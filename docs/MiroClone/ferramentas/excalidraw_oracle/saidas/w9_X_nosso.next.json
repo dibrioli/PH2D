@@ -5,10 +5,10 @@
   "licenca": "MIT",
   "chromium": "153.0.8010.12",
   "casos": "w9_nosso_casos.json",
-  "casos_sha256": "341acb8ea9537bf05a73fcde19fe123142da67470d00035b44eabef4015906c3",
+  "casos_sha256": "ed4eb84197564cc0eafd56dead5c518e868a683fe23ea8ae56a1cf037057df13",
   "caso": "X_nosso",
   "descricao": "o NOSSO .excalidraw (W9): ponto fixo (inside), órbita e centro (orbit), a curva dele, as pontas novas e o aspecto — escrito por ph2d-board-excalidraw::write",
-  "semente": 790225349,
+  "semente": 706769295,
   "relogio_fixo_utc": "2026-01-01T00:00:00.000Z",
   "consola": []
  },
@@ -459,6 +459,7 @@
         "id": 4,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -474,7 +475,6 @@
            "TriangleOpen",
            "ZeroOrMany"
           ],
-          "label": "",
           "mids": [],
           "route": "Spline",
           "start": {
@@ -516,6 +516,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -611,6 +612,7 @@
         "id": 5,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -626,7 +628,6 @@
            "One",
            "ExactlyOne"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -663,6 +664,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -756,6 +758,7 @@
         "id": 6,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -771,7 +774,6 @@
            "OneOrMany",
            "ZeroOrOne"
           ],
-          "label": "",
           "mids": [],
           "route": "Spline",
           "start": {
@@ -808,6 +810,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": [
            [
             300,
@@ -1355,6 +1358,7 @@
         "id": 4,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -1370,7 +1374,6 @@
            "TriangleOpen",
            "ZeroOrMany"
           ],
-          "label": "",
           "mids": [],
           "route": "Spline",
           "start": {
@@ -1412,6 +1415,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -1507,6 +1511,7 @@
         "id": 5,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -1522,7 +1527,6 @@
            "One",
            "ExactlyOne"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -1559,6 +1563,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -1652,6 +1657,7 @@
         "id": 6,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -1667,7 +1673,6 @@
            "OneOrMany",
            "ZeroOrOne"
           ],
-          "label": "",
           "mids": [],
           "route": "Spline",
           "start": {
@@ -1704,6 +1709,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": [
            [
             300,
@@ -2251,6 +2257,7 @@
         "id": 4,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -2266,7 +2273,6 @@
            "TriangleOpen",
            "ZeroOrMany"
           ],
-          "label": "",
           "mids": [],
           "route": "Spline",
           "start": {
@@ -2308,6 +2314,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -2403,6 +2410,7 @@
         "id": 5,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -2418,7 +2426,6 @@
            "One",
            "ExactlyOne"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -2455,6 +2462,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -2548,6 +2556,7 @@
         "id": 6,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -2563,7 +2572,6 @@
            "OneOrMany",
            "ZeroOrOne"
           ],
-          "label": "",
           "mids": [],
           "route": "Spline",
           "start": {
@@ -2600,6 +2608,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": [
            [
             300,
@@ -3152,6 +3161,7 @@
         "id": 4,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -3167,7 +3177,6 @@
            "TriangleOpen",
            "ZeroOrMany"
           ],
-          "label": "",
           "mids": [],
           "route": "Spline",
           "start": {
@@ -3209,6 +3218,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -3305,6 +3315,7 @@
         "id": 5,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -3320,7 +3331,6 @@
            "One",
            "ExactlyOne"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -3357,6 +3367,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -3451,6 +3462,7 @@
         "id": 6,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -3466,7 +3478,6 @@
            "OneOrMany",
            "ZeroOrOne"
           ],
-          "label": "",
           "mids": [],
           "route": "Spline",
           "start": {
@@ -3503,6 +3514,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": [
            [
             300,
@@ -4051,6 +4063,7 @@
         "id": 4,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -4066,7 +4079,6 @@
            "TriangleOpen",
            "ZeroOrMany"
           ],
-          "label": "",
           "mids": [],
           "route": "Spline",
           "start": {
@@ -4108,6 +4120,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -4204,6 +4217,7 @@
         "id": 5,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -4219,7 +4233,6 @@
            "One",
            "ExactlyOne"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -4256,6 +4269,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -4350,6 +4364,7 @@
         "id": 6,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -4365,7 +4380,6 @@
            "OneOrMany",
            "ZeroOrOne"
           ],
-          "label": "",
           "mids": [],
           "route": "Spline",
           "start": {
@@ -4402,6 +4416,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": [
            [
             300,

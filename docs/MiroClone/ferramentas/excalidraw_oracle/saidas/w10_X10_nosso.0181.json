@@ -5,10 +5,10 @@
   "licenca": "MIT",
   "chromium": "153.0.8010.12",
   "casos": "w10_nosso_casos.json",
-  "casos_sha256": "dfb404050170dbaf8d3254de60f55e7e79cb0454e3e66a52653fa50ecfd15303",
+  "casos_sha256": "d4b50b32816d00cebb4c4b3a26a9336822985d24eac5f6747344a11c86c62f5f",
   "caso": "X10_nosso",
   "descricao": "o NOSSO .excalidraw (W10): rectângulo, elipse e losango (direitos, rodados, de cantos redondos), órbita fora do centro, centro e ponto fixo, recta, a curva dele e a do Miro — escrito por ph2d-board-excalidraw::write",
-  "semente": 1567090972,
+  "semente": 2475240315,
   "relogio_fixo_utc": "2026-01-01T00:00:00.000Z",
   "consola": []
  },
@@ -744,6 +744,7 @@
         "id": 8,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -759,7 +760,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -801,6 +801,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -897,6 +898,7 @@
         "id": 9,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -912,7 +914,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -954,6 +955,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -1050,6 +1052,7 @@
         "id": 10,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -1065,7 +1068,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -1102,6 +1104,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -1189,6 +1192,7 @@
         "id": 11,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -1204,7 +1208,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -1241,6 +1244,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -1337,6 +1341,7 @@
         "id": 12,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -1352,7 +1357,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -1389,6 +1393,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -1476,6 +1481,7 @@
         "id": 13,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -1491,7 +1497,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -1528,6 +1533,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -1615,6 +1621,7 @@
         "id": 14,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -1630,7 +1637,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -1667,6 +1673,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -1754,6 +1761,7 @@
         "id": 15,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -1769,7 +1777,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -1806,6 +1813,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -1893,6 +1901,7 @@
         "id": 16,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -1908,7 +1917,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -1945,6 +1953,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -2032,6 +2041,7 @@
         "id": 17,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -2047,7 +2057,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -2084,6 +2093,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -2171,6 +2181,7 @@
         "id": 18,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -2186,7 +2197,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -2223,6 +2233,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -2310,6 +2321,7 @@
         "id": 19,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -2325,7 +2337,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -2362,6 +2373,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -2449,6 +2461,7 @@
         "id": 20,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -2464,7 +2477,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -2501,6 +2513,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -2588,6 +2601,7 @@
         "id": 21,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -2603,7 +2617,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -2640,6 +2653,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -2727,6 +2741,7 @@
         "id": 22,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -2742,7 +2757,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -2784,6 +2798,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -2880,6 +2895,7 @@
         "id": 23,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -2895,7 +2911,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -2932,6 +2947,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -3028,6 +3044,7 @@
         "id": 24,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -3043,7 +3060,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -3080,6 +3096,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -3167,6 +3184,7 @@
         "id": 25,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": "Center",
@@ -3177,7 +3195,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Spline",
           "start": {
@@ -3219,6 +3236,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": [
            [
             700,
@@ -3330,6 +3348,7 @@
         "id": 26,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -3345,7 +3364,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -3382,6 +3400,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -3469,6 +3488,7 @@
         "id": 27,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -3484,7 +3504,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Curved",
           "start": {
@@ -3526,6 +3545,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -4447,6 +4467,7 @@
         "id": 8,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -4462,7 +4483,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -4504,6 +4524,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -4600,6 +4621,7 @@
         "id": 9,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -4615,7 +4637,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -4657,6 +4678,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -4753,6 +4775,7 @@
         "id": 10,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -4768,7 +4791,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -4805,6 +4827,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -4892,6 +4915,7 @@
         "id": 11,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -4907,7 +4931,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -4944,6 +4967,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -5040,6 +5064,7 @@
         "id": 12,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -5055,7 +5080,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -5092,6 +5116,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -5179,6 +5204,7 @@
         "id": 13,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -5194,7 +5220,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -5231,6 +5256,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -5318,6 +5344,7 @@
         "id": 14,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -5333,7 +5360,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -5370,6 +5396,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -5457,6 +5484,7 @@
         "id": 15,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -5472,7 +5500,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -5509,6 +5536,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -5596,6 +5624,7 @@
         "id": 16,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -5611,7 +5640,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -5648,6 +5676,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -5735,6 +5764,7 @@
         "id": 17,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -5750,7 +5780,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -5787,6 +5816,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -5874,6 +5904,7 @@
         "id": 18,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -5889,7 +5920,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -5926,6 +5956,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -6013,6 +6044,7 @@
         "id": 19,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -6028,7 +6060,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -6065,6 +6096,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -6152,6 +6184,7 @@
         "id": 20,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -6167,7 +6200,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -6204,6 +6236,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -6291,6 +6324,7 @@
         "id": 21,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -6306,7 +6340,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -6343,6 +6376,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -6430,6 +6464,7 @@
         "id": 22,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -6445,7 +6480,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -6487,6 +6521,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -6583,6 +6618,7 @@
         "id": 23,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -6598,7 +6634,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -6635,6 +6670,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -6731,6 +6767,7 @@
         "id": 24,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -6746,7 +6783,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -6783,6 +6819,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -6870,6 +6907,7 @@
         "id": 25,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": "Center",
@@ -6880,7 +6918,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Spline",
           "start": {
@@ -6922,6 +6959,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": [
            [
             700,
@@ -7033,6 +7071,7 @@
         "id": 26,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -7048,7 +7087,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -7085,6 +7123,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -7172,6 +7211,7 @@
         "id": 27,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -7187,7 +7227,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Curved",
           "start": {
@@ -7229,6 +7268,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -8159,6 +8199,7 @@
         "id": 8,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -8174,7 +8215,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -8216,6 +8256,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -8312,6 +8353,7 @@
         "id": 9,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -8327,7 +8369,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -8369,6 +8410,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -8465,6 +8507,7 @@
         "id": 10,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -8480,7 +8523,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -8517,6 +8559,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -8604,6 +8647,7 @@
         "id": 11,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -8619,7 +8663,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -8656,6 +8699,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -8752,6 +8796,7 @@
         "id": 12,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -8767,7 +8812,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -8804,6 +8848,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -8891,6 +8936,7 @@
         "id": 13,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -8906,7 +8952,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -8943,6 +8988,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -9030,6 +9076,7 @@
         "id": 14,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -9045,7 +9092,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -9082,6 +9128,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -9169,6 +9216,7 @@
         "id": 15,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -9184,7 +9232,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -9221,6 +9268,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -9308,6 +9356,7 @@
         "id": 16,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -9323,7 +9372,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -9360,6 +9408,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -9447,6 +9496,7 @@
         "id": 17,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -9462,7 +9512,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -9499,6 +9548,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -9586,6 +9636,7 @@
         "id": 18,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -9601,7 +9652,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -9638,6 +9688,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -9725,6 +9776,7 @@
         "id": 19,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -9740,7 +9792,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -9777,6 +9828,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -9864,6 +9916,7 @@
         "id": 20,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -9879,7 +9932,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -9916,6 +9968,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -10003,6 +10056,7 @@
         "id": 21,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -10018,7 +10072,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -10055,6 +10108,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -10142,6 +10196,7 @@
         "id": 22,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -10157,7 +10212,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -10199,6 +10253,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -10295,6 +10350,7 @@
         "id": 23,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -10310,7 +10366,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -10347,6 +10402,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -10443,6 +10499,7 @@
         "id": 24,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -10458,7 +10515,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -10495,6 +10551,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -10582,6 +10639,7 @@
         "id": 25,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": "Center",
@@ -10592,7 +10650,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Spline",
           "start": {
@@ -10634,6 +10691,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": [
            [
             700,
@@ -10745,6 +10803,7 @@
         "id": 26,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -10760,7 +10819,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -10797,6 +10855,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -10884,6 +10943,7 @@
         "id": 27,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -10899,7 +10959,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Curved",
           "start": {
@@ -10941,6 +11000,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -11862,6 +11922,7 @@
         "id": 8,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -11877,7 +11938,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -11919,6 +11979,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -12015,6 +12076,7 @@
         "id": 9,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -12030,7 +12092,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -12072,6 +12133,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -12168,6 +12230,7 @@
         "id": 10,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -12183,7 +12246,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -12220,6 +12282,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -12307,6 +12370,7 @@
         "id": 11,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -12322,7 +12386,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -12359,6 +12422,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -12455,6 +12519,7 @@
         "id": 12,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -12470,7 +12535,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -12507,6 +12571,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -12594,6 +12659,7 @@
         "id": 13,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -12609,7 +12675,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -12646,6 +12711,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -12733,6 +12799,7 @@
         "id": 14,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -12748,7 +12815,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -12785,6 +12851,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -12872,6 +12939,7 @@
         "id": 15,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -12887,7 +12955,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -12924,6 +12991,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -13011,6 +13079,7 @@
         "id": 16,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -13026,7 +13095,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -13063,6 +13131,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -13150,6 +13219,7 @@
         "id": 17,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -13165,7 +13235,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -13202,6 +13271,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -13289,6 +13359,7 @@
         "id": 18,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -13304,7 +13375,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -13341,6 +13411,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -13428,6 +13499,7 @@
         "id": 19,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -13443,7 +13515,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -13480,6 +13551,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -13567,6 +13639,7 @@
         "id": 20,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -13582,7 +13655,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -13619,6 +13691,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -13706,6 +13779,7 @@
         "id": 21,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -13721,7 +13795,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -13758,6 +13831,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -13845,6 +13919,7 @@
         "id": 22,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -13860,7 +13935,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -13902,6 +13976,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -13998,6 +14073,7 @@
         "id": 23,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -14013,7 +14089,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -14050,6 +14125,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -14146,6 +14222,7 @@
         "id": 24,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -14161,7 +14238,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -14198,6 +14274,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -14285,6 +14362,7 @@
         "id": 25,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": "Center",
@@ -14295,7 +14373,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Spline",
           "start": {
@@ -14337,6 +14414,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": [
            [
             700,
@@ -14448,6 +14526,7 @@
         "id": 26,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -14463,7 +14542,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Straight",
           "start": {
@@ -14500,6 +14578,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },
@@ -14587,6 +14666,7 @@
         "id": 27,
         "kind": {
          "Connector": {
+          "captions": [],
           "end": {
            "Bound": {
             "anchor": {
@@ -14602,7 +14682,6 @@
            "None",
            "Arrow"
           ],
-          "label": "",
           "mids": [],
           "route": "Curved",
           "start": {
@@ -14644,6 +14723,7 @@
             255
            ]
           },
+          "turn": "Along",
           "waypoints": []
          }
         },

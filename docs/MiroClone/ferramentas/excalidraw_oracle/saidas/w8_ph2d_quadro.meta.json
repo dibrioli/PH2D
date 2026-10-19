@@ -4,9 +4,9 @@
   "package_license": "MIT",
   "chromium_version": "153.0.8010.12",
   "playwright_version": "1.63.0",
-  "date": "2026-10-19T20:51:01.716Z",
+  "date": "2026-10-19T22:37:05.754Z",
   "input": "w8_ph2d_quadro.excalidraw",
-  "input_sha256": "8dd53dea898a744bd34a0a06958fdb5e4d8aa0e94dd8b441bacf589ff1129e98",
+  "input_sha256": "08b7a256334516cd6a251db69e72b0acd5e27789a70c8cdb5fc7c91633cee98b",
   "sondas": "w8_sondas.json",
   "sondas_sha256": "ae2fad17a3b10435bb18adcae35e6eadf1b20eb551a3c24b7b9fd8e51fc594e5",
   "deterministic_env": {
@@ -24,17 +24,17 @@
   "external_requests_blocked": [],
   "console": [],
   "outputs_sha256": {
-    "w8_ph2d_quadro.restored.json": "1bcab3d8ec88fe13ebd2a520bda7ee1d073e69af091f0eb7eb627716c80e7539",
-    "w8_ph2d_quadro.serialized.excalidraw": "893ae9d0e369270e9ad5633b69f7beaac6f2b77bb8e8ed415f0da87ee0747255",
-    "w8_ph2d_quadro.serialized_database.json": "e4ec458e7f2625bf0bb7376e46274f6c81e1ee025d40540c9ee1bbbdbf51730b",
-    "w8_ph2d_quadro.svg": "f1678eecafe5d5273f6fb07ada56ffef3d2e79f1e4887a1e491c80371dd84b41",
-    "w8_ph2d_quadro.embed.svg": "07de61d3900bc2a9626ca30f597e67888c4a88d0d1f1905d72af6214380afcd0",
+    "w8_ph2d_quadro.restored.json": "5e816afde70a1cb7054bb791e3f0cfdad40f8be461cdcf030fe134e0a2d79f81",
+    "w8_ph2d_quadro.serialized.excalidraw": "9af23ff1de040dd86b19aeb509708d88210e4466a6c9bf9da712ffc28fee1b17",
+    "w8_ph2d_quadro.serialized_database.json": "7102389e53ba342d5d648d235e43484e216ad93afba6c4123ab13f62e72ae9c2",
+    "w8_ph2d_quadro.svg": "c32701adac3cc94a407dab89fc76988e3d8e04faf87e0d2a867601cdc0dafee2",
+    "w8_ph2d_quadro.embed.svg": "a7552c6c4ce4df60fc2ce780ee708e33a63ddbfff56420c036615f4b80d85104",
     "w8_ph2d_quadro.png": "6f671caccf1afded6b796d03997aa99c111b39d6cd71ab856001a1523f55cdb6",
     "w8_ph2d_quadro.sem_fundo.png": "0f39efdec2dc8880233e70061b466f19c154084cab435919d44e3396c8f5e2ee",
     "w8_ph2d_quadro.escuro.png": "6a8c476544e1f894d7e1b68ff655be9e7fbc29bbcc480581a3aa24ee900d1b33",
-    "w8_ph2d_quadro.embed.png": "e9c689d0dbfd38d9fa719214f6bc9255d69d24fc632c29ae329692c29268968f",
-    "w8_ph2d_quadro.export.json": "21cc03582fb3d48f3d3d03076cbbfb35843b7bc34c72d5ffe56b9ddb369b68a2",
-    "w8_sondas.json": "1c04ed5dcab96221bf6652138cf9b672caf7032545163360ec651acc201573b3",
+    "w8_ph2d_quadro.embed.png": "7a87f5c9666566526bf3df999a284b0da99ad773ac2ac3f01a1fae92c84438b6",
+    "w8_ph2d_quadro.export.json": "5ce58aafce610c18729dc42be15e652932a434f82440791eee16b243afd04e22",
+    "w8_sondas.json": "feb96e31e8a68c2bc146d8be16875908dd7fe244857b5989180217f311c2807e",
     "w8_appstate_restaurado.json": "47abb04d5c031807f53588acd1c68f0beb95f1ec74c6ae87e2d88fd79d23a308"
   }
 }

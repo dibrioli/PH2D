@@ -912,6 +912,12 @@
             "id": 10,
             "kind": {
               "Connector": {
+                "captions": [
+                  {
+                    "at": 0.5,
+                    "text": "next"
+                  }
+                ],
                 "end": {
                   "Bound": {
                     "anchor": "Center",
@@ -922,7 +928,6 @@
                   "None",
                   "Arrow"
                 ],
-                "label": "next",
                 "mids": [],
                 "route": "Curved",
                 "start": {
@@ -959,6 +964,7 @@
                     255
                   ]
                 },
+                "turn": "Along",
                 "waypoints": []
               }
             },
@@ -1113,6 +1119,7 @@
       "height": 25,
       "id": "ph2d-10-text",
       "isDeleted": false,
+      "labelPosition": 0.5,
       "lineHeight": 1.25,
       "link": null,
       "locked": false,
@@ -1150,6 +1157,7 @@
             "id": 11,
             "kind": {
               "Connector": {
+                "captions": [],
                 "end": {
                   "Bound": {
                     "anchor": {
@@ -1165,7 +1173,6 @@
                   "None",
                   "Arrow"
                 ],
-                "label": "",
                 "mids": [],
                 "route": "Elbow",
                 "start": {
@@ -1207,6 +1214,7 @@
                     255
                   ]
                 },
+                "turn": "Along",
                 "waypoints": []
               }
             },
@@ -1313,6 +1321,7 @@
             "id": 12,
             "kind": {
               "Connector": {
+                "captions": [],
                 "end": {
                   "Bound": {
                     "anchor": "Center",
@@ -1323,7 +1332,6 @@
                   "Bar",
                   "Triangle"
                 ],
-                "label": "",
                 "mids": [],
                 "route": "Straight",
                 "start": {
@@ -1360,6 +1368,7 @@
                     255
                   ]
                 },
+                "turn": "Along",
                 "waypoints": []
               }
             },

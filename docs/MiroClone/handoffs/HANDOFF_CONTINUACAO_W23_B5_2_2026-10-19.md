@@ -1,5 +1,8 @@
 # CONTINUAÇÃO — `line/MiroClone` W23: B5(2) textos ao longo da linha feito; o próximo é o B5(4) — 2026-10-19
 
+> ✅ **Smoke do dono 19/10: OK** (cena 26, com as curas do 2.º smoke: o texto dobra com a curva, o menu do
+> botão direito fecha ao clicar fora e com `Esc`). HEAD `63f61cd199`. O próximo é o §4 ABERTO: B5(4).
+
 > Leitor: a LLM da próxima janela. Anterior: [HANDOFF_CONTINUACAO_W23_SMOKE19_B5_1](HANDOFF_CONTINUACAO_W23_SMOKE19_B5_1_2026-10-19.md) ·
 > lista-mãe: [HANDOFF_CONTINUACAO_W23_ABERTOS](HANDOFF_CONTINUACAO_W23_ABERTOS_2026-10-18.md). HEAD `527761e134` (+ o commit de docs que
 > leva este ficheiro), base = main `100d34c8e0`. Sem integração nem push: só por ordem do Enio.

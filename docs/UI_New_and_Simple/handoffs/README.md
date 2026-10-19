@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**72 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **72** são handoffs (registro **morto**).
+**73 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **73** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -87,6 +87,7 @@
 | 2026-10-17 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-17_F16_F17.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-17_F16_F17.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-17 — F16–F17 (barra de controle, tracejado em pares, abas Drawing… |
 | 2026-10-18 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F19_O_PAINEL_LE_A_FORMA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F19_O_PAINEL_LE_A_FORMA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 18/10 — F19 (o painel do vetor lê a forma) feita |
 | 2026-10-18 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F20_MISTO_E_ESPESSURA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F20_MISTO_E_ESPESSURA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 18/10 — F20 (seleção múltipla «misto» e espessura na unidade do document… |
+| 2026-10-19 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F21_O_MISTO_COMPLETO.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F21_O_MISTO_COMPLETO.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 19/10 — F21 (o «misto» completo: seletor, forma vazia, pilha de camadas)… |
 
 ---
 

@@ -92,5 +92,8 @@ Decisões do §5:
   Mix/borracha, camada única, sem máscara nem Solid, arma a medição (`a_forca_mede_se`).
 - **Wet Paint**: fica `c` cheia (a tinta aparece pela água, fora do passo) — os cruzamentos nele ainda mostram o nó.
 
+**W12 (20/10)**: o Wet Paint deixou de ficar cheio — a tinta do artista pinta por cima da gravação e a cobertura é o
+`pa` da água dele ([doc W12](10_W12_cruzamentos_em_wet_paint.md)); Watercolor e Impasto ficam cheios, com a medição.
+
 Desvios do §2/§3: `c` é `u16` (CHEIA = 65 535), não `u8` (em `u8` somava até ½ nível); sem degrau de `PROJECT_SCHEMA`
 (FORMATO 2 no blob opaco, o 1 abre com `c` cheia). A `=6 cruza` pintava em Wet Paint — passou a Digital.

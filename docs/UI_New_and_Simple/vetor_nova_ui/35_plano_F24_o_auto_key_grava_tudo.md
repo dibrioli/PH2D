@@ -216,16 +216,18 @@ de passar suavemente, a estrela torcer a meio, ou faltar uma linha no dope-sheet
 | Criar/apagar objectos, componentes, booleanas, pais | estrutura da cena, não propriedade; a booleana grava o RESULTADO (a forma) pelo canal «Forma» |
 | Pincel, ferramenta, grelha, guias, cebola, câmara do editor | estado da ferramenta/vista, não da cena |
 | Quadro (MiroClone), editor de scripts, macros (já tem `MacroTime`) | sem cena animada |
-| Pixels do Painter | **depende do dono** (§9 Q2); as propriedades da camada (opacidade, mistura, visível, efeitos) entram de qualquer forma |
+| ~~Pixels do Painter~~ | **ENTRAM** (dono, §9 Q2): quadro a quadro como o Flip — saem desta tabela |
 | Traços do Flip | já têm a lei do Grease Pencil (o Auto Key cria DESENHO, `ph2d-flip/src/autokey.rs`); as propriedades da camada Flip entram |
 
-## §9 — Perguntas de PRODUTO ao dono (o resto é técnico e está decidido acima)
+## §9 — Decisões de PRODUTO do dono (20/10)
 
-- **Q1 — pontos:** mexer um ponto grava a **forma inteira** numa chave (After Effects, Spine:
-  recomendado — nunca torce, uma linha por forma no dope-sheet) **ou** cada ponto tem a sua chave
-  (Rive, Moho: dá para atrasar um ponto em relação a outro, mas inserir/apagar pontos fica frágil)?
-- **Q2 — pintura:** a pintura do Painter também passa a ser quadro a quadro (como o Flip), ou ficam só
-  as propriedades da camada?
+- **Q1 → (a) a FORMA INTEIRA numa chave** (After Effects, Spine). O §2 escolha 4 e o §3 valem como
+  estão; a chave por ponto (Rive/Moho) fica recusada por decisão do dono.
+- **Q2 → a pintura do Painter é QUADRO A QUADRO, como o Flip.** A camada de pintura ganha quadros
+  (exposições de desenho); com o Auto Key armado, pintar num quadro sem chave CRIA o quadro (a lei do
+  Grease Pencil que o Flip já tem, `ph2d-flip/src/autokey.rs`) — é o canal discreto «Desenho» da
+  camada. Entra no Bloco 2. ⚠️ Colisão: a missão dos pincéis (19/10, 5 janelas em `docs/Painter/Pinceis/`)
+  toca o Painter — conferir `git worktree list` e a superfície de colisão ANTES de abrir o Bloco 2.
 
 ## §10 — Ordem (dois blocos; série porque o 2.º depende do trait que o 1.º fecha)
 

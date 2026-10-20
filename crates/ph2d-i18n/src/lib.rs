@@ -60,6 +60,7 @@ mod board_live;
 /// O QUADRO — o que é de uma pessoa (W12): o modo privado e a votação ao vivo.
 mod board_private;
 /// O QUADRO — «Send to board…» da Hierarquia (W15).
+mod board_block6;
 mod board_send;
 mod board_team;
 /// As strings dos MENUS da moldura (barra de menus, menus de contexto, paleta de comandos).
@@ -545,6 +546,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| board_fidelity::tr(k))
             .or_else(|| board_images::tr(k))
             .or_else(|| board_send::tr(k))
+            .or_else(|| board_block6::tr(k))
             .or_else(|| chrome_rail::tr(k))
             .or_else(|| chrome_panes::tr(k))
             .or_else(|| audio_fx::tr(k))

@@ -210,6 +210,23 @@ impl Documents {
         &self.live.team
     }
 
+    /// W23 B14 — a frase do aviso do quadro (com botão) que está guardado, se há (as cenas e as sondas).
+    #[must_use]
+    pub fn live_alert_text(&self) -> Option<&str> {
+        self.live.alert.as_ref().map(|a| a.text.as_str())
+    }
+
+    /// W23 B12 — o que um laço pelo rasto `trail` apanharia no quadro activo (as cenas e as sondas).
+    pub fn lasso_for_tests(&mut self, trail: &[[f64; 2]]) -> Vec<ph2d_board_model::ElementId> {
+        let Some(id) = self.active else {
+            return Vec::new();
+        };
+        let (Some(board), Some(ed)) = (self.boards.get(id), self.live.editor.as_mut()) else {
+            return Vec::new();
+        };
+        ed.lasso_pick(&board.doc, trail)
+    }
+
     /// W23 B14 — os quadros (para ler) e a equipa da sessão (para mexer), juntos (o aviso das menções).
     pub(crate) fn boards_and_team(&mut self) -> (&ph2d_board_model::BoardSet, &mut Team) {
         (&self.boards, &mut self.live.team)

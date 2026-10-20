@@ -79,6 +79,17 @@ pub(crate) fn tick(hero: &mut HeroScreen) {
     hero.documents.live.alert = Some(Alert::new(line, Some(Action::ShowThread { board, thread })));
 }
 
+/// Tudo o que os quadros têm AGORA conta como visto (nada disto avisará): o que um projecto que se
+/// abre traz. Uma mensagem que chegue depois avisa.
+pub fn seen_now(hero: &mut HeroScreen) {
+    let (boards, team) = hero.documents.boards_and_team();
+    for b in boards.boards() {
+        team.seeded.insert(b.id);
+        team.notified
+            .extend(b.team.threads.iter().flat_map(|t| t.messages.iter().map(|m| m.id)));
+    }
+}
+
 /// A bolinha de «por ler para mim» no canto de cima à direita de `r`.
 pub fn paint_dot(scene: &mut VectorScene, r: Rect, theme: Theme) {
     let rad = Spacing::Xs.px();

@@ -27,6 +27,11 @@ fn meets(a: [f64; 4], b: [f64; 4]) -> bool {
 }
 
 impl Editor {
+    /// O que um laço pelo rasto `trail` apanha em `doc` (a mesma porta do gesto; as sondas e as cenas).
+    pub fn lasso_pick(&mut self, doc: &BoardDoc, trail: &[[f64; 2]]) -> Vec<ElementId> {
+        self.inside(doc, Region::Lasso(trail, LASSO_COVER))
+    }
+
     /// ⭐ Os elementos que `region` apanha, já com os grupos deles.
     pub(crate) fn inside(&mut self, doc: &BoardDoc, region: Region<'_>) -> Vec<ElementId> {
         self.routes.sync(doc);

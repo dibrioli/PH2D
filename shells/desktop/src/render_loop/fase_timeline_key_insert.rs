@@ -123,14 +123,9 @@ impl crate::App {
                         // pose a saltar de volta); fora dela é uma RECUSA com motivo,
                         // dita em voz alta. O `key_insert_time` respondia por este
                         // caso e responde a outra pergunta (*onde esta STRIP toca?*).
-                        match timeline_bridge::path_key_time(&self.timeline, entity, k_time) {
-                            Ok(t) => self.timeline_intents.push(
-                                ph2d_timeline::TimelineIntent::AddPathKey {
-                                    entity,
-                                    t,
-                                    at: [xf.translation.x, xf.translation.y],
-                                },
-                            ),
+                        let at = [xf.translation.x, xf.translation.y];
+                        match timeline_bridge::ancora_da_k(&self.timeline, entity, k_time, at) {
+                            Ok(k) => self.timeline_intents.push(k),
                             Err(r) => {
                                 // O `push` da fila de toasts devolve se coube; derrubar
                                 // um toast nunca derruba trabalho, e aqui não há

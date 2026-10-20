@@ -15,9 +15,11 @@ use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_timeline::{PropKind, TimelineState};
 use ph2d_vec_scene::paint_stack::{PaintEntry, PaintKind};
-use ph2d_vec_scene::{GradientStop, Opacity, Paint, Rgba8, ShapeKind, StrokeSpec, VecPath, VecScene};
+use ph2d_vec_scene::{
+    GradientStop, Opacity, Paint, Rgba8, ShapeKind, StrokeSpec, VecPath, VecScene,
+};
 
-use crate::autokey_cena::avanca as go;
+use crate::autokey_smoke::avanca as go;
 use crate::state::VecState;
 
 const QUADRO_12: f64 = 0.5;
@@ -60,14 +62,22 @@ pub(crate) fn step(
             crate::shape_live::drop_shape_params(sim, &vec.entities, &[id]);
             let p = scene.path_mut(id)?;
             p.fill = Some(Paint::Linear {
-                stops: vec![GradientStop::new(0.0, LARANJA), GradientStop::new(1.0, ROXO)],
+                stops: vec![
+                    GradientStop::new(0.0, LARANJA),
+                    GradientStop::new(1.0, ROXO),
+                ],
                 start: [-MEIA, 0.0],
                 end: [MEIA, 0.0],
             });
             p.stroke = Some(StrokeSpec::new(AZUL, 0.04));
-            p.paints = vec![PaintEntry::new(PaintKind::Stroke(StrokeSpec::new(AMARELO, 0.1)))];
+            p.paints = vec![PaintEntry::new(PaintKind::Stroke(StrokeSpec::new(
+                AMARELO, 0.1,
+            )))];
             crate::contour_live::arm(sim, &vec.entities, &[id], 1.8);
-            if let Some(mut ct) = sim.world_mut().get_mut::<VecContour>(Entity::from_bits(bits)) {
+            if let Some(mut ct) = sim
+                .world_mut()
+                .get_mut::<VecContour>(Entity::from_bits(bits))
+            {
                 ct.steps = 3;
             }
             if ph2d_panel_vector::state::open_layer_index() != Some(0) {

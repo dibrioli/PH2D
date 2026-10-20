@@ -338,8 +338,7 @@ fn diff_each_sample(
         }
         sonda(|| {
             format!(
-                "[autokey] e={entity:#x} capturando={capturing} tocando={playing} solo={solo} \
-                 t={t_diff:.3} casa={:?} pose={pose:?} fila={}",
+                "[autokey] e={entity:#x} capturando={capturing} tocando={playing} solo={solo} t={t_diff:.3} casa={:?} pose={pose:?} fila={}",
                 home.as_ref().ok(),
                 to_key.len()
             )

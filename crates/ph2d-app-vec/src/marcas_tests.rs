@@ -148,8 +148,14 @@ fn o_campo_da_camada_aberta_mostra_a_entrada_aberta() {
         aberta: Some(k),
         camadas: 2,
     };
-    assert_eq!(canal_do_campo(painel::VECTOR_PAINT_OPACITY, aberta(0)), vec![op(1)]);
-    assert_eq!(canal_do_campo(painel::VECTOR_PAINT_OPACITY, aberta(1)), vec![op(2)]);
+    assert_eq!(
+        canal_do_campo(painel::VECTOR_PAINT_OPACITY, aberta(0)),
+        vec![op(1)]
+    );
+    assert_eq!(
+        canal_do_campo(painel::VECTOR_PAINT_OPACITY, aberta(1)),
+        vec![op(2)]
+    );
     assert!(canal_do_campo(painel::VECTOR_PAINT_OPACITY, SEM).is_empty());
     let sw = canal_do_campo(painel::vector_paint_swatch_id(1), aberta(0));
     assert_eq!(

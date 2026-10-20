@@ -25,7 +25,7 @@ use crate::state::VecState;
 static ESTAGIO: AtomicU8 = AtomicU8::new(0);
 static ESPERA: AtomicU8 = AtomicU8::new(0);
 /// `0` = as cenas `=1|2` · `1` = `=3` (o dono) · `2` = `=4` (mexe sozinha) · `3` = `=5` (o dono,
-/// o losango em todo campo — `autokey_cena_tudo`) · `4` = `=6` (mexe sozinha) · `5` = `=7` (a `=6`
+/// o losango em todo campo — `autokey_smoke_tudo`) · `4` = `=6` (mexe sozinha) · `5` = `=7` (a `=6`
 /// com o Inspector à frente no fim, para a foto).
 static DESENHO: AtomicU8 = AtomicU8::new(0);
 /// O estágio da cena — a do desenho avança-o daqui.
@@ -50,7 +50,7 @@ pub fn step(
             let n = std::env::var("PH2D_AUTOKEY_SMOKE").ok()?;
             ESTAGIO.store(1, Ordering::Relaxed);
             ESPERA.store(if n == "2" { 1 } else { 0 }, Ordering::Relaxed);
-            // `=3` (o dono) e `=4` (mexe sozinha): o DESENHO grava (plano 35) — `autokey_cena_desenho`.
+            // `=3` (o dono) e `=4` (mexe sozinha): o DESENHO grava (plano 35) — `autokey_smoke_desenho`.
             let desenho = match n.as_str() {
                 "3" => 1,
                 "4" => 2,
@@ -65,7 +65,7 @@ pub fn step(
         s => s,
     };
     if DESENHO.load(Ordering::Relaxed) >= 3 {
-        return crate::autokey_cena_tudo::step(
+        return crate::autokey_smoke_tudo::step(
             nivel,
             DESENHO.load(Ordering::Relaxed) - 3,
             vec,
@@ -77,7 +77,7 @@ pub fn step(
         );
     }
     if DESENHO.load(Ordering::Relaxed) > 0 {
-        return crate::autokey_cena_desenho::step(
+        return crate::autokey_smoke_desenho::step(
             nivel,
             DESENHO.load(Ordering::Relaxed) == 2,
             vec,

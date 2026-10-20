@@ -91,9 +91,17 @@ const LINHAS: &[(&str, &str)] = &[
 
 /// A classe de uma chamada por um dos seus ids — exacto, ou PREFIXO quando acaba em `_`.
 const POR_ID: &[(&str, Classe, &str)] = &[
-    ("VECTOR_PENCIL_", NaoAnimavel, "ajuste da ferramenta Lápis (§8)"),
+    (
+        "VECTOR_PENCIL_",
+        NaoAnimavel,
+        "ajuste da ferramenta Lápis (§8)",
+    ),
     ("VECTOR_SYM_", NaoAnimavel, "simetria da ferramenta (§8)"),
-    ("VECTOR_SNAP_", NaoAnimavel, "o snap é da vista/ferramenta (§8)"),
+    (
+        "VECTOR_SNAP_",
+        NaoAnimavel,
+        "o snap é da vista/ferramenta (§8)",
+    ),
     (
         "VECTOR_BOOL_",
         NaoAnimavel,
@@ -105,11 +113,31 @@ const POR_ID: &[(&str, Classe, &str)] = &[
         "a transição de um estado da Interface É uma animação; não se anima a si própria",
     ),
     ("VECTOR_ANCHOR_", Divida, "Interface: as âncoras de layout"),
-    ("VECTOR_FRAME_", Divida, "Interface: a moldura (clip, painel)"),
-    ("VECTOR_BRUSH_", Divida, "os parâmetros do Brush stroke (F24a §6.4)"),
-    ("VECTOR_BLEND_STEPS", Divida, "o Blend vivo: componente sem vocabulário"),
-    ("VECTOR_MORPH_T", Divida, "o Morph vivo: componente sem vocabulário"),
-    ("VECTOR_ENVELOPE_", Divida, "o Envelope vivo: componente sem vocabulário"),
+    (
+        "VECTOR_FRAME_",
+        Divida,
+        "Interface: a moldura (clip, painel)",
+    ),
+    (
+        "VECTOR_BRUSH_",
+        Divida,
+        "os parâmetros do Brush stroke (F24a §6.4)",
+    ),
+    (
+        "VECTOR_BLEND_STEPS",
+        Divida,
+        "o Blend vivo: componente sem vocabulário",
+    ),
+    (
+        "VECTOR_MORPH_T",
+        Divida,
+        "o Morph vivo: componente sem vocabulário",
+    ),
+    (
+        "VECTOR_ENVELOPE_",
+        Divida,
+        "o Envelope vivo: componente sem vocabulário",
+    ),
     (
         "VECTOR_TEXT_WRAP_AUTO",
         Divida,
@@ -117,8 +145,16 @@ const POR_ID: &[(&str, Classe, &str)] = &[
     ),
     ("INSP_TRANSFORM_SKEW_", Divida, "o skew não tem PropKind"),
     ("INSP_SPRITE_EMISSIVE", Divida, "a emissão do sprite (§A.2)"),
-    ("INSP_JOINT_MOTOR_GROUP", Divida, "o eixo do motor (Enum, §A.5)"),
-    ("INSP_JOINT_MOTOR_MODE_GROUP", Divida, "o modo do motor (Enum, §A.5)"),
+    (
+        "INSP_JOINT_MOTOR_GROUP",
+        Divida,
+        "o eixo do motor (Enum, §A.5)",
+    ),
+    (
+        "INSP_JOINT_MOTOR_MODE_GROUP",
+        Divida,
+        "o modo do motor (Enum, §A.5)",
+    ),
     ("INSP_JOINT_MOTOR_FORCE", Divida, "a força do motor (§A.5)"),
     ("INSP_JOINT_BREAK_", Divida, "a quebra da junta (§A.5)"),
     ("INSP_JOINT_LIMITS_", Divida, "os limites da junta (§A.5)"),
@@ -218,20 +254,36 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
 
 /// Ficheiros inteiros em dívida — famílias sem vocabulário ainda.
 const DIVIDA_FICHEIRO: &[(&str, &str, &str)] = &[
-    ("ph2d-panel-vector", "paint_filters.rs", "os filtros da forma: sem vocabulário"),
-    ("ph2d-panel-vector", "paint_layout.rs", "Interface: o auto layout"),
+    (
+        "ph2d-panel-vector",
+        "paint_filters.rs",
+        "os filtros da forma: sem vocabulário",
+    ),
+    (
+        "ph2d-panel-vector",
+        "paint_layout.rs",
+        "Interface: o auto layout",
+    ),
     (
         "ph2d-panel-vector",
         "paint_patternpath.rs",
         "o padrão ao longo do caminho: sem vocabulário",
     ),
-    ("ph2d-panel-vector", "paint_textpath.rs", "o texto no caminho: sem vocabulário"),
+    (
+        "ph2d-panel-vector",
+        "paint_textpath.rs",
+        "o texto no caminho: sem vocabulário",
+    ),
     (
         "ph2d-panel-vector",
         "paint_texture_pattern.rs",
         "o padrão de textura: o canal OFF_PADRAO existe, falta a inversa dos ids por `TexPatKnob`",
     ),
-    ("ph2d-panel-vector", "paint_widget.rs", "Interface: a pele do widget"),
+    (
+        "ph2d-panel-vector",
+        "paint_widget.rs",
+        "Interface: a pele do widget",
+    ),
 ];
 
 /// As crates que pintam campos fora do [`ESCOPO`] (plano 35 §10, bloco 2).
@@ -239,15 +291,47 @@ const DIVIDA_CRATE: &[(&str, Classe, &str)] = &[
     ("ph2d-panel-audio-editor", Divida, "Áudio"),
     ("ph2d-panel-audio-mixer", Divida, "Áudio"),
     ("ph2d-panel-flip", Divida, "a camada do Flip (§A.8)"),
-    ("ph2d-panel-painter-layers", Divida, "as camadas e ajustes do Painter (§A.7)"),
+    (
+        "ph2d-panel-painter-layers",
+        Divida,
+        "as camadas e ajustes do Painter (§A.7)",
+    ),
     ("ph2d-panel-physics", Divida, "a Física (§A.5)"),
-    ("ph2d-panel-bgremoval", NaoAnimavel, "parâmetro de uma ferramenta de imagem"),
-    ("ph2d-panel-color-equalization", NaoAnimavel, "parâmetro de uma ferramenta de imagem"),
-    ("ph2d-panel-equalize-sizes", NaoAnimavel, "parâmetro de uma ferramenta de imagem"),
-    ("ph2d-panel-padding", NaoAnimavel, "parâmetro de uma ferramenta de imagem"),
-    ("ph2d-panel-upscale", NaoAnimavel, "parâmetro de uma ferramenta de imagem"),
-    ("ph2d-panel-grid-snap", NaoAnimavel, "a grelha é da vista (§8)"),
-    ("ph2d-panel-wet-tuning", NaoAnimavel, "a afinação do motor de pintura é da ferramenta"),
+    (
+        "ph2d-panel-bgremoval",
+        NaoAnimavel,
+        "parâmetro de uma ferramenta de imagem",
+    ),
+    (
+        "ph2d-panel-color-equalization",
+        NaoAnimavel,
+        "parâmetro de uma ferramenta de imagem",
+    ),
+    (
+        "ph2d-panel-equalize-sizes",
+        NaoAnimavel,
+        "parâmetro de uma ferramenta de imagem",
+    ),
+    (
+        "ph2d-panel-padding",
+        NaoAnimavel,
+        "parâmetro de uma ferramenta de imagem",
+    ),
+    (
+        "ph2d-panel-upscale",
+        NaoAnimavel,
+        "parâmetro de uma ferramenta de imagem",
+    ),
+    (
+        "ph2d-panel-grid-snap",
+        NaoAnimavel,
+        "a grelha é da vista (§8)",
+    ),
+    (
+        "ph2d-panel-wet-tuning",
+        NaoAnimavel,
+        "a afinação do motor de pintura é da ferramenta",
+    ),
 ];
 
 // ── leitura do fonte ────────────────────────────────────────────────────────────────────────
@@ -276,7 +360,11 @@ fn fontes(krate: &str) -> Vec<(String, String)> {
                 continue;
             }
             if let Ok(s) = std::fs::read_to_string(&p) {
-                let rel = p.strip_prefix(base).unwrap_or(&p).to_string_lossy().into_owned();
+                let rel = p
+                    .strip_prefix(base)
+                    .unwrap_or(&p)
+                    .to_string_lossy()
+                    .into_owned();
                 out.push((rel, sem_testes(&s).to_owned()));
             }
         }
@@ -373,7 +461,10 @@ fn nomes_das_tabelas() -> (BTreeSet<String>, String) {
         let s = sem_testes(&s).to_owned();
         for pref in ["painel::", "ferramenta::", "insp::"] {
             for (i, _) in s.match_indices(pref) {
-                let n: String = s[i + pref.len()..].chars().take_while(|&c| ident(c)).collect();
+                let n: String = s[i + pref.len()..]
+                    .chars()
+                    .take_while(|&c| ident(c))
+                    .collect();
                 if !n.is_empty() {
                     nomes.insert(n);
                 }
@@ -529,7 +620,10 @@ fn nenhuma_isencao_sobrevive_ao_codigo_que_a_explicava() {
         }
     }
     for &(krate, ficheiro, porque) in DIVIDA_FICHEIRO {
-        if !pop.iter().any(|c| c.krate == krate && c.ficheiro == ficheiro) {
+        if !pop
+            .iter()
+            .any(|c| c.krate == krate && c.ficheiro == ficheiro)
+        {
             velhas.push(format!("DIVIDA_FICHEIRO {krate}/{ficheiro} ({porque})"));
         }
     }
@@ -588,9 +682,12 @@ fn toda_crate_que_pinta_campos_escolheu_o_seu_lado() {
         .collect();
     todas.sort();
     for k in &todas {
-        let dentro = ESCOPO.iter().any(|(e, _)| e == k) || DIVIDA_CRATE.iter().any(|(d, ..)| d == k);
+        let dentro =
+            ESCOPO.iter().any(|(e, _)| e == k) || DIVIDA_CRATE.iter().any(|(d, ..)| d == k);
         if pinta(k) && !dentro {
-            erros.push(format!("{k} pinta campos com losango e não está no ESCOPO nem em DIVIDA_CRATE"));
+            erros.push(format!(
+                "{k} pinta campos com losango e não está no ESCOPO nem em DIVIDA_CRATE"
+            ));
         }
     }
     for &(k, _, porque) in DIVIDA_CRATE {
@@ -616,7 +713,10 @@ fn a_varredura_acha_os_campos_que_se_conhecem() {
         "INSP_TRANSFORM_POS_X",
         "INSP_SPRITE_OPACITY",
     ] {
-        assert!(tem(id), "a varredura não achou `{id}` — o leitor do fonte partiu");
+        assert!(
+            tem(id),
+            "a varredura não achou `{id}` — o leitor do fonte partiu"
+        );
     }
     assert!(pop.len() > 100, "população suspeita: {}", pop.len());
 }

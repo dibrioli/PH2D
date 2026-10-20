@@ -355,12 +355,26 @@ pub(crate) fn chave_do_losango(
     let xf = mundo
         .world
         .get::<ph2d_ecs::Transform>(ph2d_ecs::Entity::try_from_bits(entity)?)?;
-    let t = path_key_time(timeline, entity, k_time).ok()?;
-    Some(ph2d_timeline::TimelineIntent::AddPathKey {
+    ancora_da_k(
+        timeline,
         entity,
-        t,
-        at: [xf.translation.x, xf.translation.y],
-    })
+        k_time,
+        [xf.translation.x, xf.translation.y],
+    )
+    .ok()
+}
+
+/// ⭐ **A âncora de trajectória que a K acrescenta** no lugar `at` — o ÚNICO emissor de
+/// `AddPathKey` da shell. O tempo vem da porta que também decide SE pode ([`path_key_time`]:
+/// só a aba Keys tem um clip escolhido); fora dela é a recusa, com o motivo.
+pub(crate) fn ancora_da_k(
+    timeline: &ph2d_timeline::TimelineState,
+    entity: u64,
+    k_time: f64,
+    at: [f32; 2],
+) -> Result<ph2d_timeline::TimelineIntent, ph2d_timeline::KeyRefusal> {
+    let t = path_key_time(timeline, entity, k_time)?;
+    Ok(ph2d_timeline::TimelineIntent::AddPathKey { entity, t, at })
 }
 
 /// The default interpolation for a freshly inserted key (a gentle ease).

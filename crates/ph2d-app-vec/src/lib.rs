@@ -70,9 +70,9 @@
 
 pub mod align_live;
 /// `PH2D_AUTOKEY_SMOKE` — o Auto Key sobre uma forma vetorial (plano 34).
-pub mod autokey_cena;
-mod autokey_cena_desenho;
-mod autokey_cena_tudo;
+pub mod autokey_smoke;
+mod autokey_smoke_desenho;
+mod autokey_smoke_tudo;
 pub mod bars_publish;
 pub mod eyedropper;
 pub mod tool_keys;

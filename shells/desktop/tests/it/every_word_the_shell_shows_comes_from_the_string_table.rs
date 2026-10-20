@@ -104,6 +104,17 @@ const FORA: &[Isento] = &[
 /// Um literal isento, com o mecanismo — nomes que são DADO.
 const NOT_LANGUAGE: &[Excecao] = &[
     (
+        "render_loop/autokey_pass.rs",
+        "[autokey] painel={panel_open} armado={armed} populacao={pop:x?}",
+        "a sonda `PH2D_AUTOKEY_LOG` (plano 34): pares `chave=valor` no terminal, só com a env \
+         ligada — o diagnóstico de quem segue um report do Auto Key, nunca pintado",
+    ),
+    (
+        "render_loop/autokey_pass.rs",
+        "[autokey] e={entity:#x} capturando={capturing} tocando={playing} solo={solo} t={t_diff:.3} casa={:?} pose={pose:?} fila={}",
+        "a mesma sonda `PH2D_AUTOKEY_LOG`, a linha por objecto (o que o Auto Key capturou)",
+    ),
+    (
         "render_loop/fase_script_commits.rs",
         "Luau",
         "o NOME DO FORMATO no filtro do diálogo de ficheiro — a mesma natureza do `PNG` ou do \

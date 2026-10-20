@@ -65,8 +65,14 @@ const CAMPOS: &[(NodeId, &[PropKind])] = &[
     (ferramenta::VECTOR_JOIN_MITER, &[campo(v::TRACO_JUNCAO)]),
     (ferramenta::VECTOR_JOIN_ROUND, &[campo(v::TRACO_JUNCAO)]),
     (ferramenta::VECTOR_JOIN_BEVEL, &[campo(v::TRACO_JUNCAO)]),
-    (ferramenta::VECTOR_ALIGN_CENTRE, &[campo(v::TRACO_ALINHAMENTO)]),
-    (ferramenta::VECTOR_ALIGN_INNER, &[campo(v::TRACO_ALINHAMENTO)]),
+    (
+        ferramenta::VECTOR_ALIGN_CENTRE,
+        &[campo(v::TRACO_ALINHAMENTO)],
+    ),
+    (
+        ferramenta::VECTOR_ALIGN_INNER,
+        &[campo(v::TRACO_ALINHAMENTO)],
+    ),
     (ferramenta::VECTOR_DASH_IDS[0], &[campo(v::TRACO_TRACEJADO)]),
     (ferramenta::VECTOR_DASH_IDS[1], &[campo(v::TRACO_TRACEJADO)]),
     (ferramenta::VECTOR_DASH_IDS[2], &[campo(v::TRACO_TRACEJADO)]),
@@ -78,37 +84,88 @@ const CAMPOS: &[(NodeId, &[PropKind])] = &[
     (painel::VECTOR_OBJ_OPACITY, &[PropKind::Opacity]),
     (painel::VECTOR_OBJ_OPACITY_NUM, &[PropKind::Opacity]),
     (painel::VECTOR_CONTOUR_STEPS, &[campo(v::CONTORNO_PASSOS)]),
-    (painel::VECTOR_CONTOUR_OFFSET, &[campo(v::CONTORNO_DISTANCIA)]),
+    (
+        painel::VECTOR_CONTOUR_OFFSET,
+        &[campo(v::CONTORNO_DISTANCIA)],
+    ),
     (painel::VECTOR_CONTOUR_ACCEL, &[campo(v::CONTORNO_ACEL)]),
-    (painel::VECTOR_CONTOUR_JOIN_MITER, &[campo(v::CONTORNO_JUNCAO)]),
-    (painel::VECTOR_CONTOUR_JOIN_ROUND, &[campo(v::CONTORNO_JUNCAO)]),
-    (painel::VECTOR_CONTOUR_JOIN_BEVEL, &[campo(v::CONTORNO_JUNCAO)]),
-    (painel::VECTOR_CONTOUR_SIDE_OUTER, &[campo(v::CONTORNO_LADO)]),
-    (painel::VECTOR_CONTOUR_SIDE_INNER, &[campo(v::CONTORNO_LADO)]),
+    (
+        painel::VECTOR_CONTOUR_JOIN_MITER,
+        &[campo(v::CONTORNO_JUNCAO)],
+    ),
+    (
+        painel::VECTOR_CONTOUR_JOIN_ROUND,
+        &[campo(v::CONTORNO_JUNCAO)],
+    ),
+    (
+        painel::VECTOR_CONTOUR_JOIN_BEVEL,
+        &[campo(v::CONTORNO_JUNCAO)],
+    ),
+    (
+        painel::VECTOR_CONTOUR_SIDE_OUTER,
+        &[campo(v::CONTORNO_LADO)],
+    ),
+    (
+        painel::VECTOR_CONTOUR_SIDE_INNER,
+        &[campo(v::CONTORNO_LADO)],
+    ),
     (painel::VECTOR_CONTOUR_SIDE_BOTH, &[campo(v::CONTORNO_LADO)]),
     (painel::VECTOR_CONTOUR_TO, &[CONTORNO_COR]),
     (ferramenta::VECTOR_WIDTH_NUM, &[campo(v::TRACO_LARGURA)]),
     (ferramenta::VECTOR_STROKE_KIND_SOLID, &[COR_DO_TRACO]),
     (ferramenta::VECTOR_STROKE_KIND_PATTERN, &[COR_DO_TRACO]),
     (ferramenta::VECTOR_STROKE_KIND_BRUSH, &[COR_DO_TRACO]),
-    (ferramenta::VECTOR_MARKER_ROUND, &[campo(v::TRACO_MARCA_REDONDA)]),
+    (
+        ferramenta::VECTOR_MARKER_ROUND,
+        &[campo(v::TRACO_MARCA_REDONDA)],
+    ),
     (ferramenta::VECTOR_MARKER_SCALE_IDS[0], PONTAS),
     (ferramenta::VECTOR_MARKER_SCALE_IDS[1], PONTAS),
     (painel::VECTOR_TEXT_SIZE, &[campo(v::TEXTO_TAMANHO)]),
     (painel::VECTOR_TEXT_WEIGHT, &[campo(v::TEXTO_PESO)]),
-    (painel::VECTOR_TEXT_LINE_HEIGHT, &[campo(v::TEXTO_ENTRELINHA)]),
+    (
+        painel::VECTOR_TEXT_LINE_HEIGHT,
+        &[campo(v::TEXTO_ENTRELINHA)],
+    ),
     (painel::VECTOR_TEXT_TRACKING, &[campo(v::TEXTO_TRACKING)]),
-    (painel::VECTOR_TEXT_ALIGN_LEFT, &[campo(v::TEXTO_ALINHAMENTO)]),
-    (painel::VECTOR_TEXT_ALIGN_CENTER, &[campo(v::TEXTO_ALINHAMENTO)]),
-    (painel::VECTOR_TEXT_ALIGN_RIGHT, &[campo(v::TEXTO_ALINHAMENTO)]),
+    (
+        painel::VECTOR_TEXT_ALIGN_LEFT,
+        &[campo(v::TEXTO_ALINHAMENTO)],
+    ),
+    (
+        painel::VECTOR_TEXT_ALIGN_CENTER,
+        &[campo(v::TEXTO_ALINHAMENTO)],
+    ),
+    (
+        painel::VECTOR_TEXT_ALIGN_RIGHT,
+        &[campo(v::TEXTO_ALINHAMENTO)],
+    ),
     (painel::VECTOR_TEXT_WRAP_W, &[campo(v::TEXTO_QUEBRA)]),
     (painel::VECTOR_EXPAND_OFFSET, &[campo(v::OFFSET_DISTANCIA)]),
-    (ferramenta::VECTOR_EXPAND_JOIN_MITER, &[campo(v::OFFSET_JUNCAO)]),
-    (ferramenta::VECTOR_EXPAND_JOIN_ROUND, &[campo(v::OFFSET_JUNCAO)]),
-    (ferramenta::VECTOR_EXPAND_JOIN_BEVEL, &[campo(v::OFFSET_JUNCAO)]),
-    (ferramenta::VECTOR_EXPAND_SIDE_OUTER, &[campo(v::OFFSET_LADO)]),
-    (ferramenta::VECTOR_EXPAND_SIDE_INNER, &[campo(v::OFFSET_LADO)]),
-    (ferramenta::VECTOR_EXPAND_SIDE_BOTH, &[campo(v::OFFSET_LADO)]),
+    (
+        ferramenta::VECTOR_EXPAND_JOIN_MITER,
+        &[campo(v::OFFSET_JUNCAO)],
+    ),
+    (
+        ferramenta::VECTOR_EXPAND_JOIN_ROUND,
+        &[campo(v::OFFSET_JUNCAO)],
+    ),
+    (
+        ferramenta::VECTOR_EXPAND_JOIN_BEVEL,
+        &[campo(v::OFFSET_JUNCAO)],
+    ),
+    (
+        ferramenta::VECTOR_EXPAND_SIDE_OUTER,
+        &[campo(v::OFFSET_LADO)],
+    ),
+    (
+        ferramenta::VECTOR_EXPAND_SIDE_INNER,
+        &[campo(v::OFFSET_LADO)],
+    ),
+    (
+        ferramenta::VECTOR_EXPAND_SIDE_BOTH,
+        &[campo(v::OFFSET_LADO)],
+    ),
 ];
 
 /// ⭐ **Os campos da entrada ABERTA da pilha de pinturas** — o id é um só para qualquer entrada; o

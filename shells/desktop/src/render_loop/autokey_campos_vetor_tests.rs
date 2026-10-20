@@ -292,7 +292,16 @@ fn losango(c: &mut Cena, clicar: bool) -> ph2d_editor_core::widget::key_mark::Ke
         let st = &c.st;
         let t = c.ph.time();
         let a_k = |e, p| super::super::timeline_bridge::chave_da_k(mundo, st, e, p, t, true);
-        let pedidos = marcas::clique(&st.doc, SEM, &[VECTOR_WIDTH], &[c.e], inst, lidos, valor, a_k);
+        let pedidos = marcas::clique(
+            &st.doc,
+            SEM,
+            &[VECTOR_WIDTH],
+            &[c.e],
+            inst,
+            lidos,
+            valor,
+            a_k,
+        );
         for i in pedidos {
             ph2d_timeline::apply_intent(&mut c.st, &mut c.ph, i);
         }

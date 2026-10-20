@@ -36,15 +36,33 @@ fn na_curva(_: u64, _: PropKind) -> Option<f32> {
 #[test]
 fn o_grupo_da_posicao_responde_a_qualquer_membro() {
     let d = doc();
-    assert_eq!(estado_do_grupo(&d, &[E], &POSICAO, em(0.0), &na_curva).0, Forca::Chave);
-    assert_eq!(estado_do_grupo(&d, &[E], &POSICAO, em(0.5), &na_curva).0, Forca::Animado);
-    let fora = |_, p| Some(if p == PropKind::TranslationX { 9.0 } else { 5.0 });
-    assert_eq!(estado_do_grupo(&d, &[E], &POSICAO, em(0.5), &fora).0, Forca::Mudado);
+    assert_eq!(
+        estado_do_grupo(&d, &[E], &POSICAO, em(0.0), &na_curva).0,
+        Forca::Chave
+    );
+    assert_eq!(
+        estado_do_grupo(&d, &[E], &POSICAO, em(0.5), &na_curva).0,
+        Forca::Animado
+    );
+    let fora = |_, p| {
+        Some(if p == PropKind::TranslationX {
+            9.0
+        } else {
+            5.0
+        })
+    };
+    assert_eq!(
+        estado_do_grupo(&d, &[E], &POSICAO, em(0.5), &fora).0,
+        Forca::Mudado
+    );
     assert_eq!(
         estado_do_grupo(&d, &[E], &[PropKind::Rotation], em(0.0), &na_curva).0,
         Forca::Livre
     );
-    assert_eq!(estado_do_grupo(&d, &[], &POSICAO, em(0.0), &na_curva).0, Forca::Livre);
+    assert_eq!(
+        estado_do_grupo(&d, &[], &POSICAO, em(0.0), &na_curva).0,
+        Forca::Livre
+    );
 }
 
 /// Fora de uma chave, o clique grava X E Y pela porta da K, sem pedir o que a família publicou.

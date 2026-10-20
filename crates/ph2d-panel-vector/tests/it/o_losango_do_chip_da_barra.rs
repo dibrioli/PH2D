@@ -40,7 +40,9 @@ fn quadro(hero: &mut HeroScreen) {
         layers_differ: false,
     }));
     // A barra de controle é PUBLICADA pelo módulo (a shell chama `bars::tool_bars` por quadro).
-    ph2d_panel_vector::set_current_vector_style(Some(ph2d_tool_vector::VectorStyleSnapshot::default()));
+    ph2d_panel_vector::set_current_vector_style(Some(
+        ph2d_tool_vector::VectorStyleSnapshot::default(),
+    ));
     ph2d_panel_vector::set_current_selection_count(1);
     let barras = ph2d_panel_vector::bars::tool_bars(&hero.store, None, Vec::new());
     hero.store.set_tool_bars(Some(barras));
@@ -62,9 +64,15 @@ fn o_chip_de_opacity_da_barra_tem_losango() {
     let mut hero = hero();
     set_key_marks(BTreeMap::new());
     quadro(&mut hero);
-    assert!(hero.hit_index.rect_for(alvo).is_none(), "sem canal, sem alvo");
+    assert!(
+        hero.hit_index.rect_for(alvo).is_none(),
+        "sem canal, sem alvo"
+    );
 
-    set_key_marks(BTreeMap::from([(ids::VECTOR_OBJ_OPACITY_NUM, KeyMark::Chave)]));
+    set_key_marks(BTreeMap::from([(
+        ids::VECTOR_OBJ_OPACITY_NUM,
+        KeyMark::Chave,
+    )]));
     quadro(&mut hero);
     let r = hero
         .hit_index

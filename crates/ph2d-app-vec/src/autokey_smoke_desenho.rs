@@ -13,7 +13,7 @@ use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_timeline::{PropKind, TimelineState};
 use ph2d_vec_scene::{DashPattern, Paint, Rgba8, ShapeKind, StrokeSpec, VecPath, VecScene};
 
-use crate::autokey_cena::avanca as go;
+use crate::autokey_smoke::avanca as go;
 use crate::state::VecState;
 
 const QUADRO_12: f64 = 0.5;

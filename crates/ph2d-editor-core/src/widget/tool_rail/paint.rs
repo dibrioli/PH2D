@@ -392,7 +392,8 @@ pub fn paint_tool_rail_axis(
                 let (state, buffer, caret, anchor) = store.number_chip_view(*id);
                 let (chip, losango) = super::number_with_key_mark(*id, slot_rect);
                 if let Some(d) = losango {
-                    let _alvo = crate::widget::key_mark::paint_decorator_for(scene, theme, d, &[*id]);
+                    let _alvo =
+                        crate::widget::key_mark::paint_decorator_for(scene, theme, d, &[*id]);
                 }
                 crate::widget::paint_number_chip(
                     chip,

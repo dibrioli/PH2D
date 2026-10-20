@@ -153,7 +153,11 @@ mod tests {
             assert_eq!(fx.ler(k(campo)), Some(v), "campo {campo}");
         }
         fx.escrever(k(c::CONTORNO_PASSOS), 0.0);
-        assert_eq!(fx.contorno.unwrap().steps, 1, "um Contour vivo tem pelo menos um anel");
+        assert_eq!(
+            fx.contorno.unwrap().steps,
+            1,
+            "um Contour vivo tem pelo menos um anel"
+        );
         fx.escrever(k(c::CONTORNO_PASSOS), 99.0);
         assert_eq!(fx.contorno.unwrap().steps, MAX_CONTOUR_STEPS);
         assert_eq!(fx.campos().len(), 12);

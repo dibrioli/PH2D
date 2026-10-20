@@ -87,9 +87,8 @@ impl crate::App {
                     .map(|(k, _)| k)
                     .collect()
             };
-            let k = |e, p| {
-                timeline_bridge::chave_do_losango(mundo, &self.timeline, e, p, t_raw, solo)
-            };
+            let k =
+                |e, p| timeline_bridge::chave_do_losango(mundo, &self.timeline, e, p, t_raw, solo);
             let mut intents =
                 ph2d_app_vec::marcas::clique(tl, ctx, &c.fields, &sel, inst, lidos, valor, k);
             if intents.is_empty() {

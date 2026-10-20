@@ -62,7 +62,11 @@ pub fn publicar(sim: &mut SimWorld, scene: &VecScene, entidades: &[u64]) {
             .filter_map(|kk| Some((kk, ler(p, shape.as_ref(), kk)?)))
             .collect();
         let fx = efeitos(sim, e);
-        valores.extend(fx.campos().into_iter().filter_map(|kk| Some((kk, fx.ler(kk)?))));
+        valores.extend(
+            fx.campos()
+                .into_iter()
+                .filter_map(|kk| Some((kk, fx.ler(kk)?))),
+        );
         lotes.push((e, valores));
     }
     let mut lidos = sim

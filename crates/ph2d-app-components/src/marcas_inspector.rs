@@ -95,15 +95,22 @@ pub fn clique(
     else {
         return Vec::new();
     };
-    let apagar = ph2d_timeline::clique_no_grupo(doc, reps, entidades, inst, |_| Vec::new(), &valor, |_, _| None);
+    let apagar = ph2d_timeline::clique_no_grupo(
+        doc,
+        reps,
+        entidades,
+        inst,
+        |_| Vec::new(),
+        &valor,
+        |_, _| None,
+    );
     if apagar.contains(&TimelineIntent::DeleteSelection) {
         return apagar;
     }
     let mut out = vec![TimelineIntent::BeginEdit];
     for &e in entidades {
         // A porta da K: a animação que existe decide; um objecto novo vai para a trajectória.
-        let na_trajetoria =
-            doc.position_key_mode(e, true) == ph2d_timeline::PositionKeyMode::Path;
+        let na_trajetoria = doc.position_key_mode(e, true) == ph2d_timeline::PositionKeyMode::Path;
         out.extend(
             reps.iter()
                 .filter(|&&p| (p == PropKind::Position) == na_trajetoria || !POSICAO.contains(&p))

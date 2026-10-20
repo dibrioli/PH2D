@@ -65,7 +65,14 @@ fn o_x_e_o_y_mostram_a_posicao_inteira() {
 #[test]
 fn o_clique_grava_a_posicao_do_modo_do_objecto() {
     let d = TimelineDoc::new();
-    let i = clique(&d, &[insp::INSP_TRANSFORM_POS_X], &[E], em(0.5), na_curva, add);
+    let i = clique(
+        &d,
+        &[insp::INSP_TRANSFORM_POS_X],
+        &[E],
+        em(0.5),
+        na_curva,
+        add,
+    );
     assert_eq!(gravados(&i), vec![PropKind::Position]);
     let mut separados = TimelineDoc::new();
     separados.fps_display = 24.0;
@@ -82,9 +89,26 @@ fn o_clique_grava_a_posicao_do_modo_do_objecto() {
         gravados(&i),
         vec![PropKind::TranslationX, PropKind::TranslationY]
     );
-    let i = clique(&d, &[insp::INSP_TRANSFORM_SCALE_Y], &[E], em(0.5), na_curva, add);
+    let i = clique(
+        &d,
+        &[insp::INSP_TRANSFORM_SCALE_Y],
+        &[E],
+        em(0.5),
+        na_curva,
+        add,
+    );
     assert_eq!(gravados(&i), vec![PropKind::ScaleX, PropKind::ScaleY]);
-    assert!(clique(&d, &[insp::INSP_TRANSFORM_SKEW_X], &[E], em(0.5), na_curva, add).is_empty());
+    assert!(
+        clique(
+            &d,
+            &[insp::INSP_TRANSFORM_SKEW_X],
+            &[E],
+            em(0.5),
+            na_curva,
+            add
+        )
+        .is_empty()
+    );
 }
 
 /// Numa chave, o clique apaga — aqui a da rotação, num passo de undo.
@@ -93,7 +117,14 @@ fn o_clique_numa_chave_apaga() {
     let mut d = TimelineDoc::new();
     d.fps_display = 24.0;
     chave(&mut d, PropKind::Rotation, 0.0);
-    let i = clique(&d, &[insp::INSP_TRANSFORM_ROT], &[E], em(0.0), na_curva, add);
+    let i = clique(
+        &d,
+        &[insp::INSP_TRANSFORM_ROT],
+        &[E],
+        em(0.0),
+        na_curva,
+        add,
+    );
     assert_eq!(i.first(), Some(&TimelineIntent::BeginEdit));
     assert!(i.contains(&TimelineIntent::DeleteSelection));
     assert!(gravados(&i).is_empty());

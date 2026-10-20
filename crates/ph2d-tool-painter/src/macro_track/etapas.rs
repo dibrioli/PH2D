@@ -7,11 +7,9 @@
 //! volta depois do levantar. Re-cronometrar sai da gravação (a água larga a fita, `Passo::SaiDaGravacao`);
 //! uma edição de valor só sai se a conferência divergir ([`assenta`]).
 
-use super::inicial;
 use super::passo::Passo;
 use super::tocar::{ErroDaMacro, TocadorDoPainter};
 use crate::PaintMedia;
-use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PointerPhase;
 use ph2d_macro::{Etapa, Event, LeitorDaFamilia, MacroTime, Track};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -199,7 +197,7 @@ pub struct EtapaDoPainter {
 }
 #[path = "etapas_no_toque.rs"]
 mod no_toque;
-pub(crate) use no_toque::{NoToque, pinceis};
+pub(crate) use no_toque::pinceis;
 
 /// **As etapas VIVAS de uma trilha do Painter**, com as edições dela aplicadas (uma apagada sai; a
 /// numeração das pinceladas é a da gravação).

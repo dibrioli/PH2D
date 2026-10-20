@@ -449,6 +449,44 @@ mod portoes {
         assert!(falhas.is_empty(), "{falhas:?}");
     }
 
+    /// A cobertura média SOBRE o caminho da espiral da cena `gestos` (os pontos da bateria): o 1.º quarto (o miolo, a
+    /// curva apertada) ÷ o resto.
+    fn espiral(p: &Pincel) -> f64 {
+        let c = cobertura(&crate::as_leis_da_escala::cena(p, "gestos"));
+        let bat = crate::exame_bancada::bateria();
+        let cena = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "gestos").unwrap();
+        let op = cena["ops"].as_array().unwrap().iter().find(|o| o["nome"] == "espiral").unwrap();
+        let v: Vec<f64> = op["pts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|q| c[q[1].as_f64().unwrap().round() as usize * 1000 + q[0].as_f64().unwrap().round() as usize])
+            .collect();
+        let q = v.len() / 4;
+        let media = |s: &[f64]| s.iter().sum::<f64>() / s.len() as f64;
+        media(&v[..q]) / media(&v[q..])
+    }
+
+    /// ⭐ **A espiral pinta o PRÓPRIO caminho** (J3, 3.ª ronda): a 2.ª ponta à frente da 1.ª em LINHA RECTA saía da curva
+    /// apertada do miolo da espiral — a máscara ficava fora do caminho e o miolo saía BRANCO (o caminho no 1.º quarto
+    /// ÷ o resto 0,69–0,72 no HB, 2H, 2B); a frente segue a CURVA do caminho (o arco da curvatura medida): 0,95–0,99.
+    /// O Rebelle: 1,00 nos quatro. Mutação (a curvatura a 0): volta a 0,69–0,72.
+    #[test]
+    fn a_espiral_pinta_o_proprio_caminho() {
+        let m: Vec<_> = std::thread::scope(|s| {
+            let hs: Vec<_> = GRAFITES.iter().map(|&n| s.spawn(move || espiral(&pinceis(n).remove(0)))).collect();
+            hs.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        let mut falhas = Vec::new();
+        for (n, r) in GRAFITES.iter().zip(&m) {
+            println!("[espiral] {n:<12} o miolo ÷ o resto {r:.3}");
+            if *r < 0.9 {
+                falhas.push(format!("{n}: o miolo da espiral {r:.3} do resto"));
+            }
+        }
+        assert!(falhas.is_empty(), "{falhas:?}");
+    }
+
     /// SONDA: o recto RÁPIDO (25 px por evento) contra o LENTO (3 px) de cada `PH2D_SONDA_PRESETS` com cada variante de
     /// `PH2D_SONDA_KNOBS` (ver [`variante`]) — no Rebelle os dois são o mesmo (0,627 · 0,627 no HB, a régua).
     #[test]

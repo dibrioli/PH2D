@@ -54,6 +54,8 @@ pub(crate) struct DualEstado {
     /// O último ponto REAL do caminho e o rumo dele (unitário) — a 2.ª ponta vai À FRENTE ([`PainterTool::dual_estende`]).
     ultimo: [f32; 2],
     rumo: [f32; 2],
+    /// A curvatura do caminho (rad/px), alisada ao longo de meio raio — a frente da 2.ª ponta segue o ARCO.
+    curva: f32,
 }
 
 /// ⭐ **O recorte da 2.ª ponta no pigmento do Wet** (L6): a silhueta `s` de um dab que pousa, no píxel `(px, py)`,
@@ -100,6 +102,16 @@ impl RecorteNoWet {
     }
 }
 
+/// O ponto a `l` px de `p` ao longo do arco de rumo `rumo` (unitário) e curvatura `k` (rad/px; no máximo meia volta).
+fn frente_no_arco(p: [f32; 2], rumo: [f32; 2], k: f32, l: f32) -> [f32; 2] {
+    let kl = (k * l).clamp(-std::f32::consts::PI, std::f32::consts::PI);
+    if kl.abs() < 1e-3 {
+        return [p[0] + rumo[0] * l, p[1] + rumo[1] * l];
+    }
+    let (t0, k) = (rumo[1].atan2(rumo[0]), kl / l);
+    [p[0] + ((t0 + kl).sin() - t0.sin()) / k, p[1] - ((t0 + kl).cos() - t0.cos()) / k]
+}
+
 impl PainterTool {
     /// O motor da 2.ª ponta nasce no pen-down de um traço que a leva (o plano arma), e pousa as primeiras marcas.
     /// `tilt` é a caneta do evento: a 2.ª ponta deita-se com a 1.ª (J3, `Pinceis/exames/grafite.md`).
@@ -126,7 +138,7 @@ impl PainterTool {
         self.paint.dual.tex_rng = self.paint.seed ^ SEMENTE_DO_DUAL.rotate_left(17);
         let mut out = Vec::new();
         m.set_tilt(tilt);
-        (self.paint.dual.ultimo, self.paint.dual.rumo) = (p.pos, [0.0; 2]);
+        (self.paint.dual.ultimo, self.paint.dual.rumo, self.paint.dual.curva) = (p.pos, [0.0; 2], 0.0);
         m.begin(p, &mut out);
         self.paint.dual.pendentes.extend(out);
         self.paint.dual.motor = Some(m);
@@ -147,7 +159,8 @@ impl PainterTool {
     /// 1.ª, no rumo do último passo (J3, `Pinceis/exames/grafite.md` 3.ª ronda): a 1.ª ponta carimba-se logo a seguir e
     /// a frente dela chega a `p + raio`; com a máscara só até `p` cada dab do traço LENTO perdia a metade da frente
     /// (Multiply sobre o vazio) e o rápido (os dabs do segmento todos atrás de `p`) saía 7–12 % mais escuro — o Rebelle
-    /// dá os dois iguais. O caminho dela é o MESMO deslocado no rumo; o que passa do fim não tem a 1.ª por baixo.
+    /// dá os dois iguais. A frente segue o ARCO da curvatura medida (em linha recta saía da curva apertada do miolo da
+    /// espiral: a máscara fora do caminho e o miolo BRANCO); o que passa do fim não tem a 1.ª por baixo.
     pub(super) fn dual_estende(&mut self, p: StrokePoint, tilt: [f32; 2]) {
         let (Some(d), Some(autorado)) = (self.paint.brush.dual, self.paint.stroke_authored) else {
             return;
@@ -155,14 +168,19 @@ impl PainterTool {
         let primeira = self.compose_canvas_warp(autorado);
         let vivo = d.pincel(&primeira);
         let e = &mut self.paint.dual;
+        let frente = primeira.clamped_radius();
         let passo = [p.pos[0] - e.ultimo[0], p.pos[1] - e.ultimo[1]];
         let l = passo[0].hypot(passo[1]);
         if l > 1e-3 {
-            e.rumo = [passo[0] / l, passo[1] / l];
+            let novo = [passo[0] / l, passo[1] / l];
+            if e.rumo != [0.0; 2] {
+                let giro = (e.rumo[0] * novo[1] - e.rumo[1] * novo[0]).atan2(e.rumo[0] * novo[0] + e.rumo[1] * novo[1]);
+                e.curva += (1.0 - (-l / (0.5 * frente)).exp()) * (giro / l - e.curva);
+            }
+            e.rumo = novo;
         }
         e.ultimo = p.pos;
-        let frente = primeira.clamped_radius();
-        let p = StrokePoint { pos: [p.pos[0] + e.rumo[0] * frente, p.pos[1] + e.rumo[1] * frente], ..p };
+        let p = StrokePoint { pos: frente_no_arco(p.pos, e.rumo, e.curva, frente), ..p };
         self.dual_passo(|m, out| {
             m.set_canvas_dab(
                 vivo.radius_px,

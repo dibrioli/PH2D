@@ -8,7 +8,7 @@ use super::Region;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
     BrushSpec, Dab, DynDab, FusedDab, ImageRgb, StrokeMethod, accumulate_color_stamps_rgba_batch,
-    accumulate_shape_layers_rgba_batch, apply_color_shift, blend_over,
+    accumulate_shape_layers_rgba_batch, apply_color_shift, blend_over_modo,
 };
 use ph2d_painter_effects::{BlendMode, apply_blend};
 
@@ -239,6 +239,7 @@ impl PainterTool {
         let opac = self.paint.shape_layers.opacities();
         let any_blend = blends.iter().any(|&b| b != 0);
         let blend = brush.blend;
+        let vazio = brush.blend_sobre_vazio; // L7: o modo de cor sobre o vazio (W3C geral)
         {
             let buf = crate::tool::paint::plane_fork::fork_canvas(
                 &mut self.canvas_rgba,
@@ -322,11 +323,12 @@ impl PainterTool {
                         // (2) Blend the stroke onto the base once via the Brush blend mode.
                         if stroke[3] > 0.0 {
                             let pre_alpha = acc[3];
-                            acc = blend_over(
+                            acc = blend_over_modo(
                                 blend,
                                 acc,
                                 [stroke[0], stroke[1], stroke[2]],
                                 stroke[3],
+                                vazio,
                             );
                             if alpha_locked {
                                 acc[3] = pre_alpha;

@@ -288,6 +288,11 @@ fn lerp(b: f32, s: f32, t: f32) -> f32 {
     b + (s - b) * t
 }
 
+/// `B(b, s)` para quem compõe pela fórmula GERAL do W3C ([`crate::blend_vazio`]).
+pub(crate) fn blend_rgb_de(mode: BrushBlend, b: [f32; 3], s: [f32; 3]) -> [f32; 3] {
+    blend_rgb(mode, b, s)
+}
+
 /// Per-channel / non-separable colour blend `B(b, s)` for the colour modes.
 fn blend_rgb(mode: BrushBlend, b: [f32; 3], s: [f32; 3]) -> [f32; 3] {
     let sep = |f: fn(f32, f32) -> f32| [f(b[0], s[0]), f(b[1], s[1]), f(b[2], s[2])];

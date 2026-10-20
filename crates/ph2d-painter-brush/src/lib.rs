@@ -28,6 +28,8 @@
 
 pub mod ablate; // measurement-only ablation switch for the height texel loop (never armed in product)
 pub mod blend;
+/// O modo do pincel sobre o VAZIO — a fórmula geral do W3C (L7).
+pub mod blend_vazio;
 pub mod blur;
 pub mod blur_caixa;
 pub mod blur_grain;
@@ -158,6 +160,7 @@ pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
 pub use blur::{BlurKernel, blur_blit_stamp, blur_dab, kernel_radius};
 pub use blur_grain::blur_blit_grain;
 pub use blur_peso::{blur_region_borrado, blur_region_por_peso, mistura_linha_por_peso};
+pub use blend_vazio::{blend_over_modo, blend_over_pigment_modo, blend_over_w3c};
 pub use clone::{clone_blit_stamp, clone_dab};
 pub use clone_grain::clone_blit_grain;
 pub use curve_fit::{CurveFit, auto_handles, fit_curve, flatten_bezier};

@@ -72,6 +72,8 @@ pub(in crate::tool::paint) struct WetSession {
     /// congelado quando ela nasce ([`super::modo_da_sessao`]); trocá-lo com tinta na tela fecha a
     /// sessão (`set_brush_blend`).
     pub(in crate::tool::paint) blend: ph2d_painter_brush::BrushBlend,
+    /// O modo sobre o VAZIO da sessão (L7, `BrushSpec::blend_sobre_vazio`), congelado com o [`Self::blend`].
+    pub(in crate::tool::paint) vazio: bool,
     /// The exact `canvas_rgba` allocation OUR last composite produced (or the
     /// one the session started from). A mismatch = foreign mutation = session
     /// over. `pub(super)` so the doc-21 commit door can re-arm it after an
@@ -268,6 +270,7 @@ impl Clone for WetSession {
             seen_steps,
             base,
             blend,
+            vazio,
             canvas,
             pigment,
             lanes,
@@ -293,6 +296,7 @@ impl Clone for WetSession {
             seen_steps: *seen_steps,
             base: Arc::clone(base),
             blend: *blend,
+            vazio: *vazio,
             canvas: Weak::clone(canvas),
             pigment: pigment.clone(),
             lanes: lanes.clone(),

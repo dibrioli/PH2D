@@ -29,6 +29,7 @@ impl Default for BrushSpec {
             flow: 1.0,
             spacing: 0.10,
             blend: BrushBlend::Mix,
+            blend_sobre_vazio: false,
             falloff: Falloff::Smooth,
             jitter: 0.0,
             color: [0.0, 0.0, 0.0],

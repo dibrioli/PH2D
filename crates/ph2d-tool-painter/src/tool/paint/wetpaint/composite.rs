@@ -249,6 +249,7 @@ impl PainterTool {
         } else {
             (py0..py1).map(|_| None).collect()
         };
+        let vazio = sess.vazio; // L7: o modo de cor sobre o vazio pousa a cor (W3C geral)
         // O amostrador do upsample. ⚠️ A pergunta *"um pixel É uma célula?"* é
         // feita UMA vez, fora do laço: na razão 1 o corpo abaixo lê os quatro
         // bytes no MESMO offset que sempre leu, com a MESMA aritmética de
@@ -322,7 +323,7 @@ impl PainterTool {
                             f32::from(base[o + 2]) / 255.0,
                             f32::from(base[o + 3]) / 255.0,
                         ];
-                        let out = ph2d_painter_brush::blend_over(modo, dst, cor, pa);
+                        let out = ph2d_painter_brush::blend_over_modo(modo, dst, cor, pa, vazio);
                         for c in 0..4 {
                             row[lo + c] = (out[c] * 255.0).round().clamp(0.0, 255.0) as u8;
                         }

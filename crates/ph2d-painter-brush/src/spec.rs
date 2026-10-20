@@ -72,6 +72,9 @@ pub struct BrushSpec {
     pub spacing: f32,
     /// How the dab colour combines with the layer.
     pub blend: BrushBlend,
+    /// **O modo sobre o VAZIO** (L7): ligado, um modo de cor compõe pela fórmula GERAL do W3C e pousa a cor
+    /// em Normal onde a camada é transparente ([`crate::blend_vazio`]); desligado (fábrica) é o de sempre.
+    pub blend_sobre_vazio: bool,
     /// Radial intensity profile.
     pub falloff: Falloff,
     /// Random per-dab position offset when [`Self::jitter_unit`] is [`JitterUnit::Brush`]: a

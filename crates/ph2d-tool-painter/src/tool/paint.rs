@@ -214,6 +214,9 @@ mod accumulate_tests;
 mod efeito_modos_tests;
 #[cfg(test)]
 mod composite_look;
+/// **L7** — o modo do pincel sobre o VAZIO (a fórmula geral do W3C), no Digital e no Wet.
+#[cfg(test)]
+mod efeito_vazio_tests;
 #[cfg(test)]
 mod composite_probe;
 /// **O entalhe no cruzamento** — a sonda que decide se a aquarela usa a UNIÃO (o vinco que o FLIP

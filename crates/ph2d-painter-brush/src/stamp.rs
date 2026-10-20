@@ -118,6 +118,8 @@ struct BlitCtx<'a> {
     mask: &'a StampMask,
     color: [f32; 3],
     blend: BrushBlend,
+    /// O modo sobre o vazio (L7, [`crate::blend_vazio`]).
+    vazio: bool,
     /// Pigment mix (`0` = plain blend, byte-identical) — the amount of the Kubelka–Munk paint mix
     /// ([`crate::blend::blend_over_pigment`], the Wet Paint law since 2026-09-20; the note said RYB).
     pigment_mix: f32,
@@ -172,6 +174,7 @@ pub fn blit_stamp(
         mask,
         color: spec.color,
         blend: spec.blend,
+        vazio: spec.blend_sobre_vazio,
         pigment_mix: spec.effective_pigment_mix(),
         cx,
         cy,
@@ -288,8 +291,14 @@ fn blit_band(ctx: &BlitCtx, dst: &mut [u8], mut forca: Option<&mut [u16]>, band_
             if let Some(f) = forca.as_deref_mut() {
                 crate::stroke_cover::compoe_forca(&mut f[r * (ctx.stride / 4) + px as usize], a);
             }
-            let out =
-                crate::blend::blend_over_pigment(ctx.blend, prev, ctx.color, a, ctx.pigment_mix);
+            let out = crate::blend_vazio::blend_over_pigment_modo(
+                ctx.blend,
+                prev,
+                ctx.color,
+                a,
+                ctx.pigment_mix,
+                ctx.vazio,
+            );
             dst[i] = encode(out[0]);
             dst[i + 1] = encode(out[1]);
             dst[i + 2] = encode(out[2]);
@@ -559,12 +568,13 @@ fn canvas_blit_band(
             if let Some(f) = forca.as_deref_mut() {
                 crate::stroke_cover::compoe_forca(&mut f[mi], a);
             }
-            let out = crate::blend::blend_over_pigment(
+            let out = crate::blend_vazio::blend_over_pigment_modo(
                 ctx.spec.blend,
                 prev,
                 ctx.spec.color,
                 a,
                 ctx.spec.effective_pigment_mix(),
+                ctx.spec.blend_sobre_vazio,
             );
             canvas[i] = encode(out[0]);
             canvas[i + 1] = encode(out[1]);

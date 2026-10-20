@@ -308,6 +308,7 @@ fn ler_campo_da_obra(b: &BrushSpec, campo: &str) -> Value {
             "circular": b.symmetry.circular,
             "axis": nome(b.symmetry.axis),
             "radial_segments": b.symmetry.radial_segments,
+        "blend_sobre_vazio" => json!(b.blend_sobre_vazio),
             "center": par(b.symmetry.center),
             "custom_dir": par(b.symmetry.custom_dir),
         }),
@@ -473,6 +474,7 @@ pub(crate) fn pincel_de_json(
     base: BrushSpec,
 ) -> BrushSpec {
     let mut b = base;
+        "blend_sobre_vazio" => b.blend_sobre_vazio = booleano(v, b.blend_sobre_vazio),
     for &c in campos {
         escrever_campo(&mut b, c, m.get(c));
     }

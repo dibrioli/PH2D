@@ -161,6 +161,7 @@ fn pincel_mexido() -> BrushSpec {
         pigment_mix: 0.4,
         paper_depth: 0.3,
         // ── volumes ──
+        blend_sobre_vazio: true,
         radius_px: 9.0,
         strength: 0.85,
         // ── da obra · do gesto · do meio · do sculpt: os mesmos nas duas ──

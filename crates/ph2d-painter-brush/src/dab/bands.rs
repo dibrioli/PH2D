@@ -520,12 +520,13 @@ pub(super) fn stamp_band(
                         a,
                     );
                 }
-                crate::blend::blend_over_pigment(
+                crate::blend_vazio::blend_over_pigment_modo(
                     blend,
                     prev,
                     color,
                     a,
                     ctx.spec.effective_pigment_mix(),
+                    ctx.spec.blend_sobre_vazio,
                 )
             };
             dst[i] = encode(out[0]);

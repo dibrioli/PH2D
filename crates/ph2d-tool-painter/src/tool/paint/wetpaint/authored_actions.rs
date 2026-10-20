@@ -71,6 +71,7 @@ impl PainterTool {
             seen_steps: 0,
             base: Arc::clone(&self.canvas_rgba),
             blend: super::modo_da_sessao(self.paint.brush.blend),
+            vazio: self.paint.brush.blend_sobre_vazio,
             // The identity token is WEAK on purpose ([`WetSession::canvas`]);
             // `base` is the one strong handle the session needs, and it is what
             // makes the FIRST composite copy — correctly, since the frozen base

@@ -132,3 +132,8 @@ seguinte; o resto entra em lotes.
    **E a LISTA DE PROBLEMAS** (pedido do dono no smoke do I8, 18/10): um painel com todos os problemas
    do script (hoje só se vêem pelos pontos da calha), cada linha com a explicação do I8 e a linha do
    script; clicar leva o cursor lá; leitor de ecrã incluído. Lê o MESMO `Vec<Problem>` da calha.
+5. **Página de ajuda (decisão do dono no smoke do Acabamento, 19/10)** — Ctrl+clique numa função da API
+   (`ph2d.set`, `ph2d.get`, `math.sin`…) abre uma página de ajuda numa aba, como o Godot 4.7.2 (o que faz, cada
+   argumento, exemplo, irmãs ao lado); o balão preso do I6 era redundante com o do rato parado. Antes de codar:
+   correr o Godot como oráculo e ver os dados (JSON `ph2d-docs-*.json`; `math.sin` só tem assinatura). Onda nova:
+   a linha só fecha depois dela. [Handoff §9](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-19_ONDA2_ACABAMENTO.md)

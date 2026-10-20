@@ -120,7 +120,14 @@ linha (`/pd-linha-fechar`). A mutação deve cobrir `reach`, `goto::documents`, 
 
 ## 8. Smoke para o DONO
 
-(por fazer)
+Comando dado ao dono: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor && PH2D_CODE_SMOKE=4 cargo run -p ph2d-host-desktop --profile smoke`.
+
+1. Abrir a cena (comando acima).
+2. **Ctrl+rato** — **CONFERIDO pelo dono (19/10):** com Ctrl sobre `set` (linha 23) aparecem a mão e o
+   sublinhado; sobre `self.ampiltude` **sem mão** («é bom assim»).
+3. Ctrl+Shift+M abre a lista (erro primeiro, depois avisos); clicar na 1.ª selecciona `math.sinn` (linha 22) — **por confirmar**.
+4. No fim da linha 24: Enter, `ph2d.` + `set` + Enter, outra vez `ph2d.` + `set` + Enter; Tabs: dentro, fim do de
+   dentro, fora, e acaba depois do último `)` sem espaços (buracos fundidos) — **por confirmar**.
 
 ## 9. ABERTO
 
@@ -135,9 +142,17 @@ linha (`/pd-linha-fechar`). A mutação deve cobrir `reach`, `goto::documents`, 
 - **Herdados do I15 §9** não fechados: a secção Script do Inspector por fotografar; a sonda do solver sem
   `--docs`; a regra de Fatin nas caudas (ruído do par 0,6–1,0 ms). Os herdados do
   [I13 §9](HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-18_ONDA2_I13.md#9-aberto) continuam.
+- **DECISÃO NOVA do dono (smoke de 19/10): Ctrl+clique numa função da API (`ph2d.set`, `ph2d.get`,
+  `math.sin`…) abre uma PÁGINA DE AJUDA numa aba, como o Godot 4.7.2** (o que faz, cada argumento, um exemplo, as
+  irmãs ao lado). Motivo: o balão preso do I6 mostrava exactamente o mesmo que o rato parado (redundante). Hoje o
+  caminho é `goto.rs::arrive` → `hints.pin` (balão); a mão vem de `reach.rs` pela mesma regra `documents`.
+  Antes de codar: correr o Godot (oráculo; a página de `print`/`Vector2` aberta pelo Ctrl+clique: estrutura,
+  navegação, voltar) e ver os dados que temos (JSON de documentação da API em
+  `~/.cache/ph2d/luau-lsp/1.70.1/api/ph2d-docs-*.json` e a sua fonte; os builtins do Luau como `math.sin` não têm
+  documentação no luau-lsp, só a assinatura). É uma **onda nova**.
 - Integração: falta `clippy --workspace` e a suíte do fecho; CLAUDE.md §5.1 `1|2` → `1..4`.
 
 ## 10. Próximo
 
-Smoke do dono da cena 4 → `/pd-linha-fechar` (clippy + suíte + mutação sobre `reach` / `goto::documents` / cache
+Terminar o smoke do dono da cena 4 (passos 3 e 4) → **a onda da PÁGINA DE AJUDA** (§9) → `/pd-linha-fechar`; a linha só fecha depois dela, ou o dono decide fechar antes. `/pd-linha-fechar` (clippy + suíte + mutação sobre `reach` / `goto::documents` / cache
 de `problems()` / `Tabstops::merge`). Com o smoke OK, a fila do plano acaba; o que resta é o §9.

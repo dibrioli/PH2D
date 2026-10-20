@@ -68,8 +68,10 @@ const GRAO_FINO_DO_2H: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise"
 /// mídia 6,69, Rebelle 6,15; a 0,4, 7,71 sai do vale).
 const GRAO_FINO_FRACO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.35, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [256.0, 256.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
-/// O grão do 2B: Noise `Tiled` Size 128 (2 px), contraste 0,5.
-const GRAO_DO_2B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+/// O grão do 2B: Noise `Tiled` Size 128 (2 px), contraste 0,55 — os poros que a 1.ª revisão cega pedia («o original tem
+/// poros brancos fortes») e o passo ao HB de grão fino (a 0,5 o HB de 0,35 ficava a 0,36 dele, PASSO INVISÍVEL): a Textura
+/// da mídia 15,8 (Rebelle 13,9), o colar a 5 px 0,168 (0,120; o portão do grão aceita 2×), ac 0,50 (0,52).
+const GRAO_DO_2B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.55, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 pub const MEIOS: &[ReceitaMeio] = &[];
 

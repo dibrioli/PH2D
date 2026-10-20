@@ -132,21 +132,19 @@ fn a_agua_que_corre_sozinha_depois_do_parar_nao_marca() {
     );
 }
 
-/// ⭐ **A pincelada do artista com a água da gravação a correr marca onde o pincel passou, e só aí**: o
-/// núcleo do traço fica marcado (a tinta molhada aparece pela água, às vezes depois de levantar); nada
-/// além do alcance do pincel — raio 6 × o alcance da ponta (≤ 2) — se marca, nem onde a água da gravação
-/// continua a mudar a imagem (o controlo). Diagnóstico de 17/10: o 1.º dab marca 468 texels (raio ≈ 12,2:
-/// o alcance da ponta de fábrica ≈ 1,95) e nada mais nasce em 2 000 quadros de água. O desfazer
-/// desliga a marca do passo (depois de a água dele ser absorvida nele) e o refazer liga-a de novo.
+/// ⭐ **A pincelada do artista em Wet Paint pinta POR CIMA da gravação** (W12, decisão do dono 20/10): o 1.º
+/// dab assa a sessão da gravação — a água dela, que corria, PÁRA (nada longe do traço muda mais) — e a
+/// tinta dele nasce numa sessão sobre a imagem; a marca é a cobertura dessa tinta, o `pa` que o composite
+/// lhe dá, onde quer que a água a leve, e nada onde ela não está. O desfazer desliga a marca do passo e o
+/// refazer devolve-a com a água que correu depois do registo. ⛔ Na W9–W11 (`c` cheia sobre os discos, a
+/// sessão da gravação a correr) a água da gravação continuava a mudar a imagem longe do traço.
 #[test]
-fn a_pincelada_do_artista_marca_onde_o_pincel_passou_e_o_desfazer_a_desliga() {
+fn a_pincelada_do_artista_em_wet_paint_assa_a_gravacao_e_marca_a_tinta_dele() {
     let mut t = gravado();
-    let antes = imagem(&t);
+    assert!(!t.agua_parada(), "controlo: a água da gravação corre");
     let (de, ate) = ([12.0, 118.0], [60.0, 118.0]);
     t.set_brush_color_srgb8([20, 20, 200]);
     t.set_brush_size_px(6.0);
-    // O raio do disco do pincel, calibrado no 1.º dab (os discos provisórios), e um traço longo ao ritmo
-    // do editor: a água da tinta nova escorre DENTRO do passo, e o que ela muda fora do disco não é marca.
     t.on_canvas_pointer(CanvasPointer {
         pos: de,
         pressure: 1.0,
@@ -154,53 +152,48 @@ fn a_pincelada_do_artista_marca_onde_o_pincel_passou_e_o_desfazer_a_desliga() {
         phase: PointerPhase::Down,
     });
     quadro(&mut t);
-    let n = (LADO * LADO) as usize;
-    let r0 = {
-        let m = marca(&t);
-        (0..n)
-            .filter(|&i| m.marcado(i))
-            .map(|i| distancia(i, de, de))
-            .fold(0.0_f32, f32::max)
-    };
-    assert!(r0 > 3.0, "controlo: o 1.º dab marcou (raio {r0})");
+    let assada = imagem(&t);
     traco_de(&mut t, de, ate, 40, true);
-    let halo = |m: &MarcaDoArtista| {
-        (0..n)
-            .filter(|&i| m.marcado(i) && distancia(i, de, ate) > r0 + 0.75)
-            .count()
-    };
-    assert_eq!(halo(&marca(&t)), 0, "a água da tinta fora do disco marcou");
-    espera_a_agua(&mut t);
-    let m = marca(&t);
-    assert_eq!(
-        halo(&m),
-        0,
-        "depois da água, marcas fora do disco do pincel"
-    );
-    let longe: Vec<usize> = (0..n)
-        .filter(|&i| m.marcado(i) && distancia(i, de, ate) > ALCANCE)
-        .collect();
-    assert!(
-        longe.is_empty(),
-        "{} texels marcados longe do pincel (1.º: {:?})",
-        longe.len(),
-        longe.first()
-    );
-    let nucleo: Vec<usize> = (0..n).filter(|&i| distancia(i, de, ate) <= 1.5).collect();
-    let fora: Vec<&usize> = nucleo.iter().filter(|&&i| !m.marcado(i)).collect();
-    assert!(
-        fora.is_empty(),
-        "{} de {} texels do núcleo do traço sem marca",
-        fora.len(),
-        nucleo.len()
-    );
-    let agua_longe = diferem(&antes, &imagem(&t))
+    let q = espera_a_agua(&mut t);
+    let agora = imagem(&t);
+    let n = (LADO * LADO) as usize;
+    let longe = diferem(&assada, &agora)
         .into_iter()
         .filter(|&i| distancia(i, de, ate) > ALCANCE + 4.0)
         .count();
+    assert_eq!(
+        longe, 0,
+        "a água da gravação correu depois do 1.º dab ({q} quadros)"
+    );
+    let m = marca(&t);
+    let pig = t.wet_pigmento().expect("a sessão do artista").to_vec();
+    assert_eq!(pig.len(), n * 4, "razão 1");
+    let mudou = diferem(&assada, &agora);
     assert!(
-        agua_longe > 0,
-        "controlo: a água da gravação não mudou nada longe do traço"
+        mudou.len() > 100,
+        "controlo: o traço pintou ({})",
+        mudou.len()
+    );
+    let sem: Vec<&usize> = mudou.iter().filter(|&&i| !m.marcado(i)).collect();
+    assert!(
+        sem.is_empty(),
+        "{} texels pintados sem marca (1.º {:?})",
+        sem.len(),
+        sem.first()
+    );
+    let (mut fora, mut pior) = (0usize, 0u32);
+    for i in 0..n {
+        let pa = u32::from(pig[i * 4 + 3]);
+        let c = u32::from(m.cobertura(i)) * 255 / u32::from(super::marca::CHEIA);
+        if pa == 0 && c > 0 {
+            fora += 1;
+        }
+        pior = pior.max(pa.abs_diff(c));
+    }
+    assert_eq!(fora, 0, "texels marcados onde a tinta do artista não está");
+    assert!(
+        pior <= 1,
+        "a cobertura da marca não é a da tinta: {pior}/255"
     );
 
     let marcada = m.ladrilhos().as_ref().clone();

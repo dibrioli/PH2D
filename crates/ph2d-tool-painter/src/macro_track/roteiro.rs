@@ -166,13 +166,24 @@ pub fn grava_duas_horizontais_ligado(
     lado: u32,
     entidade: u64,
 ) -> Option<(PainterTool, Vec<u8>, f64)> {
+    grava_duas_horizontais_ligado_em(lado, entidade, PaintMedia::Digital)
+}
+
+/// [`grava_duas_horizontais_ligado`] no meio `meio` (W12: os cruzamentos em Wet Paint, Watercolor e
+/// Impasto), com o relógio fixo da água.
+#[must_use]
+pub fn grava_duas_horizontais_ligado_em(
+    lado: u32,
+    entidade: u64,
+    meio: PaintMedia,
+) -> Option<(PainterTool, Vec<u8>, f64)> {
     grava_com(
         lado,
         0,
         &CRUZADAS,
         &[12],
         Tela::Ligada(entidade),
-        &[PaintMedia::Digital],
+        &[meio],
         Relogio::Fixo,
     )
 }

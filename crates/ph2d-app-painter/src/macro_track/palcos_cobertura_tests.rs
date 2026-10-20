@@ -6,6 +6,7 @@
 //! daquele instante (antes de as gravadas nascerem, o branco) — a pincelada por cima do que a gravação tem.
 
 use super::*;
+use ph2d_tool_painter::PaintMedia;
 
 const L: u32 = 96;
 const N: usize = (L * L) as usize;
@@ -40,32 +41,74 @@ const CASOS: [Caso; 7] = [
     }),
 ];
 
-/// O pincel preto de raio 14 em Digital, acertado por `pincel`.
-fn acerta(t: &mut PainterTool, pincel: fn(&mut PainterTool)) {
-    t.set_paint_media(ph2d_tool_painter::PaintMedia::Digital);
+/// Os meios cuja tinta se compõe «por cima» da imagem por baixo: o Digital (W10, a força do carimbo) e o
+/// Wet Paint (W12, o `pa` da água do artista). O Watercolor (Beer–Lambert, a aguada funde-se) e o Impasto
+/// (a luz do relevo) ficam com a marca cheia — medido em `docs/Macros/10_W12_cruzamentos_em_wet_paint.md`.
+const MEIOS: [PaintMedia; 2] = [PaintMedia::Digital, PaintMedia::WetPaint];
+
+/// Quadros até a água assentar (o tecto dos gates do fim, `fim_tests`).
+const ASSENTA: usize = 40_000;
+
+/// A água do tool corre até parar; devolve os quadros que correu.
+fn assenta(t: &mut PainterTool) -> usize {
+    for q in 0..ASSENTA {
+        if t.agua_parada() {
+            return q;
+        }
+        tique(t);
+    }
+    panic!("a água não assentou em {ASSENTA} quadros");
+}
+
+/// As idades da água da vertical em que o Play se confere: `Some(q)` = `q` quadros depois do Up, com a
+/// água a correr (a cobertura do artista muda depois do passo); `None` = assentada.
+const IDADES: [Option<usize>; 2] = [Some(20), None];
+
+/// O pincel preto de raio 14 em `meio`, acertado por `pincel`.
+fn acerta(t: &mut PainterTool, meio: PaintMedia, pincel: fn(&mut PainterTool)) {
+    t.set_paint_media(meio);
     t.set_brush_size_px(14.0);
     t.set_brush_color_srgb8([0, 0, 0]);
     pincel(t);
 }
 
-/// A vertical em `x` de cima a baixo (cruza as duas gravadas), levantada.
-fn vertical(t: &mut PainterTool, x: f32) {
+/// A vertical em `x` de cima a baixo (cruza as duas gravadas), levantada, e a água `idade` quadros depois
+/// (ou assentada).
+fn vertical(t: &mut PainterTool, x: f32, idade: Option<usize>) {
     #[expect(clippy::cast_precision_loss, reason = "o lado cabe num f32")]
     let l = L as f32;
     traco(t, [x, 0.12 * l], [x, 0.88 * l], 14, true);
     tique(t);
+    anda(t, idade);
 }
 
-/// A régua: a pincelada sozinha sobre `fundo` (opaco, straight = premultiplicado).
-fn sobre(fundo: &[u8], pincel: fn(&mut PainterTool), x: f32) -> Vec<u8> {
+/// A água anda `idade` quadros (ou até assentar).
+fn anda(t: &mut PainterTool, idade: Option<usize>) {
+    match idade {
+        Some(q) => (0..q).for_each(|_| tique(t)),
+        None => {
+            let _ = assenta(t);
+        }
+    }
+}
+
+/// A régua: a pincelada sozinha sobre `fundo` (opaco, straight = premultiplicado), com a água na mesma idade.
+fn sobre(
+    fundo: &[u8],
+    meio: PaintMedia,
+    pincel: fn(&mut PainterTool),
+    x: f32,
+    idade: Option<usize>,
+) -> Vec<u8> {
     assert!(
         fundo.len() == N * 4 && fundo.as_chunks::<4>().0.iter().all(|p| p[3] == 255),
         "fundo opaco"
     );
     let mut r = PainterTool::default();
     r.set_source(fundo.to_vec(), L, L);
-    acerta(&mut r, pincel);
-    vertical(&mut r, x);
+    r.set_wet_relogio_fixo(true);
+    acerta(&mut r, meio, pincel);
+    vertical(&mut r, x, idade);
     r.imagem_aplicada().expect("documento").0
 }
 
@@ -101,71 +144,117 @@ fn desvio(r: &[u8], e: &[u8]) -> (u8, usize) {
 
 /// ⭐⭐ **A pincelada nova a cruzar as gravadas, no Play: só ela sobre o que a gravação tem naquele
 /// instante** — antes de as gravadas nascerem (`0,1 s`: a vertical sobre o branco, sem resquício do
-/// fim), com a 1.ª nascida e a 2.ª por nascer (`0,6 s`) e no fim. A régua: o mesmo traço pintado sobre a
-/// reprodução daquele instante, até ao piso do próprio carimbo (o arredondamento de cada dab ao byte
-/// sobre os dois fundos, medido à parte, + 2) e nunca acima de [`TECTO`]. ⛔ VERMELHO com a marca
-/// binária (199 a 231 níveis em todos os pincéis menos o disco duro): o texel que a borda da vertical
-/// mudou mostrava a imagem atual, que JÁ tem a gravada por baixo (as manchas e os «x» das fotos do dono).
+/// fim), com a 1.ª nascida e a 2.ª por nascer (`0,6 s`) e no fim; no Wet Paint também com a água da
+/// vertical a correr. A régua: o mesmo traço pintado sobre a reprodução daquele instante, com a água na
+/// mesma idade, até ao piso do próprio carimbo (o arredondamento de cada dab ao byte sobre os dois fundos,
+/// medido à parte, + 2) e nunca acima de [`TECTO`]. ⛔ VERMELHO com a marca binária (W9: 199 a 231 níveis
+/// em todos os pincéis Digital menos o disco duro) e, no Wet Paint, com a marca cheia e a vertical fundida
+/// na sessão da gravação (W10: 71 a 116 níveis — o «nó»).
 #[test]
 fn a_pincelada_nova_a_cruzar_as_gravadas_nao_deixa_resquicio() {
     let mut falhas = Vec::new();
-    for (nome, pincel) in CASOS {
-        let mut world = World::new();
-        let e = world.spawn(MacroTempo { segundos: 0.0 }).id();
-        let (mut t, doc, d) =
-            ph2d_tool_painter::macro_track::roteiro::grava_duas_horizontais_ligado(L, e.to_bits())
-                .expect("grava");
-        let mut c = Clipe::com(world, e, &doc);
-        let r = c.quadro_ligado(0.1, Some(&mut t), &mut nunca);
-        assert!(
-            r == c.palco,
-            "controlo {nome}: sem pintar, a ranhura é o palco"
-        );
-        acerta(&mut t, pincel);
-        let gravado = t.imagem_aplicada().expect("doc").0;
-        let x = 48.3;
-        vertical(&mut t, x);
-        let atual = t.imagem_aplicada().expect("doc").0;
-        let regua = sobre(&vec![255; N * 4], pincel, x);
-        let pintou = regua
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .filter(|p| p[0] < 255)
-            .count();
-        assert!(pintou > 100, "controlo {nome}: a régua pintou ({pintou})");
-        for instante in [0.1, 0.6, d] {
-            let r = c.quadro_ligado(instante, Some(&mut t), &mut nunca);
-            let gravada = c
-                .palco
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .filter(|p| p[0] < 128)
-                .count();
-            if instante < d {
-                assert!(
-                    (instante < 0.2) == (gravada == 0),
-                    "controlo {nome} {instante:.1} s: o palco tem {gravada} texels escuros"
-                );
-            }
-            let oraculo = sobre(&c.palco, pincel, x);
-            let (dv, k) = desvio(&r, &oraculo);
-            // O piso do carimbo: a pincelada preta é linear no fundo (`X = (1 − a)·fundo`) a menos do
-            // arredondamento de cada dab ao byte, que não é o mesmo sobre fundos diferentes.
-            let tecto = piso(&regua, &gravado, &atual) + piso(&regua, &c.palco, &oraculo) + 2;
-            if dv > tecto.min(TECTO) {
-                falhas.push(format!(
-                    "{nome} a {instante:.2} s: {dv} níveis no texel ({}, {}) — o carimbo explica {tecto}",
-                    k % L as usize,
-                    k / L as usize
-                ));
+    let mut tabela = Vec::new();
+    for meio in MEIOS {
+        let idades: &[Option<usize>] = if meio == PaintMedia::WetPaint {
+            &IDADES
+        } else {
+            &[None]
+        };
+        for (nome, pincel) in CASOS {
+            for &idade in idades {
+                mede_o_cruzamento((meio, idade), nome, pincel, &mut falhas, &mut tabela);
             }
         }
     }
+    eprintln!(
+        "desvio máximo (níveis) / o que o carimbo explica:\n{}",
+        tabela.join("\n")
+    );
     assert!(
         falhas.is_empty(),
         "resquícios no Play:\n{}",
         falhas.join("\n")
     );
+}
+
+/// Um caso do gate: grava em `meio`, pinta a vertical com `pincel`, deixa a água na `idade` e confere três
+/// instantes do Play.
+fn mede_o_cruzamento(
+    (meio, idade): (PaintMedia, Option<usize>),
+    nome: &str,
+    pincel: fn(&mut PainterTool),
+    falhas: &mut Vec<String>,
+    tabela: &mut Vec<String>,
+) {
+    let mut world = World::new();
+    let e = world.spawn(MacroTempo { segundos: 0.0 }).id();
+    let (mut t, doc, d) =
+        ph2d_tool_painter::macro_track::roteiro::grava_duas_horizontais_ligado_em(
+            L,
+            e.to_bits(),
+            meio,
+        )
+        .expect("grava");
+    let parado = assenta(&mut t);
+    let mut c = Clipe::com(world, e, &doc);
+    let r = c.quadro_ligado(0.1, Some(&mut t), &mut nunca);
+    assert!(
+        r == c.palco,
+        "controlo {meio:?} {nome}: sem pintar, a ranhura é o palco"
+    );
+    acerta(&mut t, meio, pincel);
+    let gravado = t.imagem_aplicada().expect("doc").0;
+    let x = 48.3;
+    vertical(&mut t, x, idade);
+    if idade.is_some() {
+        assert!(
+            !t.agua_parada(),
+            "controlo {meio:?} {nome}: a água da vertical corre"
+        );
+    }
+    let atual = t.imagem_aplicada().expect("doc").0;
+    let regua = sobre(&vec![255; N * 4], meio, pincel, x, idade);
+    let pintou = regua
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|p| p[0] < 255)
+        .count();
+    assert!(
+        pintou > 100,
+        "controlo {meio:?} {nome}: a régua pintou ({pintou})"
+    );
+    let mut linha = format!("{meio:?} · {nome} · água {parado} q · idade {idade:?}:");
+    for instante in [0.1, 0.6, d] {
+        let r = c.quadro_ligado(instante, Some(&mut t), &mut nunca);
+        let gravada = c
+            .palco
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| p[0] < 128)
+            .count();
+        if instante < d {
+            assert!(
+                (instante < 0.2) == (gravada == 0),
+                "controlo {meio:?} {nome} {instante:.1} s: o palco tem {gravada} texels escuros"
+            );
+        }
+        let oraculo = sobre(&c.palco, meio, pincel, x, idade);
+        let (dv, k) = desvio(&r, &oraculo);
+        // O piso do carimbo: a pincelada preta é linear no fundo (`X = (1 − a)·fundo`) a menos do
+        // arredondamento de cada dab ao byte, que não é o mesmo sobre fundos diferentes.
+        let tecto = piso(&regua, &gravado, &atual)
+            .saturating_add(piso(&regua, &c.palco, &oraculo))
+            .saturating_add(2);
+        linha.push_str(&format!(" {instante:.2} s {dv}/{tecto}"));
+        if dv > tecto.min(TECTO) {
+            falhas.push(format!(
+                "{meio:?} · {nome} · idade {idade:?} a {instante:.2} s: {dv} níveis no texel ({}, {}) — o carimbo explica {tecto}",
+                k % L as usize,
+                k / L as usize
+            ));
+        }
+    }
+    tabela.push(linha);
 }

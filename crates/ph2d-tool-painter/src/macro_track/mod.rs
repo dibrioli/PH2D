@@ -35,6 +35,8 @@ mod marca_cobertura_tests;
 #[cfg(test)]
 mod marca_painter_tests;
 #[cfg(test)]
+mod sonda_w12_tests;
+#[cfg(test)]
 mod tests;
 
 use crate::tool::PainterTool;

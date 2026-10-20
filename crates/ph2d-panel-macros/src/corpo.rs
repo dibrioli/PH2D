@@ -7,7 +7,7 @@ use crate::seam::PASSO_FINO;
 use crate::state::{Escolhida, MacrosPanelState};
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::macro_edits::{
-    EtapaView, FamiliaDaMacro, MacroObjetoView, MacroPanelInfo, PropsDaEtapa,
+    EtapaView, FamiliaDaMacro, MacroObjetoView, MacroPanelInfo, PropsDaEtapa, TipoDaEtapaView,
 };
 use ph2d_editor_core::paint::{paint_text, paint_text_block, resolve};
 use ph2d_editor_core::panel::rows::{RowCtx, value_col};
@@ -268,6 +268,10 @@ impl Corpo<'_> {
         match e.props {
             PropsDaEtapa::Pincelada { cor, .. } => {
                 y = cor_row(&mut r, cor, y);
+                // O ColorDrop inunda pela cor: o tamanho do pincel não lhe chega.
+                if matches!(e.tipo, TipoDaEtapaView::Preenchimento(_)) {
+                    return y;
+                }
                 y = r.labeled_number_field_unit(
                     tr("panel.macros.field.size"),
                     ids::MACROS_SIZE,

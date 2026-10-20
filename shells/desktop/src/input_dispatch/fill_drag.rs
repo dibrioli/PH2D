@@ -152,26 +152,15 @@ impl App {
             return true; // no ColorDrop delivery — the seed stays at the dwell point.
         }
         // First sample inside the sprite footprint begins the drop (Down); later ones track it (Move).
-        // `deliver_canvas_pointer` returns false for a Down outside the footprint, so the drop starts
-        // only once the cursor is over the sprite.
-        let phase = if st.on_canvas {
-            PointerPhase::Move
+        // Dragging the colour onto the canvas is what ACTIVATES Fill (a plain click never does — it only
+        // opens the picker): the delivery enters a MOMENTARY ColorDrop (returning to `prev_mode`) only when
+        // that Down lands in the footprint, so a drag that stays off the sprite switches nothing.
+        let (phase, colordrop) = if st.on_canvas {
+            (PointerPhase::Move, None)
         } else {
-            // Dragging the colour onto the canvas is what ACTIVATES Fill (a plain click never does — it
-            // only opens the picker). Enter Fill as a MOMENTARY ColorDrop (remembering `prev_mode`) right
-            // before the first Down so `on_canvas_pointer` sees Fill mode and floods on this very sample —
-            // and the fill's finalize returns to the shape/brush the user was using.
-            if let Some(painter) = self
-                .gfx
-                .as_mut()
-                .and_then(|g| g.tools.active_mut())
-                .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
-            {
-                painter.begin_colordrop_fill(st.prev_mode);
-            }
-            PointerPhase::Down
+            (PointerPhase::Down, Some(st.prev_mode))
         };
-        let delivered = self.deliver_canvas_pointer(px, py, 1.0, phase);
+        let delivered = self.deliver_canvas_pointer_colordrop(px, py, 1.0, phase, colordrop);
         if !st.on_canvas && delivered {
             st.on_canvas = true;
             st.still = (px, py);
@@ -209,17 +198,8 @@ impl App {
                 hero.store.open_fill_modal(x, y, threshold);
             }
         } else {
-            // Plain click → open the paint-colour picker. If a drag had entered momentary Fill but never
-            // reached the canvas (released off-sprite), restore the pre-ColorDrop mode so it isn't stuck in
-            // Fill (no-op for a true plain click — no return was recorded).
-            if let Some(painter) = self
-                .gfx
-                .as_mut()
-                .and_then(|g| g.tools.active_mut())
-                .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
-            {
-                painter.restore_after_colordrop();
-            }
+            // Plain click, or a drag that never reached the sprite → open the paint-colour picker. Fill was
+            // never entered (it begins with the first Down inside the footprint), so nothing to restore.
             self.open_paint_color_picker();
         }
     }

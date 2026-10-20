@@ -157,6 +157,16 @@ impl crate::App {
                     }
                 }
                 Gesto::Sobe => self.painter_canvas_up(),
+                Gesto::CeFDesce
+                | Gesto::CeFMove(_)
+                | Gesto::CeFSobe
+                | Gesto::EscolheCor(_)
+                | Gesto::FechaSeletor
+                | Gesto::FillPronto => {
+                    if let Some(falha) = self.gesto_do_cef(bits, g) {
+                        regista(&format!("{g:?}: {falha}"));
+                    }
+                }
                 Gesto::MeioWet => {
                     if let Some(p) = self.gfx.as_mut().and_then(|g| {
                         ph2d_app_painter::painter_bridge_queries::o_painter(&mut g.tools)
@@ -193,6 +203,58 @@ impl crate::App {
             "{ms} ms: {quadros} frames keys={keys} playing={playing} playhead={ph:.2} clip={clip:.2} \
              loop={laco:?} t={t:?} steps={etapas:?} gravando={gravando:?} {linha}"
         ));
+    }
+
+    /// Os gestos do C&F (W11) pelas portas da janela: o Down no botão, o arrasto, o Up; o valor do
+    /// seletor e o fecho dele; o Done do modal pelo evento do chrome. `Some` = o que falhou.
+    fn gesto_do_cef(
+        &mut self,
+        bits: u64,
+        g: ph2d_app_painter::macro_track::caminho::Gesto,
+    ) -> Option<String> {
+        use ph2d_app_painter::macro_track::caminho::Gesto;
+        use ph2d_editor_core::ids;
+        match g {
+            Gesto::CeFDesce => {
+                let hero = self.gfx.as_ref()?.hero_screen.as_ref()?;
+                let r = hero.hit_index.rect_for(ids::PAINTER_RAIL_FILL)?;
+                let r = hero.escala().rect_to_physical(r);
+                let (px, py) = (r.x + r.w / 2.0, r.y + r.h / 2.0);
+                self.last_pointer = (px, py);
+                (!self.arm_fill_drag_if_on_button(px, py)).then(|| "C&F did not arm".to_owned())
+            }
+            Gesto::CeFMove(uv) => {
+                let (px, py) = self.ponto_da_tela(bits, uv)?;
+                self.last_pointer = (px, py);
+                self.fill_drag_move(px, py);
+                None
+            }
+            Gesto::CeFSobe => {
+                self.fill_drag_up();
+                None
+            }
+            Gesto::EscolheCor([r, gr, b]) => {
+                let store = &mut self.gfx.as_mut()?.hero_screen.as_mut()?.store;
+                if store.picker_target() != Some(ids::PAINTER_COLOR_THUMB) {
+                    return Some("the colour picker is not open".to_owned());
+                }
+                let cor = ph2d_tokens::ColorValue::from_rgba8(r, gr, b, 0xFF);
+                store.set_blender_value(ids::INSP_BLENDER_PICKER, cor);
+                None
+            }
+            Gesto::FechaSeletor => {
+                let store = &mut self.gfx.as_mut()?.hero_screen.as_mut()?.store;
+                store.set_picker_target(None);
+                None
+            }
+            Gesto::FillPronto => {
+                let hero = self.gfx.as_mut()?.hero_screen.as_mut()?;
+                let ev =
+                    ph2d_editor_core::interaction::WidgetEvent::Click(ids::PAINTER_FILL_MODAL_DONE);
+                (!hero.apply_event(ev)).then(|| "the «Fill adjust» modal is not open".to_owned())
+            }
+            _ => None,
+        }
     }
 
     /// O ponto do ecrã de `(u, v)` (fracções da imagem) na tela `bits`, pela pose de MUNDO.

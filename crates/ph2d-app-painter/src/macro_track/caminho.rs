@@ -39,6 +39,17 @@ pub enum Gesto {
     PlayDeCima,
     /// A cabeça da Keys arrastada até este instante do clipe (segundos).
     Arrasta(f32),
+    /// O botão do rato desce no **C&F** do rail do Painter (W11).
+    CeFDesce,
+    /// O arrasto do C&F, em fracções da imagem `(u, v)` — fora de `[0, 1]` é fora da tela.
+    CeFMove([f32; 2]),
+    CeFSobe,
+    /// A cor escolhida no seletor que o C&F abriu (o valor do próprio seletor, sRGB).
+    EscolheCor([u8; 3]),
+    /// O seletor fecha (o clique fora dele).
+    FechaSeletor,
+    /// O Done do modal «Fill adjust».
+    FillPronto,
 }
 
 impl Gesto {
@@ -76,6 +87,12 @@ pub enum Variante {
     /// O smoke de 19/10: depois do Parar, uma pincelada vertical POR CIMA das duas gravadas; ⏮ e ▷ — a
     /// vertical fica inteira enquanto as gravadas nascem (sem faixas no miolo delas).
     Cruza,
+    /// O smoke de 19/10 depois da W10: a gravar, a cor trocada no C&F (premido, arrastado um pouco sem
+    /// entrar na tela, solto ⇒ o seletor) entre as duas pinceladas; ▷ toca as duas, a 2.ª na cor nova.
+    Cor,
+    /// O ColorDrop gravado: a cor escolhida no C&F, depois arrastada do C&F para a tela e solta (o
+    /// preenchimento) e o Done do modal; uma pincelada a seguir. ▷ toca o preenchimento e a pincelada.
+    ColorDrop,
 }
 
 /// A variante desta corrida.
@@ -90,6 +107,8 @@ pub fn variante() -> Variante {
         Ok("arrasta") => Variante::Arrasta,
         Ok("parar") => Variante::Parar,
         Ok("cruza") => Variante::Cruza,
+        Ok("cor") => Variante::Cor,
+        Ok("colordrop") => Variante::ColorDrop,
         _ => Variante::Base,
     }
 }
@@ -115,6 +134,9 @@ fn pincelada(r: &mut Vec<(u64, Gesto)>, t0: u64, v: f32, dura: u64) {
 /// **O roteiro da variante `v`**: cada gesto e o instante (ms do relógio da cena), por ordem.
 #[must_use]
 pub fn roteiro(v: Variante) -> Vec<(u64, Gesto)> {
+    if matches!(v, Variante::Cor | Variante::ColorDrop) {
+        return roteiro_do_cef(v);
+    }
     let mut r = Vec::new();
     // O Splash antes: ▷ e, dois segundos depois, ▷ outra vez (pausa); o resto anda 3 s.
     let d = if v == Variante::Splash {
@@ -154,6 +176,66 @@ pub fn roteiro(v: Variante) -> Vec<(u64, Gesto)> {
         Gesto::Play
     };
     r.push((d + play, play_g));
+    r
+}
+
+/// O vermelho que a `cor` escolhe; o azul que o `colordrop` derrama.
+pub const COR_NOVA: [u8; 3] = [200, 30, 30];
+pub const COR_DO_DROP: [u8; 3] = [40, 90, 210];
+
+/// O C&F premido, arrastado por `pontos` (fracções da imagem) e solto, a partir de `t0` (ms).
+fn cef(r: &mut Vec<(u64, Gesto)>, t0: u64, pontos: &[[f32; 2]]) -> u64 {
+    r.push((t0, Gesto::CeFDesce));
+    let mut t = t0;
+    for &p in pontos {
+        t += 50;
+        r.push((t, Gesto::CeFMove(p)));
+    }
+    r.push((t + 100, Gesto::CeFSobe));
+    t + 100
+}
+
+/// As variantes do C&F (W11), em Digital.
+fn roteiro_do_cef(v: Variante) -> Vec<(u64, Gesto)> {
+    let mut r = vec![(1_000, Gesto::Grava)];
+    pincelada(&mut r, 2_000, 0.30, 600);
+    // Um pouco de arrasto que fica à ESQUERDA da tela: só o seletor abre.
+    let fora = [[-0.30, 0.40], [-0.25, 0.42], [-0.20, 0.45]];
+    let cor = if v == Variante::Cor {
+        COR_NOVA
+    } else {
+        COR_DO_DROP
+    };
+    let t = cef(&mut r, 3_000, &fora);
+    r.extend([
+        (t + 250, Gesto::EscolheCor(cor)),
+        (t + 550, Gesto::FechaSeletor),
+    ]);
+    let t = if v == Variante::ColorDrop {
+        // De fora para dentro da tela, e solto lá: o preenchimento; depois o Done do modal, e o
+        // vermelho no C&F para a pincelada se ver sobre o azul.
+        let t = cef(
+            &mut r,
+            t + 900,
+            &[[-0.20, 0.75], [0.50, 0.75], [0.55, 0.78]],
+        );
+        r.push((t + 450, Gesto::FillPronto));
+        let t = cef(&mut r, t + 750, &[]);
+        r.extend([
+            (t + 250, Gesto::EscolheCor(COR_NOVA)),
+            (t + 550, Gesto::FechaSeletor),
+        ]);
+        t + 900
+    } else {
+        t + 900
+    };
+    pincelada(&mut r, t, 0.50, 600);
+    let para = t + 1_600;
+    r.extend([
+        (para, Gesto::Para),
+        (para + 500, Gesto::Rewind),
+        (para + 1_000, Gesto::Play),
+    ]);
     r
 }
 
@@ -285,6 +367,29 @@ pub fn anuncio(conduz: bool) -> String {
              This log is also written to {}",
             f.display()
         );
+    }
+    match variante() {
+        Variante::Cor => {
+            return format!(
+                "the app does the path by itself — Record, one Digital stroke, a press on C&F dragged a \
+                 little to the left of the canvas and released (the colour picker opens), red picked, a \
+                 second stroke, Stop, Rewind and Play in the Timeline's Keys tab. Do not touch the mouse \
+                 for 12 s. The MACROS panel must list no «Refused» step, and Play must draw both strokes, \
+                 the second one red. This log is also written to {}",
+                f.display()
+            );
+        }
+        Variante::ColorDrop => {
+            return format!(
+                "the app does the path by itself — Record, one Digital stroke, blue picked on C&F, then \
+                 C&F dragged onto the canvas and released (the fill), Done in «Fill adjust», a second \
+                 stroke, Stop, Rewind and Play in the Timeline's Keys tab. Do not touch the mouse for \
+                 14 s. The MACROS panel must list no «Refused» step, and Play must redo the blue fill \
+                 and then the second stroke. This log is also written to {}",
+                f.display()
+            );
+        }
+        _ => {}
     }
     let fim = match variante() {
         Variante::Topo => "Stop, then the Play at the top of the window (no Rewind)",

@@ -40,6 +40,7 @@ impl EtapasDaFamilia for EtapasDoPainter {
                 familia: FamiliaDaMacro::Painter,
                 tipo: match e.tipo {
                     pi::TipoDaEtapa::Pincelada(n) => TipoDaEtapaView::Pincelada(n),
+                    pi::TipoDaEtapa::Preenchimento(n) => TipoDaEtapaView::Preenchimento(n),
                     pi::TipoDaEtapa::Recusada(p) => TipoDaEtapaView::Recusada(p),
                 },
                 nome: e.nome,

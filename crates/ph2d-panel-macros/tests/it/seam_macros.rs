@@ -155,6 +155,26 @@ fn clicar_numa_etapa_escolhe_a_e_leva_a_cabeca_ao_fim_dela() {
     );
 }
 
+/// O ColorDrop gravado (W11) chama-se «Fill» e mostra a cor, sem o tamanho: o pincel não lhe chega.
+#[test]
+fn um_fill_mostra_a_cor_e_nao_o_tamanho() {
+    let mut i = info(None, None);
+    let o = i.objeto.as_mut().expect("o objecto");
+    o.etapas[1].tipo = TipoDaEtapaView::Preenchimento(1);
+    assert_eq!(ph2d_panel_macros::nomes::nome(&o.etapas[1]), "Fill 1");
+    let mut p = Palco::novo(i);
+    let _ = p.carrega(ids::row_id(0, 1));
+    p.pinta();
+    assert!(
+        p.rect(ids::MACROS_COLOR).is_some(),
+        "a cor do Fill não se pintou"
+    );
+    assert!(
+        p.rect(ids::MACROS_SIZE).is_none(),
+        "um Fill não tem tamanho"
+    );
+}
+
 /// ⭐ «Balloon text…» abre o campo da linha com o texto do balão, e o Submit chega como a edição do
 /// texto — não do nome (o mesmo campo serve os dois).
 #[test]

@@ -314,6 +314,20 @@ impl App {
         pressure: f32,
         phase: PointerPhase,
     ) -> bool {
+        self.deliver_canvas_pointer_colordrop(px, py, pressure, phase, None)
+    }
+
+    /// [`Self::deliver_canvas_pointer`] for the C&F drag: `colordrop` = the mode the ColorDrop returns to.
+    /// Fill begins only once a Down lands inside the footprint — a drag that never reaches the sprite
+    /// leaves no mode switch behind (and none in a macro being recorded, W11).
+    pub(crate) fn deliver_canvas_pointer_colordrop(
+        &mut self,
+        px: f32,
+        py: f32,
+        pressure: f32,
+        phase: PointerPhase,
+        colordrop: Option<&str>,
+    ) -> bool {
         // Read Alt before the `gfx` borrow — the Line method constrains to 45° while it's held
         // (Blender Alt-drag). The frozen `CanvasPointer` carries no modifiers, so it's forwarded
         // out-of-band via `PainterTool::set_line_constrain` just before delivery.
@@ -415,7 +429,12 @@ impl App {
         let tol = shape_grab_tol_from_affine(&affine);
         painter.set_shape_grab_tol_px(tol);
         let margin_uv = {
-            let m = painter.deform_gizmo_grab_margin_px();
+            // Fill has no gizmo: the ColorDrop's Down is judged as Fill would judge it.
+            let m = if colordrop.is_some() {
+                0.0
+            } else {
+                painter.deform_gizmo_grab_margin_px()
+            };
             [m / iw as f32, m / ih as f32]
         };
         let repeat = painter.repeat_image();
@@ -424,6 +443,11 @@ impl App {
         let in_y = canvas_down_accepts(v, repeat && tiling[1], margin_uv[1]);
         if phase == PointerPhase::Down && !(in_x && in_y) {
             return false;
+        }
+        if let Some(volta) = colordrop
+            && phase == PointerPhase::Down
+        {
+            painter.begin_colordrop_fill(volta);
         }
         let ev = CanvasPointer {
             pos: [u * iw as f32, v * ih as f32],

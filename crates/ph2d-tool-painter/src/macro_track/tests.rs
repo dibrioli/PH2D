@@ -101,6 +101,10 @@ fn todos_os_passos() -> Vec<Passo> {
         Passo::Agua(RespostaDoWorker::Passos(1 << 40)),
         Passo::Recusada("bind_document".to_owned()),
         Passo::SaiDaGravacao,
+        Passo::ColorDropComeca("brush".to_owned()),
+        Passo::LimiarDoFill(0.37),
+        Passo::FillCommit,
+        Passo::ColorDropRestaura,
     ]
 }
 

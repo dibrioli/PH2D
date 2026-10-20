@@ -51,7 +51,7 @@ const OUTRO_DOCUMENTO: &str = "liga, carrega ou desliga outro documento: a macro
 const CAMADAS_DE_FORA: &str =
     "mexe nas camadas por fora do painel (Hierarchy, juntar): o Wet Paint da W2 não o reproduz";
 const FORMA_OU_SELECAO: &str =
-    "ferramenta de forma, curva, preenchimento, colagem ou seleção: fora do Wet Paint (W2)";
+    "ferramenta de forma, curva, colagem ou seleção: fora do Wet Paint (W2)";
 const CAMADAS_COMO_PINCEL: &str =
     "lê as camadas como textura do pincel ou do papel: a macro não as guarda";
 const ACESSOR: &str = "acessor do contrato: não muda nada";
@@ -121,6 +121,11 @@ pub const PORTAS: &[Porta] = &[
     g("set_brush_shape_kind"),
     g("set_line_snap"),
     g("set_uniform_scale"),
+    // o ColorDrop do C&F (W11): o preenchimento é determinístico dado o estado (`tool/paint/fill.rs`)
+    g("begin_colordrop_fill"),
+    g("set_fill_threshold"),
+    g("fill_commit"),
+    g("restore_after_colordrop"),
     // — inerentes, recusadas —
     r("bind_document", OUTRO_DOCUMENTO),
     r("reescreve_a_gravacao", ETAPA_EDITADA),
@@ -141,10 +146,6 @@ pub const PORTAS: &[Porta] = &[
     r("commit_open_shape", FORMA_OU_SELECAO),
     r("cancel_open_shape", FORMA_OU_SELECAO),
     r("curve_select_point_at", FORMA_OU_SELECAO),
-    r("set_fill_threshold", FORMA_OU_SELECAO),
-    r("begin_colordrop_fill", FORMA_OU_SELECAO),
-    r("fill_commit", FORMA_OU_SELECAO),
-    r("restore_after_colordrop", FORMA_OU_SELECAO),
     r("line_finish_points", FORMA_OU_SELECAO),
     r("paste_commit", FORMA_OU_SELECAO),
     r("paste_cancel", FORMA_OU_SELECAO),

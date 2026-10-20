@@ -101,6 +101,14 @@ pub enum Passo {
     /// divergiu): a água larga a fita e corre no relógio fixo. Nunca gravado — só a trilha que toca o tem
     /// (`ph2d_macro::etapa`).
     SaiDaGravacao,
+    /// `begin_colordrop_fill`: o C&F entra em Fill para um ColorDrop (o modo a que volta).
+    ColorDropComeca(String),
+    /// `set_fill_threshold`: o limiar do ColorDrop (o modal, ou o gesto parado da shell).
+    LimiarDoFill(f32),
+    /// `fill_commit`: o ColorDrop confirmado (o soltar do gesto parado).
+    FillCommit,
+    /// `restore_after_colordrop`: o C&F volta ao modo de antes.
+    ColorDropRestaura,
     /// Um tipo que este leitor não conhece (gravado por uma versão mais nova).
     Desconhecido(u64),
 }
@@ -332,6 +340,16 @@ impl Passo {
                 r.str(2, porta);
             }
             Passo::SaiDaGravacao => k(&mut r, 52),
+            Passo::ColorDropComeca(modo) => {
+                k(&mut r, 53);
+                r.str(2, modo);
+            }
+            Passo::LimiarDoFill(v) => {
+                k(&mut r, 54);
+                r.f32(2, *v);
+            }
+            Passo::FillCommit => k(&mut r, 55),
+            Passo::ColorDropRestaura => k(&mut r, 56),
             Passo::Desconhecido(n) => k(&mut r, *n),
         }
         r.finish()
@@ -484,6 +502,10 @@ impl Passo {
             }),
             51 => Passo::Recusada(s_(2)?),
             52 => Passo::SaiDaGravacao,
+            53 => Passo::ColorDropComeca(s_(2)?),
+            54 => Passo::LimiarDoFill(f32_(2)?),
+            55 => Passo::FillCommit,
+            56 => Passo::ColorDropRestaura,
             n => Passo::Desconhecido(n),
         })
     }

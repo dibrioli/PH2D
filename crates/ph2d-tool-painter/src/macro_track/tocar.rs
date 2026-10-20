@@ -367,6 +367,10 @@ impl TocadorDoPainter {
             Passo::EscalaUniforme(b) => t.set_uniform_scale(b),
             Passo::Agua(_) => {}
             Passo::SaiDaGravacao => t.wet_passa_ao_relogio_fixo(),
+            Passo::ColorDropComeca(modo) => t.begin_colordrop_fill(&modo),
+            Passo::LimiarDoFill(v) => t.set_fill_threshold(v),
+            Passo::FillCommit => t.fill_commit(),
+            Passo::ColorDropRestaura => t.restore_after_colordrop(),
             Passo::Recusada(porta) => return Err(ErroDaMacro::PortaRecusada(porta)),
             Passo::Desconhecido(k) => return Err(ErroDaMacro::PassoDesconhecido(k)),
         }

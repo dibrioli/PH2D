@@ -69,7 +69,11 @@ fn toca_igual(original: &mut PainterTool, doc: &MacroDoc) -> Vec<u8> {
     );
     let mut toc = toca(doc).expect("a macro toca até ao fim");
     let (a, b) = (original.run_full().0, toc.tool_mut().run_full().0);
-    assert_eq!(texels_diferentes(&a, &b), 0, "a reprodução não é a gravação");
+    assert_eq!(
+        texels_diferentes(&a, &b),
+        0,
+        "a reprodução não é a gravação"
+    );
     a
 }
 
@@ -102,8 +106,16 @@ fn trocar_a_cor_no_cef_a_gravar_toca_ate_ao_fim_na_cor_nova() {
         "a cor do seletor não ficou na trilha"
     );
     let tela = toca_igual(&mut t, &doc);
-    assert_eq!(texel(&tela, 0.5, 0.6), NOVA, "a 2.ª pincelada não é da cor nova");
-    assert_eq!(texel(&tela, 0.5, 0.3), PRETO, "a 1.ª pincelada mudou de cor");
+    assert_eq!(
+        texel(&tela, 0.5, 0.6),
+        NOVA,
+        "a 2.ª pincelada não é da cor nova"
+    );
+    assert_eq!(
+        texel(&tela, 0.5, 0.3),
+        PRETO,
+        "a 1.ª pincelada mudou de cor"
+    );
 }
 
 /// Como o limiar chega ao ColorDrop: pelo modal depois de soltar, ou pelo gesto parado (o «dwell» da
@@ -114,37 +126,92 @@ enum Limiar {
     Parado,
 }
 
+/// Grava: uma pincelada preta, o ColorDrop vermelho (o limiar por `limiar`), uma pincelada preta.
+fn grava_o_colordrop(limiar: Limiar) -> (PainterTool, MacroDoc) {
+    let mut t = ferramenta();
+    let mut g = Gravador::arma(&mut t);
+    pincelada(&mut t, &mut g, 0.3);
+    t.set_brush_color_srgb8(NOVA);
+    quadro(&mut t, &mut g);
+    let volta = t.active_paint_mode_id();
+    t.begin_colordrop_fill(volta);
+    let s = N as f32;
+    t.on_canvas_pointer(cp([s * 0.7, s * 0.7], PointerPhase::Down));
+    quadro(&mut t, &mut g);
+    t.on_canvas_pointer(cp([s * 0.8, s * 0.8], PointerPhase::Move));
+    quadro(&mut t, &mut g);
+    match limiar {
+        Limiar::Modal => {
+            t.on_canvas_pointer(cp([s * 0.8, s * 0.8], PointerPhase::Up));
+            quadro(&mut t, &mut g);
+            t.set_fill_threshold(0.4);
+        }
+        Limiar::Parado => t.set_fill_threshold(0.2),
+    }
+    quadro(&mut t, &mut g);
+    t.fill_commit();
+    quadro(&mut t, &mut g);
+    t.set_brush_color_srgb8(PRETO);
+    pincelada(&mut t, &mut g, 0.85);
+    let doc = g.para(&mut t);
+    (t, doc)
+}
+
+/// O painel MACROS: o ColorDrop é uma etapa «Fill» com a cor dele, entre as pinceladas — também o do
+/// gesto parado, que não tem `Up` (sem ela as cores das pinceladas seguintes desalinhavam). A cor
+/// editada chega ao preenchimento inteiro, o limiar afinado depois de soltar incluído; o tamanho não.
+#[test]
+fn o_colordrop_e_uma_etapa_fill_com_a_cor_dele() {
+    use ph2d_tool_painter::macro_track::etapas::{TipoDaEtapa, edita_cor, edita_tamanho, etapas};
+    const VERDE: [u8; 3] = [30, 160, 60];
+    for limiar in [Limiar::Modal, Limiar::Parado] {
+        let (_, mut doc) = grava_o_colordrop(limiar);
+        let es = etapas(&doc.tracks[0]).expect("etapas");
+        let vistas: Vec<(TipoDaEtapa, [u8; 3])> =
+            es.iter().map(|e| (e.tipo.clone(), e.cor)).collect();
+        assert_eq!(
+            vistas,
+            vec![
+                (TipoDaEtapa::Pincelada(1), PRETO),
+                (TipoDaEtapa::Preenchimento(1), NOVA),
+                (TipoDaEtapa::Pincelada(2), PRETO),
+            ],
+            "{limiar:?}: as etapas do painel"
+        );
+        let k = es[1].k;
+        assert!(
+            edita_tamanho(&mut doc.tracks[0], k, 9.0).is_err(),
+            "{limiar:?}: o tamanho do pincel não é do ColorDrop"
+        );
+        edita_cor(&mut doc.tracks[0], k, VERDE).expect("a cor do Fill edita-se");
+        let tocavel = doc.tracks[0]
+            .tocavel(&ph2d_tool_painter::macro_track::etapas::LeitorDoPainter)
+            .expect("tocável");
+        let editada = MacroDoc {
+            tracks: vec![tocavel],
+            ..doc.clone()
+        };
+        let mut toc = toca(&editada).expect("toca a editada");
+        let tela = toc.tool_mut().run_full().0;
+        assert_eq!(
+            texel(&tela, 0.6, 0.6),
+            VERDE,
+            "{limiar:?}: o Fill não ficou verde"
+        );
+        assert_eq!(
+            texel(&tela, 0.5, 0.85),
+            PRETO,
+            "{limiar:?}: a pincelada a seguir mudou"
+        );
+    }
+}
+
 /// O ColorDrop de verdade a gravar: a cor arrastada do C&F para a tela e solta inunda a área branca;
 /// a macro toca-o igual ao byte e a pincelada seguinte também.
 #[test]
 fn o_colordrop_a_gravar_toca_igual() {
     for limiar in [Limiar::Modal, Limiar::Parado] {
-        let mut t = ferramenta();
-        let mut g = Gravador::arma(&mut t);
-        pincelada(&mut t, &mut g, 0.3);
-        t.set_brush_color_srgb8(NOVA);
-        quadro(&mut t, &mut g);
-        let volta = t.active_paint_mode_id();
-        t.begin_colordrop_fill(volta);
-        let s = N as f32;
-        t.on_canvas_pointer(cp([s * 0.7, s * 0.7], PointerPhase::Down));
-        quadro(&mut t, &mut g);
-        t.on_canvas_pointer(cp([s * 0.8, s * 0.8], PointerPhase::Move));
-        quadro(&mut t, &mut g);
-        match limiar {
-            Limiar::Modal => {
-                t.on_canvas_pointer(cp([s * 0.8, s * 0.8], PointerPhase::Up));
-                quadro(&mut t, &mut g);
-                t.set_fill_threshold(0.4);
-            }
-            Limiar::Parado => t.set_fill_threshold(0.2),
-        }
-        quadro(&mut t, &mut g);
-        t.fill_commit();
-        quadro(&mut t, &mut g);
-        t.set_brush_color_srgb8(PRETO);
-        pincelada(&mut t, &mut g, 0.85);
-        let doc = g.para(&mut t);
+        let (mut t, doc) = grava_o_colordrop(limiar);
         let tela = toca_igual(&mut t, &doc);
         assert_eq!(
             texel(&tela, 0.6, 0.6),
@@ -153,7 +220,7 @@ fn o_colordrop_a_gravar_toca_igual() {
         );
         assert_eq!(
             t.active_paint_mode_id(),
-            volta,
+            "brush",
             "{limiar:?}: o ColorDrop não voltou ao pincel"
         );
     }

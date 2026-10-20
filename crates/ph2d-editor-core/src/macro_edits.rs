@@ -73,6 +73,8 @@ pub enum FamiliaDaMacro {
 pub enum TipoDaEtapaView {
     /// A n-ésima pincelada (a contar de 1).
     Pincelada(usize),
+    /// O n-ésimo ColorDrop do C&F (a cor solta na tela), a contar de 1 — tem cor, não tamanho.
+    Preenchimento(usize),
     Acrescenta(Vec<String>),
     Liga {
         de: Option<String>,

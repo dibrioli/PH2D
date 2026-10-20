@@ -361,32 +361,36 @@ impl PainterTool {
 
     /// Set the Fill threshold from the modal slider (`0..1`) and re-fill live from the snapshot.
     pub fn set_fill_threshold(&mut self, t: f32) {
-        self.macro_recusa("set_fill_threshold");
-        self.paint.fill_threshold = t.clamp(0.0, 1.0);
-        self.refill_from_snapshot();
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::LimiarDoFill(t), {
+            self.paint.fill_threshold = t.clamp(0.0, 1.0);
+            self.refill_from_snapshot();
+        })
     }
 
     /// Enter **Fill** for a momentary ColorDrop (the shell's C&F drag) and remember the mode to RESTORE when
     /// the fill finalizes, so the drag returns to the shape/brush the user was using (Enio 2026-07-03). A
     /// deliberate Fill-tool selection uses `set_paint_tool_mode("fill")` instead (no return).
     pub fn begin_colordrop_fill(&mut self, return_mode: &str) {
-        self.macro_recusa("begin_colordrop_fill");
-        self.set_paint_tool_mode("fill");
-        self.paint.fill_return_mode = Some(return_mode.to_string());
+        let passo = |_: &Self| crate::macro_track::Passo::ColorDropComeca(return_mode.to_owned());
+        crate::macro_track::porta!(self, passo, {
+            self.set_paint_tool_mode("fill");
+            self.paint.fill_return_mode = Some(return_mode.to_string());
+        })
     }
 
     /// Finalize the current fill (modal **Done**, or the dwell live-adjust release): push the undo entry,
     /// drop the transient state. `pub` so the shell's dwell gesture can commit without the modal.
     pub fn fill_commit(&mut self) {
-        self.macro_recusa("fill_commit");
-        if self.paint.fill_seed.is_none() {
-            return;
-        }
-        self.close_stroke(); // pushes the pre-fill → filled structural-undo entry
-        self.paint.fill_seed = None;
-        self.paint.fill_snapshot = Vec::new();
-        self.paint.fill_last_rect = None;
-        self.restore_after_colordrop();
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::FillCommit, {
+            if self.paint.fill_seed.is_none() {
+                return;
+            }
+            self.close_stroke(); // pushes the pre-fill → filled structural-undo entry
+            self.paint.fill_seed = None;
+            self.paint.fill_snapshot = Vec::new();
+            self.paint.fill_last_rect = None;
+            self.restore_after_colordrop();
+        })
     }
 
     /// Restore the pre-ColorDrop mode after a momentary C&F fill finalizes (Done / Cancel / dwell release),
@@ -395,10 +399,11 @@ impl PainterTool {
     /// `set_paint_tool_mode` re-entrant `fill_commit` is a no-op (no recursion) and `fill_return_mode` is
     /// taken (drives it exactly once). `pub` so the shell's picker path can end a missed drag.
     pub fn restore_after_colordrop(&mut self) {
-        self.macro_recusa("restore_after_colordrop");
-        if let Some(ret) = self.paint.fill_return_mode.take() {
-            self.set_paint_tool_mode(&ret);
-        }
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::ColorDropRestaura, {
+            if let Some(ret) = self.paint.fill_return_mode.take() {
+                self.set_paint_tool_mode(&ret);
+            }
+        })
     }
 
     /// Discard the current fill (modal **Cancel**): restore the pre-fill pixels and drop the pending

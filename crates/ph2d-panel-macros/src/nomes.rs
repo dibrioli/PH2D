@@ -31,6 +31,7 @@ pub fn nome(e: &EtapaView) -> String {
     }
     match &e.tipo {
         T::Pincelada(n) => tr_with("panel.macros.step.stroke", &[("n", n)]),
+        T::Preenchimento(n) => tr_with("panel.macros.step.fill", &[("n", n)]),
         T::Acrescenta(tipos) => {
             let nos: Vec<String> = tipos.iter().map(|t| no(Some(t))).collect();
             tr_with("panel.macros.step.add", &[("nodes", &nos.join(", "))])

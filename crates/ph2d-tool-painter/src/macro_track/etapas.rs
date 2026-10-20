@@ -22,30 +22,85 @@ fn passo(c: &[u8]) -> Option<Passo> {
     Passo::descodifica(c).ok()
 }
 
+/// O passo que fecha um ColorDrop: o Done do gesto parado, o Done ou o Cancel do modal, a volta.
+fn fecha_o_drop(p: &Passo) -> bool {
+    use ph2d_editor_core::ids::{PAINTER_FILL_MODAL_CANCEL, PAINTER_FILL_MODAL_DONE};
+    use ph2d_editor_core::tool::PanelEvent;
+    match p {
+        Passo::FillCommit | Passo::ColorDropRestaura => true,
+        Passo::Painel(PanelEvent::Click(id)) => {
+            *id == PAINTER_FILL_MODAL_DONE || *id == PAINTER_FILL_MODAL_CANCEL
+        }
+        _ => false,
+    }
+}
+
+/// O toque em `eventos[..i]` é um ColorDrop: o último marco antes dele é o C&F a entrar em Fill.
+fn e_um_colordrop(eventos: &[Event]) -> bool {
+    eventos
+        .iter()
+        .rev()
+        .find_map(|e| match passo(&e.payload)? {
+            Passo::ColorDropComeca(_) => Some(true),
+            Passo::Ponteiro {
+                fase: PointerPhase::Down | PointerPhase::Up,
+                ..
+            } => Some(false),
+            p if fecha_o_drop(&p) => Some(false),
+            _ => None,
+        })
+        .unwrap_or(false)
+}
+
 impl LeitorDaFamilia for LeitorDoPainter {
+    /// Uma pincelada é `Down..Up`. Um ColorDrop (W11) vai do `Down` ao passo que o fecha — o limiar
+    /// afinado depois de soltar é dele —, e o do gesto parado não tem `Up`.
     fn etapas(&self, eventos: &[Event]) -> Vec<Etapa> {
         let mut out: Vec<Etapa> = Vec::new();
         let mut toque = None;
+        let mut drop = false;
+        let mut solto: Option<(usize, usize)> = None;
+        let fecha_solto = |out: &mut Vec<Etapa>, solto: &mut Option<(usize, usize)>| {
+            if let Some((inicio, fim)) = solto.take() {
+                out.push(Etapa { inicio, fim });
+            }
+        };
         for (i, e) in eventos.iter().enumerate() {
             match passo(&e.payload) {
                 Some(Passo::Ponteiro {
                     fase: PointerPhase::Down,
                     ..
-                }) => toque = Some(i),
+                }) => {
+                    fecha_solto(&mut out, &mut solto);
+                    toque = Some(i);
+                }
                 Some(Passo::Ponteiro {
                     fase: PointerPhase::Up,
                     ..
                 }) => {
                     if let Some(d) = toque.take() {
+                        if drop {
+                            solto = Some((d, i));
+                        } else {
+                            out.push(Etapa { inicio: d, fim: i });
+                        }
+                    }
+                }
+                Some(Passo::ColorDropComeca(_)) => drop = true,
+                Some(p) if drop && fecha_o_drop(&p) => {
+                    drop = false;
+                    if let Some(d) = solto.take().map(|(d, _)| d).or_else(|| toque.take()) {
                         out.push(Etapa { inicio: d, fim: i });
                     }
                 }
                 Some(Passo::Recusada(_)) if toque.is_none() => {
+                    fecha_solto(&mut out, &mut solto);
                     out.push(Etapa { inicio: i, fim: i });
                 }
                 _ => {}
             }
         }
+        fecha_solto(&mut out, &mut solto);
         out
     }
 
@@ -108,6 +163,8 @@ impl LeitorDaFamilia for LeitorDoPainter {
 pub enum TipoDaEtapa {
     /// A n-ésima pincelada (a contar de 1).
     Pincelada(usize),
+    /// O n-ésimo ColorDrop do C&F (a cor solta na tela que inunda), a contar de 1.
+    Preenchimento(usize),
     /// Uma porta que a macro não reproduz: o tocador pára aqui (o porquê).
     Recusada(String),
 }
@@ -192,11 +249,15 @@ pub fn etapas(track: &Track) -> Result<Vec<EtapaDoPainter>, ErroDaMacro> {
     let gravadas = LeitorDoPainter.etapas(&track.events);
     let mut tocadas = LeitorDoPainter.etapas(&tocavel.events).into_iter();
     let mut pinceis = pinceis(&tocavel)?.into_iter();
-    let mut n = 0;
+    let (mut n, mut f) = (0, 0);
     let mut out = Vec::with_capacity(gravadas.len());
     for (k, g) in gravadas.iter().enumerate() {
         let tipo = match passo(&track.events[g.fim].payload) {
             Some(Passo::Recusada(porta)) => TipoDaEtapa::Recusada(porta),
+            _ if e_um_colordrop(&track.events[..g.inicio]) => {
+                f += 1;
+                TipoDaEtapa::Preenchimento(f)
+            }
             _ => {
                 n += 1;
                 TipoDaEtapa::Pincelada(n)
@@ -207,11 +268,9 @@ pub fn etapas(track: &Track) -> Result<Vec<EtapaDoPainter>, ErroDaMacro> {
         }
         let Some(t) = tocadas.next() else { break };
         let (cor, tamanho_px, meio) = match tipo {
-            TipoDaEtapa::Pincelada(_) => {
-                pinceis
-                    .next()
-                    .unwrap_or(([0; 3], 0.0, PaintMedia::default()))
-            }
+            TipoDaEtapa::Pincelada(_) | TipoDaEtapa::Preenchimento(_) => pinceis
+                .next()
+                .unwrap_or(([0; 3], 0.0, PaintMedia::default())),
             TipoDaEtapa::Recusada(_) => ([0; 3], 0.0, PaintMedia::default()),
         };
         out.push(EtapaDoPainter {
@@ -269,7 +328,11 @@ fn pincelada(
         .into_iter()
         .find(|e| e.k == k)
         .ok_or(ErroDeEdicaoDoPainter::SemEtapa(k))?;
-    if !matches!(e.tipo, TipoDaEtapa::Pincelada(_)) {
+    // O ColorDrop tem a cor e o sítio onde a cor caiu; o tamanho do pincel não lhe chega.
+    if !matches!(
+        e.tipo,
+        TipoDaEtapa::Pincelada(_) | TipoDaEtapa::Preenchimento(_)
+    ) {
         return Err(ErroDeEdicaoDoPainter::NaoEPincelada(k));
     }
     let down = (e.etapa.inicio..=e.etapa.fim)
@@ -335,7 +398,10 @@ pub fn edita_cor(track: &mut Track, k: usize, cor: [u8; 3]) -> Result<(), ErroDe
 /// # Errors
 /// [`ErroDeEdicaoDoPainter`].
 pub fn edita_tamanho(track: &mut Track, k: usize, px: f32) -> Result<(), ErroDeEdicaoDoPainter> {
-    let (etapa, down, _) = pincelada(track, k)?;
+    let (etapa, down, e) = pincelada(track, k)?;
+    if !matches!(e.tipo, TipoDaEtapa::Pincelada(_)) {
+        return Err(ErroDeEdicaoDoPainter::NaoEPincelada(k));
+    }
     let original = etapas(&Track {
         edicoes: Vec::new(),
         ..track.clone()

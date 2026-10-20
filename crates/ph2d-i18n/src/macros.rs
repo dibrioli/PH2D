@@ -26,6 +26,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.field.value" => "Value",
         "panel.macros.field.color" => "Colour",
         "panel.macros.step.stroke" => "Stroke {n}",
+        "panel.macros.step.fill" => "Fill {n}",
         "panel.macros.step.add" => "Add {nodes}",
         "panel.macros.step.connect" => "{from} \u{2192} {to}",
         "panel.macros.step.disconnect" => "Disconnect {to}",

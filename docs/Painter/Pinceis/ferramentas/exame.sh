@@ -70,8 +70,8 @@ case "${1:-}" in
   --matriz)
     B=$(biblioteca)
     matriz "$B" "$DIR/matriz"
-    mkdir -p "$P/matriz" && cp "$DIR/matriz/matriz.csv" "$DIR/matriz/vizinhos.md" "$P/matriz/"
-    echo "▸ $P/matriz/{matriz.csv,vizinhos.md}"
+    mkdir -p "$P/matriz" && cp "$DIR/matriz/"{matriz.csv,matriz_oraculos.csv,vizinhos.md,oraculos.md} "$P/matriz/"
+    echo "▸ $P/matriz/{vizinhos.md,oraculos.md,matriz.csv,matriz_oraculos.csv}"
     exit 0 ;;
   --custo)
     PINCEL=${2:?pincel}

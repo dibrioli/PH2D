@@ -17,7 +17,7 @@ bash $F/exame.sh "Oil Bristle" docs/Painter/Pinceis/fixtures/rebelle_bateria/OIL
 bash $F/exame.sh "Graphite 8B" docs/Painter/Pinceis/fixtures/rebelle_bateria/PENCIL/graphite_pencil_8b
 bash $F/exame.sh caminho/do/Novo.ph2d-brush.png <oráculo>     # um candidato que ainda não está na fábrica
 bash $F/exame.sh meio:Digital                                  # os meios sem presets em ficheiro (§2)
-bash $F/exame.sh --matriz                                      # a biblioteca inteira → matriz/{matriz.csv,vizinhos.md}
+bash $F/exame.sh --matriz                                      # a biblioteca + os oráculos → matriz/ (vizinhos.md, oraculos.md, CSVs)
 bash $F/exame.sh --custo "Oil Bristle" 5,40,200                # ms/quadro e memória pico
 ```
 
@@ -86,26 +86,67 @@ largura do `recto_lento` dele ÷ a nossa a escala 1 (Graphite 8B 0,825 — o Reb
 
 ## §4 — A matriz (`exame_matriz.py`) — ⭐ o achado
 
-Vector de identidade de 457 traços em 5 grupos (forma · tinta · textura · dinâmica · mistura), cada traço ÷ o
-espalhamento robusto da biblioteca (1,4826 · MAD, chão = o ruído da régua), diferença saturada a 6, RMS por grupo,
-média dos grupos. Saída: [`matriz/matriz.csv`](matriz/matriz.csv) e [`matriz/vizinhos.md`](matriz/vizinhos.md)
-(top-3 por pincel e a distância por grupo do 1.º).
+⚠️ **A matriz é TRIAGEM, nunca veredito.** Ela diz onde olhar; o veredito de um pincel é a PRANCHA lado a lado com o
+oráculo + a REVISÃO CEGA ([05](05_REVISAO_CEGA.md)). Um «claramente longe» não aprova nada; um «perto» manda olhar.
 
-**Calibração pelos vereditos do dono** (19/10), cada um contra o vizinho entre os que FICARAM: Filbert ~ Soft
-Pastel 0,741 («nada novo» ⇒ igual) · Flat Oily ~ Soft Pastel 1,338 e Knife Smooth ~ Soft Pastel 1,328 («bizarros»
-⇒ diferentes) ⇒ **limiar = 0,992** (média geométrica). ⚠️ Medido e recusado como âncora: o par da receita (Filbert ×
-Acrylic Round, o NASCE_DE) dá **1,903** — à mesma largura e cor a Acrylic Round pinta um feixe de fios transparente
-(cobertura 0,55) e o Filbert um redondo liso (0,91); o «nada novo» é o redondo liso que a biblioteca já tinha. Os 8
-do P53 que o dono aceitou também NÃO são âncora de «distinto»: «OK» foi «serve».
+**O vector** (457 traços em 5 grupos: forma · tinta · textura · dinâmica · mistura; a largura entra RELATIVA ao
+próprio recto, mais uma absoluta). **A população**: os nossos, os **228** presets do Rebelle que pintam as três cenas
+([`fixtures/rebelle_bateria/`](fixtures/rebelle_bateria/README.md); as ferramentas sem tinta e os Effect ficam de
+fora) e os **34** do ArtRage (só a foto A: B ≡ A). **A escala é CONGELADA** em [`matriz/escala.json`](matriz/escala.json):
+cada traço ÷ max(1,4826 · MAD sobre os 228 do Rebelle, o CHÃO da sua família), diferença saturada a 6, RMS por grupo,
+média dos 5 grupos. Pincel novo não mexe na régua dos outros; `exame_matriz.py --recalibra` refá-la. O recto de 200 px
+dos 31 presets cujo Max Size é menor fica fora da identidade deles (o Rebelle pintou-o ao max: não é o pincel a 200).
+Medições completas: [`matriz/oraculos.md`](matriz/oraculos.md).
 
-**O achado: 22 dos 28 pincéis de fábrica têm o vizinho abaixo do limiar** — à mesma largura e cor, a biblioteca é
-quase toda feita de pares: Dip Pen ~ Ink Bullet 0,263 · Colored 4B ~ Oil Pastel 0,293 · Marker Liner ~ Ink Bullet
-0,343 · Wax Scrape ~ Oil Pastel 0,374 · Graphite 2H ~ HB 0,386 · Graphite 8B ~ Colored 4B 0,435 · … (a lista em
-`vizinhos.md`). Olhado nas pranchas: os lápis 2H/HB/8B, o Colored 4B, o Oil Pastel e o Wax Scrape são o mesmo
-grão macio a azul; Dip Pen e Ink Bullet o mesmo redondo chapado. Só 6 ficam longe: Wet Drip (2,60), Acrylic Round,
-Airbrush, Wet Dry Brush, Scratch, Oil Bristle (1,17–1,36). É a fila de diferenciação das janelas 2–4. ⚠️ A escala
-de cada traço é a da população: pincel novo entra ⇒ o limiar recalcula-se (com o `meio:Digital` na vista, 0,976).
-O exame de um pincel corre a matriz com ele dentro.
+**(c) O ruído do oráculo** — o MESMO recto a 40 pintado duas vezes (recto_lento da cena `gestos` × recto_40 da
+`tamanhos`), sobre os 228: cobertura p50 0,006 · p75 0,023 · p90 0,077; textura 0,71 · 2,9 · 10,3 %; rugosidade
+0,09 · 0,35 · 0,90 px; largura 0 · 1 · 5 px. O **chão = o p75**. ⛔ O p90 foi recusado: a cauda é o pincel, não a
+medida — a carga que acaba no recto mais comprido (880 × 500 px: o Gouache Liner 2 passa de 30 a 21 px) e o
+espalhamento sorteado (Grunge/Scatter, textura 12 → 120 %); como chão, a textura de 10 % apagaria a textura de quase
+todos os lápis (o 8B tem 6,4 %). ⛔ O p50 também: 62 % das larguras e 47 % das pontas repetem AO PIXEL (a régua é
+inteira), o chão seria 0 e uma ponta de 0,94 contra 1,00 valia 13 desvios. ⭐ Em distância, só com os traços do recto:
+o mesmo preset repintado dá p50 **0,33** (p90 1,50) e um preset contra o vizinho mais perto **0,65** (p90 1,49) — **o
+recto sozinho mal separa dois pincéis do Rebelle do mesmo pincel repintado**: é a lição do P53 (a régua do recto
+aprovou 11) em números; a identidade mora nos outros gestos.
+
+**(a) A distância ao vizinho mais perto dentro do Rebelle** (p10 · p25 · p50 · p75 · p90), fora da FAMÍLIA (a série
+unida aos duplicados ao byte): **total 0,60 · 0,72 · 0,91 · 1,19 · 1,53** · PENCIL 0,62 · 0,67 · 0,84 · 1,06 · 1,22 ·
+OIL_AND_ACRYLIC 0,46 · 0,63 · 0,85 · 1,13 · 1,50 · WATERCOLOR 0,72 · 0,82 · 1,13 · 1,52 · 1,98 · PASTEL 0,74 · 0,84 ·
+1,00 · 1,30 · 1,41 · INK_PEN 0,91 · 0,95 · 1,20 · 1,38 · 1,43. ArtRage (dentro dele): 0,34 · 0,76 · 0,86 · 1,08 ·
+1,90. ⭐ **O Rebelle vende duplicados**: «Colored Pencil/2H·HB·2B·4B·8B Color» e «Graphite Pencil/2H·HB·2B·4B·8B» dão
+fotos IGUAIS AO BYTE com a cor da bateria (sha1 conferido): só a cor de omissão os separa (d 0,000).
+
+**(b) As séries graduadas do Rebelle** (77 passos entre membros vizinhos): p10 · p50 · p90 = 0,43 · 1,22 · 2,05. A
+dureza do grafite: **2H → H 0,17 · H → HB 0,13 · HB → 2B 0,41 · 2B → 4B 0,43 · 4B → 8B 0,45**. Olhado nas fotos:
+2H, H e HB são o mesmo traço; a partir do 2B o grão abre e do 4B escurece. O eixo NÃO é monótono numa só medida (a
+cobertura do recto: 0,66 · 0,64 · 0,63 · 0,61 · 0,74 · 0,87 — o 2B é o mais claro e o mais granulado).
+
+**⭐ A LEI** (o que `vizinhos.md` aplica):
+1. **«Claramente longe» = d ≥ 0,596** = o **p10** da distância ao vizinho mais perto dentro do Rebelle, fora da
+   família. Porquê: é o menor afastamento que um fabricante profissional dá a dois pincéis que vende como
+   DIFERENTES (90 % dos 228 estão mais longe que isto do seu vizinho); fica 1,8 × acima da mediana do ruído do recto
+   repintado (0,33). O p10 e não o mínimo: o mínimo do Rebelle são os seus próprios quase-repetidos (Metallic Flat 2 ~
+   Round 2, 0,39).
+2. **Uma série graduada entra como FAMÍLIA** (`FAMILIAS` no script; hoje Graphite 2H · HB · 2B · 8B): (i) fora dela,
+   cada membro tem de estar ≥ 0,596 de tudo; (ii) dentro, cada passo entre membros vizinhos ≥ **0,40** — o menor passo
+   da série do Rebelle que a prancha MOSTRA (HB → 2B 0,41; os de 0,13–0,17 não se vêem); (iii) cada membro tem a SUA
+   origem como o 1.º do Rebelle (abaixo) — o eixo é o do oráculo, mesmo não monótono.
+3. **Fidelidade** (a coluna «origem» de `vizinhos.md`): o preset do Rebelle de que o nosso nasce tem de ser o seu
+   **1.º entre os 228** (um duplicado ao byte da origem empata com ela). Os nossos são comparados com os vizinhos de
+   ORÁCULO na mesma tabela ([`matriz/matriz_oraculos.csv`](matriz/matriz_oraculos.csv): 31 × 262).
+4. **Recusados como âncora** (a lei de 19/10): o Filbert «nada novo» × o Soft Pastel (0,74) — o veredito do dono não
+   foi dado contra ele, e um par só não calibra; e o par da receita Filbert × Acrylic Round (1,90). A matriz NOVA
+   explica o «nada novo»: o vizinho de oráculo do Filbert é o **Digital/Round Hard** do Rebelle (0,507, abaixo do
+   limiar) e a origem dele (Flat/Filbert) é só a 27.ª — era um redondo digital com outro nome.
+
+**O que a lei diz da fábrica (28):** **13 perto** — Colored 4B ~ Oil Pastel 0,299 · Dip Pen ~ Ink Bullet 0,359 ·
+Soft Pastel ~ Wax Scrape 0,362 · Graphite 8B ~ Oil Pastel 0,385 · Marker Liner ~ Ink Bullet 0,434 · Graphite HB ~
+Colored 4B 0,443 · Marker Bullet ~ Marker Liner 0,452 · Graphite 2H ~ Colored 4B 0,463 · Graphite 2B ~ Colored 4B
+0,502 · Square Hard ~ Oil Pastel 0,533 (+ os pares recíprocos Ink Bullet, Oil Pastel, Wax Scrape); na série, o
+passo **2H → HB = 0,37 é invisível** (como o do Rebelle). **Fidelidade: a origem é o 1.º em 8 de 29** (Airbrush,
+Charcoal, Dip Pen, Gouache Flat, Graphite 2H, Ink Brush, Marker Bullet, Wet Flat); mediana da posição 4; os piores:
+Acrylic Round 73.º, Express Oil 58.º, Marker Liner 49.º, Dabber 45.º, Graphite 8B 20.º. No 8B os traços que o afastam da
+origem são os da prancha (§6): a pressão (pontas das rampas, 6 desvios), o recto de 5 px (cobertura 0,32 × 0,80).
 
 ## §5 — As pranchas
 
@@ -140,8 +181,30 @@ Legado (molhada e seca, o cruzamento): Graphite 8B 136/156, Oil Bristle 140/156;
 cruzamento seco difere — o Rebelle (94,67,115) mistura o azul por baixo do vermelho, o nosso (146,48,91) mostra mais
 vermelho (vermelho_em_cima 0,42 × 0,62).
 
-**A revisão cega** (um agente novo, só com [`pranchas/cegas/oil_bristle.png`](pranchas/cegas/oil_bristle.png)): ver
-§6.1.
+**A revisão cega** (um agente novo, só com a cega de 2 linhas do commit `39967873bd`): ver §6.1. A cega de HOJE tem
+as 6 linhas e outra ordem sorteada (a chave nova em `pranchas/chaves/`): a próxima revisão usa-a.
+
+### §6.0 — O reexame com as três cenas do Rebelle (20/10)
+
+As fotos dos 281 presets ficaram completas ([`fixtures/rebelle_bateria/`](fixtures/rebelle_bateria/README.md)); as
+duas pranchas foram refeitas (rotulada e cega, 6 linhas cada). Régua: Graphite 8B **334/420**, Oil Bristle
+**372/420** dentro de 3 ruídos. Os vizinhos pela matriz nova: 8B ~ Oil Pastel 0,385 (PERTO), Oil Bristle ~ Soft
+Pastel 1,177 (longe). O que as cenas novas mostram:
+
+- **Graphite 8B · tamanhos**: o recto de **5 px** do Rebelle é uma linha escura e cheia (cobertura 0,80, cor
+  (51,119,188)); o nosso é um pontilhado claro e falhado (0,32, (161,193,224), textura 24 × 9 %, cv 0,30 × 0,07) — o
+  grão do nosso lápis não escala para baixo. O de **200 px** não é comparável: o Max Size do 8B no Rebelle é 80 e ele
+  pintou ao max (68 px, de borda ondulada e miolo cheio); o nosso pinta 166 px de nuvem granulada. A 40, igual.
+- **Graphite 8B · sobre**: o azul por cima do vermelho — no Rebelle o lápis cobre (vermelho em cima 0,10–0,14), no
+  nosso o vermelho atravessa o dobro (0,23–0,26) e a cor em cima é mais roxa ((71,81,141) × (54,94,161)); a faixa
+  vermelha do Rebelle é mais larga de borda irregular, a nossa mais lisa. Molhada = seca nos dois (lápis).
+- **Oil Bristle · tamanhos**: o recto de 5 px do Rebelle tem 8 px e é chapado (cobertura 0,89); o nosso 4 px e
+  claro (0,68, (79,137,195)). O de 200 px: o Rebelle corta as pontas RETAS e esfiapadas e começa mais à esquerda; o
+  nosso tem as pontas em cápsula e uma banda clara de brilho a meio do comprimento.
+- **Oil Bristle · sobre** ⭐: o azul do Rebelle passa pela faixa MOLHADA com a mesma largura e pega vermelho (0,51–0,60
+  de vermelho em cima, cor (122,46,84)); o nosso **incha numa lente** mais clara exactamente em cima da faixa molhada
+  (e não na seca) e pega metade do vermelho (0,34, (88,82,143)). Na faixa seca os dois batem (0,54 × 0,55). Depois do
+  `seca` nenhum dos dois muda.
 
 ### §6.1 — A resposta do revisor e o cruzamento
 
@@ -183,12 +246,14 @@ Um processo por tamanho ⇒ o RSS é deste pincel a este tamanho.
 
 ## §8 — Limites e o que fica para as janelas seguintes
 
-- As cenas `tamanhos` e `sobre` do Rebelle ainda não existiam: reexame dos dois quando o agente A as tirar (os
-  comandos do §0 tal como estão; o ruído do próprio oráculo passa a valer).
-- O ruído de rugosidade, textura, cv, perfil, pressão e mistura é provisório: calibrar sobre o oráculo (as três
-  cenas) e sobre fotos repetidas (o mesmo preset duas vezes).
-- O vector da matriz pesa os 5 grupos por igual; não sabe o tamanho de fábrica de cada preset (compara-os à mesma
-  largura e cor, de propósito: o artista escolhe o pincel pelo carácter).
+- O chão da escala da matriz é o ruído MEDIDO do Rebelle nas famílias do recto; o da pressão, da mistura e das
+  razões continua provisório (0,06 · 0,03 · 0,05): o recto repetido não os mede. Os ruídos da tabela da RÉGUA
+  (`exame_regua.RUIDO`, o ✓/✗ do `compara`) também são os provisórios — trocá-los pelos da tabela (c) é a próxima.
+- A fidelidade pela matriz (a origem como 1.º dos 228) compara o NOSSO a escala 1 com o Rebelle ao tamanho dele; o
+  exame de um pincel (as pranchas) é à largura medida. A identidade usa a largura relativa ao próprio recto, mais
+  uma absoluta.
+- O vector pesa os 5 grupos por igual; não sabe o tamanho de fábrica de cada preset (compara-os à mesma largura e
+  cor, de propósito: o artista escolhe o pincel pelo carácter). As famílias (`FAMILIAS`) escrevem-se à mão.
 - A caneta real (inclinação, rotação) não está na bateria (pressão só); o custo usa o rato sintético.
 
 ## ⛔ Recusas MEDIDAS
@@ -199,3 +264,8 @@ Um processo por tamanho ⇒ o RSS é deste pincel a este tamanho.
 | O custo com o relógio fixo | a água fixa corre no fio do pincel e lê-se como custo dele (p95 parado 29 ms a 200 px); a do ecrã: 7,5 ms |
 | O custo sem o ritmo de 60 Hz | 466 quadros em 1,35 s: a água do ecrã simulava 1,35 s do que o artista pinta em 8 |
 | Âncora de «igual» = o par NASCE_DE (Filbert × Acrylic Round) | d 1,903 (§4): o limiar daria «nada novo» a 30 de 31 |
+| O limiar 0,992 de 19/10 (Filbert ~ Soft Pastel 0,741 × os «bizarros» 1,33) | um par só, e o «nada novo» não foi dado contra o Soft Pastel; a escala era a da nossa biblioteca (mudava com cada pincel novo: 0,976 com o `meio:Digital`) |
+| O chão da escala = o p90 do recto repetido | a cauda é a carga que acaba no recto mais comprido e o espalhamento sorteado; textura 10,3 % apagaria a textura dos lápis |
+| O chão = o p50 | 62 % das larguras e 47 % das pontas repetem ao pixel: chão 0, uma ponta 0,94 × 1,00 valia 13 desvios (a forma passava a 2–3 em todos os pares) |
+| Lei = 3 × a mediana do ruído do recto | o ruído é só dos traços do recto (0,33) e eles mal separam pincéis (0,65 ao vizinho): 3 × daria 1,0 e «perto» a quase tudo |
+| O recto de 200 px dos 31 presets com Max Size < 200 na identidade deles | o Rebelle pinta-o ao max (o 8B a 80): era o tecto, não o pincel — o 8B nosso ficava 6 desvios longe só por isso |

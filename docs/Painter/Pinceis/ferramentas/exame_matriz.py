@@ -1,239 +1,535 @@
 #!/usr/bin/env python3
-"""A MATRIZ de distinção do EXAME (00_MISSAO §3.3): cada pincel contra a biblioteca INTEIRA, pela bateria pintada.
+"""A MATRIZ de distinção do EXAME (00_MISSAO §3.3) — TRIAGEM, nunca veredito: o veredito é a prancha + a revisão cega.
 
 Cada pincel vira um VECTOR DE IDENTIDADE tirado das suas fotos da bateria pela régua (`exame_regua.mede`), em cinco
-GRUPOS — forma (largura ÷ tamanho, pontas, perfil transversal), tinta (cobertura, opacidade, cor; também secas),
-textura (textura, var. local, rugosidade da borda, cv, período), dinâmica (resposta à pressão, rápido × lento,
-vertical × horizontal, 5 e 200 px) e mistura (o vermelho em cima e depois das faixas molhada e seca). Cada traço
-normaliza-se pelo espalhamento ROBUSTO da biblioteca (1,4826 · MAD, com um chão = o ruído da régua); a diferença em
-cada traço satura a 6; a distância de um grupo é a RMS, e a do par é a MÉDIA dos cinco grupos (nenhum grupo manda
-pelo número de traços que tem).
+GRUPOS — forma (largura relativa ao próprio recto e a absoluta, pontas, perfil transversal), tinta (cobertura,
+opacidade, cor; molhada e seca), textura (textura, var. local, rugosidade da borda, cv, período), dinâmica (pressão,
+rápido × lento, vertical × horizontal, 5 e 200 px) e mistura (o vermelho em cima e depois das faixas). A distância de
+um par: cada traço ÷ a ESCALA CONGELADA, a diferença saturada a 6, a RMS por grupo, a média dos cinco grupos.
 
-O LIMIAR «claramente longe» calibra-se pelos vereditos do dono (19/10, smoke do P53), cada pincel julgado contra o
-seu vizinho mais perto ENTRE OS QUE FICARAM na fábrica: o Filbert «nada novo» ⇒ IGUAL (tem de cair abaixo); o Flat
-Oily e o Knife Smooth «bizarros» ⇒ DIFERENTES de tudo (inúteis, mas não repetidos: acima). O limiar é a média
-geométrica entre o maior igual e o menor diferente; se a régua não os separa, di-lo. ⚠️ O par do NASCE_DE (Filbert ×
-Acrylic Round) NÃO é a âncora: medido 19/10, à bateria (tamanho 40, a mesma cor) a Acrylic Round pinta um feixe de
-fios transparente (cobertura 0,55) e o Filbert um redondo liso (0,91) — d 1,90; o «nada novo» do dono é o redondo
-liso que a biblioteca já tem (o vizinho dele é o Soft Pastel, d 0,74). Os 8 do P53 que ele aceitou NÃO são âncora de
-«distinto»: «OK» foi «serve», e a matriz mostra-os quase iguais entre si à mesma largura e cor.
+A população: os NOSSOS (as pastas do `exame_pinta`), os 228 presets do Rebelle que pintam as três cenas
+(`fixtures/rebelle_bateria/indice.csv`) e os 34 do ArtRage (`fixtures/artrage_bateria`, só a foto A: sem água, B ≡
+A). A ESCALA é a da biblioteca do Rebelle (1,4826 · MAD de cada traço sobre os 228), com o CHÃO = o ruído do próprio
+oráculo (o mesmo recto pintado duas vezes: recto_lento da cena gestos × recto_40 da cena tamanhos, p75 sobre os 228) —
+congelada em `matriz/escala.json` (`--recalibra` refá-la): pincel novo não mexe na régua dos outros. A LEI (os números
+e o porquê) está no `04_BANCADA.md` §4; `--recalibra` imprime as medições de onde ela sai (`matriz/oraculos.md`).
 
-uso: exame_matriz.py <dir da biblioteca pintada> <saida-dir> [--bateria b.json] [--saiu "Nome,Nome"]
-     (cada subpasta = um pincel, com `meta.json` e `<cena>_<A|B>.ppm` do `exame_pinta`)
+uso: exame_matriz.py <dir da biblioteca pintada> <saida-dir> [--bateria b.json] [--saiu "Nome,…"] [--recalibra]
+     [--rebelle dir] [--artrage dir] [--cache dir]
 """
 import argparse
-import warnings
 import csv
+import glob
+import hashlib
 import json
 import math
 import os
+import re
 import sys
+import warnings
+from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 
 warnings.filterwarnings("ignore", message="All-NaN slice")
+warnings.filterwarnings("ignore", message="Mean of empty slice")
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+AQUI = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, AQUI)
+from bateria_rebelle import max_do_preset  # noqa: E402
 from exame_regua import BATERIA, RUIDO, acha_foto, mede  # noqa: E402
 
-IGUAIS = ["Filbert"]  # o dono, 19/10: «Filbert = nada novo»
-DIFERENTES = ["Flat Oily", "Knife Smooth"]  # o dono, 19/10: «bizarros e inúteis» — não repetem ninguém
-NASCE_DE = [("Filbert", "Acrylic Round")]  # o par da receita (informativo)
+PINCEIS = os.path.dirname(AQUI)
+REBELLE = os.path.join(PINCEIS, "fixtures", "rebelle_bateria")
+ARTRAGE = os.path.join(PINCEIS, "fixtures", "artrage_bateria")
+ESCALA = os.path.join(PINCEIS, "matriz", "escala.json")
 GRUPOS = ("forma", "tinta", "textura", "dinamica", "mistura")
-CHAO = {"largura": 0.05, "pontas": 0.12, "alem": 0.15, "perfil": 0.04, "cobertura": RUIDO["cobertura"],
-        "opacidade": RUIDO["opacidade"], "cor": RUIDO["cor"] / 255, "textura": RUIDO["textura"],
-        "var_local": RUIDO["var_local"], "rugosidade": RUIDO["rugosidade"], "cv": RUIDO["cv"],
-        "periodo_fracao": 0.03, "pressao": 0.06, "vermelho": 0.03, "razao": 0.05}
+# O chão PROVISÓRIO das famílias que o recto repetido não mede (a pressão, a mistura, as razões).
+CHAO_PROVISORIO = {"pressao": 0.06, "vermelho": 0.03, "razao": 0.05, "cor": RUIDO["cor"] / 255}
+FAMILIAS_DO_RECTO = ["largura", "cobertura", "opacidade", "textura", "var_local", "rugosidade", "cv",
+                     "periodo_fracao", "pontas", "alem", "perfil", "cor"]
+# Os pincéis de fábrica e o preset do Rebelle de que cada um nasceu (`midias_de_fabrica.rs` MIDIAS → a foto → o
+# `fixtures/rebelle/README.md`). Wet Drip e Wet Dry Brush não têm foto de origem.
+ORIGEM = {"Wet Liner": "WATERCOLOR:Watercolor/Liner", "Oil Bristle": "OIL_AND_ACRYLIC:Bristle/Bristle Flat",
+          "Acrylic Round": "OIL_AND_ACRYLIC:Round/Round Hard", "Express Oil": "EXPRESS_OIL:Round/Hairy",
+          "Graphite 8B": "PENCIL:Graphite Pencil/8B", "Charcoal": "PENCIL:Charcoal/Charcoal",
+          "Soft Pastel": "PASTEL:Pastel Dry/Dry Thin", "Oil Pastel": "PASTEL:Pastel Oil/Oil Pastel 2",
+          "Ink Bullet": "INK_PEN:Pen/Bullet", "Dip Pen": "INK_PEN:Pen/Dip Pen", "Ink Brush": "INK_PEN:Brush/Brush",
+          "Marker Bullet": "MARKER:Marker/Bullet", "Marker Liner": "MARKER:Marker/Liner",
+          "Airbrush": "AIRBRUSH:Default/Spray 2", "Wet Flat": "WATERCOLOR:Watercolor/Flat",
+          "Gouache Flat": "WATERCOLOR:Gouache/Gouache Flat", "Graphite 2H": "PENCIL:Graphite Pencil/2H",
+          "Graphite HB": "PENCIL:Graphite Pencil/HB", "Graphite 2B": "PENCIL:Graphite Pencil/2B",
+          "Colored 4B": "PENCIL:Colored Pencil/4B Color", "Scratch": "PENCIL:Scratches/Scratch",
+          "Square Hard": "PASTEL:Pastel Dry/Square Hard", "Wax Scrape": "PASTEL:Scrape/Wax Scrape",
+          "Dabber": "OIL_AND_ACRYLIC:Dabber/Dabber", "Wet Round": "WATERCOLOR:Watercolor/Round",
+          "Wet Wash": "WATERCOLOR:Watercolor/Wash Round", "Filbert": "OIL_AND_ACRYLIC:Flat/Filbert",
+          "Flat Oily": "OIL_AND_ACRYLIC:Flat/Flat Oily", "Knife Smooth": "OIL_AND_ACRYLIC:Knife/Knife Smooth"}
 
 
-def mede_pincel(args):
-    d, bat = args
-    meta = json.load(open(os.path.join(d, "meta.json")))
-    fotos = {}
-    for c in bat["cenas"]:
-        for foto in ("A", "B"):
-            p = acha_foto(d, c["nome"], foto)
-            if p:
-                fotos[(c["nome"], foto)] = mede(p, c["nome"], bat)["tracos"]
-    return meta, fotos
+# ---------------------------------------------------------------- a população e as medidas (com cache)
 
+def populacao(biblioteca, rebelle, artrage):
+    out = []
+    for d in sorted(glob.glob(os.path.join(biblioteca, "*", "meta.json"))):
+        m = json.load(open(d))
+        out.append({"id": f"ph2d:{m['nome']}", "nome": m["nome"], "fonte": "ph2d", "ferr": m.get("meio", ""),
+                    "caminho": os.path.dirname(d)})
+    if rebelle and os.path.exists(os.path.join(rebelle, "indice.csv")):
+        ok = defaultdict(set)
+        for r in csv.DictReader(open(os.path.join(rebelle, "indice.csv"))):
+            if r["estado"] == "ok":
+                ok[(r["TOOL"], r["nome"], r["preset"])].add(r["cena"])
+        for (tool, nome, preset), cenas in sorted(ok.items()):
+            if {"gestos", "tamanhos", "sobre"} <= cenas:
+                out.append({"id": f"rebelle:{tool}:{preset}", "nome": preset, "fonte": "rebelle", "ferr": tool,
+                            "caminho": os.path.join(rebelle, tool, nome), "teto": max_do_preset(tool, preset)})
+    if artrage and os.path.isdir(artrage):
+        for f in sorted(glob.glob(os.path.join(artrage, "*", "*_gestos_A.png"))):
+            pre = f[: -len("_gestos_A.png")]
+            ferr = os.path.basename(os.path.dirname(f))
+            out.append({"id": f"artrage:{ferr}/{os.path.basename(pre)}", "nome": f"{ferr}/{os.path.basename(pre)}",
+                        "fonte": "artrage", "ferr": ferr, "caminho": pre})
+    return out
+
+
+def _versao_da_regua():
+    return hashlib.sha1(open(os.path.join(AQUI, "exame_regua.py"), "rb").read()).hexdigest()[:12]
+
+
+def mede_com_cache(args):
+    png, cena, bat, cache, versao = args
+    st = os.stat(png)
+    chave = hashlib.sha1(f"{os.path.abspath(png)}|{st.st_mtime_ns}|{st.st_size}|{versao}".encode()).hexdigest()
+    f = os.path.join(cache, chave + ".json") if cache else None
+    if f and os.path.exists(f):
+        return json.load(open(f))
+    t = mede(png, cena, bat)["tracos"]
+    if f:
+        json.dump(t, open(f, "w"), default=float)
+    return t
+
+
+def mede_todos(pop, bat, cache):
+    if cache:
+        os.makedirs(cache, exist_ok=True)
+    versao = _versao_da_regua()
+    tarefas, onde = [], []
+    for i, e in enumerate(pop):
+        for c in bat["cenas"]:
+            for foto in ("A", "B"):
+                p = acha_foto(e["caminho"], c["nome"], foto)
+                if p and not (foto == "B" and p == acha_foto(e["caminho"], c["nome"], "A")):
+                    tarefas.append((p, c["nome"], bat, cache, versao))
+                    onde.append((i, c["nome"], foto))
+    with ProcessPoolExecutor(max_workers=min(12, os.cpu_count() or 4)) as ex:
+        res = list(ex.map(mede_com_cache, tarefas, chunksize=4))
+    fotos = [dict() for _ in pop]
+    for (i, c, f), r in zip(onde, res):
+        fotos[i][(c, f)] = r
+    for fs in fotos:  # oráculo sem água (ArtRage; a foto única): B ≡ A
+        for (c, f) in list(fs):
+            if f == "A" and (c, "B") not in fs:
+                fs[(c, "B")] = fs[(c, "A")]
+    return fotos
+
+
+# ---------------------------------------------------------------- o vector
 
 def vector(fotos):
-    """{(grupo, chave do traço): valor} — a identidade de um pincel."""
+    """{(grupo, chave, família): valor} — a identidade de um pincel."""
     v = {}
 
     def g(c, f, t, k):
         x = fotos.get((c, f), {}).get(t, {}).get(k)
         return float("nan") if x is None else x
 
-    def put(grupo, chave, x, chao):
+    def put(grupo, chave, x, fam):
         if isinstance(x, (list, tuple)):
             for i, y in enumerate(x):
-                put(grupo, f"{chave}[{i}]", y, chao)
+                put(grupo, f"{chave}[{i}]", y, fam)
             return
-        v[(grupo, chave, chao)] = float("nan") if x is None else float(x)
+        v[(grupo, chave, fam)] = float("nan") if x is None else float(x)
 
     gestos = ["recto_lento", "recto_rapido", "curva_s", "espiral", "rampa_0_1", "rampa_afunila", "vertical",
               "vertical_rapido"]
     tam = {"recto_5": 5.0, "recto_40": 40.0, "recto_200": 200.0}
+    w0 = g("gestos", "A", "recto_lento", "largura") / 40.0
+    put("forma", "recto_lento.largura_absoluta", w0, "largura")
     for t in gestos + list(tam) + ["papel", "cruza_1", "cruza_2", "cruza_3_rapido"]:
         c = "tamanhos" if t in tam else ("sobre" if t in ("papel",) or t.startswith("cruza") else "gestos")
         size = tam.get(t, 40.0)
-        put("forma", f"{t}.largura", g(c, "A", t, "largura") / size, CHAO["largura"])
+        if t != "recto_lento":
+            put("forma", f"{t}.largura", g(c, "A", t, "largura") / size / w0 if w0 > 0 else float("nan"), "largura")
         for k in ("pontas_ini", "pontas_fim"):
-            put("forma", f"{t}.{k}", g(c, "A", t, k), CHAO["pontas"])
+            put("forma", f"{t}.{k}", g(c, "A", t, k), "pontas")
         for k in ("alem_ini", "alem_fim"):
-            put("forma", f"{t}.{k}", g(c, "A", t, k), CHAO["alem"])
+            put("forma", f"{t}.{k}", g(c, "A", t, k), "alem")
         for f in ("A", "B"):
             for k in ("cobertura", "opacidade"):
-                put("tinta", f"{t}.{k}.{f}", g(c, f, t, k), CHAO[k])
+                put("tinta", f"{t}.{k}.{f}", g(c, f, t, k), k)
             cor = fotos.get((c, f), {}).get(t, {}).get("cor")
-            put("tinta", f"{t}.cor.{f}", [x / 255 for x in cor] if cor else [float("nan")] * 3, CHAO["cor"])
+            put("tinta", f"{t}.cor.{f}", [x / 255 for x in cor] if cor else [float("nan")] * 3, "cor")
         for k in ("textura", "var_local", "rugosidade", "cv", "periodo_fracao"):
-            put("textura", f"{t}.{k}", g(c, "A", t, k), CHAO[k])
+            put("textura", f"{t}.{k}", g(c, "A", t, k), k)
     for t in ("recto_lento", "vertical", "espiral"):
         p = fotos.get(("gestos", "A"), {}).get(t, {}).get("perfil") or [float("nan")] * 33
-        put("forma", f"{t}.perfil", p[::4], CHAO["perfil"])
+        put("forma", f"{t}.perfil", p[::4], "perfil")
     p = fotos.get(("tamanhos", "A"), {}).get("recto_200", {}).get("perfil") or [float("nan")] * 33
-    put("forma", "recto_200.perfil", p[::4], CHAO["perfil"])
+    put("forma", "recto_200.perfil", p[::4], "perfil")
     for t in ("rampa_0_1", "rampa_afunila"):
         for k in ("pressao_largura", "pressao_cobertura"):
             put("dinamica", f"{t}.{k}", fotos.get(("gestos", "A"), {}).get(t, {}).get(k) or [float("nan")] * 10,
-                CHAO["pressao"])
+                "pressao")
 
-    def razao(a, b, k):
-        x, y = a, b
+    def razao(x, y):
         return x / y if x == x and y == y and y > 1e-6 else float("nan")
 
     for a, b in (("recto_rapido", "recto_lento"), ("vertical", "recto_lento"), ("vertical_rapido", "vertical"),
                  ("curva_s", "recto_lento"), ("espiral", "recto_lento")):
         for k in ("largura", "cobertura", "textura"):
-            put("dinamica", f"{a}/{b}.{k}", razao(g("gestos", "A", a, k), g("gestos", "A", b, k), k), CHAO["razao"])
+            put("dinamica", f"{a}/{b}.{k}", razao(g("gestos", "A", a, k), g("gestos", "A", b, k)), "razao")
     for t, s in (("recto_5", 5.0), ("recto_200", 200.0)):
         for k in ("largura", "cobertura", "textura"):
             x, y = g("tamanhos", "A", t, k), g("tamanhos", "A", "recto_40", k)
             if k == "largura":
                 x, y = x / s, y / 40.0
-            put("dinamica", f"{t}/recto_40.{k}", razao(x, y, k), CHAO["razao"])
+            put("dinamica", f"{t}/recto_40.{k}", razao(x, y), "razao")
     for f in ("A", "B"):
         for t in ("cruza_1", "cruza_2", "cruza_3_rapido"):
             sob = fotos.get(("sobre", f), {}).get(t, {}).get("sobre", {})
             for base in ("faixa_molhada", "faixa_seca"):
                 s = sob.get(base, {})
                 for k in ("vermelho_em_cima", "vermelho_depois"):
-                    put("mistura", f"{t}.{base}.{k}.{f}", s.get(k), CHAO["vermelho"])
+                    put("mistura", f"{t}.{base}.{k}.{f}", s.get(k), "vermelho")
                 cor = s.get("cor_em_cima")
-                put("mistura", f"{t}.{base}.cor.{f}", [x / 255 for x in cor] if cor else [float("nan")] * 3,
-                    CHAO["cor"])
+                put("mistura", f"{t}.{base}.cor.{f}", [x / 255 for x in cor] if cor else [float("nan")] * 3, "cor")
     return v
 
 
-def distancias(nomes, vecs):
-    chaves = sorted(set().union(*[v.keys() for v in vecs]))
-    X = np.array([[v.get(k, float("nan")) for k in chaves] for v in vecs])
+# ---------------------------------------------------------------- o ruído do oráculo e a escala
+
+def ruido_do_recto(fotos_oraculo):
+    """O mesmo recto a 40 pintado duas vezes (recto_lento da cena gestos × recto_40 da cena tamanhos, foto A): o
+    |Δ| de cada família em cada preset. Devolve {família: [Δ…]}."""
+    d = defaultdict(list)
+    for fs in fotos_oraculo:
+        a = fs.get(("gestos", "A"), {}).get("recto_lento", {})
+        b = fs.get(("tamanhos", "A"), {}).get("recto_40", {})
+        if not a or not b or a.get("vazio") or b.get("vazio"):
+            continue
+        for k in ("cobertura", "opacidade", "textura", "var_local", "rugosidade", "cv", "periodo_fracao"):
+            if a.get(k) is not None and b.get(k) is not None:
+                d[k].append(abs(a[k] - b[k]))
+        if a.get("largura") and b.get("largura"):
+            d["largura"].append(abs(a["largura"] - b["largura"]) / 40.0)
+        for k, fam in (("pontas_ini", "pontas"), ("pontas_fim", "pontas"), ("alem_ini", "alem"), ("alem_fim", "alem")):
+            if a.get(k) is not None and b.get(k) is not None:
+                d[fam].append(abs(a[k] - b[k]))
+        if a.get("perfil") and b.get("perfil"):
+            d["perfil"].extend(np.abs(np.asarray(a["perfil"][::4]) - np.asarray(b["perfil"][::4])).tolist())
+        if a.get("cor") and b.get("cor"):
+            d["cor"].extend((np.abs(np.asarray(a["cor"]) - np.asarray(b["cor"])) / 255).tolist())
+    return {k: [x for x in v if math.isfinite(x)] for k, v in d.items()}
+
+
+def escala_de(vecs_oraculo, ruido):
+    chaves = sorted(set().union(*[v.keys() for v in vecs_oraculo]))
+    X = np.array([[v.get(k, float("nan")) for k in chaves] for v in vecs_oraculo])
     med = np.nanmedian(X, 0)
-    mad = 1.4826 * np.nanmedian(np.abs(X - med), 0)
-    chao = np.array([k[2] for k in chaves])
-    esc = np.maximum(np.nan_to_num(mad, nan=0.0), chao)
-    Z = X / esc
-    grupos = np.array([k[0] for k in chaves])
-    n = len(nomes)
-    D = np.zeros((n, n))
-    G = np.zeros((n, n, len(GRUPOS)))
-    for i in range(n):
-        dz = np.clip(np.abs(Z - Z[i]), 0, 6)
+    mad = np.nan_to_num(1.4826 * np.nanmedian(np.abs(X - med), 0), nan=0.0)
+    chao = {f: float(np.percentile(ruido[f], 75)) for f in FAMILIAS_DO_RECTO if ruido.get(f)}
+    for f, x in CHAO_PROVISORIO.items():
+        chao.setdefault(f, x)
+    esc = [max(float(m), chao.get(k[2], 1e-3), 1e-6) for k, m in zip(chaves, mad)]
+    return {"tracos": [[k[0], k[1], k[2], e] for k, e in zip(chaves, esc)], "chao": chao}
+
+
+class Regua:
+    def __init__(self, escala):
+        self.chaves = [tuple(t[:3]) for t in escala["tracos"]]
+        self.esc = np.array([t[3] for t in escala["tracos"]])
+        self.grupos = np.array([k[0] for k in self.chaves])
+
+    def Z(self, vecs):
+        return np.array([[v.get(k, float("nan")) for k in self.chaves] for v in vecs]) / self.esc
+
+    def dist(self, Za, Zb, mascara=None):
+        """Distâncias (|A| × |B|) e por grupo (|A| × |B| × 5)."""
+        G = np.full((len(Za), len(Zb), len(GRUPOS)), np.nan)
         for gi, gn in enumerate(GRUPOS):
-            sel = grupos == gn
-            blk = dz[:, sel]
-            ok = np.isfinite(blk)
-            cnt = ok.sum(1)
-            G[i, :, gi] = np.sqrt(np.where(ok, blk ** 2, 0).sum(1) / np.maximum(cnt, 1))
-            G[i, cnt == 0, gi] = np.nan
-        D[i] = np.nanmean(G[i], 1)
-    return D, G, chaves, esc
+            sel = self.grupos == gn
+            if mascara is not None:
+                sel &= mascara
+            if not sel.any():
+                continue
+            a, b = Za[:, sel], Zb[:, sel]
+            for i in range(len(a)):
+                dz = np.clip(np.abs(b - a[i]), 0, 6)
+                ok = np.isfinite(dz)
+                cnt = ok.sum(1)
+                with np.errstate(invalid="ignore"):
+                    G[i, :, gi] = np.where(cnt > 0, np.sqrt(np.where(ok, dz ** 2, 0).sum(1) / np.maximum(cnt, 1)),
+                                           np.nan)
+        return np.nanmean(G, 2), G
 
 
-def calibra(nomes, D, saiu):
-    """O limiar pelos vereditos do dono; `saiu` = os que já não estão na fábrica (não são vizinhos de ninguém)."""
-    idx = {n: i for i, n in enumerate(nomes)}
-    fica = [n for n in nomes if n not in saiu]
+# ---------------------------------------------------------------- as séries graduadas do Rebelle
 
-    def vizinho(n):
-        d = [(float(D[idx[n], idx[m]]), m) for m in fica if m != n]
-        return min(d) if d else (float("nan"), None)
+DUREZA = ["9H", "8H", "7H", "6H", "5H", "4H", "3H", "2H", "H", "F", "HB", "B", "2B", "3B", "4B", "5B", "6B", "7B",
+          "8B", "9B"]
 
-    iguais = [(n, *vizinho(n)[::-1]) for n in IGUAIS if n in idx]
-    difs = [(n, *vizinho(n)[::-1]) for n in DIFERENTES if n in idx]
-    d_igual = max((d for _, _, d in iguais), default=float("nan"))
-    d_dif = min((d for _, _, d in difs), default=float("nan"))
-    if math.isfinite(d_igual) and math.isfinite(d_dif) and d_dif > d_igual:
-        limiar, separa = math.sqrt(d_igual * d_dif), True
-    elif math.isfinite(d_igual):
-        limiar, separa = 1.25 * d_igual, False
-    else:
-        limiar, separa = float("nan"), False
-    perto = sorted((round(vizinho(n)[0], 3), n, vizinho(n)[1]) for n in fica if vizinho(n)[0] < limiar)
-    return {"iguais": iguais, "diferentes": difs, "d_igual_max": d_igual, "d_diferente_min": d_dif,
-            "limiar": limiar, "separa": separa, "na_fabrica_abaixo_do_limiar": perto,
-            "nasce_de": [(a, b, float(D[idx[a], idx[b]])) for a, b in NASCE_DE if a in idx and b in idx]}
+
+def series(pop_reb):
+    """Grupos do Rebelle que só diferem por uma DUREZA (2H…8B) ou por um número no fim («Charcoal 2»)."""
+    fam = defaultdict(list)
+    for i, e in pop_reb:
+        grupo, _, nome = e["nome"].partition("/")
+        toks = nome.split()
+        dur = [t for t in toks if t in DUREZA]
+        if dur:
+            base = " ".join(t for t in toks if t not in DUREZA)
+            fam[(e["ferr"], grupo, base, "dureza")].append((DUREZA.index(dur[0]), nome, i))
+            continue
+        m = re.fullmatch(r"(.*?)(?: (\d+))?", nome)
+        fam[(e["ferr"], grupo, m.group(1), "numero")].append((int(m.group(2) or 1), nome, i))
+    return {k: sorted(v) for k, v in fam.items() if len(v) >= 2}
+
+
+# ---------------------------------------------------------------- a lei
+
+# As SÉRIES graduadas da nossa fábrica (dureza): julgadas como FAMÍLIA (04 §4). O passo VISÍVEL é o menor passo da
+# série do Rebelle que a prancha mostra (HB → 2B, 0,41); 2H → H → HB (0,17 · 0,13) não se distinguem a olho.
+FAMILIAS = {"Graphite": ["Graphite 2H", "Graphite HB", "Graphite 2B", "Graphite 8B"]}
+PASSO_VISIVEL = 0.40
+DUPLICADO = 0.05  # fotos iguais ao byte dão 0,000; abaixo disto o par é o MESMO pincel com outro nome
+
+
+def lei(nn_reb):
+    """«Claramente longe» = acima do p10 da distância ao vizinho mais perto DENTRO do Rebelle, fora da própria série e
+    fora dos duplicados ao byte: o menor afastamento que um fabricante profissional dá a dois pincéis que vende como
+    diferentes (o porquê e as recusas no 04 §4)."""
+    return float(np.percentile(nn_reb, 10))
+
+
+def q(v, ps=(10, 25, 50, 75, 90)):
+    v = [x for x in v if math.isfinite(x)]
+    return " · ".join(f"{np.percentile(v, p):.2f}" for p in ps) if v else "—"
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("biblioteca"); ap.add_argument("saida"); ap.add_argument("--bateria", default=BATERIA)
-    ap.add_argument("--saiu", default="", help="pincéis que já saíram da fábrica (marcados na tabela)")
+    ap.add_argument("--saiu", default=""); ap.add_argument("--recalibra", action="store_true")
+    ap.add_argument("--rebelle", default=REBELLE); ap.add_argument("--artrage", default=ARTRAGE)
+    ap.add_argument("--cache", default=os.path.join(os.environ.get("TMPDIR", "/tmp"), "ph2d_exame", "regua_cache"))
+    ap.add_argument("--escala", default=ESCALA)
     x = ap.parse_args()
     bat = json.load(open(x.bateria))
-    dirs = sorted(os.path.join(x.biblioteca, d) for d in os.listdir(x.biblioteca)
-                  if os.path.exists(os.path.join(x.biblioteca, d, "meta.json")))
-    with ProcessPoolExecutor(max_workers=min(8, os.cpu_count() or 4)) as ex:
-        res = list(ex.map(mede_pincel, [(d, bat) for d in dirs]))
-    nomes = [m["nome"] for m, _ in res]
-    vecs = [vector(f) for _, f in res]
-    D, G, chaves, esc = distancias(nomes, vecs)
     saiu = set(filter(None, x.saiu.split(",")))
-    cal = calibra(nomes, D, saiu)
+    pop = populacao(x.biblioteca, x.rebelle, x.artrage)
+    fotos = mede_todos(pop, bat, x.cache)
+    # O recto de 200 px de um preset cujo Max Size é menor saiu AO MAX (o README das fotos): não é o pincel a 200, é o
+    # tecto do Rebelle — esse traço fica fora da identidade dele (31 presets).
+    for e, fs in zip(pop, fotos):
+        if e.get("teto", 1e9) < 200:
+            for f in ("A", "B"):
+                if ("tamanhos", f) in fs:
+                    fs[("tamanhos", f)] = {k: v for k, v in fs[("tamanhos", f)].items() if k != "recto_200"}
+    vecs = [vector(f) for f in fotos]
+    idx = {f: [i for i, e in enumerate(pop) if e["fonte"] == f] for f in ("ph2d", "rebelle", "artrage")}
+    ruido = ruido_do_recto([fotos[i] for i in idx["rebelle"]])
+    if x.recalibra or not os.path.exists(x.escala):
+        esc = escala_de([vecs[i] for i in idx["rebelle"]], ruido)
+        os.makedirs(os.path.dirname(x.escala), exist_ok=True)
+        json.dump(esc, open(x.escala, "w"), indent=0)
+    regua = Regua(json.load(open(x.escala)))
+    Z = regua.Z(vecs)
+    D, G = regua.dist(Z, Z)
+    np.fill_diagonal(D, np.inf)
+
+    # o ruído de DISTÂNCIA: o vector do recto pintado duas vezes (as famílias do recto, só os traços recto_lento)
+    mrecto = np.array([k[1].startswith("recto_lento.") and k[2] in FAMILIAS_DO_RECTO for k in regua.chaves])
+    vb = []
+    for i in idx["rebelle"]:
+        f2 = dict(fotos[i])
+        g2 = dict(f2.get(("gestos", "A"), {}))
+        g2["recto_lento"] = f2.get(("tamanhos", "A"), {}).get("recto_40", {})
+        f2[("gestos", "A")] = g2
+        vb.append(vector(f2))
+    Zb = regua.Z(vb)
+    Zr = Z[idx["rebelle"]]
+    d_ruido = [float(regua.dist(Zr[k:k + 1], Zb[k:k + 1], mrecto)[0][0, 0]) for k in range(len(Zr))]
+    d_ruido = [d for d in d_ruido if math.isfinite(d)]
+    duplicado = DUPLICADO
+    d_recto = []  # a mesma máscara entre o preset e o seu vizinho: a escala que o ruído tem de ter ao lado
+    for a, i in enumerate(idx["rebelle"]):
+        j = idx["rebelle"][int(np.argmin([D[i, k] if k != i else np.inf for k in idx["rebelle"]]))]
+        d_recto.append(float(regua.dist(Z[i:i + 1], Z[j:j + 1], mrecto)[0][0, 0]))
+
+    # (a) e (b): o vizinho mais perto dentro de cada biblioteca, e as séries
+    reb = idx["rebelle"]
+    ser = series([(i, pop[i]) for i in reb])
+    mesma_serie = {}
+    for k, membros in ser.items():
+        for _, _, i in membros:
+            mesma_serie[i] = {j for _, _, j in membros}
+
+    def nn(i, dentro, exclui=()):
+        cand = [j for j in dentro if j != i and j not in exclui]
+        j = min(cand, key=lambda j: D[i, j])
+        return j, float(D[i, j])
+
+    nn_reb = {i: nn(i, reb) for i in reb}
+    dups = {i: {j for j in reb if j != i and D[i, j] < duplicado} for i in reb}
+    # A FAMÍLIA = a série unida aos duplicados ao byte (o «2H Color» do Rebelle é o «2H» da série Graphite).
+    pai = {i: i for i in reb}
+
+    def raiz(i):
+        while pai[i] != i:
+            pai[i] = pai[pai[i]]
+            i = pai[i]
+        return i
+
+    for i in reb:
+        for j in mesma_serie.get(i, set()) | dups[i]:
+            pai[raiz(i)] = raiz(j)
+    familia = defaultdict(set)
+    for i in reb:
+        familia[raiz(i)].add(i)
+    nn_reb_fora = {i: nn(i, reb, familia[raiz(i)]) for i in reb}
+    nn_art = {i: nn(i, idx["artrage"]) for i in idx["artrage"]} if len(idx["artrage"]) > 1 else {}
+    limiar = p10 = lei([d for _, d in nn_reb_fora.values()])
+    piso = float(np.percentile(d_ruido, 50))
+    passos = []
+    for k, membros in ser.items():
+        for (_, a, i), (_, b, j) in zip(membros, membros[1:]):
+            passos.append((k, a, b, float(D[i, j]), GRUPOS[int(np.nanargmax(G[i, j]))]))
+
+    L = ["# Os oráculos pela matriz — de onde sai a lei (gerado por `exame_matriz.py --recalibra`)", "",
+         f"População: {len(reb)} presets do Rebelle (os que pintam as 3 cenas) · {len(idx['artrage'])} do ArtRage · "
+         f"{len(idx['ph2d'])} nossos. Escala congelada em `matriz/escala.json` (o MAD de cada traço sobre o Rebelle, "
+         "com o chão = o ruído do recto repetido).", "",
+         "## (c) O ruído do oráculo — o mesmo recto a 40 pintado duas vezes (recto_lento × recto_40)", "",
+         "| família | p50 | p75 (o chão da escala) | p90 | zeros |", "|---|---|---|---|---|"]
+    for f in FAMILIAS_DO_RECTO:
+        if ruido.get(f):
+            v = np.asarray(ruido[f])
+            L.append(f"| {f} | {np.percentile(v, 50):.4f} | {np.percentile(v, 75):.4f} | {np.percentile(v, 90):.4f} | "
+                     f"{(v == 0).mean():.0%} |")
+    L += ["", f"Em DISTÂNCIA (só os traços do recto, as famílias acima): o mesmo preset repintado dá "
+              f"p10 · p25 · p50 · p75 · p90 = **{q(d_ruido)}**; o mesmo recto entre um preset e o seu vizinho "
+              f"mais perto: {q(d_recto)}.", "",
+          "## (a) A distância ao vizinho mais perto dentro do Rebelle — p10 · p25 · p50 · p75 · p90", "",
+          "| ferramenta | n | qualquer vizinho | fora da própria série |", "|---|---|---|---|"]
+    por = defaultdict(list)
+    for i in reb:
+        por[pop[i]["ferr"]].append(i)
+    for ferr, ii in sorted(por.items()) + [("TOTAL", reb)]:
+        L.append(f"| {ferr} | {len(ii)} | {q([nn_reb[i][1] for i in ii])} | {q([nn_reb_fora[i][1] for i in ii])} |")
+    if nn_art:
+        L.append(f"| ArtRage (dentro dele) | {len(nn_art)} | {q([d for _, d in nn_art.values()])} | — |")
+    pares_dup = sorted({tuple(sorted((i, j))) for i in reb for j in dups[i]})
+    L += ["", f"**Duplicados** (d < {duplicado:.2f}): {len(pares_dup)} pares — "
+              + "; ".join(f"{pop[i]['nome']} = {pop[j]['nome']} ({D[i, j]:.3f})" for i, j in pares_dup[:12])
+              + ". ⚠️ Os «X Color» e os «Graphite Pencil/X» do Rebelle dão fotos IGUAIS AO BYTE com a cor da bateria "
+                "(sha1 conferido): só a cor de omissão os separa — o Rebelle vende duplicados."]
+    L += ["", "Os 15 pares mais perto do Rebelle (fora da família: a série unida aos duplicados ao byte):", ""]
+    pares = sorted({tuple(sorted((i, j))): d for i, (j, d) in nn_reb_fora.items()}.items(), key=lambda t: t[1])
+    for (i, j), d in pares[:15]:
+        L.append(f"- {pop[i]['ferr']} {pop[i]['nome']} ~ {pop[j]['ferr']} {pop[j]['nome']}: {d:.3f}")
+    L += ["", "## (b) As séries graduadas do Rebelle — a distância entre membros VIZINHOS da série", "",
+          "| série | passos (membro → membro: d (o grupo que mais muda)) |", "|---|---|"]
+    for k, membros in sorted(ser.items()):
+        ps = [f"{a} → {b}: {d:.2f} ({gr})" for kk, a, b, d, gr in passos if kk == k]
+        L.append(f"| {k[0]} {k[1]}/{k[2] or '·'} ({k[3]}) | {' · '.join(ps)} |")
+    dp = [d for *_, d, _ in passos]
+    L += ["", f"Passos de série: {q(dp)} (n = {len(dp)}).", "",
+          f"## A lei (a proposta está no 04 §4)", "",
+          f"limiar = p10 do vizinho mais perto no Rebelle, fora da série e dos duplicados = **{limiar:.3f}** "
+          f"(o recto repintado, só os traços do recto: mediana {piso:.3f})"]
     os.makedirs(x.saida, exist_ok=True)
+    open(os.path.join(x.saida, "oraculos.md"), "w").write("\n".join(L) + "\n")
+
+    # --- os nossos: a matriz entre eles, e os vizinhos de oráculo
+    nos = idx["ph2d"]
+    fica = [i for i in nos if pop[i]["nome"] not in saiu]
+    nomes = [pop[i]["nome"] for i in nos]
     with open(os.path.join(x.saida, "matriz.csv"), "w", newline="") as f:
         w = csv.writer(f, lineterminator="\n")
         w.writerow(["pincel"] + nomes)
-        for n, row in zip(nomes, D):
-            w.writerow([n] + [f"{v:.3f}" for v in row])
-    lim = cal["limiar"]
-    linhas = ["# Vizinhos mais perto — a matriz do EXAME (gerado por `exame_matriz.py`)", "",
-              f"{len(nomes)} pincéis · {len(chaves)} traços de identidade · distância = média dos 5 grupos "
-              f"({', '.join(GRUPOS)}) da RMS do desvio robusto (saturado a 6).", "",
-              "**Calibração (os vereditos do dono, 19/10; cada um contra o vizinho entre os que ficaram):** "
-              + "; ".join(f"{n} ~ {m} = {d:.3f} («nada novo»)" for n, m, d in cal["iguais"]) + "; "
-              + "; ".join(f"{n} ~ {m} = {d:.3f} («bizarro»: diferente)" for n, m, d in cal["diferentes"])
-              + f" ⇒ **limiar = {lim:.3f}** " + ("(média geométrica do maior igual e do menor diferente)"
-                                                 if cal["separa"] else "(⚠️ a régua NÃO separa: 1,25 × o igual)")
-              + "".join(f" · o par da receita {a} × {b} = {d:.3f}" for a, b, d in cal["nasce_de"]), ""]
-    if cal["na_fabrica_abaixo_do_limiar"]:
-        linhas.append(f"⚠️ Na fábrica, {len(cal['na_fabrica_abaixo_do_limiar'])} pincéis têm o vizinho abaixo do "
-                      "limiar (candidatos a «nada novo» à mesma largura e cor): "
-                      + "; ".join(f"{n} ~ {m} {d:.3f}" for d, n, m in cal["na_fabrica_abaixo_do_limiar"]))
-        linhas.append("")
-    linhas += ["| pincel | 1.º vizinho (d) | por grupo (forma · tinta · textura · dinâmica · mistura) | 2.º | 3.º | veredito |",
-               "|---|---|---|---|---|---|"]
-    top = {}
-    for i, n in enumerate(nomes):
-        ordem = [j for j in np.argsort(D[i]) if j != i and nomes[j] not in saiu]  # vizinho = quem FICOU
-        top[n] = [(nomes[j], round(float(D[i, j]), 3)) for j in ordem[:3]]
-        j = ordem[0]
+        for i in nos:
+            w.writerow([pop[i]["nome"]] + [("" if i == j else f"{D[i, j]:.3f}") for j in nos])
+    with open(os.path.join(x.saida, "matriz_oraculos.csv"), "w", newline="") as f:
+        w = csv.writer(f, lineterminator="\n")
+        orac = reb + idx["artrage"]
+        w.writerow(["pincel"] + [pop[j]["id"] for j in orac])
+        for i in nos:
+            w.writerow([pop[i]["nome"]] + [f"{D[i, j]:.3f}" for j in orac])
+    id_reb = {f"{pop[j]['ferr']}:{pop[j]['nome']}": j for j in reb}
+    top, rank_origem = {}, {}
+    V = ["# Vizinhos mais perto — a TRIAGEM do EXAME (gerado por `exame_matriz.py`)", "",
+         "⚠️ A matriz é TRIAGEM: diz onde olhar. O veredito de um pincel é a PRANCHA lado a lado + a REVISÃO CEGA "
+         "(05_REVISAO_CEGA.md).", "",
+         f"**Lei** (04_BANCADA §4; medições em `oraculos.md`): «claramente longe» = d ≥ **{limiar:.3f}** = o p10 da "
+         "distância ao vizinho mais perto dentro do Rebelle (228 presets), fora da própria série e dos duplicados ao byte. "
+         "Uma SÉRIE graduada (dureza/densidade) entra como FAMÍLIA: fora dela, cada membro tem de estar ≥ limiar de tudo; "
+         "dentro, os passos são os do Rebelle (Graphite 2H→8B: 0,13–0,45) e o eixo tem de se VER na prancha. A coluna "
+         "«origem» é a FIDELIDADE: o preset do Rebelle de que o nosso nasce tem de ser o 1.º entre os 228.", "",
+         "| pincel | 1.º vizinho NOSSO fora da família (d) | por grupo (forma · tinta · textura · dinâmica · mistura) | 2.º · 3.º nosso "
+         "| triagem | Rebelle mais perto (d) | origem no Rebelle: posição entre 228 (d) | ArtRage mais perto (d) |",
+         "|---|---|---|---|---|---|---|---|"]
+    perto = passo_curto = 0
+    fam_de = {m: f for f, ms in FAMILIAS.items() for m in ms}
+    por_nome = {pop[i]["nome"]: i for i in nos}
+    for i in nos:
+        n = pop[i]["nome"]
+        ordem = sorted((j for j in fica if j != i), key=lambda j: D[i, j])
+        top[n] = [(pop[j]["nome"], round(float(D[i, j]), 3)) for j in ordem[:3]]
+        fam = fam_de.get(n)
+        fora = [j for j in ordem if fam is None or fam_de.get(pop[j]["nome"]) != fam]
+        j = fora[0]
+        ver = "claramente longe" if D[i, j] >= limiar else "PERTO — olhar a prancha"
+        if fam:
+            ms = FAMILIAS[fam]
+            k = ms.index(n)
+            viz = [por_nome[m] for m in (ms[k - 1:k] + ms[k + 1:k + 2]) if m in por_nome]
+            curto = [pop[v]["nome"] for v in viz if D[i, v] < PASSO_VISIVEL]
+            ver += f" · série {fam}: passo " + ", ".join(f"{pop[v]['nome']} {D[i, v]:.2f}" for v in viz)
+            if curto:
+                ver += " — PASSO INVISÍVEL"
+                passo_curto += n not in saiu
+        if D[i, j] < limiar and n not in saiu:
+            perto += 1
+        r = sorted(reb, key=lambda k: D[i, k])
+        o = ORIGEM.get(n)
+        if o and o in id_reb:
+            b = id_reb[o]
+            # um duplicado AO BYTE da origem (o «2H Color» do «2H») empata com ela
+            pos = 1 + sum(1 for k in reb if D[i, k] < D[i, b] and D[b, k] >= DUPLICADO)
+            rank_origem[n] = pos
+            orig = f"{'✓ 1.º' if pos == 1 else f'{pos}.º'} ({D[i, id_reb[o]]:.3f})"
+        else:
+            orig = "—"
+        art = min(idx["artrage"], key=lambda k: D[i, k]) if idx["artrage"] else None
         g = " · ".join(f"{v:.2f}" for v in G[i, j])
-        marca = " (saiu)" if n in saiu else ""
-        ver = "claramente longe" if D[i, j] >= lim else "PERTO — «nada novo»?"
-        linhas.append(f"| {n}{marca} | {nomes[j]} ({D[i, j]:.3f}) | {g} | {nomes[ordem[1]]} ({D[i, ordem[1]]:.3f}) | "
-                      f"{nomes[ordem[2]]} ({D[i, ordem[2]]:.3f}) | {ver} |")
-    open(os.path.join(x.saida, "vizinhos.md"), "w").write("\n".join(linhas) + "\n")
-    json.dump({"pinceis": nomes, "calibracao": cal, "top3": top,
-               "dirs": {m["nome"]: d for (m, _), d in zip(res, dirs)},
-               "grupos": {n: {nomes[j]: G[i, j].round(3).tolist() for j in range(len(nomes)) if j != i}
-                          for i, n in enumerate(nomes)}},
+        V.append(f"| {n}{' (saiu)' if n in saiu else ''} | {pop[j]['nome']} ({D[i, j]:.3f}) | {g} | "
+                 f"{', '.join(f'{a} ({b})' for a, b in top[n][1:])} | {ver} | {pop[r[0]]['nome']} ({D[i, r[0]]:.3f}) | "
+                 f"{orig} | {pop[art]['nome'] + f' ({D[i, art]:.3f})' if art is not None else '—'} |")
+    um = sum(1 for v in rank_origem.values() if v == 1)
+    V[4:4] = [f"**{perto} dos {len(fica)} de fábrica** têm o 1.º vizinho nosso (fora da própria família) abaixo do limiar; "
+              f"{passo_curto} têm um passo de série menor que o visível ({PASSO_VISIVEL}). A origem no Rebelle é o "
+              f"mais perto entre os 228 em **{um} de {len(rank_origem)}** (mediana da posição "
+              f"{int(np.median(list(rank_origem.values()))) if rank_origem else 0}).", ""]
+    open(os.path.join(x.saida, "vizinhos.md"), "w").write("\n".join(V) + "\n")
+    json.dump({"pinceis": nomes, "calibracao": {"limiar": limiar, "p10_vizinho_rebelle": p10, "piso_ruido": piso},
+               "top3": top, "rank_origem": rank_origem,
+               "dirs": {pop[i]["nome"]: pop[i]["caminho"] for i in nos},
+               "grupos": {pop[i]["nome"]: {pop[j]["nome"]: G[i, j].round(3).tolist() for j in nos if j != i}
+                          for i in nos}},
               open(os.path.join(x.saida, "matriz.json"), "w"), indent=1, default=float)
-    print("\n".join(linhas))
+    print("\n".join(V[:6]))
+    print(f"limiar {limiar:.3f} (p10 {p10:.3f}, piso {piso:.3f}); ruído de distância {q(d_ruido)}")
 
 
 if __name__ == "__main__":

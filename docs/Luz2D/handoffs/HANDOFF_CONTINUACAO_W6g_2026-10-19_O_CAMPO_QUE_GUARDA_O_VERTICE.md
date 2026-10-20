@@ -775,3 +775,40 @@ por ponto contra o gabarito do rebote a 0,01 m E a 0,005 m.)
 1. Smoke do dono (`PH2D_LIGHT2D_SMOKE=5`/`6`: os cantos vivos agora no padrão).
 2. A lei W6d com `DISTANTES` no relógio (o §20.2). 3. A anomalia da r5b (§12). 4. A família (b) (37–38): da W5g, fora.
 5. Os zera/limpa por um carimbo de quadro (~0,008 ms) — só se o C3 voltar à linha dos +5 %.
+
+## 30. O bug 6 do smoke (20/10) — medido; a causa é o ENTORNO, não a lâmpada
+
+O smoke do §29.1 passou nos cantos vivos e abriu o bug 6 (`BUGS_luz2d.md` §6: com o zoom que tira a lâmpada da vista,
+a sombra e a face do L mudam). Tudo FORA do git: `target/bug6/bug6_regua.rs` (cinco réguas `#[ignore]`, para pôr em
+`tests/it/` e no `main.rs` de volta) e os logs ao lado. Nenhum código do produto mudou.
+
+| Régua (`bug6_regua::…`) | O que mediu |
+|---|---|
+| `bug6_a_lampada_atravessa_a_borda_da_grade` (linha e um `git archive main` em `target/`, fora) | linha = `main` ao 3.º decimal em toda vista: o bug é da W6a, não da W6b–g |
+| `bug6_a_lampada_anda_para_fora_da_grade` (`PH2D_BUG6_ALTURA=3.0`/`2.0`) | câmera parada, lâmpada de x = −1 a 5 m: erro contra o gabarito CONTÍNUO na borda (0,3036 → 0,2966) |
+| `bug6_o_caminho_do_app` (estufa, Baixa, sprites por texel, 1920 e 2560×1080) | igual ao síncrono; na vista do dono a lâmpada nem sai da grade; o salto é na OITAVA (h ≈ 4,2 m) |
+| `bug6_a_grade_esticada` | a mesma vista com a grade sobre a sala inteira: o entorno erra +69 % (sombra à esquerda da haste) e +141 % (abaixo da base); sem os refletores de fora, 0 % |
+| `bug6_o_entorno_tapa` | só o L e um corpo que brilha fora da grade: atrás do L a vista + entorno dá 0,047 contra 0 (24 % do valor sem o L); entorno 4× 0,028 · 2× 0,018; sem `miolo` igual |
+
+As fotos do dono lidas nos mesmos pontos do mundo (sRGB → linear, a sombra junto ao L): +80/+34/+32 % — a régua dá
++67/+40/+38 % na troca de oitava. ⚠️ À parte, e não deste bug: a cena 5 inteira na grade que cobre tudo fica +38 % de
+vermelho na sombra contra o gabarito `Rebote` (os corpos que recebem luz por dentro × o gabarito de fronteira) — por
+medir se é o gabarito ou o produto, antes de o usar como teto.
+
+## ⛔ Recusas MEDIDAS (§30)
+
+| Recusa | Porquê |
+|---|---|
+| Curar o bug 6 na lâmpada (`distantes`, `ForaDaVista`) | A lâmpada atravessar a borda é contínuo; na vista do dono ela nem sai da grade. |
+| Afinar o entorno (8× → 4× ou 2×) como cura | A fuga cai 0,047 → 0,028 → 0,018, não some, e a memória cresce com o quadrado. |
+
+## 31. ABERTO (por ordem — substitui o §29)
+
+1. **O bug 6:** porque é que o entorno deixa passar 24 % da luz de fora através de um opaco da vista, quando o mesmo
+   HRC na grade da vista tapa a 0 (a pista: só o entorno, com `so_a_c0`, `mascarar_miolo`, a c0 somada na saída do
+   `c2_hrc`) → a cura → os gates permanentes (a cena mínima, teto perto de 0 com o controlo sem o L; a cena 5 na
+   troca de oitava contra a grade esticada) com prova de mutação. Candidata de desenho se a fuga for do método: a luz
+   de fora a ENTRAR pela borda da grade da vista (o céu de cada raio que sai = a radiância do entorno naquela
+   direção), tapada pelos opacos finos da vista.
+2. A lei W6d com `DISTANTES` no relógio (o §20.2). 3. A anomalia da r5b (§12). 4. A família (b) (37–38): da W5g, fora.
+5. Os zera/limpa por um carimbo de quadro (~0,008 ms) — só se o C3 voltar à linha dos +5 %.

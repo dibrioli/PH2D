@@ -93,9 +93,24 @@
   a sombra tem o tom quente do rebote e a face de cima do L é clara; com o zoom que tira a lâmpada da vista
   ([foto](smoke/2026-10-20_bug6_lampada_fora_da_vista.png)) a sombra fica mais escura e fria, uniforme, e a face
   do L muda. O resto do smoke («cantos vivos no padrão») passou.
-- **Por medir (nada medido ainda):** (1) se é da linha ou já estava no `main` — a mesma vista com o binário do
-  `main` (W6a) e com o desta linha; (2) a hipótese a refutar primeiro: a lâmpada sai da grade e passa ao
-  ENTORNO (o 2.º solver, mais grosso e mais largo, `distantes`/`ForaDaVista`) — o rebote e/ou a luz direta pelo
-  entorno não são os da grade; (3) o r9 tirou a `V2` do `c3_rebote` (handoff W6g §28) — conferir que não é isso
-  (a variante `cunha + V2` × lei W6d com a lâmpada fora). A régua: uma cena com a lâmpada a atravessar a borda
-  da grade por passos, a luz em pontos FIXOS do mundo (a sombra, a face do L) — tem de ser contínua.
+- **Medido (20/10, handoff W6g §30; régua e logs FORA do git em `target/bug6/`):**
+  1. **Já estava no `main`** — a mesma régua no `main` (W6a, `100d34c8e0`) e na linha: iguais ao 3.º decimal
+     em toda vista. A `V2` do r9 (hipótese 3) e a 10 + 9 não entram.
+  2. **A lâmpada a sair da grade NÃO é o gatilho** (hipótese 2 refutada): câmera parada, a lâmpada a andar
+     para fora da grade em passos de 0,25 m — o erro contra o gabarito é contínuo nos dois zooms. Na vista do
+     dono a lâmpada nem sai da grade (a grade cobre a vista com margem e oitava).
+  3. **O gatilho é a OITAVA do texel** (0,0312 → 0,0156 m ao fechar o zoom): os refletores (disco, elipse,
+     losango, barra) saem da grade da vista e o rebote deles passa a vir do ENTORNO. As fotos do dono, lidas
+     nos mesmos pontos do mundo, mudam como a régua: a sombra junto ao L sobe R/G/B +80/+34/+32 % (linear)
+     nas fotos, +67/+40/+38 % na régua.
+  4. **O errado é o entorno:** a mesma vista com a grade ESTICADA sobre a sala (o mesmo texel, sem entorno)
+     dá na sombra 0,223/0,115/0,181 — o valor da oitava larga (0,227/0,116/0,182); a vista + entorno dá
+     0,378/0,163/0,251 (+69 %) e, abaixo da base, +141 %.
+  5. **O mecanismo:** o entorno deixa a luz de FORA atravessar os opacos da vista. Cena mínima (só o L e um
+     corpo que brilha fora da grade): atrás do L o gabarito e a esticada dão 0; a vista + entorno dá 0,047
+     (24 % do que chega sem o L). Com o entorno 4× e 2× (em vez de 8×) a fuga cai a 0,028 e 0,018, sem
+     sumir; sem o `miolo` no entorno, igual. O gate `o_rebote_de_fora_da_grade` não a via: o ponto dele
+     (cena 3) vê o refletor de fora sem nada no meio.
+- **Aberto:** porque é que o entorno não tapa por inteiro (o mesmo HRC na grade da vista tapa a 0) e a cura;
+  o gate permanente nasce com ela — «a luz de fora não atravessa um opaco da vista» (a cena mínima, teto
+  perto de 0, controlo = sem o L) e a cena 5 com a oitava a mudar contra a grade esticada.

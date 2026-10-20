@@ -61,6 +61,17 @@ pub const INTERNAS: &[&str] = &[
     // A ponta (L9 · L18): as secções Brush/Grain chegam-lhe pelo `handle_panel_event`.
     "set_ponta",
     "clear_brush_shape_hose",
+    // O traço como camada e o fim do traço (L5 · L7 · L8): o cartão Taper e as linhas Glaze/edges/«On empty»
+    // chegam-lhes pelo `handle_panel_event` (`stencil.rs`, `route_traco_event`); gate `macro_traco_camada`.
+    "set_brush_taper_end",
+    "set_brush_taper_tip_end",
+    "set_brush_fall_off",
+    "set_brush_fall_off_start",
+    "set_traco_tecto",
+    "set_traco_molhada",
+    "set_traco_queimada",
+    "set_traco_largura",
+    "set_blend_sobre_vazio",
     "polygon_cancel",
     "polygon_commit",
     "polygon_commit_keep",

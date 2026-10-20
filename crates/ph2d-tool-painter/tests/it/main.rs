@@ -24,6 +24,7 @@ mod macro_etapas;
 mod macro_instantaneos;
 mod macro_portas;
 mod macro_traco;
+mod macro_traco_camada;
 mod macro_trilho;
 mod macro_tutorial_fill;
 mod measure_undo_capacity;

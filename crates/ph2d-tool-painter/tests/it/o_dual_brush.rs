@@ -97,8 +97,14 @@ fn o_dual_brush_so_tira() {
 /// não andasse com o caminho (só o pen-down) deixaria o resto do traço sem máscara: em Multiply, sem tinta.
 #[test]
 fn a_segunda_ponta_acompanha_o_traco_inteiro() {
-    let sem = tinta(&pinta(pincel(PaintMedia::Digital, |_| {})));
-    let com = tinta(&pinta(pincel(PaintMedia::Digital, |t| {
+    for m in [PaintMedia::Digital, PaintMedia::WetPaint] {
+        a_segunda_ponta_acompanha_no(m);
+    }
+}
+
+fn a_segunda_ponta_acompanha_no(m: PaintMedia) {
+    let sem = tinta(&pinta(pincel(m, |_| {})));
+    let com = tinta(&pinta(pincel(m, |t| {
         t.set_ponta(LinhaDaPonta::DualMode, 1.0);
         t.set_ponta(LinhaDaPonta::DualSize, 1.6);
         t.set_ponta(LinhaDaPonta::DualSpacing, 0.05);
@@ -106,7 +112,68 @@ fn a_segunda_ponta_acompanha_o_traco_inteiro() {
     })));
     let longe: Vec<(usize, i32, i32)> =
         sem.iter().zip(&com).enumerate().filter(|(_, (s, c))| s.abs_diff(**c) > 3).map(|(i, (s, c))| (i, *s, *c)).collect();
-    assert!(longe.is_empty(), "{} píxeis fora do traço sem dual: {:?}", longe.len(), &longe[..longe.len().min(8)]);
+    assert!(longe.is_empty(), "{m:?}: {} píxeis fora do traço sem dual: {:?}", longe.len(), &longe[..longe.len().min(8)]);
+}
+
+/// ⭐ **Sem dual o Wet é o de hoje, ao bit**: armar a 2.ª ponta, mexer-lhe e voltar a «Off» pinta a MESMA tela no Wet
+/// Paint que o pincel que nunca a teve.
+#[test]
+fn sem_dual_o_wet_e_o_de_hoje() {
+    let hoje = pinta(pincel(PaintMedia::WetPaint, |_| {}));
+    let desligado = pinta(pincel(PaintMedia::WetPaint, |t| {
+        arma(t, 2.0);
+        t.set_ponta(LinhaDaPonta::DualMode, 0.0);
+    }));
+    assert!(hoje.iter().any(|&b| b != 255), "a fixture não pintou");
+    assert!(hoje == desligado, "o dual desligado mudou a tela do Wet");
+}
+
+/// ⭐ **No Wet a 2.ª ponta só TIRA pigmento** (Multiply): ela recorta a silhueta do que pousa — a tinta total cai muito
+/// e quase nenhum píxel ganha (a água espalha o que pousou: tolerância de 8/255 em ≤ 0,5 % dos píxeis).
+#[test]
+fn o_dual_so_tira_pigmento_no_wet() {
+    let sem = tinta(&pinta(pincel(PaintMedia::WetPaint, |_| {})));
+    let com = tinta(&pinta(pincel(PaintMedia::WetPaint, |t| arma(t, 1.0))));
+    let mais = sem.iter().zip(&com).filter(|(s, c)| **c > **s + 8).count();
+    let (ts, tc) = (sem.iter().sum::<i32>() as f64, com.iter().sum::<i32>() as f64);
+    eprintln!("Wet: tinta sem {ts} · com {tc} ({:.3}) · {mais} píxeis com mais", tc / ts);
+    assert!(mais * 200 <= sem.len(), "{mais} píxeis com MAIS tinta que sem o dual");
+    assert!(tc < 0.85 * ts && tc > 0.05 * ts, "a 2.ª ponta tirou {:.3} do pigmento", 1.0 - tc / ts);
+}
+
+/// ⭐ **Gravar → carregar volta ao bit no Wet**, com a 2.ª ponta de imagem.
+#[test]
+fn gravar_e_carregar_o_dual_no_wet_volta_ao_bit() {
+    let arma_img = |t: &mut PainterTool| {
+        arma(t, 1.0);
+        t.set_ponta(LinhaDaPonta::DualTip, f64::from(TextureKind::Image.to_u8()));
+        t.set_brush_dual_image_rgba(&riscas(), 32, 32);
+        t.set_ponta(LinhaDaPonta::DualFollow, 1.0);
+    };
+    let antes = pinta(pincel(PaintMedia::WetPaint, arma_img));
+    let fonte = pincel(PaintMedia::WetPaint, arma_img);
+    let (parametros, texturas) =
+        fonte.preset_capturar(&Parametros::novo(nome_do_meio(PaintMedia::WetPaint), "Dual", "Wet"));
+    assert!(parametros.brush.contains_key("dual"), "o preset do Wet não levou o dual");
+    assert!(texturas.contains_key("dual_shape"));
+    let p = Preset {
+        parametros,
+        origem: Origem::Utilizador,
+        miniatura: Miniatura {
+            largura: 1,
+            altura: 1,
+            rgba: vec![0; 4],
+        },
+        texturas,
+    };
+    let lido = ph2d_brush_presets::ler(&ph2d_brush_presets::escrever(&p).unwrap()).unwrap();
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+    t.set_brush_color_srgb8([0, 0, 0]);
+    assert!(t.preset_aplicar(&lido).unwrap().is_empty(), "texturas por ler");
+    t.set_brush_size_px(36.0);
+    assert!(antes != pinta(pincel(PaintMedia::WetPaint, |_| {})), "o dual não mudou o Wet");
+    assert!(antes == pinta(t), "o preset do Wet com a 2.ª ponta pinta outra tela");
 }
 
 /// ⭐ **Cada modo do dual é outra tela** (a 1.ª macia, para a cobertura parcial distinguir as leis).
@@ -182,11 +249,11 @@ fn gravar_e_carregar_com_a_segunda_ponta_de_imagem_volta_ao_bit() {
     assert!(antes == depois, "o preset com a 2.ª ponta pinta outra tela");
 }
 
-/// O dual recorta o traço composto como CAMADA, que só o Digital compõe: nos outros três meios armá-lo não muda
-/// um byte (a linha esmaece lá, `Dependente::DualForaDoDigital`).
+/// O dual recorta o traço composto como CAMADA (o Digital) ou o pigmento que pousa (o Wet): na aguada e no Impasto
+/// armá-lo não muda um byte (a linha esmaece lá, `Dependente::DualForaDoDigital`).
 #[test]
-fn so_o_digital_le_o_dual() {
-    for m in [PaintMedia::Watercolor, PaintMedia::Impasto, PaintMedia::WetPaint] {
+fn a_aguada_e_o_impasto_nao_leem_o_dual() {
+    for m in [PaintMedia::Watercolor, PaintMedia::Impasto] {
         let sem = pinta(pincel(m, |_| {}));
         let com = pinta(pincel(m, |t| arma(t, 1.0)));
         assert!(sem == com, "{m:?}: o dual mudou a tela fora do Digital");
@@ -261,8 +328,9 @@ fn grava_o_carvao_com_estrias() {
 #[ignore = "sonda de custo: `--profile smoke -- --ignored --nocapture`"]
 fn mede_o_custo_do_dual() {
     let tam: f32 = std::env::var("PH2D_DUAL_TAMANHO").map_or(200.0, |v| v.parse().unwrap());
+    let nome = std::env::var("PH2D_DUAL_PRESET").unwrap_or_else(|_| "Carvao Estrias Dual".into());
     let f = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/Painter/Pinceis/fixtures/presets_teste/Carvao Estrias Dual.ph2d-brush.png");
+        .join(format!("../../docs/Painter/Pinceis/fixtures/presets_teste/{nome}.ph2d-brush.png"));
     let preset = ph2d_brush_presets::ler(&std::fs::read(&f).unwrap()).unwrap();
     let bat = crate::exame_bancada::bateria();
     let [w, h] = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
@@ -359,4 +427,58 @@ fn mede_o_custo_do_dual() {
         );
     }
     eprintln!("load {}", std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim());
+}
+
+/// As CERDAS secas da 2.ª ponta do pincel seco de teste: 64×64 em faixas horizontais de 1–4 px com vãos de 1–3 px
+/// (sorteio fixo, desenhado aqui — nenhuma textura de outro app); com o Rake elas seguem o traço: as riscas do Flat
+/// Dry do Rebelle.
+fn cerdas_secas() -> Vec<u8> {
+    let mut s: u64 = 0xD2B_5EC0;
+    let mut sorteio = |n: u64| {
+        s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        (s >> 33) % n
+    };
+    let mut linhas = vec![0u8; 64];
+    let mut y = 0;
+    while y < 64 {
+        let (faixa, vao, v) = (1 + sorteio(4) as usize, 1 + sorteio(3) as usize, 170 + sorteio(86) as u8);
+        for k in y..(y + faixa).min(64) {
+            linhas[k] = v;
+        }
+        y += faixa + vao;
+    }
+    (0..64 * 64).flat_map(|i| { let v = linhas[i / 64]; [v, v, v, 255] }).collect()
+}
+
+/// **O preset de TESTE do pincel seco no Wet** (L6, G-11 Dry Brush; não é de fábrica): o pincel do Wet com a 2.ª
+/// ponta de CERDAS secas que seguem o traço (Rake) a recortar o pigmento que pousa — só as cerdas tocam, riscado como
+/// o Flat Dry do Rebelle. Grava-o em `docs/Painter/Pinceis/fixtures/presets_teste/`.
+#[test]
+#[ignore = "gera o preset de teste do dual no Wet para a bancada"]
+fn grava_o_pincel_seco_do_wet() {
+    let t = pincel(PaintMedia::WetPaint, |t| {
+        t.set_ponta(LinhaDaPonta::DualMode, 1.0);
+        t.set_ponta(LinhaDaPonta::DualTip, f64::from(TextureKind::Image.to_u8()));
+        t.set_brush_dual_image_rgba(&cerdas_secas(), 64, 64);
+        t.set_ponta(LinhaDaPonta::DualFollow, 1.0);
+        t.set_ponta(LinhaDaPonta::DualSize, 1.1);
+        t.set_ponta(LinhaDaPonta::DualSpacing, 0.15);
+    });
+    let (parametros, texturas) =
+        t.preset_capturar(&Parametros::novo(nome_do_meio(PaintMedia::WetPaint), "Teste", "Pincel Seco Dual"));
+    let p = Preset {
+        parametros,
+        origem: Origem::Utilizador,
+        miniatura: Miniatura {
+            largura: 1,
+            altura: 1,
+            rgba: vec![0; 4],
+        },
+        texturas,
+    };
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/Painter/Pinceis/fixtures/presets_teste");
+    std::fs::create_dir_all(&dir).unwrap();
+    let f = dir.join("Pincel Seco Dual.ph2d-brush.png");
+    std::fs::write(&f, ph2d_brush_presets::escrever(&p).unwrap()).unwrap();
+    eprintln!("gravado {}", f.display());
 }

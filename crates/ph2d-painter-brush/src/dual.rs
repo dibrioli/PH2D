@@ -191,7 +191,14 @@ impl DualTip {
             ..DabJitter::NEUTRO
         };
         s.shape = self.forma;
-        s.dab_angle_deg = self.angulo % 360;
+        // O ângulo roda a ponta; com o Flow a pegada já é a do traço e o ângulo roda o PADRÃO nela (riscas ao
+        // longo × através).
+        if self.forma.flow {
+            s.shape.angle_deg = self.angulo % 360;
+            s.dab_angle_deg = 0;
+        } else {
+            s.dab_angle_deg = self.angulo % 360;
+        }
         s.dab_flatten = 0.0;
         s.dab_quina = 0.0;
         s.dab_tilt = None;

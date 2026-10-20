@@ -78,6 +78,9 @@ impl PainterTool {
             }
             self.ensure_wet_session();
         }
+        // O dual brush (L6): as marcas da 2.ª ponta na máscara do traço, que recorta o pigmento que pousa.
+        let dual =
+            self.recorte_do_dual_no_wet(!erasing && self.paint.wetpaint.tool == WetTool::Paint);
         // Take the session out so the prep below can borrow `self.paint`'s
         // Shape state alongside it (disjoint in fact, not in the borrow
         // checker's eyes); restored before the composite.
@@ -603,6 +606,9 @@ impl PainterTool {
             let memo = relevo_dab.map(|_| super::sil_memo::SilMemo::nova(cell_x, cell_y, meia));
             let sil = |cx: i32, cy: i32| -> f64 {
                 memo.as_ref()
+            // O dual brush (L6) recorta o que POUSA pelo canal do padrão (depois do portão do papel, `RecorteNoWet`).
+            let pad = dual.as_ref().map(|r| r.padrao(padrao_arg, &sil, ratio));
+            let padrao_arg = pad.as_ref().map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));
                     .map_or_else(|| sil(cx, cy), |m| m.ou(cx, cy, sil))
             };
             if erasing {

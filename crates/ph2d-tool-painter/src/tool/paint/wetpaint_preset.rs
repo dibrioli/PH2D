@@ -48,7 +48,7 @@ const TEXTURA_FORMA: &str = "shape";
 const TEXTURA_GRAO: &str = "grain";
 
 /// Os campos do `BrushSpec` que o preset leva, pelo nome do campo.
-pub const CAMPOS_DO_PINCEL: [&str; 35] = [
+pub const CAMPOS_DO_PINCEL: [&str; 36] = [
     "hardness",
     "falloff",
     "custom_falloff",
@@ -63,6 +63,8 @@ pub const CAMPOS_DO_PINCEL: [&str; 35] = [
     "spray_count",
     "dab_jitter",
     "hose",
+    // O dual brush (L6): o Digital e o Wet o leem (gravado só armado); nos outros meios a linha esmaece.
+    "dual",
     "input_samples",
     "stabilizer",
     "taper",
@@ -117,10 +119,9 @@ const DIGITAL: &str = "lido só pelo Digital (a ponta de píxel, L18)";
 const DOS_KNOBS: &str = "a caneta deitada: no Wet Paint são os knobs do pincel (`dabRotation`…`tiltLag`, W6), no mapa `engine`";
 const NAO_LIDO: &str = "o Wet Paint não o lê (deposita pela lei do fluido)";
 const PLANO: &str = "lido só pelo Digital: o plano do traço — o tecto e as orlas (L8, `traco_plano`)";
-const DUAL: &str = "lido só pelo Digital: a 2.ª ponta recorta o plano do traço (L6, `dual`)";
 
 /// Os campos do `BrushSpec` que o preset NÃO leva, e porquê.
-pub const CAMPOS_FORA: [(&str, &str); 71] = [
+pub const CAMPOS_FORA: [(&str, &str); 70] = [
     ("radius_px", VOLUME),
     ("strength", VOLUME),
     ("color", DA_OBRA),
@@ -191,7 +192,6 @@ pub const CAMPOS_FORA: [(&str, &str); 71] = [
     ("airbrush_rate_s", NAO_LIDO),
     ("space_attenuation", NAO_LIDO),
     ("traco", PLANO),
-    ("dual", DUAL),
 ];
 
 /// Um `f32` para o JSON pelo menor texto que volta ao mesmo `f32` (`0.1`, não `0.10000000149011612`).

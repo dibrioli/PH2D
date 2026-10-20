@@ -11,7 +11,7 @@
 use super::super::mao::{self, LINHAS_DA_MAO};
 use super::super::{PaintMedia, PaintMode};
 use super::{
-    AQUARELA, CAMPOS_DO_PINCEL, CAMPOS_FORA, DA_OBRA, DIGITAL, DO_MEIO, DO_SCULPT, DOS_KNOBS, DUAL,
+    AQUARELA, CAMPOS_DO_PINCEL, CAMPOS_FORA, DA_OBRA, DIGITAL, DO_MEIO, DO_SCULPT, DOS_KNOBS,
     IMPASTO, MOTOR_DOS_PRESETS, PLANO, POR_DAB, VOLUME, curto, json,
 };
 use crate::PainterTool;
@@ -59,10 +59,10 @@ pub fn campos_do_meio(m: PaintMedia) -> Vec<&'static str> {
     }
     let fora: &[&str] = match m {
         PaintMedia::Watercolor => &[
-            VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, IMPASTO, DIGITAL, PLANO, DUAL,
+            VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, IMPASTO, DIGITAL, PLANO,
         ],
         PaintMedia::Impasto => &[
-            VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, AQUARELA, DIGITAL, PLANO, DUAL,
+            VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, AQUARELA, DIGITAL, PLANO,
         ],
         _ => &[
             VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, AQUARELA, IMPASTO,

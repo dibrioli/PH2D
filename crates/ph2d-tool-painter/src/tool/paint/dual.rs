@@ -7,12 +7,14 @@
 //! rotas de sempre — trocando, só durante esse carimbo, a tela pela máscara, o pincel pelo dela, a Shape pela imagem
 //! dela e a cache do carimbo pela dela — e compõe cada texel com a cobertura da 1.ª recortada (`DualMode::recorta`).
 //!
-//! ⚠️ Só arma onde o plano arma (o Digital, um traço livre que pinta): a mesma porta, [`PainterTool::plano_recusado`].
+//! ⚠️ Arma onde o plano arma (o Digital, um traço livre que pinta: [`PainterTool::plano_recusado`]) e no **Wet Paint**
+//! que pinta: lá a máscara é do traço e recorta a SILHUETA de cada dab que pousa pigmento (e o relevo que ele penteia)
+//! — [`RecorteNoWet`], na `wetpaint/dab_route`. A aguada e o Impasto não (`DualForaDoDigital`).
 
 use std::mem::swap;
 use std::sync::Arc;
 
-use ph2d_painter_brush::{Dab, DualTip, Stroke, StrokePoint, TextureKind};
+use ph2d_painter_brush::{Dab, DualMode, DualTip, Stroke, StrokePoint, TextureKind};
 
 use super::Region;
 use super::brush_image::BrushTextureImage;
@@ -47,6 +49,52 @@ pub(crate) struct DualEstado {
     pedido: bool,
     /// O fim do traço descarrega as marcas pendentes sem um lote da 1.ª.
     no_fim: bool,
+    /// A máscara do traço no Wet Paint (no Digital ela é do plano do traço).
+    mascara: Option<Arc<Vec<u8>>>,
+}
+
+/// ⭐ **O recorte da 2.ª ponta no pigmento do Wet** (L6): a silhueta `s` de um dab que pousa, no píxel `(px, py)`,
+/// recortada pela máscara do traço — o que pousa (e o relevo que o dab penteia) é `modo(s, m)`.
+pub(super) struct RecorteNoWet {
+    modo: DualMode,
+    mascara: Arc<Vec<u8>>,
+    w: usize,
+    h: usize,
+}
+
+impl RecorteNoWet {
+    /// A máscara no píxel de canvas `(px, py)`.
+    #[inline]
+    fn m(&self, px: f32, py: f32) -> f32 {
+        let x = (px.max(0.0) as usize).min(self.w - 1);
+        let y = (py.max(0.0) as usize).min(self.h - 1);
+        f32::from(self.mascara[(y * self.w + x) * 4 + 3]) / 255.0
+    }
+
+    /// ⭐ **O canal `padrao` do motor com o recorte**: o que pousa numa célula × `modo(s, m) / s` — DEPOIS do portão do
+    /// papel, como o padrão do Shape (a lei B do plano 27), sem mexer na silhueta: recortar a silhueta deixava o motor
+    /// pousar a carga do dab inteira no que sobrava (manchas — medido na prancha do pincel seco, 20/10).
+    pub(super) fn padrao<'a>(
+        &'a self,
+        padrao: Option<ph2d_wet_paint::brush::CellFn<'a>>,
+        sil: ph2d_wet_paint::brush::CellFn<'a>,
+        ratio: u8,
+    ) -> impl Fn(i32, i32) -> f64 + Sync + 'a {
+        let r = f32::from(ratio.max(1));
+        move |x, y| {
+            let centro = |c: i32| super::wetpaint::grid_map::cell_subsample_px(c, ratio, 0, r);
+            let m = self.m(centro(x), centro(y));
+            // O Multiply não depende da ponta (`a·m / a = m`): sem reavaliar a silhueta da célula (medido: no Wet
+            // a silhueta com o AA é o que pesa).
+            let f = if self.modo == DualMode::Multiply {
+                f64::from(m)
+            } else {
+                let s = sil(x, y);
+                if s > 0.0 { f64::from(self.modo.recorta(s as f32, m)) / s } else { 0.0 }
+            };
+            padrao.map_or(1.0, |p| p(x, y)) * f
+        }
+    }
 }
 
 impl PainterTool {
@@ -54,10 +102,11 @@ impl PainterTool {
     pub(super) fn dual_comeca(&mut self, p: StrokePoint) {
         self.paint.dual.motor = None;
         self.paint.dual.pendentes.clear();
+        self.paint.dual.mascara = None;
         let Some(d) = self.paint.brush.dual else {
             return;
         };
-        if self.plano_recusado().is_some() {
+        if self.dual_recusado().is_some() {
             return;
         }
         let mut dinamica = self.dinamica_do_traco();
@@ -65,7 +114,11 @@ impl PainterTool {
         dinamica.strength_pressure = false;
         dinamica.speed_size = 0.0;
         dinamica.speed_opacity = 0.0;
-        let mut m = Stroke::new(d.pincel(&self.stroke_spec()), dinamica, self.paint.seed ^ SEMENTE_DO_DUAL);
+        let mut m = Stroke::new(
+            d.pincel(&self.stroke_spec()),
+            dinamica,
+            self.paint.seed ^ SEMENTE_DO_DUAL,
+        );
         self.paint.dual.tex_rng = self.paint.seed ^ SEMENTE_DO_DUAL.rotate_left(17);
         let mut out = Vec::new();
         m.begin(p, &mut out);
@@ -91,9 +144,49 @@ impl PainterTool {
         };
         let vivo = d.pincel(&self.compose_canvas_warp(autorado));
         self.dual_passo(|m, out| {
-            m.set_canvas_dab(vivo.radius_px, vivo.dab_flatten, vivo.dab_angle_deg, vivo.dab_curve);
+            m.set_canvas_dab(
+                vivo.radius_px,
+                vivo.dab_flatten,
+                vivo.dab_angle_deg,
+                vivo.dab_curve,
+            );
             m.extend(p, out);
         });
+    }
+
+    /// ⭐ **A porta do dual**: porque é que a 2.ª ponta NÃO arma agora (`None` = arma). No Wet Paint arma quando o
+    /// pincel POUSA pigmento (a ferramenta Paint, sem a borracha, num traço livre); nos outros meios é a do plano.
+    pub(crate) fn dual_recusado(&self) -> Option<super::traco_plano::SemPlano> {
+        if self.paint_media() == crate::PaintMedia::WetPaint {
+            let pousa = matches!(self.paint.paint_mode, super::PaintMode::WetPaint)
+                && self.paint.wetpaint.tool == super::WetTool::Paint
+                && !self.paint.eraser
+                && self.paint.brush.stroke_method.is_incremental();
+            return (!pousa).then_some(super::traco_plano::SemPlano::ForaDoTraco);
+        }
+        self.plano_recusado()
+    }
+
+    /// O recorte do lote do Wet que pousa pigmento (`pousa`): as marcas pendentes vão para a máscara do traço (nasce
+    /// vazia: com o dual armado e nenhuma marca, em Multiply, nada pousa). `None` sem o dual.
+    pub(super) fn recorte_do_dual_no_wet(&mut self, pousa: bool) -> Option<RecorteNoWet> {
+        let d = self
+            .paint
+            .brush
+            .dual
+            .filter(|_| pousa && self.dual_recusado().is_none())?;
+        let mut m = self.paint.dual.mascara.take();
+        self.carimba_a_segunda(&mut m);
+        let n4 = self.canvas_rgba.len();
+        let mascara = m.unwrap_or_else(|| Arc::new(vec![0u8; n4]));
+        self.paint.dual.mascara = Some(Arc::clone(&mascara));
+        let (w, h) = self.source_size;
+        Some(RecorteNoWet {
+            modo: d.modo,
+            mascara,
+            w: (w as usize).max(1),
+            h: (h as usize).max(1),
+        })
     }
 
     /// O fim do traço a descarregar as marcas pendentes (`descarrega_o_dual`).
@@ -127,7 +220,10 @@ impl PainterTool {
 
     /// ⭐ **Carimba as marcas pendentes na MÁSCARA** do traço (criada transparente no 1.º lote); devolve a janela que
     /// mudou.
-    pub(super) fn carimba_a_segunda(&mut self, mascara: &mut Option<Arc<Vec<u8>>>) -> Option<Region> {
+    pub(super) fn carimba_a_segunda(
+        &mut self,
+        mascara: &mut Option<Arc<Vec<u8>>>,
+    ) -> Option<Region> {
         let d = self.paint.brush.dual?;
         if self.paint.dual.pendentes.is_empty() {
             return None;
@@ -156,6 +252,8 @@ impl PainterTool {
             p.texture_ramp_enabled,
             p.shape_image_version,
         );
+        // A máscara carimba-se pelas rotas do carimbo, nunca pelo fluido (no Wet o modo é o dele).
+        let modo = std::mem::replace(&mut p.paint_mode, super::PaintMode::Paint);
         p.brush = d.pincel(&pincel);
         p.acumulando_no_plano = true;
         p.shape_color_ramp_enabled = false;
@@ -172,6 +270,7 @@ impl PainterTool {
         swap(&mut p.stamp_cache, &mut p.dual.cache);
         swap(&mut p.tex_rng, &mut p.dual.tex_rng);
         p.brush = pincel;
+        p.paint_mode = modo;
         (
             p.acumulando_no_plano,
             p.shape_color_ramp_enabled,
@@ -245,10 +344,17 @@ impl PainterTool {
 
     /// A imagem da 2.ª ponta no preset (só com a forma `Image`).
     pub(super) fn texturas_do_dual(&self, t: &mut std::collections::BTreeMap<String, Vec<u8>>) {
-        let forma_imagem = self.paint.brush.dual.is_some_and(|d| d.forma.kind == TextureKind::Image);
+        let forma_imagem = self
+            .paint
+            .brush
+            .dual
+            .is_some_and(|d| d.forma.kind == TextureKind::Image);
         if let (true, Some(img)) = (forma_imagem, self.paint.dual.imagem.as_ref()) {
             let (lum, w, h) = img.parts();
-            t.insert(TEXTURA_DO_DUAL.to_owned(), ph2d_brush_presets::escrever_textura(lum, w, h));
+            t.insert(
+                TEXTURA_DO_DUAL.to_owned(),
+                ph2d_brush_presets::escrever_textura(lum, w, h),
+            );
         }
     }
 
@@ -262,10 +368,18 @@ impl PainterTool {
         self.paint.dual.imagem = None;
         self.paint.dual.cache = None;
         self.paint.dual.versao = self.paint.dual.versao.wrapping_add(1);
-        if !self.paint.brush.dual.is_some_and(|d| d.forma.kind == TextureKind::Image) {
+        if !self
+            .paint
+            .brush
+            .dual
+            .is_some_and(|d| d.forma.kind == TextureKind::Image)
+        {
             return;
         }
-        match t.get(TEXTURA_DO_DUAL).and_then(|b| ph2d_brush_presets::ler_textura(b).ok()) {
+        match t
+            .get(TEXTURA_DO_DUAL)
+            .and_then(|b| ph2d_brush_presets::ler_textura(b).ok())
+        {
             Some((lum, w, h)) => self.instala_a_imagem_do_dual(lum, w, h),
             None => {
                 if let Some(d) = &mut self.paint.brush.dual {

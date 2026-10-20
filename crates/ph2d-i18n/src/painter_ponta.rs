@@ -61,7 +61,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_ponta.dual_rotation" => "Dual rotation",
         "panel.painter_ponta.dual_hardness" => "Dual hardness",
         "panel.painter_ponta.dual_pattern" => "Dual pattern",
-        "panel.painter_ponta.inerte.dual_medium" => "Only the Digital medium cuts a stroke with a dual tip",
+        "panel.painter_ponta.inerte.dual_medium" => "Only Digital and Wet Paint cut a stroke with a dual tip",
         _ => return None,
     })
 }

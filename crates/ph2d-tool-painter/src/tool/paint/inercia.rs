@@ -55,8 +55,8 @@ pub enum Dependente {
     FallOffDaAgua,
     // A profundidade do grão por dab (L9): o mínimo e o controlo só leem o que o jitter faz variar.
     ProfundidadeSemJitter,
-    // O dual brush (L6) recorta o traço composto como CAMADA (`traco_plano`): só o Digital o compõe, e só num traço
-    // livre que pinta.
+    // O dual brush (L6) recorta o traço composto como CAMADA (`traco_plano`, o Digital) ou o pigmento que pousa (o
+    // Wet): a aguada e o Impasto não; e só num traço livre que pinta.
     DualForaDoDigital,
     DualForaDoTraco,
 }
@@ -621,14 +621,15 @@ impl PainterTool {
                 Dependente::ProfundidadeSemJitter,
                 !b.texture.lei.varia_por_dab(),
             ),
-            // O dual brush (L6): a MESMA porta que arma o plano do traço (`plano_recusado`).
+            // O dual brush (L6): a MESMA porta que arma a 2.ª ponta (`dual_recusado`: o plano no Digital, o pincel
+            // que pousa no Wet).
             (
                 Dependente::DualForaDoDigital,
-                self.plano_recusado() == Some(super::traco_plano::SemPlano::ForaDoDigital),
+                self.dual_recusado() == Some(super::traco_plano::SemPlano::ForaDoDigital),
             ),
             (
                 Dependente::DualForaDoTraco,
-                self.plano_recusado() == Some(super::traco_plano::SemPlano::ForaDoTraco),
+                self.dual_recusado() == Some(super::traco_plano::SemPlano::ForaDoTraco),
             ),
             (Dependente::MaoSemPressao, {
                 let d = self.dinamica_do_traco();

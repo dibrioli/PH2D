@@ -122,12 +122,14 @@ linha (`/pd-linha-fechar`). A mutação deve cobrir `reach`, `goto::documents`, 
 
 Comando dado ao dono: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor && PH2D_CODE_SMOKE=4 cargo run -p ph2d-host-desktop --profile smoke`.
 
+**✅ Smoke do dono OK a 19/10 (passos 2, 3 e 4).**
+
 1. Abrir a cena (comando acima).
 2. **Ctrl+rato** — **CONFERIDO pelo dono (19/10):** com Ctrl sobre `set` (linha 23) aparecem a mão e o
    sublinhado; sobre `self.ampiltude` **sem mão** («é bom assim»).
-3. Ctrl+Shift+M abre a lista (erro primeiro, depois avisos); clicar na 1.ª selecciona `math.sinn` (linha 22) — **por confirmar**.
+3. Ctrl+Shift+M abre a lista (erro primeiro, depois avisos); clicar na 1.ª selecciona `math.sinn` (linha 22) — **conferido pelo dono (19/10)**.
 4. No fim da linha 24: Enter, `ph2d.` + `set` + Enter, outra vez `ph2d.` + `set` + Enter; Tabs: dentro, fim do de
-   dentro, fora, e acaba depois do último `)` sem espaços (buracos fundidos) — **por confirmar**.
+   dentro, fora, e acaba depois do último `)` sem espaços (buracos fundidos) — **conferido pelo dono (19/10)**.
 
 ## 9. ABERTO
 
@@ -154,5 +156,5 @@ Comando dado ao dono: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Cod
 
 ## 10. Próximo
 
-Terminar o smoke do dono da cena 4 (passos 3 e 4) → **a onda da PÁGINA DE AJUDA** (§9) → `/pd-linha-fechar`; a linha só fecha depois dela, ou o dono decide fechar antes. `/pd-linha-fechar` (clippy + suíte + mutação sobre `reach` / `goto::documents` / cache
+Smoke do dono da cena 4 OK (19/10) → **a onda da PÁGINA DE AJUDA** (§9) → `/pd-linha-fechar`; a linha só fecha depois dela, ou o dono decide fechar antes. `/pd-linha-fechar` (clippy + suíte + mutação sobre `reach` / `goto::documents` / cache
 de `problems()` / `Tabstops::merge`). Com o smoke OK, a fila do plano acaba; o que resta é o §9.

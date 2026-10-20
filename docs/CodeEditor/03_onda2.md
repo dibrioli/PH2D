@@ -123,8 +123,8 @@ seguinte; o resto entra em lotes.
    esqueletos com buracos, paleta `@ : >` e `--!strict`; smoke do dono OK a 18/10.
    ~~I13~~ — feito **na linha**, smoke do dono OK a 19/10 (formatar ao salvar com o StyLua fixado; [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-18_ONDA2_I13.md); §Estado, [I13.md](ferramentas/medicoes_onda2/I13.md)). 
    ~~I15~~ — feito **na linha**, smoke do dono OK a 19/10 (HEAD `9017a40688`, com a cura do Tab nos buracos; [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-19_ONDA2_I15.md)): cena 3 conduzida e fotografada, bancada completa dentro de um quadro, solver novo recusado (fica o antigo). Aberto da bancada (a pintura `+0,17` ms a 7 500 linhas) fechado no Acabamento: `problems()` guardado, `159,6 → 6,2 µs`.
-   ~~Acabamento~~ — feito **na linha**, smoke do dono POR FAZER (HEAD `2e988f0664`;
-   [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-19_ONDA2_ACABAMENTO.md)). **Próximo:** o smoke do dono da cena 4 e `/pd-linha-fechar`.
+   ~~Acabamento~~ — feito **na linha**, smoke do dono OK a 19/10 (HEAD `2e988f0664`;
+   [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-19_ONDA2_ACABAMENTO.md)). **Próximo:** o item 5 (página de ajuda), depois `/pd-linha-fechar`.
 4. ~~**Acabamento**~~ — feito (resumo: Ctrl+rato = mão e sublinhado pela regra do `goto`; lista de problemas com separador Problems, contador, Ctrl+Shift+M e F8; buracos fundidos; cena `PH2D_CODE_SMOKE=4`). Pedido original (fim da fila, pedido do dono no smoke do I6/I11, 17/10): com **Ctrl** carregado, o rato
    sobre qualquer palavra que o Ctrl+clique leva a algum sítio vira o ponteiro em **mão** (e o nome
    sublinha, como no Godot/VS Code). Só sobre o que é clicável: a validade tem de vir da mesma regra

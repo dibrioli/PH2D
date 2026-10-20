@@ -108,6 +108,9 @@ pub mod connector_panel;
 pub mod contour_live;
 pub mod cut_line;
 pub mod driven_style;
+/// ⭐⭐⭐ Os canais do vetor (plano 35): o leitor/escritor puro de cada campo.
+pub mod canais_campos;
+pub mod canais;
 pub mod envelope_gesture;
 pub mod envelope_live;
 pub mod expand;

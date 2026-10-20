@@ -482,6 +482,10 @@ pub struct VecState {
     /// Espelho da última sincronia de seleção canvas ↔ Hierarquia (ADR-0110): diz
     /// **quem** mudou neste frame, e por isso quem manda. Ver `sync_selection`.
     pub sel: crate::selection_sync::VecSelSync,
+
+    /// ⭐ O que a curva da timeline está a mover no documento vetorial (plano 35): o undo e o save
+    /// fotografam o autorado, não o instante da reprodução.
+    pub conducao: crate::canais::ConducaoVetor,
 }
 
 /// **O estilo de texto corrente** (A9, 2026-09-12): os oito números que o painel de texto edita e

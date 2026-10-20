@@ -109,6 +109,7 @@ mod populate_deform;
 mod populate_grid_stamp;
 mod populate_sculpt;
 mod populate_sections;
+mod populate_wetpaint; // a secção Wet Paint do populate (o tecto de 600 LOC)
 /// As secções que pintam linhas de marcar, e os rótulos de cada uma (a coluna do nome sai daqui).
 pub mod seccoes;
 pub mod state;

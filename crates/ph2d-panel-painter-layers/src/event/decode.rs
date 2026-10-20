@@ -181,3 +181,20 @@ pub(super) fn decode_wet_quick_water_option(id: NodeId) -> Option<u8> {
 pub(super) fn decode_wet_quick_opacity_option(id: NodeId) -> Option<u8> {
     decode_wet_quick(2, id)
 }
+
+/// Decode a blend-mode popover option id → `(layer, mode_u8)`.
+pub(super) fn decode_blend_option(
+    stack: &ph2d_tool_painter::LayerStack,
+    id: NodeId,
+) -> Option<(ph2d_tool_painter::LayerId, u8)> {
+    use ph2d_tool_painter::ids::painter_layer_blend_option_id;
+    use ph2d_tool_painter::MAX_BLEND_MODES;
+    for layer in stack.all_ids() {
+        for m in 0..MAX_BLEND_MODES {
+            if painter_layer_blend_option_id(layer.0, m) == id {
+                return Some((layer, m));
+            }
+        }
+    }
+    None
+}

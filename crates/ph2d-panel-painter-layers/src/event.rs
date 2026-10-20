@@ -13,10 +13,11 @@ use ph2d_editor_core::tool::PanelEvent;
 use ph2d_tool_painter::ids::{
     PainterLayerWidget, painter_curve_add_id, painter_curve_editor_id, painter_curve_remove_id,
     painter_curve_tab_id, painter_gradient_add_id, painter_gradient_editor_id,
-    painter_gradient_remove_id, painter_layer_blend_option_id, painter_layer_widget_id,
+    painter_gradient_remove_id, painter_layer_widget_id,
     painter_mixer_tab_id, painter_selcolor_bucket_id,
 };
-use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BLEND_MODES};
+use decode::decode_blend_option;
+use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack};
 
 mod curve_drag;
 /// Dropdown option-id decoders + the dropdown-option routing table (split out for the LOC cap).
@@ -585,18 +586,6 @@ fn default_falloff_remove_id() -> Option<u8> {
     let b = state::current_brush()?;
     let n = b.falloff_len as usize;
     (n > 2).then(|| b.falloff_points[1].id)
-}
-
-/// Decode a blend-mode popover option id → `(layer, mode_u8)`.
-fn decode_blend_option(stack: &LayerStack, id: ph2d_a11y::NodeId) -> Option<(LayerId, u8)> {
-    for layer in stack.all_ids() {
-        for m in 0..MAX_BLEND_MODES {
-            if painter_layer_blend_option_id(layer.0, m) == id {
-                return Some((layer, m));
-            }
-        }
-    }
-    None
 }
 
 #[cfg(test)]

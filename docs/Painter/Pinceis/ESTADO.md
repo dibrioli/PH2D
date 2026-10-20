@@ -11,7 +11,7 @@
 | A — Rebelle | **os 281 presets fotografados** na bateria (766 cenas, 1 532 PNG, 0 falhas): `fixtures/rebelle_bateria/` + README/indice.csv; ferramentas `bateria_rebelle.py`, `fotos_bateria.sh`, `lote_bateria.sh` (retomável) | `d2a6dfb614` + 14 por TOOL (`7c3ee33b75`…`31583f8e32`) |
 | B — Catálogo | `01_CATALOGO.md` (112 pincéis, 13 categorias, 68 P1) + `01b_FONTES.md`; licenças: `mypaint-brushes` CC0 (portável), bundle Krita CC-0 declarado | `c0b2f1cf7b` |
 | C — Oráculos | `02_ORACULOS.md`. **ArtRage 6 demo** corre por script (`.arscript`, pressão exacta, sem expirar): 35 pincéis × 3 cenas em `fixtures/artrage_bateria/` (404 presets instalados — mais é só acrescentar à `lista_artrage.tsv`). Krita/MyPaint: ver a linha de baixo | `a08399a7f4` |
-| C — Krita/MyPaint | (preencher: agente C1) | |
+| C — Krita/MyPaint | **MyPaint** (harness C sobre libmypaint ISC; 196 `.myb` CC0 = PORTÁVEIS) × 3 cenas, determinístico: `fixtures/mypaint_bateria/` · **Krita 6** (144 presets do bundle padrão, caneta com pressão injectada dentro do Krita, Xvfb próprio): `fixtures/krita_bateria/`. Nenhum expira; nenhum mede tilt/secagem (A = B). Pencil-2/Ink-2 do Krita têm acaso ⇒ comparar por estatística | `dc1dd28633` `6cbdbcd3c9` `0bbabaaedd` `609655ca17` |
 | D — Bancada | `04_BANCADA.md`, `05_REVISAO_CEGA.md`; `exame.sh` (pinta a bateria em qualquer preset dos 4 meios: `tests/it/exame_bancada.rs`), `exame_regua.py`, `exame_matriz.py`, `exame_prancha.py` (legível + cega), `--custo` | `39967873bd` `72dbc191f8` `e70940fdd4` |
 | E — Motores | `03_MOTORES.md`: o que cada motor exprime (pelo código) e 19 lacunas por ordem | `c9d8dcff53` |
 | F — Limpeza P53 | Filbert, Flat Oily, Knife Smooth fora da fábrica (31 → **28**); portões verdes por nome | `d9e85a11c4` |

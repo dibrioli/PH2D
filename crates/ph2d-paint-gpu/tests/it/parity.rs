@@ -255,3 +255,129 @@ fn the_device_paints_what_the_cpu_paints() {
         }
     }
 }
+
+/// ⭐ **A placa pinta a pegada DEITADA como a CPU** (revisão do bloco C, L4): cada dab com a sua pegada — a caneta
+/// deitada (esticada num azimute), a redondeza sorteada e o espelho — subida pelas linhas do mapa que o produto
+/// publica (`DabTilt` → `BrushSpec::at_dab` → `dab_footprint`, o que `device_dabs` lê). O oráculo é o carimbo REAL
+/// da CPU com o MESMO spec por dab. Pincel achatado e rodado, para o espelho e o rotor terem lado.
+#[test]
+#[ignore = "precisa de adapter — rode com `-- --ignored` na máquina com GPU"]
+fn a_placa_pinta_a_pegada_deitada_como_a_cpu() {
+    use ph2d_painter_brush::{Dab, DabTilt};
+    let Some(gpu) = context() else {
+        eprintln!("sem adapter: skip");
+        return;
+    };
+    let pass = StampPass::new(&gpu);
+    let brush = BrushSpec {
+        dab_flatten: 0.35,
+        dab_angle_deg: 20,
+        ..spec()
+    };
+    let deitadas = [
+        DabTilt {
+            azimuth: [0.6, 0.8],
+            length: 1.6,
+            width: 0.5,
+            ..DabTilt::NEUTRA
+        },
+        DabTilt {
+            round: 0.4,
+            ..DabTilt::NEUTRA
+        },
+        DabTilt {
+            round: 0.7,
+            espelho: true,
+            ..DabTilt::NEUTRA
+        },
+    ];
+    let list = dabs(24);
+    let dabs: Vec<Dab> = list
+        .iter()
+        .enumerate()
+        .map(|(i, (c, cov))| {
+            let mut d = Dab {
+                center: *c,
+                radius_px: brush.radius_px,
+                coverage: *cov,
+                color: brush.color,
+                color_shift: [0.0; 3],
+                rotation: [1.0, 0.0],
+                dir: [0.0, 0.0],
+                arc_len: 0.0,
+                stroke_radius_px: brush.radius_px,
+                step: [0.0, 0.0],
+                ante: None,
+                tilt: Some(deitadas[i % 3]),
+            };
+            d.radius_px *= brush.tilt_scale(&d);
+            d
+        })
+        .collect();
+    let mut want = base();
+    for d in &dabs {
+        let s = brush.at_dab(d);
+        let _ = stamp_dab_textured_masked(
+            &mut want,
+            W,
+            H,
+            d.center,
+            &s,
+            d.coverage,
+            false,
+            None,
+            None,
+            None,
+            None,
+            None,
+            s.dab_rotor(d),
+            None,
+        );
+    }
+    let gpu_list: Vec<GpuDab> = dabs
+        .iter()
+        .map(|d| {
+            let m = brush.dab_footprint_of(d).linear_rows();
+            GpuDab {
+                center: d.center,
+                radius: d.radius_px,
+                coverage: d.coverage,
+                color: d.color,
+                _pad0: 0.0,
+                m0: m[0],
+                m1: m[1],
+                _pad1: [0.0; 4],
+                c0: [0.0; 8],
+                c1: [0.0; 8],
+            }
+        })
+        .collect();
+    let region = Region {
+        x: 0,
+        y: 0,
+        w: W,
+        h: H,
+    };
+    let got = pass
+        .run(&base(), region, &lut(&brush), &gpu_list, false)
+        .expect("o passe recusou");
+    // Controlo: a pegada do PINCEL (sem a do dab) é outra tinta — senão o gate seria verde por vácuo.
+    let mut disco = base();
+    for d in &dabs {
+        let s = BrushSpec {
+            radius_px: d.radius_px,
+            ..brush
+        };
+        let _ = stamp_dab_textured_masked(
+            &mut disco, W, H, d.center, &s, d.coverage, false,
+            None, None, None, None, None,
+            s.dab_rotor(d), None,
+        );
+    }
+    let (_, controlo) = worst_and_count(&want, &disco);
+    assert!(controlo * 100 > want.len(), "a pegada deitada não mudou a tinta: {controlo}");
+    let (worst, diff) = worst_and_count(&want, &got);
+    eprintln!("deitada: pior delta {worst}, {diff} bytes diferem (controlo {controlo})");
+    assert!(worst <= 1, "pior delta {worst} (>1 nível)");
+    assert!(diff * 400 <= want.len(), "{diff} de {} bytes diferem (>0,25%)", want.len());
+}

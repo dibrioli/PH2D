@@ -363,6 +363,23 @@ fn the_footprint_of_the_batch_is_the_footprint_of_each_dab() {
         dab_angle_deg: 31,
         ..BrushSpec::default()
     };
+    // ⭐ Os dois últimos levam a pegada DEITADA do dab (a caneta e a forma sorteada da marca, L4): o device tem
+    // de a ver como a CPU (`at_dab` → `dab_tilt`), senão pinta o disco onde a CPU pinta a elipse.
+    let deitadas = [
+        None,
+        None,
+        Some(ph2d_painter_brush::DabTilt {
+            azimuth: [0.6, 0.8],
+            length: 2.0,
+            width: 0.5,
+            ..ph2d_painter_brush::DabTilt::NEUTRA
+        }),
+        Some(ph2d_painter_brush::DabTilt {
+            round: 0.4,
+            espelho: true,
+            ..ph2d_painter_brush::DabTilt::NEUTRA
+        }),
+    ];
     let dabs: Vec<Dab> = (0u8..4)
         .map(|i| Dab {
             center: [10.0 * f32::from(i), 20.0],
@@ -376,15 +393,14 @@ fn the_footprint_of_the_batch_is_the_footprint_of_each_dab() {
             stroke_radius_px: 9.0,
             step: [0.0, 0.0],
             ante: None,
-            tilt: None,
+            tilt: deitadas[usize::from(i)],
         })
         .collect();
     for (d, dev) in dabs.iter().zip(device_dabs(&dabs, &brush)) {
-        // O spec por-dab do laço serial — o que o produto de fato monta.
+        // O spec por-dab do laço serial — o que o produto de fato monta (`stamp_banded`).
         let per_dab = BrushSpec {
-            radius_px: d.radius_px,
             color: d.color,
-            ..brush
+            ..brush.at_dab(d)
         };
         let fp = per_dab.dab_footprint(per_dab.dab_rotor(d));
         let (e0, e1) = (fp.apply([1.0, 0.0]), fp.apply([0.0, 1.0]));

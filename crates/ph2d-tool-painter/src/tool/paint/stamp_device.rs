@@ -149,15 +149,14 @@ impl LutCache {
 
 /// Os discos, resolvidos como o `stamp_dabs_per_pixel` os resolve.
 ///
-/// ⚠️ O footprint é avaliado a partir do `brush`, **não** de uma cópia por-dab: o `footprint_deform`
-/// lê só `dab_flatten` e `dab_angle_deg`, e o spec por-dab do laço serial sobrescreve apenas
-/// `radius_px` e `color` — logo o mapa é o MESMO número. Um `BrushSpec` clonado por dab seria uma
-/// cópia grande para chegar ao mesmo lugar.
+/// ⚠️ A pegada é a DO DAB ([`BrushSpec::dab_footprint_of`]): a do pincel rodada e, com a caneta deitada ou a forma
+/// sorteada da marca (L4: redondeza, espelho — [`Dab::tilt`]), esticada/espelhada — a MESMA que o laço serial lê
+/// pelo spec `at_dab`. Do `brush` só, a placa pintava o disco onde a CPU pinta a elipse (revisão do bloco C).
 #[must_use]
 pub fn device_dabs(dabs: &[Dab], brush: &BrushSpec) -> Vec<DeviceDab> {
     dabs.iter()
         .map(|d| {
-            let fp = brush.dab_footprint(brush.dab_rotor(d));
+            let fp = brush.dab_footprint_of(d);
             let linhas = fp.linear_rows();
             DeviceDab {
                 center: d.center,

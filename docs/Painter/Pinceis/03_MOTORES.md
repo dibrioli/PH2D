@@ -207,6 +207,19 @@ scatter só perpendicular, tamanho por partícula do spray. Pincéis: I-11, J-2,
 (255 LOC, espaço) + `dab_build`; as caches constantes têm de declarar a variação. **S–M** (~400 LOC). Portões: neutro = ao bit por campo,
 `o_jitter_de_opacidade_espalha_a_cobertura` (média preservada), mutação.
 
+**L4 ✅ (J2, 20/10)** — feito: `DabJitter` no `BrushSpec` (`PB/marca.rs`; preset `dab_jitter`): opacidade por dab (± simétrica;
+o FLUXO por dab NÃO é campo — Strength·Flow são um produto, a lei da L2), contagem sorteada, espelhos X/Y, redondeza, ângulo por
+traço, espalhar ATRAVÉS (0..2·D), partícula do spray (tamanho×pressão = a `pressureSize` de sempre; tamanho por partícula já era o
+`jitter_scale` sorteado por cópia). Fluxo de sorteio PRÓPRIO (`PorTraco::rng`): ligar um não desloca os de sempre. A forma viaja na
+pegada do dab (`DabTilt::round/espelho`); ⭐ curado com ela um buraco da W6/L2: o carimbo lia a pegada do pincel — a caneta deitada no
+Digital/Impasto pintava o disco do raio crescido, não a elipse (`BrushSpec::dab_tilt` via `at_dab`). Painel: 8 linhas no cartão
+Jitter (`TP/marca.rs`, i18n `painter_marca.rs`). Medido: Splats ⊥ sd 0,69·D (Rebelle 0,61–0,92), opac. cv 0,17 (0,08–0,20).
+Custo (smoke, load 13–18, mín.): Splats L4 p95 0,47 ms a 40 px · 1,39 ms a 200 px. SHA `d1489ae706` (bloco com a L11). Portões:
+`cada_campo_muda_so_o_que_e_dele`, `o_jitter_de_opacidade_espalha_a_cobertura`, `o_espalhar_atraves_e_anisotropico`,
+`a_contagem_sorteada_fica_entre_um_e_n`, `o_espelho_vira_a_ponta`, `a_forma_da_marca_chega_a_tinta`,
+`a_caneta_deitada_pinta_a_elipse_no_digital` (vermelhos antes: 0 bytes), `seam_marca` (3), censo/esmaecido. Mutações SANGRAM:
+opacidade ignorada, pegada do dab ignorada, através perdido. ⚠️ Espelho no Wet: as cerdas só leem o rotor (o Y não chega; listado).
+
 **L5 — O FIM do traço: taper de fim, taper por pressão, fall-off** (parte de CAP-19). O fim não se conhece em tempo real: lei do
 Procreate (re-pintar a cauda curta ao levantar, dentro da transacção; prévia ≠ documento). Fall-off = a carga que se esgota pelo
 comprimento (Digital: cobertura; Wet: `pigmentPerDab`). Pincéis: C-4, C-6, D-1, D-2 (fim) · G-1, G-8, G-9, G-11, I-11, C-11 (secar
@@ -226,6 +239,15 @@ base e efeito) e fazer os presets. ⚠️ o modo é da SESSÃO molhada: medir o 
 M-3, K-4. **S** (presets + uma cena; motor só se a medição o pedir). Portão: `o_efeito_do_pincel_compoe_no_seu_modo` (base + efeito
 contra a fórmula de cada modo).
 
+**L7 ✅ (J2, 20/10)** — confirmado, nada a curar no motor: `blend_over` (Digital e a sessão do Wet, `wetpaint/composite.rs`) é a
+fórmula W3C em sRGB CODIFICADO a α por passagem. Medido pela porta do ponteiro: 16 modos × 3 bases × α 0,056–0,9, 1× e 10×, ≤ 2/255 de
+uma escrita independente do W3C; Hue/Luminosity/Overlay a 10× = as fotos do Rebelle ± (ajuste + 2). Custo: nenhum (motor intacto).
+SHA `f1260c541c`. Portões: `o_efeito_do_pincel_compoe_no_seu_modo`, `o_efeito_a_dez_passagens_e_o_do_rebelle` (mutação Overlay→HardLight
+SANGRA). ⛔ Registado, não perseguido: Saturation/Linear Burn/Dodge do Rebelle a 10× não são as fórmulas do nome (06 §10.3). ⚠️ ABERTO
+para o coordenador: no pixel VAZIO (camada transparente) os modos de cor não pintam (mantêm o α 0); o Rebelle pousa Normal a α no
+papel e o W3C geral (`(1−αb)·Cs + αb·B`) também — a cura toca as ~11 rotas de carimbo (opt-in por pincel, a cerca) e decide-se com os
+presets Effect da J3; sobre tela opaca (a bancada) o nosso = o Krita (≤ 0,9/255).
+
 **L8 — Tecto de opacidade POR TRAÇO, wet edges e burnt edges no Digital** (CAP-11). Um buffer do traço composto no fim (Pc
 light/uniform/intense glaze), e as orlas como passagem sobre ele — a orla da Watercolor é a mesma conta: REUSAR a lei, não a copiar.
 Pincéis: A-6, E-1…E-4, I-12, C-11. **M** (~700 LOC; rota nova no Digital, com o desfazer). Portões:
@@ -242,8 +264,22 @@ Attack/grade do Wet Mix faltam na Watercolor. Pincéis: G-12, G-13 (hoje Dg no c
 **L11 — Cor secundária e cor pela mão** (CAP-07). Pincéis: K-2, K-3, K-4, M-4, M-5. Motor: `PB/jitter.rs` + a cor do dab. **S** (~250
 LOC). Portões: `sem_cor_secundaria_a_cor_e_a_de_hoje`, `a_pressao_leva_a_cor_a_secundaria`.
 
+**L11 ✅ (J2, 20/10)** — feito: `CorDaMao` no `BrushSpec` (`PB/cor_mao.rs`; preset `cor_mao`): a cor SECUNDÁRIA (amostra + seletor
+na Randomize Color), a mistura sorteada fg/bg por dab e a pressão → secundária / matiz / saturação / valor (Procreate Color pressure).
+O ruído POR TRAÇO (o único do Rebelle) já existia (`ColorJitterScope::PerStroke`). Medido: long_grass S 0,29→0,61 e V 0,62→0,91 com
+`s 0,55 · v 0,33` ± 0,05. Custo (smoke, load 15–18): Grama L11 mediana 0,75 ms = a base 0,73–0,76; o p95 a 200 px varia 2,9–17 ms
+com a carga, igual ao da base (4,5–17,4) — sem custo próprio medível. SHA `d1489ae706`. Portões: `sem_cor_secundaria_a_cor_e_a_de_hoje`,
+`a_pressao_leva_a_cor_a_secundaria`, `a_pressao_leva_a_cor`, `a_amostra_da_secundaria_abre_o_seletor_e_volta_ao_pincel` (mutação SANGRA).
+
 **L12 — Velocidade→tamanho/opacidade (e a poça onde abranda)** (CAP-02, CAP-13). Pincéis: C-4, C-6, D-1, D-2 · C-1, C-7, C-12. Motor:
 `Dynamics` + a velocidade do `Stroke`. **S**. Portão: recto lento × rápido da bateria. Rb 0/281 ⇒ a lei vem do Krita/Procreate.
+
+**L12 ✅ (J2, 20/10)** — feito: `Dynamics::speed_size/speed_opacity`, a potência `(v/300 px/s)^−p` (uma lei para Fineliner 0,058 ·
+pen 0,136 · pen-note 0,18 · Marker 0,45, 06 §10.4), na lei da mão (`TP/mao.rs`: linhas `speedSize`/`speedOpacity` do cartão Pen, os
+quatro meios; o Wet herda a `Dynamics`); a velocidade do dab é a rampa do `speed.rs`, medida só com a lei ligada. Custo (Fineliner L12,
+smoke): p95 0,67 ms a 40 px · 1,06 ms a 200 px. SHA `2045598fac`. Portões: `a_velocidade_estreita_como_o_fineliner` (a curva inteira
+± 0,04; neutro 1,00), `mao::velocidade` (recto lento × rápido pela porta do ponteiro, Digital/Impasto/Wet). Mutação SANGRA. ⚠️ Não
+feito: a POÇA onde a caneta abranda (CAP-13) — o depósito é por passo; nenhum oráculo da bateria a mostra ainda (medir antes).
 
 **L13 — As lanes do Jitter alto (C39)** — decisão de LEI medida no Dabber/Spatter do Rebelle (53 §6). Pincéis: G-4, I-11, J-3. **M**.
 Portão: textura do Dabber + RSS a raio 300/1000.

@@ -1,0 +1,4 @@
+Cópia versionada da infra dos oráculos sob Wine (o original vive em ~/Apps/pincel-oraculos/ e ~/Apps/<app>/).
+Para recriar noutra máquina: mkdir -p ~/Apps/pincel-oraculos && cp env.sh tela.sh w.sh x.sh foto.sh espera.sh wt.sh ~/Apps/pincel-oraculos/
+e cp artrage_inicia.sh ~/Apps/artrage/inicia.sh; cp artrage.sh ~/Apps/artrage/artrage.sh (o instalador e o prefixo: 02_ORACULOS.md).
+Xvfb + llvmpipe: estes oráculos não pedem a vez da placa nem usam a tela do Rebelle.

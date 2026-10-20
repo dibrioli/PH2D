@@ -1,0 +1,38 @@
+# nome (Pasta__ficheiro)	tool	preset	base_tool	base_preset	k	cenas
+OilBrush__default	4900	-	-	-	95
+OilBrush__ThickGloss	4900	Oil Brush/Thick Gloss	-	-	95
+OilBrush__DryClumps	4900	Oil Brush/Dry Clumps	-	-	95
+OilBrush__ThinAndDry	4900	Oil Brush/Thin and Dry	-	-	95
+OilBrush__NormalSquare	4900	Oil Brush/Normal Square	-	-	95
+PaletteKnife__default	4905	-	4900	-	95	sobre
+PaletteKnife__JustBlendColor	4905	Knife/Just Blend Color	4900	-	95	sobre
+PaletteKnife__HardWetBlender	4905	Knife/Hard Wet Blender	4900	-	95	sobre
+Pencil__default	4901	-	-	-	1=5,4=17,16=41
+Pencil__BShading	4901	Pencil/B Shading	-	-	1=5,4=17,16=41
+Pencil__HardAndDark	4901	Pencil/Hard and Dark	-	-	1=5,4=17,16=41
+Crayon__default	4902	-	-	-	66
+Crayon__HeavyPastel	4902	Pastel/Heavy Pastel	-	-	66
+Crayon__LightPastel	4902	Pastel/Light Pastel	-	-	66
+Crayon__SolidCrayon	4902	Pastel/Solid Crayon	-	-	66
+FeltPen__default	4904	-	-	-	47
+FeltPen__SoftMarker	4904	Pen/Soft Marker	-	-	47
+FeltPen__BlendingMarkers	4904	Pen/Blending Markers	-	-	47
+InkPen__default	4917	-	-	-	149
+InkPen__ThickAndThin	4917	Ink Pen/Thick and Thin	-	-	149
+InkPen__WritingChisel	4917	Ink Pen/Writing Chisel	-	-	149
+InkPen__TechnicalPen	4917	Ink Pen/Technical Pen	-	-	149
+Watercolor__default	4916	-	-	-	54
+Watercolor__WetOnWet	4916	Watercolor/Wet on Wet	-	-	54
+Watercolor__HeavyBleed	4916	Watercolor/Heavy Bleed	-	-	54
+Watercolor__DelicateOnDry	4916	Watercolor/Delicate on Dry	-	-	54
+Watercolor__DryOnWet	4916	Watercolor/Dry on Wet	-	-	54
+Airbrush__default	4914	-	-	-	124
+Airbrush__SlowFlow	4914	Airbrush/Slow Flow	-	-	124
+PaintRoller__default	4915	-	-	-	400
+CustomBrush__BristleRound	4925	Custom Brush/Artistic/Bristle Round	-	-	134
+CustomBrush__StrongCharcoal	4925	Custom Brush/Artistic/Strong Charcoal	-	-	134
+CustomBrush__FaintCharcoal	4925	Custom Brush/Artistic/Faint Charcoal	-	-	134
+CustomBrush__SmearedInk	4925	Custom Brush/Artistic/Smeared Ink	-	-	134
+CustomBrush__Watery1	4925	Custom Brush/Artistic/Watery 1	-	-	134
+CustomBrush__Pastel	4925	Custom Brush/Artistic/Pastel	-	-	134
+CustomBrush__SimplePaint	4925	Custom Brush/Artistic/Simple Paint	-	-	134

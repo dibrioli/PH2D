@@ -1,0 +1,48 @@
+{
+ "prancha": "round_pressure.png",
+ "linhas": [
+  "gestos_A",
+  "gestos_B",
+  "tamanhos_A",
+  "tamanhos_B",
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "gestos_A": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "gestos_B": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  },
+  "tamanhos_A": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "tamanhos_B": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  },
+  "sobre_A": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "sobre_B": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  }
+ },
+ "quem": {
+  "oraculo": "b__Basic-5_Size_Opacity",
+  "nosso": "Round Pressure (escala 1.0)",
+  "vizinho": "Hard Round (d 0.411, limiar 0.591)"
+ }
+}

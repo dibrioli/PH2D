@@ -61,6 +61,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.edges_above_zero" => "Acts with Wet or Burnt edges",
         "panel.painter_layers.inerte.color_blend_mode" => "Acts with a colour Blend (Multiply, Color, Hue…)",
         "panel.painter_layers.inerte.freehand_paint_stroke" => "Acts on a freehand paint stroke",
+        // A profundidade do grão por dab (L9).
+        "panel.painter_layers.inerte.depth_jitter_above_zero" => "Acts when Depth jitter is above 0",
         "panel.painter_layers.inerte.tilt_law_on" => {
             "Acts when the pen tilt changes the dab: Tilt width, length, smooth or opacity, or Rotation: Pen tilt"
         }

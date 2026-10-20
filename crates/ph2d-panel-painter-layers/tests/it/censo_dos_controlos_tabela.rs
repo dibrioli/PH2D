@@ -352,6 +352,23 @@ fn pre_condicoes() -> Vec<Linha> {
             vec![Alvo::Id(PAINTER_BRUSH_TEXTURE_PARAMS[3])],
             false,
         ));
+        // A profundidade do grão por dab (L9): o mínimo e o controlo só agem com o jitter acima de 0.
+        v.push((
+            m,
+            "Grain Noise com Depth jitter 0,6",
+            vec![
+                opcao(
+                    PAINTER_BRUSH_TEXTURE_KIND,
+                    painter_brush_texture_kind_option_id(1),
+                ),
+                Gesto::Numero(PAINTER_PONTA_FIELDS[3], 0.6),
+            ],
+            vec![
+                Alvo::Id(PAINTER_PONTA_FIELDS[2]),
+                Alvo::Id(PAINTER_PONTA_FIELDS[4]),
+            ],
+            false,
+        ));
     }
     for m in [Digital, Watercolor, Impasto, WetPaint] {
         v.push((

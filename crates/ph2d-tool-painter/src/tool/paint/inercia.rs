@@ -51,10 +51,12 @@ pub enum Dependente {
     VazioSemModoDeCor,
     PlanoForaDoTraco,
     FallOffDaAgua,
+    // A profundidade do grão por dab (L9): o mínimo e o controlo só leem o que o jitter faz variar.
+    ProfundidadeSemJitter,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 36] = [
+    pub const TODOS: [Dependente; 37] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -91,6 +93,7 @@ impl Dependente {
         Dependente::VazioSemModoDeCor,
         Dependente::PlanoForaDoTraco,
         Dependente::FallOffDaAgua,
+        Dependente::ProfundidadeSemJitter,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -175,6 +178,10 @@ impl Dependente {
                 ids::PAINTER_MARCA_FIELDS[12],
                 ids::PAINTER_MARCA_SECONDARY,
             ],
+            // A ponta (L9), pela ordem de `LINHAS_DA_PONTA`: Minimum depth e Depth control.
+            Dependente::ProfundidadeSemJitter => {
+                &[ids::PAINTER_PONTA_FIELDS[2], ids::PAINTER_PONTA_FIELDS[4]]
+            }
             Dependente::MaoSemPressao => &[
                 ids::PAINTER_PEN_FIELDS[4],
                 ids::PAINTER_PEN_FIELDS[5],
@@ -226,6 +233,7 @@ impl Dependente {
             Dependente::VazioSemModoDeCor => "panel.painter_layers.inerte.color_blend_mode",
             Dependente::PlanoForaDoTraco => "panel.painter_layers.inerte.freehand_paint_stroke",
             Dependente::FallOffDaAgua => "panel.painter_layers.inerte.wet_paint_tool",
+            Dependente::ProfundidadeSemJitter => "panel.painter_layers.inerte.depth_jitter_above_zero",
         }
     }
 
@@ -267,8 +275,8 @@ pub enum Natureza {
     MeioNaoLe,
 }
 
-/// O Grain inteiro: o menu e os seis parâmetros.
-const GRAIN: [NodeId; 7] = [
+/// O Grain inteiro: o menu, os seis parâmetros e a lei dele (L9: o modo, Minimum depth, Depth jitter, Depth control).
+const GRAIN: [NodeId; 11] = [
     ids::PAINTER_BRUSH_TEXTURE_KIND,
     ids::PAINTER_BRUSH_TEXTURE_PARAMS[0],
     ids::PAINTER_BRUSH_TEXTURE_PARAMS[1],
@@ -276,6 +284,10 @@ const GRAIN: [NodeId; 7] = [
     ids::PAINTER_BRUSH_TEXTURE_PARAMS[3],
     ids::PAINTER_BRUSH_TEXTURE_PARAMS[4],
     ids::PAINTER_BRUSH_TEXTURE_PARAMS[5],
+    ids::PAINTER_PONTA_FIELDS[1],
+    ids::PAINTER_PONTA_FIELDS[2],
+    ids::PAINTER_PONTA_FIELDS[3],
+    ids::PAINTER_PONTA_FIELDS[4],
 ];
 
 /// As cerdas do Shape: os quatro sliders e a transformação (Angle, Offset, Size) — no Wet Paint elas SÃO a
@@ -370,7 +382,13 @@ impl PainterTool {
                     b.texture.mapping,
                     ph2d_painter_brush::TextureMapping::ViewPlane
                         | ph2d_painter_brush::TextureMapping::Random
-                ));
+                ))
+            // A profundidade do grão POR DAB (L9) leva o dab à rota por dab (`DabTilt::grao`, `any_tilted`), que roda a
+            // pegada pelo rotor: a tinta muda pelo arredondamento (a razão do Jitter Rotate, `o_censo_so_encolhe`). O
+            // Impasto não: a altura e a cor dele não rodam a pegada redonda (medido pelo gate do esmaecido, 20/10).
+            && !(b.texture.lei.varia_por_dab()
+                && b.texture.is_active()
+                && !matches!(self.paint_media(), super::media::PaintMedia::Impasto));
         let leis = [
             (Dependente::TaperTip, !b.taper.is_active()),
             (Dependente::TaperOpacity, !b.taper.is_active()),
@@ -536,6 +554,12 @@ impl PainterTool {
                 let d = self.dinamica_do_traco();
                 !agua && (!d.size_pressure || d.size_min >= 1.0)
             }),
+            // A profundidade por dab é `max(min, 1 − jitter·(1 − x))` (`GrainLaw::profundidade_do_dab`): com jitter 0
+            // nenhum dab varia (`varia_por_dab`) e o mínimo e o controlo (pressão/sorteio) não têm o que decidir.
+            (
+                Dependente::ProfundidadeSemJitter,
+                !b.texture.lei.varia_por_dab(),
+            ),
             (Dependente::MaoSemPressao, {
                 let d = self.dinamica_do_traco();
                 !agua && (!d.size_pressure || d.size_min >= 1.0) && !d.strength_pressure

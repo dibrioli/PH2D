@@ -146,12 +146,14 @@ fn a_luz_de_fora_nao_atravessa_um_opaco_da_vista() {
 
 /// A cena 5 inteira no caminho do app, dos dois lados da troca de oitava do texel (0,0312 → 0,0156: os
 /// refletores saem da grade e o rebote deles passa ao entorno), contra a MESMA vista com a grade esticada
-/// sobre a sala. Medido (handoff W6g §35): o pior −4,7 % (a sombra abaixo da base, vermelho, h = 3,8; a
-/// grossura do entorno 8×: 1× dá ±0,4 %); com a 1.ª passagem do entorno a mascarar a vista, −13,7 % (o
-/// laranja do Disco a 67–76 %); a soma da W5d dava +69 % / +141 % na sombra.
+/// sobre a sala. Medido (handoff W6g §35, §37): com o entorno 4× da Baixa o pior −1,4 % (o entorno 8×,
+/// −4,0…−4,7 %; 1× ±0,4 %); a sombra à esquerda da haste é o raio rasante na quina e oscila sem ordem
+/// com a grossura (+1,4 · −5,1 %: a tolerância dela à parte). Com a 1.ª passagem do entorno a mascarar
+/// a vista, −13,7 % (o laranja do Disco a 67–76 %); a soma da W5d dava +69 % / +141 % na sombra.
 #[test]
 fn a_cena_5_na_troca_de_oitava_segue_a_grade_esticada() {
-    const TOL: f64 = 0.07;
+    const TOL: f64 = 0.025;
+    const TOL_QUINA: f64 = 0.07;
     let Some(gpu) = gpu() else {
         eprintln!("sem GPU — saltado");
         return;
@@ -194,7 +196,8 @@ fn a_cena_5_na_troca_de_oitava_segue_a_grade_esticada() {
         }
         let fv = fluencia_lida(&gpu, l.solver().expect("solver"));
         let fe = fluencia_lida(&gpu, &s);
-        for (nome, p) in pontos {
+        for (k, (nome, p)) in pontos.into_iter().enumerate() {
+            let tol = if k == 0 { TOL_QUINA } else { TOL };
             for c in 0..3 {
                 let (v, e) = (fv.amostra_canal(p, c), fe.amostra_canal(p, c));
                 eprintln!(
@@ -202,7 +205,7 @@ fn a_cena_5_na_troca_de_oitava_segue_a_grade_esticada() {
                     100.0 * (v / e - 1.0)
                 );
                 assert!(
-                    (v / e - 1.0).abs() <= TOL,
+                    (v / e - 1.0).abs() <= tol,
                     "h={altura} {nome} canal {c}: a vista {v:.4} contra a esticada {e:.4}"
                 );
             }
@@ -255,5 +258,63 @@ fn a_luz_de_fora_passa_a_fenda_perto_da_borda() {
             *v >= MIN_DO_GABARITO * gab,
             "{p:?}: a luz pela fenda não chegou ({v:.4} contra {gab:.4})"
         );
+    }
+}
+
+/// Um corpo que BRILHA encostado à borda de cima da vista (a cavalo e todo fora dela), lido pela borda,
+/// contra a MESMA vista com a grade esticada sobre a sala. Medido (handoff W6g §37): com o entorno 4× da
+/// Baixa −1,6…+1,1 %; a 8× +1,5…+11,0 % (a grossura do arquivo); 1× ±0,4 %.
+#[test]
+fn o_emissor_encostado_a_borda_segue_a_grade_esticada() {
+    const TOL: f64 = 0.03;
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — saltado");
+        return;
+    };
+    let mut so_o_l = cena_minima();
+    so_o_l.emissores.pop();
+    so_o_l.luzes -= 1;
+    let pontos = [[-4.2, -2.0], [-2.4, -1.2], [-3.4, -0.9], [-2.2, -2.1], [-5.0, -0.4]];
+    let d = DEGRAU_PADRAO;
+    let a = Camera2d::new([-4.2, -1.8], 3.8).world_to_screen_affine(WindowSize::new(FHD.0, FHD.1));
+    let t = grade_do_quadro(a, FHD, d).expect("grade").texel_m;
+    let ge = Grade {
+        origem_m: [(-6.5 / t).floor() * t, (-5.0 / t).floor() * t],
+        texel_m: t,
+        largura: (13.0 / t).ceil() as u32,
+        altura: (10.0 / t).ceil() as u32,
+    };
+    for (rotulo, dy) in [("a cavalo", 0.0_f32), ("todo fora", 0.6)] {
+        let mut cena = so_o_l.clone();
+        cena.emissores.push(Emissor::Poligono {
+            vertices: (0..48)
+                .map(|k| {
+                    let t = std::f32::consts::TAU * k as f32 / 48.0;
+                    [-3.0 + 0.7 * t.cos(), 1.7 + dy + 0.7 * t.sin()]
+                })
+                .collect(),
+            radiancia: [1.0, 0.3, 0.2],
+            alcance_m: f32::INFINITY,
+        });
+        cena.luzes += 1;
+        let mut x = Solver::novo(&gpu, config_da_vista(&gpu.device, ge, a, d)).expect("esticada");
+        let (i, f) = regiao_da_janela(x.grade_da_fluencia(), a, FHD);
+        x.regiao_fina(i, f);
+        for _ in 0..60 {
+            x.quadro(&gpu, &cena);
+        }
+        let fx = fluencia_lida(&gpu, &x);
+        let vista = vista_mais_entorno(&gpu, &cena, &pontos);
+        for (p, v) in pontos.iter().zip(vista) {
+            let e = fx.amostra_canal(*p, 0);
+            eprintln!(
+                "o emissor {rotulo} {p:?}: vista {v:.4} · esticada {e:.4} ({:+.1} %)",
+                100.0 * (v / e - 1.0)
+            );
+            assert!(
+                (v / e - 1.0).abs() <= TOL,
+                "o emissor {rotulo} {p:?}: a vista {v:.4} contra a esticada {e:.4}"
+            );
+        }
     }
 }

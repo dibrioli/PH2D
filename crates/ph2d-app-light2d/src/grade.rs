@@ -115,9 +115,18 @@ pub const DEGRAU_PADRAO: Degrau = Degrau {
 
 /// ⭐ W5d — o fator do entorno — MEDIDO (rodada `medida_luz2d_w5d`, a cena 3 na vista de 2 m no nível
 /// Médio, o vermelho junto à borda esquerda contra a série do gabarito, câmera em x = −2 · 0 · 2): sem
-/// ele −58,8 · −63,6 · −53,7 %; 4× −10,5 · +0,5 · −0,4 %; 8× −11,3 · −0,3 · −0,9 % — o mesmo a um quarto
-/// da memória e do trabalho.
-pub const ENTORNO_PADRAO: f64 = 8.0;
+/// ele −58,8 · −63,6 · −53,7 %; 4× −10,5 · +0,5 · −0,4 %; 8× −11,3 · −0,3 · −0,9 %.
+///
+/// ⭐ W6g §37 — com a luz de fora pela BORDA o erro segue o texel do entorno em METROS, e o da Baixa a
+/// 8× (16 × 2 px) era o único grosso demais: a cena 5 no zoom fechado −4,0…−4,7 % → 4× −1,2…−1,4 % (a
+/// Média a 8×, o mesmo texel, −1,5…−1,8 %); o emissor encostado à borda +2…+11 % → ±1,6 %. Custo a
+/// 1080p · 1440p · 2160p: +0,48 · +0,79 · +1,85 ms e +33 · +56 · +120 MB. Acima da Baixa:
+/// [`ENTORNO_ACIMA_DA_BAIXA`].
+pub const ENTORNO_PADRAO: f64 = 4.0;
+
+/// ⭐ W6g §37 — o entorno da Média e da Alta: o texel dele já é o da Baixa a 4× ou mais fino (≤ −1,8 %
+/// na cena 5); o 4× ali custaria +1,8…+8,4 ms (Média) e +8…+41 ms com até +2 GB (Alta).
+pub const ENTORNO_ACIMA_DA_BAIXA: f64 = 8.0;
 
 /// O texel de `px` píxeis no zoom mais fino da oitava: a potência de 2 em metros (G11).
 fn texel_de(px: f64, ppm: f64) -> f64 {

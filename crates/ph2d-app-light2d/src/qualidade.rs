@@ -10,7 +10,7 @@
 
 use ph2d_editor_core::luz_edits::NivelDaLuz;
 
-use crate::grade::{DEGRAU_PADRAO, Degrau};
+use crate::grade::{DEGRAU_PADRAO, Degrau, ENTORNO_ACIMA_DA_BAIXA};
 
 /// O teto do tempo de placa da luz: um terço do quadro a 60 Hz.
 pub const ORCAMENTO_MS: f64 = 1000.0 / 60.0 / 3.0;
@@ -31,6 +31,11 @@ pub fn degrau_do(nivel: NivelDaLuz) -> Degrau {
             DEGRAU_PADRAO.rebotes_por_quadro
         } else {
             1
+        },
+        entorno: if nivel == NivelDaLuz::Baixa {
+            DEGRAU_PADRAO.entorno
+        } else {
+            ENTORNO_ACIMA_DA_BAIXA
         },
         ..DEGRAU_PADRAO
     }

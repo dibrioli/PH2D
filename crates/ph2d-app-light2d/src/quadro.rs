@@ -593,7 +593,7 @@ impl LuzDoQuadro {
         if let Some(p) = self.preferencia
             && let Some(t) = r.solver.tempos_sem_esperar(gpu)
         {
-            // ⭐ W5d: o entorno faz parte do custo (fixo: não muda com o nível).
+            // ⭐ W5d: o entorno faz parte do custo (fixo: da Baixa à Média o texel dele é o mesmo, W6g §37).
             let te = self
                 .entorno
                 .as_mut()

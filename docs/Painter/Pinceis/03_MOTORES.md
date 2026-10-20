@@ -364,6 +364,34 @@ feito: a POÇA onde a caneta abranda (CAP-13) — o depósito é por passo; nenh
 **L13 — As lanes do Jitter alto (C39)** — decisão de LEI medida no Dabber/Spatter do Rebelle (53 §6). Pincéis: G-4, I-11, J-3. **M**.
 Portão: textura do Dabber + RSS a raio 300/1000.
 
+**L13 ✅ a memória (J2, 20/10)** — mecanismo: `dab_route.rs` casava o dab à lane por `limiar = r`; com Jitter 0,5 (disco de raio
+`r`) dois dabs vizinhos da MESMA ponta caem a até `2r` ⇒ o traço partia-se em 4–7 lanes, cada uma com a sua janela do rasto
+(`Trail`, `crescer` em `trail/janela.rs`: ~10 planos f32 de `(2h+1)²`, `h` ≈ 2r com o salto). Sonda `sonda_memoria_da_lei` (um
+raio por processo, `VmHWM`), lei crua do gerador: Dabber de antes 6–7 lanes, **573 MiB a r300 · 4 291 MiB a r1100** (sem Jitter 181 ·
+701). Cura na LEI: `BrushSpec::limiar_da_lane = r + 2·alcance do Jitter` (sem Jitter, o `r` de sempre — as miniaturas dos outros 27
+ao bit, dois binários do mesmo tronco): 1 lane, pico do gesto **165 MiB r300 · 1 221 MiB r1000** (mutante 4 lanes: 299 · 2 966). Portão
+`a_memoria_do_dabber_cabe` (processo filho por raio: 1 lane e ≤ 230 / 1 800 MiB); mutação limiar `r` SANGRA (4 lanes, 299 MiB).
+⚠️ O que ainda estourava o gerador NÃO era o Dabber: a fatia de 24 G é da LINHA e o `/tmp` (tmpfs) dos agentes conta nela como
+`shmem` — **14,6 G** a 20/10 (12 G num só `scratchpad/j2`). Sobram ~9 G; o Dabber regerou-se COMPLETO a `PH2D_LEI_FIOS=4`: pico 5,3 GiB,
+4,8 min (64 fios ≈ Σ raios ≈ 12 G, estimado — não cabe com o `/tmp` cheio). Quem enche o `/tmp` de uma linha encolhe a fatia dela.
+
+**L13 ✅ a lei das lanes e o Dabber (J2, 20/10)** — decisão medida na bateria REFEITA (`rebelle_bateria/OIL_AND_ACRYLIC/dabber_dabber`).
+Juntar as lanes NÃO é o que cura o «rasgado»: com a lâmina de antes, rugosidade 2,97 (lanes) × 2,96 (juntas), régua 346 × 346/420.
+O rasgado é a **lâmina de pé do Oil Bristle** (`dab_flatten` 0,68 a 90°) espalhada pelo Jitter — festões no deitado e o vertical
+estreito (29 px; o Rebelle 38/38, a esponja é REDONDA: `dabber.png` de pé ÷ deitado 37/36). Grelha (flatten 0 × jitter 0–0,5 ×
+paperGate 0–1, cada variante à largura do Rebelle): redondo · 0,4 · 1 = 390/420 e rugosidade ✗ 20 → 0; com a ponta redonda as
+lanes juntas 390 × separadas 382 ⇒ lei: **uma ponta = uma lane** (o Jitter espalha, não multiplica pincéis). O grão claro
+(`bristleNoiseLight` 0,55) fica entre as duas fotos do Rebelle, que se cercam (bateria: textura do recto ≤ ~11 — 0,6 dá 11,3 ✗;
+a do 52, seca: ≥ 9,6 — 0,25 dá 8,1 ✗): 10,9 e 9,67 (margem fina, as duas fotos discordam). **Exame final** (`exames/dabber_regua.txt`,
+prancha `pranchas/dabber.png`): **346 → 378/420**; ✗ rugosidade 20 → 4 · largura 12 → 0 · cobertura 8 → 2 · textura 4 → 14 (o preço do
+grão claro: o recto rápido, o vertical e o papel leem 11–12 contra 7,4–8,1). A prancha: os verticais com a largura do Rebelle, sem
+festões; FICA visível — estrias claras do relevo das cerdas e manchas claras no traço onde o Rebelle é um azul liso granulado. Portões: `o_dabber_e_redondo` (Chato 1,11,
+foto 1,03 ± 0,15; mutação «o Dabber de antes» → 0,750 SANGRA), `cada_preset_parece_a_sua_midia` (Dabber a raio 18,5: textura 9,67 no
+vale), `a_largura_e_a_prometida` e a miniatura do Dabber verdes. Custo (`--custo`, smoke, **load 18–19**, o MÍNIMO de 3): p95
+15,95 ms a 200 px (o de antes 13,34; a ponta redonda cobre ~2× a área da lâmina), 10,39 a 40; RSS 82 · 103 MiB. ⚠️ Fica: a 200 px o
+Rebelle é pontilhado (cobertura 0,73, textura 37,6) e o nosso cheio (0,90 · 8) — o furo da esponja que cresce com o tamanho (lei
+do grão por tamanho de ponta, como a (b) do §7). SHA `8b4e2a1c21`. Prancha `pranchas/dabber.png` (antes: `dabber_antes.png`).
+
 **L15 — Nicho** (absorve a L14 «padrão ao longo do caminho», que nenhum pincel do catálogo pede): hatching (K-7; hoje Stripes Tiled), partículas com física (M-6, M-7; a Ribbon é a mola), glitter (M-5; spray + cor +
 `metallic` — MEDIR a composição antes), pattern pen e rolo (fora do catálogo). **M** cada, só por prioridade do catálogo.
 

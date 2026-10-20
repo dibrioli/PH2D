@@ -50,6 +50,9 @@ O nome muda se a janela reiniciar (confirme por `ListAgents` antes do sinal).
    continua a reprovar.
 10. **J3: o 2H é o HB com menos pigmento** (0,75 do tom do HB). O 2H do Rebelle só difere pela cor de omissão do
     preset (cinza 149 × 115), que os nossos presets não levam; um 2H real é mais claro à mesma mão.
+11. **J3: o Round Pressure (A-3) funde-se no Hard Round.** Com a opacidade por dab do Krita feita, fica a 0,286 do
+    Hard Round (degrau < 0,40) e o revisor cego não os separa nos tamanhos nem no «sobre»; a diferença (a opacidade
+    também pela pressão) é uma linha do cartão Pen no Hard Round, não outro pincel.
 7. **Fórmulas dos modos = W3C em sRGB** (provado contra o Rebelle/Krita); o Saturation/Linear Burn/Dodge do Rebelle a
    10× não seguem fórmula nenhuma — não se perseguem.
 

@@ -1017,7 +1017,7 @@ Continuam verdes (lote único, `laranja_2.log`): `a_luz_de_fora_nao_atravessa::*
 
 ## 36. ABERTO (por ordem — substitui o §34)
 
-1. **Smoke do dono** do laranja (a cena 5, o zoom que troca a oitava — as fotos de 20/10 como comparação).
+1. ~~Smoke do dono do laranja~~ — **«smoke ok» (20/10)**: o bug 6 fecha inteiro (a sombra e o laranja).
 2. Os −4 % que ficam a 8× (a grossura do entorno sobre todos os refletores de fora; 4× → −1,3 %): medir a memória e
    o tempo do entorno 4× nos tetos da placa antes de propor.
 3. O custo da borda (o §34.1): a `c2` da vista +0,36 ms / o entorno +0,32 ms em 1920×1080.

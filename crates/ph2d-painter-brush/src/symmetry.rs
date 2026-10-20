@@ -280,6 +280,11 @@ fn reflect_dab(dab: Dab, a: [f32; 2], d: [f32; 2]) -> Dab {
         dir: reflect_vec(dab.dir, d),
         step: reflect_vec(dab.step, d),
         ante: dab.ante.map(|a| a.orientado(|v| reflect_vec(v, d))),
+        // A caneta deitada (W6) e a forma da marca (L4): o azimute do estiramento é uma direcção como as outras.
+        tilt: dab.tilt.map(|t| crate::DabTilt {
+            azimuth: reflect_vec(t.azimuth, d),
+            ..t
+        }),
         ..dab
     }
 }
@@ -297,6 +302,10 @@ fn rotate_dab_about(dab: Dab, c: [f32; 2], r: [f32; 2]) -> Dab {
         ante: dab
             .ante
             .map(|a| a.orientado(|v| crate::heading::rotate(v, r))),
+        tilt: dab.tilt.map(|t| crate::DabTilt {
+            azimuth: crate::heading::rotate(t.azimuth, r),
+            ..t
+        }),
         ..dab
     }
 }
@@ -594,5 +603,37 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(hi.segments(), SYMMETRY_MAX_SEGMENTS);
+    }
+
+    /// ⭐ **A caneta deitada acompanha a cópia** (revisão do bloco C): o eixo maior da pegada deitada de uma cópia
+    /// espelhada é o da origem espelhado, e o de uma cópia radial o da origem rodado — antes o `azimuth` ficava o da
+    /// origem e a elipse saía na orientação errada nas cópias.
+    #[test]
+    fn a_caneta_deitada_acompanha_a_copia() {
+        let spec = crate::BrushSpec::default();
+        let d = Dab {
+            tilt: Some(crate::DabTilt {
+                azimuth: [0.6, 0.8],
+                length: 2.0,
+                width: 0.5,
+                ..crate::DabTilt::NEUTRA
+            }),
+            ..base_dab()
+        };
+        let eixo = |x: &Dab| spec.dab_footprint_of(x).frame();
+        let igual_a_menos_do_sinal = |a: [f32; 2], b: [f32; 2]| {
+            let dot = (a[0] * b[0] + a[1] * b[1]).abs();
+            assert!(dot > 0.9999, "{a:?} × {b:?}");
+        };
+        let espelho = [1.0, 0.0];
+        igual_a_menos_do_sinal(
+            eixo(&reflect_dab(d, [0.0, 0.0], espelho)),
+            reflect_vec(eixo(&d), espelho),
+        );
+        let r = [0.0, 1.0];
+        igual_a_menos_do_sinal(
+            eixo(&rotate_dab_about(d, [0.0, 0.0], r)),
+            crate::heading::rotate(eixo(&d), r),
+        );
     }
 }

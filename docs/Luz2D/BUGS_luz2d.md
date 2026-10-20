@@ -120,4 +120,8 @@
   atrás do L 0,047 → 0, atrás da parede de 0,03 m 0,166 → 0; a cena 5 na troca de oitava, sombra +69 %/+141 % →
   −14 %/−11 % contra a grade esticada (o resto é o rebote dos refletores de fora, ver §34.2). Gates
   `a_luz_de_fora_nao_atravessa::*` com prova de mutação (6/6). Custo: +0,6…+3,2 % de memória; +0,36 ms na vista
-  e +0,32 ms no entorno em 1920×1080. Falta o smoke do dono.
+  e +0,32 ms no entorno em 1920×1080.
+- **Smoke do dono (20/10, [foto 1](smoke/2026-10-20_bug6_cura_foto1.png), [foto 2](smoke/2026-10-20_bug6_cura_foto2.png)):
+  «sombra ok. laranja (influência do objeto superior) diminui».** A sombra está curada; o que sobra é o REBOTE do
+  refletor de cima quando ele sai da grade da vista e passa ao entorno — o mesmo −10…−14 % de vermelho que a régua
+  já media nas faces e na sombra contra a grade esticada (handoff W6g §34.2). Aberto: o mecanismo dessa perda.

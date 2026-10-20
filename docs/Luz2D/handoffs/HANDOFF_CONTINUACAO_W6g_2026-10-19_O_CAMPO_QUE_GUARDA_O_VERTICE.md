@@ -945,7 +945,13 @@ por canal). Continuam verdes: `o_rebote_de_fora_da_grade` (com o `o_entorno_nao_
 2. **Quem está certo no rebote de fora:** a cena 5 com a grade a cobrir tudo fica +38 % de vermelho contra o
    gabarito `Rebote`, e a borda fica −10 % contra a esticada nas faces (só o rebote dos refletores de fora) — medir
    o gabarito convergido antes de usar qualquer dos dois como teto.
-3. O smoke do dono do bug 6 (a cena 5 com o zoom que tira a lâmpada da vista) com esta cura.
+3. **O smoke do dono (20/10): «sombra ok. laranja (influência do objeto superior) diminui»** (fotos em
+   `docs/Luz2D/smoke/2026-10-20_bug6_cura_foto*.png`). É o item 2 visto na tela: o rebote do refletor de cima,
+   quando ele sai da grade e passa ao entorno, chega −10…−14 % (vermelho) contra a esticada. Por bissectar, com as
+   réguas de `target/bug6/` (a `bug6_a_grade_esticada`, casos «cena inteira»/«sem o disco»/«só o L e a cruz»):
+   (a) a fonte do rebote dele no entorno (a c0 da 1.ª passagem, grossa, com o miolo mascarado — ele não recebe a
+   luz que a vista emite nem a que ela devolve); (b) o nível capado (`fora.z`) e o cone-pai na leitura pela borda;
+   (c) o gabarito convergido (o item 2) — qual das três explica os −10 %, antes de mexer.
 4. A lei W6d com `DISTANTES` no relógio (o §20.2). 5. A anomalia da r5b (§12). 6. A família (b) (37–38). 7. Os
    zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.
 

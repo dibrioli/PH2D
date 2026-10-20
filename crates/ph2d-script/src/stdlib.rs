@@ -89,9 +89,6 @@ pub(crate) fn wire(lua: &Lua) -> mlua::Result<()> {
             let chunk = lua
                 .load(source.as_bytes().to_vec())
                 .set_name(name)
-                // ⛔ Só TEXTO: o modo adivinhado do mlua tomaria um texto que começa por um byte
-                // abaixo de `\n` por bytecode, e o `luau_load` não confere bytecode (fura o HR-9).
-                .set_mode(mlua::chunk::ChunkMode::Text)
                 .set_environment(env)
                 .into_function();
             Ok(match chunk {

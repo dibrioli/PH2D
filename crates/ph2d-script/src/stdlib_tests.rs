@@ -153,9 +153,9 @@ fn a_familia_do_inteiro_satura() {
     assert!(erros.is_empty(), "{}", erros.join("\n"));
 }
 
-/// ⛔ HR-9: o `loadstring` de um script recusa BYTECODE de verdade (compilado aqui pelo `Compiler`),
-/// porque o `luau_load` não o confere. Sem o `ChunkMode::Text` o mlua tomava-o por bytecode e
-/// carregava-o (mutação sobrevivente do fecho de 20/10: o caso com `\t` não era bytecode válido).
+/// ⛔ HR-9: o `loadstring` de um script recusa BYTECODE de verdade (compilado aqui pelo `Compiler`) —
+/// o `luau_load` não o confere. Quem o recusa é o modo SEGURO do mlua (`Lua::new`), medido no fecho de
+/// 20/10: um `set_mode(Text)` acrescentado por precaução sobreviveu à mutação e saiu.
 #[test]
 fn o_loadstring_de_um_script_recusa_bytecode() {
     let host = ScriptHost::new().expect("vm");

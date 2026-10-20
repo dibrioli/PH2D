@@ -207,8 +207,9 @@ corrotina.
 - **Corrotinas deixaram de se reaproveitar** (lente de correcção): um `coroutine.running()` guardado
   alcançava o gancho de OUTRO objecto que herdasse a corrotina. Custo medido no §2: 198 ns por gancho
   (nova) contra 49 (`call`). Uma espera cuja corrotina foi retomada por fora já não é retomada.
-- **`loadstring` só aceita TEXTO** (`ChunkMode::Text`): o modo adivinhado tomava por bytecode um texto
-  que começasse por um byte de controlo — e o `luau_load` não confere bytecode (furava o HR-9).
+- **`loadstring` e bytecode — o furo apontado pela auditoria NÃO existia** (medido): o modo seguro do
+  mlua (`Lua::new`) já recusa pedaços binários; um `set_mode(Text)` acrescentado sobreviveu à mutação e
+  saiu. O gate `o_loadstring_de_um_script_recusa_bytecode` (bytecode REAL, do `Compiler`) fica.
 - Trocar de script a meio do quadro (`attach_script` num objecto que já corre outro) renasce já; o
   `init` de quem pediu para morrer não corre; os filhos de uma cópia contam como da corrida.
 - O protótipo `tests/spike` C3 passou a medir as ESPERAS DA CENA: 1000 esperas em [0,500; 0,510) s a

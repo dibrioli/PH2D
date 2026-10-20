@@ -812,3 +812,54 @@ medir se é o gabarito ou o produto, antes de o usar como teto.
    direção), tapada pelos opacos finos da vista.
 2. A lei W6d com `DISTANTES` no relógio (o §20.2). 3. A anomalia da r5b (§12). 4. A família (b) (37–38): da W5g, fora.
 5. Os zera/limpa por um carimbo de quadro (~0,008 ms) — só se o C3 voltar à linha dos +5 %.
+
+## 32. O bug 6 — o MECANISMO bissectado (20/10) e a cura escrita ANTES de mexer
+
+Réguas: `crates/ph2d-app-light2d/tests/it/bug6_regua.rs` (as cinco do §30 + `bug6_bissecta_o_entorno`,
+`bug6_bissecta_a_vista`, `bug6_a_parede_fina`; `#[ignore]`, só leitura das texturas, nenhum código do produto),
+logs em `target/bug6/bug6_bissecta*.log` e `bug6_parede_fina.log`. Cena mínima do §30 (o L + o corpo que brilha
+fora da grade), ponto «atrás da haste» (−4,2; −2,0), canal vermelho.
+
+| Variante (mesmo processo) | c0 do entorno ali | c0 da vista | fluência |
+|---|---|---|---|
+| entorno 8× (a base) | **0,0000** | 0,0476 | 0,0473 |
+| entorno 4× · 2× · 1× | 0 · 0 · 0 | 0,0277 · 0,0182 · **0** | igual |
+| entorno 8× com a fina (`so_a_c0 = false`) | 0 | 0,0476 | 0,0473 |
+| **vista SEM o rebote**, entorno com ou sem | 0 | **0,0000** | **0,0000** |
+| vista com o rebote, entorno SEM o rebote | 0 | 0,0476 | 0,0473 |
+
+1. **O entorno TAPA** (a c0 dele é 0 atrás do L em todo fator): a fuga não está nele, nasce na VISTA.
+2. **É o REBOTE da vista** (sem ele, 0 ao 4.º decimal). A c0 do entorno guarda luz DENTRO dos opacos (0,147 no
+   interior do L, alfa 0) e a soma do `c2_hrc.wgsl` (saída) amostra-a com o sampler `Linear` SEM o alfa: a até um
+   texel do ENTORNO (8 da vista) da face, os texels de FORA da vista recebem a luz do interior (0,0092 a 0,1 m da
+   face de trás, sem rebote) — e a c0 da vista tem lá alfa 1. O `c4_rebote` acha nesses texels a luz da face de
+   TRÁS do L, que passa a brilhar e ilumina a sombra. Cai com o fator (4×, 2×) porque a faixa encolhe; a 1× os
+   centros coincidem e some.
+3. **Há uma 2.ª fuga, do MÉTODO** (`bug6_a_parede_fina`, uma parede no lugar do L, vista sem rebote): com 0,06 m
+   ou mais o entorno tapa a 0; com **0,03 m** (dois texels da vista, ¼ do texel do entorno) o entorno não a vê e
+   a luz de fora passa a **90 %** (0,166 contra 0). Uma c0 (fluência, sem direção) somada depois dos raios da vista
+   não pode ser tapada por um opaco que só a vista resolve. Com o rebote, ~0,043 atrás de toda parede (a fuga 2).
+
+### A cura (escrita antes de mexer): a luz de fora ENTRA PELA BORDA
+
+A fuga 2 só por si curava-se com o alfa na amostra; a 3 não — o padrão-ouro é o método, que cura as duas:
+
+- **O entorno guarda os R de todos os níveis** (`Config::arquivo_da_borda`, posto pelo `config_do_entorno`;
+  `PH2D_LIGHT2D_BORDA=0` volta à soma da c0 para comparar): o `hrc_desce` escreve cada R_n(xi, v, m) também num
+  buffer `luz2d/buf/hrc_arquivo` (todos os quadrantes, níveis 1..N−1; declarado na `PassList`, G5).
+- **A vista lê-o onde hoje lê o CÉU:** o `r_de_cima` responde `céu × arco` quando a sonda de cima está fora do
+  que se guarda (o raio saiu da grade) ou no topo. Com o entorno: a sonda `e` recua pela direção do centro do cone
+  até à borda da grade (`b`, o ponto onde a luz de fora entra), `b` passa à grade canónica do entorno no MESMO
+  quadrante, e o R dele no MESMO cone (o mesmo nível: os cones não dependem do texel) sai pela bilinear das sondas
+  do entorno; acima do topo do entorno, o cone-pai × `arco(n, j)/arco(K, pai)`; fora do entorno, o céu. A luz de
+  fora passa então pelos opacos FINOS da vista (os T dela até `b`) e o `c0_em` dela mascara o interior — as duas
+  fugas fecham pelo mesmo caminho.
+- **A soma da c0 na saída sai** no modo da borda (fica só para `PH2D_LIGHT2D_BORDA=0`). O miolo continua
+  mascarado no entorno (o `o_entorno_nao_conta_duas_vezes` guarda-o).
+- **Custo previsto:** o arquivo, Σ quadrantes Σ níveis `nx·Y·2ⁿ·8 B` — no entorno 8× de 1920×1080 (256×160)
+  ≈ 9,7 MB; o tempo, uma escrita a mais por R no entorno e a bilinear só nos ramos do céu da vista. A medir nos
+  portões dos tetos da placa.
+- **Gates (com prova de mutação):** «a luz de fora não atravessa um opaco da vista» — a cena mínima (o L) e a
+  parede de 0,03 m, teto perto de 0, controlo = sem o opaco (a luz chega); a cena 5 na troca de oitava contra a
+  grade esticada. Continuam verdes: `o_rebote_de_fora_da_grade`, `o_entorno_nao_conta_duas_vezes_…`,
+  `a_luz_num_ponto_nao_muda_com_a_vista*`.

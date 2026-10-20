@@ -111,6 +111,9 @@
      (24 % do que chega sem o L). Com o entorno 4× e 2× (em vez de 8×) a fuga cai a 0,028 e 0,018, sem
      sumir; sem o `miolo` no entorno, igual. O gate `o_rebote_de_fora_da_grade` não a via: o ponto dele
      (cena 3) vê o refletor de fora sem nada no meio.
-- **Aberto:** porque é que o entorno não tapa por inteiro (o mesmo HRC na grade da vista tapa a 0) e a cura;
-  o gate permanente nasce com ela — «a luz de fora não atravessa um opaco da vista» (a cena mínima, teto
-  perto de 0, controlo = sem o L) e a cena 5 com a oitava a mudar contra a grade esticada.
+  6. **O mecanismo (bissectado, handoff W6g §32):** o entorno TAPA (a c0 dele é 0 atrás do L); a fuga é o REBOTE
+     da vista — a soma da c0 do entorno (sampler `Linear`, sem o alfa) leva a luz do INTERIOR do L aos texels de
+     fora junto à face de trás, e o rebote acende essa face (sem o rebote da vista: 0). E há uma 2.ª, do método:
+     uma parede de 0,03 m (¼ do texel do entorno) deixa passar 90 % da luz de fora.
+- **Aberto:** a cura escrita no §32 — a luz de fora ENTRA PELA BORDA da grade da vista (o R do entorno no lugar do
+  céu), tapada pelos opacos finos da vista; os gates nascem com ela.

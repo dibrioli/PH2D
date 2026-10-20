@@ -60,6 +60,11 @@ impl Editor {
         for (k, f) in &parcel.files {
             files.entry(*k).or_insert_with(|| f.clone());
         }
-        self.place_copies(doc, history, &parcel.els, Landing::Elsewhere(Some(centre), 0))
+        self.place_copies(
+            doc,
+            history,
+            &parcel.els,
+            Landing::Elsewhere(Some(centre), 0),
+        )
     }
 }

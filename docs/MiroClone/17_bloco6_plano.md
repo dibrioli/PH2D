@@ -272,12 +272,44 @@ o do varrimento dos 100 mil que o rectângulo já paga.
 | a menção como posições no texto | ⛔ o `TeamWrite::Text` leva só o texto: as posições divergiam entre pares |
 | menção no texto de notas/formas | ⛔ o Miro não notifica por ela; fora |
 
-### Por fazer (nomeado)
+### Feito depois (20/10, 2.ª janela)
 
-- O realce de cor das menções no texto do fio (o Miro pinta-as a azul): o pintor do fio é de uma cor só.
-- O GATE de M4: ler `saidas/bloco6_laco.next.json` e exigir que o nosso laço com `cover = 1.0` dê o MESMO conjunto do
-  «contain» deles nos casos 1, 1b, 2–9 e 6b (o caso 10, grupos, é divergência escolhida — abaixo). Os elementos deles entram pelo
-  leitor `.excalidraw` que já temos (`ph2d-board-excalidraw`).
+- ✅ `8c7021ed33` — o GATE de M4 `our_lasso_at_full_cover_is_their_contain` (`ph2d-board-excalidraw`,
+  `fidelity_bloco6_tests.rs`): os elementos deles pelo nosso leitor, o nosso laço com `cover = 1.0`
+  (`Editor::lasso_pick_covering`) dá o MESMO conjunto do «contain» nos casos 1, 1b, 2–9 e 6b; nas corridas `.ctrlalt` e
+  `.selecao` (só o caso 1 gravado) também. O caso 10 (grupos) fica escrito como divergência; **controlo**: com o
+  `LASSO_COVER` do Miro a comparação cai EXACTAMENTE nos casos da fracção (1, 1b, 6b).
+- ✅ `ff9703e2a3` — o realce a azul (`ColorToken::Accent`) das menções no texto do fio: `paint_text_block_spans` (a mesma
+  passada de layout; a cor é a de cada cluster, `visual_clusters` na ordem do `positioned_glyphs`; contas diferentes ⇒ uma
+  cor só, nunca a de outro glifo) e `mention_spans` (cada ocorrência do `Who::label`, a mesma pergunta do `keep_mentions`;
+  encaixados num trecho). Gates: `spans_tests` (2), `mention_spans_cover_every_label_the_text_shows`,
+  `the_open_thread_paints_the_mention_in_its_own_colour` (ecrã real: +2 corridas, os mesmos glifos); mutações «sem os
+  trechos» e «a cor sempre a base» sangram.
+
+### Provas de mutação do bloco (20/10)
+
+**63 mutações em 6 leis; 1.ª ronda 38 sangram, 25 sobrevivem: 9 inofensivas por desenho, 16 gates em falta.** Escritos
+(`712e79f899`, `3d6a868046`) ⇒ **as 16 sangram** na 2.ª ronda (logs `r2_law*.log` do agente).
+
+| lei | mutações | 1.ª ronda | gates acrescentados (o sobrevivente que os pediu) |
+|---|---|---|---|
+| cobertura (`cover.rs`) | 20 | 12 | `what_sits_in_the_notch_of_a_c_stays_out` (C7, o atalho a 1), `a_diagonal_arrow_counts_by_its_route` (C12), `ink_counts_by_its_length_along_its_turned_points` (C13, C14), `a_turned_frame_counts_by_its_turned_box` (C15 — só o frame chega à caixa) |
+| porta (`select_region.rs`) | 8 | 5 | `ninety_two_percent_inside_is_in` (S5, 0,9 → 0,95) |
+| colar noutro quadro | 10 | 8 | `a_copy_pasted_in_another_board_lives_in_the_frame_it_lands_in` (P9), `a_cloned_board_is_another_board` (P10, o clone herdava a origem) |
+| `for_me_at` | 8 | 4 | `my_own_reply_and_my_later_reply_are_never_for_me` (F1, F4, F8) |
+| `keep_mentions` | 10 | 6 | `the_mentions_are_one_sorted_list_without_repeats` (K3, K4, K5, K8 — `edit_calling`) |
+| `parked` | 7 | 3 | `a_parked_thread_takes_its_pin_and_resolved_while_it_waits` (Q5; `ph2d-board-sync/src/team_tests.rs`, novo) |
+
+**Inofensivas por desenho (9):** C9 (o atalho pelo canto: sem aresta na caixa o nº de voltas é constante nela), C10 (sem o
+atalho: o caminho da área dá o mesmo 0/1 — é só velocidade), C19 (`near` sem o corte lateral: o filtro por faixa devolve
+vazio), S7/S8 (`meets` e `is_finite` são pré-filtros: fora ⇒ cobertura 0, NaN ⇒ `meets` falso), F5 (`[..i]` → `[..=i]`: a
+própria mensagem tem `author != me`), Q3/Q4 (a casca e os fios vivos ficam disjuntos; `threads_gone` corta o acesso antes),
+Q7 (guarda defensiva sobre o mesmo disjunto).
+
+**Achado de caminho:** `tests::alt_drag_leaves_the_original_…` e `tests::alt_resizes_about_the_centre` falhavam no HEAD desde
+o B12 (o `Ctrl` deles era incidental — sem íman — e `Ctrl+Alt`+arrastar passou a ser o laço, por cima de tudo, como no
+Excalidraw). Cura nos testes: `ALT` só (sozinha no quadro não há íman). A janela do B12 correu `tests::lasso` por nome e não
+os viu — a suíte inteira da crate só no fecho.
 
 ## §10 — M4: o oráculo Excalidraw `next` (0.18.0-143b5b6) corrido sobre cenas NOSSAS (20/10)
 

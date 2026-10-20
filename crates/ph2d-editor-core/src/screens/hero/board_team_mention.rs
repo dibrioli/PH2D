@@ -73,7 +73,11 @@ fn open_now(hero: &HeroScreen, focused: bool) -> Option<(usize, usize, Vec<Who>)
         .filter(|p| !p.me)
         .map(|p| p.name.clone())
         .collect();
-    let people = hero.documents.active_board()?.team.people(&me(hero), &present);
+    let people = hero
+        .documents
+        .active_board()?
+        .team
+        .people(&me(hero), &present);
     let found = matches(&people, &q);
     (!found.is_empty()).then_some((at, caret, found))
 }

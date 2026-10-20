@@ -62,7 +62,12 @@ fn editor() -> Editor {
 fn ours(case: &Value, cover: f64) -> BTreeSet<String> {
     let els = case["elementos"].as_array().unwrap();
     let doc = abre(els).doc;
-    assert_eq!(doc.live_len(), els.len(), "{}: o leitor deixou cair alguém", case["nome"]);
+    assert_eq!(
+        doc.live_len(),
+        els.len(),
+        "{}: o leitor deixou cair alguém",
+        case["nome"]
+    );
     // Os de fora ganham ids pela ordem do ficheiro (`read`); confere-se pela posição nas formas (as
     // linhas, as setas e a tinta têm a caixa dos pontos, com outra origem).
     let name = |id: ElementId| -> String {
@@ -72,7 +77,7 @@ fn ours(case: &Value, cover: f64) -> BTreeSet<String> {
             el.connector().is_some()
                 || el.ink().is_some()
                 || (el.x - v["x"].as_f64().unwrap()).abs() < 1e-9
-                && (el.y - v["y"].as_f64().unwrap()).abs() < 1e-9,
+                    && (el.y - v["y"].as_f64().unwrap()).abs() < 1e-9,
             "{}: o id {} não é {}",
             case["nome"],
             id.0,
@@ -132,19 +137,29 @@ fn our_lasso_at_full_cover_is_their_contain() {
             let want = theirs(r);
             let got = ours(case, 1.0);
             if name == GROUPS {
-                assert!(want.is_empty(), "{run}: o contain deles mudou nos grupos: {want:?}");
+                assert!(
+                    want.is_empty(),
+                    "{run}: o contain deles mudou nos grupos: {want:?}"
+                );
                 let all: BTreeSet<String> = ["gA", "gB"].map(str::to_owned).into();
                 assert_eq!(got, all, "{run}: o grupo inteiro por um membro dentro");
                 continue;
             }
-            assert_eq!(got, want, "{run} {name}: o nosso laço (cover 1.0) ≠ o contain deles");
+            assert_eq!(
+                got, want,
+                "{run} {name}: o nosso laço (cover 1.0) ≠ o contain deles"
+            );
             if ours(case, LASSO_COVER) != want {
                 miro_differs.insert(name);
             }
             done.insert(name);
             seen += 1;
         }
-        assert_eq!(done, expect.iter().copied().collect(), "{run}: casos corridos");
+        assert_eq!(
+            done,
+            expect.iter().copied().collect(),
+            "{run}: casos corridos"
+        );
         let fraction: BTreeSet<&str> = ["1_fracao", "1b_limiar", "6b_C_raso"].into();
         assert_eq!(
             miro_differs,

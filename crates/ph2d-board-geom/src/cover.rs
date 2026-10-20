@@ -131,9 +131,12 @@ fn area_cover_edges(region: &[Vec<[f64; 2]>], lasso: &[Edge]) -> f64 {
     if re.is_empty() {
         return 0.0;
     }
-    let [x0, x1] = re.iter().map(span_x).fold([f64::INFINITY, f64::NEG_INFINITY], |m, s| {
-        [m[0].min(s[0]), m[1].max(s[1])]
-    });
+    let [x0, x1] = re
+        .iter()
+        .map(span_x)
+        .fold([f64::INFINITY, f64::NEG_INFINITY], |m, s| {
+            [m[0].min(s[0]), m[1].max(s[1])]
+        });
     let le: Vec<Edge> = lasso
         .iter()
         .filter(|e| {
@@ -303,8 +306,20 @@ impl Lasso {
         }
         let edges = edges_of(&[trail.to_vec()]);
         let bbox = trail.iter().fold(
-            [f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY],
-            |b, p| [b[0].min(p[0]), b[1].min(p[1]), b[2].max(p[0]), b[3].max(p[1])],
+            [
+                f64::INFINITY,
+                f64::INFINITY,
+                f64::NEG_INFINITY,
+                f64::NEG_INFINITY,
+            ],
+            |b, p| {
+                [
+                    b[0].min(p[0]),
+                    b[1].min(p[1]),
+                    b[2].max(p[0]),
+                    b[3].max(p[1]),
+                ]
+            },
         );
         let x0 = bbox[0];
         let dx = ((bbox[2] - bbox[0]) / BUCKETS as f64).max(1e-12);
@@ -340,7 +355,10 @@ impl Lasso {
         if b < self.bbox[0] || a > self.bbox[2] {
             return Vec::new();
         }
-        let (ia, ib) = (Self::slot(self.x0, self.dx, a), Self::slot(self.x0, self.dx, b));
+        let (ia, ib) = (
+            Self::slot(self.x0, self.dx, a),
+            Self::slot(self.x0, self.dx, b),
+        );
         let mut ids: Vec<u32> = self.buckets[ia..=ib].iter().flatten().copied().collect();
         ids.sort_unstable();
         ids.dedup();

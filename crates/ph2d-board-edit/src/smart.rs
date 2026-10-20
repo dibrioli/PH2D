@@ -174,12 +174,19 @@ fn polygon_shape(
             for q in 0..4 {
                 let angle = base + f64::from(q) * std::f64::consts::FRAC_PI_2;
                 let (s, c) = angle.sin_cos();
-                let local: Vec<[f64; 2]> =
-                    corners.iter().map(|p| [p[0] * c + p[1] * s, -p[0] * s + p[1] * c]).collect();
-                let (lo, hi) = local.iter().fold(
-                    ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]),
-                    |(l, h), p| ([l[0].min(p[0]), l[1].min(p[1])], [h[0].max(p[0]), h[1].max(p[1])]),
-                );
+                let local: Vec<[f64; 2]> = corners
+                    .iter()
+                    .map(|p| [p[0] * c + p[1] * s, -p[0] * s + p[1] * c])
+                    .collect();
+                let (lo, hi) =
+                    local
+                        .iter()
+                        .fold(([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]), |(l, h), p| {
+                            (
+                                [l[0].min(p[0]), l[1].min(p[1])],
+                                [h[0].max(p[0]), h[1].max(p[1])],
+                            )
+                        });
                 let (w, h) = (hi[0] - lo[0], hi[1] - lo[1]);
                 if w <= tol || h <= tol {
                     continue;
@@ -229,7 +236,12 @@ impl Editor {
         let st = shape_style(style);
         let tol = px;
         match shape {
-            QuickShape::Ellipse { centre, rx, ry, rot } => {
+            QuickShape::Ellipse {
+                centre,
+                rx,
+                ry,
+                rot,
+            } => {
                 let s = Shape {
                     kind: ShapeType::Ellipse,
                     style: st,

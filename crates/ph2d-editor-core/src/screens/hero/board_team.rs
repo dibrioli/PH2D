@@ -15,15 +15,15 @@ use ph2d_host::PointerButton;
 
 #[path = "board_team_bubbles.rs"]
 mod bubbles;
+/// W11 — o quadro ao vivo (o painel «Live», os avatares, seguir, os cursores alheios).
+#[path = "board_live.rs"]
+pub mod live_board;
 /// W23 B14 — o `@` do compositor.
 #[path = "board_team_mention.rs"]
 pub mod mention;
 /// W23 B14 — o aviso, a bolinha e o «por ler para mim».
 #[path = "board_team_notify.rs"]
 pub mod notify;
-/// W11 — o quadro ao vivo (o painel «Live», os avatares, seguir, os cursores alheios).
-#[path = "board_live.rs"]
-pub mod live_board;
 #[path = "board_team_paint.rs"]
 mod paint;
 #[path = "board_team_panels.rs"]

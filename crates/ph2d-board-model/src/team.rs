@@ -403,12 +403,12 @@ impl Team {
                 t.messages
                     .iter()
                     .flat_map(|m| {
-                        std::iter::once(m.author.clone()).chain(m.mentions.iter().filter_map(
-                            |w| match w {
+                        std::iter::once(m.author.clone()).chain(m.mentions.iter().filter_map(|w| {
+                            match w {
                                 Who::Person(n) => Some(n.clone()),
                                 Who::Everyone => None,
-                            },
-                        ))
+                            }
+                        }))
                     })
                     .chain(t.read_by.iter().cloned())
             })

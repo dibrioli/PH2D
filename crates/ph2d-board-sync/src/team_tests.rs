@@ -2,7 +2,6 @@
 
 use super::*;
 
-
 fn at(n: u64) -> Lamport {
     Lamport {
         n,
@@ -23,7 +22,10 @@ fn a_parked_thread_takes_its_pin_and_resolved_while_it_waits() {
     let moved = Pin::Point([40.0, 50.0]);
     s.receive(
         &mut team,
-        &[(at(2), TeamWrite::Resolved(t, true)), (at(3), TeamWrite::Pin(t, moved))],
+        &[
+            (at(2), TeamWrite::Resolved(t, true)),
+            (at(3), TeamWrite::Pin(t, moved)),
+        ],
     );
     assert_eq!(s.pending(), 0, "a casca recebeu as duas escritas");
     let mut other = Team::default();

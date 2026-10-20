@@ -16,7 +16,10 @@ fn sides(corners: &[[f64; 2]], per: usize) -> Vec<[f64; 2]> {
     for w in corners.windows(2) {
         for k in 1..=per {
             let u = k as f64 / per as f64;
-            v.push([w[0][0] + (w[1][0] - w[0][0]) * u, w[0][1] + (w[1][1] - w[0][1]) * u]);
+            v.push([
+                w[0][0] + (w[1][0] - w[0][0]) * u,
+                w[0][1] + (w[1][1] - w[0][1]) * u,
+            ]);
         }
     }
     v
@@ -24,7 +27,10 @@ fn sides(corners: &[[f64; 2]], per: usize) -> Vec<[f64; 2]> {
 
 fn rotated(corners: &[[f64; 2]], deg: f64) -> Vec<[f64; 2]> {
     let (s, c) = deg.to_radians().sin_cos();
-    corners.iter().map(|p| [p[0] * c - p[1] * s, p[0] * s + p[1] * c]).collect()
+    corners
+        .iter()
+        .map(|p| [p[0] * c - p[1] * s, p[0] * s + p[1] * c])
+        .collect()
 }
 
 impl World {
@@ -60,7 +66,11 @@ impl World {
     }
 
     fn top(&self) -> Element {
-        self.doc.live_in_z_order().last().map(|e| (*e).clone()).expect("um elemento")
+        self.doc
+            .live_in_z_order()
+            .last()
+            .map(|e| (*e).clone())
+            .expect("um elemento")
     }
 }
 
@@ -68,7 +78,13 @@ fn kind(el: &Element) -> Option<ShapeType> {
     el.shape().map(|s| s.kind)
 }
 
-const RECT: [[f64; 2]; 5] = [[0.0, 0.0], [400.0, 0.0], [400.0, 250.0], [0.0, 250.0], [0.0, 0.0]];
+const RECT: [[f64; 2]; 5] = [
+    [0.0, 0.0],
+    [400.0, 0.0],
+    [400.0, 250.0],
+    [0.0, 250.0],
+    [0.0, 0.0],
+];
 
 #[test]
 fn holding_a_box_makes_a_rectangle_and_ctrl_z_gives_the_stroke_back() {
@@ -76,12 +92,23 @@ fn holding_a_box_makes_a_rectangle_and_ctrl_z_gives_the_stroke_back() {
     w.ink(&sides(&RECT, 50), Some(HOLD_NS), NONE);
     let el = w.top();
     assert_eq!(kind(&el), Some(ShapeType::Rectangle), "{:?}", el.kind);
-    assert!((el.w - 400.0).abs() < 1.0 && (el.h - 250.0).abs() < 1.0, "{} × {}", el.w, el.h);
+    assert!(
+        (el.w - 400.0).abs() < 1.0 && (el.h - 250.0).abs() < 1.0,
+        "{} × {}",
+        el.w,
+        el.h
+    );
     let st = &el.shape().unwrap().style;
-    assert!(st.fill.is_none() && st.stroke.is_some() && !st.round, "o traço da caneta, sem fundo");
+    assert!(
+        st.fill.is_none() && st.stroke.is_some() && !st.round,
+        "o traço da caneta, sem fundo"
+    );
     assert_eq!(w.doc.live_len(), 1);
     assert!(w.cmd(Command::Undo));
-    assert!(w.top().ink().is_some(), "o 1.º Ctrl+Z devolve o traço como foi desenhado");
+    assert!(
+        w.top().ink().is_some(),
+        "o 1.º Ctrl+Z devolve o traço como foi desenhado"
+    );
     assert!(w.cmd(Command::Undo));
     assert_eq!(w.doc.live_len(), 0);
 }
@@ -108,8 +135,19 @@ fn a_circle_and_a_rhombus() {
     w.ink(&circle, Some(HOLD_NS), NONE);
     let el = w.top();
     assert_eq!(kind(&el), Some(ShapeType::Ellipse));
-    assert!((el.w - el.h).abs() < 0.05 * el.w, "um círculo: {} × {}", el.w, el.h);
-    let rhombus = [[0.0, -150.0], [100.0, 0.0], [0.0, 150.0], [-100.0, 0.0], [0.0, -150.0]];
+    assert!(
+        (el.w - el.h).abs() < 0.05 * el.w,
+        "um círculo: {} × {}",
+        el.w,
+        el.h
+    );
+    let rhombus = [
+        [0.0, -150.0],
+        [100.0, 0.0],
+        [0.0, 150.0],
+        [-100.0, 0.0],
+        [0.0, -150.0],
+    ];
     w.ink(&sides(&rhombus, 40), Some(HOLD_NS), NONE);
     assert_eq!(kind(&w.top()), Some(ShapeType::Diamond));
 }
@@ -121,13 +159,25 @@ fn a_triangle_the_board_cannot_draw_stays_a_clean_stroke() {
     let mut w = world();
     let tri = [[0.0, 0.0], [300.0, 0.0], [150.0, -260.0], [0.0, 0.0]];
     w.ink(&sides(&tri, 50), Some(HOLD_NS), SHIFT);
-    assert_eq!(kind(&w.top()), Some(ShapeType::Triangle), "o regular é o do quadro");
+    assert_eq!(
+        kind(&w.top()),
+        Some(ShapeType::Triangle),
+        "o regular é o do quadro"
+    );
     let scalene = [[0.0, 0.0], [400.0, 0.0], [60.0, -220.0], [0.0, 0.0]];
     w.ink(&sides(&scalene, 50), Some(HOLD_NS), NONE);
     let el = w.top();
-    assert!(el.ink().is_some(), "o quadro não tem este triângulo: {:?}", el.kind);
+    assert!(
+        el.ink().is_some(),
+        "o quadro não tem este triângulo: {:?}",
+        el.kind
+    );
     let pts = crate::world_points(&el);
-    assert!(pts.len() <= 8, "a geometria limpa (cantos), não o traço: {}", pts.len());
+    assert!(
+        pts.len() <= 8,
+        "a geometria limpa (cantos), não o traço: {}",
+        pts.len()
+    );
 }
 
 /// A recta de uma forma a outra vira uma ligação presa às duas (o Excalidraw).
@@ -137,12 +187,22 @@ fn a_line_from_a_box_to_a_box_is_a_bound_arrow() {
     let a = w.rect([0.0, 0.0, 100.0, 100.0]);
     let b = w.rect([600.0, 0.0, 100.0, 100.0]);
     w.cmd(Command::Escape);
-    let line: Vec<[f64; 2]> = (0..=60).map(|i| [50.0 + 10.0 * f64::from(i), 50.0]).collect();
+    let line: Vec<[f64; 2]> = (0..=60)
+        .map(|i| [50.0 + 10.0 * f64::from(i), 50.0])
+        .collect();
     w.ink(&line, Some(HOLD_NS), NONE);
     let el = w.top();
     let c = el.connector().expect("uma ligação");
-    assert!(matches!(c.start, End::Bound { target, .. } if target == a), "{:?}", c.start);
-    assert!(matches!(c.end, End::Bound { target, .. } if target == b), "{:?}", c.end);
+    assert!(
+        matches!(c.start, End::Bound { target, .. } if target == a),
+        "{:?}",
+        c.start
+    );
+    assert!(
+        matches!(c.end, End::Bound { target, .. } if target == b),
+        "{:?}",
+        c.end
+    );
     assert_eq!(c.heads, [Head::None; 2]);
 }
 
@@ -166,12 +226,19 @@ fn the_board_hold_is_the_vector_hold() {
     let mut w = world();
     // PARADO conta desde o 1.º ponto a menos da folga do fim (a mesma porta do vetor).
     let pts = sides(&RECT, 50);
-    let j = ph2d_vec_edit::quickshape_hold::rest_index(&pts, ph2d_vec_edit::quickshape_hold::HOLD_SLOP_PX);
+    let j = ph2d_vec_edit::quickshape_hold::rest_index(
+        &pts,
+        ph2d_vec_edit::quickshape_hold::HOLD_SLOP_PX,
+    );
     let still = (pts.len() - 1 - j) as u128 * DT;
     w.ink(&pts, Some(HOLD_NS - still - 1), NONE);
     assert!(w.top().ink().is_some(), "antes do meio segundo é traço");
     w.ink(&pts, Some(HOLD_NS - still), NONE);
-    assert_eq!(kind(&w.top()), Some(ShapeType::Rectangle), "no meio segundo é a forma");
+    assert_eq!(
+        kind(&w.top()),
+        Some(ShapeType::Rectangle),
+        "no meio segundo é a forma"
+    );
     w.ink(&sides(&RECT, 50), None, NONE);
     assert!(w.top().ink().is_some(), "sem parar é traço");
     w.ed.quickshape = false;
@@ -180,7 +247,13 @@ fn the_board_hold_is_the_vector_hold() {
     w.ed.quickshape = true;
     w.ink(&sides(&RECT, 50), Some(HOLD_NS), NONE);
     let top = w.top();
-    assert_eq!(kind(&top), Some(ShapeType::Rectangle), "{:?} · {}", top.kind, w.doc.live_len());
+    assert_eq!(
+        kind(&top),
+        Some(ShapeType::Rectangle),
+        "{:?} · {}",
+        top.kind,
+        w.doc.live_len()
+    );
 }
 
 /// Com a forma viva, o 1.º Esc devolve o traço e o gesto continua; largar deixa o traço.
@@ -198,10 +271,16 @@ fn escape_gives_the_stroke_back_and_the_gesture_goes_on() {
         w.ed.pointer_move(&mut w.doc, &mut w.ts, at(p[0], p[1], NONE));
     }
     w.ed.at_time(t + HOLD_NS);
-    assert!(w.ed.ink_hold(&mut w.doc), "o quadro do gatilho faz nascer a forma");
+    assert!(
+        w.ed.ink_hold(&mut w.doc),
+        "o quadro do gatilho faz nascer a forma"
+    );
     assert!(w.ed.is_quick());
     assert!(w.cmd(Command::Escape));
-    assert!(!w.ed.is_quick() && w.ed.is_busy(), "devolveu o traço e continua a desenhar");
+    assert!(
+        !w.ed.is_quick() && w.ed.is_busy(),
+        "devolveu o traço e continua a desenhar"
+    );
     w.ed.pointer_up(&mut w.doc, &mut w.h, at(0.0, 0.0, NONE));
     assert!(w.top().ink().is_some());
     assert!(crate::world_points(&w.top()).len() > 100, "o traço cru");
@@ -228,5 +307,10 @@ fn dragging_the_live_shape_scales_it() {
     w.ed.pointer_up(&mut w.doc, &mut w.h, at(-200.0, -125.0, NONE));
     let el = w.top();
     assert_eq!(kind(&el), Some(ShapeType::Rectangle));
-    assert!((el.w - 800.0).abs() < 2.0 && (el.h - 500.0).abs() < 2.0, "{} × {}", el.w, el.h);
+    assert!(
+        (el.w - 800.0).abs() < 2.0 && (el.h - 500.0).abs() < 2.0,
+        "{} × {}",
+        el.w,
+        el.h
+    );
 }

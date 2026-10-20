@@ -29,7 +29,12 @@ pub(crate) struct Block6 {
 const SIDE: f64 = 140.0;
 const GAP: f64 = 30.0;
 /// ① o laço: 3 × 2 ideias.
-const F1: [f64; 4] = [0.0, 0.0, 3.0 * SIDE + 4.0 * GAP + SIDE, 2.0 * SIDE + 3.0 * GAP];
+const F1: [f64; 4] = [
+    0.0,
+    0.0,
+    3.0 * SIDE + 4.0 * GAP + SIDE,
+    2.0 * SIDE + 3.0 * GAP,
+];
 const F2: [f64; 4] = [F1[2] + 200.0, 0.0, 700.0, F1[3]];
 /// A 2.ª fila desce o que as lições da 1.ª ocupam (a foto de 20/10: a 320 tapavam os títulos).
 const ROW2: f64 = F1[3] + 760.0;
@@ -88,8 +93,20 @@ pub(crate) fn scene_block6(hero: &mut HeroScreen) -> Block6 {
     super::organize::frame(doc, tr("board.smoke.b6.f4"), F4, None);
     // Notas (cor e letra que se vêem com o quadro inteiro à vista; as caixas saíam pálidas na foto).
     let at = |x: f64| [F4[0] + x, F4[1] + 90.0, SIDE * 1.4];
-    let a = super::put_note(doc, ShapeType::Sticky, 3, super::note_text("board.smoke.b6.a"), at(GAP));
-    let b = super::put_note(doc, ShapeType::Sticky, 6, super::note_text("board.smoke.b6.b"), at(450.0));
+    let a = super::put_note(
+        doc,
+        ShapeType::Sticky,
+        3,
+        super::note_text("board.smoke.b6.a"),
+        at(GAP),
+    );
+    let b = super::put_note(
+        doc,
+        ShapeType::Sticky,
+        6,
+        super::note_text("board.smoke.b6.b"),
+        at(450.0),
+    );
     style.stroke_width *= 3.0;
     let bound = |target| End::Bound {
         target,
@@ -114,7 +131,10 @@ pub(crate) fn scene_block6(hero: &mut HeroScreen) -> Block6 {
     crate::io::author(hero);
     notify::seen_now(hero);
     let me = notify::me_of(&hero.documents);
-    let text = tr_with("board.smoke.b6.rui_says", &[("name", &Who::Person(me.clone()).label())]);
+    let text = tr_with(
+        "board.smoke.b6.rui_says",
+        &[("name", &Who::Person(me.clone()).label())],
+    );
     if let Some(b) = hero.documents.board_mut(board) {
         let pin = Pin::Element {
             id: launch,

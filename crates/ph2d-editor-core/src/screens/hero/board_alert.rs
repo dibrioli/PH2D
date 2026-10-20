@@ -146,7 +146,14 @@ pub(super) fn paint(
     fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
     let font = TypeToken::Sm.px();
     let text_r = b.map_or(r, |b| Rect::new(r.x, r.y, b.x - r.x, r.h));
-    paint_text_centered(text_system, scene, &alert.text, text_r, font, resolve(ColorToken::Text1, theme));
+    paint_text_centered(
+        text_system,
+        scene,
+        &alert.text,
+        text_r,
+        font,
+        resolve(ColorToken::Text1, theme),
+    );
     if let Some(b) = b {
         register(&mut hero.hit_index, b);
         if hero.store.hot_id() == Some(ids::BOARD_ALERT_ACTION) {
@@ -154,7 +161,14 @@ pub(super) fn paint(
             fill_rounded_rect(scene, b, rr, resolve(ColorToken::Bg2, theme));
         }
         let label = alert.action.map_or("", |a| tr(a.label()));
-        paint_text_centered(text_system, scene, label, b, font, resolve(ColorToken::Accent, theme));
+        paint_text_centered(
+            text_system,
+            scene,
+            label,
+            b,
+            font,
+            resolve(ColorToken::Accent, theme),
+        );
     }
 }
 

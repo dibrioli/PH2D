@@ -33,11 +33,14 @@ pub(crate) enum TabStep {
     },
 }
 
+/// Uma pilha das abas: cada passo com a sua hora.
+type TabStack = Vec<(u64, TabStep)>;
+
 /// As duas pilhas das abas, com a hora de cada passo.
 #[derive(Debug, Default)]
 pub(crate) struct TabHistory {
-    undo: Vec<(u64, TabStep)>,
-    redo: Vec<(u64, TabStep)>,
+    undo: TabStack,
+    redo: TabStack,
     /// A hora do último passo NOVO da cena (a shell avisa): um refazer de abas mais velho já não vale.
     scene_push: u64,
 }
@@ -114,7 +117,7 @@ impl Documents {
         }
     }
 
-    fn stacks(&mut self, redo: bool) -> (&mut Vec<(u64, TabStep)>, &mut Vec<(u64, TabStep)>) {
+    fn stacks(&mut self, redo: bool) -> (&mut TabStack, &mut TabStack) {
         let t = &mut self.tabs;
         if redo {
             (&mut t.redo, &mut t.undo)

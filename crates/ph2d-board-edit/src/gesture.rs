@@ -9,8 +9,8 @@ use ph2d_text::TextSystem;
 use crate::gesture_end::{is_note, undo_ops};
 use crate::guides::Snapper;
 use crate::resize::{axis_angle, drag_box, resize_frame, resized};
-use crate::snap::Guide;
 use crate::select_region::{LASSO_COVER, Region};
+use crate::snap::Guide;
 use crate::{Dir, Editor, Frame, Handle, Mods, Pointer, Tool, live};
 
 /// O laço guarda um ponto novo a cada tantos px de ECRÃ (o Excalidraw simplifica a `5/zoom`).

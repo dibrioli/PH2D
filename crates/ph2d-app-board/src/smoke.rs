@@ -44,13 +44,13 @@ mod guides;
 mod mind;
 #[path = "smoke_w23.rs"]
 mod w23;
-/// A cena 25 (W23 B5(1)), num ficheiro filho.
-#[path = "smoke_w23_elbow.rs"]
-mod w23_elbow;
 /// A cena 27 (W23 B5(4)), num ficheiro filho.
 /// A cena 28 (W23 bloco 6), num ficheiro filho.
 #[path = "smoke_w23_block6.rs"]
 mod w23_block6;
+/// A cena 25 (W23 B5(1)), num ficheiro filho.
+#[path = "smoke_w23_elbow.rs"]
+mod w23_elbow;
 #[path = "smoke_w23_tabs.rs"]
 mod w23_tabs;
 /// A cena 26 (W23 B5(2)), num ficheiro filho.

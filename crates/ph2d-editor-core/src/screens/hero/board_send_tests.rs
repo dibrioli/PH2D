@@ -55,7 +55,11 @@ fn move_to_board_from_the_menu_lands_on_the_other_board_and_undo_puts_them_back(
     t.shell_click_id(ids::CTX_MENU_BOARD_EL_MOVE_TO, "Move to board…");
     // O modal não oferece o próprio quadro: a 1.ª linha é o «Plan».
     t.shell_click_id(ids::CTX_SEND_BOARD_ROWS[0], "a linha do «Plan»");
-    assert_eq!(t.hero.documents.active(), Some(plan), "o destino fica activo");
+    assert_eq!(
+        t.hero.documents.active(),
+        Some(plan),
+        "o destino fica activo"
+    );
     assert_eq!((t.count(first), t.count(plan)), (0, 2), "moveu as duas");
     let ed = t.hero.documents.live.editor.as_ref().unwrap();
     assert_eq!(ed.selection().len(), 2, "chegam seleccionadas");
@@ -72,7 +76,10 @@ fn copy_to_board_keeps_both_and_offers_no_undo_button() {
     t.shell_click_id(ids::CTX_MENU_BOARD_EL_COPY_TO, "Copy to board…");
     t.shell_click_id(ids::CTX_SEND_BOARD_ROWS[0], "a linha do «Plan»");
     assert_eq!((t.count(first), t.count(plan)), (2, 2));
-    assert!(t.find(ids::BOARD_ALERT_ACTION).is_none(), "copiar não se desfaz por botão");
+    assert!(
+        t.find(ids::BOARD_ALERT_ACTION).is_none(),
+        "copiar não se desfaz por botão"
+    );
 }
 
 /// O `Ctrl+Z` de um quadro nunca desfaz noutro (doc 02 §1.4): depois dele, o botão do aviso já não
@@ -90,7 +97,10 @@ fn ctrl_z_on_the_target_undoes_only_it_and_the_undo_button_goes() {
     };
     t.key(BoardKey::Char('z'), ctrl, None);
     assert_eq!((t.count(first), t.count(plan)), (0, 0));
-    assert!(t.find(ids::BOARD_ALERT_ACTION).is_none(), "o botão mentiria");
+    assert!(
+        t.find(ids::BOARD_ALERT_ACTION).is_none(),
+        "o botão mentiria"
+    );
 }
 
 /// `Ctrl+C` num quadro e `Ctrl+V` noutro é a MESMA chegada: no meio da vista do destino.

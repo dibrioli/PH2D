@@ -29,7 +29,9 @@ impl T {
         let mut t = T::new();
         t.hero.documents.set_author("Ana".into());
         let (board, _) = t.hero.documents.active_parts().unwrap();
-        board.team.open(Pin::Point([900.0, 900.0]), "Rui", "hello", 1);
+        board
+            .team
+            .open(Pin::Point([900.0, 900.0]), "Rui", "hello", 1);
         board.team.open(Pin::Point([950.0, 950.0]), "Bia", "hi", 2);
         t.paint();
         t.note_at([-100.0, -100.0], "idea");
@@ -53,7 +55,11 @@ fn typing_at_lists_people_and_enter_calls_the_one_picked() {
     t.type_in("r");
     assert!(t.row(0) && !t.row(1), "o R estreita a lista ao Rui");
     t.hero_key(KEY_ENTER);
-    assert_eq!(t.field(), "look @Rui ", "o Enter com a lista aberta escolhe, não publica");
+    assert_eq!(
+        t.field(),
+        "look @Rui ",
+        "o Enter com a lista aberta escolhe, não publica"
+    );
     assert!(t.team().threads.len() == 2);
     t.type_in("now");
     t.hero_key(KEY_ENTER);
@@ -72,7 +78,11 @@ fn the_arrows_walk_the_list_and_a_click_picks() {
     t.type_in("and @");
     t.hero_key(KEY_ARROW_UP);
     t.hero_key(KEY_ENTER);
-    assert_eq!(t.field(), "@Rui and @everyone ", "↑ do 1.º dá a volta ao último");
+    assert_eq!(
+        t.field(),
+        "@Rui and @everyone ",
+        "↑ do 1.º dá a volta ao último"
+    );
     t.type_in("hey @b");
     t.shell_click_id(team_node(Hit::Mention(0)), "a Bia na lista");
     assert_eq!(t.field(), "@Rui and @everyone hey @Bia ");
@@ -94,18 +104,34 @@ fn a_mention_that_arrives_alerts_and_show_opens_the_thread() {
     let (b, _) = t.hero.documents.active_parts().unwrap();
     let th = b
         .team
-        .open_calling(Pin::Point([10.0, 10.0]), "Rui", "@Ana look", &[Who::Person("Ana".into())], 5)
+        .open_calling(
+            Pin::Point([10.0, 10.0]),
+            "Rui",
+            "@Ana look",
+            &[Who::Person("Ana".into())],
+            5,
+        )
         .unwrap();
     t.paint();
     let alert = t.hero.documents.live.alert.as_ref().expect("o aviso");
-    assert!(alert.text.starts_with("Rui mentioned you"), "{}", alert.text);
-    assert!(notify::board_has_news(&t.hero.documents, board), "a bolinha");
+    assert!(
+        alert.text.starts_with("Rui mentioned you"),
+        "{}",
+        alert.text
+    );
+    assert!(
+        notify::board_has_news(&t.hero.documents, board),
+        "a bolinha"
+    );
     t.shell_click_id(crate::ids::BOARD_ALERT_ACTION, "Show");
     assert_eq!(
         t.hero.documents.live.team.open.get(&board),
         Some(&OpenThread::Thread(th))
     );
-    assert!(!notify::board_has_news(&t.hero.documents, board), "lido: a bolinha some");
+    assert!(
+        !notify::board_has_news(&t.hero.documents, board),
+        "lido: a bolinha some"
+    );
 }
 
 /// Uma resposta num fio onde escrevi também é para mim (o Feed do Miro; dono 20/10).
@@ -114,7 +140,10 @@ fn a_reply_in_my_thread_alerts_too() {
     let mut t = T::new();
     t.hero.documents.set_author("Ana".into());
     let (b, _) = t.hero.documents.active_parts().unwrap();
-    let th = b.team.open(Pin::Point([10.0, 10.0]), "Ana", "plan?", 1).unwrap();
+    let th = b
+        .team
+        .open(Pin::Point([10.0, 10.0]), "Ana", "plan?", 1)
+        .unwrap();
     t.paint();
     let (b, _) = t.hero.documents.active_parts().unwrap();
     assert!(b.team.reply(th, "Rui", "yes", 2));
@@ -133,11 +162,20 @@ fn what_was_there_before_does_not_alert_but_the_tab_dot_counts_it() {
     let plan = t.hero.documents.create("Plan".into());
     let b = t.hero.documents.board_mut(plan).unwrap();
     b.team
-        .open_calling(Pin::Point([0.0; 2]), "Rui", "@Ana", &[Who::Person("Ana".into())], 1)
+        .open_calling(
+            Pin::Point([0.0; 2]),
+            "Rui",
+            "@Ana",
+            &[Who::Person("Ana".into())],
+            1,
+        )
         .unwrap();
     t.hero.documents.activate(Some(first));
     t.paint();
-    assert!(t.hero.documents.live.alert.is_none(), "o de antes não avisa");
+    assert!(
+        t.hero.documents.live.alert.is_none(),
+        "o de antes não avisa"
+    );
     assert!(notify::board_has_news(&t.hero.documents, plan));
     assert!(!notify::board_has_news(&t.hero.documents, first));
 }
@@ -149,15 +187,27 @@ fn for_you_keeps_only_my_threads_in_the_list() {
     let (b, _) = t.hero.documents.active_parts().unwrap();
     let mine = b
         .team
-        .open_calling(Pin::Point([0.0; 2]), "Rui", "@Ana", &[Who::Person("Ana".into())], 1)
+        .open_calling(
+            Pin::Point([0.0; 2]),
+            "Rui",
+            "@Ana",
+            &[Who::Person("Ana".into())],
+            1,
+        )
         .unwrap();
-    let other = b.team.open(Pin::Point([50.0; 2]), "Rui", "lunch", 2).unwrap();
+    let other = b
+        .team
+        .open(Pin::Point([50.0; 2]), "Rui", "lunch", 2)
+        .unwrap();
     t.paint();
     t.shell_click_id(button_node(NavButton::Comments), "Comments");
     assert!(t.find(team_node(Hit::Row(other))).is_some());
     t.btn(TeamButton::ListForYou);
     assert!(t.find(team_node(Hit::Row(mine))).is_some());
-    assert!(t.find(team_node(Hit::Row(other))).is_none(), "o almoço não é para a Ana");
+    assert!(
+        t.find(team_node(Hit::Row(other))).is_none(),
+        "o almoço não é para a Ana"
+    );
 }
 
 /// ⭐ O fio aberto pinta a azul o `@nome` de quem a mensagem chama (o Miro) — pelo ecrã real: o
@@ -188,6 +238,10 @@ fn the_open_thread_paints_the_mention_in_its_own_colour() {
         (e.resources.glyph_runs.len(), e.resources.glyphs.len())
     };
     let (plain, with) = (runs(false), runs(true));
-    assert_eq!(with.0, plain.0 + 2, "o `@Ana` é uma corrida própria no meio do texto");
+    assert_eq!(
+        with.0,
+        plain.0 + 2,
+        "o `@Ana` é uma corrida própria no meio do texto"
+    );
     assert_eq!(with.1, plain.1, "nenhum glifo se perde");
 }

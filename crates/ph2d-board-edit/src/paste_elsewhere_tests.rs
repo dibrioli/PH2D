@@ -38,7 +38,10 @@ fn a_node_pasted_in_another_board_never_hangs_from_a_strangers_map() {
     a.select(kid);
     assert!(a.cmd(Command::Copy));
     let (mut b, root_b) = W::new();
-    assert_eq!(root_a, root_b, "a fixtura precisa do MESMO número nos dois quadros");
+    assert_eq!(
+        root_a, root_b,
+        "a fixtura precisa do MESMO número nos dois quadros"
+    );
     b.ed.commit_text(&mut b.doc, &mut b.h);
     move_to(&mut a, &mut b);
     let copy = pasted(&mut a);
@@ -66,7 +69,11 @@ fn a_shape_pasted_in_another_board_never_lands_in_a_strangers_frame() {
     assert_eq!(g, f, "a fixtura precisa do MESMO número nos dois quadros");
     move_to(&mut a, &mut b);
     let copy = pasted(&mut a);
-    assert_eq!(a.el(copy).frame, None, "a cópia caiu dentro de um frame alheio");
+    assert_eq!(
+        a.el(copy).frame,
+        None,
+        "a cópia caiu dentro de um frame alheio"
+    );
 }
 
 #[test]
@@ -102,7 +109,11 @@ fn a_copy_pasted_in_another_board_lives_in_the_frame_it_lands_in() {
     let g = frame(&mut b, [-5_000.0, -5_000.0, 15_000.0, 15_000.0]);
     move_to(&mut a, &mut b);
     let copy = pasted(&mut a);
-    assert_eq!(a.el(copy).frame, Some(g), "a cópia ficou fora do frame onde caiu");
+    assert_eq!(
+        a.el(copy).frame,
+        Some(g),
+        "a cópia ficou fora do frame onde caiu"
+    );
 }
 
 /// Um documento CLONADO é outro quadro (outra origem): colar nele é colar noutro quadro.

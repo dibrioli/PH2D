@@ -71,7 +71,12 @@ pub(super) struct TeamV15 {
 
 impl From<TeamV15> for Team {
     fn from(t: TeamV15) -> Self {
-        let mut team = Self::from_v10(threads_v15(t.threads), t.versions, t.hidden_slides, t.next_id);
+        let mut team = Self::from_v10(
+            threads_v15(t.threads),
+            t.versions,
+            t.hidden_slides,
+            t.next_id,
+        );
         (team.polls, team.shown) = (t.polls, t.shown);
         team
     }

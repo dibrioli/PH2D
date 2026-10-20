@@ -51,6 +51,8 @@ mod audio_fx;
 mod blend_modes;
 /// O QUADRO (MiroClone): as abas de documento da barra de cima.
 mod board;
+/// O QUADRO — «Send to board…» da Hierarquia (W15).
+mod board_block6;
 /// O QUADRO — facilitar (W7): cronómetro, votação, carimbos, agrupar.
 mod board_facilitate;
 /// O QUADRO — a fidelidade ao Excalidraw (W9): a cena 11.
@@ -59,8 +61,6 @@ mod board_images;
 mod board_live;
 /// O QUADRO — o que é de uma pessoa (W12): o modo privado e a votação ao vivo.
 mod board_private;
-/// O QUADRO — «Send to board…» da Hierarquia (W15).
-mod board_block6;
 mod board_send;
 mod board_team;
 /// As strings dos MENUS da moldura (barra de menus, menus de contexto, paleta de comandos).

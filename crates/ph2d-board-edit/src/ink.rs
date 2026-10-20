@@ -91,8 +91,8 @@ pub(crate) enum InkGesture {
         pen: Pen,
         style: Style,
         points: Vec<[f64; 3]>,
-        /// W23 B13 — o QuickShape do vetor (segurar no fim do traço).
-        smart: crate::smart::Smart,
+        /// W23 B13 — o QuickShape do vetor (segurar no fim do traço); numa caixa: é o maior estado.
+        smart: Box<crate::smart::Smart>,
     },
     Erase {
         precise: bool,
@@ -129,7 +129,7 @@ impl Editor {
                     pen,
                     style,
                     points,
-                    smart: crate::smart::Smart::new(self.event_ns(), p.px),
+                    smart: Box::new(crate::smart::Smart::new(self.event_ns(), p.px)),
                 }
             }
             Tool::Eraser { precise } => {

@@ -10,7 +10,8 @@ use crate::documents::team::{Confirm, OpenThread};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{
-    fill_rounded_rect, paint_text_block, paint_text_block_spans, paint_text_centered, paint_text_elided, resolve,
+    fill_rounded_rect, paint_text_block, paint_text_block_spans, paint_text_centered,
+    paint_text_elided, resolve,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -302,7 +303,10 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
         }
         cy += small;
         let accent = resolve(ColorToken::Accent, theme);
-        let spans: Vec<_> = mention_spans(msg).into_iter().map(|r| (r, accent)).collect();
+        let spans: Vec<_> = mention_spans(msg)
+            .into_iter()
+            .map(|r| (r, accent))
+            .collect();
         cy += paint_text_block_spans(
             ts,
             scene,

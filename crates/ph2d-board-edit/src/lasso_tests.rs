@@ -2,8 +2,8 @@
 //! (o Miro), pela MESMA porta do rectângulo (travados fora, grupos inteiros), Shift soma, Esc devolve.
 
 use super::*;
-use std::collections::BTreeSet;
 use crate::select_region::{LASSO_COVER, Region};
+use std::collections::BTreeSet;
 
 /// O contorno de `[x0, y0, x1, y1]` a cada 10 unidades (o rasto de um rato), a fechar no início.
 fn square_trail(b: [f64; 4]) -> Vec<[f64; 2]> {
@@ -62,7 +62,11 @@ fn the_lasso_takes_what_is_ninety_percent_inside() {
     assert!(s.contains(&full) && s.contains(&most), "{s:?}");
     assert!(!s.contains(&short), "89 % dentro não entra");
     assert!(!s.contains(&half));
-    assert_eq!(w.ed.tool, Tool::Lasso, "a ferramenta fica (é um modo, como a caneta)");
+    assert_eq!(
+        w.ed.tool,
+        Tool::Lasso,
+        "a ferramenta fica (é um modo, como a caneta)"
+    );
 }
 
 /// A mesma porta do rectângulo: o travado fica de fora, quem é de um grupo traz o grupo.
@@ -78,7 +82,10 @@ fn the_lasso_and_the_marquee_ask_one_door() {
     w.trace(&square_trail([0.0, 0.0, 1_000.0, 1_000.0]), NONE);
     let s = w.picked();
     assert!(!s.contains(&most), "o travado entrou");
-    assert!(s.contains(&full) && s.contains(&half), "o grupo vem inteiro: {s:?}");
+    assert!(
+        s.contains(&full) && s.contains(&half),
+        "o grupo vem inteiro: {s:?}"
+    );
 }
 
 #[test]
@@ -91,7 +98,13 @@ fn shift_adds_and_escape_gives_the_selection_back() {
     // o rectângulo).
     w.ed.select(&w.doc, [half]);
     let t = square_trail([0.0, 0.0, 400.0, 400.0]);
-    w.ed.pointer_down(&mut w.doc, &mut w.h, &mut w.ts, at(t[0][0], t[0][1], SHIFT), VIEW);
+    w.ed.pointer_down(
+        &mut w.doc,
+        &mut w.h,
+        &mut w.ts,
+        at(t[0][0], t[0][1], SHIFT),
+        VIEW,
+    );
     for p in &t[1..] {
         w.ed.pointer_move(&mut w.doc, &mut w.ts, at(p[0], p[1], SHIFT));
     }
@@ -143,7 +156,12 @@ fn band(a: [f64; 2], b: [f64; 2]) -> Vec<[f64; 2]> {
     let l = dx.hypot(dy);
     let (d, n) = ([dx / l, dy / l], [-dy / l, dx / l]);
     let at = |p: [f64; 2], s: f64, t: f64| [p[0] + s * d[0] + t * n[0], p[1] + s * d[1] + t * n[1]];
-    vec![at(a, -10.0, -20.0), at(b, 10.0, -20.0), at(b, 10.0, 20.0), at(a, -10.0, 20.0)]
+    vec![
+        at(a, -10.0, -20.0),
+        at(b, 10.0, -20.0),
+        at(b, 10.0, 20.0),
+        at(a, -10.0, 20.0),
+    ]
 }
 
 /// Uma tinta recta de `a` a `b` (onze pontos), rodada de `angle` à volta do centro dela.
@@ -200,7 +218,10 @@ fn a_turned_shape_counts_by_its_turned_outline() {
     el.angle = std::f64::consts::FRAC_PI_4;
     let _ = BoardOp::Put(el).apply(&mut w.doc);
     let trail = square_trail([450.0, 450.0, 550.0, 550.0]);
-    assert!(!lassoed(&mut w, &trail).contains(&id), "contou o quadrado direito");
+    assert!(
+        !lassoed(&mut w, &trail).contains(&id),
+        "contou o quadrado direito"
+    );
     assert!(w.ed.lasso_pick_covering(&w.doc, &trail, 0.8).contains(&id));
 }
 
@@ -218,7 +239,10 @@ fn a_turned_frame_counts_by_its_turned_box() {
     el.angle = std::f64::consts::FRAC_PI_4;
     let _ = BoardOp::Put(el).apply(&mut w.doc);
     let trail = square_trail([450.0, 450.0, 550.0, 550.0]);
-    assert!(!lassoed(&mut w, &trail).contains(&id), "contou a caixa direita");
+    assert!(
+        !lassoed(&mut w, &trail).contains(&id),
+        "contou a caixa direita"
+    );
     assert!(w.ed.lasso_pick_covering(&w.doc, &trail, 0.8).contains(&id));
 }
 
@@ -234,7 +258,10 @@ fn ink_counts_by_its_length_along_its_turned_points() {
     let turned = ink(&mut w, flat[0], flat[1], std::f64::consts::FRAC_PI_4);
     let straight = ink(&mut w, flat[0], flat[1], 0.0);
     let s = lassoed(&mut w, &band(a, b));
-    assert!(s.contains(&diagonal), "contou a caixa e não o comprimento: {s:?}");
+    assert!(
+        s.contains(&diagonal),
+        "contou a caixa e não o comprimento: {s:?}"
+    );
     assert!(s.contains(&turned), "não rodou os pontos");
     assert!(!s.contains(&straight));
 }
@@ -294,8 +321,14 @@ fn measure_lasso_move_on_a_hundred_thousand() {
             })
             .collect()
     };
-    let (r, box_) = (800.0, [c[0] - 800.0, c[1] - 800.0, c[0] + 800.0, c[1] + 800.0]);
-    let trails = [("laço 600 pts", ring(600, r)), ("laço 2500 pts", ring(2_500, r))];
+    let (r, box_) = (
+        800.0,
+        [c[0] - 800.0, c[1] - 800.0, c[0] + 800.0, c[1] + 800.0],
+    );
+    let trails = [
+        ("laço 600 pts", ring(600, r)),
+        ("laço 2500 pts", ring(2_500, r)),
+    ];
     let mut best = [f64::INFINITY; 3];
     let mut got = [0usize; 3];
     for round in 0..7 {
@@ -304,10 +337,10 @@ fn measure_lasso_move_on_a_hundred_thousand() {
             let t0 = Instant::now();
             let n = match v {
                 0 => w.ed.inside(&w.doc, Region::Rect(box_)).len(),
-                _ => w
-                    .ed
-                    .inside(&w.doc, Region::Lasso(&trails[v - 1].1, LASSO_COVER))
-                    .len(),
+                _ => {
+                    w.ed.inside(&w.doc, Region::Lasso(&trails[v - 1].1, LASSO_COVER))
+                        .len()
+                }
             };
             best[v] = best[v].min(t0.elapsed().as_secs_f64() * 1e3);
             got[v] = n;
@@ -315,7 +348,10 @@ fn measure_lasso_move_on_a_hundred_thousand() {
     }
     let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("M2 · 100 000 caixas · loadavg {}", load.trim());
-    println!("rectângulo (caixa {box_:?}): {:.2} ms · {} dentro", best[0], got[0]);
+    println!(
+        "rectângulo (caixa {box_:?}): {:.2} ms · {} dentro",
+        best[0], got[0]
+    );
     for (i, (name, _)) in trails.iter().enumerate() {
         println!("{name}: {:.2} ms · {} dentro", best[i + 1], got[i + 1]);
     }

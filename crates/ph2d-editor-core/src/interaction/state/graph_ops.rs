@@ -127,7 +127,10 @@ impl WidgetStore {
 
     /// W23 B14 — as setas ↑/↓ no campo `id` passam a mover a lista dele (`None` = largar).
     pub fn arm_list_nav(&mut self, id: Option<NodeId>) {
-        let steps = self.list_nav.filter(|(old, _)| Some(*old) == id).map_or(0, |(_, s)| s);
+        let steps = self
+            .list_nav
+            .filter(|(old, _)| Some(*old) == id)
+            .map_or(0, |(_, s)| s);
         self.list_nav = id.map(|id| (id, steps));
     }
 

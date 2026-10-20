@@ -85,8 +85,12 @@ pub fn seen_now(hero: &mut HeroScreen) {
     let (boards, team) = hero.documents.boards_and_team();
     for b in boards.boards() {
         team.seeded.insert(b.id);
-        team.notified
-            .extend(b.team.threads.iter().flat_map(|t| t.messages.iter().map(|m| m.id)));
+        team.notified.extend(
+            b.team
+                .threads
+                .iter()
+                .flat_map(|t| t.messages.iter().map(|m| m.id)),
+        );
     }
 }
 
@@ -94,10 +98,7 @@ pub fn seen_now(hero: &mut HeroScreen) {
 pub fn paint_dot(scene: &mut VectorScene, r: Rect, theme: Theme) {
     let rad = Spacing::Xs.px();
     let c = ph2d_vector::Circle::new(
-        ph2d_vector::Point::new(
-            f64::from(r.x + r.w - rad * 1.5),
-            f64::from(r.y + rad * 1.5),
-        ),
+        ph2d_vector::Point::new(f64::from(r.x + r.w - rad * 1.5), f64::from(r.y + rad * 1.5)),
         f64::from(rad),
     );
     scene.inner_mut().fill(
@@ -113,5 +114,7 @@ pub fn paint_dot(scene: &mut VectorScene, r: Rect, theme: Theme) {
 #[must_use]
 pub fn board_has_news(docs: &Documents, id: BoardId) -> bool {
     let me = me_of(docs);
-    docs.boards().get(id).is_some_and(|b| unread_for_me(b, &me) > 0)
+    docs.boards()
+        .get(id)
+        .is_some_and(|b| unread_for_me(b, &me) > 0)
 }

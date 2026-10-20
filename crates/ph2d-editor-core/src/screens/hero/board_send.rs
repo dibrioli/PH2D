@@ -29,7 +29,8 @@ pub(crate) fn run_pending(hero: &mut HeroScreen, ts: &mut TextSystem) {
         return;
     };
     if hero.documents.active() != Some(s.from)
-        || s.to.is_some_and(|b| hero.documents.boards().get(b).is_none())
+        || s.to
+            .is_some_and(|b| hero.documents.boards().get(b).is_none())
     {
         return;
     }

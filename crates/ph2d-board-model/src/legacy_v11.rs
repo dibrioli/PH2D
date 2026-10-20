@@ -7,8 +7,7 @@ use serde::Deserialize;
 
 use super::{DocOld, doc_old};
 use crate::{
-    Board, BoardId, BoardSet, Camera, ElementId, Files, Poll, PollId, Team, Version,
-    VersionId,
+    Board, BoardId, BoardSet, Camera, ElementId, Files, Poll, PollId, Team, Version, VersionId,
 };
 
 /// A versão nomeada dos formatos 8–11: sem a lista dos ficheiros (não havia imagens).

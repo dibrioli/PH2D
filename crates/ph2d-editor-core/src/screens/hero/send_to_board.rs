@@ -49,13 +49,7 @@ pub fn open(store: &mut WidgetStore, row: NodeId) {
 
 /// ⭐ W23 B15 — o MESMO modal para a selecção do quadro `from` (`keep` = copiar, senão mover).
 pub fn open_selection(store: &mut WidgetStore, from: BoardId, keep: bool) {
-    open_kind(
-        store,
-        ContextMenuKind::SendSelection {
-            from: from.0,
-            keep,
-        },
-    );
+    open_kind(store, ContextMenuKind::SendSelection { from: from.0, keep });
 }
 
 fn open_kind(store: &mut WidgetStore, kind: ContextMenuKind) {
@@ -149,12 +143,13 @@ fn choose(hero: &mut HeroScreen, src: Source, board: Option<BoardId>) {
     hero.store.consume_last_context_menu();
     hero.store.set_focus(None);
     match src {
-        Source::Row(row) => hero
-            .bus
-            .push(EditorAction::Hierarchy(HierRequest::SendToBoardChosen {
-                row,
-                board: board.map(|b| b.0),
-            })),
+        Source::Row(row) => {
+            hero.bus
+                .push(EditorAction::Hierarchy(HierRequest::SendToBoardChosen {
+                    row,
+                    board: board.map(|b| b.0),
+                }))
+        }
         Source::Selection { from, keep } => {
             hero.documents.live.send = Some(super::board_send::Send {
                 from,

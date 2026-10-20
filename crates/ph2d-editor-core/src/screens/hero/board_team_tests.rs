@@ -90,8 +90,17 @@ fn mention_spans_cover_every_label_the_text_shows() {
             Who::Person("Bia".into()),
         ],
     };
-    let got: Vec<&str> = paint::mention_spans(&m).into_iter().map(|r| &text[r]).collect();
+    let got: Vec<&str> = paint::mention_spans(&m)
+        .into_iter()
+        .map(|r| &text[r])
+        .collect();
     assert_eq!(got, ["@Rui Costa", "@Rui", "@everyone", "@Rui"]);
-    let none = Message { mentions: Vec::new(), ..m };
-    assert!(paint::mention_spans(&none).is_empty(), "o texto sozinho não é menção");
+    let none = Message {
+        mentions: Vec::new(),
+        ..m
+    };
+    assert!(
+        paint::mention_spans(&none).is_empty(),
+        "o texto sozinho não é menção"
+    );
 }

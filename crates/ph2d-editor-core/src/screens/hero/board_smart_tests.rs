@@ -23,14 +23,25 @@ fn the_quickshape_switch_and_a_held_box_through_the_screen() {
         let n = ((w[1].0 - w[0].0).abs().max((w[1].1 - w[0].1).abs()) / 20.0).ceil() as usize;
         for k in 1..=n {
             let u = k as f32 / n as f32;
-            pts.push((w[0].0 + (w[1].0 - w[0].0) * u, w[0].1 + (w[1].1 - w[0].1) * u));
+            pts.push((
+                w[0].0 + (w[1].0 - w[0].0) * u,
+                w[0].1 + (w[1].1 - w[0].1) * u,
+            ));
         }
     }
     let p = PointerButton::Primary;
     let end = *pts.last().unwrap();
     {
         let (h, ts, c) = (&mut t.hero, &mut t.ts, &mut t.clock);
-        assert!(board_view::pointer(h, inp(ts, c), PointerKind::Down, p, a.0, a.1, true));
+        assert!(board_view::pointer(
+            h,
+            inp(ts, c),
+            PointerKind::Down,
+            p,
+            a.0,
+            a.1,
+            true
+        ));
         for q in &pts {
             board_view::pointer_move(h, inp(ts, c), q.0, q.1);
         }
@@ -38,7 +49,10 @@ fn the_quickshape_switch_and_a_held_box_through_the_screen() {
         board_view::pointer_move(h, inp(ts, c), end.0, end.1);
     }
     t.paint();
-    assert!(t.hero.documents.live.editor.as_ref().unwrap().is_quick(), "a forma não nasceu");
+    assert!(
+        t.hero.documents.live.editor.as_ref().unwrap().is_quick(),
+        "a forma não nasceu"
+    );
     {
         let (h, ts, c) = (&mut t.hero, &mut t.ts, &mut t.clock);
         board_view::pointer(h, inp(ts, c), PointerKind::Up, p, end.0, end.1, true);
@@ -46,5 +60,10 @@ fn the_quickshape_switch_and_a_held_box_through_the_screen() {
     t.paint();
     let els = t.elements();
     assert_eq!(els.len(), 1);
-    assert_eq!(els[0].shape().map(|s| s.kind), Some(ShapeType::Rectangle), "{:?}", els[0].kind);
+    assert_eq!(
+        els[0].shape().map(|s| s.kind),
+        Some(ShapeType::Rectangle),
+        "{:?}",
+        els[0].kind
+    );
 }

@@ -164,6 +164,28 @@ pressão→FLUXO e inclinação→opacidade. Pincéis: A-3, B-6, B-7, C-4, C-5, 
 `size_pressure ON, size_min 0,1` = o neutro ao bit). Portões: `o_neutro_da_mao_e_o_traco_de_hoje` (rampa 0→1 da bateria nos 3 meios =
 FNV de hoje), `a_pressao_digital_afina_como_a_do_wet`. ⛔ Recusa medida (doc 47): o piso que tira a mão do dono (0,24–0,86).
 
+**L1 ✅ / L2 ✅ (J2, 20/10)** — feito: `preset_aplicar`/`preset_capturar` (`TP/wetpaint_preset/meios.rs`) LÊEM o `media`
+(clicar num preset de outro meio TROCA o meio; desconhecido = `MeioDesconhecido` + aviso, nada muda; Wet pelo caminho de
+sempre, ao bit); os campos de cada meio saem do CENSO do `CAMPOS_FORA` (carimbo + gesto + Flow/Accumulate + a família do
+meio), a mão no `engine` pelas chaves da caneta, `paint_mode` = PaintMode (Paint/Smear/Blur) ou a ferramenta do Impasto;
+ponte: biblioteca aberta com o Painter, activo POR meio (`ativo_por_meio`), navegador agrupado `meio · pasta · grupo` (o
+de agora primeiro), pastas irmãs `Digital/` `Watercolor/` `Impasto/` (`motor_do_meio`); miniatura + preview vivo nos 4
+(A15; Composite fica fora — não é meio); legado «Digital/Watercolor Basic» = «Basic brush». L2: a lei única `TP/mao.rs`
+(o Wet passa por ela; neutro = `Dynamics`/`PenTilt::default` ao bit), o cartão **Pen** nos 4 meios (16 linhas, só as que
+o meio lê; rotação em menu; Reset; inertes esmaecidas pela lei do traço), `Tilt.opacity` (`PB/pen.rs`, `1 − o·t` no dab).
+⛔ **Pressão→FLUXO NÃO é linha**: confirmado no código que a Strength e o Flow são UM produto por dab (`PB/dab.rs:451`,
+BUGS #41) e a Strength 1 ACUMULA (sem tecto) — a `pressureOpacity` já é o fluxo; uma 2.ª linha mentiria. Exemplos (fora da
+fábrica): `fixtures/presets_exemplo/` (lápis Digital, aguada Watercolor, empaste Impasto). Custo (smoke, mín., load ~20):
+miniatura Digital 5,7 ms · Impasto 18,5 · Watercolor 289 · (Wet Round 468); painel com o Pen aberto 1,64 → 2,02 ms.
+SHAs `c9b5debd85` `b28136d620` `085a950257` `80e04263f6`. Portões: `um_preset_{digital,watercolor,impasto}_volta_ao_bit`,
+`o_meio_do_preset_e_o_meio_que_pinta`, `os_presets_do_wet_nao_mudam`, `a_contagem_por_meio`,
+`os_exemplos_sao_os_que_o_motor_grava`, `o_neutro_da_mao_e_o_traco_de_hoje`, `a_pressao_digital_afina_como_a_do_wet`,
+`a_caneta_deitada_tira_a_opacidade`, `a_mao_do_cartao_chega_ao_traco`, `seam_pen` (4), ponte (3), censo/colunas/fiação.
+Mutações (20/10, controlo verde antes, árvore restaurada): o desconhecido cai no Digital → `o_meio_do_preset…` SANGRA;
+`size_min = 0,95 − v` → `a_mao_de_fabrica…` e `o_neutro_da_mao…` (pelo pincel gravado) SANGRAM; `tiltOpacity` ignorado →
+`a_caneta_deitada…` SANGRA; a aguada sem a família dela → `um_preset_watercolor_volta_ao_bit` SANGRA; o Pen fora do
+`is_param_field` → `seam_pen` SANGRA (fora do `populate` sobrevive: o `paint_num_row` arma o campo).
+
 **L3 — A ponta que GIRA, com inércia e memória (C38) + barril** (CAP-01). Hoje Follow é instantâneo (L fixo 0,1·diâmetro), recomeça do
 0° a cada traço e o P53 nem o usou (`dab_angle 0`). Rebelle: Flat Oily/Knife Smooth = PEN_ROTATION + `force_rotation_mode`; sem barril a
 lâmina guarda a orientação entre traços e só roda com o arrasto — recto fino em qualquer direcção, curva larga (53 §4). Falta:

@@ -52,6 +52,34 @@ fn o_neutro_da_mao_e_o_traco_de_hoje() {
         if h != esperado {
             erros.push(format!("{m:?}: 0x{h:016x} (esperado 0x{esperado:016x})"));
         }
+        // E pela LEI da mão: o pincel de fábrica gravado e carregado (a mão volta por `mao::escreve`).
+        let mut t = ph2d_tool_painter::PainterTool::default();
+        t.set_paint_media(m);
+        let (parametros, texturas) = t.preset_capturar(&ph2d_brush_presets::Parametros::novo(
+            ph2d_tool_painter::nome_do_meio(m),
+            "G",
+            "N",
+        ));
+        let preset = ph2d_brush_presets::Preset {
+            parametros,
+            origem: ph2d_brush_presets::Origem::Utilizador,
+            miniatura: ph2d_brush_presets::Miniatura {
+                largura: 1,
+                altura: 1,
+                rgba: vec![0; 4],
+            },
+            texturas,
+        };
+        let h = fnv1a(&gestos(&Pincel {
+            nome: format!("{m:?} gravado"),
+            fonte: Fonte::Preset {
+                preset: Box::new(preset),
+                relativo: String::new(),
+            },
+        }));
+        if h != esperado {
+            erros.push(format!("{m:?} gravado: 0x{h:016x} (esperado 0x{esperado:016x})"));
+        }
     }
     assert!(erros.is_empty(), "o neutro mudou o traço: {erros:#?}");
 }

@@ -3,8 +3,9 @@
 //! Reset) e o efeito lê-se no TOOL — a mão do meio de agora (`BrushSettings::mao`). Uma linha que o meio não
 //! lê não se pinta.
 //!
-//! Mutações que sangram: tirar `PAINTER_PEN_FIELDS` do `populate` ou do `is_param_field`; a linha 8 fora da
-//! tabela de opções; o `route_mao_event` fora do encaminhamento do tool.
+//! Mutação que sangra (medida 20/10): tirar `PAINTER_PEN_FIELDS` do `number_field::is_param_field`. Tirá-la do
+//! `populate` SOBREVIVE — o `paint_num_row` arma o campo ele próprio (`arm_field`); a linha do `populate` é a
+//! paridade textual que o `table_driven_chips_are_registered_too` lê.
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;

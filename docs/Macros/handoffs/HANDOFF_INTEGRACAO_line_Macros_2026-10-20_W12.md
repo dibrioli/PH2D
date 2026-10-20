@@ -139,7 +139,7 @@ Fotos (`smoke_2026-10-20_W12/`, 1930×1040, rajada de 1 s; ⏮ 6,92 s, ▷ 7,40 
 [▷ 0,87 s: só a vertical, sem nós](smoke_2026-10-20_W12/cruzamolhada_02.png) ·
 [▷ 1,98 s: a de cima nascida, o cruzamento de baixo limpo](smoke_2026-10-20_W12/cruzamolhada_03.png) ·
 [▷ ≈3 s: a de baixo a nascer](smoke_2026-10-20_W12/cruzamolhada_04.png) ·
-[▷ 4,15 s: as três](smoke_2026-10-20_W12/cruzamolhada_05.png). Smoke do dono depois da W12: **por fazer**.
+[▷ 4,15 s: as três](smoke_2026-10-20_W12/cruzamolhada_05.png). Smoke do dono depois da W12: **OK (20/10)** — «smoke parece ok».
 
 ## §8 — ABERTO
 

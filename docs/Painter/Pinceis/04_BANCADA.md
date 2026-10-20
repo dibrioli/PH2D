@@ -133,6 +133,20 @@ passam a escalar com o oráculo (um lápis de 6 % de textura tem ruído 1,3 %; u
 fica fora: sem fração alta não há período (p75 15 px). A **pressão** mede-se num par que não é idêntico (a afunila
 sobe 1,7× mais depressa): é um tecto do ruído, não o ruído.
 
+**O efeito nos vereditos** — as MESMAS fotos lidas pelas duas réguas (o `compara` guarda cada diferença; a «antes»
+recontada com o provisório). Pintado a 20/10 (`f6de638eb0`/`6e94747f19` + o trabalho em curso da J2 em `crates/` e
+nos presets dos lápis): ✓ dentro de 3 ruídos
+
+| pincel × oráculo | antes (provisório) | depois, as mesmas métricas | depois, com o periodo_fracao | ✓ → ✗ | ✗ → ✓ |
+|---|---|---|---|---|---|
+| Graphite 8B × Graphite Pencil/8B | 340/420 | 312/420 | 346/454 (período 34/34) | cv 16 · vermelho em cima 14 · vermelho depois 10 · cor 2 · cor em cima 2 | cobertura 14 · cv 2 |
+| Oil Bristle × Bristle Flat | 394/420 | 382/420 | 410/454 (28/34) | cv 6 · **pontas 6** · vermelho depois 4 · perfil 2 | textura 4 · cv 2 |
+| Dabber × Dabber/Dabber | 378/420 | 334/420 | 368/454 (34/34) | rugosidade 18 · vermelho depois 12 · cv 10 · **pontas 8** · largura 4 · perfil 2 | textura 10 |
+
+Lido: a régua medida é mais estrita onde o oráculo é limpo (o cv e a rugosidade de um traço liso, o vermelho que um
+lápis NÃO arrasta) e mais larga onde o oráculo é granulado (a textura do Dabber, a cobertura do 8B). ⭐ As **pontas**
+do Oil Bristle — a diferença nº 2 da revisão cega (§6.1) que a régua provisória deixava passar — passam a ✗.
+
 O chão da MATRIZ para as famílias que o recto não mede passa a ser medido também (`CHAO_MEDIDO` no
 `exame_matriz.py`): pressão por decil **0,068** (era 0,06) · vermelho **0,0155** (0,03) · razões |r − 1| **0,070**
 (0,05); com ele e as fotos certas a escala foi recalibrada (§4).

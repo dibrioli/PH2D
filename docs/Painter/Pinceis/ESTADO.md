@@ -3,6 +3,10 @@
 > Toda janela lê isto primeiro e actualiza-o antes de sair. Contrato: [`00_MISSAO.md`](00_MISSAO.md).
 > Última escrita: JANELA 1, 2026-10-20.
 
+**Quem é quem (20/10, respostas das sessões):** JANELA 2 = `ph2d-d2` · JANELA 4 = `ph2d-d1` · JANELA 5 = `ph2d-fa` ·
+JANELA 3 = provavelmente `ph2d-94` (não respondeu à pergunta; confirme por `ListAgents` antes do sinal). O nome
+muda se a janela reiniciar.
+
 ## Feito (JANELA 1)
 
 | Entrega | O quê | SHAs |

@@ -196,7 +196,7 @@ def main():
     cal = calibra(nomes, D, saiu)
     os.makedirs(x.saida, exist_ok=True)
     with open(os.path.join(x.saida, "matriz.csv"), "w", newline="") as f:
-        w = csv.writer(f)
+        w = csv.writer(f, lineterminator="\n")
         w.writerow(["pincel"] + nomes)
         for n, row in zip(nomes, D):
             w.writerow([n] + [f"{v:.3f}" for v in row])

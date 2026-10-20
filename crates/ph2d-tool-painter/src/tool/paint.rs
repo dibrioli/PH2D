@@ -206,6 +206,9 @@ mod accumulate_probe;
 /// **Accumulate** — a metade que AFIRMA; a sonda irmã é dona da fixture.
 #[cfg(test)]
 mod accumulate_tests;
+/// **L7** — o efeito do pincel compõe no seu modo (W3C em sRGB), contra a fórmula e as fotos do Rebelle.
+#[cfg(test)]
+mod efeito_modos_tests;
 #[cfg(test)]
 mod composite_look;
 #[cfg(test)]

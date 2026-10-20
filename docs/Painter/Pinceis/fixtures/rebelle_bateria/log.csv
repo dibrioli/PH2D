@@ -1,0 +1,767 @@
+quando,nome,TOOL,preset,cena,estado,motivo,segundos
+2026-10-19T22:43:32,charcoal_charcoal,PENCIL,"Charcoal/Charcoal",gestos,ok,"",7
+2026-10-19T22:43:39,charcoal_charcoal_2,PENCIL,"Charcoal/Charcoal 2",gestos,ok,"",7
+2026-10-19T22:43:46,charcoal_charcoal_3,PENCIL,"Charcoal/Charcoal 3",gestos,ok,"",7
+2026-10-19T22:43:53,charcoal_charcoal_flat,PENCIL,"Charcoal/Charcoal Flat",gestos,ok,"",7
+2026-10-19T22:44:00,charcoal_charcoal_flat_2,PENCIL,"Charcoal/Charcoal Flat 2",gestos,ok,"",7
+2026-10-19T22:44:07,charcoal_charcoal_flat_3,PENCIL,"Charcoal/Charcoal Flat 3",gestos,ok,"",7
+2026-10-19T22:44:14,charcoal_charcoal_liner,PENCIL,"Charcoal/Charcoal Liner",gestos,ok,"",7
+2026-10-19T22:44:21,charcoal_charcoal_wide,PENCIL,"Charcoal/Charcoal Wide",gestos,ok,"",7
+2026-10-19T22:44:28,charcoal_dust,PENCIL,"Charcoal/Dust",gestos,ok,"",7
+2026-10-19T22:44:35,charcoal_powder,PENCIL,"Charcoal/Powder",gestos,ok,"",7
+2026-10-19T22:44:42,colored_pencil_2b_color,PENCIL,"Colored Pencil/2B Color",gestos,ok,"",7
+2026-10-19T22:44:49,colored_pencil_2h_color,PENCIL,"Colored Pencil/2H Color",gestos,ok,"",7
+2026-10-19T22:44:56,colored_pencil_4b_color,PENCIL,"Colored Pencil/4B Color",gestos,ok,"",7
+2026-10-19T22:45:03,colored_pencil_8b_color,PENCIL,"Colored Pencil/8B Color",gestos,ok,"",7
+2026-10-19T22:45:10,colored_pencil_craft_color,PENCIL,"Colored Pencil/Craft Color",gestos,ok,"",7
+2026-10-19T22:45:17,colored_pencil_h_color,PENCIL,"Colored Pencil/H Color",gestos,ok,"",7
+2026-10-19T22:45:24,colored_pencil_hb_color,PENCIL,"Colored Pencil/HB Color",gestos,ok,"",7
+2026-10-19T22:45:31,digital_flat,PENCIL,"Digital/Flat",gestos,ok,"",7
+2026-10-19T22:45:38,digital_round_hard,PENCIL,"Digital/Round Hard",gestos,ok,"",7
+2026-10-19T22:45:45,digital_round_soft,PENCIL,"Digital/Round Soft",gestos,ok,"",7
+2026-10-19T22:45:52,digital_round_soft_2,PENCIL,"Digital/Round Soft 2",gestos,ok,"",7
+2026-10-19T22:45:58,digital_tilted_hard,PENCIL,"Digital/Tilted Hard",gestos,ok,"",6
+2026-10-19T22:46:05,dry_media_lino,PENCIL,"Dry Media/Lino",gestos,ok,"",7
+2026-10-19T22:46:12,dry_media_lino_large,PENCIL,"Dry Media/Lino Large",gestos,ok,"",7
+2026-10-19T22:46:19,dry_media_powder,PENCIL,"Dry Media/Powder",gestos,ok,"",7
+2026-10-19T22:46:26,dry_media_powder_2,PENCIL,"Dry Media/Powder 2",gestos,ok,"",7
+2026-10-19T22:46:33,dry_media_textured,PENCIL,"Dry Media/Textured",gestos,ok,"",7
+2026-10-19T22:46:40,dry_media_textured_2,PENCIL,"Dry Media/Textured 2",gestos,ok,"",7
+2026-10-19T22:46:47,dry_media_textured_3,PENCIL,"Dry Media/Textured 3",gestos,ok,"",7
+2026-10-19T22:46:54,graphite_pencil_2b,PENCIL,"Graphite Pencil/2B",gestos,ok,"",7
+2026-10-19T22:47:01,graphite_pencil_2h,PENCIL,"Graphite Pencil/2H",gestos,ok,"",7
+2026-10-19T22:47:08,graphite_pencil_4b,PENCIL,"Graphite Pencil/4B",gestos,ok,"",7
+2026-10-19T22:47:15,graphite_pencil_8b,PENCIL,"Graphite Pencil/8B",gestos,ok,"",7
+2026-10-19T22:47:22,graphite_pencil_craft,PENCIL,"Graphite Pencil/Craft",gestos,ok,"",7
+2026-10-19T22:47:29,graphite_pencil_craft_2,PENCIL,"Graphite Pencil/Craft 2",gestos,ok,"",7
+2026-10-19T22:47:36,graphite_pencil_craft_flat,PENCIL,"Graphite Pencil/Craft Flat",gestos,ok,"",7
+2026-10-19T22:47:43,graphite_pencil_craft_flat_2,PENCIL,"Graphite Pencil/Craft Flat 2",gestos,ok,"",7
+2026-10-19T22:47:50,graphite_pencil_craft_flat_3,PENCIL,"Graphite Pencil/Craft Flat 3",gestos,ok,"",7
+2026-10-19T22:47:57,graphite_pencil_h,PENCIL,"Graphite Pencil/H",gestos,ok,"",7
+2026-10-19T22:48:04,graphite_pencil_hb,PENCIL,"Graphite Pencil/HB",gestos,ok,"",7
+2026-10-19T22:48:11,graphite_pencil_pentell,PENCIL,"Graphite Pencil/Pentell",gestos,ok,"",7
+2026-10-19T22:48:18,scratches_scratch,PENCIL,"Scratches/Scratch",gestos,ok,"",7
+2026-10-19T22:48:25,scratches_scratch_thin,PENCIL,"Scratches/Scratch Thin",gestos,ok,"",7
+2026-10-19T22:48:32,scratches_scratches_2,PENCIL,"Scratches/Scratches 2",gestos,ok,"",7
+2026-10-19T22:48:39,pastel_dry_dry_thin,PASTEL,"Pastel Dry/Dry Thin",gestos,ok,"",7
+2026-10-19T22:48:46,pastel_dry_flat_dry,PASTEL,"Pastel Dry/Flat Dry",gestos,ok,"",7
+2026-10-19T22:48:53,pastel_dry_flat_soft,PASTEL,"Pastel Dry/Flat Soft",gestos,ok,"",7
+2026-10-19T22:49:00,pastel_dry_hard,PASTEL,"Pastel Dry/Hard",gestos,ok,"",7
+2026-10-19T22:49:07,pastel_dry_oval,PASTEL,"Pastel Dry/Oval",gestos,ok,"",7
+2026-10-19T22:49:14,pastel_dry_oval_2,PASTEL,"Pastel Dry/Oval 2",gestos,ok,"",7
+2026-10-19T22:49:21,pastel_dry_small_soft,PASTEL,"Pastel Dry/Small Soft",gestos,ok,"",7
+2026-10-19T22:49:29,pastel_dry_square_hard,PASTEL,"Pastel Dry/Square Hard",gestos,ok,"",8
+2026-10-19T22:49:36,pastel_dry_square_soft_2,PASTEL,"Pastel Dry/Square Soft 2",gestos,ok,"",7
+2026-10-19T22:49:43,pastel_dry_thin_soft,PASTEL,"Pastel Dry/Thin Soft",gestos,ok,"",7
+2026-10-19T22:49:51,pastel_oil_oil_liner,PASTEL,"Pastel Oil/Oil Liner",gestos,ok,"",8
+2026-10-19T22:49:58,pastel_oil_oil_pastel,PASTEL,"Pastel Oil/Oil Pastel",gestos,ok,"",7
+2026-10-19T22:50:06,pastel_oil_oil_pastel_2,PASTEL,"Pastel Oil/Oil Pastel 2",gestos,ok,"",8
+2026-10-19T22:50:13,pastel_oil_oil_pastel_3,PASTEL,"Pastel Oil/Oil Pastel 3",gestos,ok,"",7
+2026-10-19T22:50:20,pastel_oil_oil_pastel_flat,PASTEL,"Pastel Oil/Oil Pastel Flat",gestos,ok,"",7
+2026-10-19T22:50:28,pastel_oil_wax_pencil,PASTEL,"Pastel Oil/Wax Pencil",gestos,ok,"",8
+2026-10-19T22:50:36,pastel_oil_wax_soft,PASTEL,"Pastel Oil/Wax Soft",gestos,ok,"",8
+2026-10-19T22:50:43,pastel_oil_wax_soft_2,PASTEL,"Pastel Oil/Wax Soft  2",gestos,ok,"",7
+2026-10-19T22:50:50,scrape_wax_scrape,PASTEL,"Scrape/Wax Scrape",gestos,ok,"",7
+2026-10-19T22:50:57,scrape_wax_scrape_2,PASTEL,"Scrape/Wax Scrape 2",gestos,ok,"",7
+2026-10-19T22:51:05,texture_dust,PASTEL,"Texture/Dust",gestos,ok,"",8
+2026-10-19T22:51:12,texture_fragments,PASTEL,"Texture/Fragments",gestos,ok,"",7
+2026-10-19T22:51:19,texture_pastel_pattern,PASTEL,"Texture/Pastel Pattern",gestos,ok,"",7
+2026-10-19T22:51:26,texture_scrambled,PASTEL,"Texture/Scrambled",gestos,ok,"",7
+2026-10-19T22:51:33,bristle_bristle_flat,OIL_AND_ACRYLIC,"Bristle/Bristle Flat",gestos,ok,"",7
+2026-10-19T22:51:40,bristle_bristle_flat_2,OIL_AND_ACRYLIC,"Bristle/Bristle Flat 2",gestos,ok,"",7
+2026-10-19T22:51:47,bristle_bristle_hairy,OIL_AND_ACRYLIC,"Bristle/Bristle Hairy",gestos,ok,"",7
+2026-10-19T22:51:54,bristle_bristle_rake,OIL_AND_ACRYLIC,"Bristle/Bristle Rake",gestos,ok,"",7
+2026-10-19T22:52:01,bristle_bristle_ribbon,OIL_AND_ACRYLIC,"Bristle/Bristle Ribbon",gestos,ok,"",7
+2026-10-19T22:52:08,bristle_bristle_round,OIL_AND_ACRYLIC,"Bristle/Bristle Round",gestos,ok,"",7
+2026-10-19T22:52:15,bristle_bristle_round_2,OIL_AND_ACRYLIC,"Bristle/Bristle Round 2",gestos,ok,"",7
+2026-10-19T22:52:22,bristle_bristle_soft,OIL_AND_ACRYLIC,"Bristle/Bristle Soft",gestos,ok,"",7
+2026-10-19T22:52:30,bristle_bristle_stripes,OIL_AND_ACRYLIC,"Bristle/Bristle Stripes",gestos,ok,"",8
+2026-10-19T22:52:37,bristle_bristle_wide,OIL_AND_ACRYLIC,"Bristle/Bristle Wide",gestos,ok,"",7
+2026-10-19T22:52:44,dabber_dabber,OIL_AND_ACRYLIC,"Dabber/Dabber",gestos,ok,"",7
+2026-10-19T22:52:51,dabber_dabber_2,OIL_AND_ACRYLIC,"Dabber/Dabber 2",gestos,ok,"",7
+2026-10-19T22:52:58,dabber_dabber_3,OIL_AND_ACRYLIC,"Dabber/Dabber 3",gestos,ok,"",7
+2026-10-19T22:53:05,dabber_dabber_4,OIL_AND_ACRYLIC,"Dabber/Dabber 4",gestos,ok,"",7
+2026-10-19T22:53:12,dabber_fan,OIL_AND_ACRYLIC,"Dabber/Fan",gestos,ok,"",7
+2026-10-19T22:53:19,flat_bright,OIL_AND_ACRYLIC,"Flat/Bright",gestos,ok,"",7
+2026-10-19T22:53:26,flat_filbert,OIL_AND_ACRYLIC,"Flat/Filbert",gestos,ok,"",7
+2026-10-19T22:53:33,flat_filbert_dry,OIL_AND_ACRYLIC,"Flat/Filbert Dry",gestos,ok,"",7
+2026-10-19T22:53:40,flat_flat,OIL_AND_ACRYLIC,"Flat/Flat",gestos,ok,"",7
+2026-10-19T22:53:47,flat_flat_dry,OIL_AND_ACRYLIC,"Flat/Flat Dry",gestos,ok,"",7
+2026-10-19T22:53:54,flat_flat_dry_2,OIL_AND_ACRYLIC,"Flat/Flat Dry 2",gestos,ok,"",7
+2026-10-19T22:54:02,flat_flat_dry_soft,OIL_AND_ACRYLIC,"Flat/Flat Dry Soft",gestos,ok,"",8
+2026-10-19T22:54:09,flat_flat_oily,OIL_AND_ACRYLIC,"Flat/Flat Oily",gestos,ok,"",7
+2026-10-19T22:54:16,flat_flat_oily_2,OIL_AND_ACRYLIC,"Flat/Flat Oily 2",gestos,ok,"",7
+2026-10-19T22:54:23,flat_thick,OIL_AND_ACRYLIC,"Flat/Thick",gestos,ok,"",7
+2026-10-19T22:54:30,grunge_grunge,OIL_AND_ACRYLIC,"Grunge/Grunge",gestos,ok,"",7
+2026-10-19T22:54:37,grunge_grunge_2,OIL_AND_ACRYLIC,"Grunge/Grunge 2",gestos,ok,"",7
+2026-10-19T22:54:44,grunge_grunge_3,OIL_AND_ACRYLIC,"Grunge/Grunge 3",gestos,ok,"",7
+2026-10-19T22:54:51,grunge_grunge_4,OIL_AND_ACRYLIC,"Grunge/Grunge 4",gestos,ok,"",7
+2026-10-19T22:54:58,grunge_scatter,OIL_AND_ACRYLIC,"Grunge/Scatter",gestos,ok,"",7
+2026-10-19T22:55:05,grunge_scatter_2,OIL_AND_ACRYLIC,"Grunge/Scatter 2",gestos,ok,"",7
+2026-10-19T22:55:13,grunge_scatter_3,OIL_AND_ACRYLIC,"Grunge/Scatter 3",gestos,ok,"",8
+2026-10-19T22:55:20,grunge_shred,OIL_AND_ACRYLIC,"Grunge/Shred",gestos,ok,"",7
+2026-10-19T22:55:27,knife_knife_dry,OIL_AND_ACRYLIC,"Knife/Knife Dry",gestos,ok,"",7
+2026-10-19T22:55:34,knife_knife_dry_2,OIL_AND_ACRYLIC,"Knife/Knife Dry 2",gestos,ok,"",7
+2026-10-19T22:55:41,knife_knife_grainy,OIL_AND_ACRYLIC,"Knife/Knife Grainy",gestos,ok,"",7
+2026-10-19T22:55:48,knife_knife_oily,OIL_AND_ACRYLIC,"Knife/Knife Oily",gestos,ok,"",7
+2026-10-19T22:55:55,knife_knife_smooth,OIL_AND_ACRYLIC,"Knife/Knife Smooth",gestos,ok,"",7
+2026-10-19T22:56:03,knife_knife_smooth_2,OIL_AND_ACRYLIC,"Knife/Knife Smooth 2",gestos,ok,"",8
+2026-10-19T22:56:10,knife_knife_smooth_3,OIL_AND_ACRYLIC,"Knife/Knife Smooth 3",gestos,ok,"",7
+2026-10-19T22:56:17,knife_knife_soft,OIL_AND_ACRYLIC,"Knife/Knife Soft",gestos,ok,"",7
+2026-10-19T22:56:24,knife_knife_stain,OIL_AND_ACRYLIC,"Knife/Knife Stain",gestos,ok,"",7
+2026-10-19T22:56:31,knife_knife_textured,OIL_AND_ACRYLIC,"Knife/Knife Textured",gestos,ok,"",7
+2026-10-19T22:56:38,metallic_flat,OIL_AND_ACRYLIC,"Metallic/Flat",gestos,ok,"",7
+2026-10-19T22:56:45,metallic_flat_2,OIL_AND_ACRYLIC,"Metallic/Flat 2",gestos,ok,"",7
+2026-10-19T22:56:52,metallic_flat_3,OIL_AND_ACRYLIC,"Metallic/Flat 3",gestos,ok,"",7
+2026-10-19T22:56:59,metallic_round,OIL_AND_ACRYLIC,"Metallic/Round",gestos,ok,"",7
+2026-10-19T22:57:06,metallic_round_2,OIL_AND_ACRYLIC,"Metallic/Round 2",gestos,ok,"",7
+2026-10-19T22:57:13,metallic_round_3,OIL_AND_ACRYLIC,"Metallic/Round 3",gestos,ok,"",7
+2026-10-19T22:57:20,metallic_splats,OIL_AND_ACRYLIC,"Metallic/Splats",gestos,ok,"",7
+2026-10-19T22:57:27,rake_rake_oily,OIL_AND_ACRYLIC,"Rake/Rake Oily",gestos,ok,"",7
+2026-10-19T22:57:34,rake_rake_sharp,OIL_AND_ACRYLIC,"Rake/Rake Sharp",gestos,ok,"",7
+2026-10-19T22:57:41,round_fat_bristle_2,OIL_AND_ACRYLIC,"Round/Fat bristle 2",gestos,ok,"",7
+2026-10-19T22:57:49,round_hairy,OIL_AND_ACRYLIC,"Round/Hairy",gestos,ok,"",8
+2026-10-19T22:57:56,round_liner,OIL_AND_ACRYLIC,"Round/Liner",gestos,ok,"",7
+2026-10-19T22:58:03,round_rough_dry,OIL_AND_ACRYLIC,"Round/Rough Dry",gestos,ok,"",7
+2026-10-19T22:58:10,round_rough_oily,OIL_AND_ACRYLIC,"Round/Rough Oily",gestos,ok,"",7
+2026-10-19T22:58:17,round_round_hard,OIL_AND_ACRYLIC,"Round/Round Hard",gestos,ok,"",7
+2026-10-19T22:58:24,round_round_hard_2,OIL_AND_ACRYLIC,"Round/Round Hard 2",gestos,ok,"",7
+2026-10-19T22:58:31,round_round_soft,OIL_AND_ACRYLIC,"Round/Round soft",gestos,ok,"",7
+2026-10-19T22:58:38,round_round_soft_2,OIL_AND_ACRYLIC,"Round/Round soft 2",gestos,ok,"",7
+2026-10-19T22:58:45,round_thick_hairy,OIL_AND_ACRYLIC,"Round/Thick Hairy",gestos,ok,"",7
+2026-10-19T22:58:52,flat_flat_hairy,EXPRESS_OIL,"Flat/Flat Hairy",gestos,ok,"",7
+2026-10-19T22:58:59,flat_flat_thick,EXPRESS_OIL,"Flat/Flat thick",gestos,ok,"",7
+2026-10-19T22:59:06,flat_hairy,EXPRESS_OIL,"Flat/Hairy",gestos,ok,"",7
+2026-10-19T22:59:13,flat_knife_dry,EXPRESS_OIL,"Flat/Knife Dry",gestos,ok,"",7
+2026-10-19T22:59:20,flat_knife_dry_2,EXPRESS_OIL,"Flat/Knife Dry 2",gestos,ok,"",7
+2026-10-19T22:59:27,flat_knife_grainy,EXPRESS_OIL,"Flat/Knife Grainy",gestos,ok,"",7
+2026-10-19T22:59:34,flat_knife_smooth,EXPRESS_OIL,"Flat/Knife Smooth",gestos,ok,"",7
+2026-10-19T22:59:41,flat_knife_soft,EXPRESS_OIL,"Flat/Knife Soft",gestos,ok,"",7
+2026-10-19T22:59:48,flat_knife_textured,EXPRESS_OIL,"Flat/Knife Textured",gestos,ok,"",7
+2026-10-19T22:59:55,flat_soft,EXPRESS_OIL,"Flat/Soft",gestos,ok,"",7
+2026-10-19T23:00:02,glaze_filbert,EXPRESS_OIL,"Glaze/Filbert",gestos,ok,"",7
+2026-10-19T23:00:09,glaze_filbert_smooth,EXPRESS_OIL,"Glaze/Filbert Smooth",gestos,ok,"",7
+2026-10-19T23:00:16,glaze_flat_oily,EXPRESS_OIL,"Glaze/Flat Oily",gestos,ok,"",7
+2026-10-19T23:00:23,glaze_liner,EXPRESS_OIL,"Glaze/Liner",gestos,ok,"",7
+2026-10-19T23:00:30,glaze_round,EXPRESS_OIL,"Glaze/Round",gestos,ok,"",7
+2026-10-19T23:00:37,glaze_round_soft,EXPRESS_OIL,"Glaze/Round Soft",gestos,ok,"",7
+2026-10-19T23:00:44,glaze_wash,EXPRESS_OIL,"Glaze/Wash",gestos,ok,"",7
+2026-10-19T23:00:51,grunge_grunge,EXPRESS_OIL,"Grunge/Grunge",gestos,ok,"",7
+2026-10-19T23:00:58,grunge_grunge_2,EXPRESS_OIL,"Grunge/Grunge 2",gestos,ok,"",7
+2026-10-19T23:01:05,grunge_grunge_3,EXPRESS_OIL,"Grunge/Grunge 3",gestos,ok,"",7
+2026-10-19T23:01:13,grunge_grunge_4,EXPRESS_OIL,"Grunge/Grunge 4",gestos,ok,"",8
+2026-10-19T23:01:20,grunge_scatter,EXPRESS_OIL,"Grunge/Scatter",gestos,ok,"",7
+2026-10-19T23:01:28,grunge_scatter_2,EXPRESS_OIL,"Grunge/Scatter 2",gestos,ok,"",8
+2026-10-19T23:01:35,grunge_shred,EXPRESS_OIL,"Grunge/Shred",gestos,ok,"",7
+2026-10-19T23:01:42,grunge_shred_2,EXPRESS_OIL,"Grunge/Shred 2",gestos,ok,"",7
+2026-10-19T23:01:49,grunge_shred_3,EXPRESS_OIL,"Grunge/Shred 3",gestos,ok,"",7
+2026-10-19T23:01:56,grunge_textured,EXPRESS_OIL,"Grunge/Textured",gestos,ok,"",7
+2026-10-19T23:02:04,round_fat_round,EXPRESS_OIL,"Round/Fat Round",gestos,ok,"",8
+2026-10-19T23:02:11,round_hairy,EXPRESS_OIL,"Round/Hairy",gestos,ok,"",7
+2026-10-19T23:02:18,round_hairy_2,EXPRESS_OIL,"Round/Hairy 2",gestos,ok,"",7
+2026-10-19T23:02:25,round_oily,EXPRESS_OIL,"Round/Oily",gestos,ok,"",7
+2026-10-19T23:02:32,round_rough_wet,EXPRESS_OIL,"Round/Rough Wet",gestos,ok,"",7
+2026-10-19T23:02:40,bristle_bristle_flat,WATERCOLOR,"Bristle/Bristle Flat",gestos,ok,"",8
+2026-10-19T23:02:48,bristle_bristle_round,WATERCOLOR,"Bristle/Bristle Round",gestos,ok,"",8
+2026-10-19T23:02:56,bristle_bristle_round_2,WATERCOLOR,"Bristle/Bristle Round 2",gestos,ok,"",8
+2026-10-19T23:03:03,bristle_bristle_soft,WATERCOLOR,"Bristle/Bristle Soft",gestos,ok,"",7
+2026-10-19T23:03:11,bristle_bristle_wide,WATERCOLOR,"Bristle/Bristle Wide",gestos,ok,"",8
+2026-10-19T23:03:19,gouache_gouache_bristle,WATERCOLOR,"Gouache/Gouache Bristle",gestos,ok,"",8
+2026-10-19T23:03:26,gouache_gouache_dry,WATERCOLOR,"Gouache/Gouache Dry",gestos,ok,"",7
+2026-10-19T23:03:34,gouache_gouache_fan_line,WATERCOLOR,"Gouache/Gouache Fan Line",gestos,ok,"",8
+2026-10-19T23:03:42,gouache_gouache_filbert,WATERCOLOR,"Gouache/Gouache Filbert",gestos,ok,"",8
+2026-10-19T23:03:49,gouache_gouache_filbert_2,WATERCOLOR,"Gouache/Gouache Filbert 2",gestos,ok,"",7
+2026-10-19T23:03:57,gouache_gouache_flat,WATERCOLOR,"Gouache/Gouache Flat",gestos,ok,"",8
+2026-10-19T23:04:05,gouache_gouache_flat_2,WATERCOLOR,"Gouache/Gouache Flat 2",gestos,ok,"",8
+2026-10-19T23:04:13,gouache_gouache_liner,WATERCOLOR,"Gouache/Gouache Liner",gestos,ok,"",8
+2026-10-19T23:04:20,gouache_gouache_liner_2,WATERCOLOR,"Gouache/Gouache Liner 2",gestos,ok,"",7
+2026-10-19T23:04:28,gouache_gouache_round,WATERCOLOR,"Gouache/Gouache Round",gestos,ok,"",8
+2026-10-19T23:04:36,gouache_gouache_round_2,WATERCOLOR,"Gouache/Gouache Round 2",gestos,ok,"",8
+2026-10-19T23:04:43,gouache_gouache_wash,WATERCOLOR,"Gouache/Gouache Wash",gestos,ok,"",7
+2026-10-19T23:04:50,granulation_granulation,WATERCOLOR,"Granulation/Granulation",gestos,ok,"",7
+2026-10-19T23:04:57,granulation_granulation_2,WATERCOLOR,"Granulation/Granulation 2",gestos,ok,"",7
+2026-10-19T23:05:05,spatter_spatter,WATERCOLOR,"Spatter/Spatter",gestos,ok,"",8
+2026-10-19T23:05:12,spatter_spatter_2,WATERCOLOR,"Spatter/Spatter  2",gestos,ok,"",7
+2026-10-19T23:05:20,spatter_spatter_3,WATERCOLOR,"Spatter/Spatter 3",gestos,ok,"",8
+2026-10-19T23:05:27,spatter_spatter_4,WATERCOLOR,"Spatter/Spatter 4",gestos,ok,"",7
+2026-10-19T23:05:35,spatter_spatter_5,WATERCOLOR,"Spatter/Spatter 5",gestos,ok,"",8
+2026-10-19T23:05:43,spatter_spatter_6,WATERCOLOR,"Spatter/Spatter 6",gestos,ok,"",8
+2026-10-19T23:05:51,spatter_splat,WATERCOLOR,"Spatter/Splat",gestos,ok,"",8
+2026-10-19T23:05:58,spatter_splat_2,WATERCOLOR,"Spatter/Splat 2",gestos,ok,"",7
+2026-10-19T23:06:06,spatter_splats,WATERCOLOR,"Spatter/Splats",gestos,ok,"",8
+2026-10-19T23:06:14,spatter_star,WATERCOLOR,"Spatter/Star",gestos,ok,"",8
+2026-10-19T23:06:22,sumi_e_sumi_bristle,WATERCOLOR,"Sumi-e/Sumi bristle",gestos,ok,"",8
+2026-10-19T23:06:29,sumi_e_sumi_e_soft,WATERCOLOR,"Sumi-e/Sumi-e  soft",gestos,ok,"",7
+2026-10-19T23:06:37,sumi_e_sumi_e_ribbon,WATERCOLOR,"Sumi-e/Sumi-e ribbon",gestos,ok,"",8
+2026-10-19T23:06:44,watercolor_bristle,WATERCOLOR,"Watercolor/Bristle",gestos,ok,"",7
+2026-10-19T23:06:52,watercolor_fan,WATERCOLOR,"Watercolor/Fan",gestos,ok,"",8
+2026-10-19T23:06:59,watercolor_filbert_dry,WATERCOLOR,"Watercolor/Filbert Dry",gestos,ok,"",7
+2026-10-19T23:07:07,watercolor_flat,WATERCOLOR,"Watercolor/Flat",gestos,ok,"",8
+2026-10-19T23:07:15,watercolor_flat_2,WATERCOLOR,"Watercolor/Flat 2",gestos,ok,"",8
+2026-10-19T23:07:22,watercolor_flat_dry,WATERCOLOR,"Watercolor/Flat Dry",gestos,ok,"",7
+2026-10-19T23:07:30,watercolor_liner,WATERCOLOR,"Watercolor/Liner",gestos,ok,"",8
+2026-10-19T23:07:37,watercolor_liner_2,WATERCOLOR,"Watercolor/Liner 2",gestos,ok,"",7
+2026-10-19T23:07:45,watercolor_mop,WATERCOLOR,"Watercolor/Mop",gestos,ok,"",8
+2026-10-19T23:07:52,watercolor_round,WATERCOLOR,"Watercolor/Round",gestos,ok,"",7
+2026-10-19T23:08:00,watercolor_round_2,WATERCOLOR,"Watercolor/Round 2",gestos,ok,"",8
+2026-10-19T23:08:07,watercolor_round_3,WATERCOLOR,"Watercolor/Round 3",gestos,ok,"",7
+2026-10-19T23:08:15,watercolor_round_4,WATERCOLOR,"Watercolor/Round 4",gestos,ok,"",8
+2026-10-19T23:08:23,watercolor_wash_flat,WATERCOLOR,"Watercolor/Wash Flat",gestos,ok,"",8
+2026-10-19T23:08:31,watercolor_wash_round,WATERCOLOR,"Watercolor/Wash Round",gestos,ok,"",8
+2026-10-19T23:08:38,brush_brush,INK_PEN,"Brush/Brush",gestos,ok,"",7
+2026-10-19T23:08:46,brush_brush_2,INK_PEN,"Brush/Brush 2",gestos,ok,"",8
+2026-10-19T23:08:53,brush_brush_3,INK_PEN,"Brush/Brush 3",gestos,ok,"",7
+2026-10-19T23:09:01,pen_bullet,INK_PEN,"Pen/Bullet",gestos,ok,"",8
+2026-10-19T23:09:09,pen_dip_pen,INK_PEN,"Pen/Dip Pen",gestos,ok,"",8
+2026-10-19T23:09:16,pen_fountain_round,INK_PEN,"Pen/Fountain Round",gestos,ok,"",7
+2026-10-19T23:09:24,pen_fountain_square,INK_PEN,"Pen/Fountain Square",gestos,ok,"",8
+2026-10-19T23:09:32,pen_reed_pen,INK_PEN,"Pen/Reed Pen",gestos,ok,"",8
+2026-10-19T23:09:40,pen_wood,INK_PEN,"Pen/Wood",gestos,ok,"",8
+2026-10-19T23:09:47,pen_wood_2,INK_PEN,"Pen/Wood 2",gestos,ok,"",7
+2026-10-19T23:09:54,effect_burn,MARKER,"Effect/Burn",sobre,ok,"",7
+2026-10-19T23:10:00,effect_color,MARKER,"Effect/Color",sobre,ok,"",6
+2026-10-19T23:10:07,effect_dodge,MARKER,"Effect/Dodge",sobre,ok,"",7
+2026-10-19T23:10:14,effect_hue,MARKER,"Effect/Hue",sobre,ok,"",7
+2026-10-19T23:10:39,effect_luminosity,MARKER,"Effect/Luminosity",sobre,ok,"",7
+2026-10-19T23:10:45,effect_overlay,MARKER,"Effect/Overlay",sobre,ok,"",6
+2026-10-19T23:10:52,effect_saturation,MARKER,"Effect/Saturation",sobre,ok,"",7
+2026-10-19T23:10:59,marker_bullet,MARKER,"Marker/Bullet",gestos,ok,"",7
+2026-10-19T23:11:06,marker_chisel,MARKER,"Marker/Chisel",gestos,ok,"",7
+2026-10-19T23:11:13,marker_dry,MARKER,"Marker/Dry",gestos,ok,"",7
+2026-10-19T23:11:20,marker_liner,MARKER,"Marker/Liner",gestos,ok,"",7
+2026-10-19T23:11:27,default_spray,AIRBRUSH,"Default/Spray",gestos,ok,"",7
+2026-10-19T23:11:34,default_spray_2,AIRBRUSH,"Default/Spray 2",gestos,ok,"",7
+2026-10-19T23:11:41,default_spray_3,AIRBRUSH,"Default/Spray 3",gestos,ok,"",7
+2026-10-19T23:11:48,default_spray_4,AIRBRUSH,"Default/Spray 4",gestos,ok,"",7
+2026-10-19T23:11:55,default_spray_5,AIRBRUSH,"Default/Spray 5",gestos,ok,"",7
+2026-10-19T23:12:01,default_dots,BLEND,"Default/Dots",sobre,ok,"",6
+2026-10-19T23:12:08,default_dots_aq,BLEND,"Default/Dots",sobre,ok,"",7
+2026-10-19T23:12:15,default_hard,BLEND,"Default/Hard",sobre,ok,"",7
+2026-10-19T23:12:21,default_hard_aq,BLEND,"Default/Hard",sobre,ok,"",6
+2026-10-19T23:12:28,default_lines,BLEND,"Default/Lines",sobre,ok,"",7
+2026-10-19T23:12:35,default_lines_aq,BLEND,"Default/Lines",sobre,ok,"",7
+2026-10-19T23:12:41,default_soft,BLEND,"Default/Soft",sobre,ok,"",6
+2026-10-19T23:12:48,default_soft_aq,BLEND,"Default/Soft",sobre,ok,"",7
+2026-10-19T23:12:55,default_soft_noisy,BLEND,"Default/Soft  Noisy",sobre,ok,"",7
+2026-10-19T23:13:02,default_soft_noisy_aq,BLEND,"Default/Soft  Noisy",sobre,ok,"",7
+2026-10-19T23:13:08,default_soft_2,BLEND,"Default/Soft 2",sobre,ok,"",6
+2026-10-19T23:13:15,default_soft_2_aq,BLEND,"Default/Soft 2",sobre,ok,"",7
+2026-10-19T23:13:22,default_soft_noisy_2,BLEND,"Default/Soft Noisy 2",sobre,ok,"",7
+2026-10-19T23:13:28,default_soft_noisy_2_aq,BLEND,"Default/Soft Noisy 2",sobre,ok,"",6
+2026-10-19T23:13:35,default_textured,BLEND,"Default/Textured",sobre,ok,"",7
+2026-10-19T23:13:42,default_textured_aq,BLEND,"Default/Textured",sobre,ok,"",7
+2026-10-19T23:13:48,default_flat,SMUDGE,"Default/Flat",sobre,ok,"",6
+2026-10-19T23:13:55,default_flat_aq,SMUDGE,"Default/Flat",sobre,ok,"",7
+2026-10-19T23:14:02,default_shattered,SMUDGE,"Default/Shattered",sobre,ok,"",7
+2026-10-19T23:14:08,default_shattered_aq,SMUDGE,"Default/Shattered",sobre,ok,"",6
+2026-10-19T23:14:15,default_soft,SMUDGE,"Default/Soft",sobre,ok,"",7
+2026-10-19T23:14:21,default_soft_aq,SMUDGE,"Default/Soft",sobre,ok,"",6
+2026-10-19T23:14:28,default_soft_fast,SMUDGE,"Default/Soft Fast",sobre,ok,"",7
+2026-10-19T23:14:35,default_soft_fast_aq,SMUDGE,"Default/Soft Fast",sobre,ok,"",7
+2026-10-19T23:14:41,default_spikey,SMUDGE,"Default/Spikey",sobre,ok,"",6
+2026-10-19T23:14:48,default_spikey_aq,SMUDGE,"Default/Spikey",sobre,ok,"",7
+2026-10-19T23:14:54,default_spikey_2,SMUDGE,"Default/Spikey 2",sobre,ok,"",6
+2026-10-19T23:15:01,default_spikey_2_aq,SMUDGE,"Default/Spikey 2",sobre,ok,"",7
+2026-10-19T23:15:08,default_chisel,ERASER,"Default/Chisel",sobre,ok,"",7
+2026-10-19T23:15:14,default_chisel_aq,ERASER,"Default/Chisel",sobre,ok,"",6
+2026-10-19T23:15:21,default_needle,ERASER,"Default/Needle",sobre,ok,"",7
+2026-10-19T23:15:28,default_needle_aq,ERASER,"Default/Needle",sobre,ok,"",7
+2026-10-19T23:15:34,default_round_medium,ERASER,"Default/Round Medium",sobre,ok,"",6
+2026-10-19T23:15:41,default_round_medium_aq,ERASER,"Default/Round Medium",sobre,ok,"",7
+2026-10-19T23:15:48,default_round_soft,ERASER,"Default/Round Soft",sobre,ok,"",7
+2026-10-19T23:15:54,default_round_soft_aq,ERASER,"Default/Round Soft",sobre,ok,"",6
+2026-10-19T23:16:01,default_round_soft_2,ERASER,"Default/Round Soft 2",sobre,ok,"",7
+2026-10-19T23:16:08,default_round_soft_2_aq,ERASER,"Default/Round Soft 2",sobre,ok,"",7
+2026-10-19T23:16:14,default_spatter,ERASER,"Default/Spatter",sobre,ok,"",6
+2026-10-19T23:16:21,default_spatter_aq,ERASER,"Default/Spatter",sobre,ok,"",7
+2026-10-19T23:16:28,default_spatter_2,ERASER,"Default/Spatter 2",sobre,ok,"",7
+2026-10-19T23:16:34,default_spatter_2_aq,ERASER,"Default/Spatter 2",sobre,ok,"",6
+2026-10-19T23:16:41,default_square_hard,ERASER,"Default/Square Hard",sobre,ok,"",7
+2026-10-19T23:16:48,default_square_hard_aq,ERASER,"Default/Square Hard",sobre,ok,"",7
+2026-10-19T23:16:54,default_square_medium,ERASER,"Default/Square Medium",sobre,ok,"",6
+2026-10-19T23:17:01,default_square_medium_aq,ERASER,"Default/Square Medium",sobre,ok,"",7
+2026-10-19T23:17:08,default_square_soft,ERASER,"Default/Square Soft",sobre,ok,"",7
+2026-10-19T23:17:14,default_square_soft_aq,ERASER,"Default/Square Soft",sobre,ok,"",6
+2026-10-19T23:17:22,default_blurred,WATER,"Default/Blurred",sobre,ok,"",8
+2026-10-19T23:17:29,default_line,WATER,"Default/Line",sobre,ok,"",7
+2026-10-19T23:17:37,default_soft,WATER,"Default/Soft",sobre,ok,"",8
+2026-10-19T23:17:44,default_spatter,WATER,"Default/Spatter",sobre,ok,"",7
+2026-10-19T23:17:51,default_spatter_2,WATER,"Default/Spatter 2",sobre,ok,"",7
+2026-10-19T23:17:58,default_splats,WATER,"Default/Splats",sobre,ok,"",7
+2026-10-19T23:18:06,default_splats_2,WATER,"Default/Splats 2",sobre,ok,"",8
+2026-10-19T23:18:13,default_splats_3,WATER,"Default/Splats 3",sobre,ok,"",7
+2026-10-19T23:18:19,default_splats_4,WATER,"Default/Splats 4",sobre,ok,"",6
+2026-10-19T23:18:27,default_sponge,WATER,"Default/Sponge",sobre,ok,"",8
+2026-10-19T23:18:33,default_circle,DRY,"Default/Circle",sobre,ok,"",6
+2026-10-19T23:18:40,default_paper,DRY,"Default/Paper",sobre,ok,"",7
+2026-10-19T23:18:47,default_spatter,DRY,"Default/Spatter",sobre,ok,"",7
+2026-10-19T23:18:54,default_spatter_2,DRY,"Default/Spatter 2",sobre,ok,"",7
+2026-10-19T23:19:01,default_spatter_3,DRY,"Default/Spatter 3",sobre,ok,"",7
+2026-10-19T23:19:08,default_sponge,DRY,"Default/Sponge",sobre,ok,"",7
+2026-10-19T23:19:15,default_texture,DRY,"Default/Texture",sobre,ok,"",7
+2026-10-19T23:19:22,default_paper,CLONE,"Default/Paper",sobre,ok,"",7
+2026-10-19T23:19:28,default_paper_aq,CLONE,"Default/Paper",sobre,ok,"",6
+2026-10-19T23:19:35,default_round_hard,CLONE,"Default/Round Hard",sobre,ok,"",7
+2026-10-19T23:19:42,default_round_hard_aq,CLONE,"Default/Round Hard",sobre,ok,"",7
+2026-10-19T23:19:48,default_round_soft,CLONE,"Default/Round Soft",sobre,ok,"",6
+2026-10-19T23:19:58,default_round_soft_aq,CLONE,"Default/Round Soft",sobre,ok,"",10
+2026-10-19T23:20:06,default_square_soft,CLONE,"Default/Square Soft",sobre,ok,"",8
+2026-10-19T23:20:15,default_square_soft_aq,CLONE,"Default/Square Soft",sobre,ok,"",9
+2026-10-19T23:20:22,default_texture,CLONE,"Default/Texture",sobre,ok,"",7
+2026-10-19T23:20:29,default_texture_aq,CLONE,"Default/Texture",sobre,ok,"",7
+2026-10-19T23:20:53,charcoal_charcoal,PENCIL,"Charcoal/Charcoal",tamanhos,ok,"",6
+2026-10-19T23:21:00,charcoal_charcoal,PENCIL,"Charcoal/Charcoal",sobre,ok,"",7
+2026-10-19T23:21:05,charcoal_charcoal_2,PENCIL,"Charcoal/Charcoal 2",tamanhos,ok,"",5
+2026-10-19T23:21:12,charcoal_charcoal_2,PENCIL,"Charcoal/Charcoal 2",sobre,ok,"",7
+2026-10-19T23:21:18,charcoal_charcoal_3,PENCIL,"Charcoal/Charcoal 3",tamanhos,ok,"",6
+2026-10-19T23:21:25,charcoal_charcoal_3,PENCIL,"Charcoal/Charcoal 3",sobre,ok,"",7
+2026-10-19T23:21:30,charcoal_charcoal_flat,PENCIL,"Charcoal/Charcoal Flat",tamanhos,ok,"",5
+2026-10-19T23:21:37,charcoal_charcoal_flat,PENCIL,"Charcoal/Charcoal Flat",sobre,ok,"",7
+2026-10-19T23:21:43,charcoal_charcoal_flat_2,PENCIL,"Charcoal/Charcoal Flat 2",tamanhos,ok,"",6
+2026-10-19T23:21:50,charcoal_charcoal_flat_2,PENCIL,"Charcoal/Charcoal Flat 2",sobre,ok,"",7
+2026-10-19T23:21:55,charcoal_charcoal_flat_3,PENCIL,"Charcoal/Charcoal Flat 3",tamanhos,ok,"",5
+2026-10-19T23:22:02,charcoal_charcoal_flat_3,PENCIL,"Charcoal/Charcoal Flat 3",sobre,ok,"",7
+2026-10-19T23:22:08,charcoal_charcoal_liner,PENCIL,"Charcoal/Charcoal Liner",tamanhos,ok,"",6
+2026-10-19T23:22:15,charcoal_charcoal_liner,PENCIL,"Charcoal/Charcoal Liner",sobre,ok,"",7
+2026-10-19T23:22:20,charcoal_charcoal_wide,PENCIL,"Charcoal/Charcoal Wide",tamanhos,ok,"",5
+2026-10-19T23:22:27,charcoal_charcoal_wide,PENCIL,"Charcoal/Charcoal Wide",sobre,ok,"",7
+2026-10-19T23:22:33,charcoal_dust,PENCIL,"Charcoal/Dust",tamanhos,ok,"",6
+2026-10-19T23:22:40,charcoal_dust,PENCIL,"Charcoal/Dust",sobre,ok,"",7
+2026-10-19T23:22:45,charcoal_powder,PENCIL,"Charcoal/Powder",tamanhos,ok,"",5
+2026-10-19T23:22:52,charcoal_powder,PENCIL,"Charcoal/Powder",sobre,ok,"",7
+2026-10-19T23:22:58,colored_pencil_2b_color,PENCIL,"Colored Pencil/2B Color",tamanhos,ok,"",6
+2026-10-19T23:23:04,colored_pencil_2b_color,PENCIL,"Colored Pencil/2B Color",sobre,ok,"",6
+2026-10-19T23:23:10,colored_pencil_2h_color,PENCIL,"Colored Pencil/2H Color",tamanhos,ok,"",6
+2026-10-19T23:23:17,colored_pencil_2h_color,PENCIL,"Colored Pencil/2H Color",sobre,ok,"",7
+2026-10-19T23:23:23,colored_pencil_4b_color,PENCIL,"Colored Pencil/4B Color",tamanhos,ok,"",6
+2026-10-19T23:23:29,colored_pencil_4b_color,PENCIL,"Colored Pencil/4B Color",sobre,ok,"",6
+2026-10-19T23:23:35,colored_pencil_8b_color,PENCIL,"Colored Pencil/8B Color",tamanhos,ok,"",6
+2026-10-19T23:23:42,colored_pencil_8b_color,PENCIL,"Colored Pencil/8B Color",sobre,ok,"",7
+2026-10-19T23:23:48,colored_pencil_craft_color,PENCIL,"Colored Pencil/Craft Color",tamanhos,ok,"",6
+2026-10-19T23:23:54,colored_pencil_craft_color,PENCIL,"Colored Pencil/Craft Color",sobre,ok,"",6
+2026-10-19T23:24:00,colored_pencil_h_color,PENCIL,"Colored Pencil/H Color",tamanhos,ok,"",6
+2026-10-19T23:24:07,colored_pencil_h_color,PENCIL,"Colored Pencil/H Color",sobre,ok,"",7
+2026-10-19T23:24:13,colored_pencil_hb_color,PENCIL,"Colored Pencil/HB Color",tamanhos,ok,"",6
+2026-10-19T23:24:19,colored_pencil_hb_color,PENCIL,"Colored Pencil/HB Color",sobre,ok,"",6
+2026-10-19T23:24:25,digital_flat,PENCIL,"Digital/Flat",tamanhos,ok,"",6
+2026-10-19T23:24:32,digital_flat,PENCIL,"Digital/Flat",sobre,ok,"",7
+2026-10-19T23:24:37,digital_round_hard,PENCIL,"Digital/Round Hard",tamanhos,ok,"",5
+2026-10-19T23:24:44,digital_round_hard,PENCIL,"Digital/Round Hard",sobre,ok,"",7
+2026-10-19T23:24:50,digital_round_soft,PENCIL,"Digital/Round Soft",tamanhos,ok,"",6
+2026-10-19T23:24:56,digital_round_soft,PENCIL,"Digital/Round Soft",sobre,ok,"",6
+2026-10-19T23:25:02,digital_round_soft_2,PENCIL,"Digital/Round Soft 2",tamanhos,ok,"",6
+2026-10-19T23:25:09,digital_round_soft_2,PENCIL,"Digital/Round Soft 2",sobre,ok,"",7
+2026-10-19T23:25:15,digital_tilted_hard,PENCIL,"Digital/Tilted Hard",tamanhos,ok,"",6
+2026-10-19T23:25:21,digital_tilted_hard,PENCIL,"Digital/Tilted Hard",sobre,ok,"",6
+2026-10-19T23:25:27,dry_media_lino,PENCIL,"Dry Media/Lino",tamanhos,ok,"",6
+2026-10-19T23:25:34,dry_media_lino,PENCIL,"Dry Media/Lino",sobre,ok,"",7
+2026-10-19T23:25:39,dry_media_lino_large,PENCIL,"Dry Media/Lino Large",tamanhos,ok,"",5
+2026-10-19T23:25:46,dry_media_lino_large,PENCIL,"Dry Media/Lino Large",sobre,ok,"",7
+2026-10-19T23:25:52,dry_media_powder,PENCIL,"Dry Media/Powder",tamanhos,ok,"",6
+2026-10-19T23:25:59,dry_media_powder,PENCIL,"Dry Media/Powder",sobre,ok,"",7
+2026-10-19T23:26:04,dry_media_powder_2,PENCIL,"Dry Media/Powder 2",tamanhos,ok,"",5
+2026-10-19T23:26:11,dry_media_powder_2,PENCIL,"Dry Media/Powder 2",sobre,ok,"",7
+2026-10-19T23:26:17,dry_media_textured,PENCIL,"Dry Media/Textured",tamanhos,ok,"",6
+2026-10-19T23:26:24,dry_media_textured,PENCIL,"Dry Media/Textured",sobre,ok,"",7
+2026-10-19T23:26:29,dry_media_textured_2,PENCIL,"Dry Media/Textured 2",tamanhos,ok,"",5
+2026-10-19T23:26:36,dry_media_textured_2,PENCIL,"Dry Media/Textured 2",sobre,ok,"",7
+2026-10-19T23:26:42,dry_media_textured_3,PENCIL,"Dry Media/Textured 3",tamanhos,ok,"",6
+2026-10-19T23:26:49,dry_media_textured_3,PENCIL,"Dry Media/Textured 3",sobre,ok,"",7
+2026-10-19T23:26:54,graphite_pencil_2b,PENCIL,"Graphite Pencil/2B",tamanhos,ok,"",5
+2026-10-19T23:27:01,graphite_pencil_2b,PENCIL,"Graphite Pencil/2B",sobre,ok,"",7
+2026-10-19T23:27:07,graphite_pencil_2h,PENCIL,"Graphite Pencil/2H",tamanhos,ok,"",6
+2026-10-19T23:27:13,graphite_pencil_2h,PENCIL,"Graphite Pencil/2H",sobre,ok,"",6
+2026-10-19T23:27:19,graphite_pencil_4b,PENCIL,"Graphite Pencil/4B",tamanhos,ok,"",6
+2026-10-19T23:27:26,graphite_pencil_4b,PENCIL,"Graphite Pencil/4B",sobre,ok,"",7
+2026-10-19T23:27:32,graphite_pencil_8b,PENCIL,"Graphite Pencil/8B",tamanhos,ok,"",6
+2026-10-19T23:27:38,graphite_pencil_8b,PENCIL,"Graphite Pencil/8B",sobre,ok,"",6
+2026-10-19T23:27:44,graphite_pencil_craft,PENCIL,"Graphite Pencil/Craft",tamanhos,ok,"",6
+2026-10-19T23:27:51,graphite_pencil_craft,PENCIL,"Graphite Pencil/Craft",sobre,ok,"",7
+2026-10-19T23:27:57,graphite_pencil_craft_2,PENCIL,"Graphite Pencil/Craft 2",tamanhos,ok,"",6
+2026-10-19T23:28:03,graphite_pencil_craft_2,PENCIL,"Graphite Pencil/Craft 2",sobre,ok,"",6
+2026-10-19T23:28:09,graphite_pencil_craft_flat,PENCIL,"Graphite Pencil/Craft Flat",tamanhos,ok,"",6
+2026-10-19T23:28:16,graphite_pencil_craft_flat,PENCIL,"Graphite Pencil/Craft Flat",sobre,ok,"",7
+2026-10-19T23:28:22,graphite_pencil_craft_flat_2,PENCIL,"Graphite Pencil/Craft Flat 2",tamanhos,ok,"",6
+2026-10-19T23:28:28,graphite_pencil_craft_flat_2,PENCIL,"Graphite Pencil/Craft Flat 2",sobre,ok,"",6
+2026-10-19T23:28:34,graphite_pencil_craft_flat_3,PENCIL,"Graphite Pencil/Craft Flat 3",tamanhos,ok,"",6
+2026-10-19T23:28:41,graphite_pencil_craft_flat_3,PENCIL,"Graphite Pencil/Craft Flat 3",sobre,ok,"",7
+2026-10-19T23:28:46,graphite_pencil_h,PENCIL,"Graphite Pencil/H",tamanhos,ok,"",5
+2026-10-19T23:28:53,graphite_pencil_h,PENCIL,"Graphite Pencil/H",sobre,ok,"",7
+2026-10-19T23:28:59,graphite_pencil_hb,PENCIL,"Graphite Pencil/HB",tamanhos,ok,"",6
+2026-10-19T23:29:06,graphite_pencil_hb,PENCIL,"Graphite Pencil/HB",sobre,ok,"",7
+2026-10-19T23:29:11,graphite_pencil_pentell,PENCIL,"Graphite Pencil/Pentell",tamanhos,ok,"",5
+2026-10-19T23:29:18,graphite_pencil_pentell,PENCIL,"Graphite Pencil/Pentell",sobre,ok,"",7
+2026-10-19T23:29:24,scratches_scratch,PENCIL,"Scratches/Scratch",tamanhos,ok,"",6
+2026-10-19T23:29:31,scratches_scratch,PENCIL,"Scratches/Scratch",sobre,ok,"",7
+2026-10-19T23:29:37,scratches_scratch_thin,PENCIL,"Scratches/Scratch Thin",tamanhos,ok,"",6
+2026-10-19T23:29:43,scratches_scratch_thin,PENCIL,"Scratches/Scratch Thin",sobre,ok,"",6
+2026-10-19T23:29:49,scratches_scratches_2,PENCIL,"Scratches/Scratches 2",tamanhos,ok,"",6
+2026-10-19T23:29:56,scratches_scratches_2,PENCIL,"Scratches/Scratches 2",sobre,ok,"",7
+2026-10-19T23:30:01,pastel_dry_dry_thin,PASTEL,"Pastel Dry/Dry Thin",tamanhos,ok,"",5
+2026-10-19T23:30:08,pastel_dry_dry_thin,PASTEL,"Pastel Dry/Dry Thin",sobre,ok,"",7
+2026-10-19T23:30:14,pastel_dry_flat_dry,PASTEL,"Pastel Dry/Flat Dry",tamanhos,ok,"",6
+2026-10-19T23:30:21,pastel_dry_flat_dry,PASTEL,"Pastel Dry/Flat Dry",sobre,ok,"",7
+2026-10-19T23:30:26,pastel_dry_flat_soft,PASTEL,"Pastel Dry/Flat Soft",tamanhos,ok,"",5
+2026-10-19T23:30:33,pastel_dry_flat_soft,PASTEL,"Pastel Dry/Flat Soft",sobre,ok,"",7
+2026-10-19T23:30:39,pastel_dry_hard,PASTEL,"Pastel Dry/Hard",tamanhos,ok,"",6
+2026-10-19T23:30:46,pastel_dry_hard,PASTEL,"Pastel Dry/Hard",sobre,ok,"",7
+2026-10-19T23:30:52,pastel_dry_oval,PASTEL,"Pastel Dry/Oval",tamanhos,ok,"",6
+2026-10-19T23:30:58,pastel_dry_oval,PASTEL,"Pastel Dry/Oval",sobre,ok,"",6
+2026-10-19T23:31:04,pastel_dry_oval_2,PASTEL,"Pastel Dry/Oval 2",tamanhos,ok,"",6
+2026-10-19T23:31:11,pastel_dry_oval_2,PASTEL,"Pastel Dry/Oval 2",sobre,ok,"",7
+2026-10-19T23:31:17,pastel_dry_small_soft,PASTEL,"Pastel Dry/Small Soft",tamanhos,ok,"",6
+2026-10-19T23:31:23,pastel_dry_small_soft,PASTEL,"Pastel Dry/Small Soft",sobre,ok,"",6
+2026-10-19T23:31:29,pastel_dry_square_hard,PASTEL,"Pastel Dry/Square Hard",tamanhos,ok,"",6
+2026-10-19T23:31:36,pastel_dry_square_hard,PASTEL,"Pastel Dry/Square Hard",sobre,ok,"",7
+2026-10-19T23:31:42,pastel_dry_square_soft_2,PASTEL,"Pastel Dry/Square Soft 2",tamanhos,ok,"",6
+2026-10-19T23:31:48,pastel_dry_square_soft_2,PASTEL,"Pastel Dry/Square Soft 2",sobre,ok,"",6
+2026-10-19T23:31:54,pastel_dry_thin_soft,PASTEL,"Pastel Dry/Thin Soft",tamanhos,ok,"",6
+2026-10-19T23:32:01,pastel_dry_thin_soft,PASTEL,"Pastel Dry/Thin Soft",sobre,ok,"",7
+2026-10-19T23:32:07,pastel_oil_oil_liner,PASTEL,"Pastel Oil/Oil Liner",tamanhos,ok,"",6
+2026-10-19T23:32:13,pastel_oil_oil_liner,PASTEL,"Pastel Oil/Oil Liner",sobre,ok,"",6
+2026-10-19T23:32:19,pastel_oil_oil_pastel,PASTEL,"Pastel Oil/Oil Pastel",tamanhos,ok,"",6
+2026-10-19T23:32:25,pastel_oil_oil_pastel,PASTEL,"Pastel Oil/Oil Pastel",sobre,ok,"",6
+2026-10-19T23:32:31,pastel_oil_oil_pastel_2,PASTEL,"Pastel Oil/Oil Pastel 2",tamanhos,ok,"",6
+2026-10-19T23:32:38,pastel_oil_oil_pastel_2,PASTEL,"Pastel Oil/Oil Pastel 2",sobre,ok,"",7
+2026-10-19T23:32:44,pastel_oil_oil_pastel_3,PASTEL,"Pastel Oil/Oil Pastel 3",tamanhos,ok,"",6
+2026-10-19T23:32:50,pastel_oil_oil_pastel_3,PASTEL,"Pastel Oil/Oil Pastel 3",sobre,ok,"",6
+2026-10-19T23:32:56,pastel_oil_oil_pastel_flat,PASTEL,"Pastel Oil/Oil Pastel Flat",tamanhos,ok,"",6
+2026-10-19T23:33:03,pastel_oil_oil_pastel_flat,PASTEL,"Pastel Oil/Oil Pastel Flat",sobre,ok,"",7
+2026-10-19T23:33:09,pastel_oil_wax_pencil,PASTEL,"Pastel Oil/Wax Pencil",tamanhos,ok,"",6
+2026-10-19T23:33:15,pastel_oil_wax_pencil,PASTEL,"Pastel Oil/Wax Pencil",sobre,ok,"",6
+2026-10-19T23:33:21,pastel_oil_wax_soft,PASTEL,"Pastel Oil/Wax Soft",tamanhos,ok,"",6
+2026-10-19T23:33:28,pastel_oil_wax_soft,PASTEL,"Pastel Oil/Wax Soft",sobre,ok,"",7
+2026-10-19T23:33:34,pastel_oil_wax_soft_2,PASTEL,"Pastel Oil/Wax Soft  2",tamanhos,ok,"",6
+2026-10-19T23:33:41,pastel_oil_wax_soft_2,PASTEL,"Pastel Oil/Wax Soft  2",sobre,ok,"",7
+2026-10-19T23:33:46,scrape_wax_scrape,PASTEL,"Scrape/Wax Scrape",tamanhos,ok,"",5
+2026-10-19T23:33:53,scrape_wax_scrape,PASTEL,"Scrape/Wax Scrape",sobre,ok,"",7
+2026-10-19T23:33:59,scrape_wax_scrape_2,PASTEL,"Scrape/Wax Scrape 2",tamanhos,ok,"",6
+2026-10-19T23:34:05,scrape_wax_scrape_2,PASTEL,"Scrape/Wax Scrape 2",sobre,ok,"",6
+2026-10-19T23:34:11,texture_dust,PASTEL,"Texture/Dust",tamanhos,ok,"",6
+2026-10-19T23:34:18,texture_dust,PASTEL,"Texture/Dust",sobre,ok,"",7
+2026-10-19T23:34:24,texture_fragments,PASTEL,"Texture/Fragments",tamanhos,ok,"",6
+2026-10-19T23:34:30,texture_fragments,PASTEL,"Texture/Fragments",sobre,ok,"",6
+2026-10-19T23:34:36,texture_pastel_pattern,PASTEL,"Texture/Pastel Pattern",tamanhos,ok,"",6
+2026-10-19T23:34:43,texture_pastel_pattern,PASTEL,"Texture/Pastel Pattern",sobre,ok,"",7
+2026-10-19T23:34:49,texture_scrambled,PASTEL,"Texture/Scrambled",tamanhos,ok,"",6
+2026-10-19T23:34:55,texture_scrambled,PASTEL,"Texture/Scrambled",sobre,ok,"",6
+2026-10-19T23:35:01,bristle_bristle_flat,OIL_AND_ACRYLIC,"Bristle/Bristle Flat",tamanhos,ok,"",6
+2026-10-19T23:35:08,bristle_bristle_flat,OIL_AND_ACRYLIC,"Bristle/Bristle Flat",sobre,ok,"",7
+2026-10-19T23:35:14,bristle_bristle_flat_2,OIL_AND_ACRYLIC,"Bristle/Bristle Flat 2",tamanhos,ok,"",6
+2026-10-19T23:35:21,bristle_bristle_flat_2,OIL_AND_ACRYLIC,"Bristle/Bristle Flat 2",sobre,ok,"",7
+2026-10-19T23:35:27,bristle_bristle_hairy,OIL_AND_ACRYLIC,"Bristle/Bristle Hairy",tamanhos,ok,"",6
+2026-10-19T23:35:34,bristle_bristle_hairy,OIL_AND_ACRYLIC,"Bristle/Bristle Hairy",sobre,ok,"",7
+2026-10-19T23:35:39,bristle_bristle_rake,OIL_AND_ACRYLIC,"Bristle/Bristle Rake",tamanhos,ok,"",5
+2026-10-19T23:35:46,bristle_bristle_rake,OIL_AND_ACRYLIC,"Bristle/Bristle Rake",sobre,ok,"",7
+2026-10-19T23:35:52,bristle_bristle_ribbon,OIL_AND_ACRYLIC,"Bristle/Bristle Ribbon",tamanhos,ok,"",6
+2026-10-19T23:35:59,bristle_bristle_ribbon,OIL_AND_ACRYLIC,"Bristle/Bristle Ribbon",sobre,ok,"",7
+2026-10-19T23:36:05,bristle_bristle_round,OIL_AND_ACRYLIC,"Bristle/Bristle Round",tamanhos,ok,"",6
+2026-10-19T23:36:12,bristle_bristle_round,OIL_AND_ACRYLIC,"Bristle/Bristle Round",sobre,ok,"",7
+2026-10-19T23:36:18,bristle_bristle_round_2,OIL_AND_ACRYLIC,"Bristle/Bristle Round 2",tamanhos,ok,"",6
+2026-10-19T23:36:24,bristle_bristle_round_2,OIL_AND_ACRYLIC,"Bristle/Bristle Round 2",sobre,ok,"",6
+2026-10-19T23:36:30,bristle_bristle_soft,OIL_AND_ACRYLIC,"Bristle/Bristle Soft",tamanhos,ok,"",6
+2026-10-19T23:36:37,bristle_bristle_soft,OIL_AND_ACRYLIC,"Bristle/Bristle Soft",sobre,ok,"",7
+2026-10-19T23:36:43,bristle_bristle_stripes,OIL_AND_ACRYLIC,"Bristle/Bristle Stripes",tamanhos,ok,"",6
+2026-10-19T23:36:50,bristle_bristle_stripes,OIL_AND_ACRYLIC,"Bristle/Bristle Stripes",sobre,ok,"",7
+2026-10-19T23:36:56,bristle_bristle_wide,OIL_AND_ACRYLIC,"Bristle/Bristle Wide",tamanhos,ok,"",6
+2026-10-19T23:37:02,bristle_bristle_wide,OIL_AND_ACRYLIC,"Bristle/Bristle Wide",sobre,ok,"",6
+2026-10-19T23:37:08,dabber_dabber,OIL_AND_ACRYLIC,"Dabber/Dabber",tamanhos,ok,"",6
+2026-10-19T23:37:15,dabber_dabber,OIL_AND_ACRYLIC,"Dabber/Dabber",sobre,ok,"",7
+2026-10-19T23:37:21,dabber_dabber_2,OIL_AND_ACRYLIC,"Dabber/Dabber 2",tamanhos,ok,"",6
+2026-10-19T23:37:27,dabber_dabber_2,OIL_AND_ACRYLIC,"Dabber/Dabber 2",sobre,ok,"",6
+2026-10-19T23:37:33,dabber_dabber_3,OIL_AND_ACRYLIC,"Dabber/Dabber 3",tamanhos,ok,"",6
+2026-10-19T23:37:40,dabber_dabber_3,OIL_AND_ACRYLIC,"Dabber/Dabber 3",sobre,ok,"",7
+2026-10-19T23:37:46,dabber_dabber_4,OIL_AND_ACRYLIC,"Dabber/Dabber 4",tamanhos,ok,"",6
+2026-10-19T23:37:52,dabber_dabber_4,OIL_AND_ACRYLIC,"Dabber/Dabber 4",sobre,ok,"",6
+2026-10-19T23:37:58,dabber_fan,OIL_AND_ACRYLIC,"Dabber/Fan",tamanhos,ok,"",6
+2026-10-19T23:38:05,dabber_fan,OIL_AND_ACRYLIC,"Dabber/Fan",sobre,ok,"",7
+2026-10-19T23:38:11,flat_bright,OIL_AND_ACRYLIC,"Flat/Bright",tamanhos,ok,"",6
+2026-10-19T23:38:17,flat_bright,OIL_AND_ACRYLIC,"Flat/Bright",sobre,ok,"",6
+2026-10-19T23:38:23,flat_filbert,OIL_AND_ACRYLIC,"Flat/Filbert",tamanhos,ok,"",6
+2026-10-19T23:38:30,flat_filbert,OIL_AND_ACRYLIC,"Flat/Filbert",sobre,ok,"",7
+2026-10-19T23:38:36,flat_filbert_dry,OIL_AND_ACRYLIC,"Flat/Filbert Dry",tamanhos,ok,"",6
+2026-10-19T23:38:42,flat_filbert_dry,OIL_AND_ACRYLIC,"Flat/Filbert Dry",sobre,ok,"",6
+2026-10-19T23:38:48,flat_flat,OIL_AND_ACRYLIC,"Flat/Flat",tamanhos,ok,"",6
+2026-10-19T23:38:55,flat_flat,OIL_AND_ACRYLIC,"Flat/Flat",sobre,ok,"",7
+2026-10-19T23:39:01,flat_flat_dry,OIL_AND_ACRYLIC,"Flat/Flat Dry",tamanhos,ok,"",6
+2026-10-19T23:39:07,flat_flat_dry,OIL_AND_ACRYLIC,"Flat/Flat Dry",sobre,ok,"",6
+2026-10-19T23:39:13,flat_flat_dry_2,OIL_AND_ACRYLIC,"Flat/Flat Dry 2",tamanhos,ok,"",6
+2026-10-19T23:39:20,flat_flat_dry_2,OIL_AND_ACRYLIC,"Flat/Flat Dry 2",sobre,ok,"",7
+2026-10-19T23:39:26,flat_flat_dry_soft,OIL_AND_ACRYLIC,"Flat/Flat Dry Soft",tamanhos,ok,"",6
+2026-10-19T23:39:32,flat_flat_dry_soft,OIL_AND_ACRYLIC,"Flat/Flat Dry Soft",sobre,ok,"",6
+2026-10-19T23:39:38,flat_flat_oily,OIL_AND_ACRYLIC,"Flat/Flat Oily",tamanhos,ok,"",6
+2026-10-19T23:39:45,flat_flat_oily,OIL_AND_ACRYLIC,"Flat/Flat Oily",sobre,ok,"",7
+2026-10-19T23:39:51,flat_flat_oily_2,OIL_AND_ACRYLIC,"Flat/Flat Oily 2",tamanhos,ok,"",6
+2026-10-19T23:39:57,flat_flat_oily_2,OIL_AND_ACRYLIC,"Flat/Flat Oily 2",sobre,ok,"",6
+2026-10-19T23:40:03,flat_thick,OIL_AND_ACRYLIC,"Flat/Thick",tamanhos,ok,"",6
+2026-10-19T23:40:10,flat_thick,OIL_AND_ACRYLIC,"Flat/Thick",sobre,ok,"",7
+2026-10-19T23:40:16,grunge_grunge,OIL_AND_ACRYLIC,"Grunge/Grunge",tamanhos,ok,"",6
+2026-10-19T23:40:23,grunge_grunge,OIL_AND_ACRYLIC,"Grunge/Grunge",sobre,ok,"",7
+2026-10-19T23:40:28,grunge_grunge_2,OIL_AND_ACRYLIC,"Grunge/Grunge 2",tamanhos,ok,"",5
+2026-10-19T23:40:35,grunge_grunge_2,OIL_AND_ACRYLIC,"Grunge/Grunge 2",sobre,ok,"",7
+2026-10-19T23:40:41,grunge_grunge_3,OIL_AND_ACRYLIC,"Grunge/Grunge 3",tamanhos,ok,"",6
+2026-10-19T23:40:48,grunge_grunge_3,OIL_AND_ACRYLIC,"Grunge/Grunge 3",sobre,ok,"",7
+2026-10-19T23:40:53,grunge_grunge_4,OIL_AND_ACRYLIC,"Grunge/Grunge 4",tamanhos,ok,"",5
+2026-10-19T23:41:00,grunge_grunge_4,OIL_AND_ACRYLIC,"Grunge/Grunge 4",sobre,ok,"",7
+2026-10-19T23:41:06,grunge_scatter,OIL_AND_ACRYLIC,"Grunge/Scatter",tamanhos,ok,"",6
+2026-10-19T23:41:13,grunge_scatter,OIL_AND_ACRYLIC,"Grunge/Scatter",sobre,ok,"",7
+2026-10-19T23:41:18,grunge_scatter_2,OIL_AND_ACRYLIC,"Grunge/Scatter 2",tamanhos,ok,"",5
+2026-10-19T23:41:25,grunge_scatter_2,OIL_AND_ACRYLIC,"Grunge/Scatter 2",sobre,ok,"",7
+2026-10-19T23:41:31,grunge_scatter_3,OIL_AND_ACRYLIC,"Grunge/Scatter 3",tamanhos,ok,"",6
+2026-10-19T23:41:38,grunge_scatter_3,OIL_AND_ACRYLIC,"Grunge/Scatter 3",sobre,ok,"",7
+2026-10-19T23:41:44,grunge_shred,OIL_AND_ACRYLIC,"Grunge/Shred",tamanhos,ok,"",6
+2026-10-19T23:41:50,grunge_shred,OIL_AND_ACRYLIC,"Grunge/Shred",sobre,ok,"",6
+2026-10-19T23:41:56,knife_knife_dry,OIL_AND_ACRYLIC,"Knife/Knife Dry",tamanhos,ok,"",6
+2026-10-19T23:42:03,knife_knife_dry,OIL_AND_ACRYLIC,"Knife/Knife Dry",sobre,ok,"",7
+2026-10-19T23:42:08,knife_knife_dry_2,OIL_AND_ACRYLIC,"Knife/Knife Dry 2",tamanhos,ok,"",5
+2026-10-19T23:42:15,knife_knife_dry_2,OIL_AND_ACRYLIC,"Knife/Knife Dry 2",sobre,ok,"",7
+2026-10-19T23:42:21,knife_knife_grainy,OIL_AND_ACRYLIC,"Knife/Knife Grainy",tamanhos,ok,"",6
+2026-10-19T23:42:27,knife_knife_grainy,OIL_AND_ACRYLIC,"Knife/Knife Grainy",sobre,ok,"",6
+2026-10-19T23:42:33,knife_knife_oily,OIL_AND_ACRYLIC,"Knife/Knife Oily",tamanhos,ok,"",6
+2026-10-19T23:42:40,knife_knife_oily,OIL_AND_ACRYLIC,"Knife/Knife Oily",sobre,ok,"",7
+2026-10-19T23:42:46,knife_knife_smooth,OIL_AND_ACRYLIC,"Knife/Knife Smooth",tamanhos,ok,"",6
+2026-10-19T23:42:52,knife_knife_smooth,OIL_AND_ACRYLIC,"Knife/Knife Smooth",sobre,ok,"",6
+2026-10-19T23:42:58,knife_knife_smooth_2,OIL_AND_ACRYLIC,"Knife/Knife Smooth 2",tamanhos,ok,"",6
+2026-10-19T23:43:05,knife_knife_smooth_2,OIL_AND_ACRYLIC,"Knife/Knife Smooth 2",sobre,ok,"",7
+2026-10-19T23:43:11,knife_knife_smooth_3,OIL_AND_ACRYLIC,"Knife/Knife Smooth 3",tamanhos,ok,"",6
+2026-10-19T23:43:18,knife_knife_smooth_3,OIL_AND_ACRYLIC,"Knife/Knife Smooth 3",sobre,ok,"",7
+2026-10-19T23:43:23,knife_knife_soft,OIL_AND_ACRYLIC,"Knife/Knife Soft",tamanhos,ok,"",5
+2026-10-19T23:43:30,knife_knife_soft,OIL_AND_ACRYLIC,"Knife/Knife Soft",sobre,ok,"",7
+2026-10-19T23:43:36,knife_knife_stain,OIL_AND_ACRYLIC,"Knife/Knife Stain",tamanhos,ok,"",6
+2026-10-19T23:43:43,knife_knife_stain,OIL_AND_ACRYLIC,"Knife/Knife Stain",sobre,ok,"",7
+2026-10-19T23:43:49,knife_knife_textured,OIL_AND_ACRYLIC,"Knife/Knife Textured",tamanhos,ok,"",6
+2026-10-19T23:43:55,knife_knife_textured,OIL_AND_ACRYLIC,"Knife/Knife Textured",sobre,ok,"",6
+2026-10-19T23:44:01,metallic_flat,OIL_AND_ACRYLIC,"Metallic/Flat",tamanhos,ok,"",6
+2026-10-19T23:44:08,metallic_flat,OIL_AND_ACRYLIC,"Metallic/Flat",sobre,ok,"",7
+2026-10-19T23:44:14,metallic_flat_2,OIL_AND_ACRYLIC,"Metallic/Flat 2",tamanhos,ok,"",6
+2026-10-19T23:44:20,metallic_flat_2,OIL_AND_ACRYLIC,"Metallic/Flat 2",sobre,ok,"",6
+2026-10-19T23:44:26,metallic_flat_3,OIL_AND_ACRYLIC,"Metallic/Flat 3",tamanhos,ok,"",6
+2026-10-19T23:44:33,metallic_flat_3,OIL_AND_ACRYLIC,"Metallic/Flat 3",sobre,ok,"",7
+2026-10-19T23:44:39,metallic_round,OIL_AND_ACRYLIC,"Metallic/Round",tamanhos,ok,"",6
+2026-10-19T23:44:45,metallic_round,OIL_AND_ACRYLIC,"Metallic/Round",sobre,ok,"",6
+2026-10-19T23:44:51,metallic_round_2,OIL_AND_ACRYLIC,"Metallic/Round 2",tamanhos,ok,"",6
+2026-10-19T23:44:58,metallic_round_2,OIL_AND_ACRYLIC,"Metallic/Round 2",sobre,ok,"",7
+2026-10-19T23:45:04,metallic_round_3,OIL_AND_ACRYLIC,"Metallic/Round 3",tamanhos,ok,"",6
+2026-10-19T23:45:10,metallic_round_3,OIL_AND_ACRYLIC,"Metallic/Round 3",sobre,ok,"",6
+2026-10-19T23:45:16,metallic_splats,OIL_AND_ACRYLIC,"Metallic/Splats",tamanhos,ok,"",6
+2026-10-19T23:45:23,metallic_splats,OIL_AND_ACRYLIC,"Metallic/Splats",sobre,ok,"",7
+2026-10-19T23:45:29,rake_rake_oily,OIL_AND_ACRYLIC,"Rake/Rake Oily",tamanhos,ok,"",6
+2026-10-19T23:45:35,rake_rake_oily,OIL_AND_ACRYLIC,"Rake/Rake Oily",sobre,ok,"",6
+2026-10-19T23:45:41,rake_rake_sharp,OIL_AND_ACRYLIC,"Rake/Rake Sharp",tamanhos,ok,"",6
+2026-10-19T23:45:48,rake_rake_sharp,OIL_AND_ACRYLIC,"Rake/Rake Sharp",sobre,ok,"",7
+2026-10-19T23:45:54,round_fat_bristle_2,OIL_AND_ACRYLIC,"Round/Fat bristle 2",tamanhos,ok,"",6
+2026-10-19T23:46:00,round_fat_bristle_2,OIL_AND_ACRYLIC,"Round/Fat bristle 2",sobre,ok,"",6
+2026-10-19T23:46:06,round_hairy,OIL_AND_ACRYLIC,"Round/Hairy",tamanhos,ok,"",6
+2026-10-19T23:46:13,round_hairy,OIL_AND_ACRYLIC,"Round/Hairy",sobre,ok,"",7
+2026-10-19T23:46:19,round_liner,OIL_AND_ACRYLIC,"Round/Liner",tamanhos,ok,"",6
+2026-10-19T23:46:25,round_liner,OIL_AND_ACRYLIC,"Round/Liner",sobre,ok,"",6
+2026-10-19T23:46:31,round_rough_dry,OIL_AND_ACRYLIC,"Round/Rough Dry",tamanhos,ok,"",6
+2026-10-19T23:46:38,round_rough_dry,OIL_AND_ACRYLIC,"Round/Rough Dry",sobre,ok,"",7
+2026-10-19T23:46:44,round_rough_oily,OIL_AND_ACRYLIC,"Round/Rough Oily",tamanhos,ok,"",6
+2026-10-19T23:46:50,round_rough_oily,OIL_AND_ACRYLIC,"Round/Rough Oily",sobre,ok,"",6
+2026-10-19T23:46:56,round_round_hard,OIL_AND_ACRYLIC,"Round/Round Hard",tamanhos,ok,"",6
+2026-10-19T23:47:03,round_round_hard,OIL_AND_ACRYLIC,"Round/Round Hard",sobre,ok,"",7
+2026-10-19T23:47:08,round_round_hard_2,OIL_AND_ACRYLIC,"Round/Round Hard 2",tamanhos,ok,"",5
+2026-10-19T23:47:15,round_round_hard_2,OIL_AND_ACRYLIC,"Round/Round Hard 2",sobre,ok,"",7
+2026-10-19T23:47:21,round_round_soft,OIL_AND_ACRYLIC,"Round/Round soft",tamanhos,ok,"",6
+2026-10-19T23:47:28,round_round_soft,OIL_AND_ACRYLIC,"Round/Round soft",sobre,ok,"",7
+2026-10-19T23:47:33,round_round_soft_2,OIL_AND_ACRYLIC,"Round/Round soft 2",tamanhos,ok,"",5
+2026-10-19T23:47:40,round_round_soft_2,OIL_AND_ACRYLIC,"Round/Round soft 2",sobre,ok,"",7
+2026-10-19T23:48:18,round_thick_hairy,OIL_AND_ACRYLIC,"Round/Thick Hairy",tamanhos,ok,"",6
+2026-10-19T23:48:24,round_thick_hairy,OIL_AND_ACRYLIC,"Round/Thick Hairy",sobre,ok,"",6
+2026-10-19T23:48:30,flat_flat_hairy,EXPRESS_OIL,"Flat/Flat Hairy",tamanhos,ok,"",6
+2026-10-19T23:48:37,flat_flat_hairy,EXPRESS_OIL,"Flat/Flat Hairy",sobre,ok,"",7
+2026-10-19T23:48:43,flat_flat_thick,EXPRESS_OIL,"Flat/Flat thick",tamanhos,ok,"",6
+2026-10-19T23:48:49,flat_flat_thick,EXPRESS_OIL,"Flat/Flat thick",sobre,ok,"",6
+2026-10-19T23:48:55,flat_hairy,EXPRESS_OIL,"Flat/Hairy",tamanhos,ok,"",6
+2026-10-19T23:49:02,flat_hairy,EXPRESS_OIL,"Flat/Hairy",sobre,ok,"",7
+2026-10-19T23:49:08,flat_knife_dry,EXPRESS_OIL,"Flat/Knife Dry",tamanhos,ok,"",6
+2026-10-19T23:49:14,flat_knife_dry,EXPRESS_OIL,"Flat/Knife Dry",sobre,ok,"",6
+2026-10-19T23:49:20,flat_knife_dry_2,EXPRESS_OIL,"Flat/Knife Dry 2",tamanhos,ok,"",6
+2026-10-19T23:49:27,flat_knife_dry_2,EXPRESS_OIL,"Flat/Knife Dry 2",sobre,ok,"",7
+2026-10-19T23:49:33,flat_knife_grainy,EXPRESS_OIL,"Flat/Knife Grainy",tamanhos,ok,"",6
+2026-10-19T23:49:39,flat_knife_grainy,EXPRESS_OIL,"Flat/Knife Grainy",sobre,ok,"",6
+2026-10-19T23:49:45,flat_knife_smooth,EXPRESS_OIL,"Flat/Knife Smooth",tamanhos,ok,"",6
+2026-10-19T23:49:52,flat_knife_smooth,EXPRESS_OIL,"Flat/Knife Smooth",sobre,ok,"",7
+2026-10-19T23:49:57,flat_knife_soft,EXPRESS_OIL,"Flat/Knife Soft",tamanhos,ok,"",5
+2026-10-19T23:50:04,flat_knife_soft,EXPRESS_OIL,"Flat/Knife Soft",sobre,ok,"",7
+2026-10-19T23:50:10,flat_knife_textured,EXPRESS_OIL,"Flat/Knife Textured",tamanhos,ok,"",6
+2026-10-19T23:50:17,flat_knife_textured,EXPRESS_OIL,"Flat/Knife Textured",sobre,ok,"",7
+2026-10-19T23:50:22,flat_soft,EXPRESS_OIL,"Flat/Soft",tamanhos,ok,"",5
+2026-10-19T23:50:29,flat_soft,EXPRESS_OIL,"Flat/Soft",sobre,ok,"",7
+2026-10-19T23:50:35,glaze_filbert,EXPRESS_OIL,"Glaze/Filbert",tamanhos,ok,"",6
+2026-10-19T23:50:42,glaze_filbert,EXPRESS_OIL,"Glaze/Filbert",sobre,ok,"",7
+2026-10-19T23:50:47,glaze_filbert_smooth,EXPRESS_OIL,"Glaze/Filbert Smooth",tamanhos,ok,"",5
+2026-10-19T23:50:54,glaze_filbert_smooth,EXPRESS_OIL,"Glaze/Filbert Smooth",sobre,ok,"",7
+2026-10-19T23:51:00,glaze_flat_oily,EXPRESS_OIL,"Glaze/Flat Oily",tamanhos,ok,"",6
+2026-10-19T23:51:07,glaze_flat_oily,EXPRESS_OIL,"Glaze/Flat Oily",sobre,ok,"",7
+2026-10-19T23:51:12,glaze_liner,EXPRESS_OIL,"Glaze/Liner",tamanhos,ok,"",5
+2026-10-19T23:51:19,glaze_liner,EXPRESS_OIL,"Glaze/Liner",sobre,ok,"",7
+2026-10-19T23:51:25,glaze_round,EXPRESS_OIL,"Glaze/Round",tamanhos,ok,"",6
+2026-10-19T23:51:31,glaze_round,EXPRESS_OIL,"Glaze/Round",sobre,ok,"",6
+2026-10-19T23:51:37,glaze_round_soft,EXPRESS_OIL,"Glaze/Round Soft",tamanhos,ok,"",6
+2026-10-19T23:51:44,glaze_round_soft,EXPRESS_OIL,"Glaze/Round Soft",sobre,ok,"",7
+2026-10-19T23:51:50,glaze_wash,EXPRESS_OIL,"Glaze/Wash",tamanhos,ok,"",6
+2026-10-19T23:51:56,glaze_wash,EXPRESS_OIL,"Glaze/Wash",sobre,ok,"",6
+2026-10-19T23:52:02,grunge_grunge,EXPRESS_OIL,"Grunge/Grunge",tamanhos,ok,"",6
+2026-10-19T23:52:09,grunge_grunge,EXPRESS_OIL,"Grunge/Grunge",sobre,ok,"",7
+2026-10-19T23:52:15,grunge_grunge_2,EXPRESS_OIL,"Grunge/Grunge 2",tamanhos,ok,"",6
+2026-10-19T23:52:21,grunge_grunge_2,EXPRESS_OIL,"Grunge/Grunge 2",sobre,ok,"",6
+2026-10-19T23:52:27,grunge_grunge_3,EXPRESS_OIL,"Grunge/Grunge 3",tamanhos,ok,"",6
+2026-10-19T23:52:34,grunge_grunge_3,EXPRESS_OIL,"Grunge/Grunge 3",sobre,ok,"",7
+2026-10-19T23:52:40,grunge_grunge_4,EXPRESS_OIL,"Grunge/Grunge 4",tamanhos,ok,"",6
+2026-10-19T23:52:46,grunge_grunge_4,EXPRESS_OIL,"Grunge/Grunge 4",sobre,ok,"",6
+2026-10-19T23:52:52,grunge_scatter,EXPRESS_OIL,"Grunge/Scatter",tamanhos,ok,"",6
+2026-10-19T23:52:59,grunge_scatter,EXPRESS_OIL,"Grunge/Scatter",sobre,ok,"",7
+2026-10-19T23:53:05,grunge_scatter_2,EXPRESS_OIL,"Grunge/Scatter 2",tamanhos,ok,"",6
+2026-10-19T23:53:11,grunge_scatter_2,EXPRESS_OIL,"Grunge/Scatter 2",sobre,ok,"",6
+2026-10-19T23:53:17,grunge_shred,EXPRESS_OIL,"Grunge/Shred",tamanhos,ok,"",6
+2026-10-19T23:53:24,grunge_shred,EXPRESS_OIL,"Grunge/Shred",sobre,ok,"",7
+2026-10-19T23:53:30,grunge_shred_2,EXPRESS_OIL,"Grunge/Shred 2",tamanhos,ok,"",6
+2026-10-19T23:53:37,grunge_shred_2,EXPRESS_OIL,"Grunge/Shred 2",sobre,ok,"",7
+2026-10-19T23:53:42,grunge_shred_3,EXPRESS_OIL,"Grunge/Shred 3",tamanhos,ok,"",5
+2026-10-19T23:53:49,grunge_shred_3,EXPRESS_OIL,"Grunge/Shred 3",sobre,ok,"",6
+2026-10-19T23:53:55,grunge_textured,EXPRESS_OIL,"Grunge/Textured",tamanhos,ok,"",6
+2026-10-19T23:54:02,grunge_textured,EXPRESS_OIL,"Grunge/Textured",sobre,ok,"",7
+2026-10-19T23:54:08,round_fat_round,EXPRESS_OIL,"Round/Fat Round",tamanhos,ok,"",6
+2026-10-19T23:54:14,round_fat_round,EXPRESS_OIL,"Round/Fat Round",sobre,ok,"",6
+2026-10-19T23:54:20,round_hairy,EXPRESS_OIL,"Round/Hairy",tamanhos,ok,"",6
+2026-10-19T23:54:27,round_hairy,EXPRESS_OIL,"Round/Hairy",sobre,ok,"",7
+2026-10-19T23:54:33,round_hairy_2,EXPRESS_OIL,"Round/Hairy 2",tamanhos,ok,"",6
+2026-10-19T23:54:39,round_hairy_2,EXPRESS_OIL,"Round/Hairy 2",sobre,ok,"",6
+2026-10-19T23:54:45,round_oily,EXPRESS_OIL,"Round/Oily",tamanhos,ok,"",6
+2026-10-19T23:54:52,round_oily,EXPRESS_OIL,"Round/Oily",sobre,ok,"",7
+2026-10-19T23:54:58,round_rough_wet,EXPRESS_OIL,"Round/Rough Wet",tamanhos,ok,"",6
+2026-10-19T23:55:05,round_rough_wet,EXPRESS_OIL,"Round/Rough Wet",sobre,ok,"",7
+2026-10-19T23:55:11,bristle_bristle_flat,WATERCOLOR,"Bristle/Bristle Flat",tamanhos,ok,"",6
+2026-10-19T23:55:19,bristle_bristle_flat,WATERCOLOR,"Bristle/Bristle Flat",sobre,ok,"",8
+2026-10-19T23:55:25,bristle_bristle_round,WATERCOLOR,"Bristle/Bristle Round",tamanhos,ok,"",6
+2026-10-19T23:55:33,bristle_bristle_round,WATERCOLOR,"Bristle/Bristle Round",sobre,ok,"",8
+2026-10-19T23:55:40,bristle_bristle_round_2,WATERCOLOR,"Bristle/Bristle Round 2",tamanhos,ok,"",7
+2026-10-19T23:55:47,bristle_bristle_round_2,WATERCOLOR,"Bristle/Bristle Round 2",sobre,ok,"",7
+2026-10-19T23:55:54,bristle_bristle_soft,WATERCOLOR,"Bristle/Bristle Soft",tamanhos,ok,"",7
+2026-10-19T23:56:01,bristle_bristle_soft,WATERCOLOR,"Bristle/Bristle Soft",sobre,ok,"",7
+2026-10-19T23:56:08,bristle_bristle_wide,WATERCOLOR,"Bristle/Bristle Wide",tamanhos,ok,"",7
+2026-10-19T23:56:16,bristle_bristle_wide,WATERCOLOR,"Bristle/Bristle Wide",sobre,ok,"",8
+2026-10-19T23:56:22,gouache_gouache_bristle,WATERCOLOR,"Gouache/Gouache Bristle",tamanhos,ok,"",6
+2026-10-19T23:56:30,gouache_gouache_bristle,WATERCOLOR,"Gouache/Gouache Bristle",sobre,ok,"",8
+2026-10-19T23:56:36,gouache_gouache_dry,WATERCOLOR,"Gouache/Gouache Dry",tamanhos,ok,"",6
+2026-10-19T23:56:44,gouache_gouache_dry,WATERCOLOR,"Gouache/Gouache Dry",sobre,ok,"",8
+2026-10-19T23:56:50,gouache_gouache_fan_line,WATERCOLOR,"Gouache/Gouache Fan Line",tamanhos,ok,"",6
+2026-10-19T23:56:58,gouache_gouache_fan_line,WATERCOLOR,"Gouache/Gouache Fan Line",sobre,ok,"",7
+2026-10-19T23:57:05,gouache_gouache_filbert,WATERCOLOR,"Gouache/Gouache Filbert",tamanhos,ok,"",7
+2026-10-19T23:57:12,gouache_gouache_filbert,WATERCOLOR,"Gouache/Gouache Filbert",sobre,ok,"",7
+2026-10-19T23:57:19,gouache_gouache_filbert_2,WATERCOLOR,"Gouache/Gouache Filbert 2",tamanhos,ok,"",7
+2026-10-19T23:57:26,gouache_gouache_filbert_2,WATERCOLOR,"Gouache/Gouache Filbert 2",sobre,ok,"",7
+2026-10-19T23:57:33,gouache_gouache_flat,WATERCOLOR,"Gouache/Gouache Flat",tamanhos,ok,"",7
+2026-10-19T23:57:41,gouache_gouache_flat,WATERCOLOR,"Gouache/Gouache Flat",sobre,ok,"",8
+2026-10-19T23:57:47,gouache_gouache_flat_2,WATERCOLOR,"Gouache/Gouache Flat 2",tamanhos,ok,"",6
+2026-10-19T23:57:55,gouache_gouache_flat_2,WATERCOLOR,"Gouache/Gouache Flat 2",sobre,ok,"",8
+2026-10-19T23:58:01,gouache_gouache_liner,WATERCOLOR,"Gouache/Gouache Liner",tamanhos,ok,"",6
+2026-10-19T23:58:09,gouache_gouache_liner,WATERCOLOR,"Gouache/Gouache Liner",sobre,ok,"",8
+2026-10-19T23:58:15,gouache_gouache_liner_2,WATERCOLOR,"Gouache/Gouache Liner 2",tamanhos,ok,"",6
+2026-10-19T23:58:23,gouache_gouache_liner_2,WATERCOLOR,"Gouache/Gouache Liner 2",sobre,ok,"",8
+2026-10-19T23:58:29,gouache_gouache_round,WATERCOLOR,"Gouache/Gouache Round",tamanhos,ok,"",6
+2026-10-19T23:58:37,gouache_gouache_round,WATERCOLOR,"Gouache/Gouache Round",sobre,ok,"",8
+2026-10-19T23:58:43,gouache_gouache_round_2,WATERCOLOR,"Gouache/Gouache Round 2",tamanhos,ok,"",6
+2026-10-19T23:58:51,gouache_gouache_round_2,WATERCOLOR,"Gouache/Gouache Round 2",sobre,ok,"",8
+2026-10-19T23:58:57,gouache_gouache_wash,WATERCOLOR,"Gouache/Gouache Wash",tamanhos,ok,"",6
+2026-10-19T23:59:04,gouache_gouache_wash,WATERCOLOR,"Gouache/Gouache Wash",sobre,ok,"",7
+2026-10-19T23:59:10,granulation_granulation,WATERCOLOR,"Granulation/Granulation",tamanhos,ok,"",6
+2026-10-19T23:59:16,granulation_granulation,WATERCOLOR,"Granulation/Granulation",sobre,ok,"",6
+2026-10-19T23:59:22,granulation_granulation_2,WATERCOLOR,"Granulation/Granulation 2",tamanhos,ok,"",6
+2026-10-19T23:59:29,granulation_granulation_2,WATERCOLOR,"Granulation/Granulation 2",sobre,ok,"",7
+2026-10-19T23:59:36,spatter_spatter,WATERCOLOR,"Spatter/Spatter",tamanhos,ok,"",7
+2026-10-19T23:59:43,spatter_spatter,WATERCOLOR,"Spatter/Spatter",sobre,ok,"",7
+2026-10-19T23:59:49,spatter_spatter_2,WATERCOLOR,"Spatter/Spatter  2",tamanhos,ok,"",6
+2026-10-19T23:59:56,spatter_spatter_2,WATERCOLOR,"Spatter/Spatter  2",sobre,ok,"",7
+2026-10-20T00:00:03,spatter_spatter_3,WATERCOLOR,"Spatter/Spatter 3",tamanhos,ok,"",7
+2026-10-20T00:00:10,spatter_spatter_3,WATERCOLOR,"Spatter/Spatter 3",sobre,ok,"",7
+2026-10-20T00:00:17,spatter_spatter_4,WATERCOLOR,"Spatter/Spatter 4",tamanhos,ok,"",7
+2026-10-20T00:00:24,spatter_spatter_4,WATERCOLOR,"Spatter/Spatter 4",sobre,ok,"",7
+2026-10-20T00:00:31,spatter_spatter_5,WATERCOLOR,"Spatter/Spatter 5",tamanhos,ok,"",7
+2026-10-20T00:00:39,spatter_spatter_5,WATERCOLOR,"Spatter/Spatter 5",sobre,ok,"",8
+2026-10-20T00:00:46,spatter_spatter_6,WATERCOLOR,"Spatter/Spatter 6",tamanhos,ok,"",7
+2026-10-20T00:00:53,spatter_spatter_6,WATERCOLOR,"Spatter/Spatter 6",sobre,ok,"",7
+2026-10-20T00:01:00,spatter_splat,WATERCOLOR,"Spatter/Splat",tamanhos,ok,"",7
+2026-10-20T00:01:07,spatter_splat,WATERCOLOR,"Spatter/Splat",sobre,ok,"",7
+2026-10-20T00:01:14,spatter_splat_2,WATERCOLOR,"Spatter/Splat 2",tamanhos,ok,"",7
+2026-10-20T00:01:21,spatter_splat_2,WATERCOLOR,"Spatter/Splat 2",sobre,ok,"",7
+2026-10-20T00:01:28,spatter_splats,WATERCOLOR,"Spatter/Splats",tamanhos,ok,"",7
+2026-10-20T00:01:35,spatter_splats,WATERCOLOR,"Spatter/Splats",sobre,ok,"",7
+2026-10-20T00:01:42,spatter_star,WATERCOLOR,"Spatter/Star",tamanhos,ok,"",7
+2026-10-20T00:01:49,spatter_star,WATERCOLOR,"Spatter/Star",sobre,ok,"",7
+2026-10-20T00:01:56,sumi_e_sumi_bristle,WATERCOLOR,"Sumi-e/Sumi bristle",tamanhos,ok,"",7
+2026-10-20T00:02:03,sumi_e_sumi_bristle,WATERCOLOR,"Sumi-e/Sumi bristle",sobre,ok,"",7
+2026-10-20T00:02:09,sumi_e_sumi_e_soft,WATERCOLOR,"Sumi-e/Sumi-e  soft",tamanhos,ok,"",6
+2026-10-20T00:02:16,sumi_e_sumi_e_soft,WATERCOLOR,"Sumi-e/Sumi-e  soft",sobre,ok,"",7
+2026-10-20T00:02:23,sumi_e_sumi_e_ribbon,WATERCOLOR,"Sumi-e/Sumi-e ribbon",tamanhos,ok,"",7
+2026-10-20T00:02:31,sumi_e_sumi_e_ribbon,WATERCOLOR,"Sumi-e/Sumi-e ribbon",sobre,ok,"",8
+2026-10-20T00:02:37,watercolor_bristle,WATERCOLOR,"Watercolor/Bristle",tamanhos,ok,"",6
+2026-10-20T00:02:44,watercolor_bristle,WATERCOLOR,"Watercolor/Bristle",sobre,ok,"",7
+2026-10-20T00:02:50,watercolor_fan,WATERCOLOR,"Watercolor/Fan",tamanhos,ok,"",6
+2026-10-20T00:02:58,watercolor_fan,WATERCOLOR,"Watercolor/Fan",sobre,ok,"",8
+2026-10-20T00:03:05,watercolor_filbert_dry,WATERCOLOR,"Watercolor/Filbert Dry",tamanhos,ok,"",7
+2026-10-20T00:03:12,watercolor_filbert_dry,WATERCOLOR,"Watercolor/Filbert Dry",sobre,ok,"",7
+2026-10-20T00:03:19,watercolor_flat,WATERCOLOR,"Watercolor/Flat",tamanhos,ok,"",7
+2026-10-20T00:03:26,watercolor_flat,WATERCOLOR,"Watercolor/Flat",sobre,ok,"",7
+2026-10-20T00:03:33,watercolor_flat_2,WATERCOLOR,"Watercolor/Flat 2",tamanhos,ok,"",7
+2026-10-20T00:03:40,watercolor_flat_2,WATERCOLOR,"Watercolor/Flat 2",sobre,ok,"",7
+2026-10-20T00:03:46,watercolor_flat_dry,WATERCOLOR,"Watercolor/Flat Dry",tamanhos,ok,"",6
+2026-10-20T00:03:53,watercolor_flat_dry,WATERCOLOR,"Watercolor/Flat Dry",sobre,ok,"",7
+2026-10-20T00:04:00,watercolor_liner,WATERCOLOR,"Watercolor/Liner",tamanhos,ok,"",7
+2026-10-20T00:04:08,watercolor_liner,WATERCOLOR,"Watercolor/Liner",sobre,ok,"",8
+2026-10-20T00:04:14,watercolor_liner_2,WATERCOLOR,"Watercolor/Liner 2",tamanhos,ok,"",6
+2026-10-20T00:04:21,watercolor_liner_2,WATERCOLOR,"Watercolor/Liner 2",sobre,ok,"",7
+2026-10-20T00:04:27,watercolor_mop,WATERCOLOR,"Watercolor/Mop",tamanhos,ok,"",6
+2026-10-20T00:04:35,watercolor_mop,WATERCOLOR,"Watercolor/Mop",sobre,ok,"",8
+2026-10-20T00:04:41,watercolor_round,WATERCOLOR,"Watercolor/Round",tamanhos,ok,"",6
+2026-10-20T00:04:48,watercolor_round,WATERCOLOR,"Watercolor/Round",sobre,ok,"",7
+2026-10-20T00:04:54,watercolor_round_2,WATERCOLOR,"Watercolor/Round 2",tamanhos,ok,"",6
+2026-10-20T00:05:02,watercolor_round_2,WATERCOLOR,"Watercolor/Round 2",sobre,ok,"",8
+2026-10-20T00:05:09,watercolor_round_3,WATERCOLOR,"Watercolor/Round 3",tamanhos,ok,"",7
+2026-10-20T00:05:16,watercolor_round_3,WATERCOLOR,"Watercolor/Round 3",sobre,ok,"",7
+2026-10-20T00:05:23,watercolor_round_4,WATERCOLOR,"Watercolor/Round 4",tamanhos,ok,"",7
+2026-10-20T00:05:30,watercolor_round_4,WATERCOLOR,"Watercolor/Round 4",sobre,ok,"",7
+2026-10-20T00:05:37,watercolor_wash_flat,WATERCOLOR,"Watercolor/Wash Flat",tamanhos,ok,"",7
+2026-10-20T00:05:44,watercolor_wash_flat,WATERCOLOR,"Watercolor/Wash Flat",sobre,ok,"",7
+2026-10-20T00:05:51,watercolor_wash_round,WATERCOLOR,"Watercolor/Wash Round",tamanhos,ok,"",7
+2026-10-20T00:05:58,watercolor_wash_round,WATERCOLOR,"Watercolor/Wash Round",sobre,ok,"",7
+2026-10-20T00:06:05,brush_brush,INK_PEN,"Brush/Brush",tamanhos,ok,"",7
+2026-10-20T00:06:12,brush_brush,INK_PEN,"Brush/Brush",sobre,ok,"",7
+2026-10-20T00:06:18,brush_brush_2,INK_PEN,"Brush/Brush 2",tamanhos,ok,"",6
+2026-10-20T00:06:25,brush_brush_2,INK_PEN,"Brush/Brush 2",sobre,ok,"",7
+2026-10-20T00:06:32,brush_brush_3,INK_PEN,"Brush/Brush 3",tamanhos,ok,"",7
+2026-10-20T00:06:39,brush_brush_3,INK_PEN,"Brush/Brush 3",sobre,ok,"",7
+2026-10-20T00:06:46,pen_bullet,INK_PEN,"Pen/Bullet",tamanhos,ok,"",7
+2026-10-20T00:06:54,pen_bullet,INK_PEN,"Pen/Bullet",sobre,ok,"",8
+2026-10-20T00:07:00,pen_dip_pen,INK_PEN,"Pen/Dip Pen",tamanhos,ok,"",6
+2026-10-20T00:07:08,pen_dip_pen,INK_PEN,"Pen/Dip Pen",sobre,ok,"",8
+2026-10-20T00:07:14,pen_fountain_round,INK_PEN,"Pen/Fountain Round",tamanhos,ok,"",6
+2026-10-20T00:07:22,pen_fountain_round,INK_PEN,"Pen/Fountain Round",sobre,ok,"",8
+2026-10-20T00:07:28,pen_fountain_square,INK_PEN,"Pen/Fountain Square",tamanhos,ok,"",6
+2026-10-20T00:07:36,pen_fountain_square,INK_PEN,"Pen/Fountain Square",sobre,ok,"",8
+2026-10-20T00:07:42,pen_reed_pen,INK_PEN,"Pen/Reed Pen",tamanhos,ok,"",6
+2026-10-20T00:07:49,pen_reed_pen,INK_PEN,"Pen/Reed Pen",sobre,ok,"",7
+2026-10-20T00:07:56,pen_wood,INK_PEN,"Pen/Wood",tamanhos,ok,"",7
+2026-10-20T00:08:03,pen_wood,INK_PEN,"Pen/Wood",sobre,ok,"",7
+2026-10-20T00:08:09,pen_wood_2,INK_PEN,"Pen/Wood 2",tamanhos,ok,"",6
+2026-10-20T00:08:16,pen_wood_2,INK_PEN,"Pen/Wood 2",sobre,ok,"",7
+2026-10-20T00:08:22,marker_bullet,MARKER,"Marker/Bullet",tamanhos,ok,"",6
+2026-10-20T00:08:29,marker_bullet,MARKER,"Marker/Bullet",sobre,ok,"",7
+2026-10-20T00:08:35,marker_chisel,MARKER,"Marker/Chisel",tamanhos,ok,"",6
+2026-10-20T00:08:41,marker_chisel,MARKER,"Marker/Chisel",sobre,ok,"",6
+2026-10-20T00:08:47,marker_dry,MARKER,"Marker/Dry",tamanhos,ok,"",6
+2026-10-20T00:08:54,marker_dry,MARKER,"Marker/Dry",sobre,ok,"",7
+2026-10-20T00:08:59,marker_liner,MARKER,"Marker/Liner",tamanhos,ok,"",5
+2026-10-20T00:09:06,marker_liner,MARKER,"Marker/Liner",sobre,ok,"",7
+2026-10-20T00:09:12,default_spray,AIRBRUSH,"Default/Spray",tamanhos,ok,"",6
+2026-10-20T00:09:19,default_spray,AIRBRUSH,"Default/Spray",sobre,ok,"",7
+2026-10-20T00:09:24,default_spray_2,AIRBRUSH,"Default/Spray 2",tamanhos,ok,"",5
+2026-10-20T00:09:31,default_spray_2,AIRBRUSH,"Default/Spray 2",sobre,ok,"",7
+2026-10-20T00:09:37,default_spray_3,AIRBRUSH,"Default/Spray 3",tamanhos,ok,"",6
+2026-10-20T00:09:44,default_spray_3,AIRBRUSH,"Default/Spray 3",sobre,ok,"",7
+2026-10-20T00:09:49,default_spray_4,AIRBRUSH,"Default/Spray 4",tamanhos,ok,"",5
+2026-10-20T00:09:56,default_spray_4,AIRBRUSH,"Default/Spray 4",sobre,ok,"",7
+2026-10-20T00:10:02,default_spray_5,AIRBRUSH,"Default/Spray 5",tamanhos,ok,"",6
+2026-10-20T00:10:09,default_spray_5,AIRBRUSH,"Default/Spray 5",sobre,ok,"",7

@@ -10,7 +10,7 @@ use ph2d_tool_painter::PainterTool;
 use serde_json::Value;
 
 /// Os pontos do traço `nome` da cena `cena` da bateria.
-fn pontos(cena: &str, nome: &str) -> Vec<[f32; 3]> {
+pub(super) fn pontos(cena: &str, nome: &str) -> Vec<[f32; 3]> {
     let bat = bateria();
     let c = bat["cenas"]
         .as_array()
@@ -273,7 +273,7 @@ fn sonda_a_lente_com_variantes() {
 
 /// O oráculo das leis de escala (`fixtures/leis_escala_rebelle.json`, `leis_escala.py oraculo`): a métrica `q` do
 /// recto `recto` do preset `pre` do Rebelle (`TOOL/prefixo`).
-fn rebelle(pre: &str, recto: &str, q: &str) -> f64 {
+pub(super) fn rebelle(pre: &str, recto: &str, q: &str) -> f64 {
     let f = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../docs/Painter/Pinceis/fixtures/leis_escala_rebelle.json");
     let v: Value = serde_json::from_str(&std::fs::read_to_string(f).unwrap()).unwrap();
@@ -284,7 +284,7 @@ fn rebelle(pre: &str, recto: &str, q: &str) -> f64 {
         .unwrap_or_else(|| panic!("{pre} {recto} {q}"))
 }
 
-fn mediana(mut v: Vec<f64>) -> f64 {
+pub(super) fn mediana(mut v: Vec<f64>) -> f64 {
     v.sort_by(f64::total_cmp);
     let n = v.len();
     if n % 2 == 1 {
@@ -432,7 +432,7 @@ pub(super) fn ponta(px: &[u8], y: usize, h: usize) -> (f64, f64) {
 }
 
 /// A cena `tamanhos` da bateria (os três rectos e a foto molhada) pintada por `p`.
-fn tamanhos(p: &Pincel) -> Vec<u8> {
+pub(super) fn tamanhos(p: &Pincel) -> Vec<u8> {
     cena(p, "tamanhos")
 }
 

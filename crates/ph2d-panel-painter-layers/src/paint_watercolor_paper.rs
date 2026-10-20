@@ -12,7 +12,8 @@ use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_i18n::tr;
 use ph2d_tool_painter::{
-    BrushSettings, PAPER_TOOTH_MAX, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TextureKind,
+    BrushSettings, PAPER_TOOTH_MAX, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,
+    TextureKind,
 };
 
 /// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, medida sobre os nomes que ela pinta.**
@@ -32,8 +33,6 @@ fn seccao_dos_extras(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Secc
 }
 
 /// Slider range bounds (parameter domains, not design tokens).
-const TEX_SIZE_MIN: f32 = 0.1; // LITERAL-PX-OK: paper/granulation Size min (mirrors TEX_SIZE_MIN)
-const TEX_SIZE_MAX: f32 = 100.0; // LITERAL-PX-OK: paper/granulation Size max (mirrors TEX_SIZE_MAX)
 const ANGLE_MAX: f32 = 360.0; // LITERAL-PX-OK: paper/granulation Angle range (degrees)
 
 /// Paint the **Paper** + **Granulation** canvas-anchored slots (substrate tooth + mineral settling).

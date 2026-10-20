@@ -545,13 +545,13 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     // dele (`volume_params.size` do `.rebelle-brush.png`, `ferramentas/tamanho_dos_presets.py`).
     // `lapisb_027` com a carga 50: o lápis duro, o grão fino. A 40 cobria 0,560 — a do HB (Rebelle 2H 0,595, HB 0,561) e
     // ficava mais perto da foto do irmão (5,3 × 4,2 ruídos); a 50, 0,617 e 3,7 × 11,2 (doc 53, `IRMAOS`).
-    lapis("Graphite", "Graphite 2H", 50.0, 0.3, 16.0, extras_do_lapis!(0.5, 2.0)),
+    lapis("Graphite", "Graphite 2H", 50.0, 0.18, GRAO_DURO, extras_do_lapis!(0.5, 2.0)),
     // `lapisb_028`.
-    lapis("Graphite", "Graphite HB", 40.0, 0.3, 32.0, extras_do_lapis!(0.5, 2.0)),
+    lapis("Graphite", "Graphite HB", 40.0, 0.18, GRAO_DURO, extras_do_lapis!(0.5, 2.0)),
     // `lapisb_032`.
-    lapis("Graphite", "Graphite 2B", 40.0, 0.65, 64.0, extras_do_lapis!(0.25, 2.0)),
+    lapis("Graphite", "Graphite 2B", 40.0, 0.52, GRAO_MACIO, extras_do_lapis!(0.25, 2.0)),
     // `lapisb_041`: o de cor é o 2B com o dobro da carga.
-    lapis("Colored", "Colored 4B", 80.0, 0.65, 64.0, extras_do_lapis!(0.5, 3.0)),
+    lapis("Colored", "Colored 4B", 80.0, 0.65, GRAO_MACIO, extras_do_lapis!(0.5, 3.0)),
     // `lapisc_053`: o carvão mais ralo, o papel a meio.
     Receita {
         meio: "Pencil",
@@ -626,7 +626,7 @@ const GRAPHITE_8B: Receita = Receita {
     opacity: 1.0,
     pigment: 125.0,
     pickup: 1.0,
-    gate: 0.65,
+    gate: 0.5, // §7.2: 0,65 → 0,5 com o grão fino (o colar a 5 px 0,115 → 0,078, Rebelle 0,072; a Textura no vale)
     evaporation: 1.0,
     edge: 0.0,
     tilt: DIREITA,
@@ -635,7 +635,7 @@ const GRAPHITE_8B: Receita = Receita {
     hardness: 0.0,
     size_px: Some(6.5),
     extras: extras_do_lapis!(0.25, 3.0),
-    grao: Some(("Noise", 32.0)),
+    grao: Some(("Noise", GRAO_MACIO)),
     achatado: None,
     pincel: &[("falloff", "\"Linear\""), ("jitter", "0.1")],
 };
@@ -657,7 +657,7 @@ const CHARCOAL: Receita = Receita {
     hardness: 0.1,
     size_px: Some(37.0),
     extras: &[("felt", 0.0), ("drag", 0.02), MAIS_PERTO],
-    grao: Some(("Noise", 48.0)),
+    grao: Some(("Noise", GRAO_MACIO)),
     achatado: None,
     pincel: &[("falloff", "\"Sharp\""), ("jitter", "0.2")],
 };
@@ -769,6 +769,17 @@ const OIL_BRISTLE: Receita = Receita {
     pincel: &[("dab_quina", "1.0")],
 };
 
+
+/// ⭐ **O grão do lápis e do carvão é preso à tela e mais FINO que o de antes** (J2, `docs/Painter/Pinceis/03_MOTORES.md`
+/// §7.2): o Size do Noise `Tiled` (período `256 ÷ Size` px) e o `paperGate`, da grelha Size 32…256 × Roughness ×
+/// portão contra o Rebelle em DUAS réguas — o colar de contas dos rectos 5 · 40 · 200 px (`sonda_o_grao_fino_por_size`)
+/// e o vale da mídia (`cada_preset_parece_a_sua_midia`, a Textura). Os macios e o carvão no 100 (2,56 px); os duros
+/// (HB, 2H) no 64 (4 px): mais fino, o resíduo fino passava o vale da Textura do Rebelle (6,2 · 5,0). Eram 16–64
+/// (4–16 px) e uma lei pelo diâmetro (`grao_do_wet`, saiu: o papel mudava com a ponta): a 5 px sem ela um vale
+/// atravessava o traço (buracos de 2–3 colunas) e a 40 px o cv era 1,5–2,4× o do Rebelle.
+const GRAO_MACIO: f64 = 100.0;
+/// Ver [`GRAO_MACIO`].
+const GRAO_DURO: f64 = 64.0;
 
 const fn lapis(
     grupo: &'static str,

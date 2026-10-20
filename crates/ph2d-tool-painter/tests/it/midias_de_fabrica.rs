@@ -484,7 +484,8 @@ const IRMAOS: [(&str, &str); 2] = [
 
 /// **SONDA (prompt 42b): as métricas de um preset com knobs trocados** — `PH2D_SONDA_PRESETS="Ink Brush,…"` (por
 /// omissão a tinta e o marcador) × `PH2D_SONDA_KNOBS="nome:k=v,b.k=v|…"` (`k` no mapa do motor, `b.k` no do
-/// pincel; a variante vazia é o preset de fábrica), a cena seca medida como [`cada_preset_parece_a_sua_midia`],
+/// pincel; `grao`/`rough`/`gx` = o Size do grão, a Roughness dele e o `paperGate` × x; a variante vazia é o preset de
+/// fábrica), a cena seca medida como [`cada_preset_parece_a_sua_midia`],
 /// com o vale de cada métrica. `PH2D_SONDA_RAIO=<r>` troca o raio da cena.
 #[test]
 #[ignore = "sonda: as métricas das variantes de um preset (prompt 42b); corre-se à mão"]
@@ -537,7 +538,16 @@ fn sonda_as_metricas_das_variantes() {
                 .map(|(vn, kv)| {
                     let mut p = de_fabrica(nome);
                     for (k, x) in kv {
-                        if let Some(b) = k.strip_prefix("b.") {
+                        if k == "grao" {
+                            // O Size do grão (`texture.size`, os dois eixos).
+                            p.parametros.brush.get_mut("texture").unwrap()["size"] =
+                                serde_json::json!([x, x]);
+                        } else if k == "rough" {
+                            p.parametros.brush.get_mut("texture").unwrap()["params"][3] =
+                                serde_json::json!(x);
+                        } else if k == "gx" {
+                            *p.parametros.engine.get_mut("paperGate").unwrap() *= x;
+                        } else if let Some(b) = k.strip_prefix("b.") {
                             p.parametros
                                 .brush
                                 .insert(b.to_owned(), serde_json::json!(x));

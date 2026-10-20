@@ -634,9 +634,20 @@ fn sonda_memoria_da_lei() {
     );
 }
 
+/// ⭐ O binário que corre AGORA, para o re-executar num filho. Nunca o CAMINHO (`current_exe`): o cargo religa o mesmo
+/// `it-<hash>` (outra corrida, o `exame.sh` ao lado) gravando um ficheiro novo por cima, o inode deste processo fica
+/// «(deleted)» e o filho dava `NotFound` — ou, pior, corria o código NOVO. `/proc/self/exe` abre o inode que corre.
+fn o_proprio_binario() -> std::path::PathBuf {
+    if cfg!(target_os = "linux") {
+        "/proc/self/exe".into()
+    } else {
+        std::env::current_exe().unwrap()
+    }
+}
+
 /// O pico do GESTO (MiB) e as lanes da [`sonda_memoria_da_lei`] num processo filho (o `VmHWM` é do processo).
 fn memoria_num_filho(raio: f32) -> (f64, usize) {
-    let out = std::process::Command::new(std::env::current_exe().unwrap())
+    let out = std::process::Command::new(o_proprio_binario())
         .args([
             "presets_de_fabrica::sonda_memoria_da_lei",
             "--exact",

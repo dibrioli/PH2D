@@ -42,8 +42,14 @@ pub const TEX_OFFSET_MIN: f32 = -1.0;
 pub const TEX_OFFSET_MAX: f32 = 1.0;
 /// **Size** (scale) range. `1.0` = one tile per footprint (View) / per [`TEX_TILE_BASE_PX`] (Tiled).
 pub const TEX_SIZE_MIN: f32 = 0.1;
-/// See [`TEX_SIZE_MIN`]. Wide (`100×`) so a paper/grain can tile very fine or very coarse (Enio 2026-07-05).
-pub const TEX_SIZE_MAX: f32 = 100.0;
+/// See [`TEX_SIZE_MIN`]. Wide so a paper/grain can tile very fine or very coarse (Enio 2026-07-05). The ceiling is
+/// the canvas PIXEL (a resource, CLAUDE.md §0.0): under **Tiled** one lattice cell per pixel (period
+/// `TEX_TILE_BASE_PX ÷ Size` = 1 px); the grain is sampled once per pixel, so past it the field is white noise and
+/// a larger Size only reshuffles it (measured: lag-1 autocorrelation 0,61 · 0,45 · 0,29 · 0,15 at Size 100 · 128 ·
+/// 200 · 256; lag 2 at 256 ≈ 0). Was `100` (period 2,56 px) with no measurement beside it; the pencils' cv ruler
+/// alone fits the Rebelle best at ~160 (`docs/Painter/Pinceis/03_MOTORES.md` §7.2). Every Size up to `100` samples
+/// exactly as before.
+pub const TEX_SIZE_MAX: f32 = TEX_TILE_BASE_PX;
 /// Canvas pixels spanned by one texture tile at Size `1.0` under the **Tiled** mapping.
 pub const TEX_TILE_BASE_PX: f32 = 256.0;
 

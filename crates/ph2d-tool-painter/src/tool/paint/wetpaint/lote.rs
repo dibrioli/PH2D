@@ -73,36 +73,6 @@ impl PainterTool {
     }
 }
 
-impl PainterTool {
-    /// ⭐ **O grão nunca é maior que um terço da ponta** (J2, `docs/Painter/Pinceis/03_MOTORES.md` §7 b-resto; só no
-    /// Wet): o grão preso à tela (`Tiled`) tem período `TEX_TILE_BASE_PX ÷ Size` px, e com poucos períodos no
-    /// diâmetro um vale do papel atravessava o traço inteiro — o recto de 5 px do 8B, HB, 2B e do carvão abria
-    /// buracos de 2–3 colunas (o Rebelle nenhum nos 7 lápis e no carvão: o grão fino de ~2 px a todo tamanho).
-    /// O Size sobe até o período caber [`PERIODOS_NA_PONTA`] vezes no diâmetro do PINCEL (o do traço: o do dab traz
-    /// a pressão); a ponta larga fica como estava, ao bit.
-    pub(in crate::tool::paint) fn grao_do_wet(brush: &BrushSpec) -> BrushSpec {
-        use ph2d_painter_brush::texture::{TEX_SIZE_MAX, TEX_TILE_BASE_PX, TextureMapping};
-        let mut b = *brush;
-        let t = &mut b.texture;
-        if !t.is_active() || t.mapping != TextureMapping::Tiled || t.kind.samples_in_pixels() {
-            return b;
-        }
-        let minimo = (PERIODOS_NA_PONTA * TEX_TILE_BASE_PX / (2.0 * brush.clamped_radius()).max(1.0))
-            .min(TEX_SIZE_MAX);
-        for s in &mut t.size {
-            if *s < minimo {
-                *s = minimo;
-            }
-        }
-        b
-    }
-}
-
-/// Quantos períodos do grão cabem no diâmetro da ponta ([`PainterTool::grao_do_wet`]; o diâmetro do MOTOR, o da
-/// tabela da largura). MEDIDO (03_MOTORES §7 b-resto) no recto de 5 px dos 5 lápis e do carvão: 2 períodos ainda
-/// deixavam buracos de 2–4 colunas (4B, 2H, 2B, 8B, HB); 3 nenhum; 4 = 3 (o Size bate no tecto 100).
-pub(super) const PERIODOS_NA_PONTA: f32 = 3.0;
-
 /// ⭐ The dab-CAPSULE (Continuous, [`ph2d_painter_brush::capsula`]) reaches the engine as its
 /// sub-dabs, oldest first, at least one engine cell apart: the deposit gates each against the
 /// paper (`trail/deposit.rs::cell`), so only the sub-dabs themselves lay the dense stroke —

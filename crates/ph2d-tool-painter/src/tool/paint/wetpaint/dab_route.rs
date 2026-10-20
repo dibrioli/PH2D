@@ -22,7 +22,6 @@ impl PainterTool {
     /// is already mirrored (Symmetry) and replicated (Tiling) — the engine
     /// sees exactly what the colour routes would have seen.
     pub(in crate::tool::paint) fn stamp_dabs_wetpaint(&mut self, dabs: &[Dab], brush: &BrushSpec) {
-        let brush = &Self::grao_do_wet(brush); // o grão nunca maior que ⅓ da ponta (J2 §7 b; idempotente)
         // A ponta de N imagens (L19): também o lote ADIADO (pousado no tique) carimba cada corrida com a sua imagem.
         if self.mangueira_viva() {
             return self.stamp_dabs_mangueira_com(dabs, |t, corrida| t.stamp_dabs_wetpaint(corrida, brush));

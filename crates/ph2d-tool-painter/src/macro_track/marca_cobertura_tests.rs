@@ -342,3 +342,66 @@ fn a_cobertura_e_o_por_baixo_vao_e_voltam_com_o_desfazer() {
         m2.ladrilhos()
     );
 }
+
+/// ⭐ **A água do artista compõe-se sobre a marca que já havia** (W12): uma pincelada Digital e, por cima
+/// dela, uma de Wet Paint — cada texel fica com `c = 1 − (1 − c_Digital)(1 − pa)` (o `pa` do plano de
+/// pigmento da sessão, assentada) e o que está por baixo é o do 1.º toque: o branco sob o Digital, ou a
+/// tela de antes do Wet onde só ele tocou. A régua é a marca de antes e o plano, lidos à parte.
+#[test]
+fn a_agua_do_artista_compoe_sobre_a_marca_que_ja_havia() {
+    let mut t = tela(PaintMedia::Digital, false, de_fabrica);
+    vertical(&mut t, 50.0, DE_CIMA_A_BAIXO);
+    let antes = t.marca_do_artista().expect("a marca").clone();
+    let tela_antes = imagem(&t);
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_wet_relogio_fixo(true);
+    t.set_brush_color_srgb8([20, 20, 200]);
+    vertical(&mut t, 62.0, DE_CIMA_A_BAIXO);
+    for _ in 0..40_000 {
+        if t.agua_parada() {
+            break;
+        }
+        drop(t.take_preview_arc());
+        t.on_tick(16.667);
+    }
+    assert!(t.agua_parada(), "a água assentou");
+    let m = t.marca_do_artista().expect("a marca").clone();
+    let pig = t.wet_pigmento().expect("a sessão").to_vec();
+    assert_eq!(pig.len(), L * L * 4, "razão 1");
+    let (mut sobre, mut so_agua, mut erros) = (0, 0, Vec::new());
+    for k in 0..L * L {
+        let pa = pig[k * 4 + 3];
+        let c0 = antes.cobertura(k);
+        let esperado = if pa == 0 {
+            c0
+        } else {
+            super::marca::compoe(c0, f32::from(pa) / 255.0)
+        };
+        if m.cobertura(k) != esperado {
+            erros.push(format!("c ({k}): {} ≠ {esperado}", m.cobertura(k)));
+        }
+        if pa > 0 && esperado > 0 {
+            let b = if c0 > 0 {
+                sobre += 1;
+                antes.por_baixo(k)
+            } else {
+                so_agua += 1;
+                let p = &tela_antes[k * 4..k * 4 + 4];
+                [p[0], p[1], p[2], p[3]]
+            };
+            if m.por_baixo(k) != b {
+                erros.push(format!("B ({k}): {:?} ≠ {b:?}", m.por_baixo(k)));
+            }
+        }
+    }
+    assert!(
+        sobre > 50 && so_agua > 50,
+        "controlo: sobre o Digital {sobre}, só a água {so_agua}"
+    );
+    assert!(
+        erros.is_empty(),
+        "{} texels (1.º: {})",
+        erros.len(),
+        erros[0]
+    );
+}

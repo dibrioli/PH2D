@@ -234,3 +234,71 @@ fn sonda_w12_assar_no_primeiro_toque() {
         "(A) identidade atual = P + (1−pa)·B: {identidade:.1} níveis · Play antes de nascerem contra a régua: {play:.1} · o documento muda (fundida × assada): {doc}"
     );
 }
+
+/// **O custo da água marcada** (W12): a 1024², a mesma pincelada de Wet Paint com e sem a marca posta, a
+/// água no worker real, o `on_tick` do editor (60 Hz) cronometrado em blocos intercalados por ordem rodada;
+/// a diferença é o composite a devolver a cobertura e a marca a recompor-se.
+///
+/// `bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib -- --ignored
+/// --nocapture sonda_w12_o_custo_da_agua_marcada`
+#[test]
+#[ignore = "SONDA W12: o custo da água marcada"]
+fn sonda_w12_o_custo_da_agua_marcada() {
+    use super::marca::MarcaDoArtista;
+    const LADO: u32 = 1024;
+    let nova = |marcada: bool| {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255; (LADO * LADO * 4) as usize], LADO, LADO);
+        if marcada {
+            t.poe_a_marca(Some(MarcaDoArtista::nova(LADO, LADO, 1)));
+        }
+        t.set_paint_media(PaintMedia::WetPaint);
+        t.set_brush_size_px(24.0);
+        for i in 0..=8u16 {
+            let phase = match i {
+                0 => PointerPhase::Down,
+                8 => PointerPhase::Up,
+                _ => PointerPhase::Move,
+            };
+            t.on_canvas_pointer(CanvasPointer {
+                pos: [100.0 + 40.0 * f32::from(i), 900.0],
+                pressure: 1.0,
+                tilt: [0.0, 0.0],
+                phase,
+            });
+            drop(t.take_preview_arc());
+            t.on_tick(16.667);
+        }
+        (t, Vec::<f64>::new())
+    };
+    let mut vs = [("sem marca", nova(false)), ("com a marca", nova(true))];
+    let carga = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!("load antes: {}", carga().trim());
+    for rodada in 0..12 {
+        for k in 0..vs.len() {
+            let (_, (t, ms)) = &mut vs[(rodada + k) % 2];
+            for _ in 0..20 {
+                std::thread::sleep(std::time::Duration::from_millis(16));
+                drop(t.take_preview_arc());
+                let t0 = std::time::Instant::now();
+                t.on_tick(16.667);
+                ms.push(t0.elapsed().as_secs_f64() * 1e3);
+            }
+        }
+    }
+    eprintln!("load depois: {}", carga().trim());
+    for (nome, (t, ms)) in &mut vs {
+        ms.sort_by(f64::total_cmp);
+        #[expect(clippy::cast_precision_loss, reason = "centenas de quadros")]
+        let media = ms.iter().sum::<f64>() / ms.len() as f64;
+        eprintln!(
+            "[W12] 1024² {nome:<12} on_tick: mín {:.3} · mediana {:.3} · média {media:.3} · máx {:.3} ms ({} quadros) · água a correr: {} · marcados: {}",
+            ms[0],
+            ms[ms.len() / 2],
+            ms[ms.len() - 1],
+            ms.len(),
+            !t.agua_parada(),
+            t.marca_do_artista().map_or(0, MarcaDoArtista::quantos)
+        );
+    }
+}

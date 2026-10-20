@@ -351,7 +351,7 @@ fn sonda_o_custo_da_marca() {
     let mut vs = [
         nova("água, sem marca", None, false),
         nova("água, pincelada marcada", Some(WetPaint), false),
-        nova("Play, pincelada cheia (Wet)", Some(WetPaint), true),
+        nova("Play, pincelada Wet (o pa)", Some(WetPaint), true),
         nova("Play, pincelada parcial (Digital)", Some(Digital), true),
     ];
     let quadro = |v: &mut V| -> f64 {

@@ -57,7 +57,8 @@ const CAMADAS_COMO_PINCEL: &str =
 const ACESSOR: &str = "acessor do contrato: não muda nada";
 const ETAPA_EDITADA: &str =
     "a edição de uma etapa chega à imagem: obra da própria macro, nunca um passo de outra";
-const IMAGENS_DA_PONTA: &str = "a ponta de N imagens (L19): a macro não guarda as imagens";
+const IMAGENS_DA_PONTA: &str =
+    "a silhueta cinzenta da ponta (L19) é a porta do PRESET (que a macro grava inteiro); o artista acrescenta pelo RGBA";
 const GRAVACAO: &str =
     "arma, drena ou pára a gravação (o painel MACROS): controla a macro, não é um passo da obra";
 
@@ -73,9 +74,9 @@ pub const PORTAS: &[Porta] = &[
     g("take_pending_commit"),
     g("run_full"),
     r("set_source", OUTRO_DOCUMENTO),
-    r("add_brush_shape_hose_image_rgba", IMAGENS_DA_PONTA),
+    g("add_brush_shape_hose_image_rgba"),
     r("add_brush_shape_hose_image", IMAGENS_DA_PONTA),
-    a("take_brush_shape_hose_request", "o pedido do seletor à shell (L19): não muda a obra"),
+    g("take_brush_shape_hose_request"),
     r("deactivate", OUTRO_DOCUMENTO),
     a("as_any_mut", ACESSOR),
     a("as_raster_edit_mut", ACESSOR),

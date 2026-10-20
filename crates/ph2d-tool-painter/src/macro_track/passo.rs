@@ -70,6 +70,14 @@ pub enum Passo {
         w: u32,
         h: u32,
     },
+    /// `take_brush_shape_hose_request`: o pedido do «Add image» (L19) consumido.
+    TiraPedidoMangueira,
+    /// `add_brush_shape_hose_image_rgba`: a imagem acrescentada à ponta de N imagens (L19).
+    MangueiraRgba {
+        rgba: Vec<u8>,
+        w: u32,
+        h: u32,
+    },
     FalloffPonto {
         id: u8,
         d: f32,
@@ -358,6 +366,13 @@ impl Passo {
                 k(&mut r, 200);
                 r.varint(2, u64::from(*n));
             }
+            Passo::TiraPedidoMangueira => k(&mut r, 57),
+            Passo::MangueiraRgba { rgba, w, h } => {
+                k(&mut r, 58);
+                r.bytes(2, rgba)
+                    .varint(3, u64::from(*w))
+                    .varint(4, u64::from(*h));
+            }
             Passo::Desconhecido(n) => k(&mut r, *n),
         }
         r.finish()
@@ -515,6 +530,12 @@ impl Passo {
             55 => Passo::FillCommit,
             56 => Passo::ColorDropRestaura,
             200 => Passo::PincelDaFaixa(u32_(2)?),
+            57 => Passo::TiraPedidoMangueira,
+            58 => Passo::MangueiraRgba {
+                rgba: bytes(2),
+                w: u32_(3)?,
+                h: u32_(4)?,
+            },
             n => Passo::Desconhecido(n),
         })
     }

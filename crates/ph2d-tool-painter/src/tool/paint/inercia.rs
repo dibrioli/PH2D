@@ -14,6 +14,8 @@ use ph2d_painter_brush::{BrushSpec, MAX_TEX_PARAMS, param_inerte};
 /// Um controlo cujo efeito depende de outro — com os ids que o painel pinta para ele e a dica.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Dependente {
+    // A ponta de PÍXEL (L18) carimba a pegada binária: o grão, a Shape e as N imagens não a recortam.
+    ForaDaPontaDePixel,
     TaperTip,
     TaperOpacity,
     Accumulate,
@@ -56,7 +58,8 @@ pub enum Dependente {
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 37] = [
+    pub const TODOS: [Dependente; 38] = [
+        Dependente::ForaDaPontaDePixel,
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -100,6 +103,7 @@ impl Dependente {
     #[must_use]
     pub fn ids(self) -> &'static [NodeId] {
         match self {
+            Dependente::ForaDaPontaDePixel => &FORA_DA_PONTA_DE_PIXEL,
             Dependente::TaperTip => &[ids::PAINTER_TAPER_TIP_START],
             Dependente::TaperOpacity => &[ids::PAINTER_TAPER_OPACITY],
             Dependente::Accumulate => &[ids::PAINTER_BRUSH_ACCUMULATE],
@@ -194,6 +198,7 @@ impl Dependente {
     #[must_use]
     pub fn dica(self) -> &'static str {
         match self {
+            Dependente::ForaDaPontaDePixel => "panel.painter_ponta.inerte.pixel_tip",
             Dependente::TaperTip | Dependente::TaperOpacity => {
                 "panel.painter_layers.inerte.taper_length"
             }
@@ -305,6 +310,34 @@ const CERDAS: [NodeId; 9] = [
     ids::PAINTER_SHAPE_SIZE_Y,
 ];
 
+/// O que a ponta de PÍXEL (L18) não lê: o Grain (o menu, os parâmetros, a profundidade e a lei da L9), a fonte da
+/// Shape e a ponta de N imagens (L19) — todos recortariam o píxel em fracções.
+const FORA_DA_PONTA_DE_PIXEL: [NodeId; 23] = [
+    ids::PAINTER_BRUSH_TEXTURE_KIND,
+    ids::PAINTER_BRUSH_TEXTURE_PARAMS[0],
+    ids::PAINTER_BRUSH_TEXTURE_PARAMS[1],
+    ids::PAINTER_BRUSH_TEXTURE_PARAMS[2],
+    ids::PAINTER_BRUSH_TEXTURE_PARAMS[3],
+    ids::PAINTER_BRUSH_TEXTURE_PARAMS[4],
+    ids::PAINTER_BRUSH_TEXTURE_PARAMS[5],
+    ids::PAINTER_BRUSH_GRAIN_DEPTH,
+    ids::PAINTER_PONTA_FIELDS[1],
+    ids::PAINTER_PONTA_FIELDS[2],
+    ids::PAINTER_PONTA_FIELDS[3],
+    ids::PAINTER_PONTA_FIELDS[4],
+    ids::PAINTER_SHAPE_KIND,
+    ids::PAINTER_PONTA_FIELDS[5],
+    ids::PAINTER_PONTA_FIELDS[6],
+    ids::PAINTER_PONTA_FIELDS[7],
+    ids::PAINTER_PONTA_FIELDS[8],
+    ids::PAINTER_PONTA_FIELDS[9],
+    ids::PAINTER_PONTA_FIELDS[10],
+    ids::PAINTER_PONTA_FIELDS[11],
+    ids::PAINTER_PONTA_FIELDS[12],
+    ids::PAINTER_PONTA_FIELDS[13],
+    ids::PAINTER_SHAPE_HOSE_ADD,
+];
+
 /// A dica do parâmetro de um padrão (Grain ou Shape) que está inerte.
 pub const DICA_DO_PARAMETRO: &str = "panel.painter_layers.inerte.detail_above_minimum";
 
@@ -390,6 +423,8 @@ impl PainterTool {
                 && b.texture.is_active()
                 && !matches!(self.paint_media(), super::media::PaintMedia::Impasto));
         let leis = [
+            // A ponta de píxel (L18) é binária: o grão, a Shape e as N imagens tornariam o píxel fraccionário.
+            (Dependente::ForaDaPontaDePixel, self.pixel_vivo(b)),
             (Dependente::TaperTip, !b.taper.is_active()),
             (Dependente::TaperOpacity, !b.taper.is_active()),
             // O Accumulate decide DUAS coisas: o tecto do Strength (`stroke_cover_wanted`) e se o

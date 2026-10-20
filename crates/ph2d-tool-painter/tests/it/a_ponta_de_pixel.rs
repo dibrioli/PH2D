@@ -189,3 +189,110 @@ fn a_ponta_desligada_e_o_carimbo_de_hoje() {
     assert_eq!(t.ponta(), ph2d_tool_painter::PONTA_DE_FABRICA);
     assert_eq!(PainterTool::default().ponta(), ph2d_tool_painter::PONTA_DE_FABRICA);
 }
+
+/// Um traço de píxel (raio 4) na camada TRANSPARENTE com `f` a armar o pincel; a tela.
+fn traco_com(f: impl Fn(&mut PainterTool)) -> Vec<u8> {
+    let mut t = PainterTool::default();
+    t.set_source(vec![0u8; W * H * 4], W as u32, H as u32);
+    t.set_paint_media(PaintMedia::Digital);
+    t.set_ponta(LinhaDaPonta::Pixel, 1.0);
+    t.set_brush_size_px(4.0);
+    t.set_brush_color_srgb8([255, 0, 0]);
+    f(&mut t);
+    let cp = |x: f32, phase| CanvasPointer {
+        pos: [x, 60.0],
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    t.on_canvas_pointer(cp(20.0, PointerPhase::Down));
+    for k in 1..=40 {
+        t.on_canvas_pointer(cp(20.0 + 4.0 * k as f32, PointerPhase::Move));
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.on_canvas_pointer(cp(180.0, PointerPhase::Up));
+    t.run_full().0
+}
+
+/// ⭐ **A ponta de píxel honra o modo sobre o VAZIO** (L7): um modo de cor (Multiply) com «On empty» pousa a cor
+/// em Normal na camada transparente — binária —, e sem ele não pinta nada (o W3C de sempre). Vermelho antes: a
+/// ponta de píxel compunha pela porta sem o vazio e não pintava nos dois.
+#[test]
+fn a_ponta_de_pixel_honra_o_modo_sobre_o_vazio() {
+    let multiply = ph2d_painter_brush::BrushBlend::Multiply.to_u8();
+    let com = traco_com(|t| {
+        t.set_brush_blend(multiply);
+        t.set_blend_sobre_vazio(true);
+    });
+    let sem = traco_com(|t| t.set_brush_blend(multiply));
+    let (frac, cor, tinta) = fraccoes(&com);
+    assert!(tinta > 200 && frac == 0 && cor == 0, "com o vazio: {tinta} px, {frac} fracções, {cor} cores");
+    assert_eq!(fraccoes(&sem).2, 0, "sem o vazio o Multiply pintou no transparente");
+}
+
+/// ⭐ **A ponta de píxel pinta a cor da rampa da QUEDA** («Falloff Color»): cada píxel tem a cor da rampa no perfil
+/// dele, e o alfa continua binário. Vermelho antes: a ponta de píxel pintava só a cor do pincel.
+#[test]
+fn a_ponta_de_pixel_pinta_a_cor_da_rampa_da_queda() {
+    let px = traco_com(|t| {
+        t.set_shape_ramp_enabled(true); // a Falloff Color nasce ligada: a rampa da Shape pinta pela queda
+    });
+    let mut cores: Vec<[u8; 3]> = px
+        .chunks_exact(4)
+        .filter(|p| p[3] == 255)
+        .map(|p| [p[0], p[1], p[2]])
+        .collect();
+    cores.sort_unstable();
+    cores.dedup();
+    assert!(px.chunks_exact(4).all(|p| p[3] == 0 || p[3] == 255), "alfa fraccionário");
+    assert!(cores.len() >= 3, "a rampa não chegou: {} cores {cores:?}", cores.len());
+}
+
+/// ⭐ **Desligar a ponta de píxel repõe o piso do raio**: o 1 px (raio 0,5) é só dela; a ponta com AA volta a 1.
+#[test]
+fn desligar_a_ponta_de_pixel_repoe_o_raio() {
+    let mut t = PainterTool::default();
+    t.set_paint_media(PaintMedia::Digital);
+    t.set_ponta(LinhaDaPonta::Pixel, 2.0);
+    t.set_brush_size_px(0.5);
+    assert_eq!(t.brush_size_px(), 0.5);
+    t.set_ponta(LinhaDaPonta::Pixel, 0.0);
+    assert_eq!(t.brush_size_px(), 1.0, "o raio ficou abaixo do piso da ponta com AA");
+}
+
+/// ⭐ **Com a ponta de píxel o grão, a Shape e as N imagens ESMAECEM — e não agem**: a dica está nas linhas (o Grain,
+/// a lei da L9, a fonte da Shape, a ponta de N imagens) só com a ponta ligada, e armá-los todos não muda um byte
+/// da tinta de píxel (o esmaecido diz a verdade).
+#[test]
+fn com_a_ponta_de_pixel_o_grao_a_shape_e_as_imagens_esmaecem() {
+    use ph2d_tool_painter::ids;
+    let linhas = [
+        ids::PAINTER_BRUSH_TEXTURE_KIND,
+        ids::PAINTER_BRUSH_GRAIN_DEPTH,
+        ids::PAINTER_PONTA_FIELDS[1],
+        ids::PAINTER_SHAPE_KIND,
+        ids::PAINTER_PONTA_FIELDS[5],
+        ids::PAINTER_SHAPE_HOSE_ADD,
+    ];
+    for pixel in [0.0, 1.0] {
+        let mut t = PainterTool::default();
+        t.set_paint_media(PaintMedia::Digital);
+        t.set_ponta(LinhaDaPonta::Pixel, pixel);
+        let inercias = t.brush_settings().inercias;
+        for id in linhas {
+            assert_eq!(inercias.dica_de(id).is_some(), pixel > 0.0, "pixel {pixel}: {id:?}");
+        }
+    }
+    let lado = 8u32;
+    let img = |c: u8| -> Vec<u8> { (0..lado * lado).flat_map(|i| [c, c, c, if i % 3 == 0 { 0 } else { 255 }]).collect() };
+    let hoje = traco_com(|_| {});
+    let armado = traco_com(|t| {
+        t.set_brush_texture_kind(27);
+        t.set_ponta(LinhaDaPonta::GrainMode, 4.0);
+        t.set_brush_grain_depth(0.4);
+        t.set_brush_shape_image_rgba(&img(200), lado, lado, None);
+        t.add_brush_shape_hose_image_rgba(&img(90), lado, lado);
+        t.set_brush_color_srgb8([255, 0, 0]);
+    });
+    assert!(hoje == armado, "o grão, a Shape ou as imagens mudaram a tinta de píxel");
+}

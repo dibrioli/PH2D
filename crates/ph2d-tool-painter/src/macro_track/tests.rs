@@ -76,6 +76,12 @@ fn todos_os_passos() -> Vec<Passo> {
             w: 2,
             h: 2,
         },
+        Passo::TiraPedidoMangueira,
+        Passo::MangueiraRgba {
+            rgba: vec![6; 16],
+            w: 2,
+            h: 2,
+        },
         Passo::FalloffPonto {
             id: 2,
             d: 0.4,

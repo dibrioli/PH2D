@@ -76,8 +76,16 @@ impl PainterTool {
     /// ⭐ **Acrescenta uma imagem RGBA** à ponta (o botão «Add image» da secção Shape, pelo seletor da shell). Sem
     /// imagem na Shape ela É a primeira (a porta de sempre); acima de [`HOSE_MAX`] é recusada.
     pub fn add_brush_shape_hose_image_rgba(&mut self, rgba: &[u8], w: u32, h: u32) {
-        self.macro_recusa("add_brush_shape_hose_image_rgba");
-        self.empurra_rgba(rgba, w, h);
+        // A macro guarda a IMAGEM (como a da Shape, `Passo::FormaRgba`): o tocador acrescenta-a sem seletor.
+        crate::macro_track::porta!(
+            self,
+            |_| crate::macro_track::Passo::MangueiraRgba {
+                rgba: rgba.to_vec(),
+                w,
+                h,
+            },
+            { self.empurra_rgba(rgba, w, h) }
+        )
     }
 
     /// [`Self::add_brush_shape_hose_image_rgba`] sem a porta da macro (o preset instala por aqui).
@@ -151,7 +159,10 @@ impl PainterTool {
 
     /// Toma (e limpa) o pedido do seletor: a shell abre-o e chama [`Self::add_brush_shape_hose_image_rgba`].
     pub fn take_brush_shape_hose_request(&mut self) -> bool {
-        std::mem::take(&mut self.paint.mangueira.pedido)
+        // Gravado: o tocador consome o pedido (o «Add image» tocado nunca abre o seletor da shell).
+        crate::macro_track::porta!(self, |_| crate::macro_track::Passo::TiraPedidoMangueira, {
+            std::mem::take(&mut self.paint.mangueira.pedido)
+        })
     }
 
     /// A imagem `k` da ponta como a preset a leva: `(silhueta cinzenta, w, h)` e o RGBA quando há cor.
@@ -171,6 +182,12 @@ impl PainterTool {
 
     /// ⭐ **O lote em CORRIDAS da mesma imagem**: cada corrida é carimbada com a sua imagem no lugar da Shape.
     pub(super) fn stamp_dabs_mangueira(&mut self, dabs: &[Dab]) {
+        self.stamp_dabs_mangueira_com(dabs, |t, corrida| t.stamp_dabs_dispatch(corrida));
+    }
+
+    /// [`Self::stamp_dabs_mangueira`] com o carimbo `f` de cada corrida — o Wet carimba por aqui também o lote
+    /// ADIADO, que pousa no tique, fora da porta do lote (`wetpaint::dab_route`).
+    pub(super) fn stamp_dabs_mangueira_com(&mut self, dabs: &[Dab], mut f: impl FnMut(&mut Self, &[Dab])) {
         let n = self.brush_shape_hose_count();
         let k_de = |d: &Dab| d.tilt.map_or(0, |t| usize::from(t.imagem)).min(n - 1);
         self.paint.mangueira.dentro = true;
@@ -178,7 +195,7 @@ impl PainterTool {
         while i < dabs.len() {
             let k = k_de(&dabs[i]);
             let j = (i..dabs.len()).find(|&j| k_de(&dabs[j]) != k).unwrap_or(dabs.len());
-            self.com_imagem(k, |t| t.stamp_dabs_dispatch(&dabs[i..j]));
+            self.com_imagem(k, |t| f(t, &dabs[i..j]));
             i = j;
         }
         self.paint.mangueira.dentro = false;

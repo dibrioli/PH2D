@@ -172,30 +172,172 @@ fn gravar_e_carregar_com_n_imagens_volta_ao_bit() {
     }
 }
 
-/// A ponta de N imagens AGE em todo meio que carimba a Shape: três formas (quadrado · disco · losango) sorteadas
-/// pintam outra tela que a imagem única, com a mesma tinta (tingida). Mede quais meios a leem.
+/// Um TOQUE com a pressão `p` em `pos`: o pen-down e um passo de 1 px (o Wet deposita no movimento).
+fn toque(t: &mut PainterTool, pos: [f32; 2], p: f32) {
+    let cp = |dx: f32, phase| CanvasPointer {
+        pos: [pos[0] + dx, pos[1]],
+        pressure: p,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    t.on_canvas_pointer(cp(0.0, PointerPhase::Down));
+    t.on_tick(8.0);
+    t.on_canvas_pointer(cp(1.0, PointerPhase::Move));
+    t.on_tick(8.0);
+    t.on_canvas_pointer(cp(1.0, PointerPhase::Up));
+    t.on_tick(8.0);
+}
+
+/// O pincel de raio 30 do meio `m` com a Shape das imagens `formas` (brancas, a silhueta pelo alpha), a ponta pela
+/// PRESSÃO; os toques `(x, p)` em y 80; a tela depois de 30 quadros.
+fn toques_no_meio(m: PaintMedia, formas: &[u8], toques: &[(f32, f32)]) -> Vec<u8> {
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+    t.set_paint_media(m);
+    t.set_wet_relogio_fixo(true);
+    t.set_brush_size_px(30.0);
+    t.set_brush_color_srgb8([0, 0, 0]);
+    t.set_brush_shape_image_rgba(&imagem([255, 255, 255], formas[0]), LADO, LADO, None);
+    t.toggle_brush_shape_alpha_from_image();
+    for &f in &formas[1..] {
+        t.add_brush_shape_hose_image_rgba(&imagem([255, 255, 255], f), LADO, LADO);
+    }
+    t.set_ponta(LinhaDaPonta::HoseMode, 2.0); // pela pressão: < 0,5 a 1.ª, ≥ 0,5 a 2.ª
+    for &(x, p) in toques {
+        toque(&mut t, [x, 80.0], p);
+    }
+    for _ in 0..30 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.run_full().0
+}
+
+/// O recorte `±24` px à volta de `(x, 80)`.
+fn recorte(px: &[u8], x: usize) -> Vec<u8> {
+    (56..105).flat_map(|y| px[(y * W + x - 24) * 4..(y * W + x + 25) * 4].to_vec()).collect()
+}
+
+/// ⭐ **Cada meio carimba a imagem ESCOLHIDA**: a ponta de duas imagens (quadrado, losango) pela pressão — o toque
+/// leve tem a silhueta do toque da Shape só com o quadrado, e o forte a da Shape só com o losango (< 5 % da
+/// diferença entre os dois, o controlo) — no Digital, no Impasto e no Wet. A Watercolor «Automatic» não lê a Shape: as duas imagens pintam
+/// o mesmo carimbo (o controlo inverte). Antes do adiado do Wet passar pela ponta, o Wet carimbava sempre a 1.ª.
 #[test]
 fn a_ponta_de_n_imagens_age_nos_meios() {
     for m in [PaintMedia::Digital, PaintMedia::Impasto, PaintMedia::WetPaint, PaintMedia::Watercolor] {
-        let pinta_no = |n: usize| {
-            let mut t = PainterTool::default();
-            t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
-            t.set_paint_media(m);
-            t.set_brush_size_px(10.0);
-            t.set_brush_spacing(1.0);
-            t.set_brush_color_srgb8([0, 0, 0]);
-            t.set_brush_shape_image_rgba(&imagem([255, 255, 255], 0), LADO, LADO, None);
-            t.toggle_brush_shape_alpha_from_image();
-            for k in 1..n {
-                t.add_brush_shape_hose_image_rgba(&imagem([255, 255, 255], k as u8), LADO, LADO);
-            }
-            pinta(t)
+        let ponta = toques_no_meio(m, &[0, 2], &[(160.0, 0.3), (480.0, 0.9)]);
+        let quadrado = toques_no_meio(m, &[0], &[(160.0, 0.3)]);
+        let losango = toques_no_meio(m, &[2], &[(480.0, 0.9)]);
+        let quadrado_forte = recorte(&toques_no_meio(m, &[0], &[(480.0, 0.9)]), 480);
+        let (pa, pb) = (recorte(&ponta, 160), recorte(&ponta, 480));
+        let (qa, lb) = (recorte(&quadrado, 160), recorte(&losango, 480));
+        // A silhueta: os píxeis mais escuros que o papel em ≥ 30 % da tinta mais escura do recorte (a aguada do Wet é
+        // leve). A rota por dab (a ponta de N imagens leva a imagem na pegada) arredonda a orla diferente da cache
+        // da imagem única — por isso a régua é a SILHUETA e não o byte.
+        let silhueta = |c: &[u8]| -> Vec<bool> {
+            let minimo = c.chunks_exact(4).map(|p| i32::from(p[0])).min().unwrap_or(255);
+            let limiar = 255 - (255 - minimo) * 3 / 10;
+            c.chunks_exact(4).map(|p| i32::from(p[0]) < limiar).collect()
         };
-        let (um, tres) = (pinta_no(1), pinta_no(3));
-        let n = um.iter().zip(&tres).filter(|(a, b)| a != b).count();
-        println!("[mangueira] {m:?}: {n} bytes mudam com 3 imagens");
-        if m != PaintMedia::Watercolor {
-            assert!(n > 2000, "{m:?}: a ponta de 3 imagens mudou só {n} bytes");
+        let difere = |a: &[u8], b: &[u8]| silhueta(a).iter().zip(silhueta(b)).filter(|(x, y)| **x != *y).count();
+        println!(
+            "[mangueira] {m:?}: silhueta leve×quadrado {} · forte×losango {} · quadrado×losango {} px",
+            difere(&pa, &qa),
+            difere(&pb, &lb),
+            difere(&quadrado_forte, &lb)
+        );
+        let controlo = difere(&quadrado_forte, &lb);
+        if m == PaintMedia::Watercolor {
+            assert_eq!(controlo, 0, "a Watercolor «Automatic» passou a ler a Shape?");
+            continue;
         }
+        // O Wet espalha a tinta do toque: o controlo dele é menor (36 px medidos) e continua a separar.
+        assert!(controlo > 20, "{m:?}: o quadrado e o losango pintam o mesmo (o controlo)");
+        assert!(difere(&pa, &qa) * 20 < controlo, "{m:?}: o toque leve não é o quadrado");
+        assert!(difere(&pb, &lb) * 20 < controlo, "{m:?}: o toque forte não é o losango");
     }
+}
+
+/// ⭐ **Gravar «Add image» e tocar = a mesma ponta, sem pedido pendente**: a macro grava o clique, o pedido
+/// consumido e a IMAGEM acrescentada (RGBA, como a da Shape); o tocador acrescenta-a sem abrir o seletor.
+#[test]
+fn gravar_add_image_e_tocar_e_a_mesma_ponta() {
+    use super::macro_comum::{Gravador, toca};
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut t = pincel(1, |_| {});
+    let mut g = Gravador::arma(&mut t);
+    t.handle_panel_event(PanelEvent::Click(ph2d_tool_painter::ids::PAINTER_SHAPE_HOSE_ADD));
+    g.quadro(&mut t);
+    assert!(t.take_brush_shape_hose_request(), "o «Add image» não pediu o seletor");
+    t.add_brush_shape_hose_image_rgba(&imagem(CORES[1], 1), LADO, LADO);
+    // O menu «Image order» pelo canal do painel (o que a macro grava): em sequência.
+    t.handle_panel_event(PanelEvent::SelectOption(ph2d_tool_painter::ids::PAINTER_PONTA_FIELDS[5], "1".into()));
+    g.quadro(&mut t);
+    let doc = g.para(&mut t);
+    let mut toc = toca(&doc).expect("a macro toca");
+    let tocado = toc.tool_mut();
+    assert!(!tocado.take_brush_shape_hose_request(), "ficou um pedido de seletor pendente ao tocar");
+    assert_eq!(tocado.brush_shape_hose_count(), 2);
+    assert_eq!(tocado.brush_shape_hose_count(), t.brush_shape_hose_count());
+    let mut a = std::mem::take(tocado);
+    a.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+    let mut b = t;
+    b.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+    assert!(pinta(a) == pinta(b), "a ponta tocada pinta outra tela");
+}
+
+
+/// ⭐ **No Wet o lote ADIADO carimba a imagem escolhida**: com o worker em voo (o ritmo escrito do `macro_comum`)
+/// parte dos lotes fica na fila e pousa no tique, fora da porta do lote; a ponta de duas imagens (todo dab escolhe
+/// o losango, pela pressão) pinta a silhueta da Shape só com o losango. Antes, os adiados pousavam o quadrado.
+#[test]
+fn no_wet_o_lote_adiado_carimba_a_imagem_escolhida() {
+    let traco = |formas: &[u8]| {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+        t.set_paint_media(PaintMedia::WetPaint);
+        t.set_wet_ritmo_de_teste(Some(super::macro_comum::ritmo()));
+        t.set_wet_agua_viva(true); // a água corre com o traço aberto: o motor anda em voo e há lotes adiados
+        t.set_brush_size_px(30.0);
+        t.set_brush_color_srgb8([0, 0, 0]);
+        t.set_brush_shape_image_rgba(&imagem([255, 255, 255], formas[0]), LADO, LADO, None);
+        t.toggle_brush_shape_alpha_from_image();
+        for &f in &formas[1..] {
+            t.add_brush_shape_hose_image_rgba(&imagem([255, 255, 255], f), LADO, LADO);
+        }
+        t.set_ponta(LinhaDaPonta::HoseMode, 2.0);
+        t.set_brush_spacing(1.0);
+        let cp = |x: f32, phase| CanvasPointer {
+            pos: [x, 80.0],
+            pressure: 0.9,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        t.on_canvas_pointer(cp(40.0, PointerPhase::Down));
+        t.on_tick(1000.0 / 60.0);
+        let mut x = 40.0;
+        for _ in 0..30 {
+            for _ in 0..3 {
+                x += 6.0;
+                t.on_canvas_pointer(cp(x, PointerPhase::Move));
+            }
+            let _ = t.take_preview_arc();
+            t.on_tick(1000.0 / 60.0);
+        }
+        t.on_canvas_pointer(cp(x, PointerPhase::Up));
+        for _ in 0..40 {
+            t.on_tick(1000.0 / 60.0);
+        }
+        t.run_full().0
+    };
+    let silhueta = |c: &[u8]| -> Vec<bool> {
+        let minimo = c.chunks_exact(4).map(|p| i32::from(p[0])).min().unwrap_or(255);
+        let limiar = 255 - (255 - minimo) * 3 / 10;
+        c.chunks_exact(4).map(|p| i32::from(p[0]) < limiar).collect()
+    };
+    let difere = |a: &[u8], b: &[u8]| silhueta(a).iter().zip(silhueta(b)).filter(|(x, y)| **x != *y).count();
+    let (ponta, losango, quadrado) = (traco(&[0, 2]), traco(&[2]), traco(&[0]));
+    let (d, controlo) = (difere(&ponta, &losango), difere(&quadrado, &losango));
+    println!("[mangueira] Wet adiado: ponta×losango {d} · quadrado×losango {controlo} px");
+    assert!(controlo > 50, "o controlo não separa: {controlo}");
+    assert!(d * 20 < controlo, "os lotes adiados não carimbaram o losango: {d} × {controlo}");
 }

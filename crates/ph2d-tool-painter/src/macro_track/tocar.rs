@@ -501,6 +501,10 @@ impl TocadorDoPainter {
             }
             Passo::TexturaGrao { lum, w, h } => t.set_brush_texture_image(lum, w, h),
             Passo::FormaRgba { rgba, w, h } => t.set_brush_shape_image_rgba(&rgba, w, h, None),
+            Passo::TiraPedidoMangueira => {
+                t.take_brush_shape_hose_request();
+            }
+            Passo::MangueiraRgba { rgba, w, h } => t.add_brush_shape_hose_image_rgba(&rgba, w, h),
             Passo::FalloffPonto { id, d, s } => t.set_brush_falloff_point(id, d, s),
             Passo::FalloffAcrescenta { d, s } => {
                 t.add_brush_falloff_point_at(d, s);

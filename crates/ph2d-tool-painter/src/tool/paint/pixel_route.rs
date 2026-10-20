@@ -179,12 +179,26 @@ impl PainterTool {
         if regiao.is_none() {
             return;
         }
+        // A rampa de cor da Shape pela QUEDA («Falloff Color»): a cor de cada píxel no perfil dele, o alfa binário.
+        // A Texture Color e a rampa do Grain leem a textura, que a ponta de píxel não carimba (esmaecem).
+        let p = &self.paint;
+        let rampa_viva = p.shape_color_ramp_enabled && !p.shape_color_ramp_bw && p.shape_camadas.alguma(false);
+        if rampa_viva {
+            self.ensure_ramp_lut(super::ramp_lut::RampLutOwner::Shape);
+        }
         let buf = super::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
             regiao,
         );
+        let rampa = rampa_viva.then(|| ph2d_painter_brush::RampPaint {
+            lut: &self.paint.texture_ramp_lut,
+            alpha_mode: super::ramp_lut::BRUSH_RAMP_ALPHA,
+            index: super::ramp_lut::RampLutOwner::Shape.index(),
+            shape: self.paint.shape_camadas.motor(false),
+            shift: [0.0; 3],
+        });
         let mut mask = cap.then_some(self.paint.stroke_mask.as_mut_slice());
         let mut tocado: Option<Region> = None;
         for d in dabs {
@@ -192,7 +206,13 @@ impl PainterTool {
                 color: d.color,
                 ..brush.at_dab(d)
             };
-            if let Some(r) = pixel::carimba(buf, w, h, d, &spec, alpha_locked, mask.as_deref_mut()) {
+            let rampa = rampa.map(|r| ph2d_painter_brush::RampPaint {
+                shift: d.color_shift,
+                ..r
+            });
+            if let Some(r) =
+                pixel::carimba(buf, w, h, d, &spec, alpha_locked, mask.as_deref_mut(), rampa.as_ref())
+            {
                 let q = Region {
                     x: r.x,
                     y: r.y,

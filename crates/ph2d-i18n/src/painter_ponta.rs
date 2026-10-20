@@ -21,6 +21,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_ponta.depth_control" => "Depth control",
         "panel.painter_ponta.depth_control.random" => "Random",
         "panel.painter_ponta.depth_control.pressure" => "Pen pressure",
+        "panel.painter_ponta.inerte.pixel_tip" => "Not read by the Pixel tip (pixels stay whole)",
         "panel.painter_ponta.hose_add" => "Add image",
         "panel.painter_ponta.hose_clear" => "Clear images",
         "panel.painter_ponta.hose_mode" => "Image order",

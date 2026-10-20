@@ -213,6 +213,11 @@ impl super::PainterTool {
     /// **Uma linha da ponta** no pincel de agora.
     pub fn set_ponta(&mut self, l: LinhaDaPonta, v: f64) {
         escreve(&mut self.paint.brush, l, v);
+        // Sem a ponta de píxel o 1 px (`PIXEL_SIZE_MIN_PX`) não se cumpre: o raio volta ao piso da ponta com AA.
+        if l == LinhaDaPonta::Pixel && !self.pixel_vivo(&self.paint.brush) {
+            let r = &mut self.paint.brush.radius_px;
+            *r = r.max(super::BRUSH_SIZE_MIN_PX);
+        }
     }
 
     /// As linhas da ponta do canal do painel: `SetValue` (os campos) e `SelectOption` «i» (os menus).

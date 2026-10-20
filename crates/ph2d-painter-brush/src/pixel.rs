@@ -116,15 +116,15 @@ pub fn e_quina(p0: [i32; 2], p1: [i32; 2], p2: [i32; 2]) -> bool {
     lado(p0, p1) && lado(p1, p2) && (p0[0] - p2[0]).abs() == 1 && (p0[1] - p2[1]).abs() == 1
 }
 
-/// Chama `cada(px, py)` para cada píxel da tela `w × h` cujo CENTRO cai na pegada `fp` do dab de diâmetro `d`
-/// ancorado em `centro`.
+/// Chama `cada(px, py, t)` para cada píxel da tela `w × h` cujo CENTRO cai na pegada `fp` do dab de diâmetro `d`
+/// ancorado em `centro` (`t` = a distância normalizada da pegada, `< 1`).
 pub fn cobre(
     centro: [f32; 2],
     d: i32,
     fp: FootprintDeform,
     w: u32,
     h: u32,
-    mut cada: impl FnMut(i64, i64),
+    mut cada: impl FnMut(i64, i64, f32),
 ) {
     let r = d as f32 * 0.5;
     let inv = 1.0 / r;
@@ -138,17 +138,19 @@ pub fn cobre(
         let v = (py as f32 + 0.5 - centro[1]) * inv;
         for px in x0..x1 {
             let u = (px as f32 + 0.5 - centro[0]) * inv;
-            if fp.falloff_t(u, v) < 1.0 {
-                cada(px, py);
+            let t = fp.falloff_t(u, v);
+            if t < 1.0 {
+                cada(px, py, t);
             }
         }
     }
 }
 
 /// ⭐ **Carimba UM dab de píxel** em `buf` (RGBA8 direito, `w × h`): cada píxel da pegada recebe a cor do dab no
-/// modo do pincel com a cobertura TODA do dab (`coverage · flow`) — sem AA, sem queda. Com `mask` (o tecto do
-/// traço, Accumulate desligado) um píxel já pintado neste traço não volta a receber tinta. Devolve a caixa
-/// tocada.
+/// modo do pincel (e o modo sobre o vazio, L7) com a cobertura TODA do dab (`coverage · flow`) — sem AA, sem
+/// queda. Com a rampa de cor da Shape (`ramp`, a «Falloff Color») a COR de cada píxel é a da rampa no perfil da
+/// queda dele e o alfa da rampa decide binário (`≥ ½`): o píxel continua inteiro. Com `mask` (o tecto do traço,
+/// Accumulate desligado) um píxel já pintado neste traço não volta a receber tinta. Devolve a caixa tocada.
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn carimba(
@@ -159,6 +161,7 @@ pub fn carimba(
     spec: &crate::BrushSpec,
     preserve_alpha: bool,
     mut mask: Option<&mut [u8]>,
+    ramp: Option<&crate::RampPaint<'_>>,
 ) -> Option<crate::DirtyRect> {
     if buf.len() < (w as usize) * (h as usize) * 4 {
         return None;
@@ -172,7 +175,18 @@ pub fn carimba(
     let fp = spec.dab_footprint_of(dab);
     let mix = spec.effective_pigment_mix();
     let (mut lo, mut hi) = ([i64::MAX; 2], [i64::MIN; 2]);
-    cobre(c, d, fp, w, h, |px, py| {
+    let neutra = crate::texture::GrainLaw::NEUTRA;
+    cobre(c, d, fp, w, h, |px, py, t| {
+        let cor = match ramp {
+            Some(r) => {
+                let x = crate::ramp_alpha::ramp_texel(Some(r), spec.falloff_weight(t), None, None, 0.0, 0.0, &neutra);
+                if x.g * x.stamp_alpha < 0.5 {
+                    return;
+                }
+                x.color.unwrap_or(dab.color)
+            }
+            None => dab.color,
+        };
         let p = (py as usize) * (w as usize) + px as usize;
         if let Some(m) = mask.as_deref_mut() {
             if m[p] != 0 {
@@ -183,7 +197,8 @@ pub fn carimba(
         let i = p * 4;
         let prev = [0, 1, 2, 3].map(|k| f32::from(buf[i + k]) / 255.0);
         let a = if preserve_alpha { a * prev[3] } else { a };
-        let out = crate::blend::blend_over_pigment(spec.blend, prev, dab.color, a, mix);
+        let out =
+            crate::blend_vazio::blend_over_pigment_modo(spec.blend, prev, cor, a, mix, spec.blend_sobre_vazio);
         for k in 0..4 {
             buf[i + k] = crate::dab::encode(out[k]);
         }
@@ -210,7 +225,7 @@ mod tests {
             for c in [[10.0, 10.0], [10.3, 10.7], [10.49, 9.51]] {
                 let a = ancora(c, d);
                 let mut k = 0;
-                cobre(centro(a, d), d, FootprintDeform::identity(), 40, 40, |_, _| k += 1);
+                cobre(centro(a, d), d, FootprintDeform::identity(), 40, 40, |_, _, _| k += 1);
                 assert_eq!(k, n, "d {d} em {c:?}");
             }
         }

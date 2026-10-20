@@ -22,6 +22,10 @@ impl PainterTool {
     /// is already mirrored (Symmetry) and replicated (Tiling) — the engine
     /// sees exactly what the colour routes would have seen.
     pub(in crate::tool::paint) fn stamp_dabs_wetpaint(&mut self, dabs: &[Dab], brush: &BrushSpec) {
+        // A ponta de N imagens (L19): também o lote ADIADO (pousado no tique) carimba cada corrida com a sua imagem.
+        if self.mangueira_viva() {
+            return self.stamp_dabs_mangueira_com(dabs, |t, corrida| t.stamp_dabs_wetpaint(corrida, brush));
+        }
         let (w, h) = self.source_size;
         // Two doors in, one belt (doc 21): a LIVE incremental gesture (the
         // W1/W2 path — dabs are the artist's hand, once) or the commit

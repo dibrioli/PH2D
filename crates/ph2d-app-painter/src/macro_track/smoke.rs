@@ -152,7 +152,7 @@ pub fn monta_fazer(
         .get(k)?
         .inicio;
     track.edicao_mut(ancora).dica = Some(if caixa {
-        "Draw a box with four dark lines, then fill it with blue from C&F.".into()
+        "Draw a box with four lines, then fill it with blue from C&F.".into()
     } else {
         "Start with the sky: one wide blue stroke across the top.".into()
     });
@@ -165,7 +165,7 @@ pub fn monta_fazer(
     if caixa {
         eprintln!(
             "[macro smoke =4 caixa] 'Canvas' (white, {LADO}²) is a PAINTING TUTORIAL with a Fill: four \
-             dark lines that close a box, blue dropped inside it from C&F, one yellow stroke over the \
+             Wet Paint lines that close a box, blue dropped inside it from C&F, one yellow stroke over the \
              blue. It opens in Paint mode with Wet Paint. At the Fill step the balloon rings C&F and \
              shows the blue: pick it (click C&F, type the code), then drag C&F onto the ringed spot \
              and let go, and press Done. 'Show me' does it for you; Ctrl+Z takes it back."

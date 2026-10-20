@@ -1,0 +1,98 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+MESA: info: vulkan: No DRI3 support detected - required for presentation
+Note: you can probably enable DRI3 in your Xorg config
+[ph2d-gpu] surface present mode: Fifo
+[   312ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   322ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   322ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   353ms] M11: VelloPass initialized (1024×768 intermediate)
+[   360ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   386ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   419ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   425ms] lifecycle: Foreground
+[   425ms] resize: 1024x768 @ 1.00x scale
+[macro smoke =4 caixa] 'Canvas' (white, 1024²) is a PAINTING TUTORIAL with a Fill: four dark lines that close a box, blue dropped inside it from C&F, one yellow stroke over the blue. It opens in Paint mode with Wet Paint. At the Fill step the balloon rings C&F and shows the blue: pick it (click C&F, type the code), then drag C&F onto the ringed spot and let go, and press Done. 'Show me' does it for you; Ctrl+Z takes it back.
+warn: dropped 3.000s of sim time (max_substeps cap)
+audio: stream error: A buffer underrun or overrun occurred.
+[ph2d-gpu] surface present mode → Immediate
+[ 22965ms] resize: 1930x1040 @ 1.00x scale
+[ph2d-gpu] surface present mode → Fifo
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.
+audio: stream error: A buffer underrun or overrun occurred.

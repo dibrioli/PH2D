@@ -17,6 +17,15 @@ O nome muda se a janela reiniciar (confirme por `ListAgents` antes do sinal).
   custo e revisão por um agente que não a fez. As leis medidas: [`06_LEIS_DAS_LACUNAS.md`](06_LEIS_DAS_LACUNAS.md);
   o que cada motor faz agora: `03_MOTORES.md` §4 (linhas ✅) e §7/§7.1.
 
+## A meio (JANELA 3, 2026-10-20)
+
+- Infra: a fábrica por família nos 4 meios (`938271318c`, `04_BANCADA` §9: `tests/it/familias/<família>.rs`), o
+  briefing de uma família (`BRIEFING_FAMILIA.md`), as vezes (`vez_pesada.sh` 2 vagas, `vez_do_app.sh`), o
+  inventário dos oráculos da J3 (`fixtures/INVENTARIO_J3.md`).
+- Onda 1 (agentes em paralelo): `grafite` (B-1..4 exame + HB/2H grão, B-5, B-11), `tintas` (C-1..3 exame, C-8, C-9,
+  C-12..15), `basicos` (A-1..6, Digital), `canetas` (C-4..7, C-10, C-11, Digital). Onda 2: `lapis` (B-6..10),
+  `caligrafia_marcadores` (D-1..4, E-1..4), `aerografo` (J-1..6). Relatório de cada uma: `exames/<família>.md`.
+
 ## Decisões de produto (com o porquê)
 
 1. **Os 3 do P53 saem** (veredito do dono). Voltam SÓ na JANELA 4 e só se passarem o EXAME com o Rebelle ao lado.

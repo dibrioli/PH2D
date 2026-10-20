@@ -98,19 +98,33 @@ pub enum Variante {
 /// A variante desta corrida.
 #[must_use]
 pub fn variante() -> Variante {
-    match std::env::var("PH2D_MACRO_CAMINHO").as_deref() {
-        Ok("humano") => Variante::Humano,
-        Ok("meio") => Variante::Meio,
-        Ok("splash") => Variante::Splash,
-        Ok("semrewind") => Variante::SemRewind,
-        Ok("topo") => Variante::Topo,
-        Ok("arrasta") => Variante::Arrasta,
-        Ok("parar") => Variante::Parar,
-        Ok("cruza") => Variante::Cruza,
-        Ok("cor") => Variante::Cor,
-        Ok("colordrop") => Variante::ColorDrop,
-        _ => Variante::Base,
-    }
+    let pedido = std::env::var("PH2D_MACRO_CAMINHO").unwrap_or_default();
+    NOMES
+        .iter()
+        .find(|(n, _)| *n == pedido)
+        .map_or(Variante::Base, |(_, v)| *v)
+}
+
+/// Os valores de `PH2D_MACRO_CAMINHO`. Um valor fora desta tabela corre a base — e a consola di-lo
+/// ([`caminho_desconhecido`]): o dono correu `…=PH2D_MACRO_CAMINHO=colordrop` e viu a base calada (20/10).
+const NOMES: &[(&str, Variante)] = &[
+    ("humano", Variante::Humano),
+    ("meio", Variante::Meio),
+    ("splash", Variante::Splash),
+    ("semrewind", Variante::SemRewind),
+    ("topo", Variante::Topo),
+    ("arrasta", Variante::Arrasta),
+    ("parar", Variante::Parar),
+    ("cruza", Variante::Cruza),
+    ("cor", Variante::Cor),
+    ("colordrop", Variante::ColorDrop),
+];
+
+/// O valor de `PH2D_MACRO_CAMINHO` quando ele existe e não é nenhum caminho.
+#[must_use]
+pub fn caminho_desconhecido() -> Option<String> {
+    let pedido = std::env::var("PH2D_MACRO_CAMINHO").ok()?;
+    (!pedido.is_empty() && !NOMES.iter().any(|(n, _)| *n == pedido)).then_some(pedido)
 }
 
 const PASSO_MS: u64 = 16;
@@ -301,7 +315,7 @@ pub fn passo(conduz: bool) -> (u64, Vec<Gesto>, Option<u32>) {
             (std::time::Instant::now(), Caminho::de(variante()))
         });
         let ms = u64::try_from(t0.elapsed().as_millis()).unwrap_or(u64::MAX);
-        let gestos = if conduz {
+        let gestos = if conduz && caminho_desconhecido().is_none() {
             cam.gestos_ate(ms)
         } else {
             Vec::new()
@@ -357,6 +371,14 @@ pub fn anuncio(conduz: bool) -> String {
         return format!(
             "this session is logged every 0.1 s (Record, Stop, the Timeline clock, the canvas) to {}",
             f.display()
+        );
+    }
+    if let Some(x) = caminho_desconhecido() {
+        let nomes: Vec<&str> = NOMES.iter().map(|(n, _)| *n).collect();
+        return format!(
+            "PH2D_MACRO_CAMINHO=«{x}» is not a path this scene knows ({}), so the app does NOTHING by \
+             itself. Close it and run the command again with one of those names.",
+            nomes.join(", ")
         );
     }
     if variante() == Variante::Arrasta {

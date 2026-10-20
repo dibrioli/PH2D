@@ -1,4 +1,4 @@
-//! **Família `tintas`** — J3, catálogo C (as tintas do Wet Paint): Dip Pen, Ink Bullet, Ink Brush, Fountain Pen, Reed
+//! **Família `tintas`** — J3, catálogo C (as tintas do Wet Paint): Dip Pen, Ink Bullet, Ink Brush, Reed
 //! Pen, Gloop Pen, Ink Bleed, Gesinski Ink, Wood Stick. Escreva aqui as receitas e os testes da família; nada fora
 //! deste ficheiro (`docs/Painter/Pinceis/04_BANCADA.md` §9).
 
@@ -23,7 +23,8 @@ pub const WET: &[Receita] = &[
         pickup: 1.0,
         gate: 0.0,
         evaporation: 3.0,
-        edge: 0.0,
+        // A orla do nanquim (o portão da mídia: a foto `inkbrush` tem-na; sem ela o Orla caía a 1,0).
+        edge: 60.0,
         tilt: DIREITA,
         bristle_size: 2.0,
         bristle_count: 2000.0,
@@ -55,7 +56,8 @@ pub const WET: &[Receita] = &[
         nome: "Dip Pen",
         water: 0.3,
         opacity: 1.0,
-        pigment: 1100.0,
+        // 150 e não 1100: o pigmento a mais SATURA a cápsula e a ponta leve da rampa ficava opaca (a do Rebelle é clara).
+        pigment: 150.0,
         pickup: 10.0,
         gate: 0.0,
         evaporation: 1.0,
@@ -79,16 +81,15 @@ pub const WET: &[Receita] = &[
     },
     // Ink › Pen › Ink Bullet: o mais carregado e seco da tinta. J3 (Rebelle `Pen/Bullet`): a ponta redonda LISA (sem
     // a forma de cerdas que esfiapava as pontas — o que a punha ao lado do Marker Bullet), a largura que a pressão
-    // pouco muda (0,55 → 1) e o cruzamento que arrasta um pouco da cor de baixo. ⚠️ A tinta que ENTRA clara do
-    // oráculo (o «loading» do Rebelle) não sai: a ponta romba do taper esmaece cada carimbo, mas a cápsula
-    // sobrepõe-nos e a tinta carregada satura (só o traço rápido o mostra) — `exames/tintas.md`.
+    // pouco muda (0,55 → 1), a tinta que ENTRA clara (o «loading» do Rebelle: a ponta ROMBA do taper, que só esmaece —
+    // com o pigmento a 200 a cápsula já não satura e o esmaecer vê-se) e o cruzamento que arrasta um pouco a cor.
     Receita {
         meio: "Ink",
         grupo: "Pen",
         nome: "Ink Bullet",
         water: 0.15,
         opacity: 1.0,
-        pigment: 2000.0,
+        pigment: 200.0,
         pickup: 10.0,
         gate: 0.0,
         evaporation: 1.0,
@@ -110,54 +111,22 @@ pub const WET: &[Receita] = &[
         achatado: None,
         pincel: &[
             ("shape", SEM_FORMA),
-            ("taper", SEM_TAPER),
+            ("taper", r#"{"opacity": 0.7, "start": 1.5, "tip_start": 1.0}"#),
         ],
         nasce_de: None,
     },
-    // C-8 Ink › Fountain › Fountain Pen (Rebelle `Pen/Fountain Round`): a caneta-tinteiro lisa e cheia, a pressão leva
-    // a largura de um fio ao cheio (o Bullet quase não muda) e a tinta não entra clara; o cruzamento escurece e arrasta
-    // a cor de baixo uns 20 px (o tipClean que a limpa).
-    Receita {
-        meio: "Ink",
-        grupo: "Fountain",
-        nome: "Fountain Pen",
-        water: 0.15,
-        opacity: 1.0,
-        pigment: 2000.0,
-        pickup: 16.0,
-        gate: 0.0,
-        evaporation: 1.0,
-        edge: 0.0,
-        tilt: DIREITA,
-        bristle_size: 2.0,
-        bristle_count: 2000.0,
-        hardness: 0.9,
-        size_px: None,
-        extras: &[
-            ("glaze", 1.0),
-            ("tipClean", 0.05),
-            ("pressureSize", 1.0),
-            ("pressureSizeCurve", 1.0),
-            ("pressureOpacity", 0.0),
-            ("pressureOpacityCurve", 1.0),
-        ],
-        grao: None,
-        achatado: None,
-        pincel: &[("shape", SEM_FORMA), ("taper", SEM_TAPER)],
-        nasce_de: Some("Ink Bullet"),
-    },
     // C-9 Ink › Reed › Reed Pen (Rebelle `Pen/Reed Pen`): a cana cortada — a ponta CHATA e reta fixa na tela (larga no
     // horizontal, ~0,57 dela no vertical), a borda áspera (o tamanho e a posição de cada carimbo sorteados um pouco, o
-    // papel que morde: gate 0,3) e a ponta que afina com a pressão.
+    // papel que morde: gate 0,6) e a ponta que afina com a pressão.
     Receita {
         meio: "Ink",
         grupo: "Reed",
         nome: "Reed Pen",
         water: 0.3,
         opacity: 1.0,
-        pigment: 1100.0,
+        pigment: 200.0,
         pickup: 16.0,
-        gate: 0.3,
+        gate: 0.6,
         evaporation: 1.0,
         edge: 0.0,
         tilt: DIREITA,
@@ -170,27 +139,28 @@ pub const WET: &[Receita] = &[
             ("tipClean", 0.05),
             ("pressureSizeCurve", 1.0),
             ("pressureOpacity", 0.9),
-            ("pressureOpacityCurve", 1.5),
+            ("pressureOpacityCurve", 2.5),
         ],
         grao: None,
         achatado: Some((0.43, 90)),
         pincel: &[
             ("shape", SEM_FORMA),
-            ("dab_quina", "1.0"),
-            ("jitter_scale", "0.12"),
-            ("jitter", "0.03"),
+            ("dab_quina", "0.8"),
+            ("jitter_scale", "0.15"),
+            ("jitter", "0.04"),
         ],
         nasce_de: Some("Dip Pen"),
     },
     // C-15 Ink › Wood › Wood Stick (Rebelle `Pen/Wood`): o pau mergulhado na tinta — mais fino e mais claro que o Dip
-    // Pen (água 0,5, pigmento 80), os grumos maiores e soltos (tamanho ±30 %, posição ±4 %).
+    // Pen (água 0,5, pigmento 40: a tinta que a pressão leve deixa transparente), os grumos maiores e soltos
+    // (tamanho ±30 %, posição ±4 %).
     Receita {
         meio: "Ink",
         grupo: "Wood",
         nome: "Wood Stick",
         water: 0.5,
         opacity: 1.0,
-        pigment: 80.0,
+        pigment: 40.0,
         pickup: 16.0,
         gate: 0.0,
         evaporation: 1.0,
@@ -213,7 +183,7 @@ pub const WET: &[Receita] = &[
             ("shape", SEM_FORMA),
             ("jitter_scale", "0.3"),
             ("jitter", "0.04"),
-            ("taper", SEM_TAPER),
+            ("taper", r#"{"opacity": 0.6, "start": 1.5, "tip_start": 1.0}"#),
         ],
         nasce_de: Some("Dip Pen"),
     },
@@ -227,55 +197,65 @@ const SEM_FORMA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "None", "mapp
 
 pub const MEIOS: &[ReceitaMeio] = &[
     // C-12 Ink › Gloop › Gloop Pen (ArtRage 6 `Gloop Pen`, fotografado): a gota de tinta translúcida com a ORLA escura
-    // e nítida — a lavagem da Watercolor com a orla forte e estreita, sem grão nem warp; a tinta molhada funde-se.
+    // e nítida que MULTIPLICA onde se sobrepõe — o traço do Digital como uma camada (L8: tecto 0,7 e a orla queimada
+    // de 2,5 px) em Multiply; a largura quase não muda com a pressão e o traço rápido afina um pouco (o ArtRage
+    // responde à velocidade). A 1.ª receita (a lavagem da Watercolor) fundia a tinta molhada e clareava o vermelho
+    // por baixo: `exames/tintas.md`.
     ReceitaMeio {
         pincel: &[
             ("hardness", "0.95"),
-            ("depth", "1.0"),
-            ("opacity", "0.45"),
-            ("fill", "0.3"),
-            ("edge_gain", "6.0"),
-            ("edge_spread", "1.0"),
-            ("granulation", "0.0"),
-            ("warp", "0.0"),
-            ("wet_dilution", "0.0"),
+            ("blend", r#""Multiply""#),
             ("continuous_spacing", "true"),
             ("spacing", "0.05"),
+            (
+                "traco",
+                r#"{"largura": 2.5, "molhada": 0.0, "queimada": 0.8, "tecto": 0.7}"#,
+            ),
         ],
-        mao: &[("pressureSize", 0.3)],
-        ..ReceitaMeio::aquarela("Ink", "Gloop", "Gloop Pen")
+        mao: &[("pressureSize", 0.3), ("speedSize", 0.25)],
+        opacity: Some(1.0),
+        ..ReceitaMeio::digital("Ink", "Gloop", "Gloop Pen")
     },
-    // C-13 Ink › Bleed › Ink Bleed (Procreate Ink Bleed, doc.): a tinta escura que SANGRA no papel — a borda torcida
-    // pelo warp da Watercolor (5 px) e o grão do papel nela; a pressão leva a largura.
+    // C-13 Ink › Bleed › Ink Bleed (Procreate Ink Bleed, doc.): a tinta escura que SANGRA pelas fibras — a lavagem
+    // da Watercolor de tinta cheia (depth 6) com a borda que segue o papel (paper_edge 1) e torcida pelo warp (5 px),
+    // a orla leve do nanquim, e a tinta que puxa e se dilui na que ainda está molhada (wet_pull 0,5); a pressão leva a
+    // largura. Sem o puxar, a matriz punha-a a 0,49 do Hard Round (um redondo opaco com a borda rugosa).
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.8"),
+            ("hardness", "1.0"),
             ("depth", "6.0"),
             ("opacity", "1.0"),
             ("fill", "1.0"),
             ("edge_gain", "1.5"),
             ("edge_spread", "2.0"),
             ("granulation", "0.4"),
+            ("paper_edge", "1.0"),
+            ("smooth_edges", "false"),
             ("warp", "5.0"),
-            ("wet_dilution", "0.0"),
+            ("wet_pull", "0.5"),
+            ("wet_dilution", "0.3"),
             ("continuous_spacing", "true"),
             ("spacing", "0.05"),
         ],
-        mao: &[("pressureSize", 0.8)],
+        mao: &[("pressureSize", 1.0)],
         ..ReceitaMeio::aquarela("Ink", "Bleed", "Ink Bleed")
     },
     // C-14 Ink › Nib › Gesinski Ink (Procreate Gesinski Ink, doc.): a pena translúcida que ESCURECE onde se sobrepõe —
-    // o carimbo duro do Digital em Multiply a Strength 0,6 (um traço não escurece a si mesmo; dois, sim) e a pressão
-    // que leva a largura de um fio ao cheio.
+    // o carimbo duro do Digital em Multiply com o tecto POR TRAÇO (L8, 0,55: um traço não escurece a si mesmo, nem na
+    // espiral nem a 200 px; dois, sim) e a pressão que leva a largura de um fio ao cheio, fina por mais tempo (curva 1,8).
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.9"),
+            ("hardness", "0.95"),
             ("blend", r#""Multiply""#),
             ("continuous_spacing", "true"),
             ("spacing", "0.05"),
+            (
+                "traco",
+                r#"{"largura": 7.0, "molhada": 0.0, "queimada": 0.0, "tecto": 0.55}"#,
+            ),
         ],
-        mao: &[("pressureSize", 1.0), ("pressureSizeCurve", 1.3), ("pressureOpacity", 0.3)],
-        opacity: Some(0.6),
+        mao: &[("pressureSize", 1.0), ("pressureSizeCurve", 1.8), ("pressureOpacity", 0.3)],
+        opacity: Some(1.0),
         ..ReceitaMeio::digital("Ink", "Nib", "Gesinski Ink")
     },
 ];
@@ -373,7 +353,7 @@ fn mede_tinta(nome: &str) -> Tinta {
 #[test]
 fn cada_tinta_tem_a_sua_identidade() {
     let nomes = [
-        "Dip Pen", "Ink Bullet", "Ink Brush", "Fountain Pen", "Reed Pen", "Wood Stick", "Gloop Pen", "Ink Bleed",
+        "Dip Pen", "Ink Bullet", "Ink Brush", "Reed Pen", "Wood Stick", "Gloop Pen", "Ink Bleed",
         "Gesinski Ink", "Marker Bullet",
     ];
     let medidas: Vec<(&str, Tinta)> = std::thread::scope(|s| {
@@ -390,6 +370,32 @@ fn cada_tinta_tem_a_sua_identidade() {
             falhas.push(o_que);
         }
     };
-    let _ = (&m, &mut regra);
+    // As fronteiras: o meio entre o pincel e o que a regra separa, medidos na 1.ª corrida (20/10, `exames/tintas.md`).
+    let (dip, bullet, brush, reed) = (m("Dip Pen"), m("Ink Bullet"), m("Ink Brush"), m("Reed Pen"));
+    let (wood, gloop, bleed, gesinski) = (m("Wood Stick"), m("Gloop Pen"), m("Ink Bleed"), m("Gesinski Ink"));
+    // Os grumos do aparo (2,16) contra a ponta lisa do Bullet (0,42).
+    regra(dip.grumo > 1.29, format!("Dip Pen: grumo {:.2} — a borda do aparo ficou lisa", dip.grumo));
+    // O Bullet quase não afina (0,60) contra o Dip Pen (0,18) e o Marker Bullet (0,07); e é liso.
+    regra(bullet.rampa > 0.39, format!("Ink Bullet: rampa {:.2} — a pressão afina-o como uma pena", bullet.rampa));
+    regra(bullet.grumo < 1.29, format!("Ink Bullet: grumo {:.2} — a ponta deixou de ser lisa", bullet.grumo));
+    // As pontas em fios do pincel (a entrada 0,84 contra ≥ 0,94 das canetas) e os lados lisos.
+    regra(brush.entrada < 0.89, format!("Ink Brush: entrada {:.2} — as pontas perderam os fios", brush.entrada));
+    regra(brush.grumo < 1.29, format!("Ink Brush: grumo {:.2} — os lados ficaram grumosos", brush.grumo));
+    // A ponta chata fixa: de pé 0,64 da largura deitada contra ~1,0 dos redondos.
+    regra(reed.de_pe < 0.82, format!("Reed Pen: de pé ÷ deitado {:.2} — a cana ficou redonda", reed.de_pe));
+    // O pau: os grumos (2,60) e a tinta mais clara que a do Dip Pen (0,57 contra 0,66).
+    regra(wood.grumo > 1.29, format!("Wood Stick: grumo {:.2} — a borda ficou lisa", wood.grumo));
+    regra(wood.miolo < 0.61, format!("Wood Stick: miolo {:.2} — a tinta é a do Dip Pen", wood.miolo));
+    // A orla escura da gota (1,48 contra 1,00 da pena), o que multiplica (1,57) e a largura que a pressão não leva.
+    regra(gloop.orla > 1.24, format!("Gloop Pen: orla {:.2} — perdeu o aro", gloop.orla));
+    regra(gloop.sobre_si > 1.36, format!("Gloop Pen: sobreposição {:.2} — não multiplica", gloop.sobre_si));
+    regra(gloop.rampa > 0.37, format!("Gloop Pen: rampa {:.2} — a pressão afina-a como a pena", gloop.rampa));
+    // A borda que sangra (2,70 contra o Hard Round, o vizinho da matriz, 0).
+    regra(bleed.grumo > 1.35, format!("Ink Bleed: grumo {:.2} — a borda deixou de sangrar", bleed.grumo));
+    // A pena translúcida que escurece na sobreposição (1,60 contra 1,13 do Bullet), clara (0,36), sem aro e que afina.
+    regra(gesinski.sobre_si > 1.36, format!("Gesinski Ink: sobreposição {:.2} — não escurece", gesinski.sobre_si));
+    regra(gesinski.miolo < 0.51, format!("Gesinski Ink: miolo {:.2} — a tinta ficou opaca", gesinski.miolo));
+    regra(gesinski.orla < 1.24, format!("Gesinski Ink: orla {:.2} — tem o aro da gota", gesinski.orla));
+    regra(gesinski.rampa < 0.37, format!("Gesinski Ink: rampa {:.2} — a pressão não a afina", gesinski.rampa));
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }

@@ -2,7 +2,8 @@
 
 > Leitor: a LLM da próxima janela. Anterior: [HANDOFF_CONTINUACAO_W23_B5_2](HANDOFF_CONTINUACAO_W23_B5_2_2026-10-19.md) ·
 > lista-mãe: [HANDOFF_CONTINUACAO_W23_ABERTOS](HANDOFF_CONTINUACAO_W23_ABERTOS_2026-10-18.md). Base = main `100d34c8e0`.
-> Sem integração nem push: só por ordem do Enio. ⏳ **Smoke do dono da cena 27: por fazer** (§5).
+> Sem integração nem push: só por ordem do Enio. ✅ **Smoke do dono da cena 27: OK (20/10).** O dono decidiu: a
+> pergunta «Delete board» antes de apagar FICA.
 
 ## 1. B5(4) — FEITO
 
@@ -37,9 +38,8 @@ se o estava. Mecanismo, leis do oráculo, diferenças deliberadas e recusas: **[
 
 ## 4. ABERTO (nesta ordem)
 
-1. **Smoke do dono da cena 27** (§5).
-2. **Pergunta ao dono:** com o desfazer, a pergunta «Delete board» antes de apagar ainda faz falta? (o Miro pergunta,
-   o tldraw não).
+1. ~~Smoke do dono da cena 27~~ ✅ OK 20/10.
+2. ~~Pergunta ao dono sobre «Delete board»~~ ✅ 20/10: fica.
 3. Bloco 4 (B6, B7, B10, B11 — MEDIR antes) · bloco 5 (B9, A11) · bloco 6 (B12, B13, B14 com `/pd-feature`).
    ⇒ **janela nova** (outra onda).
 4. `textAlignVertical` (top/bottom do Miro): por medir, só existe na API — sem UI nem oráculo.

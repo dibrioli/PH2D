@@ -33,7 +33,7 @@
 - **Diferenças deliberadas do tldraw**: trocar de aba NÃO é passo (P10 — Miro/Figma/navegadores não o fazem, e com
   documentos separados seria um `Ctrl+Z` gasto); criar abre o quadro novo e apagar abre a da DIREITA (decisões da W0b,
   o idioma das abas do navegador); o refazer do PRÓPRIO quadro sobrevive a uma operação de abas (é do conteúdo dele).
-- **A pergunta antes de apagar fica** (o Miro pergunta; o tldraw não) — com o desfazer, tirá-la é decisão do dono.
+- **A pergunta antes de apagar fica** (o Miro pergunta; o tldraw não) — decisão do dono, 20/10.
 
 ## 3. Desenho
 

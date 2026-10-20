@@ -86,3 +86,16 @@
   0,0100) e, no rebote, perdia τ·(o brilho da parede) por iteração (a sala a 0,99 −1,25 %; o gabarito
   +0,14 %). Peso 0 nos três sítios (`peso_de_fora` da C3, o «+1» e o borrão da holográfica): g3 0,0065,
   a sala 0,08 %, bit a bit em α = 1, salto em α → 0 de 0,012 % do máximo. Handoff W5m.
+
+## 6. «Quando damos o zoom e a lâmpada sai da área visível, a iluminação muda» (20/10, smoke da W6g r9)
+
+- **O que o dono viu** (cena 5, o L rosa): com a lâmpada na vista ([foto](smoke/2026-10-20_bug6_lampada_na_vista.png))
+  a sombra tem o tom quente do rebote e a face de cima do L é clara; com o zoom que tira a lâmpada da vista
+  ([foto](smoke/2026-10-20_bug6_lampada_fora_da_vista.png)) a sombra fica mais escura e fria, uniforme, e a face
+  do L muda. O resto do smoke («cantos vivos no padrão») passou.
+- **Por medir (nada medido ainda):** (1) se é da linha ou já estava no `main` — a mesma vista com o binário do
+  `main` (W6a) e com o desta linha; (2) a hipótese a refutar primeiro: a lâmpada sai da grade e passa ao
+  ENTORNO (o 2.º solver, mais grosso e mais largo, `distantes`/`ForaDaVista`) — o rebote e/ou a luz direta pelo
+  entorno não são os da grade; (3) o r9 tirou a `V2` do `c3_rebote` (handoff W6g §28) — conferir que não é isso
+  (a variante `cunha + V2` × lei W6d com a lâmpada fora). A régua: uma cena com a lâmpada a atravessar a borda
+  da grade por passos, a luz em pontos FIXOS do mundo (a sombra, a face do L) — tem de ser contínua.

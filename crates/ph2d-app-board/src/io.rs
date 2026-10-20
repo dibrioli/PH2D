@@ -33,7 +33,7 @@ fn author_file() -> Option<PathBuf> {
 static AUTHOR_READ: AtomicBool = AtomicBool::new(false);
 
 /// K10 — o nome: lido UMA vez (o ficheiro, senão a conta do sistema), gravado quando muda.
-fn author(hero: &mut HeroScreen) {
+pub(crate) fn author(hero: &mut HeroScreen) {
     if !AUTHOR_READ.swap(true, Ordering::Relaxed) && hero.documents.author().is_empty() {
         let saved = author_file()
             .and_then(|p| std::fs::read_to_string(p).ok())

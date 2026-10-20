@@ -31,7 +31,8 @@ const GAP: f64 = 30.0;
 /// ① o laço: 3 × 2 ideias.
 const F1: [f64; 4] = [0.0, 0.0, 3.0 * SIDE + 4.0 * GAP + SIDE, 2.0 * SIDE + 3.0 * GAP];
 const F2: [f64; 4] = [F1[2] + 200.0, 0.0, 700.0, F1[3]];
-const ROW2: f64 = F1[3] + 320.0;
+/// A 2.ª fila desce o que as lições da 1.ª ocupam (a foto de 20/10: a 320 tapavam os títulos).
+const ROW2: f64 = F1[3] + 760.0;
 const F3: [f64; 4] = [0.0, ROW2, F1[2], 420.0];
 const F4: [f64; 4] = [F2[0], ROW2, F2[2], 420.0];
 
@@ -40,7 +41,10 @@ pub(crate) fn scene_block6(hero: &mut HeroScreen) -> Block6 {
     let mut set = BoardSet::default();
     let board = set.create(tr("board.smoke.b6.board").to_owned());
     let plan = set.create(tr("board.smoke.b6.plan").to_owned());
-    let style = default_style();
+    // A tinta escura da cena da equipa: o estilo de nascença sai cinzento claro na foto (20/10).
+    let mut style = default_style();
+    style.stroke = Some(super::team::INK);
+    style.text_color = super::team::INK;
     let doc = &mut set.get_mut(board).expect("acabou de nascer").doc;
     let lasso_frame = super::organize::frame(doc, tr("board.smoke.b6.f1"), F1, None);
     let mut ideas = Vec::new();
@@ -82,9 +86,11 @@ pub(crate) fn scene_block6(hero: &mut HeroScreen) -> Block6 {
         [F3[0] + GAP, F3[1] + GAP, SIDE * 1.5],
     );
     super::organize::frame(doc, tr("board.smoke.b6.f4"), F4, None);
-    let bx = |x: f64| [F4[0] + x, F4[1] + 120.0, 200.0, 120.0];
-    let a = super::put_shape(doc, ShapeType::Rectangle, style.clone(), "board.smoke.b6.a", bx(GAP));
-    let b = super::put_shape(doc, ShapeType::Rectangle, style.clone(), "board.smoke.b6.b", bx(450.0));
+    // Notas (cor e letra que se vêem com o quadro inteiro à vista; as caixas saíam pálidas na foto).
+    let at = |x: f64| [F4[0] + x, F4[1] + 90.0, SIDE * 1.4];
+    let a = super::put_note(doc, ShapeType::Sticky, 3, super::note_text("board.smoke.b6.a"), at(GAP));
+    let b = super::put_note(doc, ShapeType::Sticky, 6, super::note_text("board.smoke.b6.b"), at(450.0));
+    style.stroke_width *= 3.0;
     let bound = |target| End::Bound {
         target,
         anchor: Anchor::Center,
@@ -103,7 +109,9 @@ pub(crate) fn scene_block6(hero: &mut HeroScreen) -> Block6 {
     document_tabs::load(hero, set);
     hero.documents.activate(Some(board));
     board_nav::show(hero, false, false);
-    // ③ — o fio do Rui CHEGA agora (o que estava antes não avisaria): chama quem está a usar o PH2D.
+    // ③ — o fio do Rui CHEGA agora (o que estava antes não avisaria): chama quem está a usar o PH2D —
+    // pelo nome do computador, que a família lê na 1.ª pintura (a foto de 20/10: chamava «Me»).
+    crate::io::author(hero);
     notify::seen_now(hero);
     let me = notify::me_of(&hero.documents);
     let text = tr_with("board.smoke.b6.rui_says", &[("name", &Who::Person(me.clone()).label())]);

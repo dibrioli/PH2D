@@ -41,6 +41,10 @@ impl PainterTool {
                 PaintMode::Paint | PaintMode::WetPaint
             )
             && self.paint.brush.deposits_color();
+        // W12: a água do artista nasce antes de qualquer marca; a cobertura dela vem do composite.
+        if !dabs.is_empty() {
+            self.wet_da_marca();
+        }
         self.undo
             .marca
             .arma_o_lote(self.a_forca_mede_se(), self.papel);
@@ -71,15 +75,19 @@ impl PainterTool {
     }
 
     fn stamp_dabs_marcados(&mut self, dabs: &[Dab]) {
+        // A água do artista (W12): a cobertura de cada texel é o `pa` que o composite lhe dá.
+        let pela_agua = self.wet_lote_do_artista();
         // A marca do artista (W9): o pincel cobre estes dabs; o registo do passo confere-os.
-        self.marca_os_dabs(dabs, self.paint.brush.tip_reach(), false);
+        if !pela_agua {
+            self.marca_os_dabs(dabs, self.paint.brush.tip_reach(), false);
+        }
         // O miolo só é do artista onde o carimbo DEPÕE tinta: a máscara não escreve na imagem, e o
         // Blur/Smear/Clone/Inpaint dão o que estava por baixo.
         let depoe = matches!(
             self.paint.paint_mode,
             PaintMode::Paint | PaintMode::WetPaint
         );
-        if depoe && self.paint.brush.deposits_color() {
+        if depoe && self.paint.brush.deposits_color() && !pela_agua {
             let uniao = !self.stroke_cover_wanted(&self.paint.brush);
             crate::tool::marca_do_artista::marca_a_forca(
                 &mut self.undo.marca,

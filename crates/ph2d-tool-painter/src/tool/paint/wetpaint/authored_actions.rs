@@ -61,6 +61,7 @@ impl PainterTool {
         // cor real»): o render desenha-a com a lei seca, e o `molhada_escurece` fica no neutro (1).
         engine.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
         engine.sim.esconde = ph2d_wet_paint::colorops::TINTA_ESCONDE;
+        let marca = self.undo.marca.nasce_a_molhada(self.papel);
         self.paint.wetpaint.session = Some(WetSession {
             engine: EngineSlot::new_here(engine),
             ratio,
@@ -84,6 +85,7 @@ impl PainterTool {
             fita: self.paint.wetpaint.fita.clone(),
             roteiro_teve_worker: false,
             ritmo: self.paint.wetpaint.ritmo.clone(),
+            marca,
         });
         true
     }
@@ -181,6 +183,7 @@ impl PainterTool {
             self.wetpaint_composite_veiled(false);
         }
         self.paint.wetpaint.session = None;
+        self.undo.marca.acaba_a_molhada();
         // Doc 21: mode-leave hygiene — a stash must not survive into another
         // mode's commit. (The GUARD-kill branch deliberately does NOT clear
         // it: a mid-authoring undo keeps authoring, and its later commit

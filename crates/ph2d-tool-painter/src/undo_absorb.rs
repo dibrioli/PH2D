@@ -173,8 +173,9 @@ impl UndoController {
         self.bytes -= old_bytes;
         let mut entry = UndoEntry::split(*first_before, before.clone(), kind, None, None);
         entry.transacao = transacao;
-        // A água absorvida não é do artista: o passo continua a ligar o que ligava.
-        entry.marca = top.marca.take();
+        // A água absorvida não é do artista — salvo a da sessão dele (W12): a tinta que ela espalhou
+        // depois do registo é deste passo.
+        entry.marca = self.marca.estende_pela_agua(top.marca.take());
         if let Some(canvas) = cheap {
             *entry.planes.canvas_mut() = canvas;
         }

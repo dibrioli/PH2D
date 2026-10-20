@@ -58,6 +58,17 @@ impl PainterTool {
             let [gx, gy] = ph2d_wet_paint::sim::tilt_dir_for_spoke(wp.tilt_spoke);
             gy.abs() >= gx.abs()
         });
+        // A água do artista (W12): a cobertura de cada texel escrito é o `pa` — exacta quando a tinta é
+        // composta «por cima» da tela congelada (Mix, a camada única, sem vidro nem alfa preso); fora disso
+        // o texel pintado fica cheio.
+        let marca = wp.session.as_ref().and_then(|s| s.marca);
+        let marca = marca.filter(|_| self.undo.marca.molhada_viva(marca));
+        let exata = marca.is_some()
+            && wp.session.as_ref().map(|s| s.blend) == Some(ph2d_painter_brush::BrushBlend::Mix)
+            && gate_alock.is_none()
+            && camada.is_none_or(|c| !self.vidros.contains_key(&c))
+            && self.preview_layer_stack_is_trivial()
+            && !self.papel_atravessa_vidro();
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
@@ -224,6 +235,18 @@ impl PainterTool {
         // ADR-0134 declara o solver serial POR SEMÂNTICA — o ADR-0109 é inaplicável lá, de propósito.
         let (pigment, base) = (&sess.pigment, &sess.base);
         let modo = sess.blend;
+        let base_da_marca = marca.map(|_| Arc::clone(&sess.base));
+        let cw = px1 - px0;
+        let mut cob: Vec<u16> = if marca.is_some() {
+            vec![0; cw * (py1 - py0)]
+        } else {
+            Vec::new()
+        };
+        let cob_linhas: Vec<Option<&mut [u16]>> = if marca.is_some() {
+            cob.chunks_mut(cw).map(Some).collect()
+        } else {
+            (py0..py1).map(|_| None).collect()
+        };
         // O amostrador do upsample. ⚠️ A pergunta *"um pixel É uma célula?"* é
         // feita UMA vez, fora do laço: na razão 1 o corpo abaixo lê os quatro
         // bytes no MESMO offset que sempre leu, com a MESMA aritmética de
@@ -245,8 +268,9 @@ impl PainterTool {
         canvas[py0 * stride..py1 * stride]
             .par_chunks_mut(stride)
             .zip(vlinhas.into_par_iter())
+            .zip(cob_linhas.into_par_iter())
             .enumerate()
-            .for_each(|(k, (row, mut vrow))| {
+            .for_each(|(k, ((row, mut vrow), mut crow))| {
                 let py = py0 + k;
                 let gb = py * stride;
                 // A metade-`y` do amostrador, resolvida UMA vez por linha.
@@ -319,6 +343,13 @@ impl PainterTool {
                         // Alpha-lock: the α reference IS `sess.base` (the gate's
                         // buffer, served by `wet_splat_gates`' wet-session arm).
                         row[lo + 3] = base[o + 3];
+                    }
+                    if let Some(c) = crow.as_deref_mut() {
+                        c[px - px0] = if exata {
+                            (cobertura.clamp(0.0, 1.0) * f32::from(u16::MAX)).round() as u16
+                        } else {
+                            u16::MAX
+                        };
                     }
                     if let (Some(v), Some(b)) = (vrow.as_deref_mut(), vbase)
                         && alock_on
@@ -425,6 +456,10 @@ impl PainterTool {
             self.undo
                 .marca
                 .agua_mudou(&antes, &self.canvas_rgba, w, (px0, py0, px1, py1));
+        }
+        if let Some(b) = base_da_marca {
+            let caixa = (px0 as u32, py0 as u32, px1 as u32, py1 as u32);
+            self.undo.marca.agua_cobre(marca, caixa, &cob, &b);
         }
     }
 }

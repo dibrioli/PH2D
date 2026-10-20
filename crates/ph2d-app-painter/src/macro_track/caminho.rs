@@ -87,6 +87,9 @@ pub enum Variante {
     /// O smoke de 19/10: depois do Parar, uma pincelada vertical POR CIMA das duas gravadas; ⏮ e ▷ — a
     /// vertical fica inteira enquanto as gravadas nascem (sem faixas no miolo delas).
     Cruza,
+    /// A `cruza` em Wet Paint (W12): a vertical pinta por cima da gravação (a água dela pára no 1.º toque)
+    /// e, no ▷, fica limpa onde cruza uma gravada por nascer — sem o «nó».
+    CruzaMolhada,
     /// O smoke de 19/10 depois da W10: a gravar, a cor trocada no C&F (premido, arrastado um pouco sem
     /// entrar na tela, solto ⇒ o seletor) entre as duas pinceladas; ▷ toca as duas, a 2.ª na cor nova.
     Cor,
@@ -116,6 +119,7 @@ const NOMES: &[(&str, Variante)] = &[
     ("arrasta", Variante::Arrasta),
     ("parar", Variante::Parar),
     ("cruza", Variante::Cruza),
+    ("cruzamolhada", Variante::CruzaMolhada),
     ("cor", Variante::Cor),
     ("colordrop", Variante::ColorDrop),
 ];
@@ -175,7 +179,7 @@ pub fn roteiro(v: Variante) -> Vec<(u64, Gesto)> {
         arrastos(&mut r, para + 800);
         return r;
     }
-    let (rewind, play) = if v == Variante::Cruza {
+    let (rewind, play) = if matches!(v, Variante::Cruza | Variante::CruzaMolhada) {
         vertical(&mut r, d + para + 500, 0.5, 600);
         (rewind + 1_200, play + 1_200)
     } else {
@@ -424,7 +428,7 @@ pub fn anuncio(conduz: bool) -> String {
     } else {
         "Wet Paint"
     };
-    let fim = if variante() == Variante::Cruza {
+    let fim = if matches!(variante(), Variante::Cruza | Variante::CruzaMolhada) {
         "Stop, one vertical stroke over both, then Rewind and Play in the Timeline's Keys tab. While it \
          plays the vertical stroke must stay whole and clean — no white gaps and no dark knots where it \
          crosses a recorded stroke that has not appeared yet"
@@ -650,6 +654,7 @@ mod tests {
             Variante::Arrasta,
             Variante::Parar,
             Variante::Cruza,
+            Variante::CruzaMolhada,
         ] {
             let r = roteiro(v);
             assert!(
@@ -662,11 +667,12 @@ mod tests {
                 .filter(|&i| matches!(r[i].1, Gesto::Desce(_)))
                 .collect();
             let sobe: Vec<usize> = (0..r.len()).filter(|&i| r[i].1 == Gesto::Sobe).collect();
-            let n = if v == Variante::Cruza { 3 } else { 2 };
+            let cruza = matches!(v, Variante::Cruza | Variante::CruzaMolhada);
+            let n = if cruza { 3 } else { 2 };
             assert_eq!((desce.len(), sobe.len()), (n, n), "{v:?}: as pinceladas");
             assert!(grava < desce[0] && desce[0] < sobe[0] && sobe[0] < desce[1]);
             assert!(sobe[1] < para, "{v:?}: Parar depois da 2.ª pincelada");
-            if v == Variante::Cruza {
+            if cruza {
                 let rw = pos(Gesto::Rewind).unwrap();
                 assert!(
                     para < desce[2] && sobe[2] < rw,

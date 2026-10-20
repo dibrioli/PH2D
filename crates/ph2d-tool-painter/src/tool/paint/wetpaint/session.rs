@@ -140,6 +140,9 @@ pub(in crate::tool::paint) struct WetSession {
     pub(super) roteiro_teve_worker: bool,
     /// O ritmo escrito do worker de um gate ([`super::fita::RitmoDaAgua`]), herdado do tool.
     pub(super) ritmo: Option<super::fita::RitmoDaAgua>,
+    /// A sessão nasceu com a marca do artista (W12): o id que a marca viva lhe deu — a cobertura dela é
+    /// o `pa` do composite. `None` = água de outra origem (a gravação), que assa no 1.º toque do artista.
+    pub(super) marca: Option<u64>,
 }
 
 /// Um lote de dabs adiado — tudo o que a rota do dab lê por LOTE.
@@ -276,6 +279,7 @@ impl Clone for WetSession {
             fita,
             roteiro_teve_worker,
             ritmo,
+            marca,
         } = self;
         assert!(
             worker.is_none(),
@@ -300,6 +304,7 @@ impl Clone for WetSession {
             fita: fita.clone(),
             roteiro_teve_worker: *roteiro_teve_worker,
             ritmo: ritmo.clone(),
+            marca: *marca,
         }
     }
 }

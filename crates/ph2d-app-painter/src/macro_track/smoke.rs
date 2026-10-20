@@ -168,7 +168,7 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     static ARMADO: AtomicBool = AtomicBool::new(false);
     let cena = std::env::var("PH2D_MACRO_SMOKE");
     // O `meio` escolhe o Wet Paint depois de Gravar; o `arrasta` pinta em Digital, como a `=5` do dono,
-    // e o `cruza` também (W10: a marca mede a força do Digital; o Wet Paint fica com a marca cheia).
+    // e o `cruza` também (W10: a força do Digital); a `cruzamolhada` é a mesma cena em Wet Paint (W12).
     let meio_depois = cena.as_deref() == Ok("6")
         && matches!(
             super::caminho::variante(),

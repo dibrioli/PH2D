@@ -330,6 +330,37 @@ impl PainterTool {
             && (!self.paint.eraser || self.paint.wetpaint.session.is_some())
     }
 
+    /// **A tinta molhada do artista pinta POR CIMA da imagem** (W12 das macros, decisão do dono 20/10): com
+    /// a marca a escrever, a sessão que não nasceu com ela (a da gravação, ainda molhada) assa antes do 1.º
+    /// dab do artista e a dele nasce aqui — antes de qualquer marca, para o nascimento a ver limpa. A
+    /// borracha molhada apaga o fluido que houver: fica com a lei da W9.
+    pub(super) fn wet_da_marca(&mut self) {
+        if !self.undo.marca.ativa()
+            || self.undo.marca.suspensa
+            || self.paint.eraser
+            || !self.wet_owns_the_dabs()
+        {
+            return;
+        }
+        self.wetpaint_guard();
+        let dela = self.paint.wetpaint.session.as_ref().map(|s| s.marca);
+        if dela.is_some_and(|id| !self.undo.marca.molhada_viva(id)) {
+            self.wetpaint_end_session();
+        }
+        self.ensure_wet_session();
+    }
+
+    /// Os dabs de agora vão para a sessão molhada do artista: a cobertura deles sai do composite.
+    pub(super) fn wet_lote_do_artista(&self) -> bool {
+        self.wet_owns_the_dabs()
+            && self
+                .paint
+                .wetpaint
+                .session
+                .as_ref()
+                .is_some_and(|s| self.undo.marca.molhada_viva(s.marca))
+    }
+
     /// Pen-up: close the engine's direct stroke (the sim resumes). Called from
     /// `paint_end`; the session itself stays alive — the water is still wet.
     pub(super) fn wetpaint_stroke_end(&mut self) {
@@ -499,6 +530,7 @@ impl PainterTool {
             && !std::ptr::eq(sess.canvas.as_ptr(), Arc::as_ptr(&self.canvas_rgba))
         {
             self.paint.wetpaint.session = None;
+            self.undo.marca.acaba_a_molhada();
         }
     }
 }

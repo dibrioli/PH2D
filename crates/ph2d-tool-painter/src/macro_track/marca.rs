@@ -361,6 +361,74 @@ impl MarcaDoArtista {
         }
     }
 
+    /// **A cobertura viva de uma sessão molhada do artista** (W12): na caixa `(x0, y0, x1, y1)` cada texel
+    /// passa a `c0` composta com a cobertura `pa` da sessão (`plano`, `0..=CHEIA`, linha a linha da caixa),
+    /// onde `c0` e o `B` são os de `nascimento` (a marca quando a sessão nasceu); onde `c0 = 0` o que está
+    /// por baixo é `base(i)` (a tela congelada da sessão). A água anda: o texel que a tinta deixa volta a
+    /// `c0`. Muda a versão se mexeu.
+    pub fn recompoe_da_agua(
+        &mut self,
+        nascimento: &Ladrilhos,
+        (x0, y0, x1, y1): (u32, u32, u32, u32),
+        plano: &[u16],
+        base: impl Fn(usize) -> [u8; 4],
+    ) {
+        let (x1, y1) = (x1.min(self.w), y1.min(self.h));
+        let cw = (x1.saturating_sub(x0)) as usize;
+        if cw == 0 || y1 <= y0 || plano.len() < cw * (y1 - y0) as usize {
+            return;
+        }
+        let w = self.w as usize;
+        let mut caixa = self.caixa;
+        let mut mexeu = false;
+        let l = Arc::make_mut(&mut self.ladrilhos);
+        for ly in y0 / LADO..=(y1 - 1) / LADO {
+            for lx in x0 / LADO..=(x1 - 1) / LADO {
+                let (tx0, ty0) = ((lx * LADO).max(x0), (ly * LADO).max(y0));
+                let (tx1, ty1) = (((lx + 1) * LADO).min(x1), ((ly + 1) * LADO).min(y1));
+                let n0 = nascimento.get(&(lx, ly));
+                let mut t = l.remove(&(lx, ly));
+                let mut guarda = t.is_some();
+                for y in ty0..ty1 {
+                    for x in tx0..tx1 {
+                        let k = ((y % LADO) * LADO + x % LADO) as usize;
+                        let pa = plano[(y - y0) as usize * cw + (x - x0) as usize];
+                        let (c0, b0) = n0.map_or((0, [0; 4]), |n| (n.c[k], n.b[k]));
+                        let c = if pa == 0 {
+                            c0
+                        } else {
+                            compoe(c0, f32::from(pa) / f32::from(CHEIA))
+                        };
+                        let b = if c0 > 0 {
+                            b0
+                        } else {
+                            base(y as usize * w + x as usize)
+                        };
+                        let atual = t.as_ref().map_or((0, [0; 4]), |t| (t.c[k], t.b[k]));
+                        if atual.0 == c && (c == 0 || atual.1 == b) {
+                            continue;
+                        }
+                        let tt = Arc::make_mut(t.get_or_insert_with(|| Arc::new(Ladrilho::novo())));
+                        tt.c[k] = c;
+                        tt.b[k] = b;
+                        guarda = true;
+                        mexeu = true;
+                        if c > 0 {
+                            caixa = Some(une(caixa, (x, y, 1, 1)));
+                        }
+                    }
+                }
+                if let (Some(t), true) = (t, guarda) {
+                    l.insert((lx, ly), t);
+                }
+            }
+        }
+        if mexeu {
+            self.caixa = caixa;
+            self.versao = versao_nova();
+        }
+    }
+
     /// O que está por baixo de texels já tocados (`(i, B)`, straight) muda — a reescrita da gravação passa
     /// o fim novo por baixo da tinta do artista. Texels intocados ficam.
     pub fn poe_por_baixo(&mut self, itens: impl IntoIterator<Item = (usize, [u8; 4])>) {

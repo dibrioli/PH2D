@@ -4,7 +4,9 @@
 //!
 //! - **com a força medida** (o carimbo escreveu-a no plano — Digital, lei «por cima», pilha trivial): cada
 //!   texel recebe a força com que foi pintado, e o que estava por baixo no 1.º toque;
-//! - **sem ela** (a água, o relevo, os outros modos e meios): a lei da W9 — os texels que o passo mudou,
+//! - **pela água do artista** (W12, Wet Paint: a sessão molhada nasce com a marca, a tinta dele por cima
+//!   da imagem): cada composite da água recompõe na marca o `pa` que a tinta tem AGORA ([`Molhada`]);
+//! - **sem ela** (a água da gravação, o relevo, os outros modos e meios): a lei da W9 — os texels que o passo mudou,
 //!   salvo os que só a água mudou; os que o pincel cobriu e mudaram; os que cobriu DENTRO da água; e o
 //!   miolo do pincel (força ≥ ½, [`crate::macro_track::forca`]) — ficam com `c = 255`.
 //!
@@ -52,7 +54,29 @@ pub(crate) struct MarcaViva {
     pub(crate) suspensa: bool,
     /// A marca antes de a reescrita a mudar por conta própria (o que estava por baixo, W10).
     antes_da_reescrita: Option<Retrato>,
+    /// A sessão molhada viva é do artista (W12): a cobertura dela recompõe-se a cada composite.
+    molhada: Option<Molhada>,
 }
+
+/// **A sessão molhada do artista** (W12, `docs/Macros/10_W12_cruzamentos_em_wet_paint.md`): nasceu com a
+/// marca posta, sobre a imagem de então, e a tinta dela é composta «por cima» dessa imagem
+/// (`atual = P + (1 − pa)·base`) — a cobertura do texel é a marca de então composta com o `pa` de agora.
+#[derive(Clone, Debug)]
+struct Molhada {
+    /// A sessão (o `marca` dela diz qual).
+    id: u64,
+    /// A marca quando a sessão nasceu (e os passos de fora da água desde então).
+    nascimento: Retrato,
+    /// A marca no último registo (ou absorção) — o «depois» que o histórico conhece.
+    registo: Retrato,
+    /// A marca quando o passo em curso começou.
+    antes_do_passo: Option<Retrato>,
+    /// O papel sob a camada: o que está por baixo é a tela da sessão sobre ele.
+    papel: Option<[u8; 3]>,
+}
+
+/// As sessões molhadas que nascem com a marca: nunca duas com o mesmo id.
+static SESSOES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
 /// Zera `v` com `n` palavras.
 fn zera(v: &mut Vec<u64>, n: usize) {
@@ -72,6 +96,86 @@ impl MarcaViva {
         self.plano = Vec::new();
         self.plano_caixa = None;
         self.exata = None;
+        self.molhada = None;
+    }
+
+    /// **Uma sessão molhada nasce** sobre a imagem de agora: se há uma marca a escrever, a sessão é do
+    /// artista e devolve o id que ela guarda ([`Self::molhada_viva`]).
+    pub(crate) fn nasce_a_molhada(&mut self, papel: Option<[u8; 3]>) -> Option<u64> {
+        if !self.ativa() || self.suspensa {
+            self.molhada = None;
+            return None;
+        }
+        let agora = Arc::clone(self.marca.as_ref()?.ladrilhos());
+        let id = SESSOES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.molhada = Some(Molhada {
+            id,
+            nascimento: Arc::clone(&agora),
+            registo: agora,
+            antes_do_passo: None,
+            papel,
+        });
+        Some(id)
+    }
+
+    /// A sessão molhada acabou (assou).
+    pub(crate) fn acaba_a_molhada(&mut self) {
+        self.molhada = None;
+    }
+
+    /// A sessão `id` é a do artista, viva, e a marca escreve-se.
+    pub(crate) fn molhada_viva(&self, id: Option<u64>) -> bool {
+        self.ativa() && !self.suspensa && id.is_some() && self.molhada.as_ref().map(|m| m.id) == id
+    }
+
+    /// **O composite da sessão `id` escreveu** a caixa `(x0, y0, x1, y1)` da tela (largura `w`): `plano` é
+    /// a cobertura de cada texel dela (`0..=CHEIA`), `base` a tela congelada da sessão.
+    pub(crate) fn agua_cobre(
+        &mut self,
+        id: Option<u64>,
+        caixa: (u32, u32, u32, u32),
+        plano: &[u16],
+        base: &[u8],
+    ) {
+        if !self.molhada_viva(id) {
+            return;
+        }
+        let (Some(m), Some(mo)) = (self.marca.as_mut(), self.molhada.as_ref()) else {
+            return;
+        };
+        let papel = mo.papel;
+        m.recompoe_da_agua(&mo.nascimento, caixa, plano, |i| {
+            let mut px = base
+                .get(i * 4..i * 4 + 4)
+                .map_or([0; 4], |p| [p[0], p[1], p[2], p[3]]);
+            if let Some(p) = papel {
+                crate::tool::papel::sobre_o_papel(&mut px, p);
+            }
+            px
+        });
+    }
+
+    /// **A absorção da água no passo anterior** (`undo_absorb`): o delta `d` dele estica-se até onde o
+    /// passo em curso começou — a tinta que a água espalhou depois do registo é desse passo.
+    pub(crate) fn estende_pela_agua(&mut self, d: Option<DeltaDaMarca>) -> Option<DeltaDaMarca> {
+        let (Some(m), Some(mo)) = (self.marca.as_ref(), self.molhada.as_mut()) else {
+            return d;
+        };
+        let fim = mo
+            .antes_do_passo
+            .clone()
+            .unwrap_or_else(|| Arc::clone(m.ladrilhos()));
+        let mais = DeltaDaMarca::entre(m.epoca(), &mo.registo, &fim);
+        mo.registo = fim;
+        if mais.vazio() {
+            return d;
+        }
+        let mut d = d.unwrap_or_else(|| DeltaDaMarca {
+            epoca: m.epoca(),
+            ladrilhos: Vec::new(),
+        });
+        d.junta(&mais);
+        Some(d)
     }
 
     /// Há uma marca a escrever (a imagem tem uma macro).
@@ -240,6 +344,9 @@ impl MarcaViva {
     /// Um passo começa: a água de antes dele já não conta.
     pub(crate) fn comeca_o_passo(&mut self) {
         self.agua.fill(0);
+        if let (Some(m), Some(mo)) = (self.marca.as_ref(), self.molhada.as_mut()) {
+            mo.antes_do_passo = Some(Arc::clone(m.ladrilhos()));
+        }
     }
 
     fn limpa_o_plano(&mut self) {
@@ -355,6 +462,23 @@ impl MarcaViva {
         }
         let antes = Arc::clone(self.marca.as_ref()?.ladrilhos());
         let m = self.marca.as_mut()?;
+        if let Some(mo) = self.molhada.as_mut() {
+            // A água do artista: o que o passo mudou FORA dela compõe-se também no nascimento (o composite
+            // seguinte recompõe a partir dele), e o passo vai de onde começou até aqui.
+            let mut n = MarcaDoArtista::nova(w as u32, h as u32, m.epoca());
+            n.poe_ladrilhos(Arc::clone(&mo.nascimento));
+            n.compoe_muitos(itens.iter().copied());
+            mo.nascimento = Arc::clone(n.ladrilhos());
+            m.compoe_muitos(itens);
+            let de = mo
+                .antes_do_passo
+                .take()
+                .unwrap_or_else(|| Arc::clone(&mo.registo));
+            let d = DeltaDaMarca::entre(m.epoca(), &de, m.ladrilhos());
+            mo.registo = Arc::clone(m.ladrilhos());
+            self.limpa_o_passo();
+            return (!d.vazio()).then_some(d);
+        }
         m.compoe_muitos(itens);
         let d = DeltaDaMarca::entre(m.epoca(), &antes, m.ladrilhos());
         self.limpa_o_passo();

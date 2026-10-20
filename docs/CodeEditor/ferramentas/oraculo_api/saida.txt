@@ -1,0 +1,57 @@
+# oráculo «a API que funciona» — 2026-10-20T18:46Z — loadavg: 39.56 29.95 23.74 35/2678 2833190
+# godot: godot 4.7.2-2.1 ; Licenses: MIT
+# corrida: godot --headless --fixed-fps 60 -s api.gd (casos: /home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor/docs/CodeEditor/ferramentas/oraculo_api/api.gd)
+# godot.log: ERROR: Condition "!enabled || !is_inside_tree()" is true.
+f2 W gancho chamada=2
+f2 W gancho antes do await 0.1
+f3 W gancho chamada=3
+f3 W apagado: queue_free a meio da espera
+f3 W espera(0): quadros=0 tempo=0.000000
+f3 W espera(1/60): quadros=0 tempo=0.000000
+f3 W await process_frame: quadros=0
+f4 W gancho chamada=4
+f4 N find_child(Alvo, recursivo): /root/Raiz/Pasta/Alvo
+f4 N get_node(Pasta/Alvo): /root/Raiz/Pasta/Alvo
+f4 N find_child(Nenhum): <Object#null>
+f4 N add_child de outro «Alvo» ao lado do «Alvo»: o nome ficou «@Node2D@3»
+f4 N add_child(force_readable_name) de outro «Alvo»: o nome ficou «Alvo2»
+f4 G posição de um objecto SEM script (Pasta): (7.0, 8.0)
+f5 W gancho chamada=5
+f5 S antes de add_child
+f5 S Nova _ready
+f5 S depois de add_child; find_child(Nova)=achou
+f6 W gancho chamada=6
+f6 M set_meta(k,1): has_meta=true lista=[&"k"]
+f6 M set_meta(k,null): has_meta=false lista=[]
+f6 M set_meta(lista,[10,20,30]): tipo=Array tamanho=3 [0]=10
+f6 M set_meta(tab,{a:1,b:[1,2]}): volta={ "a": 1, "b": [1, 2] }
+f6 M remove_meta(lista): lista=[&"tab"]
+f6 S Nova _process
+f6 W espera(0.05): quadros=3 tempo=0.050000
+f7 W gancho chamada=7
+f7 S Nova _process
+f8 W gancho chamada=8
+f8 S queue_free; is_instance_valid=true find_child(Nova)=achou
+f8 S Nova _process
+f8 W gancho depois do await 0.1: tempo de jogo passado=0.100000 chamadas do gancho entretanto=8
+f9 W gancho chamada=9
+f9 S quadro seguinte ao queue_free: is_instance_valid=false find_child(Nova)=null
+f9 W espera(0.1): quadros=6 tempo=0.100000
+f10 W gancho chamada=10
+f11 W gancho chamada=11
+f12 W gancho chamada=12
+f19 I A: is_key_pressed=false | ui_left: pressed=false just_pressed=false just_released=false | ui_right(toque): pressed=false just_pressed=false just_released=false
+f20 I (injectado no início do quadro: A e ← carregados)
+f20 I A: is_key_pressed=false | ui_left: pressed=false just_pressed=false just_released=false | ui_right(toque): pressed=false just_pressed=false just_released=false
+f21 I A: is_key_pressed=true | ui_left: pressed=true just_pressed=true just_released=false | ui_right(toque): pressed=false just_pressed=false just_released=false
+f22 I A: is_key_pressed=true | ui_left: pressed=true just_pressed=false just_released=false | ui_right(toque): pressed=false just_pressed=false just_released=false
+f23 I (injectado: A e ← largados)
+f23 I A: is_key_pressed=true | ui_left: pressed=true just_pressed=false just_released=false | ui_right(toque): pressed=false just_pressed=false just_released=false
+f24 I (injectado: → carregado E largado no mesmo quadro)
+f24 I A: is_key_pressed=false | ui_left: pressed=false just_pressed=false just_released=true | ui_right(toque): pressed=false just_pressed=false just_released=false
+f25 I A: is_key_pressed=false | ui_left: pressed=false just_pressed=false just_released=false | ui_right(toque): pressed=false just_pressed=true just_released=true
+f26 I A: is_key_pressed=false | ui_left: pressed=false just_pressed=false just_released=false | ui_right(toque): pressed=false just_pressed=false just_released=false
+f30 I (injectado: rato em 100,50 do ecrã e botão esquerdo carregado)
+f30 I rato: viewport=(0.0, 0.0) global(câmara zoom 2, em 300,0)=(300.0, 0.0) botão esq=false janela=(64.0, 64.0)
+f31 I rato: viewport=(0.0, 0.0) global(câmara zoom 2, em 300,0)=(300.0, 0.0) botão esq=true janela=(64.0, 64.0)
+f32 I rato: viewport=(0.0, 0.0) global(câmara zoom 2, em 300,0)=(300.0, 0.0) botão esq=true janela=(64.0, 64.0)

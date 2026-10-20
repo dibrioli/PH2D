@@ -30,6 +30,10 @@ pub trait SceneDoors {
 
     /// O tique do passo fixo — o `born_tick` de quem nasce.
     fn tick(&self) -> u64;
+
+    /// `ph2d.attach_script` acabou de pôr um script em `entity` — quem conhece instâncias regista-o
+    /// como DELA (senão o sync mestre → instância, sem eco do mestre, apaga-o no passe seguinte).
+    fn attached(&mut self, _sim: &mut SimWorld, _entity: Entity) {}
 }
 
 /// Sem portas: um objecto vazio nasce, uma cópia de mestre não.
@@ -266,6 +270,8 @@ impl<'w> Lane<'w> {
             )));
         }
         self.sim.world_mut().entity_mut(e).insert(LuauScript::library(sid));
+        self.doors.attached(self.sim, e);
+        self.names = None;
         Ok(true)
     }
 

@@ -17,6 +17,13 @@ pub fn feed(host: &ScriptHost, input: &InputState, mouse_world: Option<[f64; 2]>
             f64::from(value),
         );
     }
+    if crate::code_smoke::piloto_armado() {
+        static N: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let (kb, rato, onde) = crate::code_smoke::piloto(n);
+        host.devices().feed(&kb, &rato, Some(onde));
+        return;
+    }
     host.devices()
         .feed(&input.keyboard, &input.mouse, mouse_world);
 }

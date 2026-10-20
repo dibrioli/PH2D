@@ -22,6 +22,12 @@
 //!   balançam para os lados. O Ctrl+clique em `sin` abre a página `math` no membro; um link na
 //!   mesma página só rola; Alt+← volta ao script; F12 em `ph2d.set` abre a `ph2d`; o `PoseField` da
 //!   assinatura leva à `types`; Ctrl+F conta; Ctrl+W fecha; o Ctrl sobre `local` não dá a mão.
+//! - **6** — a API que funciona (Onda 2, item 6): um JOGO pequeno. O círculo corre o `jogo.luau`:
+//!   as setas movem-no (`ph2d.key_down`), o espaço atira (`ph2d.spawn("Bullet")` + `attach_script`
+//!   do `bala.luau`, que sobe e, com `ph2d.wait(1.5)`, se apaga), um clique na cena leva o quadrado
+//!   sem script até ao rato (`mouse_position`, `find_by_name`, `ph2d.set` num objecto sem script). O
+//!   rebobinar devolve tudo. Nenhuma aba abre: com uma aba de código activa o teclado é dela.
+//!   `PH2D_CODE_SMOKE_DEMO=1` = o piloto das fotos ([`piloto`]), inerte sem a variável.
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_script::{LuauScript, ProjectScripts, ScriptEditRequests, ScriptId, ScriptValue};
@@ -29,7 +35,7 @@ use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecScene, ellipse, rectangle, regular_polygon, star};
 
 /// Quantas cenas este roteador serve — o `max_level` do roteador da família (conferido em teste).
-pub const CENAS: u32 = 5;
+pub const CENAS: u32 = 6;
 
 /// O nome do script das formas nos scripts do projeto.
 pub const BOB_NAME: &str = "bob.luau";
@@ -166,6 +172,61 @@ function update(self, dt)
 end
 "#;
 
+pub const JOGO_NAME: &str = "jogo.luau";
+
+/// ⭐ **O script do nível 6** — o círculo do jogo.
+pub const JOGO_LUAU: &str = r#"-- jogo.luau — o CÍRCULO AZUL corre ESTE script. A cena já está a correr.
+-- Setas: o círculo anda. Espaço: atira uma estrela (uma cópia do mestre «Bullet»), que sobe e
+-- some passado 1,5 s. Clique na cena: o quadrado cinzento (que NÃO tem script) vai para lá.
+-- Rebobinar (o botão de voltar ao início): tudo volta ao lugar e as estrelas somem.
+
+ph2d.property("speed", 4, { min = 0, max = 10 }) -- quão depressa anda
+
+function update(self, dt)
+  local x = ph2d.get(self.id, "x") or 0
+  local y = ph2d.get(self.id, "y") or 0
+  if ph2d.key_down("left") then x = x - self.speed * dt end
+  if ph2d.key_down("right") then x = x + self.speed * dt end
+  if ph2d.key_down("up") then y = y + self.speed * dt end
+  if ph2d.key_down("down") then y = y - self.speed * dt end
+  ph2d.set(self.id, "x", x)
+  ph2d.set(self.id, "y", y)
+
+  if ph2d.key_pressed("space") then
+    local estrela = ph2d.spawn("Bullet", x, y + 1)
+    ph2d.attach_script(estrela, "bala.luau")
+    self.tiros = (self.tiros or 0) + 1
+    print("tiro", self.tiros)
+  end
+
+  if ph2d.mouse_pressed("left") then
+    local mx, my = ph2d.mouse_position()
+    local alvo = ph2d.find_by_name("Target")
+    if alvo and mx and my then
+      ph2d.set(alvo, "x", mx)
+      ph2d.set(alvo, "y", my)
+    end
+  end
+end
+"#;
+
+pub const BALA_NAME: &str = "bala.luau";
+
+/// ⭐ O script de cada estrela atirada — sobe, espera e apaga-se.
+pub const BALA_LUAU: &str = r#"-- bala.luau — cada estrela que o círculo atira corre ESTE script.
+function init(self)
+  ph2d.wait(1.5)
+  ph2d.despawn(self.id)
+end
+
+function update(self, dt)
+  ph2d.set(self.id, "y", (ph2d.get(self.id, "y") or 0) + 6 * dt)
+end
+"#;
+
+/// Onde as peças do jogo nascem (metros): o círculo, o alvo e a receita.
+pub const JOGO_AT: [[f32; 2]; 3] = [[-4.0, -1.0], [3.0, 0.75], [6.0, 2.5]];
+
 /// O script partido do smoke da Onda 0 — o mesmo ficheiro que o dono já viu no cartão.
 pub const BROKEN_LUAU: &str =
     include_str!("../../../docs/CodeEditor/ferramentas/smoke/script_quebrado.luau");
@@ -219,6 +280,9 @@ pub fn monta_em(
     nivel: u32,
 ) -> Vec<Entity> {
     let nivel = nivel.clamp(1, CENAS);
+    if nivel == 6 {
+        return monta_jogo(sim, cena, mapa);
+    }
     let (bob, broken) = {
         let mut lib = sim.world_mut().get_resource_or_init::<ProjectScripts>();
         let bob = match nivel {
@@ -265,13 +329,87 @@ pub fn monta_em(
         }
         out.push(e);
     }
-    if let Some(aberto) = broken.or((nivel >= 3).then_some(bob)) {
+    if let Some(aberto) = broken.or((3..=5).contains(&nivel).then_some(bob)) {
         sim.world_mut()
             .get_resource_or_init::<ScriptEditRequests>()
             .0
             .push(aberto);
     }
     out
+}
+
+/// ⭐ **O nível 6**: o círculo com o `jogo.luau`, o quadrado «Target» sem script e o mestre
+/// «Bullet» (uma estrela marcada como receita). Devolve `[círculo, alvo, mestre]`.
+pub fn monta_jogo(sim: &mut SimWorld, cena: &mut VecScene, mapa: &mut VecEntityMap) -> Vec<Entity> {
+    let jogo = {
+        let mut lib = sim.world_mut().get_resource_or_init::<ProjectScripts>();
+        lib.insert(BALA_NAME, BALA_LUAU);
+        lib.insert(JOGO_NAME, JOGO_LUAU)
+    };
+    let r = SHAPE_R;
+    let pecas = [
+        ("Ship", tinta(ellipse([0.0, 0.0], r, r), [96, 168, 235])),
+        ("Target", tinta(rectangle([-r, -r], [r, r]), [130, 134, 146])),
+        (
+            "Bullet",
+            tinta(star([0.0, 0.0], r * 0.4, r * 0.4, 5, 0.45), [240, 196, 72]),
+        ),
+    ];
+    let ids: Vec<_> = pecas
+        .into_iter()
+        .map(|(nome, p)| (nome, cena.push_path(p)))
+        .collect();
+    sync(sim, cena, mapa);
+    let mut out = Vec::new();
+    for (i, (nome, pid)) in ids.into_iter().enumerate() {
+        let Some(&bits) = mapa.get(&pid) else {
+            continue;
+        };
+        let e = Entity::from_bits(bits);
+        let t = Transform::from_translation(ph2d_core::Vec2::new(JOGO_AT[i][0], JOGO_AT[i][1]));
+        let mut em = sim.world_mut().entity_mut(e);
+        em.insert((Name::new(nome), t));
+        match i {
+            0 => {
+                em.insert(LuauScript::library(jogo));
+            }
+            2 => {
+                em.insert(ph2d_ecs::MasterRoot);
+            }
+            _ => {}
+        }
+        out.push(e);
+    }
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    out
+}
+
+/// O piloto das fotos (`PH2D_CODE_SMOKE_DEMO=1`): a variável, lida uma vez.
+#[must_use]
+pub fn piloto_armado() -> bool {
+    static ARMADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ARMADO.get_or_init(|| std::env::var("PH2D_CODE_SMOKE_DEMO").is_ok_and(|v| v.trim() == "1"))
+}
+
+/// ⭐ **O piloto da cena 6**, quadro `n` desde o arranque: o teclado, os botões e o rato no mundo que
+/// um jogador daria — para as FOTOS (os eventos sintéticos do X não chegam à tela virtual).
+#[must_use]
+pub fn piloto(n: u64) -> (ph2d_input::KeyboardState, ph2d_input::MouseState, [f64; 2]) {
+    use ph2d_input::{Key, MouseButton};
+    let mut kb = ph2d_input::KeyboardState::new();
+    let mut rato = ph2d_input::MouseState::default();
+    if (30..90).contains(&n) {
+        kb.handle_key_down(Key(0xF703));
+    }
+    if [100, 120, 140].contains(&n) {
+        kb.handle_key_down(Key(0x20));
+        kb.handle_key_up(Key(0x20));
+    }
+    if n == 160 {
+        rato.handle_button_down(MouseButton::Left);
+        rato.handle_button_up(MouseButton::Left);
+    }
+    (kb, rato, [-3.0, 2.0])
 }
 
 /// A porta da shell: monta e anuncia. Devolve o objecto escolhido: nenhum nos níveis 1–2 (o dono
@@ -296,6 +434,14 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
             formas.len()
         );
         return None;
+    }
+    if nivel == 6 {
+        println!(
+            "[code-smoke] =6 o JOGO: o círculo azul corre o jogo.luau. Setas = andar; Espaço = atirar \
+             uma estrela (sobe e some em 1,5 s); clique na cena = o quadrado cinzento vai para o rato. \
+             Rebobinar devolve tudo ao lugar. O console (Edit script no cartão do círculo) conta os tiros."
+        );
+        return formas.first().map(|e| e.to_bits());
     }
     if nivel == 5 {
         println!(

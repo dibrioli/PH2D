@@ -89,6 +89,37 @@ impl SceneDoors for ScriptDoors<'_, '_> {
     fn tick(&self) -> u64 {
         self.tick
     }
+
+    /// ⭐ **O script que um script põe numa cópia é um OVERRIDE dela** (ADR-0164): o sync mestre →
+    /// instância propaga a AUSÊNCIA de um componente, e sem eco do mestre «o mestre ganha» — a
+    /// 1.ª cópia de uma corrida perdia o script no passe seguinte (medido na foto da cena 6).
+    fn attached(&mut self, sim: &mut SimWorld, entity: Entity) {
+        let Some(piece) = sim.world().get::<ph2d_ecs::InstanceOf>(entity).map(|i| i.master) else {
+            return;
+        };
+        let Some(script) = self
+            .registry
+            .iter()
+            .find(|e| e.canonical_name == "ph2d::script::LuauScript")
+        else {
+            return;
+        };
+        let key = ph2d_ecs::OverrideKey {
+            piece,
+            type_id: script.type_id,
+        };
+        let mut em = sim.world_mut().entity_mut(entity);
+        match em.get_mut::<ph2d_ecs::ObjectInstance>() {
+            Some(mut o) => {
+                o.overrides.insert(key);
+            }
+            None => {
+                let mut o = ph2d_ecs::ObjectInstance::default();
+                o.overrides.insert(key);
+                em.insert(o);
+            }
+        }
+    }
 }
 
 /// O «antes» de cada escrita: os objectos com script, e os que um script ainda conduz (um

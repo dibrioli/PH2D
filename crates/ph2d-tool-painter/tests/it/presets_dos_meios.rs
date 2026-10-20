@@ -300,8 +300,8 @@ fn a_porta_dos_quatro_meios_e_a_do_wet_no_wet() {
 }
 
 /// ⭐ **A contagem por meio**: todo preset da fábrica e dos exemplos tem um meio conhecido e mora na pasta
-/// desse meio (`<motor>/…`); a fábrica tem os do Wet Paint que a receita conta e nenhum dos outros (os pincéis
-/// deles chegam com as janelas 3–4, e este portão conta-os), os exemplos um por meio antigo.
+/// desse meio (`<motor>/…`); a fábrica tem, em cada meio, os que as receitas contam (as famílias da J3–J4,
+/// `receitas_de_fabrica::contagem_por_meio`), os exemplos um por meio antigo.
 #[test]
 fn a_contagem_por_meio() {
     let conta = |b: &Biblioteca| {
@@ -317,7 +317,7 @@ fn a_contagem_por_meio() {
     // Digital · Watercolor · Impasto · Wet Paint
     assert_eq!(
         conta(&fabrica()),
-        [0, 0, 0, crate::receitas_de_fabrica::PRESETS_DE_FABRICA]
+        crate::receitas_de_fabrica::contagem_por_meio()
     );
     let ex = Biblioteca::carregar(&raiz_dos_exemplos(), None);
     assert!(ex.erros.is_empty(), "{:?}", ex.erros);

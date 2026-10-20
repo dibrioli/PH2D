@@ -19,6 +19,7 @@ mod as_formas;
 mod as_leis_da_escala; // 03_MOTORES §7 c, d, b-resto: o relevo, a ponta das cerdas, a lente, o grão fino
 mod o_grao_do_lapis; // 03_MOTORES §7.2: o grão é o papel (o mesmo a todo tamanho) e o do lápis é fino
 mod exame_bancada;
+mod familias; // J3: as receitas da fábrica, um ficheiro por família (familias/mod.rs as lista todas)
 mod leis_sistemicas;
 mod macro_agua;
 mod macro_colordrop;

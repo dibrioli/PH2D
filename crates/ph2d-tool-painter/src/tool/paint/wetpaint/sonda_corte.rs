@@ -173,7 +173,8 @@ fn grava(t: &PainterTool, nome: &str) {
 fn sonda_corte_nos_pinceis_de_fabrica() {
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let bib = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
-    for e in &bib.entradas {
+    // Só os do Wet Paint (os outros meios têm presets irmãos desde a J3).
+    for e in bib.entradas.iter().filter(|e| e.preset.parametros.media == crate::MEIO_DO_PRESET) {
         let nome_p = e.preset.parametros.name.clone();
         for (fnome, voronoi, cor) in [("lisa", false, false), ("vorocor", true, true)] {
             for rampa_pressao in [0u32, 6] {

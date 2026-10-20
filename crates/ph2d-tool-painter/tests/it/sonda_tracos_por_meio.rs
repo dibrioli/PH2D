@@ -92,7 +92,8 @@ fn os_presets_do_wet_painter() {
     let bib = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
     assert!(bib.erros.is_empty(), "{:?}", bib.erros);
     let mut n = 0;
-    for e in &bib.entradas {
+    // Só os do Wet Paint (os outros meios têm presets irmãos desde a J3).
+    for e in bib.entradas.iter().filter(|e| e.preset.parametros.media == ph2d_tool_painter::MEIO_DO_PRESET) {
         let nome = &e.preset.parametros.name;
         if qual != "todos" && qual != *nome {
             continue;

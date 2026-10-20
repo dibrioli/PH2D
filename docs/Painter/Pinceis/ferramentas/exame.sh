@@ -6,7 +6,7 @@
 #      exame.sh --matriz                      só a biblioteca inteira: matriz.csv + vizinhos.md em Pinceis/matriz/
 #      exame.sh --custo <pincel> [5,40,200]   ms/quadro a 60 Hz e a memória pico, um processo por tamanho
 #
-# <pincel>: o nome de um preset de fábrica ("Graphite 8B") · o caminho de um .ph2d-brush.png · meio:Digital |
+# <pincel>: o nome de um preset de fábrica de qualquer meio ("Graphite 8B") · o caminho de um .ph2d-brush.png · meio:Digital |
 #           meio:Watercolor | meio:Impasto | meio:WetPaint (o pincel do meio, receita em código)
 # <oraculo-dir>: as fotos `<cena>_<A|B>.png` do oráculo (ou `<prefixo>_<cena>_<A|B>`, ou uma por cena — ver
 #           `exame_regua.acha_foto`) · ou um PREFIXO numa pasta de muitos presets:
@@ -14,7 +14,8 @@
 # env: PH2D_EXAME_BATERIA (outra bateria: `legado_5gestos.json` só para validar contra as fotos antigas) ·
 #      PH2D_EXAME_ESCALA (o diâmetro de cada traço × escala; por omissão, com oráculo, a largura do recto_lento DELE
 #      ÷ a nossa a escala 1 — compara-se à largura MEDIDA igual, 05 §4.1) · PH2D_EXAME_EXTRA (2.ª raiz de presets:
-#      os que já saíram, para a matriz e a calibração) · PH2D_EXAME_DIR (o trabalho; /tmp/ph2d_exame) ·
+#      os que já saíram, para a matriz e a calibração) · PH2D_EXAME_DIR (o trabalho e a cache; /tmp/ph2d_exame —
+#      um por família em paralelo) · PH2D_EXAME_PUBLICA=1 (o --matriz com PH2D_EXAME_DIR copia para Pinceis/matriz/) ·
 #      PH2D_EXAME_SUFIXO (acrescentado ao nome das pranchas)
 set -euo pipefail
 RAIZ=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
@@ -62,16 +63,23 @@ biblioteca() {
 matriz() { # <vista-dir> <saida>
   local saiu=""
   [[ -n $EXTRA ]] && saiu=$(find "$EXTRA" -name '*.ph2d-brush.png' -printf '%f\n' | sed 's/\.ph2d-brush\.png$//' | paste -sd,)
-  py "$F/exame_matriz.py" "$1" "$2" --bateria "$BATM" --saiu "$saiu"
+  # A cache da régua no trabalho DESTA corrida (por omissão o `exame_matriz.py` usava `$TMPDIR/ph2d_exame`, partilhada).
+  py "$F/exame_matriz.py" "$1" "$2" --bateria "$BATM" --saiu "$saiu" --cache "$DIR/regua_cache"
 }
 
 case "${1:-}" in
-  "" | -h | --help) sed -n '2,20p' "$0"; exit 0 ;;
+  "" | -h | --help) sed -n '2,19p' "$0"; exit 0 ;;
   --matriz)
     B=$(biblioteca)
     matriz "$B" "$DIR/matriz"
-    mkdir -p "$P/matriz" && cp "$DIR/matriz/"{matriz.csv,matriz_oraculos.csv,vizinhos.md,oraculos.md} "$P/matriz/"
-    echo "▸ $P/matriz/{vizinhos.md,oraculos.md,matriz.csv,matriz_oraculos.csv}"
+    # Com um PH2D_EXAME_DIR próprio (as famílias em paralelo) a matriz fica nele: `Pinceis/matriz/` é UM ficheiro do
+    # repo, e cada família só vê a sua biblioteca. Publicar lá: sem PH2D_EXAME_DIR, ou PH2D_EXAME_PUBLICA=1.
+    if [[ -z ${PH2D_EXAME_DIR:-} || ${PH2D_EXAME_PUBLICA:-} == 1 ]]; then
+      mkdir -p "$P/matriz" && cp "$DIR/matriz/"{matriz.csv,matriz_oraculos.csv,vizinhos.md,oraculos.md} "$P/matriz/"
+      echo "▸ $P/matriz/{vizinhos.md,oraculos.md,matriz.csv,matriz_oraculos.csv}"
+    else
+      echo "▸ $DIR/matriz/{vizinhos.md,oraculos.md,matriz.csv,matriz_oraculos.csv} (PH2D_EXAME_PUBLICA=1 copia-a para $P/matriz/)"
+    fi
     exit 0 ;;
   --custo)
     PINCEL=${2:?pincel}

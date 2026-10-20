@@ -353,6 +353,34 @@ Um processo por tamanho ⇒ o RSS é deste pincel a este tamanho.
   um nome que não diga a dureza, o número ou a ponta não entra em família nenhuma.
 - A caneta real (inclinação, rotação) não está na bateria (pressão só); o custo usa o rato sintético.
 
+## §9 — A fábrica por família (J3)
+
+- **Onde cada família escreve**: SÓ `crates/ph2d-tool-painter/tests/it/familias/<família>.rs` — `WET` (`Receita`, Wet
+  Paint), `MEIOS` (`ReceitaMeio`, Digital/Watercolor/Impasto), `MIDIAS` (as fotos do `cada_preset_parece_a_sua_midia`)
+  e os `#[test]` dela; `use super::prelude::*`. O `familias/mod.rs` já lista as 14 da J3 e da J4 — ninguém o edita.
+  O Wet Round e as bases partilhadas (`GRAPHITE_8B`, `CHARCOAL`, `lapis()`, `extras_do_lapis!`) ficam em `receitas_de_fabrica.rs`.
+- **Outro meio**: `ReceitaMeio { pincel: &[("hardness", "0.3")], mao: &[("pressureSize", 0.6)], size_px: Some(12.0),
+  opacity: Some(0.85), ..ReceitaMeio::digital("Pencil", "Sketch", "Sketch Pencil") }` (`::aquarela`, `::impasto`;
+  `modo`, `nasce_de`). Parte do pincel por omissão do meio, nunca do próprio ficheiro; `None` = o do artista. O
+  gerador RECUSA um campo fora de `campos_do_meio`, uma linha da mão que o meio não lê ou fora da faixa, a Strength
+  na Watercolor e um valor que o pincel não guarda (`confere_receita_do_meio`). Sem tabela de largura (só o Wet a lê).
+- **Gerar/regerar só um** (qualquer meio, o MESMO comando, da raiz da árvore): `PH2D_REGERA_PRESETS=1
+  PH2D_REGERA_SO="Sketch Pencil" bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --test it
+  presets_de_fabrica::gera_os_presets_de_fabrica -- --ignored --nocapture` → `assets/brushes/<Digital|Watercolor|
+  Impasto|WetPainter>/<pasta>/<grupo>/<nome>.ph2d-brush.png`. Sem `PH2D_REGERA_PRESETS=1` só imprime o fnv. ⛔ Nunca sem `PH2D_REGERA_SO` (regera os 28 e a lei da largura de todos).
+- **Os portões que varrem os 4 meios**: `the_factory_presets_are_counted` (os ficheiros SÃO as receitas; nomes únicos
+  nos 4 meios — a bancada e o `PH2D_REGERA_SO` procuram pelo nome) · `cada_preset_de_fabrica_volta_ao_byte` ·
+  `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` · `cada_preset_de_fabrica_e_a_sua_receita` (receita mudada sem
+  regerar) · `a_contagem_por_meio` · `cada_pasta_de_fabrica_tem_rotulo` (app-painter, `--features panel-painter-layers`).
+  **Só no Wet**: `a_regra_do_spacing_da_fabrica` (a lei da cápsula dele), `a_largura_e_a_prometida` (a tabela do slider)
+  e o portão por foto (o controlo é o Wet Round).
+- **Pastas**: pasta e grupo precisam de rótulo; já registados, além dos do Wet: Basic · Calligraphy · Texture · Blend ·
+  Effects · Hard · Soft · Flat · Pixel · Glaze · Mechanical · Tilted · Sketch · Craft · Technical · Mapping · Ballpoint ·
+  Studio · Fountain · Reed · Wood · Gloop · Bleed · Monoline · Script · Nib · Chisel · Splatter · Stipple · Drips ·
+  Grain · Knife · Smudge · Eraser · Stamp · Glow. Outro nome = `rotulo_da_pasta` + `ph2d-i18n/src/app_painter.rs`
+  (partilhados: peça-o ao coordenador). Bancada em paralelo: `PH2D_EXAME_DIR=/tmp/ph2d_exame_<família>` (trabalho e
+  cache da régua); o `--matriz` com ele fica no DIR (`PH2D_EXAME_PUBLICA=1` copia para `matriz/`).
+
 ## ⛔ Recusas MEDIDAS
 
 | Recusa | Medido |

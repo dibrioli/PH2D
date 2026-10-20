@@ -18,7 +18,7 @@ use std::path::PathBuf;
 /// Uma métrica da régua e o ruído do próprio Rebelle nela (recto × rápido da mesma foto, p90 sobre as 25
 /// fotos, 11/10): só conta numa mídia se o controlo estiver a mais de 3× este ruído da foto.
 #[derive(Clone, Copy, Debug)]
-enum Metrica {
+pub(crate) enum Metrica {
     Cobertura,
     Textura,
     Borda,
@@ -181,61 +181,25 @@ pub(super) const QUADROS_SECOS: u32 = 1800;
 /// Uma mídia: o preset, a foto do Rebelle (`docs/Painter/NewFeaturesWetPaint/fixtures/rebelle/`), o
 /// raio que dá a largura dela (W2: o número é a largura) e os números da foto (`mede_traco.py`, recto) nas
 /// métricas que DISTINGUEM a mídia do Round (18 §3).
-struct Midia {
-    preset: &'static str,
-    foto: &'static str,
-    raio: f32,
-    metricas: &'static [(Metrica, f64)],
+pub(crate) struct Midia {
+    pub preset: &'static str,
+    pub foto: &'static str,
+    pub raio: f32,
+    pub metricas: &'static [(Metrica, f64)],
 }
 
-use Metrica::{
-    Borda, Chato, Cobertura, Cruzamento, Cv, Largura, Orla, Ponta, Pontas, RampaCobertura,
-    RampaLargura, Textura, Tinta,
-};
+use Metrica::{Cruzamento, Largura, Pontas, Tinta};
 
-// ⚠️ Os três do óleo levam os valores que o DONO afinou a olho contra o Rebelle (11/10, «vamos deixar esses
-// valores»); a régua reprovava Textura do Oil Bristle (8,46 contra 5,86) e da Acrylic Round (30,4 contra 3,13)
-// e a Borda do Express Oil (0,66 contra 0,80) — saíram daqui, a régua não mede o que o olho dele vê (18 §2).
-// O Chato e a Tinta (prompt 23, aceites 12/10) são os dois pontos que o dono VIU: a mutação «preset de antes»
-// sangra cada um sozinho (Oil 0,950 · Express 0,906).
-#[rustfmt::skip]
-const MIDIAS: [Midia; 24] = [
-    // ⛔ As PONTAS da rampa do Rebelle saíram dos pincéis da tinta, do óleo, dos lápis e dos pastéis por ordem do DONO
-    // (smoke 18/10: «apertar muito e pouco variam pouco a espessura; antes funcionava melhor»): o piso que as dava comia
-    // a resposta da mão dele (0,24–0,86). Ficam no aerógrafo e nos Flats, que já as tinham (doc 47_medicao §2).
-    Midia { preset: "Wet Liner", foto: "wcliner", raio: 19.0, metricas: &[(Cobertura, 0.653), (Textura, 1.708)] },
-    Midia { preset: "Oil Bristle", foto: "oil", raio: 20.5, metricas: &[(Cobertura, 0.909), (Borda, 0.872), (Chato, 0.317)] },
-    Midia { preset: "Acrylic Round", foto: "oilround", raio: 19.5, metricas: &[(Cobertura, 0.880), (Borda, 0.595)] },
-    Midia { preset: "Express Oil", foto: "express", raio: 21.0, metricas: &[(Cobertura, 0.700), (Tinta, 0.772)] },
-    Midia { preset: "Graphite 8B", foto: "pencil", raio: 15.0, metricas: &[(Cobertura, 0.798), (Textura, 9.093), (Borda, 0.320), (Orla, 7.0)] },
-    Midia { preset: "Charcoal", foto: "charcoal", raio: 10.5, metricas: &[(Cobertura, 0.384), (Borda, 0.378), (Orla, 15.0)] },
-    Midia { preset: "Soft Pastel", foto: "pastel", raio: 8.5, metricas: &[(Cobertura, 0.752), (Borda, 0.443), (Orla, 6.0)] },
-    Midia { preset: "Oil Pastel", foto: "oilpastel2", raio: 15.0, metricas: &[(Cobertura, 0.654), (Textura, 17.354), (Borda, 0.417), (Orla, 11.0)] },
-    // A tinta e o marcador (prompt 42): o Cruzamento é o da foto MOLHADA; a Borda e a Orla só onde o Round
-    // não as tem (Ink Bullet: borda 1,00 nos dois; Orla 1 nos marcadores e nas canetas).
-    Midia { preset: "Ink Bullet", foto: "ink", raio: 21.0, metricas: &[(Cobertura, 0.862), (Textura, 0.395), (Cruzamento, 0.117)] },
-    Midia { preset: "Dip Pen", foto: "dippen", raio: 19.0, metricas: &[(Cobertura, 0.856), (Textura, 1.433), (Borda, 0.910), (Cruzamento, 0.223)] },
-    Midia { preset: "Ink Brush", foto: "inkbrush", raio: 20.0, metricas: &[(Cobertura, 0.722), (Textura, 1.266), (Borda, 0.793), (Orla, 5.0), (Cruzamento, 0.239)] },
-    Midia { preset: "Marker Bullet", foto: "markerbullet", raio: 20.0, metricas: &[(Cobertura, 0.909), (Textura, 0.658), (Borda, 0.768), (Cruzamento, 0.016)] },
-    Midia { preset: "Marker Liner", foto: "marker", raio: 9.0, metricas: &[(Cobertura, 0.910), (Textura, 2.116), (Borda, 0.716), (Cruzamento, 0.016)] },
-    // O aerógrafo (prompt 43): o PÓ — a textura, a uniformidade e a orla larga são dele; o «período» não conta
-    // (a repetição do Rebelle varia 0,005, o controlo fica a 0,013 — doc 43 §2).
-    Midia { preset: "Airbrush", foto: "airbrush", raio: 15.0, metricas: &[(Cobertura, 0.381), (Textura, 22.705), (Borda, 0.537), (Orla, 12.0), (Cv, 0.088), (Cruzamento, 0.583), (RampaLargura, 0.63), (RampaCobertura, 0.34), (Largura, 26.0), (Pontas, 0.8)] },
-    // As formas (prompt 44, doc 44 §3): a ponta reta e a pressão que não estreita e ESMAECE (prompt 45, doc 45).
-    Midia { preset: "Wet Flat", foto: "wcflat", raio: 17.0, metricas: &[(Cobertura, 0.315), (Ponta, 0.096), (RampaLargura, 0.829), (RampaCobertura, 0.42), (Largura, 34.0), (Pontas, 0.9)] },
-    Midia { preset: "Gouache Flat", foto: "gouacheflat", raio: 19.5, metricas: &[(Cobertura, 0.504), (Ponta, 0.083), (Chato, 0.782), (RampaLargura, 0.872), (RampaCobertura, 0.43), (Largura, 39.0), (Pontas, 0.87)] },
-    // Os 8 que ficaram do prompt 53 (doc 52 §4; o Filbert e as lâminas saíram, doc 53 §8): as métricas que distinguem a
-    // foto do controlo; o raio é o do preset à largura SECA da foto pela lei PRÓPRIA dele (`ferramentas/avalia_53.py`; o
-    // Wax por grelha). O Cruzamento do Wax Scrape não entra (0,166 do controlo, abaixo de 3× o ruído desta régua).
-    Midia { preset: "Graphite 2H", foto: "pencil2h", raio: 14.40, metricas: &[(Cobertura, 0.595), (Textura, 4.983), (Borda, 0.321), (Orla, 10.0), (Cruzamento, 0.599), (Largura, 24.0)] },
-    Midia { preset: "Graphite HB", foto: "pencilhb", raio: 15.31, metricas: &[(Cobertura, 0.561), (Textura, 6.153), (Borda, 0.325), (Orla, 11.0), (Cruzamento, 0.583), (Largura, 24.0)] },
-    Midia { preset: "Graphite 2B", foto: "pencil2b", raio: 14.40, metricas: &[(Cobertura, 0.544), (Textura, 13.901), (Borda, 0.350), (Orla, 11.0), (Cruzamento, 0.589), (Largura, 24.0)] },
-    Midia { preset: "Colored 4B", foto: "pencil4bcolor", raio: 15.00, metricas: &[(Cobertura, 0.665), (Textura, 11.826), (Borda, 0.327), (Orla, 10.0), (Cruzamento, 0.730), (Largura, 25.0)] },
-    Midia { preset: "Scratch", foto: "scratch", raio: 15.71, metricas: &[(Cobertura, 0.255), (Textura, 19.780), (Borda, 0.591), (Orla, 13.0), (Cv, 0.126), (Cruzamento, 0.652), (Largura, 24.0)] },
-    Midia { preset: "Square Hard", foto: "squarehard", raio: 15.50, metricas: &[(Cobertura, 0.705), (Textura, 20.884), (Borda, 0.856), (Cv, 0.077), (Cruzamento, 0.579), (Largura, 31.0)] },
-    Midia { preset: "Wax Scrape", foto: "waxscrape", raio: 19.5, metricas: &[(Cobertura, 0.763), (Textura, 16.691), (Borda, 0.586), (Largura, 36.0)] },
-    Midia { preset: "Dabber", foto: "dabber", raio: 18.5, metricas: &[(Cobertura, 0.840), (Textura, 10.715), (Borda, 0.588), (Orla, 5.0), (Largura, 36.0)] },
-];
+/// ⭐ As mídias de TODAS as famílias (`familias/<família>.rs::MIDIAS`, J3): cada família põe a foto dos seus pincéis no
+/// próprio ficheiro. ⛔ As PONTAS da rampa do Rebelle saíram dos pincéis da tinta, do óleo, dos lápis e dos pastéis por
+/// ordem do DONO (smoke 18/10: «apertar muito e pouco variam pouco a espessura; antes funcionava melhor»): o piso que
+/// as dava comia a resposta da mão dele (0,24–0,86). Ficam no aerógrafo e nos Flats, que já as tinham (doc 47_medicao §2).
+static MIDIAS: std::sync::LazyLock<Vec<&'static Midia>> = std::sync::LazyLock::new(|| {
+    super::familias::FAMILIAS
+        .iter()
+        .flat_map(|f| f.midias)
+        .collect()
+});
 
 /// O raio da cena da mídia `nome` (a largura da foto do Rebelle), se ela tem foto.
 pub(super) fn raio_da_midia(nome: &str) -> Option<f32> {

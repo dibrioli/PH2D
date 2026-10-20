@@ -7,7 +7,7 @@
 //!   MÍNIMO de 7 (`--release`, `PH2D_RELEASE="mede velocidade"`).
 
 use super::midias_de_fabrica::{cena_seca, de_fabrica, raio_da_midia};
-use super::receitas_de_fabrica::RECEITAS;
+use super::receitas_de_fabrica::receitas;
 use ph2d_brush_presets::Preset;
 
 /// `antes` é o traço de antes da regra (o Spacing de antes, sem Continuous): a referência da diferença de imagem.
@@ -23,8 +23,7 @@ fn env(k: &str, d: &str) -> String {
 
 fn presets() -> Vec<&'static str> {
     let so = std::env::var("PH2D_SONDA_PRESETS").ok();
-    RECEITAS
-        .iter()
+    receitas()
         .map(|r| r.nome)
         .filter(|n| so.as_ref().is_none_or(|s| s.split(',').any(|x| x == *n)))
         .collect()

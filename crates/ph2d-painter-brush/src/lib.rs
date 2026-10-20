@@ -148,6 +148,8 @@ pub mod stroke_method;
 pub mod symmetry;
 pub mod taper;
 #[cfg(test)]
+/// O traço como uma CAMADA — o tecto por traço e as orlas (L8).
+pub mod traco;
 mod taper_tests;
 pub mod texture;
 /// **O quadrado unitário do carimbo** — a porta única de *onde, no stamp, está esta coordenada de dab,
@@ -158,9 +160,9 @@ mod tip_kernel_tests;
 
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
 pub use blur::{BlurKernel, blur_blit_stamp, blur_dab, kernel_radius};
+pub use blend_vazio::{blend_over_modo, blend_over_pigment_modo, blend_over_w3c};
 pub use blur_grain::blur_blit_grain;
 pub use blur_peso::{blur_region_borrado, blur_region_por_peso, mistura_linha_por_peso};
-pub use blend_vazio::{blend_over_modo, blend_over_pigment_modo, blend_over_w3c};
 pub use clone::{clone_blit_stamp, clone_dab};
 pub use clone_grain::clone_blit_grain;
 pub use curve_fit::{CurveFit, auto_handles, fit_curve, flatten_bezier};
@@ -219,3 +221,4 @@ pub use texture::{
     TextureKind, TextureMapping, TextureSettings, compose_shape_silhouette_kind, param_escala,
     param_inerte, param_specs, render_shape_preview, render_stencil_preview, stencil_frame,
 };
+pub use traco::TracoComposto;

@@ -139,6 +139,8 @@ mod wetpaint; // Wet Paint (PaintMode::WetPaint): the fluid-engine session — A
 pub(crate) use wetpaint::fita; // a fita do worker que a trilha da macro (`crate::macro_track`) grava e toca
 mod macro_estado;
 pub mod marca; // as linhas da MARCA (o jitter da L4) no cartão Jitter, nos quatro meios
+mod traco_plano; // o PLANO do traço: o tecto, as orlas (L8) e a cauda re-pintada (L5), só no Digital
+mod traco_settings; // as portas do painel do traço (L8) e do modo sobre o vazio (L7)
 pub mod ponta; // as linhas da PONTA (L9 o grão · L18 o píxel · L19 as imagens) nas secções Brush/Grain/Shape
 mod pixel_route; // a ponta de PÍXEL (L18): o trilho ancorado e o carimbo binário, só no Digital
 pub mod mao; // a MÃO do pincel (pressão, inclinação) nos quatro meios, por uma lei só (L2, Pinceis/03 §4)
@@ -212,11 +214,14 @@ mod accumulate_tests;
 /// **L7** — o efeito do pincel compõe no seu modo (W3C em sRGB), contra a fórmula e as fotos do Rebelle.
 #[cfg(test)]
 mod efeito_modos_tests;
-#[cfg(test)]
-mod composite_look;
 /// **L7** — o modo do pincel sobre o VAZIO (a fórmula geral do W3C), no Digital e no Wet.
 #[cfg(test)]
 mod efeito_vazio_tests;
+#[cfg(test)]
+mod composite_look;
+/// **L8 + L5** — o tecto por traço, as orlas, a cauda e o fall-off (o plano do traço).
+#[cfg(test)]
+mod traco_plano_tests;
 #[cfg(test)]
 mod composite_probe;
 /// **O entalhe no cruzamento** — a sonda que decide se a aquarela usa a UNIÃO (o vinco que o FLIP

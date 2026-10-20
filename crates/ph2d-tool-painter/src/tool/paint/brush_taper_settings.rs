@@ -13,7 +13,7 @@
 //! value is a caller that eventually does not.
 
 use super::PainterTool;
-use ph2d_painter_brush::taper::MAX_TAPER_DIAMETERS;
+use ph2d_painter_brush::taper::{MAX_FALL_OFF_DIAMETERS, MAX_TAPER_DIAMETERS};
 
 impl PainterTool {
     /// Write one field of the taper into the live brush **and every mode slot**.
@@ -44,10 +44,32 @@ impl PainterTool {
         let v = v.clamp(0.0, 1.0);
         self.set_taper_field(|t| t.opacity = v);
     }
+
+    /// ⭐ **L5 — a CAUDA**, em diâmetros (`0` = desligada): re-pintada ao levantar, no plano do traço do Digital.
+    pub fn set_brush_taper_end(&mut self, v: f32) {
+        let v = v.clamp(0.0, MAX_TAPER_DIAMETERS);
+        self.set_taper_field(|t| t.end = v);
+    }
+
+    /// A largura na ponta do FIM, `0..1`.
+    pub fn set_brush_taper_tip_end(&mut self, v: f32) {
+        let v = v.clamp(0.0, 1.0);
+        self.set_taper_field(|t| t.tip_end = v);
+    }
+
+    /// ⭐ **L5 — o FALL-OFF**: a carga que se esgota ao longo deste comprimento, em diâmetros (`0` = desligado).
+    pub fn set_brush_fall_off(&mut self, v: f32) {
+        let v = v.clamp(0.0, MAX_FALL_OFF_DIAMETERS);
+        self.set_taper_field(|t| t.fall_off = v);
+    }
+
+    /// O patamar antes de a carga começar a acabar, em diâmetros.
+    pub fn set_brush_fall_off_start(&mut self, v: f32) {
+        let v = v.clamp(0.0, MAX_FALL_OFF_DIAMETERS);
+        self.set_taper_field(|t| t.fall_off_start = v);
+    }
 }
 
-// ⛔ `set_brush_taper_end`, `set_brush_taper_tip_end` and `toggle_brush_taper_link` lived here and went
-// with the far end (Enio 2026-08-10: *"deixe o ajuste apenas para o início do traço"*). They are named
-// here rather than silently absent because each was a LIVE control with a row on screen: a length, a
-// second tip, and the toggle that linked the two. `ph2d_painter_brush::taper` carries why, and what the
-// removal cost.
+// ⭐ A cauda VOLTOU (L5, 20/10) — só no Digital, re-pintada no plano do traço ao levantar (`traco_plano`): sem
+// restaurar a tela nem re-carimbar o traço, numa transacção. O porquê de ter saído (Enio 2026-08-10) e de voltar
+// assim mora em `ph2d_painter_brush::taper`. O *Link tip sizes* não voltou: duas linhas, dois números.

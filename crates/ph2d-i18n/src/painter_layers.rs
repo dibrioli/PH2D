@@ -55,6 +55,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.spray_count_above_one" => "Acts when Count is above 1",
         "panel.painter_layers.inerte.wash_ignores_dab_opacity" => "The wash does not read the dab opacity",
         "panel.painter_layers.inerte.color_owned_by_ramp" => "Acts when no Color Ramp or Texture Color paints the colour",
+        // O fim do traço (L5), o traço como uma camada (L8) e o modo sobre o vazio (L7).
+        "panel.painter_layers.inerte.taper_end_length" => "Acts with a Tail length on a freehand stroke",
+        "panel.painter_layers.inerte.fall_off_length" => "Acts with a Fall-off length",
+        "panel.painter_layers.inerte.edges_above_zero" => "Acts with Wet or Burnt edges",
+        "panel.painter_layers.inerte.color_blend_mode" => "Acts with a colour Blend (Multiply, Color, Hue…)",
+        "panel.painter_layers.inerte.freehand_paint_stroke" => "Acts on a freehand paint stroke",
         "panel.painter_layers.inerte.tilt_law_on" => {
             "Acts when the pen tilt changes the dab: Tilt width, length, smooth or opacity, or Rotation: Pen tilt"
         }
@@ -222,6 +228,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.brush.size" => "Size",
         "panel.painter_layers.brush.strength" => "Strength",
         "panel.painter_layers.brush.accumulate" => "Accumulate",
+        "panel.painter_layers.brush.glaze" => "Glaze",
+        "panel.painter_layers.brush.wet_edges" => "Wet edges",
+        "panel.painter_layers.brush.burnt_edges" => "Burnt edges",
+        "panel.painter_layers.brush.edge_width" => "Edge width",
+        "panel.painter_layers.brush.blend_on_empty" => "On empty",
         "panel.painter_layers.brush.color" => "Color",
         // O pincel de PARTIDA de cada meio (Digital Basic / Watercolor Basic): desde a L1 o «Preset» é o
         // navegador dos ficheiros, nos quatro meios, e esta fileira fica por baixo dele com o seu nome.
@@ -548,6 +559,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.taper.taper" => "Taper",
         "panel.painter_layers.taper.tip" => "Tip",
         "panel.painter_layers.taper.opacity" => "Opacity",
+        "panel.painter_layers.taper.end" => "Tail",
+        "panel.painter_layers.taper.tip_end" => "Tail tip",
+        "panel.painter_layers.taper.fall_off" => "Fall-off",
+        "panel.painter_layers.taper.fall_off_start" => "Full for",
         "panel.painter_layers.grain.grain" => "Grain",
         "panel.painter_layers.grain.mapping" => "Mapping",
         "panel.painter_layers.grain.rake" => "Rake",

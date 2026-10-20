@@ -221,6 +221,8 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     dab_rotor: [1.0, 0.0],
     // Off: the neutral taper, shared as a const with the engine so the fallback cannot drift.
     taper: ph2d_tool_painter::Taper::NEUTRAL,
+    traco: ph2d_tool_painter::TracoComposto::NEUTRO,
+    blend_sobre_vazio: false,
     grain_depth: 1.0,
     // Shape section (mirrors BrushSpec::default — kind None, no Shape image, silhouette = falloff).
     shape_kind: 0,

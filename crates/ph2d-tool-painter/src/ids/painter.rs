@@ -205,6 +205,17 @@ pub const PAINTER_BRUSH_CONTINUOUS_SPACING: NodeId =
 /// "Accumulate" toggle (Blender `BRUSH_ACCUMULATE`): off caps a stroke at Strength. `Click` → toggle.
 pub const PAINTER_BRUSH_ACCUMULATE: NodeId = hash_node_id("painter_brush.accumulate");
 
+/// ⭐ **O traço como uma CAMADA** (L8) e o modo sobre o VAZIO (L7): as linhas numéricas do cartão Brush, por ordem
+/// — o tecto (Glaze), a orla molhada, a orla queimada, a largura da orla (só no Digital) e o modo sobre o vazio
+/// (`0`/`1`). `SetValue` → `route_traco_event` (`tool/paint/traco_settings.rs`).
+pub const PAINTER_TRACO_FIELDS: [NodeId; 5] = [
+    hash_node_id("painter_brush.traco.glaze"),
+    hash_node_id("painter_brush.traco.wetEdges"),
+    hash_node_id("painter_brush.traco.burntEdges"),
+    hash_node_id("painter_brush.traco.edgeWidth"),
+    hash_node_id("painter_brush.traco.blendOnEmpty"),
+];
+
 /// Id de uma OPÇÃO do popover do [`PAINTER_LINE_TYPE`]. Espelho do
 /// [`painter_brush_media_option_id`].
 #[must_use]

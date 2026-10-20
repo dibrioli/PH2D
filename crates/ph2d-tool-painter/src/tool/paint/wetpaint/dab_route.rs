@@ -288,6 +288,15 @@ impl PainterTool {
                 ),
                 _ => (((d.coverage / strength).clamp(0.0, 1.0) as f64) * 10.0, 1.0),
             };
+            // ⭐ O FALL-OFF (L5) no Wet é a carga do PIGMENTO (o que pousa), não a pressão: a cobertura do dab já
+            // o leva (`Taper::fall`), e no `b` da pressão ele desfaz-se para pousar na opacidade. Neutro = `1`.
+            let carga = f64::from(brush.taper.fall(d.arc_len, 2.0 * brush.clamped_radius()));
+            let (b, opacidade) =
+                if carga < 1.0 && !(opacidade_da_pressao.is_some() && wet_tool == WetTool::Paint) {
+                    ((b / carga.max(1e-6)).min(10.0), opacidade * carga)
+                } else {
+                    (b, opacidade)
+                };
             // Per-dab silhouette closure — the impasto walk's exact recipe
             // (spec at the dab's radius → rotor → footprint → Shape basis in
             // the stroke frame), evaluated per engine cell (cell − 1 = px).

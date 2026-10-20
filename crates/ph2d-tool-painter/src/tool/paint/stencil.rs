@@ -399,6 +399,10 @@ impl PainterTool {
             x if x == crate::ids::PAINTER_TAPER_START => self.set_brush_taper_start(v),
             x if x == crate::ids::PAINTER_TAPER_TIP_START => self.set_brush_taper_tip_start(v),
             x if x == crate::ids::PAINTER_TAPER_OPACITY => self.set_brush_taper_opacity(v),
+            x if x == crate::ids::PAINTER_TAPER_END => self.set_brush_taper_end(v),
+            x if x == crate::ids::PAINTER_TAPER_TIP_END => self.set_brush_taper_tip_end(v),
+            x if x == crate::ids::PAINTER_TAPER_FALL_OFF => self.set_brush_fall_off(v),
+            x if x == crate::ids::PAINTER_TAPER_FALL_OFF_START => self.set_brush_fall_off_start(v),
             _ => return false,
         }
         true

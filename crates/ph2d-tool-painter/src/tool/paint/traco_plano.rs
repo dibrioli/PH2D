@@ -1,0 +1,406 @@
+//! **O PLANO DO TRAÇO** (L8 + a cauda da L5, `docs/Painter/Pinceis/03_MOTORES.md` §4): no Digital, um traço
+//! com tecto, orla ou cauda pinta num plano TRANSPARENTE só dele — todas as rotas de carimbo, em `Mix`, com o
+//! tecto do Accumulate e tudo o resto como sempre — e cada lote compõe o plano sobre a base congelada no
+//! pen-down, com o modo do pincel, UMA vez (`ph2d_painter_brush::traco::TracoComposto::compoe`). As orlas são
+//! o aro da aguada sobre a cobertura do plano ([`super::watercolor_rim::aro_da_cobertura`], a mesma porta).
+//!
+//! **A cauda** (L5): ao levantar, a janela do fim limpa-se no plano e voltam a carimbar-se os dabs que lhe
+//! tocam, os da cauda afilados pela rampa da cabeça espelhada (`Taper::width_end`) e adensados ao passo da
+//! largura nova; fora da janela o plano volta ao que era. Tudo antes do fecho do traço: UMA transacção.
+//!
+//! ⚠️ **Quem não arma o plano não muda um byte**: o predicado [`PainterTool::traco_no_plano`] é falso no
+//! neutro e fora do Digital (a linha do painel esmaece pela MESMA pergunta, `inercia`).
+
+use super::{PaintMode, Region, union_region};
+use crate::tool::PainterTool;
+use ph2d_painter_brush::{BrushBlend, Dab};
+use rayon::prelude::*;
+use std::sync::Arc;
+
+/// A sessão do plano — vive do 1.º lote ao pen-up.
+#[derive(Clone, Debug)]
+pub(crate) struct PlanoDoTraco {
+    /// A tela no 1.º lote do traço (o pré-traço).
+    base: Arc<Vec<u8>>,
+    /// O traço em Normal sobre o transparente (RGBA reto).
+    plano: Arc<Vec<u8>>,
+    /// Os dabs carimbados (só com a cauda armada).
+    dabs: Vec<Dab>,
+}
+
+/// Porque o plano não arma (o que a linha do painel diz ao esmaecer).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum SemPlano {
+    /// O meio não é o Digital: a aguada, o relevo e o fluido têm a sua própria composição.
+    ForaDoDigital,
+    /// O gesto não é um traço livre que acumula: um método de re-carimbo, o Solid, os fios, a borracha, o
+    /// Composite ou um modo que não é Paint.
+    ForaDoTraco,
+}
+
+impl PainterTool {
+    /// Se o pincel pede o plano (o tecto, uma orla ou a cauda).
+    fn pede_o_plano(&self) -> bool {
+        let b = &self.paint.brush;
+        b.traco.is_active() || b.taper.end_active()
+    }
+
+    /// ⭐ **A porta**: porque é que o plano NÃO arma agora (`None` = arma, se o pincel o pede).
+    pub(crate) fn plano_recusado(&self) -> Option<SemPlano> {
+        if self.paint_media() != crate::PaintMedia::Digital {
+            return Some(SemPlano::ForaDoDigital);
+        }
+        let b = &self.paint.brush;
+        let livre = matches!(self.paint.paint_mode, PaintMode::Paint)
+            && b.stroke_method.is_incremental()
+            && !b.style_solid
+            && !b.sews_threads()
+            && !self.stroke_erases()
+            && !self.composite_active();
+        (!livre).then_some(SemPlano::ForaDoTraco)
+    }
+
+    /// ⭐ **O traço segue a SUA cobertura?** — o tecto do Accumulate desligado ([`Self::stroke_cover_wanted`])
+    /// ou a carga que se esgota (o fall-off da L5): a carga que acaba baixa o TECTO do traço (`cap = cobertura do
+    /// dab`), e sem o buffer os dabs empilhariam por cima dela (a Strength 1 não tem tecto). A cap `1` é a
+    /// sequência de sempre ao bit (`stroke_cover`), logo armar o buffer é seguro.
+    pub(super) fn cobertura_tapada(&self, brush: &ph2d_painter_brush::BrushSpec) -> bool {
+        self.stroke_cover_wanted(brush) || (!brush.accumulate && brush.taper.fall_active())
+    }
+
+    /// O traço de agora pinta no plano?
+    pub(super) fn traco_no_plano(&self) -> bool {
+        self.pede_o_plano() && self.plano_recusado().is_none()
+    }
+
+    /// O alcance (px) que a orla acrescenta à volta do que mudou: o raio do borrão e um texel.
+    fn margem_da_orla(&self) -> u32 {
+        let t = &self.paint.brush.traco;
+        if t.tem_orla() {
+            t.core_r(self.paint.brush.radius_px) as u32 + 1
+        } else {
+            0
+        }
+    }
+
+    /// A janela de um lote no plano: a dos dabs mais a orla (o gate projecta-a inteira).
+    pub(super) fn regiao_do_lote_no_plano(&self, dabs: &[Dab]) -> Option<Region> {
+        self.dab_batch_region(dabs)
+            .map(|r| self.alarga(r, self.margem_da_orla()))
+    }
+
+    /// ⭐ **Um lote no plano**: carimba-o no plano (todas as rotas, em `Mix`), guarda os dabs para a cauda e
+    /// recompõe a janela. Chamado pela porta do carimbo (`stamp_route`) dentro do gate de proteção/seleção.
+    pub(super) fn stamp_dabs_no_plano(&mut self, dabs: &[Dab]) {
+        let Some(r) = self.dab_batch_region(dabs) else {
+            return;
+        };
+        let mut s = self.abre_o_plano();
+        self.carimba_no_plano(&mut s, dabs);
+        if self.paint.brush.taper.end_active() {
+            s.dabs.extend_from_slice(dabs);
+        }
+        let r = self.alarga(r, self.margem_da_orla());
+        self.compoe_o_plano(&s, r);
+        self.paint.plano_do_traco = Some(s);
+    }
+
+    /// A sessão deste traço, ou uma nova sobre a tela de agora.
+    fn abre_o_plano(&mut self) -> PlanoDoTraco {
+        let n4 = self.canvas_rgba.len();
+        match self.paint.plano_do_traco.take() {
+            Some(s) if s.plano.len() == n4 && s.base.len() == n4 => s,
+            _ => PlanoDoTraco {
+                base: Arc::clone(&self.canvas_rgba),
+                plano: Arc::new(vec![0u8; n4]),
+                dabs: Vec::new(),
+            },
+        }
+    }
+
+    /// Carimba `dabs` no plano: troca o plano para dentro da tela, `Mix` e sem o trinco de alfa (o modo e o
+    /// trinco são da composição), e volta.
+    fn carimba_no_plano(&mut self, s: &mut PlanoDoTraco, dabs: &[Dab]) {
+        let ws = &self.undo.write_state;
+        super::plane_fork::swap_canvas_plane(&mut self.canvas_rgba, &mut s.plano, ws);
+        let (blend, plano) = (self.paint.brush.blend, self.paint.acumulando_no_plano);
+        self.paint.brush.blend = BrushBlend::Mix;
+        self.paint.acumulando_no_plano = true;
+        self.stamp_dabs_routed(dabs);
+        self.paint.brush.blend = blend;
+        self.paint.acumulando_no_plano = plano;
+        let ws = &self.undo.write_state;
+        super::plane_fork::swap_canvas_plane(&mut self.canvas_rgba, &mut s.plano, ws);
+    }
+
+    /// `r` alargada `m` px, presa à tela.
+    fn alarga(&self, r: Region, m: u32) -> Region {
+        let (w, h) = self.source_size;
+        let x0 = r.x.saturating_sub(m);
+        let y0 = r.y.saturating_sub(m);
+        let x1 = (r.x + r.w + m).min(w);
+        let y1 = (r.y + r.h + m).min(h);
+        Region {
+            x: x0,
+            y: y0,
+            w: x1.saturating_sub(x0),
+            h: y1.saturating_sub(y0),
+        }
+    }
+
+    /// ⭐ **A composição** de `r`: `base ⊕ plano` no modo do pincel, com o tecto e as orlas.
+    fn compoe_o_plano(&mut self, s: &PlanoDoTraco, r: Region) {
+        if r.w == 0 || r.h == 0 {
+            return;
+        }
+        let brush = self.paint.brush;
+        let t = brush.traco;
+        let w = self.source_size.0 as usize;
+        // O aro lê a cobertura numa janela com contexto (o borrão e a régua do teto), e escreve-se só em `r`.
+        let aro = t.tem_orla().then(|| {
+            let core = t.core_r(brush.radius_px);
+            let jan = self.alarga(r, 3 * core as u32 + 4);
+            let (jw, jh) = (jan.w as usize, jan.h as usize);
+            let mut cov = vec![0.0f32; jw * jh];
+            for y in 0..jh {
+                for x in 0..jw {
+                    let i = ((jan.y as usize + y) * w + jan.x as usize + x) * 4 + 3;
+                    cov[y * jw + x] = f32::from(s.plano[i]) / 255.0;
+                }
+            }
+            (
+                jan,
+                super::watercolor_rim::aro_da_cobertura(&cov, jw, jh, core),
+            )
+        });
+        let trinco = self
+            .layers
+            .active()
+            .and_then(|id| self.layers.get(id))
+            .is_some_and(|l| l.alpha_locked);
+        let buf = super::plane_fork::fork_canvas(
+            &mut self.canvas_rgba,
+            &self.undo.write_state,
+            self.source_size.0,
+            Some(r),
+        );
+        let dec = |v: u8| f32::from(v) / 255.0;
+        let enc = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+        // ADR-0173: por LINHA e em paralelo — cada texel é função pura da base, do plano e do aro dele.
+        let linhas = &mut buf[r.y as usize * w * 4..(r.y + r.h) as usize * w * 4];
+        linhas
+            .par_chunks_mut(w * 4)
+            .enumerate()
+            .for_each(|(dy, linha)| {
+                let y = r.y as usize + dy;
+                for x in r.x as usize..(r.x + r.w) as usize {
+                    let i = (y * w + x) * 4;
+                    let base = [0, 1, 2, 3].map(|k| dec(s.base[i + k]));
+                    let mut p = [0, 1, 2, 3].map(|k| dec(s.plano[i + k]));
+                    if trinco {
+                        p[3] *= base[3];
+                    }
+                    let a = aro.as_ref().map_or(0.0, |(jan, v)| {
+                        v[(y - jan.y as usize) * jan.w as usize + (x - jan.x as usize)]
+                    });
+                    let mut out = t.compoe(brush.blend, brush.blend_sobre_vazio, base, p, a);
+                    if trinco {
+                        out[3] = base[3];
+                    }
+                    for k in 0..4 {
+                        linha[x * 4 + k] = enc(out[k]);
+                    }
+                }
+            });
+        self.declare_wrote(Some(r));
+        self.mark_dirty(r);
+    }
+
+    /// ⭐ **O pen-up do plano**: a cauda (L5) re-pintada, e a sessão fecha. Antes do fecho do traço, e pelo
+    /// MESMO gate de proteção/seleção que os lotes atravessam.
+    pub(super) fn fecha_o_plano_do_traco(&mut self) {
+        let Some(mut s) = self.paint.plano_do_traco.take() else {
+            return;
+        };
+        if !self.paint.brush.taper.end_active() {
+            return;
+        }
+        let Some(cauda) = self.planeia_a_cauda(&s) else {
+            return;
+        };
+        let r = self.alarga(cauda.tocados, self.margem_da_orla());
+        let mut corpo = move |t: &mut Self| {
+            t.repinta_a_cauda(&mut s, &cauda);
+            t.compoe_o_plano(&s, r);
+        };
+        let (mask, sel) = (
+            self.mask_protection_active(),
+            self.selection_restricts_paint(),
+        );
+        if mask || sel {
+            self.gate_scoped(r, mask, sel, corpo);
+        } else {
+            corpo(self);
+        }
+    }
+
+    /// O plano da cauda: os dabs a re-carimbar, a janela que se limpa e a que muda.
+    fn planeia_a_cauda(&self, s: &PlanoDoTraco) -> Option<Cauda> {
+        let taper = self.paint.brush.taper;
+        let d = 2.0 * self.paint.brush.clamped_radius();
+        let total = s.dabs.iter().map(|d| d.arc_len).fold(0.0f32, f32::max);
+        let fim = total - taper.end_px(d);
+        let cauda_orig: Vec<Dab> = s.dabs.iter().copied().filter(|d| d.arc_len > fim).collect();
+        if cauda_orig.is_empty() {
+            return None;
+        }
+        // A janela que se limpa: a pegada dos dabs ORIGINAIS da cauda (as cópias do Tiling incluídas).
+        let ladrilhada = |v: &[Dab]| -> Vec<Dab> {
+            if self.paint.tiling[0] || self.paint.tiling[1] {
+                super::tiling::tiled_dabs(v, self.source_size, self.paint.tiling)
+            } else {
+                v.to_vec()
+            }
+        };
+        let limpa = self.dab_batch_region(&ladrilhada(&cauda_orig))?;
+        let cauda = cauda_afilada(&cauda_orig, &taper, total, d, self.passo_px());
+        let resto: Vec<Dab> = s
+            .dabs
+            .iter()
+            .copied()
+            .filter(|d| d.arc_len <= fim)
+            .filter(|d| {
+                ladrilhada(std::slice::from_ref(d))
+                    .iter()
+                    .any(|c| toca(c, limpa, self.paint.brush.tip_reach()))
+            })
+            .collect();
+        let mut lote = resto;
+        lote.extend_from_slice(&cauda);
+        let tocados = self
+            .dab_batch_region(&ladrilhada(&lote))
+            .map_or(limpa, |t| union_region(t, limpa));
+        Some(Cauda {
+            lote,
+            limpa,
+            tocados,
+        })
+    }
+
+    /// Re-pinta a cauda no plano: limpa a janela, re-carimba o lote e repõe o que estava FORA dela (os dabs
+    /// re-carimbados transbordam).
+    fn repinta_a_cauda(&mut self, s: &mut PlanoDoTraco, c: &Cauda) {
+        let w = self.source_size.0 as usize;
+        let antes = Arc::clone(&s.plano);
+        let mascara_antes = self.paint.stroke_mask.clone();
+        let p: &mut Vec<u8> = Arc::make_mut(&mut s.plano);
+        limpa_regiao(p, w, c.limpa, 4);
+        if self.paint.stroke_mask.len() * 4 == s.plano.len() {
+            limpa_regiao(&mut self.paint.stroke_mask, w, c.limpa, 1);
+        }
+        self.carimba_no_plano(s, &c.lote);
+        let p: &mut Vec<u8> = Arc::make_mut(&mut s.plano);
+        repoe_fora(p, &antes, w, c.tocados, c.limpa, 4);
+        if mascara_antes.len() == self.paint.stroke_mask.len() && !mascara_antes.is_empty() {
+            repoe_fora(
+                &mut self.paint.stroke_mask,
+                &mascara_antes,
+                w,
+                c.tocados,
+                c.limpa,
+                1,
+            );
+        }
+    }
+
+    /// O passo do traço em px (o Spacing do pincel no diâmetro cheio).
+    fn passo_px(&self) -> f32 {
+        let b = &self.paint.brush;
+        (b.spacing * 2.0 * b.clamped_radius()).max(0.5)
+    }
+}
+
+/// O plano da cauda ([`PainterTool::planeia_a_cauda`]).
+struct Cauda {
+    /// Os dabs a re-carimbar: os que tocam a janela e a cauda afilada.
+    lote: Vec<Dab>,
+    /// A janela que se limpa (a pegada da cauda original).
+    limpa: Region,
+    /// A janela que muda (a pegada do lote, que transborda da limpa).
+    tocados: Region,
+}
+
+/// O dab `d` toca a região `r`?
+fn toca(d: &Dab, r: Region, reach: f32) -> bool {
+    let e = d.radius_px * reach + 1.0;
+    d.center[0] + e >= r.x as f32
+        && d.center[0] - e <= (r.x + r.w) as f32
+        && d.center[1] + e >= r.y as f32
+        && d.center[1] - e <= (r.y + r.h) as f32
+}
+
+/// Os dabs da cauda afilados pela rampa do fim e ADENSADOS ao passo da largura nova: entre dois dabs seguidos
+/// do mesmo caminho (a distância de um passo, não um espelho da simetria) entram dabs interpolados, para a ponta
+/// fina não sair em contas.
+fn cauda_afilada(
+    orig: &[Dab],
+    taper: &ph2d_painter_brush::taper::Taper,
+    total: f32,
+    d: f32,
+    passo: f32,
+) -> Vec<Dab> {
+    let mut out = Vec::with_capacity(orig.len() * 2);
+    let afila = |mut x: Dab| {
+        let w = taper.width_end(total - x.arc_len, d);
+        ph2d_painter_brush::taper::scale_dab(&mut x, taper, w);
+        x
+    };
+    for (i, a) in orig.iter().enumerate() {
+        out.push(afila(*a));
+        let Some(b) = orig.get(i + 1) else { break };
+        let dist =
+            ((b.center[0] - a.center[0]).powi(2) + (b.center[1] - a.center[1]).powi(2)).sqrt();
+        if dist > 1.5 * passo || dist <= 0.0 {
+            continue;
+        }
+        let wa = taper.width_end(total - a.arc_len, d);
+        let wb = taper.width_end(total - b.arc_len, d);
+        let fino = (wa.min(wb) * passo).max(0.5);
+        let n = (dist / fino).ceil() as usize;
+        for k in 1..n {
+            let t = k as f32 / n as f32;
+            let mut m = *a;
+            m.center = [
+                a.center[0] + (b.center[0] - a.center[0]) * t,
+                a.center[1] + (b.center[1] - a.center[1]) * t,
+            ];
+            m.arc_len = a.arc_len + (b.arc_len - a.arc_len) * t;
+            m.radius_px = a.radius_px + (b.radius_px - a.radius_px) * t;
+            m.coverage = a.coverage + (b.coverage - a.coverage) * t;
+            out.push(afila(m));
+        }
+    }
+    out
+}
+
+/// Zera `r` num plano de `canais` canais por texel e `w` de largura.
+fn limpa_regiao(p: &mut [u8], w: usize, r: Region, canais: usize) {
+    for y in r.y as usize..(r.y + r.h) as usize {
+        let a = (y * w + r.x as usize) * canais;
+        p[a..a + r.w as usize * canais].fill(0);
+    }
+}
+
+/// Repõe, em `tocados` menos `limpa`, os texels de `antes`.
+fn repoe_fora(p: &mut [u8], antes: &[u8], w: usize, tocados: Region, limpa: Region, canais: usize) {
+    for y in tocados.y as usize..(tocados.y + tocados.h) as usize {
+        let dentro_y = y >= limpa.y as usize && y < (limpa.y + limpa.h) as usize;
+        for x in tocados.x as usize..(tocados.x + tocados.w) as usize {
+            if dentro_y && x >= limpa.x as usize && x < (limpa.x + limpa.w) as usize {
+                continue;
+            }
+            let i = (y * w + x) * canais;
+            p[i..i + canais].copy_from_slice(&antes[i..i + canais]);
+        }
+    }
+}

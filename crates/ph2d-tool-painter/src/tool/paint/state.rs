@@ -399,6 +399,9 @@ pub(crate) struct PaintState {
     /// o RELEVO (que a camada deposita à parte, [`super::composite_relevo`]) não se aplicam ali.
     pub(super) acumulando_no_plano: bool,
     pub(super) stroke_mask: Vec<u8>,
+    /// **O plano do traço** (L8/L5, só no Digital): a base, o traço em Normal e os dabs da cauda — do 1.º lote
+    /// ao pen-up ([`super::traco_plano`]). `None` fora de um traço que o pede.
+    pub(super) plano_do_traco: Option<super::traco_plano::PlanoDoTraco>,
     /// O trilho da ponta de PÍXEL (L18, [`super::pixel_route::Trilhos`]); zerado no pen-down.
     pub(super) pixel_trilhos: super::pixel_route::Trilhos,
     /// **Impasto** — every per-stroke plane the relief lives in, and the window they are indexed

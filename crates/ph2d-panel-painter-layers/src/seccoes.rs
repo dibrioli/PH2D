@@ -231,6 +231,11 @@ pub(crate) const BRUSH: &[&str] = &[
     "panel.painter_layers.brush.sync_tools",
     "panel.painter_layers.brush.accumulate",
     "panel.painter_layers.brush.blend",
+    "panel.painter_layers.brush.blend_on_empty",
+    "panel.painter_layers.brush.glaze",
+    "panel.painter_layers.brush.wet_edges",
+    "panel.painter_layers.brush.burnt_edges",
+    "panel.painter_layers.brush.edge_width",
     "panel.painter_layers.brush.color",
     "panel.painter_layers.brush.paint_mode",
     "panel.painter_layers.brush.basic_brush",
@@ -380,6 +385,10 @@ pub(crate) const SYMMETRY: &[&str] = &[
 pub(crate) const TAPER: &[&str] = &[
     "panel.painter_layers.taper.tip",
     "panel.painter_layers.taper.opacity",
+    "panel.painter_layers.taper.end",
+    "panel.painter_layers.taper.tip_end",
+    "panel.painter_layers.taper.fall_off",
+    "panel.painter_layers.taper.fall_off_start",
 ];
 /// *Watercolor*.
 pub(crate) const WATERCOLOR: &[&str] = &["panel.painter_layers.watercolor.smooth_edges"];

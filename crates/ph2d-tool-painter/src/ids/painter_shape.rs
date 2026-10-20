@@ -262,7 +262,24 @@ pub const PAINTER_TAPER_OPACITY: NodeId = hash_node_id("painter_brush.taper_opac
 /// Enio reported on 2026-08-08 (*"Tip start, Tip End e Opacity não aceitam ajustes (voltam a zero)"*):
 /// painted, registered, alive under the mouse, and mute — the fourth of the four independent UI
 /// conditions, and the one a paint+populate gate cannot see.
-pub const PAINTER_TAPER_FIELDS: [NodeId; 2] = [PAINTER_TAPER_TIP_START, PAINTER_TAPER_OPACITY];
+pub const PAINTER_TAPER_FIELDS: [NodeId; 6] = [
+    PAINTER_TAPER_TIP_START,
+    PAINTER_TAPER_OPACITY,
+    PAINTER_TAPER_END,
+    PAINTER_TAPER_TIP_END,
+    PAINTER_TAPER_FALL_OFF,
+    PAINTER_TAPER_FALL_OFF_START,
+];
+
+/// ⭐ **L5 — a CAUDA** (Pinceis/03 §4): o comprimento do afilar no fim, em diâmetros; re-pintada ao levantar (só no
+/// Digital, o plano do traço). `SetValue` → `set_brush_taper_end`.
+pub const PAINTER_TAPER_END: NodeId = hash_node_id("painter_brush.taper_end");
+/// A largura na ponta do FIM, `0..1`. `SetValue` → `set_brush_taper_tip_end`.
+pub const PAINTER_TAPER_TIP_END: NodeId = hash_node_id("painter_brush.taper_tip_end");
+/// ⭐ **L5 — o FALL-OFF**: a carga que se esgota, em diâmetros (`0` = desligado). `SetValue` → `set_brush_fall_off`.
+pub const PAINTER_TAPER_FALL_OFF: NodeId = hash_node_id("painter_brush.taper_fall_off");
+/// O patamar antes de a carga começar a acabar, em diâmetros. `SetValue` → `set_brush_fall_off_start`.
+pub const PAINTER_TAPER_FALL_OFF_START: NodeId = hash_node_id("painter_brush.taper_fall_off_start");
 
 /// Stable [`NodeId`] for the taper handle on `channel` (`0` = the head, and today the only one). A
 /// FACTORY id (paint-time `CurvePoint` registration), the twin of [`painter_brush_dab_handle_id`], so it

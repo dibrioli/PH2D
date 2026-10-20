@@ -354,6 +354,8 @@ impl PainterTool {
             shape_layer_blend,
             shape_layer_opacity,
             taper: b.taper,
+            traco: b.traco,
+            blend_sobre_vazio: b.blend_sobre_vazio,
             dab_flatten: b.dab_flatten,
             dab_angle_deg: b.dab_angle_deg,
             dab_quina: b.dab_quina,

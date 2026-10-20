@@ -321,6 +321,36 @@ pub(super) fn straight_edge_cap(sd: f32, r: usize) -> f32 {
     ((sd + r + 0.5) / (2.0 * r + 1.0)).clamp(0.0, 1.0)
 }
 
+/// ⭐ **O ARO de uma cobertura qualquer** (L8, `ph2d_painter_brush::traco`): por texel `cw − inner`, com
+/// `cw = smoothstep(SS0, SS1, cov)` e `inner = min(borrão, teto do flanco reto)` — os campos saem da MESMA
+/// porta [`rim_fields`] que o composite da aguada chama, e a conta por texel é a dele sem a deformação (o
+/// `warp` é da aguada: aqui a amostra é o próprio texel). Positivo logo dentro da fronteira, negativo na franja.
+pub(super) fn aro_da_cobertura(cov: &[f32], rw: usize, rh: usize, core_r: usize) -> Vec<f32> {
+    let com_aro = ph2d_painter_brush::BrushSpec {
+        edge_gain: 1.0, // a régua do teto só nasce para quem tem aro (`field_for`)
+        ..Default::default()
+    };
+    let rim = rim_fields(cov, rw, rh, core_r, &[], &com_aro);
+    let blur = super::watercolor_rewet_px::blur_of(&rim.blurs, core_r);
+    let ss = |c: f32| {
+        super::watercolor_field::smoothstep(
+            super::watercolor_render::SS0,
+            super::watercolor_render::SS1,
+            c,
+        )
+    };
+    (0..rw * rh)
+        .map(|i| {
+            let inner = blur[i].min(1.0);
+            let inner = rim
+                .sd
+                .as_ref()
+                .map_or(inner, |sd| inner.min(straight_edge_cap(sd[i], core_r)));
+            ss(cov[i]) - inner
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

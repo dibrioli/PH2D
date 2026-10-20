@@ -102,7 +102,10 @@ impl Stroke {
         // A cor pela MÃO e a secundária (L11): a pressão deste dab, o sorteio do fluxo da marca. As marcas
         // deliberadas (Drag Dot, Anchored, Grid) cortam todo o sorteio por dab — e esta também.
         if jitter && self.spec.cor_mao.ativa() {
-            color = self.spec.cor_mao.aplica(color, pressure, &mut self.por_traco.rng);
+            color = self
+                .spec
+                .cor_mao
+                .aplica(color, pressure, &mut self.por_traco.rng);
         }
         // O ângulo do traço (L4): o MESMO rotor em todo dab deste traço.
         if jitter && self.por_traco.rotor != [1.0, 0.0] {
@@ -259,6 +262,11 @@ impl Stroke {
         let max_offset = self.spec.alcance_do_jitter(radius);
         if max_offset <= 0.0 {
             return (pos, 0.0);
+        }
+        // O FALL-OFF (L5): a carga que se esgota pelo comprimento — a cobertura do dab, nos quatro meios.
+        if self.spec.taper.fall_active() {
+            let f = self.spec.taper.fall(arc, 2.0 * self.spec.clamped_radius());
+            dab.coverage = (dab.coverage * f).clamp(0.0, 1.0);
         }
         let (dx, dy) = crate::jitter::disc_sample(&mut self.rng);
         (

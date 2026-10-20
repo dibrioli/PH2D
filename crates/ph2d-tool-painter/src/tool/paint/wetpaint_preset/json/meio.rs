@@ -51,6 +51,12 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
         "accumulate" => json!(b.accumulate),
         "airbrush_rate_s" => num(b.airbrush_rate_s),
         "space_attenuation" => json!(b.space_attenuation),
+        "traco" => json!({
+            "tecto": num(b.traco.tecto),
+            "molhada": num(b.traco.molhada),
+            "queimada": num(b.traco.queimada),
+            "largura": num(b.traco.largura),
+        }),
         "pen_tilt" => {
             let t = b.pen_tilt;
             json!({"rotation": t.rotation as u8, "start_deg": num(t.start_deg), "full_deg": num(t.full_deg),
@@ -122,6 +128,17 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "accumulate" => b.accumulate = booleano(v, b.accumulate),
         "airbrush_rate_s" => b.airbrush_rate_s = f(v, b.airbrush_rate_s),
         "space_attenuation" => b.space_attenuation = booleano(v, b.space_attenuation),
+        // O plano do traço (L8): sub-chave ausente = a de fábrica.
+        "traco" if v.is_some() => {
+            let n = ph2d_painter_brush::TracoComposto::NEUTRO;
+            let c = |k: &str| v.and_then(|v| v.get(k));
+            b.traco = ph2d_painter_brush::TracoComposto {
+                tecto: f(c("tecto"), n.tecto),
+                molhada: f(c("molhada"), n.molhada),
+                queimada: f(c("queimada"), n.queimada),
+                largura: f(c("largura"), n.largura),
+            };
+        }
         // Campo ausente = o pincel de `b` (a lei do módulo); campo PRESENTE com uma sub-chave ausente (gravado
         // antes dela, a `opacity` da L2) = a de fábrica dessa sub-chave, nunca a de agora.
         "pen_tilt" if v.is_some() => {
@@ -139,7 +156,7 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
             t.lag_px = f(c("lag_px"), fab.lag_px);
             t.opacity = f(c("opacity"), fab.opacity);
         }
-        "pen_tilt" => {}
+        "pen_tilt" | "traco" => {}
         outro => unreachable!("campo do pincel sem conversão: {outro}"),
     }
 }

@@ -124,6 +124,10 @@ pub struct BrushSpec {
     /// dab adds on top so opacity builds up without the per-stroke cap (airbrush-like buildup). At
     /// Strength `1.0` the two are identical (the cap is full coverage). See [`crate::dab`].
     pub accumulate: bool,
+    /// **O traço como uma CAMADA** (L8): o tecto de opacidade por traço e as orlas molhada e queimada — o
+    /// traço pinta num plano próprio e compõe-se no fim com o modo do pincel ([`crate::traco`]). O neutro
+    /// não arma o plano: o carimbo de sempre ao bit.
+    pub traco: crate::traco::TracoComposto,
     /// **Style: Solid** — o gesto ganha a área que ele CERCA, preenchida com cobertura exata por
     /// área ([`crate::solid`]), **além** do traço que a cerca. Um laço fino e solto vira uma mancha
     /// gorda com o contorno do pincel por cima. `false` (o default) é o mundo de sempre, byte a byte.

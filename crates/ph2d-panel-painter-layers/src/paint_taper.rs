@@ -117,9 +117,17 @@ pub(crate) fn paint_taper_section(
     let taper = brush.taper;
     let ink = resolve(ColorToken::Text1, theme);
     let total = MAX_TAPER_DIAMETERS;
+    // A CAUDA (L5) só existe no Digital: nos outros meios a silhueta não a mostra (eles não a pintam).
+    let cauda = ph2d_tool_painter::PaintMedia::from_u8(brush.media)
+        == ph2d_tool_painter::PaintMedia::Digital;
     for i in 0..=DISCS {
         let u = i as f32 / DISCS as f32;
-        let w = taper.width(u * total, 1.0);
+        let fim = if cauda {
+            taper.width_end((1.0 - u) * total, 1.0)
+        } else {
+            1.0
+        };
+        let w = taper.width(u * total, 1.0) * fim;
         fill_circle(
             ctx.scene,
             track_x + track_w * u,
@@ -173,7 +181,7 @@ pub(crate) fn paint_taper_section(
         2,
         sec,
     );
-    crate::number_field::paint_num_row(
+    y = crate::number_field::paint_num_row(
         ctx,
         theme,
         x,
@@ -187,7 +195,80 @@ pub(crate) fn paint_taper_section(
         crate::number_field::FINE_STEP,
         2,
         sec,
-    )
+    );
+    paint_fim_do_traco(ctx, theme, x, content_w, y, &brush, sec)
+}
+
+/// ⭐ **O FIM do traço** (L5): a cauda e a ponta dela (só no Digital — o plano do traço a re-pinta ao levantar;
+/// os outros meios não a lêem e a linha não se oferece) e o fall-off com o patamar (nos quatro meios: a cobertura
+/// do dab; a aguada esmaece-o, `inercia`). Devolve o `y` seguinte.
+fn paint_fim_do_traco(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    mut y: f32,
+    brush: &BrushSettings,
+    sec: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    use ph2d_tool_painter::ids::{
+        PAINTER_TAPER_END, PAINTER_TAPER_FALL_OFF, PAINTER_TAPER_FALL_OFF_START,
+        PAINTER_TAPER_TIP_END,
+    };
+    use ph2d_tool_painter::{MAX_FALL_OFF_DIAMETERS, PaintMedia};
+    let t = brush.taper;
+    let digital = PaintMedia::from_u8(brush.media) == PaintMedia::Digital;
+    let linhas = [
+        (
+            "panel.painter_layers.taper.end",
+            PAINTER_TAPER_END,
+            t.end,
+            MAX_TAPER_DIAMETERS,
+            digital,
+        ),
+        (
+            "panel.painter_layers.taper.tip_end",
+            PAINTER_TAPER_TIP_END,
+            t.tip_end,
+            1.0,
+            digital,
+        ),
+        (
+            "panel.painter_layers.taper.fall_off",
+            PAINTER_TAPER_FALL_OFF,
+            t.fall_off,
+            MAX_FALL_OFF_DIAMETERS,
+            true,
+        ),
+        (
+            "panel.painter_layers.taper.fall_off_start",
+            PAINTER_TAPER_FALL_OFF_START,
+            t.fall_off_start,
+            MAX_FALL_OFF_DIAMETERS,
+            true,
+        ),
+    ];
+    for (rotulo, id, v, hi, mostra) in linhas {
+        if !mostra {
+            continue;
+        }
+        y = crate::number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            tr(rotulo),
+            id,
+            v.clamp(0.0, hi),
+            0.0,
+            hi,
+            crate::number_field::FINE_STEP,
+            2,
+            sec,
+        );
+    }
+    y
 }
 
 #[cfg(test)]

@@ -286,7 +286,7 @@ impl PainterTool {
         // Accumulate-OFF cap). `paint_begin` cleared it on pointer-down; grow it to canvas size (only
         // the first dab of a stroke actually zero-fills — later dabs/frames keep the accumulation, which
         // is what makes the cap per-STROKE).
-        let accumulate_cap = self.stroke_cover_wanted(brush);
+        let accumulate_cap = self.cobertura_tapada(brush);
         if accumulate_cap {
             prepare_stroke_mask(
                 &mut self.paint.stroke_mask,

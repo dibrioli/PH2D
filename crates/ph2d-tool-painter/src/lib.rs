@@ -137,7 +137,9 @@ pub use ph2d_painter_brush::{
     stroke::spray::SPRAY_COUNT_MAX,
     // The Taper (Procreate Touch Taper): the panel draws its preview with the ENGINE's own width
     // law, so the picture and the paint cannot drift -- see `ph2d_painter_brush::taper`.
-    taper::{MAX_TAPER_DIAMETERS, Taper},
+    taper::{MAX_FALL_OFF_DIAMETERS, MAX_TAPER_DIAMETERS, Taper},
+    // O traço como uma camada (L8): o painel lê o tecto e as orlas do instantâneo.
+    traco::{LARGURA_MAX_PX as TRACO_LARGURA_MAX_PX, TracoComposto},
 };
 pub use tool::paint::mao::{LINHAS_DA_MAO, LinhaDaMao, MAO_DE_FABRICA, N_LINHAS_DA_MAO};
 pub use tool::paint::marca::{

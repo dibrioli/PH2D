@@ -68,6 +68,7 @@ impl PainterTool {
             self.paint.stroke_undo = Some(before);
         }
         self.paint.drag_preview = None;
+        self.paint.plano_do_traco = None; // o plano do traço (L8/L5) nasce no 1.º lote deste traço
         self.mancha_na_aguada = None; // a do gesto anterior é tinta (ou foi descascada)
         self.paint.wetpaint.pending_deposit.clear(); // doc 21: a new gesture invalidates the stash
         self.paint.line_anchor = Some(ev.pos);
@@ -456,16 +457,17 @@ impl PainterTool {
         }
         // A ponta de píxel (L18): o último píxel do pixel-perfect esperava pelo seguinte — o traço acabou.
         self.pixel_fim_do_traco();
-        // ⛔ The taper's far end was resolved HERE, by putting the stroke back and laying it again at
-        // pen-up. It is gone (Enio 2026-08-10) — the taper shapes only the head now, which every dab
-        // knows from its own `arc_len` the instant it is made. Nothing is restored, nothing is replayed,
-        // and a pen-up costs exactly what it cost before the taper existed. See `ph2d_painter_brush::taper`.
+        // ⛔ A cauda antiga restaurava a TELA e re-carimbava o traço aqui (saiu a 2026-08-10). A de hoje (L5) só
+        // existe no Digital e re-pinta no PLANO do traço (`fecha_o_plano_do_traco`, abaixo): sem restaurar a
+        // tela nem re-carimbar o traço inteiro. Ver `ph2d_painter_brush::taper`.
         // **Style: Solid** — a corda final ganha o corpo que os rascunhos dela não depositaram.
         self.assenta_o_corpo_da_corda();
         // …e na água a região enche AGORA, antes do commit e do fecho do traço (um passo de Undo).
         self.enche_a_mancha_na_agua();
         // Drag Dot: the dab at the release point is the commit — keep it (drop the restore record).
         self.commit_drag_preview();
+        // O PLANO do traço (L8/L5): a cauda re-pintada ao levantar, ANTES do fecho — um passo de Undo.
+        self.fecha_o_plano_do_traco();
         // Wet Paint: close the engine's direct stroke (the sim resumes; the session — the water —
         // stays alive across strokes). BEFORE close_stroke so the undo entry sees the final state.
         if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
@@ -545,6 +547,7 @@ impl PainterTool {
         self.paint.line_anchor = None;
         self.paint.last_smear_pos = None;
         self.paint.watercolor_base = None; // defensive: the render-path drops it on commit already
+        self.paint.plano_do_traco = None; // a tela já guarda a composição; o plano morre com o traço
         self.paint.wet_backdrop = None; // the ground is per-stroke (the stack below may change)
         self.paint.wet_soak_pos = None;
         // O VIDRO de uma aguada por baixo segue o que este traço cobriu (doc 48), antes de o desfazer

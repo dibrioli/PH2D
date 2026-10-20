@@ -9,11 +9,11 @@
 //! ([`crate::tool::paint::mao`]) — o mesmo sítio e os mesmos nomes nos quatro meios.
 
 use super::super::mao::{self, LINHAS_DA_MAO};
-use super::{
-    AQUARELA, CAMPOS_DO_PINCEL, CAMPOS_FORA, DA_OBRA, DIGITAL, DO_MEIO, DO_SCULPT, DOS_KNOBS, IMPASTO, POR_DAB,
-    MOTOR_DOS_PRESETS, VOLUME, curto, json,
-};
 use super::super::{PaintMedia, PaintMode};
+use super::{
+    AQUARELA, CAMPOS_DO_PINCEL, CAMPOS_FORA, DA_OBRA, DIGITAL, DO_MEIO, DO_SCULPT, DOS_KNOBS,
+    IMPASTO, MOTOR_DOS_PRESETS, PLANO, POR_DAB, VOLUME, curto, json,
+};
 use crate::PainterTool;
 use ph2d_brush_presets::{Parametros, Preset, SCHEMA, Volumes};
 use std::collections::BTreeMap;
@@ -58,9 +58,15 @@ pub fn campos_do_meio(m: PaintMedia) -> Vec<&'static str> {
         return CAMPOS_DO_PINCEL.to_vec();
     }
     let fora: &[&str] = match m {
-        PaintMedia::Watercolor => &[VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, IMPASTO, DIGITAL],
-        PaintMedia::Impasto => &[VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, AQUARELA, DIGITAL],
-        _ => &[VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, AQUARELA, IMPASTO],
+        PaintMedia::Watercolor => &[
+            VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, IMPASTO, DIGITAL, PLANO,
+        ],
+        PaintMedia::Impasto => &[
+            VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, AQUARELA, DIGITAL, PLANO,
+        ],
+        _ => &[
+            VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, AQUARELA, IMPASTO,
+        ],
     };
     CAMPOS_DO_PINCEL
         .iter()
@@ -76,7 +82,8 @@ pub fn campos_do_meio(m: PaintMedia) -> Vec<&'static str> {
 
 /// As dez ferramentas do Impasto pelo nome (a ordem de `impasto_tool.rs`: Deposit · Knife · os oito verbos).
 const FERRAMENTAS_DO_IMPASTO: [&str; 10] = [
-    "Deposit", "Knife", "Smooth", "Sharpen", "Flatten", "Scrape", "Fill", "Chisel", "Layer", "Inflate",
+    "Deposit", "Knife", "Smooth", "Sharpen", "Flatten", "Scrape", "Fill", "Chisel", "Layer",
+    "Inflate",
 ];
 
 /// Os modos de pintura que um preset do Digital/Watercolor pode fixar (o resto não é um pincel: Clone, Mask…).
@@ -285,8 +292,10 @@ impl PainterTool {
             Parametros::novo(nome_do_meio(m), &base.group, &base.name)
         };
         p.schema = SCHEMA;
-        p.brush
-            .extend(json::pincel_para_json(&self.paint.brush, &campos_do_meio(m)));
+        p.brush.extend(json::pincel_para_json(
+            &self.paint.brush,
+            &campos_do_meio(m),
+        ));
         for l in LINHAS_DA_MAO {
             if l.lida_por(m) {
                 let v = mao::le(&self.paint.dynamics, &self.paint.brush.pen_tilt, l);

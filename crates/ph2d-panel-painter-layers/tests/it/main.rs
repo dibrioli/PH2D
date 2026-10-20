@@ -37,6 +37,7 @@ mod seam_pigmento; // a fileira `Pigment`: a tela concorda com a porta, nos dois
 mod seam_sculpt;
 mod seam_shape_deposit;
 mod seam_marca; // L4: as linhas da marca no cartão Jitter, pelo ponteiro
+mod seam_traco; // L5/L7/L8: a cauda, o fall-off, o modo sobre o vazio e o traço como camada, pelo ponteiro
 mod seam_spray;
 mod seam_substrate;
 mod seam_taper;

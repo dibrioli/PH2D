@@ -147,7 +147,7 @@ impl PainterTool {
         // Does this stroke track its own coverage? ONE door ([`Self::stroke_cover_wanted`]) — so a
         // Color-Ramp stroke honours Accumulate (Enio 2026-06-25) without this route holding its own
         // opinion about the rule.
-        let accumulate_cap = self.stroke_cover_wanted(brush);
+        let accumulate_cap = self.cobertura_tapada(brush);
         if accumulate_cap {
             prepare_stroke_mask(
                 &mut self.paint.stroke_mask,

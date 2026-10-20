@@ -244,6 +244,29 @@ fn pegada_de_json(v: Option<&Value>, base: FootprintCurve) -> FootprintCurve {
     FootprintCurve::from_rows(rows)
 }
 
+/// O taper: as três chaves de sempre, e a cauda e o fall-off (L5) só quando armados — o preset sem eles é o de
+/// antes, ao byte.
+fn taper_para_json(t: &ph2d_painter_brush::taper::Taper) -> Value {
+    let mut v = json!({
+        "start": num(t.start),
+        "tip_start": num(t.tip_start),
+        "opacity": num(t.opacity),
+    });
+    if let Some(o) = v.as_object_mut() {
+        for (k, x) in [
+            ("end", t.end),
+            ("tip_end", t.tip_end),
+            ("fall_off", t.fall_off),
+            ("fall_off_start", t.fall_off_start),
+        ] {
+            if x != 0.0 {
+                o.insert(k.to_owned(), num(x));
+            }
+        }
+    }
+    v
+}
+
 /// O valor JSON de UM campo do pincel. Um nome que não é campo do `BrushSpec` é erro de quem chama.
 fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
     match campo {
@@ -270,11 +293,7 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
         }),
         "input_samples" => json!(b.input_samples),
         "stabilizer" => num(b.stabilizer),
-        "taper" => json!({
-            "start": num(b.taper.start),
-            "tip_start": num(b.taper.tip_start),
-            "opacity": num(b.taper.opacity),
-        }),
+        "taper" => taper_para_json(&b.taper),
         "texture" => textura_para_json(&b.texture),
         "grain_depth" => num(b.grain_depth),
         "shape" => textura_para_json(&b.shape),
@@ -289,6 +308,7 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
         "color_jitter_val" => num(b.color_jitter_val),
         "color_jitter_scope" => nome(b.color_jitter_scope),
         "blend" => nome(b.blend),
+        "blend_sobre_vazio" => json!(b.blend_sobre_vazio),
         "pigment" => json!(b.pigment),
         "pigment_mix" => num(b.pigment_mix),
         "paper_depth" => num(b.paper_depth),
@@ -308,7 +328,6 @@ fn ler_campo_da_obra(b: &BrushSpec, campo: &str) -> Value {
             "circular": b.symmetry.circular,
             "axis": nome(b.symmetry.axis),
             "radial_segments": b.symmetry.radial_segments,
-        "blend_sobre_vazio" => json!(b.blend_sobre_vazio),
             "center": par(b.symmetry.center),
             "custom_dir": par(b.symmetry.custom_dir),
         }),
@@ -422,6 +441,12 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
             b.taper.start = g("start", b.taper.start);
             b.taper.tip_start = g("tip_start", b.taper.tip_start);
             b.taper.opacity = g("opacity", b.taper.opacity);
+            // A cauda e o fall-off (L5): sub-chave AUSENTE = a de fábrica (o preset de antes não os tinha).
+            let z = |k: &str| f(o.and_then(|o| o.get(k)), 0.0);
+            b.taper.end = z("end");
+            b.taper.tip_end = z("tip_end");
+            b.taper.fall_off = z("fall_off");
+            b.taper.fall_off_start = z("fall_off_start");
         }
         "texture" => b.texture = textura_de_json(v, b.texture),
         "grain_depth" => b.grain_depth = f(v, b.grain_depth),
@@ -449,6 +474,7 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
                 b.blend,
             );
         }
+        "blend_sobre_vazio" => b.blend_sobre_vazio = booleano(v, b.blend_sobre_vazio),
         "pigment" => b.pigment = booleano(v, b.pigment),
         "pigment_mix" => b.pigment_mix = f(v, b.pigment_mix),
         "paper_depth" => b.paper_depth = f(v, b.paper_depth),
@@ -474,7 +500,6 @@ pub(crate) fn pincel_de_json(
     base: BrushSpec,
 ) -> BrushSpec {
     let mut b = base;
-        "blend_sobre_vazio" => b.blend_sobre_vazio = booleano(v, b.blend_sobre_vazio),
     for &c in campos {
         escrever_campo(&mut b, c, m.get(c));
     }

@@ -220,6 +220,18 @@ impl PainterTool {
         // owns the whole law and says why a per-batch pull-back could not have it.
         let mask_gate = self.mask_protection_active();
         let sel_gate = self.selection_restricts_paint();
+        // ⭐ O PLANO DO TRAÇO (L8 + a cauda da L5, só no Digital, `super::traco_plano`): o lote pinta no plano do
+        // traço e compõe-se sobre a base — dentro do MESMO gate, alargado pela orla. Fora dele, nada muda.
+        if self.traco_no_plano() {
+            if (mask_gate || sel_gate)
+                && let Some(region) = self.regiao_do_lote_no_plano(dabs)
+            {
+                self.gate_scoped(region, mask_gate, sel_gate, |t| t.stamp_dabs_no_plano(dabs));
+            } else {
+                self.stamp_dabs_no_plano(dabs);
+            }
+            return;
+        }
         if (mask_gate || sel_gate)
             && let Some(region) = self.dab_batch_region(dabs)
         {
@@ -556,6 +568,8 @@ impl PainterTool {
         // per-stroke buffer to thread, so they would silently ignore the cap. Same door the threading
         // routes ask, so the two cannot disagree.
         let accumulate_cap = self.stroke_cover_wanted(&brush);
+        // …e a carga que se ESGOTA (o fall-off da L5) é um tecto que desce: a mesma porta (`traco_plano`).
+        let accumulate_cap = accumulate_cap || self.cobertura_tapada(&brush);
         // A Colour Ramp owns the painted COLOUR (baked LUT): the **Shape** ramp (its B&W filter off →
         // colourise the silhouette) or the **Grain** ramp (indexed by the Grain pattern). With NO Grain
         // the COVERAGE (the Shape silhouette, OR the bare falloff when there's no Shape image) indexes the

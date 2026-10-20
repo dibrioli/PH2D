@@ -44,10 +44,17 @@ pub enum Dependente {
     MarcaSemSpray,
     OpacidadeNaAguada,
     CorDaMaoSemLeitor,
+    // O fim do traço (L5) e o traço como uma camada (L8), no Digital (`traco_plano`); o modo sobre o vazio (L7).
+    PontaDaCaudaSemCauda,
+    PatamarSemFallOff,
+    LarguraSemOrla,
+    VazioSemModoDeCor,
+    PlanoForaDoTraco,
+    FallOffDaAgua,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 30] = [
+    pub const TODOS: [Dependente; 36] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -78,6 +85,12 @@ impl Dependente {
         Dependente::MarcaSemSpray,
         Dependente::OpacidadeNaAguada,
         Dependente::CorDaMaoSemLeitor,
+        Dependente::PontaDaCaudaSemCauda,
+        Dependente::PatamarSemFallOff,
+        Dependente::LarguraSemOrla,
+        Dependente::VazioSemModoDeCor,
+        Dependente::PlanoForaDoTraco,
+        Dependente::FallOffDaAgua,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -121,13 +134,38 @@ impl Dependente {
                 ids::PAINTER_PEN_FIELDS[10],
                 ids::PAINTER_PEN_FIELDS[14],
             ],
-            Dependente::PegadaDaAutomatica => &[ids::PAINTER_PEN_FIELDS[11], ids::PAINTER_PEN_FIELDS[12]],
+            Dependente::PegadaDaAutomatica => {
+                &[ids::PAINTER_PEN_FIELDS[11], ids::PAINTER_PEN_FIELDS[12]]
+            }
             Dependente::CurvaDoTamanhoSemPressao => &[ids::PAINTER_PEN_FIELDS[1]],
             // As linhas da MARCA (L4), pela ordem de `LINHAS_DA_MARCA`: a contagem sorteada e a partícula são
             // do spray; a opacidade, de um meio que leia a do dab. (Os espelhos, a redondeza e o ângulo do traço NÃO
             // esmaecem: ver `o_censo_so_encolhe`, a razão do Jitter Rotate.)
-            Dependente::MarcaSemSpray => &[ids::PAINTER_MARCA_FIELDS[1], ids::PAINTER_MARCA_FIELDS[7]],
-            Dependente::OpacidadeNaAguada => &[ids::PAINTER_MARCA_FIELDS[0]],
+            Dependente::MarcaSemSpray => {
+                &[ids::PAINTER_MARCA_FIELDS[1], ids::PAINTER_MARCA_FIELDS[7]]
+            }
+            // …e o FALL-OFF (L5), que é a cobertura do dab ao longo do traço: a aguada também não o lê.
+            Dependente::OpacidadeNaAguada => &[
+                ids::PAINTER_MARCA_FIELDS[0],
+                ids::PAINTER_TAPER_FALL_OFF,
+                ids::PAINTER_TAPER_FALL_OFF_START,
+            ],
+            Dependente::PontaDaCaudaSemCauda => &[ids::PAINTER_TAPER_TIP_END],
+            Dependente::FallOffDaAgua => &[
+                ids::PAINTER_TAPER_FALL_OFF,
+                ids::PAINTER_TAPER_FALL_OFF_START,
+            ],
+            Dependente::PatamarSemFallOff => &[ids::PAINTER_TAPER_FALL_OFF_START],
+            Dependente::LarguraSemOrla => &[ids::PAINTER_TRACO_FIELDS[3]],
+            Dependente::VazioSemModoDeCor => &[ids::PAINTER_TRACO_FIELDS[4]],
+            Dependente::PlanoForaDoTraco => &[
+                ids::PAINTER_TRACO_FIELDS[0],
+                ids::PAINTER_TRACO_FIELDS[1],
+                ids::PAINTER_TRACO_FIELDS[2],
+                ids::PAINTER_TRACO_FIELDS[3],
+                ids::PAINTER_TAPER_END,
+                ids::PAINTER_TAPER_TIP_END,
+            ],
             // A cor pela mão e a secundária (L11): a cor do dab — que a rampa e a Texture Color substituem.
             Dependente::CorDaMaoSemLeitor => &[
                 ids::PAINTER_MARCA_FIELDS[8],
@@ -182,6 +220,12 @@ impl Dependente {
             Dependente::MarcaSemSpray => "panel.painter_layers.inerte.spray_count_above_one",
             Dependente::OpacidadeNaAguada => "panel.painter_layers.inerte.wash_ignores_dab_opacity",
             Dependente::CorDaMaoSemLeitor => "panel.painter_layers.inerte.color_owned_by_ramp",
+            Dependente::PontaDaCaudaSemCauda => "panel.painter_layers.inerte.taper_end_length",
+            Dependente::PatamarSemFallOff => "panel.painter_layers.inerte.fall_off_length",
+            Dependente::LarguraSemOrla => "panel.painter_layers.inerte.edges_above_zero",
+            Dependente::VazioSemModoDeCor => "panel.painter_layers.inerte.color_blend_mode",
+            Dependente::PlanoForaDoTraco => "panel.painter_layers.inerte.freehand_paint_stroke",
+            Dependente::FallOffDaAgua => "panel.painter_layers.inerte.wet_paint_tool",
         }
     }
 
@@ -201,13 +245,15 @@ impl Dependente {
     #[must_use]
     pub fn natureza(self) -> Natureza {
         match self {
-            Dependente::CorDaTexturaSemLeitor | Dependente::OpacidadeNaAguada => Natureza::MeioNaoLe,
+            Dependente::CorDaTexturaSemLeitor | Dependente::OpacidadeNaAguada => {
+                Natureza::MeioNaoLe
+            }
             _ => Natureza::DependeDeOutro,
         }
     }
 
-    fn bit(self) -> u32 {
-        1 << (self as u32)
+    fn bit(self) -> u64 {
+        1 << (self as u64)
     }
 }
 
@@ -253,7 +299,7 @@ pub const DICA_DO_PARAMETRO: &str = "panel.painter_layers.inerte.detail_above_mi
 /// O que está inerte AGORA — viaja no instantâneo do pincel ([`super::BrushSettings::inercias`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Inercias {
-    dependentes: u32,
+    dependentes: u64,
     /// Bit `k` = o parâmetro `k` do Grain está inerte ([`param_inerte`]).
     grain_params: u8,
     /// Bit `k` = o parâmetro `k` da Shape está inerte.
@@ -332,7 +378,7 @@ impl PainterTool {
             // Space Attenuation ligado chega ao carimbo (`space_attenuation_reaches` com ele ligado).
             (
                 Dependente::Accumulate,
-                !self.stroke_cover_wanted(&BrushSpec {
+                !self.cobertura_tapada(&BrushSpec {
                     accumulate: false,
                     ..*b
                 }) && !(b.space_attenuation
@@ -449,6 +495,28 @@ impl PainterTool {
             ),
             // A aguada não lê a cobertura do dab (`WASH_DEPOSIT_PEAK`, a mesma razão do cartão Pen).
             (Dependente::OpacidadeNaAguada, aquarela),
+            // O fim do traço (L5): a ponta da cauda sem cauda (ou sem o plano que a re-pinta), o patamar sem a
+            // carga que acaba; o plano (L8): a largura sem orla; e o modo sobre o vazio sem um modo de cor (L7).
+            (
+                Dependente::PontaDaCaudaSemCauda,
+                !b.taper.end_active() || self.plano_recusado().is_some(),
+            ),
+            (Dependente::PatamarSemFallOff, !b.taper.fall_active()),
+            // Na água a carga que acaba é o pigmento que o PINCEL pousa (`dab_route`): a borracha, Smear, Blend,
+            // Wet, Dry e Blow não pousam pigmento.
+            (
+                Dependente::FallOffDaAgua,
+                agua && (self.paint.eraser || self.paint.wetpaint.tool != super::WetTool::Paint),
+            ),
+            (
+                Dependente::LarguraSemOrla,
+                !b.traco.tem_orla() || self.plano_recusado().is_some(),
+            ),
+            (Dependente::VazioSemModoDeCor, !b.blend.e_de_cor()),
+            (
+                Dependente::PlanoForaDoTraco,
+                self.plano_recusado() == Some(super::traco_plano::SemPlano::ForaDoTraco),
+            ),
             // A cor pela mão muda a cor do DAB: uma Color Ramp dona da cor (no carimbo e na aguada) ou a Texture
             // Color de uma Shape (só nas rotas do carimbo, `stamp_route.rs`) pintam a delas; na água só o depósito
             // (Paint) pousa a cor do dab — Smear, Blend, Wet, Dry e Blow não (a lei do `GrainDaAgua`).

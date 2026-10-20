@@ -89,6 +89,7 @@ fn an_off_taper_does_not_move_a_single_dab() {
         start: 0.0,
         tip_start: 0.75,
         opacity: 1.0,
+        ..Taper::NEUTRAL
     };
     let with = freehand(spec, 400.0, 40);
     assert_eq!(base.len(), with.len(), "the dab COUNT moved");

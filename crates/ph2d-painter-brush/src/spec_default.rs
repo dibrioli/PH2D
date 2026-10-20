@@ -44,6 +44,7 @@ impl Default for BrushSpec {
             space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24)
             continuous_spacing: false,
             accumulate: false,
+            traco: crate::traco::TracoComposto::NEUTRO,
             style_solid: false,
             line_kind: LineKind::None,
             // Sketchy: o alcance e a densidade são o ponto de operação do Krita traduzido para as

@@ -135,6 +135,10 @@ fn pincel_mexido() -> BrushSpec {
             start: 1.5,
             tip_start: 0.2,
             opacity: 0.4,
+            end: 1.25,
+            tip_end: 0.3,
+            fall_off: 9.0,
+            fall_off_start: 6.5,
         },
         texture: tex(3, 30),
         grain_depth: 0.6,
@@ -157,11 +161,11 @@ fn pincel_mexido() -> BrushSpec {
             pressure_val: 0.33,
         },
         blend: BrushBlend::Multiply,
+        blend_sobre_vazio: true,
         pigment: true,
         pigment_mix: 0.4,
         paper_depth: 0.3,
         // ── volumes ──
-        blend_sobre_vazio: true,
         radius_px: 9.0,
         strength: 0.85,
         // ── da obra · do gesto · do meio · do sculpt: os mesmos nas duas ──
@@ -198,6 +202,12 @@ fn pincel_mexido() -> BrushSpec {
         impasto: d.impasto,
         // ── os de fora que o Wet Paint não deve ler: mexidos ──
         pixel: ph2d_painter_brush::PixelTip::Perfect,
+        traco: ph2d_painter_brush::TracoComposto {
+            tecto: 0.5,
+            molhada: 0.3,
+            queimada: 0.2,
+            largura: 9.0,
+        },
         edge_gain: 2.5,
         edge_spread: 5.0,
         smooth_edges: !d.smooth_edges,

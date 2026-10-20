@@ -36,6 +36,16 @@
 //! control this codebase refuses. Reviving it is the law here plus a span the fills declare — one wave,
 //! and it needs the order that this one had.
 //!
+//! ## A cauda volta — L5 (20/10), no DIGITAL, com a ordem que pedia
+//!
+//! A missão do dono de 19/10 (*«os melhores pincéis do mundo… faça tudo que for necessário»*, Pinceis/00) e
+//! o catálogo pedem o afilar do FIM nas canetas (Procreate Studio/Technical Pen, Monoline, Script —
+//! C-4, C-6, D-1, D-2, todas Digital). Ela volta sem nenhum dos três preços que a tiraram: (1) no Digital o
+//! traço pinta num PLANO próprio (`traco_plano` no tool) — re-pintar a cauda é limpar o plano NA JANELA da
+//! cauda e voltar a carimbar só os dabs que lhe tocam, sem restaurar a tela nem re-carimbar o traço; (2) é
+//! UMA transacção (antes do fecho do traço); (3) nos outros três meios a linha ESMAECE (o meio não a lê) —
+//! não é um controlo vivo num canto e mudo no resto. A cabeça continua exacta e ao vivo como sempre.
+//!
 //! ## The law
 //!
 //! A dab knows `s`, the arc travelled from the pen-down. The width multiplier is `tip` at the very tip,
@@ -61,6 +71,11 @@
 /// ever held back, because the head is known from the first dab.
 pub const MAX_TAPER_DIAMETERS: f32 = 8.0;
 
+/// O topo do slider do FALL-OFF e do seu patamar, em diâmetros. Não é recurso: é a faixa do controlo. O oráculo
+/// mais longo medido acaba aos ~15·D (ArtRage Oil ThinAndDry, 600 px a 40 px — Pinceis/06 §5); 64·D é uma caneta
+/// de 5 px a esgotar-se aos 320 px e um pincel de 40 px aos 2560 px (a tela inteira).
+pub const MAX_FALL_OFF_DIAMETERS: f32 = 64.0;
+
 /// The stroke-head shaping of a brush (Procreate *Touch Taper*). All-zero is off, and an off taper is
 /// byte-identical to no taper at all — the multiplier is exactly `1.0` and the dab is untouched.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -75,6 +90,18 @@ pub struct Taper {
     /// but as opaque as the body); `1` = coverage narrows exactly like the width, so the tip
     /// dissolves. Procreate's taper Opacity.
     pub opacity: f32,
+    /// ⭐ **L5 — a CAUDA** (Pinceis/03 §4): o comprimento do afilar no FIM, em diâmetros (`0` = desligado).
+    /// O fim não se conhece em tempo real: a cauda é RE-PINTADA ao levantar, dentro da transacção do traço
+    /// (a lei do Procreate), no plano do traço do Digital (`traco_plano` no tool). Ver § «A cauda volta».
+    pub end: f32,
+    /// A largura na ponta do FIM, `0..1` (o «Tip» da cauda).
+    pub tip_end: f32,
+    /// ⭐ **L5 — o FALL-OFF**: a carga que se ESGOTA pelo comprimento, em diâmetros (`0` = desligado): a
+    /// cobertura de cada dab cai de `1` a `0` ao longo deste comprimento (smoothstep), depois do patamar
+    /// [`Self::fall_off_start`]. Vale nos quatro meios (a cobertura do dab; no Wet, a carga do pigmento).
+    pub fall_off: f32,
+    /// O patamar antes de a carga começar a acabar, em diâmetros (ArtRage Oil ThinAndDry: ~7·D).
+    pub fall_off_start: f32,
 }
 
 impl Taper {
@@ -88,6 +115,10 @@ impl Taper {
         // Procreate's own Tip slider, and the reason the feature is worth having on a mouse.
         tip_start: 0.0,
         opacity: 0.0,
+        end: 0.0,
+        tip_end: 0.0,
+        fall_off: 0.0,
+        fall_off_start: 0.0,
     };
 }
 
@@ -120,6 +151,43 @@ impl Taper {
     #[must_use]
     pub fn width(&self, from_start: f32, diameter_px: f32) -> f32 {
         ramp(from_start, self.start_px(diameter_px), self.tip_start)
+    }
+
+    /// Se a CAUDA está armada (L5): o fim re-pinta-se ao levantar.
+    #[must_use]
+    pub fn end_active(&self) -> bool {
+        self.end > 0.0
+    }
+
+    /// Comprimento da cauda em **px**, para um pincel de `diameter_px`.
+    #[must_use]
+    pub fn end_px(&self, diameter_px: f32) -> f32 {
+        self.end.clamp(0.0, MAX_TAPER_DIAMETERS) * diameter_px.max(0.0)
+    }
+
+    /// O multiplicador de LARGURA de um dab a `to_end` px do FIM do traço — a MESMA rampa da cabeça.
+    #[must_use]
+    pub fn width_end(&self, to_end: f32, diameter_px: f32) -> f32 {
+        ramp(to_end, self.end_px(diameter_px), self.tip_end)
+    }
+
+    /// Se o FALL-OFF está armado (L5).
+    #[must_use]
+    pub fn fall_active(&self) -> bool {
+        self.fall_off > 0.0
+    }
+
+    /// ⭐ **O fall-off**: o multiplicador de COBERTURA de um dab a `arc` px do início — `1` no patamar,
+    /// a rampa da cabeça espelhada até `0` ao fim de [`Self::fall_off`] diâmetros. Desligado = `1.0` exacto.
+    #[must_use]
+    pub fn fall(&self, arc: f32, diameter_px: f32) -> f32 {
+        if !self.fall_active() {
+            return 1.0;
+        }
+        let d = diameter_px.max(0.0);
+        let s0 = self.fall_off_start.clamp(0.0, MAX_FALL_OFF_DIAMETERS) * d;
+        let len = self.fall_off.clamp(0.0, MAX_FALL_OFF_DIAMETERS) * d;
+        ramp(s0 + len - arc, len, 0.0)
     }
 
     /// The **coverage multiplier** that goes with a width multiplier `w`. `opacity = 0` leaves the dab

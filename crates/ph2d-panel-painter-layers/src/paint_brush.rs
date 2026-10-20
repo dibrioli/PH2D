@@ -177,6 +177,7 @@ fn paint_top_basics(
             if let Some(r) = blend_open {
                 state::set_pending_brush_blend_dd(Some((r, brush.blend)));
             }
+            y = crate::paint_traco::paint_modo_sobre_vazio(ctx, theme, x, content_w, y, &brush);
         }
         y = paint_color_swatch_row(ctx, theme, x, content_w, y, brush);
     }
@@ -310,8 +311,8 @@ fn paint_top_basics(
             brush.accumulate,
         );
     }
-
-    y
+    // O traço como uma camada (L8): o Glaze e as orlas, só no Digital.
+    crate::paint_traco::paint_traco(ctx, theme, x, content_w, y, &brush)
 }
 
 /// Drain the Brush-properties dropdown popovers (Blend, Falloff, Stroke Method, Jitter Unit) — one

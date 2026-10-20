@@ -161,8 +161,8 @@ pub(crate) fn layout(
         });
         *y += h;
     };
-    for i in 0..snap.tracks.len() {
-        match de[i].filter(|&g| out.grupos[g].membros.len() > 1) {
+    for (i, d) in de.iter().copied().enumerate() {
+        match d.filter(|&g| out.grupos[g].membros.len() > 1) {
             None => faixa(&mut out, &mut y, i, None),
             Some(g) if !posto[g] => {
                 posto[g] = true;

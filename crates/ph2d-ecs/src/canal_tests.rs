@@ -83,8 +83,9 @@ fn o_vocabulario_do_vetor_nao_renumera() {
             "a constante nº {n} do vocabulário foi renumerada"
         );
     }
-    assert!(v::TINTA_PREENCH + v::TINTA_LARGURA <= v::TINTA_TRACO);
-    assert!(v::TINTA_TRACO + v::TINTA_LARGURA <= v::TRACO_LARGURA);
+    // Os blocos de tinta não se sobrepõem — provado ao COMPILAR.
+    const { assert!(v::TINTA_PREENCH + v::TINTA_LARGURA <= v::TINTA_TRACO) };
+    const { assert!(v::TINTA_TRACO + v::TINTA_LARGURA <= v::TRACO_LARGURA) };
 }
 
 /// Todo campo declarado tem um rótulo e um grupo; nenhum buraco no meio de um bloco de tinta.

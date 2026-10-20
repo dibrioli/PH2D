@@ -148,3 +148,109 @@ fn o_traco_fino_pesa_por_area_o_que_o_largo_pesa() {
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
+
+/// A resposta à pressão de uma rampa: por decil de pressão, a largura e a cobertura ÷ as de p ≥ 0,9
+/// (`exame_regua.py`, `pressao_largura`/`pressao_cobertura`).
+fn decis(cols: &[(f64, f64, f64)]) -> ([f64; 10], [f64; 10]) {
+    let mediana = |mut v: Vec<f64>| {
+        if v.is_empty() {
+            return f64::NAN;
+        }
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    let media = |v: &[f64]| v.iter().sum::<f64>() / v.len().max(1) as f64;
+    let topo: Vec<&(f64, f64, f64)> = cols.iter().filter(|c| c.0 >= 0.9).collect();
+    let wl = mediana(topo.iter().map(|c| c.1).collect());
+    let cl = media(&topo.iter().map(|c| c.2).collect::<Vec<_>>());
+    let (mut l, mut c) = ([f64::NAN; 10], [f64::NAN; 10]);
+    for k in 0..10 {
+        let sel: Vec<&(f64, f64, f64)> = cols
+            .iter()
+            .filter(|x| x.0 >= k as f64 / 10.0 && (x.0 < (k + 1) as f64 / 10.0 || k == 9))
+            .collect();
+        if sel.len() > 3 {
+            l[k] = mediana(sel.iter().map(|x| x.1).collect()) / wl;
+            c[k] = media(&sel.iter().map(|x| x.2).collect::<Vec<_>>()) / cl;
+        }
+    }
+    (l, c)
+}
+
+/// A distância (RMS, decis 0–9 das duas rampas, cada razão até 1,2) entre a nossa resposta e a do oráculo, só nas
+/// grandezas `qs` (`L` largura, `C` cobertura) — a do ajuste (`03_MOTORES` §7 a).
+fn erro(n: &[([f64; 10], [f64; 10])], o: &Value, qs: &[char]) -> f64 {
+    let (mut e, mut k) = (0.0, 0usize);
+    for (i, rampa) in ["rampa_0_1", "rampa_afunila"].iter().enumerate() {
+        for &q in qs {
+            let (nosso, chave) = if q == 'L' { (&n[i].0, "largura") } else { (&n[i].1, "cobertura") };
+            let Some(ora) = o[rampa][chave].as_array() else {
+                continue;
+            };
+            for d in 0..10 {
+                let (Some(x), y) = (ora[d].as_f64(), nosso[d]) else {
+                    continue;
+                };
+                if y.is_finite() {
+                    e += (x.min(1.2) - y.min(1.2)).powi(2);
+                    k += 1;
+                }
+            }
+        }
+    }
+    (e / k.max(1) as f64).sqrt()
+}
+
+/// A resposta na FAIXA DA MÃO DO DONO (0,24–0,86; `project-memory/feedback_pen_pressure_floor_must_keep_the_owners_
+/// hand_range.md`): (largura · cobertura) no decil 8 ÷ no decil 2, na rampa 0→1.
+fn mao(l: &[f64; 10], c: &[f64; 10]) -> f64 {
+    let (a, b) = (l[2] * c[2], l[8] * c[8]);
+    if a > 1e-3 { b / a } else { 99.0 }
+}
+
+/// A faixa da mão tem de responder pelo menos isto: o dono reprovou ~1,3 (o piso da W6, 18/10: «apertar muito e
+/// pouco variam pouco») e aprovava a lei de antes (3,2–10 na régua); 2,5 fica perto da média geométrica dos dois.
+const R_MAO: f64 = 2.5;
+
+/// ⭐ **(a) A PRESSÃO de cada preset é a da sua ORIGEM no Rebelle** — para ONDE vai a pressão: o Rebelle desvanece
+/// a CARGA a largura quase cheia (o 8B: a cobertura 0,09 a p 0,3 e 1,0 a p 0,7, a largura 0,65→1); nós só
+/// estreitávamos (`pressureSize` 0,9, a lei de sempre: largura 0,37 a p 0,3, a cobertura quase fixa). A lei nova
+/// vem dos knobs da caneta que já existiam (W6/prompt 45): a curva do tamanho (`pressureSizeCurve`, sem piso — o raio
+/// a p 0 continua 0,1) e a pressão→carga (`pressureOpacity` + curva: a fracção da pressão multiplica o pigmento que
+/// POUSA, `trail/deposit.rs`). Barra: a distância às rampas do Rebelle ≤ 0,18 (antes: 14 dos 26 acima dela, até 0,33; as
+/// aguarelas e os Flats do dono, que a grelha não leva abaixo de 0,17–0,18, ficam na barra); onde o Rebelle
+/// quase não responde na faixa da mão (tintas, marcadores, óleo de cerdas: 1,3–1,6), a largura é a dele e a mão
+/// responde pela carga (≥ [`R_MAO`]) — conta só a distância da LARGURA.
+#[test]
+fn a_pressao_de_cada_preset_e_a_da_sua_origem() {
+    let o = oraculo();
+    let todos = com_origem(&o);
+    let medidas: Vec<(String, Vec<([f64; 10], [f64; 10])>)> = std::thread::scope(|s| {
+        let hs: Vec<_> = todos
+            .iter()
+            .map(|p| {
+                s.spawn(move || {
+                    let (px, ts) = pinta(p, "gestos", &["rampa_0_1", "rampa_afunila"]);
+                    (p.nome.clone(), ts.iter().map(|t| decis(&colunas(&px, 1000, t))).collect())
+                })
+            })
+            .collect();
+        hs.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    let mut falhas = Vec::new();
+    for (nome, n) in &medidas {
+        let or = &o["leis"][nome]["pressao"];
+        let mao_r = or["rampa_0_1"]["mao"].as_f64().unwrap_or(99.0);
+        let m = mao(&n[0].0, &n[0].1);
+        let (e_lc, e_l) = (erro(n, or, &['L', 'C']), erro(n, or, &['L']));
+        let e = if mao_r >= R_MAO { e_lc } else { e_l };
+        println!("[pressao] {nome}: distância {e_lc:.3} (largura {e_l:.3}) · mão {m:.2} (Rebelle {mao_r:.2})");
+        if e > 0.18 {
+            falhas.push(format!("{nome}: a resposta à pressão está a {e:.3} da do Rebelle"));
+        }
+        if m < R_MAO {
+            falhas.push(format!("{nome}: a faixa da mão do dono só responde {m:.2}× (< {R_MAO})"));
+        }
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}

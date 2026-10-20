@@ -4,6 +4,29 @@
 use ph2d_brush_presets::Tilt;
 use serde_json::{Value, json};
 
+/// Os knobs do 8B que os lápis do 53 herdam (a caneta, a ponta deitada e o arrasto: comentário do 8B) + a PRESSÃO de
+/// cada um (J2, `docs/Painter/Pinceis/03_MOTORES.md` §7 a): a curva do tamanho e a pressão → carga ajustadas às
+/// rampas da origem no Rebelle (`leis_sistemicas::a_pressao_de_cada_preset_e_a_da_sua_origem`).
+macro_rules! extras_do_lapis {
+    ($curva_do_tamanho:expr, $curva_da_carga:expr) => {
+        &[
+            ("felt", 0.0),
+            ("drag", 0.05),
+            ("pressureSize", 0.9),
+            ("pressureSizeCurve", $curva_do_tamanho),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", $curva_da_carga),
+            ("tiltStart", 39.0),
+            ("tiltFull", 45.0),
+            ("tiltWidth", 1.05),
+            ("tiltSmooth", 0.0),
+            ("tiltLength", 3.3),
+            ("tiltLag", 170.0),
+            MAIS_PERTO,
+        ]
+    };
+}
+
 /// Quantos presets a fábrica tem — CONTADO (`the_factory_presets_are_counted`), nunca escolhido.
 pub const PRESETS_DE_FABRICA: usize = 28;
 
@@ -115,6 +138,8 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.0,
         size_px: None,
+        // A pressão do Wet Round fica a de sempre (J2 §7 a): ele é o pincel SEM preset (`painter_default_knobs`) e o
+        // CONTROLO das mídias — a lei do Rebelle dele (0,089 contra 0,155) tirava ao Wet Flat a RampaCobertura.
         extras: &[],
         grao: None,
         achatado: None,
@@ -136,7 +161,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 3000.0,
         hardness: 0.0,
         size_px: None,
-        extras: &[],
+        extras: &[("pressureSizeCurve", 0.35), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 1.0)],
         grao: None,
         achatado: None,
         pincel: &[],
@@ -252,6 +277,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
             ("bristleLift", 0.2),
             ("bristleNoiseLength", 2000.0),
             ("pigmentSpacing", PASSO_DOS_OLEOS),
+            ("pressureSizeCurve", 0.5), ("pressureOpacity", 0.75), ("pressureOpacityCurve", 1.5),
         ],
         grao: None,
         achatado: None,
@@ -299,7 +325,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.0,
         size_px: Some(77.0),
-        extras: &[("felt", 0.0), ("drag", 0.05), MAIS_PERTO],
+        extras: &[("felt", 0.0), ("drag", 0.05), MAIS_PERTO, ("pressureSizeCurve", 0.5), ("pressureOpacity", 0.9), ("pressureOpacityCurve", 2.0)],
         grao: Some(("Noise", 100.0)),
         achatado: None,
         pincel: &[("jitter", "0.1")],
@@ -328,7 +354,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         size_px: None,
         // Glaze 0,8: a fracção multiplicada que o oráculo MEDIU nesta tinta (doc 42 §3: 0,76 · 0,82); o 1,0 de antes
         // compensava o halo e o azul arrastado para baixo (doc 42 §6).
-        extras: &[("extDiffusion", 0.01), ("glaze", 0.8)],
+        extras: &[("extDiffusion", 0.01), ("glaze", 0.8), ("pressureSizeCurve", 1.0), ("pressureOpacity", 0.9), ("pressureOpacityCurve", 0.5)],
         grao: None,
         achatado: None,
         pincel: &[],
@@ -350,7 +376,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.9,
         size_px: None,
-        extras: &[("glaze", 0.8)],
+        extras: &[("glaze", 0.8), ("pressureSizeCurve", 1.0), ("pressureOpacity", 0.9), ("pressureOpacityCurve", 1.5)],
         grao: None,
         achatado: None,
         pincel: &[],
@@ -372,7 +398,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.9,
         size_px: None,
-        extras: &[("glaze", 0.9)],
+        extras: &[("glaze", 0.9), ("pressureSizeCurve", 0.25), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 3.0)],
         grao: None,
         achatado: None,
         pincel: &[],
@@ -394,7 +420,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.75,
         size_px: None,
-        extras: &[("glaze", 1.0)],
+        extras: &[("glaze", 1.0), ("pressureSizeCurve", 0.25), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 2.0)],
         grao: None,
         achatado: None,
         pincel: &[],
@@ -417,7 +443,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         bristle_count: 2000.0,
         hardness: 0.55,
         size_px: None,
-        extras: &[("glaze", 1.0)],
+        extras: &[("glaze", 1.0), ("pressureSizeCurve", 0.35), ("pressureOpacity", 0.9), ("pressureOpacityCurve", 3.0)],
         grao: None,
         achatado: None,
         pincel: &[],
@@ -519,13 +545,13 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     // dele (`volume_params.size` do `.rebelle-brush.png`, `ferramentas/tamanho_dos_presets.py`).
     // `lapisb_027` com a carga 50: o lápis duro, o grão fino. A 40 cobria 0,560 — a do HB (Rebelle 2H 0,595, HB 0,561) e
     // ficava mais perto da foto do irmão (5,3 × 4,2 ruídos); a 50, 0,617 e 3,7 × 11,2 (doc 53, `IRMAOS`).
-    lapis("Graphite", "Graphite 2H", 50.0, 0.3, 16.0),
+    lapis("Graphite", "Graphite 2H", 50.0, 0.3, 16.0, extras_do_lapis!(0.5, 2.0)),
     // `lapisb_028`.
-    lapis("Graphite", "Graphite HB", 40.0, 0.3, 32.0),
+    lapis("Graphite", "Graphite HB", 40.0, 0.3, 32.0, extras_do_lapis!(0.5, 2.0)),
     // `lapisb_032`.
-    lapis("Graphite", "Graphite 2B", 40.0, 0.65, 64.0),
+    lapis("Graphite", "Graphite 2B", 40.0, 0.65, 64.0, extras_do_lapis!(0.25, 2.0)),
     // `lapisb_041`: o de cor é o 2B com o dobro da carga.
-    lapis("Colored", "Colored 4B", 80.0, 0.65, 64.0),
+    lapis("Colored", "Colored 4B", 80.0, 0.65, 64.0, extras_do_lapis!(0.5, 3.0)),
     // `lapisc_053`: o carvão mais ralo, o papel a meio.
     Receita {
         meio: "Pencil",
@@ -534,6 +560,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         pigment: 20.0,
         gate: 0.5,
         size_px: Some(248.0),
+        extras: &[("felt", 0.0), ("drag", 0.02), MAIS_PERTO, ("pressureSizeCurve", 0.35), ("pressureOpacity", 0.75), ("pressureOpacityCurve", 0.75)],
         ..CHARCOAL
     },
     // `sq_007`: o pastel de ponta RETA, o papel todo aberto.
@@ -542,6 +569,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         pigment: 60.0,
         gate: 1.0,
         size_px: Some(35.0),
+        extras: &[("felt", 0.0), ("drag", 0.0), MAIS_PERTO, ("pressureSizeCurve", 0.25), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 2.0)],
         pincel: &[("dab_quina", "1.0")],
         ..SOFT_PASTEL
     },
@@ -552,6 +580,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         pigment: 150.0,
         gate: 1.0,
         size_px: Some(141.0),
+        extras: &[("felt", 0.0), ("drag", 0.0), MAIS_PERTO, ("pressureSizeCurve", 0.35), ("pressureOpacity", 0.75), ("pressureOpacityCurve", 1.5)],
         pincel: &[("dab_quina", "0.0")],
         ..SOFT_PASTEL
     },
@@ -574,6 +603,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
             ("bristleHeight", 0.75),
             ("pigmentSpacing", 0.0),
             ("capsuleMaxPx", 2.0),
+            ("pressureSizeCurve", 0.25), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 3.0),
         ],
         pincel: &[("jitter", "0.5")],
         ..OIL_BRISTLE
@@ -597,7 +627,7 @@ const GRAPHITE_8B: Receita = Receita {
     bristle_count: 2000.0,
     hardness: 0.0,
     size_px: Some(6.5),
-    extras: EXTRAS_DO_LAPIS,
+    extras: extras_do_lapis!(0.25, 3.0),
     grao: Some(("Noise", 32.0)),
     achatado: None,
     pincel: &[("falloff", "\"Linear\""), ("jitter", "0.1")],
@@ -641,7 +671,7 @@ const SOFT_PASTEL: Receita = Receita {
     bristle_count: 2000.0,
     hardness: 0.2,
     size_px: Some(29.0),
-    extras: &[("felt", 0.0), ("drag", 0.0), MAIS_PERTO],
+    extras: &[("felt", 0.0), ("drag", 0.0), MAIS_PERTO, ("pressureSizeCurve", 0.5), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 0.5)],
     grao: Some(("Noise", 100.0)),
     achatado: None,
     pincel: &[],
@@ -667,6 +697,7 @@ const ACRYLIC_ROUND: Receita = Receita {
         ("felt", 0.0),
         ("bristleStrength", 2.0),
         ("pigmentSpacing", PASSO_DOS_OLEOS),
+        ("pressureSizeCurve", 1.4),
         // A textura das cerdas dela anda com o dab: a 0,025 a escada a 103 px dobrava (6,2 → 12,5); à densidade
         // dela 6,1, a diferença de imagem 0,04 (doc 51 §3).
         ("capsuleSpacing", PASSO_DOS_OLEOS),
@@ -717,25 +748,13 @@ const OIL_BRISTLE: Receita = Receita {
         // Os fios dele têm largura em px: a 103 px a escada lê 2,24 · 2,45 · 2,15 com a cápsula a 2 px, 3,06 a 2,06
         // e 4,71 a 3 (tecto 2,78 · 2,60 · 2,50; doc 51 §3).
         ("capsuleMaxPx", 2.0),
+        ("pressureSizeCurve", 0.25), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 2.0),
     ],
     grao: None,
     achatado: Some((0.68, 90)),
     pincel: &[],
 };
 
-/// Os knobs do 8B que os lápis do 53 herdam (a caneta, a ponta deitada e o arrasto: comentário do 8B).
-const EXTRAS_DO_LAPIS: &[(&str, f64)] = &[
-    ("felt", 0.0),
-    ("drag", 0.05),
-    ("pressureSize", 0.9),
-    ("tiltStart", 39.0),
-    ("tiltFull", 45.0),
-    ("tiltWidth", 1.05),
-    ("tiltSmooth", 0.0),
-    ("tiltLength", 3.3),
-    ("tiltLag", 170.0),
-    MAIS_PERTO,
-];
 
 const fn lapis(
     grupo: &'static str,
@@ -743,6 +762,7 @@ const fn lapis(
     pigment: f64,
     gate: f64,
     grao: f64,
+    extras: &'static [(&'static str, f64)],
 ) -> Receita {
     Receita {
         grupo,
@@ -750,6 +770,7 @@ const fn lapis(
         pigment,
         gate,
         grao: Some(("Noise", grao)),
+        extras,
         ..GRAPHITE_8B
     }
 }

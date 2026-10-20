@@ -22,7 +22,7 @@ const RAIO_DA_CENA: f32 = 18.0;
 #[rustfmt::skip]
 const CENAS: [(&str, bool, u64); 22] = [
     ("Wet Round", false, 0x8e37a39e8ee2ba79),
-    ("Wet Wash", false, 0x5ed11e4a3f39a42a),
+    ("Wet Wash", false, 0xb08be15433107c85),
     ("Wet Dry Brush", false, 0xf45f7dcaa32eb88e),
     ("Wet Drip", false, 0x6ad975ec85398727),
     ("Wet Liner", false, 0x859efc54fe6e2c43),
@@ -30,18 +30,19 @@ const CENAS: [(&str, bool, u64); 22] = [
     // O Oil Bristle repintado pelo relevo sem escada (W3b, prompt 50, doc 50_medicao): os outros 21 ao bit.
     // Os 22 repintados pela regra do prompt 51 (Spacing 0,1 + Continuous em todos, doc 51_medicao); o Airbrush também
     // pela curva da pressão no tamanho que casa as pontas do Rebelle (ordem do dono 19/10).
-    ("Oil Bristle", false, 0x592c76da31d74d9a),
-    ("Acrylic Round", false, 0x8fe9c191fd86da3e),
-    ("Express Oil", false, 0x1a4242fb3b647301),
-    ("Graphite 8B", false, 0xd4b17df14c029182),
+    // J2 (03_MOTORES §7 a): a pressão de cada preset passou a ser a da sua origem no Rebelle (a cena tem a rampa).
+    ("Oil Bristle", false, 0x939fc3665324de0d),
+    ("Acrylic Round", false, 0xb6475854432e61f0),
+    ("Express Oil", false, 0x6ae408041d1e042f),
+    ("Graphite 8B", false, 0x67ffa64a8ff6631a),
     ("Charcoal", false, 0xd747450876d66163),
-    ("Soft Pastel", false, 0x26c1e0eaa688cca3),
-    ("Oil Pastel", false, 0xb6c9a7d0531a11da),
-    ("Ink Bullet", false, 0x14d775b3c1e596c5),
-    ("Dip Pen", false, 0xc5173ca575b542c7),
-    ("Ink Brush", false, 0xaa050aac7669ab08),
-    ("Marker Bullet", false, 0xc611a541909b7ef8),
-    ("Marker Liner", false, 0xfc33512d965f3020),
+    ("Soft Pastel", false, 0x6d2510034bf7bea2),
+    ("Oil Pastel", false, 0x53088992b4918139),
+    ("Ink Bullet", false, 0xd3ea3f5b4f847521),
+    ("Dip Pen", false, 0x2785d41ac04f93a1),
+    ("Ink Brush", false, 0x5856e27ccfe8f621),
+    ("Marker Bullet", false, 0xb30ddf5eaa30b6b8),
+    ("Marker Liner", false, 0xb7568999a13fb6ca),
     ("Airbrush", false, 0xc9c61bd3db4a244e),
     ("Wet Flat", false, 0x270ceb734f4d9aea),
     ("Gouache Flat", false, 0x6111ea627d99cff5),

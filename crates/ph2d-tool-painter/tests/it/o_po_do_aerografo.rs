@@ -109,8 +109,9 @@ fn o_po_e_do_pixel() {
 /// lê esse fluxo) pinta a cena de antes ao byte — o ramo do pó não é tomado com `dust` a 0.
 #[test]
 fn sem_po_o_fluxo_do_pincel_nao_anda() {
-    // J2 (03_MOTORES §7 b): o traço fino repõe o pigmento por área abaixo de ~29 px — a cena a 20 px pesa 1,05×.
-    const ANTES: u64 = 0xe7ecf575098ef42f;
+    // J2 (03_MOTORES §7 b, a): o traço fino repõe o pigmento por área abaixo de ~29 px (a cena a 20 px pesa 1,05×) e
+    // a pressão do Soft Pastel é a da origem no Rebelle.
+    const ANTES: u64 = 0xc6d7748f78a789fe;
     let mut p = de_fabrica("Soft Pastel");
     let tex = p.parametros.brush.get_mut("texture").unwrap();
     tex["mapping"] = serde_json::json!("Random");

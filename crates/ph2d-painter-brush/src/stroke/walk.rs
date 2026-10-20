@@ -12,6 +12,35 @@
 
 use super::*;
 
+/// Max dabs a single [`Stroke::walk_space`] may emit — a **BATENTE de MEMÓRIA**, irmão do
+/// `MAX_AIRBRUSH_DABS_PER_TICK` e escrito pelo mesmo motivo.
+///
+/// ⚠️ **De que recurso ele é:** o percurso empurra um `Dab` por passo num `Vec` que o chamador é
+/// dono, e o passo tem PISO de 1 px — então o número de iterações é o COMPRIMENTO da corda, sem
+/// teto nenhum. Uma posição absurda a chegar aqui (uma mola que divergiu, um `Transform`
+/// degenerado, um `NaN` que virou `inf`) não pinta uma linha errada: ela **esgota a RAM da
+/// máquina**. Medido em 2026-08-14, uma fita cujo integrador divergiu levou o processo a **90,2 GB
+/// de RSS** e o kernel derrubou a janela do editor junto (`OOMPolicy=stop` no scope do VSCode).
+///
+/// ⚠️ **Ele conta o BUFFER DO EVENTO, não a chamada — e a 1ª versão contava a chamada.** O
+/// `extend` do método `Space` passa pelo flattener Catmull-Rom, que pica a corda e chama o percurso
+/// **uma vez por corda**: um teto por-chamada é contornado por milhares de chamadas, e o gate mediu
+/// **416 652 dabs** com o batente instalado. O irmão airbrush já tinha a resposta na assinatura —
+/// ele conta o TIQUE.
+///
+/// ⚠️ **O número é DERIVADO, não escolhido, e o recurso é MEMÓRIA.** A maior corda legítima é uma
+/// tacada de ponteiro a atravessar a maior tela que o app abre — a diagonal de 8192² são **11 585
+/// px**, logo 11 585 dabs no piso de passo —, e a Symmetry radial multiplica isso pelas cópias, o
+/// que põe o pior gesto honesto na ordem de **2 × 10⁵**. Este teto é ~5× isso e, com o `Dab` medido
+/// em **52 B**, ele limita o `Vec` a **~55 MB**: cinco ordens de grandeza abaixo dos 90,2 GB do
+/// achado. *Um gesto nunca o alcança; uma divergência passa por ele no primeiro quadro.*
+///
+/// ⚠️ **Ele NÃO conserta a causa, e não é para isso que existe** — quem mantém a mola estável é a
+/// tríade `RIBBON_MAX_STEP_S`/`RIBBON_LAG_MIN_S`/`RIBBON_MAX_SUBSTEPS`, com gate próprio. Este
+/// batente é o que faz o modo de falha da PRÓXIMA origem de posição absurda ser *uma linha
+/// truncada que se vê*, em vez de *a máquina no chão*.
+pub(crate) const MAX_DABS_PER_WALK: usize = 1_048_576;
+
 impl Stroke {
     /// Space spacing walk from `last_pos` → `target`, emitting a dab every `spacing × diameter` of
     /// arc length and carrying the residual distance across calls (`accum`).

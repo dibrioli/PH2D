@@ -240,8 +240,14 @@ fn altura(t: &PainterTool, x: u32) -> usize {
 }
 
 fn recto_afilado(end: f32, levanta: bool) -> PainterTool {
+    recto_afilado_com(end, levanta, false)
+}
+
+/// O recto afilado com ou sem a CÁPSULA (`continuous_spacing`: cada dab interpola de volta ao estado do anterior).
+fn recto_afilado_com(end: f32, levanta: bool, capsula: bool) -> PainterTool {
     let mut b = pincel(10.0);
     b.hardness = 1.0;
+    b.continuous_spacing = capsula;
     b.taper.start = 3.0;
     b.taper.end = end;
     let mut t = tool(400, 100, [0; 4], b);
@@ -279,6 +285,25 @@ fn a_cauda_afila_como_a_cabeca() {
         t.canvas_rgba.iter().all(|&b| b == 0),
         "o desfazer deixou tinta: a cauda é outro passo"
     );
+}
+
+/// ⭐ **L5 — a cauda com a CÁPSULA espelha a cabeça** (J3, `docs/Painter/Pinceis/exames/canetas.md` 2.ª onda): cada
+/// dab da cápsula interpola de volta ao estado do dab ANTERIOR (`Dab::ante`), e a cauda re-afilava o dab sem
+/// re-afilar esse estado — o sub-dab de trás voltava ao raio CHEIO e o fim saía uma bolha de ~½ largura
+/// (`pranchas/canetas/cauda_L5_bolha_no_fim.png`). A largura a `k` px do fim é a de `k` px do início (± 2 px) e
+/// nenhuma coluna da cauda passa da cabeça à mesma distância por mais de 2 px.
+#[test]
+fn a_cauda_com_a_capsula_afila_como_a_cabeca() {
+    let t = recto_afilado_com(3.0, true, true);
+    let (x0, x1) = (40u32, 360u32);
+    let mut falhas = Vec::new();
+    for k in (2..60).step_by(2) {
+        let (h, c) = (altura(&t, x0 + k), altura(&t, x1 - k));
+        if h.abs_diff(c) > 2 {
+            falhas.push(format!("a {k} px: cabeça {h} × cauda {c}"));
+        }
+    }
+    assert!(falhas.is_empty(), "a cauda com a cápsula não espelha a cabeça:\n{}", falhas.join("\n"));
 }
 
 /// O ArtRage Oil **ThinAndDry** (`fixtures/artrage_bateria/OilBrush/ThinAndDry_tamanhos_A.png`, recto de 880

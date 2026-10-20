@@ -23,10 +23,12 @@ pub enum LinhaDaMao {
     SpeedSize,
     /// A velocidade apaga a marca (L12, [`Dynamics::speed_opacity`]).
     SpeedOpacity,
+    /// A curva em S entre o piso e o tecto ([`ph2d_painter_brush::Pen::s_curve`], J3 canetas 2.ª onda).
+    PressureSCurve,
 }
 
 /// As linhas do cartão, pela ordem do painel.
-pub const LINHAS_DA_MAO: [LinhaDaMao; 18] = [
+pub const LINHAS_DA_MAO: [LinhaDaMao; 19] = [
     LinhaDaMao::Knob(Knob::PressureSize),
     LinhaDaMao::Knob(Knob::PressureSizeCurve),
     LinhaDaMao::Knob(Knob::PressureOpacity),
@@ -45,6 +47,7 @@ pub const LINHAS_DA_MAO: [LinhaDaMao; 18] = [
     LinhaDaMao::TiltOpacity,
     LinhaDaMao::SpeedSize,
     LinhaDaMao::SpeedOpacity,
+    LinhaDaMao::PressureSCurve,
 ];
 
 /// Quantas linhas o cartão tem.
@@ -60,6 +63,7 @@ pub const MAO_DE_FABRICA: [f64; N_LINHAS_DA_MAO] = {
             LinhaDaMao::TiltOpacity => TILT_OPACITY.4,
             LinhaDaMao::SpeedSize => SPEED_SIZE.4,
             LinhaDaMao::SpeedOpacity => SPEED_OPACITY.4,
+            LinhaDaMao::PressureSCurve => PRESSURE_S_CURVE.4,
         };
         i += 1;
     }
@@ -77,6 +81,8 @@ const SPEED_SIZE: (&str, f64, f64, f64, f64) = (
     0.01,
     0.0,
 );
+/// A curva em S da pressão: `0` a recta de sempre, `1` o smoothstep (o G-pen do Krita).
+const PRESSURE_S_CURVE: (&str, f64, f64, f64, f64) = ("pressureSCurve", 0.0, 1.0, 0.01, 0.0);
 /// A velocidade→opacidade (L12), a mesma lei na cobertura do dab (Thin_Pen ≈ 0,2).
 const SPEED_OPACITY: (&str, f64, f64, f64, f64) = (
     "speedOpacity",
@@ -95,6 +101,7 @@ impl LinhaDaMao {
             Self::TiltOpacity => TILT_OPACITY.0,
             Self::SpeedSize => SPEED_SIZE.0,
             Self::SpeedOpacity => SPEED_OPACITY.0,
+            Self::PressureSCurve => PRESSURE_S_CURVE.0,
         }
     }
 
@@ -109,7 +116,16 @@ impl LinhaDaMao {
             Self::TiltOpacity => (TILT_OPACITY.1, TILT_OPACITY.2, TILT_OPACITY.3),
             Self::SpeedSize => (SPEED_SIZE.1, SPEED_SIZE.2, SPEED_SIZE.3),
             Self::SpeedOpacity => (SPEED_OPACITY.1, SPEED_OPACITY.2, SPEED_OPACITY.3),
+            Self::PressureSCurve => (PRESSURE_S_CURVE.1, PRESSURE_S_CURVE.2, PRESSURE_S_CURVE.3),
         }
+    }
+
+    /// O preset grava a linha mesmo no neutro? As linhas que nasceram DEPOIS da fábrica gravada (a curva em S,
+    /// J3) só vão para o ficheiro quando mexidas: o neutro é o valor de quem a não tem, e assim todo preset de
+    /// antes volta ao byte (`cada_preset_de_fabrica_e_a_sua_receita`).
+    #[must_use]
+    pub fn grava_no_neutro(self) -> bool {
+        self != Self::PressureSCurve
     }
 
     /// O valor de fábrica (o neutro).
@@ -120,6 +136,7 @@ impl LinhaDaMao {
             Self::TiltOpacity => TILT_OPACITY.4,
             Self::SpeedSize => SPEED_SIZE.4,
             Self::SpeedOpacity => SPEED_OPACITY.4,
+            Self::PressureSCurve => PRESSURE_S_CURVE.4,
         }
     }
 
@@ -202,6 +219,7 @@ pub(crate) fn escreve(d: &mut Dynamics, t: &mut PenTilt, l: LinhaDaMao, v: f64) 
         LinhaDaMao::TiltOpacity => t.opacity = f,
         LinhaDaMao::SpeedSize => d.speed_size = f,
         LinhaDaMao::SpeedOpacity => d.speed_opacity = f,
+        LinhaDaMao::PressureSCurve => d.pen.s_curve = f,
         LinhaDaMao::Knob(k) => unreachable!("knob fora da mão: {k:?}"),
     }
 }
@@ -244,6 +262,7 @@ pub(crate) fn le(d: &Dynamics, t: &PenTilt, l: LinhaDaMao) -> f64 {
         LinhaDaMao::TiltOpacity => curto(t.opacity),
         LinhaDaMao::SpeedSize => curto(d.speed_size),
         LinhaDaMao::SpeedOpacity => curto(d.speed_opacity),
+        LinhaDaMao::PressureSCurve => curto(d.pen.s_curve),
         LinhaDaMao::Knob(k) => unreachable!("knob fora da mão: {k:?}"),
     }
 }
@@ -264,7 +283,7 @@ pub(crate) fn de_fabrica() -> (Dynamics, PenTilt) {
 fn da_pressao(l: LinhaDaMao) -> bool {
     matches!(
         l,
-        LinhaDaMao::SpeedSize | LinhaDaMao::SpeedOpacity
+        LinhaDaMao::SpeedSize | LinhaDaMao::SpeedOpacity | LinhaDaMao::PressureSCurve
     ) || matches!(
         l,
         LinhaDaMao::Knob(
@@ -286,7 +305,7 @@ pub(crate) fn dinamica_para_json(d: &Dynamics) -> serde_json::Value {
     let t = PenTilt::default();
     LINHAS_DA_MAO
         .into_iter()
-        .filter(|l| da_pressao(*l))
+        .filter(|l| da_pressao(*l) && (l.grava_no_neutro() || le(d, &t, *l) != l.omissao()))
         .map(|l| (l.chave().to_owned(), serde_json::json!(le(d, &t, l))))
         .collect::<serde_json::Map<_, _>>()
         .into()
@@ -321,7 +340,7 @@ impl super::PainterTool {
         LINHAS_DA_MAO.map(|l| match (self.paint.wetpaint.armed, l) {
             (true, LinhaDaMao::Knob(kn)) => k.get(kn),
             (true, LinhaDaMao::TiltOpacity) => l.omissao(),
-            // A velocidade não tem knob no Wet: mora na `Dynamics` do pincel, que a mão do Wet herda.
+            // A velocidade e a curva em S não têm knob no Wet: moram na `Dynamics` do pincel, que a mão do Wet herda.
             (_, _) => le(&self.paint.dynamics, &self.paint.brush.pen_tilt, l),
         })
     }
@@ -360,6 +379,7 @@ impl super::PainterTool {
                 }
             }
             (self.paint.dynamics.speed_size, self.paint.dynamics.speed_opacity) = (0.0, 0.0);
+            self.paint.dynamics.pen.s_curve = 0.0;
         } else {
             self.repor_mao();
         }
@@ -514,6 +534,16 @@ mod velocidade {
     /// Um recto horizontal a `passo` px por evento, um quadro de 8 ms por evento (o `sonda_gestos::gesto`);
     /// devolve a altura da faixa pintada na coluna do meio.
     fn altura(m: PaintMedia, passo: f32, linha: Option<(LinhaDaMao, f64)>) -> usize {
+        alturas(m, passo, linha, &[400])[0]
+    }
+
+    /// [`altura`] nas colunas `xs`.
+    fn alturas(
+        m: PaintMedia,
+        passo: f32,
+        linha: Option<(LinhaDaMao, f64)>,
+        xs: &[usize],
+    ) -> Vec<usize> {
         let mut t = super::super::super::PainterTool::default();
         t.set_source(vec![255u8; 600 * 120 * 4], 600, 120);
         t.set_paint_media(m);
@@ -535,9 +565,29 @@ mod velocidade {
             t.paint_tick(0.008);
         }
         t.on_canvas_pointer(cp(580.0, PointerPhase::Up));
-        (0..120)
-            .filter(|y| t.canvas_rgba[(y * 600 + 400) * 4] < 200)
-            .count()
+        xs.iter()
+            .map(|&x| {
+                (0..120)
+                    .filter(|y| t.canvas_rgba[(y * 600 + x) * 4] < 200)
+                    .count()
+            })
+            .collect()
+    }
+
+    /// ⭐ **A velocidade vale desde o 1.º dab** (J3, `docs/Painter/Pinceis/exames/canetas.md` 2.ª onda): o traço só
+    /// mede a velocidade no TIQUE, e os dabs do 1.º quadro saíam a `v = 0` — a largura cheia — e a rampa ainda
+    /// subia de 0 no 2.º: uma BOLHA no início do traço rápido (o Technical Pen contra o Fineliner do Krita, que
+    /// começa fino). Com o Marker (`speedSize 0,45`) a 50 px por evento, o início (a 2 px do pen-down e a 30 px)
+    /// tem a largura do meio (± 1 px); sem a lei, idem (o neutro não muda).
+    #[test]
+    fn a_velocidade_vale_desde_o_primeiro_dab() {
+        let xs = [22, 50, 75, 400];
+        for m in [PaintMedia::Digital, PaintMedia::Impasto] {
+            let h = alturas(m, 50.0, Some((LinhaDaMao::SpeedSize, 0.45)), &xs);
+            for (x, a) in xs.iter().zip(&h) {
+                assert!(a.abs_diff(h[3]) <= 1, "{m:?}: a {x} px a largura é {a}, a do meio {} — {h:?}", h[3]);
+            }
+        }
     }
 
     /// A velocidade→opacidade chega ao Wet Paint (a mão dele herda a `Dynamics` do pincel): no recto rápido a

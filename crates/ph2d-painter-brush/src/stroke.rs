@@ -123,6 +123,8 @@ pub struct Stroke {
     speed_ramp_len: f32,
     /// O `arc_len` do dab anterior, para a rampa saber quanto de caminho passou entre dois dabs.
     speed_dab_arc: f32,
+    /// A velocidade da MÃO que a L12 lê ([`speed::Mao`]); `None` = a lei desligada.
+    mao_da_velocidade: Option<speed::Mao>,
     /// **A MEMÓRIA dos fios** — os pontos que o traço lembra, o que já foi costurado e o sorteio.
     /// A LEI e o porquê de cada campo vivem em [`mod@self::threads`], que é quem os produz.
     threads: threads::ThreadMemory,
@@ -206,34 +208,8 @@ const SETTLE_EPS_PX: f32 = 0.5;
 /// can't dump a retroactive flood (Blender's async timer never catches up after a hitch).
 const MAX_AIRBRUSH_DABS_PER_TICK: u32 = 8;
 
-/// Max dabs a single [`Stroke::walk_space`] may emit — a **BATENTE de MEMÓRIA**, irmão do
-/// [`MAX_AIRBRUSH_DABS_PER_TICK`] e escrito pelo mesmo motivo.
-///
-/// ⚠️ **De que recurso ele é:** o percurso empurra um `Dab` por passo num `Vec` que o chamador é
-/// dono, e o passo tem PISO de 1 px — então o número de iterações é o COMPRIMENTO da corda, sem
-/// teto nenhum. Uma posição absurda a chegar aqui (uma mola que divergiu, um `Transform`
-/// degenerado, um `NaN` que virou `inf`) não pinta uma linha errada: ela **esgota a RAM da
-/// máquina**. Medido em 2026-08-14, uma fita cujo integrador divergiu levou o processo a **90,2 GB
-/// de RSS** e o kernel derrubou a janela do editor junto (`OOMPolicy=stop` no scope do VSCode).
-///
-/// ⚠️ **Ele conta o BUFFER DO EVENTO, não a chamada — e a 1ª versão contava a chamada.** O
-/// `extend` do método `Space` passa pelo flattener Catmull-Rom, que pica a corda e chama o percurso
-/// **uma vez por corda**: um teto por-chamada é contornado por milhares de chamadas, e o gate mediu
-/// **416 652 dabs** com o batente instalado. O irmão airbrush já tinha a resposta na assinatura —
-/// ele conta o TIQUE.
-///
-/// ⚠️ **O número é DERIVADO, não escolhido, e o recurso é MEMÓRIA.** A maior corda legítima é uma
-/// tacada de ponteiro a atravessar a maior tela que o app abre — a diagonal de 8192² são **11 585
-/// px**, logo 11 585 dabs no piso de passo —, e a Symmetry radial multiplica isso pelas cópias, o
-/// que põe o pior gesto honesto na ordem de **2 × 10⁵**. Este teto é ~5× isso e, com o `Dab` medido
-/// em **52 B**, ele limita o `Vec` a **~55 MB**: cinco ordens de grandeza abaixo dos 90,2 GB do
-/// achado. *Um gesto nunca o alcança; uma divergência passa por ele no primeiro quadro.*
-///
-/// ⚠️ **Ele NÃO conserta a causa, e não é para isso que existe** — quem mantém a mola estável é a
-/// tríade `RIBBON_MAX_STEP_S`/`RIBBON_LAG_MIN_S`/`RIBBON_MAX_SUBSTEPS`, com gate próprio. Este
-/// batente é o que faz o modo de falha da PRÓXIMA origem de posição absurda ser *uma linha
-/// truncada que se vê*, em vez de *a máquina no chão*.
-pub(crate) const MAX_DABS_PER_WALK: usize = 1_048_576;
+/// O batente de MEMÓRIA do percurso (o porquê e a medição: [`walk::MAX_DABS_PER_WALK`]).
+pub(crate) use walk::MAX_DABS_PER_WALK;
 
 impl Stroke {
     /// ⭐⭐⭐ **A FORMA DO DAB É RELIDA ENQUANTO A MÃO ANDA** — e só ela.
@@ -298,6 +274,7 @@ impl Stroke {
             throw_speed_px_s: 0.0,
             speed_ramp_len: 0.0,
             speed_dab_arc: 0.0,
+            mao_da_velocidade: None,
             threads: threads::ThreadMemory::new(seed),
             throw_dir: [0.0, 0.0],
             fill_from: None,
@@ -352,6 +329,7 @@ impl Stroke {
         self.throw_speed_px_s = 0.0;
         self.speed_ramp_len = 0.0;
         self.speed_dab_arc = 0.0;
+        self.arma_a_espera_da_velocidade();
         self.threads.clear(); // traço novo: nenhum fio liga ao traço anterior
         self.throw_dir = [0.0, 0.0];
         self.fill_from = None;
@@ -397,6 +375,7 @@ impl Stroke {
             self.tot_samples = self.tot_samples.wrapping_add(1);
         }
         self.warmup_gate(out);
+        self.espera_a_velocidade(out);
     }
 
     /// Extend the stroke to the raw sample `raw`: average it into the input-sample window, run it
@@ -501,6 +480,7 @@ impl Stroke {
             }
         }
         self.warmup_gate(out);
+        self.espera_a_velocidade(out);
     }
 
     /// Fill the straight segment `a → b` with spaced dabs (Blender LINE / CURVE-segment finalise).
@@ -548,6 +528,7 @@ impl Stroke {
             self.warm_buf.append(out);
             self.release_warmup(out);
         }
+        self.solta_sem_velocidade(out);
         self.prev_prev = None;
     }
 
@@ -562,6 +543,15 @@ impl Stroke {
         // ⚠️ A velocidade do gesto é medida ANTES do desvio abaixo, e a ordem é a feature — o
         // porquê está no [`mod@self::speed`], junto da lei.
         self.note_tick_speed(dt);
+        let segurados = self.solta_a_velocidade(dt);
+        self.tick_do_metodo(dt, out);
+        if !segurados.is_empty() {
+            out.splice(0..0, segurados);
+        }
+    }
+
+    /// O resto do [`Self::tick`]: a fita e o aerógrafo.
+    fn tick_do_metodo(&mut self, dt: f32, out: &mut Vec<Dab>) {
         // ⚠️ A FITA percorre o caminho AQUI, e é a única lei que o faz — parada ou em movimento, um
         // passo por quadro. A lei e o porquê vivem em [`mod@self::ribbon`].
         if self.spec.ribbon_active() && self.spec.stroke_method == StrokeMethod::Space {

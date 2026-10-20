@@ -543,6 +543,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.pen.pressure_opacity_curve" => "Opacity curve",
         "panel.painter_layers.pen.pressure_floor" => "Pressure floor",
         "panel.painter_layers.pen.pressure_ceiling" => "Pressure ceiling",
+        "panel.painter_layers.pen.pressure_s_curve" => "Pressure S-curve",
         "panel.painter_layers.pen.pressure_smoothing" => "Smoothing",
         "panel.painter_layers.pen.pulled_string" => "Pulled string",
         "panel.painter_layers.pen.dab_rotation" => "Rotation",

@@ -246,6 +246,10 @@ pub struct Pen {
     pub floor: f32,
     /// O tecto: a pressão da mão que o pincel já lê como `1` (`1` = nenhum).
     pub ceiling: f32,
+    /// ⭐ **A curva em S** entre o piso e o tecto, `0..1` (`0` = a recta de sempre, ao bit): a lida vai da recta
+    /// ao smoothstep — o pé e o ombro MACIOS em vez das duas quinas. `1` = a rampa do G-pen do Krita (`Ink-3
+    /// Gpen`, medida na foto da bateria: o smoothstep de 0,14 a 0,86 a ± 0,03 — `exames/canetas.md` 2.ª onda).
+    pub s_curve: f32,
     /// A suavização da pressão ao longo do traço, `0..`[`MAX_SMOOTHING`] (`0` = nenhuma).
     pub smoothing: f32,
     /// O comprimento da corda (px de imagem): o pincel só anda quando a mão se afasta mais do que ela
@@ -264,6 +268,7 @@ impl Default for Pen {
         Self {
             floor: 0.0,
             ceiling: 1.0,
+            s_curve: 0.0,
             smoothing: 0.0,
             pulled_string_px: 0.0,
             tilt: Tilt::default(),
@@ -272,16 +277,21 @@ impl Default for Pen {
 }
 
 impl Pen {
-    /// A pressão da mão `p` como o pincel a lê: `(p − piso) / (tecto − piso)`, em `[0, 1]`. Sem piso nem
-    /// tecto é `p` ao bit.
+    /// A pressão da mão `p` como o pincel a lê: `t = (p − piso) / (tecto − piso)` em `[0, 1]`, e com a
+    /// [`Self::s_curve`] `t + s·(smoothstep(t) − t)`. Sem piso, tecto nem S é `p` ao bit.
     #[must_use]
     pub fn read(&self, p: f32) -> f32 {
-        if self.floor <= 0.0 && self.ceiling >= 1.0 {
+        let s = self.s_curve.clamp(0.0, 1.0);
+        if self.floor <= 0.0 && self.ceiling >= 1.0 && s <= 0.0 {
             return p;
         }
         let lo = self.floor.clamp(0.0, 0.99);
         let hi = self.ceiling.clamp(lo + 0.01, 1.0);
-        ((p - lo) / (hi - lo)).clamp(0.0, 1.0)
+        let t = ((p - lo) / (hi - lo)).clamp(0.0, 1.0);
+        if s <= 0.0 {
+            return t;
+        }
+        t + s * (t * t * (3.0 - 2.0 * t) - t)
     }
 
     /// Um passo da suavização: a pressão lida anterior `prev` anda `1 − s` do caminho até `p`. Sem

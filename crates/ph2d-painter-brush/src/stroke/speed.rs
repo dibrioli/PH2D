@@ -27,6 +27,27 @@
 
 use super::*;
 
+/// ⭐ **A velocidade da MÃO** (L12; J3 canetas 2.ª onda) — a que estreita a marca, medida no caminho do PONTEIRO
+/// (o Krita e o MyPaint medem a entrada), não no do traço: o estabilizador e a spline atrasam o traço no arranque, e
+/// a velocidade dele ali é a do atraso, não a do gesto. Armada só com a lei ([`Dynamics::speed_armed`]).
+#[derive(Clone, Debug)]
+pub(super) struct Mao {
+    /// Os dabs do 1.º quadro, segurados até à 1.ª medida (`None` depois dela, ou num método que não a espera).
+    segura: Option<Vec<Dab>>,
+    /// A posição da mão na amostra anterior (`None` até à do pen-down).
+    pos: Option<[f32; 2]>,
+    /// O caminho da mão desde o tique anterior (px).
+    caminho: f32,
+    /// A velocidade da mão no último tique (px/s).
+    medida: f32,
+    /// O caminho da mão no último quadro: o comprimento da rampa até à medida.
+    quadro: f32,
+    /// A velocidade do dab: a EMA por arco até à medida (a lei da rampa do [`Stroke::advance_speed`]).
+    lida: f32,
+    /// O `arc_len` do dab anterior.
+    arco: f32,
+}
+
 impl Stroke {
     /// Fecha o quadro: mede a velocidade do gesto (arco percorrido ÷ `dt`) e arma a **rampa** que os
     /// dabs do próximo quadro percorrem.
@@ -47,6 +68,103 @@ impl Stroke {
         self.speed_px_s = arc / dt;
         self.speed_ramp_len = arc;
         self.speed_arc_mark = self.arc_len;
+    }
+
+    /// ⭐ **A velocidade vale desde o 1.º dab** (L12; J3 canetas 2.ª onda): o traço só a mede no TIQUE, e os dabs
+    /// do 1.º quadro sairiam a `v = 0` — a largura cheia, uma bolha no início do traço rápido (o Fineliner do Krita
+    /// começa fino). Com a lei armada o pen-down arma a [`Mao`]: nos métodos que pintam com a mão (Space, Dots,
+    /// Airbrush) os dabs ficam no traço até ao 1.º tique e saem nele, pela velocidade medida — o tool carimba os dabs
+    /// do tique antes de compor o quadro, então a espera não custa latência. Sem a lei: `None`, ao bit.
+    pub(super) fn arma_a_espera_da_velocidade(&mut self) {
+        let segura = matches!(
+            self.spec.stroke_method,
+            StrokeMethod::Space | StrokeMethod::Dots | StrokeMethod::Airbrush
+        );
+        self.mao_da_velocidade = self.dynamics.speed_armed().then(|| Mao {
+            segura: segura.then(Vec::new),
+            pos: None,
+            caminho: 0.0,
+            medida: 0.0,
+            quadro: 0.0,
+            lida: 0.0,
+            arco: 0.0,
+        });
+    }
+
+    /// Depois de cada emissão: segura os dabs enquanto a velocidade não foi medida, e soma o caminho da mão.
+    pub(super) fn espera_a_velocidade(&mut self, out: &mut Vec<Dab>) {
+        if let Some(m) = &mut self.mao_da_velocidade {
+            if let Some(h) = &mut m.segura {
+                h.append(out);
+            }
+            if let Some(p) = m.pos {
+                m.caminho += dist(p, self.last_raw_pos);
+            }
+            m.pos = Some(self.last_raw_pos);
+        }
+    }
+
+    /// No tique: a velocidade da mão no quadro; no 1.º, os dabs segurados por ela (o raio, a cobertura e o estado
+    /// de trás da cápsula deles e do dab seguinte). Vazio sem espera.
+    pub(super) fn solta_a_velocidade(&mut self, dt: f32) -> Vec<Dab> {
+        let Some(m) = &mut self.mao_da_velocidade else {
+            return Vec::new();
+        };
+        if dt > 0.0 {
+            (m.medida, m.quadro, m.caminho) = (m.caminho / dt, m.caminho, 0.0);
+        }
+        let Some(mut h) = m.segura.take() else {
+            return Vec::new();
+        };
+        m.lida = m.medida;
+        let v = m.medida;
+        let (kr, kc) = (
+            self.dynamics.speed_radius_scale(v),
+            self.dynamics.speed_coverage_scale(v),
+        );
+        let escala = |r: &mut f32, c: &mut f32| {
+            *r = (*r * kr).clamp(0.5, MAX_BRUSH_RADIUS_PX);
+            *c = (*c * kc).clamp(0.0, 1.0);
+        };
+        for d in &mut h {
+            escala(&mut d.radius_px, &mut d.coverage);
+            if let Some(a) = &mut d.ante {
+                escala(&mut a.radius_px, &mut a.coverage);
+            }
+        }
+        for a in [&mut self.ultimo, &mut self.dab_ante].into_iter().flatten() {
+            escala(&mut a.radius_px, &mut a.coverage);
+        }
+        h
+    }
+
+    /// No pen-up sem nenhum tique (um toque mais rápido que um quadro): os dabs segurados saem como estão — sem
+    /// tempo não há velocidade.
+    pub(super) fn solta_sem_velocidade(&mut self, out: &mut Vec<Dab>) {
+        if let Some(mut h) = self.mao_da_velocidade.as_mut().and_then(|m| m.segura.take()) {
+            h.append(out);
+            *out = h;
+        }
+    }
+
+    /// A velocidade deste dab para a L12: a da mão pela rampa (o arco do quadro, como a do arremesso).
+    fn avanca_a_mao(&mut self, arc: f32) {
+        if let Some(m) = &mut self.mao_da_velocidade {
+            let ds = (arc - m.arco).max(0.0);
+            m.arco = arc;
+            if m.quadro <= f32::EPSILON {
+                m.lida = m.medida;
+            } else {
+                m.lida += (m.medida - m.lida) * ds / (ds + m.quadro);
+            }
+        }
+    }
+
+    /// A velocidade que a L12 lê no dab que se constrói agora (a da mão; sem a lei, a do arremesso — inerte).
+    pub(super) fn velocidade_do_dab(&self) -> f32 {
+        self.mao_da_velocidade
+            .as_ref()
+            .map_or(self.throw_speed_px_s, |m| m.lida)
     }
 
     /// **A VELOCIDADE do gesto no último quadro, em px/s** — a grandeza medida, não a rampeada. Zero num traço que ainda não teve um tique e em
@@ -117,11 +235,9 @@ impl Stroke {
         // ⚠️ A pergunta é `este tipo ARREMESSA?`, nunca `este tipo não é o neutro?` — a segunda é
         // uma lista de um item só, e ela apodreceu na wave seguinte: ver [`LineKind::throws`], que
         // traz os números do defeito que a trocou.
+        // A velocidade da MÃO de cada dab (L12), só quando a lei a pede: o traço de sempre não a lê.
+        self.avanca_a_mao(arc);
         if !self.spec.line_kind.throws() {
-            // A velocidade de CADA dab pela mesma rampa, só quando a mão a pede (L12): o traço de sempre não a lê.
-            if self.dynamics.speed_armed() {
-                self.advance_speed(arc);
-            }
             return pos;
         }
         let ds = (arc - self.speed_dab_arc).max(0.0);

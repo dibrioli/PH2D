@@ -122,7 +122,7 @@ impl Stroke {
             (self.spec.strength * self.dynamics.coverage_scale(pressure) * overlap).clamp(0.0, 1.0);
         // A velocidade (L12) na MESMA lei da mão: a do dab é a rampa do traço (`speed.rs`).
         let (radius, coverage) = if self.dynamics.speed_armed() {
-            let v = self.throw_speed_px_s;
+            let v = self.velocidade_do_dab();
             (
                 (radius * self.dynamics.speed_radius_scale(v)).clamp(0.5, MAX_BRUSH_RADIUS_PX),
                 (coverage * self.dynamics.speed_coverage_scale(v)).clamp(0.0, 1.0),

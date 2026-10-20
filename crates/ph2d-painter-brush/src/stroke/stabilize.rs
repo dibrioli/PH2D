@@ -70,6 +70,7 @@ impl Stroke {
         // A parked catch-up can be where the heading first settles (high-stabilizer stroke), so route
         // these dabs through the Rake warm-up too — otherwise the held opening would never release.
         self.warmup_gate(out);
+        self.espera_a_velocidade(out);
     }
 
     /// Advance the Rake **heading** from the previous anchor (`last_pos`) to `to`. The per-event methods

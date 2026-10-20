@@ -524,8 +524,26 @@ impl Janelas {
         }
     }
 
+    /// O dab re-afilado — e o estado do dab ANTERIOR que a cápsula dele interpola (`Dab::ante`), pela MESMA lei no
+    /// arco dele: sem isto o sub-dab de trás voltava ao raio cheio e a cauda acabava numa bolha (J3, canetas 2.ª onda).
+    fn afila(&self, x: Dab) -> Dab {
+        let mut y = self.afila_so(x);
+        if let Some(mut a) = x.ante {
+            let antes = self.afila_so(Dab {
+                radius_px: a.radius_px,
+                coverage: a.coverage,
+                arc_len: a.arc_len,
+                ante: None,
+                ..x
+            });
+            (a.radius_px, a.coverage) = (antes.radius_px, antes.coverage);
+            y.ante = Some(a);
+        }
+        y
+    }
+
     /// O dab re-afilado: no traço curto desfaz-se primeiro a cabeça que o motor aplicou ao vivo.
-    fn afila(&self, mut x: Dab) -> Dab {
+    fn afila_so(&self, mut x: Dab) -> Dab {
         if self.curto && self.taper.is_active() {
             let w = self.taper.width(x.arc_len, self.d);
             let m = self.taper.coverage_mult(w);
@@ -566,6 +584,8 @@ fn adensa(orig: &[Dab], j: &Janelas, passo: f32) -> Vec<Dab> {
             m.arc_len = a.arc_len + (b.arc_len - a.arc_len) * t;
             m.radius_px = a.radius_px + (b.radius_px - a.radius_px) * t;
             m.coverage = a.coverage + (b.coverage - a.coverage) * t;
+            // Um dab SOLTO: a cápsula do `a` (o passo e o estado de trás dele) não é a deste ponto do meio.
+            (m.step, m.ante) = ([0.0, 0.0], None);
             out.push(j.afila(m));
         }
     }

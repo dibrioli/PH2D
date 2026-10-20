@@ -95,6 +95,55 @@ fn the_size_curve_is_the_opacity_curve_on_the_radius() {
     }
 }
 
+/// ⭐ **A curva em S** (J3, `docs/Painter/Pinceis/exames/canetas.md` 2.ª onda): `0` é a recta do piso/tecto ao
+/// bit; `1` é o smoothstep entre eles — sem quina no pé nem no ombro (a inclinação vai a 0 nas duas pontas, o
+/// que a recta não faz), monótona, e com o raio do Studio Pen (`pressureSize 0,93`, piso 0,14, tecto 0,86) é a
+/// rampa do G-pen do Krita medida na foto da bateria (`d__Ink-3_Gpen_gestos.png`, a largura ÷ a cheia) a ± 0,04.
+#[test]
+fn the_s_curve_softens_the_floor_and_the_ceiling_into_the_g_pen_ramp() {
+    let recta = Pen {
+        floor: 0.14,
+        ceiling: 0.86,
+        ..Pen::default()
+    };
+    for i in 0..=100 {
+        let p = i as f32 / 100.0;
+        assert_eq!(Pen { s_curve: 0.0, ..recta }.read(p).to_bits(), recta.read(p).to_bits());
+    }
+    let s = Pen {
+        s_curve: 1.0,
+        ..recta
+    };
+    let (e, lo, hi) = (1e-3f32, 0.14f32, 0.86f32);
+    assert!((s.read(lo + e) - s.read(lo)) / e < 0.05, "o pé ainda tem quina");
+    assert!((s.read(hi) - s.read(hi - e)) / e < 0.05, "o ombro ainda tem quina");
+    assert!((recta.read(hi) - recta.read(hi - e)) / e > 1.0, "a recta tem a quina que o S tira");
+    let mut antes = 0.0f32;
+    for i in 0..=100 {
+        let v = s.read(i as f32 / 100.0);
+        assert!(v >= antes && (0.0..=1.0).contains(&v), "não monótona a {i} %");
+        antes = v;
+    }
+    let d = Dynamics {
+        size_min: 0.07,
+        pen: s,
+        ..Default::default()
+    };
+    const GPEN: [(f32, f32); 7] = [
+        (0.2, 0.126),
+        (0.3, 0.202),
+        (0.4, 0.353),
+        (0.5, 0.555),
+        (0.6, 0.756),
+        (0.7, 0.908),
+        (0.8, 0.958),
+    ];
+    for (p, w) in GPEN {
+        let v = d.radius_scale(s.read(p));
+        assert!((v - w).abs() <= 0.04, "a {p}: {v:.3} contra o G-pen {w}");
+    }
+}
+
 #[test]
 fn the_smoothing_follows_the_hand_with_a_lag_of_s_over_one_minus_s_samples() {
     let pen = Pen {

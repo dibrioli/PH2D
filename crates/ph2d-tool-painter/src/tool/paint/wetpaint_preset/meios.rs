@@ -297,8 +297,8 @@ impl PainterTool {
             &campos_do_meio(m),
         ));
         for l in LINHAS_DA_MAO {
-            if l.lida_por(m) {
-                let v = mao::le(&self.paint.dynamics, &self.paint.brush.pen_tilt, l);
+            let v = mao::le(&self.paint.dynamics, &self.paint.brush.pen_tilt, l);
+            if l.lida_por(m) && (l.grava_no_neutro() || v != l.omissao()) {
                 p.engine.insert(l.chave().to_owned(), v);
             } else {
                 p.engine.remove(l.chave());

@@ -287,6 +287,18 @@ tecto k > 1,6), `sem_tecto_o_carimbo_e_o_de_hoje` (neutro não arma; Mix no plan
 `PB/texture.rs` + rotas por píxel; LUT nas assadas. **S–M** (~400 LOC). Portões: o modo de hoje = neutro ao bit (nomeá-lo medindo),
 `o_height_abre_o_grao_com_a_pressao`.
 
+**L9 ✅ (J2, 20/10)** — feito: `GrainLaw` no `TextureSettings` (`PB/texture/lei.rs`; as chaves das caches vêm com o slot): o modo de
+HOJE é o **Multiply** (medido: `1 − d·(1 − t)` em toda a grelha, não o Subtract) e é o neutro pela porta de sempre ao bit; Subtract ·
+Darken · Color Burn (função da ponta `w`, factor `r/w ≤ 1`) · Height (pinta onde o papel sobe acima da ponta) · Linear Height; a
+profundidade por dab (`depth_jitter`/`depth_min`, pela pressão ou sorteada — a lei Depth Jitter/Minimum Depth/Control do Photoshop) em
+`DabTilt::grao` (`at_dab`), fluxo próprio. Relevo, Wet e Shape de cores mordem com a ponta cheia (`w = 1`). Brilho/contraste do grão JÁ
+existiam (`apply_tone`, slots 0/1) — nada a fazer. Painel: menus Grain mode · Depth control, campos Minimum depth · Depth jitter (a tabela
+`TP/ponta.rs`). Medido (rampa 0→1, miolo, Linear Height pela pressão): fracção que pinta 0,28 → 0,98, cv 0,46 → 0,14 (Rebelle HB 0,41 →
+0,10; 8B 0,46 → 0,08); hoje (Multiply) 0,99 em toda pressão. Custo (Grain Pencil, smoke, load ~15): p95 0,32 ms a 40 px · 0,75 a 200.
+SHA `0ef4275daf` (bloco com a L18). Portões: `o_height_abre_o_grao_com_a_pressao` (vermelho hoje), `o_modo_de_hoje_e_o_multiply`,
+`cada_modo_do_grao_e_outro`, `os_modos_so_tiram…`, `a_lei_do_grao_de_fabrica_e_o_multiply`, `seam_ponta`. Mutações SANGRAM: Linear
+Height = Multiply; `at_dab` sem `grao`.
+
 **L10 — Mistura com a cor de baixo fora do Wet** (CAP-09/10). Decisão técnica MEDINDO: os pincéis de mistura vão para o Wet (já pinta;
 zero motor) e só se o EXAME §3.6 (ms/quadro a 200 px) o reprovar se faz um Color Smudge Digital (color rate + smudge length).
 Attack/grade do Wet Mix faltam na Watercolor. Pincéis: G-12, G-13 (hoje Dg no catálogo ⇒ Wet), H-1, H-3. **S** (Wet) / **M** (Digital).
@@ -325,8 +337,29 @@ Pincéis: B-11, F-4, F-7. **M** (estado da ponta no tool + campos no `BrushSpec`
 **L18 — Pixel sem AA** (CAP-16): carimbo binário alinhado à grelha de píxeis. Pincel: A-5. **S** (uma rota; o `hardness 1` de hoje ainda
 tem AA). Portão: só valores 0/1 na camada; linha de 1 px sem degraus duplos (pixel-perfect).
 
+**L18 ✅ (J2, 20/10)** — ⚠️ MEDIDO: a ponta dura de hoje JÁ é binária no alfa (0 fracções, r 1–8); faltavam o ALINHAMENTO (colunas
+que afinam 2→1, 3→2 com o centro sub-píxel) e o 1 px (a ponta com AA pára nos 2). Feito: `PixelTip` (Off · Pixel · Pixel-perfect) no
+`BrushSpec`, só no Digital (`PB/pixel.rs`, `TP/pixel_route.rs`): diâmetro inteiro, centro numa âncora da grelha, a pegada do pincel
+binária pelo centro do píxel, o caminho por Bresenham (um fluxo por cópia da simetria, antes do Tiling) e a quina de cada L tirada no 1
+px (o pendente solto no lote seguinte ou no pen-up); `PIXEL_SIZE_MIN_PX` 0,5. Shape/Grain não recortam a ponta de píxel. A placa não a
+carimba (a rota sai antes). Preset: `pixel` só ligada. Painel: menu Pixel tip (Shape, Digital). Custo (smoke): p95 0,16 ms a 40 px ·
+0,44 a 200. SHA `0ef4275daf`. Portões: `a_largura_da_ponta_de_pixel_e_inteira` (vermelho hoje), `a_linha_de_um_pixel_e_pixel_perfect`
+(0 quinas × 31 alinhada), `so_valores_zero_e_um_na_camada`, `seam_ponta`. Mutações SANGRAM: a quina não tirada; o centro sem âncora.
+
 **L19 — Ponta RGBA de N imagens** (CAP-17; image hose): sorteio/sequência entre N imagens, com a cor delas. Pincéis: K-2, K-3, K-4, K-5,
 M-6. **M** (o `shape` é uma imagem; o formato já leva texturas `phTx`). Portão: `uma_imagem_e_o_carimbo_de_hoje`.
+
+**L19 ✅ (J2, 20/10)** — feito: `ImageHose` no `BrushSpec` (`PB/mangueira.rs`, `HOSE_MAX` 8 = as linhas do painel e o spec `Copy`):
+cada dab escolhe a imagem (sorteio com PESO — a lei medida no Herbals —, sequência, pressão, rumo pelo ângulo de losango) e leva-a em
+`DabTilt::imagem`; o tool (`TP/mangueira.rs`) carimba o lote em CORRIDAS da mesma imagem trocando-a para o lugar da Shape (todas as
+rotas e meios; a Watercolor «Automatic» não lê a Shape — 0 bytes). Uma lei de importação RGBA (`importa_rgba`); as imagens seguem
+Per-Layer Color (a cor delas) e a silhueta pelo alpha. Preset: `hose` fora do neutro, `shape_2…` e a cor `shape*_rgba[_alpha]`
+(`escrever/ler_textura_rgba`). Painel (Shape com imagem): Add image (o seletor da shell) · Clear images · Image order · um peso por
+imagem. Custo (Image Hose 3 imagens, smoke): p95 0,15 ms a 40 px · 0,13 a 200. SHA `2efc5f3bde`. Portões:
+`uma_imagem_e_o_carimbo_de_hoje` (ao bit), `o_sorteio_respeita_o_peso` (4·2·1 → 0,57/0,31/0,13 ± 4σ binomial; e 30 000 sorteios no
+motor), `gravar_e_carregar_com_n_imagens_volta_ao_bit` (com cor e tingida), `a_ponta_de_n_imagens_age_nos_meios`, `seam_ponta`.
+Mutações SANGRAM: pesos ignorados, troca desligada, silhuetas fora do preset; SOBREVIVE (declarado) a versão única por imagem —
+nenhuma rota de hoje guarda em cache um dab que leva imagem.
 
 **L20 — Espessura + mistura no mesmo traço** (CAP-21): primeiro MEDIR se o relevo do Wet (`emboss`, `bristleHeight`) dá G-10/G-7; só se
 não der, o Impasto passa a coexistir com o Wet (fim da exclusão em `TP/media.rs:248`). **S** (medir) / **L** (coexistir).

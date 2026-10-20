@@ -13,6 +13,14 @@ Cada sub-comando lê fotos da BATERIA (`bateria.json`, as cenas `gestos`/`tamanh
   textura  <png tamanhos>…  L6: cobertura, resíduo 5×5 e escala (½-autocorrelação) no recto_40 e no recto_200
   velhas   <dir com log.csv>  fotos consecutivas IGUAIS (máx Δ ≤ 16) — a foto velha de uma cena que não repintou
 
+As fotos NOVAS (cenas de `bateria_lacunas.json`, 06 §10):
+  memoria  <png memoria>…   L3: largura e arranque de cada traço (v1/h2 SEM SET_BRUSH × v2/h3 controlo)
+  canto    <png canto>…     L3 atraso: largura depois de cada vértice ÷ a do meio da perna
+  efeito   <png efeito>…    L7: o α por passagem e o erro de cada fórmula sobre cinza e pastel, 1× e 10×
+  velocidade <png>…         L12: largura e cobertura de 3 a 50 px/evento ÷ as do recto de 3 px
+  carimbos · carimbos_3d <png>…  L19/L4: por toque — área, manchas, desvio, cor e FORMA (quantas distintas)
+  fundo    <png fundo>…     L11: fracção da tinta que é a 2.ª cor (Krita, fundo amarelo)
+
 uso: python3 -I leis_lacunas.py <sub-comando> args…
 """
 import csv
@@ -379,6 +387,195 @@ def velhas(d):
     return out
 
 
+# ================================================================ as fotos NOVAS (bateria_lacunas.json, 06 §10)
+_BATL = []
+
+
+def batl():
+    if not _BATL:
+        _BATL.append(json.load(open(os.path.join(AQUI, 'bateria_lacunas.json'))))
+    return _BATL[0]
+
+
+def tracos_l(cena, nomes=None):
+    return [t for t in R.tracos(batl(), cena) if t['quem'] == 'preset' and (not nomes or t['nome'] in nomes)]
+
+
+def memoria(png):
+    """L3: largura mediana e ARRANQUE (1.os 15 px ÷ mediana) de cada traço; v1/h2 vieram SEM SET_BRUSH."""
+    a, _, c = cobertura(png)
+    out = {}
+    for tr in tracos_l('memoria'):
+        w = larguras(c, a, tr)[0]
+        m = len(w)
+        w50 = float(np.median(w[m // 10: m - m // 10]))
+        out[tr['nome']] = {'w50': w50, 'arranque': float(np.median(w[:15]) / w50) if w50 > 0 else float('nan'),
+                           'fim': float(np.median(w[-15:]) / w50) if w50 > 0 else float('nan')}
+    return out
+
+
+def canto(png):
+    """L3 atraso: largura por distância depois de cada vértice ÷ a do meio da perna (d = 30 px no zigue-zague)."""
+    a, _, c = cobertura(png)
+    out = {}
+    for tr in tracos_l('canto'):
+        w, th, s, pr = larguras(c, a, tr, H=20.0)
+        xy = tr['pts'][:, :2]
+        d = np.hypot(*np.diff(xy, axis=0).T)
+        vira = np.where(np.abs(np.diff(np.degrees(np.arctan2(*np.diff(xy, axis=0).T[::-1])) % 360)) > 30)[0]
+        s_v = np.concatenate([[0.0], np.cumsum(d)])[vira + 1]
+        ext = np.concatenate([[0.0], s_v, [s[-1]]])
+        pernas = []
+        for i in range(1, len(ext) - 1):
+            ini, fim = ext[i], ext[i + 1]
+            meio = np.median(w[(s > ini + 0.4 * (fim - ini)) & (s < ini + 0.6 * (fim - ini))])
+            prof = [float(np.median(w[(s >= ini + k - 1) & (s <= ini + k + 1)]) / meio) for k in (2, 5, 10, 15, 20, 25)
+                    if ini + k + 1 < fim]
+            pernas.append({'w_antes': float(np.median(w[(s > ext[i - 1] + 0.4 * (ini - ext[i - 1])) & (s < ini - 0.4 * (ini - ext[i - 1]))])),
+                           'w_meio': float(meio), 'perfil_2_5_10_15_20_25': [round(x, 2) for x in prof]})
+        out[tr['nome']] = pernas
+    return out
+
+
+def _passa(fn, b, s, al, n):
+    for _ in range(n):
+        b = b + al * (fn(b, s) - b)
+    return b
+
+
+def efeito(png):
+    """L7: base CINZA (y 150) e PASTEL (y 470) a x 375; o efeito 1× (x 250) e 10× (x 500). Um α por passagem,
+    ajustado em conjunto aos 4 pontos (2 bases × 1×/10×) pela fórmula iterada; papel (y 310) × NORMAL."""
+    a = np.asarray(Image.open(png).convert('RGB'), float) / 255.0
+    pts = []
+    for y in (150, 470):
+        base = _caixa(a, 375, y, 30, 8)
+        for x, n in ((250, 1), (500, 10)):
+            pts.append((base, _caixa(a, x, y, 5, 8), n))
+    papel = _caixa(a, 375, 310, 30, 8)
+    p1, p10 = _caixa(a, 250, 310, 5, 20), _caixa(a, 500, 310, 5, 20)
+    grade = np.concatenate([np.arange(0.0, 0.1, 0.0005), np.arange(0.1, 1.0001, 0.005)])
+    res = []
+    for esp, f, g in (('sRGB', lambda x: x, lambda x: x), ('lin', _lin, _enc)):
+        for m, fn in MODOS.items():
+            h = (lambda b, s, fn=fn: g(fn(f(b), f(s))))
+            best = min((max(float(np.abs(_passa(h, b, AZUL, al, n) - C).max()) for b, C, n in pts), al) for al in grade)
+            res.append((best[0] * 255, esp, m, best[1]))
+    res.sort()
+    dE = [float(np.abs(C - b).max() * 255) for b, C, n in pts]
+    alfa_p = lambda C, n: 1 - (1 - _alfa(papel, C, AZUL)) ** (1 / n) if _alfa(papel, C, AZUL) < 1 else 1.0
+    return {'base_cinza': (pts[0][0] * 255).round().tolist(), 'base_pastel': (pts[2][0] * 255).round().tolist(),
+            'cinza_1x_10x': [(pts[0][1] * 255).round().tolist(), (pts[1][1] * 255).round().tolist()],
+            'pastel_1x_10x': [(pts[2][1] * 255).round().tolist(), (pts[3][1] * 255).round().tolist()],
+            'dE_cinza_1x_10x_pastel_1x_10x': [round(x, 1) for x in dE],
+            'alfa_papel_por_passagem_1x_10x': [round(alfa_p(p1, 1), 4), round(alfa_p(p10, 10), 4)],
+            'melhores': [(round(e, 2), esp, m, round(al, 4)) for e, esp, m, al in res[:6]],
+            'por_modo_sRGB': {m: round(e, 2) for e, esp, m, al in res if esp == 'sRGB'}}
+
+
+def velocidade(png):
+    """L12: largura mediana e cobertura da banda central de cada recto (3…50 px/evento) ÷ a do recto de 3 px."""
+    _, _, c = cobertura(png)
+    out = []
+    for tr in tracos_l('velocidade'):
+        w, cov, n = _serie(c, tr, 0)
+        core = slice(60, n - 60)
+        out.append((tr['nome'], float(np.median(w[core])), float(np.mean(cov[core]))))
+    w0, c0 = out[0][1], out[0][2]
+    return {nm: {'w': w, 'w_rel': round(w / w0, 3) if w0 else None, 'cob_rel': round(cv / c0, 3) if c0 else None}
+            for nm, w, cv in out}
+
+
+def carimbos(png, cena='carimbos'):
+    """L4/L19: cada TOQUE é um carimbo (ou uma nuvem de emissão). Por toque: área, nº de manchas, desvio do centro
+    ÷ D, a cor (ΔH, S, V) e a FORMA (máscara 24×24 centrada); formas agrupadas por correlação ≥ 0,9."""
+    a, _, c = cobertura(png)
+    ts = tracos_l(cena)
+    xs = sorted({float(t['pts'][0][0]) for t in ts})
+    meia = 0.5 * (xs[1] - xs[0]) if len(xs) > 1 else 30.0
+    linhas = {}
+    for t in ts:
+        x, y, p = t['pts'][0]
+        D = t['size']
+        x0, x1, y0, y1 = int(x - meia), int(x + meia), int(max(0, y - 2.4 * D)), int(min(c.shape[0], y + 2.4 * D))
+        z = c[y0:y1, x0:x1]
+        m = z > 0.12
+        if m.sum() < 3:
+            linhas.setdefault(p, []).append(None)
+            continue
+        lab, n = _rotula(m)
+        area = np.bincount(lab.ravel())[1:]
+        yy, xx = np.indices(z.shape)
+        cx, cy = (xx * z).sum() / z.sum() + x0, (yy * z).sum() / z.sum() + y0
+        ys_, xs_ = np.nonzero(m)
+        caixa = z[ys_.min():ys_.max() + 1, xs_.min():xs_.max() + 1]
+        forma = np.asarray(Image.fromarray((caixa * 255).astype(np.uint8)).resize((24, 24), Image.BILINEAR), float)
+        h, sa, v = _hsv(a[y0:y1, x0:x1][m] * 1.0)
+        ok = sa > 0.2
+        dh = float(np.median((h[ok] - H_AZUL + 180) % 360 - 180)) if ok.sum() > 3 else float('nan')
+        linhas.setdefault(p, []).append({'area': int(m.sum()), 'manchas': int((area >= 3).sum()),
+                                         'dx_D': float((cx - x) / D), 'dy_D': float((cy - y) / D),
+                                         'larg': int(np.ptp(xs_) + 1), 'alt': int(np.ptp(ys_) + 1),
+                                         'dH': dh, 'S': float(np.median(sa)), 'V': float(np.median(v)),
+                                         'cobertura_media': float(z[m].mean()), '_f': forma})
+    grupos, out = [], {}
+    for p, L in sorted(linhas.items(), reverse=True):
+        seq = []
+        for e in L:
+            if e is None:
+                seq.append('-')
+                continue
+            f = e.pop('_f')
+            f = (f - f.mean()) / (f.std() + 1e-9)
+            k = next((i for i, g in enumerate(grupos) if float((f * g).mean()) >= 0.9), None)
+            if k is None:
+                grupos.append(f)
+                k = len(grupos) - 1
+            seq.append(chr(65 + k) if k < 26 else '+')
+        v = [e for e in L if e]
+        q = lambda key: np.percentile([e[key] for e in v], [10, 50, 90]).round(2).tolist() if v else None
+        out[f'pressao_{p}'] = {'toques': len(L), 'com_tinta': len(v), 'formas_seq': ''.join(seq),
+                               'area_p10_50_90': q('area'), 'manchas_p10_50_90': q('manchas'),
+                               'larg_p10_50_90': q('larg'), 'alt_p10_50_90': q('alt'),
+                               'dx_D_sd': float(np.std([e['dx_D'] for e in v])) if v else None,
+                               'dy_D_sd': float(np.std([e['dy_D'] for e in v])) if v else None,
+                               'dH_p10_50_90': q('dH'), 'V_p10_50_90': q('V'), 'cob_p10_50_90': q('cobertura_media')}
+    out['formas_distintas'] = len(grupos)
+    return out
+
+
+def _nao_azul(rgb):
+    """Fracção dos px SATURADOS (S > 0,25) cuja matiz cai fora do azul (30°–170°: amarelo, laranja, verde = a
+    mistura frente×fundo em RGB). O pálido da borda fica azul na matiz — a distância RGB enganava-se nele."""
+    h, sa, v = _hsv(rgb)
+    ok = sa > 0.25
+    return float(np.mean((h[ok] > 30) & (h[ok] < 170))) if ok.sum() > 5 else float('nan'), int(ok.sum())
+
+
+def fundo(png):
+    """L11 (Krita, frente AZUL, fundo AMARELO): fracção da tinta saturada com matiz de AMARELO/VERDE (não-azul), na
+    cena e por decil da pressão na rampa_0_1. > 0 ⇒ o preset usa a 2.ª cor (ou sorteia a matiz: ver o ΔH)."""
+    a, _, c = cobertura(png)
+    m = c > 0.1
+    if m.sum() < 20:
+        return {'tinta_px': int(m.sum())}
+    fr, n = _nao_azul(a[m])
+    out = {'tinta_px': int(m.sum()), 'saturados': n, 'frac_nao_azul': round(fr, 4)}
+    tr = tracos_l('fundo', ['rampa_0_1'])[0]
+    q, pr, s, t = R.densifica(tr['pts'])
+    Sx, RGB, o = R.faixa(c, a, q, t, 0.4 * tr['size'], 0)
+    dec = []
+    for k in range(10):
+        sel = (pr >= k / 10) & (pr < (k + 1) / 10 + (k == 9))
+        mm = Sx[sel] > 0.1
+        if mm.sum() > 5:
+            f, n = _nao_azul(RGB[sel][mm])
+            if n > 5:
+                dec.append((k / 10, round(f, 3)))
+    out['rampa_nao_azul_por_decil'] = dec
+    return out
+
+
 def main():
     if len(sys.argv) < 3:
         print(__doc__)
@@ -395,7 +592,9 @@ def main():
         for m, a, b in velhas(args[0]):
             print(f"máxΔ {m:3d}  {a} → {b}")
     else:
-        fn = {'lamina': lamina, 'dabs': dabs, 'cor': cor, 'tecto': tecto, 'textura': textura}[sub]
+        fn = {'lamina': lamina, 'dabs': dabs, 'cor': cor, 'tecto': tecto, 'textura': textura, 'memoria': memoria,
+              'canto': canto, 'efeito': efeito, 'velocidade': velocidade, 'carimbos': carimbos,
+              'carimbos_3d': lambda f: carimbos(f, 'carimbos_3d'), 'fundo': fundo}[sub]
         for png in args:
             p({'png': png, **fn(png)})
 

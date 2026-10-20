@@ -70,3 +70,17 @@ tinta_A_pct. [`log.csv`](log.csv): uma linha por cena corrida (hora, segundos).
   meio das rampas de pressão; `tamanhos` 0,00 % de tinta — já registado a 11/10) e `Spatter/Spatter` (quase
   transparente, 0,01 % — o doc 52 §1). Os seguintes mais fracos: Spatter 2/3, Metallic/Splats, Charcoal Liner
   (1,5–5 %).
+
+## 2026-10-20 — as 31 fotos VELHAS refeitas (e a guarda que as apanha)
+
+`leis_lacunas.py velhas` achou **32** cenas cuja foto era a da cena ANTERIOR (06 §7). **Causa** (medida nas
+próprias fotos): o `BOOKMARK` responde antes de o Rebelle repintar a janela — em 24 das 31 a foto **A** é a cena
+anterior e a **B** (segundos depois) já é a nova; nas outras 7 a janela ficou parada a cena inteira (A = B = a
+anterior). Não era o `SET_BRUSH` (os nomes resolvem) nem o retomável (só salta cenas com as duas fotos).
+**Cura** em `fotos_bateria.sh` + [`foto_estavel.py`](../../ferramentas/foto_estavel.py): a foto só vale com a tela
+ESTÁVEL (duas capturas seguidas com máxΔ ≤ 2) e DIFERENTE das duas fotos da cena anterior (máxΔ > 16, o limiar do
+`velhas`); senão até 30 capturas e a cena falha com o motivo no `log.csv` (volta na passagem seguinte).
+**Refeitas** as 32 (`lista_refoto_velhas.txt`, 64 PNG, 0 falhas, linhas `refoto 20/10` no fim do `log.csv`; `indice.csv`
+regenerado): 31 mudaram (4–51 % dos px), **Graphite Pencil/HB** saiu igual ao byte — é um quase-gémeo do H (máxΔ 15
+em 50 mil px), não uma foto velha; é a única linha que o `velhas` ainda imprime. Os 6 «quase iguais» (Δ 2–14)
+eram a foto B da cena anterior — velhas também.

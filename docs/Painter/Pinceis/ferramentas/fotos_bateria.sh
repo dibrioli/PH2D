@@ -5,7 +5,8 @@
 # Cada parte acaba num BOOKMARK e o envio espera a resposta dele (ws_bateria.mjs), não um prazo fixo.
 # RETOMÁVEL: salta a cena que já tem as duas fotos. Pára de começar presets novos depois de `ATE` (epoch).
 #
-# lista: `nome|TOOL|Grupo/Nome[|base TOOL:Grupo/Nome[|cenas separadas por espaço]]`
+# lista: `nome|TOOL|Grupo/Nome[|base TOOL:Grupo/Nome[|cenas separadas por espaço[|params JSON do SET_BRUSH]]]`
+# BAT=<bateria> troca a bateria (omissão: bateria.json; as lacunas: bateria_lacunas.json, com ops extra);
 # PRIMEIRA=1 fica com a 1.ª cena de cada preset (a 1.ª passagem: uma foto de CADA preset antes das repetições);
 # SO_CENA=<cena> restringe a passagem a uma cena;
 # `<saída>/salta.txt` (linhas `TOOL|nome|cena`) lista as cenas que derrubaram o Rebelle duas vezes;
@@ -16,7 +17,7 @@
 set -u
 O="$HOME/Apps/rebelle/oraculo"; F="$(cd "$(dirname "$0")" && pwd)"; L="$1"; S="$2"
 LOG="${3:-$S/log.csv}"; EV="${EV_DIR:-$O/bateria_ev}"; ATE="${ATE:-0}"
-BAT="$F/bateria.json"; CENAS_OMISSAO="gestos tamanhos sobre"
+BAT="${BAT:-$F/bateria.json}"; CENAS_OMISSAO="gestos tamanhos sobre"
 mkdir -p "$S" "$EV"
 [ -f "$LOG" ] || echo "quando,nome,TOOL,preset,cena,estado,motivo,segundos" > "$LOG"
 D=$(cat "$O/display.txt"); [ "$D" = ":0" ] && { echo RECUSA; exit 3; }
@@ -29,7 +30,7 @@ dialogos() { # fecha toda janela que não é a principal (os erros de preset fic
   echo "$n"
 }
 regista() { echo "$(date +%FT%T),$1,$2,\"$3\",$4,$5,\"$6\",$7" >> "$LOG"; }
-foto() { # foto <ficheiro final> — a janela principal, conferida (título 1000 × 640, tela alinhada), recortada
+captura() { # captura <png> — a janela principal, conferida (título 1000 × 640, tela alinhada), recortada
   local w t full="$O/_bat_full.png"; w=$(principal); [ -n "$w" ] || return 1
   t=$(xprop -display "$D" -id "$w" WM_NAME); [[ "$t" == *"1000 x 640 pixels"* ]] || return 2
   import -display "$D" -window "$w" "$full" || return 3
@@ -43,8 +44,27 @@ assert max(fora) < 140 and min(dentro) > 200, f"recorte desalinhado: fora={fora}
 PY
   magick "$full" -crop 1000x640+480+220 +repage -strip -define png:compression-level=9 "$1" && rm -f "$full"
 }
+# A GUARDA DA FOTO VELHA (20/10, 06 §7: 31 fotos de 19/10 eram a cena anterior — o BOOKMARK responde antes de
+# a janela repintar): a foto só vale com a tela ESTÁVEL (duas capturas seguidas iguais) e DIFERENTE das fotos
+# da cena anterior (foto_estavel.py). Sem isso até FOTO_TENTATIVAS capturas (~1 s cada): 5 = igual à anterior,
+# 6 = a tela não parou; o motivo fica em $O/_bat_foto_motivo.txt e a cena volta na próxima passagem.
+foto() { # foto <ficheiro final> [fotos da cena anterior …]
+  local final="$1" prev="$O/_bat_cap0.png" cur="$O/_bat_cap1.png" i r="" rc; shift
+  rm -f "$prev" "$O/_bat_foto_motivo.txt"
+  for i in $(seq 1 "${FOTO_TENTATIVAS:-30}"); do
+    captura "$cur"; rc=$?; [ $rc -eq 0 ] || return $rc
+    if [ -f "$prev" ]; then
+      r=$(python3 -I "$F/foto_estavel.py" "$cur" "$prev" "$@")
+      if [ "$r" = ok ]; then mv "$cur" "$final"; rm -f "$prev"; return 0; fi
+    fi
+    mv "$cur" "$prev"; sleep 0.5
+  done
+  echo "$r" > "$O/_bat_foto_motivo.txt"; rm -f "$prev"
+  case "$r" in igual*) return 5 ;; *) return 6 ;; esac
+}
+ultA=""; ultB=""
 n=0
-while IFS='|' read -r nm tool preset base cenas; do
+while IFS='|' read -r nm tool preset base cenas params; do
   [ -z "$nm" ] || [ "${nm:0:1}" = "#" ] && continue
   if [ "$ATE" != 0 ] && [ "$(date +%s)" -gt "$ATE" ]; then echo "ATE passou"; exit 10; fi
   mkdir -p "$S/$tool"
@@ -58,7 +78,7 @@ while IFS='|' read -r nm tool preset base cenas; do
     t0=$(date +%s); motivo=""
     nd=$(dialogos); [ "$nd" != 0 ] && echo "  (fechei $nd diálogo(s) antes de $nm $cena)"
     ev="$EV/${nm}_${cena}"
-    if ! python3 -I "$F/bateria_rebelle.py" "$BAT" "$cena" "$tool" "$preset" "$ev" ${base:+--base "$base"}; then
+    if ! python3 -I "$F/bateria_rebelle.py" "$BAT" "$cena" "$tool" "$preset" "$ev" ${base:+--base "$base"} ${params:+--params "$params"}; then
       regista "$nm" "$tool" "$preset" "$cena" falha "eventos" 0; echo "✗ $nm $cena eventos"; continue; fi
     timeout 200 node "$F/ws_bateria.mjs" "${ev}_A.json" 180000 2 > "$EV/_ws.txt"; rc=$?
     if [ $rc -ne 0 ]; then
@@ -69,14 +89,14 @@ while IFS='|' read -r nm tool preset base cenas; do
       regista "$nm" "$tool" "$preset" "$cena" falha "diálogo de erro ($nd) — preset inválido?" $(( $(date +%s) - t0 ))
       echo "✗ $nm $cena: diálogo de erro"; continue; fi
     timeout 30 bash "$O/inj.sh" "click 1853 273; wait 300; key ctrl+a; wait 200; type 100; wait 200; key enter; wait 1200" >/dev/null
-    foto "$a" || motivo="foto A rc=$?"
+    foto "$a" $ultA $ultB || motivo="foto A rc=$? $(cat "$O/_bat_foto_motivo.txt" 2>/dev/null)"
     timeout 90 node "$F/ws_bateria.mjs" "${ev}_B.json" 60000 2 > "$EV/_ws.txt"; rc=$?
     if [ $rc -ne 0 ]; then rm -f "$a"
       regista "$nm" "$tool" "$preset" "$cena" falha "ws B rc=$rc" $(( $(date +%s) - t0 )); echo "✗ $nm $cena B"; exit 11; fi
-    [ -z "$motivo" ] && { foto "$b" || motivo="foto B rc=$?"; }
+    [ -z "$motivo" ] && { foto "$b" || motivo="foto B rc=$? $(cat "$O/_bat_foto_motivo.txt" 2>/dev/null)"; }
     if [ -n "$motivo" ]; then rm -f "$a" "$b"
       regista "$nm" "$tool" "$preset" "$cena" falha "$motivo" $(( $(date +%s) - t0 )); echo "✗ $nm $cena $motivo"; continue; fi
-    regista "$nm" "$tool" "$preset" "$cena" ok "" $(( $(date +%s) - t0 ))
+    regista "$nm" "$tool" "$preset" "$cena" ok "" $(( $(date +%s) - t0 )); ultA="$a"; ultB="$b"
     echo "✓ $nm $cena $(( $(date +%s) - t0 )) s"
   done
   n=$((n+1))

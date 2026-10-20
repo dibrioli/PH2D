@@ -13,8 +13,12 @@ Ops: pincel (preset|base) · cor · traco (pontos EXACTOS com a pressão) · sec
 foto = corte da parte. A base da cena «sobre» é o próprio preset, salvo `--base TOOL:Grupo/Nome` (as
 ferramentas sem tinta: Eraser, Blend, Smudge, Water, Dry, Clone, e os Marker/Effect).
 
+A `bateria_lacunas.json` acrescenta (a `bateria.json` não os tem; a saída dela não muda): o traço
+`"mesmo_pincel": true` vai SEM SET_BRUSH (a memória entre traços, L3), e `--params '{…}'` junta campos ao
+SET_BRUSH do PRESET (ex.: `{"dual_brush_enabled": false}`; a base fica como é).
+
 uso: bateria_rebelle.py <bateria.json> <cena> <TOOL> <Grupo/Nome> <saida> [--base TOOL:Grupo/Nome]
-     [--seed 7] [--paper "Default/EX00 White Simple"]
+     [--seed 7] [--paper "Default/EX00 White Simple"] [--params JSON]
 """
 import argparse
 import json
@@ -49,7 +53,7 @@ def ptr(tipo, x, y, p):
             "pressure": p}
 
 
-def eventos(cena, tool, preset, base, seed, paper, ident):
+def eventos(cena, tool, preset, base, seed, paper, ident, params=None):
     partes, ev = {}, []
     ev.append({"event_type": "NEW_ARTWORK", "width": 1000, "height": 640, "units": "px", "dpi": 72,
                "paper": {"preset": paper, "color": {"r": 255, "g": 255, "b": 255}, "deckled_edges": False,
@@ -69,9 +73,13 @@ def eventos(cena, tool, preset, base, seed, paper, ident):
             # Acima do Max Size o Rebelle não pinta maior: com size_px > max carimba QUADRADOS soltos
             # (medido 19/10, Graphite 8B a 200 px); o traço vai então ao max, com os dois campos coerentes.
             px = min(float(op["size_px"]), mx)
-            ev.append({"event_type": "SET_BRUSH", "tool": t, "preset": pr, "size_px": px, "size": pct(px, mx),
-                       "pressure": 100, "color": dict(cor)})
-            ev.append({"event_type": "SET_BRUSH_COLOR", "color": dict(cor)})
+            if not op.get("mesmo_pincel"):  # bateria_lacunas: a memória entre traços (L3) — sem SET_BRUSH
+                sb = {"event_type": "SET_BRUSH", "tool": t, "preset": pr, "size_px": px, "size": pct(px, mx),
+                      "pressure": 100, "color": dict(cor)}
+                if params and quem == (tool, preset):
+                    sb.update(params)
+                ev.append(sb)
+                ev.append({"event_type": "SET_BRUSH_COLOR", "color": dict(cor)})
             pts = op["pts"]
             ev.append(ptr("POINTER_PRESS", *pts[0]))
             ev.extend(ptr("POINTER_MOVE", *q) for q in pts[1:])
@@ -97,6 +105,7 @@ def main():
     ap.add_argument("--base", default=None, help="TOOL:Grupo/Nome do pincel das faixas (cena «sobre»)")
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--paper", default="Default/EX00 White Simple")
+    ap.add_argument("--params", default="", help="JSON com campos a juntar ao SET_BRUSH do PRESET (não da base)")
     a = ap.parse_args()
     assert a.tool in PASTA, f"TOOL desconhecido: {a.tool}"
     bat = json.loads(Path(a.bateria).read_text())
@@ -107,7 +116,8 @@ def main():
         assert bt in PASTA, f"TOOL da base desconhecido: {bt}"
         base = (bt, bp)
     ident = Path(a.saida).name
-    for nome, ev in eventos(cena, a.tool, a.preset, base, a.seed, a.paper, ident).items():
+    params = json.loads(a.params) if a.params else None
+    for nome, ev in eventos(cena, a.tool, a.preset, base, a.seed, a.paper, ident, params).items():
         Path(f"{a.saida}_{nome}.json").write_text(json.dumps({"frames": [{"events": ev}]}, separators=(",", ":")))
 
 

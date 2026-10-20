@@ -1,0 +1,31 @@
+quando,nome,TOOL,preset,cena,estado,motivo,segundos
+2026-10-20T04:39:28,flat_flat_oily,OIL_AND_ACRYLIC,"Flat/Flat Oily",memoria,ok,"",7
+2026-10-20T04:39:39,knife_knife_smooth,OIL_AND_ACRYLIC,"Knife/Knife Smooth",memoria,ok,"",11
+2026-10-20T04:39:48,flat_flat_dry,OIL_AND_ACRYLIC,"Flat/Flat Dry",memoria,ok,"",9
+2026-10-20T04:39:56,flat_knife_soft,EXPRESS_OIL,"Flat/Knife Soft",memoria,ok,"",8
+2026-10-20T04:40:10,effect_burn,MARKER,"Effect/Burn",efeito,ok,"",14
+2026-10-20T04:40:23,effect_color,MARKER,"Effect/Color",efeito,ok,"",13
+2026-10-20T04:40:36,effect_dodge,MARKER,"Effect/Dodge",efeito,ok,"",13
+2026-10-20T04:40:47,effect_hue,MARKER,"Effect/Hue",efeito,ok,"",11
+2026-10-20T04:40:58,effect_luminosity,MARKER,"Effect/Luminosity",efeito,ok,"",11
+2026-10-20T04:41:10,effect_overlay,MARKER,"Effect/Overlay",efeito,ok,"",12
+2026-10-20T04:41:22,effect_saturation,MARKER,"Effect/Saturation",efeito,ok,"",12
+2026-10-20T04:41:40,pen_bullet,INK_PEN,"Pen/Bullet",velocidade,ok,"",18
+2026-10-20T04:41:49,graphite_pencil_hb,PENCIL,"Graphite Pencil/HB",velocidade,ok,"",9
+2026-10-20T04:41:59,watercolor_round,WATERCOLOR,"Watercolor/Round",velocidade,ok,"",10
+2026-10-20T04:42:12,spatter_splats,WATERCOLOR,"Spatter/Splats",carimbos_3d,ok,"",13
+2026-10-20T04:42:26,spatter_splats_esp3,WATERCOLOR,"Spatter/Splats",gestos,ok,"",14
+2026-10-20T04:42:34,charcoal_charcoal_2,PENCIL,"Charcoal/Charcoal 2",tamanhos,ok,"",8
+2026-10-20T04:42:46,charcoal_charcoal_2_semdual,PENCIL,"Charcoal/Charcoal 2",tamanhos,ok,"",12
+2026-10-20T04:42:55,pastel_dry_dry_thin_semdual,PASTEL,"Pastel Dry/Dry Thin",tamanhos,ok,"",9
+2026-10-20T04:43:40,flat_flat_oily,OIL_AND_ACRYLIC,"Flat/Flat Oily",canto,ok,"",10
+2026-10-20T04:43:50,knife_knife_smooth,OIL_AND_ACRYLIC,"Knife/Knife Smooth",canto,ok,"",10
+2026-10-20T04:43:59,flat_flat_dry,OIL_AND_ACRYLIC,"Flat/Flat Dry",canto,ok,"",9
+2026-10-20T04:44:06,flat_knife_soft,EXPRESS_OIL,"Flat/Knife Soft",canto,ok,"",7
+2026-10-20T04:48:01,charcoal_charcoal_prime,PENCIL,"Charcoal/Charcoal",tamanhos,ok,"",9
+2026-10-20T04:48:10,charcoal_charcoal_2_ctl2,PENCIL,"Charcoal/Charcoal 2",tamanhos,ok,"",9
+2026-10-20T04:48:19,pastel_dry_dry_thin_ctl2,PASTEL,"Pastel Dry/Dry Thin",tamanhos,ok,"",9
+2026-10-20T04:48:28,charcoal_charcoal_2_semdual2,PENCIL,"Charcoal/Charcoal 2",tamanhos,ok,"",9
+2026-10-20T04:48:36,pastel_dry_dry_thin_semdual2,PASTEL,"Pastel Dry/Dry Thin",tamanhos,ok,"",8
+2026-10-20T04:48:46,charcoal_charcoal_2_ctl3,PENCIL,"Charcoal/Charcoal 2",tamanhos,ok,"",10
+2026-10-20T04:48:54,pastel_dry_dry_thin_ctl3,PASTEL,"Pastel Dry/Dry Thin",tamanhos,ok,"",8

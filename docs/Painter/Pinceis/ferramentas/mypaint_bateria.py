@@ -13,6 +13,7 @@ branco e grava uma PNG por cena. MyPaint não tem molhado/seco: `simula`/`seca` 
   · superfície MyPaintTiledSurface2 (o pigmento espectral do MyPaint 2.x), stroke_to_2 (zoom 1, rotação 0)
 
 uso: python3 -I mypaint_bateria.py [--pacotes classic,deevad] [--pincel X.myb ...] [--saida DIR] [--dt 0.01]
+     [--bateria bateria_lacunas.json --cenas velocidade,canto]   (--cenas: só essas; omissão: todas)
      sem --pacotes nem --pincel: todos os pacotes de /usr/share/mypaint-data/2.0/brushes
 """
 import argparse
@@ -115,9 +116,14 @@ def main():
     ap.add_argument("--saida", default=os.path.join(AQUI, "..", "fixtures", "mypaint_bateria"))
     ap.add_argument("--dt", type=float, default=0.010)
     ap.add_argument("--bateria", default=os.path.join(AQUI, "bateria.json"))
+    ap.add_argument("--cenas", default="")
     a = ap.parse_args()
     bat_bytes = open(a.bateria, "rb").read()
     bateria = json.loads(bat_bytes)
+    cenas = [c for c in a.cenas.split(",") if c]
+    if cenas:
+        bateria["cenas"] = [c for c in bateria["cenas"] if c["nome"] in cenas]
+        assert len(bateria["cenas"]) == len(cenas), f"cena desconhecida em {cenas}"
     exe = binario()
     alvos = [(os.path.basename(os.path.dirname(p)), p) for p in a.pincel]
     pacotes = a.pacotes.split(",") if a.pacotes else ([] if a.pincel else sorted(

@@ -1,0 +1,34 @@
+# As fotos NOVAS do Rebelle que o 06_LEIS_DAS_LACUNAS §8 pede — corre com BAT=bateria_lacunas.json.
+# nome|TOOL|Grupo/Nome|base|cenas|params do SET_BRUSH (JSON; só no preset, nunca na base)
+# L3 memória e atraso: as duas FIXAS do P53 (Flat Oily, Knife Smooth) e dois FOLLOW_TRAJECTORY (Flat Dry; Express Knife Soft)
+flat_flat_oily|OIL_AND_ACRYLIC|Flat/Flat Oily||memoria canto
+knife_knife_smooth|OIL_AND_ACRYLIC|Knife/Knife Smooth||memoria canto
+flat_flat_dry|OIL_AND_ACRYLIC|Flat/Flat Dry||memoria canto
+flat_knife_soft|EXPRESS_OIL|Flat/Knife Soft||memoria canto
+# L7: os 7 Effect sobre CINZA e PASTEL, 1× e 10×
+effect_burn|MARKER|Effect/Burn|MARKER:Marker/Bullet|efeito
+effect_color|MARKER|Effect/Color|MARKER:Marker/Bullet|efeito
+effect_dodge|MARKER|Effect/Dodge|MARKER:Marker/Bullet|efeito
+effect_hue|MARKER|Effect/Hue|MARKER:Marker/Bullet|efeito
+effect_luminosity|MARKER|Effect/Luminosity|MARKER:Marker/Bullet|efeito
+effect_overlay|MARKER|Effect/Overlay|MARKER:Marker/Bullet|efeito
+effect_saturation|MARKER|Effect/Saturation|MARKER:Marker/Bullet|efeito
+# L12: três controlos do Rebelle nos rectos de 3 a 50 px por evento
+pen_bullet|INK_PEN|Pen/Bullet||velocidade
+graphite_pencil_hb|PENCIL|Graphite Pencil/HB||velocidade
+watercolor_round|WATERCOLOR|Watercolor/Round||velocidade
+# L4: Splats — toques a 3·D (a nuvem de UM ponto de emissão) e o spacing 3,0 pelo SET_BRUSH (o do preset: 0,7)
+spatter_splats|WATERCOLOR|Spatter/Splats||carimbos_3d
+spatter_splats_esp3|WATERCOLOR|Spatter/Splats||gestos|{"splat_spacing": 3.0}
+# L6: dual brush DESLIGADO pelo SET_BRUSH; o mesmo preset sem params é o CONTROLO da porta (= a foto de 19/10?)
+charcoal_charcoal_2|PENCIL|Charcoal/Charcoal 2||tamanhos
+charcoal_charcoal_2_semdual|PENCIL|Charcoal/Charcoal 2||tamanhos|{"dual_brush_enabled": false}
+pastel_dry_dry_thin_semdual|PASTEL|Pastel Dry/Dry Thin||tamanhos|{"dual_brush_enabled": false}
+# L6, 2.ª sessão (o controlo de cima saiu com o recto de 200 a ~60 px contra 170 a 19/10): ordem intercalada, sessão nova
+charcoal_charcoal_prime|PENCIL|Charcoal/Charcoal||tamanhos
+charcoal_charcoal_2_ctl2|PENCIL|Charcoal/Charcoal 2||tamanhos
+pastel_dry_dry_thin_ctl2|PASTEL|Pastel Dry/Dry Thin||tamanhos
+charcoal_charcoal_2_semdual2|PENCIL|Charcoal/Charcoal 2||tamanhos|{"dual_brush_enabled": false}
+pastel_dry_dry_thin_semdual2|PASTEL|Pastel Dry/Dry Thin||tamanhos|{"dual_brush_enabled": false}
+charcoal_charcoal_2_ctl3|PENCIL|Charcoal/Charcoal 2||tamanhos
+pastel_dry_dry_thin_ctl3|PASTEL|Pastel Dry/Dry Thin||tamanhos

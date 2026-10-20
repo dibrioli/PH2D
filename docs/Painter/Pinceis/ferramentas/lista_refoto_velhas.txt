@@ -1,0 +1,34 @@
+# As 32 cenas que o `leis_lacunas.py velhas` listou a 20/10 (31 eram a cena ANTERIOR; Graphite HB é legítima) — refeitas com a guarda
+# da foto velha (foto_estavel.py). Gerada de lista_281.txt; o 5.º campo é a cena a refazer.
+colored_pencil_h_color|PENCIL|Colored Pencil/H Color||gestos
+graphite_pencil_hb|PENCIL|Graphite Pencil/HB||gestos
+texture_fragments|PASTEL|Texture/Fragments||gestos
+dabber_dabber|OIL_AND_ACRYLIC|Dabber/Dabber||gestos
+grunge_scatter|OIL_AND_ACRYLIC|Grunge/Scatter||gestos
+grunge_grunge_3|EXPRESS_OIL|Grunge/Grunge 3||gestos
+bristle_bristle_soft|WATERCOLOR|Bristle/Bristle Soft||gestos
+gouache_gouache_filbert_2|WATERCOLOR|Gouache/Gouache Filbert 2||gestos
+spatter_spatter_5|WATERCOLOR|Spatter/Spatter 5||gestos
+spatter_splat|WATERCOLOR|Spatter/Splat||gestos
+spatter_star|WATERCOLOR|Spatter/Star||gestos
+sumi_e_sumi_e_soft|WATERCOLOR|Sumi-e/Sumi-e  soft||gestos
+default_soft_2|BLEND|Default/Soft 2|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_soft_noisy_2|BLEND|Default/Soft Noisy 2|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+charcoal_charcoal_3|PENCIL|Charcoal/Charcoal 3||tamanhos
+scratches_scratch_thin|PENCIL|Scratches/Scratch Thin||sobre
+knife_knife_dry|OIL_AND_ACRYLIC|Knife/Knife Dry||sobre
+knife_knife_oily|OIL_AND_ACRYLIC|Knife/Knife Oily||tamanhos
+bristle_bristle_round|WATERCOLOR|Bristle/Bristle Round||tamanhos
+bristle_bristle_soft|WATERCOLOR|Bristle/Bristle Soft||sobre
+bristle_bristle_wide|WATERCOLOR|Bristle/Bristle Wide||sobre
+gouache_gouache_fan_line|WATERCOLOR|Gouache/Gouache Fan Line||sobre
+gouache_gouache_filbert|WATERCOLOR|Gouache/Gouache Filbert||sobre
+gouache_gouache_filbert_2|WATERCOLOR|Gouache/Gouache Filbert 2||sobre
+gouache_gouache_liner|WATERCOLOR|Gouache/Gouache Liner||tamanhos
+gouache_gouache_wash|WATERCOLOR|Gouache/Gouache Wash||tamanhos
+spatter_spatter_4|WATERCOLOR|Spatter/Spatter 4||sobre
+spatter_spatter_6|WATERCOLOR|Spatter/Spatter 6||tamanhos
+spatter_star|WATERCOLOR|Spatter/Star||tamanhos
+watercolor_flat_2|WATERCOLOR|Watercolor/Flat 2||tamanhos
+watercolor_round_3|WATERCOLOR|Watercolor/Round 3||sobre
+pen_fountain_round|INK_PEN|Pen/Fountain Round||sobre

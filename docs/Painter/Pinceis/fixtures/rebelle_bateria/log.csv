@@ -765,3 +765,35 @@ quando,nome,TOOL,preset,cena,estado,motivo,segundos
 2026-10-20T00:09:56,default_spray_4,AIRBRUSH,"Default/Spray 4",sobre,ok,"",7
 2026-10-20T00:10:02,default_spray_5,AIRBRUSH,"Default/Spray 5",tamanhos,ok,"",6
 2026-10-20T00:10:09,default_spray_5,AIRBRUSH,"Default/Spray 5",sobre,ok,"",7
+2026-10-20T04:30:47,texture_fragments,PASTEL,"Texture/Fragments",gestos,ok,"refoto 20/10 (foto velha de 19/10)",8
+2026-10-20T04:30:56,dabber_dabber,OIL_AND_ACRYLIC,"Dabber/Dabber",gestos,ok,"refoto 20/10 (foto velha de 19/10)",9
+2026-10-20T04:31:05,grunge_scatter,OIL_AND_ACRYLIC,"Grunge/Scatter",gestos,ok,"refoto 20/10 (foto velha de 19/10)",9
+2026-10-20T04:33:02,colored_pencil_h_color,PENCIL,"Colored Pencil/H Color",gestos,ok,"refoto 20/10 (foto velha de 19/10)",9
+2026-10-20T04:33:11,graphite_pencil_hb,PENCIL,"Graphite Pencil/HB",gestos,ok,"refoto 20/10 (foto velha de 19/10)",9
+2026-10-20T04:33:19,grunge_grunge_3,EXPRESS_OIL,"Grunge/Grunge 3",gestos,ok,"refoto 20/10 (foto velha de 19/10)",8
+2026-10-20T04:33:30,bristle_bristle_soft,WATERCOLOR,"Bristle/Bristle Soft",gestos,ok,"refoto 20/10 (foto velha de 19/10)",11
+2026-10-20T04:33:45,gouache_gouache_filbert_2,WATERCOLOR,"Gouache/Gouache Filbert 2",gestos,ok,"refoto 20/10 (foto velha de 19/10)",15
+2026-10-20T04:33:59,spatter_spatter_5,WATERCOLOR,"Spatter/Spatter 5",gestos,ok,"refoto 20/10 (foto velha de 19/10)",14
+2026-10-20T04:34:13,spatter_splat,WATERCOLOR,"Spatter/Splat",gestos,ok,"refoto 20/10 (foto velha de 19/10)",14
+2026-10-20T04:34:29,spatter_star,WATERCOLOR,"Spatter/Star",gestos,ok,"refoto 20/10 (foto velha de 19/10)",16
+2026-10-20T04:34:41,sumi_e_sumi_e_soft,WATERCOLOR,"Sumi-e/Sumi-e  soft",gestos,ok,"refoto 20/10 (foto velha de 19/10)",12
+2026-10-20T04:34:50,default_soft_2,BLEND,"Default/Soft 2",sobre,ok,"refoto 20/10 (foto velha de 19/10)",9
+2026-10-20T04:34:59,default_soft_noisy_2,BLEND,"Default/Soft Noisy 2",sobre,ok,"refoto 20/10 (foto velha de 19/10)",9
+2026-10-20T04:35:07,charcoal_charcoal_3,PENCIL,"Charcoal/Charcoal 3",tamanhos,ok,"refoto 20/10 (foto velha de 19/10)",8
+2026-10-20T04:35:16,scratches_scratch_thin,PENCIL,"Scratches/Scratch Thin",sobre,ok,"refoto 20/10 (foto velha de 19/10)",9
+2026-10-20T04:35:24,knife_knife_dry,OIL_AND_ACRYLIC,"Knife/Knife Dry",sobre,ok,"refoto 20/10 (foto velha de 19/10)",8
+2026-10-20T04:35:32,knife_knife_oily,OIL_AND_ACRYLIC,"Knife/Knife Oily",tamanhos,ok,"refoto 20/10 (foto velha de 19/10)",8
+2026-10-20T04:35:41,bristle_bristle_round,WATERCOLOR,"Bristle/Bristle Round",tamanhos,ok,"refoto 20/10 (foto velha de 19/10)",9
+2026-10-20T04:35:51,bristle_bristle_soft,WATERCOLOR,"Bristle/Bristle Soft",sobre,ok,"refoto 20/10 (foto velha de 19/10)",10
+2026-10-20T04:36:02,bristle_bristle_wide,WATERCOLOR,"Bristle/Bristle Wide",sobre,ok,"refoto 20/10 (foto velha de 19/10)",11
+2026-10-20T04:36:11,gouache_gouache_fan_line,WATERCOLOR,"Gouache/Gouache Fan Line",sobre,ok,"refoto 20/10 (foto velha de 19/10)",9
+2026-10-20T04:36:28,gouache_gouache_filbert,WATERCOLOR,"Gouache/Gouache Filbert",sobre,ok,"refoto 20/10 (foto velha de 19/10)",17
+2026-10-20T04:36:38,gouache_gouache_filbert_2,WATERCOLOR,"Gouache/Gouache Filbert 2",sobre,ok,"refoto 20/10 (foto velha de 19/10)",10
+2026-10-20T04:36:47,gouache_gouache_liner,WATERCOLOR,"Gouache/Gouache Liner",tamanhos,ok,"refoto 20/10 (foto velha de 19/10)",9
+2026-10-20T04:36:58,gouache_gouache_wash,WATERCOLOR,"Gouache/Gouache Wash",tamanhos,ok,"refoto 20/10 (foto velha de 19/10)",11
+2026-10-20T04:37:24,spatter_spatter_4,WATERCOLOR,"Spatter/Spatter 4",sobre,ok,"refoto 20/10 (foto velha de 19/10)",26
+2026-10-20T04:37:41,spatter_spatter_6,WATERCOLOR,"Spatter/Spatter 6",tamanhos,ok,"refoto 20/10 (foto velha de 19/10)",17
+2026-10-20T04:37:56,spatter_star,WATERCOLOR,"Spatter/Star",tamanhos,ok,"refoto 20/10 (foto velha de 19/10)",15
+2026-10-20T04:38:06,watercolor_flat_2,WATERCOLOR,"Watercolor/Flat 2",tamanhos,ok,"refoto 20/10 (foto velha de 19/10)",10
+2026-10-20T04:38:18,watercolor_round_3,WATERCOLOR,"Watercolor/Round 3",sobre,ok,"refoto 20/10 (foto velha de 19/10)",12
+2026-10-20T04:38:31,pen_fountain_round,INK_PEN,"Pen/Fountain Round",sobre,ok,"refoto 20/10 (foto velha de 19/10)",13

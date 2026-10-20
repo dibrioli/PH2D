@@ -11,6 +11,8 @@ manifesto.json (sha256, px com tinta, origem do preset).
 
 uso: python3 -I krita_bateria.py [--presets "b) Basic-5 Size,c) Pencil-2"] [--passo-ms 10] [--dt-ms 10]
                                   [--cru DIR] [--sem-fixtures] [--base "b) Basic-1"]
+                                  [--bateria bateria_lacunas.json --cenas velocidade,fundo]
+(--bateria muda a fonte dos gestos — omissão: bateria.json, a saída de sempre; --cenas pinta só essas cenas)
 """
 import argparse
 import hashlib
@@ -113,14 +115,20 @@ def main():
     ap.add_argument("--sem-fixtures", action="store_true")
     ap.add_argument("--base", default="", help="preset das faixas da cena sobre (omissão: o próprio)")
     ap.add_argument("--prazo-s", type=int, default=4 * 3600)
+    ap.add_argument("--bateria", default=os.path.join(AQUI, "bateria.json"))
+    ap.add_argument("--cenas", default="", help="só estas cenas (separadas por vírgula); omissão: todas")
     a = ap.parse_args()
-    bateria = os.path.join(AQUI, "bateria.json")
+    bateria = os.path.abspath(a.bateria)
     bat = json.load(open(bateria))
+    cenas = [c for c in a.cenas.split(",") if c] or None
+    if cenas:
+        bat["cenas"] = [c for c in bat["cenas"] if c["nome"] in cenas]
+        assert len(bat["cenas"]) == len(cenas), f"cena desconhecida em {cenas}"
     prepara_perfil()
     os.makedirs(a.cru, exist_ok=True)
     job = {"bateria": bateria, "saida": a.cru, "presets": [p for p in a.presets.split(",") if p] or None,
            "passo_ms": a.passo_ms, "dt_ms": a.dt_ms, "paira": 10,
-           "base": a.base or None}
+           "base": a.base or None, "cenas": cenas}
     job_path = os.path.join(a.cru, "job.json")
     json.dump(job, open(job_path, "w"), ensure_ascii=False)
     proc, disp = xvfb()

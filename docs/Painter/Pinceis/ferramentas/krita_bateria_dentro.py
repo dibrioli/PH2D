@@ -7,7 +7,8 @@ dinâmica recomeçam em cada segmento); `paintPath` não tem pressão. `QApplica
 pinta (evento não espontâneo, sem timestamp). Medido 2026-10-19 — 02_ORACULOS.md §Krita.
 
 Trabalho em JSON (PH2D_KRITA_JOB): {"bateria", "saida", "presets": [nomes] | null, "passo_ms", "dt_ms", "paira",
-"base": preset das faixas da cena sobre | null = o próprio}.
+"base": preset das faixas da cena sobre | null = o próprio, "cenas": [nomes] | null = todas}.
+Op `cor_fundo` (bateria_lacunas.json): a 2.ª cor do Krita; sem ela o fundo fica o de omissão do perfil.
 Saída: <saida>/<nome_seguro>_<cena>.png (RGBA, o documento exportado) + <saida>/krita_presets.json (nome → ficheiro).
 Retoma: o preset cujas 3 PNG já existem é saltado.
 """
@@ -107,6 +108,8 @@ def cor(rgb):
 def pinta_preset(nome, preset):
     base = os.path.join(SAIDA, nome_seguro(nome))
     for cena in BAT["cenas"]:
+        if JOB.get("cenas") and cena["nome"] not in JOB["cenas"]:
+            continue
         png = f"{base}_{cena['nome']}.png"
         if os.path.exists(png):
             continue
@@ -126,6 +129,8 @@ def pinta_preset(nome, preset):
                 view.setCurrentBrushPreset(preset if op["quem"] == "preset" else base)
             elif op["op"] == "cor":
                 view.setForeGroundColor(cor(op["rgb"]))
+            elif op["op"] == "cor_fundo":
+                view.setBackGroundColor(cor(op["rgb"]))
             elif op["op"] == "traco":
                 view.setBrushSize(float(op["size_px"]))
                 pts = op["pts"]

@@ -6,7 +6,7 @@ Charcoal/Charcoal 2,PENCIL,charcoal_charcoal_2,gestos,PENCIL/charcoal_charcoal_2
 Charcoal/Charcoal 2,PENCIL,charcoal_charcoal_2,tamanhos,PENCIL/charcoal_charcoal_2_tamanhos_A.png,PENCIL/charcoal_charcoal_2_tamanhos_B.png,ok,,sim,32.96
 Charcoal/Charcoal 2,PENCIL,charcoal_charcoal_2,sobre,PENCIL/charcoal_charcoal_2_sobre_A.png,PENCIL/charcoal_charcoal_2_sobre_B.png,ok,,sim,26.88
 Charcoal/Charcoal 3,PENCIL,charcoal_charcoal_3,gestos,PENCIL/charcoal_charcoal_3_gestos_A.png,PENCIL/charcoal_charcoal_3_gestos_B.png,ok,,sim,19.47
-Charcoal/Charcoal 3,PENCIL,charcoal_charcoal_3,tamanhos,PENCIL/charcoal_charcoal_3_tamanhos_A.png,PENCIL/charcoal_charcoal_3_tamanhos_B.png,ok,,não,26.88
+Charcoal/Charcoal 3,PENCIL,charcoal_charcoal_3,tamanhos,PENCIL/charcoal_charcoal_3_tamanhos_A.png,PENCIL/charcoal_charcoal_3_tamanhos_B.png,ok,,sim,13.13
 Charcoal/Charcoal 3,PENCIL,charcoal_charcoal_3,sobre,PENCIL/charcoal_charcoal_3_sobre_A.png,PENCIL/charcoal_charcoal_3_sobre_B.png,ok,,sim,24.80
 Charcoal/Charcoal Flat,PENCIL,charcoal_charcoal_flat,gestos,PENCIL/charcoal_charcoal_flat_gestos_A.png,PENCIL/charcoal_charcoal_flat_gestos_B.png,ok,,sim,16.50
 Charcoal/Charcoal Flat,PENCIL,charcoal_charcoal_flat,tamanhos,PENCIL/charcoal_charcoal_flat_tamanhos_A.png,PENCIL/charcoal_charcoal_flat_tamanhos_B.png,ok,,sim,10.72
@@ -44,7 +44,7 @@ Colored Pencil/8B Color,PENCIL,colored_pencil_8b_color,sobre,PENCIL/colored_penc
 Colored Pencil/Craft Color,PENCIL,colored_pencil_craft_color,gestos,PENCIL/colored_pencil_craft_color_gestos_A.png,PENCIL/colored_pencil_craft_color_gestos_B.png,ok,,sim,17.39
 Colored Pencil/Craft Color,PENCIL,colored_pencil_craft_color,tamanhos,PENCIL/colored_pencil_craft_color_tamanhos_A.png,PENCIL/colored_pencil_craft_color_tamanhos_B.png,ok,,sim,12.94
 Colored Pencil/Craft Color,PENCIL,colored_pencil_craft_color,sobre,PENCIL/colored_pencil_craft_color_sobre_A.png,PENCIL/colored_pencil_craft_color_sobre_B.png,ok,,sim,22.77
-Colored Pencil/H Color,PENCIL,colored_pencil_h_color,gestos,PENCIL/colored_pencil_h_color_gestos_A.png,PENCIL/colored_pencil_h_color_gestos_B.png,ok,,não,17.39
+Colored Pencil/H Color,PENCIL,colored_pencil_h_color,gestos,PENCIL/colored_pencil_h_color_gestos_A.png,PENCIL/colored_pencil_h_color_gestos_B.png,ok,,sim,20.04
 Colored Pencil/H Color,PENCIL,colored_pencil_h_color,tamanhos,PENCIL/colored_pencil_h_color_tamanhos_A.png,PENCIL/colored_pencil_h_color_tamanhos_B.png,ok,,sim,15.31
 Colored Pencil/H Color,PENCIL,colored_pencil_h_color,sobre,PENCIL/colored_pencil_h_color_sobre_A.png,PENCIL/colored_pencil_h_color_sobre_B.png,ok,,sim,26.35
 Colored Pencil/HB Color,PENCIL,colored_pencil_hb_color,gestos,PENCIL/colored_pencil_hb_color_gestos_A.png,PENCIL/colored_pencil_hb_color_gestos_B.png,ok,,sim,20.07
@@ -127,7 +127,7 @@ Scratches/Scratch,PENCIL,scratches_scratch,tamanhos,PENCIL/scratches_scratch_tam
 Scratches/Scratch,PENCIL,scratches_scratch,sobre,PENCIL/scratches_scratch_sobre_A.png,PENCIL/scratches_scratch_sobre_B.png,ok,,sim,23.31
 Scratches/Scratch Thin,PENCIL,scratches_scratch_thin,gestos,PENCIL/scratches_scratch_thin_gestos_A.png,PENCIL/scratches_scratch_thin_gestos_B.png,ok,,sim,16.16
 Scratches/Scratch Thin,PENCIL,scratches_scratch_thin,tamanhos,PENCIL/scratches_scratch_thin_tamanhos_A.png,PENCIL/scratches_scratch_thin_tamanhos_B.png,ok,,sim,22.15
-Scratches/Scratch Thin,PENCIL,scratches_scratch_thin,sobre,PENCIL/scratches_scratch_thin_sobre_A.png,PENCIL/scratches_scratch_thin_sobre_B.png,ok,,não,22.15
+Scratches/Scratch Thin,PENCIL,scratches_scratch_thin,sobre,PENCIL/scratches_scratch_thin_sobre_A.png,PENCIL/scratches_scratch_thin_sobre_B.png,ok,,sim,20.85
 Scratches/Scratches 2,PENCIL,scratches_scratches_2,gestos,PENCIL/scratches_scratches_2_gestos_A.png,PENCIL/scratches_scratches_2_gestos_B.png,ok,,sim,22.53
 Scratches/Scratches 2,PENCIL,scratches_scratches_2,tamanhos,PENCIL/scratches_scratches_2_tamanhos_A.png,PENCIL/scratches_scratches_2_tamanhos_B.png,ok,,sim,28.65
 Scratches/Scratches 2,PENCIL,scratches_scratches_2,sobre,PENCIL/scratches_scratches_2_sobre_A.png,PENCIL/scratches_scratches_2_sobre_B.png,ok,,sim,28.11
@@ -194,7 +194,7 @@ Scrape/Wax Scrape 2,PASTEL,scrape_wax_scrape_2,sobre,PASTEL/scrape_wax_scrape_2_
 Texture/Dust,PASTEL,texture_dust,gestos,PASTEL/texture_dust_gestos_A.png,PASTEL/texture_dust_gestos_B.png,ok,,sim,9.68
 Texture/Dust,PASTEL,texture_dust,tamanhos,PASTEL/texture_dust_tamanhos_A.png,PASTEL/texture_dust_tamanhos_B.png,ok,,sim,11.26
 Texture/Dust,PASTEL,texture_dust,sobre,PASTEL/texture_dust_sobre_A.png,PASTEL/texture_dust_sobre_B.png,ok,,sim,13.14
-Texture/Fragments,PASTEL,texture_fragments,gestos,PASTEL/texture_fragments_gestos_A.png,PASTEL/texture_fragments_gestos_B.png,ok,,não,9.68
+Texture/Fragments,PASTEL,texture_fragments,gestos,PASTEL/texture_fragments_gestos_A.png,PASTEL/texture_fragments_gestos_B.png,ok,,sim,22.10
 Texture/Fragments,PASTEL,texture_fragments,tamanhos,PASTEL/texture_fragments_tamanhos_A.png,PASTEL/texture_fragments_tamanhos_B.png,ok,,sim,27.62
 Texture/Fragments,PASTEL,texture_fragments,sobre,PASTEL/texture_fragments_sobre_A.png,PASTEL/texture_fragments_sobre_B.png,ok,,sim,27.48
 Texture/Pastel Pattern,PASTEL,texture_pastel_pattern,gestos,PASTEL/texture_pastel_pattern_gestos_A.png,PASTEL/texture_pastel_pattern_gestos_B.png,ok,,sim,30.29
@@ -233,7 +233,7 @@ Bristle/Bristle Stripes,OIL_AND_ACRYLIC,bristle_bristle_stripes,sobre,OIL_AND_AC
 Bristle/Bristle Wide,OIL_AND_ACRYLIC,bristle_bristle_wide,gestos,OIL_AND_ACRYLIC/bristle_bristle_wide_gestos_A.png,OIL_AND_ACRYLIC/bristle_bristle_wide_gestos_B.png,ok,,sim,21.96
 Bristle/Bristle Wide,OIL_AND_ACRYLIC,bristle_bristle_wide,tamanhos,OIL_AND_ACRYLIC/bristle_bristle_wide_tamanhos_A.png,OIL_AND_ACRYLIC/bristle_bristle_wide_tamanhos_B.png,ok,,sim,36.36
 Bristle/Bristle Wide,OIL_AND_ACRYLIC,bristle_bristle_wide,sobre,OIL_AND_ACRYLIC/bristle_bristle_wide_sobre_A.png,OIL_AND_ACRYLIC/bristle_bristle_wide_sobre_B.png,ok,,sim,26.15
-Dabber/Dabber,OIL_AND_ACRYLIC,dabber_dabber,gestos,OIL_AND_ACRYLIC/dabber_dabber_gestos_A.png,OIL_AND_ACRYLIC/dabber_dabber_gestos_B.png,ok,,não,21.96
+Dabber/Dabber,OIL_AND_ACRYLIC,dabber_dabber,gestos,OIL_AND_ACRYLIC/dabber_dabber_gestos_A.png,OIL_AND_ACRYLIC/dabber_dabber_gestos_B.png,ok,,sim,23.85
 Dabber/Dabber,OIL_AND_ACRYLIC,dabber_dabber,tamanhos,OIL_AND_ACRYLIC/dabber_dabber_tamanhos_A.png,OIL_AND_ACRYLIC/dabber_dabber_tamanhos_B.png,ok,,sim,32.40
 Dabber/Dabber,OIL_AND_ACRYLIC,dabber_dabber,sobre,OIL_AND_ACRYLIC/dabber_dabber_sobre_A.png,OIL_AND_ACRYLIC/dabber_dabber_sobre_B.png,ok,,sim,29.90
 Dabber/Dabber 2,OIL_AND_ACRYLIC,dabber_dabber_2,gestos,OIL_AND_ACRYLIC/dabber_dabber_2_gestos_A.png,OIL_AND_ACRYLIC/dabber_dabber_2_gestos_B.png,ok,,sim,21.24
@@ -290,7 +290,7 @@ Grunge/Grunge 3,OIL_AND_ACRYLIC,grunge_grunge_3,sobre,OIL_AND_ACRYLIC/grunge_gru
 Grunge/Grunge 4,OIL_AND_ACRYLIC,grunge_grunge_4,gestos,OIL_AND_ACRYLIC/grunge_grunge_4_gestos_A.png,OIL_AND_ACRYLIC/grunge_grunge_4_gestos_B.png,ok,,sim,23.37
 Grunge/Grunge 4,OIL_AND_ACRYLIC,grunge_grunge_4,tamanhos,OIL_AND_ACRYLIC/grunge_grunge_4_tamanhos_A.png,OIL_AND_ACRYLIC/grunge_grunge_4_tamanhos_B.png,ok,,sim,34.63
 Grunge/Grunge 4,OIL_AND_ACRYLIC,grunge_grunge_4,sobre,OIL_AND_ACRYLIC/grunge_grunge_4_sobre_A.png,OIL_AND_ACRYLIC/grunge_grunge_4_sobre_B.png,ok,,sim,29.52
-Grunge/Scatter,OIL_AND_ACRYLIC,grunge_scatter,gestos,OIL_AND_ACRYLIC/grunge_scatter_gestos_A.png,OIL_AND_ACRYLIC/grunge_scatter_gestos_B.png,ok,,não,23.37
+Grunge/Scatter,OIL_AND_ACRYLIC,grunge_scatter,gestos,OIL_AND_ACRYLIC/grunge_scatter_gestos_A.png,OIL_AND_ACRYLIC/grunge_scatter_gestos_B.png,ok,,sim,6.39
 Grunge/Scatter,OIL_AND_ACRYLIC,grunge_scatter,tamanhos,OIL_AND_ACRYLIC/grunge_scatter_tamanhos_A.png,OIL_AND_ACRYLIC/grunge_scatter_tamanhos_B.png,ok,,sim,10.89
 Grunge/Scatter,OIL_AND_ACRYLIC,grunge_scatter,sobre,OIL_AND_ACRYLIC/grunge_scatter_sobre_A.png,OIL_AND_ACRYLIC/grunge_scatter_sobre_B.png,ok,,sim,6.97
 Grunge/Scatter 2,OIL_AND_ACRYLIC,grunge_scatter_2,gestos,OIL_AND_ACRYLIC/grunge_scatter_2_gestos_A.png,OIL_AND_ACRYLIC/grunge_scatter_2_gestos_B.png,ok,,sim,15.31
@@ -304,7 +304,7 @@ Grunge/Shred,OIL_AND_ACRYLIC,grunge_shred,tamanhos,OIL_AND_ACRYLIC/grunge_shred_
 Grunge/Shred,OIL_AND_ACRYLIC,grunge_shred,sobre,OIL_AND_ACRYLIC/grunge_shred_sobre_A.png,OIL_AND_ACRYLIC/grunge_shred_sobre_B.png,ok,,sim,29.83
 Knife/Knife Dry,OIL_AND_ACRYLIC,knife_knife_dry,gestos,OIL_AND_ACRYLIC/knife_knife_dry_gestos_A.png,OIL_AND_ACRYLIC/knife_knife_dry_gestos_B.png,ok,,sim,13.99
 Knife/Knife Dry,OIL_AND_ACRYLIC,knife_knife_dry,tamanhos,OIL_AND_ACRYLIC/knife_knife_dry_tamanhos_A.png,OIL_AND_ACRYLIC/knife_knife_dry_tamanhos_B.png,ok,,sim,13.03
-Knife/Knife Dry,OIL_AND_ACRYLIC,knife_knife_dry,sobre,OIL_AND_ACRYLIC/knife_knife_dry_sobre_A.png,OIL_AND_ACRYLIC/knife_knife_dry_sobre_B.png,ok,,não,13.03
+Knife/Knife Dry,OIL_AND_ACRYLIC,knife_knife_dry,sobre,OIL_AND_ACRYLIC/knife_knife_dry_sobre_A.png,OIL_AND_ACRYLIC/knife_knife_dry_sobre_B.png,ok,,sim,17.31
 Knife/Knife Dry 2,OIL_AND_ACRYLIC,knife_knife_dry_2,gestos,OIL_AND_ACRYLIC/knife_knife_dry_2_gestos_A.png,OIL_AND_ACRYLIC/knife_knife_dry_2_gestos_B.png,ok,,sim,13.84
 Knife/Knife Dry 2,OIL_AND_ACRYLIC,knife_knife_dry_2,tamanhos,OIL_AND_ACRYLIC/knife_knife_dry_2_tamanhos_A.png,OIL_AND_ACRYLIC/knife_knife_dry_2_tamanhos_B.png,ok,,sim,12.21
 Knife/Knife Dry 2,OIL_AND_ACRYLIC,knife_knife_dry_2,sobre,OIL_AND_ACRYLIC/knife_knife_dry_2_sobre_A.png,OIL_AND_ACRYLIC/knife_knife_dry_2_sobre_B.png,ok,,sim,16.67
@@ -312,7 +312,7 @@ Knife/Knife Grainy,OIL_AND_ACRYLIC,knife_knife_grainy,gestos,OIL_AND_ACRYLIC/kni
 Knife/Knife Grainy,OIL_AND_ACRYLIC,knife_knife_grainy,tamanhos,OIL_AND_ACRYLIC/knife_knife_grainy_tamanhos_A.png,OIL_AND_ACRYLIC/knife_knife_grainy_tamanhos_B.png,ok,,sim,32.52
 Knife/Knife Grainy,OIL_AND_ACRYLIC,knife_knife_grainy,sobre,OIL_AND_ACRYLIC/knife_knife_grainy_sobre_A.png,OIL_AND_ACRYLIC/knife_knife_grainy_sobre_B.png,ok,,sim,27.93
 Knife/Knife Oily,OIL_AND_ACRYLIC,knife_knife_oily,gestos,OIL_AND_ACRYLIC/knife_knife_oily_gestos_A.png,OIL_AND_ACRYLIC/knife_knife_oily_gestos_B.png,ok,,sim,14.51
-Knife/Knife Oily,OIL_AND_ACRYLIC,knife_knife_oily,tamanhos,OIL_AND_ACRYLIC/knife_knife_oily_tamanhos_A.png,OIL_AND_ACRYLIC/knife_knife_oily_tamanhos_B.png,ok,,não,27.93
+Knife/Knife Oily,OIL_AND_ACRYLIC,knife_knife_oily,tamanhos,OIL_AND_ACRYLIC/knife_knife_oily_tamanhos_A.png,OIL_AND_ACRYLIC/knife_knife_oily_tamanhos_B.png,ok,,sim,13.00
 Knife/Knife Oily,OIL_AND_ACRYLIC,knife_knife_oily,sobre,OIL_AND_ACRYLIC/knife_knife_oily_sobre_A.png,OIL_AND_ACRYLIC/knife_knife_oily_sobre_B.png,ok,,sim,17.56
 Knife/Knife Smooth,OIL_AND_ACRYLIC,knife_knife_smooth,gestos,OIL_AND_ACRYLIC/knife_knife_smooth_gestos_A.png,OIL_AND_ACRYLIC/knife_knife_smooth_gestos_B.png,ok,,sim,8.71
 Knife/Knife Smooth,OIL_AND_ACRYLIC,knife_knife_smooth,tamanhos,OIL_AND_ACRYLIC/knife_knife_smooth_tamanhos_A.png,OIL_AND_ACRYLIC/knife_knife_smooth_tamanhos_B.png,ok,,sim,7.14
@@ -446,7 +446,7 @@ Grunge/Grunge,EXPRESS_OIL,grunge_grunge,sobre,EXPRESS_OIL/grunge_grunge_sobre_A.
 Grunge/Grunge 2,EXPRESS_OIL,grunge_grunge_2,gestos,EXPRESS_OIL/grunge_grunge_2_gestos_A.png,EXPRESS_OIL/grunge_grunge_2_gestos_B.png,ok,,sim,22.42
 Grunge/Grunge 2,EXPRESS_OIL,grunge_grunge_2,tamanhos,EXPRESS_OIL/grunge_grunge_2_tamanhos_A.png,EXPRESS_OIL/grunge_grunge_2_tamanhos_B.png,ok,,sim,36.39
 Grunge/Grunge 2,EXPRESS_OIL,grunge_grunge_2,sobre,EXPRESS_OIL/grunge_grunge_2_sobre_A.png,EXPRESS_OIL/grunge_grunge_2_sobre_B.png,ok,,sim,30.28
-Grunge/Grunge 3,EXPRESS_OIL,grunge_grunge_3,gestos,EXPRESS_OIL/grunge_grunge_3_gestos_A.png,EXPRESS_OIL/grunge_grunge_3_gestos_B.png,ok,,não,22.42
+Grunge/Grunge 3,EXPRESS_OIL,grunge_grunge_3,gestos,EXPRESS_OIL/grunge_grunge_3_gestos_A.png,EXPRESS_OIL/grunge_grunge_3_gestos_B.png,ok,,sim,22.26
 Grunge/Grunge 3,EXPRESS_OIL,grunge_grunge_3,tamanhos,EXPRESS_OIL/grunge_grunge_3_tamanhos_A.png,EXPRESS_OIL/grunge_grunge_3_tamanhos_B.png,ok,,sim,34.61
 Grunge/Grunge 3,EXPRESS_OIL,grunge_grunge_3,sobre,EXPRESS_OIL/grunge_grunge_3_sobre_A.png,EXPRESS_OIL/grunge_grunge_3_sobre_B.png,ok,,sim,29.60
 Grunge/Grunge 4,EXPRESS_OIL,grunge_grunge_4,gestos,EXPRESS_OIL/grunge_grunge_4_gestos_A.png,EXPRESS_OIL/grunge_grunge_4_gestos_B.png,ok,,não,22.19
@@ -489,17 +489,17 @@ Bristle/Bristle Flat,WATERCOLOR,bristle_bristle_flat,gestos,WATERCOLOR/bristle_b
 Bristle/Bristle Flat,WATERCOLOR,bristle_bristle_flat,tamanhos,WATERCOLOR/bristle_bristle_flat_tamanhos_A.png,WATERCOLOR/bristle_bristle_flat_tamanhos_B.png,ok,,sim,36.72
 Bristle/Bristle Flat,WATERCOLOR,bristle_bristle_flat,sobre,WATERCOLOR/bristle_bristle_flat_sobre_A.png,WATERCOLOR/bristle_bristle_flat_sobre_B.png,ok,,sim,27.51
 Bristle/Bristle Round,WATERCOLOR,bristle_bristle_round,gestos,WATERCOLOR/bristle_bristle_round_gestos_A.png,WATERCOLOR/bristle_bristle_round_gestos_B.png,ok,,sim,21.97
-Bristle/Bristle Round,WATERCOLOR,bristle_bristle_round,tamanhos,WATERCOLOR/bristle_bristle_round_tamanhos_A.png,WATERCOLOR/bristle_bristle_round_tamanhos_B.png,ok,,não,27.51
+Bristle/Bristle Round,WATERCOLOR,bristle_bristle_round,tamanhos,WATERCOLOR/bristle_bristle_round_tamanhos_A.png,WATERCOLOR/bristle_bristle_round_tamanhos_B.png,ok,,sim,34.17
 Bristle/Bristle Round,WATERCOLOR,bristle_bristle_round,sobre,WATERCOLOR/bristle_bristle_round_sobre_A.png,WATERCOLOR/bristle_bristle_round_sobre_B.png,ok,,sim,30.00
 Bristle/Bristle Round 2,WATERCOLOR,bristle_bristle_round_2,gestos,WATERCOLOR/bristle_bristle_round_2_gestos_A.png,WATERCOLOR/bristle_bristle_round_2_gestos_B.png,ok,,sim,23.38
 Bristle/Bristle Round 2,WATERCOLOR,bristle_bristle_round_2,tamanhos,WATERCOLOR/bristle_bristle_round_2_tamanhos_A.png,WATERCOLOR/bristle_bristle_round_2_tamanhos_B.png,ok,,sim,34.81
 Bristle/Bristle Round 2,WATERCOLOR,bristle_bristle_round_2,sobre,WATERCOLOR/bristle_bristle_round_2_sobre_A.png,WATERCOLOR/bristle_bristle_round_2_sobre_B.png,ok,,não,29.78
-Bristle/Bristle Soft,WATERCOLOR,bristle_bristle_soft,gestos,WATERCOLOR/bristle_bristle_soft_gestos_A.png,WATERCOLOR/bristle_bristle_soft_gestos_B.png,ok,,sim,23.38
+Bristle/Bristle Soft,WATERCOLOR,bristle_bristle_soft,gestos,WATERCOLOR/bristle_bristle_soft_gestos_A.png,WATERCOLOR/bristle_bristle_soft_gestos_B.png,ok,,sim,22.45
 Bristle/Bristle Soft,WATERCOLOR,bristle_bristle_soft,tamanhos,WATERCOLOR/bristle_bristle_soft_tamanhos_A.png,WATERCOLOR/bristle_bristle_soft_tamanhos_B.png,ok,,não,34.63
-Bristle/Bristle Soft,WATERCOLOR,bristle_bristle_soft,sobre,WATERCOLOR/bristle_bristle_soft_sobre_A.png,WATERCOLOR/bristle_bristle_soft_sobre_B.png,ok,,não,34.63
+Bristle/Bristle Soft,WATERCOLOR,bristle_bristle_soft,sobre,WATERCOLOR/bristle_bristle_soft_sobre_A.png,WATERCOLOR/bristle_bristle_soft_sobre_B.png,ok,,sim,30.07
 Bristle/Bristle Wide,WATERCOLOR,bristle_bristle_wide,gestos,WATERCOLOR/bristle_bristle_wide_gestos_A.png,WATERCOLOR/bristle_bristle_wide_gestos_B.png,ok,,sim,24.42
 Bristle/Bristle Wide,WATERCOLOR,bristle_bristle_wide,tamanhos,WATERCOLOR/bristle_bristle_wide_tamanhos_A.png,WATERCOLOR/bristle_bristle_wide_tamanhos_B.png,ok,,sim,37.30
-Bristle/Bristle Wide,WATERCOLOR,bristle_bristle_wide,sobre,WATERCOLOR/bristle_bristle_wide_sobre_A.png,WATERCOLOR/bristle_bristle_wide_sobre_B.png,ok,,não,37.30
+Bristle/Bristle Wide,WATERCOLOR,bristle_bristle_wide,sobre,WATERCOLOR/bristle_bristle_wide_sobre_A.png,WATERCOLOR/bristle_bristle_wide_sobre_B.png,ok,,não,31.34
 Gouache/Gouache Bristle,WATERCOLOR,gouache_gouache_bristle,gestos,WATERCOLOR/gouache_gouache_bristle_gestos_A.png,WATERCOLOR/gouache_gouache_bristle_gestos_B.png,ok,,não,23.01
 Gouache/Gouache Bristle,WATERCOLOR,gouache_gouache_bristle,tamanhos,WATERCOLOR/gouache_gouache_bristle_tamanhos_A.png,WATERCOLOR/gouache_gouache_bristle_tamanhos_B.png,ok,,não,32.82
 Gouache/Gouache Bristle,WATERCOLOR,gouache_gouache_bristle,sobre,WATERCOLOR/gouache_gouache_bristle_sobre_A.png,WATERCOLOR/gouache_gouache_bristle_sobre_B.png,ok,,sim,28.12
@@ -508,13 +508,13 @@ Gouache/Gouache Dry,WATERCOLOR,gouache_gouache_dry,tamanhos,WATERCOLOR/gouache_g
 Gouache/Gouache Dry,WATERCOLOR,gouache_gouache_dry,sobre,WATERCOLOR/gouache_gouache_dry_sobre_A.png,WATERCOLOR/gouache_gouache_dry_sobre_B.png,ok,,sim,19.81
 Gouache/Gouache Fan Line,WATERCOLOR,gouache_gouache_fan_line,gestos,WATERCOLOR/gouache_gouache_fan_line_gestos_A.png,WATERCOLOR/gouache_gouache_fan_line_gestos_B.png,ok,,não,16.96
 Gouache/Gouache Fan Line,WATERCOLOR,gouache_gouache_fan_line,tamanhos,WATERCOLOR/gouache_gouache_fan_line_tamanhos_A.png,WATERCOLOR/gouache_gouache_fan_line_tamanhos_B.png,ok,,sim,24.67
-Gouache/Gouache Fan Line,WATERCOLOR,gouache_gouache_fan_line,sobre,WATERCOLOR/gouache_gouache_fan_line_sobre_A.png,WATERCOLOR/gouache_gouache_fan_line_sobre_B.png,ok,,não,24.67
+Gouache/Gouache Fan Line,WATERCOLOR,gouache_gouache_fan_line,sobre,WATERCOLOR/gouache_gouache_fan_line_sobre_A.png,WATERCOLOR/gouache_gouache_fan_line_sobre_B.png,ok,,não,22.39
 Gouache/Gouache Filbert,WATERCOLOR,gouache_gouache_filbert,gestos,WATERCOLOR/gouache_gouache_filbert_gestos_A.png,WATERCOLOR/gouache_gouache_filbert_gestos_B.png,ok,,não,22.46
 Gouache/Gouache Filbert,WATERCOLOR,gouache_gouache_filbert,tamanhos,WATERCOLOR/gouache_gouache_filbert_tamanhos_A.png,WATERCOLOR/gouache_gouache_filbert_tamanhos_B.png,ok,,sim,22.03
-Gouache/Gouache Filbert,WATERCOLOR,gouache_gouache_filbert,sobre,WATERCOLOR/gouache_gouache_filbert_sobre_A.png,WATERCOLOR/gouache_gouache_filbert_sobre_B.png,ok,,não,22.03
-Gouache/Gouache Filbert 2,WATERCOLOR,gouache_gouache_filbert_2,gestos,WATERCOLOR/gouache_gouache_filbert_2_gestos_A.png,WATERCOLOR/gouache_gouache_filbert_2_gestos_B.png,ok,,sim,22.46
+Gouache/Gouache Filbert,WATERCOLOR,gouache_gouache_filbert,sobre,WATERCOLOR/gouache_gouache_filbert_sobre_A.png,WATERCOLOR/gouache_gouache_filbert_sobre_B.png,ok,,não,29.06
+Gouache/Gouache Filbert 2,WATERCOLOR,gouache_gouache_filbert_2,gestos,WATERCOLOR/gouache_gouache_filbert_2_gestos_A.png,WATERCOLOR/gouache_gouache_filbert_2_gestos_B.png,ok,,não,22.07
 Gouache/Gouache Filbert 2,WATERCOLOR,gouache_gouache_filbert_2,tamanhos,WATERCOLOR/gouache_gouache_filbert_2_tamanhos_A.png,WATERCOLOR/gouache_gouache_filbert_2_tamanhos_B.png,ok,,não,33.30
-Gouache/Gouache Filbert 2,WATERCOLOR,gouache_gouache_filbert_2,sobre,WATERCOLOR/gouache_gouache_filbert_2_sobre_A.png,WATERCOLOR/gouache_gouache_filbert_2_sobre_B.png,ok,,sim,33.21
+Gouache/Gouache Filbert 2,WATERCOLOR,gouache_gouache_filbert_2,sobre,WATERCOLOR/gouache_gouache_filbert_2_sobre_A.png,WATERCOLOR/gouache_gouache_filbert_2_sobre_B.png,ok,,não,28.26
 Gouache/Gouache Flat,WATERCOLOR,gouache_gouache_flat,gestos,WATERCOLOR/gouache_gouache_flat_gestos_A.png,WATERCOLOR/gouache_gouache_flat_gestos_B.png,ok,,não,23.14
 Gouache/Gouache Flat,WATERCOLOR,gouache_gouache_flat,tamanhos,WATERCOLOR/gouache_gouache_flat_tamanhos_A.png,WATERCOLOR/gouache_gouache_flat_tamanhos_B.png,ok,,não,34.09
 Gouache/Gouache Flat,WATERCOLOR,gouache_gouache_flat,sobre,WATERCOLOR/gouache_gouache_flat_sobre_A.png,WATERCOLOR/gouache_gouache_flat_sobre_B.png,ok,,sim,27.26
@@ -522,7 +522,7 @@ Gouache/Gouache Flat 2,WATERCOLOR,gouache_gouache_flat_2,gestos,WATERCOLOR/gouac
 Gouache/Gouache Flat 2,WATERCOLOR,gouache_gouache_flat_2,tamanhos,WATERCOLOR/gouache_gouache_flat_2_tamanhos_A.png,WATERCOLOR/gouache_gouache_flat_2_tamanhos_B.png,ok,,sim,34.54
 Gouache/Gouache Flat 2,WATERCOLOR,gouache_gouache_flat_2,sobre,WATERCOLOR/gouache_gouache_flat_2_sobre_A.png,WATERCOLOR/gouache_gouache_flat_2_sobre_B.png,ok,,sim,29.74
 Gouache/Gouache Liner,WATERCOLOR,gouache_gouache_liner,gestos,WATERCOLOR/gouache_gouache_liner_gestos_A.png,WATERCOLOR/gouache_gouache_liner_gestos_B.png,ok,,não,17.51
-Gouache/Gouache Liner,WATERCOLOR,gouache_gouache_liner,tamanhos,WATERCOLOR/gouache_gouache_liner_tamanhos_A.png,WATERCOLOR/gouache_gouache_liner_tamanhos_B.png,ok,,sim,29.74
+Gouache/Gouache Liner,WATERCOLOR,gouache_gouache_liner,tamanhos,WATERCOLOR/gouache_gouache_liner_tamanhos_A.png,WATERCOLOR/gouache_gouache_liner_tamanhos_B.png,ok,,não,26.52
 Gouache/Gouache Liner,WATERCOLOR,gouache_gouache_liner,sobre,WATERCOLOR/gouache_gouache_liner_sobre_A.png,WATERCOLOR/gouache_gouache_liner_sobre_B.png,ok,,sim,22.51
 Gouache/Gouache Liner 2,WATERCOLOR,gouache_gouache_liner_2,gestos,WATERCOLOR/gouache_gouache_liner_2_gestos_A.png,WATERCOLOR/gouache_gouache_liner_2_gestos_B.png,ok,,não,17.51
 Gouache/Gouache Liner 2,WATERCOLOR,gouache_gouache_liner_2,tamanhos,WATERCOLOR/gouache_gouache_liner_2_tamanhos_A.png,WATERCOLOR/gouache_gouache_liner_2_tamanhos_B.png,ok,,não,17.05
@@ -534,7 +534,7 @@ Gouache/Gouache Round 2,WATERCOLOR,gouache_gouache_round_2,gestos,WATERCOLOR/gou
 Gouache/Gouache Round 2,WATERCOLOR,gouache_gouache_round_2,tamanhos,WATERCOLOR/gouache_gouache_round_2_tamanhos_A.png,WATERCOLOR/gouache_gouache_round_2_tamanhos_B.png,ok,,não,26.88
 Gouache/Gouache Round 2,WATERCOLOR,gouache_gouache_round_2,sobre,WATERCOLOR/gouache_gouache_round_2_sobre_A.png,WATERCOLOR/gouache_gouache_round_2_sobre_B.png,ok,,sim,26.89
 Gouache/Gouache Wash,WATERCOLOR,gouache_gouache_wash,gestos,WATERCOLOR/gouache_gouache_wash_gestos_A.png,WATERCOLOR/gouache_gouache_wash_gestos_B.png,ok,,sim,21.58
-Gouache/Gouache Wash,WATERCOLOR,gouache_gouache_wash,tamanhos,WATERCOLOR/gouache_gouache_wash_tamanhos_A.png,WATERCOLOR/gouache_gouache_wash_tamanhos_B.png,ok,,não,26.89
+Gouache/Gouache Wash,WATERCOLOR,gouache_gouache_wash,tamanhos,WATERCOLOR/gouache_gouache_wash_tamanhos_A.png,WATERCOLOR/gouache_gouache_wash_tamanhos_B.png,ok,,sim,13.36
 Gouache/Gouache Wash,WATERCOLOR,gouache_gouache_wash,sobre,WATERCOLOR/gouache_gouache_wash_sobre_A.png,WATERCOLOR/gouache_gouache_wash_sobre_B.png,ok,,sim,27.21
 Granulation/Granulation,WATERCOLOR,granulation_granulation,gestos,WATERCOLOR/granulation_granulation_gestos_A.png,WATERCOLOR/granulation_granulation_gestos_B.png,ok,,sim,8.82
 Granulation/Granulation,WATERCOLOR,granulation_granulation,tamanhos,WATERCOLOR/granulation_granulation_tamanhos_A.png,WATERCOLOR/granulation_granulation_tamanhos_B.png,ok,,sim,10.52
@@ -553,14 +553,14 @@ Spatter/Spatter 3,WATERCOLOR,spatter_spatter_3,tamanhos,WATERCOLOR/spatter_spatt
 Spatter/Spatter 3,WATERCOLOR,spatter_spatter_3,sobre,WATERCOLOR/spatter_spatter_3_sobre_A.png,WATERCOLOR/spatter_spatter_3_sobre_B.png,ok,,não,7.55
 Spatter/Spatter 4,WATERCOLOR,spatter_spatter_4,gestos,WATERCOLOR/spatter_spatter_4_gestos_A.png,WATERCOLOR/spatter_spatter_4_gestos_B.png,ok,,sim,15.91
 Spatter/Spatter 4,WATERCOLOR,spatter_spatter_4,tamanhos,WATERCOLOR/spatter_spatter_4_tamanhos_A.png,WATERCOLOR/spatter_spatter_4_tamanhos_B.png,ok,,sim,12.42
-Spatter/Spatter 4,WATERCOLOR,spatter_spatter_4,sobre,WATERCOLOR/spatter_spatter_4_sobre_A.png,WATERCOLOR/spatter_spatter_4_sobre_B.png,ok,,não,12.42
-Spatter/Spatter 5,WATERCOLOR,spatter_spatter_5,gestos,WATERCOLOR/spatter_spatter_5_gestos_A.png,WATERCOLOR/spatter_spatter_5_gestos_B.png,ok,,sim,15.91
+Spatter/Spatter 4,WATERCOLOR,spatter_spatter_4,sobre,WATERCOLOR/spatter_spatter_4_sobre_A.png,WATERCOLOR/spatter_spatter_4_sobre_B.png,ok,,não,19.45
+Spatter/Spatter 5,WATERCOLOR,spatter_spatter_5,gestos,WATERCOLOR/spatter_spatter_5_gestos_A.png,WATERCOLOR/spatter_spatter_5_gestos_B.png,ok,,não,29.35
 Spatter/Spatter 5,WATERCOLOR,spatter_spatter_5,tamanhos,WATERCOLOR/spatter_spatter_5_tamanhos_A.png,WATERCOLOR/spatter_spatter_5_tamanhos_B.png,ok,,não,33.84
 Spatter/Spatter 5,WATERCOLOR,spatter_spatter_5,sobre,WATERCOLOR/spatter_spatter_5_sobre_A.png,WATERCOLOR/spatter_spatter_5_sobre_B.png,ok,,não,36.36
 Spatter/Spatter 6,WATERCOLOR,spatter_spatter_6,gestos,WATERCOLOR/spatter_spatter_6_gestos_A.png,WATERCOLOR/spatter_spatter_6_gestos_B.png,ok,,não,15.31
-Spatter/Spatter 6,WATERCOLOR,spatter_spatter_6,tamanhos,WATERCOLOR/spatter_spatter_6_tamanhos_A.png,WATERCOLOR/spatter_spatter_6_tamanhos_B.png,ok,,não,36.36
+Spatter/Spatter 6,WATERCOLOR,spatter_spatter_6,tamanhos,WATERCOLOR/spatter_spatter_6_tamanhos_A.png,WATERCOLOR/spatter_spatter_6_tamanhos_B.png,ok,,sim,10.04
 Spatter/Spatter 6,WATERCOLOR,spatter_spatter_6,sobre,WATERCOLOR/spatter_spatter_6_sobre_A.png,WATERCOLOR/spatter_spatter_6_sobre_B.png,ok,,sim,10.76
-Spatter/Splat,WATERCOLOR,spatter_splat,gestos,WATERCOLOR/spatter_splat_gestos_A.png,WATERCOLOR/spatter_splat_gestos_B.png,ok,,não,14.79
+Spatter/Splat,WATERCOLOR,spatter_splat,gestos,WATERCOLOR/spatter_splat_gestos_A.png,WATERCOLOR/spatter_splat_gestos_B.png,ok,,não,23.31
 Spatter/Splat,WATERCOLOR,spatter_splat,tamanhos,WATERCOLOR/spatter_splat_tamanhos_A.png,WATERCOLOR/spatter_splat_tamanhos_B.png,ok,,não,24.47
 Spatter/Splat,WATERCOLOR,spatter_splat,sobre,WATERCOLOR/spatter_splat_sobre_A.png,WATERCOLOR/spatter_splat_sobre_B.png,ok,,não,29.24
 Spatter/Splat 2,WATERCOLOR,spatter_splat_2,gestos,WATERCOLOR/spatter_splat_2_gestos_A.png,WATERCOLOR/spatter_splat_2_gestos_B.png,ok,,não,18.07
@@ -569,13 +569,13 @@ Spatter/Splat 2,WATERCOLOR,spatter_splat_2,sobre,WATERCOLOR/spatter_splat_2_sobr
 Spatter/Splats,WATERCOLOR,spatter_splats,gestos,WATERCOLOR/spatter_splats_gestos_A.png,WATERCOLOR/spatter_splats_gestos_B.png,ok,,não,7.99
 Spatter/Splats,WATERCOLOR,spatter_splats,tamanhos,WATERCOLOR/spatter_splats_tamanhos_A.png,WATERCOLOR/spatter_splats_tamanhos_B.png,ok,,não,6.62
 Spatter/Splats,WATERCOLOR,spatter_splats,sobre,WATERCOLOR/spatter_splats_sobre_A.png,WATERCOLOR/spatter_splats_sobre_B.png,ok,,sim,9.59
-Spatter/Star,WATERCOLOR,spatter_star,gestos,WATERCOLOR/spatter_star_gestos_A.png,WATERCOLOR/spatter_star_gestos_B.png,ok,,sim,7.99
-Spatter/Star,WATERCOLOR,spatter_star,tamanhos,WATERCOLOR/spatter_star_tamanhos_A.png,WATERCOLOR/spatter_star_tamanhos_B.png,ok,,não,9.59
+Spatter/Star,WATERCOLOR,spatter_star,gestos,WATERCOLOR/spatter_star_gestos_A.png,WATERCOLOR/spatter_star_gestos_B.png,ok,,sim,7.74
+Spatter/Star,WATERCOLOR,spatter_star,tamanhos,WATERCOLOR/spatter_star_tamanhos_A.png,WATERCOLOR/spatter_star_tamanhos_B.png,ok,,não,5.88
 Spatter/Star,WATERCOLOR,spatter_star,sobre,WATERCOLOR/spatter_star_sobre_A.png,WATERCOLOR/spatter_star_sobre_B.png,ok,,sim,10.27
 Sumi-e/Sumi bristle,WATERCOLOR,sumi_e_sumi_bristle,gestos,WATERCOLOR/sumi_e_sumi_bristle_gestos_A.png,WATERCOLOR/sumi_e_sumi_bristle_gestos_B.png,ok,,não,23.46
 Sumi-e/Sumi bristle,WATERCOLOR,sumi_e_sumi_bristle,tamanhos,WATERCOLOR/sumi_e_sumi_bristle_tamanhos_A.png,WATERCOLOR/sumi_e_sumi_bristle_tamanhos_B.png,ok,,sim,36.40
 Sumi-e/Sumi bristle,WATERCOLOR,sumi_e_sumi_bristle,sobre,WATERCOLOR/sumi_e_sumi_bristle_sobre_A.png,WATERCOLOR/sumi_e_sumi_bristle_sobre_B.png,ok,,sim,30.20
-Sumi-e/Sumi-e  soft,WATERCOLOR,sumi_e_sumi_e_soft,gestos,WATERCOLOR/sumi_e_sumi_e_soft_gestos_A.png,WATERCOLOR/sumi_e_sumi_e_soft_gestos_B.png,ok,,não,23.46
+Sumi-e/Sumi-e  soft,WATERCOLOR,sumi_e_sumi_e_soft,gestos,WATERCOLOR/sumi_e_sumi_e_soft_gestos_A.png,WATERCOLOR/sumi_e_sumi_e_soft_gestos_B.png,ok,,sim,21.40
 Sumi-e/Sumi-e  soft,WATERCOLOR,sumi_e_sumi_e_soft,tamanhos,WATERCOLOR/sumi_e_sumi_e_soft_tamanhos_A.png,WATERCOLOR/sumi_e_sumi_e_soft_tamanhos_B.png,ok,,sim,33.32
 Sumi-e/Sumi-e  soft,WATERCOLOR,sumi_e_sumi_e_soft,sobre,WATERCOLOR/sumi_e_sumi_e_soft_sobre_A.png,WATERCOLOR/sumi_e_sumi_e_soft_sobre_B.png,ok,,sim,27.61
 Sumi-e/Sumi-e ribbon,WATERCOLOR,sumi_e_sumi_e_ribbon,gestos,WATERCOLOR/sumi_e_sumi_e_ribbon_gestos_A.png,WATERCOLOR/sumi_e_sumi_e_ribbon_gestos_B.png,ok,,não,18.91
@@ -594,7 +594,7 @@ Watercolor/Flat,WATERCOLOR,watercolor_flat,gestos,WATERCOLOR/watercolor_flat_ges
 Watercolor/Flat,WATERCOLOR,watercolor_flat,tamanhos,WATERCOLOR/watercolor_flat_tamanhos_A.png,WATERCOLOR/watercolor_flat_tamanhos_B.png,ok,,sim,30.84
 Watercolor/Flat,WATERCOLOR,watercolor_flat,sobre,WATERCOLOR/watercolor_flat_sobre_A.png,WATERCOLOR/watercolor_flat_sobre_B.png,ok,,sim,25.87
 Watercolor/Flat 2,WATERCOLOR,watercolor_flat_2,gestos,WATERCOLOR/watercolor_flat_2_gestos_A.png,WATERCOLOR/watercolor_flat_2_gestos_B.png,ok,,não,25.54
-Watercolor/Flat 2,WATERCOLOR,watercolor_flat_2,tamanhos,WATERCOLOR/watercolor_flat_2_tamanhos_A.png,WATERCOLOR/watercolor_flat_2_tamanhos_B.png,ok,,sim,25.87
+Watercolor/Flat 2,WATERCOLOR,watercolor_flat_2,tamanhos,WATERCOLOR/watercolor_flat_2_tamanhos_A.png,WATERCOLOR/watercolor_flat_2_tamanhos_B.png,ok,,não,36.86
 Watercolor/Flat 2,WATERCOLOR,watercolor_flat_2,sobre,WATERCOLOR/watercolor_flat_2_sobre_A.png,WATERCOLOR/watercolor_flat_2_sobre_B.png,ok,,não,30.78
 Watercolor/Flat Dry,WATERCOLOR,watercolor_flat_dry,gestos,WATERCOLOR/watercolor_flat_dry_gestos_A.png,WATERCOLOR/watercolor_flat_dry_gestos_B.png,ok,,sim,20.27
 Watercolor/Flat Dry,WATERCOLOR,watercolor_flat_dry,tamanhos,WATERCOLOR/watercolor_flat_dry_tamanhos_A.png,WATERCOLOR/watercolor_flat_dry_tamanhos_B.png,ok,,sim,30.27
@@ -616,7 +616,7 @@ Watercolor/Round 2,WATERCOLOR,watercolor_round_2,tamanhos,WATERCOLOR/watercolor_
 Watercolor/Round 2,WATERCOLOR,watercolor_round_2,sobre,WATERCOLOR/watercolor_round_2_sobre_A.png,WATERCOLOR/watercolor_round_2_sobre_B.png,ok,,sim,29.16
 Watercolor/Round 3,WATERCOLOR,watercolor_round_3,gestos,WATERCOLOR/watercolor_round_3_gestos_A.png,WATERCOLOR/watercolor_round_3_gestos_B.png,ok,,não,23.32
 Watercolor/Round 3,WATERCOLOR,watercolor_round_3,tamanhos,WATERCOLOR/watercolor_round_3_tamanhos_A.png,WATERCOLOR/watercolor_round_3_tamanhos_B.png,ok,,não,36.90
-Watercolor/Round 3,WATERCOLOR,watercolor_round_3,sobre,WATERCOLOR/watercolor_round_3_sobre_A.png,WATERCOLOR/watercolor_round_3_sobre_B.png,ok,,não,36.90
+Watercolor/Round 3,WATERCOLOR,watercolor_round_3,sobre,WATERCOLOR/watercolor_round_3_sobre_A.png,WATERCOLOR/watercolor_round_3_sobre_B.png,ok,,não,30.32
 Watercolor/Round 4,WATERCOLOR,watercolor_round_4,gestos,WATERCOLOR/watercolor_round_4_gestos_A.png,WATERCOLOR/watercolor_round_4_gestos_B.png,ok,,não,15.13
 Watercolor/Round 4,WATERCOLOR,watercolor_round_4,tamanhos,WATERCOLOR/watercolor_round_4_tamanhos_A.png,WATERCOLOR/watercolor_round_4_tamanhos_B.png,ok,,sim,25.20
 Watercolor/Round 4,WATERCOLOR,watercolor_round_4,sobre,WATERCOLOR/watercolor_round_4_sobre_A.png,WATERCOLOR/watercolor_round_4_sobre_B.png,ok,,não,20.89
@@ -643,7 +643,7 @@ Pen/Dip Pen,INK_PEN,pen_dip_pen,tamanhos,INK_PEN/pen_dip_pen_tamanhos_A.png,INK_
 Pen/Dip Pen,INK_PEN,pen_dip_pen,sobre,INK_PEN/pen_dip_pen_sobre_A.png,INK_PEN/pen_dip_pen_sobre_B.png,ok,,não,28.42
 Pen/Fountain Round,INK_PEN,pen_fountain_round,gestos,INK_PEN/pen_fountain_round_gestos_A.png,INK_PEN/pen_fountain_round_gestos_B.png,ok,,não,22.25
 Pen/Fountain Round,INK_PEN,pen_fountain_round,tamanhos,INK_PEN/pen_fountain_round_tamanhos_A.png,INK_PEN/pen_fountain_round_tamanhos_B.png,ok,,sim,16.41
-Pen/Fountain Round,INK_PEN,pen_fountain_round,sobre,INK_PEN/pen_fountain_round_sobre_A.png,INK_PEN/pen_fountain_round_sobre_B.png,ok,,não,16.41
+Pen/Fountain Round,INK_PEN,pen_fountain_round,sobre,INK_PEN/pen_fountain_round_sobre_A.png,INK_PEN/pen_fountain_round_sobre_B.png,ok,,não,23.73
 Pen/Fountain Square,INK_PEN,pen_fountain_square,gestos,INK_PEN/pen_fountain_square_gestos_A.png,INK_PEN/pen_fountain_square_gestos_B.png,ok,,não,24.20
 Pen/Fountain Square,INK_PEN,pen_fountain_square,tamanhos,INK_PEN/pen_fountain_square_tamanhos_A.png,INK_PEN/pen_fountain_square_tamanhos_B.png,ok,,sim,30.91
 Pen/Fountain Square,INK_PEN,pen_fountain_square,sobre,INK_PEN/pen_fountain_square_sobre_A.png,INK_PEN/pen_fountain_square_sobre_B.png,ok,,não,17.71
@@ -700,9 +700,9 @@ Default/Soft,BLEND,default_soft,sobre,BLEND/default_soft_sobre_A.png,BLEND/defau
 Default/Soft,BLEND,default_soft_aq,sobre,BLEND/default_soft_aq_sobre_A.png,BLEND/default_soft_aq_sobre_B.png,ok,,sim,13.18
 Default/Soft  Noisy,BLEND,default_soft_noisy,sobre,BLEND/default_soft_noisy_sobre_A.png,BLEND/default_soft_noisy_sobre_B.png,ok,,sim,19.40
 Default/Soft  Noisy,BLEND,default_soft_noisy_aq,sobre,BLEND/default_soft_noisy_aq_sobre_A.png,BLEND/default_soft_noisy_aq_sobre_B.png,ok,,sim,13.19
-Default/Soft 2,BLEND,default_soft_2,sobre,BLEND/default_soft_2_sobre_A.png,BLEND/default_soft_2_sobre_B.png,ok,,não,13.19
+Default/Soft 2,BLEND,default_soft_2,sobre,BLEND/default_soft_2_sobre_A.png,BLEND/default_soft_2_sobre_B.png,ok,,sim,20.15
 Default/Soft 2,BLEND,default_soft_2_aq,sobre,BLEND/default_soft_2_aq_sobre_A.png,BLEND/default_soft_2_aq_sobre_B.png,ok,,sim,13.67
-Default/Soft Noisy 2,BLEND,default_soft_noisy_2,sobre,BLEND/default_soft_noisy_2_sobre_A.png,BLEND/default_soft_noisy_2_sobre_B.png,ok,,não,13.67
+Default/Soft Noisy 2,BLEND,default_soft_noisy_2,sobre,BLEND/default_soft_noisy_2_sobre_A.png,BLEND/default_soft_noisy_2_sobre_B.png,ok,,sim,18.90
 Default/Soft Noisy 2,BLEND,default_soft_noisy_2_aq,sobre,BLEND/default_soft_noisy_2_aq_sobre_A.png,BLEND/default_soft_noisy_2_aq_sobre_B.png,ok,,sim,12.86
 Default/Textured,BLEND,default_textured,sobre,BLEND/default_textured_sobre_A.png,BLEND/default_textured_sobre_B.png,ok,,sim,21.90
 Default/Textured,BLEND,default_textured_aq,sobre,BLEND/default_textured_aq_sobre_A.png,BLEND/default_textured_aq_sobre_B.png,ok,,sim,14.26

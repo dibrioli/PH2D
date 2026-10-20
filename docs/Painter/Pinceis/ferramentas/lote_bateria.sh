@@ -20,6 +20,7 @@ for passagem in 1 2; do
       echo "   não arrancou ($(tail -2 "$S/.sessao.log" | tr '\n' ' '))"
       bash "$W/gotas_fecha.sh"; wait "$pid"; sleep 30; continue
     fi
+    echo "   janelas: $(timeout 20 bash "$O/inj.sh" "rect e" 2>&1 | tr '\n' ';')"
     if [ "$passagem" = 1 ]; then e=(env PRIMEIRA=1); else e=(env); fi
     "${e[@]}" ATE=$((t0 + P - 180)) bash "$F/fotos_bateria.sh" "$L" "$S" "$S/log.csv"; rc=$?
     bash "$W/gotas_fecha.sh"; wait "$pid"

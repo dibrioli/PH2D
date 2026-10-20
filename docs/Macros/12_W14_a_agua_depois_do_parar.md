@@ -47,9 +47,9 @@ Memória `project_the_water_keeps_flowing_after_the_clip_ends_2026_10_20`.
 - O palco: `PalcosDoPainter::dt_do_quadro` (a shell dá o `dt` do quadro) e `cauda::anda` na subida, com o `ate`
   da marca do Painter ligado ou da guardada.
 
-⛔ Recusas medidas: recompor a tela inteira na paragem (`mark_dirty_full`): 3 056 de 9 216 texels diferiam do
-documento (o editor só compõe o que a água sujou). «Não andou neste quadro» ≠ «acabou»: um quadro de 16,7 ms não dá
-um passo da água (25 ms) — tratar o primeiro como fim cortava a cauda no 1.º quadro.
+⛔ Medido: «não andou neste quadro» ≠ «acabou» — um quadro de 16,7 ms nem sempre dá um passo da água (25 ms), e
+tratar o 1.º quadro sem passo como o fim cortava a cauda logo ali (3 056 de 9 216 texels diferiam do documento;
+atribuí-o primeiro, errado, a recompor a tela inteira — a mutação M4 mostrou que essa dá a mesma tela).
 
 ## §4 — A cura do item 2 (a edição que flutua)
 

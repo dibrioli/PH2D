@@ -205,3 +205,24 @@ fn toca_e_confere(nome: &str, (mut t, bytes, dur): (PainterTool, Vec<u8>, f64), 
         "{nome}: fora da tinta do artista, a cauda não é o documento"
     );
 }
+
+/// **A cauda só corre no fim do clipe**: a meio dele (passos por tocar, a água viva) ela não anda e a tela
+/// fica a do instante — o Play e o arrasto mostram o clipe, não a água depois dele.
+#[test]
+fn a_meio_do_clipe_a_cauda_nao_anda() {
+    let (_, bytes, dur) =
+        grava_duas_horizontais_ligado_em(L, 1, PaintMedia::WetPaint).expect("grava");
+    let mut palco = MacroEmCena::de(&bytes).expect("lê").expect("trilha");
+    palco.segue(dur * 0.6).expect("toca");
+    let antes = palco.tocador().tool().imagem_aplicada().expect("tela").0;
+    for _ in 0..30 {
+        assert!(!palco.corre_a_cauda(DT_MS, None), "a meio do clipe a cauda andou");
+    }
+    let depois = palco.tocador().tool().imagem_aplicada().expect("tela").0;
+    assert_eq!(diferem(&antes, &depois), (0, 0), "a tela mudou a meio do clipe");
+    palco.segue(dur).expect("toca");
+    assert!(
+        palco.corre_a_cauda(DT_MS, None),
+        "controlo: no fim do mesmo clipe a cauda anda"
+    );
+}

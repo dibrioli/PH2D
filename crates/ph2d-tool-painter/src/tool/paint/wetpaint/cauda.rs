@@ -1,8 +1,8 @@
 //! **A água depois do fim de um clipe** (W14, `docs/Macros/12_W14_a_agua_depois_do_parar.md`): o tocador de
 //! uma macro corre a água da gravação no relógio fixo até assentar, ou até ao estado em que o editor a
 //! parou ([`MarcaDaAgua`], guardado na marca do artista) — e pára como o editor parou: a tela composta
-//! nesse estado e a sessão acabada. ⛔ Sem recompor a tela inteira: o editor só compõe o que a água
-//! sujou, e a inteira diferia em 1/3 dos texels (medido, W14).
+//! nesse estado e a sessão acabada — as mesmas chamadas do editor (recompor a tela inteira dá a mesma
+//! tela: mutação M4 da W14, equivalente).
 
 use super::fita::MarcaDaAgua;
 use super::offthread::STEP_S;

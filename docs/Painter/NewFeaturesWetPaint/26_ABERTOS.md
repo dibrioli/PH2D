@@ -89,6 +89,9 @@
 | C35 | **O leve do Oil Bristle** 5,72 contra 5,01 com o relevo sem escada (W3b; o de 18/10 6,32; a W2 já o deixava em 5,36; o Rebelle tem leve ≈ forte). Nenhuma lei da W3 o baixa sem tirar o forte. | [49_medicao §6](49_medicao_o_relevo_de_cada_fio.md) · [50 §5](50_medicao_o_relevo_sem_escada.md) | — |
 | C36 | **A borda do Oil Bristle a 103 px** 0,73–0,74 contra 0,87 do Rebelle (`oil103`), com e sem relevo — de antes da W3; e a 103 px o contraste 1,25× e a textura 5,36 (6,2): o preset sem relevo já tem o contraste dele. | [50 §5](50_medicao_o_relevo_sem_escada.md) | — |
 | C37 | **As linhas ESCURAS do Rebelle**: o resíduo dele tem assimetria −2,2 (41 px) · −1,1 (103) — sulcos escuros raros num campo liso; o nosso relevo é simétrico (+0,2). | [50 §5](50_medicao_o_relevo_sem_escada.md) | — |
+| C38 | **A lâmina que gira com o arrasto** (Flat Oily, Knife Smooth): no Rebelle a lâmina guarda a orientação e os traços rectos saem finos; a nossa é fixa a 0° e o traço vertical sai um bloco largo. Falta um campo «seguir o traço» no `BrushSpec`. | [53 §4](53_medicao_os_11_pinceis.md) | motor |
+| C39 | **As lanes do Jitter alto** (Dabber, Jitter 0,5): resta o ×N de memória e talvez o aspecto rasgado; juntar as lanes com o limiar r + 2·alcance muda a imagem do Jitter ≥ ~0,25. | [53 §5–§6](53_medicao_os_11_pinceis.md) | decisão de lei |
+| C40 | **O Cv das lâminas finas**: a 10 px a borda alterna entre células da grelha do motor (Cv 0,004 → 0,056 em 4,8–6,0); o Flat Oily só passa tudo a 5,1. | [53 §4](53_medicao_os_11_pinceis.md) | resolução da grelha |
 
 ## D — Processo
 

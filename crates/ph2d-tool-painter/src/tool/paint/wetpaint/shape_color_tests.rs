@@ -313,7 +313,7 @@ fn a_falloff_color_le_a_cobertura_como_no_digital() {
     assert!(r > 0.3, "ρ {r:.2} contra o Digital");
 }
 
-/// ⭐ **A COR SOBREVIVE À ÁGUA NOS 12 PINCÉIS DE FÁBRICA** — a recusa do doc 46 §1 («a mistura K–M
+/// ⭐ **A COR SOBREVIVE À ÁGUA NOS PINCÉIS DE FÁBRICA** — a recusa do doc 46 §1 («a mistura K–M
 /// homogeneíza o carimbo no primeiro passo») refutada: 10 s depois do traço o desvio de G−R da Texture
 /// Color ainda é ×3,4 (Express Oil) a ×16,5 (Oil Bristle) o do traço sem rampa (medido 16/10). Só o
 /// estado cru de teste, mais molhado que qualquer pincel de fábrica, mistura a rampa toda (×1,0).
@@ -323,9 +323,9 @@ fn a_cor_sobrevive_a_agua_nos_pinceis_de_fabrica() {
     let bib = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
     assert_eq!(
         bib.entradas.len(),
-        20,
+        31,
         "os pincéis de fábrica (prompt 42: +5 de tinta e marcador; prompt 43: o Airbrush; prompt 44: o Wet \
-         Flat e a Gouache Flat)"
+         Flat e a Gouache Flat; prompt 53: os 11 do Rebelle)"
     );
     let mut fracos = Vec::new();
     for e in &bib.entradas {

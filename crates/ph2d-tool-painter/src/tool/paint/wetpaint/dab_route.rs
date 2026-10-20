@@ -241,8 +241,6 @@ impl PainterTool {
                             // A janela do rasto anda pela CORDA entre centros: pelo sub-passo antes de arredondar, o
                             // dab do resto pesava um sub-passo inteiro — a escada do Oil Bristle a 103 px (doc 51 §4).
                             let chord = grid_map::px_len_to_cell(f64::from(best.sqrt()), ratio);
-                            // O arco que o caminho andou: com Jitter a corda é o salto, e a margem da janela pelo
-                            // salto inchava cada lane (`Trail::on_segment_no_caminho`, os números medidos).
                             let arco = (d.arc_len - sess.lanes[i].arco).max(0.0);
                             let caminho = grid_map::px_len_to_cell(f64::from(arco), ratio);
                             sess.engine.direct_segment_no_caminho(i, chord, caminho);

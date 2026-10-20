@@ -307,6 +307,7 @@ impl PainterTool {
     }
 }
 
+mod copias; // a lane por (cópia, ponta): spray, Rough e simetria (L13) — filho de dab_route por LOC
 mod dab_route; // a ROTA DO DAB (pincel -> fluido) — filho por LOC
 pub(crate) mod fita; // a FITA do worker: a água de uma macro idêntica à gravada
 pub(super) mod grid_map; // a grade do fluido != a grade de PIXELS — filho por LOC

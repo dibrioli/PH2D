@@ -369,4 +369,6 @@ pub(super) struct Lane {
     /// O comprimento de caminho do último dab da lane (`Dab::arc_len`): o pigmento por comprimento anda por ele
     /// — o Jitter afasta os centros sem andar o pincel.
     pub(super) arco: f32,
+    /// A cópia cujos dabs a lane recebe ([`super::copias`]): só um dab da MESMA cópia casa com ela.
+    pub(super) copia: u32,
 }

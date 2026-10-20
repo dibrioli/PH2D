@@ -213,6 +213,7 @@ impl PainterTool {
                     .enumerate()
                     .map(move |(j, s)| (i, n - 1 - j as u64, passo, s))
             })
+        let copia = super::copias::copia_de_cada_dab(dabs, brush, &groups);
             .collect();
         for (didx, sub_k, passo, d) in sub_dabs.iter().map(|(i, k, p, d)| (*i, *k, *p, d)) {
             let [x, y] = d.center;
@@ -238,7 +239,7 @@ impl PainterTool {
                 for (i, l) in sess.lanes.iter().enumerate() {
                     let (ddx, ddy) = (x - l.pos[0], y - l.pos[1]);
                     let d2 = ddx * ddx + ddy * ddy;
-                    if d2 <= best {
+                    if l.copia == copia[didx] && d2 <= best {
                         best = d2;
                         lane = Some(i);
                     }
@@ -272,6 +273,7 @@ impl PainterTool {
                         sess.lanes.push(Lane {
                             pos: d.center,
                             ink: d.color,
+                            copia: copia[didx],
                             arco: d.arc_len,
                         });
                         i

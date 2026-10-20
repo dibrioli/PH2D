@@ -392,6 +392,15 @@ vale), `a_largura_e_a_prometida` e a miniatura do Dabber verdes. Custo (`--custo
 Rebelle é pontilhado (cobertura 0,73, textura 37,6) e o nosso cheio (0,90 · 8) — o furo da esponja que cresce com o tamanho (lei
 do grão por tamanho de ponta, como a (b) do §7). SHA `8b4e2a1c21`. Prancha `pranchas/dabber.png` (antes: `dabber_antes.png`).
 
+**L13 ✅ a lane por (cópia, ponta) (J2, 20/10, revisão)** — defeito ALTO do limiar `r + 2·alcance` sozinho: as marcas de um ponto
+(spray Count > 1, passadas do Rough, cópias da simetria) saem juntas com o MESMO `arc_len` e caíam na mesma lane ⇒ a 2.ª, sem caminho
+andado, pousava com peso 0 (o pigmento por comprimento) e o rasto saltava entre cópias. Lei: o Jitter espalha UMA ponta; cópias são
+pontas DISTINTAS — `wetpaint/copias.rs`: a k-ésima marca de um ponto é a cópia `k` (o mapa do Tiling dá às cópias da costura a do seu
+dab) e a lane só casa dabs da mesma cópia; pincel sem cópias ⇒ cópia 0 (as 28 miniaturas de fábrica ao bit, lei × mutante). Portões
+`cada_marca_do_spray_pousa_no_wet` (Wet Round, Jitter 0,5, Count 3: 3 lanes, 0 de 2 100 dabs sem pigmento, tinta ×2,50 do Count 1) e
+`as_copias_da_simetria_pintam_as_duas_no_wet` (a 12 px do eixo: 2 lanes, 0 de 790); mutação «cópia ignorada» SANGRA nos dois (1 lane;
+250 de 2 100 e 71 de 790 dabs sem pigmento); o Dabber continua a 1 lane e 165 / 1 221 MiB.
+
 **L15 — Nicho** (absorve a L14 «padrão ao longo do caminho», que nenhum pincel do catálogo pede): hatching (K-7; hoje Stripes Tiled), partículas com física (M-6, M-7; a Ribbon é a mola), glitter (M-5; spray + cor +
 `metallic` — MEDIR a composição antes), pattern pen e rolo (fora do catálogo). **M** cada, só por prioridade do catálogo.
 

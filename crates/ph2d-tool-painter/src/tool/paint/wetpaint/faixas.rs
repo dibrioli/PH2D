@@ -17,6 +17,7 @@ const MORTA: Lane = Lane {
     pos: [f32::INFINITY; 2],
     ink: [0.0; 3],
     arco: 0.0,
+    copia: 0,
 };
 
 impl PainterTool {

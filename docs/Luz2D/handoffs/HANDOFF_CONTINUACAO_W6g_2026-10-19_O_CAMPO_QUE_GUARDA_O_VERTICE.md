@@ -581,3 +581,53 @@ das cenas. É a 1.ª reconstrução desta rodada (two-strikes conta daqui).
 
 A borda da 10 + 9 desce 0,054 ms; a cunha sem os cantos (que não é o padrão) fica nos seus +0,03 (o degrau dela,
 §21). O resto da borda sobre a lei W6d (+0,046) são os cinco despachos pequenos e as barreiras; a fina +0,07 / −0,01.
+
+## 23. A rodada completa com a 10 + 9 no padrão — o §1 passa; o padrão NÃO liga (a memória e o G9 holográfico)
+
+(`fecho_r8.sh`; `{f3,caixa,borda}_r8.log`, `suite_r8_{gpu,app}.log`, `sozinhos_r8_{gpu,app}.log`; `load` 3–6.)
+
+- **O §1 tal e qual passa:** F3 e caixa saem linha a linha os da r6 (`diff` vazio fora dos relógios); a borda com os
+  mesmos (a)/(b)/anéis/bits (`1 −0,176 / 38 / 0 / 0`); o 4.º custo +3,7 % / +0,9 %.
+- **As suítes das duas crates com o padrão ligado** (`PH2D_SUITE="motivo: o padrão da luz muda"`): gpu 41/42, app
+  77/84. Sete da app são `SemMemoria` sob os testes em paralelo na mesma placa e passam sozinhos (`--test-threads=1`,
+  7/7). **O `holografica::g9_o_rebote_na_holografica` reprova sozinho**: Baixo 0,0093 / **0,0105** / 0,0098 contra
+  `TOL_G9_HOLO[0]` = 0,0101 (medido 0,0092 na lei W6d). Por medir: qual peça da 10 + 9 o move e se o gabarito do
+  rebote o vê como erro ou como o canto mais exato.
+- **A memória** (`w6g_memoria_dos_cantos`, teste temporário no `os_tetos_da_placa.rs`, reposto): a `V` e a `V2` são
+  duas texturas `rgba16float` da captura INTEIRA para ~150 blocos com conteúdo em 245 760.
+
+| vista · degrau | sem os cantos | com | + |
+|---|---|---|---|
+| 1080p · Baixa / Média / Alta | 414 / 574 / 1143 MB | 669 / 829 / 1381 | **+255 (+61 %)** / +255 (+44 %) / +238 (+21 %) |
+| 1440p · Baixa / Média / Alta | 712 / 973 / 1865 | 1153 / 1414 / 2271 | **+441 (+62 %)** / +441 (+45 %) / +406 (+22 %) |
+| 2560×1080 · Baixa / Média / Alta | 536 / 735 / 1451 | 867 / 1066 / 1762 | +331 (+62 %) / +331 / +311 |
+| 2160p (k 1) · Baixa / Média / Alta | 582 / 1143 / 4089 | 837 / 1381 / 4327 | +255 / +238 / +238 (+6 %) |
+
+⇒ ligar assim é pagar +44–62 % de memória da luz nos degraus Baixa/Média para 0,06 % da captura: não é o padrão-ouro.
+O padrão fica a lei W6d (`borda_vertice: None`); comitado o `Config::sem_os_cantos` e as variantes de comparação das
+réguas e portões («antes da W6d», «lei W6d», «cunha», o controlo das formas redondas) já presas a ele — a identidade
+hoje, o seu significado intacto quando a 10 + 9 ligar.
+
+## ⛔ Recusas MEDIDAS (§21–§23)
+
+| Recusa | Porquê |
+|---|---|
+| A `pela_cunha` dentro do kernel da captura inteira | 55–61 registos contra 32; a cunha inteira +0,03 ms e a 10 + 9 +0,05 só disso (§21). |
+| A barreira de grupo + a marca na origem da `V` em todo bloco | 0,044 ms juntos (s2 × s3, §21); a marca por bloco num buffer com `atomicExchange` sai de graça. |
+| Ligar a 10 + 9 com a `V`/`V2` densas | +255–441 MB (+44–62 %) nos degraus Baixa/Média (§23). |
+
+## 24. ABERTO (por ordem — substitui o §20)
+
+1. **A `V` e a `V2` ESPARSAS** (a cura da memória, §23): só os blocos listados (e os 3×3 deles) num pool, com uma
+   tabela por bloco da captura (`u32`, ~1 MB; sentinela = sem cunha) que o `meio` lê antes da `V2`. Atenção: a leitura
+   da `V2` está no `meio` da fina — a tabela é uma leitura DEPENDENTE a mais no laço; meça na régua de registos e no
+   relógio ANTES (a fina da 10 + 9 está a +0,06–0,07 / −0,01). O pool precisa de teto do dispositivo e de uma recusa
+   dita (não um corte calado) quando a cena tem mais vértices que ele. O kill-criterion: o §1 tal e qual + a memória
+   da 10 + 9 ≤ +5 % sobre a lei W6d em toda vista da tabela + os bytes da fluência iguais aos da r8 (32 casos).
+2. **O G9 holográfico com a 10 + 9** (§23): Baixo 0,0105 > 0,0101. Bissecção pelas peças do `Canto` e pela `V2`; se
+   for o canto mais exato, o gabarito do rebote tem de o mostrar (não se sobe a tolerância sem isso).
+3. Depois dos dois: ligar no padrão (`borda_vertice: Some(VERTICE_PADRAO)` + `canto: Canto::LIGADO` +
+   `borda_cantos: true`) e as suítes das duas crates (os `SemMemoria` em paralelo têm de sumir com o item 1).
+4. A lei W6d com `DISTANTES` no relógio (o §20.2).
+5. A anomalia da r5b (§12).
+6. A família (b) (37–38): da W5g, fora.

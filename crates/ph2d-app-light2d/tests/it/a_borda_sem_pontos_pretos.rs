@@ -62,7 +62,8 @@ fn a_borda_nao_tem_pontos_pretos() {
     let antes = |c: ph2d_light2d_gpu::Config| ph2d_light2d_gpu::Config {
         borda_continua: false,
         borda_fora: false,
-        ..c
+        borda_vertice: None,
+        ..c.sem_os_cantos()
     };
     let a = vista_em(3.2, cena_redonda([0.0; 2]).1[0].centro);
     let cfg = config(&gpu, a, false);

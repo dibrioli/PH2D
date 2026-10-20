@@ -639,7 +639,8 @@ fn medida_w6d_vertice_girado() {
             Config {
                 borda_continua: false,
                 borda_fora: false,
-                ..base
+                borda_vertice: None,
+                ..base.sem_os_cantos()
             },
         ),
         ("produto", base),
@@ -719,7 +720,7 @@ fn medida_luz2d_w6e_f3() {
     ] {
         let cfg = Config {
             borda_vertice: v,
-            ..base
+            ..base.sem_os_cantos()
         };
         let mut s = Solver::novo(&gpu, cfg).expect("solver");
         s.quadro(&gpu, &cena);

@@ -188,18 +188,18 @@ fn medida_luz2d_w6e_campo() {
     let variantes: [Variante; 3] = [
         ("lei W6d", |c| Config {
             borda_vertice: None,
-            ..c
+            ..c.sem_os_cantos()
         }),
         ("cunha", |c| Config {
             borda_vertice: Some(ph2d_light2d_gpu::VERTICE_PADRAO),
-            ..c
+            ..c.sem_os_cantos()
         }),
         ("cunha larga", |c| Config {
             borda_vertice: Some(ph2d_light2d_gpu::Vertice {
                 pre: 0.02,
                 area: 0.05,
             }),
-            ..c
+            ..c.sem_os_cantos()
         }),
     ];
     for (zoom, k, a, cfg, d) in casos(&gpu) {
@@ -260,7 +260,8 @@ fn o_campo_da_borda_e_o_da_geometria() {
         Config {
             borda_continua: false,
             borda_fora: false,
-            ..cfg
+            borda_vertice: None,
+            ..cfg.sem_os_cantos()
         },
         d,
         GIRO,

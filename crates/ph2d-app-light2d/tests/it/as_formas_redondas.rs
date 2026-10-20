@@ -287,7 +287,8 @@ pub(crate) fn config(gpu: &ph2d_gpu::GpuContext, a: Affine, controlo: bool) -> C
             pe_na_borda: false,
             vis_na_face: false,
             miolo: None,
-            ..cfg
+            borda_vertice: None,
+            ..cfg.sem_os_cantos()
         }
     } else {
         cfg

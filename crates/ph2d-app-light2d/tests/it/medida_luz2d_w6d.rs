@@ -203,10 +203,16 @@ fn medida_luz2d_w6d_fotos() {
         let a = vista_em(zoom, r_pol.centro);
         // `antes` = a borda de antes da W6d (a reta por texel, a marcha de fora pelo iso-½).
         for (quando, borda) in [("depois", true), ("antes", false)] {
-            let cfg = ph2d_light2d_gpu::Config {
-                borda_continua: borda,
-                borda_fora: borda,
-                ..config(&gpu, a, false)
+            let c = config(&gpu, a, false);
+            let cfg = if borda {
+                c
+            } else {
+                ph2d_light2d_gpu::Config {
+                    borda_continua: false,
+                    borda_fora: false,
+                    borda_vertice: None,
+                    ..c.sem_os_cantos()
+                }
             };
             let (fl, r, _) = disco_de_imagem(&gpu, a, cfg);
             foto(&format!("imagem_zoom{zoom}_{quando}"), a, &r, cor, |p| {
@@ -331,15 +337,16 @@ fn config_diag(gpu: &ph2d_gpu::GpuContext, a: Affine, v: usize) -> ph2d_light2d_
         0 => ph2d_light2d_gpu::Config {
             borda_continua: false,
             borda_fora: false,
-            ..c
+            borda_vertice: None,
+            ..c.sem_os_cantos()
         },
         1 => ph2d_light2d_gpu::Config {
             borda_vertice: None,
-            ..c
+            ..c.sem_os_cantos()
         },
         2 => ph2d_light2d_gpu::Config {
             borda_vertice: Some(ph2d_light2d_gpu::VERTICE_PADRAO),
-            ..c
+            ..c.sem_os_cantos()
         },
         // ⭐ W6f: o campo que guarda o vértice e a face no canto (handoff W6f §8).
         3 => ph2d_light2d_gpu::Config {
@@ -353,11 +360,12 @@ fn config_diag(gpu: &ph2d_gpu::GpuContext, a: Affine, v: usize) -> ph2d_light2d_
                 pre: 0.02,
                 area: 0.05,
             }),
-            ..c
+            ..c.sem_os_cantos()
         },
         5 => ph2d_light2d_gpu::Config {
             borda_exata: false,
-            ..c
+            borda_vertice: None,
+            ..c.sem_os_cantos()
         },
         _ => c,
     }
@@ -582,14 +590,15 @@ fn medida_luz2d_w6d_canto() {
             Box::new(|c| Config {
                 borda_continua: false,
                 borda_fora: false,
-                ..c
+                borda_vertice: None,
+                ..c.sem_os_cantos()
             }),
         ),
         (
             "lei W6d".into(),
             Box::new(|c| Config {
                 borda_vertice: None,
-                ..c
+                ..c.sem_os_cantos()
             }),
         ),
     ];
@@ -598,7 +607,7 @@ fn medida_luz2d_w6d_canto() {
             format!("cunha {pre}/{area}"),
             Box::new(move |c| Config {
                 borda_vertice: Some(Vertice { pre, area }),
-                ..c
+                ..c.sem_os_cantos()
             }),
         ));
     }

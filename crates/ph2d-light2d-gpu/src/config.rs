@@ -172,8 +172,9 @@ pub struct Config {
     pub borda_fora: bool,
     /// ⭐ W6e — o parcial do VÉRTICE (só com [`Self::borda_continua`]) grava a distância da cunha das
     /// retas dos parciais a dois texels no lugar da da própria reta, que no canto sai diagonal e o
-    /// arredonda (o texel do canto convexo no ambiente; handoff W6e §1). `None` = a própria reta — o
-    /// padrão: a cunha acerta o campo mas reprova o F3 (a média das faces no canto, handoff W6e §3).
+    /// arredonda (o texel do canto convexo no ambiente; handoff W6e §1). `None` = a própria reta (a lei
+    /// W6d, o padrão). Sozinha a cunha reprova o F3 (a média das faces no canto, handoff W6e §3); com
+    /// [`Self::canto`] e [`Self::borda_cantos`] é a 10 + 9 (handoff W6g §22–§23: por ligar, a memória).
     pub borda_vertice: Option<Vertice>,
     /// ⭐ W6f — o texel do CANTO pelas faces (handoff W6f §2): as três peças da candidata 9.
     pub canto: Canto,
@@ -551,6 +552,18 @@ impl Config {
     #[must_use]
     pub fn escala_da_captura(&self) -> u32 {
         self.captura
+    }
+
+    /// ⭐ W6g r8 — a mesma configuração sem o canto pelas faces nem os cantos da borda (a lei W6d com a
+    /// [`Self::borda_vertice`] que já tiver): a base das variantes de antes da 10 + 9 — a identidade enquanto
+    /// ela não for o padrão.
+    #[must_use]
+    pub fn sem_os_cantos(self) -> Self {
+        Self {
+            canto: Canto::DESLIGADO,
+            borda_cantos: false,
+            ..self
+        }
     }
 
     /// ⭐ W6f: os cantos da borda ([`Self::borda_cantos`]) correm — `V` e `V2` alocam-se.

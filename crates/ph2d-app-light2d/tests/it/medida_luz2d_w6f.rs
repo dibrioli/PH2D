@@ -191,15 +191,15 @@ fn medida_luz2d_w6f() {
             borda_continua: false,
             borda_fora: false,
             borda_vertice: None,
-            ..c
+            ..c.sem_os_cantos()
         }),
         ("lei W6d", |c| Config {
             borda_vertice: None,
-            ..c
+            ..c.sem_os_cantos()
         }),
         ("cunha", |c| Config {
             borda_vertice: Some(VERTICE_PADRAO),
-            ..c
+            ..c.sem_os_cantos()
         }),
         ("cunha + 10 + 9", |c| Config {
             borda_vertice: Some(VERTICE_PADRAO),

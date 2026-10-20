@@ -102,11 +102,28 @@ fn a_dropped_caption_lands_on_the_nearest_point_of_the_line() {
 /// do texto vai e volta; numa linha de rectas e na horizontal o texto é rígido.
 #[test]
 fn along_a_curve_the_text_bends_letter_by_letter() {
-    let pts = vec![[0.0, 0.0], [300.0, 300.0]];
-    let r = Routed::from_points(pts, Route::Curved, [Dir::East, Dir::South]);
+    // Nos dois sentidos: a seta desenhada da direita para a esquerda lê-se com as letras em pé
+    // (mutações B7/B8 do B5(2) sobreviviam só com o sentido directo).
+    let forward = vec![[0.0, 0.0], [300.0, 300.0]];
+    let backward = vec![[300.0, 300.0], [0.0, 0.0]];
+    for (pts, dirs) in [
+        (forward, [Dir::East, Dir::South]),
+        (backward, [Dir::West, Dir::North]),
+    ] {
+        bends_letter_by_letter(Routed::from_points(pts, Route::Curved, dirs));
+    }
+    assert!(
+        !line([0.0, 0.0], [300.0, 0.0])
+            .caption_frame(0.5, TextTurn::Along)
+            .bends()
+    );
+}
+
+fn bends_letter_by_letter(r: Routed) {
     let f = r.caption_frame(0.5, TextTurn::Along);
     assert!(f.bends());
     let mut angles = Vec::new();
+    let mut xs = Vec::new();
     for u in [-60.0, -30.0, 0.0, 30.0, 60.0] {
         let (p, a) = f.to_world([u, 0.0]);
         assert!(r.distance(p) < 0.05, "{u}: a {} da linha", r.distance(p));
@@ -123,15 +140,18 @@ fn along_a_curve_the_text_bends_letter_by_letter() {
             "{u}: {back:?}"
         );
         angles.push(a);
+        xs.push(p[0]);
     }
     assert!((angles[4] - angles[0]).abs() > 0.2, "rígido: {angles:?}");
-    for w in angles.windows(2) {
-        assert!((-FRAC_PI_2..FRAC_PI_2).contains(&w[0]));
+    for a in &angles {
+        assert!(
+            (-FRAC_PI_2..FRAC_PI_2).contains(a),
+            "de cabeça para baixo: {angles:?}"
+        );
     }
     assert!(
-        !line([0.0, 0.0], [300.0, 0.0])
-            .caption_frame(0.5, TextTurn::Along)
-            .bends()
+        xs.windows(2).all(|w| w[1] > w[0]),
+        "as letras leem-se da esquerda para a direita: {xs:?}"
     );
     assert!(!r.caption_frame(0.5, TextTurn::Level).bends());
 }

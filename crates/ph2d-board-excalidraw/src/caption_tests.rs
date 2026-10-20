@@ -89,11 +89,19 @@ fn the_captions_go_to_excalidraw_and_come_back() {
 /// meio dos PONTOS — numa de dois pontos, a meio), deitado na horizontal como ele o desenha.
 #[test]
 fn a_foreign_label_comes_in_level_at_its_label_position() {
-    for (lp, at) in [(json!(0.25), 0.25), (Value::Null, Caption::MIDDLE)] {
+    // A 3.ª: três pontos assimétricos sem fracção — o meio dos PONTOS (lei 12) é 0,75 do comprimento,
+    // pelo leitor inteiro (mutação B12 do B5(2): o 0,5 passava com duas).
+    let straight = json!([[0.0, 0.0], [400.0, 0.0]]);
+    let bent = json!([[0.0, 0.0], [300.0, 0.0], [300.0, 100.0]]);
+    for (lp, at, pts) in [
+        (json!(0.25), 0.25, &straight),
+        (Value::Null, Caption::MIDDLE, &straight),
+        (Value::Null, 0.75, &bent),
+    ] {
         let file = json!({
             "type": "excalidraw",
             "elements": [
-                { "id": "a", "type": "arrow", "x": 0.0, "y": 0.0, "points": [[0.0, 0.0], [400.0, 0.0]],
+                { "id": "a", "type": "arrow", "x": 0.0, "y": 0.0, "points": pts,
                   "boundElements": [{ "id": "t", "type": "text" }] },
                 { "id": "t", "type": "text", "x": 180.0, "y": -12.0, "text": "sim", "originalText": "sim",
                   "containerId": "a", "labelPosition": lp }

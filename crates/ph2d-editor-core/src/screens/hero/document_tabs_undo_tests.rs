@@ -78,6 +78,11 @@ fn ctrl_z_brings_a_deleted_board_back_whole_with_its_own_undo() {
         find(&hero, tab_node_id(b[1])).is_some(),
         "a aba voltou à barra"
     );
+    // Pintada não basta: sem estado no store ela nasce morta (mutação M11).
+    assert!(
+        hero.store.button_state(tab_node_id(b[1])).is_some(),
+        "a aba que voltou é clicável"
+    );
 
     ctrl_z(&mut hero, &mut text, false);
     assert!(!has(&hero, b[1], el), "o desfazer dele voltou com ele");
@@ -179,6 +184,25 @@ fn create_duplicate_and_drag_come_back_with_ctrl_z() {
     assert_eq!(order(&hero), b, "a ordem de antes do arrasto");
     ctrl_z(&mut hero, &mut text, true);
     assert_eq!(order(&hero), vec![b[1], b[0]]);
+}
+
+/// Desfazer criar volta à aba de ANTES, não à vizinha: com «+» carregado a partir da 1.ª de três, a
+/// vizinha da nova (a última) não é a que estava aberta (mutação M13).
+#[test]
+fn undoing_a_create_reopens_the_tab_it_was_made_from() {
+    let (mut hero, mut text, b) = with_boards(3);
+    click(&mut hero, tab_node_id(b[0]));
+    repaint(&mut hero, &mut text);
+    click(&mut hero, ids::DOC_TAB_NEW);
+    repaint(&mut hero, &mut text);
+    ctrl_z(&mut hero, &mut text, false);
+    assert_eq!(order(&hero), b);
+    assert_eq!(
+        hero.documents.active(),
+        Some(b[0]),
+        "não a vizinha {:?}",
+        b[2]
+    );
 }
 
 /// O tldraw (`paginas_P9`): desfazer o apagar e DESENHAR no quadro que voltou mata o refazer — senão o

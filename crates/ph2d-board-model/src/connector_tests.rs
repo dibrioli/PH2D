@@ -164,4 +164,9 @@ fn the_captions_and_their_turn_are_separate_fields() {
         (c.turn, c.captions[0].text.as_str()),
         (TextTurn::Level, "não")
     );
+    // E o `turn` também viaja sozinho pelo fio (mutação B10 do B5(2): o `write` dele não escrevia).
+    let mut level = el.clone();
+    assert!(level.write(Field::TextTurn, &turned.read(Field::TextTurn).unwrap()));
+    assert_eq!(level.connector().unwrap().turn, TextTurn::Level);
+    assert!(level.changed_fields(&turned).is_empty());
 }

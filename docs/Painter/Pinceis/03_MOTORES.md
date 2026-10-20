@@ -270,6 +270,18 @@ também por marcas soltas da 2.ª ponta. Cura em `traco_plano`: marcas soltas es
 texels em série, pool em blocos de 16 linhas, texel sem tinta copia a base. Medido intercalado
 (`o_dual_brush::mede_o_custo_do_dual`, load 13–19): > 16,7 ms por rodada 0 × 0 (com/sem dual) a 40 e a 200 px;
 bancada 0/475, p95 0,66/1,99 ms. Portão novo `a_segunda_ponta_acompanha_o_traco_inteiro` (a mutação M2 SANGRA).
+**L6 no Wet ✅ (J2, 20/10)** — a porta passa a `dual_recusado`: no Wet arma quando o pincel POUSA (Paint, sem borracha,
+traço livre); a aguada e o Impasto ficam esmaecidos (nenhum pincel do catálogo o pede lá). Máscara do TRAÇO no tool, as
+marcas carimbadas a cada lote que pousa, e o recorte vai ao motor pelo canal `padrao` (depois do portão do papel, a lei
+B do plano 27): `modo(s, m)/s` por célula (Multiply = `m`, sem reavaliar a silhueta). ⛔ Recusa MEDIDA: recortar a
+SILHUETA fazia o motor pousar a carga inteira do dab no que sobrava (manchas soltas na prancha). Com o Flow, o ângulo
+da 2.ª ponta roda o PADRÃO. Preset: `dual` em CAMPOS_DO_PINCEL (o Wet grava-o). Medido: tinta 0,459 da sem dual
+(Multiply). Custo intercalado (Pincel Seco Dual): > 16,7 ms 0 × 0 a 40 px; a 200 px igual ao sem dual na mesma carga.
+Prancha `pranchas/pincel_seco_dual.png` contra o Flat Dry: os rectos e os verticais saem riscados ao longo como o
+Rebelle, mas mais claros (o pigmento do Wet de base) e a curva/espiral perdem as riscas (a água as espalha) — preset de
+TESTE; o G-11 de fábrica é da J4. Portões: `sem_dual_o_wet_e_o_de_hoje`, `o_dual_so_tira_pigmento_no_wet`,
+`gravar_e_carregar_o_dual_no_wet_volta_ao_bit`, `a_segunda_ponta_acompanha_o_traco_inteiro` (Wet), censo/esmaecido.
+Mutação (recorte ignorado) SANGRA.
 
 **L7 — Modos de mistura nos pincéis de fábrica** (CAP-05). O motor JÁ mistura (§1.1, §1.4). Falta: medir o Marker/Effect do Rebelle
 (Linear Burn, Color, Additive, Hue, Luminosity, Overlay, Saturation; a cena do 52 §A pintou 0 px sob o Wine ⇒ repetir sem o `DRY` entre

@@ -21,6 +21,7 @@ pub struct FocoDoJogo {
     focado: bool,
     corria: bool,
     tinha: bool,
+    visto: Option<(bool, bool, bool)>,
 }
 
 impl FocoDoJogo {
@@ -101,7 +102,9 @@ impl FocoDoJogo {
         if self.tinha && !tem {
             input.keyboard.release_all();
         }
-        if self.tinha != tem {
+        let agora = (cena.a_correr, cena.a_vista, tem);
+        if self.visto != Some(agora) {
+            self.visto = Some(agora);
             registo::posse(cena.a_correr, cena.a_vista, tem);
         }
         self.tinha = tem;

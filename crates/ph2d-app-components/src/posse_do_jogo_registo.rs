@@ -8,7 +8,13 @@ fn escreve(linha: std::fmt::Arguments) {
     static F: OnceLock<Option<Mutex<std::fs::File>>> = OnceLock::new();
     let f = F.get_or_init(|| {
         std::env::var_os("PH2D_POSSE_LOG")
-            .and_then(|p| std::fs::File::create(p).ok())
+            .and_then(|p| {
+                std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(p)
+                    .ok()
+            })
             .map(Mutex::new)
     });
     if let Some(f) = f

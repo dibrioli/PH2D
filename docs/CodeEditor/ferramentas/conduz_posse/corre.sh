@@ -23,15 +23,19 @@ trap fim EXIT
 sleep 1
 export DISPLAY=$DSP
 LOG="$T/posse.log"
+MARCAS="$T/marcas.log"   # um ficheiro por escritor: dois processos no mesmo ficheiro escrevem um por cima do outro
 (cd "$RAIZ" && env -u WAYLAND_DISPLAY DISPLAY=$DSP HOME="$T/home" XDG_SESSION_TYPE=x11 PH2D_CODE_SMOKE=6 \
   PH2D_POSSE_LOG="$LOG" timeout 300 "$APP" >"$T/app.log" 2>&1) &
 AP=$!
 for _ in $(seq 1 90); do grep -q 'jogo_tem=true' "$LOG" 2>/dev/null && break; sleep 0.5; done
 grep -q 'jogo_tem=true' "$LOG" 2>/dev/null || { echo "a cena 6 não deu o teclado ao jogo no arranque" >&2; tail -20 "$T/app.log" >&2; exit 1; }
 sleep 2
+# Sem gestor de janelas ninguém dá o foco de TECLADO à janela (o Godot dava-o a si próprio): pede-se aqui.
+W=$(xdotool search --onlyvisible --name . 2>/dev/null | head -1)
+xdotool windowfocus --sync "$W"
 
 agora() { date +%s%3N; }
-marca() { echo "$(agora) PASSO $*" >>"$LOG"; }
+marca() { echo "$(agora) PASSO $*" >>"$MARCAS"; }
 foto() { import -window root "$AQUI/$1.png" 2>/dev/null; }
 # A janela abre a 1024x768 em (0,0) (sem gestor de janelas): a cena, um painel e o alvo da cena 6.
 CENA="520 300"; PAINEL="100 420"; ALVO="735 325"
@@ -85,11 +89,11 @@ FALHAS=0
   echo "# binário: $APP ($(stat -c %y "$APP" | cut -d. -f1)) · HEAD $(git -C "$RAIZ" rev-parse --short HEAD)"
   echo "# corrida: Xvfb 1280x800, PH2D_CODE_SMOKE=6, teclas e cliques por xdotool; régua PH2D_POSSE_LOG"
   echo "# os mesmos passos do oráculo do Godot: ../oraculo_teclado/saida.txt"
-  sort -n "$LOG" | awk '/ PASSO /{p=substr($0, index($0,"PASSO ")+6); print "## " p; next} {sub(/^[0-9]+ /,""); print "   " $0}'
+  sort -n "$LOG" "$MARCAS" | awk '/ PASSO /{p=substr($0, index($0,"PASSO ")+6); print "## " p; next} {sub(/^[0-9]+ /,""); print "   " $0}'
   echo "# veredito por passo"
 } >"$AQUI/saida.txt"
 while IFS= read -r nome; do
-  bloco=$(sort -n "$LOG" | awk -v p="$nome" '/ PASSO /{dentro=(substr($0, index($0,"PASSO ")+6)==p); next} dentro')
+  bloco=$(sort -n "$LOG" "$MARCAS" | awk -v p="$nome" '/ PASSO /{dentro=(substr($0, index($0,"PASSO ")+6)==p); next} dentro')
   ok=1
   IFS='|' read -ra conds <<<"${ESPERA[$nome]}"
   for c in "${conds[@]}"; do
@@ -98,7 +102,7 @@ while IFS= read -r nome; do
   done
   [ $ok = 1 ] && v="✓" || { v="✗"; FALHAS=$((FALHAS + 1)); }
   echo "$v $nome   (espera: ${ESPERA[$nome]})" >>"$AQUI/saida.txt"
-done < <(grep -o 'PASSO .*' "$LOG" | sed 's/^PASSO //' | grep -v '^FIM$')
+done < <(grep -o 'PASSO .*' "$MARCAS" | sed 's/^PASSO //' | grep -v '^FIM$')
 echo "# falhas: $FALHAS" >>"$AQUI/saida.txt"
 grep -E '^(✓|✗)|falhas' "$AQUI/saida.txt"
 [ "$FALHAS" = 0 ]

@@ -18,15 +18,16 @@
 
 const SRC: &str = include_str!("../../src/input_dispatch/painter_canvas_input.rs");
 
-/// O corpo de `deliver_canvas_pointer`, do `fn` até a função irmã seguinte.
+/// O corpo da entrega, do `fn` até a função irmã seguinte. Desde a W11 das macros o
+/// `deliver_canvas_pointer` embrulha `deliver_canvas_pointer_colordrop`, e é nesta que a entrega vive.
 fn deliver_body() -> &'static str {
     let start = SRC
-        .find("pub(crate) fn deliver_canvas_pointer(")
-        .expect("`deliver_canvas_pointer` sumiu — se foi movida, mova este gate junto");
+        .find("pub(crate) fn deliver_canvas_pointer_colordrop(")
+        .expect("`deliver_canvas_pointer_colordrop` sumiu — se foi movida, mova este gate junto");
     let end = SRC[start..]
         .find("\n    /// ")
         .map(|o| start + o)
-        .expect("o corpo de `deliver_canvas_pointer` não termina numa doc de função irmã");
+        .expect("o corpo de `deliver_canvas_pointer_colordrop` não termina numa doc de função irmã");
     &SRC[start..end]
 }
 

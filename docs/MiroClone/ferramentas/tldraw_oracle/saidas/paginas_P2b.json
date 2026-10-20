@@ -1,0 +1,145 @@
+{
+  "cabecalho": {
+    "oraculo": "tldraw",
+    "versao": "5.5.2",
+    "licenca": "SEE LICENSE IN LICENSE.md",
+    "nota_licenca": "tldraw license (LICENCA_tldraw_v5.5.2.md): uso em Development Environment; corrido localmente como oráculo de medição, nenhum código lido nem copiado",
+    "chromium": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "data": "2026-10-19T23:46:36.514Z",
+    "comando": "node docs/MiroClone/ferramentas/tldraw_oracle/corre_paginas.mjs --so P2b <saida>",
+    "corredor_sha256": "ea0a72aff47c8c925a1e5aecb629a3851ce5764a97c47529dc463f36ed36b9c6",
+    "api": "editor.createPage/renamePage/updatePage/duplicatePage/deletePage/setCurrentPage/getPages/getCurrentPageId/getPageShapeIds/createShapes/markHistoryStoppingPoint/undo/redo/canUndo|getCanUndo/canRedo|getCanRedo/clearHistory",
+    "idioma": "gesto = markHistoryStoppingPoint(<op>) + chamada; 'nomark:' = chamada sem marca; undo/redo sem marca; cena montada e clearHistory() antes do 1.º passo"
+  },
+  "caso": "P2b",
+  "pergunta": "renomear A→A2 por renamePage(id,name) → undo → redo",
+  "cena": {
+    "paginas": [
+      {
+        "id": "page:A",
+        "nome": "A",
+        "formas": [
+          "retA"
+        ]
+      }
+    ],
+    "corrente": "page:A"
+  },
+  "superficie": {
+    "createPage": "function",
+    "renamePage": "function",
+    "updatePage": "function",
+    "duplicatePage": "function",
+    "deletePage": "function",
+    "setCurrentPage": "function",
+    "movePage": "undefined",
+    "movePages": "undefined",
+    "reorderPages": "undefined",
+    "getPages": "function",
+    "getPage": "function",
+    "getCurrentPageId": "function",
+    "getPageShapeIds": "function",
+    "markHistoryStoppingPoint": "function",
+    "undo": "function",
+    "redo": "function",
+    "canUndo": "function",
+    "canRedo": "function",
+    "getCanUndo": "function",
+    "getCanRedo": "function",
+    "clearHistory": "function"
+  },
+  "inicio": {
+    "paginas": [
+      {
+        "id": "page:A",
+        "nome": "A",
+        "index": "a25wX",
+        "formas": [
+          "shape:retA"
+        ]
+      }
+    ],
+    "corrente": "page:A",
+    "canUndo": false,
+    "canRedo": false
+  },
+  "passos": [
+    {
+      "passo": [
+        "renamePage",
+        "page:A",
+        "A2"
+      ],
+      "marca": true,
+      "retorno": "editor",
+      "erro": null,
+      "marcaId": "[renamePage]_nKl85bl3e6j5fabEjVqv9",
+      "depois": {
+        "paginas": [
+          {
+            "id": "page:A",
+            "nome": "A2",
+            "index": "a25wX",
+            "formas": [
+              "shape:retA"
+            ]
+          }
+        ],
+        "corrente": "page:A",
+        "canUndo": true,
+        "canRedo": false
+      }
+    },
+    {
+      "passo": [
+        "undo"
+      ],
+      "marca": false,
+      "retorno": "editor",
+      "erro": null,
+      "depois": {
+        "paginas": [
+          {
+            "id": "page:A",
+            "nome": "A",
+            "index": "a25wX",
+            "formas": [
+              "shape:retA"
+            ]
+          }
+        ],
+        "corrente": "page:A",
+        "canUndo": false,
+        "canRedo": true
+      }
+    },
+    {
+      "passo": [
+        "redo"
+      ],
+      "marca": false,
+      "retorno": "editor",
+      "erro": null,
+      "depois": {
+        "paginas": [
+          {
+            "id": "page:A",
+            "nome": "A2",
+            "index": "a25wX",
+            "formas": [
+              "shape:retA"
+            ]
+          }
+        ],
+        "corrente": "page:A",
+        "canUndo": true,
+        "canRedo": false
+      }
+    }
+  ],
+  "pedidos_externos": [
+    "https://cdn.tldraw.com/5.5.2"
+  ],
+  "consola": []
+}

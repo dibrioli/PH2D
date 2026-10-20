@@ -1,0 +1,306 @@
+{
+  "cabecalho": {
+    "oraculo": "tldraw",
+    "versao": "5.5.2",
+    "licenca": "SEE LICENSE IN LICENSE.md",
+    "nota_licenca": "tldraw license (LICENCA_tldraw_v5.5.2.md): uso em Development Environment; corrido localmente como oráculo de medição, nenhum código lido nem copiado",
+    "chromium": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "data": "2026-10-19T23:46:43.098Z",
+    "comando": "node docs/MiroClone/ferramentas/tldraw_oracle/corre_paginas.mjs --so P7b <saida>",
+    "corredor_sha256": "ea0a72aff47c8c925a1e5aecb629a3851ce5764a97c47529dc463f36ed36b9c6",
+    "api": "editor.createPage/renamePage/updatePage/duplicatePage/deletePage/setCurrentPage/getPages/getCurrentPageId/getPageShapeIds/createShapes/markHistoryStoppingPoint/undo/redo/canUndo|getCanUndo/canRedo|getCanRedo/clearHistory",
+    "idioma": "gesto = markHistoryStoppingPoint(<op>) + chamada; 'nomark:' = chamada sem marca; undo/redo sem marca; cena montada e clearHistory() antes do 1.º passo"
+  },
+  "caso": "P7b",
+  "pergunta": "P7 com marca SÓ nos gestos que mudam o documento (troca de página sem marca)",
+  "cena": {
+    "paginas": [
+      {
+        "id": "page:A",
+        "nome": "A",
+        "formas": [
+          "retA"
+        ]
+      },
+      {
+        "id": "page:B",
+        "nome": "B",
+        "formas": []
+      }
+    ],
+    "corrente": "page:A"
+  },
+  "superficie": {
+    "createPage": "function",
+    "renamePage": "function",
+    "updatePage": "function",
+    "duplicatePage": "function",
+    "deletePage": "function",
+    "setCurrentPage": "function",
+    "movePage": "undefined",
+    "movePages": "undefined",
+    "reorderPages": "undefined",
+    "getPages": "function",
+    "getPage": "function",
+    "getCurrentPageId": "function",
+    "getPageShapeIds": "function",
+    "markHistoryStoppingPoint": "function",
+    "undo": "function",
+    "redo": "function",
+    "canUndo": "function",
+    "canRedo": "function",
+    "getCanUndo": "function",
+    "getCanRedo": "function",
+    "clearHistory": "function"
+  },
+  "inicio": {
+    "paginas": [
+      {
+        "id": "page:A",
+        "nome": "A",
+        "index": "a2gyv",
+        "formas": [
+          "shape:retA"
+        ]
+      },
+      {
+        "id": "page:B",
+        "nome": "B",
+        "index": "a3yuE",
+        "formas": []
+      }
+    ],
+    "corrente": "page:A",
+    "canUndo": false,
+    "canRedo": false
+  },
+  "passos": [
+    {
+      "passo": [
+        "createShape",
+        "novaA",
+        400,
+        300
+      ],
+      "marca": true,
+      "retorno": "editor",
+      "erro": null,
+      "marcaId": "[createShape]_CplWmxGqo9LAntQtzV4kJ",
+      "depois": {
+        "paginas": [
+          {
+            "id": "page:A",
+            "nome": "A",
+            "index": "a2gyv",
+            "formas": [
+              "shape:novaA",
+              "shape:retA"
+            ]
+          },
+          {
+            "id": "page:B",
+            "nome": "B",
+            "index": "a3yuE",
+            "formas": []
+          }
+        ],
+        "corrente": "page:A",
+        "canUndo": true,
+        "canRedo": false
+      }
+    },
+    {
+      "passo": [
+        "nomark:setCurrentPage",
+        "page:B"
+      ],
+      "marca": false,
+      "retorno": "editor",
+      "erro": null,
+      "depois": {
+        "paginas": [
+          {
+            "id": "page:A",
+            "nome": "A",
+            "index": "a2gyv",
+            "formas": [
+              "shape:novaA",
+              "shape:retA"
+            ]
+          },
+          {
+            "id": "page:B",
+            "nome": "B",
+            "index": "a3yuE",
+            "formas": []
+          }
+        ],
+        "corrente": "page:B",
+        "canUndo": true,
+        "canRedo": false
+      }
+    },
+    {
+      "passo": [
+        "createShape",
+        "novaB",
+        400,
+        300
+      ],
+      "marca": true,
+      "retorno": "editor",
+      "erro": null,
+      "marcaId": "[createShape]_Rm5QtiS4jgIkQ2QLB5lER",
+      "depois": {
+        "paginas": [
+          {
+            "id": "page:A",
+            "nome": "A",
+            "index": "a2gyv",
+            "formas": [
+              "shape:novaA",
+              "shape:retA"
+            ]
+          },
+          {
+            "id": "page:B",
+            "nome": "B",
+            "index": "a3yuE",
+            "formas": [
+              "shape:novaB"
+            ]
+          }
+        ],
+        "corrente": "page:B",
+        "canUndo": true,
+        "canRedo": false
+      }
+    },
+    {
+      "passo": [
+        "nomark:setCurrentPage",
+        "page:A"
+      ],
+      "marca": false,
+      "retorno": "editor",
+      "erro": null,
+      "depois": {
+        "paginas": [
+          {
+            "id": "page:A",
+            "nome": "A",
+            "index": "a2gyv",
+            "formas": [
+              "shape:novaA",
+              "shape:retA"
+            ]
+          },
+          {
+            "id": "page:B",
+            "nome": "B",
+            "index": "a3yuE",
+            "formas": [
+              "shape:novaB"
+            ]
+          }
+        ],
+        "corrente": "page:A",
+        "canUndo": true,
+        "canRedo": false
+      }
+    },
+    {
+      "passo": [
+        "undo"
+      ],
+      "marca": false,
+      "retorno": "editor",
+      "erro": null,
+      "depois": {
+        "paginas": [
+          {
+            "id": "page:A",
+            "nome": "A",
+            "index": "a2gyv",
+            "formas": [
+              "shape:novaA",
+              "shape:retA"
+            ]
+          },
+          {
+            "id": "page:B",
+            "nome": "B",
+            "index": "a3yuE",
+            "formas": []
+          }
+        ],
+        "corrente": "page:B",
+        "canUndo": true,
+        "canRedo": true
+      }
+    },
+    {
+      "passo": [
+        "undo"
+      ],
+      "marca": false,
+      "retorno": "editor",
+      "erro": null,
+      "depois": {
+        "paginas": [
+          {
+            "id": "page:A",
+            "nome": "A",
+            "index": "a2gyv",
+            "formas": [
+              "shape:retA"
+            ]
+          },
+          {
+            "id": "page:B",
+            "nome": "B",
+            "index": "a3yuE",
+            "formas": []
+          }
+        ],
+        "corrente": "page:A",
+        "canUndo": false,
+        "canRedo": true
+      }
+    },
+    {
+      "passo": [
+        "undo"
+      ],
+      "marca": false,
+      "retorno": "editor",
+      "erro": null,
+      "depois": {
+        "paginas": [
+          {
+            "id": "page:A",
+            "nome": "A",
+            "index": "a2gyv",
+            "formas": [
+              "shape:retA"
+            ]
+          },
+          {
+            "id": "page:B",
+            "nome": "B",
+            "index": "a3yuE",
+            "formas": []
+          }
+        ],
+        "corrente": "page:A",
+        "canUndo": false,
+        "canRedo": true
+      }
+    }
+  ],
+  "pedidos_externos": [
+    "https://cdn.tldraw.com/5.5.2"
+  ],
+  "consola": []
+}

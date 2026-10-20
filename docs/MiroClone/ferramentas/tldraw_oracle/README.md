@@ -54,6 +54,9 @@ bash docs/MiroClone/ferramentas/tldraw_oracle/instala.sh              # 1× por 
 PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh \
   node docs/MiroClone/ferramentas/tldraw_oracle/corre_guias.mjs docs/MiroClone/ferramentas/tldraw_oracle/saidas
 # um caso só: ... corre_guias.mjs --so G4 <saida>
+# B5(4) — as páginas e o desfazer (doc 15), 23 casos P1..P11b → saidas/paginas_<caso>.json:
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh \
+  node docs/MiroClone/ferramentas/tldraw_oracle/corre_paginas.mjs docs/MiroClone/ferramentas/tldraw_oracle/saidas
 ```
 
 Por caso `G1..G8`: `saidas/guias_<caso>.json` (cada sonda: `cena`, `gesto` — delta pedido, pontos de

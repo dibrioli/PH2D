@@ -5980,6 +5980,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-code-help"
+version = "0.0.0"
+dependencies = [
+ "mlua",
+ "ph2d-i18n",
+ "ph2d-script",
+ "serde_json",
+]
+
+[[package]]
 name = "ph2d-code-intel"
 version = "0.0.0"
 dependencies = [

@@ -196,7 +196,7 @@ fn o_assistente_fixado_ve_a_api_e_o_que_se_escreve_sem_salvar() {
 #[test]
 fn a_documentacao_gerada_chega_a_assinatura() {
     use ph2d_script::api_table::{
-        API, API_TYPES, DEFINITIONS_PACKAGE, luau_definitions, luau_docs,
+        API, API_TYPES, DEFINITIONS_PACKAGE, luau_definitions, luau_docs, param_doc,
     };
     let dir = std::env::temp_dir().join(format!("ph2d-gate-docs-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("pasta");
@@ -231,10 +231,16 @@ fn a_documentacao_gerada_chega_a_assinatura() {
         .iter()
         .find(|e| e.table == "ph2d" && e.ident == "set")
         .unwrap();
-    let entity = API_TYPES.iter().find(|t| t.ident == "Entity").unwrap();
+    // O texto do `entity` é o da página de ajuda (`api_help`), o mesmo que o `luau_docs` lhe dá.
+    let entity = param_doc("ph2d.set", "entity", "Entity").expect("texto do entity");
+    assert_ne!(
+        entity,
+        API_TYPES.iter().find(|t| t.ident == "Entity").unwrap().doc,
+        "o entity do ph2d.set tem texto próprio"
+    );
     assert!(texto_de(&sig["documentation"]).contains(set.doc), "{sig:#}");
     assert!(
-        texto_de(&sig["parameters"][0]["documentation"]).contains(entity.doc),
+        texto_de(&sig["parameters"][0]["documentation"]).contains(entity),
         "{sig:#}"
     );
 }
@@ -400,13 +406,13 @@ fn o_assistente_fixado_completa_a_api() {
 
 /// ⭐ I5 com o `luau-lsp` FIXADO, pelo caminho do produto: dentro de `ph2d.set(e, |` a assinatura
 /// marca o 2.º parâmetro (`field`) e traz a documentação GERADA da `api_table` (a da função e a do
-/// tipo do parâmetro, pelo `--docs`); o rato parado sobre `set` mostra a documentação da função.
+/// parâmetro, pelo `--docs`); o rato parado sobre `set` mostra a documentação da função.
 #[test]
 fn o_assistente_fixado_marca_o_argumento_e_mostra_o_balao() {
     use crate::assistente::tecla;
     use crate::completar::{T0, escreve, quadro_em};
     use ph2d_editor_core::doc_surface::Key;
-    use ph2d_script::api_table::{API, API_TYPES};
+    use ph2d_script::api_table::{API, param_doc};
     let _ = fixado();
     let (m, ids) = Mesa::new(&[("a.luau", "local e = 1\n")]);
     let mut m = m.com_assistente(ph2d_app_code::IntelServer::Pinned);
@@ -443,9 +449,19 @@ fn o_assistente_fixado_marca_o_argumento_e_mostra_o_balao() {
         .iter()
         .find(|e| e.table == "ph2d" && e.ident == "set")
         .unwrap();
-    let campo = API_TYPES.iter().find(|t| t.ident == "PoseField").unwrap();
-    for doc in [set.doc, campo.doc] {
-        assert!(dito.contains(doc), "falta «{doc}» em {:?}", s.lines);
+    // O do `field` é o texto da página de ajuda (`param_doc`), pintado sem os acentos graves.
+    let campo = param_doc("ph2d.set", "field", "PoseField").expect("texto do field");
+    for doc in [set.doc, campo] {
+        let pintado = doc
+            .replace('`', "")
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(
+            dito.contains(&pintado),
+            "falta «{pintado}» em {:?}",
+            s.lines
+        );
     }
     // O balão sobre `set`.
     let t = m.docs().text_of(id).unwrap();
@@ -693,4 +709,74 @@ fn os_esqueletos_preenchidos_passam_limpos_normal_e_estrito() {
             .collect();
         assert_eq!(problemas, [], "«{pre}»\n{texto}");
     }
+}
+
+/// ⭐ G5b — cada EXEMPLO da página de ajuda da API (`ph2d_script::api_help`), aberto como script no
+/// `luau-lsp` FIXADO com as definições e a documentação geradas, não dá NENHUM erro nem aviso — um
+/// exemplo que ensina código sublinhado é pior que nenhum. Os ganchos do motor saem pelo filtro do
+/// cliente, o mesmo do editor; o controlo prova que o caminho acusa um exemplo mau.
+#[test]
+fn os_exemplos_da_api_nao_dao_aviso() {
+    use ph2d_script::api_help::API_HELP;
+    use ph2d_script::api_table::{DEFINITIONS_PACKAGE, luau_definitions, luau_docs};
+    let dir = std::env::temp_dir().join(format!("ph2d-gate-exemplos-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("pasta");
+    let (defs, docs) = (dir.join("ph2d.d.luau"), dir.join("ph2d-docs.json"));
+    std::fs::write(&defs, luau_definitions()).expect("defs");
+    std::fs::write(&docs, luau_docs()).expect("docs");
+    let mut cfg = ServerConfig::new(fixado()).with_definitions(DEFINITIONS_PACKAGE, defs);
+    cfg.docs = Some(docs);
+    let mut c = LspClient::start(cfg).expect("luau-lsp arranca");
+    c.pump();
+    let abre = |c: &mut LspClient, uri: &str, texto: &str| {
+        c.did_open(uri, texto).expect("didOpen");
+        c.wait_diagnostics(uri, Duration::from_secs(30))
+            .expect("diagnósticos")
+            .diagnostics
+    };
+    let mut avisos = Vec::new();
+    let mut vistos = 0;
+    for (i, h) in API_HELP.iter().enumerate() {
+        if h.example.is_empty() {
+            continue;
+        }
+        vistos += 1;
+        let ds = abre(
+            &mut c,
+            &format!("file:///ph2d-gate/exemplo_{i}.luau"),
+            h.example,
+        );
+        for d in ds.iter().filter(|d| d.severity.is_none_or(|s| s <= 2)) {
+            avisos.push(format!(
+                "{} {}:{} {}",
+                h.key,
+                d.range.start.line + 1,
+                d.range.start.character + 1,
+                d.message
+            ));
+        }
+    }
+    let controlo = abre(
+        &mut c,
+        "file:///ph2d-gate/controlo.luau",
+        "function update(self, dt)\n  local sobra = 1\n  ph2d.set(self.id, \"alpha\", dt)\nend\n",
+    );
+    c.shutdown().expect("shutdown");
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        avisos.is_empty(),
+        "{} avisos nos exemplos da ajuda:\n{}",
+        avisos.len(),
+        avisos.join("\n")
+    );
+    assert!(vistos >= 23, "só {vistos} exemplos");
+    let diz = |agulha: &str| controlo.iter().any(|d| d.message.contains(agulha));
+    assert!(
+        diz("alpha") && diz("sobra"),
+        "o controlo não acusou: {controlo:?}"
+    );
+    assert!(
+        !diz("'update'"),
+        "o gancho do motor não saiu pelo filtro: {controlo:?}"
+    );
 }

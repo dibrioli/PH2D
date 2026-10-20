@@ -1,0 +1,12 @@
+bit32 15 arshift band bnot bor btest bxor byteswap countlz countrz extract lrotate lshift replace rrotate rshift
+buffer 26 copy create fill fromstring len readbits readf32 readf64 readi16 readi32 readi8 readstring readu16 readu32 readu8 tostring writebits writef32 writef64 writei16 writei32 writei8 writestring writeu16 writeu32 writeu8
+coroutine 8 close create isyieldable resume running status wrap yield
+debug 2 info traceback
+globals 29 _G _VERSION assert collectgarbage error gcinfo getfenv getmetatable ipairs loadstring newproxy next pairs pcall print rawequal rawget rawlen rawset require select setfenv setmetatable tonumber tostring type typeof unpack xpcall
+integer 41 add arshift band bnot bor bswap btest bxor clamp countlz countrz create div extract fromstring ge gt idiv le lrotate lshift lt max maxsigned min minsigned mod mul neg rem replace rrotate rshift sub tonumber udiv uge ugt ule ult urem
+math 44 abs acos asin atan atan2 ceil clamp cos cosh deg e exp floor fmod frexp huge isfinite isinf isnan ldexp lerp log log10 map max min modf nan noise phi pi pow rad random randomseed round sign sin sinh sqrt sqrt2 tan tanh tau
+os 4 clock date difftime time
+string 17 byte char find format gmatch gsub len lower match pack packsize rep reverse split sub unpack upper
+table 17 clear clone concat create find foreach foreachi freeze getn insert isfrozen maxn move pack remove sort unpack
+utf8 6 char charpattern codepoint codes len offset
+vector 16 abs angle ceil clamp create cross dot floor lerp magnitude max min normalize one sign zero

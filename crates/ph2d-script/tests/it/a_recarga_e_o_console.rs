@@ -449,3 +449,19 @@ fn um_print_longo_corta_a_linha_e_o_console_tem_tecto_em_bytes() {
     );
     assert_eq!(linhas.len() as u64 + c.host.console_dropped(), 5_000);
 }
+
+/// Um `integer` de 64 bits escreve-se com TODOS os dígitos, como o `tostring` dele (antes passava
+/// pela ponte como `number` e arredondava acima de 2^53 — achado ao escrever a página `integer`).
+#[test]
+fn o_print_de_um_integer_grande_nao_arredonda() {
+    let host = ph2d_script::ScriptHost::new().expect("o runtime monta");
+    host.runtime()
+        .eval("print(integer.maxsigned, tostring(integer.maxsigned), integer.create(-7), 2^53 + 1)")
+        .expect("corre");
+    let linhas: Vec<String> = host.drain_console().into_iter().map(|l| l.text).collect();
+    assert_eq!(
+        linhas,
+        ["9223372036854775807\t9223372036854775807\t-7\t9007199254740992"],
+        "o controlo do fim: um `number` continua a ser o do Luau"
+    );
+}

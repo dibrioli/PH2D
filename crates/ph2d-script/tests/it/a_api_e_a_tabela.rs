@@ -129,20 +129,23 @@ fn as_definicoes_saem_da_tabela() {
 }
 
 /// A base de documentação do `luau-lsp` sai da tabela: cada global e cada função com a sua linha,
-/// os parâmetros pelo nome e na ordem da assinatura, e a documentação de um parâmetro de tipo
-/// exportado é um SÍMBOLO que aponta a linha desse tipo (texto directo sai vazio no servidor).
+/// os parâmetros pelo nome e na ordem da assinatura, e a documentação de um parâmetro é um SÍMBOLO
+/// (texto directo sai vazio no servidor) com o texto DELE na `api_help` — o da página de ajuda —, ou,
+/// sem ele, a linha do tipo exportado que usa.
 #[test]
 fn a_base_de_documentacao_sai_da_tabela() {
-    use ph2d_script::api_table::{DEFINITIONS_PACKAGE, luau_docs, luau_params};
+    use ph2d_script::api_help::api_help;
+    use ph2d_script::api_table::{DEFINITIONS_PACKAGE, luau_docs, luau_params, param_doc};
     let v: serde_json::Value = serde_json::from_str(&luau_docs()).expect("JSON");
     let doc = |k: &str| v[k]["documentation"].as_str().map(str::to_owned);
     for g in API_GLOBALS {
         let k = format!("{DEFINITIONS_PACKAGE}/global/{}", g.ident);
         assert_eq!(doc(&k).as_deref(), Some(g.doc), "{k}");
     }
-    let mut com_tipo = 0;
+    let (mut com_ajuda, mut com_tipo) = (0, 0);
     for e in API {
         let k = format!("{DEFINITIONS_PACKAGE}/global/{}.{}", e.table, e.ident);
+        let ajuda = api_help(&format!("{}.{}", e.table, e.ident));
         assert_eq!(doc(&k).as_deref(), Some(e.doc), "{k}");
         let ps = v[&k]["params"].as_array().expect("params");
         let sig = luau_params(e.luau_type);
@@ -163,22 +166,37 @@ fn a_base_de_documentacao_sai_da_tabela() {
                 "{k}: {name:?}"
             );
             assert_eq!(p["name"].as_str(), Some(*name), "{k}");
+            let proprio = ajuda
+                .and_then(|h| h.params.iter().find(|(n, _)| n == name))
+                .map(|(_, t)| *t);
             let tipo = API_TYPES
                 .iter()
-                .find(|t| t.ident == ty.trim_end_matches('?'));
+                .find(|t| t.ident == ty.trim_end_matches('?'))
+                .map(|t| t.doc);
             let d = p["documentation"].as_str().unwrap();
-            match tipo {
-                Some(t) => {
-                    com_tipo += 1;
+            match proprio.or(tipo) {
+                Some(texto) => {
+                    if proprio.is_some() {
+                        com_ajuda += 1;
+                    } else {
+                        com_tipo += 1;
+                    }
                     assert_eq!(d, format!("{k}/param/{i}"), "{k}");
-                    assert_eq!(doc(d).as_deref(), Some(t.doc), "{k}");
+                    assert_eq!(doc(d).as_deref(), Some(texto), "{k}: {name}");
                 }
                 None => assert_eq!(d, "", "{k}: {name}"),
             }
         }
     }
-    // Controlo: a ramificação do tipo exportado corre (o `entity: Entity` do `ph2d.set`, …).
-    assert!(com_tipo >= 5, "{com_tipo}");
+    // Controlo: o texto da ajuda chega (o `entity` do `ph2d.set`, …) e a queda para o tipo também
+    // vive (uma entrada sem ajuda cai na linha do `Entity`).
+    assert!(com_ajuda >= 5, "{com_ajuda} (com tipo: {com_tipo})");
+    let entity = API_TYPES.iter().find(|t| t.ident == "Entity").unwrap();
+    assert_eq!(
+        param_doc("ninguem.tem", "entity", "Entity?"),
+        Some(entity.doc)
+    );
+    assert_eq!(param_doc("ninguem.tem", "n", "number"), None);
     assert_eq!(
         luau_params("(f: (x: number) -> (), t: { string }, n: number?) -> ()"),
         vec![
@@ -222,4 +240,76 @@ fn os_ganchos_da_tabela_sao_os_que_a_cena_chama() {
         "nenhum .hook(\"…\") no fonte — o censo está cego"
     );
     assert_eq!(chamados, na_tabela, "ganchos chamados pela cena × HOOKS");
+}
+
+/// ⭐ **G5 — cada linha da API tem a sua página** (`docs/CodeEditor/04_pagina_de_ajuda.md` §6): toda
+/// linha de `API`, `HOOKS` e `API_TYPES` tem EXACTAMENTE uma ajuda; os argumentos dela são os da
+/// assinatura, pela ordem e cada um com texto; funções e ganchos trazem exemplo; e nenhuma ajuda
+/// nomeia uma linha que não existe (texto morto).
+#[test]
+fn toda_entrada_da_api_tem_ajuda() {
+    use ph2d_script::api_help::API_HELP;
+    use ph2d_script::api_table::luau_params;
+    // (chave, assinatura, precisa de exemplo)
+    let linhas: Vec<(String, &str, bool)> = API
+        .iter()
+        .map(|e| (format!("{}.{}", e.table, e.ident), e.luau_type, true))
+        .chain(
+            HOOKS
+                .iter()
+                .map(|h| (format!("hook.{}", h.ident), h.luau_type, true)),
+        )
+        .chain(
+            API_TYPES
+                .iter()
+                .map(|t| (format!("type.{}", t.ident), "", false)),
+        )
+        .collect();
+    let mut erros = Vec::new();
+    for (key, sig, exemplo) in &linhas {
+        let ajudas: Vec<_> = API_HELP.iter().filter(|h| h.key == *key).collect();
+        let [h] = ajudas.as_slice() else {
+            erros.push(format!("{key}: {} ajudas", ajudas.len()));
+            continue;
+        };
+        let esperados: Vec<&str> = luau_params(sig).into_iter().map(|(n, _)| n).collect();
+        let dados: Vec<&str> = h.params.iter().map(|(n, _)| *n).collect();
+        if dados != esperados {
+            erros.push(format!(
+                "{key}: argumentos {dados:?} ≠ assinatura {esperados:?}"
+            ));
+        }
+        for (n, t) in h.params {
+            if t.trim().is_empty() {
+                erros.push(format!("{key}({n}): sem texto"));
+            }
+        }
+        let sem_retorno = sig.is_empty() || sig.trim_end().ends_with("-> ()");
+        if !sem_retorno && h.returns.trim().is_empty() {
+            erros.push(format!("{key}: devolve algo e não diz o quê"));
+        }
+        if sem_retorno && !h.returns.is_empty() {
+            erros.push(format!("{key}: não devolve nada e diz «{}»", h.returns));
+        }
+        if *exemplo && h.example.trim().is_empty() {
+            erros.push(format!("{key}: sem exemplo"));
+        }
+        if h.more.starts_with('\n') || h.more.ends_with('\n') || h.more.contains("\n\n\n") {
+            erros.push(format!("{key}: parágrafos mal separados"));
+        }
+    }
+    for h in API_HELP {
+        if !linhas.iter().any(|(k, _, _)| k == h.key) {
+            erros.push(format!("{}: ajuda sem linha na tabela", h.key));
+        }
+    }
+    assert!(
+        erros.is_empty(),
+        "{} problemas:\n{}",
+        erros.len(),
+        erros.join("\n")
+    );
+    // Controlo: o censo viu as três famílias.
+    assert_eq!(linhas.len(), API.len() + HOOKS.len() + API_TYPES.len());
+    assert!(HOOKS.len() >= 3 && API_TYPES.len() >= 8 && API.len() >= 20);
 }

@@ -1,0 +1,27 @@
+[package]
+name = "ph2d-code-help"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A página de ajuda do editor de scripts (CodeEditor Onda 2, item 5, `docs/CodeEditor/04_pagina_de_ajuda.md`):
+# o catálogo (uma página por biblioteca do Luau + as nossas, geradas da `api_table`) e a porta única
+# `resolve` (que página e que membro um sítio do script nomeia). O texto da linguagem mora em `ph2d-i18n`
+# (`code.help.*`); o nosso ao lado da `api_table` (`ph2d-script::api_help`).
+[dependencies]
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-script = { path = "../ph2d-script" }
+
+[dev-dependencies]
+# O censo e os exemplos correm no runtime REAL (`ScriptHost`, com a sandbox).
+mlua = { version = "0.12", features = ["luau"] }
+# A tabela da sonda (`docs/CodeEditor/ferramentas/medicoes_onda2/ajuda_bruto.json`).
+serde_json = "1"
+
+[lints]
+workspace = true

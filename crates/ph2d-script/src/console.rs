@@ -192,10 +192,19 @@ pub(crate) fn wire_print(lua: &Lua, console: &Console) -> mlua::Result<()> {
             if i > 0 {
                 text.push('\t');
             }
+            // Um `integer` de 64 bits voltaria ao `tostring` como `number` e arredondaria acima de 2^53
+            // (`print(integer.maxsigned)`, medido 20/10): os dígitos dele são o que o `tostring` dá.
+            let room = |text: &String, n: usize| (CONSOLE_LINE_BYTES_MAX + 4 - text.len()).min(n);
+            if let mlua::Value::Integer(i) = v {
+                let digits = i.to_string();
+                let n = room(&text, digits.len());
+                text.push_str(&digits[..n]);
+                continue;
+            }
             let s: mlua::LuaString = tostring.call(v)?;
             let bytes = s.as_bytes();
-            let room = (CONSOLE_LINE_BYTES_MAX + 4 - text.len()).min(bytes.len());
-            text.push_str(&String::from_utf8_lossy(&bytes[..room]));
+            let n = room(&text, bytes.len());
+            text.push_str(&String::from_utf8_lossy(&bytes[..n]));
         }
         if let Some(c) = of(lua) {
             let (script, entity) = c.lock().speaker;

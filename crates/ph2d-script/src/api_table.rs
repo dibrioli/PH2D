@@ -324,17 +324,25 @@ pub fn luau_params(luau_type: &str) -> Vec<(&str, &str)> {
         .collect()
 }
 
+/// O texto de um parâmetro: o dele na [`crate::api_help`] (o MESMO da página de ajuda); sem ele, a
+/// linha do tipo exportado que ele usa (`entity: Entity` ⇒ a do `Entity`); `None` se nenhum.
+#[must_use]
+pub fn param_doc(key: &str, name: &str, ty: &str) -> Option<&'static str> {
+    let own = crate::api_help::api_help(key)
+        .and_then(|h| h.params.iter().find(|(n, _)| *n == name))
+        .map(|(_, t)| *t)
+        .filter(|t| !t.trim().is_empty());
+    let ty = ty.trim_end_matches('?');
+    own.or_else(|| API_TYPES.iter().find(|t| t.ident == ty).map(|t| t.doc))
+}
+
 /// ⭐ **A base de documentação do `luau-lsp`** (`--docs=<json>`), gerada da tabela: a documentação
 /// de cada global e de cada função, e os parâmetros pelo NOME. A de um parâmetro só chega ao
 /// servidor como SÍMBOLO de outra entrada (`…/param/<i>`; texto directo ali sai vazio — I0b §3), e
-/// o texto é o do tipo exportado que ele usa (`entity: Entity` ⇒ a linha do `Entity`).
+/// o texto é o [`param_doc`] — o balão e a página de ajuda dizem o mesmo.
 #[must_use]
 pub fn luau_docs() -> String {
     use serde_json::{Map, Value, json};
-    let type_doc = |ty: &str| {
-        let ty = ty.trim_end_matches('?');
-        API_TYPES.iter().find(|t| t.ident == ty).map(|t| t.doc)
-    };
     let mut m = Map::new();
     for g in API_GLOBALS {
         m.insert(
@@ -344,9 +352,10 @@ pub fn luau_docs() -> String {
     }
     for e in API {
         let sym = format!("{DEFINITIONS_PACKAGE}/global/{}.{}", e.table, e.ident);
+        let key = format!("{}.{}", e.table, e.ident);
         let mut params = Vec::new();
         for (i, (name, ty)) in luau_params(e.luau_type).into_iter().enumerate() {
-            let doc = match type_doc(ty) {
+            let doc = match param_doc(&key, name, ty) {
                 Some(d) => {
                     let p = format!("{sym}/param/{i}");
                     m.insert(p.clone(), json!({ "documentation": d }));

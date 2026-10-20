@@ -21,6 +21,8 @@
 //! pattern; populated by shells from `ph2d_input::InputState` per
 //! frame.
 
+/// O texto da página de ajuda de cada linha da `api_table`.
+pub mod api_help;
 /// A API Luau como tabela — a fonte única do `ph2d.d.luau`.
 pub mod api_table;
 pub mod component;

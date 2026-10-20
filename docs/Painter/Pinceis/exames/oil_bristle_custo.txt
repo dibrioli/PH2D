@@ -1,0 +1,6 @@
+pincel             px | ms/quadro a pintar: mediana · p95 · pior | > 16,7 |  parado: mediana · p95 | núcleos |  RSS pico | load
+Oil Bristle         5 |           0.32 ·   0.59 ·   36.28         |   1/475|      1.65 ·     3.97 |    0.15 |     74 MiB | 6.45
+Oil Bristle        40 |           1.13 ·   1.81 ·   37.47         |   1/475|      1.95 ·     4.71 |    0.48 |     80 MiB | 5.69
+Oil Bristle       200 |           2.62 ·   6.07 ·   37.80         |   8/475|      3.40 ·     7.54 |    2.07 |     96 MiB | 5.21
+
+p95 pior = 6.07 ms (dentro do orçamento de 16.7 ms a 60 Hz). ⚠️ perfil smoke; o `pior` inclui o 1.º quadro (a sessão nasce); a água corre no fio dela (núcleos).

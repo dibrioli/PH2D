@@ -1,0 +1,24 @@
+{
+ "prancha": "graphite_8b_legado_5gestos.png",
+ "linhas": [
+  "legado_A",
+  "legado_B"
+ ],
+ "chave": {
+  "legado_A": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  },
+  "legado_B": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  }
+ },
+ "quem": {
+  "oraculo": "graphite_8b",
+  "nosso": "Graphite 8B (escala 0.825)",
+  "vizinho": "Colored 4B (d 0.435, limiar 0.992)"
+ }
+}

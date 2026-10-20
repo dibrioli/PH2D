@@ -65,7 +65,7 @@ Números da sonda (log da foto `=4`): q18 cor (65, 120, 145) = meio exato de (0,
 
 ## 6 — ABERTO, por ordem
 
-1. **Smoke do dono** (§4).
+1. ~~**Smoke do dono** (§4).~~ **APROVADO pelo dono em 20/10** («smoke ok. siga»). A próxima onda começa pelo item 2.
 2. **Campos sem canal na tabela de `marcas.rs`:** linhas da pilha de pinturas (`VECTOR_PAINT_*` — o id não diz qual entrada i), gradiente (`VECTOR_GRAD_*`), contornos (`VECTOR_CONTOUR_*`), o Opacity da barra de controle (`bars_control.rs`, sem coluna de decorator) e os campos do Inspector (`INSP_TRANSFORM_*` etc. — a tabela só cobre o vetor).
 3. **Gate `architecture_every_editable_field_is_a_channel`** (plano 35 §5.2) por construir.
 4. A linha de grupo não tem menu do botão direito (Delete Track do grupo inteiro) nem valor na coluna de valor.

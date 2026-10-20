@@ -211,6 +211,72 @@ pub(crate) fn paint_text_lines(
     weight: FontWeight,
     lines: Lines,
 ) -> f32 {
+    paint_text_spans(
+        text_system,
+        scene,
+        text,
+        [x, y],
+        font_size,
+        max_width,
+        color,
+        weight,
+        lines,
+        &[],
+    )
+}
+
+/// ⭐ W23 B14 — [`paint_text_block`] com TRECHOS de outra cor (`spans`: bytes de `text` → cor; o
+/// resto em `color`) — as menções a azul no fio. A MESMA passada de layout: a cor é de cada cluster,
+/// a posição de cada glifo é a do pintor de uma cor só.
+#[allow(clippy::too_many_arguments)]
+#[track_caller] // o `elisao::Medido::onde` nomeia o PINTOR, nunca esta crate
+pub fn paint_text_block_spans(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    x: f32,
+    y: f32,
+    font_size: f32,
+    max_width: f32,
+    color: Color,
+    spans: &[(std::ops::Range<usize>, Color)],
+) -> f32 {
+    paint_text_spans(
+        text_system,
+        scene,
+        text,
+        [x, y],
+        font_size,
+        max_width,
+        color,
+        FontWeight::MEDIUM,
+        Lines::Wrap,
+        spans,
+    )
+}
+
+/// A cor do byte `at` (o 1.º trecho que o contém; senão `base`).
+fn span_color(spans: &[(std::ops::Range<usize>, Color)], at: usize, base: Color) -> Color {
+    spans
+        .iter()
+        .find(|(r, _)| r.contains(&at))
+        .map_or(base, |(_, c)| *c)
+}
+
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+#[track_caller]
+fn paint_text_spans(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    [x, y]: [f32; 2],
+    font_size: f32,
+    max_width: f32,
+    color: Color,
+    weight: FontWeight,
+    lines: Lines,
+    spans: &[(std::ops::Range<usize>, Color)],
+) -> f32 {
     // ⚠️ A elisão mede na espessura que ESTA função vai pintar, que é a lei que o `text_elide` já
     // pagou: cortar em `Medium` e pintar em `SemiBold` transborda na fronteira em que o corte
     // existe.
@@ -250,6 +316,44 @@ pub(crate) fn paint_text_lines(
             let run = glyph_run.run();
             let font = run.font();
             let run_font_size = run.font_size();
+            // Os trechos: o byte de cada glifo pela ordem do `positioned_glyphs` (os clusters
+            // visuais); a elisão muda o texto, logo só no `Wrap`. Um corte do run (`glyph_start`
+            // privado) deixa as contas diferentes: pinta-se de uma cor, nunca a cor de outro glifo.
+            let starts: Vec<usize> = if spans.is_empty() || lines != Lines::Wrap {
+                Vec::new()
+            } else {
+                run.visual_clusters()
+                    .flat_map(|c| {
+                        let at = c.text_range().start;
+                        c.glyphs().map(move |_| at)
+                    })
+                    .collect()
+            };
+            if !starts.is_empty() && starts.len() == glyph_run.positioned_glyphs().count() {
+                let glyphs: Vec<(Glyph, Color)> = glyph_run
+                    .positioned_glyphs()
+                    .zip(&starts)
+                    .map(|(g, at)| {
+                        let glyph = Glyph {
+                            id: g.id,
+                            x: snap_x_apply(g.x, snap_x),
+                            y: crate::ui_scale::ao_pixel(g.y),
+                        };
+                        (glyph, span_color(spans, *at, color))
+                    })
+                    .collect();
+                for chunk in glyphs.chunk_by(|a, b| a.1 == b.1) {
+                    inner
+                        .draw_glyphs(font)
+                        .font_size(run_font_size)
+                        .hint(hint)
+                        .normalized_coords(run.normalized_coords())
+                        .brush(chunk[0].1)
+                        .transform(translate)
+                        .draw(Fill::NonZero, chunk.iter().map(|(g, _)| *g));
+                }
+                continue;
+            }
             inner
                 .draw_glyphs(font)
                 .font_size(run_font_size)
@@ -510,6 +614,10 @@ fn paint_elided_weighted(
     };
     paint(text_system, scene, &elided);
 }
+
+#[cfg(test)]
+#[path = "paint_text_spans_tests.rs"]
+mod spans_tests;
 
 #[cfg(test)]
 mod elided_tests {

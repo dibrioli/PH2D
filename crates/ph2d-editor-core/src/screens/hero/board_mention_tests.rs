@@ -159,3 +159,35 @@ fn for_you_keeps_only_my_threads_in_the_list() {
     assert!(t.find(team_node(Hit::Row(mine))).is_some());
     assert!(t.find(team_node(Hit::Row(other))).is_none(), "o almoço não é para a Ana");
 }
+
+/// ⭐ O fio aberto pinta a azul o `@nome` de quem a mensagem chama (o Miro) — pelo ecrã real: o
+/// mesmo texto sem a menção guardada pinta uma corrida de glifos a menos de cada lado do trecho.
+#[test]
+fn the_open_thread_paints_the_mention_in_its_own_colour() {
+    let runs = |calling: bool| {
+        let mut t = T::new();
+        t.hero.documents.set_author("Bia".into());
+        let board = t.hero.documents.active().unwrap();
+        let (b, _) = t.hero.documents.active_parts().unwrap();
+        let who = [Who::Person("Ana".into())];
+        let who: &[Who] = if calling { &who } else { &[] };
+        let th = b
+            .team
+            .open_calling(Pin::Point([10.0, 10.0]), "Rui", "look @Ana here", who, 5)
+            .unwrap();
+        t.hero
+            .documents
+            .live
+            .team
+            .open
+            .insert(board, OpenThread::Thread(th));
+        let mut scene = VectorScene::new();
+        let vp = Rect::new(0.0, 0.0, t.vp_w, t.vp_h);
+        paint_hero_screen(&mut t.hero, vp, &mut scene, &mut t.ts);
+        let e = scene.inner().encoding();
+        (e.resources.glyph_runs.len(), e.resources.glyphs.len())
+    };
+    let (plain, with) = (runs(false), runs(true));
+    assert_eq!(with.0, plain.0 + 2, "o `@Ana` é uma corrida própria no meio do texto");
+    assert_eq!(with.1, plain.1, "nenhum glifo se perde");
+}

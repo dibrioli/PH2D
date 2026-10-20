@@ -10,7 +10,7 @@ use crate::documents::team::{Confirm, OpenThread};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{
-    fill_rounded_rect, paint_text_block, paint_text_centered, paint_text_elided, resolve,
+    fill_rounded_rect, paint_text_block, paint_text_block_spans, paint_text_centered, paint_text_elided, resolve,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -98,6 +98,32 @@ fn shown_text(m: &Message) -> String {
     } else {
         m.text.clone()
     }
+}
+
+/// ⭐ W23 B14 — onde o texto mostra quem a mensagem chama (o `Who::label` de cada menção
+/// guardada, a mesma pergunta do `keep_mentions`): os trechos que o fio pinta a azul (o Miro).
+/// Ordenados e sem sobreposição (`@Rui` dentro de `@Rui Costa` fica um trecho só).
+pub(super) fn mention_spans(m: &Message) -> Vec<std::ops::Range<usize>> {
+    let mut all: Vec<std::ops::Range<usize>> = m
+        .mentions
+        .iter()
+        .flat_map(|w| {
+            let label = w.label();
+            m.text
+                .match_indices(label.as_str())
+                .map(|(i, l)| i..i + l.len())
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    all.sort_by_key(|r| (r.start, std::cmp::Reverse(r.end)));
+    let mut out: Vec<std::ops::Range<usize>> = Vec::new();
+    for r in all {
+        match out.last_mut() {
+            Some(last) if r.start < last.end => last.end = last.end.max(r.end),
+            _ => out.push(r),
+        }
+    }
+    out
 }
 
 /// ⭐ K4/K5 — o cartão do fio aberto, à direita da bolha e SEMPRE dentro da área: um fio comprido
@@ -275,7 +301,9 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
             hero.store.set_tooltip(node(Hit::Delete(n)), tr(tip));
         }
         cy += small;
-        cy += paint_text_block(
+        let accent = resolve(ColorToken::Accent, theme);
+        let spans: Vec<_> = mention_spans(msg).into_iter().map(|r| (r, accent)).collect();
+        cy += paint_text_block_spans(
             ts,
             scene,
             &shown_text(msg),
@@ -284,6 +312,7 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
             sm,
             w - 2.0 * pad,
             text1,
+            &spans,
         );
         cy += pad;
     }

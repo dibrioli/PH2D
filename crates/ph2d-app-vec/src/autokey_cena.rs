@@ -24,6 +24,12 @@ use crate::state::VecState;
 
 static ESTAGIO: AtomicU8 = AtomicU8::new(0);
 static ESPERA: AtomicU8 = AtomicU8::new(0);
+/// `0` = as cenas `=1|2` · `1` = `=3` (o dono) · `2` = `=4` (mexe sozinha).
+static DESENHO: AtomicU8 = AtomicU8::new(0);
+/// O estágio da cena — a do desenho avança-o daqui.
+pub(crate) fn avanca(n: u8) {
+    ESTAGIO.store(n, Ordering::Relaxed);
+}
 
 /// O instante onde o relógio pára — o meio da rampa.
 const MEIO: f64 = 0.5;
@@ -42,10 +48,26 @@ pub fn step(
             let n = std::env::var("PH2D_AUTOKEY_SMOKE").ok()?;
             ESTAGIO.store(1, Ordering::Relaxed);
             ESPERA.store(if n == "2" { 1 } else { 0 }, Ordering::Relaxed);
+            // `=3` (o dono) e `=4` (mexe sozinha): o DESENHO grava (plano 35) — `autokey_cena_desenho`.
+            if n == "3" || n == "4" {
+                DESENHO.store(if n == "4" { 2 } else { 1 }, Ordering::Relaxed);
+            }
             1
         }
         s => s,
     };
+    if DESENHO.load(Ordering::Relaxed) > 0 {
+        return crate::autokey_cena_desenho::step(
+            nivel,
+            DESENHO.load(Ordering::Relaxed) == 2,
+            vec,
+            scene,
+            sim,
+            hero,
+            tl,
+            ph,
+        );
+    }
     let go = |n| ESTAGIO.store(n, Ordering::Relaxed);
     match nivel {
         1 => {

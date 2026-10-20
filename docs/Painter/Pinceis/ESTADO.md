@@ -41,6 +41,15 @@ O nome muda se a janela reiniciar (confirme por `ListAgents` antes do sinal).
    tiraram já não existem (o traço pinta num PLANO próprio, UM desfazer, só onde age) e as canetas do catálogo
    (C-4 C-6 D-1 D-2) afilam as duas pontas. ⚠️ **Perguntar no smoke do dono.**
 6. **Dual brush** só no Digital e no Wet (J2); na Watercolor e no Impasto esmaece (nenhum pincel do catálogo o pede).
+8. **J3: o TECTO DE TAMANHO por preset (o Max Size do Rebelle) ENTRA** — contra a recusa da J1. Pedido a 200 px, o
+   HB do Rebelle pinta ~41 px; o nosso pintava uma nuvem de bolhas de 200 px que nenhum lápis pinta
+   (`pranchas/grafite/graphite_hb.png`, tamanhos). O produto de referência do dono decide a lei.
+9. **J3: a rampa de pressão fica a do DONO, não a do Rebelle.** O Rebelle entra mais tarde e enche mais cedo; o piso
+   que o imitava foi revogado no smoke de 18/10 (a mão dele vai de 0,24 a 0,86). ⇒ a diferença «a pressão entra mais
+   tarde/enche mais cedo» numa revisão cega é divergência DECIDIDA, não defeito; qualquer outra diferença de pressão
+   continua a reprovar.
+10. **J3: o 2H é o HB com menos pigmento** (0,75 do tom do HB). O 2H do Rebelle só difere pela cor de omissão do
+    preset (cinza 149 × 115), que os nossos presets não levam; um 2H real é mais claro à mesma mão.
 7. **Fórmulas dos modos = W3C em sRGB** (provado contra o Rebelle/Krita); o Saturation/Linear Burn/Dodge do Rebelle a
    10× não seguem fórmula nenhuma — não se perseguem.
 

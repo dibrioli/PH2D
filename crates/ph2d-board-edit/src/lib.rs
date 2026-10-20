@@ -35,6 +35,7 @@ mod present;
 mod resize;
 mod select_region;
 mod send;
+mod smart;
 mod snap;
 mod templates;
 mod text;
@@ -310,6 +311,11 @@ pub struct Editor {
     clipboard: Vec<Element>,
     /// B15 — o documento de onde a cópia veio: colar noutro esquece o que ela não levou.
     clip_origin: Option<ph2d_board_model::Origin>,
+    /// W23 B13 — o relógio do último evento (ns, o da shell) e quando chegou: o gatilho do QuickShape
+    /// conta o tempo parado por ele ([`Editor::at_time`]).
+    clock: (u128, std::time::Instant),
+    /// W23 B13 — o interruptor do QuickShape na caneta (o `pencil_quickshape` do vetor; ligado).
+    pub quickshape: bool,
     /// W14 — os bytes das imagens da cópia (para colar noutro quadro).
     clip_files: ph2d_board_model::Files,
     pastes: u32,
@@ -373,6 +379,8 @@ impl Editor {
             editing: None,
             clipboard: Vec::new(),
             clip_origin: None,
+            clock: (0, std::time::Instant::now()),
+            quickshape: true,
             clip_files: ph2d_board_model::Files::new(),
             pastes: 0,
             notes: NoteStyle::default(),
@@ -442,6 +450,21 @@ impl Editor {
     #[must_use]
     pub fn is_editing_text(&self) -> bool {
         self.editing.is_some()
+    }
+
+    /// W23 B13 — o relógio (ns) do evento que vai chegar: a shell chama-o antes de cada ponteiro.
+    pub fn at_time(&mut self, now_ns: u128) {
+        self.clock = (now_ns, std::time::Instant::now());
+    }
+
+    /// O relógio do evento em curso (exacto: o que a shell carimbou).
+    pub(crate) fn event_ns(&self) -> u128 {
+        self.clock.0
+    }
+
+    /// O relógio agora, ENTRE eventos (o quadro de pintura): o do último evento mais o que passou.
+    pub(crate) fn clock_now(&self) -> u128 {
+        self.clock.0 + self.clock.1.elapsed().as_nanos()
     }
 
     /// Selecciona exactamente `ids` (os que não existem são ignorados).

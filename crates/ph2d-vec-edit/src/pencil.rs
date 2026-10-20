@@ -233,16 +233,12 @@ impl Pencil {
         enabled: bool,
     ) -> crate::quickshape_hold::HoldTick {
         use crate::quickshape_hold::HoldTick;
-        let (Some(_), Some(&end)) = (self.active, self.samples.last()) else {
+        if self.active.is_none() || self.samples.is_empty() {
             return HoldTick::Idle;
-        };
-        // PARADO = dentro da folga do toque desde a amostra `j`: o tremor de uma mão em repouso
-        // passa o passo mínimo de 1,5 px, e cada amostra reiniciava o meio segundo.
-        let slop = crate::quickshape_hold::HOLD_SLOP_PX * self.px_to_world;
-        let mut j = self.samples.len() - 1;
-        while j > 0 && dist(self.samples[j - 1], end) <= slop {
-            j -= 1;
         }
+        // PARADO = dentro da folga do toque desde a amostra `j` (a mesma porta da caneta do quadro).
+        let slop = crate::quickshape_hold::HOLD_SLOP_PX * self.px_to_world;
+        let j = crate::quickshape_hold::rest_index(&self.samples, slop);
         let Some(rest) = self.dyns.get(j) else {
             return HoldTick::Idle;
         };

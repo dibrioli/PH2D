@@ -270,6 +270,7 @@ fn canvas_down(
     live.last_down = (!double).then_some((input.now_ns, [x, y]));
     let history = live.histories.entry(board.id).or_default();
     let ed = editor(&mut live.editor, theme);
+    ed.at_time(input.now_ns);
     // Um gesto pendurado fecha-se antes de o novo começar.
     ed.finish_gesture(&mut board.doc, history);
     // O que nasce num quadro em rascunho nasce à mão (W4).
@@ -365,6 +366,7 @@ pub fn pointer(
             let Some(ed) = live.editor.as_mut().filter(|e| e.is_busy()) else {
                 return false;
             };
+            ed.at_time(input.now_ns);
             ed.pointer_up(&mut board.doc, history, p);
             true
         }
@@ -416,6 +418,7 @@ pub fn pointer_move(hero: &mut HeroScreen, input: Input<'_>, x: f32, y: f32) -> 
         }
         return false;
     }
+    ed.at_time(input.now_ns);
     ed.pointer_move(&mut board.doc, input.text, p);
     true
 }

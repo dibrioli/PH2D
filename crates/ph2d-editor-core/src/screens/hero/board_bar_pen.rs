@@ -31,6 +31,8 @@ pub enum PenItem {
     Laser,
     /// W23 B12 — o laço (o Miro põe-no junto das canetas).
     Lasso,
+    /// W23 B13 — o interruptor do QuickShape (segurar no fim do traço; o do vetor).
+    QuickShape,
 }
 
 /// O botão da caneta na barra curta.
@@ -78,7 +80,7 @@ fn colors() -> impl Iterator<Item = PenItem> {
 fn rows() -> Vec<Vec<PenItem>> {
     vec![
         kinds().to_vec(),
-        vec![PenItem::Lasso],
+        vec![PenItem::Lasso, PenItem::QuickShape],
         (0..3).map(PenItem::Preset).collect(),
         colors().collect(),
         (0..PEN_WIDTHS.len()).map(PenItem::Width).collect(),
@@ -184,6 +186,7 @@ pub(super) fn is_current(
         Item::Pen(PenItem::Eraser(p)) => ed.tool == Tool::Eraser { precise: p },
         Item::Pen(PenItem::Laser) => ed.tool == Tool::Laser,
         Item::Pen(PenItem::Lasso) => ed.tool == Tool::Lasso,
+        Item::Pen(PenItem::QuickShape) => ed.quickshape,
         _ => return None,
     })
 }
@@ -292,6 +295,7 @@ pub(super) fn paint_icon(
             circle(scene, cx + r, cy - r, r, red);
         }
         Item::Pen(PenItem::Lasso) => icon(scene, IconId::MarqueeLasso, inner, fg, px),
+        Item::Pen(PenItem::QuickShape) => icon(scene, IconId::VectorShape, inner, fg, px),
         // O ponto da predefinição pinta-o o painel (só ele conhece as predefinições).
         Item::Pen(PenItem::Preset(_)) => {}
         Item::Pen(PenItem::Color(c)) => {
@@ -330,6 +334,7 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         Item::Pen(PenItem::Eraser(true)) => "board.pen.eraser_precise",
         Item::Pen(PenItem::Laser) => "board.pen.laser",
         Item::Pen(PenItem::Lasso) => "board.pen.lasso",
+        Item::Pen(PenItem::QuickShape) => "board.pen.quickshape",
         Item::Pen(PenItem::Preset(_)) => "board.pen.preset",
         Item::Pen(PenItem::Color(_)) => "board.pen.color",
         Item::Pen(PenItem::Width(_) | PenItem::InkWidth(_)) => "board.pen.width",
@@ -380,6 +385,7 @@ pub(super) fn apply(
             PenItem::Eraser(precise) => ed.tool = Tool::Eraser { precise },
             PenItem::Laser => ed.tool = Tool::Laser,
             PenItem::Lasso => ed.tool = Tool::Lasso,
+            PenItem::QuickShape => ed.quickshape = !ed.quickshape,
         },
         _ => return false,
     }

@@ -29,8 +29,9 @@ pub enum HoldTick {
     Reshaped,
 }
 
+/// ⭐ O gatilho inteiro (o lápis do vetor e a caneta do quadro, W23 B13, usam ESTE).
 #[derive(Default)]
-pub(crate) struct Hold {
+pub struct Hold {
     live: Option<Live>,
     /// `Esc` devolveu o traço livre: este gesto não volta a reconhecer.
     dismissed: bool,
@@ -48,15 +49,17 @@ struct Live {
 }
 
 impl Hold {
-    pub(crate) fn reset(&mut self) {
+    pub fn reset(&mut self) {
         *self = Self::default();
     }
 
-    pub(crate) fn is_live(&self) -> bool {
+    #[must_use]
+    pub fn is_live(&self) -> bool {
         self.live.is_some()
     }
 
-    pub(crate) fn tick(
+    /// Um quadro: `rest_t` = quando a mão parou ([`rest_index`]), `now` o relógio dela (ns).
+    pub fn tick(
         &mut self,
         samples: &[[f64; 2]],
         rest_t: u128,
@@ -96,18 +99,20 @@ impl Hold {
         HoldTick::Recognised
     }
 
-    pub(crate) fn drag(&mut self, p: [f64; 2]) -> bool {
+    /// Com a forma viva, o arrasto escala e roda; `false` = não há forma.
+    pub fn drag(&mut self, p: [f64; 2]) -> bool {
         self.live.as_mut().map(|l| l.pointer = p).is_some()
     }
 
     /// Devolve o traço livre; `true` se havia forma.
-    pub(crate) fn dismiss(&mut self) -> bool {
+    pub fn dismiss(&mut self) -> bool {
         self.dismissed = true;
         self.live.take().is_some()
     }
 
     /// A forma como a mão a pôs agora.
-    pub(crate) fn shape(&self) -> Option<QuickShape> {
+    #[must_use]
+    pub fn shape(&self) -> Option<QuickShape> {
         let l = self.live.as_ref()?;
         let pivot = l.base.pivot();
         let (v0, v1) = (sub(l.anchor, pivot), sub(l.pointer, pivot));
@@ -121,6 +126,21 @@ impl Hold {
         }
         Some(l.base.transformed(pivot, v1[0].hypot(v1[1]) / n0, rot))
     }
+}
+
+/// ⭐ Desde que amostra a mão está PARADA: a primeira de onde até à última nada saiu de `slop`
+/// (mundo; [`HOLD_SLOP_PX`] × px). O tremor de uma mão em repouso passa o passo mínimo, e cada
+/// amostra reiniciaria o meio segundo.
+#[must_use]
+pub fn rest_index(samples: &[[f64; 2]], slop: f64) -> usize {
+    let Some(&end) = samples.last() else {
+        return 0;
+    };
+    let mut j = samples.len() - 1;
+    while j > 0 && (samples[j - 1][0] - end[0]).hypot(samples[j - 1][1] - end[1]) <= slop {
+        j -= 1;
+    }
+    j
 }
 
 fn sub(a: [f64; 2], b: [f64; 2]) -> [f64; 2] {

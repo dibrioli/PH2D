@@ -16,6 +16,7 @@ use std::time::{Duration, Instant};
 use ph2d_board_model::{BoardDoc, BoardOp, Element, ElementId, History, Ink, Pen, Rgba, Style};
 
 use crate::{Editor, Pointer, Tool, live};
+use ph2d_vec_edit::quickshape_hold::HoldTick;
 
 /// As espessuras (diâmetro, mundo) que o painel da caneta oferece — fina a muito larga (o marcador
 /// vive nas largas). O Miro não as publica (por medir numa captura).
@@ -90,6 +91,8 @@ pub(crate) enum InkGesture {
         pen: Pen,
         style: Style,
         points: Vec<[f64; 3]>,
+        /// W23 B13 — o QuickShape do vetor (segurar no fim do traço).
+        smart: crate::smart::Smart,
     },
     Erase {
         precise: bool,
@@ -126,6 +129,7 @@ impl Editor {
                     pen,
                     style,
                     points,
+                    smart: crate::smart::Smart::new(self.event_ns(), p.px),
                 }
             }
             Tool::Eraser { precise } => {
@@ -150,6 +154,12 @@ impl Editor {
 
     /// O ponteiro andou num gesto da caneta. `false` = não há um.
     pub(crate) fn ink_move(&mut self, doc: &mut BoardDoc, p: Pointer) -> bool {
+        self.ink_step(doc, p, true)
+    }
+
+    /// Um passo da caneta; `hold` = também é um quadro do gatilho (largar NÃO é: o vetor só
+    /// reconhece enquanto a mão está em baixo).
+    fn ink_step(&mut self, doc: &mut BoardDoc, p: Pointer, hold: bool) -> bool {
         self.cursor = Some(p.world);
         let Some(mut g) = self.ink.take() else {
             return false;
@@ -161,11 +171,23 @@ impl Editor {
                 pen,
                 style,
                 points,
+                smart,
             } => {
-                let last = points[points.len() - 1];
-                if last[0] != p.world[0] || last[1] != p.world[1] {
-                    points.push([p.world[0], p.world[1], NO_PRESSURE]);
-                    put_stroke(doc, *id, z, *pen, style, points);
+                smart.regular = p.mods.shift;
+                let now = self.event_ns();
+                if smart.hold.drag(p.world) {
+                    show_shape(doc, *id, z, *pen, style, smart);
+                } else {
+                    let last = points[points.len() - 1];
+                    if last[0] != p.world[0] || last[1] != p.world[1] {
+                        points.push([p.world[0], p.world[1], NO_PRESSURE]);
+                        smart.times.push(now);
+                        put_stroke(doc, *id, z, *pen, style, points);
+                    }
+                }
+                // Um movimento parado mais tarde também é um quadro do gatilho.
+                if hold && smart.tick(points, now, self.quickshape) != HoldTick::Idle {
+                    show_shape(doc, *id, z, *pen, style, smart);
                 }
             }
             InkGesture::Erase { .. } => self.erase_step(doc, &mut g, p),
@@ -177,15 +199,82 @@ impl Editor {
 
     /// Largar: o gesto vira UM passo de desfazer. `false` = não havia gesto da caneta.
     pub(crate) fn ink_up(&mut self, doc: &mut BoardDoc, history: &mut History, p: Pointer) -> bool {
-        if !self.ink_move(doc, p) {
+        if !self.ink_step(doc, p, false) {
             return false;
         }
         match self.ink.take() {
-            Some(InkGesture::Draw { id, .. }) => history.record(vec![BoardOp::Delete(id)], doc),
+            Some(InkGesture::Draw {
+                id,
+                z,
+                pen,
+                style,
+                points,
+                smart,
+            }) => match smart.hold.shape() {
+                Some(shape) => {
+                    // O traço cru é UM passo; a troca pela forma é OUTRO (`Ctrl+Z` devolve o traço).
+                    put_stroke(doc, id, &z, pen, &style, &points);
+                    history.record(vec![BoardOp::Delete(id)], doc);
+                    let made = self
+                        .smart_element(doc, &shape, &style, smart.px, id)
+                        .unwrap_or_else(|| Self::smart_ink(doc, &shape, pen, &style, smart.px));
+                    history.apply(doc, vec![BoardOp::Delete(id), BoardOp::Put(made)]);
+                }
+                None => history.record(vec![BoardOp::Delete(id)], doc),
+            },
             Some(g @ InkGesture::Erase { .. }) => history.record(erase_inverse(doc, g), doc),
             _ => {}
         }
         true
+    }
+
+    /// ⭐ W23 B13 — um quadro do QuickShape com o traço aberto (o vetor chama-o a cada quadro; o
+    /// relógio é o do último evento mais o que passou desde ele). `true` = a forma NASCEU agora.
+    pub fn ink_hold(&mut self, doc: &mut BoardDoc) -> bool {
+        let (now, enabled) = (self.clock_now(), self.quickshape);
+        let Some(InkGesture::Draw {
+            id,
+            z,
+            pen,
+            style,
+            points,
+            smart,
+        }) = self.ink.as_mut()
+        else {
+            return false;
+        };
+        let t = smart.tick(points, now, enabled);
+        if t != HoldTick::Idle {
+            show_shape(doc, *id, z, *pen, style, smart);
+        }
+        t == HoldTick::Recognised
+    }
+
+    /// `Esc` com a forma viva: o traço volta como foi desenhado e este gesto não reconhece mais (o
+    /// vetor). `false` = não havia forma.
+    pub(crate) fn ink_dismiss(&mut self, doc: &mut BoardDoc) -> bool {
+        let Some(InkGesture::Draw {
+            id,
+            z,
+            pen,
+            style,
+            points,
+            smart,
+        }) = self.ink.as_mut()
+        else {
+            return false;
+        };
+        if !smart.hold.dismiss() {
+            return false;
+        }
+        put_stroke(doc, *id, z, *pen, style, points);
+        true
+    }
+
+    /// Há uma forma do QuickShape viva no traço em curso?
+    #[must_use]
+    pub fn is_quick(&self) -> bool {
+        matches!(&self.ink, Some(InkGesture::Draw { smart, .. }) if smart.hold.is_live())
     }
 
     /// Fecha um gesto da caneta SEM acrescentar ponto (o largar perdeu-se): o traço fica como está,
@@ -299,6 +388,24 @@ fn erase_inverse(doc: &BoardDoc, g: InkGesture) -> Vec<BoardOp> {
         .map(BoardOp::Delete)
         .chain(originals.into_values().map(BoardOp::Put))
         .collect()
+}
+
+/// O traço `id` passa a desenhar a forma viva do gatilho.
+fn show_shape(
+    doc: &mut BoardDoc,
+    id: ElementId,
+    z: &ph2d_board_model::FracKey,
+    pen: Pen,
+    style: &Style,
+    smart: &crate::smart::Smart,
+) {
+    if let Some(s) = smart.hold.shape() {
+        let pts: Vec<[f64; 3]> = crate::smart::shape_points(&s, smart.px)
+            .into_iter()
+            .map(|p| [p[0], p[1], NO_PRESSURE])
+            .collect();
+        put_stroke(doc, id, z, pen, style, &pts);
+    }
 }
 
 fn put_stroke(

@@ -33,6 +33,10 @@ impl Editor {
                 if std::mem::take(&mut self.linking) {
                     return true;
                 }
+                // W23 B13 — com a forma do QuickShape viva, o 1.º Esc devolve o traço (o vetor).
+                if self.ink_dismiss(doc) {
+                    return true;
+                }
                 if self.cancel_gesture(doc) {
                     return true;
                 }

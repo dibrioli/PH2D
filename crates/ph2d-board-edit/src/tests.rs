@@ -979,3 +979,6 @@ mod caption;
 
 #[path = "lasso_tests.rs"]
 mod lasso;
+
+#[path = "smart_tests.rs"]
+mod smart;

@@ -22,6 +22,8 @@ ph2d-text = { path = "../ph2d-text" }
 ph2d-board-words = { path = "../ph2d-board-words" }
 # W16 — o recorte pelo gesto conta com o afim (píxel natural → mundo) da geometria do quadro.
 ph2d-vector = { path = "../ph2d-vector" }
+# W23 B13 — o QuickShape do vetor na caneta do quadro: a MESMA lei e o MESMO gatilho (sem limiares cá).
+ph2d-vec-edit = { path = "../ph2d-vec-edit" }
 
 [lints]
 workspace = true

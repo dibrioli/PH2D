@@ -266,6 +266,8 @@ pub fn paint_hero_screen(
             let ed = super::board_view::editor(&mut live.editor, theme);
             // W16 — o recorte conta-se em píxeis naturais: o editor sabe o tamanho dos ficheiros.
             ed.know_files(&board.files);
+            // W23 B13 — o QuickShape a cada quadro com o traço aberto (o meio segundo parado).
+            ed.ink_hold(&mut board.doc);
             // O que se desenha por cima vem ANTES: ele ajusta as notas que nasceram por ajustar,
             // e o quadro desenha-as já com a altura certa.
             let overlay = ed.overlay(&mut board.doc, text_system);

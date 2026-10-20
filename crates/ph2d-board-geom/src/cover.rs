@@ -250,6 +250,12 @@ fn cross_t(p: Edge, q: Edge) -> Option<f64> {
     ((0.0..=1.0).contains(&t) && (0.0..=1.0).contains(&u)).then_some(t)
 }
 
+/// Os pontos de um caminho do vetor achatado (W23 B13: a forma do QuickShape na caneta do quadro).
+#[must_use]
+pub fn vec_polyline(path: &ph2d_vec_scene::VecPath, tolerance: f64) -> Vec<Vec<[f64; 2]>> {
+    polyline(&ph2d_vec_render::build_bezpath(path), tolerance)
+}
+
 /// Os pontos de um caminho achatado como uma linha aberta (os sub-caminhos seguidos).
 #[must_use]
 pub fn polyline(path: &BezPath, tolerance: f64) -> Vec<Vec<[f64; 2]>> {

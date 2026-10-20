@@ -12,7 +12,7 @@
 //! `PH2D_REGERA_SO="Ink Brush,Dip Pen"` regera só esses.
 
 use super::receitas_de_fabrica::{
-    DIREITA, PRESETS_DE_FABRICA, RECEITAS, Receita, SPACING_DA_FABRICA, grao,
+    DIREITA, NASCE_DE, PRESETS_DE_FABRICA, RECEITAS, Receita, SPACING_DA_FABRICA, grao,
 };
 use super::sonda_gestos::{fnv1a, largura_que_se_ve, traco_recto_alto};
 use ph2d_brush_presets::{
@@ -61,6 +61,13 @@ fn parametros(r: &Receita) -> Parametros {
             p.engine.insert("pressureOpacity".to_owned(), 0.0);
             p
         }
+        // Os 11 do prompt 53 nascem do ficheiro do vizinho, como a sonda do doc 52 os mediu.
+        Err(_) if NASCE_DE.iter().any(|(n, _)| *n == r.nome) => {
+            let base = NASCE_DE.iter().find(|(n, _)| *n == r.nome).unwrap().1;
+            let mut p = super::midias_de_fabrica::de_fabrica(base).parametros;
+            (p.name, p.group) = (r.nome.to_owned(), r.grupo.to_owned());
+            p
+        }
         Err(_) => {
             let mut t = PainterTool::default();
             t.set_paint_media(PaintMedia::WetPaint);
@@ -100,12 +107,14 @@ fn parametros(r: &Receita) -> Parametros {
             );
         }
     }
+    // Um campo que o ficheiro ainda não grava (a ponta reta do Square Hard) entra também — desde que seja do pincel.
     for (campo, json) in r.pincel {
         let v: serde_json::Value = serde_json::from_str(json).expect("o JSON do campo");
         assert!(
-            p.brush.insert((*campo).to_owned(), v).is_some(),
+            ph2d_tool_painter::CAMPOS_DO_PINCEL.contains(campo),
             "campo {campo} existe"
         );
+        p.brush.insert((*campo).to_owned(), v);
     }
     if let Some((kind, lado)) = r.grao {
         assert!(
@@ -176,15 +185,36 @@ pub(super) fn largura_de(p: &Preset, raio: f32, crua: bool) -> f32 {
     largura_que_se_ve(&px, w, h)
 }
 
-/// A lei CRUA medida: raio do motor → largura, em paralelo (uma thread por raio).
+/// A lei CRUA medida: raio do motor → largura, numa fila do MAIOR para o menor com `PH2D_LEI_FIOS` trabalhadores
+/// (por omissão um por raio). ⚠️ A memória é a do raio: o Dabber (Jitter 0,5) a 64 de uma vez passava dos 48 GB; depois da
+/// margem da janela pelo CAMINHO (`Trail::on_segment_no_caminho`) 21,9 GiB do tecto de 24 (prompt 53) — perto: `PH2D_LEI_FIOS`.
 fn tabela_de_largura(p: &Preset) -> Vec<[f64; 2]> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
     let raios = raios_da_lei();
-    let larguras: Vec<f32> = std::thread::scope(|s| {
-        let h: Vec<_> = raios
-            .iter()
-            .map(|&r| s.spawn(move || largura_de(p, r, true)))
+    let fios = std::env::var("PH2D_LEI_FIOS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(raios.len());
+    let proximo = AtomicUsize::new(0);
+    let mut larguras = vec![0.0_f32; raios.len()];
+    std::thread::scope(|s| {
+        let h: Vec<_> = (0..fios)
+            .map(|_| {
+                s.spawn(|| {
+                    let mut feitas = Vec::new();
+                    loop {
+                        let k = proximo.fetch_add(1, Ordering::Relaxed);
+                        let Some(i) = raios.len().checked_sub(k + 1) else {
+                            break feitas;
+                        };
+                        feitas.push((i, largura_de(p, raios[i], true)));
+                    }
+                })
+            })
             .collect();
-        h.into_iter().map(|h| h.join().unwrap()).collect()
+        for (i, l) in h.into_iter().flat_map(|h| h.join().unwrap()) {
+            larguras[i] = l;
+        }
     });
     raios
         .iter()

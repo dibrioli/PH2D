@@ -5,7 +5,24 @@ use ph2d_brush_presets::Tilt;
 use serde_json::{Value, json};
 
 /// Quantos presets a fábrica tem — CONTADO (`the_factory_presets_are_counted`), nunca escolhido.
-pub const PRESETS_DE_FABRICA: usize = 20;
+pub const PRESETS_DE_FABRICA: usize = 31;
+
+/// Os pincéis que nascem do ficheiro de um VIZINHO de fábrica (prompt 53): a receita medida no doc 52 é o vizinho
+/// inteiro + os overrides (a sonda partiu do ficheiro dele, com o estado que a `Receita` não lista — o `drag` da
+/// acrílica, os fios do Oil Bristle).
+pub const NASCE_DE: [(&str, &str); 11] = [
+    ("Graphite 2H", "Graphite 8B"),
+    ("Graphite HB", "Graphite 8B"),
+    ("Graphite 2B", "Graphite 8B"),
+    ("Colored 4B", "Graphite 8B"),
+    ("Scratch", "Charcoal"),
+    ("Square Hard", "Soft Pastel"),
+    ("Wax Scrape", "Soft Pastel"),
+    ("Filbert", "Acrylic Round"),
+    ("Dabber", "Oil Bristle"),
+    ("Flat Oily", "Acrylic Round"),
+    ("Knife Smooth", "Acrylic Round"),
+];
 
 /// O grão `kind` de lado `lado` no slot Grain do pincel (o JSON do `BrushSpec::texture`).
 pub fn grao(kind: &str, lado: f64) -> Value {
@@ -201,81 +218,9 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     // e o grão no lugar das cerdas). Cada um medido contra a foto do seu preset-oráculo do Rebelle, seco, à
     // largura dela; o tamanho é o do preset dele. `cada_preset_parece_a_sua_midia` guarda-os.
     // Oil & Acrylic › Bristle Flat: corpo cheio, estrias das cerdas, relevo.
-    Receita {
-        meio: "Oil",
-        grupo: "Bristle",
-        nome: "Oil Bristle",
-        water: 0.1,
-        opacity: 1.0,
-        pigment: 2000.0,
-        pickup: 1.0,
-        gate: 0.0,
-        evaporation: 1.0,
-        edge: 0.0,
-        tilt: DIREITA,
-        bristle_size: 1.0,
-        bristle_count: 2000.0,
-        hardness: 0.9,
-        size_px: Some(103.0),
-        // O chato (prompt 23, aceite do dono 12/10): lâmina de pé, 0,68 = 1 − 13/41 (o traço de pé e o
-        // deitado da foto); o feltro fecha as falhas que a lâmina fina abria. Régua: `mede_familia_c.py`.
-        // Os FIOS (W2, doc 48_medicao §3): cada fio claro ou escuro pela cor (o óleo satura: a pressão só abriria
-        // falhas), a pressão própria e a mão leve que os levanta. Textura 2,75 → 3,85 (Rebelle 5,86: o resto são
-        // as sombras do relevo de cada fio, W3), carris 0,00 → 3,03 (3,32), CV 0,017, período 2 %.
-        // O RELEVO de cada fio sem escada (W3b, doc 50_medicao): a altura contínua através dos fios, acesa pelo
-        // MESMO emboss cinza da tinta (o de 18/10 — degrau por fio, luz do Impasto, 1,25 px + emboss 1 — saiu pelo
-        // smoke do dono: «muito pixelado»). Textura 3,85 → 5,65 (Rebelle 5,86), contraste 8,7 → 13,4 (12,1), a
-        // escada no inclinado 2,2 · 1,9 (2,5 · 2,6); a 103 px 1,9 · 1,4 (2,5 · 2,3).
-        extras: &[
-            ("felt", 0.05),
-            ("bristleStrength", 2.0),
-            ("emboss", 0.7),
-            ("bristlePressure", 1.2),
-            ("bristleLaneWidth", 1.5),
-            ("bristleLift", 0.4),
-            ("bristleNoiseSat", 0.3),
-            ("bristleNoiseLight", 0.25),
-            ("bristleHeight", 0.75),
-            // O pigmento por DAB (doc 51 §3): ele satura (a tinta a 103 px 0,985 da de antes sem o peso) e o peso só lhe
-            // dava degraus — a escada da curva 2,57 · 2,70 (tecto 2,50 · 2,55) contra 2,15 · 2,40 sem ele.
-            ("pigmentSpacing", 0.0),
-            // Os fios dele têm largura em px: a 103 px a escada lê 2,24 · 2,45 · 2,15 com a cápsula a 2 px, 3,06 a 2,06
-            // e 4,71 a 3 (tecto 2,78 · 2,60 · 2,50; doc 51 §3).
-            ("capsuleMaxPx", 2.0),
-        ],
-        grao: None,
-        achatado: Some((0.68, 90)),
-        pincel: &[],
-    },
+    OIL_BRISTLE,
     // Oil & Acrylic › Round Hard (a acrílica do Rebelle é esta ferramenta).
-    Receita {
-        meio: "Oil",
-        grupo: "Round",
-        nome: "Acrylic Round",
-        water: 0.05,
-        opacity: 0.6,
-        pigment: 500.0,
-        pickup: 1.0,
-        gate: 0.0,
-        evaporation: 1.0,
-        edge: 0.0,
-        tilt: DIREITA,
-        bristle_size: 0.5,
-        bristle_count: 4000.0,
-        hardness: 0.5,
-        size_px: Some(78.0),
-        extras: &[
-            ("felt", 0.0),
-            ("bristleStrength", 2.0),
-            ("pigmentSpacing", PASSO_DOS_OLEOS),
-            // A textura das cerdas dela anda com o dab: a 0,025 a escada a 103 px dobrava (6,2 → 12,5); à densidade
-            // dela 6,1, a diferença de imagem 0,04 (doc 51 §3).
-            ("capsuleSpacing", PASSO_DOS_OLEOS),
-        ],
-        grao: None,
-        achatado: None,
-        pincel: &[],
-    },
+    ACRYLIC_ROUND,
     // Express Oil › Hairy: claro e liso, tufos (prompt 23, aceite do dono 12/10). A claridade é POUCO
     // pigmento — com o Spacing 0,01 cada célula leva ~100 carimbos, por isso 60 e não 250; sem água (a água
     // assentava o pouco pigmento nos poros: grão 0,065 → 0,027); cerdas 4 = tufos sem sal.
@@ -321,90 +266,19 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     // Com o arrasto na ponta seca (o motor deixou de o zerar): o portão das mídias reprovava a Textura (7,65
     // contra 9,09 ± 0,66) e o arrasto só a BAIXA (0,16 → 3,25) — não são as estrias. Varridos 1 368 + 594 na
     // bancada: perfil Linear, jitter 0,1 (a borda ondulada do 8B), arrasto 0,05, papel 0,65 — nota 1,25 → 0,64.
-    Receita {
-        meio: "Pencil",
-        grupo: "Graphite",
-        nome: "Graphite 8B",
-        water: 0.0,
-        opacity: 1.0,
-        pigment: 125.0,
-        pickup: 1.0,
-        gate: 0.65,
-        evaporation: 1.0,
-        edge: 0.0,
-        tilt: DIREITA,
-        bristle_size: 2.0,
-        bristle_count: 2000.0,
-        hardness: 0.0,
-        size_px: Some(6.5),
-        extras: &[
-            ("felt", 0.0),
-            ("drag", 0.05),
-            ("pressureSize", 0.9),
-            ("tiltStart", 39.0),
-            ("tiltFull", 45.0),
-            ("tiltWidth", 1.05),
-            ("tiltSmooth", 0.0),
-            ("tiltLength", 3.3),
-            ("tiltLag", 170.0),
-            MAIS_PERTO,
-        ],
-        grao: Some(("Noise", 32.0)),
-        achatado: None,
-        pincel: &[("falloff", "\"Linear\""), ("jitter", "0.1")],
-    },
+    GRAPHITE_8B,
     // Pencil › Charcoal: pouca carga, orla larga. Prompt 35 (14/10), contra o Rebelle «Charcoal/Charcoal» a
     // 37 px vistos (nota 12,03 → 3,35): o Noise 0,15 era uma mancha (25 px a y = 40, 36 a 450) — Noise 48; o
     // carvão do Rebelle é RALO (miolo 0,64). A orla do Rebelle (15 px a 21 de largura, 25 px de subida a 38)
     // não cabe na dureza: a 0,5 o portão das mídias lia 7, e nenhuma dureza/papel/carga/arrasto passa de 9
     // (1 755 variantes). O perfil Sharp (p², a cauda longa) e o jitter 0,2 dão 10 e a poeira do carvão:
     // dureza 0,1, papel 0, carga 24, arrasto 0,02 — nota 3,31 → 0,79.
-    Receita {
-        meio: "Pencil",
-        grupo: "Charcoal",
-        nome: "Charcoal",
-        water: 0.0,
-        opacity: 1.0,
-        pigment: 24.0,
-        pickup: 1.0,
-        gate: 0.0,
-        evaporation: 1.0,
-        edge: 0.0,
-        tilt: DIREITA,
-        bristle_size: 2.0,
-        bristle_count: 2000.0,
-        hardness: 0.1,
-        size_px: Some(37.0),
-        extras: &[("felt", 0.0), ("drag", 0.02), MAIS_PERTO],
-        grao: Some(("Noise", 48.0)),
-        achatado: None,
-        pincel: &[("falloff", "\"Sharp\""), ("jitter", "0.2")],
-    },
+    CHARCOAL,
     // Pastel › Pastel Dry › Dry Thin: grão fino e regular. Prompt 35 (14/10), contra o Rebelle NO TEMPO e à
     // mesma largura vista (`ferramentas/pastel_regua.py`, nota 4,76 → 1,38): o grão Noise 0,4 era uma mancha
     // de ~640 px (a largura ia de 15 a 34 px conforme a ALTURA na tela) — Noise 100 é o grão de 2–4 px; o
     // papel 0,8 ondulava a borda; a carga 400 enchia o miolo (0,98 contra 0,91).
-    Receita {
-        meio: "Pastel",
-        grupo: "Dry",
-        nome: "Soft Pastel",
-        water: 0.0,
-        opacity: 1.0,
-        pigment: 100.0,
-        pickup: 1.0,
-        gate: 0.4,
-        evaporation: 1.0,
-        edge: 0.0,
-        tilt: DIREITA,
-        bristle_size: 2.0,
-        bristle_count: 2000.0,
-        hardness: 0.2,
-        size_px: Some(29.0),
-        extras: &[("felt", 0.0), ("drag", 0.0), MAIS_PERTO],
-        grao: Some(("Noise", 100.0)),
-        achatado: None,
-        pincel: &[],
-    },
+    SOFT_PASTEL,
     // Pastel › Pastel Oil › Oil Pastel 2 (o giz de cera): grão mais fino e mais carregado que o seco (o
     // Voronoi passava as métricas, mas a largura variava até 42 % com a posição — medido 11/10). Prompt 35
     // (14/10), contra o Rebelle «Pastel Oil/Oil Pastel 2» a 77 px vistos (nota 5,06 → 1,41): o Noise 0,15
@@ -643,7 +517,269 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         achatado: Some((0.2, 90)),
         pincel: &[("dab_quina", "1.0")],
     },
+    // ⭐ Os 11 do prompt 53: as receitas que passaram a foto do Rebelle no doc 52 §4 (`52_regua/receitas_19*.json`,
+    // pelo nome no comentário), cada uma o vizinho de [`NASCE_DE`] inteiro + os overrides. O tamanho é o do preset
+    // dele (`volume_params.size` do `.rebelle-brush.png`, `ferramentas/tamanho_dos_presets.py`).
+    // `lapisb_027`: o lápis duro — pouca carga, o papel quase fechado, o grão fino.
+    lapis("Graphite", "Graphite 2H", 40.0, 0.3, 16.0),
+    // `lapisb_028`.
+    lapis("Graphite", "Graphite HB", 40.0, 0.3, 32.0),
+    // `lapisb_032`.
+    lapis("Graphite", "Graphite 2B", 40.0, 0.65, 64.0),
+    // `lapisb_041`: o de cor é o 2B com o dobro da carga.
+    lapis("Colored", "Colored 4B", 80.0, 0.65, 64.0),
+    // `lapisc_053`: o carvão mais ralo, o papel a meio.
+    Receita {
+        meio: "Pencil",
+        grupo: "Scratch",
+        nome: "Scratch",
+        pigment: 20.0,
+        gate: 0.5,
+        size_px: Some(248.0),
+        ..CHARCOAL
+    },
+    // `sq_007`: o pastel de ponta RETA, o papel todo aberto.
+    Receita {
+        nome: "Square Hard",
+        pigment: 60.0,
+        gate: 1.0,
+        size_px: Some(35.0),
+        pincel: &[("dab_quina", "1.0")],
+        ..SOFT_PASTEL
+    },
+    // `wx_007`: a cera raspada — muita carga sobre o papel aberto.
+    Receita {
+        grupo: "Scrape",
+        nome: "Wax Scrape",
+        pigment: 150.0,
+        gate: 1.0,
+        size_px: Some(141.0),
+        pincel: &[("dab_quina", "0.0")],
+        ..SOFT_PASTEL
+    },
+    // `filbert_016`: a acrílica de cerdas largas.
+    Receita {
+        grupo: "Flat",
+        nome: "Filbert",
+        bristle_size: 2.0,
+        size_px: Some(64.0),
+        ..ACRYLIC_ROUND
+    },
+    // `dabberc_032`: o Oil Bristle de cerdas largas, mais relevo e a ponta espalhada (jitter) — a esponja.
+    Receita {
+        grupo: "Dabber",
+        nome: "Dabber",
+        bristle_size: 2.0,
+        hardness: 0.6,
+        size_px: Some(51.0),
+        extras: &[
+            ("felt", 0.05),
+            ("bristleStrength", 2.0),
+            ("emboss", 1.2),
+            ("bristlePressure", 1.2),
+            ("bristleLaneWidth", 1.5),
+            ("bristleLift", 0.4),
+            ("bristleNoiseSat", 0.3),
+            ("bristleNoiseLight", 0.25),
+            ("bristleHeight", 0.75),
+            ("pigmentSpacing", 0.0),
+            ("capsuleMaxPx", 2.0),
+        ],
+        pincel: &[("jitter", "0.5")],
+        ..OIL_BRISTLE
+    },
+    // `laminac_018`: a LÂMINA chata deitada, sem cerdas (⛔ com cerdas a textura dava 6–8 contra 0,8–1,0: 52 §5).
+    lamina("Flat", "Flat Oily", 1000.0, 64.0),
+    // `laminac_012` com um QUARTO da tinta: à lei própria a 500 pintava o Flat Oily (cruzamento 0,665 × 0,689); a 250
+    // 0,547 (Rebelle 0,513 × 0,723) e a textura 1,93 (1,05) — passa a sua foto e reprova a do Flat Oily (doc 53 §3).
+    lamina("Knife", "Knife Smooth", 250.0, 51.0),
 ];
+
+// As bases dos 11 do prompt 53, com o nome de cada uma (a fábrica e o `..` dos novos leem a MESMA).
+const GRAPHITE_8B: Receita = Receita {
+    meio: "Pencil",
+    grupo: "Graphite",
+    nome: "Graphite 8B",
+    water: 0.0,
+    opacity: 1.0,
+    pigment: 125.0,
+    pickup: 1.0,
+    gate: 0.65,
+    evaporation: 1.0,
+    edge: 0.0,
+    tilt: DIREITA,
+    bristle_size: 2.0,
+    bristle_count: 2000.0,
+    hardness: 0.0,
+    size_px: Some(6.5),
+    extras: EXTRAS_DO_LAPIS,
+    grao: Some(("Noise", 32.0)),
+    achatado: None,
+    pincel: &[("falloff", "\"Linear\""), ("jitter", "0.1")],
+};
+
+const CHARCOAL: Receita = Receita {
+    meio: "Pencil",
+    grupo: "Charcoal",
+    nome: "Charcoal",
+    water: 0.0,
+    opacity: 1.0,
+    pigment: 24.0,
+    pickup: 1.0,
+    gate: 0.0,
+    evaporation: 1.0,
+    edge: 0.0,
+    tilt: DIREITA,
+    bristle_size: 2.0,
+    bristle_count: 2000.0,
+    hardness: 0.1,
+    size_px: Some(37.0),
+    extras: &[("felt", 0.0), ("drag", 0.02), MAIS_PERTO],
+    grao: Some(("Noise", 48.0)),
+    achatado: None,
+    pincel: &[("falloff", "\"Sharp\""), ("jitter", "0.2")],
+};
+
+const SOFT_PASTEL: Receita = Receita {
+    meio: "Pastel",
+    grupo: "Dry",
+    nome: "Soft Pastel",
+    water: 0.0,
+    opacity: 1.0,
+    pigment: 100.0,
+    pickup: 1.0,
+    gate: 0.4,
+    evaporation: 1.0,
+    edge: 0.0,
+    tilt: DIREITA,
+    bristle_size: 2.0,
+    bristle_count: 2000.0,
+    hardness: 0.2,
+    size_px: Some(29.0),
+    extras: &[("felt", 0.0), ("drag", 0.0), MAIS_PERTO],
+    grao: Some(("Noise", 100.0)),
+    achatado: None,
+    pincel: &[],
+};
+
+const ACRYLIC_ROUND: Receita = Receita {
+    meio: "Oil",
+    grupo: "Round",
+    nome: "Acrylic Round",
+    water: 0.05,
+    opacity: 0.6,
+    pigment: 500.0,
+    pickup: 1.0,
+    gate: 0.0,
+    evaporation: 1.0,
+    edge: 0.0,
+    tilt: DIREITA,
+    bristle_size: 0.5,
+    bristle_count: 4000.0,
+    hardness: 0.5,
+    size_px: Some(78.0),
+    extras: &[
+        ("felt", 0.0),
+        ("bristleStrength", 2.0),
+        ("pigmentSpacing", PASSO_DOS_OLEOS),
+        // A textura das cerdas dela anda com o dab: a 0,025 a escada a 103 px dobrava (6,2 → 12,5); à densidade
+        // dela 6,1, a diferença de imagem 0,04 (doc 51 §3).
+        ("capsuleSpacing", PASSO_DOS_OLEOS),
+    ],
+    grao: None,
+    achatado: None,
+    pincel: &[],
+};
+
+const OIL_BRISTLE: Receita = Receita {
+    meio: "Oil",
+    grupo: "Bristle",
+    nome: "Oil Bristle",
+    water: 0.1,
+    opacity: 1.0,
+    pigment: 2000.0,
+    pickup: 1.0,
+    gate: 0.0,
+    evaporation: 1.0,
+    edge: 0.0,
+    tilt: DIREITA,
+    bristle_size: 1.0,
+    bristle_count: 2000.0,
+    hardness: 0.9,
+    size_px: Some(103.0),
+    // O chato (prompt 23, aceite do dono 12/10): lâmina de pé, 0,68 = 1 − 13/41 (o traço de pé e o
+    // deitado da foto); o feltro fecha as falhas que a lâmina fina abria. Régua: `mede_familia_c.py`.
+    // Os FIOS (W2, doc 48_medicao §3): cada fio claro ou escuro pela cor (o óleo satura: a pressão só abriria
+    // falhas), a pressão própria e a mão leve que os levanta. Textura 2,75 → 3,85 (Rebelle 5,86: o resto são
+    // as sombras do relevo de cada fio, W3), carris 0,00 → 3,03 (3,32), CV 0,017, período 2 %.
+    // O RELEVO de cada fio sem escada (W3b, doc 50_medicao): a altura contínua através dos fios, acesa pelo
+    // MESMO emboss cinza da tinta (o de 18/10 — degrau por fio, luz do Impasto, 1,25 px + emboss 1 — saiu pelo
+    // smoke do dono: «muito pixelado»). Textura 3,85 → 5,65 (Rebelle 5,86), contraste 8,7 → 13,4 (12,1), a
+    // escada no inclinado 2,2 · 1,9 (2,5 · 2,6); a 103 px 1,9 · 1,4 (2,5 · 2,3).
+    extras: &[
+        ("felt", 0.05),
+        ("bristleStrength", 2.0),
+        ("emboss", 0.7),
+        ("bristlePressure", 1.2),
+        ("bristleLaneWidth", 1.5),
+        ("bristleLift", 0.4),
+        ("bristleNoiseSat", 0.3),
+        ("bristleNoiseLight", 0.25),
+        ("bristleHeight", 0.75),
+        // O pigmento por DAB (doc 51 §3): ele satura (a tinta a 103 px 0,985 da de antes sem o peso) e o peso só lhe
+        // dava degraus — a escada da curva 2,57 · 2,70 (tecto 2,50 · 2,55) contra 2,15 · 2,40 sem ele.
+        ("pigmentSpacing", 0.0),
+        // Os fios dele têm largura em px: a 103 px a escada lê 2,24 · 2,45 · 2,15 com a cápsula a 2 px, 3,06 a 2,06
+        // e 4,71 a 3 (tecto 2,78 · 2,60 · 2,50; doc 51 §3).
+        ("capsuleMaxPx", 2.0),
+    ],
+    grao: None,
+    achatado: Some((0.68, 90)),
+    pincel: &[],
+};
+
+/// Os knobs do 8B que os lápis do 53 herdam (a caneta, a ponta deitada e o arrasto: comentário do 8B).
+const EXTRAS_DO_LAPIS: &[(&str, f64)] = &[
+    ("felt", 0.0),
+    ("drag", 0.05),
+    ("pressureSize", 0.9),
+    ("tiltStart", 39.0),
+    ("tiltFull", 45.0),
+    ("tiltWidth", 1.05),
+    ("tiltSmooth", 0.0),
+    ("tiltLength", 3.3),
+    ("tiltLag", 170.0),
+    MAIS_PERTO,
+];
+
+const fn lapis(grupo: &'static str, nome: &'static str, pigment: f64, gate: f64, grao: f64) -> Receita {
+    Receita {
+        grupo,
+        nome,
+        pigment,
+        gate,
+        grao: Some(("Noise", grao)),
+        ..GRAPHITE_8B
+    }
+}
+
+const fn lamina(grupo: &'static str, nome: &'static str, pigment: f64, size: f64) -> Receita {
+    Receita {
+        grupo,
+        nome,
+        pigment,
+        hardness: 0.9,
+        size_px: Some(size),
+        extras: &[
+            ("felt", 1.0),
+            ("bristleStrength", 0.0),
+            ("pigmentSpacing", PASSO_DOS_OLEOS),
+            ("capsuleSpacing", PASSO_DOS_OLEOS),
+        ],
+        achatado: Some((0.82, 0)),
+        ..ACRYLIC_ROUND
+    }
+}
 
 /// O pigmento do Wet Flat e da Gouache Flat (doc 44 §3, lote 3).
 const PIGMENTO_DO_FLAT: f64 = 50.0;

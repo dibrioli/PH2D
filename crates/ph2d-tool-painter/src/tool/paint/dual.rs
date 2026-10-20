@@ -99,7 +99,8 @@ impl RecorteNoWet {
 
 impl PainterTool {
     /// O motor da 2.ª ponta nasce no pen-down de um traço que a leva (o plano arma), e pousa as primeiras marcas.
-    pub(super) fn dual_comeca(&mut self, p: StrokePoint) {
+    /// `tilt` é a caneta do evento: a 2.ª ponta deita-se com a 1.ª (J3, `Pinceis/exames/grafite.md`).
+    pub(super) fn dual_comeca(&mut self, p: StrokePoint, tilt: [f32; 2]) {
         self.paint.dual.motor = None;
         self.paint.dual.pendentes.clear();
         self.paint.dual.mascara = None;
@@ -121,6 +122,7 @@ impl PainterTool {
         );
         self.paint.dual.tex_rng = self.paint.seed ^ SEMENTE_DO_DUAL.rotate_left(17);
         let mut out = Vec::new();
+        m.set_tilt(tilt);
         m.begin(p, &mut out);
         self.paint.dual.pendentes.extend(out);
         self.paint.dual.motor = Some(m);
@@ -138,7 +140,7 @@ impl PainterTool {
     }
 
     /// O movimento `p`: a dobra da arte relida (como a da 1.ª) e o caminho estendido.
-    pub(super) fn dual_estende(&mut self, p: StrokePoint) {
+    pub(super) fn dual_estende(&mut self, p: StrokePoint, tilt: [f32; 2]) {
         let (Some(d), Some(autorado)) = (self.paint.brush.dual, self.paint.stroke_authored) else {
             return;
         };
@@ -150,6 +152,7 @@ impl PainterTool {
                 vivo.dab_angle_deg,
                 vivo.dab_curve,
             );
+            m.set_tilt(tilt);
             m.extend(p, out);
         });
     }

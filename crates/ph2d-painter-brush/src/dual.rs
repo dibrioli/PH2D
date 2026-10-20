@@ -201,8 +201,9 @@ impl DualTip {
         }
         s.dab_flatten = 0.0;
         s.dab_quina = 0.0;
+        // A caneta DEITADA é da mão, não da ponta (J3, `Pinceis/exames/grafite.md`): a 2.ª ponta deita-se com a 1.ª —
+        // de pé, o Multiply recortava a pegada deitada à largura de pé (o 8B com a orla: através 1,11×, Rebelle 3,45×).
         s.dab_tilt = None;
-        s.pen_tilt = crate::PenTilt::default();
         // A tinta da máscara: branca, cheia, sem nada que mude a cor nem a cobertura do dab.
         s.strength = 1.0;
         s.flow = 1.0;
@@ -309,5 +310,16 @@ mod tests {
         assert_eq!(s.color, [1.0; 3]);
         assert_eq!(s.strength, 1.0);
         assert!(s.dual.is_none());
+    }
+
+    /// ⭐ **A 2.ª ponta deita-se com a 1.ª** (J3): a lei da caneta deitada é da mão — o pincel dela leva-a.
+    #[test]
+    fn a_segunda_ponta_deita_se_com_a_primeira() {
+        let mut p = BrushSpec::default();
+        p.pen_tilt.start_deg = 39.0;
+        p.pen_tilt.width = 3.3;
+        let d = DualTip::DE_FABRICA;
+        p.dual = Some(d);
+        assert_eq!(d.pincel(&p).pen_tilt, p.pen_tilt);
     }
 }

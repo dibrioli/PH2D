@@ -154,3 +154,6 @@ seguinte; o resto entra em lotes.
    `doc` da `api_table` no MESMO commit — o gate `toda_entrada_da_api_tem_ajuda` e o `censo` seguram-nos. Onda nova,
    DEPOIS do smoke do dono da cena 5; plano + oráculo (Godot/Roblox: `await`/`wait`, `get_node`, `instantiate`,
    `Input`) antes de codar. A linha só fecha depois dela (ou o dono decide fechar antes).
+   **FEITO (20/10, `cad77678e0` · `27f74b40fc`):** oráculo Godot corrido e plano em
+   [05_api_que_funciona.md](05_api_que_funciona.md); cena `PH2D_CODE_SMOKE=6` (um jogo pequeno), fotos em
+   `ferramentas/smoke/cena6/`. Smoke do dono: pendente.

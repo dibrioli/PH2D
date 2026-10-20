@@ -159,3 +159,38 @@ objecto, sem copiar a cena por tique.
 dispositivos no host + texto da ajuda. 3. `ph2d-app-components`: as portas (`SceneDoors`, mortes, `script_input`, o
 ledger). 4. A shell compõe. 5. O gate do dreno e o assistente (`ph2d.d.luau`, G3). 6. Cena de smoke 6 (um jogo pequeno:
 nave às setas, tiro com espaço que nasce de um mestre e some ao fim de `wait`, clique cria no rato).
+
+## 6. Feito (20/10) — o que mudou no caminho e o que a FOTO achou
+
+Commits `cad77678e0` (a API) e `27f74b40fc` (cena 6 + override). Tudo do §3 entrou como escrito, com três
+correcções de rota:
+
+- **O `_G` não vazava.** Suspeitei dele e medi: a tabela partilhada já era TRANCADA (escrever é erro), e
+  isso estava documentado na página `_G`. Só o `loadstring` vazava. A troca do `_G` por script foi desfeita;
+  o gate `loadstring_nao_passa_globais_entre_scripts` confirma que ele continua trancado.
+- **O portão da família do inteiro corre cada caso como SCRIPT.** No ambiente global o compilador usa a
+  versão interna da função (`FASTCALL`) e salta a cura (`math.ldexp(1, 1e10)` deu `0`); no ambiente de um
+  script, onde o código do artista corre, a cura vale. Os nomes do `bit32` no Luau são `lrotate`/`rrotate`.
+  `utf8.len`/`utf8.codepoint` com um fim além do texto passaram a erro honesto.
+- **A tick recebe o `SimWorld`** (não o `World`): a instanciação de mestres (`instantiate_master_many`) é
+  sobre ele. `scene_tick`/`scene_hear` (sem portas, os testes) e `scene_tick_with`/`scene_hear_with` (o
+  produto, com `ScriptDoors`).
+
+**Achado pela foto da cena 6 (nenhum teste via):** a 1.ª cópia atirada perdia o script no quadro seguinte.
+O sync mestre → instância (`instance_sync.rs`) propaga a AUSÊNCIA de um componente, e *«sem eco do mestre,
+o mestre ganha»* — a 1.ª instância de uma receita ainda não tinha eco. Cura: o script que um script põe
+numa cópia é um **override** dela (`SceneDoors::attached` → `ObjectInstance.overrides`). O gate da cena 6
+passou a correr o registo do produto, o `sync_instances` e o `vec sync` em cada quadro (vermelho sem a cura).
+
+**A família do inteiro, classificada** (Luau 736, `luaL_checkinteger`/`optinteger` lidos no fonte vendido):
+saturadas — `string.sub/byte/rep/find/match/gsub/unpack`, `table.unpack/concat/move/remove`,
+`utf8.len/codepoint/offset`, `math.ldexp`, `bit32.lrotate/rrotate` (módulo 32); honestas como estão (erro fora do
+alcance) — `table.create`, `buffer.*`, `select`, `tonumber(base)`, `utf8.char`, `string.char`, `table.insert`,
+`table.find`, `bit32.extract/replace`; `math.random(1, 2^40)` dá erro com mensagem enganadora («interval is
+empty») e `math.randomseed` satura em silêncio (só a semente) — **declarados**.
+
+**Diferenças declaradas:** a roda do rato e o texto escrito (IME) não chegam ao jogo; o teclado que chega ao
+jogo também chega aos atalhos do editor (como o controlo de jogador de hoje); nomes iguais na cena são
+permitidos (`find_by_name` dá o primeiro); `ph2d.wait` dentro de uma corrotina do próprio artista pausa essa
+corrotina.
+

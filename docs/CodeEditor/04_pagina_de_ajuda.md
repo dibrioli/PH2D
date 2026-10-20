@@ -167,23 +167,23 @@ cadeia). Defeitos nossos achados:
 | Achado | Estado |
 |---|---|
 | `print(integer.maxsigned)` escrevia `9223372036854776000` (o `integer` voltava ao `tostring` como `number`) | **curado** em `console.rs::wire_print`; gate `o_print_de_um_integer_grande_nao_arredonda` (vermelho com a cura desligada) |
-| **`ph2d.wait` não funciona**: o `Scheduler` de `ph2d-script/src/lib.rs` não tem chamador no app (nada retoma a corrotina) e, dentro de um gancho, dá `attempt to yield across metamethod/C-call boundary` | **ABERTO** — controlo morto da API; a página `coroutine` di-lo claramente |
-| `loadstring`: o código carregado escreve os globais no ambiente PARTILHADO da thread, não no do script ⇒ dois scripts podem trocar globais por aí | **ABERTO — por medir com dois scripts reais** (isolamento) |
+| **`ph2d.wait` não funciona**: o `Scheduler` de `ph2d-script/src/lib.rs` não tem chamador no app (nada retoma a corrotina) e, dentro de um gancho, dá `attempt to yield across metamethod/C-call boundary` | **curado** (item 6, [05](05_api_que_funciona.md) §3.1): cada gancho corre numa corrotina; o `Scheduler` de protótipo saiu |
+| `loadstring`: o código carregado escreve os globais no ambiente PARTILHADO da thread, não no do script ⇒ dois scripts podem trocar globais por aí | **medido e curado** (item 6, 05 §3.7): vazava entre scripts (42); agora cada script tem o seu `loadstring` |
 | `require` falha sempre (`require is not supported in this context`) | declarado na página |
 | `collectgarbage` só aceita `"count"` | declarado na página |
 | O `eval` do `ScriptRuntime` não dá nome ao pedaço: as mensagens apanhadas por `pcall` começam por `crates/ph2d-script/src/lib.rs:89:N:` | só a bancada (os scripts reais têm nome, `module.rs`) |
-| `string.rep("x", 1e10)` devolve `""` em vez de erro | por investigar |
+| `string.rep("x", 1e10)` devolve `""` em vez de erro | **curado** com a família do inteiro (17 funções saturam; 05 §2) |
 
 **A API nossa** (lida no código ao escrever `api_help.rs`, 20/10; a página diz cada um às claras, as linhas `doc` da
 `api_table` ficaram como estavam):
 
 | Achado | Estado |
 |---|---|
-| `ph2d.find_by_name` devolve sempre `nil` no editor: ninguém fora de `ph2d-script` chama `provide_name` | **ABERTO** — controlo morto |
-| `spawn`, `spawn_named`, `despawn`, `attach_script` nunca acontecem: ninguém chama `drain_spawns()` (já registado em `the_intent_drain_reaches_every_variant.rs`); a fila nunca esvazia, sobrevive à reconstrução da VM e, passadas 1024 chamadas na sessão, cada nova chamada é erro que pára o objecto | **ABERTO** — controlo morto que acaba em erro |
-| `ph2d.get` só lê objectos que correm um script (a fotografia só os inclui); `ph2d.set` escreve em qualquer objecto com `Transform` | **ABERTO** — assimetria |
-| `ph2d.input` só vê o comando de jogo (`gamepad.held.*`, `gamepad.axis.*`); um eixo é `nil` até se mexer uma vez; teclado e rato nunca chegam aos scripts | **ABERTO** |
-| Estado lateral: `state_set(e, k, nil)` deixa `k` em `state_keys`; listas voltam com chaves de texto (`#t` = 0); não há como tirar um campo; sobrevive ao rebobinar | **ABERTO** |
+| `ph2d.find_by_name` devolve sempre `nil` no editor: ninguém fora de `ph2d-script` chama `provide_name` | **curado** (05 §3.2) |
+| `spawn`, `spawn_named`, `despawn`, `attach_script` nunca acontecem: ninguém chama `drain_spawns()` (já registado em `the_intent_drain_reaches_every_variant.rs`); a fila nunca esvazia, sobrevive à reconstrução da VM e, passadas 1024 chamadas na sessão, cada nova chamada é erro que pára o objecto | **curado** (05 §3.3): a fila saiu, agem pela pista |
+| `ph2d.get` só lê objectos que correm um script (a fotografia só os inclui); `ph2d.set` escreve em qualquer objecto com `Transform` | **curado** (05 §3.4) — e o `set` num objecto sem script já volta ao rebobinar |
+| `ph2d.input` só vê o comando de jogo (`gamepad.held.*`, `gamepad.axis.*`); um eixo é `nil` até se mexer uma vez; teclado e rato nunca chegam aos scripts | **curado** (05 §3.5): `ph2d.key_*`, `ph2d.mouse_*` |
+| Estado lateral: `state_set(e, k, nil)` deixa `k` em `state_keys`; listas voltam com chaves de texto (`#t` = 0); não há como tirar um campo; sobrevive ao rebobinar | **curado** (05 §3.6) |
 | `ph2d.set` com campo desconhecido ou NaN não falha na chamada: o objecto pára quando o gancho acaba | declarado |
 | `emit`: o `on_signal` ouve-o no quadro SEGUINTE, em todo objecto com o gancho, o emissor incluído | declarado |
 | O Inspector só escreve em `self.<prop>` quando o valor do Inspector muda | declarado |

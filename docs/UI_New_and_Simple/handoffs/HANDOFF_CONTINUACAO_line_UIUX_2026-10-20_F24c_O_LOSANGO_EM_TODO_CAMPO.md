@@ -65,7 +65,7 @@ Position X/Y → `[TranslationX, TranslationY, Position]`, Rotation, Scale X/Y �
 - Vocabulário `canal_vetor` só APPEND (200–212); `PropKind::Field` e `DOC_VERSION 21` seguem do F24a §3.
 - Contadores como DELTA: shell +47/−7 linhas; gate novo +4 testes; cena de smoke +3 (`PH2D_AUTOKEY_SMOKE` passa a `1..7`).
 
-## 4 — Smoke do dono (binário `smoke` deixado compilado; cole «Finished … zero Compiling» aqui ao entregar: ____)
+## 4 — Smoke do dono (binário `smoke` já compilado: 2.ª build `Finished smoke profile in 0.75s`, zero `Compiling`)
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-UIUX && PH2D_AUTOKEY_SMOKE=5 ./target/smoke/ph2d-host-desktop` — estrela com degradê laranja→roxo, contorno amarelo extra (2.ª entrada da pilha, já aberta no painel Vector), anéis brancos à volta (Contour), Auto Key ligado, relógio no quadro 12.
 2. No painel Vector → Appearance, mude o «Opacity» por baixo de Width/X/Y/Offset (é o da entrada amarela) para 40.

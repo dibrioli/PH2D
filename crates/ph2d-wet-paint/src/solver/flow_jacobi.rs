@@ -78,7 +78,7 @@ struct FlowConst {
     max_v: f64,
     level_k: f64,
     level_clamp: f64,
-    /// A lei [`Knob::LevelingOwnStroke`] (com o campo do traço na grade).
+    /// As paredes entre traços neste passo ([`crate::sim::Sim::paredes`]; a lei é da tinta).
     isola: bool,
     cap_k: f64,
     cap_gate: f64,
@@ -118,7 +118,7 @@ impl FlowConst {
             max_v: p.k(Knob::MaxVelocity),
             level_k: p.k(Knob::Leveling),
             level_clamp: p.k(Knob::LevelClamp),
-            isola: p.k(Knob::LevelingOwnStroke) > 0.0,
+            isola: p.paredes,
             cap_k: p.k(Knob::Capillary),
             cap_gate: p.k(Knob::CapillaryGate),
             visc_threshold: p.k(Knob::Viscosity),
@@ -201,7 +201,7 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
         traco,
         ..
     } = g;
-    let traco_full: &[u16] = traco;
+    let traco_full: &[u32] = traco;
     let isola = c.isola && !traco_full.is_empty();
     // Tudo abaixo é LEITURA — é isto que faz do passe um gather, e o
     // compilador o verifica em vez de um comentário o prometer.
@@ -276,7 +276,7 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                 let fx = fx_off as usize;
                 let [wx, wy] = super::parede_do_traco(isola.then(|| {
                     let viz = [frow + kfl, frow + kfr, fy_u * fine_s + fx + kf, fy_d * fine_s + fx + kf];
-                    (traco_full, frow + kf, viz)
+                    (traco_full, susp_full, frow + kf, viz)
                 }));
                 let mut lx = if wx {
                     0.0

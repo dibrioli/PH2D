@@ -70,7 +70,9 @@ impl PontaDasCerdas {
     }
 
     /// A silhueta `sil` na célula `(cx, cy)` com a ponta das cerdas: a do dab deslocada ao longo do traço pelo desvio
-    /// do fio da célula.
+    /// do fio da célula — SUB-CÉLULA (a bilinear das quatro células em volta do ponto deslocado): o desvio em px não
+    /// pode depender do tamanho da célula (arredondado a células inteiras, a 2 px por célula o pente lia 0,44 da
+    /// altura a 1 px no lugar de 0,5).
     pub(super) fn recorta(&self, sil: CellFn<'_>, cx: i32, cy: i32) -> f64 {
         let d = [
             (f64::from(cx) - self.centro[0]) * self.px_cel,
@@ -80,7 +82,17 @@ impl PontaDasCerdas {
         let fio = self.fios.fio_no_ponto(d);
         let desvio = self.meia * (FiosNoDab::comprimento_do_fio(fio, self.rho) - 1.0);
         let t = [n[1], -n[0]];
-        let c = |k: usize, v: i32| v - (t[k] * desvio / self.px_cel).round() as i32;
-        sil(c(0, cx), c(1, cy))
+        let q = [
+            f64::from(cx) - t[0] * desvio / self.px_cel,
+            f64::from(cy) - t[1] * desvio / self.px_cel,
+        ];
+        let (x0, y0) = (q[0].floor(), q[1].floor());
+        let (fx, fy) = (q[0] - x0, q[1] - y0);
+        let (x0, y0) = (x0 as i32, y0 as i32);
+        let s = |x: i32, y: i32, w: f64| if w > 0.0 { w * sil(x, y) } else { 0.0 };
+        s(x0, y0, (1.0 - fx) * (1.0 - fy))
+            + s(x0 + 1, y0, fx * (1.0 - fy))
+            + s(x0, y0 + 1, (1.0 - fx) * fy)
+            + s(x0 + 1, y0 + 1, fx * fy)
     }
 }

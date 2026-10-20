@@ -25,6 +25,7 @@ impl Engine {
     /// custa **38,7 ms** na escala do produto (medido) contra 16,6 de um quadro de 60 Hz, e o maior
     /// estágio sozinho custa 10,26. Ver [`crate::sim::StepCursor`].
     pub fn step_stage(&mut self) -> Option<bool> {
+        self.sim.paredes = self.paredes_valem();
         let idx = self.active_layer;
         let had_fluid = self.layers[idx].grid.has_fluid;
         let pre = if had_fluid {

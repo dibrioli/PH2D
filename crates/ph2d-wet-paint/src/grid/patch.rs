@@ -45,7 +45,7 @@ pub struct GridPatch {
     /// A altura dos fios no recorte; VAZIA quando a grade não a tinha (restaurar = zerar a janela).
     altura: Vec<f32>,
     /// O traço de cada célula no recorte ([`super::traco`]); VAZIO quando a grade não o tinha.
-    traco: Vec<u16>,
+    traco: Vec<u32>,
     vela: Vec<f32>,
     wet: Vec<u8>,
     active: Vec<u8>,

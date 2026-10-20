@@ -54,7 +54,9 @@ pub struct Params {
     /// [`Sim::relevo_do_tamanho`].
     pub relevo_do_tamanho: f64,
     /// [`Sim::traco_actual`].
-    pub traco_actual: u16,
+    pub traco_actual: u32,
+    /// [`Sim::paredes`].
+    pub paredes: bool,
 }
 
 impl Params {
@@ -141,7 +143,11 @@ pub struct Sim {
     pub relevo_do_tamanho: f64,
     /// **O traço de agora** ([`Knob::LevelingOwnStroke`]): o número que cada célula pintada guarda
     /// ([`crate::grid::Grid::traco`]); `0` = nenhum. Muda a cada traço ([`crate::painter::Engine::begin_direct_stroke`]).
-    pub traco_actual: u16,
+    pub traco_actual: u32,
+    /// **As paredes entre traços valem neste passo?** ([`crate::solver::parede_do_traco`]) A lei é da TINTA (a célula
+    /// guarda se o seu traço isola); as ferramentas que MOVEM tinta (Blow, Wet, Smear, Blend) movem-na por cima delas
+    /// — o engine põe-no a cada passo pela ferramenta activa.
+    pub paredes: bool,
     /// Force-skip every SPEC §17 extension code path (neutrality test §18.10).
     pub ext_bypass: bool,
     /// **O solver é INDEPENDENTE DE ORDEM?** `true` (o default) roda o
@@ -222,6 +228,7 @@ impl Default for Sim {
             semente_do_po: 0,
             relevo_do_tamanho: 1.0,
             traco_actual: 0,
+            paredes: true,
             ext_bypass: false,
             order_invariant: true,
             pending: None,
@@ -324,6 +331,7 @@ impl Sim {
             semente_do_po: self.semente_do_po,
             relevo_do_tamanho: self.relevo_do_tamanho,
             traco_actual: self.traco_actual,
+            paredes: self.paredes,
         }
     }
 }

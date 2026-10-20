@@ -63,7 +63,7 @@ pub struct Grid {
     pub altura: Vec<f32>,
     /// **O TRAÇO** que pousou a tinta da célula (J2, [`traco`]): o nivelamento não escoa de um traço para a tinta
     /// molhada de outro. VAZIO até o primeiro pincel com a lei pintar ([`traco::garante`]).
-    pub traco: Vec<u16>,
+    pub traco: Vec<u32>,
     /// **O GLAZE da tinta em suspensão** (prompt 42): a fracção que filtra a de baixo — o Glaze do pincel que a
     /// pousou, pesado pela massa SUSPENSA (como o [`Self::relevo`]: trocar de pincel não muda a tinta da tela).
     /// Lido pela lei do ecrã de cada célula ([`crate::assenta::Ecra::com_vela`]); `0` = a lei da obra.
@@ -551,7 +551,7 @@ pub struct GridSnapshot {
     pub sett_rgb: Vec<[f32; 3]>,
     pub relevo: Vec<f32>,
     pub altura: Vec<f32>,
-    pub traco: Vec<u16>,
+    pub traco: Vec<u32>,
     pub vela: Vec<f32>,
     pub vel_x: Vec<f32>,
     pub vel_y: Vec<f32>,

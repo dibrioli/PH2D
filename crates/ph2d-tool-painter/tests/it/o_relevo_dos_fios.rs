@@ -529,9 +529,7 @@ fn o_relevo_e_do_emboss() {
 /// (0,45–0,55 do de 1 px, no máximo e no desvio). A mutação «sem o ÷ px por célula» dá 1.
 #[test]
 fn a_altura_e_por_px_de_tela() {
-    // A ponta das cerdas (J2 §7 c: o desvio de cada fio e a face da lâmina) arredonda em células INTEIRAS — a 2 px
-    // por célula o dobro (a razão lia 0,44); a lei que este portão prova (o ÷ px por célula) é a do relevo, sem ela.
-    let p = com_knobs(com_relevo(), "-bristleTipRagged");
+    let p = com_relevo();
     let (_, a1) = pinta_recto(&p, true, 1.0);
     let (_, a2) = pinta_recto(&p, true, 2.0);
     let max = |a: &[f32]| a.iter().fold(0.0f32, |m, &h| m.max(h.abs()));

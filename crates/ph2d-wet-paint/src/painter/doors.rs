@@ -66,6 +66,13 @@ impl Engine {
     /// Begin (or re-begin) a lane's stroke at `(x, y)` — grows the lane pool
     /// on demand; a lane can be born mid-stroke (a Tiling wrap starts when
     /// the stroke reaches the edge).
+    /// As paredes entre traços valem com a ferramenta activa? As que MOVEM tinta (Blow, Wet, Smear, Blend) passam por
+    /// cima delas — a parede é a da tinta a nivelar-se, não um muro para o sopro ([`crate::sim::Sim::paredes`]).
+    #[must_use]
+    pub fn paredes_valem(&self) -> bool {
+        !matches!(self.tool, Tool::Blow | Tool::Wet | Tool::Smear | Tool::Blend)
+    }
+
     pub fn begin_direct_stroke(&mut self, lane: usize, x: f64, y: f64) {
         self.stroke_down = true;
         // O traço NOVO (a lane 0 nasce primeiro; as cópias e as do Tiling são o mesmo traço): o número que a sua

@@ -461,6 +461,7 @@ impl Engine {
     }
 
     pub fn step_simulation(&mut self) -> bool {
+        self.sim.paredes = self.paredes_valem();
         let idx = self.active_layer;
         let had_fluid = self.layers[idx].grid.has_fluid;
         let pre = if had_fluid {

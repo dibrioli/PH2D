@@ -494,6 +494,30 @@ impl PainterTool {
             let fios_dab = fios.no_dab(arco, rumo, contacto);
             // O RELEVO de cada fio (W3): as faixas dos fios, mesmo sem pressão nem cor, e a altura de cada uma.
             let relevo_dab = (!relevo.neutro())
+            let px_cel = f64::from(ratio);
+            let cell_x = grid_map::px_to_cell(f64::from(x), ratio);
+            let cell_y = grid_map::px_to_cell(f64::from(y), ratio);
+            let cell_r = grid_map::px_len_to_cell(f64::from(d.radius_px), ratio);
+            // A caixa do relevo (W3): a da PEGADA da silhueta (a extensão de `fp_raio` × o alcance do Shape).
+            let meia = {
+                let (e, alc) = (fp_raio.extent(), sess.engine.silhouette_reach[0].max(1.0));
+                [0, 1].map(|i| cell_r * alc * f64::from(e[i]))
+            };
+            // A PONTA DESFIADA (J2 §7 c): cada fio com o seu desvio ao longo do traço ([`super::ponta_das_cerdas`]).
+            let rho = sess.engine.tuning.get(ph2d_wet_paint::tuning::Knob::BristleTipRagged);
+            let alc = meia[0].max(meia[1]) * px_cel;
+            let ponta = super::ponta_das_cerdas::PontaDasCerdas::nova(
+                relevo_dab.or(fios_dab), rho, [centro_x, centro_y], px_cel, alc, &sil,
+            );
+            let sil = |cx: i32, cy: i32| ponta.as_ref().map_or_else(|| sil(cx, cy), |p| p.recorta(&sil, cx, cy));
+            // O depósito, o pente e o grão que lê a ponta leem a MESMA silhueta (com a ponta), avaliada UMA vez por célula
+            // e guardada no dab ([`super::sil_memo`]), ao byte.
+            let memo = (relevo_dab.is_some() || grain_active && spec.texture.lei.mode.le_a_ponta())
+                .then(|| super::sil_memo::SilMemo::nova(cell_x, cell_y, meia));
+            let sil = |cx: i32, cy: i32| -> f64 {
+                memo.as_ref()
+                    .map_or_else(|| sil(cx, cy), |m| m.ou(cx, cy, sil))
+            };
                 .then(|| fios_dab.unwrap_or_else(|| fios.resolvido(arco, rumo, contacto)));
             let cor = rampa.as_ref().map(|r| {
                 move |cx: i32, cy: i32, queda: f64| -> [f32; 4] {
@@ -503,7 +527,6 @@ impl PainterTool {
                 }
             });
             // O que é de cada FIO, uma vez por dab (o traço rápido pagava os Perlin e o HSLuv por célula).
-            let px_cel = f64::from(ratio);
             let tabela = fios_dab.map(|f| f.tabela(f64::from(d.radius_px) * 2.0 + 4.0 * px_cel));
             let tabela = tabela.as_ref();
             // A cor de cada FIO (W2, o ruído HSLuv) sobre a da Shape Color ou a do dab.
@@ -588,27 +611,6 @@ impl PainterTool {
             // na sua própria grade. O `d.radius_px` continua sendo o raio da
             // silhueta (em pixels), e é assim que o pincel não muda de tamanho
             // quando a razão muda: o mesmo disco, resolvido mais grosso.
-            let cell_x = grid_map::px_to_cell(f64::from(x), ratio);
-            let cell_y = grid_map::px_to_cell(f64::from(y), ratio);
-            let cell_r = grid_map::px_len_to_cell(f64::from(d.radius_px), ratio);
-            // A caixa do relevo (W3): a da PEGADA da silhueta (a extensão de `fp_raio` × o alcance do Shape).
-            let meia = {
-                let (e, alc) = (fp_raio.extent(), sess.engine.silhouette_reach[0].max(1.0));
-                [0, 1].map(|i| cell_r * alc * f64::from(e[i]))
-            };
-            // A PONTA DESFIADA (J2 §7 c): cada fio com o seu desvio ao longo do traço ([`super::ponta_das_cerdas`]).
-            let rho = sess.engine.tuning.get(ph2d_wet_paint::tuning::Knob::BristleTipRagged);
-            let alc = meia[0].max(meia[1]) * px_cel;
-            let ponta = super::ponta_das_cerdas::PontaDasCerdas::nova(
-                relevo_dab.or(fios_dab), rho, [centro_x, centro_y], px_cel, alc, &sil,
-            );
-            let sil = |cx: i32, cy: i32| ponta.as_ref().map_or_else(|| sil(cx, cy), |p| p.recorta(&sil, cx, cy));
-            // O depósito e o pente leem a MESMA silhueta: guardada no dab ([`super::sil_memo`]), ao byte.
-            let memo = relevo_dab.map(|_| super::sil_memo::SilMemo::nova(cell_x, cell_y, meia));
-            let sil = |cx: i32, cy: i32| -> f64 {
-                memo.as_ref()
-                    .map_or_else(|| sil(cx, cy), |m| m.ou(cx, cy, sil))
-            };
             // O dual brush (L6) recorta o que POUSA pelo canal do padrão (depois do portão do papel, `RecorteNoWet`).
             let pad = dual.as_ref().map(|r| r.padrao(padrao_arg, &sil, ratio));
             let padrao_arg = pad.as_ref().map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));

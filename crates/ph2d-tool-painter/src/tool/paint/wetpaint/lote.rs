@@ -136,12 +136,14 @@ pub(super) fn sub_passo_do_lote(
 /// e da cápsula). Abaixo dele a contagem por célula cai com o diâmetro, e com ela o pigmento e a água por área: o
 /// recto de 5 px do 8B cobria 0,38 contra 0,81 a 40 px (o Rebelle 0,80 nos dois). Cada dab pesa então a célula ÷ o
 /// passo natural a [`FRACAO_DO_FINO`] do diâmetro — a contagem por área de um traço de ~29 px —; `1` daí para cima, ao
-/// bit.
+/// bit. ⭐ Com o TECTO da lei física: o fino pousa `max(2r ÷ célula, 1)` dabs por célula — um dab menor que a célula
+/// pousa nela UMA vez —, e o pigmento por área nunca passa o do largo (`1 ÷ FRACAO_DO_FINO` dabs): a 2 px por célula
+/// e r 0,5 o peso lia 57× num só dab (`peso_tests`).
 pub(super) fn peso_do_passo_fino(brush: &BrushSpec, ratio: u8) -> f32 {
     let natural = FRACAO_DO_FINO * 2.0 * brush.clamped_radius();
     let cel = f32::from(ratio).max(1.0);
     if natural > 0.0 && natural < cel {
-        cel / natural
+        (cel / natural).min(1.0 / FRACAO_DO_FINO)
     } else {
         1.0
     }
@@ -173,6 +175,36 @@ pub(super) const FRACAO_DO_FINO: f32 = 0.035;
 /// cap): o alvo de cada fio tabelado UMA vez por dab (o ruído de cada fio custava dois Perlin por célula — doc
 /// 49_medicao §5), contínuo através dos fios (o degrau por fio era a escada do traço inclinado), penteado na silhueta
 /// `sil` do dab (`cel` = o centro em células, `meia` = a meia-caixa, `passos` = o pente por comprimento).
+
+#[cfg(test)]
+mod peso_tests {
+    /// ⭐ **O traço fino nunca pousa mais pigmento por área que o largo** (o tecto de [`super::peso_do_passo_fino`]): o
+    /// largo pousa `1 ÷ FRACAO_DO_FINO` dabs por célula; o fino de passo de UMA célula pousa `max(2r ÷ célula, 1)` —
+    /// o peso é a razão, e nunca passa `1 ÷ FRACAO_DO_FINO` (a 2 px por célula e r 0,5 lia 57×; a 4, 114×). Acima do
+    /// diâmetro natural, 1.
+    #[test]
+    fn o_fino_nao_passa_o_pigmento_por_area_do_largo() {
+        let tecto = 1.0 / super::FRACAO_DO_FINO;
+        for ratio in [1u8, 2, 3, 4] {
+            for r in [0.5f32, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0, 14.0, 20.0, 60.0] {
+                let b = ph2d_painter_brush::BrushSpec {
+                    radius_px: r,
+                    ..Default::default()
+                };
+                let p = super::peso_do_passo_fino(&b, ratio);
+                let cel = f32::from(ratio);
+                let por_celula = (2.0 * r / cel).max(1.0);
+                let esperado = if 2.0 * super::FRACAO_DO_FINO * r < cel {
+                    (tecto / por_celula).max(1.0)
+                } else {
+                    1.0
+                };
+                assert!(p <= tecto + 1e-3, "r {r} grelha {ratio}: peso {p} > o tecto {tecto}");
+                assert!((p - esperado).abs() < 1e-3 * esperado, "r {r} grelha {ratio}: {p} ≠ {esperado}");
+            }
+        }
+    }
+}
 #[allow(clippy::too_many_arguments)]
 pub(super) fn penteia_o_relevo_do_dab(
     engine: &mut ph2d_wet_paint::painter::Engine,

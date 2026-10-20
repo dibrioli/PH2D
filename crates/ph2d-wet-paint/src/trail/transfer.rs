@@ -226,8 +226,10 @@ impl Trail {
         let water_cap = p.k(Knob::WaterCap); // each drag leaks ~0.8% wetness
         // O relevo pelo diâmetro do traço (J2 §7 c): `1` = o `Emboss` do pincel, ao bit.
         let relevo = (p.k(Knob::Emboss) * p.relevo_do_tamanho) as f32;
-        // O traço de cada célula (J2 §7 d): só com a lei e um traço aberto.
-        let traco = (p.k(Knob::LevelingOwnStroke) > 0.0 && p.traco_actual != 0).then_some(p.traco_actual);
+        // O traço de cada célula (J2 §7 d): a lei é da TINTA — o pincel com ela marca a célula com o seu traço; um sem
+        // ela, por cima, desmarca-a (a tinta misturada já não isola). Sem o campo e sem a lei, nada.
+        let lei = p.k(Knob::LevelingOwnStroke) > 0.0;
+        let traco = (lei || !g.traco.is_empty()).then_some(if lei { p.traco_actual } else { 0 });
         if traco.is_some() {
             crate::grid::traco::garante(g);
         }

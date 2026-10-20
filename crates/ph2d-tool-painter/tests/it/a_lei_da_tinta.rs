@@ -31,7 +31,7 @@ const CENAS: [(&str, bool, u64); 22] = [
     // Os 22 repintados pela regra do prompt 51 (Spacing 0,1 + Continuous em todos, doc 51_medicao); o Airbrush também
     // pela curva da pressão no tamanho que casa as pontas do Rebelle (ordem do dono 19/10).
     // J2 (03_MOTORES §7 a): a pressão de cada preset passou a ser a da sua origem no Rebelle (a cena tem a rampa).
-    ("Oil Bristle", false, 0x578ac0bb49aefb97), // J2 §7 c/d: o relevo pelo diâmetro, a parede, a ponta (era 0x939fc3665324de0d)
+    ("Oil Bristle", false, 0xcd20d9a3853d6fb1), // J2 §7 c/d: o relevo pelo diâmetro, a parede, a ponta (era 0x939fc3665324de0d)
     ("Acrylic Round", false, 0xb6475854432e61f0),
     ("Express Oil", false, 0x6ae408041d1e042f),
     ("Graphite 8B", false, 0x67ffa64a8ff6631a),

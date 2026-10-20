@@ -495,23 +495,72 @@ fn a_ponta_das_cerdas_e_recta_e_desfiada() {
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
 
+/// ⭐ **A ponta desfiada não depende da GRADE**: o desvio de cada fio é em px (sub-célula, a bilinear das quatro
+/// células); o desfiado do recto de 40 px do Oil Bristle a 2 px por célula fica a ±25 % do de 1 px por célula
+/// (1,15 · 1,05). ⚠️ A mutação «arredondado à célula» SOBREVIVE aqui (a 2 px o efeito fica abaixo do ruído da régua do
+/// desfiado) e a 4 px a própria célula do motor domina (1,91 com ou sem ela): o portão guarda a ordem de grandeza.
+#[test]
+fn a_ponta_desfiada_nao_depende_da_grade() {
+    let p = pinceis("Oil Bristle").remove(0);
+    let des = |ratio: f64| {
+        let mut t = tela_com(&p, 40.0);
+        t.set_wet_grid_ratio(ratio);
+        traco(&mut t, &pontos("tamanhos", "recto_40"));
+        for _ in 0..240 {
+            t.on_tick(1000.0 / 60.0);
+        }
+        ponta(&t.run_full().0, 190, 70).1
+    };
+    let (a, b) = std::thread::scope(|s| {
+        let a = s.spawn(|| des(1.0));
+        let b = s.spawn(|| des(2.0));
+        (a.join().unwrap(), b.join().unwrap())
+    });
+    println!("[grade] desfiado a 40 px: 1 · 2 px/célula {a:.2} · {b:.2}");
+    assert!((b / a - 1.0).abs() <= 0.25, "o desfiado muda com a grade: {a:.2} → {b:.2}");
+}
+
 /// ⭐⭐ **(d) A tinta molhada NÃO ALARGA o traço** (03_MOTORES §7 d; `Knob::LevelingOwnStroke`): o azul do Oil
-/// Bristle que cruza a faixa vermelha AINDA MOLHADA tem a largura que tem sobre a seca, ±1 px, nos três cruzamentos
-/// (o Rebelle 12/12 · 14/14 · 12/12). Antes: 19/12 nos três — o nivelamento escoava o filme do traço novo para as
+/// Bristle que cruza a faixa vermelha AINDA MOLHADA tem a largura que tem sobre a SECA, ±1 px, nos três cruzamentos
+/// (o Rebelle 12/12 · 14/14 · 12/12). O controlo é a seca do MESMO pincel SEM a lei (sobre o seco a lei não age:
+/// a parede é só entre tintas molhadas). Antes: 19/12 nos três — o nivelamento escoava o filme do traço novo para as
 /// células da faixa molhada, que o mantêm activo.
 #[test]
 fn a_tinta_molhada_nao_alarga_o_traco() {
-    let px = cena(&pinceis("Oil Bristle").remove(0), "sobre");
+    let (px, sem) = std::thread::scope(|s| {
+        let a = s.spawn(|| cena(&pinceis("Oil Bristle").remove(0), "sobre"));
+        let b = s.spawn(|| cena(&com("Oil Bristle", "levelingOwnStroke=0"), "sobre"));
+        (a.join().unwrap(), b.join().unwrap())
+    });
     let l: Vec<(f64, f64)> = [250usize, 500, 750]
         .iter()
-        .map(|&x| lente(&px, x))
+        .map(|&x| (lente(&px, x).0, lente(&sem, x).1))
         .collect();
-    println!("[lente] molhada/seca {l:?}");
+    println!("[lente] molhada (com a lei) / seca (sem a lei) {l:?}");
     for (m, s) in &l {
-        assert!(
-            *m <= s + 1.0,
-            "a lente: {m} px sobre a molhada contra {s} sobre a seca"
-        );
+        assert!(*m <= s + 1.0, "a lente: {m} px sobre a molhada contra {s} sobre a seca sem a lei");
+    }
+}
+
+/// ⭐⭐ **(d) A parede é da TINTA, não do pincel activo**: o Oil Bristle pinta a cena `sobre` e o artista troca para um
+/// pincel SEM a lei (o mesmo óleo, `levelingOwnStroke` 0) ANTES de a água correr — os traços do óleo continuam sem escoar uns nos outros (a lente
+/// ±1 px da seca). Antes a lei era lida do pincel activo: trocar de pincel tirava as paredes da tinta já pousada.
+#[test]
+fn a_parede_e_da_tinta_e_nao_do_pincel_activo() {
+    let bat = bateria();
+    let c = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "sobre").unwrap();
+    let mut ops = c["ops"].as_array().unwrap().clone();
+    let k = ops.iter().rposition(|o| o["op"] == "simula").unwrap();
+    ops.insert(k, serde_json::json!({"op": "pincel", "quem": "base"}));
+    let cena_troca = serde_json::json!({"nome": "sobre", "ops": ops});
+    let oleo = pinceis("Oil Bristle").remove(0);
+    // O outro pincel é o MESMO óleo sem a lei (o mesmo nivelamento: um Wet Round nivela pouco e não provaria nada).
+    let outro = com("Oil Bristle", "levelingOwnStroke=0");
+    let px = super::exame_bancada::pinta_cena(&oleo, Some(&outro), &cena_troca, [1000, 640], [255; 3], 0).1;
+    let l: Vec<(f64, f64)> = [250usize, 500, 750].iter().map(|&x| lente(&px, x)).collect();
+    println!("[parede] com o pincel sem a lei activo: molhada/seca {l:?}");
+    for (m, s) in &l {
+        assert!(*m <= s + 1.0, "trocar de pincel tirou a parede: {m} px contra {s}");
     }
 }
 

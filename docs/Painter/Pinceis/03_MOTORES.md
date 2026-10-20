@@ -264,6 +264,12 @@ de teste; o carvão de fábrica é da J3. SHA `b3c2379bdb`. Portões: `sem_dual_
 `so_o_digital_le_o_dual`, `seam_ponta::o_dual_brush_pelo_ponteiro`, `a_placa_pinta_o_dual_como_a_cpu` (RTX, 0 bytes),
 `dual::` (3), macro, censo. Mutações SANGRAM: recorte desligado; motor sem o movimento; imagem fora do preset (M2 sobrevive
 a `cada_modo…`, declarado).
+**L6 custo ✅ (J2, 20/10, `7973c324de`)** — os 10/475 quadros > 16,7 ms a 200 px eram ESPERAS (o mínimo de 10 rodadas
+intercaladas dava 0): a composição do plano (61–92 % do tempo do dual) acordava o pool por pegadas pequenas e compunha
+também por marcas soltas da 2.ª ponta. Cura em `traco_plano`: marcas soltas esperam pelo lote da 1.ª, pegada < 16 384
+texels em série, pool em blocos de 16 linhas, texel sem tinta copia a base. Medido intercalado
+(`o_dual_brush::mede_o_custo_do_dual`, load 13–19): > 16,7 ms por rodada 0 × 0 (com/sem dual) a 40 e a 200 px;
+bancada 0/475, p95 0,66/1,99 ms. Portão novo `a_segunda_ponta_acompanha_o_traco_inteiro` (a mutação M2 SANGRA).
 
 **L7 — Modos de mistura nos pincéis de fábrica** (CAP-05). O motor JÁ mistura (§1.1, §1.4). Falta: medir o Marker/Effect do Rebelle
 (Linear Burn, Color, Additive, Hue, Luminosity, Overlay, Saturation; a cena do 52 §A pintou 0 px sob o Wine ⇒ repetir sem o `DRY` entre

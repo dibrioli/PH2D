@@ -61,3 +61,11 @@ Já observado: D2 medido VERMELHO no quadro real (4 testes de `autokey_opacidade
 6. Checkbox/toggle no canvas (F18 ABERTO 3): decisão visual do dono. F20 ABERTO 6, F18 4, F16–17 seguem herdados.
 7. `CLAUDE.md` §5.1 UI/UX: **não** alterado; ao fechar a linha, trocar o link do último handoff e o intervalo do smoke (`…37` → `…38` se a cena 38 entrar).
 8. `nextest-impacted` não corrido nesta onda.
+
+## 6 — Depois do handoff: a cena do Auto Key, o smoke e a ordem do dono (19/10)
+
+- Report do dono: *«opacity ainda não funciona com auto key, não grava quadros, assim como as outras propriedades dos desenhos vetoriais»*. Commit `b3a889a629`: cena `PH2D_AUTOKEY_SMOKE=1|2` (`ph2d-app-vec/src/autokey_cena.rs`, chamada em `fase_object_mode.rs`; `=2` mexe sozinha) e a sonda `PH2D_AUTOKEY_LOG=1` (`autokey_pass.rs` `sonda`: painel/armado/população, e por entidade capturando/solo/t/casa/pose/fila — uma linha quando muda).
+- **Medido no app** (`=2`, tela virtual): Opacity ← 30 ⇒ chave 0,30 no quadro 12 (2 → 3 chaves); X do objecto +1 ⇒ chave de X (2 → 3). Fotos `fotos/F23_autokey_1_inicio.png` (Opacity 60 no Appearance e na barra = a curva) e `F23_autokey_2_gravou.png`.
+- **O mecanismo do resto do report:** a Posição X/Y do painel do vetor (`despacho_vetor_alinhar_e_forma.rs` → `translate_path_world`), o arrasto e o empurrão da ferramenta Vetor (`selection.rs:257` `translate_path`) movem os PONTOS; o `Transform` que a timeline anima não muda e o Auto Key nada vê. Só o arrasto do gizmo de objecto (`vec_snap.rs` `slide_entity_world`) mexe no `Transform`.
+- ✅ **Smoke do dono: OK (19/10)** — a cena `=1`, Opacity 30 ⇒ chave.
+- ⛔⛔ **ORDEM DO DONO (19/10), a próxima onda:** *«O auto key deve gravar absolutamente tudo neste app, não só as transformações»* (memória `project_autokey_records_everything_2026_10_19.md`). Toda propriedade editável vira canal animável e o Auto Key armado grava-a — inclusive a edição dos PONTOS (não é cura «mover o objecto em vez dos pontos»). Hoje a timeline só anima os 19 `PropKind` (`ph2d-timeline/src/prop.rs:21`, fio congelado só por APPEND): cor, largura e tracejado do traço, cantos, geometria e o resto não têm canal. Comece por inventariar as propriedades editáveis por família e medir o modelo de canais (Rive / After Effects: cada propriedade tem chave); o losango da metade B (§5) passa a valer para todas.

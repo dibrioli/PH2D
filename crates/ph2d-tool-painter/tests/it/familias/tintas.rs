@@ -23,7 +23,7 @@ pub const WET: &[Receita] = &[
         pickup: 1.0,
         gate: 0.0,
         evaporation: 3.0,
-        // A orla do nanquim (o portão da mídia: a foto `inkbrush` tem-na; sem ela o Orla caía a 1,0).
+        // A beira que escurece um pouco (o revisor cego viu-a nos verticais do Rebelle).
         edge: 60.0,
         tilt: DIREITA,
         bristle_size: 2.0,
@@ -56,8 +56,9 @@ pub const WET: &[Receita] = &[
         nome: "Dip Pen",
         water: 0.3,
         opacity: 1.0,
-        // 150 e não 1100: o pigmento a mais SATURA a cápsula e a ponta leve da rampa ficava opaca (a do Rebelle é clara).
-        pigment: 150.0,
+        // 300 e não 1100: o pigmento a mais SATURA a cápsula e a ponta leve da rampa ficava opaca (a do Rebelle é clara);
+        // abaixo de ~300 a borda clareia e sai do vale da foto `dippen` (Borda 0,84 a 150, 0,88 a 300; Rebelle 0,91).
+        pigment: 300.0,
         pickup: 10.0,
         gate: 0.0,
         evaporation: 1.0,
@@ -265,7 +266,10 @@ pub const MEIOS: &[ReceitaMeio] = &[
 pub const MIDIAS: &[Midia] = &[
     Midia { preset: "Ink Bullet", foto: "ink", raio: 21.0, metricas: &[(Cobertura, 0.862), (Textura, 0.395), (Cruzamento, 0.117)] },
     Midia { preset: "Dip Pen", foto: "dippen", raio: 19.0, metricas: &[(Cobertura, 0.856), (Textura, 1.433), (Borda, 0.910), (Cruzamento, 0.223)] },
-    Midia { preset: "Ink Brush", foto: "inkbrush", raio: 20.0, metricas: &[(Cobertura, 0.722), (Textura, 1.266), (Borda, 0.793), (Orla, 5.0), (Cruzamento, 0.239)] },
+    // ⚠️ Sem a Orla (5 px na foto `inkbrush` de 5 gestos): era a franja da forma de CERDAS, que a bateria do EXAME
+    // (Rebelle `Brush/Brush`, três cenas) desmente — o perfil do recto dela casa com os lados nítidos (régua: perfil ✓
+    // nas 3 cenas) e o revisor cego leu a franja como «granulado/salpicado». `exames/tintas.md`.
+    Midia { preset: "Ink Brush", foto: "inkbrush", raio: 20.0, metricas: &[(Cobertura, 0.722), (Textura, 1.266), (Borda, 0.793), (Cruzamento, 0.239)] },
 ];
 
 /// As medidas de identidade de uma tinta na bateria do EXAME (`ferramentas/bateria.json`, a foto A molhada), à

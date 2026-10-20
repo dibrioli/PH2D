@@ -520,8 +520,9 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
     // ⭐ Os 11 do prompt 53: as receitas que passaram a foto do Rebelle no doc 52 §4 (`52_regua/receitas_19*.json`,
     // pelo nome no comentário), cada uma o vizinho de [`NASCE_DE`] inteiro + os overrides. O tamanho é o do preset
     // dele (`volume_params.size` do `.rebelle-brush.png`, `ferramentas/tamanho_dos_presets.py`).
-    // `lapisb_027`: o lápis duro — pouca carga, o papel quase fechado, o grão fino.
-    lapis("Graphite", "Graphite 2H", 40.0, 0.3, 16.0),
+    // `lapisb_027` com a carga 50: o lápis duro, o grão fino. A 40 cobria 0,560 — a do HB (Rebelle 2H 0,595, HB 0,561) e
+    // ficava mais perto da foto do irmão (5,3 × 4,2 ruídos); a 50, 0,617 e 3,7 × 11,2 (doc 53, `IRMAOS`).
+    lapis("Graphite", "Graphite 2H", 50.0, 0.3, 16.0),
     // `lapisb_028`.
     lapis("Graphite", "Graphite HB", 40.0, 0.3, 32.0),
     // `lapisb_032`.
@@ -752,7 +753,13 @@ const EXTRAS_DO_LAPIS: &[(&str, f64)] = &[
     MAIS_PERTO,
 ];
 
-const fn lapis(grupo: &'static str, nome: &'static str, pigment: f64, gate: f64, grao: f64) -> Receita {
+const fn lapis(
+    grupo: &'static str,
+    nome: &'static str,
+    pigment: f64,
+    gate: f64,
+    grao: f64,
+) -> Receita {
     Receita {
         grupo,
         nome,

@@ -428,8 +428,46 @@ fn cada_preset_parece_a_sua_midia() {
             );
         }
     }
+    // ⭐ «Um nome, não uma mídia» entre IRMÃOS (prompt 53): cada um cabe no vale da foto do outro (o Rebelle também os
+    // pinta perto), então o vale não os separa — o medido tem de estar estritamente mais PERTO da sua foto que da do
+    // irmão, em ruídos somados sobre as métricas dos dois. A mutação «a foto do irmão» sobrevivia ao vale (doc 53).
+    for &(a, b) in &IRMAOS {
+        for (eu, outro) in [(a, b), (b, a)] {
+            let i = MIDIAS.iter().position(|m| m.preset == eu).unwrap();
+            let o = MIDIAS.iter().find(|m| m.preset == outro).unwrap();
+            let distancia = |fotos: &[(Metrica, f64)]| -> f64 {
+                MIDIAS[i]
+                    .metricas
+                    .iter()
+                    .filter_map(|&(met, _)| {
+                        let r = fotos
+                            .iter()
+                            .find(|(f, _)| {
+                                std::mem::discriminant(f) == std::mem::discriminant(&met)
+                            })?
+                            .1;
+                        Some((met.de(&medidas[i]) - r).abs() / met.ruido())
+                    })
+                    .sum()
+            };
+            let (propria, do_irmao) = (distancia(MIDIAS[i].metricas), distancia(o.metricas));
+            println!("[irmaos] {eu}: {propria:.2} ruídos da sua foto, {do_irmao:.2} da do {outro}");
+            if propria >= do_irmao {
+                falhas.push(format!(
+                    "{eu}: {propria:.2} ruídos da sua foto, {do_irmao:.2} da do irmão {outro} — pinta o irmão"
+                ));
+            }
+        }
+    }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
+
+/// Os pares que cabem um no vale do outro (a matriz do `ferramentas/avalia_53.py`): o portão pede a foto MAIS PERTO.
+const IRMAOS: [(&str, &str); 3] = [
+    ("Graphite 2H", "Graphite HB"),
+    ("Graphite 2B", "Colored 4B"),
+    ("Flat Oily", "Knife Smooth"),
+];
 
 /// **SONDA (prompt 42b): as métricas de um preset com knobs trocados** — `PH2D_SONDA_PRESETS="Ink Brush,…"` (por
 /// omissão a tinta e o marcador) × `PH2D_SONDA_KNOBS="nome:k=v,b.k=v|…"` (`k` no mapa do motor, `b.k` no do

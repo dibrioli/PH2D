@@ -18,7 +18,7 @@ from avalia_53 import OS_11, VIZINHO  # noqa: E402
 
 raiz = sys.argv[1]
 # Os ajustes MEDIDOS no 53 sobre a receita do 52 (o porquê no comentário da receita em `receitas_de_fabrica.rs`).
-AJUSTES_DO_53 = {"Knife Smooth": {"pigmentPerDab": 250.0}}
+AJUSTES_DO_53 = {"Knife Smooth": {"pigmentPerDab": 250.0}, "Graphite 2H": {"pigmentPerDab": 50.0}}
 LIVRES = {("name",), ("group",), ("volumes", "size_px"), ("width_table",)}
 
 

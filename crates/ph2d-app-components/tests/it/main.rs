@@ -3,6 +3,7 @@
 
 mod a_cena_3_do_editor_conduzida;
 mod a_cena_4_do_editor_conduzida;
+mod a_cena_5_do_editor_conduzida;
 mod as_duas_barras_do_igual_sao_iguais;
 mod every_word_this_family_shows_comes_from_the_string_table;
 mod mede_as_duas_barras_do_igual;

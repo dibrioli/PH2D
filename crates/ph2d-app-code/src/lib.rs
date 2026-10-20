@@ -55,7 +55,7 @@ mod surface;
 pub use docs::{CodeDocs, GrammarProbe, ParkedFootprint, SaveKind};
 pub use format::FormatServer;
 pub use frame::frame;
-pub use help::{HELP_TAG, member_id};
+pub use help::{HELP_TAG, help_doc, member_id};
 pub use help_doc::{DeadLink, dead_links, link_count};
 pub use intel::IntelServer;
 

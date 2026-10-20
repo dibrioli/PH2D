@@ -18,6 +18,10 @@
 //!   carregado o nome que o Ctrl+clique alcança sublinha (o `set`, não o `ampiltude`); Ctrl+Shift+M
 //!   abre a lista de problemas (o erro primeiro); o clique e o F8 seleccionam o culpado; um `ph2d.set`
 //!   escolhido dentro do `entity` de outro funde os buracos.
+//! - **5** — a página de ajuda (Onda 2, item 5): as mesmas três formas correm o `ajuda.luau` e
+//!   balançam para os lados. O Ctrl+clique em `sin` abre a página `math` no membro; um link na
+//!   mesma página só rola; Alt+← volta ao script; F12 em `ph2d.set` abre a `ph2d`; o `PoseField` da
+//!   assinatura leva à `types`; Ctrl+F conta; Ctrl+W fecha; o Ctrl sobre `local` não dá a mão.
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_script::{LuauScript, ProjectScripts, ScriptEditRequests, ScriptId, ScriptValue};
@@ -25,7 +29,7 @@ use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecScene, ellipse, rectangle, regular_polygon, star};
 
 /// Quantas cenas este roteador serve — o `max_level` do roteador da família (conferido em teste).
-pub const CENAS: u32 = 4;
+pub const CENAS: u32 = 5;
 
 /// O nome do script das formas nos scripts do projeto.
 pub const BOB_NAME: &str = "bob.luau";
@@ -124,6 +128,44 @@ function update(self, dt)
 end
 "#;
 
+/// O nome do script do nível 5.
+pub const AJUDA_NAME: &str = "ajuda.luau";
+
+/// ⭐ **O script do nível 5** — a página de ajuda: `math.sin`, um pseudónimo (`m.cos`), um método
+/// de texto (`s:upper()`), o `ph2d.set` e uma palavra da linguagem (`local`). Sem erros: as formas
+/// mexem-se. As agulhas do condutor das fotos (`ph2d_app_code::smoke_drive::STEPS_5`) vivem neste
+/// texto (conferido no teste da cena).
+pub const AJUDA_LUAU: &str = r#"-- ajuda.luau — as TRÊS formas da esquerda correm ESTE script: balançam para os lados.
+-- O quadrado da direita não tem script. Aqui aprende-se a PÁGINA DE AJUDA.
+--
+-- 1) Carregue Ctrl e passe o rato por cima de «sin», lá em baixo: o nome sublinha.
+--    Ctrl+clique: a página «math» abre numa aba, já no «sin» (o que faz, o argumento, um exemplo).
+-- 2) No texto da página, clique em «math.noise»: a página rola até ele, na mesma aba.
+-- 3) Alt+← volta ao script, onde foi o Ctrl+clique (rolar dentro da página não conta).
+-- 4) Cursor em «set», na linha do ph2d.set, e F12: a página «ph2d», no «set».
+--    Na assinatura, clique em «PoseField»: a página «types». Alt+← volta ao «set».
+-- 5) Ctrl+F na página e escreva entity: quantas vezes aparece. Ctrl+W fecha a página.
+-- 6) Ctrl por cima de «local»: nada sublinha (uma palavra da linguagem não tem página).
+
+ph2d.property("amplitude", 0.75, { min = 0, max = 2 }) -- quanto balança (metros)
+ph2d.property("speed", 2.0, { min = 0, max = 10 }) -- quão depressa
+
+local m = math
+local s = "ajuda"
+
+function init(self)
+  self.base_x = ph2d.get(self.id, "x")
+  self.t = 0
+  print(s:upper())
+end
+
+function update(self, dt)
+  self.t = self.t + dt
+  local onda = math.sin(self.t * self.speed) + m.cos(self.t) * 0.2
+  ph2d.set(self.id, "x", self.base_x + onda * self.amplitude)
+end
+"#;
+
 /// O script partido do smoke da Onda 0 — o mesmo ficheiro que o dono já viu no cartão.
 pub const BROKEN_LUAU: &str =
     include_str!("../../../docs/CodeEditor/ferramentas/smoke/script_quebrado.luau");
@@ -182,6 +224,7 @@ pub fn monta_em(
         let bob = match nivel {
             3 => lib.insert(ONDA_NAME, ONDA_LUAU),
             4 => lib.insert(PROBLEMAS_NAME, PROBLEMAS_LUAU),
+            5 => lib.insert(AJUDA_NAME, AJUDA_LUAU),
             _ => lib.insert(BOB_NAME, BOB_LUAU),
         };
         let broken = (nivel == 2).then(|| lib.insert(BROKEN_NAME, BROKEN_LUAU));
@@ -250,6 +293,15 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
             "[code-smoke] =4 {} formas: o círculo, a estrela e o hexágono correm o problemas.luau, já \
              aberto numa aba — PARADAS: o script tem um erro («math.sinn») e dois avisos. Ctrl + rato \
              sobre «set» sublinha; Ctrl+Shift+M abre a lista de problemas; F8 salta entre eles.",
+            formas.len()
+        );
+        return None;
+    }
+    if nivel == 5 {
+        println!(
+            "[code-smoke] =5 {} formas: o círculo, a estrela e o hexágono correm o ajuda.luau, já \
+             aberto numa aba, e balançam para os lados. Ctrl+clique em «sin» abre a página de ajuda \
+             «math»; F12 em «set» abre a «ph2d»; Alt+← volta; Ctrl+W fecha a página.",
             formas.len()
         );
         return None;

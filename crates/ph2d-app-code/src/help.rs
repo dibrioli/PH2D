@@ -56,6 +56,12 @@ pub fn member_id(page: &str, member: &str) -> Option<u32> {
     p.member(member).map(|i| i as u32)
 }
 
+/// ⚠️ SONDA (a bancada): a página `page` do catálogo como a aba a dispõe e pinta.
+#[must_use]
+pub fn help_doc(page: &str) -> Option<HelpDoc> {
+    Some(build(&catalog()[page_index(page)?]).doc)
+}
+
 /// A busca na página (Ctrl+F): o campo, as ocorrências no texto da página e a corrente.
 #[derive(Default)]
 pub(crate) struct HelpFind {

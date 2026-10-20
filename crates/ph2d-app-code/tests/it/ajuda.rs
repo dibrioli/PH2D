@@ -35,7 +35,7 @@ fn bruto() -> &'static Value {
     })
 }
 
-fn texto() -> &'static str {
+pub(crate) fn texto() -> &'static str {
     bruto()["texto"].as_str().expect("texto")
 }
 
@@ -93,7 +93,7 @@ fn definir(s: &str, b: usize) -> Vec<Range<usize>> {
         .collect()
 }
 
-fn mesa(scripts: &[(&str, &str)]) -> (Mesa, Vec<ScriptId>, Partilhado) {
+pub(crate) fn mesa(scripts: &[(&str, &str)]) -> (Mesa, Vec<ScriptId>, Partilhado) {
     let (mut m, ids, visto) = com_falso(
         scripts,
         Plano {
@@ -113,12 +113,12 @@ fn mesa(scripts: &[(&str, &str)]) -> (Mesa, Vec<ScriptId>, Partilhado) {
     (m, ids, visto)
 }
 
-fn ativa(m: &Mesa) -> Option<u64> {
+pub(crate) fn ativa(m: &Mesa) -> Option<u64> {
     m.hero.documents.surface_active().map(|t| t.id)
 }
 
 /// Pinta a aba `id` da família (um script ou uma página).
-fn pinta(m: &mut Mesa, id: u64) {
+pub(crate) fn pinta(m: &mut Mesa, id: u64) {
     let mut scene = VectorScene::new();
     let mut ts = std::mem::replace(&mut m.ts, TextSystem::without_system_fonts());
     m.docs()
@@ -127,7 +127,7 @@ fn pinta(m: &mut Mesa, id: u64) {
 }
 
 /// Um quadro como a shell: a família, e a pintura do script e da aba activa.
-fn quadro(m: &mut Mesa, id: ScriptId) {
+pub(crate) fn quadro(m: &mut Mesa, id: ScriptId) {
     quadro_em(m, T0);
     m.pinta(id);
     if let Some(a) = ativa(m) {
@@ -157,7 +157,13 @@ fn nunca(m: &mut Mesa, id: ScriptId, onde: &str, mut nada: impl FnMut(&mut Mesa)
     }
 }
 
-fn tecla_em(m: &mut Mesa, tab: u64, key: Key, mods: Modifiers, text: Option<&str>) -> KeyOutcome {
+pub(crate) fn tecla_em(
+    m: &mut Mesa,
+    tab: u64,
+    key: Key,
+    mods: Modifiers,
+    text: Option<&str>,
+) -> KeyOutcome {
     let mut ts = TextSystem::without_system_fonts();
     let input = KeyInput {
         key,
@@ -204,7 +210,7 @@ fn clica_aba(m: &mut Mesa, tab: u64, (x, y): (f32, f32)) {
 }
 
 /// O byte do `n`-ésimo (0-based) `agulha` do texto da sonda, deslocado `off`.
-fn em(agulha: &str, off: usize) -> usize {
+pub(crate) fn em(agulha: &str, off: usize) -> usize {
     texto().find(agulha).unwrap_or_else(|| panic!("{agulha:?}")) + off
 }
 
@@ -231,7 +237,7 @@ fn no_membro(m: &mut Mesa, page: &str, member: &str) -> bool {
                 .any(|l| l.starts_with(&sig) && !l[sig.len()..].starts_with(e_palavra)))
 }
 
-fn na_pagina(m: &mut Mesa, page: &str, member: &str) -> bool {
+pub(crate) fn na_pagina(m: &mut Mesa, page: &str, member: &str) -> bool {
     let tab = m.docs().help_tab_id(page);
     tab.is_some() && ativa(m) == tab && no_membro(m, page, member)
 }

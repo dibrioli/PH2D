@@ -13,6 +13,7 @@ fn os_scripts_da_cena_saem_limpos_do_formatador() {
         ("code_smoke::BOB_LUAU", code_smoke::BOB_LUAU),
         ("code_smoke::ONDA_LUAU", code_smoke::ONDA_LUAU),
         ("code_smoke::PROBLEMAS_LUAU", code_smoke::PROBLEMAS_LUAU),
+        ("code_smoke::AJUDA_LUAU", code_smoke::AJUDA_LUAU),
         ("script_smoke::BOB_LUAU", script_smoke::BOB_LUAU),
         ("script_boot.luau", boot),
     ] {

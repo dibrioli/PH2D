@@ -1,12 +1,18 @@
-//! ⭐ **A porta das FOTOS das cenas 3 e 4** (`PH2D_CODE_SMOKE=3|4 PH2D_CODE_SMOKE_PASSO=<n>`): o
+//! ⭐ **A porta das FOTOS das cenas 3 a 5** (`PH2D_CODE_SMOKE=3|4|5 PH2D_CODE_SMOKE_PASSO=<n>`): o
 //! roteiro do smoke conduzido pelas teclas REAIS da aba até ao fim do passo `n`, e pára — cada foto é
 //! o passo que diz ser. A tela virtual das fotos ignora eventos sintéticos (`fotografa_cena.sh`), logo
 //! o gesto entra pelas portas do artista (`DocumentSurface::key`, `pointer_move`, `pointer`), o cursor
 //! anda pelo `go_to` da paleta `:` e o Ctrl carregado vai para o `WidgetStore` como o da janela. Os
-//! testes das cenas (`ph2d-app-components`, `a_cena_3_conduzida`, `a_cena_4_conduzida`) conduzem os
-//! MESMOS roteiros e conferem as agulhas no texto da cena.
+//! testes das cenas (`ph2d-app-components`, `a_cena_3_conduzida`, `a_cena_4_conduzida`,
+//! `a_cena_5_conduzida`) conduzem os MESMOS roteiros e conferem as agulhas no texto da cena. As
+//! teclas `Key`/`Type` vão para o script; `TabKey`/`TabType` para a aba ACTIVA da família (a página
+//! de ajuda, quando é ela).
+
+use crate::help::page_of;
 
 use crate::CodeDocs;
+use ph2d_code_help::{Anchor, catalog};
+use ph2d_editor_core::doc_surface::PointerLook;
 use ph2d_editor_core::doc_surface::{DocumentSurface, Key, KeyInput, PointerInput};
 use ph2d_host::{Modifiers, PointerButton, PointerKind};
 use ph2d_script::ScriptId;
@@ -48,6 +54,22 @@ pub enum Gesture {
     ClickProblem(usize),
     /// O resto do passo entra no quadro seguinte (cada Tab vê-se).
     Frame,
+    /// Um clique com `mods` sobre o carácter `ahead` bytes depois da 1.ª `needle` (o Ctrl+clique).
+    Click {
+        needle: &'static str,
+        ahead: usize,
+        mods: Modifiers,
+    },
+    /// Uma tecla na aba ACTIVA da família (a página de ajuda, ou o script).
+    TabKey(Key, Modifiers),
+    /// Uma letra por quadro na aba activa (o campo da busca da página).
+    TabType(&'static str),
+    /// Um clique no link pintado da página `page` que leva a `to` no membro `member`.
+    Link {
+        page: &'static str,
+        to: &'static str,
+        member: &'static str,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -75,6 +97,19 @@ pub enum Until {
     ProblemRows,
     /// O texto contém isto.
     Has(&'static str),
+    /// A página `page` é a aba activa e pintou `member` no topo.
+    Page {
+        page: &'static str,
+        member: &'static str,
+    },
+    /// O script é a aba activa.
+    Script,
+    /// O assistente já verificou o script (publicou os diagnósticos dele).
+    Checked,
+    /// A busca da página activa contou (o «1 of N»).
+    Found,
+    /// Nada sublinhado e o ponteiro sobre o carácter `ahead` depois de `needle` não é a mão.
+    Plain { needle: &'static str, ahead: usize },
 }
 
 const NONE: Modifiers = Modifiers {
@@ -228,17 +263,123 @@ pub const STEPS_4: &[&[Gesture]] = &[
     ],
 ];
 
+/// ⭐ O roteiro da cena 5 (a página de ajuda): `STEPS_5[k]` é o passo `k + 1`. O histórico é o do
+/// Godot 4.7.2 (`crate::nav`): o link na MESMA página só rola, logo o Alt+← do passo 4 volta ao
+/// SCRIPT (no cursor do Ctrl+clique), não ao `sin`.
+pub const STEPS_5: &[&[Gesture]] = &[
+    // 1 — Ctrl com o rato sobre o `sin` do `math.sin`: o nome sublinha (e o ponteiro é a mão). Só
+    //     depois de o assistente verificar o script: na shell, o Ctrl a ~0,4 s do arranque deixou a
+    //     janela parada nas fotos (as da cena 4 esperavam pelos três problemas).
+    &[
+        Gesture::Wait(Until::Script),
+        Gesture::Wait(Until::Checked),
+        Gesture::Point {
+            needle: "math.sin(",
+            ahead: 6,
+        },
+        Gesture::Ctrl(true),
+        Gesture::Wait(Until::Reach(true)),
+    ],
+    // 2 — o clique com o Ctrl: a página `math` numa aba, rolada ao `sin`; o Ctrl largado.
+    &[
+        Gesture::Click {
+            needle: "math.sin(",
+            ahead: 6,
+            mods: CTRL,
+        },
+        Gesture::Ctrl(false),
+        Gesture::Wait(Until::Page {
+            page: "math",
+            member: "sin",
+        }),
+    ],
+    // 3 — o link `math.noise` no texto do `sin`: a MESMA aba rola até ele.
+    &[
+        Gesture::Link {
+            page: "math",
+            to: "math",
+            member: "noise",
+        },
+        Gesture::Wait(Until::Page {
+            page: "math",
+            member: "noise",
+        }),
+    ],
+    // 4 — Alt+←: o link na mesma página não entrou no histórico, logo volta ao SCRIPT.
+    &[
+        Gesture::TabKey(Key::Left, ALT),
+        Gesture::Wait(Until::Script),
+    ],
+    // 5 — o cursor no `set` do `ph2d.set`, F12: a página `ph2d` no `set`.
+    &[
+        Gesture::Go {
+            needle: "ph2d.set(self.id",
+            ahead: 6,
+        },
+        Gesture::Key(Key::F(12), NONE),
+        Gesture::Wait(Until::Page {
+            page: "ph2d",
+            member: "set",
+        }),
+    ],
+    // 6 — o `PoseField` da assinatura do `set`: a página `types` (empilha).
+    &[
+        Gesture::Link {
+            page: "ph2d",
+            to: "types",
+            member: "PoseField",
+        },
+        Gesture::Wait(Until::Page {
+            page: "types",
+            member: "PoseField",
+        }),
+    ],
+    // 7 — Alt+←: de volta à `ph2d`, no `set`.
+    &[
+        Gesture::TabKey(Key::Left, ALT),
+        Gesture::Wait(Until::Page {
+            page: "ph2d",
+            member: "set",
+        }),
+    ],
+    // 8 — Ctrl+F e `entity`: a barra da busca conta.
+    &[
+        Gesture::TabKey(Key::Char('f'), CTRL),
+        Gesture::TabType("entity"),
+        Gesture::Wait(Until::Found),
+    ],
+    // 9 — Ctrl+W: a página fecha e o script volta.
+    &[
+        Gesture::TabKey(Key::Char('w'), CTRL),
+        Gesture::Wait(Until::Script),
+    ],
+    // 10 — o controlo: Ctrl sobre `local` (palavra da linguagem) não sublinha nem dá a mão.
+    &[
+        Gesture::Point {
+            needle: "local m = math",
+            ahead: 2,
+        },
+        Gesture::Ctrl(true),
+        Gesture::Frame,
+        Gesture::Wait(Until::Plain {
+            needle: "local m = math",
+            ahead: 2,
+        }),
+    ],
+];
+
 /// O roteiro da cena `level` (`None` = a cena não tem fotos conduzidas).
 #[must_use]
 pub fn steps(level: u32) -> Option<&'static [&'static [Gesture]]> {
     match level {
         3 => Some(STEPS),
         4 => Some(STEPS_4),
+        5 => Some(STEPS_5),
         _ => None,
     }
 }
 
-/// O passo pedido pelo ambiente (lido uma vez) e a cena dele; só com as cenas 3 e 4.
+/// O passo pedido pelo ambiente (lido uma vez) e a cena dele; só com as cenas que têm roteiro.
 #[must_use]
 pub fn armed_step() -> Option<(u32, usize)> {
     static STEP: OnceLock<Option<(u32, usize)>> = OnceLock::new();
@@ -352,9 +493,13 @@ pub fn drive(docs: &mut CodeDocs, c: &mut Conductor) {
         // Uma espera, ou um gesto cujo alvo ainda não está pintado (o rato, o clique).
         let ready = match g {
             Gesture::Wait(until) => holds(docs, id, until),
-            Gesture::Type(s) => {
+            Gesture::Type(s) | Gesture::TabType(s) => {
+                let tab = match g {
+                    Gesture::TabType(_) => active(docs, id),
+                    _ => id.0,
+                };
                 if let Some(ch) = s.chars().nth(c.typed) {
-                    key(docs, id, Key::Other, NONE, Some(&ch.to_string()));
+                    key(docs, tab, Key::Other, NONE, Some(&ch.to_string()));
                     c.typed += 1;
                     return;
                 }
@@ -420,6 +565,53 @@ fn holds(docs: &mut CodeDocs, id: ScriptId, until: Until) -> bool {
         }
         Until::ProblemRows => docs.band_of(id).is_some_and(|b| !b.problems.is_empty()),
         Until::Has(s) => docs.text_of(id).is_some_and(|t| t.contains(s)),
+        Until::Page { page, member } => {
+            let tab = docs.help_tab_id(page);
+            tab.is_some()
+                && docs.active == tab
+                && docs.help_probe(page).is_some_and(|p| {
+                    p.title == ph2d_code_help::page(page).map_or("", |c| c.title.as_str())
+                        && p.top_member == crate::help::member_id(page, member)
+                })
+        }
+        Until::Script => docs.active == Some(id.0),
+        Until::Checked => docs.assist_diagnostics(id).1.is_some(),
+        Until::Found => docs
+            .active
+            .and_then(page_of)
+            .and_then(|p| docs.help_find_count_text(catalog()[p].id))
+            .is_some_and(|t| t.starts_with("1 of")),
+        Until::Plain { needle, ahead } => {
+            let at = docs
+                .text_of(id)
+                .and_then(|t| t.find(needle))
+                .map(|b| b + ahead);
+            let look = at
+                .and_then(|at| docs.glyph_center(id, at))
+                .and_then(|(x, y)| docs.pointer_look(id.0, x, y));
+            docs.link_of(id) == (None, false) && look.is_some_and(|l| l != PointerLook::Hand)
+        }
+    }
+}
+
+/// A aba activa da família (o script, se nenhuma das dela o é).
+fn active(docs: &CodeDocs, id: ScriptId) -> u64 {
+    docs.active
+        .filter(|t| page_of(*t).is_some() || *t == id.0)
+        .unwrap_or(id.0)
+}
+
+/// Carregar e largar o botão em `(x, y)` da aba `tab`, com `mods`, no relógio da família.
+fn click(docs: &mut CodeDocs, tab: u64, (x, y): (f32, f32), mods: Modifiers) {
+    let now_ns = docs.clock.0;
+    let mut ts = TextSystem::without_system_fonts();
+    for kind in [PointerKind::Down, PointerKind::Up] {
+        let input = PointerInput {
+            text: &mut ts,
+            mods,
+            now_ns,
+        };
+        let _ = docs.pointer(tab, input, kind, PointerButton::Primary, x, y);
     }
 }
 
@@ -443,7 +635,7 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
                 Key::Char(ch) => Some(ch.to_string()),
                 _ => None,
             };
-            key(docs, id, k, mods, s.as_deref());
+            key(docs, id.0, k, mods, s.as_deref());
         }
         Gesture::Point { needle, ahead } => {
             let at = docs
@@ -479,12 +671,55 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
                 let _ = docs.pointer(id.0, input, kind, PointerButton::Primary, x, y);
             }
         }
-        Gesture::Type(_) | Gesture::Wait(_) | Gesture::Ctrl(_) | Gesture::Frame => {}
+        Gesture::Click {
+            needle,
+            ahead,
+            mods,
+        } => {
+            let at = docs
+                .text_of(id)
+                .and_then(|t| t.find(needle))
+                .map(|b| b + ahead);
+            let Some(p) = at.and_then(|at| docs.glyph_center(id, at)) else {
+                return false;
+            };
+            click(docs, id.0, p, mods);
+        }
+        Gesture::TabKey(k, mods) => {
+            let s = match k {
+                Key::Char(ch) => Some(ch.to_string()),
+                _ => None,
+            };
+            key(docs, active(docs, id), k, mods, s.as_deref());
+        }
+        Gesture::Link { page, to, member } => {
+            let want = Anchor {
+                page: to,
+                member: Some(member),
+            };
+            let Some(tab) = docs.help_tab_id(page).filter(|t| docs.active == Some(*t)) else {
+                return false;
+            };
+            let Some(r) = docs.help_probe(page).and_then(|p| {
+                p.links
+                    .iter()
+                    .find(|(n, _, _)| docs.help_link_target(page, *n) == Some(want))
+                    .map(|l| l.1)
+            }) else {
+                return false;
+            };
+            click(docs, tab, (r.x + r.w * 0.5, r.y + r.h * 0.5), NONE);
+        }
+        Gesture::Type(_)
+        | Gesture::TabType(_)
+        | Gesture::Wait(_)
+        | Gesture::Ctrl(_)
+        | Gesture::Frame => {}
     }
     true
 }
 
-fn key(docs: &mut CodeDocs, id: ScriptId, key: Key, mods: Modifiers, text: Option<&str>) {
+fn key(docs: &mut CodeDocs, tab: u64, key: Key, mods: Modifiers, text: Option<&str>) {
     // A aba não molda texto na tecla (`CodeDocs::key` ignora o sistema de texto).
     let mut ts = TextSystem::without_system_fonts();
     let input = KeyInput {
@@ -494,5 +729,5 @@ fn key(docs: &mut CodeDocs, id: ScriptId, key: Key, mods: Modifiers, text: Optio
         text,
         paste: None,
     };
-    let _ = docs.key(id.0, &mut ts, input);
+    let _ = docs.key(tab, &mut ts, input);
 }

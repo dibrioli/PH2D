@@ -1333,3 +1333,362 @@ fn problemas_por_quadro() {
         println!("célula {}: linha do balão {}", s.nome, s.linha);
     }
 }
+
+/// O que um Ctrl+clique abre na bancada da página de ajuda: a agulha no texto da sonda
+/// (`ajuda_bruto.json`), o deslocamento até ao nome, a página e o membro.
+const AJUDA_ALVOS: [(&str, usize, &str, &str); 4] = [
+    ("math.sin", 6, "math", "sin"),
+    ("ph2d.set", 6, "ph2d", "set"),
+    ("m.cos", 2, "math", "cos"),
+    ("string.format", 7, "string", "format"),
+];
+
+/// O quadro da shell a 60 Hz.
+const QUADRO_60: std::time::Duration = std::time::Duration::from_micros(16_667);
+
+/// Ctrl+clique em `byte` do script (com o instante `now_ns`: dois cliques no mesmo sítio no mesmo
+/// instante seriam um duplo clique) e quadros a 60 Hz até a página `page` estar ACTIVA e pintada no
+/// `member`. `mao` = antes do clique, o Ctrl+rato sobre o nome até o assistente responder (o caminho
+/// da cena 5). Devolve (quadros, ms) desde o clique.
+fn ajuda_clique(
+    m: &mut Mesa,
+    id: ScriptId,
+    (byte, page, member): (usize, &str, &str),
+    now_ns: u128,
+    mao: bool,
+) -> (usize, f64) {
+    use ph2d_editor_core::doc_surface::PointerInput;
+    use ph2d_host::{PointerButton, PointerKind};
+    let (x, y) = m.docs().glyph_center(id, byte).expect("à vista");
+    if mao {
+        m.hero.store.set_cmd_held(true);
+        m.rato(id, x, y);
+        let fim = Instant::now() + std::time::Duration::from_secs(30);
+        while m.docs().reach_settled_of(id) != Some(true) {
+            assert!(Instant::now() < fim, "a mão não chegou a {page}.{member}");
+            crate::ajuda::quadro(m, id);
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+    }
+    let t0 = Instant::now();
+    let mut ts = std::mem::replace(&mut m.ts, TextSystem::without_system_fonts());
+    for kind in [PointerKind::Down, PointerKind::Up] {
+        let input = PointerInput {
+            text: &mut ts,
+            mods: crate::ctrl(),
+            now_ns,
+        };
+        let _ = m
+            .docs()
+            .pointer(id.0, input, kind, PointerButton::Primary, x, y);
+    }
+    m.ts = ts;
+    m.hero.store.set_cmd_held(false);
+    let mut n = 0;
+    loop {
+        let q = Instant::now();
+        crate::ajuda::quadro(m, id);
+        n += 1;
+        if crate::ajuda::na_pagina(m, page, member) {
+            return (n, ms(t0));
+        }
+        assert!(n < 600, "a página {page}.{member} não abriu em 10 s");
+        if let Some(r) = QUADRO_60.checked_sub(q.elapsed()) {
+            std::thread::sleep(r);
+        }
+    }
+}
+
+/// A página aberta fecha (Ctrl+W, de volta ao script) e a revisão do texto anda sem mudar o texto
+/// (uma letra e o Backspace): nem a mão nem o clique anterior respondem do que já sabem.
+fn ajuda_volta(m: &mut Mesa, id: ScriptId) {
+    if let Some(tab) = crate::ajuda::ativa(m).filter(|t| *t != id.0) {
+        let _ = crate::ajuda::tecla_em(m, tab, Key::Char('w'), crate::ctrl(), Some("w"));
+    }
+    crate::ajuda::quadro(m, id);
+    assert_eq!(
+        crate::ajuda::ativa(m),
+        Some(id.0),
+        "o Ctrl+W não voltou ao script"
+    );
+    tecla_mesa(m, id, Key::End, Modifiers::default(), None);
+    tecla_mesa(m, id, Key::Other, Modifiers::default(), Some("x"));
+    tecla_mesa(m, id, Key::Backspace, Modifiers::default(), None);
+    crate::ajuda::quadro(m, id);
+}
+
+fn tecla_mesa(m: &mut Mesa, id: ScriptId, key: Key, mods: Modifiers, text: Option<&str>) {
+    let mut ts = TextSystem::without_system_fonts();
+    tecla(m, &mut ts, id, key, mods, text);
+}
+
+/// ⏱ SONDA da página de ajuda (`docs/CodeEditor/04_pagina_de_ajuda.md` §7; tabela em
+/// `ferramentas/medicoes_onda2/ajuda_bancada.md`): (1) quadros a 60 Hz do Ctrl+clique à página
+/// pintada no membro — servidor falso (a sonda gravada) e `luau-lsp` fixado, com e sem a mão do
+/// Ctrl+rato antes; (2) a disposição da MAIOR página do catálogo: vista nova (fria), outra largura
+/// com a vista quente (refaz a disposição) e a mesma largura (em cache); (3) a pintura de um quadro
+/// com a página `ph2d` aberta contra a do editor a 7 500 linhas, no CPU e na placa (render + espera).
+/// Intercalado em blocos rodados; resumo = mínimo e mediana (`MEDIR_VELOCIDADE.md`).
+/// `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test --profile smoke -p ph2d-app-code --test it bancada -- --ignored --nocapture`
+#[test]
+#[ignore = "medição: corre-se à mão (comando no doc-comment)"]
+#[allow(clippy::too_many_lines)]
+fn ajuda_bancada() {
+    use ph2d_panel_code::{HelpFrame, HelpView};
+    const RONDAS: usize = 8;
+    const POR_BLOCO: usize = 10;
+    let load0 = loadavg();
+    let us = |t: Instant| t.elapsed().as_secs_f64() * 1e6;
+    let mm = |v: &[f64]| {
+        let mut s = v.to_vec();
+        s.sort_by(f64::total_cmp);
+        (s[0], s[s.len() / 2])
+    };
+
+    // ── 1. Ctrl+clique → página pintada ──
+    let texto = crate::ajuda::texto();
+    let (mut falso, ids, _visto) = crate::ajuda::mesa(&[("ajuda.luau", texto)]);
+    let fid = ids[0];
+    let (real, rid) = {
+        let (m, ids) = Mesa::new(&[("ajuda.luau", texto)]);
+        let mut m = m.com_assistente(ph2d_app_code::IntelServer::Pinned);
+        let id = ids[0];
+        m.pede(id);
+        let fim = Instant::now() + std::time::Duration::from_secs(60);
+        loop {
+            crate::ajuda::quadro(&mut m, id);
+            if m.docs().assist_diagnostics(id).1.is_some() {
+                break (Some(m), id);
+            }
+            if Instant::now() > fim {
+                eprintln!(
+                    "sem o luau-lsp fixado ({:?}) — só o servidor falso",
+                    m.docs().assist_reason()
+                );
+                break (None, id);
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+    };
+    let mut real = real;
+    // [servidor][mão] → (quadros, ms)
+    let mut cliques: [[Vec<(usize, f64)>; 2]; 2] = Default::default();
+    let mut instante: u128 = 1_000_000_000;
+    for r in 0..RONDAS {
+        for (k, &(agulha, off, page, member)) in AJUDA_ALVOS.iter().enumerate() {
+            let byte = crate::ajuda::em(agulha, off);
+            for v in 0..4 {
+                let (srv, mao) = ((r + k + v) % 2, (r + v / 2) % 2 == 1);
+                let (m, id) = match srv {
+                    0 => (&mut falso, fid),
+                    _ => match real.as_mut() {
+                        Some(m) => (m, rid),
+                        None => continue,
+                    },
+                };
+                instante += 1_000_000_000;
+                ajuda_volta(m, id);
+                cliques[srv][usize::from(mao)].push(ajuda_clique(
+                    m,
+                    id,
+                    (byte, page, member),
+                    instante,
+                    mao,
+                ));
+            }
+        }
+    }
+
+    // ── 2. A disposição da maior página ──
+    let mut ts = TextSystem::new();
+    let theme = Theme::default();
+    let altura = altura_para(JANELA, &mut ts, &theme);
+    let area = Rect::new(0.0, 0.0, LARGURA, altura);
+    let mut scene = VectorScene::new();
+    let pinta_vista = |v: &mut HelpView,
+                       doc: &ph2d_panel_code::help::HelpDoc,
+                       a: Rect,
+                       ts: &mut TextSystem,
+                       scene: &mut VectorScene| {
+        scene.reset();
+        let frame = HelpFrame {
+            doc,
+            back: true,
+            forward: false,
+            hover: None,
+            focus_link: None,
+            selection: None,
+            find: None,
+            matches: &[],
+            current: None,
+        };
+        v.paint(&frame, a, scene, ts, &theme);
+    };
+    let (maior, doc, alt_maior) = ph2d_code_help::catalog()
+        .iter()
+        .map(|p| {
+            let doc = ph2d_app_code::help_doc(p.id).expect("página");
+            let mut v = HelpView::new();
+            pinta_vista(&mut v, &doc, area, &mut ts, &mut scene);
+            (p.id, doc, v.probe().height)
+        })
+        .max_by(|a, b| a.2.total_cmp(&b.2))
+        .expect("catálogo");
+    let plano = {
+        let mut v = HelpView::new();
+        pinta_vista(&mut v, &doc, area, &mut ts, &mut scene);
+        v.plain().len()
+    };
+    let mut quente = HelpView::new();
+    pinta_vista(&mut quente, &doc, area, &mut ts, &mut scene);
+    let estreita = Rect::new(0.0, 0.0, LARGURA - 1.0, altura);
+    let mut lay: [Vec<f64>; 3] = Default::default();
+    for r in 0..RONDAS * 2 {
+        for k in 0..3 {
+            for i in 0..POR_BLOCO {
+                match (r + k) % 3 {
+                    0 => {
+                        let t = Instant::now();
+                        let mut v = HelpView::new();
+                        pinta_vista(&mut v, &doc, area, &mut ts, &mut scene);
+                        lay[0].push(us(t));
+                        black_box(v);
+                    }
+                    1 => {
+                        let a = if i % 2 == 0 { estreita } else { area };
+                        let t = Instant::now();
+                        pinta_vista(&mut quente, &doc, a, &mut ts, &mut scene);
+                        lay[1].push(us(t));
+                    }
+                    _ => {
+                        pinta_vista(&mut quente, &doc, area, &mut ts, &mut scene);
+                        let t = Instant::now();
+                        pinta_vista(&mut quente, &doc, area, &mut ts, &mut scene);
+                        lay[2].push(us(t));
+                    }
+                }
+            }
+        }
+    }
+
+    // ── 3. Um quadro: a página `ph2d` aberta × o editor a 7 500 linhas ──
+    let set = crate::ajuda::em("ph2d.set", 6);
+    instante += 1_000_000_000;
+    ajuda_volta(&mut falso, fid);
+    let _ = ajuda_clique(&mut falso, fid, (set, "ph2d", "set"), instante, false);
+    let pagina = falso.docs().help_tab_id("ph2d").expect("aberta");
+    let (mut grande, gid, _) = mesa(GRANDE, Lista::Fechada);
+    let mut placa = GpuContext::new(GpuContext::default_instance(), None)
+        .ok()
+        .map(|gpu| Placa {
+            gpu,
+            passes: Vec::new(),
+        });
+    let info = placa
+        .as_ref()
+        .map_or_else(|| "sem placa".to_owned(), |p| p.gpu.adapter.get_info().name);
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let tam = (LARGURA as u32, altura.ceil() as u32);
+    let pass = placa.as_mut().map(|p| p.pass(tam));
+    // [página, editor][cpu, placa]
+    let mut quadros: [[Vec<f64>; 2]; 2] = Default::default();
+    for r in 0..RONDAS * 2 {
+        for k in 0..2 {
+            let qual = (r + k) % 2;
+            for _ in 0..POR_BLOCO {
+                let (m, tab) = if qual == 0 {
+                    (&mut falso, pagina)
+                } else {
+                    (&mut grande, gid.0)
+                };
+                m.quadro();
+                scene.reset();
+                let t = Instant::now();
+                m.docs().paint(tab, area, &mut scene, &mut ts, &theme);
+                quadros[qual][0].push(us(t));
+                if let (Some(p), Some(i)) = (placa.as_mut(), pass) {
+                    let t = Instant::now();
+                    p.render(i, &scene);
+                    p.espera();
+                    quadros[qual][1].push(us(t));
+                }
+            }
+        }
+    }
+    // ⚠️ A página abriu no `set` à largura da mesa (1000 px); pintada à da bancada, a rolagem em
+    // píxeis fica e o membro do topo muda (medido: o `set` passa a ser o 2.º).
+    let top = falso.docs().help_probe("ph2d").and_then(|p| p.top_member);
+    let set_id = ph2d_app_code::member_id("ph2d", "set");
+
+    // ── O relatório ──
+    println!(
+        "\nloadavg: início {load0} · fim {} · placa: {info} · área {LARGURA} × {altura} px",
+        loadavg()
+    );
+    println!(
+        "\n| Ctrl+clique → página pintada (60 Hz) | N | quadros mín | quadros mediana | quadros máx | ms mín | ms mediana |"
+    );
+    println!("|---|---|---|---|---|---|---|");
+    for (srv, nome) in [(0, "servidor falso"), (1, "luau-lsp fixado")] {
+        for (mao, como) in [(0, "clique a frio"), (1, "depois do Ctrl+rato")] {
+            let v = &cliques[srv][mao];
+            if v.is_empty() {
+                println!("| {nome} · {como} | 0 | — | — | — | — | — |");
+                continue;
+            }
+            let q: Vec<f64> = v.iter().map(|x| x.0 as f64).collect();
+            let t: Vec<f64> = v.iter().map(|x| x.1).collect();
+            let (qmin, qmed) = mm(&q);
+            let qmax = q.iter().copied().fold(0.0, f64::max);
+            let (tmin, tmed) = mm(&t);
+            println!(
+                "| {nome} · {como} | {} | {qmin:.0} | {qmed:.0} | {qmax:.0} | {tmin:.1} | {tmed:.1} |",
+                v.len()
+            );
+        }
+    }
+    println!(
+        "\nmaior página: `{maior}` ({alt_maior:.0} px de altura, {plano} bytes de texto) a {:.0} px de largura",
+        LARGURA
+    );
+    println!("| disposição da maior página (µs) | N | mín | mediana |");
+    println!("|---|---|---|---|");
+    for (i, n) in [
+        "vista nova (fria): medida + disposição + pintura",
+        "outra largura, vista quente: disposição + pintura",
+        "a mesma largura (em cache): só a pintura",
+    ]
+    .iter()
+    .enumerate()
+    {
+        let (a, b) = mm(&lay[i]);
+        println!("| {n} | {} | {a:.0} | {b:.0} |", lay[i].len());
+    }
+    let (r_min, r_med) = mm(&lay[1]);
+    let (c_min, c_med) = mm(&lay[2]);
+    println!(
+        "| ≈ a disposição sozinha (quente − cache) | — | {:.0} | {:.0} |",
+        r_min - c_min,
+        r_med - c_med
+    );
+    println!("\npágina medida: `ph2d`, membro do topo {top:?} (o `set` é {set_id:?})");
+    println!(
+        "\n| um quadro (µs) | N | CPU `paint` mín | CPU mediana | placa (render + espera) mín | placa mediana |"
+    );
+    println!("|---|---|---|---|---|---|");
+    for (i, n) in [
+        (0, "página `ph2d` aberta (perto do `set`)"),
+        (1, "editor a 7 500 linhas"),
+    ] {
+        let (a, b) = mm(&quadros[i][0]);
+        let (c, d) = if quadros[i][1].is_empty() {
+            (f64::NAN, f64::NAN)
+        } else {
+            mm(&quadros[i][1])
+        };
+        println!(
+            "| {n} | {} | {a:.0} | {b:.0} | {c:.0} | {d:.0} |",
+            quadros[i][0].len()
+        );
+    }
+}

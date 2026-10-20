@@ -92,11 +92,21 @@ impl Palco {
 
     fn salvo(&self) -> String {
         let id = self.onda();
-        self.sim.world().resource::<ProjectScripts>().get(id).expect("script").text.clone()
+        self.sim
+            .world()
+            .resource::<ProjectScripts>()
+            .get(id)
+            .expect("script")
+            .text
+            .clone()
     }
 
     fn pose(&self, i: usize) -> Transform {
-        *self.sim.world().get::<Transform>(self.formas[i]).expect("pose")
+        *self
+            .sim
+            .world()
+            .get::<Transform>(self.formas[i])
+            .expect("pose")
     }
 
     /// A maior distância a `SHAPE_Y` de cada forma em `n` quadros.
@@ -112,14 +122,24 @@ impl Palco {
     }
 
     fn proprio_da_estrela(&self) -> Vec<(String, ScriptValue)> {
-        let s = self.sim.world().get::<LuauScript>(self.formas[1]).expect("script na estrela");
+        let s = self
+            .sim
+            .world()
+            .get::<LuauScript>(self.formas[1])
+            .expect("script na estrela");
         s.own.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
     }
 
     /// O que o Inspector mostra da estrela escolhida: `(nome, valor, próprio)`.
     fn inspector_da_estrela(&self) -> Vec<(String, Option<f64>, bool)> {
-        let info = build_info(&self.sim, Some(&self.host), self.formas[1].to_bits(), 1, true)
-            .expect("a estrela tem o cartão Script");
+        let info = build_info(
+            &self.sim,
+            Some(&self.host),
+            self.formas[1].to_bits(),
+            1,
+            true,
+        )
+        .expect("a estrela tem o cartão Script");
         info.props
             .into_iter()
             .map(|p| {
@@ -149,7 +169,10 @@ fn confere(p: &mut Palco, passo: usize) {
             assert!(t.contains("s * self.amplitude)"), "{t}");
             assert_eq!(p.salvo(), t, "o Ctrl+S levou a correcção à cena");
             let m = p.passeio(90);
-            assert!(m[0] > 0.5 && m[0] <= 1.0 + 1e-3, "o círculo sobe ~1 m: {m:?}");
+            assert!(
+                m[0] > 0.5 && m[0] <= 1.0 + 1e-3,
+                "o círculo sobe ~1 m: {m:?}"
+            );
             assert!(m[1] > 1.5, "a estrela sobe ~2 m (o valor dela): {m:?}");
             assert_eq!(m[3], 0.0, "o quadrado não se mexe");
         }
@@ -166,13 +189,19 @@ fn confere(p: &mut Palco, passo: usize) {
             assert_eq!(vista, api, "a lista do `ph2d.` é a API inteira");
         }
         4 => {
-            assert!(p.docs().snippet_of(id).is_some(), "os buracos estão activos");
+            assert!(
+                p.docs().snippet_of(id).is_some(),
+                "os buracos estão activos"
+            );
             let t = p.texto();
             assert!(t.contains("  ph2d.set(entity, \"x\", value)\n"), "{t}");
         }
         5 => {
             let t = p.texto();
-            assert!(t.contains("  ph2d.set(self.id, \"rotation\", self.t)\nend\n"), "{t}");
+            assert!(
+                t.contains("  ph2d.set(self.id, \"rotation\", self.t)\nend\n"),
+                "{t}"
+            );
             assert_eq!(p.salvo(), t);
             let antes = p.pose(1).rotation;
             p.passeio(30);
@@ -189,7 +218,10 @@ fn confere(p: &mut Palco, passo: usize) {
             let t = p.texto();
             assert!(t.contains("ph2d.property(\"height\", 1.0"), "{t}");
             assert!(t.contains("s * self.height)"), "{t}");
-            assert!(!t.contains("\"amplitude\"") && !t.contains("self.amplitude"), "{t}");
+            assert!(
+                !t.contains("\"amplitude\"") && !t.contains("self.amplitude"),
+                "{t}"
+            );
             assert_eq!(p.salvo(), t);
             assert_eq!(
                 p.proprio_da_estrela(),
@@ -210,10 +242,18 @@ fn confere(p: &mut Palco, passo: usize) {
 
 #[test]
 fn a_cena_3_conduzida_passo_a_passo() {
-    assert_eq!(CENAS, ph2d_app_code::smoke::CENAS, "as cenas contam-se nos dois lados");
+    assert_eq!(
+        CENAS,
+        ph2d_app_code::smoke::CENAS,
+        "as cenas contam-se nos dois lados"
+    );
     for g in STEPS.iter().flat_map(|s| s.iter()) {
         if let Gesture::Go { needle, .. } = g {
-            assert_eq!(ONDA_LUAU.matches(needle).count(), 1, "a agulha {needle:?} existe uma vez");
+            assert_eq!(
+                ONDA_LUAU.matches(needle).count(),
+                1,
+                "a agulha {needle:?} existe uma vez"
+            );
         }
     }
     let mut p = Palco::novo();
@@ -222,7 +262,8 @@ fn a_cena_3_conduzida_passo_a_passo() {
     assert!(m.iter().all(|d| *d == 0.0), "o erro pára as três: {m:?}");
     assert_eq!(p.texto(), ONDA_LUAU);
     assert!(
-        p.inspector_da_estrela().contains(&("amplitude".into(), Some(STAR_AMPLITUDE), true)),
+        p.inspector_da_estrela()
+            .contains(&("amplitude".into(), Some(STAR_AMPLITUDE), true)),
         "{:?}",
         p.inspector_da_estrela()
     );
@@ -231,7 +272,11 @@ fn a_cena_3_conduzida_passo_a_passo() {
     let mut feitos = 0;
     let prazo = Instant::now() + Duration::from_secs(120);
     while !c.finished() {
-        assert!(Instant::now() < prazo, "o roteiro parou no passo {}", c.steps_done() + 1);
+        assert!(
+            Instant::now() < prazo,
+            "o roteiro parou no passo {}",
+            c.steps_done() + 1
+        );
         p.quadro();
         drive(p.docs(), &mut c);
         while feitos < c.steps_done() {

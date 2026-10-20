@@ -85,6 +85,12 @@ pub(crate) fn label_w(ts: &mut TextSystem, text: &str) -> f32 {
     ph2d_editor_core::paint::label_column_width(ts, font(), [text])
 }
 
+/// A largura de um [`text_button`] com `text`: a lei inversa do orçamento com que ele o pinta
+/// (`rect_for_label`) — a folga somada à mão cortava «Word» em «W…» na barra de busca.
+pub(crate) fn button_w(ts: &mut TextSystem, text: &str) -> f32 {
+    ph2d_editor_core::paint::rect_for_label(label_w(ts, text))
+}
+
 /// Um rótulo centrado na vertical de `r`, na cor `color`.
 pub(crate) fn label_in(
     scene: &mut VectorScene,

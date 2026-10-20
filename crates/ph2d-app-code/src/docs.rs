@@ -53,7 +53,7 @@ pub struct CodeDocs {
     /// A biblioteca que as abas seguem (outra = outro projecto).
     epoch: Option<LibraryEpoch>,
     /// A aba activa no último quadro (perdê-la larga a composição e o arrasto).
-    active: Option<u64>,
+    pub(crate) active: Option<u64>,
     /// Um carregar foi tomado e ainda não largou.
     pub(crate) pressed: bool,
     /// `None` = a pasta do sistema ([`crate::recovery::default_dir`]).

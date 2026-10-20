@@ -303,7 +303,7 @@ impl FindBarView {
         y: f32,
         ui: &Ui,
     ) -> Rect {
-        let w = chrome::label_w(ts, text) + Spacing::Md.px() * 2.0;
+        let w = chrome::button_w(ts, text);
         let r = Rect::new(right - w, y, w, ROW_H_PX);
         chrome::text_button(scene, ts, text, r, false, ui);
         self.targets.push((hit, r));
@@ -322,7 +322,7 @@ impl FindBarView {
         y: f32,
         ui: &Ui,
     ) -> Rect {
-        let w = (chrome::label_w(ts, text) + Spacing::Sm.px() * 2.0).max(ROW_H_PX);
+        let w = chrome::button_w(ts, text).max(ROW_H_PX);
         let r = Rect::new(right - w, y, w, ROW_H_PX);
         chrome::text_button(scene, ts, text, r, on, ui);
         self.targets.push((hit, r));
@@ -348,5 +348,50 @@ impl FindBarView {
             text: buf.text().to_string(),
             x0,
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_code_buffer::Buffer;
+    use ph2d_editor_core::paint::label_budget;
+
+    /// Cada botão de texto da barra cabe o seu rótulo INTEIRO no orçamento com que o pinta (a folga
+    /// somada à mão nos interruptores cortava «Word» em «W…», cena 5 do editor, passo 8).
+    #[test]
+    fn cada_botao_da_barra_cabe_o_rotulo_inteiro() {
+        let mut ts = TextSystem::new();
+        let mut scene = VectorScene::new();
+        let (q, r) = (Buffer::new("entity"), Buffer::new(""));
+        let bar = FindBar {
+            query: &q,
+            replace: Some(&r),
+            goto: None,
+            focus: None,
+            case_sensitive: true,
+            whole_word: false,
+            count: None,
+        };
+        let mut v = FindBarView::default();
+        let area = Rect::new(0.0, 0.0, 900.0, FindBarView::height(&bar));
+        v.paint(&bar, area, &mut scene, &mut ts, &Theme::default());
+        let labels = [
+            (FindHit::Case, "code.find.case"),
+            (FindHit::Word, "code.find.word"),
+            (FindHit::ReplaceOne, "code.find.replace_one"),
+            (FindHit::ReplaceAll, "code.find.replace_all"),
+        ];
+        for (hit, key) in labels {
+            let rect = v.target_rect(hit).expect("pintado");
+            let text = tr(key);
+            let need = chrome::label_w(&mut ts, text);
+            assert!(
+                label_budget(rect.w) >= need,
+                "{text}: caixa {} dá {} < {need}",
+                rect.w,
+                label_budget(rect.w)
+            );
+        }
     }
 }

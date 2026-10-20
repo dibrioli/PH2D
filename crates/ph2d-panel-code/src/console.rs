@@ -225,7 +225,7 @@ impl ConsoleView {
         self.clear = chrome::NO_RECT;
         if band.tab == BandTab::Console {
             let clear_text = tr("code.console.clear");
-            let cw = chrome::label_w(ts, clear_text) + Spacing::Md.px() * 2.0;
+            let cw = chrome::button_w(ts, clear_text);
             self.clear = Rect::new(
                 area.x + area.w - pad - cw,
                 area.y + Spacing::Xxs.px(),

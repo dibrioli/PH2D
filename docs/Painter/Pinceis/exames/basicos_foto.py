@@ -40,7 +40,9 @@ def borda(v):
 def mede(caminho):
     c = cobertura(caminho)
     rec = [coluna(c, x, 30, 150) for x in range(200, 421, 20)]
-    b = float(np.mean([borda(v) for v in rec]))
+    # a orla em duas fases da grelha: o recto lento e o topo da curva em S (y ≈ 195,9)
+    topo_s = [coluna(c, x, 150, 250) for x in range(295, 326, 5)]
+    b = 0.5 * (float(np.mean([borda(v) for v in rec])) + float(np.mean([borda(v) for v in topo_s])))
     opac = float(np.mean([v.max() for v in rec]))
     leve = [coluna(c, x, 340, 460) for x in (205, 210, 215)]
     forte = [coluna(c, x, 340, 460) for x in (530, 535, 540)]

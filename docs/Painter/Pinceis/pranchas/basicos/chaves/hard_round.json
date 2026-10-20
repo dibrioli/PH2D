@@ -10,39 +10,39 @@
  ],
  "chave": {
   "gestos_A": {
-   "1": "nosso",
-   "2": "vizinho",
-   "3": "oraculo"
-  },
-  "gestos_B": {
-   "1": "vizinho",
-   "2": "oraculo",
-   "3": "nosso"
-  },
-  "tamanhos_A": {
-   "1": "vizinho",
-   "2": "oraculo",
-   "3": "nosso"
-  },
-  "tamanhos_B": {
-   "1": "vizinho",
-   "2": "nosso",
-   "3": "oraculo"
-  },
-  "sobre_A": {
    "1": "oraculo",
    "2": "nosso",
    "3": "vizinho"
   },
-  "sobre_B": {
+  "gestos_B": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  },
+  "tamanhos_A": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "tamanhos_B": {
    "1": "vizinho",
    "2": "oraculo",
    "3": "nosso"
+  },
+  "sobre_A": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  },
+  "sobre_B": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
   }
  },
  "quem": {
   "oraculo": "digital_round_hard",
-  "nosso": "Hard Round (escala 1.025)",
-  "vizinho": "Round Pressure (d 0.411, limiar 0.591)"
+  "nosso": "Hard Round (escala 1.0)",
+  "vizinho": "Soft Pastel (d 0.723, limiar 0.591)"
  }
 }

@@ -2,111 +2,113 @@
 
 Receitas e portões: `crates/ph2d-tool-painter/tests/it/familias/basicos.rs`. Pranchas: `pranchas/basicos/` (cegas e
 chaves em `cegas/`, `chaves/`). Régua: `exames/<slug>_regua.txt`. Régua do portão por foto: `exames/basicos_foto.py`
-(as mesmas contas do `Identidade::de` do teste). Matriz final (`exame.sh --matriz`, a biblioteca de 20/10 ~17h).
-Custo: `exame.sh --custo … 5,40,200`, perfil smoke, **load 17–35** (a linha inteira a correr — o p95 é o número; ficou
-≤ 3,4 ms em todos, longe dos 16,7). Pasta `Digital/Basic/<Hard|Soft|Pixel|Glaze>` (rótulos já registados).
+(as contas do `Identidade::de`; a orla em DUAS fases da grelha — o recto lento e o topo da curva em S). Custo:
+`exame.sh --custo … 5,40,200`, perfil smoke, load 20–80 (o p95 é o número). Pasta `Digital/Basic/<Hard|Soft|Flat|
+Pixel|Glaze>` (rótulos registados).
 
-**Aprovados: Hard Round · Soft Round · Pixel 1px · Glaze Round. Reprovados: Round Pressure · Flat Block-in.**
+**Aprovados: Hard Round (curado na 2.ª onda) · Soft Round · Flat Block-in (2.ª onda) · Pixel 1px · Glaze Round.
+Reprovado: Round Pressure.**
 
-## Motor (uma mudança, aditiva)
+## Motor — 1.ª onda
 
-`ph2d-painter-brush/src/dab/bands.rs`: o kernel de faixas da CPU media a orla pela norma do disco e **ignorava a
-`dab_quina`** no Digital (a ponta recta só valia no Wet): uma quina 1 pintava um disco. Com quina > 0 usa-se o
-`falloff_t` (o quadrado no referencial); sem quina o `sqrt` de sempre, ao bit. Portão red-first
-`a_ponta_reta_do_digital_pinta_um_rectangulo` (vermelho antes: cantos 0,0; verde: 1,0; a mutação = tirar a linha).
-Vizinhos verdes: `a_miniatura_de_fabrica…` (só o Flat mudava), `os_outros_meios_nao_mudam`, `as_formas::*` (Wet).
+`dab/bands.rs`: a `dab_quina` chega ao kernel de faixas do Digital (portão `a_ponta_reta_do_digital_pinta_um_rectangulo`).
 
-## A-1 Hard Round — APROVADO
+## Motor — 2.ª onda (três leis, aditivas, DESLIGADAS por omissão; neutro = o código de antes ao bit)
 
-- Receita (Digital): `hardness 0.93`, cápsula (`continuous_spacing`), `pressureSize 0.98` curva 1,2 (a do Rebelle
-  ≈ p^1,2: PL 0,11·0,21·…·0,87 × 0,11·0,21·…·0,89), opacidade fixa; **86 px** = o preset do Rebelle (83,9) + os 2 px
-  de orla que ele pinta a mais.
-- Oráculo: Rebelle `PENCIL/Digital/Round Hard` (escala 1,025). Régua **452/454** (só a textura do recto de 5 px).
-- Vizinho fora da família: Soft Pastel **0,716** (claramente longe); a origem é o 1.º dos 228 (Digital/Round Hard 0,198).
-- Razão de uso: o disco duro opaco que afina pela pressão — bloquear formas e linha limpa.
-- Revisão cega (5 rondas; a cada cura um revisor novo). Curado: largura a 200 (escala), a ponta da rampa em contas de
-  1 px (→ cápsula), o aro esfumado a 200 (dureza 0,85 → 0,93). Última (r5): *«ORIGINAL: 1 (o NOSSO) — confiança
-  baixa … nos gestos e no sobre os dois são quase idênticos … diferenças no limite: o início fraco da rampa (fio × bico),
-  a orla a 200»*. Cruzamento: escolheu o nosso como original nos gestos; nos tamanhos não separou oráculo, nosso e
-  vizinho (sem pressão os três são discos duros). Sobra no limite do visível e ao contrário da r1 (a ponta).
-- Custo p95: 0,15 · 0,53 · 3,37 ms; RSS 20–24 MiB.
+1. **`TracoComposto::tecto_por_dab`** (`ph2d-painter-brush/src/traco.rs`; arma o `stroke_cover_wanted` em
+   `stamp_route.rs`): com o Accumulate desligado cada texel pára na opacidade do dab que o cobre (a da mão), também à
+   Strength 1 — a *Opacity* do Krita/PS. Antes os dabs somavam (o Mapping Pen das canetas arma o mesmo tecto com a
+   Strength 0,99: esta é a porta sem o número mágico). Portão `o_tecto_por_dab_para_na_opacidade_da_mao` (p 0,4: pico
+   0,401 · sem ele 1,000). Mutação: tirar o `|| tecto_por_dab` → 1,000, SANGRA.
+2. **`BrushSpec::sub_passo_fino`** (`spec.rs`, `capsula.rs` `sub_passo_fino_px`, `spec/queries.rs`
+   `sub_passo_da_capsula`): o piso do sub-passo da cápsula desce de 1 texel a 1/16 — a lâmina de 2 px a 5 px leva as
+   mesmas 16 passagens que a de 16 a 40 (o acumular por fracção do diâmetro, a lei do Rebelle). Portão
+   `o_sub_passo_fino_acumula_a_lamina_fina_como_a_larga` (5 × 40 px: 0,991 × 0,996 · sem 0,483 × 0,996). Mutação:
+   ignorar o campo → 0,483, SANGRA.
+3. **`BrushSpec::borda_px`** — a orla em PÍXEIS (`spec/queries.rs` `dureza_do_dab` + `alcance_da_borda`,
+   `spec_frame.rs` `at_dab`, `dab/bands.rs`, `stamp_route.rs`): a queda nunca é mais estreita que `b` px na tela e, onde
+   a orla fixa é a mais larga, a caixa do AA CENTRA-SE na borda (o dab cresce `b/2`, até 1 texel); sob o tecto do traço
+   a orla é ÁREA (o tecto da Smooth Edges, BUGS #16) e, na cápsula, o MAIOR sub-dab (a união enchia-a). Fora da cache
+   de máscara e do device (a dureza é de cada dab). Portão `a_orla_em_pixeis_e_a_mesma_a_40_e_a_200` (orla 1,0 × 1,0 px,
+   a tinta da linha de 5 px 4,85 = a área; o Hard Round da 1.ª onda 0,5 × 2,0 e 4,00). Mutações, todas SANGRAM:
+   dureza sem a orla (tinta 6,00) · união em vez do maior sub-dab (orla 0,5) · sem centrar (tinta 3,97) · sem o tecto
+   de área (orla 0,5 × 0,7).
 
-## A-2 Soft Round — APROVADO
+As três só no Digital (`authored_spec` zera-as nos outros meios; `leis_do_digital` na aguada e no relevo, que leem o
+pincel cru); no preset só gravadas ligadas (`json.rs`/`json/meio.rs`; censo `CAMPOS_FORA` com `DIGITAL`). Verdes por
+nome: `os_outros_meios_nao_mudam`, `presets_de_fabrica::` (13), `presets_dos_meios::`, `a_ponta_de_pixel::`,
+`as_formas::`, `wetpaint_preset`, `stamp_device`, e no `ph2d-painter-brush` `capsula`/`spec`/`stroke_cover`/`dab`/
+`traco`/`falloff`. Sem UI ainda (só pelo preset).
 
-- Receita: `hardness 0`, queda **`Sharp`** (o perfil gaussiano do Rebelle: 0,04·0,12·0,24·0,37·0,51… × 0,06·0,14·
-  0,25·0,37·0,51…; a `Smooth` acumulava num planalto), sem tamanho pela pressão, `pressureOpacity 1` curva **2,6**,
-  tecto da mão 0,8 (PC 0,04·0,13·0,29·0,49·0,69·0,86 × Rebelle 0,03·0,12·0,31·0,52·0,70·0,86); **163 px** = o preset
-  (152,6) × 30/28.
-- Oráculo: Rebelle `Round Soft` (escala 1,071). Régua **448/454** (o recto de 5 px 0,78 × 0,86).
-- Vizinho: Graphite 8B **0,918**; origem 1.ª (Digital/Round Soft 0,573).
-- Razão de uso: luz e sombra suaves sem textura — o único disco macio opaco da biblioteca.
-- Revisão cega r2: *«Não consegui separar o ORIGINAL da IMITAÇÃO … a única coisa que se aproxima de uma diferença é
-  suspeita e não confirmada (a borda a 200)»*. r1 tinha listado a cauda fraca (curada: sem piso, curva 2,6).
-- Custo p95: 0,17 · 0,27 · 1,74 ms; RSS 21–25 MiB.
+## A-1 Hard Round — APROVADO (curado na 2.ª onda)
 
-## A-5 Pixel 1px — APROVADO
+- Receita (Digital): `hardness 1` + **`borda_px 1`** (a caixa de 1 px centrada na borda), cápsula, `pressureSize 0,98`
+  curva **1,4**, opacidade fixa; **84 px** = o preset do Rebelle (83,87): com a orla centrada a largura casa a 40 e a
+  200 à escala 1 (a 1.ª onda precisava de 1,025 e falhava a 200).
+- Oráculo Rebelle `PENCIL/Digital/Round Hard`. Régua **450/454** (a ponta do fim da rampa; o perfil do recto de 5 px).
+  Origem 1.ª da matriz a **0,140** (era 0,198). Vizinho: Soft Pastel **0,723**.
+- O aro a 200: 0,15 · 0,59 · 0,91 (2–3 px) → um píxel, como o Rebelle (0,22 → 0,95).
+- Revisão cega 2.ª onda: r1 escolheu o NOSSO como original nas 6 linhas (na espiral/«sobre» achou o oráculo «não
+  claramente outro»); listou a orla mais macia (era 1,3 px) e o terço fraco da rampa mais gordo. r2 achou o oráculo em
+  todas, só com zoom: o terço fraco da rampa (curado: curva 1,4, a largura casa coluna a coluna 2·2·4·6·8·10·12·14) e a
+  linha de 5 px. **r3** (final): *«ORIGINAL: o nosso nas 6 linhas — confiança baixa … diferença média de 2–3 em 255 …
+  quase uma moeda ao ar»*; sobra no limite: o Rebelle 0,3–0,5 px mais largo (o 5 px dele pinta 6), as pontas 2 px.
+- Custo p95 (final): 0,12 · 0,59 · 1,10 ms; RSS 23–25 MiB (load 36–46).
 
-- Receita: a ponta de píxel **Pixel-perfect** (`pixel 2`, L18), `hardness 1`, sem pressão; **1 px** (MyPaint `1pixel`,
-  raio e^−0,58 → 1,1 px).
-- Oráculos: MyPaint `experimental/1pixel` (principal: o recto de 5 px = 5 px como o nosso; o Krita pinta 6) e Krita
-  `u) Pixel Art`. Régua 440/454 contra o MyPaint: os ✗ são as emendas do MyPaint nos traços rápidos (ele acaba antes e
-  ondula 0,4–0,6 px); o Krita não as tem (rugosidade 0 nos rápidos).
-- Vizinho: Hard Round 0,825 (família) · Mapping Pen **0,869** fora (claramente longe).
-- Razão de uso: pixel art — zero píxeis parciais, um píxel por coluna. A 40 px a matriz vê um disco duro (é por
-  desenho); a identidade mede-se no 1 px: portão `o_pixel_1px_e_o_unico_que_pinta_o_pixel_exacto` (0 parciais,
-  460/460 colunas; o Hard 44 parciais e 82/460, o Soft idem). Mutação: `pixel 1` (sem tirar as quinas) → 459/460 SANGRA.
-- Revisão cega r2: cruzamento — achou o MyPaint pelas *«emendas nos verticais e traços que acabam antes»*, defeitos do
-  oráculo que o Krita não tem; *«cor, opacidade, pressão, cruzamento e secagem: nenhuma diferença»*. Decisão (produto):
-  não se imitam as falhas de amostragem de UM oráculo que o outro não tem.
-- Custo p95: 0,16 · 0,24 · 0,49 ms; RSS 20–25 MiB.
+## A-2 Soft Round — APROVADO (1.ª onda)
 
-## A-6 Glaze Round — APROVADO
+`hardness 0`, queda `Sharp`, `pressureOpacity 1` curva 2,6, tecto da mão 0,8, 163 px. Rebelle `Round Soft`, régua
+448/454, vizinho Graphite 8B 0,918. Revisão cega r2: *«Não consegui separar o ORIGINAL da IMITAÇÃO»*. p95 0,17 · 0,27 ·
+1,74 ms.
 
-- Receita: dabs duros quase transparentes que SE SOMAM (`hardness 0.8`, Accumulate, `flow 0.03` — o perfil macio do
-  MyPaint é a corda do disco: 0,12·0,40·0,59·0,70·0,77 × 0,17·0,41·0,55·0,66·0,73) e o **tecto do traço 0,37** (L8):
-  a espiral que se cruza sobe a 0,337 como a do MyPaint e pára; entre traços acumula. Pressão: tamanho 0,7, opacidade
-  curva 1,3. **14 px** = o MyPaint à pressão cheia.
-- Oráculo: MyPaint `deevad/detail_brush_large_glazing` (o Krita `Bristles-4 Glaze` é uma cerda opaca: não é velatura).
-  Escala 2,1. Régua **444/452**.
-- Vizinho: Wet Wash **1,188**.
-- Razão de uso: velaturas digitais por camadas — a única translúcida com tecto por traço.
-- Revisão cega r2: *«Não consigo separar o original da imitação … as únicas diferenças: o centro do recto de 200 px e
-  a força dos anéis nos cruzamentos azul sobre vermelho»* (os anéis são os carimbos do MyPaint). r1 tinha visto a orla,
-  a espiral fundida e a largura (curado: dureza 0,8 + fluxo 0,03 à escala certa).
-- Custo p95: 0,19 · 0,53 · 2,79 ms; RSS 23–30 MiB.
+## A-4 Flat Block-in — APROVADO (2.ª onda)
 
-## A-3 Round Pressure — REPROVADO
+- Receita (Digital): a lâmina FIXA do Rebelle (`dab_flatten 0,6` = T 0,4·D, `dab_angle_deg 90`, `dab_quina 0,9`),
+  `hardness 0,8` (a queda relativa dele: 2 px a 40, 7 a 200), **`borda_px 1`** (o AA de área a 5 px), Accumulate a
+  `flow 0,28`, cápsula + **`sub_passo_fino`**; sem pressão; **35 px** = o preset do Rebelle (35,1) × 0,995.
+- Oráculo Rebelle `PENCIL/Digital/Flat` (escala 0,995). Régua **452/454** (o cv do recto de 5 px). Origem a **0,210**.
+  Vizinho: Pixel 1px 0,664 (família, degrau ≥ 0,40); fora: Mapping Pen **1,063**.
+- A 5 px: 0,48 → 1,00 com 0,42 de AA nas orlas (Rebelle 0,95, 0,75). O esbatido do fim a 200 px já casava (0,1→0,9 em
+  25 px nos dois) — a queixa da 1.ª onda era da receita anterior.
+- Razão de uso: bloquear massas com a lâmina fixa — larga no horizontal, fina no vertical, pontas quadradas que esbatem.
+- Revisão cega: r1 escolheu o nosso como original nas 6 linhas e listou a linha de 5 px mais leve (curado: orla em px),
+  r2 achou o oráculo só com zoom (o nosso 1 px mais grosso — curado: a orla só centra onde é a mais larga), r3 de novo o
+  nosso nas 6, lendo a borda do nosso «mais seca» (curado: dureza 0,85 → 0,8). **r4** (final) achou o oráculo nas 6
+  pela assimetria da borda dele (o registo de meio píxel da bancada, fila 3) — *«os dois são quase o mesmo pincel, e só a
+  medição das bordas os separa»*: o nosso 0,4 px mais estreito, o vertical 1 px mais fino e de ponta mais quadrada.
+  Medido e recusado: quina 0,8/0,7 arredonda a ponta mas põe vieiras de carimbo nos rectos (régua 438 e 430/454).
+- Portão: `cada_basico_se_reconhece_pela_foto` com `M::Chato` (recto ÷ vertical 2,375 × foto 2,294). Mutação: regerar o
+  preset com `dab_flatten 0` → Chato 1,0 e Borda 0 fora, «pinta o irmão» Pixel 1px — SANGRA (preset reposto).
 
-- Contra o Krita `b) Basic-5 Size Opacity` (régua 440/454, d 0,41 do Hard Round — o eixo pressão vê-se). Três
-  revisores cegos (r1–r3) acharam o Krita e o nosso como o par e listaram SEMPRE a mesma coisa: **a cauda fraca da
-  rampa é mais curta** (Krita: 0,03 → 0,50 ao longo de 200 px, linear; nós: começa ~20 px depois e sobe depressa).
-  Mecanismo medido: a opacidade pela pressão do Krita é por TRAÇO (cada dab no máximo a sua opacidade — alpha
-  darken); a nossa multiplica a cobertura de cada dab e os dabs somam-se até à Strength. Nenhuma curva/piso/tecto da
-  mão a tornou linear (6 variantes: ou começa tarde ou o meio satura, PC 0,94 × 0,70). Também as festas de carimbo do
-  Krita a 200 px (espaçamento automático ∝ √D): imitá-las a 0,22 punha rugosidade 0,21 nos rectos de 40 (que no Krita
-  são lisos). ⇒ **fila de motor**: «pressão → opacidade do TRAÇO (máximo por dab, sem somar)».
-- Mutação do portão de foto com ele: sem a opacidade pela pressão → rampa 1,00 × 0,267 e «pinta o Hard Round» SANGRA.
+## A-5 Pixel 1px — APROVADO (1.ª onda)
 
-## A-4 Flat Block-in — REPROVADO
+Ponta Pixel-perfect (`pixel 2`), 1 px. MyPaint `1pixel` (e Krita Pixel Art). Portão
+`o_pixel_1px_e_o_unico_que_pinta_o_pixel_exacto` (0 parciais, 460/460 colunas). p95 0,16 · 0,24 · 0,49 ms.
 
-- Contra o Rebelle `Digital/Flat` (lâmina FIXA, L 0,98·D × T 0,4·D, ângulo 90°; régua 444/454; origem 1.ª, 0,412).
-  Pediu a ponta recta (o motor acima). Revisão cega r1: *«1. Traço fino (5 px): o original sai escuro e opaco, a
-  imitação clara (0,44 × 0,87). 2. As pontas dos verticais afinam e desvanecem no original. 3. A 200 px o esbatido do fim
-  é metade»*. Mecanismo: as pontas esbatidas são tinta que acumula (dabs a 0,28) e a 5 px o lado fino (2 px) leva dois
-  contributos por píxel, seja qual for o passo (`spacing` 0,01 dá o mesmo 0,48; baixar o passo mínimo do acumulo a
-  0,25 px também — revertido); sem Accumulate o miolo enche mas as pontas ficam secas. ⇒ **fila de motor**:
-  «acumulação do Digital independente do tamanho na lâmina fina».
+## A-6 Glaze Round — APROVADO (1.ª onda)
 
-## Portões (verdes por nome, 20/10)
+Dabs a `flow 0,03` que somam, `hardness 0,8`, tecto do traço 0,37 (L8), 14 px. MyPaint `detail_brush_large_glazing`,
+régua 444/452, vizinho Wet Wash 1,188. r2: *«Não consigo separar o original da imitação»*. p95 0,19 · 0,53 · 2,79 ms.
 
-`cada_basico_se_reconhece_pela_foto` (borda · opacidade · rampa da largura · rampa da cobertura · tecto, contra a foto
-de cada oráculo, e a lei dos irmãos entre os quatro) · `o_pixel_1px_e_o_unico_que_pinta_o_pixel_exacto` ·
-`a_ponta_reta_do_digital_pinta_um_rectangulo` · os da fábrica (`the_factory_presets_are_counted`,
-`cada_preset_de_fabrica_e_a_sua_receita`, `…_volta_ao_byte`, `a_miniatura…`, `a_contagem_por_meio`).
+## A-3 Round Pressure — REPROVADO (2.ª onda, de novo)
+
+O motor que ele pedia existe e mede a lei do Krita `b) Basic-5 Size Opacity`: com `tecto_por_dab` a rampa sobe desde o
+1.º píxel sem somar (0,02 · 0,07 · 0,13 · 0,19 contra 0,02 · 0,06 · 0,10 · 0,15; a 1.ª onda 0,00 · 0,01 · 0,04 · 0,06).
+Régua 448/454. Reprova por: (1) **não é distinto** — a matriz põe-no a 0,286 do Hard Round (degrau < 0,40) e a 0,30 do
+Studio Pen das canetas, e o revisor cego (r1) não separou o Hard Round dele nos tamanhos e no «sobre» («o terceiro não é
+claramente outro»); (2) a curva de potência + tecto da mão dá um JOELHO aos 0,86 de pressão que o Krita (curva em S)
+não tem — o revisor achou o Krita e listou-o em primeiro. Saiu da receita e da fábrica. Para voltar: a curva em S da mão
+(o agente das canetas) e uma decisão de produto sobre a série Hard Round ↔ Round Pressure.
+
+## Custo (2.ª onda, `exame.sh --custo`, smoke)
+
+Finais: Hard Round p95 0,12 · 0,59 · 1,10 ms (RSS 23–25 MiB, load 36–46) · Flat Block-in 0,37 · 0,53 · 0,94 ms
+(23–24 MiB, load 26–33). Round Pressure (antes de sair) 0,16 · 0,71 · 3,28 ms. As três leis só custam onde ligadas (a
+orla e o tecto por dab tiram o pincel da cache de máscara: a rota por píxel já servia a cápsula).
 
 ## Para a fila (coordenador)
 
-1. Motor: pressão → opacidade POR TRAÇO (alpha darken) — para o Round Pressure (e o PS «Hard Round Pressure Opacity»).
-2. Motor: acumulação do Digital a ≤ 5 px na lâmina fina; o esbatido do fim a crescer com o tamanho — para o Flat.
-3. A orla do Hard é relativa ao raio (dureza): 1 px de AA fixo como o Rebelle não existe; 0,93 + cápsula é o meio-termo
-   (binária a 40, 2–3 px a 200).
+1. A curva em S da mão (G-pen, Basic-5) — destrava o Round Pressure, com a decisão da série.
+2. As três leis novas não têm linha no painel (só o preset as liga): «Edge (px)», «Fine sub-step», «Opacity per dab».
+3. O registo de meio píxel entre a bancada e o Rebelle (os revisores viram o traço todo 0,4–0,5 px deslocado) — é da
+   bancada/entrada, não de um pincel.

@@ -35,6 +35,7 @@ mod seam_papel; // o seletor da cor do papel aplica o papel nos quatro meios (20
 mod seam_pigmento; // a fileira `Pigment`: a tela concorda com a porta, nos dois sentidos
 mod seam_sculpt;
 mod seam_shape_deposit;
+mod seam_marca; // L4: as linhas da marca no cartão Jitter, pelo ponteiro
 mod seam_spray;
 mod seam_substrate;
 mod seam_taper;

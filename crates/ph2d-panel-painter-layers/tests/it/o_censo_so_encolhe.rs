@@ -69,6 +69,33 @@ fn inertes_com_motivo() -> Vec<Inerte> {
                  do ângulo desloca o fluxo das outras variações; a pegada rodada arredonda diferente)";
     // O Wet Paint saiu a 13/10: as cerdas do Shape giram com o Rotate (plano 27, 27 §6.6).
     v.push((Watercolor, PAINTER_BRUSH_JITTER_ROTATE, rodar));
+    // As linhas da MARCA (L4) que viram ou achatam a PONTA: na ponta redonda de fábrica não têm lado para
+    // mostrar. NÃO esmaecem pela razão do `rodar` (medido 20/10: o dab que leva a forma sai pela rota por dab e
+    // arredonda diferente da cache — a tinta muda por ACIDENTE em vários estados). Na Watercolor com a Shape
+    // «Automatic» o carimbo é o redondo dela (doc 47 §6); no Wet as cerdas só leem o ROTOR (o espelho Y não
+    // lhes chega, o X sim pela meia-volta).
+    let ponta = "a ponta redonda de fábrica não tem lado para virar nem eixo para achatar; NÃO esmaece pela \
+                 razão do Jitter Rotate (a rota por dab arredonda diferente da cache: a tinta muda por ACIDENTE)";
+    let (vira_x, vira_y, redonda, angulo) = (
+        PAINTER_MARCA_FIELDS[3],
+        PAINTER_MARCA_FIELDS[4],
+        PAINTER_MARCA_FIELDS[2],
+        PAINTER_MARCA_FIELDS[5],
+    );
+    for (m, id) in [
+        (Digital, vira_x),
+        (Digital, vira_y),
+        (Digital, angulo),
+        (Watercolor, vira_x),
+        (Watercolor, vira_y),
+        (Watercolor, redonda),
+        (Watercolor, angulo),
+        (Impasto, vira_x),
+        (Impasto, vira_y),
+        (WetPaint, vira_y),
+    ] {
+        v.push((m, id, ponta));
+    }
     v.push((Watercolor, PAINTER_BRUSH_JITTER_ROTATE_CHIP, rodar));
     v.push((
         Impasto,

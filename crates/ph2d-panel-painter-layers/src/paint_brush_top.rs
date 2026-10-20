@@ -244,6 +244,8 @@ pub(crate) fn paint_randomize_section(
         ],
         usize::from(brush.color_jitter_scope),
     );
+    // ⭐ A cor secundária e a cor pela MÃO (L11): a amostra da secundária e as linhas da tabela da marca.
+    y = crate::marca_cor::paint_cor_da_mao(ctx, theme, x, content_w, y, &brush);
     let out = y;
     end_fold(ctx, fold, out)
 }

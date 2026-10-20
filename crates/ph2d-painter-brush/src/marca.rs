@@ -1,0 +1,159 @@
+//! **O jitter da MARCA que faltava** (L4, `docs/Painter/Pinceis/03_MOTORES.md` §4 e `06_LEIS_DAS_LACUNAS.md` §3):
+//! a opacidade por dab, a contagem sorteada do spray, os espelhos X/Y, a redondeza, o ângulo sorteado UMA vez
+//! por traço, o espalhamento só ATRAVÉS do traço e o tamanho da partícula do spray. O Position / Scale /
+//! Rotation / Spacing / Count de sempre ficam em [`crate::jitter`] e no `BrushSpec`.
+//!
+//! ⭐ **Cada campo neutro = o traço de hoje ao bit**: um campo a zero não sorteia nada, e os ligados sorteiam
+//! de um fluxo PRÓPRIO do traço (`PorTraco::rng`, semeado pela `seed`), logo ligar um não desloca os sorteios
+//! de sempre (escala → rotação → cor → posição): eles saem ao bit. Transcendental-free (HR-5).
+//!
+//! ⛔ **Fluxo por dab NÃO é um campo**: o motor multiplica a Strength e o Flow no MESMO produto por dab
+//! (`dab.rs`, BUGS #41), e a [`DabJitter::opacity`] já é esse produto — um segundo seria um controlo que mente
+//! (a mesma lei da L2 para a pressão→fluxo).
+
+use crate::jitter::next_f32;
+
+/// O jitter da marca (os campos novos da L4). [`DabJitter::NEUTRO`] = o traço de sempre.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DabJitter {
+    /// **Opacidade por dab** `0..1`: a cobertura de cada marca × `1 ± amount` (simétrico: a média fica — o
+    /// Splats do Rebelle, opacidade por dab cv 0,08–0,20 em torno de 0,33–0,37).
+    pub opacity: f32,
+    /// **Contagem sorteada** `0..1` (Photoshop *Count Jitter*): cada ponto do caminho deixa `n − ⌊amount·u·n⌉`
+    /// marcas do spray, nunca menos de uma. Sem spray (`spray_count = 1`) não há o que sortear.
+    pub count: f32,
+    /// **Espelho X** `0..1`: a probabilidade de a ponta sair espelhada no eixo X dela (Photoshop *Flip X
+    /// Jitter* = `0,5`). Só se VÊ numa ponta que não é simétrica (Shape de imagem, grão que roda com o dab).
+    pub flip_x: f32,
+    /// **Espelho Y** `0..1`: idem no eixo Y da ponta.
+    pub flip_y: f32,
+    /// **Redondeza** `0..1` (Photoshop *Roundness Jitter*): o eixo MENOR de cada marca × `1 − amount·u` — a
+    /// ponta achata-se ao acaso, marca a marca.
+    pub roundness: f32,
+    /// **Ângulo do traço** `0..1` (Procreate *Rotation → Randomized*): a ponta roda `±amount·180°` sorteados UMA
+    /// vez por traço — o traço inteiro com o mesmo ângulo, o seguinte com outro.
+    pub angle_per_stroke: f32,
+    /// **Espalhar através** `0..2` diâmetros (Photoshop *Scatter* sem *Both Axes*): cada marca desvia-se
+    /// `±amount·D` só na perpendicular ao traço — o spatter do Rebelle espalha 0,6–0,9·D através, ~3× o ao longo.
+    pub across: f32,
+    /// **Partícula** `0,05..1` (o tamanho de cada marca do spray em fracção do pincel; o espalhamento continua o
+    /// do pincel): `1` = a marca do tamanho do pincel. Só com spray (`spray_count > 1`).
+    pub particle: f32,
+}
+
+impl DabJitter {
+    /// O jitter de sempre: nada sorteia, nada muda.
+    pub const NEUTRO: Self = Self {
+        opacity: 0.0,
+        count: 0.0,
+        flip_x: 0.0,
+        flip_y: 0.0,
+        roundness: 0.0,
+        angle_per_stroke: 0.0,
+        across: 0.0,
+        particle: 1.0,
+    };
+
+    /// A menor partícula (`5 %` do pincel): abaixo disso o dab do raio mínimo (`0,5 px`) já é o que se pinta.
+    pub const PARTICULA_MIN: f32 = 0.05;
+    /// O maior espalhamento através, em diâmetros (o Spray do Krita mede 1,2·D; o dobro dá a margem do artista).
+    pub const ACROSS_MAX: f32 = 2.0;
+
+    /// Algum dos sorteios de FORMA está ligado (espelho ou redondeza) — o dab leva então a sua pegada própria.
+    #[must_use]
+    pub fn muda_a_forma(&self) -> bool {
+        self.flip_x > 0.0 || self.flip_y > 0.0 || self.roundness > 0.0
+    }
+
+    /// A partícula efectiva para um spray de `n` marcas (`1` sem spray: o campo não age).
+    #[must_use]
+    pub fn particula(&self, n: u32) -> f32 {
+        if n > 1 {
+            self.particle.clamp(Self::PARTICULA_MIN, 1.0)
+        } else {
+            1.0
+        }
+    }
+}
+
+impl Default for DabJitter {
+    fn default() -> Self {
+        Self::NEUTRO
+    }
+}
+
+/// O que os sorteios da marca decidiram para UM dab.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Marca {
+    /// O multiplicador da cobertura (`1` = o de sempre).
+    pub cobertura: f32,
+    /// O multiplicador do eixo menor (`1` = a ponta do pincel).
+    pub redondeza: f32,
+    /// A ponta espelhada no eixo Y dela (o espelho X é este + meia-volta, [`Marca::meia_volta`]).
+    pub espelho: bool,
+    /// Meia-volta da ponta (o espelho X = espelho Y + 180°; os dois espelhos juntos = só a meia-volta).
+    pub meia_volta: bool,
+    /// O desvio através do traço, em px.
+    pub desvio: [f32; 2],
+}
+
+/// Os sorteios da marca, pela ordem fixa opacidade → redondeza → espelho X → espelho Y → através; cada um só
+/// quando o seu campo está ligado (`None` = nenhum ligado: nada sorteado). `dir` é o heading do traço (unitário;
+/// `[0, 0]` sem direcção ainda — o desvio através fica `0`, mas o sorteio acontece para o fluxo ser o mesmo).
+pub(crate) fn sorteia(rng: &mut u64, j: &DabJitter, diametro: f32, dir: [f32; 2]) -> Option<Marca> {
+    if j.opacity <= 0.0 && !j.muda_a_forma() && j.across <= 0.0 {
+        return None;
+    }
+    let simetrico = |rng: &mut u64| next_f32(rng) * 2.0 - 1.0;
+    let cobertura = if j.opacity > 0.0 {
+        1.0 + simetrico(rng) * j.opacity.clamp(0.0, 1.0)
+    } else {
+        1.0
+    };
+    let redondeza = if j.roundness > 0.0 {
+        1.0 - next_f32(rng) * j.roundness.clamp(0.0, 1.0)
+    } else {
+        1.0
+    };
+    let fx = j.flip_x > 0.0 && next_f32(rng) < j.flip_x.clamp(0.0, 1.0);
+    let fy = j.flip_y > 0.0 && next_f32(rng) < j.flip_y.clamp(0.0, 1.0);
+    let desvio = if j.across > 0.0 {
+        let d = simetrico(rng) * j.across.clamp(0.0, DabJitter::ACROSS_MAX) * diametro;
+        [-dir[1] * d, dir[0] * d]
+    } else {
+        [0.0, 0.0]
+    };
+    Some(Marca {
+        cobertura,
+        redondeza,
+        espelho: fx != fy,
+        meia_volta: fx,
+        desvio,
+    })
+}
+
+/// A contagem sorteada de um ponto do caminho com `n` marcas (`n` sem sorteio quando o campo está a zero ou
+/// não há spray).
+pub(crate) fn conta(rng: &mut u64, j: &DabJitter, n: u32) -> u32 {
+    if j.count <= 0.0 || n <= 1 {
+        return n;
+    }
+    let tira = (next_f32(rng) * j.count.clamp(0.0, 1.0) * n as f32).round() as u32;
+    n.saturating_sub(tira).max(1)
+}
+
+/// O rotor do ângulo do traço (`[1, 0]` com o campo a zero), sorteado do fluxo PRÓPRIO do traço (`seed`), como
+/// a cor por traço — o fluxo por dab que os outros sorteios leem fica intacto.
+pub(crate) fn rotor_do_traco(j: &DabJitter, seed: u64) -> [f32; 2] {
+    if j.angle_per_stroke <= 0.0 {
+        return [1.0, 0.0];
+    }
+    let mut rng = seed ^ 0x616E_676C_6550_5354;
+    let deg = ((next_f32(&mut rng) * 2.0 - 1.0) * j.angle_per_stroke.clamp(0.0, 1.0) * 180.0).round()
+        as i32;
+    crate::texture::rotate_by_degrees((((deg % 360) + 360) % 360) as u16)
+}
+
+#[cfg(test)]
+#[path = "marca_tests.rs"]
+mod tests;

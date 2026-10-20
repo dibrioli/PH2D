@@ -194,6 +194,12 @@ pub const TODAS: &[Declaracao] = &[
         cartao: &[],
     },
     Declaracao {
+        nome: "marca",
+        campos: 1,
+        chaves: &crate::paint_stroke::jitter_card::ROTULOS_DA_MARCA,
+        cartao: &[],
+    },
+    Declaracao {
         nome: "taper",
         campos: 1,
         chaves: TAPER,
@@ -462,6 +468,10 @@ fn rotulos_dos_padroes() -> Vec<&'static str> {
 /// `panel.painter_layers.stroke.grid.show_grid` responde `stroke.grid`: um sub-cartão é uma secção.
 #[must_use]
 pub fn nome_da_seccao(chave: &str) -> Option<&str> {
+    // A tabela IRMÃ das linhas da marca (L4/L11, `ph2d_i18n` `painter_marca`) é uma secção só.
+    if chave.starts_with("panel.painter_marca.") {
+        return Some("marca");
+    }
     chave
         .strip_prefix("panel.painter_layers.")
         .and_then(|resto| resto.rsplit_once('.'))

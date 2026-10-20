@@ -126,11 +126,14 @@ impl Default for BrushSpec {
             color_jitter_sat: 0.0,
             color_jitter_val: 0.0,
             color_jitter_scope: crate::jitter::ColorJitterScope::PerDab,
+            cor_mao: crate::cor_mao::CorDaMao::NEUTRA,
             jitter_scale: 0.0,
             jitter_rotate: 0.0,
             jitter_spacing: 0.0,
             // Uma marca por ponto do caminho — o neutro do spray, byte-idêntico ao mundo pré-W5.
             spray_count: 1,
+            dab_jitter: crate::marca::DabJitter::NEUTRO,
+            dab_tilt: None,
             symmetry: SymmetrySettings::default(),
             // Watercolor: the `watercolor` gate (OFF) is what guarantees a byte-identical default
             // brush — so the params carry sensible *when-enabled* values, not neutral zeros, and

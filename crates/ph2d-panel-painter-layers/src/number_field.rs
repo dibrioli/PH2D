@@ -55,6 +55,7 @@ pub(crate) fn is_param_field(id: NodeId) -> bool {
         || (ph2d_tool_painter::ids::PAINTER_PEN_FIELDS.contains(&id)
             && id != ph2d_tool_painter::ids::PAINTER_PEN_ROTATION)
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_QUINA
+        || ph2d_tool_painter::ids::PAINTER_MARCA_FIELDS.contains(&id)
 }
 
 /// Format a param value: whole number when `decimals == 0` (Angle degrees), else fixed decimals (so the

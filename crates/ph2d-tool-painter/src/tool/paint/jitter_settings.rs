@@ -16,6 +16,9 @@ impl PainterTool {
     /// `PAINTER_BRUSH_JITTER_*` / `PAINTER_BRUSH_TILING_*`, which the texture-layer router does not claim.
     pub(crate) fn route_brush_jitter_event(&mut self, event: &PanelEvent) -> bool {
         match event {
+            // As linhas da MARCA (L4: opacidade, contagem, espelhos, redondeza, ângulo do traço, através,
+            // partícula), uma tabela só (`marca.rs`).
+            _ if self.route_marca_event(event) => true,
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE => {
                 self.toggle_brush_color_jitter_enabled();
                 true
@@ -409,6 +412,7 @@ impl PainterTool {
         b.color_jitter_sat = d.color_jitter_sat;
         b.color_jitter_val = d.color_jitter_val;
         b.color_jitter_scope = d.color_jitter_scope;
+        b.cor_mao = d.cor_mao;
     }
 
     /// Reset the **Texture** section to defaults — clears the assigned texture and its modulation
@@ -448,6 +452,7 @@ impl PainterTool {
         b.jitter_rotate = d.jitter_rotate;
         b.jitter_spacing = d.jitter_spacing;
         b.spray_count = d.spray_count;
+        b.dab_jitter = d.dab_jitter;
         b.dash_ratio = d.dash_ratio;
         b.dash_samples = d.dash_samples;
         b.input_samples = d.input_samples;

@@ -15,7 +15,9 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::ids::painter_brush_jitter_unit_option_id;
-use ph2d_tool_painter::{BRUSH_JITTER_ABS_MAX_PX, BrushSettings, JitterUnit, SPRAY_COUNT_MAX};
+use ph2d_tool_painter::{
+    BRUSH_JITTER_ABS_MAX_PX, BrushSettings, CartaoDaMarca, JitterUnit, SPRAY_COUNT_MAX,
+};
 
 /// Paint the **Jitter** group inside a decorative rounded-rect card: a titled panel holding the
 /// per-dab **Position** scatter (unit-aware) + its Unit, the **Scale** scatter, and (texture only)
@@ -44,7 +46,10 @@ pub(super) fn paint_jitter_card(
     // A altura é CONTADA a partir das rows que este card pinta, nunca escolhida; foi um número fixo
     // por row que a fez transbordar em 2026-06-29.
     const SLIDER_ROWS: f32 = 5.0; // LITERAL-PX-OK: Count/Position/Scale/Spacing/Rotation
-    let rows_h = slider_row_h * SLIDER_ROWS + (ROW_H_PX + sm);
+    // As linhas da MARCA (L4) por baixo: uma por `LINHAS_DA_MARCA`, cada uma da altura de uma linha de campo.
+    #[allow(clippy::cast_precision_loss)]
+    let marca_h = ph2d_tokens::row_pitch_px() * linhas_do_cartao(CartaoDaMarca::Jitter).count() as f32;
+    let rows_h = slider_row_h * SLIDER_ROWS + (ROW_H_PX + sm) + marca_h;
     let card_h = pad + title_h + rows_h + xs;
     let card = Rect::new(x, y, content_w, card_h);
     // ⭐ Raio e moldura pela porta do TEMA: o cartão é plano num tema moderno.
@@ -152,9 +157,8 @@ pub(super) fn paint_jitter_card(
         ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SPACING_CHIP,
         brush.jitter_spacing,
     );
-    // Rotation: per-dab stamp-rotation scatter (Shape + Grain) — always shown (Enio 2026-06-28). The last
-    // row, so its returned `y` is unused (the card height is pre-computed above).
-    paint_slider_chip_row(
+    // Rotation: per-dab stamp-rotation scatter (Shape + Grain) — always shown (Enio 2026-06-28).
+    iy = paint_slider_chip_row(
         ctx,
         theme,
         inner_x,
@@ -165,9 +169,72 @@ pub(super) fn paint_jitter_card(
         ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_ROTATE_CHIP,
         brush.jitter_rotate,
     );
+    // ⭐ As linhas da MARCA (L4): opacidade, contagem, redondeza, espelhos, ângulo do traço, através,
+    // partícula — uma tabela no tool (`marca.rs`); a coluna é a da secção delas.
+    let sec = crate::seccoes::seccao_da_chave(ctx.text_system, ROTULOS_DA_MARCA[0]);
+    iy = paint_linhas_da_marca(ctx, theme, inner_x, inner_w, iy, &brush, CartaoDaMarca::Jitter, sec);
     let _ = iy;
     y + card_h + ph2d_tokens::control_gap_px()
 }
+
+/// Os índices das linhas da marca que se pintam no cartão `c`.
+pub(crate) fn linhas_do_cartao(c: CartaoDaMarca) -> impl Iterator<Item = usize> {
+    ph2d_tool_painter::LINHAS_DA_MARCA
+        .into_iter()
+        .enumerate()
+        .filter(move |(_, l)| l.cartao() == c)
+        .map(|(i, _)| i)
+}
+
+/// Pinta as linhas da marca do cartão `c` (uma tabela no tool, `marca.rs`); devolve o `y` seguinte.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_linhas_da_marca(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    w: f32,
+    mut y: f32,
+    brush: &BrushSettings,
+    c: CartaoDaMarca,
+    sec: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    for i in linhas_do_cartao(c) {
+        let (lo, hi, passo) = ph2d_tool_painter::LINHAS_DA_MARCA[i].faixa();
+        y = crate::number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            w,
+            y,
+            tr(ROTULOS_DA_MARCA[i]),
+            ph2d_tool_painter::ids::PAINTER_MARCA_FIELDS[i],
+            brush.marca[i] as f32,
+            lo as f32,
+            hi as f32,
+            passo,
+            2,
+            sec,
+        );
+    }
+    y
+}
+
+/// O rótulo de cada linha da marca, pela ordem de [`ph2d_tool_painter::LINHAS_DA_MARCA`].
+pub(crate) const ROTULOS_DA_MARCA: [&str; ph2d_tool_painter::N_LINHAS_DA_MARCA] = [
+    "panel.painter_marca.opacity",
+    "panel.painter_marca.count",
+    "panel.painter_marca.roundness",
+    "panel.painter_marca.flip_x",
+    "panel.painter_marca.flip_y",
+    "panel.painter_marca.angle_per_stroke",
+    "panel.painter_marca.across",
+    "panel.painter_marca.particle",
+    "panel.painter_marca.secondary_jitter",
+    "panel.painter_marca.pressure_secondary",
+    "panel.painter_marca.pressure_hue",
+    "panel.painter_marca.pressure_sat",
+    "panel.painter_marca.pressure_val",
+];
 
 /// A contagem de marcas do spray na pista `0..1` do slider — a INVERSA exata do mapeamento que o
 /// tool aplica (`set_brush_spray_count_norm`).

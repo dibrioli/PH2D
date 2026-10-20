@@ -7,7 +7,7 @@
 
 use ph2d_painter_brush::line_kind::LineKind;
 use ph2d_painter_brush::{
-    BrushBlend, BrushSpec, ColorJitterScope, Falloff, FalloffCurve, FalloffPoint, FootprintCurve,
+    BrushBlend, BrushSpec, ColorJitterScope, CorDaMao, DabJitter, Falloff, FalloffCurve, FalloffPoint, FootprintCurve,
     HandleType, JitterUnit, MAX_BRUSH_BLEND_MODES, MAX_TEX_PARAMS, MirrorAxis, StrokeMethod,
     TextureKind, TextureMapping, TextureSettings,
 };
@@ -115,6 +115,52 @@ fn textura_de_json(v: Option<&Value>, base: TextureSettings) -> TextureSettings 
     }
 }
 
+fn marca_para_json(j: &DabJitter) -> Value {
+    json!({
+        "opacity": num(j.opacity),
+        "count": num(j.count),
+        "flip_x": num(j.flip_x),
+        "flip_y": num(j.flip_y),
+        "roundness": num(j.roundness),
+        "angle_per_stroke": num(j.angle_per_stroke),
+        "across": num(j.across),
+        "particle": num(j.particle),
+    })
+}
+
+/// O jitter da marca (L4) do JSON; uma chave ausente (um preset de antes) = a de `base`.
+fn marca_de_json(v: Option<&Value>, base: DabJitter) -> DabJitter {
+    let Some(o) = v.and_then(Value::as_object) else {
+        return base;
+    };
+    DabJitter {
+        opacity: f(o.get("opacity"), base.opacity),
+        count: f(o.get("count"), base.count),
+        flip_x: f(o.get("flip_x"), base.flip_x),
+        flip_y: f(o.get("flip_y"), base.flip_y),
+        roundness: f(o.get("roundness"), base.roundness),
+        angle_per_stroke: f(o.get("angle_per_stroke"), base.angle_per_stroke),
+        across: f(o.get("across"), base.across),
+        particle: f(o.get("particle"), base.particle),
+    }
+}
+
+/// A cor pela mão (L11) do JSON; uma chave ausente = a de `base`.
+fn cor_mao_de_json(v: Option<&Value>, base: CorDaMao) -> CorDaMao {
+    let Some(o) = v.and_then(Value::as_object) else {
+        return base;
+    };
+    let sec = o.get("secondary").and_then(Value::as_array);
+    CorDaMao {
+        secondary: [0, 1, 2].map(|k| f(sec.and_then(|a| a.get(k)), base.secondary[k])),
+        secondary_jitter: f(o.get("secondary_jitter"), base.secondary_jitter),
+        pressure_secondary: f(o.get("pressure_secondary"), base.pressure_secondary),
+        pressure_hue: f(o.get("pressure_hue"), base.pressure_hue),
+        pressure_sat: f(o.get("pressure_sat"), base.pressure_sat),
+        pressure_val: f(o.get("pressure_val"), base.pressure_val),
+    }
+}
+
 fn curva_para_json(c: &FalloffCurve) -> Value {
     Value::Array(
         c.points()
@@ -182,6 +228,15 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
         "jitter_rotate" => num(b.jitter_rotate),
         "jitter_spacing" => num(b.jitter_spacing),
         "spray_count" => json!(b.spray_count),
+        "dab_jitter" => marca_para_json(&b.dab_jitter),
+        "cor_mao" => json!({
+            "secondary": [num(b.cor_mao.secondary[0]), num(b.cor_mao.secondary[1]), num(b.cor_mao.secondary[2])],
+            "secondary_jitter": num(b.cor_mao.secondary_jitter),
+            "pressure_secondary": num(b.cor_mao.pressure_secondary),
+            "pressure_hue": num(b.cor_mao.pressure_hue),
+            "pressure_sat": num(b.cor_mao.pressure_sat),
+            "pressure_val": num(b.cor_mao.pressure_val),
+        }),
         "input_samples" => json!(b.input_samples),
         "stabilizer" => num(b.stabilizer),
         "taper" => json!({
@@ -323,6 +378,8 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "jitter_rotate" => b.jitter_rotate = f(v, b.jitter_rotate),
         "jitter_spacing" => b.jitter_spacing = f(v, b.jitter_spacing),
         "spray_count" => b.spray_count = inteiro(v, b.spray_count),
+        "dab_jitter" => b.dab_jitter = marca_de_json(v, b.dab_jitter),
+        "cor_mao" => b.cor_mao = cor_mao_de_json(v, b.cor_mao),
         "input_samples" => b.input_samples = inteiro(v, b.input_samples),
         "stabilizer" => b.stabilizer = f(v, b.stabilizer),
         "taper" => {

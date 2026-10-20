@@ -184,6 +184,8 @@ impl Stroke {
             return;
         }
         let n = self.spec.spray_count.clamp(1, SPRAY_COUNT_MAX);
+        // A contagem sorteada (L4, Photoshop *Count Jitter*): o ponto deixa entre 1 e `n` marcas.
+        let n = crate::marca::conta(&mut self.por_traco.rng, &self.spec.dab_jitter, n);
         for _ in 1..n {
             let copy = self.dab_from(thrown, pressure, overlap, arc);
             crate::symmetry::push_symmetric(out, copy, &self.spec.symmetry);

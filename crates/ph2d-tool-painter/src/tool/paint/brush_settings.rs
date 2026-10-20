@@ -477,6 +477,10 @@ pub struct BrushSettings {
     pub wet_opacidade: f32,
     /// A MÃO do meio de agora, por linha do cartão Pen (`LINHAS_DA_MAO`; L2).
     pub mao: [f64; crate::N_LINHAS_DA_MAO],
+    /// O jitter da MARCA, por linha do cartão Jitter (`LINHAS_DA_MARCA`; L4).
+    pub marca: [f64; crate::N_LINHAS_DA_MARCA],
+    /// A cor secundária do pincel (L11; sRGB `0..1`).
+    pub marca_secundaria: [f32; 3],
     /// The wet TOOL the brush wire drives while armed (doc 22).
     pub wet_tool: crate::WetTool,
     /// The tilt dial: on/off + ring (0..8) + spoke (0..11, 30 deg steps).

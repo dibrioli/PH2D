@@ -74,8 +74,7 @@ impl BrushSpec {
         // guard and Smear/Blur/Clone served it the cached (constant-orientation) mask: every dab came out
         // with the SAME ellipse angle and the knob did nothing (sweep 2026-07-12). The paint path never had
         // the bug — with both slots off it has no cache to serve and resolves `d.rotation` per pixel.
-        self.jitter_rotate > 0.0
-            && self.stroke_method.allows_jitter()
+        self.gira_a_marca()
             && (self.pegada_anisotropica()
                 || (self.texture.is_active() && self.texture.mapping.uses_dab_rotation()))
     }
@@ -319,7 +318,15 @@ impl BrushSpec {
             && self.shape.mapping.uses_dab_rotation()
             && (self.shape.rake
                 || self.shape.flow
-                || (self.jitter_rotate > 0.0 && self.stroke_method.allows_jitter()))
+                || self.gira_a_marca())
+    }
+
+    /// **O pincel roda a marca por conta própria** — o Jitter Rotate (por dab) ou o ângulo do traço (L4, um por
+    /// traço): as duas rodam o carimbo inteiro, e as caches de orientação constante não as sabem servir.
+    #[must_use]
+    pub fn gira_a_marca(&self) -> bool {
+        (self.jitter_rotate > 0.0 || self.dab_jitter.angle_per_stroke > 0.0)
+            && self.stroke_method.allows_jitter()
     }
 
     /// Whether the **Grain** slot rotates its texture frame per dab (Rake follows the stroke) — each dab

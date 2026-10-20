@@ -148,6 +148,8 @@ fn register_brush_inputs(store: &mut WidgetStore) {
             .into_iter()
             .filter(|id| *id != ph2d_tool_painter::ids::PAINTER_PEN_ROTATION),
     )
+    // As linhas da MARCA (L4), no cartão Jitter.
+    .chain(ph2d_tool_painter::ids::PAINTER_MARCA_FIELDS)
     {
         store.register(
             id,

@@ -59,6 +59,10 @@ mod height_film_lut_wiring_tests; // a LUT no laço REAL dos dois kernels (plano
 pub mod height_modes;
 pub mod height_push;
 pub(crate) mod jitter;
+/// A cor secundária e a cor pela MÃO da L11 (pressão → matiz, saturação, valor, secundária).
+pub mod cor_mao;
+/// O jitter da MARCA da L4 (opacidade, contagem, espelhos, redondeza, ângulo por traço, através, partícula).
+pub mod marca;
 /// O TIPO de linha procedural (plano 38) — a lei que decora o traço, ortogonal ao `StrokeMethod`.
 pub mod line_kind;
 #[cfg(test)]
@@ -169,6 +173,8 @@ pub use falloff_curve::{
 pub use footprint::{DAB_FLATTEN_MAX, FootprintCurve, FootprintDeform};
 pub use height::{DepthSource, DrawTo};
 pub use jitter::{ColorJitterScope, apply_color_shift};
+pub use cor_mao::CorDaMao;
+pub use marca::DabJitter;
 pub use mask_ops::{MaskCanvasOp, apply_mask_op};
 pub use pen::{DabRotation, DabTilt, Pen, Tilt as PenTilt};
 pub use ramp_alpha::{

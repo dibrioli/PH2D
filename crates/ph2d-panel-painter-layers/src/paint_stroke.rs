@@ -420,7 +420,7 @@ mod grid_card;
 /// O card **Jitter** — o que RANDOMIZA uma marca (posição / escala / rotação) e, desde o plano 38
 /// W5, quantas MARCAS cada ponto do caminho deixa. Irmão dos dois ao lado, cortado por ASSUNTO: a
 /// seção percorre o TRAÇO, este card descreve a MARCA.
-mod jitter_card;
+pub(crate) mod jitter_card;
 mod op_card;
 use apply::{paint_apply_row, paint_merge_row, paint_offset_card, paint_simplify_row};
 use grid_card::paint_grid_stamp_card;

@@ -112,6 +112,10 @@ pub struct FootprintDeform {
     /// disco de sempre (ao bit, o mesmo `sqrt`), `1` o quadrado. Sem transcendentes (HR-5): `sqrt` e
     /// `max` são exactos.
     quina: f32,
+    /// ⭐ **A ponta ESPELHADA** no eixo Y dela (o espelho sorteado da marca, L4): o ponto já no referencial da
+    /// pegada sai com o `v` trocado — a silhueta do Shape e o grão que a seguem viram do avesso; o falloff e o
+    /// contorno (simétricos) não mudam. `false` = a de sempre, ao bit.
+    espelho: bool,
 }
 
 impl FootprintDeform {
@@ -125,6 +129,7 @@ impl FootprintDeform {
             curve: FootprintCurve::flat(),
             rotor: [1.0, 0.0],
             quina: 0.0,
+            espelho: false,
         }
     }
 
@@ -141,6 +146,7 @@ impl FootprintDeform {
             curve: FootprintCurve::flat(),
             rotor: [1.0, 0.0],
             quina: 0.0,
+            espelho: false,
         }
     }
 
@@ -153,6 +159,22 @@ impl FootprintDeform {
             && self.sin == 0.0
             && self.curve.is_flat()
             && self.quina == 0.0
+            && !self.espelho
+    }
+
+    /// Esta pegada espelhada no eixo Y da ponta (`e = false` deixa-a como estava, ao bit).
+    #[must_use]
+    pub fn espelhada(self, e: bool) -> Self {
+        Self {
+            espelho: self.espelho != e,
+            ..self
+        }
+    }
+
+    /// A ponta está espelhada ([`Self::espelhada`]).
+    #[must_use]
+    pub fn espelho(self) -> bool {
+        self.espelho
     }
 
     /// A pegada com a QUINA `q` (`0..1`, ver o campo): `0` deixa-a como estava, ao bit.
@@ -216,6 +238,7 @@ impl FootprintDeform {
                 self.rotor[0] * rotor[1] + self.rotor[1] * rotor[0],
             ],
             quina: self.quina,
+            espelho: self.espelho,
         }
     }
 
@@ -239,6 +262,14 @@ impl FootprintDeform {
         let ru = p[0] * self.cos + p[1] * self.sin;
         let rv = -p[0] * self.sin + p[1] * self.cos;
         let lin = [ru, rv * self.inv_minor];
+        if self.espelho {
+            let d = if self.curve.is_flat() {
+                lin
+            } else {
+                self.curve.add_to(lin, [ru, rv])
+            };
+            return [d[0], -d[1]];
+        }
         // ⛔ **O atalho é de CUSTO, e a mutação disse-o:** apagá-lo deixa TODOS os gates verdes —
         // somar sete zeros é exacto em IEEE. O que ele tira são `14` multiplicações-e-soma por
         // texel em toda pincelada sobre arte não dobrada. *Não confundir com a cerca de bits do
@@ -257,7 +288,8 @@ impl FootprintDeform {
         if self.is_identity() {
             return f;
         }
-        let (ru, rv) = (f[0], f[1] * self.minor_fraction());
+        let f1 = if self.espelho { -f[1] } else { f[1] };
+        let (ru, rv) = (f[0], f1 * self.minor_fraction());
         [ru * self.cos - rv * self.sin, ru * self.sin + rv * self.cos]
     }
 
@@ -358,9 +390,10 @@ impl FootprintDeform {
     /// *A premissa que era gate virou porta.*
     #[must_use]
     pub fn linear_rows(self) -> [[f32; 2]; 2] {
+        let e = if self.espelho { -1.0 } else { 1.0 };
         [
             [self.cos, self.sin],
-            [-self.sin * self.inv_minor, self.cos * self.inv_minor],
+            [-self.sin * self.inv_minor * e, self.cos * self.inv_minor * e],
         ]
     }
 
@@ -375,7 +408,13 @@ impl FootprintDeform {
     #[must_use]
     pub fn curve_in_input_frame(self) -> [[f32; 7]; 2] {
         const I: [[f32; 2]; 2] = [[1.0, 0.0], [0.0, 1.0]];
-        super::canvas_warp_curve::compoe(self.curve.rows(), I, I, 1.0, [self.cos, -self.sin]).rows()
+        let mut r =
+            super::canvas_warp_curve::compoe(self.curve.rows(), I, I, 1.0, [self.cos, -self.sin])
+                .rows();
+        if self.espelho {
+            r[1] = r[1].map(|c| -c);
+        }
+        r
     }
 
     /// ⭐⭐⭐ **A CAIXA da pegada**, em unidades de raio: as meias-extensões em `x` e `y` da curva de

@@ -52,6 +52,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.pressure_size_on" => "Acts when Pressure size is above 0",
         "panel.painter_layers.inerte.pressure_on" => "Acts when Pressure size or Pressure opacity is above 0",
         "panel.painter_layers.inerte.shape_automatic_off" => "Acts when the Shape's Automatic is off",
+        "panel.painter_layers.inerte.spray_count_above_one" => "Acts when Count is above 1",
+        "panel.painter_layers.inerte.wash_ignores_dab_opacity" => "The wash does not read the dab opacity",
         "panel.painter_layers.inerte.tilt_law_on" => {
             "Acts when the pen tilt changes the dab: Tilt width, length, smooth or opacity, or Rotation: Pen tilt"
         }

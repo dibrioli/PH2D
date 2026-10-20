@@ -84,13 +84,28 @@ pub struct DabTilt {
     pub width: f32,
     /// A fracção do grão alisada neste carimbo.
     pub smooth: f32,
+    /// O eixo MENOR da ponta do pincel × isto ANTES de a caneta a deitar (a redondeza sorteada da marca, L4,
+    /// [`crate::marca::DabJitter::roundness`]); `1` = a ponta do pincel.
+    pub round: f32,
+    /// A ponta espelhada no eixo Y dela (o espelho sorteado da marca, L4; o X é este + meia-volta no rotor).
+    pub espelho: bool,
 }
 
 impl DabTilt {
+    /// A caneta de pé com a ponta do pincel: a pegada de um dab que só leva a forma sorteada da marca (L4).
+    pub const NEUTRA: Self = Self {
+        azimuth: [1.0, 0.0],
+        length: 1.0,
+        width: 1.0,
+        smooth: 0.0,
+        round: 1.0,
+        espelho: false,
+    };
+
     /// A ponta deixa de ser a do pincel (um dos raios mudou).
     #[must_use]
     pub fn stretches(&self) -> bool {
-        self.length != 1.0 || self.width != 1.0
+        self.length != 1.0 || self.width != 1.0 || self.round != 1.0
     }
 
     /// ⭐ **A pegada deitada**: a do pincel (o referencial `[cos, sin]` do eixo maior e a fracção do menor,
@@ -99,6 +114,7 @@ impl DabTilt {
     /// referencial dele e a fracção do menor — a decomposição em valores singulares 2×2, exacta.
     #[must_use]
     pub fn compose(&self, frame: [f32; 2], minor: f32) -> (f32, [f32; 2], f32) {
+        let minor = minor * self.round;
         let [ax, ay] = self.azimuth;
         let (l, w) = (self.length, self.width);
         // S = R(a)·diag(l, w)·R(a)ᵀ
@@ -208,6 +224,8 @@ impl Tilt {
             length: 1.0 + (self.length - 1.0) * t,
             width: 1.0 + (self.width - 1.0) * t,
             smooth: (self.smooth.clamp(0.0, 1.0) * t * ao_comprido).clamp(0.0, 1.0),
+            round: 1.0,
+            espelho: false,
         })
     }
 }

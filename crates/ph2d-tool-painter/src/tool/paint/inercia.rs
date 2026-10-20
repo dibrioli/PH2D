@@ -41,10 +41,12 @@ pub enum Dependente {
     PegadaDaAutomatica,
     CurvaDoTamanhoSemPressao,
     MaoSemPressao,
+    MarcaSemSpray,
+    OpacidadeNaAguada,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 27] = [
+    pub const TODOS: [Dependente; 29] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -72,6 +74,8 @@ impl Dependente {
         Dependente::PegadaDaAutomatica,
         Dependente::CurvaDoTamanhoSemPressao,
         Dependente::MaoSemPressao,
+        Dependente::MarcaSemSpray,
+        Dependente::OpacidadeNaAguada,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -117,6 +121,11 @@ impl Dependente {
             ],
             Dependente::PegadaDaAutomatica => &[ids::PAINTER_PEN_FIELDS[11], ids::PAINTER_PEN_FIELDS[12]],
             Dependente::CurvaDoTamanhoSemPressao => &[ids::PAINTER_PEN_FIELDS[1]],
+            // As linhas da MARCA (L4), pela ordem de `LINHAS_DA_MARCA`: a contagem sorteada e a partícula são
+            // do spray; a opacidade, de um meio que leia a do dab. (Os espelhos, a redondeza e o ângulo do traço NÃO
+            // esmaecem: ver `o_censo_so_encolhe`, a razão do Jitter Rotate.)
+            Dependente::MarcaSemSpray => &[ids::PAINTER_MARCA_FIELDS[1], ids::PAINTER_MARCA_FIELDS[7]],
+            Dependente::OpacidadeNaAguada => &[ids::PAINTER_MARCA_FIELDS[0]],
             Dependente::MaoSemPressao => &[
                 ids::PAINTER_PEN_FIELDS[4],
                 ids::PAINTER_PEN_FIELDS[5],
@@ -159,6 +168,8 @@ impl Dependente {
             Dependente::PegadaDaAutomatica => "panel.painter_layers.inerte.shape_automatic_off",
             Dependente::CurvaDoTamanhoSemPressao => "panel.painter_layers.inerte.pressure_size_on",
             Dependente::MaoSemPressao => "panel.painter_layers.inerte.pressure_on",
+            Dependente::MarcaSemSpray => "panel.painter_layers.inerte.spray_count_above_one",
+            Dependente::OpacidadeNaAguada => "panel.painter_layers.inerte.wash_ignores_dab_opacity",
         }
     }
 
@@ -178,7 +189,7 @@ impl Dependente {
     #[must_use]
     pub fn natureza(self) -> Natureza {
         match self {
-            Dependente::CorDaTexturaSemLeitor => Natureza::MeioNaoLe,
+            Dependente::CorDaTexturaSemLeitor | Dependente::OpacidadeNaAguada => Natureza::MeioNaoLe,
             _ => Natureza::DependeDeOutro,
         }
     }
@@ -291,6 +302,17 @@ impl PainterTool {
         let b = &self.paint.brush;
         let aquarela = self.watercolor_render_active();
         let agua = self.paint.wetpaint.armed;
+        // O Follow roda a pegada INTEIRA do dab (`BrushSpec::dab_rotor`): sem textura no Shape, sem ponta achatada
+        // e sem um Grain preso ao dab, a ponta redonda não tem ângulo para mostrar.
+        let sem_lado = !b.shape_silhouette_active(self.paint.shape_image.is_some())
+            && b.shape.kind != ph2d_painter_brush::TextureKind::Bristles
+            && !b.pegada_anisotropica()
+            && !(b.grain_samples(self.paint.texture_image.is_some())
+                && matches!(
+                    b.texture.mapping,
+                    ph2d_painter_brush::TextureMapping::ViewPlane
+                        | ph2d_painter_brush::TextureMapping::Random
+                ));
         let leis = [
             (Dependente::TaperTip, !b.taper.is_active()),
             (Dependente::TaperOpacity, !b.taper.is_active()),
@@ -357,18 +379,7 @@ impl PainterTool {
             ),
             // O Follow roda a pegada INTEIRA do dab (`BrushSpec::dab_rotor`): sem textura no Shape, sem ponta
             // achatada e sem um Grain preso ao dab, a ponta redonda não tem ângulo para mostrar.
-            (
-                Dependente::FollowSemNada,
-                !b.shape_silhouette_active(self.paint.shape_image.is_some())
-                    && b.shape.kind != ph2d_painter_brush::TextureKind::Bristles
-                    && !b.pegada_anisotropica()
-                    && !(b.grain_samples(self.paint.texture_image.is_some())
-                        && matches!(
-                            b.texture.mapping,
-                            ph2d_painter_brush::TextureMapping::ViewPlane
-                                | ph2d_painter_brush::TextureMapping::Random
-                        )),
-            ),
+            (Dependente::FollowSemNada, sem_lado),
             // A Texture Color colore a textura do Shape (prompt 38): sem textura não há o que colorir.
             (
                 Dependente::TexturaSemForma,
@@ -419,6 +430,13 @@ impl PainterTool {
                 Dependente::PegadaDaAutomatica,
                 aquarela && b.watercolor_shape_auto,
             ),
+            // A contagem sorteada e a partícula só agem com spray (`DabJitter::particula`, `marca::conta`).
+            (
+                Dependente::MarcaSemSpray,
+                b.spray_count <= 1 || !b.stroke_method.allows_jitter(),
+            ),
+            // A aguada não lê a cobertura do dab (`WASH_DEPOSIT_PEAK`, a mesma razão do cartão Pen).
+            (Dependente::OpacidadeNaAguada, aquarela),
             // Sem pressão no tamanho (nem na opacidade) a curva dele (e o piso, o tecto, a suavização da mão)
             // não têm canal que leia a pressão. Só nos meios antigos: no Wet a pressão chega também ao fluido.
             (Dependente::CurvaDoTamanhoSemPressao, {

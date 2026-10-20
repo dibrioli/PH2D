@@ -315,6 +315,9 @@ pub struct BrushSpec {
     pub color_jitter_val: f32,
     /// **When** Randomize Color draws — every dab (default) or once per stroke ([`ColorJitterScope`]).
     pub color_jitter_scope: crate::jitter::ColorJitterScope,
+    /// **A cor secundária e a cor pela MÃO** (L11): a pressão leva a matiz/saturação/valor e a mistura com a
+    /// secundária ([`crate::cor_mao::CorDaMao`]); a neutra é a cor de sempre ao bit.
+    pub cor_mao: crate::cor_mao::CorDaMao,
     /// **Jitter Scale** (PH2D, not Blender): per-dab radius scatter, `0..1`. Each dab's radius is
     /// multiplied by `1 ± amount`, clamped so it never collapses. `0` = no scatter.
     pub jitter_scale: f32,
@@ -342,6 +345,13 @@ pub struct BrushSpec {
     ///
     /// Teto em [`crate::stroke::spray::SPRAY_COUNT_MAX`], **medido**.
     pub spray_count: u32,
+    /// **O jitter da MARCA** (L4): opacidade por dab, contagem sorteada, espelhos, redondeza, ângulo por traço,
+    /// espalhar através, partícula — [`crate::marca::DabJitter`]; o neutro é o traço de sempre ao bit.
+    pub dab_jitter: crate::marca::DabJitter,
+    /// **A pegada deitada DESTE dab** — só no pincel por dab de [`Self::at_dab`] (a caneta deitada, W6, e a forma
+    /// sorteada da marca, L4: [`crate::Dab::tilt`]); `None` no pincel do artista. É por ela que o carimbo, que
+    /// lê a pegada do `spec` ([`Self::dab_footprint`]), pinta a elipse deitada e não só o raio que cresceu.
+    pub dab_tilt: Option<crate::DabTilt>,
 
     // ── Drawing symmetry (mirror / radial; see [`crate::symmetry`]) ──────────────────────────────
     /// **Symmetry**: replicate every dab across a mirror line (X / Y / a custom line) or as N radial

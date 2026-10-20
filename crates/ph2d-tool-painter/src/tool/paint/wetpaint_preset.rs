@@ -48,7 +48,7 @@ const TEXTURA_FORMA: &str = "shape";
 const TEXTURA_GRAO: &str = "grain";
 
 /// Os campos do `BrushSpec` que o preset leva, pelo nome do campo.
-pub const CAMPOS_DO_PINCEL: [&str; 31] = [
+pub const CAMPOS_DO_PINCEL: [&str; 33] = [
     "hardness",
     "falloff",
     "custom_falloff",
@@ -61,6 +61,7 @@ pub const CAMPOS_DO_PINCEL: [&str; 31] = [
     "jitter_rotate",
     "jitter_spacing",
     "spray_count",
+    "dab_jitter",
     "input_samples",
     "stabilizer",
     "taper",
@@ -76,6 +77,7 @@ pub const CAMPOS_DO_PINCEL: [&str; 31] = [
     "color_jitter_sat",
     "color_jitter_val",
     "color_jitter_scope",
+    "cor_mao",
     "blend",
     "pigment",
     "pigment_mix",
@@ -90,7 +92,13 @@ pub fn campos_da_macro() -> Vec<&'static str> {
     CAMPOS_DO_PINCEL
         .iter()
         .copied()
-        .chain(CAMPOS_FORA.iter().map(|(c, _)| *c))
+        // A pegada deitada de UM dab não é do pincel: a macro não a leva.
+        .chain(
+            CAMPOS_FORA
+                .iter()
+                .filter(|(_, porque)| *porque != POR_DAB)
+                .map(|(c, _)| *c),
+        )
         .collect()
 }
 
@@ -100,13 +108,14 @@ const DA_OBRA: &str =
 const DO_GESTO: &str = "do gesto (o método do traço e o cartão Line), não do pincel";
 const DO_MEIO: &str = "a porta do meio (`set_paint_media`) é a dona";
 const DO_SCULPT: &str = "canal derivado do Sculpt (`sculpt_panel.rs`)";
+const POR_DAB: &str = "a pegada deitada de UM dab (`BrushSpec::at_dab`): `None` no pincel do artista";
 const AQUARELA: &str = "lido só pela Watercolor";
 const IMPASTO: &str = "lido só pelo Impasto";
 const DOS_KNOBS: &str = "a caneta deitada: no Wet Paint são os knobs do pincel (`dabRotation`…`tiltLag`, W6), no mapa `engine`";
 const NAO_LIDO: &str = "o Wet Paint não o lê (deposita pela lei do fluido)";
 
 /// Os campos do `BrushSpec` que o preset NÃO leva, e porquê.
-pub const CAMPOS_FORA: [(&str, &str); 67] = [
+pub const CAMPOS_FORA: [(&str, &str); 68] = [
     ("radius_px", VOLUME),
     ("strength", VOLUME),
     ("color", DA_OBRA),
@@ -136,6 +145,7 @@ pub const CAMPOS_FORA: [(&str, &str); 67] = [
     ("dash_ratio", DO_GESTO),
     ("dash_samples", DO_GESTO),
     ("needs_heading", DO_SCULPT),
+    ("dab_tilt", POR_DAB),
     ("pen_tilt", DOS_KNOBS),
     ("watercolor", DO_MEIO),
     ("impasto", DO_MEIO),
@@ -377,7 +387,6 @@ impl PainterTool {
             self.paint.brush.shape = k.cerdas_no_shape(self.paint.brush.shape);
         }
         self.paint.wetpaint.knobs = k;
-
         if let Some(m) = prm.paint_mode.as_deref() {
             self.wet_preset_aplicar_modo(m);
         }

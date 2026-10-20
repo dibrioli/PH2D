@@ -8,6 +8,29 @@
 
 use super::*;
 
+/// O que se sorteia UMA vez por traço, cada um do seu fluxo próprio semeado pela `seed` do traço (o fluxo por
+/// dab que os outros sorteios leem fica intacto): a cor por traço e o ângulo do traço (L4).
+#[derive(Clone, Copy, Debug)]
+pub(super) struct PorTraco {
+    /// Randomize Color **per stroke** — `(cor, desvio HSV)`; `None` ⇒ por dab ou desligado.
+    cor: Option<([f32; 3], [f32; 3])>,
+    /// O rotor do ângulo do traço ([`crate::marca::DabJitter::angle_per_stroke`]); `[1, 0]` = nenhum.
+    rotor: [f32; 2],
+    /// O fluxo PRÓPRIO dos sorteios da marca (L4): ligar um deles não desloca os de sempre (posição, escala,
+    /// rotação, cor), que continuam a ler o `Stroke::rng` ao bit.
+    pub(super) rng: u64,
+}
+
+impl PorTraco {
+    pub(super) fn de(spec: &BrushSpec, seed: u64) -> Self {
+        Self {
+            cor: Stroke::stroke_colour_draw(spec, seed),
+            rotor: crate::marca::rotor_do_traco(&spec.dab_jitter, seed),
+            rng: seed ^ 0x6D61_7263_6144_4142,
+        }
+    }
+}
+
 impl Stroke {
     /// Randomize Color **per stroke**: the `(colour, HSV offset)` drawn ONCE at pen-down, from a stream
     /// of its own seeded by the stroke `seed` — so the per-dab stream every other jitter reads is
@@ -61,7 +84,7 @@ impl Stroke {
         // Per-dab Scale / Rotate / Randomize-Color in a FIXED draw order, gated like position jitter
         // (Drag Dot / Anchored opt out). Drawn BEFORE the position jitter so it keeps its old slot
         // when these are off — an all-off brush draws nothing and matches the no-jitter baseline.
-        let (scale, rotation, mut color, mut color_shift) =
+        let (scale, mut rotation, mut color, mut color_shift) =
             if self.spec.stroke_method.allows_jitter() {
                 crate::jitter::per_dab(&mut self.rng, &self.spec)
             } else {
@@ -69,8 +92,17 @@ impl Stroke {
             };
         // Randomize Color «per stroke»: the per-dab draw above still ran (the stream stays the one every
         // other jitter reads), and the stroke's own draw replaces it.
-        if let (Some(c), true) = (self.stroke_colour, self.spec.stroke_method.allows_jitter()) {
+        let jitter = self.spec.stroke_method.allows_jitter();
+        if let (Some(c), true) = (self.por_traco.cor, jitter) {
             (color, color_shift) = c;
+        }
+        // A cor pela MÃO e a secundária (L11): a pressão deste dab, o sorteio do fluxo da marca.
+        if self.spec.cor_mao.ativa() {
+            color = self.spec.cor_mao.aplica(color, pressure, &mut self.por_traco.rng);
+        }
+        // O ângulo do traço (L4): o MESMO rotor em todo dab deste traço.
+        if jitter && self.por_traco.rotor != [1.0, 0.0] {
+            rotation = crate::heading::rotate(rotation, self.por_traco.rotor);
         }
         let radius = (self.spec.clamped_radius() * self.dynamics.radius_scale(pressure) * scale)
             .clamp(0.5, MAX_BRUSH_RADIUS_PX);
@@ -81,10 +113,35 @@ impl Stroke {
         //
         // O ARREMESSO entra antes do jitter — e a ordem NÃO é load-bearing; o porquê (medido) está
         // no doc do [`Stroke::throw`], que o chamador já rodou.
-        let (center, alcance) = self.apply_jitter(thrown, radius);
+        let (disco, alcance) = self.apply_jitter(thrown, radius);
+        // O jitter da MARCA (L4), sorteado depois da posição: o desvio ATRAVÉS do traço soma-se ao do disco.
+        let marca = jitter
+            .then(|| {
+                crate::marca::sorteia(
+                    &mut self.por_traco.rng,
+                    &self.spec.dab_jitter,
+                    2.0 * radius,
+                    self.heading,
+                )
+            })
+            .flatten();
+        let center = marca.map_or(disco, |m| [disco[0] + m.desvio[0], disco[1] + m.desvio[1]]);
+        if marca.is_some_and(|m| m.meia_volta) {
+            rotation = crate::heading::rotate(rotation, [-1.0, 0.0]);
+        }
+        let particula = if jitter {
+            self.spec.dab_jitter.particula(self.spec.spray_count)
+        } else {
+            1.0
+        };
+        let radius = if particula < 1.0 {
+            (radius * particula).clamp(0.5, MAX_BRUSH_RADIUS_PX)
+        } else {
+            radius
+        };
         let ante = self.dab_ante.map(|mut a| {
             a.salto = (alcance > 0.0).then_some(crate::capsula::Salto {
-                desvio: [center[0] - thrown[0], center[1] - thrown[1]],
+                desvio: [disco[0] - thrown[0], disco[1] - thrown[1]],
                 alcance,
                 por_raio: self.spec.jitter_unit == JitterUnit::Brush,
             });
@@ -106,9 +163,32 @@ impl Stroke {
             ante,
             tilt: None,
         };
-        // A caneta DEITADA (W6) antes da ponta afilada: o taper escala a ponta que a caneta fez.
-        if let Some(t) = self.tilt_do_dab() {
-            self.deita(&mut dab, t);
+        if let Some(m) = marca
+            && m.cobertura != 1.0
+        {
+            dab.coverage = (dab.coverage * m.cobertura).clamp(0.0, 1.0);
+        }
+        // A caneta DEITADA (W6) antes da ponta afilada: o taper escala a ponta que a caneta fez. A forma
+        // sorteada da marca (L4: redondeza, espelho) entra na MESMA pegada, antes de a caneta a deitar.
+        let forma = marca.filter(|_| self.spec.dab_jitter.muda_a_forma());
+        match (self.tilt_do_dab(), forma) {
+            (Some(t), f) => {
+                let t = f.map_or(t, |m| crate::DabTilt {
+                    round: m.redondeza,
+                    espelho: m.espelho,
+                    ..t
+                });
+                self.deita(&mut dab, t);
+            }
+            (None, Some(m)) => self.deita(
+                &mut dab,
+                crate::DabTilt {
+                    round: m.redondeza,
+                    espelho: m.espelho,
+                    ..crate::DabTilt::NEUTRA
+                },
+            ),
+            (None, None) => {}
         }
         let o = self.opacidade_deitada();
         if o < 1.0 {

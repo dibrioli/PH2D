@@ -178,6 +178,7 @@ fn the_lying_tip_is_an_ellipse_along_the_azimuth() {
         length: 3.3,
         width: 1.2,
         smooth: 0.0,
+        ..DabTilt::NEUTRA
     };
     let (s1, f, m) = along.compose([1.0, 0.0], 1.0);
     assert!((s1 - 3.3).abs() < 1e-5 && f[0].abs() > 0.9999 && (m - 1.2 / 3.3).abs() < 1e-5);
@@ -373,6 +374,7 @@ fn the_brush_of_a_smoothing_dab_has_a_shallower_grain() {
         length: 1.0,
         width: 1.0,
         smooth: 0.5,
+        ..DabTilt::NEUTRA
     });
     assert!((spec.at_dab(&d).grain_depth - 0.4).abs() < 1e-6);
 }

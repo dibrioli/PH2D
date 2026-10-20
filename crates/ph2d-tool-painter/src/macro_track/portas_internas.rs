@@ -55,6 +55,9 @@ pub const INTERNAS: &[&str] = &[
     "pick_wet_tool",
     // A mão do pincel (L2): o cartão Pen chega-lhe pelo `handle_panel_event`.
     "set_mao",
+    // O jitter da marca (L4): o cartão Jitter chega-lhe pelo `handle_panel_event`.
+    "set_marca",
+    "set_marca_secundaria",
     "polygon_cancel",
     "polygon_commit",
     "polygon_commit_keep",

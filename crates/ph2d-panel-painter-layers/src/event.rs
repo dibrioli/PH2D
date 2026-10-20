@@ -23,6 +23,7 @@ mod curve_drag;
 mod dab_gizmo;
 mod decode;
 mod impasto_picker;
+mod marca_picker;
 mod option_route;
 mod picker;
 mod ramp_picker;
@@ -474,6 +475,11 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         }
         WidgetEvent::Click(id) if shape_ramp_picker::is_swatch(id) => {
             shape_ramp_picker::on_swatch_click(host, id);
+            Some(true)
+        }
+        // A cor secundária do pincel (L11) → o seletor OKLCH partilhado.
+        WidgetEvent::Click(id) if marca_picker::is_marca_swatch(id) => {
+            marca_picker::on_swatch_click(host, id);
             Some(true)
         }
         // The Impasto swatches — the LAMP's colour and the paint's WAX filter → the shared OKLCH picker.

@@ -70,6 +70,7 @@ mod paint_layer_list;
 mod paint_line; // o card Line (Style: Solid) — plano 38 §1
 mod paint_mask;
 mod paint_mask_row;
+mod marca_cor; // a cor secundária e a cor pela mão na secção Randomize Color (L11)
 mod paint_pen; // o cartão Pen: a mão do pincel nos quatro meios (L2)
 mod paint_pigment; // a fileira `Pigment`: uma lei, uma porta, os três meios que a sentem
 mod paint_ramp_leitura;

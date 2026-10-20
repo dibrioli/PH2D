@@ -10,7 +10,7 @@
 
 use super::super::mao::{self, LINHAS_DA_MAO};
 use super::{
-    AQUARELA, CAMPOS_DO_PINCEL, CAMPOS_FORA, DA_OBRA, DO_MEIO, DO_SCULPT, DOS_KNOBS, IMPASTO,
+    AQUARELA, CAMPOS_DO_PINCEL, CAMPOS_FORA, DA_OBRA, DO_MEIO, DO_SCULPT, DOS_KNOBS, IMPASTO, POR_DAB,
     MOTOR_DOS_PRESETS, VOLUME, curto, json,
 };
 use super::super::{PaintMedia, PaintMode};
@@ -58,9 +58,9 @@ pub fn campos_do_meio(m: PaintMedia) -> Vec<&'static str> {
         return CAMPOS_DO_PINCEL.to_vec();
     }
     let fora: &[&str] = match m {
-        PaintMedia::Watercolor => &[VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, DOS_KNOBS, IMPASTO],
-        PaintMedia::Impasto => &[VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, DOS_KNOBS, AQUARELA],
-        _ => &[VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, DOS_KNOBS, AQUARELA, IMPASTO],
+        PaintMedia::Watercolor => &[VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, IMPASTO],
+        PaintMedia::Impasto => &[VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, AQUARELA],
+        _ => &[VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, AQUARELA, IMPASTO],
     };
     CAMPOS_DO_PINCEL
         .iter()

@@ -190,8 +190,8 @@ pub struct Stroke {
     /// whoever knows the geometry: the closed-loop fills declare that their first dab lands on an
     /// arbitrary seam, and everything else keeps what the method started with.
     taper_head: bool,
-    /// Randomize Color **per stroke** — see [`Self::stroke_colour_draw`]. `None` ⇒ per-dab or off.
-    stroke_colour: Option<([f32; 3], [f32; 3])>,
+    /// O que se sorteia UMA vez por traço: a cor por traço e o ângulo do traço ([`dab_build::PorTraco`]).
+    por_traco: dab_build::PorTraco,
 }
 
 /// Smallest lazy-mouse blend factor, reached at stabilizer `1.0` (heaviest smoothing / most lag).
@@ -323,7 +323,7 @@ impl Stroke {
             warming: false,
             arc_len: 0.0,
             taper_head: ends::method_starts_with_head(spec.stroke_method),
-            stroke_colour: Self::stroke_colour_draw(&spec, seed),
+            por_traco: dab_build::PorTraco::de(&spec, seed),
         }
     }
 

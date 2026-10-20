@@ -50,14 +50,11 @@ impl BrushSpec {
     /// ([`Self::tilt_scale`]), então a fracção do menor e o referencial bastam.
     #[must_use]
     pub fn dab_footprint_of(&self, d: &crate::Dab) -> crate::footprint::FootprintDeform {
-        let fp = self.dab_footprint(self.dab_rotor(d));
-        match d.tilt {
-            Some(t) if t.stretches() => {
-                let (_, frame, minor) = t.compose(fp.frame(), fp.minor_fraction());
-                fp.with_frame(frame, minor)
-            }
-            _ => fp,
+        Self {
+            dab_tilt: d.tilt,
+            ..*self
         }
+        .dab_footprint(self.dab_rotor(d))
     }
 
     /// O eixo maior da pegada deitada de `d`, em raios do pincel (`1` sem caneta deitada).
@@ -65,7 +62,7 @@ impl BrushSpec {
     pub fn tilt_scale(&self, d: &crate::Dab) -> f32 {
         match d.tilt {
             Some(t) if t.stretches() => {
-                let fp = self.dab_footprint(self.dab_rotor(d));
+                let fp = self.footprint_deform().rotated_by(self.dab_rotor(d));
                 t.compose(fp.frame(), fp.minor_fraction()).0
             }
             _ => 1.0,
@@ -79,6 +76,7 @@ impl BrushSpec {
     pub fn at_dab(&self, d: &crate::Dab) -> Self {
         let mut s = Self {
             radius_px: d.radius_px,
+            dab_tilt: d.tilt,
             ..*self
         };
         if let Some(t) = d.tilt
@@ -91,7 +89,18 @@ impl BrushSpec {
 
     /// The dab footprint for a composed per-dab `rotor` ([`Self::dab_rotor`]).
     #[must_use]
+    ///
+    /// ⭐ Com a pegada deitada do dab ([`Self::dab_tilt`], o pincel de [`Self::at_dab`]) ela é esticada pela caneta
+    /// e pela forma sorteada da marca — é por aqui que o carimbo a vê; sem ela, ao bit a de sempre.
     pub fn dab_footprint(&self, rotor: [f32; 2]) -> crate::footprint::FootprintDeform {
-        self.footprint_deform().rotated_by(rotor)
+        let fp = self.footprint_deform().rotated_by(rotor);
+        match self.dab_tilt {
+            Some(t) if t.stretches() => {
+                let (_, frame, minor) = t.compose(fp.frame(), fp.minor_fraction());
+                fp.with_frame(frame, minor).espelhada(t.espelho)
+            }
+            Some(t) => fp.espelhada(t.espelho),
+            None => fp,
+        }
     }
 }

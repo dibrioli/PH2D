@@ -26,7 +26,12 @@ pub trait SceneDoors {
     ///
     /// # Errors
     /// Porque não nasceu, em texto para o script.
-    fn instantiate(&mut self, sim: &mut SimWorld, master: Entity, by: Entity) -> Result<Entity, String>;
+    fn instantiate(
+        &mut self,
+        sim: &mut SimWorld,
+        master: Entity,
+        by: Entity,
+    ) -> Result<Entity, String>;
 
     /// O tique do passo fixo — o `born_tick` de quem nasce.
     fn tick(&self) -> u64;
@@ -97,6 +102,18 @@ fn id_of(e: Entity) -> f64 {
     e.to_bits() as f64
 }
 
+/// Nasceu nesta corrida — ele, ou a raiz da cópia de que é peça (o `Spawned` só marca a raiz).
+fn born_in_run(world: &World, e: Entity) -> bool {
+    let mut at = Some(e);
+    while let Some(x) = at {
+        if ph2d_ecs::is_transient(world, x) {
+            return true;
+        }
+        at = world.get::<ChildOf>(x).map(ChildOf::parent);
+    }
+    false
+}
+
 /// Um mestre (a raiz ou uma peça) é receita, não objecto da cena.
 fn is_recipe(world: &World, e: Entity) -> bool {
     world.get::<MasterRoot>(e).is_some() || ph2d_ecs::is_master_piece(world, e)
@@ -106,7 +123,10 @@ fn is_recipe(world: &World, e: Entity) -> bool {
 /// cópias da corrida no fim — a mesma porta que o painel lê.
 fn preorder(world: &mut World) -> Vec<Entity> {
     let mut roots: Vec<Entity> = world
-        .query_filtered::<Entity, (bevy_ecs::query::With<Transform>, bevy_ecs::query::Without<ChildOf>)>()
+        .query_filtered::<Entity, (
+            bevy_ecs::query::With<Transform>,
+            bevy_ecs::query::Without<ChildOf>,
+        )>()
         .iter(world)
         .collect();
     roots.sort_unstable_by_key(|&e| ph2d_ecs::root_key(world, e));
@@ -234,7 +254,7 @@ impl<'w> Lane<'w> {
         let Some(e) = entity_of(id).filter(|&e| self.sim.world().get_entity(e).is_ok()) else {
             return Ok(false);
         };
-        if !ph2d_ecs::is_transient(self.sim.world(), e) {
+        if !born_in_run(self.sim.world(), e) {
             return Err(Refusal::Warn(format!(
                 "ph2d.despawn: '{}' is part of the scene the artist made — only objects created while \
                  the scene runs can be removed",
@@ -262,14 +282,17 @@ impl<'w> Lane<'w> {
         let Some(e) = entity_of(id).filter(|&e| self.sim.world().get_entity(e).is_ok()) else {
             return Ok(false);
         };
-        if !ph2d_ecs::is_transient(self.sim.world(), e) {
+        if !born_in_run(self.sim.world(), e) {
             return Err(Refusal::Warn(format!(
                 "ph2d.attach_script: '{}' is part of the scene the artist made — a script can only be \
                  attached to objects created while the scene runs",
                 self.label(e)
             )));
         }
-        self.sim.world_mut().entity_mut(e).insert(LuauScript::library(sid));
+        self.sim
+            .world_mut()
+            .entity_mut(e)
+            .insert(LuauScript::library(sid));
         self.doors.attached(self.sim, e);
         self.names = None;
         Ok(true)
@@ -311,9 +334,8 @@ pub(crate) fn with_lane<R>(
                 .pose(id, &field)
                 .map_err(mlua::Error::RuntimeError)
         })?;
-        let find = scope.create_function(|_, name: String| {
-            Ok(cell.borrow_mut().find(&name).map(id_of))
-        })?;
+        let find = scope
+            .create_function(|_, name: String| Ok(cell.borrow_mut().find(&name).map(id_of)))?;
         let spawn = scope.create_function(
             |_, (master, x, y): (Option<String>, Option<f64>, Option<f64>)| {
                 let at = match (x, y) {

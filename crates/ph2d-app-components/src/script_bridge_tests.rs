@@ -252,7 +252,16 @@ end
         },
         tick: 5,
     };
-    let f = frame(&mut host, &mut sim, &mut drive, true, 1, 1.0 / 60.0, &[], &mut portas);
+    let f = frame(
+        &mut host,
+        &mut sim,
+        &mut drive,
+        true,
+        1,
+        1.0 / 60.0,
+        &[],
+        &mut portas,
+    );
     assert!(f.failed.is_empty(), "{:?}", f.failed);
     let w = sim.world_mut();
     let copias: Vec<(ph2d_ecs::Entity, ph2d_ecs::Spawned, Transform)> = w
@@ -265,12 +274,32 @@ end
     assert_eq!(marca.by, 9, "posta pelo objecto do script");
     assert_eq!(marca.born_tick, 5);
     assert_eq!((pose.translation.x, pose.translation.y), (3.0, 4.0));
-    assert!(ph2d_ecs::is_transient(sim.world(), copia), "não é documento");
+    assert!(
+        ph2d_ecs::is_transient(sim.world(), copia),
+        "não é documento"
+    );
     assert!(drive.is_empty() || !drive.driven_by(Driver::ScriptPose).contains(&copia));
-    let f = frame(&mut host, &mut sim, &mut drive, true, 1, 1.0 / 60.0, &[], &mut portas);
-    assert_eq!(f.despawned, vec![copia], "o despawn sai para o dreno das mortes");
+    let f = frame(
+        &mut host,
+        &mut sim,
+        &mut drive,
+        true,
+        1,
+        1.0 / 60.0,
+        &[],
+        &mut portas,
+    );
+    assert_eq!(
+        f.despawned,
+        vec![copia],
+        "o despawn sai para o dreno das mortes"
+    );
     let _ = arma;
-    assert_eq!(crate::factory_bridge::sweep_spawned(&mut sim), 1, "o rebobinar varre-a");
+    assert_eq!(
+        crate::factory_bridge::sweep_spawned(&mut sim),
+        1,
+        "o rebobinar varre-a"
+    );
 }
 
 /// ⛔ **Achado ao ler (20/10):** um `ph2d.set` num objecto SEM script escrevia, mas só quem tinha
@@ -294,7 +323,14 @@ end
         .id();
     c.quadro(true);
     c.quadro(true);
-    let x = |c: &Cena| c.sim.world().get::<Transform>(pedra).expect("pose").translation.x;
+    let x = |c: &Cena| {
+        c.sim
+            .world()
+            .get::<Transform>(pedra)
+            .expect("pose")
+            .translation
+            .x
+    };
     assert_eq!(x(&c), 12.0, "a corrida move a pedra");
     let live = c.drive.substitute_authored(&mut c.sim);
     assert_eq!(x(&c), 10.0, "a captura vê o autorado");

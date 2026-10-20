@@ -108,7 +108,12 @@ fn a_cena_6_e_um_jogo_que_responde_ao_teclado_e_ao_rato() {
     let mut mapa = VecEntityMap::new();
     let pecas = monta_em(&mut sim, &mut vec, &mut mapa, 6);
     let [nave, alvo, receita] = [pecas[0], pecas[1], pecas[2]];
-    assert!(sim.world().get_resource::<ScriptEditRequests>().is_none_or(|r| r.0.is_empty()), "nenhuma aba abre");
+    assert!(
+        sim.world()
+            .get_resource::<ScriptEditRequests>()
+            .is_none_or(|r| r.0.is_empty()),
+        "nenhuma aba abre"
+    );
     // O registo do PRODUTO (o script incluído) e o sync das instâncias — a 1.ª versão deste teste
     // não os tinha, e a foto mostrou o que ele não via: a 1.ª estrela perdia o script.
     let reg = crate::component_registry_for_tests::registo();
@@ -116,29 +121,49 @@ fn a_cena_6_e_um_jogo_que_responde_ao_teclado_e_ao_rato() {
     let mut eco = crate::instance_sync::MasterEcho::default();
     let mut host = ScriptHost::new().expect("vm");
     let mut drive = ph2d_preview_drive::PreviewDrive::default();
+    let mut entrada = ph2d_input::InputState::new();
     let x = |sim: &SimWorld, e: Entity| sim.world().get::<Transform>(e).expect("pose").translation;
     let copias = |sim: &mut SimWorld| {
         let w = sim.world_mut();
-        w.query_filtered::<Entity, bevy_ecs::query::With<ph2d_ecs::Spawned>>().iter(w).count()
+        w.query_filtered::<Entity, bevy_ecs::query::With<ph2d_ecs::Spawned>>()
+            .iter(w)
+            .count()
     };
     let mut nasceram = 0;
     let mut morreram = 0;
     for n in 0..260u64 {
-        let (kb, rato, onde) = piloto(n);
-        host.devices().feed(&kb, &rato, Some(onde));
+        // O caminho do APP: os eventos no estado de entrada, a porta entrega e limpa.
+        let onde = piloto(&mut entrada, n);
+        crate::script_input::frame(Some(&host), &mut entrada, Some(onde));
         let antes = copias(&mut sim);
         let mut portas = crate::script_bridge::ScriptDoors {
             registry: &reg,
-            docs: crate::instance_docs::OwnedDocs { vec_scene: &mut vec, vec_entities: &mut mapa },
+            docs: crate::instance_docs::OwnedDocs {
+                vec_scene: &mut vec,
+                vec_entities: &mut mapa,
+            },
             tick: n,
         };
-        let f = crate::script_bridge::frame(&mut host, &mut sim, &mut drive, true, 1, 1.0 / 60.0, &[], &mut portas);
+        let f = crate::script_bridge::frame(
+            &mut host,
+            &mut sim,
+            &mut drive,
+            true,
+            1,
+            1.0 / 60.0,
+            &[],
+            &mut portas,
+        );
         assert!(f.failed.is_empty(), "quadro {n}: {:?}", f.failed);
         nasceram += copias(&mut sim).saturating_sub(antes);
         let mortes: Vec<ph2d_ecs::Death> = f
             .despawned
             .into_iter()
-            .map(|entity| ph2d_ecs::Death { entity, signal: String::new(), why: ph2d_ecs::DeathCause::Killed })
+            .map(|entity| ph2d_ecs::Death {
+                entity,
+                signal: String::new(),
+                why: ph2d_ecs::DeathCause::Killed,
+            })
             .collect();
         morreram += crate::factory_bridge::apply_deaths(&mut sim, &mortes);
         drive.settle();
@@ -148,20 +173,46 @@ fn a_cena_6_e_um_jogo_que_responde_ao_teclado_e_ao_rato() {
             &reg,
             &fisica,
             &mut eco,
-            &mut crate::instance_docs::OwnedDocs { vec_scene: &mut vec, vec_entities: &mut mapa },
+            &mut crate::instance_docs::OwnedDocs {
+                vec_scene: &mut vec,
+                vec_entities: &mut mapa,
+            },
         );
         ph2d_vec_entities::entities::sync(&mut sim, &mut vec, &mut mapa);
     }
-    assert!(x(&sim, nave).x > -1.0, "as setas levaram o círculo para a direita: {:?}", x(&sim, nave));
+    assert!(
+        x(&sim, nave).x > -1.0,
+        "as setas levaram o círculo para a direita: {:?}",
+        x(&sim, nave)
+    );
     assert_eq!(nasceram, 3, "três toques no espaço, três estrelas");
     assert_eq!(morreram, 3, "cada uma apagou-se ao fim de 1,5 s");
     assert_eq!(copias(&mut sim), 0, "nenhuma estrela ficou parada");
-    assert_eq!(vec.paths().len(), 3, "o documento vectorial volta às três peças");
-    assert_eq!((x(&sim, alvo).x, x(&sim, alvo).y), (-3.0, 2.0), "o clique levou o quadrado ao rato");
-    assert!(sim.world().get::<Transform>(receita).is_some(), "a receita fica");
+    assert_eq!(
+        vec.paths().len(),
+        3,
+        "o documento vectorial volta às três peças"
+    );
+    assert_eq!(
+        (x(&sim, alvo).x, x(&sim, alvo).y),
+        (-3.0, 2.0),
+        "o clique levou o quadrado ao rato"
+    );
+    assert!(
+        sim.world().get::<Transform>(receita).is_some(),
+        "a receita fica"
+    );
     let linhas: Vec<String> = host.drain_console().into_iter().map(|l| l.text).collect();
     assert_eq!(linhas, vec!["tiro\t1", "tiro\t2", "tiro\t3"]);
     crate::script_bridge::rewind(&mut host, &mut sim, &mut drive);
-    assert_eq!((x(&sim, alvo).x, x(&sim, alvo).y), (JOGO_AT[1][0], JOGO_AT[1][1]), "rebobinar devolve o quadrado");
-    assert_eq!((x(&sim, nave).x, x(&sim, nave).y), (JOGO_AT[0][0], JOGO_AT[0][1]), "e o círculo");
+    assert_eq!(
+        (x(&sim, alvo).x, x(&sim, alvo).y),
+        (JOGO_AT[1][0], JOGO_AT[1][1]),
+        "rebobinar devolve o quadrado"
+    );
+    assert_eq!(
+        (x(&sim, nave).x, x(&sim, nave).y),
+        (JOGO_AT[0][0], JOGO_AT[0][1]),
+        "e o círculo"
+    );
 }

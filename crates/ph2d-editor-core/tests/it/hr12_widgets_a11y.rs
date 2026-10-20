@@ -767,6 +767,13 @@ const WIDGET_DELEGATE_MARKERS: &[&str] = &[
 /// da categoria (b) está a justificar a isenção com um facto que não se verifica, e o gate — que
 /// só lê o par `(caminho, razão)` — não sabe a diferença.
 const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
+    // ⭐ CodeEditor (Onda 2): os nós do leitor de ecrã das filas pintadas saíram para `a11y.rs` da
+    // MESMA crate (que importa `ph2d_a11y`). ⚠️ MEDIDO: zero `NodeId`, `hit_index` ou `register(` no
+    // ficheiro — ele pinta as linhas visíveis e devolve rects.
+    (
+        "ph2d-panel-code/src/paint.rs",
+        "pure-paint das linhas do editor de scripts; a a11y das filas pintadas mora em a11y.rs da mesma crate",
+    ),
     // ⛔⛔ **VERMELHO PRÉ-EXISTENTE, achado em 2026-09-07 pelo `collision-surface.sh`.** O
     // ficheiro nasceu em 2026-09-06 do corte que a ÁRVORE COMBINADA impôs ao `paint.rs` (617 de
     // 600), e o portão daquela linha não o viu **porque não corria a suíte do `ph2d-editor-core`**

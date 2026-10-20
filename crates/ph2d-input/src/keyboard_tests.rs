@@ -130,7 +130,9 @@ fn a_tap_inside_one_frame_gives_both_edges() {
 fn every_named_key_round_trips_through_its_script_name() {
     let mut n = 0;
     for k in Key::all_named() {
-        let name = k.script_name().expect("toda tecla com rótulo tem nome de script");
+        let name = k
+            .script_name()
+            .expect("toda tecla com rótulo tem nome de script");
         assert_eq!(Key::named_in_script(&name), Some(vec![k]), "{name}");
         assert!(!k.label().starts_with("Key "), "{name} sem rótulo");
         n += 1;
@@ -154,6 +156,10 @@ fn aliases_name_both_sides_and_unknown_names_are_none() {
     assert_eq!(Key::named_in_script("a"), Some(vec![A]));
     assert_eq!(Key::named_in_script("A"), None, "os nomes são minúsculas");
     assert_eq!(Key::named_in_script("spcae"), None);
-    assert_eq!(Key(0xF702).label(), "Left Arrow", "o rótulo do artista não mudou");
+    assert_eq!(
+        Key(0xF702).label(),
+        "Left Arrow",
+        "o rótulo do artista não mudou"
+    );
     assert_eq!(Key(0xF704 + 11).label(), "F12");
 }

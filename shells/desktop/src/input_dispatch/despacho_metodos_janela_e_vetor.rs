@@ -276,7 +276,11 @@ impl crate::App {
                 }
             })
             .unwrap_or(CursorIcon::Default);
-        if self.cursor_shown.replace(Some(cursor)) != Some(cursor) {
+        let novo = self
+            .gfx
+            .as_ref()
+            .is_none_or(|g| g.cursor_shown.replace(Some(cursor)) != Some(cursor));
+        if novo {
             win.set_cursor(cursor);
         }
     }
@@ -394,6 +398,20 @@ impl crate::App {
     }
 
     /// Uma aba de família activa é dona do teclado (`surface_input::owns_the_keyboard`).
+    /// A CENA está sob `(x, y)` — nem o corpo de um painel, nem um widget do chrome.
+    pub(crate) fn pointer_on_canvas(&self, x: f32, y: f32) -> bool {
+        self.hero_ref()
+            .is_some_and(|h| h.chrome_panel_at(x, y).is_none() && h.chrome_hit(x, y).is_none())
+    }
+
+    /// ⭐ **O rato do JOGO** (CodeEditor item 6): um clique conta se COMEÇA na cena, nunca numa aba
+    /// de código; o largar passa sempre (senão um arrasto que sai da cena ficava preso).
+    pub(crate) fn rato_do_jogo(&mut self, button: ph2d_host::PointerButton, down: bool) {
+        let (x, y) = self.last_pointer;
+        let na_cena = down && self.pointer_on_canvas(x, y) && !self.surface_owns_the_keyboard();
+        ph2d_app_components::script_input::game_mouse(&mut self.input, button, down, na_cena);
+    }
+
     pub(crate) fn surface_owns_the_keyboard(&self) -> bool {
         ph2d_editor_core::screens::hero::surface_input::owns_the_keyboard(self.hero_ref())
     }

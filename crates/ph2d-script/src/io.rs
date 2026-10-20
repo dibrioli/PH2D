@@ -225,7 +225,10 @@ impl Devices {
         g.keys_down = keyboard.iter_held().collect();
         g.keys_pressed.extend(keyboard.iter_pressed());
         g.keys_released.extend(keyboard.iter_released());
-        g.mouse_down = MouseButton::ALL.into_iter().filter(|b| mouse.held(*b)).collect();
+        g.mouse_down = MouseButton::ALL
+            .into_iter()
+            .filter(|b| mouse.held(*b))
+            .collect();
         for b in MouseButton::ALL {
             if mouse.pressed(b) {
                 g.mouse_pressed.insert(b);
@@ -336,6 +339,4 @@ mod tests {
         assert_eq!(q.drain().len(), 3);
         assert!(q.push(ew(5, "x", 5.0)).is_ok());
     }
-
-
 }

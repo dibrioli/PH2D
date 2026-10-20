@@ -175,7 +175,7 @@ end"#,
             ),
         ],
         returns: "`true` when the script was attached; `false` when the id names no object, or names one you made in the scene.",
-        more: "The new script starts on the next tick, with [hooks.init]. A name that is not in the project is an error that stops the object.\n\nObjects you placed in the scene keep the scripts you gave them: attaching one while playing would change your scene, so it is refused, the console says so, and the script carries on.",
+        more: "The new script starts with [hooks.init] on the next tick — or on the next frame, when no other object runs that script yet and it has to be loaded first. A name that is not in the project is an error that stops the object.\n\nObjects you placed in the scene keep the scripts you gave them: attaching one while playing would change your scene, so it is refused, the console says so, and the script carries on.",
         example: r#"function update(self, dt)
   if ph2d.key_pressed("e") then
     local helper = ph2d.spawn()
@@ -226,10 +226,7 @@ end"#,
     },
     ApiHelp {
         key: "ph2d.mouse_down",
-        params: &[(
-            "button",
-            r#""left", "right" or "middle"."#,
-        )],
+        params: &[("button", r#""left", "right" or "middle"."#)],
         returns: "`true` while the button is held after a click that started on the scene.",
         more: "A click on a panel or a button of the editor does not reach the game — only one that starts on the scene does. Letting go always counts, wherever the mouse is. Any other button name is an error.",
         example: r#"function update(self, dt)

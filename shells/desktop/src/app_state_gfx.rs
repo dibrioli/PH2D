@@ -19,6 +19,8 @@ use super::*;
 /// chain on individual `Option<...>` fields would be awkward.
 pub(crate) struct AppGfx {
     pub(crate) surface: SurfaceContext,
+    /// O ponteiro do sistema já pedido à janela: o Wayland do winit reenvia-o a cada `set_cursor`.
+    pub(crate) cursor_shown: std::cell::Cell<Option<winit::window::CursorIcon>>,
     pub(crate) renderer: SpriteRenderer,
     pub(crate) sim: SimWorld,
     pub(crate) present: PresentWorld,

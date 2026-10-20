@@ -180,8 +180,6 @@ pub(crate) struct App {
     pub(crate) resize_settle_frames: u32,
     pub(crate) modifiers: ModifiersState,
     pub(crate) last_pointer: (f32, f32),
-    /// O ponteiro do sistema já pedido: o Wayland do winit reenvia-o a cada `set_cursor`.
-    pub(crate) cursor_shown: std::cell::Cell<Option<winit::window::CursorIcon>>,
     /// **O OBJECTO SOB O PONTEIRO neste quadro** (estudo de UI viva, C2), em bits de `Entity` —
     /// a resposta da porta única [`crate::App::hovered_object`], computada UMA vez por quadro.
     ///

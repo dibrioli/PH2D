@@ -26,7 +26,8 @@ local function sat(v)
   return v
 end
 local function rot(v)
-  if type(v) ~= "number" or v ~= v then return sat(v) end
+  if v ~= v then error("bad argument: number has no integer representation (nan)", 3) end
+  if type(v) ~= "number" then return v end
   return v % 32
 end
 local s, t, u, m, b = string, table, utf8, math, bit32
@@ -88,6 +89,9 @@ pub(crate) fn wire(lua: &Lua) -> mlua::Result<()> {
             let chunk = lua
                 .load(source.as_bytes().to_vec())
                 .set_name(name)
+                // ⛔ Só TEXTO: o modo adivinhado do mlua tomaria um texto que começa por um byte
+                // abaixo de `\n` por bytecode, e o `luau_load` não confere bytecode (fura o HR-9).
+                .set_mode(mlua::chunk::ChunkMode::Text)
                 .set_environment(env)
                 .into_function();
             Ok(match chunk {
@@ -107,3 +111,7 @@ pub(crate) fn bind_env(lua: &Lua, env: &Table) -> mlua::Result<()> {
         None => Ok(()),
     }
 }
+
+#[cfg(test)]
+#[path = "stdlib_tests.rs"]
+mod tests;

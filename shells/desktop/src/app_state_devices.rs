@@ -59,8 +59,10 @@ impl App {
             return;
         };
         // begin_frame snapshots last-frame held buttons so
-        // pressed()/released() return correct edge-trigger values.
-        self.input.begin_frame();
+        // pressed()/released() return correct edge-trigger values. ⚠️ Só o COMANDO: as bordas do
+        // teclado e do rato chegaram ENTRE quadros e são dos scripts — limpa-as a porta deles,
+        // depois de as entregar (`script_input::frame`).
+        self.input.gamepad.begin_frame();
         while let Some(gilrs::Event { event, .. }) = g.next_event() {
             match event {
                 gilrs::EventType::Connected => {
@@ -97,17 +99,18 @@ impl App {
 
     /// Os dispositivos dos scripts (CodeEditor item 6) — a porta é a da família; daqui só sai o
     /// ponto do mundo sob o rato, pela janela da CENA (a mesma do cursor do Motion).
-    pub(crate) fn push_input_to_script(&self) {
-        let Some(gfx) = self.gfx.as_ref() else {
-            return;
-        };
-        let Some(host) = gfx.script.as_ref() else {
-            return;
-        };
-        let rato = gfx.hero_screen.as_ref().map(|h| {
-            let janela = crate::scene_mapping::janela(h.view.center_split, gfx.surface.size());
-            gfx.camera.screen_to_world(self.last_cursor, janela).map(f64::from)
+    pub(crate) fn push_input_to_script(&mut self) {
+        let gfx = self.gfx.as_ref();
+        let rato = gfx.and_then(|g| {
+            let h = g.hero_screen.as_ref()?;
+            let janela = crate::scene_mapping::janela(h.view.center_split, g.surface.size());
+            Some(
+                g.camera
+                    .screen_to_world(self.last_cursor, janela)
+                    .map(f64::from),
+            )
         });
-        ph2d_app_components::script_input::feed(host, &self.input, rato);
+        let host = gfx.and_then(|g| g.script.as_ref());
+        ph2d_app_components::script_input::frame(host, &mut self.input, rato);
     }
 }

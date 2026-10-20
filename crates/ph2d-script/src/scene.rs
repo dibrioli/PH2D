@@ -34,7 +34,7 @@
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
 
-use mlua::{Function, IntoLuaMulti, Lua, MultiValue, Table, Thread, Value};
+use mlua::{Lua, Table};
 use ph2d_ecs::{Entity, SimWorld, StableId, Transform, World};
 
 use crate::component::{LuauScript, ScriptSource};
@@ -43,8 +43,10 @@ use crate::diagnostic::ScriptDiagnostic;
 use crate::io::{EntityWrite, WriteQueue, pose_field};
 use crate::lane::{Lane, SceneDoors, with_lane};
 use crate::module::ScriptModule;
-use crate::props::{PropDecl, ScriptValue, resolve};
+use crate::props::{PropDecl, ScriptValue};
 use ph2d_script_doc::{ScriptId, ScriptLibrary};
+pub(crate) use wait::WAIT_TOKEN;
+use wait::{Parked, micros, park, resume_due, run_hook};
 
 /// **O que se sabe de um script** — o que o painel mostra.
 #[derive(Clone, Debug, PartialEq)]
@@ -206,98 +208,8 @@ pub struct SceneScripts {
     epoch: Option<crate::LibraryEpoch>,
     /// ⭐ As esperas (`ph2d.wait`) por retomar, pela ordem em que pararam.
     parked: Vec<Parked>,
-    /// Corrotinas acabadas, para reaproveitar (`Thread::reset`: 107 ns contra 198 de uma nova —
-    /// `docs/CodeEditor/05_api_que_funciona.md` §2).
-    pool: Vec<Thread>,
     /// Quem pediu para morrer neste quadro: os ganchos dele já não correm.
     dying: BTreeSet<u64>,
-}
-
-/// Um gancho que parou num `ph2d.wait`.
-struct Parked {
-    entity: Entity,
-    script: ScriptId,
-    thread: Thread,
-    /// Microssegundos inteiros, como o `Timer` da casa: `round(s·1e6)`.
-    target_us: u64,
-    elapsed_us: u64,
-}
-
-/// O que uma chamada de gancho deu.
-enum Ran {
-    Done,
-    Waiting(Thread, u64),
-}
-
-/// A marca que o `ph2d.wait` cede junto com os segundos (uma cedência sem ela não é uma espera).
-pub(crate) const WAIT_TOKEN: &str = "ph2d.wait";
-
-/// Segundos → microssegundos inteiros (o relógio do `Timer` da casa).
-fn micros(seconds: f64) -> u64 {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "saturado: um número não-finito ou negativo vale 0, um enorme vale u64::MAX"
-    )]
-    let us = (seconds * 1e6).round().max(0.0) as u64;
-    us
-}
-
-/// ⭐ **Corre um gancho numa corrotina** — reaproveitada do `pool` quando há.
-fn run_hook(
-    lua: &Lua,
-    pool: &mut Vec<Thread>,
-    f: &Function,
-    args: impl IntoLuaMulti,
-) -> mlua::Result<Ran> {
-    let th = match pool.pop() {
-        Some(t) => {
-            t.reset(f.clone())?;
-            t
-        }
-        None => lua.create_thread(f.clone())?,
-    };
-    resume(lua, pool, th, args)
-}
-
-/// Retoma `th`; acabada ou falhada, volta ao `pool` (o Luau repõe qualquer estado no `reset`).
-fn resume(lua: &Lua, pool: &mut Vec<Thread>, th: Thread, args: impl IntoLuaMulti) -> mlua::Result<Ran> {
-    let out = th.resume::<MultiValue>(args);
-    let yielded = th.status() == mlua::thread::ThreadStatus::Resumable;
-    match out {
-        Ok(vals) if yielded => match wait_of(lua, &vals) {
-            Some(us) => Ok(Ran::Waiting(th, us)),
-            None => {
-                pool.push(th);
-                Err(mlua::Error::RuntimeError(
-                    "coroutine.yield in a hook: use ph2d.wait(seconds) to pause".into(),
-                ))
-            }
-        },
-        Ok(_) => {
-            pool.push(th);
-            Ok(Ran::Done)
-        }
-        Err(e) => {
-            pool.push(th);
-            Err(e)
-        }
-    }
-}
-
-/// Os microssegundos de uma cedência do `ph2d.wait` (`WAIT_TOKEN, segundos`).
-fn wait_of(lua: &Lua, vals: &MultiValue) -> Option<u64> {
-    let token: Value = lua.named_registry_value(WAIT_TOKEN).ok()?;
-    let mut it = vals.iter();
-    let first = it.next()?;
-    if !first.equals(&token).unwrap_or(false) {
-        return None;
-    }
-    match it.next() {
-        Some(Value::Number(s)) => Some(micros(*s)),
-        Some(Value::Integer(s)) => Some(micros(*s as f64)),
-        _ => Some(0),
-    }
 }
 
 /// Um objecto com script, no instante do tique.
@@ -340,25 +252,6 @@ pub(crate) fn pose_of(t: &Transform) -> [f64; 5] {
     ]
 }
 
-/// O valor como o script o lê em `self`.
-///
-/// ⚠️⚠️ **A tabela de um `vec2`/`color` sai da MESMA porta que o construtor `ph2d.vec2` usa**
-/// ([`crate::valores::tabela_de`]): o que o artista escreve na declaração e o que ele lê em `self`
-/// têm de ser a mesma forma, senão copiar uma para a outra produz um default que o painel não sabe
-/// pintar. Há gate de ida-e-volta.
-fn to_lua(lua: &Lua, v: &ScriptValue) -> mlua::Result<Value> {
-    if let Some(t) = crate::valores::tabela_de(lua, v)? {
-        return Ok(t);
-    }
-    Ok(match v {
-        ScriptValue::Number(n) => Value::Number(*n),
-        ScriptValue::Bool(b) => Value::Boolean(*b),
-        ScriptValue::Text(s) => Value::String(lua.create_string(s)?),
-        // A [`crate::valores::tabela_de`] já os devolveu acima.
-        ScriptValue::Vec2(_) | ScriptValue::Color(_) => unreachable!("a porta ja' os cobriu"),
-    })
-}
-
 impl SceneScripts {
     /// ⚠️ **A VM mudou** (o `load_script` do spike reconstrói-a): toda tabela guardada aqui é da VM
     /// velha. Esquece tudo; o próximo `sync` recarrega da biblioteca.
@@ -367,7 +260,6 @@ impl SceneScripts {
         self.instances.clear();
         // As corrotinas são da VM velha.
         self.parked.clear();
-        self.pool.clear();
     }
 
     /// ⛔ **Outra biblioteca = outro projecto**: os módulos, os vivos e as recargas por drenar são
@@ -484,7 +376,6 @@ impl SceneScripts {
             slots,
             instances,
             parked,
-            pool,
             dying,
             ..
         } = self;
@@ -494,7 +385,10 @@ impl SceneScripts {
                 let Some(hook) = module_in(slots, &a.cfg).and_then(|m| m.hook("on_signal")) else {
                     continue;
                 };
-                let Some(inst) = instances.get_mut(&a.entity.to_bits()) else {
+                let Some(inst) = instances
+                    .get_mut(&a.entity.to_bits())
+                    .filter(|i| Some(i.script) == library_id(&a.cfg))
+                else {
                     continue;
                 };
                 cell.borrow_mut().speaker = Some(a.entity);
@@ -504,7 +398,7 @@ impl SceneScripts {
                     }
                     report.calls += 1;
                     let ran = speaking(lua, inst.script, Some(a.entity), || {
-                        deadline.within(|| run_hook(lua, pool, &hook, (inst.this.clone(), *name)))
+                        deadline.within(|| run_hook(lua, &hook, (inst.this.clone(), *name)))
                     });
                     let ran = park(ran, a.entity, inst.script, parked);
                     settle_call(lua, a.entity, ran, inst, &mut writes, &mut report);
@@ -536,7 +430,6 @@ impl SceneScripts {
             slots,
             instances,
             parked,
-            pool,
             dying,
             ..
         } = self;
@@ -552,6 +445,18 @@ impl SceneScripts {
                 let bits = a.entity.to_bits();
                 let chunk = chunk_in(slots, &a.cfg);
                 cell.borrow_mut().speaker = Some(a.entity);
+                if cell.borrow().is_dying(a.entity) {
+                    continue;
+                }
+                // Trocou de script a meio do quadro (`ph2d.attach_script`): renasce já, com o `init`
+                // do novo — o `self` do anterior não é dele.
+                if instances
+                    .get(&bits)
+                    .is_some_and(|i| Some(i.script) != library_id(&a.cfg))
+                {
+                    instances.remove(&bits);
+                    parked.retain(|p| p.entity != a.entity);
+                }
                 if let Entry::Vacant(slot) = instances.entry(bits) {
                     let inst = match born(lua, a, bits, chunk.clone()) {
                         Ok(inst) => slot.insert(inst),
@@ -573,7 +478,7 @@ impl SceneScripts {
                     if let Some(init) = init {
                         report.calls += 1;
                         let ran = speaking(lua, inst.script, Some(a.entity), || {
-                            deadline.within(|| run_hook(lua, pool, &init, inst.this.clone()))
+                            deadline.within(|| run_hook(lua, &init, inst.this.clone()))
                         });
                         let ran = park(ran, a.entity, inst.script, parked);
                         if !settle_call(lua, a.entity, ran, inst, &mut writes, &mut report) {
@@ -589,7 +494,7 @@ impl SceneScripts {
                 if let Some(update) = update {
                     report.calls += 1;
                     let ran = speaking(lua, inst.script, Some(a.entity), || {
-                        deadline.within(|| run_hook(lua, pool, &update, (inst.this.clone(), dt)))
+                        deadline.within(|| run_hook(lua, &update, (inst.this.clone(), dt)))
                     });
                     let ran = park(ran, a.entity, inst.script, parked);
                     settle_call(lua, a.entity, ran, inst, &mut writes, &mut report);
@@ -601,7 +506,6 @@ impl SceneScripts {
                 cell,
                 instances,
                 parked,
-                pool,
                 micros(dt),
                 &mut writes,
                 &mut report,
@@ -614,10 +518,12 @@ impl SceneScripts {
         report.wrote.dedup();
         report
     }
-
 }
 
-fn module_in<'s>(slots: &'s BTreeMap<ScriptId, Slot>, cfg: &LuauScript) -> Option<&'s ScriptModule> {
+fn module_in<'s>(
+    slots: &'s BTreeMap<ScriptId, Slot>,
+    cfg: &LuauScript,
+) -> Option<&'s ScriptModule> {
     library_id(cfg)
         .and_then(|id| slots.get(&id))
         .and_then(|s| s.module.as_ref())
@@ -628,79 +534,6 @@ fn chunk_in(slots: &BTreeMap<ScriptId, Slot>, cfg: &LuauScript) -> String {
         .and_then(|id| slots.get(&id))
         .map(|s| s.chunk.clone())
         .unwrap_or_default()
-}
-
-/// Uma chamada que parou num `ph2d.wait` vai para as esperas; o resto segue como antes.
-fn park(
-    ran: mlua::Result<Ran>,
-    entity: Entity,
-    script: ScriptId,
-    parked: &mut Vec<Parked>,
-) -> mlua::Result<()> {
-    match ran? {
-        Ran::Done => Ok(()),
-        Ran::Waiting(thread, target_us) => {
-            parked.push(Parked {
-                entity,
-                script,
-                thread,
-                target_us,
-                elapsed_us: 0,
-            });
-            Ok(())
-        }
-    }
-}
-
-/// ⭐⭐ **As esperas que chegaram**, no fim do tique, depois dos ganchos (Godot): cada uma soma o
-/// `dt` deste tique — também a que começou nele — e retoma se o acumulado chegou ao alvo. Uma
-/// espera começada AQUI só conta a partir do tique seguinte (senão `wait(0)` num laço nunca
-/// devolveria o tique). Objecto que morreu, trocou de script ou parou ⇒ a espera é esquecida.
-#[allow(clippy::too_many_arguments)]
-fn resume_due(
-    lua: &Lua,
-    deadline: &Deadline,
-    cell: &std::cell::RefCell<Lane<'_>>,
-    instances: &mut BTreeMap<u64, Instance>,
-    parked: &mut Vec<Parked>,
-    pool: &mut Vec<Thread>,
-    dt_us: u64,
-    writes: &mut Vec<EntityWrite>,
-    report: &mut SceneReport,
-) {
-    let mut due = Vec::new();
-    for mut p in std::mem::take(parked) {
-        p.elapsed_us = p.elapsed_us.saturating_add(dt_us);
-        if p.elapsed_us >= p.target_us {
-            due.push(p);
-        } else {
-            parked.push(p);
-        }
-    }
-    for p in due {
-        let bits = p.entity.to_bits();
-        if cell.borrow().is_dying(p.entity) {
-            continue;
-        }
-        let Some(inst) = instances.get_mut(&bits) else {
-            continue;
-        };
-        if inst.script != p.script || inst.failed.is_some() {
-            continue;
-        }
-        cell.borrow_mut().speaker = Some(p.entity);
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "microssegundos de uma espera cabem em 2^53"
-        )]
-        let secs = p.elapsed_us as f64 / 1e6;
-        report.calls += 1;
-        let ran = speaking(lua, inst.script, Some(p.entity), || {
-            deadline.within(|| resume(lua, pool, p.thread, secs))
-        });
-        let ran = park(ran, p.entity, p.script, parked);
-        settle_call(lua, p.entity, ran, inst, writes, report);
-    }
 }
 
 /// O que a pista pediu entra no relatório; uma pista que não abriu é um defeito da casa, dito.
@@ -725,51 +558,6 @@ fn library_id(cfg: &LuauScript) -> Option<ScriptId> {
     match cfg.source {
         ScriptSource::Library(id) => Some(id),
         ScriptSource::None | ScriptSource::Unimported(_) => None,
-    }
-}
-
-/// O `self` de um objecto acabado de nascer: só o `id`. Os números entram pelo [`apply_props`].
-fn born(lua: &Lua, a: &Actor, bits: u64, chunk: String) -> mlua::Result<Instance> {
-    let this = lua.create_table()?;
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "os bits de uma entidade cabem em 2^53 enquanto a geração for < 2^21 — e \
-                  valem só dentro da sessão"
-    )]
-    this.set("id", bits as f64)?;
-    Ok(Instance {
-        script: library_id(&a.cfg).unwrap_or_default(),
-        chunk,
-        this,
-        applied: BTreeMap::new(),
-        failed: None,
-    })
-}
-
-/// Escreve no `self` os números que MUDARAM desde a última vez (§3.5): a mão do artista manda,
-/// mas só onde mexeu.
-fn apply_props(lua: &Lua, inst: &mut Instance, decls: &[PropDecl], cfg: &LuauScript) {
-    let r = resolve(Some(decls), &cfg.own);
-    for p in &r.values {
-        if inst.applied.get(&p.name) == Some(&p.value) {
-            continue;
-        }
-        if let Ok(v) = to_lua(lua, &p.value)
-            && inst.this.raw_set(p.name.as_str(), v).is_ok()
-        {
-            inst.applied.insert(p.name.clone(), p.value.clone());
-        }
-    }
-    // Uma declaração que SAIU do script leva o campo com ela.
-    let gone: Vec<String> = inst
-        .applied
-        .keys()
-        .filter(|k| !r.values.iter().any(|p| p.name == **k))
-        .cloned()
-        .collect();
-    for k in gone {
-        let _ = inst.this.raw_set(k.as_str(), Value::Nil);
-        inst.applied.remove(&k);
     }
 }
 
@@ -883,6 +671,12 @@ fn apply_writes(world: &mut World, writes: &[EntityWrite], report: &mut SceneRep
 #[path = "scene_reload.rs"]
 mod reload;
 pub use reload::{ReloadOutcome, ScriptReload};
+
+#[path = "scene_self.rs"]
+mod this;
+#[path = "scene_wait.rs"]
+mod wait;
+use this::{apply_props, born};
 
 #[cfg(test)]
 #[path = "scene_tests.rs"]

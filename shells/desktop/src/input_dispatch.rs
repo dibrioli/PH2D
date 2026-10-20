@@ -382,6 +382,8 @@ impl App {
             MouseButton::Middle => ph2d_host::PointerButton::Middle,
             _ => ph2d_host::PointerButton::Primary,
         };
+        // O rato do JOGO (CodeEditor item 6) — antes de todo early-return, o largar sobretudo.
+        self.rato_do_jogo(mapped_button, state == ElementState::Pressed);
         // W-Grab: **soltar a mão vem ANTES de tudo.** Este handler tem muitos
         // early-returns e uma mão que sobrevive ao release fica colada no cursor
         // para sempre; e vale para qualquer botão, porque uma mão não é um
@@ -395,8 +397,6 @@ impl App {
             // **§12** — e a alça do gizmo de âncora, pela MESMA razão escrita acima: este handler
             // tem muitos early-returns, e uma alça que sobrevive ao release fica colada ao cursor.
             self.end_anchor_gizmo_drag();
-            // E o botão do rato do JOGO (CodeEditor item 6), pela mesma razão.
-            ph2d_app_components::script_input::game_mouse(&mut self.input, mapped_button, false, false);
         }
         self.ramo_arrasto_biblioteca(state, button);
         self.ramo_aperto_solta_teclado(state);
@@ -460,19 +460,7 @@ impl App {
         // mirrors the sprite-pick path: no panel under the cursor AND no
         // interactive widget hit (`hit_index` covers pills / menus / panel
         // controls; `panel_at` covers panel bodies incl. the vector panel).
-        let on_canvas = self
-            .gfx
-            .as_ref()
-            .and_then(|g| g.hero_screen.as_ref())
-            .map(|h| {
-                h.chrome_panel_at(evt.x, evt.y).is_none() && h.chrome_hit(evt.x, evt.y).is_none()
-            })
-            .unwrap_or(false);
-        // O rato do JOGO (CodeEditor item 6): um clique que começa na cena, nunca numa aba de código.
-        if kind == PointerKind::Down {
-            let na_cena = on_canvas && !self.surface_owns_the_keyboard();
-            ph2d_app_components::script_input::game_mouse(&mut self.input, mapped_button, true, na_cena);
-        }
+        let on_canvas = self.pointer_on_canvas(evt.x, evt.y);
         if self.ramo_preview_e_fechos(kind, mapped_button, evt, menu_open_before) {
             return;
         }

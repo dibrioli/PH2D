@@ -94,8 +94,16 @@ fn tres_bonecos_tres_amplitudes_e_o_rapido_acende_a_lampada() {
     let mut gritos = 0;
     let mut acesa_alguma_vez = false;
     for _ in 0..(60 * 4) {
-        let f =
-            crate::script_bridge::frame(&mut host, &mut sim, &mut drive, true, 1, 1.0 / 60.0, &[], &mut ph2d_script::NoDoors);
+        let f = crate::script_bridge::frame(
+            &mut host,
+            &mut sim,
+            &mut drive,
+            true,
+            1,
+            1.0 / 60.0,
+            &[],
+            &mut ph2d_script::NoDoors,
+        );
         assert!(f.failed.is_empty(), "{:?}", f.failed);
         // ⚠️ **Sem sujeito**, que é o que este gate sempre significou: o que ele mede é o script a
         // gritar e a tabela a ouvir, não a CERCA do suplente #24.
@@ -188,7 +196,16 @@ fn mudar_o_default_no_ficheiro_muda_quem_nao_tem_aquele_numero_proprio() {
     // ⚠️ **A cena corre ANTES de o ficheiro mudar** — é o gesto do dono (gravar com a cena a
     // tocar), e é o que prova a RECARGA; gravar antes do primeiro quadro só provaria a carga.
     for _ in 0..60 {
-        crate::script_bridge::frame(&mut host, &mut sim, &mut drive, true, 1, 1.0 / 60.0, &[], &mut ph2d_script::NoDoors);
+        crate::script_bridge::frame(
+            &mut host,
+            &mut sim,
+            &mut drive,
+            true,
+            1,
+            1.0 / 60.0,
+            &[],
+            &mut ph2d_script::NoDoors,
+        );
         drive.settle();
     }
     assert!(
@@ -198,7 +215,16 @@ fn mudar_o_default_no_ficheiro_muda_quem_nao_tem_aquele_numero_proprio() {
     );
     let mut max_dy = [0.0f32; 3];
     for _ in 0..240 {
-        crate::script_bridge::frame(&mut host, &mut sim, &mut drive, true, 1, 1.0 / 60.0, &[], &mut ph2d_script::NoDoors);
+        crate::script_bridge::frame(
+            &mut host,
+            &mut sim,
+            &mut drive,
+            true,
+            1,
+            1.0 / 60.0,
+            &[],
+            &mut ph2d_script::NoDoors,
+        );
         drive.settle();
         for (i, e) in [bob, alto, rapido].into_iter().enumerate() {
             let y = sim.world().get::<Transform>(e).expect("pose").translation.y;

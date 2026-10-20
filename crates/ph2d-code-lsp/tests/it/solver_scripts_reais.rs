@@ -171,11 +171,18 @@ impl Lado {
         for s in ss {
             for (u, t, dst) in [
                 (uri(&s.name), s.text.clone(), &mut out.0),
-                (uri(&format!("strict_{}", s.name)), strict(&s.text), &mut out.1),
+                (
+                    uri(&format!("strict_{}", s.name)),
+                    strict(&s.text),
+                    &mut out.1,
+                ),
             ] {
                 self.c.pump();
                 self.c.did_open(&u, &t).expect("didOpen");
-                let p = self.c.wait_diagnostics(&u, WAIT).expect("diagnósticos ao abrir");
+                let p = self
+                    .c
+                    .wait_diagnostics(&u, WAIT)
+                    .expect("diagnósticos ao abrir");
                 dst.push(seen(&p.diagnostics));
             }
         }
@@ -187,7 +194,9 @@ impl Lado {
     fn morreu(&mut self, op: &'static str, s: &Script) {
         *self.mortes.entry(op).or_default() += 1;
         self.c.restart().expect("restart");
-        self.c.did_change_full(&uri(&s.name), &s.text).expect("texto original");
+        self.c
+            .did_change_full(&uri(&s.name), &s.text)
+            .expect("texto original");
     }
 
     fn pedido(&mut self, method: &str, params: Value) -> Result<f64, LspError> {
@@ -205,7 +214,14 @@ impl Lado {
         let t0 = Instant::now();
         if self
             .c
-            .did_change(&u, Range { start: at(0), end: at(0) }, PROBE)
+            .did_change(
+                &u,
+                Range {
+                    start: at(0),
+                    end: at(0),
+                },
+                PROBE,
+            )
             .is_err()
         {
             return self.morreu(OPS[0], s);
@@ -230,13 +246,19 @@ impl Lado {
                 "textDocument/signatureHelp",
                 json!({ "textDocument": doc, "position": pos(s.end, paren) }),
             ),
-            ("textDocument/semanticTokens/full", json!({ "textDocument": doc })),
+            (
+                "textDocument/semanticTokens/full",
+                json!({ "textDocument": doc }),
+            ),
             (
                 "textDocument/inlayHint",
                 json!({ "textDocument": doc,
                         "range": { "start": pos(0, 0), "end": pos(s.end + 1, 0) } }),
             ),
-            ("textDocument/documentSymbol", json!({ "textDocument": doc })),
+            (
+                "textDocument/documentSymbol",
+                json!({ "textDocument": doc }),
+            ),
             (
                 "textDocument/references",
                 json!({ "textDocument": doc, "position": pos(s.end, 7),
@@ -255,7 +277,14 @@ impl Lado {
         let fim = Position::new(s.end + 1, 0);
         if self
             .c
-            .did_change(&u, Range { start: at(0), end: fim }, "")
+            .did_change(
+                &u,
+                Range {
+                    start: at(0),
+                    end: fim,
+                },
+                "",
+            )
             .is_err()
             || self.c.wait_diagnostics(&u, WAIT).is_err()
         {
@@ -332,7 +361,11 @@ fn solver_scripts_reais() {
     }
     let parede = t_rodada.elapsed().as_secs_f64();
 
-    let perfil = if cfg!(debug_assertions) { "debug" } else { "otimizado" };
+    let perfil = if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "otimizado"
+    };
     let mut out = format!(
         "luau-lsp {} · cliente {perfil} · {ROUNDS} rodadas × {BLOCK} (n = {} por célula) · loadavg início {load0} · fim {} · rodada {parede:.1} s\n",
         ph2d_code_lsp::pinned_version(),
@@ -355,7 +388,10 @@ fn solver_scripts_reais() {
         lados[0].mortes, lados[1].mortes
     );
 
-    let _ = writeln!(out, "\n## O que cada um acusa (linha, código, 1.ª linha da mensagem)\n");
+    let _ = writeln!(
+        out,
+        "\n## O que cada um acusa (linha, código, 1.ª linha da mensagem)\n"
+    );
     let mut iguais = 0;
     for (i, s) in ss.iter().enumerate() {
         for (modo, a, b) in [
@@ -375,7 +411,11 @@ fn solver_scripts_reais() {
             }
         }
     }
-    let _ = writeln!(out, "\n{iguais} de {} (script × modo) iguais nos dois.", 2 * ss.len());
+    let _ = writeln!(
+        out,
+        "\n{iguais} de {} (script × modo) iguais nos dois.",
+        2 * ss.len()
+    );
     let conta = |v: &[Seen]| v.iter().map(Vec::len).sum::<usize>();
     let _ = writeln!(
         out,
@@ -392,10 +432,20 @@ fn solver_scripts_reais() {
     for (i, s) in ss.iter().enumerate() {
         for l in &lados {
             let cel: Vec<String> = l.t[i].iter().map(|v| resumo(v)).collect();
-            let _ = writeln!(out, "| {} ({}) | {:?} | {} |", s.name, s.end, l.solver, cel.join(" | "));
+            let _ = writeln!(
+                out,
+                "| {} ({}) | {:?} | {} |",
+                s.name,
+                s.end,
+                l.solver,
+                cel.join(" | ")
+            );
         }
     }
-    let _ = writeln!(out, "\n## O pior p50 de cada pedido sobre os scripts (ms)\n");
+    let _ = writeln!(
+        out,
+        "\n## O pior p50 de cada pedido sobre os scripts (ms)\n"
+    );
     let _ = writeln!(out, "| solver | {} |", OPS.join(" | "));
     let _ = writeln!(out, "|---|{}", "---|".repeat(OPS.len()));
     for l in &lados {

@@ -387,7 +387,7 @@ impl HelpView {
                 color,
             );
             self.rows.push(r);
-            y += ROW_H_PX;
+            y += ph2d_tokens::row_pitch_px();
         }
         scene.pop_layer();
     }

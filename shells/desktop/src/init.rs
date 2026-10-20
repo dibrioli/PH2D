@@ -147,6 +147,7 @@ pub(crate) fn build_initial_state(
 
     let gfx = AppGfx {
         surface,
+        cursor_shown: Default::default(),
         renderer,
         sim,
         present,

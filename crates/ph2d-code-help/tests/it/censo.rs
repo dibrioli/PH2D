@@ -129,10 +129,10 @@ fn todo_texto_foi_escrito() {
                     falta.push(format!("{at}({}): {:?}", prm.name, prm.text));
                 }
             }
-            if let Some(r) = &m.returns {
-                if !is_text(r) {
-                    falta.push(format!("{at} returns: {r:?}"));
-                }
+            if let Some(r) = &m.returns
+                && !is_text(r)
+            {
+                falta.push(format!("{at} returns: {r:?}"));
             }
             if m.kind == Kind::Function && m.example.is_none() {
                 falta.push(format!("{at}: sem exemplo"));

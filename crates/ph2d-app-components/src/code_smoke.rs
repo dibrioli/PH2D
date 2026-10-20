@@ -349,7 +349,10 @@ pub fn monta_jogo(sim: &mut SimWorld, cena: &mut VecScene, mapa: &mut VecEntityM
     let r = SHAPE_R;
     let pecas = [
         ("Ship", tinta(ellipse([0.0, 0.0], r, r), [96, 168, 235])),
-        ("Target", tinta(rectangle([-r, -r], [r, r]), [130, 134, 146])),
+        (
+            "Target",
+            tinta(rectangle([-r, -r], [r, r]), [130, 134, 146]),
+        ),
         (
             "Bullet",
             tinta(star([0.0, 0.0], r * 0.4, r * 0.4, 5, 0.45), [240, 196, 72]),
@@ -384,32 +387,38 @@ pub fn monta_jogo(sim: &mut SimWorld, cena: &mut VecScene, mapa: &mut VecEntityM
     out
 }
 
-/// O piloto das fotos (`PH2D_CODE_SMOKE_DEMO=1`): a variável, lida uma vez.
+/// O piloto das fotos (`PH2D_CODE_SMOKE_DEMO=1`, e só na cena 6): as variáveis, lidas uma vez.
 #[must_use]
 pub fn piloto_armado() -> bool {
     static ARMADO: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ARMADO.get_or_init(|| std::env::var("PH2D_CODE_SMOKE_DEMO").is_ok_and(|v| v.trim() == "1"))
+    *ARMADO.get_or_init(|| {
+        let var = |k: &str| std::env::var(k).ok().map(|v| v.trim().to_owned());
+        var("PH2D_CODE_SMOKE_DEMO").as_deref() == Some("1")
+            && var("PH2D_CODE_SMOKE").as_deref() == Some("6")
+    })
 }
 
-/// ⭐ **O piloto da cena 6**, quadro `n` desde o arranque: o teclado, os botões e o rato no mundo que
-/// um jogador daria — para as FOTOS (os eventos sintéticos do X não chegam à tela virtual).
-#[must_use]
-pub fn piloto(n: u64) -> (ph2d_input::KeyboardState, ph2d_input::MouseState, [f64; 2]) {
-    use ph2d_input::{Key, MouseButton};
-    let mut kb = ph2d_input::KeyboardState::new();
-    let mut rato = ph2d_input::MouseState::default();
-    if (30..90).contains(&n) {
-        kb.handle_key_down(Key(0xF703));
+/// ⭐ **O piloto da cena 6**, quadro `n`: os EVENTOS que um jogador daria, postos no estado de
+/// entrada REAL (o mesmo caminho do winit) — para as fotos, onde os eventos sintéticos do X não
+/// chegam. Devolve o ponto do mundo sob o rato.
+pub fn piloto(input: &mut ph2d_input::InputState, n: u64) -> [f64; 2] {
+    use ph2d_input::{Event, Key, MouseButton};
+    let direita = Key(0xF703);
+    let espaco = Key(0x20);
+    let eventos: &[Event] = match n {
+        30 => &[Event::KeyDown(direita)],
+        90 => &[Event::KeyUp(direita)],
+        100 | 120 | 140 => &[Event::KeyDown(espaco), Event::KeyUp(espaco)],
+        160 => &[
+            Event::MouseButtonDown(MouseButton::Left),
+            Event::MouseButtonUp(MouseButton::Left),
+        ],
+        _ => &[],
+    };
+    for e in eventos {
+        input.apply_event(*e);
     }
-    if [100, 120, 140].contains(&n) {
-        kb.handle_key_down(Key(0x20));
-        kb.handle_key_up(Key(0x20));
-    }
-    if n == 160 {
-        rato.handle_button_down(MouseButton::Left);
-        rato.handle_button_up(MouseButton::Left);
-    }
-    (kb, rato, [-3.0, 2.0])
+    [-3.0, 2.0]
 }
 
 /// A porta da shell: monta e anuncia. Devolve o objecto escolhido: nenhum nos níveis 1–2 (o dono

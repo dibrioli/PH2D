@@ -56,6 +56,7 @@ pub use console::{
 pub use diagnostic::{DiagnosticKind, ScriptDiagnostic};
 pub use host::ScriptHost;
 pub use io::{Devices, Edge, EntityWrite, InputSnapshot, QueueFull, WriteQueue};
+pub use lane::{NoDoors, SceneDoors};
 pub use lateral::{PodKey, PodValue, StateTable};
 pub use messaging::{EntityId, Handler, Message, MessageBus, MessageId};
 pub use module::{ScriptModule, load_module};
@@ -65,7 +66,6 @@ pub use props::{
     ScriptValue, ScriptValueKind,
 };
 pub use registry::register_script_components;
-pub use lane::{NoDoors, SceneDoors};
 pub use scene::{HOOK_BUDGET, ReloadOutcome, SceneReport, SceneScripts, ScriptInfo, ScriptReload};
 
 use mlua::Lua;

@@ -3,6 +3,9 @@
 //! e a aba salva-se outra vez. Os falsos provam a ordem; o StyLua fixado prova o texto, o cursor e as
 //! recusas (`bash scripts/stylua-fetch.sh`).
 
+// A selecção é uma LISTA de intervalos (multicursor): um só elemento é o caso de um cursor.
+#![allow(clippy::single_range_in_vec_init)]
+
 use crate::{Mesa, ctrl};
 use ph2d_app_code::FormatServer;
 use ph2d_app_code::commands::CMD_FORMAT_ON_SAVE;

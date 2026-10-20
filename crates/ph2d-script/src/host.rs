@@ -543,9 +543,8 @@ fn wire_devices(lua: &mlua::Lua, devices: &Devices) -> mlua::Result<()> {
         ("key_released", Edge::Released),
     ] {
         let d = devices.clone();
-        let f = lua.create_function(move |_, name: String| {
-            Ok(d.key(&keys_of(func, &name)?, edge))
-        })?;
+        let f =
+            lua.create_function(move |_, name: String| Ok(d.key(&keys_of(func, &name)?, edge)))?;
         ph2d.set(func, f)?;
     }
     for (func, edge) in [
@@ -554,9 +553,8 @@ fn wire_devices(lua: &mlua::Lua, devices: &Devices) -> mlua::Result<()> {
         ("mouse_released", Edge::Released),
     ] {
         let d = devices.clone();
-        let f = lua.create_function(move |_, name: String| {
-            Ok(d.button(button_of(func, &name)?, edge))
-        })?;
+        let f = lua
+            .create_function(move |_, name: String| Ok(d.button(button_of(func, &name)?, edge)))?;
         ph2d.set(func, f)?;
     }
     let d = devices.clone();

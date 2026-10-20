@@ -98,6 +98,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.components.script_project.found_in_the_app_working_folder_not_next_to_the_project" => {
             "{n} found in the app\u{2019}s working folder, not next to the project \u{2014} check they are the right ones"
         }
+        // CodeEditor item 6 — porque `ph2d.spawn("Mestre")` não deu uma cópia (o console do script).
+        "app.components.script_bridge.it_is_not_a_master" => "it is not a master",
+        "app.components.script_bridge.the_copy_would_land_inside_its_own_master" => {
+            "the copy would land inside its own master"
+        }
         "app.components.script_project.script_file_s_not_found_the_script_card_names_them" => {
             "{n} script file(s) not found \u{2014} the Script card names them"
         }

@@ -25,13 +25,15 @@ fn a(page: &str, member: Option<&str>) -> Option<Anchor> {
 }
 
 /// (caso da sonda, palavra, qualificador, `:`, o sítio esperado)
-fn casos() -> Vec<(
+type Caso = (
     &'static str,
     &'static str,
     Option<&'static str>,
     bool,
     Option<Anchor>,
-)> {
+);
+
+fn casos() -> Vec<Caso> {
     vec![
         (
             "math.sin",

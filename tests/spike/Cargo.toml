@@ -71,6 +71,7 @@ path = "src/bin/c2_1_messaging.rs"
 
 [dependencies]
 ph2d-script = { path = "../../crates/ph2d-script" }
+ph2d-ecs = { path = "../../crates/ph2d-ecs" }
 mlua = { version = "0.12", features = ["luau"] }
 flate2 = "1.1.9"
 bevy_ecs = { version = "0.19", optional = true }

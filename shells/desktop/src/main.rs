@@ -721,7 +721,6 @@ impl App {
             resize_settle_frames: 0,
             modifiers: ModifiersState::default(),
             last_pointer: (0.0, 0.0),
-            cursor_shown: Default::default(),
             hovered_object: None,
             prefab_stage_pending: None,
             prefab_stage: None,

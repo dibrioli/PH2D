@@ -71,7 +71,15 @@ pub fn correm(
     accoes: &BTreeMap<String, ph2d_ecs::ActionSample>,
     portas: &mut crate::script_bridge::ScriptDoors<'_, '_>,
 ) -> Vec<ph2d_ecs::Death> {
-    let mortes = scripts(sim, script, drive, signals, leitores.script, relogio, portas);
+    let mortes = scripts(
+        sim,
+        script,
+        drive,
+        signals,
+        leitores.script,
+        relogio,
+        portas,
+    );
     particulas(
         sim,
         particles,

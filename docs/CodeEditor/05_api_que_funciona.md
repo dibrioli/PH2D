@@ -196,3 +196,27 @@ jogo também chega aos atalhos do editor (como o controlo de jogador de hoje); n
 permitidos (`find_by_name` dá o primeiro); `ph2d.wait` dentro de uma corrotina do próprio artista pausa essa
 corrotina.
 
+## 7. O fecho (20/10) — o que as auditorias e os portões acharam, e a cura
+
+- ⛔⛔ **As bordas do teclado e do rato nunca chegavam ao script no APP** (lente de costura): o
+  `pump_gamepad` chamava `InputState::begin_frame` no início do quadro, DEPOIS de os eventos do winit
+  terem chegado e ANTES de a porta dos scripts os ler. Os gates injectavam as bordas à mão e o piloto das
+  fotos passava ao lado do `InputState`. Cura: o comando limpa só as dele; as do teclado e do rato limpa-as
+  `script_input::frame` DEPOIS de as entregar (e sem script também). O piloto passou a pôr EVENTOS no
+  `InputState` real e só arma na cena 6. Gate `a_borda_que_chega_entre_quadros_chega_ao_script_uma_vez`.
+- **Corrotinas deixaram de se reaproveitar** (lente de correcção): um `coroutine.running()` guardado
+  alcançava o gancho de OUTRO objecto que herdasse a corrotina. Custo medido no §2: 198 ns por gancho
+  (nova) contra 49 (`call`). Uma espera cuja corrotina foi retomada por fora já não é retomada.
+- **`loadstring` só aceita TEXTO** (`ChunkMode::Text`): o modo adivinhado tomava por bytecode um texto
+  que começasse por um byte de controlo — e o `luau_load` não confere bytecode (furava o HR-9).
+- Trocar de script a meio do quadro (`attach_script` num objecto que já corre outro) renasce já; o
+  `init` de quem pediu para morrer não corre; os filhos de uma cópia contam como da corrida.
+- O protótipo `tests/spike` C3 passou a medir as ESPERAS DA CENA: 1000 esperas em [0,500; 0,510) s a
+  60 Hz ⇒ p50 11,7 ms · p99 16,6 ms · máx 16,7 ms (tecto 1 quadro = 16,67 ms), 0 vazadas.
+- Declarados (aberto): as mensagens de erro de argumento que passam pelas funções embrulhadas levam um
+  prefixo `ph2d:NN:` no texto do console (a linha do script continua certa); `ph2d.wait` dentro de uma
+  corrotina do artista devolve a marca a quem a retomou; uma tecla com dois lados (`shift`) dá
+  `key_pressed` quando o 2.º lado desce com o 1.º em baixo; o `on_signal` não vê bordas num quadro com
+  tique; chaves inteiras do estado acima de 2^53 perdem precisão; um clique na cena que o editor também usa
+  (a alça da âncora, a onda do áudio) chega ao jogo — o editor não tem modo de jogo separado.
+

@@ -11,7 +11,7 @@
 
 use bevy_ecs::prelude::*;
 use mlua::Function;
-use ph2d_script::{Scheduler, ScriptRuntime};
+use ph2d_script::ScriptRuntime;
 use std::process::Command;
 use wasmtime::{Engine, Module};
 
@@ -126,10 +126,13 @@ fn main() -> mlua::Result<()> {
     let coro_rt = ScriptRuntime::new()?;
     coro_rt.eval(SCRIPT_BODY)?;
     let task_body: Function = coro_rt.lua().globals().get("task_body")?;
-    let mut sched = Scheduler::new();
+    // Paradas no `ph2d.wait` (a cena é quem as retomaria; o `Scheduler` de protótipo saiu no
+    // CodeEditor item 6) — vivas enquanto o vector viver.
+    let mut pending = Vec::with_capacity(N_COROUTINES);
     for _ in 0..N_COROUTINES {
-        let thread = coro_rt.spawn(task_body.clone())?;
-        sched.add(thread, 1000.0)?; // wait long enough to never fire
+        let thread = coro_rt.lua().create_thread(task_body.clone())?;
+        thread.resume::<mlua::MultiValue>(1000.0)?; // wait long enough to never fire
+        pending.push(thread);
     }
     let after_coroutines = rss_mb();
     println!(

@@ -9227,6 +9227,7 @@ dependencies = [
  "flate2",
  "flecs_ecs",
  "mlua",
+ "ph2d-ecs",
  "ph2d-script",
  "postcard",
  "serde",

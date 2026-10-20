@@ -61,7 +61,12 @@ pub struct ScriptDoors<'a, 'd> {
 }
 
 impl SceneDoors for ScriptDoors<'_, '_> {
-    fn instantiate(&mut self, sim: &mut SimWorld, master: Entity, by: Entity) -> Result<Entity, String> {
+    fn instantiate(
+        &mut self,
+        sim: &mut SimWorld,
+        master: Entity,
+        by: Entity,
+    ) -> Result<Entity, String> {
         let by = sim.world().get::<StableId>(by).map_or(0, |s| s.0);
         let copia = crate::instantiate::instantiate_master_many(
             sim,
@@ -73,10 +78,13 @@ impl SceneDoors for ScriptDoors<'_, '_> {
             1,
         )
         .map_err(|r| match r {
-            crate::instantiate::Refusal::NotAMaster => "it is not a master".to_owned(),
-            crate::instantiate::Refusal::WouldNestInItself => {
-                "the copy would land inside its own master".to_owned()
+            crate::instantiate::Refusal::NotAMaster => {
+                ph2d_i18n::tr("app.components.script_bridge.it_is_not_a_master").to_string()
             }
+            crate::instantiate::Refusal::WouldNestInItself => ph2d_i18n::tr(
+                "app.components.script_bridge.the_copy_would_land_inside_its_own_master",
+            )
+            .to_string(),
         })?
         .remove(0);
         sim.world_mut().entity_mut(copia).insert(Spawned {
@@ -94,7 +102,11 @@ impl SceneDoors for ScriptDoors<'_, '_> {
     /// instância propaga a AUSÊNCIA de um componente, e sem eco do mestre «o mestre ganha» — a
     /// 1.ª cópia de uma corrida perdia o script no passe seguinte (medido na foto da cena 6).
     fn attached(&mut self, sim: &mut SimWorld, entity: Entity) {
-        let Some(piece) = sim.world().get::<ph2d_ecs::InstanceOf>(entity).map(|i| i.master) else {
+        let Some(piece) = sim
+            .world()
+            .get::<ph2d_ecs::InstanceOf>(entity)
+            .map(|i| i.master)
+        else {
             return;
         };
         let Some(script) = self

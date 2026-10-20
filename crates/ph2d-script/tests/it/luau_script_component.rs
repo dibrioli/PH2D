@@ -40,10 +40,7 @@ fn the_world_functions_outside_a_tick_say_why() {
         "ph2d.attach_script(7, 'bob.luau')",
     ] {
         let err = host.runtime().eval(call).unwrap_err().to_string();
-        assert!(
-            err.contains("only while the scene runs"),
-            "{call}: {err}"
-        );
+        assert!(err.contains("only while the scene runs"), "{call}: {err}");
     }
 }
 

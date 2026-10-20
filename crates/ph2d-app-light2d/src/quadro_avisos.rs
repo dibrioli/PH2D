@@ -54,7 +54,19 @@ impl super::LuzDoQuadro {
                 total,
             });
         }
+        if self.acesa() && self.cantos_recusados > 0 {
+            out.push(AvisoDaLuz::CantosArredondados {
+                blocos: self.cantos_recusados,
+            });
+        }
         out
+    }
+
+    /// `(capturados por texel, sprites que emitem ou bloqueiam)` no último quadro: a diferença ficou
+    /// com o QUAD (malha, ladrilho, textura cozida ou instância fora do `present`).
+    #[must_use]
+    pub fn sprites_por_texel(&self) -> (usize, usize) {
+        self.sprites_por_texel
     }
 
     /// ⭐ **A recusa NOVA deste quadro**, já em palavras (o aviso que sobe na tela): `Some` só no

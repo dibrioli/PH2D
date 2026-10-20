@@ -72,6 +72,8 @@ pub struct LuzDoQuadro {
     erro: Option<ErroSolver>,
     /// `(por texel, sprites da cena)` no último quadro — os outros ficaram com o quad.
     sprites_por_texel: (usize, usize),
+    /// ⭐ W6g r9: os blocos que o teto dos cantos recusou (os tempos de há poucos quadros).
+    cantos_recusados: u32,
     /// ⭐ Os caminhos vetoriais que bloqueiam, desenhados na grade (W3).
     vetores: crate::vetor::CamadaVetorial,
     /// ⭐ W5e: os OUTROS que bloqueiam (o Flip, o Motion), desenhados pela família dona.
@@ -146,6 +148,7 @@ impl LuzDoQuadro {
             relatorio: None,
             erro: None,
             sprites_por_texel: (0, 0),
+            cantos_recusados: 0,
             vetores: crate::vetor::CamadaVetorial::default(),
             outros: crate::outras::CamadaDeOutros::default(),
             fabrica: ph2d_light2d_gpu::Fabrica::default(),
@@ -591,6 +594,7 @@ impl LuzDoQuadro {
                 .and_then(|e| e.tempos_sem_esperar(gpu));
             let extra = te.as_ref().map_or(0.0, |t| t.total());
             self.custo_ms = Some(t.total() + extra);
+            self.cantos_recusados = t.cantos_recusados.iter().sum();
             self.leituras += 1;
             let fluencia = r.solver.grade_da_fluencia();
             let regiao =
@@ -674,13 +678,6 @@ impl LuzDoQuadro {
     #[must_use]
     pub fn relatorio(&self) -> Option<&RelatorioC0> {
         self.relatorio.as_ref()
-    }
-
-    /// `(capturados por texel, sprites que emitem ou bloqueiam)` no último quadro: a diferença ficou
-    /// com o QUAD (malha, ladrilho, textura cozida ou instância fora do `present`).
-    #[must_use]
-    pub fn sprites_por_texel(&self) -> (usize, usize) {
-        self.sprites_por_texel
     }
 
     /// A recusa do solver no último quadro, se houve.

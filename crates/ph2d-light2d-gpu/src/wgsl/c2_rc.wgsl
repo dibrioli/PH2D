@@ -91,6 +91,9 @@ struct Cascata {
 @group(0) @binding(6) var tau_dentro: texture_2d<f32>;
 @group(0) @binding(7) var vizinhos: sampler;
 @group(0) @binding(8) var cantos: texture_2d<f32>;
+// ⭐ W6g r9 — a `V2` esparsa: por bloco 8×8 da captura, 0 = sem cunha, senão o slot dela + 1 no atlas `cantos`
+// (`c3_cantos`, 128 blocos por linha). Fora dos cantos, um buffer vazio (o ramo não corre).
+@group(0) @binding(10) var<storage, read> cantos_tabela: array<u32>;
 
 const TAU: f32 = 6.283185307179586;
 const VAZIO: u32 = 0xffffffffu;
@@ -134,10 +137,17 @@ fn meio(pc: vec2<f32>) -> Meio {
         let d = mix(mix(s.w, s.z, fr.x), mix(s.x, s.y, fr.x), fr.y);
         if BORDA_CANTOS && abs(d) < 1.0 {
             let t = clamp(vec2<i32>(floor(p)), vec2<i32>(0), vec2<i32>(n) - 1);
-            let w = textureLoad(cantos, t, 0);
-            // ⭐ W6g: a `V2` é válida em toda a captura (`c3_cantos_limpa`).
-            if w.x < 50.0 {
-                if !na_cunha(p - vec2<f32>(t) - 0.5, w) {
+            let e = cantos_tabela[t.y / 8 * ((i32(n.x) + 7) / 8) + t.x / 8];
+            // ⭐ W6g r9: o atlas e a cunha DENTRO do ramo (handoff W6g §25: o ramo com leitura é o custo).
+            if e != 0u {
+                let k = e - 1u;
+                let a = vec2<i32>(i32(k % 128u), i32(k / 128u)) * 8 + (t & vec2<i32>(7));
+                let w = textureLoad(cantos, a, 0);
+                if w.x < 50.0 {
+                    if !na_cunha(p - vec2<f32>(t) - 0.5, w) {
+                        return m;
+                    }
+                } else if d < 0.0 {
                     return m;
                 }
             } else if d < 0.0 {

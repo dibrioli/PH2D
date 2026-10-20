@@ -161,6 +161,7 @@ impl Holografica {
         let device = e.device;
         let g = e.cfg.grade;
         let grade = [g.largura, g.altura];
+        let vazia = tabela_vazia(&device);
         let cena_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("luz2d c2 holográfica cena"),
             entries: &[
@@ -175,6 +176,7 @@ impl Holografica {
                     count: None,
                 },
                 entrada_textura(8, FLOAT),
+                entrada_tabela(10),
             ],
         });
         let cena = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -198,6 +200,10 @@ impl Holografica {
                 },
                 // O `cantos` do `meio` (W6f): só a C3 o lê.
                 vista(8, &e.vistas[COBERTURA]),
+                wgpu::BindGroupEntry {
+                    binding: 10,
+                    resource: vazia.as_entire_binding(),
+                },
             ],
         });
         let c0 = PassList::indice_da_c0(e.cfg);

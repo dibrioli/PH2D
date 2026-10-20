@@ -50,6 +50,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "{n} of {total} glowing or shadow-casting sprites use their box, not their pixels \
              (mesh, tiling or baked texture)."
         }
+        "panel.inspector.luz.corners_rounded_n" => {
+            "This scene has more sharp corners than the GPU keeps \u{2014} {n} small areas draw their \
+             corners rounded."
+        }
         "panel.inspector.luz.quality" => {
             "Quality: {nivel} ({modo}) \u{2014} Settings \u{25b8} 2D Light."
         }

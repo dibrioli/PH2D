@@ -36,12 +36,48 @@ impl Solver {
 
 impl Solver {
     /// ⭐ W6f: as cunhas espalhadas que o `meio` lê junto aos vértices (`Config::borda_cantos`): por texel
-    /// da captura, `(θ₁, s₁, θ₂, s₂)` no referencial dele (`θ₁ ≥ 50` = nenhuma; `θ₂ > 5` = côncavo).
+    /// da captura, `(θ₁, s₁, θ₂, s₂)` no referencial dele (`θ₁ ≥ 50` = nenhuma; `θ₂ > 5` = côncavo), em
+    /// `rgba16float` (8 bytes por texel, linha a linha) e o tamanho da captura. W6g r9: a `V2` é esparsa (um
+    /// atlas e a tabela por bloco); esta é a vista DENSA dela, reconstruída para quem a mede.
     #[must_use]
-    pub fn cantos_da_captura(&self) -> Option<&wgpu::Texture> {
-        crate::passlist::Opcionais::de(&self.cfg)
-            .cantos
-            .map(|c| &self.texturas[c[1]])
+    pub fn cantos_lidos(&self, gpu: &GpuContext) -> Option<(Vec<u8>, [u32; 2])> {
+        let op = crate::passlist::Opcionais::de(&self.cfg);
+        let (tabela, _) = self.c3.cantos()?;
+        let captura = self.texturas[op.borda?].size();
+        let atlas = &self.texturas[op.cantos?[1]];
+        let t = ler_buffer(gpu, tabela);
+        let a = ler_textura(gpu, atlas);
+        let (w, h) = (captura.width, captura.height);
+        let largura_do_atlas = atlas.width() as usize * 8;
+        // `SEM_CUNHA` = 100 em f16.
+        let sentinela = 0x5640u16.to_le_bytes();
+        let mut v = vec![0u8; w as usize * h as usize * 8];
+        for j in 0..h as usize {
+            for i in 0..w as usize {
+                let k = (j * w as usize + i) * 8;
+                let b = (j / 8) * w.div_ceil(8) as usize + i / 8;
+                let e = u32::from_le_bytes(t[4 * b..4 * b + 4].try_into().unwrap_or_default());
+                if e == 0 {
+                    v[k..k + 2].copy_from_slice(&sentinela);
+                    continue;
+                }
+                let s = (e - 1) as usize;
+                let (x, y) = ((s % 128) * 8 + i % 8, (s / 128) * 8 + j % 8);
+                let o = y * largura_do_atlas + x * 8;
+                v[k..k + 8].copy_from_slice(&a[o..o + 8]);
+            }
+        }
+        Some((v, [w, h]))
+    }
+
+    /// ⭐ W6g r9 — a recusa DITA do teto dos cantos (`Config::cantos_por_blocos`) no último quadro: os
+    /// blocos listados que ficaram sem slot da `V` e os que ficaram sem slot da `V2` (ficam na lei W6d).
+    #[must_use]
+    pub fn cantos_recusados(&self, gpu: &GpuContext) -> Option<[u32; 2]> {
+        let (_, c) = self.c3.cantos()?;
+        let b = ler_buffer(gpu, c);
+        let n = |k: usize| u32::from_le_bytes(b[4 * k..4 * k + 4].try_into().unwrap_or_default());
+        Some([n(1), n(2)])
     }
 }
 
@@ -196,4 +232,61 @@ impl CapturaFina {
             .as_ref()
             .map_or(0, solver_sprite::C0Sprites::bytes_residentes)
     }
+}
+
+/// ⭐ W6g r9: os bytes de `b` (cópia e mapa; para quem mede, nunca no quadro).
+fn ler_buffer(gpu: &GpuContext, b: &wgpu::Buffer) -> Vec<u8> {
+    let d = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("luz2d leitura"),
+        size: b.size(),
+        usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    let mut enc = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    enc.copy_buffer_to_buffer(b, 0, &d, 0, b.size());
+    gpu.queue.submit([enc.finish()]);
+    d.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    let v = d.slice(..).get_mapped_range().to_vec();
+    d.unmap();
+    v
+}
+
+/// Os texels de `t` (`rgba16float`), linha a linha sem o alinhamento da cópia.
+fn ler_textura(gpu: &GpuContext, t: &wgpu::Texture) -> Vec<u8> {
+    let (w, h) = (t.width(), t.height());
+    let linha = (8 * w).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+    let d = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("luz2d leitura"),
+        size: u64::from(linha * h),
+        usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    let mut enc = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    enc.copy_texture_to_buffer(
+        t.as_image_copy(),
+        wgpu::TexelCopyBufferInfo {
+            buffer: &d,
+            layout: wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(linha),
+                rows_per_image: None,
+            },
+        },
+        t.size(),
+    );
+    gpu.queue.submit([enc.finish()]);
+    d.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    let m = d.slice(..).get_mapped_range();
+    let mut v = Vec::with_capacity((8 * w * h) as usize);
+    for j in 0..h {
+        let o = (j * linha) as usize;
+        v.extend_from_slice(&m[o..o + 8 * w as usize]);
+    }
+    v
 }

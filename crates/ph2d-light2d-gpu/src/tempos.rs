@@ -50,6 +50,9 @@ pub struct TemposMs {
     /// ⭐ W6g: a borda exata da captura e os cantos (0 sem ela) — uma PARCELA do [`Self::c3_preenche`],
     /// que a conta como sempre contou (fora do total).
     pub c3_borda: f64,
+    /// ⭐ W6g r9: os blocos do mesmo quadro que o teto dos cantos (`Config::cantos_por_blocos`) recusou
+    /// — `[sem slot da V, sem slot da V2]`; ficam na lei W6d (o Inspector avisa).
+    pub cantos_recusados: [u32; 2],
 }
 
 impl TemposMs {
@@ -99,6 +102,8 @@ pub(crate) struct Tempos {
     pub leitura: wgpu::Buffer,
     pub n: u32,
     pub periodo_ns: f64,
+    /// ⭐ W6g r9: os contadores dos cantos (`[slots, recusados sem V, sem V2, _]`), lidos com os carimbos.
+    pub cantos: Option<wgpu::Buffer>,
     /// ⭐ A leitura SEM ESPERA em curso (o governador do editor, W4): `Some` = o `leitura` foi
     /// pedido ao mapa e ainda não foi colhido — enquanto isso o quadro NÃO copia para ele (copiar
     /// para um buffer mapeado é erro de validação). `true` dentro = a placa já o entregou.
@@ -127,6 +132,9 @@ impl Tempos {
         enc.resolve_query_set(&self.set, 0..n, &self.resolve, 0);
         if self.pedido.is_none() {
             enc.copy_buffer_to_buffer(&self.resolve, 0, &self.leitura, 0, u64::from(n) * 8);
+            if let Some(c) = &self.cantos {
+                enc.copy_buffer_to_buffer(c, 0, &self.leitura, u64::from(n) * 8, 16);
+            }
         }
     }
 
@@ -184,6 +192,10 @@ impl Tempos {
             c3_rebote: ms(C3_REBOTE),
             c3_miolo: ms(C3_MIOLO),
             c3_borda: ms(C3_BORDA),
+            cantos_recusados: {
+                let c = &ts[n_carimbos(self.n) as usize..];
+                [(c[0] >> 32) as u32, c[1] as u32]
+            },
         }
     }
 

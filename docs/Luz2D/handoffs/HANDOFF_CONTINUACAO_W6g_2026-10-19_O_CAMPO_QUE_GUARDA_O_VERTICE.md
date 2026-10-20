@@ -631,3 +631,109 @@ hoje, o seu significado intacto quando a 10 + 9 ligar.
 4. A lei W6d com `DISTANTES` no relógio (o §20.2).
 5. A anomalia da r5b (§12).
 6. A família (b) (37–38): da W5g, fora.
+
+## 25. A rodada r9 (§24.1): a V e a V2 esparsas — o diagnóstico ANTES do produto (tudo fora do git, `target/w6g/esparsa/`)
+
+**A régua de registos** (`x.py`, `corre.py`, sobre o rc da r8): a leitura dependente da tabela no `meio` NÃO
+sobe o degrau — fina da 10 + 9 em 128 registos em toda forma (tabela em textura `r32uint` ou em buffer, com
+ou sem ramo, cedo ou tarde); o binário +8–15 % (283 → 299–326 KB). A forma por `subgroupAny` (ramo uniforme
+no warp) sobe a **168** registos e +47 % de binário.
+
+**O relógio** (`diag.sh`/`so_custo.sh`: a tabela IDENTIDADE sobre a `V2` densa — os mesmos bytes, a mesma
+leitura dependente —, variantes no MESMO processo pelo `modulo_rc`, 3 voltas de mínimos de 7; `load` 20–26
+das outras linhas, a placa pela vez). Fina da cena 5 (ms; a densa 1,996–2,013):
+
+| forma | fina c5 | leitura |
+|---|---|---|
+| tabela → atlas, sem ramo (S3) | 2,038–2,059 | +0,035–0,045 |
+| o mesmo endereço SEM ler a tabela (S8) | 2,014–2,039 | a aritmética ~0 |
+| a tabela num registo privado por bloco (S6) | 2,078–2,086 | pior (o ramo diverge) |
+| a tabela cedo, antes dos gathers (S5) | 2,050–2,059 | e o preenche +0,09 |
+| com ramo (`e ≠ 0`), textura ou buffer | 2,038–2,068 | = sem ramo |
+| a tabela lida sem dependência | 2,028–2,035 | |
+| SÓ a tabela, sem o atlas (resultado errado) | 2,009–2,019 | = a densa |
+| a DENSA + um ramo NUNCA tomado com uma leitura | 2,033–2,044 | **o mecanismo** |
+| buffer, ramo grande (atlas + cunha + retorno dentro), tabela só nos blocos COM cunha | 2,023–2,040 | **a melhor** |
+| a V2 lida cedo (densa D / tabela cedo C / as duas cedo E) | 2,04–2,05 / 2,07 / 2,24 | pior |
+
+⇒ **o custo da esparsa é a ESTRUTURA de um ramo com leitura dentro** (a densa com um ramo nunca tomado paga o
+mesmo), não a leitura nem a dependência; +0,02–0,03 ms na fina da cena 5, +0,02 na 6. Com a melhor forma a 10 + 9
+dá C3 **+4,0 a +5,6 %** na cena 5 (o mínimo da lei W6d oscila 3,025–3,076 entre voltas) e +2,6–3,2 % na 6 — em
+cima da linha. A borda: com os 4 kernels pequenos VAZIOS 0,288–0,295 (lei W6d 0,272, a 10 + 9 0,320) ⇒ despacho +
+barreiras ~0,02, trabalho ~0,03; os cantos só nos blocos com cunha (a lista B, abaixo) 0,316–0,320 — o trabalho dos
+cantos não era o custo.
+
+**O censo** (cena 1–8, a 10 + 9, 1080p): listados (candidatos) / com cunha na `V` / blocos da `V2` com cunha —
+c1 4/4/9 · **c2 2 451/1 975/3 250** · c3 8/8/32 · c4 12/12/28 · **c5 157/71/152** · c6 7/7/20 · c7 7/7/16 · c8 0.
+⇒ o pool cabe MILHARES (a cena 2 do smoke, ~1 % dos 245 760 blocos), e só 45 % dos listados da c5 têm cunha.
+
+## ⛔ Recusas MEDIDAS (§25)
+
+| Recusa | Porquê |
+|---|---|
+| A tabela lida antes dos gathers / a `V2` lida fora do ramo `\|d\| < 1` | Toda chamada do `meio` paga: preenche +0,09, fina +0,04–0,24. |
+| O ramo uniforme por `subgroupAny` | 168 registos, binário +47 %. |
+| A entrada da tabela num registo privado (lida ao mudar de bloco) | Fina 2,08 (o ramo diverge). |
+| O sinal «há cunha» no canal 0 (sinal) ou 1–2 (normal) da borda | O `c3_pe` lê a normal e o `m.c` tem consumidor: muda bytes fora da cunha. |
+| A tabela a apontar todos os 3×3 dos CANDIDATOS | O ramo entra demais; só os blocos com alguma cunha. |
+
+## 26. A r9 — o produto (escrita ANTES de mexer; 1.ª reconstrução desta rodada)
+
+- `meio`: `|d| < 1` ⇒ `e = cantos_tabela[bloco(t)]` (buffer, `u32`; 0 = sem cunha, senão o slot + 1 no pool da
+  `V2`); `e ≠ 0` ⇒ a `V2` no atlas e a decisão da cunha DENTRO do ramo (o ramo grande); senão `d < 0`.
+- a `V` e a `V2` em ATLAS de blocos 8×8 (`rgba16float`, 128 blocos por linha): a `V` no slot = o índice do
+  listado (`marcas[b] = i + 1` pelo vencedor do `c3_borda_adia`), a `V2` num slot por bloco COM cunha (o vencedor
+  de um `atomicCompareExchange` na tabela tira-o de um contador); os listados com cunha numa 2.ª lista (B) que o
+  `c3_cantos` percorre. Sem textura da captura inteira, sem `c3_cantos_inicia`; o `limpa` repõe a tabela dos 3×3
+  e a marca.
+- **o teto** (o recurso é a MEMÓRIA): `blocos / 32` slots em cada pool (7 680 a 1080p = 3,1 % dos blocos; a
+  cena 2 pede 2 451 / 3 250) — `Config::cantos_por_blocos`. Acima dele o bloco fica na lei W6d (o
+  `c3_borda_vertices` sai sem regravar; a `V2` fica sem entrada) e conta-se: `Solver::cantos_recusados` (a recusa
+  DITA), com um portão que força o teto a 1 slot.
+- **PASSA** (todos): (i) 0 bytes diferentes na fluência, nos 32 casos (`dump_head/`, a r7 = r8); (ii) o §1 tal e
+  qual (F3, caixa, borda pela rodada completa; C3 ≤ +5 % sobre a lei W6d nas cenas 5 e 6, o mínimo de 7, três
+  processos); (iii) a memória da 10 + 9 ≤ +5 % sobre a lei W6d em toda vista da tabela do §23; (iv) o portão da
+  recusa. **MORRE**: qualquer um. O C3 está em cima da linha (§25): se morrer só nele, a alavanca medida que
+  resta são os dois despachos sem trabalho (`zera`, `limpa`: ~0,008 ms) por um carimbo de quadro.
+
+## 27. A r9 medida — o alvo 1 PASSA (a V e a V2 esparsas)
+
+(`target/w6g/esparsa/r9.sh` · `custo_r9_{1,2,3}.log` · `{f3,caixa,borda}_r9.log` · `memoria_r9.log`; `load` 27–29 das outras
+linhas, a placa pela vez.)
+
+- **(i) os bytes:** 0 ficheiros diferentes em 32 (`dump_head/` = r7 = r8). **A 1.ª corrida dava 6** (c2, c5, c7 da 10 + 9) e o
+  censo da cena 5 109–116 blocos com cunha em vez de 152, a variar por volta: o `c3_borda_adia` reivindicava o bloco por
+  `atomicExchange(marca, RESERVADO)` — um candidato que chegasse DEPOIS do vencedor ter escrito o índice voltava a trocá-lo
+  por RESERVADO, e o `c3_cantos` lia a `V` daquele bloco como vazia. Cura: `atomicOr` de um bit alto (idempotente) e o
+  índice por outro `atomicOr`; quem lê mascara. ⛔ Uma troca por um valor PROVISÓRIO não é reivindicação quando o vencedor
+  escreve por cima.
+- **(ii) o §1 tal e qual:** F3 e caixa linha a linha os da r8; a borda `(a) 1 −0,176 · (b) 38 · anéis 0 · bits 0` (as linhas
+  BORDA/ANEIS/BITS iguais às da r8); **C3 da 10 + 9 sobre a lei W6d, três processos: cena 5 +4,2 · +4,6 · +4,4 % · cena 6
+  +2,3 · +2,3 · +2,5 %** ✓; preenche + borda +0,053–0,061 ✓.
+- **(iii) a memória** (portão permanente `os_tetos_da_placa::os_cantos_custam_ate_5_por_cento_da_memoria`, a `PassList`):
+
+| vista · Baixa / Média / Alta | lei W6d (MB) | com os cantos | + |
+|---|---|---|---|
+| 1080p | 414 / 574 / 1142 | 428 / 588 / 1155 | +3,3 / +2,4 / +1,1 % |
+| 1440p | 711 / 972 / 1865 | 735 / 996 / 1887 | +3,4 / +2,5 / +1,2 % |
+| 2560×1080 | 536 / 734 / 1451 | 554 / 752 / 1467 | +3,3 / +2,4 / +1,2 % |
+| 2160p (k 1) | 582 / 1142 / 4089 | 596 / 1155 / 4102 | +2,4 / +1,1 / +0,3 % |
+
+- **(iv) a recusa DITA:** `os_tetos_da_placa::o_teto_dos_cantos_recusa_e_diz` (a cena 5 lista 157; o teto mínimo, 128 slots,
+  recusa; o padrão não; o número volta pelos tempos; a luz finita) — prova de mutação: sem a contagem no
+  `c3_borda_vertices` e sem a cópia no `resolver` dos tempos, as duas VERMELHAS; repostas, verde. O número chega ao
+  Inspector: `TemposMs::cantos_recusados` → `LuzDoQuadro` → `AvisoDaLuz::CantosArredondados { blocos }` →
+  `panel.inspector.luz.corners_rounded_n` (o `seam_luz` pinta-o).
+
+**O código (r9):** `c2_rc.wgsl` (o `meio`: `cantos_tabela` em buffer, binding 10, e o ramo grande); `c3_borda.wgsl` (os atlas,
+a marca por `atomicOr`, a lista B dos listados com cunha, a reivindicação da tabela por `atomicCompareExchangeWeak`, os
+contadores; sem `c3_cantos_inicia`); `solver_c3_borda.rs` (os grupos, `tabela`, `contadores`); `passlist_cantos.rs` (novo:
+os nomes, `atlas_dos_cantos`, `buffers_dos_cantos`); `Config::cantos_por_blocos` (`CANTOS_POR_BLOCOS_PADRAO` = 32);
+`Solver::cantos_lidos` (a vista DENSA reconstruída para as réguas; substitui o `cantos_da_captura`) e
+`Solver::cantos_recusados`. **O tecto de 700 LOC** que a linha já passava (o `config.rs` 801, o `passlist.rs` 705 no HEAD
+da r8): as escolhas da `Config` num irmão `config_escolhas.rs` (666 linhas), os recursos dos cantos no `passlist_cantos.rs`
+(692), a tabela e o acessor dos cantos no `solver_c3_borda.rs` (o `solver_c3.rs` 695).
+
+**ABERTO (por ordem):** o G9 holográfico com a 10 + 9 (§24.2; a régua da bisseção pronta, fora do git: `w6g_g9_bissecao`,
+as peças contra o gabarito a 0,01 e a 0,005 m) → ligar no padrão → as suítes das duas crates (os `SemMemoria` em paralelo
+devem sumir: −250–440 MB por solver) → o resto do §24.

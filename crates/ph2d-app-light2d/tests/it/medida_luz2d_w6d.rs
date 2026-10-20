@@ -503,11 +503,9 @@ fn custo(gpu: &ph2d_gpu::GpuContext) {
     }
     // ⭐ W6g: os blocos 8×8 da captura com alguma cunha espalhada na `V2` (θ₁ < 50).
     for (n, _, _, s) in &solvers {
-        let Some(w) = s.cantos_da_captura() else {
+        let Some((b, [lx, ly])) = s.cantos_lidos(gpu) else {
             continue;
         };
-        let (lx, ly) = (w.width(), w.height());
-        let b = crate::comum::ler(gpu, w, 8);
         let (bx, by) = (lx.div_ceil(8), ly.div_ceil(8));
         let mut com = vec![false; (bx * by) as usize];
         for j in 0..ly {
@@ -519,7 +517,10 @@ fn custo(gpu: &ph2d_gpu::GpuContext) {
             }
         }
         let cobertos = com.iter().filter(|&&c| c).count();
-        eprintln!("BLOCOS · cena {n} · captura {lx}×{ly} · com cunha {cobertos}/{}", com.len());
+        eprintln!(
+            "BLOCOS · cena {n} · captura {lx}×{ly} · com cunha {cobertos}/{}",
+            com.len()
+        );
     }
     for (i, (n, v, ..)) in solvers.iter().enumerate() {
         let [a, b, c, d] = partes_min[i];

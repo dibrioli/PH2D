@@ -52,6 +52,10 @@ fn frase(a: AvisoDaLuz) -> (String, ColorToken) {
             ),
             ColorToken::Text3,
         ),
+        AvisoDaLuz::CantosArredondados { blocos } => (
+            tr_with("panel.inspector.luz.corners_rounded_n", &[("n", &blocos)]),
+            ColorToken::Text3,
+        ),
     }
 }
 

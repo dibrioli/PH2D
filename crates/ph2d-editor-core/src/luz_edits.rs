@@ -63,6 +63,9 @@ pub enum AvisoDaLuz {
     /// `com_quad` de `total` sprites que emitem ou bloqueiam entram pelo QUAD (malha, ladrilho ou
     /// textura cozida), não pelo alfa de cada texel.
     SpritesPeloQuad { com_quad: usize, total: usize },
+    /// ⭐ W6g r9: a cena tem mais cantos vivos do que a placa guarda (o teto dos cantos da borda): em
+    /// `blocos` blocos 8×8 os cantos das formas saem arredondados como antes.
+    CantosArredondados { blocos: u32 },
 }
 
 /// O que a secção **LUZ** precisa de saber para se pintar.

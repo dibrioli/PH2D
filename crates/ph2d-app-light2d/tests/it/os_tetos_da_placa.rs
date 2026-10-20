@@ -43,6 +43,95 @@ fn bytes(alvo: (u32, u32), n: N, k: u32) -> u64 {
     .bytes_alocados()
 }
 
+/// ⭐ W6g r9 — os cantos da borda (a 10 + 9) custam ≤ 5 % da memória da luz da lei W6d em toda vista e
+/// degrau: a `V` e a `V2` são atlas esparsos com a tabela por bloco (densas, da captura inteira, eram
+/// +44–62 % nos degraus Baixa/Média; handoff W6g §23, §26).
+#[test]
+fn os_cantos_custam_ate_5_por_cento_da_memoria() {
+    let tetos = Tetos {
+        lado: LADO,
+        recusou: None,
+    };
+    let medir = |c: Config| {
+        PassList::de(
+            &Config {
+                grade: c.grade_efetiva(),
+                ..c
+            },
+            false,
+        )
+        .bytes_alocados()
+    };
+    for alvo in [(1920, 1080), (2560, 1440), (2560, 1080), UHD] {
+        for n in N::ALL {
+            let k = fina_que_cabe(fabrica(alvo), alvo, degrau_do(n), tetos).expect("cabe");
+            let c = config(alvo, n, k);
+            let lei = medir(Config {
+                borda_vertice: None,
+                ..c.sem_os_cantos()
+            });
+            let cantos = medir(Config {
+                borda_vertice: Some(ph2d_light2d_gpu::VERTICE_PADRAO),
+                borda_cantos: true,
+                canto: ph2d_light2d_gpu::Canto::LIGADO,
+                ..c
+            });
+            let mais = cantos as f64 / lei as f64 - 1.0;
+            eprintln!(
+                "MEMÓRIA · {alvo:?} · {n:?} (k {k}) · lei W6d {} MB · com os cantos {} MB · {:+.1} %",
+                lei / 1_000_000,
+                cantos / 1_000_000,
+                100.0 * mais
+            );
+            assert!(
+                mais <= 0.05,
+                "{alvo:?} {n:?}: os cantos custam {:+.1} %",
+                100.0 * mais
+            );
+        }
+    }
+}
+
+/// ⭐ W6g r9 — o teto dos cantos RECUSA e DIZ: acima de `Config::cantos_por_blocos` os blocos ficam na lei
+/// W6d e o número volta com os tempos (o que o Inspector lê, `AvisoDaLuz::CantosArredondados`). A cena 5
+/// lista 157 blocos: o teto mínimo (128 slots, uma linha do atlas) recusa; o padrão (7 680) não.
+#[test]
+fn o_teto_dos_cantos_recusa_e_diz() {
+    let Some(gpu) = gpu() else { return };
+    let mut w = World::new();
+    assert!(smoke::encenar(&mut w, 5));
+    let cena = ph2d_light2d_ecs::coleta::cena_de_luz(&w);
+    let a = crate::medida_luz2d_w5d::vista(1.0);
+    let base = crate::as_formas_redondas::config(&gpu, a, false);
+    for (por_blocos, recusa) in [
+        (ph2d_light2d_gpu::CANTOS_POR_BLOCOS_PADRAO, false),
+        (u32::MAX, true),
+    ] {
+        let cfg = Config {
+            borda_vertice: Some(ph2d_light2d_gpu::VERTICE_PADRAO),
+            borda_cantos: true,
+            canto: ph2d_light2d_gpu::Canto::LIGADO,
+            cantos_por_blocos: por_blocos,
+            ..base
+        };
+        let mut s = crate::medida_luz2d_w5d::solver(&gpu, a, cfg);
+        s.quadro(&gpu, &cena);
+        let r = s.cantos_recusados(&gpu).expect("os cantos");
+        assert_eq!(r[0] > 0, recusa, "teto 1/{por_blocos}: recusados {r:?}");
+        if let Some(t) = s.tempos(&gpu) {
+            assert_eq!(
+                t.cantos_recusados, r,
+                "os tempos levam a recusa ao Inspector"
+            );
+        }
+        let f = crate::comum::fluencia_lida(&gpu, &s);
+        assert!(
+            f.v.iter().flatten().all(|x| x.is_finite()),
+            "teto 1/{por_blocos}: luz não finita"
+        );
+    }
+}
+
 /// A fina cede ao LADO de textura, e só onde precisa: a 1080p, 1440p e no ultrawide do dono nada
 /// muda; a 2160p o MENOR `k` que cabe (o `k − 1` não cabe). Controlo na mesma corrida: o degrau da W5d
 /// (`k = 0`) a 2160p passa o lado — o vermelho da rodada.

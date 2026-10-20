@@ -254,7 +254,7 @@ fn medida_luz2d_w6f() {
                     por_sonda.push(fluencia_lida(&gpu, &s));
                     if sonda == 0 {
                         let t = s.borda_da_captura().expect("o campo da borda");
-                        let w = s.cantos_da_captura().map(|w| ler(&gpu, w, 8));
+                        let w = s.cantos_lidos(&gpu).map(|(w, _)| w);
                         campos.push((ler(&gpu, t, 8), w, cfg.grade_da_captura()));
                     }
                 }

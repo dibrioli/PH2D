@@ -71,6 +71,8 @@ pub(super) struct C3 {
     borda: Option<borda::Borda>,
     /// ⭐ W6g r5: o passe dos cantos depois da fina (`Config::adia_o_canto`).
     fina_cantos: Option<fina_cantos::FinaCantos>,
+    /// ⭐ W6g r9: a tabela da `V2` esparsa (vazia sem os cantos).
+    tabela: wgpu::Buffer,
     /// A grade das cascatas (a fonte do rebote cobre-a inteira).
     tamanho_grosso: [u32; 2],
     uniforme: wgpu::Buffer,
@@ -131,6 +133,7 @@ impl C3 {
         let [cob, tau] = op.captura.unwrap_or([COBERTURA, TAU_DENTRO]);
         // ⭐ W5d: com a borda exata, a C3 lê a saída do `c3_borda` (a cobertura no vermelho).
         let cob_c3 = op.borda.unwrap_or(cob);
+        let tabela = borda::tabela(e, op.cantos.is_some());
         let cena_layout = layout(
             device,
             "luz2d c3 cena",
@@ -147,6 +150,7 @@ impl C3 {
                     count: None,
                 },
                 entrada_textura(8, FLOAT),
+                entrada_tabela(10),
             ],
         );
         let cena = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -171,6 +175,10 @@ impl C3 {
                 },
                 // ⭐ W6f: as cunhas espalhadas (sem elas, a cobertura: o `meio` não as lê).
                 vista(8, &e.vistas[op.cantos.map_or(cob_c3, |c| c[1])]),
+                wgpu::BindGroupEntry {
+                    binding: 10,
+                    resource: tabela.as_entire_binding(),
+                },
             ],
         });
         let fino = |passo_fino: bool| constantes::passo(cfg, passo_fino);
@@ -463,7 +471,14 @@ impl C3 {
 
             // ⭐ W5d: a borda exata (e, W6f, os cantos) — `solver_c3_borda.rs`.
             let borda = op.borda.map(|b| {
-                borda::Borda::nova(e, b, cob, (op.cantos, op.vertices_vazia), &pipeline_em)
+                borda::Borda::nova(
+                    e,
+                    b,
+                    cob,
+                    (op.cantos, op.vertices_vazia),
+                    &tabela,
+                    &pipeline_em,
+                )
             });
             (
                 fina.map(|h| h.join().expect("a compilação da fina")),
@@ -492,6 +507,7 @@ impl C3 {
             rebote,
             borda,
             fina_cantos,
+            tabela,
             tamanho_grosso: [cfg.grade.largura, cfg.grade.altura],
             uniforme: e.uni_c3.clone(),
             u: UniformeFina {

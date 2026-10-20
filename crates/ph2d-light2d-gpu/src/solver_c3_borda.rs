@@ -5,7 +5,9 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::*;
-use crate::passlist::{NOME_LISTA_DOS_CANTOS, NOME_MARCAS_DOS_BLOCOS};
+use crate::passlist::{
+    NOME_CONTADORES_DOS_CANTOS, NOME_LISTA_COM_CUNHA, NOME_LISTA_DOS_CANTOS, NOME_MARCAS_DOS_BLOCOS,
+};
 
 /// A assinatura do `pipeline_em` da C3 (as constantes comuns por cima das próprias).
 pub(super) type PipelineEm<'a> = dyn Fn(&str, &[Option<&wgpu::BindGroupLayout>], &str, &[(&str, f64)]) -> wgpu::ComputePipeline
@@ -20,36 +22,37 @@ pub(super) struct Borda {
 }
 
 /// ⭐ W6f/W6g: as cunhas só nos blocos que o `c3_borda_adia` listou, em despachos INDIRETOS (o despacho
-/// na captura inteira custava ~0,2 ms com o kernel VAZIO), a `V2` válida em toda a captura pela lista do
-/// quadro anterior (`c3_cantos_limpa`) e — r8 — a `pela_cunha` fora do kernel da captura (55–61 registos
-/// contra 32; handoff W6g §21).
+/// na captura inteira custava ~0,2 ms com o kernel VAZIO), a `pela_cunha` fora do kernel da captura (r8:
+/// 55–61 registos contra 32) e — r9 — a `V` e a `V2` ESPARSAS: dois atlas de blocos 8×8 e a tabela por
+/// bloco que o `meio` lê (handoff W6g §25–§26).
 struct Cantos {
-    /// As duas listas, a 2.ª em `metade`.
+    /// As duas listas dos candidatos, a 2.ª em `metade`; as duas dos listados com cunha (o mesmo formato).
     lista: wgpu::Buffer,
+    com_cunha: wgpu::Buffer,
     metade: u64,
+    /// `[slots da V2, recusados sem V, recusados sem V2, _]` do último quadro.
+    contadores: wgpu::Buffer,
     zera: wgpu::ComputePipeline,
     limpa: wgpu::ComputePipeline,
     vertices: wgpu::ComputePipeline,
     espalha: wgpu::ComputePipeline,
-    /// Sobre cada lista: o do `c3_borda_vertices`, o do `c3_cantos_limpa` (e `inicia`) e o do `c3_cantos`.
+    /// Sobre cada lista: o do `c3_borda_vertices`, o do `c3_cantos_limpa` e o do `c3_cantos`.
     grupos_vertices: [wgpu::BindGroup; 2],
     grupos_limpa: [wgpu::BindGroup; 2],
     grupos: [wgpu::BindGroup; 2],
-    /// O preenchimento da `V` e da `V2` com a sentinela, uma vez (a textura nova é zero: θ₁ = 0 seria cunha).
-    inicia: wgpu::ComputePipeline,
-    iniciada: AtomicBool,
     /// A lista deste quadro (alterna a cada gravação).
     lado: AtomicBool,
 }
 
 impl Borda {
     /// Lê a cobertura crua `cob`, escreve a da C3 em `b` (grupo 3, bindings 12–15) e, com `cantos`
-    /// (`[as cunhas dos vértices, as espalhadas]`), lista os blocos de vértice e espalha-os (16–21).
+    /// (`[o atlas da V, o da V2]`) e a `tabela`, lista os blocos de vértice e espalha-os (16–25).
     pub(super) fn nova(
         e: &Entradas<'_>,
         b: usize,
         cob: usize,
         (cantos, vazia): (Option<[usize; 2]>, Option<usize>),
+        tabela: &wgpu::Buffer,
         pipeline_em: &PipelineEm<'_>,
     ) -> Self {
         let device = e.placa;
@@ -65,41 +68,40 @@ impl Borda {
             },
             entrada_escrita(15, wgpu::TextureFormat::Rgba16Float),
         ];
-        let declarado = |nome: &str| {
-            e.lista
+        let buffer = |nome: &str, mapeado: bool| {
+            let d = e
+                .lista
                 .buffers
                 .iter()
                 .find(|b| b.nome == nome)
-                .unwrap_or_else(|| panic!("{nome} declarado na PassList"))
+                .unwrap_or_else(|| panic!("{nome} declarado na PassList"));
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(d.nome),
+                size: d.bytes,
+                usage: d.usos,
+                mapped_at_creation: mapeado,
+            })
         };
-        let lista = cantos.map(|_| {
-            let bytes = declarado(NOME_LISTA_DOS_CANTOS);
-            let buf = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(NOME_LISTA_DOS_CANTOS),
-                size: bytes.bytes,
-                usage: bytes.usos,
-                mapped_at_creation: true,
-            });
-            let metade = bytes.bytes / 2;
+        let buffers = cantos.map(|_| {
+            let [lista, com_cunha] =
+                [NOME_LISTA_DOS_CANTOS, NOME_LISTA_COM_CUNHA].map(|n| buffer(n, true));
+            let metade = lista.size() / 2;
             // O despacho indireto de cada lista: `[n, 9, 1]` — cada bloco listado cobre os 3×3 à volta.
-            for o in [0, metade] {
-                buf.slice(o..o + 12)
-                    .get_mapped_range_mut()
-                    .copy_from_slice(bytemuck::cast_slice(&[0u32, 9, 1]));
+            for l in [&lista, &com_cunha] {
+                for o in [0, metade] {
+                    l.slice(o..o + 12)
+                        .get_mapped_range_mut()
+                        .copy_from_slice(bytemuck::cast_slice(&[0u32, 9, 1]));
+                }
+                l.unmap();
             }
-            buf.unmap();
-            let m = declarado(NOME_MARCAS_DOS_BLOCOS);
-            let marcas = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(NOME_MARCAS_DOS_BLOCOS),
-                size: m.bytes,
-                usage: m.usos,
-                mapped_at_creation: false,
-            });
-            (buf, metade, marcas)
+            let marcas = buffer(NOME_MARCAS_DOS_BLOCOS, false);
+            let contadores = buffer(NOME_CONTADORES_DOS_CANTOS, false);
+            (lista, com_cunha, metade, marcas, contadores)
         });
         let mut entradas = base.to_vec();
         if cantos.is_some() {
-            entradas.extend([armazenamento(19, false), armazenamento(21, false)]);
+            entradas.extend([19, 21, 24, 25].map(|b| armazenamento(b, false)));
         }
         let g3 = layout(device, "luz2d c3 borda", &entradas);
         let v = cantos.map_or_else(|| vazia.expect("a vazia"), |c| c[0]);
@@ -114,12 +116,13 @@ impl Borda {
         ];
         let grupo_da_borda = |lado: Option<u64>| {
             let mut l = ligacoes.to_vec();
-            if let (Some(lado), Some((buf, metade, marcas))) = (lado, &lista) {
-                l.push(metade_em(buf, *metade, lado, 19));
-                l.push(wgpu::BindGroupEntry {
-                    binding: 21,
-                    resource: marcas.as_entire_binding(),
-                });
+            if let (Some(lado), Some((lista, com_cunha, metade, marcas, contadores))) =
+                (lado, &buffers)
+            {
+                l.push(metade_em(lista, *metade, lado, 19));
+                l.push(inteiro(21, marcas));
+                l.push(metade_em(com_cunha, *metade, lado, 24));
+                l.push(inteiro(25, contadores));
             }
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("luz2d c3 borda"),
@@ -132,73 +135,89 @@ impl Borda {
         } else {
             vec![grupo_da_borda(None)]
         };
-        let cantos = cantos.zip(lista).map(|([v, v2], (lista, metade, marcas))| {
-            let marcas = wgpu::BindGroupEntry {
-                binding: 21,
-                resource: marcas.as_entire_binding(),
-            };
-            let (g_vertices, grupos_vertices) = par(
-                device,
-                "luz2d c3 borda vertices",
-                &[base[0], base[1], base[2], base[3], armazenamento(20, true)],
-                [0, 1].map(|lado| {
-                    let mut l = ligacoes.to_vec();
-                    l.push(metade_em(&lista, metade, lado, 20));
-                    l
-                }),
-            );
-            let (g_limpa, grupos_limpa) = par(
-                device,
-                "luz2d c3 cantos limpa",
-                &[
-                    entrada_escrita(15, wgpu::TextureFormat::Rgba16Float),
-                    entrada_escrita(17, wgpu::TextureFormat::Rgba16Float),
-                    armazenamento(20, true),
-                    armazenamento(21, false),
-                ],
-                [0, 1].map(|lado| {
-                    vec![
-                        vista(15, &e.vistas[v]),
-                        vista(17, &e.vistas[v2]),
-                        metade_em(&lista, metade, lado, 20),
-                        marcas.clone(),
-                    ]
-                }),
-            );
-            let (g, grupos) = par(
-                device,
-                "luz2d c3 cantos",
-                &[
-                    entrada_textura(16, FLOAT),
-                    entrada_escrita(17, wgpu::TextureFormat::Rgba16Float),
-                    armazenamento(20, true),
-                ],
-                [0, 1].map(|lado| {
-                    vec![
-                        vista(16, &e.vistas[v]),
-                        vista(17, &e.vistas[v2]),
-                        metade_em(&lista, metade, lado, 20),
-                    ]
-                }),
-            );
-            let com = |g: &wgpu::BindGroupLayout, rotulo: &str, entrada: &str| {
-                pipeline_em(rotulo, &[None, None, None, Some(g)], entrada, &[])
-            };
-            Cantos {
-                zera: com(&g3, "luz2d c3 cantos zera", "c3_cantos_zera"),
-                inicia: com(&g_limpa, "luz2d c3 cantos inicia", "c3_cantos_inicia"),
-                limpa: com(&g_limpa, "luz2d c3 cantos limpa", "c3_cantos_limpa"),
-                vertices: com(&g_vertices, "luz2d c3 borda vertices", "c3_borda_vertices"),
-                espalha: com(&g, "luz2d c3 cantos", "c3_cantos"),
-                grupos_vertices,
-                grupos_limpa,
-                grupos,
-                lista,
-                metade,
-                iniciada: AtomicBool::new(false),
-                lado: AtomicBool::new(false),
-            }
-        });
+        let cantos = cantos.zip(buffers).map(
+            |([v, v2], (lista, com_cunha, metade, marcas, contadores))| {
+                let (g_vertices, grupos_vertices) = par(
+                    device,
+                    "luz2d c3 borda vertices",
+                    &[
+                        base[0],
+                        base[1],
+                        base[2],
+                        base[3],
+                        armazenamento(20, true),
+                        armazenamento(24, false),
+                        armazenamento(25, false),
+                    ],
+                    [0, 1].map(|lado| {
+                        let mut l = ligacoes.to_vec();
+                        l.push(metade_em(&lista, metade, lado, 20));
+                        l.push(metade_em(&com_cunha, metade, lado, 24));
+                        l.push(inteiro(25, &contadores));
+                        l
+                    }),
+                );
+                let (g_limpa, grupos_limpa) = par(
+                    device,
+                    "luz2d c3 cantos limpa",
+                    &[
+                        base[0],
+                        armazenamento(20, true),
+                        armazenamento(21, false),
+                        armazenamento(23, false),
+                    ],
+                    [0, 1].map(|lado| {
+                        vec![
+                            ligacoes[0].clone(),
+                            metade_em(&lista, metade, lado, 20),
+                            inteiro(21, &marcas),
+                            inteiro(23, tabela),
+                        ]
+                    }),
+                );
+                let (g, grupos) = par(
+                    device,
+                    "luz2d c3 cantos",
+                    &[
+                        base[0],
+                        entrada_textura(16, FLOAT),
+                        entrada_escrita(17, wgpu::TextureFormat::Rgba16Float),
+                        armazenamento(20, true),
+                        armazenamento(21, false),
+                        armazenamento(23, false),
+                        armazenamento(25, false),
+                    ],
+                    [0, 1].map(|lado| {
+                        vec![
+                            ligacoes[0].clone(),
+                            vista(16, &e.vistas[v]),
+                            vista(17, &e.vistas[v2]),
+                            metade_em(&com_cunha, metade, lado, 20),
+                            inteiro(21, &marcas),
+                            inteiro(23, tabela),
+                            inteiro(25, &contadores),
+                        ]
+                    }),
+                );
+                let com = |g: &wgpu::BindGroupLayout, rotulo: &str, entrada: &str| {
+                    pipeline_em(rotulo, &[None, None, None, Some(g)], entrada, &[])
+                };
+                Cantos {
+                    zera: com(&g3, "luz2d c3 cantos zera", "c3_cantos_zera"),
+                    limpa: com(&g_limpa, "luz2d c3 cantos limpa", "c3_cantos_limpa"),
+                    vertices: com(&g_vertices, "luz2d c3 borda vertices", "c3_borda_vertices"),
+                    espalha: com(&g, "luz2d c3 cantos", "c3_cantos"),
+                    grupos_vertices,
+                    grupos_limpa,
+                    grupos,
+                    lista,
+                    com_cunha,
+                    metade,
+                    contadores,
+                    lado: AtomicBool::new(false),
+                }
+            },
+        );
         let entrada = if cantos.is_some() {
             "c3_borda_adia"
         } else {
@@ -217,6 +236,11 @@ impl Borda {
         }
     }
 
+    /// ⭐ W6g r9: os contadores do último quadro (`[slots da V2, recusados sem V, recusados sem V2, _]`).
+    pub(super) fn contadores(&self) -> Option<&wgpu::Buffer> {
+        self.cantos.as_ref().map(|c| &c.contadores)
+    }
+
     /// Os despachos, antes de tudo o que lê a borda.
     pub(super) fn gravar(&self, p: &mut wgpu::ComputePass<'_>) {
         let [w, h] = self.tamanho;
@@ -228,13 +252,7 @@ impl Borda {
             p.set_pipeline(&c.zera);
             p.set_bind_group(3, &self.grupos[lado], &[]);
             p.dispatch_workgroups(1, 1, 1);
-            if !c.iniciada.swap(true, Ordering::Relaxed) {
-                p.set_pipeline(&c.inicia);
-                p.set_bind_group(3, &c.grupos_limpa[lado], &[]);
-                p.dispatch_workgroups(grupos[0], grupos[1], 1);
-            }
-            // Os blocos do quadro anterior voltam à sentinela (`V`, `V2`) e à marca 0 antes de se
-            // listarem os deste.
+            // A tabela e as marcas dos blocos do quadro anterior voltam a 0 antes de se listarem os deste.
             let anterior = 1 - lado;
             p.set_pipeline(&c.limpa);
             p.set_bind_group(3, &c.grupos_limpa[anterior], &[]);
@@ -250,9 +268,36 @@ impl Borda {
             p.dispatch_workgroups_indirect(&c.lista, o);
             p.set_pipeline(&c.espalha);
             p.set_bind_group(3, &c.grupos[lado], &[]);
-            p.dispatch_workgroups_indirect(&c.lista, o);
+            p.dispatch_workgroups_indirect(&c.com_cunha, o);
         }
     }
+}
+
+impl super::C3 {
+    /// ⭐ W6g r9: a tabela e os contadores dos cantos, para quem os lê ([`super::Solver::cantos_lidos`]).
+    pub(crate) fn cantos(&self) -> Option<(&wgpu::Buffer, &wgpu::Buffer)> {
+        let c = self.borda.as_ref()?.contadores()?;
+        Some((&self.tabela, c))
+    }
+}
+
+/// ⭐ W6g r9: a tabela da `V2` esparsa que o `meio` lê (com os cantos; senão a vazia).
+pub(super) fn tabela(e: &Entradas<'_>, com_cantos: bool) -> wgpu::Buffer {
+    let Some(t) = com_cantos.then(|| {
+        e.lista
+            .buffers
+            .iter()
+            .find(|b| b.nome == crate::passlist::NOME_TABELA_DOS_CANTOS)
+            .expect("a tabela dos cantos declarada")
+    }) else {
+        return tabela_vazia(&e.placa);
+    };
+    e.placa.create_buffer(&wgpu::BufferDescriptor {
+        label: Some(t.nome),
+        size: t.bytes,
+        usage: t.usos,
+        mapped_at_creation: false,
+    })
 }
 
 /// O layout `rotulo` e um grupo sobre cada lista (`ligacoes[lado]`).
@@ -271,6 +316,14 @@ fn par(
         })
     });
     (g, grupos)
+}
+
+/// O buffer `b` inteiro no `binding`.
+fn inteiro(binding: u32, b: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
+    wgpu::BindGroupEntry {
+        binding,
+        resource: b.as_entire_binding(),
+    }
 }
 
 /// A lista `lado` (0 ou 1) das duas do buffer `l`, cada uma com `metade` bytes.

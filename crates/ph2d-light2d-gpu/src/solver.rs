@@ -26,6 +26,7 @@ mod c1;
 /// ⭐ A montagem das cascatas (C2) — ficheiro irmão pelo mesmo tecto (W5c).
 #[path = "solver_c2.rs"]
 mod c2;
+use c2::{entrada_tabela, tabela_vazia};
 /// ⭐ C3 na grade fina (W4b) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_c3.rs"]
 mod c3;
@@ -291,6 +292,7 @@ impl Solver {
             leitura: buffer("luz2d/buf/tempos_leitura"),
             n,
             periodo_ns: f64::from(gpu.queue.get_timestamp_period()),
+            cantos: None,
             pedido: None,
         });
 
@@ -555,6 +557,10 @@ impl Solver {
             vistas[COBERTURA].clone(),
             vistas[TAU_DENTRO].clone(),
         ];
+        let tempos = tempos.map(|t| Tempos {
+            cantos: c3.cantos().map(|(_, c)| c.clone()),
+            ..t
+        });
         Ok(Self {
             cfg,
             fabrica: fabrica.clone(),

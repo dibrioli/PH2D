@@ -293,8 +293,28 @@ struct ListaLida {
     blocos: array<u32>,
 }
 @group(3) @binding(19) var<storage, read_write> borda_lista: ListaDosCantos;
-// ⭐ W6g r8 — a marca de cada bloco já listado neste quadro (1); o [`c3_cantos_limpa`] repõe-na a 0.
+// ⭐ W6g r8/r9 — a marca de cada bloco listado neste quadro: `LISTADO` | o índice dele na lista + 1 (o slot
+// da `V` no atlas); o [`c3_cantos_limpa`] repõe-na a 0. Reivindica-se por `atomicOr` (idempotente: uma troca
+// apagava o índice que o vencedor já tinha escrito).
+const LISTADO: u32 = 0x80000000u;
 @group(3) @binding(21) var<storage, read_write> borda_marcas: array<atomic<u32>>;
+// ⭐ W6g r9 — os blocos listados em que o [`c3_borda_vertices`] achou cunha: só eles espalham ([`c3_cantos`]).
+@group(3) @binding(24) var<storage, read_write> lista_com_cunha: ListaDosCantos;
+// ⭐ W6g r9 — `[slots da V2 usados, listados recusados (sem slot da V), blocos recusados (sem slot da V2)]`.
+@group(3) @binding(25) var<storage, read_write> cantos_contadores: array<atomic<u32>, 4>;
+var<workgroup> vertices_com_cunha: atomic<u32>;
+// A entrada da tabela do vencedor de um bloco antes de saber o slot ([`c3_cantos`]).
+const RESERVADO: u32 = 0xffffffffu;
+// O atlas da `V` e da `V2`: blocos 8×8 em linhas de `ATLAS_LARGURA` (o slot `s` no bloco `(s % L, s / L)`).
+const ATLAS_LARGURA: u32 = 128u;
+
+fn no_atlas(s: u32, t: vec2<i32>) -> vec2<i32> {
+    return vec2<i32>(i32(s % ATLAS_LARGURA), i32(s / ATLAS_LARGURA)) * 8 + (t & vec2<i32>(7));
+}
+
+fn slots_do_atlas(d: vec2<u32>) -> u32 {
+    return (d.x / 8u) * (d.y / 8u);
+}
 
 // O bloco 8×8 de `t` na fila dos blocos de uma captura de largura `w`.
 fn bloco_de(t: vec2<i32>, w: i32) -> u32 {
@@ -309,17 +329,27 @@ fn c3_borda_adia(@builtin(global_invocation_id) gid: vec3<u32>) {
     let t = vec2<i32>(gid.xy);
     if all(t < n) {
         borda_do_texel(t, n, true);
-        if borda_adiada && atomicExchange(&borda_marcas[bloco_de(t, n.x)], 1u) == 0u {
-            borda_lista.blocos[atomicAdd(&borda_lista.n, 1u)] = u32(t.x / 8) | (u32(t.y / 8) << 16u);
+        let b = bloco_de(t, n.x);
+        if borda_adiada && atomicOr(&borda_marcas[b], LISTADO) == 0u {
+            let i = atomicAdd(&borda_lista.n, 1u);
+            borda_lista.blocos[i] = u32(t.x / 8) | (u32(t.y / 8) << 16u);
+            atomicOr(&borda_marcas[b], i + 1u);
         }
     }
 }
 
 // ⭐ W6g r8 — em despacho indireto sobre a lista deste quadro (só o `y = 0` dos 9 do cabeçalho): os 64 texels
-// do bloco listado com a `pela_cunha` — a borda regravada (a mesma conta) e a `V` do bloco inteiro.
+// do bloco listado com a `pela_cunha` — a borda regravada (a mesma conta) e a `V` do bloco no slot dele do
+// atlas (r9). Sem slot, o bloco fica na lei W6d (a borda do [`c3_borda_adia`]) e conta-se.
 @compute @workgroup_size(8, 8)
 fn c3_borda_vertices(@builtin(local_invocation_id) lid: vec3<u32>, @builtin(workgroup_id) wid: vec3<u32>) {
     if wid.y != 0u {
+        return;
+    }
+    if wid.x >= slots_do_atlas(textureDimensions(borda_vertices)) {
+        if all(lid.xy == vec2<u32>(0u)) {
+            atomicAdd(&cantos_contadores[1], 1u);
+        }
         return;
     }
     let e = cantos_lista.blocos[wid.x];
@@ -327,13 +357,24 @@ fn c3_borda_vertices(@builtin(local_invocation_id) lid: vec3<u32>, @builtin(work
     let t = vec2<i32>(i32(e & 0xffffu), i32(e >> 16u)) * 8 + vec2<i32>(lid.xy);
     if all(t < n) {
         borda_do_texel(t, n, false);
-        textureStore(borda_vertices, t, cunha_achada);
+        textureStore(borda_vertices, no_atlas(wid.x, t), cunha_achada);
+        if cunha_achada.x < SEM_CUNHA {
+            atomicStore(&vertices_com_cunha, 1u);
+        }
+    }
+    workgroupBarrier();
+    if all(lid.xy == vec2<u32>(0u)) && atomicLoad(&vertices_com_cunha) != 0u {
+        lista_com_cunha.blocos[atomicAdd(&lista_com_cunha.n, 1u)] = e;
     }
 }
 
 @compute @workgroup_size(1)
 fn c3_cantos_zera() {
     atomicStore(&borda_lista.n, 0u);
+    atomicStore(&lista_com_cunha.n, 0u);
+    for (var k = 0; k < 4; k++) {
+        atomicStore(&cantos_contadores[k], 0u);
+    }
 }
 
 
@@ -376,14 +417,21 @@ fn borda_do_texel(t: vec2<i32>, n: vec2<i32>, adia: bool) {
 @group(3) @binding(16) var cantos_vertices: texture_2d<f32>;
 @group(3) @binding(17) var cantos_saida: texture_storage_2d<rgba16float, write>;
 @group(3) @binding(20) var<storage, read> cantos_lista: ListaLida;
+// ⭐ W6g r9 — a tabela por bloco da captura que o `meio` lê (`cantos_tabela`, `c2_rc.wgsl`): 0 = sem cunha,
+// senão o slot da `V2` no atlas + 1.
+@group(3) @binding(23) var<storage, read_write> cantos_tabela_escrita: array<atomic<u32>>;
 var<workgroup> cantos_bloco: array<vec4<f32>, 144>;
+var<workgroup> cantos_com_cunha: atomic<u32>;
+var<workgroup> cantos_slot: u32;
 
 // ⭐ W6g: em despacho INDIRETO — o grupo `(i, k)` cobre o bloco `k` dos 3×3 à volta do `i`-ésimo listado
-// pelo [`c3_borda_adia`] (dois listados vizinhos escrevem o mesmo bloco com os mesmos bits). A `V` vale a
-// sentinela fora dos blocos listados ([`c3_cantos_limpa`]): a apara lê-se sem marcas.
+// COM cunha (r9: a lista B do [`c3_borda_vertices`]; um texel a Chebyshev ≤ 2 de uma cunha está num bloco
+// vizinho do dela). A apara lê a `V` pela marca do bloco (o slot); o bloco com alguma cunha reivindica a sua
+// entrada na tabela (o primeiro dos vizinhos a chegar escreve-o, com os mesmos bits) e um slot da `V2`.
 @compute @workgroup_size(8, 8)
 fn c3_cantos(@builtin(local_invocation_id) lid: vec3<u32>, @builtin(workgroup_id) wid: vec3<u32>) {
-    let n = vec2<i32>(textureDimensions(cantos_vertices));
+    let n = vec2<i32>(textureDimensions(borda_cobertura));
+    let slots_v = slots_do_atlas(textureDimensions(cantos_vertices));
     let e = cantos_lista.blocos[wid.x];
     let k9 = i32(wid.y);
     let b0 = (vec2<i32>(i32(e & 0xffffu), i32(e >> 16u)) + vec2<i32>(k9 % 3 - 1, k9 / 3 - 1)) * 8;
@@ -392,69 +440,90 @@ fn c3_cantos(@builtin(local_invocation_id) lid: vec3<u32>, @builtin(workgroup_id
         let q = canto + vec2<i32>(i32(k % 12u), i32(k / 12u));
         var v = vec4<f32>(SEM_CUNHA, 0.0, 0.0, 0.0);
         if all(q >= vec2<i32>(0)) && all(q < n) {
-            v = textureLoad(cantos_vertices, q, 0);
+            let m = atomicLoad(&borda_marcas[bloco_de(q, n.x)]) & ~LISTADO;
+            if m != 0u && m - 1u < slots_v {
+                v = textureLoad(cantos_vertices, no_atlas(m - 1u, q), 0);
+            }
         }
         cantos_bloco[k] = v;
     }
     workgroupBarrier();
     let t = b0 + vec2<i32>(lid.xy);
-    if any(t < vec2<i32>(0)) || any(t >= n) {
-        return;
-    }
+    let no_bloco = all(b0 >= vec2<i32>(0)) && all(b0 < n);
     var melhor = vec4<f32>(SEM_CUNHA, 0.0, 0.0, 0.0);
-    var d_melhor = 99;
-    for (var j = -2; j <= 2; j++) {
-        for (var i = -2; i <= 2; i++) {
-            let v = cantos_bloco[u32(i32(lid.y) + 2 + j) * 12u + u32(i32(lid.x) + 2 + i)];
-            let d = i * i + j * j;
-            if v.x >= SEM_CUNHA || d >= d_melhor {
-                continue;
+    if all(t >= vec2<i32>(0)) && all(t < n) {
+        var d_melhor = 99;
+        for (var j = -2; j <= 2; j++) {
+            for (var i = -2; i <= 2; i++) {
+                let v = cantos_bloco[u32(i32(lid.y) + 2 + j) * 12u + u32(i32(lid.x) + 2 + i)];
+                let d = i * i + j * j;
+                if v.x >= SEM_CUNHA || d >= d_melhor {
+                    continue;
+                }
+                d_melhor = d;
+                // dentro ⟺ (y + t − q)·u ≥ s, com t − q = −(i, j).
+                let o = vec2<f32>(f32(i), f32(j));
+                let concavo = v.z > 0.5 * CONCAVO;
+                let t2 = select(v.z, v.z - CONCAVO, concavo);
+                melhor = vec4<f32>(
+                    v.x,
+                    v.y + dot(o, vec2<f32>(cos(v.x), sin(v.x))),
+                    v.z,
+                    v.w + dot(o, vec2<f32>(cos(t2), sin(t2))),
+                );
             }
-            d_melhor = d;
-            // dentro ⟺ (y + t − q)·u ≥ s, com t − q = −(i, j).
-            let o = vec2<f32>(f32(i), f32(j));
-            let concavo = v.z > 0.5 * CONCAVO;
-            let t2 = select(v.z, v.z - CONCAVO, concavo);
-            melhor = vec4<f32>(
-                v.x,
-                v.y + dot(o, vec2<f32>(cos(v.x), sin(v.x))),
-                v.z,
-                v.w + dot(o, vec2<f32>(cos(t2), sin(t2))),
-            );
+        }
+        if melhor.x < SEM_CUNHA {
+            atomicStore(&cantos_com_cunha, 1u);
         }
     }
-    textureStore(cantos_saida, t, melhor);
-}
-
-// A `V` e a `V2` inteiras com a sentinela, uma vez (a textura nova é zero, e θ₁ = 0 é uma cunha).
-@compute @workgroup_size(8, 8)
-fn c3_cantos_inicia(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let t = vec2<i32>(gid.xy);
-    if all(t < vec2<i32>(textureDimensions(cantos_saida))) {
-        textureStore(cantos_saida, t, vec4<f32>(SEM_CUNHA, 0.0, 0.0, 0.0));
-        textureStore(borda_vertices, t, vec4<f32>(SEM_CUNHA, 0.0, 0.0, 0.0));
+    workgroupBarrier();
+    if all(lid.xy == vec2<u32>(0u)) {
+        cantos_slot = 0u;
+        if no_bloco && atomicLoad(&cantos_com_cunha) != 0u {
+            let b = bloco_de(b0, n.x);
+            var r = atomicCompareExchangeWeak(&cantos_tabela_escrita[b], 0u, RESERVADO);
+            while !r.exchanged && r.old_value == 0u {
+                r = atomicCompareExchangeWeak(&cantos_tabela_escrita[b], 0u, RESERVADO);
+            }
+            if r.exchanged {
+                let s = atomicAdd(&cantos_contadores[0], 1u);
+                if s < slots_do_atlas(textureDimensions(cantos_saida)) {
+                    cantos_slot = s + 1u;
+                } else {
+                    atomicStore(&cantos_tabela_escrita[b], 0u);
+                    atomicAdd(&cantos_contadores[2], 1u);
+                }
+            }
+        }
+    }
+    let slot = workgroupUniformLoad(&cantos_slot);
+    if slot == 0u {
+        return;
+    }
+    textureStore(cantos_saida, no_atlas(slot - 1u, t), melhor);
+    if all(lid.xy == vec2<u32>(0u)) {
+        atomicStore(&cantos_tabela_escrita[bloco_de(b0, n.x)], slot);
     }
 }
 
-// ⭐ W6g r4 — em despacho indireto sobre a lista do quadro ANTERIOR, como o [`c3_cantos`]: os 3×3 blocos à
-// volta de cada listado voltam à sentinela na `V2`, e o [`c3_cantos`] deste quadro reescreve os seus por
-// cima — a `V2` fica válida em toda a captura sem marca por bloco. ⭐ r8: o listado devolve também a `V`
-// do seu bloco à sentinela e a sua marca a 0, antes do [`c3_borda_adia`] deste quadro.
+// ⭐ W6g r4/r9 — em despacho indireto sobre a lista do quadro ANTERIOR, como o [`c3_cantos`]: a entrada da
+// tabela dos 3×3 blocos à volta de cada listado volta a 0 e a marca dele também, antes do [`c3_borda_adia`]
+// deste quadro (o atlas não se limpa: só se lê pelo slot que este quadro escreveu).
 @compute @workgroup_size(8, 8)
 fn c3_cantos_limpa(@builtin(local_invocation_id) lid: vec3<u32>, @builtin(workgroup_id) wid: vec3<u32>) {
+    if any(lid.xy != vec2<u32>(0u)) {
+        return;
+    }
     let e = cantos_lista.blocos[wid.x];
     let k9 = i32(wid.y);
     let bc = vec2<i32>(i32(e & 0xffffu), i32(e >> 16u));
     let b0 = (bc + vec2<i32>(k9 % 3 - 1, k9 / 3 - 1)) * 8;
-    let t = b0 + vec2<i32>(lid.xy);
-    let n = vec2<i32>(textureDimensions(cantos_saida));
-    if all(t >= vec2<i32>(0)) && all(t < n) {
-        textureStore(cantos_saida, t, vec4<f32>(SEM_CUNHA, 0.0, 0.0, 0.0));
-        if k9 == 4 {
-            textureStore(borda_vertices, t, vec4<f32>(SEM_CUNHA, 0.0, 0.0, 0.0));
-        }
+    let n = vec2<i32>(textureDimensions(borda_cobertura));
+    if all(b0 >= vec2<i32>(0)) && all(b0 < n) {
+        atomicStore(&cantos_tabela_escrita[bloco_de(b0, n.x)], 0u);
     }
-    if k9 == 4 && all(lid.xy == vec2<u32>(0u)) {
+    if k9 == 4 {
         atomicStore(&borda_marcas[bloco_de(bc * 8, n.x)], 0u);
     }
 }

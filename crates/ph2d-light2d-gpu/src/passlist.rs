@@ -4,6 +4,13 @@
 
 use crate::config::{Config, Precisao};
 
+#[path = "passlist_cantos.rs"]
+mod cantos;
+pub(crate) use cantos::{
+    NOME_CONTADORES_DOS_CANTOS, NOME_LISTA_COM_CUNHA, NOME_LISTA_DOS_CANTOS,
+    NOME_MARCAS_DOS_BLOCOS, NOME_TABELA_DOS_CANTOS, atlas_dos_cantos, buffers_dos_cantos,
+};
+
 /// Índices das texturas em [`PassList::texturas`].
 pub(crate) const EMISSAO: usize = 0;
 pub(crate) const COBERTURA: usize = 1;
@@ -11,23 +18,12 @@ pub(crate) const TAU_DENTRO: usize = 2;
 pub(crate) const SEMENTES: [usize; 2] = [3, 4];
 /// ⭐ W5q: o buffer dos ladrilhos do anel ([`crate::ladrilhos`]).
 pub(crate) const NOME_LADRILHOS: &str = "luz2d/buf/ladrilhos";
-/// ⭐ W6g: os blocos 8×8 da captura com candidato a vértice (`c3_borda_adia`), em DUAS listas que
-/// alternam por quadro (a deste e a do anterior, que o `c3_cantos_limpa` repõe) — cada uma com o
-/// cabeçalho do despacho INDIRETO (`[n, 9, 1]`) e depois um `u32` por bloco.
-pub(crate) const NOME_LISTA_DOS_CANTOS: &str = "luz2d/buf/lista_dos_cantos";
-/// ⭐ W6g r8: a marca de cada bloco da captura já listado neste quadro (um `u32` por bloco).
-pub(crate) const NOME_MARCAS_DOS_BLOCOS: &str = "luz2d/buf/marcas_dos_blocos";
 /// ⭐ W6g r5: os texels de duas faces que a `c3_fina_adia` deixa ao `c3_fina_cantos` — o cabeçalho é o
 /// despacho INDIRETO dele (`[grupos de 64, 1, 1]`) e o número de texels, depois um `u32` por texel.
 pub(crate) const NOME_FINA_ADIADOS: &str = "luz2d/buf/fina_adiados";
 /// ⭐ W6g r5: a luz de cada texel da [`NOME_FINA_ADIADOS`] (a fluência e a transmitida, `f32`).
 pub(crate) const NOME_FINA_CANTOS_LUZ: &str = "luz2d/buf/fina_cantos_luz";
 
-/// Os bytes de UMA das duas listas para a captura `[w, h]` (cabem todos os blocos), alinhados a 256: o
-/// deslocamento do binding da 2.ª (o teto do `min_storage_buffer_offset_alignment` no WebGPU).
-pub(crate) fn metade_da_lista_dos_cantos([w, h]: [u32; 2]) -> u64 {
-    (4 * (3 + u64::from(w.div_ceil(8)) * u64::from(h.div_ceil(8)))).next_multiple_of(256)
-}
 pub(crate) const CASCATAS: [usize; 2] = [5, 6];
 /// ⭐ C3 (W4b): a fluência FINAL, na grade fina — a que os receptores leem.
 pub(crate) const FLUENCIA: usize = 7;
@@ -51,7 +47,7 @@ pub(crate) struct Opcionais {
     /// [`Config::borda_exata`].
     pub borda: Option<usize>,
     /// ⭐ W6f: os cantos da borda — `[as cunhas dos parciais de vértice, as espalhadas]` (`V`, `V2`), com
-    /// [`Config::usa_cantos`].
+    /// [`Config::usa_cantos`]; W6g r9: dois ATLAS de blocos 8×8 ([`atlas_dos_cantos`]).
     pub cantos: Option<[usize; 2]>,
     /// ⭐ W6f: sem os cantos, a textura de 1 × 1 que o `c3_borda` cita (binding 15) e não escreve.
     pub vertices_vazia: Option<usize>,
@@ -331,7 +327,7 @@ impl PassList {
                     texturas.push(Textura {
                         nome,
                         formato: wgpu::TextureFormat::Rgba16Float,
-                        tamanho: [gc.largura, gc.altura],
+                        tamanho: atlas_dos_cantos([gc.largura, gc.altura], cfg.cantos_por_blocos),
                         usos: T::STORAGE_BINDING | amostrada,
                         mips: 1,
                     });
@@ -483,18 +479,8 @@ impl PassList {
                 usos: B::STORAGE,
             });
         }
-        if let Some([v, _]) = op.cantos {
-            buffers.push(Buffer {
-                nome: NOME_LISTA_DOS_CANTOS,
-                bytes: 2 * metade_da_lista_dos_cantos(texturas[v].tamanho),
-                usos: B::STORAGE | B::INDIRECT,
-            });
-            let [w, h] = texturas[v].tamanho;
-            buffers.push(Buffer {
-                nome: NOME_MARCAS_DOS_BLOCOS,
-                bytes: 4 * u64::from(w.div_ceil(8)) * u64::from(h.div_ceil(8)),
-                usos: B::STORAGE,
-            });
+        if let (Some(_), Some(b)) = (op.cantos, op.borda) {
+            buffers.extend(buffers_dos_cantos(texturas[b].tamanho));
         }
         // ⭐ W5c: a cascata holográfica (os T, o par R, o acumulado, o uniforme e os vazios).
         if cfg.holografica.is_some() {
@@ -525,9 +511,10 @@ impl PassList {
                 bytes,
                 usos: B::QUERY_RESOLVE | B::COPY_SRC,
             });
+            // W6g r9: + os 16 bytes dos contadores dos cantos ([`crate::tempos::TemposMs::cantos_recusados`]).
             buffers.push(Buffer {
                 nome: "luz2d/buf/tempos_leitura",
-                bytes,
+                bytes: bytes + 16,
                 usos: B::MAP_READ | B::COPY_DST,
             });
         }

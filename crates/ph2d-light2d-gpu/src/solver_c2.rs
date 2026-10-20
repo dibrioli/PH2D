@@ -16,9 +16,34 @@ pub(super) struct Entradas<'a> {
     pub vizinhos: &'a wgpu::Sampler,
 }
 
+/// ⭐ W6g r9: a tabela dos cantos em buffer (o `cantos_tabela` do `meio`), só leitura.
+pub(super) fn entrada_tabela(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Storage { read_only: true },
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
+
+/// A tabela dos cantos de quem não a alimenta (o ramo do `meio` não corre).
+pub(super) fn tabela_vazia(device: &wgpu::Device) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("luz2d tabela dos cantos vazia"),
+        size: 16,
+        usage: wgpu::BufferUsages::STORAGE,
+        mapped_at_creation: false,
+    })
+}
+
 /// A pipeline das cascatas e o grupo de cada nível.
 pub(super) fn cascatas(e: &Entradas<'_>) -> (wgpu::ComputePipeline, Vec<wgpu::BindGroup>) {
     let formato = e.lista.texturas[CASCATAS[0]].formato;
+    let vazia = tabela_vazia(&e.device);
     let rc_layout = e
         .device
         .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -38,6 +63,7 @@ pub(super) fn cascatas(e: &Entradas<'_>) -> (wgpu::ComputePipeline, Vec<wgpu::Bi
                     count: None,
                 },
                 entrada_textura(8, FLOAT),
+                entrada_tabela(10),
             ],
         });
     let rc_pl = e
@@ -122,6 +148,10 @@ pub(super) fn cascatas(e: &Entradas<'_>) -> (wgpu::ComputePipeline, Vec<wgpu::Bi
                     wgpu::BindGroupEntry {
                         binding: 8,
                         resource: wgpu::BindingResource::TextureView(&e.vistas[COBERTURA]),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 10,
+                        resource: vazia.as_entire_binding(),
                     },
                 ],
             })

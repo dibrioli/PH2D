@@ -258,6 +258,7 @@ fn os_avisos_pintam_e_os_controlos_continuam_vivos() {
             com_quad: 2,
             total: 5,
         },
+        AvisoDaLuz::CantosArredondados { blocos: 3 },
     ];
     let (_, _, sem) = pinta(ponto());
     let (_, _, com) = pinta(InspectorLuzInfo {

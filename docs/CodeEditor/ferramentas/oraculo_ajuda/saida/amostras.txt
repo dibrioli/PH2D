@@ -1,0 +1,48 @@
+# oráculo página de ajuda (Ctrl+clique → referência da classe) — 2026-10-20T00:31Z — loadavg: 13.94 14.63 19.75 19/1783 2565475
+# godot: godot 4.7.2-2.1 ; Licenses: MIT
+# display: Xvfb :118 1600x1000x24 ; dbus privado sem serviços; fotos de ecrã inteiro em /tmp/oraculo_ajuda_raw.ZrMD
+# script: /home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor/docs/CodeEditor/ferramentas/oraculo_ajuda/ajuda.gd ; textos por OCR (tesseract) — o recorte nomeado é a prova
+# cursores de referência: ibeam=a72079972fe9bcdd seta=f1791298280e6053 mao=a99bd5a5a33b7e02 
+A sin_global (linha 6, col 12): cursor com Ctrl = ibeam
+A sin_global: título «@GlobalScope (& Open in Online Docs» · lista «£ ajuda.gd» · topo «® float sin(angle_rad: float)» — prova: a_sin_global_c.png
+A clamp_mesma_pagina (linha 8, col 12): cursor com Ctrl = mao
+A clamp_mesma_pagina: título «@GlobalScope (& Open in Online Docs» · lista «£ ajuda.gd» · topo «® Variant clamp(value: Variant, min: Variant, max: Variant)» — prova: a_clamp_mesma_pagina_c.png
+A length_metodo (linha 5, col 12): cursor com Ctrl = mao
+A length_metodo: título «Vector2 (& Open in Online Docs» · lista «£ ajuda.gd M @GlobalScope M Vector2» · topo «® float length() const» — prova: a_length_metodo_c.png
+A Vector2_classe (linha 4, col 12): cursor com Ctrl = mao
+A Vector2_classe: título «Vector2 (& Open in Online Docs» · lista «£ ajuda.gd M @GlobalScope M Vector2» · topo «» — prova: a_Vector2_classe_c.png
+A add_child_herdado (linha 7, col 4): cursor com Ctrl = mao
+A add_child_herdado: título «Node (& Open in Online Docs» · lista «£ ajuda.gd M @GlobalScope M Node M Vector2» · topo «® void add_child(node: Node, force_readable_name: bool = false,» — prova: a_add_child_herdado_c.png
+A Node_classe (linha 7, col 14): cursor com Ctrl = mao
+A Node_classe: título «Node (& Open in Online Docs» · lista «£ ajuda.gd M @GlobalScope M Node M Vector2» · topo «Inherits: @ Object» — prova: a_Node_classe_c.png
+A print_debug_gdscript (linha 9, col 4): cursor com Ctrl = mao
+A print_debug_gdscript: título «@GDScript (& Open in Online Docs» · lista «£ ajuda.gd M @GDScript M @GlobalScope M Node M Vector2» · topo «® void print_debug(...args: Array) vararg» — prova: a_print_debug_gdscript_c.png
+A PI_constante (linha 9, col 16): cursor com Ctrl = mao
+A PI_constante: título «@GDScript (& Open in Online Docs» · lista «£ ajuda.gd M @GDScript M @GlobalScope M Node M Vector2» · topo «® PI = 3.14159265358979» — prova: a_PI_constante_c.png
+A print_global (linha 5, col 4): cursor com Ctrl = mao
+A print_global: título «@GlobalScope (& Open in Online Docs» · lista «£ ajuda.gd M @GDScript M @GlobalScope M Node M Vector2» · topo «® void print(...args: Array) vararg» — prova: a_print_global_c.png
+A amplitude_nosso (linha 6, col 16): cursor com Ctrl = mao
+A amplitude_nosso: título «ug ajuda.gd (& Online Docs» · lista «& ajuda.gd M @GDScript M @GlobalScope M Node M Vector2» · topo «2 |ar amplitude = 1.0 - P T» — prova: a_amplitude_nosso_c.png
+A var_palavra_chave (linha 6, col 4): cursor com Ctrl = ibeam
+A var_palavra_chave: título «ug ajuda.gd (& Online Docs» · lista «& ajuda.gd M @GDScript M @GlobalScope M Node M Vector2» · topo «2 var amplitude = 1.0 o e T» — prova: a_var_palavra_chave_c.png
+B topo: «Class: @ @GlobalScope Description Global scope constants and functions. A list of global scope enumerated constants and built-in functions. This is all that resides in the globals, constants regarding error codes, keycodes, property hints, etc. Singletons are also documented here, since they can be accessed from anywhere. For the entries that can only be accessed from scripts written in GDScript, see @6DScript. Online Tutorials ® Random number generation Properties AccessibilityServer AccessibilityServer»
+B índice de secções: «Top Description Online Tutorials Properties Methods Enumerations Constants Property Descriptions Method Descriptions»
+B tabela de métodos (início): «Methods Variant abs(x: Variant) float absf(x: float) int absi(x: int) float acos(x: float) float acosh(x: float) float angle_difference(from: float, to: float) float asin(x: float) float asinh(x: float) float atan(x: float)»
+A print_de_novo (linha 5, col 4): cursor com Ctrl = mao
+A print_de_novo: título «@GlobalScope (& Open in Online Docs» · lista «£ ajuda.gd M @GDScript M @GlobalScope M Node M Vector2» · topo «® void print(...args: Array) vararg» — prova: a_print_de_novo_c.png
+D ponteiro sobre o link push_warning(): mao
+D ponteiro sobre texto da página: seta
+C link push_warning() (mesma página): título «@GlobalScope (& Open in Online Docs» · lista «£ ajuda.gd M @GDScript M @GlobalScope M Node M Vector2» · topo «® void push_warning(...args: Array) vararg» — prova: c1_link_mesma_pagina_c.png
+C ‹ depois do link na mesma página: título «ug ajuda.gd (& Open in Online Docs» · lista «& ajuda.gd M @GDScript M @GlobalScope M Node M Vector2» · topo «2 var amplitude = 1.0 o e T» — prova: c2_volta_c.png
+A print_outra_vez (linha 5, col 4): cursor com Ctrl = ibeam
+A print_outra_vez: título «@GlobalScope (& Open in Online Docs» · lista «£ ajuda.gd M @GDScript M @GlobalScope M Node M Vector2» · topo «® void print(...args: Array) vararg» — prova: a_print_outra_vez_c.png
+C link Engine.print_to_stdout (outra classe): título «Engine (& Open in Online Docs» · lista «£ ajuda.gd M @GDScript M @GlobalScope 2 Engine M Node M Vector2» · topo «® bool print_to_stdout [default: true]» — prova: c3_outra_classe_c.png
+C ‹ depois do link para outra classe: título «@GlobalScope (& Open in Online Docs» · lista «£ ajuda.gd M @GDScript M @GlobalScope M Engine M Node M Vector2» · topo «® void print(...args: Array) vararg» — prova: c4_volta_c.png
+C › a seguir: título «Engine (& Open in Online Docs» · lista «£ ajuda.gd M @GDScript M @GlobalScope 2 Engine M Node M Vector2» · topo «® bool print_to_stdout [default: true]» — prova: c5_avanca_c.png
+D balão sobre «void»: «No return value. Coiivnriw viie e NOre arguments of any type to to the console.» — prova: d_balao_void_c.png
+E PgDn com o foco na página: título «@GlobalScope (& Open in Online Docs» · lista «£ ajuda.gd M @GDScript M @GlobalScope M Engine M Node M Vector2» · topo «MEVUYYITTY MUWIPUOT O, WIHIE dloV UWiopldyllly d oldLUi UalLT WwiiTii cair Tyl U wail iy 1o pinncu. T T e e e P . . 'l sl in T merds I 72"l 1 B» — prova: e1_pgdn_c.png
+E Ctrl+F: barra «||Search |‘! v o)» — prova: e2_ctrl_f_c.png
+E busca «smoothstep» + Enter: título «@GlobalScope (& Open in Online Docs» · lista «£ ajuda.gd M @GDScript M @GlobalScope M Engine M Node M Vector2» · topo «Tween.1nterpolate_value().» — prova: e3_busca_c.png
+E busca: barra «|smoothstep | 2 of 13 matches 4 § >»
+E Ctrl+W na página: título «ug ajuda.gd (& Online Docs» · lista «& ajuda.gd M @GDScript M Engine M Node M Vector2» · topo «2 var amplitude = 1.0 o e T» — prova: e4_ctrl_w_c.png
+fim — 00:33Z loadavg 17.66 14.94 19.08 21/1674 2581941

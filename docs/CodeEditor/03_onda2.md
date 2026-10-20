@@ -137,3 +137,5 @@ seguinte; o resto entra em lotes.
    argumento, exemplo, irmãs ao lado); o balão preso do I6 era redundante com o do rato parado. Antes de codar:
    correr o Godot como oráculo e ver os dados (JSON `ph2d-docs-*.json`; `math.sin` só tem assinatura). Onda nova:
    a linha só fecha depois dela. [Handoff §9](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-19_ONDA2_ACABAMENTO.md)
+   **Oráculo corrido e plano escrito (20/10): [04_pagina_de_ajuda.md](04_pagina_de_ajuda.md)** — a porta é nossa
+   (`ph2d_code_help::resolve`), não o hover do assistente (sonda: `s:upper`, `table.insert`, `math.pi` não dizem a página).

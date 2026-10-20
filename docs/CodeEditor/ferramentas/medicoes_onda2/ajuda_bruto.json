@@ -1,0 +1,413 @@
+{
+ "loadavg": [
+  "18.22",
+  "16.13",
+  "18.99"
+ ],
+ "texto": "ph2d.property(\"amplitude\", 1.0)\nlocal m = math\nlocal campo: PoseField = \"x\"\nfunction update(self, dt)\n  local s = \"abc\"\n  local a = math.sin(dt) + m.cos(dt) + math.pi + math.huge\n  print(s:upper(), (\"x\"):upper(), string.format(\"%d\", 1), typeof(s), tostring(a))\n  table.insert({}, 1)\n  local b = buffer.create(4)\n  local v = vector.create(1, 2, 3)\n  local n = bit32.band(1, 3) + utf8.len(s) + os.clock()\n  local co = coroutine.wrap(function() end)\n  local ok = pcall(error, \"x\")\n  debug.traceback()\n  ph2d.set(self.id, campo, a)\n  motion.fire(\"go\")\nend\n",
+ "casos": {
+  "math.sin": {
+   "pos": {
+    "line": 5,
+    "character": 17
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction math.sin(n: number): number\n```"
+    }
+   }
+  },
+  "m.cos (math por outro nome)": {
+   "pos": {
+    "line": 5,
+    "character": 29
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction math.cos(n: number): number\n```"
+    }
+   }
+  },
+  "math.pi (constante)": {
+   "pos": {
+    "line": 5,
+    "character": 44
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nnumber\n```"
+    }
+   }
+  },
+  "math.huge (constante)": {
+   "pos": {
+    "line": 5,
+    "character": 54
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nnumber\n```"
+    }
+   }
+  },
+  "math (a biblioteca)": {
+   "pos": {
+    "line": 5,
+    "character": 12
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\ntype math = {\n    abs: (n: number) -> number,\n    acos: (n: number) -> number,\n    asin: (n: number) -> number,\n    atan: (n: number) -> number,\n    atan2: (y: number, x: number) -> number,\n    ceil: (n: number) -> number,\n    clamp: (n: number, min: number, max: number) -> number,\n    cos: (n: number) -> number,\n    cosh: (n: number) -> number,\n    deg: (n: number) -> number,\n    e: number,\n    exp: (n: number) -> number,\n    floor: (n: number) -> number,\n    fmod: (x: number, y: number) -> number,\n    frexp... *TRUNCATED*\n```"
+    }
+   }
+  },
+  "print (global)": {
+   "pos": {
+    "line": 6,
+    "character": 2
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction print(string, string, string, string, string): ()\n```"
+    }
+   }
+  },
+  "s:upper (método de um local)": {
+   "pos": {
+    "line": 6,
+    "character": 10
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction s:upper(string): string\n```"
+    }
+   }
+  },
+  "(\"x\"):upper (método de um literal)": {
+   "pos": {
+    "line": 6,
+    "character": 25
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction ('x'):upper(string): string\n```"
+    }
+   }
+  },
+  "string.format": {
+   "pos": {
+    "line": 6,
+    "character": 41
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction string.format(string, ...: any): string\n```"
+    }
+   }
+  },
+  "string (a biblioteca)": {
+   "pos": {
+    "line": 6,
+    "character": 34
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\ntype string = {\n    byte: @checked (string, number?, number?) -> (...number),\n    char: @checked (...number) -> string,\n    find: @checked (string, string, number?, boolean?) -> (number?, number?, ...string),\n    format: @checked (string, ...any) -> string,\n    gmatch: @checked (self: string, string) -> () -> (...string),\n    gsub: (self: string, string, ((string) -> string) | string | {\n        [string]: string\n    }, number?) -> (string, number),\n    len: @checked (self: string) -> number,\n    lower: @checked ... *TRUNCATED*\n```"
+    }
+   }
+  },
+  "typeof": {
+   "pos": {
+    "line": 6,
+    "character": 58
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction typeof(value: string): string\n```"
+    }
+   }
+  },
+  "tostring": {
+   "pos": {
+    "line": 6,
+    "character": 69
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction tostring(value: number): string\n```"
+    }
+   }
+  },
+  "table.insert": {
+   "pos": {
+    "line": 7,
+    "character": 8
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\n(<V>(t: {V}, pos: number, value: V) -> ())\n& (<V>(t: {V}, value: V) -> ())\n```"
+    }
+   }
+  },
+  "buffer.create": {
+   "pos": {
+    "line": 8,
+    "character": 19
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction buffer.create(size: number): buffer\n```"
+    }
+   }
+  },
+  "vector.create": {
+   "pos": {
+    "line": 9,
+    "character": 19
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction vector.create(x: number, y: number, z: number?): vector\n```"
+    }
+   }
+  },
+  "bit32.band": {
+   "pos": {
+    "line": 10,
+    "character": 18
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction bit32.band(...: number): number\n```"
+    }
+   }
+  },
+  "utf8.len": {
+   "pos": {
+    "line": 10,
+    "character": 36
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction utf8.len(s: string, i: number?, j: number?): (number?, number?)\n```"
+    }
+   }
+  },
+  "os.clock": {
+   "pos": {
+    "line": 10,
+    "character": 48
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction os.clock(): number\n```"
+    }
+   }
+  },
+  "coroutine.wrap": {
+   "pos": {
+    "line": 11,
+    "character": 23
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction coroutine.wrap<A..., R...>(f: (A...) -> (R...)): (A...) -> (R...)\n```"
+    }
+   }
+  },
+  "pcall": {
+   "pos": {
+    "line": 12,
+    "character": 13
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction pcall(f: (string, number?) -> never, string, number?): (boolean, never)\n```"
+    }
+   }
+  },
+  "error (passado como valor)": {
+   "pos": {
+    "line": 12,
+    "character": 19
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction error<T>(message: T, level: number?): never\n```"
+    }
+   }
+  },
+  "debug.traceback": {
+   "pos": {
+    "line": 13,
+    "character": 8
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\n((message: string?, level: number?) -> string)\n& ((thread: thread, message: string?, level: number?) -> string)\n```"
+    }
+   }
+  },
+  "ph2d.set": {
+   "pos": {
+    "line": 14,
+    "character": 7
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction ph2d.set(entity: number, field: \"rotation\" | \"scale_x\" | \"scale_y\" | \"x\" | \"y\", value: number): ()\n```\n----------\nWrites a pose field; applied at the end of the tick (everyone reads the same photo)."
+    }
+   }
+  },
+  "ph2d.property": {
+   "pos": {
+    "line": 0,
+    "character": 5
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction ph2d.property(name: string, default: Color | Vec2 | boolean | number | string, options: PropertyOptions?): ()\n```\n----------\nDeclares an Inspector property; only at the top of the script."
+    }
+   }
+  },
+  "ph2d (a tabela)": {
+   "pos": {
+    "line": 14,
+    "character": 2
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\ntype ph2d = {\n    attach_script: (entity: number, script: string) -> (),\n    color: (r: number, g: number, b: number, a: number?) -> {\n        __kind: \"color\",\n        a: number,\n        b: number,\n        g: number,\n        r: number\n    },\n    despawn: (entity: number) -> (),\n    emit: (signal: string) -> (),\n    find_by_name: (name: string) -> number?,\n    get: (entity: number, field: \"rotation\" | \"scale_x\" | \"scale_y\" | \"x\" | \"y\") -> number?,\n    input: (key: string) -> number?,\n    property: (name: string... *TRUNCATED*\n```\n----------\nThe PH2D scene API: move objects, read input, signals, properties, values."
+    }
+   }
+  },
+  "motion.fire": {
+   "pos": {
+    "line": 15,
+    "character": 9
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction motion.fire(trigger: string): ()\n```\n----------\nFires a trigger input of the Motion graph."
+    }
+   }
+  },
+  "PoseField (tipo nosso)": {
+   "pos": {
+    "line": 2,
+    "character": 13
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\ntype PoseField = \"rotation\" | \"scale_x\" | \"scale_y\" | \"x\" | \"y\"\n```"
+    }
+   }
+  },
+  "update (gancho)": {
+   "pos": {
+    "line": 3,
+    "character": 9
+   },
+   "definition": [
+    {
+     "range": {
+      "end": {
+       "character": 15,
+       "line": 3
+      },
+      "start": {
+       "character": 9,
+       "line": 3
+      }
+     },
+     "uri": "file:///ph2d-project/ajuda.luau"
+    }
+   ],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nfunction update(self: { id: number }, dt: number): ()\n```"
+    }
+   }
+  },
+  "self.id (campo do motor)": {
+   "pos": {
+    "line": 14,
+    "character": 16
+   },
+   "definition": [],
+   "hover": {
+    "contents": {
+     "kind": "markdown",
+     "value": "```luau\nnumber\n```"
+    }
+   }
+  }
+ },
+ "args": [
+  "/home/enio/.cache/ph2d/luau-lsp/1.70.1/luau-lsp",
+  "lsp",
+  "--stdio",
+  "--definitions:@ph2d=/home/enio/.cache/ph2d/luau-lsp/1.70.1/api/ph2d-5f3b24ab50658691.d.luau",
+  "--docs=/home/enio/.cache/ph2d/luau-lsp/1.70.1/api/ph2d-docs-2649bfff572254a5.json"
+ ],
+ "loadavg_fim": [
+  "18.22",
+  "16.13",
+  "18.99"
+ ]
+}

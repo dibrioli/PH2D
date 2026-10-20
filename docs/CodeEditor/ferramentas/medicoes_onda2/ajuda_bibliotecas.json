@@ -1,0 +1,119 @@
+{
+ "math": [
+  "abs",
+  "acos",
+  "asin",
+  "atan",
+  "atan2",
+  "ceil",
+  "clamp",
+  "cos",
+  "cosh",
+  "deg",
+  "e",
+  "exp",
+  "floor",
+  "fmod"
+ ],
+ "string": [
+  "byte",
+  "char",
+  "find",
+  "format",
+  "gmatch",
+  "gsub",
+  "len",
+  "lower"
+ ],
+ "table": [
+  "clear",
+  "clone",
+  "concat",
+  "create",
+  "find",
+  "foreach",
+  "foreachi",
+  "freeze",
+  "getn",
+  "insert"
+ ],
+ "buffer": [
+  "copy",
+  "create",
+  "fill",
+  "fromstring",
+  "len",
+  "readbits",
+  "readf32",
+  "readf64",
+  "readi16"
+ ],
+ "vector": [
+  "abs",
+  "angle",
+  "ceil",
+  "clamp",
+  "create",
+  "cross",
+  "dot",
+  "floor",
+  "lerp",
+  "magnitude"
+ ],
+ "bit32": [
+  "arshift",
+  "band",
+  "bnot",
+  "bor",
+  "btest",
+  "bxor",
+  "byteswap",
+  "countlz",
+  "countrz",
+  "extract",
+  "lrotate",
+  "lshift"
+ ],
+ "utf8": [
+  "char",
+  "charpattern",
+  "codepoint",
+  "codes",
+  "len",
+  "offset"
+ ],
+ "os": [
+  "clock",
+  "date",
+  "difftime"
+ ],
+ "coroutine": [
+  "close",
+  "create",
+  "isyieldable",
+  "resume",
+  "running",
+  "status",
+  "wrap",
+  "yield"
+ ],
+ "debug": [
+  "info",
+  "traceback"
+ ],
+ "ph2d": [
+  "attach_script",
+  "color",
+  "despawn",
+  "emit",
+  "find_by_name",
+  "get",
+  "input",
+  "property"
+ ],
+ "motion": [
+  "color",
+  "fire",
+  "set"
+ ]
+}

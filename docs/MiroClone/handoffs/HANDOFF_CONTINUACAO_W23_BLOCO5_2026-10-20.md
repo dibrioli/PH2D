@@ -50,6 +50,7 @@ Gates por nome verdes (acima + `ph2d-board-excalidraw` inteira 48 · 4 ignorados
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-MiroClone && ./target/smoke/ph2d-host-desktop` (recompile antes:
    `cargo build --profile smoke -p ph2d-host-desktop`).
-2. Na cena, seleccione dois objectos (uma imagem e um vector), botão direito num deles → «Send to board…» → escolha um quadro.
+2. Na lista **Hierarchy**, seleccione duas linhas (uma imagem e um vector; Ctrl+clique), botão direito numa DELAS (na
+   lista — a cena não tem menu de botão direito para objectos) → «Send to board…» → escolha um quadro.
 3. Tem de acontecer: os dois aparecem no quadro, no meio da vista, seleccionados.
 4. Deu errado se só um aparecer, se aparecer um aviso sem nome («Left out: , …») ou se nada acontecer.

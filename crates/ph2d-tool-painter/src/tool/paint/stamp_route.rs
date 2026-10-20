@@ -218,6 +218,12 @@ impl PainterTool {
             self.stamp_dabs_routed(dabs);
             return;
         }
+        // O lote que JÁ está no plano do traço (L8/L5, `traco_plano::dentro_do_plano`): veio pela porta do despacho
+        // (as corridas da ponta de N imagens) e vai direto às rotas — nem gate nem plano outra vez.
+        if self.paint.acumulando_no_plano && self.traco_no_plano() {
+            self.stamp_dabs_routed(dabs);
+            return;
+        }
         // Two footprint gates share ONE session: the Sculpt-style protection mask (freeze painted texels)
         // and the Selection mask (restrict paint to the selected region, ADR-0103). The paint accumulates
         // free of both and the keep factor — their product — is applied once per texel; `stamp_dabs_gated`

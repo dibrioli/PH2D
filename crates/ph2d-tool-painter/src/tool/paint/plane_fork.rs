@@ -194,17 +194,16 @@ pub(super) fn fork_canvas<'a>(
 /// tela logo depois encontra o tile já tomado, não recaptura, e o journal jura que a tela começou o
 /// passo com os bytes do scratch. Foi exatamente isso que o censo do degrau 1 pegou (11 dos 12).
 ///
-/// A cura é um contador de profundidade, não um guard com `Drop`: os dois sítios seguram `&mut self`
-/// por dentro do trecho trocado, e um `Drop` estenderia o empréstimo até o fim do escopo (os 14
-/// `E0499` que o S1 já mediu). Cada chamada é **uma** troca, então a paridade das chamadas é a
-/// própria paridade das trocas.
+/// A cura é uma PILHA de profundidade (`WriteState::toggle_foreign_plane`), não um guard com `Drop`: os
+/// sítios seguram `&mut self` por dentro do trecho trocado, e um `Drop` estenderia o empréstimo até o fim do
+/// escopo (os 14 `E0499` que o S1 já mediu). Cada chamada é **uma** troca; devolver o plano do topo é sair.
 pub(crate) fn swap_canvas_plane(
     canvas: &mut Arc<Vec<u8>>,
     other: &mut Arc<Vec<u8>>,
     w: &WriteState,
 ) {
     std::mem::swap(canvas, other);
-    w.toggle_foreign_plane();
+    w.toggle_foreign_plane(Arc::as_ptr(canvas) as usize, Arc::as_ptr(other) as usize);
 }
 
 /// **A porta da SUBSTITUIÇÃO** — o plano inteiro é trocado por outro (Fill, crop, resize, o Reset do

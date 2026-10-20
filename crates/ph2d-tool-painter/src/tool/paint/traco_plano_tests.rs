@@ -414,3 +414,197 @@ fn o_tip_clean_nao_e_um_fall_off_e_o_fall_off_chega_ao_wet() {
         "não esmaece ao longo: {caindo:?}"
     );
 }
+
+/// ⭐ **Revisão 1 — o plano guarda a mistura K–M do pincel**: com Pigment, o azul sobre o amarelo dá o verde do
+/// carimbo de hoje; o plano (o tecto inerte 1,0) compõe com a MESMA mistura — ± 3/255 em todo texel a mais de um
+/// texel da borda do disco (medido: 3 no ombro, o K–M em vários passos × num passo; 1 no miolo). Vermelho antes da cura: o plano compunha sem pigmento (o miolo ficava AZUL, ~180/255).
+/// ⚠️ Medido: na franja de um texel (cobertura < 1/255) o K–M é íngreme — `t = 0,02` de azul tira 14/255 ao
+/// vermelho do amarelo — e o alfa de 8 bits do plano arredonda-a a zero: até 14/255 em ~50 valores da franja.
+#[test]
+fn o_plano_mistura_o_pigmento_como_o_carimbo() {
+    let b = BrushSpec {
+        pigment: true,
+        pigment_mix: 1.0,
+        strength: 0.7,
+        ..pincel(10.0)
+    };
+    let pts: Vec<[f32; 2]> = (0..=40).map(|k| [20.0 + 4.0 * k as f32, 50.0]).collect();
+    let amarelo = [235, 200, 30, 255];
+    let mut hoje = tool(200, 100, amarelo, b);
+    traco(&mut hoje, &pts, true);
+    let tecto = TracoComposto {
+        tecto: 1.0,
+        ..TracoComposto::NEUTRO
+    };
+    let mut plano = tool(200, 100, amarelo, BrushSpec { traco: tecto, ..b });
+    traco(&mut plano, &pts, true);
+    let i = ((50 * 200 + 100) * 4) as usize;
+    assert!(
+        hoje.canvas_rgba[i + 1] > hoje.canvas_rgba[i + 2],
+        "fixtura: o K–M de hoje dá verde"
+    );
+    // A distância de cada texel ao segmento do traço (x 20..180, y 50).
+    let dentro = |p: usize| {
+        let (x, y) = ((p % 200) as f32 + 0.5, (p / 200) as f32 + 0.5);
+        let dx = (x - x.clamp(20.0, 180.0)).abs();
+        (dx * dx + (y - 50.0) * (y - 50.0)).sqrt() <= 10.0 - 1.5
+    };
+    let (mut miolo, mut franja, mut n_franja) = (0u8, 0u8, 0usize);
+    for (k, (a, b)) in hoje
+        .canvas_rgba
+        .iter()
+        .zip(plano.canvas_rgba.iter())
+        .enumerate()
+    {
+        let d = a.abs_diff(*b);
+        if dentro(k / 4) {
+            miolo = miolo.max(d);
+        } else {
+            franja = franja.max(d);
+            n_franja += usize::from(d > 2);
+        }
+    }
+    assert!(
+        miolo <= 3,
+        "o plano desviou {miolo}/255 da mistura K–M do carimbo"
+    );
+    assert!(
+        franja <= 16 && n_franja <= 80,
+        "a franja: {franja}/255 em {n_franja} valores"
+    );
+}
+
+/// ⭐ **Revisão 6 — o traço curto e o toque** (a lei do Procreate: cabeça + cauda ≤ comprimento, as duas janelas
+/// escalam). O toque com cabeça e cauda armadas fica o PONTO cheio (não encolhe a 1 px ao levantar); o traço de
+/// 40 px com janelas de 60 + 60 px afila simétrico e chega à largura cheia no meio.
+#[test]
+fn o_toque_e_o_traco_curto_escalam_as_janelas() {
+    let afilado = |end: f32| {
+        let mut b = pincel(10.0);
+        b.hardness = 1.0;
+        b.taper.start = 3.0;
+        b.taper.end = end;
+        b
+    };
+    let cheio = {
+        let mut t = tool(
+            400,
+            100,
+            [0; 4],
+            BrushSpec {
+                hardness: 1.0,
+                ..pincel(10.0)
+            },
+        );
+        traco(&mut t, &[[200.0, 50.0], [200.0, 50.0]], true);
+        altura(&t, 200)
+    };
+    let mut toque = tool(400, 100, [0; 4], afilado(3.0));
+    traco(&mut toque, &[[200.0, 50.0], [200.0, 50.0]], true);
+    assert!(
+        altura(&toque, 200) + 2 >= cheio,
+        "o toque encolheu: {} × {cheio}",
+        altura(&toque, 200)
+    );
+    let mut curto = tool(400, 100, [0; 4], afilado(3.0));
+    let pts: Vec<[f32; 2]> = (0..=10).map(|k| [180.0 + 4.0 * k as f32, 50.0]).collect();
+    traco(&mut curto, &pts, true);
+    let max = (180..=220).map(|x| altura(&curto, x)).max().unwrap();
+    assert!(
+        max + 2 >= cheio,
+        "o traço curto não chega à largura cheia: {max} × {cheio}"
+    );
+    // As pontas pintadas (o fim do traço é o último dab, não o ponteiro).
+    let tinta: Vec<u32> = (0..400).filter(|&x| altura(&curto, x) > 0).collect();
+    let (x0, x1) = (tinta[0], *tinta.last().unwrap());
+    for k in (3..(x1 - x0) / 2).step_by(2) {
+        let (h, c) = (altura(&curto, x0 + k), altura(&curto, x1 - k));
+        assert!(
+            h.abs_diff(c) <= 2,
+            "a {k} px de {x0}..{x1}: cabeça {h} × cauda {c}"
+        );
+    }
+}
+
+/// ⭐ **Revisão 5 — a cauda re-carimba com o MESMO sorteio**: com o grão em «Random» (um desvio sorteado por dab),
+/// a faixa logo DENTRO da janela da cauda — tinta dos dabs de antes dela e dos primeiros da cauda, ainda à largura
+/// cheia — é a do mesmo traço sem cauda (± 8/255). Vermelho antes da cura: o re-carimbo sorteava de novo (costura).
+#[test]
+fn a_cauda_nao_costura_o_grao_aleatorio() {
+    let grao = |end: f32| {
+        let mut b = pincel(10.0);
+        b.texture = ph2d_painter_brush::TextureSettings {
+            kind: ph2d_painter_brush::TextureKind::Noise,
+            mapping: ph2d_painter_brush::TextureMapping::Random,
+            ..b.texture
+        };
+        b.grain_depth = 1.0;
+        b.taper.end = end;
+        b.traco.tecto = 1.0; // o plano armado nos dois: só a cauda muda
+        b
+    };
+    let pts: Vec<[f32; 2]> = (0..=80).map(|k| [40.0 + 4.0 * k as f32, 50.0]).collect();
+    let mut sem = tool(400, 100, [255, 255, 255, 255], grao(0.0));
+    traco(&mut sem, &pts, true);
+    let mut com = tool(400, 100, [255, 255, 255, 255], grao(3.0));
+    traco(&mut com, &pts, true);
+    // A janela da cauda começa em x = 360 − 60 = 300; a faixa limpa começa um raio antes.
+    let pior = (290..298)
+        .flat_map(|x| (35..65).map(move |y| (x, y)))
+        .map(|(x, y)| {
+            let i = ((y * 400 + x) * 4) as usize;
+            (0..4)
+                .map(|k| sem.canvas_rgba[i + k].abs_diff(com.canvas_rgba[i + k]))
+                .max()
+                .unwrap()
+        })
+        .max()
+        .unwrap();
+    assert!(
+        pior <= 8,
+        "a cauda costurou o grão aleatório: {pior}/255 na faixa de antes dela"
+    );
+}
+
+/// ⭐ **Revisão 10 — trocar de documento a meio do traço abandona o plano** (a lei do cancelar): ele segurava duas
+/// telas do documento velho.
+#[test]
+fn o_reset_abandona_o_plano_do_traco() {
+    let b = BrushSpec {
+        traco: TracoComposto {
+            tecto: 0.5,
+            ..TracoComposto::NEUTRO
+        },
+        ..pincel(10.0)
+    };
+    let mut t = tool(200, 100, [0; 4], b);
+    traco(&mut t, &[[20.0, 50.0], [60.0, 50.0], [100.0, 50.0]], false);
+    assert!(t.paint.plano_do_traco.is_some(), "fixtura: o plano armou");
+    t.reset_transient_edit_state();
+    assert!(
+        t.paint.plano_do_traco.is_none(),
+        "o plano sobreviveu ao reset"
+    );
+}
+
+/// ⭐ **Revisão 7 — trocas de plano ANINHADAS** (o gate de proteção e o plano do traço por dentro): o journal sabe
+/// que está fora da tela até à ÚLTIMA saída. Vermelho antes da cura: o XOR dava «na tela» depois de duas entradas.
+#[test]
+fn as_trocas_de_plano_aninhadas_ficam_fora_da_tela() {
+    use std::sync::Arc;
+    let w = crate::undo::window::WriteState::default();
+    let (mut tela, mut livre, mut plano) = (
+        Arc::new(vec![1u8]),
+        Arc::new(vec![2u8]),
+        Arc::new(vec![3u8]),
+    );
+    super::plane_fork::swap_canvas_plane(&mut tela, &mut livre, &w);
+    assert!(w.on_foreign_plane());
+    super::plane_fork::swap_canvas_plane(&mut tela, &mut plano, &w);
+    assert!(w.on_foreign_plane(), "duas entradas: ainda fora da tela");
+    super::plane_fork::swap_canvas_plane(&mut tela, &mut plano, &w);
+    assert!(w.on_foreign_plane(), "uma saída: ainda no plano livre");
+    super::plane_fork::swap_canvas_plane(&mut tela, &mut livre, &w);
+    assert!(!w.on_foreign_plane(), "as duas saídas: de volta à tela");
+    assert_eq!(*tela, vec![1u8]);
+}

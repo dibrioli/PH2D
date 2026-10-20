@@ -21,7 +21,7 @@
 //! ⚠️ **O neutro não arma o plano** ([`TracoComposto::is_active`]): o carimbo de sempre, ao bit.
 
 use crate::blend::{BrushBlend, blend_over};
-use crate::blend_vazio::blend_over_modo;
+use crate::blend_vazio::blend_over_pigment_modo;
 
 /// A largura máxima da orla (px) — a faixa do Spread da Watercolor (`edge_spread` 1..48), a mesma conta.
 pub const LARGURA_MAX_PX: f32 = 48.0;
@@ -73,13 +73,14 @@ impl TracoComposto {
     }
 
     /// ⭐ **A composição de um texel**: o plano `plano` (RGBA reto, o traço em Normal sobre o transparente)
-    /// sobre a base `base`, no `modo` do pincel (`vazio` = a fórmula geral do W3C), com o `aro` da cobertura
-    /// do plano (`0` sem orla).
+    /// sobre a base `base`, no `modo` do pincel (`vazio` = a fórmula geral do W3C; `pigmento` = a mistura K–M do
+    /// pincel, `effective_pigment_mix` — a do carimbo de sempre), com o `aro` da cobertura do plano (`0` sem orla).
     #[must_use]
     pub fn compoe(
         &self,
         modo: BrushBlend,
         vazio: bool,
+        pigmento: f32,
         base: [f32; 4],
         plano: [f32; 4],
         aro: f32,
@@ -96,7 +97,7 @@ impl TracoComposto {
             a *= (1.0 - m + m * 2.0 * aro).clamp(0.0, 1.0);
         }
         let cor = [plano[0], plano[1], plano[2]];
-        let mut out = blend_over_modo(modo, base, cor, a, vazio);
+        let mut out = blend_over_pigment_modo(modo, base, cor, a, pigmento, vazio);
         let q = self.queimada.clamp(0.0, 1.0);
         if q > 0.0 && aro > 0.0 {
             let aq = q * (2.0 * aro).min(1.0) * plano[3].clamp(0.0, 1.0);
@@ -123,7 +124,14 @@ mod tests {
             tecto: 0.4,
             ..TracoComposto::NEUTRO
         };
-        let o = t.compoe(BrushBlend::Mix, false, [0.0; 4], [0.1, 0.2, 0.9, 1.0], 0.0);
+        let o = t.compoe(
+            BrushBlend::Mix,
+            false,
+            0.0,
+            [0.0; 4],
+            [0.1, 0.2, 0.9, 1.0],
+            0.0,
+        );
         assert!((o[3] - 0.4).abs() < 1e-6);
     }
 
@@ -135,8 +143,8 @@ mod tests {
             ..TracoComposto::NEUTRO
         };
         let p = [0.1, 0.2, 0.9, 0.8];
-        let miolo = t.compoe(BrushBlend::Mix, false, [0.0; 4], p, 0.0)[3];
-        let orla = t.compoe(BrushBlend::Mix, false, [0.0; 4], p, 0.5)[3];
+        let miolo = t.compoe(BrushBlend::Mix, false, 0.0, [0.0; 4], p, 0.0)[3];
+        let orla = t.compoe(BrushBlend::Mix, false, 0.0, [0.0; 4], p, 0.5)[3];
         assert!((miolo - 0.8 * 0.4).abs() < 1e-6, "{miolo}");
         assert!((orla - 0.8).abs() < 1e-6, "{orla}");
     }

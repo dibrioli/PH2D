@@ -146,13 +146,14 @@ const fn union(a: Region, b: Region) -> Region {
 #[derive(Clone, Debug, Default)]
 pub struct WriteState {
     win: std::cell::Cell<WriteWindow>,
-    /// Quantas trocas de plano estão de pé — enquanto for ímpar, o campo `canvas_rgba` do tool hospeda
-    /// um plano que **não é a tela** e o journal do canvas não pode capturar dele.
+    /// As trocas de plano DE PÉ, como uma PILHA — o endereço do plano que cada uma guardou fora. Enquanto não
+    /// estiver vazia, o campo `canvas_rgba` do tool hospeda um plano que **não é a tela** e o journal do canvas
+    /// não pode capturar dele.
     ///
-    /// Contador e não booleano porque a paridade é o invariante: cada
-    /// [`swap_canvas_plane`](crate::tool::paint::plane_fork::swap_canvas_plane) é **uma** troca, e
-    /// aninhá-las (o gate por dentro da máscara) tem de voltar ao plano certo na ordem inversa.
-    foreign_plane: std::cell::Cell<u32>,
+    /// ⛔ Era um XOR de paridade: duas trocas ANINHADAS (o gate de proteção e o plano do traço da L8 por dentro
+    /// dele) davam paridade par — o journal capturava o plano do traço como «antes» da tela. A pilha sabe se
+    /// uma troca ENTRA (guarda um plano novo) ou SAI (devolve o do topo) sem mudar a porta.
+    foreign_plane: std::cell::RefCell<Vec<usize>>,
     /// Os bytes velhos do CANVAS, por tile. ⚠️ **Só em debug/test** enquanto o journal for uma REDE de
     /// verificação e não a fonte do undo: capturar *e* forkar seria pagar as duas coisas (doc 28 §7).
     #[cfg(any(test, debug_assertions))]
@@ -285,8 +286,16 @@ impl WriteState {
 
     /// Uma troca de plano começou — ou terminou. Ver
     /// [`swap_canvas_plane`](crate::tool::paint::plane_fork::swap_canvas_plane), a única porta.
-    pub(crate) fn toggle_foreign_plane(&self) {
-        self.foreign_plane.set(self.foreign_plane.get() ^ 1);
+    ///
+    /// `dentro` = o plano que a troca pôs no campo; `fora` = o que ela tirou de lá. Devolver o plano do topo é
+    /// SAIR; qualquer outra troca ENTRA.
+    pub(crate) fn toggle_foreign_plane(&self, dentro: usize, fora: usize) {
+        let mut p = self.foreign_plane.borrow_mut();
+        if p.last() == Some(&dentro) {
+            p.pop();
+        } else {
+            p.push(fora);
+        }
     }
 
     /// `true` enquanto o campo `canvas_rgba` hospeda um plano que não é a tela.
@@ -297,7 +306,7 @@ impl WriteState {
     #[cfg(any(test, debug_assertions))]
     #[must_use]
     pub(crate) fn on_foreign_plane(&self) -> bool {
-        self.foreign_plane.get() & 1 == 1
+        !self.foreign_plane.borrow().is_empty()
     }
 
     /// **Captura o canvas antes de ele ser escrito** — `area` em ELEMENTOS (`x*4` para RGBA), `None`

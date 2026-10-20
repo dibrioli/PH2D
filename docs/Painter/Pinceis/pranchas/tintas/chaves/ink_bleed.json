@@ -1,0 +1,18 @@
+{
+ "chave": {
+  "gestos_A": {
+   "1": "nosso",
+   "2": "vizinho"
+  },
+  "tamanhos_A": {
+   "1": "vizinho",
+   "2": "nosso"
+  },
+  "sobre_A": {
+   "1": "vizinho",
+   "2": "nosso"
+  }
+ },
+ "nosso": "/tmp/ph2d_exame_tintas/candidato/ink_bleed",
+ "vizinho": "/tmp/ph2d_exame_tintas/biblioteca/hard_round"
+}

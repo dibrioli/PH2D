@@ -1,0 +1,48 @@
+{
+ "prancha": "fountain_pen_mypaint.png",
+ "linhas": [
+  "gestos_A",
+  "gestos_B",
+  "tamanhos_A",
+  "tamanhos_B",
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "gestos_A": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  },
+  "gestos_B": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  },
+  "tamanhos_A": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  },
+  "tamanhos_B": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "sobre_A": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  },
+  "sobre_B": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  }
+ },
+ "quem": {
+  "oraculo": "Fountain_SF_1",
+  "nosso": "Fountain Pen (escala 0.3)",
+  "vizinho": "Dip Pen (d 0.649, limiar 0.591)"
+ }
+}

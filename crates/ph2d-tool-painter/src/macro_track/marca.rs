@@ -237,6 +237,11 @@ impl MarcaDoArtista {
         self.agua_parou
     }
 
+    /// A água da gravação parou em `c` (a 1.ª vez fica: depois disso a imagem já não a tem viva).
+    pub(crate) fn para_a_agua(&mut self, c: MarcaDaAgua) {
+        self.agua_parou.get_or_insert(c);
+    }
+
     #[must_use]
     pub fn tamanho(&self) -> (u32, u32) {
         (self.w, self.h)
@@ -508,8 +513,8 @@ impl MarcaDoArtista {
         self.versao = versao_nova();
     }
 
-    /// **O formato gravado** (`FORMATO` 2): versão, tamanho, época, e cada ladrilho — as coberturas e,
-    /// só onde `0 < c < CHEIA`, o que estava por baixo.
+    /// **O formato gravado** (`FORMATO` 3): versão, tamanho, época, cada ladrilho — as coberturas e, só
+    /// onde `0 < c < CHEIA`, o que estava por baixo — e onde a água da gravação parou (W14).
     #[must_use]
     pub fn codifica(&self) -> Vec<u8> /* COLOR-RAW-OK: a cobertura e o píxel guardado, bytes do formato */
     {
@@ -531,6 +536,15 @@ impl MarcaDoArtista {
                 }
             }
         }
+        // `0` = a água não parou; `1` + o passo e o estágio em voo (`u8::MAX` = nenhum).
+        match self.agua_parou {
+            None => out.push(0),
+            Some(a) => {
+                out.push(1);
+                out.extend_from_slice(&a.frame.to_le_bytes());
+                out.push(a.estagio.unwrap_or(u8::MAX));
+            }
+        }
         out
     }
 
@@ -549,7 +563,7 @@ impl MarcaDoArtista {
         let mut m = Self::nova(w, h, epoca);
         match versao {
             FORMATO_DOS_BITS => m.satura_bits(&le_os_bits(&mut r, palavras_para(w, h))?),
-            FORMATO => {
+            FORMATO_DA_COBERTURA | FORMATO => {
                 let n = r.u32()? as usize;
                 if n > (w.div_ceil(LADO) * h.div_ceil(LADO)) as usize {
                     return None;
@@ -570,6 +584,16 @@ impl MarcaDoArtista {
                         }
                     }
                     l.insert((lx, ly), Arc::new(t));
+                }
+                if versao == FORMATO {
+                    m.agua_parou = match r.bytes(1)?[0] {
+                        0 => None,
+                        1 => Some(MarcaDaAgua {
+                            frame: r.u64()?,
+                            estagio: Some(r.bytes(1)?[0]).filter(|&e| e != u8::MAX),
+                        }),
+                        _ => return None,
+                    };
                 }
                 if !r.0.is_empty() {
                     return None;
@@ -599,8 +623,10 @@ fn le_os_bits(r: &mut Leitor<'_>, n: usize) -> Option<Vec<u64>> {
     Some(p)
 }
 
-/// A versão do formato de [`MarcaDoArtista::codifica`] (W10: a cobertura).
-const FORMATO: u8 = 2;
+/// A versão do formato de [`MarcaDoArtista::codifica`] (W14: onde a água da gravação parou).
+const FORMATO: u8 = 3;
+/// A da W10 (a cobertura, sem a água), que ainda se lê.
+const FORMATO_DA_COBERTURA: u8 = 2;
 /// A da W9 (um bit por texel), que ainda se lê.
 const FORMATO_DOS_BITS: u8 = 1;
 

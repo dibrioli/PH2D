@@ -68,3 +68,41 @@ fn no_fim_do_clipe_a_ranhura_corre_a_agua_ate_a_imagem_do_artista() {
         );
     }
 }
+
+/// ⭐ **Gravado com a água da gravação a correr e reaberto, a cauda pára na imagem gravada**: o ficheiro
+/// guarda onde a imagem a tem (mesmo sem tinta do artista — uma marca vazia não se gravava), e no editor a
+/// água continua. Reaberto (a sprite, sem o Painter), a ranhura no fim do clipe é a imagem gravada.
+#[test]
+fn gravado_com_a_agua_a_correr_e_reaberto_a_cauda_para_na_imagem_gravada() {
+    let mut world = World::new();
+    let e = world.spawn(MacroTempo { segundos: 0.0 }).id();
+    let (mut t, doc, d) = ph2d_tool_painter::macro_track::roteiro::grava_duas_horizontais_ligado_em(
+        L,
+        e.to_bits(),
+        PaintMedia::WetPaint,
+    )
+    .expect("grava");
+    let mut c = Clipe::com(world, e, &doc);
+    let _ = c.quadro_ligado(0.1, Some(&mut t), &mut nunca);
+    (0..20).for_each(|_| tique(&mut t));
+    assert!(!t.agua_parada(), "controlo: a água corre ao gravar");
+    let marcas = c.palcos.marcas_a_gravar(Some(&t));
+    assert!(
+        t.marca_do_artista()
+            .is_some_and(|m| m.agua_da_gravacao_parou().is_none()),
+        "no editor a água da gravação continua depois de gravar"
+    );
+    let gravada = t.imagem_aplicada().expect("documento").0;
+    let mut r = Clipe::novo(&doc);
+    assert!(r.palcos.restaura_marcas(&marcas), "o ficheiro abre");
+    r.palcos.dt_do_quadro(DT);
+    let mut le = |_: u64, _: &mut Placa| Some((gravada.clone(), L, L));
+    // A água gravada é a de 20 quadros depois do Parar: 200 quadros chegam e sobram (um quadro sem um passo
+    // inteiro da água não muda a ranhura — parar no 1.º igual cortaria a cauda).
+    let mut ranhura = Vec::new();
+    for _ in 0..200 {
+        ranhura = r.quadro_ligado(d, None, &mut le);
+    }
+    let dv = desvio(&ranhura, &premul(&gravada));
+    assert!(dv <= 1, "reaberto, a cauda não parou na imagem gravada ({dv} níveis)");
+}

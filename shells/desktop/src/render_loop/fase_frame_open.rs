@@ -76,7 +76,7 @@ impl crate::App {
         // acabou de repor, para sempre.
         self.fase_skeleton_drives();
         // As macros do Painter em cena: DEPOIS do dreno da timeline (o `MacroTempo` deste quadro).
-        let preview_overrides = self.fase_macros_do_painter(preview_overrides);
+        let preview_overrides = self.fase_macros_do_painter(preview_overrides, dt);
         self.fase_sim_extract(dt, preview_overrides, sheet_preview, ppm, default_filter);
         Some((report, tool_preview_bits))
     }

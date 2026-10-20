@@ -93,6 +93,37 @@ fn o_delta_devolve_os_ladrilhos_de_antes_e_o_refazer_os_de_depois() {
     assert!(outra.vazia());
 }
 
+/// W14: o `FORMATO` 3 guarda onde a água da gravação parou (a 1.ª vez fica); o da W10 abre sem ela.
+#[test]
+fn o_formato_3_guarda_onde_a_agua_parou_e_o_da_w10_abre_sem_ela() {
+    use crate::macro_track::MarcaDaAgua;
+    let mut m = MarcaDoArtista::nova(64, 64, 5);
+    m.marca_disco(10.0, 10.0, 4.0);
+    let mut w10 = m.codifica();
+    assert_eq!(w10.pop(), Some(0), "sem água parada, o fim é um zero");
+    w10[0] = FORMATO_DA_COBERTURA;
+    let l = MarcaDoArtista::descodifica(&w10).expect("o da W10 abre");
+    assert_eq!(l.ladrilhos(), m.ladrilhos());
+    assert_eq!(l.agua_da_gravacao_parou(), None);
+    for estagio in [None, Some(3)] {
+        let mut p = m.clone();
+        p.para_a_agua(MarcaDaAgua {
+            frame: 1234,
+            estagio,
+        });
+        p.para_a_agua(MarcaDaAgua {
+            frame: 9,
+            estagio: None,
+        });
+        let l = MarcaDoArtista::descodifica(&p.codifica()).expect("lê-se");
+        let parou = Some(MarcaDaAgua {
+            frame: 1234,
+            estagio,
+        });
+        assert_eq!(l.agua_da_gravacao_parou(), parou, "a 1.ª fica e volta igual");
+    }
+}
+
 #[test]
 fn o_formato_gravado_volta_igual_e_o_da_w9_abre_cheio() {
     let mut m = MarcaDoArtista::nova(300, 200, 0xdead_beef);

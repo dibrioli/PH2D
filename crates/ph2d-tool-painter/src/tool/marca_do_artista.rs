@@ -19,6 +19,17 @@ impl PainterTool {
         self.undo.marca.marca.as_ref()
     }
 
+    /// **A marca que um ficheiro guarda** (W14): a do artista e, se a água da gravação ainda corre, o
+    /// estado em que a imagem gravada a fica — reaberta, a água não corre mais.
+    #[must_use]
+    pub fn marca_a_gravar(&self) -> Option<MarcaDoArtista> {
+        let mut m = self.marca_do_artista()?.clone();
+        if let Some(c) = self.wet_agua_da_gravacao_viva() {
+            m.para_a_agua(c);
+        }
+        Some(m)
+    }
+
     /// O pincel cobre cada dab de `dabs`, com o alcance `reach` da ponta (`na_agua` = entram na água).
     pub(crate) fn marca_os_dabs(&mut self, dabs: &[Dab], reach: f32, na_agua: bool) {
         if !self.undo.marca.ativa() {

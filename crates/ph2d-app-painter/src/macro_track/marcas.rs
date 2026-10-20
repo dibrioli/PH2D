@@ -185,7 +185,7 @@ impl PalcosDoPainter {
     /// do Painter ligado, viva). Vazio = nenhuma marca.
     #[must_use]
     pub fn marcas_a_gravar(&self, painter: Option<&PainterTool>) -> Vec<u8> {
-        let mut vivas: BTreeMap<ChaveDaMarca, &MarcaDoArtista> = BTreeMap::new();
+        let mut vivas: BTreeMap<ChaveDaMarca, MarcaDoArtista> = BTreeMap::new();
         for l in self.lidos.values() {
             let Ok(Some(p)) = &l.palco else {
                 continue;
@@ -195,10 +195,12 @@ impl PalcosDoPainter {
             };
             let do_painter = painter
                 .filter(|t| t.bound_document().is_some() && t.bound_document() == p.sprite)
-                .and_then(PainterTool::marca_do_artista)
+                .and_then(PainterTool::marca_a_gravar)
                 .filter(|m| m.epoca() == chave.1);
-            if let Some(m) = do_painter.or_else(|| self.marcas.get(&chave).map(Guardada::vale))
-                && !m.vazia()
+            // Sem tinta do artista, a marca ainda guarda onde a água da gravação parou (W14).
+            if let Some(m) =
+                do_painter.or_else(|| self.marcas.get(&chave).map(|g| g.vale().clone()))
+                && (!m.vazia() || m.agua_da_gravacao_parou().is_some())
             {
                 vivas.insert(chave, m);
             }

@@ -256,8 +256,8 @@ impl MacroEmCena {
     /// da gravação continua `dt_ms`, até assentar ou até `ate` (onde a imagem a guardou,
     /// [`super::marca::MarcaDoArtista::agua_da_gravacao_parou`]). `false` = já não anda.
     pub fn corre_a_cauda(&mut self, dt_ms: f32, ate: Option<super::MarcaDaAgua>) -> bool {
-        let _ = (dt_ms, ate);
-        false
+        let no_fim = self.player.dispatched() >= self.doc.tracks[0].events.len();
+        no_fim && self.erro.is_none() && self.tocador.corre_a_cauda(dt_ms, ate)
     }
 
     /// O tempo até onde a macro já tocou.

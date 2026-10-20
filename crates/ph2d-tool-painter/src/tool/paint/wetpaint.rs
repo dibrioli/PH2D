@@ -164,6 +164,8 @@ pub(crate) struct WetPaintState {
     pub(super) fita: Option<fita::FitaPartilhada>,
     /// O ritmo escrito do worker ([`fita::RitmoDaAgua`]) que cada sessão nova herda — só gates.
     pub(super) ritmo: Option<fita::RitmoDaAgua>,
+    /// O estado da água que a tela mostra (o do último composite da sessão viva) — W14.
+    pub(super) composta: Option<fita::MarcaDaAgua>,
 }
 
 /// A **Heavy Edge** no `1` do slider, em `Sim::sedimenta` (a fracção por passo por unidade de `|g|`).
@@ -204,6 +206,7 @@ impl Default for WetPaintState {
             largura: Some(largura::LeiDaLargura::de_omissao()),
             fita: None,
             ritmo: None,
+            composta: None,
         }
     }
 }
@@ -537,6 +540,7 @@ impl PainterTool {
 
 mod authored_actions; // canvas actions + session birth + facts — child file (LOC cap)
 mod authoring; // o rascunho é a PRÓPRIA água (o preview de autoria) — filho por LOC
+mod cauda; // a água depois do fim de um clipe (W14)
 
 mod composite;
 /// O Solid e os fios na água, pela porta da MÁSCARA do motor (doc 46 item 9).

@@ -123,6 +123,13 @@ impl MarcaViva {
         self.molhada = None;
     }
 
+    /// A água da gravação parou na imagem no estado `c` (W14); a 1.ª vez fica.
+    pub(crate) fn agua_da_gravacao_parou(&mut self, c: crate::macro_track::MarcaDaAgua) {
+        if let Some(m) = self.marca.as_mut().filter(|_| !self.suspensa) {
+            m.para_a_agua(c);
+        }
+    }
+
     /// A sessão `id` é a do artista, viva, e a marca escreve-se.
     pub(crate) fn molhada_viva(&self, id: Option<u64>) -> bool {
         self.ativa() && !self.suspensa && id.is_some() && self.molhada.as_ref().map(|m| m.id) == id

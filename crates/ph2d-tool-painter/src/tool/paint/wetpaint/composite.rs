@@ -73,6 +73,8 @@ impl PainterTool {
             return;
         };
         sess.bring_home();
+        // A tela fica a mostrar a água NESTE estado (W14: onde ela pára se a sessão acabar já).
+        self.paint.wetpaint.composta = Some(fita::MarcaDaAgua::de(&sess.engine));
         // ⚠️ **Células e pixels deixaram de ser a mesma coisa** ([`grid_map`]):
         // a grade tem `ratio` pixels de canvas por célula. O dirty do motor é
         // em CÉLULAS e é clampado à GRADE; o retângulo que este composite

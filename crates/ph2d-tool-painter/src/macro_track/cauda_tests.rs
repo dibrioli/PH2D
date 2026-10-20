@@ -20,13 +20,26 @@ fn tique(t: &mut PainterTool) {
 }
 
 fn assenta(t: &mut PainterTool) -> usize {
-    for q in 0..40_000 {
+    assenta_em(t, false)
+}
+
+/// Quadros até a água parar; `parede` = o worker anda ao relógio de parede (um quadro dorme 1 ms).
+fn assenta_em(t: &mut PainterTool, parede: bool) -> usize {
+    let t0 = std::time::Instant::now();
+    for q in 0.. {
         if t.agua_parada() {
             return q;
         }
+        assert!(
+            t0.elapsed().as_secs() < 120 && (parede || q < 40_000),
+            "a água não assentou"
+        );
         tique(t);
+        if parede {
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
     }
-    panic!("a água não assentou");
+    unreachable!()
 }
 
 /// `(texels que diferem, o maior desvio em níveis)`.
@@ -61,8 +74,18 @@ fn cauda(palco: &mut MacroEmCena, ate: Option<MarcaDaAgua>) -> Vec<Vec<u8>> {
     panic!("a cauda não parou");
 }
 
+/// Os texels que diferem mais de 8 níveis.
+fn acima_de_8(a: &[u8], b: &[u8]) -> usize {
+    a.as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.as_chunks::<4>().0)
+        .filter(|(x, y)| x.iter().zip(*y).any(|(p, q)| p.abs_diff(*q) > 8))
+        .count()
+}
+
 /// ⭐ **Sem o artista tocar, a cauda é a água que o editor correu depois do Parar**: anda aos poucos (nenhum
-/// quadro leva mais de um quarto do salto) e assenta na imagem do fim da gravação, ao byte. ⛔ VERMELHO
+/// quadro leva mais de um quarto do salto visível) e assenta na imagem do fim da gravação, ao byte. ⛔ VERMELHO
 /// antes da W14: o palco fica na tela do Parar e a imagem assentada aparecia de uma vez ao sair do clipe
 /// (sonda W14: 93 % da área pintada a 1024²).
 #[test]
@@ -88,15 +111,17 @@ fn no_fim_do_clipe_a_agua_continua_e_assenta_na_imagem_do_fim() {
         "a cauda não assenta na imagem do fim ({} quadros; no Parar diferiam {salto})",
         telas.len()
     );
+    // A água fresca muda muitos texels por quadro, mas pouco cada um: o salto conta-se acima de 8 níveis.
+    let visivel = acima_de_8(&no_parar, &fim);
     let maior = std::iter::once(&no_parar)
         .chain(&telas)
         .zip(&telas)
-        .map(|(a, b)| diferem(a, b).0)
+        .map(|(a, b)| acima_de_8(a, b))
         .max()
         .unwrap_or(0);
     assert!(
-        telas.len() > 60 && maior * 4 < salto,
-        "a cauda salta: {} quadros, o maior muda {maior} de {salto} texels",
+        telas.len() > 60 && maior * 4 < visivel,
+        "a cauda salta: {} quadros, o maior muda {maior} de {visivel} texels acima de 8 níveis",
         telas.len()
     );
     assert!(
@@ -149,7 +174,7 @@ fn toca_e_confere(nome: &str, (mut t, bytes, dur): (PainterTool, Vec<u8>, f64), 
         });
         tique(&mut t);
     }
-    assenta(&mut t);
+    assenta_em(&mut t, parede);
     let doc = t.imagem_aplicada().expect("documento").0;
     let m = t.marca_do_artista().cloned().expect("a marca");
     let ate = m.agua_da_gravacao_parou();

@@ -583,6 +583,7 @@ impl PalcosDoPainter {
             if !p.toca {
                 continue;
             }
+            cauda::anda(p, self.dt_da_cauda_ms, &self.marcas, atuais.painter);
             let mut a_subir = Subida::Nada;
             if let Some((rgba, w, h)) = p.em_cena.toma_a_tela() {
                 let caixa = p.em_cena.caixa_da_tela().filter(|&(_, _, cw, ch)| {

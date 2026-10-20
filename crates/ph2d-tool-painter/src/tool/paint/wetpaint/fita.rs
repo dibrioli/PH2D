@@ -29,7 +29,7 @@ impl MarcaDaAgua {
     }
 
     /// A ordem dos estados: o passo `f` em voo vem depois do `f − 1` fechado e antes do `f` fechado.
-    fn ordem(self) -> (u64, u16) {
+    pub(crate) fn ordem(self) -> (u64, u16) {
         (self.frame, self.estagio.map_or(u16::MAX, u16::from))
     }
 }

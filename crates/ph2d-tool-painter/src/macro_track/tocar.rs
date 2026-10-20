@@ -8,7 +8,9 @@
 
 use super::inicial::{self, ErroDoInicial};
 use super::passo::{Passo, abs};
-use crate::tool::paint::fita::{self, Divergencia, Fita, FitaPartilhada, RespostaDoWorker};
+use crate::tool::paint::fita::{
+    self, Divergencia, Fita, FitaPartilhada, MarcaDaAgua, RespostaDoWorker,
+};
 use crate::tool::{PainterTool, SemInstantaneo};
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, RasterEditTool, Tool};
 use std::collections::VecDeque;
@@ -213,6 +215,19 @@ impl TocadorDoPainter {
             fila: VecDeque::new(),
             divergiu: None,
         };
+    }
+
+    /// **A água depois do último passo** (W14), no relógio fixo: `dt_ms`, até assentar ou até `ate`.
+    /// `false` = já não anda.
+    pub fn corre_a_cauda(&mut self, dt_ms: f32, ate: Option<MarcaDaAgua>) -> bool {
+        if self.fita_viva {
+            self.passa_ao_relogio_fixo();
+        }
+        let Some(mudou) = self.tool.wet_cauda(dt_ms, ate) else {
+            return false;
+        };
+        self.mudou |= mudou;
+        true
     }
 
     /// Aplica UMA carga da trilha.

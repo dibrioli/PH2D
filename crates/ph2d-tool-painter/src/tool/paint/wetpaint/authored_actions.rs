@@ -62,6 +62,7 @@ impl PainterTool {
         engine.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
         engine.sim.esconde = ph2d_wet_paint::colorops::TINTA_ESCONDE;
         let marca = self.undo.marca.nasce_a_molhada(self.papel);
+        self.paint.wetpaint.composta = None;
         self.paint.wetpaint.session = Some(WetSession {
             engine: EngineSlot::new_here(engine),
             ratio,
@@ -181,6 +182,18 @@ impl PainterTool {
                 sess.engine.mark_dirty_full();
             }
             self.wetpaint_composite_veiled(false);
+        }
+        // A sessão nascida sem a marca (a da gravação) acaba com a marca posta: a imagem guarda a água
+        // dela no estado da tela (W14 — a cauda do clipe pára aqui).
+        if let Some(c) = self.paint.wetpaint.composta.take()
+            && self
+                .paint
+                .wetpaint
+                .session
+                .as_ref()
+                .is_some_and(|s| s.marca.is_none())
+        {
+            self.undo.marca.agua_da_gravacao_parou(c);
         }
         self.paint.wetpaint.session = None;
         self.undo.marca.acaba_a_molhada();

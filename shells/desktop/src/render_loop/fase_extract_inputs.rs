@@ -31,6 +31,7 @@ impl crate::App {
     pub(super) fn fase_macros_do_painter(
         &mut self,
         do_editor: Vec<sim_extract::PreviewOverride>,
+        dt: f32,
     ) -> Vec<sim_extract::PreviewOverride> {
         let Some(gfx) = self.gfx.as_mut() else {
             return do_editor;
@@ -46,6 +47,8 @@ impl crate::App {
             ..
         } = FrameGfx::of(gfx);
         painter_macros.segue(sim.world_mut());
+        // W14: no fim de um clipe a água continua ao relógio do quadro.
+        painter_macros.dt_do_quadro(dt * 1000.0);
         // W8 item 2b: a etapa editada reescreve a imagem; a transação vai com o passo global.
         {
             use crate::hero_intents::texture_edit::{commit_edited_texture, read_sprite_straight};

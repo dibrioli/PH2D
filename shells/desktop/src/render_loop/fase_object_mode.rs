@@ -31,6 +31,12 @@ impl crate::App {
         let request = request
             .or_else(|| ph2d_app_painter::paint_mode::smoke_step(sim, hero))
             .or_else(|| ph2d_app_vec::vector_mode::smoke_step(&mut self.vec, vec_scene, sim, hero));
+        let (tl, ph) = (&mut self.timeline, &mut self.playhead);
+        if let Some(l) =
+            ph2d_app_vec::autokey_cena::step(&mut self.vec, vec_scene, sim, hero, tl, ph)
+        {
+            eprintln!("{l}");
+        }
         ph2d_app_flip::flip_mode::smoke_step(&self.flip_state, hero);
         // ⭐ **As famílias que declaram modos**, compiladas.
         let mut paint = ph2d_app_painter::paint_mode::Family;

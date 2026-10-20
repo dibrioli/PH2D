@@ -113,6 +113,10 @@ pub(crate) fn run(
             (e, sample_pose(src, e))
         })
         .collect();
+    sonda(|| {
+        let pop: Vec<u64> = samples.iter().map(|s| s.0).collect();
+        format!("[autokey] painel={panel_open} armado={armed} populacao={pop:x?}")
+    });
     apply_samples(
         timeline, playhead, &samples, drag_now, armed, performing, ak, toasts,
     );
@@ -343,6 +347,14 @@ fn diff_each_sample(
                 ak.displaced.remove(&entity);
             }
         }
+        sonda(|| {
+            format!(
+                "[autokey] e={entity:#x} capturando={capturing} tocando={playing} solo={solo} \
+                 t={t_diff:.3} casa={:?} pose={pose:?} fila={}",
+                home.as_ref().ok(),
+                to_key.len()
+            )
+        });
         next_baseline.insert(entity, pose);
     }
     refused_now
@@ -545,6 +557,23 @@ mod bone_tests;
 #[cfg(test)]
 #[path = "autokey_cut_clock_tests.rs"]
 mod cut_clock_tests;
+/// `PH2D_AUTOKEY_LOG=1` — o que o Auto Key viu, uma linha quando muda (plano 34: o report do dono
+/// de 19/10 de que ele não gravava formas vetoriais).
+fn sonda(linha: impl FnOnce() -> String) {
+    static LIGADA: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    static ULTIMA: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+    if !*LIGADA.get_or_init(|| std::env::var_os("PH2D_AUTOKEY_LOG").is_some()) {
+        return;
+    }
+    let l = linha();
+    if let Ok(mut u) = ULTIMA.lock()
+        && *u != l
+    {
+        eprintln!("{l}");
+        *u = l;
+    }
+}
+
 #[cfg(test)]
 #[path = "autokey_opacidade_vetor_tests.rs"]
 mod opacidade_vetor_tests;

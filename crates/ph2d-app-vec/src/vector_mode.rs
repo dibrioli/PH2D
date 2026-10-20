@@ -33,7 +33,7 @@ mod route;
 mod scenes;
 
 /// O id da ferramenta do vetor no registo.
-const VECTOR: &str = "vector";
+pub(crate) const VECTOR: &str = "vector";
 
 /// ⭐ **O que o Edit tem em mãos.**
 #[derive(Default)]

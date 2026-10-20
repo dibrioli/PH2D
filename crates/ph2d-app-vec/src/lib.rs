@@ -69,6 +69,8 @@
 //! [HOWTO §1.2]: ../../../docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md
 
 pub mod align_live;
+/// `PH2D_AUTOKEY_SMOKE` — o Auto Key sobre uma forma vetorial (plano 34).
+pub mod autokey_cena;
 pub mod bars_publish;
 pub mod eyedropper;
 pub mod tool_keys;

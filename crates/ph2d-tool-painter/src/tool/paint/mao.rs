@@ -347,6 +347,50 @@ mod tests {
         assert_eq!(MAO_DE_FABRICA, LINHAS_DA_MAO.map(LinhaDaMao::omissao));
     }
 
+    /// ⭐ **A pressão do Digital afina como a do Wet** (L2): as mesmas linhas no cartão de cada meio dão a
+    /// MESMA `Dynamics` e a MESMA `PenTilt` ao traço — a lei é uma, os armazéns é que são dois. Na Watercolor
+    /// as linhas da opacidade não se escrevem (o meio não as lê) e o resto é igual.
+    #[test]
+    fn a_pressao_digital_afina_como_a_do_wet() {
+        let valores = [
+            (Knob::PressureSize, 0.5),
+            (Knob::PressureSizeCurve, 0.7),
+            (Knob::PressureOpacity, 0.4),
+            (Knob::PressureOpacityCurve, 1.5),
+            (Knob::PressureFloor, 0.1),
+            (Knob::PressureCeiling, 0.9),
+            (Knob::PressureSmoothing, 0.3),
+            (Knob::PulledString, 12.0),
+            (Knob::DabRotation, 2.0),
+            (Knob::TiltStart, 20.0),
+            (Knob::TiltFull, 50.0),
+            (Knob::TiltWidth, 1.5),
+            (Knob::TiltLength, 2.0),
+            (Knob::TiltSmooth, 0.4),
+            (Knob::TiltLag, 30.0),
+        ];
+        let mut wet = super::super::super::PainterTool::default();
+        wet.set_paint_media(PaintMedia::WetPaint);
+        for (k, v) in valores {
+            wet.set_mao(LinhaDaMao::Knob(k), v);
+        }
+        for m in [PaintMedia::Digital, PaintMedia::Watercolor, PaintMedia::Impasto] {
+            let mut t = super::super::super::PainterTool::default();
+            t.set_paint_media(m);
+            for (k, v) in valores {
+                t.set_mao(LinhaDaMao::Knob(k), v);
+            }
+            let (d, w) = (t.dinamica_do_traco(), wet.dinamica_do_traco());
+            assert_eq!(t.inclinacao_do_pincel(), wet.inclinacao_do_pincel(), "{m:?}");
+            assert_eq!((d.size_min, d.size_curve, d.pen), (w.size_min, w.size_curve, w.pen), "{m:?}");
+            if m == PaintMedia::Watercolor {
+                assert!(!d.strength_pressure, "a Watercolor não lê a opacidade do dab");
+            } else {
+                assert_eq!(d, w, "{m:?}");
+            }
+        }
+    }
+
     /// Ler e voltar a escrever cada linha não muda um bit dos campos (o painel e o preset leem por [`le`]).
     #[test]
     fn ler_e_escrever_a_mao_e_a_identidade() {

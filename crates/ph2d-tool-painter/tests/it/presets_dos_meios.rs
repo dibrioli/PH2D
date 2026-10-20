@@ -330,3 +330,95 @@ fn gera_os_presets_de_exemplo() {
         eprintln!("{}", f.display());
     }
 }
+
+// ── L2: a mão nos três meios antigos ─────────────────────────────────────────────────────────────────
+
+use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+
+/// Um recto de 160 px a pressão 1 com a caneta inclinada `tilt`, num papel branco: a soma da tinta (255 − R).
+fn recto_inclinado(meio_: PaintMedia, opacidade: f64, tilt: [f32; 2]) -> (u64, Vec<u8>) {
+    let (w, h) = (200u32, 80u32);
+    let mut t = PainterTool::default();
+    t.set_source(vec![255; (w * h * 4) as usize], w, h);
+    t.set_paint_media(meio_);
+    t.set_brush_size_px(8.0);
+    t.set_brush_color_srgb8([20, 20, 20]);
+    t.set_mao(LinhaDaMao::TiltOpacity, opacidade);
+    let cp = |x: f32, phase| CanvasPointer {
+        pos: [x, 40.0],
+        pressure: 1.0,
+        tilt,
+        phase,
+    };
+    t.on_canvas_pointer(cp(20.0, PointerPhase::Down));
+    let mut x = 20.0;
+    while x < 180.0 {
+        x += 2.0;
+        t.on_canvas_pointer(cp(x, PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp(x, PointerPhase::Up));
+    let px = t.run_full().0;
+    let tinta = px
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|p| u64::from(255 - p[0]))
+        .sum();
+    (tinta, px)
+}
+
+/// ⭐ **A inclinação tira opacidade** (L2, o «Tilt → Opacity» do Procreate) no Digital e no Impasto: com a caneta
+/// deitada inteira (81°, acima do `tiltFull` 67,5°) cada dab leva `1 − tiltOpacity` da cobertura — a 1 nada pinta,
+/// a 0,5 menos (a Strength 1 os dabs ACUMULAM, como a pressão na opacidade: medido 0,81 da tinta); de pé, ou com a
+/// linha a 0, é o traço de sempre AO BYTE.
+#[test]
+fn a_caneta_deitada_tira_a_opacidade() {
+    for m in [PaintMedia::Digital, PaintMedia::Impasto] {
+        let (cheia, _) = recto_inclinado(m, 0.0, [0.9, 0.0]);
+        let (meia, _) = recto_inclinado(m, 0.5, [0.9, 0.0]);
+        let (nada, _) = recto_inclinado(m, 1.0, [0.9, 0.0]);
+        let r = meia as f64 / cheia as f64;
+        assert!((0.3..0.9).contains(&r), "{m:?}: deitada a 0,5 leva {r:.3} da tinta");
+        assert_eq!(nada, 0, "{m:?}: deitada inteira a 1 não pinta");
+        assert_eq!(
+            recto_inclinado(m, 0.5, [0.0, 0.0]).1,
+            recto_inclinado(m, 0.0, [0.0, 0.0]).1,
+            "{m:?}: de pé a linha não muda um byte"
+        );
+    }
+}
+
+/// A mão do cartão chega ao traço nos três meios antigos: a cena da bateria (a rampa 0→1) com `pressureSize`
+/// 0,3 já não é a do neutro.
+#[test]
+fn a_mao_do_cartao_chega_ao_traco() {
+    for (m, neutro) in NEUTRO_DE_HOJE {
+        static RECEITAS: [ReceitaDeMeio; 3] = [
+            ReceitaDeMeio {
+                nome: "mao:Digital",
+                meio: PaintMedia::Digital,
+                prepara: pressao_03,
+            },
+            ReceitaDeMeio {
+                nome: "mao:Watercolor",
+                meio: PaintMedia::Watercolor,
+                prepara: pressao_03,
+            },
+            ReceitaDeMeio {
+                nome: "mao:Impasto",
+                meio: PaintMedia::Impasto,
+                prepara: pressao_03,
+            },
+        ];
+        let r = RECEITAS.iter().find(|r| r.meio == m).unwrap();
+        let h = fnv1a(&gestos(&Pincel {
+            nome: r.nome.to_owned(),
+            fonte: Fonte::Meio(r),
+        }));
+        assert_ne!(h, neutro, "{m:?}: a pressão do cartão não chegou ao traço");
+    }
+}
+
+fn pressao_03(t: &mut PainterTool) {
+    t.set_mao(LinhaDaMao::Knob(Knob::PressureSize), 0.3);
+}

@@ -17,6 +17,7 @@ fn o_roteiro_de_cada_variante_e_o_caminho_do_dono_por_ordem() {
         Variante::Parar,
         Variante::Cruza,
         Variante::CruzaMolhada,
+        Variante::Fim,
     ] {
         let r = roteiro(v);
         assert!(
@@ -55,12 +56,23 @@ fn o_roteiro_de_cada_variante_e_o_caminho_do_dono_por_ordem() {
                 "{v:?}: arrasta para trás"
             );
             matches!(r.last().unwrap().1, Gesto::Arrasta(_))
+        } else if v == Variante::Fim {
+            // Um arrasto, depois do Parar, para lá do fim do clipe.
+            let s: Vec<(u64, f64)> = arrasta.map(|(t, g)| (*t, g.segundos())).collect();
+            assert!(
+                s.len() == 1 && s[0].0 > r[para].0 && s[0].1 > 4.2,
+                "{v:?}: {s:?}"
+            );
+            matches!(r.last().unwrap().1, Gesto::Arrasta(_))
         } else {
             assert_eq!(arrasta.count(), 0);
             matches!(r.last().unwrap().1, Gesto::Play | Gesto::PlayDeCima)
         };
         assert!(fim, "{v:?}: o Play (ou o arrasto) fecha o caminho");
-        let sem = matches!(v, Variante::SemRewind | Variante::Topo | Variante::Arrasta);
+        let sem = matches!(
+            v,
+            Variante::SemRewind | Variante::Topo | Variante::Arrasta | Variante::Fim
+        );
         assert_eq!(pos(Gesto::Rewind).is_some(), !sem);
         assert!(r.iter().all(|(_, g)| match g {
             Gesto::Desce([u, v]) | Gesto::Move([u, v]) =>

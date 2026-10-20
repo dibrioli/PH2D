@@ -96,6 +96,9 @@ pub enum Variante {
     /// O ColorDrop gravado: a cor escolhida no C&F, depois arrastada do C&F para a tela e solta (o
     /// preenchimento) e o Done do modal; uma pincelada a seguir. ▷ toca o preenchimento e a pincelada.
     ColorDrop,
+    /// W14: Parar e a cabeça da Keys parada no fim do clipe — a água continua até à imagem do artista; o
+    /// diagnóstico conta os texels da ranhura que diferem do editor (`≠editor=`).
+    Fim,
 }
 
 /// A variante desta corrida.
@@ -122,6 +125,7 @@ const NOMES: &[(&str, Variante)] = &[
     ("cruzamolhada", Variante::CruzaMolhada),
     ("cor", Variante::Cor),
     ("colordrop", Variante::ColorDrop),
+    ("fim", Variante::Fim),
 ];
 
 /// O valor de `PH2D_MACRO_CAMINHO` quando ele existe e não é nenhum caminho.
@@ -177,6 +181,11 @@ pub fn roteiro(v: Variante) -> Vec<(u64, Gesto)> {
     r.push((d + para, Gesto::Para));
     if v == Variante::Arrasta {
         arrastos(&mut r, para + 800);
+        return r;
+    }
+    if v == Variante::Fim {
+        // Para lá do fim do clipe (4,2 s): a cabeça fica no último instante.
+        r.push((para + 500, Gesto::Arrasta(4.5)));
         return r;
     }
     let (rewind, play) = if matches!(v, Variante::Cruza | Variante::CruzaMolhada) {
@@ -545,6 +554,9 @@ impl PalcosDoPainter {
         if variante() == Variante::Arrasta {
             extra.push_str(&confere(p, doc));
         }
+        if variante() == Variante::Fim {
+            extra.push_str(&ao_editor(espia, bits, painter));
+        }
         format!(
             "toca={} epoca={:04x} palco={} marca={} editor={editor}{extra}",
             p.toca,
@@ -596,6 +608,20 @@ fn mostrado(
         let _ = std::fmt::Write::write_fmt(&mut linha, format_args!(" fresca={n}"));
     }
     linha
+}
+
+/// ` ≠editor=N` da variante `fim`: os texels que a subida anterior mostrou e diferem da imagem do editor.
+fn ao_editor(e: &Espia, bits: u64, painter: Option<&PainterTool>) -> String {
+    let troca = e.trocas.iter().find(|t| t.entity_bits == bits);
+    let rgba = troca.and_then(|t| e.ranhuras.get(&t.texture_id)).map(|r| &r.1);
+    let editor = painter
+        .filter(|t| t.bound_document() == Some(bits))
+        .and_then(PainterTool::imagem_aplicada)
+        .map(|i| i.0);
+    match (rgba, editor) {
+        (Some(a), Some(b)) if a.len() == b.len() => format!(" ≠editor={}", diferentes(a, &b)),
+        _ => " ≠editor=-".to_owned(),
+    }
 }
 
 /// ` inteira=N fresca=M` da variante `arrasta`: os texels do palco que diferem da tela inteira do

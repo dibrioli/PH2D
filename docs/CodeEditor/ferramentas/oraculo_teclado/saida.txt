@@ -1,0 +1,40 @@
+# oráculo «de quem é o teclado com o jogo a correr» — 2026-10-20T22:45Z — loadavg: 39.88 35.97 56.20 46/2802 3568285
+# godot: godot 4.7.2-2.1 ; Licenses: MIT
+# corrida: o EDITOR (godot --editor) numa Xvfb 1600x1000, teclas e cliques por xdotool (XTest); jogo: jogo.gd
+# coluna «jogo recebeu» = o _input do jogo; «batimentos» = linhas de 100 ms no passo (≈ 12 a correr, 0 parado)
+# GEOMETRIA jogo pid=3561216 janela=4194308 x=224 y=176 l=1152 a=648
+# GEOMETRIA editor janela=2097156 nome=main.tscn_-_oraculo_teclado_-_Godot_Engine x=0 y=0 l=1600 a=1000
+# GEOMETRIA editor janela=2097232 nome=oraculo_teclado_(DEBUG) x=218 y=133 l=1164 a=697
+# GEOMETRIA editor janela=4194308 nome=oraculo_teclado_(DEBUG) x=224 y=176 l=1152 a=648
+editor-em-foco F5 (correr)                   | jogo recebeu: foco ganho                                                   | batimentos: 23
+jogo-em-foco space                           | jogo recebeu: tecla Space premida=true eco=false; tecla Space premida=false eco=false | batimentos: 12
+jogo-em-foco Left                            | jogo recebeu: tecla Left premida=true eco=false; tecla Left premida=false eco=false | batimentos: 12
+jogo-em-foco a                               | jogo recebeu: tecla A premida=true eco=false; tecla A premida=false eco=false | batimentos: 12
+jogo-em-foco Tab                             | jogo recebeu: tecla Tab premida=true eco=false; tecla Tab premida=false eco=false | batimentos: 12
+jogo-em-foco Escape                          | jogo recebeu: tecla Escape premida=true eco=false; tecla Escape premida=false eco=false | batimentos: 12
+jogo-em-foco Delete                          | jogo recebeu: tecla Delete premida=true eco=false; tecla Delete premida=false eco=false | batimentos: 13
+jogo-em-foco 1                               | jogo recebeu: tecla 1 premida=true eco=false; tecla 1 premida=false eco=false | batimentos: 12
+jogo-em-foco ctrl+s                          | jogo recebeu: tecla Ctrl premida=true eco=false; tecla Ctrl+S premida=true eco=false; tecla Ctrl premida=false eco=false; tecla S premida=false eco=false | batimentos: 12
+jogo-em-foco ctrl+z                          | jogo recebeu: tecla Ctrl premida=true eco=false; tecla Ctrl+Z premida=true eco=false; tecla Ctrl premida=false eco=false; tecla Z premida=false eco=false | batimentos: 12
+jogo-em-foco F7 (pausa)                      | jogo recebeu: tecla F7 premida=true eco=false; tecla F7 premida=false eco=false | batimentos: 23
+jogo-em-foco F7 (de novo)                    | jogo recebeu: tecla F7 premida=true eco=false; tecla F7 premida=false eco=false | batimentos: 12
+jogo-em-foco F9 (suspender)                  | jogo recebeu: tecla F9 premida=true eco=false; tecla F9 premida=false eco=false | batimentos: 0
+jogo-em-foco F10 (quadro seguinte?)          | jogo recebeu: -                                                            | batimentos: 1
+jogo-em-foco F9 (de novo)                    | jogo recebeu: -                                                            | batimentos: 12
+clique no editor (100,900)                   | jogo recebeu: foco perdido                                                 | batimentos: 13
+editor-em-foco space                         | jogo recebeu: -                                                            | batimentos: 12
+editor-em-foco Left                          | jogo recebeu: -                                                            | batimentos: 12
+editor-em-foco F7 (pausa)                    | jogo recebeu: -                                                            | batimentos: 0
+editor-em-foco F7 (de novo)                  | jogo recebeu: -                                                            | batimentos: 12
+clique no jogo (centro)                      | jogo recebeu: rato botao=1 premido=false; rato botao=1 premido=true; foco ganho | batimentos: 13
+jogo-clicado space                           | jogo recebeu: tecla Space premida=true eco=false; tecla Space premida=false eco=false | batimentos: 12
+clique em 2D na barra                        | jogo recebeu: foco perdido                                                 | batimentos: 14
+modo-2d clique no jogo                       | jogo recebeu: foco ganho                                                   | batimentos: 13
+modo-2d space                                | jogo recebeu: -                                                            | batimentos: 12
+clique em Input na barra                     | jogo recebeu: foco perdido                                                 | batimentos: 13
+modo-input clique no jogo                    | jogo recebeu: rato botao=1 premido=false; rato botao=1 premido=true; foco ganho | batimentos: 13
+modo-input space                             | jogo recebeu: tecla Space premida=true eco=false; tecla Space premida=false eco=false | batimentos: 12
+jogo-em-foco F8 (parar)                      | jogo recebeu: tecla F8 premida=true eco=false; tecla F8 premida=false eco=false | batimentos: 1
+FIM vivo=nao                                 | jogo recebeu: -                                                            | batimentos: 0
+# editor.log: ERROR: Condition "status < 0" is true. Returning: ERR_CANT_OPEN
+# editor.log: ERROR: Condition "status < 0" is true. Returning: ERR_CANT_OPEN

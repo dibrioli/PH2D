@@ -1,0 +1,97 @@
+{
+ "bateria_sha256": "5ce10f13ea586664353cc43125c7e2293df91517f156af2e2b99dc328bb39f6b",
+ "dt_s": 0.01,
+ "falhas": [],
+ "pinceis": {
+  "classic/knife": {
+   "canto": {
+    "px_com_tinta": 36857,
+    "sha256": "7c3cb0883cfce2c8",
+    "tinta_sum_alfa": 35572.3
+   },
+   "ficheiro": "classic/knife",
+   "memoria": {
+    "px_com_tinta": 67768,
+    "sha256": "7c843278f12ac217",
+    "tinta_sum_alfa": 64935.4
+   },
+   "velocidade": {
+    "px_com_tinta": 176800,
+    "sha256": "14dc19c48d036782",
+    "tinta_sum_alfa": 169622.3
+   }
+  },
+  "classic/pen": {
+   "canto": {
+    "px_com_tinta": 46720,
+    "sha256": "acc654214ccf4981",
+    "tinta_sum_alfa": 43193.8
+   },
+   "ficheiro": "classic/pen",
+   "memoria": {
+    "px_com_tinta": 90448,
+    "sha256": "477b33b2187b127f",
+    "tinta_sum_alfa": 83555.0
+   },
+   "velocidade": {
+    "px_com_tinta": 193534,
+    "sha256": "f4f7290688d122cd",
+    "tinta_sum_alfa": 171990.6
+   }
+  },
+  "deevad/pen-note": {
+   "canto": {
+    "px_com_tinta": 46596,
+    "sha256": "0512bfa3a323c61f",
+    "tinta_sum_alfa": 30339.4
+   },
+   "ficheiro": "deevad/pen-note",
+   "memoria": {
+    "px_com_tinta": 90172,
+    "sha256": "cb6a4d9f9bd7f604",
+    "tinta_sum_alfa": 56831.3
+   },
+   "velocidade": {
+    "px_com_tinta": 192559,
+    "sha256": "8f07f702e7b02e5c",
+    "tinta_sum_alfa": 113725.2
+   }
+  },
+  "ramon/Marker": {
+   "canto": {
+    "px_com_tinta": 38129,
+    "sha256": "e6cf8d503488dc5c",
+    "tinta_sum_alfa": 29667.7
+   },
+   "ficheiro": "ramon/Marker",
+   "memoria": {
+    "px_com_tinta": 71262,
+    "sha256": "6a7b6e43a9dce898",
+    "tinta_sum_alfa": 54103.2
+   },
+   "velocidade": {
+    "px_com_tinta": 118258,
+    "sha256": "d166008c86e5ab45",
+    "tinta_sum_alfa": 78981.4
+   }
+  },
+  "ramon/Thin_Pen": {
+   "canto": {
+    "px_com_tinta": 21300,
+    "sha256": "876e6c07e4264309",
+    "tinta_sum_alfa": 17286.0
+   },
+   "ficheiro": "ramon/Thin_Pen",
+   "memoria": {
+    "px_com_tinta": 41558,
+    "sha256": "17500e67e9461b39",
+    "tinta_sum_alfa": 32063.8
+   },
+   "velocidade": {
+    "px_com_tinta": 94400,
+    "sha256": "f864ccdd978403d0",
+    "tinta_sum_alfa": 50900.1
+   }
+  }
+ }
+}

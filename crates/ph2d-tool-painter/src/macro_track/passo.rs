@@ -78,6 +78,14 @@ pub enum Passo {
         w: u32,
         h: u32,
     },
+    /// `take_brush_dual_image_request`: o pedido do «Dual image» (L6) consumido.
+    TiraPedidoDual,
+    /// `set_brush_dual_image_rgba`: a imagem da 2.ª ponta do dual brush (L6).
+    DualRgba {
+        rgba: Vec<u8>,
+        w: u32,
+        h: u32,
+    },
     FalloffPonto {
         id: u8,
         d: f32,
@@ -373,6 +381,13 @@ impl Passo {
                     .varint(3, u64::from(*w))
                     .varint(4, u64::from(*h));
             }
+            Passo::TiraPedidoDual => k(&mut r, 59),
+            Passo::DualRgba { rgba, w, h } => {
+                k(&mut r, 60);
+                r.bytes(2, rgba)
+                    .varint(3, u64::from(*w))
+                    .varint(4, u64::from(*h));
+            }
             Passo::Desconhecido(n) => k(&mut r, *n),
         }
         r.finish()
@@ -532,6 +547,12 @@ impl Passo {
             200 => Passo::PincelDaFaixa(u32_(2)?),
             57 => Passo::TiraPedidoMangueira,
             58 => Passo::MangueiraRgba {
+                rgba: bytes(2),
+                w: u32_(3)?,
+                h: u32_(4)?,
+            },
+            59 => Passo::TiraPedidoDual,
+            60 => Passo::DualRgba {
                 rgba: bytes(2),
                 w: u32_(3)?,
                 h: u32_(4)?,

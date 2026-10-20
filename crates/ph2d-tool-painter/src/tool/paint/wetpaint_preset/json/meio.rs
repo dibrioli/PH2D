@@ -2,7 +2,7 @@
 //! que o Wet Paint não lê mas o Digital lê. Mesmas leis do [`super`]: pelo NOME, `f32` pelo texto curto,
 //! enums pelo nome da variante, chave ausente = o valor de `base`.
 
-use super::{booleano, de_nome, f, nome, num, textura_de_json, textura_para_json};
+use super::{booleano, de_nome, f, inteiro, nome, num, textura_de_json, textura_para_json};
 use ph2d_painter_brush::BrushSpec;
 use ph2d_painter_brush::height_modes::{DepthSource, DrawTo};
 use serde_json::{Value, json};
@@ -56,6 +56,21 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
             "molhada": num(b.traco.molhada),
             "queimada": num(b.traco.queimada),
             "largura": num(b.traco.largura),
+        }),
+        // O dual brush (L6): gravado só ARMADO (`pincel_para_json`).
+        "dual" => b.dual.map_or(Value::Null, |d| {
+            json!({
+                "modo": d.modo.to_u8(),
+                "forma": textura_para_json(&d.forma),
+                "escala": num(d.escala),
+                "passo": num(d.passo),
+                "espalhar": num(d.espalhar),
+                "atraves": num(d.atraves),
+                "contagem": d.contagem,
+                "angulo": d.angulo,
+                "rotacao": num(d.rotacao),
+                "dureza": num(d.dureza),
+            })
         }),
         "pen_tilt" => {
             let t = b.pen_tilt;
@@ -155,6 +170,26 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
             t.smooth = f(c("smooth"), fab.smooth);
             t.lag_px = f(c("lag_px"), fab.lag_px);
             t.opacity = f(c("opacity"), fab.opacity);
+        }
+        // O dual brush (L6): AUSENTE = desligado (só se grava armado), nunca a 2.ª ponta do pincel anterior;
+        // sub-chave ausente = a de fábrica.
+        "dual" => {
+            let n = ph2d_painter_brush::DualTip::DE_FABRICA;
+            b.dual = v.filter(|v| v.is_object()).map(|v| {
+                let c = |k: &str| v.get(k);
+                ph2d_painter_brush::DualTip {
+                    modo: ph2d_painter_brush::DualMode::from_u8(inteiro(c("modo"), 0)),
+                    forma: textura_de_json(c("forma"), n.forma),
+                    escala: f(c("escala"), n.escala),
+                    passo: f(c("passo"), n.passo),
+                    espalhar: f(c("espalhar"), n.espalhar),
+                    atraves: f(c("atraves"), n.atraves),
+                    contagem: inteiro(c("contagem"), n.contagem),
+                    angulo: inteiro(c("angulo"), n.angulo),
+                    rotacao: f(c("rotacao"), n.rotacao),
+                    dureza: f(c("dureza"), n.dureza),
+                }
+            });
         }
         "pen_tilt" | "traco" => {}
         outro => unreachable!("campo do pincel sem conversão: {outro}"),

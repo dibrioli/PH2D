@@ -442,6 +442,8 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // A ponta de N imagens (L19): «Add image» e «Clear images».
         ph2d_tool_painter::ids::PAINTER_SHAPE_HOSE_ADD,
         ph2d_tool_painter::ids::PAINTER_SHAPE_HOSE_CLEAR,
+        // O dual brush (L6): «Dual image».
+        ph2d_tool_painter::ids::PAINTER_DUAL_IMAGE,
         ph2d_tool_painter::ids::PAINTER_SHAPE_PER_LAYER_COLOR,
         ph2d_tool_painter::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE,
         // Per-section reset icon buttons (Inspector-Transform pattern).

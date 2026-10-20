@@ -78,6 +78,30 @@ pub(super) fn load_brush_texture_image(
     }
 }
 
+/// ⭐ **A imagem da 2.ª ponta do dual brush** (L6, o botão «Dual image»): o MESMO seletor e a mesma decodificação
+/// RGBA da Shape; cancelar não muda nada.
+pub(super) fn load_brush_dual_image(
+    painter: &mut ph2d_tool_painter::PainterTool,
+    asset_db: &ph2d_asset::AssetDb,
+    toasts: &mut ToastQueue,
+) {
+    match pick_brush_rgba(asset_db) {
+        Ok(Some((rgba, w, h))) => {
+            painter.set_brush_dual_image_rgba(&rgba, w, h);
+            toasts.push(Toast::success(ph2d_i18n::tr(
+                "app.painter.painter_bridge_assets.brush_shape_loaded",
+            )));
+        }
+        Ok(None) => {}
+        Err(e) => {
+            toasts.push(Toast::error(ph2d_i18n::tr_with(
+                "app.painter.painter_bridge_assets.shape_load_failed",
+                &[("e", &e)],
+            )));
+        }
+    }
+}
+
 /// Import an image as the brush **Shape** (silhouette mask). Cancel or failure reverts to None (falloff).
 /// ⭐ **Uma imagem a mais para a ponta** (L19, o botão «Add image» da Shape): o MESMO seletor e a mesma decodificação
 /// RGBA da Shape; cancelar não muda nada.

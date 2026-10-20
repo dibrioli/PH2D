@@ -155,3 +155,38 @@ fn a_ponta_de_n_imagens_pelo_ponteiro() {
     clica(&mut host, &mut st, &mut t, limpa);
     assert_eq!(t.brush_shape_hose_count(), 1);
 }
+
+/// ⭐ **O dual brush pelo ponteiro** (L6): o menu «Dual brush» na secção Shape arma a 2.ª ponta (as linhas dela só
+/// aparecem armada), a forma `Image` mostra «Dual image», que pede o seletor à shell, e a caixa do tamanho chega ao
+/// pincel; «Off» desliga-a (o pincel volta a `None`).
+#[test]
+fn o_dual_brush_pelo_ponteiro() {
+    let mut t = PainterTool::default();
+    t.set_paint_media(PaintMedia::Digital);
+    let tamanho = ids::PAINTER_PONTA_FIELDS[indice(LinhaDaPonta::DualSize)];
+    {
+        let (_h, _s, rects) = aberto(&mut t);
+        assert!(rect_of(&rects, ids::PAINTER_PONTA_FIELDS[indice(LinhaDaPonta::DualMode)]).is_some());
+        assert!(rect_of(&rects, tamanho).is_none(), "a 2.ª ponta desligada não mostra as linhas dela");
+    }
+    escolhe(&mut t, LinhaDaPonta::DualMode, 4);
+    assert_eq!(t.brush_settings().ponta[indice(LinhaDaPonta::DualMode)], 4.0);
+    let imagem = ph2d_tool_painter::TextureKind::Image.to_u8();
+    escolhe(&mut t, LinhaDaPonta::DualTip, imagem);
+    let (mut host, mut st, rects) = aberto(&mut t);
+    let botao = rect_of(&rects, ids::PAINTER_DUAL_IMAGE).expect("o botão Dual image");
+    clica(&mut host, &mut st, &mut t, botao);
+    assert!(t.take_brush_dual_image_request(), "o Dual image não pediu o seletor");
+    let (mut host, mut st, _) = aberto(&mut t);
+    for ev in host.type_into_number(tamanho, "0.3") {
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+    }
+    for action in host.drained_actions() {
+        if let EditorAction::ToolPanelEvent(pe) = action {
+            t.handle_panel_event(pe);
+        }
+    }
+    assert_eq!(t.brush_settings().ponta[indice(LinhaDaPonta::DualSize)], 0.3);
+    escolhe(&mut t, LinhaDaPonta::DualMode, 0);
+    assert_eq!(t.brush_settings().ponta[indice(LinhaDaPonta::DualMode)], 0.0);
+}

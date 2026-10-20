@@ -95,6 +95,8 @@ pub use ph2d_painter_brush::{
     DAB_FLATTEN_MAX,
     DepthSource,
     DrawTo,
+    DualMode,
+    DualTip,
     Escala,
     FLOW_KINDS,
     FLOW_SIZE_MAX,

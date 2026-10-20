@@ -263,6 +263,10 @@ pub fn dispatch(
         if painter.take_brush_shape_hose_request() {
             crate::painter_bridge_assets::load_brush_shape_hose_image(painter, asset_db, toasts);
         }
+        // O dual brush (L6): «Dual image» pede a imagem da 2.ª ponta.
+        if painter.take_brush_dual_image_request() {
+            crate::painter_bridge_assets::load_brush_dual_image(painter, asset_db, toasts);
+        }
         // Os presets dos quatro meios (W1, L1): a biblioteca abre com o Painter, o pedido do painel é
         // atendido aqui (o disco é da ponte) e a vista é publicada.
         #[cfg(feature = "panel-painter-layers")]

@@ -63,6 +63,8 @@ pub mod height_push;
 pub(crate) mod jitter;
 /// A cor secundária e a cor pela MÃO da L11 (pressão → matiz, saturação, valor, secundária).
 pub mod cor_mao;
+/// O DUAL BRUSH da L6: a 2.ª ponta que recorta a 1.ª por um modo.
+pub mod dual;
 /// O jitter da MARCA da L4 (opacidade, contagem, espelhos, redondeza, ângulo por traço, através, partícula).
 pub mod marca;
 /// O TIPO de linha procedural (plano 38) — a lei que decora o traço, ortogonal ao `StrokeMethod`.
@@ -182,6 +184,7 @@ pub use height::{DepthSource, DrawTo};
 pub use jitter::{ColorJitterScope, apply_color_shift};
 pub use cor_mao::CorDaMao;
 pub use marca::DabJitter;
+pub use dual::{DualMode, DualTip};
 pub use pixel::PixelTip;
 pub use mangueira::{HOSE_MAX, HoseMode, ImageHose};
 pub use mask_ops::{MaskCanvasOp, apply_mask_op};

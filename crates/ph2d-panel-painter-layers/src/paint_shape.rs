@@ -184,6 +184,8 @@ pub(crate) fn paint_shape_section(
     if is_image && brush.shape_has_image {
         y = crate::ponta_linhas::paint_mangueira(ctx, theme, x, content_w, y, &brush);
     }
+    // ── O DUAL BRUSH (L6): a 2.ª ponta que recorta a 1.ª. ──
+    y = crate::ponta_linhas::paint_dual(ctx, theme, x, content_w, y, &brush);
 
     // Live composed-silhouette preview — ALWAYS shown (even `None` = the bare falloff; with no Grain
     // and the Shape colour ramp on, it's the colourised silhouette), re-rendered each frame from the

@@ -513,6 +513,8 @@ pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
         .filter(|&&c| !(c == "pixel" && b.pixel == PixelTip::Off))
         // A ponta de N imagens (L19) só quando não é a de sempre: o preset de imagem única é o de antes, ao byte.
         .filter(|&&c| !(c == "hose" && b.hose == ImageHose::NEUTRA))
+        // O dual brush (L6) só armado: o preset sem ele é o de antes, ao byte.
+        .filter(|&&c| !(c == "dual" && b.dual.is_none()))
         .map(|&c| ((*c).to_owned(), ler_campo(b, c)))
         .collect()
 }

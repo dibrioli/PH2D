@@ -208,6 +208,7 @@ impl PainterTool {
             },
             &mut dabs,
         );
+        self.dual_comeca(StrokePoint { pos: ev.pos, pressure: ev.pressure }); // a 2.ª ponta (L6)
         self.stamp_stroke_dabs(&dabs);
         self.paint.dabs = dabs;
         // ⚠️ O traço volta ANTES do composite: o `park_stroke` fecha o evento (fios e a mancha do
@@ -306,6 +307,7 @@ impl PainterTool {
             },
             &mut dabs,
         );
+        self.dual_estende(StrokePoint { pos, pressure: ev.pressure }); // a 2.ª ponta (L6), o mesmo caminho
         // **Style: Solid** — o caminho E a mancha são escritos pela porta do carimbo (`stamp_dabs` a
         // bracketa, `super::solid_deposit`), e não por uma chamada solta neste sítio. ⚠️ Desde a W7 o
         // dab **é** carimbado (a tinta do gesto é a região cercada **MAIS** o traço que a cerca, como
@@ -388,6 +390,7 @@ impl PainterTool {
         };
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.tick(dt_s, &mut dabs);
+        self.dual_passo(|m, o| m.tick(dt_s, o));
         super::ribbon_diag::note(super::ribbon_diag::Source::Tick, dabs.len());
         // Watercolor render-path: accumulate the airbrush/settle dabs, then recomposite over the frozen
         // base once — but only when a dab actually landed (a held stroke ticks every frame).
@@ -396,6 +399,7 @@ impl PainterTool {
         self.stamp_dabs(&dabs);
         if parked {
             stroke.settle(&mut dabs); // clears `dabs` first
+            self.dual_passo(|m, o| m.settle(o));
             super::ribbon_diag::note(super::ribbon_diag::Source::Settle, dabs.len());
             stamped |= !dabs.is_empty();
             self.stamp_dabs(&dabs);
@@ -449,6 +453,7 @@ impl PainterTool {
         if let Some(mut stroke) = self.paint.stroke.take() {
             let mut dabs = std::mem::take(&mut self.paint.dabs);
             stroke.finish(&mut dabs);
+            self.dual_passo(|m, o| m.finish(o));
             super::ribbon_diag::note(super::ribbon_diag::Source::Finish, dabs.len());
             super::ribbon_diag::report(&self.paint.brush);
             self.stamp_dabs(&dabs);
@@ -466,7 +471,9 @@ impl PainterTool {
         self.enche_a_mancha_na_agua();
         // Drag Dot: the dab at the release point is the commit — keep it (drop the restore record).
         self.commit_drag_preview();
-        // O PLANO do traço (L8/L5): a cauda re-pintada ao levantar, ANTES do fecho — um passo de Undo.
+        // O PLANO do traço (L8/L5): a cauda re-pintada ao levantar, ANTES do fecho — um passo de Undo; antes dela, as
+        // marcas da 2.ª ponta (L6) que nenhum lote levou.
+        self.descarrega_o_dual();
         self.fecha_o_plano_do_traco();
         // Wet Paint: close the engine's direct stroke (the sim resumes; the session — the water —
         // stays alive across strokes). BEFORE close_stroke so the undo entry sees the final state.

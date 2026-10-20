@@ -30,6 +30,18 @@ pub(crate) const ROTULOS_DA_PONTA: [&str; ph2d_tool_painter::N_LINHAS_DA_PONTA] 
     "panel.painter_ponta.hose_weight_6",
     "panel.painter_ponta.hose_weight_7",
     "panel.painter_ponta.hose_weight_8",
+    "panel.painter_ponta.dual_mode",
+    "panel.painter_ponta.dual_tip",
+    "panel.painter_ponta.dual_follow",
+    "panel.painter_ponta.dual_size",
+    "panel.painter_ponta.dual_spacing",
+    "panel.painter_ponta.dual_scatter",
+    "panel.painter_ponta.dual_across",
+    "panel.painter_ponta.dual_count",
+    "panel.painter_ponta.dual_angle",
+    "panel.painter_ponta.dual_rotation",
+    "panel.painter_ponta.dual_hardness",
+    "panel.painter_ponta.dual_pattern",
 ];
 
 /// Os índices das linhas da ponta que se pintam no cartão `c`.
@@ -146,15 +158,80 @@ pub(crate) fn decode_hose_mode_option(id: ph2d_a11y::NodeId) -> Option<u8> {
     decode(5, id)
 }
 
+/// O índice da linha `l` na tabela da ponta.
+fn indice(l: LinhaDaPonta) -> usize {
+    LINHAS_DA_PONTA.iter().position(|x| *x == l).unwrap_or(0)
+}
+
+/// O menu do modo do dual brush (L6; `0` = desligado).
+pub(crate) fn decode_dual_mode_option(id: ph2d_a11y::NodeId) -> Option<u8> {
+    decode(indice(LinhaDaPonta::DualMode), id)
+}
+
+/// O menu da forma da 2.ª ponta (L6).
+pub(crate) fn decode_dual_tip_option(id: ph2d_a11y::NodeId) -> Option<u8> {
+    decode(indice(LinhaDaPonta::DualTip), id)
+}
+
+/// O menu do seguir o traço da 2.ª ponta (L6).
+pub(crate) fn decode_dual_follow_option(id: ph2d_a11y::NodeId) -> Option<u8> {
+    decode(indice(LinhaDaPonta::DualFollow), id)
+}
+
 /// A linha `i` pinta-se agora: as da ponta de N imagens só com duas imagens ou mais, e os pesos só das imagens que
 /// há e no sorteio (os outros modos não os leem).
 fn visivel(i: usize, brush: &BrushSettings) -> bool {
     let n = usize::from(brush.shape_hose_count);
+    let dual = brush.ponta[indice(LinhaDaPonta::DualMode)] > 0.0;
+    let forma = ph2d_tool_painter::TextureKind::from_u8(brush.ponta[indice(LinhaDaPonta::DualTip)] as u8);
     match LINHAS_DA_PONTA[i] {
         LinhaDaPonta::HoseMode => n > 1,
         LinhaDaPonta::Peso(k) => n > 1 && usize::from(k) < n && brush.ponta[5] == 0.0,
+        // O dual brush (L6): as linhas da 2.ª ponta só com ela armada; a dureza é do disco (sem forma), o tamanho
+        // do padrão só de um padrão.
+        LinhaDaPonta::DualMode => true,
+        LinhaDaPonta::DualHardness => dual && forma == ph2d_tool_painter::TextureKind::None,
+        LinhaDaPonta::DualPattern => {
+            dual && !matches!(
+                forma,
+                ph2d_tool_painter::TextureKind::None | ph2d_tool_painter::TextureKind::Image
+            )
+        }
+        l if l.cartao() == CartaoDaPonta::Dual => dual,
         _ => true,
     }
+}
+
+/// ⭐ **O bloco Dual brush na secção Shape** (L6): o modo (desligado ou como a 2.ª ponta recorta a 1.ª), a forma
+/// dela — com a forma `Image`, o botão «Dual image» (o seletor de ficheiro da shell) — e o resto da ponta dela.
+pub(crate) fn paint_dual(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
+    let mut y = paint_linhas_da_ponta(ctx, theme, x, w, y, brush, CartaoDaPonta::Dual);
+    let imagem = ph2d_tool_painter::TextureKind::Image.to_u8();
+    if brush.ponta[indice(LinhaDaPonta::DualMode)] > 0.0
+        && brush.ponta[indice(LinhaDaPonta::DualTip)] as u8 == imagem
+    {
+        let id = ids::PAINTER_DUAL_IMAGE;
+        let label = tr("panel.painter_ponta.dual_image");
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(ctx.text_system, x, w, y, label);
+        ph2d_editor_core::widget::paint_button(
+            &ph2d_editor_core::widget::Button::new(id, label),
+            rect,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+        );
+        crate::paint::register_button(ctx.host.store_mut(), id);
+        ctx.host.hit_index_mut().register(id, rect);
+        y += ph2d_tokens::row_pitch_px();
+    }
+    y
 }
 
 /// ⭐ **A ponta de N imagens na secção Shape** (L19, com uma imagem na Shape): «Add image» (o seletor de ficheiro da

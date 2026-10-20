@@ -1,9 +1,13 @@
-//! **As linhas da PONTA no painel** (L9 · L18 · L19, `docs/Painter/Pinceis/03_MOTORES.md` §4): a forma e o grão do
-//! carimbo — a ponta de píxel (cartão Brush, só no Digital), a lei do grão (secção Grain, com um Grain armado).
+//! **As linhas da PONTA no painel** (L9 · L18 · L19 · L6, `docs/Painter/Pinceis/03_MOTORES.md` §4): a forma e o grão do
+//! carimbo — a ponta de píxel (cartão Brush, só no Digital), a lei do grão (secção Grain, com um Grain armado), a 2.ª
+//! ponta do dual brush (secção Shape).
 //! UMA tabela — a chave (a do preset e a do id), a faixa, o valor de fábrica — e duas portas: [`escreve`] e [`le`].
 //! O preset grava os campos inteiros no `BrushSpec` (`pixel`, `texture.lei`), não estas chaves.
 
-use ph2d_painter_brush::{BrushSpec, GrainMode, HOSE_MAX, HoseMode, PixelTip};
+use ph2d_painter_brush::{
+    BrushSpec, DabJitter, DualMode, DualTip, GrainMode, HOSE_MAX, HoseMode, PixelTip, TEX_SIZE_MAX, TEX_SIZE_MIN,
+    TextureKind,
+};
 
 /// Uma linha numérica da ponta.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -22,6 +26,30 @@ pub enum LinhaDaPonta {
     HoseMode,
     /// O peso da imagem `k` no sorteio (L19).
     Peso(u8),
+    /// O dual brush (L6): `0` desligado, `1 + k` o [`DualMode`] `k`.
+    DualMode,
+    /// A forma da 2.ª ponta ([`TextureKind`] pelo índice; `Image` = a imagem dela).
+    DualTip,
+    /// A 2.ª ponta segue o traço: `0` não · `1` Rake · `2` Flow (as riscas ao longo).
+    DualFollow,
+    /// O diâmetro da 2.ª ponta em diâmetros da 1.ª.
+    DualSize,
+    /// O passo da 2.ª ponta (em diâmetros dela).
+    DualSpacing,
+    /// Espalhar a 2.ª ponta (em diâmetros dela).
+    DualScatter,
+    /// Espalhar a 2.ª ponta só através do traço.
+    DualAcross,
+    /// Marcas da 2.ª ponta por ponto do caminho.
+    DualCount,
+    /// O ângulo da 2.ª ponta (graus).
+    DualAngle,
+    /// A rotação sorteada da 2.ª ponta.
+    DualRotation,
+    /// A dureza do disco da 2.ª ponta.
+    DualHardness,
+    /// O tamanho do padrão da forma da 2.ª ponta.
+    DualPattern,
 }
 
 /// Onde a linha se pinta.
@@ -33,10 +61,12 @@ pub enum CartaoDaPonta {
     Grao,
     /// A secção Shape, com duas imagens ou mais (L19).
     Forma,
+    /// A secção Shape, o bloco Dual brush (L6).
+    Dual,
 }
 
 /// As linhas, pela ordem do painel.
-pub const LINHAS_DA_PONTA: [LinhaDaPonta; 14] = [
+pub const LINHAS_DA_PONTA: [LinhaDaPonta; 26] = [
     LinhaDaPonta::Pixel,
     LinhaDaPonta::GrainMode,
     LinhaDaPonta::DepthMin,
@@ -51,6 +81,18 @@ pub const LINHAS_DA_PONTA: [LinhaDaPonta; 14] = [
     LinhaDaPonta::Peso(5),
     LinhaDaPonta::Peso(6),
     LinhaDaPonta::Peso(7),
+    LinhaDaPonta::DualMode,
+    LinhaDaPonta::DualTip,
+    LinhaDaPonta::DualFollow,
+    LinhaDaPonta::DualSize,
+    LinhaDaPonta::DualSpacing,
+    LinhaDaPonta::DualScatter,
+    LinhaDaPonta::DualAcross,
+    LinhaDaPonta::DualCount,
+    LinhaDaPonta::DualAngle,
+    LinhaDaPonta::DualRotation,
+    LinhaDaPonta::DualHardness,
+    LinhaDaPonta::DualPattern,
 ];
 const _: () = assert!(HOSE_MAX == 8, "uma linha de peso por imagem da ponta");
 
@@ -91,6 +133,30 @@ impl LinhaDaPonta {
             Self::DepthPressure => ("depthPressure", 0.0, 1.0, 1.0, 0.0),
             Self::HoseMode => ("hoseMode", 0.0, (HoseMode::COUNT - 1) as f64, 1.0, 0.0),
             Self::Peso(k) => (PESOS[k as usize], 0.0, 100.0, 1.0, 1.0),
+            Self::DualMode => ("dualMode", 0.0, DualMode::COUNT as f64, 1.0, 0.0),
+            Self::DualTip => ("dualTip", 0.0, (TextureKind::COUNT - 1) as f64, 1.0, 0.0),
+            Self::DualFollow => ("dualFollow", 0.0, 2.0, 1.0, 0.0),
+            Self::DualSize => {
+                let d = DualTip::DE_FABRICA.escala as f64;
+                ("dualSize", DualTip::ESCALA_MIN as f64, DualTip::ESCALA_MAX as f64, 0.01, d)
+            }
+            Self::DualSpacing => {
+                let d = DualTip::DE_FABRICA.passo as f64;
+                ("dualSpacing", DualTip::PASSO_MIN as f64, DualTip::PASSO_MAX as f64, 0.01, d)
+            }
+            Self::DualScatter => ("dualScatter", 0.0, 1.0, 0.01, 0.0),
+            Self::DualAcross => ("dualAcross", 0.0, DabJitter::ACROSS_MAX as f64, 0.01, 0.0),
+            Self::DualCount => (
+                "dualCount",
+                1.0,
+                ph2d_painter_brush::stroke::spray::SPRAY_COUNT_MAX as f64,
+                1.0,
+                1.0,
+            ),
+            Self::DualAngle => ("dualAngle", 0.0, 359.0, 1.0, 0.0),
+            Self::DualRotation => ("dualRotation", 0.0, 1.0, 0.01, 0.0),
+            Self::DualHardness => ("dualHardness", 0.0, 1.0, 0.01, DualTip::DE_FABRICA.dureza as f64),
+            Self::DualPattern => ("dualPattern", TEX_SIZE_MIN as f64, TEX_SIZE_MAX as f64, 0.01, 1.0),
         }
     }
 
@@ -100,6 +166,18 @@ impl LinhaDaPonta {
         match self {
             Self::Pixel => CartaoDaPonta::Pincel,
             Self::HoseMode | Self::Peso(_) => CartaoDaPonta::Forma,
+            Self::DualMode
+            | Self::DualTip
+            | Self::DualFollow
+            | Self::DualSize
+            | Self::DualSpacing
+            | Self::DualScatter
+            | Self::DualAcross
+            | Self::DualCount
+            | Self::DualAngle
+            | Self::DualRotation
+            | Self::DualHardness
+            | Self::DualPattern => CartaoDaPonta::Dual,
             _ => CartaoDaPonta::Grao,
         }
     }
@@ -144,6 +222,22 @@ impl LinhaDaPonta {
                 "panel.painter_ponta.hose_mode.pressure",
                 "panel.painter_ponta.hose_mode.angle",
             ],
+            Self::DualMode => &[
+                "panel.painter_ponta.dual_mode.off",
+                "panel.painter_ponta.dual_mode.multiply",
+                "panel.painter_ponta.dual_mode.darken",
+                "panel.painter_ponta.dual_mode.subtract",
+                "panel.painter_ponta.dual_mode.overlay",
+                "panel.painter_ponta.dual_mode.color_burn",
+                "panel.painter_ponta.dual_mode.height",
+                "panel.painter_ponta.dual_mode.linear_height",
+            ],
+            Self::DualTip => FORMAS_DO_DUAL.as_slice(),
+            Self::DualFollow => &[
+                "panel.painter_ponta.dual_follow.off",
+                "panel.painter_ponta.dual_follow.rake",
+                "panel.painter_ponta.dual_follow.flow",
+            ],
             _ => &[],
         }
     }
@@ -172,9 +266,16 @@ impl LinhaDaPonta {
     }
 }
 
+/// As formas da 2.ª ponta no menu: os nomes dos padrões, pela ordem do [`TextureKind`] (os mesmos da Shape).
+static FORMAS_DO_DUAL: std::sync::LazyLock<[&'static str; TextureKind::COUNT as usize]> =
+    std::sync::LazyLock::new(|| std::array::from_fn(|k| TextureKind::from_u8(k as u8).name_key()));
+
 /// ⭐ **A lei**: a linha `l` com o valor `v` no campo do pincel que ela governa.
 pub(crate) fn escreve(b: &mut BrushSpec, l: LinhaDaPonta, v: f64) {
     let v = l.limpa(v);
+    if escreve_o_dual(b, l, v) {
+        return;
+    }
     let lei = &mut b.texture.lei;
     match l {
         LinhaDaPonta::Pixel => b.pixel = PixelTip::from_u8(v as u8),
@@ -184,6 +285,60 @@ pub(crate) fn escreve(b: &mut BrushSpec, l: LinhaDaPonta, v: f64) {
         LinhaDaPonta::DepthPressure => lei.depth_pressure = v >= 0.5,
         LinhaDaPonta::HoseMode => b.hose.mode = HoseMode::from_u8(v as u8),
         LinhaDaPonta::Peso(k) => b.hose.pesos[usize::from(k)] = v as u8,
+        _ => {}
+    }
+}
+
+/// As linhas do dual brush (L6): o modo arma ou desliga a 2.ª ponta; as outras só existem com ela armada. `false` =
+/// a linha não é do dual.
+fn escreve_o_dual(b: &mut BrushSpec, l: LinhaDaPonta, v: f64) -> bool {
+    if l == LinhaDaPonta::DualMode {
+        b.dual = (v >= 1.0).then(|| DualTip {
+            modo: DualMode::from_u8(v as u8 - 1),
+            ..b.dual.unwrap_or_default()
+        });
+        return true;
+    }
+    if l.cartao() != CartaoDaPonta::Dual {
+        return false;
+    }
+    let Some(d) = &mut b.dual else {
+        return true;
+    };
+    let f = v as f32;
+    match l {
+        LinhaDaPonta::DualTip => d.muda_a_forma(TextureKind::from_u8(v as u8)),
+        LinhaDaPonta::DualFollow => (d.forma.rake, d.forma.flow) = (v == 1.0, v == 2.0),
+        LinhaDaPonta::DualSize => d.escala = f,
+        LinhaDaPonta::DualSpacing => d.passo = f,
+        LinhaDaPonta::DualScatter => d.espalhar = f,
+        LinhaDaPonta::DualAcross => d.atraves = f,
+        LinhaDaPonta::DualCount => d.contagem = v as u32,
+        LinhaDaPonta::DualAngle => d.angulo = v as u16,
+        LinhaDaPonta::DualRotation => d.rotacao = f,
+        LinhaDaPonta::DualHardness => d.dureza = f,
+        LinhaDaPonta::DualPattern => d.forma.size = [f, f],
+        _ => {}
+    }
+    true
+}
+
+/// O valor de uma linha do dual (desligado: a 2.ª ponta de fábrica, que as linhas mostram ao armar).
+fn le_o_dual(b: &BrushSpec, l: LinhaDaPonta) -> f32 {
+    let d = b.dual.unwrap_or_default();
+    match l {
+        LinhaDaPonta::DualMode => b.dual.map_or(0.0, |d| f32::from(d.modo.to_u8() + 1)),
+        LinhaDaPonta::DualTip => f32::from(d.forma.kind.to_u8()),
+        LinhaDaPonta::DualFollow => f32::from(u8::from(d.forma.rake) + 2 * u8::from(d.forma.flow)),
+        LinhaDaPonta::DualSize => d.escala,
+        LinhaDaPonta::DualSpacing => d.passo,
+        LinhaDaPonta::DualScatter => d.espalhar,
+        LinhaDaPonta::DualAcross => d.atraves,
+        LinhaDaPonta::DualCount => d.contagem as f32,
+        LinhaDaPonta::DualAngle => f32::from(d.angulo),
+        LinhaDaPonta::DualRotation => d.rotacao,
+        LinhaDaPonta::DualHardness => d.dureza,
+        _ => d.forma.size[0],
     }
 }
 
@@ -199,6 +354,7 @@ pub(crate) fn le(b: &BrushSpec, l: LinhaDaPonta) -> f64 {
         LinhaDaPonta::DepthPressure => f32::from(u8::from(lei.depth_pressure)),
         LinhaDaPonta::HoseMode => f32::from(b.hose.mode.to_u8()),
         LinhaDaPonta::Peso(k) => f32::from(b.hose.pesos[usize::from(k)]),
+        dual => le_o_dual(b, dual),
     };
     format!("{v}").parse().unwrap_or(f64::from(v))
 }
@@ -231,6 +387,11 @@ impl super::PainterTool {
             }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_SHAPE_HOSE_CLEAR => {
                 self.clear_brush_shape_hose();
+                return true;
+            }
+            // A imagem da 2.ª ponta (L6): o seletor de ficheiro da shell.
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_DUAL_IMAGE => {
+                self.request_brush_dual_image();
                 return true;
             }
             _ => {}

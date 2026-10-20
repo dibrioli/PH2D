@@ -134,6 +134,13 @@ fn pincel_mexido() -> BrushSpec {
             mode: ph2d_painter_brush::HoseMode::Sequence,
             pesos: [5, 2, 1, 1, 1, 1, 0, 1],
         },
+        dual: Some(ph2d_painter_brush::DualTip {
+            modo: ph2d_painter_brush::DualMode::Overlay,
+            escala: 0.3,
+            passo: 0.7,
+            contagem: 4,
+            ..ph2d_painter_brush::DualTip::DE_FABRICA
+        }),
         input_samples: 3,
         stabilizer: 0.25,
         taper: Taper {

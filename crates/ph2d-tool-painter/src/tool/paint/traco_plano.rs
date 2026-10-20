@@ -29,6 +29,8 @@ pub(crate) struct PlanoDoTraco {
     plano: Arc<Vec<u8>>,
     /// Os LOTES carimbados (só com a cauda armada), cada um com o sorteio com que pintou.
     lotes: Vec<Lote>,
+    /// A MÁSCARA da 2.ª ponta do dual brush (L6, [`super::dual`]): o alfa é a união das marcas dela.
+    mascara: Option<Arc<Vec<u8>>>,
 }
 
 /// Porque o plano não arma (o que a linha do painel diz ao esmaecer).
@@ -45,7 +47,7 @@ impl PainterTool {
     /// Se o pincel pede o plano (o tecto, uma orla ou a cauda).
     fn pede_o_plano(&self) -> bool {
         let b = &self.paint.brush;
-        b.traco.is_active() || b.taper.end_active()
+        b.traco.is_active() || b.taper.end_active() || b.dual.is_some()
     }
 
     /// ⭐ **A porta**: porque é que o plano NÃO arma agora (`None` = arma, se o pincel o pede).
@@ -87,28 +89,37 @@ impl PainterTool {
     }
 
     /// A janela de um lote no plano: a dos dabs mais a orla (o gate projecta-a inteira).
-    pub(super) fn regiao_do_lote_no_plano(&self, dabs: &[Dab]) -> Option<Region> {
-        self.dab_batch_region(dabs)
+    pub(super) fn regiao_do_lote_no_plano(&mut self, dabs: &[Dab]) -> Option<Region> {
+        une(self.dab_batch_region(dabs), self.regiao_do_dual())
             .map(|r| self.alarga(r, self.margem_da_orla()))
     }
 
     /// ⭐ **Um lote no plano**: carimba-o no plano (todas as rotas, em `Mix`), guarda os dabs para a cauda e
     /// recompõe a janela. Chamado pela porta do carimbo (`stamp_route`) dentro do gate de proteção/seleção.
     pub(super) fn stamp_dabs_no_plano(&mut self, dabs: &[Dab]) {
-        let Some(r) = self.dab_batch_region(dabs) else {
+        let r = self.dab_batch_region(dabs);
+        if r.is_none() && !self.dual_pendente() {
+            return;
+        }
+        let mut s = self.abre_o_plano();
+        // A 2.ª ponta (L6) primeiro: as marcas dela até este ponto do caminho recortam o lote.
+        let r_dual = self.carimba_a_segunda(&mut s.mascara);
+        if r.is_some() {
+            // A cauda (L5) re-carimba lotes INTEIROS com o MESMO sorteio (`tex_rng`) e o mesmo estado do trilho
+            // de píxel: o que não é cauda volta igual, sem costura na janela.
+            if self.paint.brush.taper.end_active() {
+                s.lotes.push(Lote {
+                    rng: self.paint.tex_rng,
+                    ancorado: self.paint.pixel_trilhos.ja_ancorado,
+                    dabs: dabs.to_vec(),
+                });
+            }
+            self.carimba_no_plano(&mut s, dabs);
+        }
+        let Some(r) = une(r, r_dual) else {
+            self.paint.plano_do_traco = Some(s);
             return;
         };
-        let mut s = self.abre_o_plano();
-        // A cauda (L5) re-carimba lotes INTEIROS com o MESMO sorteio (`tex_rng`) e o mesmo estado do trilho de
-        // píxel: o que não é cauda volta igual, sem costura na janela.
-        if self.paint.brush.taper.end_active() {
-            s.lotes.push(Lote {
-                rng: self.paint.tex_rng,
-                ancorado: self.paint.pixel_trilhos.ja_ancorado,
-                dabs: dabs.to_vec(),
-            });
-        }
-        self.carimba_no_plano(&mut s, dabs);
         let r = self.alarga(r, self.margem_da_orla());
         self.compoe_o_plano(&s, r);
         self.paint.plano_do_traco = Some(s);
@@ -123,6 +134,7 @@ impl PainterTool {
                 base: Arc::clone(&self.canvas_rgba),
                 plano: Arc::new(vec![0u8; n4]),
                 lotes: Vec::new(),
+                mascara: None,
             },
         }
     }
@@ -217,6 +229,9 @@ impl PainterTool {
                     let mut p = [0, 1, 2, 3].map(|k| dec(s.plano[i + k]));
                     if trinco {
                         p[3] *= base[3];
+                    }
+                    if let (Some(d), Some(m)) = (brush.dual, s.mascara.as_deref()) {
+                        p[3] = d.modo.recorta(p[3], dec(m[i + 3]));
                     }
                     let a = aro.as_ref().map_or(0.0, |(jan, v)| {
                         v[(y - jan.y as usize) * jan.w as usize + (x - jan.x as usize)]
@@ -414,6 +429,14 @@ struct Cauda {
     limpa: Region,
     /// A janela que muda (a pegada do lote, que transborda da limpa).
     tocados: Region,
+}
+
+/// A união de duas janelas que podem faltar.
+fn une(a: Option<Region>, b: Option<Region>) -> Option<Region> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some(union_region(a, b)),
+        (a, b) => a.or(b),
+    }
 }
 
 /// O dab `d` toca a região `r`?

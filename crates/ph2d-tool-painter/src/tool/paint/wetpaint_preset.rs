@@ -117,9 +117,10 @@ const DIGITAL: &str = "lido só pelo Digital (a ponta de píxel, L18)";
 const DOS_KNOBS: &str = "a caneta deitada: no Wet Paint são os knobs do pincel (`dabRotation`…`tiltLag`, W6), no mapa `engine`";
 const NAO_LIDO: &str = "o Wet Paint não o lê (deposita pela lei do fluido)";
 const PLANO: &str = "lido só pelo Digital: o plano do traço — o tecto e as orlas (L8, `traco_plano`)";
+const DUAL: &str = "lido só pelo Digital: a 2.ª ponta recorta o plano do traço (L6, `dual`)";
 
 /// Os campos do `BrushSpec` que o preset NÃO leva, e porquê.
-pub const CAMPOS_FORA: [(&str, &str); 70] = [
+pub const CAMPOS_FORA: [(&str, &str); 71] = [
     ("radius_px", VOLUME),
     ("strength", VOLUME),
     ("color", DA_OBRA),
@@ -190,6 +191,7 @@ pub const CAMPOS_FORA: [(&str, &str); 70] = [
     ("airbrush_rate_s", NAO_LIDO),
     ("space_attenuation", NAO_LIDO),
     ("traco", PLANO),
+    ("dual", DUAL),
 ];
 
 /// Um `f32` para o JSON pelo menor texto que volta ao mesmo `f32` (`0.1`, não `0.10000000149011612`).
@@ -558,6 +560,7 @@ impl PainterTool {
             texturas.insert(TEXTURA_GRAO.to_owned(), escrever_textura(lum, w, h));
         }
         self.texturas_da_mangueira(&mut texturas); // as imagens da ponta e a cor delas (L19)
+        self.texturas_do_dual(&mut texturas); // a imagem da 2.ª ponta (L6)
         texturas
     }
 
@@ -599,6 +602,7 @@ impl PainterTool {
         self.paint.texture_image_pending = false;
         self.paint.texture_image_version = self.paint.texture_image_version.wrapping_add(1);
         self.instala_a_mangueira(texturas, &mut falhas); // as imagens da ponta (L19)
+        self.instala_o_dual(texturas, &mut falhas); // a imagem da 2.ª ponta (L6)
         falhas
     }
 }

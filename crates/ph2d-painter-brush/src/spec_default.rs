@@ -137,6 +137,7 @@ impl Default for BrushSpec {
             dab_jitter: crate::marca::DabJitter::NEUTRO,
             pixel: crate::pixel::PixelTip::Off,
             hose: crate::mangueira::ImageHose::NEUTRA,
+            dual: None,
             dab_tilt: None,
             symmetry: SymmetrySettings::default(),
             // Watercolor: the `watercolor` gate (OFF) is what guarantees a byte-identical default

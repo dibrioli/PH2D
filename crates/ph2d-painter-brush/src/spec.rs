@@ -361,6 +361,8 @@ pub struct BrushSpec {
     /// ⭐ **A ponta de N IMAGENS** (L19, [`crate::mangueira::ImageHose`]): quantas imagens a Shape leva e como cada dab
     /// escolhe a sua; a [`crate::mangueira::ImageHose::NEUTRA`] é a imagem única de sempre ao bit.
     pub hose: crate::mangueira::ImageHose,
+    /// ⭐ **O DUAL BRUSH** (L6, [`crate::dual::DualTip`]): a 2.ª ponta que recorta a 1.ª; `None` é o carimbo de sempre.
+    pub dual: Option<crate::dual::DualTip>,
     /// **A pegada deitada DESTE dab** — só no pincel por dab de [`Self::at_dab`] (a caneta deitada, W6, e a forma
     /// sorteada da marca, L4: [`crate::Dab::tilt`]); `None` no pincel do artista. É por ela que o carimbo, que
     /// lê a pegada do `spec` ([`Self::dab_footprint`]), pinta a elipse deitada e não só o raio que cresceu.

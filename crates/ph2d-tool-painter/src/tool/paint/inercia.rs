@@ -55,10 +55,14 @@ pub enum Dependente {
     FallOffDaAgua,
     // A profundidade do grão por dab (L9): o mínimo e o controlo só leem o que o jitter faz variar.
     ProfundidadeSemJitter,
+    // O dual brush (L6) recorta o traço composto como CAMADA (`traco_plano`): só o Digital o compõe, e só num traço
+    // livre que pinta.
+    DualForaDoDigital,
+    DualForaDoTraco,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 38] = [
+    pub const TODOS: [Dependente; 40] = [
         Dependente::ForaDaPontaDePixel,
         Dependente::TaperTip,
         Dependente::TaperOpacity,
@@ -97,6 +101,8 @@ impl Dependente {
         Dependente::PlanoForaDoTraco,
         Dependente::FallOffDaAgua,
         Dependente::ProfundidadeSemJitter,
+        Dependente::DualForaDoDigital,
+        Dependente::DualForaDoTraco,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -186,6 +192,7 @@ impl Dependente {
             Dependente::ProfundidadeSemJitter => {
                 &[ids::PAINTER_PONTA_FIELDS[2], ids::PAINTER_PONTA_FIELDS[4]]
             }
+            Dependente::DualForaDoDigital | Dependente::DualForaDoTraco => &DUAL,
             Dependente::MaoSemPressao => &[
                 ids::PAINTER_PEN_FIELDS[4],
                 ids::PAINTER_PEN_FIELDS[5],
@@ -239,6 +246,8 @@ impl Dependente {
             Dependente::PlanoForaDoTraco => "panel.painter_layers.inerte.freehand_paint_stroke",
             Dependente::FallOffDaAgua => "panel.painter_layers.inerte.wet_paint_tool",
             Dependente::ProfundidadeSemJitter => "panel.painter_layers.inerte.depth_jitter_above_zero",
+            Dependente::DualForaDoDigital => "panel.painter_ponta.inerte.dual_medium",
+            Dependente::DualForaDoTraco => "panel.painter_layers.inerte.freehand_paint_stroke",
         }
     }
 
@@ -258,9 +267,9 @@ impl Dependente {
     #[must_use]
     pub fn natureza(self) -> Natureza {
         match self {
-            Dependente::CorDaTexturaSemLeitor | Dependente::OpacidadeNaAguada => {
-                Natureza::MeioNaoLe
-            }
+            Dependente::CorDaTexturaSemLeitor
+            | Dependente::OpacidadeNaAguada
+            | Dependente::DualForaDoDigital => Natureza::MeioNaoLe,
             _ => Natureza::DependeDeOutro,
         }
     }
@@ -308,6 +317,23 @@ const CERDAS: [NodeId; 9] = [
     ids::PAINTER_SHAPE_OFFSET_Y,
     ids::PAINTER_SHAPE_SIZE_X,
     ids::PAINTER_SHAPE_SIZE_Y,
+];
+
+/// O bloco Dual brush (L6): o modo, as linhas da 2.ª ponta (pela ordem de `LINHAS_DA_PONTA`) e «Dual image».
+const DUAL: [NodeId; 13] = [
+    ids::PAINTER_PONTA_FIELDS[14],
+    ids::PAINTER_PONTA_FIELDS[15],
+    ids::PAINTER_PONTA_FIELDS[16],
+    ids::PAINTER_PONTA_FIELDS[17],
+    ids::PAINTER_PONTA_FIELDS[18],
+    ids::PAINTER_PONTA_FIELDS[19],
+    ids::PAINTER_PONTA_FIELDS[20],
+    ids::PAINTER_PONTA_FIELDS[21],
+    ids::PAINTER_PONTA_FIELDS[22],
+    ids::PAINTER_PONTA_FIELDS[23],
+    ids::PAINTER_PONTA_FIELDS[24],
+    ids::PAINTER_PONTA_FIELDS[25],
+    ids::PAINTER_DUAL_IMAGE,
 ];
 
 /// O que a ponta de PÍXEL (L18) não lê: o Grain (o menu, os parâmetros, a profundidade e a lei da L9), a fonte da
@@ -594,6 +620,15 @@ impl PainterTool {
             (
                 Dependente::ProfundidadeSemJitter,
                 !b.texture.lei.varia_por_dab(),
+            ),
+            // O dual brush (L6): a MESMA porta que arma o plano do traço (`plano_recusado`).
+            (
+                Dependente::DualForaDoDigital,
+                self.plano_recusado() == Some(super::traco_plano::SemPlano::ForaDoDigital),
+            ),
+            (
+                Dependente::DualForaDoTraco,
+                self.plano_recusado() == Some(super::traco_plano::SemPlano::ForaDoTraco),
             ),
             (Dependente::MaoSemPressao, {
                 let d = self.dinamica_do_traco();

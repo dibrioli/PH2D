@@ -9,3 +9,4 @@
 mod measure_boundary;
 mod measure_product_stamp;
 mod parity;
+mod o_dual_na_placa;

@@ -28,7 +28,7 @@ pub(super) fn route_brush_dropdown_option(
     host: &mut dyn PanelHostInternal,
     id: ph2d_a11y::NodeId,
 ) -> Option<bool> {
-    let routes: [OptionRoute; 31] = [
+    let routes: [OptionRoute; 34] = [
         (
             decode_brush_preset_option,
             ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET,
@@ -137,6 +137,19 @@ pub(super) fn route_brush_dropdown_option(
         (
             crate::ponta_linhas::decode_hose_mode_option,
             ph2d_tool_painter::ids::PAINTER_PONTA_FIELDS[5],
+        ),
+        // Os menus do dual brush (L6): o modo, a forma e o seguir o traço da 2.ª ponta.
+        (
+            crate::ponta_linhas::decode_dual_mode_option,
+            ph2d_tool_painter::ids::PAINTER_PONTA_FIELDS[14],
+        ),
+        (
+            crate::ponta_linhas::decode_dual_tip_option,
+            ph2d_tool_painter::ids::PAINTER_PONTA_FIELDS[15],
+        ),
+        (
+            crate::ponta_linhas::decode_dual_follow_option,
+            ph2d_tool_painter::ids::PAINTER_PONTA_FIELDS[16],
         ),
         (
             decode_wet_policy_option,

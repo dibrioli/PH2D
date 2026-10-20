@@ -232,6 +232,7 @@ impl Default for PaintState {
             acumulando_no_plano: false,
             stroke_mask: Vec::new(),
             plano_do_traco: None,
+            dual: Default::default(),
             pixel_trilhos: super::pixel_route::Trilhos::default(),
             mangueira: Default::default(),
             relief: Default::default(),

@@ -505,6 +505,10 @@ impl TocadorDoPainter {
                 t.take_brush_shape_hose_request();
             }
             Passo::MangueiraRgba { rgba, w, h } => t.add_brush_shape_hose_image_rgba(&rgba, w, h),
+            Passo::TiraPedidoDual => {
+                t.take_brush_dual_image_request();
+            }
+            Passo::DualRgba { rgba, w, h } => t.set_brush_dual_image_rgba(&rgba, w, h),
             Passo::FalloffPonto { id, d, s } => t.set_brush_falloff_point(id, d, s),
             Passo::FalloffAcrescenta { d, s } => {
                 t.add_brush_falloff_point_at(d, s);

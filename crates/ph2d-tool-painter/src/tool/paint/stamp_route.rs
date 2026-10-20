@@ -233,14 +233,7 @@ impl PainterTool {
         // ⭐ O PLANO DO TRAÇO (L8 + a cauda da L5, só no Digital, `super::traco_plano`): o lote pinta no plano do
         // traço e compõe-se sobre a base — dentro do MESMO gate, alargado pela orla. Fora dele, nada muda.
         if self.traco_no_plano() {
-            if (mask_gate || sel_gate)
-                && let Some(region) = self.regiao_do_lote_no_plano(dabs)
-            {
-                self.gate_scoped(region, mask_gate, sel_gate, |t| t.stamp_dabs_no_plano(dabs));
-            } else {
-                self.stamp_dabs_no_plano(dabs);
-            }
-            return;
+            return self.lote_no_plano(dabs, mask_gate, sel_gate);
         }
         if (mask_gate || sel_gate)
             && let Some(region) = self.dab_batch_region(dabs)
@@ -249,6 +242,28 @@ impl PainterTool {
             return;
         }
         self.stamp_dabs_routed(dabs);
+    }
+
+    /// Um lote no PLANO do traço, dentro do gate de proteção/seleção alargado pela orla e pelas marcas da 2.ª ponta.
+    fn lote_no_plano(&mut self, dabs: &[Dab], mask_gate: bool, sel_gate: bool) {
+        if (mask_gate || sel_gate)
+            && let Some(region) = self.regiao_do_lote_no_plano(dabs)
+        {
+            self.gate_scoped(region, mask_gate, sel_gate, |t| t.stamp_dabs_no_plano(dabs));
+        } else {
+            self.stamp_dabs_no_plano(dabs);
+        }
+    }
+
+    /// As marcas da 2.ª ponta (L6) que nenhum lote levou — o fim do traço, antes da cauda e do fecho.
+    pub(super) fn descarrega_o_dual(&mut self) {
+        if self.dual_pendente() && self.traco_no_plano() {
+            let (mask_gate, sel_gate) = (
+                self.mask_protection_active(),
+                self.selection_restricts_paint(),
+            );
+            self.lote_no_plano(&[], mask_gate, sel_gate);
+        }
     }
 
     /// **The one door** for *"does this stroke track its own coverage?"* — asked by the route selection

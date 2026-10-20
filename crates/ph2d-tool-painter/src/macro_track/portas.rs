@@ -76,6 +76,10 @@ pub const PORTAS: &[Porta] = &[
     r("set_source", OUTRO_DOCUMENTO),
     g("add_brush_shape_hose_image_rgba"),
     r("add_brush_shape_hose_image", IMAGENS_DA_PONTA),
+    // O dual brush (L6): a imagem da 2.ª ponta como a das N imagens — gravada pelo RGBA; a silhueta é do preset.
+    g("set_brush_dual_image_rgba"),
+    r("set_brush_dual_image", IMAGENS_DA_PONTA),
+    g("take_brush_dual_image_request"),
     g("take_brush_shape_hose_request"),
     r("deactivate", OUTRO_DOCUMENTO),
     a("as_any_mut", ACESSOR),

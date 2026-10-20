@@ -82,6 +82,12 @@ fn todos_os_passos() -> Vec<Passo> {
             w: 2,
             h: 2,
         },
+        Passo::TiraPedidoDual,
+        Passo::DualRgba {
+            rgba: vec![7; 16],
+            w: 2,
+            h: 2,
+        },
         Passo::FalloffPonto {
             id: 2,
             d: 0.4,

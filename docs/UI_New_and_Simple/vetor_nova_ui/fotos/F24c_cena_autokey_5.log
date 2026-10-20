@@ -1,0 +1,1097 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   255ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   267ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   267ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   297ms] M11: VelloPass initialized (1024×768 intermediate)
+[   305ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   340ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   372ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   378ms] lifecycle: Foreground
+[   378ms] resize: 1024x768 @ 1.00x scale
+[ph2d-gpu] surface present mode → Immediate
+[   408ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 0.233s of sim time (max_substeps cap)
+[autokey] painel=false armado=false populacao=[]
+[autokey-smoke] estrela 0 (entidade 0xfffffff9): degradê laranja→roxo, traço azul, entrada 1 da pilha = traço amarelo (aberta), Contour 3 anéis; quadro 12; Auto Key LIGADO
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=false tocando=false solo=false t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.roteiro: docs/UI_New_and_Simple/vetor_nova_ui/fotos/F24c_cena_autokey_5.log
+ne, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[ph2d-gpu] surface present mode → Fifo
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0
+[autokey] painel=true armado=true populacao=[fffffff9]
+[autokey] e=0xfffffff9 capturando=true tocando=false solo=true t=0.500 casa=Some(0.5) pose=[Some(1.110223e-16), Some(0.1718847), Some(0.0), Some(1.0), Some(1.0), Some(1.0), None, None, None, None, None] fila=0

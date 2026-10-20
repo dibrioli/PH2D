@@ -168,9 +168,14 @@ pub fn paint_choice_row(
             crate::paint::resolve(ph2d_tokens::ColorToken::Text2, theme),
         );
         let gy = y + font + crate::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX;
-        // O losango da paleta senta na coluna do decorator da linha do CABEÇALHO.
-        let (_, dot) = crate::widget::form_row_columns(x, w, y, font);
-        decorador(scene, theme, hit_index, dot, segmentos);
+        // O losango da paleta senta na coluna do decorator da linha do CABEÇALHO — só quando o
+        // campo tem canal: a paleta nunca teve o ponto, e um ponto novo na ponta do nome dela
+        // mudaria a linha de quem não anima nada.
+        let ids: Vec<NodeId> = segmentos.iter().map(|&(_, _, id)| id).collect();
+        if crate::widget::key_mark::key_mark_of(&ids).is_some() {
+            let (_, dot) = crate::widget::form_row_columns(x, w, y, font);
+            decorador(scene, theme, hit_index, dot, segmentos);
+        }
         let seg_h = crate::widget::panel_chrome::paint_segmented_group_adaptive(
             Rect::new(x, gy, w, ROW_H_PX),
             segmentos,

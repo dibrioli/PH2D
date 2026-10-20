@@ -24,7 +24,9 @@ use crate::state::VecState;
 
 static ESTAGIO: AtomicU8 = AtomicU8::new(0);
 static ESPERA: AtomicU8 = AtomicU8::new(0);
-/// `0` = as cenas `=1|2` · `1` = `=3` (o dono) · `2` = `=4` (mexe sozinha).
+/// `0` = as cenas `=1|2` · `1` = `=3` (o dono) · `2` = `=4` (mexe sozinha) · `3` = `=5` (o dono,
+/// o losango em todo campo — `autokey_cena_tudo`) · `4` = `=6` (mexe sozinha) · `5` = `=7` (a `=6`
+/// com o Inspector à frente no fim, para a foto).
 static DESENHO: AtomicU8 = AtomicU8::new(0);
 /// O estágio da cena — a do desenho avança-o daqui.
 pub(crate) fn avanca(n: u8) {
@@ -49,13 +51,31 @@ pub fn step(
             ESTAGIO.store(1, Ordering::Relaxed);
             ESPERA.store(if n == "2" { 1 } else { 0 }, Ordering::Relaxed);
             // `=3` (o dono) e `=4` (mexe sozinha): o DESENHO grava (plano 35) — `autokey_cena_desenho`.
-            if n == "3" || n == "4" {
-                DESENHO.store(if n == "4" { 2 } else { 1 }, Ordering::Relaxed);
-            }
+            let desenho = match n.as_str() {
+                "3" => 1,
+                "4" => 2,
+                "5" => 3,
+                "6" => 4,
+                "7" => 5,
+                _ => 0,
+            };
+            DESENHO.store(desenho, Ordering::Relaxed);
             1
         }
         s => s,
     };
+    if DESENHO.load(Ordering::Relaxed) >= 3 {
+        return crate::autokey_cena_tudo::step(
+            nivel,
+            DESENHO.load(Ordering::Relaxed) - 3,
+            vec,
+            scene,
+            sim,
+            hero,
+            tl,
+            ph,
+        );
+    }
     if DESENHO.load(Ordering::Relaxed) > 0 {
         return crate::autokey_cena_desenho::step(
             nivel,

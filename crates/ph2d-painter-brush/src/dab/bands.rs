@@ -350,6 +350,14 @@ pub(super) fn stamp_band(
                 .footprint
                 .apply([dx * ctx.inv_radius, dy * ctx.inv_radius]);
             let t = (wv[0] * wv[0] + wv[1] * wv[1]).sqrt();
+            // A ponta RETA (`dab_quina`, J3 A-4): a norma do `falloff_t`, o quadrado no referencial — sem quina
+            // o `sqrt` de cima, ao bit (`basicos::a_ponta_reta_do_digital_pinta_um_rectangulo`).
+            let t = if ctx.footprint.quina() > 0.0 {
+                ctx.footprint
+                    .falloff_t(dx * ctx.inv_radius, dy * ctx.inv_radius)
+            } else {
+                t
+            };
             // The FILM ([`crate::height::film_coverage`]): a brush laying body lays no pigment where it
             // lays no body. Applied to the SILHOUETTE — before the Grain, before the dynamics — so every
             // funnel below (grain, Accumulate-OFF cap, ramps) inherits the cut with no arithmetic.

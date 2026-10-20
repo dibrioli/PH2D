@@ -245,8 +245,8 @@ pub const MEIOS: &[ReceitaMeio] = &[
         ..ReceitaMeio::aquarela("Ink", "Bleed", "Ink Bleed")
     },
     // C-14 Ink › Nib › Gesinski Ink (Procreate Gesinski Ink, doc.): a pena translúcida que ESCURECE onde se sobrepõe —
-    // o carimbo duro do Digital em Multiply com o tecto POR TRAÇO (L8, 0,7 — a 0,55 o 3.º revisor cego lia-a «marcador
-    // aguado»: um traço não escurece a si mesmo, nem na
+    // o carimbo duro do Digital em Multiply com o tecto POR TRAÇO (L8, 0,55 — a 0,7 a matriz punha-a a 0,52 do Gloop
+    // Pen, abaixo do limiar; o 3.º revisor cego lia o 0,55 como «aguado»: um traço não escurece a si mesmo, nem na
     // espiral nem a 200 px; dois, sim) e a pressão que leva a largura de um FIO ao cheio (0,9: a ponta leve guarda um
     // fio, o 2.º revisor cego via-a sumir) e fica fina por mais tempo (curva 1,4).
     ReceitaMeio {
@@ -257,7 +257,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("spacing", "0.05"),
             (
                 "traco",
-                r#"{"largura": 7.0, "molhada": 0.0, "queimada": 0.0, "tecto": 0.7}"#,
+                r#"{"largura": 7.0, "molhada": 0.0, "queimada": 0.0, "tecto": 0.55}"#,
             ),
         ],
         mao: &[("pressureSize", 0.9), ("pressureSizeCurve", 1.4), ("pressureOpacity", 0.3)],

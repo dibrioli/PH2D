@@ -107,3 +107,53 @@ fn the_held_order_is_stable_and_sorted() {
         "a lista tem de sair ordenada, sempre igual"
     );
 }
+
+/// ⭐ **Um TOQUE dentro de um quadro não se perde** (Godot: `just_pressed` e `just_released` no
+/// quadro seguinte — `docs/CodeEditor/05_api_que_funciona.md` §1). A diferença de dois retratos
+/// nunca o via: a tecla não está em baixo em nenhuma fronteira.
+#[test]
+fn a_tap_inside_one_frame_gives_both_edges() {
+    let mut k = KeyboardState::new();
+    k.begin_frame();
+    k.handle_key_down(A);
+    k.handle_key_up(A);
+    assert!(!k.held(A));
+    assert!(k.pressed(A), "o toque perdeu a descida");
+    assert!(k.released(A), "o toque perdeu a subida");
+    k.begin_frame();
+    assert!(!k.pressed(A) && !k.released(A), "a borda vive um quadro só");
+}
+
+/// ⭐ Todo nome de script volta à MESMA tecla, e todo código com rótulo tem nome de script — a
+/// tabela é uma só (`NAMED` + letras, dígitos, F1..F12).
+#[test]
+fn every_named_key_round_trips_through_its_script_name() {
+    let mut n = 0;
+    for k in Key::all_named() {
+        let name = k.script_name().expect("toda tecla com rótulo tem nome de script");
+        assert_eq!(Key::named_in_script(&name), Some(vec![k]), "{name}");
+        assert!(!k.label().starts_with("Key "), "{name} sem rótulo");
+        n += 1;
+    }
+    assert_eq!(n, 26 + 10 + 12 + 21);
+    let names = Key::script_names();
+    let mut sorted = names.clone();
+    sorted.sort();
+    sorted.dedup();
+    assert_eq!(sorted.len(), names.len(), "nome repetido na tabela");
+}
+
+/// Os apelidos valem os dois lados; um nome desconhecido é `None` (o script di-lo como erro).
+#[test]
+fn aliases_name_both_sides_and_unknown_names_are_none() {
+    assert_eq!(
+        Key::named_in_script("shift"),
+        Some(vec![Key(0xF710), Key(0xF711)])
+    );
+    assert_eq!(Key::named_in_script("left"), Some(vec![Key(0xF702)]));
+    assert_eq!(Key::named_in_script("a"), Some(vec![A]));
+    assert_eq!(Key::named_in_script("A"), None, "os nomes são minúsculas");
+    assert_eq!(Key::named_in_script("spcae"), None);
+    assert_eq!(Key(0xF702).label(), "Left Arrow", "o rótulo do artista não mudou");
+    assert_eq!(Key(0xF704 + 11).label(), "F12");
+}

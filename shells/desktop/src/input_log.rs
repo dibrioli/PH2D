@@ -42,6 +42,10 @@ pub fn log_input_event(elapsed_ms: u128, event: &InputEvent) {
         // cada letra digitada num campo de texto, e imprimi-lo transformaria a consola numa
         // gravação do que o artista está a escrever. Quem quiser ver o teclado tem o diagnóstico
         // do Input Map, que imprime **acções**, não teclas.
-        InputEvent::KeyDown(_) | InputEvent::KeyUp(_) | InputEvent::FocusLost => {}
+        InputEvent::KeyDown(_)
+        | InputEvent::KeyUp(_)
+        | InputEvent::MouseButtonDown(_)
+        | InputEvent::MouseButtonUp(_)
+        | InputEvent::FocusLost => {}
     }
 }

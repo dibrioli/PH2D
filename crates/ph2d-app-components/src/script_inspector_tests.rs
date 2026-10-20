@@ -286,7 +286,7 @@ fn o_cartao_mostra_a_linha_do_erro() {
         &[],
     );
     let mut h = pronto(&mut sim);
-    h.scene_tick(sim.world_mut(), 0.1);
+    h.scene_tick(&mut sim, 0.1);
     assert_eq!(
         build_info(&sim, Some(&h), bits, 1, true)
             .expect("tem")
@@ -304,7 +304,7 @@ fn o_cartao_mostra_a_linha_do_erro() {
 fn a_falha_da_corrida_chega_ao_painel() {
     let (mut sim, bits) = cena_com(r#"function update(self, dt) error("partiu") end"#, &[]);
     let mut h = pronto(&mut sim);
-    h.scene_tick(sim.world_mut(), 0.1);
+    h.scene_tick(&mut sim, 0.1);
     let info = build_info(&sim, Some(&h), bits, 1, true).expect("tem");
     assert!(info.failure.is_some_and(|m| m.message.contains("partiu")));
 }

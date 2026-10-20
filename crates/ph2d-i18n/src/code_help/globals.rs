@@ -70,13 +70,15 @@ pub(super) fn tr(key: &str) -> Option<&'static str> {
             "What a `for` loop needs; you normally write `for i, v in ipairs(list) do`."
         }
         "code.help.globals.loadstring" => {
-            "Turns a piece of Luau code written as text into a function you can call.\n\nNote: in PH2D a mistake in the text stops the script with a `syntax error`, instead of giving `nil`; wrap the call in [pcall] if the text might be broken.\n\nNote: the new code sees the built-in names but not the global variables of your script, and the globals it creates are not your script's either. Hand it values as arguments instead: they arrive as `...`, as in `loadstring(\"local n = ... return n * 2\")(21)`."
+            "Turns a piece of Luau code written as text into a function you can call.\n\nA mistake in the text does not stop the script: you get `nil` and the message, so check the first value before calling it.\n\nThe new code runs as part of your script: it sees and changes your script's global variables, never another script's. Values can also be handed to it as arguments, which arrive as `...`, as in `loadstring(\"local n = ... return n * 2\")(21)`."
         }
         "code.help.globals.loadstring.src" => "The Luau code, as text.",
         "code.help.globals.loadstring.chunkname" => {
             "Optional. The name shown in front of its error messages. Start it with `=` to use it exactly as written."
         }
-        "code.help.globals.loadstring.returns" => "The new function.",
+        "code.help.globals.loadstring.returns" => {
+            "The new function; or `nil` and the message when the text has a mistake."
+        }
         "code.help.globals.newproxy" => {
             "Makes an empty value of type `userdata`, optionally with its own metatable.\n\nUseful only for advanced tricks: unlike a table, nothing can be stored in it directly, so its behaviour comes entirely from the metatable."
         }

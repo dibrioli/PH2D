@@ -4,6 +4,7 @@
 
 use crate::gamepad::{GamepadAxis, GamepadButton};
 use crate::keyboard::Key;
+use crate::mouse::MouseButton;
 use crate::pencil::PencilEvent;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -21,6 +22,8 @@ pub enum Event {
     /// A `Key` é o keycode **já normalizado** pela shell — ver [`crate::keyboard`].
     KeyDown(Key),
     KeyUp(Key),
+    MouseButtonDown(MouseButton),
+    MouseButtonUp(MouseButton),
     /// **Larga tudo** — a janela perdeu o foco. É a metade que esta crate pode resolver do `Up`
     /// perdido que deixaria um personagem a andar sozinho para sempre.
     FocusLost,

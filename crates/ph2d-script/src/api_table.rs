@@ -80,7 +80,7 @@ pub const API_TYPES: &[ApiType] = &[
     ApiType {
         ident: "Entity",
         definition: "number",
-        doc: "A scene object, as `self.id` and `ph2d.find_by_name` give it.",
+        doc: "A scene object, as `self.id`, `ph2d.find_by_name` and `ph2d.spawn` give it.",
     },
     ApiType {
         ident: "PoseField",
@@ -109,8 +109,20 @@ pub const API_TYPES: &[ApiType] = &[
     },
     ApiType {
         ident: "StateValue",
-        definition: "boolean | number | string | { [string]: StateValue }",
-        doc: "Plain data that survives a reload in the per-object state table.",
+        definition: "boolean | number | string | { [string | number]: StateValue }",
+        doc: "Plain data kept per object for the run (a reload keeps it, a rewind clears it).",
+    },
+    // A lista sai de `ph2d_input::Key::script_names` — o gate `os_nomes_de_tecla_sao_os_do_teclado`
+    // compara as duas.
+    ApiType {
+        ident: "KeyName",
+        definition: "\"a\" | \"b\" | \"c\" | \"d\" | \"e\" | \"f\" | \"g\" | \"h\" | \"i\" | \"j\" | \"k\" | \"l\" | \"m\" | \"n\" | \"o\" | \"p\" | \"q\" | \"r\" | \"s\" | \"t\" | \"u\" | \"v\" | \"w\" | \"x\" | \"y\" | \"z\" | \"0\" | \"1\" | \"2\" | \"3\" | \"4\" | \"5\" | \"6\" | \"7\" | \"8\" | \"9\" | \"f1\" | \"f2\" | \"f3\" | \"f4\" | \"f5\" | \"f6\" | \"f7\" | \"f8\" | \"f9\" | \"f10\" | \"f11\" | \"f12\" | \"tab\" | \"enter\" | \"space\" | \"escape\" | \"backspace\" | \"delete\" | \"up\" | \"down\" | \"left\" | \"right\" | \"left_shift\" | \"right_shift\" | \"left_ctrl\" | \"right_ctrl\" | \"left_alt\" | \"right_alt\" | \"home\" | \"[\" | \"]\" | \",\" | \".\" | \"shift\" | \"ctrl\" | \"alt\"",
+        doc: "A keyboard key, lower case; `shift`, `ctrl` and `alt` mean either side.",
+    },
+    ApiType {
+        ident: "MouseButtonName",
+        definition: "\"left\" | \"right\" | \"middle\"",
+        doc: "A mouse button.",
     },
     // `born` cria o `self` só com o `id`; os números entram pelos nomes das propriedades e o script
     // guarda o que quiser ⇒ o indexador `any` é a verdade, não preguiça. O `luau-lsp` 1.70.1 expõe um
@@ -134,13 +146,13 @@ pub const API: &[ApiEntry] = &[
         table: "ph2d",
         ident: "get",
         luau_type: "(entity: Entity, field: PoseField) -> number?",
-        doc: "Reads a pose field as it was at the start of the tick; nil if unknown.",
+        doc: "Reads a pose field of any object as it was at the start of the tick; nil if the id is no object.",
     },
     ApiEntry {
         table: "ph2d",
         ident: "input",
         luau_type: "(key: string) -> number?",
-        doc: "The value of an input key or axis this frame; nil when not held.",
+        doc: "The value of a gamepad button or axis this frame; nil when not held.",
     },
     ApiEntry {
         table: "ph2d",
@@ -152,31 +164,68 @@ pub const API: &[ApiEntry] = &[
         table: "ph2d",
         ident: "find_by_name",
         luau_type: "(name: string) -> Entity?",
-        doc: "The object with this name, if there is one.",
+        doc: "The first object with this name, in the order of the object list; nil if none.",
     },
     ApiEntry {
         table: "ph2d",
         ident: "spawn",
-        luau_type: "() -> ()",
-        doc: "Queues an empty object, created between ticks.",
-    },
-    ApiEntry {
-        table: "ph2d",
-        ident: "spawn_named",
-        luau_type: "(name: string) -> ()",
-        doc: "Queues a named object; `find_by_name` finds it from the next tick.",
+        luau_type: "(master: string?, x: number?, y: number?) -> Entity",
+        doc: "Creates a copy of the master with this name right away (an empty object without one); a rewind removes it.",
     },
     ApiEntry {
         table: "ph2d",
         ident: "despawn",
-        luau_type: "(entity: Entity) -> ()",
-        doc: "Queues the removal of an object.",
+        luau_type: "(entity: Entity) -> boolean",
+        doc: "Removes an object created while the scene runs, at the end of the frame.",
     },
     ApiEntry {
         table: "ph2d",
         ident: "attach_script",
-        luau_type: "(entity: Entity, script: string) -> ()",
-        doc: "Queues attaching a project script, named by its name in the project (e.g. \"bob.luau\").",
+        luau_type: "(entity: Entity, script: string) -> boolean",
+        doc: "Gives an object created while the scene runs a project script, by its name (e.g. \"bob.luau\").",
+    },
+    // ── ph2d: o teclado e o rato ──
+    ApiEntry {
+        table: "ph2d",
+        ident: "key_down",
+        luau_type: "(key: KeyName) -> boolean",
+        doc: "Whether the key is held right now.",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "key_pressed",
+        luau_type: "(key: KeyName) -> boolean",
+        doc: "Whether the key went down since the last tick — true on one tick only.",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "key_released",
+        luau_type: "(key: KeyName) -> boolean",
+        doc: "Whether the key went up since the last tick — true on one tick only.",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "mouse_down",
+        luau_type: "(button: MouseButtonName) -> boolean",
+        doc: "Whether the mouse button is held after a click that started on the scene.",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "mouse_pressed",
+        luau_type: "(button: MouseButtonName) -> boolean",
+        doc: "Whether the button was clicked on the scene since the last tick — true on one tick only.",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "mouse_released",
+        luau_type: "(button: MouseButtonName) -> boolean",
+        doc: "Whether the button was let go since the last tick — true on one tick only.",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "mouse_position",
+        luau_type: "() -> (number?, number?)",
+        doc: "The point of the scene under the mouse, in the same units as `x` and `y`.",
     },
     // ── ph2d: as declarações e os valores ──
     ApiEntry {
@@ -197,36 +246,36 @@ pub const API: &[ApiEntry] = &[
         luau_type: "(r: number, g: number, b: number, a: number?) -> Color",
         doc: "A linear RGBA colour value; opaque when `a` is missing.",
     },
-    // ── ph2d: o estado lateral (sobrevive à recarga) ──
+    // ── ph2d: o estado lateral (da corrida: sobrevive à recarga, o rebobinar limpa-o) ──
     ApiEntry {
         table: "ph2d",
         ident: "state_get",
         luau_type: "(entity: Entity, field: string) -> StateValue?",
-        doc: "Reads a field of the object's lateral state.",
+        doc: "Reads a field of the object's state for this run.",
     },
     ApiEntry {
         table: "ph2d",
         ident: "state_set",
         luau_type: "(entity: Entity, field: string, value: StateValue?) -> ()",
-        doc: "Writes a field of the object's lateral state; only plain data.",
+        doc: "Writes a field of the object's state for this run; only plain data, and nil removes the field.",
     },
     ApiEntry {
         table: "ph2d",
         ident: "state_keys",
         luau_type: "(entity: Entity) -> { string }",
-        doc: "The fields of the object's lateral state, sorted.",
+        doc: "The fields of the object's state, sorted.",
     },
     ApiEntry {
         table: "ph2d",
         ident: "state_clear",
         luau_type: "(entity: Entity) -> ()",
-        doc: "Drops every field of the object's lateral state.",
+        doc: "Drops every field of the object's state.",
     },
     ApiEntry {
         table: "ph2d",
         ident: "wait",
-        luau_type: "(seconds: number) -> ()",
-        doc: "Yields the running coroutine for `seconds`; scene hooks are not coroutines.",
+        luau_type: "(seconds: number?) -> number",
+        doc: "Pauses this hook for `seconds` of play time and returns the time that passed; the object keeps running.",
     },
     // ── motion ──
     ApiEntry {

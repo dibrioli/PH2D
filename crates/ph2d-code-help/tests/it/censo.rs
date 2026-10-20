@@ -167,8 +167,9 @@ fn cada_exemplo_corre_e_da_o_que_diz() {
             let Some(example) = m.example else { continue };
             let host = ScriptHost::new().expect("o runtime monta");
             let at = format!("{}.{}", p.id, m.name);
-            if let Err(e) = host.runtime().eval(example) {
-                erros.push(format!("{at}: não correu: {e}"));
+            // ⚠️ Como um SCRIPT do projecto (o ambiente dele, o `loadstring` dele), nunca no global.
+            if let Err(e) = ph2d_script::load_module(host.runtime().lua(), &at, example) {
+                erros.push(format!("{at}: não correu: {}", e.message));
                 continue;
             }
             corridos += 1;

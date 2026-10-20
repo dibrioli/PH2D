@@ -75,7 +75,7 @@ impl Palco {
         self.agora += QUADRO_NS;
         self.hero.store.note_clock(u128::from(self.agora));
         self.host.scene_sync(self.sim.world_mut());
-        let _ = self.host.scene_tick(self.sim.world_mut(), 1.0 / 60.0);
+        let _ = self.host.scene_tick(&mut self.sim, 1.0 / 60.0);
         ph2d_app_code::frame(
             &mut self.sim,
             Some(&mut self.host),

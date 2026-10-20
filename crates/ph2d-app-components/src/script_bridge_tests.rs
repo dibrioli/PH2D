@@ -57,6 +57,7 @@ impl Cena {
             1,
             1.0 / 60.0,
             &[],
+            &mut ph2d_script::NoDoors,
         );
         self.drive.settle();
         f
@@ -206,7 +207,98 @@ fn dois_tiques_num_quadro_sao_duas_chamadas() {
         2,
         1.0 / 60.0,
         &[],
+        &mut ph2d_script::NoDoors,
     );
     assert_eq!(f.calls, 3, "init + dois update");
     assert_eq!(c.x(), 12.0);
+}
+
+/// ⭐⭐ **`ph2d.spawn("Mestre")` pela porta da FÁBRICA** (CodeEditor item 6): a mesma instanciação,
+/// a mesma marca — a cópia é da corrida, nasce onde o script disse, e a varredura do rebobinar
+/// tira-a; o `ph2d.despawn` dela sai como uma morte para o dreno único.
+#[test]
+fn spawn_pela_porta_da_fabrica_e_a_copia_e_da_corrida() {
+    let mut reg = ph2d_ecs::scene::ComponentRegistry::new();
+    ph2d_ecs::scene::register_ecs_components(&mut reg);
+    let (mut vec_scene, mut vec_entities) = crate::instance_docs::empty_docs();
+    let mut sim = SimWorld::new();
+    crate::instance_smoke::spawn_master(&mut sim);
+    let id = sim
+        .world_mut()
+        .get_resource_or_init::<ProjectScripts>()
+        .insert(
+            "arma.luau",
+            r#"
+function init(self)
+  self.c = ph2d.spawn("Ragdoll", 3, 4)
+end
+function update(self)
+  if self.n then ph2d.despawn(self.c) end
+  self.n = true
+end
+"#,
+        );
+    let arma = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, StableId(9), LuauScript::library(id)))
+        .id();
+    let mut host = ScriptHost::new().expect("vm");
+    let mut drive = PreviewDrive::default();
+    let mut portas = super::ScriptDoors {
+        registry: &reg,
+        docs: crate::instance_docs::OwnedDocs {
+            vec_scene: &mut vec_scene,
+            vec_entities: &mut vec_entities,
+        },
+        tick: 5,
+    };
+    let f = frame(&mut host, &mut sim, &mut drive, true, 1, 1.0 / 60.0, &[], &mut portas);
+    assert!(f.failed.is_empty(), "{:?}", f.failed);
+    let w = sim.world_mut();
+    let copias: Vec<(ph2d_ecs::Entity, ph2d_ecs::Spawned, Transform)> = w
+        .query::<(ph2d_ecs::Entity, &ph2d_ecs::Spawned, &Transform)>()
+        .iter(w)
+        .map(|(e, s, t)| (e, *s, *t))
+        .collect();
+    assert_eq!(copias.len(), 1, "uma cópia do mestre");
+    let (copia, marca, pose) = copias[0];
+    assert_eq!(marca.by, 9, "posta pelo objecto do script");
+    assert_eq!(marca.born_tick, 5);
+    assert_eq!((pose.translation.x, pose.translation.y), (3.0, 4.0));
+    assert!(ph2d_ecs::is_transient(sim.world(), copia), "não é documento");
+    assert!(drive.is_empty() || !drive.driven_by(Driver::ScriptPose).contains(&copia));
+    let f = frame(&mut host, &mut sim, &mut drive, true, 1, 1.0 / 60.0, &[], &mut portas);
+    assert_eq!(f.despawned, vec![copia], "o despawn sai para o dreno das mortes");
+    let _ = arma;
+    assert_eq!(crate::factory_bridge::sweep_spawned(&mut sim), 1, "o rebobinar varre-a");
+}
+
+/// ⛔ **Achado ao ler (20/10):** um `ph2d.set` num objecto SEM script escrevia, mas só quem tinha
+/// script era declarado ao ledger — a pose da corrida virava DOCUMENTO e o rebobinar não a desfazia.
+#[test]
+fn set_num_objecto_sem_script_volta_ao_rebobinar() {
+    let mut c = cena(
+        r#"
+function update(self)
+  local p = ph2d.find_by_name("Pedra")
+  ph2d.set(p, "x", ph2d.get(p, "x") + 1)
+end
+"#,
+    );
+    let mut t = Transform::IDENTITY;
+    t.translation.x = 10.0;
+    let pedra = c
+        .sim
+        .world_mut()
+        .spawn((t, ph2d_ecs::Name::new("Pedra"), StableId(2)))
+        .id();
+    c.quadro(true);
+    c.quadro(true);
+    let x = |c: &Cena| c.sim.world().get::<Transform>(pedra).expect("pose").translation.x;
+    assert_eq!(x(&c), 12.0, "a corrida move a pedra");
+    let live = c.drive.substitute_authored(&mut c.sim);
+    assert_eq!(x(&c), 10.0, "a captura vê o autorado");
+    PreviewDrive::restore_live(&mut c.sim, &live);
+    rewind(&mut c.host, &mut c.sim, &mut c.drive);
+    assert_eq!(x(&c), 10.0, "rebobinar devolve a pedra");
 }

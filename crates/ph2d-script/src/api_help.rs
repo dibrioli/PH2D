@@ -6,9 +6,9 @@
 //! gate `tests/it/a_api_e_a_tabela.rs::toda_entrada_da_api_tem_ajuda`. O [`crate::api_table::luau_docs`]
 //! lê daqui o texto de cada argumento ⇒ o balão do `luau-lsp` e a página dizem o mesmo.
 //!
-//! ⚠️ O texto diz o que o código FAZ (lido de `host.rs`, `scene.rs`, `module.rs`, `lateral.rs`,
-//! `motion_api.rs`, e quem chama o `ScriptHost` na app) — incluindo o que ainda não chega à cena
-//! (`find_by_name`, `spawn*`, `despawn`, `attach_script`: ninguém fornece nomes nem drena a fila).
+//! ⚠️ O texto diz o que o código FAZ (lido de `host.rs`, `scene.rs`, `lane.rs`, `module.rs`,
+//! `lateral.rs`, `motion_api.rs`, e quem chama o `ScriptHost` na app), medido pelos portões de
+//! `scene_api_tests.rs` (CodeEditor item 6, `docs/CodeEditor/05_api_que_funciona.md`).
 
 /// O texto de uma entrada.
 pub struct ApiHelp {
@@ -22,13 +22,6 @@ pub struct ApiHelp {
     pub more: &'static str,
     /// Código Luau que o editor aceita sem aviso (gate `oraculo_lsp` do `ph2d-app-code`).
     pub example: &'static str,
-}
-
-/// O parágrafo comum às quatro chamadas da fila do mundo (`spawn*`, `despawn`, `attach_script`).
-macro_rules! queue_note {
-    () => {
-        "Note: in this version of the editor nothing carries out these requests yet, so the scene does not change. The queue is never emptied: after 1024 requests from [ph2d.spawn], [ph2d.spawn_named], [ph2d.despawn] and [ph2d.attach_script] together, every further call is an error that stops the object."
-    };
 }
 
 pub const API_HELP: &[ApiHelp] = &[
@@ -63,15 +56,15 @@ end"#,
         params: &[
             (
                 "entity",
-                "The object to read, usually `self.id`. Only objects that run a script can be read.",
+                "Any object with a pose — with or without a script — such as `self.id` or what [ph2d.find_by_name] gives.",
             ),
             (
                 "field",
                 r#"One of "x", "y", "rotation", "scale_x" or "scale_y"."#,
             ),
         ],
-        returns: "The number as it was at the start of this tick, or `nil` when the object runs no script or the field is not one of the five.",
-        more: "Every script reads the same photo of the scene, taken before the first hook of the tick, so the order in which objects run never changes what they see. A [ph2d.set] made earlier in the same hook is not visible yet.\n\nWrite `or 0` after it when a missing value should count as zero.",
+        returns: "The number as it was at the start of this tick, or `nil` when the id is not an object with a pose (it was removed, or never existed).",
+        more: "Every script reads the scene as it was before the first hook of the tick, so the order in which objects run never changes what they see. A [ph2d.set] made earlier in the same hook is not visible yet; an object made by [ph2d.spawn] in this tick is, at the place it was made.\n\nA field that is not one of the five is an error that stops the object, so a typo cannot read as `nil`. It works only while the scene runs, inside a hook.",
         example: r#"ph2d.property("height", 0.5)
 
 function init(self)
@@ -91,7 +84,7 @@ end"#,
             r#"A gamepad button or axis, such as "gamepad.held.south" or "gamepad.axis.left_stick_x"."#,
         )],
         returns: "For a button, `1` while it is held and `nil` when it is not; for an axis, its position (a stick goes from -1 to 1), or `nil` until it has moved once; `nil` for any other name.",
-        more: "Only the gamepad reaches scripts today, not the keyboard or the mouse. Buttons are `gamepad.held.` followed by `south`, `east`, `west`, `north`, `left_bumper`, `right_bumper`, `left_trigger`, `right_trigger`, `select`, `start`, `mode`, `left_stick`, `right_stick`, `dpad_up`, `dpad_down`, `dpad_left` or `dpad_right`. Axes are `gamepad.axis.` followed by `left_stick_x`, `left_stick_y`, `right_stick_x`, `right_stick_y`, `left_trigger` or `right_trigger`.\n\nA misspelt name is not an error: it reads `nil`, just like a button nobody holds. If nothing moves, check the spelling.",
+        more: "This is the gamepad; for the keyboard use [ph2d.key_down] and for the mouse [ph2d.mouse_down] and [ph2d.mouse_position]. Buttons are `gamepad.held.` followed by `south`, `east`, `west`, `north`, `left_bumper`, `right_bumper`, `left_trigger`, `right_trigger`, `select`, `start`, `mode`, `left_stick`, `right_stick`, `dpad_up`, `dpad_down`, `dpad_left` or `dpad_right`. Axes are `gamepad.axis.` followed by `left_stick_x`, `left_stick_y`, `right_stick_x`, `right_stick_y`, `left_trigger` or `right_trigger`.\n\nA misspelt name is not an error: it reads `nil`, just like a button nobody holds. If nothing moves, check the spelling.",
         example: r#"ph2d.property("speed", 3)
 
 function update(self, dt)
@@ -125,7 +118,7 @@ end"#,
             "The object's name, exactly as written (capitals count).",
         )],
         returns: "The object's id, ready for [ph2d.get] and [ph2d.set], or `nil` when no object has that name.",
-        more: "Note: in this version of the editor the scene does not hand the object names to scripts yet, so this returns `nil` for every name. Always check the result before using it, as below.",
+        more: "When several objects share a name, it gives the first one in the order of the object list (top to bottom, a parent before its children); copies made while the scene runs come after the objects you made. Masters are not objects of the scene and are never found here — [ph2d.spawn] uses them.\n\nAn object made by [ph2d.spawn] can be found in the same hook. One that [ph2d.despawn] removes can still be found until the frame ends. It works only while the scene runs, inside a hook.",
         example: r#"function update(self, dt)
   local door = ph2d.find_by_name("Door")
   if door then
@@ -135,64 +128,156 @@ end"#,
     },
     ApiHelp {
         key: "ph2d.spawn",
-        params: &[],
-        returns: "",
-        more: concat!(
-            "The request waits until the tick ends; the new object has no name, so no script can find it. Use [ph2d.spawn_named] to find it later.\n\n",
-            queue_note!()
-        ),
-        example: r#"function on_signal(self, signal)
-  if signal == "split" then
-    ph2d.spawn()
-  end
-end"#,
-    },
-    ApiHelp {
-        key: "ph2d.spawn_named",
-        params: &[("name", "The name the new object gets.")],
-        returns: "",
-        more: concat!(
-            "The object is not created right away: the request waits until the tick ends, so [ph2d.find_by_name] cannot see it in the same hook.\n\n",
-            queue_note!()
-        ),
-        example: r#"function on_signal(self, signal)
-  if signal == "fire" then
-    ph2d.spawn_named("Bullet")
+        params: &[
+            (
+                "master",
+                "The name of a master in the scene, exactly as written. Left out, the new object is empty (a position and the name \"Object\").",
+            ),
+            (
+                "x",
+                "Where the copy lands, horizontally. Give `x` and `y` together, or neither (then the copy keeps the master's position).",
+            ),
+            ("y", "Where the copy lands, vertically."),
+        ],
+        returns: "The new object's id, usable at once with [ph2d.set], [ph2d.get] and [ph2d.attach_script].",
+        more: "The copy exists right away — the next line of the hook can move it — and its own script, if the master has one, starts on the next tick. It belongs to this run only: it is not part of the scene you save, it is not in the object list, and rewinding removes it. Use [ph2d.despawn] to take it away sooner.\n\nA name with no master is an error that stops the object. It works only while the scene runs, inside a hook.",
+        example: r#"function update(self, dt)
+  if ph2d.key_pressed("space") then
+    local x = ph2d.get(self.id, "x") or 0
+    local y = ph2d.get(self.id, "y") or 0
+    ph2d.spawn("Bullet", x, y + 1)
   end
 end"#,
     },
     ApiHelp {
         key: "ph2d.despawn",
-        params: &[("entity", "The object to remove, for example `self.id`.")],
-        returns: "",
-        more: concat!(
-            "The removal waits until the tick ends, so the object still runs the rest of this hook. An id that no longer names an object is ignored.\n\n",
-            queue_note!()
-        ),
-        example: r#"function on_signal(self, signal)
-  if signal == "collected" then
-    ph2d.despawn(self.id)
-  end
+        params: &[(
+            "entity",
+            "The object to remove — one created while the scene runs, such as `self.id` of a copy or an id from [ph2d.spawn].",
+        )],
+        returns: "`true` when the object will go; `false` when the id names no object, or names one you made in the scene.",
+        more: "The object leaves when the frame ends, the same moment as everything else that dies in the scene; until then it can still be read and found, but its hooks no longer run and its waits are dropped.\n\nObjects you placed in the scene are never removed while playing — that would delete your work. The call is refused, the console says so in yellow, and the script carries on.",
+        example: r#"function init(self)
+  ph2d.wait(2)
+  ph2d.despawn(self.id)
 end"#,
     },
     ApiHelp {
         key: "ph2d.attach_script",
         params: &[
-            ("entity", "The object that gets the script."),
+            (
+                "entity",
+                "An object created while the scene runs, such as an id from [ph2d.spawn].",
+            ),
             (
                 "script",
-                r#"The script's name in the project, with its extension, such as "follow.luau". An empty name is an error."#,
+                r#"The script's name in the project, with its extension, such as "follow.luau"."#,
             ),
         ],
-        returns: "",
-        more: concat!(
-            "A name that is not in the project is not an error here: the object's script card shows the problem instead.\n\n",
-            queue_note!()
-        ),
-        example: r#"function init(self)
-  local helper = ph2d.find_by_name("Helper")
-  if helper then
+        returns: "`true` when the script was attached; `false` when the id names no object, or names one you made in the scene.",
+        more: "The new script starts on the next tick, with [hooks.init]. A name that is not in the project is an error that stops the object.\n\nObjects you placed in the scene keep the scripts you gave them: attaching one while playing would change your scene, so it is refused, the console says so, and the script carries on.",
+        example: r#"function update(self, dt)
+  if ph2d.key_pressed("e") then
+    local helper = ph2d.spawn()
     ph2d.attach_script(helper, "follow.luau")
+  end
+end"#,
+    },
+    // ── ph2d: o teclado e o rato ──
+    ApiHelp {
+        key: "ph2d.key_down",
+        params: &[(
+            "key",
+            r#"A key name in lower case: "a" to "z", "0" to "9", "space", "enter", "tab", "escape", "backspace", "delete", "home", "up", "down", "left", "right", "f1" to "f12", "[", "]", ",", ".", and "shift", "ctrl" or "alt" (either side) or "left_shift", "right_ctrl" and so on."#,
+        )],
+        returns: "`true` while the key is held.",
+        more: "A name that is not a key is an error that stops the object, so a typo cannot read as a key nobody presses. The editor lists the names as you type.\n\nA key pressed together with Ctrl, Alt or the system key is a shortcut of the editor, not a key of the game, and while a script tab has the keyboard nothing reaches the game.",
+        example: r#"ph2d.property("speed", 4)
+
+function update(self, dt)
+  local x = ph2d.get(self.id, "x") or 0
+  if ph2d.key_down("left") then x = x - self.speed * dt end
+  if ph2d.key_down("right") then x = x + self.speed * dt end
+  ph2d.set(self.id, "x", x)
+end"#,
+    },
+    ApiHelp {
+        key: "ph2d.key_pressed",
+        params: &[("key", "A key name, as in [ph2d.key_down].")],
+        returns: "`true` on the first tick after the key went down, `false` on every other tick.",
+        more: "Use it for things that should happen once per press, like a jump or a shot. Even a very quick tap, pressed and let go between two ticks, counts once; when a frame runs two ticks, only the first one sees it.",
+        example: r#"function update(self, dt)
+  if ph2d.key_pressed("space") then
+    local y = ph2d.get(self.id, "y") or 0
+    ph2d.set(self.id, "y", y + 2)
+  end
+end"#,
+    },
+    ApiHelp {
+        key: "ph2d.key_released",
+        params: &[("key", "A key name, as in [ph2d.key_down].")],
+        returns: "`true` on the first tick after the key went up, `false` on every other tick.",
+        more: "It pairs with [ph2d.key_pressed], for example to measure how long a key was held.",
+        example: r#"function update(self, dt)
+  if ph2d.key_pressed("space") then self.held = 0 end
+  if ph2d.key_down("space") then self.held = (self.held or 0) + dt end
+  if ph2d.key_released("space") then print("held for", self.held) end
+end"#,
+    },
+    ApiHelp {
+        key: "ph2d.mouse_down",
+        params: &[(
+            "button",
+            r#""left", "right" or "middle"."#,
+        )],
+        returns: "`true` while the button is held after a click that started on the scene.",
+        more: "A click on a panel or a button of the editor does not reach the game — only one that starts on the scene does. Letting go always counts, wherever the mouse is. Any other button name is an error.",
+        example: r#"function update(self, dt)
+  if ph2d.mouse_down("left") then
+    local x, y = ph2d.mouse_position()
+    if x and y then
+      ph2d.set(self.id, "x", x)
+      ph2d.set(self.id, "y", y)
+    end
+  end
+end"#,
+    },
+    ApiHelp {
+        key: "ph2d.mouse_pressed",
+        params: &[("button", r#""left", "right" or "middle"."#)],
+        returns: "`true` on the first tick after a click that started on the scene, `false` otherwise.",
+        more: "Like [ph2d.key_pressed], a quick click between two ticks counts once.",
+        example: r#"function update(self, dt)
+  if ph2d.mouse_pressed("left") then
+    local x, y = ph2d.mouse_position()
+    if x and y then
+      ph2d.spawn("Star", x, y)
+    end
+  end
+end"#,
+    },
+    ApiHelp {
+        key: "ph2d.mouse_released",
+        params: &[("button", r#""left", "right" or "middle"."#)],
+        returns: "`true` on the first tick after the button went up, `false` otherwise.",
+        more: "Letting go is seen even when the mouse has left the scene, so a drag always ends.",
+        example: r#"function update(self, dt)
+  if ph2d.mouse_released("left") then
+    print("dropped")
+  end
+end"#,
+    },
+    ApiHelp {
+        key: "ph2d.mouse_position",
+        params: &[],
+        returns: "Two numbers, the `x` and `y` of the scene point under the mouse — the same units [ph2d.set] uses for a top-level object — or two `nil`s when there is no scene view.",
+        more: "It follows the view of the scene, so zooming or panning changes the numbers for the same spot on the screen but never the point of the scene under the mouse. It works over the whole window, not only on the scene.",
+        example: r#"function update(self, dt)
+  local mx, my = ph2d.mouse_position()
+  if mx and my then
+    local x = ph2d.get(self.id, "x") or 0
+    local y = ph2d.get(self.id, "y") or 0
+    ph2d.set(self.id, "rotation", math.atan2(my - y, mx - x))
   end
 end"#,
     },
@@ -267,12 +352,13 @@ end"#,
             ("entity", "Whose state, usually `self.id`."),
             ("field", "The name of the field."),
         ],
-        returns: "What [ph2d.state_set] stored in that field, or `nil`. A list comes back with text keys (see [ph2d.state_set]).",
-        more: "The state is kept outside the script, per object, for as long as the editor is open. It survives saving a new version of the script and also rewinding: unlike `self`, it does not start over when the scene goes back to the beginning. Use [ph2d.state_clear] for a fresh start.",
-        example: r#"function init(self)
-  local runs = ph2d.state_get(self.id, "runs") or 0
-  ph2d.state_set(self.id, "runs", runs + 1)
-  print("Play number", runs + 1)
+        returns: "What [ph2d.state_set] stored in that field, or `nil`. A table comes back with the same keys it had — a list is still a list.",
+        more: "The state is kept outside the script, per object, for the length of a run. It survives saving a new version of the script (like `self`), and other objects can read it by id. Rewinding clears it, and so does removing the object with [ph2d.despawn].",
+        example: r#"function on_signal(self, signal)
+  if signal == "coin" then
+    local coins = ph2d.state_get(self.id, "coins") or 0
+    ph2d.state_set(self.id, "coins", coins + 1)
+  end
 end"#,
     },
     ApiHelp {
@@ -282,23 +368,25 @@ end"#,
             ("field", "The name of the field."),
             (
                 "value",
-                "Plain data: a number, `true`/`false`, text, or a table of those up to 16 levels deep. A function is an error. `nil` empties the field but keeps its name.",
+                "Plain data: a number, `true`/`false`, text, or a table of those up to 16 levels deep, with text or whole-number keys. A function is an error. `nil` removes the field.",
             ),
         ],
         returns: "",
-        more: "Tables are kept as maps with text keys: the list `{ 10, 20 }` comes back as `{ [\"1\"] = 10, [\"2\"] = 20 }`, so `#list` is 0 and `ipairs` sees nothing. Read it with `list[\"1\"]`, or keep the count in its own field.\n\nThere is no way to remove a single field: setting it to `nil` leaves the name in [ph2d.state_keys], and [ph2d.state_clear] removes them all.",
-        example: r#"function on_signal(self, signal)
-  if signal == "coin" then
-    local coins = ph2d.state_get(self.id, "coins") or 0
-    ph2d.state_set(self.id, "coins", coins + 1)
-  end
+        more: "A table is copied when it is stored: changing it afterwards does not change the state until you store it again. Lists keep their order and their length (`#list` and `ipairs` work on what comes back).\n\nSetting a field to `nil` removes it from [ph2d.state_keys]; [ph2d.state_clear] removes them all.",
+        example: r#"function init(self)
+  ph2d.state_set(self.id, "path", { 1, 4, 9 })
+end
+
+function update(self, dt)
+  local path = ph2d.state_get(self.id, "path") or {}
+  print(#path)
 end"#,
     },
     ApiHelp {
         key: "ph2d.state_keys",
         params: &[("entity", "Whose state, usually `self.id`.")],
         returns: "A list of the field names in alphabetical order; empty when the object has no state.",
-        more: "A field set to `nil` is still listed.",
+        more: "A field set to `nil` is gone from the list.",
         example: r#"function init(self)
   for _, key in ipairs(ph2d.state_keys(self.id)) do
     print(key, ph2d.state_get(self.id, key))
@@ -309,7 +397,7 @@ end"#,
         key: "ph2d.state_clear",
         params: &[("entity", "Whose state, usually `self.id`.")],
         returns: "",
-        more: "On an object without state it does nothing. Call it in [hooks.init] when every Play should start clean.",
+        more: "On an object without state it does nothing. Rewinding already clears every object's state, so this is for starting over in the middle of a run.",
         example: r#"function init(self)
   ph2d.state_clear(self.id)
   ph2d.state_set(self.id, "lives", 3)
@@ -319,28 +407,16 @@ end"#,
         key: "ph2d.wait",
         params: &[(
             "seconds",
-            "How long the coroutine means to wait, in seconds.",
+            "How long to wait, in seconds of play time; 0 or left out waits until the end of this tick.",
         )],
-        returns: "",
-        more: "It only works inside a coroutine you made yourself: it pauses it, and `seconds` is what [coroutine.resume] hands back to whoever resumed it. Nothing in the scene counts the time or resumes the coroutine for you — your own [hooks.update] has to, as below.\n\nCalled straight from a hook it is an error and the object stops: hooks are not coroutines.",
-        example: r#"local blink = coroutine.create(function()
+        returns: "The seconds that actually passed — a whole number of ticks, at least the time you asked for.",
+        more: "The hook stops at this line and carries on from it later, with every local variable as it was. The object keeps running meanwhile: [hooks.update] is called on every tick as usual, so a wait inside `update` starts a new wait on each tick. For a sequence (do this, wait, do that), wait in [hooks.init] or in [hooks.on_signal].\n\nThe time is play time: pausing the scene pauses the wait. A wait resumes at the end of the tick in which its time is reached, after every hook of that tick. Rewinding, removing the object, changing its script or an error drops the waits. Outside a hook — at the top of the script — it is an error; inside a coroutine you made yourself it pauses that coroutine instead, which then has to be resumed by your own code.",
+        example: r#"function init(self)
   while true do
-    print("on")
+    ph2d.set(self.id, "scale_x", 1.2)
     ph2d.wait(0.5)
-    print("off")
+    ph2d.set(self.id, "scale_x", 1)
     ph2d.wait(1)
-  end
-end)
-
-function init(self)
-  self.left = 0
-end
-
-function update(self, dt)
-  self.left = self.left - dt
-  if self.left <= 0 then
-    local _, seconds = coroutine.resume(blink)
-    self.left = seconds
   end
 end"#,
     },
@@ -466,7 +542,7 @@ end"#,
         key: "type.PoseField",
         params: &[],
         returns: "",
-        more: "`x` and `y` are the position relative to the parent, `rotation` is in radians counter-clockwise, and `scale_x` and `scale_y` multiply the size (1 is the original). Any other name reads `nil` with [ph2d.get] and stops the object with [ph2d.set]; the editor underlines it as you type.",
+        more: "`x` and `y` are the position relative to the parent, `rotation` is in radians counter-clockwise, and `scale_x` and `scale_y` multiply the size (1 is the original). Any other name stops the object, with [ph2d.get] and with [ph2d.set]; the editor underlines it as you type.",
         example: r#"function update(self, dt)
   local s = ph2d.get(self.id, "scale_x") or 1
   ph2d.set(self.id, "scale_x", s + dt)
@@ -517,9 +593,31 @@ ph2d.property("side", "left", { options = { "left", "right" } })"#,
         key: "type.StateValue",
         params: &[],
         returns: "",
-        more: "Tables keep only text keys: a list comes back with `\"1\"`, `\"2\"` … as keys, so count it yourself. Functions are refused.",
+        more: "Tables keep their keys as they were — text or whole numbers — so a list comes back as a list. Functions are refused.",
         example: r#"function init(self)
   ph2d.state_set(self.id, "best", { score = 120, name = "Ana" })
+end"#,
+    },
+    ApiHelp {
+        key: "type.KeyName",
+        params: &[],
+        returns: "",
+        more: "Letters and digits are their own name in lower case; the arrows are \"up\", \"down\", \"left\" and \"right\"; \"shift\", \"ctrl\" and \"alt\" mean either side, and \"left_shift\", \"right_shift\", \"left_ctrl\", \"right_ctrl\", \"left_alt\" and \"right_alt\" one side only.",
+        example: r#"function update(self, dt)
+  if ph2d.key_down("shift") and ph2d.key_pressed("r") then
+    print("run")
+  end
+end"#,
+    },
+    ApiHelp {
+        key: "type.MouseButtonName",
+        params: &[],
+        returns: "",
+        more: "The three buttons of a mouse.",
+        example: r#"function update(self, dt)
+  if ph2d.mouse_pressed("right") then
+    print("menu")
+  end
 end"#,
     },
     ApiHelp {

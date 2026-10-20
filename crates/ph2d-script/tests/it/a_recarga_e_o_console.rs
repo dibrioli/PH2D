@@ -59,14 +59,14 @@ impl Cena {
     /// Um quadro do produto: o `sync` (recarga) e um passo fixo.
     fn quadro(&mut self) {
         self.host.scene_sync(self.sim.world_mut());
-        let r = self.host.scene_tick(self.sim.world_mut(), 1.0 / 60.0);
+        let r = self.host.scene_tick(&mut self.sim, 1.0 / 60.0);
         assert!(r.failed.is_empty(), "{:?}", r.failed);
     }
 
     /// Um quadro sem exigir que nada falhe.
     fn quadro_livre(&mut self) -> ph2d_script::SceneReport {
         self.host.scene_sync(self.sim.world_mut());
-        self.host.scene_tick(self.sim.world_mut(), 1.0 / 60.0)
+        self.host.scene_tick(&mut self.sim, 1.0 / 60.0)
     }
 
     /// O editor SALVA: escreve o texto na biblioteca (sem disco, sem mtime).
@@ -210,7 +210,7 @@ fn salvar_recarrega_os_tres_e_o_relatorio_diz_tres() {
 fn um_script_que_nunca_compilou_nao_corre() {
     let mut c = cena(&sem_end(1), 2);
     c.host.scene_sync(c.sim.world_mut());
-    let r = c.host.scene_tick(c.sim.world_mut(), 1.0 / 60.0);
+    let r = c.host.scene_tick(&mut c.sim, 1.0 / 60.0);
     assert_eq!((r.calls, c.xs()), (0, vec![0.0; 2]));
     assert_eq!(c.host.scene().live_count(), 0);
     assert!(matches!(

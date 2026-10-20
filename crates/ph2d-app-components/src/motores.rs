@@ -69,8 +69,9 @@ pub fn correm(
     leitores: Leitores<'_>,
     relogio: &Relogio,
     accoes: &BTreeMap<String, ph2d_ecs::ActionSample>,
-) {
-    scripts(sim, script, drive, signals, leitores.script, relogio);
+    portas: &mut crate::script_bridge::ScriptDoors<'_, '_>,
+) -> Vec<ph2d_ecs::Death> {
+    let mortes = scripts(sim, script, drive, signals, leitores.script, relogio, portas);
     particulas(
         sim,
         particles,
@@ -89,6 +90,7 @@ pub fn correm(
     // Ciclo 19 do Motion: as entradas do grafo (o `Motion Input`, a vida, o dano e os sinais) —
     // DEPOIS de todos os que falam, e antes do Motion, que coze neste mesmo quadro.
     crate::motion_input_bridge::frame(sim, signals);
+    mortes
 }
 
 /// ⭐ **AS BARRAS DE VIDA** (plano 28, W4) — elas só LÊEM (a vida, a pose) e não falam no
@@ -113,7 +115,8 @@ fn barras(sim: &mut SimWorld, health_bars: &mut HealthBarsState, relogio: &Relog
 /// NESTE quadro.
 ///
 /// ⚠️ O cursor lê em TODO quadro, mesmo parado (a lei do `ui_signal_reader`), e uma falha imprime
-/// UMA linha — a mensagem fica no Inspector.
+/// UMA linha — a mensagem fica no Inspector. Devolve as mortes que os scripts pediram
+/// (`ph2d.despawn`), para o dreno único da fábrica.
 fn scripts(
     sim: &mut SimWorld,
     script: &mut Option<ScriptHost>,
@@ -121,10 +124,11 @@ fn scripts(
     signals: &mut SignalOutbox,
     reader: &mut SignalReader,
     relogio: &Relogio,
-) {
+    portas: &mut crate::script_bridge::ScriptDoors<'_, '_>,
+) -> Vec<ph2d_ecs::Death> {
     let ouvidos: Vec<String> = signals.read(reader).map(|s| s.name.to_string()).collect();
     let Some(host) = script.as_mut() else {
-        return;
+        return Vec::new();
     };
     let nomes: Vec<&str> = ouvidos.iter().map(String::as_str).collect();
     let f = crate::script_bridge::frame(
@@ -135,6 +139,7 @@ fn scripts(
         relogio.ticks,
         relogio.dt,
         &nomes,
+        portas,
     );
     for (bits, nome) in f.emitted {
         signals.publish(ph2d_runtime::Signal::from_script(&nome, bits));
@@ -142,6 +147,14 @@ fn scripts(
     for (bits, msg) in f.failed {
         eprintln!("[script] o objecto {bits} parou: {msg}");
     }
+    f.despawned
+        .into_iter()
+        .map(|entity| ph2d_ecs::Death {
+            entity,
+            signal: String::new(),
+            why: ph2d_ecs::DeathCause::Killed,
+        })
+        .collect()
 }
 
 /// ⭐⭐⭐ **OS EMISSORES DE PARTÍCULAS** (TOP-20 #18) — o que um emissor GRITA ao acabar chega à

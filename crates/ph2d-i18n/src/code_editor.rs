@@ -56,6 +56,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.console.runtime_error_noline" => "Error: {msg}",
         "code.console.refused" => "Not applied — line {line}: {msg}",
         "code.console.refused_noline" => "Not applied: {msg}",
+        "code.console.warning" => "Refused — line {line}: {msg}",
+        "code.console.warning_noline" => "Refused: {msg}",
         // A lista de problemas, o 2.º separador da faixa de baixo (acabamento, Onda 2 item 4).
         "code.band.problems" => "Problems",
         "code.band.problems_count" => "Problems ({count})",

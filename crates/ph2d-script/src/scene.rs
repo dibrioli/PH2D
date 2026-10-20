@@ -31,16 +31,17 @@
 //! - **O texto vem da BIBLIOTECA do projeto** (ADR-0188 §2), por [`ScriptId`]: recarrega quando o
 //!   `blake3` do texto (ou o nome) muda — sem disco. Um `Unimported` nunca corre.
 
-use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
+use std::collections::{BTreeMap, BTreeSet};
 
-use mlua::{Lua, Table, Value};
-use ph2d_ecs::{Entity, StableId, Transform, World};
+use mlua::{Function, IntoLuaMulti, Lua, MultiValue, Table, Thread, Value};
+use ph2d_ecs::{Entity, SimWorld, StableId, Transform, World};
 
 use crate::component::{LuauScript, ScriptSource};
 use crate::console::speaking;
 use crate::diagnostic::ScriptDiagnostic;
-use crate::io::{EntityWrite, ReadSnapshot, WriteQueue, pose_field};
+use crate::io::{EntityWrite, WriteQueue, pose_field};
+use crate::lane::{Lane, SceneDoors, with_lane};
 use crate::module::ScriptModule;
 use crate::props::{PropDecl, ScriptValue, resolve};
 use ph2d_script_doc::{ScriptId, ScriptLibrary};
@@ -121,6 +122,12 @@ pub struct SceneReport {
     pub emitted: Vec<(Entity, String)>,
     /// Objectos que pararam de correr NESTE tique, com o diagnóstico.
     pub failed: Vec<(Entity, ScriptDiagnostic)>,
+    /// Objectos da corrida que um script mandou apagar (`ph2d.despawn`) — a shell aplica-os no fim do
+    /// quadro, pelo dreno único das mortes.
+    pub despawned: Vec<Entity>,
+    /// A pose de ANTES de cada objecto que um script escreveu neste tique (o «antes» do ledger) —
+    /// com ou sem script.
+    pub wrote_before: Vec<(Entity, Transform)>,
     /// Quantos ganchos correram.
     pub calls: usize,
     /// ⭐ Ciclo 19: o que os scripts escreveram na tabela `motion` (já aplicado ao recurso).
@@ -197,6 +204,100 @@ pub struct SceneScripts {
     reloads: BTreeMap<ScriptId, ScriptReload>,
     /// A biblioteca que os `slots` seguem; outra = outro projecto (os ids recomeçam em 1).
     epoch: Option<crate::LibraryEpoch>,
+    /// ⭐ As esperas (`ph2d.wait`) por retomar, pela ordem em que pararam.
+    parked: Vec<Parked>,
+    /// Corrotinas acabadas, para reaproveitar (`Thread::reset`: 107 ns contra 198 de uma nova —
+    /// `docs/CodeEditor/05_api_que_funciona.md` §2).
+    pool: Vec<Thread>,
+    /// Quem pediu para morrer neste quadro: os ganchos dele já não correm.
+    dying: BTreeSet<u64>,
+}
+
+/// Um gancho que parou num `ph2d.wait`.
+struct Parked {
+    entity: Entity,
+    script: ScriptId,
+    thread: Thread,
+    /// Microssegundos inteiros, como o `Timer` da casa: `round(s·1e6)`.
+    target_us: u64,
+    elapsed_us: u64,
+}
+
+/// O que uma chamada de gancho deu.
+enum Ran {
+    Done,
+    Waiting(Thread, u64),
+}
+
+/// A marca que o `ph2d.wait` cede junto com os segundos (uma cedência sem ela não é uma espera).
+pub(crate) const WAIT_TOKEN: &str = "ph2d.wait";
+
+/// Segundos → microssegundos inteiros (o relógio do `Timer` da casa).
+fn micros(seconds: f64) -> u64 {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "saturado: um número não-finito ou negativo vale 0, um enorme vale u64::MAX"
+    )]
+    let us = (seconds * 1e6).round().max(0.0) as u64;
+    us
+}
+
+/// ⭐ **Corre um gancho numa corrotina** — reaproveitada do `pool` quando há.
+fn run_hook(
+    lua: &Lua,
+    pool: &mut Vec<Thread>,
+    f: &Function,
+    args: impl IntoLuaMulti,
+) -> mlua::Result<Ran> {
+    let th = match pool.pop() {
+        Some(t) => {
+            t.reset(f.clone())?;
+            t
+        }
+        None => lua.create_thread(f.clone())?,
+    };
+    resume(lua, pool, th, args)
+}
+
+/// Retoma `th`; acabada ou falhada, volta ao `pool` (o Luau repõe qualquer estado no `reset`).
+fn resume(lua: &Lua, pool: &mut Vec<Thread>, th: Thread, args: impl IntoLuaMulti) -> mlua::Result<Ran> {
+    let out = th.resume::<MultiValue>(args);
+    let yielded = th.status() == mlua::thread::ThreadStatus::Resumable;
+    match out {
+        Ok(vals) if yielded => match wait_of(lua, &vals) {
+            Some(us) => Ok(Ran::Waiting(th, us)),
+            None => {
+                pool.push(th);
+                Err(mlua::Error::RuntimeError(
+                    "coroutine.yield in a hook: use ph2d.wait(seconds) to pause".into(),
+                ))
+            }
+        },
+        Ok(_) => {
+            pool.push(th);
+            Ok(Ran::Done)
+        }
+        Err(e) => {
+            pool.push(th);
+            Err(e)
+        }
+    }
+}
+
+/// Os microssegundos de uma cedência do `ph2d.wait` (`WAIT_TOKEN, segundos`).
+fn wait_of(lua: &Lua, vals: &MultiValue) -> Option<u64> {
+    let token: Value = lua.named_registry_value(WAIT_TOKEN).ok()?;
+    let mut it = vals.iter();
+    let first = it.next()?;
+    if !first.equals(&token).unwrap_or(false) {
+        return None;
+    }
+    match it.next() {
+        Some(Value::Number(s)) => Some(micros(*s)),
+        Some(Value::Integer(s)) => Some(micros(*s as f64)),
+        _ => Some(0),
+    }
 }
 
 /// Um objecto com script, no instante do tique.
@@ -205,11 +306,12 @@ struct Actor {
     cfg: LuauScript,
 }
 
-/// Os objectos com script, **pela ordem da identidade**.
-fn actors(world: &mut World) -> Vec<Actor> {
+/// Os objectos com script, **pela ordem da identidade** — menos quem pediu para morrer.
+fn actors(world: &mut World, dying: &BTreeSet<u64>) -> Vec<Actor> {
     let mut out: Vec<(u64, u64, Actor)> = world
         .query::<(Entity, &LuauScript, Option<&StableId>)>()
         .iter(world)
+        .filter(|(entity, _, _)| !dying.contains(&entity.to_bits()))
         .map(|(entity, cfg, sid)| {
             (
                 // ⚠️ Sem identidade vai para o fim — `0` é o «nenhum» da casa, e o `u64::MAX`
@@ -227,18 +329,8 @@ fn actors(world: &mut World) -> Vec<Actor> {
     out.into_iter().map(|(_, _, a)| a).collect()
 }
 
-/// ⭐ **A FOTOGRAFIA**: todos leem as poses do início da passagem (HR-8).
-fn photograph(reads: &ReadSnapshot, world: &World, actors: &[Actor]) {
-    reads.clear();
-    for a in actors {
-        if let Some(t) = world.get::<Transform>(a.entity) {
-            reads.set_pose(a.entity.to_bits(), pose_of(t));
-        }
-    }
-}
-
 /// A pose como o script a lê.
-fn pose_of(t: &Transform) -> [f64; 5] {
+pub(crate) fn pose_of(t: &Transform) -> [f64; 5] {
     [
         f64::from(t.translation.x),
         f64::from(t.translation.y),
@@ -273,6 +365,9 @@ impl SceneScripts {
     pub fn clear(&mut self) {
         self.slots.clear();
         self.instances.clear();
+        // As corrotinas são da VM velha.
+        self.parked.clear();
+        self.pool.clear();
     }
 
     /// ⛔ **Outra biblioteca = outro projecto**: os módulos, os vivos e as recargas por drenar são
@@ -297,7 +392,15 @@ impl SceneScripts {
     pub fn rewind(&mut self) -> usize {
         let n = self.instances.len();
         self.instances.clear();
+        self.parked.clear();
+        self.dying.clear();
         n
+    }
+
+    /// Quantas esperas estão por retomar — o número que um gate lê.
+    #[must_use]
+    pub fn waiting_count(&self) -> usize {
+        self.parked.len()
     }
 
     /// O que se sabe do script `id` — `None` se nenhum objecto o apontou ainda.
@@ -332,7 +435,9 @@ impl SceneScripts {
         world: &mut World,
         lib: &ScriptLibrary,
     ) {
-        let actors = actors(world);
+        // Um quadro novo: quem pediu para morrer já saiu pelo dreno da shell.
+        self.dying.clear();
+        let actors = actors(world, &self.dying);
         let mut wanted: BTreeMap<ScriptId, usize> = BTreeMap::new();
         for id in actors.iter().filter_map(|a| library_id(&a.cfg)) {
             *wanted.entry(id).or_default() += 1;
@@ -348,135 +453,270 @@ impl SceneScripts {
             .collect();
         self.instances
             .retain(|bits, inst| now.get(bits).is_some_and(|id| *id == Some(inst.script)));
+        let instances = &self.instances;
+        self.parked.retain(|p| {
+            instances
+                .get(&p.entity.to_bits())
+                .is_some_and(|i| i.script == p.script && i.failed.is_none())
+        });
     }
 
     /// ⭐ **Os sinais deste quadro chegam a quem os ouve** (`on_signal(self, nome)`), uma chamada
     /// por par. Só em quem já nasceu — um objecto que ainda não correu um tique não tem `self`.
     ///
-    /// ⚠️ **A mesma fotografia e a mesma fila do [`Self::tick`]**: as poses são tiradas antes do
-    /// primeiro gancho, e as escritas aplicadas depois do último.
+    /// ⚠️ **A mesma pista e a mesma fila do [`Self::tick`]**: lê-se o mundo do início, e as escritas
+    /// pousam depois do último gancho. Uma espera começada aqui conta a partir do tique seguinte.
     pub(crate) fn hear(
         &mut self,
         lua: &Lua,
         deadline: &Deadline,
-        reads: &ReadSnapshot,
-        world: &mut World,
+        sim: &mut SimWorld,
         signals: &[&str],
+        doors: &mut dyn SceneDoors,
     ) -> SceneReport {
         let mut report = SceneReport::default();
         if signals.is_empty() || self.instances.is_empty() {
             return report;
         }
-        let actors = actors(world);
-        photograph(reads, world, &actors);
+        let actors = actors(sim.world_mut(), &self.dying);
         let mut writes: Vec<EntityWrite> = Vec::new();
-        for a in &actors {
-            let Some(hook) = self.module_of(&a.cfg).and_then(|m| m.hook("on_signal")) else {
-                continue;
-            };
-            let Some(inst) = self.instances.get_mut(&a.entity.to_bits()) else {
-                continue;
-            };
-            for name in signals {
-                if inst.failed.is_some() {
-                    break;
+        let Self {
+            slots,
+            instances,
+            parked,
+            pool,
+            dying,
+            ..
+        } = self;
+        let lane = Lane::new(sim, doors, dying);
+        let ran = with_lane(lua, lane, |cell| {
+            for a in &actors {
+                let Some(hook) = module_in(slots, &a.cfg).and_then(|m| m.hook("on_signal")) else {
+                    continue;
+                };
+                let Some(inst) = instances.get_mut(&a.entity.to_bits()) else {
+                    continue;
+                };
+                cell.borrow_mut().speaker = Some(a.entity);
+                for name in signals {
+                    if inst.failed.is_some() || cell.borrow().is_dying(a.entity) {
+                        break;
+                    }
+                    report.calls += 1;
+                    let ran = speaking(lua, inst.script, Some(a.entity), || {
+                        deadline.within(|| run_hook(lua, pool, &hook, (inst.this.clone(), *name)))
+                    });
+                    let ran = park(ran, a.entity, inst.script, parked);
+                    settle_call(lua, a.entity, ran, inst, &mut writes, &mut report);
                 }
-                report.calls += 1;
-                let ran = speaking(lua, inst.script, Some(a.entity), || {
-                    deadline.within(|| hook.call::<()>((inst.this.clone(), *name)))
-                });
-                settle_call(lua, a.entity, ran, inst, &mut writes, &mut report);
             }
-        }
-        apply_writes(world, &writes, &mut report);
-        crate::motion_api::apply(world, &report.motion);
+        });
+        absorb_lane(lua, ran, &mut report);
+        apply_writes(sim.world_mut(), &writes, &mut report);
+        crate::motion_api::apply(sim.world_mut(), &report.motion);
         report.wrote.sort_by_key(|e| e.to_bits());
         report.wrote.dedup();
         report
     }
 
     /// ⭐⭐⭐ **UM PASSO FIXO** — nasce quem ainda não nasceu (`init`), actualiza os números que o
-    /// artista mexeu, corre `update(self, dt)` e aplica as escritas.
+    /// artista mexeu, corre `update(self, dt)`, retoma as esperas que chegaram e aplica as escritas.
     pub(crate) fn tick(
         &mut self,
         lua: &Lua,
         deadline: &Deadline,
-        reads: &ReadSnapshot,
-        world: &mut World,
+        sim: &mut SimWorld,
         dt: f64,
+        doors: &mut dyn SceneDoors,
     ) -> SceneReport {
         let mut report = SceneReport::default();
-        let actors = actors(world);
-        photograph(reads, world, &actors);
+        let actors = actors(sim.world_mut(), &self.dying);
         let mut writes: Vec<EntityWrite> = Vec::new();
-        for a in &actors {
-            let Some(module) = self.module_of(&a.cfg) else {
-                continue; // sem script, partido, por importar ou por carregar: o painel já o diz
-            };
-            let decls = module.decls.clone();
-            let init = module.hook("init");
-            let update = module.hook("update");
-            let bits = a.entity.to_bits();
-            let chunk = self.chunk_of(&a.cfg);
-            if let Entry::Vacant(slot) = self.instances.entry(bits) {
-                let inst = match born(lua, a, bits, chunk.clone()) {
-                    Ok(inst) => slot.insert(inst),
-                    Err(e) => {
-                        let d = ScriptDiagnostic::from_error(&e, &chunk);
-                        if let Some(c) = crate::console::of(lua) {
-                            c.diagnostic(
-                                library_id(&a.cfg).unwrap_or_default(),
-                                Some(a.entity),
-                                &d,
-                                false,
-                            );
-                        }
-                        report.failed.push((a.entity, d));
-                        continue;
-                    }
+        let Self {
+            slots,
+            instances,
+            parked,
+            pool,
+            dying,
+            ..
+        } = self;
+        let lane = Lane::new(sim, doors, dying);
+        let ran = with_lane(lua, lane, |cell| {
+            for a in &actors {
+                let Some(module) = module_in(slots, &a.cfg) else {
+                    continue; // sem script, partido, por importar ou por carregar: o painel já o diz
                 };
-                apply_props(lua, inst, &decls, &a.cfg);
-                if let Some(init) = init {
-                    report.calls += 1;
-                    let ran = speaking(lua, inst.script, Some(a.entity), || {
-                        deadline.within(|| init.call::<()>(inst.this.clone()))
-                    });
-                    if !settle_call(lua, a.entity, ran, inst, &mut writes, &mut report) {
-                        continue;
+                let decls = module.decls.clone();
+                let init = module.hook("init");
+                let update = module.hook("update");
+                let bits = a.entity.to_bits();
+                let chunk = chunk_in(slots, &a.cfg);
+                cell.borrow_mut().speaker = Some(a.entity);
+                if let Entry::Vacant(slot) = instances.entry(bits) {
+                    let inst = match born(lua, a, bits, chunk.clone()) {
+                        Ok(inst) => slot.insert(inst),
+                        Err(e) => {
+                            let d = ScriptDiagnostic::from_error(&e, &chunk);
+                            if let Some(c) = crate::console::of(lua) {
+                                c.diagnostic(
+                                    library_id(&a.cfg).unwrap_or_default(),
+                                    Some(a.entity),
+                                    &d,
+                                    false,
+                                );
+                            }
+                            report.failed.push((a.entity, d));
+                            continue;
+                        }
+                    };
+                    apply_props(lua, inst, &decls, &a.cfg);
+                    if let Some(init) = init {
+                        report.calls += 1;
+                        let ran = speaking(lua, inst.script, Some(a.entity), || {
+                            deadline.within(|| run_hook(lua, pool, &init, inst.this.clone()))
+                        });
+                        let ran = park(ran, a.entity, inst.script, parked);
+                        if !settle_call(lua, a.entity, ran, inst, &mut writes, &mut report) {
+                            continue;
+                        }
                     }
                 }
+                let inst = instances.get_mut(&bits).expect("nasceu acima");
+                if inst.failed.is_some() || cell.borrow().is_dying(a.entity) {
+                    continue;
+                }
+                apply_props(lua, inst, &decls, &a.cfg);
+                if let Some(update) = update {
+                    report.calls += 1;
+                    let ran = speaking(lua, inst.script, Some(a.entity), || {
+                        deadline.within(|| run_hook(lua, pool, &update, (inst.this.clone(), dt)))
+                    });
+                    let ran = park(ran, a.entity, inst.script, parked);
+                    settle_call(lua, a.entity, ran, inst, &mut writes, &mut report);
+                }
             }
-            let inst = self.instances.get_mut(&bits).expect("nasceu acima");
-            if inst.failed.is_some() {
-                continue;
-            }
-            apply_props(lua, inst, &decls, &a.cfg);
-            if let Some(update) = update {
-                report.calls += 1;
-                let ran = speaking(lua, inst.script, Some(a.entity), || {
-                    deadline.within(|| update.call::<()>((inst.this.clone(), dt)))
-                });
-                settle_call(lua, a.entity, ran, inst, &mut writes, &mut report);
-            }
-        }
-        apply_writes(world, &writes, &mut report);
-        crate::motion_api::apply(world, &report.motion);
+            resume_due(
+                lua,
+                deadline,
+                cell,
+                instances,
+                parked,
+                pool,
+                micros(dt),
+                &mut writes,
+                &mut report,
+            );
+        });
+        absorb_lane(lua, ran, &mut report);
+        apply_writes(sim.world_mut(), &writes, &mut report);
+        crate::motion_api::apply(sim.world_mut(), &report.motion);
         report.wrote.sort_by_key(|e| e.to_bits());
         report.wrote.dedup();
         report
     }
 
-    fn module_of(&self, cfg: &LuauScript) -> Option<&ScriptModule> {
-        library_id(cfg)
-            .and_then(|id| self.slots.get(&id))
-            .and_then(|s| s.module.as_ref())
-    }
+}
 
-    fn chunk_of(&self, cfg: &LuauScript) -> String {
-        library_id(cfg)
-            .and_then(|id| self.slots.get(&id))
-            .map(|s| s.chunk.clone())
-            .unwrap_or_default()
+fn module_in<'s>(slots: &'s BTreeMap<ScriptId, Slot>, cfg: &LuauScript) -> Option<&'s ScriptModule> {
+    library_id(cfg)
+        .and_then(|id| slots.get(&id))
+        .and_then(|s| s.module.as_ref())
+}
+
+fn chunk_in(slots: &BTreeMap<ScriptId, Slot>, cfg: &LuauScript) -> String {
+    library_id(cfg)
+        .and_then(|id| slots.get(&id))
+        .map(|s| s.chunk.clone())
+        .unwrap_or_default()
+}
+
+/// Uma chamada que parou num `ph2d.wait` vai para as esperas; o resto segue como antes.
+fn park(
+    ran: mlua::Result<Ran>,
+    entity: Entity,
+    script: ScriptId,
+    parked: &mut Vec<Parked>,
+) -> mlua::Result<()> {
+    match ran? {
+        Ran::Done => Ok(()),
+        Ran::Waiting(thread, target_us) => {
+            parked.push(Parked {
+                entity,
+                script,
+                thread,
+                target_us,
+                elapsed_us: 0,
+            });
+            Ok(())
+        }
+    }
+}
+
+/// ⭐⭐ **As esperas que chegaram**, no fim do tique, depois dos ganchos (Godot): cada uma soma o
+/// `dt` deste tique — também a que começou nele — e retoma se o acumulado chegou ao alvo. Uma
+/// espera começada AQUI só conta a partir do tique seguinte (senão `wait(0)` num laço nunca
+/// devolveria o tique). Objecto que morreu, trocou de script ou parou ⇒ a espera é esquecida.
+#[allow(clippy::too_many_arguments)]
+fn resume_due(
+    lua: &Lua,
+    deadline: &Deadline,
+    cell: &std::cell::RefCell<Lane<'_>>,
+    instances: &mut BTreeMap<u64, Instance>,
+    parked: &mut Vec<Parked>,
+    pool: &mut Vec<Thread>,
+    dt_us: u64,
+    writes: &mut Vec<EntityWrite>,
+    report: &mut SceneReport,
+) {
+    let mut due = Vec::new();
+    for mut p in std::mem::take(parked) {
+        p.elapsed_us = p.elapsed_us.saturating_add(dt_us);
+        if p.elapsed_us >= p.target_us {
+            due.push(p);
+        } else {
+            parked.push(p);
+        }
+    }
+    for p in due {
+        let bits = p.entity.to_bits();
+        if cell.borrow().is_dying(p.entity) {
+            continue;
+        }
+        let Some(inst) = instances.get_mut(&bits) else {
+            continue;
+        };
+        if inst.script != p.script || inst.failed.is_some() {
+            continue;
+        }
+        cell.borrow_mut().speaker = Some(p.entity);
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "microssegundos de uma espera cabem em 2^53"
+        )]
+        let secs = p.elapsed_us as f64 / 1e6;
+        report.calls += 1;
+        let ran = speaking(lua, inst.script, Some(p.entity), || {
+            deadline.within(|| resume(lua, pool, p.thread, secs))
+        });
+        let ran = park(ran, p.entity, p.script, parked);
+        settle_call(lua, p.entity, ran, inst, writes, report);
+    }
+}
+
+/// O que a pista pediu entra no relatório; uma pista que não abriu é um defeito da casa, dito.
+fn absorb_lane(lua: &Lua, ran: mlua::Result<((), crate::lane::LaneOut)>, report: &mut SceneReport) {
+    match ran {
+        Ok(((), out)) => report.despawned = out.despawned,
+        Err(e) => {
+            if let Some(c) = crate::console::of(lua) {
+                c.diagnostic(
+                    ScriptId::NONE,
+                    None,
+                    &ScriptDiagnostic::runtime(format!("the scene lane did not open: {e}")),
+                    false,
+                );
+            }
+        }
     }
 }
 
@@ -626,6 +866,9 @@ fn apply_writes(world: &mut World, writes: &[EntityWrite], report: &mut SceneRep
         if cur == v {
             continue;
         }
+        if !report.wrote_before.iter().any(|(e, _)| *e == entity) {
+            report.wrote_before.push((entity, *t));
+        }
         match i {
             0 => t.translation.x = v,
             1 => t.translation.y = v,
@@ -644,3 +887,7 @@ pub use reload::{ReloadOutcome, ScriptReload};
 #[cfg(test)]
 #[path = "scene_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "scene_api_tests.rs"]
+mod api_tests;

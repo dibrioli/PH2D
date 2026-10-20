@@ -14,24 +14,20 @@
 
 use crate::ScriptRuntime;
 use crate::console::{Console, ConsoleLine};
-use crate::io::{
-    EntityWrite, InputSnapshot, NameSnapshot, ReadSnapshot, SpawnCommand, SpawnQueue, WriteQueue,
-};
+use crate::io::{Devices, Edge, EntityWrite, InputSnapshot, WriteQueue};
+use crate::lane::{NoDoors, SceneDoors};
 use crate::lateral::{PodValue, StateTable};
 use crate::scene::{Deadline, EmitQueue, SceneReport, SceneScripts, ScriptInfo, ScriptReload};
-use mlua::Function;
-use ph2d_ecs::{Entity, World};
+use ph2d_ecs::{Entity, SimWorld, World};
+use ph2d_input::{Key, MouseButton};
 
 /// Public host facade. One per app. Held by the shell; passed
 /// `provide_read` / `tick` / `drain_writes` from the per-frame loop.
 ///
-/// M14.2 additions:
-/// - [`SpawnQueue`] receives `ph2d.spawn` / `despawn` / `attach_script`.
-/// - [`NameSnapshot`] is populated by the host each frame so
-///   `ph2d.find_by_name(name)` resolves without crossing the world
-///   handle.
 /// - [`StateTable`] holds per-entity lateral state (HR-16). Survives
-///   `load_script` resets — that's the whole point.
+///   `load_script` resets — that's the whole point — and is cleared by a rewind.
+/// - `ph2d.get` / `find_by_name` / `spawn` / `despawn` / `attach_script` read and change the world
+///   through the scene lane (`lane.rs`), open only during a tick.
 pub struct ScriptHost {
     runtime: ScriptRuntime,
     last_source_hash: Option<[u8; 32]>,
@@ -39,10 +35,9 @@ pub struct ScriptHost {
     /// assert reset+restore actually happened on a source change.
     reset_count: u64,
     write_queue: WriteQueue,
-    read_snapshot: ReadSnapshot,
     input_snapshot: InputSnapshot,
-    spawn_queue: SpawnQueue,
-    name_snapshot: NameSnapshot,
+    /// ⭐ O teclado e o rato dos scripts (CodeEditor item 6).
+    devices: Devices,
     state_table: StateTable,
     /// ⭐ TOP-20 #16 — os sinais que `ph2d.emit` empurra (drenados por gancho).
     emit_queue: EmitQueue,
@@ -57,20 +52,16 @@ pub struct ScriptHost {
 impl ScriptHost {
     pub fn new() -> mlua::Result<Self> {
         let write_queue = WriteQueue::new();
-        let read_snapshot = ReadSnapshot::new();
         let input_snapshot = InputSnapshot::new();
-        let spawn_queue = SpawnQueue::new();
-        let name_snapshot = NameSnapshot::new();
+        let devices = Devices::default();
         let state_table = StateTable::new();
         let emit_queue = EmitQueue::default();
         let deadline = Deadline::default();
         let console = Console::default();
         let runtime = build_runtime(
             &write_queue,
-            &read_snapshot,
             &input_snapshot,
-            &spawn_queue,
-            &name_snapshot,
+            &devices,
             &state_table,
             &emit_queue,
             &deadline,
@@ -81,10 +72,8 @@ impl ScriptHost {
             last_source_hash: None,
             reset_count: 0,
             write_queue,
-            read_snapshot,
             input_snapshot,
-            spawn_queue,
-            name_snapshot,
+            devices,
             state_table,
             emit_queue,
             deadline,
@@ -102,10 +91,9 @@ impl ScriptHost {
     /// unchanged file doesn't churn coroutines. The shell can call
     /// `load_script` every frame without cost.
     ///
-    /// `WriteQueue` and `ReadSnapshot` survive the reset — they're
-    /// the engine↔script bridge, not script state — so values the
-    /// host pushed via `provide_read` before reload remain visible to
-    /// the freshly-loaded script.
+    /// `WriteQueue`, the input snapshot, the devices and the state
+    /// table survive the reset — they're the engine↔script bridge, not
+    /// script state.
     pub fn load_script(&mut self, source: &str) -> mlua::Result<bool> {
         let hash = *blake3::hash(source.as_bytes()).as_bytes();
         if self.last_source_hash == Some(hash) {
@@ -113,16 +101,13 @@ impl ScriptHost {
         }
         // Source actually changed → tear down + rebuild. The previous
         // VM (with its coroutines, globals, GC heap) is dropped here.
-        // The shared Arc-backed handles (WriteQueue, ReadSnapshot,
-        // InputSnapshot, SpawnQueue, NameSnapshot, StateTable) all
-        // survive the reset — that's how per-entity state stays put
+        // The shared Arc-backed handles (WriteQueue, InputSnapshot,
+        // Devices, StateTable) all survive the reset — that's how per-entity state stays put
         // across a Luau hot reload (HR-16 + ADR-0025 M14.2 contract).
         self.runtime = build_runtime(
             &self.write_queue,
-            &self.read_snapshot,
             &self.input_snapshot,
-            &self.spawn_queue,
-            &self.name_snapshot,
+            &self.devices,
             &self.state_table,
             &self.emit_queue,
             &self.deadline,
@@ -135,19 +120,6 @@ impl ScriptHost {
         self.last_source_hash = Some(hash);
         self.reset_count += 1;
         Ok(true)
-    }
-
-    /// Inject one ECS field value into the read snapshot. Call once
-    /// per (entity, field) before the per-frame `tick` so `ph2d.get`
-    /// resolves to current state.
-    pub fn provide_read(&self, entity: u64, field: &str, value: f64) {
-        self.read_snapshot.set(entity, field, value);
-    }
-
-    /// Clear the read snapshot. Call before re-populating a new frame
-    /// of values, otherwise stale entries from the previous tick leak.
-    pub fn clear_reads(&self) {
-        self.read_snapshot.clear();
     }
 
     /// Push one input key/value into the per-frame snapshot consulted
@@ -167,6 +139,12 @@ impl ScriptHost {
 
     pub fn input_snapshot(&self) -> &InputSnapshot {
         &self.input_snapshot
+    }
+
+    /// ⭐ O teclado e o rato dos scripts — a shell alimenta-os uma vez por quadro
+    /// ([`Devices::feed`]).
+    pub fn devices(&self) -> &Devices {
+        &self.devices
     }
 
     /// Drain everything Luau wrote via `ph2d.set` since the last
@@ -190,34 +168,6 @@ impl ScriptHost {
         Ok(())
     }
 
-    /// Convenience: lookup a global Luau function by name and resume
-    /// it as a coroutine via [`ScriptRuntime::spawn`]. Useful when a
-    /// shell wants to start a long-running user task by name.
-    pub fn spawn_named(&self, name: &str) -> mlua::Result<mlua::Thread> {
-        let f: Function = self.runtime.lua().globals().get(name)?;
-        self.runtime.spawn(f)
-    }
-
-    /// Drain pending `ph2d.spawn` / `despawn` / `attach_script`
-    /// commands queued by Luau callbacks. Host applies these to the
-    /// SimWorld between ticks.
-    pub fn drain_spawns(&self) -> Vec<SpawnCommand> {
-        self.spawn_queue.drain()
-    }
-
-    /// Inject one `(name → entity_id)` mapping into the snapshot
-    /// `ph2d.find_by_name` reads. Host re-populates each frame
-    /// before tick (analogous to `provide_read`).
-    pub fn provide_name(&self, name: &str, entity: u64) {
-        self.name_snapshot.set(name, entity);
-    }
-
-    /// Drop every name from the snapshot. Call before re-populating
-    /// per-frame so stale mappings from the previous tick don't leak.
-    pub fn clear_names(&self) {
-        self.name_snapshot.clear();
-    }
-
     /// Set a single field on `lateral_key`'s state table directly
     /// from Rust (e.g. when the host wants to seed initial state
     /// for an entity it just attached a script to).
@@ -234,16 +184,6 @@ impl ScriptHost {
     /// Borrow the lateral state table (e.g. for snapshot / inspection).
     pub fn state_table(&self) -> &StateTable {
         &self.state_table
-    }
-
-    /// Borrow the spawn queue (for tests + debug overlays).
-    pub fn spawn_queue(&self) -> &SpawnQueue {
-        &self.spawn_queue
-    }
-
-    /// Borrow the name snapshot (for tests + debug overlays).
-    pub fn name_snapshot(&self) -> &NameSnapshot {
-        &self.name_snapshot
     }
 
     // ── TOP-20 #16: os scripts da CENA ────────────────────────────────────────────────────────
@@ -275,30 +215,58 @@ impl ScriptHost {
         }
     }
 
-    /// ⭐⭐⭐ **Um passo fixo** — ver [`SceneScripts::tick`].
-    pub fn scene_tick(&mut self, world: &mut World, dt: f64) -> SceneReport {
-        self.scene.tick(
-            self.runtime.lua(),
-            &self.deadline,
-            &self.read_snapshot,
-            world,
-            dt,
-        )
+    /// ⭐⭐⭐ **Um passo fixo** sem portas para mestres ([`NoDoors`]) — os testes da crate; o
+    /// produto passa as suas pelo [`Self::scene_tick_with`].
+    pub fn scene_tick(&mut self, sim: &mut SimWorld, dt: f64) -> SceneReport {
+        self.scene_tick_with(sim, dt, &mut NoDoors)
+    }
+
+    /// ⭐⭐⭐ **Um passo fixo** — ver [`SceneScripts::tick`]. Depois dele as bordas do teclado e do
+    /// rato estão vistas, e o estado lateral de quem pediu para morrer sai.
+    pub fn scene_tick_with(
+        &mut self,
+        sim: &mut SimWorld,
+        dt: f64,
+        doors: &mut dyn SceneDoors,
+    ) -> SceneReport {
+        let r = self
+            .scene
+            .tick(self.runtime.lua(), &self.deadline, sim, dt, doors);
+        self.devices.edges_seen();
+        self.forget_the_dead(&r);
+        r
+    }
+
+    /// Os sinais deste quadro sem portas — ver [`Self::scene_hear_with`].
+    pub fn scene_hear(&mut self, sim: &mut SimWorld, signals: &[&str]) -> SceneReport {
+        self.scene_hear_with(sim, signals, &mut NoDoors)
     }
 
     /// Os sinais deste quadro — ver [`SceneScripts::hear`].
-    pub fn scene_hear(&mut self, world: &mut World, signals: &[&str]) -> SceneReport {
-        self.scene.hear(
-            self.runtime.lua(),
-            &self.deadline,
-            &self.read_snapshot,
-            world,
-            signals,
-        )
+    pub fn scene_hear_with(
+        &mut self,
+        sim: &mut SimWorld,
+        signals: &[&str],
+        doors: &mut dyn SceneDoors,
+    ) -> SceneReport {
+        let r = self
+            .scene
+            .hear(self.runtime.lua(), &self.deadline, sim, signals, doors);
+        self.forget_the_dead(&r);
+        r
     }
 
-    /// ⭐ **Rebobinar é renascer** — devolve quantos objectos tinham vivo.
+    fn forget_the_dead(&self, r: &SceneReport) {
+        for e in &r.despawned {
+            self.state_table.clear(e.to_bits());
+        }
+    }
+
+    /// ⭐ **Rebobinar é renascer** — devolve quantos objectos tinham vivo. As esperas, o estado
+    /// lateral (é da corrida) e as bordas por ver vão com ela.
     pub fn scene_rewind(&mut self) -> usize {
+        self.state_table.clear_all();
+        self.devices.forget_edges();
         self.scene.rewind()
     }
 
@@ -360,25 +328,18 @@ impl ScriptHost {
 #[allow(clippy::too_many_arguments)]
 fn build_runtime(
     write_queue: &WriteQueue,
-    read_snapshot: &ReadSnapshot,
     input_snapshot: &InputSnapshot,
-    spawn_queue: &SpawnQueue,
-    name_snapshot: &NameSnapshot,
+    devices: &Devices,
     state_table: &StateTable,
     emit_queue: &EmitQueue,
     deadline: &Deadline,
     console: &Console,
 ) -> mlua::Result<ScriptRuntime> {
     let runtime = ScriptRuntime::new()?;
-    wire_ph2d_api(
-        &runtime,
-        write_queue,
-        read_snapshot,
-        input_snapshot,
-        spawn_queue,
-        name_snapshot,
-        state_table,
-    )?;
+    wire_ph2d_api(&runtime, write_queue, input_snapshot, state_table)?;
+    wire_devices(runtime.lua(), devices)?;
+    crate::lane::wire(runtime.lua())?;
+    crate::stdlib::wire(runtime.lua())?;
     wire_scene_api(&runtime, emit_queue)?;
     crate::console::wire_print(runtime.lua(), console)?;
     install_deadline(runtime.lua(), deadline);
@@ -442,10 +403,7 @@ fn install_deadline(lua: &mlua::Lua, deadline: &Deadline) {
 fn wire_ph2d_api(
     runtime: &ScriptRuntime,
     write_queue: &WriteQueue,
-    read_snapshot: &ReadSnapshot,
     input_snapshot: &InputSnapshot,
-    spawn_queue: &SpawnQueue,
-    name_snapshot: &NameSnapshot,
     state_table: &StateTable,
 ) -> mlua::Result<()> {
     let lua = runtime.lua();
@@ -453,14 +411,10 @@ fn wire_ph2d_api(
     // below can grab them without capturing — `Lua::create_function`
     // requires `Send + 'static` bodies; app-data sidesteps the
     // closure-capture lifetimes. The clones share inner Arc storage,
-    // so values the host pushes via `provide_read` / `provide_input`
-    // / `provide_name` / `provide_state` are observable here even
-    // after a VM rebuild.
+    // so values the host pushes via `provide_input` / `provide_state`
+    // are observable here even after a VM rebuild.
     lua.set_app_data(write_queue.clone());
-    lua.set_app_data(read_snapshot.clone());
     lua.set_app_data(input_snapshot.clone());
-    lua.set_app_data(spawn_queue.clone());
-    lua.set_app_data(name_snapshot.clone());
     lua.set_app_data(state_table.clone());
 
     let set_fn = lua.create_function(
@@ -485,89 +439,12 @@ fn wire_ph2d_api(
         },
     )?;
 
-    let get_fn = lua.create_function(
-        |lua, (entity, field): (u64, String)| -> mlua::Result<Option<f64>> {
-            let s = lua.app_data_ref::<ReadSnapshot>().ok_or_else(|| {
-                mlua::Error::RuntimeError("ph2d.get: ReadSnapshot not registered".into())
-            })?;
-            Ok(s.get(entity, &field))
-        },
-    )?;
-
     let input_fn = lua.create_function(|lua, key: String| -> mlua::Result<Option<f64>> {
         let s = lua.app_data_ref::<InputSnapshot>().ok_or_else(|| {
             mlua::Error::RuntimeError("ph2d.input: InputSnapshot not registered".into())
         })?;
         Ok(s.get(&key))
     })?;
-
-    // M14.2 additions ----------------------------------------------------
-
-    // ph2d.spawn() — queue an empty entity spawn. Returns nil; the
-    // assigned entity id appears in `ph2d.find_by_name(name)` next
-    // tick if the spawn was named via `ph2d.spawn_named`.
-    //
-    // Prefab-aware variant `ph2d.spawn(prefab_id)` arrives in M14.3
-    // when `Asset::Prefab` exists.
-    let spawn_fn = lua.create_function(|lua, ()| -> mlua::Result<()> {
-        let q = lua.app_data_ref::<SpawnQueue>().ok_or_else(|| {
-            mlua::Error::RuntimeError("ph2d.spawn: SpawnQueue not registered".into())
-        })?;
-        q.push(SpawnCommand::SpawnEmpty)
-            .map_err(|e| mlua::Error::RuntimeError(format!("ph2d.spawn: {e}")))
-    })?;
-
-    // ph2d.spawn_named(name) — queue a spawn that will get a Name
-    // component on application. Same caveats as `spawn`.
-    let spawn_named_fn = lua.create_function(|lua, name: String| -> mlua::Result<()> {
-        let q = lua.app_data_ref::<SpawnQueue>().ok_or_else(|| {
-            mlua::Error::RuntimeError("ph2d.spawn_named: SpawnQueue not registered".into())
-        })?;
-        q.push(SpawnCommand::SpawnNamed { name })
-            .map_err(|e| mlua::Error::RuntimeError(format!("ph2d.spawn_named: {e}")))
-    })?;
-
-    // ph2d.despawn(entity) — queue an entity despawn.
-    let despawn_fn = lua.create_function(|lua, entity: f64| -> mlua::Result<()> {
-        let q = lua.app_data_ref::<SpawnQueue>().ok_or_else(|| {
-            mlua::Error::RuntimeError("ph2d.despawn: SpawnQueue not registered".into())
-        })?;
-        q.push(SpawnCommand::Despawn {
-            entity: entity as u64,
-        })
-        .map_err(|e| mlua::Error::RuntimeError(format!("ph2d.despawn: {e}")))
-    })?;
-
-    // ph2d.attach_script(entity, script_name) — queue attaching a PROJECT script, named by its
-    // unique name in the `ScriptLibrary` (ADR-0188 §2; the bytecode `AssetId` it took is gone).
-    let attach_script_fn =
-        lua.create_function(|lua, (entity, script): (f64, String)| -> mlua::Result<()> {
-            let q = lua.app_data_ref::<SpawnQueue>().ok_or_else(|| {
-                mlua::Error::RuntimeError("ph2d.attach_script: SpawnQueue not registered".into())
-            })?;
-            if script.trim().is_empty() {
-                return Err(mlua::Error::RuntimeError(
-                    "ph2d.attach_script: needs the name of a project script (e.g. \"bob.luau\")"
-                        .into(),
-                ));
-            }
-            q.push(SpawnCommand::AttachScript {
-                entity: entity as u64,
-                script,
-            })
-            .map_err(|e| mlua::Error::RuntimeError(format!("ph2d.attach_script: {e}")))
-        })?;
-
-    // ph2d.find_by_name(name) — resolve a Name component to an
-    // entity id. Reads from a NameSnapshot the host populates each
-    // tick.
-    let find_by_name_fn =
-        lua.create_function(|lua, name: String| -> mlua::Result<Option<f64>> {
-            let s = lua.app_data_ref::<NameSnapshot>().ok_or_else(|| {
-                mlua::Error::RuntimeError("ph2d.find_by_name: NameSnapshot not registered".into())
-            })?;
-            Ok(s.get(&name).map(|e| e as f64))
-        })?;
 
     // ph2d.state_get(entity, field) — read per-instance lateral state.
     // Returns nil if either the entity or field is absent.
@@ -585,7 +462,7 @@ fn wire_ph2d_api(
 
     // ph2d.state_set(entity, field, value) — write per-instance
     // lateral state. Value is type-checked HR-16 POD; non-POD
-    // (function, thread, userdata) returns a Luau error.
+    // (function, thread, userdata) returns a Luau error; nil removes.
     let state_set_fn = lua.create_function(
         |lua, (entity, field, value): (f64, String, mlua::Value)| -> mlua::Result<()> {
             let s = lua.app_data_ref::<StateTable>().ok_or_else(|| {
@@ -625,13 +502,7 @@ fn wire_ph2d_api(
 
     let ph2d: mlua::Table = lua.globals().get("ph2d")?;
     ph2d.set("set", set_fn)?;
-    ph2d.set("get", get_fn)?;
     ph2d.set("input", input_fn)?;
-    ph2d.set("spawn", spawn_fn)?;
-    ph2d.set("spawn_named", spawn_named_fn)?;
-    ph2d.set("despawn", despawn_fn)?;
-    ph2d.set("attach_script", attach_script_fn)?;
-    ph2d.set("find_by_name", find_by_name_fn)?;
     ph2d.set("state_get", state_get_fn)?;
     ph2d.set("state_set", state_set_fn)?;
     ph2d.set("state_keys", state_keys_fn)?;
@@ -644,4 +515,56 @@ fn wire_ph2d_api(
     ph2d.set("color", crate::valores::color_binding(lua)?)?;
 
     Ok(())
+}
+
+/// O nome de uma tecla para o script, ou o erro que o diz (uma gralha não pode ler-se «solta»).
+fn keys_of(func: &str, name: &str) -> mlua::Result<Vec<Key>> {
+    Key::named_in_script(name).ok_or_else(|| {
+        mlua::Error::RuntimeError(format!(
+            "ph2d.{func}: unknown key '{name}' — names are lower case, like \"a\", \"space\", \"left\", \"shift\", \"f1\""
+        ))
+    })
+}
+
+fn button_of(func: &str, name: &str) -> mlua::Result<MouseButton> {
+    MouseButton::from_script_name(name).ok_or_else(|| {
+        mlua::Error::RuntimeError(format!(
+            "ph2d.{func}: unknown mouse button '{name}' — \"left\", \"right\" or \"middle\""
+        ))
+    })
+}
+
+/// ⭐ **O teclado e o rato** (`docs/CodeEditor/05_api_que_funciona.md` §3.5).
+fn wire_devices(lua: &mlua::Lua, devices: &Devices) -> mlua::Result<()> {
+    let ph2d: mlua::Table = lua.globals().get("ph2d")?;
+    for (func, edge) in [
+        ("key_down", Edge::Down),
+        ("key_pressed", Edge::Pressed),
+        ("key_released", Edge::Released),
+    ] {
+        let d = devices.clone();
+        let f = lua.create_function(move |_, name: String| {
+            Ok(d.key(&keys_of(func, &name)?, edge))
+        })?;
+        ph2d.set(func, f)?;
+    }
+    for (func, edge) in [
+        ("mouse_down", Edge::Down),
+        ("mouse_pressed", Edge::Pressed),
+        ("mouse_released", Edge::Released),
+    ] {
+        let d = devices.clone();
+        let f = lua.create_function(move |_, name: String| {
+            Ok(d.button(button_of(func, &name)?, edge))
+        })?;
+        ph2d.set(func, f)?;
+    }
+    let d = devices.clone();
+    let pos = lua.create_function(move |_, ()| {
+        Ok(match d.mouse_world() {
+            Some([x, y]) => (Some(x), Some(y)),
+            None => (None, None),
+        })
+    })?;
+    ph2d.set("mouse_position", pos)
 }

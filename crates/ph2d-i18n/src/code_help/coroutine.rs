@@ -7,7 +7,7 @@ pub(super) fn tr(key: &str) -> Option<&'static str> {
             "Functions that can pause halfway and carry on later from the same spot."
         }
         "code.help.coroutine.about" => {
-            "A coroutine is a function you can pause with [coroutine.yield] and continue with [coroutine.resume]; its local variables are kept while it waits. That makes step-by-step behaviour easy to write: a patrol, a dialogue, a sequence of moves.\n\nNote: PH2D's hooks such as `update` are not coroutines, so pausing directly inside them stops the script with an error. Create your own coroutine, keep it in a variable, and resume it from `update` whenever the next step is due. [ph2d.wait] pauses a coroutine in the same way, handing the number of seconds to whoever resumes it; nothing resumes it for you."
+            "A coroutine is a function you can pause with [coroutine.yield] and continue with [coroutine.resume]; its local variables are kept while it waits. That makes step-by-step behaviour easy to write: a patrol, a dialogue, a sequence of moves.\n\nIn PH2D every hook (`init`, `update`, `on_signal`) runs as a coroutine, so [ph2d.wait] can pause it on the spot and the scene carries on from that line when the time has passed. A [coroutine.yield] of your own straight inside a hook stops the script with an error — use [ph2d.wait] there. Coroutines you create yourself work as usual."
         }
         "code.help.coroutine.close" => {
             "Shuts down a paused or finished coroutine for good; its status becomes `dead`.\n\nUse it to cancel a sequence you no longer need. It cannot close the coroutine you are running in."
@@ -22,7 +22,7 @@ pub(super) fn tr(key: &str) -> Option<&'static str> {
         "code.help.coroutine.create.f" => "The function the coroutine will run.",
         "code.help.coroutine.create.returns" => "The new coroutine, with status `suspended`.",
         "code.help.coroutine.isyieldable" => {
-            "Tells whether the code running now is allowed to pause.\n\nIt is `true` inside a coroutine and `false` in a hook such as `update` or at the top of the script."
+            "Tells whether the code running now is allowed to pause.\n\nIt is `true` inside a coroutine — a hook such as `update` included, since PH2D runs each hook as one — and `false` at the top of the script."
         }
         "code.help.coroutine.isyieldable.returns" => {
             "`true` when [coroutine.yield] would work here."
@@ -36,9 +36,11 @@ pub(super) fn tr(key: &str) -> Option<&'static str> {
             "`true` and the values it yielded or returned, or `false` and the error."
         }
         "code.help.coroutine.running" => {
-            "Gives the coroutine that is running the current code.\n\nNote: outside any coroutine (in a hook or at the top of the script) it gives `nil` in PH2D."
+            "Gives the coroutine that is running the current code.\n\nNote: at the top of the script it gives `nil` in PH2D; inside a hook it gives the coroutine PH2D runs that hook in."
         }
-        "code.help.coroutine.running.returns" => "The running coroutine, or `nil` outside one.",
+        "code.help.coroutine.running.returns" => {
+            "The running coroutine, or `nil` at the top of the script."
+        }
         "code.help.coroutine.status" => {
             "Tells what state a coroutine is in, as text.\n\n`suspended`: paused, or not started yet. `running`: it is the one asking. `normal`: it is waiting for another coroutine it resumed. `dead`: finished, failed or closed."
         }

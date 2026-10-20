@@ -76,11 +76,11 @@ fn corre(chunk: &str, source: &str) -> Vec<(String, ScriptDiagnostic)> {
     }
     for q in 0..QUADROS {
         h.scene_sync(sim.world_mut());
-        let r = h.scene_tick(sim.world_mut(), 1.0 / 60.0);
+        let r = h.scene_tick(&mut sim, 1.0 / 60.0);
         out.extend(r.failed.into_iter().map(|(_, d)| (format!("tique{q}"), d)));
     }
     if h.scene_failure(e).is_none() {
-        let r = h.scene_hear(sim.world_mut(), &["ping"]);
+        let r = h.scene_hear(&mut sim, &["ping"]);
         out.extend(r.failed.into_iter().map(|(_, d)| ("sinal".to_owned(), d)));
     }
     out

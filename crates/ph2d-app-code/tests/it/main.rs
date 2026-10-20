@@ -160,7 +160,7 @@ impl Mesa {
     pub fn cena(&mut self) {
         let h = self.host.as_mut().expect("vm");
         h.scene_sync(self.sim.world_mut());
-        let _ = h.scene_tick(self.sim.world_mut(), 1.0 / 60.0);
+        let _ = h.scene_tick(&mut self.sim, 1.0 / 60.0);
     }
 
     /// O cartão pediu «Edit script» de `id`.

@@ -17,7 +17,7 @@
 //!
 //! - **POD-like values only.** [`PodValue`] enumerates the accepted
 //!   types: `Nil`, `Bool`, `Number(f64)`, `String`, `Entity(u64)`,
-//!   `Table(BTreeMap<String, PodValue>)`. Lua `function` / `thread`
+//!   `Table(BTreeMap<PodKey, PodValue>)`. Lua `function` / `thread`
 //!   / `userdata` / `lightuserdata` are rejected with a
 //!   [`mlua::Error::RuntimeError`] before they reach the store —
 //!   they wouldn't serialize (HR-14) nor survive a hot reload.
@@ -67,9 +67,18 @@ pub enum PodValue {
     /// distinct from `Number` so save migrations can distinguish a
     /// reference from arithmetic data.
     Entity(u64),
-    /// Nested map (max depth [`StateTable::MAX_DEPTH`]). Iteration is
-    /// alphabetical by `BTreeMap` invariant.
-    Table(BTreeMap<String, PodValue>),
+    /// Nested map (max depth [`StateTable::MAX_DEPTH`]). Whole-number keys come first, in
+    /// numeric order, then text keys alphabetically (`BTreeMap` over [`PodKey`]).
+    Table(BTreeMap<PodKey, PodValue>),
+}
+
+/// ⭐ **A chave de uma tabela guarda o TIPO** — `t[1]` e `t["1"]` são chaves diferentes no Luau, e
+/// a tabela que volta tem de ser a que foi (uma lista volta lista, com `#t` certo). A 1.ª versão
+/// guardava tudo como texto e uma lista voltava com chaves `"1"`, `"2"` (`#t == 0`).
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum PodKey {
+    Int(i64),
+    Text(String),
 }
 
 impl PodValue {
@@ -104,12 +113,20 @@ impl PodValue {
                 for pair in t.pairs::<LuaValue, LuaValue>() {
                     let (k, v) = pair?;
                     let key = match k {
-                        LuaValue::String(s) => s.to_str()?.to_owned(),
-                        LuaValue::Integer(n) => n.to_string(),
-                        LuaValue::Number(n) => n.to_string(),
+                        LuaValue::String(s) => PodKey::Text(s.to_str()?.to_owned()),
+                        LuaValue::Integer(n) => PodKey::Int(n),
+                        #[expect(
+                            clippy::cast_possible_truncation,
+                            reason = "só depois de provar que o número é inteiro e cabe"
+                        )]
+                        LuaValue::Number(n)
+                            if n.fract() == 0.0 && n.abs() < 9_007_199_254_740_992.0 =>
+                        {
+                            PodKey::Int(n as i64)
+                        }
                         _ => {
                             return Err(mlua::Error::RuntimeError(
-                                "HR-16: state table keys must be string or number".into(),
+                                "state table keys must be text or whole numbers".into(),
                             ));
                         }
                     };
@@ -157,7 +174,15 @@ impl PodValue {
             PodValue::Table(map) => {
                 let t = lua.create_table()?;
                 for (k, v) in map {
-                    t.set(k, v.to_lua(lua)?)?;
+                    let v = v.to_lua(lua)?;
+                    match k {
+                        #[expect(
+                            clippy::cast_precision_loss,
+                            reason = "a chave entrou como número do Luau (< 2^53)"
+                        )]
+                        PodKey::Int(i) => t.set(i as f64, v)?,
+                        PodKey::Text(s) => t.set(s, v)?,
+                    }
                 }
                 Ok(LuaValue::Table(t))
             }
@@ -184,6 +209,17 @@ impl StateTable {
     /// Insert (or overwrite) a single field on `lateral_key`'s table.
     pub fn set(&self, lateral_key: u64, field: &str, value: PodValue) {
         let mut g = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        // ⭐ `nil` APAGA o campo (Godot `set_meta(k, null)`, Roblox `SetAttribute(k, nil)`) — a 1.ª
+        // versão guardava-o, e a chave ficava no `state_keys` para sempre.
+        if value == PodValue::Nil {
+            if let Some(m) = g.get_mut(&lateral_key) {
+                m.remove(field);
+                if m.is_empty() {
+                    g.remove(&lateral_key);
+                }
+            }
+            return;
+        }
         g.entry(lateral_key)
             .or_default()
             .insert(field.to_owned(), value);
@@ -266,9 +302,9 @@ mod tests {
     #[test]
     fn keys_are_alphabetical() {
         let s = StateTable::new();
-        s.set(1, "zeta", PodValue::Nil);
-        s.set(1, "alpha", PodValue::Nil);
-        s.set(1, "mu", PodValue::Nil);
+        s.set(1, "zeta", PodValue::Bool(true));
+        s.set(1, "alpha", PodValue::Bool(true));
+        s.set(1, "mu", PodValue::Bool(true));
         assert_eq!(s.keys(1), vec!["alpha", "mu", "zeta"]);
     }
 

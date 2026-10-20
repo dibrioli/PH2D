@@ -52,6 +52,14 @@ impl Store {
                 };
                 (text, Tone::Error, d.line, false)
             }
+            ConsoleKind::Warning(d) => {
+                let msg = d.message.lines().next().unwrap_or_default();
+                let text = match d.line {
+                    Some(n) => tr_with("code.console.warning", &[("line", &n), ("msg", &msg)]),
+                    None => tr_with("code.console.warning_noline", &[("msg", &msg)]),
+                };
+                (text, Tone::Warning, d.line, false)
+            }
         };
         self.put(text, tone, line);
         if runtime {

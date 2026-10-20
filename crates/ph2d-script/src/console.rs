@@ -62,6 +62,8 @@ pub enum ConsoleKind {
     RuntimeError(ScriptDiagnostic),
     /// O texto novo não compilou — a versão anterior (se havia) continua.
     ReloadRefused(ScriptDiagnostic),
+    /// Uma função da API recusou um pedido e disse porquê — o objecto CONTINUA a correr.
+    Warning(ScriptDiagnostic),
 }
 
 /// ⭐ **Uma linha do console.**
@@ -129,6 +131,29 @@ impl Console {
             entity,
             text: d.to_string(),
             kind,
+        });
+    }
+
+    /// ⭐ Uma recusa em voz de uma função da API, na linha do script que a chamou (o primeiro nível
+    /// da pilha que é Luau e não o `=ph2d` das funções da casa).
+    pub(crate) fn warning(&self, lua: &Lua, msg: &str) {
+        let line = (1..32).find_map(|level| {
+            lua.inspect_stack(level, |d| {
+                let src = d.source();
+                let ours = src.source.as_deref() == Some("=ph2d") || src.what == "C";
+                (!ours).then(|| d.current_line())
+            })?
+        });
+        let d = ScriptDiagnostic {
+            line: line.flatten().and_then(|n| u32::try_from(n).ok()),
+            ..ScriptDiagnostic::runtime(msg)
+        };
+        let (script, entity) = self.lock().speaker;
+        self.push(ConsoleLine {
+            script,
+            entity,
+            text: d.to_string(),
+            kind: ConsoleKind::Warning(d),
         });
     }
 

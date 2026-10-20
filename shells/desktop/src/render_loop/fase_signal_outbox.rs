@@ -44,12 +44,15 @@ impl crate::App {
         ticks: u32,
     ) {
         let accoes = self.accoes_do_quadro();
+        let vec_entities = &mut self.vec.entities;
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
         let FrameGfx {
             sim,
+            component_registry,
+            vec_scene,
             toasts,
             physics,
             tags,
@@ -176,7 +179,12 @@ impl crate::App {
             self.fixed_step.fixed_dt(),
         );
         let r = &mut self.signal_readers;
-        motores::correm(
+        let mut portas = ph2d_app_components::script_bridge::ScriptDoors {
+            registry: component_registry,
+            docs: ph2d_app_components::instance_docs::OwnedDocs { vec_scene, vec_entities },
+            tick: self.fixed_step.tick_count(),
+        };
+        deaths.extend(motores::correm(
             sim,
             script,
             particles,
@@ -191,7 +199,8 @@ impl crate::App {
             },
             &relogio,
             &accoes,
-        );
+            &mut portas,
+        ));
         // ⭐⭐⭐ **O CONSUMIDOR QUE FAZ ALGUMA COISA** (TOP-20 #5) — a tabela nome → acção.
         //
         // ⚠️ **Aqui, e não noutro sítio do quadro:** depois do dreno (senão os sinais deste quadro

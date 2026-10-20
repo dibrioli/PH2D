@@ -194,6 +194,8 @@ pub mod restart_smoke;
 pub mod row_components;
 pub mod scene_ctx;
 pub mod script_bridge;
+/// O comando de jogo, o teclado e o rato que os scripts leem (CodeEditor item 6).
+pub mod script_input;
 /// ⭐ TOP-20 #16 — a secção SCRIPT do Inspector: o instantâneo e o dreno.
 pub mod script_inspector;
 /// ADR-0188 — os scripts do projeto no `ProjectFile.scripts`: gravar, abrir (importar caminhos antigos).

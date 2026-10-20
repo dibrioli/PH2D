@@ -94,6 +94,7 @@ fn module_env(lua: &Lua) -> mlua::Result<Table> {
     let meta = lua.create_table()?;
     meta.set("__index", lua.globals())?;
     env.set_metatable(Some(meta))?;
+    crate::stdlib::bind_env(lua, &env)?;
     Ok(env)
 }
 

@@ -5,7 +5,7 @@
 -- Regenerate:      cargo run -p ph2d-bindgen -- --write
 -- ============================================================
 
---- A scene object, as `self.id` and `ph2d.find_by_name` give it.
+--- A scene object, as `self.id`, `ph2d.find_by_name` and `ph2d.spawn` give it.
 export type Entity = number
 
 --- The pose fields a scene script reads and writes.
@@ -23,8 +23,14 @@ export type PropertyDefault = number | boolean | string | Vec2 | Color
 --- Editing hints for a property; `options` makes a text property a list.
 export type PropertyOptions = { min: number?, max: number?, step: number?, options: { string }? }
 
---- Plain data that survives a reload in the per-object state table.
-export type StateValue = boolean | number | string | { [string]: StateValue }
+--- Plain data kept per object for the run (a reload keeps it, a rewind clears it).
+export type StateValue = boolean | number | string | { [string | number]: StateValue }
+
+--- A keyboard key, lower case; `shift`, `ctrl` and `alt` mean either side.
+export type KeyName = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" | "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "f1" | "f2" | "f3" | "f4" | "f5" | "f6" | "f7" | "f8" | "f9" | "f10" | "f11" | "f12" | "tab" | "enter" | "space" | "escape" | "backspace" | "delete" | "up" | "down" | "left" | "right" | "left_shift" | "right_shift" | "left_ctrl" | "right_ctrl" | "left_alt" | "right_alt" | "home" | "[" | "]" | "," | "." | "shift" | "ctrl" | "alt"
+
+--- A mouse button.
+export type MouseButtonName = "left" | "right" | "middle"
 
 --- The `self` a hook receives: its `id`, the declared properties and whatever the script keeps.
 export type ScriptSelf = { id: Entity, [string]: any }
@@ -33,38 +39,50 @@ export type ScriptSelf = { id: Entity, [string]: any }
 declare ph2d: {
     --- Writes a pose field; applied at the end of the tick (everyone reads the same photo).
     set: (entity: Entity, field: PoseField, value: number) -> (),
-    --- Reads a pose field as it was at the start of the tick; nil if unknown.
+    --- Reads a pose field of any object as it was at the start of the tick; nil if the id is no object.
     get: (entity: Entity, field: PoseField) -> number?,
-    --- The value of an input key or axis this frame; nil when not held.
+    --- The value of a gamepad button or axis this frame; nil when not held.
     input: (key: string) -> number?,
     --- Emits a signal from this object; an empty name is an error.
     emit: (signal: string) -> (),
-    --- The object with this name, if there is one.
+    --- The first object with this name, in the order of the object list; nil if none.
     find_by_name: (name: string) -> Entity?,
-    --- Queues an empty object, created between ticks.
-    spawn: () -> (),
-    --- Queues a named object; `find_by_name` finds it from the next tick.
-    spawn_named: (name: string) -> (),
-    --- Queues the removal of an object.
-    despawn: (entity: Entity) -> (),
-    --- Queues attaching a project script, named by its name in the project (e.g. "bob.luau").
-    attach_script: (entity: Entity, script: string) -> (),
+    --- Creates a copy of the master with this name right away (an empty object without one); a rewind removes it.
+    spawn: (master: string?, x: number?, y: number?) -> Entity,
+    --- Removes an object created while the scene runs, at the end of the frame.
+    despawn: (entity: Entity) -> boolean,
+    --- Gives an object created while the scene runs a project script, by its name (e.g. "bob.luau").
+    attach_script: (entity: Entity, script: string) -> boolean,
+    --- Whether the key is held right now.
+    key_down: (key: KeyName) -> boolean,
+    --- Whether the key went down since the last tick — true on one tick only.
+    key_pressed: (key: KeyName) -> boolean,
+    --- Whether the key went up since the last tick — true on one tick only.
+    key_released: (key: KeyName) -> boolean,
+    --- Whether the mouse button is held after a click that started on the scene.
+    mouse_down: (button: MouseButtonName) -> boolean,
+    --- Whether the button was clicked on the scene since the last tick — true on one tick only.
+    mouse_pressed: (button: MouseButtonName) -> boolean,
+    --- Whether the button was let go since the last tick — true on one tick only.
+    mouse_released: (button: MouseButtonName) -> boolean,
+    --- The point of the scene under the mouse, in the same units as `x` and `y`.
+    mouse_position: () -> (number?, number?),
     --- Declares an Inspector property; only at the top of the script.
     property: (name: string, default: PropertyDefault, options: PropertyOptions?) -> (),
     --- A position value.
     vec2: (x: number, y: number) -> Vec2,
     --- A linear RGBA colour value; opaque when `a` is missing.
     color: (r: number, g: number, b: number, a: number?) -> Color,
-    --- Reads a field of the object's lateral state.
+    --- Reads a field of the object's state for this run.
     state_get: (entity: Entity, field: string) -> StateValue?,
-    --- Writes a field of the object's lateral state; only plain data.
+    --- Writes a field of the object's state for this run; only plain data, and nil removes the field.
     state_set: (entity: Entity, field: string, value: StateValue?) -> (),
-    --- The fields of the object's lateral state, sorted.
+    --- The fields of the object's state, sorted.
     state_keys: (entity: Entity) -> { string },
-    --- Drops every field of the object's lateral state.
+    --- Drops every field of the object's state.
     state_clear: (entity: Entity) -> (),
-    --- Yields the running coroutine for `seconds`; scene hooks are not coroutines.
-    wait: (seconds: number) -> (),
+    --- Pauses this hook for `seconds` of play time and returns the time that passed; the object keeps running.
+    wait: (seconds: number?) -> number,
 }
 
 --- Writes the inputs that the Motion graph reads (`value.input`).

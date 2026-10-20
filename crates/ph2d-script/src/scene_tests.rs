@@ -53,7 +53,7 @@ fn x(world: &World, e: Entity) -> f32 {
 
 fn frame(host: &mut ScriptHost, sim: &mut SimWorld, dt: f64) -> crate::scene::SceneReport {
     host.scene_sync(sim.world_mut());
-    host.scene_tick(sim.world_mut(), dt)
+    host.scene_tick(sim, dt)
 }
 
 const MOVE_BY_SPEED: &str = r#"
@@ -481,10 +481,10 @@ end
     let e = actor(sim.world_mut(), 1, &path, &[]);
     let mut host = ScriptHost::new().expect("vm");
     host.scene_sync(sim.world_mut());
-    let r = host.scene_hear(sim.world_mut(), &["salta"]);
+    let r = host.scene_hear(&mut sim, &["salta"]);
     assert_eq!(r.calls, 0, "antes do primeiro tique não há self");
     frame(&mut host, &mut sim, 0.1);
-    let r = host.scene_hear(sim.world_mut(), &["outro", "salta"]);
+    let r = host.scene_hear(&mut sim, &["outro", "salta"]);
     assert_eq!(r.calls, 2);
     assert_eq!(r.emitted, vec![(e, "saltei".to_owned())]);
     assert_eq!(r.wrote, vec![e]);

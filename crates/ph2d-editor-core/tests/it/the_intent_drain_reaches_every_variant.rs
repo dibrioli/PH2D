@@ -81,32 +81,6 @@ const UNCONSUMED_PENDING: &[(&str, &str, &str)] = &[
     // ⇒ um braço nomeado-e-vazio lê como consumido por esta régua, que é um limite declarado no
     // cabeçalho deste ficheiro. O que impede a próxima variante de cair em silêncio é o `match`
     // exaustivo mais o gate `the_drain_names_every_authored_intent_variant`, no shell.
-    // ⛔ A fila de SPAWN do `ph2d-script`: as quatro sao produzidas pelas ligacoes
-    // Luau (`host.rs`) e `drain_spawns()` nao tem chamador nenhum fora dos testes
-    // da propria crate. E' a mesma ausencia que o CLAUDE.md ja' nomeia — o
-    // `ScriptHost` do desktop corre um script placeholder e NUNCA recebe
-    // `provide_read`. Nao e' um controlo de UI: e' a superficie de um subsistema
-    // que ainda nao tem consumidor. Sai da catraca quando o R1/`shells/game` abrir.
-    (
-        "SpawnCommand",
-        "SpawnEmpty",
-        "ph2d-script: drain_spawns() sem chamador (ScriptHost e' placeholder)",
-    ),
-    (
-        "SpawnCommand",
-        "SpawnNamed",
-        "ph2d-script: drain_spawns() sem chamador (ScriptHost e' placeholder)",
-    ),
-    (
-        "SpawnCommand",
-        "Despawn",
-        "ph2d-script: drain_spawns() sem chamador (ScriptHost e' placeholder)",
-    ),
-    (
-        "SpawnCommand",
-        "AttachScript",
-        "ph2d-script: drain_spawns() sem chamador (ScriptHost e' placeholder)",
-    ),
 ];
 
 /// **Controlo NEGATIVO** — filas verificadas limpas em 2026-08-30. Se uma delas
@@ -123,8 +97,10 @@ const CLEAN_QUEUES: &[&str] = &[
 
 /// A **metade justa**: a sonda tem de VER o que já existe. Baseline medido em
 /// 2026-08-30 (9 filas, 183 variantes). Números conservadores: eles descem
-/// só se alguém apagar uma fila, e aí o gate quer ser lido.
-const MIN_QUEUES: usize = 9;
+/// só se alguém apagar uma fila, e aí o gate quer ser lido. ⇒ 8 desde 2026-10-20: a fila de
+/// SPAWN do `ph2d-script` saiu (CodeEditor item 6) — o `ph2d.spawn`/`despawn`/`attach_script`
+/// passaram a agir pela pista do mundo durante o tique, sem fila por drenar.
+const MIN_QUEUES: usize = 8;
 const MIN_VARIANTS: usize = 150;
 
 fn repo_root() -> PathBuf {

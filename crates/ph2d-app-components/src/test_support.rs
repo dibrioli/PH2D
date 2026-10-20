@@ -193,7 +193,7 @@ pub mod scripts {
         crate::script_project::install(sim.world_mut(), lib.clone());
         let mut host = ScriptHost::new().expect("vm");
         host.scene_sync(sim.world_mut());
-        let r = host.scene_tick(sim.world_mut(), 0.1);
+        let r = host.scene_tick(&mut sim, 0.1);
         assert!(r.failed.is_empty(), "{:?}", r.failed);
         let w = sim.world();
         let cfg = w.get::<LuauScript>(e).expect("cfg").clone();

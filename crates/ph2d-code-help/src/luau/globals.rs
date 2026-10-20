@@ -105,8 +105,8 @@ print(table.concat(seen, " ")) --> 1:Hero 2:Slime"#,
         returns: true,
         example: r#"local f = loadstring("return 2 + 3")
 print(f()) --> 5
-local ok = pcall(loadstring, "return +")
-print(ok) --> false"#,
+local g, err = loadstring("return +")
+print(g) --> nil"#,
     },
     Entry {
         name: "newproxy",

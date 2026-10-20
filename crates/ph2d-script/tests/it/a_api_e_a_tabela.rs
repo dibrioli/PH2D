@@ -313,3 +313,30 @@ fn toda_entrada_da_api_tem_ajuda() {
     assert_eq!(linhas.len(), API.len() + HOOKS.len() + API_TYPES.len());
     assert!(HOOKS.len() >= 3 && API_TYPES.len() >= 8 && API.len() >= 20);
 }
+
+/// ⭐ O tipo `KeyName` do `ph2d.d.luau` é a lista do teclado (`ph2d_input::Key::script_names`), pela
+/// ordem dela — escrita à mão na tabela, conferida aqui (CodeEditor item 6).
+#[test]
+fn os_nomes_de_tecla_sao_os_do_teclado() {
+    let def = API_TYPES
+        .iter()
+        .find(|t| t.ident == "KeyName")
+        .expect("o tipo KeyName")
+        .definition;
+    let na_tabela: Vec<String> = def
+        .split(" | ")
+        .map(|n| n.trim_matches('"').to_owned())
+        .collect();
+    assert_eq!(na_tabela, ph2d_input::Key::script_names());
+    let botoes = API_TYPES
+        .iter()
+        .find(|t| t.ident == "MouseButtonName")
+        .expect("o tipo MouseButtonName")
+        .definition;
+    let botoes: Vec<&str> = botoes.split(" | ").map(|n| n.trim_matches('"')).collect();
+    let rato: Vec<&str> = ph2d_input::MouseButton::ALL
+        .iter()
+        .map(|b| b.script_name())
+        .collect();
+    assert_eq!(botoes, rato);
+}

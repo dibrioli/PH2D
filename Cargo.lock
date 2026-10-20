@@ -9107,6 +9107,7 @@ dependencies = [
  "blake3",
  "mlua",
  "ph2d-ecs",
+ "ph2d-input",
  "ph2d-script-doc",
  "postcard",
  "proptest",

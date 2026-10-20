@@ -29,9 +29,12 @@
 //! no passo dela e o script por cima, e o ledger de cada um adopta a escrita do outro como autorada.
 //! Não é suportado, e o painel avisa (§3.9 do plano).
 
-use ph2d_ecs::{Entity, SimWorld, Transform};
+use std::collections::BTreeMap;
+
+use ph2d_ecs::scene::ComponentRegistry;
+use ph2d_ecs::{Entity, SimWorld, Spawned, StableId, Transform};
 use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
-use ph2d_script::{LuauScript, ScriptHost};
+use ph2d_script::{LuauScript, SceneDoors, ScriptHost};
 
 /// **O que a ponte fez neste quadro** — o que a shell publica e imprime.
 #[derive(Debug, Default)]
@@ -42,21 +45,77 @@ pub struct ScriptFrame {
     pub failed: Vec<(u64, ph2d_script::ScriptDiagnostic)>,
     /// Quantos ganchos correram.
     pub calls: usize,
+    /// Objectos da corrida que um script mandou apagar — mortes para o dreno único da fábrica.
+    pub despawned: Vec<Entity>,
 }
 
-/// Os objectos com script e a pose deles agora — o «antes» de cada escrita.
-fn poses(sim: &mut SimWorld) -> Vec<(Entity, Transform)> {
+/// ⭐⭐ **A porta da `Factory` para os scripts** (`ph2d.spawn("Mestre")`, CodeEditor item 6): a
+/// MESMA instanciação das cópias de uma fábrica (`instantiate_master_many`, arte própria) e a mesma
+/// marca [`Spawned`] — logo a cópia é TRANSIENTE: não vai para o documento nem para o `Ctrl+Z`, e o
+/// rebobinar varre-a (`sweep_spawned`).
+pub struct ScriptDoors<'a, 'd> {
+    pub registry: &'a ComponentRegistry,
+    pub docs: crate::instance_docs::OwnedDocs<'d>,
+    /// O tique do passo fixo — o `born_tick` de quem nasce.
+    pub tick: u64,
+}
+
+impl SceneDoors for ScriptDoors<'_, '_> {
+    fn instantiate(&mut self, sim: &mut SimWorld, master: Entity, by: Entity) -> Result<Entity, String> {
+        let by = sim.world().get::<StableId>(by).map_or(0, |s| s.0);
+        let copia = crate::instantiate::instantiate_master_many(
+            sim,
+            self.registry,
+            master,
+            None,
+            &mut self.docs,
+            crate::instantiate::ArtLink::Own,
+            1,
+        )
+        .map_err(|r| match r {
+            crate::instantiate::Refusal::NotAMaster => "it is not a master".to_owned(),
+            crate::instantiate::Refusal::WouldNestInItself => {
+                "the copy would land inside its own master".to_owned()
+            }
+        })?
+        .remove(0);
+        sim.world_mut().entity_mut(copia).insert(Spawned {
+            by,
+            born_tick: self.tick,
+        });
+        Ok(copia)
+    }
+
+    fn tick(&self) -> u64 {
+        self.tick
+    }
+}
+
+/// O «antes» de cada escrita: os objectos com script, e os que um script ainda conduz (um
+/// `ph2d.set` num objecto SEM script também é condução — a 1.ª versão só olhava para quem tinha
+/// script, e a pose da corrida desses virava documento).
+fn poses(sim: &mut SimWorld, drive: &PreviewDrive) -> BTreeMap<Entity, Transform> {
     let world = sim.world_mut();
-    world
+    let mut out: BTreeMap<Entity, Transform> = world
         .query::<(Entity, &LuauScript, &Transform)>()
         .iter(world)
         .map(|(e, _, t)| (e, *t))
-        .collect()
+        .collect();
+    for e in drive.driven_by(Driver::ScriptPose) {
+        if let Some(t) = world.get::<Transform>(e) {
+            out.entry(e).or_insert(*t);
+        }
+    }
+    out
 }
 
 /// Declara ao ledger o que uma passagem fez: quem mudou, e quem continua conduzido sem mudar.
-fn declare(sim: &SimWorld, before: &[(Entity, Transform)], drive: &mut PreviewDrive) {
-    for &(entity, was) in before {
+fn declare(sim: &SimWorld, before: &BTreeMap<Entity, Transform>, drive: &mut PreviewDrive) {
+    for (&entity, &was) in before {
+        // Uma cópia da corrida não é documento: não há autorado a guardar por baixo dela.
+        if ph2d_ecs::is_transient(sim.world(), entity) {
+            continue;
+        }
         let Some(now) = sim.world().get::<Transform>(entity).copied() else {
             continue; // saiu da cena nesta passagem
         };
@@ -75,6 +134,7 @@ fn declare(sim: &SimWorld, before: &[(Entity, Transform)], drive: &mut PreviewDr
 /// ⚠️ **O `drive` é obrigatório na assinatura**, pela lei que a `ProjectState::capture` escreve para
 /// si mesma: uma função-irmã «sem ledger» seria a segunda porta pela qual cada quadro de uma
 /// corrida viraria um passo de `Ctrl+Z`.
+#[allow(clippy::too_many_arguments)]
 pub fn frame(
     host: &mut ScriptHost,
     sim: &mut SimWorld,
@@ -83,23 +143,35 @@ pub fn frame(
     ticks: u32,
     fixed_dt: f64,
     heard: &[&str],
+    doors: &mut dyn SceneDoors,
 ) -> ScriptFrame {
     let mut out = ScriptFrame::default();
     host.scene_sync(sim.world_mut());
-    let before = poses(sim);
+    let mut before = poses(sim, drive);
     if playing {
         for _ in 0..ticks {
-            let r = host.scene_tick(sim.world_mut(), fixed_dt);
-            absorb(&mut out, r);
+            let r = host.scene_tick_with(sim, fixed_dt, doors);
+            absorb(&mut out, &mut before, r);
         }
-        let r = host.scene_hear(sim.world_mut(), heard);
-        absorb(&mut out, r);
+        let r = host.scene_hear_with(sim, heard, doors);
+        absorb(&mut out, &mut before, r);
+    } else {
+        // Parado, nenhuma borda do teclado ou do rato espera pelo Play.
+        host.devices().forget_edges();
     }
     declare(sim, &before, drive);
     out
 }
 
-fn absorb(out: &mut ScriptFrame, r: ph2d_script::SceneReport) {
+fn absorb(
+    out: &mut ScriptFrame,
+    before: &mut BTreeMap<Entity, Transform>,
+    r: ph2d_script::SceneReport,
+) {
+    for (e, t) in r.wrote_before {
+        before.entry(e).or_insert(t);
+    }
+    out.despawned.extend(r.despawned);
     out.calls += r.calls;
     out.emitted
         .extend(r.emitted.into_iter().map(|(e, n)| (e.to_bits(), n)));
@@ -141,7 +213,7 @@ pub fn boot(ms: u128) -> Option<ScriptHost> {
 /// ao zero.
 pub fn rewind(host: &mut ScriptHost, sim: &mut SimWorld, drive: &mut PreviewDrive) -> usize {
     let n = host.scene_rewind();
-    for (entity, _) in poses(sim) {
+    for entity in drive.driven_by(Driver::ScriptPose) {
         drive.release_to_authored(sim, entity, Driver::ScriptPose);
     }
     n

@@ -21,7 +21,7 @@ fn passeio(sim: &mut SimWorld, host: &mut ScriptHost, formas: &[Entity], n: usiz
     let mut max = vec![0.0f32; formas.len()];
     for _ in 0..n {
         host.scene_sync(sim.world_mut());
-        let r = host.scene_tick(sim.world_mut(), 1.0 / 30.0);
+        let r = host.scene_tick(sim, 1.0 / 30.0);
         assert!(r.failed.is_empty(), "{:?}", r.failed);
         for (m, &e) in max.iter_mut().zip(formas) {
             *m = m.max(y(sim, e).abs());

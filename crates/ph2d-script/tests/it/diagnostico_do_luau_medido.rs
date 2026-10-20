@@ -209,7 +209,7 @@ fn o_prazo_estourado_diz_a_linha_do_laco() {
         .id();
     let mut h = host();
     h.scene_sync(sim.world_mut());
-    let r = h.scene_tick(sim.world_mut(), 0.1);
+    let r = h.scene_tick(&mut sim, 0.1);
     assert_eq!(r.failed.len(), 1);
     let d = h.scene_failure(e).expect("parou").clone();
     assert_eq!(d.kind, DiagnosticKind::Budget);

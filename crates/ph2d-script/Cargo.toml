@@ -28,6 +28,7 @@ blake3 = "1"
 # that orders the scene scripts. ⚠️ `ph2d-asset` SAIU no mesmo dia: o
 # componente deixou de guardar um `AssetId` de bytecode (ninguém o produzia).
 ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-input = { path = "../ph2d-input" }
 # bevy_ecs as a direct dep is required because `#[derive(Component)]`
 # expands to absolute paths into `bevy_ecs::*`. ph2d-ecs re-exports
 # don't satisfy the macro lookup. Same pattern documented in

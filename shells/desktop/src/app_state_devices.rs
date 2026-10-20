@@ -95,12 +95,8 @@ impl App {
             .unwrap_or(0)
     }
 
-    /// Snapshot `InputState` into the ScriptHost's `ph2d.input` table
-    /// so Luau can read held buttons / axis values via the canonical
-    /// `gamepad.held.<button>` and `gamepad.axis.<axis>` keys.
-    /// Cleared and rebuilt every frame — keys absent from this frame
-    /// resolve to `nil` on the Luau side (per the M8 ph2d_input
-    /// resolves test).
+    /// Os dispositivos dos scripts (CodeEditor item 6) — a porta é a da família; daqui só sai o
+    /// ponto do mundo sob o rato, pela janela da CENA (a mesma do cursor do Motion).
     pub(crate) fn push_input_to_script(&self) {
         let Some(gfx) = self.gfx.as_ref() else {
             return;
@@ -108,14 +104,10 @@ impl App {
         let Some(host) = gfx.script.as_ref() else {
             return;
         };
-        host.clear_input();
-        for button in self.input.gamepad.iter_held() {
-            let key = format!("gamepad.held.{}", button.as_lua_key());
-            host.provide_input(&key, 1.0);
-        }
-        for (axis, value) in self.input.gamepad.iter_axes() {
-            let key = format!("gamepad.axis.{}", axis.as_lua_key());
-            host.provide_input(&key, value as f64);
-        }
+        let rato = gfx.hero_screen.as_ref().map(|h| {
+            let janela = crate::scene_mapping::janela(h.view.center_split, gfx.surface.size());
+            gfx.camera.screen_to_world(self.last_cursor, janela).map(f64::from)
+        });
+        ph2d_app_components::script_input::feed(host, &self.input, rato);
     }
 }

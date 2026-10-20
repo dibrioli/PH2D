@@ -2,7 +2,7 @@
 //!
 //! Verifies:
 //! - `LuauScript` is a plain CONFIG component that sits on a sim entity.
-//! - Luau bindings populate `SpawnQueue` correctly.
+//! - The world functions say why outside a tick.
 //! - `ph2d.state_get`/`set`/`keys` round-trip POD values.
 //!
 //! ⚠️ Os dois gates do `lateral_key` saíram com o campo (TOP-20 #16): eles fixavam a forma
@@ -11,7 +11,6 @@
 
 use ph2d_ecs::{SimComponent, SimWorld};
 use ph2d_script::component::LuauScript;
-use ph2d_script::io::SpawnCommand;
 use ph2d_script::{PodValue, ScriptHost, ScriptValue};
 
 #[test]
@@ -26,67 +25,26 @@ fn luau_script_attaches_to_sim_entity() {
     assert_eq!(got, Some(script));
 }
 
+/// ⭐ As funções que mexem no MUNDO passam pela pista, que só existe durante um tique da cena
+/// (`lane.rs`): fora dele dizem porquê, em vez de pôr um pedido numa fila que ninguém drenava (o
+/// controlo morto que a página de ajuda tinha de confessar). O que elas fazem com a cena a correr
+/// mede-se em `ph2d-script/src/scene_api_tests.rs`.
 #[test]
-fn luau_spawn_binding_queues_command() {
+fn the_world_functions_outside_a_tick_say_why() {
     let host = ScriptHost::new().unwrap();
-    host.runtime().eval("ph2d.spawn()").unwrap();
-    let cmds = host.drain_spawns();
-    assert_eq!(cmds.len(), 1);
-    assert_eq!(cmds[0], SpawnCommand::SpawnEmpty);
-}
-
-#[test]
-fn luau_spawn_named_carries_name() {
-    let host = ScriptHost::new().unwrap();
-    host.runtime().eval("ph2d.spawn_named('Player')").unwrap();
-    let cmds = host.drain_spawns();
-    assert_eq!(cmds.len(), 1);
-    assert_eq!(
-        cmds[0],
-        SpawnCommand::SpawnNamed {
-            name: "Player".into()
-        }
-    );
-}
-
-#[test]
-fn luau_despawn_carries_entity_bits() {
-    let host = ScriptHost::new().unwrap();
-    // Lua numbers are f64; we pass entity bits as a number.
-    host.runtime().eval("ph2d.despawn(12345)").unwrap();
-    let cmds = host.drain_spawns();
-    assert_eq!(cmds.len(), 1);
-    assert_eq!(cmds[0], SpawnCommand::Despawn { entity: 12345 });
-}
-
-/// (ADR-0188) `attach_script` nomeia um script DO PROJETO pelo nome único.
-#[test]
-fn luau_attach_script_names_a_project_script() {
-    let host = ScriptHost::new().unwrap();
-    host.runtime()
-        .eval("ph2d.attach_script(7, 'bob.luau')")
-        .unwrap();
-    assert_eq!(
-        host.drain_spawns(),
-        vec![SpawnCommand::AttachScript {
-            entity: 7,
-            script: "bob.luau".into()
-        }]
-    );
-}
-
-#[test]
-fn luau_attach_script_rejects_an_empty_name() {
-    let host = ScriptHost::new().unwrap();
-    let err = host
-        .runtime()
-        .eval("ph2d.attach_script(1, '  ')")
-        .unwrap_err();
-    let msg = err.to_string();
-    assert!(
-        msg.contains("needs the name of a project script"),
-        "got: {msg}"
-    );
+    for call in [
+        "ph2d.get(1, 'x')",
+        "ph2d.find_by_name('Player')",
+        "ph2d.spawn()",
+        "ph2d.despawn(12345)",
+        "ph2d.attach_script(7, 'bob.luau')",
+    ] {
+        let err = host.runtime().eval(call).unwrap_err().to_string();
+        assert!(
+            err.contains("only while the scene runs"),
+            "{call}: {err}"
+        );
+    }
 }
 
 #[test]
@@ -150,31 +108,6 @@ fn luau_state_clear_drops_entity_state() {
         .runtime()
         .lua()
         .load("return ph2d.state_get(7, 'x')")
-        .eval()
-        .unwrap();
-    assert!(matches!(got, mlua::Value::Nil));
-}
-
-#[test]
-fn luau_find_by_name_resolves_provided_snapshot() {
-    let host = ScriptHost::new().unwrap();
-    host.provide_name("Player", 0x1234_5678_u64);
-    let got: f64 = host
-        .runtime()
-        .lua()
-        .load("return ph2d.find_by_name('Player')")
-        .eval()
-        .unwrap();
-    assert_eq!(got as u64, 0x1234_5678_u64);
-}
-
-#[test]
-fn luau_find_by_name_returns_nil_for_missing_entity() {
-    let host = ScriptHost::new().unwrap();
-    let got: mlua::Value = host
-        .runtime()
-        .lua()
-        .load("return ph2d.find_by_name('Nobody')")
         .eval()
         .unwrap();
     assert!(matches!(got, mlua::Value::Nil));

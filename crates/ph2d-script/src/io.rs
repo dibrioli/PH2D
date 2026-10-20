@@ -1,13 +1,12 @@
-//! Buffered write queue + read snapshot — the only legal way for Luau
-//! scripts to talk to ECS state.
+//! Buffered write queue — the only way a Luau script WRITES to ECS state (reads go through the
+//! scene lane, `lane.rs`) — plus the devices the scripts read.
 //!
 //! Why buffered: scripts run inside `Lua::exec`, which holds the
 //! single mlua VM lock. Letting Luau callbacks reach into bevy_ecs
 //! mid-tick is racy and crosses the sim/script boundary. Instead:
-//! - Before the script tick, the host writes the current snapshot
-//!   (entity → field → value) into `ReadSnapshot`.
-//! - During the tick, `ph2d.get` reads from the snapshot, `ph2d.set`
-//!   pushes an `EntityWrite` into `WriteQueue`.
+//! - During the tick, `ph2d.get` reads the world as it was at the start
+//!   of the tick (writes are not applied yet), `ph2d.set` pushes an
+//!   `EntityWrite` into `WriteQueue`.
 //! - After the tick, the host drains the queue and applies the writes
 //!   to ECS in one pass.
 //!
@@ -23,8 +22,10 @@
 //! a Luau-level error so the script fails fast and the host stays
 //! responsive.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex};
+
+use ph2d_input::{Key, KeyboardState, MouseButton, MouseState};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntityWrite {
@@ -118,24 +119,7 @@ impl Default for WriteQueue {
     }
 }
 
-/// Read-side: the host populates this with the current ECS snapshot
-/// before each script tick. `ph2d.get` reads from it. Same Arc-clone
-/// pattern as `WriteQueue`. BTreeMap (not HashMap) per ADR-0022 —
-/// ph2d-script feeds sim systems, so it inherits the ban.
-///
-/// Poison recovery: mutex acquisitions use `unwrap_or_else(into_inner)`
-/// so a panic in another thread holding the lock degrades gracefully
-/// (potentially-stale snapshot, but engine keeps running) instead of
-/// cascade-crashing every subsequent `ph2d.get`.
-#[derive(Clone, Default)]
-pub struct ReadSnapshot {
-    inner: Arc<Mutex<BTreeMap<(u64, String), f64>>>,
-    /// ⭐ **A pose de cada objecto com script** (TOP-20 #16), sem uma `String` por campo: os cinco
-    /// campos de [`POSE_FIELDS`] são lidos por índice. ⚠️ Consultado ANTES do mapa genérico.
-    poses: Arc<Mutex<BTreeMap<u64, [f64; 5]>>>,
-}
-
-/// **Os campos de pose que um script lê e escreve**, na ordem do `[f64; 5]` da [`ReadSnapshot`].
+/// **Os campos de pose que um script lê e escreve**, na ordem do `[f64; 5]` de `scene::pose_of`.
 pub const POSE_FIELDS: [&str; 5] = ["x", "y", "rotation", "scale_x", "scale_y"];
 
 /// O índice de `field` em [`POSE_FIELDS`] — a porta única do nome ao campo.
@@ -144,64 +128,9 @@ pub fn pose_field(field: &str) -> Option<usize> {
     POSE_FIELDS.iter().position(|f| *f == field)
 }
 
-impl ReadSnapshot {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn set(&self, entity: u64, field: &str, value: f64) {
-        self.inner
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .insert((entity, field.to_owned()), value);
-    }
-
-    pub fn get(&self, entity: u64, field: &str) -> Option<f64> {
-        if let Some(i) = pose_field(field)
-            && let Some(p) = self
-                .poses
-                .lock()
-                .unwrap_or_else(|p| p.into_inner())
-                .get(&entity)
-        {
-            return Some(p[i]);
-        }
-        self.inner
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .get(&(entity, field.to_owned()))
-            .copied()
-    }
-
-    /// A pose de um objecto, nos campos de [`POSE_FIELDS`].
-    pub fn set_pose(&self, entity: u64, pose: [f64; 5]) {
-        self.poses
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .insert(entity, pose);
-    }
-
-    pub fn clear(&self) {
-        self.inner.lock().unwrap_or_else(|p| p.into_inner()).clear();
-        self.poses.lock().unwrap_or_else(|p| p.into_inner()).clear();
-    }
-
-    pub fn len(&self) -> usize {
-        self.inner.lock().unwrap_or_else(|p| p.into_inner()).len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.inner
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .is_empty()
-    }
-}
-
 /// Per-frame input snapshot consulted by `ph2d.input(key)` from Luau.
-/// Distinct from [`ReadSnapshot`] because keys are flat strings
-/// (e.g. `"gamepad.held.south"`, `"gamepad.axis.left_stick_x"`)
-/// rather than `(entity, field)` pairs — input isn't entity-scoped.
+/// Keys are flat strings (e.g. `"gamepad.held.south"`,
+/// `"gamepad.axis.left_stick_x"`) — input isn't entity-scoped.
 ///
 /// The host (shells/desktop) populates this each frame from
 /// `ph2d_input::InputState`. M8 ships gamepad + Pencil-stub keys;
@@ -249,159 +178,107 @@ impl InputSnapshot {
     }
 }
 
-/// One queued spawn/despawn/attach command from a Luau callback.
+/// Que pergunta se faz a um botão.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Edge {
+    /// Em baixo agora.
+    Down,
+    /// Desceu desde o tique anterior.
+    Pressed,
+    /// Subiu desde o tique anterior.
+    Released,
+}
+
+#[derive(Default)]
+struct DevicesInner {
+    keys_down: BTreeSet<Key>,
+    keys_pressed: BTreeSet<Key>,
+    keys_released: BTreeSet<Key>,
+    mouse_down: BTreeSet<MouseButton>,
+    mouse_pressed: BTreeSet<MouseButton>,
+    mouse_released: BTreeSet<MouseButton>,
+    mouse_world: Option<[f64; 2]>,
+}
+
+/// ⭐ **O teclado e o rato que os scripts leem** (`ph2d.key_*`, `ph2d.mouse_*`).
 ///
-/// `ph2d.spawn` / `ph2d.despawn` / `ph2d.attach_script` push into the
-/// shared [`SpawnQueue`]; the host drains and applies after the tick
-/// finishes. Same backpressure model as [`WriteQueue`] — keeps the
-/// FFI boundary pure-data (HR-8) and the engine in charge of when
-/// world mutations happen.
-#[derive(Clone, Debug, PartialEq)]
-pub enum SpawnCommand {
-    /// Spawn an empty entity (placeholder until M14.3 Prefab assets
-    /// arrive — that milestone replaces this variant with
-    /// `SpawnPrefab { prefab: AssetId, transform: Transform }`).
-    SpawnEmpty,
-    /// Spawn an empty entity and tag it with a `Name(name)` so the
-    /// next-frame `ph2d.find_by_name(name)` lookup can locate it.
-    /// The `lateral_key` rendezvous slot used to publish the assigned
-    /// entity id back to scripts is left for a later milestone — for
-    /// now the script tags by name and re-queries.
-    SpawnNamed { name: String },
-    /// Despawn an entity by `Entity::to_bits()` value. Silently
-    /// ignored if the entity no longer exists.
-    Despawn { entity: u64 },
-    /// Attach a `LuauScript` to an existing entity: the project script with this unique name
-    /// (`ScriptLibrary::by_name`; an unknown name ⇒ `ScriptSource::Unimported`, the card's refusal).
-    AttachScript { entity: u64, script: String },
-}
-
-/// Backpressure error returned by [`SpawnQueue::push`] when the cap
-/// is hit. Same shape as [`QueueFull`] but distinct so the script
-/// error message is specific.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SpawnQueueFull {
-    pub cap: usize,
-}
-
-impl std::fmt::Display for SpawnQueueFull {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "SpawnQueue full ({} pending commands); script must yield before next spawn",
-            self.cap
-        )
-    }
-}
-
-impl std::error::Error for SpawnQueueFull {}
-
-/// Queue of pending world-mutation commands emitted by Luau bindings
-/// (`ph2d.spawn`, `ph2d.despawn`, `ph2d.attach_script`). Mirrors the
-/// [`WriteQueue`] pattern: cloned `Arc<Mutex<...>>` shared between
-/// the host and the Lua `app_data` slot; drained by the host every
-/// tick.
-///
-/// Cap default = 1024 pending commands — comfortably above the
-/// per-tick spawn rate of any reasonable scene; a "spawn bomb"
-/// script bumps into this instead of OOM-ing the host.
-#[derive(Clone)]
-pub struct SpawnQueue {
-    inner: Arc<Mutex<Vec<SpawnCommand>>>,
-    cap: usize,
-}
-
-impl SpawnQueue {
-    /// Default cap. Override with [`SpawnQueue::with_cap`] for tests.
-    pub const DEFAULT_CAP: usize = 1024;
-
-    pub fn new() -> Self {
-        Self::with_cap(Self::DEFAULT_CAP)
-    }
-
-    pub fn with_cap(cap: usize) -> Self {
-        Self {
-            inner: Arc::new(Mutex::new(Vec::new())),
-            cap,
-        }
-    }
-
-    pub fn push(&self, cmd: SpawnCommand) -> Result<(), SpawnQueueFull> {
-        let mut g = self.inner.lock().unwrap_or_else(|p| p.into_inner());
-        if g.len() >= self.cap {
-            return Err(SpawnQueueFull { cap: self.cap });
-        }
-        g.push(cmd);
-        Ok(())
-    }
-
-    pub fn drain(&self) -> Vec<SpawnCommand> {
-        std::mem::take(&mut *self.inner.lock().unwrap_or_else(|p| p.into_inner()))
-    }
-
-    pub fn len(&self) -> usize {
-        self.inner.lock().unwrap_or_else(|p| p.into_inner()).len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.inner
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .is_empty()
-    }
-
-    pub fn cap(&self) -> usize {
-        self.cap
-    }
-}
-
-impl Default for SpawnQueue {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Per-frame snapshot of `(name -> entity_id)` so Luau can resolve
-/// `ph2d.find_by_name("Player")` without crossing the world handle.
-/// Populated by the host from `Query<(Entity, &Name)>` before tick.
+/// ⚠️ **A borda vive no TIQUE, não no quadro** (`docs/CodeEditor/05_api_que_funciona.md` §3.5): as
+/// bordas de cada quadro ACUMULAM-SE até o primeiro tique as ver ([`Devices::edges_seen`]) — dois
+/// tiques num quadro veem um só «pressed», e um quadro sem tique não perde a borda.
 #[derive(Clone, Default)]
-pub struct NameSnapshot {
-    inner: Arc<Mutex<BTreeMap<String, u64>>>,
-}
+pub struct Devices(Arc<Mutex<DevicesInner>>);
 
-impl NameSnapshot {
-    pub fn new() -> Self {
-        Self::default()
+impl Devices {
+    fn lock(&self) -> std::sync::MutexGuard<'_, DevicesInner> {
+        self.0.lock().unwrap_or_else(|p| p.into_inner())
     }
 
-    pub fn set(&self, name: &str, entity: u64) {
-        self.inner
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .insert(name.to_owned(), entity);
+    /// Um quadro dos dispositivos: o que está em baixo agora, e as bordas deste quadro somadas às
+    /// que nenhum tique viu ainda. `mouse_world` = o ponto do mundo sob o rato (`None` sem vista).
+    pub fn feed(
+        &self,
+        keyboard: &KeyboardState,
+        mouse: &MouseState,
+        mouse_world: Option<[f64; 2]>,
+    ) {
+        let mut g = self.lock();
+        g.keys_down = keyboard.iter_held().collect();
+        g.keys_pressed.extend(keyboard.iter_pressed());
+        g.keys_released.extend(keyboard.iter_released());
+        g.mouse_down = MouseButton::ALL.into_iter().filter(|b| mouse.held(*b)).collect();
+        for b in MouseButton::ALL {
+            if mouse.pressed(b) {
+                g.mouse_pressed.insert(b);
+            }
+            if mouse.released(b) {
+                g.mouse_released.insert(b);
+            }
+        }
+        g.mouse_world = mouse_world;
     }
 
-    pub fn get(&self, name: &str) -> Option<u64> {
-        self.inner
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .get(name)
-            .copied()
+    /// Um tique viu as bordas: esquece-as.
+    pub fn edges_seen(&self) {
+        let mut g = self.lock();
+        g.keys_pressed.clear();
+        g.keys_released.clear();
+        g.mouse_pressed.clear();
+        g.mouse_released.clear();
     }
 
-    pub fn clear(&self) {
-        self.inner.lock().unwrap_or_else(|p| p.into_inner()).clear();
+    /// Sem corrida, nenhuma borda espera pelo Play (senão uma tecla de há minutos dispararia no
+    /// primeiro tique).
+    pub fn forget_edges(&self) {
+        self.edges_seen();
     }
 
-    pub fn len(&self) -> usize {
-        self.inner.lock().unwrap_or_else(|p| p.into_inner()).len()
+    /// Alguma das `keys` responde a `edge`?
+    #[must_use]
+    pub fn key(&self, keys: &[Key], edge: Edge) -> bool {
+        let g = self.lock();
+        let set = match edge {
+            Edge::Down => &g.keys_down,
+            Edge::Pressed => &g.keys_pressed,
+            Edge::Released => &g.keys_released,
+        };
+        keys.iter().any(|k| set.contains(k))
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.inner
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .is_empty()
+    /// O botão responde a `edge`?
+    #[must_use]
+    pub fn button(&self, b: MouseButton, edge: Edge) -> bool {
+        let g = self.lock();
+        match edge {
+            Edge::Down => g.mouse_down.contains(&b),
+            Edge::Pressed => g.mouse_pressed.contains(&b),
+            Edge::Released => g.mouse_released.contains(&b),
+        }
+    }
+
+    /// O ponto do mundo sob o rato.
+    #[must_use]
+    pub fn mouse_world(&self) -> Option<[f64; 2]> {
+        self.lock().mouse_world
     }
 }
 
@@ -425,17 +302,6 @@ mod tests {
         let drained = q.drain();
         assert_eq!(drained.len(), 2);
         assert!(q.is_empty());
-    }
-
-    #[test]
-    fn read_snapshot_round_trips() {
-        let s = ReadSnapshot::new();
-        s.set(7, "x", 7.25);
-        assert_eq!(s.get(7, "x"), Some(7.25));
-        assert_eq!(s.get(7, "y"), None);
-        assert_eq!(s.get(8, "x"), None);
-        s.clear();
-        assert_eq!(s.get(7, "x"), None);
     }
 
     #[test]
@@ -471,37 +337,5 @@ mod tests {
         assert!(q.push(ew(5, "x", 5.0)).is_ok());
     }
 
-    #[test]
-    fn spawn_queue_drain_resets() {
-        let q = SpawnQueue::new();
-        q.push(SpawnCommand::SpawnEmpty).unwrap();
-        q.push(SpawnCommand::Despawn { entity: 7 }).unwrap();
-        let drained = q.drain();
-        assert_eq!(drained.len(), 2);
-        assert!(q.is_empty());
-        assert_eq!(drained[0], SpawnCommand::SpawnEmpty);
-        assert_eq!(drained[1], SpawnCommand::Despawn { entity: 7 });
-    }
 
-    #[test]
-    fn spawn_queue_caps() {
-        let q = SpawnQueue::with_cap(2);
-        assert!(q.push(SpawnCommand::SpawnEmpty).is_ok());
-        assert!(
-            q.push(SpawnCommand::SpawnNamed { name: "x".into() })
-                .is_ok()
-        );
-        let err = q.push(SpawnCommand::SpawnEmpty).unwrap_err();
-        assert_eq!(err, SpawnQueueFull { cap: 2 });
-    }
-
-    #[test]
-    fn name_snapshot_round_trip() {
-        let s = NameSnapshot::new();
-        s.set("Player", 1234);
-        assert_eq!(s.get("Player"), Some(1234));
-        assert_eq!(s.get("Enemy"), None);
-        s.clear();
-        assert_eq!(s.get("Player"), None);
-    }
 }

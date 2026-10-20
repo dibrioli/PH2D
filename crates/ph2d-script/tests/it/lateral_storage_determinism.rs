@@ -47,10 +47,10 @@ fn snapshot_order_is_sorted_by_key_then_field() {
 #[test]
 fn keys_per_entity_are_alphabetical() {
     let s = StateTable::new();
-    s.set(7, "delta", PodValue::Nil);
-    s.set(7, "alpha", PodValue::Nil);
-    s.set(7, "charlie", PodValue::Nil);
-    s.set(7, "bravo", PodValue::Nil);
+    s.set(7, "delta", PodValue::Bool(true));
+    s.set(7, "alpha", PodValue::Bool(true));
+    s.set(7, "charlie", PodValue::Bool(true));
+    s.set(7, "bravo", PodValue::Bool(true));
     let keys = s.keys(7);
     assert_eq!(keys, vec!["alpha", "bravo", "charlie", "delta"]);
 }

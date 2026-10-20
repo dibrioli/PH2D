@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
-//! ph2d-script — Luau scripting runtime + coroutine scheduler + messaging bus.
+//! ph2d-script — Luau scripting runtime + the scene's scripts + messaging bus.
 //!
-//! Spike (S1-S3) skeleton: minimal `ScriptRuntime`, `Scheduler` for
-//! `ph2d.wait`-style coroutines, Defold-style `MessageBus`. ✓
+//! Spike (S1-S3) skeleton: minimal `ScriptRuntime`, Defold-style `MessageBus`. ✓ The
+//! `ph2d.wait` waits are the scene's (`scene.rs`, CodeEditor item 6).
 //!
 //! M7 layered the canonical engine ↔ Luau bridge on top:
 //! - [`ScriptHost`] — public facade with reset+restore hot reload via
@@ -32,6 +32,8 @@ pub mod console;
 pub mod diagnostic;
 pub mod host;
 pub mod io;
+/// A pista do mundo: o `&mut World` emprestado à VM durante os ganchos (CodeEditor item 6).
+pub mod lane;
 pub mod lateral;
 pub mod messaging;
 pub mod module;
@@ -42,6 +44,8 @@ pub mod project_scripts;
 pub mod props;
 pub mod registry;
 pub mod scene;
+/// As curas da biblioteca padrão do Luau: a família do inteiro e o `loadstring` de cada script.
+mod stdlib;
 mod valores;
 
 pub use component::{LibraryEpoch, LuauScript, ProjectScripts, ScriptEditRequests, ScriptSource};
@@ -51,10 +55,8 @@ pub use console::{
 };
 pub use diagnostic::{DiagnosticKind, ScriptDiagnostic};
 pub use host::ScriptHost;
-pub use io::{
-    EntityWrite, InputSnapshot, QueueFull, ReadSnapshot, SpawnCommand, SpawnQueue, WriteQueue,
-};
-pub use lateral::{PodValue, StateTable};
+pub use io::{Devices, Edge, EntityWrite, InputSnapshot, QueueFull, WriteQueue};
+pub use lateral::{PodKey, PodValue, StateTable};
 pub use messaging::{EntityId, Handler, Message, MessageBus, MessageId};
 pub use module::{ScriptModule, load_module};
 pub use ph2d_script_doc::{DocError, ScriptDoc, ScriptId, ScriptLibrary};
@@ -63,25 +65,39 @@ pub use props::{
     ScriptValue, ScriptValueKind,
 };
 pub use registry::register_script_components;
+pub use lane::{NoDoors, SceneDoors};
 pub use scene::{HOOK_BUDGET, ReloadOutcome, SceneReport, SceneScripts, ScriptInfo, ScriptReload};
 
-use mlua::thread::ThreadStatus;
-use mlua::{Function, IntoLuaMulti, Lua, Thread, Value};
+use mlua::Lua;
 
 pub struct ScriptRuntime {
     lua: Lua,
 }
 
+/// ⭐ **`ph2d.wait`** — cede a marca da espera e os segundos; quem retoma é o
+/// [`scene::SceneScripts`] (cada gancho corre numa corrotina). Fora de um gancho diz porquê, em vez
+/// do «attempt to yield across a C-call boundary» do Luau.
+const WAIT_LUAU: &str = r#"
+local token = ...
+ph2d = ph2d or {}
+function ph2d.wait(seconds)
+  if seconds == nil then seconds = 0 end
+  if type(seconds) ~= "number" then
+    error("ph2d.wait: seconds must be a number", 2)
+  end
+  if not coroutine.isyieldable() then
+    error("ph2d.wait: only inside init, update or on_signal while the scene runs", 2)
+  end
+  return coroutine.yield(token, seconds)
+end
+"#;
+
 impl ScriptRuntime {
     pub fn new() -> mlua::Result<Self> {
         let lua = Lua::new();
-        let setup = r#"
-ph2d = ph2d or {}
-function ph2d.wait(seconds)
-    coroutine.yield(seconds)
-end
-"#;
-        lua.load(setup).exec()?;
+        let token = lua.create_table()?;
+        lua.set_named_registry_value(scene::WAIT_TOKEN, token.clone())?;
+        lua.load(WAIT_LUAU).set_name("=ph2d").call::<()>(token)?;
         Ok(Self { lua })
     }
 
@@ -91,109 +107,5 @@ end
 
     pub fn lua(&self) -> &Lua {
         &self.lua
-    }
-
-    /// Wrap a Luau function as a coroutine thread.
-    pub fn spawn(&self, body: Function) -> mlua::Result<Thread> {
-        self.lua.create_thread(body)
-    }
-}
-
-/// Cooperative scheduler for Luau coroutines that yield `seconds`-typed waits.
-///
-/// Design: each `tick(dt)` increments accumulated time on every pending task.
-/// When a task's accumulated time meets its target, it is `resume()`d. If the
-/// task yields again, it is re-queued with the new target (and elapsed=0).
-/// If the task finishes (returns), it is dropped.
-///
-/// Per-task `elapsed_at_finish` is captured for measurement (C3).
-pub struct Scheduler {
-    tasks: Vec<Task>,
-}
-
-struct Task {
-    thread: Thread,
-    elapsed: f64,
-    target: f64,
-}
-
-/// Outcome of `tick`: per-task wall-clock at finish, useful for C3 timing measurement.
-#[derive(Default)]
-pub struct TickReport {
-    pub finished_elapsed: Vec<f64>,
-    pub still_pending: usize,
-}
-
-impl Scheduler {
-    pub fn new() -> Self {
-        Self { tasks: Vec::new() }
-    }
-
-    pub fn pending(&self) -> usize {
-        self.tasks.len()
-    }
-
-    /// Add a fresh thread. Performs an initial resume (passing `init_args`) to
-    /// extract the first wait target.
-    /// Returns `true` if thread parked (waiting), `false` if it finished immediately.
-    pub fn add(&mut self, thread: Thread, init_args: impl IntoLuaMulti) -> mlua::Result<bool> {
-        let value: Value = thread.resume(init_args)?;
-        match thread.status() {
-            ThreadStatus::Resumable => {
-                let target = value_as_seconds(&value);
-                self.tasks.push(Task {
-                    thread,
-                    elapsed: 0.0,
-                    target,
-                });
-                Ok(true)
-            }
-            _ => Ok(false),
-        }
-    }
-
-    /// Advance time by `dt` seconds for all pending tasks; resume those whose target met.
-    pub fn tick(&mut self, dt: f64) -> mlua::Result<TickReport> {
-        let mut report = TickReport::default();
-        let mut i = 0;
-        while i < self.tasks.len() {
-            self.tasks[i].elapsed += dt;
-            if self.tasks[i].elapsed >= self.tasks[i].target {
-                let task = self.tasks.swap_remove(i);
-                let elapsed_at_resume = task.elapsed;
-                let value: Value = task.thread.resume(())?;
-                match task.thread.status() {
-                    ThreadStatus::Resumable => {
-                        let new_target = value_as_seconds(&value);
-                        self.tasks.push(Task {
-                            thread: task.thread,
-                            elapsed: 0.0,
-                            target: new_target,
-                        });
-                    }
-                    _ => {
-                        report.finished_elapsed.push(elapsed_at_resume);
-                    }
-                }
-            } else {
-                i += 1;
-            }
-        }
-        report.still_pending = self.tasks.len();
-        Ok(report)
-    }
-}
-
-impl Default for Scheduler {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-fn value_as_seconds(v: &Value) -> f64 {
-    match v {
-        Value::Number(n) => *n,
-        Value::Integer(i) => *i as f64,
-        _ => 0.0,
     }
 }

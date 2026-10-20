@@ -8,6 +8,7 @@
 use crate::event::Event;
 use crate::gamepad::GamepadState;
 use crate::keyboard::KeyboardState;
+use crate::mouse::MouseState;
 use crate::pencil::PencilState;
 
 #[derive(Default, Debug, Clone)]
@@ -16,6 +17,8 @@ pub struct InputState {
     pub pencil: PencilState,
     /// ⚠️ Entrou em 2026-08-24 com o Input Map — ver [`crate::keyboard`].
     pub keyboard: KeyboardState,
+    /// Os botões do rato (a posição é da shell, depois da câmara).
+    pub mouse: MouseState,
 }
 
 impl InputState {
@@ -28,6 +31,7 @@ impl InputState {
     pub fn begin_frame(&mut self) {
         self.gamepad.begin_frame();
         self.keyboard.begin_frame();
+        self.mouse.begin_frame();
     }
 
     pub fn apply_event(&mut self, event: Event) {
@@ -38,9 +42,14 @@ impl InputState {
             Event::Pencil(p) => self.pencil.handle_event(p),
             Event::KeyDown(k) => self.keyboard.handle_key_down(k),
             Event::KeyUp(k) => self.keyboard.handle_key_up(k),
-            // ⚠️ So' o TECLADO larga aqui: o gamepad reporta o estado real dele mesmo sem foco, e
+            Event::MouseButtonDown(b) => self.mouse.handle_button_down(b),
+            Event::MouseButtonUp(b) => self.mouse.handle_button_up(b),
+            // ⚠️ So' o TECLADO e o RATO largam aqui: o gamepad reporta o estado real dele mesmo sem foco, e
             // a caneta nao tem estado segurado que sobreviva a uma troca de janela.
-            Event::FocusLost => self.keyboard.release_all(),
+            Event::FocusLost => {
+                self.keyboard.release_all();
+                self.mouse.release_all();
+            }
         }
     }
 }

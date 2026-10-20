@@ -26,6 +26,7 @@ pub mod event;
 pub mod gamepad;
 pub mod keyboard;
 pub mod map;
+pub mod mouse;
 pub mod pencil;
 pub mod resolve;
 pub mod state;
@@ -33,6 +34,7 @@ pub mod state;
 pub use event::Event;
 pub use gamepad::{GamepadAxis, GamepadButton, GamepadState};
 pub use keyboard::{Key, KeyboardState};
+pub use mouse::{MouseButton, MouseState};
 pub use pencil::{PencilButton, PencilEvent, PencilState};
 pub use state::InputState;
 

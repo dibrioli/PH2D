@@ -43,50 +43,6 @@ fn script_writes_one_hundred_entities_in_one_tick() {
 }
 
 #[test]
-fn ph2d_get_resolves_from_read_snapshot() {
-    let mut host = ScriptHost::new().unwrap();
-    host.provide_read(42, "hp", 75.0);
-
-    host.load_script(
-        r#"
-        local hp = ph2d.get(42, "hp")
-        if hp ~= nil then
-            ph2d.set(42, "hp", hp - 10)
-        end
-        "#,
-    )
-    .unwrap();
-
-    let writes = host.drain_writes();
-    assert_eq!(
-        writes,
-        vec![EntityWrite {
-            entity: 42,
-            field: "hp".into(),
-            value: 65.0
-        }]
-    );
-}
-
-#[test]
-fn ph2d_get_returns_nil_for_unknown_field() {
-    let mut host = ScriptHost::new().unwrap();
-    host.load_script(
-        r#"
-        local v = ph2d.get(999, "missing")
-        if v == nil then
-            ph2d.set(0, "missing_was_nil", 1)
-        end
-        "#,
-    )
-    .unwrap();
-
-    let writes = host.drain_writes();
-    assert_eq!(writes.len(), 1);
-    assert_eq!(writes[0].field, "missing_was_nil");
-}
-
-#[test]
 fn sandbox_blocks_io_open() {
     let mut host = ScriptHost::new().unwrap();
     // `io` is not a Luau-baseline global; sandbox(true) doesn't
@@ -271,21 +227,4 @@ fn input_snapshot_survives_reset() {
     assert_eq!(host.reset_count(), 2);
     let writes = host.drain_writes();
     assert_eq!(writes[0].value, 9.0);
-}
-
-#[test]
-fn read_snapshot_clear_removes_stale_entries() {
-    let mut host = ScriptHost::new().unwrap();
-    host.provide_read(0, "x", 1.0);
-    host.clear_reads();
-    host.load_script(
-        r#"
-        local v = ph2d.get(0, "x")
-        if v == nil then ph2d.set(0, "cleared", 1) end
-        "#,
-    )
-    .unwrap();
-    let writes = host.drain_writes();
-    assert_eq!(writes.len(), 1);
-    assert_eq!(writes[0].field, "cleared");
 }

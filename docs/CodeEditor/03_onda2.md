@@ -157,3 +157,8 @@ seguinte; o resto entra em lotes.
    **FEITO (20/10, `cad77678e0` · `27f74b40fc`):** oráculo Godot corrido e plano em
    [05_api_que_funciona.md](05_api_que_funciona.md); cena `PH2D_CODE_SMOKE=6` (um jogo pequeno), fotos em
    `ferramentas/smoke/cena6/`. Smoke do dono: pendente.
+7. **O teclado do jogo contra os atalhos do editor (smoke do dono da cena 6, 20/10: «a tecla espaço fica em conflito
+   com o jogo pois dá pausa»).** Com a cena a correr, uma tecla que o jogo usa dispara também o atalho do editor (o
+   Espaço é Play/Pause). Plano + oráculo (Godot: o jogo corre noutra janela; Unity: Game view com foco; Roblox
+   Studio: o teste toma o teclado) antes de codar; a lei da posse do teclado é a do controlo de jogador
+   (`input_dispatch/keyboard.rs`), que tem o mesmo conflito. Smoke = a cena 6.

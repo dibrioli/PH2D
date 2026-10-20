@@ -131,7 +131,8 @@ TETOS DE LOC       ✗ 1059/600 shells/desktop/src/main.rs (isenção pré-exist
 ## 8. Smokes para o DONO
 
 - **Cena 5 (a página de ajuda): FEITA pelo dono, OK (20/10).**
-- **Cena 6 (o jogo): PENDENTE.** Comando:
+- **Cena 6 (o jogo): FEITA pelo dono, OK (20/10)** — com um achado: o **Espaço também pausa a cena** (o atalho do
+  transporte do editor dispara junto com o `ph2d.key_pressed("space")` do jogo). Aberto em §9. Comando:
   `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor && PH2D_CODE_SMOKE=6 cargo run -p ph2d-host-desktop --profile smoke`
   — a cena já corre. Setas movem o círculo azul; Espaço atira estrelas (sobem e somem em 1,5 s); clique na cena
   leva o quadrado cinzento ao rato; Rebobinar devolve tudo. Fotos: `docs/CodeEditor/ferramentas/smoke/cena6/jogo{,_02,_03,_04}.png`
@@ -140,6 +141,10 @@ TETOS DE LOC       ✗ 1059/600 shells/desktop/src/main.rs (isenção pré-exist
 - Cenas 1–4: `PH2D_CODE_SMOKE=1..4` (como no I5).
 
 ## 9. ABERTO
+
+- ⛔ **Smoke do dono, cena 6 (20/10): o Espaço do jogo pausa a cena** — a tecla chega ao script E ao atalho
+  Play/Pause do editor (não há modo de jogo separado; o Godot corre o jogo noutra janela). Próxima onda: plano +
+  oráculo antes de codar (`03_onda2.md` item 7).
 
 - **Declarados** ([05 §6–§7](../05_api_que_funciona.md)):
   - a roda do rato e o IME não chegam ao jogo;

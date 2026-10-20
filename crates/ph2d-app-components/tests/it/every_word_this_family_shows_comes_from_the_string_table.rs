@@ -25,6 +25,11 @@ const FORA: &[Isento] = &[
          um gate (o censo de dois lados), nunca pintada",
     ),
     (
+        "posse_do_jogo_registo.rs",
+        "a régua do roteiro conduzido da posse do teclado: linhas escritas num ficheiro que só o script \
+         `docs/CodeEditor/ferramentas/conduz_posse/corre.sh` lê, e só com `PH2D_POSSE_LOG` — nunca pintadas",
+    ),
+    (
         "test_support.rs",
         "os nomes das fixturas do arnês (`Image`, `Rig`, `Arm`) — cena de teste, atrás da feature \
          `test-support`",

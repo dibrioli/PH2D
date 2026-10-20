@@ -162,3 +162,6 @@ seguinte; o resto entra em lotes.
    Espaço é Play/Pause). Plano + oráculo (Godot: o jogo corre noutra janela; Unity: Game view com foco; Roblox
    Studio: o teste toma o teclado) antes de codar; a lei da posse do teclado é a do controlo de jogador
    (`input_dispatch/keyboard.rs`), que tem o mesmo conflito. Smoke = a cena 6.
+   **Oráculo corrido e plano (20/10): [06_posse_do_teclado.md](06_posse_do_teclado.md)** — o editor do Godot 4.7.2 numa
+   Xvfb (`ferramentas/oraculo_teclado/`); decisões do dono: F5 pausa/continua e Shift+F5 pára, moldura na cena, o clique
+   na cena a correr é só do jogo, a mão da física fica. Roteiro conduzido na app real: `ferramentas/conduz_posse/`.

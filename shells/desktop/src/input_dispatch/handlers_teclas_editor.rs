@@ -82,23 +82,12 @@ impl crate::App {
             // Playhead. Space toggles play/pause; ',' / '.' step one frame
             // back / forward (pausing, so you land on the frame). Every
             // animatable system samples the Playhead for the current frame.
-            KeyCode::Space => {
-                // No playback mode on the Containers LIST (Enio, 2026-07-22). The
-                // bridge would pause it right back next frame anyway — refusing
-                // here keeps the toast from announcing a play that never happens.
-                if self.timeline.containers_list {
-                    gfx.toasts.push(Toast::info(tr(
-                        "shell.handlers_teclas_editor.timeline_no_playback",
-                    )));
-                } else {
-                    let playing = self.playhead.toggle_play();
-                    gfx.toasts.push(Toast::info(if playing {
-                        tr("shell.handlers_teclas_editor.timeline_play")
-                    } else {
-                        tr("shell.handlers_teclas_editor.timeline_pause")
-                    }));
-                }
-            }
+            // A mesma porta do F5 (`posse_do_jogo`).
+            KeyCode::Space => crate::input_dispatch::posse_do_jogo::alterna_o_relogio(
+                self.timeline.containers_list,
+                &mut self.playhead,
+                &mut gfx.toasts,
+            ),
             KeyCode::Comma | KeyCode::Period => {
                 let back = code == KeyCode::Comma;
                 // Com a tool Flip ativa o passo é UM QUADRO DO OBJETO (12/24 fps),

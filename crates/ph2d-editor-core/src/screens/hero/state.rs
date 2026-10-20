@@ -108,6 +108,9 @@ pub struct ViewState {
     /// ⭐ A nitidez da luz 2D (Settings ▸ 2D Light) — preferência do EDITOR: a shell persiste-a em
     /// `~/.ph2d/prefs.txt` e aplica-a à luz do quadro. Ver [`crate::luz_edits`].
     pub luz2d: crate::luz_edits::PreferenciaDaLuz,
+    /// ⭐ O JOGO tem o teclado (a cena corre e o foco é dele — CodeEditor item 7): a shell escreve-o a cada quadro e a
+    /// cena leva a moldura de destaque. Ver `ph2d_app_components::posse_do_jogo`.
+    pub jogo_com_o_teclado: bool,
 }
 
 impl Default for ViewState {
@@ -120,6 +123,7 @@ impl Default for ViewState {
             legacy_chrome: false,
             center_split: crate::screens::layout::CenterSplit::None,
             luz2d: crate::luz_edits::PreferenciaDaLuz::default(),
+            jogo_com_o_teclado: false,
         }
     }
 }

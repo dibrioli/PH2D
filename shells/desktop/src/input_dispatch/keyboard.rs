@@ -98,6 +98,14 @@ impl App {
             timestamp_ns: Self::timestamp_ns(),
         });
 
+        // ⭐⭐⭐ **DE QUEM É A TECLA com a cena a correr** (CodeEditor item 7): com o jogo a ter o teclado a tecla nua é
+        // SÓ dele; um acorde é sempre do editor; F5/Shift+F5 são do transporte; o soltar passa sempre. A lei e o porquê:
+        // `ph2d_app_components::posse_do_jogo`. ⚠️ Antes do F9 e de todo atalho, depois da escuta e da paleta.
+        if let PhysicalKey::Code(code) = physical_key
+            && self.tecla_do_jogo(code, state == ElementState::Pressed)
+        {
+            return;
+        }
         // ⭐ **F9 — o chrome legado volta.** Porquê um interruptor: `crate::legacy_chrome`.
         if state == ElementState::Pressed
             && physical_key == PhysicalKey::Code(KeyCode::F9)
@@ -105,59 +113,6 @@ impl App {
             && self.toggle_legacy_chrome()
         {
             return;
-        }
-        // O PEEK do Flip (Shift & Trace fatia 2): F1/F2/F3 são o flip de papel —
-        // SEGURAR mostra só o desenho vizinho (anterior/atual/seguinte) sem mover o
-        // playhead; soltar volta. A política é pura (`flip_peek::key_transition`):
-        // press só arma com a tool Flip ativa; release SEMPRE desarma (trocar de tool
-        // com a tecla presa não pode deixar o peek preso).
-        // ⚠️ **O dedo do jogador OBSERVA, nunca consome** (W3). A seta já tem
-        // dono (o nudge de nó do Vector), e roubá-la aqui faria esta wave
-        // regredir uma ferramenta que ninguém pediu para mexer — o evento segue
-        // o caminho de sempre, e o que muda é um par de bools que ninguém lê
-        // numa cena sem player. A política é pura (`ph2d_app_physics::player_input`),
-        // porque um `winit::KeyEvent` não pode ser construído num teste.
-        // ⚠️ **E um ACORDE nunca é entrada de jogo** (report do Enio, cena 112:
-        // *"os players pulam e se movem sozinhos"*). O dedo do jogador observa a
-        // tecla FÍSICA, e as seis que ele reclama moram todas debaixo de atalhos
-        // que o artista aperta o tempo todo: **Ctrl+Z** punha `jump`, **Ctrl+A**
-        // punha `left`, **Ctrl+D** `right`, **Ctrl+S** `down`.
-        //
-        // ⚠️ **A varredura de conflito do `player_input` foi feita e ainda assim
-        // errou**, porque mediu a tecla NUA: o doc do `KeyS` afirma que *"o único
-        // `KeyS` do repo é o Ctrl+S de salvar projeto, que corre dentro do braço
-        // guardado por modificador — um botão de player nunca vê aquele
-        // caminho"*. Ele vê: esta observação corre ANTES de toda guarda de
-        // modificador do arquivo.
-        //
-        // ⚠️ **O RELEASE passa sempre, e a assimetria é a mesma do peek do Flip
-        // logo acima:** soltar uma tecla que foi apertada sem modificador,
-        // enquanto o Ctrl está preso, tem de chegar — senão o guard troca um
-        // pulo espúrio por um personagem que anda sozinho para sempre.
-        if let PhysicalKey::Code(code) = physical_key {
-            let pressed = state == ElementState::Pressed;
-            // Uma aba de código activa tira as teclas ao jogador, como um acorde (o soltar passa).
-            let chord = self.modifiers.control_key()
-                || self.modifiers.alt_key()
-                || self.modifiers.super_key()
-                || self.surface_owns_the_keyboard();
-            if !pressed || !chord {
-                // ⭐ **O retrato dos dispositivos que o Input Map resolve** (plano 30 W5).
-                //
-                // ⚠️ **A guarda de acorde é a de sempre:** uma tecla premida com `Ctrl` segurado é
-                // um atalho de ficheiro, não um passo do jogador — e o RELEASE passa sempre, senão
-                // soltar com o `Ctrl` preso deixaria o personagem a andar para sempre.
-                //
-                // ⚠️ **Normalizador TOTAL** (`winit_to_input_keycode`), não o do editor: este tem
-                // de alcançar o `W`/`S`/`Z`/`Q` que o do editor deixa cair de propósito.
-                if let Some(k) = crate::keymap::winit_to_input_keycode(code) {
-                    self.input.apply_event(if pressed {
-                        ph2d_input::Event::KeyDown(ph2d_input::Key(k))
-                    } else {
-                        ph2d_input::Event::KeyUp(ph2d_input::Key(k))
-                    });
-                }
-            }
         }
 
         // ⭐⭐⭐ **UM MODO EM CURSO É DONO DA ENTRADA DELE** — a porta está em
@@ -173,6 +128,11 @@ impl App {
             return;
         }
 
+        // O PEEK do Flip (Shift & Trace fatia 2): F1/F2/F3 são o flip de papel —
+        // SEGURAR mostra só o desenho vizinho (anterior/atual/seguinte) sem mover o
+        // playhead; soltar volta. A política é pura (`flip_peek::key_transition`):
+        // press só arma com a tool Flip ativa; release SEMPRE desarma (trocar de tool
+        // com a tecla presa não pode deixar o peek preso).
         if let PhysicalKey::Code(code) = physical_key {
             let (next, consumed) = ph2d_app_flip::peek::key_transition(
                 self.flip_state.peek,

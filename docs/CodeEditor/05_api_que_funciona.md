@@ -124,7 +124,8 @@ objecto, sem copiar a cena por tique.
 - **A borda vive no TIQUE, não no quadro**: o que aconteceu desde o último tique é visto pelo PRIMEIRO tique a seguir,
   e só por ele (dois tiques num quadro ⇒ um só «pressed»; um quadro sem tique ⇒ a borda espera). Um toque dentro de um
   quadro dá `pressed` e `released` (Godot).
-- A posse do teclado é a do controlo de jogador que já existe (acorde e aba de código não chegam ao jogo).
+- A posse do teclado é a do controlo de jogador que já existe (acorde e aba de código não chegam ao jogo). **Substituída
+  pelo item 7** ([06_posse_do_teclado.md](06_posse_do_teclado.md)): com a cena a correr, o jogo tem o teclado e o clique.
 - O empurrão dos dispositivos sai da shell para `ph2d-app-components` (`script_input`), a shell só o chama.
 - `ph2d.input` fica para o comando de jogo, como está.
 - Portões: `uma_tecla_e_pressed_num_so_tique` · `um_toque_no_mesmo_quadro_nao_se_perde` ·
@@ -191,8 +192,8 @@ que foi pedido em 2³²+1 seria outra mentira — medido: aceitava e escrevia no
 `string.char`, `table.find`, `bit32.extract/replace`; `math.random(1, 2^40)` dá erro com mensagem enganadora («interval is
 empty») e `math.randomseed` satura em silêncio (só a semente) — **declarados**.
 
-**Diferenças declaradas:** a roda do rato e o texto escrito (IME) não chegam ao jogo; o teclado que chega ao
-jogo também chega aos atalhos do editor (como o controlo de jogador de hoje); nomes iguais na cena são
+**Diferenças declaradas:** a roda do rato e o texto escrito (IME) não chegam ao jogo; ~~o teclado que chega ao
+jogo também chega aos atalhos do editor~~ (curado no item 7, [06](06_posse_do_teclado.md)); nomes iguais na cena são
 permitidos (`find_by_name` dá o primeiro); `ph2d.wait` dentro de uma corrotina do próprio artista pausa essa
 corrotina.
 

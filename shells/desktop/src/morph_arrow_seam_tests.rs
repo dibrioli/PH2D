@@ -177,8 +177,9 @@ fn the_arrow_click_reaches_the_world() {
     // antes mataria a própria acção que a máquina lê, e o modo ficaria **inerte com o teclado
     // tomado**, que é o pior dos dois mundos — e **ANTES** do primeiro consumidor do editor.
     let kb = include_str!("input_dispatch/keyboard.rs");
+    // O retrato dos dispositivos é a porta da posse do teclado (CodeEditor item 7): ela é que entrega a tecla.
     let feed = kb
-        .find("self.input.apply_event")
+        .find("self.tecla_do_jogo(")
         .expect("o retrato dos dispositivos sumiu");
     let gate = kb
         .find("self.modal_owns_the_keyboard(")

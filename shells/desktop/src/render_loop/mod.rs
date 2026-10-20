@@ -497,6 +497,8 @@ const _: () = assert!(ph2d_audio::SUB_BUS_COUNT == ph2d_panel_audio_mixer::SUB_B
 
 impl crate::App {
     pub(super) fn run_render_frame(&mut self) {
+        // De quem é o teclado neste quadro — antes dos dois leitores (o jogador aqui, os scripts adiante).
+        self.quadro_do_foco_do_jogo();
         let player_input = self.fase_pointer_subjects();
         // PH2D_PAINT_PERF: whole-frame timer (aggregated on scope exit, paired with the dispatch info).
         let _paint_frame_timer =

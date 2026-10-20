@@ -180,6 +180,8 @@ pub mod path_follow_bridge;
 pub mod path_follow_inspector;
 /// ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — a pista desenhada e quem a percorre.
 pub mod path_follow_smoke;
+pub mod posse_do_jogo;
+pub mod posse_do_jogo_registo;
 pub mod prefab_stage;
 /// ⭐⭐⭐ **O PROJÉCTIL** (TOP-20 #14) — as duas cenas do dono.
 /// ⭐ O instantâneo e o dreno da secção PROJECTILE MOTION (TOP-20 #14).

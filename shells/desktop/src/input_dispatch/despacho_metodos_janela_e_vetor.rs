@@ -404,19 +404,11 @@ impl crate::App {
             .is_some_and(|h| h.chrome_panel_at(x, y).is_none() && h.chrome_hit(x, y).is_none())
     }
 
-    /// ⭐ **O rato do JOGO** (CodeEditor item 6): um clique conta se COMEÇA na cena, nunca numa aba
-    /// de código; o largar passa sempre (senão um arrasto que sai da cena ficava preso).
-    pub(crate) fn rato_do_jogo(&mut self, button: ph2d_host::PointerButton, down: bool) {
-        let (x, y) = self.last_pointer;
-        let na_cena = down && self.pointer_on_canvas(x, y) && !self.surface_owns_the_keyboard();
-        ph2d_app_components::script_input::game_mouse(&mut self.input, button, down, na_cena);
-    }
-
     pub(crate) fn surface_owns_the_keyboard(&self) -> bool {
         ph2d_editor_core::screens::hero::surface_input::owns_the_keyboard(self.hero_ref())
     }
 
-    fn hero_ref(&self) -> Option<&ph2d_editor_core::screens::hero::HeroScreen> {
+    pub(super) fn hero_ref(&self) -> Option<&ph2d_editor_core::screens::hero::HeroScreen> {
         self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref())
     }
 

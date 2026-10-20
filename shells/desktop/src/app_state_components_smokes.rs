@@ -31,6 +31,8 @@ pub(crate) struct ComponentsShell {
     /// segundo. ⚠️ É a única coisa que esta família guarda entre quadros, e de propósito: a pose
     /// deslocada é função PURA da vista, logo não há estado de produto para segurar aqui.
     pub(crate) parallax_log: Option<String>,
+    /// ⭐ O foco do JOGO com a cena a correr — de quem é o teclado (CodeEditor item 7, `posse_do_jogo`).
+    pub(crate) foco_do_jogo: ph2d_app_components::posse_do_jogo::FocoDoJogo,
 }
 
 /// ⭐⭐⭐ **A AUTO-CONFERÊNCIA da cena da cutscene** (TOP-20 #19) — o que ela mede sobre si mesma

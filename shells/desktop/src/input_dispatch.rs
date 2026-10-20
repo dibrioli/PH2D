@@ -58,6 +58,7 @@ mod keyboard_escapes;
 /// de LOC. *Um modo em curso é dono da entrada dele.*
 mod keyboard_modal;
 mod keyboard_palette; // as teclas do palette de nos -- MODAL, ver o doc do modulo
+pub(crate) mod posse_do_jogo; // de quem e o teclado e o rato com a cena a correr (CodeEditor item 7)
 
 // Os ramos e os irmãos do despacho: cada `despacho_*.rs` diz no próprio `//!` o que guarda.
 mod despacho_clique_flip;
@@ -382,8 +383,6 @@ impl App {
             MouseButton::Middle => ph2d_host::PointerButton::Middle,
             _ => ph2d_host::PointerButton::Primary,
         };
-        // O rato do JOGO (CodeEditor item 6) — antes de todo early-return, o largar sobretudo.
-        self.rato_do_jogo(mapped_button, state == ElementState::Pressed);
         // W-Grab: **soltar a mão vem ANTES de tudo.** Este handler tem muitos
         // early-returns e uma mão que sobrevive ao release fica colada no cursor
         // para sempre; e vale para qualquer botão, porque uma mão não é um
@@ -400,6 +399,12 @@ impl App {
         }
         self.ramo_arrasto_biblioteca(state, button);
         self.ramo_aperto_solta_teclado(state);
+        // O rato do JOGO (itens 6–7): depois do blur e antes de todo ramo que devolve; com a cena a correr o clique na
+        // cena é SÓ dele (`posse_do_jogo`).
+        if self.rato_do_jogo(mapped_button, state == ElementState::Pressed) {
+            self.clique_so_do_jogo(mapped_button);
+            return;
+        }
         if self.ramo_alca_da_ancora(state, button) {
             return;
         }
@@ -435,13 +440,7 @@ impl App {
         // Fill modal counts as a modal exactly like the new-image dialog — without this, clicking its
         // threshold slider started a fresh flood-fill on the canvas underneath (mirror of the
         // new-image-modal "leaked a dab" fix). Captured now because `forward_to_hero` may close it.
-        let menu_open_before = self
-            .gfx
-            .as_ref()
-            .and_then(|g| g.hero_screen.as_ref())
-            .is_some_and(|h| {
-                h.store.context_menu().is_some() || h.store.fill_modal_pos().is_some()
-            });
+        let menu_open_before = self.menu_aberto();
         // Colour-picker eyedropper armed when this click arrived? `forward_to_hero` services the pick
         // (sampling the pixel) AND clears the pending flag, so by the time the consume arms below run
         // it reads as disarmed. Capture it now so the Painter brush does NOT also paint where the user

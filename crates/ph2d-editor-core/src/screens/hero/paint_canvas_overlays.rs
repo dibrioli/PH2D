@@ -236,6 +236,19 @@ pub(super) fn paint_canvas_overlays(
         let at = crate::readout::at_cursor(*cursor, w, layout.canvas);
         crate::readout::paint_chip(text_system, scene, text, at, 0.0, hero.theme);
     }
+    if hero.view.jogo_com_o_teclado {
+        paint_game_frame(scene, hero.theme, hero.last_content);
+    }
+}
+
+/// ⭐ **A moldura do JOGO** (CodeEditor item 7, decisão do dono 20/10): com o jogo a ter o teclado, a área da cena leva
+/// um traço na cor de destaque, por dentro da borda — por baixo das barras e dos painéis que flutuam.
+pub(super) fn paint_game_frame(scene: &mut VectorScene, theme: ph2d_tokens::Theme, area: Rect) {
+    let w = ph2d_tokens::StrokeToken::Thick.px();
+    let half = w / 2.0;
+    let inner = Rect::new(area.x + half, area.y + half, area.w - w, area.h - w);
+    let colour = crate::paint::resolve(ph2d_tokens::ColorToken::Accent, theme);
+    crate::paint::stroke_rect(scene, inner, w, colour);
 }
 
 #[cfg(test)]

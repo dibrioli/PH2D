@@ -197,7 +197,7 @@ ryu`) — só serializa, a geometria é nossa. ⛔ `krilla` 0.8.2 recusado (§3)
 
 | proposta | estado |
 |---|---|
-| menções `@` que notificam, reacções, «seguir o fio», o fio fixado aberto | ⛔ notificar é rede (Etapa 2); num ficheiro, o «novo» por pessoa (K6) é a notificação |
+| menções `@` que notificam, reacções, «seguir o fio», o fio fixado aberto | menções e o aviso ✅ no bloco 6 (W23 B14, doc 17 §2.3: a menção é DADO, formato 16); reacções, «seguir o fio» e o fio fixado continuam fora |
 | as cinco cores do fio | ⛔ a paleta mudou entre versões do próprio Miro (a 1.ª era amarela `#F9D054`, hoje cinzenta `#C6C5D1`): não é lei estável, e as etiquetas (W5) já dão cor a um assunto |
 | versões AUTOMÁTICAS de hora a hora (Miro) | ⛔ são uma cópia de segurança da nuvem; num ficheiro local cresceriam o `.ph2dproj` em silêncio (2 MB por versão de um quadro grande, §4.1) — a versão é um gesto do artista |
 | restaurar a versão NO quadro (Figma) | ⛔ o idioma do Miro (e o pedido do dono): a versão nunca destrói o presente |

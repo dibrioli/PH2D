@@ -224,3 +224,55 @@ Miro: help.miro.com 360017730953 (objects), 360017730573 (Pen), 360017572014 (Sm
 Smart drawing), 1896 (extract to new board). Excalidraw: PRs #9169, #9353, #11862, #9313; issues #6350, #5510.
 tldraw: `ScribbleBrushing.ts`, exemplo lasso-select-tool, PR #9426. Whiteboard/OneNote: support.microsoft.com (Enhance
 inked shapes, Draw and Hold, Lasso Select). Procreate: help.procreate.com QuickShape. Ink & Switch: notes/selection-gestures.
+
+## §9 — Feito (20/10) e o que mudou do plano
+
+| item | commit | o quê |
+|---|---|---|
+| B15 | `b345e77752` | `BoardDoc::origin` + `Editor::paste`/`lift`/`land`; noutro quadro o que não veio ZERA (frame, link, pai do mapa) e a cópia cai no meio da vista, a morar no frame onde caiu; «Copy/Move to board…» no menu (o modal do send com `SendSelection`, sem o próprio quadro); mover = um passo em cada quadro + o aviso «Undo» que desfaz os dois enquanto ambos são o topo do desfazer |
+| B12 | `221e5edc32` | `ph2d-board-geom::cover` (área exacta por faixas; comprimento para tinta e setas; non-zero), `select_region` (a porta única do rectângulo e do laço), `Tool::Lasso` no painel da caneta, Ctrl+Alt+arrastar, o rasto no `overlay` |
+| B13 | `401153313a` | `quickshape_hold::Hold` público e `rest_index` partilhado (o lápis do vetor chama-o); a caneta do quadro com o relógio exacto do evento e o quadro de pintura (`ink_hold`); ao soltar, o objecto que desenha IGUAL (Hausdorff ≤ 1 px de ecrã) ou a tinta limpa; o interruptor «QuickShape» |
+| B14 | `a32baf7331` · `33dbabeee8` | `Who`/`Message::mentions` (formato 16, `legacy_v15`, fixtura do build `401153313a`; protocolo 10), `Thread::for_me_at`, `Team::people`; o `@` do compositor (↑/↓ por `WidgetStore::arm_list_nav`), o aviso com «Show», a bolinha no «Comments» e na aba, «For you» |
+| cena 28 | `38bc13c87a` | as quatro estações; gate `the_block6_scene_arms_its_four_stations` |
+
+**Defeitos achados pelo caminho (red-first, curados):** (1) colar noutro quadro apontava o frame, o link e o pai do mapa de
+OUTRO elemento com o mesmo número (3 testes vermelhos antes da cura); (2) **antigo, dos comentários ao vivo**: o `settle` apagava
+o fio que ficava sem mensagens SEM lápide e uma resposta atrasada ficava pendente para sempre, divergindo dos pares que a tinham
+— achado ao pôr menções na sonda aleatória de convergência (semente 7; o controlo sem menções falha na 40: não é delas). Cura:
+`TeamState::parked` (a casca espera e volta com a mensagem).
+
+**Mudanças do plano, com o porquê:** sem caneta «Smart drawing» (o dono: «exatamente como no Vector»); largar NÃO reconhece (o
+vetor só reconhece com a mão em baixo — e o relógio do arnês de 1 s por evento mostrou que reconhecer ao largar convertia
+traços comuns); nos eventos vale a hora EXACTA do evento e só o quadro de pintura soma o tempo passado (a soma nos eventos
+deslocava a fronteira do meio segundo em µs — pior sob carga); o `Enter` do compositor faz o que a última pintura mostrou (o
+despacho larga o foco antes de o evento chegar); a menção guarda QUEM chama, não posições no texto (a edição ao vivo leva só o
+texto e cada par chega à mesma lista por `keep_mentions`).
+
+### M2 — o custo de um movimento do laço (100 mil caixas, `--profile smoke`, mínimo de 7 rodadas intercaladas)
+
+| variante | `loadavg` 31 (antes do índice) | `loadavg` 40 (com o índice) | dentro |
+|---|---|---|---|
+| rectângulo da mesma caixa | 5,49 ms | 6,96 ms | 1 024 |
+| laço 600 pontos | 13,27 ms | **8,66 ms** | 780 |
+| laço 2 500 pontos | 42,55 ms | **11,39 ms** | 780 |
+
+Sonda `measure_lasso_move_on_a_hundred_thousand` (ignorada; o comando no doc-comment). O índice: arestas do laço feitas UMA
+vez por movimento, por 512 faixas de x; caixa sem aresta por cima conta pelo centro (exacto). ⇒ sem índice espacial: o custo é
+o do varrimento dos 100 mil que o rectângulo já paga.
+
+### ⛔ Recusas MEDIDAS / decididas
+
+| proposta | estado |
+|---|---|
+| caneta «Smart drawing» que converte ao soltar (Miro, Excalidraw) | ⛔ o dono (20/10); e a queixa medida na comunidade do Miro (letras viram círculos) |
+| reconhecer ao largar | ⛔ o vetor não o faz; o arnês de 1 s/evento converteu traços comuns (190 gates do ecrã) |
+| a forma do quadro «mais parecida» quando não desenha igual (triângulo qualquer → isósceles) | ⛔ muda o desenho do artista; fica a tinta limpa |
+| refazer as arestas do laço por elemento | ⛔ M2: 42,6 ms por movimento a 2 500 pontos |
+| Worker/thread para o laço | ⛔ o Excalidraw tentou e tirou (*«complexity much worse, perf. not much better»*) |
+| a menção como posições no texto | ⛔ o `TeamWrite::Text` leva só o texto: as posições divergiam entre pares |
+| menção no texto de notas/formas | ⛔ o Miro não notifica por ela; fora |
+
+### Por fazer (nomeado)
+
+- O realce de cor das menções no texto do fio (o Miro pinta-as a azul): o pintor do fio é de uma cor só.
+- M4 (o oráculo Excalidraw `next` corrido sobre cenas NOSSAS — laço e «Draw to shape»): ver §10 quando a corrida acabar.

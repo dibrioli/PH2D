@@ -2,7 +2,8 @@
 
 > **Pedido do dono (plano §3 W7, ordem de 09/10 «smoke ok. Vamos seguir»):** cronómetro visível no quadro;
 > carimbos e pontos de voto sobre as notas, com a contagem por nota; agrupar notas por cor, etiqueta ou
-> palavra. ⛔ Fora: votação anónima ENTRE PESSOAS AO MESMO TEMPO e modo privado (Etapa 2, rede). **O dono vê:**
+> palavra. ⛔ Fora: votação anónima ENTRE PESSOAS AO MESMO TEMPO e modo privado (Etapa 2, rede — ✅ FEITOS
+> na W12/W13, ADR-0182/0183: boletins no cofre do anfitrião; confirmado no bloco 6, doc 17 §0). **O dono vê:**
 > um brainstorm facilitado num ecrã só — o tempo a correr, votos nas ideias, as ideias agrupadas.
 >
 > Briefing: [`handoffs/HANDOFF_CONTINUACAO_W7_2026-10-09.md`](handoffs/HANDOFF_CONTINUACAO_W7_2026-10-09.md).
@@ -219,7 +220,7 @@ mostra a forma em *case folding* («API» → «#api»).
 | os carimbos como EMOJI de fonte | ⛔ não há fonte de emoji no programa nem caminho COLR no desenho: seria tofu |
 | o selo do resultado com Ø fixo | ⛔ medido (§1.2): 52 → 80 de 1 para 2 votos |
 | a campainha pelo som de UI (`UiSound`, opt-in) | ⛔ a lei desse som é «só o que a mão fez» e nasce desligado; a campainha é um ALARME que o facilitador armou — tem o seu próprio altifalante no cartão (F6) |
-| votos anónimos entre pessoas em ecrãs diferentes, modo privado | ⛔ Etapa 2 (rede) — o turno do V3 é a forma de um ecrã só |
+| votos anónimos entre pessoas em ecrãs diferentes, modo privado | ✅ feitos na Etapa 2 (W12/W13, ADR-0182/0183); o turno do V3 continua a forma de um ecrã só |
 
 ## §4 — Medir antes de limitar (§0.0)
 

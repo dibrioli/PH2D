@@ -334,14 +334,37 @@ pub(crate) fn curve_seen(
     t_secs: f64,
     solo: bool,
 ) -> Option<f32> {
+    curve_seen_b(doc, entity, prop, doc.binding_for(entity, prop), t_secs, solo)
+}
+
+/// [`curve_seen`] com o binding JÁ resolvido — quem pergunta por centenas de canais da mesma
+/// entidade (os campos de uma forma) resolve-os uma vez, em vez de varrer a lista por canal.
+pub(crate) fn curve_seen_b(
+    doc: &TimelineDoc,
+    entity: u64,
+    prop: PropKind,
+    b: Option<&crate::TargetBinding>,
+    t_secs: f64,
+    solo: bool,
+) -> Option<f32> {
     if solo {
-        curve_value(doc, entity, prop, t_secs)
+        curve_value_b(doc, entity, prop, b, t_secs)
     } else {
-        shown_value(doc, entity, prop, t_secs)
+        shown_value_b(doc, entity, prop, b, t_secs)
     }
 }
 
 fn shown_value(doc: &TimelineDoc, entity: u64, prop: PropKind, t_secs: f64) -> Option<f32> {
+    shown_value_b(doc, entity, prop, doc.binding_for(entity, prop), t_secs)
+}
+
+fn shown_value_b(
+    doc: &TimelineDoc,
+    entity: u64,
+    prop: PropKind,
+    b: Option<&crate::TargetBinding>,
+    t_secs: f64,
+) -> Option<f32> {
     // C2 (W6): read what the apply WROTE, so a prop-linked / driven channel is `shown == world`.
     if let Some(v) = persisted_shown(doc, entity, prop) {
         return Some(v);
@@ -349,9 +372,9 @@ fn shown_value(doc: &TimelineDoc, entity: u64, prop: PropKind, t_secs: f64) -> O
     // Root-aware, like `key_home`: a scratch rooted in a container makes the
     // CONTAINER's lanes the stack in question, whatever the scene holds.
     if doc.scratch().root().is_none() && doc.stack().is_empty() {
-        return curve_value(doc, entity, prop, t_secs);
+        return curve_value_b(doc, entity, prop, b, t_secs);
     }
-    let b = doc.binding_for(entity, prop)?;
+    let b = b?;
     // The formula-free re-derivation (byte-identical): a doc with no expression never populated
     // the persisted map, so control reaches here and the blend is sampled with an empty frame.
     let links = crate::frame_solve::LinkFrame::default();
@@ -390,12 +413,22 @@ pub fn key_value_in_active_clip(
     want: f32,
     t: f64,
 ) -> Result<f32, KeyRefusal> {
+    key_value_b(doc, entity, prop, doc.binding_for(entity, prop), want, t)
+}
+
+/// [`key_value_in_active_clip`] com o binding já resolvido (ver [`curve_seen_b`]).
+pub(crate) fn key_value_b(
+    doc: &TimelineDoc,
+    entity: u64,
+    prop: PropKind,
+    b: Option<&crate::TargetBinding>,
+    want: f32,
+    t: f64,
+) -> Result<f32, KeyRefusal> {
     // An unbound property has no target anywhere yet; a target no clip holds is the right
     // answer, and the probe supplies the active clip's contribution regardless. Targets are
     // allocated up from 0, so this one is unreachable by construction.
-    let target = doc
-        .binding_for(entity, prop)
-        .map_or(ph2d_anim::AnimTarget::new(u64::MAX), |b| b.target);
+    let target = b.map_or(ph2d_anim::AnimTarget::new(u64::MAX), |b| b.target);
     // ADR-0152 W0 threaded EMPTY; W5 substitutes the probe INTO the expression as `value` so
     // `value + g(time)` keys and pre-compensates instead of refusing.
     let links = crate::frame_solve::LinkFrame::default();
@@ -427,10 +460,7 @@ pub fn key_value_in_active_clip(
     // would be the scratch disagreeing with itself.
     let t_key = crate::stack_eval::strip_source_time(scratch, &strip, entity)
         .ok_or(KeyRefusal::NotPlaying)?;
-    let rest = doc
-        .binding_for(entity, prop)
-        .and_then(|b| b.rest)
-        .unwrap_or(want);
+    let rest = b.and_then(|b| b.rest).unwrap_or(want);
     crate::stack_eval::invert_stack(
         doc,
         scratch,
@@ -454,12 +484,22 @@ pub fn key_value_in_active_clip(
 /// track — a binding with no keys — counts as unbound: there is nothing to
 /// sample against.
 fn curve_value(doc: &TimelineDoc, entity: u64, prop: PropKind, t_secs: f64) -> Option<f32> {
+    curve_value_b(doc, entity, prop, doc.binding_for(entity, prop), t_secs)
+}
+
+fn curve_value_b(
+    doc: &TimelineDoc,
+    entity: u64,
+    prop: PropKind,
+    b: Option<&crate::TargetBinding>,
+    t_secs: f64,
+) -> Option<f32> {
     // C2 (W6): the solo/Keys view too — an expression-driven non-stacked channel shows `E`, but
     // this samples the RAW track. Read what the apply wrote so `shown == world` (no phantom key).
     if let Some(v) = persisted_shown(doc, entity, prop) {
         return Some(v);
     }
-    let target = doc.binding_for(entity, prop)?.target;
+    let target = b?.target;
     let track = doc.active_clip().track(target)?;
     if track.is_empty() {
         return None;

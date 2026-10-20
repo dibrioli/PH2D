@@ -91,14 +91,32 @@ pub fn info(k: FieldKey) -> Option<CampoInfo> {
 
 /// **O que o documento de cada família vale AGORA**, por `(entidade, campo)` — publicado pela família
 /// antes de quem o lê (o autokey, o `rest` da timeline, o losango do painel).
+///
+/// ⭐⭐ **O ECO** — o documento de uma família QUANTIZA (uma cor é `u8`, um parâmetro inteiro
+/// arredonda, um limite prende): a curva escreve `127,5`, o documento fica `128`, e quem compara o
+/// documento com a curva veria o artista a mexer em todo quadro a meio de uma interpolação (a chave
+/// fantasma). Quem escreve regista [`Self::eco`] — o que a curva mandou e o que o documento ficou —
+/// e [`Self::publicar`] devolve o valor da CURVA enquanto o documento ainda vale o que ficou. Só
+/// uma mudança real do documento (a mão) aparece como diferença.
 #[derive(Resource, Debug, Default, Clone, PartialEq)]
 pub struct CanaisLidos {
     valores: BTreeMap<(u64, FieldKey), f32>,
+    ecos: BTreeMap<(u64, FieldKey), (f32, f32)>,
 }
 
 impl CanaisLidos {
-    pub fn publicar(&mut self, entidade: u64, k: FieldKey, v: f32) {
+    /// Publica o valor que o documento tem (`doc`), lido através do eco da última escrita.
+    pub fn publicar(&mut self, entidade: u64, k: FieldKey, doc: f32) {
+        let v = match self.ecos.get(&(entidade, k)) {
+            Some(&(escrito, ficou)) if ficou == doc => escrito,
+            _ => doc,
+        };
         self.valores.insert((entidade, k), v);
+    }
+
+    /// Regista que a curva escreveu `escrito` e o documento ficou `ficou` (ver o cabeçalho).
+    pub fn eco(&mut self, entidade: u64, k: FieldKey, escrito: f32, ficou: f32) {
+        self.ecos.insert((entidade, k), (escrito, ficou));
     }
 
     /// Esquece tudo o que a entidade publicou (antes de a republicar: um vértice apagado sai).

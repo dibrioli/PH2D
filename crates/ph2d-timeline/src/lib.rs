@@ -33,6 +33,8 @@ mod apply_path;
 mod apply_prop;
 mod apply_views;
 pub mod autokey;
+mod autokey_campos;
+pub use autokey_campos::autokey_campos;
 pub mod binding;
 mod channel_mark;
 pub mod clipboard;

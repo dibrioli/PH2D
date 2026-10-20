@@ -128,3 +128,18 @@ fn drenar_deixa_as_outras_familias() {
     assert_eq!(e.drenar(familia::VETOR), vec![(1, k(v::ANCORA_X, 0, 0), 5.0)]);
     assert!(!e.is_empty(), "a escrita da família 99 fica para quem a drena");
 }
+
+/// ⭐⭐ O eco: a curva escreve 127,5 numa cor `u8`, o documento fica 128 — a leitura devolve 127,5
+/// (nada mudou); a mão põe 130 — a leitura devolve 130 (mudou). Sem o eco a chave fantasma nascia.
+#[test]
+fn o_eco_esconde_a_quantizacao_e_mostra_a_mao() {
+    let mut l = CanaisLidos::default();
+    let cor = k(v::TINTA_PREENCH + v::OFF_SOLIDA, 0, 0);
+    l.eco(3, cor, 127.5, 128.0);
+    l.publicar(3, cor, 128.0);
+    assert_eq!(l.valor(3, cor), Some(127.5), "o documento é a curva quantizada");
+    l.publicar(3, cor, 130.0);
+    assert_eq!(l.valor(3, cor), Some(130.0), "a mão mudou o documento");
+    l.publicar(4, cor, 128.0);
+    assert_eq!(l.valor(4, cor), Some(128.0), "o eco é por entidade");
+}

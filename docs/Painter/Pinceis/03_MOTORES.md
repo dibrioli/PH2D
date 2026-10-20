@@ -245,6 +245,26 @@ Dry Thin, Charcoal 2). Motor: `dual: Option<DualTip>` no `BrushSpec` (None = ao 
 (`crates/ph2d-paint-gpu/src/stamp.wgsl`) + secção nova. **L** (~1 000 LOC). Portões: `sem_dual_brush_o_carimbo_e_o_de_hoje`,
 `o_dual_brush_so_tira` (Multiply: cobertura ≤ a da 1.ª em todo píxel), ms/quadro a 40 e 200 px.
 
+**L6 ✅ (J2, 20/10)** — confirmado no código que faltava (só a chave `dual_brush` de um teste de chaves futuras). Feito:
+`DualTip` no `BrushSpec` (`PB/dual.rs`, `dual: Option`, None ao bit): forma (qualquer padrão da Shape ou uma IMAGEM própria),
+tamanho relativo, passo, espalhar, através (L4), contagem, ângulo, rotação, dureza, Rake/Flow; 7 modos — os do grão
+REUSADOS (`GrainLaw::factor` à profundidade cheia; Height/Linear Height afundam a 1.ª pela cobertura dela) + Subtract (a 2.ª
+escava) e Overlay. Desenho: um MOTOR de traço próprio da 2.ª ponta com os mesmos pontos (`TP/dual.rs`), as marcas numa
+MÁSCARA do PLANO do traço da L8 (reusado, não um buffer novo), carimbadas por TODAS as rotas trocando tela/pincel/Shape/cache;
+cada texel `r = modo(a, m)` na composição (a lei do PS: buffer do traço). A 1.ª continua a ir à PLACA dentro do plano. Só
+o Digital (a porta do plano): fora dele esmaece (`DualForaDoDigital`, MeioNaoLe — a aguada, o relevo e o fluido não se
+compõem como camada; o Wet recortaria o pigmento na `dab_route`, por fazer com quem a possui) e fora de traço livre
+(`DualForaDoTraco`). Preset `dual` (só armado) + `dual_shape`; painel «Dual brush» na Shape (12 linhas + «Dual image»);
+macro grava imagem e pedido (`Passo::DualRgba`/`TiraPedidoDual`). Medido: tinta 0,608 da sem dual em Multiply; os 7 modos
+diferem 2 a 2 em ≥ 6 040 px. Custo (preset de TESTE Carvao Estrias Dual, smoke, load 4–5): p95 0,76/2,69 ms a 40/200 px,
+RSS 29 MiB (base Digital 0,75 a 200). Prancha contra o Charcoal 2 (`pranchas/carvao_estrias_dual.png`): as estrias ao longo
+aparecem, mas o nosso sai mais opaco (0,88 × 0,79) e a 200 px as estrias da imagem ficam grandes e em blocos — o preset é
+de teste; o carvão de fábrica é da J3. SHA `b3c2379bdb`. Portões: `sem_dual_brush_o_carimbo_e_o_de_hoje`,
+`o_dual_brush_so_tira`, `cada_modo_do_dual_e_outro`, `gravar_e_carregar_com_a_segunda_ponta_de_imagem_volta_ao_bit`,
+`so_o_digital_le_o_dual`, `seam_ponta::o_dual_brush_pelo_ponteiro`, `a_placa_pinta_o_dual_como_a_cpu` (RTX, 0 bytes),
+`dual::` (3), macro, censo. Mutações SANGRAM: recorte desligado; motor sem o movimento; imagem fora do preset (M2 sobrevive
+a `cada_modo…`, declarado).
+
 **L7 — Modos de mistura nos pincéis de fábrica** (CAP-05). O motor JÁ mistura (§1.1, §1.4). Falta: medir o Marker/Effect do Rebelle
 (Linear Burn, Color, Additive, Hue, Luminosity, Overlay, Saturation; a cena do 52 §A pintou 0 px sob o Wine ⇒ repetir sem o `DRY` entre
 base e efeito) e fazer os presets. ⚠️ o modo é da SESSÃO molhada: medir o efeito sobre tinta ainda molhada. Pincéis: E-1…E-4, M-1, M-2,

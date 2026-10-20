@@ -204,6 +204,24 @@ fn a_turned_shape_counts_by_its_turned_outline() {
     assert!(w.ed.lasso_pick_covering(&w.doc, &trail, 0.8).contains(&id));
 }
 
+/// O frame RODADO (conta pela caixa, mas a caixa rodada) — a mesma conta do quadrado a 45°.
+#[test]
+fn a_turned_frame_counts_by_its_turned_box() {
+    use ph2d_board_model::BoardOp;
+    let mut w = world();
+    w.ed.tool = Tool::Frame;
+    w.drag([450.0, 450.0], [550.0, 550.0], NONE);
+    let id = *w.ed.selection().iter().next().unwrap();
+    w.cmd(Command::Escape);
+    let mut el = w.el(id).clone();
+    assert!(el.as_frame().is_some(), "a fixtura precisa de um frame");
+    el.angle = std::f64::consts::FRAC_PI_4;
+    let _ = BoardOp::Put(el).apply(&mut w.doc);
+    let trail = square_trail([450.0, 450.0, 550.0, 550.0]);
+    assert!(!lassoed(&mut w, &trail).contains(&id), "contou a caixa direita");
+    assert!(w.ed.lasso_pick_covering(&w.doc, &trail, 0.8).contains(&id));
+}
+
 /// ⭐ A tinta conta pelo COMPRIMENTO (não pela área da caixa) e pelos pontos RODADOS: uma faixa à
 /// volta da diagonal leva a tinta diagonal e a horizontal rodada 45°, nunca a horizontal direita.
 #[test]

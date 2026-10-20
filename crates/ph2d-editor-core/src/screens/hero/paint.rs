@@ -261,6 +261,8 @@ pub fn paint_hero_screen(
         let theme = hero.theme;
         super::board_menu::run_pending(hero, text_system);
         super::board_send::run_pending(hero, text_system);
+        // W23 B14 — a mensagem para mim que chegou vira o aviso com «Show».
+        super::board_nav::team::notify::tick(hero);
         if let Some((board, live)) = hero.documents.active_parts() {
             // As rotas das setas vêm do editor: uma cache, a mesma que o clique lê.
             let ed = super::board_view::editor(&mut live.editor, theme);

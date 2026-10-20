@@ -15,6 +15,12 @@ use ph2d_host::PointerButton;
 
 #[path = "board_team_bubbles.rs"]
 mod bubbles;
+/// W23 B14 — o `@` do compositor.
+#[path = "board_team_mention.rs"]
+pub mod mention;
+/// W23 B14 — o aviso, a bolinha e o «por ler para mim».
+#[path = "board_team_notify.rs"]
+pub mod notify;
 /// W11 — o quadro ao vivo (o painel «Live», os avatares, seguir, os cursores alheios).
 #[path = "board_live.rs"]
 pub mod live_board;
@@ -69,9 +75,11 @@ pub enum TeamButton {
     /// A lista ou as versões não cabem: as filas de antes / de depois.
     PageUp,
     PageDown,
+    /// W23 B14 — a lista só com os fios PARA mim.
+    ListForYou,
 }
 
-const ALL: [TeamButton; 30] = [
+const ALL: [TeamButton; 31] = [
     TeamButton::CardResolve,
     TeamButton::CardClose,
     TeamButton::CardSurface,
@@ -102,6 +110,7 @@ const ALL: [TeamButton; 30] = [
     TeamButton::ShowSurface,
     TeamButton::PageUp,
     TeamButton::PageDown,
+    TeamButton::ListForYou,
 ];
 
 /// O que um id derivado é.
@@ -119,6 +128,8 @@ pub enum Hit {
     Restore(usize),
     DropVersion(usize),
     RenameVersion(usize),
+    /// W23 B14 — a pessoa `n` da lista do `@`.
+    Mention(usize),
 }
 
 /// ⛔ Bits 44–47 diferentes dos da navegação e da facilitação (`0x4e61_1…`–`0x4e61_5…`): o idioma.
@@ -138,6 +149,7 @@ pub fn node(h: Hit) -> NodeId {
         Hit::Row(t) => SALT_ROW ^ t.0,
         Hit::Edit(n) => SALT_MSG ^ pair(1, n),
         Hit::Delete(n) => SALT_MSG ^ pair(2, n),
+        Hit::Mention(n) => SALT_MSG ^ pair(3, n),
         Hit::Restore(n) => SALT_VER ^ pair(1, n),
         Hit::DropVersion(n) => SALT_VER ^ pair(2, n),
         Hit::RenameVersion(n) => SALT_VER ^ pair(3, n),
@@ -173,6 +185,7 @@ pub fn hit_of(id: NodeId) -> Option<Hit> {
         return match k {
             1 => Some(Hit::Edit(n)),
             2 => Some(Hit::Delete(n)),
+            3 => Some(Hit::Mention(n)),
             _ => None,
         };
     }
@@ -192,6 +205,7 @@ fn tooltip_key(b: TeamButton) -> &'static str {
         TeamButton::CardResolve => "board.comment.resolve",
         TeamButton::CardClose | TeamButton::ListClose => "board.comment.close",
         TeamButton::ListShowResolved => "board.comment.show_resolved",
+        TeamButton::ListForYou => "board.comment.for_you_tip",
         TeamButton::ListAuthor => "board.comment.author_tip",
         TeamButton::VersionsSave => "board.version.save",
         TeamButton::VersionsClose | TeamButton::ExportClose => "board.team.close",
@@ -330,7 +344,16 @@ pub fn open_thread(hero: &mut HeroScreen, t: ThreadId) {
     );
 }
 
+/// W23 B14 — o «Show» de um aviso: o quadro do fio activo, a vista nele, o cartão aberto (lido).
+pub(crate) fn show_thread(hero: &mut HeroScreen, board: BoardId, t: ThreadId) {
+    hero.documents.activate(Some(board));
+    hero.documents.live.team.commenting = false;
+    paint::go_to_thread(hero, t);
+    open_thread(hero, t);
+}
+
 fn close_card(hero: &mut HeroScreen) {
+    hero.documents.live.team.calling.clear();
     if let Some(id) = hero.documents.active() {
         hero.documents.live.team.open.remove(&id);
     }
@@ -379,6 +402,7 @@ fn post(hero: &mut HeroScreen) {
     let author = me(hero);
     let now = now_unix();
     let editing = hero.documents.live.team.editing.take();
+    let calling = std::mem::take(&mut hero.documents.live.team.calling);
     let Some(board) = hero.documents.active_board_mut() else {
         return;
     };
@@ -389,7 +413,7 @@ fn post(hero: &mut HeroScreen) {
     };
     match open {
         Some(OpenThread::New(pin)) => {
-            if let Some(t) = board.team.open(pin, &author, &text, now) {
+            if let Some(t) = board.team.open_calling(pin, &author, &text, &calling, now) {
                 hero.documents
                     .live
                     .team
@@ -398,8 +422,10 @@ fn post(hero: &mut HeroScreen) {
             }
         }
         Some(OpenThread::Thread(t)) => match editing {
-            Some((th, m)) if th == t => _ = board.team.edit(t, m, &author, &text),
-            _ => _ = board.team.reply(t, &author, &text, now),
+            Some((th, m)) if th == t => {
+                _ = board.team.edit_calling(t, m, &author, &text, &calling);
+            }
+            _ => _ = board.team.reply_calling(t, &author, &text, &calling, now),
         },
         None => return,
     }
@@ -489,7 +515,12 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     use crate::ids::{BOARD_AUTHOR_INPUT, BOARD_COMMENT_INPUT, BOARD_VERSION_INPUT};
     match event {
         WidgetEvent::Submit(id) if id == BOARD_COMMENT_INPUT => {
-            post(hero);
+            // W23 B14 — com a lista do `@` aberta, o `Enter` escolhe a pessoa.
+            if mention::is_open(hero) {
+                mention::submit(hero);
+            } else {
+                post(hero);
+            }
             return true;
         }
         WidgetEvent::Cancel(id) if id == BOARD_COMMENT_INPUT => {
@@ -545,6 +576,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             open_thread(hero, t);
         }
         Hit::Edit(n) => paint::begin_edit(hero, n),
+        Hit::Mention(n) => mention::choose(hero, n),
         Hit::Delete(n) => delete_message(hero, n, armed),
         Hit::Restore(n) | Hit::DropVersion(n) | Hit::RenameVersion(n) => {
             panels::version_click(hero, h, n, double, armed);
@@ -621,6 +653,7 @@ fn button(hero: &mut HeroScreen, b: TeamButton) {
         TeamButton::CardClose => close_card(hero),
         TeamButton::ListClose => t.list_open = false,
         TeamButton::ListShowResolved => t.show_resolved = !t.show_resolved,
+        TeamButton::ListForYou => t.for_you = !t.for_you,
         TeamButton::ListAuthor => {
             t.editing_author = true;
             let name = t.author.clone();

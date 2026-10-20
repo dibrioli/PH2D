@@ -366,6 +366,7 @@ pub fn dispatch_key<'frame>(
                 }
             }
         }
+        KEY_ARROW_UP | KEY_ARROW_DOWN if store.list_step(event.keycode == KEY_ARROW_DOWN) => {}
         KEY_ARROW_UP => {
             if let Some(id) = store.focus_id()
                 && let Some(InteractiveState::NumberInput {

@@ -377,6 +377,10 @@ pub fn paint(
             Target::Board(b) => {
                 let name = hero_docs.boards().get(b).map_or("", |b| b.name.as_str());
                 paint_text_centered(text_system, scene, name, r, TypeToken::Sm.px(), fg);
+                // W23 B14 — a bolinha de um quadro com fios para mim por ler.
+                if super::board_nav::team::notify::board_has_news(hero_docs, b) {
+                    super::board_nav::team::notify::paint_dot(scene, r, theme);
+                }
             }
             Target::Surface(tab) => {
                 let title = surfaces

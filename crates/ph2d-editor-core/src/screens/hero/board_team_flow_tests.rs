@@ -567,3 +567,6 @@ fn a_video_on_a_slide_plays_in_the_presentation_with_our_controls() {
         "sair da apresentação pára o vídeo"
     );
 }
+
+#[path = "board_mention_tests.rs"]
+mod mention;

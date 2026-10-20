@@ -37,6 +37,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.comment.title" => "Comments",
         "board.comment.name" => "Name: {name}",
         "board.comment.none" => "No comments yet",
+        // W23 B14 — menções e notificações.
+        "board.comment.everyone" => "everyone \u{2014} everybody on this board",
+        "board.comment.mentioned_you" => "{name} mentioned you: {text}",
+        "board.comment.replied" => "{name} replied: {text}",
+        "board.comment.show" => "Show",
+        "board.comment.for_you" => "For you",
+        "board.comment.for_you_tip" => "Only the threads that mention you or answer you",
         "board.team.close" => "Close",
         "board.team.surface" => "Comments, versions and export",
         "board.team.page_up" => "Earlier rows",

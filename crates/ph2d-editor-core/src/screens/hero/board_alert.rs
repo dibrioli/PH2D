@@ -32,6 +32,20 @@ pub(crate) enum Action {
         to: BoardId,
         to_at: u64,
     },
+    /// W23 B14 — abre o fio de uma menção ou resposta (no quadro dele).
+    ShowThread {
+        board: BoardId,
+        thread: ph2d_board_model::ThreadId,
+    },
+}
+
+impl Action {
+    fn label(self) -> &'static str {
+        match self {
+            Self::UndoMove { .. } => "board.send.undo",
+            Self::ShowThread { .. } => "board.comment.show",
+        }
+    }
 }
 
 /// Um aviso do quadro.
@@ -76,16 +90,28 @@ fn can(hero: &HeroScreen, action: Action) -> bool {
             let at = |b: BoardId| hero.documents.live.histories.get(&b)?.undo_at();
             at(from) == Some(from_at) && at(to) == Some(to_at)
         }
+        Action::ShowThread { board, thread } => hero
+            .documents
+            .boards()
+            .get(board)
+            .is_some_and(|b| b.team.thread(thread).is_some()),
     }
 }
 
 /// Onde ficam a faixa e o botão, na área do quadro `area`.
-pub(crate) fn layout(text_system: &mut TextSystem, area: Rect, alert: &Alert, button: bool) -> (Rect, Option<Rect>) {
+pub(crate) fn layout(
+    text_system: &mut TextSystem,
+    area: Rect,
+    alert: &Alert,
+    button: bool,
+) -> (Rect, Option<Rect>) {
     let font = TypeToken::Sm.px();
     let gap = Spacing::Md.px();
     let text_w = rect_for_label(text_system.prefix_width(&alert.text, font));
-    let label = tr("board.send.undo");
-    let button_w = button.then(|| rect_for_label(text_system.prefix_width(label, font)));
+    let button_w = alert
+        .action
+        .filter(|_| button)
+        .map(|a| rect_for_label(text_system.prefix_width(tr(a.label()), font)));
     let w = (text_w + button_w.map_or(0.0, |b| gap + b)).min(area.w);
     let h = Spacing::Xl2.px();
     let r = Rect::new(area.x + (area.w - w) / 2.0, area.y + Spacing::Md.px(), w, h);
@@ -127,7 +153,7 @@ pub(super) fn paint(
             let rr = crate::paint::frame_radius(theme, Radius::Sm.px());
             fill_rounded_rect(scene, b, rr, resolve(ColorToken::Bg2, theme));
         }
-        let label = tr("board.send.undo");
+        let label = alert.action.map_or("", |a| tr(a.label()));
         paint_text_centered(text_system, scene, label, b, font, resolve(ColorToken::Accent, theme));
     }
 }
@@ -156,6 +182,9 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             hero.documents.undo_on(to);
             hero.documents.undo_on(from);
             hero.documents.activate(Some(from));
+        }
+        Action::ShowThread { board, thread } => {
+            super::board_nav::team::show_thread(hero, board, thread);
         }
     }
     true

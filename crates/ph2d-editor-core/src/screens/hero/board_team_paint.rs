@@ -301,6 +301,8 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
         &mut hero.hit_index,
         &hero.store,
     );
+    // W23 B14 — a lista de quem se chama com `@`, colada ao campo.
+    super::mention::paint(hero, field, area, scene, ts);
     if super::super::super::board_nav::field_text(&hero.store, fid).is_empty() {
         let hint = if thread.is_some() {
             tr("board.comment.reply")
@@ -408,12 +410,14 @@ pub(super) fn paint_list(
         return 0.0;
     };
     let show_resolved = hero.documents.live.team.show_resolved;
+    let for_you = hero.documents.live.team.for_you;
     let editing = hero.documents.live.team.editing_author;
     let mut rows: Vec<(ThreadId, String, bool, bool, usize)> = b
         .team
         .threads
         .iter()
         .filter(|t| !t.resolved || show_resolved)
+        .filter(|t| !for_you || t.for_me(&mine))
         .map(|t| {
             let m = &t.messages[0];
             let line = format!("{}: {}", m.author, m.text.lines().next().unwrap_or(""));
@@ -472,7 +476,9 @@ pub(super) fn paint_list(
         );
     }
     y += s + g;
-    let tog = Rect::new(at.x + pad, y, at.w - 2.0 * pad, s);
+    // «Show resolved» e (W23 B14) «For you» lado a lado: o filtro do Miro, sem mais uma fila.
+    let half = (at.w - 2.0 * pad - g) / 2.0;
+    let tog = Rect::new(at.x + pad, y, half, s);
     text_button(
         scene,
         ts,
@@ -482,6 +488,17 @@ pub(super) fn paint_list(
         tr("board.comment.show_resolved"),
         tog,
         show_resolved,
+        theme,
+    );
+    text_button(
+        scene,
+        ts,
+        &mut hero.hit_index,
+        &hero.store,
+        node(Hit::Button(TeamButton::ListForYou)),
+        tr("board.comment.for_you"),
+        Rect::new(tog.x + half + g, y, half, s),
+        for_you,
         theme,
     );
     y += s + g;

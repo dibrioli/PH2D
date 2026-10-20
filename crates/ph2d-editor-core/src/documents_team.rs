@@ -165,6 +165,17 @@ pub struct Team {
     /// A frase de um pedido servido (o ficheiro gravado, o que a importação saltou) e quando chegou —
     /// pintada no topo do quadro como o aviso (W5: nunca só o terminal).
     pub message: Option<(String, Instant)>,
+    /// W23 B14 — quem o `@` do compositor já chamou (vai na mensagem ao publicar).
+    pub calling: Vec<ph2d_board_model::Who>,
+    /// W23 B14 — a pessoa realçada na lista do `@` (↑/↓), e a lista à vista na última pintura.
+    pub mention_pick: usize,
+    pub mention_shown: bool,
+    /// W23 B14 — as mensagens já vistas pelo aviso (nenhuma avisa duas vezes) e os quadros cujas
+    /// mensagens de antes de os ver nesta sessão já contam como vistas (chegam pelo selo, não pelo aviso).
+    pub notified: std::collections::BTreeSet<MessageId>,
+    pub seeded: std::collections::BTreeSet<BoardId>,
+    /// W23 B14 — a lista mostra só os fios PARA mim (menções e respostas).
+    pub for_you: bool,
 }
 
 impl Team {
@@ -197,6 +208,11 @@ impl Documents {
     #[must_use]
     pub fn team_session(&self) -> &Team {
         &self.live.team
+    }
+
+    /// W23 B14 — os quadros (para ler) e a equipa da sessão (para mexer), juntos (o aviso das menções).
+    pub(crate) fn boards_and_team(&mut self) -> (&ph2d_board_model::BoardSet, &mut Team) {
+        (&self.boards, &mut self.live.team)
     }
 
     /// K10 — o nome de quem escreve.

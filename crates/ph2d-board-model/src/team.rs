@@ -351,6 +351,28 @@ impl Team {
         }
     }
 
+    /// Edita a mensagem `msg` a chamar também `who` (W23 B14): fica chamado quem o texto mostra.
+    pub fn edit_calling(
+        &mut self,
+        id: ThreadId,
+        msg: MessageId,
+        me: &str,
+        text: &str,
+        who: &[Who],
+    ) -> bool {
+        if !self.edit(id, msg, me, text) {
+            return false;
+        }
+        if let Some(m) = self
+            .thread_mut(id)
+            .and_then(|t| t.messages.iter_mut().find(|m| m.id == msg))
+        {
+            m.mentions.extend(who.iter().cloned());
+            m.keep_mentions();
+        }
+        true
+    }
+
     /// Edita a mensagem `msg` — só a do próprio autor (K4). Vazio não edita.
     pub fn edit(&mut self, id: ThreadId, msg: MessageId, me: &str, text: &str) -> bool {
         let text = text.trim();

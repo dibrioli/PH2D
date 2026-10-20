@@ -460,6 +460,15 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
             on,
             theme,
         );
+        // W23 B14 — fios para mim por ler (menções e respostas).
+        if b == NavButton::Comments
+            && hero
+                .documents
+                .active()
+                .is_some_and(|id| team::notify::board_has_news(&hero.documents, id))
+        {
+            team::notify::paint_dot(scene, r, theme);
+        }
     }
 }
 

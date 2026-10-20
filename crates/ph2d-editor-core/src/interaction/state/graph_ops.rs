@@ -125,6 +125,32 @@ impl WidgetStore {
         self.graph_keys.drain(..)
     }
 
+    /// W23 B14 — as setas ↑/↓ no campo `id` passam a mover a lista dele (`None` = largar).
+    pub fn arm_list_nav(&mut self, id: Option<NodeId>) {
+        let steps = self.list_nav.filter(|(old, _)| Some(*old) == id).map_or(0, |(_, s)| s);
+        self.list_nav = id.map(|id| (id, steps));
+    }
+
+    /// Os passos das setas no campo `id` desde a última vez (↓ = +1, ↑ = −1).
+    pub fn take_list_steps(&mut self, id: NodeId) -> i32 {
+        match &mut self.list_nav {
+            Some((at, s)) if *at == id => std::mem::take(s),
+            _ => 0,
+        }
+    }
+
+    /// Uma seta no campo focado com a lista armada: `true` = era da lista.
+    pub(crate) fn list_step(&mut self, down: bool) -> bool {
+        let focus = self.focus_id;
+        match &mut self.list_nav {
+            Some((id, s)) if Some(*id) == focus => {
+                *s += if down { 1 } else { -1 };
+                true
+            }
+            _ => false,
+        }
+    }
+
     // ── Modifiers ────────────────────────────────────────────────────────
     /// Snapshot the cached pointer modifiers for a gesture (pointer events carry
     /// none natively; the shell pushes these on `ModifiersChanged`).

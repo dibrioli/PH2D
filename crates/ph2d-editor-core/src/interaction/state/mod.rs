@@ -651,6 +651,9 @@ pub struct WidgetStore {
     /// Graph keyboard commands (Delete/F/A/Esc/K/P/Ctrl+D) produced while a
     /// graph surface holds focus, drained by the panel.
     pub(super) graph_keys: Vec<GraphKey>,
+    /// W23 B14 — o campo de texto cuja lista (as pessoas do `@`) as setas ↑/↓ percorrem, e os passos
+    /// por drenar. `None` = as setas são do campo (nada).
+    pub(super) list_nav: Option<(NodeId, i32)>,
     /// Per-surface canvas rect, republished by the panel each frame so
     /// `dispatch_wheel` can tell when the cursor is over a graph (mirror of
     /// `panel_rects`, scoped to graph surfaces).

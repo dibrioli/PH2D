@@ -268,9 +268,7 @@ fn com_a_ponta_de_pixel_o_grao_a_shape_e_as_imagens_esmaecem() {
     use ph2d_tool_painter::ids;
     let linhas = [
         ids::PAINTER_BRUSH_TEXTURE_KIND,
-        ids::PAINTER_BRUSH_GRAIN_DEPTH,
         ids::PAINTER_PONTA_FIELDS[1],
-        ids::PAINTER_SHAPE_KIND,
         ids::PAINTER_PONTA_FIELDS[5],
         ids::PAINTER_SHAPE_HOSE_ADD,
     ];

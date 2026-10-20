@@ -336,9 +336,11 @@ const DUAL: [NodeId; 13] = [
     ids::PAINTER_DUAL_IMAGE,
 ];
 
-/// O que a ponta de PÍXEL (L18) não lê: o Grain (o menu, os parâmetros, a profundidade e a lei da L9), a fonte da
-/// Shape e a ponta de N imagens (L19) — todos recortariam o píxel em fracções.
-const FORA_DA_PONTA_DE_PIXEL: [NodeId; 23] = [
+/// O que a ponta de PÍXEL (L18) não lê: o Grain (o menu, os parâmetros e a lei da L9) e a ponta de N imagens (L19) —
+/// todos recortariam o píxel em fracções. ⚠️ A Grain Depth e a fonte da Shape NÃO entram: o censo do esmaecido
+/// (`a_linha_esmaecida_e_a_que_nao_age`) mede-as inertes noutros meios sem lei que o diga (a Watercolor não lê a
+/// Depth; o Wet não muda com a fonte da Shape no traço do censo) — listá-las aqui pô-las-ia nessa régua sem a lei.
+const FORA_DA_PONTA_DE_PIXEL: [NodeId; 21] = [
     ids::PAINTER_BRUSH_TEXTURE_KIND,
     ids::PAINTER_BRUSH_TEXTURE_PARAMS[0],
     ids::PAINTER_BRUSH_TEXTURE_PARAMS[1],
@@ -346,12 +348,10 @@ const FORA_DA_PONTA_DE_PIXEL: [NodeId; 23] = [
     ids::PAINTER_BRUSH_TEXTURE_PARAMS[3],
     ids::PAINTER_BRUSH_TEXTURE_PARAMS[4],
     ids::PAINTER_BRUSH_TEXTURE_PARAMS[5],
-    ids::PAINTER_BRUSH_GRAIN_DEPTH,
     ids::PAINTER_PONTA_FIELDS[1],
     ids::PAINTER_PONTA_FIELDS[2],
     ids::PAINTER_PONTA_FIELDS[3],
     ids::PAINTER_PONTA_FIELDS[4],
-    ids::PAINTER_SHAPE_KIND,
     ids::PAINTER_PONTA_FIELDS[5],
     ids::PAINTER_PONTA_FIELDS[6],
     ids::PAINTER_PONTA_FIELDS[7],

@@ -19,6 +19,7 @@ mod macro_instantaneos;
 mod macro_portas;
 mod macro_traco;
 mod macro_trilho;
+mod macro_tutorial_fill;
 mod measure_undo_capacity;
 mod midias_de_fabrica;
 mod o_po_do_aerografo;

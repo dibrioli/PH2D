@@ -14,9 +14,9 @@ use ph2d_macro::MacroDoc;
 use ph2d_tool_painter::macro_track::Passo;
 use ph2d_tool_painter::{PaintMedia, PainterTool};
 
-const N: u32 = 64;
-const PRETO: [u8; 3] = [20, 20, 20];
-const NOVA: [u8; 3] = [200, 30, 30];
+pub const N: u32 = 64;
+pub const PRETO: [u8; 3] = [20, 20, 20];
+pub const NOVA: [u8; 3] = [200, 30, 30];
 
 fn ferramenta() -> PainterTool {
     let mut t = PainterTool::default();
@@ -27,7 +27,7 @@ fn ferramenta() -> PainterTool {
     t
 }
 
-fn quadro(t: &mut PainterTool, g: &mut Gravador) {
+pub fn quadro(t: &mut PainterTool, g: &mut Gravador) {
     let _ = t.take_preview_arc();
     t.on_tick(1000.0 / 60.0);
     g.quadro(t);
@@ -121,13 +121,13 @@ fn trocar_a_cor_no_cef_a_gravar_toca_ate_ao_fim_na_cor_nova() {
 /// Como o limiar chega ao ColorDrop: pelo modal depois de soltar, ou pelo gesto parado (o «dwell» da
 /// shell inunda no sítio, afina o limiar com o rato e o soltar só confirma — sem `Up` na tela).
 #[derive(Clone, Copy, Debug)]
-enum Limiar {
+pub enum Limiar {
     Modal,
     Parado,
 }
 
 /// Grava: uma pincelada preta, o ColorDrop vermelho (o limiar por `limiar`), uma pincelada preta.
-fn grava_o_colordrop(limiar: Limiar) -> (PainterTool, MacroDoc) {
+pub fn grava_o_colordrop(limiar: Limiar) -> (PainterTool, MacroDoc) {
     let mut t = ferramenta();
     let mut g = Gravador::arma(&mut t);
     pincelada(&mut t, &mut g, 0.3);

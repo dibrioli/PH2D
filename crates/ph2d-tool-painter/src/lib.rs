@@ -143,6 +143,9 @@ pub use tool::paint::mao::{LINHAS_DA_MAO, LinhaDaMao, MAO_DE_FABRICA, N_LINHAS_D
 pub use tool::paint::marca::{
     CartaoDaMarca, LINHAS_DA_MARCA, LinhaDaMarca, MARCA_DE_FABRICA, N_LINHAS_DA_MARCA,
 };
+pub use tool::paint::ponta::{
+    CartaoDaPonta, LINHAS_DA_PONTA, LinhaDaPonta, N_LINHAS_DA_PONTA, PONTA_DE_FABRICA,
+};
 pub use tool::paint::wetpaint_preset::{
     ALTURA_DO_PREVIEW, CAMPOS_DO_PINCEL, CAMPOS_FORA, CenaDoPreview, ChaveDoPreview,
     DIAMETRO_DA_MINIATURA, LARGURA_DO_PREVIEW, MEIO_DO_PRESET, MOTOR_DOS_PRESETS, MeioDesconhecido,

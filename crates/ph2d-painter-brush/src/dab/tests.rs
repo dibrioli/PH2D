@@ -162,6 +162,7 @@ fn ramp_texel_desloca_a_cor_da_rampa_pelo_desvio_do_carimbo() {
                     Some(v),
                     0.0,
                     0.0,
+                    &crate::texture::GrainLaw::NEUTRA,
                 );
                 (t.color.expect("a rampa é a dona da cor"), t.g.to_bits())
             };

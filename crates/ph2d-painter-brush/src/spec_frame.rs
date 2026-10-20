@@ -84,6 +84,12 @@ impl BrushSpec {
         {
             s.grain_depth = self.grain_depth.clamp(0.0, 1.0) * (1.0 - t.smooth);
         }
+        // A profundidade do grão por dab (L9): a pressão ou o sorteio deste dab.
+        if let Some(t) = d.tilt
+            && t.grao != 1.0
+        {
+            s.grain_depth = s.grain_depth.clamp(0.0, 1.0) * t.grao;
+        }
         s
     }
 

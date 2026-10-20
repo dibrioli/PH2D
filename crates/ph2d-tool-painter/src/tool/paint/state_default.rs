@@ -231,6 +231,7 @@ impl Default for PaintState {
             pilha_por_replay: std::env::var("PH2D_COMPOSITE_REPLAY").is_ok_and(|v| v == "1"),
             acumulando_no_plano: false,
             stroke_mask: Vec::new(),
+            pixel_trilhos: super::pixel_route::Trilhos::default(),
             relief: Default::default(),
             // Impasto lighting (canvas-level). Inert until some layer actually has relief.
             impasto_show: true,

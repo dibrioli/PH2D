@@ -447,6 +447,7 @@ pub fn accumulate_shape_layers_rgba_batch(
                                                     depth,
                                                     d.spec.effective_granulation(),
                                                     grain_ramp,
+                                                    &d.spec.texture.lei,
                                                 ),
                                                 crate::texture::stencil_gate(
                                                     &d.spec.texture,

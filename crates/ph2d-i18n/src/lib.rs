@@ -150,6 +150,7 @@ mod paint_engines;
 mod painter_layers;
 /// As linhas da MARCA (L4) e da cor pela mão (L11) do painel Painter — irmã da `painter_layers`.
 mod painter_marca;
+mod painter_ponta;
 /// ⭐⭐ **A COR, a CURVA, o COMANDO e as RECUSAS da timeline** — quatro motores numa fatia.
 mod quatro_motores;
 /// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
@@ -544,6 +545,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| input_map::tr(k))
             .or_else(|| painter_layers::tr(k))
             .or_else(|| painter_marca::tr(k))
+            .or_else(|| painter_ponta::tr(k))
             .or_else(|| inspector::tr(k))
             .or_else(|| inspector_game::tr(k))
             .or_else(|| inspector_vida::tr(k))

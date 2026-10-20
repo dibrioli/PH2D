@@ -446,22 +446,12 @@ pub struct BrushSettings {
     /// Rotation, que são as três rows imediatamente abaixo desta.
     pub spray_count: u32,
 
-    /// The **Paint Mode** dropdown's current value — the paint's MEDIUM, as
-    /// [`super::PaintMedia::to_u8`] (`0` Digital · `1` Watercolor · `2` Impasto · `3` Wet Paint).
-    ///
-    /// ⚠️ Derived by the tool from the three master flags below, never stored beside them (2026-07-22):
-    /// the dropdown replaced three independent checkboxes, and a fourth field holding "the current
-    /// medium" would be a second place for the same fact to be true. The panel paints exactly one
-    /// medium's section — this one.
+    /// The **Paint Mode** (the MEDIUM, [`super::PaintMedia::to_u8`]): derived from the three master flags
+    /// below, never stored beside them (2026-07-22: one place for the fact). The panel paints its section.
     pub media: u8,
 
-    /// **A fileira `Pigment` é oferecida AGORA?** — derivada pela ferramenta em
-    /// [`super::PaintMedia::offers_pigment_mixing_in`] (o MEIO ∧ o GESTO na mão ∧ não-borracha).
-    ///
-    /// ⚠️ Ela é um campo e não um predicado do painel **porque a resposta precisa do `PaintMode`**,
-    /// que o snapshot não carrega — e a alternativa era o painel re-derivar o gesto de uma lista
-    /// escrita à mão de `is_*` (que não tem `is_fill` nem `is_knife`, logo nasceria com dois
-    /// buracos). *A pergunta é respondida onde o facto vive.*
+    /// **A fileira `Pigment` é oferecida AGORA?** ([`super::PaintMedia::offers_pigment_mixing_in`]: o MEIO ∧ o
+    /// GESTO ∧ não-borracha) — um campo porque precisa do `PaintMode`, que o snapshot não carrega.
     pub pigment_offered: bool,
 
     // ── Wet Paint section (the fluid engine, ADR-0134) ──
@@ -481,6 +471,8 @@ pub struct BrushSettings {
     pub marca: [f64; crate::N_LINHAS_DA_MARCA],
     /// A cor secundária do pincel (L11; sRGB `0..1`).
     pub marca_secundaria: [f32; 3],
+    /// A PONTA, por linha (`LINHAS_DA_PONTA`; L9 o grão · L18 o píxel).
+    pub ponta: [f64; crate::N_LINHAS_DA_PONTA],
     /// The wet TOOL the brush wire drives while armed (doc 22).
     pub wet_tool: crate::WetTool,
     /// The tilt dial: on/off + ring (0..8) + spoke (0..11, 30 deg steps).

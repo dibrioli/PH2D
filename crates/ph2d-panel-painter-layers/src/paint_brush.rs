@@ -321,6 +321,7 @@ fn paint_top_basics(
 pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
     crate::paint_wetpaint_presets::paint_wetpaint_presets_popovers(ctx, theme);
     crate::paint_pen::paint_pen_popovers(ctx, theme);
+    crate::ponta_linhas::paint_ponta_popovers(ctx, theme);
     if let Some((chip_rect, cur)) = state::take_pending_brush_preset_dd() {
         paint_dropdown_popover(
             ctx,

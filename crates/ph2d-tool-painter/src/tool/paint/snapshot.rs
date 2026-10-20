@@ -405,6 +405,7 @@ impl PainterTool {
             mao: self.mao(),
             marca: self.marca(),
             marca_secundaria: self.paint.brush.cor_mao.secondary,
+            ponta: self.ponta(),
             wet_tool: self.paint.wetpaint.tool,
             wet_tilt_on: self.paint.wetpaint.tilt_on,
             wet_tilt_ring: self.paint.wetpaint.tilt_ring,

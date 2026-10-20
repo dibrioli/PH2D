@@ -141,10 +141,14 @@ impl PainterTool {
         // ([`ph2d_painter_brush::FootprintDeform::extent`]): sobre arte comprimida o raio e o
         // achatamento crescem juntos, logo a área visitada é `R²/|det W|` — os texels que a arte
         // tem naquele sítio — e não `R²`.
-        brush.radius_px = (brush.radius_px * w.radius_scale).clamp(
-            super::brush_ranges::BRUSH_SIZE_MIN_PX,
-            ph2d_painter_brush::MAX_BRUSH_RADIUS_PX,
-        );
+        // A ponta de PÍXEL (L18) desce ao 1 px (`PIXEL_SIZE_MIN_PX`); a com AA pára no 2.
+        let piso = if self.pixel_vivo(&brush) {
+            super::pixel_route::PIXEL_SIZE_MIN_PX
+        } else {
+            super::brush_ranges::BRUSH_SIZE_MIN_PX
+        };
+        brush.radius_px =
+            (brush.radius_px * w.radius_scale).clamp(piso, ph2d_painter_brush::MAX_BRUSH_RADIUS_PX);
         brush.dab_flatten = w.flatten;
         brush.dab_angle_deg = w.angle_deg;
         brush.dab_curve = w.curve;

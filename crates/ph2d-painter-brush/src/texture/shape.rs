@@ -126,6 +126,7 @@ pub fn render_shape_preview(
         stencil_size: [0.5, 0.5],
         stencil_angle_deg: 0,
         params,
+        lei: super::GrainLaw::NEUTRA,
     };
     // The dab flatten/rotate deforms the preview exactly as the engine deforms the dab.
     // The preview has no path, so the FLOW frame is `Static` (and `flow` is forced off above anyway).

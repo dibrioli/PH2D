@@ -58,6 +58,8 @@ pub const INTERNAS: &[&str] = &[
     // O jitter da marca (L4): o cartão Jitter chega-lhe pelo `handle_panel_event`.
     "set_marca",
     "set_marca_secundaria",
+    // A ponta (L9 · L18): as secções Brush/Grain chegam-lhe pelo `handle_panel_event`.
+    "set_ponta",
     "polygon_cancel",
     "polygon_commit",
     "polygon_commit_keep",

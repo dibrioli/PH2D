@@ -135,11 +135,21 @@ impl PainterTool {
     }
 
     fn set_brush_size_px_corpo(&mut self, px: f32) {
-        self.paint.brush.radius_px = px.clamp(BRUSH_SIZE_MIN_PX, BRUSH_SIZE_MAX_PX);
+        // A ponta de PÍXEL (L18) cumpre o 1 px que a ponta com AA não cumpre (`BRUSH_SIZE_MIN_PX`).
+        let lo = if self.pixel_vivo(&self.paint.brush) {
+            super::pixel_route::PIXEL_SIZE_MIN_PX
+        } else {
+            BRUSH_SIZE_MIN_PX
+        };
+        self.paint.brush.radius_px = px.clamp(lo, BRUSH_SIZE_MAX_PX);
     }
 
     /// Set the brush radius from the size slider's `0..1` track.
     pub fn set_brush_size_norm(&mut self, t: f32) {
+        // O fundo do slider é o 1 px na ponta de PÍXEL (L18); o resto do trilho é o de sempre.
+        if t <= 0.0 && self.pixel_vivo(&self.paint.brush) {
+            return self.set_brush_size_px(super::pixel_route::PIXEL_SIZE_MIN_PX);
+        }
         self.set_brush_size_px(size_norm_to_px(t));
     }
 

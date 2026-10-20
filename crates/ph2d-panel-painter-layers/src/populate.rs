@@ -150,6 +150,12 @@ fn register_brush_inputs(store: &mut WidgetStore) {
     )
     // As linhas da MARCA (L4), no cartão Jitter.
     .chain(ph2d_tool_painter::ids::PAINTER_MARCA_FIELDS)
+    // As linhas numéricas da PONTA (L9/L18); as de modo são menus, registadas com os menus.
+    .chain(
+        (0..ph2d_tool_painter::N_LINHAS_DA_PONTA)
+            .filter(|&i| !crate::ponta_linhas::e_menu(i))
+            .map(|i| ph2d_tool_painter::ids::PAINTER_PONTA_FIELDS[i]),
+    )
     {
         store.register(
             id,
@@ -548,6 +554,12 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
     // O bloco de presets do Wet Painter (W1): Preset · política · os valores rápidos dos volumes.
     .chain(ph2d_tool_painter::ids::PAINTER_WETPAINT_PRESET_DROPDOWNS)
     .chain([ph2d_tool_painter::ids::PAINTER_PEN_ROTATION])
+    // Os menus da PONTA (L9/L18): a ponta de píxel, o modo do grão, o controlo da profundidade.
+    .chain(
+        (0..ph2d_tool_painter::N_LINHAS_DA_PONTA)
+            .filter(|&i| crate::ponta_linhas::e_menu(i))
+            .map(|i| ph2d_tool_painter::ids::PAINTER_PONTA_FIELDS[i]),
+    )
     {
         store.register(
             id,

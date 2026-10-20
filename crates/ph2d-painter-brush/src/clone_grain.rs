@@ -96,11 +96,7 @@ pub fn clone_blit_grain(
                 );
                 // A B&W Grain ramp (Smear/Blur/Clone) remaps the grain into a coverage tone.
                 let g = crate::texture::remap_shape_value(raw, grain_ramp_lut);
-                w *= if depth >= 1.0 {
-                    g
-                } else {
-                    1.0 + (g - 1.0) * depth
-                };
+                w *= spec.texture.lei.factor(w, g, depth, 0.0);
             }
             let w = w * strength;
             if w <= 0.0 {

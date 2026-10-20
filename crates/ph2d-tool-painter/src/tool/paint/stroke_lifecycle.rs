@@ -80,6 +80,7 @@ impl PainterTool {
         // Reset the Accumulate-OFF cap mask (re-grown by the first dab) + the per-layer-colour
         // accumulation (so the recomposite snapshots THIS stroke's pre-pixels) — both per stroke.
         self.paint.stroke_mask.clear();
+        self.paint.pixel_trilhos.zera(); // a ponta de píxel (L18) começa o trilho no traço novo
         // ⚠️ E o cap de CADA camada do composite com ele — eles são a mesma grandeza, só que por
         // camada (ver `composite::stamp_dabs_composite`). Esquecer um deixaria a 2.ª camada Brush
         // com o tecto do traço ANTERIOR, e ela deixaria de pintar a meio de um desenho.
@@ -453,6 +454,8 @@ impl PainterTool {
             self.paint.dabs = dabs;
             self.park_stroke(stroke);
         }
+        // A ponta de píxel (L18): o último píxel do pixel-perfect esperava pelo seguinte — o traço acabou.
+        self.pixel_fim_do_traco();
         // ⛔ The taper's far end was resolved HERE, by putting the stroke back and laying it again at
         // pen-up. It is gone (Enio 2026-08-10) — the taper shapes only the head now, which every dab
         // knows from its own `arc_len` the instant it is made. Nothing is restored, nothing is replayed,

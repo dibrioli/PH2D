@@ -348,6 +348,9 @@ pub struct BrushSpec {
     /// **O jitter da MARCA** (L4): opacidade por dab, contagem sorteada, espelhos, redondeza, ângulo por traço,
     /// espalhar através, partícula — [`crate::marca::DabJitter`]; o neutro é o traço de sempre ao bit.
     pub dab_jitter: crate::marca::DabJitter,
+    /// ⭐ **A ponta de PÍXEL** (L18, [`crate::pixel::PixelTip`]): o carimbo binário alinhado à grelha (o lápis do
+    /// Aseprite), lido só pelo Digital; `Off` é o carimbo de sempre ao bit.
+    pub pixel: crate::pixel::PixelTip,
     /// **A pegada deitada DESTE dab** — só no pincel por dab de [`Self::at_dab`] (a caneta deitada, W6, e a forma
     /// sorteada da marca, L4: [`crate::Dab::tilt`]); `None` no pincel do artista. É por ela que o carimbo, que
     /// lê a pegada do `spec` ([`Self::dab_footprint`]), pinta a elipse deitada e não só o raio que cresceu.

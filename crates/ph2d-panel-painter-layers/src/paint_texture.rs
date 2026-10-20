@@ -195,6 +195,18 @@ pub(crate) fn paint_texture_section(
     y = crate::paint_texture_tiling::paint_texture_tiling(
         ctx, theme, x, content_w, y, brush, compact,
     );
+    // ⭐ A LEI do grão (L9): o modo e a profundidade por dab — do pincel (a camada de textura não os tem).
+    if !compact {
+        y = crate::ponta_linhas::paint_linhas_da_ponta(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            &brush,
+            ph2d_tool_painter::CartaoDaPonta::Grao,
+        );
+    }
 
     // A Color Ramp do Grain só onde o meio a oferece (`texture_ramp_offered`: nem na Aquarela, onde o
     // Grain é o mapa de granulação, nem no Wet Paint). A Texture LAYER (`compact`) guarda a dela.

@@ -18,12 +18,14 @@
 
 mod bristles;
 mod kind;
+mod lei;
 pub(crate) mod patterns;
 mod shape;
 mod stencil;
 mod tiled;
 pub use bristles::{bristle_knobs, bristle_tile, bristles_at};
 pub use kind::TextureKind;
+pub use lei::{GrainLaw, GrainMode};
 pub use shape::{
     ImageRgb, compose_shape_silhouette_kind, image_tip_extent, image_tip_radius, remap_shape_value,
     render_shape_preview, sample_shape_rgb_unit, sample_shape_silhouette,
@@ -171,6 +173,9 @@ pub struct TextureSettings {
     /// neutral); slot `2` is the kind's shape param (Detail / Turbulence / Radius / …). `0.5`
     /// throughout is the neutral default, reset to each kind's [`param_specs`] defaults on a change.
     pub params: [f32; MAX_TEX_PARAMS],
+    /// ⭐ **A lei do grão** (L9, [`GrainLaw`]): o modo com que morde a ponta e a profundidade por dab. Lida só no
+    /// slot do Grain; a [`GrainLaw::NEUTRA`] é o Multiply de sempre ao bit.
+    pub lei: GrainLaw,
 }
 
 /// Per-pattern parameter slots in [`TextureSettings::params`] (`0`/`1` = Contrast / Brightness; `2..` = shape knobs).
@@ -190,6 +195,7 @@ impl Default for TextureSettings {
             stencil_size: [0.5, 0.5],
             stencil_angle_deg: 0,
             params: [0.5; MAX_TEX_PARAMS],
+            lei: GrainLaw::NEUTRA,
         }
     }
 }

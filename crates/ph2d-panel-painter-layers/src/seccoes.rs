@@ -200,6 +200,12 @@ pub const TODAS: &[Declaracao] = &[
         cartao: &[],
     },
     Declaracao {
+        nome: "ponta",
+        campos: 1,
+        chaves: &crate::ponta_linhas::ROTULOS_DA_PONTA,
+        cartao: &[],
+    },
+    Declaracao {
         nome: "taper",
         campos: 1,
         chaves: TAPER,
@@ -471,6 +477,10 @@ pub fn nome_da_seccao(chave: &str) -> Option<&str> {
     // A tabela IRMÃ das linhas da marca (L4/L11, `ph2d_i18n` `painter_marca`) é uma secção só.
     if chave.starts_with("panel.painter_marca.") {
         return Some("marca");
+    }
+    // A tabela IRMÃ das linhas da ponta (L9/L18/L19, `ph2d_i18n` `painter_ponta`) é uma secção só.
+    if chave.starts_with("panel.painter_ponta.") {
+        return Some("ponta");
     }
     chave
         .strip_prefix("panel.painter_layers.")

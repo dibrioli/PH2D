@@ -63,7 +63,13 @@ pub(crate) fn texture_times_tint(texel: [f32; 3], tint: [f32; 3], shift: [f32; 3
     )
 }
 
-fn grain_modulation(g: f32, depth: f32, granulation: f32, ramp: Option<&[[f32; 4]]>) -> [f32; 4] {
+fn grain_modulation(
+    g: f32,
+    depth: f32,
+    granulation: f32,
+    ramp: Option<&[[f32; 4]]>,
+    lei: &crate::texture::GrainLaw,
+) -> [f32; 4] {
     // Watercolor valley gate — scales the whole premultiplied modulation (coverage + tint) so pigment
     // is rejected in the paper's low areas. `1` when granulation is 0 → byte-identical.
     let vg = crate::texture::granulation_gate(g, granulation);
@@ -78,7 +84,8 @@ fn grain_modulation(g: f32, depth: f32, granulation: f32, ramp: Option<&[[f32; 4
             ]
         }
         None => {
-            let m = crate::texture::grain_coverage(g, depth, granulation);
+            // A Shape de camadas de cor: o grão morde a ponta CHEIA (`w = 1`, L9) — o mesmo em cada camada.
+            let m = lei.factor(1.0, g, depth, granulation);
             [m, m, m, m]
         }
     }
@@ -162,7 +169,7 @@ pub fn render_color_stamp_mask(
             // that multiplies the premultiplied composite — tinting the tip by the Grain pattern.
             if acc[3] > 0.0 && grain_active {
                 let g = crate::texture::sample_unit(&spec.texture, &grain_basis, u, v, grain_image);
-                let m = grain_modulation(g, depth, spec.effective_granulation(), grain_ramp);
+                let m = grain_modulation(g, depth, spec.effective_granulation(), grain_ramp, &spec.texture.lei);
                 acc[0] *= m[0];
                 acc[1] *= m[1];
                 acc[2] *= m[2];
@@ -263,6 +270,7 @@ pub fn render_ramp_color_stamp(
                 s,
                 spec.grain_depth(),
                 spec.effective_granulation(),
+                &spec.texture.lei,
             );
             let c = tinta.color.unwrap_or(spec.color);
             let a = w * tinta.g;

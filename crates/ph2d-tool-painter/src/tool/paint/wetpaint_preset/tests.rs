@@ -78,6 +78,12 @@ fn pincel_mexido() -> BrushSpec {
         stencil_size: [0.4, 0.45],
         stencil_angle_deg: 12,
         params: [0.4, 0.6, 0.55, 0.5, 0.3, 0.7],
+        lei: ph2d_painter_brush::GrainLaw {
+            mode: ph2d_painter_brush::GrainMode::Height,
+            depth_min: 0.2,
+            depth_jitter: 0.7,
+            depth_pressure: true,
+        },
     };
     let curva = FalloffCurve::from_points(&[
         FalloffPoint {
@@ -190,6 +196,7 @@ fn pincel_mexido() -> BrushSpec {
         watercolor: d.watercolor,
         impasto: d.impasto,
         // ── os de fora que o Wet Paint não deve ler: mexidos ──
+        pixel: ph2d_painter_brush::PixelTip::Perfect,
         edge_gain: 2.5,
         edge_spread: 5.0,
         smooth_edges: !d.smooth_edges,

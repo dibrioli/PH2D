@@ -25,6 +25,8 @@ mod painter_pen;
 pub use painter_pen::*;
 mod painter_marca;
 pub use painter_marca::*;
+mod painter_ponta;
+pub use painter_ponta::*;
 mod painter_sculpt;
 pub use painter_sculpt::*;
 mod painter_selection;

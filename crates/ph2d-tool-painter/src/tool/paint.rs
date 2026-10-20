@@ -139,6 +139,8 @@ mod wetpaint; // Wet Paint (PaintMode::WetPaint): the fluid-engine session — A
 pub(crate) use wetpaint::fita; // a fita do worker que a trilha da macro (`crate::macro_track`) grava e toca
 mod macro_estado;
 pub mod marca; // as linhas da MARCA (o jitter da L4) no cartão Jitter, nos quatro meios
+pub mod ponta; // as linhas da PONTA (L9 o grão · L18 o píxel · L19 as imagens) nas secções Brush/Grain/Shape
+mod pixel_route; // a ponta de PÍXEL (L18): o trilho ancorado e o carimbo binário, só no Digital
 pub mod mao; // a MÃO do pincel (pressão, inclinação) nos quatro meios, por uma lei só (L2, Pinceis/03 §4)
 mod wetpaint_commit;
 pub mod wetpaint_preset; // o preset do Wet Painter: aplicar / capturar / miniatura (W1, NewFeaturesWetPaint/02 §5) // as configurações que o estado inicial de uma macro leva (crate::macro_track)

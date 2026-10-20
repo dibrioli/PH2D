@@ -195,7 +195,8 @@ pub fn grain_at(
     radius: f32,
 ) -> f32 {
     let s = crate::texture::sample(&spec.texture, basis, px, py, center, radius, image);
-    crate::texture::grain_coverage(s, spec.grain_depth(), spec.effective_granulation())
+    // O relevo e o Wet mordem com a ponta CHEIA (`w = 1`, L9): o Height e o Linear Height valem por inteiro.
+    spec.texture.lei.factor(1.0, s, spec.grain_depth(), spec.effective_granulation())
         * crate::texture::stencil_gate(&spec.texture, basis, px, py)
 }
 

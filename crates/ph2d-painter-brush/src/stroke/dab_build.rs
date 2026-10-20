@@ -19,6 +19,8 @@ pub(super) struct PorTraco {
     /// O fluxo PRÓPRIO dos sorteios da marca (L4): ligar um deles não desloca os de sempre (posição, escala,
     /// rotação, cor), que continuam a ler o `Stroke::rng` ao bit.
     pub(super) rng: u64,
+    /// O fluxo PRÓPRIO da profundidade do grão por dab (L9): ligá-la não desloca nenhum outro sorteio.
+    rng_grao: u64,
 }
 
 impl PorTraco {
@@ -27,6 +29,7 @@ impl PorTraco {
             cor: Stroke::stroke_colour_draw(spec, seed),
             rotor: crate::marca::rotor_do_traco(&spec.dab_jitter, seed),
             rng: seed ^ 0x6D61_7263_6144_4142,
+            rng_grao: seed ^ 0x6772_616F_4C39_4447,
         }
     }
 }
@@ -214,6 +217,17 @@ impl Stroke {
                 },
             ),
             (None, None) => {}
+        }
+        // A profundidade do GRÃO por dab (L9): pela pressão deste dab ou pelo sorteio do fluxo do grão; viaja na
+        // pegada do dab (`DabTilt::grao`, lida por `at_dab`).
+        let lei = self.spec.texture.lei;
+        if lei.varia_por_dab() && self.spec.texture.is_active() {
+            let u = crate::jitter::next_f32(&mut self.por_traco.rng_grao);
+            let t = dab.tilt.unwrap_or(crate::DabTilt::NEUTRA);
+            dab.tilt = Some(crate::DabTilt {
+                grao: lei.profundidade_do_dab(pressure, u),
+                ..t
+            });
         }
         let o = self.opacidade_deitada();
         if o < 1.0 {

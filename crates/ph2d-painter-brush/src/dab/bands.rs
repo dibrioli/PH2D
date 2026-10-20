@@ -392,6 +392,7 @@ pub(super) fn stamp_band(
                                 None,
                                 0.0,
                                 0.0,
+                                &crate::texture::GrainLaw::NEUTRA,
                             )
                         });
                     },
@@ -437,10 +438,11 @@ pub(super) fn stamp_band(
                 )
             });
             let (depth, gran) = (ctx.spec.grain_depth(), ctx.spec.effective_granulation());
+            let lei = &ctx.spec.texture.lei;
             let tinta = match cor_cap {
                 Some(cc) => {
                     let mordida =
-                        crate::ramp_alpha::ramp_texel(None, w, None, grain, depth, gran).g;
+                        crate::ramp_alpha::ramp_texel(None, w, None, grain, depth, gran, lei).g;
                     let Some(t) = cc.fim(mordida) else { continue };
                     t
                 }
@@ -448,7 +450,7 @@ pub(super) fn stamp_band(
                     let forma = ctx.shape_cor.map(|sh| {
                         crate::dab::shape_value_at(ctx.spec, sh, px, py, ctx.center, ctx.radius)
                     });
-                    crate::ramp_alpha::ramp_texel(ctx.ramp.as_ref(), w, forma, grain, depth, gran)
+                    crate::ramp_alpha::ramp_texel(ctx.ramp.as_ref(), w, forma, grain, depth, gran, lei)
                 }
             };
             let color = tinta.color.unwrap_or(ctx.spec.color);

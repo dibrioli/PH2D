@@ -283,6 +283,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     mao: ph2d_tool_painter::MAO_DE_FABRICA,
     marca: ph2d_tool_painter::MARCA_DE_FABRICA,
     marca_secundaria: [1.0, 1.0, 1.0],
+    ponta: ph2d_tool_painter::PONTA_DE_FABRICA,
     wet_tool: ph2d_tool_painter::WetTool::Paint,
     wet_tilt_on: true,
     wet_tilt_ring: 4,

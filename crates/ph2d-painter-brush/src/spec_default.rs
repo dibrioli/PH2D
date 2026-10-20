@@ -133,6 +133,7 @@ impl Default for BrushSpec {
             // Uma marca por ponto do caminho — o neutro do spray, byte-idêntico ao mundo pré-W5.
             spray_count: 1,
             dab_jitter: crate::marca::DabJitter::NEUTRO,
+            pixel: crate::pixel::PixelTip::Off,
             dab_tilt: None,
             symmetry: SymmetrySettings::default(),
             // Watercolor: the `watercolor` gate (OFF) is what guarantees a byte-identical default

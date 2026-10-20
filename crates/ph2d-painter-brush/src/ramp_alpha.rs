@@ -237,6 +237,7 @@ pub(crate) fn ramp_texel(
     grain: Option<f32>,
     depth: f32,
     granulation: f32,
+    lei: &crate::texture::GrainLaw,
 ) -> RampTexel {
     let mut t = RampTexel {
         color: None,
@@ -245,7 +246,7 @@ pub(crate) fn ramp_texel(
     };
     let dono_grao = matches!(ramp, Some(r) if r.index == RampIndex::Grain);
     if let Some(s) = grain.filter(|_| !dono_grao) {
-        t.g = crate::texture::grain_coverage(s, depth, granulation);
+        t.g = lei.factor(w, s, depth, granulation);
     }
     if let Some(r) = ramp {
         let c = match r.index {

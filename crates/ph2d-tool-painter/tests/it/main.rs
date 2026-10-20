@@ -9,6 +9,7 @@
 //! globais não cabem num binário, e um contador global veria as alocações dos vizinhos): fica em `tests/`.
 
 mod a_caneta_deitada;
+mod a_ponta_de_pixel;
 mod a_lei_da_tinta;
 mod a_luz_do_impasto_e_a_de_antes_da_poda;
 mod as_formas;
@@ -28,9 +29,11 @@ mod measure_undo_capacity;
 mod midias_de_fabrica;
 mod o_pigmento_por_comprimento;
 mod o_po_do_aerografo;
+mod o_modo_do_grao;
 mod o_relevo_dos_fios;
 mod os_fios;
 mod os_outros_meios_nao_mudam;
+mod pinceis_da_ponta;
 mod presets_de_fabrica;
 mod presets_dos_meios;
 mod receitas_de_fabrica;

@@ -89,6 +89,9 @@ pub struct DabTilt {
     pub round: f32,
     /// A ponta espelhada no eixo Y dela (o espelho sorteado da marca, L4; o X é este + meia-volta no rotor).
     pub espelho: bool,
+    /// A Grain Depth DESTE dab em fracção da do pincel (a profundidade por dab do grão, L9,
+    /// [`crate::texture::GrainLaw::profundidade_do_dab`]); `1` = a do pincel.
+    pub grao: f32,
 }
 
 impl DabTilt {
@@ -100,6 +103,7 @@ impl DabTilt {
         smooth: 0.0,
         round: 1.0,
         espelho: false,
+        grao: 1.0,
     };
 
     /// A ponta deixa de ser a do pincel (um dos raios mudou).
@@ -226,6 +230,7 @@ impl Tilt {
             smooth: (self.smooth.clamp(0.0, 1.0) * t * ao_comprido).clamp(0.0, 1.0),
             round: 1.0,
             espelho: false,
+            grao: 1.0,
         })
     }
 }

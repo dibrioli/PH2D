@@ -289,6 +289,15 @@ impl PainterTool {
             self.stamp_dabs_clone(dabs, w, h);
             return;
         }
+        // A ponta de PÍXEL (L18): o lote vira o trilho ancorado ANTES do Tiling e da máscara — as cópias da
+        // costura e o pincel da máscara carimbam os mesmos píxeis (`pixel_route`).
+        let ancorados;
+        let dabs = if self.pixel_vivo(&self.paint.brush) && !self.paint.pixel_trilhos.ja_ancorado {
+            ancorados = self.pixel_trilho(dabs, false);
+            &ancorados[..]
+        } else {
+            dabs
+        };
         // Mask paints a GRAYSCALE value (a layer mask) — desaturate then use the normal brush path.
         if matches!(self.paint.paint_mode, PaintMode::Mask) {
             self.stamp_dabs_mask(dabs);
@@ -488,6 +497,11 @@ impl PainterTool {
                 .active()
                 .and_then(|id| self.layers.get(id))
                 .is_some_and(|l| l.alpha_locked);
+        // A ponta de PÍXEL (L18, só no Digital): o carimbo binário dos dabs que o trilho já ancorou.
+        if self.pixel_vivo(&brush) {
+            self.stamp_dabs_pixel(dabs, &brush, alpha_locked);
+            return;
+        }
         let has_shape_image = self.paint.shape_image.is_some();
         // Per-layer-colour Shape (multi-layer, mode on): the z-ordered tinted layers recomposite onto the
         // canvas. Guarded by an ACTIVE Image silhouette so a stale `per_layer_color` flag (e.g. after the

@@ -75,6 +75,7 @@ mod line_speed_probe; // sonda do arremesso (plano 38 W2)
 #[path = "line_speed_tests.rs"]
 mod line_speed_tests; // os gates do Speed Shapes (plano 38 W2)
 pub mod mask_ops;
+pub mod pixel;
 pub mod material;
 pub mod pen;
 #[cfg(test)]
@@ -175,6 +176,7 @@ pub use height::{DepthSource, DrawTo};
 pub use jitter::{ColorJitterScope, apply_color_shift};
 pub use cor_mao::CorDaMao;
 pub use marca::DabJitter;
+pub use pixel::PixelTip;
 pub use mask_ops::{MaskCanvasOp, apply_mask_op};
 pub use pen::{DabRotation, DabTilt, Pen, Tilt as PenTilt};
 pub use ramp_alpha::{
@@ -209,7 +211,7 @@ pub use stroke_method::{JitterUnit, StrokeMethod};
 pub use symmetry::{MirrorAxis, SYMMETRY_MAX_SEGMENTS, SYMMETRY_MIN_SEGMENTS, SymmetrySettings};
 pub use texture::patterns::{render_texture_layer, render_texture_preview};
 pub use texture::{
-    DEG_STEP, Escala, ImageMask, ImageRgb, MAX_TEX_PARAMS, ParamSpec, TEX_ANGLE_MAX_DEG,
+    DEG_STEP, Escala, GrainLaw, GrainMode, ImageMask, ImageRgb, MAX_TEX_PARAMS, ParamSpec, TEX_ANGLE_MAX_DEG,
     TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TEX_TILE_BASE_PX, TexDabBasis,
     TextureKind, TextureMapping, TextureSettings, compose_shape_silhouette_kind, param_escala,
     param_inerte, param_specs, render_shape_preview, render_stencil_preview, stencil_frame,

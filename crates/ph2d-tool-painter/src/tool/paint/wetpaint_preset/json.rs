@@ -7,7 +7,7 @@
 
 use ph2d_painter_brush::line_kind::LineKind;
 use ph2d_painter_brush::{
-    BrushBlend, BrushSpec, ColorJitterScope, CorDaMao, DabJitter, Falloff, FalloffCurve, FalloffPoint, FootprintCurve,
+    BrushBlend, BrushSpec, ColorJitterScope, CorDaMao, DabJitter, GrainLaw, GrainMode, PixelTip, Falloff, FalloffCurve, FalloffPoint, FootprintCurve,
     HandleType, JitterUnit, MAX_BRUSH_BLEND_MODES, MAX_TEX_PARAMS, MirrorAxis, StrokeMethod,
     TextureKind, TextureMapping, TextureSettings,
 };
@@ -67,7 +67,7 @@ fn de_nome<T: Debug + Copy>(v: Option<&Value>, todos: impl IntoIterator<Item = T
 }
 
 fn textura_para_json(t: &TextureSettings) -> Value {
-    json!({
+    let mut v = json!({
         "kind": nome(t.kind),
         "mapping": nome(t.mapping),
         "angle_deg": t.angle_deg,
@@ -79,7 +79,36 @@ fn textura_para_json(t: &TextureSettings) -> Value {
         "stencil_size": par(t.stencil_size),
         "stencil_angle_deg": t.stencil_angle_deg,
         "params": t.params.iter().map(|&p| num(p)).collect::<Vec<_>>(),
-    })
+    });
+    // A lei do grão (L9) só quando não é a de sempre: o preset sem ela é o de antes, ao byte.
+    if t.lei != GrainLaw::NEUTRA
+        && let Some(o) = v.as_object_mut()
+    {
+        o.insert(
+            "lei".to_owned(),
+            json!({
+                "mode": t.lei.mode.to_u8(),
+                "depth_min": num(t.lei.depth_min),
+                "depth_jitter": num(t.lei.depth_jitter),
+                "depth_pressure": t.lei.depth_pressure,
+            }),
+        );
+    }
+    v
+}
+
+/// A lei do grão (L9) do JSON; AUSENTE = a de sempre (nunca a do pincel anterior: o preset sem ela é o de antes).
+fn lei_de_json(v: Option<&Value>) -> GrainLaw {
+    let Some(o) = v.and_then(Value::as_object) else {
+        return GrainLaw::NEUTRA;
+    };
+    let n = GrainLaw::NEUTRA;
+    GrainLaw {
+        mode: GrainMode::from_u8(inteiro(o.get("mode"), n.mode.to_u8())),
+        depth_min: f(o.get("depth_min"), n.depth_min),
+        depth_jitter: f(o.get("depth_jitter"), n.depth_jitter),
+        depth_pressure: booleano(o.get("depth_pressure"), n.depth_pressure),
+    }
 }
 
 fn textura_de_json(v: Option<&Value>, base: TextureSettings) -> TextureSettings {
@@ -112,6 +141,7 @@ fn textura_de_json(v: Option<&Value>, base: TextureSettings) -> TextureSettings 
         stencil_size: f2(o.get("stencil_size"), base.stencil_size),
         stencil_angle_deg: inteiro(o.get("stencil_angle_deg"), base.stencil_angle_deg),
         params,
+        lei: lei_de_json(o.get("lei")),
     }
 }
 
@@ -229,6 +259,7 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
         "jitter_spacing" => num(b.jitter_spacing),
         "spray_count" => json!(b.spray_count),
         "dab_jitter" => marca_para_json(&b.dab_jitter),
+        "pixel" => json!(b.pixel.to_u8()),
         "cor_mao" => json!({
             "secondary": [num(b.cor_mao.secondary[0]), num(b.cor_mao.secondary[1]), num(b.cor_mao.secondary[2])],
             "secondary_jitter": num(b.cor_mao.secondary_jitter),
@@ -379,6 +410,8 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "jitter_spacing" => b.jitter_spacing = f(v, b.jitter_spacing),
         "spray_count" => b.spray_count = inteiro(v, b.spray_count),
         "dab_jitter" => b.dab_jitter = marca_de_json(v, b.dab_jitter),
+        // AUSENTE = desligada (só se grava ligada), nunca a do pincel anterior.
+        "pixel" => b.pixel = PixelTip::from_u8(inteiro(v, 0)),
         "cor_mao" => b.cor_mao = cor_mao_de_json(v, b.cor_mao),
         "input_samples" => b.input_samples = inteiro(v, b.input_samples),
         "stabilizer" => b.stabilizer = f(v, b.stabilizer),
@@ -426,6 +459,8 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
 pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<String, Value> {
     campos
         .iter()
+        // A ponta de píxel (L18) só quando ligada: o preset sem ela é o de antes, ao byte.
+        .filter(|&&c| !(c == "pixel" && b.pixel == PixelTip::Off))
         .map(|&c| ((*c).to_owned(), ler_campo(b, c)))
         .collect()
 }

@@ -51,6 +51,9 @@ pub(crate) struct DualEstado {
     no_fim: bool,
     /// A máscara do traço no Wet Paint (no Digital ela é do plano do traço).
     mascara: Option<Arc<Vec<u8>>>,
+    /// O último ponto REAL do caminho e o rumo dele (unitário) — a 2.ª ponta vai À FRENTE ([`PainterTool::dual_estende`]).
+    ultimo: [f32; 2],
+    rumo: [f32; 2],
 }
 
 /// ⭐ **O recorte da 2.ª ponta no pigmento do Wet** (L6): a silhueta `s` de um dab que pousa, no píxel `(px, py)`,
@@ -123,6 +126,7 @@ impl PainterTool {
         self.paint.dual.tex_rng = self.paint.seed ^ SEMENTE_DO_DUAL.rotate_left(17);
         let mut out = Vec::new();
         m.set_tilt(tilt);
+        (self.paint.dual.ultimo, self.paint.dual.rumo) = (p.pos, [0.0; 2]);
         m.begin(p, &mut out);
         self.paint.dual.pendentes.extend(out);
         self.paint.dual.motor = Some(m);
@@ -139,12 +143,26 @@ impl PainterTool {
         self.paint.dual.motor = Some(m);
     }
 
-    /// O movimento `p`: a dobra da arte relida (como a da 1.ª) e o caminho estendido.
+    /// O movimento `p`: a dobra da arte relida (como a da 1.ª) e o caminho estendido — ⭐ À FRENTE do ponto pelo raio da
+    /// 1.ª, no rumo do último passo (J3, `Pinceis/exames/grafite.md` 3.ª ronda): a 1.ª ponta carimba-se logo a seguir e
+    /// a frente dela chega a `p + raio`; com a máscara só até `p` cada dab do traço LENTO perdia a metade da frente
+    /// (Multiply sobre o vazio) e o rápido (os dabs do segmento todos atrás de `p`) saía 7–12 % mais escuro — o Rebelle
+    /// dá os dois iguais. O caminho dela é o MESMO deslocado no rumo; o que passa do fim não tem a 1.ª por baixo.
     pub(super) fn dual_estende(&mut self, p: StrokePoint, tilt: [f32; 2]) {
         let (Some(d), Some(autorado)) = (self.paint.brush.dual, self.paint.stroke_authored) else {
             return;
         };
-        let vivo = d.pincel(&self.compose_canvas_warp(autorado));
+        let primeira = self.compose_canvas_warp(autorado);
+        let vivo = d.pincel(&primeira);
+        let e = &mut self.paint.dual;
+        let passo = [p.pos[0] - e.ultimo[0], p.pos[1] - e.ultimo[1]];
+        let l = passo[0].hypot(passo[1]);
+        if l > 1e-3 {
+            e.rumo = [passo[0] / l, passo[1] / l];
+        }
+        e.ultimo = p.pos;
+        let frente = primeira.clamped_radius();
+        let p = StrokePoint { pos: [p.pos[0] + e.rumo[0] * frente, p.pos[1] + e.rumo[1] * frente], ..p };
         self.dual_passo(|m, out| {
             m.set_canvas_dab(
                 vivo.radius_px,

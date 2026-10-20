@@ -52,6 +52,13 @@ JANELA 3 = `ph2d-94`. O nome muda se a janela reiniciar (confirme por `ListAgent
    memória (C38) · 4. L7 modos de mistura nos presets (Effect do Rebelle: 7 fotografados) · 5. L4 jitter completo ·
    6. L11 dinâmica de cor · 7. L6 dual brush · 8. L5+L12 fim do traço e velocidade (corte do `stroke.rs`, 696/700) ·
    9. L8 tecto por traço / wet-burnt edges · 10. L19 ponta RGBA · 11. o resto do `03_MOTORES` §5.
+   **J2 (20/10) — as leis medidas das lacunas** ([`06_LEIS_DAS_LACUNAS.md`](06_LEIS_DAS_LACUNAS.md), `c3f27254d4`):
+   ⛔ **L3 refutada como motor**: a lâmina do Rebelle (PEN_ROTATION/PEN_TILT) é FIXA na tela no eixo do preset
+   (`w(θ) = L·|sin(θ−α)| + T·|cos(θ−α)|`, erro 0,8–2,4 px em 26; Flat Oily α 86°, 39×8 px); o P53 errou o EIXO (0°),
+   não a rotação ⇒ L3 vira valor de preset (`dab_angle_deg`, J4), salvo o Knife Smooth (fino nos eixos, largo nas
+   diagonais: medir antes). L7 = fórmulas em sRGB, α por passagem 0,056–0,216. L11 = ruído de cor POR TRAÇO (já
+   existe). L5 raro (o Rebelle não afila o fim; fall-off só em 5/228). L12 só estreita (Krita/MyPaint). 29 fotos do
+   Rebelle eram VELHAS (o `dabber_dabber` é o Bristle Wide) — a refazer pelo agente de fotos da J2.
    Lateral (sem bloquear): Clip Studio 1.13 sob Wine (entra em «trial limited» sem conta; falta matar o pop-up web
    do arranque — `02_ORACULOS.md`); mais presets do ArtRage pelo `lista_artrage.tsv`.
 

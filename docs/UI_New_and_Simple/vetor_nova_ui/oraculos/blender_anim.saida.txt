@@ -1,0 +1,11 @@
+# ORÁCULO blender 5.2.2 (GPL-2.0+, só oráculo — nunca ler o fonte)
+# Corrida: PH2D_GPU=1 bash scripts/ph2d-run.sh timeout 90 blender -b --factory-startup -P docs/UI_New_and_Simple/vetor_nova_ui/oraculos/blender_anim.py
+# Data: 2026-10-19, plano 35 §2. Chaves em f1 e f11. Linha do material: INCONCLUSIVA (material sem objecto, não avaliado).
+[OK] float3 location: f1=(0.0, 0.0, 0.0) f6=(5.0, 0.0, 0.0) f11=(10.0, 0.0, 0.0)
+[OK] bool hide_render: f1=False f6=False f11=True
+[OK] enum display_type: f1='TEXTURED' f6='TEXTURED' f11='WIRE'
+[RECUSA] string name: TypeError: bpy_struct.keyframe_insert() property "name" not animatable
+[OK] mesh vertices[0].co: f1=(-1.0, -1.0, 0.0) f6=(-3.0, -3.0, 0.0) f11=(-5.0, -5.0, 0.0)
+[OK] material diffuse_color RGBA: f1=(0.0, 0.0, 1.0, 1.0) f6=(0.0, 0.0, 1.0, 1.0) f11=(0.0, 0.0, 1.0, 1.0)
+[RECUSA] text body: TypeError: bpy_struct.keyframe_insert() property "body" not animatable
+vert0 avaliado em f6: (-3.0, -3.0, 0.0)

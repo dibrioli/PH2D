@@ -148,10 +148,8 @@ impl PainterTool {
         let pontas: Vec<_> = carimbos
             .iter()
             .map(|d| {
-                let spec = BrushSpec {
-                    radius_px: d.radius_px,
-                    ..brush
-                };
+                // O pincel DESTE dab (`at_dab`): o raio e a pegada deitada — a caneta e a forma da marca (L4).
+                let spec = brush.at_dab(d);
                 let fp = spec.dab_footprint(spec.dab_rotor(d));
                 let basis = ph2d_painter_brush::texture::shape_basis(
                     &spec.shape,
@@ -265,5 +263,51 @@ impl PainterTool {
         let origin = [rect.x as f32, rect.y as f32];
         let alpha = threads_alpha(threads, ink, rect.w as usize, rect.h as usize, origin);
         self.pousa_na_agua(rect, &alpha);
+    }
+}
+
+#[cfg(test)]
+mod pegada_tests {
+    use super::*;
+
+    /// ⭐ **A mancha de carimbos lê a pegada DO DAB** (revisão do bloco C): a redondeza sorteada da marca (L4) e a
+    /// caneta deitada achatam cada carimbo do Style Solid na água como achatam o traço — antes a mancha montava o
+    /// spec do pincel e pintava o disco.
+    #[test]
+    fn a_mancha_le_a_pegada_do_dab() {
+        let mut t = crate::tool::PainterTool::default();
+        t.set_source(vec![255u8; 256 * 256 * 4], 256, 256);
+        t.set_paint_tool_mode("wetpaint");
+        let d = Dab {
+            center: [128.0, 128.0],
+            radius_px: 30.0,
+            coverage: 1.0,
+            color: [0.1, 0.2, 0.8],
+            color_shift: [0.0; 3],
+            rotation: [1.0, 0.0],
+            dir: [1.0, 0.0],
+            arc_len: 0.0,
+            stroke_radius_px: 30.0,
+            step: [0.0, 0.0],
+            ante: None,
+            tilt: None,
+        };
+        let achatado = Dab {
+            tilt: Some(ph2d_painter_brush::DabTilt {
+                round: 0.3,
+                ..ph2d_painter_brush::DabTilt::NEUTRA
+            }),
+            ..d
+        };
+        let soma = |x: &Dab| {
+            t.cobertura_dos_carimbos(std::slice::from_ref(x))
+                .map_or(0u64, |(_, c)| c.iter().map(|v| u64::from(*v)).sum())
+        };
+        let (redondo, chato) = (soma(&d), soma(&achatado));
+        assert!(redondo > 0, "o carimbo pinta");
+        assert!(
+            (chato as f64) < 0.6 * redondo as f64,
+            "a redondeza 0,3 não achatou a mancha: {chato} × {redondo}"
+        );
     }
 }

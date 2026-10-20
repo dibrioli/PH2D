@@ -108,3 +108,42 @@ fn a_pressao_leva_a_cor() {
         assert!((hsv[0] - 0.3).abs() * 360.0 <= 3.0, "a matiz fica");
     }
 }
+
+/// As marcas DELIBERADAS (Drag Dot, Grid Stamp…) cortam todo o sorteio por dab — e a cor pela mão também
+/// (revisão do bloco C): a cor é a do pincel em qualquer pressão.
+#[test]
+fn a_marca_deliberada_nao_leva_a_cor_pela_mao() {
+    let c = CorDaMao {
+        secondary: [1.0, 0.9, 0.1],
+        pressure_secondary: 1.0,
+        // O Drag Dot força a pressão cheia: é o SORTEIO da secundária que o corte tem de calar.
+        secondary_jitter: 1.0,
+        ..CorDaMao::NEUTRA
+    };
+    for m in [crate::StrokeMethod::DragDot, crate::StrokeMethod::GridStamp] {
+        let s = BrushSpec {
+            radius_px: 10.0,
+            color: AZUL,
+            stroke_method: m,
+            cor_mao: c,
+            ..Default::default()
+        };
+        assert!(!m.allows_jitter());
+        let mut st = Stroke::new(s, Dynamics::default(), 1);
+        let (mut all, mut out) = (Vec::new(), Vec::new());
+        let p = |x: f32| StrokePoint {
+            pos: [x, 50.0],
+            pressure: 0.1,
+        };
+        st.begin(p(40.0), &mut out);
+        all.extend_from_slice(&out);
+        for i in 1..20 {
+            st.extend(p(40.0 + 7.0 * i as f32), &mut out);
+            all.extend_from_slice(&out);
+        }
+        st.finish(&mut out);
+        all.extend_from_slice(&out);
+        assert!(!all.is_empty(), "{m:?} pousa a marca");
+        assert!(all.iter().all(|d| d.color == AZUL), "{m:?}: a cor mudou pela mão");
+    }
+}

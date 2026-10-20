@@ -43,10 +43,11 @@ pub enum Dependente {
     MaoSemPressao,
     MarcaSemSpray,
     OpacidadeNaAguada,
+    CorDaMaoSemLeitor,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 29] = [
+    pub const TODOS: [Dependente; 30] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -76,6 +77,7 @@ impl Dependente {
         Dependente::MaoSemPressao,
         Dependente::MarcaSemSpray,
         Dependente::OpacidadeNaAguada,
+        Dependente::CorDaMaoSemLeitor,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -126,6 +128,15 @@ impl Dependente {
             // esmaecem: ver `o_censo_so_encolhe`, a razão do Jitter Rotate.)
             Dependente::MarcaSemSpray => &[ids::PAINTER_MARCA_FIELDS[1], ids::PAINTER_MARCA_FIELDS[7]],
             Dependente::OpacidadeNaAguada => &[ids::PAINTER_MARCA_FIELDS[0]],
+            // A cor pela mão e a secundária (L11): a cor do dab — que a rampa e a Texture Color substituem.
+            Dependente::CorDaMaoSemLeitor => &[
+                ids::PAINTER_MARCA_FIELDS[8],
+                ids::PAINTER_MARCA_FIELDS[9],
+                ids::PAINTER_MARCA_FIELDS[10],
+                ids::PAINTER_MARCA_FIELDS[11],
+                ids::PAINTER_MARCA_FIELDS[12],
+                ids::PAINTER_MARCA_SECONDARY,
+            ],
             Dependente::MaoSemPressao => &[
                 ids::PAINTER_PEN_FIELDS[4],
                 ids::PAINTER_PEN_FIELDS[5],
@@ -170,6 +181,7 @@ impl Dependente {
             Dependente::MaoSemPressao => "panel.painter_layers.inerte.pressure_on",
             Dependente::MarcaSemSpray => "panel.painter_layers.inerte.spray_count_above_one",
             Dependente::OpacidadeNaAguada => "panel.painter_layers.inerte.wash_ignores_dab_opacity",
+            Dependente::CorDaMaoSemLeitor => "panel.painter_layers.inerte.color_owned_by_ramp",
         }
     }
 
@@ -437,6 +449,19 @@ impl PainterTool {
             ),
             // A aguada não lê a cobertura do dab (`WASH_DEPOSIT_PEAK`, a mesma razão do cartão Pen).
             (Dependente::OpacidadeNaAguada, aquarela),
+            // A cor pela mão muda a cor do DAB: uma Color Ramp dona da cor (no carimbo e na aguada) ou a Texture
+            // Color de uma Shape (só nas rotas do carimbo, `stamp_route.rs`) pintam a delas; na água só o depósito
+            // (Paint) pousa a cor do dab — Smear, Blend, Wet, Dry e Blow não (a lei do `GrainDaAgua`).
+            (
+                Dependente::CorDaMaoSemLeitor,
+                (agua && !self.paint.eraser && self.paint.wetpaint.tool != super::WetTool::Paint)
+                    || (!agua
+                        && (self.color_ramp_owner(b.texture.is_active())
+                            != super::ramp_lut::RampLutOwner::None
+                            || (!aquarela
+                                && self.paint.shape_layers.is_color_mode()
+                                && b.shape_silhouette_active(self.paint.shape_image.is_some())))),
+            ),
             // Sem pressão no tamanho (nem na opacidade) a curva dele (e o piso, o tecto, a suavização da mão)
             // não têm canal que leia a pressão. Só nos meios antigos: no Wet a pressão chega também ao fluido.
             (Dependente::CurvaDoTamanhoSemPressao, {

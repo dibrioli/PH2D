@@ -96,8 +96,9 @@ impl Stroke {
         if let (Some(c), true) = (self.por_traco.cor, jitter) {
             (color, color_shift) = c;
         }
-        // A cor pela MÃO e a secundária (L11): a pressão deste dab, o sorteio do fluxo da marca.
-        if self.spec.cor_mao.ativa() {
+        // A cor pela MÃO e a secundária (L11): a pressão deste dab, o sorteio do fluxo da marca. As marcas
+        // deliberadas (Drag Dot, Anchored, Grid) cortam todo o sorteio por dab — e esta também.
+        if jitter && self.spec.cor_mao.ativa() {
             color = self.spec.cor_mao.aplica(color, pressure, &mut self.por_traco.rng);
         }
         // O ângulo do traço (L4): o MESMO rotor em todo dab deste traço.

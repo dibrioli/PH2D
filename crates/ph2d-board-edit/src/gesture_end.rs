@@ -54,7 +54,7 @@ impl Editor {
             Gesture::Create { id: Some(id), .. } | Gesture::Connect { id: Some(id), .. } => {
                 let _ = BoardOp::Delete(id).apply(doc);
             }
-            Gesture::Marquee { base, .. } => self.selection = base,
+            Gesture::Marquee { base, .. } | Gesture::Lasso { base, .. } => self.selection = base,
             _ => {}
         }
         true

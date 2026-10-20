@@ -33,6 +33,7 @@ mod organize;
 mod overlay;
 mod present;
 mod resize;
+mod select_region;
 mod send;
 mod snap;
 mod templates;
@@ -71,6 +72,7 @@ pub use ph2d_board_layout::Move;
 pub use present::{
     SLIDE_MARGIN, TRAVEL_POWER, TRAVEL_SECS, camera_at, first_slide, slide_camera, slides, travel,
 };
+pub use select_region::LASSO_COVER;
 pub use send::Parcel;
 pub use snap::Guide;
 pub use templates::Template;
@@ -126,6 +128,8 @@ pub enum Tool {
     Frame,
     /// O mapa mental (W6): um clique põe a raiz de um mapa novo, já a escrever.
     MindMap,
+    /// W23 B12 — o laço (junto das canetas, o Miro): desenhar à volta selecciona quem fica dentro.
+    Lasso,
 }
 
 /// Modificadores no instante do evento.

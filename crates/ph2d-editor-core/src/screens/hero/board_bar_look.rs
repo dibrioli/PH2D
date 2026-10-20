@@ -75,7 +75,12 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         | Item::Mark(_)
         | Item::TextColor(_)
         | Item::Tool(
-            Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser | Tool::Frame | Tool::MindMap,
+            Tool::Pen(_)
+            | Tool::Eraser { .. }
+            | Tool::Laser
+            | Tool::Lasso
+            | Tool::Frame
+            | Tool::MindMap,
         )
         | Item::Pen(_)
         | Item::Sketch
@@ -624,7 +629,12 @@ pub(super) fn paint_item(
         | Item::Mark(_)
         | Item::TextColor(_)
         | Item::Tool(
-            Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser | Tool::Frame | Tool::MindMap,
+            Tool::Pen(_)
+            | Tool::Eraser { .. }
+            | Tool::Laser
+            | Tool::Lasso
+            | Tool::Frame
+            | Tool::MindMap,
         )
         | Item::Pen(_)
         | Item::Sketch

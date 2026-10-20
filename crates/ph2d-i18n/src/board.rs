@@ -35,6 +35,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.pen.eraser" => "Eraser (E) — erases whole pen strokes",
         "board.pen.eraser_precise" => "Precision eraser — erases only where it passes",
         "board.pen.laser" => "Laser pointer (K) — a trail that fades away",
+        "board.pen.lasso" => {
+            "Lasso — draw around objects to select the ones at least 90% inside (or Ctrl+Alt+drag)"
+        }
         "board.pen.preset" => "Preset",
         "board.pen.color" => "Color of this preset",
         "board.pen.width" => "Thickness",

@@ -77,6 +77,21 @@ pub fn paint_overlay(
         );
         line(scene, &rect, accent, thin);
     }
+    // W23 B12 — o laço: o rasto FECHADO (é a região que conta), com a faixa do rectângulo.
+    if let Some(trail) = overlay.lasso.as_deref().filter(|t| t.len() >= 2) {
+        let mut p = BezPath::new();
+        p.move_to(v * Point::new(trail[0][0], trail[0][1]));
+        for q in &trail[1..] {
+            p.line_to(v * Point::new(q[0], q[1]));
+        }
+        p.close_path();
+        scene.fill_path(
+            &p,
+            &Brush::Solid(token(ColorToken::GraphMarquee, theme)),
+            Affine::IDENTITY,
+        );
+        line(scene, &p, accent, thin);
+    }
     let guide = token(ColorToken::Danger, theme);
     for g in &overlay.guides {
         let mut p = BezPath::new();

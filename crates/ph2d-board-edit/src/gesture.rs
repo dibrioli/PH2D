@@ -10,7 +10,11 @@ use crate::gesture_end::{is_note, undo_ops};
 use crate::guides::Snapper;
 use crate::resize::{axis_angle, drag_box, resize_frame, resized};
 use crate::snap::Guide;
+use crate::select_region::{LASSO_COVER, Region};
 use crate::{Dir, Editor, Frame, Handle, Mods, Pointer, Tool, live};
+
+/// O laço guarda um ponto novo a cada tantos px de ECRÃ (o Excalidraw simplifica a `5/zoom`).
+pub(crate) const LASSO_STEP_PX: f64 = 2.0;
 
 /// O que o carregar pede a quem chama.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,6 +32,12 @@ pub(crate) enum Gesture {
     Marquee {
         start: [f64; 2],
         cur: [f64; 2],
+        base: BTreeSet<ElementId>,
+        active: bool,
+    },
+    /// W23 B12 — o laço: o rasto desenhado (fecha-se sozinho), a selecção de antes (Shift soma).
+    Lasso {
+        trail: Vec<[f64; 2]>,
         base: BTreeSet<ElementId>,
         active: bool,
     },
@@ -141,6 +151,17 @@ impl Gesture {
         }
     }
 
+    pub(crate) fn lasso(&self) -> Option<Vec<[f64; 2]>> {
+        match self {
+            Gesture::Lasso {
+                trail,
+                active: true,
+                ..
+            } => Some(trail.clone()),
+            _ => None,
+        }
+    }
+
     pub(crate) fn guides(&self) -> Vec<Guide> {
         match self {
             Gesture::Move { guides, .. }
@@ -225,6 +246,15 @@ impl Editor {
             }
             Tool::Connector => {
                 self.gesture = Some(self.begin_connect(doc, p, None, None));
+                return Down::Taken;
+            }
+            Tool::Lasso => {
+                self.begin_lasso(p);
+                return Down::Taken;
+            }
+            // W23 B12 — `Ctrl+Alt`+arrastar na Selecção é o laço (o Excalidraw), em cima de tudo.
+            Tool::Select if p.mods.ctrl && p.mods.alt => {
+                self.begin_lasso(p);
                 return Down::Taken;
             }
             Tool::Select | Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser | Tool::MindMap => {}
@@ -360,6 +390,18 @@ impl Editor {
         Down::Taken
     }
 
+    fn begin_lasso(&mut self, p: Pointer) {
+        if !p.mods.shift {
+            self.selection.clear();
+            self.leave_groups();
+        }
+        self.gesture = Some(Gesture::Lasso {
+            trail: vec![p.world],
+            base: self.selection.clone(),
+            active: false,
+        });
+    }
+
     /// O ponteiro andou (com o botão em baixo).
     pub fn pointer_move(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem, p: Pointer) {
         if self.crop_move(doc, p) {
@@ -418,26 +460,23 @@ impl Editor {
                 *cur = p.world;
                 *active |= dist(*start, *cur) > drag;
                 if *active {
-                    let r = rect(*start, *cur);
-                    self.routes.sync(doc);
-                    let routes = &self.routes;
-                    // Os travados ficam de fora (o Miro); quem é de um grupo traz o grupo.
-                    let inside: Vec<ElementId> = doc
-                        .live()
-                        .filter(|el| !el.locked())
-                        .filter(|el| {
-                            let b = match el.connector() {
-                                Some(_) => routes.get(el.id).map_or([f64::NAN; 4], |r| r.bbox),
-                                None => el.aabb(),
-                            };
-                            b[0] >= r[0] && b[1] >= r[1] && b[2] <= r[2] && b[3] <= r[3]
-                        })
-                        .map(|el| el.id)
-                        .collect();
-                    let picked: Vec<ElementId> = inside
-                        .into_iter()
-                        .flat_map(|id| self.pick(doc, id))
-                        .collect();
+                    let picked = self.inside(doc, Region::Rect(rect(*start, *cur)));
+                    self.selection = base.iter().copied().chain(picked).collect();
+                }
+            }
+            Gesture::Lasso {
+                trail,
+                base,
+                active,
+            } => {
+                // Um ponto novo a cada LASSO_STEP_PX de ecrã: abaixo disso não se vê.
+                let last = *trail.last().expect("nasce com o 1.º ponto");
+                if dist(last, p.world) >= LASSO_STEP_PX * p.px {
+                    trail.push(p.world);
+                }
+                *active |= dist(trail[0], p.world) > drag;
+                if *active {
+                    let picked = self.inside(doc, Region::Lasso(trail, LASSO_COVER));
                     self.selection = base.iter().copied().chain(picked).collect();
                 }
             }
@@ -594,7 +633,7 @@ impl Editor {
             return;
         };
         match g {
-            Gesture::Text | Gesture::Marquee { .. } => {}
+            Gesture::Text | Gesture::Marquee { .. } | Gesture::Lasso { .. } => {}
             Gesture::Peel { stack, .. } => self.selection = BTreeSet::from([stack.id]),
             Gesture::Grid { originals, .. } => history.record(undo_ops(doc, &originals), doc),
             g @ Gesture::Connect { .. } => self.connect_up(doc, history, g),

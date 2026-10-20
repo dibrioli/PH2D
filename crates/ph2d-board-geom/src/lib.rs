@@ -6,6 +6,9 @@
 //! geometria que o modo Vector desenha); rectângulo, losango e triângulo são daqui porque o canto
 //! redondo do quadro segue outra regra ([`corner_radius`]).
 
+pub mod cover;
+
+pub use cover::{Lasso, area_cover, length_cover};
 use ph2d_board_model::{Element, Shape, ShapeType, VAlign};
 use ph2d_vec_scene::{ShapeKind, cook};
 use ph2d_vector::{

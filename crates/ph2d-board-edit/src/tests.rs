@@ -976,3 +976,6 @@ mod elbow_drag;
 
 #[path = "caption_tests.rs"]
 mod caption;
+
+#[path = "lasso_tests.rs"]
+mod lasso;

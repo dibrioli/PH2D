@@ -17,6 +17,8 @@ pub struct Overlay {
     pub frame: Option<Frame>,
     /// O rectângulo da selecção por arrasto `[x0, y0, x1, y1]`.
     pub marquee: Option<[f64; 4]>,
+    /// W23 B12 — o rasto do laço (mundo), enquanto se desenha.
+    pub lasso: Option<Vec<[f64; 2]>>,
     /// As guias do encaixe: direitas, inclinadas (os eixos de um rodado), os vãos iguais e as duas do
     /// ângulo a rodar.
     pub guides: Vec<Guide>,
@@ -148,6 +150,7 @@ impl Editor {
                     .map(|f| [f.center[0] + f.w / 2.0, f.center[1] - f.h / 2.0])
             },
             marquee: self.gesture.as_ref().and_then(gesture::Gesture::marquee),
+            lasso: self.gesture.as_ref().and_then(gesture::Gesture::lasso),
             guides: self
                 .gesture
                 .as_ref()

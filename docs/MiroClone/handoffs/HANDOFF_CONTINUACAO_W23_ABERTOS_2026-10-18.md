@@ -3,6 +3,7 @@
 > **Estado em 18/10 (bloco 1 fechado): ver [HANDOFF_CONTINUACAO_W23_BLOCO1_2026-10-18.md](HANDOFF_CONTINUACAO_W23_BLOCO1_2026-10-18.md)**
 > **Estado em 18/10 (bloco 2, rede ao vivo, fechado; o próximo é o bloco 3): ver [HANDOFF_CONTINUACAO_W23_BLOCO2_2026-10-18.md](HANDOFF_CONTINUACAO_W23_BLOCO2_2026-10-18.md)**
 > **Estado em 18/10 (o cartão «Live» separado por ligação, pedido do dono, fechado; o próximo é o bloco 3): ver [HANDOFF_CONTINUACAO_W23_CARTAO_LIVE_2026-10-18.md](HANDOFF_CONTINUACAO_W23_CARTAO_LIVE_2026-10-18.md)**
+> **Estado em 20/10 (bloco 6 construído: B12 laço, B13 QuickShape na caneta, B14 menções e avisos, B15 Copy/Move to board; cena 28 à espera do smoke do dono): ver [HANDOFF_CONTINUACAO_W23_BLOCO6_2026-10-20.md](HANDOFF_CONTINUACAO_W23_BLOCO6_2026-10-20.md)**
 > **Estado em 20/10 (bloco 5 fechado: A11 e B9; smoke OK; o próximo é o bloco 6 — B12, B13, B14 e o B15 pedido pelo dono — numa janela nova): ver [HANDOFF_CONTINUACAO_W23_BLOCO5_2026-10-20.md](HANDOFF_CONTINUACAO_W23_BLOCO5_2026-10-20.md)**
 > **Estado em 20/10 (bloco 4 fechado: B6 e B7 feitos, B10 e B11 já estavam feitos na W16; o próximo é o bloco 5): ver [HANDOFF_CONTINUACAO_W23_BLOCO4_2026-10-20.md](HANDOFF_CONTINUACAO_W23_BLOCO4_2026-10-20.md)**
 > **Estado em 19/10 (B5(4) desfazer das abas feito, mutações do B5(2)/B5(4) corridas; o próximo é o smoke da cena 27, depois o bloco 4): ver [HANDOFF_CONTINUACAO_W23_B5_4_2026-10-19.md](HANDOFF_CONTINUACAO_W23_B5_4_2026-10-19.md)**

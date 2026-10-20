@@ -37,6 +37,12 @@ JANELA 3 = `ph2d-94`. O nome muda se a janela reiniciar (confirme por `ListAgent
 4. **O oráculo que manda** é o do dono (Rebelle) quando existe; ArtRage/MyPaint/Krita servem as famílias que o
    Rebelle não tem (caneta técnica, monoline, smudge de dedo, rolo, elementos). GIMP fora (dono). Procreate: só doc.
 
+5. **A cauda do taper VOLTA, só no Digital (J2, 20/10, `ed926fa0eb`)** — contra a ordem de 10/08 (*«deixe o ajuste
+   apenas para o início do traço»*). Porquê: os três preços que a tiraram já não existem (o traço pinta num PLANO
+   próprio: sem restaurar a tela, sem tocar no Impasto, UM desfazer; o controlo só aparece no Digital, onde age) e
+   as canetas do catálogo (Procreate Technical Pen/Monoline/Script, C-4 C-6 D-1 D-2) afilam as duas pontas.
+   ⚠️ **Perguntar no smoke do dono** — se ele a recusar, os presets que a usam perdem a cauda e o cartão a linha.
+
 ## A FILA (por ordem)
 
 **JANELA 2 — motores** (lista e custos em `03_MOTORES.md` §5; o que a bancada mediu sobe para o topo):

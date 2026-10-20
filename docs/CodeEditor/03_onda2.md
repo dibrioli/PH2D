@@ -141,3 +141,16 @@ seguinte; o resto entra em lotes.
    [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-20_ONDA2_AJUDA.md)). Depois: `/pd-linha-fechar`.
    **Oráculo corrido e plano escrito (20/10): [04_pagina_de_ajuda.md](04_pagina_de_ajuda.md)** — a porta é nossa
    (`ph2d_code_help::resolve`), não o hover do assistente (sonda: `s:upper`, `table.insert`, `math.pi` não dizem a página).
+6. **A API que FUNCIONA (decisão do dono, 20/10: «vou querer consertar as funções»)** — as funções da API que
+   hoje não chegam à cena (medido ao escrever `api_help.rs`; a lista e o mecanismo em
+   [04_pagina_de_ajuda.md §9](04_pagina_de_ajuda.md#9-achados-do-runtime-ao-escrever-o-texto-20-10-medidos-com-a-bancada-censocorre)):
+   (a) `ph2d.wait` — ninguém corre o `Scheduler`; num gancho dá «attempt to yield across…»; (b) `ph2d.find_by_name`
+   — ninguém chama `provide_name`, devolve sempre `nil`; (c) `spawn` / `spawn_named` / `despawn` / `attach_script`
+   — ninguém drena a fila (`drain_spawns`), e aos 1024 pedidos cada chamada é erro que pára o objecto; (d) `ph2d.get`
+   só lê objectos com script (`set` escreve em qualquer um); (e) `ph2d.input` só vê o comando de jogo (teclado e rato
+   não chegam); (f) estado lateral: `state_set(e, k, nil)` deixa a chave, listas voltam com chaves de texto, sem
+   como tirar um campo, sobrevive ao rebobinar; (g) por MEDIR: o `loadstring` escreve globais num ambiente partilhado
+   (dois scripts reais); `string.rep("x", 1e10)` devolve `""`. Cada cura muda o texto da página (`api_help.rs`) e o
+   `doc` da `api_table` no MESMO commit — o gate `toda_entrada_da_api_tem_ajuda` e o `censo` seguram-nos. Onda nova,
+   DEPOIS do smoke do dono da cena 5; plano + oráculo (Godot/Roblox: `await`/`wait`, `get_node`, `instantiate`,
+   `Input`) antes de codar. A linha só fecha depois dela (ou o dono decide fechar antes).

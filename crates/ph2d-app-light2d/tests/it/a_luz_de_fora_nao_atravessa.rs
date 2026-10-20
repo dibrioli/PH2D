@@ -146,11 +146,12 @@ fn a_luz_de_fora_nao_atravessa_um_opaco_da_vista() {
 
 /// A cena 5 inteira no caminho do app, dos dois lados da troca de oitava do texel (0,0312 → 0,0156: os
 /// refletores saem da grade e o rebote deles passa ao entorno), contra a MESMA vista com a grade esticada
-/// sobre a sala. Medido (handoff W6g §33): na sombra −1…−14 %, nas faces −3…−11 % (a soma da W5d dava
-/// +69 % / +141 % na sombra).
+/// sobre a sala. Medido (handoff W6g §35): o pior −4,7 % (a sombra abaixo da base, vermelho, h = 3,8; a
+/// grossura do entorno 8×: 1× dá ±0,4 %); com a 1.ª passagem do entorno a mascarar a vista, −13,7 % (o
+/// laranja do Disco a 67–76 %); a soma da W5d dava +69 % / +141 % na sombra.
 #[test]
 fn a_cena_5_na_troca_de_oitava_segue_a_grade_esticada() {
-    const TOL: f64 = 0.2;
+    const TOL: f64 = 0.07;
     let Some(gpu) = gpu() else {
         eprintln!("sem GPU — saltado");
         return;

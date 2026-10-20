@@ -14,12 +14,19 @@ pub(crate) struct Fora<'a> {
 
 impl Holografica {
     /// ⭐ W5d — o miolo (texels da grade) cuja emissão este solver não recolhe; `None` = nenhum.
+    /// ⭐ §34.3 (handoff W6g): pela borda só a 2.ª passagem (o arquivo, o miolo VÁCUO) o usa — a 1.ª é a
+    /// fonte do rebote dos refletores de fora, que recebem também a luz que a vista emite e devolve.
     pub(crate) fn miolo(&mut self, queue: &wgpu::Queue, miolo: Option<[f32; 4]>) {
         let m = miolo.unwrap_or(SEM_MIOLO);
+        let borda = self.janela_max.is_some();
         let janelas = self
             .janela_max
             .map(|max| hrc::janelas_do_miolo(self.grade, m, max));
-        if self.uniformes.first().is_some_and(|u| u.miolo == m)
+        if self
+            .uniformes
+            .iter()
+            .find(|u| !borda || u.arquivo[3] == 1)
+            .is_some_and(|u| u.miolo == m)
             && janelas.is_none_or(|j| j == self.janelas)
         {
             return;
@@ -29,7 +36,11 @@ impl Holografica {
             self.bases = hrc::bases_na_janela(self.grade, j).0;
         }
         for u in &mut self.uniformes {
-            u.miolo = m;
+            u.miolo = if borda && u.arquivo[3] == 0 {
+                SEM_MIOLO
+            } else {
+                m
+            };
             if self.janela_max.is_some() {
                 let q = u.quadrante as usize;
                 u.janela = self.janelas[q];

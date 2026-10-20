@@ -14,7 +14,8 @@ impl Solver {
 
     /// ⭐ W5d — este solver é o ENTORNO de outro (a luz que vem de FORA da grade daquele): a emissão
     /// dentro de `miolo_m` (`[x0, y0, x1, y1]`, metros — a grade da vista) não entra nas cascatas
-    /// dele. Só a holográfica sabe; devolve se o aplicou.
+    /// dele. ⭐ §34.3: com o [`Config::arquivo_da_borda`] só o arquivo o mascara (a 1.ª passagem, a fonte
+    /// do rebote de fora, vê a vista inteira). Só a holográfica sabe; devolve se o aplicou.
     pub fn mascarar_miolo(&mut self, gpu: &GpuContext, miolo_m: Option<[f64; 4]>) -> bool {
         let g = self.cfg.grade;
         let Some(h) = self.hrc.as_mut() else {

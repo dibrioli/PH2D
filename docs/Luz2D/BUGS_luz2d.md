@@ -124,4 +124,8 @@
 - **Smoke do dono (20/10, [foto 1](smoke/2026-10-20_bug6_cura_foto1.png), [foto 2](smoke/2026-10-20_bug6_cura_foto2.png)):
   «sombra ok. laranja (influência do objeto superior) diminui».** A sombra está curada; o que sobra é o REBOTE do
   refletor de cima quando ele sai da grade da vista e passa ao entorno — o mesmo −10…−14 % de vermelho que a régua
-  já media nas faces e na sombra contra a grade esticada (handoff W6g §34.2). Aberto: o mecanismo dessa perda.
+  já media nas faces e na sombra contra a grade esticada (handoff W6g §34.2).
+- **O laranja curado (20/10, handoff W6g §35):** a 1.ª passagem do entorno (a fonte do rebote dos refletores de fora)
+  ainda mascarava a vista — herança da soma da W5d — e o Disco recebia só metade da luz que a vista lhe devolve. Pela
+  borda só o arquivo leva a vista em vácuo; a parte do Disco 0,66–0,76 → 0,90–1,03 da esticada, a cena 5 −14 % →
+  +1/−5 % (o resto é a grossura 8× do entorno). Gate apertado a ±7 % com prova de mutação. Por fazer: o smoke do dono.

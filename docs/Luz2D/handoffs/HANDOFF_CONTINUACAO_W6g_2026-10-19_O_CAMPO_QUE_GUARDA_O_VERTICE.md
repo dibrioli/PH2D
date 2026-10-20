@@ -965,3 +965,62 @@ por canal). Continuam verdes: `o_rebote_de_fora_da_grade` (com o `o_entorno_nao_
 | O arquivo de todos os níveis na grade inteira do entorno | +8…+19 % de memória (814 MB no 4K Alta); a janela dá +0,6…+3,2 %. |
 | O laço que procura o nível no shader | +0,19 ms na `c2` da vista em 1920×1080 pelo mesmo resultado; o nível vem da CPU. |
 | Esperar que guardar a média (R / arco) poupe tempo | Medido: o tempo não muda — o custo é a quantidade de cones que saem da grade, não a leitura. |
+
+## 35. O laranja do refletor de cima (§34.3) — bissectado e curado (20/10)
+
+Régua `bug6_o_laranja` em `target/bug6/bug6_regua.rs` (fora do git, `#[ignore]`; para correr, copiá-la para
+`tests/it/` e pôr `mod bug6_regua;` no `main.rs`), logs `target/bug6/laranja_{1,2}.log` (antes / depois). Cena 5,
+h = 3,8, a vista `[-9, -5, 1, 1]` m: o Disco (y 1,0…2,4) fica TODO fora dela, encostado à borda de cima. Três
+secções, nada do produto mexido: S1 a parte do Disco (cena − sem o Disco) vista × esticada × gabarito, o entorno
+8×/4×/2×/1×; S2 a FONTE do rebote na face acesa do Disco; S3 o Disco trocado por um EMISSOR (só a leitura pela borda).
+
+| Suspeito (§34.3) | Medido | Veredito |
+|---|---|---|
+| (b) o nível capado / o cone-pai na leitura pela borda | S3: vista = esticada a ±0,4 % com o entorno 1×; +2…+11 % a 8× (a cavalo ou todo fora) | não perde luz |
+| (c) o gabarito | S1: a parte do Disco na esticada = gabarito em 5 de 6 pontos (0,96/0,99 · 0,653/0,646 · 0,154/0,151); a sombra à esquerda da haste é o raio rasante na quina da haste (0,125 contra 0,0185 — o +38 % do §30, à parte) | a esticada está certa |
+| **(a) a fonte do rebote no entorno** | S1: a parte do Disco na vista = **0,66–0,76** da esticada em TODO fator (8× a 1×); S2: a luz que a face recebe no entorno 0,66 contra 0,94 (esticada) e 0,96 (gabarito com rebotes; direta 0,385) | **é este** |
+
+**O mecanismo:** a 1.ª passagem do entorno (a c0 dele, que só alimenta o rebote DELE) mascarava o miolo — herança
+da W5d, onde essa c0 se somava à da vista e a máscara evitava contar a vista duas vezes. Pela borda essa soma não
+existe; a máscara só escondia dos refletores de fora a luz que a vista emite e DEVOLVE (a cruz branca junto à
+lâmpada, o L): o Disco recebia metade do indireto (0,27 de 0,57).
+
+**A cura** (`Holografica::miolo`, `solver_hrc_entorno.rs`): com o arquivo da borda, só a 2.ª passagem (o arquivo,
+`arquivo.w = 1`, o miolo VÁCUO) leva o miolo; a 1.ª fica `SEM_MIOLO`. A soma da W5d (`PH2D_LIGHT2D_BORDA=0`) continua
+a mascarar. Custo: nenhum (a mesma traça; um ramo). Não conta duas vezes: o arquivo, que é o que a vista lê, segue
+com a vista em vácuo.
+
+| Depois (vermelho, contra a esticada) | 8× (o padrão) | 4× | 2× | 1× |
+|---|---|---|---|---|
+| sombra à esquerda da haste | +1,4 % (era −13,7) | −5,1 % | −2,1 % | +0,3 % |
+| sombra abaixo da base | −4,7 % (era −10,5) | −1,4 % | −0,3 % | 0,0 % |
+| faces de cima | −4,1…−4,2 % (era −10) | −1,2…−1,4 % | −0,4…−0,6 % | 0,0…+0,1 % |
+| a parte do Disco (razão) | 0,90–1,03 (era 0,66–0,76) | 0,91–0,97 | 0,96–0,97 | 1,00 |
+| a face do Disco recebe (S2, −90°) | 0,884 (era 0,659; esticada 0,942) | | | |
+
+O resto a 8× (−4 %) é a grossura do entorno e aparece igual SEM o Disco (−3…−4 %: os outros refletores) — é o
+preço do fator 8×, não deste defeito. O app (`bug6_a_grade_esticada`, `LuzDoQuadro`): −14/−11/−10 % → +1/−5/−4 %.
+
+**Gate:** `a_cena_5_na_troca_de_oitava_segue_a_grade_esticada` aperta a tolerância 0,2 → **0,07** (medido o pior
+−4,7 %). **Prova de mutação** (M7 = a 1.ª passagem volta a mascarar, `if false && borda`; árvore reposta): o gate
+morre a −13,7 % (`target/bug6/mutacao_m7.log`); controlo verde depois de repor (`mutacao_m7_controlo.log`).
+Continuam verdes (lote único, `laranja_2.log`): `a_luz_de_fora_nao_atravessa::*` (3),
+`o_rebote_de_fora_da_grade::*` (2, o «não conta duas vezes» a 0,000 %), `a_luz_nao_muda_com_a_vista::*` (6).
+
+## ⛔ Recusas MEDIDAS (§35)
+
+| Recusa | Porquê |
+|---|---|
+| Curar o laranja na leitura pela borda (o nível, o cone-pai) | Com um emissor no lugar do Disco a borda dá a esticada a ±0,4 % (1×). |
+| Usar o gabarito `Rebote` como teto na sombra junto à haste | Lá ele diverge da esticada pela quina rasante (0,0185 contra 0,125); nos outros 5 pontos concorda. |
+| Afinar o entorno (8× → 4×) para os −4 % restantes, nesta rodada | É a grossura de TODOS os refletores de fora (igual sem o Disco); a memória cresce com o quadrado — decisão de custo à parte (§36.2). |
+
+## 36. ABERTO (por ordem — substitui o §34)
+
+1. **Smoke do dono** do laranja (a cena 5, o zoom que troca a oitava — as fotos de 20/10 como comparação).
+2. Os −4 % que ficam a 8× (a grossura do entorno sobre todos os refletores de fora; 4× → −1,3 %): medir a memória e
+   o tempo do entorno 4× nos tetos da placa antes de propor.
+3. O custo da borda (o §34.1): a `c2` da vista +0,36 ms / o entorno +0,32 ms em 1920×1080.
+4. O emissor encostado à borda a 8× lê +2…+11 % acima da esticada (S3) — pela grossura do arquivo; por medir se pesa.
+5. A lei W6d com `DISTANTES` no relógio (o §20.2). 6. A anomalia da r5b (§12). 7. A família (b) (37–38). 8. Os
+   zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.

@@ -435,3 +435,60 @@ fn a_sprite_goes_with_its_scene_pose() {
         "um paralelogramo dentro da caixa"
     );
 }
+
+/// ⭐⭐ A11 — o ciclo da escolha no MUNDO da cena (o que a fase da shell fazia sem gate de comportamento):
+/// a linha clicada dentro da selecção leva a selecção inteira, pela ordem; um objecto APAGADO depois do
+/// pedido conta como «Deleted object» sem chegar a ser lido; um sem nome leva o nome do tipo; e o que
+/// existe entra no quadro com o aviso a nomear o que ficou de fora.
+#[test]
+fn the_choice_reads_the_scene_counts_the_deleted_and_names_the_nameless() {
+    use ph2d_component_desc::ObjectKind;
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let w = sim.world_mut();
+    let hero_e = w.spawn(ph2d_ecs::Name::new("Hero")).id();
+    let nameless = w.spawn(ph2d_ecs::Name::new("  ")).id();
+    let gone = w.spawn(ph2d_ecs::Name::new("Old")).id();
+    w.despawn(gone);
+    let alone = w.spawn(ph2d_ecs::Name::new("Alone")).id();
+    let selected = [hero_e, gone, nameless].map(|e| e.to_bits());
+    let mut read = Vec::new();
+    let items = gather(
+        sim.world(),
+        nameless.to_bits(),
+        &selected,
+        |_| ObjectKind::Flip,
+        |e, kind, name| {
+            read.push(e);
+            assert_eq!(kind, ObjectKind::Flip);
+            if e == hero_e {
+                Sent::new(name, Some(red(4, 4)))
+            } else {
+                Sent::missing(name, "board.send.unreadable")
+            }
+        },
+    );
+    assert_eq!(read, vec![hero_e, nameless], "o apagado não se lê");
+    let names: Vec<&str> = items.iter().map(|s| s.name.as_str()).collect();
+    let unnamed = tr("board.send.unnamed.flip");
+    assert_eq!(names, vec!["Hero", tr("board.send.deleted"), unnamed]);
+    assert_eq!(items[1].content, Err("board.send.gone"));
+    let only = gather(
+        sim.world(),
+        alone.to_bits(),
+        &selected,
+        |_| ObjectKind::Flip,
+        |_, _, n| Sent::new(n, None),
+    );
+    assert_eq!(only.len(), 1, "fora da selecção vai só a linha clicada");
+    assert_eq!(only[0].name, "Alone");
+
+    let mut t = T::new(&["Moodboard"]);
+    let b = t.board_ids()[0];
+    let left = deliver(&mut t.hero, Some(b.0), items).unwrap().1.unwrap();
+    let names = format!("{}, {unnamed}", tr("board.send.deleted"));
+    assert_eq!(
+        left.message,
+        tr_with("board.send.left_out", &[("names", &names)])
+    );
+    assert_eq!(t.images(b).len(), 1, "o que existe entra");
+}

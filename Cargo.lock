@@ -5070,6 +5070,7 @@ dependencies = [
  "ph2d-board-sync",
  "ph2d-board-video",
  "ph2d-component-desc",
+ "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-gpu",
  "ph2d-host",

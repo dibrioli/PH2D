@@ -7,7 +7,7 @@
 //! com o tamanho que a régua lhes dá; a sprite com os píxeis dela.
 
 use super::*;
-use ph2d_app_board::send_to_board::{Content, Sent, ask, deliver, posed_sprite, targets};
+use ph2d_app_board::send_to_board::{Content, Sent, ask, deliver, gather, posed_sprite};
 use ph2d_component_desc::ObjectKind;
 use ph2d_editor_core::screens::hero::send_to_board::goes_to_board;
 use ph2d_i18n::tr;
@@ -51,16 +51,8 @@ impl crate::App {
         // W16 — a linha clicada DENTRO da selecção leva a selecção inteira (a ordem dela).
         let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
         let ppm = hero.project.pixels_per_meter;
-        let mut items = Vec::with_capacity(selected.len().max(1));
-        for bits in targets(clicked.to_bits(), &selected) {
-            let e = ph2d_ecs::Entity::from_bits(bits);
-            if world.get_entity(e).is_err() {
-                items.push(Sent::gone());
-                continue;
-            }
-            let name = world.get::<ph2d_ecs::Name>(e).map(|n| n.0.as_str());
-            let name = Sent::name_of(name, kind(e));
-            let sent = match kind(e) {
+        let items = gather(world, clicked.to_bits(), &selected, kind, |e, k, name| {
+            match k {
                 ObjectKind::Image => {
                     // PRECISION-READONLY: LÊ os pixels e manda uma CÓPIA ao quadro (8 bits, o formato
                     // das imagens do quadro); a sprite da cena nunca é escrita de volta.
@@ -131,9 +123,8 @@ impl crate::App {
                     },
                 },
                 _ => Sent::missing(name, "board.send.wrong_kind"),
-            };
-            items.push(sent);
-        }
+            }
+        });
         if let Ok((_, Some(t))) | Err(t) = deliver(hero, board, items) {
             gfx.toasts.push(t);
         }

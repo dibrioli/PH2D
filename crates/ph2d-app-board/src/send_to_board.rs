@@ -195,6 +195,30 @@ pub fn targets(clicked: u64, selected: &[u64]) -> Vec<u64> {
     }
 }
 
+/// ⭐ A11 — o que a escolha leva, lido no MUNDO da cena: os alvos ([`targets`]); um apagado entre o pedido e
+/// a escolha conta como «Deleted object» ([`Sent::gone`]); cada um dos outros leva o nome dele (ou o do tipo,
+/// [`Sent::name_of`]) e o conteúdo que `read` lê na família do objecto. `kind` diz o tipo de uma entidade.
+pub fn gather(
+    world: &ph2d_ecs::World,
+    clicked: u64,
+    selected: &[u64],
+    kind: impl Fn(ph2d_ecs::Entity) -> ObjectKind,
+    mut read: impl FnMut(ph2d_ecs::Entity, ObjectKind, String) -> Sent,
+) -> Vec<Sent> {
+    targets(clicked, selected)
+        .into_iter()
+        .map(|bits| {
+            let e = ph2d_ecs::Entity::from_bits(bits);
+            if world.get_entity(e).is_err() {
+                return Sent::gone();
+            }
+            let k = kind(e);
+            let name = world.get::<ph2d_ecs::Name>(e).map(|n| n.0.as_str());
+            read(e, k, Sent::name_of(name, k))
+        })
+        .collect()
+}
+
 /// ⭐ W16 — a sprite com a POSE da cena: `m` = a parte linear do afim de MUNDO dela (`[a, b, c, d]`,
 /// colunas `x = (a, b)`, `y = (c, d)`; o mundo tem y para CIMA), `size` = o tamanho dela no mundo e
 /// `ppm` = os píxeis da régua do editor (a escala do vector e do Flip), `flip` = o espelho da PRÓPRIA

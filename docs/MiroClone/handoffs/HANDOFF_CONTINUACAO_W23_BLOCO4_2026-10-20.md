@@ -37,7 +37,7 @@
 
 ## 4. ABERTO (nesta ordem)
 
-1. Smoke do dono do bloco 4 (§5).
+1. ~~Smoke do dono do bloco 4 (§5)~~ ✅ OK 20/10.
 2. Bloco 5 (B9, A11) · bloco 6 (B12, B13, B14 com `/pd-feature`) ⇒ janela nova.
 3. `textAlignVertical` (top/bottom do Miro): por medir, só existe na API — sem UI nem oráculo.
 4. Perguntas ao dono sem resposta: YouTube Premium; «Rascunho/Final» e a letra importada.

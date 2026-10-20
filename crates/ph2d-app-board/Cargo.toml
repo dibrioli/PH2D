@@ -17,6 +17,8 @@ ph2d-board-model = { path = "../ph2d-board-model" }
 ph2d-board-edit = { path = "../ph2d-board-edit" }
 # W17 — o tipo de um objecto da cena dá o nome dele nos avisos do «Send to board…» quando não tem nome.
 ph2d-component-desc = { path = "../ph2d-component-desc" }
+# A11 — `send_to_board::gather` lê os alvos no mundo da cena (a fundação; a família do tipo entra por parâmetro).
+ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-tokens = { path = "../ph2d-tokens" }

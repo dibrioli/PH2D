@@ -686,6 +686,21 @@ fn a_familia_do_inteiro_satura() {
         ("pcall(string.sub, 'abc', 0/0)", "false"),
         ("#string.rep('ab', 3)", "6"),
         ("table.remove({1, 2, 3})", "3"),
+        // Os que já respondem com erro honesto (a classificação do 05 §6, medida e não lida).
+        ("pcall(table.insert, {}, 2^32 + 1, 'x')", "false"),
+        ("pcall(table.insert, {}, 1e10, 'x')", "false"),
+        ("#(function() local t = {} table.insert(t, 2^40) return t end)()", "1"),
+        // Além da lista o Luau devolve nil e não tira nada — dentro do alcance (10) e fora dele igual.
+        ("(function() local t = {1, 2, 3} table.remove(t, 1e10) return #t end)()", "3"),
+        ("pcall(table.find, {1}, 1, 1e10)", "false"),
+        ("pcall(bit32.extract, 1, 2^32 + 1)", "false"),
+        ("pcall(bit32.replace, 1, 1, 2^32 + 1)", "false"),
+        ("pcall(table.create, 2^32 + 3)", "false"),
+        ("pcall(buffer.create, 2^32 + 3)", "false"),
+        ("pcall(select, 2^32 + 1, 'a')", "false"),
+        ("pcall(tonumber, '10', 2^32 + 10)", "false"),
+        ("pcall(utf8.char, 2^32 + 65)", "false"),
+        ("pcall(string.char, 2^32 + 65)", "false"),
     ];
     let lua = host.runtime().lua();
     let mut erros = Vec::new();
@@ -705,3 +720,4 @@ fn a_familia_do_inteiro_satura() {
     }
     assert!(erros.is_empty(), "{}", erros.join("\n"));
 }
+

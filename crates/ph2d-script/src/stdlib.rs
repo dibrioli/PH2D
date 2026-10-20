@@ -5,7 +5,7 @@
 //!    (`luai_num2int(i, d) ((i) = (int)(d))`, `lnumutils.h`): fora de ±2³¹ o x86 dá `INT_MIN` e a
 //!    resposta MENTE (`string.sub('abcdef', 2, 1e10) == ""`, `#string.rep('x', 1e10) == 0`); o ARM
 //!    satura e acerta. As funções abaixo saturam o argumento antes do Luau o ver — a resposta do ARM
-//!    em toda máquina. As que já respondem com erro honesto ficam como estão (censo:
+//!    em toda máquina; o lugar de um `table.insert` não (saturá-lo seria outra mentira): é erro. As que já respondem com erro honesto ficam como estão (censo:
 //!    `scene_api_tests::a_familia_do_inteiro_satura`). ⚠️ O portão corre cada caso como SCRIPT: no
 //!    ambiente global o compilador usa a versão interna da função (`FASTCALL`) e salta a cura; no
 //!    ambiente de um script, que é onde o código do artista corre, não.
@@ -16,7 +16,7 @@
 
 use mlua::{Lua, Table, Value};
 
-const SATURATE_LUAU: &str = r#"
+const SATURATE_LUAU: &str = r##"
 local MAXI, MINI = 2147483647, -2147483648
 local function sat(v)
   if type(v) ~= "number" then return v end
@@ -43,6 +43,17 @@ t.unpack = function(x, i, j) return tunpack(x, sat(i), sat(j)) end
 t.concat = function(x, sep, i, j) return concat(x, sep, sat(i), sat(j)) end
 t.move = function(a1, f, e, to, a2) return move(a1, sat(f), sat(e), sat(to), a2) end
 t.remove = function(x, pos) if pos == nil then return remove(x) end return remove(x, sat(pos)) end
+-- O lugar de um insert não satura: pôr em 2^31-1 o que foi pedido em 2^32+1 seria outra mentira.
+local insert = t.insert
+t.insert = function(x, ...)
+  if select("#", ...) >= 2 then
+    local pos = ...
+    if type(pos) == "number" and (pos ~= pos or pos > MAXI or pos < MINI) then
+      error("invalid argument #2 to 'insert' (position out of bounds)", 2)
+    end
+  end
+  return insert(x, ...)
+end
 local ulen, codepoint, offset = u.len, u.codepoint, u.offset
 u.len = function(x, i, j) return ulen(x, sat(i), sat(j)) end
 u.codepoint = function(x, i, j) return codepoint(x, sat(i), sat(j)) end
@@ -52,7 +63,7 @@ m.ldexp = function(x, e) return ldexp(x, sat(e)) end
 local lrotate, rrotate = b.lrotate, b.rrotate
 b.lrotate = function(x, n) return lrotate(x, rot(n)) end
 b.rrotate = function(x, n) return rrotate(x, rot(n)) end
-"#;
+"##;
 
 /// A chave no registo da VM da função que liga o `loadstring` a um ambiente.
 const BIND_KEY: &str = "ph2d.loadstring_bind";

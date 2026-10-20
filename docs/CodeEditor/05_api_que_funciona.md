@@ -184,9 +184,11 @@ passou a correr o registo do produto, o `sync_instances` e o `vec sync` em cada 
 
 **A família do inteiro, classificada** (Luau 736, `luaL_checkinteger`/`optinteger` lidos no fonte vendido):
 saturadas — `string.sub/byte/rep/find/match/gsub/unpack`, `table.unpack/concat/move/remove`,
-`utf8.len/codepoint/offset`, `math.ldexp`, `bit32.lrotate/rrotate` (módulo 32); honestas como estão (erro fora do
-alcance) — `table.create`, `buffer.*`, `select`, `tonumber(base)`, `utf8.char`, `string.char`, `table.insert`,
-`table.find`, `bit32.extract/replace`; `math.random(1, 2^40)` dá erro com mensagem enganadora («interval is
+`utf8.len/codepoint/offset`, `math.ldexp`, `bit32.lrotate/rrotate` (módulo 32) — o `table.remove` além da lista dá
+`nil` e não tira nada, igual dentro e fora do alcance (medido); o LUGAR do `table.insert` não satura (pôr em 2³¹−1 o
+que foi pedido em 2³²+1 seria outra mentira — medido: aceitava e escrevia noutro sítio) ⇒ erro; honestas como estão
+(erro fora do alcance, MEDIDO no gate) — `table.create`, `buffer.create`, `select`, `tonumber(base)`, `utf8.char`,
+`string.char`, `table.find`, `bit32.extract/replace`; `math.random(1, 2^40)` dá erro com mensagem enganadora («interval is
 empty») e `math.randomseed` satura em silêncio (só a semente) — **declarados**.
 
 **Diferenças declaradas:** a roda do rato e o texto escrito (IME) não chegam ao jogo; o teclado que chega ao

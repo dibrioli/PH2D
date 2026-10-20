@@ -258,3 +258,16 @@ fn sem_o_balao_a_arvore_chega_onde_pode() {
     assert_eq!(q("upper", Some("s"), true), None);
     assert_eq!(q("local", None, false), None);
 }
+
+/// Um `:` com qualificador e SEM balão é um método de um VALOR, não de uma biblioteca: sem página
+/// (`math:floor` não abre a `math`). Mutação sobrevivente do fecho de 20/10.
+#[test]
+fn um_metodo_sem_balao_nao_tem_pagina() {
+    let q = Query {
+        word: "floor",
+        qualifier: Some("math"),
+        colon: true,
+        hover: None,
+    };
+    assert_eq!(resolve(&q), None);
+}

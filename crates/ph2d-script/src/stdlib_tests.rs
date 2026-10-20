@@ -152,3 +152,23 @@ fn a_familia_do_inteiro_satura() {
     }
     assert!(erros.is_empty(), "{}", erros.join("\n"));
 }
+
+/// ⛔ HR-9: o `loadstring` de um script recusa BYTECODE de verdade (compilado aqui pelo `Compiler`),
+/// porque o `luau_load` não o confere. Sem o `ChunkMode::Text` o mlua tomava-o por bytecode e
+/// carregava-o (mutação sobrevivente do fecho de 20/10: o caso com `\t` não era bytecode válido).
+#[test]
+fn o_loadstring_de_um_script_recusa_bytecode() {
+    let host = ScriptHost::new().expect("vm");
+    let lua = host.runtime().lua();
+    let env = lua.create_table().expect("tabela");
+    crate::stdlib::bind_env(lua, &env).expect("bind");
+    let ls: mlua::Function = env.get("loadstring").expect("o loadstring do script");
+    let bytecode = mlua::chunk::Compiler::new()
+        .compile("return 7")
+        .expect("compila");
+    let (f, err): (Option<mlua::Function>, Option<String>) = ls
+        .call((lua.create_string(&bytecode).expect("texto"), None::<String>))
+        .expect("chama");
+    assert!(f.is_none(), "bytecode carregado — fura o HR-9");
+    assert!(err.is_some());
+}

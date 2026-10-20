@@ -15,9 +15,10 @@
 //! two keys a microsecond apart are honestly two columns.
 
 use ph2d_editor_core::interaction::{GesturePhase, TimelineGesture};
-use ph2d_timeline::{SelectedKey, TimelineIntent, TimelineViewSnapshot};
+use ph2d_timeline::{SelectedKey, TimelineIntent, TimelineViewSnapshot, TrackView};
 
 use crate::key_drag::emit_move;
+use crate::linhas::Escopo;
 use crate::state::{self, KeyDrag, SummaryPress, TimelinePanelState};
 
 /// One column of the Summary channel: a time, and every key sitting on it.
@@ -41,10 +42,15 @@ impl Column {
 /// The Summary channel's columns, in time order. Empty when no track is bound —
 /// the row itself is then not drawn.
 pub(crate) fn columns(snap: &TimelineViewSnapshot) -> Vec<Column> {
+    columns_of(snap.tracks.iter())
+}
+
+/// The columns of just these tracks — a channel group's row is the Summary of its members.
+pub(crate) fn columns_of<'a>(tracks: impl Iterator<Item = &'a TrackView>) -> Vec<Column> {
     // Bucket by the time's exact bit pattern, then sort: `f64` is not `Ord`, but
     // the times here are finite and come straight from the document.
     let mut by_time: Vec<Column> = Vec::new();
-    for track in &snap.tracks {
+    for track in tracks {
         for k in &track.keys {
             let sel = SelectedKey::new(track.target.get(), k.id.get());
             match by_time
@@ -67,9 +73,15 @@ pub(crate) fn columns(snap: &TimelineViewSnapshot) -> Vec<Column> {
     by_time
 }
 
-/// The column at `t_bits`, if the snapshot still has one.
-pub(crate) fn column_at(snap: &TimelineViewSnapshot, t_bits: u64) -> Option<Column> {
-    columns(snap).into_iter().find(|c| c.t_bits() == t_bits)
+/// The column at `t_bits` within `escopo`, if the snapshot still has one.
+pub(crate) fn column_at(
+    snap: &TimelineViewSnapshot,
+    escopo: Escopo,
+    t_bits: u64,
+) -> Option<Column> {
+    columns_of(snap.tracks.iter().filter(|t| escopo.contem(t)))
+        .into_iter()
+        .find(|c| c.t_bits() == t_bits)
 }
 
 /// The `t_bits` handle of the column a given track key sits on — the bridge from
@@ -84,7 +96,8 @@ pub(crate) fn key_t_bits(snap: &TimelineViewSnapshot, target: u64, key: u64) -> 
         .map(|k| k.t_seconds.to_bits())
 }
 
-/// Interpret one gesture on a Summary diamond.
+/// Interpret one gesture on a Summary diamond — or on a channel-group diamond, whose `escopo`
+/// narrows the column to the group's members.
 ///
 /// Press makes the column the selection (Shift adds it to whatever is already
 /// selected), and from there the drag is the ordinary streamed
@@ -94,11 +107,12 @@ pub(crate) fn apply_gesture(
     state: &mut TimelinePanelState,
     px_per_s: f64,
     snap: &TimelineViewSnapshot,
+    escopo: Escopo,
     t_bits: u64,
     g: TimelineGesture,
 ) {
     match g.phase {
-        GesturePhase::Begin => begin(state, snap, t_bits, g),
+        GesturePhase::Begin => begin(state, snap, escopo, t_bits, g),
         GesturePhase::Update => {
             if let Some(d) = state.key_drag.as_mut() {
                 d.cur_x = g.x;
@@ -119,7 +133,7 @@ pub(crate) fn apply_gesture(
             // selection collapses down to it — the same courtesy a diamond does.
             if let Some(p) = state.summary_press.take()
                 && p.was_selected
-                && let Some(c) = column_at(snap, p.t_bits)
+                && let Some(c) = column_at(snap, p.escopo, p.t_bits)
             {
                 select_column(&c, false);
             }
@@ -132,11 +146,12 @@ pub(crate) fn apply_gesture(
 fn begin(
     state: &mut TimelinePanelState,
     snap: &TimelineViewSnapshot,
+    escopo: Escopo,
     t_bits: u64,
     g: TimelineGesture,
 ) {
     state::push_intent(TimelineIntent::BeginEdit);
-    let Some(c) = column_at(snap, t_bits) else {
+    let Some(c) = column_at(snap, escopo, t_bits) else {
         // The column vanished between paint and press: close the bracket we just
         // opened rather than leaving it to swallow the next atomic edit.
         state::push_intent(TimelineIntent::EndEdit);
@@ -148,6 +163,7 @@ fn begin(
         select_column(&c, g.mods.shift);
     }
     state.summary_press = Some(SummaryPress {
+        escopo,
         t_bits,
         was_selected: c.all_selected,
     });

@@ -28,6 +28,7 @@ use ph2d_timeline::{AnimTarget, TimelineIntent, TimelineViewSnapshot};
 use crate::anchor_drag;
 use crate::box_select;
 use crate::key_drag;
+use crate::linhas::{Escopo, GrupoChave};
 use crate::loop_drag;
 use crate::marker_drag;
 use crate::resize;
@@ -145,14 +146,33 @@ pub(crate) fn dispatch_primary(
                 .then(|| summary::key_t_bits(snap, target, key))
                 .flatten()
             {
-                summary::apply_gesture(state, px_per_s, snap, t_bits, g);
+                summary::apply_gesture(state, px_per_s, snap, Escopo::Tudo, t_bits, g);
             } else {
                 key_drag::apply_key(state, px_per_s, snap, sel, g);
             }
         }
         TimelineHitKind::MacroStep { index } => crate::macro_steps::apply(state, snap, index, g),
         TimelineHitKind::SummaryKey { t_bits } => {
-            summary::apply_gesture(state, px_per_s, snap, t_bits, g);
+            summary::apply_gesture(state, px_per_s, snap, Escopo::Tudo, t_bits, g);
+        }
+        // A channel-group diamond is the Summary column narrowed to the group's members — or,
+        // under the column lock, the whole column, as a member key would be.
+        TimelineHitKind::GroupKey { group, t_bits } => {
+            let escopo = if state.column_lock {
+                Some(Escopo::Tudo)
+            } else {
+                GrupoChave::do_handle(snap, group).map(Escopo::Grupo)
+            };
+            if let Some(e) = escopo {
+                summary::apply_gesture(state, px_per_s, snap, e, t_bits, g);
+            }
+        }
+        TimelineHitKind::GroupTwirl { group } => {
+            if matches!(g.phase, GesturePhase::Click)
+                && let Some(c) = GrupoChave::do_handle(snap, group)
+            {
+                state.toggle_grupo(c);
+            }
         }
         TimelineHitKind::SummaryLock => {
             if matches!(g.phase, GesturePhase::Click) {

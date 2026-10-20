@@ -448,6 +448,19 @@ pub enum TimelineHitKind {
         target: u64,
         action: BufferAction,
     },
+    /// A diamond on a **channel-group row** (the colour, the whole shape — the fields that are
+    /// keyed together): it stands for every member key at `t_bits` (the [`Self::SummaryKey`]
+    /// encoding). Press selects them, drag moves them. `group` is the raw `AnimTarget` of the
+    /// group's first member — an opaque handle the panel resolves back to the group.
+    GroupKey {
+        group: u64,
+        t_bits: u64,
+    },
+    /// A channel-group row's twirl — a click shows/hides the member rows. `group` as in
+    /// [`Self::GroupKey`].
+    GroupTwirl {
+        group: u64,
+    },
 }
 
 /// Which per-band buffer-curve button was pressed ([`TimelineHitKind::GraphBufferButton`]):

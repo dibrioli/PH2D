@@ -173,7 +173,13 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     // Measure the scroll range, then clamp the model into it.
     state.graph_h = graph::clamp_graph_h(state.graph_h);
-    let content_h = geom::content_h(&snapshot, state.tab, &state.expanded, state.graph_h);
+    let content_h = geom::content_h(
+        &snapshot,
+        state.tab,
+        &state.expanded,
+        &state.grupos_abertos,
+        state.graph_h,
+    );
     state.scroll_max = geom::scroll_max(content_h, g.rows.h);
     state.scroll_y = state.scroll_y.clamp(0.0, state.scroll_max); // CLAMP-OK: measured bounds, min<=max
 

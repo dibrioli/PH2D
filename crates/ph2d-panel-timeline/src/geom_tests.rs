@@ -11,6 +11,25 @@ use super::*;
 // `resize::the_band_never_shrinks_past_its_floor`.
 
 const K: Tab = Tab::Keys;
+
+/// The track rows' `(index, top, height)` — the layout's bands seen as the flat list these tests
+/// were written against (no channel groups here).
+fn row_bands(
+    snap: &TimelineViewSnapshot,
+    tab: Tab,
+    expanded: &[u64],
+    graph_h: f32,
+    top: f32,
+    scroll: f32,
+) -> impl Iterator<Item = (usize, f32, f32)> {
+    crate::linhas::layout(snap, tab, expanded, &[], graph_h, top, scroll)
+        .bandas
+        .into_iter()
+        .map(|b| match b.linha {
+            crate::linhas::Linha::Faixa { i, .. } => (i, b.y, b.h),
+            crate::linhas::Linha::Grupo(_) => unreachable!("no field tracks in these fixtures"),
+        })
+}
 const A: Tab = Tab::Arrange;
 
 /// One empty lane.
@@ -47,8 +66,11 @@ fn snap_with(n: usize) -> TimelineViewSnapshot {
 #[test]
 fn scroll_max_is_zero_when_everything_fits() {
     const GH: f32 = 132.0;
-    assert_eq!(scroll_max(content_h(&snap_with(2), K, &[], GH), 500.0), 0.0);
-    let tall = content_h(&snap_with(20), K, &[], GH);
+    assert_eq!(
+        scroll_max(content_h(&snap_with(2), K, &[], &[], GH), 500.0),
+        0.0
+    );
+    let tall = content_h(&snap_with(20), K, &[], &[], GH);
     assert_eq!(scroll_max(tall, 100.0), tall - 100.0);
 }
 
@@ -59,8 +81,8 @@ fn an_expanded_row_is_taller_and_pushes_the_rows_below_it_down() {
     // the content is one row taller.
     const S: f32 = ROW_H_PX;
     let snap = snap_with(3);
-    assert_eq!(content_h(&snap, K, &[], GH), S + ROW_H_PX * 3.0);
-    assert_eq!(content_h(&snap, K, &[1], GH), S + ROW_H_PX * 3.0 + GH);
+    assert_eq!(content_h(&snap, K, &[], &[], GH), S + ROW_H_PX * 3.0);
+    assert_eq!(content_h(&snap, K, &[1], &[], GH), S + ROW_H_PX * 3.0 + GH);
 
     // Row 0 collapsed, row 1 expanded: row 2 starts below BOTH.
     let bands: Vec<_> = row_bands(&snap, K, &[1], GH, 0.0, 0.0).collect();
@@ -219,14 +241,14 @@ fn a_tab_gives_height_to_its_own_half_and_none_to_the_other() {
     assert_eq!(summary_h(&snap, K), ROW_H_PX);
     assert_eq!(row_bands(&snap, K, &[], GH, 0.0, 0.0).count(), 3);
     assert_eq!(stack_bands(&snap, K, 0.0, 0.0).count(), 0);
-    assert_eq!(content_h(&snap, K, &[], GH), ROW_H_PX * 4.0);
+    assert_eq!(content_h(&snap, K, &[], &[], GH), ROW_H_PX * 4.0);
 
     // Arrange: two lanes, and no Summary and no track rows.
     assert_eq!(stack_h(&snap, A), ROW_H_PX * 2.0);
     assert_eq!(summary_h(&snap, A), 0.0);
     assert_eq!(row_bands(&snap, A, &[], GH, 0.0, 0.0).count(), 0);
     assert_eq!(stack_bands(&snap, A, 0.0, 0.0).count(), 2);
-    assert_eq!(content_h(&snap, A, &[], GH), ROW_H_PX * 2.0);
+    assert_eq!(content_h(&snap, A, &[], &[], GH), ROW_H_PX * 2.0);
     assert_eq!(summary_band(&snap, A, 0.0, 0.0), None);
 }
 

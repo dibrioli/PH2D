@@ -149,6 +149,9 @@ pub struct TimelinePanelState {
     /// Tracks (by raw `AnimTarget`) whose graph editor is expanded. Panel-local
     /// view state — never undoable, never saved.
     pub expanded: Vec<u64>,
+    /// Channel groups whose member rows are shown ([`crate::linhas`]). Panel-local, like
+    /// `expanded`; keyed by the group's durable address, never by a row index.
+    pub grupos_abertos: Vec<crate::linhas::GrupoChave>,
     /// Speed-graph view (W5): every expanded graph band plots VELOCITY
     /// (`d(value)/dt`) instead of the value curve, toggled from the transport
     /// bar. Panel-local view state — never undoable, never saved.
@@ -293,6 +296,7 @@ impl Default for TimelinePanelState {
             graph_h: crate::graph::GRAPH_H_DEFAULT,
             graph_resize: None,
             expanded: Vec::new(),
+            grupos_abertos: Vec::new(),
             speed_view: false,
             tab: crate::tab::Tab::default(),
             source_container: None,
@@ -320,6 +324,16 @@ impl TimelinePanelState {
     #[must_use]
     pub fn is_expanded(&self, target: u64) -> bool {
         self.expanded.contains(&target)
+    }
+
+    /// Show/hide a channel group's member rows.
+    pub fn toggle_grupo(&mut self, chave: crate::linhas::GrupoChave) {
+        match self.grupos_abertos.iter().position(|&c| c == chave) {
+            Some(i) => {
+                self.grupos_abertos.remove(i);
+            }
+            None => self.grupos_abertos.push(chave),
+        }
     }
 
     /// Open/close a track's graph editor. Collapsing also drops an in-flight

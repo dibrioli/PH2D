@@ -63,6 +63,8 @@ mod board_live;
 mod board_private;
 mod board_send;
 mod board_team;
+/// Os rótulos dos canais de família (plano 35 da UI/UX).
+mod canais;
 /// As strings dos MENUS da moldura (barra de menus, menus de contexto, paleta de comandos).
 mod chrome_menus;
 /// As strings do RESTO da moldura (barra do topo, HUD, diálogos, seletor de cor, cartão de instância).
@@ -97,8 +99,6 @@ mod shell;
 mod shell_media;
 /// As strings do painel TIMELINE — cortadas daqui pelo tecto de LOC (ver o cabeçalho delas).
 mod timeline;
-/// Os rótulos dos canais de família (plano 35 da UI/UX).
-mod canais;
 mod vector;
 mod vector_bars;
 /// As strings que o MOTOR publica para o painel de Vector (efeitos, filtros, misturas).

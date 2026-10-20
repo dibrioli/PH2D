@@ -91,6 +91,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.tab.containers" => "Containers",
         "panel.timeline.tab.arrange" => "Arrange",
         "panel.timeline.prop.translate_x" => "Translate X",
+        // Um canal de família que nenhum vocabulário desta build declara.
+        "panel.timeline.prop.field" => "Property",
         "panel.timeline.prop.translate_y" => "Translate Y",
         "panel.timeline.prop.rotation" => "Rotation",
         "panel.timeline.prop.scale_x" => "Scale X",

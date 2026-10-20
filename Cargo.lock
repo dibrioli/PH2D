@@ -8778,6 +8778,7 @@ dependencies = [
  "ph2d-anim",
  "ph2d-component-desc",
  "ph2d-core",
+ "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",

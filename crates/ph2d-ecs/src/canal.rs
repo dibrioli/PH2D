@@ -45,16 +45,31 @@ impl FieldKey {
         info(self)
     }
 
+    /// O endereço do GRUPO deste campo — `(familia, grupo, i)`, com `i = 0` quando o grupo não se
+    /// parte por `i`. A porta única de «que campos se gravam juntos»: o autokey ([`Self::mesmo_grupo`])
+    /// e a linha de grupo do dope-sheet perguntam aqui.
+    #[must_use]
+    pub fn grupo(self) -> Option<(u16, u16, u16)> {
+        self.info()
+            .map(|c| (self.familia, c.grupo, if c.por_i { self.i } else { 0 }))
+    }
+
     /// `true` se `outro` grava-se na MESMA chave que este (a forma inteira, a cor inteira).
     #[must_use]
     pub fn mesmo_grupo(self, outro: FieldKey) -> bool {
-        match (self.info(), outro.info()) {
-            (Some(a), Some(b)) => {
-                self.familia == outro.familia
-                    && a.grupo == b.grupo
-                    && (!a.por_i || self.i == outro.i)
-            }
+        match (self.grupo(), outro.grupo()) {
+            (Some(a), Some(b)) => a == b,
             _ => self == outro,
+        }
+    }
+
+    /// Chave `ph2d-i18n` do nome deste campo DENTRO do grupo («Point X», «R», «Dash») — a linha do
+    /// membro quando o artista abre o grupo. `None` = endereço que nenhuma família declara.
+    #[must_use]
+    pub fn membro(self) -> Option<&'static str> {
+        match self.familia {
+            familia::VETOR => crate::canal_vetor::membro(self.campo),
+            _ => None,
         }
     }
 }

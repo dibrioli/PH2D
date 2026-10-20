@@ -2,6 +2,7 @@
 //! (`#[path]`) so the gesture source stays under the 600-LOC panel cap.
 
 use super::*;
+use crate::linhas::Escopo;
 use ph2d_editor_core::interaction::{GestureMods, TimelineHitKind};
 use ph2d_host::PointerButton;
 use ph2d_timeline::{AnimTarget, Interp, KeyId, KeyView, PropKind, TrackView};
@@ -112,8 +113,14 @@ fn an_empty_timeline_has_no_columns() {
 #[test]
 fn column_at_finds_a_column_by_its_opaque_time_handle() {
     let s = snap(&[]);
-    assert_eq!(column_at(&s, t1()).map(|c| c.keys.len()), Some(1));
-    assert_eq!(column_at(&s, 12345).map(|c| c.keys.len()), None);
+    assert_eq!(
+        column_at(&s, Escopo::Tudo, t1()).map(|c| c.keys.len()),
+        Some(1)
+    );
+    assert_eq!(
+        column_at(&s, Escopo::Tudo, 12345).map(|c| c.keys.len()),
+        None
+    );
 }
 
 // ── the gesture ──────────────────────────────────────────────────────────
@@ -126,6 +133,7 @@ fn pressing_an_unselected_column_selects_every_key_in_it() {
         &mut st,
         120.0,
         &s,
+        Escopo::Tudo,
         t0(),
         gesture(GesturePhase::Begin, 10.0, false),
     );
@@ -150,6 +158,7 @@ fn shift_pressing_a_column_adds_it_to_the_selection_instead_of_replacing_it() {
         &mut st,
         120.0,
         &s,
+        Escopo::Tudo,
         t0(),
         gesture(GesturePhase::Begin, 10.0, true),
     );
@@ -171,6 +180,7 @@ fn pressing_an_already_selected_column_preserves_the_wider_selection() {
         &mut st,
         120.0,
         &s,
+        Escopo::Tudo,
         t0(),
         gesture(GesturePhase::Begin, 10.0, false),
     );
@@ -182,6 +192,7 @@ fn pressing_an_already_selected_column_preserves_the_wider_selection() {
     assert_eq!(
         st.summary_press,
         Some(SummaryPress {
+            escopo: Escopo::Tudo,
             t_bits: t0(),
             was_selected: true
         })
@@ -196,6 +207,7 @@ fn clicking_an_already_selected_column_collapses_the_selection_to_it() {
         &mut st,
         120.0,
         &s,
+        Escopo::Tudo,
         t0(),
         gesture(GesturePhase::Begin, 10.0, false),
     );
@@ -204,6 +216,7 @@ fn clicking_an_already_selected_column_collapses_the_selection_to_it() {
         &mut st,
         120.0,
         &s,
+        Escopo::Tudo,
         t0(),
         gesture(GesturePhase::Click, 10.0, false),
     );
@@ -229,6 +242,7 @@ fn dragging_a_column_streams_the_move_and_brackets_it_as_one_undo_step() {
         &mut st,
         120.0,
         &s,
+        Escopo::Tudo,
         t0(),
         gesture(GesturePhase::Begin, 100.0, false),
     );
@@ -236,6 +250,7 @@ fn dragging_a_column_streams_the_move_and_brackets_it_as_one_undo_step() {
         &mut st,
         120.0,
         &s,
+        Escopo::Tudo,
         t0(),
         gesture(GesturePhase::Update, 130.0, false),
     );
@@ -243,6 +258,7 @@ fn dragging_a_column_streams_the_move_and_brackets_it_as_one_undo_step() {
         &mut st,
         120.0,
         &s,
+        Escopo::Tudo,
         t0(),
         gesture(GesturePhase::End, 130.0, false),
     );
@@ -269,6 +285,7 @@ fn a_continuing_column_drag_emits_only_what_accrued_since_the_last_frame() {
         &mut st,
         120.0,
         &s,
+        Escopo::Tudo,
         t0(),
         gesture(GesturePhase::Begin, 100.0, false),
     );
@@ -276,6 +293,7 @@ fn a_continuing_column_drag_emits_only_what_accrued_since_the_last_frame() {
         &mut st,
         120.0,
         &s,
+        Escopo::Tudo,
         t0(),
         gesture(GesturePhase::Update, 130.0, false),
     );
@@ -284,6 +302,7 @@ fn a_continuing_column_drag_emits_only_what_accrued_since_the_last_frame() {
         &mut st,
         120.0,
         &s,
+        Escopo::Tudo,
         t0(),
         gesture(GesturePhase::Update, 142.0, false),
     );
@@ -306,6 +325,7 @@ fn pressing_a_column_that_vanished_closes_the_bracket_it_opened() {
         &mut st,
         120.0,
         &s,
+        Escopo::Tudo,
         999,
         gesture(GesturePhase::Begin, 10.0, false),
     );

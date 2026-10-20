@@ -56,6 +56,7 @@ pub use history_band::{recorded_history, set_recorded_history};
 pub mod ids;
 mod interact;
 mod key_drag;
+pub mod linhas;
 mod loop_drag;
 mod macro_steps;
 mod marker_drag;

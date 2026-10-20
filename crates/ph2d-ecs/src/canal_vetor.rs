@@ -132,8 +132,14 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         ANCORA_X..=CANTO => c(FORMA, ANCORA_X, false),
         TIPO_VERTICE | FECHADO => d(FORMA, ANCORA_X, false),
         REGRA => d("canal.vetor.regra", REGRA, false),
-        TINTA_PREENCH..TINTA_TRACO => tinta(campo - TINTA_PREENCH, "canal.vetor.preenchimento", TINTA_PREENCH)?,
-        TINTA_TRACO..TRACO_LARGURA => tinta(campo - TINTA_TRACO, "canal.vetor.traco_cor", TINTA_TRACO)?,
+        TINTA_PREENCH..TINTA_TRACO => tinta(
+            campo - TINTA_PREENCH,
+            "canal.vetor.preenchimento",
+            TINTA_PREENCH,
+        )?,
+        TINTA_TRACO..TRACO_LARGURA => {
+            tinta(campo - TINTA_TRACO, "canal.vetor.traco_cor", TINTA_TRACO)?
+        }
         TRACO_LARGURA => c("canal.vetor.traco_largura", campo, true),
         TRACO_PONTA => d("canal.vetor.traco_ponta", campo, true),
         TRACO_JUNCAO => d("canal.vetor.traco_juncao", campo, true),
@@ -149,7 +155,9 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         PILHA_LIGADA => d("canal.vetor.pilha_ligada", campo, true),
         PILHA_OPACIDADE => c("canal.vetor.pilha_opacidade", campo, true),
         PILHA_MISTURA => d("canal.vetor.pilha_mistura", campo, true),
-        PILHA_DESLOCA_X | PILHA_DESLOCA_Y => c("canal.vetor.pilha_deslocamento", PILHA_DESLOCA_X, true),
+        PILHA_DESLOCA_X | PILHA_DESLOCA_Y => {
+            c("canal.vetor.pilha_deslocamento", PILHA_DESLOCA_X, true)
+        }
         PILHA_DILATA => c("canal.vetor.pilha_dilatacao", campo, true),
         PILHA_DILATA_JUNCAO => d("canal.vetor.pilha_dilatacao_juncao", campo, true),
         EFEITO_LIGADO => d("canal.vetor.efeito_ligado", campo, true),
@@ -165,6 +173,88 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         TEXTO_EIXO => c("canal.vetor.texto_eixo", campo, false),
         _ => return None,
     })
+}
+
+/// O nome do campo `campo` dentro do seu grupo (a linha do membro no dope-sheet). Um campo que é o
+/// grupo inteiro devolve o rótulo do grupo.
+#[must_use]
+pub fn membro(campo: u16) -> Option<&'static str> {
+    Some(match campo {
+        ANCORA_X => "canal.m.ponto_x",
+        ANCORA_Y => "canal.m.ponto_y",
+        ENTRADA_X => "canal.m.entrada_x",
+        ENTRADA_Y => "canal.m.entrada_y",
+        SAIDA_X => "canal.m.saida_x",
+        SAIDA_Y => "canal.m.saida_y",
+        CANTO => "canal.m.canto",
+        TIPO_VERTICE => "canal.m.tipo_ponto",
+        FECHADO => "canal.m.fechado",
+        TINTA_PREENCH..TINTA_TRACO => membro_tinta(campo - TINTA_PREENCH)?,
+        TINTA_TRACO..TRACO_LARGURA => membro_tinta(campo - TINTA_TRACO)?,
+        TRACO_TRACEJADO => "canal.m.ligado",
+        TRACO_TRACO => "canal.m.traco",
+        TRACO_VAO => "canal.m.vao",
+        PILHA_DESLOCA_X | PARAM_LARGURA => "canal.m.x",
+        PILHA_DESLOCA_Y | PARAM_ALTURA => "canal.m.y",
+        PARAM_VALOR => "canal.m.valor",
+        EFEITO_PARAM => "canal.m.parametro",
+        _ => info(campo)?.rotulo,
+    })
+}
+
+/// O nome de um campo dentro de um bloco de tinta.
+fn membro_tinta(off: u16) -> Option<&'static str> {
+    const RGBA: [&str; 4] = ["canal.m.r", "canal.m.g", "canal.m.b", "canal.m.a"];
+    const PARAGEM: [&str; 5] = [
+        "canal.m.posicao",
+        "canal.m.r",
+        "canal.m.g",
+        "canal.m.b",
+        "canal.m.a",
+    ];
+    const LINEAR: [&str; 4] = [
+        "canal.m.inicio_x",
+        "canal.m.inicio_y",
+        "canal.m.fim_x",
+        "canal.m.fim_y",
+    ];
+    const RADIAL: [&str; 3] = ["canal.m.centro_x", "canal.m.centro_y", "canal.m.raio"];
+    const PONTO: [&str; 8] = [
+        "canal.m.ponto_x",
+        "canal.m.ponto_y",
+        "canal.m.r",
+        "canal.m.g",
+        "canal.m.b",
+        "canal.m.a",
+        "canal.m.influencia",
+        "canal.m.jitter",
+    ];
+    const PADRAO: [&str; 8] = [
+        "canal.m.tamanho_x",
+        "canal.m.tamanho_y",
+        "canal.m.folga_x",
+        "canal.m.folga_y",
+        "canal.m.origem_x",
+        "canal.m.origem_y",
+        "canal.m.angulo",
+        "canal.m.a",
+    ];
+    let em = |base: u16, tabela: &[&'static str]| tabela.get(usize::from(off - base)).copied();
+    match off {
+        OFF_EXISTE => Some("canal.m.ligado"),
+        OFF_TIPO => Some("canal.m.tipo"),
+        OFF_N_PARAGENS => Some("canal.m.n_paragens"),
+        OFF_N_PONTOS => Some("canal.m.n_pontos"),
+        OFF_PADRAO_MODOS => Some("canal.m.ladrilho"),
+        o if o == OFF_PADRAO_MODOS + 1 => Some("canal.m.modo"),
+        OFF_SOLIDA..OFF_PARAGEM => em(OFF_SOLIDA, &RGBA),
+        OFF_PARAGEM..OFF_N_PARAGENS => em(OFF_PARAGEM, &PARAGEM),
+        OFF_LINEAR..OFF_RADIAL => em(OFF_LINEAR, &LINEAR),
+        OFF_RADIAL..OFF_PONTO => em(OFF_RADIAL, &RADIAL),
+        OFF_PONTO..OFF_N_PONTOS => em(OFF_PONTO, &PONTO),
+        OFF_PADRAO..OFF_PADRAO_MODOS => em(OFF_PADRAO, &PADRAO),
+        _ => None,
+    }
 }
 
 /// Um campo dentro de um bloco de tinta: a tinta inteira é um grupo (por `i`).

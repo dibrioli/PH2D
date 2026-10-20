@@ -163,6 +163,8 @@ pub struct ExprEdit {
 /// A press that landed on a Summary column.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SummaryPress {
+    /// Which keys the column spans: every track (the Summary), or one channel group.
+    pub escopo: crate::linhas::Escopo,
     /// The column's time, as `f64::to_bits` (the handle dispatch carries).
     pub t_bits: u64,
     /// The whole column was already selected when the press landed.

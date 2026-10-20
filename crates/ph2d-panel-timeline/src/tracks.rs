@@ -15,17 +15,19 @@
 mod label;
 pub(crate) use label::{prop_label, track_label};
 
+use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind, TrackMenuKind};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::panel_chrome::clamp_menu_to_viewport;
 use ph2d_editor_core::widget::{Button, paint_button};
 use ph2d_editor_core::zones::Rect;
-use ph2d_timeline::{Extrap, SelectedKey, TimelineViewSnapshot};
+use ph2d_timeline::{Extrap, TimelineViewSnapshot};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, BezPath, Brush, Fill, Stroke};
 
 use crate::ids;
+use crate::linhas::Linha;
 use crate::state::TimelinePanelState;
 use crate::{geom, graph, graph_paint, summary_paint};
 
@@ -33,7 +35,7 @@ use crate::{geom, graph, graph_paint, summary_paint};
 /// a fatia do número (`VALUE_W` + respiro), senão o nome da row sai cortado.
 pub(crate) const LABEL_COL_W: f32 = 176.0; // LITERAL-PX-OK: track-label column width
 /// Width of the expand/collapse twirl at the head of each row.
-const TWIRL_W: f32 = 24.0; // LITERAL-PX-OK: row twirl hit column width
+pub(crate) const TWIRL_W: f32 = 24.0; // LITERAL-PX-OK: row twirl hit column width
 /// Half the twirl triangle's flat edge.
 const TWIRL_BASE_HALF: f32 = 5.0; // LITERAL-PX-OK: row twirl triangle half-base
 /// Height of the twirl triangle, flat edge to apex.
@@ -164,12 +166,10 @@ pub(crate) fn paint_rows(
     snap: &TimelineViewSnapshot,
 ) {
     let (region, label_w) = (g.rows, g.label_w);
-    let right = region.x + region.w;
     let bottom = region.y + region.h;
-    let time_x = view.time_x;
     // Lane background over the time area — a click here clears the selection or
     // rubber-bands a box-select.
-    let lane = Rect::new(time_x, region.y, (right - time_x).max(0.0), region.h);
+    let lane = lane_rect(g, view);
     ctx.host.store_mut().register(
         ids::TIMELINE_LANES,
         InteractiveState::TimelineSurface {
@@ -190,31 +190,31 @@ pub(crate) fn paint_rows(
     crate::container_list::paint(ctx, theme, g, view, state, snap);
     // The master row, above track 0 and scrolling with it.
     summary_paint::paint(ctx, theme, g, view, preview_dx, state, snap);
-    let bands: Vec<(usize, f32, f32)> = geom::row_bands(
+    let lay = crate::linhas::layout(
         snap,
         state.tab,
         &state.expanded,
+        &state.grupos_abertos,
         state.graph_h,
         region.y,
         state.scroll_y,
-    )
-    .collect();
+    );
     // A linha «Macro steps» (W5d) vai logo a seguir à última faixa.
-    let fim = bands.last().map_or(
+    let fim = lay.bandas.last().map_or(
         region.y - state.scroll_y
             + geom::stack_h(snap, state.tab)
             + geom::summary_h(snap, state.tab),
-        |&(_, y, h)| y + h,
+        |b| b.y + b.h,
     );
-    for (i, y, h) in bands {
+    for (n, b) in lay.bandas.iter().enumerate() {
+        let (y, h) = (b.y, b.h);
         // Cull the rows outside the band entirely: a long track list then neither
         // paints nor registers off-screen hits.
         if y + h <= region.y || y >= bottom {
             continue;
         }
-        let track = &snap.tracks[i];
         // Zebra so lanes read as discrete rows.
-        if i % 2 == 1 {
+        if n % 2 == 1 {
             fill_row(
                 ctx,
                 theme,
@@ -222,15 +222,30 @@ pub(crate) fn paint_rows(
                 ColorToken::TimelineRowAlt,
             );
         }
-        paint_twirl(ctx, theme, state, region.x, y, track.target.get());
+        let (i, grupo) = match b.linha {
+            Linha::Grupo(gi) => {
+                let aberto = state.grupos_abertos.contains(&lay.grupos[gi].chave);
+                let linha = (&lay.grupos[gi], y, aberto);
+                crate::linhas::paint_grupo(ctx, theme, g, view, preview_dx, snap, linha);
+                continue;
+            }
+            Linha::Faixa { i, grupo } => (i, grupo.map(|gi| &lay.grupos[gi])),
+        };
+        let track = &snap.tracks[i];
+        // Um membro de um grupo aberto recua uma coluna, sob o ▶ do grupo.
+        let x0 = region.x + if grupo.is_some() { TWIRL_W } else { 0.0 };
+        let t = track.target.get();
+        let twirl = TimelineHitKind::Twirl { target: t };
+        let open = state.is_expanded(t);
+        paint_twirl(ctx, theme, open, (x0, y), ids::timeline_twirl_id(t), twirl);
         // The label slice (after the twirl) is a right-click surface: dispatch
         // opens the track-row context menu on it (Delete Track). Inert to
         // primary gestures — see the `Row` arm in `interact`.
         let row_id = ids::timeline_row_id(track.target.get());
         let row_hit = Rect::new(
-            region.x + TWIRL_W,
+            x0 + TWIRL_W,
             y,
-            (label_w - TWIRL_W).max(0.0),
+            (region.x + label_w - x0 - TWIRL_W).max(0.0),
             ROW_H_PX,
         );
         ctx.host.store_mut().register(
@@ -256,7 +271,10 @@ pub(crate) fn paint_rows(
             },
         );
         ctx.host.hit_index_mut().register(row_id, row_hit);
-        let text = track_label(snap.object_name(track.entity), track.entity, track.prop);
+        let text = match grupo {
+            Some(gr) => crate::linhas::rotulo_membro(snap, gr, i),
+            None => track_label(snap.object_name(track.entity), track.entity, track.prop),
+        };
         let color = if track.missing {
             ColorToken::TimelineMissing
         } else {
@@ -270,7 +288,7 @@ pub(crate) fn paint_rows(
             snap,
             track,
             (&text, color),
-            (region.x + TWIRL_W, region.x + label_w, y),
+            (x0 + TWIRL_W, region.x + label_w, y),
         );
         paint_lane_keys(ctx, theme, track, view, preview_dx, y, lane);
         if h > ROW_H_PX {
@@ -283,6 +301,17 @@ pub(crate) fn paint_rows(
     crate::macro_steps::paint(ctx, theme, region, label_w, view, state, snap, fim, lane);
     crate::scale_drag::paint_selection_box(ctx, theme, g, view, state, snap);
     ctx.scene.pop_layer();
+}
+
+/// The time area of the rows band — the canvas every dope-sheet key hit reports.
+pub(crate) fn lane_rect(g: &geom::Geom, view: graph::TimeView) -> Rect {
+    let right = g.rows.x + g.rows.w;
+    Rect::new(
+        view.time_x,
+        g.rows.y,
+        (right - view.time_x).max(0.0),
+        g.rows.h,
+    )
 }
 
 /// One row's key diamonds + their hit targets, on the dope-sheet strip.
@@ -443,16 +472,16 @@ fn paint_extrap_span(
 }
 
 /// The expand/collapse twirl at the head of a row: a right-pointing triangle
-/// that turns down when the track's graph editor is open.
-fn paint_twirl(
+/// that turns down when what it opens (a track's graph editor, a group's
+/// members) is open. `kind` is the hit it registers under `id`.
+pub(crate) fn paint_twirl(
     ctx: &mut PaintCtx,
     theme: Theme,
-    state: &TimelinePanelState,
-    x: f32,
-    y: f32,
-    target: u64,
+    open: bool,
+    (x, y): (f32, f32),
+    id: NodeId,
+    kind: TimelineHitKind,
 ) {
-    let open = state.is_expanded(target);
     let (cx, cy) = (x + TWIRL_W * 0.5, y + ROW_H_PX * 0.5);
     // An isosceles triangle: `BASE` across the flat edge, `TIP` from that edge to
     // the apex. Rotated a quarter turn when the row opens (right → down).
@@ -488,62 +517,16 @@ fn paint_twirl(
         None,
         &p,
     );
-    let id = ids::timeline_twirl_id(target);
     let hit = Rect::new(x, y, TWIRL_W, ROW_H_PX);
     ctx.host.store_mut().register(
         id,
         InteractiveState::TimelineSurface {
             parent: ph2d_editor_core::ids::TIMELINE_PANEL,
-            kind: TimelineHitKind::Twirl { target },
+            kind,
             canvas: hit,
         },
     );
     ctx.host.hit_index_mut().register(id, hit);
-}
-
-/// Every key whose diamond **centre** falls inside `sel` (a marquee in global
-/// px). Mirrors the row/column math of [`paint_rows`] exactly — a key the user
-/// can see inside the box is a key that gets selected.
-///
-/// Rows scrolled out of `rows` never match: `sel` is intersected with the band
-/// first, so a marquee dragged past the bottom edge cannot reach into the
-/// clipped rows below it.
-pub(crate) fn keys_in_rect(
-    rows: Rect,
-    view: graph::TimeView,
-    state: &TimelinePanelState,
-    snap: &TimelineViewSnapshot,
-    sel: Rect,
-) -> Vec<SelectedKey> {
-    let bottom = rows.y + rows.h;
-    let (top_y, bot_y) = (sel.y.max(rows.y), (sel.y + sel.h).min(bottom));
-    let mut out = Vec::new();
-    if top_y > bot_y {
-        return out;
-    }
-    for (i, y, _h) in geom::row_bands(
-        snap,
-        state.tab,
-        &state.expanded,
-        state.graph_h,
-        rows.y,
-        state.scroll_y,
-    ) {
-        // The diamonds sit on the row's dope-sheet STRIP, never in its graph
-        // band — a marquee over the curve must not grab the keys under it.
-        let cy = y + ROW_H_PX * 0.5;
-        if cy < top_y || cy > bot_y {
-            continue;
-        }
-        let track = &snap.tracks[i];
-        for k in &track.keys {
-            let kx = view.time_x + ((k.t_seconds - view.view_start) * view.px_per_s) as f32;
-            if kx >= sel.x && kx <= sel.x + sel.w {
-                out.push(SelectedKey::new(track.target.get(), k.id.get()));
-            }
-        }
-    }
-    out
 }
 
 /// The live box-select rubber band: marching-ants accent outline, no fill (so

@@ -249,12 +249,15 @@ pub(crate) fn content_h(
     snap: &TimelineViewSnapshot,
     tab: Tab,
     expanded: &[u64],
+    abertos: &[crate::linhas::GrupoChave],
     graph_h: f32,
 ) -> f32 {
     stack_h(snap, tab)
         + summary_h(snap, tab)
-        + row_bands(snap, tab, expanded, graph_h, 0.0, 0.0)
-            .map(|(_, _, h)| h)
+        + crate::linhas::layout(snap, tab, expanded, abertos, graph_h, 0.0, 0.0)
+            .bandas
+            .iter()
+            .map(|b| b.h)
             .sum::<f32>()
         + crate::macro_steps::macro_h(snap, tab)
 }
@@ -275,36 +278,6 @@ pub(crate) fn summary_band(
 /// How far the rows can scroll before the last one is flush with the bottom.
 pub(crate) fn scroll_max(content_h: f32, rows_h: f32) -> f32 {
     (content_h - rows_h).max(0.0)
-}
-
-/// Every track's `(index, top_y, height)` in the scrolled rows band. The single
-/// source of the row layout — paint, key hit-testing and box-select all walk it,
-/// so a row's diamonds can never disagree with the row its curve is drawn in.
-pub(crate) fn row_bands<'a>(
-    snap: &'a TimelineViewSnapshot,
-    tab: Tab,
-    expanded: &'a [u64],
-    graph_h: f32,
-    rows_top: f32,
-    scroll_y: f32,
-) -> impl Iterator<Item = (usize, f32, f32)> + 'a {
-    // The clip lanes sit above everything, then the Summary channel, then track 0
-    // — and all three scroll together. THIS is the one place that ordering lives:
-    // the painters read the bands, they never re-derive a y.
-    let mut y = rows_top - scroll_y + stack_h(snap, tab) + summary_h(snap, tab);
-    // The Arrange tab has no track rows at all — `take(0)` rather than an early
-    // return, so the iterator's type stays one type.
-    let n = if tab.shows_keys() {
-        snap.tracks.len()
-    } else {
-        0
-    };
-    snap.tracks.iter().take(n).enumerate().map(move |(i, t)| {
-        let h = row_h(expanded.contains(&t.target.get()), graph_h);
-        let top = y;
-        y += h;
-        (i, top, h)
-    })
 }
 
 /// The eight resize grippers as `(id, edges, rect)`, outermost-last so the

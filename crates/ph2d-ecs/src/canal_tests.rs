@@ -69,7 +69,10 @@ fn o_vocabulario_do_vetor_nao_renumera() {
         (v::TEXTO_EIXO, 196),
     ];
     for (n, (atual, gravado)) in fixos.iter().enumerate() {
-        assert_eq!(atual, gravado, "a constante nº {n} do vocabulário foi renumerada");
+        assert_eq!(
+            atual, gravado,
+            "a constante nº {n} do vocabulário foi renumerada"
+        );
     }
     assert!(v::TINTA_PREENCH + v::TINTA_LARGURA <= v::TINTA_TRACO);
     assert!(v::TINTA_TRACO + v::TINTA_LARGURA <= v::TRACO_LARGURA);
@@ -87,22 +90,40 @@ fn todo_campo_da_tinta_tem_informacao() {
         assert!(info(k(base + v::TINTA_LARGURA, 0, 0)).is_none() || base == v::TINTA_PREENCH);
     }
     let tipo = info(k(v::TINTA_PREENCH + v::OFF_TIPO, 0, 0)).unwrap();
-    assert!(tipo.discreto, "trocar sólido por gradiente não se interpola");
+    assert!(
+        tipo.discreto,
+        "trocar sólido por gradiente não se interpola"
+    );
     let r = info(k(v::TINTA_PREENCH + v::OFF_SOLIDA, 0, 0)).unwrap();
-    assert!(!r.discreto, "a cor passa aos poucos (lei do AE/Rive, Godot medido)");
+    assert!(
+        !r.discreto,
+        "a cor passa aos poucos (lei do AE/Rive, Godot medido)"
+    );
 }
 
 /// A forma inteira é UM grupo, através dos contornos; a tinta parte-se por entrada da pilha.
 #[test]
 fn o_grupo_e_a_chave_inteira() {
     let a = k(v::ANCORA_X, 0, 3);
-    assert!(a.mesmo_grupo(k(v::SAIDA_Y, 2, 0)), "outro contorno, mesma forma");
-    assert!(a.mesmo_grupo(k(v::TIPO_VERTICE, 0, 1)), "o tipo do vértice vai na chave da forma");
+    assert!(
+        a.mesmo_grupo(k(v::SAIDA_Y, 2, 0)),
+        "outro contorno, mesma forma"
+    );
+    assert!(
+        a.mesmo_grupo(k(v::TIPO_VERTICE, 0, 1)),
+        "o tipo do vértice vai na chave da forma"
+    );
     assert!(!a.mesmo_grupo(k(v::TRACO_LARGURA, 0, 0)));
     let base = k(v::TINTA_PREENCH + v::OFF_SOLIDA, 0, 0);
     assert!(base.mesmo_grupo(k(v::TINTA_PREENCH + v::OFF_SOLIDA + 3, 0, 0)));
-    assert!(!base.mesmo_grupo(k(v::TINTA_PREENCH + v::OFF_SOLIDA, 1, 0)), "a entrada 0 da pilha");
-    assert!(!base.mesmo_grupo(k(v::TINTA_TRACO + v::OFF_SOLIDA, 0, 0)), "a cor do traço");
+    assert!(
+        !base.mesmo_grupo(k(v::TINTA_PREENCH + v::OFF_SOLIDA, 1, 0)),
+        "a entrada 0 da pilha"
+    );
+    assert!(
+        !base.mesmo_grupo(k(v::TINTA_TRACO + v::OFF_SOLIDA, 0, 0)),
+        "a cor do traço"
+    );
 }
 
 #[test]
@@ -125,8 +146,14 @@ fn drenar_deixa_as_outras_familias() {
     let mut e = CanaisEscritos::default();
     e.escrever(1, k(v::ANCORA_X, 0, 0), 5.0);
     e.escrever(1, FieldKey::new(99, 1, 0, 0), 6.0);
-    assert_eq!(e.drenar(familia::VETOR), vec![(1, k(v::ANCORA_X, 0, 0), 5.0)]);
-    assert!(!e.is_empty(), "a escrita da família 99 fica para quem a drena");
+    assert_eq!(
+        e.drenar(familia::VETOR),
+        vec![(1, k(v::ANCORA_X, 0, 0), 5.0)]
+    );
+    assert!(
+        !e.is_empty(),
+        "a escrita da família 99 fica para quem a drena"
+    );
 }
 
 /// ⭐⭐ O eco: a curva escreve 127,5 numa cor `u8`, o documento fica 128 — a leitura devolve 127,5
@@ -137,7 +164,11 @@ fn o_eco_esconde_a_quantizacao_e_mostra_a_mao() {
     let cor = k(v::TINTA_PREENCH + v::OFF_SOLIDA, 0, 0);
     l.eco(3, cor, 127.5, 128.0);
     l.publicar(3, cor, 128.0);
-    assert_eq!(l.valor(3, cor), Some(127.5), "o documento é a curva quantizada");
+    assert_eq!(
+        l.valor(3, cor),
+        Some(127.5),
+        "o documento é a curva quantizada"
+    );
     l.publicar(3, cor, 130.0);
     assert_eq!(l.valor(3, cor), Some(130.0), "a mão mudou o documento");
     l.publicar(4, cor, 128.0);

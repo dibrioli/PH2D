@@ -34,10 +34,9 @@ pub(crate) fn prop_label(p: PropKind) -> &'static str {
         PropKind::BoneBendOutY => ph2d_i18n::tr("panel.timeline.prop.bone_bend_out_y"),
         PropKind::MacroTime => ph2d_i18n::tr("panel.timeline.prop.macro_time"),
         // O rótulo do GRUPO, do vocabulário da família (a forma inteira lê-se «Forma»).
-        PropKind::Field(k) => ph2d_i18n::tr(
-            k.info()
-                .map_or("panel.timeline.prop.field", |i| i.rotulo),
-        ),
+        PropKind::Field(k) => {
+            ph2d_i18n::tr(k.info().map_or("panel.timeline.prop.field", |i| i.rotulo))
+        }
     }
 }
 
@@ -52,12 +51,22 @@ pub(crate) fn prop_label(p: PropKind) -> &'static str {
 /// **O nome vem primeiro** porque é o que o artista varre numa coluna estreita: com
 /// seis tracks do mesmo objeto, a propriedade é o que muda de linha para linha, e o
 /// nome é a âncora que diz de quem é o bloco.
+///
+/// Um canal de família cujo grupo se parte por entrada (a tinta e o traço da camada `i` da pilha)
+/// leva o número da entrada — «Fill 2» —, senão a camada e a base liam-se iguais.
 pub(crate) fn track_label(name: Option<&str>, entity: u64, prop: PropKind) -> String {
+    let rotulo = match prop {
+        PropKind::Field(k) => match k.grupo() {
+            Some((_, _, i)) if i > 0 => format!("{} {i}", prop_label(prop)),
+            _ => prop_label(prop).to_owned(),
+        },
+        _ => prop_label(prop).to_owned(),
+    };
     match name {
-        Some(n) => format!("{n} · {}", prop_label(prop)),
+        Some(n) => format!("{n} · {rotulo}"),
         // O fallback é o rótulo que o dope-sheet sempre teve. Ele NÃO é sinal de erro:
         // um objeto sem `Name` é transiente, e mostrar `#nnnn` continua distinguindo
         // duas rows do mesmo tipo em objetos diferentes.
-        None => format!("{}  #{}", prop_label(prop), entity % 10_000),
+        None => format!("{rotulo}  #{}", entity % 10_000),
     }
 }

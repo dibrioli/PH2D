@@ -52,6 +52,9 @@ ph2d-text = { path = "../ph2d-text" }
 # `Playhead` — the seam tests drive `apply_intent`/`rebuild` to build a real
 # document + snapshot (the same objects the shell publishes).
 ph2d-core = { path = "../ph2d-core" }
+# O vocabulário dos canais (`FieldKey`, `canal_vetor`) com que os testes das linhas de grupo
+# montam as faixas — já está no grafo pela `ph2d-timeline`.
+ph2d-ecs = { path = "../ph2d-ecs" }
 
 [lints]
 workspace = true

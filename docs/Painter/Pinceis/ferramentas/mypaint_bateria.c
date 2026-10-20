@@ -118,8 +118,8 @@ int main(void) {
             char *nome = linha + 7;
             nome[strcspn(nome, "\n")] = 0;
             char *json = le_ficheiro(nome);
-            mypaint_brush_unref(b);
-            b = mypaint_brush_new();
+            /* o MESMO objecto: um MyPaintBrush novo depois de outro libertado lê estado por iniciar (malloc
+             * reciclado) no 1.º stroke_to — medido: a cena «sobre» mudava de corrida para corrida */
             mypaint_brush_from_defaults(b);
             if (!mypaint_brush_from_string(b, json)) {
                 fprintf(stderr, "pincel ilegivel: %s\n", nome);

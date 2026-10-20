@@ -23,9 +23,11 @@ python3 -I docs/Painter/Pinceis/ferramentas/mypaint_bateria.py --pincel /usr/sha
 ```
 
 O motor corre em `ferramentas/mypaint_bateria.c` (compilado à 1.ª corrida para `~/.cache/ph2d-oraculos/`).
-Determinístico: um fio só (`threadsafe_tile_requests = FALSE`), superfície própria zerada (a `fixed_tiled_surface`
-nasce com lixo — `docs/_ComoInvestigarApps/01_o_arsenal.md` §2-bis). Escala medida: 1,0 = `1<<15` (o `assert` do
-`.py` reprova outra).
+Determinístico (medido: 3 corridas, sha256 iguais nas 3 cenas): um fio só (`threadsafe_tile_requests = FALSE`),
+superfície própria zerada (a `fixed_tiled_surface` nasce com lixo — `docs/_ComoInvestigarApps/01_o_arsenal.md`
+§2-bis), e UM só `MyPaintBrush` por processo, recarregado com `from_defaults` + `from_string` — ⛔ criar um brush novo
+depois de libertar outro fazia a cena `sobre` mudar a CADA corrida (estado por iniciar lido no 1.º `stroke_to`;
+bissectado: só a variante com 2.º `pincel` variava). Escala medida: 1,0 = `1<<15` (o `assert` do `.py` reprova outra).
 
 **Saída:** `<pacote>/<nome>_<cena>.png`, cenas `gestos` · `tamanhos` · `sobre`; nomes com `#`, `%`, `(`… trocados por
 `_`. `manifesto.json`: por pincel e cena, `px_com_tinta` (alfa > 1/255), `tinta_sum_alfa` (Σ alfa) e o sha256 (16).

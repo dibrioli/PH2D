@@ -97,9 +97,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.painter.presets.folder.colored" => "Colored",
         "app.painter.presets.folder.scratch" => "Scratch",
         "app.painter.presets.folder.scrape" => "Scrape",
-        "app.painter.presets.folder.flat" => "Flat",
         "app.painter.presets.folder.dabber" => "Dabber",
-        "app.painter.presets.folder.knife" => "Knife",
         _ => return None,
     })
 }

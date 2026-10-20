@@ -61,7 +61,7 @@ fn parametros(r: &Receita) -> Parametros {
             p.engine.insert("pressureOpacity".to_owned(), 0.0);
             p
         }
-        // Os 11 do prompt 53 nascem do ficheiro do vizinho, como a sonda do doc 52 os mediu.
+        // Os do prompt 53 nascem do ficheiro do vizinho, como a sonda do doc 52 os mediu.
         Err(_) if NASCE_DE.iter().any(|(n, _)| *n == r.nome) => {
             let base = NASCE_DE.iter().find(|(n, _)| *n == r.nome).unwrap().1;
             let mut p = super::midias_de_fabrica::de_fabrica(base).parametros;

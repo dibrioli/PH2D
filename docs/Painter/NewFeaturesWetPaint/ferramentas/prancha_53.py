@@ -10,7 +10,7 @@ import sys
 from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from avalia_53 import OS_11, VIZINHO, slug  # noqa: E402
+from avalia_53 import OS_DA_FABRICA, VIZINHO, slug  # noqa: E402
 
 d, saida = sys.argv[1], sys.argv[2]
 F = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "fixtures", "rebelle")
@@ -24,9 +24,9 @@ def abre(caminho):
     return Image.new("RGB", (W, H), "magenta")
 
 
-folha = Image.new("RGB", (3 * W, len(OS_11) * (H + TOPO)), "white")
+folha = Image.new("RGB", (3 * W, len(OS_DA_FABRICA) * (H + TOPO)), "white")
 desenho = ImageDraw.Draw(folha)
-for i, (p, foto, _, _, _) in enumerate(OS_11):
+for i, (p, foto, _, _, _) in enumerate(OS_DA_FABRICA):
     y = i * (H + TOPO)
     for j, (titulo, img) in enumerate([
         (f"Rebelle · {foto}", abre(f"{F}/{foto}.png")),

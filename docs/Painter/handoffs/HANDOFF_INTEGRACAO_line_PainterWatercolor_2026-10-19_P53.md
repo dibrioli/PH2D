@@ -4,6 +4,10 @@
 > (não repetidos aqui) · [prompt 53](../NewFeaturesWetPaint/53_PROMPT_os_11_pinceis_novos.md) · anterior:
 > [integração P51](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-19_P51.md).
 > Smoke do dono: **PENDENTE** (integrar não é aprovar).
+>
+> ⛔ **Depois do smoke (19/10):** o Filbert, o Flat Oily e o Knife Smooth SAÍRAM da fábrica ([53 §8](../NewFeaturesWetPaint/53_medicao_os_11_pinceis.md)).
+> Os números de RECONTAGEM abaixo passam a: `PRESETS_DE_FABRICA` **28**, `MIDIAS` **24**, `IRMAOS` **2**, `NASCE_DE` **8**,
+> chaves i18n de pasta **+4** (sem `flat`/`knife`), 8 PNG novos; `shape_color_tests.rs` deixou o literal (não há o que recontar).
 
 ## §1 — Coordenadas
 

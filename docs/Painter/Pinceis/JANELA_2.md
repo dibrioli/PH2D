@@ -9,7 +9,7 @@ Implementar, por ordem de quantos pincéis do catálogo cada uma destrava, as LA
 lacuna é uma feature de produto completa (CLAUDE.md §0.6, DIRETIVA_IMPLEMENTACAO a cada passo):
 
 1. **Medida contra o oráculo ANTES** (o que o Krita/MyPaint/Rebelle faz na bateria de gestos) — a lei vem da medição.
-2. **Aditiva**: os 3 meios antigos e os 31 presets ficam byte-idênticos com ela desligada (prove com as miniaturas
+2. **Aditiva**: os 3 meios antigos e os 28 presets ficam byte-idênticos com ela desligada (prove com as miniaturas
    `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` e a cerca da linha).
 3. **No painel** quando é um botão do artista (tokens/i18n, HR-15; a família vive em `crates/ph2d-app-painter`,
    a shell só encolhe), **no ficheiro do preset** (`CAMPOS_DO_PINCEL`/knob do registo) quando é do pincel.

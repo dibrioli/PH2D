@@ -199,7 +199,7 @@ use Metrica::{
 // O Chato e a Tinta (prompt 23, aceites 12/10) são os dois pontos que o dono VIU: a mutação «preset de antes»
 // sangra cada um sozinho (Oil 0,950 · Express 0,906).
 #[rustfmt::skip]
-const MIDIAS: [Midia; 27] = [
+const MIDIAS: [Midia; 24] = [
     // ⛔ As PONTAS da rampa do Rebelle saíram dos pincéis da tinta, do óleo, dos lápis e dos pastéis por ordem do DONO
     // (smoke 18/10: «apertar muito e pouco variam pouco a espessura; antes funcionava melhor»): o piso que as dava comia
     // a resposta da mão dele (0,24–0,86). Ficam no aerógrafo e nos Flats, que já as tinham (doc 47_medicao §2).
@@ -224,10 +224,9 @@ const MIDIAS: [Midia; 27] = [
     // As formas (prompt 44, doc 44 §3): a ponta reta e a pressão que não estreita e ESMAECE (prompt 45, doc 45).
     Midia { preset: "Wet Flat", foto: "wcflat", raio: 17.0, metricas: &[(Cobertura, 0.315), (Ponta, 0.096), (RampaLargura, 0.829), (RampaCobertura, 0.42), (Largura, 34.0), (Pontas, 0.9)] },
     Midia { preset: "Gouache Flat", foto: "gouacheflat", raio: 19.5, metricas: &[(Cobertura, 0.504), (Ponta, 0.083), (Chato, 0.782), (RampaLargura, 0.872), (RampaCobertura, 0.43), (Largura, 39.0), (Pontas, 0.87)] },
-    // Os 11 do prompt 53 (doc 52 §4): as métricas que distinguem a foto do controlo; o raio é o do preset à largura SECA
-    // da foto pela lei PRÓPRIA dele (`ferramentas/avalia_53.py`; o Wax, o Filbert e as lâminas por grelha). O Cruzamento
-    // do Wax Scrape não entra (0,166 do controlo, abaixo de 3× o ruído desta régua); o Cv das lâminas também não: a
-    // 10 px a borda alterna entre células da grelha do motor e o Cv salta de 0,004 a 0,056 entre raios a 0,1 px (doc 53).
+    // Os 8 que ficaram do prompt 53 (doc 52 §4; o Filbert e as lâminas saíram, doc 53 §8): as métricas que distinguem a
+    // foto do controlo; o raio é o do preset à largura SECA da foto pela lei PRÓPRIA dele (`ferramentas/avalia_53.py`; o
+    // Wax por grelha). O Cruzamento do Wax Scrape não entra (0,166 do controlo, abaixo de 3× o ruído desta régua).
     Midia { preset: "Graphite 2H", foto: "pencil2h", raio: 14.40, metricas: &[(Cobertura, 0.595), (Textura, 4.983), (Borda, 0.321), (Orla, 10.0), (Cruzamento, 0.599), (Largura, 24.0)] },
     Midia { preset: "Graphite HB", foto: "pencilhb", raio: 15.31, metricas: &[(Cobertura, 0.561), (Textura, 6.153), (Borda, 0.325), (Orla, 11.0), (Cruzamento, 0.583), (Largura, 24.0)] },
     Midia { preset: "Graphite 2B", foto: "pencil2b", raio: 14.40, metricas: &[(Cobertura, 0.544), (Textura, 13.901), (Borda, 0.350), (Orla, 11.0), (Cruzamento, 0.589), (Largura, 24.0)] },
@@ -235,10 +234,7 @@ const MIDIAS: [Midia; 27] = [
     Midia { preset: "Scratch", foto: "scratch", raio: 15.71, metricas: &[(Cobertura, 0.255), (Textura, 19.780), (Borda, 0.591), (Orla, 13.0), (Cv, 0.126), (Cruzamento, 0.652), (Largura, 24.0)] },
     Midia { preset: "Square Hard", foto: "squarehard", raio: 15.50, metricas: &[(Cobertura, 0.705), (Textura, 20.884), (Borda, 0.856), (Cv, 0.077), (Cruzamento, 0.579), (Largura, 31.0)] },
     Midia { preset: "Wax Scrape", foto: "waxscrape", raio: 19.5, metricas: &[(Cobertura, 0.763), (Textura, 16.691), (Borda, 0.586), (Largura, 36.0)] },
-    Midia { preset: "Filbert", foto: "filbert", raio: 20.5, metricas: &[(Cobertura, 0.845), (Textura, 4.458), (Borda, 0.571), (Largura, 40.0)] },
     Midia { preset: "Dabber", foto: "dabber", raio: 19.5, metricas: &[(Cobertura, 0.840), (Textura, 10.715), (Borda, 0.588), (Orla, 5.0), (Largura, 36.0)] },
-    Midia { preset: "Flat Oily", foto: "flatoily", raio: 5.4, metricas: &[(Cobertura, 0.884), (Textura, 0.773), (Borda, 0.938), (Cruzamento, 0.723), (Largura, 10.0)] },
-    Midia { preset: "Knife Smooth", foto: "knife", raio: 5.1, metricas: &[(Cobertura, 0.893), (Textura, 1.048), (Borda, 0.930), (Cruzamento, 0.513), (Largura, 9.0)] },
 ];
 
 /// O raio da cena da mídia `nome` (a largura da foto do Rebelle), se ela tem foto.
@@ -463,10 +459,9 @@ fn cada_preset_parece_a_sua_midia() {
 }
 
 /// Os pares que cabem um no vale do outro (a matriz do `ferramentas/avalia_53.py`): o portão pede a foto MAIS PERTO.
-const IRMAOS: [(&str, &str); 3] = [
+const IRMAOS: [(&str, &str); 2] = [
     ("Graphite 2H", "Graphite HB"),
     ("Graphite 2B", "Colored 4B"),
-    ("Flat Oily", "Knife Smooth"),
 ];
 
 /// **SONDA (prompt 42b): as métricas de um preset com knobs trocados** — `PH2D_SONDA_PRESETS="Ink Brush,…"` (por

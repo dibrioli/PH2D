@@ -5,12 +5,12 @@ use ph2d_brush_presets::Tilt;
 use serde_json::{Value, json};
 
 /// Quantos presets a fábrica tem — CONTADO (`the_factory_presets_are_counted`), nunca escolhido.
-pub const PRESETS_DE_FABRICA: usize = 31;
+pub const PRESETS_DE_FABRICA: usize = 28;
 
 /// Os pincéis que nascem do ficheiro de um VIZINHO de fábrica (prompt 53): a receita medida no doc 52 é o vizinho
 /// inteiro + os overrides (a sonda partiu do ficheiro dele, com o estado que a `Receita` não lista — o `drag` da
-/// acrílica, os fios do Oil Bristle).
-pub const NASCE_DE: [(&str, &str); 11] = [
+/// acrílica, os fios do Oil Bristle). O Filbert e as lâminas saíram pelo smoke do dono (doc 53 §8).
+pub const NASCE_DE: [(&str, &str); 8] = [
     ("Graphite 2H", "Graphite 8B"),
     ("Graphite HB", "Graphite 8B"),
     ("Graphite 2B", "Graphite 8B"),
@@ -18,10 +18,7 @@ pub const NASCE_DE: [(&str, &str); 11] = [
     ("Scratch", "Charcoal"),
     ("Square Hard", "Soft Pastel"),
     ("Wax Scrape", "Soft Pastel"),
-    ("Filbert", "Acrylic Round"),
     ("Dabber", "Oil Bristle"),
-    ("Flat Oily", "Acrylic Round"),
-    ("Knife Smooth", "Acrylic Round"),
 ];
 
 /// O grão `kind` de lado `lado` no slot Grain do pincel (o JSON do `BrushSpec::texture`).
@@ -517,7 +514,7 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         achatado: Some((0.2, 90)),
         pincel: &[("dab_quina", "1.0")],
     },
-    // ⭐ Os 11 do prompt 53: as receitas que passaram a foto do Rebelle no doc 52 §4 (`52_regua/receitas_19*.json`,
+    // ⭐ Os 8 que ficaram do prompt 53 (doc 53 §8): as receitas que passaram a foto do Rebelle no doc 52 §4 (`52_regua/receitas_19*.json`,
     // pelo nome no comentário), cada uma o vizinho de [`NASCE_DE`] inteiro + os overrides. O tamanho é o do preset
     // dele (`volume_params.size` do `.rebelle-brush.png`, `ferramentas/tamanho_dos_presets.py`).
     // `lapisb_027` com a carga 50: o lápis duro, o grão fino. A 40 cobria 0,560 — a do HB (Rebelle 2H 0,595, HB 0,561) e
@@ -558,14 +555,6 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         pincel: &[("dab_quina", "0.0")],
         ..SOFT_PASTEL
     },
-    // `filbert_016`: a acrílica de cerdas largas.
-    Receita {
-        grupo: "Flat",
-        nome: "Filbert",
-        bristle_size: 2.0,
-        size_px: Some(64.0),
-        ..ACRYLIC_ROUND
-    },
     // `dabberc_032`: o Oil Bristle de cerdas largas, mais relevo e a ponta espalhada (jitter) — a esponja.
     Receita {
         grupo: "Dabber",
@@ -589,14 +578,9 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         pincel: &[("jitter", "0.5")],
         ..OIL_BRISTLE
     },
-    // `laminac_018`: a LÂMINA chata deitada, sem cerdas (⛔ com cerdas a textura dava 6–8 contra 0,8–1,0: 52 §5).
-    lamina("Flat", "Flat Oily", 1000.0, 64.0),
-    // `laminac_012` com um QUARTO da tinta: à lei própria a 500 pintava o Flat Oily (cruzamento 0,665 × 0,689); a 250
-    // 0,547 (Rebelle 0,513 × 0,723) e a textura 1,93 (1,05) — passa a sua foto e reprova a do Flat Oily (doc 53 §3).
-    lamina("Knife", "Knife Smooth", 250.0, 51.0),
 ];
 
-// As bases dos 11 do prompt 53, com o nome de cada uma (a fábrica e o `..` dos novos leem a MESMA).
+// As bases dos 8 do prompt 53, com o nome de cada uma (a fábrica e o `..` dos novos leem a MESMA).
 const GRAPHITE_8B: Receita = Receita {
     meio: "Pencil",
     grupo: "Graphite",
@@ -767,24 +751,6 @@ const fn lapis(
         gate,
         grao: Some(("Noise", grao)),
         ..GRAPHITE_8B
-    }
-}
-
-const fn lamina(grupo: &'static str, nome: &'static str, pigment: f64, size: f64) -> Receita {
-    Receita {
-        grupo,
-        nome,
-        pigment,
-        hardness: 0.9,
-        size_px: Some(size),
-        extras: &[
-            ("felt", 1.0),
-            ("bristleStrength", 0.0),
-            ("pigmentSpacing", PASSO_DOS_OLEOS),
-            ("capsuleSpacing", PASSO_DOS_OLEOS),
-        ],
-        achatado: Some((0.82, 0)),
-        ..ACRYLIC_ROUND
     }
 }
 

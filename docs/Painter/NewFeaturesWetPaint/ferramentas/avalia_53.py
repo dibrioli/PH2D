@@ -27,6 +27,10 @@ OS_11 = [
     ("Flat Oily", "flatoily", 10.0, "laminac_018", "0xbc86c77a90196ee9"),
     ("Knife Smooth", "knife", 10.0, "laminac_012", "0x11d44037b349ba62"),
 ]
+# Saíram da fábrica pelo smoke do dono (19/10, doc 53 §8): o Filbert «nada novo», as lâminas «bizarras e inúteis».
+# As fotos deles continuam colunas da matriz; as linhas (os presets que se leem de `assets/`) são os que ficaram.
+SAIRAM = {"Filbert", "Flat Oily", "Knife Smooth"}
+OS_DA_FABRICA = [o for o in OS_11 if o[0] not in SAIRAM]
 # O controlo de cada foto: o Wet Round à largura SECA dela (o `k_<grupo>` do 52).
 CONTROLO = {"pencil2h": 24, "pencilhb": 24, "pencil2b": 24, "pencil4bcolor": 24, "scratch": 24, "squarehard": 31,
             "waxscrape": 36, "filbert": 40, "dabber": 36, "flatoily": 10, "knife": 10}
@@ -43,13 +47,13 @@ def slug(nome):
 
 def receitas(saida):
     lote = []
-    for p, foto, alvo, _, _ in OS_11:
+    for p, foto, alvo, _, _ in OS_DA_FABRICA:
         lote.append({"nome": f"id_{slug(p)}", "base": p, "foto": foto, "alvo": alvo})
         for _, outra, alvo_outra, _, _ in OS_11:
             if outra != foto:
                 lote.append({"nome": f"x_{slug(p)}__{outra}", "base": p, "foto": outra, "alvo": alvo_outra})
     # O vizinho de fábrica de cada um (`NASCE_DE`), sem mudança, à largura da foto: a prancha do smoke.
-    for p, foto, alvo, _, _ in OS_11:
+    for p, foto, alvo, _, _ in OS_DA_FABRICA:
         lote.append({"nome": f"v_{slug(p)}", "base": VIZINHO[p], "foto": foto, "alvo": alvo})
     for larg in sorted(set(CONTROLO.values())):
         lote.append({"nome": f"k_{larg}", "base": "Wet Round", "alvo": larg})
@@ -85,7 +89,7 @@ def avalia(d, log):
 
     # A identidade (o preset gravado = a receita do 52) é por DADOS: `identidade_53.py`.
     print("## Raio de cada preset à largura da própria foto")
-    for p, _, _, _, _ in OS_11:
+    for p, _, _, _, _ in OS_DA_FABRICA:
         n = f"id_{slug(p)}"
         print(f"   {p:<13} raio {raio.get(n, '?'):>6} fnv {fnv.get(n, '?')}")
 
@@ -93,7 +97,7 @@ def avalia(d, log):
     fotos = [f for _, f, _, _, _ in OS_11]
     print("   " + " " * 13 + " ".join(f"{f[:7]:>7}" for f in fotos))
     passa = {}
-    for p, propria, _, _, _ in OS_11:
+    for p, propria, _, _, _ in OS_DA_FABRICA:
         celulas = []
         for _, foto, _, _, _ in OS_11:
             R = m(f"{F}/fixtures/rebelle/{foto}.png")
@@ -116,7 +120,7 @@ def avalia(d, log):
             celulas.append(f"{'✓' if tudo else f'{len(ok) + lw}/{len(conta) + 1}':>7}")
         print("   " + f"{p:<13}" + " ".join(celulas))
     print("\n## Veredito")
-    for p, propria, _, _, _ in OS_11:
+    for p, propria, _, _, _ in OS_DA_FABRICA:
         outras = [f for (q, f), v in passa.items() if q == p and v and f != propria]
         print(f"   {p:<13} a sua foto {'✓' if passa.get((p, propria)) else '✗'} · passa também em: {', '.join(outras) or '—'}")
 

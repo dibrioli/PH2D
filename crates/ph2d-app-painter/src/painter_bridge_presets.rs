@@ -365,9 +365,7 @@ fn rotulo_da_pasta(idioma: Idioma, nome: &str) -> &str {
         "Colored" => tr_em(idioma, "app.painter.presets.folder.colored"),
         "Scratch" => tr_em(idioma, "app.painter.presets.folder.scratch"),
         "Scrape" => tr_em(idioma, "app.painter.presets.folder.scrape"),
-        "Flat" => tr_em(idioma, "app.painter.presets.folder.flat"),
         "Dabber" => tr_em(idioma, "app.painter.presets.folder.dabber"),
-        "Knife" => tr_em(idioma, "app.painter.presets.folder.knife"),
         _ => nome,
     }
 }

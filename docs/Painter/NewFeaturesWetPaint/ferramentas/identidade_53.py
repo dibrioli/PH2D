@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""⭐ A prova de IDENTIDADE dos 11 do prompt 53: o preset gravado em `assets/brushes/WetPainter/` É a receita vencedora do
+"""⭐ A prova de IDENTIDADE dos 8 do prompt 53 que ficaram na fábrica (`OS_DA_FABRICA`): o preset gravado em `assets/brushes/WetPainter/` É a receita vencedora do
 doc 52 — o ficheiro do vizinho (`base`) com os overrides dela (`knobs` → `engine`, `brush` → `brush`), campo a campo.
 Só podem diferir o nome, o grupo, o tamanho (`volumes.size_px`, o do preset do Rebelle) e a lei da largura
 (`width_table`, medida do preset novo). Um fnv da cena não serve: a lei própria muda o raio que o motor vê.
@@ -14,11 +14,11 @@ import sys
 import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from avalia_53 import OS_11, VIZINHO  # noqa: E402
+from avalia_53 import OS_DA_FABRICA, VIZINHO  # noqa: E402
 
 raiz = sys.argv[1]
 # Os ajustes MEDIDOS no 53 sobre a receita do 52 (o porquê no comentário da receita em `receitas_de_fabrica.rs`).
-AJUSTES_DO_53 = {"Knife Smooth": {"pigmentPerDab": 250.0}, "Graphite 2H": {"pigmentPerDab": 50.0}}
+AJUSTES_DO_53 = {"Graphite 2H": {"pigmentPerDab": 50.0}}
 LIVRES = {("name",), ("group",), ("volumes", "size_px"), ("width_table",)}
 
 
@@ -63,7 +63,7 @@ for f in ("receitas_19.json", "receitas_19b.json", "receitas_19bc.json"):
         receitas.setdefault(r["nome"], r)
 
 falhas = 0
-for preset, _, _, nome_receita, _ in OS_11:
+for preset, _, _, nome_receita, _ in OS_DA_FABRICA:
     r = receitas[nome_receita]
     assert r["base"] == VIZINHO[preset], (preset, r["base"])
     esperado = parametros(r["base"])

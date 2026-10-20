@@ -8,6 +8,7 @@
 ## §0 — O que mudou
 
 `PRESETS_DE_FABRICA` **20 → 31** (contado). Os 20 antigos ficam **ao byte** (portão `cada_preset_de_fabrica_volta_ao_byte` verde).
+⛔ Depois do smoke do dono: **31 → 28** — o Filbert, o Flat Oily e o Knife Smooth saíram da fábrica (§8).
 
 **Tamanho = o do preset do Rebelle:** `volume_params.size` do chunk zTXt `ParametersEx` do `.rebelle-brush.png` instalado
 (`ferramentas/tamanho_dos_presets.py`). Conferido nos 8 de antes: Bristle Flat 103,1→103 · Round Hard 78,0→78 · Hairy 64,3→64 · 8B 6,50→6,5 ·
@@ -93,3 +94,23 @@ O gerador do Dabber a 64 fios: 21,9 GiB do tecto de 24 (perto; `PH2D_LEI_FIOS` =
 2. As lanes do Jitter alto (Dabber): o ×N de memória que resta e talvez o rasgado — decisão de lei (§6, última linha).
 3. O Cv das lâminas finas (resolução da grelha do motor).
 4. Os do 52 §6 (4 cobertos, Marker/Effect, Granulation/Spatter) e os 4 do P51 **ADIADOS pelo dono** ([51 §8](51_medicao_spacing_continuous.md)).
+
+## §8 — ⛔ Saíram pelo veredito do dono (19/10)
+
+Smoke do P53, o dono a pintar: *«Filbert = nada novo»* (pinta como a Acrylic Round); *«Flat Oily e Knife Smooth = bizarros e
+inúteis»*; *«faltou um trabalho sério de teste e comparação com o Rebelle»*. Os três passavam TODAS as réguas deste doc
+(foto no recto, matriz, irmãos, mutação, identidade) — a régua do recto é condição necessária, nunca suficiente
+(memória `feedback_a_brush_that_passes_the_ruler_can_still_be_useless`).
+
+**Saíram da fábrica (decisão do coordenador da missão, [00_MISSAO](../Pinceis/00_MISSAO.md) §3):** os três `.ph2d-brush.png`,
+as pastas `Oil/Flat` e `Oil/Knife` (vazias) e os rótulos delas (`app.painter.presets.folder.{flat,knife}`), as 3 receitas e o
+`lamina()`, as 3 mídias (`MIDIAS` 27 → 24), o par Flat Oily·Knife de `IRMAOS` (3 → 2), as 3 linhas de `NASCE_DE` (11 → 8).
+`PRESETS_DE_FABRICA` 31 → **28** (contado); `a_cor_sobrevive_a_agua_nos_pinceis_de_fabrica` deixou o literal e pede só que
+todos os ficheiros carreguem (a contagem é do `the_factory_presets_are_counted`). `avalia_53.py` ganhou `SAIRAM` /
+`OS_DA_FABRICA` (as linhas da matriz são os 8; as fotos dos 11 continuam colunas); `identidade_53.py` **8/8**.
+As fotos do Rebelle deles (`fixtures/rebelle/{filbert,flatoily,knife}.png`) e as medições acima FICAM — são o alvo de quem os refizer.
+
+**Para a [JANELA 4](../Pinceis/JANELA_4.md)** (o catálogo da pintura): refazer o Filbert, o Flat e a Knife **só** com a lâmina que
+gira com o arrasto ([26 C38](26_ABERTOS.md), motor da JANELA 2) e **só** se passarem o EXAME inteiro ([00_MISSAO](../Pinceis/00_MISSAO.md)
+§3: a bateria de gestos lado a lado, distinto da biblioteca INTEIRA, razão de uso, revisão cega, uso real). O Filbert novo
+tem de mostrar na prancha o que a Acrylic Round não pinta.

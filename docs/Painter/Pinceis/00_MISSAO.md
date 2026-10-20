@@ -38,7 +38,7 @@ réguas do traço recto. ⇒ [`feedback_a_brush_that_passes_the_ruler_can_still_
   antigos fica byte-idêntico (a cerca da linha) — capacidade nova neles entra ADITIVA, desligada por omissão.
 - **Os presets**: `assets/brushes/WetPainter/<meio>/<grupo>/<nome>.ph2d-brush.png` (`ph2d-brush-presets`), receita em
   `crates/ph2d-tool-painter/tests/it/receitas_de_fabrica.rs`, gerador `presets_de_fabrica.rs`, portão por foto
-  `midias_de_fabrica.rs` (+ a lei dos IRMÃOS). 31 de fábrica hoje. Ferramentas da régua:
+  `midias_de_fabrica.rs` (+ a lei dos IRMÃOS). 28 de fábrica hoje (eram 31; o Filbert e as lâminas saíram, 53 §8). Ferramentas da régua:
   `docs/Painter/NewFeaturesWetPaint/ferramentas/` (`avalia_53.py`, `identidade_53.py`, `prancha_53.py`,
   `tamanho_dos_presets.py`, `fotos_lote.sh`, `midias_regua.py`). Medição e recusas: docs 18, 52, 53 da mesma pasta.
 - **Oráculos** (CLAUDE.md §0.9: um app é um programa que se CORRE sobre entradas NOSSAS, nunca um fonte que se lê;

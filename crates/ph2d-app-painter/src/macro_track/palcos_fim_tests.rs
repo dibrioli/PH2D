@@ -486,3 +486,6 @@ mod marca_tests;
 
 #[path = "palcos_cobertura_tests.rs"]
 mod cobertura_tests;
+
+#[path = "palcos_cauda_tests.rs"]
+mod cauda_tests;

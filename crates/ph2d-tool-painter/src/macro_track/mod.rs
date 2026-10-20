@@ -23,6 +23,8 @@ pub mod tocar;
 pub mod tutorial;
 
 #[cfg(test)]
+mod cauda_tests;
+#[cfg(test)]
 mod composicao_tests;
 #[cfg(test)]
 mod custo_w5e_tests;
@@ -36,6 +38,8 @@ mod marca_cobertura_tests;
 mod marca_painter_tests;
 #[cfg(test)]
 mod sonda_w12_tests;
+#[cfg(test)]
+mod sonda_w14_tests;
 #[cfg(test)]
 mod tests;
 

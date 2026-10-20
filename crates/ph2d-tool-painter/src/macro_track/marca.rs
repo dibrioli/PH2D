@@ -5,6 +5,7 @@
 //! (premultiplicado; a tinta é composta «por cima»): `c = 0` é o clipe, `c = CHEIA` a imagem atual. Só os
 //! ladrilhos tocados vivem.
 
+use crate::tool::paint::fita::MarcaDaAgua;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -67,6 +68,8 @@ pub struct MarcaDoArtista {
     versao: u64,
     /// Contém todo texel com `c > 0`; `None` = nenhum.
     caixa: Option<Caixa>,
+    /// O estado da água da gravação que a imagem guardou quando ela parou depois do Parar (W14).
+    agua_parou: Option<MarcaDaAgua>,
 }
 
 /// O que um passo mudou na marca, por ladrilho: como estava e como ficou (`None` = sem ladrilho). O
@@ -222,7 +225,16 @@ impl MarcaDoArtista {
             ladrilhos: Arc::new(BTreeMap::new()),
             versao: versao_nova(),
             caixa: None,
+            agua_parou: None,
         }
+    }
+
+    /// **Onde a água da gravação parou na imagem** (W14, `docs/Macros/12_W14_a_agua_depois_do_parar.md`):
+    /// a sessão molhada da gravação acabou depois do Parar (o 1.º toque do artista a assa, W12) e a imagem
+    /// guardou a água neste estado. `None` = ela corre (ou correu) até assentar.
+    #[must_use]
+    pub fn agua_da_gravacao_parou(&self) -> Option<MarcaDaAgua> {
+        self.agua_parou
     }
 
     #[must_use]

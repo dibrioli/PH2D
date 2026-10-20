@@ -252,6 +252,14 @@ impl MacroEmCena {
         self.doc.tracks[0].target
     }
 
+    /// **A água depois do fim do clipe** (W14, decisão do dono 20/10): com todos os passos tocados, a água
+    /// da gravação continua `dt_ms`, até assentar ou até `ate` (onde a imagem a guardou,
+    /// [`super::marca::MarcaDoArtista::agua_da_gravacao_parou`]). `false` = já não anda.
+    pub fn corre_a_cauda(&mut self, dt_ms: f32, ate: Option<super::MarcaDaAgua>) -> bool {
+        let _ = (dt_ms, ate);
+        false
+    }
+
     /// O tempo até onde a macro já tocou.
     #[must_use]
     pub fn tempo(&self) -> MacroTime {

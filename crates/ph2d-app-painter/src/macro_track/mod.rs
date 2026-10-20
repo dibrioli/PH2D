@@ -24,6 +24,7 @@ use std::sync::Arc;
 
 /// `PH2D_MACRO_SMOKE=6` — o caminho do dono, sozinho, e a linha de diagnóstico do palco.
 pub mod caminho;
+mod cauda;
 mod fim;
 mod marcas;
 mod reescrita;
@@ -199,6 +200,8 @@ pub struct PalcosDoPainter {
     marcas: BTreeMap<ChaveDaMarca, marcas::Guardada>,
     /// As cenas `=5`/`=6`: o que cada ranhura recebeu e as trocas da última subida ([`caminho::Espia`]).
     espia: Option<caminho::Espia>,
+    /// O que a água anda no fim de um clipe neste quadro ([`cauda`]).
+    dt_da_cauda_ms: f32,
     /// Os gates trocam o cálculo do fim (um que falha).
     #[cfg(test)]
     calcula_o_fim: Option<fim::Calculo>,

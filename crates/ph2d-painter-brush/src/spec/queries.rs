@@ -430,6 +430,16 @@ impl BrushSpec {
         self.stroke_method.allows_jitter() && (self.jitter > 0.0 || self.jitter_absolute_px > 0.0)
     }
 
+    /// O raio do disco do Jitter para um dab de raio `radius` (`jitter × diâmetro` · `2 × jitter_absolute_px`): a
+    /// ÚNICA conta — o `stroke::dab_build::apply_jitter` e os carimbos sólidos leem esta.
+    #[must_use]
+    pub fn alcance_do_jitter(&self, radius: f32) -> f32 {
+        match self.jitter_unit {
+            JitterUnit::Brush => self.jitter.clamp(0.0, 1.0) * (2.0 * radius),
+            JitterUnit::View => 2.0 * self.jitter_absolute_px.max(0.0),
+        }
+    }
+
     /// **O comprimento do traço-ponto muda alguma coisa?** — só com o Dash Ratio abaixo de `1`: com
     /// ele a `1`, o [`Self::dash_on`] liga todo carimbo, qualquer que seja o comprimento.
     #[must_use]

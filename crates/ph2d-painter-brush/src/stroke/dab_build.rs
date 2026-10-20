@@ -133,10 +133,7 @@ impl Stroke {
         if !self.spec.stroke_method.allows_jitter() {
             return (pos, 0.0);
         }
-        let max_offset = match self.spec.jitter_unit {
-            JitterUnit::Brush => self.spec.jitter.clamp(0.0, 1.0) * (2.0 * radius),
-            JitterUnit::View => 2.0 * self.spec.jitter_absolute_px.max(0.0),
-        };
+        let max_offset = self.spec.alcance_do_jitter(radius);
         if max_offset <= 0.0 {
             return (pos, 0.0);
         }

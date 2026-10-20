@@ -362,13 +362,24 @@ impl Trail {
 
     /// Frame-segment callback: size the window from the chord length.
     pub fn on_segment(&mut self, chord_len: f64, spacing: f64) {
+        self.on_segment_no_caminho(chord_len, chord_len, spacing);
+    }
+
+    /// [`Self::on_segment`] com o CAMINHO que o pincel andou (o arco) ao lado da corda entre centros: o
+    /// `window_size` sai da corda (a lei de sempre), a margem do [`Self::fit_to`] sai de `min(corda, caminho)`.
+    /// ⛔ Com Jitter a corda é o SALTO entre dois centros sorteados, não a deriva: a margem `4 × corda` guardava
+    /// o maior salto do traço e a janela de cada lane crescia para `~5 r` (Oil Bristle + Jitter 0,5, raio 300:
+    /// 7 lanes de meia-largura ~1 450, RSS 2,04 GiB contra 0,12 sem Jitter; raio 1000: 4,50 GiB). Pelo caminho,
+    /// o resto do salto é a rede ([`Self::ensure_fits`]) a crescer só o que um dab pede: 0,51 / 1,08 GiB, os
+    /// píxeis iguais ao bit (o tamanho da janela não muda célula nenhuma). Sem Jitter a corda é o caminho.
+    pub fn on_segment_no_caminho(&mut self, chord_len: f64, caminho: f64, spacing: f64) {
         let cap = if self.mode == TrailMode::Blend {
             4.0
         } else {
             2.0
         };
         self.window_size = (chord_len / spacing.max(0.0001)).floor().min(cap) as u32;
-        self.corda = chord_len;
+        self.corda = chord_len.min(caminho);
         // A deriva da janela entre transfers é `window_size × spacing`, e é
         // metade da conta do [`Trail::fit_to`]. Guardado aqui porque é o único
         // sítio que o conhece.

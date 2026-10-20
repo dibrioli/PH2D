@@ -91,11 +91,17 @@ impl Engine {
     /// The lane's path advanced by `chord` px — rolls that lane's deposit
     /// window exactly as the engine's own Segment events do.
     pub fn direct_segment(&mut self, lane: usize, chord: f64) {
+        self.direct_segment_no_caminho(lane, chord, chord);
+    }
+
+    /// [`Self::direct_segment`] com o arco que o caminho andou (`caminho`, células) — a margem da janela
+    /// segue o caminho, não o salto do Jitter ([`Trail::on_segment_no_caminho`]).
+    pub fn direct_segment_no_caminho(&mut self, lane: usize, chord: f64, caminho: f64) {
         if (self.tool == Tool::Paint || self.tool == Tool::Blend)
             && let Some(t) = self.lane_trails.get_mut(lane)
         {
             let spacing = self.tuning.get(Knob::Spacing);
-            t.on_segment(chord, spacing);
+            t.on_segment_no_caminho(chord, caminho, spacing);
         }
     }
 

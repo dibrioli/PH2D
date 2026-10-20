@@ -17,7 +17,6 @@
 use crate::Dab;
 use crate::jitter::{disc_sample, next_f32};
 use crate::spec::{BrushSpec, MAX_BRUSH_RADIUS_PX};
-use crate::stroke_method::JitterUnit;
 
 /// O piso do passo de área, em diâmetros — ver o doc do módulo.
 pub const PASSO_MINIMO_EM_DIAMETROS: f32 = 0.5;
@@ -96,10 +95,7 @@ fn carimbo(
         (color, color_shift) = c;
     }
     let radius = (r * scale).clamp(0.5, MAX_BRUSH_RADIUS_PX);
-    let alcance = match spec.jitter_unit {
-        JitterUnit::Brush => spec.jitter.clamp(0.0, 1.0) * (2.0 * radius),
-        JitterUnit::View => 2.0 * spec.jitter_absolute_px.max(0.0),
-    };
+    let alcance = spec.alcance_do_jitter(radius);
     let center = if jitter && alcance > 0.0 {
         let (dx, dy) = disc_sample(rng);
         [p[0] + dx * alcance, p[1] + dy * alcance]

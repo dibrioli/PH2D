@@ -189,11 +189,12 @@ pub fn grava_duas_horizontais_ligado_em(
 }
 
 /// Um ColorDrop do C&F gravado (W13): a cor solta em `onde` (fracções da tela) e confirmada no Done do
-/// modal, com o limiar que o tool tem.
+/// modal — com o limiar que o tool tem, ou `limiar` afinado no slider do modal antes do Done.
 #[derive(Clone, Copy)]
 pub(crate) struct Gota {
     pub(crate) cor: [u8; 3],
     pub(crate) onde: [f32; 2],
+    pub(crate) limiar: Option<f32>,
 }
 
 /// A caixa (W13): quatro traços pretos que fecham um quadrado, depois o azul solto lá dentro pelo C&F,
@@ -227,7 +228,32 @@ const CAIXA: [Pincelada; 5] = {
 const AZUL_DA_CAIXA: Gota = Gota {
     cor: [40, 110, 210],
     onde: [0.45, 0.55],
+    limiar: None,
 };
+
+/// Um traço preto, o Fill que o cobre (o limiar no máximo: a tela inteira) e o MESMO traço outra vez,
+/// em Digital — a 2.ª passagem só tem critério contra a cor do Fill (W13, a cobertura que o Fill apaga).
+#[cfg(test)]
+pub(crate) fn grava_o_traco_sob_o_fill_e_por_cima(lado: u32) -> Option<(Vec<u8>, f64)> {
+    // LITERAL-COLOR-OK: a cor GRAVADA do Fill da fixtura.
+    let gota = Gota {
+        cor: [200, 60, 40],
+        onde: [0.5, 0.8],
+        limiar: Some(1.0),
+    };
+    let traco = CRUZADAS[0];
+    grava_com_gotas(
+        lado,
+        0,
+        &[traco, traco],
+        &[],
+        &[(1, gota)],
+        Tela::Papel,
+        &[PaintMedia::Digital],
+        Relogio::Fixo,
+    )
+    .map(|(_, b, s)| (b, s))
+}
 
 /// **A caixa com um Fill** (W13, a cena do tutorial `PH2D_MACRO_SMOKE=4` com
 /// `PH2D_MACRO_CAMINHO=fill`): quatro traços que fecham um quadrado, o azul do C&F solto dentro dele, um
@@ -343,6 +369,13 @@ fn solta(
             tilt: [0.0, 0.0],
             phase,
         });
+        quadro(t)?;
+    }
+    if let Some(v) = g.limiar {
+        t.handle_panel_event(PanelEvent::SetValue(
+            ph2d_editor_core::ids::PAINTER_FILL_MODAL_SLIDER,
+            f64::from(v),
+        ));
         quadro(t)?;
     }
     t.handle_panel_event(PanelEvent::Click(

@@ -5,6 +5,7 @@ use super::super::{EnsinoDoPainter, TipoDoCriterio, mostra};
 use super::{TOLERANCIA_DA_COR, rgb_parecida};
 use crate::PaintMedia;
 use crate::macro_track::inicial;
+use crate::macro_track::roteiro::grava_o_traco_sob_o_fill_e_por_cima;
 use crate::macro_track::roteiro::{DT_MS, grava_a_caixa_com_um_fill};
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase, Tool};
@@ -87,9 +88,9 @@ fn a_cor_do_fill_cumpre_na_tolerancia_e_nao_alem() {
     for c in &e.criterios[..fill] {
         mostra(&mut t, &track, c.regiao.k).expect("mostra");
     }
-    let tol = TOLERANCIA_DA_COR;
-    let dentro = [AZUL[0] + tol, AZUL[1] - tol, AZUL[2] + tol];
-    let alem = [AZUL[0], AZUL[1] + tol + 1, AZUL[2]];
+    // Os números da medição, não a constante: mudar a tolerância tem de reprovar aqui.
+    let dentro = [AZUL[0] + 26, AZUL[1] - 26, AZUL[2] + 26];
+    let alem = [AZUL[0], AZUL[1] + 27, AZUL[2]];
     assert!(rgb_parecida(dentro, AZUL) && !rgb_parecida(alem, AZUL));
     t.set_brush_color_srgb8(alem);
     assert_eq!(
@@ -110,6 +111,84 @@ fn a_cor_do_fill_cumpre_na_tolerancia_e_nao_alem() {
         );
         assert!(t.undo_last());
     }
+}
+
+/// ⭐ **A tolerância é o meio do intervalo medido** (W13 doc §2): o rato alcança qualquer cor a metade do
+/// maior passo da faixa do matiz (256 px lógicos, 6 níveis por canal num píxel ⇒ 3), e a paleta por
+/// omissão distingue as suas duas amostras mais próximas. Uma amostra nova mais perto reprova aqui.
+#[test]
+fn a_tolerancia_e_o_meio_entre_o_rato_e_a_paleta() {
+    let amostras: Vec<[u8; 3]> = ph2d_editor_core::widget::default_palette()
+        .swatches
+        .iter()
+        .map(|c| {
+            let [r, g, b, _] = c.rgba;
+            [r, g, b]
+        })
+        .collect();
+    let mut perto = u8::MAX;
+    for (i, a) in amostras.iter().enumerate() {
+        for b in &amostras[i + 1..] {
+            let d = a
+                .iter()
+                .zip(b)
+                .map(|(x, y)| x.abs_diff(*y))
+                .max()
+                .unwrap_or(0);
+            perto = perto.min(d);
+        }
+    }
+    let rato = 3;
+    assert_eq!(perto, 50, "a paleta mudou: meça outra vez");
+    assert_eq!(TOLERANCIA_DA_COR, (rato + perto) / 2);
+}
+
+/// Um traço, o Fill que o cobre e o MESMO traço por cima: a 2.ª passagem tem critério (contra a cor do
+/// Fill) — o Fill apaga a cobertura do traço de antes.
+#[test]
+fn o_traco_por_cima_do_fill_que_cobriu_um_traco_tem_criterio() {
+    use TipoDoCriterio::{Pincelada as P, Preenchimento as F};
+    let (b, _) = grava_o_traco_sob_o_fill_e_por_cima(LADO).expect("grava");
+    let track = ph2d_macro::codec::read(&b).expect("lê").tracks.remove(0);
+    let e = EnsinoDoPainter::medido(&track).expect("ensino");
+    let tipos: Vec<TipoDoCriterio> = e.criterios.iter().map(|c| c.regiao.tipo).collect();
+    assert_eq!(tipos, [F, P], "o 1.º traço some sob o Fill; o 2.º conta");
+    let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
+    for c in &e.criterios {
+        mostra(&mut t, &track, c.regiao.k).expect("mostra");
+        quadro(&mut t);
+    }
+    assert_eq!(e.por_cumprir(&t), None);
+}
+
+/// O «Mostra-me» do Fill usa o limiar GRAVADO (o do aluno inundaria os traços da caixa) e devolve ao
+/// aluno o modo e o limiar dele.
+#[test]
+fn o_mostra_me_do_fill_usa_o_limiar_gravado_e_devolve_o_do_aluno() {
+    let track = caixa(PaintMedia::Digital);
+    let e = EnsinoDoPainter::medido(&track).expect("ensino");
+    let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
+    for c in &e.criterios[..4] {
+        mostra(&mut t, &track, c.regiao.k).expect("mostra");
+    }
+    t.set_fill_threshold(1.0);
+    t.set_paint_tool_mode("smear");
+    mostra(&mut t, &track, e.criterios[4].regiao.k).expect("mostra o Fill");
+    quadro(&mut t);
+    assert_eq!(t.active_paint_mode_id(), "smear", "o modo do aluno volta");
+    assert!(
+        (t.fill_threshold() - 1.0).abs() < f32::EPSILON,
+        "o limiar do aluno volta"
+    );
+    let (w, _) = t.canvas_size();
+    let px = &t.camadas_rgba()[0].1;
+    // O traço de cima da caixa (v = 0,25) continua escuro: o limiar do aluno inundava-o de azul.
+    let i = ((LADO / 4) * w + LADO / 2) as usize * 4;
+    assert!(
+        px[i] < 100 && px[i + 2] < 100,
+        "o traço da caixa: {:?}",
+        &px[i..i + 4]
+    );
 }
 
 /// A cor certa solta FORA da caixa inunda o papel de fora, não o quadrado: não cumpre.

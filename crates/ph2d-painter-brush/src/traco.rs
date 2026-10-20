@@ -41,6 +41,12 @@ pub struct TracoComposto {
     pub queimada: f32,
     /// A **largura** da orla em px, `1..`[`LARGURA_MAX_PX`] (o raio do borrão da Watercolor).
     pub largura: f32,
+    /// ⭐ **O tecto POR DAB** (J3, `docs/Painter/Pinceis/exames/basicos.md` 2.ª onda): cada texel do traço pára na
+    /// opacidade do dab que o cobre — a da mão (pressão, inclinação, velocidade) —, e os dabs não somam além dela:
+    /// a *Opacity* do Krita/Photoshop (o Flow é a taxa). É o tecto do Accumulate desligado (`stroke_cover`) armado
+    /// também com a Strength a 1; com o Accumulate ligado os dabs somam por definição e isto não age. Não arma o
+    /// plano ([`Self::is_active`]).
+    pub tecto_por_dab: bool,
 }
 
 impl TracoComposto {
@@ -50,6 +56,7 @@ impl TracoComposto {
         molhada: 0.0,
         queimada: 0.0,
         largura: LARGURA_DE_FABRICA_PX,
+        tecto_por_dab: false,
     };
 
     /// Se algum campo pede o plano do traço.

@@ -115,13 +115,14 @@ const DO_SCULPT: &str = "canal derivado do Sculpt (`sculpt_panel.rs`)";
 const POR_DAB: &str = "a pegada deitada de UM dab (`BrushSpec::at_dab`): `None` no pincel do artista";
 const AQUARELA: &str = "lido só pela Watercolor";
 const IMPASTO: &str = "lido só pelo Impasto";
-const DIGITAL: &str = "lido só pelo Digital (a ponta de píxel, L18)";
+const DIGITAL: &str =
+    "lido só pelo Digital (a ponta de píxel, L18; a orla em píxeis e o sub-passo fino, J3)";
 const DOS_KNOBS: &str = "a caneta deitada: no Wet Paint são os knobs do pincel (`dabRotation`…`tiltLag`, W6), no mapa `engine`";
 const NAO_LIDO: &str = "o Wet Paint não o lê (deposita pela lei do fluido)";
 const PLANO: &str = "lido só pelo Digital: o plano do traço — o tecto e as orlas (L8, `traco_plano`)";
 
 /// Os campos do `BrushSpec` que o preset NÃO leva, e porquê.
-pub const CAMPOS_FORA: [(&str, &str); 70] = [
+pub const CAMPOS_FORA: [(&str, &str); 72] = [
     ("radius_px", VOLUME),
     ("strength", VOLUME),
     ("color", DA_OBRA),
@@ -192,6 +193,8 @@ pub const CAMPOS_FORA: [(&str, &str); 70] = [
     ("airbrush_rate_s", NAO_LIDO),
     ("space_attenuation", NAO_LIDO),
     ("traco", PLANO),
+    ("borda_px", DIGITAL),
+    ("sub_passo_fino", DIGITAL),
 ];
 
 /// Um `f32` para o JSON pelo menor texto que volta ao mesmo `f32` (`0.1`, não `0.10000000149011612`).

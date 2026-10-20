@@ -288,7 +288,11 @@ impl PainterTool {
                 // premise ("the cap is observable only under Strength < 1") is false once a texel's
                 // target alpha is fractional at full strength, because overlapping dabs would build
                 // the rim right back to a hard edge (measured: 0.64 -> 0.94).
-                || brush.film_aa_wanted(brush.shape.is_active()))
+                || brush.film_aa_wanted(brush.shape.is_active())
+                // O tecto POR DAB (J3): a opacidade da mão é o tecto de cada texel também à Strength 1.
+                || brush.traco.tecto_por_dab
+                // …e a orla em PÍXEIS (J3): o texel da orla pára na sua ÁREA, como o da Smooth Edges acima.
+                || (brush.borda_px > 0.0 && brush.leis_do_digital()))
     }
 
     /// Route a batch of dabs to one of the stamp paths (Smear / Blur / Clone / Mask / composite / cached /
@@ -566,7 +570,9 @@ impl PainterTool {
             // clauses and was served by the constant-orientation coloured stamp — every dab got the SAME
             // texture offset and the knob did nothing (sweep 2026-07-12). `is_cacheable()` covers Rake,
             // Random-Angle, Random-Offset, Tiled and Stencil in one place, so the hole cannot re-open.
+            // …e a orla em PÍXEIS (J3): o carimbo colorido em cache é de um raio, ela é de cada dab.
             let per_dab_dynamic = brush.shape_has_per_dab_rotation(has_shape_image)
+                || brush.borda_px > 0.0
                 || ph2d_painter_brush::pen::any_tilted(dabs)
                 || brush.has_colour_jitter_amount()
                 || brush.has_per_dab_rotation()

@@ -168,6 +168,18 @@ pub fn sub_passo_px(raio: f32) -> f32 {
     sub_passo_px_a(raio, SUB_SPACING)
 }
 
+/// O piso do sub-passo FINO ([`crate::BrushSpec::sub_passo_fino`], J3): 1/16 de texel — a lâmina de 2 px do Flat
+/// a 5 px leva 16 passagens por texel, as mesmas que a de 16 px a 40 (`0,4·D ÷ 0,025·D`).
+pub const SUB_PASSO_FINO_MIN_PX: f32 = 1.0 / 16.0;
+
+/// [`sub_passo_px`] com o piso [`SUB_PASSO_FINO_MIN_PX`]: acima de 40 px de diâmetro o mesmo número.
+#[must_use]
+pub fn sub_passo_fino_px(raio: f32) -> f32 {
+    let o = SUB_PX.with(Cell::get);
+    let f = if o > 0.0 { o } else { SUB_SPACING };
+    (f * 2.0 * raio).max(SUB_PASSO_FINO_MIN_PX)
+}
+
 /// [`sub_passo_px`] a outra fracção `fracao` do diâmetro (o sub-passo do pincel do Wet Paint); a de uma sonda
 /// ([`com_lei`]) manda sobre as duas.
 #[must_use]
@@ -473,7 +485,7 @@ impl crate::Dab {
     /// `None` with no step (Continuous Spacing off, the opening dab, the single marks).
     #[must_use]
     pub fn capsula(&self, spec: &crate::BrushSpec) -> Option<Capsula> {
-        let cap = Capsula::new(self.step, sub_passo_px(self.radius_px))?;
+        let cap = Capsula::new(self.step, spec.sub_passo_da_capsula(self.radius_px))?;
         let Some(a) = self.ante else {
             return Some(cap);
         };

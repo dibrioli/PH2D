@@ -353,9 +353,11 @@ impl BrushSpec {
                 && !self.shape.kind.samples_in_pixels());
         // Film AA (BUGS #16) is measured in CANVAS texels, and the cached mask is radius-independent —
         // a baked AA rim would be wrong at every other radius, so an AA'd film routes per-pixel.
+        // A orla em PÍXEIS (J3) também é medida em texels da tela: a máscara em cache não a leva a outro raio.
         shape_static
             && self.texture.is_cacheable()
             && !self.film_aa_wanted(self.shape_silhouette_active(has_shape_image))
+            && self.borda_px <= 0.0
     }
 
     /// Whether the film's screen-space AA ([`crate::height_film::FilmAa`], BUGS #16) applies to this
@@ -404,7 +406,7 @@ impl BrushSpec {
     pub fn lays_capsules(&self) -> bool {
         self.continuous_spacing
             && self.stroke_method.uses_spacing()
-            && self.dab_spacing_px() > crate::capsula::sub_passo_px(self.clamped_radius())
+            && self.dab_spacing_px() > self.sub_passo_da_capsula(self.clamped_radius())
     }
 
     /// Whether the dab at dash-slot `slot` is painted, given the dash pattern.
@@ -549,6 +551,52 @@ impl BrushSpec {
         sum
     }
 
+    /// As leis só do Digital (J3: [`Self::borda_px`], [`Self::sub_passo_fino`]) valem neste pincel? Não na aguada
+    /// nem no relevo, que leem o pincel do artista cru (os flags do meio são da porta do meio).
+    #[must_use]
+    pub fn leis_do_digital(&self) -> bool {
+        !self.watercolor && !self.impasto
+    }
+
+    /// ⭐ **O sub-passo da cápsula** deste pincel a raio `raio`: [`crate::capsula::sub_passo_px`], ou o FINO
+    /// ([`Self::sub_passo_fino`]) — o mesmo [`crate::capsula::SUB_SPACING`] do diâmetro com o piso
+    /// [`crate::capsula::SUB_PASSO_FINO_MIN_PX`] em vez de um texel.
+    #[must_use]
+    pub fn sub_passo_da_capsula(&self, raio: f32) -> f32 {
+        if self.sub_passo_fino && self.leis_do_digital() {
+            crate::capsula::sub_passo_fino_px(raio)
+        } else {
+            crate::capsula::sub_passo_px(raio)
+        }
+    }
+
+    /// ⭐ **A dureza deste dab**, `0..1`: a [`Self::hardness`] — e, com a orla em píxeis ([`Self::borda_px`]), no
+    /// máximo `1 − borda/raio` do raio DESTE spec (o do dab, `at_dab`): a queda nunca é mais estreita que a orla na
+    /// tela, em qualquer raio (a dureza 1 dá a orla exacta).
+    #[must_use]
+    pub fn dureza_do_dab(&self) -> f32 {
+        let h = self.hardness.clamp(0.0, 1.0);
+        if self.leis_do_digital() && self.borda_px > 0.0 {
+            h.min((1.0 - self.borda_px / self.clamped_radius()).clamp(0.0, 1.0))
+        } else {
+            h
+        }
+    }
+
+    /// Quanto a orla em PÍXEIS ([`Self::borda_px`]) estende o raio `raio` de um dab: metade do que ela ALARGA a queda
+    /// relativa (`(1 − dureza)·raio`), até um texel (a margem das janelas dos lotes). Com a dureza 1 é metade dela —
+    /// a caixa do AA centrada na borda do disco, a cobertura de ÁREA dele; onde a queda relativa já é mais larga, `0`
+    /// (a orla de sempre, para dentro). `0` sem ela.
+    #[must_use]
+    pub fn alcance_da_borda(&self, raio: f32) -> f32 {
+        if self.leis_do_digital() && self.borda_px > 0.0 {
+            let relativa = (1.0 - self.hardness.clamp(0.0, 1.0)) * raio.max(0.0);
+            (0.5 * (self.borda_px - relativa)).clamp(0.0, 1.0)
+        } else {
+            0.0
+        }
+    }
+
     /// Falloff weight remapped by [`Self::hardness`]. `t = distance / radius`.
     ///
     /// Hardness pushes the falloff outward: for `t < hardness` the weight is full; the curve then
@@ -556,7 +604,7 @@ impl BrushSpec {
     /// editable [`Self::custom_falloff`] profile; every other preset uses its formula.
     #[must_use]
     pub fn falloff_weight(&self, t: f32) -> f32 {
-        let h = self.hardness.clamp(0.0, 1.0);
+        let h = self.dureza_do_dab();
         if h >= 1.0 {
             return if t < 1.0 { 1.0 } else { 0.0 };
         }

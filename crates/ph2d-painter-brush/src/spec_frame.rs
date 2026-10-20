@@ -75,7 +75,8 @@ impl BrushSpec {
     #[must_use]
     pub fn at_dab(&self, d: &crate::Dab) -> Self {
         let mut s = Self {
-            radius_px: d.radius_px,
+            // A orla em PÍXEIS (J3) centrada na borda: o carimbo cresce metade dela (`alcance_da_borda`, 0 sem ela).
+            radius_px: d.radius_px + self.alcance_da_borda(d.radius_px),
             dab_tilt: d.tilt,
             ..*self
         };

@@ -63,6 +63,12 @@ pub struct BrushSpec {
     /// Plateau before the falloff begins, `0..1`. `0` = pure falloff curve; `1` = hard disk.
     /// Mirrors Blender's brush `hardness` as a distance remap applied before [`Self::falloff`].
     pub hardness: f32,
+    /// ⭐ **A orla em PÍXEIS** (J3, `docs/Painter/Pinceis/exames/basicos.md` 2.ª onda), `0` = desligada (a
+    /// [`Self::hardness`] de sempre, relativa ao raio). `> 0`: a queda nunca é mais estreita que esta largura na tela
+    /// ([`Self::dureza_do_dab`]) e, onde ela manda, a caixa do AA centra-se na borda ([`Self::alcance_da_borda`]) —
+    /// o píxel de AA do disco do Rebelle a 40 e a 200 px, e a área certa a 5. Sob o tecto do traço a orla é ÁREA
+    /// (`dab/bands.rs`). Só no Digital (o `authored_spec` do tool zera-a nos outros meios).
+    pub borda_px: f32,
     /// Maximum opacity a single stroke can build to, `0..1` (Blender "Strength"). Enforced as a
     /// per-stroke accumulation cap by the stroke engine (later phase), not by a single dab.
     pub strength: f32,
@@ -118,6 +124,12 @@ pub struct BrushSpec {
     /// dab's path step ([`crate::Dab::step`]) — streaks instead of the same constellation of dots once per
     /// dab (doc 31 §4). OFF ⇒ every dab carries a zero step and the stroke is the one of before, AO BIT.
     pub continuous_spacing: bool,
+    /// ⭐ **O sub-passo FINO da cápsula** (J3, `docs/Painter/Pinceis/exames/basicos.md` 2.ª onda), OFF = o de
+    /// sempre: o sub-passo [`crate::capsula::SUB_SPACING`] do diâmetro tem o piso de um texel, e abaixo de 40 px
+    /// cada texel leva MENOS passagens (a 5 px a lâmina de 2 px, duas: 0,48 contra os 0,95 do Rebelle, que
+    /// acumula por fração do diâmetro). ON: o piso desce a [`crate::capsula::SUB_PASSO_FINO_MIN_PX`] e cada
+    /// texel leva as mesmas passagens em qualquer tamanho. Só com o Continuous; só no Digital.
+    pub sub_passo_fino: bool,
     /// **Accumulate** (Blender `BRUSH_ACCUMULATE`, bit 13, default OFF): when OFF, a single stroke is
     /// capped at [`Self::strength`] — overlapping dabs (incl. passing the brush back over itself) do
     /// NOT build past Strength (a per-stroke coverage mask, the classic "alpha mask"). When ON, every

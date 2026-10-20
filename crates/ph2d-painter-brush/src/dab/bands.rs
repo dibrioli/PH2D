@@ -368,43 +368,52 @@ pub(super) fn stamp_band(
             // A capsule under a Shape ramp composes its COLOUR over the same sub-dabs
             // ([`super::cor_capsula`], lista 26 A9); `None` ⇒ the colour is read at this pixel below.
             let c_cap = if mask.is_some() { 1.0 } else { ctx.coverage };
+            // A orla em PÍXEIS (J3, `BrushSpec::borda_px`) sob o tecto do traço é ÁREA: o texel pára na fracção que o
+            // dab cobre (o tecto da Smooth Edges, BUGS #16) e, na cápsula, no MAIOR sub-dab — a união deles enchia a
+            // orla de volta ao duro (`basicos::a_orla_em_pixeis_e_a_mesma_a_40_e_a_200`).
+            let orla_area = mask.is_some() && ctx.spec.borda_px > 0.0 && ctx.spec.leis_do_digital();
+            let mut maior_sub = 0.0f32;
             let mut cor_cap = ctx
                 .capsula
                 .filter(|_| ctx.ramp.is_some_and(|r| r.index == RampIndex::Shape))
                 .map(|_| super::cor_capsula::CorCapsula::new(c_cap));
             let w = match (ctx.capsula, &ctx.film_aa) {
-                (Some(cap), _) => crate::dab::silhouette_capsula_com(
-                    ctx.spec,
-                    ctx.shape,
-                    ctx.footprint,
-                    cap,
-                    ctx.lei,
-                    c_cap,
-                    px,
-                    py,
-                    ctx.center,
-                    ctx.radius,
-                    |s, r, x| {
-                        let Some(cc) = cor_cap.as_mut() else { return };
-                        cc.mais(x, || {
-                            let centro = [ctx.center[0] + s.off[0], ctx.center[1] + s.off[1]];
-                            let forma = ctx.shape_cor.map(|sh| {
-                                let base = sh.basis.sub(s.rotor, s.arco);
-                                let sh = crate::dab::ShapeInput { basis: &base, ..sh };
-                                crate::dab::shape_value_at(ctx.spec, sh, px, py, centro, r)
+                (Some(cap), _) => {
+                    let uniao = crate::dab::silhouette_capsula_com(
+                        ctx.spec,
+                        ctx.shape,
+                        ctx.footprint,
+                        cap,
+                        ctx.lei,
+                        c_cap,
+                        px,
+                        py,
+                        ctx.center,
+                        ctx.radius,
+                        |s, r, x| {
+                            maior_sub = maior_sub.max(x);
+                            let Some(cc) = cor_cap.as_mut() else { return };
+                            cc.mais(x, || {
+                                let centro = [ctx.center[0] + s.off[0], ctx.center[1] + s.off[1]];
+                                let forma = ctx.shape_cor.map(|sh| {
+                                    let base = sh.basis.sub(s.rotor, s.arco);
+                                    let sh = crate::dab::ShapeInput { basis: &base, ..sh };
+                                    crate::dab::shape_value_at(ctx.spec, sh, px, py, centro, r)
+                                });
+                                crate::ramp_alpha::ramp_texel(
+                                    ctx.ramp.as_ref(),
+                                    x,
+                                    forma,
+                                    None,
+                                    0.0,
+                                    0.0,
+                                    &crate::texture::GrainLaw::NEUTRA,
+                                )
                             });
-                            crate::ramp_alpha::ramp_texel(
-                                ctx.ramp.as_ref(),
-                                x,
-                                forma,
-                                None,
-                                0.0,
-                                0.0,
-                                &crate::texture::GrainLaw::NEUTRA,
-                            )
-                        });
-                    },
-                ),
+                        },
+                    );
+                    if orla_area { maior_sub } else { uniao }
+                }
                 (None, Some(aa)) => aa.film_at_planned(
                     ctx.lut.as_ref(),
                     t,
@@ -458,7 +467,15 @@ pub(super) fn stamp_band(
                     let forma = ctx.shape_cor.map(|sh| {
                         crate::dab::shape_value_at(ctx.spec, sh, px, py, ctx.center, ctx.radius)
                     });
-                    crate::ramp_alpha::ramp_texel(ctx.ramp.as_ref(), w, forma, grain, depth, gran, lei)
+                    crate::ramp_alpha::ramp_texel(
+                        ctx.ramp.as_ref(),
+                        w,
+                        forma,
+                        grain,
+                        depth,
+                        gran,
+                        lei,
+                    )
                 }
             };
             let color = tinta.color.unwrap_or(ctx.spec.color);
@@ -508,7 +525,7 @@ pub(super) fn stamp_band(
                             w,
                             g,
                             ctx.coverage,
-                            ctx.film_aa.is_some(),
+                            ctx.film_aa.is_some() || orla_area,
                         ) else {
                             continue; // this dab adds nothing here
                         };

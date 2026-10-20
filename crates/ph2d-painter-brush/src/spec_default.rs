@@ -25,6 +25,7 @@ impl Default for BrushSpec {
         Self {
             radius_px: 25.0,
             hardness: 0.0,
+            borda_px: 0.0,
             strength: 1.0,
             flow: 1.0,
             spacing: 0.10,
@@ -43,6 +44,7 @@ impl Default for BrushSpec {
             grid_fit: 0.0,
             space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24)
             continuous_spacing: false,
+            sub_passo_fino: false,
             accumulate: false,
             traco: crate::traco::TracoComposto::NEUTRO,
             style_solid: false,

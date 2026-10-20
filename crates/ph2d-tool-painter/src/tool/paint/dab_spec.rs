@@ -45,6 +45,13 @@ impl PainterTool {
             brush.accumulate = false;
             brush.space_attenuation = false;
         }
+        // As leis só do Digital (J3, `docs/Painter/Pinceis/exames/basicos.md` 2.ª onda) saem NEUTRAS nos outros
+        // meios: um preset do Digital aplicado antes não as leva à aguada, ao relevo nem ao fluido.
+        if self.paint_media() != crate::PaintMedia::Digital {
+            brush.traco.tecto_por_dab = false;
+            brush.borda_px = 0.0;
+            brush.sub_passo_fino = false;
+        }
         // O Wet Paint não lê o PUSH do Impasto (o preset declara-o), mas o motor de traço lê-o para
         // AQUECER (reter os primeiros dabs até ter direcção): com a água a correr no traço (W1e, F6) o
         // MOMENTO em que um dab pousa muda a tinta — medido, 3 093 px num pincel guardado.

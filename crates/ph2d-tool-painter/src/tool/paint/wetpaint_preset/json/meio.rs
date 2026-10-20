@@ -51,12 +51,23 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
         "accumulate" => json!(b.accumulate),
         "airbrush_rate_s" => num(b.airbrush_rate_s),
         "space_attenuation" => json!(b.space_attenuation),
-        "traco" => json!({
-            "tecto": num(b.traco.tecto),
-            "molhada": num(b.traco.molhada),
-            "queimada": num(b.traco.queimada),
-            "largura": num(b.traco.largura),
-        }),
+        "borda_px" => num(b.borda_px),
+        "sub_passo_fino" => json!(b.sub_passo_fino),
+        "traco" => {
+            let mut v = json!({
+                "tecto": num(b.traco.tecto),
+                "molhada": num(b.traco.molhada),
+                "queimada": num(b.traco.queimada),
+                "largura": num(b.traco.largura),
+            });
+            // O tecto por dab (J3) só gravado LIGADO: o preset sem ele é o de antes, ao byte.
+            if b.traco.tecto_por_dab
+                && let Some(o) = v.as_object_mut()
+            {
+                o.insert("tecto_por_dab".to_owned(), json!(true));
+            }
+            v
+        }
         // O dual brush (L6): gravado só ARMADO (`pincel_para_json`).
         "dual" => b.dual.map_or(Value::Null, |d| {
             json!({
@@ -143,6 +154,10 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "accumulate" => b.accumulate = booleano(v, b.accumulate),
         "airbrush_rate_s" => b.airbrush_rate_s = f(v, b.airbrush_rate_s),
         "space_attenuation" => b.space_attenuation = booleano(v, b.space_attenuation),
+        // J3: ausentes = desligados (só se gravam ligados), nunca o do pincel anterior.
+        // Sem tecto: acima do raio a dureza do dab já é 0 (`dureza_do_dab`).
+        "borda_px" => b.borda_px = f(v, 0.0).max(0.0),
+        "sub_passo_fino" => b.sub_passo_fino = booleano(v, false),
         // O plano do traço (L8): sub-chave ausente = a de fábrica.
         "traco" if v.is_some() => {
             let n = ph2d_painter_brush::TracoComposto::NEUTRO;
@@ -152,6 +167,7 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
                 molhada: f(c("molhada"), n.molhada),
                 queimada: f(c("queimada"), n.queimada),
                 largura: f(c("largura"), n.largura),
+                tecto_por_dab: booleano(c("tecto_por_dab"), n.tecto_por_dab),
             };
         }
         // Campo ausente = o pincel de `b` (a lei do módulo); campo PRESENTE com uma sub-chave ausente (gravado

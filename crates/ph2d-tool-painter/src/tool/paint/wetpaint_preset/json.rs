@@ -515,6 +515,9 @@ pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
         .filter(|&&c| !(c == "hose" && b.hose == ImageHose::NEUTRA))
         // O dual brush (L6) só armado: o preset sem ele é o de antes, ao byte.
         .filter(|&&c| !(c == "dual" && b.dual.is_none()))
+        // A orla em píxeis e o sub-passo fino (J3) só ligados: idem.
+        .filter(|&&c| !(c == "borda_px" && b.borda_px <= 0.0))
+        .filter(|&&c| !(c == "sub_passo_fino" && !b.sub_passo_fino))
         .map(|&c| ((*c).to_owned(), ler_campo(b, c)))
         .collect()
 }

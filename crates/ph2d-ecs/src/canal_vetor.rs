@@ -106,6 +106,23 @@ pub const TEXTO_ALINHAMENTO: u16 = 194;
 pub const TEXTO_QUEBRA: u16 = 195;
 pub const TEXTO_EIXO: u16 = 196;
 
+/// O efeito Contour (`VecContour`, componente da entidade): passos, distância por passo,
+/// aceleração, quina, lado, e a cor do último anel r, g, b, a (`CONTORNO_COR + 0..4`, `0..=255`).
+/// Criar/remover o efeito é estrutura (plano 35 §8), não canal.
+pub const CONTORNO_PASSOS: u16 = 200;
+pub const CONTORNO_DISTANCIA: u16 = 201;
+pub const CONTORNO_ACEL: u16 = 202;
+pub const CONTORNO_JUNCAO: u16 = 203;
+pub const CONTORNO_LADO: u16 = 204;
+pub const CONTORNO_COR: u16 = 205;
+const CONTORNO_COR_A: u16 = CONTORNO_COR + 3;
+
+/// O Offset vivo (`VecOffset`, componente da entidade): a distância de MUNDO, a quina e o lado
+/// (os códigos do painel).
+pub const OFFSET_DISTANCIA: u16 = 210;
+pub const OFFSET_JUNCAO: u16 = 211;
+pub const OFFSET_LADO: u16 = 212;
+
 const fn c(rotulo: &'static str, grupo: u16, por_i: bool) -> CampoInfo {
     CampoInfo {
         rotulo,
@@ -171,6 +188,15 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         TEXTO_ALINHAMENTO => d("canal.vetor.texto_alinhamento", campo, false),
         TEXTO_QUEBRA => c("canal.vetor.texto_quebra", campo, false),
         TEXTO_EIXO => c("canal.vetor.texto_eixo", campo, false),
+        CONTORNO_PASSOS => d("canal.vetor.contorno_passos", campo, false),
+        CONTORNO_DISTANCIA => c("canal.vetor.contorno_distancia", campo, false),
+        CONTORNO_ACEL => c("canal.vetor.contorno_acel", campo, false),
+        CONTORNO_JUNCAO => d("canal.vetor.contorno_juncao", campo, false),
+        CONTORNO_LADO => d("canal.vetor.contorno_lado", campo, false),
+        CONTORNO_COR..=CONTORNO_COR_A => c("canal.vetor.contorno_cor", CONTORNO_COR, false),
+        OFFSET_DISTANCIA => c("canal.vetor.offset_distancia", campo, false),
+        OFFSET_JUNCAO => d("canal.vetor.offset_juncao", campo, false),
+        OFFSET_LADO => d("canal.vetor.offset_lado", campo, false),
         _ => return None,
     })
 }
@@ -198,6 +224,7 @@ pub fn membro(campo: u16) -> Option<&'static str> {
         PILHA_DESLOCA_Y | PARAM_ALTURA => "canal.m.y",
         PARAM_VALOR => "canal.m.valor",
         EFEITO_PARAM => "canal.m.parametro",
+        CONTORNO_COR..=CONTORNO_COR_A => membro_tinta(campo - CONTORNO_COR + OFF_SOLIDA)?,
         _ => info(campo)?.rotulo,
     })
 }

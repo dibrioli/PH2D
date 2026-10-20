@@ -36,6 +36,7 @@ pub mod autokey;
 mod autokey_campos;
 pub use autokey_campos::autokey_campos;
 pub mod binding;
+mod channel_group;
 mod channel_mark;
 pub mod clipboard;
 mod clock;
@@ -95,6 +96,7 @@ pub use autokey::{
     AutokeyPlan, PoseSample, autokey_props, autokey_props_solo, key_value_in_active_clip,
 };
 pub use binding::{TargetBinding, WireId};
+pub use channel_group::{Forca, Instante, clique_no_grupo, estado_do_grupo};
 pub use channel_mark::{ChannelMark, channel_mark};
 pub use clipboard::{ClipboardKey, TimelineClipboard};
 pub use doc::{

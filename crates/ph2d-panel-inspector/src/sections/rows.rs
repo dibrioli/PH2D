@@ -65,7 +65,11 @@ pub(super) fn seg_row(
         store,
         hit_index,
     );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, row.dot);
+    if let Some(alvo) =
+        ph2d_editor_core::widget::key_mark::paint_decorator_for(scene, theme, row.dot, option_ids)
+    {
+        hit_index.register(alvo, row.dot);
+    }
     y + seg_h.max(ROW_H_PX) + ph2d_tokens::control_gap_px()
 }
 
@@ -297,7 +301,11 @@ pub(super) fn num_row_unit(
         text_system,
         theme,
     );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, row.dot);
+    if let Some(alvo) =
+        ph2d_editor_core::widget::key_mark::paint_decorator_for(scene, theme, row.dot, &[id])
+    {
+        hit_index.register(alvo, row.dot);
+    }
     y + ph2d_tokens::row_pitch_px()
 }
 

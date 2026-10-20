@@ -196,3 +196,20 @@ fn forma_parametrica_e_texto_publicam_parametros_e_nao_vertices() {
         "sem quebra, não há largura de quebra"
     );
 }
+
+/// ⭐ Todo campo do vocabulário do vetor tem rótulo e nome de membro TRADUZIDOS — a palavra que o
+/// dope-sheet e o losango mostram. Uma chave sem tradução pinta o identificador cru.
+#[test]
+fn todo_campo_do_vocabulario_tem_rotulo_traduzido() {
+    let mut vistos = 0;
+    for campo in 0..=u16::from(u8::MAX) {
+        let Some(info) = ph2d_ecs::canal_vetor::info(campo) else {
+            continue;
+        };
+        vistos += 1;
+        assert_ne!(ph2d_i18n::tr(info.rotulo), info.rotulo, "campo {campo}");
+        let m = ph2d_ecs::canal_vetor::membro(campo).expect("campo com info sem nome de membro");
+        assert_ne!(ph2d_i18n::tr(m), m, "membro do campo {campo}");
+    }
+    assert!(vistos > 100, "o vocabulário encolheu? {vistos}");
+}

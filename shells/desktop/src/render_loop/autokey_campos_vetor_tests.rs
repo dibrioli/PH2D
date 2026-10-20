@@ -269,6 +269,10 @@ fn apagar_um_ponto_de_uma_forma_animada_vale_em_todas_as_chaves() {
 fn losango(c: &mut Cena, clicar: bool) -> ph2d_editor_core::widget::key_mark::KeyMark {
     use ph2d_app_vec::marcas;
     use ph2d_tool_vector::ids::VECTOR_WIDTH;
+    const SEM: marcas::Contexto = marcas::Contexto {
+        aberta: None,
+        camadas: 0,
+    };
     let inst = marcas::Instante {
         t_cut: c.st.doc.author_cut(true, None, c.ph.time()),
         solo: true,
@@ -288,13 +292,13 @@ fn losango(c: &mut Cena, clicar: bool) -> ph2d_editor_core::widget::key_mark::Ke
         let st = &c.st;
         let t = c.ph.time();
         let a_k = |e, p| super::super::timeline_bridge::chave_da_k(mundo, st, e, p, t, true);
-        let pedidos = marcas::clique(&st.doc, &[VECTOR_WIDTH], &[c.e], inst, lidos, valor, a_k);
+        let pedidos = marcas::clique(&st.doc, SEM, &[VECTOR_WIDTH], &[c.e], inst, lidos, valor, a_k);
         for i in pedidos {
             ph2d_timeline::apply_intent(&mut c.st, &mut c.ph, i);
         }
         return losango(c, false);
     }
-    marcas::marcas(&c.st.doc, &[c.e], inst, valor)[&VECTOR_WIDTH]
+    marcas::marcas(&c.st.doc, SEM, &[c.e], inst, valor)[&VECTOR_WIDTH]
 }
 
 /// ⭐⭐ **O losango da largura, no quadro real** (plano 35 §5.4): sem curva é o ponto clicável; o 1.º

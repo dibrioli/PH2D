@@ -444,7 +444,7 @@ impl ToolRail {
 mod geometry;
 pub use geometry::{
     EntrySlot, column_width_px, compound_face_font_px, entry_advance, entry_gap_px, entry_rects,
-    horizontal_lines, line_pitch, size_row_pulldowns,
+    horizontal_lines, line_pitch, number_with_key_mark, size_row_pulldowns,
 };
 
 #[path = "tool_rail/caption.rs"]

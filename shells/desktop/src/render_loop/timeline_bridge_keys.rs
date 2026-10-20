@@ -339,6 +339,30 @@ pub(crate) fn chave_da_k(
     })
 }
 
+/// **A chave que o clique num losango grava** — a da K: a [`chave_da_k`], e na trajectória a
+/// ÂNCORA que a K acrescenta (`AddPathKey` no lugar do objecto, ADR-0141). `None` = a K recusa.
+pub(crate) fn chave_do_losango(
+    mundo: Mundo<'_>,
+    timeline: &ph2d_timeline::TimelineState,
+    entity: u64,
+    prop: ph2d_timeline::PropKind,
+    k_time: f64,
+    keys_mode: bool,
+) -> Option<ph2d_timeline::TimelineIntent> {
+    if prop != ph2d_timeline::PropKind::Position {
+        return chave_da_k(mundo, timeline, entity, prop, k_time, keys_mode);
+    }
+    let xf = mundo
+        .world
+        .get::<ph2d_ecs::Transform>(ph2d_ecs::Entity::try_from_bits(entity)?)?;
+    let t = path_key_time(timeline, entity, k_time).ok()?;
+    Some(ph2d_timeline::TimelineIntent::AddPathKey {
+        entity,
+        t,
+        at: [xf.translation.x, xf.translation.y],
+    })
+}
+
 /// The default interpolation for a freshly inserted key (a gentle ease).
 pub(crate) fn default_interp() -> ph2d_anim::Interp {
     ph2d_anim::Interp::Eased(ph2d_anim::Easing::new(

@@ -7,15 +7,46 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_ecs::canal::familia::VETOR;
-use ph2d_ecs::{CanaisEscritos, CanaisLidos, Entity, FieldKey, SimWorld, VecPathRef, VecShape};
+use ph2d_ecs::{
+    CanaisEscritos, CanaisLidos, Entity, FieldKey, SimWorld, VecContour, VecOffset, VecPathRef,
+    VecShape,
+};
 use ph2d_vec_scene::VecScene;
 
 use crate::canais_campos::{campos, escrever, ler, prioridade};
+use crate::canais_efeitos::{Efeitos, e_de_efeito};
 
 fn caminho(sim: &SimWorld, e: u64) -> Option<(u64, Option<VecShape>)> {
     let ent = Entity::try_from_bits(e)?;
     let id = sim.world().get::<VecPathRef>(ent)?.0;
     Some((id, sim.world().get::<VecShape>(ent).cloned()))
+}
+
+fn efeitos(sim: &SimWorld, e: u64) -> Efeitos {
+    let Some(ent) = Entity::try_from_bits(e) else {
+        return Efeitos::default();
+    };
+    Efeitos {
+        contorno: sim.world().get::<VecContour>(ent).copied(),
+        offset: sim.world().get::<VecOffset>(ent).copied(),
+    }
+}
+
+/// Devolve à entidade os efeitos que mudaram (um ausente continua ausente).
+fn por_efeitos(sim: &mut SimWorld, e: u64, fx: Efeitos, antes: Efeitos) {
+    let Some(ent) = Entity::try_from_bits(e) else {
+        return;
+    };
+    if fx.contorno != antes.contorno
+        && let Some(ct) = fx.contorno
+    {
+        sim.world_mut().entity_mut(ent).insert(ct);
+    }
+    if fx.offset != antes.offset
+        && let Some(o) = fx.offset
+    {
+        sim.world_mut().entity_mut(ent).insert(o);
+    }
 }
 
 /// ⭐ **Publica o que o documento de cada entidade vale AGORA** (através do eco).
@@ -26,10 +57,12 @@ pub fn publicar(sim: &mut SimWorld, scene: &VecScene, entidades: &[u64]) {
             continue;
         };
         let Some(p) = scene.path(id) else { continue };
-        let valores = campos(p, shape.as_ref())
+        let mut valores: Vec<(FieldKey, f32)> = campos(p, shape.as_ref())
             .into_iter()
             .filter_map(|kk| Some((kk, ler(p, shape.as_ref(), kk)?)))
             .collect();
+        let fx = efeitos(sim, e);
+        valores.extend(fx.campos().into_iter().filter_map(|kk| Some((kk, fx.ler(kk)?))));
         lotes.push((e, valores));
     }
     let mut lidos = sim
@@ -70,10 +103,18 @@ pub fn aplicar(sim: &mut SimWorld, scene: &mut VecScene, conducao: &mut Conducao
             && let Some(p) = scene.path_mut(id)
         {
             let shape_antes = shape.clone();
+            let fx_antes = efeitos(sim, e);
+            let mut fx = fx_antes;
             for &(_, kk, v) in &escritas[i..fim] {
-                let antes = ler(p, shape.as_ref(), kk);
-                escrever(p, shape.as_mut(), kk, v);
-                let ficou = ler(p, shape.as_ref(), kk);
+                let (antes, ficou) = if e_de_efeito(kk) {
+                    let antes = fx.ler(kk);
+                    fx.escrever(kk, v);
+                    (antes, fx.ler(kk))
+                } else {
+                    let antes = ler(p, shape.as_ref(), kk);
+                    escrever(p, shape.as_mut(), kk, v);
+                    (antes, ler(p, shape.as_ref(), kk))
+                };
                 if let (Some(a), Some(f)) = (antes, ficou) {
                     if a != f {
                         conducao.conduziu(e, kk, a);
@@ -82,6 +123,7 @@ pub fn aplicar(sim: &mut SimWorld, scene: &mut VecScene, conducao: &mut Conducao
                     ecos.push((e, kk, v, f));
                 }
             }
+            por_efeitos(sim, e, fx, fx_antes);
             if shape != shape_antes
                 && let Some(sh) = shape
             {
@@ -159,6 +201,9 @@ impl ConducaoVetor {
         self.autorado
             .keys()
             .filter_map(|&(e, kk)| {
+                if e_de_efeito(kk) {
+                    return Some((e, kk, efeitos(sim, e).ler(kk)?));
+                }
                 let (id, shape) = caminho(sim, e)?;
                 Some((e, kk, ler(scene.path(id)?, shape.as_ref(), kk)?))
             })
@@ -174,6 +219,13 @@ impl ConducaoVetor {
         let mut v: Vec<_> = valores.collect();
         v.sort_by_key(|&(e, kk, _)| (e, prioridade(kk), kk));
         for (e, kk, x) in v {
+            if e_de_efeito(kk) {
+                let antes = efeitos(sim, e);
+                let mut fx = antes;
+                fx.escrever(kk, x);
+                por_efeitos(sim, e, fx, antes);
+                continue;
+            }
             let Some((id, mut shape)) = caminho(sim, e) else {
                 continue;
             };

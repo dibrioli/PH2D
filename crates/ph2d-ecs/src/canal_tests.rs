@@ -67,6 +67,15 @@ fn o_vocabulario_do_vetor_nao_renumera() {
         (v::TEXTO_ALINHAMENTO, 194),
         (v::TEXTO_QUEBRA, 195),
         (v::TEXTO_EIXO, 196),
+        (v::CONTORNO_PASSOS, 200),
+        (v::CONTORNO_DISTANCIA, 201),
+        (v::CONTORNO_ACEL, 202),
+        (v::CONTORNO_JUNCAO, 203),
+        (v::CONTORNO_LADO, 204),
+        (v::CONTORNO_COR, 205),
+        (v::OFFSET_DISTANCIA, 210),
+        (v::OFFSET_JUNCAO, 211),
+        (v::OFFSET_LADO, 212),
     ];
     for (n, (atual, gravado)) in fixos.iter().enumerate() {
         assert_eq!(

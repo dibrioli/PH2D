@@ -83,8 +83,21 @@ impl BodyCtx<'_> {
         // ⚠️ Não é a BARRA da linha de propriedade, e a diferença é a forma da linha: aqui a coluna
         // do valor é dos três verbos, e a cor é uma etiqueta ao lado do nome.
         let sw = ph2d_tokens::ROW_H_PX;
-        // Da direita para a esquerda: os três verbos, depois a swatch. O que sobra é o rótulo.
-        let mut x = self.inner_x + self.inner_w;
+        let sid = ids::vector_paint_swatch_id(i);
+        // ⭐ Na coluna do decorator — a mesma de toda linha de propriedade — o losango da TINTA
+        // desta entrada (plano 35 §5); da direita para a esquerda, depois dele: os três verbos, a
+        // swatch. O que sobra é o rótulo.
+        let (_, dot) =
+            ph2d_editor_core::widget::form_row_columns(self.inner_x, self.inner_w, y, self.row_h);
+        if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_for(
+            self.scene,
+            self.theme,
+            dot,
+            &[sid],
+        ) {
+            self.hit_index.register(alvo, dot);
+        }
+        let mut x = dot.x;
         for (id, icon) in [
             (ids::vector_paint_del_id(i), IconId::Trash),
             (ids::vector_paint_down_id(i), IconId::ChevronDown),
@@ -105,7 +118,6 @@ impl BodyCtx<'_> {
         }
         x -= sw;
         let sr = Rect::new(x, y + (self.row_h - sw) * 0.5, sw, sw);
-        let sid = ids::vector_paint_swatch_id(i);
         if row.mixed.color {
             paint_swatch_or_mixed(
                 sr,

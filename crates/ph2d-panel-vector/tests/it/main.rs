@@ -18,6 +18,7 @@ mod every_name_the_engine_publishes_has_a_key;
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod fill_chip_labels_fit;
 mod marker_rows;
+mod o_losango_do_chip_da_barra;
 mod popover_band;
 mod probe_gutters;
 mod seam;

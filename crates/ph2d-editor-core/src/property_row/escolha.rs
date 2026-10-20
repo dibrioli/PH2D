@@ -108,6 +108,20 @@ fn controlo_w(r: Rect) -> f32 {
 ///
 /// `segmentos` é `(rótulo, aceso, id)`; com **nenhum** aceso o grupo diz «misto». Devolve o `y`
 /// seguinte.
+/// O losango (ou o ponto) da linha de escolha: os segmentos são os campos dela.
+fn decorador(
+    scene: &mut VectorScene,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    dot: Rect,
+    segmentos: &[(&str, bool, NodeId)],
+) {
+    let ids: Vec<NodeId> = segmentos.iter().map(|&(_, _, id)| id).collect();
+    if let Some(alvo) = crate::widget::key_mark::paint_decorator_for(scene, theme, dot, &ids) {
+        hit_index.register(alvo, dot);
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn paint_choice_row(
     scene: &mut VectorScene,
@@ -137,7 +151,7 @@ pub fn paint_choice_row(
             store,
             hit_index,
         );
-        crate::widget::paint_decorator_dot(scene, theme, row.dot);
+        decorador(scene, theme, hit_index, row.dot, segmentos);
         y + seg_h.max(ROW_H_PX) + ph2d_tokens::control_gap_px()
     } else {
         // ⭐ A PALETA: o nome é o cabeçalho dela. O degrau entre o cabeçalho e o grupo é o
@@ -154,6 +168,9 @@ pub fn paint_choice_row(
             crate::paint::resolve(ph2d_tokens::ColorToken::Text2, theme),
         );
         let gy = y + font + crate::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX;
+        // O losango da paleta senta na coluna do decorator da linha do CABEÇALHO.
+        let (_, dot) = crate::widget::form_row_columns(x, w, y, font);
+        decorador(scene, theme, hit_index, dot, segmentos);
         let seg_h = crate::widget::panel_chrome::paint_segmented_group_adaptive(
             Rect::new(x, gy, w, ROW_H_PX),
             segmentos,

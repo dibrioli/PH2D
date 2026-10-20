@@ -233,3 +233,18 @@ pub fn entry_rects(
     }
     out
 }
+
+/// ⭐ **O chip numérico e o LOSANGO de animação à direita dele** (plano 35 §5) — quando o campo
+/// tem canal neste quadro, a coluna do decorator de toda linha de propriedade sai da ponta do chip;
+/// sem canal o chip é o slot inteiro. Quem pinta e quem regista o alvo perguntam AQUI.
+#[must_use]
+pub fn number_with_key_mark(id: NodeId, slot: Rect) -> (Rect, Option<Rect>) {
+    if !crate::paint::ui_is_redesign() || crate::widget::key_mark::key_mark_of(&[id]).is_none() {
+        return (slot, None);
+    }
+    let w = crate::widget::DECORATOR_W.min(slot.w * 0.5);
+    (
+        Rect::new(slot.x, slot.y, slot.w - w, slot.h),
+        Some(Rect::new(slot.x + slot.w - w, slot.y, w, slot.h)),
+    )
+}

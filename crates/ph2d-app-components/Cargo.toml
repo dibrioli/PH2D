@@ -131,6 +131,11 @@ ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
 # A luz 2D: o catálogo das fixturas é o do produto (`component_registry_for_tests`).
 ph2d-light2d-ecs = { path = "../ph2d-light2d-ecs" }
 
+# ⭐ O losango dos campos do Inspector (`marcas_inspector.rs`, plano 35 §5): os ids do painel e a
+# porta do estado de um grupo de canais. Família → painel é aresta permitida pela lei das camadas.
+ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
+ph2d-timeline = { path = "../ph2d-timeline" }
+
 [dev-dependencies]
 # ⚠️ **As duas que só os TESTES dos assets pedem, e só o `--all-targets` as revelou** (HOWTO §2.5):
 # o `prefab_stage_tests` pergunta ao ledger se a condução continua viva (`PreviewDrive::is_empty`,
@@ -141,17 +146,9 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support"] }
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
-# ⭐ Os ids do painel da tabela de acções — dois gates da secção SIGNAL ACTIONS medem que o painel
-# tem um id por verbo e por linha do modelo (desceram da shell em 2026-09-24, plano 28 W4). ⚠️ Só
-# nos TESTES: é família → painel, aresta permitida pela lei das camadas, e o produto não a pede.
-ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
 # ⭐ O ESTADO de um agente de navegação (plano 30, W3) — o gate da cena lê `Status::Arrived`. Só nos
 # testes: o produto lê a navegação pela ponte da física, que já a reexporta onde precisa.
 ph2d-nav = { path = "../ph2d-nav" }
-# ⭐ O LEITOR do pedido do `Play Clip` (ObjectsAndComponents onda 4, item 1): o gate de ponta a ponta
-# corre o `apply_autoplay` sobre o `ClipPlayback` que a ponte escreveu. Só nos testes: o produto
-# liga as duas metades na shell, pelo mundo.
-ph2d-timeline = { path = "../ph2d-timeline" }
 # 📏 A sonda das barras do `=` (`tests/it/mede_as_duas_barras_do_igual.rs`, CodeEditor 15/10): a
 # placa para o `VelloPass` e o construtor do parley para moldar a pilha mono. Já estão no grafo.
 ph2d-gpu = { path = "../ph2d-gpu" }

@@ -105,6 +105,7 @@ pub mod bucket_repro;
 pub mod canais;
 /// ⭐⭐⭐ Os canais do vetor (plano 35): o leitor/escritor puro de cada campo.
 pub mod canais_campos;
+pub mod canais_efeitos;
 pub mod canais_topologia;
 pub mod component_edit;
 pub mod connector_drag;

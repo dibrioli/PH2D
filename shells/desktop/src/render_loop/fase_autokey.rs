@@ -66,7 +66,7 @@ impl crate::App {
         // estado de cada canal no instante do autor para a pintura deste quadro.
         let sel: Vec<u64> = hero.gizmo.iter_selected().collect();
         let (solo, t_raw) = (self.timeline.keys_mode, autokey_clock.time());
-        let inst = ph2d_app_vec::marcas::Instante {
+        let inst = ph2d_timeline::Instante {
             t_cut: self
                 .timeline
                 .doc
@@ -78,6 +78,8 @@ impl crate::App {
             Some(ph2d_anim::AnimValue::Float(v)) => Some(v),
             _ => None,
         };
+        let ctx = ph2d_app_vec::marcas::Contexto::do_painel();
+        let tl = &self.timeline.doc;
         if let Some(c) = ph2d_editor_core::widget::key_mark::take_key_mark_click() {
             let lidos = |e| {
                 autokey_pass::campos_lidos(sim, e)
@@ -85,12 +87,22 @@ impl crate::App {
                     .map(|(k, _)| k)
                     .collect()
             };
-            let k = |e, p| timeline_bridge::chave_da_k(mundo, &self.timeline, e, p, t_raw, solo);
-            let tl = &self.timeline.doc;
-            let intents = ph2d_app_vec::marcas::clique(tl, &c.fields, &sel, inst, lidos, valor, k);
+            let k = |e, p| {
+                timeline_bridge::chave_do_losango(mundo, &self.timeline, e, p, t_raw, solo)
+            };
+            let mut intents =
+                ph2d_app_vec::marcas::clique(tl, ctx, &c.fields, &sel, inst, lidos, valor, k);
+            if intents.is_empty() {
+                intents = ph2d_app_components::marcas_inspector::clique(
+                    tl, &c.fields, &sel, inst, valor, k,
+                );
+            }
             self.timeline_intents.extend(intents);
         }
-        let marcas = ph2d_app_vec::marcas::marcas(&self.timeline.doc, &sel, inst, valor);
+        let mut marcas = ph2d_app_vec::marcas::marcas(tl, ctx, &sel, inst, valor);
+        marcas.extend(ph2d_app_components::marcas_inspector::marcas(
+            tl, &sel, inst, valor,
+        ));
         ph2d_editor_core::widget::key_mark::set_key_marks(marcas);
     }
 }

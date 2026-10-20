@@ -16,6 +16,10 @@
 | **L5** | Rebelle a pressão constante **não afila o fim**: cauda ≈ cabeça ≈ tampa redonda (p50 0,07–0,23·D) em 9 de 10 famílias; excepções: Knife Dry 0,65·D × cabeça 0,07·D, Knife Dry 2 0,72 × 0,05; Ribbon/Stripes = envelope nas DUAS pontas (6,6–7,3·D). Fall-off: no recto de 880 px a cobertura do fim ÷ início tem p50 0,96–1,00; só 5 de 228 caem ≥ 25 % (Charcoal Wide 0,63, Flat Filbert Dry 0,75, os 2 «ribbon») — e `paint_fadeout_length` = 1 nos 281 (o parâmetro não os distingue) | `a_cauda_redonda_e_a_da_cabeca` (\|cauda − cabeça\| ≤ 0,15·D) · `o_fall_off_esmaece_ao_longo` (Charcoal Wide fim 0,63 ± 0,05) |
 | **L12** | Rebelle **não responde à velocidade** (vertical 2500 ÷ 300 px/s: largura p10–p90 0,96–1,03, cobertura 0,96–1,06, 221 presets). Krita/MyPaint: a velocidade só ESTREITA: Ink-2 Fineliner 0,85–0,90 · Ink-1 Precision 0,93 · MyPaint pen 0,74–0,78 · pen-note 0,70–0,75 · Thin Pen 0,80 (cobertura 0,64) · Marker 0,37–0,42 | `a_velocidade_estreita_como_o_fineliner` (0,85–0,90 ± 0,04) e o neutro (1,00 ± 0,04) |
 
+> ⚠️ **20/10 (§10): as fotos novas mudaram vereditos** — L3 memória e atraso MEDIDOS (sem memória, sem atraso); L7 Hue e
+> Luminosity ✓ W3C sRGB, Saturation ✗ (o cinza fica VERMELHO), Linear Burn/Dodge ✗ a 10×; L6 a porta não desliga o dual;
+> L12 a CURVA (3–50 px/evento); L11 0/144 do Krita usam a 2.ª cor; L19 o image hose sorteia 3 imagens; §7 refeitas.
+
 ## §1 — L3: a ponta que gira — o que o Rebelle faz de facto
 
 **Oráculos:** Rebelle `OIL_AND_ACRYLIC/flat_flat_oily` · `knife_knife_smooth` · `flat_flat_dry` + os 165 presets com
@@ -51,6 +55,7 @@ picos de curvatura (κ ≈ 0,016/px) ÷ recto = 0,979 · 1,000 · 1,026 (p10/50/
 **Memória entre traços:** o arranque da vertical (depois da `rampa_afunila`, horizontal) ÷ a sua mediana = 0,97 · 1,00 ·
 1,00 nos seguidores ⇒ o 1.º dab já está alinhado com a direcção inicial, sem herdar o traço anterior. ⚠️ Mas o
 Rebelle recebeu `SET_BRUSH` antes de CADA traço (`bateria_rebelle.py`): a memória do Rebelle não é medível nesta bateria.
+✅ **Medida a 20/10 (§10.1): sem memória** — o arranque sem `SET_BRUSH` é 1,00 nos 4 presets.
 
 **A excepção Knife Smooth** (PEN_ROTATION, force False): nem fixa-rectangular nem seguidora — mínimo nos EIXOS e
 máximo nas DIAGONAIS: w(θ) = 9 · 18 · 21 · 22 · 20 · 15 · 12 · 21 · 24 · 22 · 19 · 13 (0°→180°, faixas de 15°);
@@ -162,7 +167,7 @@ Ink-2 Fineliner 39→33 (0,85) · Ink-1 Precision 0,93 · MyPaint pen 0,78 · pe
 
 ## §6 — Em uma linha
 
-- **L6 dual brush** — os 11 do Rebelle têm `dual_brush_layer_blend_mode` NORMAL. Charcoal 2 a 200 px: **estrias ao
+- **L6 dual brush** (⚠️ §10.5: o recto de 200 px não reproduz a 20/10 e a porta não desliga o dual) — os 11 do Rebelle têm `dual_brush_layer_blend_mode` NORMAL. Charcoal 2 a 200 px: **estrias ao
   longo** (½-autocorrelação 8 px ao longo × 1 px através), cobertura 0,65, resíduo 8,9 %; Dry Thin: grão isótropo de 1–2
   px, cobertura 0,81–0,82 (indistinguível do grão do papel). Todos os carvões e pastéis secos são dual ⇒ não há controlo
   sem dual na mesma família: **foto nova** = o mesmo preset com `dual_brush_enabled false` (§8).
@@ -174,7 +179,7 @@ Ink-2 Fineliner 39→33 (0,85) · Ink-1 Precision 0,93 · MyPaint pen 0,78 · pe
   pressão) e os RGBA trazem matiz própria (Stamp_Hearts +30°, Shoujo +22°, RGBA_04 −10°); o sorteio/sequência de N
   imagens não se mede com dabs sobrepostos ⇒ foto nova com espaçamento ≥ 1,5·D.
 
-## §7 — ⚠️ Achado: 29 fotos do Rebelle são a foto ANTERIOR (cena que não repintou)
+## §7 — ⚠️ Achado: 29 fotos do Rebelle são a foto ANTERIOR (cena que não repintou) — ✅ refeitas a 20/10 (§10.0)
 
 `leis_lacunas.py velhas fixtures/rebelle_bateria` compara cada foto com a anterior (ordem do `log.csv`). Iguais ao byte,
 com preset ou cena DIFERENTE (a mais tardia é a velha): `dabber_dabber` gestos = Bristle Wide (vê-se uma trincha chata:
@@ -189,14 +194,14 @@ Spatter 6 tamanhos, Spatter Splat gestos, Spatter Star gestos, Sumi-e Soft gesto
 
 | o que falta | foto nova (preset · cena · gesto) |
 |---|---|
-| L3 memória (Rebelle) | Flat Dry, Flat Oily: horizontal e depois vertical SEM `SET_BRUSH` entre os dois |
-| L3 atraso | Flat Dry e MyPaint knife a 20 px num gesto novo `canto_90` (recto → vertical) e num zigue-zague de 60 px |
-| L7 Hue/Sat/Lum | os 7 Effect sobre base CINZA 50 % e PASTEL (S 0,3), 10 passagens; Multiply/Screen só no Krita |
-| L4 contagem/eixo | Splats com spacing 3·D: a nuvem 2-D de cada ponto de emissão |
-| L11 secundária | Krita com cor de fundo ≠ da frente; o Ribbon em 20 traços iguais (a distribuição do sorteio) |
-| L12 curva | rectos a 3 · 6 · 12 · 25 · 50 px/evento no Krita Fineliner e no MyPaint pen |
-| L6 2.ª ponta | Charcoal 2 e Dry Thin com `dual_brush_enabled false` |
-| L19 N imagens | Krita Stamp_Leaves/Herbals com espaçamento 1,5·D |
+| ✅ L3 memória (Rebelle) | Flat Dry, Flat Oily: horizontal e depois vertical SEM `SET_BRUSH` entre os dois |
+| ✅ L3 atraso | Flat Dry e MyPaint knife a 20 px num gesto novo `canto_90` (recto → vertical) e num zigue-zague de 60 px |
+| ✅ L7 Hue/Sat/Lum | os 7 Effect sobre base CINZA 50 % e PASTEL (S 0,3), 10 passagens; Multiply/Screen só no Krita |
+| ✅ L4 contagem/eixo | Splats com spacing 3·D: a nuvem 2-D de cada ponto de emissão |
+| ✅ L11 secundária (Krita) | Krita com cor de fundo ≠ da frente; o Ribbon em 20 traços iguais (a distribuição do sorteio) |
+| ✅ L12 curva | rectos a 3 · 6 · 12 · 25 · 50 px/evento no Krita Fineliner e no MyPaint pen |
+| ❌ L6 2.ª ponta (§10.5: a porta não o muda) | Charcoal 2 e Dry Thin com `dual_brush_enabled false` |
+| ✅ L19 N imagens | Krita Stamp_Leaves/Herbals com espaçamento 1,5·D |
 
 ## §9 — Como refazer
 
@@ -204,6 +209,119 @@ Spatter 6 tamanhos, Spatter Splat gestos, Spatter Star gestos, Sumi-e Soft gesto
 argumentos), da pasta `docs/Painter/Pinceis`; sobre a pintura da bancada (`/tmp/ph2d_exame/…`) dá o lado «nosso» de
 cada portão. Os modos dos presets do Rebelle (rotação, `splat_*`, `bristle_noise`, `dual_brush_*`, `glaze_rgb_blend_mode`)
 vieram de `NewFeaturesWetPaint/fixtures/rebelle_presets_281.json` só para ESCOLHER os oráculos; a lei é a da foto.
+
+## §10 — As fotos NOVAS (JANELA 2, agente de fotos, 2026-10-20) — o que fecharam
+
+Bateria à parte [`ferramentas/bateria_lacunas.json`](ferramentas/bateria_lacunas.json) (gerada por `bateria_lacunas.py`;
+a `bateria.json` não mudou). Fixtures: [`rebelle_lacunas/`](fixtures/rebelle_lacunas/README.md) (30 cenas) ·
+[`krita_lacunas/`](fixtures/krita_lacunas/README.md) · [`mypaint_lacunas/`](fixtures/mypaint_lacunas/README.md).
+Réguas novas em `leis_lacunas.py`: `memoria · canto · efeito · velocidade · carimbos · carimbos_3d · fundo`
+(as antigas imprimem o mesmo). **Veredito mudou** = 🔄.
+
+### §10.0 — As fotos velhas (§7): causa, guarda, refeitas 🔄
+
+**Causa** (medida nas fotos): o `BOOKMARK` responde antes de o Rebelle repintar a janela — em 24 das 31 a foto A é a
+cena anterior e a B já é a nova; nas outras 7 a janela ficou parada a cena toda (A = B = a anterior, incluindo os 6
+«quase iguais» Δ 2–14, que eram a B da cena anterior). Não era o `SET_BRUSH` nem o retomável. **Guarda**
+(`fotos_bateria.sh` + `foto_estavel.py`): a foto só vale com a tela ESTÁVEL (2 capturas seguidas, máxΔ ≤ 2) e ≠ das
+fotos da cena anterior (máxΔ > 16); senão a cena falha com o motivo e volta na passagem seguinte. **Refeitas 32**
+(64 PNG, 0 falhas): 31 mudaram 4–51 % dos px; **Graphite HB saiu igual ao byte** = quase-gémeo LEGÍTIMO do H (máxΔ 15
+em 50 mil px) — é a única linha que o `velhas` ainda imprime. A **Dabber** de verdade é uma trincha redonda de grão
+(não a trincha chata do Bristle Wide).
+
+### §10.1 — L3 memória entre traços (Rebelle, `memoria`, 40 px) 🔄 «não medível» → **sem memória**
+
+| preset | h1 · v1 SEM SET · h2 SEM SET · v2 controlo · h3 controlo (largura px) | arranque v1 · h2 (÷ mediana) |
+|---|---|---|
+| Flat Oily (PEN_ROTATION) | 40 · 16 · 64 · 11 · 40 | 1,00 · 1,00 |
+| Knife Smooth | 9 · 16 · 11 · 13 · 9 | 1,00 · 1,00 |
+| Flat Dry (FOLLOW) | 40 · 78 · 78 · 40 · 40 | 1,00 · 1,00 |
+| Express Knife Soft (FOLLOW, fixa) | 15 · 40 · 15 · 40 · 15 | 1,00 · 1,00 |
+
+**A lâmina NÃO guarda o ângulo entre traços**: o 1.º dab do vertical depois de um horizontal (e vice-versa) já tem a
+largura do resto do traço. ⚠️ Sem `SET_BRUSH` o TAMANHO volta ao do preset (Flat Oily ×1,6, Flat Dry ×1,95; a lei
+REPETE_PARAMS) — por isso o arranque mede-se ÷ a mediana do PRÓPRIO traço. Portão do §1 inalterado (arranque ≥ 0,97).
+
+### §10.2 — L3 atraso no canto (Rebelle `canto`, 20 px; controlo MyPaint `classic/knife`) 🔄 confirmado medindo
+
+Largura a 2 · 5 · 10 · 15 · 20 · 25 px depois do vértice ÷ a do meio da perna. O excesso até ~½ largura da perna
+ANTERIOR é geometria (a fatia apanha a outra perna); o sinal do atraso num seguidor chato seria a perna nascer FINA (< 1).
+
+| preset | canto h→v | canto v→h | zigue-zague (pernas de 60 px a ±45°, 12 pernas) |
+|---|---|---|---|
+| Flat Oily (fixa 20/6 px) | 3,83 · 3,83 · **1,00** · 1,00 … | **1,00** desde 2 px | 1,6–1,7 até 5 px, 0,91–1,03 desde 10 px |
+| Knife Smooth | 1,14 · **1,00** | 4,0 · 1,67 · **1,00** | 2,2–2,3 até 5 px, 0,92–1,08 desde 10 px |
+| Flat Dry (seguidor 20–22 px) | 1,36 · 1,36 · 1,36 · **0,95** · 1,00 | 1,55 · 1,55 · 1,10 · 1,10 · 1,05 · 1,00 | 1,4–1,5 até 5 px, 1,0–1,39 a 10 px, 0,91–1,05 desde 15 px |
+| Express Knife Soft (fixa 8/20) | **1,00** desde 2 px | 3,12 até 10 px (½·20), 1,12 · 1,00 | 1,3–1,7 até 5 px, 0,86–1,06 desde 10 px |
+| MyPaint knife (redonda) | 1,45 · 1,50 · **1,00** | idem | 1,2–1,55 até 5 px, 1,00–1,23 a 10 px |
+
+**Nenhum canto do Rebelle tem atraso visível**: a largura volta à da perna em ≤ ½ largura da perna anterior (≤ 10 px a
+20 px) e o seguidor nunca nasce fino (mín. 0,91) ⇒ **λ ≤ ~0,25·D** — confirma o §1 (λ ≤ 0,3·D) com o gesto que o mede.
+
+### §10.3 — L7 os 7 Effect sobre CINZA e PASTEL, 1× e 10× (`efeito`) 🔄
+
+Um α por passagem ajustado em conjunto aos 4 pontos (cinza/pastel × 1×/10×) pela fórmula ITERADA; erro = máx |previsto −
+foto| em níveis de 8 bit; papel = NORMAL com o α. Base: cinza (128,128,128), pastel (230,184,161).
+
+| Effect (modo do ficheiro) | erro W3C sRGB | α/passagem | 10× sobre cinza · pastel | veredito |
+|---|---|---|---|---|
+| Hue | **0,45** | 0,055 | 128,128,128 (intacto, como a fórmula manda) · 208,191,186 | ✓ 🔄 (era ambíguo) |
+| Luminosity | **1,07** | 0,055 | 111,111,111 · 182,136,113 | ✓ 🔄 (era «não medível») |
+| Color | 6,1 (1×: ≤ 1; 10× pastel: 6) | 0,064 | 101,135,168 · 187,194,201 | ≈ (linear 9,0) |
+| Overlay | **1,84** | 0,21 | 19,83,203 · 133,148,217 | ✓ |
+| Saturation | **51** ✗ (HSL troca-S 17; HSV 51) | — | **179,105,105** · 241,174,139 | ✗ 🔄 o cinza ganha VERMELHO (matiz 0 de um HSL): nem W3C nem HSL/HSV |
+| Burn (LINEAR_BURN) | 31,6 ✗ (Color Burn 23,8) | — | 0,0,58 · 30,54,91 | ✗ a 10× 🔄 (era ≈ 5/255 a 1×) |
+| Dodge (ADDITIVE) | 19,7 ✗ (linear 16,1; Screen 16,2) | — | 148,218,255 · 250,255,255 | ✗ a 10× 🔄 (era ✓ 0,4 a 1×) |
+
+α no papel por passagem: 0,055 (Color/Hue/Lum) · 0,059 (Sat) · 0,086 (Burn/Dodge) · 0,21 (Overlay) = o §2. **Lei:** Hue,
+Luminosity e Overlay = fórmula W3C em sRGB codificado, iterada com α fixo por passagem; Saturation, Linear Burn e Dodge
+NÃO são as fórmulas que o nome diz quando acumulam — por achar (o portão do §2 só os cobre a 1×).
+
+### §10.4 — L12 a curva da velocidade (`velocidade`: 3 · 6 · 12 · 25 · 50 px/evento = 300 → 5000 px/s)
+
+| oráculo | largura ÷ a de 3 px/evento | cobertura (50 px/ev) |
+|---|---|---|
+| Krita Ink-2 Fineliner | 1,00 · 0,95 · 0,95 · 0,90 · **0,85** | 0,91 |
+| Krita Ink-1 Precision | 1,00 · 1,00 · 1,00 · 0,93 · 0,93 | 0,95 |
+| Krita Marker Chisel Smooth · Marker Medium (mypaint) | 1,00 em todas | ≥ 0,99 |
+| MyPaint classic/pen | 1,00 · 0,91 · 0,83 · 0,74 · **0,65** | 0,99 |
+| MyPaint deevad/pen-note | 1,00 · 0,90 · 0,80 · 0,70 · **0,60** | 0,90 |
+| MyPaint ramon/Marker | 1,00 · 0,74 · 0,53 · 0,37 · **0,26** | 0,68 |
+| MyPaint ramon/Thin_Pen | 1,00 · 0,80 · 0,80 · 0,80 · 0,80 | **0,57** (só a cobertura cai) |
+| Rebelle Pen Bullet · Graphite HB · Watercolor Round | 0,97–1,03 (ruído) | 0,99–1,01 |
+
+**Lei:** a largura cai LOG-LINEAR com a velocidade, w/w₀ = 1 − k·log₂(v/300 px/s): pen k 0,087, pen-note 0,10,
+Fineliner 0,04 (Precision: degrau a ≥ 2500 px/s); o ramon/Marker é potência, w ∝ v^−0,45. O Rebelle é neutro (confirma
+o §5). Portão `a_velocidade_estreita_como_o_fineliner`: a curva inteira (0,95 · 0,95 · 0,90 · 0,85 ± 0,04), não só o par.
+
+### §10.5 — L6 o dual brush desligado — ❌ a porta não o muda; ⚠️ a foto de 200 px não reproduz
+
+O `SET_BRUSH` aceita `"dual_brush_enabled": false` sem erro e **ignora-o**: `semdual2` ≡ controlo (Charcoal 2 recto_40
+w 34 · cobertura 0,609 × 0,603–0,618; a diferença ao controlo = a de controlo × controlo, 9,07 % dos px); idem Dry Thin
+(0,818 × 0,816–0,818). O mesmo com `"splat_spacing": 3.0` no Splats (dabs/100 px, ⊥ sd, passo iguais à foto de 19/10).
+⇒ **a porta WebSocket não muda parâmetros do preset**; o caminho que sobra é um preset COPIADO com o parâmetro mudado
+na pasta do utilizador do prefixo (não feito: exige reiniciar e mexer nos presets do oráculo).
+⚠️ **O recto de 200 px de Charcoal 2 e Dry Thin NÃO reproduz entre dias**: 57–60 px nas 5 corridas de 20/10, 170 e 95 px
+a 19/10 (o de 40 px é igual ao px; o Charcoal da mesma vizinhança: 59 × 73). Os números do §6 L6 a 200 px (estrias de
+8 px, cobertura 0,65, resíduo 8,9 %) vêm de uma foto que hoje dá 6 px · 0,40 · 16,8 % ⇒ **por decidir**; use o recto de 40.
+
+### §10.6 — L4 o toque do Splats a 3·D (`carimbos_3d`) e L19 o image hose a 1,5·D (`carimbos`, Krita)
+
+- **Splats (Rebelle):** um TOQUE não emite nuvem — 1 mancha de ~7×8 px (área p50 42 px ≈ 0,18·D), no centro (desvio
+  0,01·D), em 6/8 · 7/8 · 5/8 toques a pressão 1 · 0,6 · 0,3 ⇒ a dispersão ⊥ 0,6–0,9·D e o tamanho por dab do §3 vêm do
+  ANDAR (a emissão ao longo do traço), não de um ponto de emissão. Lei do §3 inalterada.
+- **Stamp Herbals:** image hose de **3 imagens sorteadas** (pressão 1: `AABCAAAAABBABAA`, A em 10/15 — sorteio com peso,
+  não ciclo); tamanho pela pressão (área 253 → 198 → 63 px a 1 · 0,6 · 0,3); cor = a da frente (ΔH −0,4°).
+- **Stamp Leaves:** cada toque = uma nuvem de folhas com ROTAÇÃO aleatória (15 formas distintas em 15 toques), área ~320 px
+  sem pressão, a pressão leva a OPACIDADE (cobertura 0,69 → 0,57 → 0,42). **Stamp Hearts:** spray de partículas com matiz
+  sorteada por partícula (ΔH p50 +24…+39°).
+
+### §10.7 — L11 a 2.ª cor (Krita, `fundo`: frente azul, fundo AMARELO, os 144) 🔄
+
+**0 de 144** presets de fábrica do Krita usam a cor de fundo (`krita_lacunas/fundo_varredura_144.csv`; o único > 0,
+Sketching-1 Chrome Thin 10 %, é ruído de matiz em px quase pretos; 25 não pousam tinta). As matizes «próprias» (Hearts,
+Pointillism, Impressionism) são sorteio HSV. ⇒ a cor secundária não tem oráculo no Krita padrão; fica o MyPaint (cor pela
+mão, §4) e o comportamento documentado (Procreate «Color dynamics», Photoshop «Foreground/Background jitter»).
 
 ## ⛔ Recusas MEDIDAS
 
@@ -214,3 +332,5 @@ vieram de `NewFeaturesWetPaint/fixtures/rebelle_presets_281.json` só para ESCOL
 | velocidade→largura no Rebelle | 221 presets: 0,96–1,03 (ruído) |
 | `paint_fadeout_length` como chave do fall-off | vale 1 nos 281; o esmaecer medido varia de 0,18 a 1,08 |
 | compor os modos em luz linear | erro 2–56 níveis contra 0,0–0,9 em sRGB codificado |
+| mudar parâmetros do preset (`dual_brush_enabled`, `splat_spacing`) pelo `SET_BRUSH` | ignorados: ≡ controlo (§10.5) |
+| esperar o `BOOKMARK` e fotografar logo | 31 fotos da cena anterior (§10.0); a foto espera a tela estável e ≠ da anterior |

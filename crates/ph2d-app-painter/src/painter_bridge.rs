@@ -259,6 +259,10 @@ pub fn dispatch(
         if painter.take_brush_shape_image_request() {
             load_brush_shape_image(painter, asset_db, toasts);
         }
+        // A ponta de N imagens (L19): «Add image» pede uma imagem a mais para a Shape.
+        if painter.take_brush_shape_hose_request() {
+            crate::painter_bridge_assets::load_brush_shape_hose_image(painter, asset_db, toasts);
+        }
         // Os presets dos quatro meios (W1, L1): a biblioteca abre com o Painter, o pedido do painel é
         // atendido aqui (o disco é da ponte) e a vista é publicada.
         #[cfg(feature = "panel-painter-layers")]

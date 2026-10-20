@@ -180,6 +180,10 @@ pub(crate) fn paint_shape_section(
         y = crate::paint_shape_layers::paint_use_layers_button(ctx, theme, x, content_w, y);
     }
     y = crate::paint_shape_layers::paint_shape_per_layer_color(ctx, theme, x, content_w, y, brush);
+    // ── A ponta de N IMAGENS (L19): acrescentar imagens à Shape e como cada dab escolhe a sua. ──
+    if is_image && brush.shape_has_image {
+        y = crate::ponta_linhas::paint_mangueira(ctx, theme, x, content_w, y, &brush);
+    }
 
     // Live composed-silhouette preview — ALWAYS shown (even `None` = the bare falloff; with no Grain
     // and the Shape colour ramp on, it's the colourised silhouette), re-rendered each frame from the

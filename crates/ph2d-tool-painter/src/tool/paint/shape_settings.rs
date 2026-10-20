@@ -126,32 +126,17 @@ impl PainterTool {
         )
     }
 
-    fn set_brush_shape_image_rgba_corpo(
+    pub(super) fn set_brush_shape_image_rgba_corpo(
         &mut self,
         rgba: &[u8],
         width: u32,
         height: u32,
         source_doc: Option<u64>,
     ) {
-        let n = (width as usize) * (height as usize);
-        if n == 0 || rgba.len() < n * 4 {
+        // A lei da importação (a MESMA de cada imagem da ponta de N imagens, L19): `mangueira::importa_rgba`.
+        if !super::mangueira::importa_rgba(&mut self.paint.shape_layers, rgba, width, height) {
             return;
         }
-        let alpha: Vec<u8> = (0..n).map(|i| rgba[i * 4 + 3]).collect();
-        let mut rgb = Vec::with_capacity(n * 3);
-        for i in 0..n {
-            rgb.push(rgba[i * 4]);
-            rgb.push(rgba[i * 4 + 1]);
-            rgb.push(rgba[i * 4 + 2]);
-        }
-        self.set_brush_shape_layers(vec![(alpha, width, height)]);
-        self.paint
-            .shape_layers
-            .set_layers_meta(vec![rgb], vec![1.0], vec![0], vec![0]);
-        // ⚠️ **A lei desta rota é a LUMINÂNCIA**, e ela é declarada aqui em vez de assumida: uma
-        // imagem importada pode não ter alpha nenhum, e tomar o dela como silhueta faria de todo
-        // `.jpg` opaco um carimbo quadrado. O alpha fica guardado — é o que o checkbox liga.
-        self.paint.shape_layers.set_alpha_from_image(false);
         self.reflatten_shape_image();
         self.shape_source_doc = source_doc;
         self.shape_source_revision = self.shape_source_content_revision();
@@ -201,6 +186,7 @@ impl PainterTool {
         // Shape into the coloured-stamp path (garbage paint). The multi-layer CAPTURE
         // (`set_brush_shape_layers`) re-populates it afterwards (Enio 2026-06-26).
         self.paint.shape_layers.clear();
+        self.esvazia_a_mangueira(); // a fonte mudou: as imagens da ponta (L19) iam com a antiga
         match kind {
             TextureKind::Image => self.paint.shape_image_pending = true, // shell opens a file picker
             TextureKind::None => self.paint.shape_image = None,
@@ -239,6 +225,7 @@ impl PainterTool {
 
     /// Clear the Shape image (and reset the slot to `None`) — the silhouette reverts to the falloff.
     pub fn clear_brush_shape_image(&mut self) {
+        self.esvazia_a_mangueira();
         self.paint.shape_image = None;
         self.paint.shape_layers.clear();
         self.paint.brush.shape.kind = TextureKind::None;
@@ -465,6 +452,7 @@ impl PainterTool {
     /// re-importação — é escolher qual dos dois planos que já estão ali é a silhueta.
     pub fn toggle_brush_shape_alpha_from_image(&mut self) {
         self.paint.shape_layers.toggle_alpha_from_image();
+        self.sincroniza_as_imagens(); // as imagens da ponta (L19) seguem a Shape
         // A imagem única (o caminho do ramo de cor / do preview) é o flatten das máscaras — re-assá-la
         // aqui é o que faz a troca aparecer nas DUAS rotas com um gesto só.
         self.reflatten_shape_image();
@@ -474,6 +462,7 @@ impl PainterTool {
     /// lower). While on, the Shape colour ramp is hidden + nullified (the route uses the coloured stamp).
     pub fn toggle_brush_shape_per_layer_color(&mut self) {
         self.paint.shape_layers.toggle_per_layer_color();
+        self.sincroniza_as_imagens(); // as imagens da ponta (L19) seguem a Shape
         self.texture_colour_starts_untinted();
         // Flipping the mode MID-STROKE (the panel and the canvas are both live — that is how Enio's Rake
         // panic happened) invalidates the accumulation, and silently: `pre` is the PRE-stroke canvas, and

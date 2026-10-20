@@ -391,7 +391,6 @@ pub(crate) struct PaintState {
     pub(super) shape_ramp_dirty: bool,
     pub(super) shape_ramp_version: u64,
     pub(super) ramp_lut_owner: ramp_lut::RampLutOwner,
-    /// **Accumulate OFF** per-stroke coverage mask (1 byte/px), cleared on down; caps a stroke at Strength.
     /// **A pilha corre pelo REPLAY?** Porta de bissecção (`PH2D_COMPOSITE_REPLAY=1`), um CAMPO: um gate que lê o
     /// ambiente mede a máquina.
     pub(super) pilha_por_replay: bool,
@@ -404,6 +403,7 @@ pub(crate) struct PaintState {
     pub(super) plano_do_traco: Option<super::traco_plano::PlanoDoTraco>,
     /// O trilho da ponta de PÍXEL (L18, [`super::pixel_route::Trilhos`]); zerado no pen-down.
     pub(super) pixel_trilhos: super::pixel_route::Trilhos,
+    pub(super) mangueira: super::mangueira::Mangueira, // as imagens da ponta além da Shape (L19)
     /// **Impasto** — every per-stroke plane the relief lives in, and the window they are indexed
     /// against. See [`relief_state::ReliefState`].
     pub(super) relief: relief_state::ReliefState,

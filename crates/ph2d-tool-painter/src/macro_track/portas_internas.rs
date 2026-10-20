@@ -60,6 +60,7 @@ pub const INTERNAS: &[&str] = &[
     "set_marca_secundaria",
     // A ponta (L9 · L18): as secções Brush/Grain chegam-lhe pelo `handle_panel_event`.
     "set_ponta",
+    "clear_brush_shape_hose",
     "polygon_cancel",
     "polygon_commit",
     "polygon_commit_keep",

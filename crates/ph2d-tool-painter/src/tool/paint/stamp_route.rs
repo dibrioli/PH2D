@@ -146,6 +146,10 @@ impl PainterTool {
         if self.wire_suppresses_dabs() {
             return;
         }
+        // A ponta de N IMAGENS (L19): o lote em corridas da mesma imagem, cada uma no lugar da Shape.
+        if self.mangueira_viva() {
+            return self.stamp_dabs_mangueira(dabs);
+        }
         // Watercolor optical render-path: DON'T deposit dabs on the canvas — accumulate the coverage
         // (max-blended discs) + the deposited colour (source-over), and let `apply_watercolor` reconstruct
         // the whole wash over the frozen base ([`super::watercolor_render`]). Short-circuits every route.

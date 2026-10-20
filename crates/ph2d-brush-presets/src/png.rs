@@ -122,6 +122,29 @@ pub fn escrever_textura(lum: &[u8], w: u32, h: u32) -> Vec<u8> {
     png_8bits(0, 1, w, h, lum, &[])
 }
 
+/// Uma textura RGBA (`w × h × 4`, alpha direito) como PNG de 8 bits — a ponta com a cor dela (L19: a imagem da
+/// Shape com «Use Texture Colors», cada imagem da ponta de N imagens).
+#[must_use]
+pub fn escrever_textura_rgba(rgba: &[u8], w: u32, h: u32) -> Vec<u8> {
+    assert_eq!(rgba.len(), w as usize * h as usize * 4, "textura RGBA {w}×{h}");
+    png_8bits(6, 4, w, h, rgba, &[])
+}
+
+/// Lê uma textura de [`escrever_textura_rgba`] (`w × h × 4`); uma cinzenta vira RGBA opaco.
+///
+/// # Errors
+/// Os de [`ler`] para a parte da imagem.
+pub fn ler_textura_rgba(bytes: &[u8]) -> Result<(Vec<u8>, u32, u32), Erro> {
+    let (cab, cru) = imagem_crua(bytes)?;
+    let px = desfiltrar(&cab, &cru)?;
+    let rgba = if cab.canais == 4 {
+        px
+    } else {
+        px.iter().flat_map(|&v| [v, v, v, 255]).collect()
+    };
+    Ok((rgba, cab.largura, cab.altura))
+}
+
 /// Lê uma textura escrita por [`escrever_textura`] (ou qualquer PNG de 8 bits: a cor vira luminância
 /// pelo canal vermelho, que numa máscara cinzenta é o próprio valor).
 ///

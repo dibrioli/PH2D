@@ -9,6 +9,7 @@
 //! globais não cabem num binário, e um contador global veria as alocações dos vizinhos): fica em `tests/`.
 
 mod a_caneta_deitada;
+mod a_ponta_de_n_imagens;
 mod a_ponta_de_pixel;
 mod a_lei_da_tinta;
 mod a_luz_do_impasto_e_a_de_antes_da_poda;

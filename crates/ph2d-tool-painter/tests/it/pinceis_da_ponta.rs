@@ -43,4 +43,31 @@ fn gera_os_pinceis_de_teste_da_ponta() {
     t.set_ponta(LinhaDaPonta::DepthJitter, 1.0);
     t.set_ponta(LinhaDaPonta::DepthPressure, 1.0);
     eprintln!("{}", grava(&t, &dir, "Grain Pencil").display());
+    // A ponta de 3 imagens (L19): folha, disco e losango desenhados aqui, sorteados com peso 4·2·1 (o Herbals).
+    let mut t = PainterTool::default();
+    t.set_paint_media(PaintMedia::Digital);
+    let lado = 32u32;
+    let forma = |k: u32| -> Vec<u8> {
+        let m = lado as f32 / 2.0;
+        (0..lado * lado)
+            .flat_map(|i| {
+                let (x, y) = ((i % lado) as f32 + 0.5 - m, (i / lado) as f32 + 0.5 - m);
+                let d = match k {
+                    0 => (x * x / (m * m) + y * y / (0.16 * m * m)).sqrt(), // a folha: elipse 1 × 0,4
+                    1 => (x * x + y * y).sqrt() / m,
+                    _ => (x.abs() + y.abs()) / m,
+                };
+                let a = ((1.0 - d) * 4.0).clamp(0.0, 1.0);
+                [255, 255, 255, (a * 255.0) as u8]
+            })
+            .collect()
+    };
+    t.set_brush_shape_image_rgba(&forma(0), lado, lado, None);
+    t.toggle_brush_shape_alpha_from_image();
+    t.add_brush_shape_hose_image_rgba(&forma(1), lado, lado);
+    t.add_brush_shape_hose_image_rgba(&forma(2), lado, lado);
+    t.set_ponta(LinhaDaPonta::Peso(0), 4.0);
+    t.set_ponta(LinhaDaPonta::Peso(1), 2.0);
+    t.set_brush_spacing(1.0);
+    eprintln!("{}", grava(&t, &dir, "Image Hose").display());
 }

@@ -48,7 +48,7 @@ const TEXTURA_FORMA: &str = "shape";
 const TEXTURA_GRAO: &str = "grain";
 
 /// Os campos do `BrushSpec` que o preset leva, pelo nome do campo.
-pub const CAMPOS_DO_PINCEL: [&str; 34] = [
+pub const CAMPOS_DO_PINCEL: [&str; 35] = [
     "hardness",
     "falloff",
     "custom_falloff",
@@ -62,6 +62,7 @@ pub const CAMPOS_DO_PINCEL: [&str; 34] = [
     "jitter_spacing",
     "spray_count",
     "dab_jitter",
+    "hose",
     "input_samples",
     "stabilizer",
     "taper",
@@ -556,6 +557,7 @@ impl PainterTool {
         {
             texturas.insert(TEXTURA_GRAO.to_owned(), escrever_textura(lum, w, h));
         }
+        self.texturas_da_mangueira(&mut texturas); // as imagens da ponta e a cor delas (L19)
         texturas
     }
 
@@ -596,6 +598,7 @@ impl PainterTool {
         }
         self.paint.texture_image_pending = false;
         self.paint.texture_image_version = self.paint.texture_image_version.wrapping_add(1);
+        self.instala_a_mangueira(texturas, &mut falhas); // as imagens da ponta (L19)
         falhas
     }
 }

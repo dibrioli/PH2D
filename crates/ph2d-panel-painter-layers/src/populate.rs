@@ -439,6 +439,9 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // "Use Document Layers" capture button + the Per-Layer Color mode toggle (the per-layer
         // checkboxes + swatches are factory ids, registered at paint time). Forward as a Button Click.
         ph2d_tool_painter::ids::PAINTER_SHAPE_USE_LAYERS,
+        // A ponta de N imagens (L19): «Add image» e «Clear images».
+        ph2d_tool_painter::ids::PAINTER_SHAPE_HOSE_ADD,
+        ph2d_tool_painter::ids::PAINTER_SHAPE_HOSE_CLEAR,
         ph2d_tool_painter::ids::PAINTER_SHAPE_PER_LAYER_COLOR,
         ph2d_tool_painter::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE,
         // Per-section reset icon buttons (Inspector-Transform pattern).

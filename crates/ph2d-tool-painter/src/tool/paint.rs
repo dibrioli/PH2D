@@ -142,6 +142,7 @@ pub mod marca; // as linhas da MARCA (o jitter da L4) no cartão Jitter, nos qua
 mod traco_plano; // o PLANO do traço: o tecto, as orlas (L8) e a cauda re-pintada (L5), só no Digital
 mod traco_settings; // as portas do painel do traço (L8) e do modo sobre o vazio (L7)
 pub mod ponta; // as linhas da PONTA (L9 o grão · L18 o píxel · L19 as imagens) nas secções Brush/Grain/Shape
+mod mangueira; // a ponta de N IMAGENS (L19): as imagens além da Shape e o carimbo em corridas
 mod pixel_route; // a ponta de PÍXEL (L18): o trilho ancorado e o carimbo binário, só no Digital
 pub mod mao; // a MÃO do pincel (pressão, inclinação) nos quatro meios, por uma lei só (L2, Pinceis/03 §4)
 mod wetpaint_commit;

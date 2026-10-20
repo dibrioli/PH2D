@@ -408,6 +408,7 @@ impl PainterTool {
             marca: self.marca(),
             marca_secundaria: self.paint.brush.cor_mao.secondary,
             ponta: self.ponta(),
+            shape_hose_count: self.brush_shape_hose_count() as u8,
             wet_tool: self.paint.wetpaint.tool,
             wet_tilt_on: self.paint.wetpaint.tilt_on,
             wet_tilt_ring: self.paint.wetpaint.tilt_ring,

@@ -7,7 +7,7 @@
 
 use ph2d_painter_brush::line_kind::LineKind;
 use ph2d_painter_brush::{
-    BrushBlend, BrushSpec, ColorJitterScope, CorDaMao, DabJitter, GrainLaw, GrainMode, PixelTip, Falloff, FalloffCurve, FalloffPoint, FootprintCurve,
+    BrushBlend, BrushSpec, ColorJitterScope, CorDaMao, DabJitter, GrainLaw, GrainMode, HOSE_MAX, HoseMode, ImageHose, PixelTip, Falloff, FalloffCurve, FalloffPoint, FootprintCurve,
     HandleType, JitterUnit, MAX_BRUSH_BLEND_MODES, MAX_TEX_PARAMS, MirrorAxis, StrokeMethod,
     TextureKind, TextureMapping, TextureSettings,
 };
@@ -95,6 +95,22 @@ fn textura_para_json(t: &TextureSettings) -> Value {
         );
     }
     v
+}
+
+/// A ponta de N imagens (L19) do JSON; AUSENTE = a imagem única.
+fn mangueira_de_json(v: Option<&Value>) -> ImageHose {
+    let Some(o) = v.and_then(Value::as_object) else {
+        return ImageHose::NEUTRA;
+    };
+    let mut h = ImageHose::NEUTRA;
+    h.n = inteiro(o.get("n"), 1u8).clamp(1, HOSE_MAX as u8);
+    h.mode = HoseMode::from_u8(inteiro(o.get("mode"), 0u8));
+    if let Some(a) = o.get("pesos").and_then(Value::as_array) {
+        for (k, p) in h.pesos.iter_mut().enumerate() {
+            *p = inteiro(a.get(k), *p);
+        }
+    }
+    h
 }
 
 /// A lei do grão (L9) do JSON; AUSENTE = a de sempre (nunca a do pincel anterior: o preset sem ela é o de antes).
@@ -283,6 +299,11 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
         "spray_count" => json!(b.spray_count),
         "dab_jitter" => marca_para_json(&b.dab_jitter),
         "pixel" => json!(b.pixel.to_u8()),
+        "hose" => json!({
+            "n": b.hose.n,
+            "mode": b.hose.mode.to_u8(),
+            "pesos": b.hose.pesos.to_vec(),
+        }),
         "cor_mao" => json!({
             "secondary": [num(b.cor_mao.secondary[0]), num(b.cor_mao.secondary[1]), num(b.cor_mao.secondary[2])],
             "secondary_jitter": num(b.cor_mao.secondary_jitter),
@@ -432,6 +453,8 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "dab_jitter" => b.dab_jitter = marca_de_json(v, b.dab_jitter),
         // AUSENTE = desligada (só se grava ligada), nunca a do pincel anterior.
         "pixel" => b.pixel = PixelTip::from_u8(inteiro(v, 0)),
+        // AUSENTE = a imagem única (só se grava com várias), nunca a ponta do pincel anterior.
+        "hose" => b.hose = mangueira_de_json(v),
         "cor_mao" => b.cor_mao = cor_mao_de_json(v, b.cor_mao),
         "input_samples" => b.input_samples = inteiro(v, b.input_samples),
         "stabilizer" => b.stabilizer = f(v, b.stabilizer),
@@ -488,6 +511,8 @@ pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
         .iter()
         // A ponta de píxel (L18) só quando ligada: o preset sem ela é o de antes, ao byte.
         .filter(|&&c| !(c == "pixel" && b.pixel == PixelTip::Off))
+        // A ponta de N imagens (L19) só quando não é a de sempre: o preset de imagem única é o de antes, ao byte.
+        .filter(|&&c| !(c == "hose" && b.hose == ImageHose::NEUTRA))
         .map(|&c| ((*c).to_owned(), ler_campo(b, c)))
         .collect()
 }

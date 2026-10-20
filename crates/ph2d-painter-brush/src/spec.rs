@@ -358,6 +358,9 @@ pub struct BrushSpec {
     /// ⭐ **A ponta de PÍXEL** (L18, [`crate::pixel::PixelTip`]): o carimbo binário alinhado à grelha (o lápis do
     /// Aseprite), lido só pelo Digital; `Off` é o carimbo de sempre ao bit.
     pub pixel: crate::pixel::PixelTip,
+    /// ⭐ **A ponta de N IMAGENS** (L19, [`crate::mangueira::ImageHose`]): quantas imagens a Shape leva e como cada dab
+    /// escolhe a sua; a [`crate::mangueira::ImageHose::NEUTRA`] é a imagem única de sempre ao bit.
+    pub hose: crate::mangueira::ImageHose,
     /// **A pegada deitada DESTE dab** — só no pincel por dab de [`Self::at_dab`] (a caneta deitada, W6, e a forma
     /// sorteada da marca, L4: [`crate::Dab::tilt`]); `None` no pincel do artista. É por ela que o carimbo, que
     /// lê a pegada do `spec` ([`Self::dab_footprint`]), pinta a elipse deitada e não só o raio que cresceu.

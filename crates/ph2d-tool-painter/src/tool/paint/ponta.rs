@@ -3,7 +3,7 @@
 //! UMA tabela — a chave (a do preset e a do id), a faixa, o valor de fábrica — e duas portas: [`escreve`] e [`le`].
 //! O preset grava os campos inteiros no `BrushSpec` (`pixel`, `texture.lei`), não estas chaves.
 
-use ph2d_painter_brush::{BrushSpec, GrainMode, PixelTip};
+use ph2d_painter_brush::{BrushSpec, GrainMode, HOSE_MAX, HoseMode, PixelTip};
 
 /// Uma linha numérica da ponta.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -18,6 +18,10 @@ pub enum LinhaDaPonta {
     DepthJitter,
     /// O controlo da profundidade por dab: `0` sorteada · `1` a pressão (L9).
     DepthPressure,
+    /// Como cada dab escolhe a imagem da ponta de N imagens (L19, [`HoseMode`] pelo índice).
+    HoseMode,
+    /// O peso da imagem `k` no sorteio (L19).
+    Peso(u8),
 }
 
 /// Onde a linha se pinta.
@@ -27,15 +31,39 @@ pub enum CartaoDaPonta {
     Pincel,
     /// A secção Grain (com um Grain armado).
     Grao,
+    /// A secção Shape, com duas imagens ou mais (L19).
+    Forma,
 }
 
 /// As linhas, pela ordem do painel.
-pub const LINHAS_DA_PONTA: [LinhaDaPonta; 5] = [
+pub const LINHAS_DA_PONTA: [LinhaDaPonta; 14] = [
     LinhaDaPonta::Pixel,
     LinhaDaPonta::GrainMode,
     LinhaDaPonta::DepthMin,
     LinhaDaPonta::DepthJitter,
     LinhaDaPonta::DepthPressure,
+    LinhaDaPonta::HoseMode,
+    LinhaDaPonta::Peso(0),
+    LinhaDaPonta::Peso(1),
+    LinhaDaPonta::Peso(2),
+    LinhaDaPonta::Peso(3),
+    LinhaDaPonta::Peso(4),
+    LinhaDaPonta::Peso(5),
+    LinhaDaPonta::Peso(6),
+    LinhaDaPonta::Peso(7),
+];
+const _: () = assert!(HOSE_MAX == 8, "uma linha de peso por imagem da ponta");
+
+/// As chaves das linhas de peso (uma por imagem da ponta).
+const PESOS: [&str; HOSE_MAX] = [
+    "hoseWeight1",
+    "hoseWeight2",
+    "hoseWeight3",
+    "hoseWeight4",
+    "hoseWeight5",
+    "hoseWeight6",
+    "hoseWeight7",
+    "hoseWeight8",
 ];
 
 /// Quantas linhas a ponta tem.
@@ -61,6 +89,8 @@ impl LinhaDaPonta {
             Self::DepthMin => ("depthMin", 0.0, 1.0, 0.01, 0.0),
             Self::DepthJitter => ("depthJitter", 0.0, 1.0, 0.01, 0.0),
             Self::DepthPressure => ("depthPressure", 0.0, 1.0, 1.0, 0.0),
+            Self::HoseMode => ("hoseMode", 0.0, (HoseMode::COUNT - 1) as f64, 1.0, 0.0),
+            Self::Peso(k) => (PESOS[k as usize], 0.0, 100.0, 1.0, 1.0),
         }
     }
 
@@ -69,6 +99,7 @@ impl LinhaDaPonta {
     pub fn cartao(self) -> CartaoDaPonta {
         match self {
             Self::Pixel => CartaoDaPonta::Pincel,
+            Self::HoseMode | Self::Peso(_) => CartaoDaPonta::Forma,
             _ => CartaoDaPonta::Grao,
         }
     }
@@ -106,6 +137,12 @@ impl LinhaDaPonta {
             Self::DepthPressure => &[
                 "panel.painter_ponta.depth_control.random",
                 "panel.painter_ponta.depth_control.pressure",
+            ],
+            Self::HoseMode => &[
+                "panel.painter_ponta.hose_mode.random",
+                "panel.painter_ponta.hose_mode.sequence",
+                "panel.painter_ponta.hose_mode.pressure",
+                "panel.painter_ponta.hose_mode.angle",
             ],
             _ => &[],
         }
@@ -145,6 +182,8 @@ pub(crate) fn escreve(b: &mut BrushSpec, l: LinhaDaPonta, v: f64) {
         LinhaDaPonta::DepthMin => lei.depth_min = v as f32,
         LinhaDaPonta::DepthJitter => lei.depth_jitter = v as f32,
         LinhaDaPonta::DepthPressure => lei.depth_pressure = v >= 0.5,
+        LinhaDaPonta::HoseMode => b.hose.mode = HoseMode::from_u8(v as u8),
+        LinhaDaPonta::Peso(k) => b.hose.pesos[usize::from(k)] = v as u8,
     }
 }
 
@@ -158,6 +197,8 @@ pub(crate) fn le(b: &BrushSpec, l: LinhaDaPonta) -> f64 {
         LinhaDaPonta::DepthMin => lei.depth_min,
         LinhaDaPonta::DepthJitter => lei.depth_jitter,
         LinhaDaPonta::DepthPressure => f32::from(u8::from(lei.depth_pressure)),
+        LinhaDaPonta::HoseMode => f32::from(b.hose.mode.to_u8()),
+        LinhaDaPonta::Peso(k) => f32::from(b.hose.pesos[usize::from(k)]),
     };
     format!("{v}").parse().unwrap_or(f64::from(v))
 }
@@ -177,6 +218,18 @@ impl super::PainterTool {
     /// As linhas da ponta do canal do painel: `SetValue` (os campos) e `SelectOption` «i» (os menus).
     pub(crate) fn route_ponta_event(&mut self, event: &ph2d_editor_core::tool::PanelEvent) -> bool {
         use ph2d_editor_core::tool::PanelEvent;
+        // Os botões da ponta de N imagens (L19): «Add image» pede o seletor à shell, «Clear images» tira as outras.
+        match event {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SHAPE_HOSE_ADD => {
+                self.request_brush_shape_hose_image();
+                return true;
+            }
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_SHAPE_HOSE_CLEAR => {
+                self.clear_brush_shape_hose();
+                return true;
+            }
+            _ => {}
+        }
         let (id, v) = match event {
             PanelEvent::SetValue(id, v) => (id, *v),
             PanelEvent::SelectOption(id, s) => match s.parse::<f64>() {

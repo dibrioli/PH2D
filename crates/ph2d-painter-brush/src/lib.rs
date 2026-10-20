@@ -78,6 +78,7 @@ mod line_speed_probe; // sonda do arremesso (plano 38 W2)
 mod line_speed_tests; // os gates do Speed Shapes (plano 38 W2)
 pub mod mask_ops;
 pub mod pixel;
+pub mod mangueira;
 pub mod material;
 pub mod pen;
 #[cfg(test)]
@@ -147,9 +148,9 @@ pub(crate) mod stroke_cover;
 pub mod stroke_method;
 pub mod symmetry;
 pub mod taper;
-#[cfg(test)]
 /// O traço como uma CAMADA — o tecto por traço e as orlas (L8).
 pub mod traco;
+#[cfg(test)]
 mod taper_tests;
 pub mod texture;
 /// **O quadrado unitário do carimbo** — a porta única de *onde, no stamp, está esta coordenada de dab,
@@ -159,8 +160,8 @@ pub(crate) mod tip;
 mod tip_kernel_tests;
 
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
-pub use blur::{BlurKernel, blur_blit_stamp, blur_dab, kernel_radius};
 pub use blend_vazio::{blend_over_modo, blend_over_pigment_modo, blend_over_w3c};
+pub use blur::{BlurKernel, blur_blit_stamp, blur_dab, kernel_radius};
 pub use blur_grain::blur_blit_grain;
 pub use blur_peso::{blur_region_borrado, blur_region_por_peso, mistura_linha_por_peso};
 pub use clone::{clone_blit_stamp, clone_dab};
@@ -182,6 +183,7 @@ pub use jitter::{ColorJitterScope, apply_color_shift};
 pub use cor_mao::CorDaMao;
 pub use marca::DabJitter;
 pub use pixel::PixelTip;
+pub use mangueira::{HOSE_MAX, HoseMode, ImageHose};
 pub use mask_ops::{MaskCanvasOp, apply_mask_op};
 pub use pen::{DabRotation, DabTilt, Pen, Tilt as PenTilt};
 pub use ramp_alpha::{

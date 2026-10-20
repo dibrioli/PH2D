@@ -407,6 +407,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == ph2d_tool_painter::ids::PAINTER_SHAPE_WATERCOLOR_AUTO
                 || id == ph2d_tool_painter::ids::PAINTER_SHAPE_RESET
                 || id == ph2d_tool_painter::ids::PAINTER_SHAPE_USE_LAYERS
+                || id == ph2d_tool_painter::ids::PAINTER_SHAPE_HOSE_ADD
+                || id == ph2d_tool_painter::ids::PAINTER_SHAPE_HOSE_CLEAR
                 || id == ph2d_tool_painter::ids::PAINTER_SHAPE_PER_LAYER_COLOR
                 || id == ph2d_tool_painter::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE
                 || ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_BUTTONS.contains(&id)

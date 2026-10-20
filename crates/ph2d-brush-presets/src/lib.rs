@@ -26,4 +26,6 @@ pub use estado::{EstadoDoUtilizador, FICHEIRO_ESTADO, Lembrado, Politica};
 pub use modelo::{
     Erro, LADO_MINIATURA, Miniatura, Origem, Parametros, Preset, SCHEMA, Tilt, Volumes,
 };
-pub use png::{escrever, escrever_textura, ler, ler_textura};
+pub use png::{
+    escrever, escrever_textura, escrever_textura_rgba, ler, ler_textura, ler_textura_rgba,
+};

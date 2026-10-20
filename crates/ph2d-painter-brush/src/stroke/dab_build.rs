@@ -21,6 +21,9 @@ pub(super) struct PorTraco {
     pub(super) rng: u64,
     /// O fluxo PRÓPRIO da profundidade do grão por dab (L9): ligá-la não desloca nenhum outro sorteio.
     rng_grao: u64,
+    /// O fluxo PRÓPRIO e o contador da imagem de cada dab (L19, a ponta de N imagens).
+    rng_imagem: u64,
+    seq_imagem: u32,
 }
 
 impl PorTraco {
@@ -30,6 +33,8 @@ impl PorTraco {
             rotor: crate::marca::rotor_do_traco(&spec.dab_jitter, seed),
             rng: seed ^ 0x6D61_7263_6144_4142,
             rng_grao: seed ^ 0x6772_616F_4C39_4447,
+            rng_imagem: seed ^ 0x696D_6167_4C31_3948,
+            seq_imagem: 0,
         }
     }
 }
@@ -232,6 +237,17 @@ impl Stroke {
                 ..t
             });
         }
+        // A imagem DESTE dab (L19): a ponta de N imagens escolhe pelo peso, pela sequência, pela pressão ou pelo rumo;
+        // viaja na pegada (`DabTilt::imagem`), e o tool carimba cada uma com a sua.
+        if self.spec.hose.ativa() {
+            let u = crate::jitter::next_f32(&mut self.por_traco.rng_imagem);
+            let k = self
+                .spec
+                .hose
+                .escolhe(pressure, self.heading, u, &mut self.por_traco.seq_imagem);
+            let t = dab.tilt.unwrap_or(crate::DabTilt::NEUTRA);
+            dab.tilt = Some(crate::DabTilt { imagem: k, ..t });
+        }
         let o = self.opacidade_deitada();
         if o < 1.0 {
             dab.coverage *= o;
@@ -246,6 +262,11 @@ impl Stroke {
         let w = self.taper_width_at(arc);
         if w < 1.0 {
             crate::taper::scale_dab(&mut dab, &self.spec.taper, w);
+        }
+        // O FALL-OFF (L5): a carga que se esgota pelo comprimento — a cobertura do dab, nos quatro meios.
+        if self.spec.taper.fall_active() {
+            let f = self.spec.taper.fall(arc, 2.0 * self.spec.clamped_radius());
+            dab.coverage = (dab.coverage * f).clamp(0.0, 1.0);
         }
         self.ultimo = Some(Ante::de(&dab));
         dab
@@ -262,11 +283,6 @@ impl Stroke {
         let max_offset = self.spec.alcance_do_jitter(radius);
         if max_offset <= 0.0 {
             return (pos, 0.0);
-        }
-        // O FALL-OFF (L5): a carga que se esgota pelo comprimento — a cobertura do dab, nos quatro meios.
-        if self.spec.taper.fall_active() {
-            let f = self.spec.taper.fall(arc, 2.0 * self.spec.clamped_radius());
-            dab.coverage = (dab.coverage * f).clamp(0.0, 1.0);
         }
         let (dx, dy) = crate::jitter::disc_sample(&mut self.rng);
         (

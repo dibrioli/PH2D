@@ -472,8 +472,9 @@ pub struct BrushSettings {
     pub marca: [f64; crate::N_LINHAS_DA_MARCA],
     /// A cor secundária do pincel (L11; sRGB `0..1`).
     pub marca_secundaria: [f32; 3],
-    /// A PONTA, por linha (`LINHAS_DA_PONTA`; L9 o grão · L18 o píxel).
+    /// A PONTA, por linha (`LINHAS_DA_PONTA`; L9 o grão · L18 o píxel · L19 as imagens) e quantas imagens a Shape leva.
     pub ponta: [f64; crate::N_LINHAS_DA_PONTA],
+    pub shape_hose_count: u8,
     /// The wet TOOL the brush wire drives while armed (doc 22).
     pub wet_tool: crate::WetTool,
     /// The tilt dial: on/off + ring (0..8) + spoke (0..11, 30 deg steps).

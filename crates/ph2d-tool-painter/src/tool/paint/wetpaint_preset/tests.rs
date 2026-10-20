@@ -129,6 +129,11 @@ fn pincel_mexido() -> BrushSpec {
             across: 1.2,
             particle: 0.5,
         },
+        hose: ph2d_painter_brush::ImageHose {
+            n: 1,
+            mode: ph2d_painter_brush::HoseMode::Sequence,
+            pesos: [5, 2, 1, 1, 1, 1, 0, 1],
+        },
         input_samples: 3,
         stabilizer: 0.25,
         taper: Taper {
@@ -504,7 +509,8 @@ fn o_pincel_inteiro_vai_e_volta_pelo_json_da_macro() {
     let campos = campos_da_macro();
     let fabrica = json::pincel_para_json(&d, &campos);
     let m = json::pincel_para_json(&b, &campos);
-    let parados: Vec<&&str> = campos.iter().filter(|c| fabrica[**c] == m[**c]).collect();
+    // `get`: a ponta de píxel e a de N imagens (L18/L19) só se gravam fora do neutro — na fábrica faltam.
+    let parados: Vec<&&str> = campos.iter().filter(|c| fabrica.get(**c) == m.get(**c)).collect();
     assert!(parados.is_empty(), "a fixtura não mexe em {parados:?}");
     assert_eq!(json::pincel_de_json(&m, &campos, d), b);
 }

@@ -92,6 +92,8 @@ pub struct DabTilt {
     /// A Grain Depth DESTE dab em fracção da do pincel (a profundidade por dab do grão, L9,
     /// [`crate::texture::GrainLaw::profundidade_do_dab`]); `1` = a do pincel.
     pub grao: f32,
+    /// A imagem da Shape que ESTE dab carimba (L19, [`crate::mangueira::ImageHose::escolhe`]); `0` = a primeira.
+    pub imagem: u8,
 }
 
 impl DabTilt {
@@ -104,6 +106,7 @@ impl DabTilt {
         round: 1.0,
         espelho: false,
         grao: 1.0,
+        imagem: 0,
     };
 
     /// A ponta deixa de ser a do pincel (um dos raios mudou).
@@ -231,6 +234,7 @@ impl Tilt {
             round: 1.0,
             espelho: false,
             grao: 1.0,
+            imagem: 0,
         })
     }
 }

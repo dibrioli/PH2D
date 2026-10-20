@@ -233,6 +233,7 @@ impl Default for PaintState {
             stroke_mask: Vec::new(),
             plano_do_traco: None,
             pixel_trilhos: super::pixel_route::Trilhos::default(),
+            mangueira: Default::default(),
             relief: Default::default(),
             // Impasto lighting (canvas-level). Inert until some layer actually has relief.
             impasto_show: true,

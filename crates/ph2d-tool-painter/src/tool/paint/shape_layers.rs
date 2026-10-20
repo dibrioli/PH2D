@@ -246,6 +246,26 @@ impl ShapeLayers {
         self.per_layer_color
     }
 
+    /// A versão de uma imagem da ponta de N imagens (L19, `mangueira.rs`): única por imagem e por estado da principal.
+    pub(super) fn set_version(&mut self, v: u64) {
+        self.version = v;
+    }
+
+    /// O RGBA da imagem importada (a cor capturada + o alpha de origem), para o preset a levar (L19); `None` sem cor.
+    pub(super) fn rgba_da_imagem(&self) -> Option<(Vec<u8>, u32, u32)> {
+        let (src, rgb) = (self.src.first()?, self.rgb.first().filter(|c| !c.is_empty())?);
+        let (alpha, w, h) = src.parts();
+        Some((
+            alpha
+                .iter()
+                .enumerate()
+                .flat_map(|(i, &a)| [rgb[i * 3], rgb[i * 3 + 1], rgb[i * 3 + 2], a])
+                .collect(),
+            w,
+            h,
+        ))
+    }
+
     /// Monotonic version (cache invalidation key for the coloured stamp).
     pub(super) fn version(&self) -> u64 {
         self.version

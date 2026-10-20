@@ -113,3 +113,45 @@ fn a_lei_do_grao_chega_ao_pincel() {
     }
     assert_eq!(t.brush_settings().ponta[j], 0.75);
 }
+
+/// Uma imagem 8×8 opaca de cor `c`.
+fn img(c: u8) -> Vec<u8> {
+    (0..64).flat_map(|_| [c, c, c, 255]).collect()
+}
+
+/// ⭐ **A ponta de N imagens na secção Shape** (L19): com uma imagem, «Add image» pede o seletor à shell; com três,
+/// o menu da ordem e um peso por imagem (no sorteio) chegam ao pincel, e «Clear images» volta à imagem única.
+#[test]
+fn a_ponta_de_n_imagens_pelo_ponteiro() {
+    let mut t = PainterTool::default();
+    t.set_paint_media(PaintMedia::Digital);
+    t.set_brush_shape_image_rgba(&img(200), 8, 8, None);
+    let (mut host, mut st, rects) = aberto(&mut t);
+    let add = rect_of(&rects, ids::PAINTER_SHAPE_HOSE_ADD).expect("o botão Add image");
+    assert!(rect_of(&rects, ids::PAINTER_PONTA_FIELDS[indice(LinhaDaPonta::HoseMode)]).is_none());
+    clica(&mut host, &mut st, &mut t, add);
+    assert!(t.take_brush_shape_hose_request(), "o Add image não pediu o seletor");
+    t.add_brush_shape_hose_image_rgba(&img(120), 8, 8);
+    t.add_brush_shape_hose_image_rgba(&img(60), 8, 8);
+    assert_eq!(t.brush_shape_hose_count(), 3);
+    escolhe(&mut t, LinhaDaPonta::HoseMode, 2);
+    assert_eq!(t.brush_settings().ponta[indice(LinhaDaPonta::HoseMode)], 2.0);
+    escolhe(&mut t, LinhaDaPonta::HoseMode, 0);
+    let (mut host, mut st, rects) = aberto(&mut t);
+    let p3 = ids::PAINTER_PONTA_FIELDS[indice(LinhaDaPonta::Peso(2))];
+    assert!(rect_of(&rects, p3).is_some(), "o peso da 3.ª imagem");
+    assert!(rect_of(&rects, ids::PAINTER_PONTA_FIELDS[indice(LinhaDaPonta::Peso(3))]).is_none());
+    for ev in host.type_into_number(p3, "6") {
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+    }
+    for action in host.drained_actions() {
+        if let EditorAction::ToolPanelEvent(pe) = action {
+            t.handle_panel_event(pe);
+        }
+    }
+    assert_eq!(t.brush_settings().ponta[indice(LinhaDaPonta::Peso(2))], 6.0);
+    let (mut host, mut st, rects) = aberto(&mut t);
+    let limpa = rect_of(&rects, ids::PAINTER_SHAPE_HOSE_CLEAR).expect("o botão Clear images");
+    clica(&mut host, &mut st, &mut t, limpa);
+    assert_eq!(t.brush_shape_hose_count(), 1);
+}

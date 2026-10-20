@@ -6,7 +6,7 @@ use serde::Deserialize;
 use super::{DocOld, doc_old};
 use crate::{
     Board, BoardId, BoardSet, Camera, Connector, Crop, Element, ElementId, ElementKind, FileId,
-    Files, FracKey, Frame, Image, ImageFilter, Ink, Org, Shape, Style, Team,
+    Files, FracKey, Frame, Image, ImageFilter, Ink, Org, Shape, Style,
 };
 
 #[derive(Deserialize)]
@@ -86,7 +86,7 @@ struct BoardV12 {
     camera: Camera,
     doc: DocOld<ElementV12>,
     sketch: bool,
-    team: Team,
+    team: super::TeamV15,
     files: Files,
 }
 
@@ -112,7 +112,7 @@ pub(crate) fn read_v12(bytes: &[u8]) -> Result<BoardSet, String> {
                 camera: b.camera,
                 doc,
                 sketch: b.sketch,
-                team: b.team,
+                team: b.team.into(),
                 files: b.files,
             }
         })

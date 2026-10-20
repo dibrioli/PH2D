@@ -61,6 +61,11 @@ pub(crate) struct TeamState {
     /// Mensagens de um fio que ainda não chegou aqui.
     pending: Vec<(Lamport, TeamWrite)>,
     polls_gone: BTreeSet<PollId>,
+    /// ⭐ W23 B14 — os fios que ficaram SEM mensagens aqui (as que tinham foram apagadas) mas não
+    /// foram apagados: a casca (alfinete, resolvido) espera que uma mensagem atrasada chegue e o traga
+    /// de volta. Sem ela o fio sumia sem lápide e a resposta atrasada ficava pendente para sempre — e
+    /// este par divergia de quem a tinha recebido antes (sonda aleatória, semente 7 com menções).
+    parked: BTreeMap<ThreadId, Thread>,
 }
 
 /// A sombra: a equipa como estava na última captura (as versões sem os bytes).
@@ -249,6 +254,7 @@ impl TeamState {
                 }
                 lww(self, Key::Pin(t.id));
                 lww(self, Key::Resolved(t.id));
+                self.unpark(team, t.id);
                 match team.thread_mut(t.id) {
                     Some(have) => {
                         for m in &t.messages {
@@ -270,7 +276,12 @@ impl TeamState {
                 if self.threads_gone.contains(id) {
                     return true;
                 }
-                let Some(t) = team.thread_mut(*id) else {
+                let Some(t) = team
+                    .threads
+                    .iter_mut()
+                    .find(|t| t.id == *id)
+                    .or_else(|| self.parked.get_mut(id))
+                else {
                     return false;
                 };
                 let key = match w {
@@ -288,12 +299,14 @@ impl TeamState {
             }
             TeamWrite::ThreadGone(id) => {
                 self.threads_gone.insert(*id);
+                self.parked.remove(id);
                 team.threads.retain(|t| t.id != *id);
             }
             TeamWrite::Message(id, m) => {
                 if self.threads_gone.contains(id) || self.messages_gone.contains(&m.id) {
                     return true;
                 }
+                self.unpark(team, *id);
                 let Some(t) = team.thread_mut(*id) else {
                     return false;
                 };
@@ -314,6 +327,7 @@ impl TeamState {
                 if lww(self, Key::Text(*m)) {
                     x.text.clone_from(text);
                     x.edited = true;
+                    x.keep_mentions();
                 }
             }
             TeamWrite::MessageGone(id, m) => {
@@ -400,7 +414,16 @@ impl TeamState {
     }
 
     /// A forma ÚNICA da equipa: a ordem de fios, mensagens e versões, e o «lido» das marcas.
-    pub(crate) fn settle(&self, team: &mut Team) {
+    /// A casca de um fio estacionado volta à equipa (vazia: quem a trouxe põe a mensagem).
+    fn unpark(&mut self, team: &mut Team, id: ThreadId) {
+        if let Some(t) = self.parked.remove(&id)
+            && team.thread(id).is_none()
+        {
+            team.threads.push(t);
+        }
+    }
+
+    pub(crate) fn settle(&mut self, team: &mut Team) {
         for t in &mut team.threads {
             t.messages.sort_by_key(|m| (m.at, m.id));
             let last = t.messages.last().map(|m| m.id);
@@ -413,6 +436,9 @@ impl TeamState {
                 .collect();
             read.sort();
             t.read_by = read;
+        }
+        for t in team.threads.iter().filter(|t| t.messages.is_empty()) {
+            self.parked.insert(t.id, t.clone());
         }
         team.threads.retain(|t| !t.messages.is_empty());
         team.threads

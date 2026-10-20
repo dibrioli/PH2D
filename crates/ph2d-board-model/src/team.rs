@@ -47,6 +47,38 @@ pub enum Pin {
     Point([f64; 2]),
 }
 
+/// ⭐ W23 B14 — **quem uma menção chama** (doc 17 §2.3): uma pessoa (o nome dela, a identidade de
+/// pessoa do quadro — a do `author` e do `read_by`, K6) ou toda a gente. É a CHAVE da menção; o texto
+/// da mensagem mostra o [`Who::label`] dela (uma chave e um texto do mesmo tipo é defeito à espera).
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum Who {
+    Person(String),
+    Everyone,
+}
+
+impl Who {
+    /// O que o texto mostra: `@Rui`, `@everyone`.
+    #[must_use]
+    pub fn label(&self) -> String {
+        match self {
+            Self::Person(n) => format!("@{n}"),
+            Self::Everyone => EVERYONE.to_owned(),
+        }
+    }
+
+    /// Chama `me`?
+    #[must_use]
+    pub fn calls(&self, me: &str) -> bool {
+        match self {
+            Self::Person(n) => n == me,
+            Self::Everyone => true,
+        }
+    }
+}
+
+/// O texto da menção de toda a gente (o `@board` do Miro; dado, não i18n — é o que se escreve).
+pub const EVERYONE: &str = "@everyone";
+
 /// Uma mensagem de um fio (K4): texto simples, o nome de quem a escreveu e o instante (segundos
 /// UNIX — a vista mostra «há quanto tempo», que não pede fuso).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -56,6 +88,26 @@ pub struct Message {
     pub text: String,
     pub at: i64,
     pub edited: bool,
+    /// W23 B14 (formato 16) — quem ela chama. Só fica quem o texto ainda mostra
+    /// ([`Message::keep_mentions`]).
+    pub mentions: Vec<Who>,
+}
+
+impl Message {
+    /// Chama `me` (pelo nome, ou a toda a gente) — e não é minha.
+    #[must_use]
+    pub fn calls(&self, me: &str) -> bool {
+        self.author != me && self.mentions.iter().any(|w| w.calls(me))
+    }
+
+    /// ⭐ Depois de o texto mudar: só fica chamado quem o texto ainda mostra. Função do texto ⇒ cada
+    /// par chega à mesma lista sem a lista viajar (o `TeamWrite::Text` leva só o texto).
+    pub fn keep_mentions(&mut self) {
+        let text = &self.text;
+        self.mentions.retain(|w| text.contains(&w.label()));
+        self.mentions.sort();
+        self.mentions.dedup();
+    }
 }
 
 /// Um fio de comentários: a 1.ª mensagem e as respostas.
@@ -102,11 +154,41 @@ pub struct Team {
     session: crate::session::Lottery,
 }
 
+/// Uma mensagem nova: só fica chamado quem o texto mostra.
+fn message(id: MessageId, author: &str, text: &str, who: &[Who], at: i64) -> Message {
+    let mut m = Message {
+        id,
+        author: author.to_owned(),
+        text: text.to_owned(),
+        at,
+        edited: false,
+        mentions: who.to_vec(),
+    };
+    m.keep_mentions();
+    m
+}
+
 impl Thread {
     /// Este fio está por ler para `me` (K6): não é meu, e eu ainda não o abri.
     #[must_use]
     pub fn unread_for(&self, me: &str) -> bool {
         !self.read_by.iter().any(|r| r == me)
+    }
+
+    /// ⭐ W23 B14 — **a mensagem `i` é PARA `me`** (a porta do aviso, do selo e do filtro): chama-me,
+    /// ou é uma resposta de outra pessoa num fio onde eu já tinha escrito (o «Feed» do Miro; dono 20/10).
+    #[must_use]
+    pub fn for_me_at(&self, i: usize, me: &str) -> bool {
+        let Some(m) = self.messages.get(i) else {
+            return false;
+        };
+        m.author != me && (m.calls(me) || self.messages[..i].iter().any(|p| p.author == me))
+    }
+
+    /// Há neste fio alguma mensagem para `me` ([`Thread::for_me_at`]).
+    #[must_use]
+    pub fn for_me(&self, me: &str) -> bool {
+        (0..self.messages.len()).any(|i| self.for_me_at(i, me))
     }
 
     /// Onde a bolha aponta, no mundo; `None` = o objecto apagado ou escondido (K3: o fio some com ele
@@ -196,6 +278,18 @@ impl Team {
 
     /// Abre um fio novo com a 1.ª mensagem; quem o escreve já o leu. Texto vazio (só espaços) não abre.
     pub fn open(&mut self, pin: Pin, author: &str, text: &str, at: i64) -> Option<ThreadId> {
+        self.open_calling(pin, author, text, &[], at)
+    }
+
+    /// [`Team::open`] a chamar `who` (W23 B14; só fica quem o texto mostra).
+    pub fn open_calling(
+        &mut self,
+        pin: Pin,
+        author: &str,
+        text: &str,
+        who: &[Who],
+        at: i64,
+    ) -> Option<ThreadId> {
         let text = text.trim();
         if text.is_empty() {
             return None;
@@ -205,13 +299,7 @@ impl Team {
         self.threads.push(Thread {
             id,
             pin,
-            messages: vec![Message {
-                id: msg,
-                author: author.to_owned(),
-                text: text.to_owned(),
-                at,
-                edited: false,
-            }],
+            messages: vec![message(msg, author, text, who, at)],
             resolved: false,
             read_by: vec![author.to_owned()],
         });
@@ -229,6 +317,18 @@ impl Team {
 
     /// Responde a um fio; os outros passam a tê-lo por ler (só quem responde o leu).
     pub fn reply(&mut self, id: ThreadId, author: &str, text: &str, at: i64) -> bool {
+        self.reply_calling(id, author, text, &[], at)
+    }
+
+    /// [`Team::reply`] a chamar `who` (W23 B14).
+    pub fn reply_calling(
+        &mut self,
+        id: ThreadId,
+        author: &str,
+        text: &str,
+        who: &[Who],
+        at: i64,
+    ) -> bool {
         let text = text.trim();
         if text.is_empty() || self.thread(id).is_none() {
             return false;
@@ -237,13 +337,7 @@ impl Team {
         let Some(t) = self.thread_mut(id) else {
             return false;
         };
-        t.messages.push(Message {
-            id: msg,
-            author: author.to_owned(),
-            text: text.to_owned(),
-            at,
-            edited: false,
-        });
+        t.messages.push(message(msg, author, text, who, at));
         t.read_by = vec![author.to_owned()];
         true
     }
@@ -270,8 +364,38 @@ impl Team {
         if m.text != text {
             m.text = text.to_owned();
             m.edited = true;
+            m.keep_mentions();
         }
         true
+    }
+
+    /// ⭐ W23 B14 — quem se pode chamar com `@` (fora `me`): os autores das mensagens, quem leu os
+    /// fios e quem já foi chamado neste quadro, mais `present` (quem está na sessão agora), sem
+    /// repetir, por ordem de nome.
+    #[must_use]
+    pub fn people(&self, me: &str, present: &[String]) -> Vec<String> {
+        let mut v: Vec<String> = self
+            .threads
+            .iter()
+            .flat_map(|t| {
+                t.messages
+                    .iter()
+                    .flat_map(|m| {
+                        std::iter::once(m.author.clone()).chain(m.mentions.iter().filter_map(
+                            |w| match w {
+                                Who::Person(n) => Some(n.clone()),
+                                Who::Everyone => None,
+                            },
+                        ))
+                    })
+                    .chain(t.read_by.iter().cloned())
+            })
+            .chain(present.iter().cloned())
+            .filter(|n| !n.trim().is_empty() && n != me)
+            .collect();
+        v.sort_by_key(|n| n.to_lowercase());
+        v.dedup();
+        v
     }
 
     /// Apaga a mensagem `msg` (só a do próprio autor); apagar a 1.ª apaga o fio inteiro (K4).

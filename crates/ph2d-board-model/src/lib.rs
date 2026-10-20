@@ -56,7 +56,9 @@ pub use organize::{FRAME_FILL, Frame, GroupId, MAX_TAGS, Org, Tag, far_frame};
 pub use poll::{Poll, PollId};
 pub use rich::{Mark, Marks, RichText, Span};
 pub use session::SESSION_ID_BIT;
-pub use team::{Message, MessageId, Pin, Team, TeamOp, Thread, ThreadId, Version, VersionId};
+pub use team::{
+    EVERYONE, Message, MessageId, Pin, Team, TeamOp, Thread, ThreadId, Version, VersionId, Who,
+};
 
 /// Espessura do contorno de uma forma nova, em unidades do mundo: a MAIS FINA que o quadro oferece,
 /// 0,5 — ordens do dono (07/10): *«a espessura padrão deve ser a mais fina»* (captura

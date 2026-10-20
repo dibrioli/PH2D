@@ -17,8 +17,9 @@ use crate::{BoardDoc, Files, Team};
 /// das votações (`Team::polls`, `Team::shown`) e o elemento sem `Org::votes` (W13 — ADR-0183); 12 = as
 /// imagens (`Board::files`, `Version::files`, `ElementKind::Image`, W14); 13 = o filtro da imagem
 /// (`Image::filter`, W15); 14 = o segmento do meio do cotovelo (`Connector::mids`, W23 — doc 13);
-/// 15 = os textos ao longo da linha da seta (`Connector::captions`, `Connector::turn`, W23 — doc 14).
-pub const FORMAT_VERSION: u32 = 15;
+/// 15 = os textos ao longo da linha da seta (`Connector::captions`, `Connector::turn`, W23 — doc 14);
+/// 16 = as menções das mensagens (`Message::mentions`, W23 B14 — doc 17).
+pub const FORMAT_VERSION: u32 = 16;
 
 /// Identidade de um quadro no projecto. Nunca reusada.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -328,6 +329,7 @@ impl BoardSet {
             12 => crate::legacy::read_v12(bytes),
             13 => crate::legacy::read_v13(bytes),
             14 => crate::legacy::read_v14(bytes),
+            15 => crate::legacy::read_v15(bytes),
             v => Err(format!("board format version {v} != {FORMAT_VERSION}")),
         }
     }

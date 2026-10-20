@@ -60,6 +60,7 @@ impl From<TeamV9> for Team {
                     text: m.text,
                     at: m.at,
                     edited: m.edited,
+                    mentions: Vec::new(),
                 })
                 .collect();
             team.threads.push(Thread {

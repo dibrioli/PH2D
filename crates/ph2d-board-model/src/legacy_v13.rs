@@ -10,7 +10,7 @@ use serde::Deserialize;
 use super::{DocOld, doc_old};
 use crate::{
     Board, BoardId, BoardSet, Camera, Connector, Element, ElementId, ElementKind, End, Files,
-    FracKey, Frame, Head, Image, Ink, Org, Route, Shape, Style, Team, TextTurn,
+    FracKey, Frame, Head, Image, Ink, Org, Route, Shape, Style, TextTurn,
 };
 
 /// A seta dos formatos 9–13.
@@ -146,7 +146,7 @@ struct BoardOld<C> {
     camera: Camera,
     doc: DocOld<ElementOld<C>>,
     sketch: bool,
-    team: Team,
+    team: super::TeamV15,
     files: Files,
 }
 
@@ -183,7 +183,7 @@ fn read_old<C: for<'de> Deserialize<'de> + Into<Connector>>(
                 camera: b.camera,
                 doc,
                 sketch: b.sketch,
-                team: b.team,
+                team: b.team.into(),
                 files: b.files,
             }
         })

@@ -51,6 +51,10 @@ pub(crate) use v12::read_v12;
 #[path = "legacy_v13.rs"]
 mod v13;
 pub(crate) use v13::{read_v13, read_v14};
+#[path = "legacy_v15.rs"]
+mod v15;
+pub(crate) use v15::read_v15;
+use v15::{TeamV15, ThreadV15, threads_v15};
 
 /// O `Style` dos formatos 1–3 (sem `sketch`).
 #[derive(Deserialize)]

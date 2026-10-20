@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use super::{DocOld, doc_old};
 use crate::{
-    Board, BoardId, BoardSet, Camera, ElementId, Files, Poll, PollId, Team, Thread, Version,
+    Board, BoardId, BoardSet, Camera, ElementId, Files, Poll, PollId, Team, Version,
     VersionId,
 };
 
@@ -32,7 +32,7 @@ pub(super) fn version_v11(v: VersionV11) -> Version {
 
 #[derive(Deserialize)]
 struct TeamV11 {
-    threads: Vec<Thread>,
+    threads: Vec<super::ThreadV15>,
     versions: Vec<VersionV11>,
     hidden_slides: BTreeSet<ElementId>,
     next_id: u64,
@@ -68,7 +68,7 @@ pub(crate) fn read_v11(bytes: &[u8]) -> Result<BoardSet, String> {
             doc.reindex();
             let t = b.team;
             let mut team = Team::from_v10(
-                t.threads,
+                super::threads_v15(t.threads),
                 t.versions.into_iter().map(version_v11).collect(),
                 t.hidden_slides,
                 t.next_id,

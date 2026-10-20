@@ -456,3 +456,71 @@ fn a_team_step_of_a_gone_thread_is_spent() {
     assert!(h.undo_team(&mut team));
     assert!(!h.can_undo() && !h.can_redo());
 }
+
+/// Gravados pelo build do formato 15 (`401153313a`): um fio do Rui («@Enio look at this») e a resposta
+/// do Enio («ok @Rui») — o texto tinha as letras, não a menção.
+const V15_BYTES: &[u8] = include_bytes!("../fixtures/format_v15.bin");
+
+/// ⭐ W23 B14 — o ficheiro do formato 15 lê-se, as mensagens SEM menções (as letras «@Enio» de um
+/// ficheiro antigo não chamam ninguém: ninguém as escolheu), e o 16 vai e volta com elas.
+#[test]
+fn format_15_reads_with_no_mentions_and_16_keeps_them() {
+    assert_eq!(postcard::take_from_bytes::<u32>(V15_BYTES).unwrap().0, 15);
+    let mut set = crate::BoardSet::from_bytes(V15_BYTES).unwrap();
+    let b = set.boards()[0].id;
+    let board = set.get_mut(b).unwrap();
+    let t = &board.team.threads[0];
+    assert_eq!(t.messages[0].text, "@Enio look at this");
+    assert!(t.messages.iter().all(|m| m.mentions.is_empty()));
+    let id = t.id;
+    assert!(board.team.reply_calling(
+        id,
+        "Rui",
+        "@Enio and @everyone",
+        &[crate::Who::Person("Enio".into()), crate::Who::Everyone],
+        1_760_000_200,
+    ));
+    let back = crate::BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
+    assert_eq!(back, set);
+    let m = back.boards()[0].team.threads[0].messages.last().unwrap();
+    assert_eq!(m.mentions.len(), 2);
+}
+
+/// Só fica chamado quem o texto mostra — à nascença e depois de editar.
+#[test]
+fn a_mention_lives_only_while_the_text_shows_it() {
+    let mut team = Team::default();
+    let who = [crate::Who::Person("Ana".into()), crate::Who::Person("Rui".into())];
+    let t = team
+        .open_calling(Pin::Point([0.0; 2]), "Enio", "hi @Ana", &who, 1)
+        .unwrap();
+    let m = &team.thread(t).unwrap().messages[0];
+    assert_eq!(m.mentions, vec![crate::Who::Person("Ana".into())], "o Rui não está no texto");
+    let mid = m.id;
+    assert!(team.edit(t, mid, "Enio", "hi everyone"));
+    assert!(team.thread(t).unwrap().messages[0].mentions.is_empty());
+}
+
+/// ⭐ A porta «é para mim»: chama-me (ou a toda a gente), ou responde num fio onde eu escrevi — e
+/// nunca uma mensagem minha.
+#[test]
+fn a_message_is_for_me_when_it_calls_me_or_answers_me() {
+    let mut team = Team::default();
+    let ana = [crate::Who::Person("Ana".into())];
+    let t = team
+        .open_calling(Pin::Point([0.0; 2]), "Rui", "@Ana see", &ana, 1)
+        .unwrap();
+    let th = team.thread(t).unwrap();
+    assert!(th.for_me_at(0, "Ana"));
+    assert!(!th.for_me_at(0, "Rui"), "a minha nunca é para mim");
+    assert!(!th.for_me_at(0, "Bia"), "nem me chama nem escrevi");
+    assert!(team.reply(t, "Bia", "agree", 2));
+    let th = team.thread(t).unwrap();
+    assert!(th.for_me_at(1, "Rui"), "a resposta num fio onde escrevi");
+    assert!(!th.for_me_at(1, "Ana"), "a Ana não escreveu, só foi chamada");
+    assert!(team.reply_calling(t, "Rui", "@everyone done", &[crate::Who::Everyone], 3));
+    let th = team.thread(t).unwrap();
+    assert!(th.for_me_at(2, "Zé"), "toda a gente");
+    assert!(th.for_me("Ana") && th.for_me("Zé"));
+    assert_eq!(team.people("Rui", &["Zé".to_owned()]), vec!["Ana", "Bia", "Zé"]);
+}

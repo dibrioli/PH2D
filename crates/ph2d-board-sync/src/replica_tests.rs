@@ -456,7 +456,12 @@ fn team_edit(p: &mut Peer, rng: &mut Rng) {
             p.b.team.open(Pin::Point([1.0, 2.0]), me, "oi", at);
         }
         (1, Some(t)) => {
-            p.b.team.reply(t, me, &format!("r{}", rng.below(9)), at);
+            // W23 B14 — metade das respostas chama alguém (a menção viaja na mensagem).
+            let who = WHO[rng.below(3)];
+            let call = [ph2d_board_model::Who::Person(who.to_owned())];
+            let text = format!("@{who} r{}", rng.below(9));
+            let n = usize::from(rng.below(2) == 0);
+            p.b.team.reply_calling(t, me, &text, &call[..n], at);
         }
         (2, Some(t)) => p.b.team.mark_read(t, me),
         (3, Some(t)) => {
@@ -470,7 +475,14 @@ fn team_edit(p: &mut Peer, rng: &mut Rng) {
                     .collect();
             let (m, author) = msgs[rng.below(msgs.len())].clone();
             if rng.below(2) == 0 {
-                p.b.team.edit(t, m, &author, &format!("e{}", rng.below(9)));
+                // A edição que tira o «@» tira a menção em TODOS os pares (o texto decide).
+                let keep = WHO[rng.below(3)];
+                let text = if rng.below(2) == 0 {
+                    format!("e{}", rng.below(9))
+                } else {
+                    format!("@{keep} e{}", rng.below(9))
+                };
+                p.b.team.edit(t, m, &author, &text);
             } else {
                 p.b.team.delete(t, m, &author);
             }

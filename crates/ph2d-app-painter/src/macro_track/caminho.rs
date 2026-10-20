@@ -424,6 +424,16 @@ pub fn anuncio(conduz: bool) -> String {
                 f.display()
             );
         }
+        Variante::Fim => {
+            return format!(
+                "the app does the path by itself — Record, two Wet Paint strokes, Stop, then it drags \
+                 the Timeline's playhead past the end of the clip and leaves it there. Do not touch the \
+                 mouse. At the end of the clip the paint must keep spreading for up to a minute and stop \
+                 on the editor's image: «≠editor» in this log reaches 0, and nothing jumps. This log is \
+                 also written to {}",
+                f.display()
+            );
+        }
         _ => {}
     }
     let fim = match variante() {

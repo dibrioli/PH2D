@@ -64,13 +64,20 @@ fn reescreve_a_imagem(
 }
 
 impl PalcosDoPainter {
-    /// **Uma reescrita espera** o fim novo (ou a água do editor): o desfazer global não regista enquanto
-    /// isto for `true` (a edição e a imagem entram no MESMO passo).
+    /// **Os objectos (bits) cuja reescrita espera** o fim novo (ou a água do editor): a edição e a imagem
+    /// entram no MESMO passo do desfazer, e o que o artista faz entretanto são passos dele (W14,
+    /// `ph2d_app_macros::espera`).
+    pub fn a_reescrever_em(&self) -> impl Iterator<Item = u64> + '_ {
+        self.lidos
+            .iter()
+            .filter(|(_, l)| matches!(&l.palco, Ok(Some(p)) if p.por_reescrever.is_some()))
+            .map(|(&bits, _)| bits)
+    }
+
+    /// Uma reescrita espera ([`Self::a_reescrever_em`]).
     #[must_use]
     pub fn a_reescrever(&self) -> bool {
-        self.lidos
-            .values()
-            .any(|l| matches!(&l.palco, Ok(Some(p)) if p.por_reescrever.is_some()))
+        self.a_reescrever_em().next().is_some()
     }
 
     /// A transação da última reescrita, até o passo global a levar ([`Self::toma_a_transacao`]).

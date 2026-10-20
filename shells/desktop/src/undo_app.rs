@@ -306,9 +306,16 @@ impl crate::App {
     /// Desfaz (ou refaz) um passo da fila global: empurra o estado atual pro outro
     /// lado e aplica o restaurado.
     pub(crate) fn apply_undo(&mut self, redo: bool) {
+        // W14: sem nada por cima da edição de etapa que espera, o Ctrl+Z é dela — regista-se já.
+        if self.edicao_que_espera.antes_de_desfazer(redo)
+            && let Some(atual) = self.capture_project()
+        {
+            self.empurra(atual);
+        }
         let Some(current) = self.capture_project() else {
             return;
         };
+        let antes = self.edicao_que_espera.espera().then(|| current.clone());
         let agora = self.field_selection_mark();
         let transacao = self.undo.transacao_do_topo(redo);
         let restored = if redo {
@@ -317,7 +324,18 @@ impl crate::App {
             self.undo.undo(current, agora)
         };
         if let Some((state, mark)) = restored {
-            self.apply_project_with(&state, Some(&mark));
+            // A edição que espera fica como está; o baseline fica sem ela.
+            let (aplica, base) = match &antes {
+                Some(a) => {
+                    let (x, b) = self.edicao_que_espera.restaurado(&state, a);
+                    (x, Some(b))
+                }
+                None => (state, None),
+            };
+            self.apply_project_with(&aplica, Some(&mark));
+            if base.is_some() {
+                self.undo_baseline = base;
+            }
             // O passo do Painter da mesma transação (a imagem de uma etapa editada) vai junto.
             if let Some(t) = transacao
                 && let Some(p) = self
@@ -340,17 +358,53 @@ impl crate::App {
         }
     }
 
-    /// A reescrita de uma etapa editada de uma macro (W8): `aterrou` = escreveu, e o passo global
-    /// regista-se já com a transação dela; senão = ainda espera (o passo global não regista).
-    fn reescrita(&self, aterrou: bool) -> bool {
-        self.gfx.as_ref().is_some_and(|g| {
-            let p = &g.painter_macros;
-            if aterrou {
-                p.transacao().is_some()
-            } else {
-                p.a_reescrever()
+    /// A reescrita de uma etapa editada de uma macro escreveu (W8): o passo global regista-se já com a
+    /// transação dela.
+    fn reescrita_aterrou(&self) -> bool {
+        self.gfx
+            .as_ref()
+            .is_some_and(|g| g.painter_macros.transacao().is_some())
+    }
+
+    /// **Os objectos (`StableId`) cuja edição de etapa espera a conta dela** (W14): a imagem nova da
+    /// reescrita ou a conferência da água gravada.
+    fn macros_que_esperam(&self) -> Vec<u64> {
+        let Some(g) = self.gfx.as_ref() else {
+            return Vec::new();
+        };
+        let mut bits: Vec<u64> = g.painter_macros.a_reescrever_em().collect();
+        bits.extend(ph2d_app_macros::com(|m| m.a_conferir_em()));
+        let w = g.sim.world();
+        let mut ids: Vec<u64> = bits
+            .into_iter()
+            .filter_map(|b| {
+                w.get::<ph2d_ecs::StableId>(ph2d_ecs::Entity::from_bits(b))
+                    .map(|s| s.0)
+            })
+            .collect();
+        ids.sort_unstable();
+        ids.dedup();
+        ids
+    }
+
+    /// O baseline vira um passo (com a transação de uma reescrita que aterrou) e `atual` o baseline novo.
+    fn empurra(&mut self, atual: crate::undo::ProjectState) {
+        if let Some(base) = self.undo_baseline.replace(atual) {
+            // ⚠️ **A marca que vai com o passo é a do BASELINE**, não a de agora — ela descreve o
+            // estado que está a ser empurrado. E a de agora passa a ser a do baseline novo, pela
+            // mesma mecânica do próprio `undo_baseline`.
+            let agora = self.field_selection_mark();
+            let mark = std::mem::replace(&mut self.undo_baseline_selection, agora);
+            let t = self
+                .gfx
+                .as_mut()
+                .and_then(|g| g.painter_macros.toma_a_transacao());
+            self.undo.push_undo_em(base, mark, t);
+            if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                h.documents.scene_stepped();
             }
-        })
+            self.edicao_que_espera.registou();
+        }
     }
 
     /// **O log do undo está ligado?** Cacheado — os três sítios que o consultam correm por
@@ -388,7 +442,13 @@ impl crate::App {
         if std::mem::take(&mut self.prefab_cancel_pending) {
             self.prefab_cancel = self.capture_project();
         }
-        let had_input = std::mem::take(&mut self.any_input_this_frame) || self.reescrita(true);
+        // W14: a edição de etapa que espera fica fora do baseline; quando a espera acaba, o passo é já.
+        let esperam = self.macros_que_esperam();
+        let acabou = self
+            .edicao_que_espera
+            .quadro(&esperam, self.undo_baseline.as_ref());
+        let had_input =
+            std::mem::take(&mut self.any_input_this_frame) || self.reescrita_aterrou() || acabou;
         // O clique no botão Undo/Redo da barra entra pela MESMA porta do Ctrl+Z (que pode
         // rotear para o Áudio, o Painter, o global ou o image-edit). Ele arma o
         // `undo_request` logo abaixo, e o passo é aplicado ainda neste frame.
@@ -444,10 +504,6 @@ impl crate::App {
             .live_busy(self.flip_state.style.as_ref())
         {
             Some(tr("shell.undo_app.colorize_a_recalcular"))
-        } else if ph2d_app_macros::com(|m| m.a_conferir()) {
-            Some(tr("shell.undo_app.macro_a_conferir"))
-        } else if self.reescrita(false) {
-            Some(tr("shell.undo_app.macro_a_reescrever"))
         } else if self.ui_state_live {
             Some(tr("shell.undo_app.transicao_de_estado_de"))
         } else if !had_input {
@@ -500,8 +556,9 @@ impl crate::App {
         let Some(current) = self.capture_project() else {
             return;
         };
+        let current = self.edicao_que_espera.a_comparar(current);
         if self.undo_baseline.as_ref() == Some(&current) {
-            return; // nada mudou desde o último passo
+            return; // nada mudou desde o último passo (salvo a edição que espera)
         }
         if Self::undo_log_on() {
             // ⭐ **A ordem que este passo está a guardar** — o outro lado da pergunta do restauro.
@@ -553,20 +610,6 @@ impl crate::App {
                 );
             }
         }
-        if let Some(base) = self.undo_baseline.replace(current) {
-            // ⚠️ **A marca que vai com o passo é a do BASELINE**, não a de agora — ela descreve o
-            // estado que está a ser empurrado. E a de agora passa a ser a do baseline novo, pela
-            // mesma mecânica do próprio `undo_baseline`.
-            let agora = self.field_selection_mark();
-            let mark = std::mem::replace(&mut self.undo_baseline_selection, agora);
-            let t = self
-                .gfx
-                .as_mut()
-                .and_then(|g| g.painter_macros.toma_a_transacao());
-            self.undo.push_undo_em(base, mark, t);
-            if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-                h.documents.scene_stepped();
-            }
-        }
+        self.empurra(current);
     }
 }

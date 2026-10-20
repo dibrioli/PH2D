@@ -481,3 +481,49 @@ fn a_buried_purge_sends_ctrl_z_to_the_global_undo() {
         "e mandá-lo DIRETO ao undo global"
     );
 }
+
+/// ⭐ **A edição de etapa que espera fica fora da fotografia do desfazer** (W14,
+/// `ph2d_app_macros::espera`) sobre o `ProjectState` de verdade: o `Macro` editado volta ao de antes no que
+/// se compara, e o objecto que o artista moveu entretanto fica movido; restaurar um passo põe a edição de
+/// volta como está.
+#[test]
+fn a_edicao_que_espera_fica_fora_da_fotografia_do_desfazer() {
+    use ph2d_app_macros::espera::{EdicaoQueEspera, EstadoComMacros};
+    let reg = registry();
+    let (mut sim, vec) = scene();
+    let m = sim
+        .world_mut()
+        .spawn((
+            Transform::default(),
+            Name::new("Tela"),
+            ph2d_ecs::Macro {
+                doc: b"velho".to_vec(),
+                modo: ph2d_ecs::ModoDaMacro::Fiel,
+            },
+        ))
+        .id();
+    let base = capture(&mut sim, &vec, &reg);
+    let id = sim.world().get::<ph2d_ecs::StableId>(m).expect("o id").0;
+    let velho = base.macro_de(id).expect("o Macro na fotografia");
+    sim.world_mut().get_mut::<ph2d_ecs::Macro>(m).expect("Macro").doc = b"novo".to_vec();
+    let mut espera = EdicaoQueEspera::default();
+    assert!(!espera.quadro(&[id], Some(&base)), "a espera começa");
+    let editado = capture(&mut sim, &vec, &reg);
+    assert!(editado != base, "controlo: a edição muda a fotografia");
+    assert!(
+        espera.a_comparar(editado.clone()) == base,
+        "só a edição que espera mudou: nada a registar"
+    );
+    let mut q = sim
+        .world_mut()
+        .query_filtered::<&mut Transform, ph2d_ecs::With<Name>>();
+    for mut t in q.iter_mut(sim.world_mut()) {
+        t.translation.x += 5.0;
+    }
+    let movido = espera.a_comparar(capture(&mut sim, &vec, &reg));
+    assert!(movido != base, "o movimento é um passo");
+    assert_eq!(movido.macro_de(id), Some(velho.clone()), "sem a edição");
+    let (aplica, novo_base) = espera.restaurado(&base, &editado);
+    assert_eq!(aplica.macro_de(id), editado.macro_de(id), "a edição fica");
+    assert!(novo_base == base, "o baseline fica sem ela");
+}

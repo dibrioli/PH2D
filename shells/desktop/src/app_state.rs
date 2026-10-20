@@ -794,6 +794,8 @@ pub(crate) struct App {
     /// ⚠️ Ela é substituída **exactamente** onde o baseline é: quando um passo nasce, e no restauro.
     /// Uma das duas sozinha faria o `Ctrl+Z` devolver a mão ao objecto errado.
     pub(crate) undo_baseline_selection: crate::undo::SelectionMark,
+    /// A edição de etapa de uma macro que espera a conta dela (W14): fora do baseline e dos passos.
+    pub(crate) edicao_que_espera: ph2d_app_macros::espera::EdicaoQueEspera,
     /// Ctrl+Z / Ctrl+Y pendente (`Some(redo)`), setado pelo teclado e drenado no
     /// `post_frame_undo` (onde `self` está livre do borrow do render loop).
     pub(crate) undo_request: Option<bool>,

@@ -371,3 +371,52 @@ fn snapshot_postcard_round_trips() {
     let decoded: WorldSnapshot = postcard::from_bytes(&bytes).unwrap();
     assert_eq!(decoded, snap);
 }
+
+/// **Pôr e tirar UM componente de uma linha** (W14 das Macros, a edição que espera no desfazer): pôr o
+/// `Macro` de outro instantâneo dá esse instantâneo, na ordem do registo; tirá-lo dá a linha sem ele; e o
+/// resultado restaura-se.
+#[test]
+fn por_e_tirar_um_componente_de_uma_linha() {
+    const MACRO: &str = "ph2d::ecs::Macro";
+    let mut reg = ComponentRegistry::new();
+    register_ecs_components(&mut reg);
+    let foto = |doc: Option<&[u8]>| {
+        let mut sim = SimWorld::new();
+        let e = sim
+            .world_mut()
+            .spawn((Transform::from_translation(Vec2::new(3.0, 4.0)), Name::new("Tela")))
+            .id();
+        if let Some(d) = doc {
+            sim.world_mut().entity_mut(e).insert(crate::Macro {
+                doc: d.to_vec(),
+                modo: crate::ModoDaMacro::Fiel,
+            });
+        }
+        let mut state = TransformPropagationState::new(sim.world_mut());
+        let mut snap = WorldSnapshot::new();
+        world_to_snapshot(sim.world_mut(), &mut state, &mut WorklistBuf::new(), &reg, &mut snap)
+            .unwrap();
+        snap
+    };
+    let (velho, novo, sem) = (foto(Some(b"velho")), foto(Some(b"novo")), foto(None));
+    let id = velho.entities[0].id;
+    assert_eq!(sem.entities[0].id, id, "controlo: a mesma identidade nos três");
+    let blob = velho.component_blob(id, MACRO).expect("o Macro está na linha").to_vec();
+    assert!(sem.component_blob(id, MACRO).is_none());
+    let mut a = novo.clone();
+    a.set_component_blob(id, MACRO, Some(blob.clone()));
+    assert_eq!(a, velho, "pôr o Macro de antes dá o instantâneo de antes");
+    let mut b = sem.clone();
+    b.set_component_blob(id, MACRO, Some(blob));
+    assert_eq!(b, velho, "pôr numa linha sem ele entra na ordem do registo");
+    let mut c = velho.clone();
+    c.set_component_blob(id, MACRO, None);
+    assert_eq!(c, sem, "tirar dá a linha sem ele");
+    let mut d = velho.clone();
+    d.set_component_blob(StableId(id.0 + 999), MACRO, None);
+    assert_eq!(d, velho, "sem a linha, nada");
+    let mut w = SimWorld::new();
+    snapshot_to_world(w.world_mut(), &b, &reg).expect("restaura-se");
+    let mut q = w.world_mut().query::<&crate::Macro>();
+    assert_eq!(q.single(w.world()).expect("um Macro").doc, b"velho");
+}

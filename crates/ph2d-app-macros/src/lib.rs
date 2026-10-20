@@ -159,6 +159,12 @@ impl Macros {
         self.conferencias.a_conferir()
     }
 
+    /// Os objectos (bits) cuja edição espera a conferência ([`espera`]).
+    #[must_use]
+    pub fn a_conferir_em(&self) -> Vec<u64> {
+        self.conferencias.a_conferir_em()
+    }
+
     /// **O tutorial do Painter mede as referências das pinceladas** (fora do quadro): até chegarem,
     /// nenhuma se dá por feita.
     #[must_use]

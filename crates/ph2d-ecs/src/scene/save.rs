@@ -144,6 +144,43 @@ impl WorldSnapshot {
         }
         n
     }
+
+    /// Os bytes do componente `type_name` (o nome registado) na linha `id`; `None` = sem a linha ou sem o
+    /// componente.
+    #[must_use]
+    pub fn component_blob(&self, id: StableId, type_name: &str) -> Option<&[u8]> {
+        let tipo = super::stable_type_id(type_name);
+        let row = self.entities.iter().find(|r| r.id == id)?;
+        row.components
+            .iter()
+            .find(|b| b.type_id == tipo)
+            .map(|b| b.data.as_slice())
+    }
+
+    /// **Põe (`Some`) ou tira (`None`) o componente `type_name` da linha `id`**, na ordem do registo — a
+    /// porta do desfazer que fotografa sem uma edição que espera (`ph2d_app_macros::espera`). Sem a linha,
+    /// nada; só a linha tocada se copia (`Arc::make_mut`).
+    pub fn set_component_blob(&mut self, id: StableId, type_name: &str, data: Option<Vec<u8>>) {
+        let tipo = super::stable_type_id(type_name);
+        let Some(row) = self.entities.iter_mut().find(|r| r.id == id) else {
+            return;
+        };
+        let k = row.components.partition_point(|b| b.type_id < tipo);
+        let tem = row.components.get(k).is_some_and(|b| b.type_id == tipo);
+        match (data, tem) {
+            (Some(d), true) if row.components[k].data == d => {}
+            (Some(d), true) => std::sync::Arc::make_mut(row).components[k].data = d,
+            (Some(d), false) => {
+                std::sync::Arc::make_mut(row)
+                    .components
+                    .insert(k, blob(tipo, d));
+            }
+            (None, true) => {
+                std::sync::Arc::make_mut(row).components.remove(k);
+            }
+            (None, false) => {}
+        }
+    }
 }
 
 impl Default for WorldSnapshot {

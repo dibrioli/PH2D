@@ -94,6 +94,13 @@ impl Conferencias {
         self.em_curso.is_some() || !self.por_conferir.is_empty()
     }
 
+    /// Os objectos (bits) com uma conferência por fazer ou a correr.
+    pub(crate) fn a_conferir_em(&self) -> Vec<u64> {
+        let mut v: Vec<u64> = self.por_conferir.iter().copied().collect();
+        v.extend(self.em_curso.as_ref().map(|x| x.bits));
+        v
+    }
+
     /// **Por quadro**, depois dos pedidos: vê que `Macro`s mudaram, colhe a conferência que acabou e
     /// arranca a seguinte. Devolve o erro de uma conferência, para o painel o dizer.
     pub(crate) fn quadro(&mut self, c: &mut Cena<'_>) -> Option<(u64, ErroDaMacroView)> {

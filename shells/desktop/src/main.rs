@@ -859,6 +859,7 @@ impl App {
             undo: crate::undo::ProjectUndo::default(),
             undo_baseline: None,
             undo_baseline_selection: crate::undo::SelectionMark::default(),
+            edicao_que_espera: Default::default(),
             undo_request: None,
             undo_button: None,
             any_input_this_frame: false,

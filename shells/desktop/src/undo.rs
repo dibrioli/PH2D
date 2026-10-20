@@ -97,6 +97,22 @@ pub(crate) struct ProjectState {
     pub(crate) tags: Vec<u8>,
 }
 
+/// O `Macro` de cada objecto, para a edição de etapa que espera (W14, `ph2d_app_macros::espera`).
+impl ph2d_app_macros::espera::EstadoComMacros for ProjectState {
+    fn macro_de(&self, id: u64) -> Option<Vec<u8>> {
+        let id = ph2d_ecs::StableId(id);
+        self.world.component_blob(id, MACRO).map(<[u8]>::to_vec)
+    }
+
+    fn com_macro(&mut self, id: u64, m: Option<Vec<u8>>) {
+        self.world
+            .set_component_blob(ph2d_ecs::StableId(id), MACRO, m);
+    }
+}
+
+/// O nome registado do `Macro` (`ph2d_ecs::scene::registry`).
+const MACRO: &str = "ph2d::ecs::Macro";
+
 impl ProjectState {
     /// Captura o estado atual. `prop`/`worklist` são scratch reusado (o
     /// `world_to_snapshot` é zero-alloc além do crescimento do próprio snapshot).

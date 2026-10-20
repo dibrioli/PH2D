@@ -78,7 +78,7 @@ impl Shell {
         if !teve_entrada {
             return;
         }
-        let atual = self.espera.a_comparar(self.mundo.clone(), &base);
+        let atual = self.espera.a_comparar(self.mundo.clone());
         if atual != base {
             self.regista(atual);
         }

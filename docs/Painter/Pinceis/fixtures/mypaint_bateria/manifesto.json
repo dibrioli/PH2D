@@ -1,0 +1,3535 @@
+{
+ "bateria_sha256": "cff23b71a54593d6118b2c1f5f7fe6cd5ed270f3094d53c5a5f3bfa741d914fa",
+ "dt_s": 0.01,
+ "falhas": [],
+ "pinceis": {
+  "Dieterle/8B_Pencil#1": {
+   "ficheiro": "Dieterle/8B_Pencil_1",
+   "gestos": {
+    "px_com_tinta": 42338,
+    "sha256": "95c6e09962f99216",
+    "tinta_sum_alfa": 26905.4
+   },
+   "sobre": {
+    "px_com_tinta": 49986,
+    "sha256": "bf500abb99a3dcbb",
+    "tinta_sum_alfa": 38747.3
+   },
+   "tamanhos": {
+    "px_com_tinta": 47385,
+    "sha256": "3713130901cc68eb",
+    "tinta_sum_alfa": 37472.5
+   }
+  },
+  "Dieterle/Blender": {
+   "ficheiro": "Dieterle/Blender",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "Dieterle/Dissolver": {
+   "ficheiro": "Dieterle/Dissolver",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "Dieterle/Eraser": {
+   "ficheiro": "Dieterle/Eraser",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "Dieterle/Fan#1": {
+   "ficheiro": "Dieterle/Fan_1",
+   "gestos": {
+    "px_com_tinta": 603933,
+    "sha256": "969f0010ef8032e1",
+    "tinta_sum_alfa": 518087.7
+   },
+   "sobre": {
+    "px_com_tinta": 623036,
+    "sha256": "3798d76ca04bd6c2",
+    "tinta_sum_alfa": 600486.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 442438,
+    "sha256": "7187845b17fa868b",
+    "tinta_sum_alfa": 374889.1
+   }
+  },
+  "Dieterle/Flat2#1": {
+   "ficheiro": "Dieterle/Flat2_1",
+   "gestos": {
+    "px_com_tinta": 610543,
+    "sha256": "bdc4614dc987f525",
+    "tinta_sum_alfa": 283969.7
+   },
+   "sobre": {
+    "px_com_tinta": 625334,
+    "sha256": "81897590d5f7361e",
+    "tinta_sum_alfa": 346886.1
+   },
+   "tamanhos": {
+    "px_com_tinta": 477776,
+    "sha256": "7cad1657a5511e47",
+    "tinta_sum_alfa": 130909.6
+   }
+  },
+  "Dieterle/Flight_Feathers": {
+   "ficheiro": "Dieterle/Flight_Feathers",
+   "gestos": {
+    "px_com_tinta": 354484,
+    "sha256": "45f12f144159aff1",
+    "tinta_sum_alfa": 161221.7
+   },
+   "sobre": {
+    "px_com_tinta": 323037,
+    "sha256": "a84b77056042976f",
+    "tinta_sum_alfa": 162814.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 214631,
+    "sha256": "39edc2608481cab0",
+    "tinta_sum_alfa": 88724.0
+   }
+  },
+  "Dieterle/Fount-offset#1": {
+   "ficheiro": "Dieterle/Fount-offset_1",
+   "gestos": {
+    "px_com_tinta": 49189,
+    "sha256": "c51254bcea6eaccc",
+    "tinta_sum_alfa": 30586.2
+   },
+   "sobre": {
+    "px_com_tinta": 52204,
+    "sha256": "95c9278023577a54",
+    "tinta_sum_alfa": 31078.3
+   },
+   "tamanhos": {
+    "px_com_tinta": 27544,
+    "sha256": "179b4287b6a2f5bf",
+    "tinta_sum_alfa": 18777.5
+   }
+  },
+  "Dieterle/Fountain_SF#1": {
+   "ficheiro": "Dieterle/Fountain_SF_1",
+   "gestos": {
+    "px_com_tinta": 89685,
+    "sha256": "74dde955b792c0f3",
+    "tinta_sum_alfa": 69588.1
+   },
+   "sobre": {
+    "px_com_tinta": 78738,
+    "sha256": "5bec1cdf4fef41b7",
+    "tinta_sum_alfa": 58350.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 82782,
+    "sha256": "bb2f09fd8d94f9fe",
+    "tinta_sum_alfa": 69134.7
+   }
+  },
+  "Dieterle/HalfTone#1": {
+   "ficheiro": "Dieterle/HalfTone_1",
+   "gestos": {
+    "px_com_tinta": 179055,
+    "sha256": "2cd9e4863694d4b5",
+    "tinta_sum_alfa": 113047.9
+   },
+   "sobre": {
+    "px_com_tinta": 225385,
+    "sha256": "f58ed5779bb2662f",
+    "tinta_sum_alfa": 165035.3
+   },
+   "tamanhos": {
+    "px_com_tinta": 135161,
+    "sha256": "95bea9605cae963b",
+    "tinta_sum_alfa": 91539.9
+   }
+  },
+  "Dieterle/HalfToneCMY#1": {
+   "ficheiro": "Dieterle/HalfToneCMY_1",
+   "gestos": {
+    "px_com_tinta": 176841,
+    "sha256": "1cb5404de41f1c15",
+    "tinta_sum_alfa": 118859.8
+   },
+   "sobre": {
+    "px_com_tinta": 225424,
+    "sha256": "d9d74523e21290eb",
+    "tinta_sum_alfa": 170357.8
+   },
+   "tamanhos": {
+    "px_com_tinta": 135100,
+    "sha256": "9ed64202382a39b0",
+    "tinta_sum_alfa": 94391.6
+   }
+  },
+  "Dieterle/Pencil-_Left_Handed": {
+   "ficheiro": "Dieterle/Pencil-_Left_Handed",
+   "gestos": {
+    "px_com_tinta": 40443,
+    "sha256": "699352aa57fc0d54",
+    "tinta_sum_alfa": 18225.5
+   },
+   "sobre": {
+    "px_com_tinta": 44609,
+    "sha256": "3fad0df309c50ec9",
+    "tinta_sum_alfa": 22249.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 28480,
+    "sha256": "7603eb9278ca7a5b",
+    "tinta_sum_alfa": 14693.7
+   }
+  },
+  "Dieterle/Posterizer": {
+   "ficheiro": "Dieterle/Posterizer",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "Dieterle/Round#1": {
+   "ficheiro": "Dieterle/Round_1",
+   "gestos": {
+    "px_com_tinta": 418922,
+    "sha256": "757981752322592a",
+    "tinta_sum_alfa": 337569.4
+   },
+   "sobre": {
+    "px_com_tinta": 432530,
+    "sha256": "d3c14f723f2b3155",
+    "tinta_sum_alfa": 372336.1
+   },
+   "tamanhos": {
+    "px_com_tinta": 257513,
+    "sha256": "ac9229e7972ed8e2",
+    "tinta_sum_alfa": 212140.9
+   }
+  },
+  "Dieterle/Splash": {
+   "ficheiro": "Dieterle/Splash",
+   "gestos": {
+    "px_com_tinta": 81593,
+    "sha256": "c3f14a0ec875d3ed",
+    "tinta_sum_alfa": 22696.3
+   },
+   "sobre": {
+    "px_com_tinta": 50792,
+    "sha256": "0524e20564c3ce8c",
+    "tinta_sum_alfa": 17990.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 73770,
+    "sha256": "09dd50f0cb7689bc",
+    "tinta_sum_alfa": 15053.0
+   }
+  },
+  "Dieterle/Tail_Feathers": {
+   "ficheiro": "Dieterle/Tail_Feathers",
+   "gestos": {
+    "px_com_tinta": 492095,
+    "sha256": "6fbf05e859cbbbcd",
+    "tinta_sum_alfa": 135927.2
+   },
+   "sobre": {
+    "px_com_tinta": 497241,
+    "sha256": "e264149bb9638b6b",
+    "tinta_sum_alfa": 144715.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 335365,
+    "sha256": "3447aced3c45d0fd",
+    "tinta_sum_alfa": 91029.2
+   }
+  },
+  "Dieterle/Tail_Feathers2": {
+   "ficheiro": "Dieterle/Tail_Feathers2",
+   "gestos": {
+    "px_com_tinta": 180945,
+    "sha256": "9b201c211fc74c80",
+    "tinta_sum_alfa": 64926.2
+   },
+   "sobre": {
+    "px_com_tinta": 179395,
+    "sha256": "e61b1311fd8476b3",
+    "tinta_sum_alfa": 68715.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 174838,
+    "sha256": "abac7c65d7906532",
+    "tinta_sum_alfa": 66631.0
+   }
+  },
+  "Dieterle/WateryFlatbrush": {
+   "ficheiro": "Dieterle/WateryFlatbrush",
+   "gestos": {
+    "px_com_tinta": 620862,
+    "sha256": "386847fa68ef0f59",
+    "tinta_sum_alfa": 565521.7
+   },
+   "sobre": {
+    "px_com_tinta": 630424,
+    "sha256": "c0fe10ae0b82f305",
+    "tinta_sum_alfa": 614187.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 485526,
+    "sha256": "ce75e79895d3abaa",
+    "tinta_sum_alfa": 408365.2
+   }
+  },
+  "Dieterle/arrow#1": {
+   "ficheiro": "Dieterle/arrow_1",
+   "gestos": {
+    "px_com_tinta": 288298,
+    "sha256": "98d55028179cd231",
+    "tinta_sum_alfa": 283592.4
+   },
+   "sobre": {
+    "px_com_tinta": 328547,
+    "sha256": "8f69e4d550f47069",
+    "tinta_sum_alfa": 328547.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 443610,
+    "sha256": "f380239e1a1cfc87",
+    "tinta_sum_alfa": 443590.7
+   }
+  },
+  "classic/blend+paint": {
+   "ficheiro": "classic/blend+paint",
+   "gestos": {
+    "px_com_tinta": 158524,
+    "sha256": "37c6e16041ee238b",
+    "tinta_sum_alfa": 23828.9
+   },
+   "sobre": {
+    "px_com_tinta": 193582,
+    "sha256": "609e84e0918cca49",
+    "tinta_sum_alfa": 32879.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 236420,
+    "sha256": "c5265b8b5738c453",
+    "tinta_sum_alfa": 64726.1
+   }
+  },
+  "classic/blending_knife": {
+   "ficheiro": "classic/blending_knife",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "classic/blur": {
+   "ficheiro": "classic/blur",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "classic/brush": {
+   "ficheiro": "classic/brush",
+   "gestos": {
+    "px_com_tinta": 614620,
+    "sha256": "663352271c518d42",
+    "tinta_sum_alfa": 613274.6
+   },
+   "sobre": {
+    "px_com_tinta": 640000,
+    "sha256": "cb0fec23eb622c6a",
+    "tinta_sum_alfa": 639980.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "31ce09a140b1b457",
+    "tinta_sum_alfa": 639980.5
+   }
+  },
+  "classic/bulk": {
+   "ficheiro": "classic/bulk",
+   "gestos": {
+    "px_com_tinta": 166587,
+    "sha256": "5c0e36ef830353e5",
+    "tinta_sum_alfa": 157549.7
+   },
+   "sobre": {
+    "px_com_tinta": 194014,
+    "sha256": "bcdfe9528bb9e6fd",
+    "tinta_sum_alfa": 189910.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 233188,
+    "sha256": "dc290d2553cba247",
+    "tinta_sum_alfa": 230442.9
+   }
+  },
+  "classic/calligraphy": {
+   "ficheiro": "classic/calligraphy",
+   "gestos": {
+    "px_com_tinta": 132040,
+    "sha256": "ec99611253228ddf",
+    "tinta_sum_alfa": 119269.4
+   },
+   "sobre": {
+    "px_com_tinta": 172254,
+    "sha256": "fd4fd9a62da2ec8d",
+    "tinta_sum_alfa": 155672.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 207223,
+    "sha256": "47a841e706f8d50f",
+    "tinta_sum_alfa": 183760.2
+   }
+  },
+  "classic/charcoal": {
+   "ficheiro": "classic/charcoal",
+   "gestos": {
+    "px_com_tinta": 221414,
+    "sha256": "419cb78ea616dda8",
+    "tinta_sum_alfa": 95014.5
+   },
+   "sobre": {
+    "px_com_tinta": 221921,
+    "sha256": "85ecfc33fdc701d2",
+    "tinta_sum_alfa": 121722.1
+   },
+   "tamanhos": {
+    "px_com_tinta": 280988,
+    "sha256": "defaae833f36ea49",
+    "tinta_sum_alfa": 142802.2
+   }
+  },
+  "classic/coarse_bulk_1": {
+   "ficheiro": "classic/coarse_bulk_1",
+   "gestos": {
+    "px_com_tinta": 640000,
+    "sha256": "ee7eaf771261a659",
+    "tinta_sum_alfa": 355459.9
+   },
+   "sobre": {
+    "px_com_tinta": 640000,
+    "sha256": "6557e3373fe4d2c4",
+    "tinta_sum_alfa": 394836.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "89eed63d8cb956bd",
+    "tinta_sum_alfa": 218575.9
+   }
+  },
+  "classic/coarse_bulk_2": {
+   "ficheiro": "classic/coarse_bulk_2",
+   "gestos": {
+    "px_com_tinta": 626478,
+    "sha256": "3c0a3f21bc75e592",
+    "tinta_sum_alfa": 516441.7
+   },
+   "sobre": {
+    "px_com_tinta": 635993,
+    "sha256": "6617eeb33e7bc488",
+    "tinta_sum_alfa": 584588.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 627467,
+    "sha256": "053fca3b7f392003",
+    "tinta_sum_alfa": 507091.2
+   }
+  },
+  "classic/coarse_bulk_3": {
+   "ficheiro": "classic/coarse_bulk_3",
+   "gestos": {
+    "px_com_tinta": 492620,
+    "sha256": "236c3d988bcbedce",
+    "tinta_sum_alfa": 172517.2
+   },
+   "sobre": {
+    "px_com_tinta": 524780,
+    "sha256": "30ac2ce45e5eeded",
+    "tinta_sum_alfa": 265968.6
+   },
+   "tamanhos": {
+    "px_com_tinta": 584077,
+    "sha256": "c8cec4e0e892db1c",
+    "tinta_sum_alfa": 364327.7
+   }
+  },
+  "classic/dry_brush": {
+   "ficheiro": "classic/dry_brush",
+   "gestos": {
+    "px_com_tinta": 420226,
+    "sha256": "30a63dfc020857ab",
+    "tinta_sum_alfa": 225712.4
+   },
+   "sobre": {
+    "px_com_tinta": 401417,
+    "sha256": "730e04abba2dd797",
+    "tinta_sum_alfa": 226557.6
+   },
+   "tamanhos": {
+    "px_com_tinta": 536529,
+    "sha256": "1f367168545b4917",
+    "tinta_sum_alfa": 303618.6
+   }
+  },
+  "classic/imp_blending": {
+   "ficheiro": "classic/imp_blending",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "classic/imp_details": {
+   "ficheiro": "classic/imp_details",
+   "gestos": {
+    "px_com_tinta": 320797,
+    "sha256": "fd768d2db476f05a",
+    "tinta_sum_alfa": 274969.8
+   },
+   "sobre": {
+    "px_com_tinta": 435939,
+    "sha256": "2ff99de52fe04610",
+    "tinta_sum_alfa": 395587.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 496494,
+    "sha256": "d640749bb5528f09",
+    "tinta_sum_alfa": 452256.1
+   }
+  },
+  "classic/impressionism": {
+   "ficheiro": "classic/impressionism",
+   "gestos": {
+    "px_com_tinta": 303375,
+    "sha256": "974aa88476cb28e2",
+    "tinta_sum_alfa": 247887.7
+   },
+   "sobre": {
+    "px_com_tinta": 386477,
+    "sha256": "d4c2342e6cf59601",
+    "tinta_sum_alfa": 352522.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 479383,
+    "sha256": "796123881bc62709",
+    "tinta_sum_alfa": 443143.4
+   }
+  },
+  "classic/ink_blot": {
+   "ficheiro": "classic/ink_blot",
+   "gestos": {
+    "px_com_tinta": 372799,
+    "sha256": "c1baf676480a5cfc",
+    "tinta_sum_alfa": 101539.6
+   },
+   "sobre": {
+    "px_com_tinta": 454242,
+    "sha256": "110dc03ebef9b990",
+    "tinta_sum_alfa": 151093.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 564124,
+    "sha256": "7268d869274bd090",
+    "tinta_sum_alfa": 223896.3
+   }
+  },
+  "classic/ink_eraser": {
+   "ficheiro": "classic/ink_eraser",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "classic/kabura": {
+   "ficheiro": "classic/kabura",
+   "gestos": {
+    "px_com_tinta": 294032,
+    "sha256": "2a0993fc2f095579",
+    "tinta_sum_alfa": 265401.8
+   },
+   "sobre": {
+    "px_com_tinta": 403708,
+    "sha256": "05255d222189561f",
+    "tinta_sum_alfa": 376739.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 501913,
+    "sha256": "199cdf51c5cec696",
+    "tinta_sum_alfa": 493431.8
+   }
+  },
+  "classic/knife": {
+   "ficheiro": "classic/knife",
+   "gestos": {
+    "px_com_tinta": 157698,
+    "sha256": "f610817c032d9065",
+    "tinta_sum_alfa": 132869.7
+   },
+   "sobre": {
+    "px_com_tinta": 184984,
+    "sha256": "40f4dc1d77e5df96",
+    "tinta_sum_alfa": 178072.1
+   },
+   "tamanhos": {
+    "px_com_tinta": 218698,
+    "sha256": "589781ac8f5e84c3",
+    "tinta_sum_alfa": 209409.0
+   }
+  },
+  "classic/long_grass": {
+   "ficheiro": "classic/long_grass",
+   "gestos": {
+    "px_com_tinta": 141081,
+    "sha256": "1a1f65bc5cfb4ca6",
+    "tinta_sum_alfa": 98265.4
+   },
+   "sobre": {
+    "px_com_tinta": 94398,
+    "sha256": "0a562d411d196788",
+    "tinta_sum_alfa": 73941.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 214313,
+    "sha256": "8d240448f7ba2add",
+    "tinta_sum_alfa": 171761.6
+   }
+  },
+  "classic/marker_fat": {
+   "ficheiro": "classic/marker_fat",
+   "gestos": {
+    "px_com_tinta": 45904,
+    "sha256": "ddff1ee469e370bb",
+    "tinta_sum_alfa": 41840.7
+   },
+   "sobre": {
+    "px_com_tinta": 55582,
+    "sha256": "3c17f87310d22a67",
+    "tinta_sum_alfa": 52241.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 60815,
+    "sha256": "d046fbbc0020f719",
+    "tinta_sum_alfa": 58064.8
+   }
+  },
+  "classic/marker_small": {
+   "ficheiro": "classic/marker_small",
+   "gestos": {
+    "px_com_tinta": 54463,
+    "sha256": "dea90290606946cf",
+    "tinta_sum_alfa": 49622.9
+   },
+   "sobre": {
+    "px_com_tinta": 66940,
+    "sha256": "efb1d3f15cde0da9",
+    "tinta_sum_alfa": 62180.6
+   },
+   "tamanhos": {
+    "px_com_tinta": 77911,
+    "sha256": "57f4fbea13d00757",
+    "tinta_sum_alfa": 70199.9
+   }
+  },
+  "classic/modelling": {
+   "ficheiro": "classic/modelling",
+   "gestos": {
+    "px_com_tinta": 353343,
+    "sha256": "635bd2bd8bbc118f",
+    "tinta_sum_alfa": 72124.8
+   },
+   "sobre": {
+    "px_com_tinta": 393707,
+    "sha256": "636e12d6da8f440b",
+    "tinta_sum_alfa": 106794.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 475957,
+    "sha256": "0718d434edaf8077",
+    "tinta_sum_alfa": 108287.3
+   }
+  },
+  "classic/modelling2": {
+   "ficheiro": "classic/modelling2",
+   "gestos": {
+    "px_com_tinta": 449980,
+    "sha256": "154392cdd7a5ce95",
+    "tinta_sum_alfa": 209119.0
+   },
+   "sobre": {
+    "px_com_tinta": 497039,
+    "sha256": "f31ff9c8ca311dc4",
+    "tinta_sum_alfa": 324125.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 508629,
+    "sha256": "7b16ebea537fd2b7",
+    "tinta_sum_alfa": 299255.2
+   }
+  },
+  "classic/pen": {
+   "ficheiro": "classic/pen",
+   "gestos": {
+    "px_com_tinta": 182063,
+    "sha256": "056ef97ac8d331e9",
+    "tinta_sum_alfa": 169014.4
+   },
+   "sobre": {
+    "px_com_tinta": 207446,
+    "sha256": "746bdf335482227a",
+    "tinta_sum_alfa": 191560.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 285448,
+    "sha256": "387e8ee1773668c3",
+    "tinta_sum_alfa": 261900.6
+   }
+  },
+  "classic/pencil": {
+   "ficheiro": "classic/pencil",
+   "gestos": {
+    "px_com_tinta": 180164,
+    "sha256": "313b1e853fb8065b",
+    "tinta_sum_alfa": 43133.1
+   },
+   "sobre": {
+    "px_com_tinta": 217995,
+    "sha256": "5741a6e27cb3210b",
+    "tinta_sum_alfa": 61936.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 265291,
+    "sha256": "5f91792be9567526",
+    "tinta_sum_alfa": 67564.7
+   }
+  },
+  "classic/pointy_ink": {
+   "ficheiro": "classic/pointy_ink",
+   "gestos": {
+    "px_com_tinta": 639966,
+    "sha256": "02cbbc8e85946393",
+    "tinta_sum_alfa": 639936.8
+   },
+   "sobre": {
+    "px_com_tinta": 640000,
+    "sha256": "2dbc297cf24b71c1",
+    "tinta_sum_alfa": 639980.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "31ce09a140b1b457",
+    "tinta_sum_alfa": 639972.5
+   }
+  },
+  "classic/puantilism": {
+   "ficheiro": "classic/puantilism",
+   "gestos": {
+    "px_com_tinta": 482946,
+    "sha256": "cfbb96c6f8514b8b",
+    "tinta_sum_alfa": 437317.5
+   },
+   "sobre": {
+    "px_com_tinta": 538591,
+    "sha256": "1d196236f6c622d6",
+    "tinta_sum_alfa": 521245.8
+   },
+   "tamanhos": {
+    "px_com_tinta": 586916,
+    "sha256": "115c5b5b8eb1537a",
+    "tinta_sum_alfa": 573629.6
+   }
+  },
+  "classic/puantilism2": {
+   "ficheiro": "classic/puantilism2",
+   "gestos": {
+    "px_com_tinta": 451109,
+    "sha256": "ce39bcdd57f37e69",
+    "tinta_sum_alfa": 410134.7
+   },
+   "sobre": {
+    "px_com_tinta": 553654,
+    "sha256": "f09d6a13dceb6a0d",
+    "tinta_sum_alfa": 533573.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 622325,
+    "sha256": "7d5eca27e6ffdfa4",
+    "tinta_sum_alfa": 612164.0
+   }
+  },
+  "classic/rounded": {
+   "ficheiro": "classic/rounded",
+   "gestos": {
+    "px_com_tinta": 165764,
+    "sha256": "5282bda9aa3c2e34",
+    "tinta_sum_alfa": 53500.7
+   },
+   "sobre": {
+    "px_com_tinta": 193560,
+    "sha256": "d2d16b46340ced1c",
+    "tinta_sum_alfa": 73876.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 238514,
+    "sha256": "552cc8f9033bec50",
+    "tinta_sum_alfa": 81220.2
+   }
+  },
+  "classic/short_grass": {
+   "ficheiro": "classic/short_grass",
+   "gestos": {
+    "px_com_tinta": 209991,
+    "sha256": "415315fa1a0c302a",
+    "tinta_sum_alfa": 154467.6
+   },
+   "sobre": {
+    "px_com_tinta": 217989,
+    "sha256": "0f1131a74f03eada",
+    "tinta_sum_alfa": 209538.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 302917,
+    "sha256": "bcba205eb6e8af54",
+    "tinta_sum_alfa": 290859.4
+   }
+  },
+  "classic/slow_ink": {
+   "ficheiro": "classic/slow_ink",
+   "gestos": {
+    "px_com_tinta": 149220,
+    "sha256": "33d55b4e0ebf2005",
+    "tinta_sum_alfa": 132483.1
+   },
+   "sobre": {
+    "px_com_tinta": 197365,
+    "sha256": "7abeaf4c28255386",
+    "tinta_sum_alfa": 173161.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 242729,
+    "sha256": "09ff007cc203fc21",
+    "tinta_sum_alfa": 208352.5
+   }
+  },
+  "classic/smudge": {
+   "ficheiro": "classic/smudge",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "classic/smudge+paint": {
+   "ficheiro": "classic/smudge+paint",
+   "gestos": {
+    "px_com_tinta": 93693,
+    "sha256": "0bdb374cb7f42e80",
+    "tinta_sum_alfa": 53391.0
+   },
+   "sobre": {
+    "px_com_tinta": 106674,
+    "sha256": "517d5718e50bf9d8",
+    "tinta_sum_alfa": 72806.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 123068,
+    "sha256": "73276f815dda23bb",
+    "tinta_sum_alfa": 83954.0
+   }
+  },
+  "classic/textured_ink": {
+   "ficheiro": "classic/textured_ink",
+   "gestos": {
+    "px_com_tinta": 432096,
+    "sha256": "f0711d69f10cad39",
+    "tinta_sum_alfa": 420969.1
+   },
+   "sobre": {
+    "px_com_tinta": 368713,
+    "sha256": "5561331db174e62d",
+    "tinta_sum_alfa": 359737.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 518285,
+    "sha256": "222c2003367eac10",
+    "tinta_sum_alfa": 512391.2
+   }
+  },
+  "classic/wet_knife": {
+   "ficheiro": "classic/wet_knife",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "deevad/2B_pencil": {
+   "ficheiro": "deevad/2B_pencil",
+   "gestos": {
+    "px_com_tinta": 216399,
+    "sha256": "4fac8c8e43a4eaa1",
+    "tinta_sum_alfa": 67539.3
+   },
+   "sobre": {
+    "px_com_tinta": 269410,
+    "sha256": "fe6eaf59a65c6998",
+    "tinta_sum_alfa": 95152.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 341192,
+    "sha256": "1ad17e9ebd26b1b9",
+    "tinta_sum_alfa": 105082.9
+   }
+  },
+  "deevad/4H_pencil": {
+   "ficheiro": "deevad/4H_pencil",
+   "gestos": {
+    "px_com_tinta": 203890,
+    "sha256": "cfbc2085499f941c",
+    "tinta_sum_alfa": 14197.8
+   },
+   "sobre": {
+    "px_com_tinta": 259298,
+    "sha256": "ce4e6a56bc25ed6f",
+    "tinta_sum_alfa": 20688.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 337727,
+    "sha256": "c63d5a636577ede3",
+    "tinta_sum_alfa": 21864.5
+   }
+  },
+  "deevad/airbrush": {
+   "ficheiro": "deevad/airbrush",
+   "gestos": {
+    "px_com_tinta": 131713,
+    "sha256": "8922e5761e3ac84e",
+    "tinta_sum_alfa": 16358.1
+   },
+   "sobre": {
+    "px_com_tinta": 149922,
+    "sha256": "fce9c415236e4d1b",
+    "tinta_sum_alfa": 21035.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 182246,
+    "sha256": "db6b5ebd2a3ffee5",
+    "tinta_sum_alfa": 22659.9
+   }
+  },
+  "deevad/ballpen": {
+   "ficheiro": "deevad/ballpen",
+   "gestos": {
+    "px_com_tinta": 183802,
+    "sha256": "c75c785db5921b5f",
+    "tinta_sum_alfa": 74062.7
+   },
+   "sobre": {
+    "px_com_tinta": 218278,
+    "sha256": "f5879a3e0cbf9785",
+    "tinta_sum_alfa": 101241.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 273916,
+    "sha256": "be2e9aab1a6daa0b",
+    "tinta_sum_alfa": 114157.9
+   }
+  },
+  "deevad/basic_digital_brush": {
+   "ficheiro": "deevad/basic_digital_brush",
+   "gestos": {
+    "px_com_tinta": 166894,
+    "sha256": "ac482ab1157eb825",
+    "tinta_sum_alfa": 139961.5
+   },
+   "sobre": {
+    "px_com_tinta": 200808,
+    "sha256": "31c05e1649ea656e",
+    "tinta_sum_alfa": 198426.8
+   },
+   "tamanhos": {
+    "px_com_tinta": 244732,
+    "sha256": "c19076018afff786",
+    "tinta_sum_alfa": 241623.2
+   }
+  },
+  "deevad/basic_digital_brush_smudging": {
+   "ficheiro": "deevad/basic_digital_brush_smudging",
+   "gestos": {
+    "px_com_tinta": 158817,
+    "sha256": "ada6c6edb42c7591",
+    "tinta_sum_alfa": 143120.5
+   },
+   "sobre": {
+    "px_com_tinta": 194442,
+    "sha256": "d802c6bcfa636099",
+    "tinta_sum_alfa": 192195.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 239686,
+    "sha256": "a949e6d1b42405cd",
+    "tinta_sum_alfa": 236027.1
+   }
+  },
+  "deevad/basic_digital_knife": {
+   "ficheiro": "deevad/basic_digital_knife",
+   "gestos": {
+    "px_com_tinta": 96125,
+    "sha256": "8b1ede7978d9c400",
+    "tinta_sum_alfa": 84376.6
+   },
+   "sobre": {
+    "px_com_tinta": 118390,
+    "sha256": "0ed100db85dfbfc1",
+    "tinta_sum_alfa": 117110.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 102711,
+    "sha256": "c3d4eeb62b1875b4",
+    "tinta_sum_alfa": 99905.8
+   }
+  },
+  "deevad/basic_digital_knife_smudging": {
+   "ficheiro": "deevad/basic_digital_knife_smudging",
+   "gestos": {
+    "px_com_tinta": 97056,
+    "sha256": "3ad5e2d24f4eb6c7",
+    "tinta_sum_alfa": 66427.1
+   },
+   "sobre": {
+    "px_com_tinta": 124542,
+    "sha256": "c1f8b5746cd24ccf",
+    "tinta_sum_alfa": 90570.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 103602,
+    "sha256": "1bc19940fa773689",
+    "tinta_sum_alfa": 69828.1
+   }
+  },
+  "deevad/blending": {
+   "ficheiro": "deevad/blending",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "deevad/brush": {
+   "ficheiro": "deevad/brush",
+   "gestos": {
+    "px_com_tinta": 535583,
+    "sha256": "c72e6c1d099fc6b2",
+    "tinta_sum_alfa": 516144.5
+   },
+   "sobre": {
+    "px_com_tinta": 465649,
+    "sha256": "b98b93cf08924425",
+    "tinta_sum_alfa": 456774.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 639012,
+    "sha256": "a9276838de7023c2",
+    "tinta_sum_alfa": 631237.3
+   }
+  },
+  "deevad/chalk": {
+   "ficheiro": "deevad/chalk",
+   "gestos": {
+    "px_com_tinta": 502272,
+    "sha256": "055ef6d668c83ab0",
+    "tinta_sum_alfa": 365607.6
+   },
+   "sobre": {
+    "px_com_tinta": 518740,
+    "sha256": "3cabec6f4eb4e8f7",
+    "tinta_sum_alfa": 470603.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 553933,
+    "sha256": "c494e087b3cd49e9",
+    "tinta_sum_alfa": 500046.6
+   }
+  },
+  "deevad/detail_brush_large": {
+   "ficheiro": "deevad/detail_brush_large",
+   "gestos": {
+    "px_com_tinta": 303586,
+    "sha256": "73aa1d6d563dc36d",
+    "tinta_sum_alfa": 127847.0
+   },
+   "sobre": {
+    "px_com_tinta": 291270,
+    "sha256": "442ea8665ee2f690",
+    "tinta_sum_alfa": 133666.1
+   },
+   "tamanhos": {
+    "px_com_tinta": 493665,
+    "sha256": "42cbefbf2f14c071",
+    "tinta_sum_alfa": 200878.8
+   }
+  },
+  "deevad/detail_brush_large_glazing": {
+   "ficheiro": "deevad/detail_brush_large_glazing",
+   "gestos": {
+    "px_com_tinta": 301994,
+    "sha256": "8cd1318fccfef8a1",
+    "tinta_sum_alfa": 49762.8
+   },
+   "sobre": {
+    "px_com_tinta": 379462,
+    "sha256": "280a35db376d2d9c",
+    "tinta_sum_alfa": 70552.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 493028,
+    "sha256": "2cde09201252ced4",
+    "tinta_sum_alfa": 74142.3
+   }
+  },
+  "deevad/detail_brush_thin": {
+   "ficheiro": "deevad/detail_brush_thin",
+   "gestos": {
+    "px_com_tinta": 303586,
+    "sha256": "73aa1d6d563dc36d",
+    "tinta_sum_alfa": 127847.0
+   },
+   "sobre": {
+    "px_com_tinta": 380500,
+    "sha256": "06fb2edcde56c0a9",
+    "tinta_sum_alfa": 177818.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 493665,
+    "sha256": "42cbefbf2f14c071",
+    "tinta_sum_alfa": 200878.8
+   }
+  },
+  "deevad/detail_brush_thin_glazing": {
+   "ficheiro": "deevad/detail_brush_thin_glazing",
+   "gestos": {
+    "px_com_tinta": 302279,
+    "sha256": "d0791e9dadb079c3",
+    "tinta_sum_alfa": 53261.1
+   },
+   "sobre": {
+    "px_com_tinta": 379580,
+    "sha256": "6162af08c46e88ed",
+    "tinta_sum_alfa": 75485.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 493105,
+    "sha256": "40bd5939fc000c8e",
+    "tinta_sum_alfa": 79565.1
+   }
+  },
+  "deevad/fill": {
+   "ficheiro": "deevad/fill",
+   "gestos": {
+    "px_com_tinta": 374563,
+    "sha256": "ba2d2f1cbe2ea0f6",
+    "tinta_sum_alfa": 370217.4
+   },
+   "sobre": {
+    "px_com_tinta": 484280,
+    "sha256": "ed790aaa44f45b5d",
+    "tinta_sum_alfa": 480862.8
+   },
+   "tamanhos": {
+    "px_com_tinta": 515768,
+    "sha256": "38d23c67436004f9",
+    "tinta_sum_alfa": 515445.9
+   }
+  },
+  "deevad/grainy_blending": {
+   "ficheiro": "deevad/grainy_blending",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "deevad/kneaded_eraser": {
+   "ficheiro": "deevad/kneaded_eraser",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "deevad/kneaded_eraser_large": {
+   "ficheiro": "deevad/kneaded_eraser_large",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "deevad/large_hard_eraser": {
+   "ficheiro": "deevad/large_hard_eraser",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "deevad/large_watercolor_fringe": {
+   "ficheiro": "deevad/large_watercolor_fringe",
+   "gestos": {
+    "px_com_tinta": 147453,
+    "sha256": "86236eaa73442190",
+    "tinta_sum_alfa": 40655.1
+   },
+   "sobre": {
+    "px_com_tinta": 172364,
+    "sha256": "a5dc64b12ad15a05",
+    "tinta_sum_alfa": 57363.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 208814,
+    "sha256": "0b270477944b07f8",
+    "tinta_sum_alfa": 70288.8
+   }
+  },
+  "deevad/liner": {
+   "ficheiro": "deevad/liner",
+   "gestos": {
+    "px_com_tinta": 164205,
+    "sha256": "749361ebe3987732",
+    "tinta_sum_alfa": 156908.1
+   },
+   "sobre": {
+    "px_com_tinta": 192100,
+    "sha256": "9b7ba09682dc2eaf",
+    "tinta_sum_alfa": 182761.8
+   },
+   "tamanhos": {
+    "px_com_tinta": 236882,
+    "sha256": "f3d36c43412b4012",
+    "tinta_sum_alfa": 223465.5
+   }
+  },
+  "deevad/only_water_fringe": {
+   "ficheiro": "deevad/only_water_fringe",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "deevad/pen": {
+   "ficheiro": "deevad/pen",
+   "gestos": {
+    "px_com_tinta": 279113,
+    "sha256": "77ff0cbf27e04d3f",
+    "tinta_sum_alfa": 121439.2
+   },
+   "sobre": {
+    "px_com_tinta": 374113,
+    "sha256": "97b1d72c98e9b58a",
+    "tinta_sum_alfa": 177114.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 492825,
+    "sha256": "aaad32a7497c3d9e",
+    "tinta_sum_alfa": 205961.7
+   }
+  },
+  "deevad/pen-note": {
+   "ficheiro": "deevad/pen-note",
+   "gestos": {
+    "px_com_tinta": 181396,
+    "sha256": "8ccc158405c9025c",
+    "tinta_sum_alfa": 121452.7
+   },
+   "sobre": {
+    "px_com_tinta": 226879,
+    "sha256": "ea4a6bbddf852716",
+    "tinta_sum_alfa": 149922.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 284477,
+    "sha256": "f0638779b66b289f",
+    "tinta_sum_alfa": 179871.0
+   }
+  },
+  "deevad/rigger_brush": {
+   "ficheiro": "deevad/rigger_brush",
+   "gestos": {
+    "px_com_tinta": 304068,
+    "sha256": "c415cefded828922",
+    "tinta_sum_alfa": 233233.5
+   },
+   "sobre": {
+    "px_com_tinta": 380784,
+    "sha256": "7404d0988bbdc65c",
+    "tinta_sum_alfa": 310698.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 493831,
+    "sha256": "3bdc7045d370dbdf",
+    "tinta_sum_alfa": 393393.6
+   }
+  },
+  "deevad/rigger_brush_thin": {
+   "ficheiro": "deevad/rigger_brush_thin",
+   "gestos": {
+    "px_com_tinta": 294357,
+    "sha256": "b737df87922ec9df",
+    "tinta_sum_alfa": 139427.5
+   },
+   "sobre": {
+    "px_com_tinta": 278146,
+    "sha256": "68758fd1fadab10e",
+    "tinta_sum_alfa": 140214.3
+   },
+   "tamanhos": {
+    "px_com_tinta": 485418,
+    "sha256": "1a8100a47807856d",
+    "tinta_sum_alfa": 218270.9
+   }
+  },
+  "deevad/rough": {
+   "ficheiro": "deevad/rough",
+   "gestos": {
+    "px_com_tinta": 292837,
+    "sha256": "39d578ac4e8c6a6e",
+    "tinta_sum_alfa": 29033.6
+   },
+   "sobre": {
+    "px_com_tinta": 368472,
+    "sha256": "e13e1802213165f2",
+    "tinta_sum_alfa": 41375.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 488721,
+    "sha256": "a199fb2e0dfd29c1",
+    "tinta_sum_alfa": 43928.2
+   }
+  },
+  "deevad/soft-dip-pen": {
+   "ficheiro": "deevad/soft-dip-pen",
+   "gestos": {
+    "px_com_tinta": 293930,
+    "sha256": "674d6d32b91d3bef",
+    "tinta_sum_alfa": 265320.9
+   },
+   "sobre": {
+    "px_com_tinta": 403940,
+    "sha256": "e02deaf91cef99cc",
+    "tinta_sum_alfa": 376918.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 501913,
+    "sha256": "199cdf51c5cec696",
+    "tinta_sum_alfa": 493431.8
+   }
+  },
+  "deevad/sponge_smudging": {
+   "ficheiro": "deevad/sponge_smudging",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "deevad/spray": {
+   "ficheiro": "deevad/spray",
+   "gestos": {
+    "px_com_tinta": 382259,
+    "sha256": "9ce7fc273b068add",
+    "tinta_sum_alfa": 111973.1
+   },
+   "sobre": {
+    "px_com_tinta": 458386,
+    "sha256": "41ab2a62430a0647",
+    "tinta_sum_alfa": 163515.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 528780,
+    "sha256": "136a6f0028058636",
+    "tinta_sum_alfa": 223330.0
+   }
+  },
+  "deevad/spray2": {
+   "ficheiro": "deevad/spray2",
+   "gestos": {
+    "px_com_tinta": 636113,
+    "sha256": "6392c730f77be01a",
+    "tinta_sum_alfa": 330692.8
+   },
+   "sobre": {
+    "px_com_tinta": 634979,
+    "sha256": "21564a57ae21a8fa",
+    "tinta_sum_alfa": 395773.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 587863,
+    "sha256": "66022c81600398a2",
+    "tinta_sum_alfa": 195556.5
+   }
+  },
+  "deevad/thin_hard_eraser": {
+   "ficheiro": "deevad/thin_hard_eraser",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "deevad/thin_watercolor": {
+   "ficheiro": "deevad/thin_watercolor",
+   "gestos": {
+    "px_com_tinta": 147812,
+    "sha256": "427a8ff814ed12c3",
+    "tinta_sum_alfa": 27767.6
+   },
+   "sobre": {
+    "px_com_tinta": 173991,
+    "sha256": "672fc671920ebd1c",
+    "tinta_sum_alfa": 37829.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 211085,
+    "sha256": "a71d1fd5ed0fcb1e",
+    "tinta_sum_alfa": 42287.3
+   }
+  },
+  "deevad/watercolor_expressive": {
+   "ficheiro": "deevad/watercolor_expressive",
+   "gestos": {
+    "px_com_tinta": 383379,
+    "sha256": "06addd81734529b5",
+    "tinta_sum_alfa": 46484.5
+   },
+   "sobre": {
+    "px_com_tinta": 518538,
+    "sha256": "ff2c58276c91050a",
+    "tinta_sum_alfa": 62053.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 536947,
+    "sha256": "bc54992362a03c06",
+    "tinta_sum_alfa": 58194.0
+   }
+  },
+  "deevad/watercolor_glazing": {
+   "ficheiro": "deevad/watercolor_glazing",
+   "gestos": {
+    "px_com_tinta": 330521,
+    "sha256": "3085189fe868f644",
+    "tinta_sum_alfa": 78403.3
+   },
+   "sobre": {
+    "px_com_tinta": 438021,
+    "sha256": "9c87c7f654f51833",
+    "tinta_sum_alfa": 117787.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 504654,
+    "sha256": "66a94619f7370d5a",
+    "tinta_sum_alfa": 132456.7
+   }
+  },
+  "experimental/1pixel": {
+   "ficheiro": "experimental/1pixel",
+   "gestos": {
+    "px_com_tinta": 161090,
+    "sha256": "9b5d394f24486276",
+    "tinta_sum_alfa": 161090.0
+   },
+   "sobre": {
+    "px_com_tinta": 189014,
+    "sha256": "dbb44c3f8d025d49",
+    "tinta_sum_alfa": 189014.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 237231,
+    "sha256": "952f412fad21c32f",
+    "tinta_sum_alfa": 237231.0
+   }
+  },
+  "experimental/DNA_brush": {
+   "ficheiro": "experimental/DNA_brush",
+   "gestos": {
+    "px_com_tinta": 265424,
+    "sha256": "4dccbb98b307750d",
+    "tinta_sum_alfa": 200189.5
+   },
+   "sobre": {
+    "px_com_tinta": 413721,
+    "sha256": "b28150fa9aa5e153",
+    "tinta_sum_alfa": 338343.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 108400,
+    "sha256": "41432c071caaeec0",
+    "tinta_sum_alfa": 82447.7
+   }
+  },
+  "experimental/basic": {
+   "ficheiro": "experimental/basic",
+   "gestos": {
+    "px_com_tinta": 162254,
+    "sha256": "3a3a49ea49d940d8",
+    "tinta_sum_alfa": 132693.5
+   },
+   "sobre": {
+    "px_com_tinta": 188412,
+    "sha256": "57d53108fbd7bc28",
+    "tinta_sum_alfa": 175299.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 228310,
+    "sha256": "8b2c0c7d21854671",
+    "tinta_sum_alfa": 209270.1
+   }
+  },
+  "experimental/bubble": {
+   "ficheiro": "experimental/bubble",
+   "gestos": {
+    "px_com_tinta": 636438,
+    "sha256": "7c219b80961e3aed",
+    "tinta_sum_alfa": 330716.6
+   },
+   "sobre": {
+    "px_com_tinta": 639857,
+    "sha256": "5eda509342971d8e",
+    "tinta_sum_alfa": 457029.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "b9d2f44b47090bc7",
+    "tinta_sum_alfa": 319209.0
+   }
+  },
+  "experimental/fur": {
+   "ficheiro": "experimental/fur",
+   "gestos": {
+    "px_com_tinta": 640000,
+    "sha256": "acb7aa8ab70e673b",
+    "tinta_sum_alfa": 621535.4
+   },
+   "sobre": {
+    "px_com_tinta": 640000,
+    "sha256": "f4c8914e92fca7f2",
+    "tinta_sum_alfa": 635250.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "72e6729fcfc6d42d",
+    "tinta_sum_alfa": 595378.8
+   }
+  },
+  "experimental/glow": {
+   "ficheiro": "experimental/glow",
+   "gestos": {
+    "px_com_tinta": 214428,
+    "sha256": "6f0f028503dc8f10",
+    "tinta_sum_alfa": 73048.1
+   },
+   "sobre": {
+    "px_com_tinta": 252270,
+    "sha256": "abf5d5b00530efb0",
+    "tinta_sum_alfa": 85145.3
+   },
+   "tamanhos": {
+    "px_com_tinta": 343278,
+    "sha256": "3b94b0c08c77fc0a",
+    "tinta_sum_alfa": 108395.7
+   }
+  },
+  "experimental/hard_blot": {
+   "ficheiro": "experimental/hard_blot",
+   "gestos": {
+    "px_com_tinta": 640000,
+    "sha256": "313143d5ad5a4980",
+    "tinta_sum_alfa": 250760.0
+   },
+   "sobre": {
+    "px_com_tinta": 640000,
+    "sha256": "c73ac31ae38a9fea",
+    "tinta_sum_alfa": 332395.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "4c43fda7c381c58f",
+    "tinta_sum_alfa": 318972.1
+   }
+  },
+  "experimental/hard_sting": {
+   "ficheiro": "experimental/hard_sting",
+   "gestos": {
+    "px_com_tinta": 46185,
+    "sha256": "ef0feceeb9286a02",
+    "tinta_sum_alfa": 40251.0
+   },
+   "sobre": {
+    "px_com_tinta": 51245,
+    "sha256": "86cd0b85bf4e4943",
+    "tinta_sum_alfa": 48741.1
+   },
+   "tamanhos": {
+    "px_com_tinta": 122036,
+    "sha256": "f1f6321bf28d098c",
+    "tinta_sum_alfa": 119081.9
+   }
+  },
+  "experimental/irregular_ink": {
+   "ficheiro": "experimental/irregular_ink",
+   "gestos": {
+    "px_com_tinta": 166889,
+    "sha256": "143befd903e1955f",
+    "tinta_sum_alfa": 159089.1
+   },
+   "sobre": {
+    "px_com_tinta": 156474,
+    "sha256": "e9e163a6e52d1c31",
+    "tinta_sum_alfa": 148675.1
+   },
+   "tamanhos": {
+    "px_com_tinta": 249382,
+    "sha256": "e1708a2fa92d9907",
+    "tinta_sum_alfa": 235473.2
+   }
+  },
+  "experimental/leaves": {
+   "ficheiro": "experimental/leaves",
+   "gestos": {
+    "px_com_tinta": 57985,
+    "sha256": "ac802c7aa1aa8f1b",
+    "tinta_sum_alfa": 44061.0
+   },
+   "sobre": {
+    "px_com_tinta": 68572,
+    "sha256": "6e72ec282b98cc50",
+    "tinta_sum_alfa": 57313.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 110998,
+    "sha256": "fafb46825b7ba7b4",
+    "tinta_sum_alfa": 100591.5
+   }
+  },
+  "experimental/particules_3": {
+   "ficheiro": "experimental/particules_3",
+   "gestos": {
+    "px_com_tinta": 411843,
+    "sha256": "23a3331e269a3531",
+    "tinta_sum_alfa": 233570.4
+   },
+   "sobre": {
+    "px_com_tinta": 445699,
+    "sha256": "b1c426339549f303",
+    "tinta_sum_alfa": 303433.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 503190,
+    "sha256": "7dec94a60f2ebfcb",
+    "tinta_sum_alfa": 321714.3
+   }
+  },
+  "experimental/particules_eraser": {
+   "ficheiro": "experimental/particules_eraser",
+   "gestos": {
+    "px_com_tinta": 145371,
+    "sha256": "e21afba6a4bceaee",
+    "tinta_sum_alfa": 88979.0
+   },
+   "sobre": {
+    "px_com_tinta": 190161,
+    "sha256": "a8847291003be235",
+    "tinta_sum_alfa": 130792.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 73835,
+    "sha256": "68eca367afb49a4b",
+    "tinta_sum_alfa": 49098.0
+   }
+  },
+  "experimental/pick_and_drag": {
+   "ficheiro": "experimental/pick_and_drag",
+   "gestos": {
+    "px_com_tinta": 118126,
+    "sha256": "abebbe818a64127b",
+    "tinta_sum_alfa": 42228.8
+   },
+   "sobre": {
+    "px_com_tinta": 143314,
+    "sha256": "c8f04ecd40547610",
+    "tinta_sum_alfa": 62246.8
+   },
+   "tamanhos": {
+    "px_com_tinta": 170936,
+    "sha256": "d3040dd332a92b49",
+    "tinta_sum_alfa": 68240.2
+   }
+  },
+  "experimental/pixel_hardink": {
+   "ficheiro": "experimental/pixel_hardink",
+   "gestos": {
+    "px_com_tinta": 515481,
+    "sha256": "5aee8f7fde28e601",
+    "tinta_sum_alfa": 515481.0
+   },
+   "sobre": {
+    "px_com_tinta": 599665,
+    "sha256": "99c2ddae1fa2a69c",
+    "tinta_sum_alfa": 599665.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 634807,
+    "sha256": "2f00508a80532022",
+    "tinta_sum_alfa": 634807.0
+   }
+  },
+  "experimental/pixelblocking": {
+   "ficheiro": "experimental/pixelblocking",
+   "gestos": {
+    "px_com_tinta": 154403,
+    "sha256": "bbdf2e1c7079ef29",
+    "tinta_sum_alfa": 154403.0
+   },
+   "sobre": {
+    "px_com_tinta": 184239,
+    "sha256": "8cb6faeb8f5de14c",
+    "tinta_sum_alfa": 184239.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 236301,
+    "sha256": "f056505d968de767",
+    "tinta_sum_alfa": 236301.0
+   }
+  },
+  "experimental/sewing": {
+   "ficheiro": "experimental/sewing",
+   "gestos": {
+    "px_com_tinta": 176534,
+    "sha256": "2ab8f142ebf7d565",
+    "tinta_sum_alfa": 146946.4
+   },
+   "sobre": {
+    "px_com_tinta": 204890,
+    "sha256": "9afcde677c9078c9",
+    "tinta_sum_alfa": 185127.3
+   },
+   "tamanhos": {
+    "px_com_tinta": 340553,
+    "sha256": "3c6fc5d4e529c981",
+    "tinta_sum_alfa": 323854.8
+   }
+  },
+  "experimental/small_blot": {
+   "ficheiro": "experimental/small_blot",
+   "gestos": {
+    "px_com_tinta": 75026,
+    "sha256": "ca1333c55fa384c1",
+    "tinta_sum_alfa": 19939.0
+   },
+   "sobre": {
+    "px_com_tinta": 76883,
+    "sha256": "8c3917ee3c2b9598",
+    "tinta_sum_alfa": 24439.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 91702,
+    "sha256": "7260463d977e9276",
+    "tinta_sum_alfa": 26358.5
+   }
+  },
+  "experimental/soft": {
+   "ficheiro": "experimental/soft",
+   "gestos": {
+    "px_com_tinta": 278668,
+    "sha256": "e690a8e6941bc834",
+    "tinta_sum_alfa": 10489.7
+   },
+   "sobre": {
+    "px_com_tinta": 224636,
+    "sha256": "5ee3d943bd946748",
+    "tinta_sum_alfa": 6487.1
+   },
+   "tamanhos": {
+    "px_com_tinta": 219184,
+    "sha256": "16d27bfc82d9b2f1",
+    "tinta_sum_alfa": 5434.3
+   }
+  },
+  "experimental/soft_irregular": {
+   "ficheiro": "experimental/soft_irregular",
+   "gestos": {
+    "px_com_tinta": 640000,
+    "sha256": "39a7e4e455f292c1",
+    "tinta_sum_alfa": 639980.3
+   },
+   "sobre": {
+    "px_com_tinta": 640000,
+    "sha256": "892f96a72f02f81f",
+    "tinta_sum_alfa": 639980.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "9066073698a56ea8",
+    "tinta_sum_alfa": 639980.3
+   }
+  },
+  "experimental/spaced-blot": {
+   "ficheiro": "experimental/spaced-blot",
+   "gestos": {
+    "px_com_tinta": 64540,
+    "sha256": "19ce0630b38fad83",
+    "tinta_sum_alfa": 36736.8
+   },
+   "sobre": {
+    "px_com_tinta": 82907,
+    "sha256": "daf440e5166c53c6",
+    "tinta_sum_alfa": 51580.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 114286,
+    "sha256": "f072e2f76567d70c",
+    "tinta_sum_alfa": 64573.7
+   }
+  },
+  "experimental/speed_blot": {
+   "ficheiro": "experimental/speed_blot",
+   "gestos": {
+    "px_com_tinta": 74983,
+    "sha256": "e6668a1d3d8e78c9",
+    "tinta_sum_alfa": 32154.4
+   },
+   "sobre": {
+    "px_com_tinta": 77022,
+    "sha256": "2ed7b5e0f34efdaa",
+    "tinta_sum_alfa": 44828.6
+   },
+   "tamanhos": {
+    "px_com_tinta": 92023,
+    "sha256": "35bb7088de579fa9",
+    "tinta_sum_alfa": 48913.2
+   }
+  },
+  "experimental/subtle_pencil": {
+   "ficheiro": "experimental/subtle_pencil",
+   "gestos": {
+    "px_com_tinta": 446000,
+    "sha256": "bdf0565e0a3f7624",
+    "tinta_sum_alfa": 331770.9
+   },
+   "sobre": {
+    "px_com_tinta": 567588,
+    "sha256": "dad0723384f02c3e",
+    "tinta_sum_alfa": 480360.6
+   },
+   "tamanhos": {
+    "px_com_tinta": 638344,
+    "sha256": "8f4588b496e3fb6d",
+    "tinta_sum_alfa": 530597.5
+   }
+  },
+  "experimental/track": {
+   "ficheiro": "experimental/track",
+   "gestos": {
+    "px_com_tinta": 609079,
+    "sha256": "d2ed1ba9ae314c5a",
+    "tinta_sum_alfa": 154326.1
+   },
+   "sobre": {
+    "px_com_tinta": 621845,
+    "sha256": "e3173f6053d96b02",
+    "tinta_sum_alfa": 223342.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "89d72ca48c12b534",
+    "tinta_sum_alfa": 198939.0
+   }
+  },
+  "kaerhon_v1/Airbrush_a": {
+   "ficheiro": "kaerhon_v1/Airbrush_a",
+   "gestos": {
+    "px_com_tinta": 128458,
+    "sha256": "b6aea58a48ca2d8f",
+    "tinta_sum_alfa": 10184.4
+   },
+   "sobre": {
+    "px_com_tinta": 136154,
+    "sha256": "f71559ee2932457e",
+    "tinta_sum_alfa": 11665.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 176206,
+    "sha256": "5464fc6b0e46a53d",
+    "tinta_sum_alfa": 13798.8
+   }
+  },
+  "kaerhon_v1/Dirty_Transparent_sk": {
+   "ficheiro": "kaerhon_v1/Dirty_Transparent_sk",
+   "gestos": {
+    "px_com_tinta": 639807,
+    "sha256": "f4faa631ac0053e2",
+    "tinta_sum_alfa": 381713.9
+   },
+   "sobre": {
+    "px_com_tinta": 640000,
+    "sha256": "b74c41bffa5b2af9",
+    "tinta_sum_alfa": 476317.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "bdcda7b7a60b1e91",
+    "tinta_sum_alfa": 243244.4
+   }
+  },
+  "kaerhon_v1/Sketcher2_sk": {
+   "ficheiro": "kaerhon_v1/Sketcher2_sk",
+   "gestos": {
+    "px_com_tinta": 372249,
+    "sha256": "d6000153fe243e2e",
+    "tinta_sum_alfa": 351510.2
+   },
+   "sobre": {
+    "px_com_tinta": 436317,
+    "sha256": "c55ecf438cc22fd4",
+    "tinta_sum_alfa": 435550.6
+   },
+   "tamanhos": {
+    "px_com_tinta": 511832,
+    "sha256": "520aca7ee14c2044",
+    "tinta_sum_alfa": 509499.4
+   }
+  },
+  "kaerhon_v1/Smear_sm": {
+   "ficheiro": "kaerhon_v1/Smear_sm",
+   "gestos": {
+    "px_com_tinta": 612080,
+    "sha256": "a3dc09744a1a0f5c",
+    "tinta_sum_alfa": 427153.8
+   },
+   "sobre": {
+    "px_com_tinta": 640000,
+    "sha256": "2887210e1520b98c",
+    "tinta_sum_alfa": 532453.1
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "a2087f2c9f28cf10",
+    "tinta_sum_alfa": 262917.8
+   }
+  },
+  "kaerhon_v1/airbruch_press_a": {
+   "ficheiro": "kaerhon_v1/airbruch_press_a",
+   "gestos": {
+    "px_com_tinta": 444763,
+    "sha256": "dfd5e4f10d612d6f",
+    "tinta_sum_alfa": 154172.8
+   },
+   "sobre": {
+    "px_com_tinta": 564864,
+    "sha256": "c8c77f880abf7637",
+    "tinta_sum_alfa": 230738.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 561337,
+    "sha256": "60f9009f826d5306",
+    "tinta_sum_alfa": 238862.8
+   }
+  },
+  "kaerhon_v1/airsmudge_a": {
+   "ficheiro": "kaerhon_v1/airsmudge_a",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "kaerhon_v1/airsmudgeultimate_sk": {
+   "ficheiro": "kaerhon_v1/airsmudgeultimate_sk",
+   "gestos": {
+    "px_com_tinta": 244402,
+    "sha256": "984ae8caa157a1bc",
+    "tinta_sum_alfa": 70771.8
+   },
+   "sobre": {
+    "px_com_tinta": 155106,
+    "sha256": "ce34095bf7d2ec88",
+    "tinta_sum_alfa": 92804.1
+   },
+   "tamanhos": {
+    "px_com_tinta": 186428,
+    "sha256": "e83f301341f2977a",
+    "tinta_sum_alfa": 105295.6
+   }
+  },
+  "kaerhon_v1/classic_sk": {
+   "ficheiro": "kaerhon_v1/classic_sk",
+   "gestos": {
+    "px_com_tinta": 181765,
+    "sha256": "ce401c6cf02b9c4e",
+    "tinta_sum_alfa": 161154.4
+   },
+   "sobre": {
+    "px_com_tinta": 220570,
+    "sha256": "1fadd9b3e099b758",
+    "tinta_sum_alfa": 205350.6
+   },
+   "tamanhos": {
+    "px_com_tinta": 298742,
+    "sha256": "189af254643d4125",
+    "tinta_sum_alfa": 277651.5
+   }
+  },
+  "kaerhon_v1/classicroundblock_static_c": {
+   "ficheiro": "kaerhon_v1/classicroundblock_static_c",
+   "gestos": {
+    "px_com_tinta": 165062,
+    "sha256": "a2b80de2e143d0fb",
+    "tinta_sum_alfa": 145750.9
+   },
+   "sobre": {
+    "px_com_tinta": 194054,
+    "sha256": "df4062eaea1b6eea",
+    "tinta_sum_alfa": 188704.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 237710,
+    "sha256": "00f98d7722514936",
+    "tinta_sum_alfa": 230533.7
+   }
+  },
+  "kaerhon_v1/extreme_round_l": {
+   "ficheiro": "kaerhon_v1/extreme_round_l",
+   "gestos": {
+    "px_com_tinta": 639845,
+    "sha256": "2a17b126ff282aa9",
+    "tinta_sum_alfa": 639791.7
+   },
+   "sobre": {
+    "px_com_tinta": 640000,
+    "sha256": "31ce09a140b1b457",
+    "tinta_sum_alfa": 639980.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "31ce09a140b1b457",
+    "tinta_sum_alfa": 639980.5
+   }
+  },
+  "kaerhon_v1/fill_c": {
+   "ficheiro": "kaerhon_v1/fill_c",
+   "gestos": {
+    "px_com_tinta": 165138,
+    "sha256": "da1204f32a054cbf",
+    "tinta_sum_alfa": 161098.7
+   },
+   "sobre": {
+    "px_com_tinta": 192872,
+    "sha256": "3bd62f8ee480045f",
+    "tinta_sum_alfa": 188320.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 237146,
+    "sha256": "96b229b3b3db231f",
+    "tinta_sum_alfa": 230946.4
+   }
+  },
+  "kaerhon_v1/flat_bar_l": {
+   "ficheiro": "kaerhon_v1/flat_bar_l",
+   "gestos": {
+    "px_com_tinta": 630187,
+    "sha256": "b89519c79b8f4a89",
+    "tinta_sum_alfa": 628244.2
+   },
+   "sobre": {
+    "px_com_tinta": 640000,
+    "sha256": "346c958e5ca015d0",
+    "tinta_sum_alfa": 639980.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "31ce09a140b1b457",
+    "tinta_sum_alfa": 639980.5
+   }
+  },
+  "kaerhon_v1/ink-slowline_s": {
+   "ficheiro": "kaerhon_v1/ink-slowline_s",
+   "gestos": {
+    "px_com_tinta": 418939,
+    "sha256": "72e1d840c5f361b7",
+    "tinta_sum_alfa": 408976.7
+   },
+   "sobre": {
+    "px_com_tinta": 527602,
+    "sha256": "0bc49835fb731af9",
+    "tinta_sum_alfa": 522140.6
+   },
+   "tamanhos": {
+    "px_com_tinta": 552011,
+    "sha256": "318ea55716214481",
+    "tinta_sum_alfa": 544563.5
+   }
+  },
+  "kaerhon_v1/ink_slow_s": {
+   "ficheiro": "kaerhon_v1/ink_slow_s",
+   "gestos": {
+    "px_com_tinta": 411636,
+    "sha256": "43835c5bcaa9e6c8",
+    "tinta_sum_alfa": 401944.4
+   },
+   "sobre": {
+    "px_com_tinta": 538193,
+    "sha256": "64bea40425d59211",
+    "tinta_sum_alfa": 531861.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 566259,
+    "sha256": "78b3dcaa618ae7e0",
+    "tinta_sum_alfa": 559031.3
+   }
+  },
+  "kaerhon_v1/inkster_l": {
+   "ficheiro": "kaerhon_v1/inkster_l",
+   "gestos": {
+    "px_com_tinta": 310439,
+    "sha256": "1eba9b6e2702f2a6",
+    "tinta_sum_alfa": 288504.9
+   },
+   "sobre": {
+    "px_com_tinta": 379546,
+    "sha256": "7dcb952bfb37005f",
+    "tinta_sum_alfa": 357545.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 495098,
+    "sha256": "b788e33c643bc0bc",
+    "tinta_sum_alfa": 476230.4
+   }
+  },
+  "kaerhon_v1/paint_barrr_sm": {
+   "ficheiro": "kaerhon_v1/paint_barrr_sm",
+   "gestos": {
+    "px_com_tinta": 151183,
+    "sha256": "028548d0cfe5c132",
+    "tinta_sum_alfa": 135498.0
+   },
+   "sobre": {
+    "px_com_tinta": 185914,
+    "sha256": "5fd90d147e2bbd5c",
+    "tinta_sum_alfa": 179778.3
+   },
+   "tamanhos": {
+    "px_com_tinta": 224266,
+    "sha256": "d22aeeca9aa5d7ca",
+    "tinta_sum_alfa": 212794.5
+   }
+  },
+  "kaerhon_v1/paint_radius_2_sm": {
+   "ficheiro": "kaerhon_v1/paint_radius_2_sm",
+   "gestos": {
+    "px_com_tinta": 83386,
+    "sha256": "cbb398ad0bc536fa",
+    "tinta_sum_alfa": 69816.0
+   },
+   "sobre": {
+    "px_com_tinta": 87664,
+    "sha256": "ef9bd27bf3f7db98",
+    "tinta_sum_alfa": 85470.8
+   },
+   "tamanhos": {
+    "px_com_tinta": 101976,
+    "sha256": "2e10c23d88772e62",
+    "tinta_sum_alfa": 95617.3
+   }
+  },
+  "kaerhon_v1/paint_sm": {
+   "ficheiro": "kaerhon_v1/paint_sm",
+   "gestos": {
+    "px_com_tinta": 153370,
+    "sha256": "9f174ead8a81d204",
+    "tinta_sum_alfa": 139801.4
+   },
+   "sobre": {
+    "px_com_tinta": 193744,
+    "sha256": "c1463cbb33ce4de3",
+    "tinta_sum_alfa": 187212.8
+   },
+   "tamanhos": {
+    "px_com_tinta": 241104,
+    "sha256": "54864397ff2672cc",
+    "tinta_sum_alfa": 227743.8
+   }
+  },
+  "kaerhon_v1/smudge_ink(0.7)_sm": {
+   "ficheiro": "kaerhon_v1/smudge_ink_0.7__sm",
+   "gestos": {
+    "px_com_tinta": 612798,
+    "sha256": "9c677ead5a987537",
+    "tinta_sum_alfa": 309006.5
+   },
+   "sobre": {
+    "px_com_tinta": 640000,
+    "sha256": "523683b2e31bd7f1",
+    "tinta_sum_alfa": 385209.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "bf69a95c140f6a99",
+    "tinta_sum_alfa": 253120.5
+   }
+  },
+  "kaerhon_v1/wet_paint_sm": {
+   "ficheiro": "kaerhon_v1/wet_paint_sm",
+   "gestos": {
+    "px_com_tinta": 612803,
+    "sha256": "f729ac9dc859a2b8",
+    "tinta_sum_alfa": 453364.7
+   },
+   "sobre": {
+    "px_com_tinta": 640000,
+    "sha256": "2829c49af5b2f8e9",
+    "tinta_sum_alfa": 531191.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "ba05a6ba8253b846",
+    "tinta_sum_alfa": 263133.3
+   }
+  },
+  "ramon/100%_Opaque": {
+   "ficheiro": "ramon/100__Opaque",
+   "gestos": {
+    "px_com_tinta": 164153,
+    "sha256": "4f1369da15335283",
+    "tinta_sum_alfa": 162915.4
+   },
+   "sobre": {
+    "px_com_tinta": 192057,
+    "sha256": "a8978fe1e1e252f0",
+    "tinta_sum_alfa": 190195.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 238099,
+    "sha256": "81bb04652b58b0ba",
+    "tinta_sum_alfa": 235027.3
+   }
+  },
+  "ramon/2B_pencil": {
+   "ficheiro": "ramon/2B_pencil",
+   "gestos": {
+    "px_com_tinta": 248730,
+    "sha256": "1d93215c40713349",
+    "tinta_sum_alfa": 79603.1
+   },
+   "sobre": {
+    "px_com_tinta": 294391,
+    "sha256": "fd13661f9aaa9ec1",
+    "tinta_sum_alfa": 108763.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 399134,
+    "sha256": "dee14ae652114310",
+    "tinta_sum_alfa": 129546.5
+   }
+  },
+  "ramon/B-pencil": {
+   "ficheiro": "ramon/B-pencil",
+   "gestos": {
+    "px_com_tinta": 143192,
+    "sha256": "0a7a4ab0ff078a78",
+    "tinta_sum_alfa": 24724.2
+   },
+   "sobre": {
+    "px_com_tinta": 149042,
+    "sha256": "9324c5f9620e4a32",
+    "tinta_sum_alfa": 31207.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 184152,
+    "sha256": "f814dcc95213210d",
+    "tinta_sum_alfa": 34401.2
+   }
+  },
+  "ramon/Beamlight": {
+   "ficheiro": "ramon/Beamlight",
+   "gestos": {
+    "px_com_tinta": 101376,
+    "sha256": "c39e5a423b5f2384",
+    "tinta_sum_alfa": 8158.2
+   },
+   "sobre": {
+    "px_com_tinta": 79325,
+    "sha256": "74cd9d1e0df2d63b",
+    "tinta_sum_alfa": 4223.8
+   },
+   "tamanhos": {
+    "px_com_tinta": 14316,
+    "sha256": "a3fb9053b51277bc",
+    "tinta_sum_alfa": 4740.5
+   }
+  },
+  "ramon/BigAirbrush": {
+   "ficheiro": "ramon/BigAirbrush",
+   "gestos": {
+    "px_com_tinta": 123655,
+    "sha256": "9728af19c93de5ac",
+    "tinta_sum_alfa": 15339.7
+   },
+   "sobre": {
+    "px_com_tinta": 39738,
+    "sha256": "199cd384f5e6b94d",
+    "tinta_sum_alfa": 10618.8
+   },
+   "tamanhos": {
+    "px_com_tinta": 46700,
+    "sha256": "7fb68c179a07102c",
+    "tinta_sum_alfa": 12327.1
+   }
+  },
+  "ramon/Blur_Fast": {
+   "ficheiro": "ramon/Blur_Fast",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "ramon/Classic_Paint": {
+   "ficheiro": "ramon/Classic_Paint",
+   "gestos": {
+    "px_com_tinta": 291275,
+    "sha256": "a24c1bef84eadf2b",
+    "tinta_sum_alfa": 275242.7
+   },
+   "sobre": {
+    "px_com_tinta": 365536,
+    "sha256": "ae846280a6b44fb1",
+    "tinta_sum_alfa": 361275.3
+   },
+   "tamanhos": {
+    "px_com_tinta": 478819,
+    "sha256": "196242f1c37bcd79",
+    "tinta_sum_alfa": 476175.7
+   }
+  },
+  "ramon/Clouds": {
+   "ficheiro": "ramon/Clouds",
+   "gestos": {
+    "px_com_tinta": 640000,
+    "sha256": "d6f1dbdd7ec76930",
+    "tinta_sum_alfa": 448728.6
+   },
+   "sobre": {
+    "px_com_tinta": 640000,
+    "sha256": "7c2a0a4d2d9ed2d9",
+    "tinta_sum_alfa": 544028.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "f9b305b15ec93d9d",
+    "tinta_sum_alfa": 552740.5
+   }
+  },
+  "ramon/Delayed_": {
+   "ficheiro": "ramon/Delayed_",
+   "gestos": {
+    "px_com_tinta": 608343,
+    "sha256": "a7c2c62bc47c3402",
+    "tinta_sum_alfa": 604740.3
+   },
+   "sobre": {
+    "px_com_tinta": 640000,
+    "sha256": "bcd5680d27b50f4b",
+    "tinta_sum_alfa": 639980.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "31ce09a140b1b457",
+    "tinta_sum_alfa": 639980.5
+   }
+  },
+  "ramon/Dirty_Noise": {
+   "ficheiro": "ramon/Dirty_Noise",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "ramon/Glow_Airbrush": {
+   "ficheiro": "ramon/Glow_Airbrush",
+   "gestos": {
+    "px_com_tinta": 81544,
+    "sha256": "a8658633051a5fbe",
+    "tinta_sum_alfa": 14281.1
+   },
+   "sobre": {
+    "px_com_tinta": 80280,
+    "sha256": "264770e1d315b5ad",
+    "tinta_sum_alfa": 18294.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 90620,
+    "sha256": "3daa10273aee1832",
+    "tinta_sum_alfa": 21045.0
+   }
+  },
+  "ramon/Grain": {
+   "ficheiro": "ramon/Grain",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "ramon/Hard_Eraser": {
+   "ficheiro": "ramon/Hard_Eraser",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "ramon/Knife": {
+   "ficheiro": "ramon/Knife",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "ramon/Marker": {
+   "ficheiro": "ramon/Marker",
+   "gestos": {
+    "px_com_tinta": 144052,
+    "sha256": "e47d7d0d887af214",
+    "tinta_sum_alfa": 108814.5
+   },
+   "sobre": {
+    "px_com_tinta": 184296,
+    "sha256": "dcb25c476400993e",
+    "tinta_sum_alfa": 142010.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 228156,
+    "sha256": "a6d71fb7ca43208a",
+    "tinta_sum_alfa": 172352.7
+   }
+  },
+  "ramon/P._Shade": {
+   "ficheiro": "ramon/P._Shade",
+   "gestos": {
+    "px_com_tinta": 483191,
+    "sha256": "33b2d3980ede47da",
+    "tinta_sum_alfa": 145349.8
+   },
+   "sobre": {
+    "px_com_tinta": 510217,
+    "sha256": "41ef07f59ea68b5b",
+    "tinta_sum_alfa": 213414.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 548494,
+    "sha256": "43723249bbe05058",
+    "tinta_sum_alfa": 204194.9
+   }
+  },
+  "ramon/Pastel_1": {
+   "ficheiro": "ramon/Pastel_1",
+   "gestos": {
+    "px_com_tinta": 635517,
+    "sha256": "cdadf118bc6d18ce",
+    "tinta_sum_alfa": 353796.1
+   },
+   "sobre": {
+    "px_com_tinta": 639662,
+    "sha256": "ab26a79c563b23ff",
+    "tinta_sum_alfa": 449500.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "d70628c214d8d186",
+    "tinta_sum_alfa": 488249.6
+   }
+  },
+  "ramon/Pen": {
+   "ficheiro": "ramon/Pen",
+   "gestos": {
+    "px_com_tinta": 129725,
+    "sha256": "6e685f00a9db33d4",
+    "tinta_sum_alfa": 109473.0
+   },
+   "sobre": {
+    "px_com_tinta": 150322,
+    "sha256": "cff7a2cd38a8177c",
+    "tinta_sum_alfa": 133968.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 192778,
+    "sha256": "eec548cf42c352a8",
+    "tinta_sum_alfa": 170918.0
+   }
+  },
+  "ramon/PenBrush": {
+   "ficheiro": "ramon/PenBrush",
+   "gestos": {
+    "px_com_tinta": 614769,
+    "sha256": "f3bec925e81b715f",
+    "tinta_sum_alfa": 611378.1
+   },
+   "sobre": {
+    "px_com_tinta": 625569,
+    "sha256": "0083ef3d4ca6f940",
+    "tinta_sum_alfa": 618789.6
+   },
+   "tamanhos": {
+    "px_com_tinta": 640000,
+    "sha256": "8d8a2a4ba735ea9b",
+    "tinta_sum_alfa": 639916.6
+   }
+  },
+  "ramon/RS_blendOP": {
+   "ficheiro": "ramon/RS_blendOP",
+   "gestos": {
+    "px_com_tinta": 73505,
+    "sha256": "9f8f95eb2cd5d8a1",
+    "tinta_sum_alfa": 54212.5
+   },
+   "sobre": {
+    "px_com_tinta": 91676,
+    "sha256": "9c89b6ac56e039bb",
+    "tinta_sum_alfa": 76499.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 101156,
+    "sha256": "c5e6148f96af0f62",
+    "tinta_sum_alfa": 83358.8
+   }
+  },
+  "ramon/Round": {
+   "ficheiro": "ramon/Round",
+   "gestos": {
+    "px_com_tinta": 222955,
+    "sha256": "2152bd17cd0c2d17",
+    "tinta_sum_alfa": 80704.3
+   },
+   "sobre": {
+    "px_com_tinta": 241123,
+    "sha256": "4d84afe58c9d81c0",
+    "tinta_sum_alfa": 110640.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 288448,
+    "sha256": "531828a0a8c46ec2",
+    "tinta_sum_alfa": 117456.5
+   }
+  },
+  "ramon/Round_Bl": {
+   "ficheiro": "ramon/Round_Bl",
+   "gestos": {
+    "px_com_tinta": 220867,
+    "sha256": "4c371c5e1f4d0f4d",
+    "tinta_sum_alfa": 197314.3
+   },
+   "sobre": {
+    "px_com_tinta": 228130,
+    "sha256": "f15d67a9c37e0886",
+    "tinta_sum_alfa": 215858.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 379966,
+    "sha256": "3b98830f78b7f1a9",
+    "tinta_sum_alfa": 366347.0
+   }
+  },
+  "ramon/Sketch_1": {
+   "ficheiro": "ramon/Sketch_1",
+   "gestos": {
+    "px_com_tinta": 597893,
+    "sha256": "a7b6699b8780213e",
+    "tinta_sum_alfa": 235252.0
+   },
+   "sobre": {
+    "px_com_tinta": 617327,
+    "sha256": "5fd48773adf4ac85",
+    "tinta_sum_alfa": 306510.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 638151,
+    "sha256": "897421bb1c56436e",
+    "tinta_sum_alfa": 389507.0
+   }
+  },
+  "ramon/Smear": {
+   "ficheiro": "ramon/Smear",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "ramon/Soft_Eraser": {
+   "ficheiro": "ramon/Soft_Eraser",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "ramon/Thin_Pen": {
+   "ficheiro": "ramon/Thin_Pen",
+   "gestos": {
+    "px_com_tinta": 96642,
+    "sha256": "bf2d130709b07e2c",
+    "tinta_sum_alfa": 67652.3
+   },
+   "sobre": {
+    "px_com_tinta": 111366,
+    "sha256": "eddc427426eeea0b",
+    "tinta_sum_alfa": 86088.3
+   },
+   "tamanhos": {
+    "px_com_tinta": 137202,
+    "sha256": "7e0d6e97f32980e6",
+    "tinta_sum_alfa": 105674.8
+   }
+  },
+  "ramon/Wet_Direction": {
+   "ficheiro": "ramon/Wet_Direction",
+   "gestos": {
+    "px_com_tinta": 573601,
+    "sha256": "aeb71b78b5a258cc",
+    "tinta_sum_alfa": 311487.5
+   },
+   "sobre": {
+    "px_com_tinta": 603257,
+    "sha256": "e03797b0c1627b70",
+    "tinta_sum_alfa": 428512.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 639789,
+    "sha256": "06a80609b80359b1",
+    "tinta_sum_alfa": 355162.6
+   }
+  },
+  "ramon/wet_round": {
+   "ficheiro": "ramon/wet_round",
+   "gestos": {
+    "px_com_tinta": 157546,
+    "sha256": "9c5fdc4d32b0eb22",
+    "tinta_sum_alfa": 144509.2
+   },
+   "sobre": {
+    "px_com_tinta": 194658,
+    "sha256": "06b922f222778763",
+    "tinta_sum_alfa": 193426.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 240228,
+    "sha256": "016d3635c58dfb1f",
+    "tinta_sum_alfa": 238805.0
+   }
+  },
+  "tanda/acrylic-03-only-water": {
+   "ficheiro": "tanda/acrylic-03-only-water",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "tanda/acrylic-03-paint": {
+   "ficheiro": "tanda/acrylic-03-paint",
+   "gestos": {
+    "px_com_tinta": 173967,
+    "sha256": "1c0683305f2f8d38",
+    "tinta_sum_alfa": 161831.9
+   },
+   "sobre": {
+    "px_com_tinta": 244200,
+    "sha256": "21abfe2390fa32d0",
+    "tinta_sum_alfa": 228066.6
+   },
+   "tamanhos": {
+    "px_com_tinta": 302951,
+    "sha256": "0b740881cd1e5596",
+    "tinta_sum_alfa": 280562.1
+   }
+  },
+  "tanda/acrylic-03-with-water": {
+   "ficheiro": "tanda/acrylic-03-with-water",
+   "gestos": {
+    "px_com_tinta": 188522,
+    "sha256": "97433485e89a3edb",
+    "tinta_sum_alfa": 87956.4
+   },
+   "sobre": {
+    "px_com_tinta": 267115,
+    "sha256": "f81448c49c693303",
+    "tinta_sum_alfa": 131115.3
+   },
+   "tamanhos": {
+    "px_com_tinta": 343225,
+    "sha256": "549804bbf6db3e48",
+    "tinta_sum_alfa": 161533.7
+   }
+  },
+  "tanda/acrylic-04-only-water": {
+   "ficheiro": "tanda/acrylic-04-only-water",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "tanda/acrylic-04-paint": {
+   "ficheiro": "tanda/acrylic-04-paint",
+   "gestos": {
+    "px_com_tinta": 253326,
+    "sha256": "56a64a315fc00f3b",
+    "tinta_sum_alfa": 253290.7
+   },
+   "sobre": {
+    "px_com_tinta": 360724,
+    "sha256": "b1982b8bc22199bf",
+    "tinta_sum_alfa": 360724.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 474628,
+    "sha256": "57b589b677a2bd2c",
+    "tinta_sum_alfa": 474628.0
+   }
+  },
+  "tanda/acrylic-04-with-water": {
+   "ficheiro": "tanda/acrylic-04-with-water",
+   "gestos": {
+    "px_com_tinta": 228806,
+    "sha256": "158bbc7d41c83bfe",
+    "tinta_sum_alfa": 149617.9
+   },
+   "sobre": {
+    "px_com_tinta": 328651,
+    "sha256": "edaab24a06eed2c9",
+    "tinta_sum_alfa": 223347.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 428863,
+    "sha256": "f5827e7d8a509e2a",
+    "tinta_sum_alfa": 275410.3
+   }
+  },
+  "tanda/acrylic-05-only-water": {
+   "ficheiro": "tanda/acrylic-05-only-water",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "tanda/acrylic-05-paint": {
+   "ficheiro": "tanda/acrylic-05-paint",
+   "gestos": {
+    "px_com_tinta": 340156,
+    "sha256": "1c44048ec9962aef",
+    "tinta_sum_alfa": 190332.4
+   },
+   "sobre": {
+    "px_com_tinta": 319870,
+    "sha256": "1315b26d00b2ab23",
+    "tinta_sum_alfa": 185235.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 510334,
+    "sha256": "d88b0623fcb6ec87",
+    "tinta_sum_alfa": 310597.0
+   }
+  },
+  "tanda/acrylic-05-with-water": {
+   "ficheiro": "tanda/acrylic-05-with-water",
+   "gestos": {
+    "px_com_tinta": 286356,
+    "sha256": "b121b951aef689b7",
+    "tinta_sum_alfa": 76104.3
+   },
+   "sobre": {
+    "px_com_tinta": 388948,
+    "sha256": "fe69fdbc481358e0",
+    "tinta_sum_alfa": 99588.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 510707,
+    "sha256": "e34b286f4be1a514",
+    "tinta_sum_alfa": 169004.4
+   }
+  },
+  "tanda/charcoal-01": {
+   "ficheiro": "tanda/charcoal-01",
+   "gestos": {
+    "px_com_tinta": 367823,
+    "sha256": "a77337117928cc5f",
+    "tinta_sum_alfa": 174244.2
+   },
+   "sobre": {
+    "px_com_tinta": 423573,
+    "sha256": "0c0bd26a07463501",
+    "tinta_sum_alfa": 241786.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 464228,
+    "sha256": "3a94b930134f7e08",
+    "tinta_sum_alfa": 244868.3
+   }
+  },
+  "tanda/charcoal-03": {
+   "ficheiro": "tanda/charcoal-03",
+   "gestos": {
+    "px_com_tinta": 355787,
+    "sha256": "c6fc041464ce70aa",
+    "tinta_sum_alfa": 189800.0
+   },
+   "sobre": {
+    "px_com_tinta": 405865,
+    "sha256": "cb12fe346bec6d28",
+    "tinta_sum_alfa": 251392.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 460836,
+    "sha256": "1bc01e65e6f53284",
+    "tinta_sum_alfa": 269966.0
+   }
+  },
+  "tanda/charcoal-04": {
+   "ficheiro": "tanda/charcoal-04",
+   "gestos": {
+    "px_com_tinta": 293980,
+    "sha256": "9d8a7787d0213a38",
+    "tinta_sum_alfa": 130690.2
+   },
+   "sobre": {
+    "px_com_tinta": 351553,
+    "sha256": "ca9bd3967315eb91",
+    "tinta_sum_alfa": 195977.8
+   },
+   "tamanhos": {
+    "px_com_tinta": 418165,
+    "sha256": "143b673a039f8e63",
+    "tinta_sum_alfa": 227286.5
+   }
+  },
+  "tanda/charcoal-blur1": {
+   "ficheiro": "tanda/charcoal-blur1",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "tanda/marker-01": {
+   "ficheiro": "tanda/marker-01",
+   "gestos": {
+    "px_com_tinta": 201191,
+    "sha256": "01a4e0e565b8e813",
+    "tinta_sum_alfa": 180183.0
+   },
+   "sobre": {
+    "px_com_tinta": 244202,
+    "sha256": "f2eb676fb72441aa",
+    "tinta_sum_alfa": 225878.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 318474,
+    "sha256": "298a9e36abc9427e",
+    "tinta_sum_alfa": 301874.2
+   }
+  },
+  "tanda/marker-05": {
+   "ficheiro": "tanda/marker-05",
+   "gestos": {
+    "px_com_tinta": 297571,
+    "sha256": "af8f2a5a78a2ec9d",
+    "tinta_sum_alfa": 241693.2
+   },
+   "sobre": {
+    "px_com_tinta": 365499,
+    "sha256": "f7e63be87896e23a",
+    "tinta_sum_alfa": 334599.3
+   },
+   "tamanhos": {
+    "px_com_tinta": 477403,
+    "sha256": "da52736fd1aa783e",
+    "tinta_sum_alfa": 461015.7
+   }
+  },
+  "tanda/oil-01-clean": {
+   "ficheiro": "tanda/oil-01-clean",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "tanda/oil-01-paint": {
+   "ficheiro": "tanda/oil-01-paint",
+   "gestos": {
+    "px_com_tinta": 260744,
+    "sha256": "6427e56bcf701ed5",
+    "tinta_sum_alfa": 245063.9
+   },
+   "sobre": {
+    "px_com_tinta": 318089,
+    "sha256": "54463eb069801fd9",
+    "tinta_sum_alfa": 304441.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 424995,
+    "sha256": "298908f7cb45c77b",
+    "tinta_sum_alfa": 406166.1
+   }
+  },
+  "tanda/oil-03-clean": {
+   "ficheiro": "tanda/oil-03-clean",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "tanda/oil-03-paint": {
+   "ficheiro": "tanda/oil-03-paint",
+   "gestos": {
+    "px_com_tinta": 208718,
+    "sha256": "8e427b1c24be2150",
+    "tinta_sum_alfa": 197594.2
+   },
+   "sobre": {
+    "px_com_tinta": 254539,
+    "sha256": "d6a8a5003682eb73",
+    "tinta_sum_alfa": 242027.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 345565,
+    "sha256": "cfac930493393c4c",
+    "tinta_sum_alfa": 324899.9
+   }
+  },
+  "tanda/oil-06-clean": {
+   "ficheiro": "tanda/oil-06-clean",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "tanda/oil-06-paint": {
+   "ficheiro": "tanda/oil-06-paint",
+   "gestos": {
+    "px_com_tinta": 324624,
+    "sha256": "30d8f4780d115ace",
+    "tinta_sum_alfa": 184268.7
+   },
+   "sobre": {
+    "px_com_tinta": 414415,
+    "sha256": "7ec02678b5a12e11",
+    "tinta_sum_alfa": 244819.7
+   },
+   "tamanhos": {
+    "px_com_tinta": 494346,
+    "sha256": "9b7dd3876ecac93b",
+    "tinta_sum_alfa": 291197.3
+   }
+  },
+  "tanda/oil-mop": {
+   "ficheiro": "tanda/oil-mop",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "tanda/pencil-2b": {
+   "ficheiro": "tanda/pencil-2b",
+   "gestos": {
+    "px_com_tinta": 220326,
+    "sha256": "4c58d972d7e504b8",
+    "tinta_sum_alfa": 68218.9
+   },
+   "sobre": {
+    "px_com_tinta": 272624,
+    "sha256": "4e91104fd0252c3a",
+    "tinta_sum_alfa": 95969.8
+   },
+   "tamanhos": {
+    "px_com_tinta": 357758,
+    "sha256": "2418b8958cb1d5e2",
+    "tinta_sum_alfa": 106445.0
+   }
+  },
+  "tanda/pencil-8b": {
+   "ficheiro": "tanda/pencil-8b",
+   "gestos": {
+    "px_com_tinta": 82500,
+    "sha256": "6900b98669d0662b",
+    "tinta_sum_alfa": 42976.9
+   },
+   "sobre": {
+    "px_com_tinta": 74702,
+    "sha256": "a446fa50e11d9697",
+    "tinta_sum_alfa": 44021.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 112632,
+    "sha256": "916102a0df279e1f",
+    "tinta_sum_alfa": 65326.1
+   }
+  },
+  "tanda/splatter-02": {
+   "ficheiro": "tanda/splatter-02",
+   "gestos": {
+    "px_com_tinta": 540126,
+    "sha256": "6b8d9cccb5d197fd",
+    "tinta_sum_alfa": 20846.7
+   },
+   "sobre": {
+    "px_com_tinta": 391890,
+    "sha256": "0e7605ca7f624f29",
+    "tinta_sum_alfa": 19219.4
+   },
+   "tamanhos": {
+    "px_com_tinta": 56262,
+    "sha256": "3dd56b6a669d897e",
+    "tinta_sum_alfa": 3742.4
+   }
+  },
+  "tanda/splatter-04": {
+   "ficheiro": "tanda/splatter-04",
+   "gestos": {
+    "px_com_tinta": 189028,
+    "sha256": "c662343684b3e777",
+    "tinta_sum_alfa": 159981.9
+   },
+   "sobre": {
+    "px_com_tinta": 213365,
+    "sha256": "d94c9ed7b10c45d1",
+    "tinta_sum_alfa": 177424.3
+   },
+   "tamanhos": {
+    "px_com_tinta": 281496,
+    "sha256": "752f1e0744b83586",
+    "tinta_sum_alfa": 241544.8
+   }
+  },
+  "tanda/texture-03": {
+   "ficheiro": "tanda/texture-03",
+   "gestos": {
+    "px_com_tinta": 213085,
+    "sha256": "2aeacb7a0c4bc495",
+    "tinta_sum_alfa": 139512.5
+   },
+   "sobre": {
+    "px_com_tinta": 274025,
+    "sha256": "e6d2db199ec07f8c",
+    "tinta_sum_alfa": 233505.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 302363,
+    "sha256": "232269568b83d5f7",
+    "tinta_sum_alfa": 258264.1
+   }
+  },
+  "tanda/texture-06": {
+   "ficheiro": "tanda/texture-06",
+   "gestos": {
+    "px_com_tinta": 112658,
+    "sha256": "c05f3ec3241951fa",
+    "tinta_sum_alfa": 81518.4
+   },
+   "sobre": {
+    "px_com_tinta": 138731,
+    "sha256": "0636e692a500265f",
+    "tinta_sum_alfa": 120955.2
+   },
+   "tamanhos": {
+    "px_com_tinta": 164551,
+    "sha256": "9ff7a6c1cdf20b19",
+    "tinta_sum_alfa": 144402.0
+   }
+  },
+  "tanda/texture-12": {
+   "ficheiro": "tanda/texture-12",
+   "gestos": {
+    "px_com_tinta": 245156,
+    "sha256": "1407fbdcec714321",
+    "tinta_sum_alfa": 169938.7
+   },
+   "sobre": {
+    "px_com_tinta": 289658,
+    "sha256": "40f798bf5ace0c0e",
+    "tinta_sum_alfa": 249793.5
+   },
+   "tamanhos": {
+    "px_com_tinta": 275621,
+    "sha256": "fd405833127ddcaf",
+    "tinta_sum_alfa": 228175.6
+   }
+  },
+  "tanda/water-01": {
+   "ficheiro": "tanda/water-01",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "tanda/water-02": {
+   "ficheiro": "tanda/water-02",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "tanda/water-05": {
+   "ficheiro": "tanda/water-05",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "tanda/water-06": {
+   "ficheiro": "tanda/water-06",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  },
+  "tanda/watercolor-02-paint": {
+   "ficheiro": "tanda/watercolor-02-paint",
+   "gestos": {
+    "px_com_tinta": 327313,
+    "sha256": "eef90ad1c09f7eb1",
+    "tinta_sum_alfa": 18145.5
+   },
+   "sobre": {
+    "px_com_tinta": 481015,
+    "sha256": "28668d974e48e958",
+    "tinta_sum_alfa": 26951.9
+   },
+   "tamanhos": {
+    "px_com_tinta": 529449,
+    "sha256": "858de8eeb07a7fca",
+    "tinta_sum_alfa": 30171.1
+   }
+  },
+  "tanda/watercolor-02-water": {
+   "ficheiro": "tanda/watercolor-02-water",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "sobre": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac",
+    "tinta_sum_alfa": 0.0
+   }
+  }
+ }
+}

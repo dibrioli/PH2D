@@ -589,3 +589,50 @@ origem 1.ª com a distância 0,811 → 0,688; o 8B 340/420, a origem 20.º (0,85
 p95 a pintar Oil Bristle 0,72 · 3,16 · 8,57 ms e 8B 0,51 · 2,40 · 5,60 ms a 5 · 40 · 200 px (≤ 16,7); RSS ≤ 98 MiB.
 Fica (de outra lei, não destas): a rampa 0→1 do óleo esbate em fiapos claros onde o Rebelle começa cheio
 (cobertura 0,69 × 0,83) e o azul sobre o vermelho não puxa o roxo do Rebelle.
+
+### §7.2 — O grão do lápis: o papel preso à tela, o tecto do Size e o grão fino (J2 fecho)
+
+**A lei do §7.1 b-resto SAIU** (revisão da J2): `grao_do_wet` subia o Size do grão `Tiled` até `3·256/D` — o grão
+Tiled é o PAPEL, e a escala dele passava a depender da ponta (um Size 4 forçado até D ≈ 192 px, o Size 1 até 768; dois
+traços de tamanhos diferentes viam papéis diferentes; o slider Size não agia no Wet). O oráculo diz o contrário: o
+grão do Rebelle é o mesmo a todo tamanho. Portão `o_grao_do_lapis::o_grao_e_o_papel_preso_a_tela` (o 8B com Size 4 a 8
+e a 40 px: correlação do perfil 0,97; Size 4 × 8 a 8 px: 0,31). Mutação (a lei no amostrador): 0,15 · 1,00, sangra.
+
+**O tecto do Size** (`TEX_SIZE_MAX`, era 100 sem medição — CLAUDE.md §0.0): o recurso é o PÍXEL. Sob Tiled o período é
+`256 ÷ Size` px e o grão é amostrado uma vez por píxel; a autocorrelação lag-1 do campo amostrado é 0,61 · 0,45 · 0,35 ·
+0,29 · 0,15 a Size 100 · 128 · 160 · 200 · 256, e a lag 2 a 256 ≈ 0 (= a lag 1 a 512): acima de 256 o campo é ruído
+branco e um Size maior só o baralha. ⇒ `TEX_SIZE_MAX = TEX_TILE_BASE_PX` (256); até 100 amostra ao bit.
+
+**O grão dos lápis** (sonda `sonda_o_grao_fino_por_size`, régua `cv_do_recto` = `leis_escala.py::recto` ao bit + a
+autocorrelação a 1 px do colar; oráculo `fixtures/leis_escala_rebelle.json`, + Scratch). Medido em duas réguas que se
+contrariam: o COLAR de contas (cv a 5 · 40 · 200 px) pede o grão fino (o melhor só por ela: Size ~160), o vale da
+TEXTURA da mídia (`cada_preset_parece_a_sua_midia`, resíduo fino) limita a amplitude do fino. Atribuição: o grão sozinho
+(Size 100 → 256) baixa o cv5 só ~10 %; o resto é o portão do papel (célula a célula, branco): o 8B com `paperGate`
+0,65 → 0,3 dá cv5 0,115 → 0,054. Escolha (as duas réguas verdes, sem buraco ≥ 2 colunas): 8B/2B/4B/carvão grão 100,
+HB/2H 64; portão 8B 0,5, 2B 0,52, HB/2H 0,18.
+
+| pincel | cv 5 (Rebelle) antes → agora | cv 40 (Rebelle) antes → agora | ac 5 (Rebelle) antes → agora |
+|---|---|---|---|
+| 8B | 0,176 (0,072) → 0,093 | 0,062 (0,026) → 0,022 | 0,79 (0,50) → 0,54 |
+| HB | 0,170 (0,066) → 0,130 | 0,074 (0,034) → 0,037 | 0,87 (0,24) → 0,78 |
+| 2H | 0,149 (0,061) → 0,116 | 0,048 (0,034) → 0,029 | 0,88 (0,24) → 0,77 |
+| 2B | 0,221 (0,120) → 0,165 | 0,079 (0,057) → 0,053 | 0,72 (0,52) → 0,61 |
+| Colored 4B | 0,181 (0,105) → 0,151 | 0,053 (0,044) → 0,048 | 0,70 (0,57) → 0,56 |
+| Charcoal | 0,197 (0,154) → 0,186 | 0,074 (0,068) → 0,075 | 0,73 (0,51) → 0,63 |
+
+(«antes» = o grão de fábrica sem a lei do diâmetro, o estado que a saída dela deixaria.) Portão
+`o_traco_fino_do_lapis_tem_o_grao_do_rebelle` (cv40 ±35 %, cv5 ≤ 2×, ac5 ≤ +0,6); mutação (grão ≤ 32): sangra.
+`o_traco_fino_do_lapis_nao_abre_falhas` verde sem a lei (buracos 0–1). Exame do 8B (`pranchas/graphite_8b_j2_grao.png`):
+o recto de 5 px sólido como o do Rebelle; régua 416/454; a origem 2.ª (0,518; era 7.ª, 0,669).
+⛔ **Recusas medidas**: o grão ≥ 128 (cv melhor) reprova a Textura da mídia nos duros (HB 10,3 · 2H 9,7 contra 6,2 · 5,0);
+Roughness 0 (menos fino) piora o cv e abre buracos; Grain Depth 0,7/0,5 reprova a Largura; portão ≤ 0,1 com grão fino
+casa o cv5 dos duros (HB 0,065) mas reprova a Largura. **Fica** (dos duros, da J3 no exame da categoria): o cv5 do HB/2H
+~1,9× e o grão a 5 px mais correlacionado (0,78 contra 0,24) — o Rebelle tem DUAS escalas (fino fraco + papel largo, a
+borda ondulada a 200 px) e um Noise só não as dá; o caminho medido é um papel largo armado no preset + grão fino fraco.
+
+**O flake `a_memoria_do_dabber_cabe`** («o processo filho da sonda: NotFound», com o exame ao lado): NÃO é de carga.
+O cargo religa o mesmo `it-<hash>` gravando um ficheiro novo por cima; o `current_exe()` do pai passa a «… (deleted)» e
+o 2.º filho falha (reproduzido: substituir o binário a meio da corrida → NotFound na sonda de raio 1000). Cura:
+re-executar `/proc/self/exe` (o inode que corre — e o MESMO código, não o religado); verde com o binário substituído.
+Mesma espécie, por curar nas suas linhas: `ph2d-navmesh/tests/it/determinismo.rs:54`,
+`ph2d-script/tests/it/a_recarga_e_o_console.rs:340`, `ph2d-board-net/tests/it/dois_processos.rs:19`.

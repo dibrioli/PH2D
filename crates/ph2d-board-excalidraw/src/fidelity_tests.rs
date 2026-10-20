@@ -543,3 +543,6 @@ mod w10;
 
 #[path = "fidelity_w23_tests.rs"]
 mod w23;
+
+#[path = "fidelity_bloco6_tests.rs"]
+mod bloco6;

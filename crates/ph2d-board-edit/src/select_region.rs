@@ -29,7 +29,17 @@ fn meets(a: [f64; 4], b: [f64; 4]) -> bool {
 impl Editor {
     /// O que um laço pelo rasto `trail` apanha em `doc` (a mesma porta do gesto; as sondas e as cenas).
     pub fn lasso_pick(&mut self, doc: &BoardDoc, trail: &[[f64; 2]]) -> Vec<ElementId> {
-        self.inside(doc, Region::Lasso(trail, LASSO_COVER))
+        self.lasso_pick_covering(doc, trail, LASSO_COVER)
+    }
+
+    /// [`Self::lasso_pick`] com outra cobertura (`1.0` = o «contain» do Excalidraw: o gate do oráculo).
+    pub fn lasso_pick_covering(
+        &mut self,
+        doc: &BoardDoc,
+        trail: &[[f64; 2]],
+        cover: f64,
+    ) -> Vec<ElementId> {
+        self.inside(doc, Region::Lasso(trail, cover))
     }
 
     /// ⭐ Os elementos que `region` apanha, já com os grupos deles.

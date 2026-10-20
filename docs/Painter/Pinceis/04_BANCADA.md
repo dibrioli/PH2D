@@ -78,13 +78,72 @@ de cada ponta ÷ a mediana) e o que passa do ponto final, a resposta à pressão
 pressão ÷ as de p ≥ 0,9) e, sobre outra tinta, o VERMELHO por desmistura das absorvâncias (azul × vermelho) em cima
 da faixa e nos 70 px depois (o arrasto), e a cor em cima. As amostras perto de outro traço saem das métricas limpas.
 `compara` lê `<cena>_<A|B>` dos dois lados (`.png`/`.ppm`, com prefixo, ou uma foto por cena para oráculos sem água)
-e escreve a tabela (oráculo → nosso, ✓ dentro de 3 ruídos) e o JSON. O RUÍDO: o da promessa (largura ± 2 px), o do
-P53 (cobertura 0,012), os outros PROVISÓRIOS — e o `compara` mede o do próprio oráculo (o mesmo recto a 40 em três
-cenas: recto_lento · recto_40 · papel) e usa o maior; só vale quando o oráculo tiver as três cenas.
+e escreve a tabela (oráculo → nosso, ✓ dentro de 3 ruídos) e o JSON. O RUÍDO de cada métrica é o MEDIDO no Rebelle
+(§3.1) — e o `compara` mede também o do próprio oráculo (o mesmo recto a 40 em três cenas: recto_lento · recto_40 ·
+papel) e usa o maior; só vale quando o oráculo tiver as três cenas.
 
 A **escala**: com oráculo, a bancada pinta o nosso e o vizinho à largura MEDIDA do oráculo (05 §4.1): escala = a
 largura do `recto_lento` dele ÷ a nossa a escala 1 (Graphite 8B 0,825 — o Rebelle pinta 33 px a «40»; Oil Bristle
 1,05). `PH2D_EXAME_ESCALA=1` força o tamanho nominal.
+
+### §3.1 — O ruído de cada métrica, medido (J2)
+
+[`ferramentas/ruido_regua.py`](ferramentas/ruido_regua.py) → [`matriz/ruido_regua.json`](matriz/ruido_regua.json) (26 s
+com a cache). O método do §4(c): o MESMO gesto pintado duas vezes pelo mesmo preset, |Δ| de cada métrica, sobre os
+**228** presets do Rebelle (as fotos refeitas a 20/10). Os pares que a bateria repete (pontos iguais ao byte, só a
+posição muda): **R1** recto_lento × recto_40 (o da J1; 500 × 880 px) · **R2** recto_40 × papel (880 × 880, outra
+cena) · **V1** cruza_1 × cruza_2 (o vertical sobre as faixas, duas vezes — também a MISTURA, por faixa) · **P** a
+rampa_0_1 × a SUBIDA da rampa_afunila (as duas sobem do início do traço; decil a decil — sim, partilham os decis
+0,1–0,9). A foto B entra quando difere da A ao byte. ⭐ **Controlo de zero:** as 603 cenas com A = B ao byte dão
+medidas IGUAIS em todas as métricas (603/603) — a régua é determinística; o ruído é do pincel, não da medida.
+
+**O modelo.** Para 9 métricas o ruído CRESCE com o nível (a textura: p75 0,20 a 1,2 % → 9,0 a 38 %; a var_local
+×870): uma constante reprovava em cima o que aprovava em baixo. A regra, no script: se o p75 do quartil de CIMA do
+nível passa **3×** o do quartil de BAIXO (3 = a tolerância de 3 ruídos), o ruído é **máx(a, b·|valor do ORÁCULO|)** (a =
+o p75 do quartil de baixo, b = o p75 de |Δ|/nível no resto); senão é a constante = o p75 de todos. O nível é o do
+oráculo: o nosso não alarga a própria tolerância.
+
+| métrica | p75: R1 · R2 · V1 | p50 · p75 · p90 (usados) | p75 baixo → cima do nível | **o ruído (o `RUIDO`; «a · b·nível» = máx(a, b·nível))** | era |
+|---|---|---|---|---|---|
+| largura (px) | 1 · 1 · 1 | 0 · 1 · 2 | 1 @20 → 1 @42 | **1** (3 ruídos ⊃ a promessa ± 2) | 2 |
+| largura50 | 1 · 1 · 1 | 0 · 1 · 3 | 1 → 1 | **1** | — |
+| cobertura | 0,015 · 0,018 · 0,018 | 0,006 · 0,017 · 0,039 | 0,019 @0,23 → 0,007 @0,89 | **0,0168** | 0,012 |
+| opacidade | 0,018 · 0,024 · 0,016 | 0,004 · 0,020 · 0,043 | 0,028 → 0,004 | **0,0196** | 0,02 |
+| rugosidade (px) | 0,26 · 0,21 · 0,29 | 0,08 · 0,25 · 0,68 | 0,041 @0,09 → 0,80 @4,3 | **0,041 · 0,229·nível** | 0,4 |
+| textura (%) | 2,4 · 2,6 · 2,1 | 0,6 · 2,3 · 7,7 | 0,20 @1,2 → 9,0 @38 | **0,196 · 0,21·nível** | 1,0 |
+| var_local | 0,010 · 0,012 · 0,008 | 0,001 · 0,010 · 0,051 | 0,0001 → 0,10 | **0,000116 · 0,392·nível** | 0,01 |
+| cv | 0,014 · 0,019 · 0,011 | 0,004 · 0,016 · 0,043 | 0,0012 @0,002 → 0,051 @0,21 | **0,00122 · 0,29·nível** | 0,012 |
+| periodo_fracao | 0,057 · 0,068 · 0,083 | 0,034 · 0,069 · 0,13 | 0,034 @0,05 → 0,14 @0,25 | **0,034 · 0,565·nível** (entra no `compara`) | — |
+| cor (RGB, euclid.) | 5,2 · 5,5 · 5,2 | 2,0 · 5,3 · 12,6 | — | **5,32** | 6 |
+| pontas_ini | 0,033 · 0,036 · 0,037 | 0 · 0,036 · 0,091 | 0,091 → 0,060 | **0,0357** | 0,12 |
+| pontas_fim | 0,051 · 0,047 · 0,054 | 0,012 · 0,051 · 0,12 | 0,10 → 0,096 | **0,0513** | 0,12 |
+| alem_ini | 0,14 · 0,11 · 0,10 | 0,05 · 0,12 · 0,29 | 0,058 @0,33 → 0,29 @1,36 | **0,058 · 0,153·nível** | 0,15 |
+| alem_fim | 0,20 · 0,12 · 0,10 | 0,05 · 0,15 · 0,37 | 0,099 → 0,28 (2,8×) | **0,146** | 0,15 |
+| perfil | 0,036 · 0,037 · 0,031 | 0,016 · 0,035 · 0,066 | — | **0,0346** | 0,04 |
+| pressao_largura | P 0,051 (0_1 × inteira 0,069 · subida × descida 0,11) | 0,029 · 0,051 · 0,10 | — | **0,0512** | 0,08 |
+| pressao_cobertura | P 0,098 (0,16 · 0,21) | 0,057 · 0,098 · 0,14 | — | **0,0982** | 0,06 |
+| vermelho_em_cima | V1 molhada 0,029 · seca 0,037 | 0,012 · 0,032 · 0,072 | 0,017 @0,03 → 0,083 @0,42 | **0,0168 · 0,149·nível** | 0,05 |
+| vermelho_depois | V1 0,0020 · 0,0016 | 0,0003 · 0,0018 · 0,0059 | 0,00008 → 0,010 | **0,0000758 · 0,239·nível** | 0,03 |
+| cor_em_cima | V1 7,3 · 8,6 | 3,4 · 7,8 · 15,3 | — | **7,81** | 8 |
+
+O que mudou de sentido: as **pontas** ficam 2,4–3,4× mais estritas (o provisório 0,12 deixava passar as pontas de
+cápsula que a revisão cega do Oil Bristle viu, §6.1); a **textura**, a **rugosidade**, o **cv** e a **var_local**
+passam a escalar com o oráculo (um lápis de 6 % de textura tem ruído 1,3 %; um Grunge de 38 %, 8 %); o
+**periodo_fracao** (o carimbo/as riscas REGULARES, também da §6.1) entra na tabela do `compara`. O `periodo` em px
+fica fora: sem fração alta não há período (p75 15 px). A **pressão** mede-se num par que não é idêntico (a afunila
+sobe 1,7× mais depressa): é um tecto do ruído, não o ruído.
+
+O chão da MATRIZ para as famílias que o recto não mede passa a ser medido também (`CHAO_MEDIDO` no
+`exame_matriz.py`): pressão por decil **0,068** (era 0,06) · vermelho **0,0155** (0,03) · razões |r − 1| **0,070**
+(0,05); com ele e as fotos certas a escala foi recalibrada (§4).
+
+| ⛔ Recusa | Medido |
+|---|---|
+| A pressão pela subida × descida da afunila (a mesma pressão, decil a decil) | p75 0,11 · 0,21 = 2× a 0_1 × subida: a descida é a 2.ª metade da carga e a pressão a CAIR — a histerese do pincel, que o `compara` vê no MESMO traço dos dois lados |
+| Uma constante para as métricas que escalam com o nível | textura 0,20 → 9,0 entre os quartis (45×): o p75 global (2,3 %) aprovava um redondo liso (1,2 %) contra um lápis (6 %) e reprovava um Grunge repintado |
+| O nível pelo NOSSO valor (ou a média dos dois) | o pincel com mais grão alargava a própria tolerância |
+| A largura pela promessa (± 2 px) | o ruído medido é 1 px (inteiro: 56–66 % dos pares repetem ao pixel); 3 ruídos = 3 px já contêm a promessa |
+| A cobertura 0,012 (P53: o p90 recto × RÁPIDO de 25 fotos) | recto × rápido não é o mesmo gesto; o repetido dá 0,0168 (p75, 228 presets). O portão Rust `midias_de_fabrica.rs` continua com o dele |
 
 ## §4 — A matriz (`exame_matriz.py`) — ⭐ o achado
 
@@ -124,15 +183,22 @@ dureza do grafite: **2H → H 0,17 · H → HB 0,13 · HB → 2B 0,41 · 2B → 
 cobertura do recto: 0,66 · 0,64 · 0,63 · 0,61 · 0,74 · 0,87 — o 2B é o mais claro e o mais granulado).
 
 **⭐ A LEI** (o que `vizinhos.md` aplica):
-1. **«Claramente longe» = d ≥ 0,596** = o **p10** da distância ao vizinho mais perto dentro do Rebelle, fora da
+1. **«Claramente longe» = d ≥ 0,591** (0,596 a 19/10; recontado a 20/10, abaixo) = o **p10** da distância ao vizinho mais perto dentro do Rebelle, fora da
    família. Porquê: é o menor afastamento que um fabricante profissional dá a dois pincéis que vende como
    DIFERENTES (90 % dos 228 estão mais longe que isto do seu vizinho); fica 1,8 × acima da mediana do ruído do recto
    repintado (0,33). O p10 e não o mínimo: o mínimo do Rebelle são os seus próprios quase-repetidos (Metallic Flat 2 ~
    Round 2, 0,39).
-2. **Uma série graduada entra como FAMÍLIA** (`FAMILIAS` no script; hoje Graphite 2H · HB · 2B · 8B): (i) fora dela,
-   cada membro tem de estar ≥ 0,596 de tudo; (ii) dentro, cada passo entre membros vizinhos ≥ **0,40** — o menor passo
-   da série do Rebelle que a prancha MOSTRA (HB → 2B 0,41; os de 0,13–0,17 não se vêem); (iii) cada membro tem a SUA
+2. **Uma série graduada entra como FAMÍLIA**: (i) fora dela, cada membro tem de estar ≥ o limiar de tudo; (ii)
+   dentro, cada passo ≥ o **passo visível** — o menor passo da série do Rebelle que a prancha MOSTRA, HB → 2B do
+   Graphite Pencil, CONTADO na escala de hoje (0,41 a 19/10; os de 0,13–0,17 não se vêem); (iii) cada membro tem a SUA
    origem como o 1.º do Rebelle (abaixo) — o eixo é o do oráculo, mesmo não monótono.
+   **As famílias saem de uma REGRA** (`chave_de_familia`/`series` no `exame_matriz.py`, J2), a MESMA nos dois lados:
+   o nome sem a **dureza** (2H…8B), sem o **número** do fim («Charcoal 2») e sem a **ponta** (Liner · Round · Flat ·
+   Filbert · Bullet · Chisel · Fan · Wash · Mop · Bright · Oval · Square · Wide) é a BASE; família = (ferramenta, grupo,
+   base) — no Rebelle a pasta `TOOL/Grupo`, na fábrica `WetPainter/<meio>/<grupo>/`. Do nosso lado juntam-se ainda os
+   que têm a ORIGEM na mesma família do Rebelle (série ∪ duplicados ao byte). Dentro: os adjacentes no eixo ordenado
+   (dureza, número) e todos os de outra ponta (a ponta não tem ordem). A regra não move o limiar (0,591 com e sem as
+   pontas; os passos de família do Rebelle: p10 · p50 · p90 = 0,44 · 1,26 · 2,16, n = 112).
 3. **Fidelidade** (a coluna «origem» de `vizinhos.md`): o preset do Rebelle de que o nosso nasce tem de ser o seu
    **1.º entre os 228** (um duplicado ao byte da origem empata com ela). Os nossos são comparados com os vizinhos de
    ORÁCULO na mesma tabela ([`matriz/matriz_oraculos.csv`](matriz/matriz_oraculos.csv): 31 × 262).
@@ -149,6 +215,21 @@ passo **2H → HB = 0,37 é invisível** (como o do Rebelle). **Fidelidade: a or
 Charcoal, Dip Pen, Gouache Flat, Graphite 2H, Ink Brush, Marker Bullet, Wet Flat); mediana da posição 4; os piores:
 Acrylic Round 73.º, Express Oil 58.º, Marker Liner 49.º, Dabber 45.º, Graphite 8B 20.º. No 8B os traços que o afastam da
 origem são os da prancha (§6): a pressão (pontas das rampas, 6 desvios), o recto de 5 px (cobertura 0,32 × 0,80).
+
+**A matriz refeita (J2, 20/10)** — as 32 fotos velhas do Rebelle trocadas (o Dabber lia o Bristle Wide), a fábrica de
+HOJE (`41a48df4b4` + o trabalho em curso da J2 em `crates/`, diff `74be8a06`), o chão medido (§3.1) e a escala
+RECALIBRADA sobre as fotos certas ([`escala.json`](matriz/escala.json); o MAD muda 0,92–1,04× no p10–p90). O limiar
+fica em **0,591** (0,596 a 19/10; só com as fotos novas e a escala velha era 0,560) e o passo visível em **0,406**
+(HB → 2B; o Graphite do Rebelle: 2H→H 0,17 · H→HB 0,13 · HB→2B 0,41 · 2B→4B 0,43 · 4B→8B 0,46). As famílias pela
+regra: **[Graphite 2H · HB · 2B · Colored 4B · Graphite 8B]** (o Colored 4B entra pela origem: o «4B Color» do
+Rebelle é o «4B» ao byte) · **[Marker Bullet · Marker Liner]** · **[Wet Flat · Liner · Round · Wash]**.
+**6 perto** (eram 13), três pares: Soft Pastel ~ Wax Scrape **0,484** · Ink Bullet ~ Marker Bullet **0,490** ·
+Colored 4B ~ Oil Pastel **0,562**. Saíram do «perto»: o Dip Pen (0,730 do Ink Bullet), o Marker Liner (0,684), o
+Square Hard (0,638) e os grafites — o 8B a **0,607** do Oil Pastel, rente ao limiar; os «Graphite ~ Colored 4B» eram
+a MESMA série (hoje passos 2H→HB 0,43 · HB→2B 0,62 · 2B→4B 0,54 · 4B→8B 0,46, todos ≥ 0,406). **Fidelidade: a origem
+é o 1.º em 11 de 26** (Airbrush, Charcoal, Gouache Flat, Graphite 2H e 2B, Marker Bullet, Oil Pastel, Scratch,
+Square Hard, Wax Scrape, Wet Wash); mediana da posição **2** (era 4); os piores: Express Oil 77.º, Acrylic Round
+68.º, Marker Liner 39.º, Dabber 12.º (era 45.º contra a foto errada), Soft Pastel 8.º; Graphite 8B 4.º (era 20.º).
 
 ## §5 — As pranchas
 
@@ -248,14 +329,14 @@ Um processo por tamanho ⇒ o RSS é deste pincel a este tamanho.
 
 ## §8 — Limites e o que fica para as janelas seguintes
 
-- O chão da escala da matriz é o ruído MEDIDO do Rebelle nas famílias do recto; o da pressão, da mistura e das
-  razões continua provisório (0,06 · 0,03 · 0,05): o recto repetido não os mede. Os ruídos da tabela da RÉGUA
-  (`exame_regua.RUIDO`, o ✓/✗ do `compara`) também são os provisórios — trocá-los pelos da tabela (c) é a próxima.
+- O ruído da régua e o chão da matriz são MEDIDOS (§3.1, J2), mas só a 40 px: a bateria não repete o recto de 5 nem
+  o de 200 px (a largura de 1 px a 200 é um chão, não o ruído de lá). A pressão mede-se num par não idêntico (tecto).
 - A fidelidade pela matriz (a origem como 1.º dos 228) compara o NOSSO a escala 1 com o Rebelle ao tamanho dele; o
   exame de um pincel (as pranchas) é à largura medida. A identidade usa a largura relativa ao próprio recto, mais
   uma absoluta.
 - O vector pesa os 5 grupos por igual; não sabe o tamanho de fábrica de cada preset (compara-os à mesma largura e
-  cor, de propósito: o artista escolhe o pincel pelo carácter). As famílias (`FAMILIAS`) escrevem-se à mão.
+  cor, de propósito: o artista escolhe o pincel pelo carácter). As famílias saem de uma REGRA de nomes (§4, lei 2):
+  um nome que não diga a dureza, o número ou a ponta não entra em família nenhuma.
 - A caneta real (inclinação, rotação) não está na bateria (pressão só); o custo usa o rato sintético.
 
 ## ⛔ Recusas MEDIDAS

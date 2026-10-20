@@ -37,16 +37,28 @@ from PIL import Image
 AQUI = os.path.dirname(os.path.abspath(__file__))
 BATERIA = os.path.join(AQUI, "bateria.json")
 
-# O RUÍDO de cada métrica (a diferença que não conta). ⚠️ Provisório onde diz «(a calibrar)»: o `compara` mede o do
-# PRÓPRIO oráculo (o mesmo recto a 40 em três sítios: recto_lento · recto_40 · papel) e usa o maior dos dois.
-RUIDO = {"largura": 2.0,  # ± 2 px: a promessa da largura (05 §4.1)
-         "cobertura": 0.012,  # o p90 recto × rápido das 25 fotos do Rebelle (midias_de_fabrica.rs)
-         "opacidade": 0.02, "rugosidade": 0.4, "textura": 1.0, "var_local": 0.01, "cv": 0.012,  # (a calibrar)
-         "cor": 6.0, "pontas_ini": 0.12, "pontas_fim": 0.12, "alem_ini": 0.15, "alem_fim": 0.15,  # (a calibrar)
-         "perfil": 0.04, "pressao_largura": 0.08, "pressao_cobertura": 0.06,  # (a calibrar)
-         "vermelho_em_cima": 0.05, "vermelho_depois": 0.03, "cor_em_cima": 8.0}  # (a calibrar)
+# O RUÍDO de cada métrica (a diferença que não conta), MEDIDO no Rebelle (04_BANCADA §3.1, `ruido_regua.py`): o mesmo
+# gesto pintado duas vezes pelos 228 presets, o p75. Um número = constante; um par (a, b) = máx(a, b·|o valor do
+# oráculo|) (a métrica cujo ruído cresce com o nível: textura 0,2 a 1 % · 9 a 38 %). O `compara` usa o maior entre
+# este e o do PRÓPRIO oráculo (o mesmo recto a 40 em três sítios: recto_lento · recto_40 · papel).
+RUIDO = {"largura": 1.0, "largura50": 1.0,  # px; 3 ruídos = 3 px ⊃ a promessa ± 2 px (05 §4.1)
+         "cobertura": 0.0168, "opacidade": 0.0196, "rugosidade": (0.0412, 0.229), "textura": (0.196, 0.21),
+         "var_local": (0.000116, 0.392), "cv": (0.00122, 0.29), "periodo_fracao": (0.034, 0.565), "cor": 5.32,
+         "pontas_ini": 0.0357, "pontas_fim": 0.0513, "alem_ini": (0.0579, 0.153), "alem_fim": 0.146,
+         "perfil": 0.0346, "pressao_largura": 0.0512, "pressao_cobertura": 0.0982,
+         "vermelho_em_cima": (0.0168, 0.149), "vermelho_depois": (7.58e-05, 0.239), "cor_em_cima": 7.81}
 ESCALARES = ["largura", "largura50", "cobertura", "opacidade", "rugosidade", "textura", "var_local", "cv",
-             "pontas_ini", "pontas_fim", "alem_ini", "alem_fim"]
+             "periodo_fracao", "pontas_ini", "pontas_fim", "alem_ini", "alem_fim"]
+
+
+def ruido_de(k, oraculo, proprio=None):
+    """O ruído da métrica `k` ao nível do ORÁCULO (o nosso não alarga a própria tolerância)."""
+    r = RUIDO.get(k)
+    if r is None:
+        return None
+    if isinstance(r, tuple):
+        r = max(r[0], r[1] * abs(oraculo)) if isinstance(oraculo, (int, float)) and math.isfinite(oraculo) else r[0]
+    return max(r, (proprio or {}).get(k, 0.0))
 
 
 def le(png):
@@ -163,7 +175,9 @@ def desmistura(rgb, papel, azul, verm):
     return np.where(tot > 0.15, ab[1] / np.maximum(tot, 1e-9), np.nan).reshape(rgb.shape[:-1])
 
 
-def mede_traco(c, rgb, papel, tr, todos, bat_cores):
+def mede_traco(c, rgb, papel, tr, todos, bat_cores, amostras=False):
+    """`amostras`: devolve também, em `_amostras`, as séries por amostra da resposta à pressão (o `ruido_regua.py`
+    parte a rampa que afunila em subida × descida)."""
     q, pr, s, t = densifica(tr["pts"])
     size = tr["size"]
     H = meia_janela(q, size)
@@ -271,6 +285,8 @@ def mede_traco(c, rgb, papel, tr, todos, bat_cores):
             pc.append(float(np.nanmean(serie_cob[sel]) / cl) if sel.sum() > 3 and cl > 0 else float("nan"))
         m["pressao_largura"] = [round(v, 4) for v in pl]
         m["pressao_cobertura"] = [round(v, 4) for v in pc]
+        if amostras:
+            m["_amostras"] = {"pr": pr, "larg25": larg25, "cob": serie_cob, "limpa": limpa, "wl": wl, "cl": cl}
     # sobre outra tinta: os traços-base que este cruza
     azul, verm = bat_cores
     cruz = {}
@@ -377,29 +393,30 @@ def compara(oraculo, nosso, bat):
             med_o[(cena, foto)] = mede(po, cena, bat)
             med_n[(cena, foto)] = mede(pn, cena, bat)
     proprio = ruido_do_oraculo(med_o)
-    ruido = {k: max(v, proprio.get(k, 0.0)) for k, v in RUIDO.items()}
+
+    def item(k, o, n):
+        d = dist_metrica(k, o, n)
+        r = ruido_de(k, o, proprio)
+        return {"oraculo": o, "nosso": n, "dif": d, "ruido": r,
+                "ruidos": abs(d) / r if r and math.isfinite(d) else None}
+
     linhas = []
     for (cena, foto), mo in med_o.items():
         mn = med_n[(cena, foto)]
         for nome, to in mo["tracos"].items():
             tn = mn["tracos"][nome]
-            met = {}
             chaves = [k for k in ESCALARES + ["perfil", "cor", "pressao_largura", "pressao_cobertura"]
                       if k in to or k in tn]
-            for k in chaves:
-                d = dist_metrica(k, to.get(k), tn.get(k))
-                met[k] = {"oraculo": to.get(k), "nosso": tn.get(k), "dif": d,
-                          "ruidos": abs(d) / ruido[k] if k in ruido and math.isfinite(d) else None}
+            met = {k: item(k, to.get(k), tn.get(k)) for k in chaves}
             for base, so in to.get("sobre", {}).items():
                 sn = tn.get("sobre", {}).get(base, {})
                 for k in ("vermelho_em_cima", "vermelho_depois", "cor_em_cima"):
-                    d = dist_metrica(k, so.get(k), sn.get(k))
-                    met[f"{k}:{base}"] = {"oraculo": so.get(k), "nosso": sn.get(k), "dif": d,
-                                          "ruidos": abs(d) / ruido[k] if math.isfinite(d) else None}
+                    met[f"{k}:{base}"] = item(k, so.get(k), sn.get(k))
             linhas.append({"cena": cena, "foto": foto, "traco": nome, "metricas": met,
                            "vazio": {"oraculo": bool(to.get("vazio")), "nosso": bool(tn.get("vazio"))}})
-    return {"oraculo": oraculo, "nosso": nosso, "ruido": ruido, "ruido_do_oraculo": proprio,
-            "fotos": [f"{c}_{f}" for c, f in med_o], "linhas": linhas}
+    return {"oraculo": oraculo, "nosso": nosso, "ruido": {k: list(v) if isinstance(v, tuple) else v
+                                                          for k, v in RUIDO.items()},
+            "ruido_do_oraculo": proprio, "fotos": [f"{c}_{f}" for c, f in med_o], "linhas": linhas}
 
 
 def fmt(v):
@@ -414,14 +431,18 @@ def fmt(v):
     return f"{v:.3g}"
 
 
-TABELA = ["largura", "cobertura", "opacidade", "rugosidade", "textura", "cv", "cor", "pontas_ini", "pontas_fim",
-          "perfil", "pressao_largura", "pressao_cobertura"]
+TABELA = ["largura", "cobertura", "opacidade", "rugosidade", "textura", "cv", "periodo_fracao", "cor", "pontas_ini",
+          "pontas_fim", "perfil", "pressao_largura", "pressao_cobertura"]
 
 
 def tabela(r, so_foto=None):
+    def rr(v):
+        return f"máx({v[0]:.3g}, {v[1]:.3g}·oráculo)" if isinstance(v, list) else f"{v:.3g}"
+
     out = [f"oráculo {r['oraculo']}\nnosso   {r['nosso']}",
-           "ruído usado (o maior entre o provisório e o do próprio oráculo): "
-           + " ".join(f"{k} {v:.3g}" for k, v in r["ruido"].items()), "",
+           "ruído (MEDIDO, 04 §3.1; o maior entre este e o do próprio oráculo): "
+           + " ".join(f"{k} {rr(v)}" for k, v in r["ruido"].items()),
+           "ruído do próprio oráculo: " + " ".join(f"{k} {v:.3g}" for k, v in r["ruido_do_oraculo"].items()), "",
            "✓ = |dif| ≤ 3 ruídos · ✗ = fora · cada célula: oráculo → nosso", ""]
     tot = ok = 0
     for ln in r["linhas"]:

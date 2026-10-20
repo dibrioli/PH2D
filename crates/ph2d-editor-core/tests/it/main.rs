@@ -23,6 +23,7 @@ mod a_coluna_da_especie_mede_a_familia;
 mod a_coluna_vazia_nao_pisca_quando_a_area_cresce;
 mod a_label_that_does_not_fit_is_elided_not_wrapped;
 mod a_label_that_fits_is_never_painted_with_dots;
+mod a_linha_de_escolha_tem_losango_nos_dois_feitios;
 mod a_linha_de_marcar_poe_o_nome_na_coluna_do_nome;
 mod a_list_is_not_a_form;
 mod a_longer_suffix_is_never_shadowed_by_a_shorter_one;

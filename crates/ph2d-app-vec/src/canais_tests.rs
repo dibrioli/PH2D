@@ -128,3 +128,33 @@ fn a_fotografia_ve_o_autorado_e_parado_a_curva_vira_documento() {
     cond.settle();
     assert!(cond.is_empty(), "parado, a curva já é documento");
 }
+
+/// ⭐ Os efeitos VIVOS da entidade (Contour, Offset) publicam-se e a curva conduz-nos — o encaminho
+/// de `canais_efeitos` em `publicar` e `aplicar`. (Nasceu de uma mutação sobrevivente, F24c: apagar
+/// a publicação dos efeitos passava os 16 testes de `canais`.)
+#[test]
+fn os_efeitos_vivos_publicam_se_e_a_curva_os_conduz() {
+    let (mut sim, mut scene, e, mut doc) = cena();
+    let ent = ph2d_ecs::Entity::from_bits(e);
+    sim.world_mut().entity_mut(ent).insert((
+        ph2d_ecs::VecContour {
+            steps: 3,
+            d: 0.1,
+            ..ph2d_ecs::VecContour::default()
+        },
+        ph2d_ecs::VecOffset::new(0.2, 1, 0),
+    ));
+    let dist = k(c::CONTORNO_DISTANCIA, 0, 0);
+    let s = RationalTime::from_seconds;
+    for (t, v) in [(0.0, 0.1), (1.0, 0.5)] {
+        doc.insert_key(e, PropKind::Field(dist), s(t), AnimValue::Float(v), Interp::Linear);
+    }
+    let mut cond = ConducaoVetor::default();
+    publicar(&mut sim, &scene, &[e]);
+    let l = lidos(&sim, e);
+    assert!(l.contains(&(k(c::CONTORNO_PASSOS, 0, 0), 3.0)), "o Contour não foi publicado");
+    assert!(l.contains(&(k(c::OFFSET_JUNCAO, 0, 0), 1.0)), "o Offset não foi publicado");
+    quadro(&mut sim, &mut scene, &mut doc, &mut cond, e, 0.5);
+    let d = sim.world().get::<ph2d_ecs::VecContour>(ent).unwrap().d;
+    assert!((d - 0.3).abs() < 1e-5, "a curva não conduziu o Contour: d = {d}");
+}

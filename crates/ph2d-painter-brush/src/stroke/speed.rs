@@ -247,6 +247,8 @@ impl Stroke {
                     desvio: [c[0] - p[0], c[1] - p[1]],
                     alcance,
                     por_raio: self.spec.jitter_unit == crate::JitterUnit::Brush,
+                    atraves: 0.0,
+                    normal: [0.0, 0.0],
                 });
                 a
             });

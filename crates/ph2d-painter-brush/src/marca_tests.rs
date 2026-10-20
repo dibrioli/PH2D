@@ -285,3 +285,32 @@ fn a_lei_da_velocidade_e_neutra_no_zero() {
     assert!(crate::dynamics::lei_da_velocidade(0.45, 4_800.0) < 0.3);
     assert!(!Dynamics::default().speed_armed());
 }
+
+/// ⭐ **O espalhar ATRAVÉS também é de cada sub-dab da cápsula** (Spacing Continuous, doc 51 §4): cada sub-dab tira
+/// o SEU desvio através, como o traçador faria se pousasse um dab ali — senão todos herdavam o do dab da frente e a
+/// cápsula era uma faixa lisa deslocada (revisão do bloco C). Num recto horizontal, o `y` dos sub-dabs de UMA
+/// cápsula varia (sd ≥ 0,2·D); sem o desvio através, controlo, não varia.
+#[test]
+fn o_espalhar_atraves_e_de_cada_sub_dab_da_capsula() {
+    let sd_dentro = |across: f32| {
+        let mut s = com(|j| j.across = across);
+        s.spray_count = 1;
+        s.jitter = 0.0;
+        s.continuous_spacing = true;
+        s.spacing = 1.5;
+        let d = 2.0 * s.radius_px;
+        let mut sds = Vec::new();
+        for dab in recto(s, 7) {
+            let subs = crate::capsula::sub_dabs(&dab, crate::capsula::sub_passo_px(dab.radius_px));
+            if subs.len() >= 4 {
+                let y: Vec<f32> = subs.iter().map(|x| x.center[1] / d).collect();
+                sds.push(media_sd(&y).1);
+            }
+        }
+        assert!(sds.len() > 5, "o recto tem de pousar cápsulas: {}", sds.len());
+        sds.iter().sum::<f32>() / sds.len() as f32
+    };
+    assert!(sd_dentro(0.0) < 1e-4, "controlo: sem através a cápsula é uma faixa");
+    let v = sd_dentro(1.0);
+    assert!(v >= 0.2, "dentro de uma cápsula o através não varia: sd {v}·D");
+}

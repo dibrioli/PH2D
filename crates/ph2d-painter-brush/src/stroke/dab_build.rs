@@ -136,6 +136,18 @@ impl Stroke {
             })
             .flatten();
         let center = marca.map_or(disco, |m| [disco[0] + m.desvio[0], disco[1] + m.desvio[1]]);
+        // A meia-amplitude do através (em px, do raio deste dab) e a normal: o que cada sub-dab da cápsula sorteia.
+        let atraves = if jitter && marca.is_some() && self.spec.dab_jitter.across > 0.0 {
+            self.spec
+                .dab_jitter
+                .across
+                .clamp(0.0, crate::marca::DabJitter::ACROSS_MAX)
+                * 2.0
+                * radius
+        } else {
+            0.0
+        };
+        let normal = [-self.heading[1], self.heading[0]];
         if marca.is_some_and(|m| m.meia_volta) {
             rotation = crate::heading::rotate(rotation, [-1.0, 0.0]);
         }
@@ -150,10 +162,12 @@ impl Stroke {
             radius
         };
         let ante = self.dab_ante.map(|mut a| {
-            a.salto = (alcance > 0.0).then_some(crate::capsula::Salto {
-                desvio: [disco[0] - thrown[0], disco[1] - thrown[1]],
+            a.salto = (alcance > 0.0 || atraves > 0.0).then_some(crate::capsula::Salto {
+                desvio: [center[0] - thrown[0], center[1] - thrown[1]],
                 alcance,
                 por_raio: self.spec.jitter_unit == JitterUnit::Brush,
+                atraves,
+                normal,
             });
             a
         });

@@ -382,7 +382,8 @@ pub fn sub_dabs(d: &crate::Dab, sub_px: f32) -> Vec<crate::Dab> {
         .collect()
 }
 
-/// O centro de um sub-dab com o SEU Jitter ([`Salto`]): tira o desvio do dab da frente e sorteia outro no disco,
+/// O centro de um sub-dab com o SEU Jitter ([`Salto`]): tira o desvio do dab da frente e sorteia outro no disco (e,
+/// com o espalhar através da L4, outro na normal),
 /// pelo fluxo splitmix do Jitter semeado pelo desvio da frente e pelo múltiplo `m` do sub-passo — determinístico.
 fn salto_do_sub_dab(c: [f32; 2], j: &Salto, m: i64, razao_do_raio: f32) -> [f32; 2] {
     let alcance = if j.por_raio {
@@ -393,10 +394,16 @@ fn salto_do_sub_dab(c: [f32; 2], j: &Salto, m: i64, razao_do_raio: f32) -> [f32;
     let mut rng = (u64::from(j.desvio[0].to_bits()) << 32 | u64::from(j.desvio[1].to_bits()))
         ^ (m as u64).wrapping_mul(0xD1B5_4A32_D192_ED03);
     let (dx, dy) = crate::jitter::disc_sample(&mut rng);
-    [
+    let c = [
         c[0] - j.desvio[0] + dx * alcance,
         c[1] - j.desvio[1] + dy * alcance,
-    ]
+    ];
+    // O espalhar através (L4), do mesmo fluxo e só se o dab da frente o levou: o disco fica ao bit sem ele.
+    if j.atraves <= 0.0 {
+        return c;
+    }
+    let a = (crate::jitter::next_f32(&mut rng) * 2.0 - 1.0) * j.atraves * razao_do_raio;
+    [c[0] + j.normal[0] * a, c[1] + j.normal[1] * a]
 }
 
 /// The per-dab state a capsule interpolates back to ([`Dab::ante`]): what the previous dab of the path
@@ -423,6 +430,11 @@ pub struct Salto {
     pub alcance: f32,
     /// O alcance escala com o raio do dab (`JitterUnit::Brush`); `false` = px de ecrã (`View`).
     pub por_raio: bool,
+    /// ⭐ O espalhar ATRAVÉS do dab da frente (L4, [`crate::marca::DabJitter::across`]): a meia-amplitude, px
+    /// (escala sempre com o raio: é em diâmetros). `0` = sem ele, e o sub-dab sorteia só o disco, ao bit.
+    pub atraves: f32,
+    /// A normal ao traço em que o [`Self::atraves`] se sorteia (unitária).
+    pub normal: [f32; 2],
 }
 
 impl Ante {
@@ -447,6 +459,7 @@ impl Ante {
             rotation: f(self.rotation),
             salto: self.salto.map(|j| Salto {
                 desvio: f(j.desvio),
+                normal: f(j.normal),
                 ..j
             }),
             ..self

@@ -17,7 +17,7 @@ use ph2d_tool_painter::{LINHAS_DA_MAO, MAO_DE_FABRICA, PaintMedia, PainterTool, 
 use ph2d_ui_testkit::MockPanelHost;
 
 fn viewport() -> Rect {
-    Rect::new(0.0, 0.0, 1600.0, 2400.0)
+    Rect::new(0.0, 0.0, 1600.0, 6000.0)
 }
 
 fn no_meio(m: PaintMedia) -> PainterTool {
@@ -105,9 +105,10 @@ fn o_cartao_pen_pinta_as_linhas_que_o_meio_le() {
         let (_, _, rects) = novo(&no_meio(m));
         assert!(rect_of(&rects, ids::PAINTER_PEN_SECTION).is_some(), "{m:?}");
         for (l, id) in LINHAS_DA_MAO.into_iter().zip(ids::PAINTER_PEN_FIELDS) {
+            let auto = no_meio(m).brush_settings().watercolor_shape_auto;
             assert_eq!(
                 rect_of(&rects, id).is_some(),
-                l.lida_por(m),
+                l.lida(m, auto),
                 "{m:?}: a linha {} pintada ⇔ o meio a lê",
                 l.chave()
             );

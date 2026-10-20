@@ -272,11 +272,13 @@ fn fabrica() -> Biblioteca {
     b
 }
 
-/// ⭐ **Os presets do Wet Paint não mudam**: cada um da fábrica, aplicado pela porta dos quatro meios, deixa o
-/// pincel que a porta do Wet deixava (a captura inteira, o mapa do motor e as texturas ao byte), e a captura
-/// dos quatro meios é a do Wet.
+/// **No Wet, a porta dos quatro meios É a do Wet**: cada preset de fábrica, aplicado por `preset_aplicar`, deixa o
+/// pincel que `wet_preset_aplicar` deixa (a captura inteira, o mapa do motor e as texturas ao byte), e a captura
+/// dos quatro meios é a do Wet. ⚠️ Prova a PORTA, não «igual a antes da L1»: essa guarda é a das miniaturas de
+/// fábrica (`a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`, os ficheiros gravados antes, repintados pela porta
+/// nova) e a da cena (`sem_glaze_cada_preset_de_fabrica_pinta_a_cena_de_antes`).
 #[test]
-fn os_presets_do_wet_nao_mudam() {
+fn a_porta_dos_quatro_meios_e_a_do_wet_no_wet() {
     for e in &fabrica().entradas {
         let p = &e.preset;
         if p.parametros.media != nome_do_meio(PaintMedia::WetPaint) {
@@ -483,4 +485,119 @@ fn sonda_custo_da_miniatura_por_meio() {
             .fold(f64::INFINITY, f64::min);
         eprintln!("miniatura {nome}: {ms:.1} ms (mín. de 5)");
     }
+}
+
+// ── A revisão da J2 (20/10): o que a mão diz e o que o meio lê ────────────────────────────────────────
+
+use ph2d_editor_core::Tool;
+use ph2d_tool_painter::Dependente;
+
+/// Um recto inclinado (81°) com as linhas `mao` no cartão Pen, no meio `m`: os pixels e o que o painel esmaece.
+fn deitado(
+    m: PaintMedia,
+    mao: &[(LinhaDaMao, f64)],
+    automatica: bool,
+) -> (Vec<u8>, ph2d_tool_painter::Inercias) {
+    let (w, h) = (200u32, 80u32);
+    let mut t = PainterTool::default();
+    t.set_source(vec![255; (w * h * 4) as usize], w, h);
+    t.set_paint_media(m);
+    if m == PaintMedia::Watercolor && t.brush_settings().watercolor_shape_auto != automatica {
+        t.toggle_brush_watercolor_shape_auto();
+    }
+    t.set_brush_size_px(8.0);
+    t.set_brush_color_srgb8([20, 20, 20]);
+    for &(l, v) in mao {
+        t.set_mao(l, v);
+    }
+    let inercias = t.brush_settings().inercias;
+    let cp = |x: f32, phase| CanvasPointer {
+        pos: [x, 40.0],
+        pressure: 0.3 + 0.7 * (x - 20.0) / 160.0,
+        tilt: [0.9, 0.0],
+        phase,
+    };
+    t.on_canvas_pointer(cp(20.0, PointerPhase::Down));
+    let mut x = 20.0;
+    while x < 180.0 {
+        x += 2.0;
+        t.on_canvas_pointer(cp(x, PointerPhase::Move));
+        t.on_tick(8.0);
+    }
+    t.on_canvas_pointer(cp(x, PointerPhase::Up));
+    for _ in 0..30 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    (t.run_full().0, inercias)
+}
+
+/// ⭐ **A Watercolor com a Shape «Automatic» não lê a pegada deitada** (03_MOTORES §6, doc 47 §6): o carimbo dela é
+/// o redondo próprio (`wet_shape_stamp` só com a Automatic DESLIGADA) — Tilt width/length não mudam a tinta e
+/// esmaecem; com a Automatic desligada agem e acendem.
+#[test]
+fn a_aquarela_automatica_nao_le_a_pegada_deitada() {
+    let pegada = [
+        (LinhaDaMao::Knob(Knob::TiltWidth), 2.0),
+        (LinhaDaMao::Knob(Knob::TiltLength), 3.0),
+    ];
+    let (neutro, _) = deitado(PaintMedia::Watercolor, &[], true);
+    let (com, i) = deitado(PaintMedia::Watercolor, &pegada, true);
+    assert!(com == neutro, "Automatic: a pegada deitada mudou a tinta");
+    assert!(i.inerte(Dependente::PegadaDaAutomatica), "Automatic: as linhas acesas");
+    let (neutro, _) = deitado(PaintMedia::Watercolor, &[], false);
+    let (com, i) = deitado(PaintMedia::Watercolor, &pegada, false);
+    assert!(com != neutro, "sem Automatic a pegada deitada age");
+    assert!(!i.inerte(Dependente::PegadaDaAutomatica));
+}
+
+/// A inclinação→opacidade não acende as linhas da caneta na Watercolor (o pincel é um nos três meios, e a lavagem não
+/// lê a cobertura do dab).
+#[test]
+fn a_opacidade_deitada_nao_acende_a_caneta_na_aquarela() {
+    // Mexida no Digital, a opacidade deitada viaja no pincel para a Watercolor.
+    let mut t = PainterTool::default();
+    t.set_mao(LinhaDaMao::TiltOpacity, 0.5);
+    t.set_paint_media(PaintMedia::Watercolor);
+    assert!(t.brush_settings().inercias.inerte(Dependente::CanetaDePe));
+    let (_, i) = deitado(PaintMedia::Digital, &[(LinhaDaMao::TiltOpacity, 0.5)], true);
+    assert!(!i.inerte(Dependente::CanetaDePe));
+}
+
+/// Sem pressão no tamanho nem na opacidade, a curva do tamanho, o piso, o tecto e a suavização não agem — e
+/// esmaecem; com a pressão no tamanho, agem.
+#[test]
+fn as_linhas_da_pressao_apagam_sem_pressao() {
+    let sem = [(LinhaDaMao::Knob(Knob::PressureSize), 0.0)];
+    let mexe = [
+        (LinhaDaMao::Knob(Knob::PressureSizeCurve), 2.0),
+        (LinhaDaMao::Knob(Knob::PressureFloor), 0.4),
+        (LinhaDaMao::Knob(Knob::PressureCeiling), 0.7),
+        (LinhaDaMao::Knob(Knob::PressureSmoothing), 0.5),
+    ];
+    for m in [PaintMedia::Digital, PaintMedia::Impasto] {
+        let (base, i) = deitado(m, &sem, true);
+        assert!(i.inerte(Dependente::CurvaDoTamanhoSemPressao), "{m:?}");
+        assert!(i.inerte(Dependente::MaoSemPressao), "{m:?}");
+        let todas: Vec<_> = sem.iter().chain(&mexe).copied().collect();
+        assert!(deitado(m, &todas, true).0 == base, "{m:?}: sem pressão as linhas mudaram a tinta");
+        let com = [(LinhaDaMao::Knob(Knob::PressureSize), 0.5)];
+        let (base, i) = deitado(m, &com, true);
+        assert!(!i.inerte(Dependente::CurvaDoTamanhoSemPressao) && !i.inerte(Dependente::MaoSemPressao));
+        let todas: Vec<_> = com.iter().chain(&mexe).copied().collect();
+        assert!(deitado(m, &todas, true).0 != base, "{m:?}: com pressão as linhas agem");
+    }
+}
+
+/// «Base de outro meio só empresta nome e grupo» também no Wet: capturar o pincel molhado sobre um preset Digital
+/// não leva o gesto nem a mão do Digital para o ficheiro.
+#[test]
+fn a_captura_no_wet_sobre_base_de_outro_meio_so_empresta_o_nome() {
+    let digital = ph2d_brush_presets::ler(&std::fs::read(caminho_do_exemplo(0)).unwrap()).unwrap();
+    let mut t = PainterTool::default();
+    t.set_paint_media(PaintMedia::WetPaint);
+    let (p, _) = t.preset_capturar(&digital.parametros);
+    assert_eq!(p.media, nome_do_meio(PaintMedia::WetPaint));
+    assert_eq!((p.name.as_str(), p.group.as_str()), (digital.parametros.name.as_str(), digital.parametros.group.as_str()));
+    assert!(!p.brush.contains_key("stroke_method"), "o gesto do Digital entrou no Wet");
+    assert!(!p.engine.contains_key("tiltOpacity"), "a mão do Digital entrou no Wet");
 }

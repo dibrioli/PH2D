@@ -78,7 +78,7 @@ pub(crate) fn paint_pen_section(
     let meio = PaintMedia::from_u8(brush.media);
     let sec = crate::seccoes::seccao_da_chave(ctx.text_system, ROTULOS[0]);
     for (i, l) in LINHAS_DA_MAO.into_iter().enumerate() {
-        if !l.lida_por(meio) {
+        if !l.lida(meio, brush.watercolor_shape_auto) {
             continue;
         }
         if ids::PAINTER_PEN_FIELDS[i] == ids::PAINTER_PEN_ROTATION {

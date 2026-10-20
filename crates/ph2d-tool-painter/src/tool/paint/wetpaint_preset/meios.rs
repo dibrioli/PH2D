@@ -269,6 +269,13 @@ impl PainterTool {
     #[must_use]
     pub fn preset_capturar(&self, base: &Parametros) -> (Parametros, BTreeMap<String, Vec<u8>>) {
         let m = self.paint_media();
+        if m == PaintMedia::WetPaint && meio_do_preset(&base.media) != Some(m) {
+            return self.wet_preset_capturar(&Parametros::novo(
+                nome_do_meio(m),
+                &base.group,
+                &base.name,
+            ));
+        }
         if m == PaintMedia::WetPaint {
             return self.wet_preset_capturar(base);
         }

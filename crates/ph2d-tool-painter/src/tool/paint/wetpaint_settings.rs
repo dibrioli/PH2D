@@ -69,7 +69,23 @@ impl crate::PainterTool {
     #[must_use]
     pub(crate) fn inclinacao_do_pincel(&self) -> ph2d_painter_brush::PenTilt {
         self.mao_do_wet()
-            .map_or(self.paint.brush.pen_tilt, |(_, t)| t)
+            .map_or_else(|| self.inclinacao_dos_antigos(), |(_, t)| t)
+    }
+
+    /// A `PenTilt` do pincel como a lavagem a LÊ: ela não lê a cobertura do dab (`WASH_DEPOSIT_PEAK`, sem
+    /// opacidade deitada) e, com a Shape «Automatic», o carimbo é o redondo dela (`wet_shape_stamp`: a pegada
+    /// só com a Automatic desligada, doc 47 §6) — sem largura, comprimento nem rotação deitados.
+    fn inclinacao_dos_antigos(&self) -> ph2d_painter_brush::PenTilt {
+        let mut t = self.paint.brush.pen_tilt;
+        if self.watercolor_render_active() {
+            t.opacity = 0.0;
+            if self.paint.brush.watercolor_shape_auto {
+                t.width = 1.0;
+                t.length = 1.0;
+                t.rotation = ph2d_painter_brush::DabRotation::None;
+            }
+        }
+        t
     }
 
     /// A mão dos knobs do Wet Paint (`None` fora dele): cada knob da caneta pela lei única do cartão Pen.

@@ -103,6 +103,18 @@ impl LinhaDaMao {
         }
     }
 
+    /// **O pincel de agora lê esta linha?** — [`Self::lida_por`] e, na Watercolor com a Shape «Automatic», a
+    /// rotação NÃO (o carimbo redondo dela não tem para onde rodar; a largura e o comprimento deitados esmaecem,
+    /// `Dependente::PegadaDaAutomatica`). ⚠️ A rotação sai em vez de esmaecer: ela também é inerte noutros
+    /// estados de todos os meios (nada a rodar), e o gate do esmaecido exige a lei EXACTA.
+    #[must_use]
+    pub fn lida(self, m: PaintMedia, automatica: bool) -> bool {
+        self.lida_por(m)
+            && !(m == PaintMedia::Watercolor
+                && automatica
+                && self == Self::Knob(Knob::DabRotation))
+    }
+
     /// **O meio LÊ esta linha?** A Watercolor não lê a cobertura do dab (`WASH_DEPOSIT_PEAK`: a Strength e
     /// a pressão nela não são da lavagem, dono 12/08), e o Wet Paint não tem knob da inclinação→opacidade.
     #[must_use]
@@ -130,7 +142,11 @@ pub(crate) fn escreve(d: &mut Dynamics, t: &mut PenTilt, l: LinhaDaMao, v: f64) 
     let f = v as f32;
     match l {
         // O raio na pressão 0 é `1 − ela` (`0,9` = os 10 % de sempre, ao bit).
-        LinhaDaMao::Knob(Knob::PressureSize) => d.size_min = (1.0 - v) as f32,
+        // `0` desliga o canal (o raio na pressão 0 seria o de 1 — o MESMO `1,0` ao bit, sem rampa).
+        LinhaDaMao::Knob(Knob::PressureSize) => {
+            d.size_pressure = v > 0.0;
+            d.size_min = (1.0 - v) as f32;
+        }
         LinhaDaMao::Knob(Knob::PressureSizeCurve) => d.size_curve = f,
         // Acima de 0 a tinta do dab segue a pressão (o Flat do Rebelle); 0 = a lei de sempre.
         LinhaDaMao::Knob(Knob::PressureOpacity) => {
@@ -237,13 +253,24 @@ pub(crate) fn dinamica_para_json(d: &Dynamics) -> serde_json::Value {
         .into()
 }
 
-/// O inverso de [`dinamica_para_json`]; uma chave ausente (uma macro de antes da L2) não mexe.
+/// O inverso de [`dinamica_para_json`]. Uma chave ausente (uma macro de antes da L2) é a de FÁBRICA, nunca a mão
+/// de agora: a macro toca o que gravou.
 pub(crate) fn dinamica_de_json(d: &mut Dynamics, v: &serde_json::Value) {
+    let fab = de_fabrica().0;
+    *d = Dynamics {
+        pen: ph2d_painter_brush::Pen {
+            tilt: d.pen.tilt,
+            ..fab.pen
+        },
+        ..fab
+    };
     let mut t = PenTilt::default();
     for l in LINHAS_DA_MAO.into_iter().filter(|l| da_pressao(*l)) {
-        if let Some(x) = v.get(l.chave()).and_then(serde_json::Value::as_f64) {
-            escreve(d, &mut t, l, l.limpa(x));
-        }
+        let x = v
+            .get(l.chave())
+            .and_then(serde_json::Value::as_f64)
+            .unwrap_or_else(|| l.omissao());
+        escreve(d, &mut t, l, l.limpa(x));
     }
 }
 
@@ -381,7 +408,13 @@ mod tests {
                 t.set_mao(LinhaDaMao::Knob(k), v);
             }
             let (d, w) = (t.dinamica_do_traco(), wet.dinamica_do_traco());
-            assert_eq!(t.inclinacao_do_pincel(), wet.inclinacao_do_pincel(), "{m:?}");
+            let (mut ti, wi) = (t.inclinacao_do_pincel(), wet.inclinacao_do_pincel());
+            if m == PaintMedia::Watercolor {
+                // A Shape «Automatic» (a de fábrica da Watercolor) não lê a pegada deitada.
+                assert_eq!((ti.width, ti.length, ti.rotation), (1.0, 1.0, DabRotation::None));
+                (ti.width, ti.length, ti.rotation) = (wi.width, wi.length, wi.rotation);
+            }
+            assert_eq!(ti, wi, "{m:?}");
             assert_eq!((d.size_min, d.size_curve, d.pen), (w.size_min, w.size_curve, w.pen), "{m:?}");
             if m == PaintMedia::Watercolor {
                 assert!(!d.strength_pressure, "a Watercolor não lê a opacidade do dab");
@@ -389,6 +422,29 @@ mod tests {
                 assert_eq!(d, w, "{m:?}");
             }
         }
+    }
+
+    /// Uma MACRO gravada antes da L2 (sem a chave `mao`, e a `pen_tilt` sem `opacity`) toca com a mão de FÁBRICA,
+    /// nunca com a de agora.
+    #[test]
+    fn uma_macro_sem_a_mao_volta_a_mao_de_fabrica() {
+        let mut d = Dynamics::default();
+        let mut t = PenTilt::default();
+        for l in LINHAS_DA_MAO {
+            let (lo, hi, _) = l.faixa();
+            escreve(&mut d, &mut t, l, lo + (hi - lo) * 0.3);
+        }
+        dinamica_de_json(&mut d, &serde_json::Value::Null);
+        assert_eq!(d, Dynamics::default());
+        let mut b = ph2d_painter_brush::BrushSpec::default();
+        b.pen_tilt.opacity = 0.7;
+        let mut m = super::super::wetpaint_preset::json::pincel_para_json(&b, &["pen_tilt"]);
+        m.get_mut("pen_tilt")
+            .and_then(serde_json::Value::as_object_mut)
+            .unwrap()
+            .remove("opacity");
+        let lida = super::super::wetpaint_preset::json::pincel_de_json(&m, &["pen_tilt"], b);
+        assert_eq!(lida.pen_tilt.opacity, 0.0, "a pen_tilt antiga não traz a opacidade de agora");
     }
 
     /// Ler e voltar a escrever cada linha não muda um bit dos campos (o painel e o preset leem por [`le`]).

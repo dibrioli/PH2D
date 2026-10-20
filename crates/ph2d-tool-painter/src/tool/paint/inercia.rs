@@ -38,10 +38,13 @@ pub enum Dependente {
     TexturaSemForma,
     CurvaSemOpacidade,
     CanetaDePe,
+    PegadaDaAutomatica,
+    CurvaDoTamanhoSemPressao,
+    MaoSemPressao,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 24] = [
+    pub const TODOS: [Dependente; 27] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -66,6 +69,9 @@ impl Dependente {
         Dependente::TexturaSemForma,
         Dependente::CurvaSemOpacidade,
         Dependente::CanetaDePe,
+        Dependente::PegadaDaAutomatica,
+        Dependente::CurvaDoTamanhoSemPressao,
+        Dependente::MaoSemPressao,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -109,6 +115,13 @@ impl Dependente {
                 ids::PAINTER_PEN_FIELDS[10],
                 ids::PAINTER_PEN_FIELDS[14],
             ],
+            Dependente::PegadaDaAutomatica => &[ids::PAINTER_PEN_FIELDS[11], ids::PAINTER_PEN_FIELDS[12]],
+            Dependente::CurvaDoTamanhoSemPressao => &[ids::PAINTER_PEN_FIELDS[1]],
+            Dependente::MaoSemPressao => &[
+                ids::PAINTER_PEN_FIELDS[4],
+                ids::PAINTER_PEN_FIELDS[5],
+                ids::PAINTER_PEN_FIELDS[6],
+            ],
         }
     }
 
@@ -143,6 +156,9 @@ impl Dependente {
             }
             Dependente::CurvaSemOpacidade => "panel.painter_layers.inerte.pressure_opacity_on",
             Dependente::CanetaDePe => "panel.painter_layers.inerte.tilt_law_on",
+            Dependente::PegadaDaAutomatica => "panel.painter_layers.inerte.shape_automatic_off",
+            Dependente::CurvaDoTamanhoSemPressao => "panel.painter_layers.inerte.pressure_size_on",
+            Dependente::MaoSemPressao => "panel.painter_layers.inerte.pressure_on",
         }
     }
 
@@ -397,6 +413,21 @@ impl PainterTool {
             (Dependente::CanetaDePe, {
                 let t = self.inclinacao_do_pincel();
                 !t.active() && t.opacity <= 0.0
+            }),
+            // A Watercolor com a Shape «Automatic» não lê a pegada deitada (`inclinacao_dos_antigos`).
+            (
+                Dependente::PegadaDaAutomatica,
+                aquarela && b.watercolor_shape_auto,
+            ),
+            // Sem pressão no tamanho (nem na opacidade) a curva dele (e o piso, o tecto, a suavização da mão)
+            // não têm canal que leia a pressão. Só nos meios antigos: no Wet a pressão chega também ao fluido.
+            (Dependente::CurvaDoTamanhoSemPressao, {
+                let d = self.dinamica_do_traco();
+                !agua && (!d.size_pressure || d.size_min >= 1.0)
+            }),
+            (Dependente::MaoSemPressao, {
+                let d = self.dinamica_do_traco();
+                !agua && (!d.size_pressure || d.size_min >= 1.0) && !d.strength_pressure
             }),
         ];
         Inercias {

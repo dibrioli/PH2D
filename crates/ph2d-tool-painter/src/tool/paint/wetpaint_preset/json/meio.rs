@@ -122,20 +122,24 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "accumulate" => b.accumulate = booleano(v, b.accumulate),
         "airbrush_rate_s" => b.airbrush_rate_s = f(v, b.airbrush_rate_s),
         "space_attenuation" => b.space_attenuation = booleano(v, b.space_attenuation),
-        "pen_tilt" => {
+        // Campo ausente = o pincel de `b` (a lei do módulo); campo PRESENTE com uma sub-chave ausente (gravado
+        // antes dela, a `opacity` da L2) = a de fábrica dessa sub-chave, nunca a de agora.
+        "pen_tilt" if v.is_some() => {
+            let fab = ph2d_painter_brush::PenTilt::default();
             let t = &mut b.pen_tilt;
             let c = |k: &str| v.and_then(|v| v.get(k));
-            if let Some(r) = c("rotation").and_then(Value::as_f64) {
-                t.rotation = ph2d_painter_brush::DabRotation::from_index(r);
-            }
-            t.start_deg = f(c("start_deg"), t.start_deg);
-            t.full_deg = f(c("full_deg"), t.full_deg);
-            t.width = f(c("width"), t.width);
-            t.length = f(c("length"), t.length);
-            t.smooth = f(c("smooth"), t.smooth);
-            t.lag_px = f(c("lag_px"), t.lag_px);
-            t.opacity = f(c("opacity"), t.opacity);
+            t.rotation = c("rotation")
+                .and_then(Value::as_f64)
+                .map_or(fab.rotation, ph2d_painter_brush::DabRotation::from_index);
+            t.start_deg = f(c("start_deg"), fab.start_deg);
+            t.full_deg = f(c("full_deg"), fab.full_deg);
+            t.width = f(c("width"), fab.width);
+            t.length = f(c("length"), fab.length);
+            t.smooth = f(c("smooth"), fab.smooth);
+            t.lag_px = f(c("lag_px"), fab.lag_px);
+            t.opacity = f(c("opacity"), fab.opacity);
         }
+        "pen_tilt" => {}
         outro => unreachable!("campo do pincel sem conversão: {outro}"),
     }
 }

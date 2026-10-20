@@ -114,8 +114,9 @@ fn inertes_com_motivo() -> Vec<Inerte> {
          pilha — já é 1,28× a pilha do Digital, e a ordem entre camadas não existe num fluido que \
          mistura o pigmento",
     ));
-    // O cartão Pen (L2). A rotação do carimbo: o mesmo porquê do Jitter Rotate.
-    for m in [Digital, Watercolor, Impasto] {
+    // O cartão Pen (L2). A rotação do carimbo: o mesmo porquê do Jitter Rotate. (Na Watercolor de fábrica — Shape
+    // «Automatic» — ela nem está no cartão: o carimbo redondo dela não a lê, `LinhaDaMao::lida`.)
+    for m in [Digital, Impasto] {
         v.push((m, PAINTER_PEN_ROTATION, rodar));
     }
     for m in [Digital, Watercolor, Impasto, WetPaint] {

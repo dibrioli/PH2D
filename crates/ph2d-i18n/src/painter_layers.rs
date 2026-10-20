@@ -49,6 +49,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.charge_below_full" => "Acts when Charge is below 100%",
         "panel.painter_layers.inerte.grain_chosen" => "Acts when a Grain is chosen",
         "panel.painter_layers.inerte.pressure_opacity_on" => "Acts when Pressure opacity is above 0",
+        "panel.painter_layers.inerte.pressure_size_on" => "Acts when Pressure size is above 0",
+        "panel.painter_layers.inerte.pressure_on" => "Acts when Pressure size or Pressure opacity is above 0",
+        "panel.painter_layers.inerte.shape_automatic_off" => "Acts when the Shape's Automatic is off",
         "panel.painter_layers.inerte.tilt_law_on" => {
             "Acts when the pen tilt changes the dab: Tilt width, length, smooth or opacity, or Rotation: Pen tilt"
         }

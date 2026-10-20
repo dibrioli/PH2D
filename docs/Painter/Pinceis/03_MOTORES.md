@@ -185,6 +185,13 @@ Mutações (20/10, controlo verde antes, árvore restaurada): o desconhecido cai
 `size_min = 0,95 − v` → `a_mao_de_fabrica…` e `o_neutro_da_mao…` (pelo pincel gravado) SANGRAM; `tiltOpacity` ignorado →
 `a_caneta_deitada…` SANGRA; a aguada sem a família dela → `um_preset_watercolor_volta_ao_bit` SANGRA; o Pen fora do
 `is_param_field` → `seam_pen` SANGRA (fora do `populate` sobrevive: o `paint_num_row` arma o campo).
+Revisão (20/10, curada): a Watercolor com a Shape «Automatic» não lê a pegada deitada (`inclinacao_dos_antigos`:
+largura/comprimento/rotação neutros; as duas linhas esmaecem — `PegadaDaAutomatica` —, a rotação sai do cartão) nem a
+opacidade deitada (que já não acende as linhas da caneta); sem pressão no tamanho nem na opacidade a curva, o piso, o
+tecto e a suavização esmaecem (`CurvaDoTamanhoSemPressao`, `MaoSemPressao`; `pressureSize 0` desliga o canal, ao bit);
+uma macro/`pen_tilt` sem as chaves da L2 volta à mão de FÁBRICA; capturar no Wet sobre base de outro meio só empresta
+nome e grupo; o portão da porta Wet chama-se agora `a_porta_dos_quatro_meios_e_a_do_wet_no_wet` (a guarda «igual a
+antes» é a das miniaturas de fábrica).
 
 **L3 — A ponta que GIRA, com inércia e memória (C38) + barril** (CAP-01). Hoje Follow é instantâneo (L fixo 0,1·diâmetro), recomeça do
 0° a cada traço e o P53 nem o usou (`dab_angle 0`). Rebelle: Flat Oily/Knife Smooth = PEN_ROTATION + `force_rotation_mode`; sem barril a

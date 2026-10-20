@@ -10,7 +10,7 @@ Depois: cada PNG exportada (RGBA) é composta sobre o papel e gravada RGB em fix
 manifesto.json (sha256, px com tinta, origem do preset).
 
 uso: python3 -I krita_bateria.py [--presets "b) Basic-5 Size,c) Pencil-2"] [--passo-ms 10] [--dt-ms 10]
-                                  [--cru DIR] [--sem-fixtures]
+                                  [--cru DIR] [--sem-fixtures] [--base "b) Basic-1"]
 """
 import argparse
 import hashlib
@@ -111,6 +111,7 @@ def main():
     ap.add_argument("--cru", default=os.path.join(PERFIL, "saida"))
     ap.add_argument("--saida", default=os.path.join(AQUI, "..", "fixtures", "krita_bateria"))
     ap.add_argument("--sem-fixtures", action="store_true")
+    ap.add_argument("--base", default="", help="preset das faixas da cena sobre (omissão: o próprio)")
     ap.add_argument("--prazo-s", type=int, default=4 * 3600)
     a = ap.parse_args()
     bateria = os.path.join(AQUI, "bateria.json")
@@ -118,7 +119,8 @@ def main():
     prepara_perfil()
     os.makedirs(a.cru, exist_ok=True)
     job = {"bateria": bateria, "saida": a.cru, "presets": [p for p in a.presets.split(",") if p] or None,
-           "passo_ms": a.passo_ms, "dt_ms": a.dt_ms, "paira": 10}
+           "passo_ms": a.passo_ms, "dt_ms": a.dt_ms, "paira": 10,
+           "base": a.base or None}
     job_path = os.path.join(a.cru, "job.json")
     json.dump(job, open(job_path, "w"), ensure_ascii=False)
     proc, disp = xvfb()
@@ -143,7 +145,7 @@ def main():
                dt_ms=a.dt_ms, krita=subprocess.run(["krita_version"], capture_output=True, text=True).stdout.strip())
     falta = []
     for nome, info in mapa.items():
-        ent = {"ficheiro": info["ficheiro"], "origem": info["origem"]}
+        ent = {"ficheiro": info["ficheiro"], "origem": info["origem"], "base_sobre": a.base or nome}
         for cena in bat["cenas"]:
             cru = os.path.join(a.cru, f"{info['ficheiro']}_{cena['nome']}.png")
             if not os.path.exists(cru):

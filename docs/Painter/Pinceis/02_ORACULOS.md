@@ -15,6 +15,8 @@
 | Corel Painter 2023 | ❌ | — | 0 | (teste de 15 dias) |
 | Photoshop (Creative Cloud) / Fresco | ❌ | — | 0 | exige Adobe ID / Microsoft Store |
 | Procreate | — (só iPad) | documental | 0 | — |
+| **Krita 6.0.4.1** | ✅ | caneta injectada no Qt (`handleTabletEvent`, pressão real) num Xvfb próprio | **432** (144 presets × 3 cenas) | nunca (livre) |
+| **MyPaint 2.0 / libmypaint 1.6.1** | ✅ | a biblioteca ISC ligada por um C nosso (`stroke_to_2`) | **588** (196 `.myb` × 3 cenas) | nunca (livre) |
 
 ## A infra comum dos oráculos sob Wine (`~/Apps/pincel-oraculos/`, fora do repo)
 
@@ -117,3 +119,73 @@ agente fotografa ao mesmo tempo. Fotos por `import -window root` no display da a
   («Over 300 handcrafted brushes»).
 - **Não mede nada:** sem app a correr, nenhuma métrica; a prancha do EXAME de um pincel «estilo Procreate» usa como
   oráculo o pincel equivalente de um app que CORRE (Krita, MyPaint, ArtRage, Rebelle) e o Handbook como lei escrita.
+
+## Krita 6 — ✅ CORRE (o bundle padrão inteiro, 144 presets)
+
+Os 144 são os que um perfil LIMPO carrega com janela (os 137 que o `kritarunner` lista sem janela + 7 do motor
+MyPaint do Krita, `… (mypaint)`).
+
+- **Licença** (`pacman -Qi krita`, 2026-10-19): `krita 6.0.4.1-1.1`, **GPL3** ⇒ só se CORRE; nenhum `.kpp`, ponta ou
+  textura vem para o repo; o fonte não foi lido (as conclusões abaixo são medidas por sonda). Não expira.
+- **Comando:** `python3 -I docs/Painter/Pinceis/ferramentas/krita_bateria.py [--presets "c) Pencil-2,…"]`
+  (lote inteiro ≈ 1 h 45 min, ~45 s por preset, retoma onde parou). Saída e cabeçalho:
+  [`fixtures/krita_bateria/README.md`](fixtures/krita_bateria/README.md).
+- **A porta (medida, por eliminação):**
+
+  | caminho | resultado |
+  |---|---|
+  | `kritarunner -s <script>` (sem janela) | API viva (137 presets listados), mas `openWindow()` dá **SIGSEGV** — sem View não há pincel activo |
+  | `QT_QPA_PLATFORM=offscreen krita` | **SIGSEGV** no arranque |
+  | `Node.paintLine(p1, p2, pressão1, pressão2)` | existe, mas o binding só aceita **`QPoint` inteiro** e cada chamada é um traço NOVO (o espaçamento e a dinâmica recomeçam a cada segmento); `paintPath` não tem pressão ⇒ ⛔ recusado |
+  | `QApplication.sendEvent(canvas, QTabletEvent)` | entregue, **não pinta** (evento não espontâneo; o PyQt6 não expõe `setTimestamp`) |
+  | `xdotool` (rato X real) num Xvfb próprio | **pinta** — mas sem pressão |
+  | ⭐ `QWindowSystemInterface::handleTabletEnterLeaveProximityEvent` + `handleTabletEvent` (QtGui, chamados por `ctypes` de dentro do Krita), passos espaçados por `QTimer` | **pinta, com pressão real** — o mesmo caminho de um tablet: ferramenta de mão livre, sensores, suavização |
+
+  ⚠️ Duas armadilhas medidas: (1) a injecção feita **dentro** de uma chamada síncrona (com `processEvents`) não pinta —
+  nem o `xdotool` — ⇒ o driver é um gerador que devolve o controlo ao laço do Qt entre eventos; (2) os eventos só
+  chegam ao canvas depois do evento de **proximidade**.
+- **Isolamento:** perfil próprio (`XDG_CONFIG/DATA/CACHE_HOME=~/.cache/ph2d-oraculos/krita`; o `kritarc` do dono não é
+  tocado), plugin `ph2dbateria` escrito no perfil (corre `krita_bateria_dentro.py` quando a janela nasce), **Xvfb
+  próprio** a partir de `:87` (os do Wine são `:71–:75`), `DISPLAY`/`WAYLAND_DISPLAY` do dono removidos. Exportação
+  pelo documento (`exportImage`) = sem ruído do ecrã.
+- **O relógio (A×B medido, 5 presets × 3 cenas, contra uma 2.ª corrida igual como controlo):** passo de relógio 2 ms
+  em vez de 10 ms muda o `Ink-2 Fineliner` em 11–17 mil px (controlo: 1,2–2,4 mil); timestamps a 3 ms em vez de 10 ms
+  ficam no ruído do controlo ⇒ **o Krita lê o RELÓGIO de parede, não o timestamp do evento** ⇒ o lote corre em tempo
+  real (10 ms por evento). `Basic-5 Size`, `Airbrush Soft`, `Bristles-2` são byte-idênticos entre corridas; o
+  `Pencil-2` tem aleatório próprio (7–12 mil px de corrida para corrida) ⇒ compara-se por estatística.
+- **Prova:** [`pranchas/oraculo_krita.png`](pranchas/oraculo_krita.png) — `c) Pencil-2` e `f) Bristles-2 Flat Rough`,
+  as 3 cenas.
+- **Mede:** a forma do traço, o espaçamento, a pressão (tamanho/opacidade/fluxo por pressão), a velocidade (relógio),
+  o cruzamento sobre outra cor e a mistura dos pincéis de mistura (`i) Wet…`, `k) Blender…`, `m) RGBA…`) sobre a
+  tinta já pousada. **Não mede:** inclinação/rotação (0), secagem/molhado (o Krita não tem: A = B), o «pousar em
+  movimento», e presets que dependem de outras camadas, selecção ou padrão de clone. Os **23** que não pousam tinta
+  no papel (borrachas, `k) Blender…`, `l) Adjust…`, `v) Clone/Distort…`, `x) Filter…` e 3 outros) saem em branco
+  nas cenas `gestos`/`tamanhos` — é a verdade deles — e na cena `sobre` as faixas vermelhas são pintadas com
+  `b) Basic-1` (`--base`, registado no manifesto) para o misturador/borracha ter onde agir.
+- **Números do lote (2026-10-20):** 144 presets × 3 cenas = **432 PNG**, 0 em falta, 0 falhas; ~45 s por preset
+  (1 h 48 min, um núcleo, Krita em llvmpipe no Xvfb); 56 MB sem perdas.
+
+## MyPaint / libmypaint — ✅ CORRE (os 7 pacotes, 196 pincéis)
+
+- **Licença por ARTEFACTO** (`pacman -Qi`, 2026-10-19): `libmypaint 1.6.1-2.1` **ISC** (o motor — pode-se ligar ou
+  portar, com atribuição) · `mypaint-brushes 2.0.2-2` **CC0** (`/usr/share/licenses/mypaint-brushes/COPYING`; o
+  `deevad/readme.txt` diz «public domain», o `kaerhon_v1/ReadMe.txt` diz «CC0») ⇒ ⭐ **os 196 `.myb` PODEM ser
+  portados** · `mypaint 2.0.1-8.1` **GPL-2.0+** (o app — não é tocado: a porta é a biblioteca). Não expira.
+- **Comando:** `python3 -I docs/Painter/Pinceis/ferramentas/mypaint_bateria.py [--pacotes deevad] [--pincel X.myb]`
+  (lote inteiro 6 min 40 s num núcleo; compila `mypaint_bateria.c` à 1.ª corrida). Saída e cabeçalho:
+  [`fixtures/mypaint_bateria/README.md`](fixtures/mypaint_bateria/README.md).
+- **A porta:** um C nosso liga a lib (`pkg-config libmypaint`) e implementa uma `MyPaintTiledSurface2` própria (a do
+  MyPaint 2.x: pigmento espectral, `paint_mode`) sobre um buffer zerado; `mypaint_brush_stroke_to_2` com os pontos
+  EXACTOS da bateria, a pressão, `dt` 10 ms por evento, raio `ln(size/2)`, cor por `color_h/s/v`. Determinístico
+  (medido: 3 corridas, sha256 iguais; um fio; UM só `MyPaintBrush` por processo — ⛔ um brush novo depois de
+  libertar outro lê estado por iniciar e a cena `sobre` mudava a cada corrida). Camada transparente sobre o papel.
+- ⚠️ **Armadilha medida:** depois de `mypaint_brush_reset` o seguimento lento (`slow_tracking`) parte de (0,0) — a
+  1.ª corrida deu a cada traço um **gancho** apontado ao canto superior esquerdo (o «1» nas verticais da caneta). A
+  cura é a de uma mão real: a caneta **paira** 0,5 s (50 eventos de pressão 0) no 1.º ponto antes de pousar.
+  As outras duas (superfície que nasce com lixo; escala `1<<15`) estão em `docs/_ComoInvestigarApps/01_o_arsenal.md`
+  §2-bis — a superfície própria evita a 1.ª e um `assert` guarda a 2.ª.
+- **Prova:** [`pranchas/oraculo_mypaint.png`](pranchas/oraculo_mypaint.png) — `deevad/2B_pencil` e
+  `tanda/oil-03-paint`, as 3 cenas.
+- **Mede:** o traço exacto de cada `.myb` (dinâmica de pressão, velocidade, aleatório, smudge, pigmento) sobre papel
+  e sobre tinta. **Não mede:** inclinação/rotação (0), secagem (não existe: A = B), o «pousar em movimento» (os
+  pincéis com raio por velocidade, ex. `classic/pen`, fazem uma bolinha no início), e o app (GUI, camadas).

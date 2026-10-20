@@ -6,7 +6,8 @@ Porque não a API: `Node.paintLine` só aceita QPoint inteiro e cada chamada é 
 dinâmica recomeçam em cada segmento); `paintPath` não tem pressão. `QApplication.sendEvent` com QTabletEvent não
 pinta (evento não espontâneo, sem timestamp). Medido 2026-10-19 — 02_ORACULOS.md §Krita.
 
-Trabalho em JSON (PH2D_KRITA_JOB): {"bateria", "saida", "presets": [nomes] | null, "passo_ms", "dt_ms", "paira"}.
+Trabalho em JSON (PH2D_KRITA_JOB): {"bateria", "saida", "presets": [nomes] | null, "passo_ms", "dt_ms", "paira",
+"base": preset das faixas da cena sobre | null = o próprio}.
 Saída: <saida>/<nome_seguro>_<cena>.png (RGBA, o documento exportado) + <saida>/krita_presets.json (nome → ficheiro).
 Retoma: o preset cujas 3 PNG já existem é saltado.
 """
@@ -120,7 +121,9 @@ def pinta_preset(nome, preset):
         yield 50
         for op in cena["ops"]:
             if op["op"] == "pincel":
-                view.setCurrentBrushPreset(preset)  # base = o mesmo preset (bateria.py)
+                # base = o mesmo preset (bateria.py), salvo JOB["base"]: misturadores/borrachas não pousam as faixas
+                base = k.resources("preset").get(JOB.get("base") or "", preset)
+                view.setCurrentBrushPreset(preset if op["quem"] == "preset" else base)
             elif op["op"] == "cor":
                 view.setForeGroundColor(cor(op["rgb"]))
             elif op["op"] == "traco":

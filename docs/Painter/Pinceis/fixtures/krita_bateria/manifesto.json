@@ -1,0 +1,2457 @@
+{
+ "bateria_sha256": "cff23b71a54593d6118b2c1f5f7fe6cd5ed270f3094d53c5a5f3bfa741d914fa",
+ "dt_ms": 10,
+ "falta": [],
+ "krita": "6.0.4.1",
+ "passo_ms": 10,
+ "pinceis": {
+  "a) Eraser Circle": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "a__Eraser_Circle",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "a)_Eraser_Circle.kpp",
+   "sobre": {
+    "px_com_tinta": 102364,
+    "sha256": "82468df93d20b989"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "a) Eraser Small": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "a__Eraser_Small",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "a)_Eraser_Small.kpp",
+   "sobre": {
+    "px_com_tinta": 100132,
+    "sha256": "e04a23023273929c"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "a) Eraser Soft": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "a__Eraser_Soft",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "a)_Eraser_Soft.kpp",
+   "sobre": {
+    "px_com_tinta": 110524,
+    "sha256": "1c01d3f4d3ce153a"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "b) Airbrush Soft": {
+   "base_sobre": "b) Airbrush Soft",
+   "ficheiro": "b__Airbrush_Soft",
+   "gestos": {
+    "px_com_tinta": 156243,
+    "sha256": "353045d43bfa5102"
+   },
+   "origem": "b)_Airbrush_Soft.kpp",
+   "sobre": {
+    "px_com_tinta": 186779,
+    "sha256": "12872a61c9187708"
+   },
+   "tamanhos": {
+    "px_com_tinta": 226764,
+    "sha256": "27d53c093f3b9ab4"
+   }
+  },
+  "b) Basic-1": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "b__Basic-1",
+   "gestos": {
+    "px_com_tinta": 172588,
+    "sha256": "0cc94860c394c71f"
+   },
+   "origem": "b)_Basic-1.kpp",
+   "sobre": {
+    "px_com_tinta": 199985,
+    "sha256": "90c4f6054017aac9"
+   },
+   "tamanhos": {
+    "px_com_tinta": 242844,
+    "sha256": "43850d61308a472c"
+   }
+  },
+  "b) Basic-2 Opacity": {
+   "base_sobre": "b) Basic-2 Opacity",
+   "ficheiro": "b__Basic-2_Opacity",
+   "gestos": {
+    "px_com_tinta": 164962,
+    "sha256": "b56efb6841c34ac6"
+   },
+   "origem": "b)_Basic-2_Opacity.kpp",
+   "sobre": {
+    "px_com_tinta": 192178,
+    "sha256": "b973dccbb0418343"
+   },
+   "tamanhos": {
+    "px_com_tinta": 238715,
+    "sha256": "bf31bd790351e2d8"
+   }
+  },
+  "b) Basic-3 Flow": {
+   "base_sobre": "b) Basic-3 Flow",
+   "ficheiro": "b__Basic-3_Flow",
+   "gestos": {
+    "px_com_tinta": 163836,
+    "sha256": "3ef856c3267a8a2e"
+   },
+   "origem": "b)_Basic-3_Flow.kpp",
+   "sobre": {
+    "px_com_tinta": 192993,
+    "sha256": "ccfb824623969d0c"
+   },
+   "tamanhos": {
+    "px_com_tinta": 238142,
+    "sha256": "b81bec361458a9de"
+   }
+  },
+  "b) Basic-4 Flow Opacity": {
+   "base_sobre": "b) Basic-4 Flow Opacity",
+   "ficheiro": "b__Basic-4_Flow_Opacity",
+   "gestos": {
+    "px_com_tinta": 161148,
+    "sha256": "94e3b0bc0a361bd1"
+   },
+   "origem": "b)_Basic-4_Flow_Opacity.kpp",
+   "sobre": {
+    "px_com_tinta": 193097,
+    "sha256": "158e73f7f87f585e"
+   },
+   "tamanhos": {
+    "px_com_tinta": 238242,
+    "sha256": "aea6090d136008b6"
+   }
+  },
+  "b) Basic-5 Size": {
+   "base_sobre": "b) Basic-5 Size",
+   "ficheiro": "b__Basic-5_Size",
+   "gestos": {
+    "px_com_tinta": 141488,
+    "sha256": "e4d2ed17818fc6eb"
+   },
+   "origem": "b)_Basic-5_Size_default.kpp",
+   "sobre": {
+    "px_com_tinta": 192198,
+    "sha256": "2c9a2fbec77c2bd7"
+   },
+   "tamanhos": {
+    "px_com_tinta": 238745,
+    "sha256": "a777d05816d02b22"
+   }
+  },
+  "b) Basic-5 Size Opacity": {
+   "base_sobre": "b) Basic-5 Size Opacity",
+   "ficheiro": "b__Basic-5_Size_Opacity",
+   "gestos": {
+    "px_com_tinta": 148744,
+    "sha256": "f3e110414c39ddbc"
+   },
+   "origem": "b)_Basic-5_Size_Opacity.kpp",
+   "sobre": {
+    "px_com_tinta": 191327,
+    "sha256": "5e31c06dbe85d7a0"
+   },
+   "tamanhos": {
+    "px_com_tinta": 234417,
+    "sha256": "15a2ab293de837c3"
+   }
+  },
+  "b) Basic-6 Details": {
+   "base_sobre": "b) Basic-6 Details",
+   "ficheiro": "b__Basic-6_Details",
+   "gestos": {
+    "px_com_tinta": 124595,
+    "sha256": "dd2defddeb4d0abf"
+   },
+   "origem": "b)_Basic-6_Details.kpp",
+   "sobre": {
+    "px_com_tinta": 161342,
+    "sha256": "ac1fb2726530b0ef"
+   },
+   "tamanhos": {
+    "px_com_tinta": 190793,
+    "sha256": "9d7abf01c7ddb1ba"
+   }
+  },
+  "c) Pencil 1 Sketch (mypaint)": {
+   "base_sobre": "c) Pencil 1 Sketch (mypaint)",
+   "ficheiro": "c__Pencil_1_Sketch__mypaint_",
+   "gestos": {
+    "px_com_tinta": 549221,
+    "sha256": "5c2ce34a3b78dcc3"
+   },
+   "origem": "c)_Pencil_1_Sketch_(mypaint).myb",
+   "sobre": {
+    "px_com_tinta": 571226,
+    "sha256": "f62c4338a8427110"
+   },
+   "tamanhos": {
+    "px_com_tinta": 581500,
+    "sha256": "8b36eca9a1bb76d7"
+   }
+  },
+  "c) Pencil 2b (mypaint)": {
+   "base_sobre": "c) Pencil 2b (mypaint)",
+   "ficheiro": "c__Pencil_2b__mypaint_",
+   "gestos": {
+    "px_com_tinta": 210972,
+    "sha256": "bce6c085c8d26a37"
+   },
+   "origem": "c)_Pencil_2b_(mypaint).myb",
+   "sobre": {
+    "px_com_tinta": 269572,
+    "sha256": "c913800d857e5e33"
+   },
+   "tamanhos": {
+    "px_com_tinta": 342706,
+    "sha256": "7d48292a1e5b2317"
+   }
+  },
+  "c) Pencil-1 Hard": {
+   "base_sobre": "c) Pencil-1 Hard",
+   "ficheiro": "c__Pencil-1_Hard",
+   "gestos": {
+    "px_com_tinta": 134261,
+    "sha256": "29760373d63e8ae1"
+   },
+   "origem": "c)_Pencil-1_Hard.kpp",
+   "sobre": {
+    "px_com_tinta": 168773,
+    "sha256": "c6ebc1d5239d53d3"
+   },
+   "tamanhos": {
+    "px_com_tinta": 201643,
+    "sha256": "ee25ce49f18b1bed"
+   }
+  },
+  "c) Pencil-2": {
+   "base_sobre": "c) Pencil-2",
+   "ficheiro": "c__Pencil-2",
+   "gestos": {
+    "px_com_tinta": 148804,
+    "sha256": "304face8182997e4"
+   },
+   "origem": "c)_Pencil-2.kpp",
+   "sobre": {
+    "px_com_tinta": 186931,
+    "sha256": "55bfeea542b34e26"
+   },
+   "tamanhos": {
+    "px_com_tinta": 226364,
+    "sha256": "c9468cb101258e60"
+   }
+  },
+  "c) Pencil-3 Large 4B": {
+   "base_sobre": "c) Pencil-3 Large 4B",
+   "ficheiro": "c__Pencil-3_Large_4B",
+   "gestos": {
+    "px_com_tinta": 143822,
+    "sha256": "bffcb6e48caed25b"
+   },
+   "origem": "c)_Pencil-3_Large_4B.kpp",
+   "sobre": {
+    "px_com_tinta": 179901,
+    "sha256": "711dd91071814d20"
+   },
+   "tamanhos": {
+    "px_com_tinta": 214466,
+    "sha256": "7628073b50bbd1fc"
+   }
+  },
+  "c) Pencil-4 Soft": {
+   "base_sobre": "c) Pencil-4 Soft",
+   "ficheiro": "c__Pencil-4_Soft",
+   "gestos": {
+    "px_com_tinta": 97730,
+    "sha256": "c72906587e5e0d1b"
+   },
+   "origem": "c)_Pencil-4_Soft.kpp",
+   "sobre": {
+    "px_com_tinta": 127107,
+    "sha256": "288fc0b8f0dc3bdd"
+   },
+   "tamanhos": {
+    "px_com_tinta": 151297,
+    "sha256": "e76a33b3d3918b24"
+   }
+  },
+  "c) Pencil-5 Tilted": {
+   "base_sobre": "c) Pencil-5 Tilted",
+   "ficheiro": "c__Pencil-5_Tilted",
+   "gestos": {
+    "px_com_tinta": 17830,
+    "sha256": "d8cb064471acd97e"
+   },
+   "origem": "c)_Pencil-5_Tilted.kpp",
+   "sobre": {
+    "px_com_tinta": 19724,
+    "sha256": "c0ee318f50ac51ae"
+   },
+   "tamanhos": {
+    "px_com_tinta": 10722,
+    "sha256": "6042c518b2acfa7c"
+   }
+  },
+  "c) Pencil-6 Quick Shade": {
+   "base_sobre": "c) Pencil-6 Quick Shade",
+   "ficheiro": "c__Pencil-6_Quick_Shade",
+   "gestos": {
+    "px_com_tinta": 104744,
+    "sha256": "811373cb68b8c307"
+   },
+   "origem": "c)_Pencil-6_Quick_Shade.kpp",
+   "sobre": {
+    "px_com_tinta": 127772,
+    "sha256": "12d199e3a0d3a6ba"
+   },
+   "tamanhos": {
+    "px_com_tinta": 146396,
+    "sha256": "b20a26a712b236ba"
+   }
+  },
+  "d) Ink pen (mypaint)": {
+   "base_sobre": "d) Ink pen (mypaint)",
+   "ficheiro": "d__Ink_pen__mypaint_",
+   "gestos": {
+    "px_com_tinta": 158942,
+    "sha256": "9ad42744461fe07f"
+   },
+   "origem": "d)_Ink_pen_(mypaint).myb",
+   "sobre": {
+    "px_com_tinta": 199145,
+    "sha256": "9d8e474ee3910956"
+   },
+   "tamanhos": {
+    "px_com_tinta": 251898,
+    "sha256": "08793ba221c4a70e"
+   }
+  },
+  "d) Ink-1 Precision": {
+   "base_sobre": "d) Ink-1 Precision",
+   "ficheiro": "d__Ink-1_Precision",
+   "gestos": {
+    "px_com_tinta": 158335,
+    "sha256": "684a2d72603028ad"
+   },
+   "origem": "d)_Ink-1_Precision.kpp",
+   "sobre": {
+    "px_com_tinta": 184153,
+    "sha256": "09e8f77cecb8c3f4"
+   },
+   "tamanhos": {
+    "px_com_tinta": 226832,
+    "sha256": "8cd8a28758b279be"
+   }
+  },
+  "d) Ink-2 Fineliner": {
+   "base_sobre": "d) Ink-2 Fineliner",
+   "ficheiro": "d__Ink-2_Fineliner",
+   "gestos": {
+    "px_com_tinta": 155070,
+    "sha256": "6c6f3b4920239e3c"
+   },
+   "origem": "d)_Ink-2_Fineliner.kpp",
+   "sobre": {
+    "px_com_tinta": 187639,
+    "sha256": "b54b19bcda1d4f3c"
+   },
+   "tamanhos": {
+    "px_com_tinta": 235552,
+    "sha256": "65d2149756ef7177"
+   }
+  },
+  "d) Ink-3 Gpen": {
+   "base_sobre": "d) Ink-3 Gpen",
+   "ficheiro": "d__Ink-3_Gpen",
+   "gestos": {
+    "px_com_tinta": 150555,
+    "sha256": "a154cef0e08b6839"
+   },
+   "origem": "d)_Ink-3_Gpen.kpp",
+   "sobre": {
+    "px_com_tinta": 193206,
+    "sha256": "24b621e6dd3aa588"
+   },
+   "tamanhos": {
+    "px_com_tinta": 239213,
+    "sha256": "92acdd3439a24c71"
+   }
+  },
+  "d) Ink-4 Pen Rough": {
+   "base_sobre": "d) Ink-4 Pen Rough",
+   "ficheiro": "d__Ink-4_Pen_Rough",
+   "gestos": {
+    "px_com_tinta": 145036,
+    "sha256": "25fdb34afd4d00e8"
+   },
+   "origem": "d)_Ink-4_Pen_Rough.kpp",
+   "sobre": {
+    "px_com_tinta": 190138,
+    "sha256": "0b0ae831575eb113"
+   },
+   "tamanhos": {
+    "px_com_tinta": 237236,
+    "sha256": "bd2ed43abd8b7493"
+   }
+  },
+  "d) Ink-7 Brush Rough": {
+   "base_sobre": "d) Ink-7 Brush Rough",
+   "ficheiro": "d__Ink-7_Brush_Rough",
+   "gestos": {
+    "px_com_tinta": 147078,
+    "sha256": "536edf3f4bde6d80"
+   },
+   "origem": "d)_Ink-7_Brush_Rough.kpp",
+   "sobre": {
+    "px_com_tinta": 191709,
+    "sha256": "2aac93119f3f9818"
+   },
+   "tamanhos": {
+    "px_com_tinta": 238353,
+    "sha256": "e4ed6a100970168d"
+   }
+  },
+  "d) Ink-8 Sumi-e": {
+   "base_sobre": "d) Ink-8 Sumi-e",
+   "ficheiro": "d__Ink-8_Sumi-e",
+   "gestos": {
+    "px_com_tinta": 145956,
+    "sha256": "982dd63894cc75db"
+   },
+   "origem": "d)_Ink-8_Sumi-e.kpp",
+   "sobre": {
+    "px_com_tinta": 189631,
+    "sha256": "a539ebce5b7d609c"
+   },
+   "tamanhos": {
+    "px_com_tinta": 204536,
+    "sha256": "6022ea846b2c01d8"
+   }
+  },
+  "e) Marker Chisel Smooth": {
+   "base_sobre": "e) Marker Chisel Smooth",
+   "ficheiro": "e__Marker_Chisel_Smooth",
+   "gestos": {
+    "px_com_tinta": 17584,
+    "sha256": "d5db44ed3c448bf3"
+   },
+   "origem": "e)_Marker_Chisel_Smooth.kpp",
+   "sobre": {
+    "px_com_tinta": 21766,
+    "sha256": "6474b13653bb6352"
+   },
+   "tamanhos": {
+    "px_com_tinta": 25058,
+    "sha256": "41e4cdbe02b1aa5f"
+   }
+  },
+  "e) Marker Details": {
+   "base_sobre": "e) Marker Details",
+   "ficheiro": "e__Marker_Details",
+   "gestos": {
+    "px_com_tinta": 151352,
+    "sha256": "02cb953d534af7da"
+   },
+   "origem": "e)_Marker_Details.kpp",
+   "sobre": {
+    "px_com_tinta": 189103,
+    "sha256": "af89734654574983"
+   },
+   "tamanhos": {
+    "px_com_tinta": 229764,
+    "sha256": "9eea2c50a6308108"
+   }
+  },
+  "e) Marker Dry": {
+   "base_sobre": "e) Marker Dry",
+   "ficheiro": "e__Marker_Dry",
+   "gestos": {
+    "px_com_tinta": 115735,
+    "sha256": "869ba4720d88f602"
+   },
+   "origem": "e)_Marker_Dry.kpp",
+   "sobre": {
+    "px_com_tinta": 128246,
+    "sha256": "a9273651fefdd8f3"
+   },
+   "tamanhos": {
+    "px_com_tinta": 120114,
+    "sha256": "814ae086ddf380da"
+   }
+  },
+  "e) Marker Medium (mypaint)": {
+   "base_sobre": "e) Marker Medium (mypaint)",
+   "ficheiro": "e__Marker_Medium__mypaint_",
+   "gestos": {
+    "px_com_tinta": 150325,
+    "sha256": "4dcd7e2e2670b0ba"
+   },
+   "origem": "e)_Marker_Medium_(mypaint).myb",
+   "sobre": {
+    "px_com_tinta": 180468,
+    "sha256": "472134f1bb264802"
+   },
+   "tamanhos": {
+    "px_com_tinta": 217978,
+    "sha256": "c2a01dbbb4822351"
+   }
+  },
+  "e) Marker Plain (mypaint)": {
+   "base_sobre": "e) Marker Plain (mypaint)",
+   "ficheiro": "e__Marker_Plain__mypaint_",
+   "gestos": {
+    "px_com_tinta": 154656,
+    "sha256": "59816a2ae47e4215"
+   },
+   "origem": "e)_Marker_Plain_(mypaint).myb",
+   "sobre": {
+    "px_com_tinta": 183112,
+    "sha256": "e5155f35d0803733"
+   },
+   "tamanhos": {
+    "px_com_tinta": 218096,
+    "sha256": "4b6cd7ce47aa056e"
+   }
+  },
+  "f) Bristles-1 Details": {
+   "base_sobre": "f) Bristles-1 Details",
+   "ficheiro": "f__Bristles-1_Details",
+   "gestos": {
+    "px_com_tinta": 144506,
+    "sha256": "2d332819d72cf02f"
+   },
+   "origem": "f)_Bristles-1_Details.kpp",
+   "sobre": {
+    "px_com_tinta": 184517,
+    "sha256": "0faa4a6d4164ac7e"
+   },
+   "tamanhos": {
+    "px_com_tinta": 224299,
+    "sha256": "cb925f765e5bb73f"
+   }
+  },
+  "f) Bristles-2 Flat Rough": {
+   "base_sobre": "f) Bristles-2 Flat Rough",
+   "ficheiro": "f__Bristles-2_Flat_Rough",
+   "gestos": {
+    "px_com_tinta": 133181,
+    "sha256": "bb1003551d61e904"
+   },
+   "origem": "f)_Bristles-2_Flat_Rough.kpp",
+   "sobre": {
+    "px_com_tinta": 170646,
+    "sha256": "c61d5871db66ceb6"
+   },
+   "tamanhos": {
+    "px_com_tinta": 202211,
+    "sha256": "0d8b03dde6fc37e4"
+   }
+  },
+  "f) Bristles-3 Large Smooth": {
+   "base_sobre": "f) Bristles-3 Large Smooth",
+   "ficheiro": "f__Bristles-3_Large_Smooth",
+   "gestos": {
+    "px_com_tinta": 144115,
+    "sha256": "d5479f5274d6a357"
+   },
+   "origem": "f)_Bristles-3_Large_Smooth.kpp",
+   "sobre": {
+    "px_com_tinta": 179238,
+    "sha256": "56ea43c791406e39"
+   },
+   "tamanhos": {
+    "px_com_tinta": 201226,
+    "sha256": "f229385576ee45d9"
+   }
+  },
+  "f) Bristles-4 Glaze": {
+   "base_sobre": "f) Bristles-4 Glaze",
+   "ficheiro": "f__Bristles-4_Glaze",
+   "gestos": {
+    "px_com_tinta": 108638,
+    "sha256": "3e5f08f74c9eec41"
+   },
+   "origem": "f)_Bristles-4_Glaze.kpp",
+   "sobre": {
+    "px_com_tinta": 125174,
+    "sha256": "0baef8218896c493"
+   },
+   "tamanhos": {
+    "px_com_tinta": 133050,
+    "sha256": "b179eefd3898652f"
+   }
+  },
+  "f) Bristles-5 Flat": {
+   "base_sobre": "f) Bristles-5 Flat",
+   "ficheiro": "f__Bristles-5_Flat",
+   "gestos": {
+    "px_com_tinta": 105579,
+    "sha256": "f1eb5c78ee10b859"
+   },
+   "origem": "f)_Bristles-5_Flat.kpp",
+   "sobre": {
+    "px_com_tinta": 125226,
+    "sha256": "0838a9f81f184062"
+   },
+   "tamanhos": {
+    "px_com_tinta": 108024,
+    "sha256": "e274a4cbd42987d6"
+   }
+  },
+  "f) Charcoal Rock Soft": {
+   "base_sobre": "f) Charcoal Rock Soft",
+   "ficheiro": "f__Charcoal_Rock_Soft",
+   "gestos": {
+    "px_com_tinta": 119741,
+    "sha256": "7da64ff737445c09"
+   },
+   "origem": "f)_Charcoal_Rock_Soft.kpp",
+   "sobre": {
+    "px_com_tinta": 141258,
+    "sha256": "f0576a15d5ba4f31"
+   },
+   "tamanhos": {
+    "px_com_tinta": 155906,
+    "sha256": "187e945c1db67b41"
+   }
+  },
+  "f) Dry Roller": {
+   "base_sobre": "f) Dry Roller",
+   "ficheiro": "f__Dry_Roller",
+   "gestos": {
+    "px_com_tinta": 120019,
+    "sha256": "1165180caa57dd55"
+   },
+   "origem": "f)_Dry_Roller.kpp",
+   "sobre": {
+    "px_com_tinta": 147466,
+    "sha256": "b2c84bc31c7fc16c"
+   },
+   "tamanhos": {
+    "px_com_tinta": 175444,
+    "sha256": "152191def8d117fc"
+   }
+  },
+  "g) Dry Bristles": {
+   "base_sobre": "g) Dry Bristles",
+   "ficheiro": "g__Dry_Bristles",
+   "gestos": {
+    "px_com_tinta": 152394,
+    "sha256": "cf5b990603ff30e1"
+   },
+   "origem": "g)_Dry_Bristles.kpp",
+   "sobre": {
+    "px_com_tinta": 182696,
+    "sha256": "9f6f68bb1bffd929"
+   },
+   "tamanhos": {
+    "px_com_tinta": 218719,
+    "sha256": "de2cff4c37ea7bc1"
+   }
+  },
+  "g) Dry Bristles Eroded": {
+   "base_sobre": "g) Dry Bristles Eroded",
+   "ficheiro": "g__Dry_Bristles_Eroded",
+   "gestos": {
+    "px_com_tinta": 102769,
+    "sha256": "e64a3a7baa1365c4"
+   },
+   "origem": "g)_Dry_Bristles_Eroded.kpp",
+   "sobre": {
+    "px_com_tinta": 129512,
+    "sha256": "2dd6ae35a6adc6d4"
+   },
+   "tamanhos": {
+    "px_com_tinta": 145314,
+    "sha256": "4965c7cb5c8d28a7"
+   }
+  },
+  "g) Dry Brushing": {
+   "base_sobre": "g) Dry Brushing",
+   "ficheiro": "g__Dry_Brushing",
+   "gestos": {
+    "px_com_tinta": 91085,
+    "sha256": "ca664763c59c21bc"
+   },
+   "origem": "g)_Dry_Brushing.kpp",
+   "sobre": {
+    "px_com_tinta": 114815,
+    "sha256": "c1dbe82f45a9b50f"
+   },
+   "tamanhos": {
+    "px_com_tinta": 120514,
+    "sha256": "42a0571b5d89c3f0"
+   }
+  },
+  "g) Dry Textured Creases": {
+   "base_sobre": "g) Dry Textured Creases",
+   "ficheiro": "g__Dry_Textured_Creases",
+   "gestos": {
+    "px_com_tinta": 141904,
+    "sha256": "2a50dd7d2911d01d"
+   },
+   "origem": "g)_Dry_Textured_Creases.kpp",
+   "sobre": {
+    "px_com_tinta": 181111,
+    "sha256": "6edf3105498b20f2"
+   },
+   "tamanhos": {
+    "px_com_tinta": 217764,
+    "sha256": "c98ee725811443fc"
+   }
+  },
+  "h) Chalk Details": {
+   "base_sobre": "h) Chalk Details",
+   "ficheiro": "h__Chalk_Details",
+   "gestos": {
+    "px_com_tinta": 110375,
+    "sha256": "183843bc9fde9e6b"
+   },
+   "origem": "h)_Chalk_Details.kpp",
+   "sobre": {
+    "px_com_tinta": 135638,
+    "sha256": "0a732b77506a68d9"
+   },
+   "tamanhos": {
+    "px_com_tinta": 172497,
+    "sha256": "1b185c56e7dd37e4"
+   }
+  },
+  "h) Chalk Grainy": {
+   "base_sobre": "h) Chalk Grainy",
+   "ficheiro": "h__Chalk_Grainy",
+   "gestos": {
+    "px_com_tinta": 160580,
+    "sha256": "467315daa5937351"
+   },
+   "origem": "h)_Chalk_Grainy.kpp",
+   "sobre": {
+    "px_com_tinta": 191483,
+    "sha256": "857e3e83ed08b10a"
+   },
+   "tamanhos": {
+    "px_com_tinta": 233851,
+    "sha256": "722393436b39fdec"
+   }
+  },
+  "h) Chalk Soft": {
+   "base_sobre": "h) Chalk Soft",
+   "ficheiro": "h__Chalk_Soft",
+   "gestos": {
+    "px_com_tinta": 133858,
+    "sha256": "4dadc0273336104e"
+   },
+   "origem": "h)_Chalk_Soft.kpp",
+   "sobre": {
+    "px_com_tinta": 162572,
+    "sha256": "94c59b5d886c1ac0"
+   },
+   "tamanhos": {
+    "px_com_tinta": 219580,
+    "sha256": "2e7541eb8149fd71"
+   }
+  },
+  "h) Charcoal Pencil Medium": {
+   "base_sobre": "h) Charcoal Pencil Medium",
+   "ficheiro": "h__Charcoal_Pencil_Medium",
+   "gestos": {
+    "px_com_tinta": 128989,
+    "sha256": "f7ed109bdcbb6979"
+   },
+   "origem": "h)_Charcoal_Pencil_Medium.kpp",
+   "sobre": {
+    "px_com_tinta": 163110,
+    "sha256": "b04475931e36dfb2"
+   },
+   "tamanhos": {
+    "px_com_tinta": 199316,
+    "sha256": "4e719f2c89460a1e"
+   }
+  },
+  "h) Charcoal Pencil Thin": {
+   "base_sobre": "h) Charcoal Pencil Thin",
+   "ficheiro": "h__Charcoal_Pencil_Thin",
+   "gestos": {
+    "px_com_tinta": 129062,
+    "sha256": "7165f09143a5a8d3"
+   },
+   "origem": "h)_Charcoal_Pencil_Thin.kpp",
+   "sobre": {
+    "px_com_tinta": 163240,
+    "sha256": "552d53b8eded4e1a"
+   },
+   "tamanhos": {
+    "px_com_tinta": 199086,
+    "sha256": "cc0bfea897981605"
+   }
+  },
+  "h) Charcoal pencil large": {
+   "base_sobre": "h) Charcoal pencil large",
+   "ficheiro": "h__Charcoal_pencil_large",
+   "gestos": {
+    "px_com_tinta": 129078,
+    "sha256": "8e38178de2c9570c"
+   },
+   "origem": "h)_Charcoal_pencil_large.kpp",
+   "sobre": {
+    "px_com_tinta": 162889,
+    "sha256": "b3d083d85819ecd7"
+   },
+   "tamanhos": {
+    "px_com_tinta": 199318,
+    "sha256": "68e9ffa378d334cc"
+   }
+  },
+  "i) Wet Bristles": {
+   "base_sobre": "i) Wet Bristles",
+   "ficheiro": "i__Wet_Bristles",
+   "gestos": {
+    "px_com_tinta": 112230,
+    "sha256": "4bc7b70011d3f9dd"
+   },
+   "origem": "i)_Wet_Bristles.kpp",
+   "sobre": {
+    "px_com_tinta": 141827,
+    "sha256": "b278ff9e7708fbf8"
+   },
+   "tamanhos": {
+    "px_com_tinta": 143396,
+    "sha256": "32fc8f22dfee9b9f"
+   }
+  },
+  "i) Wet Bristles Rough": {
+   "base_sobre": "i) Wet Bristles Rough",
+   "ficheiro": "i__Wet_Bristles_Rough",
+   "gestos": {
+    "px_com_tinta": 143794,
+    "sha256": "ad66ed55020782b5"
+   },
+   "origem": "i)_Wet_Bristles_Rough.kpp",
+   "sobre": {
+    "px_com_tinta": 189381,
+    "sha256": "430759dd1972f722"
+   },
+   "tamanhos": {
+    "px_com_tinta": 224607,
+    "sha256": "ee8ea9515b4d5a1b"
+   }
+  },
+  "i) Wet Circle": {
+   "base_sobre": "i) Wet Circle",
+   "ficheiro": "i__Wet_Circle",
+   "gestos": {
+    "px_com_tinta": 156218,
+    "sha256": "9039312b6887534e"
+   },
+   "origem": "i)_Wet_Circle.kpp",
+   "sobre": {
+    "px_com_tinta": 192676,
+    "sha256": "15353e5a684baf9c"
+   },
+   "tamanhos": {
+    "px_com_tinta": 238472,
+    "sha256": "de624477f53b5cd2"
+   }
+  },
+  "i) Wet Knife": {
+   "base_sobre": "i) Wet Knife",
+   "ficheiro": "i__Wet_Knife",
+   "gestos": {
+    "px_com_tinta": 72893,
+    "sha256": "a8d9f8438f83596f"
+   },
+   "origem": "i)_Wet_Knife.kpp",
+   "sobre": {
+    "px_com_tinta": 89869,
+    "sha256": "bf8564a4b9bf72d8"
+   },
+   "tamanhos": {
+    "px_com_tinta": 48374,
+    "sha256": "cf2aa840e077441b"
+   }
+  },
+  "i) Wet Knife Plus (mypaint)": {
+   "base_sobre": "i) Wet Knife Plus (mypaint)",
+   "ficheiro": "i__Wet_Knife_Plus__mypaint_",
+   "gestos": {
+    "px_com_tinta": 147578,
+    "sha256": "6108b9503c773091"
+   },
+   "origem": "i)_Wet_Knife_Plus_(mypaint).myb",
+   "sobre": {
+    "px_com_tinta": 183876,
+    "sha256": "05b9b22cb9fa4416"
+   },
+   "tamanhos": {
+    "px_com_tinta": 221442,
+    "sha256": "fd0998fe9759bb90"
+   }
+  },
+  "i) Wet Paint": {
+   "base_sobre": "i) Wet Paint",
+   "ficheiro": "i__Wet_Paint",
+   "gestos": {
+    "px_com_tinta": 157397,
+    "sha256": "a1fae2e68bda9752"
+   },
+   "origem": "i)_Wet_Paint.kpp",
+   "sobre": {
+    "px_com_tinta": 191558,
+    "sha256": "bc3a52ca1a82282d"
+   },
+   "tamanhos": {
+    "px_com_tinta": 234216,
+    "sha256": "98a2ee9e2833560b"
+   }
+  },
+  "i) Wet Paint Details": {
+   "base_sobre": "i) Wet Paint Details",
+   "ficheiro": "i__Wet_Paint_Details",
+   "gestos": {
+    "px_com_tinta": 148849,
+    "sha256": "cf186bb765f64a5c"
+   },
+   "origem": "i)_Wet_Paint_Details.kpp",
+   "sobre": {
+    "px_com_tinta": 191980,
+    "sha256": "09bd8286670135c5"
+   },
+   "tamanhos": {
+    "px_com_tinta": 234920,
+    "sha256": "5ac87999fed01dcc"
+   }
+  },
+  "i) Wet Paint Plus (mypaint)": {
+   "base_sobre": "i) Wet Paint Plus (mypaint)",
+   "ficheiro": "i__Wet_Paint_Plus__mypaint_",
+   "gestos": {
+    "px_com_tinta": 155842,
+    "sha256": "5ecdf44f0fe5f00a"
+   },
+   "origem": "i)_Wet_Paint_Plus_(mypaint).myb",
+   "sobre": {
+    "px_com_tinta": 194735,
+    "sha256": "ff04af56558e001e"
+   },
+   "tamanhos": {
+    "px_com_tinta": 239664,
+    "sha256": "00c59b86b783ce0f"
+   }
+  },
+  "i) Wet Smear": {
+   "base_sobre": "i) Wet Smear",
+   "ficheiro": "i__Wet_Smear",
+   "gestos": {
+    "px_com_tinta": 148413,
+    "sha256": "2119187bf50e1cd4"
+   },
+   "origem": "i)_Wet_Smear.kpp",
+   "sobre": {
+    "px_com_tinta": 195609,
+    "sha256": "e40edfdb4e1a2a3d"
+   },
+   "tamanhos": {
+    "px_com_tinta": 239296,
+    "sha256": "4e744a6944dcf69a"
+   }
+  },
+  "i) Wet Textured Soft": {
+   "base_sobre": "i) Wet Textured Soft",
+   "ficheiro": "i__Wet_Textured_Soft",
+   "gestos": {
+    "px_com_tinta": 136638,
+    "sha256": "41d2721dcd016251"
+   },
+   "origem": "i)_Wet_Textured_Soft.kpp",
+   "sobre": {
+    "px_com_tinta": 164482,
+    "sha256": "e1cfeb8dd5941ed2"
+   },
+   "tamanhos": {
+    "px_com_tinta": 203822,
+    "sha256": "cf065e8406b8a580"
+   }
+  },
+  "j) WaterC Basic Lines-Dry": {
+   "base_sobre": "j) WaterC Basic Lines-Dry",
+   "ficheiro": "j__WaterC_Basic_Lines-Dry",
+   "gestos": {
+    "px_com_tinta": 13285,
+    "sha256": "6d2b381fe115c291"
+   },
+   "origem": "j)_WaterC_Basic_Lines-Dry.kpp",
+   "sobre": {
+    "px_com_tinta": 19919,
+    "sha256": "0f9976456cf9d9aa"
+   },
+   "tamanhos": {
+    "px_com_tinta": 24946,
+    "sha256": "f10ebe9b62f756e7"
+   }
+  },
+  "j) WaterC Basic Lines-Wet": {
+   "base_sobre": "j) WaterC Basic Lines-Wet",
+   "ficheiro": "j__WaterC_Basic_Lines-Wet",
+   "gestos": {
+    "px_com_tinta": 15414,
+    "sha256": "68f889b15a521eee"
+   },
+   "origem": "j)_WaterC_Basic_Lines-Wet.kpp",
+   "sobre": {
+    "px_com_tinta": 20430,
+    "sha256": "62a7ca4dc004dd7c"
+   },
+   "tamanhos": {
+    "px_com_tinta": 26679,
+    "sha256": "22484b94c228336f"
+   }
+  },
+  "j) WaterC Basic Lines-Wet-Pattern": {
+   "base_sobre": "j) WaterC Basic Lines-Wet-Pattern",
+   "ficheiro": "j__WaterC_Basic_Lines-Wet-Pattern",
+   "gestos": {
+    "px_com_tinta": 57615,
+    "sha256": "182e211c2729ff83"
+   },
+   "origem": "j)_WaterC_Basic_Lines-Wet-Pattern.kpp",
+   "sobre": {
+    "px_com_tinta": 85552,
+    "sha256": "95c68d236ad6ef2e"
+   },
+   "tamanhos": {
+    "px_com_tinta": 107678,
+    "sha256": "5dc9e16ab0acbc04"
+   }
+  },
+  "j) WaterC Basic Round-Fringe 02": {
+   "base_sobre": "j) WaterC Basic Round-Fringe 02",
+   "ficheiro": "j__WaterC_Basic_Round-Fringe_02",
+   "gestos": {
+    "px_com_tinta": 104132,
+    "sha256": "cfd2798385bd0c7e"
+   },
+   "origem": "j)_WaterC_Basic_Round-Fringe_02.kpp",
+   "sobre": {
+    "px_com_tinta": 136241,
+    "sha256": "3228e40dc6e78c4f"
+   },
+   "tamanhos": {
+    "px_com_tinta": 143898,
+    "sha256": "2bedad34fdf71c2a"
+   }
+  },
+  "j) WaterC Basic Round-Grain": {
+   "base_sobre": "j) WaterC Basic Round-Grain",
+   "ficheiro": "j__WaterC_Basic_Round-Grain",
+   "gestos": {
+    "px_com_tinta": 131376,
+    "sha256": "4423b23ed52d12ca"
+   },
+   "origem": "j)_WaterC_Basic_Round-Grain.kpp",
+   "sobre": {
+    "px_com_tinta": 172066,
+    "sha256": "58a65ea02e063341"
+   },
+   "tamanhos": {
+    "px_com_tinta": 209522,
+    "sha256": "ac5d801fbcf5fc24"
+   }
+  },
+  "j) WaterC Basic Round-Grunge": {
+   "base_sobre": "j) WaterC Basic Round-Grunge",
+   "ficheiro": "j__WaterC_Basic_Round-Grunge",
+   "gestos": {
+    "px_com_tinta": 173949,
+    "sha256": "b735ad50a0c1314f"
+   },
+   "origem": "j)_WaterC_Basic_Round-Grunge.kpp",
+   "sobre": {
+    "px_com_tinta": 226685,
+    "sha256": "24e84b9802ae0d7b"
+   },
+   "tamanhos": {
+    "px_com_tinta": 302000,
+    "sha256": "46e51e7dda8247f4"
+   }
+  },
+  "j) WaterC Flat Big-Grain Tilt": {
+   "base_sobre": "j) WaterC Flat Big-Grain Tilt",
+   "ficheiro": "j__WaterC_Flat_Big-Grain_Tilt",
+   "gestos": {
+    "px_com_tinta": 112803,
+    "sha256": "a2748375b1a3e702"
+   },
+   "origem": "j)_WaterC_Flat_Big-Grain_Tilt.kpp",
+   "sobre": {
+    "px_com_tinta": 149729,
+    "sha256": "5a509e8fafefc902"
+   },
+   "tamanhos": {
+    "px_com_tinta": 208549,
+    "sha256": "c9884635ae1a5b41"
+   }
+  },
+  "j) WaterC Flat Decay Tilt": {
+   "base_sobre": "j) WaterC Flat Decay Tilt",
+   "ficheiro": "j__WaterC_Flat_Decay_Tilt",
+   "gestos": {
+    "px_com_tinta": 118757,
+    "sha256": "118b6965a65d4a9c"
+   },
+   "origem": "j)_WaterC_Flat_Decay_Tilt.kpp",
+   "sobre": {
+    "px_com_tinta": 155239,
+    "sha256": "f4c697295cbb2b85"
+   },
+   "tamanhos": {
+    "px_com_tinta": 223303,
+    "sha256": "85d7c9810fef8427"
+   }
+  },
+  "j) WaterC Special Blobs": {
+   "base_sobre": "j) WaterC Special Blobs",
+   "ficheiro": "j__WaterC_Special_Blobs",
+   "gestos": {
+    "px_com_tinta": 45493,
+    "sha256": "c01a3a044ed1c3e1"
+   },
+   "origem": "j)_WaterC_Special_Blobs.kpp",
+   "sobre": {
+    "px_com_tinta": 51219,
+    "sha256": "006077c94bba2738"
+   },
+   "tamanhos": {
+    "px_com_tinta": 50219,
+    "sha256": "1a742744ab20239c"
+   }
+  },
+  "j) WaterC Special Splats": {
+   "base_sobre": "j) WaterC Special Splats",
+   "ficheiro": "j__WaterC_Special_Splats",
+   "gestos": {
+    "px_com_tinta": 94753,
+    "sha256": "2e59e148aac4d835"
+   },
+   "origem": "j)_WaterC_Special_Splats.kpp",
+   "sobre": {
+    "px_com_tinta": 110680,
+    "sha256": "cb3252429201be88"
+   },
+   "tamanhos": {
+    "px_com_tinta": 131248,
+    "sha256": "a3a06e04cc47473e"
+   }
+  },
+  "j) WaterC Spread": {
+   "base_sobre": "j) WaterC Spread",
+   "ficheiro": "j__WaterC_Spread",
+   "gestos": {
+    "px_com_tinta": 61295,
+    "sha256": "8561dfe8c6511ffe"
+   },
+   "origem": "j)_WaterC_Spread.kpp",
+   "sobre": {
+    "px_com_tinta": 92948,
+    "sha256": "e6543aa9a5cb798d"
+   },
+   "tamanhos": {
+    "px_com_tinta": 102845,
+    "sha256": "3a2e06de79cc45f6"
+   }
+  },
+  "j) WaterC Spread WideArea": {
+   "base_sobre": "j) WaterC Spread WideArea",
+   "ficheiro": "j__WaterC_Spread_WideArea",
+   "gestos": {
+    "px_com_tinta": 276293,
+    "sha256": "3cfb6e8c67f663cd"
+   },
+   "origem": "j)_WaterC_Spread_WideArea.kpp",
+   "sobre": {
+    "px_com_tinta": 362145,
+    "sha256": "98a08a25761fab02"
+   },
+   "tamanhos": {
+    "px_com_tinta": 489699,
+    "sha256": "02a8f201d9de0524"
+   }
+  },
+  "j) WaterC Spread-Pattern": {
+   "base_sobre": "j) WaterC Spread-Pattern",
+   "ficheiro": "j__WaterC_Spread-Pattern",
+   "gestos": {
+    "px_com_tinta": 35582,
+    "sha256": "4390aaa38ed0981e"
+   },
+   "origem": "j)_WaterC_Spread-Pattern.kpp",
+   "sobre": {
+    "px_com_tinta": 50152,
+    "sha256": "84af0525fa026c33"
+   },
+   "tamanhos": {
+    "px_com_tinta": 52934,
+    "sha256": "f12a0a0994f85705"
+   }
+  },
+  "j) WaterC Water-Pattern": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "j__WaterC_Water-Pattern",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "j)_WaterC_Water-Pattern.kpp",
+   "sobre": {
+    "px_com_tinta": 120527,
+    "sha256": "da4a8be48953c919"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "j) Watercolor Fringe": {
+   "base_sobre": "j) Watercolor Fringe",
+   "ficheiro": "j__Watercolor_Fringe",
+   "gestos": {
+    "px_com_tinta": 141564,
+    "sha256": "992a1066c3da2c17"
+   },
+   "origem": "j)_Watercolor_Fringe.kpp",
+   "sobre": {
+    "px_com_tinta": 164008,
+    "sha256": "f6f4f44bbb71aa82"
+   },
+   "tamanhos": {
+    "px_com_tinta": 191331,
+    "sha256": "fdfc075e093121eb"
+   }
+  },
+  "j) Watercolor Texture": {
+   "base_sobre": "j) Watercolor Texture",
+   "ficheiro": "j__Watercolor_Texture",
+   "gestos": {
+    "px_com_tinta": 115974,
+    "sha256": "b1d0098191a88834"
+   },
+   "origem": "j)_Watercolor_Texture.kpp",
+   "sobre": {
+    "px_com_tinta": 144253,
+    "sha256": "c332b1c9da4f608c"
+   },
+   "tamanhos": {
+    "px_com_tinta": 161494,
+    "sha256": "632e655e65a759af"
+   }
+  },
+  "j) Waterpaint Hard Edges": {
+   "base_sobre": "j) Waterpaint Hard Edges",
+   "ficheiro": "j__Waterpaint_Hard_Edges",
+   "gestos": {
+    "px_com_tinta": 139557,
+    "sha256": "b56b988185c75976"
+   },
+   "origem": "j)_Waterpaint_Hard_Edges.kpp",
+   "sobre": {
+    "px_com_tinta": 180350,
+    "sha256": "4e546bd78a409d41"
+   },
+   "tamanhos": {
+    "px_com_tinta": 216783,
+    "sha256": "47e20c634b023a1b"
+   }
+  },
+  "j) Waterpaint Soft Edges": {
+   "base_sobre": "j) Waterpaint Soft Edges",
+   "ficheiro": "j__Waterpaint_Soft_Edges",
+   "gestos": {
+    "px_com_tinta": 52350,
+    "sha256": "f2c0857e55ff8b9b"
+   },
+   "origem": "j)_Waterpaint_Soft_Edges.kpp",
+   "sobre": {
+    "px_com_tinta": 62762,
+    "sha256": "46cda910685c4ea1"
+   },
+   "tamanhos": {
+    "px_com_tinta": 102554,
+    "sha256": "e103b9b0d523dbe9"
+   }
+  },
+  "k) Blender Basic": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "k__Blender_Basic",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "k)_Blender_Basic.kpp",
+   "sobre": {
+    "px_com_tinta": 151448,
+    "sha256": "0ae54fd8ded05ef7"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "k) Blender Blur": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "k__Blender_Blur",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "k)_Blender_Blur.kpp",
+   "sobre": {
+    "px_com_tinta": 134176,
+    "sha256": "33e8d55256e9641d"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "k) Blender Knife Edge": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "k__Blender_Knife_Edge",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "k)_Blender_Knife_Edge.kpp",
+   "sobre": {
+    "px_com_tinta": 118338,
+    "sha256": "5753e89a7888a4b8"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "k) Blender Pixelize": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "k__Blender_Pixelize",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "k)_Blender_Pixelize.kpp",
+   "sobre": {
+    "px_com_tinta": 114160,
+    "sha256": "c3eca39404ef83e9"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "k) Blender Rake": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "k__Blender_Rake",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "k)_Blender_Rake.kpp",
+   "sobre": {
+    "px_com_tinta": 126301,
+    "sha256": "4366fb5820781d8e"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "k) Blender Smear": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "k__Blender_Smear",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "k)_Blender_Smear.kpp",
+   "sobre": {
+    "px_com_tinta": 133210,
+    "sha256": "d29ca23831d52751"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "k) Blender Textured Soft": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "k__Blender_Textured_Soft",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "k)_Blender_Textured_Soft.kpp",
+   "sobre": {
+    "px_com_tinta": 150988,
+    "sha256": "dd20f3161d754ff6"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "l) Adjust Color": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "l__Adjust_Color",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "l)_Adjust_Color.kpp",
+   "sobre": {
+    "px_com_tinta": 114640,
+    "sha256": "2a0acbbfbffacc51"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "l) Adjust Dodge": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "l__Adjust_Dodge",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "l)_Adjust_Dodge.kpp",
+   "sobre": {
+    "px_com_tinta": 114640,
+    "sha256": "bdaeb37a48efdc12"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "l) Adjust Lighten": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "l__Adjust_Lighten",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "l)_Adjust_Lighten.kpp",
+   "sobre": {
+    "px_com_tinta": 114640,
+    "sha256": "7c8fba7faedc6a18"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "l) Adjust Multiply": {
+   "base_sobre": "l) Adjust Multiply",
+   "ficheiro": "l__Adjust_Multiply",
+   "gestos": {
+    "px_com_tinta": 156243,
+    "sha256": "dce71f852b3446ad"
+   },
+   "origem": "l)_Adjust_Multiply.kpp",
+   "sobre": {
+    "px_com_tinta": 186779,
+    "sha256": "8e10f0c2f61e9f7d"
+   },
+   "tamanhos": {
+    "px_com_tinta": 226764,
+    "sha256": "82623bfe81dc1813"
+   }
+  },
+  "l) Adjust Overlay Burn": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "l__Adjust_Overlay_Burn",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "l)_Adjust_Overlay_Burn.kpp",
+   "sobre": {
+    "px_com_tinta": 114640,
+    "sha256": "a7e0d57cb2e7c238"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "m) RGBA 01 Thick-dry": {
+   "base_sobre": "m) RGBA 01 Thick-dry",
+   "ficheiro": "m__RGBA_01_Thick-dry",
+   "gestos": {
+    "px_com_tinta": 152540,
+    "sha256": "9503ec7f7565b86e"
+   },
+   "origem": "m)_RGBA_01_Thick-dry.kpp",
+   "sobre": {
+    "px_com_tinta": 181543,
+    "sha256": "2ac297869a7e18a4"
+   },
+   "tamanhos": {
+    "px_com_tinta": 203528,
+    "sha256": "6e503d4067d32387"
+   }
+  },
+  "m) RGBA 02 Thickpaint": {
+   "base_sobre": "m) RGBA 02 Thickpaint",
+   "ficheiro": "m__RGBA_02_Thickpaint",
+   "gestos": {
+    "px_com_tinta": 139046,
+    "sha256": "f5a2e7961175daee"
+   },
+   "origem": "m)_RGBA_02_Thickpaint.kpp",
+   "sobre": {
+    "px_com_tinta": 180996,
+    "sha256": "b111f47bffbe9894"
+   },
+   "tamanhos": {
+    "px_com_tinta": 221274,
+    "sha256": "1827ae28864276f8"
+   }
+  },
+  "m) RGBA 03 Rake": {
+   "base_sobre": "m) RGBA 03 Rake",
+   "ficheiro": "m__RGBA_03_Rake",
+   "gestos": {
+    "px_com_tinta": 66060,
+    "sha256": "793befd3c2946779"
+   },
+   "origem": "m)_RGBA_03_Rake.kpp",
+   "sobre": {
+    "px_com_tinta": 74994,
+    "sha256": "bdc0efe7d47d4661"
+   },
+   "tamanhos": {
+    "px_com_tinta": 76376,
+    "sha256": "14702761f5002d10"
+   }
+  },
+  "m) RGBA 04 Impasto": {
+   "base_sobre": "m) RGBA 04 Impasto",
+   "ficheiro": "m__RGBA_04_Impasto",
+   "gestos": {
+    "px_com_tinta": 57698,
+    "sha256": "1f331dae2b13c00c"
+   },
+   "origem": "m)_RGBA_04_Impasto.kpp",
+   "sobre": {
+    "px_com_tinta": 81418,
+    "sha256": "fe23b102bbf3fe8a"
+   },
+   "tamanhos": {
+    "px_com_tinta": 123645,
+    "sha256": "c072147bcb96e6f8"
+   }
+  },
+  "m) RGBA 05 Impasto-details": {
+   "base_sobre": "m) RGBA 05 Impasto-details",
+   "ficheiro": "m__RGBA_05_Impasto-details",
+   "gestos": {
+    "px_com_tinta": 51895,
+    "sha256": "a24e66f1b6a12ecf"
+   },
+   "origem": "m)_RGBA_05_Impasto-details.kpp",
+   "sobre": {
+    "px_com_tinta": 77437,
+    "sha256": "8a32c81cf9e44de4"
+   },
+   "tamanhos": {
+    "px_com_tinta": 99021,
+    "sha256": "c486491c9a680c52"
+   }
+  },
+  "m) RGBA 06 Rock": {
+   "base_sobre": "m) RGBA 06 Rock",
+   "ficheiro": "m__RGBA_06_Rock",
+   "gestos": {
+    "px_com_tinta": 96753,
+    "sha256": "e275f66f0983fb1c"
+   },
+   "origem": "m)_RGBA_06_Rock.kpp",
+   "sobre": {
+    "px_com_tinta": 123376,
+    "sha256": "8f9c5a5240c6dd43"
+   },
+   "tamanhos": {
+    "px_com_tinta": 116849,
+    "sha256": "234e5b70dfd64277"
+   }
+  },
+  "t) Shapes Fill": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "t__Shapes_Fill",
+   "gestos": {
+    "px_com_tinta": 47899,
+    "sha256": "4e0ceae39d9aadfd"
+   },
+   "origem": "t)_Shapes_Fill.kpp",
+   "sobre": {
+    "px_com_tinta": 114640,
+    "sha256": "2cf7958ed3a30b5b"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "t) Shapes Mecha": {
+   "base_sobre": "t) Shapes Mecha",
+   "ficheiro": "t__Shapes_Mecha",
+   "gestos": {
+    "px_com_tinta": 53279,
+    "sha256": "6977266008c48977"
+   },
+   "origem": "t)_Shapes_Mecha.kpp",
+   "sobre": {
+    "px_com_tinta": 72164,
+    "sha256": "571a1b3a5b93e782"
+   },
+   "tamanhos": {
+    "px_com_tinta": 64589,
+    "sha256": "0864c52d8671f1f4"
+   }
+  },
+  "t) Shapes Rounded": {
+   "base_sobre": "t) Shapes Rounded",
+   "ficheiro": "t__Shapes_Rounded",
+   "gestos": {
+    "px_com_tinta": 59788,
+    "sha256": "ae7f0b893550c9fe"
+   },
+   "origem": "t)_Shapes_Rounded.kpp",
+   "sobre": {
+    "px_com_tinta": 79572,
+    "sha256": "945ea0260b047880"
+   },
+   "tamanhos": {
+    "px_com_tinta": 79415,
+    "sha256": "2e47d25202b7b59e"
+   }
+  },
+  "t) Shapes Spikes": {
+   "base_sobre": "t) Shapes Spikes",
+   "ficheiro": "t__Shapes_Spikes",
+   "gestos": {
+    "px_com_tinta": 43827,
+    "sha256": "50508453743b8dea"
+   },
+   "origem": "t)_Shapes_Spikes.kpp",
+   "sobre": {
+    "px_com_tinta": 56320,
+    "sha256": "edc27642460af9c2"
+   },
+   "tamanhos": {
+    "px_com_tinta": 61195,
+    "sha256": "2861e23b0510e5aa"
+   }
+  },
+  "t) Shapes Square": {
+   "base_sobre": "t) Shapes Square",
+   "ficheiro": "t__Shapes_Square",
+   "gestos": {
+    "px_com_tinta": 240453,
+    "sha256": "45cba265c9a21f3d"
+   },
+   "origem": "t)_Shapes_Square.kpp",
+   "sobre": {
+    "px_com_tinta": 321068,
+    "sha256": "f1fa9d2cf34c454c"
+   },
+   "tamanhos": {
+    "px_com_tinta": 384560,
+    "sha256": "47b9a38f417434cd"
+   }
+  },
+  "u) Pixel Art": {
+   "base_sobre": "u) Pixel Art",
+   "ficheiro": "u__Pixel_Art",
+   "gestos": {
+    "px_com_tinta": 165558,
+    "sha256": "e528a3674b0b59d8"
+   },
+   "origem": "u)_Pixel_Art.kpp",
+   "sobre": {
+    "px_com_tinta": 193022,
+    "sha256": "ad09bdbfa1544a15"
+   },
+   "tamanhos": {
+    "px_com_tinta": 238912,
+    "sha256": "570a54bf1c21f51a"
+   }
+  },
+  "u) Pixel Art Dithering": {
+   "base_sobre": "u) Pixel Art Dithering",
+   "ficheiro": "u__Pixel_Art_Dithering",
+   "gestos": {
+    "px_com_tinta": 74805,
+    "sha256": "1031f0d385a6ffa6"
+   },
+   "origem": "u)_Pixel_Art_Dithering.kpp",
+   "sobre": {
+    "px_com_tinta": 96566,
+    "sha256": "8f32071dfa2d23d0"
+   },
+   "tamanhos": {
+    "px_com_tinta": 118939,
+    "sha256": "3b3d14a52f2e7309"
+   }
+  },
+  "u) Pixel Art Fill": {
+   "base_sobre": "u) Pixel Art Fill",
+   "ficheiro": "u__Pixel_Art_Fill",
+   "gestos": {
+    "px_com_tinta": 148884,
+    "sha256": "6915b8dfd2b9d5b2"
+   },
+   "origem": "u)_Pixel_Art_Fill.kpp",
+   "sobre": {
+    "px_com_tinta": 191633,
+    "sha256": "c8361eb2b7d17551"
+   },
+   "tamanhos": {
+    "px_com_tinta": 233534,
+    "sha256": "cbce8575a50b2341"
+   }
+  },
+  "v) Clone Tool": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "v__Clone_Tool",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "v)_Clone_Tool.kpp",
+   "sobre": {
+    "px_com_tinta": 126521,
+    "sha256": "65f3dd0579517e62"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "v) Distort Grow": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "v__Distort_Grow",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "v)_Distort_Grow.kpp",
+   "sobre": {
+    "px_com_tinta": 116587,
+    "sha256": "a333a0ea69181540"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "v) Distort Move": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "v__Distort_Move",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "v)_Distort_Move.kpp",
+   "sobre": {
+    "px_com_tinta": 116396,
+    "sha256": "d40c8e4287232b4c"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "v) Distort Shrink": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "v__Distort_Shrink",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "v)_Distort_Shrink.kpp",
+   "sobre": {
+    "px_com_tinta": 115722,
+    "sha256": "abd95fadf1112b2e"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "v) Experimental Webs": {
+   "base_sobre": "v) Experimental Webs",
+   "ficheiro": "v__Experimental_Webs",
+   "gestos": {
+    "px_com_tinta": 28470,
+    "sha256": "cda8b48ac08559bb"
+   },
+   "origem": "v)_Experimental_Webs.kpp",
+   "sobre": {
+    "px_com_tinta": 5476,
+    "sha256": "bac4dc295b3f6ae3"
+   },
+   "tamanhos": {
+    "px_com_tinta": 2660,
+    "sha256": "107551da1aecfca0"
+   }
+  },
+  "v) Sketching-1 Chrome Thin": {
+   "base_sobre": "v) Sketching-1 Chrome Thin",
+   "ficheiro": "v__Sketching-1_Chrome_Thin",
+   "gestos": {
+    "px_com_tinta": 5742,
+    "sha256": "704eb3d60e96b408"
+   },
+   "origem": "v)_Sketching-1_Chrome_Thin.kpp",
+   "sobre": {
+    "px_com_tinta": 4197,
+    "sha256": "5763a4f69d7b2dd3"
+   },
+   "tamanhos": {
+    "px_com_tinta": 2643,
+    "sha256": "72311486f96800d5"
+   }
+  },
+  "v) Sketching-2 Chrome Large": {
+   "base_sobre": "v) Sketching-2 Chrome Large",
+   "ficheiro": "v__Sketching-2_Chrome_Large",
+   "gestos": {
+    "px_com_tinta": 22247,
+    "sha256": "149e1e137440634d"
+   },
+   "origem": "v)_Sketching-2_Chrome_Large.kpp",
+   "sobre": {
+    "px_com_tinta": 20881,
+    "sha256": "2a1d5ea9b335f6b4"
+   },
+   "tamanhos": {
+    "px_com_tinta": 13263,
+    "sha256": "aa4b90cd178a15a1"
+   }
+  },
+  "v) Sketching-3 Leaky": {
+   "base_sobre": "v) Sketching-3 Leaky",
+   "ficheiro": "v__Sketching-3_Leaky",
+   "gestos": {
+    "px_com_tinta": 174930,
+    "sha256": "f380b7b27740afeb"
+   },
+   "origem": "v)_Sketching-3_Leaky.kpp",
+   "sobre": {
+    "px_com_tinta": 198960,
+    "sha256": "6e21cb2ad7d64ca0"
+   },
+   "tamanhos": {
+    "px_com_tinta": 242150,
+    "sha256": "9c105cde494c73f5"
+   }
+  },
+  "v) Texture Impressionism": {
+   "base_sobre": "v) Texture Impressionism",
+   "ficheiro": "v__Texture_Impressionism",
+   "gestos": {
+    "px_com_tinta": 387266,
+    "sha256": "20d37ca9358c13d2"
+   },
+   "origem": "v)_Texture_Impressionism.kpp",
+   "sobre": {
+    "px_com_tinta": 487533,
+    "sha256": "84c80d41fc072917"
+   },
+   "tamanhos": {
+    "px_com_tinta": 536991,
+    "sha256": "857dfd7fb84886be"
+   }
+  },
+  "v) Texture Pointillism": {
+   "base_sobre": "v) Texture Pointillism",
+   "ficheiro": "v__Texture_Pointillism",
+   "gestos": {
+    "px_com_tinta": 99202,
+    "sha256": "8016dbb60d25717d"
+   },
+   "origem": "v)_Texture_Pointillism.kpp",
+   "sobre": {
+    "px_com_tinta": 86411,
+    "sha256": "b4046eeff24ae9aa"
+   },
+   "tamanhos": {
+    "px_com_tinta": 51086,
+    "sha256": "ad3cfed10b237f8d"
+   }
+  },
+  "w) Texture Normal Map": {
+   "base_sobre": "w) Texture Normal Map",
+   "ficheiro": "w__Texture_Normal_Map",
+   "gestos": {
+    "px_com_tinta": 147203,
+    "sha256": "189a53fb4f49ae3c"
+   },
+   "origem": "w)_Texture_Normal_Map.kpp",
+   "sobre": {
+    "px_com_tinta": 192459,
+    "sha256": "b83ee8a96d16b2af"
+   },
+   "tamanhos": {
+    "px_com_tinta": 236556,
+    "sha256": "82a0b84bd8855d79"
+   }
+  },
+  "x) Filter Blur": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "x__Filter_Blur",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "x)_Filter_Blur.kpp",
+   "sobre": {
+    "px_com_tinta": 115908,
+    "sha256": "40000b720a82fb67"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "x) Filter Sharpen": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "x__Filter_Sharpen",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "x)_Filter_Sharpen.kpp",
+   "sobre": {
+    "px_com_tinta": 114640,
+    "sha256": "aea08dcde24b3800"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "y) Screentone Moire": {
+   "base_sobre": "y) Screentone Moire",
+   "ficheiro": "y__Screentone_Moire",
+   "gestos": {
+    "px_com_tinta": 58489,
+    "sha256": "eba5743850ef021d"
+   },
+   "origem": "y)_Screentone_Moire.kpp",
+   "sobre": {
+    "px_com_tinta": 72116,
+    "sha256": "b16bb748e6bd9532"
+   },
+   "tamanhos": {
+    "px_com_tinta": 77533,
+    "sha256": "76bc62a4c64e6a58"
+   }
+  },
+  "y) Screentone Pressure": {
+   "base_sobre": "y) Screentone Pressure",
+   "ficheiro": "y__Screentone_Pressure",
+   "gestos": {
+    "px_com_tinta": 131553,
+    "sha256": "2b8eba68453fc93a"
+   },
+   "origem": "y)_Screentone_Pressure.kpp",
+   "sobre": {
+    "px_com_tinta": 179451,
+    "sha256": "8224b7c2d5182271"
+   },
+   "tamanhos": {
+    "px_com_tinta": 214601,
+    "sha256": "53ae5517ab6c5402"
+   }
+  },
+  "y) Screentones Regular": {
+   "base_sobre": "y) Screentones Regular",
+   "ficheiro": "y__Screentones_Regular",
+   "gestos": {
+    "px_com_tinta": 35887,
+    "sha256": "e9bea453f24b7cb4"
+   },
+   "origem": "y)_Screentones_Regular.kpp",
+   "sobre": {
+    "px_com_tinta": 49132,
+    "sha256": "a24b6716bee1fedd"
+   },
+   "tamanhos": {
+    "px_com_tinta": 61956,
+    "sha256": "bec614b52ccd09bb"
+   }
+  },
+  "y) Texture Big": {
+   "base_sobre": "y) Texture Big",
+   "ficheiro": "y__Texture_Big",
+   "gestos": {
+    "px_com_tinta": 160603,
+    "sha256": "ad0b7df1f924fd8b"
+   },
+   "origem": "y)_Texture_Big.kpp",
+   "sobre": {
+    "px_com_tinta": 193302,
+    "sha256": "6db95a55a69a492b"
+   },
+   "tamanhos": {
+    "px_com_tinta": 236769,
+    "sha256": "fdc122aabcba6bf1"
+   }
+  },
+  "y) Texture Crackles": {
+   "base_sobre": "y) Texture Crackles",
+   "ficheiro": "y__Texture_Crackles",
+   "gestos": {
+    "px_com_tinta": 89853,
+    "sha256": "fac71a07d5234da2"
+   },
+   "origem": "y)_Texture_Crackles.kpp",
+   "sobre": {
+    "px_com_tinta": 114262,
+    "sha256": "e79e0794ac03e827"
+   },
+   "tamanhos": {
+    "px_com_tinta": 112197,
+    "sha256": "88b64fe4165649bd"
+   }
+  },
+  "y) Texture Hair": {
+   "base_sobre": "y) Texture Hair",
+   "ficheiro": "y__Texture_Hair",
+   "gestos": {
+    "px_com_tinta": 100501,
+    "sha256": "bc94bb01625523b1"
+   },
+   "origem": "y)_Texture_Hair.kpp",
+   "sobre": {
+    "px_com_tinta": 124804,
+    "sha256": "8b5ff6708a751319"
+   },
+   "tamanhos": {
+    "px_com_tinta": 140475,
+    "sha256": "c7e843d93e9094e0"
+   }
+  },
+  "y) Texture Large Splat": {
+   "base_sobre": "y) Texture Large Splat",
+   "ficheiro": "y__Texture_Large_Splat",
+   "gestos": {
+    "px_com_tinta": 141140,
+    "sha256": "d99b61c35178a0a1"
+   },
+   "origem": "y)_Texture_Large_Splat.kpp",
+   "sobre": {
+    "px_com_tinta": 163033,
+    "sha256": "7d4994a251a0d90b"
+   },
+   "tamanhos": {
+    "px_com_tinta": 176058,
+    "sha256": "a75361e3e94ffbbe"
+   }
+  },
+  "y) Texture Noise": {
+   "base_sobre": "y) Texture Noise",
+   "ficheiro": "y__Texture_Noise",
+   "gestos": {
+    "px_com_tinta": 105133,
+    "sha256": "63b685bcb46be12f"
+   },
+   "origem": "y)_Texture_Noise.kpp",
+   "sobre": {
+    "px_com_tinta": 123538,
+    "sha256": "5605a9e61a7dc272"
+   },
+   "tamanhos": {
+    "px_com_tinta": 148097,
+    "sha256": "ae0407c1761619ba"
+   }
+  },
+  "y) Texture Random Particles": {
+   "base_sobre": "y) Texture Random Particles",
+   "ficheiro": "y__Texture_Random_Particles",
+   "gestos": {
+    "px_com_tinta": 65524,
+    "sha256": "e6517cc164a85d5a"
+   },
+   "origem": "y)_Texture_Random_Particles.kpp",
+   "sobre": {
+    "px_com_tinta": 76739,
+    "sha256": "34f387b472f23849"
+   },
+   "tamanhos": {
+    "px_com_tinta": 44688,
+    "sha256": "ff663d05886c2a66"
+   }
+  },
+  "y) Texture Reptile": {
+   "base_sobre": "y) Texture Reptile",
+   "ficheiro": "y__Texture_Reptile",
+   "gestos": {
+    "px_com_tinta": 121380,
+    "sha256": "c9f711b9c7cdfa62"
+   },
+   "origem": "y)_Texture_Reptile.kpp",
+   "sobre": {
+    "px_com_tinta": 154419,
+    "sha256": "a463171e64055f53"
+   },
+   "tamanhos": {
+    "px_com_tinta": 185546,
+    "sha256": "4fafde72e4f697e0"
+   }
+  },
+  "y) Texture Snow Pile": {
+   "base_sobre": "y) Texture Snow Pile",
+   "ficheiro": "y__Texture_Snow_Pile",
+   "gestos": {
+    "px_com_tinta": 89289,
+    "sha256": "7992916b1f7fc988"
+   },
+   "origem": "y)_Texture_Snow_Pile.kpp",
+   "sobre": {
+    "px_com_tinta": 107959,
+    "sha256": "a5fdadf61a85f159"
+   },
+   "tamanhos": {
+    "px_com_tinta": 110589,
+    "sha256": "cae3008a8f7fdb6f"
+   }
+  },
+  "y) Texture Spines": {
+   "base_sobre": "y) Texture Spines",
+   "ficheiro": "y__Texture_Spines",
+   "gestos": {
+    "px_com_tinta": 102434,
+    "sha256": "8d6920a307640143"
+   },
+   "origem": "y)_Texture_Spines.kpp",
+   "sobre": {
+    "px_com_tinta": 117398,
+    "sha256": "b7474aa81e575f1a"
+   },
+   "tamanhos": {
+    "px_com_tinta": 89823,
+    "sha256": "b36f055b911ef2b9"
+   }
+  },
+  "y) Texture Splat": {
+   "base_sobre": "y) Texture Splat",
+   "ficheiro": "y__Texture_Splat",
+   "gestos": {
+    "px_com_tinta": 23140,
+    "sha256": "f5ac67f61bed11bd"
+   },
+   "origem": "y)_Texture_Splat.kpp",
+   "sobre": {
+    "px_com_tinta": 27870,
+    "sha256": "d957852edf1863b9"
+   },
+   "tamanhos": {
+    "px_com_tinta": 25020,
+    "sha256": "7883e846abade9a6"
+   }
+  },
+  "y) Texture Spray": {
+   "base_sobre": "y) Texture Spray",
+   "ficheiro": "y__Texture_Spray",
+   "gestos": {
+    "px_com_tinta": 383584,
+    "sha256": "099d8e45847e8680"
+   },
+   "origem": "y)_Texture_Spray.kpp",
+   "sobre": {
+    "px_com_tinta": 443111,
+    "sha256": "640f7c299ac29a65"
+   },
+   "tamanhos": {
+    "px_com_tinta": 511294,
+    "sha256": "17ff2740a4848540"
+   }
+  },
+  "y) Texture Starfield": {
+   "base_sobre": "b) Basic-1",
+   "ficheiro": "y__Texture_Starfield",
+   "gestos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   },
+   "origem": "y)_Texture_Starfield.kpp",
+   "sobre": {
+    "px_com_tinta": 114639,
+    "sha256": "20ee927a6706cee9"
+   },
+   "tamanhos": {
+    "px_com_tinta": 0,
+    "sha256": "9c5ad57bf7626cac"
+   }
+  },
+  "y) Texture Wood Fiber": {
+   "base_sobre": "y) Texture Wood Fiber",
+   "ficheiro": "y__Texture_Wood_Fiber",
+   "gestos": {
+    "px_com_tinta": 154286,
+    "sha256": "404b44e4d9152fe0"
+   },
+   "origem": "y)_Texture_Wood_Fiber.kpp",
+   "sobre": {
+    "px_com_tinta": 183843,
+    "sha256": "5c0baa1a4a206ca4"
+   },
+   "tamanhos": {
+    "px_com_tinta": 219569,
+    "sha256": "2a342cc99eb40a78"
+   }
+  },
+  "z) Stamp Bokeh": {
+   "base_sobre": "z) Stamp Bokeh",
+   "ficheiro": "z__Stamp_Bokeh",
+   "gestos": {
+    "px_com_tinta": 67300,
+    "sha256": "034f895b50e62db8"
+   },
+   "origem": "z)_Stamp_Bokeh.kpp",
+   "sobre": {
+    "px_com_tinta": 90495,
+    "sha256": "7f67e453f54ae7ed"
+   },
+   "tamanhos": {
+    "px_com_tinta": 109288,
+    "sha256": "7d6de87833cdd53e"
+   }
+  },
+  "z) Stamp Floor": {
+   "base_sobre": "z) Stamp Floor",
+   "ficheiro": "z__Stamp_Floor",
+   "gestos": {
+    "px_com_tinta": 133892,
+    "sha256": "07a25e2a7258c880"
+   },
+   "origem": "z)_Stamp_Floor.kpp",
+   "sobre": {
+    "px_com_tinta": 164434,
+    "sha256": "7326e46727933784"
+   },
+   "tamanhos": {
+    "px_com_tinta": 187523,
+    "sha256": "4d91e47c7c368b7c"
+   }
+  },
+  "z) Stamp Grass": {
+   "base_sobre": "z) Stamp Grass",
+   "ficheiro": "z__Stamp_Grass",
+   "gestos": {
+    "px_com_tinta": 87807,
+    "sha256": "55827aaeec35135a"
+   },
+   "origem": "z)_Stamp_Grass.kpp",
+   "sobre": {
+    "px_com_tinta": 110063,
+    "sha256": "91a81e12c2c31ea9"
+   },
+   "tamanhos": {
+    "px_com_tinta": 109467,
+    "sha256": "292a100863cd9918"
+   }
+  },
+  "z) Stamp Grass Patch": {
+   "base_sobre": "z) Stamp Grass Patch",
+   "ficheiro": "z__Stamp_Grass_Patch",
+   "gestos": {
+    "px_com_tinta": 54820,
+    "sha256": "6865730c44986a40"
+   },
+   "origem": "z)_Stamp_Grass_Patch.kpp",
+   "sobre": {
+    "px_com_tinta": 69827,
+    "sha256": "22b8338fcef5b4ad"
+   },
+   "tamanhos": {
+    "px_com_tinta": 77080,
+    "sha256": "cd9a5a2db36bb684"
+   }
+  },
+  "z) Stamp Hearts": {
+   "base_sobre": "z) Stamp Hearts",
+   "ficheiro": "z__Stamp_Hearts",
+   "gestos": {
+    "px_com_tinta": 282780,
+    "sha256": "8444f2ff975b9706"
+   },
+   "origem": "z)_Stamp_Hearts.kpp",
+   "sobre": {
+    "px_com_tinta": 285442,
+    "sha256": "af5f689c4560798a"
+   },
+   "tamanhos": {
+    "px_com_tinta": 214167,
+    "sha256": "b62056824ad25d74"
+   }
+  },
+  "z) Stamp Herbals": {
+   "base_sobre": "z) Stamp Herbals",
+   "ficheiro": "z__Stamp_Herbals",
+   "gestos": {
+    "px_com_tinta": 98217,
+    "sha256": "ba1229640f077b7d"
+   },
+   "origem": "z)_Stamp_Herbals.kpp",
+   "sobre": {
+    "px_com_tinta": 117924,
+    "sha256": "12f15b8df6df9597"
+   },
+   "tamanhos": {
+    "px_com_tinta": 128682,
+    "sha256": "0bc77bcce3733174"
+   }
+  },
+  "z) Stamp Leaves": {
+   "base_sobre": "z) Stamp Leaves",
+   "ficheiro": "z__Stamp_Leaves",
+   "gestos": {
+    "px_com_tinta": 112770,
+    "sha256": "f0856ba14a14526a"
+   },
+   "origem": "z)_Stamp_Leaves.kpp",
+   "sobre": {
+    "px_com_tinta": 130232,
+    "sha256": "d32a3fd09ac87851"
+   },
+   "tamanhos": {
+    "px_com_tinta": 130977,
+    "sha256": "501233b1997f22b1"
+   }
+  },
+  "z) Stamp Mountains Distant": {
+   "base_sobre": "z) Stamp Mountains Distant",
+   "ficheiro": "z__Stamp_Mountains_Distant",
+   "gestos": {
+    "px_com_tinta": 68598,
+    "sha256": "25dda3d23d477a42"
+   },
+   "origem": "z)_Stamp_Mountains_Distant.kpp",
+   "sobre": {
+    "px_com_tinta": 90763,
+    "sha256": "97a695a36eaf82d1"
+   },
+   "tamanhos": {
+    "px_com_tinta": 90601,
+    "sha256": "74ef7ef370378d38"
+   }
+  },
+  "z) Stamp Shoujo Bubbles": {
+   "base_sobre": "z) Stamp Shoujo Bubbles",
+   "ficheiro": "z__Stamp_Shoujo_Bubbles",
+   "gestos": {
+    "px_com_tinta": 125089,
+    "sha256": "c35b354c5e6b61c1"
+   },
+   "origem": "z)_Stamp_Shoujo_Bubbles.kpp",
+   "sobre": {
+    "px_com_tinta": 108065,
+    "sha256": "0d23b2e7071be622"
+   },
+   "tamanhos": {
+    "px_com_tinta": 99604,
+    "sha256": "394198ce3d8ea93e"
+   }
+  },
+  "z) Stamp Sparkles": {
+   "base_sobre": "z) Stamp Sparkles",
+   "ficheiro": "z__Stamp_Sparkles",
+   "gestos": {
+    "px_com_tinta": 15853,
+    "sha256": "30aabc5e2fabd3ec"
+   },
+   "origem": "z)_Stamp_Sparkles.kpp",
+   "sobre": {
+    "px_com_tinta": 20648,
+    "sha256": "097d3f8b98d01e17"
+   },
+   "tamanhos": {
+    "px_com_tinta": 22541,
+    "sha256": "498619e612e4d724"
+   }
+  },
+  "z) Stamp Stylised Tree": {
+   "base_sobre": "z) Stamp Stylised Tree",
+   "ficheiro": "z__Stamp_Stylised_Tree",
+   "gestos": {
+    "px_com_tinta": 85905,
+    "sha256": "74df839b22f9ebaf"
+   },
+   "origem": "z)_Stamp_Stylised_Tree.kpp",
+   "sobre": {
+    "px_com_tinta": 109491,
+    "sha256": "66ddd03fcb9b3605"
+   },
+   "tamanhos": {
+    "px_com_tinta": 122945,
+    "sha256": "6da20ab3d3812ddb"
+   }
+  },
+  "z) Stamp Vegetal": {
+   "base_sobre": "z) Stamp Vegetal",
+   "ficheiro": "z__Stamp_Vegetal",
+   "gestos": {
+    "px_com_tinta": 121987,
+    "sha256": "233f2f43f8967ad9"
+   },
+   "origem": "z)_Stamp_Vegetal.kpp",
+   "sobre": {
+    "px_com_tinta": 144825,
+    "sha256": "f7fbf38f259f26fa"
+   },
+   "tamanhos": {
+    "px_com_tinta": 167227,
+    "sha256": "20abad696fb36b41"
+   }
+  },
+  "z) Stamp Water": {
+   "base_sobre": "z) Stamp Water",
+   "ficheiro": "z__Stamp_Water",
+   "gestos": {
+    "px_com_tinta": 68287,
+    "sha256": "ecaf5615a70a4ac9"
+   },
+   "origem": "z)_Stamp_Water.kpp",
+   "sobre": {
+    "px_com_tinta": 86818,
+    "sha256": "ea71f2fa571b7df5"
+   },
+   "tamanhos": {
+    "px_com_tinta": 75430,
+    "sha256": "65964e71a5992c8d"
+   }
+  }
+ }
+}

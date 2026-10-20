@@ -68,7 +68,7 @@ Leis do [`label_oracle`](ferramentas/label_oracle/README.md) que decidiram:
 - app: `the_w23_text_scene_opens_with_the_words_in_reach` (cena 26, pelo rato real da shell)
 
 Oráculos W8/W9/W10 regravados em `527761e134` (diff só `label` → `captions`/`turn`, `labelPosition` no texto preso).
-⚠️ **Provas de mutação: NÃO corridas.**
+**Provas de mutação (19/10, `dec9bb6112`)**: 13 corridas; 9 sangraram à 1.ª; B7/B8 (`to_local`/`to_world` sem o `sign`), B10 (`Field::TextTurn` não escreve) e B12 (`foreign` a 0,5) sobreviviam — mortas reforçando `along_a_curve_…` (a curva ao contrário, letras em pé e da esquerda para a direita), `the_captions_and_their_turn_…` (o `turn` sozinho no fio) e `a_foreign_label_…` (3 pontos assimétricos → 0,75).
 
 ## 5. ⛔ Recusas MEDIDAS
 

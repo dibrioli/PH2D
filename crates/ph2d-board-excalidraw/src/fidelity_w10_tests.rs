@@ -243,6 +243,71 @@ fn sample_w10() -> Board {
         Route::Curved,
         vec![],
     );
+    // W23 B9: o losango REDONDO e o rectângulo redondo acima do tecto do raio, de medidas
+    // fraccionárias e rodados — a lei das peças; pontos fixos do lado de cá, do lado de lá, num canto.
+    let drr = shape(
+        b,
+        ShapeType::Diamond,
+        [1200.0, 300.0, 173.4, 97.8],
+        0.2,
+        true,
+    );
+    let ror = shape(
+        b,
+        ShapeType::Rectangle,
+        [1500.0, 0.0, 157.3, 211.9],
+        0.35,
+        true,
+    );
+    arrow(
+        b,
+        End::Free([1290.0, 550.0]),
+        bound(drr, Anchor::Orbit([0.8, 0.3])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        bound(drr, Anchor::Center),
+        bound(ror, Anchor::Orbit([0.1, 0.8])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([1100.0, 600.0]),
+        bound(drr, Anchor::Fixed([0.4, 0.55])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([1450.0, 350.0]),
+        bound(drr, Anchor::Fixed([0.3, 0.5])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([1850.0, -100.0]),
+        bound(ror, Anchor::Fixed([0.7, 0.3])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([1850.0, 320.0]),
+        bound(ror, Anchor::Orbit([0.95, 0.97])),
+        st,
+        vec![],
+    );
+    arrow(
+        b,
+        End::Free([1400.0, -50.0]),
+        bound(ror, Anchor::Fixed([0.8, 0.6])),
+        st,
+        vec![],
+    );
     b.clone()
 }
 
@@ -288,21 +353,26 @@ fn targets(b: &Board) -> Vec<[Option<(Element, Anchor)>; 2]> {
         .collect()
 }
 
-/// Onde a lei não está medida (o losango e o rectângulo redondo), o vão dele: até onde a ponta mexe
-/// (medido 3,876 em órbita/centro).
-const UNMEASURED_GAP: f64 = 4.0;
-/// …e com um ponto fixo DENTRO delas (medido 4,70 no losango, 85,6 no rectângulo redondo do lado de LÁ).
-const UNMEASURED_INSIDE: f64 = 86.0;
+/// O 0.18.1 contra a lei, com UMA ponta presa (medido 20/10, W23 B9: 0,0009 — o canto do rectângulo
+/// redondo, o Newton dele a 1e-3).
+const LAW_ONE: f64 = 0.002;
+/// …e com as DUAS: ao empurrar as formas ele re-liga uma ponta de cada vez, a partir da outra ainda
+/// deslocada de 1 px (medido 0,1199, o losango redondo rodado ao centro → o rectângulo redondo rodado).
+const LAW_TWO: f64 = 0.12;
+/// Onde o 0.18.1 põe a ponta em órbita e ao centro, de onde a escrevemos — TODAS as formas (medido
+/// 0,1199, a mesma seta de [`LAW_TWO`]; antes da W23 B9 o losango 3,875 e o rectângulo redondo 3,513).
+const ORBIT: f64 = 0.12;
 /// Um ponto fixo DENTRO que o 0.18.1 não exprime (do lado de LÁ da recta): até onde fica a ponta que
-/// a lei dá ao par que escrevemos (medido 70,12).
+/// a lei dá ao par que escrevemos (medido 70,12, o rectângulo; o losango redondo 35,13, o rectângulo
+/// redondo 52,29 — antes da W23 B9 85,6).
 const UNEXPRESSIBLE: f64 = 71.0;
 
 /// ⭐⭐ XV7 — o NOSSO ficheiro no 0.18.1. Ao abrir nada mexe e o legado gravado é o que o escritor de
 /// HOJE escreve; ao EMPURRAR as formas (ele re-liga cada seta pelo legado) cada ponta cai onde a lei
-/// medida diz ([`crate::legacy_focus::landing`], ≤ 0,05 no rectângulo e na elipse — com as DUAS pontas
-/// presas ele re-liga uma de cada vez, a partir da outra ainda deslocada), e essa é a que escrevemos
-/// (órbita e centro ≤ 0,05). Um ponto fixo do lado de LÁ da recta não se exprime: fica o par que cai
-/// mais perto (≤ [`UNEXPRESSIBLE`]). O losango e o rectângulo redondo: ≤ [`UNMEASURED_GAP`] da nossa.
+/// medida diz ([`crate::legacy_focus::landing`]: ≤ [`LAW_ONE`], ≤ [`LAW_TWO`] com as duas pontas
+/// presas), e em órbita e ao centro é a que escrevemos (≤ [`ORBIT`], as cinco formas — o losango e o
+/// rectângulo redondo pela lei das peças, W23 B9). Um ponto fixo do lado de LÁ da recta não se
+/// exprime: fica o par que cai mais perto (≤ [`UNEXPRESSIBLE`]).
 #[test]
 fn xv7_the_0181_moves_no_tip_when_it_rebinds_our_arrows() {
     let b = sample_w10();
@@ -325,11 +395,14 @@ fn xv7_the_0181_moves_no_tip_when_it_rebinds_our_arrows() {
     assert_eq!((opened.len(), after.len()), (ours.len(), ours.len()));
     const KEYS: [&str; 2] = ["startBinding", "endBinding"];
     let mut fails = Vec::new();
+    let mut worst = [0.0f64; 4];
+    let mut kinds = std::collections::BTreeSet::new();
     for (((o, a), w), t) in opened.iter().zip(&after).zip(&ours).zip(targets(&b)) {
         let (wp, op, ap) = (world(w), world(o), world(a));
         for (q, r) in op.iter().zip(&wp) {
             assert!(dist(*q, *r) < 1e-9, "{}: o 0.18.1 mexeu ao ABRIR", w["id"]);
         }
+        let both = t.iter().all(Option::is_some);
         for (k, end) in t.iter().enumerate() {
             let Some((shape, anchor)) = end else { continue };
             let (wb, ob) = (&w[KEYS[k]], &o[KEYS[k]]);
@@ -348,55 +421,45 @@ fn xv7_the_0181_moves_no_tip_when_it_rebinds_our_arrows() {
                 (wp[n - 1], wp[n - 2], ap[ap.len() - 1])
             };
             let (focus, gap) = (wb["focus"].as_f64().unwrap(), wb["gap"].as_f64().unwrap());
-            let label = format!(
-                "{} ponta {k} ({:?}, {anchor:?})",
-                w["id"],
-                shape.shape().unwrap().kind
-            );
-            match crate::legacy_focus::landing(shape, from, focus, gap) {
-                Some(land) => {
-                    let law = dist(got, land);
-                    let ours = dist(land, tip);
-                    let bound = if matches!(anchor, Anchor::Fixed(_)) {
-                        UNEXPRESSIBLE
-                    } else {
-                        0.05
-                    };
-                    eprintln!("{label}: lei {law:.4} · nossa {ours:.4}");
-                    if law > 0.05 || ours > bound {
-                        fails.push(format!(
-                            "{label}: a lei erra {law:.3}, a nossa fica a {ours:.3}"
-                        ));
-                    }
-                }
-                None => {
-                    let e = dist(got, tip);
-                    eprintln!("{label}: sem lei · {e:.4}");
-                    let bound = if matches!(anchor, Anchor::Fixed(_)) {
-                        UNMEASURED_INSIDE
-                    } else {
-                        UNMEASURED_GAP
-                    };
-                    if e > bound {
-                        fails.push(format!("{label}: {e:.3}"));
-                    }
-                }
+            let kind = shape.shape().unwrap().kind;
+            kinds.insert(format!("{kind:?} {}", shape.style().round));
+            let label = format!("{} ponta {k} ({kind:?}, {anchor:?})", w["id"]);
+            let law = crate::legacy_focus::landing(shape, from, focus, gap)
+                .map_or(f64::INFINITY, |land| dist(got, land));
+            let real = dist(got, tip);
+            eprintln!("{label}: lei {law:.4} · o 0.18.1 a {real:.4} da nossa");
+            let (lw, lb) = if both { (1, LAW_TWO) } else { (0, LAW_ONE) };
+            let (rw, rb) = if matches!(anchor, Anchor::Fixed(_)) {
+                (3, UNEXPRESSIBLE)
+            } else {
+                (2, ORBIT)
+            };
+            worst[lw] = worst[lw].max(law);
+            worst[rw] = worst[rw].max(real);
+            if law > lb || real > rb {
+                fails.push(format!(
+                    "{label}: a lei erra {law:.4}, a ponta fica a {real:.4} da nossa"
+                ));
             }
         }
     }
+    eprintln!("lei 1 ponta · 2 pontas · órbita/centro · fixo: {worst:.4?}");
+    assert_eq!(kinds.len(), 5, "as cinco formas: {kinds:?}");
     assert!(fails.is_empty(), "o 0.18.1: {fails:#?}");
 }
 
 /// ⭐ A LEI do legado (XV7) contra a varredura do oráculo (`saidas/w10_F_*.0181.json`: forma × vão ×
 /// rotação × cantos × espessura × proporção, 12 ângulos × 7 focos, presas pelo fim e pelo início):
-/// de cada ponta que o 0.18.1 re-ligou, [`crate::legacy_focus::legacy`] devolve o `focus` gravado — e
-/// o `gap` no rectângulo de cantos vivos e na elipse (o losango e o rectângulo redondo não têm a lei do
-/// vão medida).
+/// de cada ponta que o 0.18.1 re-ligou, [`crate::legacy_focus::legacy`] devolve o `focus` e o `gap`
+/// gravados — o losango e o rectângulo redondo pela lei das peças (W23 B9), salvo a ponta no ponto do
+/// foco (um só cruzamento: o vão não se lê dela).
 #[test]
 fn xv7_the_legacy_law_reproduces_the_0181_sweep() {
     let mut casos = 0;
     let mut pontas = 0;
     let mut espelhadas = 0;
+    let (mut gaps, mut no_gap) = (0, 0);
+    let mut worst_gap: f64 = 0.0;
     for f in std::fs::read_dir(format!("{DIR}/saidas")).unwrap() {
         let name = f.unwrap().file_name().into_string().unwrap();
         if !(name.starts_with("w10_F_") && name.ends_with(".0181.json")) {
@@ -427,8 +490,6 @@ fn xv7_the_legacy_law_reproduces_the_0181_sweep() {
         );
         shape.angle = num("angle");
         let c = shape.center();
-        let gap_law =
-            kind == ShapeType::Ellipse || (kind == ShapeType::Rectangle && !shape.style().round);
         for a in els.iter().filter(|e| e["type"] == "arrow") {
             let p = world(a);
             let end = a["id"].as_str().unwrap().starts_with('e');
@@ -461,16 +522,31 @@ fn xv7_the_legacy_law_reproduces_the_0181_sweep() {
                 a["id"]
             );
             let g = b["gap"].as_f64().unwrap();
-            if gap_law && g != 0.0 && !caso.contains("eixos") {
-                assert!(
-                    (gap - g).abs() < 1e-6,
-                    "{caso} {}: gap {gap} ≠ {g}",
-                    a["id"]
-                );
+            let aim = crate::legacy_focus::landing(&shape, from, want, 0.0);
+            if aim.is_some_and(|m| dist(m, tip) < 1e-3) {
+                no_gap += 1;
+                continue;
+            }
+            if g != 0.0 && !caso.contains("eixos") {
+                gaps += 1;
+                // A ponta do 0.18.1 nos cantos redondos vem do Newton dele (a 1e-3 px): o vão lido
+                // dela também.
+                // (medido 1,4e-4)
+                let tol = if kind == ShapeType::Diamond || shape.style().round {
+                    1e-3
+                } else {
+                    1e-6
+                };
+                worst_gap = worst_gap.max((gap - g).abs());
+                assert!((gap - g).abs() < tol, "{caso} {}: gap {gap} ≠ {g}", a["id"]);
             }
         }
     }
     assert_eq!(casos, 34, "a varredura inteira");
+    eprintln!(
+        "{pontas} pontas, {gaps} vãos lidos (pior {worst_gap:.2e}), {no_gap} no ponto do foco"
+    );
+    assert!(gaps > 2500 && no_gap > 0, "{gaps} · {no_gap}");
     assert!(pontas > 3000, "{pontas}");
     assert!(
         espelhadas > 0,

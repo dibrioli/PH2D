@@ -146,6 +146,15 @@ fn native(kind: ShapeType) -> Option<&'static str> {
     }
 }
 
+/// O `roundness.type` de uma forma nativa redonda: 3 (o raio adaptativo) no rectângulo, 2 no resto.
+pub(crate) fn roundness_type(kind: ShapeType) -> u8 {
+    if native(kind) == Some("rectangle") {
+        3
+    } else {
+        2
+    }
+}
+
 /// Os pontos relativos ao 1.º (o `x, y` dele) e a largura e a altura da CAIXA deles (a do Excalidraw:
 /// a leitura compara-a para saber se o elemento foi redimensionado lá).
 fn points_rel(pts: &[[f64; 2]]) -> (f64, f64, Value, f64, f64) {
@@ -191,8 +200,10 @@ fn shape(board: &Board, el: &Element, s: &Shape, out: &mut Vec<Value>) {
     let mut m = if let Some(kind) = native(s.kind) {
         let mut m = base(board, el, kind, &[]);
         if st.round {
-            let t = if kind == "rectangle" { 3 } else { 2 };
-            m.insert("roundness".into(), json!({ "type": t }));
+            m.insert(
+                "roundness".into(),
+                json!({ "type": roundness_type(s.kind) }),
+            );
         }
         container = Some(id(el.id));
         m

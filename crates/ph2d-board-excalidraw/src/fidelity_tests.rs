@@ -540,3 +540,6 @@ mod file;
 
 #[path = "fidelity_w10_tests.rs"]
 mod w10;
+
+#[path = "fidelity_w23_tests.rs"]
+mod w23;

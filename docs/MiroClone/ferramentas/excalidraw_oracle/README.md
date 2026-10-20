@@ -439,7 +439,7 @@ o miolo, a diagonal) nas duas versões.
 **O que mediu** (estudo [07](../../07_fidelidade_excalidraw.md) §2 XV7, §3): ao re-ligar, o 0.18.1 põe a ponta na
 recta do ponto vizinho por \|focus\|·K (focus = d/h(n)) a `gap` da forma — \|Δfocus\| 0,00000, gap rect/elipse
 0,0000 —; `gap 0` põe a ponta DENTRO; rectas paralelas aos eixos saem espelhadas; o vão do losango e do rectângulo
-redondo não tem lei (resíduo até 3,7 px). No next, o arrasto de uma ponta NÃO marca o foco: só o contorno azul e
+redondo não tem lei (resíduo até 3,7 px) — ⇒ tem: a lei das peças, §W23 B9. No next, o arrasto de uma ponta NÃO marca o foco: só o contorno azul e
 a seta já parada a g (os pontos mostrados são o encaixe no meio do lado), e o foco do gesto na faixa é o cursor.
 
 **Quando o escritor muda, regravam-se as TRÊS entradas nossas:** W8 (`grava_a_entrada_do_oraculo` +
@@ -600,3 +600,71 @@ links colados não se guardam (o JSON tem tudo); as do caminho `Z01..Z05` sim.
 ### W21 — o clique longo num vídeo e as outras ferramentas sobre ele: `sonda_w21.mjs`
 
 `sonda_w21.mjs` (como a `sonda_w20.mjs`: Playwright, YouTube real, a página como `https://ph2d.local/`); saída `saidas/w21/w21_sondas.json` (24 sondas; só as fotos de rectangle/freedraw/text/arrow ficaram, o JSON nomeia as podadas). A duração conta-se no relógio da PÁGINA (`event.timeStamp`), não no do Node. Medido: segurar parado num vídeo seleccionado activa até 283,5 ms e não activa desde 303,3 ms (nos dois sentidos); com qualquer das 11 ferramentas o clique/arrasto faz o da ferramenta e nunca activa o vídeo; a borracha apaga o vídeo. Leitura e decisão: [`10_video_do_youtube.md`](../../10_video_do_youtube.md) §W21.
+
+### W23 — o vão do losango e do rectângulo redondo: `corre_fidelidade.mjs --prefixo w23`
+
+```bash
+python3 docs/MiroClone/ferramentas/excalidraw_oracle/entradas/gera_w23_vao_casos.py docs/MiroClone/ferramentas/excalidraw_oracle/entradas
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh node docs/MiroClone/ferramentas/excalidraw_oracle/corre_fidelidade.mjs --prefixo w23 --versao 0181 docs/MiroClone/ferramentas/excalidraw_oracle/entradas/w23_vao_casos.json docs/MiroClone/ferramentas/excalidraw_oracle/saidas
+python3 docs/MiroClone/ferramentas/excalidraw_oracle/mede_w23_vao.py
+```
+
+**Casos:** 110 `V_*`, 28 188 setas (entrada 6,4 MB, saídas `saidas/w23_V_*.0181.json` 7,7 MB; a corrida de 20/10 tinha 98 —
+a B9 juntou as medidas FRACCIONÁRIAS 173,4×97,8, g 6 · −5 · dentro, em cada forma): losango vivo, losango
+`roundness` 2 e 3, rectângulo `roundness` 3 × 200×120 (vãos 0,01 · 1 · 3 · 6 · 10 · 20 · −5), 120×200 · 60×40 · 300×200
+(1 · 6 · 20 · −5; o 300×200 passa o limiar 128 do raio adaptativo) × rodado 0,4 rad (6 · −5) × `gap 0` × «ponto fixo
+dentro» com o par que o NOSSO escritor grava (focus da recta, gap = −distância ao nosso contorno); 24 ângulos × 11 focos
+(−0,9…0,9) presas pelo fim (no 200×120 g 6 também pelo início); controlo: rectângulo vivo g 6 e −5 (W10, exacto).
+**Novidade do corredor:** `"campos": [...]` num caso — só essas chaves de cada elemento vão para a saída.
+**Controlo da máquina:** `F_diamond_g6` da W10 recorrido hoje = byte a byte igual à fixture. **Determinismo:** duas
+corridas em paralelo (portas 47131/47132, `load` ~36): **98/98 ficheiros idênticos**; 218 s e 203 s.
+
+**A lei** (referencial local: centro da CAIXA na origem, sem rotação; `hw, hh` as meias-medidas; `R(x)` = `x/4`, e no
+`type 3` 32 acima de `x = 128`):
+- **as peças alargadas de g** (g com sinal; `ox = ⌊w/2⌋+1−w/2`, `oy = ⌊h/2⌋+1−h/2` — o vértice do losango NÃO está no meio):
+  - losango vivo: vértices `(ox, ∓(hh+g))`, `(±(hw+g), oy)` — cada um +g no SEU eixo;
+  - losango redondo: o caminho do desenho — vértices `T(ox,−hh) R(hw,oy) B(ox,hh) L(−hw,oy)`, cantos cúbicos com os DOIS
+    controlos no vértice entre `V ± (R(⌊w/2⌋+1), R(⌊h/2⌋+1))` ao longo das arestas (topo `(T.x∓vr, T.y+hr)`, direita
+    `(R.x−vr, R.y∓hr)`…), arestas rectas entre as pontas; **cada canto transladado de g·V/|V|**;
+  - rectângulo redondo (`r = R(min(w,h))`): cantos quadráticos (controlo no vértice) transladados de
+    **(±g·(hw+g), ±g·(hh+g)) / √((hw+g)²+(hh+g)²)** — o lado fica a `hw + g·(hw+g)/|…|` (não `hw+g`).
+- **a recta:** do ponto vizinho A pelo ponto do foco `|focus|·K` (XV7, K o vértice do losango simétrico `(0,±hh)`,
+  `(±hw,0)` / o canto da caixa), como SEGMENTO longo a partir de A; **cada peça dá no máximo UM ponto** (a curva por
+  Newton; as sementes não mudam o veredito);
+- **≥ 2 pontos ⇒ o mais perto de A; 1 ⇒ o PONTO DO FOCO** (a corda que entra e sai pela MESMA curva de canto); 0 ⇒ a
+  ponta não mexe; `gap 0` ⇒ o ponto do foco;
+- **o `empurrar` são DUAS re-ligações** (forma +1 px, depois −1): a única seta que a lei de uma só falhava
+  (`V_losango_r3_300x200_gneg5`, ponta em (1, −90)) é a 1.ª re-ligação que a 2.ª (sem pontos) deixou ficar.
+
+**Resíduo máximo (px)** — colunas de hipótese: a 1.ª entrada da recta OBSERVADA (só o vão, sem as pontas no foco);
+`LEI`: a lei inteira contra todas as setas:
+
+| forma | gap | setas | fica | foco | hipóteses do vão | LEI |
+|---|---|---|---|---|---|---|
+| losango vivo | 0,01 · 1 · 3 · 6 · 10 · 20 · −5 | 5 808 | 48 | 0 | (a) Minkowski 4,8–33/∞ · (b) semi-diagonais+g 4,7–32 · (c) mitra 4,8–33/∞ · **(d) +g no eixo, vértice ⌊⌋+1: 0,000** | **0,0000** |
+| losango vivo | 0 | 264 | 24 | 240 | — | **0,0000** |
+| losango redondo 2 e 3 | 0,01 … 20 · −5 | 2 × 5 808 | 358 | 812 | (a) Minkowski do redondo 9,5–41/∞ · (b) o vivo 5,8–42 · (c) +g no eixo 0,001–1,7/∞ · (e) raios do alargado 0,005–16/∞ · (f) g·û(V) quadrática 7–15/∞ · **(f′) g·û(V) cúbica 0,000** (r3 −5: 4,17 = a seta das duas re-ligações) | **≤ 0,0022** |
+| rectângulo redondo 3 | 0,01 … 20 · −5 | 5 808 | 148 | 240 | (a) Minkowski 0,07–53/∞ · (b) Chebyshev+g 12–83 · (c) lados+g mesmo r 0,07–65/∞ · **(d) g·û(hw+g,hh+g) quadrática 0,000** · (d′) cúbica 6,7–10 · (e) r do alargado 0,07–65/∞ | **≤ 0,0022** |
+| as três | 0 | 3 × 264 | 72 | 720 | — | **0,0000** |
+
+(o resíduo 0,0022 é a tolerância 1e-3 do Newton; |Δfocus| ≤ 0,00006 em todas, 0,0047 na seta das duas re-ligações.)
+**O que a W10 leu como «sem lei»:** o vértice do losango a ⌊w/2⌋+1 (as arestas ajustadas a um losango simétrico davam
+«x 4,43, y 5,39» para g 6); no rectângulo redondo g 6 «5,09 no lado, 3,17 no topo» = 6·106/124,87 e 6·66/124,87; e as
+pontas que caem no PONTO DO FOCO (1 só cruzamento).
+
+**«Ponto fixo dentro»** (o par do nosso escritor): a ponta cai, de mediana, 21 px (losango 200×120), 24 px (losango
+redondo), 65 px (rectângulo redondo 200×120) e até 193 px do ponto gravado — a LEI prevê onde (≤ 0,0017 px): a entrada
+da recta na forma ENCOLHIDA de |gap| (`gap = −distância` não é o nível que passa pelo ponto), ou o ponto do foco.
+
+**B9 (20/10) — o escritor e o gate.** A lei está em `ph2d-board-excalidraw/src/legacy_focus.rs` (`pieces`,
+`landing_pieces`; o Newton dele portado, sementes 0,5 · 0,2 · 0,8 a 1e-3, o ponto aceite afinado) e o escritor grava o
+par que a põe na NOSSA ponta (o nível que passa por ela; inexprimível ⇒ o vão de menor erro). Medidas fraccionárias
+confirmam o `⌊w/2⌋+1` e o `R(⌊w/2⌋+1)`: lei ≤ 0,0012 nos 173,4×97,8; as 110 em Python ≤ 0,0022, em Rust ≤ 0,0022.
+**No repo só 15 saídas (947 KB)**, o subconjunto do gate `w23_the_pieces_law_reproduces_the_0181_sweep`
+(`fidelity_w23_tests.rs`): `V_losango_{173p4x97p8_gneg5, 200x120_rot_g6, 200x120_g0, 173p4x97p8_dentro}`,
+`V_losango_r2_{173p4x97p8_g6, 200x120_rot_gneg5, 200x120_g0, 173p4x97p8_dentro}`, `V_losango_r3_300x200_{g6, gneg5}`
+(o tecto do raio; a 2.ª re-ligação sem cruzamentos), `V_retangulo_r3_{173p4x97p8_g6, 200x120_rot_gneg5, 300x200_g1,
+200x120_g0, 173p4x97p8_dentro}` — cada família × vão + · − · 0 · dentro · rodado · fraccionário, e os ramos «entrada»,
+«ponto do foco com um só cruzamento» e «fica». A entrada (6,4 MB) e as outras 95 saídas NÃO se guardam: regeneram-se
+pelos três comandos acima (determinístico; o cabeçalho das 15 leva `casos_sha256` `1eb66aa8…c2cef328`, o da entrada que
+o gerador de hoje escreve).

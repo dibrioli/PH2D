@@ -15,7 +15,7 @@
       "foreignObjects": 0
     },
     "padding0": {
-      "sha256": "784beb592ea627d86bf0a3cf634ff4754d1d07830408f98159e36bdf713c5f19",
+      "sha256": "191f0fa226c5fd6d29012979de710b68c802f2661d30cf3aef9db33134d4014b",
       "width": "1000",
       "height": "620.5",
       "viewBox": "0 0 1000 620.5",
@@ -86,15 +86,15 @@
       "foreignObjects": 0
     },
     "embed": {
-      "sha256": "68ad6d3844d9a54196c45129a2c92319e8a796e325baa3c04e233365b8a0e030",
+      "sha256": "e2565cac2f7ebf3ba259f83e97a89779e61eb8c1a7b8336fca54908919517bc8",
       "width": "1020",
       "height": "640.5",
       "viewBox": "0 0 1020 640.5",
-      "bytes": 29291,
+      "bytes": 29279,
       "font_faces": 1,
       "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"1020\" height=\"640.5\" fill=\"#ffffff\"/>",
-      "metadata_inicio": "<!-- payload-type:application/vnd.excalidraw+json --><!-- payload-version:2 --><!-- payload-start -->eyJ2ZXJzaW9uIjoiMSIsImVuY29kaW5nIjoiYnN0cmluZyIsImNvbXByZXNzZWQiOnRydWUsImVuY29kZWQiOiJ4nO1dW2/jNlx1MDAxNn7Pr1xi3Nexyvulb3NFXHUwMDA32C5cdTAwMDZNgX3YXHUwMDFkXGZcdTAwMTRbk1xicSzDVppJi/nveyhfRFKkLN9iZ2q",
-      "metadata_bytes": 8793,
+      "metadata_inicio": "<!-- payload-type:application/vnd.excalidraw+json --><!-- payload-version:2 --><!-- payload-start -->eyJ2ZXJzaW9uIjoiMSIsImVuY29kaW5nIjoiYnN0cmluZyIsImNvbXByZXNzZWQiOnRydWUsImVuY29kZWQiOiJ4nO1dW2/jNlx1MDAxNn7Pr1xi3Nexyvulb3NFXHUwMDA32C5cdTAwMDZNgX3YXHUwMDFkXGZcdTAwMTRbk1xicSzDVppJi/nveyhfRFKkLN9iZ2r",
+      "metadata_bytes": 8781,
       "clipPaths": 2,
       "images": 0,
       "foreignObjects": 0
@@ -114,7 +114,7 @@
       "foreignObjects": 0
     },
     "so_moldura": {
-      "sha256": "fe1f9f0805a1a65a1dc8f2ccc95ed06d6f37c3f32be1f9301694789432512923",
+      "sha256": "74ba8dca1f093fafab5df6c3adf533f1930f2fd8a3e09ad29b50bb4c2db26a1c",
       "width": "900",
       "height": "600",
       "viewBox": "0 0 900 600",
@@ -560,8 +560,8 @@
     },
     "embed": {
       "type": "image/png",
-      "bytes": 64056,
-      "sha256": "7a87f5c9666566526bf3df999a284b0da99ad773ac2ac3f01a1fae92c84438b6",
+      "bytes": 64074,
+      "sha256": "9da44df2d5348d7de27440e20393c818df1969bb1aed0acb910d7b163a4d8ec6",
       "width": 1020,
       "height": 640,
       "chunks": [
@@ -637,9 +637,9 @@
         },
         {
           "type": "tEXt",
-          "len": 6412,
+          "len": 6430,
           "keyword": "application/vnd.excalidraw+json",
-          "inicio": "{\"version\":\"1\",\"encoding\":\"bstring\",\"compressed\":true,\"encoded\":\"xí][oÛ8\\u0016~Ï¯\\b<¯µ÷Ë¼õ)°»(&\\u0003ìÃnQ¨\\u0018q,CVv\\u0007ýï{(_DR¤,[vìt¬\\f¦\\tIQGä¹|ß\\u001"
+          "inicio": "{\"version\":\"1\",\"encoding\":\"bstring\",\"compressed\":true,\"encoded\":\"xí][oÛ8\\u0016~Ï¯\\b<¯µ÷Ë¼õ)°»(&\\u0003ìÃnQ¨\\u0018q,CVv\\u0007ýï{(_DR¤,[vìt¬.vb¢Èsù¾#úëâòr"
         },
         {
           "type": "IEND",

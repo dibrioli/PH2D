@@ -204,7 +204,9 @@ for (const [versao, home] of Object.entries(HOMES)) {
           }
           // `guardar: false`: o passo corre mas não vai para a saída (W10: a varredura só guarda o fim).
           if (passo.guardar === false) continue;
-          passos.push({ passo, elementos: limpa(caso.relogio === "livre" ? normaliza(atuais, conhecidos) : atuais) });
+          // W23 `"campos": [...]` no caso: só essas chaves de cada elemento vão para a saída (a varredura densa).
+          const guarda = limpa(caso.relogio === "livre" ? normaliza(atuais, conhecidos) : atuais);
+          passos.push({ passo, elementos: caso.campos ? guarda.map((e) => Object.fromEntries(caso.campos.filter((k) => k in e).map((k) => [k, e[k]]))) : guarda });
         }
       } catch (e) {
         console.error(`FALHA ${caso.nome} (${versao}): ${e.message}`);

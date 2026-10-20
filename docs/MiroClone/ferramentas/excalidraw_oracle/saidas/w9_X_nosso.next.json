@@ -5,10 +5,10 @@
   "licenca": "MIT",
   "chromium": "153.0.8010.12",
   "casos": "w9_nosso_casos.json",
-  "casos_sha256": "ed4eb84197564cc0eafd56dead5c518e868a683fe23ea8ae56a1cf037057df13",
+  "casos_sha256": "475a357c2b7b04bff63849e3ee994b4dd0bf7b978383277aa62d029cf099519e",
   "caso": "X_nosso",
   "descricao": "o NOSSO .excalidraw (W9): ponto fixo (inside), órbita e centro (orbit), a curva dele, as pontas novas e o aspecto — escrito por ph2d-board-excalidraw::write",
-  "semente": 706769295,
+  "semente": 523644422,
   "relogio_fixo_utc": "2026-01-01T00:00:00.000Z",
   "consola": []
  },

@@ -17,7 +17,9 @@ n=0
 # As ISENÇÕES (uma por linha: caminho, o número EXATO de linhas removidas/alteradas, a razão): uma linha a
 # mais ou a menos volta a reprovar. Só para linhas que testam o Wet Paint e moram num ficheiro protegido —
 # ou, por ordem do dono (11/10), para mudar só a FORMA DE CORRER um teste de outro meio (as mesmas contas e
-# asserções; nenhum byte do produto).
+# asserções; nenhum byte do produto) — ou, na missão Pincéis (dono 19/10: o recurso novo entra nos quatro
+# meios, desligado por omissão), para a linha que passa a perguntar a uma porta nova e que, de fábrica, devolve
+# o de antes AO BIT (a prova: `os_outros_meios_nao_mudam` verde + o porquê da porta escrito na isenção).
 isencoes="$(dirname "$0")/cerca_isencoes.tsv"
 while IFS=$'\t' read -r mais menos f; do
   [[ "$f" =~ $padrao ]] || continue

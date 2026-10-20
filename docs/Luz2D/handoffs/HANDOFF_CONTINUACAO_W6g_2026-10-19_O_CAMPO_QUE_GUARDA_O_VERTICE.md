@@ -1111,7 +1111,7 @@ marca da última suíte verde NÃO avançou (a corrida saiu vermelha).
 
 ## 40. ABERTO (por ordem — substitui o §38)
 
-1. Smoke do dono do entorno 4× (a cena 5 no zoom fechado: o laranja do refletor de cima igual ao do zoom aberto).
+1. ~~Smoke do dono do entorno 4×~~ — **«smoke ok» (20/10)**.
    O binário `smoke` está compilado na worktree (2.ª corrida: `Finished \`smoke\` profile [optimized] target(s) in 0.35s`).
 2. O custo da borda (§37): +5,9 ms na vista e +5,1 ms no entorno a 2160p Alta (+0,37 / +0,31 a 1080p Baixa) — a 2.ª
    passagem do entorno só na parte da grade a partir da janela (§34.1) e os cones dos níveis 8–9.

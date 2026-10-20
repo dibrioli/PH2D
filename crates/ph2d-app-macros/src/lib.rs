@@ -7,6 +7,7 @@
 
 mod conferencia;
 pub mod erros;
+pub mod espera;
 pub mod etapas;
 pub mod instala;
 pub mod sessao;

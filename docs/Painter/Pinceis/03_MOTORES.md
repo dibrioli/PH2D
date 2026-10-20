@@ -560,7 +560,7 @@ escada 2,68; caixa no traço, 3,4; a ESPESSURA da lâmina cortada a 0,6 (casava 
 tira pigmento por área: a rampa de pressão 0,66 → 0,59, o vermelho seco aparece por baixo do azul (0,54 → 0,70) e a
 distância à origem na matriz 0,81 → 1,01 (fica o além 31/23, o de antes). A borda/miolo do W3 lê-se na média dos dois
 raios: a fase subpíxel movia-a 0,75 ↔ 0,91 a r 20 só pelo nó da tabela da largura (a barra 0,8–0,9 a mesma). Portão
-`a_ponta_das_cerdas_e_recta_e_desfiada` (curva a 200 px ±0,06; desfiado ½–1,5× o do Bristle Flat). Mutação: sangra.
+`a_ponta_das_cerdas_e_recta_e_desfiada` (curva a 200 px ±0,06; desfiado ½–1,5× o do Bristle Flat). Mutação: sangra. O desvio é sub-célula (`01aa42c60d`; portão `a_ponta_desfiada_nao_depende_da_grade`).
 
 **(d) A lente sobre a faixa molhada — ✅.** Mecanismo confirmado: `leveling` 0 → 12/12, mas parte a escada. **Cura**
 `Knob::LevelingOwnStroke` + o campo preguiçoso `Grid::traco` (o número do traço que pousou cada célula; `WP/grid/traco.rs`,
@@ -568,7 +568,10 @@ no snapshot e no recorte do undo): entre células pintadas por traços DIFERENTE
 fluxo final é zero nas duas rotas (`WP/solver.rs::parede_do_traco`, a de Jacobi e o `smooth_velocity`; só a parede no
 nivelamento deixava 13–15/12: a velocidade que ele deixa atravessava). A tinta mistura-se onde POUSA; não escoa para a
 molhada de outro traço. Oil Bristle: 19/12 → 12/12 nos três cruzamentos (Rebelle 12/12 · 14/14 · 12/12); a escada do
-W3b intacta. Portão `a_tinta_molhada_nao_alarga_o_traco` (±1 px). Mutação (sem parede): 13/7, sangra.
+W3b intacta. Portão `a_tinta_molhada_nao_alarga_o_traco` (±1 px). Mutação (sem parede): 13/7, sangra. Revisão (`01aa42c60d`): a lei é da TINTA — a célula guarda o traço (um pincel sem a lei por cima desmarca-a) e a
+parede vale entre tintas MOLHADAS de traços diferentes com uma delas com a lei (a seca nunca; o `dry_canvas` leva o
+campo); as ferramentas que movem tinta (Blow, Wet, Smear, Blend) passam por cima (`Sim::paredes`; o Blow do Rebelle
+não medido). Portões `a_parede_e_da_tinta_e_nao_do_pincel_activo`, `a_parede_e_so_entre_tintas_molhadas_…`.
 
 **(b-resto) O grão nas pontas pequenas — ✅ (só no Wet).** Oráculo: o grão do Rebelle é FINO a todo tamanho (correlação
 ao longo ~2 px a 5 · 40 · 200) e o ATRAVÉS não cai na ponta fina (8B 15 · 12 · 13) — a profundidade não cai, e nenhum

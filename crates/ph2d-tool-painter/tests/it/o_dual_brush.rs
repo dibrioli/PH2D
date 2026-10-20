@@ -91,6 +91,24 @@ fn o_dual_brush_so_tira() {
     assert!(tc < 0.85 * ts && tc > 0.05 * ts, "a 2.ª ponta tirou {:.3} da tinta", 1.0 - tc / ts);
 }
 
+/// ⭐ **A 2.ª ponta acompanha o traço INTEIRO**: um disco duro maior que a 1.ª, denso e sem espalhar, em Multiply,
+/// cobre-a de ponta a ponta (`m = 1`) — a tela é a do traço sem o dual em todo píxel (± 3/255: o arredondamento do
+/// plano, medido 3 num píxel da orla). Um motor da 2.ª que
+/// não andasse com o caminho (só o pen-down) deixaria o resto do traço sem máscara: em Multiply, sem tinta.
+#[test]
+fn a_segunda_ponta_acompanha_o_traco_inteiro() {
+    let sem = tinta(&pinta(pincel(PaintMedia::Digital, |_| {})));
+    let com = tinta(&pinta(pincel(PaintMedia::Digital, |t| {
+        t.set_ponta(LinhaDaPonta::DualMode, 1.0);
+        t.set_ponta(LinhaDaPonta::DualSize, 1.6);
+        t.set_ponta(LinhaDaPonta::DualSpacing, 0.05);
+        t.set_ponta(LinhaDaPonta::DualHardness, 1.0);
+    })));
+    let longe: Vec<(usize, i32, i32)> =
+        sem.iter().zip(&com).enumerate().filter(|(_, (s, c))| s.abs_diff(**c) > 3).map(|(i, (s, c))| (i, *s, *c)).collect();
+    assert!(longe.is_empty(), "{} píxeis fora do traço sem dual: {:?}", longe.len(), &longe[..longe.len().min(8)]);
+}
+
 /// ⭐ **Cada modo do dual é outra tela** (a 1.ª macia, para a cobertura parcial distinguir as leis).
 #[test]
 fn cada_modo_do_dual_e_outro() {
@@ -234,4 +252,111 @@ fn grava_o_carvao_com_estrias() {
     let f = dir.join("Carvao Estrias Dual.ph2d-brush.png");
     std::fs::write(&f, ph2d_brush_presets::escrever(&p).unwrap()).unwrap();
     eprintln!("gravado {}", f.display());
+}
+
+/// ⭐ **O custo do dual, INTERCALADO** (`docs/DevOps/MEDIR_VELOCIDADE.md`): o preset de teste com e sem a 2.ª ponta,
+/// no MESMO processo, a cena `gestos` da bateria a 3 eventos por quadro, rodadas alternadas; por quadro o MÍNIMO das
+/// rodadas. Imprime os quadros > 16,7 ms de cada variante e os piores. `PH2D_DUAL_TAMANHO` (px, 200 por omissão).
+#[test]
+#[ignore = "sonda de custo: `--profile smoke -- --ignored --nocapture`"]
+fn mede_o_custo_do_dual() {
+    let tam: f32 = std::env::var("PH2D_DUAL_TAMANHO").map_or(200.0, |v| v.parse().unwrap());
+    let f = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/Painter/Pinceis/fixtures/presets_teste/Carvao Estrias Dual.ph2d-brush.png");
+    let preset = ph2d_brush_presets::ler(&std::fs::read(&f).unwrap()).unwrap();
+    let bat = crate::exame_bancada::bateria();
+    let [w, h] = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
+    let cena = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "gestos").unwrap();
+    let eventos: Vec<CanvasPointer> = cena["ops"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|o| o["op"] == "traco")
+        .flat_map(|op| {
+            let pts = op["pts"].as_array().unwrap().clone();
+            let n = pts.len();
+            (0..=n).map(move |i| {
+                let p = &pts[i.min(n - 1)];
+                CanvasPointer {
+                    pos: [p[0].as_f64().unwrap() as f32, p[1].as_f64().unwrap() as f32],
+                    pressure: p[2].as_f64().unwrap() as f32,
+                    tilt: [0.0, 0.0],
+                    phase: if i == 0 {
+                        PointerPhase::Down
+                    } else if i == n {
+                        PointerPhase::Up
+                    } else {
+                        PointerPhase::Move
+                    },
+                }
+            })
+        })
+        .collect();
+    let novo = |dual: bool| {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (w * h * 4) as usize], w, h);
+        assert!(t.preset_aplicar(&preset).unwrap().is_empty());
+        if !dual {
+            t.set_ponta(LinhaDaPonta::DualMode, 0.0);
+        }
+        t.set_brush_size_px(tam * 0.5);
+        t.set_brush_color_srgb8([23, 101, 179]);
+        t
+    };
+    let corre = |t: &mut PainterTool| -> Vec<f64> {
+        eventos
+            .chunks(3)
+            .map(|q| {
+                let t0 = std::time::Instant::now();
+                for e in q {
+                    t.on_canvas_pointer(e.clone());
+                }
+                t.on_tick(1000.0 / 60.0);
+                t0.elapsed().as_secs_f64() * 1e3
+            })
+            .collect()
+    };
+    eprintln!("load {}", std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim());
+    let mut minimo: [Vec<f64>; 2] = [Vec::new(), Vec::new()];
+    let mut picos: [Vec<usize>; 2] = [Vec::new(), Vec::new()];
+    for rodada in 0..10 {
+        for k in [rodada % 2, 1 - rodada % 2] {
+            let mut t = novo(k == 1);
+            let q = corre(&mut t);
+            picos[k].push(q.iter().filter(|x| **x > 1000.0 / 60.0).count());
+            let mut o = q.clone();
+            o.sort_by(f64::total_cmp);
+            eprintln!(
+                "rodada {rodada} {}: > 16,7 ms {} · pior {:.1} ms (quadro {})",
+                if k == 1 { "com dual" } else { "sem dual" },
+                q.iter().filter(|x| **x > 1000.0 / 60.0).count(),
+                o[o.len() - 1],
+                q.iter().position(|x| *x == o[o.len() - 1]).unwrap_or(0)
+            );
+            if minimo[k].is_empty() {
+                minimo[k] = q;
+            } else {
+                for (m, v) in minimo[k].iter_mut().zip(q) {
+                    *m = m.min(v);
+                }
+            }
+        }
+    }
+    for (k, nome) in [(0, "sem dual"), (1, "com dual")] {
+        let v = &minimo[k];
+        let mut piores: Vec<(usize, f64)> = v.iter().copied().enumerate().collect();
+        piores.sort_by(|a, b| b.1.total_cmp(&a.1));
+        let mut s = v.clone();
+        s.sort_by(f64::total_cmp);
+        eprintln!(
+            "{tam} px {nome}: {} quadros · > 16,7 ms por rodada {:?} · no mínimo {} · mediana {:.2} · p95 {:.2} · piores {:?}",
+            v.len(),
+            picos[k],
+            v.iter().filter(|x| **x > 1000.0 / 60.0).count(),
+            s[s.len() / 2],
+            s[s.len() * 95 / 100],
+            &piores[..6.min(piores.len())]
+        );
+    }
+    eprintln!("load {}", std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim());
 }

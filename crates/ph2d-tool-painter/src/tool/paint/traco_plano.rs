@@ -20,6 +20,15 @@ use ph2d_painter_brush::{BrushBlend, Dab};
 use rayon::prelude::*;
 use std::sync::Arc;
 
+/// A janela (texels) a partir da qual a composição de um lote vai ao pool (ADR-0173), em blocos de
+/// [`LINHAS_POR_TAREFA`]. Medido intercalado (`o_dual_brush::mede_o_custo_do_dual`): a pegada de 40 px (~1,8 k
+/// texels) custava 1–2,5 ms por lote só a acordar o pool (0,07 ms em série) e 20–40 ms com um trabalhador
+/// desagendado; a de 200 px (~41 k) em série é 1,7 ms e no pool ~0,2 ms (série a 200 px: mediana 0,81 ms/quadro
+/// contra 0,24 no pool).
+const COMPOE_EM_PARALELO_DESDE: usize = 16_384;
+/// Linhas por tarefa no pool.
+const LINHAS_POR_TAREFA: usize = 16;
+
 /// A sessão do plano — vive do 1.º lote ao pen-up.
 #[derive(Clone, Debug)]
 pub(crate) struct PlanoDoTraco {
@@ -98,7 +107,9 @@ impl PainterTool {
     /// recompõe a janela. Chamado pela porta do carimbo (`stamp_route`) dentro do gate de proteção/seleção.
     pub(super) fn stamp_dabs_no_plano(&mut self, dabs: &[Dab]) {
         let r = self.dab_batch_region(dabs);
-        if r.is_none() && !self.dual_pendente() {
+        // Marcas da 2.ª ponta sem lote da 1.ª esperam pelo lote seguinte (ou pelo fim do traço): compor só por elas
+        // dobrava as composições por quadro (medido, `o_dual_brush::mede_o_custo_do_dual`).
+        if r.is_none() && !self.dual_no_fim() {
             return;
         }
         let mut s = self.abre_o_plano();
@@ -216,35 +227,63 @@ impl PainterTool {
         let enc = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
         // O modo, a fórmula geral (L7) e a mistura K–M do pincel: o carimbo de sempre, composto UMA vez.
         let (vazio, pigmento) = (brush.blend_sobre_vazio, brush.effective_pigment_mix());
+        // A 2.ª ponta (L6): o modo e a máscara resolvidos UMA vez por lote, não por texel.
+        let dual = brush.dual.map(|d| d.modo).zip(s.mascara.as_deref());
         // ADR-0173: por LINHA e em paralelo — cada texel é função pura da base, do plano e do aro dele.
         let linhas = &mut buf[r.y as usize * w * 4..(r.y + r.h) as usize * w * 4];
-        linhas
-            .par_chunks_mut(w * 4)
-            .enumerate()
-            .for_each(|(dy, linha)| {
-                let y = r.y as usize + dy;
-                for x in r.x as usize..(r.x + r.w) as usize {
-                    let i = (y * w + x) * 4;
-                    let base = [0, 1, 2, 3].map(|k| dec(s.base[i + k]));
-                    let mut p = [0, 1, 2, 3].map(|k| dec(s.plano[i + k]));
-                    if trinco {
-                        p[3] *= base[3];
-                    }
-                    if let (Some(d), Some(m)) = (brush.dual, s.mascara.as_deref()) {
-                        p[3] = d.modo.recorta(p[3], dec(m[i + 3]));
-                    }
-                    let a = aro.as_ref().map_or(0.0, |(jan, v)| {
-                        v[(y - jan.y as usize) * jan.w as usize + (x - jan.x as usize)]
-                    });
-                    let mut out = t.compoe(brush.blend, vazio, pigmento, base, p, a);
-                    if trinco {
-                        out[3] = base[3];
-                    }
-                    for k in 0..4 {
-                        linha[x * 4 + k] = enc(out[k]);
+        let linha_composta = |(dy, linha): (usize, &mut [u8])| {
+            let y = r.y as usize + dy;
+            for x in r.x as usize..(r.x + r.w) as usize {
+                let i = (y * w + x) * 4;
+                // Sem tinta do traço (o plano vazio, ou a 2.ª ponta que o recorta a nada) e sem orla que a
+                // alcance, o texel é a base: a composição devolve-a ao bit (`compoe` com `a = 0`).
+                let sem_aro = aro.is_none();
+                if sem_aro && s.plano[i + 3] == 0 {
+                    linha[x * 4..x * 4 + 4].copy_from_slice(&s.base[i..i + 4]);
+                    continue;
+                }
+                let base = [0, 1, 2, 3].map(|k| dec(s.base[i + k]));
+                let mut p = [0, 1, 2, 3].map(|k| dec(s.plano[i + k]));
+                if trinco {
+                    p[3] *= base[3];
+                }
+                if let Some((modo, m)) = dual {
+                    p[3] = modo.recorta(p[3], dec(m[i + 3]));
+                    if sem_aro && p[3] <= 0.0 {
+                        linha[x * 4..x * 4 + 4].copy_from_slice(&s.base[i..i + 4]);
+                        continue;
                     }
                 }
-            });
+                let a = aro.as_ref().map_or(0.0, |(jan, v)| {
+                    v[(y - jan.y as usize) * jan.w as usize + (x - jan.x as usize)]
+                });
+                let mut out = t.compoe(brush.blend, vazio, pigmento, base, p, a);
+                if trinco {
+                    out[3] = base[3];
+                }
+                for k in 0..4 {
+                    linha[x * 4 + k] = enc(out[k]);
+                }
+            }
+        };
+        // Uma pegada pequena compõe-se em SÉRIE: acordar o pool por ela custava 1–2 ms por lote e, com um
+        // trabalhador desagendado, 20–40 ms (medido, `o_dual_brush::mede_o_custo_do_dual`, a 40 px).
+        if (r.w as usize) * (r.h as usize) < COMPOE_EM_PARALELO_DESDE {
+            linhas
+                .chunks_mut(w * 4)
+                .enumerate()
+                .for_each(linha_composta);
+        } else {
+            // Em blocos de linhas: uma tarefa por LINHA eram ~200 encontros por lote a 200 px.
+            linhas
+                .par_chunks_mut(w * 4 * LINHAS_POR_TAREFA)
+                .enumerate()
+                .for_each(|(b, bloco)| {
+                    for (k, l) in bloco.chunks_mut(w * 4).enumerate() {
+                        linha_composta((b * LINHAS_POR_TAREFA + k, l));
+                    }
+                });
+        }
         self.declare_wrote(Some(r));
         self.mark_dirty(r);
     }

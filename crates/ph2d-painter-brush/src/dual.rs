@@ -65,6 +65,7 @@ impl DualMode {
 
     /// ⭐ **A cobertura `a` da 1.ª recortada pela máscara `m` da 2.ª** (`0..1` os dois).
     #[must_use]
+    #[inline]
     pub fn recorta(self, a: f32, m: f32) -> f32 {
         let (a, m) = (a.clamp(0.0, 1.0), m.clamp(0.0, 1.0));
         if a <= 0.0 {

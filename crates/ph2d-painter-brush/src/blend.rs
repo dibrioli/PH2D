@@ -153,6 +153,7 @@ impl BrushBlend {
 }
 
 #[must_use]
+#[inline]
 pub fn blend_over(mode: BrushBlend, dst: [f32; 4], color: [f32; 3], a: f32) -> [f32; 4] {
     let a = a.clamp(0.0, 1.0);
     let cb = [dst[0], dst[1], dst[2]];
@@ -198,6 +199,7 @@ pub fn blend_over(mode: BrushBlend, dst: [f32; 4], color: [f32; 3], a: f32) -> [
 /// the mix is additionally scaled by the destination coverage `dst[3]` so a dab on bare paper just
 /// lands (there is no pigment there to mix with). Deterministic (RYB is min/max/mul only) — HR-5 safe.
 #[must_use]
+#[inline]
 pub fn blend_over_pigment(
     mode: BrushBlend,
     dst: [f32; 4],

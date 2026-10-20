@@ -262,7 +262,7 @@ impl PainterTool {
                 self.mask_protection_active(),
                 self.selection_restricts_paint(),
             );
-            self.lote_no_plano(&[], mask_gate, sel_gate);
+            self.como_fim_do_dual(|t| t.lote_no_plano(&[], mask_gate, sel_gate));
         }
     }
 

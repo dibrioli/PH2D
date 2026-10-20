@@ -57,6 +57,7 @@ pub fn blend_over_modo(
 /// A porta do modo com a mistura de pigmento — `vazio = false` é a [`blend_over_pigment`] ao bit. Onde a
 /// fórmula geral age o destino não é tinta opaca, e a mistura K–M (lei de tinta SOBRE tinta) não entra.
 #[must_use]
+#[inline]
 pub fn blend_over_pigment_modo(
     mode: BrushBlend,
     dst: [f32; 4],

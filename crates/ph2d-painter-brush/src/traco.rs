@@ -76,6 +76,7 @@ impl TracoComposto {
     /// sobre a base `base`, no `modo` do pincel (`vazio` = a fórmula geral do W3C; `pigmento` = a mistura K–M do
     /// pincel, `effective_pigment_mix` — a do carimbo de sempre), com o `aro` da cobertura do plano (`0` sem orla).
     #[must_use]
+    #[inline]
     pub fn compoe(
         &self,
         modo: BrushBlend,

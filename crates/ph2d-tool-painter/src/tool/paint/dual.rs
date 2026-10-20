@@ -45,6 +45,8 @@ pub(crate) struct DualEstado {
     versao: u64,
     /// O botão «Dual image» pediu o seletor de ficheiro à shell.
     pedido: bool,
+    /// O fim do traço descarrega as marcas pendentes sem um lote da 1.ª.
+    no_fim: bool,
 }
 
 impl PainterTool {
@@ -92,6 +94,18 @@ impl PainterTool {
             m.set_canvas_dab(vivo.radius_px, vivo.dab_flatten, vivo.dab_angle_deg, vivo.dab_curve);
             m.extend(p, out);
         });
+    }
+
+    /// O fim do traço a descarregar as marcas pendentes (`descarrega_o_dual`).
+    pub(super) fn dual_no_fim(&self) -> bool {
+        self.paint.dual.no_fim && self.dual_pendente()
+    }
+
+    /// Corre `f` como o fim do traço (as marcas pendentes compõem-se sem um lote da 1.ª).
+    pub(super) fn como_fim_do_dual(&mut self, f: impl FnOnce(&mut Self)) {
+        self.paint.dual.no_fim = true;
+        f(self);
+        self.paint.dual.no_fim = false;
     }
 
     /// Há marcas da 2.ª ponta à espera de lote.

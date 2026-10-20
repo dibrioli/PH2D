@@ -24,6 +24,12 @@ réguas do traço recto. ⇒ [`feedback_a_brush_that_passes_the_ruler_can_still_
 - Um comando recusado por um GUARDA do repo (hook R5–R8, `ph2d-run`) não é pedido de permissão: leia a mensagem e
   corrija o comando. Nada de `sudo`. Instalar app: `pacman`/`paru` sem root não dá ⇒ AppImage/tarball em `~/Apps/`,
   `pip --user`, Wine prefix próprio; se exigir root, ESCOLHA outro caminho e registe.
+- ⛔ **Nenhum comando pode PARAR à espera de autorização** (dono, 20/10: um «allow Bash command» de um agente parou a
+  missão). Há um hook local que aprova tudo (`~/.claude/hooks/aprova-sem-perguntar.sh`, em `.claude/settings.local.json`;
+  os guardas do repo continuam a recusar), mas não confie só nele — as formas que disparam o pedido estão PROIBIDAS a
+  janelas e agentes: `cd X && …` (caminhos absolutos), `bash -c '…'`/`sh -c` (escreva um `.sh` e corra-o),
+  `rm -rf` com variável/glob (`rm -r -- /caminho/literal`), `kill` de PID que não gravou, escrever em `.git/`,
+  `.claude/`, `~/.bashrc`. Ponha esta linha no briefing de TODO agente.
 - ⛔ Continua proibido (CLAUDE.md §0.7): `git push`, integrar no `main`, tocar noutras worktrees, matar processos de
   outras linhas (`kill` do pai de um órfão = logout do dono), `spectacle` em `kwin --virtual` (use `import -window`).
 - Árvore: SÓ `Worktrees/line-PainterWatercolor` (branch `line/PainterWatercolor`), Modo L. FASE 0 de toda janela e de

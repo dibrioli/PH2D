@@ -103,6 +103,7 @@ pub(crate) fn run(
         })
         .collect();
     ak.campos = samples.iter().map(|&(e, _)| (e, campos_lidos(sim, e))).collect();
+    propagar_topologia(timeline, ak);
     sonda(|| {
         let pop: Vec<u64> = samples.iter().map(|s| s.0).collect();
         format!("[autokey] painel={panel_open} armado={armed} populacao={pop:x?}")
@@ -110,6 +111,27 @@ pub(crate) fn run(
     apply_samples(
         timeline, playhead, &samples, drag_now, armed, performing, ak, toasts,
     );
+}
+
+/// ⭐ Um ponto acrescentado/apagado numa forma animada vale em TODAS as chaves (plano 35, decisão
+/// do dono) — antes do diff, e num passo de undo da timeline próprio (ou no do gesto aberto).
+pub(crate) fn propagar_topologia(timeline: &mut TimelineState, ak: &AutokeyState) {
+    for (&e, agora) in &ak.campos {
+        let Some(antes) = ak.base_campos.get(&e) else { continue };
+        if !ph2d_app_vec::canais_topologia::mudou(antes, agora) {
+            continue;
+        }
+        // Um gesto já aberto (um arrasto) leva a propagação no passo dele.
+        let proprio = !timeline.history.is_open();
+        if proprio {
+            timeline.history.begin(&timeline.doc);
+        }
+        ph2d_app_vec::canais_topologia::propagar(&mut timeline.doc, e, antes, agora);
+        if proprio {
+            let doc = timeline.doc.clone();
+            timeline.history.commit_if_changed(&doc);
+        }
+    }
 }
 
 /// O laço de [`apply_samples`]: cada pose amostrada contra a sua curva (ou o quadro anterior),

@@ -102,6 +102,7 @@ fn quadro(c: &mut Cena, armed: bool, mao: impl FnOnce(&mut VecScene, u64)) {
     let mundo = super::super::timeline_bridge::Mundo::com_vetor(c.sim.world(), &c.scene);
     let samples = vec![(c.e, sample_pose(mundo, c.e))];
     c.ak.campos = samples.iter().map(|&(e, _)| (e, campos_lidos(&c.sim, e))).collect();
+    propagar_topologia(&mut c.st, &c.ak);
     apply_samples(
         &mut c.st,
         &c.ph,
@@ -201,4 +202,32 @@ fn desarmado_a_edicao_fica_ate_o_relogio_mudar() {
     quadro(&mut c, false, |_, _| {});
     assert_eq!(largura(&c), 6.0, "o relógio andou: a curva volta");
     assert_eq!(chaves(&c, k(cv::TRACO_LARGURA, 0, 0)).len(), 2, "desarmado não grava");
+}
+
+/// ⭐⭐ No quadro real: a forma animada (pontos com chave em 0 e 1 s), o artista APAGA um ponto a
+/// meio — no quadro seguinte toda chave tem 3 pontos, e o desenho a 0,25 s não torce.
+#[test]
+fn apagar_um_ponto_de_uma_forma_animada_vale_em_todas_as_chaves() {
+    let mut c = cena();
+    quadro(&mut c, true, |_, _| {});
+    quadro(&mut c, true, |s, id| assert!(s.translate_path(id, 10.0, 0.0)));
+    c.ph.seek(1.0);
+    quadro(&mut c, true, |_, _| {});
+    quadro(&mut c, true, |s, id| assert!(s.translate_path(id, 10.0, 0.0)));
+    c.ph.seek(0.75);
+    quadro(&mut c, true, |_, _| {});
+    quadro(&mut c, true, |s, id| {
+        s.path_mut(id).unwrap().verts.remove(2);
+    });
+    quadro(&mut c, true, |_, _| {});
+    for t in [0.5, 1.0] {
+        assert!(
+            chaves(&c, k(cv::ANCORA_X, 0, 3)).is_empty(),
+            "o 4.º ponto saiu de toda chave (t={t})"
+        );
+    }
+    // Apagar não move os outros pontos: a forma a 0,75 continua a ser a interpolação das duas chaves
+    // (já com 3 pontos), logo nenhuma chave nova nasce ali — só a topologia mudou, em todas.
+    assert_eq!(chaves(&c, k(cv::ANCORA_X, 0, 2)).len(), 2, "0,5 · 1,0");
+    assert_eq!(chaves(&c, k(cv::ANCORA_X, 0, 2))[0].1, 13.0, "o índice 2 é o antigo 3 (x=3+10)");
 }

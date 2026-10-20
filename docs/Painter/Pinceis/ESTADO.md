@@ -19,6 +19,20 @@ JANELA 3 = `ph2d-94`. O nome muda se a janela reiniciar (confirme por `ListAgent
 | E — Motores | `03_MOTORES.md`: o que cada motor exprime (pelo código) e 19 lacunas por ordem | `c9d8dcff53` |
 | F — Limpeza P53 | Filbert, Flat Oily, Knife Smooth fora da fábrica (31 → **28**); portões verdes por nome | `d9e85a11c4` |
 
+## Feito (JANELA 2, 20/10) — cada lacuna com portão red-first, mutação, custo, e uma revisão por agente que não a fez
+
+| Entrega | O quê | SHAs |
+|---|---|---|
+| Leis medidas | `06_LEIS_DAS_LACUNAS.md` + §10 (fotos novas `fixtures/*_lacunas/`); 32 fotos velhas do Rebelle refeitas + a guarda `foto_estavel.py` | `c3f27254d4` `2f7267cf01` + 11 de fotos |
+| Leis sistémicas | (a) pressão → CARGA em 20 presets (portão `a_pressao_de_cada_preset_e_a_da_sua_origem`) · (b) traço de 5 px por área (`peso_do_passo_fino`) · grão do Wet lê a ponta · (c) pontas/relevo e (d) lente: ABERTAS → motor do Wet (em curso) | `95c9597395` `77da300cb1` `bf832ce2c3` `e18e51eeec` |
+| L1+L2 | presets nos 4 meios (navegador, miniatura, pastas irmãs), a mão por uma lei só (`mao.rs`) + cartão Pen + inclinação→opacidade; revisão: 6 curas | `c9b5debd85` `b28136d620` `085a950257` `80e04263f6` `d35c87a54a` |
+| L4+L11, L7, L12 | jitter completo (opacidade, contagem, espelho, redondeza, ângulo por traço, espalhar através), cor secundária/pela mão, modos (fórmula W3C em sRGB, provada), velocidade (potência); revisão: a GPU sem a pegada do dab + 3 curas | `f1260c541c` `d1489ae706` `2045598fac` `9201d46716` `bb76fcf22c` `a0d62aac8f` `90510a90a5` `f754e35ee9` |
+| L7-vazio, L8, L5 | modo sobre o vazio (W3C geral), o PLANO do traço (tecto, orla molhada/queimada), cauda re-pintada + fall-off; revisão: 7 curas (K–M no plano, cauda×N imagens, toque curto…) | `c8e95a075d` `ed926fa0eb` `14915eeb77` |
+| L18+L9, L19 | ponta de píxel/pixel-perfect, 6 modos do grão + profundidade por dab, ponta de N imagens (sorteio com peso/sequência/pressão/ângulo); revisão: 4 curas | `0ef4275daf` `2efc5f3bde` `8298230687` `01910a65c7` |
+| L6 | dual brush no Digital (máscara no plano do traço, 7 modos, paridade GPU, 0 quadros > 16,7 ms); no Wet em curso; Watercolor esmaecida (nenhum pincel do catálogo o pede lá) | `b3c2379bdb` `7973c324de` |
+| Limpeza | portas da macro com decisão, controlos que mentiam esmaecidos, a CERCA verde (8 linhas isentas com prova) | `35f3629899` `68bd57f602` `f87844fb83` |
+| ⛔ L3 | refutada como motor (a lâmina do Rebelle é FIXA no eixo do preset) ⇒ valor de preset na J4 | — |
+
 ## Decisões de produto (com o porquê)
 
 1. **Os 3 do P53 saem** (veredito do dono, confirmado de novo por ele a 19/10: «inúteis ou muito ruins — modificados

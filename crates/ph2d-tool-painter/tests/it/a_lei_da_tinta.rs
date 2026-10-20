@@ -34,7 +34,7 @@ const CENAS: [(&str, bool, u64); 22] = [
     ("Oil Bristle", false, 0xcd20d9a3853d6fb1), // J2 §7 c/d: o relevo pelo diâmetro, a parede, a ponta (era 0x939fc3665324de0d)
     ("Acrylic Round", false, 0xb6475854432e61f0),
     ("Express Oil", false, 0x6ae408041d1e042f),
-    ("Graphite 8B", false, 0x9bdb7c14d205745f), // J3: a orla do dual, a carga 150 e o papel 0,55 (era 0x854f35176af4c8a1)
+    ("Graphite 8B", false, 0x0aed0cb29386b748), // J3: a orla do dual, a carga 150 e o papel 0,55 (era 0x854f35176af4c8a1)
     ("Charcoal", false, 0x319febeb25876cd8), // J2 §7.2: o grão fino (era 0xd747450876d66163)
     ("Soft Pastel", false, 0x6d2510034bf7bea2),
     ("Oil Pastel", false, 0x53088992b4918139),

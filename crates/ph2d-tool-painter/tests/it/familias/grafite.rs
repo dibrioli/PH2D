@@ -21,7 +21,7 @@ pub const WET: &[Receita] = &[
         ..GRAPHITE_8B
     },
     // ⭐ Os do prompt 53 (doc 53 §8): cada um o 8B inteiro (`nasce_de`) + os overrides; o tamanho é o do preset do Rebelle.
-    // J3: os quatro com a orla do dual; HB e 2H com o grão FINO e FRACO (Size 200 = 1,3 px, contraste 0,3 — o Rebelle
+    // J3: os quatro com a orla do dual; HB e 2H com o grão FINO e FRACO (Size 256 = o píxel, contraste 0,35 e 0,25 — o Rebelle
     // tem o fino fraco e a onda larga; um Noise só não dava as duas, 03_MOTORES §7.2); o 2H CLARO: a carga 24 dá-lhe o
     // tom da cor de fábrica dele no Rebelle (cinza 149 contra o 115 do HB: 106/140 = 0,76 da tinta) — com a MESMA cor,
     // o 2H do Rebelle é o HB (d 0,30 na família dele) e o eixo de dureza não se via (d 0,23 entre os nossos). A carga mais
@@ -53,17 +53,20 @@ pub const WET: &[Receita] = &[
 /// a 0,45 com 3, ac 0,23. A revisão cega do 8B (J3) apontava a borda «aos caroços, ondulada» do original como a diferença maior.
 const ORLA_DO_LAPIS: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dureza": 0.3, "escala": 0.45, "espalhar": 0.2, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
 
-/// A orla do 8B: duas marcas a 0,7 do diâmetro, 0,1 espalhadas e 0,2 através — com a dos outros (0,45 × 3) o 8B DEITADO
-/// perdia o grão (textura através ÷ de pé 0,78, Rebelle 1,01 ± 0,15, `a_caneta_deitada`); assim 0,90, ao longo 1,33
-/// (1,24; a 0,8 × 1, 1,38 saía do vale), a onda 0,047 e o colar a 5 px 0,076 · ac 0,50 (Rebelle 0,072 · 0,50).
-const ORLA_DO_8B: &str = r#"{"angulo": 0, "atraves": 0.2, "contagem": 2, "dureza": 0.3, "escala": 0.7, "espalhar": 0.1, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+/// A orla do 8B: duas marcas a 0,7 do diâmetro, 0,3 espalhadas e 0,1 através — com a dos outros (0,45 × 3) o 8B DEITADO
+/// perdia o grão (textura através ÷ de pé 0,78, Rebelle 1,01 ± 0,15, `a_caneta_deitada`); assim 0,91, ao longo 1,33
+/// (1,24; a 0,8 × 1, 1,38 saía do vale), a onda 0,053 e o colar a 5 px 0,075 · ac 0,52 (Rebelle 0,072 · 0,50). A 2.ª
+/// revisão cega viu os caroços do Rebelle maiores que os nossos: o espalhar 0,1 → 0,3 (onda 0,045 → 0,053).
+const ORLA_DO_8B: &str = r#"{"angulo": 0, "atraves": 0.1, "contagem": 2, "dureza": 0.3, "escala": 0.7, "espalhar": 0.3, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
 
-/// O grão do 2H: o fino e fraco ainda mais fraco (contraste 0,2) — a Textura da mídia 4,70 (Rebelle 4,98; a 0,3, 6,58).
-const GRAO_FINO_DO_2H: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.2, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [200.0, 200.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+/// O grão do 2H: o fino ao píxel (Size 256) mais fraco que o do HB (contraste 0,25) — a Textura da mídia 5,62 (Rebelle
+/// 4,98; a 0,3, 6,62 sai do vale).
+const GRAO_FINO_DO_2H: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.25, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [256.0, 256.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
-/// O grão fino e fraco dos duros: Noise `Tiled` Size 200 (1,28 px), contraste 0,3 — o colar a 5 px do HB 0,079 (Rebelle
-/// 0,066; era 0,130) e a autocorrelação 0,29 (0,24; era 0,78).
-const GRAO_FINO_FRACO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.3, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [200.0, 200.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+/// O grão fino e fraco do HB: Noise `Tiled` Size 256 (o píxel), contraste 0,35 — o colar a 5 px 0,071 (Rebelle 0,066; era
+/// 0,130), a autocorrelação 0,34 (0,24; era 0,78) e os poros brancos que a 1.ª revisão cega não via a 0,3 (a Textura da
+/// mídia 6,69, Rebelle 6,15; a 0,4, 7,71 sai do vale).
+const GRAO_FINO_FRACO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.35, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [256.0, 256.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// O grão do 2B: Noise `Tiled` Size 128 (2 px), contraste 0,5.
 const GRAO_DO_2B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;

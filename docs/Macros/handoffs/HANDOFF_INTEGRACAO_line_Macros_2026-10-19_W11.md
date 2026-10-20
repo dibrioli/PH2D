@@ -12,7 +12,8 @@
 - Branch `line/Macros-Automação`, worktree `Worktrees/line-Macros-Automação/`. Merge-base `ad5f8fe39c`; o `main` está em
   `100d34c8e0` (os mesmos 3 commits de processo que o handoff da W10 lista).
 - Commits da W11: `b339b163d4` (prompt) · `cc43e8b0f8` (test: vermelho antes da cura) · `b0f9eb6c80` (fix) · o commit
-  deste handoff (docs + fotos). `git diff --shortstat 13673c4dcd..b0f9eb6c80`: **20 ficheiros, +635 / −64**.
+  deste handoff (docs + fotos) · `6d6fb11904` (smoke do dono 20/10: um `PH2D_MACRO_CAMINHO` desconhecido corria a base
+  calada; agora a consola lista os nomes e a cena não conduz — o ColorDrop à mão passou). `git diff --shortstat 13673c4dcd..b0f9eb6c80`: **20 ficheiros, +635 / −64**.
 
 ## §2 — O que a W11 entrega (smoke do dono 19/10: trocar a cor no C&F a gravar deixava 4 recusas e o ▷ parava)
 

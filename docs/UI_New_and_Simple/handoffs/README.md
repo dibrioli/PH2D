@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**73 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **73** são handoffs (registro **morto**).
+**77 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **77** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -88,7 +88,10 @@
 | 2026-10-18 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F19_O_PAINEL_LE_A_FORMA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F19_O_PAINEL_LE_A_FORMA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 18/10 — F19 (o painel do vetor lê a forma) feita |
 | 2026-10-18 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F20_MISTO_E_ESPESSURA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F20_MISTO_E_ESPESSURA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 18/10 — F20 (seleção múltipla «misto» e espessura na unidade do document… |
 | 2026-10-19 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F21_O_MISTO_COMPLETO.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F21_O_MISTO_COMPLETO.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 19/10 — F21 (o «misto» completo: seletor, forma vazia, pilha de camadas)… |
-| 2026-10-19 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F22_O_GESTO_VENCE_A_MAQUINA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F22_O_GESTO_VENCE_A_MAQUINA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 19/10 — F22 (o gesto do artista vence a máquina dos estados; o olho diz «misto»)… |
+| 2026-10-19 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F22_O_GESTO_VENCE_A_MAQUINA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F22_O_GESTO_VENCE_A_MAQUINA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 19/10 — F22 (o gesto do artista vence a máquina dos estados; o olho diz … |
+| 2026-10-19 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F23a_O_PAINEL_LE_A_CURVA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F23a_O_PAINEL_LE_A_CURVA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 19/10 — F23 metade A (o painel lê a curva que a tela desenha) feita; met… |
+| 2026-10-20 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24a_O_MOTOR_DOS_CANAIS.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24a_O_MOTOR_DOS_CANAIS.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 20/10 — F24a: o motor dos canais feito (o Auto Key grava o desenho); o d… |
+| 2026-10-20 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24b_O_GRUPO_E_O_LOSANGO.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24b_O_GRUPO_E_O_LOSANGO.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 20/10 — F24b: o grupo no dope-sheet e o losango nos campos do vetor |
 
 ---
 

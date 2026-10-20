@@ -292,6 +292,34 @@ fn o_balao_so_pergunta_sobre_codigo_e_sai_com_uma_tecla() {
     assert_eq!(m.docs().hover_of(id), None, "a tecla não fechou o balão");
 }
 
+/// ⭐ Carregar no Ctrl fecha o balão do rato (o Godot 4.7.2 fá-lo: com o Ctrl, a mão e o sublinhado
+/// dizem o que o clique fará — `docs/CodeEditor/04_pagina_de_ajuda.md` §3.8). Largá-lo não o reabre
+/// sem uma pausa nova do rato.
+#[test]
+fn carregar_no_ctrl_fecha_o_balao() {
+    let texto = "local brilho = 1\nprint(brilho)\n";
+    let (mut m, ids, _) = mesa(&[("a.luau", texto)]);
+    let id = ids[0];
+    m.pede(id);
+    quadro_em(&mut m, T0);
+    m.pinta(id);
+    aponta(&mut m, id, texto.rfind("brilho").unwrap() + 1);
+    ate(&mut m, id, T0 + PAUSA_BALAO, "o balão não abriu", |m| {
+        m.docs().hover_of(id).is_some()
+    });
+    m.hero.store.set_cmd_held(true);
+    quadro_em(&mut m, T0 + PAUSA_BALAO + PASSO);
+    assert_eq!(m.docs().hover_of(id), None, "o Ctrl não fechou o balão");
+    m.hero.store.set_cmd_held(false);
+    nunca(
+        &mut m,
+        id,
+        T0 + PAUSA_BALAO + 2 * PASSO,
+        "largar o Ctrl reabriu o balão",
+        |m| m.docs().hover_of(id).is_none(),
+    );
+}
+
 /// ⭐ A assinatura abre em `(` e em `,` (sem pausa) e o argumento activo de `ph2d.set` fica MARCADO,
 /// na pintura também; fechar o `)` sai da chamada e fecha-a; Esc fecha-a.
 #[test]

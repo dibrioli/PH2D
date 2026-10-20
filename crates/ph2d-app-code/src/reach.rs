@@ -2,12 +2,14 @@
 //! em `docs/CodeEditor/ferramentas/oraculo_acabamento/`). Com o Ctrl (ou ⌘) carregado, o nome sob o
 //! rato que o Ctrl+clique leva a algum sítio sublinha e o ponteiro vira a mão.
 //!
-//! A validade é a do [`crate::goto`], pelas MESMAS portas (`goto_word`, `destination`): um sítio
-//! neste script · `self.<propriedade>` · a documentação — e esta só existe se o balão a é
-//! (`documents`: o luau-lsp dá um tipo a quase tudo, até a `if` e a `1`). Pergunta-se uma vez por
-//! nome e revisão do texto.
+//! A validade é a do [`crate::goto`], pelas MESMAS portas (`goto_word`, `dest_of`): um sítio neste
+//! script · `self.<propriedade>` · a página de ajuda que a porta única
+//! ([`ph2d_code_help::resolve::resolve`]) dá (o luau-lsp dá um tipo a quase tudo, até a `if` e a
+//! `1`: o tipo sozinho não é página). Pergunta-se uma vez por nome e revisão do texto; o
+//! Ctrl+clique sobre um nome já respondido vai sem perguntar outra vez.
 
 use crate::doc::CodeDoc;
+use crate::goto::Dest;
 use ph2d_code_intel::{Answer, Ticket};
 use ph2d_editor_core::doc_surface::PointerLook;
 use ph2d_panel_code::Hit;
@@ -42,9 +44,9 @@ pub(crate) fn tint(
 pub(crate) enum Verdict {
     /// À espera de onde ele está definido.
     Definition,
-    /// Nenhum sítio no script: à espera do balão (a documentação).
+    /// Nenhum sítio no script: à espera do balão (a página de ajuda).
     Documentation,
-    Reaches,
+    Reaches(Dest),
     Nowhere,
 }
 
@@ -85,7 +87,13 @@ impl CodeDoc {
 
     /// Um quadro com o Ctrl `held`: o nome sob o rato pergunta-se ao assistente (uma vez por nome e
     /// revisão; a pergunta segue o caminho do Ctrl+clique, [`crate::intel`]).
+    ///
+    /// Carregar no Ctrl fecha o balão do rato (o Godot 4.7.2 fá-lo; a mão e o sublinhado dizem o que o
+    /// clique fará).
     pub(crate) fn reach_tick(&mut self, held: bool) {
+        if held && !self.reach.held {
+            self.hints.hover = None;
+        }
         self.reach.held = held;
         let Some(word) = held
             .then_some(self.reach.mouse)
@@ -110,10 +118,9 @@ impl CodeDoc {
     /// Ctrl+clique o leva a algum sítio (nesta revisão).
     pub(crate) fn reach_link(&self) -> Option<Range<usize>> {
         let (x, y) = self.reach.mouse.filter(|_| self.reach.held)?;
-        let a =
-            self.reach.asked.as_ref().filter(|a| {
-                a.verdict == Verdict::Reaches && a.revision == self.buffer.revision()
-            })?;
+        let a = self.reach.asked.as_ref().filter(|a| {
+            matches!(a.verdict, Verdict::Reaches(_)) && a.revision == self.buffer.revision()
+        })?;
         (self.word_under(x, y)? == a.word).then(|| a.word.clone())
     }
 
@@ -124,7 +131,7 @@ impl CodeDoc {
         let a = self.reach.asked.as_ref()?;
         let current = a.revision == self.buffer.revision() && self.word_under(x, y)? == a.word;
         match a.verdict {
-            Verdict::Reaches if current => Some(true),
+            Verdict::Reaches(_) if current => Some(true),
             Verdict::Nowhere if current => Some(false),
             _ => None,
         }
@@ -138,21 +145,28 @@ impl CodeDoc {
     }
 
     /// A resposta à pergunta em curso: a definição decide pela regra do Ctrl+clique; sem sítio no
-    /// script, pergunta-se o balão; qualquer outra resposta (recusa, servidor que caiu) = nada.
+    /// script, pergunta-se o balão e decide a porta única; outra resposta à definição (recusa,
+    /// servidor que caiu) = nada; ao balão, a porta decide sem ele.
     pub(crate) fn reach_answer(&mut self, uri: &str, answer: Answer) {
         let Some(a) = self.reach.asked.take() else {
             return;
         };
         let verdict = match (a.verdict, answer) {
             (Verdict::Definition, Answer::Definition(targets)) => {
-                if self.destination(uri, &a.word, &targets).is_some() {
-                    Verdict::Reaches
-                } else {
-                    Verdict::Documentation
+                match self.destination(uri, &a.word, &targets) {
+                    Some(b) => Verdict::Reaches(Dest::Here(b)),
+                    None => Verdict::Documentation,
                 }
             }
-            (Verdict::Documentation, Answer::Hover(Some(h))) if Self::documents(&h.text) => {
-                Verdict::Reaches
+            (Verdict::Documentation, answer) => {
+                let hover = match answer {
+                    Answer::Hover(h) => h.map(|h| h.text),
+                    _ => None,
+                };
+                match self.help_anchor(&a.word, hover.as_deref()) {
+                    Some(anchor) => Verdict::Reaches(Dest::Help(anchor)),
+                    None => Verdict::Nowhere,
+                }
             }
             _ => Verdict::Nowhere,
         };
@@ -160,6 +174,29 @@ impl CodeDoc {
             ticket: None,
             verdict,
             ..a
+        });
+    }
+
+    /// Para onde o Ctrl+clique em `word` leva, se a mão já o sabe nesta revisão (`None` = por saber,
+    /// ou a lado nenhum: o clique pergunta).
+    pub(crate) fn reach_dest(&self, word: &Range<usize>) -> Option<Dest> {
+        let a = self.reach.asked.as_ref()?;
+        match a.verdict {
+            Verdict::Reaches(d) if a.word == *word && a.revision == self.buffer.revision() => {
+                Some(d)
+            }
+            _ => None,
+        }
+    }
+
+    /// O Ctrl+clique respondeu sobre `word`: a mão fica a sabê-lo (as perguntas dela em voo
+    /// cancelaram-se ao mandar as do clique).
+    pub(crate) fn reach_learn(&mut self, word: &Range<usize>, dest: Option<Dest>) {
+        self.reach.asked = Some(Asked {
+            word: word.clone(),
+            revision: self.buffer.revision(),
+            ticket: None,
+            verdict: dest.map_or(Verdict::Nowhere, Verdict::Reaches),
         });
     }
 

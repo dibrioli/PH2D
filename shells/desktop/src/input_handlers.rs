@@ -16,6 +16,8 @@ use winit::keyboard::KeyCode;
 /// Os ramos do `handle_editor_key` (os braços do `match code` depois do `T`).
 #[path = "input_dispatch/handlers_teclas_editor.rs"]
 mod handlers_teclas_editor;
+#[path = "input_dispatch/letra_solta.rs"]
+mod letra_solta;
 
 impl App {
     /// M12 demo control router.
@@ -137,6 +139,12 @@ impl App {
                     crate::global_palette_input::open_global_palette(hero);
                 }
             }
+            // ⭐ G9: daqui para baixo, uma letra com Ctrl/Alt/Super nunca dispara o atalho solto.
+            c if letra_solta::acorde_em_letra_solta(
+                crate::keymap::winit_to_input_keycode(c),
+                cmd_chord,
+                self.modifiers.alt_key(),
+            ) => {}
             KeyCode::KeyM => {
                 gfx.theme = gfx.theme.next();
                 gfx.toasts.push(Toast::info(tr_with(
@@ -290,32 +298,8 @@ impl App {
         {
             active.handle_panel_event(event);
             self.title_dirty = true;
-            // Wave 10 / Etapa 3 audit fix [C3]: removed the BgRemoval
-            // Apply Toggle drain that was here. Two reasons:
-            //
-            // 1. **Multi-select regression**: it pushed a single
-            //    `OneShotImageOp { entity_bits: hero.gizmo.selection }`
-            //    (primary only), but the canonical bridge in
-            //    `render_loop/bgremoval_preview.rs` uses
-            //    `drive_pending_commit(bg, hero.gizmo.iter_selected())`
-            //    — multi-sprite. Two competing drains of the same
-            //    `take_pending_apply` (destructive) meant the input-
-            //    handlers path won and the bridge always saw `false`,
-            //    so multi-select Apply via panel toggle only baked the
-            //    primary sprite. Regression silently introduced before
-            //    Wave 10.
-            //
-            // 2. **Trait surface coverage**: with BgR (Etapa 1.B) +
-            //    CEQ + Upscale (Etapa 2) all on RasterEditTool, the
-            //    bridges' `drive_pending_commit` is the canonical
-            //    drain for every raster Apply path. Keeping a parallel
-            //    drain here would re-introduce the bug for the new
-            //    tools too.
-            //
-            // The bridge runs every frame BEFORE `paint_hero_screen`
-            // (per `render_loop/mod.rs::dispatch_bus_drain` order), so
-            // latency between the click and the OneShotImageOp is at
-            // most 1 frame — visually equivalent to the old path.
+            // ⛔ No Apply drain here (Wave 10 audit fix C3): the bridges' `drive_pending_commit`
+            // is the ONE drain of every raster Apply (multi-select), run before the paint.
         }
     }
 }

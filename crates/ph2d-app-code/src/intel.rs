@@ -486,13 +486,18 @@ impl Intel {
             if let Some(f) = d.hints.hover.as_mut().and_then(|h| h.fixes.as_mut()) {
                 f.send(|req| session.ask(&m.uri, req));
             }
+            // O Ctrl+clique/F12: a definição e o balão juntos. As perguntas do Ctrl+rato e do balão
+            // do rato (os MESMOS géneros, que o novo cancela) esperam que ele acabe.
             if let Some(g) = d.goto.as_mut()
                 && g.ticket.is_none()
             {
                 g.ticket = Some(session.ask(&m.uri, Req::Definition(g.word.start)));
+                g.hover_ticket = Some(session.ask(&m.uri, Req::Hover(g.word.start)));
+                d.reach.asked = None;
             }
+            let clicking = d.goto.is_some();
             // O Ctrl+rato pergunta pelo mesmo caminho: a definição, e o balão se ela não fica aqui.
-            if let Some(a) = d.reach.asked.as_mut().filter(|a| a.unsent()) {
+            if let Some(a) = d.reach.asked.as_mut().filter(|a| a.unsent() && !clicking) {
                 let req = match a.verdict {
                     crate::reach::Verdict::Definition => Req::Definition(a.word.start),
                     _ => Req::Hover(a.word.start),
@@ -503,6 +508,7 @@ impl Intel {
                 && h.ticket.is_none()
                 && h.due_ns <= now_ns
                 && h.asks()
+                && !clicking
             {
                 h.ticket = Some(session.ask(&m.uri, Req::Hover(h.word.start)));
             }

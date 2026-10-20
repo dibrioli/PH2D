@@ -163,6 +163,21 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.help.forward" => "Forward",
         "code.help.copy" => "Copy example",
         "code.help.sections" => "On this page",
+        // As secções da página (`ph2d-app-code/src/help_doc.rs`), como as do Godot 4.7.2.
+        "code.help.page.description" => "Description",
+        "code.help.page.functions" => "Functions",
+        "code.help.page.hooks" => "Hooks",
+        "code.help.page.types" => "Types",
+        "code.help.page.constants" => "Constants",
+        "code.help.page.function_descriptions" => "Function descriptions",
+        "code.help.page.hook_descriptions" => "Hook descriptions",
+        "code.help.page.type_descriptions" => "Type descriptions",
+        "code.help.page.constant_descriptions" => "Constant descriptions",
+        "code.help.page.parameters" => "Parameters",
+        "code.help.page.returns" => "Returns",
+        "code.help.page.example" => "Example",
+        // Entre o nome de um argumento (ou «Returns») e o texto dele.
+        "code.help.page.dash" => " \u{2014} ",
         _ => return None,
     })
 }

@@ -300,3 +300,156 @@ fn a_shell_cede_o_f9_e_o_modo_do_morph_a_aba_activa() {
         "o F9 alterna o chrome com a aba activa"
     );
 }
+
+/// A guarda da shell, incluída da fonte (só `std`): a shell é um binário que os testes não importam.
+#[path = "../../../../shells/desktop/src/input_dispatch/letra_solta.rs"]
+mod letra_solta;
+
+/// Os dois ficheiros do `match code` do `handle_editor_key`.
+const DESPACHO: [(&str, &str); 2] = [
+    (
+        "input_handlers.rs",
+        include_str!("../../../../shells/desktop/src/input_handlers.rs"),
+    ),
+    (
+        "handlers_teclas_editor.rs",
+        include_str!("../../../../shells/desktop/src/input_dispatch/handlers_teclas_editor.rs"),
+    ),
+];
+
+/// Um braço do `match code` (as linhas a 12 espaços): as letras do padrão, a guarda (`if …`), se ela
+/// EXIGE um Ctrl/Super (um acorde), e o byte onde começa.
+struct Braco {
+    letras: Vec<char>,
+    acorde: bool,
+    guarda_g9: bool,
+    em: usize,
+}
+
+fn bracos(src: &str) -> Vec<Braco> {
+    let sem_comentarios: String = src
+        .lines()
+        .map(|l| l.find("//").map_or(l, |i| &l[..i]))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let s = sem_comentarios.as_str();
+    let mut out = Vec::new();
+    let mut at = 0;
+    for linha in s.split_inclusive('\n') {
+        let inicio = at;
+        at += linha.len();
+        let corpo = linha.strip_prefix("            ").unwrap_or("");
+        if corpo.starts_with(' ') || !(corpo.starts_with("KeyCode::") || corpo.starts_with("c if"))
+        {
+            continue;
+        }
+        let Some(fim) = s[inicio..].find("=>") else {
+            continue;
+        };
+        let braco = &s[inicio..inicio + fim];
+        let (padrao, guarda) = braco.split_once(" if ").unwrap_or((braco, ""));
+        let letras = padrao
+            .match_indices("KeyCode::Key")
+            .filter_map(|(i, n)| padrao[i + n.len()..].chars().next())
+            .filter(char::is_ascii_uppercase)
+            .collect();
+        let exige = |t: &str| {
+            guarda.match_indices(t).any(|(i, _)| {
+                !guarda[..i]
+                    .trim_end_matches("self.modifiers.")
+                    .ends_with('!')
+            })
+        };
+        out.push(Braco {
+            letras,
+            acorde: exige("cmd_chord") || exige("control_key()") || exige("super_key()"),
+            guarda_g9: guarda.contains("letra_solta::acorde_em_letra_solta"),
+            em: inicio,
+        });
+    }
+    out
+}
+
+/// ⭐⭐ G9 (`docs/CodeEditor/04_pagina_de_ajuda.md` §3.7, a família do Ctrl+letra): TODO atalho de
+/// letra solta do despacho da shell × Ctrl, Alt e Super (e as combinações) — nenhum dispara. O censo
+/// lê os braços na fonte: uma letra solta nova que a guarda não conhece, ou um acorde (Ctrl+Z) que
+/// ela comeria, é vermelho aqui.
+#[test]
+fn ctrl_letra_nunca_cai_no_atalho_solto() {
+    use letra_solta::{LETRAS_SOLTAS, acorde_em_letra_solta};
+    let (handlers, ramos) = (bracos(DESPACHO[0].1), bracos(DESPACHO[1].1));
+    assert!(
+        DESPACHO[0].1.contains(
+            "let cmd_chord = self.modifiers.super_key() || self.modifiers.control_key();"
+        ),
+        "o `cmd_chord` da guarda é o Ctrl OU o Super"
+    );
+    let soltas: std::collections::BTreeSet<char> = handlers
+        .iter()
+        .chain(&ramos)
+        .filter(|b| !b.acorde)
+        .flat_map(|b| b.letras.iter().copied())
+        .collect();
+    // Controlo: o censo vê os defeitos que o motivaram e os acordes que não pode comer.
+    for c in ['M', 'W'] {
+        assert!(soltas.contains(&c), "controlo: o `{c}` solto não foi visto");
+    }
+    let acordes: Vec<char> = ramos
+        .iter()
+        .filter(|b| b.acorde)
+        .flat_map(|b| b.letras.iter().copied())
+        .collect();
+    assert!(acordes.contains(&'Z'), "controlo: o Ctrl+Z não foi visto");
+    let lista: std::collections::BTreeSet<char> = LETRAS_SOLTAS.into_iter().collect();
+    assert_eq!(
+        soltas, lista,
+        "a lista da guarda ≠ os atalhos de letra solta da fonte"
+    );
+    // A guarda: um braço no 1.º ficheiro, depois dos acordes dele e antes de toda letra solta.
+    let guarda = handlers
+        .iter()
+        .find(|b| b.guarda_g9)
+        .expect("a guarda G9 no `match code`");
+    for b in handlers.iter().filter(|b| !b.letras.is_empty()) {
+        if b.acorde {
+            assert!(
+                b.em < guarda.em,
+                "o acorde {:?} vem depois da guarda",
+                b.letras
+            );
+        } else if !b.letras.is_empty() {
+            assert!(
+                b.em > guarda.em,
+                "a letra solta {:?} vem antes da guarda",
+                b.letras
+            );
+        }
+    }
+    // Os acordes do 2.º ficheiro (alcançados pelo `_`, DEPOIS da guarda) não podem estar na lista.
+    for c in &acordes {
+        assert!(!lista.contains(c), "a guarda comeria o Ctrl+{c}");
+    }
+    // O varrimento: cada letra solta × cada modificador.
+    for &l in &soltas {
+        let k = Some(u32::from(l));
+        assert!(
+            !acorde_em_letra_solta(k, false, false),
+            "`{l}` solto tem de disparar"
+        );
+        for (ctrl, alt, sup) in [
+            (true, false, false),
+            (false, true, false),
+            (false, false, true),
+            (true, true, false),
+            (true, false, true),
+        ] {
+            assert!(
+                acorde_em_letra_solta(k, ctrl || sup, alt),
+                "{}{}{}{l} disparou o atalho solto",
+                if ctrl { "Ctrl+" } else { "" },
+                if alt { "Alt+" } else { "" },
+                if sup { "Super+" } else { "" },
+            );
+        }
+    }
+}

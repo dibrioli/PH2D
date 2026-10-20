@@ -20,6 +20,8 @@ ph2d-code-buffer = { path = "../ph2d-code-buffer" }
 ph2d-code-explain = { path = "../ph2d-code-explain" }
 # O StyLua fixado que formata ao salvar (I13).
 ph2d-code-format = { path = "../ph2d-code-format" }
+# A página de ajuda (Onda 2, item 5): o catálogo e a porta única `resolve` do Ctrl+clique.
+ph2d-code-help = { path = "../ph2d-code-help" }
 # O reparse fora da tecla (Onda 2, I1) e a sessão do `luau-lsp` (I2).
 ph2d-code-intel = { path = "../ph2d-code-intel" }
 # O `luau-lsp` fixado que a sessão liga (`resolve_binary`, `ServerConfig`).

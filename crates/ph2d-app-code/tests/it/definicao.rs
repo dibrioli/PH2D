@@ -109,35 +109,26 @@ fn ctrl_clique_num_local_vai_para_a_declaracao() {
     );
 }
 
-/// ⭐ F12 numa função da API (o servidor dá `[]`): abre a documentação no balão, já e sem mexer no
-/// cursor; o rato a passar não a leva; uma tecla fecha-a.
+/// ⭐ F12 numa função da API (o servidor dá `[]`): abre a PÁGINA de ajuda dela numa aba (a porta
+/// única, `ajuda.rs`), sem mexer no cursor e sem balão preso (o balão preso do I6 saiu: decisão do
+/// dono no smoke do Acabamento, 19/10).
 #[test]
-fn f12_na_api_abre_a_documentacao_e_o_cursor_fica() {
+fn f12_na_api_abre_a_pagina_e_o_cursor_fica() {
     let (mut m, id, visto) = mesa(Duration::ZERO);
     let set = TEXTO.find("ph2d.set").unwrap() + 6;
     clica_em(&mut m, id, set, Modifiers::default());
     tecla(&mut m, id, Key::F(12), Modifiers::default(), None, "");
-    ate(&mut m, id, T0, "o F12 não abriu a documentação", |m| {
-        m.docs().hover_of(id).is_some()
+    ate(&mut m, id, T0, "o F12 não abriu a página", |m| {
+        m.docs().help_tab_id("ph2d").is_some()
     });
-    assert!(
-        m.docs().hover_of(id).unwrap().contains("local set"),
-        "o balão é o de `set`"
+    assert_eq!(
+        m.hero.documents.surface_active().map(|t| t.id),
+        m.docs().help_tab_id("ph2d"),
+        "a página fica activa"
     );
     assert_eq!(cursor(&mut m, id), set, "o cursor não sai do sítio");
     assert_eq!(definicoes(&visto), 1);
-    let (pintado, _) = m.docs().hints_painted(id);
-    assert!(pintado.is_some(), "o balão pintou-se");
-    // O rato noutro nome: o balão aberto pelo comando fica.
-    let outro = TEXTO.find("update").unwrap();
-    crate::dicas::aponta(&mut m, id, outro + 2);
-    nunca(&mut m, id, T0, "o rato levou o balão do F12", |m| {
-        m.docs()
-            .hover_of(id)
-            .is_some_and(|h| h.contains("local set"))
-    });
-    tecla(&mut m, id, Key::Escape, Modifiers::default(), None, "");
-    assert_eq!(m.docs().hover_of(id), None, "uma tecla fecha-o");
+    assert_eq!(m.docs().hover_of(id), None, "nenhum balão preso");
 }
 
 /// ⭐ `self.amplitude` (o servidor dá `[]`): a declaração é a NOSSA, o `ph2d.property("amplitude", …)`.

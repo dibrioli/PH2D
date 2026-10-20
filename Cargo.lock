@@ -5098,6 +5098,7 @@ dependencies = [
  "ph2d-code-buffer",
  "ph2d-code-explain",
  "ph2d-code-format",
+ "ph2d-code-help",
  "ph2d-code-intel",
  "ph2d-code-lsp",
  "ph2d-code-syntax",

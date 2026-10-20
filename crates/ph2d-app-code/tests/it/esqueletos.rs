@@ -338,20 +338,36 @@ fn um_item_com_buracos_dentro_de_um_buraco_funde_as_sessoes() {
         (18, 24, "o `entity` de dentro"),
         (27, 28, "o `x` de dentro"),
         (31, 36, "o `value` de dentro"),
-        (fim_de_dentro, fim_de_dentro, "o `$0` de dentro é uma paragem"),
+        (
+            fim_de_dentro,
+            fim_de_dentro,
+            "o `$0` de dentro é uma paragem",
+        ),
         (x_fora, x_fora + 1, "o `x` de fora"),
         (v_fora, v_fora + 5, "o `value` de fora"),
     ];
-    assert_eq!(sel(&mut m, id), [(passos[0].0, passos[0].1)], "{}", passos[0].2);
+    assert_eq!(
+        sel(&mut m, id),
+        [(passos[0].0, passos[0].1)],
+        "{}",
+        passos[0].2
+    );
     for &(a, b, o_que) in &passos[1..] {
         tecla(&mut m, id, Key::Tab, Modifiers::default());
         assert_eq!(sel(&mut m, id), [(a, b)], "{o_que}");
-        assert!(marcas(&mut m, id).is_some(), "{o_que}: a sessão acabou cedo");
+        assert!(
+            marcas(&mut m, id).is_some(),
+            "{o_que}: a sessão acabou cedo"
+        );
     }
     tecla(&mut m, id, Key::Tab, Modifiers::default());
     assert_eq!(sel(&mut m, id), [(t.len(), t.len())], "o `$0` de fora");
     assert_eq!(marcas(&mut m, id), None, "a sessão acaba no `$0` de fora");
-    assert_eq!(m.docs().text_of(id).as_deref(), Some(t.as_str()), "nenhum espaço entrou");
+    assert_eq!(
+        m.docs().text_of(id).as_deref(),
+        Some(t.as_str()),
+        "nenhum espaço entrou"
+    );
 
     // O Esc numa sessão fundida acaba as duas.
     let (mut m, ids, _) = com_falso(

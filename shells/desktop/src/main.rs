@@ -929,20 +929,17 @@ impl App {
         // Depois do frame (estado já reconciliado pelo `sync`, `self` livre do borrow
         // do render loop): drena um Ctrl+Z/Y pendente e registra a ação do frame na
         // fila de undo global, por diff de estado (ver `undo::post_frame_undo`).
-        // ⭐ **O SYNC das instâncias** (ADR-0164 / F4.3) — aqui, e a posição é lei: DEPOIS do
-        // quadro (as edições do Inspector já chegaram ao mundo) e ANTES da captura (senão a
-        // escrita do sync vira um passo de undo que ninguém deu). Ver o doc da função.
+        // ⭐ O SYNC das instâncias (ADR-0164): DEPOIS do quadro e ANTES da captura (senão a escrita
+        // do sync vira um passo de undo que ninguém deu). Ver o doc da função.
         self.sync_instances();
-        // ⭐⭐⭐ **A SAÍDA da sessão de receita** (`Done`/`Enter` · `Cancel`/`Esc`) — servida aqui,
-        // com o `self` livre, e ANTES do `post_frame_undo`: um cancelamento é uma mudança do
-        // documento como outra qualquer, e o passo por diff regista-o (o `Ctrl+Z` traz as edições
-        // de volta). Ver [`ph2d_app_components::prefab_stage`].
+        // ⭐⭐⭐ A SAÍDA da sessão de receita, ANTES do `post_frame_undo`: um cancelamento é uma
+        // mudança do documento como outra qualquer ([`ph2d_app_components::prefab_stage`]).
         self.serve_prefab_exit();
-        // ⚠️ **A rede dos escritores tardios da árvore mudou-se para DENTRO do
-        // [`crate::undo_app`], colada à captura que ela serve** — ela custa uma varredura O(formas)
-        // e não tinha nada a proteger nos quadros em que a fotografia é suprimida. Ver
-        // [`crate::vec_tree_settle`] e o comentário no sítio novo.
+        // A rede dos escritores tardios da árvore vive DENTRO do [`crate::undo_app`].
         self.post_frame_undo();
+        if let Some(g) = self.gfx.as_mut() {
+            crate::forwarding::drain_clipboard_copy(g);
+        }
         // **O menu Ficheiro**, no mesmo sítio e pela mesma razão: `self` está livre do borrow do
         // render loop, e um diálogo nativo é modal — abri-lo a meio do frame prenderia o `gfx`.
         self.drain_project_io();

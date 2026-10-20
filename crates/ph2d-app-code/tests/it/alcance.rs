@@ -63,7 +63,9 @@ fn pairar(texto: &str, b: usize) -> Value {
     match nome {
         "" => Value::Null,
         "local" => Value::Null,
-        "if" | "then" | "end" | "function" => luau("function update<T>(self: { ampiltude: T }, dt: number): ()"),
+        "if" | "then" | "end" | "function" => {
+            luau("function update<T>(self: { ampiltude: T }, dt: number): ()")
+        }
         "and" => luau("T | false"),
         "pirnt" => luau("type pirnt = *error-type*"),
         "ph2d" => luau("type ph2d = {\n    set: (entity: number) -> ()\n}"),
@@ -120,11 +122,19 @@ fn em(agulha: &str, off: usize) -> usize {
 fn casos() -> Vec<(&'static str, usize, bool)> {
     vec![
         ("local usado (sítio no script)", em("= brilho", 3), true),
-        ("self.<propriedade> declarada", em("self.amplitude", 7), true),
+        (
+            "self.<propriedade> declarada",
+            em("self.amplitude", 7),
+            true,
+        ),
         ("função da API documentada", em("ph2d.set", 6), true),
         ("tabela da API", em("ph2d.set", 1), true),
         ("campo do motor: só o tipo", em("self.id", 6), false),
-        ("campo que não existe: só o tipo", em("self.ampiltude", 7), false),
+        (
+            "campo que não existe: só o tipo",
+            em("self.ampiltude", 7),
+            false,
+        ),
         ("global que não existe: *error-type*", em("pirnt", 1), false),
         ("palavra reservada if", em("if d", 0), false),
         ("palavra reservada then", em("then", 1), false),
@@ -136,7 +146,7 @@ fn casos() -> Vec<(&'static str, usize, bool)> {
 }
 
 /// ⭐⭐ A mão nunca mente: em cada espécie de palavra, com o Ctrl carregado, a mão e o sublinhado
-/// aparecem se, e só se, o Ctrl+clique ali salta o cursor ou abre a documentação. Palavras reservadas,
+/// aparecem se, e só se, o Ctrl+clique ali salta o cursor ou abre a página de ajuda. Palavras reservadas,
 /// números, comentários e aspas nem se perguntam ao assistente.
 #[test]
 fn a_mao_aparece_onde_o_ctrl_clique_faz_alguma_coisa() {
@@ -145,11 +155,17 @@ fn a_mao_aparece_onde_o_ctrl_clique_faz_alguma_coisa() {
         ctrl_carregado(&mut m, true);
         aponta(&mut m, id, b);
         if mao {
-            ate(&mut m, id, T0, &format!("{o_que}: a mão não apareceu"), |m| {
-                olhar(m, id, b) == Some(PointerLook::Hand)
-                    && sublinhado(m, id).is_some_and(|w| w.contains(&b))
-                    && m.docs().link_of(id).1
-            });
+            ate(
+                &mut m,
+                id,
+                T0,
+                &format!("{o_que}: a mão não apareceu"),
+                |m| {
+                    olhar(m, id, b) == Some(PointerLook::Hand)
+                        && sublinhado(m, id).is_some_and(|w| w.contains(&b))
+                        && m.docs().link_of(id).1
+                },
+            );
         } else {
             nunca(&mut m, id, T0, &format!("{o_que}: a mão apareceu"), |m| {
                 olhar(m, id, b) == Some(PointerLook::Text) && sublinhado(m, id).is_none()
@@ -167,12 +183,25 @@ fn a_mao_aparece_onde_o_ctrl_clique_faz_alguma_coisa() {
         ctrl_carregado(&mut m, false);
         clica_em(&mut m, id, b, ctrl());
         // O centro de uma letra põe o cursor de um lado ou do outro dela: isso não é um salto.
-        let fez =
-            |m: &mut Mesa| !(b..=b + 1).contains(&cursor(m, id)) || m.docs().hover_of(id).is_some();
+        let fez = |m: &mut Mesa| {
+            !(b..=b + 1).contains(&cursor(m, id)) || !m.docs().help_tabs().is_empty()
+        };
         if mao {
-            ate(&mut m, id, T0, &format!("{o_que}: a mão prometeu e o clique não fez nada"), fez);
+            ate(
+                &mut m,
+                id,
+                T0,
+                &format!("{o_que}: a mão prometeu e o clique não fez nada"),
+                fez,
+            );
         } else {
-            nunca(&mut m, id, T0, &format!("{o_que}: o clique fez algo sem a mão"), |m| !fez(m));
+            nunca(
+                &mut m,
+                id,
+                T0,
+                &format!("{o_que}: o clique fez algo sem a mão"),
+                |m| !fez(m),
+            );
         }
     }
 }
@@ -192,9 +221,13 @@ fn o_ctrl_com_o_rato_parado_sublinha_e_largar_desfaz() {
     let antes = m.docs().ink_painted(id, b);
     assert_ne!(antes, Ink::Link);
     ctrl_carregado(&mut m, true);
-    ate(&mut m, id, T0, "o Ctrl com o rato parado não sublinhou", |m| {
-        olhar(m, id, b) == Some(PointerLook::Hand)
-    });
+    ate(
+        &mut m,
+        id,
+        T0,
+        "o Ctrl com o rato parado não sublinhou",
+        |m| olhar(m, id, b) == Some(PointerLook::Hand),
+    );
     // O nome inteiro na cor do link (o VS Code pinta o texto da cor do traço), os vizinhos não.
     let w = sublinhado(&mut m, id).expect("sublinhado");
     assert!(w.clone().all(|k| m.docs().ink_painted(id, k) == Ink::Link));
@@ -204,8 +237,15 @@ fn o_ctrl_com_o_rato_parado_sublinha_e_largar_desfaz() {
     m.pinta(id);
     assert_eq!(olhar(&mut m, id, b), Some(PointerLook::Text));
     assert_eq!(sublinhado(&mut m, id), None);
-    assert!(!m.docs().link_of(id).1, "largar o Ctrl deixou o sublinhado pintado");
-    assert_eq!(m.docs().ink_painted(id, b), antes, "largar o Ctrl não devolveu a cor");
+    assert!(
+        !m.docs().link_of(id).1,
+        "largar o Ctrl deixou o sublinhado pintado"
+    );
+    assert_eq!(
+        m.docs().ink_painted(id, b),
+        antes,
+        "largar o Ctrl não devolveu a cor"
+    );
     ctrl_carregado(&mut m, true);
     ate(&mut m, id, T0, "voltar ao Ctrl não sublinhou", |m| {
         sublinhado(m, id).is_some()
@@ -221,7 +261,9 @@ fn uma_edicao_pergunta_outra_vez() {
     let b = em("= brilho", 3);
     ctrl_carregado(&mut m, true);
     aponta(&mut m, id, b);
-    ate(&mut m, id, T0, "não sublinhou", |m| sublinhado(m, id).is_some());
+    ate(&mut m, id, T0, "não sublinhou", |m| {
+        sublinhado(m, id).is_some()
+    });
     m.docs().go_to(id.0, TEXTO.lines().count() - 1, 3);
     m.escreve(id, " ");
     ate(&mut m, id, T0, "a edição não perguntou outra vez", |m| {

@@ -96,6 +96,11 @@ pub fn frame(
     if let Some(lib) = world.get_resource::<ProjectScripts>() {
         docs.sync_intel(lib);
     }
+    // O Ctrl+clique/F12 que respondeu «a página»; e o que um clique copiou (o «Copy» do exemplo).
+    docs.follow_help_requests();
+    if let Some(text) = docs.take_copy() {
+        hero.store.set_clipboard_copy(text);
+    }
     match ask {
         Some(SaveKind::Save) => hero.file_menu.save = true,
         Some(SaveKind::SaveAs) => hero.file_menu.save_as = true,

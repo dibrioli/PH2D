@@ -76,6 +76,8 @@ pub(crate) struct CodeDoc {
     pub(crate) inlay: crate::inlay::InlayHeld,
     /// Ctrl+clique / F12 à espera do assistente (I6).
     pub(crate) goto: Option<crate::goto::Goto>,
+    /// A página que o último Ctrl+clique/F12 pediu (a família abre-a, [`crate::help`]).
+    pub(crate) help_request: Option<ph2d_code_help::Anchor>,
     /// O que o Ctrl+clique alcança sob o rato, com o Ctrl carregado (acabamento).
     pub(crate) reach: crate::reach::Reach,
     /// As acções de contexto do Alt+Enter (I7).
@@ -144,6 +146,7 @@ impl CodeDoc {
             sem: crate::semantic::SemHeld::default(),
             inlay: crate::inlay::InlayHeld::default(),
             goto: None,
+            help_request: None,
             reach: crate::reach::Reach::default(),
             actions: None,
             lint: crate::lint::Lint::default(),

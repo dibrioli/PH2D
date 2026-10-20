@@ -37,8 +37,6 @@ pub(crate) struct Hovering {
     /// Perguntado (uma vez por palavra).
     pub ticket: Option<Ticket>,
     pub shown: Option<Hover>,
-    /// Aberto por um comando (a definição na API, I6): o rato não o leva.
-    pub pinned: bool,
     /// O balão de um problema (I8, `crate::note`), além da palavra.
     pub note: Option<Note>,
     /// A pausa passou (o balão de um problema abre sem esperar o assistente).
@@ -90,9 +88,6 @@ impl Hints {
     /// (`note`), no instante `now_ns`. `open` = o balão está à vista: um alvo novo espera
     /// [`HOVER_HIDE_NS`] ([`Self::settle`]), e voltar a ele antes disso não muda nada.
     pub fn pointer(&mut self, at: Target, now_ns: u128, open: bool) {
-        if self.hover.as_ref().is_some_and(|h| h.pinned) {
-            return;
-        }
         if let Some(h) = self.hover.as_mut() {
             let same = at
                 .as_ref()
@@ -121,7 +116,6 @@ impl Hints {
                     due_ns: now_ns + HOVER_PAUSE_NS,
                     ticket: None,
                     shown: None,
-                    pinned: false,
                     note,
                     ripe: false,
                     fixes: None,
@@ -153,23 +147,6 @@ impl Hints {
         }
     }
 
-    /// O balão de `word` já (sem a pausa do rato), preso a ela.
-    pub fn pin(&mut self, word: Range<usize>) {
-        self.hover = Some(Hovering {
-            word,
-            due_ns: 0,
-            ticket: None,
-            shown: None,
-            pinned: true,
-            note: None,
-            ripe: false,
-            fixes: None,
-            hot: None,
-            live: Vec::new(),
-            leaving: None,
-        });
-    }
-
     /// Abre a assinatura (ou pergunta outra vez, se já está aberta).
     pub fn open_signature(&mut self) {
         self.sig.get_or_insert_with(SigHelp::default).asked = None;
@@ -195,9 +172,7 @@ impl Hints {
         use ph2d_code_intel::Answer;
         if let Some(h) = self.hover.as_mut().filter(|h| h.ticket == Some(ticket)) {
             if let Answer::Hover(a) = answer {
-                // O preso pelo Ctrl+clique/F12 é a documentação, ou nada (a regra do `goto`).
-                let pinned = h.pinned;
-                h.shown = a.filter(|a| !pinned || crate::doc::CodeDoc::documents(&a.text));
+                h.shown = a;
             }
             return;
         }

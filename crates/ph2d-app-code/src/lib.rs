@@ -23,6 +23,9 @@ mod folds;
 mod format;
 mod frame;
 mod goto;
+mod help;
+mod help_doc;
+mod help_input;
 mod hint;
 mod inlay;
 mod intel;
@@ -30,11 +33,12 @@ mod keys;
 mod link;
 mod lint;
 pub mod list;
+mod nav;
 mod note;
 mod places;
 mod pointer;
-pub mod problems;
 mod problem_list;
+pub mod problems;
 mod reach;
 mod recovery;
 mod refs;
@@ -46,10 +50,13 @@ pub mod smoke_drive;
 mod snippet;
 mod snippet_doc;
 mod strict;
+mod surface;
 
 pub use docs::{CodeDocs, GrammarProbe, ParkedFootprint, SaveKind};
 pub use format::FormatServer;
 pub use frame::frame;
+pub use help::{HELP_TAG, member_id};
+pub use help_doc::{DeadLink, dead_links, link_count};
 pub use intel::IntelServer;
 
 /// A declaração da família à shell.

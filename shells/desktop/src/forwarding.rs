@@ -217,7 +217,10 @@ pub fn forward_key_to_hero(gfx: Option<&mut AppGfx>, event: KeyEvent) {
         }
     }
     // Cmd+C / Cmd+X saem já (um Cmd+V na mesma imagem lê-os); o resto, a cada imagem.
-    ph2d_app_host::clipboard::hand_over(&mut hero.store, gfx.clipboard.as_mut());
+    drain_clipboard_copy(gfx);
+    let Some(hero) = gfx.hero_screen.as_mut() else {
+        return;
+    };
     if let Some(target) = hero.store.take_clipboard_paste_request() {
         // W16 — com prazo: um app dono da área de transferência que trave não congela o PH2D.
         let text = match ph2d_app_host::clipboard::read(|cb| cb.get_text().ok()) {
@@ -307,4 +310,12 @@ pub(crate) fn resolve_live_entry(
     _picked: Option<u64>,
 ) -> Option<ph2d_editor_core::screens::hero::fixture::HierarchyEntity> {
     None
+}
+
+/// O que a tecla (Ctrl+C/X) ou um CLIQUE pediu para copiar vai para a área de transferência: chamada
+/// pela tecla e uma vez por quadro (o «Copy» do exemplo da página de ajuda é um clique).
+pub fn drain_clipboard_copy(gfx: &mut AppGfx) {
+    if let Some(hero) = gfx.hero_screen.as_mut() {
+        ph2d_app_host::clipboard::hand_over(&mut hero.store, gfx.clipboard.as_mut());
+    }
 }

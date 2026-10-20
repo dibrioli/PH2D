@@ -383,9 +383,14 @@ fn abre_tudo(m: &mut Mesa, ts: &mut TextSystem, id: ScriptId) {
     };
     let t0: u128 = 1_000_000_000_000;
     m.hero.store.note_clock(t0);
-    assert!(m.docs().command(id.0, ph2d_app_code::commands::CMD_TYPE_HINTS));
+    assert!(
+        m.docs()
+            .command(id.0, ph2d_app_code::commands::CMD_TYPE_HINTS)
+    );
     m.hero.store.note_clock(t0 + 5_000_000_000);
-    ate(m, "as dicas de tipo", &|m| !m.docs().inlays_of(id).is_empty());
+    ate(m, "as dicas de tipo", &|m| {
+        !m.docs().inlays_of(id).is_empty()
+    });
     for _ in 0..2 {
         tecla(m, ts, id, Key::Left, Modifiers::default(), None);
     }
@@ -402,7 +407,10 @@ fn abre_tudo(m: &mut Mesa, ts: &mut TextSystem, id: ScriptId) {
         m.docs().completion_of(id).is_some() && m.docs().signature_of(id).is_some()
     });
     let (l, _) = m.docs().completion_of(id).expect("aberta");
-    assert!(l.iter().any(|x| x == "dtxwmzk"), "o local que a régua continua: {l:?}");
+    assert!(
+        l.iter().any(|x| x == "dtxwmzk"),
+        "o local que a régua continua: {l:?}"
+    );
     let diags = m.docs().assist_diagnostics(id).1.map_or(0, |d| d.len());
     println!(
         "célula real ({} linhas): {diags} diagnósticos do assistente · {} dicas de tipo · lista de {}",
@@ -1155,8 +1163,16 @@ fn problemas_por_quadro() {
                 .as_ref()
                 .is_some_and(|e| e.title == p.message && e.kind.starts_with("unknown_field"))
         };
-        let fundidos: Vec<String> = ps.iter().filter(|p| !e_lint(p)).map(|p| p.message.clone()).collect();
-        let lint: Vec<_> = ps.iter().filter(|p| e_lint(p)).filter_map(|p| p.culprit.clone()).collect();
+        let fundidos: Vec<String> = ps
+            .iter()
+            .filter(|p| !e_lint(p))
+            .map(|p| p.message.clone())
+            .collect();
+        let lint: Vec<_> = ps
+            .iter()
+            .filter(|p| e_lint(p))
+            .filter_map(|p| p.culprit.clone())
+            .collect();
         // A entrada do `sort` de `CodeDoc::problems`: os fundidos (já ordenados) e o lint no fim.
         let ordem: Vec<Problem> = ps
             .iter()
@@ -1166,7 +1182,10 @@ fn problemas_por_quadro() {
             .collect();
         let diags = m.docs().assist_diagnostics(id).1.unwrap_or_default();
         let com_expl = fundidos.iter().filter(|s| explica(s).is_some()).count();
-        let n1001 = diags.iter().filter(|d| d.code.as_deref() == Some("1001")).count();
+        let n1001 = diags
+            .iter()
+            .filter(|d| d.code.as_deref() == Some("1001"))
+            .count();
         println!(
             "sonda {linhas}: {} linhas · {} diagnósticos do assistente ({n1001} de código 1001) · {} problemas = {} fundidos ({com_expl} com explicação) + {} do lint · {} dicas",
             texto.lines().count(),
@@ -1182,7 +1201,10 @@ fn problemas_por_quadro() {
         }
         let mut classes: Vec<_> = classes.into_iter().collect();
         classes.sort_by_key(|c| std::cmp::Reverse(c.1));
-        println!("  mensagens mais comuns: {:?}", &classes[..classes.len().min(3)]);
+        println!(
+            "  mensagens mais comuns: {:?}",
+            &classes[..classes.len().min(3)]
+        );
         let linha = ps.first().map_or(0, |p| p.line);
         sondas.push(Sonda {
             nome: if linhas == 51 { "51" } else { "7 500" },
@@ -1276,7 +1298,11 @@ fn problemas_por_quadro() {
         s.sort_by(f64::total_cmp);
         (s[0], s[s.len() / 2])
     };
-    println!("\nloadavg: início {load0} · fim {} · N = {} por fase e célula", loadavg(), RONDAS * POR_BLOCO);
+    println!(
+        "\nloadavg: início {load0} · fim {} · N = {} por fase e célula",
+        loadavg(),
+        RONDAS * POR_BLOCO
+    );
     println!("| fase (µs) | 51 mín | 51 mediana | 7 500 mín | 7 500 mediana |");
     println!("|---|---|---|---|---|");
     let nomes = [

@@ -171,7 +171,11 @@ fn a_resposta_de_um_pedido_velho_nunca_entra_no_texto_novo() {
     let (novo_tx, novo_rx) = mpsc::channel::<()>();
     let (velho_rx, novo_rx) = (Mutex::new(velho_rx), Mutex::new(novo_rx));
     let f = FormatServer::Custom(Arc::new(move |t: &str| {
-        let rx = if t.starts_with("-- c") { &novo_rx } else { &velho_rx };
+        let rx = if t.starts_with("-- c") {
+            &novo_rx
+        } else {
+            &velho_rx
+        };
         let _ = rx.lock().unwrap().recv();
         Ok(t.replace("x=1", "x = 1"))
     }));
@@ -216,7 +220,11 @@ fn a_formatacao_nunca_se_junta_a_escrita_de_antes() {
     chega(&mut m);
     assert_eq!(texto(&mut m, id), format!("{DIREITO}z"));
     desfaz(&mut m, id);
-    assert_eq!(texto(&mut m, id), format!("{TORTO}z"), "só a formatação sai");
+    assert_eq!(
+        texto(&mut m, id),
+        format!("{TORTO}z"),
+        "só a formatação sai"
+    );
     desfaz(&mut m, id);
     assert_eq!(texto(&mut m, id), TORTO);
 }

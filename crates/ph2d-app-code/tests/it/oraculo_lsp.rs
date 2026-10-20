@@ -483,7 +483,7 @@ fn o_assistente_fixado_marca_o_argumento_e_mostra_o_balao() {
 }
 
 /// ⭐ I6 e I11 com o `luau-lsp` FIXADO, pelo caminho do produto: Ctrl+clique num uso de um local vai à
-/// declaração; F12 em `ph2d.set` (o servidor dá `[]`) abre a documentação GERADA no balão; as cores
+/// declaração; F12 em `ph2d.set` (o servidor dá `[]`) abre a página de ajuda `ph2d`; as cores
 /// do servidor pintam `ph2d` e `set` na cor da biblioteca (o tree-sitter dá-lhes variável e função),
 /// e `pirnt` — que não tem token nenhum — na de alerta, pelo diagnóstico.
 #[test]
@@ -493,7 +493,6 @@ fn o_assistente_fixado_vai_a_definicao_e_pinta_as_cores() {
     use ph2d_editor_core::doc_surface::Key;
     use ph2d_host::Modifiers;
     use ph2d_panel_code::Ink;
-    use ph2d_script::api_table::API;
     let _ = fixado();
     let texto = "local brilho = 1\nfunction update(self, dt)\n  ph2d.set(self.id, \"x\", brilho)\n  pirnt(dt)\nend\n";
     let (m, ids) = Mesa::new(&[("a.luau", texto)]);
@@ -537,19 +536,14 @@ fn o_assistente_fixado_vai_a_definicao_e_pinta_as_cores() {
     espera(&mut m, "o Ctrl+clique não foi à declaração", &|m| {
         m.docs().cursor_of(id).map(|c| c.1) == Some(6)
     });
-    // F12 em `set` → a documentação da função, e o cursor fica.
+    // F12 em `set` → a página de ajuda `ph2d`, e o cursor fica.
     let set = ph2d + 6;
     let (x, y) = m.docs().glyph_center(id, set).expect("à vista");
     m.clica(id, x, y, Modifiers::default());
     let antes = m.docs().cursor_of(id);
     tecla(&mut m, id, Key::F(12), Modifiers::default(), None, "");
-    let doc = API
-        .iter()
-        .find(|e| e.table == "ph2d" && e.ident == "set")
-        .unwrap()
-        .doc;
-    espera(&mut m, "o F12 em `set` não abriu a documentação", &|m| {
-        m.docs().hover_of(id).is_some_and(|h| h.contains(doc))
+    espera(&mut m, "o F12 em `set` não abriu a página", &|m| {
+        m.docs().help_tab_id("ph2d").is_some()
     });
     assert_eq!(
         m.docs().cursor_of(id),
@@ -778,5 +772,123 @@ fn os_exemplos_da_api_nao_dao_aviso() {
     assert!(
         !diz("'update'"),
         "o gancho do motor não saiu pelo filtro: {controlo:?}"
+    );
+}
+
+/// A assinatura sem os NOMES dos argumentos (`(n: number): number` → `(number): number`), sem o
+/// `: ()` do fim e sem espaços — o que a página e o balão têm de dizer igual.
+fn sem_nomes(sig: &str) -> String {
+    let sig = sig.trim();
+    let sig = sig.strip_suffix(": ()").unwrap_or(sig);
+    let cs: Vec<char> = sig.chars().collect();
+    let mut out = String::new();
+    let mut i = 0;
+    while i < cs.len() {
+        let depois_de_abrir = out.trim_end().ends_with(['(', ',']);
+        if depois_de_abrir && (cs[i].is_alphabetic() || cs[i] == '_' || cs[i] == '.') {
+            let mut j = i;
+            while j < cs.len() && (cs[j].is_alphanumeric() || cs[j] == '_' || cs[j] == '.') {
+                j += 1;
+            }
+            let mut k = j;
+            while k < cs.len() && cs[k] == ' ' {
+                k += 1;
+            }
+            if k < cs.len() && cs[k] == ':' && cs.get(k + 1) != Some(&':') {
+                // `...: T` fica `...T`; `nome: T` fica `T`.
+                let nome: String = cs[i..j].iter().collect();
+                if nome == "..." {
+                    out.push_str("...");
+                }
+                i = k + 1;
+                continue;
+            }
+        }
+        out.push(cs[i]);
+        i += 1;
+    }
+    out.chars().filter(|c| !c.is_whitespace()).collect()
+}
+
+/// ⭐ G3 (`docs/CodeEditor/04_pagina_de_ajuda.md` §6): a assinatura de cada função da LINGUAGEM na
+/// página de ajuda é a que o `luau-lsp` 1.70.1 FIXADO dá no balão, onde ele a dá com o nome
+/// (`function math.sin(…)`) — comparadas sem os nomes dos argumentos e sem o `: ()`. As que o
+/// balão não nomeia (as interseções do `table.insert`) ficam de fora, e contam-se.
+#[test]
+fn a_assinatura_da_pagina_e_a_do_assistente() {
+    use ph2d_code_help::{Kind, catalog};
+    use ph2d_code_lsp::byte_to_position;
+    let bin = fixado();
+    let cfg =
+        ServerConfig::new(bin).with_definitions("@ph2d", repo().join("runtime/luau/ph2d.d.luau"));
+    let mut c = LspClient::start(cfg).expect("luau-lsp arranca");
+    const NOSSAS: [&str; 4] = ["ph2d", "motion", "types", "hooks"];
+    let mut texto = String::new();
+    let mut sitios = Vec::new();
+    for p in catalog().iter().filter(|p| !NOSSAS.contains(&p.id)) {
+        for m in p.members.iter().filter(|m| m.kind == Kind::Function) {
+            let lib = if p.id == "globals" {
+                String::new()
+            } else {
+                format!("{}.", p.id)
+            };
+            let linha = format!("local _ = {lib}{}\n", m.name);
+            let b = texto.len() + linha.len() - 1 - m.name.len();
+            sitios.push((format!("{lib}{}", m.name), m.sigs[0].clone(), b));
+            texto.push_str(&linha);
+        }
+    }
+    let uri = "file:///ph2d-gate/assinaturas.luau";
+    c.pump();
+    c.did_open(uri, &texto).expect("didOpen");
+    let _ = c.wait_diagnostics(uri, Duration::from_secs(30));
+    let (mut erradas, mut sem_nome, mut iguais) = (Vec::new(), Vec::new(), 0);
+    for (nome, nossa, b) in &sitios {
+        let balao = c
+            .hover(uri, byte_to_position(&texto, *b))
+            .expect("hover")
+            .unwrap_or_default();
+        let linha = balao
+            .lines()
+            .map(str::trim)
+            .find(|l| !l.is_empty() && !l.starts_with("```"))
+            .unwrap_or_default()
+            .to_owned();
+        let Some(dele) = linha.strip_prefix(&format!("function {nome}")) else {
+            sem_nome.push(format!("{nome}: {linha}"));
+            continue;
+        };
+        if sem_nomes(dele) == sem_nomes(nossa) {
+            iguais += 1;
+        } else {
+            erradas.push(format!(
+                "{nome}\n    página:   {nossa}\n    balão:    {dele}"
+            ));
+        }
+    }
+    c.shutdown().expect("shutdown");
+    eprintln!(
+        "G3: {iguais} iguais, {} sem nome: {sem_nome:#?}",
+        sem_nome.len()
+    );
+    assert!(
+        erradas.is_empty(),
+        "{} assinatura(s) da página ≠ a do luau-lsp:\n{}",
+        erradas.len(),
+        erradas.join("\n")
+    );
+    assert!(
+        iguais > 150,
+        "controlo: o balão nomeou só {iguais} funções; sem nome: {sem_nome:#?}"
+    );
+}
+
+#[test]
+fn sem_nomes_tira_os_nomes_dos_argumentos() {
+    assert_eq!(sem_nomes("(n: number): number"), "(number):number");
+    assert_eq!(sem_nomes("<T>(value: T, ...: any): ()"), "<T>(T,...any)");
+    assert_eq!(
+        sem_nomes("(f: (a: number) -> string): { x: number }"),
+        "((number)->string):{x:number}"
     );
 }

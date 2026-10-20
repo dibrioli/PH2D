@@ -1,0 +1,147 @@
+# Krita 6.0.4.1, os 144 presets do perfil limpo, cena `fundo` de bateria_lacunas.json (frente azul, fundo AMARELO), 2026-10-20
+# leis_lacunas.py fundo: frac_nao_azul = px saturados (S>0,25) com matiz 30–170°; > 0 ⇒ usa a 2.ª cor. As PNG ficaram fora do repo.
+preset,ficheiro,sha256_16,tinta_px,saturados,frac_nao_azul
+"a) Eraser Circle",a__Eraser_Circle,9c5ad57bf7626cac,0,,
+"a) Eraser Small",a__Eraser_Small,9c5ad57bf7626cac,0,,
+"a) Eraser Soft",a__Eraser_Soft,9c5ad57bf7626cac,0,,
+"b) Airbrush Soft",b__Airbrush_Soft,78e00b825ed984ea,61849,44093,0.0
+"b) Basic-1",b__Basic-1,4fd206f2bb1aa370,92009,91598,0.0
+"b) Basic-2 Opacity",b__Basic-2_Opacity,70d29fbeea5c21c5,83682,73684,0.0
+"b) Basic-3 Flow",b__Basic-3_Flow,f75a4588a5774660,79783,73826,0.0
+"b) Basic-4 Flow Opacity",b__Basic-4_Flow_Opacity,d6a01f29e860aaa1,73855,65960,0.0
+"b) Basic-5 Size",b__Basic-5_Size,589771543d338a2c,63187,62304,0.0
+"b) Basic-5 Size Opacity",b__Basic-5_Size_Opacity,587064f2798e5908,70233,67700,0.0
+"b) Basic-6 Details",b__Basic-6_Details,366739b3efadcc1a,55963,53735,0.0
+"c) Pencil 1 Sketch (mypaint)",c__Pencil_1_Sketch__mypaint_,eb578d57eefc4a7e,223228,128483,0.0
+"c) Pencil 2b (mypaint)",c__Pencil_2b__mypaint_,5355017c2df62a1e,80521,40805,0.0
+"c) Pencil-1 Hard",c__Pencil-1_Hard,4780dbaaed06ff4b,38667,9316,0.0
+"c) Pencil-2",c__Pencil-2,4867586c4e24c101,54948,40321,0.0
+"c) Pencil-3 Large 4B",c__Pencil-3_Large_4B,117d9d584319166c,66362,60545,0.0
+"c) Pencil-4 Soft",c__Pencil-4_Soft,2273fe5709cecd57,41255,32364,0.0
+"c) Pencil-5 Tilted",c__Pencil-5_Tilted,8eca1b34e7a747b8,4195,2691,0.0
+"c) Pencil-6 Quick Shade",c__Pencil-6_Quick_Shade,ea433ce218db3f6b,43568,31849,0.0
+"d) Ink pen (mypaint)",d__Ink_pen__mypaint_,69cae3ff69cadbe0,83550,80943,0.0
+"d) Ink-1 Precision",d__Ink-1_Precision,f657d0859be3986b,67964,54116,0.0
+"d) Ink-2 Fineliner",d__Ink-2_Fineliner,fc3374f4521146c5,80867,78946,0.0
+"d) Ink-3 Gpen",d__Ink-3_Gpen,1eef00b1f1d66def,72157,71509,0.0
+"d) Ink-4 Pen Rough",d__Ink-4_Pen_Rough,42ad6ce064926f60,67635,66355,0.0
+"d) Ink-7 Brush Rough",d__Ink-7_Brush_Rough,f9117f17e8c3ce9f,68812,67478,0.0
+"d) Ink-8 Sumi-e",d__Ink-8_Sumi-e,2ac7bc24aa1e18ed,57243,39968,0.0
+"e) Marker Chisel Smooth",e__Marker_Chisel_Smooth,6a34b8ed2b88b8f3,8368,7422,0.0
+"e) Marker Details",e__Marker_Details,8d70235c0ba82a86,65659,57490,0.0
+"e) Marker Dry",e__Marker_Dry,2ccd3fada7c954b4,46606,42654,0.0
+"e) Marker Medium (mypaint)",e__Marker_Medium__mypaint_,b17cde963d3bfcdf,51220,0,nan
+"e) Marker Plain (mypaint)",e__Marker_Plain__mypaint_,4e1af401b1f743b9,76659,64526,0.0
+"f) Bristles-1 Details",f__Bristles-1_Details,fe641f3da6f92c93,67477,63757,0.0
+"f) Bristles-2 Flat Rough",f__Bristles-2_Flat_Rough,c8d5ef02fb3ad3dc,58274,48324,0.0
+"f) Bristles-3 Large Smooth",f__Bristles-3_Large_Smooth,87ed4565f86c9522,64583,57644,0.0
+"f) Bristles-4 Glaze",f__Bristles-4_Glaze,f54668edb4e60308,46102,40570,0.0
+"f) Bristles-5 Flat",f__Bristles-5_Flat,79923cf0ecf0b895,39227,33164,0.0
+"f) Charcoal Rock Soft",f__Charcoal_Rock_Soft,1c7d503f16cf14a3,51654,45297,0.0
+"f) Dry Roller",f__Dry_Roller,44bf9b923d69f32a,55751,48593,0.0
+"g) Dry Bristles",g__Dry_Bristles,22d5c0f0bc55c79a,73966,64234,0.0
+"g) Dry Bristles Eroded",g__Dry_Bristles_Eroded,523f08700eb75860,43972,38977,0.0
+"g) Dry Brushing",g__Dry_Brushing,6dd0cd0a3f032aca,36062,32235,0.0
+"g) Dry Textured Creases",g__Dry_Textured_Creases,1972c0675cf804a4,65572,61358,0.0
+"h) Chalk Details",h__Chalk_Details,fc2d3ef384a455f5,51728,50028,0.0
+"h) Chalk Grainy",h__Chalk_Grainy,4267987829f97d42,75031,65923,0.0
+"h) Chalk Soft",h__Chalk_Soft,07ed55af9a31b651,68126,61618,0.0
+"h) Charcoal Pencil Medium",h__Charcoal_Pencil_Medium,857b788d0c868290,47248,34220,0.0
+"h) Charcoal Pencil Thin",h__Charcoal_Pencil_Thin,6e38970c14f3a994,47545,34829,0.0
+"h) Charcoal pencil large",h__Charcoal_pencil_large,9b60afd88d254214,47429,34566,0.0
+"i) Wet Bristles",i__Wet_Bristles,3f00063ba562a040,44929,41319,0.0
+"i) Wet Bristles Rough",i__Wet_Bristles_Rough,b0b447605e847d74,60582,51287,0.0
+"i) Wet Circle",i__Wet_Circle,06861df1c3840d45,73392,68972,0.0
+"i) Wet Knife",i__Wet_Knife,06caa68bdeb9595d,21799,20940,0.0
+"i) Wet Knife Plus (mypaint)",i__Wet_Knife_Plus__mypaint_,25c8452ba03ce1ef,71624,67284,0.0
+"i) Wet Paint",i__Wet_Paint,42fd305b3c707e0d,72988,61276,0.0
+"i) Wet Paint Details",i__Wet_Paint_Details,7d34704ed33b7e00,68125,63076,0.0
+"i) Wet Paint Plus (mypaint)",i__Wet_Paint_Plus__mypaint_,ad7934fdc309ab34,72731,66209,0.0
+"i) Wet Smear",i__Wet_Smear,bb7eaafcd9f8941b,67589,64816,0.0
+"i) Wet Textured Soft",i__Wet_Textured_Soft,3c3074bc95f0fffa,63945,54593,0.0
+"j) WaterC Basic Lines-Dry",j__WaterC_Basic_Lines-Dry,48cf264effdcca4c,5179,1718,0.0
+"j) WaterC Basic Lines-Wet",j__WaterC_Basic_Lines-Wet,abed96f0b0e9f937,6935,2804,0.0
+"j) WaterC Basic Lines-Wet-Pattern",j__WaterC_Basic_Lines-Wet-Pattern,336cb94c0335b804,23662,19003,0.0
+"j) WaterC Basic Round-Fringe 02",j__WaterC_Basic_Round-Fringe_02,70e545f90c0238e8,45740,15007,0.0
+"j) WaterC Basic Round-Grain",j__WaterC_Basic_Round-Grain,2bc8af6f32f83892,58260,42444,0.0
+"j) WaterC Basic Round-Grunge",j__WaterC_Basic_Round-Grunge,887a0e03472571c6,88714,78229,0.0
+"j) WaterC Flat Big-Grain Tilt",j__WaterC_Flat_Big-Grain_Tilt,627d21a25ed94bbe,58829,49663,0.0
+"j) WaterC Flat Decay Tilt",j__WaterC_Flat_Decay_Tilt,66543a6d8411b27e,53828,25401,0.0
+"j) WaterC Special Blobs",j__WaterC_Special_Blobs,60d2d929de34ae3b,10190,1279,0.0
+"j) WaterC Special Splats",j__WaterC_Special_Splats,a74f609d74d10e2c,19036,2385,0.0
+"j) WaterC Spread",j__WaterC_Spread,d783516494a934ff,382,0,nan
+"j) WaterC Spread WideArea",j__WaterC_Spread_WideArea,ada7e65b4e455c01,100263,4472,0.0
+"j) WaterC Spread-Pattern",j__WaterC_Spread-Pattern,fccbf54f0ddac4bb,1527,0,nan
+"j) WaterC Water-Pattern",j__WaterC_Water-Pattern,9c5ad57bf7626cac,0,,
+"j) Watercolor Fringe",j__Watercolor_Fringe,658601ecb4e4c30b,64479,57003,0.0
+"j) Watercolor Texture",j__Watercolor_Texture,462d431b726c20f8,48318,31387,0.0
+"j) Waterpaint Hard Edges",j__Waterpaint_Hard_Edges,84bd7e72466cea60,63558,59112,0.0
+"j) Waterpaint Soft Edges",j__Waterpaint_Soft_Edges,11e86ef97e712850,20026,9353,0.0
+"k) Blender Basic",k__Blender_Basic,9c5ad57bf7626cac,0,,
+"k) Blender Blur",k__Blender_Blur,9c5ad57bf7626cac,0,,
+"k) Blender Knife Edge",k__Blender_Knife_Edge,9c5ad57bf7626cac,0,,
+"k) Blender Pixelize",k__Blender_Pixelize,9c5ad57bf7626cac,0,,
+"k) Blender Rake",k__Blender_Rake,9c5ad57bf7626cac,0,,
+"k) Blender Smear",k__Blender_Smear,9c5ad57bf7626cac,0,,
+"k) Blender Textured Soft",k__Blender_Textured_Soft,9c5ad57bf7626cac,0,,
+"l) Adjust Color",l__Adjust_Color,9c5ad57bf7626cac,0,,
+"l) Adjust Dodge",l__Adjust_Dodge,9c5ad57bf7626cac,0,,
+"l) Adjust Lighten",l__Adjust_Lighten,9c5ad57bf7626cac,0,,
+"l) Adjust Multiply",l__Adjust_Multiply,c77d68476c41ced2,61849,44093,0.0
+"l) Adjust Overlay Burn",l__Adjust_Overlay_Burn,9c5ad57bf7626cac,0,,
+"m) RGBA 01 Thick-dry",m__RGBA_01_Thick-dry,659c69cc18e2218d,68421,54752,0.0
+"m) RGBA 02 Thickpaint",m__RGBA_02_Thickpaint,6ec35f89311a901e,64049,62874,0.0
+"m) RGBA 03 Rake",m__RGBA_03_Rake,b8a520710270a6e2,21785,16537,0.0
+"m) RGBA 04 Impasto",m__RGBA_04_Impasto,736e6376a262f5ec,23108,18783,0.0
+"m) RGBA 05 Impasto-details",m__RGBA_05_Impasto-details,dbb47251c289d1a3,22838,20486,0.0
+"m) RGBA 06 Rock",m__RGBA_06_Rock,0ae4ccfecdc2e1b7,37061,35572,0.0
+"t) Shapes Fill",t__Shapes_Fill,03b21ba8c98b2f86,14546,14353,0.0
+"t) Shapes Mecha",t__Shapes_Mecha,dda8fc4273e36665,22992,18224,0.0
+"t) Shapes Rounded",t__Shapes_Rounded,60bb7f497c87d3c4,26007,22425,0.0
+"t) Shapes Spikes",t__Shapes_Spikes,a5f3549cce5c7035,17148,14244,0.0
+"t) Shapes Square",t__Shapes_Square,607b4ef0a8978813,121912,102717,0.0
+"u) Pixel Art",u__Pixel_Art,b1124e747640d2c1,87567,87567,0.0
+"u) Pixel Art Dithering",u__Pixel_Art_Dithering,c61b79f1c6f20587,35867,35867,0.0
+"u) Pixel Art Fill",u__Pixel_Art_Fill,03698662564bd03b,71056,71056,0.0
+"v) Clone Tool",v__Clone_Tool,9c5ad57bf7626cac,0,,
+"v) Distort Grow",v__Distort_Grow,9c5ad57bf7626cac,0,,
+"v) Distort Move",v__Distort_Move,9c5ad57bf7626cac,0,,
+"v) Distort Shrink",v__Distort_Shrink,9c5ad57bf7626cac,0,,
+"v) Experimental Webs",v__Experimental_Webs,fb7d09263805dd39,7393,6520,0.0
+"v) Sketching-1 Chrome Thin",v__Sketching-1_Chrome_Thin,fe9467baef41f286,2481,2216,0.1047
+"v) Sketching-2 Chrome Large",v__Sketching-2_Chrome_Large,a31eafd43bde3c53,10202,9487,0.0
+"v) Sketching-3 Leaky",v__Sketching-3_Leaky,aea8252e0f2d00ac,91881,91167,0.0
+"v) Texture Impressionism",v__Texture_Impressionism,743013e0112f8853,192467,168725,0.0
+"v) Texture Pointillism",v__Texture_Pointillism,3dc3f0827e2a8a43,47403,45696,0.0
+"w) Texture Normal Map",w__Texture_Normal_Map,a9c7b193d3ef07e6,67434,62114,0.0
+"x) Filter Blur",x__Filter_Blur,9c5ad57bf7626cac,0,,
+"x) Filter Sharpen",x__Filter_Sharpen,9c5ad57bf7626cac,0,,
+"y) Screentone Moire",y__Screentone_Moire,83f295765364b4cf,23646,15068,0.0
+"y) Screentone Pressure",y__Screentone_Pressure,7fea0cd644169949,54222,43930,0.0
+"y) Screentones Regular",y__Screentones_Regular,bf6aba77faef1fde,15099,12404,0.0
+"y) Texture Big",y__Texture_Big,2e2e3a642beaa36b,68227,53830,0.0
+"y) Texture Crackles",y__Texture_Crackles,d531b31a40c16cc3,25919,9833,0.0
+"y) Texture Hair",y__Texture_Hair,0019cdd9ab0af12f,42894,37615,0.0
+"y) Texture Large Splat",y__Texture_Large_Splat,5e18565529bcc900,51806,35013,0.0
+"y) Texture Noise",y__Texture_Noise,8ecc8c60dad9a19c,44484,25759,0.0
+"y) Texture Random Particles",y__Texture_Random_Particles,0bc2705bf2abc677,18629,10974,0.0
+"y) Texture Reptile",y__Texture_Reptile,c8fb12ef493c04b5,53305,45564,0.0
+"y) Texture Snow Pile",y__Texture_Snow_Pile,b81f641c7f79cbe9,37817,30690,0.0
+"y) Texture Spines",y__Texture_Spines,d25cbae78c57532e,27402,9967,0.0
+"y) Texture Splat",y__Texture_Splat,e0f28d63543f019e,4833,1831,0.0
+"y) Texture Spray",y__Texture_Spray,77e80486c424f16c,188922,119305,0.0
+"y) Texture Starfield",y__Texture_Starfield,9c5ad57bf7626cac,0,,
+"y) Texture Wood Fiber",y__Texture_Wood_Fiber,3b55bd7edc86c730,65046,39487,0.0
+"z) Stamp Bokeh",z__Stamp_Bokeh,9fcf100258156b73,25212,3787,0.0
+"z) Stamp Floor",z__Stamp_Floor,a1075c4c45a01485,51734,21352,0.0
+"z) Stamp Grass",z__Stamp_Grass,be8c408aa8024d59,28783,14606,0.0
+"z) Stamp Grass Patch",z__Stamp_Grass_Patch,c057901a1e552c29,16358,8759,0.0
+"z) Stamp Hearts",z__Stamp_Hearts,80becc63b98e8957,145683,130031,0.0
+"z) Stamp Herbals",z__Stamp_Herbals,9d4d045994c605fa,31102,13423,0.0
+"z) Stamp Leaves",z__Stamp_Leaves,d88de9e31dc40c10,54172,48088,0.0
+"z) Stamp Mountains Distant",z__Stamp_Mountains_Distant,e45a37e206e675cc,13978,2787,0.0
+"z) Stamp Shoujo Bubbles",z__Stamp_Shoujo_Bubbles,bb20adb80e7b4c88,33461,9396,0.0
+"z) Stamp Sparkles",z__Stamp_Sparkles,05c87d0b600ae5b1,3192,1243,0.0
+"z) Stamp Stylised Tree",z__Stamp_Stylised_Tree,763c00844404aa79,35076,28596,0.0
+"z) Stamp Vegetal",z__Stamp_Vegetal,3d0110204c278c70,56028,47566,0.0
+"z) Stamp Water",z__Stamp_Water,54e55722ab19faa7,19984,6734,0.0

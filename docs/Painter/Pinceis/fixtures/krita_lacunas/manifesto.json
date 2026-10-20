@@ -1,0 +1,72 @@
+{
+ "bateria_sha256": "5ce10f13ea586664353cc43125c7e2293df91517f156af2e2b99dc328bb39f6b",
+ "dt_ms": 10,
+ "falta": [],
+ "krita": "6.0.4.1",
+ "passo_ms": 10,
+ "pinceis": {
+  "d) Ink-1 Precision": {
+   "base_sobre": "d) Ink-1 Precision",
+   "ficheiro": "d__Ink-1_Precision",
+   "origem": "d)_Ink-1_Precision.kpp",
+   "velocidade": {
+    "px_com_tinta": 165304,
+    "sha256": "2ed59dc0b7e246d3"
+   }
+  },
+  "d) Ink-2 Fineliner": {
+   "base_sobre": "d) Ink-2 Fineliner",
+   "ficheiro": "d__Ink-2_Fineliner",
+   "origem": "d)_Ink-2_Fineliner.kpp",
+   "velocidade": {
+    "px_com_tinta": 159483,
+    "sha256": "a5e70a7487f0f1c8"
+   }
+  },
+  "e) Marker Chisel Smooth": {
+   "base_sobre": "e) Marker Chisel Smooth",
+   "ficheiro": "e__Marker_Chisel_Smooth",
+   "origem": "e)_Marker_Chisel_Smooth.kpp",
+   "velocidade": {
+    "px_com_tinta": 17666,
+    "sha256": "b59b94b9b44503e1"
+   }
+  },
+  "e) Marker Medium (mypaint)": {
+   "base_sobre": "e) Marker Medium (mypaint)",
+   "ficheiro": "e__Marker_Medium__mypaint_",
+   "origem": "e)_Marker_Medium_(mypaint).myb",
+   "velocidade": {
+    "px_com_tinta": 166818,
+    "sha256": "6bb19f482180aada"
+   }
+  },
+  "z) Stamp Hearts": {
+   "base_sobre": "z) Stamp Hearts",
+   "carimbos": {
+    "px_com_tinta": 85068,
+    "sha256": "a776466b486d3d72"
+   },
+   "ficheiro": "z__Stamp_Hearts",
+   "origem": "z)_Stamp_Hearts.kpp"
+  },
+  "z) Stamp Herbals": {
+   "base_sobre": "z) Stamp Herbals",
+   "carimbos": {
+    "px_com_tinta": 17152,
+    "sha256": "ab2a5e143c4e507c"
+   },
+   "ficheiro": "z__Stamp_Herbals",
+   "origem": "z)_Stamp_Herbals.kpp"
+  },
+  "z) Stamp Leaves": {
+   "base_sobre": "z) Stamp Leaves",
+   "carimbos": {
+    "px_com_tinta": 19263,
+    "sha256": "7cb9b84aa179ba05"
+   },
+   "ficheiro": "z__Stamp_Leaves",
+   "origem": "z)_Stamp_Leaves.kpp"
+  }
+ }
+}

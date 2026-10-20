@@ -35,6 +35,20 @@ impl crate::App {
             &self.clip_playhead,
             &self.container_playhead,
         );
+        // ⭐ O que o documento vetorial vale agora, para quem o compara com a curva (plano 35): a
+        // população do autokey e todo objecto que tem um campo animado.
+        let mut publicar = autokey_pass::populacao(hero, &self.skeleton, sim, &self.preview_drive);
+        publicar.extend(
+            self.timeline
+                .doc
+                .bindings()
+                .iter()
+                .filter(|b| matches!(b.prop, ph2d_timeline::PropKind::Field(_)))
+                .map(|b| b.entity),
+        );
+        publicar.sort_unstable();
+        publicar.dedup();
+        ph2d_app_vec::canais::publicar(sim, vec_scene, &publicar);
         autokey_pass::run(
             &mut self.timeline,
             autokey_clock,

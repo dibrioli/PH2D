@@ -67,4 +67,10 @@ pub(crate) struct AutokeyState {
     /// what to simplify (and over what tolerance) when the record drag ends.
     /// Empty outside a performing drag.
     pub(crate) record: BTreeMap<(u64, PropKind), RecSpan>,
+    /// ⭐ Os campos de família que cada entidade da população publicou NESTE quadro (plano 35) — o
+    /// `run` enche-os ao lado da pose; um gate que chame o `apply_samples` direto deixa-os vazios.
+    pub(crate) campos: BTreeMap<u64, Vec<(ph2d_ecs::FieldKey, f32)>>,
+    /// Os mesmos, do quadro anterior — a `baseline` dos campos (sem curva, um campo só nasce canal
+    /// se MUDOU).
+    pub(crate) base_campos: BTreeMap<u64, BTreeMap<ph2d_ecs::FieldKey, f32>>,
 }

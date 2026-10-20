@@ -75,7 +75,11 @@ impl crate::App {
         // ⚠️ **A árvore de tags é codificada AQUI, e a cache é que a torna barata** — a irmã exacta
         // da linha acima, e pela medição que a biblioteca pagou (até 28 % de um quadro sem ela).
         let tags = gfx.tags_cache.doc(&gfx.tags).to_vec();
-        Some(ProjectState::capture(
+        // ⭐ O que a curva move no documento vetorial é pré-visualização, como o `drive` acima
+        // (plano 35): a fotografia vê o AUTORADO, e o vivo volta logo a seguir.
+        let conducao = &self.vec.conducao;
+        let vivo = conducao.substituir(&mut gfx.sim, &mut gfx.vec_scene);
+        let foto = ProjectState::capture(
             drive,
             &mut gfx.sim,
             &gfx.vec_scene,
@@ -90,7 +94,9 @@ impl crate::App {
             // documento vetorial não mudou. Empréstimos disjuntos: `undo_baseline` e `gfx` são
             // campos diferentes de `self`.
             baseline,
-        ))
+        );
+        conducao.repor(&mut gfx.sim, &mut gfx.vec_scene, vivo);
+        Some(foto)
     }
 
     /// Aplica um estado restaurado ao App: restaura o mundo + a geometria, reconstrói
@@ -336,6 +342,7 @@ impl crate::App {
         // motores não declararam neste quadro. Quem parou volta a ser documento **já nesta
         // fotografia** — é isso que faz uma corrida inteira colapsar em UM passo, em vez de zero.
         self.preview_drive.settle();
+        self.vec.conducao.settle();
         // ⭐⭐⭐ **A FOTOGRAFIA que o `Cancel` da sessão de receita repõe** — pedida quando a sessão
         // abriu, tirada aqui, onde o `self` está livre (a captura reconcilia o documento antes de
         // fotografar e leva o `&mut self` inteiro).

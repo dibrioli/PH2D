@@ -85,6 +85,8 @@ impl crate::App {
             // escrevem enquanto o playhead toca não é uma edição (`crate::timeline_preview`).
             &mut self.preview_drive,
         );
+        // ⭐ Os campos de família que a curva mandou (plano 35): o vetor drena-os para o documento.
+        ph2d_app_vec::canais::aplicar(sim, vec_scene, &mut self.vec.conducao);
         // Sob pilha, o relógio do EDITOR segue o da Keys onde o clip toca uma vez (emenda 3).
         if vista == ph2d_timeline::ViewClock::Clip {
             let (doc, scrub) = (&self.timeline.doc, self.autokey.scrub_now);

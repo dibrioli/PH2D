@@ -42,24 +42,13 @@ use ph2d_timeline::{PoseSample, PropKind, TimelineState, autokey_props};
 #[path = "autokey_state.rs"]
 mod autokey_state;
 pub(crate) use autokey_state::AutokeyState;
+#[path = "autokey_amostra.rs"]
+mod autokey_amostra;
+pub(crate) use autokey_amostra::populacao;
+use autokey_amostra::{campos_lidos, sample_pose};
 
-use super::timeline_bridge::{default_interp, sample_prop_value};
+use super::timeline_bridge::default_interp;
 use ph2d_timeline::record_fit::{REC_SIMPLIFY_REL, REC_SMOOTH_PASSES, RecSpan, simplify_recorded};
-
-/// Sample a sprite's six animatable values into a [`PoseSample`], in
-/// `PropKind::ALL` order. `None` for a property whose backing component is absent
-/// (e.g. opacity on an entity with no `Sprite`).
-fn sample_pose<'a>(src: impl Into<super::timeline_bridge::Mundo<'a>>, entity: u64) -> PoseSample {
-    let src = src.into();
-    let mut pose: PoseSample = [None; PropKind::AUTOKEYED.len()];
-    for (i, &prop) in PropKind::AUTOKEYED.iter().enumerate() {
-        pose[i] = sample_prop_value(src, entity, prop).and_then(|v| match v {
-            AnimValue::Float(f) => Some(f),
-            _ => None,
-        });
-    }
-    pose
-}
 
 /// Auto-key the current selection. `armed` is `panel_open && auto_key`, resolved
 /// by the caller; the pass additionally goes inert while the transport is playing
@@ -113,6 +102,7 @@ pub(crate) fn run(
             (e, sample_pose(src, e))
         })
         .collect();
+    ak.campos = samples.iter().map(|&(e, _)| (e, campos_lidos(sim, e))).collect();
     sonda(|| {
         let pop: Vec<u64> = samples.iter().map(|s| s.0).collect();
         format!("[autokey] painel={panel_open} armado={armed} populacao={pop:x?}")
@@ -120,46 +110,6 @@ pub(crate) fn run(
     apply_samples(
         timeline, playhead, &samples, drag_now, armed, performing, ak, toasts,
     );
-}
-
-/// ⭐⭐⭐ **DE QUEM ESTE PASSE OLHA A POSE: a SELECÇÃO mais o que a MÃO segura.**
-///
-/// ⛔⛔ **A selecção sozinha perdia a pose que o artista acabou de fazer** (report do dono,
-/// 2026-09-14). Puxar a PONTA de uma corrente é cinemática inversa: a corrente **inteira** dobra —
-/// e agarrar um osso **não** o selecciona (o `despacho_clique_select` escreve `bone_pose` e
-/// devolve). Com a selecção sozinha, a animação ficava com **um osso** da pose e o resto perdia-se
-/// no primeiro instante em que o apply voltasse a escrever pelas curvas.
-///
-/// ⭐ **A população certa já era CALCULADA** — a [`super::timeline_bridge::maos_do_quadro`] nasceu
-/// na W8 para o apply *não* escrever por cima da mão, e é exactamente a mesma pergunta. *Uma porta
-/// com um consumidor só estava a metade do trabalho que sabia fazer.*
-///
-/// ⚠️ **Isto NÃO espalha chaves pelo esqueleto:** quem filtra é o DIFF do [`apply_samples`] — um
-/// osso cuja pose é a da curva não cunha nada. A mão diz *«olha também para estes»*, nunca
-/// *«cunha estes»*.
-///
-/// ⚠️ **A ordem é a da SELECÇÃO primeiro** (é o que o diff e a primeira recusa do quadro esperam), a
-/// mão a seguir, **sem repetidos** — o osso agarrado costuma estar nas duas listas.
-///
-/// ⛔ **Menos quem um MOTOR está a conduzir** (auditoria de 2026-09-08): a invariante do cabeçalho
-/// deste ficheiro exige que ninguém escreva pose **entre** o apply e este passe, e os passes do
-/// esqueleto (o osso inteligente, a âncora de IK) escrevem exactamente aí — a chave nasceria feita
-/// da saída do motor. *Pré-visualização não é autoria.*
-#[must_use]
-pub(crate) fn populacao(
-    hero: &HeroScreen,
-    skeleton: &ph2d_app_skeleton::state::SkeletonState,
-    sim: &ph2d_ecs::SimWorld,
-    preview: &ph2d_preview_drive::PreviewDrive,
-) -> Vec<u64> {
-    let maos = super::timeline_bridge::maos_do_quadro(Some(hero), skeleton, sim);
-    let mut fora: Vec<u64> = Vec::new();
-    for e in hero.gizmo.iter_selected().chain(maos.iter().copied()) {
-        if !preview.drives(e) && !fora.contains(&e) {
-            fora.push(e);
-        }
-    }
-    fora
 }
 
 /// O laço de [`apply_samples`]: cada pose amostrada contra a sua curva (ou o quadro anterior),
@@ -244,6 +194,11 @@ fn diff_each_sample(
             .get(&entity)
             .copied()
             .unwrap_or([None; PropKind::AUTOKEYED.len()]);
+        // Os campos de família (plano 35): a mesma diferença, ao lado da pose.
+        let campos = ak.campos.get(&entity).cloned().unwrap_or_default();
+        let base_c = ak.base_campos.get(&entity).cloned().unwrap_or_default();
+        let doc = &timeline.doc;
+        let campos_fora = |criar| ph2d_timeline::autokey_campos(doc, entity, t_diff, &campos, &base_c, criar, solo);
         if capturing {
             // Performing (playing) records only what the DRAG pushed off the
             // curve; under a plain Play the drag is the sole source of an
@@ -270,6 +225,10 @@ fn diff_each_sample(
                     default_path,
                 )
             };
+            let mut plan = plan;
+            let pc = campos_fora(true);
+            plan.keys.extend(pc.keys);
+            plan.refused.extend(pc.refused);
             // **A refusal is a result, not an absence.** The pose was moved and the
             // clip being edited cannot express it (ADR-0115 R9) — so no key is
             // written, the apply snaps the object back next frame, and the animator
@@ -340,7 +299,8 @@ fn diff_each_sample(
                     default_path,
                 )
             })
-            .is_empty();
+            .is_empty()
+                || !campos_fora(false).is_empty();
             if !capturing && off_curve {
                 ak.displaced.insert(entity);
             } else {
@@ -357,6 +317,7 @@ fn diff_each_sample(
         });
         next_baseline.insert(entity, pose);
     }
+    ak.base_campos = ak.campos.iter().map(|(&e, v)| (e, v.iter().copied().collect())).collect();
     refused_now
 }
 
@@ -577,6 +538,9 @@ fn sonda(linha: impl FnOnce() -> String) {
 #[cfg(test)]
 #[path = "autokey_opacidade_vetor_tests.rs"]
 mod opacidade_vetor_tests;
+#[cfg(test)]
+#[path = "autokey_campos_vetor_tests.rs"]
+mod campos_vetor_tests;
 #[cfg(test)]
 #[path = "autokey_performing_tests.rs"]
 mod performing_tests;

@@ -227,6 +227,18 @@ ao longo). Motor: `PB/taper.rs` (`end`, `tip_end`), `PB/stroke.rs` (corte antes)
 cápsula). Portões: `a_cauda_afila_como_a_cabeca`, `o_fall_off_esmaece_ao_longo`; no neutro o portão do taper de hoje intacto.
 Antes: medir se `tipClean` do Wet já é um fall-off (recta longa da bateria).
 
+**L5 ✅ (J2, 20/10)** — feito: `Taper::end/tip_end` = a CAUDA re-pintada ao levantar, só no Digital, no PLANO do traço da
+L8 (`TP/traco_plano.rs`): limpa a janela da cauda, re-carimba só os dabs que lhe tocam (afilados pela rampa da cabeça espelhada,
+adensados ao passo novo), repõe o resto; prévia larga até ao pen-up; UM desfazer; nos outros meios a linha não se oferece.
+`Taper::fall_off/fall_off_start` = a carga que esgota (smoothstep após um patamar) nos quatro meios: cobertura do dab que ARMA o
+tecto por traço (`cobertura_tapada`), no Wet o pigmento que pousa (`dab_route`); a aguada não a lê (esmaece). Medido: `tipClean`
+NÃO é fall-off (limpeza da cor da ponta; recto de 600 px igual a 0 e 0,05); o Charcoal Wide do Rebelle NÃO esgota (bloco de 40 px
+= ruído 0,56–1,18; o «0,63» do 06 §5 era a tampa) ⇒ oráculo = ArtRage Oil ThinAndDry (carga ± 10 %, bloco ± 0,2). Custo (smoke,
+cauda+fall-off): mediana 0,7/1,1 ms, p95 1,4/4,2 a 40/200 px (load 4–5); o pen-up da cauda a 200 px ≤ ~95 ms uma vez. SHA
+`ed926fa0eb`. Portões: `a_cauda_afila_como_a_cabeca` (± 2 px; prévia; um desfazer), `o_fall_off_esmaece_ao_longo`,
+`o_tip_clean_nao_e_um_fall_off_e_o_fall_off_chega_ao_wet`, `seam_traco`, taper de hoje intacto. Mutações SANGRAM (cauda,
+fall-off, carga do Wet, tecto do fall-off). ⚠️ Fim agudo por PRESSÃO (Pc Pressure Taper) = a curva de pressão da L2, não linha.
+
 **L6 — Dual brush** (CAP-06). Lei (PS/Pc/Rb, documentada): 2.ª ponta com tamanho/spacing/scatter/count/rotação próprios, MÁSCARA da 1.ª
 por um modo (Multiply, Darken, Overlay, Height; Rb `dual_brush_layer_blend_mode`). Pincéis: C-9, C-11, C-14, D-4, F-3, G-11, K-9 (+ Rb
 Dry Thin, Charcoal 2). Motor: `dual: Option<DualTip>` no `BrushSpec` (None = ao bit), ~10 rotas de carimbo + caches + GPU
@@ -248,10 +260,28 @@ para o coordenador: no pixel VAZIO (camada transparente) os modos de cor não pi
 papel e o W3C geral (`(1−αb)·Cs + αb·B`) também — a cura toca as ~11 rotas de carimbo (opt-in por pincel, a cerca) e decide-se com os
 presets Effect da J3; sobre tela opaca (a bancada) o nosso = o Krita (≤ 0,9/255).
 
+**L7-vazio ✅ (J2, 20/10)** — feito: `BrushSpec::blend_sobre_vazio` (desligado de fábrica; preset; linha «On empty» debaixo do
+Blend, 0/1): a porta `PB/blend_vazio.rs` compõe pela fórmula GERAL do W3C onde `αb < 1` e o modo é de cor (sobre tinta opaca =
+o de sempre ao bit), nas rotas de carimbo (cache, banda, rampa, cor) e na sessão do Wet (o mesmo buraco, confirmado; o campo
+congela com o Blend). Custo: nenhum no neutro. SHA `c8e95a075d` (UI em `ed926fa0eb`). Portões: `o_efeito_sobre_o_vazio_pousa_a_cor`
+(α ± 0,01, cor ± 2/255, opaco ao byte), `…_no_wet` (= o Mix ± 2/255); a L7 intacta. Red-first = a mutação sem a porta: SANGRA.
+
 **L8 — Tecto de opacidade POR TRAÇO, wet edges e burnt edges no Digital** (CAP-11). Um buffer do traço composto no fim (Pc
 light/uniform/intense glaze), e as orlas como passagem sobre ele — a orla da Watercolor é a mesma conta: REUSAR a lei, não a copiar.
 Pincéis: A-6, E-1…E-4, I-12, C-11. **M** (~700 LOC; rota nova no Digital, com o desfazer). Portões:
 `o_tecto_do_traco_nao_escurece_no_proprio_cruzamento` (S que se cruza: máx = tecto), `sem_tecto_o_carimbo_e_o_de_hoje`.
+
+**L8 ✅ (J2, 20/10)** — feito: `BrushSpec::traco` (`PB/traco.rs`: tecto, orla molhada, orla queimada, largura). Confirmado no código
+que o tecto do Accumulate desligado já tapa um pincel de dabs que convergem; faltava o tecto de um pincel que ACUMULA e o modo
+composto uma vez. No Digital o traço livre pinta num PLANO próprio (`TP/traco_plano.rs`, todas as rotas em Mix) e cada lote compõe
+plano ⊕ base do pen-down no modo do pincel, dentro do mesmo gate; tecto = `min` do alfa; orlas = o ARO da Watercolor pela MESMA
+porta (`watercolor_rim::rim_fields`, + `aro_da_cobertura`, só linhas novas). Painel: Glaze, Wet edges, Burnt edges, Edge width
+(só no Digital; esmaecem pela lei). Custo (smoke): orla mediana 2,6–2,8 ms, p95 5,4/6,3 a 40/200 px (load 6–7) contra a base
+0,87/1,08. SHA `ed926fa0eb`. Portões: `o_tecto_do_traco_nao_escurece_no_proprio_cruzamento` (máx = 0,25 ± 1,5/255, k 1,00–1,15; sem
+tecto k > 1,6), `sem_tecto_o_carimbo_e_o_de_hoje` (neutro não arma; Mix no plano = hoje ± 2/255),
+`a_orla_molhada_guarda_a_borda_e_clareia_o_miolo`, `a_orla_queimada_escurece_a_borda`, `cada_linha_do_traco_chega_ao_pincel`,
+`seam_traco`. Mutações SANGRAM (tecto, aro). ⚠️ O plano não arma em re-carimbo (Line/Drag Dot…), Solid, fios, borracha, Composite
+(esmaece). A orla NÃO tem oráculo corrido (Procreate/PS só documentados): a escala «miolo a 1 − molhada» é escolha, por medir contra uma foto.
 
 **L9 — O grão: modo, profundidade mín/jitter, brilho/contraste.** Pincéis: B-6, B-7, B-11, F-3, F-7, K-8 (e os lápis/carvões Dg). Motor:
 `PB/texture.rs` + rotas por píxel; LUT nas assadas. **S–M** (~400 LOC). Portões: o modo de hoje = neutro ao bit (nomeá-lo medindo),

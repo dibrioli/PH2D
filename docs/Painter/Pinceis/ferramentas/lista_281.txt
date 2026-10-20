@@ -1,0 +1,310 @@
+charcoal_charcoal|PENCIL|Charcoal/Charcoal||gestos tamanhos sobre
+charcoal_charcoal_2|PENCIL|Charcoal/Charcoal 2||gestos tamanhos sobre
+charcoal_charcoal_3|PENCIL|Charcoal/Charcoal 3||gestos tamanhos sobre
+charcoal_charcoal_flat|PENCIL|Charcoal/Charcoal Flat||gestos tamanhos sobre
+charcoal_charcoal_flat_2|PENCIL|Charcoal/Charcoal Flat 2||gestos tamanhos sobre
+charcoal_charcoal_flat_3|PENCIL|Charcoal/Charcoal Flat 3||gestos tamanhos sobre
+charcoal_charcoal_liner|PENCIL|Charcoal/Charcoal Liner||gestos tamanhos sobre
+charcoal_charcoal_wide|PENCIL|Charcoal/Charcoal Wide||gestos tamanhos sobre
+charcoal_dust|PENCIL|Charcoal/Dust||gestos tamanhos sobre
+charcoal_powder|PENCIL|Charcoal/Powder||gestos tamanhos sobre
+colored_pencil_2b_color|PENCIL|Colored Pencil/2B Color||gestos tamanhos sobre
+colored_pencil_2h_color|PENCIL|Colored Pencil/2H Color||gestos tamanhos sobre
+colored_pencil_4b_color|PENCIL|Colored Pencil/4B Color||gestos tamanhos sobre
+colored_pencil_8b_color|PENCIL|Colored Pencil/8B Color||gestos tamanhos sobre
+colored_pencil_craft_color|PENCIL|Colored Pencil/Craft Color||gestos tamanhos sobre
+colored_pencil_h_color|PENCIL|Colored Pencil/H Color||gestos tamanhos sobre
+colored_pencil_hb_color|PENCIL|Colored Pencil/HB Color||gestos tamanhos sobre
+digital_flat|PENCIL|Digital/Flat||gestos tamanhos sobre
+digital_round_hard|PENCIL|Digital/Round Hard||gestos tamanhos sobre
+digital_round_soft|PENCIL|Digital/Round Soft||gestos tamanhos sobre
+digital_round_soft_2|PENCIL|Digital/Round Soft 2||gestos tamanhos sobre
+digital_tilted_hard|PENCIL|Digital/Tilted Hard||gestos tamanhos sobre
+dry_media_lino|PENCIL|Dry Media/Lino||gestos tamanhos sobre
+dry_media_lino_large|PENCIL|Dry Media/Lino Large||gestos tamanhos sobre
+dry_media_powder|PENCIL|Dry Media/Powder||gestos tamanhos sobre
+dry_media_powder_2|PENCIL|Dry Media/Powder 2||gestos tamanhos sobre
+dry_media_textured|PENCIL|Dry Media/Textured||gestos tamanhos sobre
+dry_media_textured_2|PENCIL|Dry Media/Textured 2||gestos tamanhos sobre
+dry_media_textured_3|PENCIL|Dry Media/Textured 3||gestos tamanhos sobre
+graphite_pencil_2b|PENCIL|Graphite Pencil/2B||gestos tamanhos sobre
+graphite_pencil_2h|PENCIL|Graphite Pencil/2H||gestos tamanhos sobre
+graphite_pencil_4b|PENCIL|Graphite Pencil/4B||gestos tamanhos sobre
+graphite_pencil_8b|PENCIL|Graphite Pencil/8B||gestos tamanhos sobre
+graphite_pencil_craft|PENCIL|Graphite Pencil/Craft||gestos tamanhos sobre
+graphite_pencil_craft_2|PENCIL|Graphite Pencil/Craft 2||gestos tamanhos sobre
+graphite_pencil_craft_flat|PENCIL|Graphite Pencil/Craft Flat||gestos tamanhos sobre
+graphite_pencil_craft_flat_2|PENCIL|Graphite Pencil/Craft Flat 2||gestos tamanhos sobre
+graphite_pencil_craft_flat_3|PENCIL|Graphite Pencil/Craft Flat 3||gestos tamanhos sobre
+graphite_pencil_h|PENCIL|Graphite Pencil/H||gestos tamanhos sobre
+graphite_pencil_hb|PENCIL|Graphite Pencil/HB||gestos tamanhos sobre
+graphite_pencil_pentell|PENCIL|Graphite Pencil/Pentell||gestos tamanhos sobre
+scratches_scratch|PENCIL|Scratches/Scratch||gestos tamanhos sobre
+scratches_scratch_thin|PENCIL|Scratches/Scratch Thin||gestos tamanhos sobre
+scratches_scratches_2|PENCIL|Scratches/Scratches 2||gestos tamanhos sobre
+pastel_dry_dry_thin|PASTEL|Pastel Dry/Dry Thin||gestos tamanhos sobre
+pastel_dry_flat_dry|PASTEL|Pastel Dry/Flat Dry||gestos tamanhos sobre
+pastel_dry_flat_soft|PASTEL|Pastel Dry/Flat Soft||gestos tamanhos sobre
+pastel_dry_hard|PASTEL|Pastel Dry/Hard||gestos tamanhos sobre
+pastel_dry_oval|PASTEL|Pastel Dry/Oval||gestos tamanhos sobre
+pastel_dry_oval_2|PASTEL|Pastel Dry/Oval 2||gestos tamanhos sobre
+pastel_dry_small_soft|PASTEL|Pastel Dry/Small Soft||gestos tamanhos sobre
+pastel_dry_square_hard|PASTEL|Pastel Dry/Square Hard||gestos tamanhos sobre
+pastel_dry_square_soft_2|PASTEL|Pastel Dry/Square Soft 2||gestos tamanhos sobre
+pastel_dry_thin_soft|PASTEL|Pastel Dry/Thin Soft||gestos tamanhos sobre
+pastel_oil_oil_liner|PASTEL|Pastel Oil/Oil Liner||gestos tamanhos sobre
+pastel_oil_oil_pastel|PASTEL|Pastel Oil/Oil Pastel||gestos tamanhos sobre
+pastel_oil_oil_pastel_2|PASTEL|Pastel Oil/Oil Pastel 2||gestos tamanhos sobre
+pastel_oil_oil_pastel_3|PASTEL|Pastel Oil/Oil Pastel 3||gestos tamanhos sobre
+pastel_oil_oil_pastel_flat|PASTEL|Pastel Oil/Oil Pastel Flat||gestos tamanhos sobre
+pastel_oil_wax_pencil|PASTEL|Pastel Oil/Wax Pencil||gestos tamanhos sobre
+pastel_oil_wax_soft|PASTEL|Pastel Oil/Wax Soft||gestos tamanhos sobre
+pastel_oil_wax_soft_2|PASTEL|Pastel Oil/Wax Soft  2||gestos tamanhos sobre
+scrape_wax_scrape|PASTEL|Scrape/Wax Scrape||gestos tamanhos sobre
+scrape_wax_scrape_2|PASTEL|Scrape/Wax Scrape 2||gestos tamanhos sobre
+texture_dust|PASTEL|Texture/Dust||gestos tamanhos sobre
+texture_fragments|PASTEL|Texture/Fragments||gestos tamanhos sobre
+texture_pastel_pattern|PASTEL|Texture/Pastel Pattern||gestos tamanhos sobre
+texture_scrambled|PASTEL|Texture/Scrambled||gestos tamanhos sobre
+bristle_bristle_flat|OIL_AND_ACRYLIC|Bristle/Bristle Flat||gestos tamanhos sobre
+bristle_bristle_flat_2|OIL_AND_ACRYLIC|Bristle/Bristle Flat 2||gestos tamanhos sobre
+bristle_bristle_hairy|OIL_AND_ACRYLIC|Bristle/Bristle Hairy||gestos tamanhos sobre
+bristle_bristle_rake|OIL_AND_ACRYLIC|Bristle/Bristle Rake||gestos tamanhos sobre
+bristle_bristle_ribbon|OIL_AND_ACRYLIC|Bristle/Bristle Ribbon||gestos tamanhos sobre
+bristle_bristle_round|OIL_AND_ACRYLIC|Bristle/Bristle Round||gestos tamanhos sobre
+bristle_bristle_round_2|OIL_AND_ACRYLIC|Bristle/Bristle Round 2||gestos tamanhos sobre
+bristle_bristle_soft|OIL_AND_ACRYLIC|Bristle/Bristle Soft||gestos tamanhos sobre
+bristle_bristle_stripes|OIL_AND_ACRYLIC|Bristle/Bristle Stripes||gestos tamanhos sobre
+bristle_bristle_wide|OIL_AND_ACRYLIC|Bristle/Bristle Wide||gestos tamanhos sobre
+dabber_dabber|OIL_AND_ACRYLIC|Dabber/Dabber||gestos tamanhos sobre
+dabber_dabber_2|OIL_AND_ACRYLIC|Dabber/Dabber 2||gestos tamanhos sobre
+dabber_dabber_3|OIL_AND_ACRYLIC|Dabber/Dabber 3||gestos tamanhos sobre
+dabber_dabber_4|OIL_AND_ACRYLIC|Dabber/Dabber 4||gestos tamanhos sobre
+dabber_fan|OIL_AND_ACRYLIC|Dabber/Fan||gestos tamanhos sobre
+flat_bright|OIL_AND_ACRYLIC|Flat/Bright||gestos tamanhos sobre
+flat_filbert|OIL_AND_ACRYLIC|Flat/Filbert||gestos tamanhos sobre
+flat_filbert_dry|OIL_AND_ACRYLIC|Flat/Filbert Dry||gestos tamanhos sobre
+flat_flat|OIL_AND_ACRYLIC|Flat/Flat||gestos tamanhos sobre
+flat_flat_dry|OIL_AND_ACRYLIC|Flat/Flat Dry||gestos tamanhos sobre
+flat_flat_dry_2|OIL_AND_ACRYLIC|Flat/Flat Dry 2||gestos tamanhos sobre
+flat_flat_dry_soft|OIL_AND_ACRYLIC|Flat/Flat Dry Soft||gestos tamanhos sobre
+flat_flat_oily|OIL_AND_ACRYLIC|Flat/Flat Oily||gestos tamanhos sobre
+flat_flat_oily_2|OIL_AND_ACRYLIC|Flat/Flat Oily 2||gestos tamanhos sobre
+flat_thick|OIL_AND_ACRYLIC|Flat/Thick||gestos tamanhos sobre
+grunge_grunge|OIL_AND_ACRYLIC|Grunge/Grunge||gestos tamanhos sobre
+grunge_grunge_2|OIL_AND_ACRYLIC|Grunge/Grunge 2||gestos tamanhos sobre
+grunge_grunge_3|OIL_AND_ACRYLIC|Grunge/Grunge 3||gestos tamanhos sobre
+grunge_grunge_4|OIL_AND_ACRYLIC|Grunge/Grunge 4||gestos tamanhos sobre
+grunge_scatter|OIL_AND_ACRYLIC|Grunge/Scatter||gestos tamanhos sobre
+grunge_scatter_2|OIL_AND_ACRYLIC|Grunge/Scatter 2||gestos tamanhos sobre
+grunge_scatter_3|OIL_AND_ACRYLIC|Grunge/Scatter 3||gestos tamanhos sobre
+grunge_shred|OIL_AND_ACRYLIC|Grunge/Shred||gestos tamanhos sobre
+knife_knife_dry|OIL_AND_ACRYLIC|Knife/Knife Dry||gestos tamanhos sobre
+knife_knife_dry_2|OIL_AND_ACRYLIC|Knife/Knife Dry 2||gestos tamanhos sobre
+knife_knife_grainy|OIL_AND_ACRYLIC|Knife/Knife Grainy||gestos tamanhos sobre
+knife_knife_oily|OIL_AND_ACRYLIC|Knife/Knife Oily||gestos tamanhos sobre
+knife_knife_smooth|OIL_AND_ACRYLIC|Knife/Knife Smooth||gestos tamanhos sobre
+knife_knife_smooth_2|OIL_AND_ACRYLIC|Knife/Knife Smooth 2||gestos tamanhos sobre
+knife_knife_smooth_3|OIL_AND_ACRYLIC|Knife/Knife Smooth 3||gestos tamanhos sobre
+knife_knife_soft|OIL_AND_ACRYLIC|Knife/Knife Soft||gestos tamanhos sobre
+knife_knife_stain|OIL_AND_ACRYLIC|Knife/Knife Stain||gestos tamanhos sobre
+knife_knife_textured|OIL_AND_ACRYLIC|Knife/Knife Textured||gestos tamanhos sobre
+metallic_flat|OIL_AND_ACRYLIC|Metallic/Flat||gestos tamanhos sobre
+metallic_flat_2|OIL_AND_ACRYLIC|Metallic/Flat 2||gestos tamanhos sobre
+metallic_flat_3|OIL_AND_ACRYLIC|Metallic/Flat 3||gestos tamanhos sobre
+metallic_round|OIL_AND_ACRYLIC|Metallic/Round||gestos tamanhos sobre
+metallic_round_2|OIL_AND_ACRYLIC|Metallic/Round 2||gestos tamanhos sobre
+metallic_round_3|OIL_AND_ACRYLIC|Metallic/Round 3||gestos tamanhos sobre
+metallic_splats|OIL_AND_ACRYLIC|Metallic/Splats||gestos tamanhos sobre
+rake_rake_oily|OIL_AND_ACRYLIC|Rake/Rake Oily||gestos tamanhos sobre
+rake_rake_sharp|OIL_AND_ACRYLIC|Rake/Rake Sharp||gestos tamanhos sobre
+round_fat_bristle_2|OIL_AND_ACRYLIC|Round/Fat bristle 2||gestos tamanhos sobre
+round_hairy|OIL_AND_ACRYLIC|Round/Hairy||gestos tamanhos sobre
+round_liner|OIL_AND_ACRYLIC|Round/Liner||gestos tamanhos sobre
+round_rough_dry|OIL_AND_ACRYLIC|Round/Rough Dry||gestos tamanhos sobre
+round_rough_oily|OIL_AND_ACRYLIC|Round/Rough Oily||gestos tamanhos sobre
+round_round_hard|OIL_AND_ACRYLIC|Round/Round Hard||gestos tamanhos sobre
+round_round_hard_2|OIL_AND_ACRYLIC|Round/Round Hard 2||gestos tamanhos sobre
+round_round_soft|OIL_AND_ACRYLIC|Round/Round soft||gestos tamanhos sobre
+round_round_soft_2|OIL_AND_ACRYLIC|Round/Round soft 2||gestos tamanhos sobre
+round_thick_hairy|OIL_AND_ACRYLIC|Round/Thick Hairy||gestos tamanhos sobre
+flat_flat_hairy|EXPRESS_OIL|Flat/Flat Hairy||gestos tamanhos sobre
+flat_flat_thick|EXPRESS_OIL|Flat/Flat thick||gestos tamanhos sobre
+flat_hairy|EXPRESS_OIL|Flat/Hairy||gestos tamanhos sobre
+flat_knife_dry|EXPRESS_OIL|Flat/Knife Dry||gestos tamanhos sobre
+flat_knife_dry_2|EXPRESS_OIL|Flat/Knife Dry 2||gestos tamanhos sobre
+flat_knife_grainy|EXPRESS_OIL|Flat/Knife Grainy||gestos tamanhos sobre
+flat_knife_smooth|EXPRESS_OIL|Flat/Knife Smooth||gestos tamanhos sobre
+flat_knife_soft|EXPRESS_OIL|Flat/Knife Soft||gestos tamanhos sobre
+flat_knife_textured|EXPRESS_OIL|Flat/Knife Textured||gestos tamanhos sobre
+flat_soft|EXPRESS_OIL|Flat/Soft||gestos tamanhos sobre
+glaze_filbert|EXPRESS_OIL|Glaze/Filbert||gestos tamanhos sobre
+glaze_filbert_smooth|EXPRESS_OIL|Glaze/Filbert Smooth||gestos tamanhos sobre
+glaze_flat_oily|EXPRESS_OIL|Glaze/Flat Oily||gestos tamanhos sobre
+glaze_liner|EXPRESS_OIL|Glaze/Liner||gestos tamanhos sobre
+glaze_round|EXPRESS_OIL|Glaze/Round||gestos tamanhos sobre
+glaze_round_soft|EXPRESS_OIL|Glaze/Round Soft||gestos tamanhos sobre
+glaze_wash|EXPRESS_OIL|Glaze/Wash||gestos tamanhos sobre
+grunge_grunge|EXPRESS_OIL|Grunge/Grunge||gestos tamanhos sobre
+grunge_grunge_2|EXPRESS_OIL|Grunge/Grunge 2||gestos tamanhos sobre
+grunge_grunge_3|EXPRESS_OIL|Grunge/Grunge 3||gestos tamanhos sobre
+grunge_grunge_4|EXPRESS_OIL|Grunge/Grunge 4||gestos tamanhos sobre
+grunge_scatter|EXPRESS_OIL|Grunge/Scatter||gestos tamanhos sobre
+grunge_scatter_2|EXPRESS_OIL|Grunge/Scatter 2||gestos tamanhos sobre
+grunge_shred|EXPRESS_OIL|Grunge/Shred||gestos tamanhos sobre
+grunge_shred_2|EXPRESS_OIL|Grunge/Shred 2||gestos tamanhos sobre
+grunge_shred_3|EXPRESS_OIL|Grunge/Shred 3||gestos tamanhos sobre
+grunge_textured|EXPRESS_OIL|Grunge/Textured||gestos tamanhos sobre
+round_fat_round|EXPRESS_OIL|Round/Fat Round||gestos tamanhos sobre
+round_hairy|EXPRESS_OIL|Round/Hairy||gestos tamanhos sobre
+round_hairy_2|EXPRESS_OIL|Round/Hairy 2||gestos tamanhos sobre
+round_oily|EXPRESS_OIL|Round/Oily||gestos tamanhos sobre
+round_rough_wet|EXPRESS_OIL|Round/Rough Wet||gestos tamanhos sobre
+bristle_bristle_flat|WATERCOLOR|Bristle/Bristle Flat||gestos tamanhos sobre
+bristle_bristle_round|WATERCOLOR|Bristle/Bristle Round||gestos tamanhos sobre
+bristle_bristle_round_2|WATERCOLOR|Bristle/Bristle Round 2||gestos tamanhos sobre
+bristle_bristle_soft|WATERCOLOR|Bristle/Bristle Soft||gestos tamanhos sobre
+bristle_bristle_wide|WATERCOLOR|Bristle/Bristle Wide||gestos tamanhos sobre
+gouache_gouache_bristle|WATERCOLOR|Gouache/Gouache Bristle||gestos tamanhos sobre
+gouache_gouache_dry|WATERCOLOR|Gouache/Gouache Dry||gestos tamanhos sobre
+gouache_gouache_fan_line|WATERCOLOR|Gouache/Gouache Fan Line||gestos tamanhos sobre
+gouache_gouache_filbert|WATERCOLOR|Gouache/Gouache Filbert||gestos tamanhos sobre
+gouache_gouache_filbert_2|WATERCOLOR|Gouache/Gouache Filbert 2||gestos tamanhos sobre
+gouache_gouache_flat|WATERCOLOR|Gouache/Gouache Flat||gestos tamanhos sobre
+gouache_gouache_flat_2|WATERCOLOR|Gouache/Gouache Flat 2||gestos tamanhos sobre
+gouache_gouache_liner|WATERCOLOR|Gouache/Gouache Liner||gestos tamanhos sobre
+gouache_gouache_liner_2|WATERCOLOR|Gouache/Gouache Liner 2||gestos tamanhos sobre
+gouache_gouache_round|WATERCOLOR|Gouache/Gouache Round||gestos tamanhos sobre
+gouache_gouache_round_2|WATERCOLOR|Gouache/Gouache Round 2||gestos tamanhos sobre
+gouache_gouache_wash|WATERCOLOR|Gouache/Gouache Wash||gestos tamanhos sobre
+granulation_granulation|WATERCOLOR|Granulation/Granulation||gestos tamanhos sobre
+granulation_granulation_2|WATERCOLOR|Granulation/Granulation 2||gestos tamanhos sobre
+spatter_spatter|WATERCOLOR|Spatter/Spatter||gestos tamanhos sobre
+spatter_spatter_2|WATERCOLOR|Spatter/Spatter  2||gestos tamanhos sobre
+spatter_spatter_3|WATERCOLOR|Spatter/Spatter 3||gestos tamanhos sobre
+spatter_spatter_4|WATERCOLOR|Spatter/Spatter 4||gestos tamanhos sobre
+spatter_spatter_5|WATERCOLOR|Spatter/Spatter 5||gestos tamanhos sobre
+spatter_spatter_6|WATERCOLOR|Spatter/Spatter 6||gestos tamanhos sobre
+spatter_splat|WATERCOLOR|Spatter/Splat||gestos tamanhos sobre
+spatter_splat_2|WATERCOLOR|Spatter/Splat 2||gestos tamanhos sobre
+spatter_splats|WATERCOLOR|Spatter/Splats||gestos tamanhos sobre
+spatter_star|WATERCOLOR|Spatter/Star||gestos tamanhos sobre
+sumi_e_sumi_bristle|WATERCOLOR|Sumi-e/Sumi bristle||gestos tamanhos sobre
+sumi_e_sumi_e_soft|WATERCOLOR|Sumi-e/Sumi-e  soft||gestos tamanhos sobre
+sumi_e_sumi_e_ribbon|WATERCOLOR|Sumi-e/Sumi-e ribbon||gestos tamanhos sobre
+watercolor_bristle|WATERCOLOR|Watercolor/Bristle||gestos tamanhos sobre
+watercolor_fan|WATERCOLOR|Watercolor/Fan||gestos tamanhos sobre
+watercolor_filbert_dry|WATERCOLOR|Watercolor/Filbert Dry||gestos tamanhos sobre
+watercolor_flat|WATERCOLOR|Watercolor/Flat||gestos tamanhos sobre
+watercolor_flat_2|WATERCOLOR|Watercolor/Flat 2||gestos tamanhos sobre
+watercolor_flat_dry|WATERCOLOR|Watercolor/Flat Dry||gestos tamanhos sobre
+watercolor_liner|WATERCOLOR|Watercolor/Liner||gestos tamanhos sobre
+watercolor_liner_2|WATERCOLOR|Watercolor/Liner 2||gestos tamanhos sobre
+watercolor_mop|WATERCOLOR|Watercolor/Mop||gestos tamanhos sobre
+watercolor_round|WATERCOLOR|Watercolor/Round||gestos tamanhos sobre
+watercolor_round_2|WATERCOLOR|Watercolor/Round 2||gestos tamanhos sobre
+watercolor_round_3|WATERCOLOR|Watercolor/Round 3||gestos tamanhos sobre
+watercolor_round_4|WATERCOLOR|Watercolor/Round 4||gestos tamanhos sobre
+watercolor_wash_flat|WATERCOLOR|Watercolor/Wash Flat||gestos tamanhos sobre
+watercolor_wash_round|WATERCOLOR|Watercolor/Wash Round||gestos tamanhos sobre
+brush_brush|INK_PEN|Brush/Brush||gestos tamanhos sobre
+brush_brush_2|INK_PEN|Brush/Brush 2||gestos tamanhos sobre
+brush_brush_3|INK_PEN|Brush/Brush 3||gestos tamanhos sobre
+pen_bullet|INK_PEN|Pen/Bullet||gestos tamanhos sobre
+pen_dip_pen|INK_PEN|Pen/Dip Pen||gestos tamanhos sobre
+pen_fountain_round|INK_PEN|Pen/Fountain Round||gestos tamanhos sobre
+pen_fountain_square|INK_PEN|Pen/Fountain Square||gestos tamanhos sobre
+pen_reed_pen|INK_PEN|Pen/Reed Pen||gestos tamanhos sobre
+pen_wood|INK_PEN|Pen/Wood||gestos tamanhos sobre
+pen_wood_2|INK_PEN|Pen/Wood 2||gestos tamanhos sobre
+effect_burn|MARKER|Effect/Burn|MARKER:Marker/Bullet|sobre
+effect_color|MARKER|Effect/Color|MARKER:Marker/Bullet|sobre
+effect_dodge|MARKER|Effect/Dodge|MARKER:Marker/Bullet|sobre
+effect_hue|MARKER|Effect/Hue|MARKER:Marker/Bullet|sobre
+effect_luminosity|MARKER|Effect/Luminosity|MARKER:Marker/Bullet|sobre
+effect_overlay|MARKER|Effect/Overlay|MARKER:Marker/Bullet|sobre
+effect_saturation|MARKER|Effect/Saturation|MARKER:Marker/Bullet|sobre
+marker_bullet|MARKER|Marker/Bullet||gestos tamanhos sobre
+marker_chisel|MARKER|Marker/Chisel||gestos tamanhos sobre
+marker_dry|MARKER|Marker/Dry||gestos tamanhos sobre
+marker_liner|MARKER|Marker/Liner||gestos tamanhos sobre
+default_spray|AIRBRUSH|Default/Spray||gestos tamanhos sobre
+default_spray_2|AIRBRUSH|Default/Spray 2||gestos tamanhos sobre
+default_spray_3|AIRBRUSH|Default/Spray 3||gestos tamanhos sobre
+default_spray_4|AIRBRUSH|Default/Spray 4||gestos tamanhos sobre
+default_spray_5|AIRBRUSH|Default/Spray 5||gestos tamanhos sobre
+default_dots|BLEND|Default/Dots|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_dots_aq|BLEND|Default/Dots|WATERCOLOR:Watercolor/Round|sobre
+default_hard|BLEND|Default/Hard|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_hard_aq|BLEND|Default/Hard|WATERCOLOR:Watercolor/Round|sobre
+default_lines|BLEND|Default/Lines|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_lines_aq|BLEND|Default/Lines|WATERCOLOR:Watercolor/Round|sobre
+default_soft|BLEND|Default/Soft|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_soft_aq|BLEND|Default/Soft|WATERCOLOR:Watercolor/Round|sobre
+default_soft_noisy|BLEND|Default/Soft  Noisy|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_soft_noisy_aq|BLEND|Default/Soft  Noisy|WATERCOLOR:Watercolor/Round|sobre
+default_soft_2|BLEND|Default/Soft 2|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_soft_2_aq|BLEND|Default/Soft 2|WATERCOLOR:Watercolor/Round|sobre
+default_soft_noisy_2|BLEND|Default/Soft Noisy 2|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_soft_noisy_2_aq|BLEND|Default/Soft Noisy 2|WATERCOLOR:Watercolor/Round|sobre
+default_textured|BLEND|Default/Textured|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_textured_aq|BLEND|Default/Textured|WATERCOLOR:Watercolor/Round|sobre
+default_flat|SMUDGE|Default/Flat|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_flat_aq|SMUDGE|Default/Flat|WATERCOLOR:Watercolor/Round|sobre
+default_shattered|SMUDGE|Default/Shattered|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_shattered_aq|SMUDGE|Default/Shattered|WATERCOLOR:Watercolor/Round|sobre
+default_soft|SMUDGE|Default/Soft|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_soft_aq|SMUDGE|Default/Soft|WATERCOLOR:Watercolor/Round|sobre
+default_soft_fast|SMUDGE|Default/Soft Fast|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_soft_fast_aq|SMUDGE|Default/Soft Fast|WATERCOLOR:Watercolor/Round|sobre
+default_spikey|SMUDGE|Default/Spikey|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_spikey_aq|SMUDGE|Default/Spikey|WATERCOLOR:Watercolor/Round|sobre
+default_spikey_2|SMUDGE|Default/Spikey 2|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_spikey_2_aq|SMUDGE|Default/Spikey 2|WATERCOLOR:Watercolor/Round|sobre
+default_chisel|ERASER|Default/Chisel|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_chisel_aq|ERASER|Default/Chisel|WATERCOLOR:Watercolor/Round|sobre
+default_needle|ERASER|Default/Needle|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_needle_aq|ERASER|Default/Needle|WATERCOLOR:Watercolor/Round|sobre
+default_round_medium|ERASER|Default/Round Medium|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_round_medium_aq|ERASER|Default/Round Medium|WATERCOLOR:Watercolor/Round|sobre
+default_round_soft|ERASER|Default/Round Soft|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_round_soft_aq|ERASER|Default/Round Soft|WATERCOLOR:Watercolor/Round|sobre
+default_round_soft_2|ERASER|Default/Round Soft 2|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_round_soft_2_aq|ERASER|Default/Round Soft 2|WATERCOLOR:Watercolor/Round|sobre
+default_spatter|ERASER|Default/Spatter|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_spatter_aq|ERASER|Default/Spatter|WATERCOLOR:Watercolor/Round|sobre
+default_spatter_2|ERASER|Default/Spatter 2|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_spatter_2_aq|ERASER|Default/Spatter 2|WATERCOLOR:Watercolor/Round|sobre
+default_square_hard|ERASER|Default/Square Hard|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_square_hard_aq|ERASER|Default/Square Hard|WATERCOLOR:Watercolor/Round|sobre
+default_square_medium|ERASER|Default/Square Medium|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_square_medium_aq|ERASER|Default/Square Medium|WATERCOLOR:Watercolor/Round|sobre
+default_square_soft|ERASER|Default/Square Soft|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_square_soft_aq|ERASER|Default/Square Soft|WATERCOLOR:Watercolor/Round|sobre
+default_blurred|WATER|Default/Blurred|WATERCOLOR:Watercolor/Round|sobre
+default_line|WATER|Default/Line|WATERCOLOR:Watercolor/Round|sobre
+default_soft|WATER|Default/Soft|WATERCOLOR:Watercolor/Round|sobre
+default_spatter|WATER|Default/Spatter|WATERCOLOR:Watercolor/Round|sobre
+default_spatter_2|WATER|Default/Spatter 2|WATERCOLOR:Watercolor/Round|sobre
+default_splats|WATER|Default/Splats|WATERCOLOR:Watercolor/Round|sobre
+default_splats_2|WATER|Default/Splats 2|WATERCOLOR:Watercolor/Round|sobre
+default_splats_3|WATER|Default/Splats 3|WATERCOLOR:Watercolor/Round|sobre
+default_splats_4|WATER|Default/Splats 4|WATERCOLOR:Watercolor/Round|sobre
+default_sponge|WATER|Default/Sponge|WATERCOLOR:Watercolor/Round|sobre
+default_circle|DRY|Default/Circle|WATERCOLOR:Watercolor/Round|sobre
+default_paper|DRY|Default/Paper|WATERCOLOR:Watercolor/Round|sobre
+default_spatter|DRY|Default/Spatter|WATERCOLOR:Watercolor/Round|sobre
+default_spatter_2|DRY|Default/Spatter 2|WATERCOLOR:Watercolor/Round|sobre
+default_spatter_3|DRY|Default/Spatter 3|WATERCOLOR:Watercolor/Round|sobre
+default_sponge|DRY|Default/Sponge|WATERCOLOR:Watercolor/Round|sobre
+default_texture|DRY|Default/Texture|WATERCOLOR:Watercolor/Round|sobre
+default_paper|CLONE|Default/Paper|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_paper_aq|CLONE|Default/Paper|WATERCOLOR:Watercolor/Round|sobre
+default_round_hard|CLONE|Default/Round Hard|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_round_hard_aq|CLONE|Default/Round Hard|WATERCOLOR:Watercolor/Round|sobre
+default_round_soft|CLONE|Default/Round Soft|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_round_soft_aq|CLONE|Default/Round Soft|WATERCOLOR:Watercolor/Round|sobre
+default_square_soft|CLONE|Default/Square Soft|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_square_soft_aq|CLONE|Default/Square Soft|WATERCOLOR:Watercolor/Round|sobre
+default_texture|CLONE|Default/Texture|OIL_AND_ACRYLIC:Round/Round Hard|sobre
+default_texture_aq|CLONE|Default/Texture|WATERCOLOR:Watercolor/Round|sobre

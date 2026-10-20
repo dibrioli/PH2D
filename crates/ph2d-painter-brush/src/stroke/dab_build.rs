@@ -263,6 +263,10 @@ impl Stroke {
         if w < 1.0 {
             crate::taper::scale_dab(&mut dab, &self.spec.taper, w);
         }
+        let romba = self.taper_fade_at(arc);
+        if romba < 1.0 {
+            dab.coverage = (dab.coverage * romba).clamp(0.0, 1.0);
+        }
         // O FALL-OFF (L5): a carga que se esgota pelo comprimento — a cobertura do dab, nos quatro meios.
         if self.spec.taper.fall_active() {
             let f = self.spec.taper.fall(arc, 2.0 * self.spec.clamped_radius());

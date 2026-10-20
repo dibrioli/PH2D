@@ -190,6 +190,17 @@ impl Taper {
         ramp(s0 + len - arc, len, 0.0)
     }
 
+    /// ⭐ **A ponta ROMBA** (`tip_start ≥ 1`): o taper não estreita, só ESMAECE pela [`Self::opacity`] — a
+    /// cobertura vai de `1 − opacity` na ponta a `1` ao fim do comprimento (a promessa do [`Self::tip_start`]).
+    /// Fora dela `1.0` exacto: a ponta que estreita já esmaece pela [`Self::coverage_mult`].
+    #[must_use]
+    pub fn fade_blunt(&self, from_start: f32, diameter_px: f32) -> f32 {
+        if self.tip_start < 1.0 || self.opacity <= 0.0 {
+            return 1.0;
+        }
+        ramp(from_start, self.start_px(diameter_px), 1.0 - self.opacity.clamp(0.0, 1.0))
+    }
+
     /// The **coverage multiplier** that goes with a width multiplier `w`. `opacity = 0` leaves the dab
     /// as opaque as the body; `opacity = 1` fades it exactly as fast as it narrows.
     #[must_use]

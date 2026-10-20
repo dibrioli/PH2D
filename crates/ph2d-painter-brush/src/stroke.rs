@@ -638,6 +638,14 @@ impl Stroke {
         self.spec.taper.width(arc, 2.0 * self.spec.clamped_radius())
     }
 
+    /// O esmaecer da ponta ROMBA ([`crate::taper::Taper::fade_blunt`]) a `arc` px do início; `1.0` sem taper.
+    fn taper_fade_at(&self, arc: f32) -> f32 {
+        if !self.spec.taper.is_active() || !self.taper_head {
+            return 1.0;
+        }
+        self.spec.taper.fade_blunt(arc, 2.0 * self.spec.clamped_radius())
+    }
+
     /// The live **stroke heading** (unit vector; `[0, 0]` = not established yet), i.e. the direction the
     /// next dab will be stamped with. Exposed so the brush-cursor ring can show the orientation the dab
     /// will actually use when a slot follows the stroke — the ring reads the ENGINE's heading rather than

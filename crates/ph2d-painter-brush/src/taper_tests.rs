@@ -534,3 +534,33 @@ fn the_taper_tightens_the_spacing_so_the_point_is_not_a_row_of_dots() {
          {worst_r:.2} — the tip is a row of dots"
     );
 }
+
+/// **A ponta ROMBA só esmaece** (`tip_start` 1 = «blunt (no narrowing at all, so the taper is only whatever
+/// [`Taper::opacity`] fades)», a promessa do campo): o 1.º dab tem a largura do corpo e a cobertura de
+/// `1 − opacity`; o fim do comprimento, o corpo. O Ink Bullet e o Wood Stick do Rebelle ENTRAM claros
+/// (`docs/Painter/Pinceis/exames/tintas.md`). Antes: o `scale_dab` saía em `w ≥ 1` e a Opacity não fazia nada.
+///
+/// **Mutation that must bleed:** drop the `taper_fade_at` multiply in `Stroke::dab_at`.
+#[test]
+fn a_ponta_romba_so_esmaece() {
+    let mut rombo = brush();
+    rombo.taper = Taper {
+        start: 3.0,
+        tip_start: 1.0,
+        opacity: 0.8,
+        ..Taper::default()
+    };
+    let dabs = freehand(rombo, 400.0, 40);
+    let (primeiro, ultimo) = (dabs[0], *dabs.last().unwrap());
+    assert!(
+        (primeiro.radius_px - 10.0).abs() < 1e-4,
+        "a ponta romba estreitou: raio {}",
+        primeiro.radius_px
+    );
+    assert!(
+        (primeiro.coverage - 0.2 * ultimo.coverage).abs() < 0.02,
+        "a ponta romba não esmaeceu a 1 − 0,8: {} contra o corpo {}",
+        primeiro.coverage,
+        ultimo.coverage
+    );
+}

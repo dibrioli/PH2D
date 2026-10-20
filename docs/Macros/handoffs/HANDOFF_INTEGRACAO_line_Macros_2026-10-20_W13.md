@@ -139,7 +139,7 @@ Fotos (`smoke_2026-10-20_W13/`, 1930×1040, servidor X virtual com cliques de `x
 a ~16–20 s; cada «Mostra-me» levou de 5 s a ~2,5 min com `load` 57–173):
 [passo 1](smoke_2026-10-20_W13/caixa_01_passo1.png) · [a etapa do Fill, anel no C&F e alvo](smoke_2026-10-20_W13/caixa_02_fill.png)
 · [depois do «Mostra-me»](smoke_2026-10-20_W13/caixa_03_depois_do_mostra.png) · [o Ctrl+Z](smoke_2026-10-20_W13/caixa_04_ctrlz.png)
-· [log](smoke_2026-10-20_W13/caixa.log). Smoke do dono: **pendente**.
+· [log](smoke_2026-10-20_W13/caixa.log). Smoke do dono depois da W13: **OK (20/10)** — «smoke ok. siga».
 
 ## §8 — ABERTO
 

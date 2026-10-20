@@ -3,7 +3,7 @@
 > **Estado em 18/10 (bloco 1 fechado): ver [HANDOFF_CONTINUACAO_W23_BLOCO1_2026-10-18.md](HANDOFF_CONTINUACAO_W23_BLOCO1_2026-10-18.md)**
 > **Estado em 18/10 (bloco 2, rede ao vivo, fechado; o próximo é o bloco 3): ver [HANDOFF_CONTINUACAO_W23_BLOCO2_2026-10-18.md](HANDOFF_CONTINUACAO_W23_BLOCO2_2026-10-18.md)**
 > **Estado em 18/10 (o cartão «Live» separado por ligação, pedido do dono, fechado; o próximo é o bloco 3): ver [HANDOFF_CONTINUACAO_W23_CARTAO_LIVE_2026-10-18.md](HANDOFF_CONTINUACAO_W23_CARTAO_LIVE_2026-10-18.md)**
-> **Estado em 20/10 (bloco 5 fechado: A11 e B9; o próximo é o bloco 6 numa janela nova): ver [HANDOFF_CONTINUACAO_W23_BLOCO5_2026-10-20.md](HANDOFF_CONTINUACAO_W23_BLOCO5_2026-10-20.md)**
+> **Estado em 20/10 (bloco 5 fechado: A11 e B9; smoke OK; o próximo é o bloco 6 — B12, B13, B14 e o B15 pedido pelo dono — numa janela nova): ver [HANDOFF_CONTINUACAO_W23_BLOCO5_2026-10-20.md](HANDOFF_CONTINUACAO_W23_BLOCO5_2026-10-20.md)**
 > **Estado em 20/10 (bloco 4 fechado: B6 e B7 feitos, B10 e B11 já estavam feitos na W16; o próximo é o bloco 5): ver [HANDOFF_CONTINUACAO_W23_BLOCO4_2026-10-20.md](HANDOFF_CONTINUACAO_W23_BLOCO4_2026-10-20.md)**
 > **Estado em 19/10 (B5(4) desfazer das abas feito, mutações do B5(2)/B5(4) corridas; o próximo é o smoke da cena 27, depois o bloco 4): ver [HANDOFF_CONTINUACAO_W23_B5_4_2026-10-19.md](HANDOFF_CONTINUACAO_W23_B5_4_2026-10-19.md)**
 > **Estado em 19/10 (B5(2) textos ao longo da linha feito; o próximo é o B5(4), depois o bloco 4): ver [HANDOFF_CONTINUACAO_W23_B5_2_2026-10-19.md](HANDOFF_CONTINUACAO_W23_B5_2_2026-10-19.md)**
@@ -55,6 +55,7 @@
 | B12 | Laço (seleccionar desenhando à volta) | 2026-10-07 §10.5 | médio |
 | B13 | Desenho inteligente do Miro (o traço à mão vira forma) | 2026-10-07 §10.5 | grande |
 | B14 | Menções, notificações e votação anónima entre pessoas — confira o que o ao vivo (W12, ADR-0182) já cobre | W8 §9 · W7 §9 | grande |
+| B15 | **Pedido do dono (20/10):** mandar o que está seleccionado num QUADRO para OUTRO quadro (o «Send to board…» hoje só vai da cena — Hierarchy — para um quadro; no menu do botão direito do quadro não existe). Decidir no plano: copiar ou mover, as ligações (setas presas, frames, mapa mental) e o desfazer dos dois quadros | smoke do dono 20/10 | médio |
 
 ## (C) Decisões aceites / limitações (NÃO são trabalho — não reabra)
 
@@ -78,7 +79,7 @@ de vão (W10 §9) · setas curvas/cotovelo editadas no Excalidraw não voltam (W
 3. **Bloco «quadro»**: A7, A10, A13, B1, B2, B3, B4, B5 (verifique cada herdado; liste os que já existem).
 4. **Bloco «velocidade e memória»** (meça ANTES de mexer, `docs/DevOps/MEDIR_VELOCIDADE.md`): B6, B7, B10, B11.
 5. **Bloco «fidelidade»**: B9, A11.
-6. **Funcionalidades novas** (`/pd-feature`: plano primeiro, produto final, UI incluída, cena de smoke nova): B12, B13, B14.
+6. **Funcionalidades novas** (`/pd-feature`: plano primeiro, produto final, UI incluída, cena de smoke nova): B12, B13, B14, B15.
 
 Cada bloco fecha com `/pd-onda-fechar` (commit, fotos, passos do smoke ao dono); a linha só fecha (`/pd-linha-fechar`)
 no fim de tudo.

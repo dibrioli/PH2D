@@ -39,8 +39,8 @@ Gates por nome verdes (acima + `ph2d-board-excalidraw` inteira 48 · 4 ignorados
 
 ## 4. ABERTO (nesta ordem)
 
-1. Smoke do dono do bloco 5 (§5).
-2. Bloco 6 (B12 laço, B13 desenho inteligente, B14 menções/notificações/voto anónimo — com `/pd-feature`) ⇒ **janela nova**.
+1. ~~Smoke do dono do bloco 5 (§5)~~ ✅ OK 20/10.
+2. Bloco 6 (B12 laço, B13 desenho inteligente, B14 menções/notificações/voto anónimo, **B15 de um quadro para outro — pedido do dono 20/10**; com `/pd-feature`) ⇒ **janela nova**.
 3. `textAlignVertical` (top/bottom do Miro): por medir, só existe na API.
 4. Perguntas ao dono sem resposta: YouTube Premium; «Rascunho/Final» e a letra importada.
 5. Nomeados, não feitos: rectângulo vivo e elipse não ganharam a busca do «menor erro» para o ponto fixo do lado de lá

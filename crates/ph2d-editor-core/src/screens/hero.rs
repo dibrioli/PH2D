@@ -59,11 +59,13 @@ pub mod style;
 pub mod tool_bar;
 pub mod topbar;
 
+pub(crate) mod board_alert;
 pub mod board_bar;
 pub mod board_images;
 pub mod board_keys;
 mod board_menu;
 pub mod board_nav;
+pub(crate) mod board_send;
 pub mod board_video;
 pub mod board_video_bar;
 pub mod board_view;

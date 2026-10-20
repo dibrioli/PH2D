@@ -44,6 +44,21 @@ pub const fn goes_to_board(kind: ObjectKind) -> bool {
 
 /// Abre o modal para a linha `row`: a busca limpa e com o teclado.
 pub fn open(store: &mut WidgetStore, row: NodeId) {
+    open_kind(store, ContextMenuKind::SendToBoard { row });
+}
+
+/// ⭐ W23 B15 — o MESMO modal para a selecção do quadro `from` (`keep` = copiar, senão mover).
+pub fn open_selection(store: &mut WidgetStore, from: BoardId, keep: bool) {
+    open_kind(
+        store,
+        ContextMenuKind::SendSelection {
+            from: from.0,
+            keep,
+        },
+    );
+}
+
+fn open_kind(store: &mut WidgetStore, kind: ContextMenuKind) {
     store.register(
         ids::CTX_SEND_BOARD_SEARCH,
         InteractiveState::TextInput {
@@ -58,7 +73,7 @@ pub fn open(store: &mut WidgetStore, row: NodeId) {
     store.open_context_menu(ContextMenuRequest {
         x: 0.0,
         y: 0.0,
-        kind: ContextMenuKind::SendToBoard { row },
+        kind,
     });
 }
 
@@ -71,14 +86,16 @@ fn query(store: &WidgetStore) -> &str {
 }
 
 /// ⭐ Os quadros que o modal mostra, pela ordem das abas — os que contêm a busca (sem caixa), até
-/// [`ids::CTX_SEND_BOARD_ROWS`] — e quantos casaram e ficaram de fora.
+/// [`ids::CTX_SEND_BOARD_ROWS`] — e quantos casaram e ficaram de fora. `except` = o quadro de onde a
+/// selecção sai (B15: mandá-la para ele mesmo não é escolha).
 #[must_use]
-pub fn visible(docs: &Documents, query: &str) -> (Vec<BoardId>, usize) {
+pub fn visible(docs: &Documents, query: &str, except: Option<BoardId>) -> (Vec<BoardId>, usize) {
     let q = query.trim().to_lowercase();
     let all: Vec<BoardId> = docs
         .boards()
         .boards()
         .iter()
+        .filter(|b| Some(b.id) != except)
         .filter(|b| q.is_empty() || b.name.to_lowercase().contains(&q))
         .map(|b| b.id)
         .collect();
@@ -87,51 +104,92 @@ pub fn visible(docs: &Documents, query: &str) -> (Vec<BoardId>, usize) {
     (all.into_iter().take(cap).collect(), more)
 }
 
-/// A linha da Hierarquia cujo conteúdo o modal aberto vai mandar.
-fn open_row(store: &WidgetStore) -> Option<NodeId> {
+/// O que o modal aberto vai mandar: o conteúdo de uma linha da Hierarquia, ou a selecção de um quadro.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Source {
+    Row(NodeId),
+    Selection { from: BoardId, keep: bool },
+}
+
+impl Source {
+    /// O quadro que a lista esconde (o de onde a selecção sai).
+    fn except(self) -> Option<BoardId> {
+        match self {
+            Self::Row(_) => None,
+            Self::Selection { from, .. } => Some(from),
+        }
+    }
+
+    fn title(self) -> &'static str {
+        match self {
+            Self::Row(_) => "board.send.title",
+            Self::Selection { keep: true, .. } => "board.send.copy_title",
+            Self::Selection { keep: false, .. } => "board.send.move_title",
+        }
+    }
+}
+
+/// O que o modal aberto vai mandar.
+#[must_use]
+pub fn source(store: &WidgetStore) -> Option<Source> {
     match store.context_menu()?.kind {
-        ContextMenuKind::SendToBoard { row } => Some(row),
+        ContextMenuKind::SendToBoard { row } => Some(Source::Row(row)),
+        ContextMenuKind::SendSelection { from, keep } => Some(Source::Selection {
+            from: BoardId(from),
+            keep,
+        }),
         _ => None,
     }
 }
 
-/// O quadro escolhido (`None` = um novo) segue para a shell; o modal fecha.
-fn choose(hero: &mut HeroScreen, row: NodeId, board: Option<BoardId>) {
+/// O quadro escolhido (`None` = um novo): a linha da Hierarquia segue para a shell; a selecção de um
+/// quadro vai na pintura seguinte (`board_send::run_pending`, com o moldador). O modal fecha.
+fn choose(hero: &mut HeroScreen, src: Source, board: Option<BoardId>) {
     hero.store.close_context_menu();
     hero.store.consume_last_context_menu();
     hero.store.set_focus(None);
-    hero.bus
-        .push(EditorAction::Hierarchy(HierRequest::SendToBoardChosen {
-            row,
-            board: board.map(|b| b.0),
-        }));
+    match src {
+        Source::Row(row) => hero
+            .bus
+            .push(EditorAction::Hierarchy(HierRequest::SendToBoardChosen {
+                row,
+                board: board.map(|b| b.0),
+            })),
+        Source::Selection { from, keep } => {
+            hero.documents.live.send = Some(super::board_send::Send {
+                from,
+                to: board,
+                keep,
+            });
+        }
+    }
 }
 
 /// As linhas do modal, a busca (`Enter` = o primeiro quadro da lista, `Esc` = desistir). Corre no
 /// pré-despacho. `true` = consumido.
 pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
-    let Some(row) = open_row(&hero.store) else {
+    let Some(src) = source(&hero.store) else {
         return false;
     };
     let pick = |hero: &HeroScreen, slot: usize| {
-        visible(&hero.documents, query(&hero.store))
+        visible(&hero.documents, query(&hero.store), src.except())
             .0
             .get(slot)
             .copied()
     };
     match event {
-        WidgetEvent::Click(id) if id == ids::CTX_SEND_BOARD_NEW => choose(hero, row, None),
+        WidgetEvent::Click(id) if id == ids::CTX_SEND_BOARD_NEW => choose(hero, src, None),
         WidgetEvent::Click(id) => {
             let Some(slot) = ids::CTX_SEND_BOARD_ROWS.iter().position(|r| *r == id) else {
                 return false;
             };
             if let Some(board) = pick(hero, slot) {
-                choose(hero, row, Some(board));
+                choose(hero, src, Some(board));
             }
         }
         WidgetEvent::Submit(id) if id == ids::CTX_SEND_BOARD_SEARCH => {
             if let Some(board) = pick(hero, 0) {
-                choose(hero, row, Some(board));
+                choose(hero, src, Some(board));
             }
         }
         WidgetEvent::Cancel(id) if id == ids::CTX_SEND_BOARD_SEARCH => {
@@ -176,9 +234,9 @@ pub fn paint(
     store: &WidgetStore,
     viewport: Rect,
 ) {
-    if open_row(store).is_none() {
+    let Some(src) = source(store) else {
         return;
-    }
+    };
     let (query, caret, anchor, ti_state) = match store.get(ids::CTX_SEND_BOARD_SEARCH) {
         Some(InteractiveState::TextInput {
             text,
@@ -188,7 +246,7 @@ pub fn paint(
         }) => (text.as_str(), *caret, *selection_anchor, *state),
         _ => ("", 0, None, TextInputState::Normal),
     };
-    let (boards, more) = visible(docs, query);
+    let (boards, more) = visible(docs, query, src.except());
     let gap = Spacing::Xs.px();
     // título · busca · quadros (≥ 1: a frase «nada casa») · «mais N» · risco · «New board».
     let list_rows = boards.len().max(1) + usize::from(more > 0);
@@ -220,7 +278,7 @@ pub fn paint(
     let title = Rect::new(x, y, inner_w, ROW_H);
     let ink = |t: ColorToken| resolve(t, theme);
     let tw = inner_w - pad_x * 2.0;
-    let title_text = tr("board.send.title");
+    let title_text = tr(src.title());
     paint_text(
         text_system,
         scene,

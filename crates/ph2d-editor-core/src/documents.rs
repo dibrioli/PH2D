@@ -69,6 +69,10 @@ pub(crate) struct BoardLive {
     /// e ferramenta.
     /// W23 — o comando que o menu do botão direito numa forma enfileirou (corre na pintura seguinte).
     pub(crate) menu_command: Option<ph2d_board_edit::Command>,
+    /// W23 B15 — a selecção escolhida no modal para ir a outro quadro (corre na pintura seguinte).
+    pub(crate) send: Option<crate::screens::hero::board_send::Send>,
+    /// W23 B15 — o aviso do quadro com um botão (o «Undo» de um mover).
+    pub(crate) alert: Option<crate::screens::hero::board_alert::Alert>,
     /// W23 — a grelha de todas as pontas, aberta para ESTA selecção e para a ponta `0`/`1`.
     pub(crate) heads: Option<(
         std::collections::BTreeSet<ph2d_board_model::ElementId>,
@@ -258,6 +262,15 @@ impl Documents {
             ed.cancel_gesture(&mut board.doc);
             ed.select(&board.doc, []);
         }
+    }
+
+    /// W23 B15 — desfaz o último passo do quadro `id` (activo ou não). `false` = nada a desfazer.
+    pub(crate) fn undo_on(&mut self, id: BoardId) -> bool {
+        let (Some(board), Some(h)) = (self.boards.get_mut(id), self.live.histories.get_mut(&id))
+        else {
+            return false;
+        };
+        h.undo(&mut board.doc)
     }
 
     /// O quadro activo, o histórico dele e o resto do estado de sessão — juntos, para um gesto.

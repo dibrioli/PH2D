@@ -122,7 +122,7 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [crate::ids::MenuRow] {
         ContextMenuKind::BoardArrow { along: false } => menu_tables::BOARD_ARROW_LEVEL_ROWS,
         ContextMenuKind::ConfirmDeleteBoard { .. } => &[],
         // O modal «Send to board» desenha o próprio corpo (`send_to_board::paint`).
-        ContextMenuKind::SendToBoard { .. } => &[],
+        ContextMenuKind::SendToBoard { .. } | ContextMenuKind::SendSelection { .. } => &[],
     }
 }
 

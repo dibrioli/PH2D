@@ -251,6 +251,7 @@ pub(super) fn doc_old<E>(d: DocOld<E>, element: &impl Fn(E) -> Element) -> Board
         frames: Default::default(),
         minds: Default::default(),
         session: Default::default(),
+        origin: Default::default(),
     }
 }
 

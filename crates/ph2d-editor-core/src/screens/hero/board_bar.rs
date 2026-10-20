@@ -396,6 +396,8 @@ pub fn paint(
     let Some((board, live)) = hero.documents.active_parts() else {
         return;
     };
+    // W23 B15 — o aviso com botão, se é o mais novo, tapa o da recusa.
+    let alert_on = super::board_alert::shown(live).is_some();
     let ed = super::board_view::editor(&mut live.editor, theme);
     let tool = ed.tool;
     let sel_style = selected_style(ed, &board.doc);
@@ -412,7 +414,8 @@ pub fn paint(
     }
     let notice = live
         .notice
-        .filter(|(_, t)| t.elapsed().as_secs_f32() < crate::toast::Toast::DEFAULT_TTL_S);
+        .filter(|(_, t)| t.elapsed().as_secs_f32() < crate::toast::Toast::DEFAULT_TTL_S)
+        .filter(|_| !alert_on);
     let area_w = super::board_view::area_of(area);
     // A escrever, a barra fica (as marcas do texto); só um arrasto a esconde.
     let sel_box = (!ed.is_busy())

@@ -27,6 +27,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.send.deleted" => "Deleted object",
         "board.send.repeated" => "{name} \u{d7}{count}",
         "board.send.all_gone" => "Those objects are no longer in the scene",
+        // W23 B15 — a selecção de um quadro para outro.
+        "board.send.copy_title" => "Copy to board",
+        "board.send.move_title" => "Move to board",
+        "board.send.copied_one" => "Copied 1 object to \u{201c}{name}\u{201d}",
+        "board.send.copied" => "Copied {count} objects to \u{201c}{name}\u{201d}",
+        "board.send.moved_one" => "Moved 1 object to \u{201c}{name}\u{201d}",
+        "board.send.moved" => "Moved {count} objects to \u{201c}{name}\u{201d}",
+        "board.send.undo" => "Undo",
+        "board.send.undo_tip" => "Put them back on the first board and take them off this one",
         _ => return None,
     })
 }

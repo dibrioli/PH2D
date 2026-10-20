@@ -188,6 +188,7 @@ pub(crate) fn rehome_copy(
     doc: &BoardDoc,
     el: &mut Element,
     map: &std::collections::BTreeMap<ElementId, ElementId>,
+    home: bool,
 ) -> bool {
     let Some(m) = el.mind().cloned() else {
         return false;
@@ -201,7 +202,7 @@ pub(crate) fn rehome_copy(
         }
         return false;
     }
-    if doc.get(p).and_then(Element::mind).is_some() {
+    if home && doc.get(p).and_then(Element::mind).is_some() {
         let order = doc.key_between(Some(&m.order), after(doc, p, &m.order).as_ref());
         if let Some(mm) = el.mind_mut() {
             mm.order = order;

@@ -61,6 +61,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.el.back" => "Send to back",
         "board.el.lock" => "Lock / unlock",
         "board.el.delete" => "Delete",
+        // W23 B15 — de um quadro para outro (pedido do dono 20/10).
+        "board.el.copy_to" => "Copy to board\u{2026}",
+        "board.el.move_to" => "Move to board\u{2026}",
         // W23 B5(2) — como se deitam os textos de uma seta (o Miro).
         "board.el.text_along" => "Text along the line",
         "board.el.text_level" => "Horizontal text",

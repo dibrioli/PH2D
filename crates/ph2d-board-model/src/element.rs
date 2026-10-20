@@ -578,6 +578,41 @@ pub struct BoardDoc {
     /// Em sessão ao vivo: ids sorteados e chaves com cauda ([`BoardDoc::set_session`]).
     #[serde(skip)]
     pub(crate) session: Session,
+    /// B15 — de que documento é isto ([`BoardDoc::origin`]). Não vai para o ficheiro.
+    #[serde(skip)]
+    pub(crate) origin: OriginSlot,
+}
+
+/// ⭐ **De que documento veio** uma cópia (B15, doc 17 §2.4): os ids são um contador POR quadro, e
+/// colar noutro quadro tem de saber que o `ElementId(3)` de lá não é o de cá. Tirada de um contador
+/// global do processo; um documento lido de bytes ou clonado é OUTRO documento e nasce com outra.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Origin(u64);
+
+/// O lugar da [`Origin`] no documento: o `PartialEq` do documento compara CONTEÚDO (como a [`Rev`]).
+#[derive(Debug)]
+pub(crate) struct OriginSlot(Origin);
+
+static NEXT_ORIGIN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+impl Default for OriginSlot {
+    fn default() -> Self {
+        Self(Origin(
+            NEXT_ORIGIN.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+        ))
+    }
+}
+
+impl Clone for OriginSlot {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}
+
+impl PartialEq for OriginSlot {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
 }
 
 /// ⭐ **Revisão de um documento nesta sessão** — o «mudou alguma coisa?» em O(1) dos caches
@@ -613,6 +648,12 @@ impl BoardDoc {
     #[must_use]
     pub fn rev(&self) -> u64 {
         self.rev.0
+    }
+
+    /// B15 — a identidade deste documento nesta sessão ([`Origin`]).
+    #[must_use]
+    pub fn origin(&self) -> Origin {
+        self.origin.0
     }
 
     /// O elemento com este id, APAGADO incluído (a lápide é estado partilhado numa sessão).

@@ -58,16 +58,33 @@ pub(super) fn open(hero: &mut HeroScreen, x: f32, y: f32) {
         .open_context_menu(ContextMenuRequest { x, y, kind });
 }
 
+/// W23 B15 — as linhas que mandam a selecção a outro quadro: `true` = copiar, `false` = mover.
+const SEND_ROWS: [(ph2d_a11y::NodeId, bool); 2] = [
+    (ids::CTX_MENU_BOARD_EL_COPY_TO, true),
+    (ids::CTX_MENU_BOARD_EL_MOVE_TO, false),
+];
+
 /// As linhas do menu (o `document_tabs_menu::populate` regista-as com as do menu das abas).
 pub(super) fn row_ids() -> impl Iterator<Item = ph2d_a11y::NodeId> {
-    ROWS.into_iter().map(|(id, _)| id)
+    ROWS.into_iter()
+        .map(|(id, _)| id)
+        .chain(SEND_ROWS.into_iter().map(|(id, _)| id))
 }
 
-/// Uma linha do menu: fecha-o e enfileira o comando. Corre no pré-despacho.
+/// Uma linha do menu: fecha-o e enfileira o comando (ou abre a escolha do quadro). Corre no
+/// pré-despacho.
 pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let (WidgetEvent::Click(id) | WidgetEvent::DoubleClick(id)) = event else {
         return false;
     };
+    if let Some(&(_, keep)) = SEND_ROWS.iter().find(|(row, _)| *row == id) {
+        hero.store.close_context_menu();
+        hero.store.consume_last_context_menu();
+        if let Some(from) = hero.documents.active() {
+            super::send_to_board::open_selection(&mut hero.store, from, keep);
+        }
+        return true;
+    }
     let Some(&(_, c)) = ROWS.iter().find(|(row, _)| *row == id) else {
         return false;
     };
@@ -91,6 +108,9 @@ pub(crate) fn run_pending(hero: &mut HeroScreen, ts: &mut TextSystem) {
     let ed = super::board_view::editor(&mut live.editor, theme);
     if c == Command::Paste {
         ed.give_clip_files(&mut board.files);
+        let centre = [board.camera.center_x, board.camera.center_y];
+        ed.paste(&mut board.doc, history, Some(centre));
+        return;
     }
     ed.command(&mut board.doc, history, ts, c);
     if c == Command::Copy {

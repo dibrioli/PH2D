@@ -260,6 +260,7 @@ pub fn paint_hero_screen(
         }
         let theme = hero.theme;
         super::board_menu::run_pending(hero, text_system);
+        super::board_send::run_pending(hero, text_system);
         if let Some((board, live)) = hero.documents.active_parts() {
             // As rotas das setas vêm do editor: uma cache, a mesma que o clique lê.
             let ed = super::board_view::editor(&mut live.editor, theme);
@@ -294,6 +295,7 @@ pub fn paint_hero_screen(
             super::board_nav::clear_of(hero, r, hud);
             super::board_nav::paint(hero, r, scene, text_system);
             super::board_bar::paint(hero, r, scene, text_system);
+            super::board_alert::paint(hero, r, scene, text_system);
         }
         super::board_video_bar::paint(hero, r, scene, text_system);
         // Pintar e agarrar leem o MESMO rect (o `board_view` lê o `last_canvas`).

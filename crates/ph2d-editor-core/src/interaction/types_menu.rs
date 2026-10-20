@@ -352,6 +352,12 @@ pub enum ContextMenuKind {
     SendToBoard {
         row: NodeId,
     },
+    /// ⭐ W23 B15 — o MESMO modal para a selecção do quadro `from`: `keep` = copiar (fica nos dois),
+    /// senão mover.
+    SendSelection {
+        from: u64,
+        keep: bool,
+    },
 }
 
 impl ContextMenuKind {
@@ -457,5 +463,9 @@ impl ContextMenuKind {
         Self::BoardArrow { along: true },
         Self::ConfirmDeleteBoard { board: 0 },
         Self::SendToBoard { row: NodeId(1) },
+        Self::SendSelection {
+            from: 0,
+            keep: true,
+        },
     ];
 }

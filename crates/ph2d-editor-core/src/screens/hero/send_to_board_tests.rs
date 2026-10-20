@@ -215,9 +215,9 @@ fn more_boards_than_rows_are_reached_by_the_search() {
     let names: Vec<String> = (1..=15).map(|n| format!("B{n:02}")).collect();
     let refs: Vec<&str> = names.iter().map(String::as_str).collect();
     let (hero, _, b) = with_boards(&refs);
-    let (shown, more) = visible(&hero.documents, "");
+    let (shown, more) = visible(&hero.documents, "", None);
     assert_eq!((shown.len(), more), (ids::CTX_SEND_BOARD_ROWS.len(), 3));
-    assert_eq!(visible(&hero.documents, "b14").0, vec![b[13]]);
+    assert_eq!(visible(&hero.documents, "b14", None).0, vec![b[13]]);
 }
 
 /// ⭐ Um quadro sem desenho ainda (criado e escrito no mesmo passo) recebe a imagem no centro da

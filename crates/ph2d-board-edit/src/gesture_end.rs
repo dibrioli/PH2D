@@ -74,7 +74,7 @@ impl Editor {
             el.set_imported_seed(None);
         }
         crate::wire::remap(&mut copies, &map);
-        let roots = crate::command::remap_organize(doc, &mut copies, &map);
+        let roots = crate::command::remap_organize(doc, &mut copies, &map, true);
         self.unfitted.extend(roots);
         let ids: Vec<ElementId> = copies
             .into_iter()

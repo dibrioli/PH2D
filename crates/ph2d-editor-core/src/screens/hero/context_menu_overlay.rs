@@ -151,7 +151,9 @@ pub fn paint_context_menu_overlay(
     // O mesmo para o modal «Send to board»: pinta-o o `send_to_board::paint`, que tem os quadros.
     if matches!(
         req.kind,
-        ContextMenuKind::ConfirmDeleteBoard { .. } | ContextMenuKind::SendToBoard { .. }
+        ContextMenuKind::ConfirmDeleteBoard { .. }
+            | ContextMenuKind::SendToBoard { .. }
+            | ContextMenuKind::SendSelection { .. }
     ) {
         return;
     }

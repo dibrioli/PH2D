@@ -44,6 +44,10 @@ pub const CTX_MENU_BOARD_EL_LOCK: NodeId = hash_node_id("ctx_menu_board_el_lock"
 pub const CTX_MENU_BOARD_EL_DELETE: NodeId = hash_node_id("ctx_menu_board_el_delete");
 pub const CTX_MENU_BOARD_EL_TEXT_ALONG: NodeId = hash_node_id("ctx_menu_board_el_text_along");
 pub const CTX_MENU_BOARD_EL_TEXT_LEVEL: NodeId = hash_node_id("ctx_menu_board_el_text_level");
+/// W23 B15 — mandar a selecção a outro quadro (copiar / mover) e o botão do aviso do quadro.
+pub const CTX_MENU_BOARD_EL_COPY_TO: NodeId = hash_node_id("ctx_menu_board_el_copy_to");
+pub const CTX_MENU_BOARD_EL_MOVE_TO: NodeId = hash_node_id("ctx_menu_board_el_move_to");
+pub const BOARD_ALERT_ACTION: NodeId = hash_node_id("board_alert_action");
 /// Menu do botão direito numa aba de quadro.
 pub const CTX_MENU_BOARD_RENAME: NodeId = hash_node_id("ctx_menu_board_rename");
 pub const CTX_MENU_BOARD_DUPLICATE: NodeId = hash_node_id("ctx_menu_board_duplicate");

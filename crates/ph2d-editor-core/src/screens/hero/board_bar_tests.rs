@@ -492,6 +492,8 @@ mod notes;
 
 #[path = "board_bar_heads_tests.rs"]
 mod heads;
+#[path = "board_send_tests.rs"]
+mod send;
 #[path = "board_bar_pen_tests.rs"]
 mod pen;
 #[path = "board_bar_shapes_tests.rs"]

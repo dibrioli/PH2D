@@ -255,9 +255,11 @@ pub fn key(
                 ed.paste_cells(doc, history, ts, p, center);
                 return taken();
             }
-            // W14 — as imagens da cópia levam os bytes (de outro quadro, se foi lá que se copiou).
+            // W14 — as imagens da cópia levam os bytes (de outro quadro, se foi lá que se copiou);
+            // B15 — de outro quadro, a cópia nasce no meio da vista.
             ed.give_clip_files(&mut board.files);
-            Some(Command::Paste)
+            ed.paste(doc, history, Some(center));
+            return taken();
         }
         (BoardKey::Delete | BoardKey::Backspace, false) => Some(Command::Delete),
         (BoardKey::Escape, false) => Some(Command::Escape),

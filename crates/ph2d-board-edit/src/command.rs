@@ -134,7 +134,7 @@ impl Editor {
             Command::Duplicate => {
                 let mut src = self.selected_with_contents(doc);
                 self.detach_outside(doc, &mut src);
-                self.place_copies(doc, history, &src, 1)
+                self.place_copies(doc, history, &src, Landing::Offset(1))
             }
             Command::Group
             | Command::Ungroup
@@ -150,15 +150,31 @@ impl Editor {
             | Command::TextTurn(_) => self.organize(doc, history, c),
             Command::MindChild => self.mind_child(doc, history, ts, None),
             Command::MindSibling => self.mind_sibling(doc, history, ts),
-            Command::Paste => {
-                self.pastes += 1;
-                let src = self.clipboard.clone();
-                self.place_copies(doc, history, &src, self.pastes)
-            }
+            Command::Paste => self.paste(doc, history, None),
         }
     }
 
+    /// ⭐ **Colar** (B15): no quadro de onde se copiou, `paste_offset` à frente do original, na casa
+    /// dele; NOUTRO quadro ([`ph2d_board_model::Origin`]) a cópia esquece o que não levou e nasce
+    /// centrada em `centre` (o meio da vista; `None` = onde estava). `Command::Paste` = `None`.
+    pub fn paste(
+        &mut self,
+        doc: &mut BoardDoc,
+        history: &mut History,
+        centre: Option<[f64; 2]>,
+    ) -> bool {
+        self.pastes += 1;
+        let src = self.clipboard.clone();
+        let landing = match centre {
+            _ if self.clip_origin == Some(doc.origin()) => Landing::Offset(self.pastes),
+            Some(c) => Landing::Elsewhere(Some(c), self.pastes - 1),
+            None => Landing::Elsewhere(None, self.pastes - 1),
+        };
+        self.place_copies(doc, history, &src, landing)
+    }
+
     fn copy(&mut self, doc: &BoardDoc) {
+        self.clip_origin = Some(doc.origin());
         let mut els = self.selected_with_contents(doc);
         self.detach_outside(doc, &mut els);
         // O texto deles (um por linha) vai também para fora do app — e é a marca que separa um
@@ -192,18 +208,29 @@ impl Editor {
             && (self.clipboard.is_empty() || self.copied_text.as_deref() != Some(system))
     }
 
-    /// Cópias de `src` desviadas `steps × paste_offset`, à frente de tudo, seleccionadas — UM passo.
-    fn place_copies(
+    /// Cópias de `src` no sítio que `landing` diz, à frente de tudo, seleccionadas — UM passo.
+    pub(crate) fn place_copies(
         &mut self,
         doc: &mut BoardDoc,
         history: &mut History,
         src: &[Element],
-        steps: u32,
+        landing: Landing,
     ) -> bool {
         if src.is_empty() {
             return false;
         }
-        let off = self.metrics.paste_offset * f64::from(steps);
+        let step = self.metrics.paste_offset;
+        let (off, home) = match landing {
+            Landing::Offset(n) => ([step * f64::from(n); 2], true),
+            Landing::Elsewhere(at, n) => {
+                let c = at.map_or([0.0; 2], |c| {
+                    let m = middle_of(src);
+                    [c[0] - m[0], c[1] - m[1]]
+                });
+                let k = step * f64::from(n);
+                ([c[0] + k, c[1] + k], false)
+            }
+        };
         let mut ids = BTreeSet::new();
         let mut map = std::collections::BTreeMap::new();
         let mut copies: Vec<Element> = src
@@ -215,13 +242,19 @@ impl Editor {
                 el.version = 0;
                 // Uma cópia treme de outra maneira (a semente importada fica no original, W9).
                 el.set_imported_seed(None);
-                el.translate([off, off]);
+                el.translate(off);
                 ids.insert(el.id);
                 el
             })
             .collect();
         crate::wire::remap(&mut copies, &map);
-        let roots = remap_organize(doc, &mut copies, &map);
+        let roots = remap_organize(doc, &mut copies, &map, home);
+        if !home {
+            // Num quadro alheio, quem ficou sem casa mora no frame onde caiu (como quem nasce lá).
+            for el in copies.iter_mut().filter(|e| e.frame.is_none()) {
+                el.frame = doc.deepest_frame_at(el.center(), &ids);
+            }
+        }
         self.unfitted.extend(roots);
         let ops = copies
             .into_iter()
@@ -271,7 +304,7 @@ impl Editor {
 
     /// Os seleccionados e o que vive dentro dos frames entre eles, em ordem de z (o que uma cópia
     /// leva: copiar um frame copia o conteúdo).
-    fn selected_with_contents(&self, doc: &BoardDoc) -> Vec<Element> {
+    pub(crate) fn selected_with_contents(&self, doc: &BoardDoc) -> Vec<Element> {
         let ids: Vec<ElementId> = self.selection.iter().copied().collect();
         let mut v: Vec<Element> = crate::organize::with_descendants(doc, &ids)
             .into_iter()
@@ -282,26 +315,52 @@ impl Editor {
     }
 }
 
+/// Onde nascem as cópias: no quadro de onde vieram, `n × paste_offset` à frente; noutro quadro
+/// (B15), centradas no ponto (`None` = onde estavam) e `n × paste_offset` adiante.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Landing {
+    Offset(u32),
+    Elsewhere(Option<[f64; 2]>, u32),
+}
+
+/// O meio da caixa que junta os elementos.
+fn middle_of(els: &[Element]) -> [f64; 2] {
+    let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
+    for e in els {
+        lo = [lo[0].min(e.x), lo[1].min(e.y)];
+        hi = [hi[0].max(e.x + e.w), hi[1].max(e.y + e.h)];
+    }
+    [(lo[0] + hi[0]) / 2.0, (lo[1] + hi[1]) / 2.0]
+}
+
 /// As cópias ficam nos frames COPIADOS (ou na casa do original, se o frame dele não veio) e em
 /// grupos NOVOS — uma cópia de um grupo é outro grupo; o link para um copiado aponta a cópia.
+/// ⭐ `home = false` (B15: colar NOUTRO quadro): o que não veio na cópia não existe lá — os ids de
+/// cá são de OUTROS elementos de lá — e a referência ZERA (sem frame, sem link, raiz de mapa novo).
 pub(crate) fn remap_organize(
     doc: &mut BoardDoc,
     copies: &mut [Element],
     map: &std::collections::BTreeMap<ElementId, ElementId>,
+    home: bool,
 ) -> Vec<ElementId> {
     let mut groups = std::collections::BTreeMap::new();
     let mut roots = Vec::new();
     for el in copies.iter_mut() {
-        if let Some(f) = el.frame.and_then(|f| map.get(&f)) {
-            el.frame = Some(*f);
+        match el.frame.map(|f| map.get(&f)) {
+            Some(Some(f)) => el.frame = Some(*f),
+            Some(None) if !home => el.frame = None,
+            _ => {}
         }
-        if let Some(l) = el.link().and_then(|l| map.get(&l)) {
-            el.set_link(Some(*l));
+        match el.link().map(|l| map.get(&l)) {
+            Some(Some(l)) => el.set_link(Some(*l)),
+            Some(None) if !home => el.set_link(None),
+            _ => {}
         }
         // Um nó copiado com o pai fica debaixo da cópia dele; sem o pai, é irmão do original — LOGO
         // DEPOIS dele, com chave própria (duas chaves iguais faziam o `Enter` seguinte entrar em
-        // pânico, auditoria W6); e se o pai já não existe, a cópia é a raiz de um mapa novo.
-        if crate::mindmap::rehome_copy(doc, el, map) {
+        // pânico, auditoria W6); e se o pai já não existe (ou é de outro quadro), a cópia é a raiz de
+        // um mapa novo.
+        if crate::mindmap::rehome_copy(doc, el, map, home) {
             roots.push(el.id);
         }
         for g in el.groups_mut() {

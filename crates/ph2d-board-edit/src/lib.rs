@@ -33,6 +33,7 @@ mod organize;
 mod overlay;
 mod present;
 mod resize;
+mod send;
 mod snap;
 mod templates;
 mod text;
@@ -70,6 +71,7 @@ pub use ph2d_board_layout::Move;
 pub use present::{
     SLIDE_MARGIN, TRAVEL_POWER, TRAVEL_SECS, camera_at, first_slide, slide_camera, slides, travel,
 };
+pub use send::Parcel;
 pub use snap::Guide;
 pub use templates::Template;
 pub use text::{face, hand_lettered};
@@ -302,6 +304,8 @@ pub struct Editor {
     gesture: Option<gesture::Gesture>,
     editing: Option<text::Editing>,
     clipboard: Vec<Element>,
+    /// B15 — o documento de onde a cópia veio: colar noutro esquece o que ela não levou.
+    clip_origin: Option<ph2d_board_model::Origin>,
     /// W14 — os bytes das imagens da cópia (para colar noutro quadro).
     clip_files: ph2d_board_model::Files,
     pastes: u32,
@@ -364,6 +368,7 @@ impl Editor {
             gesture: None,
             editing: None,
             clipboard: Vec::new(),
+            clip_origin: None,
             clip_files: ph2d_board_model::Files::new(),
             pastes: 0,
             notes: NoteStyle::default(),

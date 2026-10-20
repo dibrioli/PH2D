@@ -142,6 +142,7 @@ fn register_brush_inputs(store: &mut WidgetStore) {
     .chain(ph2d_tool_painter::ids::PAINTER_WATERCOLOR_FIELDS)
     .chain(ph2d_tool_painter::ids::PAINTER_WETPAINT_FIELDS)
     .chain(ph2d_tool_painter::ids::PAINTER_IMPASTO_FIELDS)
+    .chain(ph2d_tool_painter::ids::painter_pen_number_fields())
     {
         store.register(
             id,
@@ -432,6 +433,7 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RESET,
         ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_RESET,
         ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_RESET,
+        ph2d_tool_painter::ids::PAINTER_PEN_RESET,
         // Apply / Apply & Keep — bake the open on-canvas shape (Curve/Free Hand/Ellipse/Polygon); Keep
         // retains the editor for re-apply. Routed in the tool's `route_brush_dab_event`.
         ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_APPLY,
@@ -538,6 +540,7 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
     .into_iter()
     // O bloco de presets do Wet Painter (W1): Preset · política · os valores rápidos dos volumes.
     .chain(ph2d_tool_painter::ids::PAINTER_WETPAINT_PRESET_DROPDOWNS)
+    .chain([ph2d_tool_painter::ids::PAINTER_PEN_ROTATION])
     {
         store.register(
             id,

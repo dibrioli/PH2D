@@ -92,7 +92,9 @@ impl Pincel {
 
     fn meio(&self) -> PaintMedia {
         match &self.fonte {
-            Fonte::Preset { .. } => PaintMedia::WetPaint,
+            // O meio do FICHEIRO (L1): um preset de qualquer meio; um desconhecido é recusado no `aplica`.
+            Fonte::Preset { preset, .. } => ph2d_tool_painter::meio_do_preset(&preset.parametros.media)
+                .unwrap_or(PaintMedia::WetPaint),
             Fonte::Meio(r) => r.meio,
         }
     }
@@ -103,7 +105,9 @@ impl Pincel {
         match &self.fonte {
             Fonte::Preset { preset, .. } => {
                 t.set_wet_relogio_fixo(relogio_fixo);
-                let falhas = t.wet_preset_aplicar(preset);
+                let falhas = t
+                    .preset_aplicar(preset)
+                    .unwrap_or_else(|e| panic!("{}: meio desconhecido {e:?}", self.nome));
                 assert!(falhas.is_empty(), "{}: {falhas:?}", self.nome);
             }
             Fonte::Meio(r) => {

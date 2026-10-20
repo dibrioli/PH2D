@@ -117,6 +117,10 @@ pub const PORTAS: &[Porta] = &[
     g("wet_preset_aplicar"),
     g("wet_preset_aplicar_volumes"),
     g("wet_preset_aplicar_modo"),
+    // O preset nos quatro meios (L1): a ponte e a miniatura aplicam por aqui.
+    g("preset_aplicar"),
+    g("preset_aplicar_volumes"),
+    g("preset_aplicar_modo"),
     g("set_brush_texture_kind"),
     g("set_brush_shape_kind"),
     g("set_line_snap"),

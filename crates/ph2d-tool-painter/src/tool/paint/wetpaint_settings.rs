@@ -510,7 +510,7 @@ impl PainterTool {
         event: &ph2d_editor_core::tool::PanelEvent,
     ) -> bool {
         use ph2d_editor_core::tool::PanelEvent;
-        if self.route_wet_preset_event(event) {
+        if self.route_wet_preset_event(event) || self.route_mao_event(event) {
             return true;
         }
         match event {

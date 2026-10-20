@@ -21,6 +21,8 @@ mod painter_impasto;
 pub use painter_impasto::*;
 mod painter_line;
 pub use painter_line::*;
+mod painter_pen;
+pub use painter_pen::*;
 mod painter_sculpt;
 pub use painter_sculpt::*;
 mod painter_selection;

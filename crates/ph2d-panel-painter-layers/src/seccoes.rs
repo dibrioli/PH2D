@@ -188,6 +188,12 @@ pub const TODAS: &[Declaracao] = &[
         cartao: &[],
     },
     Declaracao {
+        nome: "pen",
+        campos: 1,
+        chaves: &crate::paint_pen::ROTULOS,
+        cartao: &[],
+    },
+    Declaracao {
         nome: "taper",
         campos: 1,
         chaves: TAPER,
@@ -215,7 +221,7 @@ pub(crate) const BRUSH: &[&str] = &[
     "panel.painter_layers.brush.blend",
     "panel.painter_layers.brush.color",
     "panel.painter_layers.brush.paint_mode",
-    "panel.painter_layers.brush.preset",
+    "panel.painter_layers.brush.basic_brush",
     // O bloco de presets do Wet Painter (W1) toma o lugar do Preset no Wet Paint: o mesmo cartão.
     "panel.painter_layers.wetpaint.preset",
     "panel.painter_layers.wetpaint.preset_favorite",

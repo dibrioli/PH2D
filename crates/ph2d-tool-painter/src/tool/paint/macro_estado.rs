@@ -48,6 +48,7 @@ impl PainterTool {
                 .collect::<Vec<_>>(),
             "ligados": p.link_shared_settings,
             "falloff_armado": p.falloff_armed,
+            "mao": super::mao::dinamica_para_json(&p.dynamics),
             "metodo_por_meio": p.method_by_media,
             "tela": self.macro_tela(),
             "trilho": trilho,
@@ -130,6 +131,7 @@ impl PainterTool {
         let p = &mut self.paint;
         p.link_shared_settings = v["ligados"].as_bool().unwrap_or(p.link_shared_settings);
         p.falloff_armed = v["falloff_armado"].as_bool().unwrap_or(p.falloff_armed);
+        super::mao::dinamica_de_json(&mut p.dynamics, &v["mao"]);
         if let Some(a) = v["metodo_por_meio"].as_array() {
             for (m, x) in p.method_by_media.iter_mut().zip(a) {
                 *m = x.as_u64().and_then(|n| u8::try_from(n).ok()).unwrap_or(*m);

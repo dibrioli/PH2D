@@ -53,6 +53,8 @@ pub const INTERNAS: &[&str] = &[
     "move_layer_up",
     "new_brush_texture",
     "pick_wet_tool",
+    // A mão do pincel (L2): o cartão Pen chega-lhe pelo `handle_panel_event`.
+    "set_mao",
     "polygon_cancel",
     "polygon_commit",
     "polygon_commit_keep",

@@ -28,7 +28,7 @@ pub(super) fn route_brush_dropdown_option(
     host: &mut dyn PanelHostInternal,
     id: ph2d_a11y::NodeId,
 ) -> Option<bool> {
-    let routes: [OptionRoute; 26] = [
+    let routes: [OptionRoute; 27] = [
         (
             decode_brush_preset_option,
             ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET,
@@ -116,6 +116,10 @@ pub(super) fn route_brush_dropdown_option(
         (
             super::decode::decode_shape_color_blend_option,
             ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_BLEND,
+        ),
+        (
+            crate::paint_pen::decode_rotation_option,
+            ph2d_tool_painter::ids::PAINTER_PEN_ROTATION,
         ),
         (
             decode_wet_policy_option,

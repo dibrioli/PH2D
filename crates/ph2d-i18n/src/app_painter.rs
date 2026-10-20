@@ -74,6 +74,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.painter.skin_suspend.images_unbound_from_the_bones" => {
             "The image size or margins changed: {soltas} image(s) unbound from the bones. Ctrl+Z brings the binding back."
         }
+        // Os presets nos quatro meios (L1): o grupo do navegador leva o meio; um meio que este PH2D não
+        // conhece é recusado; um modo que o meio não tem não se aplica.
+        "app.painter.presets.group_in_media" => "{engine} · {media} · {group}",
+        "app.painter.presets.unknown_media" => {
+            "The brush {name} is for a paint medium this PH2D does not know ({media}): it was not applied"
+        }
+        "app.painter.presets.mode_not_applied" => {
+            "The brush {name} asks for a tool this paint medium does not have ({mode})"
+        }
         // As pastas da FÁBRICA dos presets do Wet Painter (`assets/brushes/WetPainter/<meio>/<grupo>`),
         // como o navegador as mostra; a pasta do artista mostra-se como ele a chamou.
         "app.painter.presets.folder.watercolor" => "Watercolor",

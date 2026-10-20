@@ -420,6 +420,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 // Symmetry: Use/Circular checkboxes, X/Y/Custom axis segments, Draw-Line/Pick-Center, reset.
                 || ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_CLICKABLE.contains(&id)
                 || ph2d_tool_painter::ids::PAINTER_BRUSH_SECTION_RESETS.contains(&id)
+                || id == ph2d_tool_painter::ids::PAINTER_PEN_RESET
                 // Wet Paint (see PAINTER_WETPAINT_CLICKS: absent here = dead under the mouse).
                 || ph2d_tool_painter::ids::PAINTER_WETPAINT_CLICKS.contains(&id)
                 // Watercolor section: Wet-edges + Pigment toggles + the section reset.

@@ -269,14 +269,41 @@ fn sem_preset_activo_so_ha_guardar_como_novo() {
     }
 }
 
+/// ⭐ L1 (`docs/Painter/Pinceis/03_MOTORES.md` §2): o navegador abre nos QUATRO meios — fora do Wet Paint sem
+/// os volumes vivos (o Size e a Strength têm as fileiras deles no corpo) e com o pincel de partida do meio
+/// («Basic brush») por baixo. Era `fora_do_wet_paint_o_bloco_nao_aparece`, a decisão que a L1 revogou.
 #[test]
-fn fora_do_wet_paint_o_bloco_nao_aparece() {
-    let t = PainterTool::default();
-    let (_, _, rects) = novo(&t, Some(ROUND));
-    assert!(rect_of(&rects, ids::PAINTER_WETPAINT_PRESET).is_none());
-    assert!(
-        rect_of(&rects, ids::PAINTER_BRUSH_PRESET).is_some(),
-        "o Preset dos meios fica"
+fn fora_do_wet_paint_o_navegador_aparece_sem_os_volumes() {
+    for meio in [PaintMedia::Digital, PaintMedia::Watercolor, PaintMedia::Impasto] {
+        let mut t = PainterTool::default();
+        t.set_paint_media(meio);
+        let (_, _, rects) = novo(&t, Some(ROUND));
+        assert!(rect_of(&rects, ids::PAINTER_WETPAINT_PRESET).is_some(), "{meio:?}");
+        assert!(rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_SAVE_NEW).is_some(), "{meio:?}");
+        assert!(rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_POLICY).is_some(), "{meio:?}");
+        for vol in [ids::PAINTER_WETPAINT_VOL_SIZE, ids::PAINTER_WETPAINT_VOL_OPACITY] {
+            assert!(rect_of(&rects, vol).is_none(), "{meio:?}: volume do Wet fora dele");
+        }
+        assert!(
+            rect_of(&rects, ids::PAINTER_BRUSH_PRESET).is_some(),
+            "{meio:?}: o pincel de partida do meio fica"
+        );
+    }
+}
+
+/// Escolher no navegador FORA do Wet Paint pede o preset (a ponte troca o meio ao aplicá-lo).
+#[test]
+fn escolher_no_navegador_fora_do_wet_paint_pede_o_preset() {
+    let mut t = PainterTool::default();
+    escolhe(
+        &mut t,
+        None,
+        ids::PAINTER_WETPAINT_PRESET,
+        ids::painter_wetpaint_preset_option_id(2, WASH),
+    );
+    assert_eq!(
+        t.take_wet_preset_request(),
+        Some(PedidoPreset::Escolher(WASH.to_owned()))
     );
 }
 

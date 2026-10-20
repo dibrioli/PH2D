@@ -44,6 +44,20 @@ pub const LINHAS_DA_MAO: [LinhaDaMao; 16] = [
 /// Quantas linhas o cartão tem.
 pub const N_LINHAS_DA_MAO: usize = LINHAS_DA_MAO.len();
 
+/// O valor de fábrica de cada linha — a mão do pincel novo (o instantâneo de recurso do painel).
+pub const MAO_DE_FABRICA: [f64; N_LINHAS_DA_MAO] = {
+    let mut v = [0.0; N_LINHAS_DA_MAO];
+    let mut i = 0;
+    while i < N_LINHAS_DA_MAO {
+        v[i] = match LINHAS_DA_MAO[i] {
+            LinhaDaMao::Knob(k) => KNOB_DEFS[k as usize].default,
+            LinhaDaMao::TiltOpacity => TILT_OPACITY.4,
+        };
+        i += 1;
+    }
+    v
+};
+
 /// A chave, a faixa (`min`, `max`, `passo`) e o valor de fábrica da inclinação→opacidade.
 const TILT_OPACITY: (&str, f64, f64, f64, f64) = ("tiltOpacity", 0.0, 1.0, 0.01, 0.0);
 
@@ -194,6 +208,45 @@ pub(crate) fn de_fabrica() -> (Dynamics, PenTilt) {
     (d, t)
 }
 
+/// As linhas que governam a `Dynamics` (a pressão e a corda); as outras são da `PenTilt`, um campo do pincel.
+fn da_pressao(l: LinhaDaMao) -> bool {
+    matches!(
+        l,
+        LinhaDaMao::Knob(
+            Knob::PressureSize
+                | Knob::PressureSizeCurve
+                | Knob::PressureOpacity
+                | Knob::PressureOpacityCurve
+                | Knob::PressureFloor
+                | Knob::PressureCeiling
+                | Knob::PressureSmoothing
+                | Knob::PulledString
+        )
+    )
+}
+
+/// A `Dynamics` dos meios antigos pelas chaves das linhas — o que o estado inicial de uma MACRO leva dela (a
+/// `PenTilt` já vai no pincel, `campos_da_macro`).
+pub(crate) fn dinamica_para_json(d: &Dynamics) -> serde_json::Value {
+    let t = PenTilt::default();
+    LINHAS_DA_MAO
+        .into_iter()
+        .filter(|l| da_pressao(*l))
+        .map(|l| (l.chave().to_owned(), serde_json::json!(le(d, &t, l))))
+        .collect::<serde_json::Map<_, _>>()
+        .into()
+}
+
+/// O inverso de [`dinamica_para_json`]; uma chave ausente (uma macro de antes da L2) não mexe.
+pub(crate) fn dinamica_de_json(d: &mut Dynamics, v: &serde_json::Value) {
+    let mut t = PenTilt::default();
+    for l in LINHAS_DA_MAO.into_iter().filter(|l| da_pressao(*l)) {
+        if let Some(x) = v.get(l.chave()).and_then(serde_json::Value::as_f64) {
+            escreve(d, &mut t, l, l.limpa(x));
+        }
+    }
+}
+
 impl super::PainterTool {
     /// O valor de cada linha do cartão Pen no meio de agora (o que o painel mostra).
     #[must_use]
@@ -229,6 +282,46 @@ impl super::PainterTool {
     pub(crate) fn repor_mao(&mut self) {
         (self.paint.dynamics, self.paint.brush.pen_tilt) = de_fabrica();
     }
+
+    /// O Reset do cartão Pen: a mão de fábrica do meio de agora (no Wet Paint, os knobs da caneta).
+    fn repor_mao_do_meio(&mut self) {
+        if self.paint.wetpaint.armed {
+            for l in LINHAS_DA_MAO {
+                if let LinhaDaMao::Knob(kn) = l {
+                    let v = super::WetKnobs::DEFAULT.get(kn);
+                    self.paint.wetpaint.knobs.set(kn, v);
+                }
+            }
+        } else {
+            self.repor_mao();
+        }
+    }
+
+    /// As linhas do cartão Pen (`SetValue`) e o Reset dele (`Click`), do canal do painel.
+    pub(crate) fn route_mao_event(&mut self, event: &ph2d_editor_core::tool::PanelEvent) -> bool {
+        use ph2d_editor_core::tool::PanelEvent;
+        match event {
+            PanelEvent::SetValue(id, v) => {
+                let Some(i) = crate::ids::PAINTER_PEN_FIELDS.iter().position(|f| f == id) else {
+                    return false;
+                };
+                self.set_mao(LINHAS_DA_MAO[i], *v);
+                true
+            }
+            PanelEvent::SelectOption(id, v) if *id == crate::ids::PAINTER_PEN_ROTATION => {
+                let Ok(i) = v.parse::<u8>() else {
+                    return false;
+                };
+                self.set_mao(LinhaDaMao::Knob(Knob::DabRotation), f64::from(i));
+                true
+            }
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_PEN_RESET => {
+                self.repor_mao_do_meio();
+                true
+            }
+            _ => false,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -241,6 +334,17 @@ mod tests {
         let (d, t) = de_fabrica();
         assert_eq!(d, Dynamics::default());
         assert_eq!(t, PenTilt::default());
+    }
+
+    /// Os ids do cartão Pen são os das linhas, pela ordem e pela chave.
+    #[test]
+    fn cada_linha_tem_o_seu_id_pela_chave() {
+        for (l, id) in LINHAS_DA_MAO.into_iter().zip(crate::ids::PAINTER_PEN_FIELDS) {
+            let pela_chave =
+                ph2d_tool_registry::hash_node_id_runtime(&format!("painter_brush.pen.{}", l.chave()));
+            assert_eq!(id, pela_chave, "{}", l.chave());
+        }
+        assert_eq!(MAO_DE_FABRICA, LINHAS_DA_MAO.map(LinhaDaMao::omissao));
     }
 
     /// Ler e voltar a escrever cada linha não muda um bit dos campos (o painel e o preset leem por [`le`]).

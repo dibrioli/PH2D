@@ -21,6 +21,7 @@ pub(crate) fn register_collapsible_sections(store: &mut WidgetStore) {
     store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SECTION);
     store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_SECTION);
     store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SECTION);
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_PEN_SECTION);
     store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_SECTION);
     store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_WETPAINT_SECTION);
     store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_WATERCOLOR_SECTION);
@@ -68,6 +69,8 @@ pub(crate) fn register_collapsible_sections(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_SECTION,
         ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SECTION,
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_SECTION,
+        // O cartão Pen (L2, 20/10): chegou depois da decisão, nasce recolhido como elas.
+        ph2d_tool_painter::ids::PAINTER_PEN_SECTION,
     ] {
         store.set_collapsed_if_unchosen(collapsed, true);
     }

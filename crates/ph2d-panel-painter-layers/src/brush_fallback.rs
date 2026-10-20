@@ -280,6 +280,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     wetpaint: false,
     wet_knobs: ph2d_tool_painter::WetKnobs::DEFAULT,
     wet_opacidade: ph2d_tool_painter::OPACIDADE_DE_FABRICA,
+    mao: ph2d_tool_painter::MAO_DE_FABRICA,
     wet_tool: ph2d_tool_painter::WetTool::Paint,
     wet_tilt_on: true,
     wet_tilt_ring: 4,

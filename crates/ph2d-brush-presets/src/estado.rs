@@ -51,6 +51,10 @@ pub struct EstadoDoUtilizador {
     pub lembrados: BTreeMap<String, Lembrado>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ativo: Option<String>,
+    /// O preset activo de CADA meio (L1: os presets nos quatro meios), pelo `media` do preset — o pincel
+    /// de um meio abre com o dele, e trocar de meio não esquece o do outro.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub ativo_por_meio: BTreeMap<String, String>,
     /// [`VERSAO_DO_ESTADO`] ao ler e ao gravar; `0` só num ficheiro de antes dela.
     #[serde(default)]
     pub versao: u32,
@@ -66,6 +70,7 @@ impl Default for EstadoDoUtilizador {
             politica: Politica::default(),
             lembrados: BTreeMap::new(),
             ativo: None,
+            ativo_por_meio: BTreeMap::new(),
             versao: VERSAO_DO_ESTADO,
             extra: BTreeMap::new(),
         }
@@ -116,6 +121,13 @@ impl EstadoDoUtilizador {
     /// menu repetia os nomes; um `estado.json` antigo com eles guarda-os em `extra` e nada os lê.)
     pub fn usar(&mut self, relativo: &str) {
         self.ativo = Some(relativo.to_owned());
+    }
+
+    /// O artista escolheu este preset do meio `media`: passa a activo dele (e o activo de todos).
+    pub fn usar_no_meio(&mut self, media: &str, relativo: &str) {
+        self.usar(relativo);
+        self.ativo_por_meio
+            .insert(media.to_owned(), relativo.to_owned());
     }
 
     pub fn alternar_favorito(&mut self, relativo: &str) {

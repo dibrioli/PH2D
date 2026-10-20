@@ -83,11 +83,13 @@ pub(crate) fn paint_brush_body(
     // Basic) — and "Sync with other tools" under it. Off (default) = this tool keeps its own
     // settings; on = all paint tools share them (the panel where it's checked seeds the others).
     plano.bloco(move |ctx, theme, y| {
-        // No Wet Paint a fileira «Preset» é o navegador do Wet Painter (W1) + os volumes vivos.
+        // A fileira «Preset» é o navegador dos presets nos QUATRO meios (W1, L1); no Wet Paint com os
+        // volumes vivos, nos outros com o pincel de partida do meio por baixo.
+        let y = crate::paint_wetpaint_presets::paint_wetpaint_presets(
+            ctx, theme, x, content_w, y, brush,
+        );
         let y = if brush.wetpaint {
-            crate::paint_wetpaint_presets::paint_wetpaint_presets(
-                ctx, theme, x, content_w, y, brush,
-            )
+            y
         } else {
             paint_preset_row(ctx, theme, x, content_w, y, brush)
         };
@@ -318,6 +320,7 @@ fn paint_top_basics(
 /// [`paint_brush_body`] (already at their scrolled positions).
 pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
     crate::paint_wetpaint_presets::paint_wetpaint_presets_popovers(ctx, theme);
+    crate::paint_pen::paint_pen_popovers(ctx, theme);
     if let Some((chip_rect, cur)) = state::take_pending_brush_preset_dd() {
         paint_dropdown_popover(
             ctx,
@@ -507,7 +510,7 @@ fn paint_preset_row(
         x,
         content_w,
         y,
-        "panel.painter_layers.brush.preset",
+        "panel.painter_layers.brush.basic_brush",
         ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET,
         preset_idx,
         preset_name(preset_idx),

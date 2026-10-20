@@ -61,7 +61,10 @@ const ELIDEM_POR_LARGURA: &[(f32, usize)] = &[
     //    do Wet Paint deixou de ser caixa e virou linha numérica (pedido do dono: «ajustar a intensidade»).
     //    O nome é o que o dono conhece; corta só aqui, no mínimo do dock (o piso da caixa); de `245` para
     //    cima a escada não muda.
-    (220.0, 13),
+    // ⚠️ **13 → 15 em 2026-10-20, e NÃO por regressão: o cartão Pen ENTROU na população** (L2, a mão do pincel
+    //    nos quatro meios) — «Pressure opacity» e «Pressure ceiling» cortam só aqui, no mínimo do dock; de
+    //    `245` para cima a escada não muda.
+    (220.0, 15),
     (245.0, 1),
     // Amostra DATADA da largura do dono (lida em 2026-09-14).
     (273.3, 0),

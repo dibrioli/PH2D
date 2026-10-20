@@ -475,6 +475,8 @@ pub struct BrushSettings {
     pub wet_knobs: crate::WetKnobs,
     /// The Wet Paint's own **Opacity** volume (`0..1`): the deposited colour goes to the paper white by it.
     pub wet_opacidade: f32,
+    /// A MÃO do meio de agora, por linha do cartão Pen (`LINHAS_DA_MAO`; L2).
+    pub mao: [f64; crate::N_LINHAS_DA_MAO],
     /// The wet TOOL the brush wire drives while armed (doc 22).
     pub wet_tool: crate::WetTool,
     /// The tilt dial: on/off + ring (0..8) + spoke (0..11, 30 deg steps).

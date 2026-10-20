@@ -294,7 +294,7 @@ impl crate::tool::PainterTool {
     /// ⚠️ E o fallback do fallback continua sendo `offered.first()`: as listas são DADOS e podem mudar, e
     /// um padrão que deixasse de ser oferecido faria esta função assentar num método que o dropdown não
     /// mostra — exatamente o estado que ela existe para remover.
-    fn settle_stroke_method(&mut self) {
+    pub(in crate::tool::paint) fn settle_stroke_method(&mut self) {
         let bs = self.brush_settings();
         let media = self.paint_media();
         let offered = ph2d_painter_brush::stroke_method::offered_methods(

@@ -217,6 +217,14 @@ pub(crate) fn declara_aparencia(
             y
         }
     });
+    // ── O cartão **Pen** (L2): a mão — pressão e inclinação — nos quatro meios, as linhas que o meio lê. ──
+    plano.seccao(pids::PAINTER_PEN_SECTION, move |ctx, theme, y| {
+        if fora {
+            crate::paint_pen::paint_pen_section(ctx, theme, x, content_w, y, brush)
+        } else {
+            y
+        }
+    });
     // Symmetry — hidden in Clone: mirrored dabs would clone from mirrored source positions.
     plano.seccao(
         pids::PAINTER_BRUSH_SYMMETRY_SECTION,

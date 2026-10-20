@@ -259,15 +259,13 @@ pub fn dispatch(
         if painter.take_brush_shape_image_request() {
             load_brush_shape_image(painter, asset_db, toasts);
         }
-        // Os presets do Wet Painter (W1): a biblioteca abre na 1.ª vez que o Wet Paint está armado,
-        // o pedido do painel é atendido aqui (o disco é da ponte) e a vista é publicada.
+        // Os presets dos quatro meios (W1, L1): a biblioteca abre com o Painter, o pedido do painel é
+        // atendido aqui (o disco é da ponte) e a vista é publicada.
         #[cfg(feature = "panel-painter-layers")]
-        crate::painter_bridge_presets::drive(painter, painter.wetpaint_armed(), toasts);
-        // O preview VIVO do pincel: repinta-se numa thread a cada mudança e anima uma vez.
+        crate::painter_bridge_presets::drive(painter, toasts);
+        // O preview VIVO do pincel (A15: em todos os meios): repinta-se numa thread a cada mudança.
         #[cfg(feature = "panel-painter-layers")]
-        if painter.wetpaint_armed() {
-            crate::painter_bridge_preview::drive(painter);
-        }
+        crate::painter_bridge_preview::drive(painter);
         // Selection-drift invalidation (mirror of drive_preview_cache).
         if let (Some(existing), Some(sel)) = (painter_preview.as_ref(), hero.gizmo.selection)
             && existing.entity_bits != sel

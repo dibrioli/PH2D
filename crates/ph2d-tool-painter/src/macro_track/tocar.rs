@@ -482,13 +482,14 @@ impl TocadorDoPainter {
                     },
                     texturas: texturas.into_iter().collect(),
                 };
-                t.wet_preset_aplicar(&p);
+                // O meio do ficheiro (L1): um preset recusado não mudou nada ao gravar, e não muda ao tocar.
+                let _ = t.preset_aplicar(&p);
             }
             Passo::PresetVolumes(j) => {
                 let v = serde_json::from_str(&j).map_err(|e| ErroDaMacro::Preset(e.to_string()))?;
-                t.wet_preset_aplicar_volumes(&v);
+                t.preset_aplicar_volumes(&v);
             }
-            Passo::PresetModo(m) => t.wet_preset_aplicar_modo(&m),
+            Passo::PresetModo(m) => t.preset_aplicar_modo(&m),
             Passo::TiraPedidoPreset => {
                 t.take_wet_preset_request();
             }

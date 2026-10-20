@@ -13,13 +13,23 @@ pub const DIAMETRO_DA_MINIATURA: f32 = 40.0;
 /// A tinta da miniatura (o azul da bancada, `sonda_gestos::AZUL`).
 const AZUL: [u8; 3] = [23, 101, 179];
 
-/// Pinta a miniatura de `p`.
+/// Pinta a miniatura de `p` no meio do ficheiro (A15: os quatro meios, cada um pela sua rota). Um meio
+/// desconhecido não pinta nada: a miniatura fica a tela branca (o preset é recusado ao aplicar).
 #[must_use]
 pub fn miniatura_do_preset(p: &Preset) -> Miniatura {
     let mut t = PainterTool::default();
-    t.set_paint_media(PaintMedia::WetPaint);
+    if super::meio_do_preset(&p.parametros.media) == Some(PaintMedia::WetPaint) {
+        t.set_paint_media(PaintMedia::WetPaint);
+    }
     // Uma textura que não se leu já foi dita a quem aplicou o preset; a miniatura pinta o que há.
-    let _ = t.wet_preset_aplicar(p);
+    if t.preset_aplicar(p).is_err() {
+        let lado = ph2d_brush_presets::LADO_MINIATURA;
+        return Miniatura {
+            largura: lado,
+            altura: lado,
+            rgba: vec![255; (lado * lado * 4) as usize],
+        };
+    }
     let d = p
         .parametros
         .volumes

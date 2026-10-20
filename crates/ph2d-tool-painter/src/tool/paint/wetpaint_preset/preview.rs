@@ -13,11 +13,11 @@
 use super::super::brush_settings::BrushTextureImage;
 use super::super::shape_ramp::EstadoDaShapeColor;
 use super::super::wetpaint::largura::LeiDaLargura;
-use crate::{PaintMedia, PainterTool, WetKnobs};
+use crate::{LightRig, PaintMedia, PainterTool, WetKnobs};
 use ph2d_brush_presets::LADO_MINIATURA;
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
-use ph2d_painter_brush::BrushSpec;
+use ph2d_painter_brush::{BrushSpec, Dynamics};
 
 /// O maior diâmetro que cabe no S sem tocar as margens (o S oscila ±[`AMPLITUDE`] em torno do meio).
 pub(super) const DIAMETRO_MAX: f32 = 96.0;
@@ -52,6 +52,12 @@ const TICKS_POR_QUADRO: u32 = 10;
 /// fluido: inclinação, grade, mistura, o papel visível). Opaco e `Send`: a ponte só o leva à thread.
 #[derive(Clone)]
 pub struct CenaDoPreview {
+    /// O meio que pinta (A15: a prévia em TODOS os meios, cada um pela sua rota).
+    meio: PaintMedia,
+    /// A mão dos meios antigos (L2): a miniatura sobe e desce a pressão.
+    dynamics: Dynamics,
+    /// A luz do relevo da obra (o Impasto mostra-se por ela).
+    luz: (LightRig, bool),
     brush: BrushSpec,
     knobs: WetKnobs,
     shape_image: Option<BrushTextureImage>,
@@ -83,6 +89,9 @@ pub struct CenaDoPreview {
 /// imagens pela VERSÃO (nunca pelo endereço: um `Arc` novo pode nascer no endereço de um morto).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ChaveDoPreview {
+    meio: PaintMedia,
+    dynamics: Dynamics,
+    luz: (LightRig, bool),
     brush: BrushSpec,
     knobs: WetKnobs,
     versoes: (u64, u64, u64),
@@ -105,6 +114,9 @@ impl PainterTool {
     pub fn wet_preview_cena(&self) -> CenaDoPreview {
         let w = &self.paint.wetpaint;
         CenaDoPreview {
+            meio: self.paint_media(),
+            dynamics: self.paint.dynamics,
+            luz: (self.paint.impasto_rig, self.paint.impasto_show),
             brush: self.paint.brush,
             knobs: w.knobs,
             shape_image: self.paint.shape_image.clone(),
@@ -132,6 +144,9 @@ impl PainterTool {
     pub fn wet_preview_chave(&self) -> ChaveDoPreview {
         let w = &self.paint.wetpaint;
         ChaveDoPreview {
+            meio: self.paint_media(),
+            dynamics: self.paint.dynamics,
+            luz: (self.paint.impasto_rig, self.paint.impasto_show),
             brush: self.paint.brush,
             knobs: w.knobs,
             versoes: (
@@ -169,6 +184,11 @@ impl PainterTool {
             brush.radius_px = (brush.radius_px * 2.0).clamp(DIAMETRO_MIN, DIAMETRO_MAX) * 0.5;
         }
         self.paint.brush = brush;
+        self.paint.dynamics = c.dynamics;
+        // A luz da obra só nos meios antigos: a prévia do Wet Paint é a de sempre, ao bit.
+        if c.meio != PaintMedia::WetPaint {
+            (self.paint.impasto_rig, self.paint.impasto_show) = c.luz;
+        }
         self.paint.shape_image = c.shape_image.clone();
         self.paint.texture_image = c.texture_image.clone();
         self.paint.paper_image = c.paper_image.clone();
@@ -228,7 +248,7 @@ pub(super) fn pintar_miniatura(
     // Com papel do documento a tela é transparente e o papel aparece por baixo (a mesma lei da obra).
     let fundo = if cena.papel.is_some() { 0u8 } else { 255 };
     t.set_source(vec![fundo; (lado * lado * 4) as usize], lado, lado);
-    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_paint_media(cena.meio);
     t.set_wet_relogio_fixo(true);
     t.instalar_cena(cena, false);
 
@@ -289,7 +309,7 @@ pub fn pintar_preview(
     let mut t = PainterTool::default();
     let fundo = if cena.papel.is_some() { 0u8 } else { 255 };
     t.set_source(vec![fundo; (lw * lh * 4) as usize], lw, lh);
-    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_paint_media(cena.meio);
     t.set_wet_relogio_fixo(true);
     t.instalar_cena(cena, true);
 

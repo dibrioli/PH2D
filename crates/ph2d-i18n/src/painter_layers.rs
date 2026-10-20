@@ -48,6 +48,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.same_as_paper_off" => "Acts when Same as Paper is off",
         "panel.painter_layers.inerte.charge_below_full" => "Acts when Charge is below 100%",
         "panel.painter_layers.inerte.grain_chosen" => "Acts when a Grain is chosen",
+        "panel.painter_layers.inerte.pressure_opacity_on" => "Acts when Pressure opacity is above 0",
+        "panel.painter_layers.inerte.tilt_law_on" => {
+            "Acts when the pen tilt changes the dab: Tilt width, length, smooth or opacity, or Rotation: Pen tilt"
+        }
         "panel.painter_layers.inerte.follow_nothing_to_turn" => {
             "Acts with a Shape texture, a flattened tip or a Grain that follows the dab"
         }
@@ -213,7 +217,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.brush.strength" => "Strength",
         "panel.painter_layers.brush.accumulate" => "Accumulate",
         "panel.painter_layers.brush.color" => "Color",
-        "panel.painter_layers.brush.preset" => "Preset",
+        // O pincel de PARTIDA de cada meio (Digital Basic / Watercolor Basic): desde a L1 o «Preset» é o
+        // navegador dos ficheiros, nos quatro meios, e esta fileira fica por baixo dele com o seu nome.
+        "panel.painter_layers.brush.basic_brush" => "Basic brush",
         "panel.painter_layers.brush.watercolor_basic" => "Watercolor Basic",
         "panel.painter_layers.brush.digital_basic" => "Digital Basic",
         "panel.painter_layers.brush.paint_mode" => "Paint Mode",
@@ -510,6 +516,27 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.symmetry.custom" => "Custom",
         "panel.painter_layers.symmetry.axis" => "Axis",
         "panel.painter_layers.symmetry.segments" => "Segments",
+        // O cartão Pen (L2): a mão do pincel nos quatro meios — as palavras do painel Tuning do Wet Paint.
+        "panel.painter_layers.pen.title" => "Pen",
+        "panel.painter_layers.pen.pressure_size" => "Pressure size",
+        "panel.painter_layers.pen.pressure_size_curve" => "Size curve",
+        "panel.painter_layers.pen.pressure_opacity" => "Pressure opacity",
+        "panel.painter_layers.pen.pressure_opacity_curve" => "Opacity curve",
+        "panel.painter_layers.pen.pressure_floor" => "Pressure floor",
+        "panel.painter_layers.pen.pressure_ceiling" => "Pressure ceiling",
+        "panel.painter_layers.pen.pressure_smoothing" => "Smoothing",
+        "panel.painter_layers.pen.pulled_string" => "Pulled string",
+        "panel.painter_layers.pen.dab_rotation" => "Rotation",
+        "panel.painter_layers.pen.rotation_none" => "None",
+        "panel.painter_layers.pen.rotation_follow" => "Follow stroke",
+        "panel.painter_layers.pen.rotation_tilt" => "Pen tilt",
+        "panel.painter_layers.pen.tilt_start" => "Tilt start",
+        "panel.painter_layers.pen.tilt_full" => "Tilt full",
+        "panel.painter_layers.pen.tilt_width" => "Tilt width",
+        "panel.painter_layers.pen.tilt_length" => "Tilt length",
+        "panel.painter_layers.pen.tilt_smooth" => "Tilt smooth",
+        "panel.painter_layers.pen.tilt_lag" => "Tilt lag",
+        "panel.painter_layers.pen.tilt_opacity" => "Tilt opacity",
         "panel.painter_layers.taper.taper" => "Taper",
         "panel.painter_layers.taper.tip" => "Tip",
         "panel.painter_layers.taper.opacity" => "Opacity",

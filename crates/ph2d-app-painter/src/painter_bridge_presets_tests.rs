@@ -3,7 +3,7 @@
 
 use super::*;
 use ph2d_editor_core::toast::ToastSeverity;
-use ph2d_tool_painter::PaintMedia;
+use ph2d_tool_painter::{MEIO_DO_PRESET, PaintMedia};
 
 const ROUND: &str = "WetPainter/Watercolor/Fluid/Wet Round.ph2d-brush.png";
 const WASH: &str = "WetPainter/Watercolor/Fluid/Wet Wash.ph2d-brush.png";
@@ -177,4 +177,93 @@ fn cada_pasta_de_fabrica_tem_rotulo() {
         rotulo_da_pasta(Idioma::Teste, "Os meus pincéis"),
         "Os meus pincéis"
     );
+}
+
+// ── L1: os presets nos quatro meios ─────────────────────────────────────────────────────────────────
+
+/// Os três presets de EXEMPLO (um por meio antigo, `docs/Painter/Pinceis/fixtures/presets_exemplo`) copiados
+/// para a pasta do artista: a biblioteca passa a ter os quatro meios.
+fn com_exemplos(nome: &str, meio: PaintMedia) -> (Presets, PainterTool, ToastQueue, PathBuf) {
+    let uti = pasta(nome);
+    let ex = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/Painter/Pinceis/fixtures/presets_exemplo");
+    for e in &ph2d_brush_presets::Biblioteca::carregar(&ex, None).entradas {
+        let destino = uti.join(&e.relativo);
+        std::fs::create_dir_all(destino.parent().unwrap()).unwrap();
+        std::fs::copy(&e.caminho, destino).unwrap();
+    }
+    let mut t = PainterTool::default();
+    t.set_paint_media(meio);
+    let mut toasts = ToastQueue::default();
+    let p = Presets::abrir_em(pasta_de_fabrica(), Some(uti.clone()), &mut t, &mut toasts);
+    (p, t, toasts, uti)
+}
+
+const LAPIS: &str = "Digital/Pencil/Graphite/Sketch Pencil.ph2d-brush.png";
+const EMPASTE: &str = "Impasto/Oil/Bristle/Thick Impasto.ph2d-brush.png";
+
+/// ⭐ O navegador abre SEM o Wet Paint, lista os quatro meios (o de agora primeiro) e escolher um preset de outro
+/// meio TROCA o meio; o activo é o de cada meio.
+#[test]
+fn o_navegador_abre_em_qualquer_meio_e_escolher_troca_o_meio() {
+    let (mut p, mut t, mut toasts, _) = com_exemplos("quatro", PaintMedia::Digital);
+    sem_erros(&toasts);
+    let fabrica = ph2d_brush_presets::Biblioteca::carregar(&pasta_de_fabrica(), None);
+    assert_eq!(p.vista.entradas.len(), fabrica.entradas.len() + 3);
+    assert_eq!(p.vista.entradas[0].relativo, LAPIS, "o meio de agora primeiro");
+    assert_eq!(p.vista.ativo, None);
+    p.atender(&mut t, PedidoPreset::Escolher(EMPASTE.into()), &mut toasts);
+    sem_erros(&toasts);
+    assert_eq!(t.paint_media(), PaintMedia::Impasto);
+    assert_eq!(p.vista.ativo.as_deref(), Some(EMPASTE));
+    p.atender(&mut t, PedidoPreset::Escolher(ROUND.into()), &mut toasts);
+    assert_eq!(t.paint_media(), PaintMedia::WetPaint);
+    assert_eq!(p.vista.ativo.as_deref(), Some(ROUND));
+    p.atender(&mut t, PedidoPreset::Escolher(LAPIS.into()), &mut toasts);
+    assert_eq!(t.paint_media(), PaintMedia::Digital);
+    assert_eq!(p.vista.ativo.as_deref(), Some(LAPIS));
+    assert_eq!(
+        p.estado.ativo_por_meio.get("Impasto").map(String::as_str),
+        Some(EMPASTE),
+        "o activo de cada meio fica lembrado"
+    );
+    sem_erros(&toasts);
+}
+
+/// ⭐ Um preset de um meio que este PH2D não conhece é RECUSADO com aviso: o meio e o activo não mudam.
+#[test]
+fn um_meio_desconhecido_e_recusado_com_aviso() {
+    let (mut p, mut t, mut toasts, uti) = com_exemplos("estranho", PaintMedia::Digital);
+    let mut x = p.bib.procurar(LAPIS).unwrap().preset.clone();
+    x.parametros.media = "Fluid".into();
+    let rel = "Fluid/Any/Any/Strange.ph2d-brush.png";
+    gravar(&uti, rel, &x).unwrap();
+    p.recarregar(&mut toasts);
+    p.atender(&mut t, PedidoPreset::Escolher(LAPIS.into()), &mut toasts);
+    p.atender(&mut t, PedidoPreset::Escolher(rel.into()), &mut toasts);
+    assert_eq!(t.paint_media(), PaintMedia::Digital);
+    assert_eq!(p.vista.ativo.as_deref(), Some(LAPIS));
+    assert!(
+        toasts
+            .iter()
+            .any(|m| m.severity == ToastSeverity::ErrorState && m.message.contains("Fluid")),
+        "o artista é avisado"
+    );
+}
+
+/// «Save as New» no Digital grava um preset DIGITAL na pasta do Digital, com a miniatura do meio.
+#[test]
+fn guardar_como_novo_no_digital_vai_para_a_pasta_do_digital() {
+    let (mut p, mut t, mut toasts, uti) = com_exemplos("novo_digital", PaintMedia::Digital);
+    p.atender(&mut t, PedidoPreset::GuardarComoNovo, &mut toasts);
+    sem_erros(&toasts);
+    let rel = format!("Digital/User/User/{}.ph2d-brush.png", tr("app.painter.presets.new_name"));
+    assert!(uti.join(&rel).is_file(), "{rel}");
+    let e = p.bib.procurar(&rel).unwrap();
+    assert_eq!(e.preset.parametros.media, "Digital");
+    assert!(
+        e.preset.miniatura.rgba.chunks(4).any(|px| px[0] < 200),
+        "a miniatura pintou o traço"
+    );
+    assert_eq!(p.vista.ativo.as_deref(), Some(rel.as_str()));
 }

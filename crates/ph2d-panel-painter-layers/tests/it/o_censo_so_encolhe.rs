@@ -114,6 +114,19 @@ fn inertes_com_motivo() -> Vec<Inerte> {
          pilha — já é 1,28× a pilha do Digital, e a ordem entre camadas não existe num fluido que \
          mistura o pigmento",
     ));
+    // O cartão Pen (L2). A rotação do carimbo: o mesmo porquê do Jitter Rotate.
+    for m in [Digital, Watercolor, Impasto] {
+        v.push((m, PAINTER_PEN_ROTATION, rodar));
+    }
+    for m in [Digital, Watercolor, Impasto, WetPaint] {
+        v.push((
+            m,
+            PAINTER_PEN_FIELDS[13],
+            "a caneta deitada alisa o GRÃO (`grain_depth × (1 − smooth)`, `spec_frame::at_dab`) e a fábrica não \
+             tem Grain. NÃO esmaece: ligá-la põe o dab na rota deitada (por dab), e com uma Shape a tinta muda \
+             por arredondamento — medido pelo gate do esmaecido (20/10, L2)",
+        ));
+    }
     v.push((
         WetPaint,
         PAINTER_WETPAINT_TUNING,

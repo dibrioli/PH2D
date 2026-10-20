@@ -22,6 +22,7 @@ pub const OPACIDADE_DE_FABRICA: f32 = 1.0;
 pub(in crate::tool::paint) mod json;
 #[cfg(test)]
 mod medida_preview;
+mod meios;
 mod miniatura;
 mod preview;
 #[cfg(test)]
@@ -29,6 +30,9 @@ mod shape_color_tests;
 #[cfg(test)]
 mod tests;
 
+pub use meios::{
+    MeioDesconhecido, campos_do_meio, meio_do_preset, motor_do_meio, nome_do_meio,
+};
 pub use miniatura::{DIAMETRO_DA_MINIATURA, miniatura_do_preset};
 pub use preview::{
     ALTURA_DO_PREVIEW, CenaDoPreview, ChaveDoPreview, LARGURA_DO_PREVIEW, pintar_preview,
@@ -506,7 +510,11 @@ impl PainterTool {
         if let Some(lei) = &w.largura {
             p.width_table = lei.tabela();
         }
+        (p, self.texturas_do_pincel())
+    }
 
+    /// As máscaras da forma e do grão que o pincel tem, como o ficheiro as leva (`phTx`).
+    fn texturas_do_pincel(&self) -> BTreeMap<String, Vec<u8>> {
         let mut texturas = BTreeMap::new();
         if self.paint.brush.shape.kind == TextureKind::Image
             && let Some((lum, w, h)) = self.brush_shape_image()
@@ -518,7 +526,7 @@ impl PainterTool {
         {
             texturas.insert(TEXTURA_GRAO.to_owned(), escrever_textura(lum, w, h));
         }
-        (p, texturas)
+        texturas
     }
 
     /// As máscaras da forma e do grão: instaladas DIRECTAMENTE (as portas da UI re-ajustam o aspecto e

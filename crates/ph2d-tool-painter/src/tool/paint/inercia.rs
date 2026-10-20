@@ -36,10 +36,12 @@ pub enum Dependente {
     ContinuoSemPasso,
     CorDaTexturaSemLeitor,
     TexturaSemForma,
+    CurvaSemOpacidade,
+    CanetaDePe,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 22] = [
+    pub const TODOS: [Dependente; 24] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -62,6 +64,8 @@ impl Dependente {
         Dependente::ContinuoSemPasso,
         Dependente::CorDaTexturaSemLeitor,
         Dependente::TexturaSemForma,
+        Dependente::CurvaSemOpacidade,
+        Dependente::CanetaDePe,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -98,6 +102,13 @@ impl Dependente {
                 ids::PAINTER_SHAPE_TEXTURE_COLOR,
                 ids::PAINTER_SHAPE_TEXTURE_OPACITY,
             ],
+            // O cartão Pen (L2), pela ordem de `LINHAS_DA_MAO`.
+            Dependente::CurvaSemOpacidade => &[ids::PAINTER_PEN_FIELDS[3]],
+            Dependente::CanetaDePe => &[
+                ids::PAINTER_PEN_FIELDS[9],
+                ids::PAINTER_PEN_FIELDS[10],
+                ids::PAINTER_PEN_FIELDS[14],
+            ],
         }
     }
 
@@ -130,6 +141,8 @@ impl Dependente {
             Dependente::TexturaSemForma => {
                 "panel.painter_layers.inerte.texture_color_needs_a_shape"
             }
+            Dependente::CurvaSemOpacidade => "panel.painter_layers.inerte.pressure_opacity_on",
+            Dependente::CanetaDePe => "panel.painter_layers.inerte.tilt_law_on",
         }
     }
 
@@ -374,6 +387,17 @@ impl PainterTool {
             // deposita a cor do pincel pela silhueta (`wet_owns_the_dabs`) e a aguada reconstrói-se da cor
             // do pincel (`watercolor_render_active`) — as duas saem antes dessas rotas (26 C1).
             (Dependente::CorDaTexturaSemLeitor, agua || aquarela),
+            // O cartão Pen (L2), pela lei que o traço lê (`dinamica_do_traco`, `inclinacao_do_pincel`): a
+            // curva da opacidade só com a pressão na opacidade; os ângulos e o atraso só com a caneta a mudar
+            // o carimbo. (O grão alisado e a rotação NÃO esmaecem: ver `o_censo_so_encolhe`.)
+            (
+                Dependente::CurvaSemOpacidade,
+                !self.dinamica_do_traco().strength_pressure,
+            ),
+            (Dependente::CanetaDePe, {
+                let t = self.inclinacao_do_pincel();
+                !t.active() && t.opacity <= 0.0
+            }),
         ];
         Inercias {
             dependentes: leis

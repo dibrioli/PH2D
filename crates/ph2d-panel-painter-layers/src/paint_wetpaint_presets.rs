@@ -1,5 +1,6 @@
-//! **O bloco de presets do Wet Painter** (W1, `docs/Painter/NewFeaturesWetPaint/02 §5`): no Wet Paint
-//! ele toma o lugar da fileira «Preset» dos meios. De cima para baixo: o chip Preset (o navegador:
+//! **O bloco de presets** (W1, `docs/Painter/NewFeaturesWetPaint/02 §5`; L1 — os QUATRO meios,
+//! `docs/Painter/Pinceis/03_MOTORES.md` §2): a fileira «Preset» de todo meio. Os volumes vivos são só do Wet
+//! Paint (nos outros o Size e a Strength têm as suas fileiras no corpo). De cima para baixo: o chip Preset (o navegador:
 //! Favoritos · os grupos, que são as pastas), Favorite, o preview VIVO, Save as New ·
 //! Save as Default · Reset, os volumes VIVOS (Size px = o diâmetro do anel · Water · Opacity, a do Wet
 //! Paint, que dilui a cor para o papel) com os valores rápidos, e a política dos volumes. A força
@@ -49,7 +50,39 @@ pub(crate) fn paint_wetpaint_presets(
     } else {
         y = paint_preview(ctx, x, content_w, y);
     }
-    y = volume_row(
+    if brush.wetpaint {
+        y = paint_volumes(ctx, theme, x, content_w, y, brush);
+    }
+    if let Some(v) = vista.as_deref() {
+        let (ny, open) = paint_dropdown_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "panel.painter_layers.wetpaint.preset_policy",
+            ids::PAINTER_WETPAINT_PRESET_POLICY,
+            v.politica,
+            nome_da_politica(v.politica),
+        );
+        if let Some(r) = open {
+            st::PENDING_POLICY_DD.with(|c| c.set(Some((r, v.politica))));
+        }
+        y = ny;
+    }
+    y
+}
+
+/// Os volumes VIVOS do Wet Paint: Size px (o diâmetro do anel) · Water · Opacity.
+fn paint_volumes(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let mut y = volume_row(
         ctx,
         theme,
         x,
@@ -80,7 +113,7 @@ pub(crate) fn paint_wetpaint_presets(
         number_field::FINE_STEP,
         2,
     );
-    y = volume_row(
+    volume_row(
         ctx,
         theme,
         x,
@@ -93,25 +126,7 @@ pub(crate) fn paint_wetpaint_presets(
         (0.0, 1.0),
         number_field::FINE_STEP,
         2,
-    );
-    if let Some(v) = vista.as_deref() {
-        let (ny, open) = paint_dropdown_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "panel.painter_layers.wetpaint.preset_policy",
-            ids::PAINTER_WETPAINT_PRESET_POLICY,
-            v.politica,
-            nome_da_politica(v.politica),
-        );
-        if let Some(r) = open {
-            st::PENDING_POLICY_DD.with(|c| c.set(Some((r, v.politica))));
-        }
-        y = ny;
-    }
-    y
+    )
 }
 
 fn paint_navegador(

@@ -30,13 +30,14 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tool_painter::ids as pids;
 
 /// ⭐ **As secções do corpo que se ARRASTAM**, pela ordem natural em que o corpo as pinta.
-pub(crate) const SECCOES_MOVEIS: [NodeId; 8] = [
+pub(crate) const SECCOES_MOVEIS: [NodeId; 9] = [
     pids::PAINTER_BRUSH_RANDOMIZE_SECTION,
     pids::PAINTER_SHAPE_SECTION,
     pids::PAINTER_SHAPE_RAMP_SECTION,
     pids::PAINTER_WATERCOLOR_PAPER_SECTION,
     pids::PAINTER_BRUSH_TEXTURE_SECTION,
     pids::PAINTER_BRUSH_STROKE_SECTION,
+    pids::PAINTER_PEN_SECTION,
     pids::PAINTER_BRUSH_SYMMETRY_SECTION,
     pids::PAINTER_BRUSH_TILING_SECTION,
 ];

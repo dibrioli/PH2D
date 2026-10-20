@@ -153,6 +153,7 @@ impl Engine {
             .com_pigmento(self.sliders.pigmento);
         let (mut dab, _water_unit) = self.pressure_dab(&p, x, y, b, r);
         dab.opacity = opacidade;
+        dab.water_amount *= self.agua_do_dab;
         if sil.is_some() {
             [dab.reach, dab.window_reach] = self.silhouette_reach;
         }

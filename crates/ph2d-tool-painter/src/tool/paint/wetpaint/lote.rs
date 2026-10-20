@@ -100,3 +100,25 @@ pub(super) fn sub_passo_do_lote(
         ph2d_painter_brush::capsula::sub_passo_sem_batimento(n, cel)
     }
 }
+
+/// ⭐ **O traço FINO pesa por área o que o largo pesa** (J2, `docs/Painter/Pinceis/03_MOTORES.md` §7 b): cada célula
+/// recebe `2r ÷ passo` dabs; o passo é uma fracção do diâmetro, mas nunca menos de UMA célula (o piso do caminhador
+/// e da cápsula). Abaixo dele a contagem por célula cai com o diâmetro, e com ela o pigmento e a água por área: o
+/// recto de 5 px do 8B cobria 0,38 contra 0,81 a 40 px (o Rebelle 0,80 nos dois). Cada dab pesa então a célula ÷ o
+/// passo natural a [`FRACAO_DO_FINO`] do diâmetro — a contagem por área de um traço de ~29 px —; `1` daí para cima, ao
+/// bit.
+pub(super) fn peso_do_passo_fino(brush: &BrushSpec, ratio: u8) -> f32 {
+    let natural = FRACAO_DO_FINO * 2.0 * brush.clamped_radius();
+    let cel = f32::from(ratio).max(1.0);
+    if natural > 0.0 && natural < cel {
+        cel / natural
+    } else {
+        1.0
+    }
+}
+
+/// A fracção do diâmetro de [`peso_do_passo_fino`] (o diâmetro de referência `1 ÷ (2 · 0,035)` ≈ 29 px). MEDIDA
+/// (03_MOTORES §7 b): 0,025 (a cápsula, 40 px) repunha tudo mas tirava do vale as mídias afinadas a 17–18 px (Soft
+/// Pastel, Marker Liner, Dabber) e a tabela da largura colapsava a 1–2 px; 0,05 (20 px) deixava 8 pincéis abaixo
+/// da barra (o 8B 0,82 do recto de 40); 0,035 passa os 26 com origem sem tirar nenhuma cena de fábrica do lugar.
+pub(super) const FRACAO_DO_FINO: f32 = 0.035;

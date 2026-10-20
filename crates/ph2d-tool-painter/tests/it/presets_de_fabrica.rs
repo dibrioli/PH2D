@@ -244,7 +244,11 @@ fn gera_os_presets_de_fabrica() {
             },
             texturas: Default::default(),
         };
-        preset.parametros.width_table = tabela_de_largura(&preset);
+        // `PH2D_REGERA_SO_MINIATURA=1`: a tabela do ficheiro fica (o Dabber, de Jitter 0,5, estoura a fatia de 24 G na
+        // lei da largura a raio 1 100 — as lanes do C39; J2 20/10).
+        if std::env::var("PH2D_REGERA_SO_MINIATURA").as_deref() != Ok("1") {
+            preset.parametros.width_table = tabela_de_largura(&preset);
+        }
         if r.nome == "Wet Round" {
             // A tabela que o motor embute (`wetpaint/largura.rs::LARGURA_DO_WET_ROUND`), já limpa.
             let mut t = PainterTool::default();

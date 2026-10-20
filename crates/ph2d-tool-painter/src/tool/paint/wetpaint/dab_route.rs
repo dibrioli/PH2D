@@ -141,9 +141,8 @@ impl PainterTool {
         let cerdas = brush.shape.kind == ph2d_painter_brush::TextureKind::Bristles;
         let fios = self.fios_do_pincel();
         let relevo = self.relevo_do_pincel();
-        // ⭐ O pigmento por COMPRIMENTO (prompt 51, doc 51 §2): cada dab pousa o do caminho que representa — o
-        // caminho desde o dab anterior da lane ÷ o passo do Spacing a que o pigmento foi afinado. Sem cápsula,
-        // nunca mais que um dab inteiro: o Spacing largo de propósito pontilha.
+        // ⭐ O pigmento por COMPRIMENTO (prompt 51, doc 51 §2): cada dab pousa o do caminho desde o dab anterior da
+        // lane ÷ o passo a que o pigmento foi afinado. Sem cápsula, nunca mais que um dab (o Spacing largo pontilha).
         let passo_do_pigmento =
             sess.engine
                 .tuning
@@ -191,9 +190,10 @@ impl PainterTool {
         }
         let strength = brush.strength.clamp(1e-3, 1.0);
         let t_dep = std::time::Instant::now();
-        // `k` conta os sub-dabs de trás para a frente (o `0` é o próprio dab); `passo` é o sub-passo (o arco que cada
-        // sub-dab representa), com cápsula — [`super::lote::sub_passo_do_lote`].
+        // `k` conta os sub-dabs de trás para a frente (`0` = o dab); `passo` = o sub-passo, com cápsula (`lote`).
         let sub = super::lote::sub_passo_do_lote(&sess.engine.tuning, brush, ratio);
+        let fino = super::lote::peso_do_passo_fino(brush, ratio);
+        sess.engine.agua_do_dab = f64::from(fino).recip();
         let sub_dabs: Vec<(usize, u64, Option<f32>, Dab)> = dabs
             .iter()
             .enumerate()
@@ -623,7 +623,7 @@ impl PainterTool {
                         cell_y,
                         b,
                         cell_r,
-                        opacidade * f64::from(peso),
+                        opacidade * f64::from(peso * fino),
                         Some(&sil),
                         grain_arg,
                         padrao_arg,

@@ -125,6 +125,9 @@ pub struct Engine {
     pub lane_trails: Vec<Trail>,
     /// `[dab, janela]` do hospedeiro, por dab com forma ([`crate::trail::Dab::reach`]); `[1, 1]` = o raio.
     pub silhouette_reach: [f64; 2],
+    /// A fracção da ÁGUA que o dab pousa com o seu pigmento: o hospedeiro repõe o pigmento por área do traço fino
+    /// (`docs/Painter/Pinceis/03_MOTORES.md` §7 b) e a água fica a do dab. `1` = a de sempre, ao bit.
+    pub agua_do_dab: f64,
     /// Test hook: (pressure, dab) per dispatched dab.
     ///
     /// ⚠️ **`+ Send` porque o `Engine` VIAJA** — a sim roda numa thread própria
@@ -166,6 +169,7 @@ impl Engine {
             trail: Trail::default(),
             lane_trails: Vec::new(),
             silhouette_reach: [1.0, 1.0],
+            agua_do_dab: 1.0,
             stroke: Stroke::default(),
             stroke_events: Vec::new(),
             tool: Tool::Paint,

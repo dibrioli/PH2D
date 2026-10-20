@@ -13,6 +13,7 @@ mod a_lei_da_tinta;
 mod a_luz_do_impasto_e_a_de_antes_da_poda;
 mod as_formas;
 mod exame_bancada;
+mod leis_sistemicas;
 mod macro_agua;
 mod macro_colordrop;
 mod macro_comum;

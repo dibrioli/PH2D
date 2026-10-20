@@ -8,10 +8,13 @@
 
 /// A tabela do **Wet Round** de fábrica, limpa — a lei do pincel que nasce sem preset (o `WetKnobs::DEFAULT`
 /// é o Wet Round). É a MESMA do ficheiro (`a_lei_de_omissao_e_a_do_wet_round`); o gerador imprime-a.
-pub(crate) const LARGURA_DO_WET_ROUND: [[f64; 2]; 51] = [
+pub(crate) const LARGURA_DO_WET_ROUND: [[f64; 2]; 54] = [
+    [1.5, 1.0],
+    [1.8, 2.0],
+    [2.8, 3.0],
     [3.5, 4.0],
-    [4.3, 5.0],
-    [5.9, 6.0],
+    [3.8, 5.0],
+    [5.3, 6.0],
     [6.5, 7.0],
     [7.2, 9.0],
     [8.9, 10.0],

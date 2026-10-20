@@ -174,6 +174,42 @@ pub fn pinceis(spec: &str) -> Vec<Pincel> {
     v
 }
 
+/// As VARIANTES de cada preset (`PH2D_EXAME_VARIANTES` = um JSON `{"<nome>"|"*": [{"<knob>": v, "brush.<campo>": v},
+/// …]}`): cada mapa sobrepõe-se ao `engine` (ou, com `brush.`, ao `brush`) do preset e pinta-se como
+/// `<nome>~v<k>` — o ajuste de uma lei (03_MOTORES §7) mede N valores num só processo. Sem a variável, os presets.
+fn variantes(pinceis: Vec<Pincel>) -> Vec<Pincel> {
+    let Ok(f) = std::env::var("PH2D_EXAME_VARIANTES") else {
+        return pinceis;
+    };
+    let v: Value = serde_json::from_str(&std::fs::read_to_string(&f).unwrap()).unwrap();
+    let mut out = Vec::new();
+    for p in pinceis {
+        let Fonte::Preset { preset, relativo } = &p.fonte else {
+            out.push(p);
+            continue;
+        };
+        let lista = v.get(&p.nome).or_else(|| v.get("*"));
+        for (k, m) in lista.and_then(Value::as_array).into_iter().flatten().enumerate() {
+            let mut pr = preset.clone();
+            for (chave, valor) in m.as_object().unwrap() {
+                if let Some(campo) = chave.strip_prefix("brush.") {
+                    pr.parametros.brush.insert(campo.to_owned(), valor.clone());
+                } else {
+                    pr.parametros.engine.insert(chave.clone(), valor.as_f64().unwrap());
+                }
+            }
+            out.push(Pincel {
+                nome: format!("{}~v{k}", p.nome),
+                fonte: Fonte::Preset {
+                    preset: pr,
+                    relativo: relativo.clone(),
+                },
+            });
+        }
+    }
+    out
+}
+
 /// A bateria (`PH2D_EXAME_BATERIA`, por omissão a do EXAME).
 pub fn bateria() -> Value {
     let f = std::env::var("PH2D_EXAME_BATERIA").map_or_else(
@@ -354,7 +390,7 @@ fn cpu_s() -> f64 {
 fn exame_pinta() {
     let spec = std::env::var("PH2D_EXAME_PRESETS").expect("PH2D_EXAME_PRESETS");
     let out = PathBuf::from(std::env::var("PH2D_EXAME_OUT").expect("PH2D_EXAME_OUT"));
-    let todos = pinceis(&spec);
+    let todos = variantes(pinceis(&spec));
     let base = std::env::var("PH2D_EXAME_BASE")
         .ok()
         .map(|b| pinceis(&b).remove(0));
@@ -372,10 +408,15 @@ fn exame_pinta() {
                 .is_none_or(|s| s.iter().any(|n| c["nome"] == n.as_str()))
         })
         .collect();
+    // `PH2D_EXAME_SO_A=1`: só a 1.ª foto de cada cena (a molhada) — o ajuste de uma lei não precisa da seca.
+    let so_a = std::env::var("PH2D_EXAME_SO_A").is_ok_and(|v| v == "1");
     let tarefas: Vec<(usize, usize, usize)> = (0..todos.len())
         .flat_map(|p| {
             let cenas = &cenas;
-            (0..cenas.len()).flat_map(move |c| (0..fotos_da_cena(cenas[c])).map(move |f| (p, c, f)))
+            (0..cenas.len()).flat_map(move |c| {
+                let n = if so_a { 1 } else { fotos_da_cena(cenas[c]) };
+                (0..n).map(move |f| (p, c, f))
+            })
         })
         .collect();
     let proxima = AtomicUsize::new(0);

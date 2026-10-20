@@ -482,3 +482,60 @@ fn grava_o_pincel_seco_do_wet() {
     std::fs::write(&f, ph2d_brush_presets::escrever(&p).unwrap()).unwrap();
     eprintln!("gravado {}", f.display());
 }
+
+/// A 2.ª ponta de cobertura total (disco duro maior que a 1.ª, denso, Multiply: `m = 1` em todo o traço).
+fn cobre(t: &mut PainterTool) {
+    t.set_ponta(LinhaDaPonta::DualMode, 1.0);
+    t.set_ponta(LinhaDaPonta::DualSize, 1.6);
+    t.set_ponta(LinhaDaPonta::DualSpacing, 0.05);
+    t.set_ponta(LinhaDaPonta::DualHardness, 1.0);
+}
+
+/// ⭐ **Dual + Tiling no Wet**: o carimbo da máscara não apaga o mapa das cópias da costura (`dab_groups`) que o lote
+/// da 1.ª ponta lê a seguir — com a 2.ª ponta a cobrir tudo, a tela ladrilhada é a do traço ladrilhado sem dual.
+#[test]
+fn o_dual_nao_parte_o_sorteio_das_copias_da_costura_no_wet() {
+    // O Grain com o deslocamento SORTEADO por dab: as cópias da costura partilham o sorteio pelo `dab_groups`.
+    let ladrilha = |t: &mut PainterTool| {
+        t.toggle_brush_tiling(0);
+        t.toggle_brush_tiling(1);
+        t.set_brush_texture_kind(1);
+        t.set_brush_texture_mapping(2);
+    };
+    // Um recto que ATRAVESSA a costura da direita (x 300 → 420, a tela tem 360).
+    let costura = |mut t: PainterTool| {
+        let cp = |x: f32, phase| CanvasPointer {
+            pos: [x, 100.0],
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        t.on_canvas_pointer(cp(300.0, PointerPhase::Down));
+        for k in 1..=30 {
+            t.on_canvas_pointer(cp(300.0 + 4.0 * k as f32, PointerPhase::Move));
+            t.on_tick(8.0);
+        }
+        t.on_canvas_pointer(cp(420.0, PointerPhase::Up));
+        t.run_full().0
+    };
+    let sem = tinta(&costura(pincel(PaintMedia::WetPaint, ladrilha)));
+    let com = tinta(&costura(pincel(PaintMedia::WetPaint, |t| {
+        ladrilha(t);
+        cobre(t);
+    })));
+    assert!(sem[100 * W + 20] > 0, "a cópia da costura não pintou");
+    let longe = sem.iter().zip(&com).filter(|(s, c)| s.abs_diff(**c) > 3).count();
+    assert_eq!(longe, 0, "{longe} píxeis diferem do traço ladrilhado sem dual");
+}
+
+/// ⭐ **Dual + Composite no Wet**: o Composite não age no Wet (`composite_active` pede o modo Paint), e a máscara é
+/// da 2.ª ponta — com o Composite ligado a tela é a mesma.
+#[test]
+fn o_composite_nao_carimba_a_mascara_no_wet() {
+    let sem = pinta(pincel(PaintMedia::WetPaint, |t| arma(t, 1.0)));
+    let com = pinta(pincel(PaintMedia::WetPaint, |t| {
+        t.toggle_composite();
+        arma(t, 1.0);
+    }));
+    assert!(sem == com, "com o Composite ligado o dual do Wet pinta outra tela");
+}

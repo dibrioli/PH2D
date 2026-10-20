@@ -252,8 +252,12 @@ impl PainterTool {
             p.texture_ramp_enabled,
             p.shape_image_version,
         );
-        // A máscara carimba-se pelas rotas do carimbo, nunca pelo fluido (no Wet o modo é o dele).
+        // A máscara carimba-se pelas rotas do carimbo da 2.ª ponta: nunca pelo fluido (no Wet o modo é o dele) nem pelo
+        // Composite (que o modo Paint acordaria); e o mapa das cópias da costura (`dab_groups`) que o lote da 1.ª
+        // ponta lê a seguir volta intacto (as rotas limpam-no).
         let modo = std::mem::replace(&mut p.paint_mode, super::PaintMode::Paint);
+        let composto = std::mem::replace(&mut p.composite_enabled, false);
+        let grupos = std::mem::take(&mut p.dab_groups);
         p.brush = d.pincel(&pincel);
         p.acumulando_no_plano = true;
         p.shape_color_ramp_enabled = false;
@@ -271,6 +275,8 @@ impl PainterTool {
         swap(&mut p.tex_rng, &mut p.dual.tex_rng);
         p.brush = pincel;
         p.paint_mode = modo;
+        p.composite_enabled = composto;
+        p.dab_groups = grupos;
         (
             p.acumulando_no_plano,
             p.shape_color_ramp_enabled,

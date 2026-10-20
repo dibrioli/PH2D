@@ -1,0 +1,6372 @@
+{
+ "cabecalho": {
+  "oraculo": "@excalidraw/excalidraw",
+  "versao": "0.18.0-143b5b6",
+  "licenca": "MIT",
+  "chromium": "153.0.8010.12",
+  "entrada": "bloco6_traco.json",
+  "entrada_sha256": "80f9537fa909e380a8f7a0982e575d0525d0938dc566feec253e43ae17cef147",
+  "data": "2026-10-20",
+  "tela": [
+   1280,
+   800
+  ],
+  "dt_ms": 16,
+  "relogio": "livre (ids novos normalizados por posição na cena)",
+  "ferramentas": [
+   "autoshape",
+   "freedraw"
+  ]
+ },
+ "resultados": [
+  {
+   "traco": "arco_meio",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": 10,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [],
+   "tipo": "nenhum",
+   "tipo_api_recognizeShape": "freedraw",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "arco_quarto",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": 60,
+    "dy": 10,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [],
+   "tipo": "nenhum",
+   "tipo_api_recognizeShape": "freedraw",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "circulo_aberto_40",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "ellipse",
+     "x": 610,
+     "y": 260,
+     "width": 300,
+     "height": 300,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     }
+    }
+   ],
+   "tipo": "ellipse",
+   "tipo_api_recognizeShape": "ellipse",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "circulo_passa_10",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "ellipse",
+     "x": 610,
+     "y": 260,
+     "width": 300,
+     "height": 300,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     }
+    }
+   ],
+   "tipo": "ellipse",
+   "tipo_api_recognizeShape": "ellipse",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "circulo_r150",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "ellipse",
+     "x": 610,
+     "y": 260,
+     "width": 300,
+     "height": 300,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     }
+    }
+   ],
+   "tipo": "ellipse",
+   "tipo_api_recognizeShape": "ellipse",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "circulo_r40",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "ellipse",
+     "x": 720,
+     "y": 370.1000061035156,
+     "width": 80,
+     "height": 79.79998779296875,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     }
+    }
+   ],
+   "tipo": "ellipse",
+   "tipo_api_recognizeShape": "ellipse",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "circulo_tremor_06",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -41,
+    "dy": -89,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "ellipse",
+     "x": 609.2000122070312,
+     "y": 258.20001220703125,
+     "width": 301.39996337890625,
+     "height": 304.29998779296875,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     }
+    }
+   ],
+   "tipo": "ellipse",
+   "tipo_api_recognizeShape": "ellipse",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "circulo_volta_e_meia",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [],
+   "tipo": "nenhum",
+   "tipo_api_recognizeShape": "freedraw",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "curva_S",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [],
+   "tipo": "nenhum",
+   "tipo_api_recognizeShape": "freedraw",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "elipse_2para1",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "ellipse",
+     "x": 460,
+     "y": 260,
+     "width": 600,
+     "height": 300,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     }
+    }
+   ],
+   "tipo": "ellipse",
+   "tipo_api_recognizeShape": "ellipse",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "elipse_2para1_rodada_30",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "ellipse",
+     "x": 489.6000061035156,
+     "y": 211.60000610351562,
+     "width": 540.8000183105469,
+     "height": 396.8000183105469,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     }
+    }
+   ],
+   "tipo": "ellipse",
+   "tipo_api_recognizeShape": "ellipse",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "elipse_3para2",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "ellipse",
+     "x": 460,
+     "y": 210,
+     "width": 600,
+     "height": 400,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     }
+    }
+   ],
+   "tipo": "ellipse",
+   "tipo_api_recognizeShape": "ellipse",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "forma_L",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [],
+   "tipo": "nenhum",
+   "tipo_api_recognizeShape": "freedraw",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "forma_V",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [],
+   "tipo": "nenhum",
+   "tipo_api_recognizeShape": "freedraw",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "linha_arco_leve",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 459.79998779296875,
+     "y": 419.8999938964844,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       600.3999633789062,
+       0
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "linha_com_gancho",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -45,
+    "dy": -105,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 505,
+     "y": 395,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       510,
+       30
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "linha_curta_30",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -155,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 745,
+     "y": 410,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       30,
+       0
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "linha_curta_60",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -170,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 730,
+     "y": 410,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       60,
+       0
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "linha_diagonal_500",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": 44,
+    "dy": -115,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 544,
+     "y": 285,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       433,
+       250
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "linha_horizontal_600",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 460,
+     "y": 410,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       600,
+       0
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "linha_rodada_02",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -99,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 510,
+     "y": 401,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       499.70001220703125,
+       17.399993896484375
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "linha_rodada_04",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -39,
+    "dy": -107,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 511,
+     "y": 393,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       498.79998779296875,
+       34.899993896484375
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "linha_rodada_06",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -39,
+    "dy": -116,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 511,
+     "y": 384,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       497.29998779296875,
+       52.29998779296875
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "linha_rodada_08",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -38,
+    "dy": -125,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 512,
+     "y": 375,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       495.0999755859375,
+       69.60000610351562
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "linha_tremor_02",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 459.79998779296875,
+     "y": 409.8999938964844,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       600.3999633789062,
+       0.800018310546875
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "linha_tremor_06",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -39,
+    "dy": -89,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 461.6000061035156,
+     "y": 410.5,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       597.4999694824219,
+       -3.600006103515625
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "linha_tremor_12",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -45,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 460.29998779296875,
+     "y": 409.6000061035156,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       599.2000122070312,
+       -5.800018310546875
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "linha_tremor_24",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -38,
+    "dy": -91,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 469.29998779296875,
+     "y": 410,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       585.7000122070312,
+       12
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "linha_vertical_400",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -140,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 760,
+     "y": 210,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       400
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "paralelogramo_03",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 553.4000244140625,
+     "y": 285,
+     "width": 413,
+     "height": 250,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "paralelogramo_06",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 546.9000244140625,
+     "y": 285,
+     "width": 425.89996337890625,
+     "height": 250,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "paralelogramo_10",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 538,
+     "y": 285,
+     "width": 443.70001220703125,
+     "height": 250,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "paralelogramo_15",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 526.5,
+     "y": 285,
+     "width": 466.29998779296875,
+     "height": 250,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "paralelogramo_20",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 514.5,
+     "y": 285,
+     "width": 490.29998779296875,
+     "height": 250,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "paralelogramo_30",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 487.79998779296875,
+     "y": 285,
+     "width": 544.0000610351562,
+     "height": 250,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "poligono_3_lados",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -40,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "diamond",
+     "x": 587.5999755859375,
+     "y": 260,
+     "width": 344.4000244140625,
+     "height": 300,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     }
+    }
+   ],
+   "tipo": "diamond",
+   "tipo_api_recognizeShape": "diamond",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "poligono_5_lados",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -71,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [],
+   "tipo": "nenhum",
+   "tipo_api_recognizeShape": "freedraw",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "poligono_6_lados",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "ellipse",
+     "x": 586.7999877929688,
+     "y": 210,
+     "width": 346.4000244140625,
+     "height": 400,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     }
+    }
+   ],
+   "tipo": "ellipse",
+   "tipo_api_recognizeShape": "ellipse",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "poligono_8_lados",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "ellipse",
+     "x": 560.5999755859375,
+     "y": 210,
+     "width": 398.70001220703125,
+     "height": 399.9000244140625,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     }
+    }
+   ],
+   "tipo": "ellipse",
+   "tipo_api_recognizeShape": "ellipse",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "quadrado_300",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 610,
+     "y": 260,
+     "width": 300,
+     "height": 300,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rabisco",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": 2,
+    "dy": 60,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [],
+   "tipo": "nenhum",
+   "tipo_api_recognizeShape": "freedraw",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_aberto_15",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 560,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_aberto_40",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 560,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_aberto_90",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 560,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_alinhado_400x250",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 560,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_cantos_r20",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 560,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_cantos_r40",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 560,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_comeca_no_meio",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 560,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_estreito_500x60",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 510,
+     "y": 380,
+     "width": 500,
+     "height": 60,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_passa_do_inicio",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 560,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_pequeno_70x50",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 725,
+     "y": 385,
+     "width": 70,
+     "height": 50,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_rodado_02",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 555.7999877929688,
+     "y": 278.1000061035156,
+     "width": 408.4000244140625,
+     "height": 263.6999816894531,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_rodado_04",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 551.9000244140625,
+     "y": 271.3999938964844,
+     "width": 416.29998779296875,
+     "height": 277.1000061035156,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_rodado_06",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 548.2000122070312,
+     "y": 264.79998779296875,
+     "width": 423.79998779296875,
+     "height": 290.20001220703125,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_rodado_08",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 544.7999877929688,
+     "y": 258.3999938964844,
+     "width": 430.70001220703125,
+     "height": 302.8999938964844,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_rodado_10",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 541.7000122070312,
+     "y": 252.1999969482422,
+     "width": 437,
+     "height": 315.3000030517578,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_rodado_25",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "diamond",
+     "x": 526.7999877929688,
+     "y": 212.1999969482422,
+     "width": 467.29998779296875,
+     "height": 394.8000030517578,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     }
+    }
+   ],
+   "tipo": "diamond",
+   "tipo_api_recognizeShape": "diamond",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_rodado_45",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -41,
+    "dy": -89,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "diamond",
+     "x": 530.5999755859375,
+     "y": 181.1999969482422,
+     "width": 458.20001220703125,
+     "height": 458.2000274658203,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     }
+    }
+   ],
+   "tipo": "diamond",
+   "tipo_api_recognizeShape": "diamond",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_tremor_03",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 558.5,
+     "y": 282.70001220703125,
+     "width": 403.20001220703125,
+     "height": 254.5999755859375,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_tremor_08",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -89,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 555.5999755859375,
+     "y": 281.20001220703125,
+     "width": 408.800048828125,
+     "height": 257.70001220703125,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "rect_tremor_16",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -39,
+    "dy": -89,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 553.5,
+     "y": 275.5,
+     "width": 413.9000244140625,
+     "height": 268.5,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "seta_cabo_L",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": 60,
+    "dy": -105,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [],
+   "tipo": "nenhum",
+   "tipo_api_recognizeShape": "freedraw",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "seta_curva_duas_pontas",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -175,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [],
+   "tipo": "nenhum",
+   "tipo_api_recognizeShape": "freedraw",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "seta_curva_v_aberto",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -45,
+    "dy": -175,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [],
+   "tipo": "nenhum",
+   "tipo_api_recognizeShape": "freedraw",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "seta_diagonal_v_aberto",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": 87,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "arrow",
+     "x": 587,
+     "y": 310,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       346.4000244140625,
+       200
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": "arrow"
+    }
+   ],
+   "tipo": "arrow",
+   "tipo_api_recognizeShape": "arrow",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "seta_farpa_20",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "arrow",
+     "x": 510,
+     "y": 410,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       492.5,
+       -2.70001220703125
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": "arrow"
+    }
+   ],
+   "tipo": "arrow",
+   "tipo_api_recognizeShape": "arrow",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "seta_farpa_45",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "arrow",
+     "x": 510,
+     "y": 410,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       477.4000244140625,
+       -22.600006103515625
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": "arrow"
+    }
+   ],
+   "tipo": "arrow",
+   "tipo_api_recognizeShape": "arrow",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "seta_farpa_60",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "arrow",
+     "x": 510,
+     "y": 410,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       478,
+       -38.100006103515625
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": "arrow"
+    }
+   ],
+   "tipo": "arrow",
+   "tipo_api_recognizeShape": "arrow",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "seta_farpa_curta_20px",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 510,
+     "y": 410,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       482.70001220703125,
+       10
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "seta_pequena_v_aberto",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -14,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "arrow",
+     "x": 686,
+     "y": 410,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       141.29998779296875,
+       -5
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": "arrow"
+    }
+   ],
+   "tipo": "arrow",
+   "tipo_api_recognizeShape": "arrow",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "seta_recta_duas_pontas",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 562,
+     "y": 440,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       396,
+       0
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "seta_recta_uma_farpa",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -75,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "line",
+     "x": 510,
+     "y": 425,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       448,
+       -30
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": null
+    }
+   ],
+   "tipo": "line",
+   "tipo_api_recognizeShape": "line",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "seta_recta_v_aberto",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "arrow",
+     "x": 510,
+     "y": 410,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       486.0999755859375,
+       -8
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": "arrow"
+    }
+   ],
+   "tipo": "arrow",
+   "tipo_api_recognizeShape": "arrow",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "seta_recta_v_fechado",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "arrow",
+     "x": 510,
+     "y": 410,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       486.0999755859375,
+       -8
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": "arrow"
+    }
+   ],
+   "tipo": "arrow",
+   "tipo_api_recognizeShape": "arrow",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "seta_recta_v_ida_volta",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "arrow",
+     "x": 510,
+     "y": 410,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       486.0999755859375,
+       -8
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": "arrow"
+    }
+   ],
+   "tipo": "arrow",
+   "tipo_api_recognizeShape": "arrow",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "seta_tremor_03",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -92,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "arrow",
+     "x": 510,
+     "y": 410.5,
+     "width": 0,
+     "height": 0,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     },
+     "n_pontos": 2,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       489.5,
+       -11.5
+      ]
+     ],
+     "startArrowhead": null,
+     "endArrowhead": "arrow"
+    }
+   ],
+   "tipo": "arrow",
+   "tipo_api_recognizeShape": "arrow",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "trapezio",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "rectangle",
+     "x": 560,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": {
+      "type": 3
+     }
+    }
+   ],
+   "tipo": "rectangle",
+   "tipo_api_recognizeShape": "rectangle",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "triangulo_aberto_40",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -40,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "diamond",
+     "x": 587.5999755859375,
+     "y": 260,
+     "width": 344.4000244140625,
+     "height": 300,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     }
+    }
+   ],
+   "tipo": "diamond",
+   "tipo_api_recognizeShape": "diamond",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "triangulo_tremor_06",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -38,
+    "dy": -42,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "diamond",
+     "x": 588.0999755859375,
+     "y": 259.1000061035156,
+     "width": 344.70001220703125,
+     "height": 302.3000183105469,
+     "angle": 0,
+     "roundness": {
+      "type": 2
+     }
+    }
+   ],
+   "tipo": "diamond",
+   "tipo_api_recognizeShape": "diamond",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "traco": "zigzag_4",
+   "ferramenta": "autoshape",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -115,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "autoshape",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [],
+   "tipo": "nenhum",
+   "tipo_api_recognizeShape": "freedraw",
+   "ferramenta_depois": "autoshape"
+  },
+  {
+   "ferramenta": "autoshape",
+   "estado_currentItem": {
+    "currentItemArrowType": "round",
+    "currentItemBackgroundColor": "transparent",
+    "currentItemEndArrowhead": "arrow",
+    "currentItemFillStyle": "solid",
+    "currentItemFontFamily": 5,
+    "currentItemFontSize": 20,
+    "currentItemOpacity": 100,
+    "currentItemRoughness": 1,
+    "currentItemRoundness": "round",
+    "currentItemStartArrowhead": null,
+    "currentItemStickynoteBackgroundColor": "#ffdf6b",
+    "currentItemStickynoteStrokeColor": "#1e1e1e",
+    "currentItemStrokeColor": "#1e1e1e",
+    "currentItemStrokeStyle": "solid",
+    "currentItemStrokeVariability": "constant",
+    "currentItemStrokeWidthKey": "medium",
+    "currentItemTextAlign": "left"
+   },
+   "semente": 304744165,
+   "tela": {
+    "w": 1280,
+    "h": 800,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "consola": []
+  },
+  {
+   "traco": "arco_meio",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": 10,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 560,
+     "y": 510,
+     "width": 400,
+     "height": 200,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 159,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      400,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "arco_quarto",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": 60,
+    "dy": 10,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 660,
+     "y": 510,
+     "width": 200,
+     "height": 200,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 80,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      200,
+      -200
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "circulo_aberto_40",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 910,
+     "y": 410,
+     "width": 300,
+     "height": 300,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 227,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      -5.29998779296875,
+      -39.5
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "circulo_passa_10",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 910,
+     "y": 410,
+     "width": 300,
+     "height": 300,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 261,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      -28.5999755859375,
+      88.20001220703125
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "circulo_r150",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 910,
+     "y": 410,
+     "width": 300,
+     "height": 300,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 237,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "circulo_r40",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 800,
+     "y": 410,
+     "width": 80,
+     "height": 79.79998779296875,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 64,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "circulo_tremor_06",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -41,
+    "dy": -89,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 910.5999755859375,
+     "y": 410.5,
+     "width": 301.39996337890625,
+     "height": 304.29998779296875,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 237,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "circulo_volta_e_meia",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 910,
+     "y": 410,
+     "width": 300,
+     "height": 300,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 355,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      -300,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "curva_S",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 760,
+     "y": 210,
+     "width": 200,
+     "height": 400,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 158,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      400
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "elipse_2para1",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 1060,
+     "y": 410,
+     "width": 600,
+     "height": 300,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 473,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "elipse_2para1_rodada_30",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 1019.7999877929688,
+     "y": 560,
+     "width": 540.8000183105469,
+     "height": 396.8000183105469,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 473,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "elipse_3para2",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 1060,
+     "y": 410,
+     "width": 600,
+     "height": 400,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 473,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "forma_L",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 560,
+     "y": 210,
+     "width": 400,
+     "height": 400,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 202,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      400,
+      400
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "forma_V",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 560,
+     "y": 210,
+     "width": 400,
+     "height": 399.29998779296875,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 226,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      400,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "linha_arco_leve",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 459.79998779296875,
+     "y": 419.8999938964844,
+     "width": 600.3999633789062,
+     "height": 19.899993896484375,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 152,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      600.3999633789062,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "linha_com_gancho",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -45,
+    "dy": -105,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 505,
+     "y": 395,
+     "width": 510,
+     "height": 30,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 135,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      510,
+      30
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "linha_curta_30",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -155,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 745,
+     "y": 410,
+     "width": 30,
+     "height": 0,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 10,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      30,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "linha_curta_60",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -170,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 730,
+     "y": 410,
+     "width": 60,
+     "height": 0,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 17,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      60,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "linha_diagonal_500",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": 44,
+    "dy": -115,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 544,
+     "y": 285,
+     "width": 433,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 127,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      433,
+      250
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "linha_horizontal_600",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 460,
+     "y": 410,
+     "width": 600,
+     "height": 0,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 152,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      600,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "linha_rodada_02",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -99,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 510,
+     "y": 401,
+     "width": 499.70001220703125,
+     "height": 17.399993896484375,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 127,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      499.70001220703125,
+      17.399993896484375
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "linha_rodada_04",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -39,
+    "dy": -107,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 511,
+     "y": 393,
+     "width": 498.79998779296875,
+     "height": 34.899993896484375,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 127,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      498.79998779296875,
+      34.899993896484375
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "linha_rodada_06",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -39,
+    "dy": -116,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 511,
+     "y": 384,
+     "width": 497.29998779296875,
+     "height": 52.29998779296875,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 127,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      497.29998779296875,
+      52.29998779296875
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "linha_rodada_08",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -38,
+    "dy": -125,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 512,
+     "y": 375,
+     "width": 495.0999755859375,
+     "height": 69.60000610351562,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 127,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      495.0999755859375,
+      69.60000610351562
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "linha_tremor_02",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 459.79998779296875,
+     "y": 409.8999938964844,
+     "width": 600.4999389648438,
+     "height": 2.20001220703125,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 153,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      600.3999633789062,
+      0.800018310546875
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "linha_tremor_06",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -39,
+    "dy": -89,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 461.6000061035156,
+     "y": 410.5,
+     "width": 597.4999694824219,
+     "height": 7.100006103515625,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 153,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      597.4999694824219,
+      -3.600006103515625
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "linha_tremor_12",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -45,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 460.29998779296875,
+     "y": 409.6000061035156,
+     "width": 599.2000122070312,
+     "height": 15.600006103515625,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 153,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      599.2000122070312,
+      -5.800018310546875
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "linha_tremor_24",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -38,
+    "dy": -91,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 469.29998779296875,
+     "y": 410,
+     "width": 589.5,
+     "height": 28.29998779296875,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 153,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      585.7000122070312,
+      12
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "linha_vertical_400",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -140,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 760,
+     "y": 210,
+     "width": 0,
+     "height": 400,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 102,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      400
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "paralelogramo_03",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 553.4000244140625,
+     "y": 285,
+     "width": 413,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 328,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "paralelogramo_06",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 546.9000244140625,
+     "y": 285,
+     "width": 425.89996337890625,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 328,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "paralelogramo_10",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 538,
+     "y": 285,
+     "width": 443.70001220703125,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 329,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "paralelogramo_15",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 526.5,
+     "y": 285,
+     "width": 466.29998779296875,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 332,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "paralelogramo_20",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 514.5,
+     "y": 285,
+     "width": 490.29998779296875,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 336,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "paralelogramo_30",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 487.79998779296875,
+     "y": 285,
+     "width": 544.0000610351562,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 347,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "poligono_3_lados",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -40,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 760,
+     "y": 260,
+     "width": 344.4000244140625,
+     "height": 300,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 262,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "poligono_5_lados",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -71,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 760,
+     "y": 229,
+     "width": 380,
+     "height": 361.79998779296875,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 296,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "poligono_6_lados",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 760,
+     "y": 210,
+     "width": 346.4000244140625,
+     "height": 400,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 302,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "poligono_8_lados",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 760,
+     "y": 210,
+     "width": 398.70001220703125,
+     "height": 399.9000244140625,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 309,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "quadrado_300",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 610,
+     "y": 260,
+     "width": 300,
+     "height": 300,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 302,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rabisco",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": 2,
+    "dy": 60,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 802,
+     "y": 560,
+     "width": 357.5,
+     "height": 300,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 850,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      26.29998779296875,
+      -24.29998779296875
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_aberto_15",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 560,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 323,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      16
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_aberto_40",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 560,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 317,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      40
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_aberto_90",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 560,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 304,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      92
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_alinhado_400x250",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 560,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 327,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_cantos_r20",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 760,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 319,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_cantos_r40",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 760,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 310,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_comeca_no_meio",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 760,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 327,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_estreito_500x60",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 510,
+     "y": 380,
+     "width": 500,
+     "height": 60,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 282,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_passa_do_inicio",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 560,
+     "y": 285,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 342,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      60,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_pequeno_70x50",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 725,
+     "y": 385,
+     "width": 70,
+     "height": 50,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 62,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_rodado_02",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 564.5,
+     "y": 278.1000061035156,
+     "width": 408.4000244140625,
+     "height": 263.6999816894531,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 327,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_rodado_04",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 569.2000122070312,
+     "y": 271.3999938964844,
+     "width": 416.29998779296875,
+     "height": 277.1000061035156,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 327,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_rodado_06",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 574.2000122070312,
+     "y": 264.79998779296875,
+     "width": 423.79998779296875,
+     "height": 290.20001220703125,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 327,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_rodado_08",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 579.2999877929688,
+     "y": 258.3999938964844,
+     "width": 430.70001220703125,
+     "height": 302.8999938964844,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 327,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_rodado_10",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 584.7000122070312,
+     "y": 252.1999969482422,
+     "width": 437,
+     "height": 315.3000030517578,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 327,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_rodado_25",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 631.5999755859375,
+     "y": 212.1999969482422,
+     "width": 467.29998779296875,
+     "height": 394.8000030517578,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 327,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_rodado_45",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -41,
+    "dy": -89,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 706,
+     "y": 181.1999969482422,
+     "width": 458.20001220703125,
+     "height": 458.2000274658203,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 327,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_tremor_03",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 560.5999755859375,
+     "y": 283.1000061035156,
+     "width": 403.20001220703125,
+     "height": 254.5999755859375,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 328,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_tremor_08",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -89,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 557.2999877929688,
+     "y": 281.6000061035156,
+     "width": 408.800048828125,
+     "height": 257.70001220703125,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 328,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "rect_tremor_16",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -39,
+    "dy": -89,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 561.2999877929688,
+     "y": 289.29998779296875,
+     "width": 413.9000244140625,
+     "height": 268.5,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 328,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "seta_cabo_L",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": 60,
+    "dy": -105,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 560,
+     "y": 195,
+     "width": 400,
+     "height": 430,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 247,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      348,
+      430
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "seta_curva_duas_pontas",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -175,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 505.5,
+     "y": 477.29998779296875,
+     "width": 621.2000122070312,
+     "height": 210.5999755859375,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 288,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      509,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "seta_curva_v_aberto",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -45,
+    "dy": -175,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 454.29998779296875,
+     "y": 515.5999755859375,
+     "width": 611.1000366210938,
+     "height": 210.5999755859375,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 243,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      555.2000122070312,
+      -38.29998779296875
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "seta_diagonal_v_aberto",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": 87,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 587,
+     "y": 310,
+     "width": 346.4000244140625,
+     "height": 200,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 147,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      286.4000244140625,
+      200
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "seta_farpa_20",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 510,
+     "y": 410,
+     "width": 500,
+     "height": 41,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 172,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      443.5999755859375,
+      20.5
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "seta_farpa_45",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 510,
+     "y": 410,
+     "width": 500,
+     "height": 84.79998779296875,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 172,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      457.5999755859375,
+      42.399993896484375
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "seta_farpa_60",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 510,
+     "y": 410,
+     "width": 500,
+     "height": 104,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 172,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      470,
+      52
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "seta_farpa_curta_20px",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 510,
+     "y": 410,
+     "width": 500,
+     "height": 20,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 142,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      482.70001220703125,
+      10
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "seta_pequena_v_aberto",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -14,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 686,
+     "y": 410,
+     "width": 148.29998779296875,
+     "height": 30,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 62,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      124,
+      15
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "seta_recta_duas_pontas",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 562,
+     "y": 440,
+     "width": 500,
+     "height": 60,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 217,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      396,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "seta_recta_uma_farpa",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -75,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 510,
+     "y": 425,
+     "width": 500,
+     "height": 30,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 142,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      448,
+      -30
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "seta_recta_v_aberto",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 510,
+     "y": 410,
+     "width": 500,
+     "height": 60,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 172,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      448,
+      30
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "seta_recta_v_fechado",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 510,
+     "y": 410,
+     "width": 500,
+     "height": 60,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 172,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      500,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "seta_recta_v_ida_volta",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 510,
+     "y": 410,
+     "width": 500,
+     "height": 60,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 187,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      500,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "seta_tremor_03",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": 10,
+    "dy": -92,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 510,
+     "y": 410.5,
+     "width": 500.4000244140625,
+     "height": 58.79998779296875,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 173,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      449.29998779296875,
+      29
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "trapezio",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -90,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 560,
+     "y": 535,
+     "width": 400,
+     "height": 250,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 287,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "triangulo_aberto_40",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -40,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 760,
+     "y": 260,
+     "width": 344.4000244140625,
+     "height": 300,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 251,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      -21.5999755859375,
+      37.399993896484375
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "triangulo_tremor_06",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -38,
+    "dy": -42,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 761.2000122070312,
+     "y": 259.8999938964844,
+     "width": 344.70001220703125,
+     "height": 302.3000183105469,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 263,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      0,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "traco": "zigzag_4",
+   "ferramenta": "freedraw",
+   "transformacao": {
+    "escala": 1,
+    "dx": -40,
+    "dy": -115,
+    "nota": "ecrã = fonte·escala + (dx,dy)"
+   },
+   "ferramenta_armada": {
+    "type": "freedraw",
+    "customType": null,
+    "locked": false,
+    "fromSelection": false,
+    "lastActiveTool": null
+   },
+   "ms_ate_parar": 600,
+   "elementos": [
+    {
+     "id": "novo1",
+     "type": "freedraw",
+     "x": 460,
+     "y": 285,
+     "width": 600,
+     "height": 249.5999755859375,
+     "angle": 0,
+     "roundness": null,
+     "n_pontos": 294,
+     "primeiro": [
+      0,
+      0
+     ],
+     "ultimo": [
+      600,
+      0
+     ]
+    }
+   ],
+   "tipo": "freedraw",
+   "ferramenta_depois": "freedraw"
+  },
+  {
+   "ferramenta": "freedraw",
+   "estado_currentItem": {
+    "currentItemArrowType": "round",
+    "currentItemBackgroundColor": "transparent",
+    "currentItemEndArrowhead": "arrow",
+    "currentItemFillStyle": "solid",
+    "currentItemFontFamily": 5,
+    "currentItemFontSize": 20,
+    "currentItemOpacity": 100,
+    "currentItemRoughness": 1,
+    "currentItemRoundness": "round",
+    "currentItemStartArrowhead": null,
+    "currentItemStickynoteBackgroundColor": "#ffdf6b",
+    "currentItemStickynoteStrokeColor": "#1e1e1e",
+    "currentItemStrokeColor": "#1e1e1e",
+    "currentItemStrokeStyle": "solid",
+    "currentItemStrokeVariability": "constant",
+    "currentItemStrokeWidthKey": "medium",
+    "currentItemTextAlign": "left"
+   },
+   "semente": 1917593603,
+   "tela": {
+    "w": 1280,
+    "h": 800,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "consola": []
+  }
+ ]
+}

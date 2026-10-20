@@ -668,3 +668,71 @@ confirmam o `⌊w/2⌋+1` e o `R(⌊w/2⌋+1)`: lei ≤ 0,0012 nos 173,4×97,8; 
 «ponto do foco com um só cruzamento» e «fica». A entrada (6,4 MB) e as outras 95 saídas NÃO se guardam: regeneram-se
 pelos três comandos acima (determinístico; o cabeçalho das 15 leva `casos_sha256` `1eb66aa8…c2cef328`, o da entrada que
 o gerador de hoje escreve).
+
+### W23 bloco 6 — o LAÇO e o «Draw to shape» pelo RATO (canal next): `corre_bloco6.mjs`
+
+Só a UI e a API pública da página `www_w9` (o `instala_w9.sh`); ecrã = cena (zoom 1, scroll 0). O laço corre numa tela
+1400×1100 (o host do `oracle_w9` estica-se depois de montar; `appState.width/height` lidos = 1400×1100), os traços na 1280×800.
+
+```bash
+python3 docs/MiroClone/ferramentas/excalidraw_oracle/entradas/bloco6_gera_entradas.py   # entradas/bloco6_laco.json + bloco6_traco.json
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh node docs/MiroClone/ferramentas/excalidraw_oracle/corre_bloco6.mjs laco \
+  docs/MiroClone/ferramentas/excalidraw_oracle/entradas/bloco6_laco.json docs/MiroClone/ferramentas/excalidraw_oracle/saidas   # ~20 min a load 150
+PH2D_PRAZO=5400 PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh node docs/MiroClone/ferramentas/excalidraw_oracle/corre_bloco6.mjs traco \
+  docs/MiroClone/ferramentas/excalidraw_oracle/entradas/bloco6_traco.json docs/MiroClone/ferramentas/excalidraw_oracle/saidas  # ~35 min (passa os 1800 s)
+# as outras armas do laço (só o caso 1): … laco … --so 1_fracao --armar selecao|ctrlalt --sufixo selecao|ctrlalt
+python3 docs/MiroClone/ferramentas/excalidraw_oracle/bloco6_resume.py                     # as tabelas (as 80 linhas do traço)
+```
+
+Saídas: `saidas/bloco6_laco.next.json` (entrada sha256 `672bc14d…`), `saidas/bloco6_laco.next.{selecao,ctrlalt}.json`,
+`saidas/bloco6_traco.next.json` (entrada sha256 `80f9537f…`). **Determinismo:** duas corridas em paralelo (portas
+47171/47172 e 47173/47174, `load` 130–300): **byte a byte iguais**, as duas.
+
+**Como se arma (lido do DOM vivo, `data-testid`):** laço = «More tools» → «Lasso selection» (`toolbar-lasso`, sem
+atalho); OU clicar no botão «Selection» quando ele JÁ é a ferramenta activa (alterna para `lasso`; carregar `V` duas
+vezes NÃO alterna); OU arrastar com a Selection e **Ctrl+Alt** carregados (a ferramenta é `lasso` só durante o arrasto e
+volta a `selection`). As três dão a MESMA selecção no caso 1. «Draw to shape» = «More tools» → «Draw to shape»
+(`toolbar-autoshape`, atalho **Shift+X**, medido); o controlo é «Draw» (`toolbar-freedraw`). **Modo do laço:** o pacote
+não tem preferência na UI (o menu principal não tem «Preferences»); o `appState.boxSelectionMode` (`"contain"` por
+omissão | `"overlap"`, o tipo `BoxSelectionMode` do `.d.ts`) põe-se por `updateScene` e o laço OBEDECE-lhe.
+
+**Laço — o que fica seleccionado** (o rasto ~4 px, fechado; a selecção actualiza-se A MEIO do arrasto):
+
+| caso | `contain` (omissão) | `overlap` |
+|---|---|---|
+| 1 rect. 100 % · 95 % · 89 % · 60 % dentro | só o 100 % | os 4 |
+| 1b 99 · 97 · 93 · 91 · 90 · 85 · 75 · 50 % da largura | nenhum (nem o de 99 %) | os 8 |
+| 2 elipse, cantos da caixa FORA do laço, contorno dentro | a elipse | a elipse |
+| 3 losango, idem | o losango | o losango |
+| 4 rect. rodado 45°, idem | o rectângulo | o rectângulo |
+| 5 laço em gravata, um rect. em cada lóbulo | os dois | os dois |
+| 6 C: cantos do rect. dentro, entalhe come 16,7 % | nenhum | o rectângulo |
+| 6b C raso: entalhe come 2,2 % | nenhum | o rectângulo |
+| 7 trancado + livre, os dois dentro | só o livre | só o livre |
+| 8 linha inteira dentro + seta meio dentro | a linha | as duas |
+| 9 traço livre inteiro + traço meio dentro | o inteiro | os dois |
+| 10 grupo g1: um membro dentro, outro fora | nenhum | os dois + `selectedGroupIds` g1 |
+
+⇒ `contain` = o CONTORNO inteiro dentro do laço (não a caixa, não uma fracção da área: 99 % não chega; um entalhe que o
+contorno atravessa recusa); `overlap` = qualquer pedaço do contorno dentro (60 % e 50 % entram). O grupo
+é tudo-ou-nada nos dois modos; trancado nunca; laço que se cruza conta os dois lóbulos. **Não há «≥ 90 % da área»**
+no Excalidraw (a lei de 90 % do plano do bloco 6 é do Miro, não daqui).
+
+**Draw to shape pelo rato × a API** (`recognizeShape`+`convertToShape`, `oraculo_quickshape/fixtures_excalidraw`):
+os 80 traços (`oraculo_quickshape/entradas/*.txt` em px, os mesmos nomes de `fixtures/`, só transladados — escala 1,
+`(dx,dy)` por traço na entrada e na saída; `dt` 16 ms entre pontos). **Tipo: 80/80 iguais à API**; geometria igual a
+0,000 px em 67 dos 68 elementos (o `seta_farpa_45` acaba 2,83 px ao lado = uma amostra de 4 px na farpa a 45°). O
+controlo «Draw» dá `freedraw` 80/80.
+
+| resultado | traços |
+|---|---|
+| `rectangle` (26) | quadrado_300, rect_* (alinhado, aberto 15/40/90, cantos r20/r40, começa no meio, passa do início, estreito, pequeno, rodado 2–10°, tremor), paralelogramo_03…30, trapezio |
+| `diamond` (5) | poligono_3_lados, triangulo_aberto_40, triangulo_tremor_06, rect_rodado_25, rect_rodado_45 |
+| `ellipse` (10) | circulo_{aberto_40, passa_10, r150, r40, tremor_06}, elipse_{2para1, 3para2, 2para1_rodada_30}, poligono_6_lados, poligono_8_lados |
+| `line` (18) | as 15 linha_*, seta_farpa_curta_20px, seta_recta_duas_pontas, seta_recta_uma_farpa |
+| `arrow` (9, ponta `null→arrow` = a corrente) | seta_{diagonal_v_aberto, farpa_20/45/60, pequena_v_aberto, recta_v_aberto, recta_v_fechado, recta_v_ida_volta, tremor_03} |
+| **nada** (12) | arco_meio, arco_quarto, circulo_volta_e_meia, curva_S, forma_L, forma_V, poligono_5_lados, rabisco, seta_cabo_L, seta_curva_duas_pontas, seta_curva_v_aberto, zigzag_4 |
+
+Medido também: o traço NÃO reconhecido **desaparece** (a ferramenta desenha um rasto cinzento, e ao largar a cena fica
+vazia — nem um elemento apagado); o ângulo é SEMPRE 0 (o rectângulo rodado 2–10° vira a caixa alinhada; a elipse rodada
+30° também); `line`/`arrow` saem com `width`/`height` 0 e 2 pontos (como na API); a ferramenta fica armada depois de largar.

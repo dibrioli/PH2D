@@ -37,8 +37,8 @@ inclui `send` 5, `lasso`, `smart`, `team::mention` 6), `interaction` (286), `ph2
 ## 4. ABERTO (nesta ordem)
 
 1. Smoke do dono da cena 28 (§5).
-2. M4 — o oráculo Excalidraw `next` (laço em «contain» e «Draw to shape» sobre cenas NOSSAS): ver doc 17 §10 (se vazio, a
-   corrida não acabou nesta janela; os ficheiros `excalidraw_oracle/*bloco6*` são dela e estão por rever e guardar).
+2. O GATE de M4 (doc 17 §9 «Por fazer» e §10): o oráculo já correu e está guardado; falta o teste que exige o nosso laço com
+   `cover = 1.0` igual ao «contain» deles (casos 1–9, 6b; o 10, grupos, é divergência escolhida).
 3. Provas de mutação do bloco (cobertura, o zerar das referências alheias, `for_me_at`, `keep_mentions`, o `parked`).
 4. O realce a azul das menções no texto do fio (doc 17 §9 «Por fazer»).
 5. Os restantes da lista-mãe (`textAlignVertical`, as perguntas ao dono, os nomeados do bloco 5).

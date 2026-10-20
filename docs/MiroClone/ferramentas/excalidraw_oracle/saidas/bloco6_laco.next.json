@@ -1,0 +1,1289 @@
+{
+ "cabecalho": {
+  "oraculo": "@excalidraw/excalidraw",
+  "versao": "0.18.0-143b5b6",
+  "licenca": "MIT",
+  "chromium": "153.0.8010.12",
+  "entrada": "bloco6_laco.json",
+  "entrada_sha256": "672bc14d969376fd4be8d01e87deb93323bc3e13b8f336ca6a350b758ec3511a",
+  "data": "2026-10-20",
+  "tela": [
+   1400,
+   1100
+  ],
+  "armar": "menu",
+  "dt_ms": 4,
+  "relogio": "2026-01-01T00:00:00.000Z",
+  "modos": [
+   "contain",
+   "overlap"
+  ],
+  "nota_modos": "boxSelectionMode ('contain' | 'overlap', tipo BoxSelectionMode do .d.ts público) posto por updateScene; a UI do pacote não tem preferência para ele"
+ },
+ "resultados": [
+  {
+   "caso": "1_fracao",
+   "boxSelectionMode": "contain",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 1508092766,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "r100"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "r100"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "r100": {
+     "seleccionado": true,
+     "fracao_dentro": 1
+    },
+    "r95": {
+     "seleccionado": false,
+     "fracao_dentro": 0.95
+    },
+    "r89": {
+     "seleccionado": false,
+     "fracao_dentro": 0.89
+    },
+    "r60": {
+     "seleccionado": false,
+     "fracao_dentro": 0.6
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 4,
+   "consola": []
+  },
+  {
+   "caso": "1_fracao",
+   "boxSelectionMode": "overlap",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 1508092766,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "r100"
+    ],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "r100",
+     "r60",
+     "r89",
+     "r95"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "r100",
+    "r60",
+    "r89",
+    "r95"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "r100": {
+     "seleccionado": true,
+     "fracao_dentro": 1
+    },
+    "r95": {
+     "seleccionado": true,
+     "fracao_dentro": 0.95
+    },
+    "r89": {
+     "seleccionado": true,
+     "fracao_dentro": 0.89
+    },
+    "r60": {
+     "seleccionado": true,
+     "fracao_dentro": 0.6
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 4,
+   "consola": []
+  },
+  {
+   "caso": "1b_limiar",
+   "boxSelectionMode": "contain",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 4266341739,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": []
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "f99": {
+     "seleccionado": false,
+     "fracao_dentro": 0.99
+    },
+    "f97": {
+     "seleccionado": false,
+     "fracao_dentro": 0.97
+    },
+    "f93": {
+     "seleccionado": false,
+     "fracao_dentro": 0.93
+    },
+    "f91": {
+     "seleccionado": false,
+     "fracao_dentro": 0.91
+    },
+    "f90": {
+     "seleccionado": false,
+     "fracao_dentro": 0.9
+    },
+    "f85": {
+     "seleccionado": false,
+     "fracao_dentro": 0.85
+    },
+    "f75": {
+     "seleccionado": false,
+     "fracao_dentro": 0.75
+    },
+    "f50": {
+     "seleccionado": false,
+     "fracao_dentro": 0.5
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 8,
+   "consola": []
+  },
+  {
+   "caso": "1b_limiar",
+   "boxSelectionMode": "overlap",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 4266341739,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "f50",
+     "f75",
+     "f85",
+     "f90",
+     "f91",
+     "f93",
+     "f97",
+     "f99"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "f50",
+    "f75",
+    "f85",
+    "f90",
+    "f91",
+    "f93",
+    "f97",
+    "f99"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "f99": {
+     "seleccionado": true,
+     "fracao_dentro": 0.99
+    },
+    "f97": {
+     "seleccionado": true,
+     "fracao_dentro": 0.97
+    },
+    "f93": {
+     "seleccionado": true,
+     "fracao_dentro": 0.93
+    },
+    "f91": {
+     "seleccionado": true,
+     "fracao_dentro": 0.91
+    },
+    "f90": {
+     "seleccionado": true,
+     "fracao_dentro": 0.9
+    },
+    "f85": {
+     "seleccionado": true,
+     "fracao_dentro": 0.85
+    },
+    "f75": {
+     "seleccionado": true,
+     "fracao_dentro": 0.75
+    },
+    "f50": {
+     "seleccionado": true,
+     "fracao_dentro": 0.5
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 8,
+   "consola": []
+  },
+  {
+   "caso": "2_elipse",
+   "boxSelectionMode": "contain",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 3230072059,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "el"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "el"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "el": {
+     "seleccionado": true,
+     "fracao_dentro": null
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 1,
+   "consola": []
+  },
+  {
+   "caso": "2_elipse",
+   "boxSelectionMode": "overlap",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 3230072059,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "el"
+    ],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "el"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "el"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "el": {
+     "seleccionado": true,
+     "fracao_dentro": null
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 1,
+   "consola": []
+  },
+  {
+   "caso": "3_losango",
+   "boxSelectionMode": "contain",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 123848654,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "lo"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "lo"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "lo": {
+     "seleccionado": true,
+     "fracao_dentro": null
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 1,
+   "consola": []
+  },
+  {
+   "caso": "3_losango",
+   "boxSelectionMode": "overlap",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 123848654,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "lo"
+    ],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "lo"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "lo"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "lo": {
+     "seleccionado": true,
+     "fracao_dentro": null
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 1,
+   "consola": []
+  },
+  {
+   "caso": "4_rodado",
+   "boxSelectionMode": "contain",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 3708067658,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "rr"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "rr"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "rr": {
+     "seleccionado": true,
+     "fracao_dentro": null
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 1,
+   "consola": []
+  },
+  {
+   "caso": "4_rodado",
+   "boxSelectionMode": "overlap",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 3708067658,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "rr"
+    ],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "rr"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "rr"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "rr": {
+     "seleccionado": true,
+     "fracao_dentro": null
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 1,
+   "consola": []
+  },
+  {
+   "caso": "5_oito",
+   "boxSelectionMode": "contain",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 1053504081,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "lobD"
+    ],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "lobD",
+     "lobE"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "lobD",
+    "lobE"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "lobE": {
+     "seleccionado": true,
+     "fracao_dentro": null
+    },
+    "lobD": {
+     "seleccionado": true,
+     "fracao_dentro": null
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 2,
+   "consola": []
+  },
+  {
+   "caso": "5_oito",
+   "boxSelectionMode": "overlap",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 1053504081,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "lobD"
+    ],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "lobD",
+     "lobE"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "lobD",
+    "lobE"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "lobE": {
+     "seleccionado": true,
+     "fracao_dentro": null
+    },
+    "lobD": {
+     "seleccionado": true,
+     "fracao_dentro": null
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 2,
+   "consola": []
+  },
+  {
+   "caso": "6_C_fundo",
+   "boxSelectionMode": "contain",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 970607334,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": []
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "rc": {
+     "seleccionado": false,
+     "fracao_dentro": 0.8333333333333334
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 1,
+   "consola": []
+  },
+  {
+   "caso": "6_C_fundo",
+   "boxSelectionMode": "overlap",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 970607334,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "rc"
+    ],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "rc"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "rc"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "rc": {
+     "seleccionado": true,
+     "fracao_dentro": 0.8333333333333334
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 1,
+   "consola": []
+  },
+  {
+   "caso": "6b_C_raso",
+   "boxSelectionMode": "contain",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 633403578,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": []
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "rc": {
+     "seleccionado": false,
+     "fracao_dentro": 0.9777777777777777
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 1,
+   "consola": []
+  },
+  {
+   "caso": "6b_C_raso",
+   "boxSelectionMode": "overlap",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 633403578,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "rc"
+    ],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "rc"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "rc"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "rc": {
+     "seleccionado": true,
+     "fracao_dentro": 0.9777777777777777
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 1,
+   "consola": []
+  },
+  {
+   "caso": "7_trancado",
+   "boxSelectionMode": "contain",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 3079121817,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "livre"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "livre"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "tranc": {
+     "seleccionado": false,
+     "fracao_dentro": null
+    },
+    "livre": {
+     "seleccionado": true,
+     "fracao_dentro": null
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 2,
+   "consola": []
+  },
+  {
+   "caso": "7_trancado",
+   "boxSelectionMode": "overlap",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 3079121817,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "livre"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "livre"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "tranc": {
+     "seleccionado": false,
+     "fracao_dentro": null
+    },
+    "livre": {
+     "seleccionado": true,
+     "fracao_dentro": null
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 2,
+   "consola": []
+  },
+  {
+   "caso": "8_linha_seta",
+   "boxSelectionMode": "contain",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 4058852568,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "lin"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "lin"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "lin": {
+     "seleccionado": true,
+     "fracao_dentro": 1
+    },
+    "seta": {
+     "seleccionado": false,
+     "fracao_dentro": 0.5
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 2,
+   "consola": []
+  },
+  {
+   "caso": "8_linha_seta",
+   "boxSelectionMode": "overlap",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 4058852568,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "lin"
+    ],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "lin",
+     "seta"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "lin",
+    "seta"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "lin": {
+     "seleccionado": true,
+     "fracao_dentro": 1
+    },
+    "seta": {
+     "seleccionado": true,
+     "fracao_dentro": 0.5
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 2,
+   "consola": []
+  },
+  {
+   "caso": "9_livre",
+   "boxSelectionMode": "contain",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 2023012802,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "fd_in"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "fd_in"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "fd_in": {
+     "seleccionado": true,
+     "fracao_dentro": 1
+    },
+    "fd_meio": {
+     "seleccionado": false,
+     "fracao_dentro": 0.5
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 2,
+   "consola": []
+  },
+  {
+   "caso": "9_livre",
+   "boxSelectionMode": "overlap",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 2023012802,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "fd_in",
+     "fd_meio"
+    ],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "fd_in",
+     "fd_meio"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "fd_in",
+    "fd_meio"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "fd_in": {
+     "seleccionado": true,
+     "fracao_dentro": 1
+    },
+    "fd_meio": {
+     "seleccionado": true,
+     "fracao_dentro": 0.5
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 2,
+   "consola": []
+  },
+  {
+   "caso": "10_grupo",
+   "boxSelectionMode": "contain",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 313231530,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": []
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "gA": {
+     "seleccionado": false,
+     "fracao_dentro": null
+    },
+    "gB": {
+     "seleccionado": false,
+     "fracao_dentro": null
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 2,
+   "consola": []
+  },
+  {
+   "caso": "10_grupo",
+   "boxSelectionMode": "overlap",
+   "armar": "menu",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 313231530,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "lasso",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "gA",
+     "gB"
+    ],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "gA",
+     "gB"
+    ]
+   },
+   "ferramenta": "lasso",
+   "selectedElementIds": [
+    "gA",
+    "gB"
+   ],
+   "selectedGroupIds": [
+    "g1"
+   ],
+   "por_elemento": {
+    "gA": {
+     "seleccionado": true,
+     "fracao_dentro": null
+    },
+    "gB": {
+     "seleccionado": true,
+     "fracao_dentro": null
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 2,
+   "consola": []
+  }
+ ]
+}

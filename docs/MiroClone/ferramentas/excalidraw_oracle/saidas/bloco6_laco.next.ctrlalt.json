@@ -1,0 +1,149 @@
+{
+ "cabecalho": {
+  "oraculo": "@excalidraw/excalidraw",
+  "versao": "0.18.0-143b5b6",
+  "licenca": "MIT",
+  "chromium": "153.0.8010.12",
+  "entrada": "bloco6_laco.json",
+  "entrada_sha256": "672bc14d969376fd4be8d01e87deb93323bc3e13b8f336ca6a350b758ec3511a",
+  "data": "2026-10-20",
+  "tela": [
+   1400,
+   1100
+  ],
+  "armar": "ctrlalt",
+  "dt_ms": 4,
+  "relogio": "2026-01-01T00:00:00.000Z",
+  "modos": [
+   "contain",
+   "overlap"
+  ],
+  "nota_modos": "boxSelectionMode ('contain' | 'overlap', tipo BoxSelectionMode do .d.ts público) posto por updateScene; a UI do pacote não tem preferência para ele"
+ },
+ "resultados": [
+  {
+   "caso": "1_fracao",
+   "boxSelectionMode": "contain",
+   "armar": "ctrlalt",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 1508092766,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "selection",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "r100"
+    ]
+   },
+   "ferramenta": "selection",
+   "selectedElementIds": [
+    "r100"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "r100": {
+     "seleccionado": true,
+     "fracao_dentro": 1
+    },
+    "r95": {
+     "seleccionado": false,
+     "fracao_dentro": 0.95
+    },
+    "r89": {
+     "seleccionado": false,
+     "fracao_dentro": 0.89
+    },
+    "r60": {
+     "seleccionado": false,
+     "fracao_dentro": 0.6
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 4,
+   "consola": []
+  },
+  {
+   "caso": "1_fracao",
+   "boxSelectionMode": "overlap",
+   "armar": "ctrlalt",
+   "tela": {
+    "w": 1400,
+    "h": 1100,
+    "scroll": [
+     0,
+     0
+    ],
+    "zoom": 1,
+    "offset": [
+     0,
+     0
+    ]
+   },
+   "semente": 1508092766,
+   "ferramenta_antes": "selection",
+   "ferramenta_armada": "selection",
+   "a_meio": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "r100"
+    ],
+    "selectionElement": null
+   },
+   "antes_de_largar": {
+    "ferramenta": "lasso",
+    "seleccionados": [
+     "r100",
+     "r60",
+     "r89",
+     "r95"
+    ]
+   },
+   "ferramenta": "selection",
+   "selectedElementIds": [
+    "r100",
+    "r60",
+    "r89",
+    "r95"
+   ],
+   "selectedGroupIds": [],
+   "por_elemento": {
+    "r100": {
+     "seleccionado": true,
+     "fracao_dentro": 1
+    },
+    "r95": {
+     "seleccionado": true,
+     "fracao_dentro": 0.95
+    },
+    "r89": {
+     "seleccionado": true,
+     "fracao_dentro": 0.89
+    },
+    "r60": {
+     "seleccionado": true,
+     "fracao_dentro": 0.6
+    }
+   },
+   "cena_mexeu": false,
+   "elementos_na_cena": 4,
+   "consola": []
+  }
+ ]
+}

@@ -275,4 +275,27 @@ o do varrimento dos 100 mil que o rectângulo já paga.
 ### Por fazer (nomeado)
 
 - O realce de cor das menções no texto do fio (o Miro pinta-as a azul): o pintor do fio é de uma cor só.
-- M4 (o oráculo Excalidraw `next` corrido sobre cenas NOSSAS — laço e «Draw to shape»): ver §10 quando a corrida acabar.
+- O GATE de M4: ler `saidas/bloco6_laco.next.json` e exigir que o nosso laço com `cover = 1.0` dê o MESMO conjunto do
+  «contain» deles nos casos 1, 1b, 2–9 e 6b (o caso 10, grupos, é divergência escolhida — abaixo). Os elementos deles entram pelo
+  leitor `.excalidraw` que já temos (`ph2d-board-excalidraw`).
+
+## §10 — M4: o oráculo Excalidraw `next` (0.18.0-143b5b6) corrido sobre cenas NOSSAS (20/10)
+
+Comandos, armamento e tabelas inteiras: [`ferramentas/excalidraw_oracle/README.md`](ferramentas/excalidraw_oracle/README.md)
+§«W23 bloco 6» (`corre_bloco6.mjs`, `bloco6_resume.py`; duas corridas paralelas idênticas byte a byte; só a interface e a API
+públicas — nenhum código deles lido).
+
+**Laço.** Arma-se por «More tools → Lasso selection», por clicar a Selecção já activa, ou por Ctrl+Alt+arrastar (as três dão o
+mesmo); «wrap vs overlap» não tem botão: é o `boxSelectionMode` (nascença `contain`). **Contain = o CONTORNO inteiro dentro**,
+sem limiar de área (99 % não entra; a caixa não conta: elipse, losango e o rectângulo a 45° com os cantos da caixa fora entram);
+o laço em 8 apanha as duas voltas; travados nunca; **grupo é tudo-ou-nada** (um membro dentro não leva o grupo); actualiza a
+meio do arrasto. ⇒ A nossa lei (≥ 90 % da área, Miro, escolha do dono) é o `contain` deles com `cover = 1.0`, MENOS os grupos:
+o nosso laço e o nosso rectângulo trazem o grupo inteiro por um membro dentro (a porta única que já era a do rectângulo) —
+**divergência escolhida**, registada.
+
+**«Draw to shape».** Shift+X ou «More tools». De 80 traços nossos: rectângulo 26 · losango 5 · elipse 10 · linha 18 · seta 9
+(sempre ponta só no fim) · **nada 12** (arcos, S, L, V, pentágono, volta e meia, zigue-zague, setas curvas) — e o traço some
+da cena. A rotação cai sempre (os rectângulos rodados e a elipse a 30° saem direitos; rectângulos rodados de 25°/45° viram
+losango); triângulos viram losango, hexágono/octógono viram elipse. Controlo: «Draw» deu traço livre 80/80. ⇒ O nosso (o
+QuickShape do vetor) reconhece mais e guarda a rotação; onde o quadro não tem a forma, fica a tinta limpa em vez de sumir.
+

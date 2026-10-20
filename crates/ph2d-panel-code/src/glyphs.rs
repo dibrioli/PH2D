@@ -2,6 +2,8 @@
 //! calha e o contador de trabalho da pintura — um `draw_glyphs` por grupo (fonte, tamanho, tinta).
 
 use crate::frame::CodeFrame;
+use crate::line_cache::LineCache;
+use crate::metrics::Metrics;
 use crate::palette::Palette;
 use crate::style::Ink;
 use crate::view::CodeView;
@@ -109,9 +111,7 @@ impl CodeView {
         }
     }
 
-    /// A calha: números (glifos dos dígitos já moldados), a marca de problema e o marcador de dobra.
-    /// Um texto de uma linha na mono a partir de `x`, cortado antes de `right` (as janelinhas);
-    /// devolve onde acabou.
+    /// Um texto de uma linha na mono ([`paint_mono`]) com a cache e as medidas desta vista.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn paint_mono(
         &mut self,
@@ -124,46 +124,21 @@ impl CodeView {
         row_y: f32,
         right: f32,
     ) -> f32 {
-        let k = self
-            .cache
-            .touch(ts, text, &[(0..text.len(), ink)], self.m.font_px);
-        let Some(layout) = self.cache.peek(k) else {
-            return x;
-        };
-        let top = ao_pixel(row_y + self.m.text_dy);
-        let mut batches: Vec<Batch> = Vec::new();
-        let mut off = 0.0;
-        'line: for line in layout.lines() {
-            let base = line.metrics().baseline;
-            for run in line.runs() {
-                for c in run.visual_clusters() {
-                    if x + off + c.advance() > right {
-                        break 'line;
-                    }
-                    let i = batch(
-                        &mut batches,
-                        run.font(),
-                        run.font_size(),
-                        run.normalized_coords(),
-                        ink,
-                    );
-                    for g in c.glyphs() {
-                        batches[i].glyphs.push(Glyph {
-                            id: g.id,
-                            x: x + off + g.x,
-                            y: top + ao_pixel(base + g.y),
-                        });
-                        off += g.advance;
-                    }
-                }
-            }
-        }
-        for b in batches {
-            draw(scene, &b.font, b.size, &b.coords, pal.ink(b.ink), b.glyphs);
-        }
-        x + off
+        paint_mono(
+            &mut self.cache,
+            &self.m,
+            ts,
+            scene,
+            pal,
+            text,
+            ink,
+            x,
+            row_y,
+            right,
+        )
     }
 
+    /// A calha: números (glifos dos dígitos já moldados), a marca de problema e o marcador de dobra.
     pub(crate) fn paint_gutter(
         &self,
         frame: &CodeFrame<'_>,
@@ -252,6 +227,59 @@ impl CodeView {
             y: base,
         }));
     }
+}
+
+/// Um texto de uma linha na mono a partir de `x`, na linha que começa em `row_y`, cortado antes de
+/// `right` (as janelinhas, a página de ajuda); devolve onde acabou.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_mono(
+    cache: &mut LineCache,
+    m: &Metrics,
+    ts: &mut ph2d_text::TextSystem,
+    scene: &mut VectorScene,
+    pal: &Palette,
+    text: &str,
+    ink: Ink,
+    x: f32,
+    row_y: f32,
+    right: f32,
+) -> f32 {
+    let k = cache.touch(ts, text, &[(0..text.len(), ink)], m.font_px);
+    let Some(layout) = cache.peek(k) else {
+        return x;
+    };
+    let top = ao_pixel(row_y + m.text_dy);
+    let mut batches: Vec<Batch> = Vec::new();
+    let mut off = 0.0;
+    'line: for line in layout.lines() {
+        let base = line.metrics().baseline;
+        for run in line.runs() {
+            for c in run.visual_clusters() {
+                if x + off + c.advance() > right {
+                    break 'line;
+                }
+                let i = batch(
+                    &mut batches,
+                    run.font(),
+                    run.font_size(),
+                    run.normalized_coords(),
+                    ink,
+                );
+                for g in c.glyphs() {
+                    batches[i].glyphs.push(Glyph {
+                        id: g.id,
+                        x: x + off + g.x,
+                        y: top + ao_pixel(base + g.y),
+                    });
+                    off += g.advance;
+                }
+            }
+        }
+    }
+    for b in batches {
+        draw(scene, &b.font, b.size, &b.coords, pal.ink(b.ink), b.glyphs);
+    }
+    x + off
 }
 
 /// Um grupo de glifos que se desenha numa chamada só.

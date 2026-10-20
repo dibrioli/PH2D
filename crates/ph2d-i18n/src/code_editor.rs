@@ -158,6 +158,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "code.list.show" => "Show the script list",
         "code.list.hide" => "Hide the script list",
+        // Onda 2, item 5: a página de ajuda (o cabeçalho, o índice e o botão de cada exemplo).
+        "code.help.back" => "Back",
+        "code.help.forward" => "Forward",
+        "code.help.copy" => "Copy example",
+        "code.help.sections" => "On this page",
         _ => return None,
     })
 }

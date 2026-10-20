@@ -11,6 +11,7 @@ pub mod find_bar;
 pub mod frame;
 mod geom;
 mod glyphs;
+pub mod help;
 mod hint;
 pub mod line_cache;
 mod metrics;
@@ -36,6 +37,7 @@ pub use frame::{
 };
 pub use geom::Column;
 pub use glyphs::{PaintWork, paint_work};
+pub use help::{HelpFrame, HelpHit, HelpProbe, HelpView};
 pub use hint::HintProbe;
 pub use line_cache::LineCache;
 pub use metrics::Metrics;

@@ -33,6 +33,11 @@
 - Velocidade: inner loop `bash <árvore>/scripts/cargo-check-narrow.sh ph2d-tool-painter`; testes POR NOME
   (`bash <árvore>/scripts/cargo-test-narrow.sh ph2d-tool-painter <nome>`); pesado por `bash <árvore>/scripts/ph2d-run.sh`.
   Nada de clippy nem suíte inteira (é do fecho da J5). Edite com a ferramenta Edit.
+- **No máximo DUAS corridas pesadas na linha ao mesmo tempo** (a fatia é uma, 24 G): todo `exame.sh`, gerador e
+  `cargo test` vai por `bash docs/Painter/Pinceis/ferramentas/vez_pesada.sh <comando…>` (espera uma das 2 vagas).
+  O `cargo-check-narrow` não precisa.
+- **Pastas e grupos**: use os rótulos já registados (`04_BANCADA.md` §9). Um nome novo mexe em ficheiros
+  partilhados: escolha o registado mais perto e diga-o no relatório.
 - **A bancada em paralelo**: SEMPRE `PH2D_EXAME_DIR=/tmp/ph2d_exame_<família>` em todo `exame.sh` (a cache da
   biblioteca é por pasta; sem isto duas famílias apagam o trabalho uma da outra). No fim, `rm -r -- /tmp/ph2d_exame_<família>`
   (a fatia da linha conta o `/tmp`).

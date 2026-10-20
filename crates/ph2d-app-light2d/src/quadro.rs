@@ -550,11 +550,17 @@ impl LuzDoQuadro {
                     gv.origem_m[1] + f64::from(gv.altura) * gv.texel_m,
                 ]),
             );
-            let sem_ceu = CenaDeLuz {
-                ceu: [0.0; 3],
-                ..self.cena.clone()
-            };
-            e.gravar_com_sprites(gpu, &mut enc, &sem_ceu, &sprites);
+            // ⭐ bug 6: pela borda, o céu da vista É o que o entorno lhe dá (os raios que saem dela leem-no);
+            // na soma da W5d o céu dele contava duas vezes.
+            if e.config().arquivo_da_borda.is_some() {
+                e.gravar_com_sprites(gpu, &mut enc, &self.cena, &sprites);
+            } else {
+                let sem_ceu = CenaDeLuz {
+                    ceu: [0.0; 3],
+                    ..self.cena.clone()
+                };
+                e.gravar_com_sprites(gpu, &mut enc, &sem_ceu, &sprites);
+            }
             if sozinha >= 2 {
                 enc = leituras::enviar_e_esperar(gpu, enc);
             }

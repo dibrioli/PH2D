@@ -40,6 +40,19 @@ struct Hrc {
     // ⭐ W5d — a c0 do ENTORNO somada na saída: `(desloc, escala, ligado)` — o texel da grade daquele
     // é `P · escala + desloc`.
     entorno: vec4<f32>,
+    // ⭐ bug 6 (handoff W6g §32) — `(base, arquiva, colunas do entorno, miolo vácuo)`: na 2.ª passagem de um
+    // ENTORNO (o miolo vácuo) os R deste passe arquivam-se em `arquivo_dos_r[base + i]`; na vista, o
+    // `colunas` diz o layout do arquivo que ela lê.
+    arquivo: vec4<u32>,
+    // ⭐ bug 6 — a vista lê o R do entorno PELA BORDA: `(X, Y, K, ligado)` do entorno no MESMO quadrante
+    // (K = o nível mais alto arquivado) e a base de cada nível no arquivo.
+    fora: vec4<u32>,
+    // ⭐ bug 6 — a JANELA do arquivo (canónico do entorno, texels: `U0, U1, V0, V1`, os fins exclusivos): só as
+    // sondas sob a grade da vista (mais uma linha de cada lado) se guardam — é só lá que ela lê.
+    janela: vec4<u32>,
+    // ⭐ bug 6 — o canónico desta grade → o do entorno no mesmo quadrante: `c_e = c · z + xy`.
+    fora_af: vec4<f32>,
+    fora_base: array<vec4<u32>, 5>,
 }
 
 @group(3) @binding(4) var<uniform> hrc: Hrc;
@@ -55,6 +68,8 @@ struct Hrc {
 // ⭐ W5d: a c0 do entorno (só a saída a lê).
 @group(2) @binding(14) var entorno_c0: texture_2d<f32>;
 @group(2) @binding(15) var entorno_amostra: sampler;
+// ⭐ bug 6: os R de todos os níveis do ENTORNO — ele escreve-os, a vista lê-os no lugar do céu.
+@group(2) @binding(17) var<storage, read_write> arquivo_dos_r: array<vec2<u32>>;
 // (o binding 11, a c0 de saída, vem do prelúdio `saida_*`: o formato segue o armazenamento.)
 
 // O passo do traço curto, em texels.
@@ -125,6 +140,16 @@ fn texel_da_grade(u: u32, v: u32) -> vec2<u32> {
     return vec2<u32>(floor(na_grade(f32(u), f32(v))));
 }
 
+// ⭐ bug 6 (handoff W6g §32) — o meio que os traços leem: na passagem do ARQUIVO (`arquivo.w = 1`) o miolo é
+// VÁCUO (nem tapa nem brilha: é da vista, que o traça fino) — o R do entorno é então a luz de FORA que chega à
+// borda dela, e a vista lê-o lá sem a versão grossa dos opacos dela pelo meio.
+fn meio_do_traco(x: vec2<f32>) -> Meio {
+    if hrc.arquivo.w == 1u && no_miolo(x) {
+        return Meio(1.0, 0.0, vec2<i32>(0), false, vec4<f32>(0.0));
+    }
+    return meio(x);
+}
+
 // ⭐ W5d — `x` (texels da grade) cai no miolo cuja emissão não se recolhe.
 fn no_miolo(x: vec2<f32>) -> bool {
     return all(x >= hrc.miolo.xy) && all(x < hrc.miolo.zw);
@@ -132,7 +157,7 @@ fn no_miolo(x: vec2<f32>) -> bool {
 
 // Traço(A, B) na lei do meio, as entradas em (A, B]; a queda conta-se de A.
 fn tracar(A: vec2<f32>, B: vec2<f32>) -> Par {
-    return tracar_de(A, meio(A), B);
+    return tracar_de(A, meio_do_traco(A), B);
 }
 
 // [`tracar`] com o meio em A já lido (`m0`: partilhado pelos intervalos de uma sonda).
@@ -149,7 +174,7 @@ fn tracar_de(A: vec2<f32>, m0: Meio, B: vec2<f32>) -> Par {
     var s = min(PASSO_HRC, len);
     loop {
         let x = A + dir * s;
-        let m = meio(x);
+        let m = meio_do_traco(x);
         if m.luz && !luz_ant && !no_miolo(x) {
             var l = m.e.rgb;
             if m.e.a > 0.0 {
@@ -251,9 +276,96 @@ fn t_de_cima(xi: u32, v: u32, k: u32) -> Par {
 fn r_de_cima(xi: u32, v: i32, j: u32) -> vec3<f32> {
     let n = hrc.nivel + 1u;
     if hrc.topo == 1u || xi >= hrc.nx_cima || v < 0 || v >= i32(hrc.eixo.y) {
-        return cas.ceu.rgb * arco(n, j);
+        return de_fora(xi, v, j, n);
     }
     return desempacotar(ler_r_cima(indice_r(hrc.nx_cima, n, xi, u32(v), j))).r;
+}
+
+// ⭐ bug 6 (handoff W6g §32) — a luz de FORA entra pela BORDA: no lugar do céu, o R do ENTORNO no mesmo cone,
+// onde o raio sai desta grade (a sonda `(xi, v)` do nível `n` recua pelo centro do cone `j` até à borda `b`); os T
+// desta grade até lá tapam-na. O arquivo do entorno vem da passagem com o miolo VÁCUO, logo o R numa sonda dele
+// DENTRO desta grade, sobre o mesmo raio, é o que atravessa `b`: lê-se a coluna de sondas mais perto ATRÁS de `b`
+// (nunca uma além, cujo R perderia o que fica entre as duas), no nível mais fino em ângulo cuja coluna ainda cai
+// dentro desta grade; acima dele, o cone-pai pela fração do arco; fora do entorno, o céu.
+fn de_fora(xi: u32, v: i32, j: u32, n: u32) -> vec3<f32> {
+    if hrc.fora.w == 0u {
+        return cas.ceu.rgb * arco(n, j);
+    }
+    let lado = f32(1u << n);
+    let e = vec2<f32>(f32(xi) * lado + 0.5, f32(v) + 0.5);
+    let d = vec2<f32>(lado, 2.0 * f32(j) + 1.0 - lado);
+    let x = vec2<f32>(hrc.eixo);
+    var t = 0.0;
+    if e.x > x.x {
+        t = max(t, (e.x - x.x) / d.x);
+    }
+    if e.y < 0.0 && d.y < 0.0 {
+        t = max(t, e.y / d.y);
+    }
+    if e.y > x.y && d.y > 0.0 {
+        t = max(t, (e.y - x.y) / d.y);
+    }
+    let b = clamp(e - t * d, vec2<f32>(0.0), x);
+    // b no canónico do entorno (o mesmo quadrante: a escala e uma translação, a direção não muda).
+    let xe = vec2<f32>(hrc.fora.xy);
+    let ce = b * hrc.fora_af.z + hrc.fora_af.xy;
+    let passo = d / d.x;
+    // O nível: o mais fino em ângulo cuja coluna cabe nesta grade (o `fora.z`, da CPU); a coluna de sondas
+    // mais perto ATRÁS de `b` e o recuo até ela, sobre o raio.
+    let m = min(n, hrc.fora.z);
+    let lado_e = f32(1u << m);
+    let coluna = floor((ce.x - 0.5) / lado_e);
+    let recuo = ce.x - (coluna * lado_e + 0.5);
+    let pai = j >> (n - m);
+    let nx = (hrc.fora.x + (1u << m) - 1u) >> m;
+    // O arquivo guarda a radiância MÉDIA do cone (R / arco): o cone fino `j` é o pai × o arco dele.
+    let ceu = cas.ceu.rgb;
+    if coluna < 0.0 || coluna >= f32(nx) {
+        return ceu * arco(n, j);
+    }
+    let vf = ce.y - recuo * passo.y - 0.5;
+    let v0 = floor(vf);
+    let fr = vf - v0;
+    var soma = vec3<f32>(0.0);
+    for (var k = 0; k < 2; k++) {
+        let s = v0 + f32(k);
+        var r = ceu;
+        if s >= 0.0 && s < xe.y {
+            let i = indice_na_janela(m, u32(coluna), u32(s), pai);
+            if i != FORA_DA_JANELA {
+                r = desempacotar(arquivo_dos_r[hrc.fora_base[m / 4u][m % 4u] + i]).r;
+            }
+        }
+        soma += select(1.0 - fr, fr, k == 1) * r;
+    }
+    return soma * arco(n, j);
+}
+
+const FORA_DA_JANELA: u32 = 0xffffffffu;
+
+// O R (nível `m`, sonda `(k, v)`, cone `c`) na janela do arquivo (a partir da base do nível), ou
+// `FORA_DA_JANELA`. As colunas do nível são as `k` com `k·2ᵐ` em `[U0, U1)` arredondado para fora.
+fn indice_na_janela(m: u32, k: u32, v: u32, c: u32) -> u32 {
+    let j = hrc.janela;
+    let k0 = j.x >> m;
+    let colunas = ((j.y + (1u << m) - 1u) >> m) + 1u - k0;
+    let linhas = j.w - j.z;
+    if k < k0 || k >= k0 + colunas || v < j.z || v >= j.w {
+        return FORA_DA_JANELA;
+    }
+    return (c * colunas + (k - k0)) * linhas + (v - j.z);
+}
+
+// ⭐ bug 6 — a 2.ª passagem de um ENTORNO guarda o R que acabou de escrever — a radiância MÉDIA do cone
+// (R / arco) —, se a sonda cai na janela.
+fn arquivar(xi: u32, v: u32, c: u32, e: vec2<u32>) {
+    if hrc.arquivo.y == 1u {
+        let i = indice_na_janela(hrc.nivel, xi, v, c);
+        if i != FORA_DA_JANELA {
+            let r = desempacotar(e).r / arco(hrc.nivel, c);
+            arquivo_dos_r[hrc.arquivo.x + i] = empacotar(Par(r, 0.0));
+        }
+    }
 }
 
 // A entrada do despacho 1D (dobrado em 2D: o limite de 65 535 grupos por eixo).
@@ -344,7 +456,7 @@ fn tracar_sonda(sv: vec2<u32>) {
         }
         return;
     }
-    let m0 = meio(l[0]);
+    let m0 = meio_do_traco(l[0]);
     for (var k = 0u; k <= (1u << n); k++) {
         let B = na_grade(u + lado, v + 2.0 * f32(k) - lado);
         escrever_t(indice_t(hrc.nx, n, sv.x, sv.y, k), empacotar(tracar_de(l[0], m0, B)));
@@ -425,7 +537,7 @@ fn hrc_desce(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgro
     }
     if GRADE3D_HRC && COLUNAS_HRC {
         if gid.x < hrc.eixo.y {
-            escrever_r(indice_r(hrc.nx, hrc.nivel, gid.y, gid.x, gid.z),
+            escrever_e_arquivar_r(indice_r(hrc.nx, hrc.nivel, gid.y, gid.x, gid.z), gid.y, gid.x, gid.z,
                 empacotar(Par(soma_da_descida(gid.z, gid.y, gid.x), 0.0)));
         }
         return;
@@ -435,7 +547,12 @@ fn hrc_desce(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgro
         return;
     }
     let d = decompor(e, 1u << hrc.nivel);
-    escrever_r(e, empacotar(Par(soma_da_descida(d.x, d.y, d.z), 0.0)));
+    escrever_e_arquivar_r(e, d.y, d.z, d.x, empacotar(Par(soma_da_descida(d.x, d.y, d.z), 0.0)));
+}
+
+fn escrever_e_arquivar_r(i: u32, xi: u32, v: u32, c: u32, e: vec2<u32>) {
+    escrever_r(i, e);
+    arquivar(xi, v, c, e);
 }
 
 // R_n no cone `m` da sonda `(xi, v)`: as duas metades do cone.
@@ -535,17 +652,17 @@ fn descer_cones(gid: vec3<u32>) {
         var soma = vec3<f32>(0.0);
         soma += metade_da_descida(xi, v, m, 2u * m, t_ant);
         soma += metade_da_descida(xi, v, m + 1u, 2u * m + 1u, t_prox);
-        escrever_r(indice_r(hrc.nx, hrc.nivel, xi, v, m), empacotar(Par(soma, 0.0)));
+        escrever_e_arquivar_r(indice_r(hrc.nx, hrc.nivel, xi, v, m), xi, v, m, empacotar(Par(soma, 0.0)));
         t_ant = t_prox;
     }
 }
 
-// O R0 do cone 0 na sonda `(u, v)` (o céu × o arco além da última).
+// O R0 do cone 0 na sonda `(u, v)` (além da última: o que vem de fora, [`de_fora`]).
 fn r0_na_sonda(u: u32, v: u32) -> vec3<f32> {
     if u < hrc.nx {
         return desempacotar(ler_r_cima(indice_r(hrc.nx, 0u, u, v, 0u))).r;
     }
-    return cas.ceu.rgb * arco(0u, 0u);
+    return de_fora(u, i32(v), 0u, 0u);
 }
 
 // ── A fluência do quadrante: L(u, v) += R0((u + 1, v), 0) ──

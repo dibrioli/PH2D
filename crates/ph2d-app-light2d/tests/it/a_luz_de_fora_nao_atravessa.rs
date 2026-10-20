@@ -1,0 +1,258 @@
+//! ⭐ O bug 6 (`docs/Luz2D/BUGS_luz2d.md` §6; handoff W6g §32–§33): a luz de FORA da grade da vista entra
+//! pela BORDA dela e os opacos dela tapam-na — nunca atravessa um opaco que só a vista resolve. Antes, a c0
+//! do entorno somava-se na saída sem direção: atrás do L 0,047 (24 % da luz livre), atrás de uma parede de
+//! 0,03 m 0,166 (90 %), e a cena 5 na troca de oitava +69 % / +141 % na sombra contra a grade esticada.
+
+use bevy_ecs::entity::Entity;
+use bevy_ecs::world::World;
+use ph2d_app_light2d::{
+    DEGRAU_PADRAO, LuzDoQuadro, config_da_vista, config_do_entorno, grade_do_quadro,
+    regiao_da_janela, smoke,
+};
+use ph2d_ecs::{Name, PresentWorld};
+use ph2d_host::WindowSize;
+use ph2d_light2d_ecs::coleta::cena_de_luz;
+use ph2d_light2d_ecs::{CenaDeLuz, Emissor, Oclusor};
+use ph2d_light2d_gpu::{Grade, Solver};
+use ph2d_render::Camera2d;
+
+use crate::comum::{fluencia_lida, gpu, renderer};
+
+const FHD: (u32, u32) = (1920, 1080);
+/// Atrás de um opaco, com a luz de fora a 0,12–0,14 sem ele: o teto (1,5 % dela). Medido 0,0000.
+const TETO_ATRAS: f64 = 0.002;
+/// Sem o opaco a luz de fora CHEGA (o controlo): ao gabarito ±5 %. Medido 0,1719 / 0,1711 (+0,5 %).
+const TOL_LIVRE: f64 = 0.05;
+
+/// A cena 5 só com o L (sem a lâmpada, o ambiente e os refletores) e um corpo que brilha fora da grade.
+fn cena_minima() -> CenaDeLuz {
+    let mut w = World::new();
+    assert!(smoke::encenar(&mut w, 5));
+    for n in [
+        "Disco",
+        "Elipse",
+        "Losango",
+        "Barra",
+        "Cruz — braço",
+        "Cruz — tronco",
+        "Luz ambiente",
+        "Lâmpada",
+    ] {
+        let e = w
+            .query::<(Entity, &Name)>()
+            .iter(&w)
+            .find(|(_, m)| m.0 == n)
+            .map(|(e, _)| e)
+            .expect(n);
+        w.despawn(e);
+    }
+    let mut cena = cena_de_luz(&w);
+    cena.emissores.push(Emissor::Poligono {
+        vertices: vec![[3.0, -2.5], [4.0, -2.5], [4.0, -1.5], [3.0, -1.5]],
+        radiancia: [1.0, 0.3, 0.3],
+        alcance_m: f32::INFINITY,
+    });
+    cena.luzes += 1;
+    cena
+}
+
+/// A fluência (vermelho) nos `pontos` com a vista e o entorno do produto, 60 quadros.
+fn vista_mais_entorno(
+    gpu: &ph2d_gpu::GpuContext,
+    cena: &CenaDeLuz,
+    pontos: &[[f64; 2]],
+) -> Vec<f64> {
+    let d = DEGRAU_PADRAO;
+    let a = Camera2d::new([-4.2, -1.8], 3.8).world_to_screen_affine(WindowSize::new(FHD.0, FHD.1));
+    let g = grade_do_quadro(a, FHD, d).expect("grade");
+    let mut s = Solver::novo(gpu, config_da_vista(&gpu.device, g, a, d)).expect("vista");
+    let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, FHD);
+    s.regiao_fina(i, f);
+    let ce = config_do_entorno(&gpu.device, a, FHD, d).expect("o entorno");
+    assert!(
+        ce.arquivo_da_borda.is_some(),
+        "o produto lê o entorno pela borda"
+    );
+    let mut e = Solver::novo(gpu, ce).expect("entorno");
+    e.regiao_fina([0; 2], [0; 2]);
+    assert!(e.mascarar_miolo(
+        gpu,
+        Some([
+            g.origem_m[0],
+            g.origem_m[1],
+            g.origem_m[0] + f64::from(g.largura) * g.texel_m,
+            g.origem_m[1] + f64::from(g.altura) * g.texel_m,
+        ])
+    ));
+    for _ in 0..60 {
+        e.quadro(gpu, cena);
+        assert!(s.somar_entorno(gpu, Some(&e)));
+        s.quadro(gpu, cena);
+    }
+    let fl = fluencia_lida(gpu, &s);
+    pontos.iter().map(|&p| fl.amostra_canal(p, 0)).collect()
+}
+
+#[test]
+fn a_luz_de_fora_nao_atravessa_um_opaco_da_vista() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — saltado");
+        return;
+    };
+    let base = cena_minima();
+    let albedo = base.oclusores.first().map_or([0.5; 3], |o| o.albedo);
+    let parede = CenaDeLuz {
+        oclusores: vec![Oclusor {
+            vertices: vec![[-3.0, -6.0], [-2.97, -6.0], [-2.97, 2.0], [-3.0, 2.0]],
+            opacidade: 1.0,
+            albedo,
+        }],
+        sprites: Vec::new(),
+        ..base.clone()
+    };
+    let livre = CenaDeLuz {
+        oclusores: Vec::new(),
+        sprites: Vec::new(),
+        ..base.clone()
+    };
+    // (cena, pontos atrás do opaco) — o L da cena 5 e uma parede de 0,03 m (2 texels da vista, ¼ do entorno).
+    let casos: [(&str, &CenaDeLuz, Vec<[f64; 2]>); 2] = [
+        ("o L", &base, vec![[-4.2, -2.0], [-5.2, -2.0], [-4.6, -2.4]]),
+        (
+            "a parede de 0,03 m",
+            &parede,
+            vec![[-3.1, -2.0], [-3.6, -2.0], [-4.2, -2.0], [-5.2, -2.0]],
+        ),
+    ];
+    for (nome, cena, pontos) in &casos {
+        let atras = vista_mais_entorno(&gpu, cena, pontos);
+        let controlo = vista_mais_entorno(&gpu, &livre, pontos);
+        for ((p, v), c) in pontos.iter().zip(&atras).zip(&controlo) {
+            let gab = ph2d_light2d_ref::fluencia(&livre, *p)[0];
+            eprintln!(
+                "{nome} {p:?}: atrás {v:.4} · sem o opaco {c:.4} · gabarito sem ele {gab:.4}"
+            );
+            assert!(
+                *v <= TETO_ATRAS,
+                "{nome} {p:?}: a luz de fora atravessou o opaco ({v:.4})"
+            );
+            assert!(
+                (c / gab - 1.0).abs() <= TOL_LIVRE,
+                "{nome} {p:?}: sem o opaco a luz de fora não chega ({c:.4} contra {gab:.4})"
+            );
+        }
+    }
+}
+
+/// A cena 5 inteira no caminho do app, dos dois lados da troca de oitava do texel (0,0312 → 0,0156: os
+/// refletores saem da grade e o rebote deles passa ao entorno), contra a MESMA vista com a grade esticada
+/// sobre a sala. Medido (handoff W6g §33): na sombra −1…−14 %, nas faces −3…−11 % (a soma da W5d dava
+/// +69 % / +141 % na sombra).
+#[test]
+fn a_cena_5_na_troca_de_oitava_segue_a_grade_esticada() {
+    const TOL: f64 = 0.2;
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — saltado");
+        return;
+    };
+    let r = renderer(&gpu);
+    let mut w = World::new();
+    assert!(smoke::encenar(&mut w, 5));
+    let cena = cena_de_luz(&w);
+    let pontos: [(&str, [f64; 2]); 4] = [
+        ("sombra à esquerda da haste", [-4.2, -2.0]),
+        ("sombra abaixo da base", [-2.6, -2.7]),
+        ("face de cima da haste", [-3.4, -0.9]),
+        ("face de cima da base", [-2.2, -2.1]),
+    ];
+    let mut texels = Vec::new();
+    for altura in [4.27_f32, 3.8] {
+        let a = Camera2d::new([-4.2, -1.8], altura)
+            .world_to_screen_affine(WindowSize::new(FHD.0, FHD.1));
+        let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
+        let mut present = PresentWorld::new();
+        for _ in 0..120 {
+            assert!(l.preparar(&w, a, FHD));
+            l.gravar(&gpu, &mut present, &r);
+        }
+        let gv = l.grade().expect("grade");
+        let t = gv.texel_m;
+        texels.push(t);
+        let ge = Grade {
+            origem_m: [(-6.5 / t).floor() * t, (-5.0 / t).floor() * t],
+            texel_m: t,
+            largura: (13.0 / t).ceil() as u32,
+            altura: (10.0 / t).ceil() as u32,
+        };
+        let mut s = Solver::novo(&gpu, config_da_vista(&gpu.device, ge, a, DEGRAU_PADRAO))
+            .expect("a esticada");
+        let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, FHD);
+        s.regiao_fina(i, f);
+        for _ in 0..120 {
+            s.quadro(&gpu, &cena);
+        }
+        let fv = fluencia_lida(&gpu, l.solver().expect("solver"));
+        let fe = fluencia_lida(&gpu, &s);
+        for (nome, p) in pontos {
+            for c in 0..3 {
+                let (v, e) = (fv.amostra_canal(p, c), fe.amostra_canal(p, c));
+                eprintln!(
+                    "h={altura} texel={t:.4} {nome} canal {c}: vista {v:.4} · esticada {e:.4} ({:+.1} %)",
+                    100.0 * (v / e - 1.0)
+                );
+                assert!(
+                    (v / e - 1.0).abs() <= TOL,
+                    "h={altura} {nome} canal {c}: a vista {v:.4} contra a esticada {e:.4}"
+                );
+            }
+        }
+    }
+    assert!(
+        texels[0] > texels[1],
+        "as duas vistas ficam dos dois lados da oitava: {texels:?}"
+    );
+}
+
+/// O outro lado da mesma lei: a luz de fora que a vista deixa PASSAR chega. Uma parede junto à borda da
+/// grade, de 0,25 m (2 texels do entorno), com uma fenda de 0,06 m (4 texels da vista, ½ do entorno): o
+/// entorno, grosso, fecha-a — se o
+/// arquivo dele trouxesse a parede grossa (o miolo não vácuo na 2.ª passagem), a luz pela fenda sumia.
+#[test]
+fn a_luz_de_fora_passa_a_fenda_perto_da_borda() {
+    const MIN_DO_GABARITO: f64 = 0.5;
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — saltado");
+        return;
+    };
+    let base = cena_minima();
+    let albedo = base.oclusores.first().map_or([0.5; 3], |o| o.albedo);
+    // A parede a 0,5 m da borda direita da grade da vista: entre ela e a coluna de sondas que a vista lê.
+    let a = Camera2d::new([-4.2, -1.8], 3.8).world_to_screen_affine(WindowSize::new(FHD.0, FHD.1));
+    let g = grade_do_quadro(a, FHD, DEGRAU_PADRAO).expect("grade");
+    let x0 = (g.origem_m[0] + f64::from(g.largura) * g.texel_m - 0.5) as f32;
+    eprintln!(
+        "a borda direita da vista em x = {:.3}; a parede em x = {x0:.3}",
+        x0 + 0.5
+    );
+    let placa = |y0: f32, y1: f32| Oclusor {
+        vertices: vec![[x0, y0], [x0 + 0.25, y0], [x0 + 0.25, y1], [x0, y1]],
+        opacidade: 1.0,
+        albedo,
+    };
+    let fenda = CenaDeLuz {
+        oclusores: vec![placa(-6.0, -2.03), placa(-1.97, 2.0)],
+        sprites: Vec::new(),
+        ..base
+    };
+    let pontos = [[-1.0, -2.0], [-2.0, -2.0], [-3.0, -2.0]];
+    let v = vista_mais_entorno(&gpu, &fenda, &pontos);
+    for (p, v) in pontos.iter().zip(&v) {
+        let gab = ph2d_light2d_ref::fluencia(&fenda, *p)[0];
+        eprintln!("a fenda {p:?}: vista {v:.4} · gabarito {gab:.4}");
+        assert!(gab > 0.0, "a fenda deixa passar no gabarito");
+        assert!(
+            *v >= MIN_DO_GABARITO * gab,
+            "{p:?}: a luz pela fenda não chegou ({v:.4} contra {gab:.4})"
+        );
+    }
+}

@@ -158,9 +158,89 @@ pub(crate) fn texturas(grade: [u32; 2]) -> Vec<Textura> {
         .collect()
 }
 
+/// ⭐ bug 6 (handoff W6g §32) — os R de todos os níveis de um ENTORNO, que a vista lê pela borda.
+pub(crate) const NOME_ARQUIVO: &str = "luz2d/buf/hrc_arquivo";
+
+/// ⭐ bug 6 — a JANELA do arquivo no quadrante (canónico do entorno, texels: `[U0, U1, V0, V1]`, fins
+/// exclusivos): as sondas sob a grade da vista; a MESMA conta do `indice_na_janela` do `c2_hrc.wgsl`.
+pub(crate) type Janela = [u32; 4];
+
+/// As entradas do nível `m` na janela `j` (as colunas arredondadas para fora, como o `indice_na_janela`).
+fn entradas_na_janela(j: Janela, m: u32) -> u64 {
+    let k0 = j[0] >> m;
+    let colunas = j[1].div_ceil(1 << m) + 1 - k0;
+    u64::from(colunas) * u64::from(j[3] - j[2]) * (1u64 << m)
+}
+
+/// ⭐ bug 6 — a base de cada nível `0..N` de cada quadrante no arquivo (as janelas na ordem dos passes) e o
+/// total de entradas.
+pub(crate) fn bases_na_janela(
+    grade: [u32; 2],
+    janelas: [Janela; 4],
+) -> ([[u32; NIVEIS_MAX]; 4], u64) {
+    let mut bases = [[0u32; NIVEIS_MAX]; 4];
+    let mut total = 0u64;
+    for (q, b) in bases.iter_mut().enumerate() {
+        for m in 0..Quadrante::de(q as u32, grade).n {
+            b[m as usize] = total as u32;
+            total += entradas_na_janela(janelas[q], m);
+        }
+    }
+    (bases, total)
+}
+
+/// ⭐ bug 6 — as entradas do arquivo para uma janela de no máximo `[w, h]` texels (da grade do entorno) em
+/// qualquer posição: o pior alinhamento das colunas de cada nível.
+pub(crate) fn entradas_do_arquivo(grade: [u32; 2], [w, h]: [u32; 2]) -> u64 {
+    (0..4u32)
+        .map(|q| {
+            let (lu, lv) = if q % 2 == 0 { (w, h) } else { (h, w) };
+            (0..Quadrante::de(q, grade).n)
+                .map(|m| (u64::from(lu.div_ceil(1 << m)) + 2) * u64::from(lv) * (1u64 << m))
+                .sum::<u64>()
+        })
+        .sum()
+}
+
+/// ⭐ bug 6 — a janela de cada quadrante para o miolo `[x0, y0, x1, y1]` (texels da grade `w × h`): o
+/// retângulo no canónico, uma linha a mais de cada lado (a bilinear do `de_fora`), dentro da grade, com
+/// no máximo `max` texels de lado.
+pub(crate) fn janelas_do_miolo([w, h]: [u32; 2], miolo: [f32; 4], max: [u32; 2]) -> [Janela; 4] {
+    std::array::from_fn(|q| {
+        let (gw, gh) = (w as f32, h as f32);
+        let canonico = |x: f32, y: f32| match q {
+            1 => (y, gw - x),
+            2 => (gw - x, gh - y),
+            3 => (gh - y, x),
+            _ => (x, y),
+        };
+        let (a, b) = (canonico(miolo[0], miolo[1]), canonico(miolo[2], miolo[3]));
+        let (lu, lv) = if q % 2 == 0 { (w, h) } else { (h, w) };
+        let (mu, mv) = if q % 2 == 0 {
+            (max[0], max[1])
+        } else {
+            (max[1], max[0])
+        };
+        let faixa = |p: f32, r: f32, lado: u32, max: u32| {
+            let i0 = (p.min(r).floor() as i64 - 1).clamp(0, i64::from(lado)) as u32;
+            let i1 = (p.max(r).ceil() as i64 + 1).clamp(0, i64::from(lado)) as u32;
+            (i0, i1.min(i0 + max))
+        };
+        let (u0, u1) = faixa(a.0, b.0, lu, mu);
+        let (v0, v1) = faixa(a.1, b.1, lv, mv);
+        [u0, u1, v0, v1]
+    })
+}
+
 /// Os buffers da cascata holográfica para a grade `w × h`: o acumulado, os arcos, a cobertura, o
-/// uniforme (um por passe) e — sem `niveis_em_textura` ([`texturas`]) — os T, o par R e os vazios.
-pub(crate) fn buffers([w, h]: [u32; 2], passes: u64, niveis_em_textura: bool) -> Vec<Buffer> {
+/// uniforme (um por passe), o arquivo dos R (⭐ bug 6: só o ENTORNO o enche; os outros, 16 bytes) e — sem
+/// `niveis_em_textura` ([`texturas`]) — os T, o par R e os vazios.
+pub(crate) fn buffers(
+    [w, h]: [u32; 2],
+    passes: u64,
+    niveis_em_textura: bool,
+    arquivo_da_borda: Option<[u32; 2]>,
+) -> Vec<Buffer> {
     use wgpu::BufferUsages as B;
     let n_max = Quadrante::de(0, [w, h]).n.max(Quadrante::de(1, [w, h]).n);
     let armazenado = B::STORAGE | B::COPY_DST;
@@ -196,6 +276,14 @@ pub(crate) fn buffers([w, h]: [u32; 2], passes: u64, niveis_em_textura: bool) ->
         bytes: crate::passlist::PASSO_UNIFORME * passes,
         usos: B::UNIFORM | B::COPY_DST,
     });
+    v.push(Buffer {
+        nome: NOME_ARQUIVO,
+        bytes: match arquivo_da_borda {
+            Some(max) => ENTRADA * entradas_do_arquivo([w, h], max),
+            None => 16,
+        },
+        usos: armazenado,
+    });
     if !niveis_em_textura {
         v.extend(NOMES_VAZIOS.map(|nome| Buffer {
             nome,
@@ -223,12 +311,14 @@ impl crate::Config {
 }
 
 /// Quantos passes (despachos) a cascata holográfica grava por quadro: os ladrilhos com cobertura (W5s);
-/// por quadrante T0–T2, T3..TN, R_{N−1}..R0 e a soma; mais a saída.
-pub(crate) fn n_passes([w, h]: [u32; 2]) -> u64 {
+/// por quadrante T0–T2, T3..TN, R_{N−1}..R0 e a soma; mais a saída. ⭐ bug 6: um ENTORNO que arquiva
+/// (`arquivo_da_borda`) grava de novo, por quadrante, os T e os R (a 2.ª passagem, sem soma).
+pub(crate) fn n_passes([w, h]: [u32; 2], arquivo_da_borda: bool) -> u64 {
     (0..4)
         .map(|q| {
             let n = u64::from(Quadrante::de(q, [w, h]).n);
-            3 + (n - 2) + n + 1
+            let tr = 3 + (n - 2) + n;
+            tr + 1 + if arquivo_da_borda { tr } else { 0 }
         })
         .sum::<u64>()
         + 2

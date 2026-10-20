@@ -491,8 +491,9 @@ impl PassList {
         if cfg.holografica.is_some() {
             buffers.extend(crate::hrc::buffers(
                 fino,
-                crate::hrc::n_passes(fino),
+                crate::hrc::n_passes(fino, cfg.arquivo_da_borda.is_some()),
                 niveis_em_textura,
+                cfg.arquivo_da_borda,
             ));
         }
         if op.rebote.is_some() {

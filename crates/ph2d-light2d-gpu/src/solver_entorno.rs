@@ -28,9 +28,10 @@ impl Solver {
         true
     }
 
-    /// ⭐ W5d — a c0 do `entorno` (o solver que mascarou o miolo desta grade) soma-se à c0 deste: a luz
-    /// que vem de FORA da grade (o rebote e os corpos que brilham fora dela). Só com a holográfica
-    /// nos dois; devolve se o estado pedido ficou ligado.
+    /// ⭐ W5d — o `entorno` (o solver que mascarou o miolo desta grade) traz a luz que vem de FORA da grade
+    /// (o rebote e os corpos que brilham fora dela). ⭐ bug 6: com o [`Config::arquivo_da_borda`] dele,
+    /// ela ENTRA PELA BORDA (o R dele no lugar do céu) e os opacos desta grade tapam-na; sem ele, a c0 dele
+    /// soma-se à deste (a W5d). Só com a holográfica nos dois; devolve se o estado pedido ficou ligado.
     pub fn somar_entorno(&mut self, gpu: &GpuContext, entorno: Option<&Solver>) -> bool {
         let g = self.cfg.grade;
         let Some(h) = self.hrc.as_mut() else {
@@ -51,10 +52,16 @@ impl Solver {
                     ((g.origem_m[1] - ge.origem_m[1]) / ge.texel_m) as f32,
                 ];
                 let escala = (g.texel_m / ge.texel_m) as f32;
+                let fora = e.cfg.arquivo_da_borda.is_some().then(|| super::holo::Fora {
+                    arquivo: &e.hrc.as_ref().expect("filtrado").arquivo,
+                    grade: [ge.largura, ge.altura],
+                    janelas: e.hrc.as_ref().expect("filtrado").janelas,
+                    bases: e.hrc.as_ref().expect("filtrado").bases,
+                });
                 h.entorno(
                     placa,
                     &gpu.queue,
-                    Some((&vista, [desloc[0], desloc[1], escala])),
+                    Some((&vista, [desloc[0], desloc[1], escala], fora)),
                 );
                 true
             }

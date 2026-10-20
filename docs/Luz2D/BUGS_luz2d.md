@@ -115,5 +115,9 @@
      da vista — a soma da c0 do entorno (sampler `Linear`, sem o alfa) leva a luz do INTERIOR do L aos texels de
      fora junto à face de trás, e o rebote acende essa face (sem o rebote da vista: 0). E há uma 2.ª, do método:
      uma parede de 0,03 m (¼ do texel do entorno) deixa passar 90 % da luz de fora.
-- **Aberto:** a cura escrita no §32 — a luz de fora ENTRA PELA BORDA da grade da vista (o R do entorno no lugar do
-  céu), tapada pelos opacos finos da vista; os gates nascem com ela.
+- **Curado (20/10, handoff W6g §33):** a luz de fora ENTRA PELA BORDA da grade da vista (o R do entorno no lugar do
+  céu, de uma 2.ª passagem dele com a vista em vácuo, guardado só sob a janela da vista) e os opacos dela tapam-na:
+  atrás do L 0,047 → 0, atrás da parede de 0,03 m 0,166 → 0; a cena 5 na troca de oitava, sombra +69 %/+141 % →
+  −14 %/−11 % contra a grade esticada (o resto é o rebote dos refletores de fora, ver §34.2). Gates
+  `a_luz_de_fora_nao_atravessa::*` com prova de mutação (6/6). Custo: +0,6…+3,2 % de memória; +0,36 ms na vista
+  e +0,32 ms no entorno em 1920×1080. Falta o smoke do dono.

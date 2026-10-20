@@ -7,15 +7,18 @@ use super::*;
 use crate::config::Holografica as Escolhas;
 use crate::hrc::{self, Quadrante};
 
+/// ⭐ W5z — os T e os R em textura ou em buffer (ficheiro irmão).
+#[path = "solver_hrc_entorno.rs"]
+mod entorno;
 /// ⭐ W5q — o instrumento das etapas (ficheiro irmão).
 #[path = "solver_hrc_fases.rs"]
 mod fases;
-/// ⭐ W5z — os T e os R em textura ou em buffer (ficheiro irmão).
+pub(crate) use entorno::Fora;
 #[path = "solver_hrc_niveis.rs"]
 mod niveis;
 use niveis::Nivel;
 
-/// O espelho de `Hrc` do `c2_hrc.wgsl` (56 B).
+/// O espelho de `Hrc` do `c2_hrc.wgsl`.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct UniformeHrc {
@@ -37,12 +40,19 @@ struct UniformeHrc {
     /// saída (`desloc, escala, ligado`) — o `Hrc` do `c2_hrc.wgsl`.
     miolo: [f32; 4],
     entorno: [f32; 4],
+    /// ⭐ bug 6 (handoff W6g §32): `(base, arquiva, _, miolo vácuo)`, o entorno pela borda (`X, Y, K,
+    /// ligado` no mesmo quadrante), a janela do arquivo e a base de cada nível nele.
+    arquivo: [u32; 4],
+    fora: [u32; 4],
+    janela: [u32; 4],
+    fora_af: [f32; 4],
+    fora_base: [[u32; 4]; 5],
 }
 
 /// O miolo VAZIO (nenhum texel cai nele).
 const SEM_MIOLO: [f32; 4] = [1.0, 1.0, 0.0, 0.0];
 
-const _: () = assert!(size_of::<UniformeHrc>() == 96, "o `Hrc` do `c2_hrc.wgsl`");
+const _: () = assert!(size_of::<UniformeHrc>() == 240, "o `Hrc` do `c2_hrc.wgsl`");
 
 #[derive(Clone, Copy)]
 enum Etapa {
@@ -90,6 +100,13 @@ pub(super) struct Holografica {
     g2: wgpu::BindGroup,
     amostra: wgpu::Sampler,
     vazia: wgpu::TextureView,
+    /// ⭐ bug 6: o arquivo dos R deste solver (um ENTORNO enche-o; nos outros, 16 bytes que não se leem),
+    /// a janela máxima, a grade, as janelas do miolo de agora e as bases dos níveis nelas.
+    pub(super) arquivo: wgpu::Buffer,
+    janela_max: Option<[u32; 2]>,
+    grade: [u32; 2],
+    pub(super) janelas: [hrc::Janela; 4],
+    pub(super) bases: [[u32; hrc::NIVEIS_MAX]; 4],
     fases: Option<fases::FasesHrc>,
     /// ⭐ W5x — os buffers grandes (T, R, acumulado) com o rótulo: a régua do regime da `c2` mede cada um.
     pub(super) grandes: Vec<(&'static str, wgpu::Buffer)>,
@@ -224,12 +241,8 @@ impl Holografica {
                 armazenado(16, false),
             ],
         });
-        let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("luz2d c2 holográfica"),
-            bind_group_layouts: &[Some(&cena_layout), None, None, Some(&g3_layout)],
-            immediate_size: 0,
-        });
-        // ⭐ W5d: a saída lê a c0 do entorno (grupo 2) — só ela.
+        // ⭐ W5d: o entorno (grupo 2) — a c0 dele, que a saída soma; ⭐ bug 6: e o arquivo dos R (o
+        // entorno escreve o seu na descida; a vista lê o do entorno no lugar do céu).
         let g2_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("luz2d c2 holográfica entorno"),
             entries: &[
@@ -240,10 +253,11 @@ impl Holografica {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
+                armazenado(17, false),
             ],
         });
-        let pl_saida = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("luz2d c2 holográfica saída"),
+        let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("luz2d c2 holográfica"),
             bind_group_layouts: &[Some(&cena_layout), None, Some(&g2_layout), Some(&g3_layout)],
             immediate_size: 0,
         });
@@ -256,7 +270,8 @@ impl Holografica {
         // Sem entorno a saída liga a EMISSÃO (o `entorno.w = 0` não a lê): uma textura vazia a mais mudava
         // o enchimento que o alocador dá às vizinhas (o G5).
         let vazia = e.vistas[EMISSAO].clone();
-        let g2 = g2_de(device, &g2_layout, &vazia, &amostra);
+        let arquivo = (e.buffer)(hrc::NOME_ARQUIVO);
+        let g2 = g2_de(device, &g2_layout, &vazia, &amostra, &arquivo);
         // ⭐ W5u: os fios que fazem mais de uma entrada (só em 3D).
         let em_3d = e.cfg.hrc_grade_3d && e.cfg.hrc_por_colunas;
         let cones = if em_3d {
@@ -294,11 +309,7 @@ impl Holografica {
             .map(|entrada| {
                 device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                     label: Some(entrada),
-                    layout: Some(if *entrada == "hrc_saida" {
-                        &pl_saida
-                    } else {
-                        &pl
-                    }),
+                    layout: Some(&pl),
                     module: e.modulo,
                     entry_point: Some(entrada),
                     compilation_options: wgpu::PipelineCompilationOptions {
@@ -397,6 +408,11 @@ impl Holografica {
             _q: [0; 2],
             miolo: SEM_MIOLO,
             entorno: [0.0; 4],
+            arquivo: [0; 4],
+            fora: [0; 4],
+            janela: [0; 4],
+            fora_af: [0.0; 4],
+            fora_base: [[0; 4]; 5],
         };
         // ⭐ W5s: a máscara do vazio, da própria captura (a textura inteira: a grade efetiva), antes dos
         // quadrantes.
@@ -413,121 +429,145 @@ impl Holografica {
                 ],
             );
         }
-        for q in 0..4 {
-            let quad = Quadrante::de(q, grade);
-            let base = UniformeHrc {
-                quadrante: q,
-                nivel: 0,
-                grade,
-                eixo: [quad.x, quad.y],
-                nx: 0,
-                nx_baixo: 0,
-                nx_cima: 0,
-                topo: 0,
-                total: 0,
-                por_fio: 0,
-                _p: [0; 2],
-                _q: [0; 2],
-                miolo: SEM_MIOLO,
-                entorno: [0.0; 4],
-            };
-            let nx = |n: u32| quad.nx(n);
-            // ⭐ W5t: em 3D (por colunas) os grupos são `[⌈Y/64⌉, nx, k]` (a traça só com um fio por sonda).
-            let grupos_3d = |n: u32, k: u32| [quad.y.div_ceil(64), nx(n), k];
-            for n in 0..=quad.n {
-                // ⭐ W5s: um fio por sonda na traça (o `SONDA_HRC`).
-                let por_sonda = n <= 2 && e.cfg.hrc_fio_por_sonda;
-                let total = if por_sonda {
-                    u64::from(nx(n)) * u64::from(quad.y)
-                } else {
-                    quad.entradas_t(n)
+        // ⭐ bug 6 (handoff W6g §32): um ENTORNO faz uma 2.ª passagem com o miolo VÁCUO, que arquiva os R
+        // (sem soma nem saída: a c0 dele é a da 1.ª, a do rebote dele).
+        let rodadas: &[bool] = if e.cfg.arquivo_da_borda.is_some() {
+            &[false, true]
+        } else {
+            &[false]
+        };
+        for &arquivando in rodadas {
+            for q in 0..4 {
+                let quad = Quadrante::de(q, grade);
+                let base = UniformeHrc {
+                    quadrante: q,
+                    nivel: 0,
+                    grade,
+                    eixo: [quad.x, quad.y],
+                    nx: 0,
+                    nx_baixo: 0,
+                    nx_cima: 0,
+                    topo: 0,
+                    total: 0,
+                    por_fio: 0,
+                    _p: [0; 2],
+                    _q: [0; 2],
+                    miolo: SEM_MIOLO,
+                    entorno: [0.0; 4],
+                    arquivo: [0; 4],
+                    fora: [0; 4],
+                    janela: [0; 4],
+                    fora_af: [0.0; 4],
+                    fora_base: [[0; 4]; 5],
                 };
-                let u = UniformeHrc {
-                    nivel: n,
-                    nx: nx(n),
-                    nx_baixo: if n > 0 { nx(n - 1) } else { 0 },
-                    total: total as u32,
-                    por_fio: u32::from(por_fio),
+                let base = UniformeHrc {
+                    arquivo: [0, 0, 0, u32::from(arquivando)],
                     ..base
                 };
-                let (etapa, ler) = if n <= 2 {
-                    (Etapa::Traca, &vazio_l)
-                } else {
-                    (Etapa::Sobe, &t[(n - 1) as usize])
-                };
-                let grupos = match (em_3d, n <= 2) {
-                    (true, true) if por_sonda => grupos_3d(n, 1),
-                    (true, false) if pares > 0 && por_fio => {
-                        grupos_3d(n, ((1 << (n - 1)) + 1u32).div_ceil(pares))
-                    }
-                    (true, false) => grupos_3d(n, (1 << n) + 1),
-                    _ => grupos_1d(total),
-                };
-                passo(
-                    etapa,
-                    u,
-                    [ler, &vazio_l, &t[n as usize], &vazio_l, &vazio_r],
-                    grupos,
-                );
-            }
-            for n in (0..quad.n).rev() {
-                let total = quad.entradas_r(n);
-                let topo = n + 1 == quad.n;
-                let u = UniformeHrc {
-                    nivel: n,
-                    nx: nx(n),
-                    nx_cima: nx(n + 1),
-                    topo: u32::from(topo),
-                    total: total as u32,
-                    por_fio: u32::from(por_fio),
-                    ..base
-                };
-                let cima = if topo {
-                    &vazio_l
-                } else {
-                    &r[((n + 1) % 2) as usize]
-                };
-                passo(
-                    Etapa::Desce,
-                    u,
-                    [
-                        &t[n as usize],
-                        &t[(n + 1) as usize],
-                        &vazio_t,
-                        cima,
-                        &r[(n % 2) as usize],
-                    ],
-                    if em_3d {
-                        grupos_3d(n, (1u32 << n).div_ceil(if por_fio { cones } else { 1 }))
+                let nx = |n: u32| quad.nx(n);
+                // ⭐ W5t: em 3D (por colunas) os grupos são `[⌈Y/64⌉, nx, k]` (a traça só com um fio por sonda).
+                let grupos_3d = |n: u32, k: u32| [quad.y.div_ceil(64), nx(n), k];
+                for n in 0..=quad.n {
+                    // ⭐ W5s: um fio por sonda na traça (o `SONDA_HRC`).
+                    let por_sonda = n <= 2 && e.cfg.hrc_fio_por_sonda;
+                    let total = if por_sonda {
+                        u64::from(nx(n)) * u64::from(quad.y)
                     } else {
-                        grupos_1d(total)
-                    },
+                        quad.entradas_t(n)
+                    };
+                    let u = UniformeHrc {
+                        nivel: n,
+                        nx: nx(n),
+                        nx_baixo: if n > 0 { nx(n - 1) } else { 0 },
+                        total: total as u32,
+                        por_fio: u32::from(por_fio),
+                        ..base
+                    };
+                    let (etapa, ler) = if n <= 2 {
+                        (Etapa::Traca, &vazio_l)
+                    } else {
+                        (Etapa::Sobe, &t[(n - 1) as usize])
+                    };
+                    let grupos = match (em_3d, n <= 2) {
+                        (true, true) if por_sonda => grupos_3d(n, 1),
+                        (true, false) if pares > 0 && por_fio => {
+                            grupos_3d(n, ((1 << (n - 1)) + 1u32).div_ceil(pares))
+                        }
+                        (true, false) => grupos_3d(n, (1 << n) + 1),
+                        _ => grupos_1d(total),
+                    };
+                    passo(
+                        etapa,
+                        u,
+                        [ler, &vazio_l, &t[n as usize], &vazio_l, &vazio_r],
+                        grupos,
+                    );
+                }
+                for n in (0..quad.n).rev() {
+                    let total = quad.entradas_r(n);
+                    let topo = n + 1 == quad.n;
+                    let u = UniformeHrc {
+                        nivel: n,
+                        nx: nx(n),
+                        nx_cima: nx(n + 1),
+                        topo: u32::from(topo),
+                        total: total as u32,
+                        por_fio: u32::from(por_fio),
+                        arquivo: if arquivando { [0, 1, 0, 1] } else { [0; 4] },
+                        ..base
+                    };
+                    let cima = if topo {
+                        &vazio_l
+                    } else {
+                        &r[((n + 1) % 2) as usize]
+                    };
+                    passo(
+                        Etapa::Desce,
+                        u,
+                        [
+                            &t[n as usize],
+                            &t[(n + 1) as usize],
+                            &vazio_t,
+                            cima,
+                            &r[(n % 2) as usize],
+                        ],
+                        if em_3d {
+                            grupos_3d(n, (1u32 << n).div_ceil(if por_fio { cones } else { 1 }))
+                        } else {
+                            grupos_1d(total)
+                        },
+                    );
+                }
+                if arquivando {
+                    continue;
+                }
+                // ⭐ W5r: por colunas, um grupo por ladrilho 8×8 (o `hrc_soma`).
+                let total = if e.cfg.hrc_por_colunas {
+                    64 * u64::from(quad.x.div_ceil(8)) * u64::from(quad.y.div_ceil(8))
+                } else {
+                    u64::from(quad.x) * u64::from(quad.y)
+                };
+                let u = UniformeHrc {
+                    nx: nx(0),
+                    total: total as u32,
+                    ..base
+                };
+                passo(
+                    Etapa::Soma,
+                    u,
+                    [&vazio_l, &vazio_l, &vazio_t, &r[0], &vazio_r],
+                    grupos_1d(total),
                 );
             }
-            // ⭐ W5r: por colunas, um grupo por ladrilho 8×8 (o `hrc_soma`).
-            let total = if e.cfg.hrc_por_colunas {
-                64 * u64::from(quad.x.div_ceil(8)) * u64::from(quad.y.div_ceil(8))
-            } else {
-                u64::from(quad.x) * u64::from(quad.y)
-            };
-            let u = UniformeHrc {
-                nx: nx(0),
-                total: total as u32,
-                ..base
-            };
-            passo(
-                Etapa::Soma,
-                u,
-                [&vazio_l, &vazio_l, &vazio_t, &r[0], &vazio_r],
-                grupos_1d(total),
-            );
+            if !arquivando {
+                passo(
+                    Etapa::Saida,
+                    saida,
+                    [&vazio_l, &vazio_l, &vazio_t, &vazio_l, &vazio_r],
+                    [grade[0].div_ceil(8), grade[1].div_ceil(8), 1],
+                );
+            }
         }
-        passo(
-            Etapa::Saida,
-            saida,
-            [&vazio_l, &vazio_l, &vazio_t, &vazio_l, &vazio_r],
-            [grade[0].div_ceil(8), grade[1].div_ceil(8), 1],
-        );
         let h = Self {
             cena,
             pipelines,
@@ -538,6 +578,11 @@ impl Holografica {
             g2,
             amostra,
             vazia,
+            arquivo,
+            janela_max: e.cfg.arquivo_da_borda,
+            grade,
+            janelas: [[0; 4]; 4],
+            bases: [[0; hrc::NIVEIS_MAX]; 4],
             fases: None,
             grandes: if e.cfg.hrc_guarda_os_grandes {
                 hrc::NOMES_T[..n_t]
@@ -566,40 +611,6 @@ impl Holografica {
         queue.write_buffer(&self.uniforme, 0, &uni);
     }
 
-    /// ⭐ W5d — o miolo (texels da grade) cuja emissão este solver não recolhe; `None` = nenhum.
-    pub(super) fn miolo(&mut self, queue: &wgpu::Queue, miolo: Option<[f32; 4]>) {
-        let m = miolo.unwrap_or(SEM_MIOLO);
-        if self.uniformes.first().is_some_and(|u| u.miolo == m) {
-            return;
-        }
-        for u in &mut self.uniformes {
-            u.miolo = m;
-        }
-        self.escrever(queue);
-    }
-
-    /// ⭐ W5d — a c0 do entorno (a vista dela e `desloc, escala` do texel desta grade para o dela)
-    /// somada na saída; `None` = nenhuma.
-    pub(super) fn entorno(
-        &mut self,
-        device: crate::Placa<'_>,
-        queue: &wgpu::Queue,
-        entorno: Option<(&wgpu::TextureView, [f32; 3])>,
-    ) {
-        let (vista, e) = match entorno {
-            Some((v, [dx, dy, s])) => (v.clone(), [dx, dy, s, 1.0]),
-            None => (self.vazia.clone(), [0.0; 4]),
-        };
-        self.g2 = g2_de(device, &self.g2_layout, &vista, &self.amostra);
-        if self.uniformes.first().is_some_and(|u| u.entorno == e) {
-            return;
-        }
-        for u in &mut self.uniformes {
-            u.entorno = e;
-        }
-        self.escrever(queue);
-    }
-
     /// Grava a cascata holográfica inteira no passe `p` (a c0 sai dela); a gravação `k` do quadro (⭐ W5s:
     /// a máscara do vazio só na 1.ª — a cobertura não muda entre os rebotes).
     pub(super) fn gravar(&self, p: &mut wgpu::ComputePass<'_>, k: u32) {
@@ -609,9 +620,7 @@ impl Holografica {
                 continue;
             }
             p.set_pipeline(&self.pipelines[*etapa as usize]);
-            if matches!(etapa, Etapa::Saida) {
-                p.set_bind_group(2, &self.g2, &[]);
-            }
+            p.set_bind_group(2, &self.g2, &[]);
             p.set_bind_group(3, grupo, &[]);
             p.dispatch_workgroups(*x, *y, *z);
         }
@@ -660,6 +669,7 @@ fn g2_de(
     layout: &wgpu::BindGroupLayout,
     v: &wgpu::TextureView,
     amostra: &wgpu::Sampler,
+    arquivo: &wgpu::Buffer,
 ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("luz2d c2 holográfica entorno"),
@@ -670,6 +680,7 @@ fn g2_de(
                 binding: 15,
                 resource: wgpu::BindingResource::Sampler(amostra),
             },
+            buf(17, arquivo),
         ],
     })
 }

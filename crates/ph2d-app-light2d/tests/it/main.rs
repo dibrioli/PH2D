@@ -5,6 +5,7 @@ mod a_borda_sem_pontos_pretos;
 mod a_escada_da_sombra;
 mod a_face_acesa_da_parede;
 mod a_grade_fina;
+mod a_luz_de_fora_nao_atravessa;
 mod a_luz_nao_muda_com_a_vista;
 mod a_luz_nasce_na_estufa;
 mod a_nitidez_da_luz;

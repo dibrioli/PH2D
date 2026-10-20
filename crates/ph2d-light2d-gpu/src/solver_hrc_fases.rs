@@ -74,9 +74,7 @@ impl Holografica {
             }
             p.set_bind_group(0, &self.cena, &[]);
             p.set_pipeline(&self.pipelines[*etapa as usize]);
-            if matches!(etapa, Etapa::Saida) {
-                p.set_bind_group(2, &self.g2, &[]);
-            }
+            p.set_bind_group(2, &self.g2, &[]);
             p.set_bind_group(3, grupo, &[]);
             p.dispatch_workgroups(*x, *y, *z);
         }

@@ -863,3 +863,99 @@ A fuga 2 só por si curava-se com o alfa na amostra; a 3 não — o padrão-ouro
   parede de 0,03 m, teto perto de 0, controlo = sem o opaco (a luz chega); a cena 5 na troca de oitava contra a
   grade esticada. Continuam verdes: `o_rebote_de_fora_da_grade`, `o_entorno_nao_conta_duas_vezes_…`,
   `a_luz_num_ponto_nao_muda_com_a_vista*`.
+
+## 33. A cura do bug 6 — a luz de fora ENTRA PELA BORDA (20/10, feita e medida)
+
+O desenho do §32 com três correções que a medição obrigou (cada uma com a régua que a mostrou; réguas em
+`target/bug6/bug6_regua.rs`, fora do git pelo tecto de LOC, `#[ignore]`; logs `target/bug6/borda_*.log`):
+
+1. **O arquivo sai de uma 2.ª passagem do entorno com o miolo VÁCUO** (`meio_do_traco`: na passagem com
+   `arquivo.w = 1`, o miolo nem tapa nem brilha). Com a passagem normal, as sondas do entorno nos níveis altos
+   (16 m umas das outras) caíam dentro da vista e o R delas vinha tapado pela versão GROSSA do L: o lado aceso
+   ficou a 0,004 contra 0,171. A 1.ª passagem fica como era (a c0 dele = o rebote dos refletores de fora, tapado
+   pelos objetos da vista).
+2. **A vista lê a coluna de sondas mais perto ATRÁS da borda, sobre o raio** (nunca a bilinear em `u`): a sonda
+   além da borda perdia o que fica entre as duas (o corpo que brilha a 2–3 m da borda): 0,067 contra 0,171. O
+   nível é o mais fino em ângulo cuja coluna cabe na vista (`fora.z`, da CPU, sem laço no shader).
+3. **O céu passa ao entorno** (`quadro.rs`): a W5d tirava-o dele porque a soma o contava DUAS vezes (medido:
+   1,256 contra 2π·céu = 0,628 na sala vazia); pela borda o céu da vista é o que o entorno lhe dá (0,6284).
+
+E dois cortes de custo: **o arquivo guarda só a JANELA da vista** (`hrc::janelas_do_miolo`, as sondas sob a
+grade dela + uma linha de cada lado; `Config::arquivo_da_borda = Some(janela máxima)`) e a radiância MÉDIA do
+cone (R / arco). `PH2D_LIGHT2D_BORDA=0` volta à soma da W5d.
+
+| Medido (cena mínima, vermelho) | soma (W5d) | borda | esticada | gabarito |
+|---|---|---|---|---|
+| atrás do L (−4,2; −2,0) | 0,047 | **0,0000** | 0 | 0 |
+| atrás de uma parede de 0,03 m | 0,166 | **0,0000** | — | 0 |
+| sem o opaco (o controlo) | — | 0,1364 | — | 0,1387 |
+| acima do L | 0,191 | 0,1719 | 0,1765 | 0,1711 |
+
+| Cena 5 no app, h = 3,8 (texel 0,0156) contra a esticada | soma (W5d) | borda |
+|---|---|---|
+| sombra à esquerda da haste (R/G/B) | +69/+41/+39 % | −14/−1/−1 % |
+| sombra abaixo da base | +141/+75/+43 % | −11/−3/−1 % |
+| faces de cima (haste, base) | −1…−5 % | −10…−11 % (R) |
+| só o L com o ambiente (sombra) | — | +0 % |
+| do outro lado da oitava (h = 4,27, texel 0,0312) | — | 0,0 % |
+
+Os −10 % no vermelho das faces são o rebote dos refletores de fora (sem eles: 0 %). A esticada fica +38 % de
+vermelho acima do gabarito `Rebote` na mesma cena (§30, por medir) — o desvio da borda aponta para o gabarito,
+não para a esticada; antes de o usar como teto, mede-se quem está certo (§34.2).
+
+**Custo** (`bug6_o_custo_da_borda`, `bug6_as_fases_da_borda`; variantes no mesmo processo, intercaladas, o mínimo):
+
+| | soma | borda |
+|---|---|---|
+| memória do entorno, 1920×1080 Baixa / Média / Alta | 10,1 / 35,4 / 125,2 MB | +2,4 / +9,7 / +37,5 MB (+0,6 / +1,6 / +3,1 % do par) |
+| idem 2560×1440 | 18,3 / 61,3 / 244,1 | +4,3 / +17,6 / +66,0 (+0,6 / +1,7 / +3,2 %) |
+| idem 3840×2160 | 35,4 / 125,2 / 509,5 | +9,7 / +37,5 / +155,9 (+0,6 / +1,7 / +3,1 %) |
+| placa, entorno 1920×1080 / 2560×1440 (padrão) | 0,632 / 0,723 ms | 0,948 / 1,105 ms |
+| placa, vista (c2) 1920×1080 / 2560×1440 | 7,707 (1,528) / 9,902 (2,164) | 8,064 (1,890) / 10,495 (2,752) |
+
+O arquivo inteiro (sem a janela) custava +8…+19 % (814 MB no 4K Alta); com o laço do nível no shader a `c2` da
+vista pagava +0,55 ms. O resto do custo está nos dois níveis de cima da descida (n = 8, 9: +0,10 e +0,08 ms em
+1920×1080), onde quase todo cone sai da grade.
+
+**Gates** (`tests/it/a_luz_de_fora_nao_atravessa.rs`): `a_luz_de_fora_nao_atravessa_um_opaco_da_vista` (o L e a
+parede de 0,03 m: atrás ≤ 0,002, medido 0,0000; o controlo sem o opaco ao gabarito ±5 %, medido −0,1…−1,8 %),
+`a_luz_de_fora_passa_a_fenda_perto_da_borda` (placas de 0,25 m a 0,5 m da borda da vista com uma fenda de 0,06 m:
+≥ ½ do gabarito, medido +14…+18 %) e `a_cena_5_na_troca_de_oitava_segue_a_grade_esticada` (h = 4,27 e 3,8, ±20 %
+por canal). Continuam verdes: `o_rebote_de_fora_da_grade` (com o `o_entorno_nao_conta_duas_vezes_…`),
+`a_luz_num_ponto_nao_muda_com_a_vista*`, `os_tetos_da_placa` (20/20 no app), G5 e `architecture_workspace_file_loc_cap`
+(o `solver_hrc.rs` 799 → 686: o entorno, o miolo e a borda no filho `solver_hrc_entorno.rs`).
+
+**Prova de mutação** (cada uma sozinha, a árvore reposta):
+
+| Mutação | Morre em |
+|---|---|
+| M1 a borda desligada (`de_fora` → céu) | o opaco (0,0000 contra 0,1387 sem ele) e a cena 5 |
+| M2 o miolo NÃO vácuo na passagem do arquivo | a fenda (0,0009 contra 0,0343; limpa 0,0400) — sobrevivia aos outros dois: só um opaco entre a coluna lida e a borda a vê |
+| M3 a coluna ALÉM da borda | o opaco e a cena 5 |
+| M4 a soma da c0 de volta, além da borda | o opaco (atrás do L 0,0473) e a cena 5 |
+| M5 o entorno sem o céu (o da W5d) | a cena 5 (0,1304 contra 0,2267) |
+| M6 o arquivo não se escreve | o opaco e a cena 5 |
+
+## 34. ABERTO (por ordem — substitui o §31)
+
+1. **O custo que fica:** a `c2` da vista +0,36 ms (1920×1080) / +0,59 ms (2560×1440), quase todo nos dois níveis
+   de cima da descida (quase todo cone sai da grade); o entorno +0,32 / +0,38 ms (a 2.ª passagem inteira — ela só
+   precisa da parte da grade dele a partir da janela no sentido do quadrante). A régua: `bug6_o_custo_da_borda` e
+   `bug6_as_fases_da_borda` em `target/bug6/bug6_regua.rs`.
+2. **Quem está certo no rebote de fora:** a cena 5 com a grade a cobrir tudo fica +38 % de vermelho contra o
+   gabarito `Rebote`, e a borda fica −10 % contra a esticada nas faces (só o rebote dos refletores de fora) — medir
+   o gabarito convergido antes de usar qualquer dos dois como teto.
+3. O smoke do dono do bug 6 (a cena 5 com o zoom que tira a lâmpada da vista) com esta cura.
+4. A lei W6d com `DISTANTES` no relógio (o §20.2). 5. A anomalia da r5b (§12). 6. A família (b) (37–38). 7. Os
+   zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.
+
+## ⛔ Recusas MEDIDAS (§33)
+
+| Recusa | Porquê |
+|---|---|
+| Curar só com o alfa na amostra da c0 do entorno | Fecha a fuga do rebote, não a da parede fina (90 % atravessa: o entorno não a vê). |
+| Ler o R do entorno pela bilinear das sondas em `u` | A sonda além da borda perde o corpo que brilha entre as duas: o lado aceso a 39 %. |
+| Arquivar a passagem NORMAL do entorno | As sondas dentro da vista vêm tapadas pelo L grosso: o lado aceso a 2 %. |
+| O arquivo de todos os níveis na grade inteira do entorno | +8…+19 % de memória (814 MB no 4K Alta); a janela dá +0,6…+3,2 %. |
+| O laço que procura o nível no shader | +0,19 ms na `c2` da vista em 1920×1080 pelo mesmo resultado; o nível vem da CPU. |
+| Esperar que guardar a média (R / arco) poupe tempo | Medido: o tempo não muda — o custo é a quantidade de cones que saem da grade, não a leitura. |

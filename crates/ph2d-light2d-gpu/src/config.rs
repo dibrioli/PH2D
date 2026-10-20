@@ -220,6 +220,11 @@ pub struct Config {
     /// ⭐ W5o — ninguém lê a FLUÊNCIA deste solver (o entorno: só a c0 dele soma-se à da vista): a
     /// visibilidade das lâmpadas, a grade fina, o anel e o miolo não correm (nem alocam).
     pub so_a_c0: bool,
+    /// ⭐ bug 6 (handoff W6g §32) — este solver é um ENTORNO que guarda os R de todos os níveis
+    /// (`luz2d/buf/hrc_arquivo`): a vista lê-os no lugar do céu — a luz de fora entra pela BORDA dela e os
+    /// opacos dela tapam-na. O valor é a JANELA máxima (texels desta grade) que a grade da vista ocupa: só as
+    /// sondas sob ela se guardam. `None` = a c0 dele somada na saída da vista (a W5d; `PH2D_LIGHT2D_BORDA=0`).
+    pub arquivo_da_borda: Option<[u32; 2]>,
     /// ⭐ W5c — a CASCATA HOLOGRÁFICA (HRC, a do produto em todo nível) no lugar das cascatas de Sannikov: a mesma
     /// c0, outra conta (`c2_hrc.wgsl`). `None` = as cascatas.
     pub holografica: Option<Holografica>,
@@ -398,6 +403,7 @@ impl Config {
             anel_por_ladrilhos: true,
             miolo_salta_o_fundo: true,
             so_a_c0: false,
+            arquivo_da_borda: None,
             holografica: None,
             modulo_rc: None,
             hrc_nasce_duas_vezes: true,

@@ -44,6 +44,12 @@ fn cortes_ligados() -> bool {
     ligado("PH2D_LIGHT2D_CORTES")
 }
 
+/// ⭐ bug 6 (handoff W6g §32) — `PH2D_LIGHT2D_BORDA=0`: a luz do entorno volta a somar-se na saída da
+/// vista (a W5d; comparar) em vez de entrar pela borda dela.
+fn borda_ligada() -> bool {
+    ligado("PH2D_LIGHT2D_BORDA")
+}
+
 /// ⭐ W5p — `PH2D_LIGHT2D_HRC_DUAS=0`: a holográfica nasce uma vez (a `c2` do High mais lenta, comparar).
 fn hrc_duas_vezes() -> bool {
     ligado("PH2D_LIGHT2D_HRC_DUAS")
@@ -147,11 +153,18 @@ pub fn config_do_entorno(
         ..dg
     };
     let ge = grade_do_quadro(mundo_para_tela, alvo_px, de)?;
+    // ⭐ bug 6: a janela do arquivo é a grade da vista nos texels deste (mais as linhas da bilinear).
+    let janela = || {
+        let gv = grade_do_quadro(mundo_para_tela, alvo_px, dg)?;
+        let lado = |n: u32| (f64::from(n) * gv.texel_m / ge.texel_m).ceil() as u32 + 4;
+        Some([lado(gv.largura), lado(gv.altura)])
+    };
     Some(hrc_por_fio(Config {
         holografica,
         rebote: rebote_ligado(),
         // ⭐ W5o: da vista só se lê a c0 do entorno (`Solver::somar_entorno`).
         so_a_c0: cortes_ligados(),
+        arquivo_da_borda: if borda_ligada() { janela() } else { None },
         hrc_nasce_duas_vezes: hrc_duas_vezes(),
         hrc_berco: hrc_berco(),
         hrc_em_texturas: hrc_texturas(),

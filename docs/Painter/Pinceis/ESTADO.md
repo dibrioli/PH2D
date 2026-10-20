@@ -4,8 +4,7 @@
 > Última escrita: JANELA 1, 2026-10-20.
 
 **Quem é quem (20/10, respostas das sessões):** JANELA 2 = `ph2d-d2` · JANELA 4 = `ph2d-d1` · JANELA 5 = `ph2d-fa` ·
-JANELA 3 = provavelmente `ph2d-94` (não respondeu à pergunta; confirme por `ListAgents` antes do sinal). O nome
-muda se a janela reiniciar.
+JANELA 3 = `ph2d-94`. O nome muda se a janela reiniciar (confirme por `ListAgents` antes do sinal).
 
 ## Feito (JANELA 1)
 

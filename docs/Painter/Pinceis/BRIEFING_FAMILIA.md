@@ -33,6 +33,8 @@
 - Velocidade: inner loop `bash <árvore>/scripts/cargo-check-narrow.sh ph2d-tool-painter`; testes POR NOME
   (`bash <árvore>/scripts/cargo-test-narrow.sh ph2d-tool-painter <nome>`); pesado por `bash <árvore>/scripts/ph2d-run.sh`.
   Nada de clippy nem suíte inteira (é do fecho da J5). Edite com a ferramenta Edit.
+- **O scratchpad é PARTILHADO entre os agentes da sessão**: os seus scripts e ficheiros temporários vão SÓ numa
+  subpasta com o nome da família (`<scratchpad>/<família>/`) — a 1.ª onda perdeu um script assim.
 - **No máximo DUAS corridas pesadas na linha ao mesmo tempo** (a fatia é uma, 24 G): todo `exame.sh`, gerador e
   `cargo test` vai por `bash docs/Painter/Pinceis/ferramentas/vez_pesada.sh <comando…>` (espera uma das 2 vagas).
   O `cargo-check-narrow` não precisa.

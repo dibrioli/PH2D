@@ -35,7 +35,8 @@ fn fecha_o_drop(p: &Passo) -> bool {
     }
 }
 
-/// O toque em `eventos[..i]` é um ColorDrop: o último marco antes dele é o C&F a entrar em Fill.
+/// A etapa que começa no último de `eventos` é um ColorDrop: o último marco até lá é o C&F a entrar em
+/// Fill.
 fn e_um_colordrop(eventos: &[Event]) -> bool {
     eventos
         .iter()
@@ -53,12 +54,14 @@ fn e_um_colordrop(eventos: &[Event]) -> bool {
 }
 
 impl LeitorDaFamilia for LeitorDoPainter {
-    /// Uma pincelada é `Down..Up`. Um ColorDrop (W11) vai do `Down` ao passo que o fecha — o limiar
+    /// Uma pincelada é `Down..Up`. Um ColorDrop (W11) vai da entrada em Fill (`ColorDropComeca`, W13:
+    /// apagá-lo leva-a, senão a pincelada seguinte tocava em Fill) ao passo que o fecha — o limiar
     /// afinado depois de soltar é dele —, e o do gesto parado não tem `Up`.
     fn etapas(&self, eventos: &[Event]) -> Vec<Etapa> {
         let mut out: Vec<Etapa> = Vec::new();
         let mut toque = None;
         let mut drop = false;
+        let mut marco = None;
         let mut solto: Option<(usize, usize)> = None;
         let fecha_solto = |out: &mut Vec<Etapa>, solto: &mut Option<(usize, usize)>| {
             if let Some((inicio, fim)) = solto.take() {
@@ -72,7 +75,7 @@ impl LeitorDaFamilia for LeitorDoPainter {
                     ..
                 }) => {
                     fecha_solto(&mut out, &mut solto);
-                    toque = Some(i);
+                    toque = Some(if drop { marco.unwrap_or(i) } else { i });
                 }
                 Some(Passo::Ponteiro {
                     fase: PointerPhase::Up,
@@ -86,9 +89,15 @@ impl LeitorDaFamilia for LeitorDoPainter {
                         }
                     }
                 }
-                Some(Passo::ColorDropComeca(_)) => drop = true,
+                Some(Passo::ColorDropComeca(_)) => {
+                    if !drop {
+                        marco = Some(i);
+                    }
+                    drop = true;
+                }
                 Some(p) if drop && fecha_o_drop(&p) => {
                     drop = false;
+                    marco = None;
                     if let Some(d) = solto.take().map(|(d, _)| d).or_else(|| toque.take()) {
                         out.push(Etapa { inicio: d, fim: i });
                     }
@@ -216,9 +225,19 @@ fn e_de_configuracao(p: &Passo) -> bool {
     )
 }
 
-/// O pincel no toque de cada pincelada da trilha QUE TOCA (cor, tamanho e meio), lido por um tool no
-/// estado inicial que só recebe os passos de configuração.
-fn pinceis(tocavel: &Track) -> Result<Vec<([u8; 3], f32, PaintMedia)>, ErroDaMacro> {
+/// O pincel no toque de uma etapa.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct NoToque {
+    pub cor: [u8; 3],
+    pub tamanho_px: f32,
+    pub meio: PaintMedia,
+    /// O limiar do Fill (o de um ColorDrop que não o afina).
+    pub limiar: f32,
+}
+
+/// O pincel no toque de cada pincelada da trilha QUE TOCA, lido por um tool no estado inicial que só
+/// recebe os passos de configuração.
+pub(crate) fn pinceis(tocavel: &Track) -> Result<Vec<NoToque>, ErroDaMacro> {
     let mut t: PainterTool =
         inicial::tool_no_inicial(&tocavel.initial).map_err(ErroDaMacro::Inicial)?;
     let mut out = Vec::new();
@@ -229,7 +248,12 @@ fn pinceis(tocavel: &Track) -> Result<Vec<([u8; 3], f32, PaintMedia)>, ErroDaMac
             ..
         } = p
         {
-            out.push((t.brush_color_srgb8(), t.brush_size_px(), t.paint_media()));
+            out.push(NoToque {
+                cor: t.brush_color_srgb8(),
+                tamanho_px: t.brush_size_px(),
+                meio: t.paint_media(),
+                limiar: t.fill_threshold(),
+            });
         } else if e_de_configuracao(&p) {
             TocadorDoPainter::aplica_ao_tool(&mut t, p)?;
         }
@@ -254,7 +278,7 @@ pub fn etapas(track: &Track) -> Result<Vec<EtapaDoPainter>, ErroDaMacro> {
     for (k, g) in gravadas.iter().enumerate() {
         let tipo = match passo(&track.events[g.fim].payload) {
             Some(Passo::Recusada(porta)) => TipoDaEtapa::Recusada(porta),
-            _ if e_um_colordrop(&track.events[..g.inicio]) => {
+            _ if e_um_colordrop(&track.events[..=g.inicio]) => {
                 f += 1;
                 TipoDaEtapa::Preenchimento(f)
             }
@@ -270,7 +294,9 @@ pub fn etapas(track: &Track) -> Result<Vec<EtapaDoPainter>, ErroDaMacro> {
         let (cor, tamanho_px, meio) = match tipo {
             TipoDaEtapa::Pincelada(_) | TipoDaEtapa::Preenchimento(_) => pinceis
                 .next()
-                .unwrap_or(([0; 3], 0.0, PaintMedia::default())),
+                .map_or(([0; 3], 0.0, PaintMedia::default()), |p| {
+                    (p.cor, p.tamanho_px, p.meio)
+                }),
             TipoDaEtapa::Recusada(_) => ([0; 3], 0.0, PaintMedia::default()),
         };
         out.push(EtapaDoPainter {

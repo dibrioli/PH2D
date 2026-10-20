@@ -42,6 +42,14 @@ pub enum PedidoDoTutorial {
     },
     /// Pintar a área marcada ([`AreaNaImagem`]).
     Pinta,
+    /// Antes de um Fill (W13): escolher a cor dele no C&F (o pincel não a tem).
+    Cor {
+        cor: [u8; 3],
+    },
+    /// Um Fill (W13): arrastar o C&F até ao alvo marcado ([`AreaNaImagem::solta`]) e soltar.
+    Solta {
+        cor: [u8; 3],
+    },
     /// A família ainda prepara o tutorial fora do quadro (lê a gravação): o total ainda não se sabe e
     /// nenhuma etapa conta. «Recomeçar» vale (só precisa do estado inicial); «Mostra-me» não.
     APreparar,
@@ -54,6 +62,8 @@ pub struct AreaNaImagem {
     pub entity_bits: u64,
     pub pontos: Vec<[f32; 2]>,
     pub raio: f32,
+    /// Um alvo onde SOLTAR (o Fill, W13): um anel em `pontos[0]`, do tamanho do chrome.
+    pub solta: bool,
 }
 
 /// Uma etapa COM critério, no estado do aluno.
@@ -130,6 +140,15 @@ pub struct BalaoDoTutorial {
 }
 
 impl BalaoDoTutorial {
+    /// A cor que o pedido mostra (a amostra do balão): a do Fill.
+    #[must_use]
+    pub fn cor(&self) -> Option<[u8; 3]> {
+        match self.pedido {
+            Some(PedidoDoTutorial::Cor { cor } | PedidoDoTutorial::Solta { cor }) => Some(cor),
+            _ => None,
+        }
+    }
+
     /// «Mostra-me» faz sentido: há uma etapa por fazer (e não um preparo).
     #[must_use]
     pub fn pode_mostrar(&self) -> bool {
@@ -198,6 +217,11 @@ impl BalaoDoTutorial {
                 &[("medium", &tr(chave_do_meio))],
             ),
             PedidoDoTutorial::Pinta => tr("panel.macros.tutorial.paint").to_owned(),
+            PedidoDoTutorial::Cor { cor: [r, g, b] } => tr_with(
+                "panel.macros.tutorial.fill_colour",
+                &[("colour", &format!("#{r:02X}{g:02X}{b:02X}"))],
+            ),
+            PedidoDoTutorial::Solta { .. } => tr("panel.macros.tutorial.fill_drop").to_owned(),
             PedidoDoTutorial::APreparar => tr("panel.macros.tutorial.preparing").to_owned(),
         };
         (titulo, corpo)

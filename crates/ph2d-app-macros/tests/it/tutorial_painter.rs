@@ -61,6 +61,14 @@ impl Banca {
         Self::com(doc)
     }
 
+    /// A caixa (W13): quatro traços, o azul do C&F dentro, um traço por cima.
+    fn com_a_caixa() -> Self {
+        let (doc, _) =
+            ph2d_tool_painter::macro_track::roteiro::grava_a_caixa_com_um_fill(LADO, 0, MEIO)
+                .expect("grava");
+        Self::com(doc)
+    }
+
     fn com(doc: Vec<u8>) -> Self {
         let mut sim = SimWorld::new();
         let bits = sim
@@ -416,4 +424,53 @@ fn mudar_a_macro_a_meio_da_medicao_larga_a_versao_velha() {
         (1, 4, Some("Pinta o céu")),
         "o ensino é o da versão nova"
     );
+}
+
+// LITERAL-COLOR-OK: a cor GRAVADA do Fill da caixa (`roteiro::AZUL_DA_CAIXA`).
+const AZUL: [u8; 3] = [40, 110, 210];
+
+/// ⭐ W13: na etapa do Fill da caixa o balão pede a cor dele no C&F (o anel no botão, a amostra, o
+/// código no texto) enquanto o pincel não a tem; depois o soltar, com o alvo onde a cor caiu; o
+/// «Mostra-me» fá-lo e o passo segue para o traço por cima.
+#[test]
+fn na_etapa_do_fill_o_balao_pede_a_cor_e_depois_o_soltar() {
+    use ph2d_editor_core::ids::PAINTER_RAIL_FILL;
+    let mut b = Banca::com_a_caixa();
+    b.activo = true;
+    b.abre();
+    b.t.set_paint_media(MEIO);
+    let x = b.quadro();
+    assert_eq!((x.passo, x.total), (1, 6));
+    for _ in 0..4 {
+        b.pede(mostra_me);
+    }
+    b.t.set_brush_color_srgb8([0, 0, 0]);
+    let x = b.quadro();
+    assert_eq!(
+        (x.passo, x.pedido.clone()),
+        (5, Some(PedidoDoTutorial::Cor { cor: AZUL }))
+    );
+    assert_eq!(x.alvos, vec![PAINTER_RAIL_FILL], "o anel no C&F");
+    assert_eq!(x.cor(), Some(AZUL), "a amostra");
+    assert!(x.frase().1.contains("#286ED2"), "{}", x.frase().1);
+    let area = x.area.clone().expect("o alvo do Fill");
+    assert!(area.solta && area.pontos.len() == 1, "{area:?}");
+    let [u, v] = area.pontos[0];
+    assert!(
+        (u - 0.45 * LADO as f32).abs() < 1.0 && (v - 0.55 * LADO as f32).abs() < 1.0,
+        "o alvo é onde a cor caiu: {u}, {v}"
+    );
+    assert!(x.pode_mostrar(), "«Mostra-me» faz o Fill");
+    b.t.set_brush_color_srgb8(AZUL);
+    let x = b.quadro();
+    assert_eq!(x.pedido, Some(PedidoDoTutorial::Solta { cor: AZUL }));
+    assert_eq!(x.alvos, vec![PAINTER_RAIL_FILL]);
+    let x = b.pede(mostra_me);
+    assert_eq!(
+        (x.passo, x.pedido.clone()),
+        (6, Some(PedidoDoTutorial::Pinta))
+    );
+    assert!(x.alvos.is_empty() && !x.area.expect("a área do traço").solta);
+    let x = b.pede(mostra_me);
+    assert_eq!((x.passo, x.pedido), (6, None), "a caixa feita");
 }

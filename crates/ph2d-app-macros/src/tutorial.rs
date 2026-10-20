@@ -16,7 +16,9 @@ use ph2d_editor_core::macro_tutorial::{
 use ph2d_macro::{MacroDoc, Track};
 use ph2d_tool_painter::PainterTool;
 use ph2d_tool_painter::macro_track::tocar::ErroDaMacro;
-use ph2d_tool_painter::macro_track::tutorial::{self as pt, EnsinoDoPainter, Medida, Preparo};
+use ph2d_tool_painter::macro_track::tutorial::{
+    self as pt, EnsinoDoPainter, Medida, Preparo, TipoDoCriterio,
+};
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -264,6 +266,8 @@ impl Tutorial {
         let e = e.as_ref().map_err(Clone::clone)?;
         let na_mao = f.painter_activo;
         let t = painter_em(f, alvo).map(|t| &*t);
+        // A cor que falta no pincel para o Fill corrente (W13): pedida no lugar do soltar.
+        let mut cor_falta = None;
         let (preparo, feitas) = match e.aberto(t, na_mao, alvo.unwrap_or(u64::MAX)) {
             // Outra tela não se avalia: o balão di-lo, em vez de fingir que nada está pintado.
             Err(Preparo::OutroTamanho { w, h }) => {
@@ -293,6 +297,7 @@ impl Tutorial {
                 let meio = e.meio_que_falta(t, feitas).map(|m| PedidoDoTutorial::Meio {
                     chave_do_meio: m.name_key(),
                 });
+                cor_falta = e.cor_que_falta(t, feitas);
                 (meio, feitas)
             }
         };
@@ -300,14 +305,27 @@ impl Tutorial {
             .iter()
             .enumerate()
             .map(|(i, c)| {
+                let fill = c.regiao.tipo == TipoDoCriterio::Preenchimento;
+                let cor = c.regiao.cor;
+                let pedido = match (fill, i == feitas && cor_falta.is_some()) {
+                    (false, _) => PedidoDoTutorial::Pinta,
+                    (true, true) => PedidoDoTutorial::Cor { cor },
+                    (true, false) => PedidoDoTutorial::Solta { cor },
+                };
                 let etapa = EtapaDoTutorial {
                     k: c.regiao.k,
-                    falta: (i >= feitas).then_some(PedidoDoTutorial::Pinta),
-                    alvos: Vec::new(),
+                    falta: (i >= feitas).then_some(pedido),
+                    // O Fill começa no botão C&F: o anel aponta-o.
+                    alvos: if fill && i == feitas {
+                        vec![ph2d_editor_core::ids::PAINTER_RAIL_FILL]
+                    } else {
+                        Vec::new()
+                    },
                     area: alvo.filter(|_| i == feitas).map(|a| AreaNaImagem {
                         entity_bits: a,
                         pontos: c.regiao.pontos.clone(),
                         raio: c.regiao.raio,
+                        solta: fill,
                     }),
                 };
                 (preparo.clone(), etapa, c.dica.clone())

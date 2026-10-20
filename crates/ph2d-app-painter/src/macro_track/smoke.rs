@@ -136,7 +136,14 @@ pub fn monta_fazer(
     )
     .map_err(|e| eprintln!("[macro smoke =4] could not spawn the canvas: {e}"))
     .ok()?;
-    let (doc, _) = ph2d_tool_painter::macro_track::roteiro::grava_no_papel(LADO, 0, 4)?;
+    // `PH2D_MACRO_TUTORIAL=caixa` (W13): a caixa com um Fill no lugar do Splash.
+    let caixa = std::env::var("PH2D_MACRO_TUTORIAL").as_deref() == Ok("caixa");
+    let (doc, _) = if caixa {
+        let meio = ph2d_tool_painter::PaintMedia::WetPaint;
+        ph2d_tool_painter::macro_track::roteiro::grava_a_caixa_com_um_fill(LADO, 0, meio)?
+    } else {
+        ph2d_tool_painter::macro_track::roteiro::grava_no_papel(LADO, 0, 4)?
+    };
     let mut macro_doc = ph2d_macro::codec::read(&doc).ok()?;
     // O texto do AUTOR na 1.ª pincelada (o «Balloon text…» do painel MACROS).
     let track = macro_doc.tracks.first_mut()?;
@@ -144,20 +151,33 @@ pub fn monta_fazer(
     let ancora = ph2d_macro::LeitorDaFamilia::etapas(&LeitorDoPainter, &track.events)
         .get(k)?
         .inicio;
-    track.edicao_mut(ancora).dica =
-        Some("Start with the sky: one wide blue stroke across the top.".into());
+    track.edicao_mut(ancora).dica = Some(if caixa {
+        "Draw a box with four dark lines, then fill it with blue from C&F.".into()
+    } else {
+        "Start with the sky: one wide blue stroke across the top.".into()
+    });
     sim.world_mut()
         .entity_mut(Entity::from_bits(bits))
         .insert(Macro {
             doc: ph2d_macro::codec::write(&macro_doc),
             modo: ModoDaMacro::Fazer,
         });
-    eprintln!(
-        "[macro smoke =4] 'Canvas' (white, {LADO}²) is a PAINTING TUTORIAL: it carries the four \
-         recorded Splash strokes but does not play them. It opens in Paint mode with Wet Paint; a \
-         balloon marks each stroke's area — fill most of it and the balloon moves on. Ctrl+Z takes it \
-         back; 'Show me' paints the stroke for you; 'Restart' clears the canvas."
-    );
+    if caixa {
+        eprintln!(
+            "[macro smoke =4 caixa] 'Canvas' (white, {LADO}²) is a PAINTING TUTORIAL with a Fill: four \
+             dark lines that close a box, blue dropped inside it from C&F, one yellow stroke over the \
+             blue. It opens in Paint mode with Wet Paint. At the Fill step the balloon rings C&F and \
+             shows the blue: pick it (click C&F, type the code), then drag C&F onto the ringed spot \
+             and let go, and press Done. 'Show me' does it for you; Ctrl+Z takes it back."
+        );
+    } else {
+        eprintln!(
+            "[macro smoke =4] 'Canvas' (white, {LADO}²) is a PAINTING TUTORIAL: it carries the four \
+             recorded Splash strokes but does not play them. It opens in Paint mode with Wet Paint; a \
+             balloon marks each stroke's area — fill most of it and the balloon moves on. Ctrl+Z takes \
+             it back; 'Show me' paints the stroke for you; 'Restart' clears the canvas."
+        );
+    }
     Some(bits)
 }
 

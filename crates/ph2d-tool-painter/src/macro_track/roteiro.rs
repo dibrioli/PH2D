@@ -188,6 +188,65 @@ pub fn grava_duas_horizontais_ligado_em(
     )
 }
 
+/// Um ColorDrop do C&F gravado (W13): a cor solta em `onde` (fracções da tela) e confirmada no Done do
+/// modal, com o limiar que o tool tem.
+#[derive(Clone, Copy)]
+pub(crate) struct Gota {
+    pub(crate) cor: [u8; 3],
+    pub(crate) onde: [f32; 2],
+}
+
+/// A caixa (W13): quatro traços pretos que fecham um quadrado, depois o azul solto lá dentro pelo C&F,
+/// depois um traço amarelo por cima do azul.
+// LITERAL-COLOR-OK: as cores GRAVADAS da fixtura (o artista escolheu-as), não da UI.
+const CAIXA: [Pincelada; 5] = {
+    const fn lado(de: [f32; 2], ate: [f32; 2]) -> Pincelada {
+        Pincelada {
+            cor: [30, 30, 30],
+            tamanho_px: 16.0,
+            de,
+            ate,
+            curva: 0.0,
+        }
+    }
+    [
+        lado([0.22, 0.25], [0.78, 0.25]),
+        lado([0.75, 0.22], [0.75, 0.78]),
+        lado([0.78, 0.75], [0.22, 0.75]),
+        lado([0.25, 0.78], [0.25, 0.22]),
+        Pincelada {
+            cor: [230, 190, 40],
+            tamanho_px: 24.0,
+            de: [0.35, 0.62],
+            ate: [0.65, 0.38],
+            curva: 0.05,
+        },
+    ]
+};
+// LITERAL-COLOR-OK: a cor GRAVADA do Fill da caixa.
+const AZUL_DA_CAIXA: Gota = Gota {
+    cor: [40, 110, 210],
+    onde: [0.45, 0.55],
+};
+
+/// **A caixa com um Fill** (W13, a cena do tutorial `PH2D_MACRO_SMOKE=4` com
+/// `PH2D_MACRO_CAMINHO=fill`): quatro traços que fecham um quadrado, o azul do C&F solto dentro dele, um
+/// traço por cima — numa sprite branca aberta pela porta do produto, no meio `meio`.
+#[must_use]
+pub fn grava_a_caixa_com_um_fill(lado: u32, alvo: u64, meio: PaintMedia) -> Option<(Vec<u8>, f64)> {
+    grava_com_gotas(
+        lado,
+        alvo,
+        &CAIXA,
+        &[],
+        &[(4, AZUL_DA_CAIXA)],
+        Tela::Papel,
+        &[meio],
+        Relogio::Fixo,
+    )
+    .map(|(_, b, s)| (b, s))
+}
+
 /// As pinceladas `ps` gravadas como o Splash, com `antes[k]` quadros parados a mais antes da `k`.
 pub(crate) fn grava_pinceladas(
     lado: u32,
@@ -264,6 +323,34 @@ pub(crate) fn grava_como_a_maquina_e_o_tool(
     )
 }
 
+/// O ColorDrop `g` como a shell o entrega: a cor no seletor, o C&F a entrar em Fill antes do toque, o
+/// soltar na tela e o Done do modal — um quadro por passo.
+fn solta(
+    t: &mut PainterTool,
+    g: &Gota,
+    l: f32,
+    quadro: &mut dyn FnMut(&mut PainterTool) -> Option<()>,
+) -> Option<()> {
+    t.set_brush_color_srgb8(g.cor);
+    quadro(t)?;
+    let volta = t.active_paint_mode_id();
+    t.begin_colordrop_fill(volta);
+    let pos = [g.onde[0] * l, g.onde[1] * l];
+    for phase in [PointerPhase::Down, PointerPhase::Up] {
+        t.on_canvas_pointer(CanvasPointer {
+            pos,
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        });
+        quadro(t)?;
+    }
+    t.handle_panel_event(PanelEvent::Click(
+        ph2d_editor_core::ids::PAINTER_FILL_MODAL_DONE,
+    ));
+    quadro(t)
+}
+
 fn grava(
     lado: u32,
     alvo: u64,
@@ -305,6 +392,24 @@ fn grava_com(
     alvo: u64,
     ps: &[Pincelada],
     antes: &[u32],
+    tela: Tela,
+    meios: &[PaintMedia],
+    relogio: Relogio<'_>,
+) -> Option<(PainterTool, Vec<u8>, f64)> {
+    grava_com_gotas(lado, alvo, ps, antes, &[], tela, meios, relogio)
+}
+
+/// [`grava_com`] com os ColorDrops `gotas`: `(k, g)` solta `g` antes da pincelada `k`.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "a gravação inteira de uma fixtura, cada parte com o seu nome"
+)]
+fn grava_com_gotas(
+    lado: u32,
+    alvo: u64,
+    ps: &[Pincelada],
+    antes: &[u32],
+    gotas: &[(usize, Gota)],
     tela: Tela,
     meios: &[PaintMedia],
     relogio: Relogio<'_>,
@@ -356,6 +461,9 @@ fn grava_com(
     for (k, p) in ps.iter().enumerate() {
         for _ in 0..antes.get(k).copied().unwrap_or(0) {
             quadro(&mut t, &mut rec)?;
+        }
+        for (_, g) in gotas.iter().filter(|(j, _)| *j == k) {
+            solta(&mut t, g, l, &mut |t| quadro(t, &mut rec))?;
         }
         let m = meio(k)?;
         if t.paint_media() != m {

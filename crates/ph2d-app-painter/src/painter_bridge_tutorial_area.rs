@@ -70,6 +70,30 @@ pub(super) fn draw_tutorial_area(
     let Some(&p0) = area.pontos.first() else {
         return;
     };
+    if area.solta {
+        // O alvo do Fill (W13): onde soltar o C&F — um anel do acento do tamanho de uma linha do
+        // chrome (não da imagem: o alvo tem de se ver a qualquer zoom) e o centro marcado.
+        let c = mapa.point(p0);
+        let raio = f64::from(ph2d_tokens::ROW_H_PX * hero.escala().factor());
+        let scene = vector_scene.inner_mut();
+        scene.fill(
+            Fill::NonZero,
+            Affine::IDENTITY,
+            &Brush::Solid(cor(ColorToken::Accent, hero, ALFA_DA_FAIXA)),
+            None,
+            &Circle::new(c, raio),
+        );
+        for (r, w) in [(raio, LINHA_PX * 2.0), (LINHA_PX * 2.0, LINHA_PX * 2.0)] {
+            scene.stroke(
+                &Stroke::new(w),
+                Affine::IDENTITY,
+                &Brush::Solid(cor(ColorToken::Accent, hero, u8::MAX)),
+                None,
+                &Circle::new(c, r),
+            );
+        }
+        return;
+    }
     let pts = mapa.polyline(&area.pontos, false);
     let (a, b) = (mapa.point(p0), mapa.point([p0[0] + area.raio, p0[1]]));
     let largura = 2.0 * ((b.x - a.x).powi(2) + (b.y - a.y).powi(2)).sqrt();

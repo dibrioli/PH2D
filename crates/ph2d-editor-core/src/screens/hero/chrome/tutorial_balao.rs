@@ -153,6 +153,28 @@ pub fn paint_balao(
 
     let x = r.x + pad;
     let mut y = r.y + pad;
+    // A cor do Fill (W13): a amostra no fim da linha do título — a cor a escolher no C&F.
+    let amostra = b.cor().map(|[cr, cg, cb]| {
+        let lado = ROW_H_PX;
+        let q = Rect::new(x + inner_w - lado, y, lado, lado);
+        let raio_q = crate::paint::frame_radius(theme, Radius::Sm.px());
+        fill_rounded_rect(
+            scene,
+            q,
+            raio_q,
+            ph2d_vector::Color::from_rgba8(cr, cg, cb, u8::MAX), // LITERAL-COLOR-OK: user-color — a cor GRAVADA pelo artista, nunca um token de tema
+        );
+        crate::paint::stroke_frame(
+            scene,
+            q,
+            raio_q,
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
+            StrokeToken::Default.px(),
+            resolve(ColorToken::Border, theme),
+        );
+        lado + gap
+    });
     paint_text(
         ts,
         scene,
@@ -160,7 +182,7 @@ pub fn paint_balao(
         x,
         y + (ROW_H_PX - fonte) * 0.5,
         fonte,
-        inner_w,
+        inner_w - amostra.unwrap_or(0.0),
         resolve(ColorToken::Text1, theme),
     );
     y += ROW_H_PX + gap;

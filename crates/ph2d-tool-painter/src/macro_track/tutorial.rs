@@ -13,6 +13,8 @@
 //!   nova); as duas são curvas, lidas na idade do aluno desde o último `Up` ([`idade`]).
 //! - **«Mostra-me»** = o caminho gravado pelas portas do tool vivo, com a cor e o tamanho da
 //!   pincelada (os do aluno voltam depois): um passo de undo.
+//! - **O Fill** (W13, [`fill`]): o ColorDrop é uma etapa cuja região é o que ele pintou na reprodução,
+//!   cumprida com a cor dele; uma pincelada sobre um Fill conta onde difere da cor dele.
 
 use super::etapas::{self, LeitorDoPainter, TipoDaEtapa};
 use super::inicial;
@@ -25,14 +27,29 @@ use std::sync::atomic::AtomicBool;
 
 #[path = "tutorial_base.rs"]
 mod base;
+#[path = "tutorial_curva.rs"]
+mod curva;
+#[path = "tutorial_fill.rs"]
+pub mod fill;
+pub use curva::{Curva, Referencia};
 #[path = "tutorial_mede.rs"]
 mod mede;
+
+/// O que uma etapa do tutorial pede.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TipoDoCriterio {
+    /// Tinta na área, de qualquer cor.
+    Pincelada,
+    /// O ColorDrop do C&F: a região na cor dele ([`fill::parecida`]).
+    Preenchimento,
+}
 
 /// A pincelada `k` (o endereço da GRAVAÇÃO) numa tela `w × h`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RegiaoDaPincelada {
     pub k: usize,
-    /// O caminho do pincel, em píxeis da tela.
+    pub tipo: TipoDoCriterio,
+    /// O caminho do pincel, em píxeis da tela; num Fill, o sítio onde a cor caiu.
     pub pontos: Vec<[f32; 2]>,
     pub raio: f32,
     pub cor: [u8; 3],
@@ -40,15 +57,18 @@ pub struct RegiaoDaPincelada {
     pub meio: PaintMedia,
 }
 
-/// Uma pincelada da trilha QUE TOCA: o endereço, o evento do toque, o pincel no toque e os passos do
-/// ponteiro.
+/// Uma etapa da trilha QUE TOCA: o endereço, os eventos dela, o pincel no toque e os passos do gesto
+/// (o ponteiro; num Fill, também as portas do C&F e o modal).
 struct Pinc {
     k: usize,
-    /// O índice do `Down` nos eventos da trilha que toca.
+    tipo: TipoDoCriterio,
+    /// O 1.º e o último evento da etapa na trilha que toca.
     inicio: usize,
+    fim: usize,
     cor: [u8; 3],
     raio: f32,
     meio: PaintMedia,
+    limiar: f32,
     passos: Vec<Passo>,
 }
 
@@ -63,54 +83,80 @@ fn pinceladas(track: &Track) -> Result<Vec<Pinc>, ErroDaMacro> {
 /// As pinceladas de `track` nos eventos da trilha que toca `tocavel` (a dela).
 fn pinceladas_em(track: &Track, tocavel: &Track) -> Result<Vec<Pinc>, ErroDaMacro> {
     let tocadas = LeitorDoPainter.etapas(&tocavel.events);
+    let mut pinceis = etapas::pinceis(tocavel)?.into_iter();
     let mut out = Vec::new();
-    // `etapas` lê uma tocada por etapa viva, pela ordem: as duas listas andam juntas.
+    // `etapas` lê uma tocada por etapa viva e um pincel por toque, pela ordem: as listas andam juntas.
     for (e, t) in etapas::etapas(track)?.into_iter().zip(tocadas) {
-        if !matches!(e.tipo, TipoDaEtapa::Pincelada(_)) {
-            continue;
-        }
+        let tipo = match e.tipo {
+            TipoDaEtapa::Pincelada(_) => TipoDoCriterio::Pincelada,
+            TipoDaEtapa::Preenchimento(_) => TipoDoCriterio::Preenchimento,
+            TipoDaEtapa::Recusada(_) => continue,
+        };
+        let limiar = pinceis.next().map_or(0.0, |p| p.limiar);
         let mut passos = Vec::new();
         for ev in &tocavel.events[t.inicio..=t.fim] {
             let p = Passo::descodifica(&ev.payload).map_err(ErroDaMacro::Passo)?;
-            if matches!(p, Passo::Ponteiro { .. }) {
+            let entra = match tipo {
+                TipoDoCriterio::Pincelada => matches!(p, Passo::Ponteiro { .. }),
+                TipoDoCriterio::Preenchimento => fill::e_do_colordrop(&p),
+            };
+            if entra {
                 passos.push(p);
             }
         }
         out.push(Pinc {
             k: e.k,
+            tipo,
             inicio: t.inicio,
+            fim: t.fim,
             cor: e.cor,
             raio: e.tamanho_px,
             meio: e.meio,
+            limiar,
             passos,
         });
     }
     Ok(out)
 }
 
-/// As pinceladas da trilha QUE TOCA, com o caminho na tela `w × h`.
+/// As etapas da trilha QUE TOCA, com o caminho na tela `w × h`.
 ///
 /// # Errors
 /// [`ErroDaMacro`].
 pub fn regioes(track: &Track, w: u32, h: u32) -> Result<Vec<RegiaoDaPincelada>, ErroDaMacro> {
-    let (fw, fh) = (f64::from(w), f64::from(h));
     Ok(pinceladas(track)?
-        .into_iter()
-        .map(|p| RegiaoDaPincelada {
-            k: p.k,
-            pontos: p
-                .passos
-                .iter()
-                .filter_map(|p| match p {
-                    Passo::Ponteiro { pos, .. } => Some(abs(*pos, fw, fh)),
-                    _ => None,
-                })
-                .collect(),
-            raio: p.raio,
-            cor: p.cor,
-            meio: p.meio,
-        })
+        .iter()
+        .map(|p| regiao_de(p, w, h))
         .collect())
+}
+
+/// A região de `p` numa tela `w × h`: o caminho; num Fill, o último sítio do ponteiro (onde a cor
+/// caiu), sem raio.
+fn regiao_de(p: &Pinc, w: u32, h: u32) -> RegiaoDaPincelada {
+    let (fw, fh) = (f64::from(w), f64::from(h));
+    let mut pontos: Vec<[f32; 2]> = p
+        .passos
+        .iter()
+        .filter_map(|p| match p {
+            Passo::Ponteiro { pos, .. } => Some(abs(*pos, fw, fh)),
+            _ => None,
+        })
+        .collect();
+    let raio = match p.tipo {
+        TipoDoCriterio::Pincelada => p.raio,
+        TipoDoCriterio::Preenchimento => {
+            pontos = pontos.last().copied().into_iter().collect();
+            0.0
+        }
+    };
+    RegiaoDaPincelada {
+        k: p.k,
+        tipo: p.tipo,
+        pontos,
+        raio,
+        cor: p.cor,
+        meio: p.meio,
+    }
 }
 
 /// Os índices (`y · w + x`) dos píxeis cujo centro está a no máximo `raio` do caminho.
@@ -170,98 +216,18 @@ fn d2_segmento(c: [f32; 2], a: [f32; 2], b: [f32; 2]) -> f32 {
 #[derive(Clone, Debug, PartialEq)]
 pub struct CriterioDaPincelada {
     pub regiao: RegiaoDaPincelada,
-    /// Os píxeis da região que nenhuma pincelada anterior cobre (nunca vazio: a pincelada toda
-    /// coberta pelas anteriores não tem critério).
+    /// Os píxeis da região que ela julga (nunca vazio: sem nenhum, não tem critério) — numa pincelada,
+    /// os que nenhuma anterior cobre e nenhum Fill seguinte repinta; num Fill, os que nada seguinte
+    /// repinta.
     pub novos: Vec<u32>,
+    /// Numa pincelada, a cor do Fill anterior sob cada um dos `novos` (`None` = o estado inicial): ali
+    /// conta a tinta que não é a dele. Vazio num Fill.
+    pub fundos: Vec<Option<[u8; 3]>>,
     /// Medida na reprodução ([`EnsinoDoPainter::mede`]); `None` = ainda por medir — a pincelada não
     /// se cumpre.
     pub referencia: Option<Referencia>,
     /// O texto que o autor escreveu para o balão nesta etapa.
     pub dica: Option<String>,
-}
-
-/// **Uma fracção ao longo do assentar** (W7): `(idade, fracção)` por idade crescente, nunca vazia — a
-/// idade em quadros (60 Hz) desde o último `Up` da trilha medida
-/// ([`PainterTool::segundos_desde_o_ultimo_up`]).
-#[derive(Clone, Debug, PartialEq)]
-pub struct Curva(pub Vec<(u32, f32)>);
-
-impl Curva {
-    /// A mesma fracção em qualquer idade.
-    #[must_use]
-    pub fn constante(f: f32) -> Self {
-        Self(vec![(0, f)])
-    }
-
-    /// A fracção na idade `q`, interpolada entre os pontos; antes do 1.º vale o 1.º, depois do último
-    /// o último.
-    #[must_use]
-    pub fn em(&self, q: u32) -> f32 {
-        let i = self.0.partition_point(|&(a, _)| a <= q);
-        match (i.checked_sub(1).map(|j| self.0[j]), self.0.get(i)) {
-            (Some((a, fa)), Some(&(b, fb))) => {
-                #[expect(clippy::cast_precision_loss, reason = "idades em quadros")]
-                let x = (q - a) as f32 / (b - a) as f32;
-                fa + (fb - fa) * x
-            }
-            (Some((_, f)), None) | (None, Some(&(_, f))) => f,
-            (None, None) => 0.0,
-        }
-    }
-
-    /// A fracção do último ponto (a água assentada).
-    #[must_use]
-    pub fn fim(&self) -> f32 {
-        self.0.last().map_or(0.0, |p| p.1)
-    }
-
-    /// A idade do último ponto.
-    #[must_use]
-    pub fn ate(&self) -> u32 {
-        self.0.last().map_or(0, |p| p.0)
-    }
-}
-
-/// Quanto dos `novos` de uma pincelada a GRAVAÇÃO pinta, com ela e sem ela, ao longo do assentar —
-/// cada curva na idade da SUA trilha.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Referencia {
-    /// A trilha que toca, desde o `Up` da pincelada.
-    pub gravada: Curva,
-    /// A trilha que toca SEM esta pincelada (o que a água das outras pinta sozinha), desde o `Up` da
-    /// anterior que lá ficou.
-    pub base: Curva,
-}
-
-impl Referencia {
-    /// As duas curvas constantes.
-    #[must_use]
-    pub fn constante(gravada: f32, base: f32) -> Self {
-        Self {
-            gravada: Curva::constante(gravada),
-            base: Curva::constante(base),
-        }
-    }
-
-    /// O que a pincelada acrescenta à água ASSENTADA (a lei do Δ vazio).
-    #[must_use]
-    pub fn delta(&self) -> f32 {
-        self.gravada.fim() - self.base.fim()
-    }
-
-    /// A base e o que a pincelada acrescenta na idade `q` (o acréscimo nunca abaixo de
-    /// [`DELTA_MINIMO`]: a guarda da divisão).
-    #[must_use]
-    pub fn em(&self, q: u32) -> (f32, f32) {
-        let b = self.base.em(q);
-        (b, (self.gravada.em(q) - b).max(DELTA_MINIMO))
-    }
-
-    /// A idade a partir da qual nenhuma das duas muda.
-    #[must_use]
-    pub fn ate(&self) -> u32 {
-        self.gravada.ate().max(self.base.ate())
-    }
 }
 
 /// A idade de `t` em quadros (60 Hz) desde o último `Up` na tela; `None` = nenhum.
@@ -310,6 +276,8 @@ pub struct EnsinoDoPainter {
 type Camadas<'a> = Vec<(&'a [u8], Option<&'a [u8]>)>;
 
 impl EnsinoDoPainter {
+    /// Um Fill pede a reprodução até ao fecho dele ([`fill::regioes_dos_fills`]).
+    ///
     /// # Errors
     /// [`ErroDaMacro`].
     pub fn de(track: &Track) -> Result<Self, ErroDaMacro> {
@@ -320,8 +288,15 @@ impl EnsinoDoPainter {
             .into_iter()
             .map(|(id, px)| (id, px.to_vec()))
             .collect();
-        let mut coberto = vec![false; w as usize * h as usize];
-        let mut criterios = Vec::new();
+        let tocavel = track
+            .tocavel(&LeitorDoPainter)
+            .map_err(ErroDaMacro::Edicao)?;
+        let ps = pinceladas_em(track, &tocavel)?;
+        let areas: Vec<Vec<u32>> = ps
+            .iter()
+            .zip(fill::regioes_dos_fills(&tocavel, &ps, w, h)?)
+            .map(|(p, f)| f.unwrap_or_else(|| rasteriza(&regiao_de(p, w, h), w, h)))
+            .collect();
         let gravadas = LeitorDoPainter.etapas(&track.events);
         let dica = |k: usize| {
             let ancora = gravadas.get(k)?.inicio;
@@ -332,21 +307,56 @@ impl EnsinoDoPainter {
                 .dica
                 .clone()
         };
-        for regiao in regioes(track, w, h)? {
-            let dentro = rasteriza(&regiao, w, h);
-            let novos: Vec<u32> = dentro
+        let n = w as usize * h as usize;
+        // Depois: um Fill julga só onde nada o repinta; uma pincelada, só onde nenhum Fill a repinta.
+        let (mut depois, mut depois_fill) = (vec![false; n], vec![false; n]);
+        let mut julgados = vec![Vec::new(); ps.len()];
+        for (j, p) in ps.iter().enumerate().rev() {
+            let fora = match p.tipo {
+                TipoDoCriterio::Pincelada => &depois_fill,
+                TipoDoCriterio::Preenchimento => &depois,
+            };
+            julgados[j] = areas[j]
                 .iter()
                 .copied()
-                .filter(|&i| !coberto[i as usize])
+                .filter(|&i| !fora[i as usize])
                 .collect();
-            for &i in &dentro {
-                coberto[i as usize] = true;
+            for &i in &areas[j] {
+                depois[i as usize] = true;
+                depois_fill[i as usize] |= p.tipo == TipoDoCriterio::Preenchimento;
             }
+        }
+        // Antes: a parte NOVA de uma pincelada e o Fill debaixo dela.
+        let mut coberto = vec![false; n];
+        let mut fundo: Vec<Option<[u8; 3]>> = vec![None; n];
+        let mut criterios = Vec::new();
+        for ((p, area), julgado) in ps.iter().zip(&areas).zip(julgados) {
+            let (novos, fundos) = match p.tipo {
+                TipoDoCriterio::Pincelada => {
+                    let novos: Vec<u32> = julgado
+                        .into_iter()
+                        .filter(|&i| !coberto[i as usize])
+                        .collect();
+                    let fundos = novos.iter().map(|&i| fundo[i as usize]).collect();
+                    for &i in area {
+                        coberto[i as usize] = true;
+                    }
+                    (novos, fundos)
+                }
+                TipoDoCriterio::Preenchimento => {
+                    for &i in area {
+                        coberto[i as usize] = false;
+                        fundo[i as usize] = Some(p.cor);
+                    }
+                    (julgado, Vec::new())
+                }
+            };
             if !novos.is_empty() {
                 criterios.push(CriterioDaPincelada {
                     novos,
-                    dica: dica(regiao.k),
-                    regiao,
+                    fundos,
+                    dica: dica(p.k),
+                    regiao: regiao_de(p, w, h),
                     referencia: None,
                 });
             }
@@ -420,17 +430,38 @@ impl EnsinoDoPainter {
         })
     }
 
-    /// A fracção dos píxeis NOVOS de `c` pintados nas `camadas`.
+    /// A fracção dos píxeis NOVOS de `c` feitos nas `camadas`: alguma camada mudou ali — numa
+    /// pincelada, para outra cor que a do Fill debaixo; num Fill, para a cor dele.
     fn fracao(camadas: &Camadas<'_>, c: &CriterioDaPincelada) -> f32 {
-        let pintado = |i: u32| {
+        let feito = |j: usize, i: u32| {
             let k = i as usize * 4;
-            camadas.iter().any(|(px, ini)| match ini {
-                Some(ini) => px[k..k + 4] != ini[k..k + 4],
-                None => px[k + 3] > 0,
+            camadas.iter().any(|(px, ini)| {
+                let mudou = match ini {
+                    Some(ini) => px[k..k + 4] != ini[k..k + 4],
+                    None => px[k + 3] > 0,
+                };
+                mudou
+                    && match c.regiao.tipo {
+                        TipoDoCriterio::Pincelada => c
+                            .fundos
+                            .get(j)
+                            .copied()
+                            .flatten()
+                            .is_none_or(|f| !fill::parecida(&px[k..k + 4], f)),
+                        TipoDoCriterio::Preenchimento => {
+                            fill::parecida(&px[k..k + 4], c.regiao.cor)
+                        }
+                    }
             })
         };
+        let n = c
+            .novos
+            .iter()
+            .enumerate()
+            .filter(|&(j, &i)| feito(j, i))
+            .count();
         #[expect(clippy::cast_precision_loss, reason = "contagens de píxeis")]
-        let f = c.novos.iter().filter(|&&i| pintado(i)).count() as f32 / c.novos.len() as f32;
+        let f = n as f32 / c.novos.len() as f32;
         f
     }
 
@@ -535,6 +566,16 @@ impl EnsinoDoPainter {
         (t.paint_media() != m).then_some(m)
     }
 
+    /// A cor que falta no pincel para a etapa `atual` (índice em [`Self::criterios`]): a de um Fill,
+    /// quando a do pincel não é parecida ([`fill::rgb_parecida`]).
+    #[must_use]
+    pub fn cor_que_falta(&self, t: &PainterTool, atual: usize) -> Option<[u8; 3]> {
+        let c = self.criterios.get(atual)?;
+        (c.regiao.tipo == TipoDoCriterio::Preenchimento
+            && !fill::rgb_parecida(t.brush_color_srgb8(), c.regiao.cor))
+        .then_some(c.regiao.cor)
+    }
+
     /// O que falta antes da pincelada corrente: [`Self::aberto`] e depois [`Self::meio_que_falta`].
     #[must_use]
     pub fn preparo(&self, t: Option<&PainterTool>, na_mao: bool, alvo: u64) -> Option<Preparo> {
@@ -583,15 +624,19 @@ pub fn recomeca(t: &mut PainterTool, track: &Track) -> Result<(), ErroDaMacro> {
     Ok(())
 }
 
-/// **«Mostra-me» da pincelada `k`** no tool vivo `t`: o caminho gravado pelas portas do tool, com a
-/// cor e o tamanho dela; os do aluno voltam no fim. Um passo de undo (o do Down..Up).
+/// **«Mostra-me» da etapa `k`** no tool vivo `t`: o caminho gravado pelas portas do tool, com a cor e
+/// o tamanho dela; os do aluno voltam no fim. Um passo de undo (o do Down..Up). Um Fill:
+/// [`fill::mostra`].
 ///
 /// # Errors
-/// [`ErroDaMacro`]; a etapa `k` não é uma pincelada.
+/// [`ErroDaMacro`]; a etapa `k` não é uma pincelada nem um Fill.
 pub fn mostra(t: &mut PainterTool, track: &Track, k: usize) -> Result<(), ErroDaMacro> {
     let Some(p) = pinceladas(track)?.into_iter().find(|p| p.k == k) else {
         return Err(ErroDaMacro::PortaRecusada(format!("etapa {k}")));
     };
+    if p.tipo == TipoDoCriterio::Preenchimento {
+        return fill::mostra(t, p);
+    }
     let antes = (t.brush_color_srgb8(), t.brush_size_px());
     t.set_brush_color_srgb8(p.cor);
     t.set_brush_size_px(p.raio);

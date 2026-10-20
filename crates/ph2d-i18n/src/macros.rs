@@ -97,6 +97,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.tutorial.paint" => {
             "Paint over the marked area: fill most of it, with any colour and brush."
         }
+        "panel.macros.tutorial.fill_colour" => {
+            "Pick this colour on the ringed C&F button: {colour} (click it, then type the code or \
+             pick it by eye)."
+        }
+        "panel.macros.tutorial.fill_drop" => {
+            "Drag from the ringed C&F button onto the marked spot on the image and let go."
+        }
         "panel.macros.tutorial.preparing" => "Preparing this tutorial\u{2026}",
         "panel.macros.tutorial.show_me" => "Show me",
         "panel.macros.tutorial.restart" => "Restart",

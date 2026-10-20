@@ -231,7 +231,7 @@ impl PainterTool {
             let li = if erasing {
                 0
             } else {
-                let thr = d.radius_px.max(4.0);
+                let thr = brush.limiar_da_lane(d.radius_px);
                 let mut best = thr * thr;
                 let mut lane = None;
                 for (i, l) in sess.lanes.iter().enumerate() {

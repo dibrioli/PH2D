@@ -187,7 +187,9 @@ pub(super) fn largura_de(p: &Preset, raio: f32, crua: bool) -> f32 {
 
 /// A lei CRUA medida: raio do motor → largura, numa fila do MAIOR para o menor com `PH2D_LEI_FIOS` trabalhadores
 /// (por omissão um por raio). ⚠️ A memória é a do raio: o Dabber (Jitter 0,5) a 64 de uma vez passava dos 48 GB; depois da
-/// margem da janela pelo CAMINHO (`Trail::on_segment_no_caminho`) 21,9 GiB do tecto de 24 (prompt 53) — perto: `PH2D_LEI_FIOS`.
+/// margem da janela pelo CAMINHO (`Trail::on_segment_no_caminho`) 21,9 GiB do tecto de 24 (prompt 53); com UMA lane por
+/// ponta (L13) o raio 1 100 pesa 1,7 GiB (era 4,3) — mas a fatia é da LINHA e o `/tmp` (tmpfs) dos agentes conta nela
+/// (14,6 G de `shmem` a 20/10): o Dabber regerou-se a `PH2D_LEI_FIOS=4`, pico 5,3 GiB, 4,8 min (03_MOTORES §4 L13).
 fn tabela_de_largura(p: &Preset) -> Vec<[f64; 2]> {
     use std::sync::atomic::{AtomicUsize, Ordering};
     let raios = raios_da_lei();
@@ -244,8 +246,7 @@ fn gera_os_presets_de_fabrica() {
             },
             texturas: Default::default(),
         };
-        // `PH2D_REGERA_SO_MINIATURA=1`: a tabela do ficheiro fica (o Dabber, de Jitter 0,5, estoura a fatia de 24 G na
-        // lei da largura a raio 1 100 — as lanes do C39; J2 20/10).
+        // `PH2D_REGERA_SO_MINIATURA=1`: a tabela do ficheiro fica (só a miniatura, quando a lei da largura não mudou).
         if std::env::var("PH2D_REGERA_SO_MINIATURA").as_deref() != Ok("1") {
             preset.parametros.width_table = tabela_de_largura(&preset);
         }
@@ -266,9 +267,10 @@ fn gera_os_presets_de_fabrica() {
             .map(|[r, l]| format!("{r}→{l}"))
             .collect();
         println!(
-            "[fabrica] {:<14} miniatura fnv {:#018x} · largura {}",
+            "[fabrica] {:<14} miniatura fnv {:#018x} · pico {:.0} MiB · largura {}",
             r.nome,
             fnv1a(&preset.miniatura.rgba),
+            pico_mib(),
             larguras.join(" ")
         );
         if escreve {
@@ -550,5 +552,136 @@ fn sonda_ruido_da_largura() {
                 2.0 * r
             );
         }
+    }
+}
+
+/// O pico de memória do processo (`VmHWM`), em MiB.
+fn pico_mib() -> f64 {
+    std::fs::read_to_string("/proc/self/status")
+        .unwrap_or_default()
+        .lines()
+        .find_map(|l| l.strip_prefix("VmHWM:"))
+        .and_then(|r| r.split_whitespace().next()?.parse::<f64>().ok())
+        .unwrap_or(0.0)
+        / 1024.0
+}
+
+/// **Sonda da MEMÓRIA da lei da largura** (J2 Dabber, L13): UM raio por processo (`VmHWM` é do processo), o traço
+/// de [`largura_de`] com `PH2D_SONDA_PRESET` (Dabber), `PH2D_SONDA_RAIO`, `PH2D_SONDA_CRUA` (1), `PH2D_SONDA_JITTER`
+/// (o do preset) e `PH2D_SONDA_QUADROS` (os da lei; `0` = só o gesto). Imprime o pico depois do gesto e depois da
+/// água, as lanes e as janelas. O portão [`a_memoria_do_dabber_cabe`] corre-a num processo filho.
+#[test]
+#[ignore = "sonda: a memória da lei da largura, um raio por processo"]
+fn sonda_memoria_da_lei() {
+    use ph2d_editor_core::{Tool, tool::RasterEditTool};
+    let var = |k: &str| std::env::var(k).ok();
+    let nome = var("PH2D_SONDA_PRESET").unwrap_or_else(|| "Dabber".into());
+    let raio: f32 = var("PH2D_SONDA_RAIO").map_or(300.0, |v| v.parse().unwrap());
+    let crua = var("PH2D_SONDA_CRUA").as_deref() != Some("0");
+    let quadros: u32 = var("PH2D_SONDA_QUADROS").map_or(QUADROS_DA_LEI, |v| v.parse().unwrap());
+    let mut p = ficheiros_de_fabrica()
+        .into_iter()
+        .map(|(_, b)| ler(&b).unwrap())
+        .find(|p| p.parametros.name == nome)
+        .expect("o preset de fábrica");
+    // `PH2D_SONDA_RECEITA=1`: o preset da RECEITA de hoje (antes de o regerar), com a tabela do ficheiro.
+    if var("PH2D_SONDA_RECEITA").as_deref() == Some("1") {
+        let r = RECEITAS.iter().find(|r| r.nome == nome).expect("a receita");
+        let tabela = std::mem::take(&mut p.parametros.width_table);
+        p.parametros = parametros(r);
+        p.parametros.width_table = tabela;
+    }
+    if let Some(j) = var("PH2D_SONDA_JITTER") {
+        p.parametros
+            .brush
+            .insert("jitter".into(), serde_json::json!(j.parse::<f64>().unwrap()));
+    }
+    let escala = if crua { (raio / 500.0).max(1.0) } else { 1.0 };
+    let h = ((raio * 6.0) as u32 + 80).max(120);
+    let w = super::sonda_gestos::W;
+    let cy = h as f32 * 0.5;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (w * h * 4) as usize], w, h);
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(&direito(&p)).is_empty());
+    if crua {
+        t.set_wet_largura_crua(escala);
+    }
+    t.set_brush_size_px(raio / escala);
+    t.set_brush_color_srgb8(super::sonda_gestos::AZUL);
+    let t0 = std::time::Instant::now();
+    super::sonda_gestos::gesto(&mut t, &[[100.0, cy], [900.0, cy]], 3.0, |_| 1.0);
+    let gesto = pico_mib();
+    let mut janelas = Vec::new();
+    t.wet_sonda_motor(|e| {
+        janelas = e
+            .lane_trails
+            .iter()
+            .map(ph2d_wet_paint::trail::Trail::window_half_for_measure)
+            .collect();
+    });
+    for _ in 0..quadros {
+        t.on_tick(1000.0 / 60.0);
+    }
+    let (px, pw, ph) = t.run_full();
+    println!(
+        "[memoria] {nome} raio {raio} crua {crua} · tela {w}×{h} · gesto {gesto:.0} MiB · água {:.0} MiB · lanes {} \
+         · meias-larguras {janelas:?} · largura {:.1} · {:.1} s",
+        pico_mib(),
+        janelas.len(),
+        largura_que_se_ve(&px, pw, ph),
+        t0.elapsed().as_secs_f64()
+    );
+}
+
+/// O pico do GESTO (MiB) e as lanes da [`sonda_memoria_da_lei`] num processo filho (o `VmHWM` é do processo).
+fn memoria_num_filho(raio: f32) -> (f64, usize) {
+    let out = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "presets_de_fabrica::sonda_memoria_da_lei",
+            "--exact",
+            "--ignored",
+            "--nocapture",
+            "--test-threads",
+            "1",
+        ])
+        .env("PH2D_SONDA_RAIO", raio.to_string())
+        .env("PH2D_SONDA_QUADROS", "0")
+        .env_remove("PH2D_SONDA_JITTER")
+        .env_remove("PH2D_SONDA_PRESET")
+        .output()
+        .expect("o processo filho da sonda");
+    let txt = String::from_utf8_lossy(&out.stdout);
+    let linha = txt
+        .split("[memoria]")
+        .nth(1)
+        .unwrap_or_else(|| panic!("a sonda não respondeu a raio {raio}:\n{txt}"));
+    let num = |k: &str| -> f64 {
+        linha.split(k).nth(1).unwrap().split_whitespace().next().unwrap().parse().unwrap()
+    };
+    println!("[memoria]{}", linha.lines().next().unwrap_or(""));
+    (num(" gesto "), num(" lanes ") as usize)
+}
+
+/// Os tectos do PICO do gesto do Dabber na lei crua da largura (a do gerador), em MiB, medidos 20/10 (L13, smoke,
+/// um processo por raio; 03_MOTORES §4 L13):
+///
+/// | raio | limiar `r` (o mutante: 4 lanes) | uma ponta = uma lane | tecto |
+/// |---|---|---|---|
+/// | 300  | 298 | 165 | 230 |
+/// | 1000 | 2 966 | 1 221 | 1 800 |
+///
+/// (O Dabber de antes — lâmina, Jitter 0,5 — com o limiar `r`: 467 a raio 300 e 3 955 a 1 100, 6–7 lanes.)
+const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 230.0), (1000.0, 1800.0)];
+
+/// ⭐ **A MEMÓRIA do Dabber cabe** (L13, EXAME §3.6): o Jitter espalha UMA ponta — o traço inteiro numa lane — e o
+/// pico do gesto a raio 300 e 1000 fica abaixo do tecto medido. Mutação: o limiar da lane sem o Jitter
+/// (`BrushSpec::limiar_da_lane` = `r`) parte o traço em lanes e passa os dois tectos.
+#[test]
+fn a_memoria_do_dabber_cabe() {
+    for (raio, tecto) in TECTO_DA_MEMORIA_MIB {
+        let (pico, lanes) = memoria_num_filho(raio);
+        assert_eq!(lanes, 1, "raio {raio}: o Jitter partiu o traço em {lanes} lanes");
+        assert!(pico <= tecto, "raio {raio}: pico do gesto {pico:.0} MiB > tecto {tecto:.0}");
     }
 }

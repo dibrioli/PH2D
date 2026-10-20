@@ -234,7 +234,7 @@ const MIDIAS: [Midia; 24] = [
     Midia { preset: "Scratch", foto: "scratch", raio: 15.71, metricas: &[(Cobertura, 0.255), (Textura, 19.780), (Borda, 0.591), (Orla, 13.0), (Cv, 0.126), (Cruzamento, 0.652), (Largura, 24.0)] },
     Midia { preset: "Square Hard", foto: "squarehard", raio: 15.50, metricas: &[(Cobertura, 0.705), (Textura, 20.884), (Borda, 0.856), (Cv, 0.077), (Cruzamento, 0.579), (Largura, 31.0)] },
     Midia { preset: "Wax Scrape", foto: "waxscrape", raio: 19.5, metricas: &[(Cobertura, 0.763), (Textura, 16.691), (Borda, 0.586), (Largura, 36.0)] },
-    Midia { preset: "Dabber", foto: "dabber", raio: 19.5, metricas: &[(Cobertura, 0.840), (Textura, 10.715), (Borda, 0.588), (Orla, 5.0), (Largura, 36.0)] },
+    Midia { preset: "Dabber", foto: "dabber", raio: 18.5, metricas: &[(Cobertura, 0.840), (Textura, 10.715), (Borda, 0.588), (Orla, 5.0), (Largura, 36.0)] },
 ];
 
 /// O raio da cena da mídia `nome` (a largura da foto do Rebelle), se ela tem foto.
@@ -456,6 +456,24 @@ fn cada_preset_parece_a_sua_midia() {
         }
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// ⭐ **O Dabber é uma esponja REDONDA** (L13, J2 20/10): o traço de pé tem a largura do deitado, como na foto
+/// (`mede_familia_c.py` no `dabber.png`: 37 / 36 = 1,028). O Chato não entra no vale do [`cada_preset_parece_a_sua_midia`]
+/// (o Wet Round também é redondo: não distingue a mídia), mas é o que distingue o Dabber da lâmina de pé do Oil
+/// Bristle que o Jitter espalhava — o «rasgado» (bancada: rugosidade 2,97 × 1,05 do Rebelle; Chato 0,74). Mutação:
+/// o Dabber de antes (`dab_flatten` 0,68) sangra.
+#[test]
+fn o_dabber_e_redondo() {
+    const CHATO_DA_FOTO: f64 = 37.0 / 36.0;
+    let m = MIDIAS.iter().find(|m| m.preset == "Dabber").unwrap();
+    let medida = cena_seca(&de_fabrica("Dabber"), m.raio, &[]);
+    let chato = Metrica::Chato.de(&medida);
+    println!("[dabber] Chato {chato:.3} (foto {CHATO_DA_FOTO:.3})");
+    assert!(
+        (chato - CHATO_DA_FOTO).abs() <= 3.0 * Metrica::Chato.ruido(),
+        "o Dabber de pé ÷ deitado {chato:.3}, a foto {CHATO_DA_FOTO:.3}: a ponta não é a esponja redonda"
+    );
 }
 
 /// Os pares que cabem um no vale do outro (a matriz do `ferramentas/avalia_53.py`): o portão pede a foto MAIS PERTO.

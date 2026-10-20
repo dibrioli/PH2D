@@ -447,6 +447,20 @@ impl BrushSpec {
         }
     }
 
+    /// **Até onde um dab é da MESMA ponta** (a lane do Wet, L13/C39): o raio mais os dois discos do Jitter — dois
+    /// dabs vizinhos do mesmo pincel caem até `2 × alcance` um do outro. O Jitter espalha UMA ponta, não nasce
+    /// outras: com o limiar `r` o Dabber (Jitter 0,5) partia-se em 5–7 lanes, cada uma com a sua janela (4,3 GiB a
+    /// raio 1 100 → 1,7). Sem Jitter, o `r` de sempre. Medido: `docs/Painter/Pinceis/03_MOTORES.md` §4 L13.
+    #[must_use]
+    pub fn limiar_da_lane(&self, radius: f32) -> f32 {
+        let alcance = if self.stroke_method.allows_jitter() {
+            self.alcance_do_jitter(radius)
+        } else {
+            0.0
+        };
+        (radius + 2.0 * alcance).max(4.0)
+    }
+
     /// **O comprimento do traço-ponto muda alguma coisa?** — só com o Dash Ratio abaixo de `1`: com
     /// ele a `1`, o [`Self::dash_on`] liga todo carimbo, qualquer que seja o comprimento.
     #[must_use]

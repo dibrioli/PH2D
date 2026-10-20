@@ -585,12 +585,17 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
         ..SOFT_PASTEL
     },
     // `dabberc_032`: o Oil Bristle de cerdas largas, mais relevo e a ponta espalhada (jitter) — a esponja.
+    // L13 (J2, 20/10): a esponja é REDONDA (o vertical do Rebelle tem a largura do deitado: 38/38) e morde o papel; a
+    // lâmina de pé do Oil Bristle espalhada pelo Jitter era o «rasgado» (rugosidade 2,97 × 1,05). Grelha flatten 0 ×
+    // jitter 0–0,5 × paperGate 0–1 à largura do Rebelle: 0,4 · 1 = 390/420 (era 346), rugosidade 0 ✗ (eram 20).
     Receita {
         grupo: "Dabber",
         nome: "Dabber",
         bristle_size: 2.0,
         hardness: 0.6,
         size_px: Some(51.0),
+        gate: 1.0,
+        achatado: Some((0.0, 90)),
         extras: &[
             ("felt", 0.05),
             ("bristleStrength", 2.0),
@@ -599,13 +604,15 @@ pub const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
             ("bristleLaneWidth", 1.5),
             ("bristleLift", 0.4),
             ("bristleNoiseSat", 0.3),
-            ("bristleNoiseLight", 0.25),
+            // O grão claro da esponja: as duas fotos do Rebelle cercam-no (a da bateria: textura do recto ≤ ~11, 0,6 dá
+            // 11,3 ✗; a do 52 seca: ≥ 9,6, o vale do Wet Round) — 0,55 dá 10,9 e 9,67 (0,25: 9,9 e 8,1 ✗).
+            ("bristleNoiseLight", 0.55),
             ("bristleHeight", 0.75),
             ("pigmentSpacing", 0.0),
             ("capsuleMaxPx", 2.0),
             ("pressureSizeCurve", 0.25), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 3.0),
         ],
-        pincel: &[("jitter", "0.5")],
+        pincel: &[("jitter", "0.4")],
         ..OIL_BRISTLE
     },
 ];

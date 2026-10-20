@@ -129,3 +129,6 @@
   ainda mascarava a vista — herança da soma da W5d — e o Disco recebia só metade da luz que a vista lhe devolve. Pela
   borda só o arquivo leva a vista em vácuo; a parte do Disco 0,66–0,76 → 0,90–1,03 da esticada, a cena 5 −14 % →
   +1/−5 % (o resto é a grossura 8× do entorno). Gate apertado a ±7 % com prova de mutação. **Smoke do dono (20/10): «smoke ok» — o bug 6 está FECHADO.**
+- **O resto (−4 %) curado pela grossura (20/10, handoff W6g §37, por ordem do dono):** o erro segue o texel do entorno
+  em METROS e só a Baixa a 8× era grossa demais; o entorno da Baixa passa a 4× (Média e Alta 8×): a cena 5 −4,0…−4,7 % →
+  −1,2…−1,4 %, o emissor encostado à borda +11 % → ±1,6 %, por +0,48 ms a 1080p. Gates 0,025 e 0,03, mutação M8.

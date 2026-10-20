@@ -1081,3 +1081,38 @@ todos os níveis (+8…+41 ms e até +2 GB na Alta por −1 % a menos).
 2. O custo da borda (§37, §36.3): +5,9 ms na vista e +5,1 ms no entorno a 2160p Alta — maior que o +0,36/+0,32 do padrão.
 3. A lei W6d com `DISTANTES` no relógio (o §20.2). 4. A anomalia da r5b (§12). 5. A família (b) (37–38). 6. Os
    zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.
+
+## 39. O entorno da Baixa a 4× (o §37, por ordem do dono «siga como sugere», 20/10) — feito
+
+`fceb09c79b`. `ENTORNO_PADRAO = 4.0` (o `DEGRAU_PADRAO` é a Baixa) e `ENTORNO_ACIMA_DA_BAIXA = 8.0`, que o
+`degrau_do` dá à Média e à Alta; as duas notas reconferidas (§0.0) com a tabela do §37. O governador conta o entorno no
+`fixo`: da Baixa à Média o texel dele é agora o MESMO (16 px) — a previsão da subida passa a exata nesse passo (era
+subestimada ×4 a 8×); da Média à Alta continua ×4 por fora do `fixo` (como antes).
+
+**Gates** (`a_luz_de_fora_nao_atravessa.rs`): `a_cena_5_na_troca_de_oitava_segue_a_grade_esticada` aperta 0,07 → **0,025**
+(medido o pior −1,4 % nos três pontos fora da quina) com a quina rasante à parte em 0,07 (medido −5,1 %; oscila com a
+grossura sem ordem, §37); gate NOVO `o_emissor_encostado_a_borda_segue_a_grade_esticada` (o S3: a cavalo e todo fora,
+5 pontos, ±3 %, medido −1,6…+1,1 %). Os 20 da família verdes (`grossura_portoes_1.log`: `a_luz_de_fora*`,
+`o_rebote_de_fora*`, `a_luz_nao_muda*`, `os_tetos_da_placa`); a fenda a 4× lê 0,0392/0,0343 (≥ ½ do gabarito).
+
+**Prova de mutação** (cada uma sozinha, a árvore reposta, `target/bug6/mutacao_{m8,m2_4x,m8_m2_controlo}.log`):
+
+| Mutação | Morre em |
+|---|---|
+| M8 a Baixa de volta a 8× | a cena 5 (−4,7 %, sombra abaixo da base) e o emissor (+11,0 %, a cavalo) |
+| M2 o miolo NÃO vácuo na passagem do arquivo, a 4× | a fenda (0,0001 contra 0,0343) e a cena 5 — a fenda de 0,06 m (agora 1 texel do entorno) ainda a vê |
+| controlo | os 3 verdes |
+
+**Suíte** (`nextest-impacted`, `target/bug6/suite_37.log`): 17 790 / 17 793; os 3 vermelhos são de `ph2d-tool-painter` (a
+linha não o toca), a `load` 105–127: `the_authoring_pause_stops_the_sim_…` (FAIL 1,9 s), `o_glaze_do_pincel_escurece_o_cruzamento`
+(TIMEOUT 180 s) e `pular_a_pincelada_e_esperar_nao_cumpre_nenhuma` (TIMEOUT 600 s) — sozinhos, a `load` ~40, os 3 PASSAM
+(1,1 · 39 · 152 s): flakes de carga (candidatos à tabela do `FLAKES_DE_CARGA.md`, decisão de quem possui o Painter). A
+marca da última suíte verde NÃO avançou (a corrida saiu vermelha).
+
+## 40. ABERTO (por ordem — substitui o §38)
+
+1. Smoke do dono do entorno 4× (a cena 5 no zoom fechado: o laranja do refletor de cima igual ao do zoom aberto).
+2. O custo da borda (§37): +5,9 ms na vista e +5,1 ms no entorno a 2160p Alta (+0,37 / +0,31 a 1080p Baixa) — a 2.ª
+   passagem do entorno só na parte da grade a partir da janela (§34.1) e os cones dos níveis 8–9.
+3. A lei W6d com `DISTANTES` no relógio (o §20.2). 4. A anomalia da r5b (§12). 5. A família (b) (37–38). 6. Os
+   zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.

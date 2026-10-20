@@ -314,3 +314,32 @@ fn o_espalhar_atraves_e_de_cada_sub_dab_da_capsula() {
     let v = sd_dentro(1.0);
     assert!(v >= 0.2, "dentro de uma cápsula o através não varia: sd {v}·D");
 }
+
+/// ⭐ **O espalhar através também é dos dabs que preenchem o vão do ARREMESSO** (`LineKind::Speed`, `speed.rs`): cada
+/// preenchimento sorteia o seu desvio através, como um dab do caminho — antes saíam todos SOBRE o caminho (só o
+/// disco), uma fileira alinhada no meio da nuvem. Recto horizontal rápido: nenhum dab, além do primeiro (sem
+/// direcção ainda), fica no eixo do traço.
+#[test]
+fn o_espalhar_atraves_e_dos_preenchimentos_do_arremesso() {
+    let mut s = com(|j| j.across = 1.0);
+    s.spray_count = 1;
+    s.jitter = 0.0;
+    s.line_kind = crate::line_kind::LineKind::Speed;
+    let mut st = Stroke::new(s, sem_pressao(), 4);
+    let (mut all, mut out) = (Vec::new(), Vec::new());
+    let p = |x: f32| StrokePoint {
+        pos: [60.0 + x, 300.0],
+        pressure: 1.0,
+    };
+    st.begin(p(0.0), &mut out);
+    all.extend_from_slice(&out);
+    for i in 1..=40 {
+        st.extend(p(i as f32 * 20.0), &mut out);
+        all.extend_from_slice(&out);
+        st.tick(1.0 / 60.0, &mut out);
+        all.extend_from_slice(&out);
+    }
+    assert!(all.len() > 40, "o arremesso preenche: {}", all.len());
+    let no_eixo = all.iter().filter(|d| (d.center[1] - 300.0).abs() < 1e-3).count();
+    assert!(no_eixo <= 2, "{no_eixo} de {} dabs sem o desvio através", all.len());
+}

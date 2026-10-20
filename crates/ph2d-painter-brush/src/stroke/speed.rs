@@ -239,16 +239,27 @@ impl Stroke {
             let p = [from[0] + d[0] * t, from[1] + d[1] * t];
             let mut fill = *dab;
             let (c, alcance) = self.apply_jitter(p, dab.radius_px);
+            // O espalhar ATRAVÉS (L4) de cada preenchimento, como o do dab do caminho (`dab_build`): o diâmetro do
+            // pincel (sem a partícula) e o heading do traço.
+            let (atraves, meia) = if self.spec.stroke_method.allows_jitter() {
+                let j = self.spec.dab_jitter;
+                let diametro = 2.0 * dab.radius_px / j.particula(self.spec.spray_count);
+                let v = crate::marca::desvio_atraves(&mut self.por_traco.rng, &j, diametro, self.heading);
+                (v, j.across.clamp(0.0, crate::marca::DabJitter::ACROSS_MAX) * diametro)
+            } else {
+                ([0.0, 0.0], 0.0)
+            };
+            let c = [c[0] + atraves[0], c[1] + atraves[1]];
             fill.center = c;
             fill.arc_len = from_arc + (to_arc - from_arc) * t;
             fill.step = step;
             fill.ante = ante.map(|mut a| {
-                a.salto = (alcance > 0.0).then_some(crate::capsula::Salto {
+                a.salto = (alcance > 0.0 || meia > 0.0).then_some(crate::capsula::Salto {
                     desvio: [c[0] - p[0], c[1] - p[1]],
                     alcance,
                     por_raio: self.spec.jitter_unit == crate::JitterUnit::Brush,
-                    atraves: 0.0,
-                    normal: [0.0, 0.0],
+                    atraves: meia,
+                    normal: [-self.heading[1], self.heading[0]],
                 });
                 a
             });

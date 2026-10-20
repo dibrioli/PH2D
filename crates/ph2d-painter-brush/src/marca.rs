@@ -117,12 +117,7 @@ pub(crate) fn sorteia(rng: &mut u64, j: &DabJitter, diametro: f32, dir: [f32; 2]
     };
     let fx = j.flip_x > 0.0 && next_f32(rng) < j.flip_x.clamp(0.0, 1.0);
     let fy = j.flip_y > 0.0 && next_f32(rng) < j.flip_y.clamp(0.0, 1.0);
-    let desvio = if j.across > 0.0 {
-        let d = simetrico(rng) * j.across.clamp(0.0, DabJitter::ACROSS_MAX) * diametro;
-        [-dir[1] * d, dir[0] * d]
-    } else {
-        [0.0, 0.0]
-    };
+    let desvio = desvio_atraves(rng, j, diametro, dir);
     Some(Marca {
         cobertura,
         redondeza,
@@ -130,6 +125,16 @@ pub(crate) fn sorteia(rng: &mut u64, j: &DabJitter, diametro: f32, dir: [f32; 2]
         meia_volta: fx,
         desvio,
     })
+}
+
+/// O desvio ATRAVÉS do traço (`dir` = o heading; `[0, 0]` sem direcção), sorteado do fluxo da marca só com o
+/// campo ligado — a UMA conta do dab do caminho ([`sorteia`]) e dos que preenchem o vão do arremesso (`speed.rs`).
+pub(crate) fn desvio_atraves(rng: &mut u64, j: &DabJitter, diametro: f32, dir: [f32; 2]) -> [f32; 2] {
+    if j.across <= 0.0 {
+        return [0.0, 0.0];
+    }
+    let d = (next_f32(rng) * 2.0 - 1.0) * j.across.clamp(0.0, DabJitter::ACROSS_MAX) * diametro;
+    [-dir[1] * d, dir[0] * d]
 }
 
 /// A contagem sorteada de um ponto do caminho com `n` marcas (`n` sem sorteio quando o campo está a zero ou

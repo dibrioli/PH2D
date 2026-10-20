@@ -520,3 +520,60 @@ carris e a escada. Cura: motor (o nivelamento não atravessa para outra tinta mo
 **Custo** (`exame.sh --custo`, smoke, load 12–14): p95 a pintar 8B 0,54 · 1,89 · 5,39 ms e Oil Bristle 0,67 · 2,08 ·
 6,89 ms a 5 · 40 · 200 px (≤ 16,7); RSS ≤ 97 MiB. Exame: régua 8B 334 → 340/420, Oil Bristle 372 → 386/420 (a origem
 do Oil Bristle passou a 1.ª entre as 228).
+
+### §7.1 — O FECHO das abertas (J2, as leis de ESCALA do Wet)
+
+Régua `ferramentas/leis_escala.py` (os três rectos da cena `tamanhos` a 5 · 40 · 200 px: largura, cobertura, cv, estrias,
+ATRAVÉS = o desvio da luminância através do miolo, grão, buraco, e a curva · desfiado · além das duas pontas); oráculo
+`fixtures/leis_escala_rebelle.json` (5 óleos + 7 lápis/carvão). Portões em `tests/it/as_leis_da_escala.rs`, todos
+VERMELHOS antes; mutação curta de cada um: sangra.
+
+**(c) O relevo pelo diâmetro — ✅.** Oráculo: o ATRAVÉS de 41 → 202 px cai — Bristle Flat 15,4 → 11,5 · Wide 14,4 → 10,6 ·
+Soft 19,5 → 13,2 (razão 0,68–0,74; o Round/Hairy ~1, nunca cresce); as estrias têm o mesmo passo de ~1 px a todo tamanho
+(os fios do Rebelle têm px fixos, como os nossos). Nós 15 → 17 (1,13). **Mecanismo** (sonda `sonda_o_relevo_por_tamanho`,
+o campo): a massa por área cresce com o diâmetro (3 728 → 5 308 de 40 a 200 px, ~D^0,22) e com ela o termo do gradiente
+da massa no emboss (`WP/render.rs`, 7,3 → 10,4); a altura dos fios +14 %. **Cura** `Knob::EmbossSizeExp`/`EmbossSizeRef`:
+o `Emboss` que a célula GUARDA é `Emboss · (ref ÷ D)^γ` (`WP/trail/transfer.rs`; `D` = o diâmetro do pincel, posto por
+lote em `TP/wetpaint/lote.rs::acerta_o_lote` → `Sim::relevo_do_tamanho`; `γ = 0` ao bit). Oil Bristle `γ` 0,4, ref 41:
+ATRAVÉS 14,5 → 11,0 (Rebelle 15,4 → 11,5; antes 15 → 17), estrias a 200 px 55 → 35 (Rebelle 28); o W3b a 103 px
+contraste 14,7 → 11,6 (Rebelle 11,5) e a escada desce (2,2 · 2,4 → 1,9 · 2,0). Portão `o_relevo_nao_cresce_com_o_pincel` (razão ≤ a da família + 0,08; a 200 px ±2 do
+Bristle Flat). Mutação (factor 1): 12,8 → 13,9, sangra.
+
+**(c) A ponta recta e desfiada — ✅.** Oráculo: o fim do Bristle Flat a 200 px curva −0,02 · desfiado 6,5 · além 12 px
+(a 40: 0,00 · 1,3 · 1) — o desfiado escala com o diâmetro (~3,3 %). **Cura** (`TP/wetpaint/ponta_das_cerdas.rs`,
+`Knob::BristleTipRagged`): cada FIO tem um DESVIO ao longo do traço (a pegada dele é a do dab deslocada — no meio do
+traço cada célula recebe o mesmo; só as pontas saem fio a fio: o DESFIADO, que nenhum valor de preset dava); o RECTO a
+toda a largura é a lâmina rectangular (`dab_quina` 1 no referencial da pegada — a objecção de antes, o contraste a 41 px
+fora do vale, era o CONTROLO do W3 a andar com o preset: o controlo passa a ser o pincel da W3 sem as leis J2, uma régua
+fixa). Oil Bristle ρ 0,8. ⛔ Recusas medidas: o corte recto no referencial do TRAÇO — a meia-corda da lâmina fixa muda
+com o rumo, a escada da curva do W3b 2,62 (tecto 2,55); um comprimento por fio (corte) — massa diferente fio a fio,
+escada 2,68; caixa no traço, 3,4; a ESPESSURA da lâmina cortada a 0,6 (casava o além 22/10 com o 21/12 do Rebelle) —
+tira pigmento por área: a rampa de pressão 0,66 → 0,59, o vermelho seco aparece por baixo do azul (0,54 → 0,70) e a
+distância à origem na matriz 0,81 → 1,01 (fica o além 31/23, o de antes). A borda/miolo do W3 lê-se na média dos dois
+raios: a fase subpíxel movia-a 0,75 ↔ 0,91 a r 20 só pelo nó da tabela da largura (a barra 0,8–0,9 a mesma). Portão
+`a_ponta_das_cerdas_e_recta_e_desfiada` (curva a 200 px ±0,06; desfiado ½–1,5× o do Bristle Flat). Mutação: sangra.
+
+**(d) A lente sobre a faixa molhada — ✅.** Mecanismo confirmado: `leveling` 0 → 12/12, mas parte a escada. **Cura**
+`Knob::LevelingOwnStroke` + o campo preguiçoso `Grid::traco` (o número do traço que pousou cada célula; `WP/grid/traco.rs`,
+no snapshot e no recorte do undo): entre células pintadas por traços DIFERENTES há uma PAREDE — o eixo não nivela e o
+fluxo final é zero nas duas rotas (`WP/solver.rs::parede_do_traco`, a de Jacobi e o `smooth_velocity`; só a parede no
+nivelamento deixava 13–15/12: a velocidade que ele deixa atravessava). A tinta mistura-se onde POUSA; não escoa para a
+molhada de outro traço. Oil Bristle: 19/12 → 12/12 nos três cruzamentos (Rebelle 12/12 · 14/14 · 12/12); a escada do
+W3b intacta. Portão `a_tinta_molhada_nao_alarga_o_traco` (±1 px). Mutação (sem parede): 13/7, sangra.
+
+**(b-resto) O grão nas pontas pequenas — ✅ (só no Wet).** Oráculo: o grão do Rebelle é FINO a todo tamanho (correlação
+ao longo ~2 px a 5 · 40 · 200) e o ATRAVÉS não cai na ponta fina (8B 15 · 12 · 13) — a profundidade não cai, e nenhum
+dos 7 lápis/carvão tem uma coluna sem tinta a 5 px. Nós: o Noise 32 dos lápis tem período 8 px; a 5 px um vale
+atravessa o traço (buracos de 2–3 colunas no 8B, HB, 2B, carvão; cv 0,18–0,22). **Cura** `TP/wetpaint/lote.rs::
+grao_do_wet` (na entrada da rota do Wet, idempotente): o Size do grão `Tiled` sobe até o período caber 3 vezes no
+diâmetro do motor (2 deixava buracos de 2–4 colunas; 4 = 3, o tecto 100); ≥ ~25 px nada muda, ao bit. Portão
+`o_traco_fino_do_lapis_nao_abre_falhas` (nenhum buraco ≥ 2 colunas). Mutações
+(sem a lei; 2 períodos): sangram. Fica o cv a 5 px 0,11–0,15 (Rebelle 0,07–0,12): é o grão binário do portão do papel
+com ~4 células de largura, não um vale (a prancha do 8B ainda mostra o 5 px mais claro e granulado que o do Rebelle:
+o período já bate no tecto do Size, 100 = 2,56 px). Regerados os 5 lápis (a miniatura a 6,5 px mudou) e o Oil Bristle.
+
+**Fecho** `2fc7a32d60`. Exame Oil Bristle (prancha `pranchas/oil_bristle_j2_escala.png`): régua 386 → 402/420, a
+origem 1.ª com a distância 0,811 → 0,688; o 8B 340/420, a origem 20.º (0,855) → 7.º (0,669). Custo (smoke, load 5–10):
+p95 a pintar Oil Bristle 0,72 · 3,16 · 8,57 ms e 8B 0,51 · 2,40 · 5,60 ms a 5 · 40 · 200 px (≤ 16,7); RSS ≤ 98 MiB.
+Fica (de outra lei, não destas): a rampa 0→1 do óleo esbate em fiapos claros onde o Rebelle começa cheio
+(cobertura 0,69 × 0,83) e o azul sobre o vermelho não puxa o roxo do Rebelle.

@@ -209,7 +209,8 @@ fn shift_locks_the_move_to_the_main_axis() {
 fn alt_drag_leaves_the_original_and_moves_a_copy_and_undo_drops_the_copy() {
     let mut w = world();
     let id = w.rect([0.0, 0.0, 100.0, 50.0]);
-    w.drag([50.0, 25.0], [250.0, 25.0], Mods { ctrl: true, ..ALT });
+    // Sem Ctrl: `Ctrl+Alt`+arrastar é o laço (W23 B12); sozinha no quadro, não há íman.
+    w.drag([50.0, 25.0], [250.0, 25.0], ALT);
     assert_eq!(w.doc.live_len(), 2);
     assert_eq!(w.el(id).x, 0.0, "o original saiu do sítio");
     let copy = *w.ed.selection().iter().next().unwrap();
@@ -303,7 +304,7 @@ fn alt_resizes_about_the_centre() {
     let mut w = world();
     let id = w.rect([0.0, 0.0, 100.0, 50.0]);
     let c = w.el(id).center();
-    w.drag([100.0, 25.0], [120.0, 25.0], Mods { ctrl: true, ..ALT });
+    w.drag([100.0, 25.0], [120.0, 25.0], ALT);
     assert_eq!(w.el(id).w, 140.0);
     assert_eq!(w.el(id).center(), c);
 }

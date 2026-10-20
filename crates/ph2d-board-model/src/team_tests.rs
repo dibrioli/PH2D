@@ -524,3 +524,47 @@ fn a_message_is_for_me_when_it_calls_me_or_answers_me() {
     assert!(th.for_me("Ana") && th.for_me("Zé"));
     assert_eq!(team.people("Rui", &["Zé".to_owned()]), vec!["Ana", "Bia", "Zé"]);
 }
+
+/// A porta «é para mim» nas bordas: a MINHA resposta num fio onde escrevi não é para mim; uma
+/// mensagem minha POSTERIOR não torna a anterior para mim; fora do fio, nada.
+#[test]
+fn my_own_reply_and_my_later_reply_are_never_for_me() {
+    let mut team = Team::default();
+    let t = team.open(Pin::Point([0.0; 2]), "Bia", "plan?", 1).unwrap();
+    assert!(team.reply(t, "Rui", "ok", 2));
+    assert!(team.reply(t, "Bia", "thanks", 3));
+    assert!(team.reply(t, "Bia", "and more", 4));
+    let th = team.thread(t).unwrap();
+    assert!(!th.for_me_at(0, "Rui"), "a do início não fica minha por eu ter respondido depois");
+    assert!(th.for_me_at(2, "Rui"), "a resposta da Bia depois da minha");
+    assert!(!th.for_me_at(3, "Bia"), "a minha 2.ª mensagem num fio onde já escrevi");
+    assert!(!th.for_me_at(99, "Rui"), "fora do fio");
+}
+
+/// ⭐ A lista das menções é CANÓNICA (ordenada, sem repetidos) à nascença e depois de editar com
+/// menções novas — cada par chega à mesma lista seja qual for a ordem em que as escolheu.
+#[test]
+fn the_mentions_are_one_sorted_list_without_repeats() {
+    use crate::Who;
+    let mut team = Team::default();
+    let who = [
+        Who::Everyone,
+        Who::Person("Rui".into()),
+        Who::Person("Ana".into()),
+        Who::Person("Ana".into()),
+    ];
+    let t = team
+        .open_calling(Pin::Point([0.0; 2]), "Enio", "@Rui @Ana @everyone", &who, 1)
+        .unwrap();
+    let canonical = vec![Who::Person("Ana".into()), Who::Person("Rui".into()), Who::Everyone];
+    let m = &team.thread(t).unwrap().messages[0];
+    assert_eq!(m.mentions, canonical);
+    let mid = m.id;
+    let more = [Who::Person("Bia".into()), Who::Person("Bia".into()), Who::Person("Zé".into())];
+    assert!(team.edit_calling(t, mid, "Enio", "@Bia and @Ana", &more));
+    assert_eq!(
+        team.thread(t).unwrap().messages[0].mentions,
+        vec![Who::Person("Ana".into()), Who::Person("Bia".into())],
+        "o Zé não está no texto, a Bia uma vez só"
+    );
+}

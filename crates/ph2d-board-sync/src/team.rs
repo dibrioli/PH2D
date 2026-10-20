@@ -452,3 +452,7 @@ impl TeamState {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "team_tests.rs"]
+mod tests;

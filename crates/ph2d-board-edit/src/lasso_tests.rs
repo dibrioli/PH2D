@@ -137,6 +137,114 @@ fn an_arrow_counts_by_its_length() {
     assert!(!s.contains(&across));
 }
 
+/// Uma faixa de meia largura 20 à volta do segmento `a`–`b`, prolongada 10 de cada ponta.
+fn band(a: [f64; 2], b: [f64; 2]) -> Vec<[f64; 2]> {
+    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+    let l = dx.hypot(dy);
+    let (d, n) = ([dx / l, dy / l], [-dy / l, dx / l]);
+    let at = |p: [f64; 2], s: f64, t: f64| [p[0] + s * d[0] + t * n[0], p[1] + s * d[1] + t * n[1]];
+    vec![at(a, -10.0, -20.0), at(b, 10.0, -20.0), at(b, 10.0, 20.0), at(a, -10.0, 20.0)]
+}
+
+/// Uma tinta recta de `a` a `b` (onze pontos), rodada de `angle` à volta do centro dela.
+fn ink(w: &mut World, a: [f64; 2], b: [f64; 2], angle: f64) -> ElementId {
+    use ph2d_board_model::{BoardOp, Ink, Pen, Style};
+    let pts: Vec<[f64; 3]> = (0..=10)
+        .map(|i| {
+            let t = f64::from(i) / 10.0;
+            [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]), 0.5]
+        })
+        .collect();
+    let style = Style::new(None, Some(Rgba([0, 0, 0, 255])), Rgba([0, 0, 0, 255]));
+    let (stroke, bx) = Ink::from_world(&pts, style, Pen::Pen, false);
+    let (id, z) = (w.doc.mint_id(), w.doc.z_on_top());
+    let mut el = Element::new_ink(id, z, stroke, bx);
+    el.angle = angle;
+    let _ = BoardOp::Put(el).apply(&mut w.doc);
+    id
+}
+
+fn lassoed(w: &mut World, trail: &[[f64; 2]]) -> BTreeSet<ElementId> {
+    w.ed.lasso_pick(&w.doc, trail).into_iter().collect()
+}
+
+/// ⭐ O que está na CAIXA do laço mas no entalhe de um «C», sem aresta a tocá-lo, fica de fora (o
+/// atalho conta pelo centro, não «dentro da caixa»); o da parte cheia entra.
+#[test]
+fn what_sits_in_the_notch_of_a_c_stays_out() {
+    let (mut w, [full, ..]) = four_boxes();
+    let notch = w.rect([600.0, 450.0, 100.0, 100.0]);
+    let c = vec![
+        [0.0, 0.0],
+        [1_000.0, 0.0],
+        [1_000.0, 300.0],
+        [400.0, 300.0],
+        [400.0, 700.0],
+        [1_000.0, 700.0],
+        [1_000.0, 1_000.0],
+        [0.0, 1_000.0],
+    ];
+    let s = lassoed(&mut w, &c);
+    assert!(s.contains(&full), "{s:?}");
+    assert!(!s.contains(&notch), "o do entalhe entrou");
+}
+
+/// ⭐ Uma forma RODADA conta pelo contorno rodado: o quadrado de 100 rodado 45° dentro de um laço que
+/// é o mesmo quadrado direito tem `2√2 − 2` ≈ 82,8 % dentro — não entra (a 80 % entra).
+#[test]
+fn a_turned_shape_counts_by_its_turned_outline() {
+    use ph2d_board_model::BoardOp;
+    let mut w = world();
+    let id = w.rect([450.0, 450.0, 100.0, 100.0]);
+    let mut el = w.el(id).clone();
+    el.angle = std::f64::consts::FRAC_PI_4;
+    let _ = BoardOp::Put(el).apply(&mut w.doc);
+    let trail = square_trail([450.0, 450.0, 550.0, 550.0]);
+    assert!(!lassoed(&mut w, &trail).contains(&id), "contou o quadrado direito");
+    assert!(w.ed.lasso_pick_covering(&w.doc, &trail, 0.8).contains(&id));
+}
+
+/// ⭐ A tinta conta pelo COMPRIMENTO (não pela área da caixa) e pelos pontos RODADOS: uma faixa à
+/// volta da diagonal leva a tinta diagonal e a horizontal rodada 45°, nunca a horizontal direita.
+#[test]
+fn ink_counts_by_its_length_along_its_turned_points() {
+    let mut w = world();
+    let (a, b) = ([400.0, 400.0], [600.0, 600.0]);
+    let diagonal = ink(&mut w, a, b, 0.0);
+    let half = 100.0 * std::f64::consts::SQRT_2;
+    let flat = [[500.0 - half, 500.0], [500.0 + half, 500.0]];
+    let turned = ink(&mut w, flat[0], flat[1], std::f64::consts::FRAC_PI_4);
+    let straight = ink(&mut w, flat[0], flat[1], 0.0);
+    let s = lassoed(&mut w, &band(a, b));
+    assert!(s.contains(&diagonal), "contou a caixa e não o comprimento: {s:?}");
+    assert!(s.contains(&turned), "não rodou os pontos");
+    assert!(!s.contains(&straight));
+}
+
+/// Uma seta na diagonal conta pela ROTA: a faixa à volta dela leva-a toda, embora tape pouco da caixa.
+#[test]
+fn a_diagonal_arrow_counts_by_its_route() {
+    let mut w = world();
+    w.ed.tool = Tool::Connector;
+    w.drag([100.0, 100.0], [900.0, 900.0], CTRL);
+    let arrow = *w.ed.selection().iter().next().unwrap();
+    w.cmd(Command::Escape);
+    let mut el = w.el(arrow).clone();
+    el.connector_mut().unwrap().route = ph2d_board_model::Route::Straight;
+    let _ = ph2d_board_model::BoardOp::Put(el).apply(&mut w.doc);
+    let s = lassoed(&mut w, &band([100.0, 100.0], [900.0, 900.0]));
+    assert!(s.contains(&arrow), "{s:?}");
+}
+
+/// O limiar é 90 %: 92 % dentro entra (o 85 % e o 89 % já se provam acima).
+#[test]
+fn ninety_two_percent_inside_is_in() {
+    let mut w = world();
+    let id = w.rect([908.0, 100.0, 100.0, 100.0]);
+    w.cmd(Command::Escape);
+    assert!(lassoed(&mut w, &square_trail([0.0, 0.0, 1_000.0, 1_000.0])).contains(&id));
+}
+
 /// ⭐ M2 (doc 17 §5) — quanto custa UM movimento do laço num quadro de 100 mil caixas, contra o
 /// rectângulo da MESMA caixa: variantes no mesmo processo, intercaladas em 7 rodadas, vale o MÍNIMO
 /// (`docs/DevOps/MEDIR_VELOCIDADE.md`). Corre-se à mão:

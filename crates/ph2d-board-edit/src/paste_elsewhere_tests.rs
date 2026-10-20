@@ -88,3 +88,28 @@ fn a_link_pasted_in_another_board_never_points_at_a_stranger() {
     let copy = pasted(&mut a);
     assert_eq!(a.el(copy).link(), None, "o link aponta um estranho");
 }
+
+/// Noutro quadro, a cópia sem casa MORA no frame de lá onde caiu (como quem nasce lá).
+#[test]
+fn a_copy_pasted_in_another_board_lives_in_the_frame_it_lands_in() {
+    let (mut a, _) = W::new();
+    a.ed.commit_text(&mut a.doc, &mut a.h);
+    let r = rect(&mut a, [1_100.0, 1_100.0, 100.0, 100.0]);
+    assert_eq!(a.el(r).frame, None);
+    a.select(r);
+    assert!(a.cmd(Command::Copy));
+    let (mut b, _) = W::new();
+    let g = frame(&mut b, [-5_000.0, -5_000.0, 15_000.0, 15_000.0]);
+    move_to(&mut a, &mut b);
+    let copy = pasted(&mut a);
+    assert_eq!(a.el(copy).frame, Some(g), "a cópia ficou fora do frame onde caiu");
+}
+
+/// Um documento CLONADO é outro quadro (outra origem): colar nele é colar noutro quadro.
+#[test]
+fn a_cloned_board_is_another_board() {
+    let (a, _) = W::new();
+    let twin = a.doc.clone();
+    assert_ne!(twin.origin(), a.doc.origin());
+    assert_eq!(twin, a.doc, "o conteúdo é o mesmo");
+}

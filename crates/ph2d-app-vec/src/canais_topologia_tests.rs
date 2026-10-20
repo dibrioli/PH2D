@@ -28,7 +28,13 @@ fn animado() -> TimelineDoc {
     let mut doc = TimelineDoc::new();
     for (t, lado) in [(0.0, 10.0), (1.0, 20.0)] {
         for (kk, v) in leitura(&quadrado(lado)) {
-            doc.upsert_key(E, PropKind::Field(kk), RationalTime::from_seconds(t), AnimValue::Float(v), Interp::Linear);
+            doc.upsert_key(
+                E,
+                PropKind::Field(kk),
+                RationalTime::from_seconds(t),
+                AnimValue::Float(v),
+                Interp::Linear,
+            );
         }
     }
     doc
@@ -36,7 +42,9 @@ fn animado() -> TimelineDoc {
 
 fn na_chave(doc: &TimelineDoc, t: f64, j: u16) -> [f32; 2] {
     let v = |campo| {
-        let b = doc.binding_for(E, PropKind::Field(k(campo, 0, j))).expect("trilha");
+        let b = doc
+            .binding_for(E, PropKind::Field(k(campo, 0, j)))
+            .expect("trilha");
         match doc.active_clip().track(b.target).unwrap().sample(t) {
             AnimValue::Float(x) => x,
             o => panic!("{o:?}"),
@@ -64,9 +72,21 @@ fn inserir_um_ponto_numa_forma_animada_insere_em_todas_as_chaves() {
     let rel = propagar(&mut doc, E, &antes, &leitura(&hoje)).expect("propagou");
     assert_eq!((rel.chaves, rel.novos, rel.apagados), (2, 1, 0));
     assert_eq!(n_vertices(&doc), 5);
-    assert_eq!(na_chave(&doc, 0.0, 1), [5.0, 0.0], "o meio do lado na chave de lado 10");
-    assert_eq!(na_chave(&doc, 1.0, 1), [10.0, 0.0], "o meio do lado na chave de lado 20");
-    assert_eq!(na_chave(&doc, 1.0, 2), [20.0, 0.0], "o vizinho seguinte não mudou de lugar");
+    assert_eq!(
+        na_chave(&doc, 0.0, 1),
+        [5.0, 0.0],
+        "o meio do lado na chave de lado 10"
+    );
+    assert_eq!(
+        na_chave(&doc, 1.0, 1),
+        [10.0, 0.0],
+        "o meio do lado na chave de lado 20"
+    );
+    assert_eq!(
+        na_chave(&doc, 1.0, 2),
+        [20.0, 0.0],
+        "o vizinho seguinte não mudou de lugar"
+    );
     assert_eq!(na_chave(&doc, 0.0, 4), [0.0, 10.0], "o último é o antigo 3");
 }
 
@@ -81,7 +101,11 @@ fn apagar_um_ponto_numa_forma_animada_apaga_em_todas_as_chaves() {
     let rel = propagar(&mut doc, E, &antes, &leitura(&hoje)).expect("propagou");
     assert_eq!((rel.novos, rel.apagados), (0, 1));
     assert_eq!(n_vertices(&doc), 3);
-    assert_eq!(na_chave(&doc, 1.0, 2), [0.0, 20.0], "o índice 2 é agora o antigo 3");
+    assert_eq!(
+        na_chave(&doc, 1.0, 2),
+        [0.0, 20.0],
+        "o índice 2 é agora o antigo 3"
+    );
     assert_eq!(na_chave(&doc, 0.0, 1), [10.0, 0.0]);
 }
 
@@ -106,6 +130,10 @@ fn num_segmento_curvo_as_alcas_dos_vizinhos_acompanham() {
     let mut b = [10.0f32, 0.0, 10.0, 6.0, 10.0, 0.0, 0.0, 1.0];
     let novo = dividir(&mut a, &mut b, 0.5, &[0.0; 8]);
     assert_eq!([novo[0], novo[1]], [5.0, 4.5], "o ponto da cúbica em u=0,5");
-    assert_eq!([a[4], a[5]], [0.0, 3.0], "a alça de saída do vizinho encolhe a metade");
+    assert_eq!(
+        [a[4], a[5]],
+        [0.0, 3.0],
+        "a alça de saída do vizinho encolhe a metade"
+    );
     assert_eq!([b[2], b[3]], [10.0, 3.0]);
 }

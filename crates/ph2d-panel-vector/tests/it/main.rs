@@ -28,6 +28,7 @@ mod seam_components;
 mod seam_contour;
 mod seam_filters;
 mod seam_frame;
+mod seam_key_mark;
 mod seam_layout;
 mod seam_layout_grid_item;
 mod seam_marquee;

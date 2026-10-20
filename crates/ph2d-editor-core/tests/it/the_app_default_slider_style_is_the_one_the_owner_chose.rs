@@ -140,6 +140,7 @@ fn tinted_paints_the_ghost_fill_and_the_underline_line() {
                 state: PropertyBoxState::Normal,
                 accent: ColorToken::Accent,
                 decorator: false,
+                animado: None,
                 value_w: None,
             },
             SliderStyle {

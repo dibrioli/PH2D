@@ -204,6 +204,7 @@ pub fn paint_slider_with_chip_layout(
         //
         // ⚠️ **Custa 14 px em toda linha do app**, e é por isso que esperou por ele.
         decorator: crate::widget::property_box::FORM_ROWS_SHOW_DECORATOR,
+        animado: (slider_id.0 != 0).then_some(slider_id),
         value_w: Some(chip_w),
     };
 
@@ -231,6 +232,14 @@ pub fn paint_slider_with_chip_layout(
     }
 
     let chip_rect = paint_property_box(scene, text_system, theme, rect, b, style);
+    if let Some(campo) = b.animado.filter(|_| b.decorator) {
+        let r = crate::widget::property_box::decorator_rect(rect);
+        if let Some(alvo) =
+            crate::widget::key_mark::paint_decorator_for(scene, theme, r, &[campo, chip_id])
+        {
+            hit_index.register(alvo, r);
+        }
+    }
 
     // O campo numérico REAL na coluna que a caixa reservou — **sem superfície própria**, senão
     // seria uma caixa dentro da caixa, que é exactamente o cromo que este redesenho apaga.

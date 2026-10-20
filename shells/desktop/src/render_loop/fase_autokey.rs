@@ -62,5 +62,35 @@ impl crate::App {
             // isso que faz o gesto inteiro ser UM passo de undo (ver `autokey_pass::run`).
             &self.skeleton,
         );
+        // ⭐ O LOSANGO ao lado de cada campo (plano 35 §5): o clique desde o último quadro, depois o
+        // estado de cada canal no instante do autor para a pintura deste quadro.
+        let sel: Vec<u64> = hero.gizmo.iter_selected().collect();
+        let (solo, t_raw) = (self.timeline.keys_mode, autokey_clock.time());
+        let inst = ph2d_app_vec::marcas::Instante {
+            t_cut: self
+                .timeline
+                .doc
+                .author_cut(solo, self.timeline.container_open, t_raw),
+            solo,
+        };
+        let mundo = timeline_bridge::Mundo::com_vetor(sim.world(), vec_scene);
+        let valor = |e, p| match timeline_bridge::sample_prop_value(mundo, e, p) {
+            Some(ph2d_anim::AnimValue::Float(v)) => Some(v),
+            _ => None,
+        };
+        if let Some(c) = ph2d_editor_core::widget::key_mark::take_key_mark_click() {
+            let lidos = |e| {
+                autokey_pass::campos_lidos(sim, e)
+                    .into_iter()
+                    .map(|(k, _)| k)
+                    .collect()
+            };
+            let k = |e, p| timeline_bridge::chave_da_k(mundo, &self.timeline, e, p, t_raw, solo);
+            let tl = &self.timeline.doc;
+            let intents = ph2d_app_vec::marcas::clique(tl, &c.fields, &sel, inst, lidos, valor, k);
+            self.timeline_intents.extend(intents);
+        }
+        let marcas = ph2d_app_vec::marcas::marcas(&self.timeline.doc, &sel, inst, valor);
+        ph2d_editor_core::widget::key_mark::set_key_marks(marcas);
     }
 }

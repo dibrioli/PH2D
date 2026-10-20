@@ -102,6 +102,10 @@ pub mod bool_shape;
 pub mod bucket;
 pub mod bucket_claim;
 pub mod bucket_repro;
+pub mod canais;
+/// ⭐⭐⭐ Os canais do vetor (plano 35): o leitor/escritor puro de cada campo.
+pub mod canais_campos;
+pub mod canais_topologia;
 pub mod component_edit;
 pub mod connector_drag;
 pub mod connector_live;
@@ -109,16 +113,14 @@ pub mod connector_panel;
 pub mod contour_live;
 pub mod cut_line;
 pub mod driven_style;
-/// ⭐⭐⭐ Os canais do vetor (plano 35): o leitor/escritor puro de cada campo.
-pub mod canais_campos;
-pub mod canais;
-pub mod canais_topologia;
 pub mod envelope_gesture;
 pub mod envelope_live;
 pub mod expand;
 pub mod frame_boxes;
 pub mod frame_labels;
 pub mod frame_spans;
+/// ⭐⭐ O losango de cada campo do painel do vetor (plano 35 §5).
+pub mod marcas;
 /// O empacotador mora no `ph2d-render` desde o ciclo 20 W3b do Motion (a camada filtrada em cada
 /// forma usa a mesma porta, com a ordem de z preservada).
 pub use ph2d_render::fx_atlas;

@@ -29,7 +29,9 @@ fn forma() -> VecPath {
             end: [30.0, 25.0],
         }),
         stroke: Some(traco),
-        paints: vec![PaintEntry::new(PaintKind::Fill(Paint::Solid(Rgba8::new(0, 0, 0, 90))))],
+        paints: vec![PaintEntry::new(PaintKind::Fill(Paint::Solid(Rgba8::new(
+            0, 0, 0, 90,
+        ))))],
         effects: vec![FxEntry::new(PathEffect::Trim(TrimSpec::default()))],
         ..VecPath::default()
     }
@@ -42,7 +44,11 @@ fn forma() -> VecPath {
 fn escrever_o_que_se_leu_e_identidade_em_todo_campo() {
     let original = forma();
     let todos = campos(&original, None);
-    assert!(todos.len() > 60, "a fixtura tem de ter os blocos todos: {}", todos.len());
+    assert!(
+        todos.len() > 60,
+        "a fixtura tem de ter os blocos todos: {}",
+        todos.len()
+    );
     for kk in todos {
         let mut p = original.clone();
         let v = ler(&p, None, kk).expect("publicado ⇒ legível");
@@ -61,10 +67,17 @@ fn todo_campo_continuo_vai_e_volta() {
         }
         let mut p = original.clone();
         let antes = ler(&p, None, kk).unwrap();
-        let quer = if antes > 100.0 { antes - 7.0 } else { antes + 0.25 };
+        let quer = if antes > 100.0 {
+            antes - 7.0
+        } else {
+            antes + 0.25
+        };
         escrever(&mut p, None, kk, quer);
         let depois = ler(&p, None, kk).unwrap();
-        assert!((depois - quer).abs() <= 0.5, "{kk:?}: escrevi {quer}, ficou {depois}");
+        assert!(
+            (depois - quer).abs() <= 0.5,
+            "{kk:?}: escrevi {quer}, ficou {depois}"
+        );
     }
 }
 
@@ -78,7 +91,11 @@ fn a_forma_publica_os_vertices_e_um_grupo_so() {
         .collect();
     assert_eq!(forma.len(), 3 * 8 + 1);
     assert!(forma.iter().all(|kk| kk.mesmo_grupo(forma[0])));
-    assert_eq!(ler(&p, None, k(c::TIPO_VERTICE, 0, 1)), Some(2.0), "Symmetric");
+    assert_eq!(
+        ler(&p, None, k(c::TIPO_VERTICE, 0, 1)),
+        Some(2.0),
+        "Symmetric"
+    );
     assert_eq!(ler(&p, None, k(c::CANTO, 0, 2)), Some(4.5));
 }
 
@@ -91,7 +108,12 @@ fn a_cor_a_meio_e_por_componente_srgb() {
         ..VecPath::default()
     };
     for (canal, v) in [(0, 127.5), (1, 0.0), (2, 127.5), (3, 127.5)] {
-        escrever(&mut p, None, k(c::TINTA_PREENCH + c::OFF_SOLIDA + canal, 0, 0), v);
+        escrever(
+            &mut p,
+            None,
+            k(c::TINTA_PREENCH + c::OFF_SOLIDA + canal, 0, 0),
+            v,
+        );
     }
     assert_eq!(p.fill, Some(Paint::Solid(Rgba8::new(128, 0, 128, 128))));
 }
@@ -105,13 +127,31 @@ fn trocar_o_tipo_da_tinta_converte() {
         ..VecPath::default()
     };
     escrever(&mut p, None, k(c::TINTA_PREENCH + c::OFF_TIPO, 0, 0), 1.0);
-    let Some(Paint::Linear { stops, .. }) = &p.fill else { panic!("{:?}", p.fill) };
+    let Some(Paint::Linear { stops, .. }) = &p.fill else {
+        panic!("{:?}", p.fill)
+    };
     assert_eq!(stops.len(), 2);
     assert_eq!(stops[0].color, Rgba8::new(9, 8, 7, 255));
-    escrever(&mut p, None, k(c::TINTA_PREENCH + c::OFF_N_PARAGENS, 0, 0), 3.0);
-    escrever(&mut p, None, k(c::TINTA_PREENCH + c::OFF_PARAGEM, 0, 1), 0.5);
-    assert_eq!(ler(&p, None, k(c::TINTA_PREENCH + c::OFF_N_PARAGENS, 0, 0)), Some(3.0));
-    assert_eq!(ler(&p, None, k(c::TINTA_PREENCH + c::OFF_PARAGEM, 0, 1)), Some(0.5));
+    escrever(
+        &mut p,
+        None,
+        k(c::TINTA_PREENCH + c::OFF_N_PARAGENS, 0, 0),
+        3.0,
+    );
+    escrever(
+        &mut p,
+        None,
+        k(c::TINTA_PREENCH + c::OFF_PARAGEM, 0, 1),
+        0.5,
+    );
+    assert_eq!(
+        ler(&p, None, k(c::TINTA_PREENCH + c::OFF_N_PARAGENS, 0, 0)),
+        Some(3.0)
+    );
+    assert_eq!(
+        ler(&p, None, k(c::TINTA_PREENCH + c::OFF_PARAGEM, 0, 1)),
+        Some(0.5)
+    );
 }
 
 /// A geometria de uma forma paramétrica e de um texto é DERIVADA: o canal são os parâmetros.
@@ -128,7 +168,12 @@ fn forma_parametrica_e_texto_publicam_parametros_e_nao_vertices() {
     assert!(!cs.iter().any(|kk| kk.campo == c::ANCORA_X));
     assert!(cs.contains(&k(c::PARAM_VALOR, 0, 1)));
     let mut sh = param.clone();
-    escrever(&mut p.clone(), Some(&mut sh), k(c::PARAM_LARGURA, 0, 0), 50.0);
+    escrever(
+        &mut p.clone(),
+        Some(&mut sh),
+        k(c::PARAM_LARGURA, 0, 0),
+        50.0,
+    );
     assert_eq!(ler(&p, Some(&sh), k(c::PARAM_LARGURA, 0, 0)), Some(50.0));
 
     let texto = VecShape::Text(VecTextParams {
@@ -146,5 +191,8 @@ fn forma_parametrica_e_texto_publicam_parametros_e_nao_vertices() {
     let cs = campos(&p, Some(&texto));
     assert!(cs.contains(&k(c::TEXTO_TAMANHO, 0, 0)));
     assert!(cs.contains(&k(c::TEXTO_EIXO, 0, 0)));
-    assert!(!cs.contains(&k(c::TEXTO_QUEBRA, 0, 0)), "sem quebra, não há largura de quebra");
+    assert!(
+        !cs.contains(&k(c::TEXTO_QUEBRA, 0, 0)),
+        "sem quebra, não há largura de quebra"
+    );
 }

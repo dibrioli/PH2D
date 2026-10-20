@@ -67,6 +67,25 @@ pub fn channel_mark(
         })
 }
 
+impl TimelineDoc {
+    /// ⭐ **O relógio do AUTOR, corte incluído** — o instante em que o auto-key compara, a tecla K
+    /// grava e o losango responde. Antes de tudo o apply corta todo relógio na duração autorada da
+    /// vista: a vista Keys (e o Arrange de pilha vazia) pelo clip activo, um contentor aberto pelo
+    /// dele, a cena pela dela. Depois do corte a pose congela em `curva(corte)`; quem lesse
+    /// `curva(t_raw)` veria uma diferença fantasma. `t_src` de cada objecto compõe-se POR CIMA disto
+    /// (`remapped_time`).
+    #[must_use]
+    pub fn author_cut(&self, solo: bool, root: Option<usize>, t_raw: f64) -> f64 {
+        if solo || (root.is_none() && self.stack().is_empty()) {
+            self.clip_cut(self.active_index(), t_raw)
+        } else if let Some(c) = root {
+            self.container_cut(c, t_raw)
+        } else {
+            self.cut_scene(t_raw)
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "channel_mark_tests.rs"]
 mod tests;

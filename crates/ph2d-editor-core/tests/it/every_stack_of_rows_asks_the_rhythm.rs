@@ -84,7 +84,8 @@ const MUTE_OK: &[&str] = &[];
 /// com cara de catraca* — a mesma doença que o §5.0 do `CLAUDE.md` descreve, um nível acima.
 const NOT_THIS_QUESTION: &[(&str, &str)] = &[
     (
-        "crates/ph2d-panel-timeline/src/geom.rs",
+        // Mudou-se do `geom.rs` com o código que empilha as linhas (F24b, 20/10: `linhas::layout`).
+        "crates/ph2d-panel-timeline/src/linhas.rs",
         "GRELHA DENSA, nao formulario: o passo de uma track E' a altura dela (`ROW_H_PX`), sem \
          vao nenhum, porque a fileira tem de alinhar com a regua e com as chaves. Um vao entre \
          linhas desalinhava o dope-sheet do editor de curvas",

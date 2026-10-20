@@ -38,10 +38,21 @@ fn cena() -> (SimWorld, VecScene, u64, TimelineDoc) {
 }
 
 fn lidos(sim: &SimWorld, e: u64) -> Vec<(FieldKey, f32)> {
-    sim.world().get_resource::<CanaisLidos>().unwrap().campos(e).collect()
+    sim.world()
+        .get_resource::<CanaisLidos>()
+        .unwrap()
+        .campos(e)
+        .collect()
 }
 
-fn quadro(sim: &mut SimWorld, scene: &mut VecScene, doc: &mut TimelineDoc, cond: &mut ConducaoVetor, e: u64, t: f64) {
+fn quadro(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    doc: &mut TimelineDoc,
+    cond: &mut ConducaoVetor,
+    e: u64,
+    t: f64,
+) {
     apply_from_doc(sim.world_mut(), doc, t);
     aplicar(sim, scene, cond);
     publicar(sim, scene, &[e]);
@@ -61,7 +72,11 @@ fn a_curva_chega_ao_desenho_e_parar_a_meio_nao_grava() {
     let l = lidos(&sim, e);
     let base = l.iter().copied().collect();
     let plan = autokey_campos(&doc, e, 0.5, &l, &base, true, false);
-    assert!(plan.is_empty(), "parado a meio, na curva, gravou {:?}", plan.keys);
+    assert!(
+        plan.is_empty(),
+        "parado a meio, na curva, gravou {:?}",
+        plan.keys
+    );
 }
 
 /// A mão muda o traço com o Auto Key armado ⇒ a chave do traço, no valor da mão — e só dele.
@@ -71,10 +86,19 @@ fn a_mao_no_traco_vira_chave_do_traco() {
     let mut cond = ConducaoVetor::default();
     quadro(&mut sim, &mut scene, &mut doc, &mut cond, e, 0.5);
     let base: BTreeMap<FieldKey, f32> = lidos(&sim, e).into_iter().collect();
-    scene.path_mut(scene.paths()[0].id).unwrap().stroke.as_mut().unwrap().width = 20.0;
+    scene
+        .path_mut(scene.paths()[0].id)
+        .unwrap()
+        .stroke
+        .as_mut()
+        .unwrap()
+        .width = 20.0;
     publicar(&mut sim, &scene, &[e]);
     let plan = autokey_campos(&doc, e, 0.5, &lidos(&sim, e), &base, true, false);
-    assert_eq!(plan.keys, vec![(PropKind::Field(k(c::TRACO_LARGURA, 0, 0)), 20.0)]);
+    assert_eq!(
+        plan.keys,
+        vec![(PropKind::Field(k(c::TRACO_LARGURA, 0, 0)), 20.0)]
+    );
 }
 
 /// ⭐ **Undo e save fotografam o AUTORADO enquanto a curva move o desenho** (a lei do
@@ -86,10 +110,18 @@ fn a_fotografia_ve_o_autorado_e_parado_a_curva_vira_documento() {
     quadro(&mut sim, &mut scene, &mut doc, &mut cond, e, 0.5);
     let vivo = cond.substituir(&mut sim, &mut scene);
     let p = &scene.paths()[0];
-    assert_eq!(p.fill, Some(Paint::Solid(Rgba8::new(255, 0, 0, 255))), "a fotografia vê o autorado");
+    assert_eq!(
+        p.fill,
+        Some(Paint::Solid(Rgba8::new(255, 0, 0, 255))),
+        "a fotografia vê o autorado"
+    );
     assert_eq!(p.stroke.as_ref().unwrap().width, 4.0);
     cond.repor(&mut sim, &mut scene, vivo);
-    assert_eq!(scene.paths()[0].stroke.as_ref().unwrap().width, 8.0, "e o vivo volta");
+    assert_eq!(
+        scene.paths()[0].stroke.as_ref().unwrap().width,
+        8.0,
+        "e o vivo volta"
+    );
 
     cond.settle();
     quadro(&mut sim, &mut scene, &mut doc, &mut cond, e, 0.5); // o mesmo instante: nada muda

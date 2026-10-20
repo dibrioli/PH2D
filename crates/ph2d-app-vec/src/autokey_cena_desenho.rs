@@ -88,7 +88,10 @@ pub(crate) fn step(
                     for xy in [&mut v.anchor, &mut v.in_handle, &mut v.out_handle] {
                         xy[0] += 0.4;
                     }
-                    Some(format!("[autokey-smoke] q12: ponto 0 → +0,4 · {}", trilhas(tl, bits)))
+                    Some(format!(
+                        "[autokey-smoke] q12: ponto 0 → +0,4 · {}",
+                        trilhas(tl, bits)
+                    ))
                 }
                 40 => {
                     ph.seek(QUADRO_24);
@@ -97,13 +100,20 @@ pub(crate) fn step(
                 50 => {
                     p.fill = Some(Paint::Solid(ROXO));
                     p.stroke.as_mut()?.width = 0.04;
-                    Some(format!("[autokey-smoke] q24: roxo, traço 0,04 · {}", trilhas(tl, bits)))
+                    Some(format!(
+                        "[autokey-smoke] q24: roxo, traço 0,04 · {}",
+                        trilhas(tl, bits)
+                    ))
                 }
                 55 => {
                     ph.seek(QUADRO_18);
                     None
                 }
-                65 => Some(format!("[autokey-smoke] q18 (a meio): {} · {}", medir(p), trilhas(tl, bits))),
+                65 => Some(format!(
+                    "[autokey-smoke] q18 (a meio): {} · {}",
+                    medir(p),
+                    trilhas(tl, bits)
+                )),
                 80 => Some(format!("[autokey-smoke] fim · {}", trilhas(tl, bits))),
                 _ => None,
             }
@@ -130,8 +140,14 @@ fn trilhas(tl: &TimelineState, bits: u64) -> String {
     for b in tl.doc.bindings().iter().filter(|b| b.entity == bits) {
         let PropKind::Field(k) = b.prop else { continue };
         let nome = k.info().map_or("?", |i| i.rotulo);
-        let n = tl.doc.active_clip().track(b.target).map_or(0, |t| t.keys().len());
-        let e = por_grupo.entry(nome.trim_start_matches("canal.vetor.")).or_default();
+        let n = tl
+            .doc
+            .active_clip()
+            .track(b.target)
+            .map_or(0, |t| t.keys().len());
+        let e = por_grupo
+            .entry(nome.trim_start_matches("canal.vetor."))
+            .or_default();
         e.0 += 1;
         e.1 = e.1.max(n);
     }

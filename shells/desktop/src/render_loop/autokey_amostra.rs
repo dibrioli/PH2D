@@ -11,7 +11,10 @@ use super::super::timeline_bridge::sample_prop_value;
 /// Sample a sprite's six animatable values into a [`PoseSample`], in
 /// `PropKind::ALL` order. `None` for a property whose backing component is absent
 /// (e.g. opacity on an entity with no `Sprite`).
-pub(super) fn sample_pose<'a>(src: impl Into<super::super::timeline_bridge::Mundo<'a>>, entity: u64) -> PoseSample {
+pub(super) fn sample_pose<'a>(
+    src: impl Into<super::super::timeline_bridge::Mundo<'a>>,
+    entity: u64,
+) -> PoseSample {
     let src = src.into();
     let mut pose: PoseSample = [None; PropKind::AUTOKEYED.len()];
     for (i, &prop) in PropKind::AUTOKEYED.iter().enumerate() {
@@ -66,7 +69,10 @@ pub(crate) fn populacao(
 /// ⭐ **Os campos de família que `entity` publicou neste quadro** (`ph2d_ecs::CanaisLidos`) — o que
 /// o autokey compara com a curva, ao lado da pose.
 #[must_use]
-pub(crate) fn campos_lidos(sim: &ph2d_ecs::SimWorld, entity: u64) -> Vec<(ph2d_ecs::FieldKey, f32)> {
+pub(crate) fn campos_lidos(
+    sim: &ph2d_ecs::SimWorld,
+    entity: u64,
+) -> Vec<(ph2d_ecs::FieldKey, f32)> {
     sim.world()
         .get_resource::<ph2d_ecs::CanaisLidos>()
         .map(|l| l.campos(entity).collect())

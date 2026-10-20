@@ -216,7 +216,11 @@ fn paint_fields_row_inner(
             theme,
         );
     }
-    crate::widget::paint_decorator_dot(scene, theme, row.dot);
+    if let Some(alvo) =
+        crate::widget::key_mark::paint_decorator_for(scene, theme, row.dot, field_ids)
+    {
+        hit_index.register(alvo, row.dot);
+    }
     (y + passo * linhas as f32, primeiro)
 }
 
@@ -372,7 +376,9 @@ pub fn paint_field_row_value(
         text_system,
         theme,
     );
-    crate::widget::paint_decorator_dot(scene, theme, row.dot);
+    if let Some(alvo) = crate::widget::key_mark::paint_decorator_for(scene, theme, row.dot, &[id]) {
+        hit_index.register(alvo, row.dot);
+    }
     (y + ph2d_tokens::row_pitch_px() * linhas as f32, rect)
 }
 
@@ -435,7 +441,9 @@ pub fn paint_text_row(
         text_system,
         theme,
     );
-    crate::widget::paint_decorator_dot(scene, theme, row.dot);
+    if let Some(alvo) = crate::widget::key_mark::paint_decorator_for(scene, theme, row.dot, &[id]) {
+        hit_index.register(alvo, row.dot);
+    }
     y + ph2d_tokens::row_pitch_px()
 }
 
@@ -623,6 +631,8 @@ pub fn paint_color_row(
     let aberto = store.picker_target() == Some(id);
     crate::widget::paint_swatch_or_mixed(rect, id, label, rgba, aberto, scene, theme);
     hit_index.register(id, rect);
-    crate::widget::paint_decorator_dot(scene, theme, row.dot);
+    if let Some(alvo) = crate::widget::key_mark::paint_decorator_for(scene, theme, row.dot, &[id]) {
+        hit_index.register(alvo, row.dot);
+    }
     y + ph2d_tokens::row_pitch_px()
 }

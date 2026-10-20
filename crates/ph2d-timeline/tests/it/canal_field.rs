@@ -71,7 +71,10 @@ fn um_campo_continuo_cruza_na_media() {
     let (mut world, mut doc, e) = crossfade(PropKind::Field(VERMELHO), 1.0, 3.0);
     apply_from_doc(&mut world, &mut doc, 1.5);
     let got = escrito(&mut world, e, VERMELHO).expect("a pilha calou o campo");
-    assert!((got - 2.0).abs() < 1e-4, "o meio do crossfade é {got}, não a média 2");
+    assert!(
+        (got - 2.0).abs() < 1e-4,
+        "o meio do crossfade é {got}, não a média 2"
+    );
 }
 
 /// ⛔ ADR-0115 R7: o discreto NÃO se mistura. De 0 (sólida) para 2 (radial), a média seria 1
@@ -95,7 +98,14 @@ fn o_discreto_segura_ate_a_chave_seguinte_e_e_funcao_do_tempo() {
     let p = PropKind::Field(TIPO);
     doc.insert_key(e, p, s(0.0), AnimValue::Float(0.0), Interp::Linear);
     doc.insert_key(e, p, s(1.0), AnimValue::Float(2.0), Interp::Linear);
-    for (t, quer) in [(0.9, 0.0), (1.0, 2.0), (0.5, 0.0), (0.99, 0.0), (1.5, 2.0), (0.0, 0.0)] {
+    for (t, quer) in [
+        (0.9, 0.0),
+        (1.0, 2.0),
+        (0.5, 0.0),
+        (0.99, 0.0),
+        (1.5, 2.0),
+        (0.0, 0.0),
+    ] {
         apply_from_doc(&mut world, &mut doc, t);
         assert_eq!(escrito(&mut world, e, TIPO), Some(quer), "em t={t}");
     }
@@ -108,7 +118,11 @@ fn dois_campos_do_mesmo_objecto_sao_dois_canais() {
     let a = doc.bind(e, PropKind::Field(VERMELHO));
     let b = doc.bind(e, PropKind::Field(TIPO));
     assert_ne!(a, b);
-    assert_eq!(doc.bind(e, PropKind::Field(VERMELHO)), a, "idempotente por campo");
+    assert_eq!(
+        doc.bind(e, PropKind::Field(VERMELHO)),
+        a,
+        "idempotente por campo"
+    );
     let outro_contorno = FieldKey::new(familia::VETOR, v::ANCORA_X, 1, 0);
     let mesmo_vertice = FieldKey::new(familia::VETOR, v::ANCORA_X, 0, 0);
     assert_ne!(
@@ -121,12 +135,28 @@ fn dois_campos_do_mesmo_objecto_sao_dois_canais() {
 #[test]
 fn um_documento_com_campos_vai_e_volta_pelo_formato() {
     let (_world, mut doc, e) = scene();
-    doc.insert_key(e, PropKind::Field(VERMELHO), s(0.5), AnimValue::Float(9.0), Interp::Linear);
-    doc.insert_key(e, PropKind::Field(TIPO), s(0.5), AnimValue::Float(3.0), Interp::Linear);
+    doc.insert_key(
+        e,
+        PropKind::Field(VERMELHO),
+        s(0.5),
+        AnimValue::Float(9.0),
+        Interp::Linear,
+    );
+    doc.insert_key(
+        e,
+        PropKind::Field(TIPO),
+        s(0.5),
+        AnimValue::Float(3.0),
+        Interp::Linear,
+    );
     let bytes = doc.to_bytes().unwrap();
     let back = TimelineDoc::from_bytes(&bytes).unwrap();
     assert_eq!(back.bindings().len(), 2);
-    assert!(back.bindings().iter().any(|b| b.prop == PropKind::Field(TIPO)));
+    assert!(
+        back.bindings()
+            .iter()
+            .any(|b| b.prop == PropKind::Field(TIPO))
+    );
 }
 
 /// ⭐ v20 → v21 sem perda: o documento migrado é o v20 campo a campo, menos a versão.
@@ -141,7 +171,16 @@ fn um_ficheiro_v20_abre_sem_perda() {
         j
     };
     let antes: serde_json::Value = serde_json::from_str(V20_JSON).unwrap();
-    assert_eq!(sem_versao(serde_json::to_value(&doc).unwrap()), sem_versao(antes));
-    assert!(doc.clips()[0].autoplay, "o que só a v20 tinha atravessa a migração");
-    assert_eq!(TimelineDoc::from_bytes(&doc.to_bytes().unwrap()).unwrap(), doc);
+    assert_eq!(
+        sem_versao(serde_json::to_value(&doc).unwrap()),
+        sem_versao(antes)
+    );
+    assert!(
+        doc.clips()[0].autoplay,
+        "o que só a v20 tinha atravessa a migração"
+    );
+    assert_eq!(
+        TimelineDoc::from_bytes(&doc.to_bytes().unwrap()).unwrap(),
+        doc
+    );
 }

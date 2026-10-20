@@ -15,9 +15,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_anim::{AnimValue, AttributeEvaluator, Interp, RationalTime};
+use ph2d_ecs::FieldKey;
 use ph2d_ecs::canal::familia::VETOR;
 use ph2d_ecs::canal_vetor as c;
-use ph2d_ecs::FieldKey;
 use ph2d_timeline::{PropKind, TimelineDoc};
 
 /// Os 8 campos de um vértice, na ordem do vocabulário (`ANCORA_X ..= TIPO_VERTICE`).
@@ -41,7 +41,9 @@ fn contornos(lidos: &[(FieldKey, f32)]) -> BTreeMap<u16, Vec<Vert>> {
                 [usize::from(kk.campo - c::ANCORA_X)] = v;
         }
     }
-    out.into_iter().map(|(i, vs)| (i, vs.into_values().collect())).collect()
+    out.into_iter()
+        .map(|(i, vs)| (i, vs.into_values().collect()))
+        .collect()
 }
 
 /// A maior subsequência comum de âncoras EXACTAS: os pares `(índice de ontem, índice de hoje)`.
@@ -78,7 +80,11 @@ fn lerp(a: P, b: P, u: f32) -> P {
     [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u]
 }
 fn cubica(p: [P; 4], u: f32) -> P {
-    let (q0, q1, q2) = (lerp(p[0], p[1], u), lerp(p[1], p[2], u), lerp(p[2], p[3], u));
+    let (q0, q1, q2) = (
+        lerp(p[0], p[1], u),
+        lerp(p[1], p[2], u),
+        lerp(p[2], p[3], u),
+    );
     lerp(lerp(q0, q1, u), lerp(q1, q2, u), u)
 }
 fn seg(a: &Vert, b: &Vert) -> [P; 4] {
@@ -91,7 +97,9 @@ fn projectar(s: [P; 4], x: P) -> f32 {
         let p = cubica(s, u);
         (p[0] - x[0]).powi(2) + (p[1] - x[1]).powi(2)
     };
-    let mut melhor = (0..=64).map(|i| i as f32 / 64.0).fold(0.0, |b, u| if d(u) < d(b) { u } else { b });
+    let mut melhor = (0..=64)
+        .map(|i| i as f32 / 64.0)
+        .fold(0.0, |b, u| if d(u) < d(b) { u } else { b });
     let mut passo = 1.0 / 64.0;
     for _ in 0..24 {
         passo *= 0.5;
@@ -116,7 +124,13 @@ fn dividir(a: &mut Vert, b: &mut Vert, u: f32, modelo: &Vert) -> Vert {
 }
 
 /// A forma de UMA chave refeita na topologia de hoje.
-fn refazer(ontem: &[Vert], hoje: &[Vert], na_chave: &[Vert], pares: &[(usize, usize)], fechado: bool) -> Vec<Vert> {
+fn refazer(
+    ontem: &[Vert],
+    hoje: &[Vert],
+    na_chave: &[Vert],
+    pares: &[(usize, usize)],
+    fechado: bool,
+) -> Vec<Vert> {
     let de_hoje: BTreeMap<usize, usize> = pares.iter().map(|&(a, b)| (b, a)).collect();
     let mut out: Vec<Option<Vert>> = vec![None; hoje.len()];
     for (&b, &a) in &de_hoje {
@@ -149,13 +163,19 @@ fn refazer(ontem: &[Vert], hoje: &[Vert], na_chave: &[Vert], pares: &[(usize, us
             continue;
         };
         let s_ontem = seg(&ontem[oa], &ontem[ob]);
-        let mut us: Vec<(f32, usize)> = (ini..b).map(|j| (projectar(s_ontem, [hoje[j][0], hoje[j][1]]), j)).collect();
+        let mut us: Vec<(f32, usize)> = (ini..b)
+            .map(|j| (projectar(s_ontem, [hoje[j][0], hoje[j][1]]), j))
+            .collect();
         us.sort_by(|x, y| x.0.total_cmp(&y.0));
         let (mut va, mut vb) = (na_chave[oa], na_chave[ob]);
         let mut feito = 0.0;
         let mut novos = Vec::new();
         for (u, j) in us {
-            let ur = if feito < 1.0 { ((u - feito) / (1.0 - feito)).clamp(0.0, 1.0) } else { 0.0 };
+            let ur = if feito < 1.0 {
+                ((u - feito) / (1.0 - feito)).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
             let mut esquerda = novos.last().map_or(va, |&(_, v)| v);
             let nv = dividir(&mut esquerda, &mut vb, ur, &hoje[j]);
             match novos.last_mut() {
@@ -175,7 +195,10 @@ fn refazer(ontem: &[Vert], hoje: &[Vert], na_chave: &[Vert], pares: &[(usize, us
             out[j] = Some(v);
         }
     }
-    out.into_iter().enumerate().map(|(j, v)| v.unwrap_or(hoje[j])).collect()
+    out.into_iter()
+        .enumerate()
+        .map(|(j, v)| v.unwrap_or(hoje[j]))
+        .collect()
 }
 
 /// `true` se algum contorno mudou de nº de pontos entre as duas leituras — a pergunta barata que
@@ -189,7 +212,10 @@ pub fn mudou(antes: &BTreeMap<FieldKey, f32>, agora: &[(FieldKey, f32)]) -> bool
         }
         n
     };
-    let (o, h) = (conta(&mut antes.keys().copied()), conta(&mut agora.iter().map(|&(kk, _)| kk)));
+    let (o, h) = (
+        conta(&mut antes.keys().copied()),
+        conta(&mut agora.iter().map(|&(kk, _)| kk)),
+    );
     h.iter().any(|(i, n)| o.get(i).is_some_and(|m| m != n))
 }
 
@@ -225,7 +251,9 @@ pub fn propagar(
         .iter()
         .filter(|b| b.entity == entidade)
         .filter_map(|b| match b.prop {
-            PropKind::Field(kk) if kk.familia == VETOR && (c::ANCORA_X..=c::FECHADO).contains(&kk.campo) => {
+            PropKind::Field(kk)
+                if kk.familia == VETOR && (c::ANCORA_X..=c::FECHADO).contains(&kk.campo) =>
+            {
                 Some((b.prop, b.target))
             }
             _ => None,
@@ -243,7 +271,12 @@ pub fn propagar(
             }
         }
     }
-    let fechado = |i: u16| agora.iter().find(|(kk, _)| kk.campo == c::FECHADO && kk.i == i).is_some_and(|&(_, v)| v >= 0.5);
+    let fechado = |i: u16| {
+        agora
+            .iter()
+            .find(|(kk, _)| kk.campo == c::FECHADO && kk.i == i)
+            .is_some_and(|&(_, v)| v >= 0.5)
+    };
     let mut rel = Propagacao::default();
     for i in mudou {
         let (o, h) = (&ontem[&i], &hoje[&i]);
@@ -272,7 +305,13 @@ pub fn propagar(
             for (j, v) in nova.iter().enumerate() {
                 for campo in 0..N_CAMPOS {
                     let p = PropKind::Field(k(c::ANCORA_X + campo, i, n16(j)));
-                    doc.upsert_key(entidade, p, t, AnimValue::Float(v[usize::from(campo)]), interp);
+                    doc.upsert_key(
+                        entidade,
+                        p,
+                        t,
+                        AnimValue::Float(v[usize::from(campo)]),
+                        interp,
+                    );
                 }
             }
         }

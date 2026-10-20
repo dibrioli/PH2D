@@ -157,6 +157,7 @@ pub(crate) fn paint_study(b: &mut Bench<'_>, st: &WidgetLabState, live: (f32, bo
                 state: PropertyBoxState::Normal,
                 accent,
                 decorator: st.decorator,
+                animado: None,
                 // ⚠️ A MESMA coluna que a linha do produto reserva. Medi-la pelo texto faria a
                 // régua da §2 mentir: a `110 px` a amostra sobraria espaço que uma linha real não
                 // tem, e a bancada aprovaria um desenho que o app não consegue mostrar.
@@ -186,6 +187,7 @@ pub(crate) fn paint_study(b: &mut Bench<'_>, st: &WidgetLabState, live: (f32, bo
                 state: PropertyBoxState::Normal,
                 accent,
                 decorator: st.decorator,
+                animado: None,
                 // ⚠️ A MESMA coluna que a linha do produto reserva. Medi-la pelo texto faria a
                 // régua da §2 mentir: a `110 px` a amostra sobraria espaço que uma linha real não
                 // tem, e a bancada aprovaria um desenho que o app não consegue mostrar.
@@ -218,6 +220,7 @@ pub(crate) fn paint_study(b: &mut Bench<'_>, st: &WidgetLabState, live: (f32, bo
                 state: s,
                 accent,
                 decorator: st.decorator,
+                animado: None,
                 // ⚠️ A MESMA coluna que a linha do produto reserva. Medi-la pelo texto faria a
                 // régua da §2 mentir: a `110 px` a amostra sobraria espaço que uma linha real não
                 // tem, e a bancada aprovaria um desenho que o app não consegue mostrar.
@@ -248,6 +251,7 @@ pub(crate) fn paint_study(b: &mut Bench<'_>, st: &WidgetLabState, live: (f32, bo
                 state: PropertyBoxState::Normal,
                 accent: *a,
                 decorator: st.decorator,
+                animado: None,
                 // ⚠️ A MESMA coluna que a linha do produto reserva. Medi-la pelo texto faria a
                 // régua da §2 mentir: a `110 px` a amostra sobraria espaço que uma linha real não
                 // tem, e a bancada aprovaria um desenho que o app não consegue mostrar.
@@ -297,6 +301,7 @@ pub(crate) fn paint_study(b: &mut Bench<'_>, st: &WidgetLabState, live: (f32, bo
             state,
             accent,
             decorator: st.decorator,
+            animado: None,
             value_w: Some(VALUE_W),
         },
         style,

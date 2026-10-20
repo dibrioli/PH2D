@@ -16,6 +16,7 @@ mod arrange_is_independent;
 mod auto_orient;
 #[cfg(feature = "skeleton")]
 mod bone_bend_channels;
+mod canal_field;
 mod clearing_a_formula_hands_the_pose_back;
 mod clip_clock;
 mod clip_entry;
@@ -70,4 +71,3 @@ mod stack_trailing_release;
 mod strip_marks;
 mod the_noise_seed_is_stable;
 mod track_extrapolation;
-mod canal_field;

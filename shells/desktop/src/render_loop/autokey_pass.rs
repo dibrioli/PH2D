@@ -44,8 +44,8 @@ mod autokey_state;
 pub(crate) use autokey_state::AutokeyState;
 #[path = "autokey_amostra.rs"]
 mod autokey_amostra;
-pub(crate) use autokey_amostra::populacao;
-use autokey_amostra::{campos_lidos, sample_pose};
+use autokey_amostra::sample_pose;
+pub(crate) use autokey_amostra::{campos_lidos, populacao};
 
 use super::timeline_bridge::default_interp;
 use ph2d_timeline::record_fit::{REC_SIMPLIFY_REL, REC_SMOOTH_PASSES, RecSpan, simplify_recorded};
@@ -102,7 +102,10 @@ pub(crate) fn run(
             (e, sample_pose(src, e))
         })
         .collect();
-    ak.campos = samples.iter().map(|&(e, _)| (e, campos_lidos(sim, e))).collect();
+    ak.campos = samples
+        .iter()
+        .map(|&(e, _)| (e, campos_lidos(sim, e)))
+        .collect();
     propagar_topologia(timeline, ak);
     sonda(|| {
         let pop: Vec<u64> = samples.iter().map(|s| s.0).collect();
@@ -117,7 +120,9 @@ pub(crate) fn run(
 /// do dono) — antes do diff, e num passo de undo da timeline próprio (ou no do gesto aberto).
 pub(crate) fn propagar_topologia(timeline: &mut TimelineState, ak: &AutokeyState) {
     for (&e, agora) in &ak.campos {
-        let Some(antes) = ak.base_campos.get(&e) else { continue };
+        let Some(antes) = ak.base_campos.get(&e) else {
+            continue;
+        };
         if !ph2d_app_vec::canais_topologia::mudou(antes, agora) {
             continue;
         }
@@ -220,7 +225,9 @@ fn diff_each_sample(
         let campos = ak.campos.get(&entity).cloned().unwrap_or_default();
         let base_c = ak.base_campos.get(&entity).cloned().unwrap_or_default();
         let doc = &timeline.doc;
-        let campos_fora = |criar| ph2d_timeline::autokey_campos(doc, entity, t_diff, &campos, &base_c, criar, solo);
+        let campos_fora = |criar| {
+            ph2d_timeline::autokey_campos(doc, entity, t_diff, &campos, &base_c, criar, solo)
+        };
         if capturing {
             // Performing (playing) records only what the DRAG pushed off the
             // curve; under a plain Play the drag is the sole source of an
@@ -339,7 +346,11 @@ fn diff_each_sample(
         });
         next_baseline.insert(entity, pose);
     }
-    ak.base_campos = ak.campos.iter().map(|(&e, v)| (e, v.iter().copied().collect())).collect();
+    ak.base_campos = ak
+        .campos
+        .iter()
+        .map(|(&e, v)| (e, v.iter().copied().collect()))
+        .collect();
     refused_now
 }
 
@@ -428,14 +439,7 @@ pub(crate) fn apply_samples(
     //    so hand it the same one.
     // All cuts are `t.min(len)`, so within the authored range (and with nothing
     // authored) `t_cut == playhead.time()` and this is byte-identical to before.
-    let t_raw = playhead.time();
-    let t_cut = if solo || (root.is_none() && timeline.doc.stack().is_empty()) {
-        timeline.doc.clip_cut(timeline.doc.active_index(), t_raw)
-    } else if let Some(c) = root {
-        timeline.doc.container_cut(c, t_raw)
-    } else {
-        timeline.doc.cut_scene(t_raw)
-    };
+    let t_cut = timeline.doc.author_cut(solo, root, playhead.time());
     let t = ph2d_timeline::snap_time(
         RationalTime::from_seconds(t_cut),
         fps,
@@ -558,11 +562,11 @@ fn sonda(linha: impl FnOnce() -> String) {
 }
 
 #[cfg(test)]
-#[path = "autokey_opacidade_vetor_tests.rs"]
-mod opacidade_vetor_tests;
-#[cfg(test)]
 #[path = "autokey_campos_vetor_tests.rs"]
 mod campos_vetor_tests;
+#[cfg(test)]
+#[path = "autokey_opacidade_vetor_tests.rs"]
+mod opacidade_vetor_tests;
 #[cfg(test)]
 #[path = "autokey_performing_tests.rs"]
 mod performing_tests;

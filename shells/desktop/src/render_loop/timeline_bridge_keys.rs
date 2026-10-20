@@ -310,6 +310,35 @@ pub(crate) fn path_key_time(
     Ok(solo_key_time(timeline, entity, clip_t))
 }
 
+/// **A chave que a K grava para `(entity, prop)` em `k_time`** — a porta que o clique no losango de
+/// um campo também usa (`ph2d_app_vec::marcas::clique`). `None` = a K recusa (sem casa no clip).
+pub(crate) fn chave_da_k(
+    mundo: Mundo<'_>,
+    timeline: &ph2d_timeline::TimelineState,
+    entity: u64,
+    prop: ph2d_timeline::PropKind,
+    k_time: f64,
+    keys_mode: bool,
+) -> Option<ph2d_timeline::TimelineIntent> {
+    let authored = if keys_mode {
+        key_authoring_solo(mundo, timeline, entity, prop, k_time)
+    } else {
+        // Arrange OR inside a container — both read the stack (rooted at the scene or the
+        // container respectively, primed by the caller) at `k_time`. The value/time helpers are
+        // root-aware, so a container key lands on the container's clock and refuses on the
+        // container's terms, never the scene's.
+        key_value_for(mundo, timeline, entity, prop, k_time)
+            .zip(key_insert_time(timeline, entity, prop, k_time))
+    };
+    authored.map(|(value, t)| ph2d_timeline::TimelineIntent::AddKey {
+        entity,
+        prop,
+        t,
+        value,
+        interp: default_interp(),
+    })
+}
+
 /// The default interpolation for a freshly inserted key (a gentle ease).
 pub(crate) fn default_interp() -> ph2d_anim::Interp {
     ph2d_anim::Interp::Eased(ph2d_anim::Easing::new(

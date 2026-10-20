@@ -119,7 +119,7 @@ pub fn paint_property_box(
         fill_rounded_rect(scene, caret, 0.0, resolve(ColorToken::Accent, theme));
     }
 
-    if let Some(d) = deco {
+    if let Some(d) = deco.filter(|_| b.animado.is_none()) {
         paint_decorator(scene, theme, d, disabled);
     }
 

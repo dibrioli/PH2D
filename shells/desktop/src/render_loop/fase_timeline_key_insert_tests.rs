@@ -38,7 +38,9 @@ const BANDEIRA: &str = "timeline_insert_key";
 /// leria «verde» exactamente no dia em que deixasse de ter sujeito.
 #[test]
 fn a_fase_medida_e_mesmo_a_que_autora_uma_chave() {
-    for agulha in ["TimelineIntent::AddKey", "TimelineIntent::AddPathKey"] {
+    // O `AddKey` monta-se na porta da K (`timeline_bridge::chave_da_k`, partilhada com o clique no
+    // losango — F24b, 20/10); a fase é a que a CHAMA.
+    for agulha in ["timeline_bridge::chave_da_k(", "TimelineIntent::AddPathKey"] {
         assert!(
             FASE.contains(agulha),
             "esta fase devia ser a que autora chaves, e nao contem `{agulha}` — o gate abaixo \

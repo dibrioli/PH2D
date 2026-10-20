@@ -55,7 +55,15 @@ fn mexer_um_ponto_grava_a_forma_inteira_e_so_ela() {
     let antes = campos();
     let mut l = antes.clone();
     mudar(&mut l, k(v::ANCORA_X, 0, 0), 5.0);
-    let plan = autokey_campos(&TimelineDoc::new(), E, 0.0, &l, &base_de(&antes), true, false);
+    let plan = autokey_campos(
+        &TimelineDoc::new(),
+        E,
+        0.0,
+        &l,
+        &base_de(&antes),
+        true,
+        false,
+    );
     let quer: BTreeSet<FieldKey> = [
         k(v::ANCORA_X, 0, 0),
         k(v::ANCORA_Y, 0, 0),
@@ -64,7 +72,10 @@ fn mexer_um_ponto_grava_a_forma_inteira_e_so_ela() {
     ]
     .into();
     assert_eq!(chaves(&plan), quer);
-    let x0 = plan.keys.iter().find(|(p, _)| *p == PropKind::Field(k(v::ANCORA_X, 0, 0)));
+    let x0 = plan
+        .keys
+        .iter()
+        .find(|(p, _)| *p == PropKind::Field(k(v::ANCORA_X, 0, 0)));
     assert_eq!(x0.map(|c| c.1), Some(5.0), "o valor da mão");
 }
 
@@ -74,12 +85,31 @@ fn a_cor_grava_inteira_mas_so_a_da_sua_entrada() {
     let antes = campos();
     let mut l = antes.clone();
     mudar(&mut l, k(v::TINTA_PREENCH + v::OFF_SOLIDA, 1, 0), 10.0);
-    let plan = autokey_campos(&TimelineDoc::new(), E, 0.0, &l, &base_de(&antes), true, false);
-    assert_eq!(chaves(&plan), [k(v::TINTA_PREENCH + v::OFF_SOLIDA, 1, 0)].into());
+    let plan = autokey_campos(
+        &TimelineDoc::new(),
+        E,
+        0.0,
+        &l,
+        &base_de(&antes),
+        true,
+        false,
+    );
+    assert_eq!(
+        chaves(&plan),
+        [k(v::TINTA_PREENCH + v::OFF_SOLIDA, 1, 0)].into()
+    );
 
     let mut l = antes.clone();
     mudar(&mut l, k(v::TINTA_PREENCH + v::OFF_SOLIDA + 1, 0, 0), 30.0);
-    let plan = autokey_campos(&TimelineDoc::new(), E, 0.0, &l, &base_de(&antes), true, false);
+    let plan = autokey_campos(
+        &TimelineDoc::new(),
+        E,
+        0.0,
+        &l,
+        &base_de(&antes),
+        true,
+        false,
+    );
     assert_eq!(
         chaves(&plan),
         [
@@ -127,5 +157,16 @@ fn sem_curva_e_sem_criar_nao_ha_diferenca() {
     let antes = campos();
     let mut l = antes.clone();
     mudar(&mut l, k(v::TRACO_LARGURA, 0, 0), 12.0);
-    assert!(autokey_campos(&TimelineDoc::new(), E, 0.0, &l, &base_de(&antes), false, false).is_empty());
+    assert!(
+        autokey_campos(
+            &TimelineDoc::new(),
+            E,
+            0.0,
+            &l,
+            &base_de(&antes),
+            false,
+            false
+        )
+        .is_empty()
+    );
 }

@@ -164,27 +164,15 @@ impl crate::App {
                 // overridden by or to play twice). In ARRANGE mode the pose is a
                 // blend, so `key_value_for` inverts it and `key_insert_time` can
                 // REFUSE (the clip has no influence, or plays zero/two times).
-                let authored = if keys_mode {
-                    timeline_bridge::key_authoring_solo(mundo, &self.timeline, entity, prop, k_time)
-                } else {
-                    // Arrange OR inside a container — both read the stack (rooted at
-                    // the scene or the container respectively, primed above) at
-                    // `k_time`. The value/time helpers are root-aware, so a container
-                    // key lands on the container's clock and refuses on the
-                    // container's terms, never the scene's.
-                    timeline_bridge::key_value_for(mundo, &self.timeline, entity, prop, k_time).zip(
-                        timeline_bridge::key_insert_time(&self.timeline, entity, prop, k_time),
-                    )
-                };
-                if let Some((value, t)) = authored {
-                    self.timeline_intents
-                        .push(ph2d_timeline::TimelineIntent::AddKey {
-                            entity,
-                            prop,
-                            t,
-                            value,
-                            interp: timeline_bridge::default_interp(),
-                        });
+                if let Some(k) = timeline_bridge::chave_da_k(
+                    mundo,
+                    &self.timeline,
+                    entity,
+                    prop,
+                    k_time,
+                    keys_mode,
+                ) {
+                    self.timeline_intents.push(k);
                 }
             }
         }

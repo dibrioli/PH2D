@@ -334,7 +334,14 @@ pub(crate) fn curve_seen(
     t_secs: f64,
     solo: bool,
 ) -> Option<f32> {
-    curve_seen_b(doc, entity, prop, doc.binding_for(entity, prop), t_secs, solo)
+    curve_seen_b(
+        doc,
+        entity,
+        prop,
+        doc.binding_for(entity, prop),
+        t_secs,
+        solo,
+    )
 }
 
 /// [`curve_seen`] com o binding JÁ resolvido — quem pergunta por centenas de canais da mesma

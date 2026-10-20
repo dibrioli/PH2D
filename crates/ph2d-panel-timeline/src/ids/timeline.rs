@@ -476,19 +476,6 @@ pub fn timeline_summary_hit_id(t_bits: u64) -> NodeId {
     dynamic_id("timeline.summary", &[t_bits])
 }
 
-/// A diamond on a channel-group row, keyed by the group's handle (its first member's
-/// `AnimTarget`) and the column time as `f64::to_bits`.
-#[must_use]
-pub fn timeline_group_key_id(group: u64, t_bits: u64) -> NodeId {
-    dynamic_id("timeline.group_key", &[group, t_bits])
-}
-
-/// A channel-group row's twirl, keyed like [`timeline_group_key_id`].
-#[must_use]
-pub fn timeline_group_twirl_id(group: u64) -> NodeId {
-    dynamic_id("timeline.group_twirl", &[group])
-}
-
 /// A stable `NodeId` for a loop-range brace on the ruler, keyed by `edge`
 /// (`0` = start, `1` = end, `2` = the band between them).
 #[must_use]
@@ -532,7 +519,7 @@ pub fn timeline_strip_hit_id(lane: u64, strip: u64, edge: u8) -> NodeId {
     dynamic_id("timeline.strip", &[lane, strip, u64::from(edge)])
 }
 
-fn dynamic_id(domain: &'static str, parts: &[u64]) -> NodeId {
+pub(super) fn dynamic_id(domain: &'static str, parts: &[u64]) -> NodeId {
     const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
     let mut h = hash_node_id(domain).0;
     for b in parts.iter().flat_map(|p| p.to_le_bytes()) {

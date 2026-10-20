@@ -52,6 +52,14 @@ pub(super) fn dispatch_down<'frame>(
     }
 
     let hit = hit_index.hit_with_rect(event.x, event.y);
+    // ⭐ O LOSANGO de animação ao lado de um campo (plano 35 §5): a pressão é um pedido à shell
+    // (gravar / apagar a chave do canal neste quadro), e não chega ao campo nem à secção.
+    if let Some((id, _)) = hit
+        && let Some(c) = crate::widget::key_mark::key_mark_target(id)
+    {
+        crate::widget::key_mark::pedir(c);
+        return;
+    }
     // ⭐ **Estação 1 do arrasto de linha: SEMEAR.** Ver `dispatch::hierarchy::diag_down` — ela
     // corre ANTES de qualquer triagem de propósito, porque uma pressão que não acerta em widget
     // nenhum é precisamente o caso que o report de 2026-09-07 deixou sem rasto.

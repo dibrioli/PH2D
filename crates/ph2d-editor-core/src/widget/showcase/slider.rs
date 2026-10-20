@@ -83,6 +83,7 @@ pub(super) fn paint_slider_section(
             state: crate::widget::PropertyBoxState::Normal,
             accent: ColorToken::Accent,
             decorator: true,
+            animado: None,
             // Amostra: a coluna do valor sai do texto. A LINHA do produto reserva-a, para os
             // números alinharem entre linhas — ver o doc do campo.
             value_w: None,

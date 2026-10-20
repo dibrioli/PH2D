@@ -22,7 +22,9 @@ fn caminho(sim: &SimWorld, e: u64) -> Option<(u64, Option<VecShape>)> {
 pub fn publicar(sim: &mut SimWorld, scene: &VecScene, entidades: &[u64]) {
     let mut lotes: Vec<(u64, Vec<(FieldKey, f32)>)> = Vec::with_capacity(entidades.len());
     for &e in entidades {
-        let Some((id, shape)) = caminho(sim, e) else { continue };
+        let Some((id, shape)) = caminho(sim, e) else {
+            continue;
+        };
         let Some(p) = scene.path(id) else { continue };
         let valores = campos(p, shape.as_ref())
             .into_iter()
@@ -60,7 +62,10 @@ pub fn aplicar(sim: &mut SimWorld, scene: &mut VecScene, conducao: &mut Conducao
     let mut i = 0;
     while i < escritas.len() {
         let e = escritas[i].0;
-        let fim = escritas[i..].iter().position(|w| w.0 != e).map_or(escritas.len(), |n| i + n);
+        let fim = escritas[i..]
+            .iter()
+            .position(|w| w.0 != e)
+            .map_or(escritas.len(), |n| i + n);
         if let Some((id, mut shape)) = caminho(sim, e)
             && let Some(p) = scene.path_mut(id)
         {
@@ -131,9 +136,17 @@ impl ConducaoVetor {
     }
 
     /// Repõe o AUTORADO no documento para a fotografia; devolve o vivo para [`Self::repor`].
-    pub fn substituir(&self, sim: &mut SimWorld, scene: &mut VecScene) -> Vec<(u64, FieldKey, f32)> {
+    pub fn substituir(
+        &self,
+        sim: &mut SimWorld,
+        scene: &mut VecScene,
+    ) -> Vec<(u64, FieldKey, f32)> {
         let vivo = self.valores(sim, scene);
-        self.escrever_todos(sim, scene, self.autorado.iter().map(|(&(e, kk), &v)| (e, kk, v)));
+        self.escrever_todos(
+            sim,
+            scene,
+            self.autorado.iter().map(|(&(e, kk), &v)| (e, kk, v)),
+        );
         vivo
     }
 
@@ -161,8 +174,12 @@ impl ConducaoVetor {
         let mut v: Vec<_> = valores.collect();
         v.sort_by_key(|&(e, kk, _)| (e, prioridade(kk), kk));
         for (e, kk, x) in v {
-            let Some((id, mut shape)) = caminho(sim, e) else { continue };
-            let Some(p) = scene.path_mut(id) else { continue };
+            let Some((id, mut shape)) = caminho(sim, e) else {
+                continue;
+            };
+            let Some(p) = scene.path_mut(id) else {
+                continue;
+            };
             escrever(p, shape.as_mut(), kk, x);
             if let (Some(sh), Some(ent)) = (shape, Entity::try_from_bits(e)) {
                 if let VecShape::Param { .. } = sh {

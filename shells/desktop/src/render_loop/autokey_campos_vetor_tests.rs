@@ -101,7 +101,10 @@ fn quadro(c: &mut Cena, armed: bool, mao: impl FnOnce(&mut VecScene, u64)) {
     ph2d_app_vec::canais::publicar(&mut c.sim, &c.scene, &[c.e]);
     let mundo = super::super::timeline_bridge::Mundo::com_vetor(c.sim.world(), &c.scene);
     let samples = vec![(c.e, sample_pose(mundo, c.e))];
-    c.ak.campos = samples.iter().map(|&(e, _)| (e, campos_lidos(&c.sim, e))).collect();
+    c.ak.campos = samples
+        .iter()
+        .map(|&(e, _)| (e, campos_lidos(&c.sim, e)))
+        .collect();
     propagar_topologia(&mut c.st, &c.ak);
     apply_samples(
         &mut c.st,
@@ -144,9 +147,14 @@ fn largura(c: &Cena) -> f64 {
 fn armado_o_traco_engrossado_vira_chave() {
     let mut c = cena();
     quadro(&mut c, true, |_, _| {});
-    quadro(&mut c, true, |s, id| s.path_mut(id).unwrap().stroke.as_mut().unwrap().width = 12.0);
+    quadro(&mut c, true, |s, id| {
+        s.path_mut(id).unwrap().stroke.as_mut().unwrap().width = 12.0
+    });
     assert_eq!(chaves(&c, k(cv::TRACO_LARGURA, 0, 0)), vec![(0.5, 12.0)]);
-    assert!(chaves(&c, k(cv::ANCORA_X, 0, 0)).is_empty(), "a forma não foi tocada");
+    assert!(
+        chaves(&c, k(cv::ANCORA_X, 0, 0)).is_empty(),
+        "a forma não foi tocada"
+    );
 }
 
 /// ⭐⭐ **Mover os PONTOS do desenho grava a forma INTEIRA** (o report do dono: o arrasto da
@@ -160,12 +168,23 @@ fn armado_mover_os_pontos_grava_a_forma_inteira() {
     });
     for j in 0..4 {
         for campo in cv::ANCORA_X..=cv::TIPO_VERTICE {
-            assert_eq!(chaves(&c, k(campo, 0, j)).len(), 1, "campo {campo} do vértice {j}");
+            assert_eq!(
+                chaves(&c, k(campo, 0, j)).len(),
+                1,
+                "campo {campo} do vértice {j}"
+            );
         }
     }
     assert_eq!(chaves(&c, k(cv::ANCORA_X, 0, 0)), vec![(0.5, 80.0)]);
-    assert_eq!(chaves(&c, k(cv::FECHADO, 0, 0)).len(), 1, "o contorno inteiro vai na chave");
-    assert!(chaves(&c, k(cv::TRACO_LARGURA, 0, 0)).is_empty(), "o traço não mudou");
+    assert_eq!(
+        chaves(&c, k(cv::FECHADO, 0, 0)).len(),
+        1,
+        "o contorno inteiro vai na chave"
+    );
+    assert!(
+        chaves(&c, k(cv::TRACO_LARGURA, 0, 0)).is_empty(),
+        "o traço não mudou"
+    );
 }
 
 /// ⛔⛔ **Parado a meio de uma cor animada, armado, NÃO nasce chave** — a cor é `u8`, a curva dá
@@ -193,7 +212,9 @@ fn desarmado_a_edicao_fica_ate_o_relogio_mudar() {
     animar(&mut c, k(cv::TRACO_LARGURA, 0, 0), 4.0, 12.0);
     quadro(&mut c, false, |_, _| {});
     assert_eq!(largura(&c), 8.0, "a curva a meio");
-    quadro(&mut c, false, |s, id| s.path_mut(id).unwrap().stroke.as_mut().unwrap().width = 30.0);
+    quadro(&mut c, false, |s, id| {
+        s.path_mut(id).unwrap().stroke.as_mut().unwrap().width = 30.0
+    });
     for _ in 0..3 {
         quadro(&mut c, false, |_, _| {});
         assert_eq!(largura(&c), 30.0, "a mão ficou presa até o tempo andar");
@@ -201,7 +222,11 @@ fn desarmado_a_edicao_fica_ate_o_relogio_mudar() {
     c.ph.seek(0.25);
     quadro(&mut c, false, |_, _| {});
     assert_eq!(largura(&c), 6.0, "o relógio andou: a curva volta");
-    assert_eq!(chaves(&c, k(cv::TRACO_LARGURA, 0, 0)).len(), 2, "desarmado não grava");
+    assert_eq!(
+        chaves(&c, k(cv::TRACO_LARGURA, 0, 0)).len(),
+        2,
+        "desarmado não grava"
+    );
 }
 
 /// ⭐⭐ No quadro real: a forma animada (pontos com chave em 0 e 1 s), o artista APAGA um ponto a
@@ -210,10 +235,14 @@ fn desarmado_a_edicao_fica_ate_o_relogio_mudar() {
 fn apagar_um_ponto_de_uma_forma_animada_vale_em_todas_as_chaves() {
     let mut c = cena();
     quadro(&mut c, true, |_, _| {});
-    quadro(&mut c, true, |s, id| assert!(s.translate_path(id, 10.0, 0.0)));
+    quadro(&mut c, true, |s, id| {
+        assert!(s.translate_path(id, 10.0, 0.0))
+    });
     c.ph.seek(1.0);
     quadro(&mut c, true, |_, _| {});
-    quadro(&mut c, true, |s, id| assert!(s.translate_path(id, 10.0, 0.0)));
+    quadro(&mut c, true, |s, id| {
+        assert!(s.translate_path(id, 10.0, 0.0))
+    });
     c.ph.seek(0.75);
     quadro(&mut c, true, |_, _| {});
     quadro(&mut c, true, |s, id| {
@@ -229,5 +258,59 @@ fn apagar_um_ponto_de_uma_forma_animada_vale_em_todas_as_chaves() {
     // Apagar não move os outros pontos: a forma a 0,75 continua a ser a interpolação das duas chaves
     // (já com 3 pontos), logo nenhuma chave nova nasce ali — só a topologia mudou, em todas.
     assert_eq!(chaves(&c, k(cv::ANCORA_X, 0, 2)).len(), 2, "0,5 · 1,0");
-    assert_eq!(chaves(&c, k(cv::ANCORA_X, 0, 2))[0].1, 13.0, "o índice 2 é o antigo 3 (x=3+10)");
+    assert_eq!(
+        chaves(&c, k(cv::ANCORA_X, 0, 2))[0].1,
+        13.0,
+        "o índice 2 é o antigo 3 (x=3+10)"
+    );
+}
+
+/// O que a fase do autokey faz com o losango, no quadro real: o estado do campo e o clique.
+fn losango(c: &mut Cena, clicar: bool) -> ph2d_editor_core::widget::key_mark::KeyMark {
+    use ph2d_app_vec::marcas;
+    use ph2d_tool_vector::ids::VECTOR_WIDTH;
+    let inst = marcas::Instante {
+        t_cut: c.st.doc.author_cut(true, None, c.ph.time()),
+        solo: true,
+    };
+    let mundo = super::super::timeline_bridge::Mundo::com_vetor(c.sim.world(), &c.scene);
+    let valor = |e, p| match super::super::timeline_bridge::sample_prop_value(mundo, e, p) {
+        Some(AnimValue::Float(v)) => Some(v),
+        _ => None,
+    };
+    if clicar {
+        let lidos = |e| {
+            campos_lidos(&c.sim, e)
+                .into_iter()
+                .map(|(kk, _)| kk)
+                .collect()
+        };
+        let st = &c.st;
+        let t = c.ph.time();
+        let a_k = |e, p| super::super::timeline_bridge::chave_da_k(mundo, st, e, p, t, true);
+        let pedidos = marcas::clique(&st.doc, &[VECTOR_WIDTH], &[c.e], inst, lidos, valor, a_k);
+        for i in pedidos {
+            ph2d_timeline::apply_intent(&mut c.st, &mut c.ph, i);
+        }
+        return losango(c, false);
+    }
+    marcas::marcas(&c.st.doc, &[c.e], inst, valor)[&VECTOR_WIDTH]
+}
+
+/// ⭐⭐ **O losango da largura, no quadro real** (plano 35 §5.4): sem curva é o ponto clicável; o 1.º
+/// clique grava a chave com o valor do DOCUMENTO no relógio (a porta da K); o 2.º, na chave, apaga-a.
+#[test]
+fn o_clique_no_losango_grava_e_depois_apaga_a_chave_do_traco() {
+    use ph2d_editor_core::widget::key_mark::KeyMark;
+    let mut c = cena();
+    quadro(&mut c, false, |_, _| {});
+    assert_eq!(losango(&mut c, false), KeyMark::Livre);
+    assert_eq!(losango(&mut c, true), KeyMark::Chave);
+    assert_eq!(chaves(&c, k(cv::TRACO_LARGURA, 0, 0)), vec![(0.5, 4.0)]);
+    assert!(
+        chaves(&c, k(cv::ANCORA_X, 0, 0)).is_empty(),
+        "só o grupo do campo clicado"
+    );
+    assert_eq!(losango(&mut c, true), KeyMark::Livre);
+    assert!(chaves(&c, k(cv::TRACO_LARGURA, 0, 0)).is_empty());
 }

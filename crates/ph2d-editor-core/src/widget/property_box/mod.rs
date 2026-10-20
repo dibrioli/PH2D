@@ -48,7 +48,7 @@ pub(crate) use label::fit_label;
 pub(crate) use row::{decorator_rect, paint_decorator};
 
 use crate::zones::Rect;
-use ph2d_a11y::{Action, Node, NodeBuilder, Role};
+use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_tokens::{ColorToken, Spacing};
 
 /// Em que estado a caixa é pintada.
@@ -109,6 +109,10 @@ pub struct PropertyBox<'a> {
     pub accent: ColorToken,
     /// Desenha a coluna de animação à direita.
     pub decorator: bool,
+    /// O campo cuja animação a coluna mostra. `Some` ⇒ a caixa reserva a coluna e **não** pinta o
+    /// ponto: quem a pinta é o chamador, pelo [`key_mark::paint_decorator_for`] (losango ou ponto),
+    /// porque o alvo do clique pede o índice de alvos que esta função não tem.
+    pub animado: Option<NodeId>,
     /// **A largura da coluna do valor.**
     ///
     /// - `None` — mede o texto do `value`. É o que uma AMOSTRA quer (o laboratório, a galeria).

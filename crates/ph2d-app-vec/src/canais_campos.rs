@@ -21,7 +21,10 @@ fn n16(n: usize) -> u16 {
     u16::try_from(n).unwrap_or(u16::MAX)
 }
 
-#[expect(clippy::cast_possible_truncation, reason = "o canal é f32; o documento guarda f64")]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "o canal é f32; o documento guarda f64"
+)]
 fn f(x: f64) -> f32 {
     x as f32
 }
@@ -37,7 +40,11 @@ fn indice(v: f32, n: usize) -> usize {
 }
 
 fn byte(v: f32) -> u8 {
-    #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "preso a 0..=255")]
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "preso a 0..=255"
+    )]
     let b = v.round().clamp(0.0, 255.0) as u8;
     b
 }
@@ -55,12 +62,22 @@ fn set_rgba(cor: &mut Rgba8, canal: u16, v: f32) {
     }
 }
 
-const VERTICES: [VertexKind; 3] = [VertexKind::Corner, VertexKind::Smooth, VertexKind::Symmetric];
+const VERTICES: [VertexKind; 3] = [
+    VertexKind::Corner,
+    VertexKind::Smooth,
+    VertexKind::Symmetric,
+];
 const REGRAS: [FillRule; 2] = [FillRule::NonZero, FillRule::EvenOdd];
 const PONTAS: [LineCap; 3] = [LineCap::Butt, LineCap::Round, LineCap::Square];
 const JUNCOES: [LineJoin; 3] = [LineJoin::Miter, LineJoin::Round, LineJoin::Bevel];
-const ALINHAMENTOS: [StrokeAlign; 3] = [StrokeAlign::Centre, StrokeAlign::Inner, StrokeAlign::Outer];
-const LADRILHOS: [TileKind; 4] = [TileKind::Grid, TileKind::BrickRow, TileKind::BrickCol, TileKind::Hex];
+const ALINHAMENTOS: [StrokeAlign; 3] =
+    [StrokeAlign::Centre, StrokeAlign::Inner, StrokeAlign::Outer];
+const LADRILHOS: [TileKind; 4] = [
+    TileKind::Grid,
+    TileKind::BrickRow,
+    TileKind::BrickCol,
+    TileKind::Hex,
+];
 const MODOS: [PatternMode; 3] = [PatternMode::Tile, PatternMode::Mirror, PatternMode::Clamp];
 
 fn pos<T: PartialEq>(todos: &[T], x: &T) -> f32 {
@@ -192,20 +209,30 @@ fn campos_da_tinta(p: &VecPath, base: u16, i: u16, out: &mut Vec<FieldKey>) {
         Tinta::Fill(Some(Paint::Solid(_))) | Tinta::Traco(Some(StrokePaint::Solid(_))) => {
             &[(c::OFF_TIPO, 1), (c::OFF_SOLIDA, 4)]
         }
-        Tinta::Fill(Some(Paint::Linear { .. })) => &[(c::OFF_TIPO, 1), (c::OFF_N_PARAGENS, 1), (c::OFF_LINEAR, 4)],
-        Tinta::Fill(Some(Paint::Radial { .. })) => &[(c::OFF_TIPO, 1), (c::OFF_N_PARAGENS, 1), (c::OFF_RADIAL, 3)],
-        Tinta::Fill(Some(Paint::MultiPoint { .. })) => &[(c::OFF_TIPO, 1), (c::OFF_N_PONTOS, 1)],
-        Tinta::Fill(Some(Paint::Pattern(_))) | Tinta::Traco(Some(StrokePaint::Pattern(_))) => {
-            &[(c::OFF_TIPO, 1), (c::OFF_PADRAO, 8), (c::OFF_PADRAO_MODOS, 2)]
+        Tinta::Fill(Some(Paint::Linear { .. })) => {
+            &[(c::OFF_TIPO, 1), (c::OFF_N_PARAGENS, 1), (c::OFF_LINEAR, 4)]
         }
+        Tinta::Fill(Some(Paint::Radial { .. })) => {
+            &[(c::OFF_TIPO, 1), (c::OFF_N_PARAGENS, 1), (c::OFF_RADIAL, 3)]
+        }
+        Tinta::Fill(Some(Paint::MultiPoint { .. })) => &[(c::OFF_TIPO, 1), (c::OFF_N_PONTOS, 1)],
+        Tinta::Fill(Some(Paint::Pattern(_))) | Tinta::Traco(Some(StrokePaint::Pattern(_))) => &[
+            (c::OFF_TIPO, 1),
+            (c::OFF_PADRAO, 8),
+            (c::OFF_PADRAO_MODOS, 2),
+        ],
         Tinta::Traco(Some(StrokePaint::Brush(_))) => &[(c::OFF_TIPO, 1)],
     };
     for &(off, n) in blocos {
         out.extend((off..off + n).map(|o| k(base + o, i, 0)));
     }
     let (por_j, n) = match t {
-        Tinta::Fill(Some(Paint::Linear { stops, .. } | Paint::Radial { stops, .. })) => (c::OFF_PARAGEM..c::OFF_PARAGEM + 5, stops.len()),
-        Tinta::Fill(Some(Paint::MultiPoint { points })) => (c::OFF_PONTO..c::OFF_PONTO + 8, points.len()),
+        Tinta::Fill(Some(Paint::Linear { stops, .. } | Paint::Radial { stops, .. })) => {
+            (c::OFF_PARAGEM..c::OFF_PARAGEM + 5, stops.len())
+        }
+        Tinta::Fill(Some(Paint::MultiPoint { points })) => {
+            (c::OFF_PONTO..c::OFF_PONTO + 8, points.len())
+        }
         _ => (0..0, 0),
     };
     for j in 0..n16(n) {
@@ -232,7 +259,9 @@ pub fn ler(p: &VecPath, shape: Option<&VecShape>, kk: FieldKey) -> Option<f32> {
     let (campo, i, j) = (kk.campo, kk.i, kk.j);
     let ju = usize::from(j);
     match campo {
-        c::FECHADO => contornos(p).nth(usize::from(i)).map(|(_, fechado)| f32::from(u8::from(fechado))),
+        c::FECHADO => contornos(p)
+            .nth(usize::from(i))
+            .map(|(_, fechado)| f32::from(u8::from(fechado))),
         c::ANCORA_X..=c::TIPO_VERTICE => {
             let (verts, _) = contornos(p).nth(usize::from(i))?;
             let v = verts.get(ju)?;
@@ -249,7 +278,11 @@ pub fn ler(p: &VecPath, shape: Option<&VecShape>, kk: FieldKey) -> Option<f32> {
         }
         c::REGRA => Some(pos(&REGRAS, &p.fill_rule)),
         c::TINTA_PREENCH..c::TRACO_LARGURA => {
-            let base = if campo < c::TINTA_TRACO { c::TINTA_PREENCH } else { c::TINTA_TRACO };
+            let base = if campo < c::TINTA_TRACO {
+                c::TINTA_PREENCH
+            } else {
+                c::TINTA_TRACO
+            };
             ler_tinta(tinta(p, base, i)?, campo - base, i, ju)
         }
         c::TRACO_LARGURA..=c::TRACO_MARCA_REDONDA => {
@@ -282,7 +315,10 @@ pub fn ler(p: &VecPath, shape: Option<&VecShape>, kk: FieldKey) -> Option<f32> {
                 _ => f32::from(e.dilate_join),
             })
         }
-        c::EFEITO_LIGADO => p.effects.get(usize::from(i)).map(|e| f32::from(u8::from(e.enabled))),
+        c::EFEITO_LIGADO => p
+            .effects
+            .get(usize::from(i))
+            .map(|e| f32::from(u8::from(e.enabled))),
         c::EFEITO_PARAM => {
             let e = p.effects.get(usize::from(i))?;
             (ju < e.effect.params().len()).then(|| f(e.effect.get(ju)))
@@ -335,71 +371,6 @@ fn ler_tinta(t: Tinta<'_>, off: u16, i: u16, j: usize) -> Option<f32> {
     }
 }
 
-fn ler_paint(p: &Paint, off: u16, j: usize) -> Option<f32> {
-    if off == c::OFF_TIPO {
-        return Some(tipo_tinta(p));
-    }
-    match p {
-        Paint::Solid(cor) if (c::OFF_SOLIDA..c::OFF_SOLIDA + 4).contains(&off) => {
-            Some(rgba(*cor)[usize::from(off - c::OFF_SOLIDA)])
-        }
-        Paint::Linear { stops, start, end } => match off {
-            c::OFF_N_PARAGENS => Some(f32::from(n16(stops.len()))),
-            o if (c::OFF_LINEAR..c::OFF_LINEAR + 4).contains(&o) => {
-                Some(f([start[0], start[1], end[0], end[1]][usize::from(o - c::OFF_LINEAR)]))
-            }
-            o => ler_paragem(stops, o, j),
-        },
-        Paint::Radial { stops, center, radius } => match off {
-            c::OFF_N_PARAGENS => Some(f32::from(n16(stops.len()))),
-            o if (c::OFF_RADIAL..c::OFF_RADIAL + 3).contains(&o) => {
-                Some(f([center[0], center[1], *radius][usize::from(o - c::OFF_RADIAL)]))
-            }
-            o => ler_paragem(stops, o, j),
-        },
-        Paint::MultiPoint { points } => match off {
-            c::OFF_N_PONTOS => Some(f32::from(n16(points.len()))),
-            o if (c::OFF_PONTO..c::OFF_PONTO + 8).contains(&o) => {
-                let pt = points.get(j)?;
-                let [r, g, b, a] = rgba(pt.color);
-                Some([f(pt.pos[0]), f(pt.pos[1]), r, g, b, a, f(pt.influence), f(pt.jitter)][usize::from(o - c::OFF_PONTO)])
-            }
-            _ => None,
-        },
-        Paint::Pattern(pt) => ler_padrao(pt, off),
-        Paint::Solid(_) => None,
-    }
-}
-
-fn ler_paragem(stops: &[GradientStop], off: u16, j: usize) -> Option<f32> {
-    if !(c::OFF_PARAGEM..c::OFF_PARAGEM + 5).contains(&off) {
-        return None;
-    }
-    let s = stops.get(j)?;
-    let [r, g, b, a] = rgba(s.color);
-    Some([f(s.offset), r, g, b, a][usize::from(off - c::OFF_PARAGEM)])
-}
-
-fn ler_padrao(pt: &ph2d_vec_scene::PatternFill, off: u16) -> Option<f32> {
-    match off {
-        o if (c::OFF_PADRAO..c::OFF_PADRAO + 8).contains(&o) => Some(
-            [
-                f(pt.size[0]),
-                f(pt.size[1]),
-                f(pt.gap[0]),
-                f(pt.gap[1]),
-                f(pt.origin[0]),
-                f(pt.origin[1]),
-                f(pt.angle),
-                pt.alpha,
-            ][usize::from(o - c::OFF_PADRAO)],
-        ),
-        o if o == c::OFF_PADRAO_MODOS => Some(pos(&LADRILHOS, &pt.kind)),
-        o if o == c::OFF_PADRAO_MODOS + 1 => Some(pos(&MODOS, &pt.mode)),
-        _ => None,
-    }
-}
-
 /// A ordem em que as escritas de um quadro se aplicam: o que muda a ESTRUTURA (existe, tipo, nº de
 /// paragens, tracejado ligado, a forma paramétrica) antes do que preenche os números dela.
 #[must_use]
@@ -442,7 +413,9 @@ pub fn escrever(p: &mut VecPath, shape: Option<&mut VecShape>, kk: FieldKey, v: 
             }
         },
         c::ANCORA_X..=c::TIPO_VERTICE => {
-            let Some(vx) = vertice_mut(p, i, j) else { return };
+            let Some(vx) = vertice_mut(p, i, j) else {
+                return;
+            };
             match campo {
                 c::ANCORA_X => vx.anchor[0] = d,
                 c::ANCORA_Y => vx.anchor[1] = d,
@@ -474,8 +447,12 @@ pub fn escrever(p: &mut VecPath, shape: Option<&mut VecShape>, kk: FieldKey, v: 
                         par[usize::from(campo == c::TRACO_VAO)] = d.max(0.0);
                     }
                 }
-                c::TRACO_MARCA_INICIO => s.marker_start = Marker::from_u8(byte(v)).unwrap_or(Marker::None),
-                c::TRACO_MARCA_FIM => s.marker_end = Marker::from_u8(byte(v)).unwrap_or(Marker::None),
+                c::TRACO_MARCA_INICIO => {
+                    s.marker_start = Marker::from_u8(byte(v)).unwrap_or(Marker::None)
+                }
+                c::TRACO_MARCA_FIM => {
+                    s.marker_end = Marker::from_u8(byte(v)).unwrap_or(Marker::None)
+                }
                 c::TRACO_ESCALA_INICIO => s.marker_scale_start = d,
                 c::TRACO_ESCALA_FIM => s.marker_scale_end = d,
                 _ => s.marker_round = d,
@@ -483,7 +460,12 @@ pub fn escrever(p: &mut VecPath, shape: Option<&mut VecShape>, kk: FieldKey, v: 
         }
         c::MISTURA => p.blend = BlendMode::from_u8(byte(v)),
         c::PILHA_LIGADA..=c::PILHA_DILATA_JUNCAO => {
-            let Some(e) = usize::from(i).checked_sub(1).and_then(|x| p.paints.get_mut(x)) else { return };
+            let Some(e) = usize::from(i)
+                .checked_sub(1)
+                .and_then(|x| p.paints.get_mut(x))
+            else {
+                return;
+            };
             match campo {
                 c::PILHA_LIGADA => e.enabled = liga,
                 c::PILHA_OPACIDADE => e.opacity = Opacity::new(v),
@@ -597,123 +579,9 @@ fn escrever_tinta_traco(p: &mut VecPath, off: u16, i: u16, v: f32) {
     }
 }
 
-/// O tipo da tinta mudou: converte guardando a cor principal (as paragens, pontos e posições vêm
-/// das curvas do mesmo quadro, escritas a seguir — [`prioridade`]).
-fn converter(t: &mut Paint, tipo: usize) {
-    let cor = t.primary_color();
-    let paragens = || vec![GradientStop::new(0.0, cor), GradientStop::new(1.0, cor)];
-    *t = match tipo {
-        0 => Paint::Solid(cor),
-        1 => Paint::Linear {
-            stops: paragens(),
-            start: [0.0, 0.0],
-            end: [1.0, 0.0],
-        },
-        2 => Paint::Radial {
-            stops: paragens(),
-            center: [0.0, 0.0],
-            radius: 1.0,
-        },
-        3 => Paint::MultiPoint {
-            points: vec![ph2d_vec_scene::GradientPoint::new([0.0, 0.0], cor, 1.0)],
-        },
-        // O padrão traz uma fonte (imagem ou forma) que a curva não cria: fica o que estava.
-        _ => return,
-    };
-}
-
-fn escrever_paint(t: &mut Paint, off: u16, j: usize, v: f32) {
-    let d = f64::from(v);
-    if off == c::OFF_TIPO {
-        let tipo = indice(v, 5);
-        #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "0..=4")]
-        let agora = tipo_tinta(t) as usize;
-        if tipo != agora {
-            converter(t, tipo);
-        }
-        return;
-    }
-    match t {
-        Paint::Solid(cor) => {
-            if (c::OFF_SOLIDA..c::OFF_SOLIDA + 4).contains(&off) {
-                set_rgba(cor, off - c::OFF_SOLIDA, v);
-            }
-        }
-        Paint::Linear { stops, start, end } => match off {
-            o if (c::OFF_LINEAR..c::OFF_LINEAR + 4).contains(&o) => match o - c::OFF_LINEAR {
-                0 => start[0] = d,
-                1 => start[1] = d,
-                2 => end[0] = d,
-                _ => end[1] = d,
-            },
-            o => escrever_paragem(stops, o, j, v),
-        },
-        Paint::Radial { stops, center, radius } => match off {
-            o if (c::OFF_RADIAL..c::OFF_RADIAL + 3).contains(&o) => match o - c::OFF_RADIAL {
-                0 => center[0] = d,
-                1 => center[1] = d,
-                _ => *radius = d.max(0.0),
-            },
-            o => escrever_paragem(stops, o, j, v),
-        },
-        Paint::MultiPoint { points } => {
-            if off == c::OFF_N_PONTOS {
-                redimensionar(points, indice(v, usize::from(u16::MAX)).max(1));
-            } else if (c::OFF_PONTO..c::OFF_PONTO + 8).contains(&off)
-                && let Some(pt) = points.get_mut(j)
-            {
-                match off - c::OFF_PONTO {
-                    0 => pt.pos[0] = d,
-                    1 => pt.pos[1] = d,
-                    o @ 2..=5 => set_rgba(&mut pt.color, o - 2, v),
-                    6 => pt.influence = d,
-                    _ => pt.jitter = d,
-                }
-            }
-        }
-        Paint::Pattern(pt) => escrever_padrao(pt, off, v),
-    }
-}
-
-fn redimensionar<T: Clone>(xs: &mut Vec<T>, n: usize) {
-    if let Some(ultimo) = xs.last().cloned() {
-        xs.resize(n, ultimo);
-    }
-}
-
-fn escrever_paragem(stops: &mut Vec<GradientStop>, off: u16, j: usize, v: f32) {
-    if off == c::OFF_N_PARAGENS {
-        redimensionar(stops, indice(v, usize::from(u16::MAX)).max(2));
-        return;
-    }
-    if !(c::OFF_PARAGEM..c::OFF_PARAGEM + 5).contains(&off) {
-        return;
-    }
-    let Some(s) = stops.get_mut(j) else { return };
-    match off - c::OFF_PARAGEM {
-        0 => s.offset = f64::from(v).clamp(0.0, 1.0),
-        o => set_rgba(&mut s.color, o - 1, v),
-    }
-}
-
-fn escrever_padrao(pt: &mut ph2d_vec_scene::PatternFill, off: u16, v: f32) {
-    let d = f64::from(v);
-    match off {
-        o if (c::OFF_PADRAO..c::OFF_PADRAO + 8).contains(&o) => match o - c::OFF_PADRAO {
-            0 => pt.size[0] = d,
-            1 => pt.size[1] = d,
-            2 => pt.gap[0] = d,
-            3 => pt.gap[1] = d,
-            4 => pt.origin[0] = d,
-            5 => pt.origin[1] = d,
-            6 => pt.angle = d,
-            _ => pt.alpha = v.clamp(0.0, 1.0),
-        },
-        o if o == c::OFF_PADRAO_MODOS => pt.kind = LADRILHOS[indice(v, LADRILHOS.len())],
-        o if o == c::OFF_PADRAO_MODOS + 1 => pt.mode = MODOS[indice(v, MODOS.len())],
-        _ => {}
-    }
-}
+#[path = "canais_campos_tinta.rs"]
+mod tinta;
+use tinta::{escrever_padrao, escrever_paint, ler_padrao, ler_paint};
 
 #[cfg(test)]
 #[path = "canais_campos_tests.rs"]

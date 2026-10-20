@@ -422,3 +422,37 @@ fn a_mao_do_cartao_chega_ao_traco() {
 fn pressao_03(t: &mut PainterTool) {
     t.set_mao(LinhaDaMao::Knob(Knob::PressureSize), 0.3);
 }
+
+// ── O custo (sonda, `--ignored`) ─────────────────────────────────────────────────────────────────────
+
+/// O custo da miniatura de cada meio (`miniatura_do_preset`, a que o «Save as New» pinta): o MÍNIMO de 5
+/// corridas, em ms, os três exemplos e o Wet Round de fábrica ao lado. Perfil `smoke`.
+#[test]
+#[ignore = "sonda: o custo da miniatura por meio"]
+fn sonda_custo_da_miniatura_por_meio() {
+    let mut presets: Vec<(String, Preset)> = (0..EXEMPLOS.len())
+        .map(|i| {
+            let b = std::fs::read(caminho_do_exemplo(i)).unwrap();
+            (
+                format!("{:?}", EXEMPLOS[i].0.meio),
+                ph2d_brush_presets::ler(&b).unwrap(),
+            )
+        })
+        .collect();
+    let round = fabrica()
+        .entradas
+        .into_iter()
+        .find(|e| e.preset.parametros.name == "Wet Round")
+        .unwrap();
+    presets.push(("WetPaint (Wet Round)".to_owned(), round.preset));
+    for (nome, p) in &presets {
+        let ms = (0..5)
+            .map(|_| {
+                let t0 = std::time::Instant::now();
+                std::hint::black_box(miniatura_do_preset(p));
+                t0.elapsed().as_secs_f64() * 1000.0
+            })
+            .fold(f64::INFINITY, f64::min);
+        eprintln!("miniatura {nome}: {ms:.1} ms (mín. de 5)");
+    }
+}

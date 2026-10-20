@@ -167,3 +167,25 @@ fn o_reset_do_cartao_devolve_a_mao_de_fabrica() {
         }
     }
 }
+
+/// O custo de pintar o painel com o cartão Pen ABERTO × fechado, no Digital (o MÍNIMO de 20 pinturas, ms).
+#[test]
+#[ignore = "sonda: o custo do cartão Pen no painel"]
+fn sonda_custo_do_cartao_pen() {
+    let t = no_meio(PaintMedia::Digital);
+    let mede = |host: &mut MockPanelHost, st: &mut PainterLayersPanelState| {
+        (0..20)
+            .map(|_| {
+                let t0 = std::time::Instant::now();
+                std::hint::black_box(painted(&t, host, st));
+                t0.elapsed().as_secs_f64() * 1000.0
+            })
+            .fold(f64::INFINITY, f64::min)
+    };
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let fechado = mede(&mut host, &mut st);
+    let (mut host, mut st, _) = novo(&t);
+    let aberto = mede(&mut host, &mut st);
+    eprintln!("painel Digital: Pen fechado {fechado:.2} ms · aberto {aberto:.2} ms (mín. de 20)");
+}

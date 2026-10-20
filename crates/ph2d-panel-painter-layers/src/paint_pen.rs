@@ -48,15 +48,9 @@ pub(crate) const ROTULOS: [&str; 16] = [
     "panel.painter_layers.pen.tilt_opacity",
 ];
 
-/// As casas decimais de uma linha pelo passo dela (`1` → inteiros; `0,5` → uma; o resto → duas).
+/// As casas decimais de uma linha pelo passo dela (`1` → inteiros; `0,5` → uma; `0,01` → duas).
 fn casas(passo: f64) -> usize {
-    if passo >= 1.0 {
-        0
-    } else if passo >= 0.1 {
-        1
-    } else {
-        2
-    }
+    (-passo.log10()).ceil().max(0.0) as usize
 }
 
 /// Pinta o cartão Pen; devolve o `y` seguinte.

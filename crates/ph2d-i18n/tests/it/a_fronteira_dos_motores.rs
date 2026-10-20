@@ -80,6 +80,14 @@ const POR_PAGAR: &[(&str, usize, &str)] = &[];
 /// deste repo; e a metade justa abaixo apaga a que já não abriga nada.
 const ISENTOS: &[(&str, &str, &str)] = &[
     (
+        "ph2d-tool-painter",
+        "tool/paint/wetpaint_preset/meios.rs",
+        "⭐ e' o `media` GRAVADO no `.ph2d-brush.png` (`\"Digital\"`, `\"Watercolor\"`, `\"Impasto\"`, ao lado do \
+`\"WetPaint\"` de sempre) e o nome da pasta-raiz de cada meio na biblioteca (L1, 20/10). FORMATO, nao rotulo: \
+outro PH2D le-o para escolher o meio, e traduzi-lo faria o mesmo ficheiro recusar-se noutra lingua. O painel \
+mostra o meio pelo `PaintMedia::name_key`.",
+    ),
+    (
         "ph2d-i18n",
         "*",
         "esta crate E' a tabela de strings: todo literal dela e' o texto de chegada de uma chave. \

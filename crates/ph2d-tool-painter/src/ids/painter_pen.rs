@@ -43,10 +43,3 @@ pub const PAINTER_PEN_ROTATION_COUNT: u8 = 3;
 pub fn painter_pen_rotation_option_id(i: u8) -> NodeId {
     hash_node_id_runtime(&format!("painter_brush.pen.rotation_opt.{i}"))
 }
-
-/// As linhas NUMÉRICAS do cartão (todas menos a rotação).
-pub fn painter_pen_number_fields() -> impl Iterator<Item = NodeId> {
-    PAINTER_PEN_FIELDS
-        .into_iter()
-        .filter(|id| *id != PAINTER_PEN_ROTATION)
-}

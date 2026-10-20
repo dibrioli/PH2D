@@ -59,8 +59,10 @@ Relógio da água FIXO e semente 0: a mesma tinta duas vezes (medido: fnv iguais
 | Impasto | `meio:Impasto` | sem efeito (não há água) | nada: o relevo não seca |
 | Digital | `meio:Digital` | sem efeito | nada |
 
-Os meios Digital/Watercolor/Impasto ainda não têm presets em ficheiro (03_MOTORES): a bancada aceita-os como
-`meio:<X>` + uma receita em código (`RECEITAS_DE_MEIO`, uma linha por pincel novo). Medido sobre a biblioteca: A ≠ B
+Desde a L1 (J2, 20/10) os quatro meios têm presets em ficheiro: a bancada pinta o `.ph2d-brush.png` de QUALQUER
+meio no meio do ficheiro (`preset_aplicar`; um `media` desconhecido reprova a corrida) — três exemplos em
+`fixtures/presets_exemplo/` (Digital, Watercolor, Impasto). O `meio:<X>` + uma receita em código (`RECEITAS_DE_MEIO`)
+continua para o pincel de fábrica de cada meio. Medido sobre a biblioteca: A ≠ B
 (o seca muda a imagem) em 11 dos 31 — os Wet/Ink/Dip Pen/Gouache/Flat Oily/Knife; nos lápis, pastéis, óleo e
 marcadores A = B ao bit depois dos 240 quadros (a tinta já assentou). No Digital, a faixa «seca» da cena `sobre` é
 igual à «molhada» (por desenho do meio, não da bancada).

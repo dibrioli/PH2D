@@ -149,6 +149,142 @@ fn o_traco_fino_pesa_por_area_o_que_o_largo_pesa() {
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
 
+/// A cena inteira `cena` da bateria (com a base, as secagens e a foto molhada) pintada por `p`.
+fn cena_inteira(p: &Pincel, cena: &str) -> Vec<u8> {
+    let bat = bateria();
+    let c = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == cena)
+        .unwrap();
+    let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
+    pinta_cena(p, None, c, tela, [255; 3], 0).1
+}
+
+fn rgb(px: &[u8], w: usize, x: usize, y: usize) -> [f64; 3] {
+    let i = (y * w + x) * 4;
+    [0, 1, 2].map(|k| f64::from(px[i + k]))
+}
+
+/// ⭐ **(d) A LENTE sobre a faixa molhada**: a largura do azul em cima da faixa vermelha MOLHADA ÷ em cima da SECA,
+/// por cruzamento (a mediana das 41 linhas da faixa; o azul = `b > r + 30` nos ±60 px do cruzamento).
+fn lente(px: &[u8], w: usize, x: usize, y_molhada: usize, y_seca: usize) -> f64 {
+    let largura = |y: usize| {
+        let mut v: Vec<f64> = (y - 20..=y + 20)
+            .map(|yy| {
+                let azul: Vec<usize> = (x - 60..=x + 60)
+                    .filter(|&xx| {
+                        let c = rgb(px, w, xx, yy);
+                        c[2] > c[0] + 30.0
+                    })
+                    .collect();
+                azul.last().map_or(0.0, |l| (l - azul[0] + 1) as f64)
+            })
+            .collect();
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    largura(y_molhada) / largura(y_seca).max(1.0)
+}
+
+/// O fim do recto de 200 px (a cena `tamanhos`): a CURVA da ponta — o fim no eixo − o das bordas, ÷ a meia-largura
+/// (a cápsula > 0, o corte recto ≈ 0; `leis_oraculo.py::pontas`) — e as ESTRIAS: a luminância p95 − p5 no miolo
+/// (linhas 360..520, colunas 300..700) — o «brilho de tubo» que a revisão cega viu são as estrias claras do relevo.
+fn ponta_e_tubo(px: &[u8], w: usize) -> (f64, f64) {
+    let (x0, x1, y) = (60usize, 940usize, 440usize);
+    let c = |x: usize, yy: usize| {
+        let v = rgb(px, w, x, yy);
+        v.iter().map(|k| 255.0 - k).fold(0.0, f64::max) / 255.0
+    };
+    let rows: Vec<usize> = (y - 130..y + 130).collect();
+    let mut maxs: Vec<f64> = (x0 + 100..x1 - 100)
+        .map(|x| rows.iter().map(|&r| c(x, r)).fold(0.0, f64::max))
+        .collect();
+    maxs.sort_by(f64::total_cmp);
+    let nivel = maxs[maxs.len() * 9 / 10];
+    let lin: Vec<f64> = rows
+        .iter()
+        .map(|&r| (x0 + 100..x1 - 100).map(|x| c(x, r)).sum::<f64>() / (x1 - x0 - 200) as f64)
+        .collect();
+    let lmax = lin.iter().copied().fold(0.0, f64::max);
+    let dentro: Vec<usize> = (0..rows.len()).filter(|&i| lin[i] > 0.25 * lmax).collect();
+    let (a, b) = (dentro[0] as f64, *dentro.last().unwrap() as f64);
+    let (meio, hw) = (0.5 * (a + b), 0.5 * (b - a + 1.0));
+    let (mut eixo, mut bordas) = (Vec::new(), Vec::new());
+    for (i, &r) in rows.iter().enumerate() {
+        let v = (i as f64 - meio) / hw;
+        if v.abs() > 0.8 {
+            continue;
+        }
+        let Some(fim) = (x0..w).rev().find(|&x| c(x, r) >= 0.25 * nivel) else {
+            continue;
+        };
+        let e = fim as f64 - x1 as f64;
+        if v.abs() < 0.25 {
+            eixo.push(e);
+        } else if v.abs() > 0.6 {
+            bordas.push(e);
+        }
+    }
+    let mediana = |mut v: Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    let curva = (mediana(eixo) - mediana(bordas)) / hw;
+    let mut lum: Vec<f64> = (360..=520)
+        .flat_map(|r| (300..700).map(move |x| (r, x)))
+        .map(|(r, x)| rgb(px, w, x, r).iter().sum::<f64>() / 3.0)
+        .collect();
+    lum.sort_by(f64::total_cmp);
+    let q = |f: f64| lum[((lum.len() - 1) as f64 * f) as usize];
+    let estrias = q(0.95) - q(0.05);
+    (curva, estrias)
+}
+
+/// SONDA **(d) A LENTE sobre a faixa molhada** (03_MOTORES §7 d — ABERTA, com o porquê): o azul do óleo que cruza a
+/// faixa vermelha ainda molhada tem no Rebelle a largura que tem sobre a seca (12/12 px, 1,00); o nosso Oil Bristle
+/// incha 1,58× numa lente clara. Mecanismo: o NIVELAMENTO do filme (`ph2d-wet-paint/src/solver.rs`, o termo
+/// `level_k` da diferença do filme entre vizinhos) escoa o filme do dab novo pelas células que a faixa molhada mantém
+/// activas (sobre o papel seco estão inactivas e nada escoa). `leveling` 0 no preset cura a lente (1,00) mas o mesmo
+/// nivelamento é o que alisa o relevo dos fios no traço inclinado: a escada do W3b sobe para 2,87 (≤ 2,60), e
+/// nenhum `emboss` (0,5–0,7) cabe nas duas barras do relevo (escada e contraste). A cura é de motor.
+#[test]
+#[ignore = "sonda: a lente do óleo sobre a tinta molhada (03_MOTORES §7 d, aberta)"]
+fn sonda_a_lente_sobre_a_molhada() {
+    let o = oraculo();
+    for nome in ["Oil Bristle", "Dabber"] {
+        let p = pinceis(nome).remove(0);
+        let px = cena_inteira(&p, "sobre");
+        for (k, x) in [("cruza_1", 250usize), ("cruza_2", 500), ("cruza_3_rapido", 750)] {
+            let l = lente(&px, 1000, x, 150, 470);
+            let alvo = o["leis"][nome]["molhada"][k]["lente"].as_f64().unwrap();
+            println!("[lente] {nome} {k}: {l:.2} (Rebelle {alvo:.2})");
+        }
+    }
+}
+
+/// SONDA **(c) A ponta e as estrias do pincel CHATO de óleo** (03_MOTORES §7 c — ABERTA, com o porquê): o recto de
+/// 200 px do Rebelle acaba em corte recto e desfiado (curva −0,02, desfiado 6,5 px) e as estrias são escuras e
+/// baixas (p95 − p5 = 29); o nosso acaba na meia-elipse da pegada achatada (curva 0,08, desfiado 0,7 px) e as
+/// estrias claras do relevo têm o dobro (55). A ponta RETA do preset (`dab_quina` 1) corta recto (0,00) mas tira
+/// o contraste do relevo a 41 px do vale (13,3 × 12,1 ± 1,1); o `emboss` 0,3 casa as estrias a 200 px mas parte o
+/// contraste a 41 px (o relevo CRESCE com o tamanho no nosso e não no Rebelle). A cura é de motor.
+#[test]
+#[ignore = "sonda: a ponta e as estrias do óleo (03_MOTORES §7 c, aberta)"]
+fn sonda_a_ponta_e_as_estrias_do_oleo() {
+    let o = oraculo();
+    let p = pinceis("Oil Bristle").remove(0);
+    let (px, _) = pinta(&p, "tamanhos", &["recto_200"]);
+    let (curva, estrias) = ponta_e_tubo(&px, 1000);
+    let pontas = &o["leis"]["Oil Bristle"]["pontas"];
+    println!(
+        "[ponta] Oil Bristle: curva {curva:.3} (Rebelle {:.3}) · estrias {estrias:.1} (Rebelle {:.1})",
+        pontas["fim"]["curva"].as_f64().unwrap(),
+        pontas["estrias"].as_f64().unwrap()
+    );
+}
+
 /// A resposta à pressão de uma rampa: por decil de pressão, a largura e a cobertura ÷ as de p ≥ 0,9
 /// (`exame_regua.py`, `pressao_largura`/`pressao_cobertura`).
 fn decis(cols: &[(f64, f64, f64)]) -> ([f64; 10], [f64; 10]) {
@@ -250,6 +386,49 @@ fn a_pressao_de_cada_preset_e_a_da_sua_origem() {
         }
         if m < R_MAO {
             falhas.push(format!("{nome}: a faixa da mão do dono só responde {m:.2}× (< {R_MAO})"));
+        }
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// ⭐ **No Wet o modo do grão que lê a PONTA morde** (L9 × Wet, limpeza da J2): o Wet carimba o grão com a ponta
+/// CHEIA (`dab::grain_at`, `w = 1`), e com `w = 1` o Subtract (`w − d·(1 − t)`) e o Darken (`min(w, T)`) são o
+/// Multiply ao bit e o Color Burn não tem grão — a linha `grainMode` do painel mentia (o censo
+/// `a_linha_esmaecida_e_a_que_nao_age`). Agora o grão desses três lê a silhueta da célula
+/// (`dab::grain_at_na_ponta`); o Multiply, o Height e o Linear Height ficam ao bit.
+#[test]
+fn no_wet_o_modo_do_grao_que_le_a_ponta_morde() {
+    use ph2d_editor_core::Tool;
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+    let p = pinceis("Graphite 8B").remove(0);
+    let pinta_com = |modo: f64| -> Vec<u8> {
+        let (w, h) = (400u32, 100u32);
+        let mut t = ph2d_tool_painter::PainterTool::default();
+        t.set_source(vec![255u8; (w * h * 4) as usize], w, h);
+        p.aplica(&mut t, true);
+        t.set_ponta(ph2d_tool_painter::LinhaDaPonta::GrainMode, modo);
+        t.set_brush_size_px(16.0);
+        t.set_brush_color_srgb8([23, 101, 179]);
+        let cp = |x: f32, phase| CanvasPointer { pos: [x, 50.0], pressure: 1.0, tilt: [0.0, 0.0], phase };
+        t.on_canvas_pointer(cp(40.0, PointerPhase::Down));
+        for k in 1..=100 {
+            t.on_canvas_pointer(cp(40.0 + 3.2 * k as f32, PointerPhase::Move));
+            t.on_tick(8.0);
+        }
+        t.on_canvas_pointer(cp(360.0, PointerPhase::Up));
+        for _ in 0..60 {
+            t.on_tick(1000.0 / 60.0);
+        }
+        t.run_full().0
+    };
+    let multiply = pinta_com(0.0);
+    let mut falhas = Vec::new();
+    for (modo, nome) in [(1.0, "Subtract"), (2.0, "Darken"), (3.0, "Color Burn")] {
+        let px = pinta_com(modo);
+        let diferem = px.chunks(4).zip(multiply.chunks(4)).filter(|(a, b)| a != b).count();
+        println!("[grao] {nome}: {diferem} px diferem do Multiply");
+        if diferem < 200 {
+            falhas.push(format!("{nome}: só {diferem} px diferem do Multiply no Wet"));
         }
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));

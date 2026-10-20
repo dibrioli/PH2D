@@ -200,6 +200,25 @@ pub fn grain_at(
         * crate::texture::stencil_gate(&spec.texture, basis, px, py)
 }
 
+/// [`grain_at`] com a ponta `w` (`0..1`) da célula: os modos do grão que são função da ponta (Subtract, Darken,
+/// Color Burn — L9) mordem a orla do dab do Wet como mordem a do carimbo; com `w = 1` é [`grain_at`] ao bit (o
+/// Multiply, o Height e o Linear Height não lêem a ponta).
+#[allow(clippy::too_many_arguments)]
+pub fn grain_at_na_ponta(
+    spec: &BrushSpec,
+    basis: &TexDabBasis,
+    image: Option<&ImageMask<'_>>,
+    px: i64,
+    py: i64,
+    center: [f32; 2],
+    radius: f32,
+    w: f32,
+) -> f32 {
+    let s = crate::texture::sample(&spec.texture, basis, px, py, center, radius, image);
+    spec.texture.lei.factor(w.clamp(0.0, 1.0), s, spec.grain_depth(), spec.effective_granulation())
+        * crate::texture::stencil_gate(&spec.texture, basis, px, py)
+}
+
 /// Axis-aligned region of the buffer touched by a dab, in pixels (half-open: `[x, x+w)`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DirtyRect {

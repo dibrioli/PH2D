@@ -122,3 +122,38 @@ pub(super) fn peso_do_passo_fino(brush: &BrushSpec, ratio: u8) -> f32 {
 /// Pastel, Marker Liner, Dabber) e a tabela da largura colapsava a 1–2 px; 0,05 (20 px) deixava 8 pincéis abaixo
 /// da barra (o 8B 0,82 do recto de 40); 0,035 passa os 26 com origem sem tirar nenhuma cena de fábrica do lugar.
 pub(super) const FRACAO_DO_FINO: f32 = 0.035;
+
+/// ⭐ **O RELEVO de cada fio num dab** (W3/W3b, `ph2d_wet_paint::bristles_relevo`; a partir de `dab_route.rs`, LOC
+/// cap): o alvo de cada fio tabelado UMA vez por dab (o ruído de cada fio custava dois Perlin por célula — doc
+/// 49_medicao §5), contínuo através dos fios (o degrau por fio era a escada do traço inclinado), penteado na silhueta
+/// `sil` do dab (`cel` = o centro em células, `meia` = a meia-caixa, `passos` = o pente por comprimento).
+#[allow(clippy::too_many_arguments)]
+pub(super) fn penteia_o_relevo_do_dab(
+    engine: &mut ph2d_wet_paint::painter::Engine,
+    f: &ph2d_wet_paint::bristles_fios::FiosNoDab,
+    relevo: &ph2d_wet_paint::bristles_relevo::Relevo,
+    contacto: f64,
+    cel: [f64; 2],
+    meia: [f64; 2],
+    px_cel: f64,
+    sil: ph2d_wet_paint::brush::CellFn<'_>,
+    passos: f64,
+) {
+    let (k0, k1) = f.faixa((meia[0].hypot(meia[1]) + 2.0) * px_cel);
+    let (k0, k1) = (k0 - 1, k1 + 1);
+    let tabela: Vec<f64> = (k0..=k1)
+        .map(|k| relevo.alvo_do_fio(k, f.ganho_do_fio(k), contacto))
+        .collect();
+    let do_fio = |k: i32| -> f64 {
+        usize::try_from(k - k0)
+            .ok()
+            .and_then(|i| tabela.get(i).copied())
+            .unwrap_or_else(|| relevo.alvo_do_fio(k, f.ganho_do_fio(k), contacto))
+    };
+    let alvo = |cx: i32, cy: i32| -> f64 {
+        let dc = [f64::from(cx) - cel[0], f64::from(cy) - cel[1]];
+        let ([a, b], t) = f.entre_fios(dc.map(|v| v * px_cel));
+        ph2d_wet_paint::bristles_relevo::entre(do_fio(a), do_fio(b), t) / px_cel
+    };
+    engine.pentear_relevo(cel[0], cel[1], meia, sil, &alvo, passos);
+}

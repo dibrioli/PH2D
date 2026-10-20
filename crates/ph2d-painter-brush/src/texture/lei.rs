@@ -49,6 +49,13 @@ impl GrainMode {
         }
     }
 
+    /// O modo é função da PONTA `w` (Subtract, Darken, Color Burn): quem pinta com a ponta cheia tem de lha dar
+    /// (o Wet, `wetpaint/dab_route.rs`) — com `w = 1` os três eram o Multiply (o controlo mentia, J2).
+    #[must_use]
+    pub fn le_a_ponta(self) -> bool {
+        matches!(self, Self::Subtract | Self::Darken | Self::ColorBurn)
+    }
+
     /// O inverso de [`Self::to_u8`]; fora da faixa = [`Self::Multiply`].
     #[must_use]
     pub fn from_u8(v: u8) -> Self {

@@ -537,18 +537,15 @@ impl PainterTool {
                 (None, None) => None,
             };
             let gimg = grain_image.as_ref();
+            // O modo do grão que lê a PONTA (Subtract, Darken, Color Burn — L9) morde a orla pela silhueta da célula.
+            let na_ponta = spec_ref.texture.lei.mode.le_a_ponta();
             let grain = grain_basis.as_ref().map(|gb| {
                 move |cx: i32, cy: i32| -> f64 {
                     let px = grid_map::cell_center_texel(cx, ratio);
                     let py = grid_map::cell_center_texel(cy, ratio);
-                    f64::from(ph2d_painter_brush::dab::grain_at(
-                        spec_ref,
-                        gb,
-                        gimg,
-                        px,
-                        py,
-                        d.center,
-                        d.radius_px,
+                    let w = if na_ponta { sil(cx, cy) as f32 } else { 1.0 };
+                    f64::from(ph2d_painter_brush::dab::grain_at_na_ponta(
+                        spec_ref, gb, gimg, px, py, d.center, d.radius_px, w,
                     ))
                 }
             });
@@ -644,33 +641,15 @@ impl PainterTool {
                     );
                     if let Some(f) = relevo_dab {
                         let contacto = f64::from(d.radius_px / d.stroke_radius_px.max(1e-3));
-                        // O alvo depende só do FIO: tabelado uma vez por dab (o ruído de cada fio custava dois
-                        // Perlin por célula — doc 49_medicao §5, o custo).
-                        let (k0, k1) = f.faixa((meia[0].hypot(meia[1]) + 2.0) * px_cel);
-                        let (k0, k1) = (k0 - 1, k1 + 1);
-                        let tabela: Vec<f64> = (k0..=k1)
-                            .map(|k| relevo.alvo_do_fio(k, f.ganho_do_fio(k), contacto))
-                            .collect();
-                        let do_fio = |k: i32| -> f64 {
-                            usize::try_from(k - k0)
-                                .ok()
-                                .and_then(|i| tabela.get(i).copied())
-                                .unwrap_or_else(|| {
-                                    relevo.alvo_do_fio(k, f.ganho_do_fio(k), contacto)
-                                })
-                        };
-                        // Contínuo através dos fios (W3b): o degrau por fio era a escada do traço inclinado.
-                        let alvo = |cx: i32, cy: i32| -> f64 {
-                            let dc = [f64::from(cx) - centro_x, f64::from(cy) - centro_y];
-                            let ([a, b], t) = f.entre_fios(dc.map(|v| v * px_cel));
-                            ph2d_wet_paint::bristles_relevo::entre(do_fio(a), do_fio(b), t) / px_cel
-                        };
-                        sess.engine.pentear_relevo(
-                            cell_x,
-                            cell_y,
+                        super::lote::penteia_o_relevo_do_dab(
+                            &mut sess.engine,
+                            &f,
+                            &relevo,
+                            contacto,
+                            [centro_x, centro_y],
                             meia,
+                            px_cel,
                             &sil,
-                            &alvo,
                             passos_do_pente,
                         );
                     }

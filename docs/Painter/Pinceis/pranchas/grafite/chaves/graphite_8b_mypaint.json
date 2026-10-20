@@ -1,0 +1,48 @@
+{
+ "prancha": "graphite_8b_mypaint.png",
+ "linhas": [
+  "gestos_A",
+  "gestos_B",
+  "tamanhos_A",
+  "tamanhos_B",
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "gestos_A": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  },
+  "gestos_B": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  },
+  "tamanhos_A": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "tamanhos_B": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  },
+  "sobre_A": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "sobre_B": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  }
+ },
+ "quem": {
+  "oraculo": "8B_Pencil_1",
+  "nosso": "Graphite 8B (escala 0.275)",
+  "vizinho": "Colored 4B (d 0.594, limiar 0.591)"
+ }
+}

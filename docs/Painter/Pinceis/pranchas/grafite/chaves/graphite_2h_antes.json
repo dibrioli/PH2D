@@ -1,0 +1,48 @@
+{
+ "prancha": "graphite_2h_base.png",
+ "linhas": [
+  "gestos_A",
+  "gestos_B",
+  "tamanhos_A",
+  "tamanhos_B",
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "gestos_A": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "gestos_B": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  },
+  "tamanhos_A": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "tamanhos_B": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  },
+  "sobre_A": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  },
+  "sobre_B": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  }
+ },
+ "quem": {
+  "oraculo": "graphite_pencil_2h",
+  "nosso": "Graphite 2H (escala 0.732)",
+  "vizinho": "Graphite HB (d 0.232, limiar 0.591)"
+ }
+}

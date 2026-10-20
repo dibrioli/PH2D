@@ -1024,3 +1024,60 @@ Continuam verdes (lote único, `laranja_2.log`): `a_luz_de_fora_nao_atravessa::*
 4. O emissor encostado à borda a 8× lê +2…+11 % acima da esticada (S3) — pela grossura do arquivo; por medir se pesa.
 5. A lei W6d com `DISTANTES` no relógio (o §20.2). 6. A anomalia da r5b (§12). 7. A família (b) (37–38). 8. Os
    zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.
+
+## 37. A grossura do entorno (§36.2–§36.4) — MEDIDA, o padrão NÃO trocado (20/10, à espera da decisão do dono)
+
+Régua `target/bug6/grossura_regua.rs` (fora do git, `#[ignore]`; copiar para `tests/it/` + `mod` no `main.rs`),
+logs `target/bug6/grossura_{1,2}.log`. Cena 5, h = 3,8. Tempo: as quatro variantes (8×/4× × borda/soma) no MESMO
+processo — UMA vista, os quatro entornos vivos, 6 blocos rodados, 3 quadros de aquecimento + 8 medidos, o MÍNIMO;
+a fina é a que o app escolhe (`fina_que_cabe`, `k1` a 2160p). Memória = `PassList::bytes_alocados` (com a borda).
+
+| alvo · nível | entorno MB 8× → 4× | luz MB 8× → 4× | entorno ms 8× → 4× (borda) | vista ms (igual nos dois) |
+|---|---|---|---|---|
+| 1920×1080 Baixa | 12,5 → 45,0 | 421 → 453 (+8 %) | 0,95 → 1,42 (+0,48) | 8,04 |
+| 1920×1080 Média | 45,0 → 165 | 606 → 726 (+20 %) | 1,43 → 3,21 (+1,79) | 8,62 |
+| 1920×1080 Alta | 163 → 665 | 1 265 → 1 768 (+40 %) | 3,25 → 11,40 (+8,15) | 19,24 |
+| 2560×1440 Baixa | 22,6 → 78,9 | 724 → 780 (+8 %) | 1,12 → 1,90 (+0,79) | 10,41 |
+| 2560×1440 Média | 78,9 → 317 | 1 029 → 1 267 (+23 %) | 1,93 → 5,50 (+3,57) | 12,19 |
+| 2560×1440 Alta | 310 → 1 179 | 2 110 → 2 979 (+41 %) | 5,35 → 21,77 (+16,4) | 28,58 |
+| 3840×2160 Baixa (k1) | 45,0 → 165 | 614 → 734 (+20 %) | 1,45 → 3,30 (+1,85) | 11,49 |
+| 3840×2160 Média (k1) | 163 → 665 | 1 265 → 1 768 (+40 %) | 3,25 → 11,60 (+8,35) | 18,84 |
+| 3840×2160 Alta (k1) | 665 → 2 677 | 4 578 → 6 589 (+44 %) | 11,63 → 52,25 (+40,6) | 77,99 |
+
+Tudo cabe no lado (8 192) e na placa (16 GB). O 4× custa ~3,5–4,5× no entorno (o quadrado e um pouco mais), e a
+vista não muda (a leitura pela borda não depende do fator: fases idênticas a ±0,003 ms).
+
+**O erro segue o TEXEL DO ENTORNO EM METROS, não o nível** (`grossura_por_nivel`, 1920×1080, vermelho contra a
+esticada do mesmo nível, os 4 pontos fora da quina rasante):
+
+| | entorno 0,125 m | 0,0625 m | 0,0312 m | 0,0156 m |
+|---|---|---|---|---|
+| Baixa | 8×: −4,0…−4,7 % | 4×: −1,2…−1,4 % | | |
+| Média | | 8×: −1,5…−1,8 % | 4×: −0,7…−0,9 % | |
+| Alta | | | 8×: −0,8…−1,2 % | 4×: −0,5…−0,7 % |
+
+O ponto da quina rasante (sombra à esquerda da haste, §35) oscila sem ordem (+1,4 / −5,1 / −6,0 / −3,0 / −2,9 /
+−0,6 %) — é o gate de 0,07 que o cobre. ⇒ os −4 % são SÓ da Baixa a 8×; a Baixa a 4× fica com o entorno da Média
+(o mesmo texel em metros, a qualquer zoom: ambos `c0_px · fator` = 16 px).
+
+**§36.4 — o emissor encostado à borda** (`grossura_o_emissor_na_borda`, S3 com 8/4/2/1×): 8× +1,5…+11,0 % (a
+cavalo) e +1,9…+8,3 % (todo fora); 4× −1,6…+1,1 %; 2× −0,8…+1,7 %; 1× ±0,4 %. A mesma família: o 4× cura-o.
+
+**§36.3 — o custo da borda cresce com o nível e a janela** (o fator não o muda): vista +0,37 (1080 Baixa) · +0,54
+(1080 Média) · +1,55 (1080 Alta) · +1,64 (1440 Alta) · +5,94 ms (2160 Alta); entorno (8×) +0,31 · +0,52 · +1,31 ·
++2,17 · +5,14 ms. Na vista está todo na `hrc_desce` (≈ +0,01–0,03 ms por nível, n = 8 +0,10, n = 9 +0,08 em
+1080 Baixa); a `hrc_saida` paga MENOS com a borda (−0,004). O alvo de uma cura: a 2.ª passagem do entorno só na
+parte da grade a partir da janela no sentido do quadrante (o §34.1) e os cones dos níveis 8–9 que saem da grade.
+
+**Recomendação (para o dono decidir; nada trocado):** o entorno **4× só na Baixa** (`degrau_do` dá 4× à Baixa,
+8× à Média e à Alta). Cura o −4 % e o emissor da borda onde eles existem, pelo preço menor de todos (+0,48 ms /
++33 MB a 1080p, +0,79 ms a 1440p, +1,85 ms a 2160p); a Média e a Alta já estão a ≤ −1,8 %. Recusado: o 4× em
+todos os níveis (+8…+41 ms e até +2 GB na Alta por −1 % a menos).
+
+## 38. ABERTO (por ordem — substitui o §36)
+
+1. A decisão do dono sobre o §37 (4× na Baixa). Se sim: o gate `a_cena_5_na_troca_de_oitava_segue_a_grade_esticada`
+   aperta (medido −1,4 % fora da quina), a nota do `ENTORNO_PADRAO` reconfere-se (§0.0) e o governador conta o +0,48 ms.
+2. O custo da borda (§37, §36.3): +5,9 ms na vista e +5,1 ms no entorno a 2160p Alta — maior que o +0,36/+0,32 do padrão.
+3. A lei W6d com `DISTANTES` no relógio (o §20.2). 4. A anomalia da r5b (§12). 5. A família (b) (37–38). 6. Os
+   zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.

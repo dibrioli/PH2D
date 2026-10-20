@@ -223,6 +223,10 @@ fn eval_frame(
         axis,
     } = q;
     let algebra = prop.algebra();
+    // ADR-0115 R7: um canal DISCRETO não se mistura — a média de dois índices inventa um terceiro.
+    // Ele SUBSTITUI: na faixa ganha a entrada de maior peso, e a faixa troca o valor quando a sua
+    // influência chega a metade (a lei da AnimationTree do Godot e do Animator do Unity).
+    let discreto = prop.is_discrete();
     let mut acc = f64::from(rest);
     let mut touched = false;
 
@@ -240,6 +244,7 @@ fn eval_frame(
 
         // ── inside the lane: normalize (see the module docs) ──
         let (mut num, mut den) = (0.0_f64, 0.0_f64);
+        let (mut best, mut best_w) = (acc, 0.0_f64);
         // **A lane pode FALAR deste canal e mesmo assim somar peso zero** — é o instante inicial
         // de um fade, ou a beirada de um fade-out. Silêncio (a lane não keya este canal) e peso
         // zero (ela keya, e agora não influi) NÃO são a mesma coisa, e confundi-los foi o bug:
@@ -324,6 +329,14 @@ fn eval_frame(
                     }
                 }
             };
+            if discreto {
+                speaks = true;
+                if a.w > 0.0 && a.w >= best_w {
+                    (best, best_w) = (v, a.w);
+                }
+                den += a.w;
+                continue;
+            }
             let x = if additive {
                 // **A write can move the reference it is measured against.** An
                 // additive strip's reference is its clip's own value at `src_in`,
@@ -425,6 +438,13 @@ fn eval_frame(
         }
 
         // ── across lanes: coverage becomes influence ──
+        if discreto {
+            if den.min(1.0) * lane.weight.clamp(0.0, 1.0) >= 0.5 {
+                acc = best;
+            }
+            touched = true;
+            continue;
+        }
         let x_lane = num / den;
         let influence = den.min(1.0) * lane.weight.clamp(0.0, 1.0);
         acc = match (additive, algebra) {

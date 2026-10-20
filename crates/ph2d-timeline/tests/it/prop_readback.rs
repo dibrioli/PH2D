@@ -304,6 +304,9 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
             PropKind::BoneBendOutY => "bend_out_y",
             PropKind::IkBendSide => "bend_side",
             PropKind::MacroTime => "macro_time",
+            // Sem alvo fixo: o laço abaixo percorre `from_target`, que nunca o devolve. O nome
+            // de um campo na expressão é do vocabulário da família (`tests/it/canal_field.rs`).
+            PropKind::Field(_) => unreachable!("um campo não tem AnimTarget fixo"),
         }
     }
 

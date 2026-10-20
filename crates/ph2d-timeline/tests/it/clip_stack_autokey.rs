@@ -279,7 +279,10 @@ fn every_prop_kind_interpolates_and_a_discrete_one_would_break_this() {
             | PropKind::BoneBendInX
             | PropKind::BoneBendInY
             | PropKind::BoneBendOutX
-            | PropKind::BoneBendOutY => {
+            | PropKind::BoneBendOutY
+            // E um campo de família vai pelo `CanaisEscritos`: o crossfade dele (contínuo = a
+            // média, discreto = SUBSTITUI) é o `tests/it/canal_field.rs`.
+            | PropKind::Field(_) => {
                 continue;
             }
         };

@@ -150,8 +150,11 @@ fn schema_version_is_nineteen() {
     //      provado contra a fixtura em `clip_owner.rs`).
     // Postcard is positional: an older blob must be REJECTED by the version gate,
     // not misread field-for-field (v18 is the one exception, read by a frozen image).
-    assert_eq!(DOC_VERSION, 20);
-    assert_eq!(TimelineDoc::new().version, 20);
+    // v21 = o canal de QUALQUER propriedade (`PropKind::Field`, plano 35 da UI/UX): variante
+    //      APENDADA, então um v20 é um v21 sem campos e só re-carimba (`doc_v20.rs`, provado
+    //      contra a fixtura em `canal_field.rs`).
+    assert_eq!(DOC_VERSION, 21);
+    assert_eq!(TimelineDoc::new().version, 21);
 }
 
 /// **Both loops survive the trip, and independently.** A clip whose Arrange loop and

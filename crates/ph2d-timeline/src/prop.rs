@@ -191,6 +191,13 @@ pub enum PropKind {
     /// [`PropKind::ALL`] e do [`PropKind::AUTOKEYED`]: não é pose nem nada que a mão arraste.
     /// Appended — the discriminant is a frozen wire value.
     MacroTime = 18,
+    /// ⭐⭐⭐ **Qualquer outra propriedade** — o campo de uma família pelo seu endereço durável
+    /// ([`ph2d_ecs::FieldKey`]; plano 35 §3.0). A timeline não sabe o que ele é: lê o valor em
+    /// `ph2d_ecs::CanaisLidos` e publica o da curva em `ph2d_ecs::CanaisEscritos`; a família faz o
+    /// resto. Não tem `AnimTarget` fixo (o binding aloca o seu) e fica fora de [`PropKind::ALL`] e
+    /// [`PropKind::AUTOKEYED`] — o autokey percorre os campos que a família publicou.
+    /// Appended — o postcard grava o índice da variante, os blobs antigos não mudam de bytes.
+    Field(ph2d_ecs::FieldKey) = 19,
 }
 
 impl PropKind {
@@ -252,7 +259,49 @@ impl PropKind {
     /// The opaque [`AnimTarget`] a track uses to drive this property.
     #[must_use]
     pub const fn target(self) -> AnimTarget {
-        AnimTarget::new(self as u64)
+        AnimTarget::new(match self {
+            PropKind::TranslationX => 0,
+            PropKind::TranslationY => 1,
+            PropKind::Rotation => 2,
+            PropKind::ScaleX => 3,
+            PropKind::ScaleY => 4,
+            PropKind::Opacity => 5,
+            PropKind::TimeRemap => 6,
+            PropKind::Morph => 7,
+            PropKind::Position => 8,
+            PropKind::JointMotorTarget => 9,
+            PropKind::JointMotorSpeed => 10,
+            PropKind::JointRestLength => 11,
+            PropKind::JointMaxLength => 12,
+            PropKind::BoneBendInX => 13,
+            PropKind::BoneBendInY => 14,
+            PropKind::BoneBendOutX => 15,
+            PropKind::BoneBendOutY => 16,
+            PropKind::IkBendSide => 17,
+            PropKind::MacroTime => 18,
+            // Sem alvo fixo: só o binding do documento o nomeia. Um id que nenhum
+            // `from_target` devolve, para que ninguém o confunda com um dos 19.
+            PropKind::Field(_) => u64::MAX,
+        })
+    }
+
+    /// ⭐ **A interpolação que uma chave nova deste canal recebe** — a porta única: um campo
+    /// DISCRETO (bool, escolha, tipo de vértice, texto) é sempre `Hold`, função pura do tempo que
+    /// segura até a chave seguinte (a lei do Blender, medida no oráculo; o `Linear` num discreto é o
+    /// que faz o Godot virar a meio e escrever lixo num texto — `oraculos/godot_interp.saida.txt`).
+    #[must_use]
+    pub fn interp_of(self, wanted: ph2d_anim::Interp) -> ph2d_anim::Interp {
+        if self.is_discrete() {
+            ph2d_anim::Interp::Hold
+        } else {
+            wanted
+        }
+    }
+
+    /// `true` ⇒ o canal é um índice que não se interpola nem se mistura (ADR-0115 R7).
+    #[must_use]
+    pub fn is_discrete(self) -> bool {
+        matches!(self, PropKind::Field(k) if k.info().is_some_and(|i| i.discreto))
     }
 
     /// Recover a kind from its opaque target id, if it names a known property.
@@ -316,6 +365,8 @@ impl PropKind {
             PropKind::BoneBendOutY => "bone_bend_out_y",
             PropKind::IkBendSide => "ik_bend_side",
             PropKind::MacroTime => "macro_time",
+            // O rótulo de um campo é do vocabulário da família (`FieldKey::info`).
+            PropKind::Field(_) => "field",
         }
     }
 
@@ -393,7 +444,8 @@ impl PropKind {
             // ⭐ E o LADO DA DOBRA mora no `IkGoal` da entidade-OSSO da ponta — mesmo resolver.
             | PropKind::IkBendSide
             // O relógio da macro mora no `MacroTempo` da entidade dona — `crate::apply_prop`.
-            | PropKind::MacroTime => None,
+            | PropKind::MacroTime
+            | PropKind::Field(_) => None,
         }
     }
 
@@ -453,7 +505,8 @@ impl PropKind {
             | PropKind::IkBendSide
             // Segundos de um relógio: escalar sem fronteira (recuar abaixo de 0 é o tocador que
             // satura, não o ajuste).
-            | PropKind::MacroTime => ph2d_anim::FitChannel::LINEAR,
+            | PropKind::MacroTime
+            | PropKind::Field(_) => ph2d_anim::FitChannel::LINEAR,
         }
     }
 
@@ -513,6 +566,9 @@ impl PropKind {
             // Um instante: neutro 0, e uma lane aditiva quer dizer «adianta a macro um tanto» —
             // o argumento do `TimeRemap`.
             PropKind::MacroTime => Algebra::Sum,
+            // Um campo de família é um número que se SOMA: a mistura de dois clipes de uma cor é a
+            // média das cores, não o produto.
+            PropKind::Field(_) => Algebra::Sum,
         }
     }
 }

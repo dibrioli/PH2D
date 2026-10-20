@@ -70,3 +70,4 @@ mod stack_trailing_release;
 mod strip_marks;
 mod the_noise_seed_is_stable;
 mod track_extrapolation;
+mod canal_field;

@@ -88,6 +88,10 @@ pub mod motion_inputs;
 pub use motion_inputs::MotionInputs;
 pub use particle_emitter::{EmissionShape, ParticleEmitter, ParticleSpace};
 pub mod clip_playback;
+/// ⭐⭐⭐ **O canal de qualquer propriedade** (plano 35) — o endereço e os dois quadros de dados.
+pub mod canal;
+pub mod canal_vetor;
+pub use canal::{CampoInfo, CanaisEscritos, CanaisLidos, FieldKey};
 pub mod present;
 /// ⭐⭐⭐ **A reposição do estado VIVO ao rebobinar** — ver o cabeçalho do módulo.
 pub mod rewind_runtime;

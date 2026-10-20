@@ -91,6 +91,13 @@ pub(crate) fn sample_prop_value<'a>(
         // — which is what the authoring slice builds. Refusing here keeps this
         // function honest about what it is.
         PropKind::Position => return None,
+        // ⭐ **Um campo de família** (plano 35): o valor que o documento DELA tem agora, como ela o
+        // publicou — a mesma leitura do `read_prop_kind` da timeline, nunca uma segunda.
+        PropKind::Field(k) => Float(
+            world
+                .get_resource::<ph2d_ecs::CanaisLidos>()?
+                .valor(entity_bits, k)?,
+        ),
         // **Os parâmetros de um joint são valores de CENA**, como o `t` do Morph:
         // o artista afina o servo no Inspector até a máquina parecer certa e
         // aperta K. (Sem `PhysicsJoint` na entidade não há o que capturar, e o

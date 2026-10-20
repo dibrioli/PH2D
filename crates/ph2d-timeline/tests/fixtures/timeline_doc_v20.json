@@ -1,0 +1,273 @@
+{
+  "version": 20,
+  "fps_display": 24.0,
+  "clips": [
+    {
+      "name": "Main",
+      "clip": {
+        "tracks": [
+          [
+            0,
+            {
+              "keys": [
+                {
+                  "t": {
+                    "num": 0,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 0.0
+                  },
+                  "interp": "Linear"
+                },
+                {
+                  "t": {
+                    "num": 2000000,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 10.0
+                  },
+                  "interp": "Hold"
+                }
+              ],
+              "default": {
+                "Float": 0.0
+              },
+              "roving": [
+                false,
+                false
+              ],
+              "pre": "Hold",
+              "post": "Hold"
+            }
+          ]
+        ],
+        "duration": {
+          "num": 0,
+          "den": 1000000
+        }
+      },
+      "loop_range": [
+        0.5,
+        1.5
+      ],
+      "loop_ping_pong": false,
+      "keys_loop_range": null,
+      "keys_loop_ping_pong": false,
+      "length_override": null,
+      "expr": {},
+      "paths": {},
+      "owner": null,
+      "autoplay": true
+    },
+    {
+      "name": "andar",
+      "clip": {
+        "tracks": [
+          [
+            1,
+            {
+              "keys": [
+                {
+                  "t": {
+                    "num": 0,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 1.0
+                  },
+                  "interp": "Linear"
+                },
+                {
+                  "t": {
+                    "num": 1000000,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 0.25
+                  },
+                  "interp": "Linear"
+                }
+              ],
+              "default": {
+                "Float": 1.0
+              },
+              "roving": [
+                false,
+                false
+              ],
+              "pre": "Hold",
+              "post": "Hold"
+            }
+          ]
+        ],
+        "duration": {
+          "num": 0,
+          "den": 1000000
+        }
+      },
+      "loop_range": null,
+      "loop_ping_pong": true,
+      "keys_loop_range": null,
+      "keys_loop_ping_pong": false,
+      "length_override": null,
+      "expr": {
+        "0": "time * 2"
+      },
+      "paths": {},
+      "owner": null,
+      "autoplay": false
+    },
+    {
+      "name": "andar",
+      "clip": {
+        "tracks": [],
+        "duration": {
+          "num": 0,
+          "den": 1000000
+        }
+      },
+      "loop_range": null,
+      "loop_ping_pong": false,
+      "keys_loop_range": null,
+      "keys_loop_ping_pong": false,
+      "length_override": null,
+      "expr": {},
+      "paths": {},
+      "owner": {
+        "wire_id": 0
+      },
+      "autoplay": false
+    },
+    {
+      "name": "pular",
+      "clip": {
+        "tracks": [],
+        "duration": {
+          "num": 0,
+          "den": 1000000
+        }
+      },
+      "loop_range": null,
+      "loop_ping_pong": false,
+      "keys_loop_range": null,
+      "keys_loop_ping_pong": false,
+      "length_override": null,
+      "expr": {},
+      "paths": {},
+      "owner": {
+        "wire_id": 0
+      },
+      "autoplay": false
+    }
+  ],
+  "active_clip": 0,
+  "bindings": [
+    {
+      "target": 0,
+      "prop": "TranslationX",
+      "wire_id": 42,
+      "rest": null,
+      "auto_orient": false,
+      "expr": null
+    },
+    {
+      "target": 1,
+      "prop": "Opacity",
+      "wire_id": 43,
+      "rest": null,
+      "auto_orient": false,
+      "expr": null
+    }
+  ],
+  "markers": [
+    {
+      "t": {
+        "num": 1000000,
+        "den": 1000000
+      },
+      "label": "hit",
+      "signal": null
+    }
+  ],
+  "next_target": 2,
+  "next_strip": 2,
+  "stack": [
+    {
+      "name": "Base",
+      "muted": false,
+      "weight": 1.0,
+      "mode": "Override",
+      "strips": [
+        {
+          "id": 1,
+          "source": {
+            "Clip": 0
+          },
+          "t_start": 0.0,
+          "t_end": 2.0,
+          "src_in": 0.0,
+          "src_out": 2.0,
+          "speed": 1.0,
+          "loop_mode": "Once",
+          "ease_in": 0.0,
+          "ease_out": 0.0,
+          "lead_in": 0.0,
+          "marks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "lead_out": 0.0,
+          "curve_in": null,
+          "curve_out": null
+        }
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "name": "Porta",
+      "stack": [
+        {
+          "name": "Dentro",
+          "muted": false,
+          "weight": 1.0,
+          "mode": "Override",
+          "strips": [
+            {
+              "id": 2,
+              "source": {
+                "Clip": 1
+              },
+              "t_start": 0.0,
+              "t_end": 1.0,
+              "src_in": 0.0,
+              "src_out": 1.0,
+              "speed": 1.0,
+              "loop_mode": "Once",
+              "ease_in": 0.0,
+              "ease_out": 0.0,
+              "lead_in": 0.0,
+              "marks": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "lead_out": 0.0,
+              "curve_in": null,
+              "curve_out": null
+            }
+          ]
+        }
+      ],
+      "loop_range": null,
+      "loop_ping_pong": false,
+      "length_override": null
+    }
+  ],
+  "scene_length": null
+}

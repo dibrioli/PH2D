@@ -98,6 +98,41 @@ saídas (fixtures com cabeçalho, corridas DUAS vezes com o mesmo resultado) em
 | **inserir/apagar a chave de UM canal** | clicar o losango: `Chave` ⇒ `ChannelIntent::RemoveKeyAt`; senão ⇒ `AddKey` com `read()` no tempo da tecla K |
 | **onde vive o valor por quadro durante a reprodução** | no documento (sink único) + o ledger `preview_drive` já existente para que undo/save fotografem o AUTORADO (a lei de `ph2d-preview-drive`) — **se** a medição T0 (§6) mostrar que o `Transform` animado precisa dela; a mesma lei para todos os canais |
 
+### §3.0 O desenho como FICOU depois de ler o maquinário (20/10) — substitui §3.1/§3.2 onde divergem
+
+Cada binding já tem um `AnimTarget` PRÓPRIO (alocado pelo doc, `doc.rs` `bind`), e todo o maquinário
+(clipes, pilha, aninhamento, expressões, graph editor, `record_fit`, inversa do blend) trabalha sobre
+`(entity, PropKind) → Track<AnimValue::Float>`. Logo o canal novo **não precisa de trilha nova**:
+
+- **`PropKind::Field(FieldKey)`** — variante APENDADA (índice 19; o postcard grava o índice da variante,
+  os blobs antigos não mudam de bytes). `FieldKey { familia: u16, campo: u16, i: u16, j: u16 }` com os
+  números DECLARADOS por família (fio congelado só por APPEND, como os discriminantes do `PropKind`);
+  `i`/`j` = contorno/vértice, paragem, entrada da pilha, eixo. É `Copy + Ord + Hash` ⇒ todo mapa
+  `(entity, prop)` do maquinário já distingue um campo do outro, e cada `match` exaustivo é o
+  compilador a apontar o sítio que tem de responder pelo canal novo.
+- **Tudo é `Float`.** Cor = 4 campos (r,g,b,a sRGB, mesmo `grupo`); vértice = 7 campos contínuos +
+  o tipo (discreto); bool/enum/texto/escolha = índice em `Float` com `Interp::Hold` FORÇADO na
+  inserção, e o escritor arredonda ao índice válido (uma pilha que misture dois discretos não
+  inventa um terceiro). O `rest: Option<f32>`, o `Algebra::Sum` e a inversa do blend servem sem mudança.
+- **Grupo = chave inteira.** Cada campo declara `grupo`; quando um membro muda, o autokey grava TODOS
+  os membros do grupo no mesmo instante (a forma inteira — decisão do dono —, a cor inteira). Por
+  construção as trilhas de um grupo têm as chaves nos MESMOS tempos.
+- **A timeline não chama família nenhuma** (ADR-0075): dois recursos do mundo ECS em
+  `ph2d-ecs/src/canal.rs` — `CanaisLidos` (o que o DOCUMENTO de cada família vale agora, publicado
+  pela família) e `CanaisEscritos` (o que a curva manda escrever neste quadro, publicado pelo
+  `write_prop` do braço `Field`, drenado pela família). O braço `Field` de `read_prop_kind` lê
+  `CanaisLidos`. ⇒ formato: `DOC_VERSION 20 → 21` com migração que só re-carimba a versão (o layout
+  de um v20 é um v21 sem campos); `PROJECT_SCHEMA` intocado.
+- **Custo medido antes** (`tests/it/apply_perf.rs`, 12/07): 5 600 bindings = 300 µs/apply, 0,054
+  µs/binding, linearítmico. Cena típica (10 formas × 50 pontos × 8 ≈ 4 000) ≈ 0,2 ms; pior caso
+  (100 × 100 × 8 = 80 000) ≈ 5 ms. **Kill-criterion:** se a cena grande passar de 2 ms medidos, a
+  avaliação de um grupo passa a ser em LOTE (uma busca de segmento por grupo — as chaves partilham os
+  tempos), sem tocar o formato. ⚠️ `binding_for` é varredura linear: o passe de campos indexa os
+  bindings da entidade UMA vez por entidade.
+- **§3.4 revisto:** a opacidade do vetor CONTINUA `PropKind::Opacity` pela camada conduzida do F23 (é
+  UM canal, com UMA porta); não se cria um `Field` duplicado para ela. Dobrar a F23 deixa de ser
+  necessário.
+
 ### §3.1 Tipos (todos em `ph2d-timeline`, foundational, não congelado)
 
 ```text

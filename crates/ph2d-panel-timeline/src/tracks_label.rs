@@ -33,6 +33,11 @@ pub(crate) fn prop_label(p: PropKind) -> &'static str {
         PropKind::IkBendSide => ph2d_i18n::tr("panel.timeline.prop.ik_bend_side"),
         PropKind::BoneBendOutY => ph2d_i18n::tr("panel.timeline.prop.bone_bend_out_y"),
         PropKind::MacroTime => ph2d_i18n::tr("panel.timeline.prop.macro_time"),
+        // O rótulo do GRUPO, do vocabulário da família (a forma inteira lê-se «Forma»).
+        PropKind::Field(k) => ph2d_i18n::tr(
+            k.info()
+                .map_or("panel.timeline.prop.field", |i| i.rotulo),
+        ),
     }
 }
 

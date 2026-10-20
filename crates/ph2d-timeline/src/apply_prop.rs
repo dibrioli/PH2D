@@ -29,6 +29,16 @@ pub(crate) fn write_prop(
     orient: bool,
 ) {
     let prop = b.prop;
+    // Um campo de família: a timeline só PUBLICA o valor da curva; a família dona drena-o e escreve
+    // o seu documento (plano 35 §3.0 — um sistema não chama o outro).
+    if let PropKind::Field(k) = prop {
+        if let AnimValue::Float(f) = v {
+            world
+                .get_resource_or_insert_with(ph2d_ecs::CanaisEscritos::default)
+                .escrever(entity.to_bits(), k, f);
+        }
+        return;
+    }
     // Position (uma distância → ponto, ADR-0141) e os cinco de sprite-transform são POSE:
     // vão pela porta única `pose::set_transform_field`, a MESMA que o `pose_at` do onion
     // usa, para que não haja uma 2ª derivação da pose a divergir (ADR-0142).
@@ -219,6 +229,12 @@ pub(crate) fn read_prop(
 pub(crate) fn read_prop_kind(world: &World, entity: Entity, prop: PropKind) -> Option<f32> {
     if prop == PropKind::Position {
         return None;
+    }
+    // O valor que o documento da família tem agora, como ela o publicou.
+    if let PropKind::Field(k) = prop {
+        return world
+            .get_resource::<ph2d_ecs::CanaisLidos>()?
+            .valor(entity.to_bits(), k);
     }
     if let Some(sp) = prop.as_sprite_transform() {
         let xf = world.get::<Transform>(entity)?;

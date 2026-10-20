@@ -97,6 +97,8 @@ mod shell;
 mod shell_media;
 /// As strings do painel TIMELINE — cortadas daqui pelo tecto de LOC (ver o cabeçalho delas).
 mod timeline;
+/// Os rótulos dos canais de família (plano 35 da UI/UX).
+mod canais;
 mod vector;
 mod vector_bars;
 /// As strings que o MOTOR publica para o painel de Vector (efeitos, filtros, misturas).
@@ -502,6 +504,7 @@ fn tr_ingles(key: &str) -> &'static str {
         // (o identificador cru é feio de propósito).
         k => vector::tr(k)
             .or_else(|| timeline::tr(k))
+            .or_else(|| canais::tr(k))
             .or_else(|| tags::tr(k))
             .or_else(|| macros::tr(k))
             .or_else(|| factory::tr(k))

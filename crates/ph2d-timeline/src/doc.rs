@@ -116,12 +116,17 @@ mod clip_paths;
 /// *Autoplay* do Godot): o clipe que a Animação de um objecto toca sozinha no Play. Migra
 /// (`doc_v19.rs`, provado contra `tests/fixtures/timeline_doc_v19.bin`): nenhum marcado ⇒ o 1.º.
 ///
+/// v21: **o canal de QUALQUER propriedade** (`PropKind::Field`, plano 35 §3.0 da UI/UX — *«o auto
+/// key grava absolutamente tudo»*). A variante é apendada, então os bytes de um v20 são um v21 sem
+/// campos: a migração (`doc_v20.rs`, provada contra `tests/fixtures/timeline_doc_v20.bin`) só
+/// re-carimba a versão. O bump existe porque um v21 COM campos não pode abrir numa build v20.
+///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
 /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
 /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
 /// [ADR-0144]: ../../../docs/architecture/decisions/0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md
 /// [ADR-0151]: ../../../docs/architecture/decisions/0151-timeline-expressions-are-per-clip-so-a-strip-windows-them.md
-pub const DOC_VERSION: u32 = 20;
+pub const DOC_VERSION: u32 = 21;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -402,6 +407,7 @@ impl TimelineDoc {
         let doc: TimelineDoc = match postcard::take_from_bytes::<u32>(bytes) {
             Ok((v18::VERSION, _)) => v18::migrate(bytes)?,
             Ok((v19::VERSION, _)) => v19::migrate(bytes)?,
+            Ok((v20::VERSION, _)) => v20::migrate(bytes)?,
             _ => postcard::from_bytes(bytes).map_err(|e| e.to_string())?,
         };
         if doc.version != DOC_VERSION {
@@ -503,6 +509,7 @@ impl TimelineDoc {
         value: AnimValue,
         interp: Interp,
     ) -> (AnimTarget, KeyId) {
+        let interp = prop.interp_of(interp);
         let target = self.bind(entity, prop);
         let track = self
             .active_clip_mut()
@@ -527,6 +534,7 @@ impl TimelineDoc {
         value: AnimValue,
         interp: Interp,
     ) -> (AnimTarget, KeyId) {
+        let interp = prop.interp_of(interp);
         let target = self.bind(entity, prop);
         let track = self
             .active_clip_mut()
@@ -577,3 +585,5 @@ mod entry;
 mod v18;
 #[path = "doc_v19.rs"]
 mod v19;
+#[path = "doc_v20.rs"]
+mod v20;

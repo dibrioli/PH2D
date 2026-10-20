@@ -30,10 +30,10 @@ pub(super) fn entrada_tabela(binding: u32) -> wgpu::BindGroupLayoutEntry {
     }
 }
 
-/// A tabela dos cantos de quem não a alimenta (o ramo do `meio` não corre).
-pub(super) fn tabela_vazia(device: &wgpu::Device) -> wgpu::Buffer {
+/// A tabela dos cantos de quem não a alimenta (o ramo do `meio` não corre); `nome` declarado na `PassList`.
+pub(super) fn tabela_vazia(device: &wgpu::Device, nome: &'static str) -> wgpu::Buffer {
     device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("luz2d tabela dos cantos vazia"),
+        label: Some(nome),
         size: 16,
         usage: wgpu::BufferUsages::STORAGE,
         mapped_at_creation: false,
@@ -43,7 +43,7 @@ pub(super) fn tabela_vazia(device: &wgpu::Device) -> wgpu::Buffer {
 /// A pipeline das cascatas e o grupo de cada nível.
 pub(super) fn cascatas(e: &Entradas<'_>) -> (wgpu::ComputePipeline, Vec<wgpu::BindGroup>) {
     let formato = e.lista.texturas[CASCATAS[0]].formato;
-    let vazia = tabela_vazia(&e.device);
+    let vazia = tabela_vazia(&e.device, crate::passlist::NOME_TABELA_VAZIA_C2);
     let rc_layout = e
         .device
         .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

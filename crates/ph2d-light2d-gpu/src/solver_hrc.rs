@@ -161,7 +161,7 @@ impl Holografica {
         let device = e.device;
         let g = e.cfg.grade;
         let grade = [g.largura, g.altura];
-        let vazia = tabela_vazia(&device);
+        let vazia = tabela_vazia(&device, crate::passlist::NOME_TABELA_VAZIA_HRC);
         let cena_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("luz2d c2 holográfica cena"),
             entries: &[

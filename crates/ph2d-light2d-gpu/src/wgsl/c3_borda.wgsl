@@ -282,6 +282,7 @@ fn c3_borda(@builtin(global_invocation_id) gid: vec3<u32>) {
 // [`c3_cantos`] (`x` = quantos, `y` = 9: cada um espalha nos 3×3 blocos à volta), depois o bloco `x | y << 16`.
 struct ListaDosCantos {
     n: atomic<u32>,
+    // `9` e `1`, escritos pelo [`c3_cantos_zera`].
     y: u32,
     z: u32,
     blocos: array<u32>,
@@ -372,6 +373,10 @@ fn c3_borda_vertices(@builtin(local_invocation_id) lid: vec3<u32>, @builtin(work
 fn c3_cantos_zera() {
     atomicStore(&borda_lista.n, 0u);
     atomicStore(&lista_com_cunha.n, 0u);
+    borda_lista.y = 9u;
+    borda_lista.z = 1u;
+    lista_com_cunha.y = 9u;
+    lista_com_cunha.z = 1u;
     for (var k = 0; k < 4; k++) {
         atomicStore(&cantos_contadores[k], 0u);
     }

@@ -452,7 +452,9 @@ impl C3 {
                     let c: Vec<(&str, f64)> = constantes
                         .iter()
                         .copied()
-                        .chain([("DISTANTES", d)])
+                        // ⭐ W6g r9: a fonte do rebote, na grade GROSSA, sem a cunha da captura fina (o G9
+                        // no Baixo: 0,0105 → 0,0071; handoff W6g §28).
+                        .chain([("DISTANTES", d), ("BORDA_CANTOS", 0.0)])
                         .collect();
                     pipeline_em(
                         "luz2d c3 rebote",

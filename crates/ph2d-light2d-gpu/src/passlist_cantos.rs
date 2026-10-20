@@ -25,6 +25,29 @@ pub(crate) fn atlas_dos_cantos([w, h]: [u32; 2], por_blocos: u32) -> [u32; 2] {
     let slots = (w.div_ceil(8) * h.div_ceil(8)).div_ceil(por_blocos.max(1));
     [8 * 128, 8 * slots.div_ceil(128)]
 }
+/// ⭐ W6g r9: a tabela VAZIA (16 B) que liga o `cantos_tabela` do `meio` onde ele não corre: a C2, a
+/// holográfica e a C3 sem os cantos.
+pub(crate) const NOME_TABELA_VAZIA_C2: &str = "luz2d/buf/tabela_vazia_c2";
+pub(crate) const NOME_TABELA_VAZIA_HRC: &str = "luz2d/buf/tabela_vazia_hrc";
+pub(crate) const NOME_TABELA_VAZIA_C3: &str = "luz2d/buf/tabela_vazia_c3";
+
+/// As tabelas vazias da configuração (com os cantos a C3 tem a sua; com a holográfica, a dela).
+pub(crate) fn tabelas_vazias(cantos: bool, holografica: bool) -> Vec<Buffer> {
+    [
+        (NOME_TABELA_VAZIA_C2, true),
+        (NOME_TABELA_VAZIA_HRC, holografica),
+        (NOME_TABELA_VAZIA_C3, !cantos),
+    ]
+    .into_iter()
+    .filter(|&(_, sim)| sim)
+    .map(|(nome, _)| Buffer {
+        nome,
+        bytes: 16,
+        usos: wgpu::BufferUsages::STORAGE,
+    })
+    .collect()
+}
+
 /// Os buffers dos cantos para a captura `[w, h]` (a da borda).
 pub(crate) fn buffers_dos_cantos(captura: [u32; 2]) -> [Buffer; 5] {
     use wgpu::BufferUsages as B;

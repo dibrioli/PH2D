@@ -68,7 +68,7 @@ impl Borda {
             },
             entrada_escrita(15, wgpu::TextureFormat::Rgba16Float),
         ];
-        let buffer = |nome: &str, mapeado: bool| {
+        let buffer = |nome: &str| {
             let d = e
                 .lista
                 .buffers
@@ -79,24 +79,20 @@ impl Borda {
                 label: Some(d.nome),
                 size: d.bytes,
                 usage: d.usos,
-                mapped_at_creation: mapeado,
+                mapped_at_creation: false,
             })
         };
+        // O cabeçalho de cada lista (o despacho indireto `[n, 9, 1]`) escreve-o o `c3_cantos_zera` (nascer mapeado
+        // rebentava quando a placa recusa a memória: o buffer nasce inválido).
         let buffers = cantos.map(|_| {
-            let [lista, com_cunha] =
-                [NOME_LISTA_DOS_CANTOS, NOME_LISTA_COM_CUNHA].map(|n| buffer(n, true));
+            let [lista, com_cunha, marcas, contadores] = [
+                NOME_LISTA_DOS_CANTOS,
+                NOME_LISTA_COM_CUNHA,
+                NOME_MARCAS_DOS_BLOCOS,
+                NOME_CONTADORES_DOS_CANTOS,
+            ]
+            .map(buffer);
             let metade = lista.size() / 2;
-            // O despacho indireto de cada lista: `[n, 9, 1]` — cada bloco listado cobre os 3×3 à volta.
-            for l in [&lista, &com_cunha] {
-                for o in [0, metade] {
-                    l.slice(o..o + 12)
-                        .get_mapped_range_mut()
-                        .copy_from_slice(bytemuck::cast_slice(&[0u32, 9, 1]));
-                }
-                l.unmap();
-            }
-            let marcas = buffer(NOME_MARCAS_DOS_BLOCOS, false);
-            let contadores = buffer(NOME_CONTADORES_DOS_CANTOS, false);
             (lista, com_cunha, metade, marcas, contadores)
         });
         let mut entradas = base.to_vec();
@@ -290,7 +286,7 @@ pub(super) fn tabela(e: &Entradas<'_>, com_cantos: bool) -> wgpu::Buffer {
             .find(|b| b.nome == crate::passlist::NOME_TABELA_DOS_CANTOS)
             .expect("a tabela dos cantos declarada")
     }) else {
-        return tabela_vazia(&e.placa);
+        return tabela_vazia(&e.placa, crate::passlist::NOME_TABELA_VAZIA_C3);
     };
     e.placa.create_buffer(&wgpu::BufferDescriptor {
         label: Some(t.nome),

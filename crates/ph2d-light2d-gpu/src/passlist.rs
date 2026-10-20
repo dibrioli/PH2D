@@ -8,7 +8,8 @@ use crate::config::{Config, Precisao};
 mod cantos;
 pub(crate) use cantos::{
     NOME_CONTADORES_DOS_CANTOS, NOME_LISTA_COM_CUNHA, NOME_LISTA_DOS_CANTOS,
-    NOME_MARCAS_DOS_BLOCOS, NOME_TABELA_DOS_CANTOS, atlas_dos_cantos, buffers_dos_cantos,
+    NOME_MARCAS_DOS_BLOCOS, NOME_TABELA_DOS_CANTOS, NOME_TABELA_VAZIA_C2, NOME_TABELA_VAZIA_C3,
+    NOME_TABELA_VAZIA_HRC, atlas_dos_cantos, buffers_dos_cantos, tabelas_vazias,
 };
 
 /// Índices das texturas em [`PassList::texturas`].
@@ -482,6 +483,10 @@ impl PassList {
         if let (Some(_), Some(b)) = (op.cantos, op.borda) {
             buffers.extend(buffers_dos_cantos(texturas[b].tamanho));
         }
+        buffers.extend(tabelas_vazias(
+            op.cantos.is_some(),
+            cfg.holografica.is_some(),
+        ));
         // ⭐ W5c: a cascata holográfica (os T, o par R, o acumulado, o uniforme e os vazios).
         if cfg.holografica.is_some() {
             buffers.extend(crate::hrc::buffers(

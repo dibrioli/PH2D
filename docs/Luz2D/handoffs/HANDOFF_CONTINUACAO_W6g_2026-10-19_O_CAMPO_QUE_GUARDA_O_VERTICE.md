@@ -737,3 +737,41 @@ da r8): as escolhas da `Config` num irmão `config_escolhas.rs` (666 linhas), os
 **ABERTO (por ordem):** o G9 holográfico com a 10 + 9 (§24.2; a régua da bisseção pronta, fora do git: `w6g_g9_bissecao`,
 as peças contra o gabarito a 0,01 e a 0,005 m) → ligar no padrão → as suítes das duas crates (os `SemMemoria` em paralelo
 devem sumir: −250–440 MB por solver) → o resto do §24.
+
+## 28. O G9 holográfico com a 10 + 9 — bissecção, cura, e a 10 + 9 no PADRÃO
+
+(`g9_r9.log`, `g9_r9_sem_rebote.log`: a régua `w6g_g9_bissecao`, fora do git — cada peça da 10 + 9 nos três degraus, o erro
+por ponto contra o gabarito do rebote a 0,01 m E a 0,005 m.)
+
+| Baixo (c0 a 4 px) | p1 | p2 | p3 | p4 (meio da sala) |
+|---|---|---|---|---|
+| lei W6d | 0,0052 | 0,0071 | 0,0030 | 0,0063 |
+| cunha · cunha + canto · as 4 peças do canto | 0,0056 | 0,0071 | 0,0030 | 0,0063 |
+| **cunha + V2** · a 10 + 9 | 0,0093 | **0,0105** | 0,0053 | 0,0098 |
+| a 10 + 9 com o `c3_rebote` SEM a V2 | 0,0056 | 0,0071 | 0,0030 | 0,0063 |
+
+- Alto e Médio: todas as variantes iguais à lei W6d até ao 4.º decimal. **O gabarito a 0,005 m é o de 0,01 m** (convergido): não
+  há canto mais exato a ver — a 10 + 9 piorava os QUATRO pontos, o do meio da sala incluído (um efeito global da fonte).
+- **O mecanismo:** a fonte do rebote (`c3_rebote`, a luz que cada superfície recebe) é amostrada na grade GROSSA das cascatas
+  (a c0 a 4 px no Baixo) e lia o `meio` com a cunha da captura FINA: junto aos cantos côncavos da sala a geometria da
+  amostra não é a da cunha.
+- **A cura (no produto):** o `c3_rebote` compila com `BORDA_CANTOS = 0` (a constante própria vence a comum) — o
+  `TOL_G9_HOLO` NÃO mudou.
+- **A 10 + 9 no padrão:** `borda_vertice: Some(VERTICE_PADRAO)` + `canto: Canto::LIGADO` + `borda_cantos: true`.
+- **Dois defeitos que o padrão acordou** (a 10 + 9 nunca tinha nascido sob a placa recusada nem sem a holográfica):
+  as listas dos cantos nasciam MAPEADAS para escrever o cabeçalho `[0, 9, 1]` — com a memória recusada o buffer nasce
+  inválido e o `get_mapped_range` rebentava (`os_tetos_da_placa::a_luz_recua_quando_a_placa_recusa_a_memoria`, sozinho);
+  cura: o `c3_cantos_zera` escreve o cabeçalho a cada gravação (a lista «anterior» do 1.º quadro é zero: o indireto é
+  vazio). E o G5: a tabela vazia (16 B) não declarada — agora uma por sítio, declarada (`tabelas_vazias`: C2, holográfica,
+  C3 sem os cantos).
+- **Medido com o padrão novo:** 0 bytes diferentes em 32 (`dump_r9b`); **as duas crates pelo nextest (as faixas da luz)
+  140/140**. ⚠️ Pelo `cargo test` puro (sem as faixas, como o `fecho_r8.sh`) o
+  `a_nitidez_da_luz::com_o_automatico_desligado_o_custo_e_o_do_nivel_escolhido` reprova por relógio (Low 7,27 / 35,05 ms
+  contra 2,37 sozinho): os sete que morriam em `SemMemoria` na r8 agora correm e disputam a placa — o portão de
+  verdade é o nextest.
+
+## 29. ABERTO (por ordem — substitui o §24)
+
+1. Smoke do dono (`PH2D_LIGHT2D_SMOKE=5`/`6`: os cantos vivos agora no padrão).
+2. A lei W6d com `DISTANTES` no relógio (o §20.2). 3. A anomalia da r5b (§12). 4. A família (b) (37–38): da W5g, fora.
+5. Os zera/limpa por um carimbo de quadro (~0,008 ms) — só se o C3 voltar à linha dos +5 %.

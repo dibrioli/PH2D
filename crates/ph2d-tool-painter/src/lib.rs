@@ -139,6 +139,7 @@ pub use ph2d_painter_brush::{
     // law, so the picture and the paint cannot drift -- see `ph2d_painter_brush::taper`.
     taper::{MAX_TAPER_DIAMETERS, Taper},
 };
+pub use tool::paint::mao::{LINHAS_DA_MAO, LinhaDaMao, N_LINHAS_DA_MAO};
 pub use tool::paint::wetpaint_preset::{
     ALTURA_DO_PREVIEW, CAMPOS_DO_PINCEL, CAMPOS_FORA, CenaDoPreview, ChaveDoPreview,
     DIAMETRO_DA_MINIATURA, LARGURA_DO_PREVIEW, MEIO_DO_PRESET, MOTOR_DOS_PRESETS,

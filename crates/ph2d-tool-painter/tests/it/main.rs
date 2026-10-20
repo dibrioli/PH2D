@@ -31,6 +31,7 @@ mod o_relevo_dos_fios;
 mod os_fios;
 mod os_outros_meios_nao_mudam;
 mod presets_de_fabrica;
+mod presets_dos_meios;
 mod receitas_de_fabrica;
 mod regua_escada;
 mod regua_midia;

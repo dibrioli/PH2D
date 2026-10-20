@@ -459,6 +459,7 @@ fn o_pincel_inteiro_vai_e_volta_pelo_json_da_macro() {
         length: 3.25,
         smooth: 0.5,
         lag_px: 170.0,
+        opacity: 0.25,
     };
     b.watercolor = !d.watercolor;
     b.impasto = !d.impasto;

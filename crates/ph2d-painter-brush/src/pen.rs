@@ -52,6 +52,9 @@ pub struct Tilt {
     /// O caminho (px de imagem) em que a inclinação lida percorre `1 − 1/e` da distância até à da mão
     /// (`0` = a da mão, sem atraso).
     pub lag_px: f32,
+    /// Quanto da opacidade do carimbo a caneta deitada INTEIRA tira (`0` = nada; L2, o «Tilt → Opacity» do
+    /// Procreate): o carimbo leva `1 − opacity·t` ([`Self::opacity_scale`]).
+    pub opacity: f32,
 }
 
 impl Default for Tilt {
@@ -64,6 +67,7 @@ impl Default for Tilt {
             length: 1.0,
             smooth: 0.0,
             lag_px: 0.0,
+            opacity: 0.0,
         }
     }
 }
@@ -162,6 +166,16 @@ impl Tilt {
     pub fn amount(&self, angle_deg: f32) -> f32 {
         let (a, b) = (self.start_deg, self.full_deg.max(self.start_deg + 1e-3));
         ((angle_deg - a) / (b - a)).clamp(0.0, 1.0)
+    }
+
+    /// O multiplicador da opacidade do carimbo com a inclinação lida `tilt` — `1` ao bit sem a lei
+    /// ([`Self::opacity`] `0`) ou com a caneta de pé.
+    #[must_use]
+    pub fn opacity_scale(&self, tilt: [f32; 2]) -> f32 {
+        if self.opacity <= 0.0 || (tilt[0] == 0.0 && tilt[1] == 0.0) {
+            return 1.0;
+        }
+        1.0 - self.opacity.min(1.0) * self.amount(Self::polar(tilt).0)
     }
 
     /// Um passo do atraso: a inclinação lida `prev` anda até à da mão `tilt` depois de `caminho` px.

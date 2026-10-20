@@ -57,48 +57,34 @@ impl crate::PainterTool {
     /// [`Knob::PressureOpacity`] (`0` = a lei de sempre; acima dela a tinta do dab segue a pressão, o Flat
     /// do Rebelle) com a curva [`Knob::PressureOpacityCurve`] (prompt 45). Lido UMA vez por traço, no
     /// `Stroke::new`.
+    /// Nos outros meios a mão é a do pincel (`paint.dynamics`, L2). As duas pela MESMA lei
+    /// ([`super::mao::escreve`]).
     #[must_use]
     pub(crate) fn dinamica_do_traco(&self) -> ph2d_painter_brush::Dynamics {
-        let mut d = self.paint.dynamics;
-        if self.paint.wetpaint.armed {
-            let k = &self.paint.wetpaint.knobs;
-            d.size_min = (1.0 - k.get(Knob::PressureSize)) as f32;
-            let po = k.get(Knob::PressureOpacity);
-            if po > 0.0 {
-                d.strength_pressure = true;
-                d.strength_min = (1.0 - po) as f32;
-                d.strength_curve = k.get(Knob::PressureOpacityCurve) as f32;
-            }
-            // A caneta (W6): a curva do tamanho, o piso/tecto da mão, a suavização e a corda.
-            d.size_curve = k.get(Knob::PressureSizeCurve) as f32;
-            d.pen = ph2d_painter_brush::Pen {
-                floor: k.get(Knob::PressureFloor) as f32,
-                ceiling: k.get(Knob::PressureCeiling) as f32,
-                smoothing: k.get(Knob::PressureSmoothing) as f32,
-                pulled_string_px: k.get(Knob::PulledString) as f32,
-                tilt: d.pen.tilt,
-            };
-        }
-        d
+        self.mao_do_wet().map_or(self.paint.dynamics, |(d, _)| d)
     }
 
     /// ⭐ **A inclinação do PINCEL** (W6): no Wet Paint a dos knobs do pincel ([`Knob::DabRotation`] …
-    /// [`Knob::TiltLag`]); nos outros meios a do pincel do tool (o neutro, a lei de antes).
+    /// [`Knob::TiltLag`]); nos outros meios a do pincel do tool (L2: o cartão Pen escreve-a).
     #[must_use]
     pub(crate) fn inclinacao_do_pincel(&self) -> ph2d_painter_brush::PenTilt {
+        self.mao_do_wet()
+            .map_or(self.paint.brush.pen_tilt, |(_, t)| t)
+    }
+
+    /// A mão dos knobs do Wet Paint (`None` fora dele): cada knob da caneta pela lei única do cartão Pen.
+    fn mao_do_wet(&self) -> Option<(ph2d_painter_brush::Dynamics, ph2d_painter_brush::PenTilt)> {
         if !self.paint.wetpaint.armed {
-            return self.paint.brush.pen_tilt;
+            return None;
         }
         let k = &self.paint.wetpaint.knobs;
-        ph2d_painter_brush::PenTilt {
-            rotation: ph2d_painter_brush::DabRotation::from_index(k.get(Knob::DabRotation)),
-            start_deg: k.get(Knob::TiltStart) as f32,
-            full_deg: k.get(Knob::TiltFull) as f32,
-            width: k.get(Knob::TiltWidth) as f32,
-            length: k.get(Knob::TiltLength) as f32,
-            smooth: k.get(Knob::TiltSmooth) as f32,
-            lag_px: k.get(Knob::TiltLag) as f32,
+        let (mut d, mut t) = (self.paint.dynamics, ph2d_painter_brush::PenTilt::default());
+        for l in super::mao::LINHAS_DA_MAO {
+            if let super::mao::LinhaDaMao::Knob(kn) = l {
+                super::mao::escreve(&mut d, &mut t, l, k.get(kn));
+            }
         }
+        Some((d, t))
     }
 
     /// ⭐ **Os fios do pincel** (W2, `ph2d_wet_paint::bristles_fios`): os knobs [`Knob::BristlePressure`] …

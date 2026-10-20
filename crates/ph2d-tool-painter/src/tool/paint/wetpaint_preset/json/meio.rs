@@ -54,7 +54,8 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
         "pen_tilt" => {
             let t = b.pen_tilt;
             json!({"rotation": t.rotation as u8, "start_deg": num(t.start_deg), "full_deg": num(t.full_deg),
-                   "width": num(t.width), "length": num(t.length), "smooth": num(t.smooth), "lag_px": num(t.lag_px)})
+                   "width": num(t.width), "length": num(t.length), "smooth": num(t.smooth), "lag_px": num(t.lag_px),
+                   "opacity": num(t.opacity)})
         }
         outro => unreachable!("campo do pincel sem conversão: {outro}"),
     }
@@ -133,6 +134,7 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
             t.length = f(c("length"), t.length);
             t.smooth = f(c("smooth"), t.smooth);
             t.lag_px = f(c("lag_px"), t.lag_px);
+            t.opacity = f(c("opacity"), t.opacity);
         }
         outro => unreachable!("campo do pincel sem conversão: {outro}"),
     }

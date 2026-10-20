@@ -64,6 +64,13 @@ impl Stroke {
         }
     }
 
+    /// A opacidade que a caneta deitada deixa ao dab que se emite agora ([`crate::pen::Tilt::opacity_scale`]).
+    pub(super) fn opacidade_deitada(&self) -> f32 {
+        self.spec
+            .pen_tilt
+            .opacity_scale(self.pen.tilt_lida.unwrap_or(self.pen.tilt))
+    }
+
     /// A ponta deitada do dab que se emite agora (`None` = a lei desligada ou a caneta de pé).
     pub(super) fn tilt_do_dab(&self) -> Option<crate::DabTilt> {
         let t = self.pen.tilt_lida.unwrap_or(self.pen.tilt);

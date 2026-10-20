@@ -110,6 +110,10 @@ impl Stroke {
         if let Some(t) = self.tilt_do_dab() {
             self.deita(&mut dab, t);
         }
+        let o = self.opacidade_deitada();
+        if o < 1.0 {
+            dab.coverage *= o;
+        }
         // The TAPER, applied here and ONLY here, to every dab this engine emits — the instant it is
         // emitted, at the position the pointer put it. ⚠️ Nothing is ever held back: a taper is a
         // property of a MARK, and an engine that withholds dabs to learn their distance-to-the-end has

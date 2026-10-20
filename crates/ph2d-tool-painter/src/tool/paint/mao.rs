@@ -1,0 +1,261 @@
+//! **A MÃO do pincel nos quatro meios** (L2, `docs/Painter/Pinceis/03_MOTORES.md` §4): o que a pressão e a
+//! inclinação da caneta fazem ao carimbo. UMA lei — cada linha do cartão Pen vira um campo da
+//! [`Dynamics`]/[`PenTilt`] em [`escreve`] — e dois armazéns: no Wet Paint os knobs do pincel (o registo
+//! `KNOB_DEFS`, W6), nos três meios antigos os campos do pincel (`paint.dynamics`, `brush.pen_tilt`). A chave de
+//! cada linha é a do knob do Wet, e por isso o preset de qualquer meio grava a mão no mesmo mapa `engine`.
+//!
+//! ⭐ O valor de fábrica de cada linha é o neutro, e o neutro é o traço de sempre ao bit (`pressureSize 0,9` =
+//! `size_min 0,1`; gate `o_neutro_da_mao_e_o_traco_de_hoje`). ⛔ Sem piso de pressão novo
+//! (`feedback_pen_pressure_floor_must_keep_the_owners_hand_range`). Pressão→FLUXO não é uma linha: o motor
+//! multiplica a Strength e o Flow no MESMO produto por dab (`ph2d_painter_brush::dab`, BUGS #41), e a linha
+//! `pressureOpacity` já é esse produto — uma segunda seria um controlo que mente.
+
+use super::PaintMedia;
+use ph2d_painter_brush::{DabRotation, Dynamics, PenTilt};
+use ph2d_wet_paint::tuning::{KNOB_DEFS, Knob};
+
+/// Uma linha do cartão Pen: um knob da caneta do Wet (W6) ou a inclinação→opacidade (L2, sem knob no Wet).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LinhaDaMao {
+    Knob(Knob),
+    TiltOpacity,
+}
+
+/// As linhas do cartão, pela ordem do painel.
+pub const LINHAS_DA_MAO: [LinhaDaMao; 16] = [
+    LinhaDaMao::Knob(Knob::PressureSize),
+    LinhaDaMao::Knob(Knob::PressureSizeCurve),
+    LinhaDaMao::Knob(Knob::PressureOpacity),
+    LinhaDaMao::Knob(Knob::PressureOpacityCurve),
+    LinhaDaMao::Knob(Knob::PressureFloor),
+    LinhaDaMao::Knob(Knob::PressureCeiling),
+    LinhaDaMao::Knob(Knob::PressureSmoothing),
+    LinhaDaMao::Knob(Knob::PulledString),
+    LinhaDaMao::Knob(Knob::DabRotation),
+    LinhaDaMao::Knob(Knob::TiltStart),
+    LinhaDaMao::Knob(Knob::TiltFull),
+    LinhaDaMao::Knob(Knob::TiltWidth),
+    LinhaDaMao::Knob(Knob::TiltLength),
+    LinhaDaMao::Knob(Knob::TiltSmooth),
+    LinhaDaMao::Knob(Knob::TiltLag),
+    LinhaDaMao::TiltOpacity,
+];
+
+/// Quantas linhas o cartão tem.
+pub const N_LINHAS_DA_MAO: usize = LINHAS_DA_MAO.len();
+
+/// A chave, a faixa (`min`, `max`, `passo`) e o valor de fábrica da inclinação→opacidade.
+const TILT_OPACITY: (&str, f64, f64, f64, f64) = ("tiltOpacity", 0.0, 1.0, 0.01, 0.0);
+
+impl LinhaDaMao {
+    /// A chave da linha — a do knob no registo do Wet, e a do mapa `engine` de todo preset.
+    #[must_use]
+    pub fn chave(self) -> &'static str {
+        match self {
+            Self::Knob(k) => KNOB_DEFS[k as usize].key,
+            Self::TiltOpacity => TILT_OPACITY.0,
+        }
+    }
+
+    /// `(min, max, passo)`.
+    #[must_use]
+    pub fn faixa(self) -> (f64, f64, f64) {
+        match self {
+            Self::Knob(k) => {
+                let d = &KNOB_DEFS[k as usize];
+                (d.min, d.max, d.step)
+            }
+            Self::TiltOpacity => (TILT_OPACITY.1, TILT_OPACITY.2, TILT_OPACITY.3),
+        }
+    }
+
+    /// O valor de fábrica (o neutro).
+    #[must_use]
+    pub fn omissao(self) -> f64 {
+        match self {
+            Self::Knob(k) => KNOB_DEFS[k as usize].default,
+            Self::TiltOpacity => TILT_OPACITY.4,
+        }
+    }
+
+    /// `v` dentro da faixa; NaN = o valor de fábrica.
+    #[must_use]
+    pub fn limpa(self, v: f64) -> f64 {
+        let (lo, hi, _) = self.faixa();
+        if v.is_nan() {
+            self.omissao()
+        } else {
+            v.clamp(lo, hi)
+        }
+    }
+
+    /// **O meio LÊ esta linha?** A Watercolor não lê a cobertura do dab (`WASH_DEPOSIT_PEAK`: a Strength e
+    /// a pressão nela não são da lavagem, dono 12/08), e o Wet Paint não tem knob da inclinação→opacidade.
+    #[must_use]
+    pub fn lida_por(self, m: PaintMedia) -> bool {
+        !matches!(
+            (self, m),
+            (Self::TiltOpacity, PaintMedia::WetPaint | PaintMedia::Watercolor)
+                | (
+                    Self::Knob(Knob::PressureOpacity | Knob::PressureOpacityCurve),
+                    PaintMedia::Watercolor
+                )
+        )
+    }
+}
+
+/// O `f32` de um campo como o valor da linha: pelo menor texto que volta ao mesmo `f32` (`0.9`, não
+/// `0.8999999761581421`), para o preset e o painel lerem o número que o artista escreveu.
+fn curto(v: f32) -> f64 {
+    format!("{v}").parse().unwrap_or(f64::from(v))
+}
+
+/// ⭐ **A lei**: a linha `l` com o valor `v` no campo do pincel que ela governa. Os dois armazéns passam
+/// por aqui (o Wet em [`super::PainterTool::dinamica_do_traco`], os antigos no setter do cartão).
+pub(crate) fn escreve(d: &mut Dynamics, t: &mut PenTilt, l: LinhaDaMao, v: f64) {
+    let f = v as f32;
+    match l {
+        // O raio na pressão 0 é `1 − ela` (`0,9` = os 10 % de sempre, ao bit).
+        LinhaDaMao::Knob(Knob::PressureSize) => d.size_min = (1.0 - v) as f32,
+        LinhaDaMao::Knob(Knob::PressureSizeCurve) => d.size_curve = f,
+        // Acima de 0 a tinta do dab segue a pressão (o Flat do Rebelle); 0 = a lei de sempre.
+        LinhaDaMao::Knob(Knob::PressureOpacity) => {
+            d.strength_pressure = v > 0.0;
+            if v > 0.0 {
+                d.strength_min = (1.0 - v) as f32;
+            }
+        }
+        LinhaDaMao::Knob(Knob::PressureOpacityCurve) => d.strength_curve = f,
+        LinhaDaMao::Knob(Knob::PressureFloor) => d.pen.floor = f,
+        LinhaDaMao::Knob(Knob::PressureCeiling) => d.pen.ceiling = f,
+        LinhaDaMao::Knob(Knob::PressureSmoothing) => d.pen.smoothing = f,
+        LinhaDaMao::Knob(Knob::PulledString) => d.pen.pulled_string_px = f,
+        LinhaDaMao::Knob(Knob::DabRotation) => t.rotation = DabRotation::from_index(v),
+        LinhaDaMao::Knob(Knob::TiltStart) => t.start_deg = f,
+        LinhaDaMao::Knob(Knob::TiltFull) => t.full_deg = f,
+        LinhaDaMao::Knob(Knob::TiltWidth) => t.width = f,
+        LinhaDaMao::Knob(Knob::TiltLength) => t.length = f,
+        LinhaDaMao::Knob(Knob::TiltSmooth) => t.smooth = f,
+        LinhaDaMao::Knob(Knob::TiltLag) => t.lag_px = f,
+        LinhaDaMao::TiltOpacity => t.opacity = f,
+        LinhaDaMao::Knob(k) => unreachable!("knob fora da mão: {k:?}"),
+    }
+}
+
+/// O valor da linha `l` lido dos campos (o inverso de [`escreve`]: escrever o que se leu não muda um bit).
+#[must_use]
+pub(crate) fn le(d: &Dynamics, t: &PenTilt, l: LinhaDaMao) -> f64 {
+    match l {
+        LinhaDaMao::Knob(Knob::PressureSize) => {
+            if d.size_pressure {
+                curto(1.0 - d.size_min)
+            } else {
+                0.0
+            }
+        }
+        LinhaDaMao::Knob(Knob::PressureSizeCurve) => curto(d.size_curve),
+        LinhaDaMao::Knob(Knob::PressureOpacity) => {
+            if d.strength_pressure {
+                curto(1.0 - d.strength_min)
+            } else {
+                0.0
+            }
+        }
+        LinhaDaMao::Knob(Knob::PressureOpacityCurve) => curto(d.strength_curve),
+        LinhaDaMao::Knob(Knob::PressureFloor) => curto(d.pen.floor),
+        LinhaDaMao::Knob(Knob::PressureCeiling) => curto(d.pen.ceiling),
+        LinhaDaMao::Knob(Knob::PressureSmoothing) => curto(d.pen.smoothing),
+        LinhaDaMao::Knob(Knob::PulledString) => curto(d.pen.pulled_string_px),
+        LinhaDaMao::Knob(Knob::DabRotation) => match t.rotation {
+            DabRotation::None => 0.0,
+            DabRotation::FollowTrajectory => 1.0,
+            DabRotation::PenTilt => 2.0,
+        },
+        LinhaDaMao::Knob(Knob::TiltStart) => curto(t.start_deg),
+        LinhaDaMao::Knob(Knob::TiltFull) => curto(t.full_deg),
+        LinhaDaMao::Knob(Knob::TiltWidth) => curto(t.width),
+        LinhaDaMao::Knob(Knob::TiltLength) => curto(t.length),
+        LinhaDaMao::Knob(Knob::TiltSmooth) => curto(t.smooth),
+        LinhaDaMao::Knob(Knob::TiltLag) => curto(t.lag_px),
+        LinhaDaMao::TiltOpacity => curto(t.opacity),
+        LinhaDaMao::Knob(k) => unreachable!("knob fora da mão: {k:?}"),
+    }
+}
+
+/// A mão de FÁBRICA de um pincel dos meios antigos: a de cada linha no seu valor de fábrica, a partir da
+/// `Dynamics`/`PenTilt` de sempre — é a de `Dynamics::default()` e `PenTilt::default()` ao bit
+/// (`a_mao_de_fabrica_e_a_de_sempre`).
+#[must_use]
+pub(crate) fn de_fabrica() -> (Dynamics, PenTilt) {
+    let (mut d, mut t) = (Dynamics::default(), PenTilt::default());
+    for l in LINHAS_DA_MAO {
+        escreve(&mut d, &mut t, l, l.omissao());
+    }
+    (d, t)
+}
+
+impl super::PainterTool {
+    /// O valor de cada linha do cartão Pen no meio de agora (o que o painel mostra).
+    #[must_use]
+    pub fn mao(&self) -> [f64; N_LINHAS_DA_MAO] {
+        let k = &self.paint.wetpaint.knobs;
+        LINHAS_DA_MAO.map(|l| match (self.paint.wetpaint.armed, l) {
+            (true, LinhaDaMao::Knob(kn)) => k.get(kn),
+            (true, LinhaDaMao::TiltOpacity) => l.omissao(),
+            (false, _) => le(&self.paint.dynamics, &self.paint.brush.pen_tilt, l),
+        })
+    }
+
+    /// **Uma linha do cartão Pen**, no armazém do meio de agora: os knobs do pincel no Wet Paint, os campos do
+    /// pincel nos outros três. Uma linha que o meio não lê não muda nada (o painel nem a pinta).
+    pub fn set_mao(&mut self, l: LinhaDaMao, v: f64) {
+        let v = l.limpa(v);
+        if !l.lida_por(self.paint_media()) {
+            return;
+        }
+        match (self.paint.wetpaint.armed, l) {
+            (true, LinhaDaMao::Knob(kn)) => self.paint.wetpaint.knobs.set(kn, v),
+            (true, LinhaDaMao::TiltOpacity) => {}
+            (false, _) => escreve(
+                &mut self.paint.dynamics,
+                &mut self.paint.brush.pen_tilt,
+                l,
+                v,
+            ),
+        }
+    }
+
+    /// A mão dos meios antigos de volta à de fábrica (o pincel novo de um preset que não a fixa).
+    pub(crate) fn repor_mao(&mut self) {
+        (self.paint.dynamics, self.paint.brush.pen_tilt) = de_fabrica();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// ⭐ A mão de fábrica é a `Dynamics`/`PenTilt` de sempre ao bit (o neutro da L2).
+    #[test]
+    fn a_mao_de_fabrica_e_a_de_sempre() {
+        let (d, t) = de_fabrica();
+        assert_eq!(d, Dynamics::default());
+        assert_eq!(t, PenTilt::default());
+    }
+
+    /// Ler e voltar a escrever cada linha não muda um bit dos campos (o painel e o preset leem por [`le`]).
+    #[test]
+    fn ler_e_escrever_a_mao_e_a_identidade() {
+        let (mut d, mut t) = de_fabrica();
+        for (i, l) in LINHAS_DA_MAO.into_iter().enumerate() {
+            let (lo, hi, _) = l.faixa();
+            escreve(&mut d, &mut t, l, lo + (hi - lo) * (i as f64 + 1.0) / 20.0);
+        }
+        let (d0, t0) = (d, t);
+        for l in LINHAS_DA_MAO {
+            let v = le(&d0, &t0, l);
+            escreve(&mut d, &mut t, l, v);
+        }
+        assert_eq!((d, t), (d0, t0));
+    }
+}

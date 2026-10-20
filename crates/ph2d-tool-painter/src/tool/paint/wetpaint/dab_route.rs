@@ -212,8 +212,8 @@ impl PainterTool {
                     .enumerate()
                     .map(move |(j, s)| (i, n - 1 - j as u64, passo, s))
             })
-        let copia = super::copias::copia_de_cada_dab(dabs, brush, &groups);
             .collect();
+        let copia = super::copias::copia_de_cada_dab(dabs, brush, &groups);
         for (didx, sub_k, passo, d) in sub_dabs.iter().map(|(i, k, p, d)| (*i, *k, *p, d)) {
             let [x, y] = d.center;
             // LANE matching, geometric: the dab belongs to the lane whose
@@ -272,8 +272,8 @@ impl PainterTool {
                         sess.lanes.push(Lane {
                             pos: d.center,
                             ink: d.color,
-                            copia: copia[didx],
                             arco: d.arc_len,
+                            copia: copia[didx],
                         });
                         i
                     }
@@ -493,6 +493,7 @@ impl PainterTool {
             let fios_dab = fios.no_dab(arco, rumo, contacto);
             // O RELEVO de cada fio (W3): as faixas dos fios, mesmo sem pressão nem cor, e a altura de cada uma.
             let relevo_dab = (!relevo.neutro())
+                .then(|| fios_dab.unwrap_or_else(|| fios.resolvido(arco, rumo, contacto)));
             let px_cel = f64::from(ratio);
             let cell_x = grid_map::px_to_cell(f64::from(x), ratio);
             let cell_y = grid_map::px_to_cell(f64::from(y), ratio);
@@ -517,7 +518,6 @@ impl PainterTool {
                 memo.as_ref()
                     .map_or_else(|| sil(cx, cy), |m| m.ou(cx, cy, sil))
             };
-                .then(|| fios_dab.unwrap_or_else(|| fios.resolvido(arco, rumo, contacto)));
             let cor = rampa.as_ref().map(|r| {
                 move |cx: i32, cy: i32, queda: f64| -> [f32; 4] {
                     let v = forma_da_cor.map(|si| valor_da_forma(si, cx, cy));

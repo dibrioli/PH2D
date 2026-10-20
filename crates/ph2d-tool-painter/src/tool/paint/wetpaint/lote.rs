@@ -145,36 +145,6 @@ pub(super) const FRACAO_DO_FINO: f32 = 0.035;
 /// cap): o alvo de cada fio tabelado UMA vez por dab (o ruído de cada fio custava dois Perlin por célula — doc
 /// 49_medicao §5), contínuo através dos fios (o degrau por fio era a escada do traço inclinado), penteado na silhueta
 /// `sil` do dab (`cel` = o centro em células, `meia` = a meia-caixa, `passos` = o pente por comprimento).
-
-#[cfg(test)]
-mod peso_tests {
-    /// ⭐ **O traço fino nunca pousa mais pigmento por área que o largo** (o tecto de [`super::peso_do_passo_fino`]): o
-    /// largo pousa `1 ÷ FRACAO_DO_FINO` dabs por célula; o fino de passo de UMA célula pousa `max(2r ÷ célula, 1)` —
-    /// o peso é a razão, e nunca passa `1 ÷ FRACAO_DO_FINO` (a 2 px por célula e r 0,5 lia 57×; a 4, 114×). Acima do
-    /// diâmetro natural, 1.
-    #[test]
-    fn o_fino_nao_passa_o_pigmento_por_area_do_largo() {
-        let tecto = 1.0 / super::FRACAO_DO_FINO;
-        for ratio in [1u8, 2, 3, 4] {
-            for r in [0.5f32, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0, 14.0, 20.0, 60.0] {
-                let b = ph2d_painter_brush::BrushSpec {
-                    radius_px: r,
-                    ..Default::default()
-                };
-                let p = super::peso_do_passo_fino(&b, ratio);
-                let cel = f32::from(ratio);
-                let por_celula = (2.0 * r / cel).max(1.0);
-                let esperado = if 2.0 * super::FRACAO_DO_FINO * r < cel {
-                    (tecto / por_celula).max(1.0)
-                } else {
-                    1.0
-                };
-                assert!(p <= tecto + 1e-3, "r {r} grelha {ratio}: peso {p} > o tecto {tecto}");
-                assert!((p - esperado).abs() < 1e-3 * esperado, "r {r} grelha {ratio}: {p} ≠ {esperado}");
-            }
-        }
-    }
-}
 #[allow(clippy::too_many_arguments)]
 pub(super) fn penteia_o_relevo_do_dab(
     engine: &mut ph2d_wet_paint::painter::Engine,
@@ -204,4 +174,34 @@ pub(super) fn penteia_o_relevo_do_dab(
         ph2d_wet_paint::bristles_relevo::entre(do_fio(a), do_fio(b), t) / px_cel
     };
     engine.pentear_relevo(cel[0], cel[1], meia, sil, &alvo, passos);
+}
+
+#[cfg(test)]
+mod peso_tests {
+    /// ⭐ **O traço fino nunca pousa mais pigmento por área que o largo** (o tecto de [`super::peso_do_passo_fino`]): o
+    /// largo pousa `1 ÷ FRACAO_DO_FINO` dabs por célula; o fino de passo de UMA célula pousa `max(2r ÷ célula, 1)` —
+    /// o peso é a razão, e nunca passa `1 ÷ FRACAO_DO_FINO` (a 2 px por célula e r 0,5 lia 57×; a 4, 114×). Acima do
+    /// diâmetro natural, 1.
+    #[test]
+    fn o_fino_nao_passa_o_pigmento_por_area_do_largo() {
+        let tecto = 1.0 / super::FRACAO_DO_FINO;
+        for ratio in [1u8, 2, 3, 4] {
+            for r in [0.5f32, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0, 14.0, 20.0, 60.0] {
+                let b = ph2d_painter_brush::BrushSpec {
+                    radius_px: r,
+                    ..Default::default()
+                };
+                let p = super::peso_do_passo_fino(&b, ratio);
+                let cel = f32::from(ratio);
+                let por_celula = (2.0 * r / cel).max(1.0);
+                let esperado = if 2.0 * super::FRACAO_DO_FINO * r < cel {
+                    (tecto / por_celula).max(1.0)
+                } else {
+                    1.0
+                };
+                assert!(p <= tecto + 1e-3, "r {r} grelha {ratio}: peso {p} > o tecto {tecto}");
+                assert!((p - esperado).abs() < 1e-3 * esperado, "r {r} grelha {ratio}: {p} ≠ {esperado}");
+            }
+        }
+    }
 }

@@ -13,8 +13,8 @@ mod a_ponta_de_n_imagens;
 mod o_dual_brush;
 mod a_ponta_de_pixel;
 mod a_lei_da_tinta;
-mod a_luz_do_impasto_e_a_de_antes_da_poda;
 mod a_cauda_das_pontas; // L5 + L18/L19: a cauda pela porta do despacho e com o fim do trilho de píxel
+mod a_luz_do_impasto_e_a_de_antes_da_poda;
 mod as_formas;
 mod as_leis_da_escala; // 03_MOTORES §7 c, d, b-resto: o relevo, a ponta das cerdas, a lente, o grão fino
 mod o_grao_do_lapis; // 03_MOTORES §7.2: o grão é o papel (o mesmo a todo tamanho) e o do lápis é fino

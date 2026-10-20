@@ -2,18 +2,18 @@ gilrs: initialized; no gamepads connected yet
 audio: Default Audio Device @ 48000 Hz, 2 ch, F32
 PH2D desktop shell starting (close window or Cmd+Q to exit)…
 [ph2d-gpu] surface present mode: Fifo
-[   213ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
-[   223ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
-[   223ms] M7: ScriptHost initialized (placeholder script loaded)
+[   239ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   249ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   249ms] M7: ScriptHost initialized (placeholder script loaded)
 [ph2d] theme = dark
-[   238ms] M11: VelloPass initialized (1024×768 intermediate)
-[   242ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
-[   268ms] PR 8: tool registry built (14 manifests, installed in editor)
-[   302ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
-[   308ms] lifecycle: Foreground
-[   308ms] resize: 1024x768 @ 1.00x scale
+[   268ms] M11: VelloPass initialized (1024×768 intermediate)
+[   273ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   295ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   329ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   335ms] lifecycle: Foreground
+[   335ms] resize: 1024x768 @ 1.00x scale
 [code-smoke] =6 o JOGO: o círculo azul corre o jogo.luau. Setas = andar; Espaço = atirar uma estrela (sobe e some em 1,5 s); clique na cena = o quadrado cinzento vai para o rato. Rebobinar devolve tudo ao lugar. O console (Edit script no cartão do círculo) conta os tiros.
 [ph2d-gpu] surface present mode → Immediate
-[   327ms] resize: 1930x1012 @ 1.00x scale
-warn: dropped 0.167s of sim time (max_substeps cap)
+[   354ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 0.200s of sim time (max_substeps cap)
 [ph2d-gpu] surface present mode → Fifo

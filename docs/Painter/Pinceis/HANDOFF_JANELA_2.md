@@ -39,4 +39,21 @@
 
 ## Fecho da J2 (a bateria por nome, os achados da última revisão)
 
-EM CURSO no momento desta escrita — a J2 actualiza esta secção antes do sinal.
+- **A bateria por nome, verde** (load 2–15): `presets_dos_meios`, `os_outros_meios_nao_mudam`, `presets_de_fabrica`
+  (miniatura, largura, memória do Dabber), `sem_glaze`, `midias_de_fabrica`, `macro_portas`, `o_dual_brush`,
+  `leis_sistemicas`, `as_leis_da_escala`, `o_grao_do_lapis`, `a_cauda_das_pontas`, pixel, mangueira; lib `mao`,
+  `marca`, `efeito_*`, `traco_plano`; painel `a_linha_esmaecida_e_a_que_nao_age`, `o_censo_so_encolhe`, a escada de
+  colunas; `the_shell_only_shrinks`, LOC 700, `architecture_panel_loc_cap` (curado por corte), `cerca.sh`.
+- **A última revisão** (L6, Dabber, motor do Wet): 3 altos curados — a lane por (cópia, ponta) `f6de638eb0`; a
+  parede é da TINTA e só entre tintas molhadas `01aa42c60d`; o grão do Wet deixou de escalar pelo diâmetro (o papel é
+  o mesmo a todo tamanho; `TEX_SIZE_MAX` 100 → 256, medido: o recurso é o píxel) `4d62095d0f`.
+- ⚠️ **O HEAD não compilava** depois dos commits por hunks filtrados de vários agentes — curado em `6b8e7b95e5`
+  (memória `feedback_filtered_hunk_commits_by_many_agents_misplace_lines`). Ao fechar uma onda: `git status` limpo
+  e `cargo-check-narrow` sobre o HEAD.
+- **Para a J3** (categoria dela): os lápis **HB e 2H** ainda saem ~1,9× mais granulados que o Rebelle a 5 px (o
+  Rebelle tem DUAS escalas: grão fino fraco + papel largo); a rota medida está no `03_MOTORES` §7.2 (papel largo
+  armado no preset + grão fino fraco). O 8B já bate (cv 0,078 × 0,072; origem 2.ª). Faça-o no exame dos lápis.
+- **Para a J4**: o Blow/Wet/Smear/Blend ATRAVESSAM a parede entre traços por decisão sem oráculo — meça o Blow do
+  Rebelle antes de refazer os pincéis de mistura.
+- O mesmo flake do binário re-ligado a meio (`current_exe()` → «(deleted)») existe noutras linhas (navmesh, script,
+  board-net) — fora desta missão; a cura é `/proc/self/exe` (`4d62095d0f`).

@@ -10,24 +10,24 @@
  ],
  "chave": {
   "gestos_A": {
-   "1": "vizinho",
+   "1": "oraculo",
    "2": "nosso",
-   "3": "oraculo"
+   "3": "vizinho"
   },
   "gestos_B": {
-   "1": "oraculo",
-   "2": "vizinho",
+   "1": "vizinho",
+   "2": "oraculo",
    "3": "nosso"
   },
   "tamanhos_A": {
    "1": "oraculo",
-   "2": "vizinho",
-   "3": "nosso"
+   "2": "nosso",
+   "3": "vizinho"
   },
   "tamanhos_B": {
    "1": "vizinho",
-   "2": "nosso",
-   "3": "oraculo"
+   "2": "oraculo",
+   "3": "nosso"
   },
   "sobre_A": {
    "1": "oraculo",
@@ -35,14 +35,14 @@
    "3": "vizinho"
   },
   "sobre_B": {
-   "1": "oraculo",
+   "1": "vizinho",
    "2": "nosso",
-   "3": "vizinho"
+   "3": "oraculo"
   }
  },
  "quem": {
   "oraculo": "bristle_bristle_flat",
   "nosso": "Oil Bristle (escala 1.05)",
-  "vizinho": "Soft Pastel (d 1.177, limiar 0.596)"
+  "vizinho": "Soft Pastel (d 1.229, limiar 0.56)"
  }
 }

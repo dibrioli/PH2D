@@ -411,3 +411,66 @@ MEDIDAS` dos docs 47 e 53 (o piso de pressão, `MAX_SMOOTHING` 0,95 = 95 ms, jun
 - A Knife do Impasto recolhe cor? (só altura achada.) · `tipClean` do Wet já é um fall-off? · `extBackrun` dá o backrun de I-10/L-6?
 - O custo de L1 na miniatura dos 3 meios (A15): a rota de cena existe na bancada (entrega D), não no painel.
 - O `PenTilt` no Watercolor com «Automatic» (a elipse só com ele off, doc 47 §6) — L2 tem de o respeitar.
+
+## §7 — As leis sistémicas (J2)
+
+> Pedida como «§5»; o §5 já é A ORDEM. Oráculo: as fotos A da bateria do Rebelle (`fixtures/rebelle_bateria/`) pela
+> régua do EXAME; fixture `fixtures/leis_rebelle.json` (`ferramentas/leis_oraculo.py oraculo`, as 26 origens de
+> fábrica). Portões em `crates/ph2d-tool-painter/tests/it/leis_sistemicas.rs`.
+
+**(a) A pressão — ✅ curada nos valores.** Oráculo (`rampa_0_1`, 227 presets com tinta; largura e cobertura ÷ as de
+p ≥ 0,9, mediana (p10–p90)):
+
+| ferramenta | n | largura p 0,1 · 0,3 · 0,5 · 0,7 | cobertura p 0,1 · 0,3 · 0,5 · 0,7 |
+|---|---|---|---|
+| PENCIL | 44 | 0,00 · 0,59 (0,00–0,71) · 0,73 · 0,90 | 0,10 · 0,41 (0,11–0,83) · 0,72 · 1,00 |
+| PASTEL | 24 | 0,00 · 0,64 (0,00–0,91) · 0,75 · 0,89 | 0,03 · 0,40 (0,09–0,75) · 0,78 · 0,96 |
+| OIL_AND_ACRYLIC | 62 | 0,01 · 0,58 (0,16–0,95) · 0,78 · 0,92 | 0,04 · 0,64 (0,12–0,96) · 0,94 · 1,00 |
+| EXPRESS_OIL | 32 | 0,17 · 0,45 (0,27–0,92) · 0,71 · 0,87 | 0,23 · 0,67 (0,20–0,88) · 0,88 · 1,00 |
+| WATERCOLOR | 46 | 0,00 · 0,36 (0,00–0,85) · 0,78 · 0,90 | 0,13 · 0,57 (0,12–0,94) · 0,85 · 0,97 |
+| INK_PEN | 10 | 0,22 · 0,39 (0,00–0,72) · 0,61 · 0,81 | 0,26 · 0,74 (0,02–0,98) · 0,98 · 1,00 |
+| MARKER | 4 | 0,66 · 0,76 (0,23–0,93) · 0,89 · 0,96 | 0,71 · 0,96 (0,33–1,00) · 0,99 · 1,00 |
+| AIRBRUSH | 5 | 0,00 · 0,74 (0,53–0,88) · 0,74 · 0,96 | 0,11 · 0,27 (0,24–0,44) · 0,43 · 0,78 |
+
+O Rebelle leva a pressão à CARGA quase a largura cheia (o 8B: cobertura 0,09 a p 0,3, 1,0 a p 0,7; largura 0,65 → 1);
+nós só estreitávamos (`pressureSize` 0,9: largura linear, carga fixa). **Mecanismo**: o motor já exprimia pressão →
+carga — `pressureOpacity` multiplica o pigmento que POUSA (`WP/trail/deposit.rs`, `DepositLaw::opacidade`); os presets
+não a usavam. **Cura**: `pressureSizeCurve` + `pressureOpacity`/`Curve` por preset, de uma grelha de 252 variantes
+(`PH2D_EXAME_VARIANTES`) contra as duas rampas da origem; sem piso (`pressureSize` 0,9). Onde o Rebelle quase não
+responde na faixa da mão (tintas, marcadores, Oil Bristle: 1,3–1,4×), a largura é a dele e a mão responde pela carga
+(≥ 2,5×; a W6 reprovada lia ~1,3). Ficam: Charcoal e Wet Liner (já os mais perto), Airbrush/Wet Flat/Gouache Flat (do
+dono), Wet Round (pincel sem preset e controlo das mídias), Wet Drip/Dry Brush (sem origem). **Portão**
+`a_pressao_de_cada_preset_e_a_da_sua_origem` (distância RMS às rampas ≤ 0,18 e mão ≥ 2,5×): antes 14 de 26 acima (8B
+0,250 · Oil Bristle 0,325 na largura); depois ≤ 0,179. Mutação (o 8B e o Oil Bristle de antes): sangra. `77da300cb1`.
+
+**(b) O traço fino — ✅ curado na lei (o pontilhado do grão fica).** Oráculo: cobertura do recto de 5 px ÷ a do de
+40 px do MESMO pincel, mediana 0,93 (Charcoal 0,63 … Gouache 1,13); nós 0,19–0,54 (8B 0,47). **Mecanismo**: o passo do
+caminhador e da cápsula nunca desce de uma célula (`PB/capsula.rs::sub_passo_px_a`, `passo_de`), e abaixo dele a
+contagem de dabs por célula — o pigmento por área — cai com o diâmetro. **Cura** `TP/wetpaint/lote.rs::
+peso_do_passo_fino`: cada dab pesa a célula ÷ o passo natural a 0,035 do diâmetro (`FRACAO_DO_FINO`, ~29 px; 1 acima,
+ao bit); o pigmento pesa, a água fica a do dab (`Engine::agua_do_dab`). Recusas medidas: 0,025 tirava do vale o Soft
+Pastel, o Marker Liner e o Dabber (afinados a 17–18 px) e colapsava a tabela da largura a 1–2 px; 0,05 deixava 9 abaixo
+da barra; a água a pesar também afogava as aguarelas finas. **Portão** `o_traco_fino_pesa_por_area_o_que_o_largo_pesa`
+(razão ≥ a do Rebelle − 0,20): 21 de 26 vermelhos → verde; mutações (sem o peso: 21 sangram; 0,05: 9). Exame do 8B à
+escala dele: cobertura 0,315 → 0,731 (Rebelle 0,799), cor (161,193,224) → (58,124,191) ((51,119,188)); **fica** o cv
+0,19 (Rebelle 0,07): o grão do lápis tem o tamanho em px de tela e a 4 px de largura um vale do papel atravessa o traço
+inteiro — lei do grão por tamanho de ponta, por fazer. `95c9597395`.
+
+**(c) As pontas e o «tubo» do Oil Bristle — ✗ aberta (de motor).** Oráculo (recto de 200 px): corte recto e desfiado
+(curva −0,02, desfiado 6,5 px), estrias escuras e baixas (luminância p95 − p5 = 29). Nós: a meia-elipse da pegada
+achatada (curva 0,08, desfiado 0,7), estrias claras do relevo com o dobro (55; o perfil MÉDIO através do traço é chato —
+não há cilindro). Medido nos valores: `dab_quina` 1 corta recto (0,00) mas tira o contraste do relevo a 41 px do vale
+do W3b (13,3 × 12,1 ± 1,1); `emboss` 0,3 casa as estrias a 200 px mas parte o contraste a 41 px — o relevo dos fios
+CRESCE com o tamanho no nosso e não no Rebelle; `felt` 0 desfia (5,9 px) mas abre falhas a 40 px. Cura: motor (relevo
+independente do tamanho; o fio que acaba atrás do centro). Sonda `sonda_a_ponta_e_as_estrias_do_oleo`.
+
+**(d) A lente sobre a faixa molhada — ✗ aberta (de motor).** Oráculo: o azul cruza a faixa vermelha molhada com a
+largura que tem sobre a seca (12/12 px). Nós 19/12 (1,58) e mais claro. **Mecanismo**: o nivelamento do filme
+(`WP/solver.rs`, o termo `level_k`) escoa o filme do dab novo pelas células que a faixa molhada mantém activas (sobre o
+papel seco estão inactivas). `leveling` 0 cura a lente (1,00) mas o mesmo nivelamento alisa o relevo dos fios: a
+escada do W3b sobe para 2,87 (≤ 2,60) e nenhum `emboss` (0,5–0,7) cabe nas duas barras; `waterPerDab` 0 parte os
+carris e a escada. Cura: motor (o nivelamento não atravessa para outra tinta molhada). Sonda `sonda_a_lente_sobre_a_molhada`.
+
+**Custo** (`exame.sh --custo`, smoke, load 12–14): p95 a pintar 8B 0,54 · 1,89 · 5,39 ms e Oil Bristle 0,67 · 2,08 ·
+6,89 ms a 5 · 40 · 200 px (≤ 16,7); RSS ≤ 97 MiB. Exame: régua 8B 334 → 340/420, Oil Bristle 372 → 386/420 (a origem
+do Oil Bristle passou a 1.ª entre as 228).

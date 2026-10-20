@@ -85,13 +85,11 @@ def pontas(png):
         res = e - np.polyval(k, v)
         out[lado] = {"curva": float((eixo - bordas) / hw), "desfiado_px": float(res.std()),
                      "alem_px": float(eixo)}
-    # O TUBO: a amplitude da luminância através do traço (10/30/50/70/90 % da largura, colunas 300..700).
-    lum = a[int(y0) - 130:int(y0) + 130, 300:700].mean(2).mean(1)
-    esc = np.where(lum < 240)[0]
-    if len(esc) > 5:
-        perfil = lum[esc[0]:esc[-1] + 1]
-        q = [perfil[int(len(perfil) * f)] for f in (0.1, 0.3, 0.5, 0.7, 0.9)]
-        out["tubo"] = float(max(q) - min(q))
+    # As ESTRIAS: a luminância p95 − p5 no miolo (linhas 360..520, colunas 300..700) — o «brilho de tubo» que a
+    # revisão cega viu no Oil Bristle são as estrias claras do relevo (o perfil MÉDIO através do traço é chato).
+    lum = a[360:521, 300:700].mean(2)
+    p5, p95 = np.percentile(lum, [5, 95])
+    out["estrias"] = float(p95 - p5)
     return out
 
 

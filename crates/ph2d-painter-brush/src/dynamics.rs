@@ -25,6 +25,12 @@ pub struct Dynamics {
     /// The pen before the curves: the floor/ceiling of the hand, the smoothing, the pulled string
     /// ([`crate::pen`]). [`crate::Pen::default`] = the hand's pressure as it comes, bit for bit.
     pub pen: crate::Pen,
+    /// **A velocidade ESTREITA a marca** (L12, `docs/Painter/Pinceis/06_LEIS_DAS_LACUNAS.md` §10.4): o raio ×
+    /// `(v / v₀)^−speed_size` acima de [`VELOCIDADE_DE_REFERENCIA_PX_S`]. `0` = a velocidade não conta (o
+    /// Rebelle: 221 presets neutros), ao bit; Fineliner do Krita ≈ 0,06 · pen do MyPaint ≈ 0,14 · Marker 0,45.
+    pub speed_size: f32,
+    /// A mesma lei na cobertura do dab (o Thin_Pen do MyPaint: só a cobertura cai, 0,57 a 5 000 px/s ≈ 0,2).
+    pub speed_opacity: f32,
 }
 
 impl Default for Dynamics {
@@ -39,6 +45,8 @@ impl Default for Dynamics {
             strength_curve: 1.0,
             size_curve: 1.0,
             pen: crate::Pen::default(),
+            speed_size: 0.0,
+            speed_opacity: 0.0,
         }
     }
 }
@@ -85,6 +93,45 @@ impl Dynamics {
             self.strength_min,
             curve(pressure, self.strength_curve),
         )
+    }
+}
+
+/// A velocidade abaixo da qual a marca é a do pincel (px/s) — a mais LENTA que a bateria mede (3 px por
+/// evento de 10 ms, `06` §10.4); todas as curvas medidas (Krita, MyPaint) normalizam-se a ela.
+pub const VELOCIDADE_DE_REFERENCIA_PX_S: f32 = 300.0;
+
+/// O teto do expoente da velocidade: o Marker do MyPaint (`w ∝ v^−0,45`, o mais forte medido) com margem.
+pub const VELOCIDADE_EXPOENTE_MAX: f32 = 1.0;
+
+/// ⭐ **A lei da velocidade** (L12): `(v / v₀)^−p` acima de `v₀`, `1` abaixo dele e com `p = 0` (sem `powf`).
+/// UMA potência serve as quatro curvas medidas — Fineliner `p 0,058` (0,96 · 0,92 · 0,88 · 0,85 contra 0,95 ·
+/// 0,95 · 0,90 · 0,85), pen `0,136`, pen-note `0,18`, Marker `0,45` —, e nunca chega a zero (a log-linear sim).
+#[inline]
+#[must_use]
+pub fn lei_da_velocidade(p: f32, v_px_s: f32) -> f32 {
+    if p <= 0.0 || v_px_s <= VELOCIDADE_DE_REFERENCIA_PX_S || !v_px_s.is_finite() {
+        return 1.0;
+    }
+    (v_px_s / VELOCIDADE_DE_REFERENCIA_PX_S).powf(-p.min(VELOCIDADE_EXPOENTE_MAX))
+}
+
+impl Dynamics {
+    /// Alguma lei da velocidade está ligada (só então o traço mede a velocidade de cada dab).
+    #[must_use]
+    pub fn speed_armed(&self) -> bool {
+        self.speed_size > 0.0 || self.speed_opacity > 0.0
+    }
+
+    /// O multiplicador do raio à velocidade `v` (px/s).
+    #[must_use]
+    pub fn speed_radius_scale(&self, v: f32) -> f32 {
+        lei_da_velocidade(self.speed_size, v)
+    }
+
+    /// O multiplicador da cobertura à velocidade `v` (px/s).
+    #[must_use]
+    pub fn speed_coverage_scale(&self, v: f32) -> f32 {
+        lei_da_velocidade(self.speed_opacity, v)
     }
 }
 

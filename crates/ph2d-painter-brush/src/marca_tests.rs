@@ -200,3 +200,88 @@ fn o_espelho_vira_a_ponta() {
     assert!(!crate::FootprintDeform::identity().espelhada(true).is_identity());
 }
 
+/// Um recto vertical de 600 px a `passo` px por evento, um tique de 10 ms por evento (300 px/s a 3 px).
+fn recto_a(passo: f32, d: Dynamics) -> Vec<Dab> {
+    let s = BrushSpec {
+        radius_px: 20.0,
+        spacing: 0.1,
+        space_attenuation: false,
+        stabilizer: 0.0,
+        ..Default::default()
+    };
+    let mut st = Stroke::new(s, d, 1);
+    let (mut all, mut out) = (Vec::new(), Vec::new());
+    let p = |y: f32| StrokePoint {
+        pos: [500.0, 20.0 + y],
+        pressure: 1.0,
+    };
+    st.begin(p(0.0), &mut out);
+    all.extend_from_slice(&out);
+    let n = (600.0 / passo) as usize;
+    for i in 1..=n {
+        st.extend(p(i as f32 * passo), &mut out);
+        all.extend_from_slice(&out);
+        st.tick(0.01, &mut out);
+        all.extend_from_slice(&out);
+    }
+    all
+}
+
+/// A largura (o raio mediano) da metade final do recto — a rampa da velocidade já assentou.
+fn raio_assente(passo: f32, d: Dynamics) -> f32 {
+    let mut r: Vec<f32> = recto_a(passo, d)
+        .iter()
+        .filter(|x| x.center[1] > 320.0)
+        .map(|x| x.radius_px)
+        .collect();
+    r.sort_by(f32::total_cmp);
+    r[r.len() / 2]
+}
+
+/// ⭐ **`a_velocidade_estreita_como_o_fineliner`** (06 §10.4): o Fineliner do Krita a 3 · 6 · 12 · 25 · 50 px
+/// por evento (300 → 5 000 px/s) dá a largura 1,00 · 0,95 · 0,95 · 0,90 · 0,85 da lenta; a nossa com
+/// `speed_size 0,058` cai na curva ± 0,04 — a curva INTEIRA, não só o par. E sem a lei, 1,00 ± 0,001.
+#[test]
+fn a_velocidade_estreita_como_o_fineliner() {
+    let fineliner = Dynamics {
+        size_pressure: false,
+        speed_size: 0.058,
+        ..Default::default()
+    };
+    let neutro = Dynamics {
+        size_pressure: false,
+        ..Default::default()
+    };
+    let lento = raio_assente(3.0, fineliner);
+    for (passo, krita) in [(6.0, 0.95), (12.0, 0.95), (25.0, 0.90), (50.0, 0.85)] {
+        let r = raio_assente(passo, fineliner) / lento;
+        assert!((r - krita).abs() <= 0.04, "{passo} px/evento: {r} (Krita {krita})");
+        let n = raio_assente(passo, neutro) / raio_assente(3.0, neutro);
+        assert!((n - 1.0).abs() <= 1e-3, "sem a lei a velocidade não conta: {n}");
+    }
+    // A cobertura pela mesma lei (o Thin_Pen do MyPaint: 0,57 a 5 000 px/s com `p ≈ 0,2`).
+    let thin = Dynamics {
+        size_pressure: false,
+        speed_opacity: 0.2,
+        ..Default::default()
+    };
+    let cob = |passo: f32| {
+        let v: Vec<f32> = recto_a(passo, thin)
+            .iter()
+            .filter(|x| x.center[1] > 320.0)
+            .map(|x| x.coverage)
+            .collect();
+        v[v.len() / 2]
+    };
+    let c = cob(50.0) / cob(3.0);
+    assert!((c - 0.57).abs() <= 0.05, "Thin_Pen 0,57: {c}");
+}
+
+/// O neutro da lei: `p = 0` e a velocidade lenta dão `1` exacto, sem `powf`.
+#[test]
+fn a_lei_da_velocidade_e_neutra_no_zero() {
+    assert_eq!(crate::dynamics::lei_da_velocidade(0.0, 9_000.0), 1.0);
+    assert_eq!(crate::dynamics::lei_da_velocidade(0.4, 300.0), 1.0);
+    assert!(crate::dynamics::lei_da_velocidade(0.45, 4_800.0) < 0.3);
+    assert!(!Dynamics::default().speed_armed());
+}

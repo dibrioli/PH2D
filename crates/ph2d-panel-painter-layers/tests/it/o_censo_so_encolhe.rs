@@ -96,6 +96,14 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     ] {
         v.push((m, id, ponta));
     }
+    // A velocidade→opacidade (L12) no Wet: o traço do censo é lento e a tinta molhada enche até cheia, logo a
+    // cobertura por dab a menos não aparece. Age no traço rápido (medido 20/10: 32 613 bytes a 5 000 px/s).
+    v.push((
+        WetPaint,
+        PAINTER_PEN_FIELDS[17],
+        "o traço do censo é lento e a tinta molhada enche até cheia: a cobertura por dab a menos não se vê \
+         (age a 5 000 px/s, `mao::velocidade`)",
+    ));
     v.push((Watercolor, PAINTER_BRUSH_JITTER_ROTATE_CHIP, rodar));
     v.push((
         Impasto,

@@ -542,6 +542,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.pen.tilt_smooth" => "Tilt smooth",
         "panel.painter_layers.pen.tilt_lag" => "Tilt lag",
         "panel.painter_layers.pen.tilt_opacity" => "Tilt opacity",
+        "panel.painter_layers.pen.speed_size" => "Speed size",
+        "panel.painter_layers.pen.speed_opacity" => "Speed opacity",
         "panel.painter_layers.taper.taper" => "Taper",
         "panel.painter_layers.taper.tip" => "Tip",
         "panel.painter_layers.taper.opacity" => "Opacity",

@@ -19,10 +19,14 @@ use ph2d_wet_paint::tuning::{KNOB_DEFS, Knob};
 pub enum LinhaDaMao {
     Knob(Knob),
     TiltOpacity,
+    /// A velocidade estreita a marca (L12, [`Dynamics::speed_size`]).
+    SpeedSize,
+    /// A velocidade apaga a marca (L12, [`Dynamics::speed_opacity`]).
+    SpeedOpacity,
 }
 
 /// As linhas do cartão, pela ordem do painel.
-pub const LINHAS_DA_MAO: [LinhaDaMao; 16] = [
+pub const LINHAS_DA_MAO: [LinhaDaMao; 18] = [
     LinhaDaMao::Knob(Knob::PressureSize),
     LinhaDaMao::Knob(Knob::PressureSizeCurve),
     LinhaDaMao::Knob(Knob::PressureOpacity),
@@ -39,6 +43,8 @@ pub const LINHAS_DA_MAO: [LinhaDaMao; 16] = [
     LinhaDaMao::Knob(Knob::TiltSmooth),
     LinhaDaMao::Knob(Knob::TiltLag),
     LinhaDaMao::TiltOpacity,
+    LinhaDaMao::SpeedSize,
+    LinhaDaMao::SpeedOpacity,
 ];
 
 /// Quantas linhas o cartão tem.
@@ -52,6 +58,8 @@ pub const MAO_DE_FABRICA: [f64; N_LINHAS_DA_MAO] = {
         v[i] = match LINHAS_DA_MAO[i] {
             LinhaDaMao::Knob(k) => KNOB_DEFS[k as usize].default,
             LinhaDaMao::TiltOpacity => TILT_OPACITY.4,
+            LinhaDaMao::SpeedSize => SPEED_SIZE.4,
+            LinhaDaMao::SpeedOpacity => SPEED_OPACITY.4,
         };
         i += 1;
     }
@@ -60,6 +68,23 @@ pub const MAO_DE_FABRICA: [f64; N_LINHAS_DA_MAO] = {
 
 /// A chave, a faixa (`min`, `max`, `passo`) e o valor de fábrica da inclinação→opacidade.
 const TILT_OPACITY: (&str, f64, f64, f64, f64) = ("tiltOpacity", 0.0, 1.0, 0.01, 0.0);
+/// A velocidade→tamanho (L12): o expoente da potência `(v/v₀)^−p` (`06` §10.4: Fineliner 0,06 · pen 0,14 ·
+/// Marker 0,45); o tecto é o do motor.
+const SPEED_SIZE: (&str, f64, f64, f64, f64) = (
+    "speedSize",
+    0.0,
+    ph2d_painter_brush::dynamics::VELOCIDADE_EXPOENTE_MAX as f64,
+    0.01,
+    0.0,
+);
+/// A velocidade→opacidade (L12), a mesma lei na cobertura do dab (Thin_Pen ≈ 0,2).
+const SPEED_OPACITY: (&str, f64, f64, f64, f64) = (
+    "speedOpacity",
+    0.0,
+    ph2d_painter_brush::dynamics::VELOCIDADE_EXPOENTE_MAX as f64,
+    0.01,
+    0.0,
+);
 
 impl LinhaDaMao {
     /// A chave da linha — a do knob no registo do Wet, e a do mapa `engine` de todo preset.
@@ -68,6 +93,8 @@ impl LinhaDaMao {
         match self {
             Self::Knob(k) => KNOB_DEFS[k as usize].key,
             Self::TiltOpacity => TILT_OPACITY.0,
+            Self::SpeedSize => SPEED_SIZE.0,
+            Self::SpeedOpacity => SPEED_OPACITY.0,
         }
     }
 
@@ -80,6 +107,8 @@ impl LinhaDaMao {
                 (d.min, d.max, d.step)
             }
             Self::TiltOpacity => (TILT_OPACITY.1, TILT_OPACITY.2, TILT_OPACITY.3),
+            Self::SpeedSize => (SPEED_SIZE.1, SPEED_SIZE.2, SPEED_SIZE.3),
+            Self::SpeedOpacity => (SPEED_OPACITY.1, SPEED_OPACITY.2, SPEED_OPACITY.3),
         }
     }
 
@@ -89,6 +118,8 @@ impl LinhaDaMao {
         match self {
             Self::Knob(k) => KNOB_DEFS[k as usize].default,
             Self::TiltOpacity => TILT_OPACITY.4,
+            Self::SpeedSize => SPEED_SIZE.4,
+            Self::SpeedOpacity => SPEED_OPACITY.4,
         }
     }
 
@@ -123,7 +154,8 @@ impl LinhaDaMao {
             (self, m),
             (Self::TiltOpacity, PaintMedia::WetPaint | PaintMedia::Watercolor)
                 | (
-                    Self::Knob(Knob::PressureOpacity | Knob::PressureOpacityCurve),
+                    Self::Knob(Knob::PressureOpacity | Knob::PressureOpacityCurve)
+                        | Self::SpeedOpacity,
                     PaintMedia::Watercolor
                 )
         )
@@ -168,6 +200,8 @@ pub(crate) fn escreve(d: &mut Dynamics, t: &mut PenTilt, l: LinhaDaMao, v: f64) 
         LinhaDaMao::Knob(Knob::TiltSmooth) => t.smooth = f,
         LinhaDaMao::Knob(Knob::TiltLag) => t.lag_px = f,
         LinhaDaMao::TiltOpacity => t.opacity = f,
+        LinhaDaMao::SpeedSize => d.speed_size = f,
+        LinhaDaMao::SpeedOpacity => d.speed_opacity = f,
         LinhaDaMao::Knob(k) => unreachable!("knob fora da mão: {k:?}"),
     }
 }
@@ -208,6 +242,8 @@ pub(crate) fn le(d: &Dynamics, t: &PenTilt, l: LinhaDaMao) -> f64 {
         LinhaDaMao::Knob(Knob::TiltSmooth) => curto(t.smooth),
         LinhaDaMao::Knob(Knob::TiltLag) => curto(t.lag_px),
         LinhaDaMao::TiltOpacity => curto(t.opacity),
+        LinhaDaMao::SpeedSize => curto(d.speed_size),
+        LinhaDaMao::SpeedOpacity => curto(d.speed_opacity),
         LinhaDaMao::Knob(k) => unreachable!("knob fora da mão: {k:?}"),
     }
 }
@@ -227,6 +263,9 @@ pub(crate) fn de_fabrica() -> (Dynamics, PenTilt) {
 /// As linhas que governam a `Dynamics` (a pressão e a corda); as outras são da `PenTilt`, um campo do pincel.
 fn da_pressao(l: LinhaDaMao) -> bool {
     matches!(
+        l,
+        LinhaDaMao::SpeedSize | LinhaDaMao::SpeedOpacity
+    ) || matches!(
         l,
         LinhaDaMao::Knob(
             Knob::PressureSize
@@ -282,7 +321,8 @@ impl super::PainterTool {
         LINHAS_DA_MAO.map(|l| match (self.paint.wetpaint.armed, l) {
             (true, LinhaDaMao::Knob(kn)) => k.get(kn),
             (true, LinhaDaMao::TiltOpacity) => l.omissao(),
-            (false, _) => le(&self.paint.dynamics, &self.paint.brush.pen_tilt, l),
+            // A velocidade não tem knob no Wet: mora na `Dynamics` do pincel, que a mão do Wet herda.
+            (_, _) => le(&self.paint.dynamics, &self.paint.brush.pen_tilt, l),
         })
     }
 
@@ -296,7 +336,7 @@ impl super::PainterTool {
         match (self.paint.wetpaint.armed, l) {
             (true, LinhaDaMao::Knob(kn)) => self.paint.wetpaint.knobs.set(kn, v),
             (true, LinhaDaMao::TiltOpacity) => {}
-            (false, _) => escreve(
+            (_, _) => escreve(
                 &mut self.paint.dynamics,
                 &mut self.paint.brush.pen_tilt,
                 l,
@@ -319,6 +359,7 @@ impl super::PainterTool {
                     self.paint.wetpaint.knobs.set(kn, v);
                 }
             }
+            (self.paint.dynamics.speed_size, self.paint.dynamics.speed_opacity) = (0.0, 0.0);
         } else {
             self.repor_mao();
         }
@@ -461,5 +502,92 @@ mod tests {
             escreve(&mut d, &mut t, l, v);
         }
         assert_eq!((d, t), (d0, t0));
+    }
+}
+
+/// L12 — a velocidade pela lei da mão, pela porta do ponteiro (`06_LEIS_DAS_LACUNAS.md` §10.4).
+#[cfg(test)]
+mod velocidade {
+    use super::*;
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+
+    /// Um recto horizontal a `passo` px por evento, um quadro de 8 ms por evento (o `sonda_gestos::gesto`);
+    /// devolve a altura da faixa pintada na coluna do meio.
+    fn altura(m: PaintMedia, passo: f32, linha: Option<(LinhaDaMao, f64)>) -> usize {
+        let mut t = super::super::super::PainterTool::default();
+        t.set_source(vec![255u8; 600 * 120 * 4], 600, 120);
+        t.set_paint_media(m);
+        t.set_brush_size_px(16.0);
+        if let Some((l, v)) = linha {
+            t.set_mao(l, v);
+        }
+        let cp = |x: f32, phase| CanvasPointer {
+            pos: [x, 60.0],
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        t.on_canvas_pointer(cp(20.0, PointerPhase::Down));
+        let mut x = 20.0;
+        while x < 580.0 {
+            x += passo;
+            t.on_canvas_pointer(cp(x.min(580.0), PointerPhase::Move));
+            t.paint_tick(0.008);
+        }
+        t.on_canvas_pointer(cp(580.0, PointerPhase::Up));
+        (0..120)
+            .filter(|y| t.canvas_rgba[(y * 600 + 400) * 4] < 200)
+            .count()
+    }
+
+    /// A velocidade→opacidade chega ao Wet Paint (a mão dele herda a `Dynamics` do pincel): no recto rápido a
+    /// tinta muda (no lento do censo a tinta molhada enche até cheia — `o_censo_so_encolhe`).
+    #[test]
+    fn a_velocidade_chega_ao_wet() {
+        let tela = |v: f64| {
+            let mut t = super::super::super::PainterTool::default();
+            t.set_source(vec![255u8; 600 * 120 * 4], 600, 120);
+            t.set_paint_media(PaintMedia::WetPaint);
+            t.set_mao(LinhaDaMao::SpeedOpacity, v);
+            let cp = |x: f32, phase| CanvasPointer {
+                pos: [x, 60.0],
+                pressure: 1.0,
+                tilt: [0.0, 0.0],
+                phase,
+            };
+            t.on_canvas_pointer(cp(20.0, PointerPhase::Down));
+            let mut x: f32 = 20.0;
+            while x < 580.0 {
+                x += 40.0;
+                t.on_canvas_pointer(cp(x.min(580.0), PointerPhase::Move));
+                t.paint_tick(0.008);
+            }
+            t.on_canvas_pointer(cp(580.0, PointerPhase::Up));
+            for _ in 0..30 {
+                t.paint_tick(1.0 / 60.0);
+            }
+            t.canvas_rgba.to_vec()
+        };
+        let (a, b) = (tela(0.0), tela(1.0));
+        let n = a.iter().zip(&b).filter(|(x, y)| x != y).count();
+        assert!(n > 1000, "a velocidade não chegou ao Wet: {n} bytes");
+    }
+
+    /// ⭐ **`recto lento × rápido`**: com a lei do Marker do MyPaint (`speedSize 0,45`) o recto a 50 px por
+    /// evento (6 250 px/s) sai mais FINO que o de 3 px (375 px/s) — perto da potência medida, `(6250/375)^−0,45`
+    /// = 0,28 da lenta ± 2 px —, e sem a lei (o Rebelle: 221 presets neutros) os dois têm a mesma largura.
+    #[test]
+    fn a_velocidade_estreita_o_traco() {
+        for m in [PaintMedia::Digital, PaintMedia::Impasto] {
+            let (lento, rapido) = (altura(m, 3.0, None), altura(m, 50.0, None));
+            assert!(lento > 8 && lento.abs_diff(rapido) <= 1, "{m:?} neutro: {lento} × {rapido}");
+            let marker = Some((LinhaDaMao::SpeedSize, 0.45));
+            let (l, r) = (altura(m, 3.0, marker), altura(m, 50.0, marker));
+            let esperado = l as f32 * (6250.0f32 / 375.0).powf(-0.45);
+            assert!(
+                (r as f32 - esperado).abs() <= 2.0,
+                "{m:?}: rápido {r} px × lento {l} px (a lei: {esperado:.1})"
+            );
+        }
     }
 }

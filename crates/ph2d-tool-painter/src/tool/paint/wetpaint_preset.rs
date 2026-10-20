@@ -387,6 +387,13 @@ impl PainterTool {
             self.paint.brush.shape = k.cerdas_no_shape(self.paint.brush.shape);
         }
         self.paint.wetpaint.knobs = k;
+        // A velocidade (L12) não é knob do motor: mora na `Dynamics` do pincel, que a mão do Wet herda. Ausente
+        // = a de fábrica (sem velocidade), nunca a do pincel anterior.
+        for l in [super::mao::LinhaDaMao::SpeedSize, super::mao::LinhaDaMao::SpeedOpacity] {
+            let v = prm.engine.get(l.chave()).copied().unwrap_or_else(|| l.omissao());
+            super::mao::escreve(&mut self.paint.dynamics, &mut self.paint.brush.pen_tilt, l, l.limpa(v));
+        }
+
         if let Some(m) = prm.paint_mode.as_deref() {
             self.wet_preset_aplicar_modo(m);
         }
@@ -501,6 +508,15 @@ impl PainterTool {
             p.engine.remove(KNOB_DEFS[kn as usize].key);
         }
         p.engine.insert(CHAVE_ERASE.to_owned(), k.erase);
+        // A velocidade (L12) só quando o pincel a tem: o preset sem ela é o de antes, ao byte.
+        for l in [super::mao::LinhaDaMao::SpeedSize, super::mao::LinhaDaMao::SpeedOpacity] {
+            let v = super::mao::le(&self.paint.dynamics, &self.paint.brush.pen_tilt, l);
+            if v == l.omissao() {
+                p.engine.remove(l.chave());
+            } else {
+                p.engine.insert(l.chave().to_owned(), v);
+            }
+        }
         let v = self.wet_preset_volumes();
         p.volumes.size_px = v.size_px;
         p.volumes.opacity = v.opacity;

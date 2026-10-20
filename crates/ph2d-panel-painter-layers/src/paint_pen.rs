@@ -29,7 +29,7 @@ const ROTACOES: [&str; 3] = [
 ];
 
 /// O rótulo de cada linha, pela ordem de [`LINHAS_DA_MAO`] (as palavras do painel Tuning do Wet Paint).
-pub(crate) const ROTULOS: [&str; 16] = [
+pub(crate) const ROTULOS: [&str; 18] = [
     "panel.painter_layers.pen.pressure_size",
     "panel.painter_layers.pen.pressure_size_curve",
     "panel.painter_layers.pen.pressure_opacity",
@@ -46,6 +46,8 @@ pub(crate) const ROTULOS: [&str; 16] = [
     "panel.painter_layers.pen.tilt_smooth",
     "panel.painter_layers.pen.tilt_lag",
     "panel.painter_layers.pen.tilt_opacity",
+    "panel.painter_layers.pen.speed_size",
+    "panel.painter_layers.pen.speed_opacity",
 ];
 
 /// As casas decimais de uma linha pelo passo dela (`1` → inteiros; `0,5` → uma; `0,01` → duas).

@@ -118,6 +118,10 @@ impl Stroke {
         // uma lista de um item só, e ela apodreceu na wave seguinte: ver [`LineKind::throws`], que
         // traz os números do defeito que a trocou.
         if !self.spec.line_kind.throws() {
+            // A velocidade de CADA dab pela mesma rampa, só quando a mão a pede (L12): o traço de sempre não a lê.
+            if self.dynamics.speed_armed() {
+                self.advance_speed(arc);
+            }
             return pos;
         }
         let ds = (arc - self.speed_dab_arc).max(0.0);

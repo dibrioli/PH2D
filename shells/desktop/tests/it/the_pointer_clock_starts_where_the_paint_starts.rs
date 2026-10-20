@@ -24,10 +24,9 @@ fn deliver_body() -> &'static str {
     let start = SRC
         .find("pub(crate) fn deliver_canvas_pointer_colordrop(")
         .expect("`deliver_canvas_pointer_colordrop` sumiu — se foi movida, mova este gate junto");
-    let end = SRC[start..]
-        .find("\n    /// ")
-        .map(|o| start + o)
-        .expect("o corpo de `deliver_canvas_pointer_colordrop` não termina numa doc de função irmã");
+    let end = SRC[start..].find("\n    /// ").map(|o| start + o).expect(
+        "o corpo de `deliver_canvas_pointer_colordrop` não termina numa doc de função irmã",
+    );
     &SRC[start..end]
 }
 

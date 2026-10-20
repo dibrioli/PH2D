@@ -78,6 +78,8 @@ struct FlowConst {
     max_v: f64,
     level_k: f64,
     level_clamp: f64,
+    /// A lei [`Knob::LevelingOwnStroke`] (com o campo do traço na grade).
+    isola: bool,
     cap_k: f64,
     cap_gate: f64,
     visc_threshold: f64,
@@ -116,6 +118,7 @@ impl FlowConst {
             max_v: p.k(Knob::MaxVelocity),
             level_k: p.k(Knob::Leveling),
             level_clamp: p.k(Knob::LevelClamp),
+            isola: p.k(Knob::LevelingOwnStroke) > 0.0,
             cap_k: p.k(Knob::Capillary),
             cap_gate: p.k(Knob::CapillaryGate),
             visc_threshold: p.k(Knob::Viscosity),
@@ -195,8 +198,11 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
         paper,
         active,
         bloom,
+        traco,
         ..
     } = g;
+    let traco_full: &[u16] = traco;
+    let isola = c.isola && !traco_full.is_empty();
     // Tudo abaixo é LEITURA — é isto que faz do passe um gather, e o
     // compilador o verifica em vez de um comentário o prometer.
     let film_full: &[f32] = film;
@@ -267,13 +273,26 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
 
                 // Leveling: a água corre do grosso para o fino, clampada por
                 // eixo. (Diferença finita ⇒ leva o `dif`.)
-                let mut lx = (film_m[kfl] as f64 - film_m[kfr] as f64) * c.level_k * c.dif;
+                let fx = fx_off as usize;
+                let [wx, wy] = super::parede_do_traco(isola.then(|| {
+                    let viz = [frow + kfl, frow + kfr, fy_u * fine_s + fx + kf, fy_d * fine_s + fx + kf];
+                    (traco_full, frow + kf, viz)
+                }));
+                let mut lx = if wx {
+                    0.0
+                } else {
+                    (film_m[kfl] as f64 - film_m[kfr] as f64) * c.level_k * c.dif
+                };
                 if lx > c.level_clamp {
                     lx = c.level_clamp;
                 } else if lx < -c.level_clamp {
                     lx = -c.level_clamp;
                 }
-                let mut ly = (film_u[kf] as f64 - film_d[kf] as f64) * c.level_k * c.dif;
+                let mut ly = if wy {
+                    0.0
+                } else {
+                    (film_u[kf] as f64 - film_d[kf] as f64) * c.level_k * c.dif
+                };
                 if ly > c.level_clamp {
                     ly = c.level_clamp;
                 } else if ly < -c.level_clamp {
@@ -405,8 +424,8 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                 if let Some(gt) = c.gota {
                     (ex, ey) = gt.aplica(ex, ey, fi, fine_s, film_full, wet_full);
                 }
-                fxr[x as usize] = clamp_sym(ex, c.max_v) as f32;
-                fyr[x as usize] = clamp_sym(ey, c.max_v) as f32;
+                fxr[x as usize] = if wx { 0.0 } else { clamp_sym(ex, c.max_v) as f32 };
+                fyr[x as usize] = if wy { 0.0 } else { clamp_sym(ey, c.max_v) as f32 };
                 i += 1;
             }
         },

@@ -68,6 +68,11 @@ impl Engine {
     /// the stroke reaches the edge).
     pub fn begin_direct_stroke(&mut self, lane: usize, x: f64, y: f64) {
         self.stroke_down = true;
+        // O traço NOVO (a lane 0 nasce primeiro; as cópias e as do Tiling são o mesmo traço): o número que a sua
+        // tinta guarda ([`crate::grid::Grid::traco`]) — o `0` fica para «nenhum».
+        if lane == 0 {
+            self.sim.traco_actual = self.sim.traco_actual.wrapping_add(1).max(1);
+        }
         while self.lane_trails.len() <= lane {
             self.lane_trails.push(Trail::default());
         }

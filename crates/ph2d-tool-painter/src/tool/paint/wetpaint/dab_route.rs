@@ -22,6 +22,7 @@ impl PainterTool {
     /// is already mirrored (Symmetry) and replicated (Tiling) — the engine
     /// sees exactly what the colour routes would have seen.
     pub(in crate::tool::paint) fn stamp_dabs_wetpaint(&mut self, dabs: &[Dab], brush: &BrushSpec) {
+        let brush = &Self::grao_do_wet(brush); // o grão nunca maior que ⅓ da ponta (J2 §7 b; idempotente)
         // A ponta de N imagens (L19): também o lote ADIADO (pousado no tique) carimba cada corrida com a sua imagem.
         if self.mangueira_viva() {
             return self.stamp_dabs_mangueira_com(dabs, |t, corrida| t.stamp_dabs_wetpaint(corrida, brush));
@@ -200,7 +201,7 @@ impl PainterTool {
         // `k` conta os sub-dabs de trás para a frente (`0` = o dab); `passo` = o sub-passo, com cápsula (`lote`).
         let sub = super::lote::sub_passo_do_lote(&sess.engine.tuning, brush, ratio);
         let fino = super::lote::peso_do_passo_fino(brush, ratio);
-        sess.engine.agua_do_dab = f64::from(fino).recip();
+        super::lote::acerta_o_lote(&mut sess.engine, brush, fino);
         let sub_dabs: Vec<(usize, u64, Option<f32>, Dab)> = dabs
             .iter()
             .enumerate()
@@ -486,21 +487,12 @@ impl PainterTool {
                 grid_map::px_to_cell(f64::from(y), ratio),
             );
             // Os FIOS (W2): a pressão de cada fio e a oscilação, no comprimento de caminho do dab, em px.
-            let fios_dab = fios.no_dab(
-                f64::from(d.arc_len),
-                [f64::from(d.dir[0]), f64::from(d.dir[1])],
-                f64::from(d.radius_px / d.stroke_radius_px.max(1e-3)),
-            );
+            let (arco, rumo) = (f64::from(d.arc_len), [d.dir[0], d.dir[1]].map(f64::from));
+            let contacto = f64::from(d.radius_px / d.stroke_radius_px.max(1e-3));
+            let fios_dab = fios.no_dab(arco, rumo, contacto);
             // O RELEVO de cada fio (W3): as faixas dos fios, mesmo sem pressão nem cor, e a altura de cada uma.
-            let relevo_dab = (!relevo.neutro()).then(|| {
-                fios_dab.unwrap_or_else(|| {
-                    fios.resolvido(
-                        f64::from(d.arc_len),
-                        [f64::from(d.dir[0]), f64::from(d.dir[1])],
-                        f64::from(d.radius_px / d.stroke_radius_px.max(1e-3)),
-                    )
-                })
-            });
+            let relevo_dab = (!relevo.neutro())
+                .then(|| fios_dab.unwrap_or_else(|| fios.resolvido(arco, rumo, contacto)));
             let cor = rampa.as_ref().map(|r| {
                 move |cx: i32, cy: i32, queda: f64| -> [f32; 4] {
                     let v = forma_da_cor.map(|si| valor_da_forma(si, cx, cy));
@@ -602,15 +594,22 @@ impl PainterTool {
                 let (e, alc) = (fp_raio.extent(), sess.engine.silhouette_reach[0].max(1.0));
                 [0, 1].map(|i| cell_r * alc * f64::from(e[i]))
             };
+            // A PONTA DESFIADA (J2 §7 c): cada fio com o seu desvio ao longo do traço ([`super::ponta_das_cerdas`]).
+            let rho = sess.engine.tuning.get(ph2d_wet_paint::tuning::Knob::BristleTipRagged);
+            let alc = meia[0].max(meia[1]) * px_cel;
+            let ponta = super::ponta_das_cerdas::PontaDasCerdas::nova(
+                relevo_dab.or(fios_dab), rho, [centro_x, centro_y], px_cel, alc, &sil,
+            );
+            let sil = |cx: i32, cy: i32| ponta.as_ref().map_or_else(|| sil(cx, cy), |p| p.recorta(&sil, cx, cy));
             // O depósito e o pente leem a MESMA silhueta: guardada no dab ([`super::sil_memo`]), ao byte.
             let memo = relevo_dab.map(|_| super::sil_memo::SilMemo::nova(cell_x, cell_y, meia));
             let sil = |cx: i32, cy: i32| -> f64 {
                 memo.as_ref()
+                    .map_or_else(|| sil(cx, cy), |m| m.ou(cx, cy, sil))
+            };
             // O dual brush (L6) recorta o que POUSA pelo canal do padrão (depois do portão do papel, `RecorteNoWet`).
             let pad = dual.as_ref().map(|r| r.padrao(padrao_arg, &sil, ratio));
             let padrao_arg = pad.as_ref().map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));
-                    .map_or_else(|| sil(cx, cy), |m| m.ou(cx, cy, sil))
-            };
             if erasing {
                 // W2.6: the same §9 mapping, routed to the engine's ERASER —
                 // silhouette and grain shape the erase exactly as they shape

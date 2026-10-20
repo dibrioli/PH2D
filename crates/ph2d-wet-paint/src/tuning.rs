@@ -157,9 +157,21 @@ pub enum Knob {
     /// O sub-passo da cápsula pelo inteiro de células mais PERTO em vez de para BAIXO (`1`;
     /// `capsula::sub_passo_mais_perto`): os pincéis secos de grão, onde o de baixo dobra o custo (doc 51 §4).
     CapsuleRoundNearest,
+    /// ⭐ **O relevo pelo DIÂMETRO** (J2, 03_MOTORES §7 c): o expoente `γ` do relevo que a célula guarda,
+    /// `Emboss · (ref ÷ D)^γ` com `D` o diâmetro do traço — o relevo das cerdas do Rebelle não cresce com o
+    /// pincel (o Bristle Flat lê 15,6 a 41 px e 11,3 a 202). `0` = o de antes, ao bit.
+    EmbossSizeExp,
+    /// … o diâmetro (px) a que o `Emboss` do preset foi medido (o factor `1`).
+    EmbossSizeRef,
+    /// ⭐ **A ponta DESFIADA das cerdas** (J2, 03_MOTORES §7 c): a amplitude do desvio de cada fio ao longo do traço
+    /// (a pegada dele deslocada; o desfiado das duas pontas) — `0` = a pegada de sempre, ao bit.
+    BristleTipRagged,
+    /// ⭐ **O nivelamento não atravessa para OUTRO traço** (J2, 03_MOTORES §7 d): o filme de um traço não escoa
+    /// para a tinta molhada de outro (`1`); `0` = o nivelamento de sempre, ao bit.
+    LevelingOwnStroke,
 }
 
-pub const KNOB_COUNT: usize = 89;
+pub const KNOB_COUNT: usize = 93;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

@@ -742,7 +742,6 @@ const OIL_BRISTLE: Receita = Receita {
     extras: &[
         ("felt", 0.05),
         ("bristleStrength", 2.0),
-        ("emboss", 0.7),
         ("bristlePressure", 1.2),
         ("bristleLaneWidth", 1.5),
         ("bristleLift", 0.4),
@@ -756,10 +755,18 @@ const OIL_BRISTLE: Receita = Receita {
         // e 4,71 a 3 (tecto 2,78 · 2,60 · 2,50; doc 51 §3).
         ("capsuleMaxPx", 2.0),
         ("pressureSizeCurve", 0.25), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 2.0),
+        // As leis de escala do Wet (J2, 03_MOTORES §7 c/d; `as_leis_da_escala`): o relevo pelo diâmetro (o Bristle Flat
+        // do Rebelle 15,6 → 11,3 de 41 a 202 px; o nosso crescia 15 → 17), a tinta que não escoa para a faixa molhada
+        // (a lente 19/12 → 12/12) e a ponta recta e desfiada de cada fio (6,5 px a 200 no Rebelle).
+        // O expoente 0,4: o através 14 → 11 de 41 a 202 px (o Rebelle 15,4 → 11,5); a ponta ρ 0,8: desfiado ~6 px a 200.
+        ("emboss", 0.7), ("embossSizeExp", 0.4), ("embossSizeRef", 41.0), ("levelingOwnStroke", 1.0),
+        ("bristleTipRagged", 0.8),
     ],
     grao: None,
     achatado: Some((0.68, 90)),
-    pincel: &[],
+    // A lâmina é um RECTÂNGULO na pegada (a quina 1: o corte recto a toda a largura); o desfiado é a lei das cerdas
+    // (`bristleTipRagged`, J2 §7 c).
+    pincel: &[("dab_quina", "1.0")],
 };
 
 

@@ -16,6 +16,7 @@ mod a_lei_da_tinta;
 mod a_luz_do_impasto_e_a_de_antes_da_poda;
 mod a_cauda_das_pontas; // L5 + L18/L19: a cauda pela porta do despacho e com o fim do trilho de píxel
 mod as_formas;
+mod as_leis_da_escala; // 03_MOTORES §7 c, d, b-resto: o relevo, a ponta das cerdas, a lente, o grão fino
 mod exame_bancada;
 mod leis_sistemicas;
 mod macro_agua;

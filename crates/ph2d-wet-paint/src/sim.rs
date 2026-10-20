@@ -51,6 +51,10 @@ pub struct Params {
     pub ecra: crate::assenta::Ecra,
     /// [`Sim::semente_do_po`].
     pub semente_do_po: u32,
+    /// [`Sim::relevo_do_tamanho`].
+    pub relevo_do_tamanho: f64,
+    /// [`Sim::traco_actual`].
+    pub traco_actual: u16,
 }
 
 impl Params {
@@ -132,6 +136,12 @@ pub struct Sim {
     /// **A semente do PÓ deste dab** ([`Knob::Dust`]): o hospedeiro sorteia-a por dab do fluxo do traço
     /// (dabs parados no mesmo lugar pousam pontos novos); o motor mistura-lhe o centro do dab.
     pub semente_do_po: u32,
+    /// **O relevo pelo diâmetro do traço** ([`Knob::EmbossSizeExp`]): o factor que o hospedeiro põe por lote e que
+    /// multiplica o `Emboss` que a célula guarda ao receber a tinta. `1` = o de antes, ao bit.
+    pub relevo_do_tamanho: f64,
+    /// **O traço de agora** ([`Knob::LevelingOwnStroke`]): o número que cada célula pintada guarda
+    /// ([`crate::grid::Grid::traco`]); `0` = nenhum. Muda a cada traço ([`crate::painter::Engine::begin_direct_stroke`]).
+    pub traco_actual: u16,
     /// Force-skip every SPEC §17 extension code path (neutrality test §18.10).
     pub ext_bypass: bool,
     /// **O solver é INDEPENDENTE DE ORDEM?** `true` (o default) roda o
@@ -210,6 +220,8 @@ impl Default for Sim {
             esconde: 1.0,
             camadas_transparentes: false,
             semente_do_po: 0,
+            relevo_do_tamanho: 1.0,
+            traco_actual: 0,
             ext_bypass: false,
             order_invariant: true,
             pending: None,
@@ -310,6 +322,8 @@ impl Sim {
                 },
             },
             semente_do_po: self.semente_do_po,
+            relevo_do_tamanho: self.relevo_do_tamanho,
+            traco_actual: self.traco_actual,
         }
     }
 }

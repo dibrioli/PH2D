@@ -242,7 +242,8 @@ fn ponta_e_tubo(px: &[u8], w: usize) -> (f64, f64) {
     (curva, estrias)
 }
 
-/// SONDA **(d) A LENTE sobre a faixa molhada** (03_MOTORES §7 d — ABERTA, com o porquê): o azul do óleo que cruza a
+/// SONDA **(d) A LENTE sobre a faixa molhada** (03_MOTORES §7 d — FECHADA: `as_leis_da_escala::a_tinta_molhada_nao_alarga_o_traco`;
+/// o porquê de antes): o azul do óleo que cruza a
 /// faixa vermelha ainda molhada tem no Rebelle a largura que tem sobre a seca (12/12 px, 1,00); o nosso Oil Bristle
 /// incha 1,58× numa lente clara. Mecanismo: o NIVELAMENTO do filme (`ph2d-wet-paint/src/solver.rs`, o termo
 /// `level_k` da diferença do filme entre vizinhos) escoa o filme do dab novo pelas células que a faixa molhada mantém
@@ -250,7 +251,7 @@ fn ponta_e_tubo(px: &[u8], w: usize) -> (f64, f64) {
 /// nivelamento é o que alisa o relevo dos fios no traço inclinado: a escada do W3b sobe para 2,87 (≤ 2,60), e
 /// nenhum `emboss` (0,5–0,7) cabe nas duas barras do relevo (escada e contraste). A cura é de motor.
 #[test]
-#[ignore = "sonda: a lente do óleo sobre a tinta molhada (03_MOTORES §7 d, aberta)"]
+#[ignore = "sonda: a lente do óleo sobre a tinta molhada (03_MOTORES §7 d; o portão é as_leis_da_escala)"]
 fn sonda_a_lente_sobre_a_molhada() {
     let o = oraculo();
     for nome in ["Oil Bristle", "Dabber"] {
@@ -264,14 +265,15 @@ fn sonda_a_lente_sobre_a_molhada() {
     }
 }
 
-/// SONDA **(c) A ponta e as estrias do pincel CHATO de óleo** (03_MOTORES §7 c — ABERTA, com o porquê): o recto de
+/// SONDA **(c) A ponta e as estrias do pincel CHATO de óleo** (03_MOTORES §7 c — FECHADA: `as_leis_da_escala`; o porquê
+/// de antes): o recto de
 /// 200 px do Rebelle acaba em corte recto e desfiado (curva −0,02, desfiado 6,5 px) e as estrias são escuras e
 /// baixas (p95 − p5 = 29); o nosso acaba na meia-elipse da pegada achatada (curva 0,08, desfiado 0,7 px) e as
 /// estrias claras do relevo têm o dobro (55). A ponta RETA do preset (`dab_quina` 1) corta recto (0,00) mas tira
 /// o contraste do relevo a 41 px do vale (13,3 × 12,1 ± 1,1); o `emboss` 0,3 casa as estrias a 200 px mas parte o
 /// contraste a 41 px (o relevo CRESCE com o tamanho no nosso e não no Rebelle). A cura é de motor.
 #[test]
-#[ignore = "sonda: a ponta e as estrias do óleo (03_MOTORES §7 c, aberta)"]
+#[ignore = "sonda: a ponta e as estrias do óleo (03_MOTORES §7 c; o portão é as_leis_da_escala)"]
 fn sonda_a_ponta_e_as_estrias_do_oleo() {
     let o = oraculo();
     let p = pinceis("Oil Bristle").remove(0);

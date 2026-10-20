@@ -312,6 +312,7 @@ pub(crate) mod fita; // a FITA do worker: a água de uma macro idêntica à grav
 pub(super) mod grid_map; // a grade do fluido != a grade de PIXELS — filho por LOC
 pub(super) mod largura; // a LARGURA PROMETIDA (W2): o raio do motor sai da tabela do preset
 mod lote; // o papel e o sub-passo da cápsula de cada lote — filho de dab_route por LOC
+mod ponta_das_cerdas; // a ponta RECTA e DESFIADA das cerdas (J2 §7 c) — filho de dab_route por LOC
 mod session; // what a wet SESSION is (data model) — child file (LOC cap)
 use session::{Lane, PaperKey};
 pub(super) use session::{WetEngineFacts, WetSession};

@@ -224,7 +224,13 @@ impl Trail {
         let drag_w1 = (drag * 255.0).trunc() as i32; // integer byte weights: they
         let drag_w2 = ((1.0 - drag) * 255.0).trunc() as i32; // sum < 256 on purpose, so
         let water_cap = p.k(Knob::WaterCap); // each drag leaks ~0.8% wetness
-        let relevo = p.k(Knob::Emboss) as f32;
+        // O relevo pelo diâmetro do traço (J2 §7 c): `1` = o `Emboss` do pincel, ao bit.
+        let relevo = (p.k(Knob::Emboss) * p.relevo_do_tamanho) as f32;
+        // O traço de cada célula (J2 §7 d): só com a lei e um traço aberto.
+        let traco = (p.k(Knob::LevelingOwnStroke) > 0.0 && p.traco_actual != 0).then_some(p.traco_actual);
+        if traco.is_some() {
+            crate::grid::traco::garante(g);
+        }
         let vela = p.k(Knob::Glaze) as f32;
         if vela > 0.0 && std::mem::take(&mut self.por_assentar_pendente) {
             self.por_assentar.clear();
@@ -251,6 +257,9 @@ impl Trail {
                 }
                 let i = cx as usize + cy as usize * s;
                 // O relevo pousa com a tinta (Bug #48): a média, pela massa, do que estava e do que chega.
+                if let Some(t) = traco {
+                    g.traco[i] = t;
+                }
                 let r_old = g.relevo[i];
                 if r_old != relevo {
                     let m_old = g.susp[i] as f64 + g.sett[i] as f64;

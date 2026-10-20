@@ -139,6 +139,21 @@ impl Gota {
 /// **As diferenças finitas levam o [`crate::flow::diff_scale`]** e nada mais
 /// leva: o nivelamento e o capilar são gradientes; a viscosidade é uma média;
 /// os empurrões do fingering e do backrun já são velocidades.
+/// ⭐ **A PAREDE entre dois traços** (J2, 03_MOTORES §7 d — a lente do óleo sobre a faixa molhada): os eixos `[x, y]`
+/// em que a célula `c` tem um vizinho (`[esquerda, direita, cima, baixo]`, índices finos) de OUTRO traço, as duas
+/// pintadas ([`Grid::traco`]). Nesses eixos o fluxo é zero — nem o nivelamento nem a velocidade que ele deixa
+/// atravessam: a tinta de um traço mistura-se com a molhada de baixo onde POUSA, e não escoa para dentro da de
+/// outro. A porta das três rotas do fluxo ([`build_flow_field`], a de Jacobi e [`smooth_velocity`]); sem a lei
+/// ([`Knob::LevelingOwnStroke`] ou sem o campo), `[false, false]` e o fluxo de sempre, ao bit.
+#[inline]
+pub(crate) fn parede_do_traco(traco: Option<(&[u16], usize, [usize; 4])>) -> [bool; 2] {
+    let Some((t, c, [l, r, u, d])) = traco else {
+        return [false, false];
+    };
+    let sep = |j: usize| crate::grid::traco::separa(t, c, j);
+    [sep(l) || sep(r), sep(u) || sep(d)]
+}
+
 pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: bool) {
     let fine_s = g.s;
     let (gw, gh) = (g.w as i32, g.h as i32);
@@ -169,6 +184,7 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
     // Hoist every knob out of the hot loop.
     let level_k = p.k(Knob::Leveling);
     let level_clamp = p.k(Knob::LevelClamp);
+    let isola = p.k(Knob::LevelingOwnStroke) > 0.0 && !g.traco.is_empty();
     let cap_k = p.k(Knob::Capillary);
     let cap_gate = p.k(Knob::CapillaryGate);
     let visc_threshold = p.k(Knob::Viscosity);
@@ -195,8 +211,10 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
         paper,
         active,
         bloom,
+        traco,
         ..
     } = g;
+    let traco_full: &[u16] = traco;
 
     // Per-row subslices of the READ-ONLY arrays (film/paper/vel/active are
     // never written by this pass on any path) let the compiler prove the
@@ -267,13 +285,26 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
 
             // Leveling: water flows thick -> thin, clamped per axis.
             // (Diferença finita ⇒ leva o `dif`.)
-            let mut lx = (film_m[kfl] as f64 - film_m[kfr] as f64) * level_k * dif;
+            let fx = fx_off as usize;
+            let [wx, wy] = parede_do_traco(isola.then(|| {
+                let viz = [frow + kfl, frow + kfr, fy_u * fine_s + fx + kf, fy_d * fine_s + fx + kf];
+                (traco_full, frow + kf, viz)
+            }));
+            let mut lx = if wx {
+                0.0
+            } else {
+                (film_m[kfl] as f64 - film_m[kfr] as f64) * level_k * dif
+            };
             if lx > level_clamp {
                 lx = level_clamp;
             } else if lx < -level_clamp {
                 lx = -level_clamp;
             }
-            let mut ly = (film_u[kf] as f64 - film_d[kf] as f64) * level_k * dif;
+            let mut ly = if wy {
+                0.0
+            } else {
+                (film_u[kf] as f64 - film_d[kf] as f64) * level_k * dif
+            };
             if ly > level_clamp {
                 ly = level_clamp;
             } else if ly < -level_clamp {
@@ -454,8 +485,8 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
             if let Some(gt) = p.gota {
                 (ex, ey) = gt.aplica(ex, ey, fi, fine_s, film_full, wet);
             }
-            flow_x[i] = clamp_sym(ex, max_v) as f32;
-            flow_y[i] = clamp_sym(ey, max_v) as f32;
+            flow_x[i] = if wx { 0.0 } else { clamp_sym(ex, max_v) as f32 };
+            flow_y[i] = if wy { 0.0 } else { clamp_sym(ey, max_v) as f32 };
             i += 1;
         }
     }
@@ -514,8 +545,11 @@ pub fn smooth_velocity_rows(g: &mut Grid, p: &Params, mode: Rows) {
         flow_y,
         active,
         wet,
+        traco,
         ..
     } = g;
+    // A PAREDE entre traços (J2 §7 d, [`parede_do_traco`]).
+    let traco: Option<&[u16]> = (p.k(Knob::LevelingOwnStroke) > 0.0 && !traco.is_empty()).then_some(traco);
     let row_lo: &[i32] = frow_lo;
     let row_hi: &[i32] = frow_hi;
     let film: &[f32] = film;
@@ -577,8 +611,12 @@ pub fn smooth_velocity_rows(g: &mut Grid, p: &Params, mode: Rows) {
                 } else if fy < -max_v {
                     fy = -max_v;
                 }
-                fxr[x as usize] = fx as f32;
-                fyr[x as usize] = fy as f32;
+                let [wx, wy] = parede_do_traco(traco.map(|t| {
+                    let pi = |dx: i32, dy: i32| crate::flow::probe_idx(x + dx, y + dy, gw, gh, s, geom.rf);
+                    (t, fi, [pi(-1, 0), pi(1, 0), pi(0, -1), pi(0, 1)])
+                }));
+                fxr[x as usize] = if wx { 0.0 } else { fx as f32 };
+                fyr[x as usize] = if wy { 0.0 } else { fy as f32 };
             }
         },
     );

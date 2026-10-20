@@ -12,6 +12,7 @@ const SEMENTE_ONDA: u32 = 0x6f69_0002;
 const SEMENTE_OSCILACAO: u32 = 0x6f69_0003;
 const SEMENTE_SPAN: u32 = 0x6f69_0004;
 const SEMENTE_COR: u32 = 0x6f69_0005;
+const SEMENTE_PONTA: u32 = 0x6f69_0007;
 
 /// O tecto da onda da largura: a esta amplitude um fio estreita até ¼ da largura e nunca some (o `min_width`
 /// 0,25 dos fios do Rebelle, doc 02 §2.4).
@@ -238,6 +239,27 @@ impl FiosNoDab {
         };
         let (ca, cb) = (centro(a), centro(b));
         ([a, b], ((u - ca) / (cb - ca)).clamp(0.0, 1.0))
+    }
+
+    /// A normal do traço neste dab (unitária) — a tangente é `[n₁, −n₀]`.
+    #[must_use]
+    pub fn normal(&self) -> [f64; 2] {
+        self.normal
+    }
+
+    /// O fio do ponto a `d` px do centro do dab (o de [`Self::no_ponto`], sem a conta do ganho).
+    #[must_use]
+    pub fn fio_no_ponto(&self, d: [f64; 2]) -> i32 {
+        let n = self.normal;
+        let q = [d[0] - n[0] * self.desvio_px, d[1] - n[1] * self.desvio_px];
+        self.fio((q[0] * n[0] + q[1] * n[1]) / self.fios.largura_px.max(0.25))
+    }
+
+    /// ⭐ **O comprimento do fio `fio`** (J2, 03_MOTORES §7 c — a ponta das cerdas): a fracção `1 + ρ·(1 − 2u)` do
+    /// comprimento médio, `u` sorteado por fio (o mesmo o traço inteiro) — `ρ = 0` = todos iguais.
+    #[must_use]
+    pub fn comprimento_do_fio(fio: i32, rho: f64) -> f64 {
+        1.0 + rho * (1.0 - 2.0 * crate::rng::hash2(fio, 0, SEMENTE_PONTA))
     }
 
     /// O ganho da pressão do fio `fio` neste dab — o mesmo para todos os pontos dele.

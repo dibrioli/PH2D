@@ -25,6 +25,9 @@ pub struct Detail {
     /// Uma nota cuja letra fica abaixo do `READ_PX` vira um BLOCO da cor dela: sem sombra nem
     /// riscas (a queixa aberta do Miro: de longe, um brainstorm é uma mancha de cores).
     pub note_blocks: bool,
+    /// Uma forma em rascunho cujo lado maior fica abaixo disto no ecrã desenha-se FINAL (B6). `0` =
+    /// sempre à mão.
+    pub sketch_final_below_px: f64,
 }
 
 impl Default for Detail {
@@ -32,9 +35,14 @@ impl Default for Detail {
         Self {
             frame_title_only_px: FRAME_TITLE_ONLY_PX,
             note_blocks: true,
+            sketch_final_below_px: SKETCH_FINAL_BELOW_PX,
         }
     }
 }
+
+/// O limiar de nascença de [`Detail::sketch_final_below_px`]. Medido (doc 16 §1, `measure_bloco4`): até 10 px
+/// o final de contorno engrossado não se distingue do rascunho (abaixo do controlo de ½ px); a 12 px já.
+pub const SKETCH_FINAL_BELOW_PX: f64 = 11.0;
 
 /// O limiar de nascença de [`Detail::frame_title_only_px`]. ⚠️ Medido na 2.ª rodada da W5 (ver a
 /// tabela no handoff W5 e na régua).

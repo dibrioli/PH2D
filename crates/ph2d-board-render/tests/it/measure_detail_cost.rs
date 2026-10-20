@@ -73,6 +73,7 @@ fn detail(frame_px: f64, notes: bool) -> Detail {
     Detail {
         frame_title_only_px: frame_px,
         note_blocks: notes,
+        sketch_final_below_px: 0.0,
     }
 }
 

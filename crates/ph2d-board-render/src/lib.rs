@@ -25,7 +25,7 @@ mod video;
 
 pub use anim::{Animate, frame_ms, install_animator};
 pub use facilitate::{paint_stamp, paint_votes, stamp_color, stamp_path};
-pub use frames::{Detail, FRAME_TITLE_ONLY_PX};
+pub use frames::{Detail, FRAME_TITLE_ONLY_PX, SKETCH_FINAL_BELOW_PX};
 pub use gray::{gray_of, to_gray};
 pub use grid::{dot_grid, grid_step_world};
 pub use image::{Decode, Images, Pixels, Salvage, install_decoder, install_salvager, level_to_box};
@@ -66,6 +66,9 @@ const GREEK_ALPHA: f32 = 0.35;
 /// curva (o «nível de detalhe» de quem se afastou muito). ⛔ Medido 06/10: a 2 px, 100 mil formas de
 /// 2,5 px desenhadas inteiras custavam 26,6 ms de CPU por quadro.
 const DOT_PX: f64 = 4.0;
+/// O contorno de uma forma em rascunho desenhada final de longe ([`Detail::sketch_final_below_px`]): o traço
+/// à mão passa a linha duas vezes. Medido (doc 16 §1): ×2,5 fica abaixo do controlo de ½ px de 5 a 10 px.
+const SKETCH_FAR_STROKE: f64 = 2.5;
 
 /// Quantos quadros um contorno guardado sobrevive sem ser desenhado.
 const KEEP_FRAMES: u64 = 120;
@@ -440,10 +443,15 @@ fn paint_shape(
     let t = v * to_world(el);
     let faded = st.opacity < 100;
     // O rascunho, ou um final com o preenchimento às riscas que veio de um `.excalidraw` (W9).
-    let hand = st.sketch || st.look.fill_style != ph2d_board_model::FillStyle::Solid;
+    // De longe o rascunho é o final com o contorno engrossado: a mesma imagem, sem o traço à mão (B6, doc 16).
+    let solid = st.look.fill_style == ph2d_board_model::FillStyle::Solid;
+    let far =
+        st.sketch && solid && el.w.max(el.h) * zoom < cache.lod(cache.detail.sketch_final_below_px);
+    let hand = (st.sketch && !far) || !solid;
+    let width = st.stroke_width * if far { SKETCH_FAR_STROKE } else { 1.0 };
     if faded {
         let [x0, y0, x1, y1] = el.aabb();
-        let pad = st.stroke_width
+        let pad = width
             + if hand {
                 sketch::hand_reach(st, el.w, el.h)
             } else {
@@ -469,7 +477,7 @@ fn paint_shape(
             scene.fill_path(&o.fill, &Brush::Solid(doc_color(c)), t);
         }
         if let Some(c) = st.stroke.filter(|_| st.stroke_width > 0.0) {
-            let stroke = style_stroke(st.stroke_width, st.dash);
+            let stroke = style_stroke(width, st.dash);
             let brush = Brush::Solid(cache.ink.color(c));
             scene.stroke_path(&stroke, t, &brush, &o.fill);
             if !o.lines.is_empty() {

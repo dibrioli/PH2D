@@ -145,3 +145,43 @@ fn a_salted_key_stays_in_its_gap_and_differs_by_salt() {
     assert!(just.clone().salted(u64::MAX, Some(&just)) == just);
     assert!(FracKey::between(Some(&a), Some(&b.clone().max(a.clone()))) >= a.clone().min(b));
 }
+
+/// ⭐ B7 — o prefixo inteiro ordena como a chave: chaves de inserções ao acaso, com caudas de quem colabora e
+/// longas com o mesmo começo; um prefixo MENOR nunca é de uma chave maior, e uma chave menor nunca tem um
+/// prefixo maior.
+#[test]
+fn the_prefix_orders_like_the_key() {
+    let mut rng = Lcg(7);
+    let mut keys: Vec<FracKey> = vec![FracKey::between(None, None)];
+    for i in 0..3_000 {
+        keys.sort();
+        let k = rng.next(keys.len() + 1);
+        let lo = k.checked_sub(1).map(|j| &keys[j]);
+        let hi = keys.get(k);
+        let mut new = FracKey::between(lo, hi);
+        if i % 5 == 0 {
+            new = new.salted(rng.next(1 << 30) as u64, hi);
+        }
+        keys.push(new);
+    }
+    // Uma pilha de inserções sempre no MESMO vão: o começo partilhado passa dos 8 bytes.
+    let (mut lo, hi) = (key("a0"), key("a1"));
+    for _ in 0..40 {
+        lo = FracKey::between(Some(&lo), Some(&hi));
+        keys.push(lo.clone());
+    }
+    assert!(
+        keys.iter().any(|k| k.as_str().len() > 8),
+        "há chaves além do prefixo"
+    );
+    for a in &keys {
+        for b in keys.iter().step_by(7) {
+            if a.prefix() < b.prefix() {
+                assert!(a < b, "{a:?} {b:?}");
+            }
+            if a < b {
+                assert!(a.prefix() <= b.prefix(), "{a:?} {b:?}");
+            }
+        }
+    }
+}

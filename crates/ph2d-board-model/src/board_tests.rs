@@ -536,3 +536,90 @@ fn a_format_9_file_still_opens_and_its_team_gets_ids() {
 
 /// Gravados pelo build do formato 9 (`c9f29c3e6`).
 const V9_BYTES: &[u8] = include_bytes!("../fixtures/format_v9.bin");
+
+/// ⭐ B7 — a ordem de desenho é a das chaves (z, depois id) com os vídeos por cima, num quadro de z BARALHADO,
+/// com empates (duas pessoas criaram no mesmo sítio) e chaves além dos 8 bytes do prefixo.
+#[test]
+fn the_paint_order_is_the_key_order_on_a_shuffled_board() {
+    use crate::{Element, ElementId, FracKey};
+    let mut set = BoardSet::default();
+    let id = set.create("z".into());
+    let b = set.get_mut(id).unwrap();
+    let mut zs: Vec<FracKey> = vec![FracKey::between(None, None)];
+    for _ in 0..300 {
+        let last = zs.last().cloned();
+        zs.push(FracKey::between(last.as_ref(), None));
+    }
+    let (mut lo, hi) = (zs[10].clone(), zs[11].clone());
+    for _ in 0..30 {
+        lo = FracKey::between(Some(&lo), Some(&hi));
+        zs.push(lo.clone());
+    }
+    let n = zs.len();
+    let mut s = 0x2545_F491_4F6C_DD1D_u64;
+    for i in 0..n {
+        s ^= s << 13;
+        s ^= s >> 7;
+        s ^= s << 17;
+        let z = zs[(s % n as u64) as usize].clone(); // com repetição: empates de z
+        let el = if i % 50 == 7 {
+            let embed = crate::Embed {
+                link: "https://youtu.be/dQw4w9WgXcQ".into(),
+                video: crate::Video::YouTube {
+                    id: "dQw4w9WgXcQ".into(),
+                    start: 0,
+                    vertical: false,
+                },
+                style: Style::new(None, None, Rgba([0, 0, 0, 255])),
+            };
+            Element::new_embed(ElementId(i as u64 + 1), z, embed, [0.0, 0.0, 10.0, 10.0])
+        } else {
+            let shape = Shape {
+                kind: ShapeType::Rectangle,
+                style: Style::new(None, None, Rgba([0, 0, 0, 255])),
+                text: RichText::plain(""),
+            };
+            Element::new_shape(ElementId(i as u64 + 1), z, shape, [0.0, 0.0, 10.0, 10.0])
+        };
+        BoardOp::Put(el).apply(&mut b.doc);
+    }
+    // Chaves que partilham os 8 bytes do prefixo e só diferem na cauda, com os ids AO CONTRÁRIO delas: só o
+    // desempate pelo texto as põe na ordem.
+    let (mut lo, hi) = (zs[20].clone(), zs[21].clone());
+    let mut tail = Vec::new();
+    for _ in 0..200 {
+        lo = FracKey::between(Some(&lo), Some(&hi));
+        tail.push(lo.clone());
+    }
+    let long: Vec<FracKey> = tail
+        .into_iter()
+        .filter(|k| k.as_str().len() > 9)
+        .take(20)
+        .collect();
+    assert!(long.len() == 20 && long[0].prefix() == long[19].prefix() && long[0] < long[19]);
+    for (j, z) in long.into_iter().enumerate() {
+        let shape = Shape {
+            kind: ShapeType::Rectangle,
+            style: Style::new(None, None, Rgba([0, 0, 0, 255])),
+            text: RichText::plain(""),
+        };
+        let el = Element::new_shape(
+            ElementId(10_000 - j as u64),
+            z,
+            shape,
+            [0.0, 0.0, 10.0, 10.0],
+        );
+        BoardOp::Put(el).apply(&mut b.doc);
+    }
+    let mut want: Vec<&Element> = b.doc.live().collect();
+    want.sort_by(|a, b| a.z.cmp(&b.z).then(a.id.cmp(&b.id)));
+    let ids = |v: &[&Element]| v.iter().map(|e| e.id).collect::<Vec<_>>();
+    assert_eq!(ids(&b.doc.live_in_z_order()), ids(&want));
+    want.sort_by_key(|e| e.embed().is_some());
+    let paint = b.doc.live_in_paint_order();
+    assert_eq!(ids(&paint), ids(&want));
+    assert!(
+        paint.last().unwrap().embed().is_some(),
+        "o vídeo fica por cima"
+    );
+}

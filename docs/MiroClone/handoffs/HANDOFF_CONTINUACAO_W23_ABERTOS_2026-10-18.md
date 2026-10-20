@@ -3,6 +3,7 @@
 > **Estado em 18/10 (bloco 1 fechado): ver [HANDOFF_CONTINUACAO_W23_BLOCO1_2026-10-18.md](HANDOFF_CONTINUACAO_W23_BLOCO1_2026-10-18.md)**
 > **Estado em 18/10 (bloco 2, rede ao vivo, fechado; o próximo é o bloco 3): ver [HANDOFF_CONTINUACAO_W23_BLOCO2_2026-10-18.md](HANDOFF_CONTINUACAO_W23_BLOCO2_2026-10-18.md)**
 > **Estado em 18/10 (o cartão «Live» separado por ligação, pedido do dono, fechado; o próximo é o bloco 3): ver [HANDOFF_CONTINUACAO_W23_CARTAO_LIVE_2026-10-18.md](HANDOFF_CONTINUACAO_W23_CARTAO_LIVE_2026-10-18.md)**
+> **Estado em 20/10 (bloco 4 fechado: B6 e B7 feitos, B10 e B11 já estavam feitos na W16; o próximo é o bloco 5): ver [HANDOFF_CONTINUACAO_W23_BLOCO4_2026-10-20.md](HANDOFF_CONTINUACAO_W23_BLOCO4_2026-10-20.md)**
 > **Estado em 19/10 (B5(4) desfazer das abas feito, mutações do B5(2)/B5(4) corridas; o próximo é o smoke da cena 27, depois o bloco 4): ver [HANDOFF_CONTINUACAO_W23_B5_4_2026-10-19.md](HANDOFF_CONTINUACAO_W23_B5_4_2026-10-19.md)**
 > **Estado em 19/10 (B5(2) textos ao longo da linha feito; o próximo é o B5(4), depois o bloco 4): ver [HANDOFF_CONTINUACAO_W23_B5_2_2026-10-19.md](HANDOFF_CONTINUACAO_W23_B5_2_2026-10-19.md)**
 > **Estado em 19/10 (smoke do dono curado e B5(1) cotovelo feito; o próximo é o B5(2), depois B5(4) e o bloco 4): ver [HANDOFF_CONTINUACAO_W23_SMOKE19_B5_1_2026-10-19.md](HANDOFF_CONTINUACAO_W23_SMOKE19_B5_1_2026-10-19.md)** (anterior, 18/10: [bloco 3](HANDOFF_CONTINUACAO_W23_BLOCO3_2026-10-18.md))
@@ -44,12 +45,12 @@
 | B3 | Mapa mental: a letra da raiz não re-mede os filhos; «−» só aparece sem pairar; o vertical herda o horizontal; ramos saem lisos no rascunho | W6 §9 | pequeno |
 | B4 | Ponta curta de seta (o Excalidraw corta a metade do último trecho; a nossa é fixa) — confira contra a XA2 do `07_fidelidade_excalidraw.md`, pode já estar feita | `HANDOFF_INTEGRACAO_line_MiroClone_2026-10-07.md` §10.3 | pequeno |
 | B5 | Herdados W2–W4, NÃO verificados um a um: arrastar segmento do cotovelo, rótulo ao longo da linha, pontas UML, transbordo e desfazer das abas, cursor sobre as pegas, trackpad, menu do botão direito numa forma, texto-guia do modo em massa | 2026-10-07 §10.6 | vários pequenos |
-| B6 | Rascunho de quadro grande: 10 mil formas à mão 11,1 ms contra 6,0 no final (candidato: desenhar o final abaixo de N px — MEÇA antes) | W5 §10.1 | médio |
-| B7 | Chão das cenas de 100 mil (ordenar os vivos a cada imagem, ~1,3 ms) | W5 §10.2 | médio |
+| ~~B6~~ | ✅ 20/10 — abaixo de 11 px o rascunho é o final de contorno ×2,5 (o final simples VÊ-SE: recusado) — [doc 16 §1](../16_bloco4_velocidade.md) | W5 §10.1 | médio |
+| ~~B7~~ | ✅ 20/10 — ordenar pelo prefixo inteiro da chave de z: baralhado 2,3× mais depressa — [doc 16 §2](../16_bloco4_velocidade.md) | W5 §10.2 | médio |
 | B8 | Agrupar as escritas a 30 Hz só na internet | W11 §9(c) · W11 FECHO §3(c) | pequeno |
 | B9 | Re-ligação no 0.18.1 depois de mexer numa forma usa a lei antiga (pontas saltam 9,5–36,9 px; medir a lei do `focus` antes) | W9 §9 | médio |
-| B10 | Export SVG rasteriza SVG que não usa (só custo) — não confirmado | W14 §6 | pequeno |
-| B11 | Memória do Flip grande no quadro (256 MiB por camada a 8192²) — não confirmado; decidir pela medição | `HANDOFF_CONTINUACAO_W16_O_QUE_FICOU_DAS_IMAGENS_2026-10-11.md` item 5 | médio |
+| ~~B10~~ | ✅ já feito na W16 (161,7 → 1,4 ms) — [doc 16 §3](../16_bloco4_velocidade.md) | W14 §6 | pequeno |
+| ~~B11~~ | ✅ já feito na W16 (ladrilhos; o pico não cresce com as camadas) — [doc 16 §3](../16_bloco4_velocidade.md) | `HANDOFF_CONTINUACAO_W16_O_QUE_FICOU_DAS_IMAGENS_2026-10-11.md` item 5 | médio |
 | B12 | Laço (seleccionar desenhando à volta) | 2026-10-07 §10.5 | médio |
 | B13 | Desenho inteligente do Miro (o traço à mão vira forma) | 2026-10-07 §10.5 | grande |
 | B14 | Menções, notificações e votação anónima entre pessoas — confira o que o ao vivo (W12, ADR-0182) já cobre | W8 §9 · W7 §9 | grande |

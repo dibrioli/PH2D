@@ -644,9 +644,20 @@ impl BoardDoc {
     /// Os elementos vivos e à vista, de trás para a frente (ordem de desenho).
     #[must_use]
     pub fn live_in_z_order(&self) -> Vec<&Element> {
-        let mut v: Vec<&Element> = self.live().collect();
-        v.sort_by(|a, b| a.z.cmp(&b.z).then(a.id.cmp(&b.id)));
-        v
+        // Ordena o prefixo inteiro da chave e só no empate vai ao texto: com o z baralhado, 3× mais depressa que
+        // comparar as chaves (100 mil: 23 → 7,7 ms, doc 16 §2).
+        let live: Vec<&Element> = self.live().collect();
+        let mut keys: Vec<(u64, u32)> = (0u32..)
+            .zip(&live)
+            .map(|(i, e)| (e.z.prefix(), i))
+            .collect();
+        keys.sort_unstable_by(|a, b| {
+            a.0.cmp(&b.0).then_with(|| {
+                let (x, y) = (live[a.1 as usize], live[b.1 as usize]);
+                x.z.cmp(&y.z).then(x.id.cmp(&y.id))
+            })
+        });
+        keys.into_iter().map(|(_, i)| live[i as usize]).collect()
     }
 
     /// ⭐ W21 — o que se VÊ, de trás para a frente: a ordem de z com os vídeos por cima de tudo o resto (entre
@@ -655,8 +666,11 @@ impl BoardDoc {
     /// clique («o de cima») leem esta ordem.
     #[must_use]
     pub fn live_in_paint_order(&self) -> Vec<&Element> {
-        let mut v = self.live_in_z_order();
-        v.sort_by_key(|e| e.embed().is_some());
+        let (mut v, top): (Vec<&Element>, Vec<&Element>) = self
+            .live_in_z_order()
+            .into_iter()
+            .partition(|e| e.embed().is_none());
+        v.extend(top);
         v
     }
 

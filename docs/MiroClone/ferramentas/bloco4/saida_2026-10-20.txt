@@ -1,0 +1,49 @@
+# measure_bloco4 (crates/ph2d-board-render/tests/it/measure_bloco4.rs) — 2026-10-20
+# linha line/MiroClone sobre e109a0890b + o bloco 4 por comitar · perfil smoke · RTX 5060 Ti / Vulkan · 1920x1080 (custo) e 640x480 (visibilidade)
+# ⚠️ máquina carregada por outras linhas (loadavg ao lado): vale a comparação lado a lado (mínimo de 7 rodadas intercaladas), não o número absoluto
+# 'de longe' = o produto com SKETCH_FINAL_BELOW_PX forçado a infinito (o final de contorno ×2,5 em todos os tamanhos)
+
+loadavg no início: 30.57 28.19 25.77 43/3110 3647038
+## B6 custo — 10 mil formas em rascunho (mínimo de 7×20; mediana)
+| forma no ecrã | CPU à mão | CPU de longe | placa à mão | placa de longe |
+| 5 px | 23.95 (24.56) | 15.83 (16.72) | 6.40 (6.87) | 3.11 (3.72) |
+| 6 px | 24.17 (24.61) | 15.52 (15.71) | 6.07 (7.37) | 3.10 (4.39) |
+| 8 px | 23.96 (24.69) | 16.10 (17.36) | 6.61 (11.55) | 3.01 (3.75) |
+| 10 px | 20.78 (21.28) | 13.62 (14.04) | 5.98 (6.88) | 2.48 (2.69) |
+| 11 px | 19.35 (19.80) | 12.54 (13.05) | 4.89 (7.40) | 2.39 (2.59) |
+| 12 px | 17.25 (17.74) | 10.76 (11.28) | 5.22 (6.41) | 2.17 (2.42) |
+| 16 px | 12.94 (13.63) | 7.30 (7.80) | 4.13 (4.54) | 1.89 (2.29) |
+| 24 px | 11.89 (12.21) | 10.00 (10.11) | 12.45 (16.69) | 11.66 (12.25) |
+| 32 px | 7.35 (7.63) | 5.83 (6.38) | 7.53 (7.98) | 7.04 (9.47) |
+## B6 visibilidade — |Δ luma| média · p99,9 (0–255); razão = rascunho × X ÷ controlo (de longe × ele ½ px)
+| forma no ecrã | rascunho × de longe | controlo ½ px | razão de longe | razão final simples (o candidato do W5) · contorno ×2 · ×3 |
+| 5 px | 0.632 · 60 | 1.428 · 109 | 0.44 | 1.12 · 0.65 · 0.33 |
+| 6 px | 0.855 · 59 | 1.892 · 116 | 0.45 | 1.24 · 0.67 · 0.35 |
+| 8 px | 1.643 · 88 | 3.085 · 120 | 0.53 | 1.21 · 0.70 · 0.47 |
+| 10 px | 2.213 · 122 | 4.247 · 119 | 0.52 | 1.29 · 0.70 · 0.54 |
+| 11 px | 2.898 · 127 | 4.697 · 118 | 0.62 | 1.31 · 0.76 · 0.65 |
+| 12 px | 3.314 · 138 | 5.284 · 116 | 0.63 | 1.39 · 0.77 · 0.66 |
+| 16 px | 5.352 · 157 | 7.342 · 113 | 0.73 | 1.55 · 0.82 · 0.86 |
+| 24 px | 10.314 · 209 | 9.488 · 113 | 1.09 | 1.85 · 0.96 · 1.69 |
+| 32 px | 13.337 · 224 | 8.219 · 138 | 1.62 | 2.05 · 1.45 · 2.43 |
+## B7 ordem de desenho (ms por imagem; mínimo de 7×20; mediana)
+### 10 mil à vista
+| o produto (prefixo u64 + partição) | 0.253 | 0.278 |
+| instável + partição | 0.205 | 0.243 |
+| o de antes (estável ×2) | 0.207 | 0.272 |
+| chão: passagem + collect | 0.154 | 0.166 |
+| a imagem inteira | 15.381 | 15.787 |
+### 100 mil, z na ordem dos ids
+| o produto (prefixo u64 + partição) | 7.412 | 8.287 |
+| instável + partição | 8.683 | 9.645 |
+| o de antes (estável ×2) | 8.010 | 9.664 |
+| chão: passagem + collect | 2.307 | 3.009 |
+| a imagem inteira | 25.474 | 27.444 |
+### 100 mil, z baralhado
+| o produto (prefixo u64 + partição) | 9.286 | 10.273 |
+| instável + partição | 20.215 | 23.388 |
+| o de antes (estável ×2) | 21.675 | 22.974 |
+| chão: passagem + collect | 3.511 | 3.855 |
+| a imagem inteira | 40.355 | 42.369 |
+loadavg no fim: 30.39 28.65 26.10 34/3078 3686942
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 68.58s

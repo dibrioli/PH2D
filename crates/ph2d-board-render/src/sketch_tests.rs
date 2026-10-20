@@ -271,3 +271,77 @@ fn a_hand_drawn_curved_arrow_follows_its_route() {
         );
     }
 }
+
+/// Quantos traços à mão a imagem de UMA forma em rascunho gerou, com o lado maior a `px` no ecrã, e a
+/// espessura (mundo) do traço mais grosso que pintou.
+fn hand_drawn_at(px: f64, detail: crate::Detail) -> (usize, f64) {
+    let mut set = ph2d_board_model::BoardSet::default();
+    let id = set.create("b6".into());
+    let b = set.get_mut(id).unwrap();
+    ph2d_board_model::BoardOp::Put(rect(1)).apply(&mut b.doc);
+    b.camera = ph2d_board_model::Camera {
+        center_x: 80.0,
+        center_y: 50.0,
+        zoom: px / 160.0,
+    };
+    let board = &set.boards()[0];
+    let mut routes = ph2d_board_route::RouteCache::default();
+    routes.sync(&board.doc);
+    let mut cache = crate::RenderCache::default();
+    cache.detail = detail;
+    let (mut scene, mut ts) = (
+        VectorScene::new(),
+        ph2d_text::TextSystem::without_system_fonts(),
+    );
+    let area = [0.0, 0.0, 640.0, 480.0];
+    scene.record();
+    crate::paint(
+        board,
+        area,
+        &mut scene,
+        ph2d_tokens::Theme::Forge,
+        &mut ts,
+        &mut cache,
+        &routes,
+        None,
+    );
+    let widest = scene
+        .take_record()
+        .iter()
+        .filter_map(|op| match op {
+            ph2d_vector::DrawOp::Stroke { style, .. } => Some(style.width),
+            _ => None,
+        })
+        .fold(0.0, f64::max);
+    (cache.sketch.rough.len(), widest)
+}
+
+/// ⭐ B6 (doc 16 §1) — abaixo de [`crate::SKETCH_FINAL_BELOW_PX`] no ecrã o rascunho é o FINAL (nenhum traço
+/// à mão gerado; o contorno engrossado imita a linha passada duas vezes); acima, à mão; e o limiar a zero
+/// devolve o desenho de antes.
+#[test]
+fn a_far_sketched_shape_is_drawn_final_and_a_near_one_by_hand() {
+    let lim = crate::SKETCH_FINAL_BELOW_PX;
+    let w = rect(1).shape().unwrap().style.stroke_width;
+    assert!(w > 0.0);
+    let off = crate::Detail {
+        sketch_final_below_px: 0.0,
+        ..crate::Detail::default()
+    };
+    assert_eq!(
+        hand_drawn_at(lim - 1.0, crate::Detail::default()),
+        // O número MEDIDO (doc 16 §1), não a constante: o gate vigia-a.
+        (0, w * 2.5),
+        "de longe: final, de contorno engrossado"
+    );
+    assert_eq!(
+        hand_drawn_at(lim + 1.0, crate::Detail::default()),
+        (1, w),
+        "de perto: à mão"
+    );
+    assert_eq!(
+        hand_drawn_at(lim - 1.0, off),
+        (1, w),
+        "sem limiar: à mão como antes"
+    );
+}

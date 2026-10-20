@@ -253,6 +253,7 @@ pub fn paint_page(
         cache.detail = Detail {
             frame_title_only_px: 0.0,
             note_blocks: false,
+            sketch_final_below_px: 0.0,
         };
     }
     cache.hide_votes = true;

@@ -81,6 +81,16 @@ impl FracKey {
         &self.0
     }
 
+    /// Os primeiros 8 bytes como inteiro (o resto a zero): `a.prefix() < b.prefix()` ⇒ `a < b`, porque a base
+    /// 62 não tem o byte zero. Empate ⇒ compare as chaves. É a chave de ordenar sem ir ao texto (B7, doc 16).
+    #[must_use]
+    pub fn prefix(&self) -> u64 {
+        let mut b = [0u8; 8];
+        let n = self.0.len().min(8);
+        b[..n].copy_from_slice(&self.0.as_bytes()[..n]);
+        u64::from_be_bytes(b)
+    }
+
     /// Esta chave com uma CAUDA de `salt` (4 dígitos, o último nunca zero): continua acima do que
     /// estava abaixo dela e, se cabe, abaixo de `hi` — duas pessoas com caudas diferentes nunca
     /// geram a mesma chave no mesmo sítio. Não cabe ⇒ a chave tal como está.

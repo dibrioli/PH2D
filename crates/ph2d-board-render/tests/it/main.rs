@@ -1,5 +1,6 @@
 //! Testes de integração do desenho do quadro (um binário por crate: `tests/it/`).
 mod frames_paint;
+mod measure_bloco4;
 mod measure_detail_cost;
 mod measure_encode_cost;
 mod measure_facilitate_cost;

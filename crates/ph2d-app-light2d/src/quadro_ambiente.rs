@@ -165,6 +165,8 @@ pub fn config_do_entorno(
         // ⭐ W5o: da vista só se lê a c0 do entorno (`Solver::somar_entorno`).
         so_a_c0: cortes_ligados(),
         arquivo_da_borda: if borda_ligada() { janela() } else { None },
+        // ⭐ §40.2: `PH2D_LIGHT2D_RECORTE=0` = a 2.ª passagem inteira (o mesmo bit, comparar).
+        hrc_recorta_o_arquivo: ligado("PH2D_LIGHT2D_RECORTE"),
         hrc_nasce_duas_vezes: hrc_duas_vezes(),
         hrc_berco: hrc_berco(),
         hrc_em_texturas: hrc_texturas(),

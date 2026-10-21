@@ -318,3 +318,63 @@ fn o_emissor_encostado_a_borda_segue_a_grade_esticada() {
         }
     }
 }
+
+/// ⭐ §40.2 (handoff W6g) — a descida da 2.ª passagem do entorno só onde o arquivo depende NÃO muda um bit
+/// da luz da vista: a cena 5 inteira (os refletores fora da grade), duas câmeras na Baixa e uma na Alta (os
+/// níveis de cima), o recorte ligado × a passagem inteira.
+#[test]
+fn o_recorte_do_arquivo_nao_muda_um_bit() {
+    use ph2d_app_light2d::qualidade::degrau_do;
+    use ph2d_editor_core::luz_edits::NivelDaLuz;
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — saltado");
+        return;
+    };
+    let mut w = World::new();
+    assert!(smoke::encenar(&mut w, 5));
+    let cena = cena_de_luz(&w);
+    for (centro, nivel) in [
+        ([-4.2, -1.8], NivelDaLuz::Baixa),
+        ([-1.0, 0.5], NivelDaLuz::Baixa),
+        ([-4.2, -1.8], NivelDaLuz::Alta),
+    ] {
+        let d = degrau_do(nivel);
+        let a = Camera2d::new(centro, 3.8).world_to_screen_affine(WindowSize::new(FHD.0, FHD.1));
+        let g = grade_do_quadro(a, FHD, d).expect("grade");
+        let luz = |recorta: bool| {
+            let mut s = Solver::novo(&gpu, config_da_vista(&gpu.device, g, a, d)).expect("vista");
+            let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, FHD);
+            s.regiao_fina(i, f);
+            let mut ce = config_do_entorno(&gpu.device, a, FHD, d).expect("o entorno");
+            assert!(ce.arquivo_da_borda.is_some(), "o produto lê o entorno pela borda");
+            ce.hrc_recorta_o_arquivo = recorta;
+            let mut e = Solver::novo(&gpu, ce).expect("entorno");
+            e.regiao_fina([0; 2], [0; 2]);
+            assert!(e.mascarar_miolo(
+                &gpu,
+                Some([
+                    g.origem_m[0],
+                    g.origem_m[1],
+                    g.origem_m[0] + f64::from(g.largura) * g.texel_m,
+                    g.origem_m[1] + f64::from(g.altura) * g.texel_m,
+                ])
+            ));
+            for _ in 0..30 {
+                e.quadro(&gpu, &cena);
+                assert!(s.somar_entorno(&gpu, Some(&e)));
+                s.quadro(&gpu, &cena);
+            }
+            fluencia_lida(&gpu, &s).v
+        };
+        let (com, sem) = (luz(true), luz(false));
+        let diferentes = com.iter().zip(&sem).filter(|(a, b)| a != b).count();
+        eprintln!(
+            "{centro:?} {nivel:?}: {diferentes} de {} texels diferentes",
+            com.len()
+        );
+        assert!(
+            com.len() == sem.len() && diferentes == 0,
+            "{centro:?} {nivel:?}: o recorte mudou {diferentes} texels"
+        );
+    }
+}

@@ -40,9 +40,9 @@ struct Hrc {
     // ⭐ W5d — a c0 do ENTORNO somada na saída: `(desloc, escala, ligado)` — o texel da grade daquele
     // é `P · escala + desloc`.
     entorno: vec4<f32>,
-    // ⭐ bug 6 (handoff W6g §32) — `(base, arquiva, colunas do entorno, miolo vácuo)`: na 2.ª passagem de um
-    // ENTORNO (o miolo vácuo) os R deste passe arquivam-se em `arquivo_dos_r[base + i]`; na vista, o
-    // `colunas` diz o layout do arquivo que ela lê.
+    // ⭐ bug 6 (handoff W6g §32) — `(base, arquiva, recorta, miolo vácuo)`: na 2.ª passagem de um ENTORNO (o
+    // miolo vácuo) os R deste passe arquivam-se em `arquivo_dos_r[base + i]`; com `recorta` (§40.2) a descida
+    // só corre onde o arquivo depende ([`fora_do_arquivo`]).
     arquivo: vec4<u32>,
     // ⭐ bug 6 — a vista lê o R do entorno PELA BORDA: `(X, Y, K, ligado)` do entorno no MESMO quadrante
     // (K = o nível mais alto arquivado) e a base de cada nível no arquivo.
@@ -368,6 +368,18 @@ fn arquivar(xi: u32, v: u32, c: u32, e: vec2<u32>) {
     }
 }
 
+// ⭐ §40.2 (handoff W6g) — a sonda `(xi, v)` do nível `n` desta descida não alimenta o arquivo: os R desta
+// passagem só se leem nele, R_n lê R_{n+1} só para a frente (colunas ≥ xi/2) e n descidas alcançam
+// ±(2^{n+1} − 2) linhas — fora das colunas da janela e das linhas dela ± 2^{n+1}, nada a lê.
+fn fora_do_arquivo(xi: u32, v: u32) -> bool {
+    if hrc.arquivo.z == 0u {
+        return false;
+    }
+    let alcance = 2u << hrc.nivel;
+    let j = hrc.janela;
+    return xi + 2u < (j.x >> hrc.nivel) || v + alcance < j.z || v >= j.w + alcance;
+}
+
 // A entrada do despacho 1D (dobrado em 2D: o limite de 65 535 grupos por eixo).
 fn entrada(gid: vec3<u32>, nw: vec3<u32>) -> u32 {
     return gid.x + gid.y * nw.x * 64u;
@@ -530,13 +542,13 @@ fn hrc_sobe(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
 @compute @workgroup_size(64)
 fn hrc_desce(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nw: vec3<u32>) {
     if GRADE3D_HRC && COLUNAS_HRC && CONES_HRC > 1u && hrc.por_fio == 1u {
-        if gid.x < hrc.eixo.y {
+        if gid.x < hrc.eixo.y && !fora_do_arquivo(gid.y, gid.x) {
             descer_cones(gid);
         }
         return;
     }
     if GRADE3D_HRC && COLUNAS_HRC {
-        if gid.x < hrc.eixo.y {
+        if gid.x < hrc.eixo.y && !fora_do_arquivo(gid.y, gid.x) {
             escrever_e_arquivar_r(indice_r(hrc.nx, hrc.nivel, gid.y, gid.x, gid.z), gid.y, gid.x, gid.z,
                 empacotar(Par(soma_da_descida(gid.z, gid.y, gid.x), 0.0)));
         }
@@ -547,6 +559,9 @@ fn hrc_desce(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgro
         return;
     }
     let d = decompor(e, 1u << hrc.nivel);
+    if fora_do_arquivo(d.y, d.z) {
+        return;
+    }
     escrever_e_arquivar_r(e, d.y, d.z, d.x, empacotar(Par(soma_da_descida(d.x, d.y, d.z), 0.0)));
 }
 

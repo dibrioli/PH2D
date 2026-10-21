@@ -513,7 +513,11 @@ impl Holografica {
                         topo: u32::from(topo),
                         total: total as u32,
                         por_fio: u32::from(por_fio),
-                        arquivo: if arquivando { [0, 1, 0, 1] } else { [0; 4] },
+                        arquivo: if arquivando {
+                            [0, 1, u32::from(e.cfg.hrc_recorta_o_arquivo), 1]
+                        } else {
+                            [0; 4]
+                        },
                         ..base
                     };
                     let cima = if topo {

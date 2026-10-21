@@ -225,6 +225,9 @@ pub struct Config {
     /// opacos dela tapam-na. O valor é a JANELA máxima (texels desta grade) que a grade da vista ocupa: só as
     /// sondas sob ela se guardam. `None` = a c0 dele somada na saída da vista (a W5d; `PH2D_LIGHT2D_BORDA=0`).
     pub arquivo_da_borda: Option<[u32; 2]>,
+    /// ⭐ §40.2 (handoff W6g) — a descida da 2.ª passagem do entorno só onde o arquivo depende (as colunas da
+    /// janela em diante, as linhas dela ± o alcance); `false` = a passagem inteira (o mesmo bit, mais lenta).
+    pub hrc_recorta_o_arquivo: bool,
     /// ⭐ W5c — a CASCATA HOLOGRÁFICA (HRC, a do produto em todo nível) no lugar das cascatas de Sannikov: a mesma
     /// c0, outra conta (`c2_hrc.wgsl`). `None` = as cascatas.
     pub holografica: Option<Holografica>,
@@ -404,6 +407,7 @@ impl Config {
             miolo_salta_o_fundo: true,
             so_a_c0: false,
             arquivo_da_borda: None,
+            hrc_recorta_o_arquivo: true,
             holografica: None,
             modulo_rc: None,
             hrc_nasce_duas_vezes: true,

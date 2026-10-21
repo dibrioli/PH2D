@@ -287,8 +287,10 @@ fn hand_drawn_at(px: f64, detail: crate::Detail) -> (usize, f64) {
     let board = &set.boards()[0];
     let mut routes = ph2d_board_route::RouteCache::default();
     routes.sync(&board.doc);
-    let mut cache = crate::RenderCache::default();
-    cache.detail = detail;
+    let mut cache = crate::RenderCache {
+        detail,
+        ..Default::default()
+    };
     let (mut scene, mut ts) = (
         VectorScene::new(),
         ph2d_text::TextSystem::without_system_fonts(),
@@ -344,4 +346,109 @@ fn a_far_sketched_shape_is_drawn_final_and_a_near_one_by_hand() {
         (1, w),
         "sem limiar: à mão como antes"
     );
+}
+
+/// A mão dos gates do QuickShape do quadro: a MESMA fonte que a `ph2d-board-edit` usa.
+#[path = "../../ph2d-board-edit/src/smart_test_hand.rs"]
+#[allow(dead_code)]
+mod hand;
+
+/// Segura o traço de mão `pts` com a caneta do quadro (parado 600 ms) e devolve o documento do
+/// segurar — o que o ecrã pinta antes de soltar.
+fn held(pts: &[[f64; 2]]) -> ph2d_board_model::BoardDoc {
+    use ph2d_board_edit::{Editor, Metrics, Mods, Pointer, Tool};
+    let ink = Rgba([20, 20, 20, 255]);
+    let metrics = Metrics {
+        handle: 8.0,
+        rotate_offset: 24.0,
+        snap: 8.0,
+        drag: 3.0,
+        click_size: [160.0, 100.0],
+        paste_offset: 10.0,
+        bind: 8.0,
+        dot: 40.0,
+        eraser: 10.0,
+        frame_title: 20.0,
+    };
+    let mut ed = Editor::new(Style::new(None, Some(ink), ink), metrics);
+    let mut doc = ph2d_board_model::BoardDoc::default();
+    let mut h = ph2d_board_model::History::default();
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let at = |p: [f64; 2]| Pointer {
+        world: p,
+        px: 1.0,
+        mods: Mods::default(),
+    };
+    let view = [-10_000.0, -10_000.0, 10_000.0, 10_000.0];
+    ed.tool = Tool::Pen(Pen::Pen);
+    let mut t: u128 = 1_000_000_000_000;
+    ed.at_time(t);
+    ed.pointer_down(&mut doc, &mut h, &mut ts, at(pts[0]), view);
+    for &p in &pts[1..] {
+        t += 4_000_000;
+        ed.at_time(t);
+        ed.pointer_move(&mut doc, &mut ts, at(p));
+    }
+    ed.at_time(t + 600_000_000);
+    ed.ink_hold(&mut doc);
+    assert!(ed.is_quick(), "a forma nasceu");
+    doc
+}
+
+/// ⭐ (c) A régua do PINTOR (smoke do dono 20/10, o «D»): a forma viva que o quadro só tem como tinta
+/// (um triângulo de mão) é pintada por `ink_outline` a menos de 1 px de ecrã do polígono — com os
+/// cantos só, o perfect-freehand alisava-a num «D» (118 px fora) — e o rectângulo vivo é JÁ o
+/// objecto `Rectangle` (o caminho vivo é a forma exacta, como no lápis do vetor).
+#[test]
+fn the_live_quickshape_paints_within_a_screen_pixel_of_the_shape() {
+    let doc = held(&hand::hand_rect());
+    let live: Vec<&Element> = doc.live_in_z_order();
+    assert_eq!(live.len(), 1);
+    assert_eq!(
+        live[0].shape().map(|s| s.kind),
+        Some(ShapeType::Rectangle),
+        "o rectângulo vivo (tinta de {:?} pontos?)",
+        live[0].ink().map(|i| i.points.len())
+    );
+    let doc = held(&hand::hand_triangle());
+    let el = doc.live_in_z_order()[0].clone();
+    let ink = el
+        .ink()
+        .expect("o quadro não tem este triângulo: tinta limpa");
+    let poly: Vec<[f64; 2]> = ph2d_board_edit::world_points(&el)
+        .iter()
+        .map(|p| [p[0], p[1]])
+        .collect();
+    let to_poly = |q: [f64; 2]| {
+        poly.windows(2)
+            .map(|w| ph2d_board_edit::point_segment(q, w[0], w[1]))
+            .fold(f64::INFINITY, f64::min)
+    };
+    let path = ink_outline(ink, el.w, el.h);
+    let mut painted: Vec<[f64; 2]> = Vec::new();
+    for seg in path.segments() {
+        for k in 0..=20 {
+            let q = seg.eval(f64::from(k) / 20.0);
+            painted.push([q.x + el.x, q.y + el.y]);
+        }
+    }
+    let half = ink.style.stroke_width / 2.0;
+    let out = painted.iter().map(|&q| to_poly(q)).fold(0.0, f64::max);
+    assert!(out <= half + 1.0, "pintado fora do polígono: {out:.1} px");
+    let mut missed: f64 = 0.0;
+    for w in poly.windows(2) {
+        for k in 0..=10 {
+            let u = f64::from(k) / 10.0;
+            let q = [
+                w[0][0] + (w[1][0] - w[0][0]) * u,
+                w[0][1] + (w[1][1] - w[0][1]) * u,
+            ];
+            let d = painted
+                .iter()
+                .map(|p| (p[0] - q[0]).hypot(p[1] - q[1]))
+                .fold(f64::INFINITY, f64::min);
+            missed = missed.max(d);
+        }
+    }
+    assert!(missed <= half + 1.0, "polígono por pintar: {missed:.1} px");
 }

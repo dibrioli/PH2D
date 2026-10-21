@@ -163,8 +163,10 @@ fn diff(a: &[u8], b: &[u8]) -> (f64, f64) {
     let luma =
         |p: &[u8]| 0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2]);
     let mut d: Vec<f64> = a
-        .chunks_exact(4)
-        .zip(b.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.as_chunks::<4>().0)
         .map(|(x, y)| (luma(x) - luma(y)).abs())
         .collect();
     let mean = d.iter().sum::<f64>() / d.len() as f64;
@@ -226,7 +228,13 @@ fn b6_looks() {
         if let Some(d) = &dir {
             for (name, px_buf) in [("mao", &hand), ("longe", &fin), ("final", &thick[0])] {
                 let mut ppm = format!("P6\n{} {}\n255\n", LOOK.0, LOOK.1).into_bytes();
-                ppm.extend(px_buf.chunks_exact(4).flat_map(|p| [p[0], p[1], p[2]]));
+                ppm.extend(
+                    px_buf
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
+                        .flat_map(|p| [p[0], p[1], p[2]]),
+                );
                 std::fs::write(d.join(format!("b6_{px:02}px_{name}.ppm")), ppm).expect("ppm");
             }
         }
@@ -308,9 +316,9 @@ fn b7_order() {
     for (name, set) in &cases {
         let doc = &set.boards()[0].doc;
         let want: Vec<_> = order(doc, 0).iter().map(|e| e.id).collect();
-        for v in 1..3 {
+        for (v, variant) in ORDER.iter().enumerate().take(3).skip(1) {
             let got: Vec<_> = order(doc, v).iter().map(|e| e.id).collect();
-            assert_eq!(got, want, "{name}: a variante {} muda a ordem", ORDER[v]);
+            assert_eq!(got, want, "{name}: a variante {variant} muda a ordem");
         }
         let routes = routes_of(set);
         let mut cache = RenderCache::default();

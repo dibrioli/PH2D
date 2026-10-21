@@ -8,11 +8,16 @@
 //! cai, o Excalidraw). Onde nenhum a desenha igual (um triângulo qualquer, um arco), fica uma tinta com
 //! a geometria LIMPA da lei — nunca uma forma do quadro que mude o desenho. O traço cru nasce num passo
 //! e a troca é outro: um `Ctrl+Z` devolve o traço como foi desenhado.
+//!
+//! ⭐ Smoke do dono 20/10 (o «D»): a lei do LÁPIS do vetor inteira — a lei vê as amostras com o passo
+//! dele ([`MIN_SAMPLE_PX`]), e o caminho vivo É a forma exacta: o elemento do gesto passa a ser já o
+//! objecto (ou a tinta limpa, um ponto por px de ecrã), e soltar não o muda.
 
 use ph2d_board_model::{
     BoardDoc, Connector, Element, ElementId, FracKey, Head, Ink, Pen, RichText, Route, Shape,
     ShapeType, Style,
 };
+use ph2d_vec_edit::pencil::MIN_SAMPLE_PX;
 use ph2d_vec_edit::quickshape::QuickShape;
 use ph2d_vec_edit::quickshape_hold::{HOLD_SLOP_PX, Hold, HoldTick, rest_index};
 
@@ -22,8 +27,11 @@ use crate::{Editor, Mods, Pointer};
 #[derive(Default)]
 pub(crate) struct Smart {
     pub(crate) hold: Hold,
-    /// O relógio (ns) de cada ponto do traço.
-    pub(crate) times: Vec<u128>,
+    /// O que a LEI vê: as amostras com o passo mínimo do lápis (a tinta crua guarda todos os pontos;
+    /// o tremor da caneta pousada mudava a forma reconhecida).
+    samples: Vec<[f64; 2]>,
+    /// O relógio (ns) de cada amostra.
+    times: Vec<u128>,
     /// Px de ecrã → mundo (as folgas do vetor são de ecrã).
     pub(crate) px: f64,
     /// O último `Shift` (o `regular` do vetor).
@@ -45,26 +53,37 @@ const POLYGON_KINDS: [ShapeType; 7] = [
 const BARB_DEG: f64 = 30.0;
 
 impl Smart {
-    pub(crate) fn new(now: u128, px: f64) -> Self {
+    pub(crate) fn new(p: [f64; 2], now: u128, px: f64) -> Self {
         Self {
             hold: Hold::default(),
+            samples: vec![p],
             times: vec![now],
             px: px.max(f64::MIN_POSITIVE),
             regular: false,
         }
     }
 
-    /// Um quadro do gatilho sobre os pontos `pts` do traço. `enabled` = o interruptor.
-    pub(crate) fn tick(&mut self, pts: &[[f64; 3]], now: u128, enabled: bool) -> HoldTick {
-        let samples: Vec<[f64; 2]> = pts.iter().map(|p| [p[0], p[1]]).collect();
-        let j = rest_index(&samples, HOLD_SLOP_PX * self.px);
+    /// A mão chegou a `p`: uma amostra da lei se andou o passo do lápis (`Pencil::on_drag`).
+    pub(crate) fn push(&mut self, p: [f64; 2], now: u128) {
+        let last = self.samples[self.samples.len() - 1];
+        if (p[0] - last[0]).hypot(p[1] - last[1]) >= MIN_SAMPLE_PX * self.px {
+            self.samples.push(p);
+            self.times.push(now);
+        }
+    }
+
+    /// Um quadro do gatilho. `enabled` = o interruptor.
+    pub(crate) fn tick(&mut self, now: u128, enabled: bool) -> HoldTick {
+        let j = rest_index(&self.samples, HOLD_SLOP_PX * self.px);
         let rest = self.times.get(j).copied().unwrap_or(now);
         self.hold
-            .tick(&samples, rest, now, self.px, self.regular, enabled)
+            .tick(&self.samples, rest, now, self.px, self.regular, enabled)
     }
 }
 
-/// Os pontos (mundo) que DESENHAM a forma como tinta: o contorno achatado e, numa seta, as farpas.
+/// Os pontos (mundo) que DESENHAM a forma como tinta: o contorno achatado e, numa seta, as farpas — um a
+/// cada px de ecrã (`px`) no máximo: o pintor da caneta alisa o traço (perfect-freehand), e com só os
+/// cantos cortava-os (o «D» do smoke 20/10: 107 px fora do rectângulo).
 #[must_use]
 pub fn shape_points(shape: &QuickShape, px: f64) -> Vec<[f64; 2]> {
     let tol = (px * 0.25).max(1e-9);
@@ -102,7 +121,22 @@ pub fn shape_points(shape: &QuickShape, px: f64) -> Vec<[f64; 2]> {
             }
         }
     }
-    pts
+    dense(&pts, px)
+}
+
+/// A linha `pts` com um ponto a cada `step` no máximo (os de `pts` ficam exactos).
+fn dense(pts: &[[f64; 2]], step: f64) -> Vec<[f64; 2]> {
+    let mut out = Vec::with_capacity(pts.len());
+    for w in pts.windows(2) {
+        let d = sub(w[1], w[0]);
+        let n = (d[0].hypot(d[1]) / step).ceil().max(1.0) as usize;
+        out.extend((0..n).map(|k| {
+            let t = k as f64 / n as f64;
+            [w[0][0] + t * d[0], w[0][1] + t * d[1]]
+        }));
+    }
+    out.extend(pts.last());
+    out
 }
 
 fn sub(a: [f64; 2], b: [f64; 2]) -> [f64; 2] {
@@ -236,18 +270,35 @@ impl Editor {
         self.clock.0 + self.clock.1.elapsed().as_nanos()
     }
 
-    /// ⭐ O objecto do quadro que a forma `shape` vira (o estilo `style` da caneta; `raw` = o traço cru,
-    /// que não prende pontas); `None` = nenhum a desenha igual — fica a tinta limpa ([`shape_points`]).
-    pub(crate) fn smart_element(
+    /// ⭐ VIVO = FINAL: o elemento `id` do gesto passa a SER a forma viva do gatilho — o objecto do
+    /// quadro que a desenha igual, senão a tinta limpa. Soltar deixa-o como está.
+    pub(crate) fn smart_show(
         &mut self,
         doc: &mut BoardDoc,
+        (id, z): (ElementId, &FracKey),
+        pen: Pen,
+        style: &Style,
+        smart: &Smart,
+    ) {
+        let Some(shape) = smart.hold.shape() else {
+            return;
+        };
+        let el = self
+            .smart_element(doc, &shape, style, smart.px, (id, z.clone()))
+            .unwrap_or_else(|| smart_ink(&shape, pen, style, smart.px, (id, z.clone())));
+        crate::live(doc, el);
+    }
+
+    /// ⭐ O objecto do quadro `id` (em `z`) que a forma `shape` vira, com o estilo `style` da caneta (as
+    /// pontas não se prendem a ele mesmo); `None` = nenhum a desenha igual — fica a tinta limpa.
+    fn smart_element(
+        &mut self,
+        doc: &BoardDoc,
         shape: &QuickShape,
         style: &Style,
         px: f64,
-        raw: ElementId,
+        (id, z): (ElementId, FracKey),
     ) -> Option<Element> {
-        let id = doc.mint_id();
-        let z = doc.z_on_top();
         let st = shape_style(style);
         let tol = px;
         match shape {
@@ -276,11 +327,11 @@ impl Editor {
                 closed: true,
             } => polygon_shape(corners, &st, id, &z, tol),
             QuickShape::Line { a, b } => {
-                Some(self.smart_wire(doc, [id, raw], z, [*a, *b], [None; 2], st, px))
+                Some(self.smart_wire(doc, id, z, [*a, *b], [None; 2], st, px))
             }
             QuickShape::Arrow(arrow) => match arrow.shaft.as_ref() {
                 QuickShape::Line { a, b } => {
-                    Some(self.smart_wire(doc, [id, raw], z, [*a, *b], arrow.heads, st, px))
+                    Some(self.smart_wire(doc, id, z, [*a, *b], arrow.heads, st, px))
                 }
                 _ => None,
             },
@@ -288,12 +339,12 @@ impl Editor {
         }
     }
 
-    /// A recta de `a` a `b` como ligação: cada ponta presa à forma onde cai (a porta da seta).
+    /// A recta de `a` a `b` como a ligação `id`: cada ponta presa à forma onde cai (a porta da seta).
     #[allow(clippy::too_many_arguments)]
     fn smart_wire(
         &mut self,
         doc: &BoardDoc,
-        [id, raw]: [ElementId; 2],
+        id: ElementId,
         z: FracKey,
         [a, b]: [[f64; 2]; 2],
         heads: [Option<f64>; 2],
@@ -305,26 +356,26 @@ impl Editor {
             px,
             mods: Mods::default(),
         };
-        let (start, _) = self.end_at(doc, at(a), &[raw]);
-        let (end, _) = self.end_at(doc, at(b), &[raw]);
+        let (start, _) = self.end_at(doc, at(a), &[id]);
+        let (end, _) = self.end_at(doc, at(b), &[id]);
         let mut c = Connector::new(start, end, Route::Straight, style);
         c.heads = heads.map(|h| if h.is_some() { Head::Arrow } else { Head::None });
         Element::new_connector(id, z, c)
     }
+}
 
-    /// A tinta que DESENHA a forma (o que fica quando nenhum objecto do quadro a desenha igual).
-    pub(crate) fn smart_ink(
-        doc: &mut BoardDoc,
-        shape: &QuickShape,
-        pen: Pen,
-        style: &Style,
-        px: f64,
-    ) -> Element {
-        let pts: Vec<[f64; 3]> = shape_points(shape, px)
-            .into_iter()
-            .map(|p| [p[0], p[1], 0.5])
-            .collect();
-        let (ink, bx) = Ink::from_world(&pts, style.clone(), pen, false);
-        Element::new_ink(doc.mint_id(), doc.z_on_top(), ink, bx)
-    }
+/// A tinta `id` (em `z`) que DESENHA a forma (quando nenhum objecto do quadro a desenha igual).
+fn smart_ink(
+    shape: &QuickShape,
+    pen: Pen,
+    style: &Style,
+    px: f64,
+    (id, z): (ElementId, FracKey),
+) -> Element {
+    let pts: Vec<[f64; 3]> = shape_points(shape, px)
+        .into_iter()
+        .map(|p| [p[0], p[1], 0.5])
+        .collect();
+    let (ink, bx) = Ink::from_world(&pts, style.clone(), pen, false);
+    Element::new_ink(id, z, ink, bx)
 }

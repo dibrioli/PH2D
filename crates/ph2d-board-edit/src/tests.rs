@@ -983,3 +983,9 @@ mod lasso;
 
 #[path = "smart_tests.rs"]
 mod smart;
+
+#[path = "smart_test_hand.rs"]
+mod smart_test_hand;
+
+#[path = "smart_hand_tests.rs"]
+mod smart_hand;

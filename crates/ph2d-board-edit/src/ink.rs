@@ -129,7 +129,7 @@ impl Editor {
                     pen,
                     style,
                     points,
-                    smart: Box::new(crate::smart::Smart::new(self.event_ns(), p.px)),
+                    smart: Box::new(crate::smart::Smart::new(p.world, self.event_ns(), p.px)),
                 }
             }
             Tool::Eraser { precise } => {
@@ -176,18 +176,18 @@ impl Editor {
                 smart.regular = p.mods.shift;
                 let now = self.event_ns();
                 if smart.hold.drag(p.world) {
-                    show_shape(doc, *id, z, *pen, style, smart);
+                    self.smart_show(doc, (*id, z), *pen, style, smart);
                 } else {
                     let last = points[points.len() - 1];
                     if last[0] != p.world[0] || last[1] != p.world[1] {
                         points.push([p.world[0], p.world[1], NO_PRESSURE]);
-                        smart.times.push(now);
+                        smart.push(p.world, now);
                         put_stroke(doc, *id, z, *pen, style, points);
                     }
                 }
                 // Um movimento parado mais tarde também é um quadro do gatilho.
-                if hold && smart.tick(points, now, self.quickshape) != HoldTick::Idle {
-                    show_shape(doc, *id, z, *pen, style, smart);
+                if hold && smart.tick(now, self.quickshape) != HoldTick::Idle {
+                    self.smart_show(doc, (*id, z), *pen, style, smart);
                 }
             }
             InkGesture::Erase { .. } => self.erase_step(doc, &mut g, p),
@@ -210,15 +210,13 @@ impl Editor {
                 style,
                 points,
                 smart,
-            }) => match smart.hold.shape() {
-                Some(shape) => {
-                    // O traço cru é UM passo; a troca pela forma é OUTRO (`Ctrl+Z` devolve o traço).
+            }) => match doc.get(id).cloned().filter(|_| smart.hold.is_live()) {
+                // A forma viva JÁ é o elemento (vivo = final): soltar só a guarda. O traço cru é UM
+                // passo e a troca é OUTRO (`Ctrl+Z` devolve o traço).
+                Some(shown) => {
                     put_stroke(doc, id, &z, pen, &style, &points);
                     history.record(vec![BoardOp::Delete(id)], doc);
-                    let made = self
-                        .smart_element(doc, &shape, &style, smart.px, id)
-                        .unwrap_or_else(|| Self::smart_ink(doc, &shape, pen, &style, smart.px));
-                    history.apply(doc, vec![BoardOp::Delete(id), BoardOp::Put(made)]);
+                    history.apply(doc, vec![BoardOp::Put(shown)]);
                 }
                 None => history.record(vec![BoardOp::Delete(id)], doc),
             },
@@ -232,21 +230,25 @@ impl Editor {
     /// relógio é o do último evento mais o que passou desde ele). `true` = a forma NASCEU agora.
     pub fn ink_hold(&mut self, doc: &mut BoardDoc) -> bool {
         let (now, enabled) = (self.clock_now(), self.quickshape);
-        let Some(InkGesture::Draw {
+        let Some(mut g) = self.ink.take() else {
+            return false;
+        };
+        let mut t = HoldTick::Idle;
+        if let InkGesture::Draw {
             id,
             z,
             pen,
             style,
-            points,
             smart,
-        }) = self.ink.as_mut()
-        else {
-            return false;
-        };
-        let t = smart.tick(points, now, enabled);
-        if t != HoldTick::Idle {
-            show_shape(doc, *id, z, *pen, style, smart);
+            ..
+        } = &mut g
+        {
+            t = smart.tick(now, enabled);
+            if t != HoldTick::Idle {
+                self.smart_show(doc, (*id, z), *pen, style, smart);
+            }
         }
+        self.ink = Some(g);
         t == HoldTick::Recognised
     }
 
@@ -388,24 +390,6 @@ fn erase_inverse(doc: &BoardDoc, g: InkGesture) -> Vec<BoardOp> {
         .map(BoardOp::Delete)
         .chain(originals.into_values().map(BoardOp::Put))
         .collect()
-}
-
-/// O traço `id` passa a desenhar a forma viva do gatilho.
-fn show_shape(
-    doc: &mut BoardDoc,
-    id: ElementId,
-    z: &ph2d_board_model::FracKey,
-    pen: Pen,
-    style: &Style,
-    smart: &crate::smart::Smart,
-) {
-    if let Some(s) = smart.hold.shape() {
-        let pts: Vec<[f64; 3]> = crate::smart::shape_points(&s, smart.px)
-            .into_iter()
-            .map(|p| [p[0], p[1], NO_PRESSURE])
-            .collect();
-        put_stroke(doc, id, z, pen, style, &pts);
-    }
 }
 
 fn put_stroke(

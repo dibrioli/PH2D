@@ -172,12 +172,18 @@ fn a_triangle_the_board_cannot_draw_stays_a_clean_stroke() {
         "o quadro não tem este triângulo: {:?}",
         el.kind
     );
+    // A geometria LIMPA, um ponto por px de ecrã (o traço tinha um a cada 8 px), sobre o triângulo.
     let pts = crate::world_points(&el);
-    assert!(
-        pts.len() <= 8,
-        "a geometria limpa (cantos), não o traço: {}",
-        pts.len()
-    );
+    for w in pts.windows(2) {
+        let gap = (w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]);
+        assert!(gap <= PX + 1e-3, "a geometria limpa, não o traço: {gap:.2}");
+    }
+    for p in &pts {
+        let d = (0..3)
+            .map(|i| crate::point_segment([p[0], p[1]], scalene[i], scalene[i + 1]))
+            .fold(f64::INFINITY, f64::min);
+        assert!(d < 0.01, "sobre o triângulo: {d}");
+    }
 }
 
 /// A recta de uma forma a outra vira uma ligação presa às duas (o Excalidraw).

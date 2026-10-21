@@ -60,8 +60,9 @@ pub const DEFAULT_FIDELITY_PX: f64 = 2.0;
 
 /// Passo mínimo entre amostras aceitas, em **pixels de tela**. Abaixo disto o move é ignorado:
 /// um cursor parado num pixel geraria centenas de amostras coincidentes, e nós coincidentes são
-/// o caso degenerado que o solver tem de defender-se de ([`crate::hobby`]).
-const MIN_SAMPLE_PX: f64 = 1.5;
+/// o caso degenerado que o solver tem de defender-se de ([`crate::hobby`]). É também a ENTRADA do
+/// QuickShape: a caneta do quadro filtra as amostras da lei por este passo (smoke 20/10, o «D»).
+pub const MIN_SAMPLE_PX: f64 = 1.5;
 
 /// Comprimento total mínimo do gesto, em **pixels de tela**, para o traço ser commitado. Abaixo
 /// disto foi um clique perdido — o mesmo limiar de intenção que a `ShapeTool` aplica ao arrasto.

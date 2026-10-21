@@ -121,8 +121,9 @@ struct BlitCtx<'a> {
     /// O modo sobre o vazio (L7, [`crate::blend_vazio`]).
     vazio: bool,
     /// Pigment mix (`0` = plain blend, byte-identical) — the amount of the Kubelka–Munk paint mix
-    /// ([`crate::blend::blend_over_pigment`], the Wet Paint law since 2026-09-20; the note said RYB).
-    pigment_mix: f32,
+    /// ([`crate::blend::blend_over_pigment`], the Wet Paint law since 2026-09-20; the note said RYB) — or the
+    /// spectral one ([`crate::espectral`], `BrushSpec::pigment_espectral`).
+    pigment_mix: crate::blend::Pigmento,
     cx: f32,
     cy: f32,
     inv_radius: f32,
@@ -175,7 +176,7 @@ pub fn blit_stamp(
         color: spec.color,
         blend: spec.blend,
         vazio: spec.blend_sobre_vazio,
-        pigment_mix: spec.effective_pigment_mix(),
+        pigment_mix: spec.pigmento(),
         cx,
         cy,
         inv_radius: 1.0 / radius,
@@ -573,7 +574,7 @@ fn canvas_blit_band(
                 prev,
                 ctx.spec.color,
                 a,
-                ctx.spec.effective_pigment_mix(),
+                ctx.spec.pigmento(),
                 ctx.spec.blend_sobre_vazio,
             );
             canvas[i] = encode(out[0]);

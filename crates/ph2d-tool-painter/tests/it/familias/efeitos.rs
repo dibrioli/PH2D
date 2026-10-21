@@ -107,6 +107,10 @@ const GLOW: ReceitaMeio =
             ("accumulate", "true"),
             ("flow", "0.45"),
             ("spacing", "0.09"),
+            // A mistura espectral do MyPaint 2 (2.ª ronda): o néon azul sobre o vermelho passa pelo grená escuro.
+            ("pigment", "true"),
+            ("pigment_mix", "1.0"),
+            ("pigment_espectral", "true"),
         ],
         mao: &[
             ("pressureSize", 0.37),
@@ -282,6 +286,122 @@ fn o_portao_dos_efeitos_sangra_com_cada_mutacao() {
     let sobreviveu: Vec<String> =
         sangrou.iter().filter(|(_, _, f)| f.is_empty()).map(|(n, o, _)| format!("{n} · {o}")).collect();
     assert!(sobreviveu.is_empty(), "mutações que o portão NÃO apanha: {sobreviveu:?}");
+}
+
+/// O cruzamento da cena `sobre` como o MyPaint o pinta (2.ª ronda, `exames/efeitos.md`): numa CAMADA transparente
+/// composta sobre o papel (a superfície do oráculo, `fixtures/mypaint_bateria/README.md`), as faixas vermelhas com o
+/// MESMO pincel, à escala do oráculo. Devolve a cor no meio do cruzamento 2 (x 500, y 150, mediana 5×5) e a do píxel
+/// mais ESCURO à volta dele (y 120..180, x 440..560: o anel onde o néon ralo passa sobre o vermelho cheio).
+fn cruzamento_do_mypaint(preset: ph2d_brush_presets::Preset, escala: f64) -> ([f64; 3], [f64; 3]) {
+    use crate::exame_bancada::{Fonte, Pincel, bateria, pinta_cena_com};
+    let bat = bateria();
+    let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
+    let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
+    let mut sobre = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "sobre").unwrap().clone();
+    for op in sobre["ops"].as_array_mut().unwrap() {
+        if let Some(d) = op.get("size_px").and_then(serde_json::Value::as_f64) {
+            op["size_px"] = serde_json::json!(d * escala);
+        }
+    }
+    let p = Pincel { nome: "cand".to_owned(), fonte: Fonte::Preset { preset: Box::new(preset), relativo: String::new() } };
+    let mut px = pinta_cena_com(&p, None, &sobre, tela, papel, 0, true).1;
+    for c in px.as_chunks_mut::<4>().0 {
+        let a = u32::from(c[3]);
+        for k in 0..3 {
+            c[k] = ((u32::from(c[k]) * a + u32::from(papel[k]) * (255 - a) + 127) / 255) as u8;
+        }
+    }
+    let w = tela[0] as usize;
+    let cor = |x: usize, y: usize| [0, 1, 2].map(|k| f64::from(px[(y * w + x) * 4 + k]));
+    let centro = [0, 1, 2].map(|k| {
+        let mut v: Vec<f64> = (498..=502).flat_map(|x| (148..=152).map(move |y| (x, y))).map(|(x, y)| cor(x, y)[k]).collect();
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    });
+    let escuro = (120..=180)
+        .flat_map(|y| (440..=560).map(move |x| (x, y)))
+        .map(|(x, y)| cor(x, y))
+        .min_by(|a, b| a.iter().sum::<f64>().total_cmp(&b.iter().sum::<f64>()))
+        .unwrap();
+    (centro, escuro)
+}
+
+/// As fotos do MyPaint (`fixtures/mypaint_bateria`, a cena `sobre`): o pincel, a escala do exame, o meio do
+/// cruzamento e o píxel mais escuro do anel (medidos por `scratchpad`/`exames/efeitos.md` 2.ª ronda, 21/10).
+#[rustfmt::skip]
+const CRUZAMENTOS_DO_MYPAINT: [(&str, &str, f64, [f64; 3], [f64; 3]); 2] = [
+    ("Glow", "mypaint experimental/glow", 1.636, [43.0, 73.0, 131.0], [75.0, 52.0, 90.0]),
+    ("Ballpoint", "mypaint deevad/ballpen", 1.462, [64.0, 74.0, 121.0], [70.0, 71.0, 115.0]),
+];
+
+/// As falhas de um cruzamento contra a foto do MyPaint: o meio a ±10 níveis por canal, e o anel ESCURO (o grená do
+/// néon ralo sobre o vermelho) a ±25 na soma dos canais com o verde a ±12.
+fn falhas_do_cruzamento(nome: &str, (centro, escuro): ([f64; 3], [f64; 3])) -> Vec<String> {
+    let (_, oraculo, _, c_mp, e_mp) = CRUZAMENTOS_DO_MYPAINT.iter().find(|c| c.0 == nome).unwrap();
+    let mut falhas = Vec::new();
+    if (0..3).any(|k| (centro[k] - c_mp[k]).abs() > 10.0) {
+        falhas.push(format!("{nome}: o meio do cruzamento {centro:?} × {c_mp:?} ({oraculo})"));
+    }
+    let soma = |c: &[f64; 3]| c.iter().sum::<f64>();
+    if (soma(&escuro) - soma(e_mp)).abs() > 25.0 || (escuro[1] - e_mp[1]).abs() > 12.0 {
+        falhas.push(format!("{nome}: o anel escuro {escuro:?} × {e_mp:?} ({oraculo})"));
+    }
+    falhas
+}
+
+fn receita_em_estudo(nome: &str) -> &'static ReceitaMeio {
+    EM_ESTUDO.iter().chain(super::canetas::EM_ESTUDO).find(|r| r.nome == nome).unwrap()
+}
+
+/// ⭐ **A mistura ESPECTRAL cruza como o MyPaint** (2.ª ronda; o `BrushSpec::pigment_espectral`): o Glow e a Ballpoint
+/// sobre o vermelho — o meio do cruzamento violeta-cinza e o anel grená (o néon ralo sobre o vermelho cheio), que o
+/// K–M de constante única pinta azul e claro. E a prova de mutação, permanente: a MESMA receita com a lei do K–M
+/// (`pigment_espectral` falso — a lei de antes, o vermelho visto antes da cura) tem de sangrar.
+#[test]
+fn a_mistura_espectral_cruza_como_o_mypaint() {
+    use serde_json::json;
+    let casos: Vec<(&str, bool)> =
+        CRUZAMENTOS_DO_MYPAINT.iter().flat_map(|c| [(c.0, true), (c.0, false)]).collect();
+    let medidas: Vec<(&str, bool, Vec<String>)> = std::thread::scope(|s| {
+        let hs: Vec<_> = casos
+            .into_iter()
+            .map(|(nome, espectral)| {
+                s.spawn(move || {
+                    let mut p = crate::presets_de_fabrica::preset_do_meio(receita_em_estudo(nome));
+                    if !espectral {
+                        p.parametros.brush.insert("pigment_espectral".to_owned(), json!(false));
+                    }
+                    let escala = CRUZAMENTOS_DO_MYPAINT.iter().find(|c| c.0 == nome).unwrap().2;
+                    let m = cruzamento_do_mypaint(p, escala);
+                    println!("[espectral] {nome} (espectral {espectral}): meio {:?} · anel {:?}", m.0, m.1);
+                    (nome, espectral, falhas_do_cruzamento(nome, m))
+                })
+            })
+            .collect();
+        hs.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    let mut falhas = Vec::new();
+    for (nome, espectral, f) in medidas {
+        match (espectral, f.is_empty()) {
+            (true, false) => falhas.extend(f),
+            (false, true) => falhas.push(format!("{nome}: a mutação «o K–M» NÃO sangrou")),
+            _ => {}
+        }
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// A bancada dos EM_ESTUDO (e da Ballpoint das `canetas`, cuja lei do pigmento é desta família): grava cada um, pela
+/// porta do gerador, em `PH2D_EM_ESTUDO_DIR/<nome>.ph2d-brush.png` — o `exame.sh` aceita o caminho.
+#[test]
+#[ignore = "bancada: escreve os EM_ESTUDO em PH2D_EM_ESTUDO_DIR"]
+fn escreve_os_em_estudo() {
+    let dir = std::path::PathBuf::from(std::env::var("PH2D_EM_ESTUDO_DIR").expect("PH2D_EM_ESTUDO_DIR"));
+    for r in EM_ESTUDO.iter().chain(super::canetas::EM_ESTUDO) {
+        let p = crate::presets_de_fabrica::preset_do_meio(r);
+        let f = ph2d_brush_presets::gravar(&dir, &format!("{}.ph2d-brush.png", r.nome), &p).unwrap();
+        println!("[em estudo] {}", f.display());
+    }
 }
 
 /// Os reprovados não estão na fábrica: nenhum ficheiro com o nome de uma receita `EM_ESTUDO` — e cada um continua a

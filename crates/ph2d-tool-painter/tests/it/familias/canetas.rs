@@ -43,6 +43,8 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("spacing", "0.16"),
             ("pigment", "true"),
             ("pigment_mix", "1.0"),
+            // A lei do MyPaint 2 (J4 efeitos, `exames/efeitos.md` 2.ª ronda): o azul sobre o vermelho em violeta-cinza.
+            ("pigment_espectral", "true"),
             ("traco", r#"{"largura":7.0,"molhada":0.0,"queimada":0.0,"tecto":0.99}"#),
         ],
         mao: &[("pressureSize", 0.25), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 1.2), ("pressureJitter", 0.35)],

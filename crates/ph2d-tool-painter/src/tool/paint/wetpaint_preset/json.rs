@@ -391,6 +391,7 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
         "blend_sobre_vazio" => json!(b.blend_sobre_vazio),
         "pigment" => json!(b.pigment),
         "pigment_mix" => num(b.pigment_mix),
+        "pigment_espectral" => json!(b.pigment_espectral),
         "paper_depth" => num(b.paper_depth),
         outro => ler_campo_da_obra(b, outro),
     }
@@ -568,6 +569,8 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "blend_sobre_vazio" => b.blend_sobre_vazio = booleano(v, b.blend_sobre_vazio),
         "pigment" => b.pigment = booleano(v, b.pigment),
         "pigment_mix" => b.pigment_mix = f(v, b.pigment_mix),
+        // J4: ausente = o K–M (só se grava ligado), nunca o do pincel anterior.
+        "pigment_espectral" => b.pigment_espectral = booleano(v, false),
         "paper_depth" => b.paper_depth = f(v, b.paper_depth),
         outro => escrever_campo_da_obra(b, outro, v),
     }
@@ -594,6 +597,8 @@ pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
         // As cordas sorteadas do Wire (J4 efeitos) só ligadas: idem.
         .filter(|&&c| !(c == "wire_sorteio" && !b.wire_sorteio))
         .filter(|&&c| !(c == "wire_cordas" && b.wire_cordas == 0))
+        // A lei espectral do pigmento (J4 efeitos) só ligada: idem.
+        .filter(|&&c| !(c == "pigment_espectral" && !b.pigment_espectral))
         .map(|&c| ((*c).to_owned(), ler_campo(b, c)))
         .collect()
 }

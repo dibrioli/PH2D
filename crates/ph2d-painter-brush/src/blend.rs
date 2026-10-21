@@ -240,6 +240,34 @@ pub fn blend_over_pigment(
     ]
 }
 
+/// **A mistura de pigmento de um pincel**: QUANTO (`mix`, o [`BrushSpec::effective_pigment_mix`]) e por que LEI — o
+/// K–M de sempre ([`blend_over_pigment`]) ou a média geométrica espectral do MyPaint
+/// ([`crate::espectral::blend_over_espectral`], `BrushSpec::pigment_espectral`). Um `f32` é o K–M a esse `mix`.
+///
+/// [`BrushSpec::effective_pigment_mix`]: crate::BrushSpec::effective_pigment_mix
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Pigmento {
+    pub mix: f32,
+    pub espectral: bool,
+}
+
+impl From<f32> for Pigmento {
+    fn from(mix: f32) -> Self {
+        Self { mix, espectral: false }
+    }
+}
+
+/// ⭐ **A porta da lei do pigmento** — `espectral = false` é a [`blend_over_pigment`] ao bit.
+#[must_use]
+#[inline]
+pub fn blend_over_pigmento(mode: BrushBlend, dst: [f32; 4], color: [f32; 3], a: f32, p: Pigmento) -> [f32; 4] {
+    if p.espectral {
+        crate::espectral::blend_over_espectral(mode, dst, color, a, p.mix)
+    } else {
+        blend_over_pigment(mode, dst, color, a, p.mix)
+    }
+}
+
 /// Convert straight-RGB `[0, 1]` to the artistic **RYB** (red / yellow / blue) subtractive primaries —
 /// the "paint" wheel where blue + yellow → green. Clean-room port of the Gossett & Chen (2004)-style
 /// decomposition (the same used by the PH2D Wet Paint study app). Deterministic: min/max/mul only.

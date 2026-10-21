@@ -42,6 +42,8 @@ pub mod clone_grain;
 pub mod curve_fit;
 pub mod dab;
 pub mod dynamics;
+/// A mistura de pigmento ESPECTRAL (a do MyPaint 2, `libmypaint` ISC — J4 efeitos).
+pub mod espectral;
 pub mod falloff;
 pub mod falloff_curve;
 pub mod footprint;

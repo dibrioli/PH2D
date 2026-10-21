@@ -203,6 +203,13 @@ impl BrushSpec {
         }
     }
 
+    /// A mistura de pigmento que o carimbo compõe: o [`Self::effective_pigment_mix`] e a lei
+    /// ([`Self::pigment_espectral`]).
+    #[must_use]
+    pub fn pigmento(&self) -> crate::blend::Pigmento {
+        crate::blend::Pigmento { mix: self.effective_pigment_mix(), espectral: self.pigment_espectral }
+    }
+
     /// Whether this brush's dabs deposit **height** (the impasto relief). The master switch must be on,
     /// the brush must be set to write depth, and the depth must be non-zero — a zero-depth dab is a
     /// no-op *by definition* (it neither lifts nor carves), so the height pass skips it entirely rather

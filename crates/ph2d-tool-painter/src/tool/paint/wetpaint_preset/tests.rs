@@ -190,6 +190,7 @@ fn pincel_mexido() -> BrushSpec {
         blend_sobre_vazio: true,
         pigment: true,
         pigment_mix: 0.4,
+        pigment_espectral: true,
         paper_depth: 0.3,
         // ── volumes ──
         radius_px: 9.0,

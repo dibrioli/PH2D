@@ -550,7 +550,7 @@ pub(super) fn stamp_band(
                     prev,
                     color,
                     a,
-                    ctx.spec.effective_pigment_mix(),
+                    ctx.spec.pigmento(),
                     ctx.spec.blend_sobre_vazio,
                 )
             };

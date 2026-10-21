@@ -173,7 +173,7 @@ pub fn carimba(
     let d = diametro(dab.radius_px);
     let c = centro(ancora(dab.center, d), d);
     let fp = spec.dab_footprint_of(dab);
-    let mix = spec.effective_pigment_mix();
+    let mix = spec.pigmento();
     let (mut lo, mut hi) = ([i64::MAX; 2], [i64::MIN; 2]);
     let neutra = crate::texture::GrainLaw::NEUTRA;
     cobre(c, d, fp, w, h, |px, py, t| {

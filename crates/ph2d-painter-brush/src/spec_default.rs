@@ -157,6 +157,7 @@ impl Default for BrushSpec {
             granulation: 0.3,
             pigment: false,
             pigment_mix: 0.5,
+            pigment_espectral: false,
             // Render-path optics (wet_edges defaults); inert unless `watercolor` is on.
             fill: 0.12,
             depth: 1.2,

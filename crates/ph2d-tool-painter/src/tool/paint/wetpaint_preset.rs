@@ -48,7 +48,7 @@ const TEXTURA_FORMA: &str = "shape";
 const TEXTURA_GRAO: &str = "grain";
 
 /// Os campos do `BrushSpec` que o preset leva, pelo nome do campo.
-pub const CAMPOS_DO_PINCEL: [&str; 37] = [
+pub const CAMPOS_DO_PINCEL: [&str; 38] = [
     // O tecto de tamanho (J3, decisão 8): os quatro meios; gravado só quando o preset o fixa.
     "size_max_px",
     "hardness",
@@ -87,6 +87,8 @@ pub const CAMPOS_DO_PINCEL: [&str; 37] = [
     "blend_sobre_vazio",
     "pigment",
     "pigment_mix",
+    // A lei espectral do pigmento (J4 efeitos): gravada só ligada.
+    "pigment_espectral",
     "paper_depth",
 ];
 

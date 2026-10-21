@@ -225,8 +225,8 @@ impl PainterTool {
         );
         let dec = |v: u8| f32::from(v) / 255.0;
         let enc = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-        // O modo, a fórmula geral (L7) e a mistura K–M do pincel: o carimbo de sempre, composto UMA vez.
-        let (vazio, pigmento) = (brush.blend_sobre_vazio, brush.effective_pigment_mix());
+        // O modo, a fórmula geral (L7) e a mistura do pincel (K–M ou espectral): o carimbo de sempre, composto UMA vez.
+        let (vazio, pigmento) = (brush.blend_sobre_vazio, brush.pigmento());
         // A 2.ª ponta (L6): o modo e a máscara resolvidos UMA vez por lote, não por texel.
         let dual = brush.dual.map(|d| d.modo).zip(s.mascara.as_deref());
         // ADR-0173: por LINHA e em paralelo — cada texel é função pura da base, do plano e do aro dele.

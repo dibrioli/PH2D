@@ -445,6 +445,10 @@ pub struct BrushSpec {
     /// **Pigment mix** amount, `0..1`: how much the subtractive path is applied vs the plain blend.
     /// Only read when [`Self::pigment`] is on — em qualquer meio (ver a nota dele).
     pub pigment_mix: f32,
+    /// ⭐ **A lei ESPECTRAL do pigmento** (J4 efeitos; o MyPaint 2, [`crate::espectral`]): a média geométrica de 10
+    /// bandas em vez do K–M de constante única — o azul sobre o vermelho dá o violeta-cinza (`64,74,121`) e não o azul
+    /// (`48,94,137`). Só lido com [`Self::pigment`]; `false` = o K–M de sempre, ao bit (no preset só se grava ligado).
+    pub pigment_espectral: bool,
     /// **Fill** density of the wash, `0..1` (wet_edges `fillDensity`): the optical density contributed by
     /// the flat interior of the stroke (before the edge term). Low = a translucent glaze, high = a
     /// saturated pool. Only read by the watercolor render-path (`ph2d-tool-painter`), when

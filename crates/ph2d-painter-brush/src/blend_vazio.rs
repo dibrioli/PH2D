@@ -10,7 +10,7 @@
 //! troca onde `αb < 1`: um pincel com o campo ligado pinta ao bit o de sempre sobre tinta opaca. Desligado
 //! (o de fábrica, a cerca da linha) a porta É a `blend_over` — nenhum carimbo muda.
 
-use crate::blend::{BrushBlend, blend_over, blend_over_pigment, blend_rgb_de};
+use crate::blend::{BrushBlend, blend_over, blend_rgb_de};
 
 impl BrushBlend {
     /// O modo compõe por `B(Cb, Cs)` — não é o `Mix` nem um dos dois modos de ALFA.
@@ -54,7 +54,7 @@ pub fn blend_over_modo(
     }
 }
 
-/// A porta do modo com a mistura de pigmento — `vazio = false` é a [`blend_over_pigment`] ao bit. Onde a
+/// A porta do modo com a mistura de pigmento — `vazio = false` é a [`crate::blend::blend_over_pigmento`] ao bit. Onde a
 /// fórmula geral age o destino não é tinta opaca, e a mistura K–M (lei de tinta SOBRE tinta) não entra.
 #[must_use]
 #[inline]
@@ -63,13 +63,13 @@ pub fn blend_over_pigment_modo(
     dst: [f32; 4],
     color: [f32; 3],
     a: f32,
-    mix: f32,
+    pigmento: impl Into<crate::blend::Pigmento>,
     vazio: bool,
 ) -> [f32; 4] {
     if geral(mode, dst, vazio) {
         blend_over_w3c(mode, dst, color, a)
     } else {
-        blend_over_pigment(mode, dst, color, a, mix)
+        crate::blend::blend_over_pigmento(mode, dst, color, a, pigmento.into())
     }
 }
 

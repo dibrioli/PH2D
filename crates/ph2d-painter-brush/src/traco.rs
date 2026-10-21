@@ -80,15 +80,16 @@ impl TracoComposto {
     }
 
     /// ⭐ **A composição de um texel**: o plano `plano` (RGBA reto, o traço em Normal sobre o transparente)
-    /// sobre a base `base`, no `modo` do pincel (`vazio` = a fórmula geral do W3C; `pigmento` = a mistura K–M do
-    /// pincel, `effective_pigment_mix` — a do carimbo de sempre), com o `aro` da cobertura do plano (`0` sem orla).
+    /// sobre a base `base`, no `modo` do pincel (`vazio` = a fórmula geral do W3C; `pigmento` = a mistura do
+    /// pincel, `BrushSpec::pigmento` — a do carimbo de sempre; um `f32` é o K–M), com o `aro` da cobertura do plano
+    /// (`0` sem orla).
     #[must_use]
     #[inline]
     pub fn compoe(
         &self,
         modo: BrushBlend,
         vazio: bool,
-        pigmento: f32,
+        pigmento: impl Into<crate::blend::Pigmento>,
         base: [f32; 4],
         plano: [f32; 4],
         aro: f32,

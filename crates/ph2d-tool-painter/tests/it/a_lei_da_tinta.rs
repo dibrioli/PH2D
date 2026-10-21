@@ -25,7 +25,7 @@ const CENAS: [(&str, bool, u64); 20] = [
     ("Wet Wash", false, 0xb08be15433107c85),
     ("Wet Dry Brush", false, 0xf45f7dcaa32eb88e),
     ("Wet Drip", false, 0x6ad975ec85398727),
-    ("Wet Liner", false, 0x859efc54fe6e2c43),
+    ("Wet Liner", false, 0xc458dcf08bfe5390),
     // Os dois com os FIOS da W2 (prompt 48, doc 48_medicao): repinados pela lei nova; os outros 20 ao bit.
     // O Oil Bristle repintado pelo relevo sem escada (W3b, prompt 50, doc 50_medicao): os outros 21 ao bit.
     // Os 22 repintados pela regra do prompt 51 (Spacing 0,1 + Continuous em todos, doc 51_medicao); o Airbrush também
@@ -48,7 +48,7 @@ const CENAS: [(&str, bool, u64); 20] = [
     ("Wet Flat", false, 0x270ceb734f4d9aea),
     ("Gouache Flat", false, 0x6111ea627d99cff5),
     ("Wet Round", true, 0xab51e31b5a6e8cb0),
-    ("Wet Liner", true, 0xc2fd88e64e7098c4),
+    ("Wet Liner", true, 0x8a3c8be418ae2ca9),
 ];
 
 fn cena(preset: &str, obra: bool) -> u64 {

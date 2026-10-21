@@ -12,6 +12,10 @@ mod sonda;
 const PIGMENTO_DO_FLAT: f64 = 50.0;
 /// A curva da pressão → opacidade (prompt 45, doc 45 §2): a rampa da cena seca contra o Rebelle — 0,41 (0,42).
 const CURVA_DO_FLAT: f64 = 1.75;
+/// ⭐ O MIOLO LISO (motor J4, `Knob::StrokeFilm`; `exames/aguarela.md` «Motor J4»): o traço deixa UM filme, sem o tapete
+/// das cerdas — e o pincel de filme leva o arrasto a 0 (medido no portão do motor).
+const FILME: (&str, f64) = ("strokeFilm", 1.0);
+const SEM_ARRASTO: (&str, f64) = ("drag", 0.0);
 
 pub const WET: &[Receita] = &[
     // J4 (`exames/aguarela.md` I-2): NÃO aprovado, receita de antes. A cura medida contra o Rebelle `Wash Round` (dura
@@ -98,26 +102,26 @@ pub const WET: &[Receita] = &[
     // ⭐ O 1.º da Fase C (prompt 17, 05 §4b «Presets de todas as mídias»): o Liner do Rebelle
     // (`Watercolor/Liner`: duro, carregado, papel 0,10 — o grão quase não fura, 28,86 px). Medido contra
     // `fixtures/rebelle/wcliner.png` (cobertura 0,65 · textura 1,7 %) à largura 38; o Wet Round dá 0,19 · 8,1.
-    // J4 (`exames/aguarela.md` I-4): NÃO aprovado, receita de antes. A cura contra a bateria (dura 1, papel 0, orla
-    // 200, pigmento 65: régua 322 → 376/454) foi lida como «grão e halo esfiapado» por dois revisores e sobe a textura
-    // fora do vale da foto `wcliner` (6,28 contra 1,71; `cada_preset_parece_a_sua_midia`).
+    // J4 motor (`exames/aguarela.md` «Motor J4»): com o FILME (sem o tapete, sem a soma), papel 0, orla 200, pigmento 17
+    // — régua 322 → 375/456, as listras e o grão saem (o revisor novo vê-o liso); curado, NÃO aprovado: falta-lhe o fio
+    // escuro da borda e o miolo mais carregado do Rebelle a 200 px, e o cruzamento molhado arrasta o vermelho.
     Receita {
         meio: "Watercolor",
         grupo: "Fluid",
         nome: "Wet Liner",
         water: 0.5,
         opacity: 1.0,
-        pigment: 100.0,
+        pigment: 17.0,
         pickup: 1.0,
-        gate: 0.05,
+        gate: 0.0,
         evaporation: 1.0,
-        edge: 100.0,
+        edge: 200.0,
         tilt: DIREITA,
         bristle_size: 2.0,
         bristle_count: 2000.0,
         hardness: 0.9,
         size_px: Some(29.0),
-        extras: &[],
+        extras: &[FILME, SEM_ARRASTO],
         grao: None,
         achatado: None,
         pincel: &[],
@@ -157,16 +161,18 @@ pub const WET: &[Receita] = &[
 /// ⛔ Os REPROVADOS da J4 (`docs/Painter/Pinceis/exames/aguarela.md`): a receita medida fica para quando o motor que lhes
 /// falta existir — sem ficheiro de preset (a fábrica são os aprovados e os pré-existentes).
 pub const EM_ESTUDO: &[Receita] = &[
-    // J4 I-7: a trincha CARREGADA do Rebelle (`Watercolor/Mop`): a lavagem sem o fio escuro, três vezes mais
-    // pigmento, muita água (a espiral funde-se num disco), e a pressão estreita E esmaece. Régua 368/445; reprovado: o
-    // miolo listrado e o anel claro por dentro da orla (o Rebelle é liso) não saem com valores (motor: o miolo liso).
+    // J4 I-7: a trincha CARREGADA do Rebelle (`Watercolor/Mop`): a lavagem sem o fio escuro, muita água (a espiral
+    // funde-se num disco), a pressão estreita (curva 0,5) E esmaece. J4 motor: com o FILME a régua 368/445 → 405/456 e o
+    // revisor cego novo leu o NOSSO como o original em 6/6 (média); reprovado ainda pelo que ele listou do nosso lado: o
+    // recto de 5 px quase some, a rampa 0,15→1→0,15 de tampas redondas (o Rebelle afina), a mancha lilás com contas no
+    // cruzamento molhado (`exames/aguarela.md` «Motor J4»).
     Receita {
         meio: "Watercolor",
         grupo: "Fluid",
         nome: "Mop",
         water: 1.0,
         opacity: 1.0,
-        pigment: 15.0,
+        pigment: 5.2,
         pickup: 0.6,
         gate: 0.05,
         evaporation: 0.7,
@@ -179,9 +185,11 @@ pub const EM_ESTUDO: &[Receita] = &[
         extras: &[
             ("waterPerDab", 1.5),
             ("pressureSize", 0.7),
-            ("pressureSizeCurve", 1.0),
+            ("pressureSizeCurve", 0.5),
             ("pressureOpacity", 1.0),
-            ("pressureOpacityCurve", 1.0),
+            ("pressureOpacityCurve", 1.3),
+            FILME,
+            SEM_ARRASTO,
         ],
         grao: None,
         achatado: None,

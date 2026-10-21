@@ -108,3 +108,63 @@ medido (nenhum aprovado).
 8. Do `oleo_acrilica`: azul sobre vermelho molhado — o Rebelle cobre (lente lisa), o nosso levanta uma flor e empurra
    o vermelho (todas as pranchas).
 9. Foto: `watercolor_mop_sobre_A.png` duplicada da `tamanhos_B`.
+
+## Motor J4 — o miolo liso (`Knob::StrokeFilm`)
+
+**O mecanismo (medido, sonda `familias::aguarela::sonda`: o grid logo depois do traço — caneta em baixo, a água
+parada — e depois de 240 quadros):** (1) o miolo listrado é o **tapete das cerdas** (a ladrilha 128² do Wet, que a
+migração põe no Shape Bristles de todo o preset com `bristleCount` no mapa) lido no desvio ao centro de cada dab: a
+mesma linha do tapete é arrastada pelo traço inteiro, e a fase de cada dab (a 8 células) faz um padrão de ±20 %. Mop a
+200 px, depósito: listras 0,065 → **0,0004** sem o tapete (tudo o resto igual); um dab sozinho é a ladrilha de pontos.
+(2) O domo é a **soma das cordas** dos discos (ombros 0,75–0,80 do centro); as voltas da espiral e as pontas somam mais.
+(3) Depois da água, arcos por janela do rasto: o 2.º gole da célula virgem (mancha 0,095 → 0,038) e o tecto de água da
+célula, que só morde na água que chega aos bocados. Medidas do Rebelle (as fotos A, a 200 px): listras 0,002–0,013,
+manchas 0,002–0,007, ombros ÷ centro 0,90–1,05. O Edge Darkening, o mapeamento Random do tapete e o `extRivulets` não
+mexem nisto (lote v1/v2). Régua do miolo: `scratchpad/aguarela_motor/liso.py`.
+
+**A lei** (aditiva; 0 = a soma de sempre, ao bit — o byte e a miniatura de todo preset de fábrica, a impressão digital
+do motor, `deposit_rows`, `product_doors` verdes): o traço deixa UM filme — cada célula fica com o MÁXIMO que um dab lhe
+trouxe, na espessura do miolo de um traço largo (`1 ÷ CapsuleSpacing` dabs, o peso do fino desfeito: a mesma a 5 e a
+200 px), nunca a soma; sem o tapete (o Grain armado continua); sem o 2.º gole, sem o tecto da janela e sem o peso por
+comprimento (o 1.º dab da lane pesava 1 contra 0,838: o «disco do 1.º toque» que o revisor viu). O pincel de filme leva
+`drag` 0 (o arrasto puxa tinta de trás acima do filme). Commits `0b50329ea2` · `8f7d8166bf` · `d92a015b11` · `16e98dddea`.
+Portões (`familias/aguarela/portoes.rs`, red-first): `o_filme_do_traco_e_liso` (Liner 200/40 px: listras 0,103/0,195 →
+0,000, ombros 0,75 → 1,00), `…continua_liso_depois_da_agua` (seco e molhado), `o_filme_tem_a_mesma_espessura_a_todo_o_tamanho`,
+`o_filme_nao_tem_o_disco_do_primeiro_toque`. Mutações (seis, todas sangram): o máximo, o tapete, a espessura pela corda,
+o tecto de água, o peso por comprimento, o 2.º gole. Custo (smoke, load 18–22): Mop p95 6,4 · 9,4 · 6,4 ms, Liner 3,3 ·
+3,0 · 4,5 ms a 5/40/200 px; RSS ≤ 94 MiB.
+
+**Os pincéis** (bancada `PH2D_EXAME_DIR=/tmp/ph2d_exame_aguarela_motor`; pranchas `pranchas/aguarela/*_filme.png`):
+- **Wet Liner** (pré-existente) — com o filme, papel 0, orla 200, pigmento 17: régua 322 → **375/456**, vizinho Gouache
+  Flat 1,29; todas as leis por nome verdes (`a_lei_da_tinta` com o fnv novo). Revisor q3 (o 1.º filme): leu o NOSSO como
+  original 6/6. Revisor t9 (o final): achou o Rebelle 6/6 (média) e listou do nosso lado: sem o **fio escuro da borda** e
+  sem as pontas mais claras; a 200 px o Rebelle tem o miolo mais carregado e a orla esbatida em arcos (o nosso chapado);
+  a espiral sem os anéis finos; a rampa começa opaca (o Rebelle num fio); 5 px mais claro; o azul arrasta o vermelho
+  molhado e o cruzamento seco fica violeta-cinza (o Rebelle azul-marinho). ⇒ **curado, NÃO aprovado**; fica o filme.
+- **Mop** (em estudo) — filme, pigmento 5,2, pressão do tamanho em curva 0,5, opacidade 1,3: régua 368/445 →
+  **405/456**, vizinho Wet Flat 1,03 (claramente longe). Revisores k7 e m2 (novos): o NOSSO lido como o original 6/6 nos
+  dois (baixa → média). Do nosso lado ficou (m2): o recto de 5 px quase some; a rampa 0,15→1→0,15 de tampas redondas (o
+  Rebelle afina a bico); um grão de papel orgânico no miolo (o Rebelle mais liso); o cruzamento molhado é uma mancha lilás
+  com «contas» acima e abaixo. ⇒ **reprovado ainda**, de volta ao `EM_ESTUDO` com a receita do filme (sem ficheiro).
+- **Wet Wash** — o filme cura o miolo (régua 350 → 375/456, manchas 0,046 → 0,009, ombros 0,57 → 0,99), mas a rampa de
+  pressão fica a 0,196–0,23 da origem (`leis_sistemicas` ≤ 0,18; grelha de 32 variantes de tamanho/opacidade): o Rebelle
+  não pinta abaixo da pressão 0,3 e salta à largura cheia. É a **decisão 15** (a régua da rampa acima do início do
+  oráculo, por fazer na lei) — com ela, o filme entra. Fica a receita de antes.
+- **Wet Flat** — com o filme o traço de 5 px cobre 0,61 do de 40 (< 0,71): a lâmina de 0,6 px a 5 px só é coberta pela
+  SOMA das passagens; o máximo de cada dab não a cobre. Régua 383 → 367. Fica a receita de antes. Motor: o filme de uma
+  pegada mais fina que o passo pede a pegada VARRIDA (a cápsula da lâmina entre dois dabs).
+- **Wet Round** (controlo das `MIDIAS`, pincel sem preset) — o filme NÃO o cura: a ponta macia (dura 0) passa a mostrar a
+  cauda do fall-off (largura ×2, escala 0,52) e a régua cai 299 → 137–213. Não aplicado; as `MIDIAS` das famílias não
+  mudam. (A cura do pigmento 125, régua 419, é da soma — decisão do coordenador, sem o filme.)
+- **Wet Dry Brush → Wet Flat** (proposta, não tocada): tirá-lo mexe em `assets/…/Watercolor/Fluid/Wet Dry Brush.ph2d-brush.png`,
+  `familias/aguarela.rs` (a receita), `tests/it/a_lei_da_tinta.rs` (a linha fnv), `tests/it/os_fios.rs`,
+  `tests/it/sonda_tilt_do_preset.rs`, `src/tool/paint/wetpaint/sonda_presets.rs`, `sonda_papel_seco.rs`,
+  `sonda_shape_casa.rs`, `src/tool/paint/wetpaint_preset/medida_preview.rs`, `01_CATALOGO.md`, `matriz/` (regenerar).
+- **Sumi-e** — não feito (as cerdas em pente são outro recurso).
+
+**Foto**: `rebelle_bateria/WATERCOLOR/watercolor_mop_sobre_{A,B}.png` refeitas (a A era a `tamanhos_B`), `421cc42dc7`.
+
+**Para a fila**: (1) a régua da rampa acima do início do oráculo (decisão 15) — destrava o Wash com o filme; (2) a
+**orla de 1 px** do Rebelle (o Liner e o Mop: nenhum knob a dá com o filme — `capillary`, evaporação, `leveling`,
+`extEdgeTint`, `retention`: orla 1,00–1,04 contra 1,07–1,28); (3) a pegada varrida sob o filme (o Flat fino); (4) o
+cruzamento molhado (o azul arrasta o vermelho; contas) — do `oleo_acrilica`; (5) o recto de 5 px do Mop.

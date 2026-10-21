@@ -22,6 +22,7 @@ uso: bateria_rebelle.py <bateria.json> <cena> <TOOL> <Grupo/Nome> <saida> [--bas
 """
 import argparse
 import json
+import os
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
@@ -61,6 +62,7 @@ def eventos(cena, tool, preset, base, seed, paper, ident, params=None):
     ev.append({"event_type": "SET_RANDOM_SEED", "seed": seed})
     quem = (tool, preset)
     cor = {"r": 0, "g": 0, "b": 0}
+    ultimo = None
     for op in cena["ops"]:
         o = op["op"]
         if o == "pincel":
@@ -78,8 +80,15 @@ def eventos(cena, tool, preset, base, seed, paper, ident, params=None):
                       "pressure": 100, "color": dict(cor)}
                 if params and quem == (tool, preset):
                     sb.update(params)
+                # PH2D_REBELLE_REPETE_TROCA=1 (J4 mistura): no 1.º traço depois de TROCAR de ferramenta o Rebelle pinta
+                # ao tamanho da anterior (medido: o cruza_1 do Smudge Soft 68 px × 15 no cruza_2; Square Hard 75 × 39) —
+                # o SET_BRUSH vai DUAS vezes na troca. Sem a variável, os eventos de sempre.
+                if os.environ.get("PH2D_REBELLE_REPETE_TROCA") == "1" and ultimo is not None and ultimo != t:
+                    ev.append(dict(sb))
+                    ev.append({"event_type": "SET_BRUSH_COLOR", "color": dict(cor)})
                 ev.append(sb)
                 ev.append({"event_type": "SET_BRUSH_COLOR", "color": dict(cor)})
+                ultimo = t
             pts = op["pts"]
             ev.append(ptr("POINTER_PRESS", *pts[0]))
             ev.extend(ptr("POINTER_MOVE", *q) for q in pts[1:])

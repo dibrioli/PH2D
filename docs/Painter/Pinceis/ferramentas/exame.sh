@@ -16,9 +16,15 @@
 #      ÷ a nossa a escala 1 — compara-se à largura MEDIDA igual, 05 §4.1) · PH2D_EXAME_EXTRA (2.ª raiz de presets:
 #      os que já saíram, para a matriz e a calibração) · PH2D_EXAME_DIR (o trabalho e a cache; /tmp/ph2d_exame —
 #      um por família em paralelo) · PH2D_EXAME_PUBLICA=1 (o --matriz com PH2D_EXAME_DIR copia para Pinceis/matriz/) ·
-#      PH2D_EXAME_SUFIXO (acrescentado ao nome das pranchas)
+#      PH2D_EXAME_SUFIXO (acrescentado ao nome das pranchas) ·
+#      PH2D_EXAME_BASE (o pincel das FAIXAS da cena «sobre» do candidato e do vizinho da prancha: «Acrylic Round» =
+#      o Round Hard do óleo que o Rebelle usou nas fotos de BLEND/SMUDGE/ERASER, «Wet Round» = o Watercolor Round
+#      das `_aq`, WATER e DRY. Um borrador/borracha só se vê sobre tinta. A biblioteca pinta-se SEMPRE sem ela: a
+#      cena «sobre» de cada pincel de fábrica é a dele, e a cache não muda.)
 set -euo pipefail
 RAIZ=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
+# O cargo corre NA árvore do script (chamado de outra pasta, testava o `it` dessa outra árvore).
+cd "$RAIZ"
 F=$RAIZ/docs/Painter/Pinceis/ferramentas
 P=$RAIZ/docs/Painter/Pinceis
 # A bateria do EXAME (a da matriz, sempre) e a da comparação com o oráculo (a mesma, salvo PH2D_EXAME_BATERIA).
@@ -54,7 +60,7 @@ biblioteca() {
   if [[ ! -f $B/chave || $(cat "$B/chave") != "$chave" ]]; then
     echo "▸ a biblioteca inteira pela bateria do EXAME (chave $chave)…" >&2
     rm -rf "$B" && mkdir -p "$B"
-    pinta "todos" "$B" 1 >&2
+    (unset PH2D_EXAME_BASE; pinta "todos" "$B" 1 >&2) || exit 1
     echo "$chave" >"$B/chave"
   fi
   echo "$B"
@@ -125,6 +131,17 @@ if [[ $BAT != "$BATM" ]]; then # outra bateria (o legado): o nosso a escala 1 ne
   VIZD=""
 fi
 ESCALA=${PH2D_EXAME_ESCALA:-}
+if [[ -n $ORACULO && -z $ESCALA ]] && ! py -c "
+import json,sys
+sys.path.insert(0,sys.argv[1])
+from exame_regua import acha_foto
+bat=json.load(open(sys.argv[2]))
+c=next(c['nome'] for c in bat['cenas'] if any(o.get('nome')=='recto_lento' for o in c['ops']))
+sys.exit(0 if acha_foto(sys.argv[3],c,'A') else 1)" "$F" "$BAT" "$ORACULO"; then
+  # Um oráculo só com a cena «sobre» (os borradores e borrachas do Rebelle): sem o recto, a escala é a nominal.
+  ESCALA=1
+  echo "▸ o oráculo não tem o recto_lento: escala nominal 1 (PH2D_EXAME_ESCALA para outra)"
+fi
 if [[ -n $ORACULO && -z $ESCALA ]]; then
   ESCALA=$(py -c "
 import json,sys
@@ -138,7 +155,8 @@ print(round(o/n,3))" "$F" "$BAT" "$ORACULO" "$NOSSO")
   echo "▸ escala = a largura do recto_lento do oráculo ÷ a nossa = $ESCALA"
 fi
 ESCALA=${ESCALA:-1}
-if [[ -z $VIZD ]] || py -c "import sys;sys.exit(0 if abs(float(sys.argv[1])-1)>0.02 else 1)" "$ESCALA"; then
+# Com uma base, o vizinho da prancha repinta-se SOBRE ela (o da biblioteca tem as faixas dele).
+if [[ -z $VIZD || -n ${PH2D_EXAME_BASE:-} ]] || py -c "import sys;sys.exit(0 if abs(float(sys.argv[1])-1)>0.02 else 1)" "$ESCALA"; then
   E="$DIR/escala" && rm -rf "$E" && mkdir -p "$E"
   pinta "$PINCEL|$VIZ" "$E" "$ESCALA" "$BAT"
   NOSSO="$E/$SLUG"

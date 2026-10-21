@@ -99,6 +99,18 @@ impl Pincel {
         }
     }
 
+    /// Uma FERRAMENTA que não pinta (J4 `mistura`): um modo que não é o Paint (Smear, Blur, as ferramentas molhadas
+    /// Blend/Wet/Dry…) ou a borracha (`EraseAlpha`). Sobre o papel ela não deixa nada: as faixas da cena «sobre» são
+    /// de outro pincel ([`base_padrao`]).
+    pub fn nao_pinta(&self) -> bool {
+        let Fonte::Preset { preset, .. } = &self.fonte else {
+            return false;
+        };
+        let p = &preset.parametros;
+        p.paint_mode.as_deref().is_some_and(|m| m != "Paint")
+            || p.brush.get("blend").and_then(Value::as_str) == Some("EraseAlpha")
+    }
+
     /// `relogio_fixo`: a água em passos síncronos (a mesma tinta duas vezes — as fotos); sem ele, a do ecrã (o custo).
     pub fn aplica(&self, t: &mut PainterTool, relogio_fixo: bool) {
         t.set_semente_dos_tracos(0);
@@ -335,10 +347,16 @@ fn fotos_da_cena(cena: &Value) -> usize {
         .count()
 }
 
-fn escreve_ppm(path: &Path, rgba: &[u8], w: u32, h: u32) {
+/// A foto como o artista a vê: a camada SOBRE o papel da bateria. Uma borracha (`EraseAlpha`) só mexe no alfa e
+/// deixa o RGB de antes; sem compor, o apagado lia-se como tinta intacta. Com alfa 255 (todo pincel que pinta) o
+/// píxel sai ao byte.
+fn escreve_ppm(path: &Path, rgba: &[u8], w: u32, h: u32, papel: [u8; 3]) {
     let mut f = format!("P6\n{w} {h}\n255\n").into_bytes();
     for px in rgba.as_chunks::<4>().0 {
-        f.extend_from_slice(&px[..3]);
+        let a = u32::from(px[3]);
+        f.extend((0..3).map(|i| {
+            ((u32::from(px[i]) * a + u32::from(papel[i]) * (255 - a) + 127) / 255) as u8
+        }));
     }
     std::fs::write(path, f).unwrap();
 }
@@ -397,6 +415,14 @@ fn exame_pinta() {
     let base = std::env::var("PH2D_EXAME_BASE")
         .ok()
         .map(|b| pinceis(&b).remove(0));
+    // Sem `PH2D_EXAME_BASE`, a ferramenta que não pinta leva a base do seu meio (a biblioteca e a matriz também): um
+    // pincel que pinta continua com as faixas dele, ao byte.
+    let padroes: Vec<Option<Pincel>> = todos
+        .iter()
+        .map(|p| {
+            (base.is_none() && p.nao_pinta()).then(|| pinceis(base_padrao(p.meio())).remove(0))
+        })
+        .collect();
     let bat = bateria();
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
@@ -438,10 +464,11 @@ fn exame_pinta() {
                     let dir = out.join(pincel.slug());
                     std::fs::create_dir_all(&dir).unwrap();
                     let t1 = Instant::now();
-                    let (foto, px) = pinta_cena(pincel, base.as_ref(), cena, tela, papel, f);
+                    let base = base.as_ref().or(padroes[p].as_ref());
+                    let (foto, px) = pinta_cena(pincel, base, cena, tela, papel, f);
                     let ms = t1.elapsed().as_secs_f64() * 1e3;
                     let chave = format!("{nome_cena}_{foto}");
-                    escreve_ppm(&dir.join(format!("{chave}.ppm")), &px, tela[0], tela[1]);
+                    escreve_ppm(&dir.join(format!("{chave}.ppm")), &px, tela[0], tela[1], papel);
                     println!("[exame] {} · {chave}: {ms:.0} ms", pincel.nome);
                     let mut m = metas.lock().unwrap();
                     let e = &mut m[p];
@@ -451,7 +478,7 @@ fn exame_pinta() {
                     if let Fonte::Preset { relativo, .. } = &pincel.fonte {
                         e["relativo"] = json!(relativo);
                     }
-                    if let Some(b) = &base {
+                    if let Some(b) = base {
                         e["base"] = json!(b.nome);
                     }
                     e["fnv"][&chave] = json!(format!("{:#018x}", fnv1a(&px)));
@@ -572,5 +599,15 @@ fn exame_custo() {
             "load": std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim(),
         });
         println!("[custo] {r}");
+    }
+}
+
+/// A base das faixas da cena «sobre» de uma ferramenta que não pinta ([`Pincel::nao_pinta`]): a tinta lisa do meio dela
+/// — o disco duro no Digital (as faixas lisas do Round Hard do Rebelle), a acrílica no Wet e nos outros (a tinta que as
+/// ferramentas molhadas movem).
+pub fn base_padrao(meio: PaintMedia) -> &'static str {
+    match meio {
+        PaintMedia::Digital => "Hard Round",
+        _ => "Acrylic Round",
     }
 }

@@ -1,7 +1,7 @@
 # ESTADO da missão Pincéis (a FILA viva; ≤ 8 KB)
 
 > Toda janela lê isto primeiro e actualiza-o antes de sair. Contrato: [`00_MISSAO.md`](00_MISSAO.md).
-> Última escrita: JANELA 2, 2026-10-20. O detalhe de cada janela: `HANDOFF_JANELA_<n>.md`.
+> Última escrita: JANELA 3, 2026-10-21. O detalhe de cada janela: `HANDOFF_JANELA_<n>.md`.
 
 **Quem é quem (20/10):** JANELA 2 = `ph2d-d2` · JANELA 3 = `ph2d-94` · JANELA 4 = `ph2d-d1` · JANELA 5 = `ph2d-fa`.
 O nome muda se a janela reiniciar (confirme por `ListAgents` antes do sinal).
@@ -17,14 +17,11 @@ O nome muda se a janela reiniciar (confirme por `ListAgents` antes do sinal).
   custo e revisão por um agente que não a fez. As leis medidas: [`06_LEIS_DAS_LACUNAS.md`](06_LEIS_DAS_LACUNAS.md);
   o que cada motor faz agora: `03_MOTORES.md` §4 (linhas ✅) e §7/§7.1.
 
-## A meio (JANELA 3, 2026-10-20)
-
-- Infra: a fábrica por família nos 4 meios (`938271318c`, `04_BANCADA` §9: `tests/it/familias/<família>.rs`), o
-  briefing de uma família (`BRIEFING_FAMILIA.md`), as vezes (`vez_pesada.sh` 2 vagas, `vez_do_app.sh`), o
-  inventário dos oráculos da J3 (`fixtures/INVENTARIO_J3.md`).
-- Onda 1 (agentes em paralelo): `grafite` (B-1..4 exame + HB/2H grão, B-5, B-11), `tintas` (C-1..3 exame, C-8, C-9,
-  C-12..15), `basicos` (A-1..6, Digital), `canetas` (C-4..7, C-10, C-11, Digital). Onda 2: `lapis` (B-6..10),
-  `caligrafia_marcadores` (D-1..4, E-1..4), `aerografo` (J-1..6). Relatório de cada uma: `exames/<família>.md`.
+- **JANELA 3** ([handoff](HANDOFF_JANELA_3.md), HEAD `c9087dc183`): a fábrica por família nos 4 meios
+  (`tests/it/familias/`, `04_BANCADA` §9), `BRIEFING_FAMILIA.md`, as vezes (`vez_pesada.sh`, `vez_do_app.sh`), o
+  tecto de tamanho por preset. As 7 famílias A–E, J examinadas: **6 aprovados novos** (Hard Round, Soft Round,
+  Pixel 1px, Glaze Round, Flat Block-in, Mapping Pen — Digital); os 12 pré-existentes curados; 20 reprovados em
+  estudo (`EM_ESTUDO`, sem ficheiro); 7 fundidos. Fábrica 34 (Wet 27, Digital 7). Relatórios `exames/<família>.md`.
 
 ## Decisões de produto (com o porquê)
 
@@ -53,23 +50,20 @@ O nome muda se a janela reiniciar (confirme por `ListAgents` antes do sinal).
 11. **J3: o Round Pressure (A-3) funde-se no Hard Round.** Com a opacidade por dab do Krita feita, fica a 0,286 do
     Hard Round (degrau < 0,40) e o revisor cego não os separa nos tamanhos nem no «sobre»; a diferença (a opacidade
     também pela pressão) é uma linha do cartão Pen no Hard Round, não outro pincel.
-12. **J3: «diferença VISÍVEL» na revisão cega** = a que um revisor aponta com confiança média/alta, ou que DOIS
-    revisores novos repetem. A que só sai a medir píxeis com confiança baixa e que revisores seguidos CONTRADIZEM
-    (Mapping Pen: 6 rondas, «o Krita começa em ponta» × «começa redondo») não reprova — senão o exame não fecha.
+12. **J3: «diferença VISÍVEL»** = confiança média/alta, ou repetida por DOIS revisores novos. A de confiança baixa
+    que revisores seguidos CONTRADIZEM (Mapping Pen, 6 rondas) não reprova — senão o exame não fecha.
 13. **J3: a matriz manda nas fusões das canetas duras.** Studio Pen (0,273 do Hard Round) e Technical Pen (0,33 do
     Pixel 1px) são esses pincéis com outra curva/tamanho — não entram; a curva em S fica como linha do cartão Pen.
 14. **J3: os grafites NÃO saem da regra do Spacing 0,1 + Continuous** (ordem do dono, 18/10). As bossas da borda
-    do 8B do Rebelle (oval girada a cada 0,2·D) que a regra alisa são divergência DECIDIDA. Quando a régua MEDIDA
-    na foto do oráculo e um revisor se contradizem (o grão do 2H: textura 4,98 obriga a grão fraco), vale a foto.
+    do 8B do Rebelle que a regra alisa são divergência DECIDIDA. Régua MEDIDA na foto × revisor: vale a foto.
 7. **Fórmulas dos modos = W3C em sRGB** (provado contra o Rebelle/Krita); o Saturation/Linear Burn/Dodge do Rebelle a
    10× não seguem fórmula nenhuma — não se perseguem.
 
 ## A FILA (por ordem)
 
-**JANELA 3** — desenho, tinta, aerógrafo (catálogo A, B, C, D, E, J): os novos + o exame dos existentes destas
-categorias (decisão 3). Ordem P1 do catálogo §0. Os motores pedidos por estas categorias EXISTEM todos (03 §4 ✅):
-presets Digital/Watercolor/Impasto em ficheiro (L1), cartão Pen (L2), modos + «On empty» (L7), tecto por traço e
-orlas (L8), cauda e fall-off (L5, só Digital), velocidade (L12), ponta de píxel (L18), grão com modos (L9).
+**Fila de MOTOR da J3** (o que destrava cada reprovado de A–E, J; [HANDOFF_JANELA_3](HANDOFF_JANELA_3.md) §fila):
+a J4 faz os que os seus pincéis também pedem (o Wet: tinta molhada × molhada, entrada clara, fibras, pó); a J5 os
+restantes e reexamina os `EM_ESTUDO`.
 **JANELA 4** — pintura, textura, efeitos (F, G, H, I, K, L, M) + refazer Filbert/Flat Oily/Knife (decisão 1); dual
 (L6), N imagens (L19), jitter completo (L4), cor secundária (L11) estão prontos. Abertos de pincel (não de motor)
 que a J2 mediu: a rampa 0→1 do Oil Bristle esbate em fiapos (cobertura 0,69 × 0,83 do Rebelle); o azul sobre o
@@ -94,5 +88,7 @@ presets do ArtRage pelo `lista_artrage.tsv`; o dual da Watercolor se um pincel n
 
 ## Aberto (com dono)
 
-- As pranchas cegas de 6 linhas do 8B e do Oil Bristle ainda sem revisão cega (J3 faz a do 8B, J4 a do Oil Bristle).
+- A prancha cega do Oil Bristle ainda sem revisão cega (J4). A do 8B: feita na J3 (`exames/grafite.md`).
+- Para o smoke do dono: a cauda do taper (decisão 5); o tecto de tamanho por preset (decisão 8); os 4 grafites e
+  as 3 tintas pré-existentes ficaram «curados, não aprovados» (decisão 3) — o que falta está no relatório.
 - A régua dos ruídos da pressão e da mistura: ver `04_BANCADA.md` §3.1 (o que ficou provisório e porquê).

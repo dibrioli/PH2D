@@ -131,7 +131,12 @@ fn sonda_o_miolo_liso() {
             for (c, x) in v {
                 pr.parametros.engine.insert(c.clone(), x.as_f64().unwrap());
             }
-            for (rotulo, raio, y, pressao) in [("200", 100.0f32, 440.0f32, 1.0f32), ("fraca40", 20.0, 190.0, 0.25)] {
+            // `PH2D_SONDA_TAMANHOS="5,40,200"`: os rectos a esses diâmetros, pressão 1 (por omissão o de 200 e o fraco de 40).
+            let cenas: Vec<(String, f32, f32, f32)> = match std::env::var("PH2D_SONDA_TAMANHOS") {
+                Ok(l) => l.split(',').map(|d| (d.to_owned(), d.parse::<f32>().unwrap() / 2.0, 320.0, 1.0)).collect(),
+                Err(_) => vec![("200".into(), 100.0, 440.0, 1.0), ("fraca40".into(), 20.0, 190.0, 0.25)],
+            };
+            for (rotulo, raio, y, pressao) in cenas {
                 let mut t = tela();
                 t.set_semente_dos_tracos(0);
                 t.set_wet_relogio_fixo(true);

@@ -8,7 +8,9 @@
 //! CORDA do disco (o domo: ombros 0,77 do centro); as voltas da espiral e o início do traço somam mais. O máximo é
 //! plano por construção: a corda, a fase do tapete e a sobreposição deixam de contar.
 //!
-//! A espessura do filme é a do miolo da soma de antes (`2r ÷ passo` dabs), para o tom do preset não mudar de escala.
+//! A espessura do filme é a do miolo da soma num traço LARGO (`1 ÷ CapsuleSpacing` dabs, 40), a TODO o tamanho: o traço
+//! fino da soma pesava `2r ÷ 1 célula` × o peso do fino (`1 ÷ 0,035` ≈ 29 dabs) e o filme tirado dele cobria a 5 px 0,62
+//! do de 40 (o Rebelle 0,98) — o peso do fino desfaz-se (`agua_do_dab`) e o passo deixa de contar.
 //! `0` = a soma de sempre, ao bit (o campo nem existe).
 
 /// O máximo por célula do traço vivo (em unidades de depósito × dabs), da grade inteira; preguiçoso.
@@ -67,18 +69,17 @@ pub(crate) fn acrescenta(guardado: &mut f32, alvo: f64) -> f64 {
     alvo - m
 }
 
-/// Quantos dabs o miolo de um traço recto empilha: `2r ÷ passo`, com o passo a corda entre dois dabs da lane (`0` no
-/// primeiro dab: o sub-passo da cápsula) e nunca menos de uma célula.
+/// A espessura do filme em dabs: `1 ÷ capsula` (o miolo de um traço largo), vezes `agua_do_dab` (`1 ÷` o peso do traço
+/// fino, que o depósito já traz na opacidade) — a mesma a todo o tamanho, e o passo dos dabs não conta.
 #[inline]
 #[must_use]
-pub(crate) fn dabs_no_miolo(r: f64, corda: f64, capsula: f64) -> f64 {
-    let passo = if corda > 0.0 { corda } else { capsula * 2.0 * r };
-    (2.0 * r / passo.max(1.0)).max(1.0)
+pub(crate) fn espessura(capsula: f64, agua_do_dab: f64) -> f64 {
+    agua_do_dab / capsula.max(1e-3)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Filme, acrescenta, dabs_no_miolo};
+    use super::{Filme, acrescenta, espessura};
 
     /// ⭐ O filme guarda o MÁXIMO: um dab mais fraco por cima não acrescenta nada, um mais forte só a diferença.
     #[test]
@@ -103,12 +104,10 @@ mod tests {
         assert_eq!(f.caixa.2 < f.caixa.0, true);
     }
 
-    /// O miolo de um recto empilha `2r ÷ passo` dabs; o 1.º dab (sem corda) lê o sub-passo da cápsula; nunca menos de 1.
+    /// A espessura é a do miolo de um traço largo (40 dabs a 0,025) e desfaz o peso do fino.
     #[test]
-    fn a_espessura_e_a_do_miolo_da_soma() {
-        assert_eq!(dabs_no_miolo(100.0, 8.0, 0.025), 25.0);
-        assert_eq!(dabs_no_miolo(100.0, 0.0, 0.025), 40.0);
-        assert_eq!(dabs_no_miolo(2.0, 0.5, 0.025), 4.0);
-        assert_eq!(dabs_no_miolo(0.3, 0.0, 0.025), 1.0);
+    fn a_espessura_e_a_do_miolo_largo_a_todo_o_tamanho() {
+        assert_eq!(espessura(0.025, 1.0), 40.0);
+        assert_eq!(espessura(0.025, 0.25), 10.0);
     }
 }

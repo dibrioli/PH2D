@@ -512,10 +512,10 @@ impl Trail {
             self.tinta_na_janela = true;
         }
         let law = deposit::DepositLaw::new(p, dab, ext_bypass);
-        // O filme: quantos dabs o miolo da soma empilharia (a espessura), e o campo do tamanho da grade.
+        // O filme: a espessura (os dabs do miolo de um traço largo) e o campo do tamanho da grade.
         let filme = (p.k(Knob::StrokeFilm) > 0.0).then(|| {
             self.filme.garante(g.cells, g.s);
-            filme::dabs_no_miolo(dab.r, self.corda, p.k(Knob::CapsuleSpacing))
+            filme::espessura(p.k(Knob::CapsuleSpacing), p.agua_do_dab)
         });
         let wrote = self.deposit_shaped(g, tex, dab, law, sil, grain, padrao, cor, mode, filme);
         self.accumulated(wrote)

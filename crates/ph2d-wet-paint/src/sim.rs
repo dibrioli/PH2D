@@ -57,6 +57,10 @@ pub struct Params {
     pub traco_actual: u32,
     /// [`Sim::paredes`].
     pub paredes: bool,
+    /// A água do dab ÷ a de um dab inteiro (`Engine::agua_do_dab`, `1 ÷` o peso do traço fino que a porta do produto
+    /// dobra na opacidade): o FILME do traço ([`crate::tuning::Knob::StrokeFilm`]) desfá-lo para ter a mesma espessura a
+    /// todo o tamanho. `1` fora da porta do produto.
+    pub agua_do_dab: f64,
 }
 
 impl Params {
@@ -332,6 +336,7 @@ impl Sim {
             relevo_do_tamanho: self.relevo_do_tamanho,
             traco_actual: self.traco_actual,
             paredes: self.paredes,
+            agua_do_dab: 1.0,
         }
     }
 }

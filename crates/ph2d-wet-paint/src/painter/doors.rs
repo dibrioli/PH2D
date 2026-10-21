@@ -159,10 +159,11 @@ impl Engine {
         padrao: Option<crate::brush::CellFn<'_>>,
         cor: Option<crate::brush::ColorFn<'_>>,
     ) {
-        let p = self
+        let mut p = self
             .sim
             .gather_params(&self.tuning)
             .com_pigmento(self.sliders.pigmento);
+        p.agua_do_dab = self.agua_do_dab;
         let (mut dab, _water_unit) = self.pressure_dab(&p, x, y, b, r);
         dab.opacity = opacidade;
         dab.water_amount *= self.agua_do_dab;

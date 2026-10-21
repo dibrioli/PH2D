@@ -84,7 +84,8 @@ fora da sessão: e-mail/telemóvel/Slack. O painel de comentários filtra «All 
   | `Ellipse` | `Ellipse` (+`angle` = `rot`) |
   | polilinha aberta, pentágono, N-gono sem forma nossa, ou desvio > limiar M3 | `Ink` com a geometria limpa (lei do dono: como no vetor) |
 
-  Estilo: contorno = cor e espessura da caneta, sem preenchimento, sem texto.
+  Estilo: contorno = cor e espessura da caneta, sem preenchimento, sem texto — sobre o estilo da FERRAMENTA dessa
+  forma no quadro (o rascunho, o `Look`: smoke 21/10, §9).
 - **Gatilho — DONO 20/10: «exatamente como no módulo Vector».** Só **segurar parado** com a caneta normal, o
   `quickshape_hold::Hold` do vetor tal qual (500 ms, 10 px; arrastar sem soltar escala e roda à volta do `pivot`;
   Shift regulariza ao vivo; soltar confirma; Esc devolve o traço e não volta a tentar nesse gesto) e o interruptor
@@ -327,6 +328,35 @@ do triângulo media «≤ 8 pontos» — a própria causa. Gates novos (vermelho
 `smart_test_hand.rs` e o `Pencil` real) e a régua do pintor
 `sketch::tests::the_live_quickshape_paints_within_a_screen_pixel_of_the_shape`; 4 mutações (sem a subdivisão, o vivo
 tinta, sem o filtro, soltar a refazer) sangram todas.
+
+### Smoke 21/10: o Shift (`304d033615`)
+
+O `Shift` premido com a forma à vista e a mão PARADA não regularizava. O lápis do vetor lê `modifiers.shift_key()` a cada
+quadro (`fase_vector_live_geometry.rs` → `quickshape_frame::frame` → `Pencil::hold_tick(.., regular)`): premido antes, a
+meio ou com a forma mostrada, o `Hold::tick` refaz a forma quando o `regular` muda, e largado volta à livre. O quadro só o
+lia no `pointer_move` (`smart.regular = p.mods.shift`); o quadro de pintura (`paint.rs` → `ink_hold`) não o recebia — o
+Shift antes de desenhar funcionava (vai nos eventos), o Shift sem mexer nunca. Cura: `ink_hold(doc, shift)` com o
+`store.shift_held()` da shell (teclado e 2.º dedo), e a forma viva refeita (vivo = final). Gates:
+`board_bar::tests::smart_hand::shift_alone_regularises_the_held_shape_and_letting_go_gives_it_back` (caixa → quadrado,
+elipse → círculo, largar volta; vermelho antes: 300,6 × 198,5), `shift_held_from_the_start_gives_the_regular_shape`, e
+pelos dois caminhos `tests::smart_hand::shift_without_moving_regularises_as_the_vector_pencil_does` (o `Pencil` real, ≤ 1
+px). Mutações: o `ink_hold` ignora o Shift · o pintor passa `false` — sangram.
+
+### Smoke 21/10: o Sketch (`304d033615`)
+
+Num quadro em Rascunho, nenhuma forma da caneta + segurar saía à mão: o estilo era `Style::new(..)` (`sketch: false`, o
+`Look` de nascença), não o da ferramenta no quadro (`Editor::style`, com `sketch = board.sketch` desde o carregar).
+Medido pelo ecrã, caneta × ferramenta (rascunho; o `Look` e a semente — do id — já iguais):
+
+| forma | ferramenta | caneta antes | caneta depois |
+|---|---|---|---|
+| rectângulo · quadrado · elipse · círculo · losango | à mão | final | à mão |
+| linha · seta (ligação) | à mão | final | à mão |
+| triângulo · polilinha (tinta limpa) | tinta crua: o pintor da tinta não lê o rascunho | igual | igual |
+
+Cura: `Editor::smart_style` = o estilo da ferramenta com a cor, a espessura, a opacidade e o tracejado da CANETA; sem
+fundo, cantos vivos. Gate `board_bar::tests::smart_hand::pen_shapes_in_a_sketch_board_are_drawn_like_the_tools_shapes`
+(as 9 formas, e a cor e a espessura da caneta); a mutação «o estilo de nascença» sangra.
 
 ## §10 — M4: o oráculo Excalidraw `next` (0.18.0-143b5b6) corrido sobre cenas NOSSAS (20/10)
 

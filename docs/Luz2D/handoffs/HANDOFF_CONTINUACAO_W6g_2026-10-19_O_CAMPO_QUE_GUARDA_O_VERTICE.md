@@ -1117,3 +1117,69 @@ marca da última suíte verde NÃO avançou (a corrida saiu vermelha).
    passagem do entorno só na parte da grade a partir da janela (§34.1) e os cones dos níveis 8–9.
 3. A lei W6d com `DISTANTES` no relógio (o §20.2). 4. A anomalia da r5b (§12). 5. A família (b) (37–38). 6. Os
    zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.
+
+## 41. O custo da borda (§40.2) — bissectado; o recorte da 2.ª passagem do entorno (20/10, por ordem «vamos seguir»)
+
+Réguas fora do git: `target/bug6/custo_borda_regua.rs` (precisa de um interruptor de diagnóstico, também fora do git e
+já reposto: `fora.w = 2` = a conta do `de_fora` sem ler o arquivo, por um `AtomicU32` na `ph2d-light2d-gpu`) e
+`target/bug6/recorte_regua.rs`; logs `custo_borda_1.log`, `recorte_1.log`. Cena 5, h = 3,8, mesmo processo, blocos
+rodados, o mínimo.
+
+**(a) A vista — metade conta, metade leitura, e nos níveis de CIMA:**
+
+| `c2` da vista | céu | conta sem ler | borda |
+|---|---|---|---|
+| 1920×1080 Baixa | 1,528 | +0,198 | +0,396 |
+| 2560×1440 Média | 3,935 | +0,385 | +0,722 |
+| 3840×2160 Alta | 53,35 | +3,105 | +6,902 |
+
+Na 2160p Alta os dois níveis de cima da descida levam +4,44 dos +6,90 ms (n = 11: 1,98 → 4,29; n = 12: 0,96 → 3,09):
+lá quase todo cone sai da grade e cada fio chama o `de_fora` até 4× (as duas metades × `f0`/`f1`). Os níveis baixos
+pagam +0,01–0,06 ms cada (os fios da borda divergem o warp). Não curado nesta rodada (§42.2).
+
+**(b) A 2.ª passagem do entorno é uma passagem INTEIRA** (as fases somadas: a 2.ª = a 1.ª menos a soma e a saída):
+1080p Baixa 0,61 ms (traça 0,19 · sobe 0,14 · desce 0,28), 2160p Alta 5,25 ms (traça 0,59 · sobe 1,12 · desce 3,56).
+As subidas (T) NÃO se recortam: o T do nível de cima cobre a grade inteira e puxa todas as colunas e linhas abaixo dele
+(a recorrência `sT(n−1) = min(…, 2·sT(n))` arredonda o começo a um múltiplo de 2^N, ⇒ 0). A descida SIM: R_n lê R_{n+1}
+só para a frente (colunas ≥ xi/2) e n descidas alcançam ±(2^{n+1} − 2) linhas, e os R desta passagem só se leem no arquivo.
+
+**A cura (`0aafae551e`):** `fora_do_arquivo` (`c2_hrc.wgsl`) — na descida da 2.ª passagem (`arquivo.z = 1`,
+`Config::hrc_recorta_o_arquivo`, `PH2D_LIGHT2D_RECORTE=0` compara) sai cedo o fio fora das colunas da janela em diante
+(margem 2) e das linhas dela ± 2^{n+1}. O mesmo bit. Medido (a 2.ª passagem, inteira → recortada):
+
+| | Baixa | Média | Alta |
+|---|---|---|---|
+| 1920×1080 | 0,517 → 0,500 (−3 %) | 0,516 → 0,501 (−3 %) | 1,279 → 1,048 (−18 %) |
+| 2560×1440 | 0,744 → 0,645 (−13 %) | 0,749 → 0,641 (−14 %) | 2,223 → 1,709 (−23 %) |
+| 3840×2160 | 1,293 → 1,016 (−21 %) | 1,287 → 1,006 (−22 %) | 5,064 → 3,714 (−27 %) |
+
+Abaixo do estimado (~⅔ da descida): nas grades pequenas a passagem está presa ao NÚMERO de despachos (4 quadrantes ×
+~19 etapas ≈ 76 por passagem, ~0,03 ms por nível de descida qualquer que seja o trabalho); nas grandes, os grupos que
+saem cedo ainda se lançam.
+
+**Gate:** `o_recorte_do_arquivo_nao_muda_um_bit` (`a_luz_de_fora_nao_atravessa.rs`): a cena 5, duas câmeras na Baixa e
+uma na Alta, a luz da vista com o recorte × sem ele: 0 de 3 932 160 / 3 932 160 / 3 674 112 texels. Prova de mutação
+(`mutacao_m9_alcance.log`, `mutacao_m10_coluna.log`, `mutacao_m9_m10_controlo.log`):
+
+| Mutação | Morre |
+|---|---|
+| M9 o alcance 2^n (metade) | 474 texels diferentes — o alcance de 2^{n+1} é o justo |
+| M10 o recorte 2 colunas DENTRO da janela | 1 690 432 texels |
+| controlo | 0 / 0 / 0 |
+
+## ⛔ Recusas MEDIDAS (§41)
+
+| Recusa | Porquê |
+|---|---|
+| Recortar as SUBIDAS (T) da 2.ª passagem | O T do nível de cima cobre a grade inteira: a recorrência leva o começo a 0 em todo nível. |
+| Esperar que o recorte corte ⅔ da descida em toda janela | Medido −3 % a 1080p Baixa: o custo lá é o número de despachos, não o trabalho. |
+
+## 42. ABERTO (por ordem — substitui o §40)
+
+1. O número de DESPACHOS da holográfica (4 quadrantes × ~19 etapas por passagem, na vista e no entorno): é o custo fixo
+   da Baixa a 1080p (a 2.ª passagem 0,5 ms quase sem trabalho). Uma etapa com os 4 quadrantes num despacho (z =
+   quadrante) mexe nos uniformes por passo — medir antes o custo por despacho vazio.
+2. A vista nos níveis de cima (§41 a): +4,4 ms a 2160p Alta. Candidatos por medir: o R de fora da grade de cada nível
+   numa tabela calculada uma vez (hoje até 4 `de_fora` por fio, ~2× o necessário) e o despacho recortado aos fios que leem.
+3. A lei W6d com `DISTANTES` no relógio (o §20.2). 4. A anomalia da r5b (§12). 5. A família (b) (37–38). 6. Os
+   zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.

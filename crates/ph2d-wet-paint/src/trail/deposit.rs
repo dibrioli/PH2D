@@ -113,6 +113,8 @@ pub(super) struct DepositLaw {
     po: Option<Po>,
     /// [`Dab::opacity`]: multiplica o que pousa, como o `sv`.
     opacidade: f64,
+    /// [`Knob::PressureGrain`]: a parte da [`Self::opacidade`] que entra antes do portão (`0` = nenhuma).
+    grao_da_pressao: f64,
 }
 
 impl DepositLaw {
@@ -130,6 +132,7 @@ impl DepositLaw {
             mix: p.mix,
             po: Po::de(p.k(Knob::Dust), p.semente_do_po, dab),
             opacidade: dab.opacity,
+            grao_da_pressao: p.k(Knob::PressureGrain),
         }
     }
 
@@ -162,6 +165,14 @@ impl DepositLaw {
         if stamp > 1.0 {
             stamp = 1.0;
         }
+        // ⭐ A pressão leve desfaz em grão: a parte `k` da opacidade entra antes do portão (`opacidade^k`), o resto
+        // (`opacidade^(1-k)`) depois — `k = 0` é a lei de sempre, ao bit.
+        let opacidade_depois = if self.grao_da_pressao > 0.0 {
+            stamp *= self.opacidade.powf(self.grao_da_pressao);
+            self.opacidade.powf(1.0 - self.grao_da_pressao)
+        } else {
+            self.opacidade
+        };
         if stamp <= 0.0 {
             return None;
         }
@@ -189,7 +200,7 @@ impl DepositLaw {
             return None;
         }
         deposit *= sv;
-        deposit *= self.opacidade;
+        deposit *= opacidade_depois;
         if !self.ext_bypass {
             // Wet-edge softening extension: thin the rim on wet paper.
             let softness = (film as f64 / 3.0).min(1.0) * self.ext_wet_soften;

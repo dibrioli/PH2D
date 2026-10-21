@@ -174,9 +174,14 @@ pub enum Knob {
     /// produto das duas tintas, nunca a média) e espalha-se pela pegada inteira — o azul escurece um raio ANTES da
     /// faixa e arrasta depois. `0` = a ponta de sempre (cada texel guarda o que tocou, pelo `Pickup`), ao bit.
     TipReservoir,
+    /// ⭐ **A pressão leve desfaz o traço em GRÃO** (J4 pastel_carvao, `docs/Painter/Pinceis/exames/pastel_carvao.md`):
+    /// a fracção `k` da opacidade da pressão ([`Knob::PressureOpacity`]) que entra ANTES do portão do papel — com pouca
+    /// tinta só os picos do dente a vencem (os pontos soltos do pastel e do carvão do Rebelle a pressão leve); o resto
+    /// multiplica depois, como sempre. `0` = a lei de sempre (a opacidade toda depois do portão), ao bit.
+    PressureGrain,
 }
 
-pub const KNOB_COUNT: usize = 94;
+pub const KNOB_COUNT: usize = 95;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

@@ -349,6 +349,41 @@ mod tests {
     }
 
     #[test]
+    fn a_tecla_do_jogo_entra_no_teclado_dele_e_so_ela() {
+        let mut f = FocoDoJogo::default();
+        let mut input = InputState::new();
+        f.quadro(&mut input, CORRE);
+        f.tecla(&mut input, CORRE, nua(true), Some(SETA), false, &"seta");
+        assert!(input.keyboard.held(SETA) && input.keyboard.pressed(SETA));
+        f.tecla(&mut input, CORRE, nua(false), Some(SETA), false, &"seta");
+        assert!(!input.keyboard.held(SETA) && input.keyboard.released(SETA));
+        let parada = FocoDoJogo::default();
+        parada.tecla(&mut input, PARADA, nua(true), Some(Key(0x41)), false, &"a");
+        assert!(
+            !input.keyboard.held(Key(0x41)),
+            "sem o jogo a ter o teclado nada desce nele"
+        );
+        input.begin_frame();
+        f.tecla(&mut input, CORRE, nua(true), None, false, &"sem nome");
+        assert_eq!(
+            input.keyboard.iter_pressed().count(),
+            0,
+            "uma tecla sem nome nunca entra"
+        );
+    }
+
+    #[test]
+    fn com_a_cena_tapada_um_clique_nao_e_so_do_jogo() {
+        let mut f = FocoDoJogo::default();
+        let mut input = InputState::new();
+        let tapada = Cena {
+            a_correr: true,
+            a_vista: false,
+        };
+        assert!(!f.premido(&mut input, tapada, true));
+    }
+
+    #[test]
     fn com_a_cena_parada_um_clique_nao_e_do_jogo() {
         let mut f = FocoDoJogo::default();
         let mut input = InputState::new();

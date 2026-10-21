@@ -1,5 +1,5 @@
-# roteiro conduzido «de quem é o teclado» — 2026-10-20T23:39Z — loadavg: 18.65 56.55 99.63 6/2744 1731123
-# binário: /home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor/target/smoke/ph2d-host-desktop (2026-10-20 20:39:33) · HEAD cd7f0585dd
+# roteiro conduzido «de quem é o teclado» — 2026-10-21T00:50Z — loadavg: 32.30 65.58 116.61 26/1815 558709
+# binário: /home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor/target/smoke/ph2d-host-desktop (2026-10-20 21:49:41) · HEAD eaeac6df3c
 # corrida: Xvfb 1280x800, PH2D_CODE_SMOKE=6, teclas e cliques por xdotool; régua PH2D_POSSE_LOG
 # os mesmos passos do oráculo do Godot: ../oraculo_teclado/saida.txt
    posse a_correr=false a_vista=true jogo_tem=false
@@ -26,8 +26,8 @@
    clique Primary na_cena=false so_do_jogo=false
    posse a_correr=true a_vista=true jogo_tem=false
 ## editor-em-foco space (pausa)
-   posse a_correr=false a_vista=true jogo_tem=false
    tecla Space jogo=false consumida=false transporte=None
+   posse a_correr=false a_vista=true jogo_tem=false
 ## editor-em-foco space (continua)
    posse a_correr=true a_vista=true jogo_tem=true
    tecla Space jogo=false consumida=false transporte=None

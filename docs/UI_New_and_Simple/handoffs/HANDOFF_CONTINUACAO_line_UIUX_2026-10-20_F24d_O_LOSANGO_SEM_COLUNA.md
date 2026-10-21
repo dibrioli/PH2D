@@ -101,3 +101,5 @@ Smoke: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-UIUX && PH2D_AUTOK
 → arraste uma alça da estrela (o ponto do raio interno): ela segue o rato com a Timeline aberta; ao
 soltar nasce UMA chave «Shape Settings». Com a ferramenta de vetor na mão, `L` abre/fecha a Timeline;
 `Shift+L` pega a Elipse. Binário: 2.ª build sem «Compiling».
+
+**Smoke do dono (§4 + §7): APROVADO em 21/10 («smoke ok»).** A próxima onda começa pelo §6 item 2.

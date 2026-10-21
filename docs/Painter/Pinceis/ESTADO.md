@@ -62,6 +62,14 @@ O nome muda se a janela reiniciar (confirme por `ListAgents` antes do sinal).
     Pixel 1px) são esses pincéis com outra curva/tamanho — não entram; a curva em S fica como linha do cartão Pen.
 14. **J3: os grafites NÃO saem da regra do Spacing 0,1 + Continuous** (ordem do dono, 18/10). As bossas da borda
     do 8B do Rebelle que a regra alisa são divergência DECIDIDA. Régua MEDIDA na foto × revisor: vale a foto.
+15. **J4: a regra da rampa de pressão NÃO reprova a entrada tardia do oráculo.** O Flat Bristle dá 0,202 na barra
+    0,18 só porque o Rebelle não pinta abaixo da pressão 0,2 — copiá-lo é o piso que a decisão 9 proíbe. A régua da
+    rampa compara-se acima do início do oráculo (a mudar na lei, aditiva, quando um pincel a pedir).
+16. **J4: no conflito entre uma foto nova do Rebelle e um número antigo gravado num portão, vale a foto** (Square
+    Hard: o cruzamento mais escuro que a revisão pede × o 0,58 do portão das mídias). O número re-mede-se na foto.
+17. **J4: o Dabber fica como está** (curado, não aprovado); fiel ao Rebelle cairia a 0,55 do nosso 8B. A J5 decide
+    com a matriz final. Acrylic Round (→ Hard Round) e Rigger (→ Hard Round) fundidos; Wet Blend Round não entra
+    (o Soft Round já pinta o Wet Paint do Krita, 366/454).
 7. **Fórmulas dos modos = W3C em sRGB** (provado contra o Rebelle/Krita); o Saturation/Linear Burn/Dodge do Rebelle a
    10× não seguem fórmula nenhuma — não se perseguem.
 

@@ -602,7 +602,7 @@ const FOTOS: [(&str, &str, f64, [Faixa; 2]); 6] = [
 const IDENTIDADE: [(&str, &[(usize, M)]); 3] = [
     ("Halftone", &[(1, M::Pontos), (1, M::CvArea), (1, M::Contraste), (0, M::Pontos)]),
     ("Stars", &[(0, M::Gota), (0, M::Contraste), (0, M::CvArea)]),
-    ("Grass", &[(1, M::Alto), (1, M::Contraste), (0, M::Alto)]),
+    ("Grass", &[(1, M::Alto), (1, M::Contraste), (0, M::Pontos)]),
 ];
 
 /// ⭐ **Cada carimbo reconhece-se pela foto do seu oráculo** (J4, `docs/Painter/Pinceis/exames/texturas.md`): pintado
@@ -656,6 +656,12 @@ fn cada_carimbo_se_reconhece_pela_foto() {
                 falhas.push(format!("{nome}: {propria:.2} tolerâncias da sua foto, {d:.2} da do {outro} — pinta o irmão"));
             }
         }
+    }
+    // A relva DE PÉ (J4, o que a faz relva): a 200 px as manchas mais altas que largas como as do Krita (1,66); a relva
+    // a rodar ao acaso dá 1,25 (a mutação G1 do exame). A tolerância geral do Alto (0,42) deixava-a passar.
+    let k = IDENTIDADE.iter().position(|i| i.0 == "Grass").unwrap();
+    if medidas[k][1].alto < 1.5 {
+        falhas.push(format!("Grass: Alto[1] {:.2} < 1,5 — as lâminas não estão de pé (Krita 1,66)", medidas[k][1].alto));
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }

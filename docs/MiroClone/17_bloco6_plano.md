@@ -267,6 +267,7 @@ o do varrimento dos 100 mil que o rectângulo já paga.
 | caneta «Smart drawing» que converte ao soltar (Miro, Excalidraw) | ⛔ o dono (20/10); e a queixa medida na comunidade do Miro (letras viram círculos) |
 | reconhecer ao largar | ⛔ o vetor não o faz; o arnês de 1 s/evento converteu traços comuns (190 gates do ecrã) |
 | a forma do quadro «mais parecida» quando não desenha igual (triângulo qualquer → isósceles) | ⛔ muda o desenho do artista; fica a tinta limpa |
+| mostrar a forma reconhecida como tinta de poucos pontos (só os cantos) | ⛔ o pintor da caneta alisa (perfect-freehand, streamline 0,5): o «D» do smoke 20/10, 107 px fora do rectângulo; vivo = o objecto, ou a tinta a um ponto por px de ecrã |
 | refazer as arestas do laço por elemento | ⛔ M2: 42,6 ms por movimento a 2 500 pontos |
 | Worker/thread para o laço | ⛔ o Excalidraw tentou e tirou (*«complexity much worse, perf. not much better»*) |
 | a menção como posições no texto | ⛔ o `TeamWrite::Text` leva só o texto: as posições divergiam entre pares |
@@ -310,6 +311,22 @@ Q7 (guarda defensiva sobre o mesmo disjunto).
 o B12 (o `Ctrl` deles era incidental — sem íman — e `Ctrl+Alt`+arrastar passou a ser o laço, por cima de tudo, como no
 Excalidraw). Cura nos testes: `ALT` só (sozinha no quadro não há íman). A janela do B12 correu `tests::lasso` por nome e não
 os viu — a suíte inteira da crate só no fecho.
+
+### Smoke do dono 20/10: o «D» (`8982ba31db`)
+
+Caixa à mão na caneta, segurar no fim ⇒ um «D». **A lei reconhecia o MESMO rectângulo que o lápis do vetor**; o defeito
+era o que se fazia com ele: a forma viva ia para o documento como TINTA com só os cantos (`shape_points`: 6 pontos), e o
+pintor da caneta (`ink_outline`, perfect-freehand com `streamline 0,5`: cada ponto anda 57,5 % para o seguinte, fecho por
+quadráticas pelos médios) cortava-os — o rectângulo 300×200 pintado em ~248×148 com um lado curvo, **107 px** fora (o canto
+a 108,6 px de qualquer tinta); o triângulo qualquer ficava assim para sempre (118 px). Secundário: sem o passo mínimo do
+lápis (1,5 px), o tremor da caneta pousada entrava na lei (triângulo 2,66 px fora do vetor; elipse `None` com 25 amostras).
+Cura = o lápis do vetor inteiro: **vivo = final** (o elemento do gesto É já o objecto do quadro, ou a tinta limpa; soltar
+só guarda), a tinta limpa a um ponto por px de ecrã (**107 px → 0,09 px**), e `pencil::MIN_SAMPLE_PX` público como a
+entrada da lei. Os gates do B13 eram verdes porque usavam polígonos perfeitos, só olhavam o elemento DEPOIS de soltar, e o
+do triângulo media «≤ 8 pontos» — a própria causa. Gates novos (vermelhos antes): `tests::smart_hand::*` (3; a mão de
+`smart_test_hand.rs` e o `Pencil` real) e a régua do pintor
+`sketch::tests::the_live_quickshape_paints_within_a_screen_pixel_of_the_shape`; 4 mutações (sem a subdivisão, o vivo
+tinta, sem o filtro, soltar a refazer) sangram todas.
 
 ## §10 — M4: o oráculo Excalidraw `next` (0.18.0-143b5b6) corrido sobre cenas NOSSAS (20/10)
 

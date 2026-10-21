@@ -185,7 +185,8 @@ impl CanaisEscritos {
         self.valores.push((entidade, k, v));
     }
 
-    /// Tira as escritas de UMA família, deixando as outras para quem as drena.
+    /// Tira as escritas de UMA família, deixando as outras para quem as drena (o apply poupa
+    /// [`MaosDasFamilias`]).
     pub fn drenar(&mut self, familia: u16) -> Vec<(u64, FieldKey, f32)> {
         let (dela, resto) = std::mem::take(&mut self.valores)
             .into_iter()
@@ -197,6 +198,33 @@ impl CanaisEscritos {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.valores.is_empty()
+    }
+}
+
+/// ⭐ **O que a MÃO de cada família segura neste quadro** — as entidades sob um gesto vivo (a alça
+/// de uma forma, um ponto, um gradiente a arrastar), publicadas pela família, lidas pelo apply da
+/// timeline (não as conduz: o documento não briga com o dedo) e pelo Auto Key (grava no soltar, um
+/// passo só). O irmão do `gizmo.drag` e da pose do osso para quem não passa por eles.
+#[derive(Resource, Debug, Default, Clone, PartialEq, Eq)]
+pub struct MaosDasFamilias {
+    por_familia: BTreeMap<u16, Vec<u64>>,
+}
+
+impl MaosDasFamilias {
+    /// O que a família `familia` segura agora (substitui o do quadro anterior).
+    pub fn publicar(&mut self, familia: u16, entidades: Vec<u64>) {
+        self.por_familia.insert(familia, entidades);
+    }
+
+    /// Todas as entidades seguras, de todas as famílias.
+    pub fn todas(&self) -> impl Iterator<Item = u64> + '_ {
+        self.por_familia.values().flatten().copied()
+    }
+
+    /// Alguma família tem um gesto vivo?
+    #[must_use]
+    pub fn alguma(&self) -> bool {
+        self.por_familia.values().any(|v| !v.is_empty())
     }
 }
 

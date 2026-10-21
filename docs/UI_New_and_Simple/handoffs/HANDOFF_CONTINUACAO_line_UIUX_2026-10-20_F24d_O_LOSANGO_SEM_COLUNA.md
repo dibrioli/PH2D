@@ -73,3 +73,31 @@ Sonda (`F24d_cena_autokey_9.log`): q18 «olho da entrada 1 false · mistura Mult
 2. **Dívida restante nomeada no gate** (zera no bloco 2): filtros do vetor (ficheiro inteiro, olho incluído) · padrão ao longo do caminho · texto no caminho · pele do widget · auto layout/âncoras/moldura (Interface) · Blend/Morph/Envelope vivos · Brush stroke · perfil de largura (Power Stroke, incl. o chip PROFILE da barra) · modo da quebra do texto · família da fonte (menu) · desfasamento do padrão de textura (`Offset`: precisa de campo no vocabulário). Inspector: skew, emissão, tint/cantos, motor (eixo/modo/força), quebra/limites/mola da junta, ficheiros fora do ESCOPO. Crates: áudio, Flip, Painter layers, Física.
 3. **Perf:** `marcas()` agora percorre `CAMPOS` + derivados (2×21 texpat + 4×19 fx + 2×`MAX_SHAPE_FIELDS`) + 2 por entrada, com `canal_do_campo` linear a cada quadro — medir no T0(b) antes de otimizar (um `BTreeMap` id→grupo é a cura óbvia se aparecer).
 4. **Seguem de F24b/F24c, inalterados:** menu do botão direito/valor na linha de grupo do dope-sheet · perf de `linhas::layout` · lacunas de vocabulário (conteúdo/família do texto, fonte do padrão, Brush) · Bloco 2 (plano 35 §10; antes `git worktree list`) · ADR «o canal de qualquer propriedade» · gate de fecho da linha (clippy `--workspace --all-targets`, `nextest-impacted`, mutação do F24b §6.10, `paint_decorator_for` sem registrar, `set_key_marks` sem limpar, `clique` com `Escopo::Tudo`) · `CLAUDE.md` §5.1 UI/UX ao fechar (link do handoff; `PH2D_AUTOKEY_SMOKE=1..10`; não alterado nesta onda) · undo da timeline separado do undo do vetor (conhecido).
+
+## 7 — Adenda 21/10: dois bugs do dono, curados nesta janela
+
+1. **«Com a Timeline aberta os gizmos de ajuste das shapes não aceitam ajustes.»** Mecanismo: o Auto
+   Key só arma com o painel da timeline aberto (`autokey_pass.rs` `armed = panel_open && auto_key`);
+   as mãos que o apply poupa e que o Auto Key trata como arrasto eram só `hero.gizmo.drag` e a pose do
+   osso. O arrasto de uma alça de forma (e os outros 10 gestos vivos do vetor) era «edição discreta»
+   por quadro: a chave nascia e o apply do quadro seguinte reescrevia `VecShape` com a curva — o
+   dedo perdia. Cura (família inteira, uma porta): `ph2d_ecs::MaosDasFamilias` (recurso NOVO, append
+   em `canal.rs`, re-exportado; por família) · `ph2d_app_vec::maos` (NOVO: `gesto_vivo` = shape_handles.grab,
+   grad_drag, envelope_drag, patternpath_handle, width_grab, textpath_handle_drag, conn_handle,
+   connect, pen.is_dragging, shape/pencil activos; `maos` = alvo explícito + selecção; `publicar`)
+   · shell: `fase_timeline_view.rs` publica antes do apply, `timeline_bridge::maos_do_quadro` lê as
+   famílias, `autokey_pass` `drag_now` conta-as (um passo de undo, como o gizmo). Shell +9 linhas.
+   Testes: `maos_tests` (3), `timeline_bridge_maos_tests::a_forma_que_a_mao_do_vetor_segura_nao_recebe_a_curva`
+   (com controlo; mutação «sem o extend das famílias» ⇒ RED, visto). ⚠️ Não fotografável (o XTest não
+   chega à Xwayland da tela virtual) — o smoke do dono é o juiz.
+2. **«L é o atalho da Timeline, mas no modo vetor tem conflito.»** A cadeia do vetor corre antes do
+   global e `L` era a Elipse. Decisão do dono (21/10): **`L` = Timeline em todo modo; a Elipse passa a
+   `Shift+L`** (`ph2d-panel-vector/src/tool_keys.rs`). Gate `tool_keys_tests::o_l_da_timeline_nao_tem_dono_no_vetor`.
+   ⚠️ Aberto: não há gate geral «tecla de modo × tecla global» (as letras do vetor sobrepõem-se a
+   várias globais por decisão de 07/10 — `HANDOFF_INTEGRACAO_line_UIUX_2026-10-07_NOVA_UI_DO_VETOR.md`
+   :38-40); só o `L` ficou reservado.
+
+Smoke: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-UIUX && PH2D_AUTOKEY_SMOKE=8 ./target/smoke/ph2d-host-desktop`
+→ arraste uma alça da estrela (o ponto do raio interno): ela segue o rato com a Timeline aberta; ao
+soltar nasce UMA chave «Shape Settings». Com a ferramenta de vetor na mão, `L` abre/fecha a Timeline;
+`Shift+L` pega a Elipse. Binário: 2.ª build sem «Compiling».

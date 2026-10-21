@@ -139,3 +139,44 @@ fn the_whole_skeleton_is_held_and_a_stranger_holds_nothing() {
         "o arrasto do gizmo de sprite e' a outra mao, e ela continua la'"
     );
 }
+
+/// ⭐⭐ **A mão do VETOR também é mão** (bug do dono, 21/10: *«com timeline aberta os gizmos de
+/// ajustes das shapes não aceitam ajustes»*): a entidade que a família publica em
+/// `MaosDasFamilias` (a alça de uma forma a arrastar) não recebe a curva do campo dela; o
+/// controlo, sem a mão publicada, recebe. (Mutação: tirar o `extend` das famílias ⇒ a curva escreve.)
+#[test]
+fn a_forma_que_a_mao_do_vetor_segura_nao_recebe_a_curva() {
+    use ph2d_ecs::canal::familia::VETOR;
+    let campo = ph2d_ecs::FieldKey::new(VETOR, ph2d_ecs::canal_vetor::PARAM_VALOR, 0, 0);
+    let escritas = |segura: bool| {
+        let (mut sim, _raiz, ponta, mut st, mut ph) = rig_keyado();
+        for (t, v) in [(0.0, 5.0_f32), (2.0, 8.0)] {
+            st.doc.insert_key(
+                ponta.to_bits(),
+                PropKind::Field(campo),
+                RationalTime::from_seconds(t),
+                AnimValue::Float(v),
+                Interp::Linear,
+            );
+        }
+        if segura {
+            let mut m = ph2d_ecs::MaosDasFamilias::default();
+            m.publicar(VETOR, vec![ponta.to_bits()]);
+            sim.world_mut().insert_resource(m);
+        }
+        let maos = super::maos_do_quadro(None, &Default::default(), &sim);
+        quadro(&mut sim, &mut st, &mut ph, &maos);
+        sim.world_mut()
+            .get_resource_mut::<ph2d_ecs::CanaisEscritos>()
+            .map_or(0, |mut c| c.drenar(VETOR).len())
+    };
+    assert_eq!(
+        escritas(true),
+        0,
+        "a curva escreveu por cima da alça que o dedo segura"
+    );
+    assert!(
+        escritas(false) > 0,
+        "controlo: sem mão, a curva TEM de escrever o campo"
+    );
+}

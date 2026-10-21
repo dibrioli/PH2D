@@ -65,7 +65,7 @@ pub enum KeyAction {
     Mode(DrawMode),
     /// `M`: a Forma com o RECTÂNGULO do catálogo já escolhido.
     ShapeRect,
-    /// `L`: a Forma com a ELIPSE do catálogo já escolhida.
+    /// `Shift+L`: a Forma com a ELIPSE do catálogo já escolhida.
     ShapeEllipse,
     /// `X`: o foco da cor passa de Preenchimento a Traço (e volta).
     ToggleFillStroke,
@@ -87,7 +87,8 @@ pub const KEYS: [(Chord, KeyAction); 21] = [
     (Chord::key('p'), KeyAction::Mode(DrawMode::Pen)),
     (Chord::key('n'), KeyAction::Mode(DrawMode::Pencil)),
     (Chord::key('m'), KeyAction::ShapeRect),
-    (Chord::key('l'), KeyAction::ShapeEllipse),
+    // ⛔ `L` é da Timeline em TODO modo (dono, 21/10) — a Elipse sobe para `Shift+L`.
+    (Chord::shift('l'), KeyAction::ShapeEllipse),
     (Chord::key('t'), KeyAction::Mode(DrawMode::Text)),
     (Chord::shift('m'), KeyAction::Mode(DrawMode::Build)),
     (Chord::shift('w'), KeyAction::Mode(DrawMode::Width)),

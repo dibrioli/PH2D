@@ -91,7 +91,7 @@ pub use particle_emitter::{EmissionShape, ParticleEmitter, ParticleSpace};
 pub mod canal;
 pub mod canal_vetor;
 pub mod clip_playback;
-pub use canal::{CampoInfo, CanaisEscritos, CanaisLidos, FieldKey};
+pub use canal::{CampoInfo, CanaisEscritos, CanaisLidos, FieldKey, MaosDasFamilias};
 pub mod present;
 /// ⭐⭐⭐ **A reposição do estado VIVO ao rebobinar** — ver o cabeçalho do módulo.
 pub mod rewind_runtime;

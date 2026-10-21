@@ -32,7 +32,7 @@ fn the_table_is_the_one_the_owner_decided() {
     assert_eq!(k('p'), Some(KeyAction::Mode(DrawMode::Pen)));
     assert_eq!(k('n'), Some(KeyAction::Mode(DrawMode::Pencil)));
     assert_eq!(k('m'), Some(KeyAction::ShapeRect));
-    assert_eq!(k('l'), Some(KeyAction::ShapeEllipse));
+    assert_eq!(action_for(Chord::shift('l')), Some(KeyAction::ShapeEllipse));
     assert_eq!(k('t'), Some(KeyAction::Mode(DrawMode::Text)));
     assert_eq!(k('k'), Some(KeyAction::Mode(DrawMode::Bucket)));
     assert_eq!(k('w'), Some(KeyAction::Mode(DrawMode::PickBlend)));
@@ -59,4 +59,13 @@ fn the_table_is_the_one_the_owner_decided() {
 #[test]
 fn the_table_only_holds_letters() {
     assert!(KEYS.iter().all(|(c, _)| c.letter.is_ascii_lowercase()));
+}
+
+/// ⛔ **O `L` é da Timeline em TODO modo** (dono, 21/10: *«L é o atalho da timeline, mas no modo
+/// vector tem um conflito com L»*): a cadeia do vetor corre ANTES do atalho global e consumia-o
+/// (era a Elipse). Nenhuma tecla do vetor o pode tomar, com ou sem modificador que o global ignore.
+#[test]
+fn o_l_da_timeline_nao_tem_dono_no_vetor() {
+    assert_eq!(action_for(Chord::key('l')), None);
+    assert_eq!(action_for(Chord::key('L')), None);
 }

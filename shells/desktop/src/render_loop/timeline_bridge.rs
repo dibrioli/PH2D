@@ -96,6 +96,9 @@ pub(crate) fn maos_do_quadro(
         .map(|d| d.entity_bits)
         .into_iter()
         .collect();
+    // ⭐ As mãos das FAMÍLIAS (a alça de uma forma do vetor…), que não passam pelo gizmo.
+    let familias = sim.world().get_resource::<ph2d_ecs::MaosDasFamilias>();
+    maos.extend(familias.into_iter().flat_map(|m| m.todas()));
     let osso = skeleton.bone_pose.map(|(bits, _)| bits);
     // ⛔ O guarda do osso é load-bearing: sem ele um `seed` que não é osso faz o `skeleton_of`
     // devolver TODOS os ossos da cena (a leitura certa dele para *«ninguém apontou»*, e a errada

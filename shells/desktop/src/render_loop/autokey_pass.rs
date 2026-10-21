@@ -82,7 +82,12 @@ pub(crate) fn run(
     // ⭐⭐⭐ **DUAS MÃOS ARRASTAM NESTE APP, e este passe só conhecia uma** — posar um osso é um
     // gesto próprio (`bone_pose::pose`). Sem o somar aqui, cada quadro de um arrasto de osso é uma
     // «edição discreta» e abre um passo de undo seu: quarenta passos para dobrar um braço.
-    let drag_now = hero.gizmo.drag.is_some() || skeleton.bone_pose.is_some();
+    let drag_now = hero.gizmo.drag.is_some()
+        || skeleton.bone_pose.is_some()
+        || sim
+            .world()
+            .get_resource::<ph2d_ecs::MaosDasFamilias>()
+            .is_some_and(ph2d_ecs::MaosDasFamilias::alguma);
     // Sample every selected sprite's live pose, in selection order.
     //
     // ⛔⛔ **Menos quem um MOTOR está a conduzir** (auditoria de 2026-09-08). A invariante que o

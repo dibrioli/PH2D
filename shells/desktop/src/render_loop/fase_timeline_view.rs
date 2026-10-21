@@ -82,6 +82,7 @@ impl crate::App {
         // `maos` is still needed here: `timeline_bridge::run` skips what the hand holds
         // in the apply so the document never fights a live manipulation — the gizmo drag
         // AND the bone the Bone tool is posing (`timeline_bridge::maos_do_quadro`).
+        ph2d_app_vec::maos::publicar(&self.vec, sim);
         let maos = timeline_bridge::maos_do_quadro(hero_screen.as_ref(), &self.skeleton, sim);
         // The panel's Keys tab drives a soloed clip on its OWN clock (the AE precomp
         // model). `keys_mode` is the panel's last-painted tab; it picks which

@@ -123,6 +123,7 @@ pub mod frame_boxes;
 pub mod frame_labels;
 pub mod frame_spans;
 /// ⭐⭐ O losango de cada campo do painel do vetor (plano 35 §5).
+pub mod maos;
 pub mod marcas;
 /// O empacotador mora no `ph2d-render` desde o ciclo 20 W3b do Motion (a camada filtrada em cada
 /// forma usa a mesma porta, com a ordem de z preservada).

@@ -39,19 +39,19 @@ pub const WET: &[Receita] = &[
     // leve pede a curva da carga 1,5 (a 2,0 a rampa da pressão saía a 0,18 da do Rebelle; a 1,5, 0,10).
     Receita {
         pincel: &[
-            ("falloff", "\"Linear\""),
+            ("falloff", "\"Smoother\""),
             ("jitter", "0.1"),
-            ("dual", ORLA_DO_LAPIS),
+            ("dual", ORLA_DO_2H),
             ("texture", GRAO_FINO_DO_2H),
             ("shape", TUFOS_DO_2H),
             ("size_max_px", TECTO_DO_LAPIS),
         ],
         grao: None,
-        ..lapis("Graphite", "Graphite 2H", 46.0, 0.18, GRAO_DURO, extras_do_lapis!(0.5, 1.5))
+        ..lapis("Graphite", "Graphite 2H", 58.0, 0.18, GRAO_DURO, extras_do_lapis!(0.5, 1.5))
     },
     Receita {
         pincel: &[
-            ("falloff", "\"Linear\""),
+            ("falloff", "\"Smoother\""),
             ("jitter", "0.1"),
             ("dual", ORLA_DO_LAPIS),
             ("texture", GRAO_FINO_FRACO),
@@ -59,21 +59,21 @@ pub const WET: &[Receita] = &[
             ("size_max_px", TECTO_DO_LAPIS),
         ],
         grao: None,
-        ..lapis("Graphite", "Graphite HB", 72.0, 0.18, GRAO_DURO, extras_do_lapis!(0.5, 2.0))
+        ..lapis("Graphite", "Graphite HB", 100.0, 0.18, GRAO_DURO, extras_do_lapis!(0.5, 2.0))
     },
     // O 2B: o grão de 2 px (Size 128), o papel a 0,4, a carga 46 e a curva do tamanho 0,4 (com a orla a 0,25 a rampa da
     // pressão saía a 0,19 da do Rebelle, `a_pressao_de_cada_preset_e_a_da_sua_origem`; a 0,4, 0,09).
     Receita {
         pincel: &[
-            ("falloff", "\"Linear\""),
+            ("falloff", "\"Smoother\""),
             ("jitter", "0.1"),
             ("dual", ORLA_DO_LAPIS),
             ("texture", GRAO_DO_2B),
-            ("shape", TUFOS_DO_LAPIS),
+            ("shape", TUFOS_DO_2B),
             ("size_max_px", TECTO_DO_LAPIS),
         ],
         grao: None,
-        ..lapis("Graphite", "Graphite 2B", 85.0, 0.4, GRAO_MACIO, extras_do_lapis!(0.4, 2.0))
+        ..lapis("Graphite", "Graphite 2B", 120.0, 0.4, GRAO_MACIO, extras_do_lapis!(0.4, 2.0))
     },
 ];
 
@@ -83,31 +83,38 @@ pub const WET: &[Receita] = &[
 /// a nossa era 0,026–0,034 com 1–2 px (só o grão) e passa a ~0,06 com 8 px; a 200 px ~0,056 (Rebelle 0,07–0,08).
 /// A 0,6 com 2 marcas a onda era a mesma, mas a 5 px as marcas de 3 px correlacionavam o colar (ac 0,43; Rebelle 0,24):
 /// a 0,45 com 3, ac 0,23. A revisão cega do 8B (J3) apontava a borda «aos caroços, ondulada» do original como a diferença maior.
-const ORLA_DO_LAPIS: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dureza": 0.15, "escala": 0.45, "espalhar": 0.2, "forma": {"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.6, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+const ORLA_DO_LAPIS: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dureza": 0.0, "escala": 0.45, "espalhar": 0.25, "forma": {"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.3, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+
+/// A orla do 2H: a do lápis com o espalhar a 0,2 — a 0,25, com a carga leve, o colar a 40 px saía 0,047 (Rebelle 0,034;
+/// o portão do grão aceita ±35 %).
+const ORLA_DO_2H: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dureza": 0.0, "escala": 0.45, "espalhar": 0.2, "forma": {"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.3, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
 
 /// A orla do 8B: duas marcas a 0,7 do diâmetro, 0,3 espalhadas e 0,1 através — com a dos outros (0,45 × 3) o 8B DEITADO
 /// perdia o grão (textura através ÷ de pé 0,78, Rebelle 1,01 ± 0,15, `a_caneta_deitada`); assim 0,91, ao longo 1,33
 /// (1,24; a 0,8 × 1, 1,38 saía do vale), a onda 0,053 e o colar a 5 px 0,075 · ac 0,52 (Rebelle 0,072 · 0,50). A 2.ª
 /// revisão cega viu os caroços do Rebelle maiores que os nossos: o espalhar 0,1 → 0,3 (onda 0,045 → 0,053).
-const ORLA_DO_8B: &str = r#"{"angulo": 0, "atraves": 0.1, "contagem": 1, "dureza": 0.3, "escala": 0.8, "espalhar": 0.3, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+const ORLA_DO_8B: &str = r#"{"angulo": 0, "atraves": 0.4, "contagem": 2, "dureza": 0.3, "escala": 0.6, "espalhar": 0.4, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
 
 /// O grão fino e fraco do HB: Noise `Tiled` Size 256 (o píxel), contraste 0,35 — o colar a 5 px 0,071 (Rebelle 0,066; era
 /// 0,130), a autocorrelação 0,34 (0,24; era 0,78) e os poros brancos que a 1.ª revisão cega não via a 0,3 (a Textura da
 /// mídia 6,69, Rebelle 6,15; a 0,4, 7,71 sai do vale).
-const GRAO_FINO_FRACO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.15, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [256.0, 256.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+const GRAO_FINO_FRACO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.4, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [256.0, 256.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// O grão do 2B: Noise `Tiled` Size 128 (2 px), contraste 0,55 — os poros que a 1.ª revisão cega pedia («o original tem
 /// poros brancos fortes») e o passo ao HB de grão fino (a 0,5 o HB de 0,35 ficava a 0,36 dele, PASSO INVISÍVEL): a Textura
 /// da mídia 15,8 (Rebelle 13,9), o colar a 5 px 0,168 (0,120; o portão do grão aceita 2×), ac 0,50 (0,52).
-const GRAO_DO_2B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+const GRAO_DO_2B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.53, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// ⭐ **Os TUFOS da 1.ª ponta** (J3, 3.ª ronda): a Shape um Noise `Random` de lado 8 a 0,5 — cada dab um tufo manchado,
 /// o miolo do traço manchado como o do Rebelle (a forma oval-imagem dele); sem ela o miolo era liso e a 2.ª revisão
 /// cega via «bolhas lisas». Ela clareia o depósito: a carga sobe (HB 40 → 72).
-const TUFOS_DO_LAPIS: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [8.0, 8.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+const TUFOS_DO_LAPIS: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.4, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [4.0, 4.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
-/// Os tufos do 8B (0,8): a carga 280 enche o miolo e eles dão-lhe a Textura da foto (8,5; Rebelle 9,09).
-const TUFOS_DO_8B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.8, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [8.0, 8.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+/// Os tufos do 2B (0,5): mais manchado que o HB (o passo HB → 2B na matriz).
+const TUFOS_DO_2B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [4.0, 4.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+
+/// Os tufos do 8B (0,9): a carga 280 enche o miolo e eles dão-lhe a Textura da foto (8,5; Rebelle 9,09).
+const TUFOS_DO_8B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.9, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [8.0, 8.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// O grão do 8B: Noise `Tiled` Size 128 a 0,5 — os salpicos finos do Rebelle (o Size 32 da base, 8 px, dava manchas
 /// brancas; a 0,55 a Borda saía 0,56).
@@ -115,8 +122,8 @@ const GRAO_DO_8B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "ma
 
 /// O 2H: os tufos e o grão mais fracos que os do HB (0,15 · 0,05) — o Rebelle 2H é mais LISO que o HB (Textura da foto
 /// 4,98 contra 6,15); com os do HB o nosso 2H, mais claro, dava 6,90 (o vale vai a 6,41).
-const TUFOS_DO_2H: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.15, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [8.0, 8.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
-const GRAO_FINO_DO_2H: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.05, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [256.0, 256.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+const TUFOS_DO_2H: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.05, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [4.0, 4.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+const GRAO_FINO_DO_2H: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.3, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [256.0, 256.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// ⭐ **O TECTO de tamanho** (decisão 8, o Max Size 80 do Rebelle) no DIÂMETRO do nosso anel: a largura que o Rebelle
 /// pinta ao tecto — o recto de 200 px de `leis_escala_rebelle.json`: 2H 59 · HB 60 · 2B 59 (o tamanho dele pinta 0,75 do
@@ -396,6 +403,7 @@ mod portoes {
                 "modo" => b.get_mut("dual").unwrap()["modo"] = serde_json::json!(v as u8),
                 "atr" => b.get_mut("dual").unwrap()["atraves"] = serde_json::json!(v),
                 "esp" => b.get_mut("dual").unwrap()["espalhar"] = serde_json::json!(v),
+                "pas" => b.get_mut("dual").unwrap()["passo"] = serde_json::json!(v),
                 // A forma da 2.ª ponta: um Noise `Random` de lado `fs` e contraste `fc`.
                 "fs" => {
                     let f = &mut b.get_mut("dual").unwrap()["forma"];
@@ -412,6 +420,11 @@ mod portoes {
                     f["size"] = serde_json::json!([v, v]);
                 }
                 "sc" => b.get_mut("shape").unwrap()["params"][0] = serde_json::json!(v),
+                // O perfil da 1.ª ponta pelo índice de `Falloff` (0 Smooth · 1 Smoother · 2 Sphere · 3 Root · 4 Sharp · 5 Linear · 6 Pow4).
+                "fo" => {
+                    let n = ["Smooth", "Smoother", "Sphere", "Root", "Sharp", "Linear", "Pow4"][v as usize];
+                    b.insert("falloff".into(), serde_json::json!(n));
+                }
                 "jit" => {
                     b.insert("jitter".into(), serde_json::json!(v));
                 }
@@ -605,8 +618,9 @@ mod portoes {
                             fonte: Fonte::Preset { preset: Box::new(p), relativo: String::new() },
                         };
                         let ((o, lag), (cv5, ac5), cob40) = medidas(&pincel);
+                        let cv40 = cv_do_recto(&tamanhos(&pincel), 190, 70).0;
                         format!(
-                            "[variante] {n} {kv:<22} cob {:.3} tex {:.2} borda {:.3} orla {} larg {} · deitado larg {:.2} tex {:.2} ao longo {:.2} · onda {o:.3} ({lag}) cv5 {cv5:.3} ac5 {ac5:.2} cob40 {cob40:.3}",
+                            "[variante] {n} {kv:<22} cob {:.3} tex {:.2} borda {:.3} orla {} larg {} · deitado larg {:.2} tex {:.2} ao longo {:.2} · onda {o:.3} ({lag}) cv5 {cv5:.3} ac5 {ac5:.2} cv40 {cv40:.3} cob40 {cob40:.3}",
                             m.cobertura, m.textura, m.borda, m.orla, m.largura, at.0 / pe.0, at.1 / pe.1, lo.0 / pe.0
                         )
                     })

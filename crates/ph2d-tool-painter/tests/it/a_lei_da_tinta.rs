@@ -20,7 +20,7 @@ const RAIO_DA_CENA: f32 = 18.0;
 /// Flat pinados com a lei de antes do prompt 45 (a dos 20 de cima, ao bit, `a5134220e5`); os três com a pressão →
 /// opacidade refeitos pela lei do 45 por ORDEM DO DONO (o Airbrush «como no Rebelle», a rampa dos Flats).
 #[rustfmt::skip]
-const CENAS: [(&str, bool, u64); 22] = [
+const CENAS: [(&str, bool, u64); 21] = [
     ("Wet Round", false, 0x8e37a39e8ee2ba79),
     ("Wet Wash", false, 0xb08be15433107c85),
     ("Wet Dry Brush", false, 0xf45f7dcaa32eb88e),
@@ -34,7 +34,7 @@ const CENAS: [(&str, bool, u64); 22] = [
     ("Oil Bristle", false, 0xcd20d9a3853d6fb1), // J2 §7 c/d: o relevo pelo diâmetro, a parede, a ponta (era 0x939fc3665324de0d)
     ("Acrylic Round", false, 0xb6475854432e61f0),
     ("Express Oil", false, 0x6ae408041d1e042f),
-    ("Graphite 8B", false, 0x4b28ef0af7f2eb9f), // J3 3.ª ronda: a 2.ª ponta à frente (no arco), a orla 0,8 × 1, os tufos, a carga 280 e o papel 0,4 (era 0x0aed0cb29386b748)
+    ("Graphite 8B", false, 0xa30d19aed297aa0d), // J3 3.ª ronda: a 2.ª ponta à frente (no arco), a orla 0,8 × 1, os tufos, a carga 280 e o papel 0,4 (era 0x0aed0cb29386b748)
     ("Charcoal", false, 0x319febeb25876cd8), // J2 §7.2: o grão fino (era 0xd747450876d66163)
     ("Soft Pastel", false, 0x6d2510034bf7bea2),
     ("Oil Pastel", false, 0x53088992b4918139),
@@ -42,7 +42,6 @@ const CENAS: [(&str, bool, u64); 22] = [
     ("Dip Pen", false, 0x2785d41ac04f93a1),
     ("Ink Brush", false, 0x5856e27ccfe8f621),
     ("Marker Bullet", false, 0xb30ddf5eaa30b6b8),
-    ("Marker Liner", false, 0xb7568999a13fb6ca),
     ("Airbrush", false, 0xc9c61bd3db4a244e),
     ("Wet Flat", false, 0x270ceb734f4d9aea),
     ("Gouache Flat", false, 0x6111ea627d99cff5),
@@ -200,12 +199,11 @@ fn o_traco_sozinho_nao_muda_com_o_glaze() {
 fn sonda_prancha_sem_glaze() {
     let dir = std::env::var("PH2D_SONDA_OUT").expect("PH2D_SONDA_OUT");
     std::fs::create_dir_all(&dir).unwrap();
-    const RAIOS: [(&str, f32); 5] = [
+    const RAIOS: [(&str, f32); 4] = [
         ("Ink Bullet", 21.0),
         ("Dip Pen", 19.0),
         ("Ink Brush", 20.0),
         ("Marker Bullet", 20.0),
-        ("Marker Liner", 9.0),
     ];
     std::thread::scope(|s| {
         for (nome, raio) in RAIOS {
@@ -454,12 +452,11 @@ fn cenas_das_camadas_(hw: f32) -> [(&'static str, Vec<Traco>); 2] {
 }
 
 /// Os pincéis de Glaze de fábrica e o raio do portão das mídias.
-const PINCEIS_DE_GLAZE: [(&str, f32); 5] = [
+const PINCEIS_DE_GLAZE: [(&str, f32); 4] = [
     ("Ink Bullet", 21.0),
     ("Dip Pen", 19.0),
     ("Ink Brush", 20.0),
     ("Marker Bullet", 20.0),
-    ("Marker Liner", 9.0),
 ];
 
 /// **SONDA (smoke do dono 16/10): a 3.ª camada da MESMA tinta clareia.** Para cada pincel de Glaze × espera entre

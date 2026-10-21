@@ -18,8 +18,9 @@ use crate::{BoardDoc, Files, Team};
 /// imagens (`Board::files`, `Version::files`, `ElementKind::Image`, W14); 13 = o filtro da imagem
 /// (`Image::filter`, W15); 14 = o segmento do meio do cotovelo (`Connector::mids`, W23 — doc 13);
 /// 15 = os textos ao longo da linha da seta (`Connector::captions`, `Connector::turn`, W23 — doc 14);
-/// 16 = as menções das mensagens (`Message::mentions`, W23 B14 — doc 17).
-pub const FORMAT_VERSION: u32 = 16;
+/// 16 = as menções das mensagens (`Message::mentions`, W23 B14 — doc 17); 17 = a escala de nascença
+/// do traço (`Style::birth`) e a tinta limpa (`Ink::clean`) — auditoria do Sketch, doc 17 §9.
+pub const FORMAT_VERSION: u32 = 17;
 
 /// Identidade de um quadro no projecto. Nunca reusada.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -330,6 +331,7 @@ impl BoardSet {
             13 => crate::legacy::read_v13(bytes),
             14 => crate::legacy::read_v14(bytes),
             15 => crate::legacy::read_v15(bytes),
+            16 => crate::legacy::read_v16(bytes),
             v => Err(format!("board format version {v} != {FORMAT_VERSION}")),
         }
     }

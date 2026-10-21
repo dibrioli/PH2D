@@ -289,9 +289,12 @@ impl Editor {
         let Some(shape) = smart.hold.shape() else {
             return;
         };
+        // A tinta limpa nasce com o estilo das formas da caneta (o rascunho, a espessura e a escala de
+        // nascença da ferramenta; a cor da caneta) — auditoria 21/10: com o da caneta ficava lisa.
+        let clean = self.smart_style(style);
         let el = self
             .smart_element(doc, &shape, style, smart.px, (id, z.clone()))
-            .unwrap_or_else(|| smart_ink(&shape, pen, style, smart.px, (id, z.clone())));
+            .unwrap_or_else(|| smart_ink(&shape, pen, &clean, smart.px, (id, z.clone())));
         crate::live(doc, el);
     }
 
@@ -382,6 +385,7 @@ fn smart_ink(
         .into_iter()
         .map(|p| [p[0], p[1], 0.5])
         .collect();
-    let (ink, bx) = Ink::from_world(&pts, style.clone(), pen, false);
+    let (mut ink, bx) = Ink::from_world(&pts, style.clone(), pen, false);
+    ink.clean = true;
     Element::new_ink(id, z, ink, bx)
 }

@@ -7,6 +7,9 @@ use serde::{Deserialize, Serialize};
 use crate::session::{Session, splitmix64};
 use crate::{Connector, End, FracKey, Frame, Ink, Org, RichText};
 
+#[path = "element_birth.rs"]
+mod birth;
+pub use birth::BirthScale;
 #[path = "element_identity.rs"]
 mod identity;
 pub(crate) use identity::OriginSlot;
@@ -196,6 +199,10 @@ pub struct Style {
     /// `serde(default)`: o elemento que viajou no `customData` de um ficheiro anterior lê-se igual.
     #[serde(default)]
     pub look: Look,
+    /// A escala do ecrã em que nasceu ([`BirthScale`], formato 17). `serde(default)`: o elemento do
+    /// `customData` de um `.excalidraw` anterior lê-se nascido a zoom 1.
+    #[serde(default)]
+    pub birth: BirthScale,
 }
 
 /// ⭐ **O aspecto que vem do Excalidraw** (W9, [estudo 07](../../../docs/MiroClone/07_fidelidade_excalidraw.md)
@@ -300,6 +307,7 @@ impl Style {
             font_size: crate::DEFAULT_FONT_SIZE,
             sketch: false,
             look: Look::default(),
+            birth: BirthScale::default(),
         }
     }
 }

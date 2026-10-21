@@ -29,6 +29,11 @@ pub struct Ink {
     /// A pressão foi MEDIDA por um dispositivo (senão o traço é de largura constante: o Miro não
     /// varia a espessura com a caneta — ideia «Open» na comunidade dele, 7583).
     pub pressure: bool,
+    /// A geometria LIMPA de uma forma da caneta + segurar (o triângulo qualquer, a polilinha — W23
+    /// B13): em rascunho pinta-se à mão como as formas e o botão «Rascunho ↔ Final» alcança-a
+    /// (formato 17). `serde(default)`: o traço do `customData` de um `.excalidraw` anterior é livre.
+    #[serde(default)]
+    pub clean: bool,
 }
 
 impl Ink {
@@ -66,6 +71,7 @@ impl Ink {
             points,
             base: [w, h],
             pressure,
+            clean: false,
         };
         (ink, [x, y, w, h])
     }

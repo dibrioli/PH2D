@@ -34,7 +34,10 @@ pub const MAX_STEPS: usize = 500;
 /// inverso de um passo da equipa.
 #[derive(Clone, Debug)]
 enum Step {
-    Doc(Vec<BoardOp>, Vec<Option<Element>>),
+    /// O lote inverso, o estado depois do gesto e — no botão «Rascunho ↔ Final» do quadro inteiro — o
+    /// MODO do quadro a repor e o outro (`Board::sketch`; auditoria 21/10: o `Ctrl+Z` desfazia as
+    /// formas e deixava o modo).
+    Doc(Vec<BoardOp>, Vec<Option<Element>>, Option<(bool, bool)>),
     Team(TeamOp),
 }
 
@@ -79,6 +82,8 @@ pub struct History {
     redo: Vec<(u64, Step)>,
     /// A hora do último passo NOVO (não um desfazer nem um refazer); `0` = nenhum.
     last_push: u64,
+    /// O modo do quadro que o último desfazer/refazer repôs ([`Self::take_mode`]).
+    mode: Option<bool>,
 }
 
 impl History {
@@ -93,8 +98,24 @@ impl History {
     pub fn record(&mut self, inverse: Vec<BoardOp>, doc: &BoardDoc) {
         if !inverse.is_empty() {
             let after = after(doc, &inverse);
-            self.push(Step::Doc(inverse, after));
+            self.push(Step::Doc(inverse, after, None));
         }
+    }
+
+    /// Aplica `ops` e muda o MODO do quadro de `was` para `now` no MESMO passo (o botão «Rascunho ↔
+    /// Final» sem selecção): desfazê-lo repõe `was` ([`Self::take_mode`]).
+    pub fn apply_mode(&mut self, doc: &mut BoardDoc, ops: Vec<BoardOp>, [was, now]: [bool; 2]) {
+        let inverse = apply_batch(doc, ops);
+        if !inverse.is_empty() || was != now {
+            let after = after(doc, &inverse);
+            self.push(Step::Doc(inverse, after, Some((was, now))));
+        }
+    }
+
+    /// O modo do quadro que o último desfazer/refazer repôs, se o passo o mudava — quem tem o
+    /// [`crate::Board`] escreve-o em `Board::sketch`.
+    pub fn take_mode(&mut self) -> Option<bool> {
+        self.mode.take()
     }
 
     /// Aplica um passo da equipa e guarda-o. `false` = não mudou nada (não é passo).
@@ -118,29 +139,36 @@ impl History {
     /// Desfaz o último gesto do DOCUMENTO. `false` = nada a desfazer, ou o último passo é da equipa
     /// (fica na pilha para [`Self::undo_team`]).
     pub fn undo(&mut self, doc: &mut BoardDoc) -> bool {
-        Self::swap_doc(&mut self.undo, &mut self.redo, doc)
+        let done = Self::swap_doc(&mut self.undo, &mut self.redo, doc);
+        self.mode = done.flatten();
+        done.is_some()
     }
 
     /// Refaz o último desfeito do DOCUMENTO (o par de [`Self::undo`]).
     pub fn redo(&mut self, doc: &mut BoardDoc) -> bool {
-        Self::swap_doc(&mut self.redo, &mut self.undo, doc)
+        let done = Self::swap_doc(&mut self.redo, &mut self.undo, doc);
+        self.mode = done.flatten();
+        done.is_some()
     }
 
     fn swap_doc(
         from: &mut Vec<(u64, Step)>,
         to: &mut Vec<(u64, Step)>,
         doc: &mut BoardDoc,
-    ) -> bool {
+    ) -> Option<Option<bool>> {
         let Some((_, Step::Doc(..))) = from.last() else {
-            return false;
+            return None;
         };
-        let Some((_, Step::Doc(step, was))) = from.pop() else {
+        let Some((_, Step::Doc(step, was, mode))) = from.pop() else {
             unreachable!("visto acima");
         };
         let inverse = apply_batch(doc, rebase(doc, step, was));
         let after = after(doc, &inverse);
-        to.push((undo_tick(), Step::Doc(inverse, after)));
-        true
+        to.push((
+            undo_tick(),
+            Step::Doc(inverse, after, mode.map(|(a, b)| (b, a))),
+        ));
+        Some(mode.map(|(back, _)| back))
     }
 
     /// Desfaz o último passo se é da EQUIPA. `false` = não é (ou não há).

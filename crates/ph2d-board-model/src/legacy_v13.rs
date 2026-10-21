@@ -1,16 +1,18 @@
 //! **Os formatos 13 e 14** (W15–W23): o de hoje com a seta de um rótulo único a meio — no 13 sem o
 //! segmento do meio do cotovelo (`Connector::mids`, W23 B5(1)), no 14 com ele; o 15 trocou o rótulo
-//! pelos textos ao longo da linha (`Connector::captions`, W23 B5(2)). Só a variante `Connector` do
-//! elemento muda: o resto lê-se com as structs de hoje, e as do elemento são genéricas na seta. Os
-//! leitores do 9 ao 12 lêem a seta pela [`ConnectorV13`] (antes do 13 ela já era esta) e o elemento
-//! pelo [`KindV13`] (as variantes novas só se acrescentam no fim).
+//! pelos textos ao longo da linha (`Connector::captions`, W23 B5(2)). As structs do elemento são
+//! genéricas na seta, e as variantes lêem-se pelas do formato 16 (`legacy_v16.rs`); o quadro, na
+//! equipa. Os leitores do 9 ao 12 lêem a seta pela [`ConnectorV13`] (antes do 13 ela já era esta) e
+//! o elemento pelo [`KindV13`] (as variantes novas só se acrescentam no fim); o 15 e o 16, pelo
+//! [`read_old`] com a seta do 16.
 
 use serde::Deserialize;
 
+use super::v16::{EmbedV16, FrameV16, ImageV16, InkV16, ShapeV16, StyleV16};
 use super::{DocOld, doc_old};
 use crate::{
     Board, BoardId, BoardSet, Camera, Connector, Element, ElementId, ElementKind, End, Files,
-    FracKey, Frame, Head, Image, Ink, Org, Route, Shape, Style, TextTurn,
+    FracKey, Head, Org, Route, Team, TextTurn,
 };
 
 /// A seta dos formatos 9–13.
@@ -20,7 +22,7 @@ pub(super) struct ConnectorV13 {
     end: End,
     route: Route,
     heads: [Head; 2],
-    style: Style,
+    style: StyleV16,
     label: String,
     waypoints: Vec<[f64; 2]>,
 }
@@ -32,21 +34,21 @@ pub(super) struct ConnectorV14 {
     end: End,
     route: Route,
     heads: [Head; 2],
-    style: Style,
+    style: StyleV16,
     label: String,
     waypoints: Vec<[f64; 2]>,
     mids: Vec<Option<f64>>,
 }
 
-/// O que um elemento É, nos formatos 9–14 (o 12 lê a imagem pela dele), com a seta `C` do formato.
+/// O que um elemento É, nos formatos 9–16 (o 12 lê a imagem pela dele), com a seta `C` do formato.
 #[derive(Deserialize)]
 pub(super) enum KindOld<C> {
-    Shape(Shape),
+    Shape(ShapeV16),
     Connector(Box<C>),
-    Ink(Box<Ink>),
-    Frame(Frame),
-    Image(Box<Image>),
-    Embed(Box<crate::Embed>),
+    Ink(Box<InkV16>),
+    Frame(FrameV16),
+    Image(Box<ImageV16>),
+    Embed(Box<EmbedV16>),
 }
 
 pub(super) type KindV13 = KindOld<ConnectorV13>;
@@ -75,7 +77,7 @@ impl From<ConnectorV14> for Connector {
             end: c.end,
             route: c.route,
             heads: c.heads,
-            style: c.style,
+            style: c.style.into(),
             captions: Connector::captions_of(c.label),
             turn: TextTurn::Level,
             waypoints: c.waypoints,
@@ -87,17 +89,17 @@ impl From<ConnectorV14> for Connector {
 impl<C: Into<Connector>> From<KindOld<C>> for ElementKind {
     fn from(k: KindOld<C>) -> Self {
         match k {
-            KindOld::Shape(s) => ElementKind::Shape(s),
+            KindOld::Shape(s) => ElementKind::Shape(s.into()),
             KindOld::Connector(c) => ElementKind::Connector(Box::new((*c).into())),
-            KindOld::Ink(i) => ElementKind::Ink(i),
-            KindOld::Frame(f) => ElementKind::Frame(f),
-            KindOld::Image(i) => ElementKind::Image(i),
-            KindOld::Embed(e) => ElementKind::Embed(e),
+            KindOld::Ink(i) => ElementKind::Ink(Box::new((*i).into())),
+            KindOld::Frame(f) => ElementKind::Frame(f.into()),
+            KindOld::Image(i) => ElementKind::Image(Box::new((*i).into())),
+            KindOld::Embed(e) => ElementKind::Embed(Box::new((*e).into())),
         }
     }
 }
 
-/// O elemento dos formatos 11–14.
+/// O elemento dos formatos 11–16.
 #[derive(Deserialize)]
 pub(super) struct ElementOld<C> {
     id: ElementId,
@@ -139,38 +141,42 @@ fn element_old<C: Into<Connector>>(e: ElementOld<C>) -> Element {
     }
 }
 
+/// O quadro dos formatos 12–16, com a seta `C` e a equipa `T` do formato.
 #[derive(Deserialize)]
-struct BoardOld<C> {
+struct BoardOld<C, T> {
     id: BoardId,
     name: String,
     camera: Camera,
     doc: DocOld<ElementOld<C>>,
     sketch: bool,
-    team: super::TeamV15,
+    team: T,
     files: Files,
 }
 
 #[derive(Deserialize)]
-struct SetOld<C> {
+struct SetOld<C, T> {
     _version: u32,
-    boards: Vec<BoardOld<C>>,
+    boards: Vec<BoardOld<C, T>>,
     next_id: u64,
 }
 
 /// Os bytes de um `BoardSet` no formato 13, já no formato actual.
 pub(crate) fn read_v13(bytes: &[u8]) -> Result<BoardSet, String> {
-    read_old::<ConnectorV13>(bytes)
+    read_old::<ConnectorV13, super::TeamV15>(bytes)
 }
 
 /// Os bytes de um `BoardSet` no formato 14, já no formato actual.
 pub(crate) fn read_v14(bytes: &[u8]) -> Result<BoardSet, String> {
-    read_old::<ConnectorV14>(bytes)
+    read_old::<ConnectorV14, super::TeamV15>(bytes)
 }
 
-fn read_old<C: for<'de> Deserialize<'de> + Into<Connector>>(
-    bytes: &[u8],
-) -> Result<BoardSet, String> {
-    let old: SetOld<C> = postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
+/// Os bytes de um `BoardSet` dos formatos 13–16, já no formato actual.
+pub(super) fn read_old<C, T>(bytes: &[u8]) -> Result<BoardSet, String>
+where
+    C: for<'de> Deserialize<'de> + Into<Connector>,
+    T: for<'de> Deserialize<'de> + Into<Team>,
+{
+    let old: SetOld<C, T> = postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
     let boards = old
         .boards
         .into_iter()

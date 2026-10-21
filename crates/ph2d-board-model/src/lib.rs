@@ -31,8 +31,8 @@ pub use board::{Board, BoardId, BoardSet, Camera, FORMAT_VERSION};
 pub use camera::{Area, ZOOM_RANGE};
 pub use connector::{Anchor, Caption, Connector, End, Head, ORBIT_GAP, Route, TextTurn};
 pub use element::{
-    BoardDoc, Dash, Element, ElementId, ElementKind, FillStyle, Letter, Look, Origin, Rgba, Shape,
-    ShapeType, Style, TextAlign, VAlign, rotate_about,
+    BirthScale, BoardDoc, Dash, Element, ElementId, ElementKind, FillStyle, Letter, Look, Origin,
+    Rgba, Shape, ShapeType, Style, TextAlign, VAlign, rotate_about,
 };
 pub use embed::{Embed, Video};
 pub use facilitate::{

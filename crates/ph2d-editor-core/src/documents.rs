@@ -272,7 +272,11 @@ impl Documents {
         else {
             return false;
         };
-        h.undo(&mut board.doc)
+        let done = h.undo(&mut board.doc);
+        if let Some(mode) = h.take_mode() {
+            board.sketch = mode;
+        }
+        done
     }
 
     /// O quadro activo, o histórico dele e o resto do estado de sessão — juntos, para um gesto.

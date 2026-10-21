@@ -613,7 +613,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             let c = swatch(it, theme);
             ed.set_style(doc, history, |s| s.stroke = c);
         }
-        Item::Width(i) => ed.set_style(doc, history, |s| s.stroke_width = WIDTHS[i]),
+        Item::Width(i) => ed.set_style(doc, history, |s| s.choose_width(WIDTHS[i])),
         Item::Dash(d) => ed.set_style(doc, history, |s| s.dash = d),
         Item::Round(r) => ed.set_style(doc, history, |s| s.round = r),
         Item::Opacity(i) => ed.set_style(doc, history, |s| s.opacity = OPACITIES[i]),

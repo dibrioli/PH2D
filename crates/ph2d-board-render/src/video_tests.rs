@@ -389,13 +389,23 @@ fn a_hatched_video_background_is_painted_hatched() {
     c.videos.frame = Some((flat([7, 7, 7, 255], 560, 315), [560, 315]));
     let o = ops(&b, &mut c);
     let ink = crate::doc_color(yellow);
-    let solid = o
-        .iter()
-        .any(|d| matches!(d, DrawOp::Fill { brush: Brush::Solid(k), .. } if *k == ink));
+    // As riscas vão em contorno ENCHIDO (auditoria 21/10, os espigões do traço fino na placa): o
+    // fundo liso é UM contorno; as riscas, muitos.
+    let pieces = |p: &ph2d_vector::BezPath| {
+        p.elements()
+            .iter()
+            .filter(|e| matches!(e, ph2d_vector::PathEl::MoveTo(_)))
+            .count()
+    };
+    let solid = o.iter().any(
+        |d| matches!(d, DrawOp::Fill { brush: Brush::Solid(k), path, .. } if *k == ink && pieces(path) == 1),
+    );
     assert!(!solid, "o fundo às riscas pintou-se liso");
     let hatch = o
         .iter()
-        .position(|d| matches!(d, DrawOp::Stroke { brush: Brush::Solid(k), .. } if *k == ink))
+        .position(
+            |d| matches!(d, DrawOp::Fill { brush: Brush::Solid(k), path, .. } if *k == ink && pieces(path) > 1),
+        )
         .expect("as riscas do fundo não se desenharam");
     let frame = o
         .iter()

@@ -30,6 +30,7 @@ fn rich_style() -> Style {
             valign: VAlign::Bottom,
             letter: Letter::Hand,
         },
+        birth: crate::BirthScale(-5),
     }
 }
 
@@ -111,6 +112,7 @@ fn pairs() -> Vec<(Element, Element)> {
         },
         base: if rich { [3.0, 4.0] } else { [0.0, 0.0] },
         pressure: rich,
+        clean: rich,
     };
     let frame = |st: Style, name: &str| Frame {
         name: name.into(),
@@ -265,6 +267,7 @@ fn every_field_of_the_model_is_named_here() {
                     points: _,
                     base: _,
                     pressure: _,
+                    clean: _,
                 } = &**i;
                 style
             }
@@ -306,6 +309,7 @@ fn every_field_of_the_model_is_named_here() {
                     valign: _,
                     letter: _,
                 },
+            birth: _,
         } = style;
         let Org {
             groups: _,

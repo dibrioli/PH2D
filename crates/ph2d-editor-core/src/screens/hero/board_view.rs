@@ -273,8 +273,10 @@ fn canvas_down(
     ed.at_time(input.now_ns);
     // Um gesto pendurado fecha-se antes de o novo começar.
     ed.finish_gesture(&mut board.doc, history);
-    // O que nasce num quadro em rascunho nasce à mão (W4).
+    // O que nasce num quadro em rascunho nasce à mão (W4), e à escala do ecrã de agora (o dono, 21/10:
+    // de longe o rascunho de mundo ficava abaixo de 1 px — doc 17 §9).
     ed.style.sketch = board.sketch;
+    ed.style.reborn(ph2d_board_model::BirthScale::of_px(p.px));
     if double && ed.double_click(&mut board.doc, history, input.text, p) {
         live.gesture = ed.is_busy();
         return true;

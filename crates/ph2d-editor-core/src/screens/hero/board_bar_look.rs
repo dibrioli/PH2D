@@ -203,20 +203,9 @@ pub(super) fn selected_kind(ed: &Editor, doc: &ph2d_board_model::BoardDoc) -> Op
     }
 }
 
-/// O botão «Rascunho ↔ Final» aceso: com selecção, se tudo o que ele troca nela está à mão; sem
-/// selecção, o modo do quadro.
+/// O botão «Rascunho ↔ Final» aceso — a porta do editor ([`Editor::sketch_lit`]), a mesma do clique.
 pub(super) fn sketch_on(ed: &Editor, doc: &ph2d_board_model::BoardDoc, board: bool) -> bool {
-    let sel: Vec<_> = ed
-        .selection()
-        .iter()
-        .filter_map(|id| doc.get(*id))
-        .filter(|el| ph2d_board_edit::sketchable(el))
-        .collect();
-    if ed.selection().is_empty() {
-        board
-    } else {
-        !sel.is_empty() && sel.iter().all(|el| el.style().sketch)
-    }
+    ed.sketch_lit(doc, board)
 }
 
 /// A caixa no ecrã da selecção: a moldura das formas e as rotas das setas.
@@ -391,7 +380,7 @@ pub(super) fn is_current(it: Item, s: &Style, arrow: Option<&Connector>, theme: 
         Item::Fill(Some(_)) => s.fill == swatch(it, theme),
         Item::Stroke(None) => s.stroke.is_none(),
         Item::Stroke(Some(_)) => s.stroke == swatch(it, theme),
-        Item::Width(i) => s.stroke_width == WIDTHS[i],
+        Item::Width(i) => (s.chosen_width() - WIDTHS[i]).abs() < 1e-9,
         Item::Dash(d) => s.dash == d,
         Item::Round(r) => s.round == r,
         Item::Opacity(i) => s.opacity == OPACITIES[i],

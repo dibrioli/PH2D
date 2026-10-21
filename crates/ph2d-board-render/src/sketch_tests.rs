@@ -336,14 +336,15 @@ fn a_far_sketched_shape_is_drawn_final_and_a_near_one_by_hand() {
         (0, w * 2.5),
         "de longe: final, de contorno engrossado"
     );
+    // À mão o traço vai em CONTORNO enchido (nenhum traço à placa: os espigões, auditoria 21/10).
     assert_eq!(
         hand_drawn_at(lim + 1.0, crate::Detail::default()),
-        (1, w),
+        (1, 0.0),
         "de perto: à mão"
     );
     assert_eq!(
         hand_drawn_at(lim - 1.0, off),
-        (1, w),
+        (1, 0.0),
         "sem limiar: à mão como antes"
     );
 }

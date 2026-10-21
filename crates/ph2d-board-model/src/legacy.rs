@@ -16,7 +16,9 @@
 //! - 10 (W11–W12): os votos da última votação em cada elemento (`Org::votes`) e a equipa sem histórico
 //!   (W13, ADR-0183): do 7 ao 10 os votos viram UMA sessão, mostrada ([`old_votes`]).
 //! - 11 (W13): sem imagens (`legacy_v11.rs`); 12 (W14): a imagem sem filtro (`legacy_v12.rs`); 13
-//!   (W15–W23): a seta sem o segmento do meio do cotovelo (`legacy_v13.rs`).
+//!   (W15–W23): a seta sem o segmento do meio do cotovelo (`legacy_v13.rs`); 14: a seta de rótulo
+//!   único; 15: a mensagem sem menções (`legacy_v15.rs`); 16: o estilo sem a escala de nascença e o
+//!   traço sem a geometria limpa — do 9 ao 16 as variantes do elemento lêem-se por `legacy_v16.rs`.
 //!
 //! Do 1 ao 3 o elemento, o documento e o quadro têm a mesma forma a menos do que o elemento É:
 //! [`Old`] é genérico nisso.
@@ -53,8 +55,10 @@ mod v13;
 pub(crate) use v13::{read_v13, read_v14};
 #[path = "legacy_v15.rs"]
 mod v15;
-pub(crate) use v15::read_v15;
 use v15::{TeamV15, ThreadV15, threads_v15};
+#[path = "legacy_v16.rs"]
+mod v16;
+pub(crate) use v16::{read_v15, read_v16};
 
 /// O `Style` dos formatos 1–3 (sem `sketch`).
 #[derive(Deserialize)]
@@ -82,6 +86,7 @@ impl From<StyleV3> for Style {
             font_size: s.font_size,
             sketch: false,
             look: crate::Look::default(),
+            birth: crate::BirthScale::default(),
         }
     }
 }

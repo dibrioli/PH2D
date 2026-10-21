@@ -60,11 +60,13 @@ pub enum Field {
     Embed,
     /// W23 B5(2) — como os textos de uma seta se deitam.
     TextTurn,
+    /// Formato 17 — a escala do ecrã em que o elemento nasceu (`Style::birth`).
+    Birth,
 }
 
 impl Field {
     /// Todos, pela ordem do enum.
-    pub const ALL: [Field; 40] = [
+    pub const ALL: [Field; 41] = [
         Field::Box,
         Field::Angle,
         Field::Z,
@@ -105,6 +107,7 @@ impl Field {
         Field::Image,
         Field::Embed,
         Field::TextTurn,
+        Field::Birth,
     ];
 
     /// Uma contagem que SOMA entre pessoas (dois carimbos ao mesmo tempo são dois): a sessão ao vivo
@@ -165,7 +168,7 @@ impl Element {
             }
             Field::InkBody => {
                 let i = self.ink()?;
-                enc(&(i.pen, &i.points, i.base, i.pressure))
+                enc(&(i.pen, &i.points, i.base, i.pressure, i.clean))
             }
             Field::FrameName => enc(&self.as_frame()?.name),
             Field::Groups => enc(&org.groups),
@@ -184,6 +187,7 @@ impl Element {
                 enc(&(&e.link, &e.video))
             }
             Field::TextTurn => enc(&self.connector()?.turn),
+            Field::Birth => enc(&st.birth),
         })
     }
 
@@ -244,7 +248,7 @@ impl Element {
                 let ElementKind::Ink(i) = &mut self.kind else {
                     return None;
                 };
-                (i.pen, i.points, i.base, i.pressure) = dec(b)?;
+                (i.pen, i.points, i.base, i.pressure, i.clean) = dec(b)?;
                 Some(())
             }
             Field::FrameName => put(&mut self.as_frame_mut()?.name, b),
@@ -266,6 +270,7 @@ impl Element {
                 Some(())
             }
             Field::TextTurn => put(&mut self.connector_mut()?.turn, b),
+            Field::Birth => put(&mut self.style_mut().birth, b),
         }
     }
 

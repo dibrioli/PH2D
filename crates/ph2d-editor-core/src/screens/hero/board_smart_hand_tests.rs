@@ -208,8 +208,9 @@ fn hand_questions(el: &Element) -> (bool, ph2d_board_model::Look, Option<u32>, &
     )
 }
 
-/// ⭐ Num quadro em RASCUNHO, cada forma que a caneta dá (segurar) pinta-se como a da ferramenta
-/// dessa forma; o que fica tinta limpa pinta-se como a tinta crua da caneta.
+/// ⭐ Num quadro em RASCUNHO, cada forma que a caneta dá (segurar) nasce com o rascunho da ferramenta
+/// dessa forma; o que fica tinta LIMPA também nasce em rascunho (auditoria 21/10: «como a tinta crua»
+/// era o defeito). Régua de CAMPOS — a da tinta é `sketch_ink`.
 #[test]
 fn pen_shapes_in_a_sketch_board_are_drawn_like_the_tools_shapes() {
     let rhombus = sides(
@@ -300,9 +301,12 @@ fn pen_shapes_in_a_sketch_board_are_drawn_like_the_tools_shapes() {
                 u.drag(a, b);
             }
             Other::RawInk => {
-                u.board_editor().tool = Tool::Pen(Pen::Pen);
-                let q = place(&u, &pts);
-                u.drag(q[0], q[q.len() / 2]);
+                let ink = pen.ink().expect("tinta limpa");
+                assert!(
+                    ink.clean && pen.style().sketch,
+                    "{name}: a tinta limpa em rascunho"
+                );
+                continue;
             }
         }
         let tool = u.only();
@@ -323,3 +327,6 @@ fn pen_shapes_in_a_sketch_board_are_drawn_like_the_tools_shapes() {
         );
     }
 }
+
+#[path = "board_sketch_ink_tests.rs"]
+mod sketch_ink;

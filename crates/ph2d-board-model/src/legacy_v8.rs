@@ -36,6 +36,7 @@ impl From<StyleV8> for Style {
             font_size: s.font_size,
             sketch: s.sketch,
             look: crate::Look::default(),
+            birth: crate::BirthScale::default(),
         }
     }
 }
@@ -113,6 +114,7 @@ impl From<KindV8> for ElementKind {
                     points: i.points,
                     base: i.base,
                     pressure: i.pressure,
+                    clean: false,
                 }))
             }
             KindV8::Frame(f) => ElementKind::Frame(crate::Frame {

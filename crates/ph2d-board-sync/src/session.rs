@@ -18,8 +18,9 @@ use crate::{PeerId, Replica, Snapshot, Write};
 /// 7 = o vídeo (`ElementKind::Embed`, `Field::Embed`, W18 — ADR-0185); 8 = o `Field::Waypoints` leva
 /// também o segmento do meio do cotovelo (`Connector::mids`, W23); 9 = os textos ao longo da linha da
 /// seta (`Field::Captions` no lugar do rótulo único, `Field::TextTurn`, W23 B5(2)); 10 = as menções
-/// das mensagens (`Message::mentions` no `TeamWrite::Message`/`Thread`, W23 B14).
-pub const PROTOCOL: u32 = 10;
+/// das mensagens (`Message::mentions` no `TeamWrite::Message`/`Thread`, W23 B14); 11 = o elemento com
+/// `Style::birth` e `Ink::clean` (formato 17).
+pub const PROTOCOL: u32 = 11;
 
 /// Uma ligação, no transporte do anfitrião.
 pub type ConnId = u64;

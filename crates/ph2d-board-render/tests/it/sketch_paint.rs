@@ -200,3 +200,106 @@ fn the_pens_held_box_reads_as_sketched_as_the_tools() {
         tool * 100.0
     );
 }
+
+/// A semente que o quadro dá ao elemento de id `id` (o splitmix64 do `Element::seed`).
+fn seed_of(id: u64) -> u32 {
+    let mut z = id.wrapping_add(0x9e37_79b9_7f4a_7c15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    ((z ^ (z >> 31)) as u32 & 0x7fff_ffff).max(1)
+}
+
+/// ⭐ Nenhum traço À MÃO pinta longe da caixa dele (auditoria 21/10): num rectângulo da ferramenta
+/// (a semente do id 1) uma passagem saía ~35 px pelo canto de cima à direita. A geometria do rough
+/// nunca sai mais de 3,9 px (5 000 sementes); o espigão nascia na PLACA, ao traçar as passagens finas
+/// (3/60 rectângulos a 0,5). 60 sementes por espessura, tinta lida de volta:
+/// nenhum píxel aceso a mais de 6 px da caixa.
+#[test]
+fn no_hand_stroke_paints_far_outside_its_box() {
+    let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
+        println!("sem adaptador: o espigão do rascunho não corre");
+        return;
+    };
+    let mut pass = VelloPass::new(&gpu, wgpu::TextureFormat::Rgba8Unorm, SIZE).expect("VelloPass");
+    let ink = Rgba(ph2d_board_model::DEFAULT_INK);
+    let mut bad = Vec::new();
+    for width in [0.25, 0.5, 1.0, 1.68, 2.0] {
+        for batch in 0..15u64 {
+            let mut set = BoardSet::default();
+            let id = set.create("espigão".into());
+            let b = set.get_mut(id).expect("o quadro");
+            b.sketch = true;
+            b.camera.center_x = f64::from(SIZE.0) / 2.0;
+            b.camera.center_y = f64::from(SIZE.1) / 2.0;
+            let mut boxes = Vec::new();
+            for k in 0..4u64 {
+                let (cx, cy) = ((k % 2) as f64, (k / 2) as f64);
+                let bx = [100.0 + cx * 500.0, 80.0 + cy * 400.0, 300.0, 200.0];
+                let mut st = Style::new(None, Some(ink), ink);
+                st.sketch = true;
+                st.stroke_width = width;
+                let shape = ph2d_board_model::Shape {
+                    kind: ShapeType::Rectangle,
+                    style: st,
+                    text: Default::default(),
+                };
+                let mut el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), shape, bx);
+                el.set_imported_seed(Some(seed_of(batch * 4 + k + 1)));
+                ph2d_board_model::BoardOp::Put(el).apply(&mut b.doc);
+                boxes.push((batch * 4 + k + 1, bx));
+            }
+            let board = &set.boards()[0];
+            let mut routes = RouteCache::default();
+            routes.sync(&board.doc);
+            let (mut scene, mut ts) = (VectorScene::new(), TextSystem::without_system_fonts());
+            let mut cache = RenderCache::default();
+            let area = [0.0, 0.0, f64::from(SIZE.0), f64::from(SIZE.1)];
+            ph2d_board_render::paint(
+                board,
+                area,
+                &mut scene,
+                Theme::Forge,
+                &mut ts,
+                &mut cache,
+                &routes,
+                None,
+            );
+            let px = pass
+                .render_and_readback(&gpu, scene.inner(), SIZE)
+                .expect("readback");
+            let bg = [px[0], px[1], px[2]];
+            for (n, bx) in boxes {
+                let mut lit = 0usize;
+                let (x0, y0) = (
+                    (bx[0] - 60.0).max(0.0) as u32,
+                    (bx[1] - 60.0).max(0.0) as u32,
+                );
+                let x1 = ((bx[0] + bx[2] + 60.0).min(f64::from(SIZE.0))) as u32;
+                let y1 = ((bx[1] + bx[3] + 60.0).min(f64::from(SIZE.1))) as u32;
+                for y in y0..y1 {
+                    for x in x0..x1 {
+                        let (fx, fy) = (f64::from(x) + 0.5, f64::from(y) + 0.5);
+                        let dx = (bx[0] - fx).max(fx - bx[0] - bx[2]).max(0.0);
+                        let dy = (bx[1] - fy).max(fy - bx[1] - bx[3]).max(0.0);
+                        if dx.hypot(dy) <= 6.0 {
+                            continue;
+                        }
+                        let i = ((y * SIZE.0 + x) * 4) as usize;
+                        let d: i32 = (0..3)
+                            .map(|c| (i32::from(px[i + c]) - i32::from(bg[c])).abs())
+                            .sum();
+                        if d > 90 {
+                            lit += 1;
+                        }
+                    }
+                }
+                if lit > 0 {
+                    bad.push(format!(
+                        "espessura {width}, semente do id {n}: {lit} px acesos"
+                    ));
+                }
+            }
+        }
+    }
+    assert!(bad.is_empty(), "tinta longe da caixa: {bad:#?}");
+}

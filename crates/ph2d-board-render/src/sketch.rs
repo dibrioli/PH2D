@@ -9,13 +9,13 @@ use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use ph2d_board_geom::Outline;
-use ph2d_board_model::{Element, Ink, Pen, Rgba, ShapeType, Style};
+use ph2d_board_model::{Dash, Element, Ink, Pen, Rgba, ShapeType, Style};
 use ph2d_board_rough::freehand;
 use ph2d_board_rough::rough::{self, FillStyle, Op, OpSet, Seg, SetKind};
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{
     Affine, BezPath, Brush, Cap, Color, Join, ParamCurve, PathEl, PathSeg, Point, Stroke,
-    VectorScene,
+    StrokeOpts, VectorScene, expand_stroke,
 };
 
 use crate::{KEEP_FRAMES, doc_color, style_stroke};
@@ -25,12 +25,56 @@ use crate::{KEEP_FRAMES, doc_color, style_stroke};
 pub const HIGHLIGHTER_ALPHA: f32 = 0.4;
 
 /// Um elemento em rascunho, pronto a pintar: o preenchimento cheio, as riscas do preenchimento
-/// (traçadas com a cor dele) e o traço.
+/// (traçadas com a cor dele), o traço e o traço POSTO em contorno ([`outline_of`]), o que se pinta.
 #[derive(Default)]
 pub(crate) struct Rough {
     fill: BezPath,
     hachure: BezPath,
     line: BezPath,
+    outline: BezPath,
+    hachure_outline: BezPath,
+}
+
+impl Rough {
+    /// Do espaço de nascença ao mundo (`f` = [`ph2d_board_model::BirthScale::factor`]), e o traço
+    /// posto em contorno à espessura `width` (mundo).
+    fn finish(mut self, f: f64, width: f64, dash: Dash) -> Self {
+        if f != 1.0 {
+            for p in [&mut self.fill, &mut self.hachure, &mut self.line] {
+                p.apply_affine(Affine::scale(f));
+            }
+        }
+        self.outline = outline_of(&self.line, width, dash);
+        if !self.hachure.is_empty() {
+            let hatch = Stroke::new(width.max(1.0) / 2.0).with_caps(Cap::Round);
+            self.hachure_outline =
+                expand_stroke(&self.hachure, &hatch, &StrokeOpts::default(), width / 16.0);
+        }
+        self
+    }
+}
+
+/// ⭐ O traço à mão POSTO em contorno: a placa ENCHE-o em vez de o traçar — a traçar as passagens
+/// finas ela soltava espigões até 35 px fora da caixa (auditoria 21/10, doc 17 §9: 3/60 rectângulos a
+/// 0,5; a geometria do rough fica a ≤ 3,9 px em 5 000 sementes). Cabe na cache do elemento.
+fn outline_of(line: &BezPath, width: f64, dash: Dash) -> BezPath {
+    if line.is_empty() || width <= 0.0 {
+        return BezPath::new();
+    }
+    let s = style_stroke(width, dash)
+        .with_caps(Cap::Round)
+        .with_join(Join::Round);
+    expand_stroke(line, &s, &StrokeOpts::default(), width / 16.0)
+}
+
+/// ⭐ O espaço em que o traço NASCEU ([`ph2d_board_model::BirthScale`], decisão do dono 21/10): o
+/// rascunho gera-se no tamanho que tinha no ecrã de quem o desenhou e volta ao mundo por `f`. Devolve
+/// `f` e o estilo lá (a espessura do ecrã de nascença).
+fn born(st: &Style) -> (f64, Style) {
+    let f = st.birth.factor();
+    let mut b = st.clone();
+    b.stroke_width /= f;
+    (f, b)
 }
 
 #[derive(Default)]
@@ -273,23 +317,32 @@ pub fn hand_shape(
 #[must_use]
 pub fn hand_reach(st: &Style, w: f64, h: f64) -> f64 {
     let o = rough::Options::default();
+    let f = st.birth.factor();
+    let (w, h) = (w / f, h / f);
     let rough = hand_roughness(st, w, h, st.round, false);
-    rough * o.max_randomness_offset * (1.0 + o.bowing * w.abs().max(h.abs()) / 200.0)
+    f * rough * o.max_randomness_offset * (1.0 + o.bowing * w.abs().max(h.abs()) / 200.0)
 }
 
-/// O rascunho de uma forma, na caixa LOCAL dela.
+/// O rascunho de uma forma, na caixa LOCAL dela — gerado no espaço de nascença ([`born`]).
 fn rough_shape(el: &Element, kind: ShapeType, st: &Style, o: &Outline) -> Rough {
     let mut r = Rough::default();
-    let rough = hand_roughness(st, el.w, el.h, st.round, false);
-    let opts = hand_options(el.seed(), rough, st, true);
-    collect(hand_shape(kind, st.round, el.w, el.h, o, &opts), &mut r);
+    let (f, b) = born(st);
+    let (w, h) = (el.w / f, el.h / f);
+    let to_birth = Affine::scale(1.0 / f);
+    let o = &Outline {
+        fill: to_birth * o.fill.clone(),
+        lines: to_birth * o.lines.clone(),
+    };
+    let rough = hand_roughness(&b, w, h, b.round, false);
+    let opts = hand_options(el.seed(), rough, &b, true);
+    collect(hand_shape(kind, b.round, w, h, o, &opts), &mut r);
     if !o.lines.is_empty() {
         collect(
-            rough::path(&segs(&o.lines), &hand_options(el.seed(), rough, st, false)),
+            rough::path(&segs(&o.lines), &hand_options(el.seed(), rough, &b, false)),
             &mut r,
         );
     }
-    r
+    r.finish(f, st.stroke_width, st.dash)
 }
 
 /// O maior afastamento (mundo) do traço à mão SEM tremor contra a curva da seta: meio traço do de
@@ -403,6 +456,7 @@ pub(crate) fn paint_shape(
         kind.hash(h);
         el.seed().hash(h);
         [el.w, el.h, st.stroke_width].map(f64::to_bits).hash(h);
+        (st.birth, st.dash as u8).hash(h);
         (st.fill.is_some(), st.stroke.is_some(), st.round).hash(h);
         (st.sketch, st.look.cartoonist, st.look.fill_style as u8).hash(h);
     });
@@ -419,18 +473,14 @@ fn paint_rough(scene: &mut VectorScene, r: &Rough, st: &Style, t: Affine, ink: c
         if !r.fill.is_empty() {
             scene.fill_path(&r.fill, &brush, t);
         }
-        if !r.hachure.is_empty() {
-            let hatch = Stroke::new(st.stroke_width.max(1.0) / 2.0).with_caps(Cap::Round);
-            scene.stroke_path(&hatch, t, &brush, &r.hachure);
+        if !r.hachure_outline.is_empty() {
+            scene.fill_path(&r.hachure_outline, &brush, t);
         }
     }
     if let Some(c) = st.stroke.filter(|_| st.stroke_width > 0.0)
-        && !r.line.is_empty()
+        && !r.outline.is_empty()
     {
-        let line = style_stroke(st.stroke_width, st.dash)
-            .with_caps(Cap::Round)
-            .with_join(Join::Round);
-        scene.stroke_path(&line, t, &Brush::Solid(ink.color(c)), &r.line);
+        scene.fill_path(&r.outline, &Brush::Solid(ink.color(c)), t);
     }
 }
 
@@ -448,6 +498,7 @@ pub(crate) fn paint_connector(
     let key = hash(|h| {
         el.seed().hash(h);
         st.stroke_width.to_bits().hash(h);
+        (st.birth, st.dash as u8).hash(h);
         st.look.cartoonist.hash(h);
         path_hash(h, &d.line);
         for (p, filled) in &d.heads {
@@ -457,10 +508,13 @@ pub(crate) fn paint_connector(
     });
     let r = cached(&mut cache.rough, owner, key, frame, || {
         let mut r = Rough::default();
-        let b = ph2d_vector::Shape::bounding_box(&d.line);
-        let rough = hand_roughness(st, b.width(), b.height(), false, true);
-        let line = hand_options(el.seed(), rough, st, false);
-        collect(hand_line(&d.line, &line), &mut r);
+        let (f, born_st) = born(st);
+        let to_birth = Affine::scale(1.0 / f);
+        let path = to_birth * d.line.clone();
+        let b = ph2d_vector::Shape::bounding_box(&path);
+        let rough = hand_roughness(&born_st, b.width(), b.height(), false, true);
+        let line = hand_options(el.seed(), rough, &born_st, false);
+        collect(hand_line(&path, &line), &mut r);
         for (i, (p, filled)) in d.heads.iter().enumerate() {
             let o = rough::Options {
                 seed: line.seed.wrapping_add(i as u32 + 1),
@@ -468,9 +522,9 @@ pub(crate) fn paint_connector(
                 fill_style: FillStyle::Solid,
                 ..line.clone()
             };
-            collect(rough::path(&segs(p), &o), &mut r);
+            collect(rough::path(&segs(&(to_birth * p.clone())), &o), &mut r);
         }
-        r
+        r.finish(f, st.stroke_width, st.dash)
     });
     let Some(c) = st.stroke else {
         return;
@@ -479,10 +533,7 @@ pub(crate) fn paint_connector(
     if !r.fill.is_empty() {
         scene.fill_path(&r.fill, &brush, v);
     }
-    let line = style_stroke(st.stroke_width, st.dash)
-        .with_caps(Cap::Round)
-        .with_join(Join::Round);
-    scene.stroke_path(&line, v, &brush, &r.line);
+    scene.fill_path(&r.outline, &brush, v);
 }
 
 /// W23 B3 — o RAMO de um nó de mapa em rascunho: a curva dele (`path`, mundo) pelo traço à mão das
@@ -517,12 +568,9 @@ pub(crate) fn paint_branch(
             hand_line(path, &hand_options(el.seed(), rough, &st, false)),
             &mut r,
         );
-        r
+        r.finish(1.0, width, Dash::Solid)
     });
-    let line = Stroke::new(width)
-        .with_caps(Cap::Round)
-        .with_join(Join::Round);
-    scene.stroke_path(&line, v, &Brush::Solid(color), &r.line);
+    scene.fill_path(&r.outline, &Brush::Solid(color), v);
 }
 
 /// As opções do perfect-freehand de um traço: a espessura do estilo, sem afinar quando a pressão não
@@ -565,7 +613,83 @@ pub fn ink_outline(ink: &Ink, w: f64, h: f64) -> BezPath {
     path
 }
 
-/// ⭐ Pinta um traço da caneta (o marcador, translúcido).
+/// A distância (espaço de nascença, px de ecrã de quem desenhou) abaixo da qual um ponto da tinta
+/// limpa está sobre o lado que liga os vértices vizinhos: a lei põe um ponto por px EXACTAMENTE sobre
+/// a forma, por isso meio px separa os vértices dos pontos de passagem.
+const CLEAN_VERTEX_PX: f64 = 0.5;
+
+/// Os vértices de uma polilinha (Douglas–Peucker a `tol`).
+fn vertices(pts: &[[f64; 2]], tol: f64) -> Vec<[f64; 2]> {
+    fn keep(pts: &[[f64; 2]], tol: f64, out: &mut Vec<[f64; 2]>) {
+        let (a, b) = (pts[0], pts[pts.len() - 1]);
+        let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+        let len = dx.hypot(dy);
+        let far = pts[1..pts.len() - 1]
+            .iter()
+            .enumerate()
+            .map(|(i, p)| {
+                let d = if len > 0.0 {
+                    ((p[0] - a[0]) * dy - (p[1] - a[1]) * dx).abs() / len
+                } else {
+                    (p[0] - a[0]).hypot(p[1] - a[1])
+                };
+                (i + 1, d)
+            })
+            .max_by(|x, y| x.1.total_cmp(&y.1));
+        match far {
+            Some((i, d)) if d > tol => {
+                keep(&pts[..=i], tol, out);
+                keep(&pts[i..], tol, out);
+            }
+            _ => out.push(b),
+        }
+    }
+    let mut out = vec![pts[0]];
+    if pts.len() > 1 {
+        keep(pts, tol, &mut out);
+    }
+    out
+}
+
+/// ⭐ A TINTA LIMPA de uma forma da caneta + segurar em rascunho (W23 B13, auditoria 21/10): o traço à
+/// mão dos vértices dela — fechada pelo `polygon` do Excalidraw, aberta pelo `linearPath` —, como as
+/// formas da ferramenta, no espaço de nascença.
+fn rough_clean(el: &Element, ink: &Ink) -> Rough {
+    let mut r = Rough::default();
+    let (f, b) = born(&ink.style);
+    let pts: Vec<[f64; 2]> = ink
+        .placed([0.0, 0.0, el.w, el.h])
+        .iter()
+        .map(|p| [p[0] / f, p[1] / f])
+        .collect();
+    if pts.len() < 2 {
+        return r;
+    }
+    let v = vertices(&pts, CLEAN_VERTEX_PX);
+    let (first, last) = (v[0], v[v.len() - 1]);
+    let closed = v.len() > 3 && (first[0] - last[0]).hypot(first[1] - last[1]) <= CLEAN_VERTEX_PX;
+    let (lo, hi) = v
+        .iter()
+        .fold(([f64::MAX; 2], [f64::MIN; 2]), |(lo, hi), p| {
+            (
+                [lo[0].min(p[0]), lo[1].min(p[1])],
+                [hi[0].max(p[0]), hi[1].max(p[1])],
+            )
+        });
+    let rough = hand_roughness(&b, hi[0] - lo[0], hi[1] - lo[1], false, !closed);
+    let opts = hand_options(el.seed(), rough, &b, false);
+    collect(
+        if closed {
+            rough::polygon(&v[..v.len() - 1], &opts)
+        } else {
+            rough::linear_path(&v, &opts)
+        },
+        &mut r,
+    );
+    r.finish(f, ink.style.stroke_width, ink.style.dash)
+}
+
+/// ⭐ Pinta um traço da caneta (o marcador, translúcido); a tinta LIMPA em rascunho, à mão.
 pub(crate) fn paint_ink(
     scene: &mut VectorScene,
     cache: &mut SketchCache,
@@ -575,16 +699,6 @@ pub(crate) fn paint_ink(
     ink: &Ink,
     t: Affine,
 ) {
-    let key = hash(|h| {
-        [el.w, el.h, ink.style.stroke_width]
-            .map(f64::to_bits)
-            .hash(h);
-        ink.points.len().hash(h);
-        ink.pressure.hash(h);
-    });
-    let path = cached(&mut cache.inks, owner, key, frame, || {
-        ink_outline(ink, el.w, el.h)
-    });
     let Some(stroke) = ink.style.stroke else {
         return;
     };
@@ -596,6 +710,27 @@ pub(crate) fn paint_ink(
         .ink
         .color(Rgba([stroke.0[0], stroke.0[1], stroke.0[2], 255]))
         .with_alpha(alpha);
+    if ink.clean && ink.style.sketch {
+        let st = &ink.style;
+        let key = hash(|h| {
+            el.seed().hash(h);
+            [el.w, el.h, st.stroke_width].map(f64::to_bits).hash(h);
+            (st.birth, st.dash as u8, ink.points.len()).hash(h);
+        });
+        let r = cached(&mut cache.rough, owner, key, frame, || rough_clean(el, ink));
+        scene.fill_path(&r.outline, &Brush::Solid(c), t);
+        return;
+    }
+    let key = hash(|h| {
+        [el.w, el.h, ink.style.stroke_width]
+            .map(f64::to_bits)
+            .hash(h);
+        ink.points.len().hash(h);
+        ink.pressure.hash(h);
+    });
+    let path = cached(&mut cache.inks, owner, key, frame, || {
+        ink_outline(ink, el.w, el.h)
+    });
     scene.fill_path(path, &Brush::Solid(c), t);
 }
 

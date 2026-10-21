@@ -1,41 +1,42 @@
 //! **O formato 12** (W14): o de hoje com a imagem sem filtro (`Image::filter`, W15). Só a variante
-//! `Image` do elemento muda; o resto lê-se com as structs de hoje.
+//! `Image` do elemento muda; o resto lê-se com as structs do formato 16 (`legacy_v16.rs`).
 
 use serde::Deserialize;
 
+use super::v16::{FrameV16, InkV16, ShapeV16, StyleV16};
 use super::{DocOld, doc_old};
 use crate::{
     Board, BoardId, BoardSet, Camera, Connector, Crop, Element, ElementId, ElementKind, FileId,
-    Files, FracKey, Frame, Image, ImageFilter, Ink, Org, Shape, Style,
+    Files, FracKey, Image, ImageFilter, Org,
 };
 
 #[derive(Deserialize)]
 struct ImageV12 {
     file: FileId,
-    style: Style,
+    style: StyleV16,
     crop: Option<Crop>,
     flip: [bool; 2],
 }
 
 #[derive(Deserialize)]
 enum KindV12 {
-    Shape(Shape),
+    Shape(ShapeV16),
     Connector(Box<super::v13::ConnectorV13>),
-    Ink(Box<Ink>),
-    Frame(Frame),
+    Ink(Box<InkV16>),
+    Frame(FrameV16),
     Image(Box<ImageV12>),
 }
 
 impl From<KindV12> for ElementKind {
     fn from(k: KindV12) -> Self {
         match k {
-            KindV12::Shape(s) => ElementKind::Shape(s),
+            KindV12::Shape(s) => ElementKind::Shape(s.into()),
             KindV12::Connector(c) => ElementKind::Connector(Box::new(Connector::from(*c))),
-            KindV12::Ink(i) => ElementKind::Ink(i),
-            KindV12::Frame(f) => ElementKind::Frame(f),
+            KindV12::Ink(i) => ElementKind::Ink(Box::new((*i).into())),
+            KindV12::Frame(f) => ElementKind::Frame(f.into()),
             KindV12::Image(i) => ElementKind::Image(Box::new(Image {
                 file: i.file,
-                style: i.style,
+                style: i.style.into(),
                 crop: i.crop,
                 flip: i.flip,
                 filter: ImageFilter::Original,

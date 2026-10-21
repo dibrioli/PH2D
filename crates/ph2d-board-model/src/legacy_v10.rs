@@ -137,7 +137,7 @@ mod tests {
         };
         let el = |id: u64, votes: u32, deleted: bool| ElementV10 {
             id: ElementId(id),
-            kind: super::super::v13::KindV13::Shape(sticky.clone()),
+            kind: super::super::v13::KindV13::Shape(super::super::v16::shape_v16(sticky.clone())),
             x: 0.0,
             y: 0.0,
             w: 1.0,

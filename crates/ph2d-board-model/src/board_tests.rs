@@ -213,7 +213,7 @@ fn an_arrow_round_trips_through_the_bytes() {
     BoardOp::Put(arrow).apply(doc);
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
     assert_eq!(back, set);
-    assert_eq!(FORMAT_VERSION, 16);
+    assert_eq!(FORMAT_VERSION, 17);
 }
 
 /// A revisão da sessão muda a cada operação aplicada e nunca se repete entre documentos (a cache de
@@ -622,4 +622,11 @@ fn the_paint_order_is_the_key_order_on_a_shuffled_board() {
         paint.last().unwrap().embed().is_some(),
         "o vídeo fica por cima"
     );
+}
+
+/// O `Style` cabe nos 40 bytes: a [`crate::BirthScale`] é um `i8` para entrar na folga, não crescê-lo.
+#[test]
+fn the_style_stays_in_forty_bytes() {
+    let n = std::mem::size_of::<Style>();
+    assert!(n <= 40, "{n}");
 }

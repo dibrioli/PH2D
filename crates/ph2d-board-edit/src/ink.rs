@@ -105,6 +105,31 @@ pub(crate) enum InkGesture {
     Laser,
 }
 
+/// Guarda o traço que acabou (largado, ou o largar que se perdeu — auditoria 21/10: era UM passo e o
+/// `Ctrl+Z` apagava a forma). Com a forma viva, ela JÁ é o elemento (vivo = final): o traço cru é UM
+/// passo e a troca é OUTRO (`Ctrl+Z` devolve o traço).
+fn keep_drawn(doc: &mut BoardDoc, history: &mut History, g: InkGesture) {
+    let InkGesture::Draw {
+        id,
+        z,
+        pen,
+        style,
+        points,
+        smart,
+    } = g
+    else {
+        return;
+    };
+    match doc.get(id).cloned().filter(|_| smart.hold.is_live()) {
+        Some(shown) => {
+            put_stroke(doc, id, &z, pen, &style, &points);
+            history.record(vec![BoardOp::Delete(id)], doc);
+            history.apply(doc, vec![BoardOp::Put(shown)]);
+        }
+        None => history.record(vec![BoardOp::Delete(id)], doc),
+    }
+}
+
 /// A pressão gravada quando o dispositivo não a mede (o meio, a de nascença do perfect-freehand).
 const NO_PRESSURE: f64 = 0.5;
 
@@ -203,23 +228,7 @@ impl Editor {
             return false;
         }
         match self.ink.take() {
-            Some(InkGesture::Draw {
-                id,
-                z,
-                pen,
-                style,
-                points,
-                smart,
-            }) => match doc.get(id).cloned().filter(|_| smart.hold.is_live()) {
-                // A forma viva JÁ é o elemento (vivo = final): soltar só a guarda. O traço cru é UM
-                // passo e a troca é OUTRO (`Ctrl+Z` devolve o traço).
-                Some(shown) => {
-                    put_stroke(doc, id, &z, pen, &style, &points);
-                    history.record(vec![BoardOp::Delete(id)], doc);
-                    history.apply(doc, vec![BoardOp::Put(shown)]);
-                }
-                None => history.record(vec![BoardOp::Delete(id)], doc),
-            },
+            Some(g @ InkGesture::Draw { .. }) => keep_drawn(doc, history, g),
             Some(g @ InkGesture::Erase { .. }) => history.record(erase_inverse(doc, g), doc),
             _ => {}
         }
@@ -286,7 +295,7 @@ impl Editor {
     /// num passo de desfazer. `false` = não havia.
     pub(crate) fn ink_finish(&mut self, doc: &mut BoardDoc, history: &mut History) -> bool {
         match self.ink.take() {
-            Some(InkGesture::Draw { id, .. }) => history.record(vec![BoardOp::Delete(id)], doc),
+            Some(g @ InkGesture::Draw { .. }) => keep_drawn(doc, history, g),
             Some(g @ InkGesture::Erase { .. }) => history.record(erase_inverse(doc, g), doc),
             Some(InkGesture::Laser) => {}
             None => return false,
@@ -515,7 +524,11 @@ fn cut(el: &Element, a: [f64; 2], b: [f64; 2], r: f64) -> Vec<(Ink, [f64; 4])> {
     }
     pieces
         .into_iter()
-        .map(|run| Ink::from_world(&run, ink.style.clone(), ink.pen, ink.pressure))
+        .map(|run| {
+            let (mut piece, bx) = Ink::from_world(&run, ink.style.clone(), ink.pen, ink.pressure);
+            piece.clean = ink.clean;
+            (piece, bx)
+        })
         .collect()
 }
 

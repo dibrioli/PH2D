@@ -545,10 +545,11 @@ impl Editor {
         history.apply(doc, ops);
     }
 
-    /// ⭐ **O botão «Rascunho ↔ Final»** (W4): com selecção, troca as formas e setas dela; sem
-    /// selecção, o quadro INTEIRO — e devolve o modo novo do quadro (`Some`), que é também o das
-    /// formas que nascerem. Fica tudo à mão se havia alguma final, e final se já estava tudo à mão.
-    /// As notas entram só na letra; os traços da caneta não entram (já são mão). UM passo. A letra
+    /// ⭐ **O botão «Rascunho ↔ Final»** (W4): o que ele alcança ([`Self::sketch_targets`]) — a
+    /// selecção, ou o quadro INTEIRO, e então devolve o modo novo do quadro (`Some`), que é também o
+    /// das formas que nascerem, no MESMO passo ([`History::apply_mode`]). Dá o contrário da luz
+    /// ([`Self::sketch_lit`]). As notas entram só na letra; os traços livres da caneta não entram (já
+    /// são mão), a tinta limpa sim. UM passo. A letra
     /// fixa de um `.excalidraw` (`Letter::Hand`/`Sans`) volta ao modo (`Auto`) em todo o alcançado. Um
     /// texto aberto fecha-se primeiro, no seu próprio passo.
     pub fn toggle_sketch(
@@ -559,20 +560,8 @@ impl Editor {
     ) -> Option<bool> {
         // O texto em edição fecha-se antes (é o passo dele): a letra nova não se mede no que está aberto.
         self.commit_text(doc, history);
-        let whole = self.selection.is_empty();
-        let targets: Vec<&Element> = if whole {
-            doc.live_in_z_order()
-        } else {
-            self.editable(doc)
-        }
-        .into_iter()
-        .filter(|el| sketchable(el))
-        .collect();
-        let on = if targets.is_empty() {
-            !board
-        } else {
-            !targets.iter().all(|el| el.style().sketch)
-        };
+        let (whole, targets) = self.sketch_targets(doc);
+        let on = !self.sketch_lit(doc, board);
         // A letra fixa que um `.excalidraw` trouxe volta ao modo com o botão (decisão do dono, W10).
         let ops = targets
             .into_iter()
@@ -585,11 +574,42 @@ impl Editor {
                 BoardOp::Put(el)
             })
             .collect();
-        history.apply(doc, ops);
-        whole.then(|| {
-            self.style.sketch = on;
-            on
-        })
+        if !whole {
+            history.apply(doc, ops);
+            return None;
+        }
+        history.apply_mode(doc, ops, [board, on]);
+        self.style.sketch = on;
+        Some(on)
+    }
+
+    /// ⭐ O que o botão «Rascunho ↔ Final» alcança — a porta ÚNICA da luz dele e do clique: os
+    /// alcançáveis editáveis da selecção; sem selecção, ou com uma que ele não alcança (só traços
+    /// livres, frames, vídeos, travados), o quadro INTEIRO (`true`) — nunca um botão morto (auditoria
+    /// 21/10: o clique não fazia nada e a luz contava os travados).
+    #[must_use]
+    pub fn sketch_targets<'a>(&self, doc: &'a BoardDoc) -> (bool, Vec<&'a Element>) {
+        let picked: Vec<&Element> = self
+            .editable(doc)
+            .into_iter()
+            .filter(|el| sketchable(el))
+            .collect();
+        if picked.is_empty() {
+            let all = doc.live_in_z_order();
+            (true, all.into_iter().filter(|el| sketchable(el)).collect())
+        } else {
+            (false, picked)
+        }
+    }
+
+    /// A luz do botão: o modo do quadro (`board`) quando ele troca o quadro inteiro; senão, tudo o
+    /// que alcança já à mão. Carregar dá sempre o contrário.
+    #[must_use]
+    pub fn sketch_lit(&self, doc: &BoardDoc, board: bool) -> bool {
+        match self.sketch_targets(doc) {
+            (true, _) => board,
+            (false, t) => t.iter().all(|el| el.style().sketch),
+        }
     }
 
     /// Troca a rota das setas seleccionadas (UM passo) e guarda-a para as próximas.
@@ -663,8 +683,12 @@ impl Editor {
 /// letra (decisão do dono, 10/10: o papel fica liso, o desenho não as passa ao traço tremido).
 #[must_use]
 pub fn sketchable(el: &Element) -> bool {
-    // W15: a imagem pela moldura (o contorno à mão, como o de uma forma).
-    el.connector().is_some() || el.shape().is_some() || el.image().is_some()
+    // W15: a imagem pela moldura (o contorno à mão, como o de uma forma); W23 B13: a tinta LIMPA de
+    // uma forma da caneta + segurar (o traço livre já é mão).
+    el.connector().is_some()
+        || el.shape().is_some()
+        || el.image().is_some()
+        || el.ink().is_some_and(|i| i.clean)
 }
 
 /// A caixa alinhada que contém todos `els` (rodados): `[x0, y0, x1, y1]`.

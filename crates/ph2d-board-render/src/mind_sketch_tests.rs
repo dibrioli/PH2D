@@ -74,7 +74,12 @@ fn branch_segments(b: &Board) -> usize {
         .take_record()
         .iter()
         .filter_map(|o| match o {
-            DrawOp::Stroke { brush, path, .. } if *brush == want => Some(path.segments().count()),
+            // Liso, um traço; à mão, o traço posto em contorno (auditoria 21/10) — enchido.
+            DrawOp::Stroke { brush, path, .. } | DrawOp::Fill { brush, path, .. }
+                if *brush == want =>
+            {
+                Some(path.segments().count())
+            }
             _ => None,
         })
         .sum()

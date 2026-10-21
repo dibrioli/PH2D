@@ -320,3 +320,34 @@ fn dragging_the_live_shape_scales_it() {
         el.h
     );
 }
+
+/// O LARGAR que se perdeu (a janela perdeu o foco com a forma à vista; o gesto fecha-se no carregar
+/// seguinte, `finish_gesture`) deixa os MESMOS dois passos que o largar: o 1.º `Ctrl+Z` devolve o
+/// traço como foi desenhado (auditoria 21/10: era UM passo, e o `Ctrl+Z` apagava a forma).
+#[test]
+fn a_lost_release_with_the_shape_shown_still_gives_the_stroke_back() {
+    let mut w = world();
+    let pts = sides(&RECT, 50);
+    w.ed.tool = Tool::Pen(Pen::Pen);
+    let mut t = T0;
+    w.ed.at_time(t);
+    w.ed.pointer_down(&mut w.doc, &mut w.h, &mut w.ts, at(0.0, 0.0, NONE), VIEW);
+    for p in &pts[1..] {
+        t += DT;
+        w.ed.at_time(t);
+        w.ed.pointer_move(&mut w.doc, &mut w.ts, at(p[0], p[1], NONE));
+    }
+    t += HOLD_NS;
+    w.ed.at_time(t);
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, at(0.0, 0.0, NONE));
+    assert!(w.ed.is_quick(), "a forma à vista");
+    assert!(w.ed.finish_gesture(&mut w.doc, &mut w.h));
+    assert_eq!(kind(&w.top()), Some(ShapeType::Rectangle), "a forma fica");
+    assert!(w.cmd(Command::Undo));
+    assert!(
+        w.top().ink().is_some(),
+        "o 1.º Ctrl+Z devolve o traço como foi desenhado"
+    );
+    assert!(w.cmd(Command::Undo));
+    assert_eq!(w.doc.live_len(), 0);
+}

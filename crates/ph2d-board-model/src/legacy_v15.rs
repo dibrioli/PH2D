@@ -1,14 +1,11 @@
-//! **O formato 15** e a equipa dos formatos 10–15 (W11–W23 bloco 5): a mensagem SEM as menções — o
-//! 16 deu-lhe `Message::mentions` (W23 B14, doc 17 §2.3). O resto do quadro lê-se com as structs de hoje.
+//! **A equipa dos formatos 10–15** (W11–W23 bloco 5): a mensagem SEM as menções — o 16 deu-lhe
+//! `Message::mentions` (W23 B14, doc 17 §2.3). O quadro do 15 lê-se pelo `legacy_v16.rs`.
 
 use std::collections::BTreeSet;
 
 use serde::Deserialize;
 
-use crate::{
-    Board, BoardDoc, BoardId, BoardSet, Camera, ElementId, Files, Message, MessageId, Pin, Poll,
-    PollId, Team, Thread, ThreadId, Version,
-};
+use crate::{ElementId, Message, MessageId, Pin, Poll, PollId, Team, Thread, ThreadId, Version};
 
 /// A mensagem dos formatos 10–15.
 #[derive(Deserialize)]
@@ -80,45 +77,4 @@ impl From<TeamV15> for Team {
         (team.polls, team.shown) = (t.polls, t.shown);
         team
     }
-}
-
-#[derive(Deserialize)]
-struct BoardV15 {
-    id: BoardId,
-    name: String,
-    camera: Camera,
-    doc: BoardDoc,
-    sketch: bool,
-    team: TeamV15,
-    files: Files,
-}
-
-#[derive(Deserialize)]
-struct SetV15 {
-    _version: u32,
-    boards: Vec<BoardV15>,
-    next_id: u64,
-}
-
-/// Os bytes de um `BoardSet` no formato 15, já no formato actual.
-pub(crate) fn read_v15(bytes: &[u8]) -> Result<BoardSet, String> {
-    let old: SetV15 = postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
-    let boards = old
-        .boards
-        .into_iter()
-        .map(|b| {
-            let mut doc = b.doc;
-            doc.reindex();
-            Board {
-                id: b.id,
-                name: b.name,
-                camera: b.camera,
-                doc,
-                sketch: b.sketch,
-                team: b.team.into(),
-                files: b.files,
-            }
-        })
-        .collect();
-    Ok(BoardSet::from_parts(boards, old.next_id))
 }

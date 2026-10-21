@@ -228,8 +228,8 @@ pub use scroll_motion::ScrollMotion;
 pub use scroll_repeat::{ScrollRepeat, envolve_eixo};
 pub use sequence::SequencePlayer;
 pub use sibling_order::{
-    SiblingOrder, assign_missing_sibling_order, ordered_children, root_key, set_sibling_order,
-    sibling_key,
+    SiblingOrder, assign_missing_sibling_order, list_order, ordered_children, root_key,
+    set_sibling_order, sibling_key,
 };
 pub use signal_actions::{
     ArgKind, Disparo, SIGNAL_ACTIONS_MAX, SignalAction, SignalActions, SignalEffect, SignalFrom,

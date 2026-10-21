@@ -179,6 +179,26 @@ pub fn ordered_children(world: &World, parent: Entity) -> Vec<Entity> {
     kids
 }
 
+/// ⭐ **A ordem da lista de objectos** — raízes (com `Transform`) por [`root_key`], filhos por
+/// [`ordered_children`], pai antes dos filhos: a ordem em que a Hierarquia as mostra e em que o
+/// `ph2d.find_by_name` procura. Uma porta só para os dois (estava dentro da pista dos scripts).
+#[must_use]
+pub fn list_order(world: &mut World) -> Vec<Entity> {
+    let mut roots: Vec<Entity> = world
+        .query_filtered::<Entity, (With<crate::Transform>, bevy_ecs::query::Without<ChildOf>)>()
+        .iter(world)
+        .collect();
+    roots.sort_unstable_by_key(|&e| root_key(world, e));
+    let mut out = Vec::with_capacity(roots.len());
+    let mut stack: Vec<Entity> = roots.into_iter().rev().collect();
+    while let Some(e) = stack.pop() {
+        out.push(e);
+        let kids = ordered_children(world, e);
+        stack.extend(kids.into_iter().rev());
+    }
+    out
+}
+
 #[cfg(test)]
 #[path = "sibling_order_tests.rs"]
 mod tests;

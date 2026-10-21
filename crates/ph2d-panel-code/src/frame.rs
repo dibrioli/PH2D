@@ -188,6 +188,8 @@ pub struct CodeFrame<'a> {
     pub strict: bool,
     /// O nome que o Ctrl+clique alcança, com o Ctrl carregado e o rato sobre ele: sublinhado.
     pub link: Option<Range<usize>>,
+    /// Um arrasto entre painéis sobre o texto (item 8): onde cairia, e o balão das teclas.
+    pub dropping: Option<crate::DropView<'a>>,
 }
 
 /// Uma dica de tipo (I9): o rótulo (`: number`) mostrado em `at` sem ocupar bytes.

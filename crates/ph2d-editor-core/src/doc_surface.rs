@@ -141,6 +141,23 @@ pub struct PointerInput<'a> {
     pub now_ns: u128,
 }
 
+/// ⭐ **O que um arrasto ENTRE PAINÉIS traz a uma aba** (item 8 do CodeEditor). A aba decide o que
+/// isso escreve; a shell só diz o que é.
+#[derive(Clone, Copy, Debug)]
+pub enum Dropping<'a> {
+    /// Objectos da cena (os nomes, pela ordem da lista de objectos).
+    Objects(&'a [String]),
+}
+
+/// Um arrasto entre painéis sobre a aba, agora: onde, o quê e os modificadores premidos.
+#[derive(Clone, Copy, Debug)]
+pub struct DropAt<'a> {
+    pub x: f32,
+    pub y: f32,
+    pub what: Dropping<'a>,
+    pub mods: Modifiers,
+}
+
 /// ⭐ **Uma família com documentos em aba.** Cada chamada leva o `id` da aba a que se dirige.
 pub trait DocumentSurface: Any {
     /// As abas abertas, pela ordem em que se mostram.
@@ -216,6 +233,17 @@ pub trait DocumentSurface: Any {
     fn pointer_look(&self, id: u64, x: f32, y: f32) -> Option<PointerLook> {
         let _ = (id, x, y);
         None
+    }
+    /// Um arrasto entre painéis passa por cima da aba (`Some`) ou saiu/acabou (`None`): a aba mostra
+    /// onde cairia. `true` = largar AQUI escreve alguma coisa (a voz do arrasto diz «aceita»).
+    fn drop_hover(&mut self, id: u64, at: Option<DropAt<'_>>) -> bool {
+        let _ = (id, at);
+        false
+    }
+    /// Largou-se em cima da aba. `true` = ela recebeu (um passo de undo).
+    fn drop(&mut self, id: u64, at: DropAt<'_>) -> bool {
+        let _ = (id, at);
+        false
     }
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;

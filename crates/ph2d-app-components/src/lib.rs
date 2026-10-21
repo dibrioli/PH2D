@@ -73,6 +73,7 @@ pub mod asset_card_verbs;
 pub mod asset_catalog_verbs;
 pub mod asset_drop;
 pub mod asset_index_build;
+pub mod object_drag;
 // ⛔⛔ **A ponte do SOM DE CENA FICOU na shell, e a razão é um GATE:** ela precisa do
 // `ph2d-app-audio`, que é uma FAMÍLIA — e o `architecture_no_dependency_climbs_a_layer` recusa
 // família → família (ADR-0075). A cura que ele prescreve é *«uma tabela injectada pela

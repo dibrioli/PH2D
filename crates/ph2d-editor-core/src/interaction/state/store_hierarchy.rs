@@ -81,6 +81,26 @@ impl WidgetStore {
         }
     }
 
+    /// ⭐ **O arrasto de reparentar está DENTRO do painel onde começou** — a porta única de *«a
+    /// Hierarquia é o alvo?»*, com dois leitores: a queda (`pointer_up`) e o indicador (`paint`).
+    ///
+    /// ⛔ Até 21/10 a queda só olhava a ALTURA do cursor (`find_hierarchy_drop` recebe `cursor_y`):
+    /// soltar em QUALQUER ponto da janela à altura de uma linha reparentava, e abaixo de todas punha
+    /// o objecto no fim da raiz — largar um objecto sobre o script (item 8 do CodeEditor) mudava-o
+    /// de pai. Fora do painel, quem decide é a queda entre painéis (`asset_drop`).
+    #[must_use]
+    pub fn hierarchy_drag_in_own_panel(&self) -> bool {
+        self.hierarchy_drag
+            .is_some_and(|d| self.hierarchy_drop_in_own_panel(d, d.cursor_x, d.cursor_y))
+    }
+
+    /// [`Self::hierarchy_drag_in_own_panel`] para um arrasto já terminado, largado em `(x, y)`.
+    #[must_use]
+    pub fn hierarchy_drop_in_own_panel(&self, d: HierarchyDragState, x: f32, y: f32) -> bool {
+        let here = self.panel_at(x, y);
+        here.is_some() && here == self.panel_at(d.down_x, d.down_y)
+    }
+
     pub fn end_hierarchy_drag(&mut self) -> Option<HierarchyDragState> {
         self.hierarchy_drag.take()
     }

@@ -124,6 +124,7 @@ pub fn frame<'a>(
         stops: &[],
         strict: d.strict,
         link: None,
+        dropping: None,
     }
 }
 

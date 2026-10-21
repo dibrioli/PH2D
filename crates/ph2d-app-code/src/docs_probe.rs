@@ -307,6 +307,13 @@ impl CodeDocs {
             .unwrap_or_default()
     }
 
+    /// ⚠️ SONDA: onde a aba `id` mostra que um arrasto cairia, e o balão (`None` = nenhum arrasto).
+    #[must_use]
+    pub fn drop_mark_of(&self, id: ScriptId) -> Option<(usize, Vec<String>)> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        d.dropping.as_ref().map(|m| (m.at, m.hint.clone()))
+    }
+
     /// ⚠️ SONDA: onde o cursor se pintaria no byte `at` do script `id` (`None` = fora da vista).
     #[must_use]
     pub fn caret_rect_at(&self, id: ScriptId, at: usize) -> Option<ph2d_editor_core::zones::Rect> {

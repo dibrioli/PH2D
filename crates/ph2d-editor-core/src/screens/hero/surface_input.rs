@@ -115,6 +115,21 @@ pub(super) fn pointer(
     Some(taken)
 }
 
+/// Um arrasto entre painéis sobre a aba de família activa (`None` = saiu ou acabou). `true` = ela
+/// receberia ali; sem aba activa, `false`.
+pub fn drop_hover(hero: &mut HeroScreen, at: Option<crate::doc_surface::DropAt<'_>>) -> bool {
+    hero.documents
+        .active_surface_mut()
+        .is_some_and(|(f, id)| f.drop_hover(id, at))
+}
+
+/// Largou-se um arrasto entre painéis: a aba de família activa recebe-o? (`true` = escreveu.)
+pub fn drop(hero: &mut HeroScreen, at: crate::doc_surface::DropAt<'_>) -> bool {
+    hero.documents
+        .active_surface_mut()
+        .is_some_and(|(f, id)| f.drop(id, at))
+}
+
 pub(super) fn pointer_move(
     hero: &mut HeroScreen,
     input: Input<'_>,

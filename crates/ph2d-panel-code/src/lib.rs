@@ -7,6 +7,7 @@ mod a11y;
 mod chrome;
 pub mod console;
 mod display;
+mod drop_mark;
 pub mod find_bar;
 pub mod frame;
 mod geom;
@@ -29,6 +30,7 @@ pub use console::{
     Band, BandProbe, BandTab, ConsoleHit, ConsoleRow, ConsoleSource, ConsoleView, PaintedProblem,
     ProblemRow, problem_label, problems_title, title_text as console_title_text,
 };
+pub use drop_mark::DropView;
 pub use find_bar::{FindBar, FindBarView, FindCount, FindField, FindHit, count_text};
 pub use frame::{
     Assist, Badge, COMPLETION_MAX_CHARS, COMPLETION_ROWS, CodeFrame, CompletionRow, CompletionView,

@@ -119,25 +119,9 @@ fn is_recipe(world: &World, e: Entity) -> bool {
     world.get::<MasterRoot>(e).is_some() || ph2d_ecs::is_master_piece(world, e)
 }
 
-/// ⭐ **A ordem da lista de objectos** (raízes por `root_key`, filhos por `sibling_key`), com as
-/// cópias da corrida no fim — a mesma porta que o painel lê.
+/// A ordem da lista de objectos — a mesma porta que o painel lê ([`ph2d_ecs::list_order`]).
 fn preorder(world: &mut World) -> Vec<Entity> {
-    let mut roots: Vec<Entity> = world
-        .query_filtered::<Entity, (
-            bevy_ecs::query::With<Transform>,
-            bevy_ecs::query::Without<ChildOf>,
-        )>()
-        .iter(world)
-        .collect();
-    roots.sort_unstable_by_key(|&e| ph2d_ecs::root_key(world, e));
-    let mut out = Vec::with_capacity(roots.len());
-    let mut stack: Vec<Entity> = roots.into_iter().rev().collect();
-    while let Some(e) = stack.pop() {
-        out.push(e);
-        let kids = ph2d_ecs::ordered_children(world, e);
-        stack.extend(kids.into_iter().rev());
-    }
-    out
+    ph2d_ecs::list_order(world)
 }
 
 impl<'w> Lane<'w> {
@@ -377,7 +361,14 @@ pub(crate) fn with_lane<R>(
             table.raw_set(k, v)?;
         }
         let r = f(&cell);
-        for k in ["get", "find_by_name", "object", "spawn", "despawn", "attach_script"] {
+        for k in [
+            "get",
+            "find_by_name",
+            "object",
+            "spawn",
+            "despawn",
+            "attach_script",
+        ] {
             table.raw_set(k, Value::Nil)?;
         }
         Ok(r)

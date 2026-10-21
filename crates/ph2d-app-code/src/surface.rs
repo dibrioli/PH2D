@@ -6,7 +6,7 @@ use crate::docs::{A11Y_SALT, CodeDocs, blink_on};
 use crate::help::page_of;
 use ph2d_a11y::{Node, NodeId};
 use ph2d_editor_core::doc_surface::{
-    Compose, DocCommand, DocTab, DocumentSurface, Key, KeyInput, KeyOutcome, PointerInput,
+    Compose, DocCommand, DocTab, DocumentSurface, DropAt, Key, KeyInput, KeyOutcome, PointerInput,
     PointerLook,
 };
 use ph2d_editor_core::ime::ComposeKey;
@@ -123,6 +123,16 @@ impl DocumentSurface for CodeDocs {
         }
         d.hover_at(x, y, now);
         false
+    }
+
+    fn drop_hover(&mut self, id: u64, at: Option<DropAt<'_>>) -> bool {
+        let at =
+            at.filter(|a| page_of(id).is_none() && self.split_area(self.area).1.contains(a.x, a.y));
+        self.doc(id).is_some_and(|d| d.drop_hover(at))
+    }
+
+    fn drop(&mut self, id: u64, at: DropAt<'_>) -> bool {
+        page_of(id).is_none() && self.doc(id).is_some_and(|d| d.drop(at))
     }
 
     fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {

@@ -233,7 +233,10 @@ mod tests {
             ("bala-azul", "bala_azul"),
         ] {
             assert_eq!(variable_name(nome), var, "{nome}");
-            assert!(ph2d_code_syntax::is_identifier(&variable_name(nome)), "{nome}");
+            assert!(
+                ph2d_code_syntax::is_identifier(&variable_name(nome)),
+                "{nome}"
+            );
         }
     }
 
@@ -249,8 +252,18 @@ mod tests {
             "function update(self)\n  ph2d.set(ph2d.object(\"Porta\"), \"x\", 1)\nend\n"
         );
         assert_eq!(i.caret, b + "ph2d.object(\"Porta\")".len());
-        let dois = insertion(&t, &s, b, &["Porta".into(), "Diz \"oi\"".into()], false, "  ");
-        assert_eq!(dois.text, "ph2d.object(\"Porta\"), ph2d.object(\"Diz \\\"oi\\\"\")");
+        let dois = insertion(
+            &t,
+            &s,
+            b,
+            &["Porta".into(), "Diz \"oi\"".into()],
+            false,
+            "  ",
+        );
+        assert_eq!(
+            dois.text,
+            "ph2d.object(\"Porta\"), ph2d.object(\"Diz \\\"oi\\\"\")"
+        );
     }
 
     #[test]
@@ -271,7 +284,11 @@ mod tests {
             got,
             "function update(self)\n  local porta = ph2d.object(\"Porta\")\n  local caixa_grande = ph2d.object(\"Caixa Grande\")\n  ph2d.set(self.id, \"x\", 1)\nend\n"
         );
-        assert_eq!(&got[..i.caret], &got[..at(&got, "\n  ph2d.set")], "o cursor no fim da última declaração");
+        assert_eq!(
+            &got[..i.caret],
+            &got[..at(&got, "\n  ph2d.set")],
+            "o cursor no fim da última declaração"
+        );
     }
 
     #[test]
@@ -279,7 +296,14 @@ mod tests {
         let src = "local VEL = 2\n\nfunction init(self)\n\tself.vida = 3\nend\n";
         let t = Text::new(src);
         let s = Syntax::new(&t);
-        let i = insertion(&t, &s, at(src, "\n\nfunction") + 1, &["Porta".into()], true, "  ");
+        let i = insertion(
+            &t,
+            &s,
+            at(src, "\n\nfunction") + 1,
+            &["Porta".into()],
+            true,
+            "  ",
+        );
         assert_eq!(
             apply(src, &i),
             "local VEL = 2\n\nfunction init(self)\n\tself.porta = ph2d.object(\"Porta\")\n\tself.vida = 3\nend\n",
@@ -292,14 +316,24 @@ mod tests {
         let src = "local VEL = 2\n\nfunction update(self)\nend\n";
         let t = Text::new(src);
         let s = Syntax::new(&t);
-        let i = insertion(&t, &s, at(src, "\nfunction") + 1, &["Porta".into()], true, "\t");
+        let i = insertion(
+            &t,
+            &s,
+            at(src, "\nfunction") + 1,
+            &["Porta".into()],
+            true,
+            "\t",
+        );
         let got = apply(src, &i);
         assert_eq!(
             got,
             "local VEL = 2\n\nfunction init(self)\n\tself.porta = ph2d.object(\"Porta\")\nend\nfunction update(self)\nend\n"
         );
         assert!(got[..i.caret].ends_with("ph2d.object(\"Porta\")"));
-        assert!(Syntax::new(&Text::new(&got)).errors().is_empty(), "o script continua válido");
+        assert!(
+            Syntax::new(&Text::new(&got)).errors().is_empty(),
+            "o script continua válido"
+        );
     }
 
     #[test]

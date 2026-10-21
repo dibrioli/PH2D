@@ -46,6 +46,19 @@ impl WidgetStore {
     pub fn begin_asset_drag(&mut self, payload: DragPayload, x: f32, y: f32) {
         self.asset_drag_origin = (x, y);
         self.asset_drag = Some(InFlightDrag::started(payload, (x, y)));
+        self.asset_drag_label = None;
+    }
+
+    /// [`Self::begin_asset_drag`] com o NOME do que vai na mão (o fantasma diz-o, item 8 do CodeEditor).
+    pub fn begin_named_drag(&mut self, payload: DragPayload, x: f32, y: f32, label: String) {
+        self.begin_asset_drag(payload, x, y);
+        self.asset_drag_label = Some(label);
+    }
+
+    /// O nome do que vai na mão, se a carga o tem.
+    #[must_use]
+    pub fn asset_drag_label(&self) -> Option<&str> {
+        self.asset_drag_label.as_deref()
     }
 
     /// Move o cursor do arrasto, armando-o se passou o limiar.
@@ -82,6 +95,7 @@ impl WidgetStore {
     /// clique»* de *«não havia arrasto nenhum»*, e um `None` para os dois casos apagaria a
     /// diferença.
     pub fn end_asset_drag(&mut self) -> Option<InFlightDrag> {
+        self.asset_drag_label = None;
         self.asset_drag.take()
     }
 }

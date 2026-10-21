@@ -35,6 +35,10 @@ pub enum DragPayload {
     Prefab { stable_id: u64 },
     /// Uma **imagem** da biblioteca — o blake3 do conteúdo.
     Image { asset: [u8; 32] },
+    /// Um **objecto da cena**, arrastado da Hierarquia — o `StableId` dele (com a selecção, se ele
+    /// estava nela: a shell resolve a lista na queda). Item 8 do CodeEditor: largar num script
+    /// escreve o código que o aponta.
+    Object { stable_id: u64 },
 }
 
 impl DragPayload {
@@ -44,6 +48,7 @@ impl DragPayload {
         match self {
             DragPayload::Prefab { .. } => tr("chrome.interaction.prefab"),
             DragPayload::Image { .. } => tr("chrome.interaction.image"),
+            DragPayload::Object { .. } => tr("chrome.interaction.object"),
         }
     }
 }

@@ -15,6 +15,7 @@
 //! a lei devolver. *Uma decisão dentro da fiação seria uma decisão sem gate.*
 
 use ph2d_app_components::asset_drop::{DropAction, DropOver, DropTarget};
+use ph2d_app_components::object_drag;
 use ph2d_editor_core::interaction::drag_payload::{DragPayload, DragVerdict};
 
 impl crate::App {
@@ -38,6 +39,10 @@ impl crate::App {
         let Some(id) = hero.chrome_hit(x, y) else {
             return;
         };
+        if hero.store.is_hierarchy_row(id) {
+            let row = gfx.hero_live.as_ref().and_then(|l| l.bridge.entity_for(id));
+            return object_drag::seed(hero, gfx.sim.world(), row, (x, y));
+        }
         if !hero.store.is_asset_cell(id) {
             return;
         }
@@ -102,6 +107,7 @@ impl crate::App {
         // *«o que aconteceria se eu largasse aqui?»* fariam o fantasma prometer uma coisa e a
         // queda fazer outra.
         let target = self.drop_target_at(x, y);
+        let mods = Self::convert_modifiers(self.modifiers);
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -118,6 +124,16 @@ impl crate::App {
             return true;
         };
         let action = ph2d_app_components::asset_drop::resolve(drag.payload, target);
+        if object_drag::write_code(
+            action,
+            drag.payload,
+            hero,
+            gfx.sim.world_mut(),
+            (x, y),
+            mods,
+        ) {
+            return true;
+        }
         self.perform_drop(action, drag.payload);
         true
     }
@@ -138,25 +154,32 @@ impl crate::App {
         // bloco mutável seria pedir dois empréstimos do mesmo `self`.
         let inspector_slot = self.inspector_slot_under(x, y);
         let catalog_row = self.catalog_row_under(x, y);
-        let (panel, on_canvas, world) = {
-            let gfx = self.gfx.as_ref()?;
-            let hero = gfx.hero_screen.as_ref()?;
+        let mods = Self::convert_modifiers(self.modifiers);
+        let (on_canvas, world, code, home) = {
+            let gfx = self.gfx.as_mut()?;
+            let window = gfx.scene_window();
+            let hero = gfx.hero_screen.as_mut()?;
             let panel = hero.chrome_panel_at(x, y);
+            let home = panel == Some(ph2d_editor_core::ids::ASSET_PANEL)
+                || hero.store.hierarchy_drag_in_own_panel();
             // ⛔⛔ **A pergunta «estou sobre a TELA?» tem DUAS metades, e a 1.ª versão só fazia
             // uma.** O `panel_at` só conhece os 28 painéis que publicam rect; o **rail de
             // ferramentas**, a **barra de cima**, o HUD e os menus registam só rect de acerto. ⇒
             // largar sobre a barra de cima caía no ramo do canvas e **re-texturava a sprite
             // escondida por trás dela**, em silêncio.
             let on_canvas = panel.is_none() && hero.chrome_hit(x, y).is_none();
-            let world = gfx.camera.screen_to_world((x, y), gfx.scene_window());
-            (panel, on_canvas, world)
+            let world = gfx.camera.screen_to_world((x, y), window);
+            let code = object_drag::hover_code(hero, gfx.sim.world_mut(), (x, y), on_canvas, mods);
+            (on_canvas, world, code, home)
         };
         Some(if let Some(entity_bits) = inspector_slot {
             DropTarget::InspectorTexture { entity_bits }
         } else if let Some(catalog) = catalog_row {
             DropTarget::CatalogRow { catalog }
-        } else if panel == Some(ph2d_editor_core::ids::ASSET_PANEL) {
+        } else if home {
             DropTarget::Source
+        } else if let Some(on_text) = code {
+            DropTarget::Code { on_text }
         } else if !on_canvas {
             DropTarget::Chrome
         } else {
@@ -219,7 +242,7 @@ impl crate::App {
     fn perform_drop(&mut self, action: DropAction, payload: DragPayload) {
         match action {
             // ⭐ Desistir não diz nada — ver a lei.
-            DropAction::Cancel => {}
+            DropAction::Cancel | DropAction::WriteCode => {}
             DropAction::Refuse => {
                 // ⛔ **A recusa VÊ-SE** — largar num sítio que não sabe receber nunca é silêncio.
                 if let Some(gfx) = self.gfx.as_mut() {

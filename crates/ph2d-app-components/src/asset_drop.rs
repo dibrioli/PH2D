@@ -61,6 +61,9 @@ pub enum DropTarget {
     ///
     /// `entity_bits` é a sprite que a ranhura descreve — resolvida pelo painel que a pintou.
     InspectorTexture { entity_bits: u64 },
+    /// ⭐⭐ **Sobre uma aba de SCRIPT** (item 8 do CodeEditor, `docs/CodeEditor/07_arrastar_para_o_codigo.md`).
+    /// `on_text` = o cursor está sobre o TEXTO (a aba mostra onde cairia); na calha ou na barra, não.
+    Code { on_text: bool },
     /// Sobre o chrome (um painel, a barra, o rail) — nada aqui sabe receber um asset.
     Chrome,
     /// ⭐ **De volta ao painel de onde saiu** — isto é um CANCELAR, não uma recusa.
@@ -100,6 +103,8 @@ pub enum DropAction {
         /// A gaveta.
         catalog: Option<u128>,
     },
+    /// ⭐⭐ A aba de script escreve o código que aponta os objectos largados (item 8 do CodeEditor).
+    WriteCode,
     /// ⛔ **Nada acontece, e VÊ-SE.** Ver o doc do módulo.
     Refuse,
     /// ⭐ **Nada acontece, e é SILENCIOSO** — o artista desistiu. Ver [`DropTarget::Source`].
@@ -116,6 +121,9 @@ impl DropAction {
         match payload {
             DragPayload::Prefab { .. } => tr("shell.asset_drop.drop_a_prefab_on_the").to_string(),
             DragPayload::Image { .. } => tr("shell.asset_drop.drop_an_image_on_a").to_string(),
+            DragPayload::Object { .. } => {
+                tr("shell.asset_drop.drop_an_object_on_a_script").to_string()
+            }
         }
     }
 }
@@ -135,6 +143,14 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
     match (payload, target) {
         // ⭐ Desistir é silencioso — ver [`DropTarget::Source`].
         (_, DropTarget::Source) => DropAction::Cancel,
+
+        // ⭐⭐ **Um objecto da cena só se larga num script** (item 8 do CodeEditor): sobre o texto,
+        // ele escreve o código que o aponta; em qualquer outro sítio recusa — e vê-se, como as
+        // cargas da biblioteca. Antes do braço da gaveta: arrumar é de assets.
+        (DragPayload::Object { .. }, DropTarget::Code { on_text: true }) => DropAction::WriteCode,
+        (DragPayload::Object { .. }, _) => DropAction::Refuse,
+        // ⛔ Um asset num script ainda não escreve nada (o 8b do item 8); fora do texto, nada.
+        (_, DropTarget::Code { .. }) => DropAction::Refuse,
 
         // ⭐⭐ **Uma linha de catálogo aceita as DUAS famílias** — arrumar não olha ao tipo, ao
         // contrário de instanciar. É a resposta que a lei D7 dá aqui: o ALVO decide, e este alvo
@@ -481,5 +497,47 @@ mod texture_slot_target_tests {
             resolve(DragPayload::Image { asset }, DropTarget::Source),
             DropAction::Cancel
         );
+    }
+
+    /// ⭐⭐ **Um objecto da cena só se larga no TEXTO de um script** (item 8 do CodeEditor); em todo
+    /// outro sítio recusa e vê-se — e voltar à Hierarquia é desistir. Uma carga da biblioteca num
+    /// script ainda recusa (8b).
+    #[test]
+    fn um_objecto_so_se_larga_no_texto_de_um_script() {
+        let o = DragPayload::Object { stable_id: 7 };
+        assert_eq!(
+            resolve(o, DropTarget::Code { on_text: true }),
+            DropAction::WriteCode
+        );
+        for t in [
+            DropTarget::Code { on_text: false },
+            DropTarget::Canvas {
+                world: [0.0, 0.0],
+                over: None,
+            },
+            DropTarget::Canvas {
+                world: [0.0, 0.0],
+                over: Some(DropOver {
+                    entity_bits: 3,
+                    is_sprite: true,
+                }),
+            },
+            DropTarget::InspectorTexture { entity_bits: 3 },
+            DropTarget::CatalogRow { catalog: None },
+            DropTarget::Chrome,
+        ] {
+            assert_eq!(resolve(o, t), DropAction::Refuse, "{t:?}");
+        }
+        assert_eq!(resolve(o, DropTarget::Source), DropAction::Cancel);
+        for p in [
+            DragPayload::Prefab { stable_id: 1 },
+            DragPayload::Image { asset: [1; 32] },
+        ] {
+            assert_eq!(
+                resolve(p, DropTarget::Code { on_text: true }),
+                DropAction::Refuse
+            );
+        }
+        assert!(!DropAction::refusal_line(o).is_empty());
     }
 }

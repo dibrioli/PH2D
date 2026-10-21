@@ -286,16 +286,29 @@ fn objecto_pelo_nome_e_o_do_find_e_sem_ele_para_com_o_nome() {
     );
     let mut host = ScriptHost::new().expect("vm");
     let r = tick(&mut host, &mut sim);
-    assert_eq!(pose(sim.world(), acha).translation.x, 1.0, "o mesmo objecto que o find");
+    assert_eq!(
+        pose(sim.world(), acha).translation.x,
+        1.0,
+        "o mesmo objecto que o find"
+    );
     assert!(sim.world().get::<Transform>(alvo).is_some());
     let parou: Vec<_> = r.failed.iter().filter(|(e, _)| *e == falha).collect();
-    assert_eq!(parou.len(), 1, "sem o objecto, o script pára: {:?}", r.failed);
+    assert_eq!(
+        parou.len(),
+        1,
+        "sem o objecto, o script pára: {:?}",
+        r.failed
+    );
     assert!(
         parou[0].1.message.contains("Ninguem"),
         "a mensagem diz o nome: {}",
         parou[0].1.message
     );
-    assert_eq!(pose(sim.world(), falha).translation.x, 0.0, "nada se escreveu");
+    assert_eq!(
+        pose(sim.world(), falha).translation.x,
+        0.0,
+        "nada se escreveu"
+    );
 }
 
 // ── §3.3 (c) spawn · despawn · attach_script ─────────────────────────────────────────────────

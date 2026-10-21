@@ -7,6 +7,7 @@ mod abrir;
 mod acoes;
 mod ajuda;
 mod alcance;
+mod arrastar;
 mod assistente;
 mod bancada;
 mod botoes;

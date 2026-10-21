@@ -113,6 +113,8 @@ pub(crate) struct CodeDoc {
     /// O byte onde o arrasto da seleção começou.
     pub drag: Option<usize>,
     pub last_click: Option<(u128, usize)>,
+    /// Um arrasto entre painéis sobre o texto (item 8): onde cairia e o balão.
+    pub(crate) dropping: Option<crate::drop_doc::DropMark>,
     derived: Derived,
 }
 
@@ -167,6 +169,7 @@ impl CodeDoc {
             resave: false,
             drag: None,
             last_click: None,
+            dropping: None,
             derived: Derived::default(),
         }
     }
@@ -438,6 +441,7 @@ impl CodeDoc {
             rename,
             inlay,
             snippet,
+            dropping,
             ..
         } = self;
         let stops = snippet.as_ref().map(|s| s.marks()).unwrap_or_default();
@@ -526,6 +530,10 @@ impl CodeDoc {
             stops: &stops,
             strict,
             link: link.clone(),
+            dropping: dropping.as_ref().map(|d| ph2d_panel_code::DropView {
+                at: d.at,
+                hint: &d.hint,
+            }),
         };
         view.paint(frame, code_r, scene, ts, theme);
         if let Some(r) = find_r {

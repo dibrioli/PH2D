@@ -8,6 +8,7 @@ impl WidgetStore {
         Self {
             asset_drag: None,
             asset_drag_origin: (0.0, 0.0),
+            asset_drag_label: None,
             asset_cells: std::collections::BTreeMap::new(),
             states: BTreeMap::new(),
             focus_order: Vec::with_capacity(capacity),

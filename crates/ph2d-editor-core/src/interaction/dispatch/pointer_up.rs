@@ -148,6 +148,14 @@ pub(super) fn dispatch_up<'frame>(
             }
             return;
         }
+        // ⛔ Fora do painel onde começou não é reparentar: é a queda entre painéis (item 8 do
+        // CodeEditor — largar sobre o script não pode mudar o objecto de pai).
+        if !store.hierarchy_drop_in_own_panel(drag, event.x, event.y) {
+            if super::hierarchy::diag_on() {
+                eprintln!("[hier] up: fora do painel da hierarquia — nao e' reparentar");
+            }
+            return;
+        }
         let drop = find_hierarchy_drop(hit_index, store, event.y, drag.dragged);
         if super::hierarchy::diag_on() {
             eprintln!("[hier] up: destino resolvido = {drop:?}");

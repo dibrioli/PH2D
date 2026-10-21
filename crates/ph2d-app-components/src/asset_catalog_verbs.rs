@@ -97,6 +97,8 @@ pub fn drain(
         }
         CatalogVerb::Assign { asset, catalog } => {
             let key = match asset {
+                // A lei da queda recusa um objecto numa gaveta (`asset_drop::resolve`).
+                DragPayload::Object { .. } => return false,
                 DragPayload::Prefab { stable_id } => ph2d_asset_index::AssetRef::Component {
                     stable_id: *stable_id,
                 },

@@ -44,6 +44,7 @@ const REFUSED_LABEL: TextKey = TextKey::new("chrome.canvas.wont_take_this");
 /// acabar por ser um clique, e um fantasma que pisca a cada toque é ruído).
 pub(super) fn paint_asset_drag_ghost(
     drag: Option<InFlightDrag>,
+    name: Option<&str>,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -63,7 +64,7 @@ pub(super) fn paint_asset_drag_ghost(
     let label = if refused {
         REFUSED_LABEL.tr()
     } else {
-        drag.payload.kind_label()
+        name.unwrap_or_else(|| drag.payload.kind_label())
     };
     let font = TypeToken::Sm.px();
     let pad = Spacing::Sm.px();

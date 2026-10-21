@@ -601,8 +601,13 @@ pub fn paint_hero_screen(
     // a seguir o cursor. Por cima de tudo, inclusive do aviso de largar ficheiro: os dois nunca
     // coexistem (um é arrasto interno, o outro é do sistema operativo), e a ordem torna isso
     // observável se algum dia coexistirem.
+    // ⚠️ Um objecto ainda dentro da Hierarquia é o reparentar dela (que tem o seu indicador): o
+    // fantasma só aparece quando ele SAI do painel.
     super::asset_drag_ghost::paint_asset_drag_ghost(
-        hero.store.asset_drag(),
+        hero.store
+            .asset_drag()
+            .filter(|_| !hero.store.hierarchy_drag_in_own_panel()),
+        hero.store.asset_drag_label(),
         scene,
         text_system,
         hero.theme,

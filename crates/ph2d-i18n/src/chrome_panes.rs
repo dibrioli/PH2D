@@ -42,6 +42,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.grid_snap.chunked_square" => "Chunked Square",
         "chrome.interaction.prefab" => "Prefab",
         "chrome.interaction.image" => "Image",
+        "chrome.interaction.object" => "Object",
         "chrome.interaction.palette" => "Palette",
         "chrome.interaction.imported" => "Imported",
         "chrome.zone.edit" => "EDIT",

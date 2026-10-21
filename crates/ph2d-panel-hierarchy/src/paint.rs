@@ -448,7 +448,7 @@ fn paint_hierarchy_body(
         }
         y += HIER_ROW_H + list_row_gap_px();
     }
-    if let Some(d) = dragging {
+    if let Some(d) = dragging.filter(|_| store.hierarchy_drag_in_own_panel()) {
         let fallback = Rect::new(rect.x + body_pad, y - 1.0, row_w, 2.0);
         paint_drop_indicator(d, &row_rects, fallback, scene, theme);
     }

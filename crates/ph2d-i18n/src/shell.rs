@@ -65,6 +65,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Drop an image on a sprite to retexture it, or on empty canvas"
         }
         "shell.asset_drop.drop_a_prefab_on_the" => "Drop a prefab on the canvas to place it",
+        "shell.asset_drop.drop_an_object_on_a_script" => {
+            "Drop an object on a script to write the code that points at it"
+        }
         "shell.asset_drop_apply.could_not_place_that" => "Could not place that asset",
         "shell.asset_drop_apply.image_placed" => "Image placed",
         "shell.asset_drop_apply.image" => "Image",

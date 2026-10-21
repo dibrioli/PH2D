@@ -425,7 +425,8 @@ impl crate::App {
         // W14: a edição de etapa que espera fica fora do baseline; quando a espera acaba, o passo é já.
         let esperam = self.macros_que_esperam();
         let acabou = self
-            .undo.espera
+            .undo
+            .espera
             .quadro(&esperam, self.undo_baseline.as_ref());
         let had_input =
             std::mem::take(&mut self.any_input_this_frame) || self.reescrita_aterrou() || acabou;

@@ -1,0 +1,36 @@
+{
+ "linhas": [
+  "gestos_A",
+  "gestos_B",
+  "tamanhos_A",
+  "tamanhos_B",
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "linha 1": {
+   "1": "vizinho (Hard Round)",
+   "2": "nosso"
+  },
+  "linha 2": {
+   "1": "vizinho (Hard Round)",
+   "2": "nosso"
+  },
+  "linha 3": {
+   "1": "nosso",
+   "2": "vizinho (Hard Round)"
+  },
+  "linha 4": {
+   "1": "nosso",
+   "2": "vizinho (Hard Round)"
+  },
+  "linha 5": {
+   "1": "nosso",
+   "2": "vizinho (Hard Round)"
+  },
+  "linha 6": {
+   "1": "nosso",
+   "2": "vizinho (Hard Round)"
+  }
+ }
+}

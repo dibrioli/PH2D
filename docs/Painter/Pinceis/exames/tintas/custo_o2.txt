@@ -1,0 +1,36 @@
+== Dip Pen · load 12.81 19.97 19.21
+Dip Pen             5 |           0.43 ·  11.02 ·   46.77         |   2/475|      2.54 ·    12.20 |    0.38 |     73 MiB | 4.86
+Dip Pen            40 |           1.73 ·  10.54 ·   41.40         |   4/475|      2.61 ·     6.77 |    0.81 |     79 MiB | 4.26
+Dip Pen           200 |           3.02 ·  15.00 ·   45.37         |  16/475|      0.00 ·    32.92 |    1.31 |     85 MiB | 3.76
+p95 pior = 15.00 ms (dentro do orçamento de 16.7 ms a 60 Hz). ⚠️ perfil smoke; o `pior` inclui o 1.º quadro (a sessão nasce); a água corre no fio dela (núcleos).
+== Ink Bullet · load 3.76 14.30 17.23
+Ink Bullet          5 |           0.36 ·   0.94 ·   40.49         |   1/475|      1.94 ·     4.37 |    0.36 |     73 MiB | 24.58
+Ink Bullet         40 |           1.83 ·   4.38 ·   39.25         |   1/475|      2.57 ·     6.57 |    0.80 |     78 MiB | 22.39
+Ink Bullet        200 |           3.47 ·  14.87 ·   53.89         |  17/475|      0.01 ·    31.29 |    1.42 |     85 MiB | 21.64
+p95 pior = 14.87 ms (dentro do orçamento de 16.7 ms a 60 Hz). ⚠️ perfil smoke; o `pior` inclui o 1.º quadro (a sessão nasce); a água corre no fio dela (núcleos).
+== Ink Brush · load 21.64 19.13 18.65
+Ink Brush           5 |           0.63 ·   3.22 ·   55.27         |   3/475|      2.60 ·     5.42 |    0.40 |     74 MiB | 21.91
+Ink Brush          40 |           4.58 ·  14.61 ·   60.47         |  13/475|      0.00 ·     6.93 |    0.97 |     80 MiB | 22.41
+Ink Brush         200 |           0.01 ·  26.64 ·   72.54         |  58/475|      4.06 ·    33.29 |    2.11 |     97 MiB | 21.89
+p95 pior = 26.64 ms (FORA do orçamento de 16.7 ms a 60 Hz). ⚠️ perfil smoke; o `pior` inclui o 1.º quadro (a sessão nasce); a água corre no fio dela (núcleos).
+== Reed Pen · load 21.89 19.55 18.82
+Reed Pen            5 |           0.42 ·   8.88 ·   40.89         |   1/475|      2.42 ·     8.98 |    0.38 |     73 MiB | 22.92
+Reed Pen           40 |           1.39 ·  12.03 ·   42.35         |   3/475|      2.99 ·     6.47 |    0.81 |     78 MiB | 22.40
+Reed Pen          200 |           1.77 ·  10.18 ·   57.16         |   5/475|      0.00 ·    32.12 |    1.26 |     84 MiB | 21.65
+p95 pior = 12.03 ms (dentro do orçamento de 16.7 ms a 60 Hz). ⚠️ perfil smoke; o `pior` inclui o 1.º quadro (a sessão nasce); a água corre no fio dela (núcleos).
+== Wood Stick · load 21.65 19.93 18.99
+Wood Stick          5 |           0.37 ·   0.81 ·   38.50         |   1/475|      1.75 ·     4.78 |    0.37 |     73 MiB | 19.82
+Wood Stick         40 |           1.46 ·   2.51 ·   41.42         |   1/475|      3.32 ·     6.24 |    1.08 |     79 MiB | 20.20
+Wood Stick        200 |           3.14 ·   6.20 ·   49.53         |   8/475|      4.24 ·     7.82 |    1.93 |     85 MiB | 19.17
+p95 pior = 6.20 ms (dentro do orçamento de 16.7 ms a 60 Hz). ⚠️ perfil smoke; o `pior` inclui o 1.º quadro (a sessão nasce); a água corre no fio dela (núcleos).
+== Gloop Pen · load 19.17 19.58 18.92
+Gloop Pen           5 |           0.69 ·   1.20 ·    3.03         |   0/475|      0.00 ·     0.01 |    0.22 |     27 MiB | 19.89
+Gloop Pen          40 |           2.21 ·  13.15 ·   22.65         |   4/475|      0.00 ·     0.00 |    0.25 |     27 MiB | 19.34
+Gloop Pen         200 |           2.01 ·   3.32 ·   22.48         |   2/475|      0.00 ·     0.00 |    0.37 |     30 MiB | 16.91
+p95 pior = 13.15 ms (dentro do orçamento de 16.7 ms a 60 Hz). ⚠️ perfil smoke; o `pior` inclui o 1.º quadro (a sessão nasce); a água corre no fio dela (núcleos).
+== Gesinski Ink · load 16.91 19.06 18.78
+Gesinski Ink        5 |           0.08 ·   0.16 ·    2.47         |   0/475|      0.00 ·     0.00 |    0.01 |     26 MiB | 15.23
+Gesinski Ink       40 |           0.75 ·   2.91 ·    5.06         |   0/475|      0.00 ·     0.00 |    0.04 |     26 MiB | 15.81
+Gesinski Ink      200 |           1.13 ·   5.72 ·   21.55         |   4/475|      0.00 ·     0.00 |    0.23 |     29 MiB | 17.42
+p95 pior = 5.72 ms (dentro do orçamento de 16.7 ms a 60 Hz). ⚠️ perfil smoke; o `pior` inclui o 1.º quadro (a sessão nasce); a água corre no fio dela (núcleos).
+FIM

@@ -1,0 +1,30 @@
+{
+ "prancha": "gloop_pen_o2.png",
+ "linhas": [
+  "gestos_A",
+  "tamanhos_A",
+  "sobre_A"
+ ],
+ "chave": {
+  "gestos_A": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  },
+  "tamanhos_A": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  },
+  "sobre_A": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  }
+ },
+ "quem": {
+  "oraculo": "default",
+  "nosso": "Gloop Pen (escala 1.0)",
+  "vizinho": "Rough Sketch (d 1.011, limiar 0.591)"
+ }
+}

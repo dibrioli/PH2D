@@ -234,15 +234,17 @@ pub fn sample_shape_silhouette_unit_px(
     sample_shape_silhouette_unit(s, b, u, v, image)
 }
 
-/// O lado máximo da grelha de amostras por píxel de [`area_do_pixel`] (`16² = 256` toques bilineares). O
-/// recurso é o CPU por dab: o custo por dab reduzido fica ~constante (`n² · πr²`, `n ≈ texels/píxel`), e a
-/// 16 o passo entre amostras é ≤ 1,6 texels numa imagem de 128 a 5 px — o toque bilinear já cobre 2.
-const AREA_MAX: f32 = 16.0;
+/// O lado máximo da grelha de amostras por píxel de [`area_do_pixel`] (`8² = 64` toques bilineares). O recurso é o
+/// CPU por dab: reduzido, o custo de um dab é ~`(texels que ele cobre ÷ 2)²` (cada toque bilinear já cobre 2
+/// texels por eixo); com 16 e um toque por texel o Foliage a 40 px media p95 33 ms/quadro (load 26), e a 5 px a
+/// grelha de 8 põe as amostras a ≤ 3,2 texels numa imagem de 128 (`area_tests` mede a média ±0,15).
+const AREA_MAX: f32 = 8.0;
 
 /// ⭐ **A ponta de IMAGEM pela ÁREA do píxel** ([`super::GrainLaw::area`]): a média de `nx × ny` amostras
 /// espalhadas pelo píxel (o quadrado `± ½` em volta do centro; `em(desvio em px)` = a coordenada da pegada), cada
-/// uma levada à imagem pela MESMA pegada, Size, rotação e Offset — `n` = os texels que um passo de um píxel
-/// atravessa em cada eixo (o filtro de caixa, o mipmap). Ampliada (`n = 1`) é a amostra no centro, ao bit.
+/// uma levada à imagem pela MESMA pegada, Size, rotação e Offset — `n` = metade dos texels que um passo de um
+/// píxel atravessa em cada eixo (cada toque bilinear cobre 2; o filtro de caixa, o mipmap). Ampliada (`n = 1`) é a
+/// amostra no centro, ao bit.
 fn area_do_pixel(
     s: &TextureSettings,
     b: &TexDabBasis,
@@ -260,7 +262,7 @@ fn area_do_pixel(
     let (t0, tx, ty) = (tex([0.0, 0.0]), tex([1.0, 0.0]), tex([0.0, 1.0]));
     let (hw, hh) = (img.width.max(1) as f32 * 0.5, img.height.max(1) as f32 * 0.5);
     let texels = |d: [f32; 2]| ((d[0] - t0[0]) * hw).hypot((d[1] - t0[1]) * hh);
-    let lado = |t: f32| if t.is_finite() { t.ceil().clamp(1.0, AREA_MAX) } else { 1.0 };
+    let lado = |t: f32| if t.is_finite() { (0.5 * t).ceil().clamp(1.0, AREA_MAX) } else { 1.0 };
     let (nx, ny) = (lado(texels(tx)), lado(texels(ty)));
     if nx <= 1.0 && ny <= 1.0 {
         return shape_value(s, b, em([0.0, 0.0]), size, Some(img));

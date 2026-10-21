@@ -49,10 +49,27 @@ pub struct DabJitter {
     /// ~234 px mas nenhuma passa de 56 px (a caixa da imagem dele: as que passariam saem QUADRADAS). `0` =
     /// desligado. Só com spray (`spray_count > 1`).
     pub particle_max_px: f32,
+    /// ⭐ **O PISO da partícula em PÍXEIS** (J4 `texturas`, «Motor J4»): o diâmetro mínimo de cada marca do spray — a
+    /// 5 px o raminho do Foliage a 0,5 do pincel tem 2,5 px e a linha parte-se (revisões r8–r9: o Krita é uma linha
+    /// cheia). `0` = desligado. Só com spray (`spray_count > 1`).
+    pub particle_min_px: f32,
     /// ⭐ **O VÉU** (J4 `texturas`, «Motor J4»): a fracção `0..1` das marcas do spray que sai da 2.ª população — maior
     /// ([`Self::veu_escala`]) e pálida ([`Self::veu_opacidade`]): a névoa clara por baixo das gotas do Texture Spray
     /// do Krita. Sorteado de um fluxo PRÓPRIO do traço. `0` = desligado (uma população, a de sempre).
     pub veu: f32,
+    /// ⭐ **O PÓ SOLTO** (J4 `texturas`, «Motor J4»; pedido da família `pastel_carvao`): grãos de pó à VOLTA do
+    /// traço, fora da borda — grãos por 100 px² da área do traço (`0` = desligado). Medido no Rebelle (o recto de 200
+    /// e o de 40 px da bateria): o Soft Pastel `Dry Thin` 0,85–0,9, o Charcoal 0,6, o Flat Soft 1,25 — a densidade
+    /// por área é a mesma a 40 e a 200 px. Contados sem sorteio (o resto acumula de ponto em ponto); a posição, o
+    /// tamanho e o tom de cada grão de um fluxo PRÓPRIO. Vale para todo meio que pinta os dabs do traço (Digital, Wet).
+    pub po: f32,
+    /// Até onde o pó vai além da borda, em raios do dab: a distância é `raio·(1 + po_alcance·u²)` (o Rebelle: a
+    /// mediana a ~0,3 e o p90 a ~0,9 da meia-largura no Soft Pastel ⇒ ~1,1; o Charcoal ~0,5; o Flat Soft ~3).
+    pub po_alcance: f32,
+    /// O diâmetro de um grão em px (× `0,5..1,5` sorteado).
+    pub po_px: f32,
+    /// A cobertura de um grão em fracção da do dab (× `0,4..1` sorteado; o Rebelle: o tom médio dos grãos ~0,17).
+    pub po_opacidade: f32,
     /// O raio de uma marca do véu × isto (`> 0`; só com [`Self::veu`]).
     pub veu_escala: f32,
     /// A cobertura de uma marca do véu × isto (`0..1`; só com [`Self::veu`]).
@@ -72,9 +89,14 @@ impl DabJitter {
         particle: 1.0,
         particle_px: 0.0,
         particle_max_px: 0.0,
+        particle_min_px: 0.0,
         veu: 0.0,
         veu_escala: 1.0,
         veu_opacidade: 1.0,
+        po: 0.0,
+        po_alcance: 1.0,
+        po_px: 2.0,
+        po_opacidade: 0.3,
     };
 
     /// A menor partícula (`5 %` do pincel): abaixo disso o dab do raio mínimo (`0,5 px`) já é o que se pinta.
@@ -100,10 +122,15 @@ impl DabJitter {
         }
     }
 
-    /// O raio de uma marca do spray de `n` com o tecto [`Self::particle_max_px`] (o próprio `raio` sem ele).
+    /// O raio de uma marca do spray de `n` entre o piso [`Self::particle_min_px`] e o tecto
+    /// [`Self::particle_max_px`] (o próprio `raio` sem eles).
     #[must_use]
     pub fn com_tecto(&self, n: u32, raio: f32) -> f32 {
-        if n > 1 && self.particle_max_px > 0.0 {
+        if n <= 1 {
+            return raio;
+        }
+        let raio = if self.particle_min_px > 0.0 { raio.max(0.5 * self.particle_min_px) } else { raio };
+        if self.particle_max_px > 0.0 {
             raio.min((0.5 * self.particle_max_px).max(0.5))
         } else {
             raio

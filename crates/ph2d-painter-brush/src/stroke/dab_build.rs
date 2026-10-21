@@ -29,6 +29,9 @@ pub(super) struct PorTraco {
     /// O spray PARADO (J4, [`BrushSpec::parado_s`]): o tempo parado acumulado e o `tot_samples` do último tique.
     pub(super) parado_acum_s: f32,
     pub(super) parado_marca: u32,
+    /// O pó solto (J4, [`crate::marca::DabJitter::po`]): o fluxo PRÓPRIO dele e o resto da contagem.
+    pub(super) rng_po: u64,
+    pub(super) po_resto: f32,
 }
 
 impl PorTraco {
@@ -43,6 +46,8 @@ impl PorTraco {
             rng_veu: seed ^ 0x7665_755F_4A34_5645,
             parado_acum_s: 0.0,
             parado_marca: 0,
+            rng_po: seed ^ 0x706F_5F73_6F6C_746F,
+            po_resto: 0.0,
         }
     }
 }

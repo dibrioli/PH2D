@@ -53,6 +53,10 @@ impl PainterTool {
             brush.sub_passo_fino = false;
             brush.passo_pela_pressao = false;
             brush.parado_s = 0.0;
+            // O pó solto (J4) no Wet entra no sub-passo do lote (`wetpaint/lote.rs`) como se fosse o traço e
+            // pinta nódoas (medido: o miolo do Soft Pastel 92 → 109 px, os grãos 86 → 19 por 100 px): só no
+            // Digital até a rota do Wet os pousar à parte (`docs/Painter/Pinceis/exames/texturas.md` «Motor J4»).
+            brush.dab_jitter.po = 0.0;
         }
         // O Wet Paint não lê o PUSH do Impasto (o preset declara-o), mas o motor de traço lê-o para
         // AQUECER (reter os primeiros dabs até ter direcção): com a água a correr no traço (W1e, F6) o

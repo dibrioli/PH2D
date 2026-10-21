@@ -39,55 +39,24 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("spray_count", "2"),
             ("spacing", "0.85"),
             ("jitter", "0.5"),
-            ("jitter_scale", "0.45"),
+            ("jitter_scale", "0.6"),
+            // O passo pelo diâmetro à pressão (J4): na pressão fraca o rasto de estrelinhas do Rebelle (revisões r4, r6).
+            ("passo_pela_pressao", "true"),
             ("jitter_rotate", "1.0"),
             ("continuous_spacing", "false"),
             (
                 "dab_jitter",
-                r#"{"across": 0.9, "angle_per_stroke": 0.0, "count": 0.5, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.05, "particle": 0.7, "roundness": 0.0}"#,
+                r#"{"across": 0.9, "angle_per_stroke": 0.0, "count": 0.5, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.05, "particle": 0.8, "particle_max_px": 56.0, "roundness": 0.0}"#,
             ),
         ],
-        // A pressão no tamanho e o tamanho = os do preset do Rebelle (`pressure_size_influence` 1, Size 108).
+        // A pressão no tamanho e o tamanho = os do preset do Rebelle (`pressure_size_influence` 1, Size 108). O tecto
+        // da estrela em px (J4 «Motor J4»): a 200 px o Rebelle espalha-as por ~234 px mas nenhuma passa de 56 px (a
+        // caixa da imagem dele; as que passariam saem QUADRADAS — o defeito não se imita, o tamanho sim).
         mao: &[("pressureSize", 1.0), ("pressureSizeCurve", 1.0), ("pressureOpacity", 0.6)],
         size_px: Some(108.0),
         opacity: Some(0.6),
         texturas: &[("shape", estrela)],
         ..ReceitaMeio::digital("Stamp", "Stamp", "Stars")
-    },
-];
-
-/// Os REPROVADOS da família (J4, `docs/Painter/Pinceis/exames/texturas.md`): a receita da última ronda, fora da
-/// fábrica — as revisões cegas acharam o oráculo e listaram o que falta (o exame diz o quê, e a fila o que destrava).
-pub const EM_ESTUDO: &[ReceitaMeio] = &[
-    // K-2 — a FOLHAGEM (Krita «z) Stamp Leaves»): cada dab é um RAMINHO nosso ([`raminho`]: um pé, sete folhas e um
-    // maciço no meio), sorteado em posição, tamanho, rotação e espelho; a pressão leva a opacidade (Krita 0,69 → 0,42).
-    ReceitaMeio {
-        pincel: &[
-            ("hardness", "1.0"),
-            ("falloff", "\"Constant\""),
-            ("borda_px", "0.0"),
-            ("shape", IMAGEM_AREA),
-            ("spray_count", "4"),
-            ("spacing", "0.08"),
-            ("jitter", "0.25"),
-            ("jitter_scale", "0.4"),
-            ("jitter_rotate", "1.0"),
-            ("continuous_spacing", "false"),
-            (
-                "dab_jitter",
-                r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.4, "flip_x": 0.5, "flip_y": 0.0, "opacity": 0.0, "particle": 0.5, "roundness": 0.0}"#,
-            ),
-        ],
-        mao: &[
-            ("pressureSize", 0.0),
-            ("pressureOpacity", 0.8),
-            ("pressureOpacityCurve", 1.0),
-        ],
-        // O tamanho do carimbo do Krita (svg) não se mede: o do artista.
-        size_px: None,
-        opacity: Some(1.0),
-        texturas: &[("shape", raminho)],
-        ..ReceitaMeio::digital("Stamp", "Stamp", "Foliage")
     },
     // K-3 — a RELVA (Krita «z) Stamp Grass», MyPaint `long_grass`): tufos de lâminas que sobem do traço, três
     // desenhos nossos ([`tufo`]) sorteados pela mangueira (L19), quase de pé (±15°), a base que esmaece.
@@ -96,10 +65,10 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("hardness", "1.0"),
             ("falloff", "\"Constant\""),
             ("borda_px", "0.0"),
-            ("shape", IMAGEM),
+            ("shape", IMAGEM_AREA),
             ("hose", r#"{"n": 3, "mode": 0, "pesos": [1, 1, 1, 1, 1, 1, 1, 1]}"#),
             ("spray_count", "1"),
-            ("spacing", "0.42"),
+            ("spacing", "0.75"),
             ("jitter", "0.06"),
             ("jitter_scale", "0.4"),
             ("jitter_rotate", "0.1"),
@@ -115,10 +84,46 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
         texturas: &[("shape", tufo_0), ("shape_2", tufo_1), ("shape_3", tufo_2)],
         ..ReceitaMeio::digital("Stamp", "Stamp", "Grass")
     },
+];
+
+/// Os REPROVADOS da família (J4, `docs/Painter/Pinceis/exames/texturas.md`): a receita da última ronda, fora da
+/// fábrica — as revisões cegas acharam o oráculo e listaram o que falta (o exame diz o quê, e a fila o que destrava).
+pub const EM_ESTUDO: &[ReceitaMeio] = &[
+    // K-2 — a FOLHAGEM (Krita «z) Stamp Leaves»): cada dab é um RAMINHO nosso ([`raminho`]: um pé, sete folhas e um
+    // maciço no meio), sorteado em posição, tamanho, rotação e espelho; a pressão leva a opacidade (a rampa 0→1 do Krita
+    // 0,165 → 0,341 de cobertura; a nossa 0,161 → 0,337 — J4 «Motor J4»).
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "1.0"),
+            ("falloff", "\"Constant\""),
+            ("borda_px", "0.0"),
+            ("shape", IMAGEM_AREA),
+            ("spray_count", "5"),
+            ("spacing", "0.08"),
+            ("jitter", "0.3"),
+            ("jitter_scale", "0.4"),
+            ("jitter_rotate", "1.0"),
+            ("continuous_spacing", "false"),
+            (
+                "dab_jitter",
+                r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.4, "flip_x": 0.5, "flip_y": 0.0, "opacity": 0.0, "particle": 0.42, "particle_min_px": 3.5, "roundness": 0.0}"#,
+            ),
+        ],
+        mao: &[
+            ("pressureSize", 0.0),
+            ("pressureOpacity", 0.8),
+            ("pressureOpacityCurve", 1.0),
+        ],
+        // O tamanho do carimbo do Krita (svg) não se mede: o do artista.
+        size_px: None,
+        opacity: Some(1.0),
+        texturas: &[("shape", raminho)],
+        ..ReceitaMeio::digital("Stamp", "Stamp", "Foliage")
+    },
     // K-4 — o BOKEH (Krita «z) Stamp Bokeh»): discos de luz espalhados, um ARO nítido (0,72) sobre um miolo
     // translúcido (0,20 — o perfil medido de um disco de 150 px), tamanhos muito variados; o tamanho pela pressão.
-    // J4 «Motor J4»: o passo pelo diâmetro à pressão (o rasto de bolinhas) e uma 2.ª população de MICRO-pontos
-    // (`veu` a 0,15 do tamanho, opacos — os pontinhos do Krita entre os discos grandes; revisões r7–r8).
+    // J4 «Motor J4»: o passo pelo diâmetro à pressão (o rasto de bolinhas); a pressão a crescer o disco pela curva
+    // 1,5 (r10–r12: o Krita vai de pontinhos a discos grandes); sem micro-pontos (r12: «pontinhos escuros a mais»).
     ReceitaMeio {
         pincel: &[
             ("falloff", "\"Custom\""),
@@ -126,18 +131,18 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("hardness", "0.0"),
             ("borda_px", "0.0"),
             ("spray_count", "3"),
-            ("spacing", "0.9"),
+            ("spacing", "0.75"),
             // O passo pelo diâmetro À PRESSÃO (J4 «Motor J4»): na pressão fraca o rasto denso de bolinhas do Krita.
             ("passo_pela_pressao", "true"),
             ("jitter", "0.6"),
-            ("jitter_scale", "0.55"),
+            ("jitter_scale", "0.35"),
             ("continuous_spacing", "false"),
             (
                 "dab_jitter",
-                r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.1, "particle": 0.45, "roundness": 0.0, "veu": 0.12, "veu_escala": 0.15, "veu_opacidade": 1.0}"#,
+                r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.1, "particle": 0.6, "roundness": 0.0}"#,
             ),
         ],
-        mao: &[("pressureSize", 1.0), ("pressureSizeCurve", 1.3), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 1.0)],
+        mao: &[("pressureSize", 1.0), ("pressureSizeCurve", 1.5), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 1.0)],
         size_px: None,
         opacity: Some(0.75),
         ..ReceitaMeio::digital("Stamp", "Stamp", "Bokeh")
@@ -152,14 +157,14 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("borda_px", "0.0"),
             ("shape", IMAGEM_AREA),
             ("spacing", "0.12"),
-            ("jitter", "0.15"),
-            ("jitter_scale", "0.25"),
+            ("jitter", "0.05"),
+            ("jitter_scale", "0.15"),
             ("jitter_rotate", "1.0"),
             ("continuous_spacing", "false"),
             ("accumulate", "true"),
-            ("flow", "0.7"),
+            ("flow", "0.6"),
         ],
-        mao: &[("pressureSize", 0.3), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 1.3)],
+        mao: &[("pressureSize", 0.3), ("pressureOpacity", 0.7), ("pressureOpacityCurve", 1.0)],
         size_px: None,
         opacity: Some(1.0),
         texturas: &[("shape", riscos)],
@@ -314,27 +319,27 @@ fn tufo_sorteado(semente: u64, n: usize) -> Vec<u8> {
     let laminas: Vec<Lamina> = (0..n)
         .map(|_| {
             // J4 «Motor J4»: a moita do Krita — a base larga, as lâminas FINAS e curvadas para a direita, de
-            // alturas várias, metade pálidas (translúcidas) e de tinta sorteada, não duas.
-            let bx = (u() - 0.5) * 0.9 - 0.15;
-            let inclina = 0.05 + 0.75 * u();
-            let ty = -0.35 - 0.6 * u();
-            let forca = if u() < 0.5 { 0.2 + 0.3 * u() } else { 0.75 + 0.25 * u() };
-            Lamina { bx, tx: (bx + inclina).clamp(-0.9, 0.9), ty, w: 0.012 + 0.018 * u(), forca }
+            // alturas várias, um terço pálidas (translúcidas) e de tinta sorteada, não duas.
+            let bx = (u() - 0.5) * 1.2 - 0.05;
+            let inclina = 0.0 + 0.8 * u();
+            let ty = -0.3 - 0.55 * u();
+            let forca = if u() < 0.25 { 0.3 + 0.3 * u() } else { 0.85 + 0.15 * u() };
+            Lamina { bx, tx: (bx + inclina).clamp(-0.9, 0.9), ty, w: 0.025 + 0.025 * u(), forca }
         })
         .collect();
     tufo(&laminas)
 }
 
 fn tufo_0() -> Vec<u8> {
-    tufo_sorteado(11, 24)
+    tufo_sorteado(11, 30)
 }
 
 fn tufo_1() -> Vec<u8> {
-    tufo_sorteado(23, 22)
+    tufo_sorteado(23, 28)
 }
 
 fn tufo_2() -> Vec<u8> {
-    tufo_sorteado(37, 26)
+    tufo_sorteado(37, 32)
 }
 
 /// O ponto `(x, y)` dentro do polígono `v` (par-ímpar).
@@ -577,7 +582,7 @@ const FOTOS: [(&str, &str, f64, [Faixa; 2]); 6] = [
     ("Foliage", "krita z) Stamp Leaves", 0.794, [
         Faixa { cob: 0.155, pontos: 1.58, gota: 16.0, alto: 1.0, contraste: 1.01, cv_area: 3.29 },
         Faixa { cob: 0.373, pontos: 2.24, gota: 185.0, alto: 1.13, contraste: 1.0, cv_area: 3.85 }]),
-    ("Grass", "krita z) Stamp Grass", 1.111, [
+    ("Grass", "krita z) Stamp Grass", 0.909, [
         Faixa { cob: 0.059, pontos: 10.53, gota: 15.0, alto: 1.48, contraste: 1.93, cv_area: 1.73 },
         Faixa { cob: 0.132, pontos: 10.13, gota: 20.0, alto: 1.66, contraste: 1.85, cv_area: 2.78 }]),
     ("Bokeh", "krita z) Stamp Bokeh", 1.0, [
@@ -594,9 +599,10 @@ const FOTOS: [(&str, &str, f64, [Faixa; 2]); 6] = [
 /// O que faz a identidade de cada um: (faixa 0 = 40 px · 1 = 200 px, a medida). A estrela do Rebelle a 200 px é um
 /// QUADRADO (o carimbo dele ao tecto), fora; o salpico a 200 px parte-se em gotículas que a régua das manchas conta.
 /// Só os APROVADOS; as outras fotos da família ficam como IRMÃOS (a lei dos irmãos mede contra todas).
-const IDENTIDADE: [(&str, &[(usize, M)]); 2] = [
+const IDENTIDADE: [(&str, &[(usize, M)]); 3] = [
     ("Halftone", &[(1, M::Pontos), (1, M::CvArea), (1, M::Contraste), (0, M::Pontos)]),
     ("Stars", &[(0, M::Gota), (0, M::Contraste), (0, M::CvArea)]),
+    ("Grass", &[(1, M::Alto), (1, M::Contraste), (0, M::Alto)]),
 ];
 
 /// ⭐ **Cada carimbo reconhece-se pela foto do seu oráculo** (J4, `docs/Painter/Pinceis/exames/texturas.md`): pintado
@@ -697,24 +703,24 @@ fn riscos() -> Vec<u8> {
     };
     // (a, b, meia-largura, tinta, a fracção da meia-largura que é orla)
     let mut traco: Vec<((f64, f64), (f64, f64), f64, f64, f64)> = Vec::new();
-    for _ in 0..14 {
+    for _ in 0..18 {
         let (cx, cy) = no_disco(0.62, &mut u);
         let (dx, dy) = direccao(&mut u);
-        let l = 0.12 + 0.22 * u();
-        traco.push(((cx - dx * l, cy - dy * l), (cx + dx * l, cy + dy * l), 0.05 + 0.06 * u(), 0.16 + 0.2 * u(), 1.0));
+        let l = 0.1 + 0.2 * u();
+        traco.push(((cx - dx * l, cy - dy * l), (cx + dx * l, cy + dy * l), 0.06 + 0.07 * u(), 0.2 + 0.22 * u(), 0.8));
     }
-    for _ in 0..10 {
+    for _ in 0..12 {
         let mut p = no_disco(0.62, &mut u);
         let mut d = direccao(&mut u);
-        let curva = (u() - 0.5) * 0.9;
-        let (w, tinta) = (0.007 + 0.006 * u(), 0.5 + 0.4 * u());
-        for _ in 0..12 {
+        let curva = (u() - 0.5) * 1.4;
+        let (w, tinta) = (0.01 + 0.007 * u(), 0.6 + 0.3 * u());
+        for _ in 0..8 {
             let t = curva + (u() - 0.5) * 0.3;
             let (c, sn) = (1.0 - t * t / 2.0, t - t * t * t / 6.0);
             let r = (d.0 * c - d.1 * sn, d.0 * sn + d.1 * c);
             let n = (r.0 * r.0 + r.1 * r.1).sqrt();
             d = (r.0 / n, r.1 / n);
-            let q = (p.0 + d.0 * 0.045, p.1 + d.1 * 0.045);
+            let q = (p.0 + d.0 * 0.04, p.1 + d.1 * 0.04);
             traco.push((p, q, w, tinta, 0.6));
             p = q;
         }

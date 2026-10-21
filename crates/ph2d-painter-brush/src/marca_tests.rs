@@ -394,6 +394,19 @@ fn o_tecto_da_particula_corta_so_as_maiores() {
         }
     }
     assert!(cortadas > 0 && cortadas < sem.len(), "{cortadas} de {} cortadas", sem.len());
+    // O PISO (J4, o Foliage a 5 px): num pincel de 5 px nenhuma marca fica abaixo de metade dele, as posições ficam.
+    let mut s = spec_base();
+    s.radius_px = 2.5;
+    let sem = recto(s, 7);
+    s.dab_jitter.particle_min_px = 4.0;
+    let com_piso = recto(s, 7);
+    let mut subidas = 0;
+    for (a, b) in sem.iter().zip(&com_piso) {
+        assert_eq!(a.center, b.center);
+        assert!(b.radius_px >= 2.0 - 1e-4, "raio {} abaixo do piso", b.radius_px);
+        subidas += usize::from(a.radius_px < 2.0);
+    }
+    assert!(subidas > 0, "nenhuma marca abaixo do piso: o controlo não mede nada");
 }
 
 /// ⭐ **O VÉU** (J4 `texturas`, o Texture Spray do Krita: a névoa clara por baixo das gotas): a fracção `veu` das marcas
@@ -421,4 +434,37 @@ fn o_veu_e_uma_segunda_populacao_maior_e_palida() {
     }
     let f = veu as f32 / sem.len() as f32;
     assert!((0.2..=0.4).contains(&f), "véu {veu} de {} ({f})", sem.len());
+}
+
+/// ⭐ **O PÓ SOLTO** (J4 `texturas`, pedido do `pastel_carvao`; o Soft Pastel do Rebelle: ~0,85 grão por 100 px² da
+/// área do traço, até ~1 meia-largura além da borda): o recto deixa `po/100 × comprimento × diâmetro` grãos (± o
+/// resto), todos do tamanho `po_px` e fora do dab que os larga, dentro do alcance; os dabs do traço ficam AO BIT.
+#[test]
+fn o_po_solto_espalha_graos_a_volta_do_traco() {
+    let mut s = spec_base();
+    s.spray_count = 1;
+    s.jitter = 0.0;
+    s.jitter_scale = 0.0;
+    s.radius_px = 50.0;
+    s.spacing = 0.1;
+    let sem = recto(s, 5);
+    s.dab_jitter.po = 0.9;
+    s.dab_jitter.po_alcance = 1.1;
+    s.dab_jitter.po_px = 2.0;
+    let com = recto(s, 5);
+    let (tracos, graos): (Vec<&Dab>, Vec<&Dab>) = com.iter().partition(|d| d.radius_px > 10.0);
+    assert_eq!(tracos.len(), sem.len());
+    for (a, b) in sem.iter().zip(&tracos) {
+        assert_eq!(a, *b, "o dab do traço mudou com o pó");
+    }
+    // 880 px × 100 px de diâmetro × 0,009 por px² ≈ 792 (o primeiro e o último ponto somam ±1 passo).
+    assert!((700..=900).contains(&graos.len()), "{} grãos", graos.len());
+    for g in &graos {
+        assert!(g.radius_px <= 1.5 + 1e-4 && g.radius_px >= 0.5, "grão de raio {}", g.radius_px);
+        let fora = (g.center[1] - 300.0).abs();
+        assert!(fora <= 50.0 * 2.1 + 1e-3, "grão a {fora} px do caminho (alcance 1,1 raio além da borda)");
+        assert!(g.step == [0.0, 0.0] && g.ante.is_none(), "um grão não se arrasta");
+    }
+    let alem = graos.iter().filter(|g| (g.center[1] - 300.0).abs() > 50.0).count();
+    assert!(alem * 3 > graos.len(), "{alem} de {} além da borda", graos.len());
 }

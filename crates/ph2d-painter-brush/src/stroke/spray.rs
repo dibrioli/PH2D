@@ -103,6 +103,10 @@ pub const SPRAY_COUNT_MAX: u32 = 16;
 /// uma linha; o que não se pode é deixar a primeira nuvem invisível.
 pub const SPRAY_DEFAULT_SPREAD: f32 = 0.5;
 
+/// O tecto de grãos de pó por ponto do caminho: um batente de MEMÓRIA (um pincel de 2000 px a `po` 2 pediria
+/// ~10⁴ por ponto); a 200 px o Soft Pastel do Rebelle pede ~17.
+const PO_MAX_POR_PONTO: u32 = 512;
+
 impl Stroke {
     /// **A PORTA ÚNICA por onde um ponto do CAMINHO vira marca** — arremessa uma vez, constrói `n`.
     ///
@@ -129,7 +133,9 @@ impl Stroke {
         let base_pos = self.roughen(thrown, arc, 0);
         let mut base = self.dab_from(base_pos, pressure, overlap, arc);
         self.veu(&mut base);
+        let molde = base;
         self.emit(base, out);
+        self.po_solto(&molde, out);
         self.rough_passes(thrown, pressure, overlap, arc, out);
         self.spray_copies(base_pos, pressure, overlap, arc, out);
     }
@@ -204,6 +210,49 @@ impl Stroke {
         if crate::jitter::next_f32(&mut self.por_traco.rng_veu) < j.veu.clamp(0.0, 1.0) {
             d.radius_px = (d.radius_px * j.veu_escala.max(0.05)).clamp(0.5, crate::MAX_BRUSH_RADIUS_PX);
             d.coverage *= j.veu_opacidade.clamp(0.0, 1.0);
+        }
+    }
+
+    /// ⭐ **O PÓ SOLTO** (J4, [`crate::marca::DabJitter::po`]): os grãos que este ponto do caminho espalha à volta
+    /// do dab `molde` — `po/100 × passo × diâmetro` deles (o resto passa ao ponto seguinte), cada um a
+    /// `raio·(1 + alcance·u²)` do centro numa direcção ao acaso, do tamanho `po_px` e do tom `po_opacidade` do dab,
+    /// sem cápsula (um grão não se arrasta). Desligado (`po = 0`): nada se sorteia.
+    fn po_solto(&mut self, molde: &Dab, out: &mut Vec<Dab>) {
+        let j = self.spec.dab_jitter;
+        if j.po <= 0.0 || !self.spec.stroke_method.allows_jitter() {
+            return;
+        }
+        let r = molde.radius_px.max(0.5);
+        let passo = self.spec.passo_de(self.spec.spacing);
+        self.por_traco.po_resto += j.po * 0.01 * passo * 2.0 * r;
+        let n = (self.por_traco.po_resto.floor() as u32).min(PO_MAX_POR_PONTO);
+        self.por_traco.po_resto -= self.por_traco.po_resto.floor();
+        let rng = &mut self.por_traco.rng_po;
+        for _ in 0..n {
+            let (dx, dy) = loop {
+                let (x, y) = (
+                    crate::jitter::next_f32(rng) * 2.0 - 1.0,
+                    crate::jitter::next_f32(rng) * 2.0 - 1.0,
+                );
+                let q = x * x + y * y;
+                if q > 0.04 && q <= 1.0 {
+                    let n = q.sqrt();
+                    break (x / n, y / n);
+                }
+            };
+            let u = crate::jitter::next_f32(rng);
+            let dist = r * (1.0 + j.po_alcance.max(0.0) * u * u);
+            let tamanho = 0.5 + crate::jitter::next_f32(rng);
+            let tom = 0.4 + 0.6 * crate::jitter::next_f32(rng);
+            let grao = Dab {
+                center: [molde.center[0] + dx * dist, molde.center[1] + dy * dist],
+                radius_px: (0.5 * j.po_px.max(0.5) * tamanho).max(0.5),
+                coverage: (molde.coverage * j.po_opacidade.clamp(0.0, 1.0) * tom).clamp(0.0, 1.0),
+                step: [0.0, 0.0],
+                ante: None,
+                ..*molde
+            };
+            crate::symmetry::push_symmetric(out, grao, &self.spec.symmetry);
         }
     }
 

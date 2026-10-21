@@ -139,17 +139,18 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
     // população: maior e pálida, `DabJitter::veu`) + o spray PARADO (`parado_s`: parada, a lata continua a pousar).
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.5"),
+            ("hardness", "0.85"),
             ("spray_count", "16"),
             ("spacing", "0.015"),
             ("jitter", "0.7"),
             ("jitter_scale", "0.95"),
             ("continuous_spacing", "false"),
-            ("flow", "0.65"),
-            ("parado_s", "0.02"),
+            ("flow", "0.4"),
+            // O parado do Krita 0,235 · 0,918 · 0,996 a 10 · 60 · 200 eventos; 0,0035 s ≈ 0,30 · 0,89 · 1,00.
+            ("parado_s", "0.0035"),
             (
                 "dab_jitter",
-                r#"{"across": 0.4, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.09, "roundness": 0.0, "veu": 0.3, "veu_escala": 2.5, "veu_opacidade": 0.2}"#,
+                r#"{"across": 0.4, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.09, "roundness": 0.0, "veu": 0.2, "veu_escala": 1.8, "veu_opacidade": 0.2}"#,
             ),
         ],
         mao: &[("pressureSize", 0.0), ("pressureOpacity", 1.0)],

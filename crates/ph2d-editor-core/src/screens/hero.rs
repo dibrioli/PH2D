@@ -103,6 +103,7 @@ mod live;
 pub mod menu_bar;
 pub mod menu_rows;
 mod menu_tables;
+mod menu_tables_board;
 mod menu_tables_section;
 pub mod mode_drive;
 /// O que esta tela OFERECE agora — as portas de *«esta superfície está viva?»*.

@@ -1481,14 +1481,9 @@ const PAINEIS_QUE_NAO_SAO_CHROME: &[(&str, &str)] = &[
          `LIVE BOX — drag it`, `row 22`). O `Geometry Offset` ja' e' isencao NOMEADA no censo das \
          elisoes deste mesmo ficheiro, pela mesma razao.",
     ),
-    (
-        "authored",
-        "as palavras deste painel sao do ARTISTA, nao do programa: ele desenha a arvore e o app \
-         ESCREVE o codigo do painel (`src/generated/panel.rs`, com o gate \
-         `the_generated_panel_is_what_the_emitter_emits` a compara-lo byte a byte com o que o \
-         emissor produz). `Design`/`Preview`/`Code` sao conteudo do documento, como o nome de uma \
-         camada — e o proprio gate do painel se chama `the_program_writes_no_word_into_this_panel`.",
-    ),
+    // `authored` saiu em 20/10 (W23 bloco 6): o `Design` do quadro entrou na tabela, e as três
+    // palavras do painel (`Design`/`Preview`/`Code`) passaram todas a ser produzíveis — a isenção já
+    // não abrigava nada (`nenhum_painel_isento_deixou_de_abrigar_uma_palavra_escrita_a_mao`).
 ];
 
 /// ⭐⭐ **O texto ja' CORTADO é um artefacto da medição, não um rótulo.**

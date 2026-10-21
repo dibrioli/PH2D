@@ -151,7 +151,7 @@ fn choose(hero: &mut HeroScreen, src: Source, board: Option<BoardId>) {
                 }))
         }
         Source::Selection { from, keep } => {
-            hero.documents.live.send = Some(super::board_send::Send {
+            hero.documents.live.send = Some(crate::documents::alert::Send {
                 from,
                 to: board,
                 keep,

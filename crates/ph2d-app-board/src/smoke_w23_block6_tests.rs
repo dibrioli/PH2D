@@ -31,7 +31,10 @@ fn the_block6_scene_arms_its_four_stations() {
     for id in &s.ideas {
         assert!(taken.contains(id), "a ideia {id:?} ficou de fora");
     }
-    assert!(taken.contains(&s.lasso_frame), "o frame, inteiro dentro, entra com elas");
+    assert!(
+        taken.contains(&s.lasso_frame),
+        "o frame, inteiro dentro, entra com elas"
+    );
     assert!(taken.contains(&s.most), "95 % dentro entra");
     assert!(!taken.contains(&s.half), "metade fora não entra");
     // ④ — a seta liga as duas caixas.

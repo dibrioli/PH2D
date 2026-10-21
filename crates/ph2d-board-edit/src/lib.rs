@@ -452,21 +452,6 @@ impl Editor {
         self.editing.is_some()
     }
 
-    /// W23 B13 — o relógio (ns) do evento que vai chegar: a shell chama-o antes de cada ponteiro.
-    pub fn at_time(&mut self, now_ns: u128) {
-        self.clock = (now_ns, std::time::Instant::now());
-    }
-
-    /// O relógio do evento em curso (exacto: o que a shell carimbou).
-    pub(crate) fn event_ns(&self) -> u128 {
-        self.clock.0
-    }
-
-    /// O relógio agora, ENTRE eventos (o quadro de pintura): o do último evento mais o que passou.
-    pub(crate) fn clock_now(&self) -> u128 {
-        self.clock.0 + self.clock.1.elapsed().as_nanos()
-    }
-
     /// Selecciona exactamente `ids` (os que não existem são ignorados).
     pub fn select(&mut self, doc: &BoardDoc, ids: impl IntoIterator<Item = ElementId>) {
         self.selection = ids

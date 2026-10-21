@@ -13,6 +13,8 @@ use ph2d_board_model::{Board, BoardId, History};
 pub use ph2d_board_model::{BoardSet, undo_tick};
 use std::collections::BTreeMap;
 
+#[path = "documents_alert.rs"]
+pub(crate) mod alert;
 #[path = "documents_fac.rs"]
 pub(crate) mod fac;
 #[path = "documents_live.rs"]
@@ -70,9 +72,9 @@ pub(crate) struct BoardLive {
     /// W23 — o comando que o menu do botão direito numa forma enfileirou (corre na pintura seguinte).
     pub(crate) menu_command: Option<ph2d_board_edit::Command>,
     /// W23 B15 — a selecção escolhida no modal para ir a outro quadro (corre na pintura seguinte).
-    pub(crate) send: Option<crate::screens::hero::board_send::Send>,
+    pub(crate) send: Option<alert::Send>,
     /// W23 B15 — o aviso do quadro com um botão (o «Undo» de um mover).
-    pub(crate) alert: Option<crate::screens::hero::board_alert::Alert>,
+    pub(crate) alert: Option<alert::Alert>,
     /// W23 — a grelha de todas as pontas, aberta para ESTA selecção e para a ponta `0`/`1`.
     pub(crate) heads: Option<(
         std::collections::BTreeSet<ph2d_board_model::ElementId>,

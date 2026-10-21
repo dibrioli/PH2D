@@ -221,6 +221,21 @@ fn polygon_shape(
 }
 
 impl Editor {
+    /// W23 B13 — o relógio (ns) do evento que vai chegar: a shell chama-o antes de cada ponteiro.
+    pub fn at_time(&mut self, now_ns: u128) {
+        self.clock = (now_ns, std::time::Instant::now());
+    }
+
+    /// O relógio do evento em curso (exacto: o que a shell carimbou).
+    pub(crate) fn event_ns(&self) -> u128 {
+        self.clock.0
+    }
+
+    /// O relógio agora, ENTRE eventos (o quadro de pintura): o do último evento mais o que passou.
+    pub(crate) fn clock_now(&self) -> u128 {
+        self.clock.0 + self.clock.1.elapsed().as_nanos()
+    }
+
     /// ⭐ O objecto do quadro que a forma `shape` vira (o estilo `style` da caneta; `raw` = o traço cru,
     /// que não prende pontas); `None` = nenhum a desenha igual — fica a tinta limpa ([`shape_points`]).
     pub(crate) fn smart_element(

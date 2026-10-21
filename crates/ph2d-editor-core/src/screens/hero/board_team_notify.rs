@@ -5,8 +5,8 @@
 //! depois (o «novo» por pessoa, K6). O que já lá estava quando o quadro foi visto não avisa.
 
 use super::super::super::HeroScreen;
-use super::super::super::board_alert::{Action, Alert};
 use crate::documents::Documents;
+use crate::documents::alert::{Action, Alert};
 use crate::paint::resolve;
 use crate::zones::Rect;
 use ph2d_board_model::{Board, BoardId};
@@ -97,8 +97,9 @@ pub fn seen_now(hero: &mut HeroScreen) {
 /// A bolinha de «por ler para mim» no canto de cima à direita de `r`.
 pub fn paint_dot(scene: &mut VectorScene, r: Rect, theme: Theme) {
     let rad = Spacing::Xs.px();
+    let inset = rad * 1.5; // LITERAL-PX-OK: proporção — o centro a raio e meio do canto
     let c = ph2d_vector::Circle::new(
-        ph2d_vector::Point::new(f64::from(r.x + r.w - rad * 1.5), f64::from(r.y + rad * 1.5)),
+        ph2d_vector::Point::new(f64::from(r.x + r.w - inset), f64::from(r.y + inset)),
         f64::from(rad),
     );
     scene.inner_mut().fill(

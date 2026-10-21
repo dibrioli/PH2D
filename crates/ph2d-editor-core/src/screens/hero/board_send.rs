@@ -6,21 +6,12 @@
 //! noutro quadro, doc 02 §1.4) e o aviso «Undo» desfaz os dois ([`super::board_alert`]).
 
 use super::HeroScreen;
-use super::board_alert::{Action, Alert};
 use super::board_view::editor;
 use super::document_tabs::register_board;
+use crate::documents::alert::{Action, Alert};
 use ph2d_board_edit::Command;
-use ph2d_board_model::BoardId;
 use ph2d_i18n::tr_with;
 use ph2d_text::TextSystem;
-
-/// A escolha do modal à espera da pintura: de que quadro, para qual (`None` = um novo), copiar ou mover.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct Send {
-    pub(crate) from: BoardId,
-    pub(crate) to: Option<BoardId>,
-    pub(crate) keep: bool,
-}
 
 /// Corre a escolha enfileirada. Nada muda se a origem já não é o quadro activo, se a selecção está
 /// vazia ou se o quadro escolhido foi fechado entretanto.

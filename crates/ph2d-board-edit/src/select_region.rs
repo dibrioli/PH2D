@@ -6,7 +6,11 @@
 
 use ph2d_board_model::{BoardDoc, ElementId};
 
-use crate::Editor;
+use crate::gesture::{Gesture, dist, rect};
+use crate::{Editor, Pointer};
+
+/// O laço guarda um ponto novo a cada tantos px de ECRÃ (o Excalidraw simplifica a `5/zoom`).
+pub(crate) const LASSO_STEP_PX: f64 = 2.0;
 
 /// O laço leva quem tem pelo menos esta fracção dentro (a área; numa linha, o comprimento). O Miro:
 /// *«an object is selected only if at least 90% of it is inside the lasso»* (help, «Working with
@@ -75,5 +79,55 @@ impl Editor {
             .map(|el| el.id)
             .collect();
         hits.into_iter().flat_map(|id| self.pick(doc, id)).collect()
+    }
+
+    pub(crate) fn begin_lasso(&mut self, p: Pointer) {
+        if !p.mods.shift {
+            self.selection.clear();
+            self.leave_groups();
+        }
+        self.gesture = Some(Gesture::Lasso {
+            trail: vec![p.world],
+            base: self.selection.clone(),
+            active: false,
+        });
+    }
+
+    /// O rectângulo ou o laço a andar: passado o arrasto `drag`, a selecção é a de antes (`base`)
+    /// mais quem a região apanha agora.
+    pub(crate) fn region_move(&mut self, doc: &BoardDoc, g: &mut Gesture, p: Pointer, drag: f64) {
+        let (base, picked) = match g {
+            Gesture::Marquee {
+                start,
+                cur,
+                base,
+                active,
+            } => {
+                *cur = p.world;
+                *active |= dist(*start, *cur) > drag;
+                if !*active {
+                    return;
+                }
+                (base, self.inside(doc, Region::Rect(rect(*start, *cur))))
+            }
+            Gesture::Lasso {
+                trail,
+                base,
+                active,
+            } => {
+                // Um ponto novo a cada LASSO_STEP_PX de ecrã: abaixo disso não se vê.
+                let last = *trail.last().expect("nasce com o 1.º ponto");
+                if dist(last, p.world) >= LASSO_STEP_PX * p.px {
+                    trail.push(p.world);
+                }
+                *active |= dist(trail[0], p.world) > drag;
+                if !*active {
+                    return;
+                }
+                (base, self.inside(doc, Region::Lasso(trail, LASSO_COVER)))
+            }
+            _ => return,
+        };
+        self.selection = base.iter().copied().chain(picked).collect();
     }
 }

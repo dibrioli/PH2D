@@ -9,12 +9,8 @@ use ph2d_text::TextSystem;
 use crate::gesture_end::{is_note, undo_ops};
 use crate::guides::Snapper;
 use crate::resize::{axis_angle, drag_box, resize_frame, resized};
-use crate::select_region::{LASSO_COVER, Region};
 use crate::snap::Guide;
 use crate::{Dir, Editor, Frame, Handle, Mods, Pointer, Tool, live};
-
-/// O laço guarda um ponto novo a cada tantos px de ECRÃ (o Excalidraw simplifica a `5/zoom`).
-pub(crate) const LASSO_STEP_PX: f64 = 2.0;
 
 /// O que o carregar pede a quem chama.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -182,7 +178,7 @@ pub(crate) fn rect(a: [f64; 2], b: [f64; 2]) -> [f64; 4] {
     ]
 }
 
-fn dist(a: [f64; 2], b: [f64; 2]) -> f64 {
+pub(crate) fn dist(a: [f64; 2], b: [f64; 2]) -> f64 {
     (a[0] - b[0]).hypot(a[1] - b[1])
 }
 
@@ -390,18 +386,6 @@ impl Editor {
         Down::Taken
     }
 
-    fn begin_lasso(&mut self, p: Pointer) {
-        if !p.mods.shift {
-            self.selection.clear();
-            self.leave_groups();
-        }
-        self.gesture = Some(Gesture::Lasso {
-            trail: vec![p.world],
-            base: self.selection.clone(),
-            active: false,
-        });
-    }
-
     /// O ponteiro andou (com o botão em baixo).
     pub fn pointer_move(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem, p: Pointer) {
         if self.crop_move(doc, p) {
@@ -451,34 +435,8 @@ impl Editor {
             Gesture::Bend { .. } => self.bend_move(doc, &mut g, p),
             Gesture::Slide { .. } => self.slide_move(doc, &mut g, p),
             Gesture::Caption { .. } => self.caption_move(doc, &mut g, p),
-            Gesture::Marquee {
-                start,
-                cur,
-                base,
-                active,
-            } => {
-                *cur = p.world;
-                *active |= dist(*start, *cur) > drag;
-                if *active {
-                    let picked = self.inside(doc, Region::Rect(rect(*start, *cur)));
-                    self.selection = base.iter().copied().chain(picked).collect();
-                }
-            }
-            Gesture::Lasso {
-                trail,
-                base,
-                active,
-            } => {
-                // Um ponto novo a cada LASSO_STEP_PX de ecrã: abaixo disso não se vê.
-                let last = *trail.last().expect("nasce com o 1.º ponto");
-                if dist(last, p.world) >= LASSO_STEP_PX * p.px {
-                    trail.push(p.world);
-                }
-                *active |= dist(trail[0], p.world) > drag;
-                if *active {
-                    let picked = self.inside(doc, Region::Lasso(trail, LASSO_COVER));
-                    self.selection = base.iter().copied().chain(picked).collect();
-                }
+            Gesture::Marquee { .. } | Gesture::Lasso { .. } => {
+                self.region_move(doc, &mut g, p, drag)
             }
             Gesture::Move {
                 start,

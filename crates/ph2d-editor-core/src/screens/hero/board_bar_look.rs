@@ -274,13 +274,13 @@ pub(super) fn stroke(scene: &mut VectorScene, p: &ph2d_vector::BezPath, c: Color
 /// MIOLO, os pontos colavam-se num traço.
 pub(super) fn more_dots(r: Rect) -> ph2d_vector::BezPath {
     use ph2d_vector::Shape as _;
-    let step = f64::from(r.w) / 4.0;
-    let radius = step / 4.0;
+    let step = f64::from(r.w) / 4.0; // LITERAL-PX-OK: proporção — três pontos em quartos do botão
+    let radius = step / 4.0; // LITERAL-PX-OK: proporção — o ponto é um quarto do passo
     let (cx, cy) = (f64::from(r.x + r.w / 2.0), f64::from(r.y + r.h / 2.0));
     let mut path = ph2d_vector::BezPath::new();
     for k in [-step, 0.0, step] {
         let dot = ph2d_vector::Circle::new(ph2d_vector::Point::new(cx + k, cy), radius);
-        path.extend(dot.to_path(0.1));
+        path.extend(dot.to_path(0.1)); // LITERAL-PX-OK: tolerância de achatar o círculo
     }
     path
 }

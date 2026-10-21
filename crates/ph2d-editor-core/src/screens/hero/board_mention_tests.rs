@@ -74,14 +74,14 @@ fn the_arrows_walk_the_list_and_a_click_picks() {
     t.type_in("@");
     t.hero_key(KEY_ARROW_DOWN);
     t.hero_key(KEY_ENTER);
-    assert_eq!(t.field(), "@Rui ", "↓ desceu da Bia ao Rui");
+    assert_eq!(t.field(), "@Rui ", "a seta de baixo desceu da Bia ao Rui");
     t.type_in("and @");
     t.hero_key(KEY_ARROW_UP);
     t.hero_key(KEY_ENTER);
     assert_eq!(
         t.field(),
         "@Rui and @everyone ",
-        "↑ do 1.º dá a volta ao último"
+        "a seta de cima, do 1.º, dá a volta ao último"
     );
     t.type_in("hey @b");
     t.shell_click_id(team_node(Hit::Mention(0)), "a Bia na lista");

@@ -212,6 +212,7 @@ fn pincel_mexido() -> BrushSpec {
         wire_history: d.wire_history,
         wire_connection_line: d.wire_connection_line,
         wire_sorteio: d.wire_sorteio,
+        wire_cordas: d.wire_cordas,
         ribbon_weight: d.ribbon_weight,
         ribbon_friction: d.ribbon_friction,
         ribbon_gravity: d.ribbon_gravity,
@@ -510,6 +511,7 @@ fn o_pincel_inteiro_vai_e_volta_pelo_json_da_macro() {
     b.wire_history = d.wire_history + 0.25;
     b.wire_connection_line = !d.wire_connection_line;
     b.wire_sorteio = !d.wire_sorteio;
+    b.wire_cordas = d.wire_cordas + 3;
     b.ribbon_weight = d.ribbon_weight + 0.25;
     b.ribbon_friction = d.ribbon_friction + 0.25;
     b.ribbon_gravity = d.ribbon_gravity + 0.25;

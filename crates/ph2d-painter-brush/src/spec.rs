@@ -203,6 +203,10 @@ pub struct BrushSpec {
     /// traço para dentro da curva, em vez de quatro fios paralelos. O mesmo custo (a contagem não muda); `false` = as
     /// fatias de sempre, ao bit.
     pub wire_sorteio: bool,
+    /// ⭐ **Wire — quantas cordas por dab** (J4 efeitos; o `Experimental Webs` do Krita: dezenas de fios paralelos
+    /// que, juntos, dão a fita em degradê). `0` = as [`crate::line_kind::WIRE_CURVES_PER_DAB`] de sempre, ao bit; mais é
+    /// pago pela janela — o orçamento medido é `contagem × history ≤ 4 × 24` ([`Self::wire_cordas_efectivas`]).
+    pub wire_cordas: u8,
     /// **Ribbon — o `Weight`**, a fração do [`crate::line_kind::RIBBON_LAG_MAX_S`] que o traço
     /// atrasa. `0` desliga (sem atraso não há fita).
     ///

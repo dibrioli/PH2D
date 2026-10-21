@@ -176,9 +176,10 @@ impl Stroke {
             return;
         }
         let oldest = self.threads.pts[0][2];
+        let cordas = self.spec.wire_cordas_efectivas();
         #[allow(clippy::cast_precision_loss)]
-        let n = crate::line_kind::WIRE_CURVES_PER_DAB as f32;
-        for k in 1..=crate::line_kind::WIRE_CURVES_PER_DAB {
+        let n = cordas as f32;
+        for k in 1..=cordas {
             // Sorteadas: um ponto da fatia `((k − 1)/n, k/n]` da janela; sem o sorteio, o fim dela (`u = 1`, ao bit).
             let u = if self.spec.wire_sorteio {
                 1.0 - crate::jitter::next_f32(&mut self.threads.rng)

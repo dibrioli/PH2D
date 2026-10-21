@@ -593,3 +593,22 @@ fn as_cordas_sorteadas_cobrem_a_janela() {
     assert!(com * 8 > fios_com, "com sorteio ~¼ das cordas na 1.ª fatia: {com} de {fios_com}");
     assert_eq!((fios_sem, dabs_sem), (fios_com, dabs_com), "o sorteio não muda a contagem");
 }
+
+/// ⭐ **As cordas por dab do Wire** (J4 efeitos): `0` = as quatro de sempre; 16 a 3 diâmetros desenham 4× os fios
+/// (a fita em degradê do `Experimental Webs` do Krita) — e o ORÇAMENTO medido manda: `contagem × history ≤ 4 × 24`,
+/// então 255 cordas a 24 diâmetros ficam nas 4 do pior evento medido.
+#[test]
+fn as_cordas_por_dab_respeitam_o_orcamento() {
+    let fios = |cordas: u8, history: f32| {
+        let sp = BrushSpec {
+            wire_cordas: cordas,
+            ..wire_spec(history)
+        };
+        (straight(sp, 400.0, 3.0).1.len(), sp.wire_cordas_efectivas())
+    };
+    let (quatro, c4) = fios(0, 3.0);
+    let (dezasseis, c16) = fios(16, 3.0);
+    assert_eq!((c4, c16), (crate::line_kind::WIRE_CURVES_PER_DAB, 16));
+    assert!(dezasseis > 3 * quatro, "16 cordas a 3 diâmetros: {dezasseis} fios contra {quatro}");
+    assert_eq!(fios(255, crate::line_kind::WIRE_HISTORY_MAX).1, crate::line_kind::WIRE_CURVES_PER_DAB);
+}

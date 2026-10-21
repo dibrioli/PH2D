@@ -177,6 +177,21 @@ impl BrushSpec {
         self.wire_history * 2.0 * self.clamped_radius()
     }
 
+    /// **As cordas do Wire por dab** ([`Self::wire_cordas`]): `0` = as [`crate::line_kind::WIRE_CURVES_PER_DAB`] de
+    /// sempre; mais, até ao ORÇAMENTO que a tabela do [`crate::line_kind::WIRE_HISTORY_MAX`] mediu — o custo é linear
+    /// em `contagem × janela`, e `4 × 24` diâmetros é o pior evento medido (3,9 ms contra o kill de 8 ms): a 3
+    /// diâmetros cabem 32 cordas.
+    #[must_use]
+    pub fn wire_cordas_efectivas(&self) -> usize {
+        let base = crate::line_kind::WIRE_CURVES_PER_DAB;
+        if self.wire_cordas == 0 {
+            return base;
+        }
+        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let teto = ((base as f32 * crate::line_kind::WIRE_HISTORY_MAX) / self.wire_history.max(1e-3)).floor() as usize;
+        usize::from(self.wire_cordas).clamp(1, teto.max(1))
+    }
+
     /// **O ALCANCE do Sketchy em PIXELS** — o raio dentro do qual dois pontos do traço se costuram.
     ///
     /// ⚠️ **Porta ÚNICA, e ela existe porque o motor a lê DUAS vezes, para duas perguntas:** *quão

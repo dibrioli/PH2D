@@ -421,6 +421,7 @@ fn ler_campo_da_obra(b: &BrushSpec, campo: &str) -> Value {
         "wire_history" => num(b.wire_history),
         "wire_connection_line" => json!(b.wire_connection_line),
         "wire_sorteio" => json!(b.wire_sorteio),
+        "wire_cordas" => json!(b.wire_cordas),
         "ribbon_weight" => num(b.ribbon_weight),
         "ribbon_friction" => num(b.ribbon_friction),
         "ribbon_gravity" => num(b.ribbon_gravity),
@@ -478,6 +479,7 @@ fn escrever_campo_da_obra(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "wire_connection_line" => b.wire_connection_line = booleano(v, b.wire_connection_line),
         // J4: ausente = desligado (só se grava ligado), nunca o do pincel anterior.
         "wire_sorteio" => b.wire_sorteio = booleano(v, false),
+        "wire_cordas" => b.wire_cordas = v.and_then(Value::as_u64).map_or(0, |c| c.min(u64::from(u8::MAX)) as u8),
         "ribbon_weight" => b.ribbon_weight = f(v, b.ribbon_weight),
         "ribbon_friction" => b.ribbon_friction = f(v, b.ribbon_friction),
         "ribbon_gravity" => b.ribbon_gravity = f(v, b.ribbon_gravity),
@@ -586,6 +588,7 @@ pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
         .filter(|&&c| !(c == "parado_s" && b.parado_s <= 0.0))
         // As cordas sorteadas do Wire (J4 efeitos) só ligadas: idem.
         .filter(|&&c| !(c == "wire_sorteio" && !b.wire_sorteio))
+        .filter(|&&c| !(c == "wire_cordas" && b.wire_cordas == 0))
         .map(|&c| ((*c).to_owned(), ler_campo(b, c)))
         .collect()
 }

@@ -4,6 +4,9 @@
 
 use super::prelude::*;
 
+mod portoes;
+mod sonda;
+
 /// O pigmento do Wet Flat (doc 44 §3, lote 3). J4: 44 casava a cobertura do recto do Rebelle (régua 383 → 399/456) mas
 /// tirava a rampa da pressão da origem (`leis_sistemicas`, 0,212 > 0,18) — fica 50 (`exames/aguarela.md` I-3).
 const PIGMENTO_DO_FLAT: f64 = 50.0;

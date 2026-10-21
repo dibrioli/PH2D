@@ -179,9 +179,15 @@ pub enum Knob {
     /// tinta só os picos do dente a vencem (os pontos soltos do pastel e do carvão do Rebelle a pressão leve); o resto
     /// multiplica depois, como sempre. `0` = a lei de sempre (a opacidade toda depois do portão), ao bit.
     PressureGrain,
+    /// ⭐ **O MIOLO LISO da lavagem** (J4 aguarela, `docs/Painter/Pinceis/exames/aguarela.md` «Motor J4»): o traço deixa
+    /// UM filme de tinta — cada célula fica com o MÁXIMO que um dab do traço lhe trouxe (a espessura do miolo da soma de
+    /// sempre, `2r ÷ passo` dabs), nunca a soma dos que a cruzaram — e o tapete das cerdas não o texturiza (o Grain armado
+    /// continua). Medido: as listras do miolo são as linhas do tapete arrastadas pelo traço, o domo é a soma das cordas.
+    /// `0` = a soma de sempre, ao bit.
+    StrokeFilm,
 }
 
-pub const KNOB_COUNT: usize = 95;
+pub const KNOB_COUNT: usize = 96;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

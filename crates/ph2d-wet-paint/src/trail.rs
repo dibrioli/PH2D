@@ -17,6 +17,7 @@
 use crate::brush::{CellFn, ColorFn, for_each_stamp_pixel};
 
 mod deposit; // o que um dab POUSA — a lei da célula e o caminho por linhas (ADR-0175)
+mod filme; // o filme do traço (Knob::StrokeFilm): o máximo por célula, nunca a soma
 mod janela;
 mod transfer; // the window-landing half of §10 (LOC-cap split) // a janela cresce NO LUGAR para caber cada dab (smoke do dono 16/10)
 use crate::grid::Grid;
@@ -130,6 +131,8 @@ pub struct Trail {
     por_assentar: Vec<bool>,
     /// O traço ainda não tirou o [`Self::por_assentar`] da grade.
     por_assentar_pendente: bool,
+    /// O máximo por célula do traço vivo ([`Knob::StrokeFilm`]); vazio sem a lei.
+    filme: filme::Filme,
 }
 
 /// Canvas rect touched by a transfer (cell coords, inclusive).
@@ -232,6 +235,7 @@ impl Default for Trail {
             tinta_na_janela: false,
             por_assentar: Vec::new(),
             por_assentar_pendente: false,
+            filme: filme::Filme::default(),
         }
     }
 }
@@ -256,6 +260,7 @@ impl Trail {
         self.dab_count = 0;
         self.window_size = 0;
         self.corda = 0.0;
+        self.filme.limpa();
         self.lx0 = 0;
         self.ly0 = 0;
         self.lx1 = -1;
@@ -507,7 +512,12 @@ impl Trail {
             self.tinta_na_janela = true;
         }
         let law = deposit::DepositLaw::new(p, dab, ext_bypass);
-        let wrote = self.deposit_shaped(g, tex, dab, law, sil, grain, padrao, cor, mode);
+        // O filme: quantos dabs o miolo da soma empilharia (a espessura), e o campo do tamanho da grade.
+        let filme = (p.k(Knob::StrokeFilm) > 0.0).then(|| {
+            self.filme.garante(g.cells, g.s);
+            filme::dabs_no_miolo(dab.r, self.corda, p.k(Knob::CapsuleSpacing))
+        });
+        let wrote = self.deposit_shaped(g, tex, dab, law, sil, grain, padrao, cor, mode, filme);
         self.accumulated(wrote)
     }
 

@@ -146,6 +146,7 @@ impl PainterTool {
         // `texv`, que hoje vinha do tapete do próprio motor) — a silhueta fica o contorno da ponta. Um Shape
         // que não é Bristles não tem cerdas: a ponta é LISA (`texv = 1`, D4).
         let cerdas = brush.shape.kind == ph2d_painter_brush::TextureKind::Bristles;
+        let filme_liso = sess.engine.tuning.get(ph2d_wet_paint::tuning::Knob::StrokeFilm) > 0.0;
         let fios = self.fios_do_pincel();
         let relevo = self.relevo_do_pincel();
         // ⭐ O pigmento por COMPRIMENTO (prompt 51, doc 51 §2): cada dab pousa o do caminho desde o dab anterior da
@@ -571,7 +572,8 @@ impl PainterTool {
             // As cerdas do Shape, pela MESMA porta do Grain e no referencial do motor: o desvio em células ao
             // centro do dab (`x − cx`, como `brush.rs::stamp_row_shaped`) — no neutro, o `sample_bristle` do
             // motor ao bit. Um Grain armado continua a tomar o lugar delas (W2.4; D7 medido no 27 §6.7).
-            let cerdas_sb = shape_basis.as_ref().filter(|_| cerdas && grain.is_none());
+            // Com o FILME do traço (`Knob::StrokeFilm`, J4 aguarela) o tapete fica de fora: a lavagem é lisa.
+            let cerdas_sb = shape_basis.as_ref().filter(|_| cerdas && grain.is_none() && !filme_liso);
             let cerdas_fn = cerdas_sb.map(|sb| {
                 let forma = &spec_ref.shape;
                 let px_por_celula = f64::from(ratio);

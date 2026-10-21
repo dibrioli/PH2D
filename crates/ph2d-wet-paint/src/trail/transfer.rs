@@ -301,6 +301,9 @@ impl Trail {
             crate::grid::traco::garante(g);
         }
         let vela = p.k(Knob::Glaze) as f32;
+        // O FILME do traço (`Knob::StrokeFilm`): a água da célula é a do filme, sem o 2.º gole da célula virgem (o gole
+        // dependia de quanto a 1.ª janela lhe trouxe — a orla do dab ou o miolo — e deixava um arco de água por janela).
+        let filme = p.k(Knob::StrokeFilm) > 0.0;
         if vela > 0.0 && std::mem::take(&mut self.por_assentar_pendente) {
             self.por_assentar.clear();
             self.por_assentar.extend(g.susp.iter().map(|&m| m > 0.0));
@@ -457,7 +460,9 @@ impl Trail {
                         // its first wetting twice (this add + the general below).
                         g.susp_rgb[i] = ponta;
                         g.susp[i] = v as f32;
-                        g.film[i] = (g.film[i] as f64 + self.water[l] as f64) as f32;
+                        if !filme {
+                            g.film[i] = (g.film[i] as f64 + self.water[l] as f64) as f32;
+                        }
                     }
                     if g.sett[i] as f64 > 3000.0 {
                         let ns = g.sett[i] as f64 - shed_pig;

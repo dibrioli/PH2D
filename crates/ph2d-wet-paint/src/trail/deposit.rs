@@ -220,7 +220,7 @@ struct LinhaDaJanela<'a> {
 }
 
 /// Uma linha do depósito: o `y`, a linha do grid (`wet`) e — se a janela a cobre — a linha dela.
-type Linha<'a> = (i32, &'a mut [u8], Option<LinhaDaJanela<'a>>);
+type Linha<'a> = (i32, &'a mut [u8], Option<LinhaDaJanela<'a>>, Option<&'a mut [f32]>);
 
 /// **A cor de um dab numa célula da janela**: a primeira tinta na célula pousa a cor dele inteira; as
 /// seguintes misturam-se pela massa (`soma ÷ (antes + soma)`), como duas tintas no pincel.
@@ -262,7 +262,8 @@ impl Trail {
     ///
     /// Devolve o que a porta pública devolvia (a janela encheu? · onde o dab escreveu no grid) e
     /// actualiza a extensão da janela. `mode = None` é o produto: a rota sai de [`Rows::pick`]
-    /// com o piso MEDIDO [`par::MIN_CELLS_DEPOSIT`].
+    /// com o piso MEDIDO [`par::MIN_CELLS_DEPOSIT`]. `filme` = a espessura do filme do traço em dabs
+    /// ([`Knob::StrokeFilm`], [`super::filme`]): cada célula recebe só o que passa do máximo que o traço já lhe deu.
     #[allow(clippy::too_many_arguments)]
     pub(super) fn deposit_shaped(
         &mut self,
@@ -275,6 +276,7 @@ impl Trail {
         padrao: Option<CellFn<'_>>,
         cor: Option<ColorFn<'_>>,
         mode: Option<Rows>,
+        filme: Option<f64>,
     ) -> (i32, i32, i32, i32) {
         let Some((x0, y0, x1, y1)) = shaped_bounds(g.w, g.h, dab.x, dab.y, dab.r * dab.reach)
         else {
@@ -336,14 +338,18 @@ impl Trail {
             }
         }
         let faixa = &mut wet[y0 as usize * s..(y1 as usize + 1) * s];
+        let mut do_filme: Vec<Option<&mut [f32]>> = match filme {
+            Some(_) => self.filme.linhas((x0, y0, x1, y1)).map(Some).collect(),
+            None => (0..n_linhas).map(|_| None).collect(),
+        };
         let mut linhas: Vec<Linha<'_>> = faixa
             .chunks_mut(s)
             .zip(janela)
             .enumerate()
-            .map(|(k, (w, j))| (y0 + k as i32, w, j))
+            .map(|(k, (w, j))| (y0 + k as i32, w, j, do_filme[k].take()))
             .collect();
         let linha = |it: &mut Linha<'_>| -> ((i32, i32, i32, i32), (i32, i32, i32, i32)) {
-            let (y, wet_row, win) = it;
+            let (y, wet_row, win, filme_row) = it;
             let y = *y;
             let base = y as usize * s;
             let ly = y - ay + half;
@@ -369,6 +375,9 @@ impl Trail {
                     let tinta = cor.map(|f| f(x, y, fall * sv));
                     if let Some(c) = tinta {
                         deposit *= f64::from(c[3]);
+                    }
+                    if let (Some(k), Some(f)) = (filme, filme_row.as_deref_mut()) {
+                        deposit = super::filme::acrescenta(&mut f[x as usize], deposit * k);
                     }
                     // ⚠️ **Esta é uma escrita no DOCUMENTO** — ver o doc do pai: é dela que o véu do
                     // Show Wet se alimenta, e acontece mesmo fora da janela do rasto.

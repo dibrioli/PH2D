@@ -28,6 +28,12 @@
 //!   sem script até ao rato (`mouse_position`, `find_by_name`, `ph2d.set` num objecto sem script). O
 //!   rebobinar devolve tudo. Nenhuma aba abre: com uma aba de código activa o teclado é dela.
 //!   `PH2D_CODE_SMOKE_DEMO=1` = o piloto das fotos ([`piloto`]), inerte sem a variável.
+//! - **7** — arrastar objectos para o código (item 8, `docs/CodeEditor/07_arrastar_para_o_codigo.md`):
+//!   o círculo «Ship» corre o `arrastar.luau`, já aberto numa aba; a porta «Door» e a moeda «Gold
+//!   Coin» não têm script. Com o Ctrl, arrastar a «Door» para a linha vazia escreve
+//!   `local door = ph2d.object("Door")` e a porta sobe e desce; sem o Ctrl, a «Gold Coin» dentro de um
+//!   `ph2d.set(` faz a moeda girar. Renomear a «Door» na Hierarquia muda o script (um Ctrl+Z desfaz os
+//!   dois); `ph2d.object("` sugere os nomes; um nome errado é um aviso; Ctrl+clique selecciona.
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_script::{LuauScript, ProjectScripts, ScriptEditRequests, ScriptId, ScriptValue};
@@ -35,7 +41,7 @@ use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecScene, ellipse, rectangle, regular_polygon, star};
 
 /// Quantas cenas este roteador serve — o `max_level` do roteador da família (conferido em teste).
-pub const CENAS: u32 = 6;
+pub const CENAS: u32 = 7;
 
 /// O nome do script das formas nos scripts do projeto.
 pub const BOB_NAME: &str = "bob.luau";
@@ -283,6 +289,9 @@ pub fn monta_em(
     if nivel == 6 {
         return monta_jogo(sim, cena, mapa);
     }
+    if nivel == 7 {
+        return monta_arrastar(sim, cena, mapa);
+    }
     let (bob, broken) = {
         let mut lib = sim.world_mut().get_resource_or_init::<ProjectScripts>();
         let bob = match nivel {
@@ -387,6 +396,87 @@ pub fn monta_jogo(sim: &mut SimWorld, cena: &mut VecScene, mapa: &mut VecEntityM
     out
 }
 
+pub const ARRASTAR_NAME: &str = "arrastar.luau";
+
+/// ⭐ **O script do nível 7** — o dono arrasta objectos da Hierarquia para ele.
+pub const ARRASTAR_LUAU: &str = r#"-- arrastar.luau — o CÍRCULO AZUL corre ESTE script. Aqui você ARRASTA objetos da Hierarquia
+-- (a lista de objetos) para dentro do código. Depois de cada passo: Ctrl+S, e a aba «Cena» para ver.
+
+local tempo = 0
+
+function update(self, dt)
+  tempo = tempo + dt
+
+  -- ① Com o Ctrl carregado, arraste «Door» da Hierarquia e solte NA LINHA VAZIA aqui em baixo:
+
+  if door then
+    ph2d.set(door, "y", math.sin(tempo * 2) * 1.5) -- a porta sobe e desce
+  end
+
+  -- ② Abra uma linha nova logo abaixo desta (End e Enter), escreva  ph2d.set(  , arraste «Gold
+  --    Coin» SEM o Ctrl para logo depois do parêntese e termine com  , "rotation", tempo)
+end
+"#;
+
+/// Onde as peças do nível 7 nascem (metros): o círculo, a porta e a moeda.
+pub const ARRASTAR_AT: [[f32; 2]; 3] = [[-4.0, 0.0], [0.5, 0.0], [4.5, 0.5]];
+
+/// ⭐ **O nível 7**: o círculo «Ship» com o `arrastar.luau` (aberto numa aba), a porta «Door» e a
+/// moeda «Gold Coin» — sem script, para serem arrastadas para o código. Devolve `[Ship, Door, Coin]`.
+pub fn monta_arrastar(
+    sim: &mut SimWorld,
+    cena: &mut VecScene,
+    mapa: &mut VecEntityMap,
+) -> Vec<Entity> {
+    let script = sim
+        .world_mut()
+        .get_resource_or_init::<ProjectScripts>()
+        .insert(ARRASTAR_NAME, ARRASTAR_LUAU);
+    let r = SHAPE_R;
+    let pecas = [
+        ("Ship", tinta(ellipse([0.0, 0.0], r, r), [96, 168, 235])),
+        (
+            "Door",
+            tinta(
+                rectangle([-r * 0.5, -r * 1.5], [r * 0.5, r * 1.5]),
+                [176, 120, 80],
+            ),
+        ),
+        (
+            "Gold Coin",
+            tinta(star([0.0, 0.0], r, r, 5, 0.45), [240, 196, 72]),
+        ),
+    ];
+    let ids: Vec<_> = pecas
+        .into_iter()
+        .map(|(nome, p)| (nome, cena.push_path(p)))
+        .collect();
+    sync(sim, cena, mapa);
+    let mut out = Vec::new();
+    for (i, (nome, pid)) in ids.into_iter().enumerate() {
+        let Some(&bits) = mapa.get(&pid) else {
+            continue;
+        };
+        let e = Entity::from_bits(bits);
+        let at = ARRASTAR_AT[i];
+        let mut em = sim.world_mut().entity_mut(e);
+        em.insert((
+            Name::new(nome),
+            Transform::from_translation(ph2d_core::Vec2::new(at[0], at[1])),
+        ));
+        if i == 0 {
+            em.insert(LuauScript::library(script));
+        }
+        out.push(e);
+    }
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    sim.world_mut()
+        .get_resource_or_init::<ScriptEditRequests>()
+        .0
+        .push(script);
+    out
+}
+
 /// O piloto das fotos (`PH2D_CODE_SMOKE_DEMO=1`, e só na cena 6): as variáveis, lidas uma vez.
 #[must_use]
 pub fn piloto_armado() -> bool {
@@ -451,6 +541,14 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
              Rebobinar devolve tudo ao lugar. O console (Edit script no cartão do círculo) conta os tiros."
         );
         return formas.first().map(|e| e.to_bits());
+    }
+    if nivel == 7 {
+        println!(
+            "[code-smoke] =7 arrastar para o código: o círculo «Ship» corre o arrastar.luau, já aberto \
+             numa aba; «Door» e «Gold Coin» não têm script. Ctrl + arrastar a «Door» da Hierarquia para \
+             a linha vazia do update: a porta sobe e desce (Ctrl+S, aba «Cena»)."
+        );
+        return None;
     }
     if nivel == 5 {
         println!(

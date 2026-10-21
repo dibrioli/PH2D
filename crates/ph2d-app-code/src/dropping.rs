@@ -97,6 +97,23 @@ fn indent_of(text: &Text, line: usize) -> String {
         .collect()
 }
 
+/// O recuo para escrever na linha `line`: o dela; numa linha EM BRANCO (o formatador tira-lhe os
+/// espaços), o maior das vizinhas com texto — a de cima abre o bloco, a de baixo pode ser o `end`.
+fn indent_for(text: &Text, line: usize) -> String {
+    if !text.line_string(line).trim().is_empty() {
+        return indent_of(text, line);
+    }
+    let filled = |l: &usize| !text.line_string(*l).trim().is_empty();
+    let up = (0..line).rev().find(filled).map(|l| indent_of(text, l));
+    let down = (line + 1..text.line_count())
+        .find(filled)
+        .map(|l| indent_of(text, l));
+    up.into_iter()
+        .chain(down)
+        .max_by_key(String::len)
+        .unwrap_or_default()
+}
+
 /// ⭐ **A soltura de objectos** em `byte` (a posição do cursor fino).
 ///
 /// - Sem modificador: `ph2d.object("A"), ph2d.object("B")` no cursor (§3.1, §3.3).
@@ -130,18 +147,20 @@ pub fn insertion(
         };
     }
     let line = text.line_of_byte(byte);
-    let indent = indent_of(text, line);
-    let line_start = text.byte_of_line(line) + indent.len();
+    let own = indent_of(text, line);
+    let line_start = text.byte_of_line(line) + own.len();
     if !syntax.at_top_level(text, line_start) {
+        let indent = indent_for(text, line);
+        let pad = &indent[own.len().min(indent.len())..];
         let decls = names
             .iter()
             .map(|n| format!("local {} = {}", variable_name(n), reference(n)))
             .collect::<Vec<_>>()
             .join(&format!("\n{indent}"));
-        let s = format!("{decls}\n{indent}");
+        let s = format!("{pad}{decls}\n{indent}");
         return Insertion {
             at: line_start,
-            caret: line_start + decls.len(),
+            caret: line_start + pad.len() + decls.len(),
             text: s,
         };
     }
@@ -174,6 +193,17 @@ pub fn insertion(
         caret: at + head.len() + decls.len(),
         text: format!("{head}{decls}\nend\n"),
     }
+}
+
+/// O texto `src` depois da soltura em `byte` — a lei inteira sem aba (as cenas de smoke e os testes
+/// que correm o resultado).
+#[must_use]
+pub fn dropped_into(src: &str, byte: usize, names: &[String], ctrl: bool, unit: &str) -> String {
+    let t = Text::new(src);
+    let i = insertion(&t, &Syntax::new(&t), byte, names, ctrl, unit);
+    let mut out = src.to_owned();
+    out.insert_str(i.at, &i.text);
+    out
 }
 
 /// ⭐ **O renomear reescreve** (§3.5): os bytes (dentro das aspas) a trocar por `new`, do fim para o
@@ -288,6 +318,34 @@ mod tests {
             &got[..i.caret],
             &got[..at(&got, "\n  ph2d.set")],
             "o cursor no fim da última declaração"
+        );
+    }
+
+    #[test]
+    fn com_ctrl_numa_linha_em_branco_o_recuo_vem_das_vizinhas() {
+        let src = "function update(self)\n  x = 1\n\n  y = 2\nend\n";
+        let t = Text::new(src);
+        let s = Syntax::new(&t);
+        let i = insertion(&t, &s, at(src, "\n\n") + 1, &["Door".into()], true, "\t");
+        let got = apply(src, &i);
+        assert_eq!(
+            got,
+            "function update(self)\n  x = 1\n  local door = ph2d.object(\"Door\")\n  \n  y = 2\nend\n"
+        );
+        assert!(got[..i.caret].ends_with("ph2d.object(\"Door\")"));
+        let antes_do_end = "function update(self)\n  x = 1\n\nend\n";
+        let t = Text::new(antes_do_end);
+        let i = insertion(
+            &t,
+            &Syntax::new(&t),
+            at(antes_do_end, "\n\n") + 1,
+            &["D".into()],
+            true,
+            "\t",
+        );
+        assert!(
+            apply(antes_do_end, &i).contains("\n  local d = "),
+            "a de cima ganha ao `end`"
         );
     }
 

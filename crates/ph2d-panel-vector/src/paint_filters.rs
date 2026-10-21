@@ -238,6 +238,10 @@ impl BodyCtx<'_> {
             w,
             resolve(dim, self.theme),
         );
+        // ⭐ Na coluna do decorator — a dos parâmetros por baixo — o losango do OLHO (o idioma do
+        // `effect_header`); os ícones contam-se da direita a partir dela.
+        let (w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, h);
+        self.decorator(dot, &[ids::filter_hide_id(row)]);
         let slot = |i: usize| x + w - ICON_PX * (i as f32 + 1.0) - Spacing::Xs.px() * i as f32;
         self.filter_icon(ids::filter_remove_id(row), IconId::Close, slot(0), y, h);
         self.filter_icon(

@@ -893,6 +893,72 @@ fn selecting_a_joint_shows_the_thresholds_it_carries() {
     );
 }
 
+/// **Os números da junta SEGUEM o documento com a junta seleccionada** (F25, Auto Key).
+///
+/// A timeline escreve a rigidez da mola a cada quadro sem a selecção mudar; o Inspector mostrava
+/// 200/5 sobre uma mola de 110/2,75 (`sync_joint_fields` corria só sob `entity_changed`). E a
+/// caixa sob o dedo não é reescrita (o idioma do Transform).
+///
+/// Mutação: pôr a chamada de volta dentro do `entity_changed` — o segundo quadro lê 200.
+#[test]
+fn the_joint_numbers_follow_the_document_while_the_joint_stays_selected() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::screens::hero::InspectorTransformInfo;
+    use ph2d_panel_inspector::ids::{INSP_JOINT_DAMPING, INSP_JOINT_STIFFNESS};
+    use ph2d_panel_inspector::state::set_current_inspector_transform;
+
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_transform(Some(InspectorTransformInfo {
+        entity_bits: ENTITY,
+        translation: [0.0, 0.0],
+        rotation_rad: 0.0,
+        scale: [1.0, 1.0],
+        skew_rad: [0.0, 0.0],
+    }));
+    let mola = |stiffness, damping| InspectorJointInfo {
+        stiffness,
+        damping,
+        ..joint(1)
+    };
+    let val = |host: &MockPanelHost, id| match host.store().get(id) {
+        Some(InteractiveState::NumberInput { value, .. }) => *value,
+        other => panic!("{id:?} nao e um NumberInput registrado: {other:?}"),
+    };
+    set_current_inspector_joint(Some(mola(200.0, 5.0)));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    // A MESMA junta, o documento a meio da animação.
+    set_current_inspector_joint(Some(mola(110.0, 2.75)));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let (k, c) = (
+        val(&host, INSP_JOINT_STIFFNESS),
+        val(&host, INSP_JOINT_DAMPING),
+    );
+    // O dedo na rigidez: o documento muda e a caixa em foco fica com o que o artista escreve.
+    host.store_mut().set_focus(Some(INSP_JOINT_STIFFNESS));
+    set_current_inspector_joint(Some(mola(60.0, 1.5)));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let (k_dedo, c_dedo) = (
+        val(&host, INSP_JOINT_STIFFNESS),
+        val(&host, INSP_JOINT_DAMPING),
+    );
+    set_current_inspector_joint(None);
+    set_current_inspector_transform(None);
+
+    assert!(
+        (k - 110.0).abs() < 1e-6 && (c - 2.75).abs() < 1e-6,
+        "Stiffness/Damping mostram {k}/{c} sobre uma mola de 110/2.75 — o painel ficou na selecção"
+    );
+    assert!(
+        (k_dedo - 110.0).abs() < 1e-6,
+        "a caixa em FOCO foi reescrita pelo documento ({k_dedo}) — o painel brigou com o dedo"
+    );
+    assert!(
+        (c_dedo - 1.5).abs() < 1e-6,
+        "a caixa ao lado da focada parou de seguir o documento ({c_dedo})"
+    );
+}
+
 /// **A higiene do par é oferecida em TODO tipo** (W-J8) — o Active, o Collide e
 /// o Swap.
 ///

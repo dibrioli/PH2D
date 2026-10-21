@@ -34,7 +34,7 @@ fn o_vocabulario_do_vetor_nao_renumera() {
         (v::OFF_N_PONTOS, 27),
         (v::OFF_PADRAO, 28),
         (v::OFF_PADRAO_MODOS, 36),
-        (v::TINTA_LARGURA, 38),
+        (v::OFF_PADRAO_DESFASE, 38),
         (v::TRACO_LARGURA, 100),
         (v::TRACO_PONTA, 101),
         (v::TRACO_JUNCAO, 102),
@@ -76,6 +76,32 @@ fn o_vocabulario_do_vetor_nao_renumera() {
         (v::OFFSET_DISTANCIA, 210),
         (v::OFFSET_JUNCAO, 211),
         (v::OFFSET_LADO, 212),
+        (v::PINCEL_ESPACO, 112),
+        (v::PINCEL_ESPELHO, 116),
+        (v::TEXTO_QUEBRA_FIXA, 197),
+        (v::TEXTO_FAMILIA, 198),
+        (v::TEXTO_CONTEUDO, 199),
+        (v::FILTRO_TIPO, 220),
+        (v::FILTRO_LIGADO, 221),
+        (v::FILTRO_COR, 225),
+        (v::FILTRO_COR_B, 229),
+        (v::FILTRO_PARAGEM, 244),
+        (v::PERFIL_EXISTE, 250),
+        (v::PERFIL_MULT, 253),
+        (v::PADRAO_CAMINHO_INICIO, 260),
+        (v::PADRAO_CAMINHO_ROTACAO, 265),
+        (v::TEXTO_CAMINHO_INICIO, 270),
+        (v::BLEND_PASSOS, 280),
+        (v::ENVELOPE_CANTO_X, 290),
+        (v::ENVELOPE_PINO, 297),
+        (v::ENVELOPE_CURVA, 301),
+        (v::ANCORAS_EXISTE, 310),
+        (v::ANCORA_BASE, 315),
+        (v::MOLDURA_RECORTA, 320),
+        (v::LAYOUT_DIR, 330),
+        (v::LAYOUT_MARGEM, 333),
+        (v::LAYOUT_ABSOLUTO, 349),
+        (v::WIDGET_PELE, 350),
     ];
     for (n, (atual, gravado)) in fixos.iter().enumerate() {
         assert_eq!(
@@ -144,10 +170,17 @@ fn esquecer_tira_so_a_entidade() {
     l.publicar(8, k(v::ANCORA_X, 0, 0), 3.0);
     l.publicar(u64::MAX, k(v::ANCORA_X, 0, 0), 4.0);
     assert_eq!(l.campos(7).count(), 2);
-    l.esquecer(7);
-    assert_eq!(l.campos(7).count(), 0);
+    let outra = FieldKey::new(familia::VETOR + 1, 1, 0, 0);
+    l.publicar(7, outra, 5.0);
+    l.esquecer(7, familia::VETOR);
+    assert_eq!(
+        l.campos(7).collect::<Vec<_>>(),
+        [(outra, 5.0)],
+        "as outras famílias ficam"
+    );
     assert_eq!(l.valor(8, k(v::ANCORA_X, 0, 0)), Some(3.0));
-    l.esquecer(u64::MAX);
+    l.esquecer(u64::MAX, familia::VETOR);
+    l.esquecer(7, familia::VETOR + 1);
     assert_eq!(l.len(), 1);
 }
 
@@ -183,4 +216,22 @@ fn o_eco_esconde_a_quantizacao_e_mostra_a_mao() {
     assert_eq!(l.valor(3, cor), Some(130.0), "a mão mudou o documento");
     l.publicar(4, cor, 128.0);
     assert_eq!(l.valor(4, cor), Some(128.0), "o eco é por entidade");
+}
+
+/// O texto entra no canal por um índice estável: o mesmo texto, o mesmo número; `0` é nenhum.
+#[test]
+fn o_texto_e_um_indice_estavel() {
+    let mut t = TextosDosCanais::default();
+    assert_eq!(t.indice(None), 0.0);
+    let a = t.indice(Some("Inter"));
+    let b = t.indice(Some("Lato"));
+    assert_eq!((a, b), (1.0, 2.0));
+    assert_eq!(t.indice(Some("Inter")), a);
+    assert_eq!(t.texto(b), Some("Lato"));
+    assert_eq!(t.texto(0.0), None);
+    assert_eq!(t.texto(9.0), None);
+    let gravada = TextosDosCanais::de(t.textos().to_vec());
+    assert_eq!(gravada.texto(a), Some("Inter"));
+    assert!(info(k(v::TEXTO_FAMILIA, 0, 0)).is_some_and(|c| c.texto && c.discreto));
+    assert!(info(k(v::TEXTO_TAMANHO, 0, 0)).is_some_and(|c| !c.texto));
 }

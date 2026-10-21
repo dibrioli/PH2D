@@ -126,13 +126,21 @@ impl crate::App {
             let mirror = (sel.len() == 1)
                 .then(|| sel[0])
                 .filter(|id| crate::profile_live::spec_of(sim, &self.vec.entities, *id).is_some());
-            if mirror != self.vec.profile_mirrored {
-                self.vec.profile_mirrored = mirror;
-                if let Some(p) = mirror
-                    .and_then(|id| crate::profile_live::spec_of(sim, &self.vec.entities, id))
+            let doc = mirror
+                .and_then(|id| crate::profile_live::spec_of(sim, &self.vec.entities, id))
+                .as_ref()
+                .and_then(crate::profile_live::preset_of);
+            // A curva da timeline também muda o perfil: sem o dedo no slider, ele segue o documento.
+            let segue = !hero
+                .store
+                .active_id()
+                .is_some_and(|id| crate::profile_live::SLIDERS.contains(&id))
+                && doc
                     .as_ref()
-                    .and_then(crate::profile_live::preset_of)
-                {
+                    .is_some_and(|p| !crate::profile_live::store_shows(&hero.store, p));
+            if mirror != self.vec.profile_mirrored || segue {
+                self.vec.profile_mirrored = mirror;
+                if let Some(p) = doc {
                     crate::profile_live::write_preset_to_store(&mut hero.store, &p);
                 }
             }

@@ -104,7 +104,8 @@ pub fn simplify_recorded(
     // Group the session's tracks by entity — alignment is per OBJECT (two objects
     // recorded at once keep independent timing).
     let mut by_entity: BTreeMap<u64, Vec<(PropKind, RecSpan)>> = BTreeMap::new();
-    for (&(entity, prop), &span) in record {
+    // A discrete channel (a field index, a text) is a step function: a fit would blend indices.
+    for (&(entity, prop), &span) in record.iter().filter(|((_, p), _)| !p.is_discrete()) {
         by_entity.entry(entity).or_default().push((prop, span));
     }
     for (entity, props) in by_entity {

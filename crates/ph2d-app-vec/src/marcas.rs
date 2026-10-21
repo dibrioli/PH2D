@@ -202,8 +202,8 @@ const DA_CAMADA_ABERTA: &[(NodeId, u16)] = &[
 ];
 
 /// Os controlos do padrão de textura que são membros da TINTA (tamanho, vão, origem, ângulo,
-/// reticulado, repetição). ⛔ Fora: a arte e «Use shape» (verbos), o desfasamento (sem campo), os
-/// dois elos (gesto da sessão).
+/// reticulado, repetição, desfasamento). ⛔ Fora: a arte e «Use shape» (verbos), os dois elos
+/// (gesto da sessão).
 /// (O gate lê os nomes por extenso.)
 const PADRAO: &[painel::TexPatKnob] = &[
     painel::TexPatKnob::Tile(0),
@@ -213,6 +213,8 @@ const PADRAO: &[painel::TexPatKnob] = &[
     painel::TexPatKnob::Mode(0),
     painel::TexPatKnob::Mode(1),
     painel::TexPatKnob::Mode(2),
+    painel::TexPatKnob::Offset,
+    painel::TexPatKnob::OffsetNum,
     painel::TexPatKnob::Width,
     painel::TexPatKnob::WidthNum,
     painel::TexPatKnob::Height,
@@ -261,9 +263,17 @@ fn derivados() -> &'static [(NodeId, PropKind)] {
             t.push((ferramenta::vector_shape_field_id(j), c));
             t.push((ferramenta::vector_shape_choice_id(j), c));
         }
+        vivos::derivados(&mut t);
         t
     });
     &T
+}
+
+/// O índice id → canal dos [`derivados`] (o `marcas` pergunta por todos a cada quadro).
+fn derivado(id: NodeId) -> Option<PropKind> {
+    static I: std::sync::LazyLock<BTreeMap<NodeId, PropKind>> =
+        std::sync::LazyLock::new(|| derivados().iter().copied().collect());
+    I.get(&id).copied()
 }
 
 /// O que o painel mostra agora e muda o canal de um campo: a entrada ABERTA da pilha e quantas
@@ -293,10 +303,10 @@ fn entrada(k: usize) -> u16 {
 /// O GRUPO de canais que o campo `id` do painel mostra (vazio = o campo não tem canal).
 #[must_use]
 pub fn canal_do_campo(id: NodeId, ctx: Contexto) -> Vec<PropKind> {
-    if let Some(&(_, g)) = CAMPOS.iter().find(|(c, _)| *c == id) {
+    if let Some(&(_, g)) = CAMPOS.iter().chain(vivos::CAMPOS).find(|(c, _)| *c == id) {
         return g.to_vec();
     }
-    if let Some(&(_, g)) = derivados().iter().find(|(c, _)| *c == id) {
+    if let Some(g) = derivado(id) {
         return vec![g];
     }
     if let Some(k) = ctx.aberta
@@ -326,6 +336,7 @@ fn ids(ctx: Contexto) -> impl Iterator<Item = NodeId> {
     let aberta = ctx.aberta.is_some();
     CAMPOS
         .iter()
+        .chain(vivos::CAMPOS)
         .map(|&(id, _)| id)
         .chain(
             DA_CAMADA_ABERTA
@@ -400,6 +411,9 @@ pub fn clique(
         .unwrap_or_default();
     ph2d_timeline::clique_no_grupo(doc, &reps, entidades, inst, lidos, valor, autorar)
 }
+
+#[path = "marcas_vivos.rs"]
+mod vivos;
 
 #[cfg(test)]
 #[path = "marcas_tests.rs"]

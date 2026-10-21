@@ -123,4 +123,7 @@ pub struct FlipState {
     /// `FlipObjectId` → entidade ECS que o representa na Hierarquia (ADR-0114). O
     /// invariante "um objeto ⟺ uma entidade" é mantido por `flip_entities::sync`.
     pub entities: ph2d_flip_entities::entities::FlipEntityMap,
+    /// ⭐ O que a curva move nas camadas é pré-visualização (plano 35 §A.8): o autorado de cada
+    /// campo conduzido, que o undo e o save fotografam (`canais_camada::ConducaoFlip`).
+    pub conducao: crate::canais_camada::ConducaoFlip,
 }

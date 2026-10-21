@@ -52,6 +52,7 @@ mod o_chip_da_vigia_mostra_um_sinal;
 mod o_chip_de_uma_tag_cabe_na_pilula;
 mod o_icone_da_hierarquia_traz_o_cartao;
 mod o_losango_do_transform;
+mod o_losango_dos_campos_novos;
 mod o_segmentado_do_fit_tem_um_id_por_modo;
 mod o_tutorial_da_navegacao_nomeia_rotulos_que_existem;
 mod o_tutorial_da_vida_nomeia_rotulos_que_existem;

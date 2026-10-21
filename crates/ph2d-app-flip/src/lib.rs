@@ -24,6 +24,8 @@ pub mod airbrush_smoke;
 pub mod autokey;
 pub mod bake;
 pub mod bridge;
+/// ⭐ A família FLIP nos canais (plano 35 §A.8): as propriedades da camada.
+pub mod canais_camada;
 pub mod colorize;
 pub mod colorize_smoke;
 pub mod ctx;
@@ -43,6 +45,8 @@ pub mod gap_overlay;
 pub mod gizmo_view;
 pub mod hardness_smoke;
 pub mod layers;
+/// ⭐ O losango de cada campo da camada (plano 35 §A.8).
+pub mod marcas_camada;
 pub mod multiframe;
 pub mod multiplane_smoke;
 /// O desenho Flip no menu Add de objectos (spec/06 F1).

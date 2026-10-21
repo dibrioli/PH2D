@@ -96,7 +96,7 @@ fn quadro(c: &mut Cena, armed: bool, mao: impl FnOnce(&mut VecScene, u64)) {
         &mut super::super::timeline_bridge::SignalEmitter::default(),
         &mut ph2d_preview_drive::PreviewDrive::default(),
     );
-    ph2d_app_vec::canais::aplicar(&mut c.sim, &mut c.scene, &mut c.cond);
+    let _ = ph2d_app_vec::canais::aplicar(&mut c.sim, &mut c.scene, &mut c.cond);
     mao(&mut c.scene, c.id);
     ph2d_app_vec::canais::publicar(&mut c.sim, &c.scene, &[c.e]);
     let mundo = super::super::timeline_bridge::Mundo::com_vetor(c.sim.world(), &c.scene);

@@ -58,12 +58,8 @@ impl crate::App {
             ph2d_panel_vector::set_current_text_wrap(
                 target.as_ref().map_or(self.vec.text.wrap, |t| t.wrap_width),
             );
-            // Semente dos sliders: só quando o ALVO muda (senão brigaria com o drag).
-            let target_id = target.as_ref().map(|t| t.id);
-            if target_id != self.vec.text_last_target {
-                self.vec.text_last_target = target_id;
-                ph2d_panel_vector::set_current_text_seed(target.as_ref().map(|t| t.sliders));
-            }
+            // Os sliders seguem o alvo a cada quadro; o painel salta a fileira sob o dedo.
+            ph2d_panel_vector::set_current_text_seed(target.as_ref().map(|t| t.sliders));
             // ⛔ **E o FACTO que a fileira Weight precisava, e que ninguém publicava:** *esta
             // fonte expõe `wght`?* Sem `fvar` o `skrifa` ignora a localização de eixo, então
             // numa fonte ESTÁTICA aquele slider era pintado e **inerte**.

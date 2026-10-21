@@ -143,6 +143,11 @@ pub enum Driver {
     /// da outra; usar o que existe é a leitura certa, porque é o **mesmo facto vindo de outro
     /// motor** — exactamente o que o doc daquele driver já declara para o solver e a timeline.
     TweenTint,
+    /// ⭐⭐ **A cor da sprite que as curvas da família OBJETO escrevem** (`ph2d_ecs::canal_objeto`):
+    /// o RGB do `tint`, a opacidade final, o degradê dos cantos e a emissão. ⚠️ Os campos são
+    /// DISJUNTOS dos outros drivers da sprite: o `tint[3]` é do [`Self::SpriteAlpha`] e o
+    /// `self_tint`/`tint_fill` do [`Self::TweenTint`] (a curva usa-o — o mesmo facto, outro motor).
+    SpriteCor,
 }
 
 /// **O FACTO que um motor escreve** — o recorte exacto do componente que é dele, e nada mais.
@@ -207,6 +212,19 @@ pub enum Driven {
         /// O `Sprite::tint_fill` — o interruptor da silhueta.
         fill: bool,
     },
+    /// ⭐⭐ A cor da sprite que um canal OBJETO escreve — ver [`Driver::SpriteCor`]. Os dois
+    /// componentes opcionais vão como `Option`: repor um autorado AUSENTE é remover o componente
+    /// (ausência = identidade, e o quadro volta byte-idêntico).
+    SpriteCor {
+        /// `Sprite::tint` r, g, b (o alfa é o [`Driven::SpriteAlpha`]).
+        tint: [f32; 3],
+        /// `Sprite::opacity`.
+        opacidade: f32,
+        /// `SpriteCornerTint`.
+        cantos: Option<[[f32; 4]; 4]>,
+        /// `SpriteEmissive`.
+        emissao: Option<f32>,
+    },
 }
 
 impl Driven {
@@ -226,6 +244,7 @@ impl Driven {
             Self::ParallaxPose(_) => Driver::ParallaxPose,
             Self::TweenPose(_) => Driver::TweenPose,
             Self::TweenTint { .. } => Driver::TweenTint,
+            Self::SpriteCor { .. } => Driver::SpriteCor,
         }
     }
 
@@ -276,6 +295,16 @@ impl Driven {
                 Some(Self::TweenTint {
                     self_tint: s.self_tint,
                     fill: s.tint_fill,
+                })
+            }
+            Driver::SpriteCor => {
+                let w = sim.world();
+                let s = w.get::<Sprite>(entity)?;
+                Some(Self::SpriteCor {
+                    tint: [s.tint[0], s.tint[1], s.tint[2]],
+                    opacidade: s.opacity,
+                    cantos: w.get::<ph2d_ecs::SpriteCornerTint>(entity).map(|c| c.0),
+                    emissao: w.get::<ph2d_ecs::SpriteEmissive>(entity).map(|e| e.0),
                 })
             }
         }
@@ -345,6 +374,45 @@ impl Driven {
                 {
                     s.self_tint = self_tint;
                     s.tint_fill = fill;
+                }
+            }
+            Self::SpriteCor {
+                tint,
+                opacidade,
+                cantos,
+                emissao,
+            } => {
+                if let Some(mut s) = sim.world_mut().get_mut::<Sprite>(entity)
+                    && (s.tint[..3] != tint || s.opacity != opacidade)
+                {
+                    s.tint[..3].copy_from_slice(&tint);
+                    s.opacity = opacidade;
+                }
+                let w = sim.world_mut();
+                if w.get_entity(entity).is_err() {
+                    return;
+                }
+                let ja = w.get::<ph2d_ecs::SpriteCornerTint>(entity).map(|c| c.0);
+                if ja != cantos {
+                    match cantos {
+                        Some(c) => {
+                            w.entity_mut(entity).insert(ph2d_ecs::SpriteCornerTint(c));
+                        }
+                        None => {
+                            w.entity_mut(entity).remove::<ph2d_ecs::SpriteCornerTint>();
+                        }
+                    }
+                }
+                let ja = w.get::<ph2d_ecs::SpriteEmissive>(entity).map(|e| e.0);
+                if ja != emissao {
+                    match emissao {
+                        Some(v) => {
+                            w.entity_mut(entity).insert(ph2d_ecs::SpriteEmissive(v));
+                        }
+                        None => {
+                            w.entity_mut(entity).remove::<ph2d_ecs::SpriteEmissive>();
+                        }
+                    }
                 }
             }
             Self::MorphT(v) => {

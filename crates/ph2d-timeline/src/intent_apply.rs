@@ -5,7 +5,7 @@
 //! is pure over `(state, playhead)`, which is why every gesture in the panel is
 //! testable with no UI at all — the seam test drives these functions directly.
 
-use ph2d_anim::{AnimTarget, KeyId, RationalTime};
+use ph2d_anim::{AnimTarget, Interp, KeyId, RationalTime};
 use ph2d_core::Playhead;
 
 use crate::doc::TimelineDoc;
@@ -250,6 +250,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             key,
             interp,
         } => edit(state, |doc, _| {
+            let interp = interp_for(doc, target, interp);
             if let Some(track) = doc.active_clip_mut().track_mut(target) {
                 track.set_interp(key, interp);
             }
@@ -284,14 +285,17 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             doc.set_marker_signal(index, signal);
         }),
         I::SetSelectedInterp { interp } => edit(state, |doc, sel| {
-            for_selected_tracks(doc, sel, |track, ids| {
+            for_selected_tracks_of(doc, sel, |discrete, track, ids| {
                 for &id in ids {
-                    track.set_interp(id, interp);
+                    track.set_interp(id, if discrete { Interp::Hold } else { interp });
                 }
             });
         }),
         I::ConvertSelectionToBezier => edit(state, |doc, sel| {
-            for_selected_tracks(doc, sel, |track, ids| {
+            for_selected_tracks_of(doc, sel, |discrete, track, ids| {
+                if discrete {
+                    return; // a Bezier on an index blends between two of them
+                }
                 for &id in ids {
                     // Read each key's OWN curve: one shared `Interp` would flatten
                     // a mixed selection onto whichever one we happened to pick.
@@ -619,6 +623,28 @@ fn for_selected_tracks(
             op(track, &ids);
         }
     }
+}
+
+/// [`for_selected_tracks`] that also says whether the track is DISCRETE — a discrete channel
+/// (a field index, a text) only ever holds: no interp edit may make it blend between two indices.
+fn for_selected_tracks_of(
+    doc: &mut TimelineDoc,
+    sel: &Selection,
+    mut op: impl FnMut(bool, &mut ph2d_anim::Track, &[KeyId]),
+) {
+    for target in distinct_targets(sel) {
+        let discrete = doc.binding(target).is_some_and(|b| b.prop.is_discrete());
+        let ids = sel.ids_for(target);
+        if let Some(track) = doc.active_clip_mut().track_mut(target) {
+            op(discrete, track, &ids);
+        }
+    }
+}
+
+/// The interpolation a key of `target` may take ([`crate::PropKind::interp_of`]).
+fn interp_for(doc: &TimelineDoc, target: AnimTarget, wanted: Interp) -> Interp {
+    doc.binding(target)
+        .map_or(wanted, |b| b.prop.interp_of(wanted))
 }
 
 /// Snap a second value to a whole display frame when snapping is on.

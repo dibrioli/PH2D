@@ -253,12 +253,13 @@ pub(crate) fn current(
     sim.world().get::<VecTextPath>(entity).copied()
 }
 
-/// Re-cozinha o texto com os params que ele já tem — o vínculo mudou, o texto não.
+/// Re-cozinha o texto com os params que ele já tem — o vínculo mudou, ou a curva da timeline
+/// mudou a receita (`ph2d_app_vec::canais::Aplicado::textos`).
 ///
 /// Passa pela porta de sempre (`recook_text_object`), que é quem sabe resolver o guia e impor
 /// a identidade. Um re-cook próprio aqui seria a segunda resposta a *"como um texto vira
 /// geometria"*, e divergiria no dia em que uma delas ganhasse um cuidado.
-fn recook(
+pub(crate) fn recook(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,

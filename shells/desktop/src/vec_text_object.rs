@@ -238,7 +238,6 @@ pub(crate) fn align_from_u8(a: u8) -> TextAlign {
 /// selecionado. É o que faz a seção Text aparecer e agir também na ferramenta Select —
 /// o texto segue editável enquanto for texto (não-curva).
 pub(crate) struct TextTarget {
-    pub id: VecPathId,
     pub text: String,
     pub family: Option<String>,
     pub align: TextAlign,
@@ -262,7 +261,6 @@ pub(crate) fn panel_text_target(
 ) -> Option<TextTarget> {
     if let Some(e) = edit {
         return Some(TextTarget {
-            id: e.id.unwrap_or_default(),
             text: e.text.clone(),
             family: e.family.clone(),
             align: e.align,
@@ -271,9 +269,8 @@ pub(crate) fn panel_text_target(
             wrap_width: e.wrap_width,
         });
     }
-    let (id, _, p) = selected_text_object(sim, map, selection)?;
+    let (_, _, p) = selected_text_object(sim, map, selection)?;
     Some(TextTarget {
-        id,
         text: p.text.clone(),
         family: p.family.clone(),
         align: align_from_u8(p.align),

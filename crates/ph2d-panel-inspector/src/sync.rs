@@ -32,10 +32,6 @@ pub(crate) fn sync_inspector_from_snapshots(
         .or_else(|| name.as_ref().map(|i| i.entity_bits))
         .or_else(|| visibility.map(|i| i.entity_bits));
     let entity_changed = new_entity != inspector_state.last_entity;
-    // ⚠️ **FORA do `entity_changed`, de propósito** — o `Rope Length` de uma
-    // polia é derivado pela PONTE, e um número que o produto muda não pode
-    // ser sincado só quando a SELEÇÃO muda. Ver `sync_derived_rope_length`.
-    crate::sync_physics::sync_derived_rope_length(host);
     let display_unit = host.project().display_unit;
     let ppm = host.project().pixels_per_meter;
     let pos_for_display = |m: f32| display_unit.from_meters(m, ppm) as f64;
@@ -59,7 +55,6 @@ pub(crate) fn sync_inspector_from_snapshots(
             host.store_mut().set_picker_target(None);
         }
         crate::sync_physics::sync_physics_fields(host);
-        crate::sync_physics::sync_joint_fields(host);
         crate::sync_physics::sync_wheel_fields(host);
         crate::sync_physics::sync_player_fields(host);
         if let Some(info) = transform {
@@ -90,6 +85,10 @@ pub(crate) fn sync_inspector_from_snapshots(
             &ang_for_display,
         );
     }
+    // ⚠️ **FORA do `entity_changed`**: a timeline (Auto Key) e a ponte (o `Rope Length` da polia)
+    // mudam os números da junta sem a selecção mudar. Depois do ramo, que já largou foco e arrasto
+    // na troca de selecção.
+    crate::sync_physics::sync_joint_fields(host);
     let pending_visibility_edit = host
         .bus()
         .iter()

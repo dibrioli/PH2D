@@ -315,6 +315,10 @@ pub mod panel_bridge;
 
 // As JUNTAS — a autoria: desenhar uma, arrastar-lhe uma âncora, montar um rig,
 // agarrar uma roldana.
+/// ⭐⭐ A família FISICA nos canais: o corpo, o colisor e a zona da §11 (plano 35 §A.5).
+pub mod canais_corpo;
+/// ⭐⭐ A família JUNTA nos canais: os campos do `PhysicsJoint` sem `PropKind` (plano 35 §3.0).
+pub mod canais_junta;
 pub mod joint;
 pub mod joint_anchor_drag;
 pub mod joint_create;

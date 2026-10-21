@@ -448,8 +448,30 @@ fn every_dimension_field_reaches_the_bus() {
             "Init Vel Y",
         ),
     ] {
-        expect(&commit(with_body(), id, v), edit, what);
+        // Cada medida na forma que a mostra (`paint_shape_dims`): o raio numa bola, a meia-altura
+        // numa cápsula, o resto na caixa do `with_body()`.
+        let shape_tag = match edit {
+            PhysicsFieldEdit::Radius(_) => 0,
+            PhysicsFieldEdit::CapHalfHeight(_) => 2,
+            _ => 1,
+        };
+        let info = InspectorPhysicsInfo {
+            shape_tag,
+            ..with_body()
+        };
+        expect(&commit(info, id, v), edit, what);
     }
+    // ⛔ E a medida de OUTRA forma é recusada no evento: o raio numa caixa trocá-la-ia por uma
+    // bola (o funil converte), e o canal FISICA escreve por esta porta.
+    assert!(
+        commit(
+            with_body(),
+            ph2d_panel_inspector::ids::INSP_PHYS_RADIUS,
+            0.75
+        )
+        .is_empty(),
+        "o raio de uma caixa chegou ao barramento"
+    );
 }
 
 /// **The capsule's rows are offered only for a capsule** — and the box's only
@@ -2657,4 +2679,56 @@ fn o_chip_do_filtro_por_tag_e_pintado() {
         .map(|(_, r)| *r)
         .expect("a §11 nunca pintou o chip do filtro *Only for tag*");
     assert!(r.w > 0.0 && r.h > 0.0, "o chip do filtro sem area: {r:?}");
+}
+
+/// ⭐ **O losango nos campos da §11** (plano 35 §A.5, família FISICA): cada linha — escolha,
+/// número num laço, par de eixos — pinta o losango na coluna do decorator e regista o alvo do
+/// clique. A shell publica o mapa (`marcas_inspector`, que deixa de fora os comandos).
+/// (Mutação: o `decorator` do `num_row_unit` desligado ⇒ sem alvo.)
+#[test]
+fn os_campos_da_fisica_pintam_o_losango() {
+    use ph2d_editor_core::widget::key_mark::{
+        KeyMark, key_mark_id, key_mark_target, set_key_marks,
+    };
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_panel_inspector::ids as insp;
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 4000.0,
+    };
+    ph2d_editor_core::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
+    let linhas = [
+        (insp::INSP_PHYS_KIND[0], "Body"),
+        (insp::INSP_PHYS_SHAPE[0], "Collider"),
+        (insp::INSP_PHYS_HALF_X, "Half Width"),
+        (insp::INSP_PHYS_OFFSET_X, "Offset X"),
+        (insp::INSP_PHYS_DENSITY, "Density"),
+        (insp::INSP_PHYS_RESTITUTION, "Bounce"),
+        (insp::INSP_PHYS_LAYER[0], "Layer"),
+        (insp::INSP_PHYS_GRAVITY_SCALE, "Gravity Scale"),
+        (insp::INSP_PHYS_LINVEL_Y, "Init Vel Y"),
+        (insp::INSP_PHYS_CCD[0], "Collision"),
+        (insp::INSP_PHYS_LINEAR_DAMPING, "Linear Damping"),
+    ];
+    set_key_marks(linhas.iter().map(|&(id, _)| (id, KeyMark::Chave)).collect());
+    set_current_inspector_physics(Some(with_body()));
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    host.settle_section_folds();
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    for (id, o_que) in linhas {
+        assert!(
+            rects.iter().any(|(n, _)| *n == key_mark_id(id)),
+            "a linha {o_que} da §11 não pintou o losango (ou não registou o alvo)"
+        );
+    }
+    assert_eq!(
+        key_mark_target(key_mark_id(insp::INSP_PHYS_KIND[0])).map(|c| c.fields),
+        Some(insp::INSP_PHYS_KIND.to_vec()),
+        "as três opções do tipo são UMA linha, um losango"
+    );
+    set_key_marks(std::collections::BTreeMap::new());
+    set_current_inspector_physics(None);
 }

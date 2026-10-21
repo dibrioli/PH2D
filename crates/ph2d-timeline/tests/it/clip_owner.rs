@@ -11,9 +11,11 @@ fn s(t: f64) -> RationalTime {
     RationalTime::from_seconds(t)
 }
 
-/// Tira o que veio DEPOIS da v18 em cada clip — o `owner` (v19) e o `autoplay` (v20) — e a versão.
+/// Tira o que veio DEPOIS da v18 em cada clip — o `owner` (v19) e o `autoplay` (v20) —, a tabela de
+/// textos (v22) e a versão.
 fn sem_o_que_a_v19_acrescentou(mut v: serde_json::Value) -> serde_json::Value {
     v.as_object_mut().unwrap().remove("version");
+    v.as_object_mut().unwrap().remove("textos");
     for c in v["clips"].as_array_mut().unwrap() {
         c.as_object_mut().unwrap().remove("owner");
         c.as_object_mut().unwrap().remove("autoplay");

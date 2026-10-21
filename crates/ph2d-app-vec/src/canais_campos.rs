@@ -191,6 +191,7 @@ pub fn campos(p: &VecPath, shape: Option<&VecShape>) -> Vec<FieldKey> {
         }
         Some(VecShape::Text(t)) => {
             out.extend((c::TEXTO_TAMANHO..=c::TEXTO_QUEBRA).map(|campo| k(campo, 0, 0)));
+            out.push(k(c::TEXTO_QUEBRA_FIXA, 0, 0));
             out.extend((0..n16(t.axes.len())).map(|j| k(c::TEXTO_EIXO, 0, j)));
         }
         _ => {}
@@ -220,6 +221,7 @@ fn campos_da_tinta(p: &VecPath, base: u16, i: u16, out: &mut Vec<FieldKey>) {
             (c::OFF_TIPO, 1),
             (c::OFF_PADRAO, 8),
             (c::OFF_PADRAO_MODOS, 2),
+            (c::OFF_PADRAO_DESFASE, 1),
         ],
         Tinta::Traco(Some(StrokePaint::Brush(_))) => &[(c::OFF_TIPO, 1)],
     };
@@ -250,6 +252,9 @@ fn campos_do_traco(p: &VecPath, i: u16, out: &mut Vec<FieldKey>) {
         } else {
             out.push(k(campo, i, 0));
         }
+    }
+    if s.brush().is_some() {
+        out.extend((c::PINCEL_ESPACO..=c::PINCEL_ESPELHO).map(|campo| k(campo, i, 0)));
     }
 }
 
@@ -302,6 +307,7 @@ pub fn ler(p: &VecPath, shape: Option<&VecShape>, kk: FieldKey) -> Option<f32> {
                 _ => f(s.marker_round),
             })
         }
+        c::PINCEL_ESPACO..=c::PINCEL_ESPELHO => ler_pincel(traco(p, i)?.brush()?, campo),
         c::MISTURA => Some(f32::from(p.blend.to_u8())),
         c::PILHA_LIGADA..=c::PILHA_DILATA_JUNCAO => {
             let e = p.paints.get(usize::from(i).checked_sub(1)?)?;
@@ -331,8 +337,9 @@ pub fn ler(p: &VecPath, shape: Option<&VecShape>, kk: FieldKey) -> Option<f32> {
             }),
             _ => None,
         },
-        c::TEXTO_TAMANHO..=c::TEXTO_EIXO => match shape? {
+        c::TEXTO_TAMANHO..=c::TEXTO_QUEBRA_FIXA => match shape? {
             VecShape::Text(t) => Some(match campo {
+                c::TEXTO_QUEBRA_FIXA => f32::from(u8::from(t.wrap_width.is_some())),
                 c::TEXTO_TAMANHO => f(t.size),
                 c::TEXTO_PESO => t.weight,
                 c::TEXTO_ENTRELINHA => f(t.line_height),
@@ -381,7 +388,7 @@ pub fn prioridade(kk: FieldKey) -> u8 {
         _ => None,
     };
     match (kk.campo, off_tinta) {
-        (_, Some(c::OFF_EXISTE)) => 0,
+        (_, Some(c::OFF_EXISTE)) | (c::TEXTO_QUEBRA_FIXA, _) => 0,
         (_, Some(c::OFF_TIPO)) => 1,
         (_, Some(c::OFF_N_PARAGENS | c::OFF_N_PONTOS)) | (c::TRACO_TRACEJADO, _) => 2,
         _ => 3,
@@ -458,6 +465,11 @@ pub fn escrever(p: &mut VecPath, shape: Option<&mut VecShape>, kk: FieldKey, v: 
                 _ => s.marker_round = d,
             }
         }
+        c::PINCEL_ESPACO..=c::PINCEL_ESPELHO => {
+            if let Some(StrokePaint::Brush(b)) = traco_mut(p, i).map(|s| &mut s.paint) {
+                escrever_pincel(b, campo, v);
+            }
+        }
         c::MISTURA => p.blend = BlendMode::from_u8(byte(v)),
         c::PILHA_LIGADA..=c::PILHA_DILATA_JUNCAO => {
             let Some(e) = usize::from(i)
@@ -488,7 +500,7 @@ pub fn escrever(p: &mut VecPath, shape: Option<&mut VecShape>, kk: FieldKey, v: 
                 e.effect.set(ju, d);
             }
         }
-        c::PARAM_LARGURA..=c::TEXTO_EIXO => escrever_shape(shape, campo, ju, v),
+        c::PARAM_LARGURA..=c::TEXTO_QUEBRA_FIXA => escrever_shape(shape, campo, ju, v),
         _ => {}
     }
 }
@@ -522,6 +534,13 @@ fn escrever_shape(shape: Option<&mut VecShape>, campo: u16, j: usize, v: f32) {
                     a.1 = v;
                 }
             }
+            // Ligar a largura fixa semeia o número de fábrica do «Fixed» do painel; a curva da
+            // largura (o mesmo grupo) aplica-se a seguir (`prioridade`).
+            c::TEXTO_QUEBRA_FIXA => match (v >= 0.5, t.wrap_width.is_some()) {
+                (true, false) => t.wrap_width = Some(ph2d_tool_vector::params::DEFAULT_TEXT_WRAP),
+                (false, true) => t.wrap_width = None,
+                _ => {}
+            },
             _ => {}
         },
         _ => {}
@@ -581,7 +600,7 @@ fn escrever_tinta_traco(p: &mut VecPath, off: u16, i: u16, v: f32) {
 
 #[path = "canais_campos_tinta.rs"]
 mod tinta;
-use tinta::{escrever_padrao, escrever_paint, ler_padrao, ler_paint};
+use tinta::{escrever_padrao, escrever_paint, escrever_pincel, ler_padrao, ler_paint, ler_pincel};
 
 #[cfg(test)]
 #[path = "canais_campos_tests.rs"]

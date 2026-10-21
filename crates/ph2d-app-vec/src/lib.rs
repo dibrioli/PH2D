@@ -71,8 +71,10 @@
 pub mod align_live;
 /// `PH2D_AUTOKEY_SMOKE` — o Auto Key sobre uma forma vetorial (plano 34).
 pub mod autokey_smoke;
+mod autokey_smoke_bloco2;
 mod autokey_smoke_campos;
 mod autokey_smoke_desenho;
+mod autokey_smoke_juntas;
 mod autokey_smoke_tudo;
 pub mod bars_publish;
 pub mod eyedropper;
@@ -108,7 +110,12 @@ pub mod canais;
 /// ⭐⭐⭐ Os canais do vetor (plano 35): o leitor/escritor puro de cada campo.
 pub mod canais_campos;
 pub mod canais_efeitos;
+pub mod canais_entidade;
+pub mod canais_filtros;
+pub mod canais_interface;
+pub mod canais_textos;
 pub mod canais_topologia;
+pub mod canais_vivos;
 pub mod component_edit;
 pub mod connector_drag;
 pub mod connector_live;

@@ -304,6 +304,13 @@ impl PropKind {
         matches!(self, PropKind::Field(k) if k.info().is_some_and(|i| i.discreto))
     }
 
+    /// `true` ⇒ o valor é um índice em `ph2d_ecs::TextosDosCanais` — o documento grava a tabela com
+    /// as chaves e a compacta ([`crate::TimelineDoc::to_bytes_com_textos`]).
+    #[must_use]
+    pub fn is_text(self) -> bool {
+        matches!(self, PropKind::Field(k) if k.info().is_some_and(|i| i.texto))
+    }
+
     /// Recover a kind from its opaque target id, if it names a known property.
     #[must_use]
     pub const fn from_target(target: AnimTarget) -> Option<PropKind> {

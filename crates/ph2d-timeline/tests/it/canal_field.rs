@@ -159,7 +159,7 @@ fn um_documento_com_campos_vai_e_volta_pelo_formato() {
     );
 }
 
-/// ⭐ v20 → v21 sem perda: o documento migrado é o v20 campo a campo, menos a versão.
+/// ⭐ v20 → v21 (→ v22) sem perda: o documento migrado é o v20 campo a campo, menos a versão.
 #[test]
 fn um_ficheiro_v20_abre_sem_perda() {
     const V20_BIN: &[u8] = include_bytes!("../fixtures/timeline_doc_v20.bin");
@@ -168,6 +168,7 @@ fn um_ficheiro_v20_abre_sem_perda() {
     assert_eq!(doc.version, ph2d_timeline::DOC_VERSION);
     let sem_versao = |mut j: serde_json::Value| {
         j.as_object_mut().unwrap().remove("version");
+        j.as_object_mut().unwrap().remove("textos"); // v22
         j
     };
     let antes: serde_json::Value = serde_json::from_str(V20_JSON).unwrap();

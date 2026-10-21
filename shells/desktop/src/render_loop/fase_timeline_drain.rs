@@ -24,6 +24,8 @@ impl crate::App {
             sim,
             toasts,
             vec_scene,
+            flip,
+            component_registry,
             ..
         } = FrameGfx::of(gfx);
 
@@ -86,7 +88,15 @@ impl crate::App {
             &mut self.preview_drive,
         );
         // ⭐ Os campos de família que a curva mandou (plano 35): o vetor drena-os para o documento.
-        ph2d_app_vec::canais::aplicar(sim, vec_scene, &mut self.vec.conducao);
+        let feito = ph2d_app_vec::canais::aplicar(sim, vec_scene, &mut self.vec.conducao);
+        for (id, e) in feito.textos {
+            crate::vec_text_ride::recook(sim, vec_scene, &self.vec.entities, id, e);
+        }
+        ph2d_app_components::canais_objeto::aplicar(sim, &mut self.preview_drive);
+        ph2d_app_physics::canais_junta::aplicar(sim, &mut self.preview_drive);
+        let conducao = &mut self.physics.conducao;
+        ph2d_app_physics::canais_corpo::aplicar(sim, component_registry, conducao);
+        ph2d_app_flip::canais_camada::aplicar(sim, flip, &mut self.flip_state.conducao);
         // Sob pilha, o relógio do EDITOR segue o da Keys onde o clip toca uma vez (emenda 3).
         if vista == ph2d_timeline::ViewClock::Clip {
             let (doc, scrub) = (&self.timeline.doc, self.autokey.scrub_now);

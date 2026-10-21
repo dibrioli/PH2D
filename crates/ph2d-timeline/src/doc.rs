@@ -121,12 +121,18 @@ mod clip_paths;
 /// campos: a migração (`doc_v20.rs`, provada contra `tests/fixtures/timeline_doc_v20.bin`) só
 /// re-carimba a versão. O bump existe porque um v21 COM campos não pode abrir numa build v20.
 ///
+/// v22: **a tabela dos TEXTOS** (`TimelineDoc.textos`, apendada) — um campo de texto
+/// (`CampoInfo::texto`: a família da fonte, o conteúdo) guarda na chave um índice em
+/// `ph2d_ecs::TextosDosCanais`, e o ficheiro leva a tabela COMPACTADA às chaves que a usam (o
+/// porquê e as duas portas em `doc_textos.rs`). Migra (`doc_v21.rs`, provada contra
+/// `tests/fixtures/timeline_doc_v21.bin`): tabela vazia — nenhuma build v21 publicava texto.
+///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
 /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
 /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
 /// [ADR-0144]: ../../../docs/architecture/decisions/0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md
 /// [ADR-0151]: ../../../docs/architecture/decisions/0151-timeline-expressions-are-per-clip-so-a-strip-windows-them.md
-pub const DOC_VERSION: u32 = 21;
+pub const DOC_VERSION: u32 = 22;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -271,6 +277,10 @@ pub struct TimelineDoc {
     /// defines "the end", cuts content past it non-destructively, `None` = derived.
     /// Appended (v11).
     pub scene_length: Option<f64>,
+    /// ⭐ **A tabela dos textos que ESTE documento nomeia** (v22) — vazia na sessão (as chaves
+    /// indexam o recurso `TextosDosCanais`); cheia só num documento vindo do ficheiro, até a
+    /// [`Self::adota_textos`] o passar para a tabela da sessão. Lei em `doc_textos.rs`.
+    textos: Vec<String>,
     /// This frame's live strips and their per-entity clocks (`stack_eval.rs`).
     /// Runtime scratch, not document identity: never serialized, always compares
     /// equal, and its buffers are retained frame to frame (zero-alloc, HR-3).
@@ -324,6 +334,7 @@ impl TimelineDoc {
             stack: Vec::new(),
             containers: Vec::new(),
             scene_length: None,
+            textos: Vec::new(),
             scratch: StackScratch::default(),
             reverse_play: false,
         }
@@ -396,20 +407,25 @@ impl TimelineDoc {
     ///
     /// Bindings serialize by `wire_id`; the live `entity` bits are `#[serde(skip)]`
     /// — stamp the wire ids first (see [`crate::stamp_wire_ids`]).
+    ///
+    /// Sem a tabela da sessão: um documento com chaves de texto grava-se por
+    /// [`Self::to_bytes_com_textos`], e esta porta RECUSA em vez de perder o texto delas.
     pub fn to_bytes(&self) -> Result<Vec<u8>, String> {
-        postcard::to_allocvec(self).map_err(|e| e.to_string())
+        self.to_bytes_sem_sessao()
     }
 
     /// Load a document saved by [`Self::to_bytes`], rejecting a schema version
     /// this build does not understand. The loaded bindings have null `entity`
     /// bits — resolve them with [`crate::resolve_entities`].
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
-        let doc: TimelineDoc = match postcard::take_from_bytes::<u32>(bytes) {
+        let mut doc: TimelineDoc = match postcard::take_from_bytes::<u32>(bytes) {
             Ok((v18::VERSION, _)) => v18::migrate(bytes)?,
             Ok((v19::VERSION, _)) => v19::migrate(bytes)?,
             Ok((v20::VERSION, _)) => v20::migrate(bytes)?,
+            Ok((v21::VERSION, _)) => v21::migrate(bytes)?,
             _ => postcard::from_bytes(bytes).map_err(|e| e.to_string())?,
         };
+        doc.normaliza_textos();
         if doc.version != DOC_VERSION {
             return Err(format!(
                 "timeline schema version {} != {DOC_VERSION}",
@@ -580,6 +596,9 @@ pub use owner::{ClipOwner, SCENE};
 
 #[path = "doc_entry.rs"]
 mod entry;
+/// **Os textos das chaves de texto** (v22) — filho: lê o campo privado `textos`.
+#[path = "doc_textos.rs"]
+mod textos;
 /// **A migração v18 → v19** — o único leitor de bytes antigos deste documento.
 #[path = "doc_v18.rs"]
 mod v18;
@@ -587,3 +606,5 @@ mod v18;
 mod v19;
 #[path = "doc_v20.rs"]
 mod v20;
+#[path = "doc_v21.rs"]
+mod v21;

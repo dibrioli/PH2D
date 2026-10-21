@@ -160,3 +160,56 @@ fn dragging_the_width_slider_reaches_the_bus() {
     );
     ph2d_panel_vector::set_current_text_wrap(None);
 }
+
+/// **Os sliders de texto SEGUEM o texto-alvo a cada quadro — e o *Wrap width* também** (F25).
+///
+/// A foto do Auto Key lia `12.00` (o de fábrica) sobre um texto que quebrava a `2.2`: a semente
+/// do alvo não levava a largura e só corria na troca de ALVO, então com a timeline a escrever o
+/// documento os outros quatro também paravam. A fileira sob o dedo não é reescrita.
+///
+/// Mutação: tirar a fileira da largura do `seed_text_sliders` — o primeiro quadro lê `12`.
+#[test]
+fn the_text_sliders_follow_the_target_every_frame_and_the_wrap_width_too() {
+    use ph2d_editor_core::panel::PanelHostInternal;
+    use ph2d_panel_vector::ids::{VECTOR_TEXT_SIZE_NUM, VECTOR_TEXT_WRAP_W_NUM};
+    let mut host = crate::host_aberto();
+    let mut panel_state = VectorPanelState;
+    let mut quadro = |host: &mut ph2d_ui_testkit::MockPanelHost, size: f64, wrap: f64| {
+        arm_text();
+        ph2d_panel_vector::set_current_text_seed(Some([size, 400.0, 1.2, 0.0]));
+        ph2d_panel_vector::set_current_text_wrap(Some(wrap));
+        let _ = host.paint::<VectorPanel>(&mut panel_state, VIEWPORT);
+        (
+            host.store()
+                .number_value(VECTOR_TEXT_SIZE_NUM)
+                .unwrap_or(f64::NAN),
+            host.store()
+                .number_value(VECTOR_TEXT_WRAP_W_NUM)
+                .unwrap_or(f64::NAN),
+        )
+    };
+    let (_, primeiro) = quadro(&mut host, 0.45, 2.2);
+    // O MESMO alvo, o documento a meio da animação.
+    let (tamanho, largura) = quadro(&mut host, 0.625, 1.5);
+    host.store_mut().set_focus(Some(VECTOR_TEXT_WRAP_W_NUM));
+    let (tamanho_dedo, largura_dedo) = quadro(&mut host, 0.8, 3.0);
+    host.store_mut().set_focus(None);
+    ph2d_panel_vector::set_current_text_wrap(None);
+
+    assert!(
+        (primeiro - 2.2).abs() < 1e-9,
+        "Wrap width mostra {primeiro} sobre um texto que quebra a 2.2"
+    );
+    assert!(
+        (tamanho - 0.625).abs() < 1e-9 && (largura - 1.5).abs() < 1e-9,
+        "com o mesmo alvo os sliders ficaram em {tamanho}/{largura} sobre 0.625/1.5"
+    );
+    assert!(
+        (largura_dedo - 1.5).abs() < 1e-9,
+        "a caixa em FOCO foi reescrita pelo documento ({largura_dedo})"
+    );
+    assert!(
+        (tamanho_dedo - 0.8).abs() < 1e-9,
+        "a fileira ao lado da focada parou de seguir o documento ({tamanho_dedo})"
+    );
+}

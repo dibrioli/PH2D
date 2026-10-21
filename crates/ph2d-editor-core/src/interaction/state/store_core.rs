@@ -520,10 +520,7 @@ impl WidgetStore {
             _ => return,
         }
         if let Some(num) = self.linked_number(id) {
-            let (scale, offset) = self.linked_slider_mapping(num);
-            let curve = self.linked_slider_curve(num);
-            let display =
-                f64::from(super::slider_curve::pista_para_fracao(v, curve) * scale + offset);
+            let display = f64::from(self.linked_chip_display(num, v));
             if let Some(InteractiveState::NumberInput { value, .. }) = self.get_mut(num) {
                 *value = display;
             }

@@ -79,6 +79,10 @@ impl crate::App {
         // (plano 35): a fotografia vê o AUTORADO, e o vivo volta logo a seguir.
         let conducao = &self.vec.conducao;
         let vivo = conducao.substituir(&mut gfx.sim, &mut gfx.vec_scene);
+        let camadas = &self.flip_state.conducao;
+        let vivo_flip = camadas.substituir(&gfx.sim, &mut gfx.flip);
+        let corpos = &self.physics.conducao;
+        let vivo_corpos = corpos.substituir(&mut gfx.sim, &gfx.component_registry);
         let foto = ProjectState::capture(
             drive,
             &mut gfx.sim,
@@ -96,6 +100,8 @@ impl crate::App {
             baseline,
         );
         conducao.repor(&mut gfx.sim, &mut gfx.vec_scene, vivo);
+        camadas.repor(&gfx.sim, &mut gfx.flip, vivo_flip);
+        corpos.repor(&mut gfx.sim, &gfx.component_registry, vivo_corpos);
         Some(foto)
     }
 
@@ -219,7 +225,6 @@ impl crate::App {
         // seguinte. O estado restaurado é a verdade: a sessão termina (o objeto de texto
         // continua lá, editável pela seleção).
         self.vec.text_edit = None;
-        self.vec.text_last_target = None;
         // O cache de poses dos rótulos é a memória de "o que EU escrevi no frame passado". O
         // restore põe poses novas no mundo sem passar por ele — deixá-lo faria o passe ler a
         // pose restaurada como um arrasto do usuário. É inócuo (o estado restaurado é
@@ -343,6 +348,8 @@ impl crate::App {
         // fotografia** — é isso que faz uma corrida inteira colapsar em UM passo, em vez de zero.
         self.preview_drive.settle();
         self.vec.conducao.settle();
+        self.flip_state.conducao.settle();
+        self.physics.conducao.settle();
         // ⭐⭐⭐ **A FOTOGRAFIA que o `Cancel` da sessão de receita repõe** — pedida quando a sessão
         // abriu, tirada aqui, onde o `self` está livre (a captura reconcilia o documento antes de
         // fotografar e leva o `&mut self` inteiro).

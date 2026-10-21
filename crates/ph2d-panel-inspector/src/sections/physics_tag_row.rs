@@ -47,7 +47,16 @@ pub(super) fn signal_tag_row(
     if open {
         crate::state_popovers::set_pending_phys_tag_dd(Some(rect));
     }
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+    // A coluna do losango pela porta de todos: o filtro por tag é fiação por identidade (plano 35
+    // §8) e não tem canal, então ela pinta o ponto.
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_for(
+        scene,
+        theme,
+        dot,
+        &[ids::INSP_PHYS_SIGNAL_TAG],
+    ) {
+        hit_index.register(alvo, dot);
+    }
     let mut cur_y = y + ph2d_tokens::row_pitch_px();
 
     // ⛔ A tag foi apagada ⇒ a armadilha não grita com ninguém. ⚠️ Só com o id VIVO e o caminho

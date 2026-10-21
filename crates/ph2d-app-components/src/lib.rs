@@ -84,6 +84,8 @@ pub mod camera_2d;
 pub mod camera_2d_smoke;
 /// ⭐⭐ **A secção CAMERA** (TOP-20 #7) — o instantâneo e o commit; veio da shell na W7 da paralaxe.
 pub mod camera_inspector;
+/// ⭐⭐ A família OBJETO nos canais: o skew e a aparência da sprite (plano 35 §3.0).
+pub mod canais_objeto;
 pub mod code_smoke;
 pub mod component_attach;
 pub mod component_palette;

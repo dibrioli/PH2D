@@ -25,7 +25,8 @@ pub(crate) fn text_visible() -> bool {
     CURRENT_TEXT_VISIBLE.with(Cell::get)
 }
 
-/// Publica a semente ONE-SHOT dos sliders de texto (só quando o alvo muda).
+/// Publica os valores do texto-alvo para os sliders de texto — a cada quadro (o painel consome-os
+/// uma vez e salta a fileira sob o dedo). `None` = sem alvo: os sliders guardam o que estava.
 pub fn set_current_text_seed(seed: Option<[f64; 4]>) {
     TEXT_SEED.with(|c| c.set(seed));
 }

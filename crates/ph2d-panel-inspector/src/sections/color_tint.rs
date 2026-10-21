@@ -253,6 +253,16 @@ pub(crate) fn paint_color_tint_section(
         1,
         &[tr("panel.inspector.color_tint.tint_fill")],
     );
+    // A caixa fica na largura do controlo; a coluna do decorator leva o losango da silhueta.
+    let (check_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, cur_y, field_h);
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_for(
+        scene,
+        theme,
+        dot,
+        &[ids::INSP_SPRITE_TINT_FILL],
+    ) {
+        hit_index.register(alvo, dot);
+    }
     cur_y = ph2d_editor_core::property_row::paint_check_row(
         scene,
         text_system,
@@ -260,7 +270,7 @@ pub(crate) fn paint_color_tint_section(
         hit_index,
         store,
         x,
-        w,
+        check_w,
         cur_y,
         (
             ids::INSP_SPRITE_TINT_FILL,
@@ -369,7 +379,12 @@ fn paint_per_corner_tab(
         );
         hit_index.register(corner_ids[i], sr);
     }
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, row.dot);
+    // Um losango para o degradê inteiro (os quatro cantos são um grupo de canais).
+    if let Some(alvo) =
+        ph2d_editor_core::widget::key_mark::paint_decorator_for(scene, theme, row.dot, &corner_ids)
+    {
+        hit_index.register(alvo, row.dot);
+    }
     let grid_h = alto;
     let mut cur_y = y + grid_h + Spacing::Sm.px();
 

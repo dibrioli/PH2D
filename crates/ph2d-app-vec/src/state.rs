@@ -413,13 +413,8 @@ pub struct VecState {
     /// `DoubleClick` (o evento do chrome é por-widget), então o par é rastreado aqui.
     pub last_canvas_click: Option<(std::time::Instant, (f32, f32))>,
 
-    /// O último ALVO das configs de texto do painel (sessão ou objeto selecionado).
-    /// Quando muda, a shell publica a semente dos sliders — uma vez (senão o seed
-    /// brigaria com o arrasto).
-    pub text_last_target: Option<ph2d_vec_scene::VecPathId>,
-
     /// O último ALVO das seções de FORMA do painel (a forma viva paramétrica
-    /// selecionada). Mesma regra do texto: quando muda, a shell semeia os sliders e a
+    /// selecionada). Quando muda, a shell semeia os sliders e a
     /// tool adota os params — uma vez. Zerado no restore (undo/load) porque a forma
     /// pode ter voltado com outros params sob o MESMO id: sem re-semear, o painel
     /// mostraria o valor desfeito.

@@ -202,7 +202,8 @@ fn forma_parametrica_e_texto_publicam_parametros_e_nao_vertices() {
 #[test]
 fn todo_campo_do_vocabulario_tem_rotulo_traduzido() {
     let mut vistos = 0;
-    for campo in 0..=u16::from(u8::MAX) {
+    // O vocabulário passa dos 255 (os componentes da entidade, a Interface): varre-se até 1023.
+    for campo in 0..1024 {
         let Some(info) = ph2d_ecs::canal_vetor::info(campo) else {
             continue;
         };
@@ -212,4 +213,109 @@ fn todo_campo_do_vocabulario_tem_rotulo_traduzido() {
         assert_ne!(ph2d_i18n::tr(m), m, "membro do campo {campo}");
     }
     assert!(vistos > 100, "o vocabulário encolheu? {vistos}");
+}
+
+/// ⭐ O PINCEL do traço (`PINCEL_*`, membros da tinta do traço `i`), o DESFASAMENTO do padrão
+/// (`OFF_PADRAO_DESFASE`) e o MODO da quebra do texto (`TEXTO_QUEBRA_FIXA`): publicam-se onde
+/// existem, escrever o que se leu é identidade, e um valor novo vai e volta no domínio do painel.
+#[test]
+fn o_pincel_o_desfase_e_a_quebra_fixa_vao_e_voltam() {
+    let mut traco = StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 3.0);
+    traco.paint = StrokePaint::Brush(Box::new(ph2d_vec_scene::BrushStroke {
+        spacing: 1.5,
+        offset: -0.25,
+        rotation_deg: 30.0,
+        scale: 2.0,
+        ..ph2d_vec_scene::BrushStroke::default()
+    }));
+    let mut padrao = ph2d_vec_scene::PatternFill::new(
+        ph2d_vec_scene::PatternSource::Shape(9),
+        [4.0, 4.0],
+        Rgba8::new(1, 2, 3, 255),
+    );
+    padrao.offset_denom = 3;
+    let original = VecPath {
+        verts: vec![VecVertex::corner([0.0, 0.0]), VecVertex::corner([9.0, 0.0])],
+        fill: Some(Paint::Pattern(Box::new(padrao))),
+        stroke: Some(traco),
+        ..VecPath::default()
+    };
+    let todos = campos(&original, None);
+    for kk in [
+        k(c::PINCEL_ESPACO, 0, 0),
+        k(c::PINCEL_ESPELHO, 0, 0),
+        k(c::TINTA_PREENCH + c::OFF_PADRAO_DESFASE, 0, 0),
+    ] {
+        assert!(todos.contains(&kk), "{kk:?} não publicado");
+    }
+    for kk in todos {
+        let mut p = original.clone();
+        let v = ler(&p, None, kk).expect("publicado ⇒ legível");
+        escrever(&mut p, None, kk, v);
+        assert_eq!(p, original, "escrever {v} lido de {kk:?} mudou o documento");
+    }
+    let mut p = original.clone();
+    for (campo, v) in [
+        (c::PINCEL_ESPACO, 0.75),
+        (c::PINCEL_DESLOCA, 0.5),
+        (c::PINCEL_ROTACAO, -45.0),
+        (c::PINCEL_ESCALA, 3.0),
+        (c::PINCEL_ESPELHO, 1.0),
+    ] {
+        escrever(&mut p, None, k(campo, 0, 0), v);
+        assert_eq!(ler(&p, None, k(campo, 0, 0)), Some(v), "campo {campo}");
+    }
+    assert!(p.stroke.as_ref().unwrap().brush().unwrap().flip);
+    let desfase = k(c::TINTA_PREENCH + c::OFF_PADRAO_DESFASE, 0, 0);
+    escrever(&mut p, None, desfase, 4.6);
+    assert_eq!(ler(&p, None, desfase), Some(5.0), "discreto: arredonda");
+    escrever(&mut p, None, desfase, -3.0);
+    assert_eq!(
+        ler(&p, None, desfase),
+        Some(1.0),
+        "o domínio do painel é 1..=255"
+    );
+    // Sem pincel não há campo de pincel (o traço sólido não o publica nem o inventa).
+    let mut solido = forma();
+    assert!(
+        !campos(&solido, None)
+            .iter()
+            .any(|kk| kk.campo == c::PINCEL_ESPACO)
+    );
+    let antes = solido.clone();
+    escrever(&mut solido, None, k(c::PINCEL_ESPACO, 0, 0), 9.0);
+    assert_eq!(solido, antes);
+
+    let mut texto = VecShape::Text(VecTextParams {
+        text: "Olá".to_string(),
+        origin: [0.0, 0.0],
+        family: None,
+        size: 24.0,
+        weight: 400.0,
+        line_height: 1.2,
+        tracking: 0.0,
+        align: 0,
+        axes: Vec::new(),
+        wrap_width: None,
+    });
+    let fixa = k(c::TEXTO_QUEBRA_FIXA, 0, 0);
+    let largura = k(c::TEXTO_QUEBRA, 0, 0);
+    assert!(campos(&p, Some(&texto)).contains(&fixa));
+    assert_eq!(ler(&p, Some(&texto), fixa), Some(0.0));
+    escrever(&mut p, Some(&mut texto), largura, 40.0);
+    assert_eq!(
+        ler(&p, Some(&texto), largura),
+        None,
+        "Auto: a largura não existe"
+    );
+    escrever(&mut p, Some(&mut texto), fixa, 1.0);
+    escrever(&mut p, Some(&mut texto), largura, 40.0);
+    assert_eq!(ler(&p, Some(&texto), largura), Some(40.0));
+    assert!(
+        prioridade(fixa) < prioridade(largura),
+        "o modo antes da largura"
+    );
+    escrever(&mut p, Some(&mut texto), fixa, 0.0);
+    let VecShape::Text(t) = &texto else { panic!() };
+    assert_eq!(t.wrap_width, None);
 }

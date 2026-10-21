@@ -56,6 +56,17 @@ impl WidgetStore {
             .get(&number)
             .map_or(1.0, |&(_, _, curva)| curva)
     }
+
+    /// ⭐ **Pista → o número que o chip `number` ligado a ela MOSTRA** (`offset + scale·pista^curva`).
+    ///
+    /// Uma conta, três leitores: o espelho do arrasto (`dispatch`), o [`Self::set_slider_value`] e o
+    /// pintor da linha (`paint_slider_with_chip`). ⛔ O pintor passava a PISTA como número do chip:
+    /// verdade só na ligação identidade — a Emissão a `0,4` lia-se `0,006` (`0,4 ÷ 64`).
+    #[must_use]
+    pub fn linked_chip_display(&self, number: NodeId, track: f32) -> f32 {
+        let (scale, offset) = self.linked_slider_mapping(number);
+        pista_para_fracao(track, self.linked_slider_curve(number)) * scale + offset
+    }
 }
 
 /// `true` quando a curva é a identidade — e então as projecções não tocam no número.

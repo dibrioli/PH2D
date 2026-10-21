@@ -7,7 +7,7 @@
 //! que só a repassa ([`LINHAS`]). Cada chamada tem de cair numa classe:
 //!
 //! - **canal**: um dos ids dela está numa tabela de canais ([`TABELAS`]: `ph2d_app_vec::marcas`,
-//!   `ph2d_app_components::marcas_inspector`);
+//!   `ph2d_app_components::marcas_inspector`, `ph2d_app_flip::marcas_camada`);
 //! - **⛔ não-animável** ou **dívida**: um id (ou prefixo) dela está em [`POR_ID`], a função dela
 //!   em [`POR_FUNCAO`] (o id vem numa variável), ou o ficheiro em [`DIVIDA_FICHEIRO`].
 //!
@@ -82,14 +82,26 @@ const ESCOPO: &[(&str, Option<&[&str]>)] = &[
             "sections/emissive_row.rs",
             "sections/joint_cards.rs",
             "sections/joint_kind_rows.rs",
+            "sections/joint_custom.rs",
+            "sections/physics.rs",
+            "sections/physics_area_rows.rs",
+            "sections/physics_body.rs",
+            "sections/physics_doors.rs",
+            "sections/physics_join_rows.rs",
+            "sections/physics_part.rs",
+            "sections/physics_rows.rs",
+            "sections/physics_tag_row.rs",
         ]),
     ),
+    ("ph2d-panel-flip", None),
 ];
 
 /// As tabelas de canais (caminhos a partir de `crates/`).
 const TABELAS: &[&str] = &[
     "ph2d-app-vec/src/marcas.rs",
+    "ph2d-app-vec/src/marcas_vivos.rs",
     "ph2d-app-components/src/marcas_inspector.rs",
+    "ph2d-app-flip/src/marcas_camada.rs",
 ];
 
 /// Os helpers de LINHA de cada painel: recebem o id do chamador e repassam-no a uma porta — a
@@ -114,6 +126,10 @@ const LINHAS: &[(&str, &str)] = &[
     ("ph2d-panel-inspector", "num_row"),
     ("ph2d-panel-inspector", "num_row_unit"),
     ("ph2d-panel-inspector", "seg_row"),
+    ("ph2d-panel-inspector", "paint_tint_swatch_cell"),
+    ("ph2d-panel-inspector", "bloco_de_cores"),
+    ("ph2d-panel-flip", "slider_row"),
+    ("ph2d-panel-flip", "slider_row_linked"),
 ];
 
 /// A classe de uma chamada por um dos seus ids — exacto, ou PREFIXO quando acaba em `_`.
@@ -139,36 +155,15 @@ const POR_ID: &[(&str, Classe, &str)] = &[
         NaoAnimavel,
         "a transição de um estado da Interface É uma animação; não se anima a si própria",
     ),
-    ("VECTOR_ANCHOR_", Divida, "Interface: as âncoras de layout"),
     (
-        "VECTOR_FRAME_",
-        Divida,
-        "Interface: a moldura (clip, painel)",
+        "VECTOR_FRAME_PANEL_",
+        NaoAnimavel,
+        "«Show as Panel» é a visibilidade do painel no editor (HeroScreen), não documento",
     ),
     (
-        "VECTOR_BRUSH_",
-        Divida,
-        "os parâmetros do Brush stroke (F24a §6.4)",
-    ),
-    (
-        "VECTOR_BLEND_STEPS",
-        Divida,
-        "o Blend vivo: componente sem vocabulário",
-    ),
-    (
-        "VECTOR_MORPH_T",
-        Divida,
-        "o Morph vivo: componente sem vocabulário",
-    ),
-    (
-        "VECTOR_ENVELOPE_",
-        Divida,
-        "o Envelope vivo: componente sem vocabulário",
-    ),
-    (
-        "VECTOR_TEXT_WRAP_AUTO",
-        Divida,
-        "o MODO da quebra (a largura existir ou não) não tem campo; a largura tem",
+        "VECTOR_LAYOUT_PAD_ALL_MODE",
+        NaoAnimavel,
+        "a margem vista como um número ou quatro: estado do painel; as margens têm canal",
     ),
     (
         "VECTOR_CUT_",
@@ -196,36 +191,26 @@ const POR_ID: &[(&str, Classe, &str)] = &[
         "o elo do vão do padrão: gesto da sessão (não viaja no ficheiro)",
     ),
     (
-        "TexPatKnob::Offset",
-        Divida,
-        "o desfasamento do padrão (Brick/Column): sem campo no vocabulário",
+        "INSP_PHYS_BAKE_",
+        NaoAnimavel,
+        "o que o Bake grava: parâmetro de um comando (§8)",
     ),
     (
-        "VECTOR_BAR_PROFILE",
-        Divida,
-        "o perfil de largura (Power Stroke): sem vocabulário",
+        "INSP_PHYS_JOIN_KIND",
+        NaoAnimavel,
+        "o tipo da PRÓXIMA junta que o Join cria: parâmetro de um comando (§8)",
     ),
     (
-        "VECTOR_TEXT_FONT_DD",
-        Divida,
-        "a família da fonte: sem vocabulário",
-    ),
-    ("INSP_TRANSFORM_SKEW_", Divida, "o skew não tem PropKind"),
-    ("INSP_SPRITE_EMISSIVE", Divida, "a emissão do sprite (§A.2)"),
-    (
-        "INSP_JOINT_MOTOR_GROUP",
-        Divida,
-        "o eixo do motor (Enum, §A.5)",
+        "INSP_PHYS_SIGNAL_TAG",
+        NaoAnimavel,
+        "o filtro por tag dos sinais: fiação por identidade (§8)",
     ),
     (
-        "INSP_JOINT_MOTOR_MODE_GROUP",
-        Divida,
-        "o modo do motor (Enum, §A.5)",
+        "FLIP_",
+        NaoAnimavel,
+        "o pincel, a borracha, o balde e o Colorize do Flip: o tamanho e a cor do PRÓXIMO traço \
+         são da ferramenta (§8); o traço feito é desenho (a lei do Grease Pencil, §8)",
     ),
-    ("INSP_JOINT_MOTOR_FORCE", Divida, "a força do motor (§A.5)"),
-    ("INSP_JOINT_BREAK_", Divida, "a quebra da junta (§A.5)"),
-    ("INSP_JOINT_LIMITS_", Divida, "os limites da junta (§A.5)"),
-    ("INSP_JOINT_SOFT_", Divida, "a mola da junta (§A.5)"),
 ];
 
 /// As chamadas cujo id vem numa VARIÁVEL, pela função que as faz. Para [`Canal`], os nomes que a
@@ -314,9 +299,13 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     (
         "ph2d-panel-vector",
         "brush_section",
-        Divida,
-        &[],
-        "os parâmetros do Brush stroke (F24a §6.4)",
+        Canal,
+        &[
+            "VECTOR_BRUSH_SCALE",
+            "VECTOR_BRUSH_SPACING",
+            "VECTOR_BRUSH_ROTATION",
+        ],
+        "os parâmetros do pincel do traço, da tabela do laço (`marcas_vivos::CAMPOS`)",
     ),
     (
         "ph2d-panel-vector",
@@ -328,16 +317,122 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     (
         "ph2d-panel-vector",
         "power_stroke_rows",
-        Divida,
-        &[],
-        "o perfil de largura (Power Stroke): sem vocabulário",
+        Canal,
+        &[
+            "VECTOR_EXPAND_W_START",
+            "VECTOR_EXPAND_W_MID",
+            "VECTOR_EXPAND_W_END",
+            "VECTOR_EXPAND_W_POS",
+        ],
+        "os quatro sliders que armam o perfil de largura (`marcas_vivos::CAMPOS`)",
     ),
     (
         "ph2d-panel-vector",
         "width_preset_row",
-        Divida,
-        &[],
-        "o perfil de largura (Power Stroke): sem vocabulário",
+        Canal,
+        &["vector_width_preset_id"],
+        "o catálogo de perfis de largura (`marcas_vivos::derivados`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "filter_card",
+        Canal,
+        &["filter_mode_id"],
+        "o modo do degrau `row` dos filtros (`marcas_vivos::derivados`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "filter_header",
+        Canal,
+        &["filter_hide_id"],
+        "o olho do degrau `row` dos filtros (`marcas_vivos::derivados`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "filter_radius_row",
+        Canal,
+        &["filter_radius_id", "filter_radius_num_id"],
+        "o raio do degrau `row` (`marcas_vivos::derivados`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "filter_noise_rows",
+        Canal,
+        &["filter_scale_id", "filter_detail_id", "filter_seed_id"],
+        "o ruído do degrau `row` (`marcas_vivos::derivados`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "filter_grow_row",
+        Canal,
+        &["filter_grow_id"],
+        "o Amount do degrau `row` (`marcas_vivos::derivados`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "filter_adjust_rows",
+        Canal,
+        &["filter_hue_id", "filter_sat_id", "filter_bright_id"],
+        "o ajuste de cor do degrau `row` (`marcas_vivos::derivados`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "filter_opacity_row",
+        Canal,
+        &["filter_opacity_id"],
+        "a opacidade do degrau `row` (`marcas_vivos::derivados`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "filter_offset_row",
+        Canal,
+        &["filter_offx_id", "filter_offy_id"],
+        "o deslocamento do degrau `row` (`marcas_vivos::derivados`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "filter_blend_row",
+        Canal,
+        &["filter_blend_id"],
+        "a mistura do degrau `row` (`marcas_vivos::derivados`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "filter_color_swatch",
+        Canal,
+        &["filter_color_id", "filter_color_b_id"],
+        "as cores do degrau `row` (`marcas_vivos::derivados`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "patternpath_section",
+        Canal,
+        &["VECTOR_PATTERNPATH_FLIP", "VECTOR_PATTERNPATH_FLIP_OFF"],
+        "o lado do padrão no caminho (`marcas_vivos::CAMPOS`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "textpath_section",
+        Canal,
+        &["VECTOR_TEXTPATH_FLIP", "VECTOR_TEXTPATH_FLIP_OFF"],
+        "o lado do texto no caminho (`marcas_vivos::CAMPOS`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "layout_align_rows",
+        Canal,
+        &[
+            "VECTOR_LAYOUT_JUSTIFY_START",
+            "VECTOR_LAYOUT_JUSTIFY_BETWEEN",
+        ],
+        "a distribuição do auto layout (`marcas_vivos::CAMPOS`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "widget_skin_section",
+        Canal,
+        &["vector_widget_kind_id"],
+        "a pele do widget (`marcas_vivos::derivados`)",
     ),
     (
         "ph2d-panel-vector",
@@ -363,59 +458,204 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     (
         "ph2d-panel-inspector",
         "paint_kind_params",
-        Divida,
-        &[],
-        "misto: comprimento de repouso e máximo têm canal; molas e limites não (§A.5)",
+        Canal,
+        &[
+            "INSP_JOINT_LIMIT_MIN",
+            "INSP_JOINT_LIMIT_MAX",
+            "INSP_JOINT_STIFFNESS",
+            "INSP_JOINT_DAMPING",
+        ],
+        "o par de limites e a mola da junta, num laço (canais JUNTA)",
     ),
     (
         "ph2d-panel-inspector",
-        "paint_tint_swatch_cell",
-        Divida,
+        "paint_axis_rows",
+        Canal,
+        &["INSP_JOINT_AXIS_MIN", "INSP_JOINT_AXIS_MAX"],
+        "o min/max do eixo `i` de um Custom (canais JUNTA)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "paint_per_corner_tab",
+        Canal,
+        &[
+            "INSP_SPRITE_CORNER_TL",
+            "INSP_SPRITE_CORNER_TR",
+            "INSP_SPRITE_CORNER_BL",
+            "INSP_SPRITE_CORNER_BR",
+        ],
+        "os quatro cantos do degradê: um losango, um grupo (canal OBJETO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "paint_shape_dims",
+        Canal,
+        &[
+            "INSP_PHYS_RADIUS",
+            "INSP_PHYS_HALF_X",
+            "INSP_PHYS_HALF_Y",
+            "INSP_PHYS_CAP_HALF_H",
+        ],
+        "as medidas da forma do colisor, pela forma (canal FISICA)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "paint_area_rows",
+        Canal,
+        &[
+            "INSP_PHYS_FORCE_X",
+            "INSP_PHYS_FORCE_Y",
+            "INSP_PHYS_AREA_TORQUE",
+            "INSP_PHYS_AREA_FALLOFF",
+            "INSP_PHYS_AREA_DRAG",
+            "INSP_PHYS_AREA_DENSITY",
+            "INSP_PHYS_AREA_FORM_DRAG",
+        ],
+        "os números da zona de um sensor, num laço (canal FISICA)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "paint_body_face",
+        Canal,
+        &["INSP_PHYS_OFFSET_X", "INSP_PHYS_OFFSET_Y"],
+        "o deslocamento do colisor, num laço (canal FISICA)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "paint_dynamics_rows",
+        Canal,
+        &[
+            "INSP_PHYS_GRAVITY_SCALE",
+            "INSP_PHYS_LINVEL_X",
+            "INSP_PHYS_LINVEL_Y",
+            "INSP_PHYS_ANGVEL",
+            "INSP_PHYS_DOMINANCE",
+        ],
+        "a dinâmica de um corpo Dynamic, num laço (canal FISICA)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "paint_part_face",
+        Canal,
+        &[
+            "INSP_PHYS_OFFSET_X",
+            "INSP_PHYS_OFFSET_Y",
+            "INSP_PHYS_DENSITY",
+        ],
+        "o deslocamento e a densidade de uma peça, num laço (canal FISICA)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "paint_damping_rows",
+        Canal,
+        &["INSP_PHYS_LINEAR_DAMPING", "INSP_PHYS_ANGULAR_DAMPING"],
+        "o amortecimento do corpo, num laço (canal FISICA)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "paint_material_rows",
+        Canal,
+        &[
+            "INSP_PHYS_RESTITUTION",
+            "INSP_PHYS_FRICTION",
+            "INSP_PHYS_REST_COMBINE",
+            "INSP_PHYS_FRIC_COMBINE",
+        ],
+        "o material e as regras de combinação, num laço (canal FISICA)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "paint_mass_source",
+        Canal,
+        &["INSP_PHYS_MASS", "INSP_PHYS_DENSITY"],
+        "a massa OU a densidade, pela fonte da massa (canal FISICA)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "paint_collision_rows",
+        Canal,
+        &[
+            "INSP_PHYS_LAYER",
+            "INSP_PHYS_SENSOR",
+            "INSP_PHYS_WALK_GRIP",
+            "INSP_PHYS_WALK_BELT",
+        ],
+        "a camada, o sensor e a superfície, em laços (canal FISICA)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "signal_row",
+        NaoAnimavel,
         &[],
-        "as cores do tint e dos cantos (§A.2)",
+        "o nome do sinal ao bater/sair: fiação por nome (§8)",
+    ),
+    (
+        "ph2d-panel-flip",
+        "brush",
+        NaoAnimavel,
+        &[],
+        "a força do pincel ou da borracha (o id pelo modo): ajuste da ferramenta (§8)",
+    ),
+    (
+        "ph2d-panel-flip",
+        "brush_size_row",
+        NaoAnimavel,
+        &[],
+        "o tamanho do pincel ou da borracha (o id pelo modo): ajuste da ferramenta (§8)",
+    ),
+    (
+        "ph2d-panel-flip",
+        "paint_eye",
+        Canal,
+        &["FlipLayerWidget::Visibility"],
+        "o olho da camada `row` (canal FLIP, `marcas_camada::CAMPOS`)",
+    ),
+    (
+        "ph2d-panel-flip",
+        "paint_labeled_slider_row",
+        Canal,
+        &["FlipLayerWidget::Opacity", "FlipLayerWidget::Depth"],
+        "a opacidade OU a profundidade da camada, pelo tipo (canal FLIP)",
+    ),
+    (
+        "ph2d-panel-flip",
+        "paint_blend_chip",
+        Canal,
+        &["FlipLayerWidget::Blend"],
+        "a mistura da camada `row` (canal FLIP)",
     ),
 ];
 
 /// Ficheiros inteiros em dívida — famílias sem vocabulário ainda.
-const DIVIDA_FICHEIRO: &[(&str, &str, &str)] = &[
-    (
-        "ph2d-panel-vector",
-        "paint_filters.rs",
-        "os filtros da forma: sem vocabulário",
-    ),
-    (
-        "ph2d-panel-vector",
-        "paint_layout.rs",
-        "Interface: o auto layout",
-    ),
-    (
-        "ph2d-panel-vector",
-        "paint_patternpath.rs",
-        "o padrão ao longo do caminho: sem vocabulário",
-    ),
-    (
-        "ph2d-panel-vector",
-        "paint_textpath.rs",
-        "o texto no caminho: sem vocabulário",
-    ),
-    (
-        "ph2d-panel-vector",
-        "paint_widget.rs",
-        "Interface: a pele do widget",
-    ),
-];
+const DIVIDA_FICHEIRO: &[(&str, &str, &str)] = &[];
 
 /// As crates que pintam campos fora do [`ESCOPO`] (plano 35 §10, bloco 2).
 const DIVIDA_CRATE: &[(&str, Classe, &str)] = &[
-    ("ph2d-panel-audio-editor", Divida, "Áudio"),
-    ("ph2d-panel-audio-mixer", Divida, "Áudio"),
-    ("ph2d-panel-flip", Divida, "a camada do Flip (§A.8)"),
+    (
+        "ph2d-panel-audio-editor",
+        NaoAnimavel,
+        "edita o ASSET de som (cortes, o rack que o Apply coze no ficheiro, loop, variações, \
+         entrega), não a cena; o som na cena é o componente Áudio do objecto",
+    ),
+    (
+        "ph2d-panel-audio-mixer",
+        NaoAnimavel,
+        "a mesa de MONITORIZAÇÃO da sessão: o estado mora no painel (thread-local) e não viaja no \
+         projecto; o motor lê-o do painel, não do mundo — sem documento, não há o que animar",
+    ),
     (
         "ph2d-panel-painter-layers",
         Divida,
         "as camadas e ajustes do Painter (§A.7)",
     ),
-    ("ph2d-panel-physics", Divida, "a Física (§A.5)"),
+    (
+        "ph2d-panel-physics",
+        NaoAnimavel,
+        "o MUNDO da simulação (afinação do solver, gravidade e arrasto por omissão, matriz de \
+         camadas), as ferramentas de interacção e de junta e o debug: configuração e ferramenta, \
+         não objecto; o que um corpo faz no tempo (a escala de gravidade incluída) é a §11 do \
+         Inspector, canal FISICA",
+    ),
     (
         "ph2d-panel-bgremoval",
         NaoAnimavel,
@@ -839,7 +1079,11 @@ fn sem_coluna() -> Vec<(String, String, &'static str, bool)> {
             }
             for (funcao, corpo) in funcoes(&s) {
                 let coluna = COLUNA.iter().any(|c| corpo.contains(c));
-                let icone = corpo.contains("paint_icon_button(") || corpo.contains(".icon(");
+                // O ícone pintado direto, pela porta do painel (`.icon(`) ou por um helper do card
+                // (`.filter_icon(`).
+                let icone = ["paint_icon_button(", ".icon(", ".filter_icon("]
+                    .iter()
+                    .any(|p| corpo.contains(p));
                 for p in SEM_COLUNA {
                     let olho = p.contains("Eye") || p.starts_with("eye_");
                     if corpo.contains(p) && (!olho || icone) {
@@ -869,13 +1113,15 @@ fn todo_campo_sem_coluna_propria_ganha_a_do_losango() {
          `dropdown_row`) ou pinte o decorator na função:\n  {}",
         sem.join("\n  ")
     );
-    // Controlo do leitor: os cinco sítios conhecidos são achados.
+    // Controlo do leitor: os sítios conhecidos são achados.
     for (func, p) in [
         ("checkbox_row", "paint_checkbox("),
         ("dropdown_row", "paint_dropdown_chip("),
         ("fill_type_section", "paint_segmented_group_adaptive("),
         ("layer_row", "eye_icon("),
         ("effect_header", "IconId::Eye"),
+        ("filter_header", "IconId::Eye"),
+        ("paint_blend_chip", "paint_dropdown_chip("),
     ] {
         assert!(
             todos.iter().any(|(_, f, q, _)| f == func && *q == p),
@@ -898,6 +1144,14 @@ fn a_varredura_acha_os_campos_que_se_conhecem() {
         "VECTOR_OBJ_OPACITY_NUM",
         "INSP_TRANSFORM_POS_X",
         "INSP_SPRITE_OPACITY",
+        "INSP_TRANSFORM_SKEW_X",
+        "INSP_SPRITE_EMISSIVE",
+        "INSP_SPRITE_TINT_SWATCH",
+        "INSP_SPRITE_TINT_FILL",
+        "INSP_JOINT_MOTOR",
+        "INSP_JOINT_MOTOR_AXIS",
+        "INSP_JOINT_BREAK_FORCE",
+        "INSP_JOINT_AXIS_MODE",
         "VECTOR_OBJ_BLEND",
         "VECTOR_PAINT_BLEND",
         "VECTOR_STROKE_PRESENT",
@@ -905,6 +1159,24 @@ fn a_varredura_acha_os_campos_que_se_conhecem() {
         "VECTOR_BAR_KIND",
         "TexPatKnob::Angle",
         "TexPatKnob::Lock",
+        "TexPatKnob::Offset",
+        "VECTOR_BRUSH_FLIP",
+        "VECTOR_TEXT_WRAP_AUTO",
+        "VECTOR_TEXT_FONT_DD",
+        "VECTOR_BAR_PROFILE",
+        "VECTOR_ENVELOPE_BEND",
+        "VECTOR_ANCHOR_H_START",
+        "VECTOR_FRAME_CLIP_ON",
+        "VECTOR_LAYOUT_DIR_ROW",
+        "VECTOR_WIDGET_ICON_DD",
+        "VECTOR_PATTERNPATH_SPACING",
+        "VECTOR_TEXTPATH_OFFSET",
+        "FLIP_SIZE",
+        "FLIP_COLORIZE_SWATCH",
+        "INSP_PHYS_KIND",
+        "INSP_PHYS_FORCE_AXES",
+        "INSP_PHYS_ONEWAY",
+        "INSP_PHYS_DENSITY",
     ] {
         assert!(
             tem(id),

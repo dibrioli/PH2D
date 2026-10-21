@@ -36,74 +36,9 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
     // construção — o painter só as pinta num corpo (peça não tem efetor).
     if let WidgetEvent::ValueChanged(id) = ev
         && let Some(info) = state::current_inspector_physics()
-        && info.has_collider
     {
         let v = host.store().number_value(id).unwrap_or(0.0) as f32;
-        let edit = match id {
-            crate::ids::INSP_PHYS_RADIUS => Some(PhysicsFieldEdit::Radius(v)),
-            crate::ids::INSP_PHYS_HALF_X => Some(PhysicsFieldEdit::HalfX(v)),
-            crate::ids::INSP_PHYS_HALF_Y => Some(PhysicsFieldEdit::HalfY(v)),
-            crate::ids::INSP_PHYS_CAP_HALF_H => Some(PhysicsFieldEdit::CapHalfHeight(v)),
-            // Collider offset — a collider property, honoured for any body (not
-            // Dynamic-gated like velocity/gravity).
-            crate::ids::INSP_PHYS_OFFSET_X => Some(PhysicsFieldEdit::OffsetX(v)),
-            crate::ids::INSP_PHYS_WALK_GRIP => Some(PhysicsFieldEdit::WalkGrip(v)),
-            crate::ids::INSP_PHYS_WALK_BELT => Some(PhysicsFieldEdit::WalkBelt(v)),
-            crate::ids::INSP_PHYS_OFFSET_Y => Some(PhysicsFieldEdit::OffsetY(v)),
-            crate::ids::INSP_PHYS_DENSITY => Some(PhysicsFieldEdit::Density(v)),
-            // The explicit Mass row (Manual mode) — gated on `mass_is_read`, the
-            // SAME question the painter asks (a kinematic player's mass is read by
-            // the 3rd law; see `InspectorPhysicsInfo::mass_is_read`). The row is
-            // only painted in Manual mode, so this cannot fire otherwise, but a
-            // refusal in the paint loop is not one.
-            crate::ids::INSP_PHYS_MASS if info.mass_is_read => Some(PhysicsFieldEdit::Mass(v)),
-            crate::ids::INSP_PHYS_RESTITUTION => Some(PhysicsFieldEdit::Restitution(v)),
-            crate::ids::INSP_PHYS_FRICTION => Some(PhysicsFieldEdit::Friction(v)),
-            // Honoured only for a Dynamic body — the same gate the painter
-            // offers it under (rapier applies gravity to Dynamic bodies only).
-            // The row is not painted for other kinds, so this cannot fire for
-            // them, but a refusal that lives in the paint loop is not a refusal.
-            crate::ids::INSP_PHYS_GRAVITY_SCALE if info.kind_tag == 0 => {
-                Some(PhysicsFieldEdit::GravityScale(v))
-            }
-            // Initial velocity (W9), Dynamic-only like gravity. Angular is
-            // displayed in deg/s and converted to the component's radians here.
-            crate::ids::INSP_PHYS_LINVEL_X if info.kind_tag == 0 => {
-                Some(PhysicsFieldEdit::LinvelX(v))
-            }
-            crate::ids::INSP_PHYS_LINVEL_Y if info.kind_tag == 0 => {
-                Some(PhysicsFieldEdit::LinvelY(v))
-            }
-            crate::ids::INSP_PHYS_ANGVEL if info.kind_tag == 0 => {
-                Some(PhysicsFieldEdit::Angvel(v.to_radians()))
-            }
-            // Dominance (W-Dominance), Dynamic-only like gravity/velocity. The widget
-            // is a float; dominance is an i8 priority, so round and clamp to i8 range
-            // at the panel boundary (the shell's edit and the component stay i8).
-            crate::ids::INSP_PHYS_DOMINANCE if info.kind_tag == 0 => {
-                // `safe_clamp` (NaN-aware) rather than `f32::clamp`: the bounds are
-                // `i8::MIN/MAX` cast to f32 — dynamic values, not literal constants,
-                // so `arch_safe_clamp_only` requires the safe variant.
-                let clamped = ph2d_editor_core::math::safe_clamp(
-                    v.round(),
-                    f32::from(i8::MIN),
-                    f32::from(i8::MAX),
-                );
-                Some(PhysicsFieldEdit::Dominance(clamped as i8))
-            }
-            // Per-body damping (W-Damping), Dynamic-only like gravity/velocity.
-            crate::ids::INSP_PHYS_LINEAR_DAMPING if info.kind_tag == 0 => {
-                Some(PhysicsFieldEdit::LinearDamping(v))
-            }
-            crate::ids::INSP_PHYS_ANGULAR_DAMPING if info.kind_tag == 0 => {
-                Some(PhysicsFieldEdit::AngularDamping(v))
-            }
-            // As sete rows da ZONA — o que esta ÁREA faz a OUTROS corpos, extraídas para
-            // um irmão pelo cap de 200 LOC desta fn (o mesmo corte que separou
-            // `components/area.rs` e `inspector_physics_area.rs`).
-            other => area_edit(other, v, info.clone()),
-        };
-        if let Some(edit) = edit {
+        if let Some(edit) = value_edit(id, v, &info) {
             host.bus_mut().push(EditorAction::InspectorPhysicsEdit {
                 entity_bits: info.entity_bits,
                 edit,
@@ -112,6 +47,99 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
         }
     }
     false
+}
+
+/// ⭐ **A edição que o controlo `id` da §11 emite** — o clique (`valor = None`) ou o número
+/// digitado (`Some`, na unidade do PAINEL). A porta única das duas metades do evento, e a que o
+/// canal FISICA usa para escrever pelo mesmo funil (`ph2d_app_physics::canais_corpo`).
+#[must_use]
+pub fn physics_edit_for(
+    id: ph2d_editor_core::NodeId,
+    valor: Option<f32>,
+    info: &InspectorPhysicsInfo,
+) -> Option<PhysicsFieldEdit> {
+    match valor {
+        None => click_edit(id, info.clone()),
+        Some(v) => value_edit(id, v, info),
+    }
+}
+
+/// **Que NÚMERO foi digitado** — a metade contínua da §11.
+fn value_edit(
+    id: ph2d_editor_core::NodeId,
+    v: f32,
+    info: &InspectorPhysicsInfo,
+) -> Option<PhysicsFieldEdit> {
+    if !info.has_collider {
+        return None;
+    }
+    // As medidas só da forma que o painel mostra (`paint_shape_dims`): o `Radius` numa caixa a
+    // TROCARIA por uma bola (o funil converte), e o canal escreve por aqui.
+    let (bola, caixa, capsula) = (
+        info.shape_tag == 0,
+        info.shape_tag == 1,
+        info.shape_tag == 2,
+    );
+    match id {
+        crate::ids::INSP_PHYS_RADIUS if bola || capsula => Some(PhysicsFieldEdit::Radius(v)),
+        crate::ids::INSP_PHYS_HALF_X if caixa => Some(PhysicsFieldEdit::HalfX(v)),
+        crate::ids::INSP_PHYS_HALF_Y if caixa => Some(PhysicsFieldEdit::HalfY(v)),
+        crate::ids::INSP_PHYS_CAP_HALF_H if capsula => Some(PhysicsFieldEdit::CapHalfHeight(v)),
+        // Collider offset — a collider property, honoured for any body (not
+        // Dynamic-gated like velocity/gravity).
+        crate::ids::INSP_PHYS_OFFSET_X => Some(PhysicsFieldEdit::OffsetX(v)),
+        crate::ids::INSP_PHYS_WALK_GRIP => Some(PhysicsFieldEdit::WalkGrip(v)),
+        crate::ids::INSP_PHYS_WALK_BELT => Some(PhysicsFieldEdit::WalkBelt(v)),
+        crate::ids::INSP_PHYS_OFFSET_Y => Some(PhysicsFieldEdit::OffsetY(v)),
+        crate::ids::INSP_PHYS_DENSITY => Some(PhysicsFieldEdit::Density(v)),
+        // The explicit Mass row (Manual mode) — gated on `mass_is_read`, the
+        // SAME question the painter asks (a kinematic player's mass is read by
+        // the 3rd law; see `InspectorPhysicsInfo::mass_is_read`). The row is
+        // only painted in Manual mode, so this cannot fire otherwise, but a
+        // refusal in the paint loop is not one.
+        crate::ids::INSP_PHYS_MASS if info.mass_is_read => Some(PhysicsFieldEdit::Mass(v)),
+        crate::ids::INSP_PHYS_RESTITUTION => Some(PhysicsFieldEdit::Restitution(v)),
+        crate::ids::INSP_PHYS_FRICTION => Some(PhysicsFieldEdit::Friction(v)),
+        // Honoured only for a Dynamic body — the same gate the painter
+        // offers it under (rapier applies gravity to Dynamic bodies only).
+        // The row is not painted for other kinds, so this cannot fire for
+        // them, but a refusal that lives in the paint loop is not a refusal.
+        crate::ids::INSP_PHYS_GRAVITY_SCALE if info.kind_tag == 0 => {
+            Some(PhysicsFieldEdit::GravityScale(v))
+        }
+        // Initial velocity (W9), Dynamic-only like gravity. Angular is
+        // displayed in deg/s and converted to the component's radians here.
+        crate::ids::INSP_PHYS_LINVEL_X if info.kind_tag == 0 => Some(PhysicsFieldEdit::LinvelX(v)),
+        crate::ids::INSP_PHYS_LINVEL_Y if info.kind_tag == 0 => Some(PhysicsFieldEdit::LinvelY(v)),
+        crate::ids::INSP_PHYS_ANGVEL if info.kind_tag == 0 => {
+            Some(PhysicsFieldEdit::Angvel(v.to_radians()))
+        }
+        // Dominance (W-Dominance), Dynamic-only like gravity/velocity. The widget
+        // is a float; dominance is an i8 priority, so round and clamp to i8 range
+        // at the panel boundary (the shell's edit and the component stay i8).
+        crate::ids::INSP_PHYS_DOMINANCE if info.kind_tag == 0 => {
+            // `safe_clamp` (NaN-aware) rather than `f32::clamp`: the bounds are
+            // `i8::MIN/MAX` cast to f32 — dynamic values, not literal constants,
+            // so `arch_safe_clamp_only` requires the safe variant.
+            let clamped = ph2d_editor_core::math::safe_clamp(
+                v.round(),
+                f32::from(i8::MIN),
+                f32::from(i8::MAX),
+            );
+            Some(PhysicsFieldEdit::Dominance(clamped as i8))
+        }
+        // Per-body damping (W-Damping), Dynamic-only like gravity/velocity.
+        crate::ids::INSP_PHYS_LINEAR_DAMPING if info.kind_tag == 0 => {
+            Some(PhysicsFieldEdit::LinearDamping(v))
+        }
+        crate::ids::INSP_PHYS_ANGULAR_DAMPING if info.kind_tag == 0 => {
+            Some(PhysicsFieldEdit::AngularDamping(v))
+        }
+        // As sete rows da ZONA — o que esta ÁREA faz a OUTROS corpos, extraídas para
+        // um irmão pelo cap de 200 LOC desta fn (o mesmo corte que separou
+        // `components/area.rs` e `inspector_physics_area.rs`).
+        other => area_edit(other, v, info.clone()),
+    }
 }
 
 /// **Que CONTROLE foi apertado** — a metade discreta da §11 (chips e botoes).

@@ -266,18 +266,7 @@ fn paint_layer_block(
     // ── Line 1: eye | lock | name (row-select) | ↑ ↓ ──
     let icon_w = m.row_h;
     let gap = Spacing::Xs.px();
-    let eye_id = ids::flip_layer_widget_id(row.id, FlipLayerWidget::Visibility);
-    icon_button(
-        ctx,
-        theme,
-        eye_id,
-        if row.visible {
-            IconId::Eye
-        } else {
-            IconId::EyeClosed
-        },
-        Rect::new(m.inner_x + gap, y, icon_w, m.row_h),
-    );
+    let line_w = paint_eye(ctx, theme, m, row, y);
     let lock_id = ids::flip_layer_widget_id(row.id, FlipLayerWidget::Lock);
     icon_button(
         ctx,
@@ -291,10 +280,10 @@ fn paint_layer_block(
         Rect::new(m.inner_x + gap + icon_w + gap, y, icon_w, m.row_h),
     );
 
-    // Reorder arrows on the right (disabled = dim + not hit-registered).
+    // Reorder arrows on the right (disabled = dim + not hit-registered), before the decorator.
     let up_id = ids::flip_layer_widget_id(row.id, FlipLayerWidget::MoveUp);
     let down_id = ids::flip_layer_widget_id(row.id, FlipLayerWidget::MoveDown);
-    let down_x = m.inner_x + m.inner_w - icon_w;
+    let down_x = m.inner_x + gap + line_w - icon_w;
     let up_x = down_x - icon_w - gap;
     reorder_arrow(
         ctx,
@@ -406,6 +395,44 @@ fn paint_layer_block(
     );
     y += m.row_gap;
     y
+}
+
+/// O OLHO da camada e, na coluna do decorator, o losango dele (a visibilidade é canal, plano 35
+/// §A.8) — na mesma coluna dos sliders da camada (o mesmo rect, `inner ± gap`); o cadeado é trava
+/// de edição e não tem canal (§8). Devolve a largura da linha antes da coluna.
+fn paint_eye(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    m: &LayerMetrics,
+    row: &FlipLayerRow,
+    y: f32,
+) -> f32 {
+    let gap = Spacing::Xs.px();
+    let eye_id = ids::flip_layer_widget_id(row.id, FlipLayerWidget::Visibility);
+    let icon = if row.visible {
+        IconId::Eye
+    } else {
+        IconId::EyeClosed
+    };
+    icon_button(
+        ctx,
+        theme,
+        eye_id,
+        icon,
+        Rect::new(m.inner_x + gap, y, m.row_h, m.row_h),
+    );
+    let (line_w, dot) = ph2d_editor_core::widget::form_row_columns(
+        m.inner_x + gap,
+        m.inner_w - gap * 2.0,
+        y,
+        m.row_h,
+    );
+    if let Some(alvo) =
+        ph2d_editor_core::widget::key_mark::paint_decorator_for(ctx.scene, theme, dot, &[eye_id])
+    {
+        ctx.host.hit_index_mut().register(alvo, dot);
+    }
+    line_w
 }
 
 /// A linha CANÔNICA de um valor `0..1` mostrado como `%` — label + track + chip

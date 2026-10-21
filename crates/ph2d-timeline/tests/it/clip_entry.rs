@@ -13,6 +13,7 @@ fn s(t: f64) -> RationalTime {
 
 fn sem_o_que_a_v20_acrescentou(mut v: serde_json::Value) -> serde_json::Value {
     v.as_object_mut().unwrap().remove("version");
+    v.as_object_mut().unwrap().remove("textos"); // v22
     for c in v["clips"].as_array_mut().unwrap() {
         c.as_object_mut().unwrap().remove("autoplay");
     }

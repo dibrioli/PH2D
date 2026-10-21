@@ -153,8 +153,10 @@ fn schema_version_is_nineteen() {
     // v21 = o canal de QUALQUER propriedade (`PropKind::Field`, plano 35 da UI/UX): variante
     //      APENDADA, então um v20 é um v21 sem campos e só re-carimba (`doc_v20.rs`, provado
     //      contra a fixtura em `canal_field.rs`).
-    assert_eq!(DOC_VERSION, 21);
-    assert_eq!(TimelineDoc::new().version, 21);
+    // v22 = a tabela dos TEXTOS (`TimelineDoc.textos`, apendada): o ficheiro leva os textos que as
+    //      chaves de texto indexam (`doc_v21.rs`, provado contra a fixtura em `canal_textos.rs`).
+    assert_eq!(DOC_VERSION, 22);
+    assert_eq!(TimelineDoc::new().version, 22);
 }
 
 /// **Both loops survive the trip, and independently.** A clip whose Arrange loop and

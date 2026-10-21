@@ -104,4 +104,8 @@ pub struct PhysicsState {
     /// conseguir — e sem esta trava a segunda tentativa montaria a cena outra vez
     /// por cima da primeira.
     pub smoke_done: bool,
+
+    /// ⭐ O que a curva move nos corpos é pré-visualização (plano 35 §A.5): o autorado de cada
+    /// campo conduzido, que o undo e o save fotografam (`canais_corpo::ConducaoFisica`).
+    pub conducao: crate::canais_corpo::ConducaoFisica,
 }

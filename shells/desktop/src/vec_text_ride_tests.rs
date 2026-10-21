@@ -584,3 +584,6 @@ fn link_explicit_refuses_bad_pairs() {
     assert!(f.sim.world().get::<VecTextPath>(f.text_entity()).is_none());
     assert!(f.sim.world().get::<VecTextPath>(ge).is_none());
 }
+
+#[path = "vec_text_ride_curva_tests.rs"]
+mod curva;

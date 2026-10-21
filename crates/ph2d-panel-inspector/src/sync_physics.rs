@@ -7,23 +7,27 @@
 //! que ela possui, em vez de empurrar o orquestrador compartilhado do Inspector
 //! contra o teto a cada wave.
 //!
-//! ⚠️ **Os três rodam sob o guarda `entity_changed`** do chamador: um re-seed por
-//! frame brigaria com a digitação do artista, sobrescrevendo o buffer no meio da
-//! edição.
+//! ⚠️ **O corpo, a roda e o player rodam sob o guarda `entity_changed`** do chamador; a
+//! JUNTA corre a cada quadro com o guarda de foco/arrasto (ver [`sync_joint_fields`]).
 
 use crate::state;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::widget::TextInputState;
 
-/// §12 Physics Joint — mirror the snapshot into the number boxes, exactly as
-/// the body's dimensions are mirrored below. Only the numbers: the three
-/// segmented groups read their selection straight off the snapshot at paint
-/// time, so there is nothing in the store for them to fall out of date with.
+/// §12 Physics Joint — espelha o snapshot nas caixas **a cada quadro**, saltando a caixa em
+/// foco ou em arrasto (o dedo do artista): o idioma das linhas do Transform (`write_transform_rows`).
+/// Os grupos segmentados lêem o snapshot ao pintar e não têm o que espelhar.
+///
+/// ⛔ Corria só na troca de SELECÇÃO: com a mola seleccionada e a timeline a escrever o documento
+/// (Auto Key, F25) o painel mostrava 200/5 sobre uma mola que valia 110/2,75. O `Rope Length` da
+/// polia, que a ponte re-deriva, tinha uma cópia própria deste laço só por isso — agora é este.
 pub(crate) fn sync_joint_fields(host: &mut dyn PanelHostInternal) {
     let Some(info) = state::current_inspector_joint() else {
         return;
     };
+    let focus = host.store().focus_id();
+    let drag = host.store().number_input_drag().map(|d| d.id);
     for (id, v) in [
         (crate::ids::INSP_JOINT_LIMIT_MIN, info.limit_min_ui),
         (crate::ids::INSP_JOINT_LIMIT_MAX, info.limit_max_ui),
@@ -50,7 +54,9 @@ pub(crate) fn sync_joint_fields(host: &mut dyn PanelHostInternal) {
         (crate::ids::INSP_JOINT_AXIS_MIN[2], info.axis_min_ui[2]),
         (crate::ids::INSP_JOINT_AXIS_MAX[2], info.axis_max_ui[2]),
     ] {
-        host.store_mut().set_number_value(id, f64::from(v));
+        if focus != Some(id) && drag != Some(id) {
+            host.store_mut().set_number_value(id, f64::from(v));
+        }
     }
 }
 
@@ -243,39 +249,4 @@ pub(crate) fn sync_player_fields(host: &mut dyn PanelHostInternal) {
     ] {
         host.store_mut().set_number_value(id, f64::from(v));
     }
-}
-
-/// **O `Rope Length` de uma POLIA é DERIVADO, então a row tem de acompanhar.**
-///
-/// Enio (2026-07-29): *"diferente das outras joints que mostram o tamanho real da
-/// corda, essa junta não mostra"*.
-///
-/// O `L0` de uma polia não é digitado: a ponte o SEMEIA da rota que as roldanas
-/// desenham (`!joint.anchored`), e agora também o re-deriva a cada vez que o
-/// artista dimensiona uma roldana. Os irmãos rodam sob `entity_changed` — o
-/// contrato certo para um número que só o artista muda —, e é exactamente esse
-/// contrato que um número **derivado pelo produto** quebra: a entidade não muda,
-/// então a caixa guarda o valor de antes da derivação e mostra 1,00 sobre uma
-/// corda de 11,96 m.
-///
-/// ⚠️ **O guard é o FOCO, e ele é load-bearing:** enquanto a caixa está focada o
-/// buffer tem uma edição parcial que o componente ainda não viu, e re-empurrar
-/// ali apagaria o que o artista está digitando. Fora do foco, um re-push com o
-/// MESMO valor é no-op — então isto não briga com o stepper: uma vez autorado,
-/// `anchored` fica `true`, o `info` devolve o número do artista e o push repete o
-/// que já está lá.
-pub(crate) fn sync_derived_rope_length(host: &mut dyn PanelHostInternal) {
-    let Some(info) = state::current_inspector_joint() else {
-        return;
-    };
-    if info.kind_tag != crate::sections::joint::KIND_PULLEY {
-        return;
-    }
-    if host.store().focus_id() == Some(crate::ids::INSP_JOINT_MAX_LENGTH) {
-        return;
-    }
-    host.store_mut().set_number_value(
-        crate::ids::INSP_JOINT_MAX_LENGTH,
-        f64::from(info.max_length),
-    );
 }

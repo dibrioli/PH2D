@@ -15,6 +15,7 @@ impl crate::App {
             toasts,
             hero_screen,
             vec_scene,
+            flip,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -46,9 +47,15 @@ impl crate::App {
                 .filter(|b| matches!(b.prop, ph2d_timeline::PropKind::Field(_)))
                 .map(|b| b.entity),
         );
+        // O desenho Flip em edição: o painel mostra as camadas dele, selecionado ou não.
+        publicar.extend(ph2d_app_flip::marcas_camada::alvo(&self.flip_state, flip).map(|a| a.0));
         publicar.sort_unstable();
         publicar.dedup();
         ph2d_app_vec::canais::publicar(sim, vec_scene, &publicar);
+        ph2d_app_components::canais_objeto::publicar(sim, &publicar);
+        ph2d_app_physics::canais_junta::publicar(sim, &publicar);
+        ph2d_app_physics::canais_corpo::publicar(sim, &publicar);
+        ph2d_app_flip::canais_camada::publicar(sim, flip, &publicar);
         autokey_pass::run(
             &mut self.timeline,
             autokey_clock,
@@ -80,6 +87,7 @@ impl crate::App {
         };
         let ctx = ph2d_app_vec::marcas::Contexto::do_painel();
         let tl = &self.timeline.doc;
+        let camada = ph2d_app_flip::marcas_camada::alvo(&self.flip_state, flip);
         if let Some(c) = ph2d_editor_core::widget::key_mark::take_key_mark_click() {
             let lidos = |e| {
                 autokey_pass::campos_lidos(sim, e)
@@ -93,7 +101,14 @@ impl crate::App {
                 ph2d_app_vec::marcas::clique(tl, ctx, &c.fields, &sel, inst, lidos, valor, k);
             if intents.is_empty() {
                 intents = ph2d_app_components::marcas_inspector::clique(
-                    tl, &c.fields, &sel, inst, valor, k,
+                    tl, &c.fields, &sel, inst, lidos, valor, k,
+                );
+            }
+            if intents.is_empty()
+                && let Some((e, obj)) = camada
+            {
+                intents = ph2d_app_flip::marcas_camada::clique(
+                    tl, &c.fields, e, obj, inst, lidos, valor, k,
                 );
             }
             self.timeline_intents.extend(intents);
@@ -102,6 +117,11 @@ impl crate::App {
         marcas.extend(ph2d_app_components::marcas_inspector::marcas(
             tl, &sel, inst, valor,
         ));
+        if let Some((e, obj)) = camada {
+            marcas.extend(ph2d_app_flip::marcas_camada::marcas(
+                tl, e, obj, inst, valor,
+            ));
+        }
         ph2d_editor_core::widget::key_mark::set_key_marks(marcas);
     }
 }

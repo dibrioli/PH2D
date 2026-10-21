@@ -29,18 +29,30 @@ use ph2d_editor_core::widget::{SCROLLBAR_W, VECTOR_SCROLLBAR_ID, number_input_mi
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 
-/// Escreve a semente `[size, weight, line_height, tracking]` nos sliders de texto (+
-/// seus chips). Só quando a shell publica uma (o alvo do painel mudou) — fora isso o
-/// store é a fonte da verdade e o arrasto do slider manda.
+/// Escreve o texto-alvo `[size, weight, line_height, tracking]` + a largura de quebra (Fixed) nos
+/// sliders de texto e nos chips, **a cada quadro** que a shell o publica, saltando a fileira sob o
+/// dedo (pista ou chip activos, em foco, em arrasto ou com a setinha premida).
+///
+/// ⛔ Era uma semente da troca de ALVO e sem a largura: o *Wrap width* mostrava o `12` de fábrica
+/// sobre um texto que quebrava a `2,2`, e com a timeline a escrever o documento (Auto Key, F25) os
+/// quatro ficavam no valor da selecção. O idioma é o dos campos irmãos ([`seed_number_fields`]).
 fn seed_text_sliders(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     use ph2d_editor_core::interaction::InteractiveState;
     use ph2d_tool_vector::params::{
         text_line_height_to_slider, text_size_to_slider, text_tracking_to_slider,
-        text_weight_to_slider,
+        text_weight_to_slider, text_wrap_to_slider,
     };
     let Some([size, weight, lh, tr]) = state::take_text_seed() else {
         return;
     };
+    let wrap = state::current_text_wrap().map(|w| {
+        (
+            crate::ids::VECTOR_TEXT_WRAP_W,
+            ids::VECTOR_TEXT_WRAP_W_NUM,
+            text_wrap_to_slider(w),
+            w,
+        )
+    });
     let rows = [
         (
             crate::ids::VECTOR_TEXT_SIZE,
@@ -67,7 +79,17 @@ fn seed_text_sliders(store: &mut ph2d_editor_core::interaction::WidgetStore) {
             tr,
         ),
     ];
-    for (slider, chip, track, val) in rows {
+    let focus = store.focus_id();
+    let active = store.active_id();
+    let drag = store.number_input_drag().map(|d| d.id);
+    let hold = store.number_stepper_hold().map(|h| h.id);
+    for (slider, chip, track, val) in rows.into_iter().chain(wrap) {
+        let sob_o_dedo = [focus, active, drag, hold]
+            .into_iter()
+            .any(|f| f == Some(slider) || f == Some(chip));
+        if sob_o_dedo {
+            continue;
+        }
         if let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider) {
             *value = track;
         }
@@ -286,9 +308,8 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
             store.set_number_value(id, value);
         }
     }
-    // Semente ONE-SHOT dos sliders de texto — publicada quando o ALVO muda (sessão nova /
-    // outro objeto de texto selecionado). Depois o store é a fonte, senão o seed brigaria
-    // com o arrasto do slider.
+    // Os sliders de texto seguem o ALVO (a sessão viva ou o texto seleccionado) a cada quadro,
+    // menos a fileira sob o dedo.
     seed_text_sliders(store);
     // A faixa REAL de cada parâmetro de efeito — sem isto o chip mostra o track `0..1`
     // durante o arrasto e o valor do documento só depois de largar (Enio, 2026-07-18).

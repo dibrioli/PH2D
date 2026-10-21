@@ -84,6 +84,7 @@ pub(super) fn ler_padrao(pt: &ph2d_vec_scene::PatternFill, off: u16) -> Option<f
         ),
         o if o == c::OFF_PADRAO_MODOS => Some(pos(&LADRILHOS, &pt.kind)),
         o if o == c::OFF_PADRAO_MODOS + 1 => Some(pos(&MODOS, &pt.mode)),
+        c::OFF_PADRAO_DESFASE => Some(f32::from(pt.offset_denom)),
         _ => None,
     }
 }
@@ -210,6 +211,32 @@ pub(super) fn escrever_padrao(pt: &mut ph2d_vec_scene::PatternFill, off: u16, v:
         },
         o if o == c::OFF_PADRAO_MODOS => pt.kind = LADRILHOS[indice(v, LADRILHOS.len())],
         o if o == c::OFF_PADRAO_MODOS + 1 => pt.mode = MODOS[indice(v, MODOS.len())],
+        // O domínio do painel (`TexPatCmd::OffsetDenom`): `1..=255`.
+        c::OFF_PADRAO_DESFASE => pt.offset_denom = byte(v).max(1),
+        _ => {}
+    }
+}
+
+/// O pincel do traço (`StrokePaint::Brush`) — o `art` é um verbo (escolher a forma), não canal.
+pub(super) fn ler_pincel(b: &ph2d_vec_scene::BrushStroke, campo: u16) -> Option<f32> {
+    Some(match campo {
+        c::PINCEL_ESPACO => f(b.spacing),
+        c::PINCEL_DESLOCA => f(b.offset),
+        c::PINCEL_ROTACAO => f(b.rotation_deg),
+        c::PINCEL_ESCALA => f(b.scale),
+        c::PINCEL_ESPELHO => f32::from(u8::from(b.flip)),
+        _ => return None,
+    })
+}
+
+pub(super) fn escrever_pincel(b: &mut ph2d_vec_scene::BrushStroke, campo: u16, v: f32) {
+    let d = f64::from(v);
+    match campo {
+        c::PINCEL_ESPACO => b.spacing = d,
+        c::PINCEL_DESLOCA => b.offset = d,
+        c::PINCEL_ROTACAO => b.rotation_deg = d,
+        c::PINCEL_ESCALA => b.scale = d,
+        c::PINCEL_ESPELHO => b.flip = v >= 0.5,
         _ => {}
     }
 }

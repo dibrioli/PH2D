@@ -371,3 +371,39 @@ fn a_filled_and_stroked_shape_keeps_its_middle() {
         "a camada de baixo não é o miolo sem traço"
     );
 }
+
+/// O espelho dos sliders pergunta `store_shows`: falso enquanto os knobs mostram outro perfil
+/// (a curva mudou o documento), verdadeiro EXACTO depois de o escrever — sem ping-pong.
+#[test]
+fn os_sliders_mostram_o_perfil_depois_de_escrito_e_so_entao() {
+    let mut store = ph2d_editor_core::WidgetStore::default();
+    for id in SLIDERS {
+        store.register(
+            id,
+            ph2d_editor_core::interaction::InteractiveState::Slider {
+                state: ph2d_editor_core::widget::SliderState::Normal,
+                value: 0.0,
+                orientation: ph2d_editor_core::widget::SliderOrientation::Horizontal,
+            },
+        );
+    }
+    let taper = ph2d_vec_scene::WIDTH_PRESETS
+        .iter()
+        .map(|p| p.profile)
+        .find(|p| *p != WidthProfile::UNIFORM)
+        .expect("um perfil não-uniforme no catálogo");
+    assert!(
+        !store_shows(&store, &taper),
+        "knobs no zero não mostram o Taper"
+    );
+    write_preset_to_store(&mut store, &taper);
+    assert!(store_shows(&store, &taper));
+    let outro = WidthProfile {
+        mid: taper.mid * 0.5,
+        ..taper
+    };
+    assert!(
+        !store_shows(&store, &outro),
+        "a curva mudou o meio: os knobs têm de seguir"
+    );
+}

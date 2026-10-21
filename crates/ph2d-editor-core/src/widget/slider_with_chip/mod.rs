@@ -56,16 +56,39 @@ pub fn default_chip_w() -> f32 {
     crate::widget::number_input::min_w_px()
 }
 
+/// **O número que o chip de uma linha mostra para a pista `track`** — pela LIGAÇÃO do par
+/// ([`WidgetStore::linked_chip_display`]), arredondado se a ligação é inteira; sem ligação, a pista.
+///
+/// ⛔ Era `track as f64`: certo só na ligação identidade. Num par mapeado o chip mostrava a POSIÇÃO
+/// da pista — a Emissão `0,4` lida `0,006`, a Opacidade `100 %` lida `1` — e, focado, o número
+/// verdadeiro: duas leituras do mesmo campo.
+#[must_use]
+pub fn slider_chip_value(
+    store: &WidgetStore,
+    slider_id: NodeId,
+    chip_id: NodeId,
+    track: f32,
+) -> f64 {
+    if store.linked_number(slider_id) != Some(chip_id) {
+        return f64::from(track);
+    }
+    let shown = f64::from(store.linked_chip_display(chip_id, track));
+    if store.linked_slider_snap_integer(chip_id) {
+        shown.round()
+    } else {
+        shown
+    }
+}
+
 /// Paint a label + slider track + numeric chip composite using the
 /// canonical layout. Both `slider_id` and `chip_id` register in the
 /// hit index so the dispatch can route drag (slider) and click /
 /// type (chip) separately.
 ///
-/// `value` is the slider value in `[0..1]`; the chip displays the
-/// same value formatted via [`crate::interaction::format_number`].
-/// For displays that diverge from the slider's normalised value
-/// (e.g. Inspector fields that show "160" for a slider at 0.62),
-/// use [`paint_slider_with_chip_layout`] and pass `chip_value` /
+/// `value` is the slider value in `[0..1]`; the chip displays it through
+/// the pair's LINK ([`slider_chip_value`]) — the same number the chip holds.
+/// For displays the link does not express, use
+/// [`paint_slider_with_chip_layout`] and pass `chip_value` /
 /// `display_override` separately.
 /// Returns the total vertical extent used: `rect.h` in the normal
 /// (one-row) layout, or taller when the panel is narrow and the label
@@ -90,7 +113,7 @@ pub fn paint_slider_with_chip(
         rect,
         label,
         value,
-        value as f64,
+        slider_chip_value(store, slider_id, chip_id, value),
         None,
         slider_id,
         chip_id,

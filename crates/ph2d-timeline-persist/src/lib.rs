@@ -47,7 +47,7 @@
 //! contrário no comentário. Um 2º formato para o mesmo dado é a coisa que o `project.rs` existe
 //! para não ser.
 
-use ph2d_ecs::{Entity, Name, StableId, World};
+use ph2d_ecs::{Entity, Name, StableId, TextosDosCanais, World};
 
 mod animation;
 pub use animation::{copy_animations, follow_selection, publish_animation_header};
@@ -122,6 +122,9 @@ fn wire_of(world: &World, entity_bits: u64) -> WireId {
 /// function does not own one. Healing is not counted back: its oracle is the
 /// bindings themselves (`entity` bits + `!missing`).
 pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
+    // ⭐ Antes de tudo: um documento vindo do ficheiro (ou que o undo devolveu ainda pendente) traz
+    // a tabela de textos dele — passa à da sessão antes que alguém leia um índice dela.
+    adota_textos(timeline, world);
     // ⚠️ **Incondicional, e é o que torna esta função auto-suficiente.** A metade VIVA do heal
     // carimba o id em cada binding, e ela corre mesmo com nada `missing`: um objeto acabado de
     // criar que ainda não tivesse id seria carimbado NULL, e ao morrer a binding dele seria
@@ -436,7 +439,23 @@ pub fn serialize(timeline: &mut TimelineState, world: &mut World) -> Result<Vec<
     ph2d_ecs::assign_missing_stable_ids(world);
     let world = &*world;
     stamp_wire_ids(&mut timeline.doc, |bits| wire_of(world, bits));
-    timeline.doc.to_bytes()
+    // As chaves de texto indexam a tabela da SESSÃO; o ficheiro leva-a compactada (`doc_textos.rs`).
+    let sessao = world.get_resource::<TextosDosCanais>();
+    timeline
+        .doc
+        .to_bytes_com_textos(sessao.unwrap_or(&TextosDosCanais::default()))
+}
+
+/// ⭐ **A tabela de textos do documento passa para a da sessão** (o recurso
+/// [`TextosDosCanais`]), que só cresce: cada texto é INTERNADO e as chaves remapeadas — o
+/// recurso nunca é substituído, então nenhum índice já dado muda de texto. No regime (documento
+/// sem tabela pendente) não toca no mundo. Lei inteira em `ph2d_timeline::doc_textos`.
+pub fn adota_textos(timeline: &mut TimelineState, world: &mut World) -> bool {
+    if timeline.doc.textos().is_empty() {
+        return false;
+    }
+    let mut sessao = world.get_resource_or_insert_with(TextosDosCanais::default);
+    timeline.doc.adota_textos(&mut sessao)
 }
 
 /// Instala o documento vindo do arquivo de projeto, com **toda binding DESTACADA**
@@ -454,6 +473,9 @@ pub fn serialize(timeline: &mut TimelineState, world: &mut World) -> Result<Vec<
 ///
 /// Selection / history / clipboard não são persistidos: nascem limpos em volta do documento
 /// carregado, então um undo depois do load não alcança a sessão anterior.
+///
+/// A tabela de TEXTOS também fica pendente no documento, pela mesma razão: quem a passa à sessão é
+/// o [`upkeep`] do frame ([`adota_textos`]), que tem o mundo.
 pub fn install_from_project(bytes: &[u8]) -> Result<TimelineState, String> {
     if bytes.is_empty() {
         // **Projeto SEM animação abre com o padrão do PRODUTO** (4 s autorados), não com o
@@ -522,3 +544,8 @@ mod reset_guard_tests;
 #[cfg(test)]
 #[path = "timeline_clip_names_tests.rs"]
 mod clip_names_tests;
+
+/// ⚠️ Irmão de [`tests`] pelo mesmo teto — a tabela de textos através do ficheiro (v22).
+#[cfg(test)]
+#[path = "timeline_textos_tests.rs"]
+mod textos_tests;

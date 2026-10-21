@@ -256,9 +256,11 @@ fn os_ids_derivados_voltam_ao_canal_deles() {
         c(painel::texpat_id(1, K::Tile(2))),
         c(painel::texpat_id(1, K::Mode(0)))
     );
-    for k in [K::Lock, K::GapLink, K::Offset, K::Source] {
+    for k in [K::Lock, K::GapLink, K::Source, K::PickShape] {
         assert!(c(painel::texpat_id(0, k)).is_empty(), "{k:?} não é campo");
     }
+    // O desfasamento (bloco 2): membro da tinta, como o tamanho.
+    assert_eq!(c(painel::texpat_id(0, K::OffsetNum)), vec![f(R)]);
     let p = fij(v::EFEITO_PARAM, 2, 3);
     assert_eq!(c(ferramenta::vector_fx_param_id(2, 3)), vec![p]);
     assert_eq!(c(ferramenta::vector_fx_param_num_id(2, 3)), vec![p]);
@@ -293,4 +295,101 @@ fn a_chave_de_um_efeito_acende_os_parametros_dele() {
     assert_eq!(m[&ferramenta::vector_fx_toggle_id(1, 5)], KeyMark::Chave);
     assert_eq!(m[&ferramenta::vector_fx_param_id(0, 2)], KeyMark::Livre);
     assert_eq!(m[&ferramenta::vector_fx_hide_id(1)], KeyMark::Livre);
+}
+
+/// ⭐ Bloco 2 — cada campo novo do painel volta ao GRUPO dele: o pincel à tinta do traço, a quebra
+/// (o modo e a largura) ao mesmo grupo, a família, o perfil (sliders, chip da barra e catálogo),
+/// o Blend, o Morph (o `PropKind` de sempre), o Envelope (um grupo para a gaiola inteira), as
+/// âncoras, o recorte, o auto layout, a pele e o ícone do widget, o padrão e o texto no caminho e
+/// os filtros (o olho um grupo, o resto do degrau outro, por degrau).
+#[test]
+fn os_campos_do_bloco_2_voltam_ao_grupo_deles() {
+    let c = |id| canal_do_campo(id, SEM);
+    let grupo = |id| {
+        let g = c(id);
+        assert_eq!(g.len(), 1, "{id:?}: {g:?}");
+        match g[0] {
+            PropKind::Field(k) => k.grupo().expect("campo declarado"),
+            p => panic!("{id:?} → {p:?}"),
+        }
+    };
+    let traco = grupo(ferramenta::VECTOR_STROKE_SWATCH);
+    for id in [
+        painel::VECTOR_BRUSH_SCALE_NUM,
+        painel::VECTOR_BRUSH_ROTATION,
+        painel::VECTOR_BRUSH_FLIP,
+    ] {
+        assert_eq!(grupo(id), traco, "o pincel é membro da tinta do traço");
+    }
+    assert_eq!(
+        grupo(painel::VECTOR_TEXT_WRAP_FIXED),
+        grupo(painel::VECTOR_TEXT_WRAP_W),
+        "o modo da quebra e a largura gravam-se juntos"
+    );
+    assert_eq!(c(painel::VECTOR_TEXT_FONT_DD), vec![f(v::TEXTO_FAMILIA)]);
+    let perfil = grupo(painel::VECTOR_BAR_PROFILE);
+    for id in [
+        painel::VECTOR_EXPAND_W_MID,
+        ferramenta::VECTOR_EXPAND_W_POS_NUM,
+        painel::vector_width_preset_id(3),
+    ] {
+        assert_eq!(grupo(id), perfil);
+    }
+    assert_eq!(
+        c(ferramenta::VECTOR_BLEND_STEPS_NUM),
+        vec![f(v::BLEND_PASSOS)]
+    );
+    assert_eq!(c(painel::VECTOR_MORPH_T), vec![PropKind::Morph]);
+    let env = grupo(painel::VECTOR_ENVELOPE_MESH);
+    assert_eq!(grupo(ferramenta::VECTOR_ENVELOPE_BEND_NUM), env);
+    assert_eq!(
+        grupo(painel::VECTOR_ANCHOR_V_STRETCH),
+        grupo(painel::VECTOR_ANCHOR_H_START)
+    );
+    assert_eq!(c(painel::VECTOR_FRAME_CLIP_ON), vec![f(v::MOLDURA_RECORTA)]);
+    assert_eq!(c(painel::VECTOR_LAYOUT_DIR_OFF), vec![f(v::LAYOUT_DIR)]);
+    assert_eq!(
+        grupo(painel::VECTOR_LAYOUT_PAD_L),
+        grupo(painel::VECTOR_LAYOUT_PAD_ALL)
+    );
+    assert_eq!(
+        c(painel::VECTOR_LAYOUT_ITEM_ABSOLUTE),
+        vec![f(v::LAYOUT_ABSOLUTO)]
+    );
+    assert_eq!(c(painel::vector_widget_kind_id(5)), vec![f(v::WIDGET_PELE)]);
+    assert_eq!(c(painel::VECTOR_WIDGET_ICON_DD), vec![f(v::WIDGET_ICONE)]);
+    assert_eq!(
+        c(painel::VECTOR_PATTERNPATH_SLIDE_NUM),
+        vec![f(v::PADRAO_CAMINHO_INICIO), f(v::PADRAO_CAMINHO_FIM)],
+        "o Slide move o início e o fim"
+    );
+    assert_eq!(
+        c(painel::VECTOR_TEXTPATH_FLIP_OFF),
+        vec![f(v::TEXTO_CAMINHO_ESPELHO)]
+    );
+    assert_eq!(
+        c(painel::filter_hide_id(2)),
+        vec![fij(v::FILTRO_LIGADO, 2, 0)]
+    );
+    let degrau = c(painel::filter_radius_id(2));
+    assert_eq!(degrau, vec![fij(v::FILTRO_TIPO, 2, 0)]);
+    for id in [
+        painel::filter_mode_id(2, 1),
+        painel::filter_color_b_id(2),
+        painel::filter_stop_color_id(2),
+        painel::filter_blend_id(2),
+        painel::filter_hue_num_id(2),
+    ] {
+        assert_eq!(c(id), degrau, "{id:?}");
+    }
+    assert_ne!(c(painel::filter_radius_id(1)), degrau, "por degrau");
+    // Fora: os verbos e o modo de vista da margem.
+    for id in [
+        painel::VECTOR_BRUSH_PICK_SHAPE,
+        painel::VECTOR_FRAME_PANEL_ON,
+        painel::VECTOR_LAYOUT_PAD_EACH_MODE,
+        painel::filter_remove_id(0),
+    ] {
+        assert!(c(id).is_empty(), "{id:?} não é campo");
+    }
 }

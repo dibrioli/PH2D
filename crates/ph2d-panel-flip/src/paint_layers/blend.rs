@@ -5,16 +5,24 @@
 use super::*;
 
 /// Paint the blend chip (registered as a `Dropdown` for the generic open/close
-/// dispatch). If open (single-open enforced), stash it into `pending` for the
+/// dispatch) and, in the decorator column of `line`, the blend's key mark (a mistura é canal,
+/// plano 35 §A.8). If open (single-open enforced), stash it into `pending` for the
 /// deferred popover pass.
 pub(super) fn paint_blend_chip(
     ctx: &mut PaintCtx,
     theme: Theme,
     id: ph2d_a11y::NodeId,
     row: &FlipLayerRow,
-    rect: Rect,
+    line: Rect,
     pending: &mut Option<PendingBlend>,
 ) {
+    let (chip_w, dot) = ph2d_editor_core::widget::form_row_columns(line.x, line.w, line.y, line.h);
+    let rect = Rect::new(line.x, line.y, chip_w, line.h);
+    if let Some(alvo) =
+        ph2d_editor_core::widget::key_mark::paint_decorator_for(ctx.scene, theme, dot, &[id])
+    {
+        ctx.host.hit_index_mut().register(alvo, dot);
+    }
     ctx.host.store_mut().register_if_absent(
         id,
         InteractiveState::Dropdown {

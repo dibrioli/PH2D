@@ -627,3 +627,42 @@ fn zeroing_emissive_is_an_edit_not_a_no_op() {
         "apagar a emissao nao chegou ao barramento — a sprite ficaria acesa para sempre"
     );
 }
+
+/// **(5b) O chip de Emissive e o de Opacidade MOSTRAM o valor, não a posição da pista** (F25).
+///
+/// A foto do Auto Key lia `0.006` numa sprite de emissão `0.4` (`0.4 ÷ 64`): o pintor da linha
+/// passava a PISTA como número do chip. O número que ele pinta é `slider_chip_value` — a mesma
+/// conta da ligação do par.
+///
+/// Mutação: `slider_chip_value` devolver a pista — lê `0.00625` e `1`.
+#[test]
+fn the_emissive_and_opacity_chips_show_the_value_not_the_track() {
+    use ph2d_editor_core::widget::slider_chip_value;
+    use ph2d_panel_inspector::ids::{
+        INSP_SPRITE_EMISSIVE, INSP_SPRITE_EMISSIVE_CHIP, INSP_SPRITE_OPACITY,
+        INSP_SPRITE_OPACITY_CHIP,
+    };
+    let mut lit = sprite();
+    lit.emissive = 0.4;
+    lit.opacity = 0.5;
+    set_current_inspector_sprite(Some(lit));
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    host.settle_section_folds();
+    host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_sprite(None);
+    let mostra = |slider, chip| {
+        let (_, track) = host.store().slider(slider).expect("pista registada");
+        slider_chip_value(host.store(), slider, chip, track)
+    };
+    let emissao = mostra(INSP_SPRITE_EMISSIVE, INSP_SPRITE_EMISSIVE_CHIP);
+    let opacidade = mostra(INSP_SPRITE_OPACITY, INSP_SPRITE_OPACITY_CHIP);
+    assert!(
+        (emissao - 0.4).abs() < 1e-5,
+        "o chip de Emissive mostra {emissao} sobre uma emissao de 0.4"
+    );
+    assert_eq!(
+        opacidade, 50.0,
+        "o chip de Opacidade (em %) mostra {opacidade} sobre uma sprite a 50 %"
+    );
+}

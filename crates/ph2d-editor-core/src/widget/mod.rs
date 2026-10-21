@@ -197,7 +197,7 @@ pub use skin::{
 pub use slider::{Slider, SliderOrientation, SliderState, paint_slider, paint_slider_track};
 pub use slider_with_chip::{
     DEFAULT_CHIP_W, DEFAULT_LABEL_W, default_chip_w, paint_number_chip, paint_slider_with_chip,
-    paint_slider_with_chip_layout, paint_slider_with_chip_layout_adaptive,
+    paint_slider_with_chip_layout, paint_slider_with_chip_layout_adaptive, slider_chip_value,
     slider_with_chip_chip_rect, slider_with_chip_height, slider_with_chip_is_stacked,
     slider_with_chip_label_rect, slider_with_chip_min_w,
 };

@@ -54,7 +54,7 @@ fn quadro(
     t: f64,
 ) {
     apply_from_doc(sim.world_mut(), doc, t);
-    aplicar(sim, scene, cond);
+    let _ = aplicar(sim, scene, cond);
     publicar(sim, scene, &[e]);
 }
 
@@ -171,5 +171,102 @@ fn os_efeitos_vivos_publicam_se_e_a_curva_os_conduz() {
     assert!(
         (d - 0.3).abs() < 1e-5,
         "a curva não conduziu o Contour: d = {d}"
+    );
+}
+
+/// ⭐ Bloco 2, de ponta a ponta, um por DONO: um campo do caminho (a escala do pincel do traço), um
+/// componente de uma entidade SEM caminho (a curvatura do Envelope no contentor) e um texto (a
+/// família da fonte, pelo índice na tabela). `publicar` → a curva em `CanaisEscritos` → `aplicar`
+/// muda o documento.
+#[test]
+fn o_bloco_2_publica_e_a_curva_conduz_cada_dono() {
+    let (mut sim, mut scene, e, mut doc) = cena();
+    let id = scene.paths()[0].id;
+    scene.path_mut(id).unwrap().stroke.as_mut().unwrap().paint =
+        ph2d_vec_scene::StrokePaint::Brush(Box::default());
+    let contentor = sim
+        .world_mut()
+        .spawn(ph2d_ecs::VecEnvelope::at_rest(
+            Vec::new(),
+            [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+            [[[0.0, 0.0]; 2]; 4],
+        ))
+        .id()
+        .to_bits();
+    let ent = Entity::from_bits(e);
+    sim.world_mut()
+        .entity_mut(ent)
+        .insert(VecShape::Text(ph2d_ecs::VecTextParams {
+            text: "Olá".to_owned(),
+            origin: [0.0, 0.0],
+            family: None,
+            size: 12.0,
+            weight: 400.0,
+            line_height: 1.2,
+            tracking: 0.0,
+            align: 0,
+            axes: Vec::new(),
+            wrap_width: None,
+        }));
+    let mut textos = TextosDosCanais::default();
+    let roboto = textos.indice(Some("Roboto"));
+    sim.world_mut().insert_resource(textos);
+    let s = RationalTime::from_seconds;
+    let escala = k(c::PINCEL_ESCALA, 0, 0);
+    let curva = k(c::ENVELOPE_CURVA, 0, 0);
+    let familia = k(c::TEXTO_FAMILIA, 0, 0);
+    for (dono, kk, a, b) in [
+        (e, escala, 1.0, 3.0),
+        (contentor, curva, 0.0, 1.0),
+        (e, familia, roboto, roboto),
+    ] {
+        for (t, v) in [(0.0, a), (1.0, b)] {
+            doc.insert_key(
+                dono,
+                PropKind::Field(kk),
+                s(t),
+                AnimValue::Float(v),
+                Interp::Linear,
+            );
+        }
+    }
+    publicar(&mut sim, &scene, &[e, contentor]);
+    let l = lidos(&sim, e);
+    assert!(l.contains(&(escala, 1.0)), "o pincel não foi publicado");
+    assert!(
+        l.iter().any(|&(kk, _)| kk == familia),
+        "a família não foi publicada"
+    );
+    assert!(
+        lidos(&sim, contentor).contains(&(curva, 0.5)),
+        "o Envelope de um contentor sem caminho não foi publicado"
+    );
+    let mut cond = ConducaoVetor::default();
+    quadro(&mut sim, &mut scene, &mut doc, &mut cond, e, 0.5);
+    let b = scene.paths()[0]
+        .stroke
+        .as_ref()
+        .unwrap()
+        .brush()
+        .unwrap()
+        .scale;
+    assert_eq!(b, 2.0, "a curva não conduziu o pincel");
+    let bend = sim
+        .world()
+        .get::<ph2d_ecs::VecEnvelope>(Entity::from_bits(contentor))
+        .unwrap()
+        .bend;
+    assert_eq!(bend, 0.5, "a curva não conduziu o Envelope");
+    let Some(VecShape::Text(t)) = sim.world().get::<VecShape>(ent) else {
+        panic!("o texto sumiu")
+    };
+    assert_eq!(
+        t.family.as_deref(),
+        Some("Roboto"),
+        "a curva não trocou a fonte"
+    );
+    assert!(
+        sim.world().get_resource::<TextosDosCanais>().is_some(),
+        "a tabela dos textos volta ao mundo"
     );
 }

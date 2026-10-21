@@ -279,15 +279,28 @@ pub fn preset_of(stops: &WidthStops) -> Option<WidthProfile> {
 /// clicar um perfil escreveria trilhos que a fileira não reconheceria, e a linha que o artista
 /// acabou de escolher ficaria apagada.
 pub fn write_preset_to_store(store: &mut WidgetStore, p: &WidthProfile) {
-    const IDS: [ph2d_editor_core::NodeId; 4] = [
-        ph2d_panel_vector::ids::VECTOR_EXPAND_W_START,
-        ph2d_panel_vector::ids::VECTOR_EXPAND_W_MID,
-        ph2d_panel_vector::ids::VECTOR_EXPAND_W_END,
-        ph2d_panel_vector::ids::VECTOR_EXPAND_W_POS,
-    ];
-    for (id, v) in IDS.into_iter().zip(params::preset_tracks(p)) {
+    for (id, v) in SLIDERS.into_iter().zip(params::preset_tracks(p)) {
         store.set_slider_value(id, v);
     }
+}
+
+/// Os quatro sliders `W Start/Mid/End/Pos`, na ordem de [`params::preset_tracks`].
+pub const SLIDERS: [ph2d_editor_core::NodeId; 4] = [
+    ph2d_panel_vector::ids::VECTOR_EXPAND_W_START,
+    ph2d_panel_vector::ids::VECTOR_EXPAND_W_MID,
+    ph2d_panel_vector::ids::VECTOR_EXPAND_W_END,
+    ph2d_panel_vector::ids::VECTOR_EXPAND_W_POS,
+];
+
+/// Os quatro sliders já mostram `p`? — em TRILHO, a língua de [`write_preset_to_store`] (depois
+/// de o escrever a resposta é `true` exacta, sem tolerância). Um slider que o painel ainda não
+/// registou não mostra nada, logo não tem o que seguir.
+#[must_use]
+pub fn store_shows(store: &WidgetStore, p: &WidthProfile) -> bool {
+    SLIDERS
+        .iter()
+        .zip(params::preset_tracks(p))
+        .all(|(id, v)| store.slider(*id).is_none_or(|(_, s)| s == v))
 }
 
 #[cfg(test)]

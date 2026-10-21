@@ -69,6 +69,10 @@ impl FieldKey {
     pub fn membro(self) -> Option<&'static str> {
         match self.familia {
             familia::VETOR => crate::canal_vetor::membro(self.campo),
+            familia::OBJETO => crate::canal_objeto::membro(self.campo),
+            familia::JUNTA => crate::canal_junta::membro(self.campo),
+            familia::FLIP => crate::canal_flip::membro(self.campo),
+            familia::FISICA => crate::canal_fisica::membro(self.campo),
             _ => None,
         }
     }
@@ -86,12 +90,87 @@ pub struct CampoInfo {
     /// `true` ⇒ o grupo parte-se por `i` (cada entrada da pilha tem a sua tinta); `false` ⇒ todo `i`
     /// é o mesmo grupo (a forma inteira são todos os contornos).
     pub por_i: bool,
+    /// `true` ⇒ o valor é um índice em [`TextosDosCanais`] (sempre discreto): quem grava o
+    /// documento da timeline guarda a tabela com as chaves e compacta-a pelos índices usados.
+    pub texto: bool,
+}
+
+/// ⭐ **Os TEXTOS que um canal discreto nomeia** (a família da fonte, o conteúdo de um texto) — o
+/// canal é `f32`, então o texto entra por um índice: `0` = nenhum, `k + 1` = `textos[k]`. A
+/// tabela só CRESCE (um índice dado nunca muda de texto), e o documento da timeline guarda-a com as
+/// chaves que a usam ([`CampoInfo::texto`]).
+#[derive(Resource, Debug, Default, Clone, PartialEq, Eq)]
+pub struct TextosDosCanais {
+    textos: Vec<String>,
+    por_texto: BTreeMap<String, u32>,
+}
+
+impl TextosDosCanais {
+    /// A tabela de um documento gravado (a ordem é a dos índices).
+    #[must_use]
+    pub fn de(textos: Vec<String>) -> Self {
+        let por_texto = textos
+            .iter()
+            .enumerate()
+            .map(|(k, s)| (s.clone(), u32::try_from(k).unwrap_or(u32::MAX)))
+            .collect();
+        Self { textos, por_texto }
+    }
+
+    /// O índice de `s` como o canal o guarda, acrescentando-o se é novo.
+    pub fn indice(&mut self, s: Option<&str>) -> f32 {
+        let Some(s) = s else { return 0.0 };
+        let k = match self.por_texto.get(s) {
+            Some(&k) => k,
+            None => {
+                let k = u32::try_from(self.textos.len()).unwrap_or(u32::MAX);
+                self.textos.push(s.to_owned());
+                self.por_texto.insert(s.to_owned(), k);
+                k
+            }
+        };
+        debug_assert!(k < (1 << 24), "o índice tem de caber exacto num f32");
+        #[expect(clippy::cast_precision_loss, reason = "preso a 2^24, exacto em f32")]
+        let v = (k + 1) as f32;
+        v
+    }
+
+    /// O texto que o valor `v` de um canal nomeia (`None` = nenhum, ou um índice que esta tabela
+    /// não tem).
+    #[must_use]
+    pub fn texto(&self, v: f32) -> Option<&str> {
+        let k = v.round();
+        if k.is_nan() || k < 1.0 {
+            return None;
+        }
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "arredondado e positivo"
+        )]
+        let k = k as usize - 1;
+        self.textos.get(k).map(String::as_str)
+    }
+
+    /// Os textos, na ordem dos índices.
+    #[must_use]
+    pub fn textos(&self) -> &[String] {
+        &self.textos
+    }
 }
 
 /// As famílias. ⛔ Números DECLARADOS e gravados no documento da timeline: só APPEND.
 pub mod familia {
     /// O documento vetorial (`VecScene` e o `VecShape` da entidade) — `crate::canal_vetor`.
     pub const VETOR: u16 = 1;
+    /// O objecto no Inspector (o skew do `Transform`, a aparência da sprite) — `crate::canal_objeto`.
+    pub const OBJETO: u16 = 2;
+    /// A junta de física (`PhysicsJoint`) — `crate::canal_junta`.
+    pub const JUNTA: u16 = 3;
+    /// A camada de um objecto Flip (`FlipLayer`, `i` = o `LayerId`) — `crate::canal_flip`.
+    pub const FLIP: u16 = 4;
+    /// O corpo de física da §11 (`RigidBody`, `Collider` e os opcionais) — `crate::canal_fisica`.
+    pub const FISICA: u16 = 5;
 }
 
 /// ⭐ **A porta única de «o que é este campo»** — `None` = endereço que nenhuma família declara (um
@@ -100,6 +179,10 @@ pub mod familia {
 pub fn info(k: FieldKey) -> Option<CampoInfo> {
     match k.familia {
         familia::VETOR => crate::canal_vetor::info(k.campo),
+        familia::OBJETO => crate::canal_objeto::info(k.campo),
+        familia::JUNTA => crate::canal_junta::info(k.campo),
+        familia::FLIP => crate::canal_flip::info(k.campo),
+        familia::FISICA => crate::canal_fisica::info(k.campo),
         _ => None,
     }
 }
@@ -134,11 +217,14 @@ impl CanaisLidos {
         self.ecos.insert((entidade, k), (escrito, ficou));
     }
 
-    /// Esquece tudo o que a entidade publicou (antes de a republicar: um vértice apagado sai).
-    pub fn esquecer(&mut self, entidade: u64) {
+    /// Esquece o que a entidade publicou da `familia` (antes de a republicar: um vértice apagado
+    /// sai) — as outras famílias da mesma entidade ficam.
+    pub fn esquecer(&mut self, entidade: u64, familia: u16) {
+        let de = FieldKey::new(familia, 0, 0, 0);
+        let ate = FieldKey::new(familia, u16::MAX, u16::MAX, u16::MAX);
         let dela: Vec<_> = self
             .valores
-            .range((entidade, FieldKey::MIN)..=(entidade, FieldKey::MAX))
+            .range((entidade, de)..=(entidade, ate))
             .map(|(k, _)| *k)
             .collect();
         for k in dela {

@@ -74,6 +74,7 @@ pub(super) fn migrate(bytes: &[u8]) -> Result<TimelineDoc, String> {
         stack: old.stack,
         containers: old.containers,
         scene_length: old.scene_length,
+        textos: Vec::new(),
         scratch: StackScratch::default(),
         reverse_play: false,
     })

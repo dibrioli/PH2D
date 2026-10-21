@@ -301,8 +301,8 @@ impl Trail {
             crate::grid::traco::garante(g);
         }
         let vela = p.k(Knob::Glaze) as f32;
-        // O FILME do traço (`Knob::StrokeFilm`): a água da célula é a do filme, sem o 2.º gole da célula virgem (o gole
-        // dependia de quanto a 1.ª janela lhe trouxe — a orla do dab ou o miolo — e deixava um arco de água por janela).
+        // O FILME do traço (`Knob::StrokeFilm`): a água da célula é a do filme — sem o 2.º gole da célula virgem (o gole
+        // dependia de quanto a 1.ª janela lhe trouxe e deixava um arco de água por janela) e sem o tecto de água abaixo.
         let filme = p.k(Knob::StrokeFilm) > 0.0;
         if vela > 0.0 && std::mem::take(&mut self.por_assentar_pendente) {
             self.por_assentar.clear();
@@ -469,7 +469,9 @@ impl Trail {
                         g.sett[i] = if ns < 0.0 { 0.0 } else { ns as f32 };
                     }
                     let film_i = g.film[i] as f64;
-                    let mut nf = if film_i < water_cap {
+                    // Com o FILME a água da célula é a do filme, de uma vez ou aos bocados: o tecto (a média da janela)
+                    // tirava aos bocados o que a 1.ª janela pousava inteiro — o disco do 1.º toque, mais molhado.
+                    let mut nf = if film_i < water_cap || filme {
                         film_i + self.water[l] as f64
                     } else {
                         film_i + self.water[l] as f64 - shed_water

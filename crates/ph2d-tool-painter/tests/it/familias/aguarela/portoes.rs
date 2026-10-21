@@ -47,8 +47,8 @@ fn deposito_e_agua(nome: &str, engine: &[(&str, f64)], diametro: f32, y: f32) ->
 const BASE: [(&str, f64); 3] = [("pigmentPerDab", 30.0), ("paperGate", 0.05), ("edgeDarkening", 100.0)];
 /// A soma de sempre (o controlo): sem o filme, o arrasto e o tecto de água de omissão.
 const SOMA: [(&str, f64); 6] = [BASE[0], BASE[1], BASE[2], ("strokeFilm", 0.0), ("drag", 0.16), ("waterCap", 8.0)];
-/// O filme, com o arrasto a 0 e o tecto de água do filme (os dois medidos abaixo).
-const FILME: [(&str, f64); 6] = [BASE[0], BASE[1], BASE[2], ("strokeFilm", 1.0), ("drag", 0.0), ("waterCap", 30.0)];
+/// O filme, com o arrasto a 0 (medido abaixo) e o tecto de água de omissão (8 — o filme não o lê).
+const FILME: [(&str, f64); 6] = [BASE[0], BASE[1], BASE[2], ("strokeFilm", 1.0), ("drag", 0.0), ("waterCap", 8.0)];
 
 /// ⭐ **O FILME do traço é liso** (`Knob::StrokeFilm`, J4 aguarela): com ele, o depósito de um recto do Wet Liner é um
 /// véu — sem as listras das linhas do tapete das cerdas (que a soma dos dabs arrasta pelo traço inteiro) e sem o domo da
@@ -71,10 +71,16 @@ fn o_filme_do_traco_e_liso() {
 
 /// ⭐ **E a água não o desfaz** (`Knob::StrokeFilm`): depois de 240 quadros o filme do Wet Liner a 200 px continua um
 /// véu — sem o 2.º gole da célula virgem (que dependia de quanto a 1.ª janela lhe trouxe e deixava um ARCO de água por
-/// janela, medido: mancha 0,095 → 0,038 no Mop) e com o tecto de água que o filme pede (`waterCap` 30: com o 8 de
-/// omissão o excesso sai pela média da janela, outro arco).
+/// janela, medido: mancha 0,095 → 0,038 no Mop) e sem o tecto de água da janela (o excesso saía pela média dela aos
+/// bocados, e a 1.ª janela pousava o seu inteiro: o disco do 1.º toque, que o revisor cego viu no Liner a 200 px).
 #[test]
 fn o_filme_do_traco_continua_liso_depois_da_agua() {
+    // E molhado (a água por dab no tecto da faixa: o filme passa o tecto de água da célula, como o Mop).
+    let molhado = [FILME[0], FILME[1], FILME[2], FILME[3], FILME[4], FILME[5], ("waterPerDab", 4.0)];
+    let (_, agua) = deposito_e_agua("Wet Liner", &molhado, 200.0, 440.0);
+    println!("[filme] 200 px molhado depois de 240 quadros: {agua:.3?}");
+    // (0,038 com a lei; 0,078 com o tecto da janela de volta — o disco do 1.º toque e os arcos da água.)
+    assert!(agua[3] > 0.93 && agua[5] < 0.055, "molhado: ombros ÷ centro {:.3}, manchas {:.3}", agua[3], agua[5]);
     let (_, agua) = deposito_e_agua("Wet Liner", &FILME, 200.0, 440.0);
     println!("[filme] 200 px depois de 240 quadros: {agua:.3?}");
     // (A água nivela o que sobra das listras também na soma — aqui elas são só a régua do ruído: 0,009–0,011.)

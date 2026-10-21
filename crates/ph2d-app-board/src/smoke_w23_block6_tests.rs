@@ -37,6 +37,14 @@ fn the_block6_scene_arms_its_four_stations() {
     );
     assert!(taken.contains(&s.most), "95 % dentro entra");
     assert!(!taken.contains(&s.half), "metade fora não entra");
+    // ② — o quadro em rascunho, e os dois exemplos à mão, nascidos ao zoom de abertura.
+    let b = h.documents.boards().get(s.board).expect("o quadro");
+    assert!(b.sketch, "o quadro abre em rascunho");
+    for id in s.sketched {
+        let st = b.doc.get(id).expect("o exemplo").style();
+        assert!(st.sketch && st.fill.is_none(), "{id:?} à mão, oco");
+        assert_eq!(st.birth, OPEN_BIRTH, "{id:?} nascido ao zoom de abertura");
+    }
     // ④ — a seta liga as duas caixas.
     let doc = &h.documents.boards().get(s.board).unwrap().doc;
     let c = doc

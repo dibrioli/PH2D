@@ -18,8 +18,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
              are selected; \u{201c}Mostly inside\u{201d} too, \u{201c}Half outside\u{201d} not."
         }
         "board.smoke.b6.l2" => {
-            "2. Pen button \u{2192} pen. Draw a box and HOLD STILL at the end: it turns into a \
-             rectangle. Try a circle, a line between two boxes, an arrow. Ctrl+Z gives the stroke back."
+            "2. Pen \u{2192} draw a box, HOLD STILL: a rectangle (Ctrl+Z: the stroke back). Sketch is \
+             on: bottom right, left = Rectangle tool, right = pen. Select one, press the wavy button: \
+             smooth. Again: hand-drawn."
         }
         "board.smoke.b6.l3" => {
             "3. Rui mentioned you: the message at the top, the dot on Comments. Click Show. \

@@ -3,6 +3,8 @@
 //! «Plan» por trás. ① o laço (seis ideias dentro, uma quase toda dentro, uma meio fora); ② um frame
 //! vazio para desenhar e segurar; ③ uma nota com um fio do Rui que CHEGA ao abrir e chama quem está a
 //! usar o PH2D (o aviso, a bolinha); ④ duas caixas ligadas por uma seta para «Move to board…».
+//! O quadro abre em RASCUNHO, com um rectângulo da ferramenta e um da caneta no canto de ② nascidos ao
+//! zoom de abertura a 1366 (auditoria do Sketch, 21/10: de longe o rascunho ficava liso).
 //! O gate `the_block6_scene_arms_its_four_stations` conduz o que a cena arma.
 
 use ph2d_board_model::{
@@ -24,6 +26,8 @@ pub(crate) struct Block6 {
     pub most: ElementId,
     pub half: ElementId,
     pub send: [ElementId; 3],
+    /// Os exemplos do rascunho em ②: o da ferramenta e o da caneta.
+    pub sketched: [ElementId; 2],
 }
 
 const SIDE: f64 = 140.0;
@@ -40,6 +44,12 @@ const F2: [f64; 4] = [F1[2] + 200.0, 0.0, 700.0, F1[3]];
 const ROW2: f64 = F1[3] + 760.0;
 const F3: [f64; 4] = [0.0, ROW2, F1[2], 420.0];
 const F4: [f64; 4] = [F2[0], ROW2, F2[2], 420.0];
+/// Os exemplos do rascunho no canto de baixo à direita de ②: a caixa e o vão.
+const EXAMPLE: [f64; 2] = [220.0, 140.0];
+const EXAMPLE_GAP: f64 = 20.0;
+/// A escala de nascença dos exemplos: a do zoom com que a cena abre a 1366 (~0,293, um px = 3,4 do
+/// mundo; quartos de oitava, `BirthScale::of_px`).
+const OPEN_BIRTH: ph2d_board_model::BirthScale = ph2d_board_model::BirthScale(7);
 
 /// A cena; devolve os ids que o gate conduz.
 pub(crate) fn scene_block6(hero: &mut HeroScreen) -> Block6 {
@@ -82,6 +92,7 @@ pub(crate) fn scene_block6(hero: &mut HeroScreen) -> Block6 {
         [edge - 0.5 * SIDE, GAP + SIDE + GAP, SIDE],
     );
     super::organize::frame(doc, tr("board.smoke.b6.f2"), F2, None);
+    let sketched = examples(doc, &style);
     super::organize::frame(doc, tr("board.smoke.b6.f3"), F3, None);
     let launch = super::put_note(
         doc,
@@ -123,6 +134,7 @@ pub(crate) fn scene_block6(hero: &mut HeroScreen) -> Block6 {
             [f[0], f[1] + f[3] + GAP, f[2].min(2.0 * STICKY_SIDE * 1.6)],
         );
     }
+    set.get_mut(board).expect("acabou de nascer").sketch = true;
     document_tabs::load(hero, set);
     hero.documents.activate(Some(board));
     board_nav::show(hero, false, false);
@@ -151,7 +163,38 @@ pub(crate) fn scene_block6(hero: &mut HeroScreen) -> Block6 {
         most,
         half,
         send: [a, b, arrow],
+        sketched,
     }
+}
+
+/// ② — o rectângulo da FERRAMENTA e o da CANETA + segurar, em rascunho, nascidos ao zoom de abertura:
+/// o da caneta com a cor da caneta e o resto do estilo da ferramenta (a lei do `smart_style`).
+fn examples(
+    doc: &mut ph2d_board_model::BoardDoc,
+    style: &ph2d_board_model::Style,
+) -> [ElementId; 2] {
+    let mut tool = style.clone();
+    tool.fill = None;
+    tool.sketch = true;
+    tool.reborn(OPEN_BIRTH);
+    let mut pen = tool.clone();
+    let ink = ph2d_board_model::Rgba(ph2d_board_model::DEFAULT_INK);
+    (pen.stroke, pen.text_color) = (Some(ink), ink);
+    let y = F2[1] + F2[3] - EXAMPLE[1] - EXAMPLE_GAP;
+    let x = |k: f64| F2[0] + F2[2] - (2.0 - k) * (EXAMPLE[0] + EXAMPLE_GAP);
+    let at = |k: f64| [x(k), y, EXAMPLE[0], EXAMPLE[1]];
+    // Sem rótulo: a esta distância a letra (de mundo) é um risco; a lição ② diz qual é qual.
+    [(tool, 0.0), (pen, 1.0)].map(|(style, k)| {
+        let shape = ph2d_board_model::Shape {
+            kind: ShapeType::Rectangle,
+            style,
+            text: Default::default(),
+        };
+        let el = ph2d_board_model::Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, at(k));
+        let id = el.id;
+        ph2d_board_model::BoardOp::Put(el).apply(doc);
+        id
+    })
 }
 
 fn now() -> i64 {

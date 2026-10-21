@@ -173,5 +173,5 @@ teste:check 2,2 ✗ · edições sem conferência 0,3 % ✓ · contexto/passo 31
   - uma cena que começa a correr tapada precisa de um clique.
 - Tudo o que continua aberto no [handoff do item 6, §9](HANDOFF_INTEGRACAO_line_CodeEditor_2026-10-20_ONDA2_I6_A_API.md)
   (o item do Espaço que lá estava aberto fecha-se aqui; o resto não se copia).
-- **Smoke do dono do item 7: pendente.**
+- **Smoke do dono do item 7: OK (21/10).**
 - **Integração:** a entrada do CLAUDE.md §5.1 já aponta para este handoff; no merge, só o link «Último» muda.

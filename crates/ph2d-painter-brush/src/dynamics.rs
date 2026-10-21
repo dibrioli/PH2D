@@ -31,6 +31,10 @@ pub struct Dynamics {
     pub speed_size: f32,
     /// A mesma lei na cobertura do dab (o Thin_Pen do MyPaint: só a cobertura cai, 0,57 a 5 000 px/s ≈ 0,2).
     pub speed_opacity: f32,
+    /// ⭐ **A pressão LEVE espalha** (J3 canetas 2.ª onda; a esferográfica do MyPaint `deevad/ballpen`, CC0:
+    /// `offset_by_random` 0,354 na pressão 0 → 0 na 1): o raio do disco de Jitter SOMADO ao do pincel, em
+    /// diâmetros do pincel (sem a pressão), na pressão 0 — e cai em recta até 0 na pressão 1. `0` = nada, ao bit.
+    pub jitter_pressure: f32,
 }
 
 impl Default for Dynamics {
@@ -47,6 +51,7 @@ impl Default for Dynamics {
             pen: crate::Pen::default(),
             speed_size: 0.0,
             speed_opacity: 0.0,
+            jitter_pressure: 0.0,
         }
     }
 }
@@ -116,6 +121,15 @@ pub fn lei_da_velocidade(p: f32, v_px_s: f32) -> f32 {
 }
 
 impl Dynamics {
+    /// O raio (px) do disco de Jitter que a pressão `pressure` soma num pincel de `diametro_px` ([`Self::jitter_pressure`]).
+    #[must_use]
+    pub fn jitter_da_pressao(&self, pressure: f32, diametro_px: f32) -> f32 {
+        if self.jitter_pressure <= 0.0 {
+            return 0.0;
+        }
+        self.jitter_pressure.min(1.0) * (1.0 - pressure.clamp(0.0, 1.0)) * diametro_px.max(0.0)
+    }
+
     /// Alguma lei da velocidade está ligada (só então o traço mede a velocidade de cada dab).
     #[must_use]
     pub fn speed_armed(&self) -> bool {

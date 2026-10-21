@@ -1,106 +1,85 @@
 # Exame da família `canetas` (J3, catálogo C, meio Digital) — 20/10
 
-> Agente da família, JANELA 3. Briefing: [`BRIEFING_FAMILIA.md`](../BRIEFING_FAMILIA.md). Pranchas:
-> [`pranchas/canetas/`](../pranchas/canetas/) (cegas e chaves ao lado). Receitas e portão:
-> `crates/ph2d-tool-painter/tests/it/familias/canetas.rs`. Medida da identidade (espelho do portão):
-> [`canetas_foto.py`](canetas_foto.py). Bancada sempre com `PH2D_EXAME_DIR=/tmp/ph2d_exame_canetas`.
-> Critério de veredito: o do briefing §2 — cada diferença visível listada pelo revisor cego é curada e revista por um
-> revisor NOVO, ou o pincel sai. 11 revisores no total (3–4 rondas por pincel).
+> Briefing: [`BRIEFING_FAMILIA.md`](../BRIEFING_FAMILIA.md). Pranchas: [`pranchas/canetas/`](../pranchas/canetas/) (`*_o2` =
+> 2.ª onda; cegas e chaves ao lado). Receitas e portões: `crates/ph2d-tool-painter/tests/it/familias/canetas.rs`; espelho
+> da medida: [`canetas_foto.py`](canetas_foto.py). 1.ª onda (11 revisores): `git show 84bbb1f393`.
 
-## Resumo
+## Resumo (2.ª onda)
 
-| # | pincel | veredito | porquê, numa linha |
+| # | pincel | veredito | porquê |
 |---|---|---|---|
-| C-5 | **Mapping Pen** | ✅ APROVADO | o 4.º revisor acertou o oráculo em 3/6 linhas (moeda ao ar); d 0,869 da biblioteca |
-| C-4 | Studio Pen | ❌ reprovado | a rampa de pressão do G-pen é uma curva em S; a nossa lei (potência + tecto) dá «joelhos» — 3 revisores viram-nos; e d 0,223 do Hard Round |
-| C-6 | Technical Pen | ❌ reprovado | a velocidade (a única identidade, L12) põe uma BOLHA no início do traço rápido (o 1.º tique tem v = 0); sem ela é o Pixel 1px (d 0,357) |
-| C-7 | Ballpoint | ❌ reprovado | 3 revisores: no traço leve o nosso falha em buracos brancos NÍTIDOS (grão Height), o MyPaint esbate em fiapos; o cruzamento sobre o vermelho nem Mix nem Multiply acertam |
-| C-11 | Dry Ink | ❌ reprovado | contra o Krita Pen Rough: pontas redondas × cortadas, gomos × serrilhado fino a 200 px, d 0,179 do Hard Round; contra o Rebelle Ink Brush 3 (o do §3 Fusões) falta o ARRASTO da tinta molhada — é do Wet Paint |
-| C-10 | Brush Pen | 🔀 fundido | o Krita Ink-7 Brush Rough é o Ink-3 G-pen com pó na orla: a nossa cópia fiel ficou a d 0,187 do Studio Pen, a mesma lei de pressão |
+| C-5 | Mapping Pen | ⚠️ na fábrica (aprovada na 1.ª onda) | 6 revisores novos: acertam o Krita 5–6/6 a confiança BAIXA medindo píxeis; restos ao píxel abaixo |
+| C-4 | Studio Pen | ❌ | o S casa o G-pen (régua 450/454, a prancha igual), mas é o Hard Round com outra curva: **d 0,273** < 0,596 |
+| C-6 | Technical Pen | ❌ | sem bolha agora, régua 426/454, mas **d 0,33** do Pixel 1px: a velocidade (−3 %) não o separa |
+| C-7 | Ballpoint | ❌ em estudo (`EM_ESTUDO`) | traço leve, papel e 200 px casados; o cruzamento pede a mistura ESPECTRAL do MyPaint |
+| C-11 | Dry Ink | ❌ | os alvos pedidos não são uma tinta seca distinta (medido abaixo) |
+| C-10 | Brush Pen | 🔀 fundido | inalterado (d 0,187 do G-pen, 1.ª onda) |
 
-## C-5 Mapping Pen — ✅ APROVADO
+## O motor (aditivo, neutro = o traço de antes ao bit; nenhum preset de fábrica mudou salvo o Gloop Pen)
 
-- **Receita** (Digital): `hardness 0,2`, `falloff Pow4`, `spacing 0,08` SEM a cápsula (a cápsula satura a orla e
-  endurece-a), `taper start 0,2 · tip 0,6` (o início afila como no Krita), `pressureSize 0` (largura FIXA), Strength
-  0,99, tamanho de fábrica **3 px** (o `diameter="3"` do `d)_Ink-1_Precision.kpp`, CC-0). A largura que se vê é ~0,7 do
-  tamanho (como no Krita: 28 px a «40»).
-- **Oráculo**: Krita `d) Ink-1 Precision` (`fixtures/krita_bateria/d__Ink-1_Precision`). Escala do exame 1,167.
-- **Prancha**: [`pranchas/canetas/mapping_pen.png`](../pranchas/canetas/mapping_pen.png) · régua **446/454** ✓
-  ([`mapping_pen_regua.txt`](mapping_pen_regua.txt)). O perfil transversal casa o do Krita ponto a ponto
-  (0,43/0,56/0,69/0,81 contra 0,45/0,59/0,72/0,83 a ½ largura).
-- **Vizinho**: Pixel 1px **d 0,869** (≥ 0,596: claramente longe); depois Soft Pastel 1,107, Soft Round 1,135.
-- **Razão de uso**: o fio de largura constante e borda macia, para hachura e detalhe fino, que NÃO responde à pressão
-  (nenhum outro da biblioteca: o Soft Round alarga com a pressão e é nuvem, o Hard Round é duro e varia).
-- **Revisão cega** (ronda 4, revisor novo, `cegas/mapping_pen.png`): «ORIGINAL: 2 — confiança baixa» em todas as
-  linhas; cruzamento: escolheu o NOSSO como original em 3 das 6 linhas (gestos B, tamanhos B, sobre A) — indistinguível.
-  Diferenças que listou (pequenas): a orla do nosso um pouco mais curta a 200 px; o início em bico (o taper) — que a
-  ronda 2 pedira (o Krita começa «em bala»); uma franja cinza-violeta no cruzamento sobre o vermelho. As rondas 1–3
-  pediram: perfil mais gaussiano (curado: Pow4 sem cápsula), artefactos de carimbo a 200 px (curados), o fio de 5 px
-  pálido (melhorado: pico 0,64 → 0,80, Krita 0,89 — a ponta Pow4 de 2,5 px perde área no AA). O terceiro (Pixel 1px)
-  foi «claramente outro» em todas as rondas.
-- **Custo**: ver §Custo.
-- **Portão**: `familias::canetas::cada_caneta_se_reconhece_pela_foto` (a RECEITA pintada na cena `gestos` à escala do
-  oráculo: orla, opacidade, rampa a 0,15 e a 0,5, rugosidade, tinta no traço leve contra a foto, e a lei das IRMÃS: mais
-  perto da foto do Precision que das do G-pen, Fineliner, ballpen e Pen Rough). Verde. **Mutação**: M1 (Pow4 → Smooth,
-  dureza 0,9) SANGRA (orla 1,0 × 9,0 ± 3,65); M2 (`pressureSize 0,9`) SANGRA (rampa 0,15 × 1,0); M3 (Strength 1,0)
-  SOBREVIVE — declarado: com o passo solto o tecto por texel não muda a identidade (o perfil é do dab).
+Cada um: portão vermelho visto ANTES da cura; mutação na CÓPIA isolada da árvore (`scratchpad/canetas_motor/mutacao.py`:
+controlo verde → mutado vermelho, nunca na árvore partilhada).
 
-## Os reprovados — o que se mediu e o que falta
+1. **Curva em S** — `Pen::s_curve`, linha «Pressure S-curve» (`pressureSCurve`, 0–1): `t + s·(smoothstep(t) − t)` entre o
+   piso e o tecto. A rampa do G-pen (Krita `Ink-3`, medida na foto: 0,076 até 0,14, smoothstep até 0,86) cabe a ± 0,04.
+   Portões `the_s_curve_softens_the_floor_and_the_ceiling_into_the_g_pen_ramp` (pen_tests) e o da família (vermelho: rampa
+   0,3 → 0,283 × 0,217 e 0,7 → 0,80 × 0,90 com a recta; verde com o S). **M1** (S → recta) sangra. Custo: um smoothstep por
+   amostra.
+2. **L12 pela velocidade da MÃO desde o 1.º dab** — `stroke/speed.rs` (`Mao`): o caminho do ponteiro por tique, a rampa por
+   arco; os dabs do 1.º quadro esperam pela 1.ª medida e saem no tique (antes do composite: latência 0). Era `[26, 24, 10, 6]`
+   px (início × meio, Marker 50 px/evento) → `[6, 6, 6, 6]`. Portão `a_velocidade_vale_desde_o_primeiro_dab`. **M2** (a espera
+   não escala) e **M3** (L12 volta à velocidade do traço atrasado pelo estabilizador) sangram. O Gloop Pen (speedSize 0,25)
+   regerado; a isenção do speedOpacity no censo do Wet saiu (`o_censo_so_encolhe`: a linha agora age).
+3. **A cauda (L5) com a cápsula** — `traco_plano.rs`: o re-afilar não escalava o estado de trás da cápsula (`Dab::ante`), e o
+   sub-dab de trás voltava ao raio cheio — a bolha. Antes/depois:
+   [`cauda_L5_curada.png`](../pranchas/canetas/cauda_L5_curada.png). Portão `a_cauda_com_a_capsula_afila_como_a_cabeca`
+   (vermelho: cauda 10 px × cabeça 0 a 2 px do fim). **M4** sangra. O «espinho côncavo» do início é a lei da cabeça
+   (smoothstep, ponta 0) — fica: mudá-la mexe em todo preset com taper; a cauda agora espelha-a.
+4. **A pressão leve espalha** — `Dynamics::jitter_pressure`, linha «Light-touch scatter» (`pressureJitter`): o disco de
+   Jitter somado `j·(1 − p)·D` (MyPaint `deevad/ballpen`, CC0: `offset_by_random` 0,354 → 0). Portões
+   `a_pressao_leve_espalha_e_a_cheia_nao` e o da família (vermelho sem ele: borrão 0,033 × 0,28 do MyPaint; com 0,279).
+   **M6** sangra nos dois.
+5. **O papel não é pigmento** — `blend.rs`: o K–M deixava o papel branco opaco ser pigmento (o azul sobre o papel ficava
+   0,82 × o over 0,68). Agora a mistura entra inteira com o canal mais escuro do fundo ≤ `PAPEL_DO_PIGMENTO` 0,75 e
+   desliga-se até ao branco. Portão `o_papel_branco_e_o_substrato_do_pigmento`; **M5** sangra.
+6. `LinhaDaMao::grava_no_neutro`: as duas linhas novas só vão para o preset mexidas — toda a fábrica fica ao byte.
+   Portão `as_linhas_novas_so_vao_para_o_preset_mexidas`; **M7** sangra. Painel: 18 → 20 linhas (ids, rótulos, i18n).
+   `stroke.rs` voltou abaixo das 700 linhas (o batente `MAX_DABS_PER_WALK` mudou-se para `walk.rs`).
 
-- **C-4 Studio Pen** (Krita `Ink-3 Gpen`, MyPaint `pen`): receita medida: `hardness 0,98`, cápsula, `pressureSize 0,93 · curve 2,0 · ceiling 0,7 · smoothing 0,8`,
-  5 px. Régua 448/454. Os revisores (3 rondas) acertaram o oráculo e viram sempre: (1) a rampa com «joelhos» onde a
-  largura enche (o tecto da `Pen::read` é uma quina; a suavização arredonda-a mas atrasa o fim, que fica rombo); (2) o
-  fio inicial em degraus. ⇒ **motor (fila)**: uma curva de pressão em S — um tecto MACIO (smoothstep perto do tecto) ou a
-  curva editável do Krita no `Dynamics`; é uma linha nova do cartão Pen (`LINHAS_DA_MAO` 18 → 19, i18n), não
-  «pequeno» para uma família. Sem ela o Studio Pen é o Hard Round (A-1) com outra curva (d 0,223, PERTO). CAP-28
-  (estabilização): o nosso Digital tem `stabilizer` (0,5 de fábrica) e `pulledString`; a bateria não os exercita.
-- **C-6 Technical Pen** (Krita `Ink-2 Fineliner`, MyPaint `liner`): `hardness 0,85–0,98`, `pressureSize 0,22 · curve 1,25
-  · ceiling 0,86 · speedSize 0,058` (L12). Os 2 revisores: a «gota» no início do recto e do vertical RÁPIDOS (o Krita
-  começa fino) — é o `speed.rs`: a velocidade mede-se por TIQUE e o 1.º tique tem v = 0, então o 1.º dab sai largo.
-  ⇒ **motor (fila)**: a velocidade do 1.º segmento no 1.º dab. Sem a velocidade é um disco duro de largura fixa = Pixel
-  1px/Hard Round à mesma largura (d 0,357).
-- **C-7 Ballpoint** (MyPaint `deevad/ballpen`, d 1,05 — distinta): `falloff Sharp`, dureza 0, Strength 0,68,
-  `pressureOpacity 1 · pressureSize 0,45`, grão Noise 100×35 Tiled lei **Height** pela pressão (L9), jitter 0,04, taper de
-  opacidade no início, Multiply no plano do traço (L8). Régua 358–402/454. Os revisores das rondas 2–3 escolheram o
-  NOSSO como original na maioria das linhas, MAS listaram sempre: no traço leve o MyPaint esbate em fiapos borrados e
-  afina (o `offset_by_random` dele CRESCE quando a pressão cai); o Height só faz buracos binários. O cruzamento azul
-  sobre vermelho: Mix dá cinza-azulado claro, Multiply quase preto, o MyPaint dá azul-marinho; o pigmento (K–M) escurece
-  também o papel (cobertura 0,82 × 0,56). ⇒ **motor (fila)**: jitter de posição pela pressão INVERSA (ou o grão que
-  esbate em vez de furar). ⚠️ A «gota no fim» do catálogo não está em nenhum oráculo da bateria (CAP-13, não medida).
-- **C-11 Dry Ink**: três desenhos. (a) Krita `Ink-4 Pen Rough`: jitter em píxeis da vista 0,5 + elipse 0,08 que roda,
-  `pressureSize 1 · curve 1,05`, 7 px (o `diameter="7"` do kpp); régua 446/454, mas o revisor viu pontas redondas × as
-  cortadas do Krita, gomos × serrilhado fino, e a 200 px as bolhas de cada carimbo; e fica a d 0,179 do Hard Round.
-  (b) Rebelle `Ink/Brush/Brush 3` (o «Rb Ink Brush 3» do §3 Fusões): 2.ª ponta (L6) de 16 discos 0,1·D em Multiply +
-  blend Multiply → d 1,18 (distinta), régua 428/454, mas o revisor viu o ARRASTO do escuro do cruzamento ao longo do
-  traço, as bordas fibrosas e a opacidade pela pressão — o Ink Brush 3 é tinta MOLHADA (pickup do Wet Paint), não um
-  carimbo. ⇒ **fila**: o Dry Ink do Rebelle vai para o Wet Paint (família `tintas` / J4), não para o Digital.
-- **C-10 Brush Pen** fundiu-se: a cópia fiel do Krita `Ink-7 Brush Rough` (grão Random em Color Burn na orla) ficou a d
-  0,187 do Studio Pen; as fotos do Krita mostram o mesmo traço com pó na orla.
+## Por pincel
 
-## Motor: o que se testou e ficou de fora
-
-- **L5 (a cauda)**: com `taper end` o fim do traço sai uma BOLHA redonda mais larga que o traço (recto, verticais,
-  espiral) e o início afila em espinho côncavo — [`pranchas/canetas/cauda_L5_bolha_no_fim.png`](../pranchas/canetas/cauda_L5_bolha_no_fim.png)
-  (Studio e Technical com `start/end` 1,5 e 0,8 D). ⚠️ Defeito do motor (re-pintar a cauda ao levantar), para quem possui
-  `traco_plano.rs`. Nenhum oráculo que corre afila a pressão constante (Krita, MyPaint, ArtRage), por isso as canetas
-  aprovadas não usam a cauda; a decisão 5 do `ESTADO.md` continua por perguntar no smoke.
-- Nenhum ficheiro de motor foi tocado.
-
-## Custo (Mapping Pen; `exame.sh --custo`, perfil smoke, 60 Hz)
-
-| px | ms/quadro mediana · p95 · pior | > 16,7 ms | RSS pico | load |
-|---|---|---|---|---|
-| 5 | 0,05 · 0,08 · 0,36 | 0/475 | 21 MiB | 24,9 |
-| 40 | 0,16 · 0,22 · 0,74 | 0/475 | 21 MiB | 22,1 |
-| 200 | 0,01 · 0,46 · 1,30 | 0/475 | 25 MiB | 19,0 |
-
-⚠️ Load 19–25 (as outras famílias): o relógio acima de ~5 não vale como número absoluto, mas o p95 de 0,46 ms a 200 px
-está 36× dentro do orçamento — não muda o veredito. Rato e caneta: a Mapping Pen não lê pressão nem inclinação (a
-largura é fixa por desenho); a caneta deitada não faz nada.
+- **Mapping Pen** — Pow4 `hardness 0,16`, passo 0,08, `taper start 0,2 · tip 0,8`, `speedSize 0,025`, 3 px. O Krita
+  `Ink-1` é tamanho por VELOCIDADE (`1 → 0,526`; medido: o rápido 0,97 do lento, o vertical 0,93) e o início dele 0,82 → 1
+  em ~8 px. Régua 442/454; vizinho Pixel 1px d 0,798; 200 px casado (orla 45,7 × 46,9 px, ½ 115 × 114, 10 % 164 × 162).
+  Custo p95 0,12 · 0,27 · 1,06 ms a 5/40/200, RSS 25 MiB, load 17–20. Revisores (rondas 5–10, cada um novo): o oráculo
+  certo 5, 5, 6, 6, 5, 5 de 6, sempre «quase indistinguíveis a olho, só medindo». Os pedidos CONTRADIZEM-SE entre
+  rondas (o início fino: «o Krita começa em ponta» com o taper fora, «começa redondo» com ele), e o que resta é: (a) o fio
+  de 5 px mais pálido (0,92 × 0,98 de pico) — o Krita não é invariante à escala nas pontas pequenas e o nosso perfil é:
+  pede uma dureza pelo TAMANHO (motor, fila); (b) o ruído dos sensores do Krita (a velocidade que oscila ao longo de um
+  recto rápido; a pressão < 0,04 que afina os primeiros píxeis) — não é lei. Portão `cada_caneta_se_reconhece_pela_foto`.
+- **Studio Pen** — `hardness 0,9`, cápsula, `pressureSize 0,93 · floor 0,14 · ceiling 0,86 · pressureSCurve 1`, 5 px.
+  Prancha [`studio_pen_o2.png`](../pranchas/canetas/studio_pen_o2.png): as rampas são as do G-pen. Mas a matriz põe-no a
+  d 0,273 do Hard Round (só a curva de pressão difere) — condição 4 do exame. Sem revisor (já reprovado). Se o produto
+  quiser a pressão do G-pen, é a linha «Pressure S-curve» num Hard Round (decisão do coordenador/basicos).
+- **Technical Pen** — `hardness 0,9`, cápsula, `pressureSize 0,25 · speedSize 0,058`, 5 px (Krita `Ink-2`, `diameter 5`,
+  pressão 0,754 → 1). A bolha saiu; d 0,33 do Pixel 1px — a velocidade do Fineliner tira só 3 % ao recto.
+- **Ballpoint** (em estudo) — Sharp, dureza 0, passo 0,16, `pressureSize 0,25 · pressureOpacity 1 · curve 1,2 ·
+  pressureJitter 0,35`, Strength 0,7, o plano do traço (tecto 0,99) com pigmento 1. d 0,847 do Soft Round (distinto).
+  Revisor 1 (prancha só com o plano): acertou 6/6 — halo mais curto, anéis soltos no traço leve, o cruzamento mais azul.
+  Revisor 2 ([`ballpoint_o2.png`](../pranchas/canetas/ballpoint_o2.png)): escolheu o NOSSO como original nos gestos A e B;
+  acertou os tamanhos (contas a 200 px, o 5 px mais claro) e o «sobre»: o MyPaint cruza o vermelho em violeta-cinza,
+  o nosso em azul. Medido (o vermelho só a 211,80,93 nos dois): MyPaint `64,74,121`; o over `83,94,152`; o nosso K–M
+  `48,94,137` — o verde fica 94 em TODA mistura de 3 canais (K–M e média geométrica); o MyPaint mistura ESPECTRAL (a tinta
+  misturada lê `43,54,106`, mais escura em G que as duas). ⇒ **motor grande (fila)**: uma mistura espectral multi-banda.
+- **Dry Ink** — reprovado com o porquê medido: o Krita `Ink-4 Pen Rough` é o Hard Round com a orla rasgada (rugosidade
+  0,145, d 0,179 do Hard Round na 1.ª onda); o MyPaint `classic/textured_ink` são borrões espalhados (não uma tinta seca);
+  o Rebelle `Ink/Brush/Brush 3` (opaco, orla rasgada 0,357, nada parecido com o Ink Brush da `tintas`) arrasta tinta
+  molhada — vai para o Wet Paint (fila J4, família `tintas`).
 
 ## Portões por nome (20/10)
 
-`familias::canetas::cada_caneta_se_reconhece_pela_foto` ✓ · `the_factory_presets_are_counted` ✓ ·
-`cada_preset_de_fabrica_volta_ao_byte` ✓ · `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` ✓ ·
-`familias::cada_familia_e_um_ficheiro` ✓. `cada_preset_de_fabrica_e_a_sua_receita` vermelho por `Pixel 1px`
-(família `basicos`, a meio — regerar o dela); a da Mapping Pen confere-se no gerador (`confere_receita_do_meio`, verde).
+Verdes: `familias::canetas::cada_caneta_se_reconhece_pela_foto` (Mapping + a Ballpoint em estudo) · `mao::` (inclui
+`a_velocidade_vale_desde_o_primeiro_dab`, `as_linhas_novas_…`, `pressao_leve::…`) · `traco_plano_tests` · `pen_tests` ·
+`blend` · `cada_preset_de_fabrica_e_a_sua_receita` · `cada_preset_de_fabrica_volta_ao_byte` ·
+`the_factory_presets_are_counted` · `seam_pen`. ⚠️ Vermelhos de outros a meio (não meus): a miniatura do Hard Round
+(`basicos`, ficheiro por comitar), `a_largura_e_a_prometida` e o 2B/Ink Brush (Wet, `grafite`/`tintas`).

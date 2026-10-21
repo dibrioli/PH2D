@@ -25,10 +25,12 @@ pub enum LinhaDaMao {
     SpeedOpacity,
     /// A curva em S entre o piso e o tecto ([`ph2d_painter_brush::Pen::s_curve`], J3 canetas 2.ª onda).
     PressureSCurve,
+    /// A pressão leve espalha ([`Dynamics::jitter_pressure`], J3 canetas 2.ª onda).
+    PressureJitter,
 }
 
 /// As linhas do cartão, pela ordem do painel.
-pub const LINHAS_DA_MAO: [LinhaDaMao; 19] = [
+pub const LINHAS_DA_MAO: [LinhaDaMao; 20] = [
     LinhaDaMao::Knob(Knob::PressureSize),
     LinhaDaMao::Knob(Knob::PressureSizeCurve),
     LinhaDaMao::Knob(Knob::PressureOpacity),
@@ -48,6 +50,7 @@ pub const LINHAS_DA_MAO: [LinhaDaMao; 19] = [
     LinhaDaMao::SpeedSize,
     LinhaDaMao::SpeedOpacity,
     LinhaDaMao::PressureSCurve,
+    LinhaDaMao::PressureJitter,
 ];
 
 /// Quantas linhas o cartão tem.
@@ -64,6 +67,7 @@ pub const MAO_DE_FABRICA: [f64; N_LINHAS_DA_MAO] = {
             LinhaDaMao::SpeedSize => SPEED_SIZE.4,
             LinhaDaMao::SpeedOpacity => SPEED_OPACITY.4,
             LinhaDaMao::PressureSCurve => PRESSURE_S_CURVE.4,
+            LinhaDaMao::PressureJitter => PRESSURE_JITTER.4,
         };
         i += 1;
     }
@@ -83,6 +87,8 @@ const SPEED_SIZE: (&str, f64, f64, f64, f64) = (
 );
 /// A curva em S da pressão: `0` a recta de sempre, `1` o smoothstep (o G-pen do Krita).
 const PRESSURE_S_CURVE: (&str, f64, f64, f64, f64) = ("pressureSCurve", 0.0, 1.0, 0.01, 0.0);
+/// A pressão leve espalha: o disco de Jitter na pressão 0, em diâmetros (a esferográfica do MyPaint: 0,354).
+const PRESSURE_JITTER: (&str, f64, f64, f64, f64) = ("pressureJitter", 0.0, 1.0, 0.01, 0.0);
 /// A velocidade→opacidade (L12), a mesma lei na cobertura do dab (Thin_Pen ≈ 0,2).
 const SPEED_OPACITY: (&str, f64, f64, f64, f64) = (
     "speedOpacity",
@@ -102,6 +108,7 @@ impl LinhaDaMao {
             Self::SpeedSize => SPEED_SIZE.0,
             Self::SpeedOpacity => SPEED_OPACITY.0,
             Self::PressureSCurve => PRESSURE_S_CURVE.0,
+            Self::PressureJitter => PRESSURE_JITTER.0,
         }
     }
 
@@ -117,6 +124,7 @@ impl LinhaDaMao {
             Self::SpeedSize => (SPEED_SIZE.1, SPEED_SIZE.2, SPEED_SIZE.3),
             Self::SpeedOpacity => (SPEED_OPACITY.1, SPEED_OPACITY.2, SPEED_OPACITY.3),
             Self::PressureSCurve => (PRESSURE_S_CURVE.1, PRESSURE_S_CURVE.2, PRESSURE_S_CURVE.3),
+            Self::PressureJitter => (PRESSURE_JITTER.1, PRESSURE_JITTER.2, PRESSURE_JITTER.3),
         }
     }
 
@@ -125,7 +133,7 @@ impl LinhaDaMao {
     /// antes volta ao byte (`cada_preset_de_fabrica_e_a_sua_receita`).
     #[must_use]
     pub fn grava_no_neutro(self) -> bool {
-        self != Self::PressureSCurve
+        !matches!(self, Self::PressureSCurve | Self::PressureJitter)
     }
 
     /// O valor de fábrica (o neutro).
@@ -137,6 +145,7 @@ impl LinhaDaMao {
             Self::SpeedSize => SPEED_SIZE.4,
             Self::SpeedOpacity => SPEED_OPACITY.4,
             Self::PressureSCurve => PRESSURE_S_CURVE.4,
+            Self::PressureJitter => PRESSURE_JITTER.4,
         }
     }
 
@@ -220,6 +229,7 @@ pub(crate) fn escreve(d: &mut Dynamics, t: &mut PenTilt, l: LinhaDaMao, v: f64) 
         LinhaDaMao::SpeedSize => d.speed_size = f,
         LinhaDaMao::SpeedOpacity => d.speed_opacity = f,
         LinhaDaMao::PressureSCurve => d.pen.s_curve = f,
+        LinhaDaMao::PressureJitter => d.jitter_pressure = f,
         LinhaDaMao::Knob(k) => unreachable!("knob fora da mão: {k:?}"),
     }
 }
@@ -263,6 +273,7 @@ pub(crate) fn le(d: &Dynamics, t: &PenTilt, l: LinhaDaMao) -> f64 {
         LinhaDaMao::SpeedSize => curto(d.speed_size),
         LinhaDaMao::SpeedOpacity => curto(d.speed_opacity),
         LinhaDaMao::PressureSCurve => curto(d.pen.s_curve),
+        LinhaDaMao::PressureJitter => curto(d.jitter_pressure),
         LinhaDaMao::Knob(k) => unreachable!("knob fora da mão: {k:?}"),
     }
 }
@@ -283,7 +294,10 @@ pub(crate) fn de_fabrica() -> (Dynamics, PenTilt) {
 fn da_pressao(l: LinhaDaMao) -> bool {
     matches!(
         l,
-        LinhaDaMao::SpeedSize | LinhaDaMao::SpeedOpacity | LinhaDaMao::PressureSCurve
+        LinhaDaMao::SpeedSize
+            | LinhaDaMao::SpeedOpacity
+            | LinhaDaMao::PressureSCurve
+            | LinhaDaMao::PressureJitter
     ) || matches!(
         l,
         LinhaDaMao::Knob(
@@ -380,6 +394,7 @@ impl super::PainterTool {
             }
             (self.paint.dynamics.speed_size, self.paint.dynamics.speed_opacity) = (0.0, 0.0);
             self.paint.dynamics.pen.s_curve = 0.0;
+            self.paint.dynamics.jitter_pressure = 0.0;
         } else {
             self.repor_mao();
         }
@@ -506,6 +521,27 @@ mod tests {
             .remove("opacity");
         let lida = super::super::wetpaint_preset::json::pincel_de_json(&m, &["pen_tilt"], b);
         assert_eq!(lida.pen_tilt.opacity, 0.0, "a pen_tilt antiga não traz a opacidade de agora");
+    }
+
+    /// ⭐ **As linhas que nasceram depois da fábrica só vão para o preset MEXIDAS** (a curva em S, a pressão leve —
+    /// J3 canetas 2.ª onda): o pincel de fábrica não as grava (todo preset de antes fica ao byte), e mexida, grava-a.
+    #[test]
+    fn as_linhas_novas_so_vao_para_o_preset_mexidas() {
+        use super::super::wetpaint_preset::nome_do_meio;
+        use ph2d_brush_presets::Parametros;
+        let novas = [LinhaDaMao::PressureSCurve, LinhaDaMao::PressureJitter];
+        let mut t = super::super::super::PainterTool::default();
+        t.set_paint_media(PaintMedia::Digital);
+        let base = Parametros::novo(nome_do_meio(PaintMedia::Digital), "g", "n");
+        let (p, _) = t.preset_capturar(&base);
+        for l in novas {
+            assert!(!p.engine.contains_key(l.chave()), "{} no preset de fábrica", l.chave());
+            t.set_mao(l, 0.5);
+        }
+        let (p, _) = t.preset_capturar(&base);
+        for l in novas {
+            assert_eq!(p.engine.get(l.chave()).copied(), Some(0.5), "{} mexida e não gravada", l.chave());
+        }
     }
 
     /// Ler e voltar a escrever cada linha não muda um bit dos campos (o painel e o preset leem por [`le`]).
@@ -639,5 +675,46 @@ mod velocidade {
                 "{m:?}: rápido {r} px × lento {l} px (a lei: {esperado:.1})"
             );
         }
+    }
+}
+
+/// A pressão leve espalha (J3 canetas 2.ª onda), pela porta do ponteiro.
+#[cfg(test)]
+mod pressao_leve {
+    use super::*;
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+
+    /// Um recto à pressão `p` (3 px por evento) com a linha `pressureJitter` a `j`: a tela inteira.
+    fn recto(p: f32, j: f64) -> Vec<u8> {
+        let mut t = super::super::super::PainterTool::default();
+        t.set_source(vec![255u8; 600 * 120 * 4], 600, 120);
+        t.set_paint_media(PaintMedia::Digital);
+        t.set_brush_size_px(16.0);
+        t.set_mao(LinhaDaMao::PressureJitter, j);
+        let cp = |x: f32, phase| CanvasPointer { pos: [x, 60.0], pressure: p, tilt: [0.0, 0.0], phase };
+        t.on_canvas_pointer(cp(20.0, PointerPhase::Down));
+        let mut x: f32 = 20.0;
+        while x < 580.0 {
+            x += 3.0;
+            t.on_canvas_pointer(cp(x.min(580.0), PointerPhase::Move));
+            t.paint_tick(0.008);
+        }
+        t.on_canvas_pointer(cp(580.0, PointerPhase::Up));
+        t.canvas_rgba.to_vec()
+    }
+
+    /// As linhas da tela com tinta (algum texel abaixo de 250 no vermelho).
+    fn linhas_com_tinta(px: &[u8]) -> usize {
+        (0..120).filter(|y| (100..500).any(|x| px[(y * 600 + x) * 4] < 250)).count()
+    }
+
+    /// ⭐ **A pressão leve espalha** (`Dynamics::jitter_pressure`; a esferográfica do MyPaint, `offset_by_random`
+    /// 0,354 → 0 com a pressão): à pressão 0,2 a tinta espalha-se por mais linhas do que sem a lei; à pressão 1 a
+    /// lei não move um dab (a tela é a de sem ela, ao byte).
+    #[test]
+    fn a_pressao_leve_espalha_e_a_cheia_nao() {
+        let (sem, com) = (linhas_com_tinta(&recto(0.2, 0.0)), linhas_com_tinta(&recto(0.2, 0.5)));
+        assert!(com >= sem + 4, "à pressão 0,2 a lei não espalhou: {sem} → {com} linhas");
+        assert!(recto(1.0, 0.0) == recto(1.0, 0.5), "à pressão 1 a lei mexeu na tinta");
     }
 }

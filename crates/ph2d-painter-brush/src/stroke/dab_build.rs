@@ -135,7 +135,10 @@ impl Stroke {
         //
         // O ARREMESSO entra antes do jitter — e a ordem NÃO é load-bearing; o porquê (medido) está
         // no doc do [`Stroke::throw`], que o chamador já rodou.
-        let (disco, alcance) = self.apply_jitter(thrown, radius);
+        let extra = self
+            .dynamics
+            .jitter_da_pressao(pressure, 2.0 * self.spec.clamped_radius());
+        let (disco, alcance) = self.apply_jitter(thrown, radius, extra);
         // O jitter da MARCA (L4), sorteado depois da posição: o desvio ATRAVÉS do traço soma-se ao do disco.
         let marca = jitter
             .then(|| {
@@ -280,11 +283,12 @@ impl Stroke {
     /// jitter unit: `Brush` → radius `jitter × diameter`; `View` → radius `2 × jitter_absolute_px`
     /// (Blender `BKE_brush_jitter_pos`). No-op for methods that disable jitter (DragDot/Anchored).
     /// Devolve também o raio do disco (`0` = sem Jitter) — o [`crate::capsula::Salto`] do dab.
-    pub(super) fn apply_jitter(&mut self, pos: [f32; 2], radius: f32) -> ([f32; 2], f32) {
+    pub(super) fn apply_jitter(&mut self, pos: [f32; 2], radius: f32, extra: f32) -> ([f32; 2], f32) {
         if !self.spec.stroke_method.allows_jitter() {
             return (pos, 0.0);
         }
-        let max_offset = self.spec.alcance_do_jitter(radius);
+        // `extra`: o disco que a pressão leve soma (`Dynamics::jitter_da_pressao`; `0` sem a lei, ao bit).
+        let max_offset = self.spec.alcance_do_jitter(radius) + extra;
         if max_offset <= 0.0 {
             return (pos, 0.0);
         }

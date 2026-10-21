@@ -354,7 +354,8 @@ impl Stroke {
             let t = k as f32 / (n + 1) as f32;
             let p = [from[0] + d[0] * t, from[1] + d[1] * t];
             let mut fill = *dab;
-            let (c, alcance) = self.apply_jitter(p, dab.radius_px);
+            // O preenchimento do arremesso não leva a pressão leve (não sabe a pressão do ponto do meio).
+            let (c, alcance) = self.apply_jitter(p, dab.radius_px, 0.0);
             // O espalhar ATRAVÉS (L4) de cada preenchimento, como o do dab do caminho (`dab_build`): o diâmetro do
             // pincel (sem a partícula) e o heading do traço.
             let (atraves, meia) = if self.spec.stroke_method.allows_jitter() {

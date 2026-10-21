@@ -198,6 +198,9 @@ pub fn blend_over(mode: BrushBlend, dst: [f32; 4], color: [f32; 3], a: f32) -> [
 /// `mix == 0` returns [`blend_over`] **exactly** (byte-identical), so a non-pigment brush is unchanged;
 /// the mix is additionally scaled by the destination coverage `dst[3]` so a dab on bare paper just
 /// lands (there is no pigment there to mix with). Deterministic (RYB is min/max/mul only) — HR-5 safe.
+/// Onde o papel começa (o canal mais escuro do fundo, `0..1`): acima disto o fundo é papel e o pigmento não mistura.
+pub const PAPEL_DO_PIGMENTO: f32 = 0.75;
+
 #[must_use]
 #[inline]
 pub fn blend_over_pigment(
@@ -208,7 +211,14 @@ pub fn blend_over_pigment(
     mix: f32,
 ) -> [f32; 4] {
     let plain = blend_over(mode, dst, color, a);
-    let m = mix.clamp(0.0, 1.0) * dst[3].clamp(0.0, 1.0);
+    // ⭐ O papel BRANCO é o substrato, não um pigmento (J3 canetas 2.ª onda): no K–M a película pousa SOBRE ele.
+    // Num ficheiro achatado o branco opaco é o papel (o oráculo — MyPaint `deevad/ballpen` — pinta numa camada
+    // transparente: o azul sobre o papel é o over simples, 0,68 por canal, e sobre o vermelho escurece para
+    // `64,74,121`). O papel é o QUASE-branco: a mistura entra inteira com o canal mais escuro do fundo até
+    // [`PAPEL_DO_PIGMENTO`] e desliga-se em recta até ao branco — toda tinta de cor (o amarelo do K–M de sempre, o
+    // vermelho) mistura como antes, ao bit; só o papel e o quase-branco deixam de ser pigmento.
+    let tinta = ((1.0 - dst[0].min(dst[1]).min(dst[2]).clamp(0.0, 1.0)) / (1.0 - PAPEL_DO_PIGMENTO)).min(1.0);
+    let m = mix.clamp(0.0, 1.0) * dst[3].clamp(0.0, 1.0) * tinta;
     if m <= 0.0 || !mode.lays_pigment() {
         return plain; // byte-identical to `blend_over` when Pigment é off, o canvas é nu, ou o
         // blend não DEPOSITA pigmento nenhum (ver `lays_pigment`)
@@ -594,6 +604,28 @@ mod tests {
             blend_over(BrushBlend::Mix, bare, [0.9, 0.8, 0.1], 0.5),
             "no pigment to mix with on bare paper → plain deposit"
         );
+    }
+
+    /// ⭐ **O papel branco é o substrato** (J3 canetas 2.ª onda): sobre o branco OPACO o pigmento pousa como o over
+    /// simples, ao bit (o MyPaint `deevad/ballpen` sobre o papel: 0,68 por canal, o over), e sobre uma tinta de cor
+    /// mistura — mais escuro que o over (o cruzamento azul × vermelho do oráculo, `64,74,121` contra o over
+    /// `83,94,152`).
+    #[test]
+    fn o_papel_branco_e_o_substrato_do_pigmento() {
+        let (papel, azul) = ([1.0, 1.0, 1.0, 1.0], [0.0086, 0.13, 0.45]);
+        for a in [0.2f32, 0.68, 1.0] {
+            assert_eq!(
+                blend_over_pigment(BrushBlend::Mix, papel, azul, a, 1.0),
+                blend_over(BrushBlend::Mix, papel, azul, a),
+                "o papel branco misturou como um pigmento a {a}"
+            );
+        }
+        let vermelho = [0.65, 0.08, 0.11, 1.0];
+        let (pig, over) = (
+            blend_over_pigment(BrushBlend::Mix, vermelho, azul, 0.68, 1.0),
+            blend_over(BrushBlend::Mix, vermelho, azul, 0.68),
+        );
+        assert!(pig[0] + pig[1] + pig[2] < over[0] + over[1] + over[2], "sobre a tinta não escureceu: {pig:?} × {over:?}");
     }
 
     /// The pigment path mixes a blue canvas + a yellow dab **toward green** — the subtractive hallmark

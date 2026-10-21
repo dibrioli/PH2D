@@ -11,19 +11,44 @@ use super::prelude::*;
 pub const WET: &[Receita] = &[];
 
 pub const MEIOS: &[ReceitaMeio] = &[
-    // C-5 — o fio de largura FIXA (nenhuma pressão) e perfil gaussiano (Krita Ink-1 Precision): o perfil do traço é o
-    // do dab (Pow4) com o passo SOLTO (a cápsula satura a orla e endurece-a); o início afina um pouco, como no Krita.
+    // C-5 — o fio que a pressão não muda e perfil gaussiano (Krita Ink-1 Precision, CC-0: o tamanho pela VELOCIDADE,
+    // `1 → 0,526`): o perfil do traço é o do dab (Pow4) com o passo SOLTO (a cápsula satura a orla e endurece-a), e o
+    // traço rápido sai ~5 % mais fino (L12, a velocidade da mão: o Krita 0,97 no recto, 0,93 no vertical); o início
+    // afina um pouco (o Krita, medido: 0,82 → 0,91 → 1 da largura nos primeiros ~8 px do recto lento).
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.2"),
+            ("hardness", "0.16"),
             ("falloff", r#""Pow4""#),
             ("spacing", "0.08"),
-            ("taper", r#"{"start":0.2,"tip_start":0.6,"opacity":0.0}"#),
+            ("taper", r#"{"start":0.2,"tip_start":0.8,"opacity":0.0}"#),
         ],
-        mao: &[("pressureSize", 0.0)],
+        mao: &[("pressureSize", 0.0), ("speedSize", 0.025)],
         size_px: Some(3.0),
         opacity: Some(0.99),
         ..ReceitaMeio::digital("Ink", "Mapping", "Mapping Pen")
+    },
+];
+
+/// As receitas EM ESTUDO — medidas, com o portão, mas fora da fábrica (REPROVADAS no exame; o porquê em
+/// `docs/Painter/Pinceis/exames/canetas.md`). A Ballpoint: o traço leve e o papel casam o MyPaint; o cruzamento
+/// sobre o vermelho pede a mistura ESPECTRAL dele (o K–M de constante única dá azul onde ele dá violeta-cinza).
+pub const EM_ESTUDO: &[ReceitaMeio] = &[
+    // C-7 — a esferográfica (MyPaint `deevad/ballpen`, CC0): translúcida e macia, a tinta e o tamanho pela pressão, e
+    // no traço LEVE a tinta não fura — esbate em fiapos; o traço compõe-se UMA vez (o plano) com o pigmento, que sobre
+    // o papel é o over e sobre outra tinta escurece (`exames/canetas.md` 2.ª onda).
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "0.0"),
+            ("falloff", r#""Sharp""#),
+            ("spacing", "0.16"),
+            ("pigment", "true"),
+            ("pigment_mix", "1.0"),
+            ("traco", r#"{"largura":7.0,"molhada":0.0,"queimada":0.0,"tecto":0.99}"#),
+        ],
+        mao: &[("pressureSize", 0.25), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 1.2), ("pressureJitter", 0.35)],
+        size_px: Some(5.0),
+        opacity: Some(0.7),
+        ..ReceitaMeio::digital("Ink", "Ballpoint", "Ballpoint")
     },
 ];
 
@@ -44,10 +69,21 @@ struct Identidade {
     rampa_fio: f64,
     /// A largura na pressão ~0,5 ÷ na ~0,95: a forma da curva (em S no G-pen, recta no fineliner).
     rampa_meio: f64,
+    /// A largura na pressão ~0,3 ÷ na ~0,95: o pé do S (o G-pen ainda fino; a recta já a meio caminho).
+    rampa_baixa: f64,
+    /// A largura na pressão ~0,7 ÷ na ~0,95: o ombro do S (o G-pen já quase cheio; um tecto em quina não).
+    rampa_alta: f64,
     /// |Δ| médio, entre colunas vizinhas, da linha de cima do recto lento a ½ do pico: a borda rasgada.
     rugosidade: f64,
     /// O pico médio da rampa a pressão 0,05–0,25 ÷ a opacidade: a tinta que o traço leve deixa.
     leve: f64,
+    /// No traço leve (0,05–0,25): |Δ| médio entre colunas vizinhas ÷ a tinta média — furos nítidos ≫, fiapos borrados ≪.
+    aspereza_leve: f64,
+    /// O σ vertical da tinta no traço leve ÷ o do cheio (0,88–0,97): a pressão leve que ESPALHA a posição.
+    espalha_leve: f64,
+    /// No traço leve, o pico de cada coluna menos a recta que o ajusta, σ ÷ média: os BORRÕES (os fiapos da
+    /// esferográfica; liso ≈ 0).
+    borrao: f64,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -56,8 +92,13 @@ enum M {
     Opacidade,
     RampaFio,
     RampaMeio,
+    RampaBaixa,
+    RampaAlta,
     Rugosidade,
     Leve,
+    AsperezaLeve,
+    EspalhaLeve,
+    Borrao,
 }
 
 impl M {
@@ -67,8 +108,13 @@ impl M {
             M::Opacidade => i.opacidade,
             M::RampaFio => i.rampa_fio,
             M::RampaMeio => i.rampa_meio,
+            M::RampaBaixa => i.rampa_baixa,
+            M::RampaAlta => i.rampa_alta,
             M::Rugosidade => i.rugosidade,
             M::Leve => i.leve,
+            M::AsperezaLeve => i.aspereza_leve,
+            M::EspalhaLeve => i.espalha_leve,
+            M::Borrao => i.borrao,
         }
     }
     /// A tolerância contra a foto (a orla é inteira e escala com o macio).
@@ -77,8 +123,13 @@ impl M {
             M::Borda => 0.5 + 0.35 * foto,
             M::Opacidade => 0.06,
             M::RampaFio | M::RampaMeio => 0.12,
+            // A forma da curva: o pé e o ombro do S (os «joelhos» que a revisão cega viu passavam a 0,12).
+            M::RampaBaixa | M::RampaAlta => 0.05,
             M::Rugosidade => 0.1 + 0.3 * foto,
             M::Leve => 0.15,
+            M::AsperezaLeve => 0.05,
+            M::EspalhaLeve => 0.12,
+            M::Borrao => 0.1,
         }
     }
 }
@@ -115,13 +166,43 @@ impl Identidade {
             .collect();
         let rugosidade = media(&topo.windows(2).map(|p| (p[1] - p[0]).abs()).collect::<Vec<_>>());
         let leve = media(&(85..=185).step_by(5).map(|x| pico(&col(x, 340, 460))).collect::<Vec<_>>());
+        let banda = |x0: usize, x1: usize| -> (f64, f64) {
+            let cols: Vec<Vec<f64>> = (x0..x1).map(|x| col(x, 340, 460)).collect();
+            let tinta = media(&cols.iter().map(|v| media(v)).collect::<Vec<_>>());
+            let dif = media(
+                &cols
+                    .windows(2)
+                    .map(|p| media(&p[0].iter().zip(&p[1]).map(|(a, b)| (b - a).abs()).collect::<Vec<_>>()))
+                    .collect::<Vec<_>>(),
+            );
+            let sigma = |v: &Vec<f64>| {
+                let w = v.iter().sum::<f64>() + 1e-9;
+                let mu = v.iter().enumerate().map(|(y, a)| a * y as f64).sum::<f64>() / w;
+                (v.iter().enumerate().map(|(y, a)| a * (y as f64 - mu).powi(2)).sum::<f64>() / w).sqrt()
+            };
+            (dif / tinta.max(1e-6), media(&cols.iter().map(sigma).collect::<Vec<_>>()))
+        };
+        let ((aspereza_leve, sigma_leve), (_, sigma_cheio)) = (banda(85, 185), banda(500, 545));
+        let picos: Vec<f64> = (85..185).map(|x| pico(&col(x, 340, 460))).collect();
+        let n = picos.len() as f64;
+        let (mx, my) = ((n - 1.0) / 2.0, media(&picos));
+        let inclina = picos.iter().enumerate().map(|(x, y)| (x as f64 - mx) * (y - my)).sum::<f64>()
+            / picos.iter().enumerate().map(|(x, _)| (x as f64 - mx).powi(2)).sum::<f64>();
+        let resto: Vec<f64> =
+            picos.iter().enumerate().map(|(x, y)| (y - my - inclina * (x as f64 - mx)).powi(2)).collect();
+        let borrao = media(&resto).sqrt() / my.max(1e-6);
         Self {
             borda: media(&rec.iter().map(|v| borda(v)).collect::<Vec<_>>()),
             opacidade,
             rampa_fio: rampa([130, 135, 140]) / forte,
             rampa_meio: rampa([305, 310, 315]) / forte,
+            rampa_baixa: rampa([205, 210, 215]) / forte,
+            rampa_alta: rampa([405, 410, 415]) / forte,
             rugosidade,
             leve: leve / opacidade.max(1e-6),
+            aspereza_leve,
+            espalha_leve: sigma_leve / sigma_cheio.max(1e-6),
+            borrao,
         }
     }
 }
@@ -131,17 +212,18 @@ impl Identidade {
 /// recto lento do oráculo ÷ a nossa, a do `exame.sh`).
 #[rustfmt::skip]
 const FOTOS: [(&str, &str, Identidade); 5] = [
-    ("Mapping Pen", "krita d) Ink-1 Precision", Identidade { borda: 9.0, opacidade: 0.998, rampa_fio: 1.0, rampa_meio: 1.0, rugosidade: 0.0, leve: 1.001 }),
-    ("G-pen", "krita d) Ink-3 Gpen", Identidade { borda: 1.0, opacidade: 1.0, rampa_fio: 0.1, rampa_meio: 0.567, rugosidade: 0.0, leve: 0.99 }),
-    ("Fineliner", "krita d) Ink-2 Fineliner", Identidade { borda: 1.0, opacidade: 1.0, rampa_fio: 0.789, rampa_meio: 0.895, rugosidade: 0.0, leve: 1.0 }),
-    ("Ballpen", "mypaint deevad/ballpen", Identidade { borda: 13.0, opacidade: 0.687, rampa_fio: 0.807, rampa_meio: 0.833, rugosidade: 0.0, leve: 0.125 }),
-    ("Pen Rough", "krita d) Ink-4 Pen Rough", Identidade { borda: 0.833, opacidade: 1.0, rampa_fio: 0.145, rampa_meio: 0.5, rugosidade: 0.145, leve: 0.99 }),
+    ("Mapping Pen", "krita d) Ink-1 Precision", Identidade { borda: 9.0, opacidade: 0.998, rampa_fio: 1.0, rampa_meio: 1.0, rampa_baixa: 1.0, rampa_alta: 1.0, rugosidade: 0.0, leve: 1.001, aspereza_leve: 0.005, espalha_leve: 1.0, borrao: 0.002 }),
+    ("G-pen", "krita d) Ink-3 Gpen", Identidade { borda: 1.0, opacidade: 1.0, rampa_fio: 0.1, rampa_meio: 0.567, rampa_baixa: 0.217, rampa_alta: 0.9, rugosidade: 0.0, leve: 0.99, aspereza_leve: 0.009, espalha_leve: 0.099, borrao: 0.003 }),
+    ("Fineliner", "krita d) Ink-2 Fineliner", Identidade { borda: 1.0, opacidade: 1.0, rampa_fio: 0.789, rampa_meio: 0.895, rampa_baixa: 0.842, rampa_alta: 0.947, rugosidade: 0.0, leve: 1.0, aspereza_leve: 0.002, espalha_leve: 0.801, borrao: 0.0 }),
+    ("Ballpoint", "mypaint deevad/ballpen", Identidade { borda: 13.0, opacidade: 0.687, rampa_fio: 0.807, rampa_meio: 0.833, rampa_baixa: 0.772, rampa_alta: 0.921, rugosidade: 0.0, leve: 0.125, aspereza_leve: 0.04, espalha_leve: 0.918, borrao: 0.28 }),
+    ("Pen Rough", "krita d) Ink-4 Pen Rough", Identidade { borda: 0.833, opacidade: 1.0, rampa_fio: 0.145, rampa_meio: 0.5, rampa_baixa: 0.318, rampa_alta: 0.755, rugosidade: 0.145, leve: 0.99, aspereza_leve: 0.084, espalha_leve: 0.141, borrao: 0.018 }),
 ];
 
 /// As canetas de fábrica da família: o nome, a escala do exame e o que faz a identidade.
 #[rustfmt::skip]
-const CANETAS: [(&str, f64, &[M]); 1] = [
-    ("Mapping Pen", 1.167, &[M::Borda, M::RampaFio, M::RampaMeio, M::Opacidade, M::Rugosidade, M::Leve]),
+const CANETAS: [(&str, f64, &[M]); 2] = [
+    ("Mapping Pen", 1.273, &[M::Borda, M::RampaFio, M::RampaBaixa, M::RampaMeio, M::RampaAlta, M::Opacidade, M::Rugosidade, M::Leve]),
+    ("Ballpoint", 1.462, &[M::Borda, M::Opacidade, M::RampaFio, M::RampaMeio, M::Leve, M::AsperezaLeve, M::EspalhaLeve, M::Borrao]),
 ];
 
 /// ⭐ **Cada caneta reconhece-se pela foto do seu oráculo** (J3, `docs/Painter/Pinceis/exames/canetas.md`): a RECEITA
@@ -164,7 +246,7 @@ fn cada_caneta_se_reconhece_pela_foto() {
                 op["size_px"] = serde_json::json!(d * escala);
             }
         }
-        let r = MEIOS.iter().find(|r| r.nome == nome).unwrap();
+        let r = MEIOS.iter().chain(EM_ESTUDO).find(|r| r.nome == nome).unwrap();
         let (parametros, texturas) = crate::presets_de_fabrica::parametros_do_meio(r);
         let preset = ph2d_brush_presets::Preset {
             parametros,

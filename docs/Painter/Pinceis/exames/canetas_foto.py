@@ -18,6 +18,8 @@ def ident(path):
     forte = float(np.mean([larg(col(x, 340, 460)) for x in (530, 535, 540)]))
     fio = float(np.mean([larg(col(x, 340, 460)) for x in (130, 135, 140)]))
     meio = float(np.mean([larg(col(x, 340, 460)) for x in (305, 310, 315)]))
+    baixa = float(np.mean([larg(col(x, 340, 460)) for x in (205, 210, 215)]))
+    alta = float(np.mean([larg(col(x, 340, 460)) for x in (405, 410, 415)]))
     # a orla de cima do recto lento: a 1.ª linha a ½ do pico, coluna a coluna; a rugosidade = |Δ| médio entre colunas
     topo = []
     for x in range(100, 501):
@@ -25,8 +27,20 @@ def ident(path):
         topo.append(int(np.argmax(v >= 0.5 * m)) if m > 0.02 else 0)
     rug = float(np.mean(np.abs(np.diff(topo))))
     leve = float(np.mean([pico(col(x, 340, 460)) for x in range(85, 186, 5)])) / max(opac, 1e-6)
+    # o traço LEVE (rampa a 0,05–0,25) contra o cheio (0,88–0,97): a aspereza (|Δx| médio ÷ a tinta: furos nítidos ≫,
+    # fiapos borrados ≪) e o espalhar (σ vertical da tinta ÷ o do cheio: a pressão leve que espalha a posição)
+    def banda(x0, x1):
+        b = c[340:460, x0:x1]
+        ys = np.arange(340, 460)[:, None]
+        w = b.sum(axis=0) + 1e-9
+        mu = (b * ys).sum(axis=0) / w
+        return np.abs(np.diff(b, axis=1)).mean() / max(b.mean(), 1e-6), np.sqrt((b * (ys - mu) ** 2).sum(axis=0) / w).mean()
+    asp, sl = banda(85, 185)
+    _, sf = banda(500, 545)
     return dict(borda=round(float(np.mean([borda(v) for v in rec])), 3), opacidade=round(opac, 3),
                 rampa_fio=round(fio / max(forte, 1), 3), rampa_meio=round(meio / max(forte, 1), 3),
-                rugosidade=round(rug, 3), leve=round(leve, 3))
+                rampa_baixa=round(baixa / max(forte, 1), 3), rampa_alta=round(alta / max(forte, 1), 3),
+                rugosidade=round(rug, 3), leve=round(leve, 3),
+                aspereza_leve=round(float(asp), 3), espalha_leve=round(float(sl / max(sf, 1e-6)), 3))
 for p in sys.argv[1:]:
     print(p.split('/')[-1], ident(p))

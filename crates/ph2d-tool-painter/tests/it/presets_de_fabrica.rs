@@ -315,10 +315,15 @@ fn raios_da_lei() -> Vec<f32> {
         .collect()
 }
 
-/// O preset com a tela DIREITA: a largura é a do traço; o escorrimento do Wet Drip é da tela (W1e).
+/// O preset com a tela DIREITA: a largura é a do traço; o escorrimento do Wet Drip é da tela (W1e). E SEM o pó solto
+/// (J4 `pastel_carvao`): os grãos fora da borda não são a largura do traço (com eles a tabela do Charcoal lia 1,5× e o
+/// slider pintava o miolo mais fino que o prometido).
 fn direito(p: &Preset) -> Preset {
     let mut d = p.clone();
     d.parametros.tilt = Some(DIREITA);
+    if let Some(j) = d.parametros.brush.get_mut("dab_jitter").and_then(|j| j.as_object_mut()) {
+        j.remove("po");
+    }
     d
 }
 

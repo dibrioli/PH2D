@@ -34,6 +34,7 @@ pub const WET: &[Receita] = &[
             ("jitter", "0.15"),
             ("shape", MARMORE_DO_CARVAO),
             ("size_max_px", TECTO_DO_CARVAO),
+            ("dab_jitter", PO_DO_CARVAO),
         ],
         ..CHARCOAL
     },
@@ -56,6 +57,7 @@ pub const WET: &[Receita] = &[
             ("pressureOpacityCurve", 0.5),
             ("pressureGrain", 0.5),
         ],
+        pincel: &[("dab_jitter", PO_DO_PASTEL)],
         ..SOFT_PASTEL
     },
     // Pastel › Pastel Oil › Oil Pastel 2 (o giz de cera): grão mais fino e mais carregado que o seco (o
@@ -139,6 +141,15 @@ const VETAS_DA_BARRA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise",
 
 /// O miolo marmoreado do Charcoal (J4 r3): a Shape um Noise `Random` de lado 8, contraste 0,6, viés 0,55.
 const MARMORE_DO_CARVAO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.6, 0.55, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [8.0, 8.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+
+/// ⭐ **O PÓ SOLTO do pastel seco** (J4 2.ª ronda, `wetpaint/po.rs`): os grãos à volta do traço, à parte do rasto. Rebelle
+/// «Dry Thin», recto de 200 px (`po2.py`): 56 grãos por 100 px a ≥ 0,2 da meia-largura, área p50 3 px, tom 0,18, 2,15×
+/// mais à direita de quem anda (`po_lado` 0,37); o nosso (variante sp6 v0, à escala 0,475): 54, área 2, tom 0,20.
+const PO_DO_PASTEL: &str = r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 0.0, "po": 2.5, "po_alcance": 1.0, "po_px": 1.5, "po_opacidade": 0.08, "po_lado": 0.37}"#;
+
+/// O pó solto do carvão (J4 2.ª ronda): mais perto da borda (Rebelle «Charcoal»: 46 grãos por 100 px, todos a 0,1–0,5 da
+/// meia-largura, 231 × 91 à direita — `po_lado` 0,43); o nosso (ch6 v1): 44, as mesmas faixas, tom 0,17 (Rebelle 0,15).
+const PO_DO_CARVAO: &str = r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 0.0, "po": 3.5, "po_alcance": 0.4, "po_px": 1.5, "po_opacidade": 0.1, "po_lado": 0.43}"#;
 
 /// O tecto do Charcoal (decisão 8): o recto de 200 px do Rebelle pinta 73–76 px (`fixtures/leis_escala_rebelle.json`).
 const TECTO_DO_CARVAO: &str = "76";
@@ -628,6 +639,112 @@ mod portoes {
             if com < 1.12 * sem {
                 f.push(format!("{n}: a pressão leve não se desfaz em grão ({com:.2} contra {sem:.2} sem a lei)"));
             }
+        }
+        assert!(f.is_empty(), "{f:?}");
+    }
+
+    /// ⭐ **O PÓ SOLTO** do recto de 200 px (cena `tamanhos`, y 290..640, x 150..850 — `po2.py` da família, o método da
+    /// medição do Rebelle em `exames/texturas.md` «Motor J4»): o miolo = as linhas cuja cobertura média passa ¼ do pico;
+    /// fora dele (3 px de folga) as manchas 4-ligadas de cobertura ≥ 0,12 a ≥ 0,2 da meia-largura da borda (as de mais
+    /// perto são a orla granulosa do próprio traço) — a largura do miolo, quantas por 100 px, a distância mediana em
+    /// fracção da meia-largura e quantas caem acima e abaixo.
+    pub(super) fn po_solto(c: &[f64]) -> Po {
+        let (y0, y1, x0, x1) = (290usize, 640usize, 150usize, 850usize);
+        let (h, w) = (y1 - y0, x1 - x0);
+        let b = |y: usize, x: usize| c[(y0 + y) * 1000 + x0 + x];
+        let perfil: Vec<f64> = (0..h).map(|y| (0..w).map(|x| b(y, x)).sum::<f64>() / w as f64).collect();
+        let pico = perfil.iter().copied().fold(0.0, f64::max);
+        let miolo: Vec<usize> = (0..h).filter(|&y| perfil[y] > 0.25 * pico).collect();
+        let (Some(&m0), Some(&m1)) = (miolo.first(), miolo.last()) else { return Po::default() };
+        let meia = (m1 - m0) as f64 / 2.0;
+        let fora = |y: usize| y + 3 < m0 || y > m1 + 3;
+        let mut visto = vec![false; h * w];
+        let (mut dist, mut cima, mut baixo) = (Vec::new(), 0, 0);
+        for y in 0..h {
+            for x in 0..w {
+                if visto[y * w + x] || !fora(y) || b(y, x) < 0.12 {
+                    continue;
+                }
+                let (mut pilha, mut soma, mut n) = (vec![(y, x)], 0.0, 0.0);
+                visto[y * w + x] = true;
+                while let Some((yy, xx)) = pilha.pop() {
+                    soma += yy as f64;
+                    n += 1.0;
+                    let viz = [(yy + 1, xx), (yy.wrapping_sub(1), xx), (yy, xx + 1), (yy, xx.wrapping_sub(1))];
+                    for (vy, vx) in viz {
+                        if vy < h && vx < w && !visto[vy * w + vx] && fora(vy) && b(vy, vx) >= 0.12 {
+                            visto[vy * w + vx] = true;
+                            pilha.push((vy, vx));
+                        }
+                    }
+                }
+                let cy = soma / n;
+                let d = (cy - m0 as f64).abs().min((cy - m1 as f64).abs()) / meia.max(1.0);
+                if d >= 0.2 {
+                    dist.push(d);
+                    if cy < m0 as f64 { cima += 1 } else { baixo += 1 }
+                }
+            }
+        }
+        let por_100 = dist.len() as f64 / (w as f64 / 100.0);
+        let p50 = if dist.is_empty() { 0.0 } else { mediana(dist) };
+        Po { miolo: m1 - m0 + 1, por_100, p50, cima, baixo }
+    }
+
+    /// O pó solto medido por [`po_solto`].
+    #[derive(Clone, Copy, Debug, Default)]
+    pub(super) struct Po {
+        miolo: usize,
+        por_100: f64,
+        p50: f64,
+        cima: usize,
+        baixo: usize,
+    }
+
+    /// O pincel `nome` com o pó solto (o `DabJitter::po` e os seus campos; `po` 0 = sem pó).
+    fn com_po(nome: &str, po: f64, alcance: f64, px: f64, opacidade: f64, lado: f64) -> Pincel {
+        mutado(
+            nome,
+            "brush.dab_jitter",
+            serde_json::json!({"po": po, "po_alcance": alcance, "po_px": px, "po_opacidade": opacidade, "po_lado": lado}),
+        )
+    }
+
+    /// ⭐⭐ **O pó solto cai À VOLTA do traço no Wet Paint, à parte do rasto, e do lado DIREITO de quem anda** (J4 2.ª
+    /// ronda, `wetpaint/po.rs`, a porta `Engine::pousa_grao_solto` e o `DabJitter::po_lado`): o Soft Pastel com o pó larga
+    /// grãos longe da borda do recto de 200 px — o Rebelle `Dry Thin` 56 por 100 px a ≥ 0,2 da meia-largura, 2,15× mais
+    /// em baixo (à direita do rumo) — e o MIOLO do traço não muda (dentro das lanes os grãos pintavam nódoas: o miolo
+    /// 92 → 109 px, `exames/texturas.md` «Motor J4»). Sem o pó, nenhum grão longe; sem o lado, tantos em cima como em baixo.
+    #[test]
+    fn o_po_solto_cai_a_volta_do_traco_no_wet() {
+        let ps = [
+            com_po("Soft Pastel", 0.0, 1.0, 1.5, 0.08, 0.0),
+            com_po("Soft Pastel", 2.5, 1.0, 1.5, 0.08, 0.37),
+            com_po("Soft Pastel", 2.5, 1.0, 1.5, 0.08, 0.0),
+        ];
+        let m: Vec<Po> = std::thread::scope(|s| {
+            let hs: Vec<_> = ps.iter().map(|p| s.spawn(move || po_solto(&cobertura(&tamanhos(p))))).collect();
+            hs.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        let (sem, com, sem_lado) = (m[0], m[1], m[2]);
+        println!("[pastel_carvao] o pó a 200 px: sem {sem:?} · com {com:?} · sem o lado {sem_lado:?}");
+        let mut f = Vec::new();
+        if sem.por_100 > 8.0 {
+            f.push(format!("sem o pó o traço já larga {:.1} grãos/100 px longe da borda", sem.por_100));
+        }
+        if com.por_100 < 30.0 {
+            f.push(format!("com o pó só {:.1} grãos/100 px longe da borda (Rebelle 56)", com.por_100));
+        }
+        if com.miolo.abs_diff(sem.miolo) > 4 {
+            f.push(format!("o pó mexe no MIOLO do traço: {} → {} px (as nódoas da lane)", sem.miolo, com.miolo));
+        }
+        if !(0.25..=1.0).contains(&com.p50) {
+            f.push(format!("os grãos a {:.2} da meia-largura (Rebelle 0,44 dos que passam 0,2)", com.p50));
+        }
+        let lado = |p: Po| p.baixo as f64 / p.cima.max(1) as f64;
+        // Medido: 2,99 com o lado, 1,38 sem (a orla do pastel deitado à direita já pende para baixo).
+        if lado(com) < 1.5 * lado(sem_lado) {
+            f.push(format!("o lado: {:.2} com, {:.2} sem (Rebelle 2,15)", lado(com), lado(sem_lado)));
         }
         assert!(f.is_empty(), "{f:?}");
     }

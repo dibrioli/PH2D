@@ -107,12 +107,18 @@ Godot onde ele acerta (gesto, texto no cursor, Ctrl = declarar, vários = lista,
 
 ## 5. Fases (cada uma com portões e mutação; smoke no fim)
 
+Ordem: **8a → 8d → 8b → 8c** (o 8b escreve código da API que o 8d cria).
+
 - **8a** Hierarchy → código: §3.1–3, 5–8, 11–12.
-- **8b** Assets, lista de scripts e propriedades do Inspector: §3.9–10.
+- **8d** Os scripts tocam componentes e imagens (decisão do dono nº 8, 21/10): ler e escrever cada propriedade que o
+  Inspector mostra, pelo mesmo nome. Hoje não há tabela de reflexão — cada cartão é à mão (33 `populate_*`), e só a
+  pose chega ao Luau; o ponto de partida é o catálogo `ph2d-component-desc` (107 `ComponentDesc`, `FieldDesc` com id e
+  `FieldKind`), que hoje não toca valores. Plano + oráculo próprios antes de codar.
+- **8b** Assets, lista de scripts e propriedades do Inspector: §3.9–10, com a API do 8d.
 - **8c** Alt → propriedade de objecto: §3.4.
 - **Smoke = cena 7** (`PH2D_CODE_SMOKE=7`): um jogo pequeno com objectos para arrastar; conduzida e fotografada antes.
 
-## 6. Por decidir pelo dono
+## 6. Decisões do dono
 
-- **O que os scripts ainda não sabem tocar** (componentes como Vida e Câmera, imagens, propriedades fora de
-  `x/y/rotation/scale`): ao arrastá-los, recusar com uma explicação no balão, ou abrir trabalho para a API os ler.
+- **Nº 8 (21/10):** o que os scripts ainda não sabem tocar (componentes, imagens, propriedades fora da pose) —
+  **ensinar os scripts já**, antes de fechar o item 8 (fase 8d).

@@ -201,7 +201,11 @@ fn a_espera_que_acaba_sem_escrever_regista_a_edicao_ja() {
     s.esperam = vec![ID];
     s.quadro(true);
     s.aterra();
-    assert_eq!(s.undo.len(), 1, "a edição registou-se quando a espera acabou");
+    assert_eq!(
+        s.undo.len(),
+        1,
+        "a edição registou-se quando a espera acabou"
+    );
     s.move_o_objecto();
     s.ctrl(false);
     assert_eq!(

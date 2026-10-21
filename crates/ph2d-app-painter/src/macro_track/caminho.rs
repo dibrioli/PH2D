@@ -623,7 +623,9 @@ fn mostrado(
 /// ` ≠editor=N` da variante `fim`: os texels que a subida anterior mostrou e diferem da imagem do editor.
 fn ao_editor(e: &Espia, bits: u64, painter: Option<&PainterTool>) -> String {
     let troca = e.trocas.iter().find(|t| t.entity_bits == bits);
-    let rgba = troca.and_then(|t| e.ranhuras.get(&t.texture_id)).map(|r| &r.1);
+    let rgba = troca
+        .and_then(|t| e.ranhuras.get(&t.texture_id))
+        .map(|r| &r.1);
     let editor = painter
         .filter(|t| t.bound_document() == Some(bits))
         .and_then(PainterTool::imagem_aplicada)

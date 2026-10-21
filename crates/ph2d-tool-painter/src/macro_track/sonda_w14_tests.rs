@@ -17,7 +17,12 @@ fn tique(t: &mut PainterTool) {
 fn salto(a: &[u8], b: &[u8]) -> (usize, usize, usize, usize, u8) {
     let mut r = (0, 0, 0, 0, 0u8);
     for (x, y) in a.as_chunks::<4>().0.iter().zip(b.as_chunks::<4>().0) {
-        let d = x.iter().zip(y).map(|(p, q)| p.abs_diff(*q)).max().unwrap_or(0);
+        let d = x
+            .iter()
+            .zip(y)
+            .map(|(p, q)| p.abs_diff(*q))
+            .max()
+            .unwrap_or(0);
         if d > 0 {
             r.0 += 1;
         }
@@ -49,13 +54,19 @@ fn sonda_o_salto_no_fim_do_clipe() {
     for (lado, n) in [(1024u32, 2usize), (1024, 4)] {
         let (mut t, bytes, dur) = grava_no_papel_ligado(lado, 1, n).expect("grava");
         // A espera de uma etapa editada (W8 2b): o fio da imagem do fim nova.
-        let track = ph2d_macro::codec::read(&bytes).expect("lê").tracks.remove(0);
+        let track = ph2d_macro::codec::read(&bytes)
+            .expect("lê")
+            .tracks
+            .remove(0);
         let t0 = std::time::Instant::now();
-        let _ = super::etapas::imagens_da_gravacao(&track, &std::sync::atomic::AtomicBool::new(false));
+        let _ =
+            super::etapas::imagens_da_gravacao(&track, &std::sync::atomic::AtomicBool::new(false));
         println!(
             "[w14] {lado}² {n} pinceladas: a imagem do fim nova leva {:.1} s (load {})",
             t0.elapsed().as_secs_f64(),
-            std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+            std::fs::read_to_string("/proc/loadavg")
+                .unwrap_or_default()
+                .trim()
         );
         let mut palco = MacroEmCena::de(&bytes).expect("lê").expect("trilha");
         palco.segue(dur).expect("toca");

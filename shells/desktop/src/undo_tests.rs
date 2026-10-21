@@ -505,7 +505,10 @@ fn a_edicao_que_espera_fica_fora_da_fotografia_do_desfazer() {
     let base = capture(&mut sim, &vec, &reg);
     let id = sim.world().get::<ph2d_ecs::StableId>(m).expect("o id").0;
     let velho = base.macro_de(id).expect("o Macro na fotografia");
-    sim.world_mut().get_mut::<ph2d_ecs::Macro>(m).expect("Macro").doc = b"novo".to_vec();
+    sim.world_mut()
+        .get_mut::<ph2d_ecs::Macro>(m)
+        .expect("Macro")
+        .doc = b"novo".to_vec();
     let mut espera = EdicaoQueEspera::default();
     assert!(!espera.quadro(&[id], Some(&base)), "a espera começa");
     let editado = capture(&mut sim, &vec, &reg);

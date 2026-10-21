@@ -384,7 +384,10 @@ fn por_e_tirar_um_componente_de_uma_linha() {
         let mut sim = SimWorld::new();
         let e = sim
             .world_mut()
-            .spawn((Transform::from_translation(Vec2::new(3.0, 4.0)), Name::new("Tela")))
+            .spawn((
+                Transform::from_translation(Vec2::new(3.0, 4.0)),
+                Name::new("Tela"),
+            ))
             .id();
         if let Some(d) = doc {
             sim.world_mut().entity_mut(e).insert(crate::Macro {
@@ -394,14 +397,26 @@ fn por_e_tirar_um_componente_de_uma_linha() {
         }
         let mut state = TransformPropagationState::new(sim.world_mut());
         let mut snap = WorldSnapshot::new();
-        world_to_snapshot(sim.world_mut(), &mut state, &mut WorklistBuf::new(), &reg, &mut snap)
-            .unwrap();
+        world_to_snapshot(
+            sim.world_mut(),
+            &mut state,
+            &mut WorklistBuf::new(),
+            &reg,
+            &mut snap,
+        )
+        .unwrap();
         snap
     };
     let (velho, novo, sem) = (foto(Some(b"velho")), foto(Some(b"novo")), foto(None));
     let id = velho.entities[0].id;
-    assert_eq!(sem.entities[0].id, id, "controlo: a mesma identidade nos três");
-    let blob = velho.component_blob(id, MACRO).expect("o Macro está na linha").to_vec();
+    assert_eq!(
+        sem.entities[0].id, id,
+        "controlo: a mesma identidade nos três"
+    );
+    let blob = velho
+        .component_blob(id, MACRO)
+        .expect("o Macro está na linha")
+        .to_vec();
     assert!(sem.component_blob(id, MACRO).is_none());
     let mut a = novo.clone();
     a.set_component_blob(id, MACRO, Some(blob.clone()));

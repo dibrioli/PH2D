@@ -120,7 +120,11 @@ fn o_formato_3_guarda_onde_a_agua_parou_e_o_da_w10_abre_sem_ela() {
             frame: 1234,
             estagio,
         });
-        assert_eq!(l.agua_da_gravacao_parou(), parou, "a 1.ª fica e volta igual");
+        assert_eq!(
+            l.agua_da_gravacao_parou(),
+            parou,
+            "a 1.ª fica e volta igual"
+        );
     }
 }
 

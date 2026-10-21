@@ -11,7 +11,11 @@ const DT: f32 = 1000.0 / 60.0;
 
 /// O maior desvio, em níveis, entre duas ranhuras.
 fn desvio(a: &[u8], b: &[u8]) -> u8 {
-    a.iter().zip(b).map(|(x, y)| x.abs_diff(*y)).max().unwrap_or(0)
+    a.iter()
+        .zip(b)
+        .map(|(x, y)| x.abs_diff(*y))
+        .max()
+        .unwrap_or(0)
 }
 
 /// ⭐⭐ **No fim do clipe a ranhura anda até ao documento do editor**: sem o artista tocar (a água assenta
@@ -76,12 +80,13 @@ fn no_fim_do_clipe_a_ranhura_corre_a_agua_ate_a_imagem_do_artista() {
 fn gravado_com_a_agua_a_correr_e_reaberto_a_cauda_para_na_imagem_gravada() {
     let mut world = World::new();
     let e = world.spawn(MacroTempo { segundos: 0.0 }).id();
-    let (mut t, doc, d) = ph2d_tool_painter::macro_track::roteiro::grava_duas_horizontais_ligado_em(
-        L,
-        e.to_bits(),
-        PaintMedia::WetPaint,
-    )
-    .expect("grava");
+    let (mut t, doc, d) =
+        ph2d_tool_painter::macro_track::roteiro::grava_duas_horizontais_ligado_em(
+            L,
+            e.to_bits(),
+            PaintMedia::WetPaint,
+        )
+        .expect("grava");
     let mut c = Clipe::com(world, e, &doc);
     let _ = c.quadro_ligado(0.1, Some(&mut t), &mut nunca);
     (0..20).for_each(|_| tique(&mut t));
@@ -104,5 +109,8 @@ fn gravado_com_a_agua_a_correr_e_reaberto_a_cauda_para_na_imagem_gravada() {
         ranhura = r.quadro_ligado(d, None, &mut le);
     }
     let dv = desvio(&ranhura, &premul(&gravada));
-    assert!(dv <= 1, "reaberto, a cauda não parou na imagem gravada ({dv} níveis)");
+    assert!(
+        dv <= 1,
+        "reaberto, a cauda não parou na imagem gravada ({dv} níveis)"
+    );
 }

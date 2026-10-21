@@ -19,10 +19,6 @@ fn tique(t: &mut PainterTool) {
     t.on_tick(DT_MS);
 }
 
-fn assenta(t: &mut PainterTool) -> usize {
-    assenta_em(t, false)
-}
-
 /// Quadros até a água parar; `parede` = o worker anda ao relógio de parede (um quadro dorme 1 ms).
 fn assenta_em(t: &mut PainterTool, parede: bool) -> usize {
     let t0 = std::time::Instant::now();
@@ -49,7 +45,13 @@ fn diferem(a: &[u8], b: &[u8]) -> (usize, u8) {
         .0
         .iter()
         .zip(b.as_chunks::<4>().0)
-        .map(|(x, y)| x.iter().zip(y).map(|(p, q)| p.abs_diff(*q)).max().unwrap_or(0))
+        .map(|(x, y)| {
+            x.iter()
+                .zip(y)
+                .map(|(p, q)| p.abs_diff(*q))
+                .max()
+                .unwrap_or(0)
+        })
         .filter(|&d| d > 0)
         .fold((0, 0), |(n, m), d| (n + 1, m.max(d)))
 }
@@ -156,7 +158,10 @@ fn toca_e_confere(nome: &str, (mut t, bytes, dur): (PainterTool, Vec<u8>, f64), 
             std::thread::sleep(std::time::Duration::from_millis(16));
         }
     }
-    assert!(!t.agua_parada(), "controlo {nome}: a água da gravação ainda corre");
+    assert!(
+        !t.agua_parada(),
+        "controlo {nome}: a água da gravação ainda corre"
+    );
     // LITERAL-COLOR-OK: a tinta do artista na fixtura.
     t.set_brush_color_srgb8([200, 40, 40]);
     t.set_brush_size_px(6.0);
@@ -216,10 +221,17 @@ fn a_meio_do_clipe_a_cauda_nao_anda() {
     palco.segue(dur * 0.6).expect("toca");
     let antes = palco.tocador().tool().imagem_aplicada().expect("tela").0;
     for _ in 0..30 {
-        assert!(!palco.corre_a_cauda(DT_MS, None), "a meio do clipe a cauda andou");
+        assert!(
+            !palco.corre_a_cauda(DT_MS, None),
+            "a meio do clipe a cauda andou"
+        );
     }
     let depois = palco.tocador().tool().imagem_aplicada().expect("tela").0;
-    assert_eq!(diferem(&antes, &depois), (0, 0), "a tela mudou a meio do clipe");
+    assert_eq!(
+        diferem(&antes, &depois),
+        (0, 0),
+        "a tela mudou a meio do clipe"
+    );
     palco.segue(dur).expect("toca");
     assert!(
         palco.corre_a_cauda(DT_MS, None),

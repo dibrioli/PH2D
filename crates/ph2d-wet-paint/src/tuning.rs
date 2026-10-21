@@ -190,9 +190,26 @@ pub enum Knob {
     /// o pó fino a todo o tamanho). `2` = a gota de sempre, ao bit (o grão do aerógrafo do Rebelle mede 1,28 px a 20, 40
     /// e 80 px; a gota de 2 dá 1,40 e a de 1,5 dá 1,17 — prompt 43, `43_medicao` §3).
     DustDrop,
+    /// ⭐ **O VEIO de cada fio** (J4 oleo_acrilica, `docs/Painter/Pinceis/exames/oleo_acrilica.md` «2.ª ronda»): a carga de
+    /// um fio que, a troços, pesa (o fio quase preto) ou falta (o claro) ao longo do traço — a luminosidade HSLuv do fio
+    /// desce desta fracção de 100 nos troços escuros ([`crate::bristles_fios::Fios::veio`]). `0` (e o claro a `0`) = os
+    /// fios de sempre, ao bit.
+    BristleStreak,
+    /// … a fracção de 100 que a luminosidade SOBE nos troços claros.
+    BristleStreakLight,
+    /// … o comprimento de caminho (px) em que o veio de um fio muda (o comprimento dos troços).
+    BristleStreakLength,
+    /// … o limiar do ruído do fio acima do qual um troço pesa ou falta (`0..1`: quanto maior, mais raros).
+    BristleStreakCut,
+    /// ⭐ **O pincel de cerdas FINO esmaece** (J4 oleo_acrilica, «2.ª ronda»): abaixo de [`Knob::ThinStrokeRef`] px de
+    /// diâmetro a carga do dab cai como `(D ÷ ref)^γ` — as poucas cerdas de um chato pequeno não se sobrepõem (o `Flat`
+    /// do Rebelle: o recto de 5 px cobre 0,22 do de 40). `0` = a carga de sempre, ao bit.
+    ThinStrokeFade,
+    /// … o diâmetro (px) a partir do qual a carga é a inteira.
+    ThinStrokeRef,
 }
 
-pub const KNOB_COUNT: usize = 97;
+pub const KNOB_COUNT: usize = 103;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

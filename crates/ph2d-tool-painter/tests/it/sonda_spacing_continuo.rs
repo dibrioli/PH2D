@@ -79,7 +79,7 @@ pub(super) fn variantes() -> Vec<(String, String)> {
 }
 
 fn e_oleo(nome: &str) -> bool {
-    matches!(nome, "Oil Bristle" | "Acrylic Round" | "Express Oil")
+    matches!(nome, "Oil Bristle" | "Filbert" | "Express Oil")
 }
 
 #[test]

@@ -4,7 +4,7 @@
   "origens": {
    "Wet Liner": "WATERCOLOR:Watercolor/Liner",
    "Oil Bristle": "OIL_AND_ACRYLIC:Bristle/Bristle Flat",
-   "Acrylic Round": "OIL_AND_ACRYLIC:Round/Round Hard",
+   "Flat Bristle": "OIL_AND_ACRYLIC:Flat/Flat",
    "Express Oil": "EXPRESS_OIL:Round/Hairy",
    "Graphite 8B": "PENCIL:Graphite Pencil/8B",
    "Charcoal": "PENCIL:Charcoal/Charcoal",
@@ -272,120 +272,120 @@
     }
    }
   },
-  "Acrylic Round": {
+  "Flat Bristle": {
    "pressao": {
     "rampa_0_1": {
      "largura": [
       0.0,
-      0.0833,
-      0.1667,
-      0.2778,
-      0.3889,
-      0.5,
-      0.6389,
-      0.75,
-      0.9167,
+      0.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
       1.0
      ],
      "cobertura": [
-      0.0031,
-      0.1741,
-      0.5024,
-      0.763,
-      0.9601,
-      1.0059,
-      1.0221,
-      1.0197,
-      1.019,
+      0.0,
+      0.0036,
+      0.1193,
+      0.3707,
+      0.6628,
+      0.8681,
+      0.9536,
+      1.014,
+      1.0442,
       1.0
      ],
-     "mao": 11.153628748772537
+     "mao": 8.752724224643755
     },
     "rampa_afunila": {
      "largura": [
       null,
-      0.0395,
-      0.1842,
-      0.2368,
-      0.3947,
-      0.5132,
-      0.6316,
-      0.7368,
-      0.8421,
+      0.0,
+      0.0,
+      0.4875,
+      0.9875,
+      0.9875,
+      1.0,
+      1.0,
+      1.0,
       1.0
      ],
      "cobertura": [
       null,
-      0.0389,
-      0.1709,
-      0.3879,
-      0.6584,
-      0.8648,
-      0.9426,
-      0.9777,
-      0.9957,
+      0.0057,
+      0.0589,
+      0.1824,
+      0.3544,
+      0.5216,
+      0.7072,
+      0.8683,
+      0.9733,
       1.0
      ],
-     "mao": 26.635477439804216
+     "mao": 99.0
     }
    },
    "fino": {
     "recto_5": {
-     "largura": 4.0,
-     "cobertura": 0.8066677922721613,
-     "cv": 0.0025533377471504,
-     "textura": 19.1597977441638
+     "largura": 6.0,
+     "cobertura": 0.14343388366184875,
+     "cv": 0.028969957958994836,
+     "textura": 35.07389445098236
     },
     "recto_40": {
      "largura": 40.0,
-     "cobertura": 0.8974612917624075,
-     "cv": 0.00021253452445411646,
-     "textura": 0.8470104453482207
+     "cobertura": 0.6661378955045207,
+     "cv": 0.0021051722011401017,
+     "textura": 8.345194193012935
     },
-    "razao_5_40": 0.8988329632446335
+    "razao_5_40": 0.21532160927913363
    },
    "pontas": {
     "ini": {
-     "curva": 0.010362694300518135,
-     "desfiado_px": 1.701540441959462,
-     "alem_px": 60.0
+     "curva": 0.0,
+     "desfiado_px": 3.248756393057342,
+     "alem_px": 9.0
     },
     "fim": {
-     "curva": 0.02072538860103627,
-     "desfiado_px": 3.313013244850444,
-     "alem_px": 59.0
+     "curva": 0.0,
+     "desfiado_px": 3.1304832432865135,
+     "alem_px": 11.0
     },
-    "estrias": 24.0
+    "estrias": 35.666664123535156
    },
    "molhada": {
     "cruza_1": {
-     "molhada_px": 38.0,
-     "seca_px": 38.0,
+     "molhada_px": 12.0,
+     "seca_px": 12.0,
      "lente": 1.0,
      "cor_em_cima_molhada": [
-      26.2,
-      100.9,
-      177.5
+      29.0,
+      104.9,
+      182.2
      ]
     },
     "cruza_2": {
-     "molhada_px": 38.0,
-     "seca_px": 38.0,
+     "molhada_px": 12.0,
+     "seca_px": 12.0,
      "lente": 1.0,
      "cor_em_cima_molhada": [
-      27.1,
-      99.9,
-      176.3
+      28.3,
+      103.0,
+      179.7
      ]
     },
     "cruza_3_rapido": {
-     "molhada_px": 38.0,
-     "seca_px": 38.0,
+     "molhada_px": 12.0,
+     "seca_px": 12.0,
      "lente": 1.0,
      "cor_em_cima_molhada": [
-      26.6,
-      99.9,
-      176.4
+      29.3,
+      104.2,
+      181.2
      ]
     }
    }

@@ -685,4 +685,10 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::PressureGrain, KnobGroup::Hidden, "pressureGrain", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::StrokeFilm, KnobGroup::Hidden, "strokeFilm", 0.0, 1.0, 1.0, 0.0, None),
     k(Knob::DustDrop, KnobGroup::Hidden, "dustDrop", 1.0, 32.0, 0.5, 2.0, None),
+    k(Knob::BristleStreak, KnobGroup::Hidden, "bristleStreak", 0.0, 1.0, 0.005, 0.0, None),
+    k(Knob::BristleStreakLight, KnobGroup::Hidden, "bristleStreakLight", 0.0, 1.0, 0.005, 0.0, None),
+    k(Knob::BristleStreakLength, KnobGroup::Hidden, "bristleStreakLength", 10.0, 4000.0, 1.0, 300.0, None),
+    k(Knob::BristleStreakCut, KnobGroup::Hidden, "bristleStreakCut", 0.0, 0.95, 0.01, 0.5, None),
+    k(Knob::ThinStrokeFade, KnobGroup::Hidden, "thinStrokeFade", 0.0, 4.0, 0.01, 0.0, None),
+    k(Knob::ThinStrokeRef, KnobGroup::Hidden, "thinStrokeRef", 1.0, 400.0, 0.5, 40.0, None),
 ];

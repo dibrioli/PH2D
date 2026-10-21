@@ -1,10 +1,11 @@
-//! **Família `oleo_acrilica`** — J4, catálogo G (óleo, acrílica): Oil Bristle, Acrylic Round, Express Oil, Dabber.
+//! **Família `oleo_acrilica`** — J4, catálogo G (óleo, acrílica): Oil Bristle, Express Oil, Dabber, Filbert, Flat Bristle.
+//! A Acrylic Round saiu na 2.ª ronda: fundida no Hard Round (`exames/oleo_acrilica.md`, G-2).
 //! Escreva aqui as receitas e os testes da família; nada fora deste ficheiro (`docs/Painter/Pinceis/04_BANCADA.md` §9).
 
 use super::prelude::*;
 
 /// Os três óleos foram afinados a Spacing 0,01 (o pigmento por dab deles é o de 0,01): o pigmento por comprimento
-/// mantém a tinta do Express Oil e da Acrylic Round com os dabs mais esparsos.
+/// mantém a tinta do Express Oil com os dabs mais esparsos.
 const PASSO_DOS_OLEOS: f64 = 0.01;
 
 // ⭐ O 2.º lote (11/10, depois da reavaliação pedida pelo dono — 18 §3: pigmento alto, o relevo de volta
@@ -13,8 +14,6 @@ const PASSO_DOS_OLEOS: f64 = 0.01;
 pub const WET: &[Receita] = &[
     // Oil & Acrylic › Bristle Flat: corpo cheio, estrias das cerdas, relevo.
     OIL_BRISTLE,
-    // Oil & Acrylic › Round Hard (a acrílica do Rebelle é esta ferramenta).
-    ACRYLIC_ROUND,
     // Express Oil › Hairy: claro e liso, tufos (prompt 23, aceite do dono 12/10). A claridade é POUCO
     // pigmento — com o Spacing 0,01 cada célula leva ~100 carimbos, por isso 60 e não 250; sem água (a água
     // assentava o pouco pigmento nos poros: grão 0,065 → 0,027); cerdas 4 = tufos sem sal.
@@ -104,10 +103,12 @@ pub const WET: &[Receita] = &[
 
 /// Os REPROVADOS da J4 (`docs/Painter/Pinceis/exames/oleo_acrilica.md`): a receita fica para quem os retomar, sem ficheiro
 /// na fábrica (`os_reprovados_do_oleo_nao_estao_na_fabrica`).
-/// - G-6 Flat Bristle: o revisor cego achou o Rebelle nas 6 linhas — a tinta rala do nosso sai em GRÃO sal-e-pimenta
-///   (o fio a pouca carga deposita aos pontos) onde a do Rebelle é uma risca lisa translúcida; o 5 px firme contra quase
-///   invisível. Motor: o fio translúcido contínuo (medido: cápsula 0/2/4/8 px, feltro 0–0,2, ruído ao longo 2000, força
-///   1–2 — o grão fica).
+/// - G-6 Flat Bristle (2.ª ronda: o grão era a capilaridade — `capillary` 0 dá a risca lisa; o 5 px esmaece pela lei
+///   `thinStrokeFade`; régua 367/454, o 1.º dos 228 do Rebelle): o revisor cego achou o Rebelle nas 6 linhas (baixa) e
+///   lista o vermelho da base opaco e saturado (cobertura 0,92 contra 0,72 — o vermelho do K–M a 200 de pigmento cobre
+///   mais que o azul; não é do preset) e o portão `a_pressao_de_cada_preset_e_a_da_sua_origem` dá 0,202 (barra 0,18): a
+///   entrada tardia do Rebelle (nada abaixo de p 0,2) só se copia com um piso, que a decisão 9 proíbe. O ficheiro gerado
+///   vive em `fixtures/presets_teste/` ([`FLAT_EM_ESTUDO`]) para os portões da família.
 /// - G-9 Rake: régua 390/454, a 0,83 do Filbert; o 1.º revisor escolheu o nosso como original (baixa), o 2.º achou o
 ///   Rebelle nas 6 linhas (média) e os dois listam as PONTAS (as do Rebelle cortadas a direito, as nossas desfiadas
 ///   cerda a cerda) e, a 200 px, as ~15 riscas escuras espaçadas dele contra o nosso campo denso de estrias.
@@ -160,9 +161,17 @@ const FLAT_BRISTLE: Receita = Receita {
     size_px: Some(78.0),
     achatado: Some((0.73, 90)),
     extras: &[
+        // 2.ª ronda (`exames/oleo_acrilica.md`): o GRÃO sal-e-pimenta da 1.ª era a CAPILARIDADE — o pouco pigmento que ela
+        // espalha pelas fibras do papel, píxel a píxel (medido: o mesmo traço com `capillary` 0 é a risca lisa translúcida
+        // do Rebelle; o feltro, as fibras, o sulco, a água por dab, o pickup e o papel visível não mexiam no grão). A tinta
+        // grossa satura e esconde-o; a rala mostra-o. Sem motor novo: a composição já o exprime.
+        ("capillary", 0.0),
         ("felt", 0.1),
         ("bristleStrength", 1.0),
-        ("bristlePressure", 1.2),
+        // A carga de cada fio quase constante pelo traço (ruído 2000 px, força 0,8): as riscas do Rebelle não mudam ao
+        // longo de 800 px; com 150 px o nosso saía às manchas claras.
+        ("bristlePressure", 0.8),
+        ("bristleNoiseLength", 2000.0),
         ("bristleLaneWidth", 1.5),
         ("bristleLift", 0.4),
         ("bristleNoiseSat", 0.0),
@@ -180,7 +189,12 @@ const FLAT_BRISTLE: Receita = Receita {
         ("embossSizeExp", 0.4),
         ("embossSizeRef", 41.0),
         ("levelingOwnStroke", 1.0),
-        ("bristleTipRagged", 0.8),
+        // A ponta do Rebelle é um corte quase recto com uma franja curta (~20 px a 200): 0,8 desfiava 60 px.
+        ("bristleTipRagged", 0.3),
+        // ⭐ 2.ª ronda (`Knob::ThinStrokeFade`): o chato pequeno do Rebelle quase não pinta — o recto de 5 px cobre 0,143
+        // (0,22 do de 40); o nosso 0,683. γ 0,6 · 0,9 · 1,2 · 1,6 → 0,328 · 0,201 · 0,118 · 0,035; o de 40 px não muda.
+        ("thinStrokeFade", 1.05),
+        ("thinStrokeRef", 40.0),
     ],
     nasce_de: Some("Oil Bristle"),
     ..OIL_BRISTLE
@@ -305,7 +319,6 @@ const GRUMOS: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Clouds", "mappi
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[
     Midia { preset: "Oil Bristle", foto: "oil", raio: 20.5, metricas: &[(Cobertura, 0.909), (Borda, 0.872), (Chato, 0.317)] },
-    Midia { preset: "Acrylic Round", foto: "oilround", raio: 19.5, metricas: &[(Cobertura, 0.880), (Borda, 0.595)] },
     // J4: sem a Tinta da foto `express` do prompt 23 (0,772): os tufos curados (`exames/oleo_acrilica.md`) dão 0,666 com o
     // pigmento 75 — o recto da bateria do EXAME (Rebelle `Round/Hairy`, três cenas) está dentro do ruído na opacidade, e o
     // pigmento que a devolvia (≥ 100) partia a largura prometida a raio 7. A identidade dos tufos é o portão da família.
@@ -314,37 +327,6 @@ pub const MIDIAS: &[Midia] = &[
     // granulado fino e igual — o claro por fio 0,55 → 0,1 deixa a textura em 6,6 (régua 368 → 388/454, origem 12.º → 8.º).
     Midia { preset: "Dabber", foto: "dabber", raio: 18.5, metricas: &[(Cobertura, 0.840), (Borda, 0.588), (Orla, 5.0), (Largura, 36.0)] },
 ];
-
-const ACRYLIC_ROUND: Receita = Receita {
-    meio: "Oil",
-    grupo: "Round",
-    nome: "Acrylic Round",
-    water: 0.05,
-    opacity: 0.6,
-    pigment: 500.0,
-    pickup: 1.0,
-    gate: 0.0,
-    evaporation: 1.0,
-    edge: 0.0,
-    tilt: DIREITA,
-    bristle_size: 0.5,
-    bristle_count: 4000.0,
-    hardness: 0.5,
-    size_px: Some(78.0),
-    extras: &[
-        ("felt", 0.0),
-        ("bristleStrength", 2.0),
-        ("pigmentSpacing", PASSO_DOS_OLEOS),
-        ("pressureSizeCurve", 1.4),
-        // A textura das cerdas dela anda com o dab: a 0,025 a escada a 103 px dobrava (6,2 → 12,5); à densidade
-        // dela 6,1, a diferença de imagem 0,04 (doc 51 §3).
-        ("capsuleSpacing", PASSO_DOS_OLEOS),
-    ],
-    grao: None,
-    achatado: None,
-    pincel: &[],
-    nasce_de: None,
-};
 
 const OIL_BRISTLE: Receita = Receita {
     meio: "Oil",
@@ -386,6 +368,16 @@ const OIL_BRISTLE: Receita = Receita {
         // cegos (r2, r3) viam o nosso «mecânico»: riscas contínuas e paralelas onde as do Rebelle aparecem e somem.
         ("bristleSpan", 1.0),
         ("bristleSpanLength", 40.0),
+        // ⭐ 2.ª ronda: o VEIO (`Knob::BristleStreak`) — o «pente regular demais» que três revisores repetiram: a troços raros
+        // um fio pesa (quase preto) ou falta. Medido no recto de 200 px (`os_fios_do_oil_bristle_aparecem_e_somem`): escuros
+        // 0,0144 · claros 0,0039 da área (Rebelle 0,0154 · 0,0074), corridas de 25 px (Rebelle 84: o pontilhado do relevo
+        // parte-as). ⛔ A água por dab 0,5 dava o contraste do Rebelle aos troços (~42 contra ~31) mas subia a textura e o
+        // relevo do recto (6,87 · emboss 14,2 contra 6,39 · 11,4) para fora do vale dos portões do relevo — fica a 1.
+        ("bristleStreak", 0.9),
+        ("bristleStreakLight", 0.7),
+        ("bristleStreakLength", 2000.0),
+        ("bristleStreakCut", 0.35),
+        ("waterPerDab", 1.0),
         ("bristleHeight", 0.75),
         // O pigmento por DAB (doc 51 §3): ele satura (a tinta a 103 px 0,985 da de antes sem o peso) e o peso só lhe
         // dava degraus — a escada da curva 2,57 · 2,70 (tecto 2,50 · 2,55) contra 2,15 · 2,40 sem ele.
@@ -401,8 +393,8 @@ const OIL_BRISTLE: Receita = Receita {
         // (a lente 19/12 → 12/12) e a ponta recta e desfiada de cada fio (6,5 px a 200 no Rebelle).
         // O expoente 0,4: o através 14 → 11 de 41 a 202 px (o Rebelle 15,4 → 11,5); a ponta ρ 0,8: desfiado ~6 px a 200.
         // J4: 0,7 → 0,8 com o claro por fio a 0,1 — o através a 200 px volta a 10 (Rebelle 11,5 ± 2; a 0,7 caía a 9,2).
-        ("emboss", 0.8),
-        ("embossSizeExp", 0.4),
+        ("emboss", 0.6),
+        ("embossSizeExp", 0.5),
         ("embossSizeRef", 41.0),
         ("levelingOwnStroke", 1.0),
         ("bristleTipRagged", 0.8),
@@ -477,7 +469,7 @@ fn mede_oleo(nome: &str) -> Oleo {
 /// de cada regra é o meio entre o pincel e o que ela separa, medidos na corrida de calibração (abaixo, por regra).
 #[test]
 fn cada_oleo_tem_a_sua_identidade() {
-    let nomes = ["Oil Bristle", "Filbert", "Express Oil", "Dabber", "Acrylic Round", "Hard Round"];
+    let nomes = ["Oil Bristle", "Filbert", "Express Oil", "Dabber", "Hard Round"];
     let medidas: Vec<(&str, Oleo)> = std::thread::scope(|s| {
         let h: Vec<_> = nomes.iter().map(|&n| (n, s.spawn(move || mede_oleo(n)))).collect();
         h.into_iter().map(|(n, h)| (n, h.join().unwrap())).collect()
@@ -523,4 +515,153 @@ fn os_reprovados_do_oleo_nao_estao_na_fabrica() {
         .filter(|n| EM_ESTUDO.iter().any(|r| r.nome == *n) || EM_ESTUDO_MEIOS.iter().any(|r| r.nome == *n))
         .collect();
     assert!(na_fabrica.is_empty(), "reprovados na fábrica: {na_fabrica:?}");
+}
+
+/// Os VEIOS de um traço (J4 2.ª ronda, `exames/oleo_acrilica.md`): no recto de 200 px da cena `tamanhos` (foto A, linhas
+/// 355..530, x 150..850), a luminância de cada linha alisada ao longo (caixa de 7 px — o pontilhado fino do relevo não
+/// parte um troço) e o desvio à mediana da linha; os troços ESCUROS e CLAROS a mais de 25 níveis: a fracção da área e o
+/// comprimento médio das corridas ao longo de x. O Rebelle `Bristle Flat` (a mesma conta, `veios.py` da 2.ª ronda): escuros
+/// 0,0154 em corridas de 84 px, claros 0,0074 de 56 px.
+#[derive(Debug, Clone, Copy)]
+struct Veios {
+    escuro: f64,
+    corrida_escura: f64,
+    claro: f64,
+}
+
+fn mede_veios(p: &crate::exame_bancada::Pincel) -> Veios {
+    use crate::exame_bancada::{bateria, pinta_cena};
+    let bat = bateria();
+    let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
+    let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
+    let cena = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "tamanhos").unwrap().clone();
+    let (_, g) = pinta_cena(p, None, &cena, tela, papel, 0);
+    let w = tela[0] as usize;
+    const K: usize = 7;
+    let (mut escuros, mut claros, mut n) = (0usize, 0usize, 0usize);
+    let mut corridas: Vec<usize> = Vec::new();
+    for y in 355..530 {
+        let l: Vec<f64> = (150..850)
+            .map(|x| 255.0 * (1.0 - escuro(&g, w, x, y)))
+            .collect();
+        let m: Vec<f64> = (K..l.len() - K)
+            .map(|i| l[i - K / 2..=i + K / 2].iter().sum::<f64>() / K as f64)
+            .collect();
+        let mut o = m.clone();
+        o.sort_by(f64::total_cmp);
+        let med = o[o.len() / 2];
+        let mut corrida = 0;
+        for v in &m {
+            n += 1;
+            if v - med < -25.0 {
+                escuros += 1;
+                corrida += 1;
+            } else {
+                if corrida > 0 {
+                    corridas.push(corrida);
+                }
+                corrida = 0;
+                claros += usize::from(v - med > 25.0);
+            }
+        }
+        if corrida > 0 {
+            corridas.push(corrida);
+        }
+    }
+    Veios {
+        escuro: escuros as f64 / n as f64,
+        corrida_escura: corridas.iter().sum::<usize>() as f64 / corridas.len().max(1) as f64,
+        claro: claros as f64 / n as f64,
+    }
+}
+
+/// ⭐ **Os fios do Oil Bristle aparecem e somem** (J4 2.ª ronda, `Knob::BristleStreak`): três revisores cegos da 1.ª ronda
+/// repetiram «um pente regular demais» — no Rebelle, a troços raros, um fio fica quase preto ou falta. O traço de 200 px
+/// tem os troços escuros e claros na fracção do Rebelle (a metade a duas vezes e meia) e as corridas escuras longas;
+/// CONTROLO: o mesmo preset sem o veio não os tem (a régua mede).
+#[test]
+fn os_fios_do_oil_bristle_aparecem_e_somem() {
+    use crate::exame_bancada::{Fonte, Pincel, pinceis};
+    let p = pinceis("Oil Bristle").remove(0);
+    let Fonte::Preset { preset, relativo } = &p.fonte else { unreachable!() };
+    let mut sem = preset.clone();
+    for k in ["bristleStreak", "bristleStreakLight", "bristleStreakLength", "bristleStreakCut"] {
+        sem.parametros.engine.remove(k);
+    }
+    let controlo = Pincel { nome: "sem veio".into(), fonte: Fonte::Preset { preset: sem, relativo: relativo.clone() } };
+    let (v, c) = std::thread::scope(|s| {
+        let a = s.spawn(|| mede_veios(&p));
+        let b = s.spawn(|| mede_veios(&controlo));
+        (a.join().unwrap(), b.join().unwrap())
+    });
+    println!("[veios] Oil Bristle {v:?} · sem o veio {c:?} · Rebelle escuro 0,0154 (84 px) claro 0,0074");
+    let mut falhas = Vec::new();
+    if c.escuro > 0.003 || c.claro > 0.003 {
+        falhas.push(format!("o controlo já tem veios ({c:?}): a régua não mede o veio"));
+    }
+    if !(0.0077..0.039).contains(&v.escuro) {
+        falhas.push(format!("troços escuros {:.4} (Rebelle 0,0154)", v.escuro));
+    }
+    if !(0.0037..0.0185).contains(&v.claro) {
+        falhas.push(format!("troços claros {:.4} (Rebelle 0,0074)", v.claro));
+    }
+    if v.corrida_escura < 15.0 {
+        falhas.push(format!("corridas escuras de {:.1} px: o fio pisca em vez de pesar a troços", v.corrida_escura));
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// O Flat Bristle em estudo (fora da fábrica): o ficheiro gerado pela receita [`FLAT_BRISTLE`], guardado com os presets de
+/// teste da bancada para os portões da família o lerem.
+const FLAT_EM_ESTUDO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/Painter/Pinceis/fixtures/presets_teste/Flat Bristle.ph2d-brush.png");
+
+/// A tinta do recto de 5 px ÷ a do de 40 (cena `tamanhos`, foto A): a escuridão de PICO de cada coluna x 200..800 na
+/// faixa do traço, a mediana. O Rebelle (a mesma conta): `Flat` 0,228 · `Bristle Flat` 0,952.
+fn fino_sobre_largo(p: &crate::exame_bancada::Pincel) -> f64 {
+    use crate::exame_bancada::{bateria, pinta_cena};
+    let bat = bateria();
+    let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
+    let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
+    let cena = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "tamanhos").unwrap().clone();
+    let (_, g) = pinta_cena(p, None, &cena, tela, papel, 0);
+    let w = tela[0] as usize;
+    let pico = |ys: std::ops::Range<usize>| {
+        let mut v: Vec<f64> = (200..800)
+            .map(|x| ys.clone().map(|y| escuro(&g, w, x, y)).fold(0.0, f64::max))
+            .collect();
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    pico(55..86) / pico(160..221).max(1e-6)
+}
+
+/// ⭐ **O chato pequeno esmaece** (J4 2.ª ronda, `Knob::ThinStrokeFade`): o `Flat` do Rebelle a 5 px quase não pinta (0,228
+/// da tinta do de 40 px) — o revisor cego da 1.ª ronda viu «o 5 px firme contra quase invisível». O Flat Bristle fica
+/// perto dele; o Oil Bristle (sem a lei) não esmaece (Rebelle `Bristle Flat` 0,952). CONTROLO: o Flat Bristle sem a lei
+/// pinta o 5 px cheio (a régua mede).
+#[test]
+fn o_chato_pequeno_esmaece() {
+    use crate::exame_bancada::{Fonte, Pincel, pinceis};
+    let flat = pinceis(FLAT_EM_ESTUDO).remove(0);
+    let oil = pinceis("Oil Bristle").remove(0);
+    let Fonte::Preset { preset, relativo } = &flat.fonte else { unreachable!() };
+    let mut sem = preset.clone();
+    sem.parametros.engine.remove("thinStrokeFade");
+    let controlo = Pincel { nome: "sem a lei".into(), fonte: Fonte::Preset { preset: sem, relativo: relativo.clone() } };
+    let [f, o, c] = std::thread::scope(|s| {
+        let h = [&flat, &oil, &controlo].map(|p| s.spawn(move || fino_sobre_largo(p)));
+        h.map(|h| h.join().unwrap())
+    });
+    println!("[fino] Flat Bristle {f:.3} (Rebelle 0,228) · Oil Bristle {o:.3} (0,952) · Flat sem a lei {c:.3}");
+    let mut falhas = Vec::new();
+    if c < 0.7 {
+        falhas.push(format!("o controlo {c:.3} já esmaece: a régua não mede a lei"));
+    }
+    if !(0.13..0.35).contains(&f) {
+        falhas.push(format!("Flat Bristle: 5 px ÷ 40 px {f:.3} (Rebelle 0,228)"));
+    }
+    if o < 0.75 {
+        falhas.push(format!("Oil Bristle: 5 px ÷ 40 px {o:.3} — a lei vazou para quem não a tem (Rebelle 0,952)"));
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }

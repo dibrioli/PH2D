@@ -580,7 +580,7 @@ fn sonda_prancha_b6_lisa_e_cerdas() {
         "Wet Wash",
         "Wet Dry Brush",
         "Wet Liner",
-        "Acrylic Round",
+        "Filbert",
         "Oil Bristle",
     ] {
         let e = bib

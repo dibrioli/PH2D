@@ -202,6 +202,17 @@ impl PainterTool {
         let sub = super::lote::sub_passo_do_lote(&sess.engine.tuning, brush, ratio);
         let fino = super::lote::peso_do_passo_fino(brush, ratio);
         super::lote::acerta_o_lote(&mut sess.engine, brush, fino);
+        // ⭐ O pincel de cerdas FINO esmaece (`Knob::ThinStrokeFade`, J4 óleo): `(D ÷ ref)^γ` abaixo do diâmetro de
+        // referência — `γ = 0` = 1, a lei de sempre ao bit.
+        let esmaece_fino = {
+            let g = sess.engine.tuning.get(ph2d_wet_paint::tuning::Knob::ThinStrokeFade);
+            if g > 0.0 {
+                let r = sess.engine.tuning.get(ph2d_wet_paint::tuning::Knob::ThinStrokeRef).max(1.0);
+                (2.0 * f64::from(brush.clamped_radius()) / r).clamp(0.0, 1.0).powf(g)
+            } else {
+                1.0
+            }
+        };
         let sub_dabs: Vec<(usize, u64, Option<f32>, Dab)> = dabs
             .iter()
             .enumerate()
@@ -643,7 +654,7 @@ impl PainterTool {
                         cell_y,
                         b,
                         cell_r,
-                        opacidade * f64::from(peso * fino),
+                        opacidade * f64::from(peso * fino) * esmaece_fino,
                         Some(&sil),
                         grain_arg,
                         padrao_arg,

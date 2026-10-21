@@ -19,7 +19,7 @@ pub(super) struct Foto {
 /// Os pincéis de fábrica com cerdas (o Shape de fábrica) ou grão — todos menos o Airbrush (sem forma) — e a
 /// foto da mídia de cada um; o Wet Dry Brush e o Wet Drip não têm foto na bancada dos gestos.
 #[rustfmt::skip]
-pub(super) const FIOS: [(&str, Option<Foto>); 18] = [
+pub(super) const FIOS: [(&str, Option<Foto>); 17] = [
     ("Wet Round", Some(Foto { nome: "wcround", raio: 16.0, textura: 2.35, cv: 0.038, periodo_fracao: 0.05 })),
     ("Wet Wash", Some(Foto { nome: "wcwash", raio: 20.0, textura: 4.96, cv: 0.018, periodo_fracao: 0.12 })),
     ("Wet Dry Brush", None),
@@ -28,7 +28,6 @@ pub(super) const FIOS: [(&str, Option<Foto>); 18] = [
     ("Wet Flat", Some(Foto { nome: "wcflat", raio: 17.0, textura: 5.08, cv: 0.020, periodo_fracao: 0.05 })),
     ("Gouache Flat", Some(Foto { nome: "gouacheflat", raio: 19.5, textura: 2.50, cv: 0.023, periodo_fracao: 0.08 })),
     ("Oil Bristle", Some(Foto { nome: "oil", raio: 20.5, textura: 5.86, cv: 0.011, periodo_fracao: 0.09 })),
-    ("Acrylic Round", Some(Foto { nome: "oilround", raio: 19.5, textura: 3.13, cv: 0.000, periodo_fracao: 0.03 })),
     ("Express Oil", Some(Foto { nome: "express", raio: 21.0, textura: 9.00, cv: 0.008, periodo_fracao: 0.47 })),
     ("Graphite 8B", Some(Foto { nome: "pencil", raio: 15.0, textura: 9.09, cv: 0.037, periodo_fracao: 0.07 })),
     ("Charcoal", Some(Foto { nome: "charcoal", raio: 10.5, textura: 8.30, cv: 0.053, periodo_fracao: 0.07 })),

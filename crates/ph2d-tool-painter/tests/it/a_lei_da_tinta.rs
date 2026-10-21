@@ -20,7 +20,7 @@ const RAIO_DA_CENA: f32 = 18.0;
 /// Flat pinados com a lei de antes do prompt 45 (a dos 20 de cima, ao bit, `a5134220e5`); os três com a pressão →
 /// opacidade refeitos pela lei do 45 por ORDEM DO DONO (o Airbrush «como no Rebelle», a rampa dos Flats).
 #[rustfmt::skip]
-const CENAS: [(&str, bool, u64); 21] = [
+const CENAS: [(&str, bool, u64); 20] = [
     ("Wet Round", false, 0x8e37a39e8ee2ba79),
     ("Wet Wash", false, 0xb08be15433107c85),
     ("Wet Dry Brush", false, 0xf45f7dcaa32eb88e),
@@ -31,8 +31,8 @@ const CENAS: [(&str, bool, u64); 21] = [
     // Os 22 repintados pela regra do prompt 51 (Spacing 0,1 + Continuous em todos, doc 51_medicao); o Airbrush também
     // pela curva da pressão no tamanho que casa as pontas do Rebelle (ordem do dono 19/10).
     // J2 (03_MOTORES §7 a): a pressão de cada preset passou a ser a da sua origem no Rebelle (a cena tem a rampa).
-    ("Oil Bristle", false, 0x261ee2908291c9c7), // J4 oleo_acrilica: o claro por fio 0,1, o emboss 0,8, o vão dos fios (era 0xcd20d9a3853d6fb1)
-    ("Acrylic Round", false, 0xb6475854432e61f0),
+    ("Oil Bristle", false, 0xd5dc7c77cb4a281b), // J4 oleo_acrilica 2.ª ronda: o veio dos fios, o emboss 0,6 × expoente 0,5 (era 0x261ee2908291c9c7)
+    // J4 oleo_acrilica 2.ª ronda: a Acrylic Round (0xb6475854432e61f0) saiu da fábrica — fundida no Hard Round.
     ("Express Oil", false, 0x324fcd3206cecaff), // J4 oleo_acrilica: os tufos (cerdas 7 × 300, faixa 4 px, pigmento 75) (era 0x6ae408041d1e042f)
     ("Graphite 8B", false, 0xa30d19aed297aa0d), // J3 3.ª ronda: a 2.ª ponta à frente (no arco), a orla 0,8 × 1, os tufos, a carga 280 e o papel 0,4 (era 0x0aed0cb29386b748)
     ("Charcoal", false, 0x46f876790c63367f), // J4 pastel_carvao: o tecto, o miolo marmoreado e a pressão (era 0x319febeb25876cd8)

@@ -13,6 +13,7 @@ const SEMENTE_OSCILACAO: u32 = 0x6f69_0003;
 const SEMENTE_SPAN: u32 = 0x6f69_0004;
 const SEMENTE_COR: u32 = 0x6f69_0005;
 const SEMENTE_PONTA: u32 = 0x6f69_0007;
+const SEMENTE_VEIO: u32 = 0x6f69_0008;
 
 /// O tecto da onda da largura: a esta amplitude um fio estreita até ¼ da largura e nunca some (o `min_width`
 /// 0,25 dos fios do Rebelle, doc 02 §2.4).
@@ -43,6 +44,15 @@ pub struct Fios {
     pub span_comprimento_px: f64,
     /// O ruído de cor de cada fio em HSLuv: o matiz (voltas), a saturação e a luminosidade (fracções de 100).
     pub cor: [f64; 3],
+    /// ⭐ **O VEIO** (J4 óleo, [`crate::tuning::Knob::BristleStreak`]): o quanto a luminosidade HSLuv de um fio DESCE nos
+    /// troços em que ele pesa e SOBE nos troços em que falta (`[escuro, claro]`, fracções de 100; `[0, 0]` = nenhum). Os
+    /// troços são RAROS e têm princípio e fim — o ruído do fio acima de [`Self::veio_corte`] — e o resto do fio fica
+    /// na sua cor: o «aparece e some» do Rebelle, contra o ruído contínuo de [`Self::cor`] que tinge o fio inteiro.
+    pub veio: [f64; 2],
+    /// O comprimento de caminho (px) em que o veio de um fio muda.
+    pub veio_px: f64,
+    /// O limiar do `|ruído|` do fio a partir do qual o troço pesa (ruído > 0) ou falta (< 0).
+    pub veio_corte: f64,
 }
 
 impl Fios {
@@ -57,6 +67,9 @@ impl Fios {
         span_px: 0.0,
         span_comprimento_px: 10.0,
         cor: [0.0; 3],
+        veio: [0.0; 2],
+        veio_px: 300.0,
+        veio_corte: 0.5,
     };
 
     /// Nenhum dos três age: a lei de antes.
@@ -70,10 +83,10 @@ impl Fios {
             && !self.tem_cor()
     }
 
-    /// O ruído de cor age.
+    /// O ruído de cor (ou o veio) age.
     #[must_use]
     pub fn tem_cor(&self) -> bool {
-        self.cor != [0.0; 3]
+        self.cor != [0.0; 3] || self.veio != [0.0; 2]
     }
 
     /// A lei num dab no comprimento de caminho `arco` (px) com o rumo `rumo` (unitário; `[0, 0]` = o 1.º dab,
@@ -287,7 +300,7 @@ impl FiosNoDab {
     /// como a pressão (cada componente com o seu ruído); sem ruído de cor, `rgb` intacto.
     #[must_use]
     pub fn cor_do_fio(&self, rgb: [f32; 3], fio: i32) -> [f32; 3] {
-        if self.fios.cor == [0.0; 3] {
+        if !self.fios.tem_cor() {
             return rgb;
         }
         crate::bristles_cor::com_ruido(rgb, self.ruido_de_cor(fio))
@@ -296,21 +309,38 @@ impl FiosNoDab {
     /// [`Self::cor_do_fio`] com o ruído do fio lido da tabela `t` do dab — a mesma conta, ao bit.
     #[must_use]
     pub fn cor_do_fio_em(&self, rgb: [f32; 3], fio: i32, t: &TabelaDosFios) -> [f32; 3] {
-        if self.fios.cor == [0.0; 3] {
+        if !self.fios.tem_cor() {
             return rgb;
         }
         crate::bristles_cor::com_ruido(rgb, t.do_fio(self, fio).cor)
     }
 
-    /// O ruído HSLuv do fio `fio` (matiz, saturação, luminosidade), que anda ao longo do caminho.
+    /// O ruído HSLuv do fio `fio` (matiz, saturação, luminosidade), que anda ao longo do caminho — com o veio na
+    /// luminosidade.
     fn ruido_de_cor(&self, fio: i32) -> [f64; 3] {
         let c = self.fios.cor;
+        let veio = self.veio_do_fio(fio);
         if c == [0.0; 3] {
-            return [0.0; 3];
+            return [0.0, 0.0, veio];
         }
         let t = self.arco / self.fios.ruido_px.max(1.0);
         let r = |i: u32| ruido(t, fio, SEMENTE_COR.wrapping_add(i));
-        [c[0] * r(0), c[1] * r(1), c[2] * r(2)]
+        [c[0] * r(0), c[1] * r(1), c[2] * r(2) + veio]
+    }
+
+    /// ⭐ **O veio do fio `fio` neste dab** ([`Fios::veio`]): o troço pesa (luminosidade − escuro) onde o ruído do fio passa
+    /// o limiar para cima e falta (+ claro) onde passa para baixo; entra a meio caminho entre o limiar e o tecto
+    /// (`(|n| − corte) ÷ (1 − corte)`, ×2, preso a 1) — o fio chega à cor do troço e volta, sem degrau. `0` sem veio.
+    #[must_use]
+    pub fn veio_do_fio(&self, fio: i32) -> f64 {
+        let f = &self.fios;
+        if f.veio == [0.0; 2] {
+            return 0.0;
+        }
+        let n = ruido(self.arco / f.veio_px.max(1.0), fio, SEMENTE_VEIO);
+        let corte = f.veio_corte.clamp(0.0, 0.95);
+        let e = (2.0 * (n.abs() - corte) / (1.0 - corte)).clamp(0.0, 1.0);
+        if n > 0.0 { -f.veio[0] * e } else { f.veio[1] * e }
     }
 
     /// O fio em `u` (larguras de fio na normal): o `k` com `fronteira(k) ≤ u < fronteira(k + 1)`. Cada fronteira

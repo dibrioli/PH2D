@@ -56,7 +56,7 @@ FAMILIAS_DO_RECTO = ["largura", "cobertura", "opacidade", "textura", "var_local"
 # Os pincéis de fábrica e o preset do Rebelle de que cada um nasceu (`midias_de_fabrica.rs` MIDIAS → a foto → o
 # `fixtures/rebelle/README.md`). Wet Drip e Wet Dry Brush não têm foto de origem.
 ORIGEM = {"Wet Liner": "WATERCOLOR:Watercolor/Liner", "Oil Bristle": "OIL_AND_ACRYLIC:Bristle/Bristle Flat",
-          "Acrylic Round": "OIL_AND_ACRYLIC:Round/Round Hard", "Express Oil": "EXPRESS_OIL:Round/Hairy",
+          "Flat Bristle": "OIL_AND_ACRYLIC:Flat/Flat", "Express Oil": "EXPRESS_OIL:Round/Hairy",
           "Graphite 8B": "PENCIL:Graphite Pencil/8B", "Charcoal": "PENCIL:Charcoal/Charcoal",
           "Soft Pastel": "PASTEL:Pastel Dry/Dry Thin", "Oil Pastel": "PASTEL:Pastel Oil/Oil Pastel 2",
           "Ink Bullet": "INK_PEN:Pen/Bullet", "Dip Pen": "INK_PEN:Pen/Dip Pen", "Ink Brush": "INK_PEN:Brush/Brush",

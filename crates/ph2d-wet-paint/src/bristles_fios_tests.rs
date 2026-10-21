@@ -307,3 +307,52 @@ fn entre_fios_anda_continuo_de_centro_a_centro() {
     assert_eq!(fd.entre_fios([0.0, 0.5 * largura]), ([0, 1], 0.0));
     assert_eq!(fd.entre_fios([0.0, 0.0]), ([-1, 0], 0.5));
 }
+
+/// ⭐ **O VEIO** (J4 óleo, `Knob::BristleStreak`): sem ele nada muda (o neutro não liga a lei, o veio de todo fio é 0);
+/// com ele cada fio passa a MAIOR parte do caminho na sua cor e, a troços raros com princípio e fim (dezenas de px), pesa
+/// (a luminosidade desce até `escuro`) ou falta (sobe até `claro`). CONTROLO: o ruído de cor da luminosidade tinge o
+/// fio no caminho inteiro (nenhum troço a zero).
+#[test]
+fn o_veio_e_raro_tem_principio_e_fim_e_os_dois_sinais() {
+    assert!(Fios::NEUTRO.no_dab(37.0, [1.0, 0.0], 1.0).is_none());
+    assert!(!Fios::NEUTRO.tem_cor());
+    let veio = com(|f| {
+        f.veio = [0.6, 0.3];
+        f.veio_px = 800.0;
+        f.veio_corte = 0.3;
+    });
+    assert!(veio.tem_cor() && veio.no_dab(37.0, [1.0, 0.0], 1.0).is_some());
+    let (mut zero, mut total, mut escuros, mut claros) = (0usize, 0usize, 0usize, 0usize);
+    let mut corridas: Vec<usize> = Vec::new();
+    let (mut min, mut max) = (0.0f64, 0.0f64);
+    for fio in -40..40 {
+        let mut corrida = 0;
+        for i in 0..3000 {
+            let v = veio.no_dab(f64::from(i), [1.0, 0.0], 1.0).unwrap().veio_do_fio(fio);
+            assert_eq!(v.to_bits(), veio.no_dab(f64::from(i), [1.0, 0.0], 1.0).unwrap().veio_do_fio(fio).to_bits());
+            total += 1;
+            (min, max) = (min.min(v), max.max(v));
+            if v == 0.0 {
+                zero += 1;
+                if corrida > 0 {
+                    corridas.push(corrida);
+                }
+                corrida = 0;
+            } else {
+                corrida += 1;
+                if v < 0.0 { escuros += 1 } else { claros += 1 }
+            }
+        }
+    }
+    let livre = zero as f64 / total as f64;
+    let media = corridas.iter().sum::<usize>() as f64 / corridas.len().max(1) as f64;
+    println!("[veio] livre {livre:.3} · escuros {escuros} · claros {claros} · troços {} de {media:.0} px · [{min:.2}, {max:.2}]", corridas.len());
+    assert!((0.6..0.97).contains(&livre), "o veio não é raro: {livre:.3} do caminho livre");
+    assert!(escuros > 0 && claros > 0, "um sinal falta: {escuros} escuros, {claros} claros");
+    assert!(media >= 20.0, "troços de {media:.1} px: o veio pisca em vez de correr");
+    assert!(min <= -0.59 && max >= 0.29, "o troço não chega à cor dele: [{min}, {max}]");
+    // CONTROLO: o ruído de cor da luminosidade não tem troços livres.
+    let cor = com(|f| f.cor = [0.0, 0.0, 0.1]).no_dab(100.0, [1.0, 0.0], 1.0).unwrap();
+    let ruidos = (-40..40).filter(|&k| cor.cor_do_fio([23.0, 101.0, 179.0], k) != [23.0, 101.0, 179.0]).count();
+    assert!(ruidos > 70, "o controlo não mede: {ruidos} de 80 fios tingidos");
+}

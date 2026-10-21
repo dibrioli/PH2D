@@ -123,6 +123,9 @@ impl crate::PainterTool {
                 k.get(Knob::BristleNoiseSat),
                 k.get(Knob::BristleNoiseLight),
             ],
+            veio: [k.get(Knob::BristleStreak), k.get(Knob::BristleStreakLight)],
+            veio_px: k.get(Knob::BristleStreakLength),
+            veio_corte: k.get(Knob::BristleStreakCut),
         }
     }
 

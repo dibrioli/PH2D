@@ -176,11 +176,11 @@ fn sonda_a_largura_molhada_e_seca() {
     }
 }
 
-/// Os três óleos e o raio da foto de cada um (a largura dela): Oil Bristle (Bristle Flat), Acrylic Round
-/// (Round Hard), Express Oil (Hairy).
+/// Os três óleos e o raio da foto de cada um (a largura dela): Oil Bristle (Bristle Flat), Filbert (o recto de 40 px da
+/// bateria do EXAME; a Acrylic Round saiu da fábrica na J4), Express Oil (Hairy).
 pub(super) const OLEOS: [(&str, f32); 3] = [
     ("Oil Bristle", 20.5),
-    ("Acrylic Round", 19.5),
+    ("Filbert", 20.0),
     ("Express Oil", 21.0),
 ];
 
@@ -354,9 +354,11 @@ fn com_relevo() -> ph2d_brush_presets::Preset {
 /// controlo é o pincel que a W3 mediu, uma régua fixa (a ponta desfiada sozinha levava o contraste dele a 41 px de
 /// 8,7 a 11,0 — o vale encolhia por o CONTROLO andar, não o relevo).
 fn sem_relevo(nome: &str) -> ph2d_brush_presets::Preset {
+    // … e sem o VEIO dos fios (J4 óleo, `Knob::BristleStreak`): os troços escuros e claros também são contraste, e o
+    // controlo é o óleo de antes do relevo de cada fio (8,7), não o do veio sozinho (11,5 — colado ao Rebelle).
     com_knobs(
         de_fabrica(nome),
-        "-bristleHeight,-bristleRemove,emboss=0.7,-embossSizeExp,-embossSizeRef,-levelingOwnStroke,-bristleTipRagged,b.dab_quina=0",
+        "-bristleHeight,-bristleRemove,emboss=0.7,-embossSizeExp,-embossSizeRef,-levelingOwnStroke,-bristleTipRagged,b.dab_quina=0,-bristleStreak,-bristleStreakLight",
     )
 }
 

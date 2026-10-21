@@ -644,9 +644,9 @@ Pen/Dip Pen,INK_PEN,pen_dip_pen,sobre,INK_PEN/pen_dip_pen_sobre_A.png,INK_PEN/pe
 Pen/Fountain Round,INK_PEN,pen_fountain_round,gestos,INK_PEN/pen_fountain_round_gestos_A.png,INK_PEN/pen_fountain_round_gestos_B.png,ok,,não,22.25
 Pen/Fountain Round,INK_PEN,pen_fountain_round,tamanhos,INK_PEN/pen_fountain_round_tamanhos_A.png,INK_PEN/pen_fountain_round_tamanhos_B.png,ok,,sim,16.41
 Pen/Fountain Round,INK_PEN,pen_fountain_round,sobre,INK_PEN/pen_fountain_round_sobre_A.png,INK_PEN/pen_fountain_round_sobre_B.png,ok,,não,23.73
-Pen/Fountain Square,INK_PEN,pen_fountain_square,gestos,INK_PEN/pen_fountain_square_gestos_A.png,INK_PEN/pen_fountain_square_gestos_B.png,ok,,não,24.20
-Pen/Fountain Square,INK_PEN,pen_fountain_square,tamanhos,INK_PEN/pen_fountain_square_tamanhos_A.png,INK_PEN/pen_fountain_square_tamanhos_B.png,ok,,sim,30.91
-Pen/Fountain Square,INK_PEN,pen_fountain_square,sobre,INK_PEN/pen_fountain_square_sobre_A.png,INK_PEN/pen_fountain_square_sobre_B.png,ok,,não,17.71
+Pen/Fountain Square,INK_PEN,pen_fountain_square,gestos,INK_PEN/pen_fountain_square_gestos_A.png,INK_PEN/pen_fountain_square_gestos_B.png,ok,,não,15.55
+Pen/Fountain Square,INK_PEN,pen_fountain_square,tamanhos,INK_PEN/pen_fountain_square_tamanhos_A.png,INK_PEN/pen_fountain_square_tamanhos_B.png,ok,,não,8.75
+Pen/Fountain Square,INK_PEN,pen_fountain_square,sobre,INK_PEN/pen_fountain_square_sobre_A.png,INK_PEN/pen_fountain_square_sobre_B.png,ok,,não,17.57
 Pen/Reed Pen,INK_PEN,pen_reed_pen,gestos,INK_PEN/pen_reed_pen_gestos_A.png,INK_PEN/pen_reed_pen_gestos_B.png,ok,,não,19.13
 Pen/Reed Pen,INK_PEN,pen_reed_pen,tamanhos,INK_PEN/pen_reed_pen_tamanhos_A.png,INK_PEN/pen_reed_pen_tamanhos_B.png,ok,,não,17.03
 Pen/Reed Pen,INK_PEN,pen_reed_pen,sobre,INK_PEN/pen_reed_pen_sobre_A.png,INK_PEN/pen_reed_pen_sobre_B.png,ok,,não,17.03

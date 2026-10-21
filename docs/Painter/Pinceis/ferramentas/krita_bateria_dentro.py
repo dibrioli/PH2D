@@ -124,9 +124,11 @@ def pinta_preset(nome, preset):
         yield 50
         for op in cena["ops"]:
             if op["op"] == "pincel":
-                # base = o mesmo preset (bateria.py), salvo JOB["base"]: misturadores/borrachas não pousam as faixas
-                base = k.resources("preset").get(JOB.get("base") or "", preset)
-                view.setCurrentBrushPreset(preset if op["quem"] == "preset" else base)
+                # o das faixas = o mesmo preset (bateria.py), salvo JOB["base"]: misturadores/borrachas não pousam as
+                # faixas. ⚠️ Outro nome que não `base`: ela é o prefixo dos PNG (tapada, a 2.ª cena gravava
+                # `<PyKrita…>_<cena>.png` na pasta de onde se corre).
+                outro = k.resources("preset").get(JOB.get("base") or "", preset)
+                view.setCurrentBrushPreset(preset if op["quem"] == "preset" else outro)
             elif op["op"] == "cor":
                 view.setForeGroundColor(cor(op["rgb"]))
             elif op["op"] == "cor_fundo":

@@ -35,6 +35,11 @@ pub struct Dynamics {
     /// `offset_by_random` 0,354 na pressão 0 → 0 na 1): o raio do disco de Jitter SOMADO ao do pincel, em
     /// diâmetros do pincel (sem a pressão), na pressão 0 — e cai em recta até 0 na pressão 1. `0` = nada, ao bit.
     pub jitter_pressure: f32,
+    /// ⭐ **A velocidade com ATRASO** (J4 efeitos; o `speed1_slowness` do libmypaint, ISC — 0,04 s em 164 dos 196
+    /// pincéis do MyPaint): a velocidade que a L12 lê é a da mão passada por um filtro de 1.ª ordem com esta constante
+    /// de tempo (s), e o traço NASCE a `v = 0` — largo no arranque e a afinar à medida que a mão acelera (a cabeça do
+    /// traço rápido do `experimental/glow`). `0` = a velocidade medida desde o 1.º dab (a lei da J3), ao bit.
+    pub speed_lag_s: f32,
 }
 
 impl Default for Dynamics {
@@ -52,6 +57,7 @@ impl Default for Dynamics {
             speed_size: 0.0,
             speed_opacity: 0.0,
             jitter_pressure: 0.0,
+            speed_lag_s: 0.0,
         }
     }
 }

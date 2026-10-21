@@ -27,10 +27,12 @@ pub enum LinhaDaMao {
     PressureSCurve,
     /// A pressão leve espalha ([`Dynamics::jitter_pressure`], J3 canetas 2.ª onda).
     PressureJitter,
+    /// A velocidade com atraso ([`Dynamics::speed_lag_s`], J4 efeitos).
+    SpeedLag,
 }
 
 /// As linhas do cartão, pela ordem do painel.
-pub const LINHAS_DA_MAO: [LinhaDaMao; 20] = [
+pub const LINHAS_DA_MAO: [LinhaDaMao; 21] = [
     LinhaDaMao::Knob(Knob::PressureSize),
     LinhaDaMao::Knob(Knob::PressureSizeCurve),
     LinhaDaMao::Knob(Knob::PressureOpacity),
@@ -51,6 +53,7 @@ pub const LINHAS_DA_MAO: [LinhaDaMao; 20] = [
     LinhaDaMao::SpeedOpacity,
     LinhaDaMao::PressureSCurve,
     LinhaDaMao::PressureJitter,
+    LinhaDaMao::SpeedLag,
 ];
 
 /// Quantas linhas o cartão tem.
@@ -68,6 +71,7 @@ pub const MAO_DE_FABRICA: [f64; N_LINHAS_DA_MAO] = {
             LinhaDaMao::SpeedOpacity => SPEED_OPACITY.4,
             LinhaDaMao::PressureSCurve => PRESSURE_S_CURVE.4,
             LinhaDaMao::PressureJitter => PRESSURE_JITTER.4,
+            LinhaDaMao::SpeedLag => SPEED_LAG.4,
         };
         i += 1;
     }
@@ -89,6 +93,8 @@ const SPEED_SIZE: (&str, f64, f64, f64, f64) = (
 const PRESSURE_S_CURVE: (&str, f64, f64, f64, f64) = ("pressureSCurve", 0.0, 1.0, 0.01, 0.0);
 /// A pressão leve espalha: o disco de Jitter na pressão 0, em diâmetros (a esferográfica do MyPaint: 0,354).
 const PRESSURE_JITTER: (&str, f64, f64, f64, f64) = ("pressureJitter", 0.0, 1.0, 0.01, 0.0);
+/// O atraso da velocidade (s): o `speed1_slowness` do MyPaint (0,04 em 164 dos 196 pincéis dele; o maior 0,2).
+const SPEED_LAG: (&str, f64, f64, f64, f64) = ("speedLag", 0.0, 0.5, 0.01, 0.0);
 /// A velocidade→opacidade (L12), a mesma lei na cobertura do dab (Thin_Pen ≈ 0,2).
 const SPEED_OPACITY: (&str, f64, f64, f64, f64) = (
     "speedOpacity",
@@ -109,6 +115,7 @@ impl LinhaDaMao {
             Self::SpeedOpacity => SPEED_OPACITY.0,
             Self::PressureSCurve => PRESSURE_S_CURVE.0,
             Self::PressureJitter => PRESSURE_JITTER.0,
+            Self::SpeedLag => SPEED_LAG.0,
         }
     }
 
@@ -125,6 +132,7 @@ impl LinhaDaMao {
             Self::SpeedOpacity => (SPEED_OPACITY.1, SPEED_OPACITY.2, SPEED_OPACITY.3),
             Self::PressureSCurve => (PRESSURE_S_CURVE.1, PRESSURE_S_CURVE.2, PRESSURE_S_CURVE.3),
             Self::PressureJitter => (PRESSURE_JITTER.1, PRESSURE_JITTER.2, PRESSURE_JITTER.3),
+            Self::SpeedLag => (SPEED_LAG.1, SPEED_LAG.2, SPEED_LAG.3),
         }
     }
 
@@ -133,7 +141,7 @@ impl LinhaDaMao {
     /// antes volta ao byte (`cada_preset_de_fabrica_e_a_sua_receita`).
     #[must_use]
     pub fn grava_no_neutro(self) -> bool {
-        !matches!(self, Self::PressureSCurve | Self::PressureJitter)
+        !matches!(self, Self::PressureSCurve | Self::PressureJitter | Self::SpeedLag)
     }
 
     /// O valor de fábrica (o neutro).
@@ -146,6 +154,7 @@ impl LinhaDaMao {
             Self::SpeedOpacity => SPEED_OPACITY.4,
             Self::PressureSCurve => PRESSURE_S_CURVE.4,
             Self::PressureJitter => PRESSURE_JITTER.4,
+            Self::SpeedLag => SPEED_LAG.4,
         }
     }
 
@@ -230,6 +239,7 @@ pub(crate) fn escreve(d: &mut Dynamics, t: &mut PenTilt, l: LinhaDaMao, v: f64) 
         LinhaDaMao::SpeedOpacity => d.speed_opacity = f,
         LinhaDaMao::PressureSCurve => d.pen.s_curve = f,
         LinhaDaMao::PressureJitter => d.jitter_pressure = f,
+        LinhaDaMao::SpeedLag => d.speed_lag_s = f,
         LinhaDaMao::Knob(k) => unreachable!("knob fora da mão: {k:?}"),
     }
 }
@@ -274,6 +284,7 @@ pub(crate) fn le(d: &Dynamics, t: &PenTilt, l: LinhaDaMao) -> f64 {
         LinhaDaMao::SpeedOpacity => curto(d.speed_opacity),
         LinhaDaMao::PressureSCurve => curto(d.pen.s_curve),
         LinhaDaMao::PressureJitter => curto(d.jitter_pressure),
+        LinhaDaMao::SpeedLag => curto(d.speed_lag_s),
         LinhaDaMao::Knob(k) => unreachable!("knob fora da mão: {k:?}"),
     }
 }
@@ -298,6 +309,7 @@ fn da_pressao(l: LinhaDaMao) -> bool {
             | LinhaDaMao::SpeedOpacity
             | LinhaDaMao::PressureSCurve
             | LinhaDaMao::PressureJitter
+            | LinhaDaMao::SpeedLag
     ) || matches!(
         l,
         LinhaDaMao::Knob(
@@ -395,6 +407,7 @@ impl super::PainterTool {
             (self.paint.dynamics.speed_size, self.paint.dynamics.speed_opacity) = (0.0, 0.0);
             self.paint.dynamics.pen.s_curve = 0.0;
             self.paint.dynamics.jitter_pressure = 0.0;
+            self.paint.dynamics.speed_lag_s = 0.0;
         } else {
             self.repor_mao();
         }
@@ -529,7 +542,7 @@ mod tests {
     fn as_linhas_novas_so_vao_para_o_preset_mexidas() {
         use super::super::wetpaint_preset::nome_do_meio;
         use ph2d_brush_presets::Parametros;
-        let novas = [LinhaDaMao::PressureSCurve, LinhaDaMao::PressureJitter];
+        let novas = [LinhaDaMao::PressureSCurve, LinhaDaMao::PressureJitter, LinhaDaMao::SpeedLag];
         let mut t = super::super::super::PainterTool::default();
         t.set_paint_media(PaintMedia::Digital);
         let base = Parametros::novo(nome_do_meio(PaintMedia::Digital), "g", "n");
@@ -580,11 +593,16 @@ mod velocidade {
         linha: Option<(LinhaDaMao, f64)>,
         xs: &[usize],
     ) -> Vec<usize> {
+        alturas_com(m, passo, linha.as_slice(), xs)
+    }
+
+    /// [`alturas`] com várias linhas da mão.
+    fn alturas_com(m: PaintMedia, passo: f32, linhas: &[(LinhaDaMao, f64)], xs: &[usize]) -> Vec<usize> {
         let mut t = super::super::super::PainterTool::default();
         t.set_source(vec![255u8; 600 * 120 * 4], 600, 120);
         t.set_paint_media(m);
         t.set_brush_size_px(16.0);
-        if let Some((l, v)) = linha {
+        for &(l, v) in linhas {
             t.set_mao(l, v);
         }
         let cp = |x: f32, phase| CanvasPointer {
@@ -624,6 +642,26 @@ mod velocidade {
                 assert!(a.abs_diff(h[3]) <= 1, "{m:?}: a {x} px a largura é {a}, a do meio {} — {h:?}", h[3]);
             }
         }
+    }
+
+    /// ⭐ **A velocidade com ATRASO** (J4 efeitos, `docs/Painter/Pinceis/exames/efeitos.md`; o `speed1_slowness` do
+    /// MyPaint): com `speedLag` 0,04 s o traço rápido NASCE largo (o filtro ainda não viu a mão: `v = 0`) e afina à
+    /// medida que o filtro a apanha — a cabeça do traço rápido do `experimental/glow`; sem o atraso, o início tem a
+    /// largura do meio (a lei da J3, intacta). O 1.º dab sai à largura de SEM velocidade, e um atraso maior afina
+    /// mais tarde (o filtro, não só o arranque a zero).
+    #[test]
+    fn a_velocidade_com_atraso_nasce_larga() {
+        let xs = [22, 200, 560];
+        let marker = (LinhaDaMao::SpeedSize, 0.45);
+        let lag = |s: f64| (LinhaDaMao::SpeedLag, s);
+        let plena = alturas_com(PaintMedia::Digital, 50.0, &[], &xs);
+        let curto = alturas_com(PaintMedia::Digital, 50.0, &[marker, lag(0.04)], &xs);
+        let longo = alturas_com(PaintMedia::Digital, 50.0, &[marker, lag(0.2)], &xs);
+        let sem = alturas_com(PaintMedia::Digital, 50.0, &[marker], &xs);
+        assert!(sem[0].abs_diff(sem[2]) <= 1, "sem atraso o início é o meio: {sem:?}");
+        assert!(curto[0] + 1 >= plena[0], "com atraso o 1.º dab sai à largura cheia: {curto:?} × {plena:?}");
+        assert!(curto[2] + 3 <= curto[0], "com atraso o traço afina: {curto:?}");
+        assert!(longo[1] >= curto[1] + 2, "o atraso maior afina mais tarde: {longo:?} × {curto:?}");
     }
 
     /// A velocidade→opacidade chega ao Wet Paint (a mão dele herda a `Dynamics` do pincel): no recto rápido a

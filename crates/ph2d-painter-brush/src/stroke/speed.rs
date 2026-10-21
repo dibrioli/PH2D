@@ -46,6 +46,8 @@ pub(super) struct Mao {
     lida: f32,
     /// O `arc_len` do dab anterior.
     arco: f32,
+    /// A velocidade da mão pelo filtro do atraso ([`Dynamics::speed_lag_s`]); só lida com ele ligado.
+    filtrada: f32,
 }
 
 impl Stroke {
@@ -76,10 +78,12 @@ impl Stroke {
     /// Airbrush) os dabs ficam no traço até ao 1.º tique e saem nele, pela velocidade medida — o tool carimba os dabs
     /// do tique antes de compor o quadro, então a espera não custa latência. Sem a lei: `None`, ao bit.
     pub(super) fn arma_a_espera_da_velocidade(&mut self) {
-        let segura = matches!(
-            self.spec.stroke_method,
-            StrokeMethod::Space | StrokeMethod::Dots | StrokeMethod::Airbrush
-        );
+        // Com o atraso o traço nasce a `v = 0` (o filtro ainda não viu a mão): nada a segurar.
+        let segura = self.dynamics.speed_lag_s <= 0.0
+            && matches!(
+                self.spec.stroke_method,
+                StrokeMethod::Space | StrokeMethod::Dots | StrokeMethod::Airbrush
+            );
         self.mao_da_velocidade = self.dynamics.speed_armed().then(|| Mao {
             segura: segura.then(Vec::new),
             pos: None,
@@ -88,6 +92,7 @@ impl Stroke {
             quadro: 0.0,
             lida: 0.0,
             arco: 0.0,
+            filtrada: 0.0,
         });
     }
 
@@ -112,6 +117,11 @@ impl Stroke {
         };
         if dt > 0.0 {
             (m.medida, m.quadro, m.caminho) = (m.caminho / dt, m.caminho, 0.0);
+            let tau = self.dynamics.speed_lag_s;
+            if tau > 0.0 {
+                m.filtrada += (m.medida - m.filtrada) * (1.0 - (-dt / tau).exp());
+                m.medida = m.filtrada;
+            }
         }
         let Some(mut h) = m.segura.take() else {
             return Vec::new();

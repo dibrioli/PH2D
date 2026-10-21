@@ -30,6 +30,11 @@ pub struct CorDaMao {
     pub pressure_sat: f32,
     /// **Pressão → valor** `0..1`: `V × (1 − amount·(1 − p))`.
     pub pressure_val: f32,
+    /// **O VIÉS do sorteio de cor** (J4 `texturas`) — `[matiz em voltas, saturação, valor]` somados à cor de CADA dab
+    /// (depois do sorteio simétrico): o *Pointillism* do Krita sorteia em torno de uma cor DESLOCADA da escolhida
+    /// (média (48, 110, 210) sobre a base (23, 101, 179): +0,02 de matiz, −0,1 de saturação, +0,12 de valor).
+    /// `[0; 3]` = desligado, a cor de sempre ao bit.
+    pub vies: [f32; 3],
 }
 
 impl CorDaMao {
@@ -41,6 +46,7 @@ impl CorDaMao {
         pressure_hue: 0.0,
         pressure_sat: 0.0,
         pressure_val: 0.0,
+        vies: [0.0; 3],
     };
 
     /// O maior deslocamento de matiz pela pressão, em voltas (meia roda para cada lado).
@@ -50,6 +56,7 @@ impl CorDaMao {
     #[must_use]
     pub fn ativa(&self) -> bool {
         self.secondary_jitter > 0.0
+            || self.vies != [0.0; 3]
             || self.pressure_secondary > 0.0
             || self.pressure_hue != 0.0
             || self.pressure_sat > 0.0
@@ -81,6 +88,13 @@ impl CorDaMao {
             hsv[0] = (hsv[0] + h * leve).rem_euclid(1.0);
             hsv[1] *= 1.0 - s * leve;
             hsv[2] *= 1.0 - v * leve;
+            c = hsv_to_rgb(hsv);
+        }
+        if self.vies != [0.0; 3] {
+            let mut hsv = rgb_to_hsv(c);
+            hsv[0] = (hsv[0] + self.vies[0]).rem_euclid(1.0);
+            hsv[1] = (hsv[1] + self.vies[1]).clamp(0.0, 1.0);
+            hsv[2] = (hsv[2] + self.vies[2]).clamp(0.0, 1.0);
             c = hsv_to_rgb(hsv);
         }
         c

@@ -173,6 +173,7 @@ fn pincel_mexido() -> BrushSpec {
             pressure_hue: -0.1,
             pressure_sat: 0.55,
             pressure_val: 0.33,
+            vies: [0.02, -0.1, 0.12],
         },
         blend: BrushBlend::Multiply,
         blend_sobre_vazio: true,

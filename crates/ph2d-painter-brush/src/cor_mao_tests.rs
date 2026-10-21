@@ -147,3 +147,22 @@ fn a_marca_deliberada_nao_leva_a_cor_pela_mao() {
         assert!(all.iter().all(|d| d.color == AZUL), "{m:?}: a cor mudou pela mão");
     }
 }
+
+/// ⭐ **O viés do sorteio de cor** (J4 `texturas`, o Pointillism do Krita): com `vies` cada dab sai da cor deslocada
+/// (matiz +0,02, saturação −0,1, valor +0,12 em HSV), à mesma pressão em todo o traço; desligado é a cor de sempre.
+#[test]
+fn o_vies_desloca_a_cor_de_cada_dab() {
+    let base = rampa(CorDaMao::NEUTRA);
+    let com = rampa(CorDaMao {
+        vies: [0.02, -0.1, 0.12],
+        ..CorDaMao::NEUTRA
+    });
+    let hb = crate::jitter::rgb_to_hsv(AZUL);
+    for d in &com {
+        let h = crate::jitter::rgb_to_hsv(d.color);
+        assert!((h[0] - (hb[0] + 0.02)).abs() < 1e-3, "matiz {} × {}", h[0], hb[0] + 0.02);
+        assert!((h[1] - (hb[1] - 0.1)).abs() < 1e-3, "saturação {} × {}", h[1], hb[1] - 0.1);
+        assert!((h[2] - (hb[2] + 0.12)).abs() < 1e-3, "valor {} × {}", h[2], hb[2] + 0.12);
+    }
+    assert!(base.iter().all(|d| d.color == AZUL), "desligado: a cor de sempre");
+}

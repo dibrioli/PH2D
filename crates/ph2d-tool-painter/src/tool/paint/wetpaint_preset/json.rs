@@ -211,6 +211,11 @@ fn cor_mao_de_json(v: Option<&Value>, base: CorDaMao) -> CorDaMao {
         pressure_hue: f(o.get("pressure_hue"), base.pressure_hue),
         pressure_sat: f(o.get("pressure_sat"), base.pressure_sat),
         pressure_val: f(o.get("pressure_val"), base.pressure_val),
+        // AUSENTE = desligado (nunca o do pincel anterior: o preset sem ele é o de antes).
+        vies: {
+            let a = o.get("vies").and_then(Value::as_array);
+            [0, 1, 2].map(|k| f(a.and_then(|a| a.get(k)), 0.0))
+        },
     }
 }
 
@@ -311,14 +316,21 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
             "mode": b.hose.mode.to_u8(),
             "pesos": b.hose.pesos.to_vec(),
         }),
-        "cor_mao" => json!({
-            "secondary": [num(b.cor_mao.secondary[0]), num(b.cor_mao.secondary[1]), num(b.cor_mao.secondary[2])],
-            "secondary_jitter": num(b.cor_mao.secondary_jitter),
-            "pressure_secondary": num(b.cor_mao.pressure_secondary),
-            "pressure_hue": num(b.cor_mao.pressure_hue),
-            "pressure_sat": num(b.cor_mao.pressure_sat),
-            "pressure_val": num(b.cor_mao.pressure_val),
-        }),
+        "cor_mao" => {
+            let mut v = json!({
+                "secondary": [num(b.cor_mao.secondary[0]), num(b.cor_mao.secondary[1]), num(b.cor_mao.secondary[2])],
+                "secondary_jitter": num(b.cor_mao.secondary_jitter),
+                "pressure_secondary": num(b.cor_mao.pressure_secondary),
+                "pressure_hue": num(b.cor_mao.pressure_hue),
+                "pressure_sat": num(b.cor_mao.pressure_sat),
+                "pressure_val": num(b.cor_mao.pressure_val),
+            });
+            // O viés (J4) só ligado: o preset sem ele é o de antes, ao byte.
+            if b.cor_mao.vies != [0.0; 3] {
+                v["vies"] = json!(b.cor_mao.vies.map(num));
+            }
+            v
+        }
         "input_samples" => json!(b.input_samples),
         "stabilizer" => num(b.stabilizer),
         "size_max_px" => b.size_max_px.map_or(Value::Null, num),

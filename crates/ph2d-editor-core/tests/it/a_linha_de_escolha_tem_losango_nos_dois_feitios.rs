@@ -38,7 +38,10 @@ fn pinta(w: f32) -> (bool, Option<NodeId>) {
     });
     let alvo = key_mark_id(A);
     (
-        pintadas.first().expect("a escolha passou pela porta").ao_lado,
+        pintadas
+            .first()
+            .expect("a escolha passou pela porta")
+            .ao_lado,
         hit.rect_for(alvo).map(|_| alvo),
     )
 }
@@ -49,12 +52,29 @@ fn a_escolha_tem_o_losango_ao_lado_e_em_paleta() {
     ph2d_editor_core::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
     set_key_marks(BTreeMap::from([(A, KeyMark::Chave)]));
     let (ao_lado, alvo) = pinta(600.0);
-    assert!(ao_lado, "600 px cabe numa fileira — o feitio medido tem de ser «ao lado»");
-    assert_eq!(alvo, Some(key_mark_id(A)), "ao lado: o losango não foi registado");
-    assert_eq!(key_mark_target(key_mark_id(A)).map(|c| c.fields), Some(vec![A, B]));
+    assert!(
+        ao_lado,
+        "600 px cabe numa fileira — o feitio medido tem de ser «ao lado»"
+    );
+    assert_eq!(
+        alvo,
+        Some(key_mark_id(A)),
+        "ao lado: o losango não foi registado"
+    );
+    assert_eq!(
+        key_mark_target(key_mark_id(A)).map(|c| c.fields),
+        Some(vec![A, B])
+    );
     let (ao_lado, alvo) = pinta(40.0);
-    assert!(!ao_lado, "40 px não cabe — o feitio medido tem de ser a paleta");
-    assert_eq!(alvo, Some(key_mark_id(A)), "paleta: o losango não foi registado");
+    assert!(
+        !ao_lado,
+        "40 px não cabe — o feitio medido tem de ser a paleta"
+    );
+    assert_eq!(
+        alvo,
+        Some(key_mark_id(A)),
+        "paleta: o losango não foi registado"
+    );
     set_key_marks(BTreeMap::new());
     let (_, alvo) = pinta(600.0);
     assert_eq!(alvo, None, "sem canal, a linha não tem alvo de losango");

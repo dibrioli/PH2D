@@ -98,3 +98,32 @@ fn o_chip_de_opacity_da_barra_tem_losango() {
     set_key_marks(BTreeMap::new());
     state::set_current_appearance(None);
 }
+
+/// ⭐ F24d — o chip de OPÇÃO da barra (a tinta do traço) também tem o losango quando tem canal, e o
+/// rato acha-o na ponta direita. (Mutação: o braço `Compound` fora do `matches!` do `tool_bar` ⇒
+/// o `expect` dispara.)
+#[test]
+fn o_chip_de_opcao_da_barra_tem_losango() {
+    ph2d_editor_core::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
+    let alvo = key_mark_id(ids::VECTOR_BAR_KIND);
+    let mut hero = hero();
+    state::set_stroke_paint_kind(Some(state::StrokePaintKind::Solid));
+    set_key_marks(BTreeMap::from([(ids::VECTOR_BAR_KIND, KeyMark::Animado)]));
+    quadro(&mut hero);
+    let r = hero
+        .hit_index
+        .rect_for(alvo)
+        .expect("o losango do chip de opção foi pintado mas não registado");
+    assert_eq!(
+        hero.hit_index.hit(r.x + r.w * 0.5, r.y + r.h * 0.5),
+        Some(alvo),
+        "o rato acha o losango, não o chip"
+    );
+    assert_eq!(
+        key_mark_target(alvo).map(|c| c.fields),
+        Some(vec![ids::VECTOR_BAR_KIND])
+    );
+    set_key_marks(BTreeMap::new());
+    state::set_stroke_paint_kind(None);
+    state::set_current_appearance(None);
+}

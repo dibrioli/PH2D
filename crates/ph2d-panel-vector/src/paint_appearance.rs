@@ -21,9 +21,8 @@
 //! não tem onde esconder um knob morto* — e aqui o morto seria o pior tipo: um modo que grava no
 //! documento e desenha `Normal`.
 
-use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
+use ph2d_editor_core::widget::{Dropdown, DropdownOption};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::Theme;
@@ -91,31 +90,17 @@ impl BodyCtx<'_> {
     /// O chip do modo de mistura. Abre o popover no passe DIFERIDO — sem ele o `push_clip` do
     /// scroll da seção cortaria a lista na borda (a lei dos outros cinco popovers desta janela).
     fn blend_row(&mut self, atual: ph2d_vec_scene::BlendMode, misto: bool, y: f32) -> f32 {
-        let chip = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
-        let open = matches!(
-            self.store.get(crate::ids::VECTOR_OBJ_BLEND),
-            Some(InteractiveState::Dropdown { open: true, .. })
-        );
-        let visual = self.store.dropdown_visual(crate::ids::VECTOR_OBJ_BLEND);
-        let dd = Dropdown::new(
+        let face = if misto {
+            tr("panel.vector.mixed")
+        } else {
+            nome(atual)
+        };
+        if let Some(chip) = self.dropdown_row(
             crate::ids::VECTOR_OBJ_BLEND,
             tr("panel.vector.appearance.blend"),
-            vec![DropdownOption::new(
-                crate::ids::VECTOR_OBJ_BLEND,
-                (),
-                if misto {
-                    tr("panel.vector.mixed")
-                } else {
-                    nome(atual)
-                },
-            )],
-        )
-        .selected(())
-        .open(open)
-        .visual(visual);
-        paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
-        self.hit_index.register(crate::ids::VECTOR_OBJ_BLEND, chip);
-        if open {
+            face,
+            Rect::new(self.inner_x, y, self.inner_w, self.row_h),
+        ) {
             state::set_pending_obj_blend_dd(Some(chip));
         }
         y + self.row_h + self.row_gap

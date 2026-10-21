@@ -162,3 +162,31 @@ fn paint_smoke_minimal_rail() {
 // ---------------------------------------------------------------------------
 // O eixo do hover (wave da UI viva)
 // ---------------------------------------------------------------------------
+
+/// ⭐ F24d — o chip de um campo com canal encolhe e deixa a ponta direita ao losango; sem canal é o
+/// slot inteiro. (Mutação: devolver o `slot` ⇒ o chip pinta por baixo do losango.)
+#[test]
+fn o_chip_de_um_campo_com_canal_deixa_a_ponta_ao_losango() {
+    use crate::widget::key_mark::{KeyMark, set_key_marks};
+    crate::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
+    let slot = Rect::new(10.0, 0.0, 80.0, 24.0);
+    let mut scene = VectorScene::new();
+    set_key_marks(std::collections::BTreeMap::new());
+    assert_eq!(
+        super::paint::chip_with_key_mark(&mut scene, Theme::Forge, NodeId(6), slot),
+        slot
+    );
+    set_key_marks(std::collections::BTreeMap::from([(
+        NodeId(6),
+        KeyMark::Chave,
+    )]));
+    let chip = super::paint::chip_with_key_mark(&mut scene, Theme::Forge, NodeId(6), slot);
+    let (_, losango) = number_with_key_mark(NodeId(6), slot);
+    let d = losango.expect("com canal há losango");
+    assert!(
+        chip.x + chip.w <= d.x + 0.01,
+        "o chip entra no losango: {chip:?} × {d:?}"
+    );
+    assert!((d.x + d.w - (slot.x + slot.w)).abs() < 0.01);
+    set_key_marks(std::collections::BTreeMap::new());
+}

@@ -6,9 +6,8 @@
 //! eu escolhi não aparece?"* —, porque a resposta fica no mesmo lugar em que a pergunta nasce.
 //! Uma seção "Tokens" à parte deixaria a swatch mentindo sozinha lá em cima.
 
-use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
+use ph2d_editor_core::widget::{Dropdown, DropdownOption};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Theme};
@@ -100,18 +99,7 @@ impl BodyCtx<'_> {
             ph2d_editor_core::paint::resolve(ColorToken::Text1, self.theme),
         );
         let chip = ph2d_editor_core::panel::value_col(self.inner_x, self.inner_w, y, self.row_h);
-        let open = matches!(
-            self.store.get(id),
-            Some(InteractiveState::Dropdown { open: true, .. })
-        );
-        let dd_visual = self.store.dropdown_visual(id);
-        let dd = Dropdown::new(id, "", vec![DropdownOption::new(id, (), chip_label(bound))])
-            .selected(())
-            .open(open)
-            .visual(dd_visual);
-        paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
-        self.hit_index.register(id, chip);
-        if open {
+        if let Some(chip) = self.dropdown_row(id, "", chip_label(bound), chip) {
             state::set_pending_token_dd(Some((slot.code, chip)));
         }
         y + self.row_h + self.row_gap

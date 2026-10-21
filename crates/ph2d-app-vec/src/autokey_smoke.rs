@@ -26,7 +26,9 @@ static ESTAGIO: AtomicU8 = AtomicU8::new(0);
 static ESPERA: AtomicU8 = AtomicU8::new(0);
 /// `0` = as cenas `=1|2` · `1` = `=3` (o dono) · `2` = `=4` (mexe sozinha) · `3` = `=5` (o dono,
 /// o losango em todo campo — `autokey_smoke_tudo`) · `4` = `=6` (mexe sozinha) · `5` = `=7` (a `=6`
-/// com o Inspector à frente no fim, para a foto).
+/// com o Inspector à frente no fim, para a foto) · `6` = `=8` (o dono, o losango nos campos sem
+/// coluna — `autokey_smoke_campos`) · `7` = `=9` (mexe sozinha) · `8` = `=10` (a `=9` rolada até
+/// ao efeito).
 static DESENHO: AtomicU8 = AtomicU8::new(0);
 /// O estágio da cena — a do desenho avança-o daqui.
 pub(crate) fn avanca(n: u8) {
@@ -57,6 +59,9 @@ pub fn step(
                 "5" => 3,
                 "6" => 4,
                 "7" => 5,
+                "8" => 6,
+                "9" => 7,
+                "10" => 8,
                 _ => 0,
             };
             DESENHO.store(desenho, Ordering::Relaxed);
@@ -64,6 +69,18 @@ pub fn step(
         }
         s => s,
     };
+    if DESENHO.load(Ordering::Relaxed) >= 6 {
+        return crate::autokey_smoke_campos::step(
+            nivel,
+            DESENHO.load(Ordering::Relaxed) - 6,
+            vec,
+            scene,
+            sim,
+            hero,
+            tl,
+            ph,
+        );
+    }
     if DESENHO.load(Ordering::Relaxed) >= 3 {
         return crate::autokey_smoke_tudo::step(
             nivel,

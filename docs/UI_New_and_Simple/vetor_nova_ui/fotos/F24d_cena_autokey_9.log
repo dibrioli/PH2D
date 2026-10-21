@@ -1,0 +1,26 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   243ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   255ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   255ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   292ms] M11: VelloPass initialized (1024×768 intermediate)
+[   297ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   328ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   368ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   374ms] lifecycle: Foreground
+[   374ms] resize: 1024x768 @ 1.00x scale
+[ph2d-gpu] surface present mode → Immediate
+[   397ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 0.233s of sim time (max_substeps cap)
+[autokey-smoke] estrela paramétrica 0 (entidade 0xfffffff9): traço azul, entrada 1 da pilha = traço amarelo, Zig Zag; quadro 12; Auto Key LIGADO
+[autokey-smoke] q12: olho da entrada 1 ← desligado
+[autokey-smoke] q12: mistura ← Multiply
+[ph2d-gpu] surface present mode → Fifo
+[autokey-smoke] q12: Zig Zag p0 ← 50.000
+[autokey-smoke] q12: estrela ← 8 pontas · trilhas: efeito[0] 4×1ch · mistura[0] 1×1ch · pilha_ligada[1] 1×1ch
+[autokey-smoke] q24: tudo de volta · trilhas: efeito[0] 4×1ch · forma_param[0] 8×1ch · mistura[0] 1×1ch · pilha_ligada[1] 1×1ch
+[autokey-smoke] q18 (a meio): olho da entrada 1 false · mistura Multiply · Zig Zag p0 30.000 · pontas 6.50 · trilhas: efeito[0] 4×2ch · forma_param[0] 8×2ch · mistura[0] 1×2ch · pilha_ligada[1] 1×2ch
+[autokey-smoke] fim · trilhas: efeito[0] 4×2ch · forma_param[0] 8×2ch · mistura[0] 1×2ch · pilha_ligada[1] 1×2ch

@@ -18,11 +18,9 @@
 //! o mesmo gesto (o triângulo de expandir).
 
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::widget::{
     Button, ColorSwatch, Dropdown, DropdownOption, IconButtonStyle, IconGlyph, SwatchSize,
-    paint_button, paint_color_swatch, paint_dropdown_chip, paint_icon_button,
-    paint_swatch_or_mixed,
+    paint_button, paint_color_swatch, paint_icon_button, paint_swatch_or_mixed,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -151,9 +149,17 @@ impl BodyCtx<'_> {
             self.scene,
             self.theme,
         );
+        // ⭐ O losango do OLHO (ligada/desligada é outro canal que a tinta), colado a ele: o da
+        // direita é o da cor.
+        let mw = if ph2d_editor_core::paint::ui_is_redesign() {
+            ph2d_editor_core::widget::DECORATOR_W
+        } else {
+            0.0
+        };
+        self.decorator(Rect::new(er.x + er.w, y, mw, self.row_h), &[eid]);
 
         // O RÓTULO ocupa o que sobra — e é ele que ABRE a camada.
-        let lx = self.inner_x + ICON_W + ph2d_tokens::icon_label_gap_px();
+        let lx = self.inner_x + ICON_W + mw + ph2d_tokens::icon_label_gap_px();
         let lw = (x - gap - lx).max(1.0);
         let rid = ids::vector_paint_row_id(i);
         let lr = Rect::new(lx, y, lw, self.row_h);
@@ -250,31 +256,17 @@ impl BodyCtx<'_> {
     /// O chip de mistura da camada aberta. O popover abre no passe DIFERIDO — a lei dos outros
     /// seis desta janela.
     fn layer_blend_row(&mut self, atual: ph2d_vec_scene::BlendMode, misto: bool, y: f32) -> f32 {
-        let chip = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
-        let open = matches!(
-            self.store.get(crate::ids::VECTOR_PAINT_BLEND),
-            Some(InteractiveState::Dropdown { open: true, .. })
-        );
-        let dd = Dropdown::new(
+        let face = if misto {
+            tr("panel.vector.mixed")
+        } else {
+            tr(atual.label_key())
+        };
+        if let Some(chip) = self.dropdown_row(
             crate::ids::VECTOR_PAINT_BLEND,
             tr("panel.vector.paint.blend"),
-            vec![DropdownOption::new(
-                crate::ids::VECTOR_PAINT_BLEND,
-                (),
-                if misto {
-                    tr("panel.vector.mixed")
-                } else {
-                    tr(atual.label_key())
-                },
-            )],
-        )
-        .selected(())
-        .open(open)
-        .visual(self.store.dropdown_visual(crate::ids::VECTOR_PAINT_BLEND));
-        paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
-        self.hit_index
-            .register(crate::ids::VECTOR_PAINT_BLEND, chip);
-        if open {
+            face,
+            Rect::new(self.inner_x, y, self.inner_w, self.row_h),
+        ) {
             state::set_pending_paint_blend_dd(Some(chip));
         }
         y + self.row_h + self.row_gap

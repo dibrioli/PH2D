@@ -13,8 +13,6 @@
 //! artista procuraria um campo que não existe e concluiria que o controle é mudo — a mesma razão
 //! pela qual a instância órfã tem um readout em vez de um silêncio.
 
-use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 
@@ -96,22 +94,7 @@ impl BodyCtx<'_> {
             return y;
         };
         let chip = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
-        let open = matches!(
-            self.store.get(ids::VECTOR_WIDGET_ICON_DD),
-            Some(InteractiveState::Dropdown { open: true, .. })
-        );
-        let dd_visual = self.store.dropdown_visual(ids::VECTOR_WIDGET_ICON_DD);
-        let dd = Dropdown::new(
-            ids::VECTOR_WIDGET_ICON_DD,
-            "",
-            vec![DropdownOption::new(ids::VECTOR_WIDGET_ICON_DD, (), label)],
-        )
-        .selected(())
-        .open(open)
-        .visual(dd_visual);
-        paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
-        self.hit_index.register(ids::VECTOR_WIDGET_ICON_DD, chip);
-        if open {
+        if let Some(chip) = self.dropdown_row(ids::VECTOR_WIDGET_ICON_DD, "", &label, chip) {
             state::set_pending_icon_dd(Some(chip));
         }
         y + self.row_h + self.row_gap

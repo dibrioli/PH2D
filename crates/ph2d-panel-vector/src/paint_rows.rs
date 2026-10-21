@@ -9,10 +9,12 @@
 //! arquivo ao teto.
 
 use super::paint_sections::{BodyCtx, label_col_w};
+use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, paint_text_block, resolve};
+use ph2d_editor_core::widget::key_mark::paint_decorator_for;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, Checkbox, CheckboxValue, paint_button, paint_checkbox,
-    paint_slider_with_chip_layout_adaptive,
+    Button, ButtonKind, Checkbox, CheckboxValue, Dropdown, DropdownOption, form_row_columns,
+    paint_button, paint_checkbox, paint_dropdown_chip, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
@@ -90,10 +92,46 @@ impl BodyCtx<'_> {
         let cb = Checkbox::new(id, label)
             .visual(self.store.checkbox_visual(id))
             .value(value);
-        let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
+        let (w, dot) = form_row_columns(self.inner_x, self.inner_w, y, self.row_h);
+        let rect = Rect::new(self.inner_x, y, w, self.row_h);
         paint_checkbox(&cb, rect, self.scene, self.text_system, self.theme);
         self.hit_index.register(id, rect);
+        self.decorator(dot, &[id]);
         y + self.row_h + self.row_gap
+    }
+
+    /// A coluna do decorator de uma linha cujos campos são `fields`: o losango (ou o ponto), e o
+    /// alvo do clique registado nela.
+    pub(crate) fn decorator(&mut self, dot: Rect, fields: &[ph2d_a11y::NodeId]) {
+        if let Some(alvo) = paint_decorator_for(self.scene, self.theme, dot, fields) {
+            self.hit_index.register(alvo, dot);
+        }
+    }
+
+    /// **Uma linha de MENU** — o chip de `id` (a face `face`) em `chip` e, na coluna do decorator,
+    /// o losango dele. O chip nunca entra na coluna: um que chega à borda encolhe. Devolve o chip
+    /// pintado quando o menu está ABERTO — o popover ancora-se nele, no passe diferido.
+    pub(crate) fn dropdown_row(
+        &mut self,
+        id: ph2d_a11y::NodeId,
+        a11y: &str,
+        face: &str,
+        chip: Rect,
+    ) -> Option<Rect> {
+        let (_, dot) = form_row_columns(self.inner_x, self.inner_w, chip.y, self.row_h);
+        let chip = Rect::new(chip.x, chip.y, chip.w.min(dot.x - chip.x).max(1.0), chip.h);
+        let open = matches!(
+            self.store.get(id),
+            Some(InteractiveState::Dropdown { open: true, .. })
+        );
+        let dd = Dropdown::new(id, a11y, vec![DropdownOption::new(id, (), face)])
+            .selected(())
+            .open(open)
+            .visual(self.store.dropdown_visual(id));
+        paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
+        self.hit_index.register(id, chip);
+        self.decorator(dot, &[id]);
+        open.then_some(chip)
     }
 
     /// **Uma linha `rótulo … swatch de cor`** — a porta única das linhas de cor deste painel.

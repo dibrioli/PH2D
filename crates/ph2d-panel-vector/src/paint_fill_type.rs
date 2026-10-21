@@ -151,8 +151,12 @@ impl BodyCtx<'_> {
             .iter()
             .map(|(id, label, k)| (*label, kind == *k, *id))
             .collect();
+        // O losango é o da TINTA inteira (o tipo é membro dela), na 1.ª fileira do refluxo.
+        let (w, dot) =
+            ph2d_editor_core::widget::form_row_columns(self.inner_x, self.inner_w, y, self.row_h);
+        self.decorator(dot, &[ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID]);
         let used = paint_segmented_group_adaptive(
-            Rect::new(self.inner_x, y, self.inner_w, self.row_h),
+            Rect::new(self.inner_x, y, w, self.row_h),
             &segs,
             self.scene,
             self.text_system,

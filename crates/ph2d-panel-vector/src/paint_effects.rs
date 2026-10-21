@@ -204,6 +204,10 @@ impl BodyCtx<'_> {
             resolve(dim, self.theme),
         );
 
+        // ⭐ Na coluna do decorator — a dos parâmetros por baixo — o losango do OLHO (o efeito
+        // ligado é o canal do cabeçalho).
+        let (w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, h);
+        self.decorator(dot, &[ph2d_tool_vector::ids::vector_fx_hide_id(row)]);
         // Da DIREITA para a esquerda: ✕ · olho · ↓ · ↑. Assim o ✕ fica sempre no mesmo sítio,
         // e a ausência de uma seta nas bordas não desloca os outros.
         let slot = |i: usize| x + w - ICON_PX * (i as f32 + 1.0) - Spacing::Xs.px() * i as f32;
@@ -270,8 +274,18 @@ impl BodyCtx<'_> {
             // A caixinha é um botão cujo rótulo diz o ESTADO: um slider de dois valores seria
             // um controle contínuo a mentir sobre um fato binário.
             let on = p.value >= 0.5;
-            return self.action_button(
-                ph2d_tool_vector::ids::vector_fx_toggle_id(row, param),
+            let tid = ph2d_tool_vector::ids::vector_fx_toggle_id(row, param);
+            let (w, dot) = ph2d_editor_core::widget::form_row_columns(
+                self.inner_x,
+                self.inner_w,
+                y,
+                self.row_h,
+            );
+            self.decorator(dot, &[tid]);
+            // O botão na coluna do controlo (o idioma do card: guardar e repor a coluna).
+            let keep = std::mem::replace(&mut self.inner_w, w);
+            let ny = self.action_button(
+                tid,
                 &format!(
                     "{}: {}",
                     p.name,
@@ -283,6 +297,8 @@ impl BodyCtx<'_> {
                 ),
                 y,
             );
+            self.inner_w = keep;
+            return ny;
         }
         // O track é a posição NORMALIZADA na faixa; o número mostrado é o do documento. A
         // projeção entre os dois está registada no store (`seed_effect_ranges`), então o chip

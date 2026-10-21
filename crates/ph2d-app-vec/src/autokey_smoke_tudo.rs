@@ -171,7 +171,7 @@ fn medir(p: &VecPath, sim: &SimWorld, e: Entity) -> String {
 }
 
 /// Quantas trilhas o objecto tem, por grupo, e quantas chaves cada uma.
-fn trilhas(tl: &TimelineState, bits: u64) -> String {
+pub(crate) fn trilhas(tl: &TimelineState, bits: u64) -> String {
     let mut por_grupo: std::collections::BTreeMap<String, (usize, usize)> = Default::default();
     for b in tl.doc.bindings().iter().filter(|b| b.entity == bits) {
         let nome = match b.prop {

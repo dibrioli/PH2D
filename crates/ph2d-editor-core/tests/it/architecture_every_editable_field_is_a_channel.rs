@@ -16,6 +16,10 @@
 //!
 //! ⛔ Toda tabela tem censo de obsolescência: uma entrada que já não casa nada reprova (uma isenção
 //! que sobrevive ao código que a explicava é licença).
+//!
+//! E a lei da COLUNA (F24d): os primitivos de campo que não a trazem ([`SEM_COLUNA`] — a caixa de
+//! marcar, o chip de menu, o seletor pintado direto, o olho) só se pintam numa função que pinta a
+//! coluna do decorator — sem isto o campo ficava fora da população, invisível a este gate.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -44,9 +48,27 @@ const PORTAS: &[&str] = &[
     "paint_slider_with_chip_layout_adaptive",
     "paint_choice_row",
     "paint_decorator_for",
-    // `ToolRailEntry::number` — o chip numérico do rail (o losango à direita dele).
+    // `ToolRailEntry::number` / `::compound` — o chip numérico e o de opção do rail (o losango à
+    // direita deles).
     "number",
+    "compound",
 ];
+
+/// As portas que só valem prefixadas pelo tipo (`ToolRailEntry::number`, não um `number(` solto).
+const DO_RAIL: &[&str] = &["number", "compound"];
+
+/// Os primitivos de campo SEM a coluna do losango: só se chamam numa função que a pinta
+/// ([`COLUNA`]). O olho conta quando a função pinta um ícone com ele.
+const SEM_COLUNA: &[&str] = &[
+    "paint_checkbox(",
+    "paint_dropdown_chip(",
+    "paint_segmented_group_adaptive(",
+    "IconId::Eye",
+    "eye_icon(",
+];
+
+/// O que uma função escreve quando pinta a coluna do decorator.
+const COLUNA: &[&str] = &["paint_decorator_for(", ".decorator("];
 
 /// As crates cujos campos este gate classifica um a um; `None` = todos os ficheiros de `src/`,
 /// `Some` = só estes (o resto da crate é dívida do bloco 2).
@@ -83,6 +105,11 @@ const LINHAS: &[(&str, &str)] = &[
     ("ph2d-panel-vector", "fields_row"),
     ("ph2d-panel-vector", "colour_swatch_row"),
     ("ph2d-panel-vector", "colour_swatch_row_rect"),
+    ("ph2d-panel-vector", "checkbox_row"),
+    ("ph2d-panel-vector", "dropdown_row"),
+    ("ph2d-panel-vector", "decorator"),
+    ("ph2d-panel-vector", "chip"),
+    ("ph2d-panel-vector", "list_chip"),
     ("ph2d-panel-inspector", "fields_row"),
     ("ph2d-panel-inspector", "num_row"),
     ("ph2d-panel-inspector", "num_row_unit"),
@@ -143,6 +170,46 @@ const POR_ID: &[(&str, Classe, &str)] = &[
         Divida,
         "o MODO da quebra (a largura existir ou não) não tem campo; a largura tem",
     ),
+    (
+        "VECTOR_CUT_",
+        NaoAnimavel,
+        "os verbos da ferramenta Cut (§8)",
+    ),
+    (
+        "VECTOR_BAR_STROKE",
+        NaoAnimavel,
+        "abre o painel do traço: um verbo",
+    ),
+    (
+        "VECTOR_TRANSFORM_RESIZE_BOX",
+        NaoAnimavel,
+        "o que a alça do gizmo faz ao objecto: comportamento da edição, não desenho",
+    ),
+    (
+        "TexPatKnob::Lock",
+        NaoAnimavel,
+        "o cadeado do tamanho do padrão: gesto da sessão (não viaja no ficheiro)",
+    ),
+    (
+        "TexPatKnob::GapLink",
+        NaoAnimavel,
+        "o elo do vão do padrão: gesto da sessão (não viaja no ficheiro)",
+    ),
+    (
+        "TexPatKnob::Offset",
+        Divida,
+        "o desfasamento do padrão (Brick/Column): sem campo no vocabulário",
+    ),
+    (
+        "VECTOR_BAR_PROFILE",
+        Divida,
+        "o perfil de largura (Power Stroke): sem vocabulário",
+    ),
+    (
+        "VECTOR_TEXT_FONT_DD",
+        Divida,
+        "a família da fonte: sem vocabulário",
+    ),
     ("INSP_TRANSFORM_SKEW_", Divida, "o skew não tem PropKind"),
     ("INSP_SPRITE_EMISSIVE", Divida, "a emissão do sprite (§A.2)"),
     (
@@ -175,16 +242,74 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
         "ph2d-panel-vector",
         "layer_row",
         Canal,
-        &["vector_paint_swatch_id"],
-        "a tinta da entrada `i` da pilha (`marcas::canal_do_campo`)",
+        &["vector_paint_swatch_id", "vector_paint_eye_id"],
+        "a tinta e o olho da entrada `i` da pilha (`marcas::canal_do_campo`)",
     ),
     (
         "ph2d-panel-vector",
         "shape_field_chip",
-        Divida,
+        Canal,
+        &["vector_shape_field_id", "vector_shape_choice_id"],
+        "os campos da forma paramétrica na fila ② (`marcas::derivados`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "effect_header",
+        Canal,
+        &["vector_fx_hide_id"],
+        "o olho do efeito da linha `r` (`marcas::derivados`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "marker_row",
+        Canal,
+        &["VECTOR_MARKER_START_DD", "VECTOR_MARKER_END_DD"],
+        "a ponta do início OU do fim, pelo slot",
+    ),
+    (
+        "ph2d-panel-vector",
+        "texture_pattern_section",
+        Canal,
+        &[
+            "TexPatKnob::Tile",
+            "TexPatKnob::Mode",
+            "TexPatKnob::ShiftX",
+            "TexPatKnob::ShiftY",
+        ],
+        "o padrão de textura da tinta `slot` (`marcas::derivados`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "size_and_gap_rows",
+        Canal,
+        &[
+            "TexPatKnob::Width",
+            "TexPatKnob::Height",
+            "TexPatKnob::Gap",
+            "TexPatKnob::GapY",
+        ],
+        "o tamanho e o vão do padrão (`marcas::derivados`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "token_row",
+        NaoAnimavel,
         &[],
-        "os campos da forma paramétrica na fila ②: o canal PARAM_VALOR existe, falta a inversa de \
-         `vector_shape_field_id`",
+        "a ligação a um token de cor é fiação, não propriedade",
+    ),
+    (
+        "ph2d-panel-vector",
+        "gesture_chips",
+        NaoAnimavel,
+        &[],
+        "as opções do gesto na mão: ajustes da ferramenta (§8)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "symmetry_chips",
+        NaoAnimavel,
+        &[],
+        "a simetria da ferramenta (§8)",
     ),
     (
         "ph2d-panel-vector",
@@ -196,10 +321,9 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     (
         "ph2d-panel-vector",
         "fx_param",
-        Divida,
-        &[],
-        "os parâmetros dos efeitos: o canal EFEITO_PARAM existe, falta a inversa de \
-         `vector_fx_param_id`",
+        Canal,
+        &["vector_fx_param_id", "vector_fx_toggle_id"],
+        "os parâmetros do efeito da linha `r` (`marcas::derivados`)",
     ),
     (
         "ph2d-panel-vector",
@@ -273,11 +397,6 @@ const DIVIDA_FICHEIRO: &[(&str, &str, &str)] = &[
         "ph2d-panel-vector",
         "paint_textpath.rs",
         "o texto no caminho: sem vocabulário",
-    ),
-    (
-        "ph2d-panel-vector",
-        "paint_texture_pattern.rs",
-        "o padrão de textura: o canal OFF_PADRAO existe, falta a inversa dos ids por `TexPatKnob`",
     ),
     (
         "ph2d-panel-vector",
@@ -422,7 +541,7 @@ fn chamadas<'a>(corpo: &'a str, nomes: &BTreeSet<&str>) -> Vec<(String, &'a str)
         if !nomes.contains(nome) || corpo[..ini].ends_with("fn ") {
             continue;
         }
-        if nome == "number" && !corpo[..ini].ends_with("ToolRailEntry::") {
+        if DO_RAIL.contains(&nome) && !corpo[..ini].ends_with("ToolRailEntry::") {
             continue;
         }
         let (mut d, mut j) = (1, i + 1);
@@ -439,11 +558,24 @@ fn chamadas<'a>(corpo: &'a str, nomes: &BTreeSet<&str>) -> Vec<(String, &'a str)
     out
 }
 
-/// Os ids `ids::NOME` (maiúsculas) de um texto — `X[0]` conta como `X`.
+/// O nome que começa em `s`: um identificador, ou `Tipo::Variante` (`TexPatKnob::Width`).
+fn nome_em(s: &str) -> String {
+    let a: String = s.chars().take_while(|&c| ident(c)).collect();
+    match s[a.len()..].strip_prefix("::") {
+        Some(resto) => {
+            let b: String = resto.chars().take_while(|&c| ident(c)).collect();
+            if b.is_empty() { a } else { format!("{a}::{b}") }
+        }
+        None => a,
+    }
+}
+
+/// Os ids `ids::NOME` (maiúsculas) de um texto — `X[0]` conta como `X`; `ids::Tipo::Variante`
+/// conta como `Tipo::Variante`.
 fn ids_em(args: &str) -> Vec<String> {
     let mut out = Vec::new();
     for (i, _) in args.match_indices("ids::") {
-        let nome: String = args[i + 5..].chars().take_while(|&c| ident(c)).collect();
+        let nome = nome_em(&args[i + 5..]);
         if nome.len() > 2 && nome.chars().next().is_some_and(|c| c.is_ascii_uppercase()) {
             out.push(nome);
         }
@@ -461,10 +593,7 @@ fn nomes_das_tabelas() -> (BTreeSet<String>, String) {
         let s = sem_testes(&s).to_owned();
         for pref in ["painel::", "ferramenta::", "insp::"] {
             for (i, _) in s.match_indices(pref) {
-                let n: String = s[i + pref.len()..]
-                    .chars()
-                    .take_while(|&c| ident(c))
-                    .collect();
+                let n = nome_em(&s[i + pref.len()..]);
                 if !n.is_empty() {
                     nomes.insert(n);
                 }
@@ -698,6 +827,63 @@ fn toda_crate_que_pinta_campos_escolheu_o_seu_lado() {
     assert!(erros.is_empty(), "{}", erros.join("\n"));
 }
 
+/// Onde, no [`ESCOPO`] fora da dívida de ficheiro, cada primitivo [`SEM_COLUNA`] é pintado:
+/// (ficheiro, função, primitivo, a função pinta a coluna?).
+fn sem_coluna() -> Vec<(String, String, &'static str, bool)> {
+    let mut out = Vec::new();
+    for &(krate, so) in ESCOPO {
+        for (ficheiro, s) in fontes(krate) {
+            if so.is_some_and(|fs| !fs.contains(&ficheiro.as_str())) || na_divida(krate, &ficheiro)
+            {
+                continue;
+            }
+            for (funcao, corpo) in funcoes(&s) {
+                let coluna = COLUNA.iter().any(|c| corpo.contains(c));
+                let icone = corpo.contains("paint_icon_button(") || corpo.contains(".icon(");
+                for p in SEM_COLUNA {
+                    let olho = p.contains("Eye") || p.starts_with("eye_");
+                    if corpo.contains(p) && (!olho || icone) {
+                        out.push((ficheiro.clone(), funcao.clone(), *p, coluna));
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
+/// ⭐ **A lei da COLUNA** (F24d): uma caixa de marcar, um chip de menu, um seletor pintado direto ou
+/// um olho só se pintam numa função que pinta a coluna do decorator — onde o losango mora e onde
+/// este gate os vê. (Mutação: o `checkbox_row` sem o `decorator` ⇒ reprova.)
+#[test]
+fn todo_campo_sem_coluna_propria_ganha_a_do_losango() {
+    let todos = sem_coluna();
+    let sem: Vec<String> = todos
+        .iter()
+        .filter(|(.., coluna)| !coluna)
+        .map(|(f, func, p, _)| format!("{f} · fn {func} pinta `{p}` sem a coluna do losango"))
+        .collect();
+    assert!(
+        sem.is_empty(),
+        "campos pintados SEM a coluna do losango — use as linhas do painel (`checkbox_row`, \
+         `dropdown_row`) ou pinte o decorator na função:\n  {}",
+        sem.join("\n  ")
+    );
+    // Controlo do leitor: os cinco sítios conhecidos são achados.
+    for (func, p) in [
+        ("checkbox_row", "paint_checkbox("),
+        ("dropdown_row", "paint_dropdown_chip("),
+        ("fill_type_section", "paint_segmented_group_adaptive("),
+        ("layer_row", "eye_icon("),
+        ("effect_header", "IconId::Eye"),
+    ] {
+        assert!(
+            todos.iter().any(|(_, f, q, _)| f == func && *q == p),
+            "a varredura não achou `{p}` em `fn {func}` — o leitor partiu"
+        );
+    }
+}
+
 /// Controlo do próprio leitor: a varredura acha a população conhecida (sem isto, um leitor que
 /// casasse ZERO aprovaria tudo).
 #[test]
@@ -712,6 +898,13 @@ fn a_varredura_acha_os_campos_que_se_conhecem() {
         "VECTOR_OBJ_OPACITY_NUM",
         "INSP_TRANSFORM_POS_X",
         "INSP_SPRITE_OPACITY",
+        "VECTOR_OBJ_BLEND",
+        "VECTOR_PAINT_BLEND",
+        "VECTOR_STROKE_PRESENT",
+        "VECTOR_FILL_KIND_SOLID",
+        "VECTOR_BAR_KIND",
+        "TexPatKnob::Angle",
+        "TexPatKnob::Lock",
     ] {
         assert!(
             tem(id),

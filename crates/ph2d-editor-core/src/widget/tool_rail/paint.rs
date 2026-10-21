@@ -12,6 +12,21 @@ use super::caption::{paint_sub_label, sub_label_font_px};
 use super::*;
 use crate::widget::{chip_axis_color, chip_axis_t, chip_feel};
 
+/// O chip de um CAMPO do rail (o número, a opção): pinta o losango na ponta direita do slot quando
+/// o campo tem canal e devolve o rect que sobra para o chip — a porta única dos dois chips.
+pub(super) fn chip_with_key_mark(
+    scene: &mut VectorScene,
+    theme: Theme,
+    id: NodeId,
+    slot: Rect,
+) -> Rect {
+    let (chip, losango) = super::number_with_key_mark(id, slot);
+    if let Some(d) = losango {
+        let _alvo = crate::widget::key_mark::paint_decorator_for(scene, theme, d, &[id]);
+    }
+    chip
+}
+
 /// ⚠️ **Delega com o NEUTRO.** O eixo do hover vive em [`paint_tool_rail_t`]; esta assinatura é a
 /// de sempre e pinta **exactamente** o que pintava antes da wave da UI viva — o molde do
 /// `denoise_ml` / `denoise_ml_with_progress`.
@@ -189,7 +204,9 @@ pub fn paint_tool_rail_axis(
                 active,
                 ..
             } => {
-                let chip_rect = slot_rect;
+                // Uma OPÇÃO que é um campo (a escolha da forma paramétrica) tem o losango do chip
+                // numérico; as outras não têm canal e ocupam o slot inteiro.
+                let chip_rect = chip_with_key_mark(scene, theme, *id, slot_rect);
                 // Halved 2026-05-24 (Lg → Sm, 12 → 6 px) per user
                 // feedback that rail buttons looked too bubbly.
                 let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
@@ -255,7 +272,7 @@ pub fn paint_tool_rail_axis(
                     sub,
                     sub_font,
                     rect.x,
-                    chip_rect,
+                    slot_rect,
                     axis,
                     // M14.5 r4: see Icon arm note.
                     resolve(ColorToken::Text2, theme),
@@ -390,11 +407,7 @@ pub fn paint_tool_rail_axis(
                 id, sub, display, ..
             } => {
                 let (state, buffer, caret, anchor) = store.number_chip_view(*id);
-                let (chip, losango) = super::number_with_key_mark(*id, slot_rect);
-                if let Some(d) = losango {
-                    let _alvo =
-                        crate::widget::key_mark::paint_decorator_for(scene, theme, d, &[*id]);
-                }
+                let chip = chip_with_key_mark(scene, theme, *id, slot_rect);
                 crate::widget::paint_number_chip(
                     chip,
                     state,

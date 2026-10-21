@@ -28,11 +28,7 @@ use crate::state::filters::{
     FILTER_RADIUS_MAX, FILTER_SCALE_MAX, FILTER_SEED_MAX,
 };
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::widget::{
-    Card, Dropdown, DropdownOption, IconButtonStyle, IconGlyph, paint_card, paint_dropdown_chip,
-    paint_icon_button,
-};
+use ph2d_editor_core::widget::{Card, IconButtonStyle, IconGlyph, paint_card, paint_icon_button};
 use ph2d_i18n::tr;
 
 /// O lado de um botão de ícone do cabeçalho.
@@ -471,22 +467,7 @@ impl BodyCtx<'_> {
             resolve(ColorToken::Text1, self.theme),
         );
         let chip = ph2d_editor_core::panel::value_col(self.inner_x, self.inner_w, y, self.row_h);
-        let open = matches!(
-            self.store.get(id),
-            Some(InteractiveState::Dropdown { open: true, .. })
-        );
-        let dd_visual = self.store.dropdown_visual(id);
-        let dd = Dropdown::new(
-            id,
-            "",
-            vec![DropdownOption::new(id, (), fst::blend_name(fx.blend))],
-        )
-        .selected(())
-        .open(open)
-        .visual(dd_visual);
-        paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
-        self.hit_index.register(id, chip);
-        if open {
+        if let Some(chip) = self.dropdown_row(id, "", fst::blend_name(fx.blend), chip) {
             state::set_pending_blend_dd(Some((row, chip)));
         }
         y + self.row_h + self.row_gap

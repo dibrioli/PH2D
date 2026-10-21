@@ -98,14 +98,23 @@ fn selection_name(sel: usize) -> String {
     }
 }
 
+/// Um chip da fila que abre uma LISTA (aceso enquanto ela está aberta).
+fn list_chip(
+    store: &WidgetStore,
+    id: NodeId,
+    key: &str,
+    face: String,
+    faces: Vec<String>,
+    sub: &str,
+) -> ToolRailEntry {
+    let e = ToolRailEntry::compound(id, tr(key), face, sub).showing(faces);
+    if is_open(store, id) { e.active() } else { e }
+}
+
 /// ⭐ **A cabeça da fila ②** — o que só funciona NA fila (o `⋯` leva a cauda): o nome, as amostras,
 /// o «Stroke ▾», o peso, e com seleção o perfil, a tinta e a opacidade do objecto.
 pub(super) fn control_chips(snap: &VectorStyleSnapshot, store: &WidgetStore) -> Vec<ToolRailEntry> {
     let sel = crate::state::current_selection_count();
-    let list = |id: NodeId, key: &str, face: String, faces: Vec<String>, sub: &str| {
-        let e = ToolRailEntry::compound(id, tr(key), face, sub).showing(faces);
-        if is_open(store, id) { e.active() } else { e }
-    };
     let mut v = vec![
         ToolRailEntry::text(selection_name(sel)),
         ToolRailEntry::swatch(
@@ -122,7 +131,8 @@ pub(super) fn control_chips(snap: &VectorStyleSnapshot, store: &WidgetStore) -> 
         )
         .mixed(!snap.agrees(ph2d_tool_vector::StyleFields::STROKE_RGB))
         .with_sub(tr("panel.vector.bar.sub.stroke")),
-        list(
+        list_chip(
+            store,
             crate::ids::VECTOR_BAR_STROKE,
             "panel.vector.bar.stroke_options",
             tr("panel.vector.bar.stroke_more").to_owned(),
@@ -145,7 +155,8 @@ pub(super) fn control_chips(snap: &VectorStyleSnapshot, store: &WidgetStore) -> 
             .unwrap_or(custom);
         let mut faces: Vec<String> = profile_names().map(str::to_owned).collect();
         faces.push(custom.to_owned());
-        v.push(list(
+        v.push(list_chip(
+            store,
             crate::ids::VECTOR_BAR_PROFILE,
             "panel.vector.bar.profile",
             face.to_owned(),
@@ -159,7 +170,8 @@ pub(super) fn control_chips(snap: &VectorStyleSnapshot, store: &WidgetStore) -> 
             .iter()
             .find(|(_, _, kind)| *kind == k)
             .map_or("", |(_, key, _)| tr(key));
-        v.push(list(
+        v.push(list_chip(
+            store,
             crate::ids::VECTOR_BAR_KIND,
             "panel.vector.bar.kind",
             face.to_owned(),

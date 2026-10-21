@@ -166,6 +166,24 @@ const CAMPOS: &[(NodeId, &[PropKind])] = &[
         ferramenta::VECTOR_EXPAND_SIDE_BOTH,
         &[campo(v::OFFSET_LADO)],
     ),
+    (painel::VECTOR_OBJ_BLEND, &[campo(v::MISTURA)]),
+    // O Fill Type, ter traço, e a tinta da barra são membros da TINTA (o tipo, o «existe»): o
+    // mesmo grupo que a cor.
+    (ferramenta::VECTOR_FILL_KIND_SOLID, &[PREENCHIMENTO]),
+    (ferramenta::VECTOR_FILL_KIND_LINEAR, &[PREENCHIMENTO]),
+    (ferramenta::VECTOR_FILL_KIND_RADIAL, &[PREENCHIMENTO]),
+    (ferramenta::VECTOR_FILL_KIND_MULTI, &[PREENCHIMENTO]),
+    (ferramenta::VECTOR_FILL_KIND_PATTERN, &[PREENCHIMENTO]),
+    (painel::VECTOR_STROKE_PRESENT, &[COR_DO_TRACO]),
+    (painel::VECTOR_BAR_KIND, &[COR_DO_TRACO]),
+    (
+        ferramenta::VECTOR_MARKER_START_DD,
+        &[campo(v::TRACO_MARCA_INICIO)],
+    ),
+    (
+        ferramenta::VECTOR_MARKER_END_DD,
+        &[campo(v::TRACO_MARCA_FIM)],
+    ),
 ];
 
 /// ⭐ **Os campos da entrada ABERTA da pilha de pinturas** — o id é um só para qualquer entrada; o
@@ -180,7 +198,73 @@ const DA_CAMADA_ABERTA: &[(NodeId, u16)] = &[
     (painel::VECTOR_PAINT_JOIN_BEVEL, v::PILHA_DILATA_JUNCAO),
     (painel::VECTOR_PAINT_OPACITY, v::PILHA_OPACIDADE),
     (painel::VECTOR_PAINT_OPACITY_NUM, v::PILHA_OPACIDADE),
+    (painel::VECTOR_PAINT_BLEND, v::PILHA_MISTURA),
 ];
+
+/// Os controlos do padrão de textura que são membros da TINTA (tamanho, vão, origem, ângulo,
+/// reticulado, repetição). ⛔ Fora: a arte e «Use shape» (verbos), o desfasamento (sem campo), os
+/// dois elos (gesto da sessão).
+/// (O gate lê os nomes por extenso.)
+const PADRAO: &[painel::TexPatKnob] = &[
+    painel::TexPatKnob::Tile(0),
+    painel::TexPatKnob::Tile(1),
+    painel::TexPatKnob::Tile(2),
+    painel::TexPatKnob::Tile(3),
+    painel::TexPatKnob::Mode(0),
+    painel::TexPatKnob::Mode(1),
+    painel::TexPatKnob::Mode(2),
+    painel::TexPatKnob::Width,
+    painel::TexPatKnob::WidthNum,
+    painel::TexPatKnob::Height,
+    painel::TexPatKnob::HeightNum,
+    painel::TexPatKnob::Gap,
+    painel::TexPatKnob::GapNum,
+    painel::TexPatKnob::GapY,
+    painel::TexPatKnob::GapYNum,
+    painel::TexPatKnob::Angle,
+    painel::TexPatKnob::AngleNum,
+    painel::TexPatKnob::ShiftX,
+    painel::TexPatKnob::ShiftXNum,
+    painel::TexPatKnob::ShiftY,
+    painel::TexPatKnob::ShiftYNum,
+];
+
+fn em_j(c: u16, i: usize, j: usize) -> PropKind {
+    let n = |x: usize| u16::try_from(x).unwrap_or(u16::MAX);
+    PropKind::Field(FieldKey::new(VETOR, c, n(i), n(j)))
+}
+
+/// ⭐ **Os campos de id DERIVADO de um índice** — o padrão de textura de cada tinta (`slot` 0 =
+/// preenchimento, 1 = traço), os parâmetros e o olho de cada efeito (a linha `r` do painel é o
+/// efeito `r` do documento), os campos da forma paramétrica na fila ② (o número e o gémeo que
+/// cicla). Os ids saem de um `format!` + hash: calculam-se UMA vez, nunca por quadro.
+fn derivados() -> &'static [(NodeId, PropKind)] {
+    static T: std::sync::LazyLock<Vec<(NodeId, PropKind)>> = std::sync::LazyLock::new(|| {
+        let mut t = Vec::new();
+        for (slot, tinta) in [PREENCHIMENTO, COR_DO_TRACO].into_iter().enumerate() {
+            t.extend(PADRAO.iter().map(|&k| (painel::texpat_id(slot, k), tinta)));
+        }
+        for r in 0..ferramenta::MAX_FX_ROWS {
+            t.push((
+                ferramenta::vector_fx_hide_id(r),
+                em_j(v::EFEITO_LIGADO, r, 0),
+            ));
+            for p in 0..ferramenta::MAX_FX_ROW_PARAMS {
+                let c = em_j(v::EFEITO_PARAM, r, p);
+                t.push((ferramenta::vector_fx_param_id(r, p), c));
+                t.push((ferramenta::vector_fx_param_num_id(r, p), c));
+                t.push((ferramenta::vector_fx_toggle_id(r, p), c));
+            }
+        }
+        for j in 0..ph2d_vec_scene::MAX_SHAPE_FIELDS {
+            let c = em_j(v::PARAM_VALOR, 0, j);
+            t.push((ferramenta::vector_shape_field_id(j), c));
+            t.push((ferramenta::vector_shape_choice_id(j), c));
+        }
+        t
+    });
+    &T
+}
 
 /// O que o painel mostra agora e muda o canal de um campo: a entrada ABERTA da pilha e quantas
 /// entradas há (a swatch da entrada `k` mostra a tinta dela, `i = k + 1`).
@@ -212,23 +296,29 @@ pub fn canal_do_campo(id: NodeId, ctx: Contexto) -> Vec<PropKind> {
     if let Some(&(_, g)) = CAMPOS.iter().find(|(c, _)| *c == id) {
         return g.to_vec();
     }
+    if let Some(&(_, g)) = derivados().iter().find(|(c, _)| *c == id) {
+        return vec![g];
+    }
     if let Some(k) = ctx.aberta
         && let Some(&(_, c)) = DA_CAMADA_ABERTA.iter().find(|(x, _)| *x == id)
     {
         return vec![em(c, entrada(k))];
     }
-    // A swatch da entrada `k`: a tinta dela — de preenchimento OU de traço; só a que a entrada tem
-    // está ligada ou publicada, a outra não responde.
-    (0..ctx.camadas)
-        .find(|&k| painel::vector_paint_swatch_id(k) == id)
-        .map(|k| {
-            let i = entrada(k);
-            vec![
+    for k in 0..ctx.camadas {
+        let i = entrada(k);
+        // A swatch da entrada `k`: a tinta dela — de preenchimento OU de traço; só a que a entrada
+        // tem está ligada ou publicada, a outra não responde.
+        if painel::vector_paint_swatch_id(k) == id {
+            return vec![
                 em(v::TINTA_PREENCH + v::OFF_SOLIDA, i),
                 em(v::TINTA_TRACO + v::OFF_SOLIDA, i),
-            ]
-        })
-        .unwrap_or_default()
+            ];
+        }
+        if painel::vector_paint_eye_id(k) == id {
+            return vec![em(v::PILHA_LIGADA, i)];
+        }
+    }
+    Vec::new()
 }
 
 /// Todo id que pode ter losango neste contexto.
@@ -243,7 +333,13 @@ fn ids(ctx: Contexto) -> impl Iterator<Item = NodeId> {
                 .filter(move |_| aberta)
                 .map(|&(id, _)| id),
         )
-        .chain((0..ctx.camadas).map(painel::vector_paint_swatch_id))
+        .chain(derivados().iter().map(|&(id, _)| id))
+        .chain((0..ctx.camadas).flat_map(|k| {
+            [
+                painel::vector_paint_swatch_id(k),
+                painel::vector_paint_eye_id(k),
+            ]
+        }))
 }
 
 /// A força do grupo como o losango a pinta.

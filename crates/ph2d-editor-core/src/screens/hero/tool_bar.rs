@@ -305,10 +305,13 @@ pub fn paint_tool_bar(
             continue; // o divisor não se clica
         };
         hit_index.register(id, slot.rect);
-        // O losango do chip numérico (o alvo que o pintor registou ao pintá-lo).
+        // O losango do chip numérico ou de opção (o alvo que o pintor registou ao pintá-lo).
         if matches!(
             rail.entries.get(slot.index),
-            Some(crate::widget::ToolRailEntry::Number { .. })
+            Some(
+                crate::widget::ToolRailEntry::Number { .. }
+                    | crate::widget::ToolRailEntry::Compound { .. }
+            )
         ) && let (_, Some(d)) = crate::widget::number_with_key_mark(id, slot.rect)
         {
             hit_index.register(crate::widget::key_mark::key_mark_id(id), d);

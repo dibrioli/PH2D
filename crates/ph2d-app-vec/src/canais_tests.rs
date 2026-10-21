@@ -147,14 +147,29 @@ fn os_efeitos_vivos_publicam_se_e_a_curva_os_conduz() {
     let dist = k(c::CONTORNO_DISTANCIA, 0, 0);
     let s = RationalTime::from_seconds;
     for (t, v) in [(0.0, 0.1), (1.0, 0.5)] {
-        doc.insert_key(e, PropKind::Field(dist), s(t), AnimValue::Float(v), Interp::Linear);
+        doc.insert_key(
+            e,
+            PropKind::Field(dist),
+            s(t),
+            AnimValue::Float(v),
+            Interp::Linear,
+        );
     }
     let mut cond = ConducaoVetor::default();
     publicar(&mut sim, &scene, &[e]);
     let l = lidos(&sim, e);
-    assert!(l.contains(&(k(c::CONTORNO_PASSOS, 0, 0), 3.0)), "o Contour não foi publicado");
-    assert!(l.contains(&(k(c::OFFSET_JUNCAO, 0, 0), 1.0)), "o Offset não foi publicado");
+    assert!(
+        l.contains(&(k(c::CONTORNO_PASSOS, 0, 0), 3.0)),
+        "o Contour não foi publicado"
+    );
+    assert!(
+        l.contains(&(k(c::OFFSET_JUNCAO, 0, 0), 1.0)),
+        "o Offset não foi publicado"
+    );
     quadro(&mut sim, &mut scene, &mut doc, &mut cond, e, 0.5);
     let d = sim.world().get::<ph2d_ecs::VecContour>(ent).unwrap().d;
-    assert!((d - 0.3).abs() < 1e-5, "a curva não conduziu o Contour: d = {d}");
+    assert!(
+        (d - 0.3).abs() < 1e-5,
+        "a curva não conduziu o Contour: d = {d}"
+    );
 }

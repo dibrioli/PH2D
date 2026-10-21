@@ -196,3 +196,101 @@ fn o_losango_da_camada_aberta_segue_a_entrada() {
     assert_eq!(m[&painel::VECTOR_PAINT_OPACITY], KeyMark::Livre);
     assert!(!marcas(&d, SEM, &[E], em(0.0), na_curva).contains_key(&painel::VECTOR_PAINT_OPACITY));
 }
+
+fn fij(c: u16, i: u16, j: u16) -> PropKind {
+    PropKind::Field(FieldKey::new(VETOR, c, i, j))
+}
+
+/// ⭐ F24d — os campos que não tinham a coluna do losango mostram o canal deles: a mistura do
+/// objecto e a da entrada aberta, o Fill Type e «tem traço» (membros da tinta), a ponta do fim, a
+/// tinta da barra, o olho da entrada `k`.
+#[test]
+fn os_campos_sem_coluna_mostram_o_canal_deles() {
+    let ctx = Contexto {
+        aberta: Some(1),
+        camadas: 2,
+    };
+    assert_eq!(
+        canal_do_campo(painel::VECTOR_OBJ_BLEND, SEM),
+        vec![f(v::MISTURA)]
+    );
+    assert_eq!(
+        canal_do_campo(ferramenta::VECTOR_FILL_KIND_PATTERN, SEM),
+        vec![f(R)]
+    );
+    let traco = f(v::TINTA_TRACO + v::OFF_SOLIDA);
+    assert_eq!(
+        canal_do_campo(painel::VECTOR_STROKE_PRESENT, SEM),
+        vec![traco]
+    );
+    assert_eq!(canal_do_campo(painel::VECTOR_BAR_KIND, SEM), vec![traco]);
+    assert_eq!(
+        canal_do_campo(ferramenta::VECTOR_MARKER_END_DD, SEM),
+        vec![f(v::TRACO_MARCA_FIM)]
+    );
+    assert_eq!(
+        canal_do_campo(painel::VECTOR_PAINT_BLEND, ctx),
+        vec![fij(v::PILHA_MISTURA, 2, 0)]
+    );
+    assert_eq!(
+        canal_do_campo(painel::vector_paint_eye_id(1), ctx),
+        vec![fij(v::PILHA_LIGADA, 2, 0)]
+    );
+    assert!(canal_do_campo(painel::vector_paint_eye_id(2), ctx).is_empty());
+}
+
+/// ⭐ F24d — os ids DERIVADOS de um índice voltam ao canal: o padrão da tinta `slot` (só os
+/// controlos que são membros dela), o parâmetro, o número e a caixinha do efeito `r`, o olho dele,
+/// o campo `j` da forma e o gémeo que cicla. (Mutação: trocar `slot` por 0 ⇒ o traço lê o
+/// preenchimento.)
+#[test]
+fn os_ids_derivados_voltam_ao_canal_deles() {
+    use painel::TexPatKnob as K;
+    let c = |id| canal_do_campo(id, SEM);
+    assert_eq!(c(painel::texpat_id(0, K::Width)), vec![f(R)]);
+    assert_eq!(
+        c(painel::texpat_id(1, K::AngleNum)),
+        vec![f(v::TINTA_TRACO + v::OFF_SOLIDA)]
+    );
+    assert_eq!(
+        c(painel::texpat_id(1, K::Tile(2))),
+        c(painel::texpat_id(1, K::Mode(0)))
+    );
+    for k in [K::Lock, K::GapLink, K::Offset, K::Source] {
+        assert!(c(painel::texpat_id(0, k)).is_empty(), "{k:?} não é campo");
+    }
+    let p = fij(v::EFEITO_PARAM, 2, 3);
+    assert_eq!(c(ferramenta::vector_fx_param_id(2, 3)), vec![p]);
+    assert_eq!(c(ferramenta::vector_fx_param_num_id(2, 3)), vec![p]);
+    assert_eq!(
+        c(ferramenta::vector_fx_toggle_id(1, 0)),
+        vec![fij(v::EFEITO_PARAM, 1, 0)]
+    );
+    assert_eq!(
+        c(ferramenta::vector_fx_hide_id(3)),
+        vec![fij(v::EFEITO_LIGADO, 3, 0)]
+    );
+    let campo = fij(v::PARAM_VALOR, 0, 4);
+    assert_eq!(c(ferramenta::vector_shape_field_id(4)), vec![campo]);
+    assert_eq!(c(ferramenta::vector_shape_choice_id(4)), vec![campo]);
+}
+
+/// Uma chave num parâmetro do efeito 1 acende o losango de todo parâmetro DELE (o efeito é um
+/// grupo) e não o do efeito 0; o olho do efeito 1 é outro canal.
+#[test]
+fn a_chave_de_um_efeito_acende_os_parametros_dele() {
+    let mut d = TimelineDoc::new();
+    d.fps_display = 24.0;
+    d.insert_key(
+        E,
+        fij(v::EFEITO_PARAM, 1, 2),
+        RationalTime::from_seconds(0.0),
+        AnimValue::Float(100.0),
+        Interp::Linear,
+    );
+    let m = marcas(&d, SEM, &[E], em(0.0), na_curva);
+    assert_eq!(m[&ferramenta::vector_fx_param_id(1, 0)], KeyMark::Chave);
+    assert_eq!(m[&ferramenta::vector_fx_toggle_id(1, 5)], KeyMark::Chave);
+    assert_eq!(m[&ferramenta::vector_fx_param_id(0, 2)], KeyMark::Livre);
+    assert_eq!(m[&ferramenta::vector_fx_hide_id(1)], KeyMark::Livre);
+}

@@ -26,11 +26,11 @@
 use crate::paint_sections::{BodyCtx, label_col_w};
 use crate::state;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
+use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::{PaintCtx, PanelHostInternal};
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
+use ph2d_editor_core::widget::{Dropdown, DropdownOption};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Theme, TypeToken};
@@ -198,34 +198,16 @@ impl BodyCtx<'_> {
         );
         let id = marker_dd_id(slot);
         let chip = ph2d_editor_core::panel::value_col(self.inner_x, self.inner_w, y, self.row_h);
-        let open = matches!(
-            self.store.get(id),
-            Some(InteractiveState::Dropdown { open: true, .. })
-        );
-        let dd_visual = self.store.dropdown_visual(id);
-        let dd = Dropdown::new(
-            id,
-            "",
-            vec![DropdownOption::new(
-                id,
-                (),
-                if snap.agrees(if slot == 0 {
-                    ph2d_tool_vector::StyleFields::MARKER_START
-                } else {
-                    ph2d_tool_vector::StyleFields::MARKER_END
-                }) {
-                    crate::nomes_do_motor::ponta(marker_of(snap, slot).label())
-                } else {
-                    tr("panel.vector.mixed")
-                },
-            )],
-        )
-        .selected(())
-        .open(open)
-        .visual(dd_visual);
-        paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
-        self.hit_index.register(id, chip);
-        if open {
+        let face = if snap.agrees(if slot == 0 {
+            ph2d_tool_vector::StyleFields::MARKER_START
+        } else {
+            ph2d_tool_vector::StyleFields::MARKER_END
+        }) {
+            crate::nomes_do_motor::ponta(marker_of(snap, slot).label())
+        } else {
+            tr("panel.vector.mixed")
+        };
+        if let Some(chip) = self.dropdown_row(id, "", face, chip) {
             // O popover pinta no passe DIFERIDO (fora do clip do scroll) — `paint.rs`.
             state::set_pending_marker_dd(Some((slot, chip)));
         }

@@ -7,11 +7,8 @@
 
 use crate::ids;
 use crate::paint_sections::BodyCtx;
-use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, resolve};
-use ph2d_editor_core::widget::{
-    Button, ButtonKind, Dropdown, DropdownOption, paint_button, paint_dropdown_chip,
-};
+use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing};
@@ -135,6 +132,9 @@ impl BodyCtx<'_> {
         }
         let btn_w = self.row_h;
         let gap = Spacing::Xs.px();
+        // `<` · o menu · `>` na coluna do controlo; a do losango fica livre.
+        let (row_w, _) =
+            ph2d_editor_core::widget::form_row_columns(self.inner_x, self.inner_w, y, self.row_h);
         self.arrow_button(
             crate::ids::VECTOR_TEXT_FONT_PREV,
             "<",
@@ -145,38 +145,18 @@ impl BodyCtx<'_> {
         self.arrow_button(
             crate::ids::VECTOR_TEXT_FONT_NEXT,
             ">",
-            self.inner_x + self.inner_w - btn_w,
+            self.inner_x + row_w - btn_w,
             btn_w,
             y,
         );
         let chip = Rect::new(
             self.inner_x + btn_w + gap,
             y,
-            (self.inner_w - 2.0 * (btn_w + gap)).max(1.0),
+            (row_w - 2.0 * (btn_w + gap)).max(1.0),
             self.row_h,
         );
-        let open = matches!(
-            self.store.get(crate::ids::VECTOR_TEXT_FONT_DD),
-            Some(InteractiveState::Dropdown { open: true, .. })
-        );
-        let dd_visual = self.store.dropdown_visual(crate::ids::VECTOR_TEXT_FONT_DD);
         let name = state::current_text_font().unwrap_or_default();
-        let dd = Dropdown::new(
-            crate::ids::VECTOR_TEXT_FONT_DD,
-            "",
-            vec![DropdownOption::new(
-                crate::ids::VECTOR_TEXT_FONT_DD,
-                (),
-                name,
-            )],
-        )
-        .selected(())
-        .open(open)
-        .visual(dd_visual);
-        paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
-        self.hit_index
-            .register(crate::ids::VECTOR_TEXT_FONT_DD, chip);
-        if open {
+        if let Some(chip) = self.dropdown_row(crate::ids::VECTOR_TEXT_FONT_DD, "", &name, chip) {
             state::set_pending_font_dd(Some(chip));
         }
         y += self.row_h + self.row_gap;

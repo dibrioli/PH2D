@@ -83,6 +83,12 @@ fn hrc_em_3d() -> bool {
 
 /// ⭐ W5u — `PH2D_LIGHT2D_HRC_POR_FIO=0`: uma entrada por fio na subida e na descida (o mesmo bit, mais
 /// lento; comparar), na vista e no entorno.
+/// ⭐ §44 (handoff W6g): os quadrantes juntos no degrau que os pede; `PH2D_LIGHT2D_JUNTOS=0` = um depois do
+/// outro (o mesmo bit, comparar).
+fn quadrantes_juntos(dg: Degrau) -> bool {
+    dg.quadrantes_juntos && ligado("PH2D_LIGHT2D_JUNTOS")
+}
+
 fn hrc_por_fio(c: ph2d_light2d_gpu::Config) -> ph2d_light2d_gpu::Config {
     if ligado("PH2D_LIGHT2D_HRC_POR_FIO") {
         return c;
@@ -128,6 +134,7 @@ pub fn config_da_vista(
         miolo: miolo_do_ambiente(),
         // ⭐ W5v: `=0` = a fina calcula o fundo dos opacos (o mesmo bit, mais lento; comparar).
         miolo_salta_o_fundo: ligado("PH2D_LIGHT2D_FUNDO"),
+        hrc_quadrantes_juntos: quadrantes_juntos(dg),
         ..crate::teto::config_do_quadro(g, mundo_para_tela, dg, rebote_ligado())
     })
 }
@@ -167,6 +174,7 @@ pub fn config_do_entorno(
         arquivo_da_borda: if borda_ligada() { janela() } else { None },
         // ⭐ §40.2: `PH2D_LIGHT2D_RECORTE=0` = a 2.ª passagem inteira (o mesmo bit, comparar).
         hrc_recorta_o_arquivo: ligado("PH2D_LIGHT2D_RECORTE"),
+        hrc_quadrantes_juntos: quadrantes_juntos(dg),
         hrc_nasce_duas_vezes: hrc_duas_vezes(),
         hrc_berco: hrc_berco(),
         hrc_em_texturas: hrc_texturas(),

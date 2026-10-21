@@ -33,9 +33,8 @@ struct UniformeHrc {
     total: u32,
     /// ⭐ W5u: 1 = os fios fazem mais de uma entrada neste passe (a grade passa [`hrc::POR_FIO_DESDE`]).
     por_fio: u32,
-    _p: [u32; 2],
-    /// O `vec4` seguinte alinha-se a 16 bytes (o `Hrc` do `c2_hrc.wgsl` tem 96).
-    _q: [u32; 2],
+    /// ⭐ §44: com os quadrantes juntos, o começo da faixa deste quadrante em `t_a`, `t_b`, `r_cima` e na escrita.
+    bases: [u32; 4],
     /// ⭐ W5d: o miolo cuja emissão não se recolhe (texels da grade) e a c0 do entorno somada na
     /// saída (`desloc, escala, ligado`) — o `Hrc` do `c2_hrc.wgsl`.
     miolo: [f32; 4],
@@ -47,12 +46,16 @@ struct UniformeHrc {
     janela: [u32; 4],
     fora_af: [f32; 4],
     fora_base: [[u32; 4]; 5],
+    /// ⭐ §44: os grupos `[⌈Y/64⌉, nx, k]` deste quadrante no despacho junto e o primeiro deles.
+    grupos: [u32; 4],
 }
 
 /// O miolo VAZIO (nenhum texel cai nele).
 const SEM_MIOLO: [f32; 4] = [1.0, 1.0, 0.0, 0.0];
 
-const _: () = assert!(size_of::<UniformeHrc>() == 240, "o `Hrc` do `c2_hrc.wgsl`");
+const _: () = assert!(size_of::<UniformeHrc>() == 256, "o `Hrc` do `c2_hrc.wgsl`");
+// ⭐ §44: o `array<Hrc, 4>` do `c2_hrc.wgsl` são quatro fatias seguidas do uniforme.
+const _: () = assert!(size_of::<UniformeHrc>() as u64 == PASSO_UNIFORME);
 
 #[derive(Clone, Copy)]
 enum Etapa {
@@ -90,8 +93,8 @@ pub(super) struct Entradas<'a> {
 pub(super) struct Holografica {
     cena: wgpu::BindGroup,
     pipelines: Vec<wgpu::ComputePipeline>,
-    /// `(etapa, grupo 3, grupos de trabalho)`, na ordem.
-    passos: Vec<(Etapa, wgpu::BindGroup, [u32; 3])>,
+    /// `(etapa, grupo 3, grupos de trabalho, a 1.ª fatia do uniforme)`, na ordem.
+    passos: Vec<(Etapa, wgpu::BindGroup, [u32; 3], usize)>,
     /// ⭐ W5d: o uniforme de cada passo (o miolo e o entorno reescrevem-se neles) e o buffer.
     uniformes: Vec<UniformeHrc>,
     uniforme: wgpu::Buffer,
@@ -168,7 +171,12 @@ fn buf(binding: u32, x: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
 /// (⭐ W5s: `[65 535, 2]` deixava até metade da 2.ª fila de grupos vazios, e lançá-los custava — a sobe
 /// n10–n12 e a desce n10–n11 −0,63 ms no High; handoff W5s §3).
 fn grupos_1d(total: u64) -> [u32; 3] {
-    let g = total.div_ceil(64).max(1);
+    dobrar(total.div_ceil(64))
+}
+
+/// `g` grupos dobrados em 2D por igual nas filas (o [`grupos_1d`]; ⭐ §44 o despacho junto).
+fn dobrar(g: u64) -> [u32; 3] {
+    let g = g.max(1);
     let y = g.div_ceil(65_535);
     [g.div_ceil(y) as u32, y as u32, 1]
 }
@@ -303,6 +311,7 @@ impl Holografica {
             ("GRADE3D_HRC", f64::from(u8::from(e.cfg.hrc_grade_3d))),
             ("CONES_HRC", f64::from(cones)),
             ("PARES_SOBE_HRC", f64::from(pares)),
+            ("JUNTOS_HRC", f64::from(u8::from(e.cfg.hrc_juntos()))),
         ];
         let pipelines = ENTRADAS
             .iter()
@@ -369,16 +378,17 @@ impl Holografica {
 
         let mut uniformes = Vec::new();
         let mut passos = Vec::new();
-        let mut passo = |etapa: Etapa, u: UniformeHrc, ligados: [&Nivel; 5], grupos: [u32; 3]| {
-            let k = passos.len() as u64;
-            uniformes.push(u);
+        // Um passe com o uniforme de cada quadrante dele (⭐ §44: quatro no despacho junto, um nos outros).
+        let mut passo = |etapa: Etapa, us: &[UniformeHrc], ligados: [&Nivel; 5], grupos: [u32; 3]| {
+            let k = uniformes.len() as u64;
+            uniformes.extend_from_slice(us);
             let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("luz2d c2 holográfica"),
                 layout: &g3_layout,
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 4,
-                        resource: fatia_uniforme(&uniforme, k, size_of::<UniformeHrc>() as u64),
+                        resource: fatia_uniforme(&uniforme, k, 4 * size_of::<UniformeHrc>() as u64),
                     },
                     ligados[0].ligar(5),
                     ligados[1].ligar(6),
@@ -391,7 +401,7 @@ impl Holografica {
                     buf(16, &com_cobertura),
                 ],
             });
-            passos.push((etapa, grupo, grupos));
+            passos.push((etapa, grupo, grupos, k as usize));
         };
         let saida = UniformeHrc {
             quadrante: 0,
@@ -404,8 +414,7 @@ impl Holografica {
             topo: 0,
             total: 0,
             por_fio: 0,
-            _p: [0; 2],
-            _q: [0; 2],
+            bases: [0; 4],
             miolo: SEM_MIOLO,
             entorno: [0.0; 4],
             arquivo: [0; 4],
@@ -413,6 +422,7 @@ impl Holografica {
             janela: [0; 4],
             fora_af: [0.0; 4],
             fora_base: [[0; 4]; 5],
+            grupos: [0; 4],
         };
         // ⭐ W5s: a máscara do vazio, da própria captura (a textura inteira: a grade efetiva), antes dos
         // quadrantes.
@@ -420,7 +430,7 @@ impl Holografica {
             let ge = e.cfg.grade_efetiva();
             passo(
                 Etapa::Ladrilhos,
-                saida,
+                &[saida],
                 [&vazio_l, &vazio_l, &vazio_t, &vazio_l, &vazio_r],
                 [
                     ge.largura.div_ceil(hrc::LADO_DO_VAZIO),
@@ -436,8 +446,18 @@ impl Holografica {
         } else {
             &[false]
         };
+        // ⭐ §44: os quadrantes JUNTOS — cada etapa num despacho, cada quadrante na sua faixa dos níveis; a soma
+        // continua um quadrante de cada vez (o acumulado soma-os na MESMA ordem: o mesmo bit).
+        let juntos = e.cfg.hrc_juntos().then(|| hrc::faixas(grade).0);
+        let n_max = (0..4).map(|q| Quadrante::de(q, grade).n).max().unwrap_or(3);
+        let soma = 2 * n_max + 1;
         for &arquivando in rodadas {
+            // As etapas de cada quadrante: `(chave na rodada, etapa, uniforme, ligados, grupos)`.
+            let mut etapas: [Vec<(u32, Etapa, UniformeHrc, [&Nivel; 5], [u32; 3])>; 4] = Default::default();
             for q in 0..4 {
+                let faixa = |bases: [u32; 4]| if juntos.is_some() { bases } else { [0; 4] };
+                let ft = juntos.map_or([0; hrc::NIVEIS_MAX], |f| f.t[q as usize]);
+                let fr = juntos.map_or(0, |f| f.r[q as usize]);
                 let quad = Quadrante::de(q, grade);
                 let base = UniformeHrc {
                     quadrante: q,
@@ -450,8 +470,7 @@ impl Holografica {
                     topo: 0,
                     total: 0,
                     por_fio: 0,
-                    _p: [0; 2],
-                    _q: [0; 2],
+                    bases: [0; 4],
                     miolo: SEM_MIOLO,
                     entorno: [0.0; 4],
                     arquivo: [0; 4],
@@ -459,6 +478,7 @@ impl Holografica {
                     janela: [0; 4],
                     fora_af: [0.0; 4],
                     fora_base: [[0; 4]; 5],
+                    grupos: [0; 4],
                 };
                 let base = UniformeHrc {
                     arquivo: [0, 0, 0, u32::from(arquivando)],
@@ -483,10 +503,14 @@ impl Holografica {
                         por_fio: u32::from(por_fio),
                         ..base
                     };
-                    let (etapa, ler) = if n <= 2 {
-                        (Etapa::Traca, &vazio_l)
+                    let (etapa, ler, bases) = if n <= 2 {
+                        (Etapa::Traca, &vazio_l, [0, 0, 0, ft[n as usize]])
                     } else {
-                        (Etapa::Sobe, &t[(n - 1) as usize])
+                        (Etapa::Sobe, &t[(n - 1) as usize], [ft[(n - 1) as usize], 0, 0, ft[n as usize]])
+                    };
+                    let u = UniformeHrc {
+                        bases: faixa(bases),
+                        ..u
                     };
                     let grupos = match (em_3d, n <= 2) {
                         (true, true) if por_sonda => grupos_3d(n, 1),
@@ -496,12 +520,13 @@ impl Holografica {
                         (true, false) => grupos_3d(n, (1 << n) + 1),
                         _ => grupos_1d(total),
                     };
-                    passo(
+                    etapas[q as usize].push((
+                        n,
                         etapa,
                         u,
                         [ler, &vazio_l, &t[n as usize], &vazio_l, &vazio_r],
                         grupos,
-                    );
+                    ));
                 }
                 for n in (0..quad.n).rev() {
                     let total = quad.entradas_r(n);
@@ -511,6 +536,12 @@ impl Holografica {
                         nx: nx(n),
                         nx_cima: nx(n + 1),
                         topo: u32::from(topo),
+                        bases: faixa([
+                            ft[n as usize],
+                            ft[(n + 1) as usize],
+                            if topo { 0 } else { fr },
+                            fr,
+                        ]),
                         total: total as u32,
                         por_fio: u32::from(por_fio),
                         arquivo: if arquivando {
@@ -520,12 +551,15 @@ impl Holografica {
                         },
                         ..base
                     };
-                    let cima = if topo {
+                    // ⭐ §44: junto, o passe é de todos os quadrantes neste nível e o topo de um não é o de outro
+                    // (a grade não quadrada): liga-se o R de cima, que o topo não lê.
+                    let cima = if topo && juntos.is_none() {
                         &vazio_l
                     } else {
                         &r[((n + 1) % 2) as usize]
                     };
-                    passo(
+                    etapas[q as usize].push((
+                        2 * n_max - n,
                         Etapa::Desce,
                         u,
                         [
@@ -540,7 +574,7 @@ impl Holografica {
                         } else {
                             grupos_1d(total)
                         },
-                    );
+                    ));
                 }
                 if arquivando {
                     continue;
@@ -554,19 +588,56 @@ impl Holografica {
                 let u = UniformeHrc {
                     nx: nx(0),
                     total: total as u32,
+                    bases: faixa([0, 0, fr, 0]),
                     ..base
                 };
-                passo(
+                etapas[q as usize].push((
+                    soma,
                     Etapa::Soma,
                     u,
                     [&vazio_l, &vazio_l, &vazio_t, &r[0], &vazio_r],
                     grupos_1d(total),
-                );
+                ));
+            }
+            if juntos.is_none() {
+                for (_, etapa, u, ligados, grupos) in etapas.iter().flatten() {
+                    passo(*etapa, &[*u], *ligados, *grupos);
+                }
+            } else {
+                for chave in 0..soma {
+                    let membros = etapas.each_ref().map(|v| v.iter().find(|x| x.0 == chave));
+                    let Some(&&(_, etapa, _, ligados, _)) = membros.iter().flatten().next() else {
+                        continue;
+                    };
+                    let mut primeiro = 0u32;
+                    let us: [UniformeHrc; 4] = std::array::from_fn(|q| {
+                        let (u, [x, y, z]) = membros[q].map_or(
+                            (
+                                UniformeHrc {
+                                    quadrante: q as u32,
+                                    ..saida
+                                },
+                                [0; 3],
+                            ),
+                            |m| (m.2, m.4),
+                        );
+                        let u = UniformeHrc {
+                            grupos: [x, y, z, primeiro],
+                            ..u
+                        };
+                        primeiro += x * y * z;
+                        u
+                    });
+                    passo(etapa, &us, ligados, dobrar(u64::from(primeiro)));
+                }
+                for (_, etapa, u, ligados, grupos) in etapas.iter().flatten().filter(|x| x.0 == soma) {
+                    passo(*etapa, &[*u], *ligados, *grupos);
+                }
             }
             if !arquivando {
                 passo(
                     Etapa::Saida,
-                    saida,
+                    &[saida],
                     [&vazio_l, &vazio_l, &vazio_t, &vazio_l, &vazio_r],
                     [grade[0].div_ceil(8), grade[1].div_ceil(8), 1],
                 );
@@ -619,7 +690,7 @@ impl Holografica {
     /// a máscara do vazio só na 1.ª — a cobertura não muda entre os rebotes).
     pub(super) fn gravar(&self, p: &mut wgpu::ComputePass<'_>, k: u32) {
         p.set_bind_group(0, &self.cena, &[]);
-        for (etapa, grupo, [x, y, z]) in &self.passos {
+        for (etapa, grupo, [x, y, z], _) in &self.passos {
             if k > 0 && matches!(etapa, Etapa::Ladrilhos) {
                 continue;
             }

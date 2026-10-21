@@ -106,8 +106,58 @@ impl Quadrante {
     }
 }
 
-/// Os T_0..T_N (o maior dos dois eixos) e o par R da grade `w × h`: `(nome, entradas)`.
-fn niveis([w, h]: [u32; 2]) -> Vec<(&'static str, u64)> {
+/// ⭐ §44 — o alinhamento de cada faixa de quadrante (um ladrilho 8 × 8 do `hrc_niveis_textura.wgsl`).
+const ALINHA_FAIXA: u64 = 64;
+
+/// ⭐ §44 (handoff W6g) — com os quadrantes JUNTOS ([`crate::Config::hrc_juntos`]) cada um tem a sua faixa em
+/// cada nível: `t[q][n]` é o começo da do T_n do quadrante `q` e `r[q]` o da dele em cada R do par (as `bases`
+/// do `Hrc`, somadas ao índice pelos acessores dos níveis).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Faixas {
+    pub t: [[u32; NIVEIS_MAX]; 4],
+    pub r: [u32; 4],
+}
+
+/// As faixas da grade `w × h` e as entradas de cada T_n (`0..=N`) e de cada R com elas.
+pub(crate) fn faixas([w, h]: [u32; 2]) -> (Faixas, Vec<u64>, u64) {
+    let quads = [0, 1, 2, 3].map(|q| Quadrante::de(q, [w, h]));
+    let n_max = quads.iter().map(|q| q.n).max().unwrap_or(3);
+    let mut f = Faixas {
+        t: [[0; NIVEIS_MAX]; 4],
+        r: [0; 4],
+    };
+    let t = (0..=n_max)
+        .map(|n| {
+            let mut fim = 0u64;
+            for (q, quad) in quads.iter().enumerate() {
+                f.t[q][n as usize] = fim as u32;
+                if n <= quad.n {
+                    fim += quad.entradas_t(n).next_multiple_of(ALINHA_FAIXA);
+                }
+            }
+            fim.max(1)
+        })
+        .collect();
+    let mut r = 0u64;
+    for (q, quad) in quads.iter().enumerate() {
+        f.r[q] = r as u32;
+        r += (0..quad.n).map(|n| quad.entradas_r(n)).max().unwrap_or(1).next_multiple_of(ALINHA_FAIXA);
+    }
+    (f, t, r)
+}
+
+/// Os T_0..T_N (o maior dos dois eixos) e o par R da grade `w × h`: `(nome, entradas)`; ⭐ §44 `juntos` = as
+/// faixas dos quatro quadrantes ([`faixas`]).
+fn niveis([w, h]: [u32; 2], juntos: bool) -> Vec<(&'static str, u64)> {
+    if juntos {
+        let (_, t, r) = faixas([w, h]);
+        return t
+            .into_iter()
+            .enumerate()
+            .map(|(n, e)| (NOMES_T[n], e))
+            .chain(NOMES_R.map(|nome| (nome, r)))
+            .collect();
+    }
     let quads = [Quadrante::de(0, [w, h]), Quadrante::de(1, [w, h])];
     let n_max = quads.iter().map(|q| q.n).max().unwrap_or(3);
     let r = quads
@@ -130,15 +180,15 @@ fn niveis([w, h]: [u32; 2]) -> Vec<(&'static str, u64)> {
 }
 
 /// ⭐ W5z — os T e os R da grade `w × h` cabem em texturas de nível?
-pub(crate) fn niveis_cabem_em_textura(grade: [u32; 2]) -> bool {
-    niveis(grade)
+pub(crate) fn niveis_cabem_em_textura(grade: [u32; 2], juntos: bool) -> bool {
+    niveis(grade, juntos)
         .iter()
         .all(|&(_, e)| e <= ENTRADAS_POR_TEXTURA)
 }
 
 /// ⭐ W5z — os T, o par R e os vazios em TEXTURAS `Rg32Uint` (com os rótulos dos buffers que substituem):
 /// [`LARGURA_DOS_NIVEIS`] de largura, a altura em ladrilhos de 8 linhas; os vazios 8 × 8.
-pub(crate) fn texturas(grade: [u32; 2]) -> Vec<Textura> {
+pub(crate) fn texturas(grade: [u32; 2], juntos: bool) -> Vec<Textura> {
     use wgpu::TextureUsages as T;
     let textura = |nome, tamanho| Textura {
         nome,
@@ -148,7 +198,7 @@ pub(crate) fn texturas(grade: [u32; 2]) -> Vec<Textura> {
         mips: 1,
     };
     let por_ladrilho = 8 * u64::from(LARGURA_DOS_NIVEIS);
-    niveis(grade)
+    niveis(grade, juntos)
         .into_iter()
         .map(|(nome, e)| {
             let altura = 8 * e.div_ceil(por_ladrilho).max(1);
@@ -239,6 +289,7 @@ pub(crate) fn buffers(
     [w, h]: [u32; 2],
     passes: u64,
     niveis_em_textura: bool,
+    juntos: bool,
     arquivo_da_borda: Option<[u32; 2]>,
 ) -> Vec<Buffer> {
     use wgpu::BufferUsages as B;
@@ -247,7 +298,7 @@ pub(crate) fn buffers(
     let mut v: Vec<Buffer> = if niveis_em_textura {
         Vec::new()
     } else {
-        niveis([w, h])
+        niveis([w, h], juntos)
             .into_iter()
             .map(|(nome, e)| Buffer {
                 nome,
@@ -303,25 +354,44 @@ impl crate::Config {
         let g = self.grade_efetiva();
         self.holografica.is_some()
             && self.hrc_em_texturas
-            && niveis_cabem_em_textura([g.largura, g.altura])
+            && niveis_cabem_em_textura([g.largura, g.altura], self.hrc_juntos())
             && self
                 .modulo_rc
                 .is_none_or(|m| m.contains("fn texel_do_nivel("))
     }
+
+    /// ⭐ §44 — os quadrantes JUNTOS ([`Self::hrc_quadrantes_juntos`]): só com os despachos em 3D e um fio por
+    /// sonda na traça (o despacho junto decompõe grupos `[⌈Y/64⌉, nx, k]`; o 1D dobrado não tem quadrante).
+    #[must_use]
+    pub fn hrc_juntos(&self) -> bool {
+        self.hrc_quadrantes_juntos
+            && self.holografica.is_some()
+            && self.hrc_grade_3d
+            && self.hrc_por_colunas
+            && self.hrc_fio_por_sonda
+    }
 }
 
-/// Quantos passes (despachos) a cascata holográfica grava por quadro: os ladrilhos com cobertura (W5s);
+/// Quantas fatias do uniforme a cascata holográfica usa: uma por passe — os ladrilhos com cobertura (W5s);
 /// por quadrante T0–T2, T3..TN, R_{N−1}..R0 e a soma; mais a saída. ⭐ bug 6: um ENTORNO que arquiva
-/// (`arquivo_da_borda`) grava de novo, por quadrante, os T e os R (a 2.ª passagem, sem soma).
-pub(crate) fn n_passes([w, h]: [u32; 2], arquivo_da_borda: bool) -> u64 {
-    (0..4)
-        .map(|q| {
-            let n = u64::from(Quadrante::de(q, [w, h]).n);
-            let tr = 3 + (n - 2) + n;
-            tr + 1 + if arquivo_da_borda { tr } else { 0 }
-        })
-        .sum::<u64>()
-        + 2
+/// (`arquivo_da_borda`) grava de novo, por quadrante, os T e os R (a 2.ª passagem, sem soma). ⭐ §44: com os
+/// quadrantes `juntos`, quatro por etapa (uma por quadrante, até o nível mais alto dos quatro); e a ligação
+/// de todo passe lê quatro fatias (o `array<Hrc, 4>`), logo mais três no fim.
+pub(crate) fn n_passes([w, h]: [u32; 2], arquivo_da_borda: bool, juntos: bool) -> u64 {
+    let rodadas = 1 + u64::from(arquivo_da_borda);
+    let por_quadrante = if juntos {
+        let n = u64::from(Quadrante::de(0, [w, h]).n.max(Quadrante::de(1, [w, h]).n));
+        4 * (2 * n + 1) * rodadas + 4
+    } else {
+        (0..4)
+            .map(|q| {
+                let n = u64::from(Quadrante::de(q, [w, h]).n);
+                let tr = 3 + (n - 2) + n;
+                tr + 1 + if arquivo_da_borda { tr } else { 0 }
+            })
+            .sum::<u64>()
+    };
+    por_quadrante + 2 + 3
 }
 
 #[cfg(test)]

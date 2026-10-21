@@ -57,7 +57,7 @@ impl Holografica {
             return false;
         };
         let base = 2 * k * self.passos.len() as u32;
-        for (i, (etapa, grupo, [x, y, z])) in self.passos.iter().enumerate() {
+        for (i, (etapa, grupo, [x, y, z], _)) in self.passos.iter().enumerate() {
             let par = base + 2 * i as u32;
             // ⭐ W5s: a máscara só na 1.ª gravação (um passe vazio escreve os carimbos dela).
             let vazio = k > 0 && matches!(etapa, Etapa::Ladrilhos);
@@ -108,7 +108,8 @@ impl Holografica {
         f.leitura.unmap();
         let mut out: Vec<FaseHrc> = Vec::new();
         for k in 0..f.feitas.get() as usize {
-            for (i, ((etapa, _, _), u)) in self.passos.iter().zip(&self.uniformes).enumerate() {
+            for (i, (etapa, _, _, fatia)) in self.passos.iter().enumerate() {
+                let u = &self.uniformes[*fatia];
                 let par = 2 * (k * self.passos.len() + i);
                 let ms = ts[par + 1].wrapping_sub(ts[par]) as f64 * f.periodo_ns / 1e6;
                 let nome = ENTRADAS[*etapa as usize];

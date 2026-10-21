@@ -273,6 +273,10 @@ pub struct Config {
     /// `hrc::POR_FIO_DESDE` texels (a decisão vai no uniforme: redimensionar não recompila).
     pub hrc_cones_por_fio: u32,
     pub hrc_pares_na_subida: u32,
+    /// ⭐ §44 (handoff W6g) — os 4 quadrantes de cada etapa num só despacho, cada um na sua faixa dos níveis
+    /// (a memória dos T e dos R ×~3,7): o mesmo bit; −0,5 ms na vista e no entorno da Baixa a 1080p (§43 b).
+    /// Efetivo: [`Self::hrc_juntos`]. `false` = um quadrante depois do outro.
+    pub hrc_quadrantes_juntos: bool,
 }
 
 /// ⭐ W5h — o maior [`Config::captura`]: as subamostras da C0 grossa (o `validar` recusa acima).
@@ -421,6 +425,7 @@ impl Config {
             hrc_grade_3d: true,
             hrc_cones_por_fio: 4,
             hrc_pares_na_subida: 4,
+            hrc_quadrantes_juntos: false,
         }
     }
 

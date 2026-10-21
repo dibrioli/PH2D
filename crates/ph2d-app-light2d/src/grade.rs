@@ -40,6 +40,11 @@ pub struct Degrau {
     pub entorno: f64,
     /// ⭐ W5d: os rebotes por quadro (o `Config::rebotes_por_quadro`) — ver [`DEGRAU_PADRAO`].
     pub rebotes_por_quadro: u32,
+    /// ⭐ §44 (handoff W6g) — os 4 quadrantes da holográfica num despacho por etapa (o
+    /// `Config::hrc_quadrantes_juntos`): o mesmo bit, a memória dos T e dos R ×~3,7. Só na Baixa (ordem do dono,
+    /// 21/10): 1080p −0,5 ms na vista e no entorno por +90 e +56 MiB; na Média a vista pagaria +384 MiB e na
+    /// Alta +1,5…+6,5 GiB (§43 b).
+    pub quadrantes_juntos: bool,
 }
 
 impl Degrau {
@@ -111,6 +116,7 @@ pub const DEGRAU_PADRAO: Degrau = Degrau {
     holografica: true,
     entorno: ENTORNO_PADRAO,
     rebotes_por_quadro: 2,
+    quadrantes_juntos: true,
 };
 
 /// ⭐ W5d — o fator do entorno — MEDIDO (rodada `medida_luz2d_w5d`, a cena 3 na vista de 2 m no nível

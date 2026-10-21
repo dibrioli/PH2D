@@ -25,6 +25,7 @@ pub const ALTO: ph2d_app_light2d::Degrau = ph2d_app_light2d::Degrau {
     holografica: false,
     entorno: 0.0,
     rebotes_por_quadro: 1,
+    quadrantes_juntos: false,
 };
 
 pub const W: u32 = 64;

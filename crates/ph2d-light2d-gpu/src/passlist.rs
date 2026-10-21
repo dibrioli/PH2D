@@ -393,7 +393,7 @@ impl PassList {
         // ⭐ W5z: os T e os R da holográfica em textura (`Config::hrc_niveis_em_textura`).
         let niveis_em_textura = cfg.hrc_niveis_em_textura();
         if niveis_em_textura {
-            texturas.extend(crate::hrc::texturas(fino));
+            texturas.extend(crate::hrc::texturas(fino, cfg.hrc_juntos()));
         }
 
         use wgpu::BufferUsages as B;
@@ -491,8 +491,9 @@ impl PassList {
         if cfg.holografica.is_some() {
             buffers.extend(crate::hrc::buffers(
                 fino,
-                crate::hrc::n_passes(fino, cfg.arquivo_da_borda.is_some()),
+                crate::hrc::n_passes(fino, cfg.arquivo_da_borda.is_some(), cfg.hrc_juntos()),
                 niveis_em_textura,
+                cfg.hrc_juntos(),
                 cfg.arquivo_da_borda,
             ));
         }

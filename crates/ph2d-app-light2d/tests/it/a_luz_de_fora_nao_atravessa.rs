@@ -378,3 +378,66 @@ fn o_recorte_do_arquivo_nao_muda_um_bit() {
         );
     }
 }
+
+/// ⭐ §44 (handoff W6g) — os 4 quadrantes da holográfica num despacho por etapa NÃO mudam um bit da luz da vista:
+/// a cena 5 inteira, a Baixa (o único nível que os junta), duas câmeras deitadas e uma janela em pé (o quadrante
+/// com mais níveis troca de eixo: o topo de um não é o do outro), a vista e o entorno juntos × um depois do outro.
+#[test]
+fn os_quadrantes_juntos_nao_mudam_um_bit() {
+    use ph2d_app_light2d::qualidade::degrau_do;
+    use ph2d_editor_core::luz_edits::NivelDaLuz;
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — saltado");
+        return;
+    };
+    let mut w = World::new();
+    assert!(smoke::encenar(&mut w, 5));
+    let cena = cena_de_luz(&w);
+    for nivel in [NivelDaLuz::Media, NivelDaLuz::Alta] {
+        assert!(!degrau_do(nivel).quadrantes_juntos, "{nivel:?}: a memória ×3,7 só na Baixa");
+    }
+    let d = degrau_do(NivelDaLuz::Baixa);
+    for (centro, alvo) in [([-4.2, -1.8], FHD), ([-1.0, 0.5], FHD), ([-4.2, -1.8], (1080, 1920))] {
+        let a = Camera2d::new(centro, 3.8).world_to_screen_affine(WindowSize::new(alvo.0, alvo.1));
+        let g = grade_do_quadro(a, alvo, d).expect("grade");
+        let luz = |juntos: bool| {
+            let mut cv = config_da_vista(&gpu.device, g, a, d);
+            let mut ce = config_do_entorno(&gpu.device, a, alvo, d).expect("o entorno");
+            assert!(cv.hrc_juntos() && ce.hrc_juntos(), "o produto junta os quadrantes na Baixa");
+            cv.hrc_quadrantes_juntos = juntos;
+            ce.hrc_quadrantes_juntos = juntos;
+            let mut s = Solver::novo(&gpu, cv).expect("vista");
+            let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, alvo);
+            s.regiao_fina(i, f);
+            let mut e = Solver::novo(&gpu, ce).expect("entorno");
+            e.regiao_fina([0; 2], [0; 2]);
+            assert!(e.mascarar_miolo(
+                &gpu,
+                Some([
+                    g.origem_m[0],
+                    g.origem_m[1],
+                    g.origem_m[0] + f64::from(g.largura) * g.texel_m,
+                    g.origem_m[1] + f64::from(g.altura) * g.texel_m,
+                ])
+            ));
+            for _ in 0..30 {
+                e.quadro(&gpu, &cena);
+                assert!(s.somar_entorno(&gpu, Some(&e)));
+                s.quadro(&gpu, &cena);
+            }
+            fluencia_lida(&gpu, &s).v
+        };
+        let (com, sem) = (luz(true), luz(false));
+        let diferentes = com.iter().zip(&sem).filter(|(a, b)| a != b).count();
+        let acesos = sem.iter().filter(|v| v.iter().any(|c| *c > 0.0)).count();
+        eprintln!(
+            "{centro:?} {alvo:?}: {diferentes} de {} texels diferentes ({acesos} acesos)",
+            com.len()
+        );
+        assert!(acesos > 0, "{centro:?} {alvo:?}: a vista às escuras não prova nada");
+        assert!(
+            com.len() == sem.len() && diferentes == 0,
+            "{centro:?} {alvo:?}: juntar os quadrantes mudou {diferentes} texels"
+        );
+    }
+}

@@ -37,6 +37,7 @@ pub fn degrau_do(nivel: NivelDaLuz) -> Degrau {
         } else {
             ENTORNO_ACIMA_DA_BAIXA
         },
+        quadrantes_juntos: nivel == NivelDaLuz::Baixa,
         ..DEGRAU_PADRAO
     }
 }

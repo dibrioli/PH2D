@@ -1,6 +1,7 @@
 //! **Família `tintas`** — J3, catálogo C (as tintas do Wet Paint): Dip Pen, Ink Bullet, Ink Brush, Reed
-//! Pen, Gloop Pen, Ink Bleed, Gesinski Ink, Wood Stick. Escreva aqui as receitas e os testes da família; nada fora
-//! deste ficheiro (`docs/Painter/Pinceis/04_BANCADA.md` §9).
+//! Pen (reprovado na 2.ª onda: sai quando a `caligrafia_marcadores` o largar como vizinho). Gloop Pen, Ink Bleed,
+//! Gesinski Ink e Wood Stick saíram na 2.ª onda (`docs/Painter/Pinceis/exames/tintas.md`). Escreva aqui as receitas
+//! e os testes da família; nada fora deste ficheiro (`docs/Painter/Pinceis/04_BANCADA.md` §9).
 
 use super::prelude::*;
 
@@ -170,46 +171,6 @@ pub const WET: &[Receita] = &[
         ],
         nasce_de: Some("Dip Pen"),
     },
-    // C-15 Ink › Wood › Wood Stick (Rebelle `Pen/Wood`): o pau mergulhado na tinta — mais fino e mais claro que o Dip
-    // Pen (água 0,5, pigmento 60 — a 80 o revisor cego via-o mais escuro que o Rebelle, a 40 mais claro — a tinta que
-    // a pressão leve deixa transparente), os grumos maiores e soltos
-    // (tamanho ±30 %, posição ±4 %).
-    Receita {
-        meio: "Ink",
-        grupo: "Wood",
-        nome: "Wood Stick",
-        water: 0.5,
-        opacity: 1.0,
-        pigment: 60.0,
-        pickup: 16.0,
-        gate: 0.0,
-        evaporation: 1.0,
-        edge: 0.0,
-        tilt: DIREITA,
-        bristle_size: 2.0,
-        bristle_count: 2000.0,
-        hardness: 0.95,
-        size_px: None,
-        extras: &[
-            ("glaze", 0.6),
-            ("tipClean", 0.05),
-            ("leveling", 0.5),
-            ("tipReservoir", 0.3),
-            ("pressureSizeCurve", 1.0),
-            ("pressureOpacity", 0.9),
-            ("pressureOpacityCurve", 1.5),
-        ],
-        grao: None,
-        achatado: None,
-        pincel: &[
-            ("shape", SEM_FORMA),
-            ("jitter_scale", "0.3"),
-            ("jitter", "0.04"),
-            ("taper", r#"{"opacity": 0.6, "start": 1.5, "tip_start": 1.0}"#),
-            ("size_max_px", "97"),
-        ],
-        nasce_de: Some("Dip Pen"),
-    },
 ];
 
 /// O taper desligado (o do vizinho de onde o pincel nasce não passa).
@@ -218,73 +179,9 @@ const SEM_TAPER: &str = r#"{"opacity": 0.0, "start": 0.0, "tip_start": 0.0}"#;
 /// O Shape sem forma (nem cerdas): a ponta é só a queda — a caneta lisa (o mesmo do aerógrafo).
 const SEM_FORMA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
-pub const MEIOS: &[ReceitaMeio] = &[
-    // C-12 Ink › Gloop › Gloop Pen (ArtRage 6 `Gloop Pen`, fotografado): a gota de tinta translúcida com a ORLA escura
-    // e nítida que ESCURECE onde se sobrepõe — o traço do Digital como uma camada (L8: tecto 0,65 e a orla queimada
-    // de 2,5 px) por cima, NORMAL (2.ª onda: o ArtRage compõe a ~0,65 — azul sobre vermelho (74,81,133), azul sobre
-    // azul 1,38×; em Multiply o nosso ia ao preto sobre o vermelho e o 3.º revisor cego o punha com o Gesinski); a pressão afina a ponta (a rampa do ArtRage nasce fina) e o traço rápido afina um pouco
-    // (o ArtRage responde à velocidade; 0,25 virava agulha — 2.º revisor cego). A 1.ª receita (a lavagem da Watercolor) fundia a tinta molhada e clareava o vermelho
-    // por baixo: `exames/tintas.md`.
-    ReceitaMeio {
-        pincel: &[
-            ("hardness", "0.95"),
-            ("blend", r#""Mix""#),
-            ("continuous_spacing", "true"),
-            ("spacing", "0.05"),
-            (
-                "traco",
-                r#"{"largura": 2.5, "molhada": 0.0, "queimada": 0.8, "tecto": 0.65}"#,
-            ),
-        ],
-        mao: &[("pressureSize", 0.8), ("speedSize", 0.1)],
-        opacity: Some(1.0),
-        ..ReceitaMeio::digital("Ink", "Gloop", "Gloop Pen")
-    },
-    // C-13 Ink › Bleed › Ink Bleed (Procreate Ink Bleed, doc.): a tinta escura que SANGRA pelas fibras — a lavagem
-    // da Watercolor de tinta cheia (depth 6) com a borda que segue o papel (paper_edge 1) e torcida pelo warp (5 px),
-    // a orla leve do nanquim, e a tinta que puxa e se dilui na que ainda está molhada (wet_pull 0,5); a pressão leva a
-    // largura. Sem o puxar, a matriz punha-a a 0,49 do Hard Round (um redondo opaco com a borda rugosa).
-    ReceitaMeio {
-        pincel: &[
-            ("hardness", "1.0"),
-            ("depth", "6.0"),
-            ("opacity", "1.0"),
-            ("fill", "1.0"),
-            ("edge_gain", "1.5"),
-            ("edge_spread", "2.0"),
-            ("granulation", "0.4"),
-            ("paper_edge", "1.0"),
-            ("smooth_edges", "false"),
-            ("warp", "5.0"),
-            ("wet_pull", "0.5"),
-            ("wet_dilution", "0.3"),
-            ("continuous_spacing", "true"),
-            ("spacing", "0.05"),
-        ],
-        mao: &[("pressureSize", 1.0)],
-        ..ReceitaMeio::aquarela("Ink", "Bleed", "Ink Bleed")
-    },
-    // C-14 Ink › Nib › Gesinski Ink (Procreate Gesinski Ink, doc.): a pena translúcida que ESCURECE onde se sobrepõe —
-    // o carimbo duro do Digital em Multiply com o tecto POR TRAÇO (L8, 0,55 — a 0,7 a matriz punha-a a 0,52 do Gloop
-    // Pen, abaixo do limiar; o 3.º revisor cego lia o 0,55 como «aguado»: um traço não escurece a si mesmo, nem na
-    // espiral nem a 200 px; dois, sim) e a pressão que leva a largura de um FIO ao cheio (0,9: a ponta leve guarda um
-    // fio, o 2.º revisor cego via-a sumir) e fica fina por mais tempo (curva 1,4).
-    ReceitaMeio {
-        pincel: &[
-            ("hardness", "0.95"),
-            ("blend", r#""Multiply""#),
-            ("continuous_spacing", "true"),
-            ("spacing", "0.05"),
-            (
-                "traco",
-                r#"{"largura": 7.0, "molhada": 0.0, "queimada": 0.0, "tecto": 0.55}"#,
-            ),
-        ],
-        mao: &[("pressureSize", 0.9), ("pressureSizeCurve", 1.4), ("pressureOpacity", 0.3)],
-        opacity: Some(1.0),
-        ..ReceitaMeio::digital("Ink", "Nib", "Gesinski Ink")
-    },
-];
+// 2.ª onda (`exames/tintas.md`): o Gloop Pen, o Ink Bleed e o Gesinski Ink saíram — reprovados de novo pelo revisor
+// cego (a orla granulada e a pressão do ArtRage; a capilaridade pelas fibras; a densidade viva sob o tecto: motor).
+pub const MEIOS: &[ReceitaMeio] = &[];
 
 // O Cruzamento é o da foto MOLHADA; a Borda e a Orla só onde o Round não as tem (Ink Bullet: borda 1,00 nos dois).
 #[rustfmt::skip]
@@ -301,9 +198,7 @@ pub const MIDIAS: &[Midia] = &[
 /// escala 1: o que a prancha de cada pincel mostra contra o oráculo e contra o vizinho, num número.
 #[derive(Debug, Clone, Copy)]
 struct Tinta {
-    /// A largura do recto lento (px, tinta > 0,25).
-    largura: f64,
-    /// O desvio-padrão da largura ao longo dele (px): os grumos do aparo, a borda da cana.
+    /// O desvio-padrão da largura do recto lento (px, tinta > 0,25): os grumos do aparo, a borda da cana.
     grumo: f64,
     /// A largura do vertical lento ÷ a do recto: a ponta chata fixa na tela.
     de_pe: f64,
@@ -313,10 +208,6 @@ struct Tinta {
     entrada: f64,
     /// A tinta no miolo do recto (escuridão 0..1).
     miolo: f64,
-    /// A tinta na borda do recto (o máximo a 1–4 px da beira) ÷ a do miolo: a orla.
-    orla: f64,
-    /// A tinta do azul sobre o azul (o cruzamento `cruza_1` × `papel`) ÷ a do azul só: o que escurece na sobreposição.
-    sobre_si: f64,
 }
 
 /// A escuridão de um píxel (1 − luminância): 0 o papel.
@@ -343,7 +234,6 @@ fn mede_tinta(nome: &str) -> Tinta {
     let p = pinceis(nome).remove(0);
     let w = tela[0] as usize;
     let (_, g) = pinta_cena(&p, None, &cena("gestos"), tela, papel, 0);
-    let (_, s) = pinta_cena(&p, None, &cena("sobre"), tela, papel, 0);
     // O recto lento: y 90, x 60..560 (40 px). O miolo = a mediana da escuridão na linha do centro.
     let mut centro: Vec<f64> = (150..470).map(|x| escuro(&g, w, x, 90)).collect();
     centro.sort_by(f64::total_cmp);
@@ -362,18 +252,7 @@ fn mede_tinta(nome: &str) -> Tinta {
     let rampa = larg_em(115) / larg_em(535).max(1.0);
     // A entrada: a tinta na linha do centro nos primeiros 12 px depois da tampa (x 62..74) ÷ o miolo.
     let entrada = (62..74).map(|x| escuro(&g, w, x, 90)).sum::<f64>() / 12.0 / miolo;
-    // A orla: por coluna, o máximo a 1–4 px da beira de cima ÷ a escuridão do centro.
-    let orlas: Vec<f64> = (150..470)
-        .filter_map(|x| {
-            let (n, a, _) = coluna(&g, w, x, 50, 131, lim);
-            (n > 6.0).then(|| (a + 1..a + 5).map(|y| escuro(&g, w, x, y)).fold(0.0, f64::max) / escuro(&g, w, x, 90).max(1e-3))
-        })
-        .collect();
-    let orla = orlas.iter().sum::<f64>() / orlas.len().max(1) as f64;
-    // O azul sobre o azul: o cruzamento (250, 310) ÷ o azul do `cruza_1` só (250, 230) e o do `papel` só (400, 310).
-    let so = 0.5 * (escuro(&s, w, 250, 230) + escuro(&s, w, 400, 310));
-    let sobre_si = escuro(&s, w, 250, 310) / so.max(1e-3);
-    Tinta { largura, grumo, de_pe, rampa, entrada, miolo, orla, sobre_si }
+    Tinta { grumo, de_pe, rampa, entrada, miolo }
 }
 
 /// ⭐ **Cada tinta é a SUA tinta** (J3, `docs/Painter/Pinceis/exames/tintas.md`): o que a prancha mostrou contra o
@@ -382,8 +261,7 @@ fn mede_tinta(nome: &str) -> Tinta {
 #[test]
 fn cada_tinta_tem_a_sua_identidade() {
     let nomes = [
-        "Dip Pen", "Ink Bullet", "Ink Brush", "Reed Pen", "Wood Stick", "Gloop Pen", "Ink Bleed",
-        "Gesinski Ink", "Marker Bullet",
+        "Dip Pen", "Ink Bullet", "Ink Brush", "Reed Pen", "Marker Bullet",
     ];
     let medidas: Vec<(&str, Tinta)> = std::thread::scope(|s| {
         let h: Vec<_> = nomes.iter().map(|&n| (n, s.spawn(move || mede_tinta(n)))).collect();
@@ -401,7 +279,6 @@ fn cada_tinta_tem_a_sua_identidade() {
     };
     // As fronteiras: o meio entre o pincel e o que a regra separa, medidos na corrida final (20/10, `exames/tintas.md`).
     let (dip, bullet, brush, reed) = (m("Dip Pen"), m("Ink Bullet"), m("Ink Brush"), m("Reed Pen"));
-    let (wood, gloop, bleed, gesinski) = (m("Wood Stick"), m("Gloop Pen"), m("Ink Bleed"), m("Gesinski Ink"));
     // Os grumos do aparo (1,80) contra a ponta lisa do Bullet (0,42).
     regra(dip.grumo > 1.11, format!("Dip Pen: grumo {:.2} — a borda do aparo ficou lisa", dip.grumo));
     // O Bullet quase não afina (0,60) contra o Dip Pen (0,18) e o Marker Bullet (0,07); e é liso.
@@ -414,21 +291,6 @@ fn cada_tinta_tem_a_sua_identidade() {
     regra(brush.grumo < 1.11, format!("Ink Brush: grumo {:.2} — os lados ficaram grumosos", brush.grumo));
     // A ponta chata fixa: de pé 0,64 da largura deitada contra ~1,0 dos redondos.
     regra(reed.de_pe < 0.82, format!("Reed Pen: de pé ÷ deitado {:.2} — a cana ficou redonda", reed.de_pe));
-    // O pau contra o Dip Pen: os grumos maiores (2,62 contra 1,80) e a tinta que ENTRA clara (0,88 contra 0,99).
-    regra(wood.grumo > 2.21, format!("Wood Stick: grumo {:.2} — os grumos são os do Dip Pen", wood.grumo));
-    regra(wood.entrada < 0.94, format!("Wood Stick: entrada {:.2} — a tinta não entra clara", wood.entrada));
-    // A orla escura da gota (1,60 contra 1,00 da pena), o que escurece na sobreposição (1,35, ArtRage 1,38, contra ~1,06
-    // das canetas) e a largura que a pressão leva pouco (0,32 contra a pena Gesinski, 0,16).
-    regra(gloop.orla > 1.24, format!("Gloop Pen: orla {:.2} — perdeu o aro", gloop.orla));
-    regra(gloop.sobre_si > 1.20, format!("Gloop Pen: sobreposição {:.2} — não escurece", gloop.sobre_si));
-    regra(gloop.rampa > 0.24, format!("Gloop Pen: rampa {:.2} — a pressão afina-a como a pena", gloop.rampa));
-    // A borda que sangra (2,84 contra o Hard Round, o vizinho da matriz, 0).
-    regra(bleed.grumo > 1.35, format!("Ink Bleed: grumo {:.2} — a borda deixou de sangrar", bleed.grumo));
-    // A pena translúcida que escurece na sobreposição (1,60 contra 1,13 do Bullet), clara (0,36), sem aro e que afina.
-    regra(gesinski.sobre_si > 1.36, format!("Gesinski Ink: sobreposição {:.2} — não escurece", gesinski.sobre_si));
-    regra(gesinski.miolo < 0.51, format!("Gesinski Ink: miolo {:.2} — a tinta ficou opaca", gesinski.miolo));
-    regra(gesinski.orla < 1.24, format!("Gesinski Ink: orla {:.2} — tem o aro da gota", gesinski.orla));
-    regra(gesinski.rampa < 0.24, format!("Gesinski Ink: rampa {:.2} — a pressão não a afina", gesinski.rampa));
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
 
@@ -488,7 +350,7 @@ fn borrao(px: &[u8], yc: usize) -> (usize, usize, f64) {
 fn o_borrao_da_tinta_transborda_a_faixa() {
     use crate::as_leis_da_escala::cena;
     use crate::exame_bancada::pinceis;
-    let nomes = ["Dip Pen", "Ink Bullet", "Ink Brush", "Reed Pen", "Wood Stick", "Marker Bullet"];
+    let nomes = ["Dip Pen", "Ink Bullet", "Ink Brush", "Reed Pen", "Marker Bullet"];
     let medidas: Vec<(&str, (usize, usize, f64), (usize, usize, f64))> = std::thread::scope(|s| {
         let h: Vec<_> = nomes
             .iter()
@@ -519,7 +381,7 @@ fn o_borrao_da_tinta_transborda_a_faixa() {
             "Ink Bullet" => (40.0, 38.0),
             "Ink Brush" => (11.0, 11.0),
             "Reed Pen" => (40.0, 26.0),
-            _ => (19.0, 16.0), // Wood Stick
+            _ => unreachable!("{n}"),
         };
         if (seca.0 as f64) < 0.4 * reb_s || seca.1 < 4 {
             falhas.push(format!("{n}: a faixa SECA não borra ({seca:?}; ≥ 0,4 × Rebelle {reb_s}) — o reservatório"));

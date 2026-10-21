@@ -350,7 +350,9 @@ impl BrushSpec {
                 crate::texture::TextureMapping::ViewPlane
             ) && !self.shape.rake
                 && !self.shape.flow
-                && !self.shape.kind.samples_in_pixels());
+                && !self.shape.kind.samples_in_pixels()
+                // A imagem pela área (J4) mede o píxel da TELA: a máscara em cache é de outro raio.
+                && !self.shape.lei.area);
         // Film AA (BUGS #16) is measured in CANVAS texels, and the cached mask is radius-independent —
         // a baked AA rim would be wrong at every other radius, so an AA'd film routes per-pixel.
         // A orla em PÍXEIS (J3) também é medida em texels da tela: a máscara em cache não a leva a outro raio.

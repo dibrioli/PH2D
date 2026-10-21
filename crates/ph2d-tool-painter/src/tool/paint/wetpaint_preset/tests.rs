@@ -83,6 +83,7 @@ fn pincel_mexido() -> BrushSpec {
             depth_min: 0.2,
             depth_jitter: 0.7,
             depth_pressure: true,
+            area: true,
         },
     };
     let curva = FalloffCurve::from_points(&[
@@ -130,6 +131,10 @@ fn pincel_mexido() -> BrushSpec {
             across: 1.2,
             particle: 0.5,
             particle_px: 6.0,
+            particle_max_px: 30.0,
+            veu: 0.4,
+            veu_escala: 2.5,
+            veu_opacidade: 0.2,
         },
         hose: ph2d_painter_brush::ImageHose {
             n: 1,
@@ -226,6 +231,8 @@ fn pincel_mexido() -> BrushSpec {
         },
         borda_px: 1.5,
         sub_passo_fino: true,
+        passo_pela_pressao: true,
+        parado_s: 0.05,
         edge_gain: 2.5,
         edge_spread: 5.0,
         smooth_edges: !d.smooth_edges,

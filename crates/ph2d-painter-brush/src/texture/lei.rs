@@ -81,6 +81,11 @@ pub struct GrainLaw {
     pub depth_jitter: f32,
     /// A variação segue a PRESSÃO do dab (o «Control: Pen Pressure»); desligado = sorteada por dab.
     pub depth_pressure: bool,
+    /// ⭐ A ponta de IMAGEM lê-se pela ÁREA que o píxel cobre (o mipmap do Krita; J4 `texturas`,
+    /// `docs/Painter/Pinceis/exames/texturas.md` «Motor J4»): reduzida a 5 px, a imagem amostrada num ponto por
+    /// píxel parte-se em pontos; pela área dá a média (a linha contínua). Só na Shape `Image` e sem o Flow;
+    /// desligado = a amostra no centro do píxel, ao bit. Ver [`super::shape::sample_shape`].
+    pub area: bool,
 }
 
 impl Default for GrainLaw {
@@ -96,6 +101,7 @@ impl GrainLaw {
         depth_min: 0.0,
         depth_jitter: 0.0,
         depth_pressure: false,
+        area: false,
     };
 
     /// A profundidade varia por dab (o dab leva o multiplicador na pegada, [`crate::DabTilt::grao`]).

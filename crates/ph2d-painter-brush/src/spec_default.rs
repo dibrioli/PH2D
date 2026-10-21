@@ -46,6 +46,8 @@ impl Default for BrushSpec {
             space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24)
             continuous_spacing: false,
             sub_passo_fino: false,
+            passo_pela_pressao: false,
+            parado_s: 0.0,
             accumulate: false,
             traco: crate::traco::TracoComposto::NEUTRO,
             style_solid: false,

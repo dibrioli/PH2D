@@ -395,11 +395,12 @@ pub fn accumulate_shape_layers_rgba_batch(
                                 // loop skipped them whenever the layer silhouette was 0).
                                 let mut grain_mg: Option<([f32; 4], f32)> = None;
                                 for (i, layer) in layers.iter().enumerate() {
-                                    let mut a = crate::texture::sample_shape_silhouette_unit(
+                                    let mut a = crate::texture::sample_shape_silhouette_unit_px(
                                         &d.spec.shape,
                                         &d.shape_basis,
                                         u,
                                         v,
+                                        b.inv_radius,
                                         Some(layer),
                                     );
                                     if a <= 0.0 {

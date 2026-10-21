@@ -573,6 +573,8 @@ impl PainterTool {
             // …e a orla em PÍXEIS (J3): o carimbo colorido em cache é de um raio, ela é de cada dab.
             let per_dab_dynamic = brush.shape_has_per_dab_rotation(has_shape_image)
                 || brush.borda_px > 0.0
+                // A imagem pela área (J4) mede o píxel da tela: a máscara assada é de outro raio.
+                || brush.shape.lei.area
                 || ph2d_painter_brush::pen::any_tilted(dabs)
                 || brush.has_colour_jitter_amount()
                 || brush.has_per_dab_rotation()

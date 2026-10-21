@@ -1844,3 +1844,78 @@ fn per_dab_randomize_is_byte_identical_to_before_the_scope() {
     assert_eq!(h, IMPRESSAO_ANTES, "impressão de hoje: {h:#x}");
 }
 const IMPRESSAO_ANTES: u64 = 0x6e2c_ccd1_5f9e_0cff;
+
+/// ⭐ **O passo pelo diâmetro À PRESSÃO** (J4 `texturas`, [`BrushSpec::passo_pela_pressao`]): na rampa 0→1 com o
+/// tamanho pela pressão, a metade FRACA leva muitos mais dabs (os carimbos pequenos apertados, o rasto do Stamp
+/// Bokeh do Krita) e cada passo é `spacing ×` o diâmetro do dab de onde parte; desligado, o passo é o do pincel.
+#[test]
+fn o_passo_segue_o_diametro_a_pressao() {
+    let dyn_ = Dynamics {
+        size_pressure: true,
+        size_min: 0.0,
+        ..Default::default()
+    };
+    let rampa: Vec<StrokePoint> = (0..=50).map(|i| pt(i as f32 * 10.0, 0.0, i as f32 / 50.0)).collect();
+    let fracos = |ligado: bool| {
+        let spec = BrushSpec {
+            passo_pela_pressao: ligado,
+            ..straight_spec(20.0, 0.5)
+        };
+        collect_stroke(spec, dyn_, &rampa).iter().filter(|d| d.center[0] < 250.0).count()
+    };
+    let (sem, com) = (fracos(false), fracos(true));
+    assert!(sem > 0 && com >= 3 * sem, "metade fraca: {sem} dabs sem a lei, {com} com ela");
+    // A metade forte (pressão ~1) fica com o passo do pincel.
+    let spec = BrushSpec {
+        passo_pela_pressao: true,
+        ..straight_spec(20.0, 0.5)
+    };
+    let dabs = collect_stroke(spec, dyn_, &rampa);
+    let fim: Vec<f32> = dabs.iter().map(|d| d.center[0]).filter(|&x| x > 450.0).collect();
+    for w in fim.windows(2) {
+        assert!((w[1] - w[0] - 20.0).abs() < 2.5, "passo forte {} (o do pincel 20)", w[1] - w[0]);
+    }
+}
+
+/// ⭐ **O spray PARADO** (J4 `texturas`, [`BrushSpec::parado_s`]; o Texture Spray do Krita parado cobre 0,24 → 1,00 a
+/// 10 → 200 eventos): com o Space e a caneta parada, cada `parado_s` de tique pousa uma nuvem no cursor; a mexer, o
+/// caminho zera o relógio; desligado, parado não pousa nada.
+#[test]
+fn o_spray_parado_pousa_pelo_tempo() {
+    let parado = |periodo: f32| {
+        let spec = BrushSpec {
+            parado_s: periodo,
+            ..straight_spec(10.0, 0.5)
+        };
+        let mut s = Stroke::new(spec, no_dynamics(), 1);
+        let (mut out, mut n) = (Vec::new(), 0);
+        s.begin(pt(50.0, 50.0, 1.0), &mut out);
+        for i in 0..100 {
+            s.extend(pt(50.0 + 0.01 * (i % 2) as f32, 50.0, 1.0), &mut out);
+            n += out.len();
+            s.tick(0.008, &mut out);
+            assert!(out.iter().all(|d| (d.center[0] - 50.0).abs() < 0.1 && d.center[1] == 50.0));
+            n += out.len();
+        }
+        n
+    };
+    assert_eq!(parado(0.0), 0, "desligado: o Space parado não pousa nada");
+    let n = parado(0.04);
+    assert!((19..=21).contains(&n), "0,8 s a 0,04 s = 20 nuvens, deu {n}");
+    // A mexer, cada tique vem depois de dabs do caminho: o relógio parado zera e nada se acrescenta.
+    let spec = BrushSpec {
+        parado_s: 0.004,
+        ..straight_spec(10.0, 0.5)
+    };
+    let mut s = Stroke::new(spec, no_dynamics(), 1);
+    let mut out = Vec::new();
+    s.begin(pt(0.0, 0.0, 1.0), &mut out);
+    let mut no_tique = 0;
+    for i in 1..=50 {
+        s.extend(pt(i as f32 * 10.0, 0.0, 1.0), &mut out);
+        assert!(!out.is_empty());
+        s.tick(0.003, &mut out);
+        no_tique += out.len();
+    }
+    assert_eq!(no_tique, 0, "a mexer o tique não pousa nuvens");
+}

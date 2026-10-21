@@ -44,6 +44,19 @@ pub struct DabJitter {
     /// pincel: a 200 px são gotas soltas, não discos maiores; a 5 px um cordão de gotas MAIORES que o pincel).
     /// `0` = desligada (a [`Self::particle`] relativa de sempre). Só com spray (`spray_count > 1`).
     pub particle_px: f32,
+    /// ⭐ **O TECTO da partícula em PÍXEIS** (J4 `texturas`, «Motor J4»): o diâmetro máximo de cada marca do spray na
+    /// TELA — o espalhamento continua o do pincel. O Spatter/Star do Rebelle a 200 px espalha as estrelas por
+    /// ~234 px mas nenhuma passa de 56 px (a caixa da imagem dele: as que passariam saem QUADRADAS). `0` =
+    /// desligado. Só com spray (`spray_count > 1`).
+    pub particle_max_px: f32,
+    /// ⭐ **O VÉU** (J4 `texturas`, «Motor J4»): a fracção `0..1` das marcas do spray que sai da 2.ª população — maior
+    /// ([`Self::veu_escala`]) e pálida ([`Self::veu_opacidade`]): a névoa clara por baixo das gotas do Texture Spray
+    /// do Krita. Sorteado de um fluxo PRÓPRIO do traço. `0` = desligado (uma população, a de sempre).
+    pub veu: f32,
+    /// O raio de uma marca do véu × isto (`> 0`; só com [`Self::veu`]).
+    pub veu_escala: f32,
+    /// A cobertura de uma marca do véu × isto (`0..1`; só com [`Self::veu`]).
+    pub veu_opacidade: f32,
 }
 
 impl DabJitter {
@@ -58,6 +71,10 @@ impl DabJitter {
         across: 0.0,
         particle: 1.0,
         particle_px: 0.0,
+        particle_max_px: 0.0,
+        veu: 0.0,
+        veu_escala: 1.0,
+        veu_opacidade: 1.0,
     };
 
     /// A menor partícula (`5 %` do pincel): abaixo disso o dab do raio mínimo (`0,5 px`) já é o que se pinta.
@@ -80,6 +97,16 @@ impl DabJitter {
             self.particle_px / (2.0 * raio_px)
         } else {
             self.particula(n)
+        }
+    }
+
+    /// O raio de uma marca do spray de `n` com o tecto [`Self::particle_max_px`] (o próprio `raio` sem ele).
+    #[must_use]
+    pub fn com_tecto(&self, n: u32, raio: f32) -> f32 {
+        if n > 1 && self.particle_max_px > 0.0 {
+            raio.min((0.5 * self.particle_max_px).max(0.5))
+        } else {
+            raio
         }
     }
 

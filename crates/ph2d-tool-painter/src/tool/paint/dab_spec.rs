@@ -51,6 +51,8 @@ impl PainterTool {
             brush.traco.tecto_por_dab = false;
             brush.borda_px = 0.0;
             brush.sub_passo_fino = false;
+            brush.passo_pela_pressao = false;
+            brush.parado_s = 0.0;
         }
         // O Wet Paint não lê o PUSH do Impasto (o preset declara-o), mas o motor de traço lê-o para
         // AQUECER (reter os primeiros dabs até ter direcção): com a água a correr no traço (W1e, F6) o

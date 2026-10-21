@@ -371,3 +371,54 @@ fn a_particula_em_px_e_a_mesma_em_todo_pincel() {
     let (d_lo, _, _) = mede(100.0, 0.0);
     assert!((d_lo - 100.0).abs() < 1e-4, "desligada: {d_lo}");
 }
+
+/// ⭐ **O tecto da partícula em px** (J4 `texturas`, o Spatter/Star do Rebelle: nenhuma estrela passa de 56 px a 200
+/// px, o espalhamento continua o do pincel): com `particle_max_px` nenhuma marca do spray passa de metade dele de
+/// raio, as POSIÇÕES são as de sem o tecto (o espalhamento leu o pincel), e as menores que ele ficam ao bit.
+#[test]
+fn o_tecto_da_particula_corta_so_as_maiores() {
+    let mut s = spec_base();
+    s.radius_px = 100.0;
+    let sem = recto(s, 7);
+    s.dab_jitter.particle_max_px = 200.0;
+    let com_tecto = recto(s, 7);
+    assert_eq!(sem.len(), com_tecto.len());
+    let mut cortadas = 0;
+    for (a, b) in sem.iter().zip(&com_tecto) {
+        assert_eq!(a.center, b.center, "o espalhamento é do pincel");
+        assert!(b.radius_px <= 100.0 + 1e-4, "raio {} acima do tecto", b.radius_px);
+        if a.radius_px <= 100.0 {
+            assert_eq!(a.radius_px, b.radius_px);
+        } else {
+            cortadas += 1;
+        }
+    }
+    assert!(cortadas > 0 && cortadas < sem.len(), "{cortadas} de {} cortadas", sem.len());
+}
+
+/// ⭐ **O VÉU** (J4 `texturas`, o Texture Spray do Krita: a névoa clara por baixo das gotas): a fracção `veu` das marcas
+/// sai maior e pálida (`veu_escala`, `veu_opacidade`), sorteada do fluxo PRÓPRIO — as outras marcas ficam AO BIT.
+#[test]
+fn o_veu_e_uma_segunda_populacao_maior_e_palida() {
+    let base = spec_base();
+    let sem = recto(base, 3);
+    let mut s = base;
+    s.dab_jitter.veu = 0.3;
+    s.dab_jitter.veu_escala = 3.0;
+    s.dab_jitter.veu_opacidade = 0.2;
+    let com_veu = recto(s, 3);
+    assert_eq!(sem.len(), com_veu.len());
+    let mut veu = 0;
+    for (a, b) in sem.iter().zip(&com_veu) {
+        assert_eq!(a.center, b.center);
+        if b.radius_px == a.radius_px {
+            assert_eq!(a.coverage, b.coverage);
+        } else {
+            veu += 1;
+            assert!((b.radius_px - 3.0 * a.radius_px).abs() < 1e-3, "{} × {}", b.radius_px, a.radius_px);
+            assert!((b.coverage - 0.2 * a.coverage).abs() < 1e-5);
+        }
+    }
+    let f = veu as f32 / sem.len() as f32;
+    assert!((0.2..=0.4).contains(&f), "véu {veu} de {} ({f})", sem.len());
+}

@@ -24,6 +24,11 @@ pub(super) struct PorTraco {
     /// O fluxo PRÓPRIO e o contador da imagem de cada dab (L19, a ponta de N imagens).
     rng_imagem: u64,
     seq_imagem: u32,
+    /// O fluxo PRÓPRIO do véu (J4, [`crate::marca::DabJitter::veu`]): ligá-lo não desloca nenhum outro sorteio.
+    pub(super) rng_veu: u64,
+    /// O spray PARADO (J4, [`BrushSpec::parado_s`]): o tempo parado acumulado e o `tot_samples` do último tique.
+    pub(super) parado_acum_s: f32,
+    pub(super) parado_marca: u32,
 }
 
 impl PorTraco {
@@ -35,6 +40,9 @@ impl PorTraco {
             rng_grao: seed ^ 0x6772_616F_4C39_4447,
             rng_imagem: seed ^ 0x696D_6167_4C31_3948,
             seq_imagem: 0,
+            rng_veu: seed ^ 0x7665_755F_4A34_5645,
+            parado_acum_s: 0.0,
+            parado_marca: 0,
         }
     }
 }
@@ -175,6 +183,12 @@ impl Stroke {
         };
         let radius = if particula != 1.0 {
             (radius * particula).clamp(0.5, MAX_BRUSH_RADIUS_PX)
+        } else {
+            radius
+        };
+        // O tecto da partícula em px (J4): o espalhamento acima já leu o raio do pincel.
+        let radius = if jitter {
+            self.spec.dab_jitter.com_tecto(self.spec.spray_count, radius)
         } else {
             radius
         };

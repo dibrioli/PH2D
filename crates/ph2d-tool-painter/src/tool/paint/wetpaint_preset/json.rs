@@ -93,6 +93,12 @@ fn textura_para_json(t: &TextureSettings) -> Value {
                 "depth_pressure": t.lei.depth_pressure,
             }),
         );
+        // A imagem pela área (J4) só quando ligada: a lei gravada antes dela fica ao byte.
+        if t.lei.area
+            && let Some(l) = o.get_mut("lei").and_then(Value::as_object_mut)
+        {
+            l.insert("area".to_owned(), json!(true));
+        }
     }
     v
 }
@@ -124,6 +130,7 @@ fn lei_de_json(v: Option<&Value>) -> GrainLaw {
         depth_min: f(o.get("depth_min"), n.depth_min),
         depth_jitter: f(o.get("depth_jitter"), n.depth_jitter),
         depth_pressure: booleano(o.get("depth_pressure"), n.depth_pressure),
+        area: booleano(o.get("area"), n.area),
     }
 }
 
@@ -176,6 +183,15 @@ fn marca_para_json(j: &DabJitter) -> Value {
     if j.particle_px > 0.0 {
         v["particle_px"] = num(j.particle_px);
     }
+    // O tecto da partícula e o véu (J4) só ligados: idem.
+    if j.particle_max_px > 0.0 {
+        v["particle_max_px"] = num(j.particle_max_px);
+    }
+    if j.veu > 0.0 {
+        v["veu"] = num(j.veu);
+        v["veu_escala"] = num(j.veu_escala);
+        v["veu_opacidade"] = num(j.veu_opacidade);
+    }
     v
 }
 
@@ -195,6 +211,10 @@ fn marca_de_json(v: Option<&Value>, base: DabJitter) -> DabJitter {
         particle: f(o.get("particle"), base.particle),
         // AUSENTE = desligada (nunca a do pincel anterior: o preset sem ela é o de antes).
         particle_px: f(o.get("particle_px"), 0.0).max(0.0),
+        particle_max_px: f(o.get("particle_max_px"), 0.0).max(0.0),
+        veu: f(o.get("veu"), 0.0).clamp(0.0, 1.0),
+        veu_escala: f(o.get("veu_escala"), 1.0).max(0.05),
+        veu_opacidade: f(o.get("veu_opacidade"), 1.0).clamp(0.0, 1.0),
     }
 }
 
@@ -544,6 +564,9 @@ pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
         // A orla em píxeis e o sub-passo fino (J3) só ligados: idem.
         .filter(|&&c| !(c == "borda_px" && b.borda_px <= 0.0))
         .filter(|&&c| !(c == "sub_passo_fino" && !b.sub_passo_fino))
+        // O passo pela pressão (J4) só ligado: idem.
+        .filter(|&&c| !(c == "passo_pela_pressao" && !b.passo_pela_pressao))
+        .filter(|&&c| !(c == "parado_s" && b.parado_s <= 0.0))
         .map(|&c| ((*c).to_owned(), ler_campo(b, c)))
         .collect()
 }

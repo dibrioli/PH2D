@@ -193,10 +193,87 @@ pub fn sample_shape(
             .unwrap_or(0.0);
     }
     // Dab flatten/rotate deforms the footprint first, so the Shape tip flattens with the falloff.
-    let f = b
-        .footprint
-        .apply([(p[0] - center[0]) / r, (p[1] - center[1]) / r]);
-    shape_value(s, b, f, [sx, sy], image)
+    let em = |o: [f32; 2]| {
+        b.footprint
+            .apply([(p[0] + o[0] - center[0]) / r, (p[1] + o[1] - center[1]) / r])
+    };
+    if s.lei.area
+        && s.kind == TextureKind::Image
+        && let Some(img) = image
+    {
+        return area_do_pixel(s, b, [sx, sy], img, em);
+    }
+    shape_value(s, b, em([0.0, 0.0]), [sx, sy], image)
+}
+
+/// ⭐ [`sample_shape_silhouette_unit`] numa grelha de píxeis: `passo` = o lado de UM píxel da tela em unidades do
+/// dab (`1 / raio`). Com a lei da área ([`super::GrainLaw::area`]) na Shape de imagem lê a área desse píxel, como
+/// o [`sample_shape`]; sem ela (ou com o Flow) é o [`sample_shape_silhouette_unit`] ao bit.
+#[must_use]
+pub fn sample_shape_silhouette_unit_px(
+    s: &TextureSettings,
+    b: &TexDabBasis,
+    u: f32,
+    v: f32,
+    passo: f32,
+    image: Option<&ImageMask>,
+) -> f32 {
+    if s.lei.area
+        && s.kind == TextureKind::Image
+        && !s.flow
+        && let Some(img) = image
+    {
+        let size = [
+            s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX),
+            s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX),
+        ];
+        return area_do_pixel(s, b, size, img, |o| {
+            b.footprint.apply([u + o[0] * passo, v + o[1] * passo])
+        });
+    }
+    sample_shape_silhouette_unit(s, b, u, v, image)
+}
+
+/// O lado máximo da grelha de amostras por píxel de [`area_do_pixel`] (`16² = 256` toques bilineares). O
+/// recurso é o CPU por dab: o custo por dab reduzido fica ~constante (`n² · πr²`, `n ≈ texels/píxel`), e a
+/// 16 o passo entre amostras é ≤ 1,6 texels numa imagem de 128 a 5 px — o toque bilinear já cobre 2.
+const AREA_MAX: f32 = 16.0;
+
+/// ⭐ **A ponta de IMAGEM pela ÁREA do píxel** ([`super::GrainLaw::area`]): a média de `nx × ny` amostras
+/// espalhadas pelo píxel (o quadrado `± ½` em volta do centro; `em(desvio em px)` = a coordenada da pegada), cada
+/// uma levada à imagem pela MESMA pegada, Size, rotação e Offset — `n` = os texels que um passo de um píxel
+/// atravessa em cada eixo (o filtro de caixa, o mipmap). Ampliada (`n = 1`) é a amostra no centro, ao bit.
+fn area_do_pixel(
+    s: &TextureSettings,
+    b: &TexDabBasis,
+    size: [f32; 2],
+    img: &ImageMask,
+    em: impl Fn([f32; 2]) -> [f32; 2],
+) -> f32 {
+    let tex = |q: [f32; 2]| {
+        let rel = em(q);
+        [
+            (rel[0] * b.u[0] + rel[1] * b.u[1]) * size[0],
+            (rel[0] * b.v[0] + rel[1] * b.v[1]) * size[1],
+        ]
+    };
+    let (t0, tx, ty) = (tex([0.0, 0.0]), tex([1.0, 0.0]), tex([0.0, 1.0]));
+    let (hw, hh) = (img.width.max(1) as f32 * 0.5, img.height.max(1) as f32 * 0.5);
+    let texels = |d: [f32; 2]| ((d[0] - t0[0]) * hw).hypot((d[1] - t0[1]) * hh);
+    let lado = |t: f32| if t.is_finite() { t.ceil().clamp(1.0, AREA_MAX) } else { 1.0 };
+    let (nx, ny) = (lado(texels(tx)), lado(texels(ty)));
+    if nx <= 1.0 && ny <= 1.0 {
+        return shape_value(s, b, em([0.0, 0.0]), size, Some(img));
+    }
+    let mut soma = 0.0;
+    for j in 0..ny as u32 {
+        let oy = (j as f32 + 0.5) / ny - 0.5;
+        for i in 0..nx as u32 {
+            let ox = (i as f32 + 0.5) / nx - 0.5;
+            soma += shape_value(s, b, em([ox, oy]), size, Some(img));
+        }
+    }
+    soma / (nx * ny)
 }
 
 /// As [`sample_shape`] but at the dab-relative unit coord `(u, v) ∈ [-1, 1]` — the scale-invariant
@@ -386,3 +463,6 @@ fn sample_image_clamped(img: &ImageMask, u: f32, v: f32) -> f32 {
     let bot = lerp(at(xi0, yi1), at(xi1, yi1), tx);
     lerp(top, bot, ty)
 }
+
+#[cfg(test)]
+mod area_tests;

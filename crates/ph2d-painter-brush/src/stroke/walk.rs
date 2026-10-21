@@ -128,7 +128,12 @@ impl Stroke {
             //
             // The `max(1.0)` floor is the engine's own, not a new number: it already bounded the walk,
             // and it is what stops the loop from stalling as the factor approaches zero at a sharp tip.
-            let w = self.taper_width_at(base_arc + traveled);
+            let mut w = self.taper_width_at(base_arc + traveled);
+            // O passo pelo diâmetro À PRESSÃO (J4, `BrushSpec::passo_pela_pressao`): a do ponto onde se está.
+            if self.spec.passo_pela_pressao && self.spec.leis_do_digital() {
+                let p = lerp(self.last_pressure, target.pressure, traveled / seg.max(1e-6));
+                w *= self.dynamics.radius_scale(p);
+            }
             let step = (base_step * w * self.spacing_mult).max(1.0);
             // A step that shrank below what is already banked (a taper ramp, or a live spacing edit)
             // must not walk BACKWARDS: emit here, and the reset of `accum` below carries the walk on.

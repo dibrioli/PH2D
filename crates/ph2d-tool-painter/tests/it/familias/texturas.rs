@@ -66,10 +66,10 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("hardness", "1.0"),
             ("falloff", "\"Constant\""),
             ("borda_px", "0.0"),
-            ("shape", IMAGEM),
+            ("shape", IMAGEM_AREA),
             ("spray_count", "4"),
             ("spacing", "0.08"),
-            ("jitter", "0.3"),
+            ("jitter", "0.25"),
             ("jitter_scale", "0.4"),
             ("jitter_rotate", "1.0"),
             ("continuous_spacing", "false"),
@@ -80,7 +80,7 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
         ],
         mao: &[
             ("pressureSize", 0.0),
-            ("pressureOpacity", 0.56),
+            ("pressureOpacity", 0.8),
             ("pressureOpacityCurve", 1.0),
         ],
         // O tamanho do carimbo do Krita (svg) não se mede: o do artista.
@@ -117,6 +117,8 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
     },
     // K-4 — o BOKEH (Krita «z) Stamp Bokeh»): discos de luz espalhados, um ARO nítido (0,72) sobre um miolo
     // translúcido (0,20 — o perfil medido de um disco de 150 px), tamanhos muito variados; o tamanho pela pressão.
+    // J4 «Motor J4»: o passo pelo diâmetro à pressão (o rasto de bolinhas) e uma 2.ª população de MICRO-pontos
+    // (`veu` a 0,15 do tamanho, opacos — os pontinhos do Krita entre os discos grandes; revisões r7–r8).
     ReceitaMeio {
         pincel: &[
             ("falloff", "\"Custom\""),
@@ -124,13 +126,15 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("hardness", "0.0"),
             ("borda_px", "0.0"),
             ("spray_count", "3"),
-            ("spacing", "0.85"),
+            ("spacing", "0.9"),
+            // O passo pelo diâmetro À PRESSÃO (J4 «Motor J4»): na pressão fraca o rasto denso de bolinhas do Krita.
+            ("passo_pela_pressao", "true"),
             ("jitter", "0.6"),
             ("jitter_scale", "0.55"),
             ("continuous_spacing", "false"),
             (
                 "dab_jitter",
-                r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.1, "particle": 0.45, "roundness": 0.0}"#,
+                r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.1, "particle": 0.45, "roundness": 0.0, "veu": 0.12, "veu_escala": 0.15, "veu_opacidade": 1.0}"#,
             ),
         ],
         mao: &[("pressureSize", 1.0), ("pressureSizeCurve", 1.3), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 1.0)],
@@ -146,7 +150,7 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("hardness", "1.0"),
             ("falloff", "\"Constant\""),
             ("borda_px", "0.0"),
-            ("shape", IMAGEM),
+            ("shape", IMAGEM_AREA),
             ("spacing", "0.12"),
             ("jitter", "0.15"),
             ("jitter_scale", "0.25"),
@@ -172,6 +176,9 @@ const HALFTONE: &str = r#"{"angle_deg": 45, "flow": false, "kind": "Dots", "mapp
 
 /// A Shape de IMAGEM (a silhueta do ficheiro, `shape`): uma imagem por dab, no plano do dab.
 pub(crate) const IMAGEM: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Image", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+
+/// A Shape de IMAGEM lida pela ÁREA do píxel (J4 «Motor J4», `GrainLaw::area`): a 5 px a média da imagem, não pontos.
+const IMAGEM_AREA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Image", "lei": {"area": true, "depth_jitter": 0.0, "depth_min": 0.0, "depth_pressure": false, "mode": 0}, "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// O perfil do disco de bokeh (x = a distância ao centro ÷ o raio): miolo 0,28 do aro, o aro a 0,95 e a queda
 /// em 1,5 % do raio — o disco de 150 px do Krita: 47 · 52–75 (o brilho de dentro) · 166 · 0 em 255.
@@ -306,26 +313,28 @@ fn tufo_sorteado(semente: u64, n: usize) -> Vec<u8> {
     };
     let laminas: Vec<Lamina> = (0..n)
         .map(|_| {
-            let bx = (u() - 0.5) * 0.6 - 0.1;
-            let inclina = -0.25 + 0.95 * u();
-            let ty = -0.55 - 0.4 * u();
-            let forca = if u() < 0.45 { 0.35 } else { 1.0 };
-            Lamina { bx, tx: (bx + inclina).clamp(-0.85, 0.85), ty, w: 0.022 + 0.015 * u(), forca }
+            // J4 «Motor J4»: a moita do Krita — a base larga, as lâminas FINAS e curvadas para a direita, de
+            // alturas várias, metade pálidas (translúcidas) e de tinta sorteada, não duas.
+            let bx = (u() - 0.5) * 0.9 - 0.15;
+            let inclina = 0.05 + 0.75 * u();
+            let ty = -0.35 - 0.6 * u();
+            let forca = if u() < 0.5 { 0.2 + 0.3 * u() } else { 0.75 + 0.25 * u() };
+            Lamina { bx, tx: (bx + inclina).clamp(-0.9, 0.9), ty, w: 0.012 + 0.018 * u(), forca }
         })
         .collect();
     tufo(&laminas)
 }
 
 fn tufo_0() -> Vec<u8> {
-    tufo_sorteado(11, 18)
+    tufo_sorteado(11, 24)
 }
 
 fn tufo_1() -> Vec<u8> {
-    tufo_sorteado(23, 16)
+    tufo_sorteado(23, 22)
 }
 
 fn tufo_2() -> Vec<u8> {
-    tufo_sorteado(37, 20)
+    tufo_sorteado(37, 26)
 }
 
 /// O ponto `(x, y)` dentro do polígono `v` (par-ímpar).
@@ -663,51 +672,77 @@ fn os_em_estudo_nao_estao_na_fabrica() {
     }
 }
 
-/// UM punhado de riscos (o carimbo do grão sujo): 60 traços curvos (dois segmentos) de orla macia, espessura e tinta sorteadas (0,25–0,85),
-/// dentro do disco, mais densos no meio — sorteados por um gerador INTEIRO, as direcções normalizadas por raiz.
+/// UM punhado de grão sujo (o carimbo do Noise Grit; J4 «Motor J4», a revisão r5: o Krita são «rabiscos curvos,
+/// grossos e esbatidos», não palha recta): MANCHAS largas e pálidas de orla macia + RABISCOS finos e escuros que
+/// curvam (polilinhas que rodam um pouco a cada passo), espalhados por igual no disco — sorteados por um gerador
+/// INTEIRO; as rotações por polinómios (cos ≈ 1 − t²/2, sen ≈ t − t³/6) e raízes, sem trigonometria.
 fn riscos() -> Vec<u8> {
     let mut e = 0x6E01_5E_u64;
-    let u = |e: &mut u64| {
-        *e = e.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
-        (*e >> 40) as f64 / (1u64 << 24) as f64
+    let mut u = move || {
+        e = e.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        (e >> 40) as f64 / (1u64 << 24) as f64
     };
-    let traco: Vec<((f64, f64), (f64, f64), (f64, f64), f64, f64)> = (0..60)
-        .map(|_| {
-            let (r, (dx, dy)) = loop {
-                let (x, y) = (u(&mut e) * 2.0 - 1.0, u(&mut e) * 2.0 - 1.0);
-                let n = (x * x + y * y).sqrt();
-                if n > 0.2 && n <= 1.0 {
-                    break (u(&mut e) * u(&mut e) * 0.55, (x / n, y / n));
-                }
-            };
-            let (cx, cy) = (r * dx, r * dy);
-            let (ax, ay) = loop {
-                let (x, y) = (u(&mut e) * 2.0 - 1.0, u(&mut e) * 2.0 - 1.0);
-                let n = (x * x + y * y).sqrt();
-                if n > 0.2 && n <= 1.0 {
-                    break (x / n, y / n);
-                }
-            };
-            let meio = 0.12 + 0.18 * u(&mut e);
-            // A curva: o meio do risco desviado na perpendicular (dois segmentos — um caracol aberto).
-            let curva = (u(&mut e) - 0.5) * 2.0 * meio;
-            (
-                (cx - ax * meio, cy - ay * meio),
-                (cx - ay * curva, cy + ax * curva),
-                (cx + ax * meio, cy + ay * meio),
-                0.015 + 0.03 * u(&mut e),
-                0.25 + 0.6 * u(&mut e),
-            )
-        })
-        .collect();
+    let no_disco = |r: f64, u: &mut dyn FnMut() -> f64| loop {
+        let (x, y) = (u() * 2.0 - 1.0, u() * 2.0 - 1.0);
+        if x * x + y * y <= 1.0 {
+            break (x * r, y * r);
+        }
+    };
+    let direccao = |u: &mut dyn FnMut() -> f64| loop {
+        let (x, y) = (u() * 2.0 - 1.0, u() * 2.0 - 1.0);
+        let n = (x * x + y * y).sqrt();
+        if n > 0.2 && n <= 1.0 {
+            break (x / n, y / n);
+        }
+    };
+    // (a, b, meia-largura, tinta, a fracção da meia-largura que é orla)
+    let mut traco: Vec<((f64, f64), (f64, f64), f64, f64, f64)> = Vec::new();
+    for _ in 0..14 {
+        let (cx, cy) = no_disco(0.62, &mut u);
+        let (dx, dy) = direccao(&mut u);
+        let l = 0.12 + 0.22 * u();
+        traco.push(((cx - dx * l, cy - dy * l), (cx + dx * l, cy + dy * l), 0.05 + 0.06 * u(), 0.16 + 0.2 * u(), 1.0));
+    }
+    for _ in 0..10 {
+        let mut p = no_disco(0.62, &mut u);
+        let mut d = direccao(&mut u);
+        let curva = (u() - 0.5) * 0.9;
+        let (w, tinta) = (0.007 + 0.006 * u(), 0.5 + 0.4 * u());
+        for _ in 0..12 {
+            let t = curva + (u() - 0.5) * 0.3;
+            let (c, sn) = (1.0 - t * t / 2.0, t - t * t * t / 6.0);
+            let r = (d.0 * c - d.1 * sn, d.0 * sn + d.1 * c);
+            let n = (r.0 * r.0 + r.1 * r.1).sqrt();
+            d = (r.0 / n, r.1 / n);
+            let q = (p.0 + d.0 * 0.045, p.1 + d.1 * 0.045);
+            traco.push((p, q, w, tinta, 0.6));
+            p = q;
+        }
+    }
     mascara(|x, y| {
-        // A orla macia de cada risco (o carimbo do Krita é translúcido e esbatido, não recortado).
-        traco
-            .iter()
-            .map(|&(a, m, b, w, tinta)| {
-                let d = ao_segmento((x, y), a, m).0.min(ao_segmento((x, y), m, b).0);
-                tinta * ((w - d) / w).clamp(0.0, 1.0)
-            })
-            .fold(0.0, f64::max)
+        // As marcas somam-se como tinta translúcida (onde se cruzam escurece).
+        let fica = traco.iter().fold(1.0, |fica, &(a, b, w, tinta, orla)| {
+            let s = ((w - ao_segmento((x, y), a, b).0) / (w * orla)).clamp(0.0, 1.0);
+            fica * (1.0 - tinta * s * s * (3.0 - 2.0 * s))
+        });
+        1.0 - fica
     })
+}
+
+/// Escreve os `EM_ESTUDO` (desta família e os do aerógrafo que ela reexamina) em `$PH2D_EXAME_DIR/estudo/<relativo>`:
+/// a bancada lê-os pelo caminho (`exame.sh <caminho>`) sem eles entrarem na fábrica. `PH2D_REGERA_SO` filtra.
+#[test]
+#[ignore = "bancada: PH2D_EXAME_DIR=… cargo test … familias::texturas::escreve_os_em_estudo -- --ignored"]
+fn escreve_os_em_estudo() {
+    use crate::presets_de_fabrica::{preset_do_meio, relativo_do_meio};
+    let dir = std::path::PathBuf::from(std::env::var("PH2D_EXAME_DIR").expect("PH2D_EXAME_DIR")).join("estudo");
+    let so = std::env::var("PH2D_REGERA_SO").ok();
+    for r in EM_ESTUDO.iter().chain(super::aerografo::EM_ESTUDO) {
+        if so.as_deref().is_some_and(|s| !s.split(',').any(|n| n == r.nome)) {
+            continue;
+        }
+        let rel = relativo_do_meio(r);
+        ph2d_brush_presets::gravar(&dir, &rel, &preset_do_meio(r)).unwrap();
+        println!("[estudo] {}", dir.join(&rel).display());
+    }
 }

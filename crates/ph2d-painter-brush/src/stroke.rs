@@ -557,6 +557,7 @@ impl Stroke {
         if self.spec.ribbon_active() && self.spec.stroke_method == StrokeMethod::Space {
             self.tick_ribbon(dt, out);
         }
+        self.tick_parado(dt, out);
         if self.spec.stroke_method != StrokeMethod::Airbrush {
             return;
         }

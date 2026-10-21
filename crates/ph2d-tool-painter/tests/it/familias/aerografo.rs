@@ -134,6 +134,29 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
         opacity: Some(1.0),
         ..ReceitaMeio::digital("Stipple", "Stipple", "Stipple")
     },
+    // J-2 — a LATA (Krita «y) Texture Spray»), REEXAMINADA na J4 pelo motor da família `texturas`
+    // (`exames/texturas.md` «Motor J4»): gotas pequenas de tamanhos vários (a receita medida da J3) + o VÉU (a 2.ª
+    // população: maior e pálida, `DabJitter::veu`) + o spray PARADO (`parado_s`: parada, a lata continua a pousar).
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "0.5"),
+            ("spray_count", "16"),
+            ("spacing", "0.015"),
+            ("jitter", "0.7"),
+            ("jitter_scale", "0.95"),
+            ("continuous_spacing", "false"),
+            ("flow", "0.65"),
+            ("parado_s", "0.02"),
+            (
+                "dab_jitter",
+                r#"{"across": 0.4, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.09, "roundness": 0.0, "veu": 0.3, "veu_escala": 2.5, "veu_opacidade": 0.2}"#,
+            ),
+        ],
+        mao: &[("pressureSize", 0.0), ("pressureOpacity", 1.0)],
+        size_px: None,
+        opacity: Some(1.0),
+        ..ReceitaMeio::digital("Splatter", "Splatter", "Spray Can")
+    },
 ];
 
 

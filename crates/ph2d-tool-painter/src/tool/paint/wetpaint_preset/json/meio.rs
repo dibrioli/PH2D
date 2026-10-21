@@ -53,6 +53,8 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
         "space_attenuation" => json!(b.space_attenuation),
         "borda_px" => num(b.borda_px),
         "sub_passo_fino" => json!(b.sub_passo_fino),
+        "passo_pela_pressao" => json!(b.passo_pela_pressao),
+        "parado_s" => num(b.parado_s),
         "traco" => {
             let mut v = json!({
                 "tecto": num(b.traco.tecto),
@@ -158,6 +160,8 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         // Sem tecto: acima do raio a dureza do dab já é 0 (`dureza_do_dab`).
         "borda_px" => b.borda_px = f(v, 0.0).max(0.0),
         "sub_passo_fino" => b.sub_passo_fino = booleano(v, false),
+        "passo_pela_pressao" => b.passo_pela_pressao = booleano(v, false),
+        "parado_s" => b.parado_s = f(v, 0.0).max(0.0),
         // O plano do traço (L8): sub-chave ausente = a de fábrica.
         "traco" if v.is_some() => {
             let n = ph2d_painter_brush::TracoComposto::NEUTRO;

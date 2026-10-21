@@ -215,11 +215,12 @@ pub fn accumulate_shape_layer_rgba(
         let row = (py as usize) * (width as usize);
         for px in x0..x1 {
             let u = ((px as f32 + 0.5) - cx) * inv_radius;
-            let mut a = crate::texture::sample_shape_silhouette_unit(
+            let mut a = crate::texture::sample_shape_silhouette_unit_px(
                 &spec.shape,
                 shape_basis,
                 u,
                 v,
+                inv_radius,
                 Some(layer),
             );
             if a <= 0.0 {

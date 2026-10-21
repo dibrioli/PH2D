@@ -133,6 +133,15 @@ pub struct BrushSpec {
     /// acumula por fração do diâmetro). ON: o piso desce a [`crate::capsula::SUB_PASSO_FINO_MIN_PX`] e cada
     /// texel leva as mesmas passagens em qualquer tamanho. Só com o Continuous; só no Digital.
     pub sub_passo_fino: bool,
+    /// ⭐ **O passo pelo diâmetro À PRESSÃO** (J4 `texturas`, `docs/Painter/Pinceis/exames/texturas.md` «Motor
+    /// J4»), OFF = o de sempre: o passo entre dabs é `spacing ×` o diâmetro do PINCEL. ON: × o diâmetro que a
+    /// pressão dá a esse dab ([`crate::Dynamics::radius_scale`]) — na pressão baixa os carimbos pequenos
+    /// vêm apertados (o rasto denso de bolinhas do Stamp Bokeh do Krita). Só no Digital.
+    pub passo_pela_pressao: bool,
+    /// ⭐ **O spray PARADO** (J4 `texturas`, «Motor J4»), em segundos (`0` = desligado, o de sempre): com o Space e a
+    /// caneta parada (nenhum dab do caminho desde o tique anterior), pousa uma nuvem no cursor a cada `parado_s` —
+    /// o Texture Spray do Krita parado cobre 0,24 → 1,00 a 10 → 200 eventos; o Space de sempre não pousa nada.
+    pub parado_s: f32,
     /// **Accumulate** (Blender `BRUSH_ACCUMULATE`, bit 13, default OFF): when OFF, a single stroke is
     /// capped at [`Self::strength`] — overlapping dabs (incl. passing the brush back over itself) do
     /// NOT build past Strength (a per-stroke coverage mask, the classic "alpha mask"). When ON, every

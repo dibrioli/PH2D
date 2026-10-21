@@ -127,7 +127,8 @@ impl Stroke {
         // ⚠️ A passada 0 é a de sempre, então com o tipo desarmado o `roughen` devolve `thrown` e o
         // traço é byte-idêntico.
         let base_pos = self.roughen(thrown, arc, 0);
-        let base = self.dab_from(base_pos, pressure, overlap, arc);
+        let mut base = self.dab_from(base_pos, pressure, overlap, arc);
+        self.veu(&mut base);
         self.emit(base, out);
         self.rough_passes(thrown, pressure, overlap, arc, out);
         self.spray_copies(base_pos, pressure, overlap, arc, out);
@@ -187,8 +188,45 @@ impl Stroke {
         // A contagem sorteada (L4, Photoshop *Count Jitter*): o ponto deixa entre 1 e `n` marcas.
         let n = crate::marca::conta(&mut self.por_traco.rng, &self.spec.dab_jitter, n);
         for _ in 1..n {
-            let copy = self.dab_from(thrown, pressure, overlap, arc);
+            let mut copy = self.dab_from(thrown, pressure, overlap, arc);
+            self.veu(&mut copy);
             crate::symmetry::push_symmetric(out, copy, &self.spec.symmetry);
         }
+    }
+
+    /// ⭐ **O VÉU** (J4, [`crate::marca::DabJitter::veu`]): a marca `d` do spray sai da 2.ª população — maior e
+    /// pálida — com a probabilidade `veu`, do fluxo PRÓPRIO do véu. Sem o campo (ou sem spray) nada se sorteia.
+    fn veu(&mut self, d: &mut Dab) {
+        let j = &self.spec.dab_jitter;
+        if j.veu <= 0.0 || self.spec.spray_count <= 1 || !self.spec.stroke_method.allows_jitter() {
+            return;
+        }
+        if crate::jitter::next_f32(&mut self.por_traco.rng_veu) < j.veu.clamp(0.0, 1.0) {
+            d.radius_px = (d.radius_px * j.veu_escala.max(0.05)).clamp(0.5, crate::MAX_BRUSH_RADIUS_PX);
+            d.coverage *= j.veu_opacidade.clamp(0.0, 1.0);
+        }
+    }
+
+    /// ⭐ **O spray PARADO** (J4, [`BrushSpec::parado_s`]): com o Space, o tempo em que o caminho não pousou nenhum
+    /// dab acumula-se e, a cada `parado_s`, uma nuvem cai no cursor (a do caminho, pelo [`Self::stamp_at`]). Um dab
+    /// do caminho desde o tique anterior zera o relógio. Desligado (`0`): nada.
+    pub(super) fn tick_parado(&mut self, dt: f32, out: &mut Vec<Dab>) {
+        let periodo = self.spec.parado_s;
+        if periodo <= 0.0 || self.spec.stroke_method != crate::StrokeMethod::Space {
+            return;
+        }
+        if self.tot_samples != self.por_traco.parado_marca {
+            self.por_traco.parado_acum_s = 0.0;
+        }
+        self.por_traco.parado_acum_s += dt.max(0.0);
+        let mut n = 0;
+        while self.por_traco.parado_acum_s >= periodo && n < super::MAX_AIRBRUSH_DABS_PER_TICK {
+            self.por_traco.parado_acum_s -= periodo;
+            let pr = self.method_pressure(self.last_pressure);
+            self.stamp_at(self.last_pos, pr, 1.0, self.arc_len, out);
+            self.tot_samples = self.tot_samples.wrapping_add(1);
+            n += 1;
+        }
+        self.por_traco.parado_marca = self.tot_samples;
     }
 }

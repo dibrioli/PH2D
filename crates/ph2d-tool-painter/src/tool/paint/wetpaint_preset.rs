@@ -124,7 +124,7 @@ const NAO_LIDO: &str = "o Wet Paint não o lê (deposita pela lei do fluido)";
 const PLANO: &str = "lido só pelo Digital: o plano do traço — o tecto e as orlas (L8, `traco_plano`)";
 
 /// Os campos do `BrushSpec` que o preset NÃO leva, e porquê.
-pub const CAMPOS_FORA: [(&str, &str); 72] = [
+pub const CAMPOS_FORA: [(&str, &str); 74] = [
     ("radius_px", VOLUME),
     ("strength", VOLUME),
     ("color", DA_OBRA),
@@ -197,6 +197,8 @@ pub const CAMPOS_FORA: [(&str, &str); 72] = [
     ("traco", PLANO),
     ("borda_px", DIGITAL),
     ("sub_passo_fino", DIGITAL),
+    ("passo_pela_pressao", DIGITAL),
+    ("parado_s", DIGITAL),
 ];
 
 /// Um `f32` para o JSON pelo menor texto que volta ao mesmo `f32` (`0.1`, não `0.10000000149011612`).

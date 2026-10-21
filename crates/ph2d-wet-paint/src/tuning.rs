@@ -185,9 +185,14 @@ pub enum Knob {
     /// continua). Medido: as listras do miolo são as linhas do tapete arrastadas pelo traço, o domo é a soma das cordas.
     /// `0` = a soma de sempre, ao bit.
     StrokeFilm,
+    /// ⭐ **A GOTA do pó por preset** (J4 pastel_carvao, `docs/Painter/Pinceis/exames/pastel_carvao.md`): o lado da gota
+    /// do [`Knob::Dust`] em células — o pó grosso do carvão em pó e do aerógrafo do Rebelle (a gota fixa de 2 células dava
+    /// o pó fino a todo o tamanho). `2` = a gota de sempre, ao bit (o grão do aerógrafo do Rebelle mede 1,28 px a 20, 40
+    /// e 80 px; a gota de 2 dá 1,40 e a de 1,5 dá 1,17 — prompt 43, `43_medicao` §3).
+    DustDrop,
 }
 
-pub const KNOB_COUNT: usize = 96;
+pub const KNOB_COUNT: usize = 97;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

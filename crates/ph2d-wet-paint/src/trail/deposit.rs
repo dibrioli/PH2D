@@ -39,9 +39,6 @@ use crate::tuning::Knob;
 /// Com o pó a 1, a fracção das gotas que FALTAM num dab (uma em 20 cai).
 const POEIRA_MAXIMA: f64 = 0.95;
 
-/// O lado da gota do pó, em células: o grão do aerógrafo do Rebelle mede 1,28 px (autocorrelação 0,5) a
-/// 20, 40 e 80 px; a gota de 2 dá 1,40 e a de 1,5 dá 1,17 (prompt 43, `43_medicao` §3).
-const GOTA_DO_PO: f64 = 2.0;
 
 /// A caixa vazia (`x1 < x0`), a sentinela que o [`touch_ext`] já usa.
 const VAZIA: (i32, i32, i32, i32) = (0, 0, -1, -1);
@@ -57,19 +54,20 @@ fn uniao(a: (i32, i32, i32, i32), b: (i32, i32, i32, i32)) -> (i32, i32, i32, i3
     (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))
 }
 
-/// **O pó de um dab** ([`Knob::Dust`]): cada GOTA (um quadrado de [`GOTA_DO_PO`] células, a grelha com
+/// **O pó de um dab** ([`Knob::Dust`]): cada GOTA (um quadrado de [`Knob::DustDrop`] células, a grelha com
 /// a fase deste dab) cai com a probabilidade `p` e leva a dose `÷ p` — a média do carimbo é a de sempre.
 #[derive(Clone, Copy)]
 struct Po {
     p: f64,
     semente: u32,
     fase: [f64; 2],
+    gota: f64,
 }
 
 impl Po {
     /// A semente é a do hospedeiro e o CENTRO do dab (os bits do `f64` dobrados): sem hospedeiro, dois
     /// dabs em lugares diferentes já pousam gotas diferentes.
-    fn de(po: f64, semente: u32, dab: &Dab) -> Option<Self> {
+    fn de(po: f64, gota: f64, semente: u32, dab: &Dab) -> Option<Self> {
         if po <= 0.0 {
             return None;
         }
@@ -79,18 +77,19 @@ impl Po {
         };
         let semente =
             (crate::rng::hash2(dobra(dab.x), dobra(dab.y), semente) * 4_294_967_296.0) as u32;
-        let fase = [1, 3].map(|k| crate::rng::hash2(k, k + 1, semente) * GOTA_DO_PO);
+        let fase = [1, 3].map(|k| crate::rng::hash2(k, k + 1, semente) * gota);
         Some(Self {
             p: 1.0 - POEIRA_MAXIMA * po.min(1.0),
             semente,
             fase,
+            gota,
         })
     }
 
     /// A gota que cobre a célula `(x, y)` cai neste dab?
     #[inline]
     fn cai(&self, x: i32, y: i32) -> bool {
-        let g = |c: i32, f: f64| ((f64::from(c) + f) / GOTA_DO_PO).floor() as i32;
+        let g = |c: i32, f: f64| ((f64::from(c) + f) / self.gota).floor() as i32;
         crate::rng::hash2(g(x, self.fase[0]), g(y, self.fase[1]), self.semente) < self.p
     }
 }
@@ -130,7 +129,7 @@ impl DepositLaw {
             dry_gate: dab.dry_gate,
             water_amount: dab.water_amount,
             mix: p.mix,
-            po: Po::de(p.k(Knob::Dust), p.semente_do_po, dab),
+            po: Po::de(p.k(Knob::Dust), p.k(Knob::DustDrop), p.semente_do_po, dab),
             opacidade: dab.opacity,
             grao_da_pressao: p.k(Knob::PressureGrain),
         }

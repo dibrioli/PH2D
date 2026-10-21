@@ -652,4 +652,39 @@ mod portoes {
         }
         assert!(achados.is_empty(), "um reprovado está na fábrica: {achados:?}");
     }
+
+    /// O Charcoal de fábrica com o pó do Charcoal Powder (`EM_ESTUDO`: `dust` 0,7, carga 11, sem Shape nem jitter de
+    /// carvão) e a gota `gota` ([`Knob::DustDrop`](ph2d_wet_paint::tuning::Knob::DustDrop)).
+    fn po_com_gota(gota: f64) -> Pincel {
+        let mut p = pinceis("Charcoal").remove(0);
+        if let Fonte::Preset { preset, .. } = &mut p.fonte {
+            let e = &mut preset.parametros.engine;
+            for (k, v) in [("dust", 0.7), ("pigmentPerDab", 11.0), ("dustDrop", gota)] {
+                e.insert(k.to_owned(), v);
+            }
+            preset.parametros.brush.insert("size_max_px".to_owned(), serde_json::Value::Null);
+        }
+        p
+    }
+
+    /// ⭐⭐ **A gota do pó é do PRESET** (`Knob::DustDrop`, J4 — o recurso da fila «a gota do pó por preset»): com a gota de
+    /// 8 células o grão do pó no recto de 200 px fica mais grosso (½-autocorrelação ao longo e através) que com a de
+    /// sempre (2, ao bit a lei de antes). Medido na variante do Charcoal Powder: gota 2 → 2 × 2 px, 8 → 4 × 3, 12 → 4 × 4.
+    #[test]
+    fn a_gota_do_po_e_do_preset() {
+        let (fina, grossa) = std::thread::scope(|s| {
+            let a = s.spawn(|| estrias(&cobertura(&tamanhos(&po_com_gota(2.0))), 440, 170));
+            let b = s.spawn(|| estrias(&cobertura(&tamanhos(&po_com_gota(8.0))), 440, 170));
+            (a.join().unwrap(), b.join().unwrap())
+        });
+        println!("[pastel_carvao] o pó a 200 px: gota 2 → {} × {} px · gota 8 → {} × {} px", fina.2, fina.3, grossa.2, grossa.3);
+        assert!(
+            grossa.2 + grossa.3 >= fina.2 + fina.3 + 2,
+            "a gota de 8 não engrossa o pó ({} × {} contra {} × {})",
+            grossa.2,
+            grossa.3,
+            fina.2,
+            fina.3
+        );
+    }
 }

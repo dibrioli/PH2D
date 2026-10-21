@@ -684,4 +684,5 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::TipReservoir, KnobGroup::Hidden, "tipReservoir", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::PressureGrain, KnobGroup::Hidden, "pressureGrain", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::StrokeFilm, KnobGroup::Hidden, "strokeFilm", 0.0, 1.0, 1.0, 0.0, None),
+    k(Knob::DustDrop, KnobGroup::Hidden, "dustDrop", 1.0, 32.0, 0.5, 2.0, None),
 ];

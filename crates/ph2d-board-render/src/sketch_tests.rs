@@ -390,7 +390,7 @@ fn held(pts: &[[f64; 2]]) -> ph2d_board_model::BoardDoc {
         ed.pointer_move(&mut doc, &mut ts, at(p));
     }
     ed.at_time(t + 600_000_000);
-    ed.ink_hold(&mut doc);
+    ed.ink_hold(&mut doc, false);
     assert!(ed.is_quick(), "a forma nasceu");
     doc
 }

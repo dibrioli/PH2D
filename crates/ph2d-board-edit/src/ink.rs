@@ -227,8 +227,10 @@ impl Editor {
     }
 
     /// ⭐ W23 B13 — um quadro do QuickShape com o traço aberto (o vetor chama-o a cada quadro; o
-    /// relógio é o do último evento mais o que passou desde ele). `true` = a forma NASCEU agora.
-    pub fn ink_hold(&mut self, doc: &mut BoardDoc) -> bool {
+    /// relógio é o do último evento mais o que passou desde ele). `shift` = a tecla AGORA (o `regular`
+    /// do vetor, lido a cada quadro: premida ou largada SEM mexer refaz a forma viva — smoke 21/10).
+    /// `true` = a forma NASCEU agora.
+    pub fn ink_hold(&mut self, doc: &mut BoardDoc, shift: bool) -> bool {
         let (now, enabled) = (self.clock_now(), self.quickshape);
         let Some(mut g) = self.ink.take() else {
             return false;
@@ -243,6 +245,7 @@ impl Editor {
             ..
         } = &mut g
         {
+            smart.regular = shift;
             t = smart.tick(now, enabled);
             if t != HoldTick::Idle {
                 self.smart_show(doc, (*id, z), *pen, style, smart);

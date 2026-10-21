@@ -502,6 +502,8 @@ mod send;
 mod shapes;
 #[path = "board_smart_tests.rs"]
 mod smart;
+#[path = "board_smart_hand_tests.rs"]
+mod smart_hand;
 
 #[path = "board_bar_organize_tests.rs"]
 mod organize;

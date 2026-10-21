@@ -278,7 +278,7 @@ fn escape_gives_the_stroke_back_and_the_gesture_goes_on() {
     }
     w.ed.at_time(t + HOLD_NS);
     assert!(
-        w.ed.ink_hold(&mut w.doc),
+        w.ed.ink_hold(&mut w.doc, false),
         "o quadro do gatilho faz nascer a forma"
     );
     assert!(w.ed.is_quick());
@@ -307,7 +307,7 @@ fn dragging_the_live_shape_scales_it() {
         w.ed.pointer_move(&mut w.doc, &mut w.ts, at(p[0], p[1], NONE));
     }
     w.ed.at_time(t + HOLD_NS);
-    assert!(w.ed.ink_hold(&mut w.doc));
+    assert!(w.ed.ink_hold(&mut w.doc, false));
     // O fim do traço é (0, 0); o centro (200, 125): levar a mão ao dobro da distância dobra a forma.
     w.ed.pointer_move(&mut w.doc, &mut w.ts, at(-200.0, -125.0, NONE));
     w.ed.pointer_up(&mut w.doc, &mut w.h, at(-200.0, -125.0, NONE));

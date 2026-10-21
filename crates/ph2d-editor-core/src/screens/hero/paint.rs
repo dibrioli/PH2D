@@ -263,13 +263,15 @@ pub fn paint_hero_screen(
         super::board_send::run_pending(hero, text_system);
         // W23 B14 — a mensagem para mim que chegou vira o aviso com «Show».
         super::board_nav::team::notify::tick(hero);
+        // O `Shift` de AGORA (o teclado e o 2.º dedo, pela shell): o QuickShape relê-o a cada quadro.
+        let shift = hero.store.shift_held();
         if let Some((board, live)) = hero.documents.active_parts() {
             // As rotas das setas vêm do editor: uma cache, a mesma que o clique lê.
             let ed = super::board_view::editor(&mut live.editor, theme);
             // W16 — o recorte conta-se em píxeis naturais: o editor sabe o tamanho dos ficheiros.
             ed.know_files(&board.files);
             // W23 B13 — o QuickShape a cada quadro com o traço aberto (o meio segundo parado).
-            ed.ink_hold(&mut board.doc);
+            ed.ink_hold(&mut board.doc, shift);
             // O que se desenha por cima vem ANTES: ele ajusta as notas que nasceram por ajustar,
             // e o quadro desenha-as já com a altura certa.
             let overlay = ed.overlay(&mut board.doc, text_system);

@@ -172,16 +172,6 @@ fn same_outline(a: &[[f64; 2]], b: &[[f64; 2]], tol: f64) -> bool {
         && along(b, step).into_iter().all(|p| to_poly(p, a) <= tol)
 }
 
-/// O estilo de um objecto feito pela caneta: o traço e a cor dela, sem preenchimento, cantos vivos.
-fn shape_style(pen: &Style) -> Style {
-    let ink = pen.stroke.unwrap_or(pen.text_color);
-    let mut s = Style::new(None, Some(ink), ink);
-    s.stroke_width = pen.stroke_width;
-    s.round = false;
-    s.opacity = pen.opacity;
-    s
-}
-
 /// O polígono `corners` como forma do quadro, se uma o desenha igual (a menos de `tol`).
 fn polygon_shape(
     corners: &[[f64; 2]],
@@ -260,6 +250,23 @@ impl Editor {
         self.clock = (now_ns, std::time::Instant::now());
     }
 
+    /// ⭐ O estilo do objecto que a caneta dá: o da FERRAMENTA dessa forma neste quadro (o rascunho, o
+    /// `Look`; smoke 21/10 — nascia sempre final) com a cor, a espessura, a opacidade e o tracejado
+    /// da CANETA (o que o artista escolheu nela); sem preenchimento e com cantos vivos (a forma é a
+    /// que a mão desenhou, doc 17 §2.2).
+    fn smart_style(&self, pen: &Style) -> Style {
+        let ink = pen.stroke.unwrap_or(pen.text_color);
+        let mut s = self.style.clone();
+        s.fill = None;
+        s.stroke = Some(ink);
+        s.text_color = ink;
+        s.stroke_width = pen.stroke_width;
+        s.dash = pen.dash;
+        s.opacity = pen.opacity;
+        s.round = false;
+        s
+    }
+
     /// O relógio do evento em curso (exacto: o que a shell carimbou).
     pub(crate) fn event_ns(&self) -> u128 {
         self.clock.0
@@ -299,7 +306,7 @@ impl Editor {
         px: f64,
         (id, z): (ElementId, FracKey),
     ) -> Option<Element> {
-        let st = shape_style(style);
+        let st = self.smart_style(style);
         let tol = px;
         match shape {
             QuickShape::Ellipse {

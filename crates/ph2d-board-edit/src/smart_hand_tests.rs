@@ -37,7 +37,7 @@ fn board_draw(w: &mut World, pts: &[[f64; 2]], rest: &[[f64; 2]]) -> u128 {
     }
     if rest.is_empty() {
         w.ed.at_time(t + STILL);
-        w.ed.ink_hold(&mut w.doc);
+        w.ed.ink_hold(&mut w.doc, false);
     }
     t
 }
@@ -164,6 +164,65 @@ fn the_clean_ink_has_a_point_every_screen_pixel() {
         assert!(gap <= px + 1e-9, "px {px}: {gap:.2}");
         for c in [[0.0, 0.0], [300.0, 0.0], [60.0, -220.0]] {
             assert!(pts.contains(&c), "o canto {c:?} fica exacto");
+        }
+    }
+}
+
+/// ⭐ O `Shift` SEM mexer, com a forma viva (smoke 21/10): o lápis do vetor relê-o a cada quadro
+/// (`hold_tick(.., regular)`) e o quadro também (`ink_hold(.., shift)`) — a MESMA forma regular e,
+/// largado, a MESMA forma livre.
+#[test]
+fn shift_without_moving_regularises_as_the_vector_pencil_does() {
+    let steps = [true, false, true];
+    for (name, pts) in [
+        ("caixa", hand_rect()),
+        ("elipse", hand_ellipse()),
+        ("triângulo", hand_triangle()),
+    ] {
+        let mut scene = Default::default();
+        let mut pencil = ph2d_vec_edit::Pencil::default();
+        let dy = |t_ns| PenDynamics {
+            pressure: 1.0,
+            t_ns,
+        };
+        let mut t = T0;
+        pencil.on_press(&mut scene, pts[0], PX, dy(t));
+        for &p in &pts[1..] {
+            t += DT;
+            pencil.on_drag(&mut scene, p, dy(t));
+            pencil.hold_tick(&mut scene, t, false, true);
+        }
+        t += STILL;
+        pencil.hold_tick(&mut scene, t, false, true);
+        let mut vector = Vec::new();
+        for shift in steps {
+            t += DT;
+            pencil.hold_tick(&mut scene, t, shift, true);
+            let p = scene
+                .path(pencil.active_path().expect("o traço"))
+                .expect("vivo");
+            vector.push(p.verts.iter().map(|v| v.anchor).collect::<Vec<_>>());
+        }
+        let mut w = world();
+        board_draw(&mut w, &pts, &[]);
+        let mut board = Vec::new();
+        for shift in steps {
+            w.ed.ink_hold(&mut w.doc, shift);
+            let Some(crate::ink::InkGesture::Draw { smart, .. }) = &w.ed.ink else {
+                panic!("{name}: o gesto");
+            };
+            board.push(outline(&smart.hold.shape().expect("a forma viva")).1);
+        }
+        assert_ne!(vector[0], vector[1], "{name}: o vetor regulariza");
+        for (k, (v, b)) in vector.iter().zip(&board).enumerate() {
+            assert_eq!(v.len(), b.len(), "{name} · passo {k}");
+            for (p, q) in v.iter().zip(b) {
+                let d = (p[0] - q[0]).hypot(p[1] - q[1]);
+                assert!(
+                    d <= PX,
+                    "{name} · passo {k}: {d:.2} px · vetor {v:?} · quadro {b:?}"
+                );
+            }
         }
     }
 }

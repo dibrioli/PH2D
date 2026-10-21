@@ -233,6 +233,31 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.explain.unknown_field_near.why" => {
             "Nothing in this script writes self.{name} = …, and no ph2d.property declares it, so it is always nil. Alt+Enter changes it to {near}."
         }
+        // ── As nossas (os nomes da cena, item 8) ──
+        "code.explain.unknown_object" => "No object in the scene is named \"{name}\"",
+        "code.explain.unknown_object.why" => {
+            "ph2d.object stops this object's script when no object has that name (capitals count). Drag the object from the Hierarchy into the script and its name is written for you; use ph2d.find_by_name when the object may not exist yet."
+        }
+        "code.explain.unknown_object_near" => {
+            "No object in the scene is named \"{name}\" — did you mean \"{near}\"?"
+        }
+        "code.explain.unknown_object_near.why" => {
+            "ph2d.object stops this object's script when no object has that name (capitals count). The closest name in the scene is \"{near}\"."
+        }
+        "code.explain.object_twice" => "{count} objects are named \"{name}\"",
+        "code.explain.object_twice.why" => {
+            "The script gets the first of them in the order of the Hierarchy. Give each object its own name so the name points at one object."
+        }
+        "code.explain.unknown_master" => "No master is named \"{name}\"",
+        "code.explain.unknown_master.why" => {
+            "ph2d.spawn copies a master by its name (capitals count), and with no master of that name it is an error when the line runs."
+        }
+        "code.explain.unknown_master_near" => {
+            "No master is named \"{name}\" — did you mean \"{near}\"?"
+        }
+        "code.explain.unknown_master_near.why" => {
+            "ph2d.spawn copies a master by its name (capitals count). The closest master is \"{near}\"."
+        }
         _ => return None,
     })
 }

@@ -38,6 +38,8 @@ pub(crate) enum Dest {
     /// Um byte deste script (a declaração, ou a `ph2d.property`).
     Here(usize),
     Help(Anchor),
+    /// Um nome de objecto da cena (`ph2d.object("…")`, item 8): seleccioná-lo. O byte é o início do nome.
+    Object(usize),
 }
 
 impl CodeDoc {
@@ -53,6 +55,11 @@ impl CodeDoc {
     /// Ctrl+clique ou F12 em `at`: o nome de CÓDIGO ali. Se a mão do Ctrl já sabe para onde ele
     /// leva (o mesmo nome, nesta revisão), vai já; senão pergunta a definição e o balão.
     pub(crate) fn go_to_definition(&mut self, at: usize) {
+        if let Some(name) = self.object_word(at) {
+            self.goto = None;
+            self.arrive_at(Dest::Object(name.start));
+            return;
+        }
         let Some(word) = self.goto_word(at) else {
             self.goto = None;
             return;
@@ -111,7 +118,32 @@ impl CodeDoc {
                 self.reveal();
             }
             Dest::Help(a) => self.help_request = Some(a),
+            Dest::Object(b) => {
+                let t = self.buffer.text();
+                self.select_object = self
+                    .syntax
+                    .object_references(t)
+                    .into_iter()
+                    .find(|r| r.range.start == b)
+                    .map(|r| r.name);
+            }
         }
+    }
+
+    /// ⭐ O nome de objecto da CENA escrito em `at` (`ph2d.object`/`ph2d.find_by_name`, item 8): os
+    /// bytes dentro das aspas, só se a cena tem um objecto com ele — o Ctrl+clique selecciona-o.
+    pub(crate) fn object_word(&self, at: usize) -> Option<std::ops::Range<usize>> {
+        use ph2d_code_syntax::ObjectCall;
+        self.syntax
+            .object_references(self.buffer.text())
+            .into_iter()
+            .find(|r| {
+                r.range.start <= at
+                    && at <= r.range.end
+                    && r.call != ObjectCall::Spawn
+                    && self.scene.objects.contains_key(&r.name)
+            })
+            .map(|r| r.range)
     }
 
     /// O pedido `ticket` é desta aba (o balão, a assinatura, as cores, a definição).

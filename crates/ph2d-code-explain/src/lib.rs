@@ -103,13 +103,27 @@ kinds! {
     BadHint => "bad_hint",
     UnknownField => "unknown_field",
     UnknownFieldNear => "unknown_field_near",
+    UnknownObject => "unknown_object",
+    UnknownObjectNear => "unknown_object_near",
+    ObjectTwice => "object_twice",
+    UnknownMaster => "unknown_master",
+    UnknownMasterNear => "unknown_master_near",
 }
 
 impl Kind {
     /// Uma classe NOSSA (o lint do `self`, I7): não vem do Luau, logo não está no corpus.
     #[must_use]
     pub const fn ours(self) -> bool {
-        matches!(self, Kind::UnknownField | Kind::UnknownFieldNear)
+        matches!(
+            self,
+            Kind::UnknownField
+                | Kind::UnknownFieldNear
+                | Kind::UnknownObject
+                | Kind::UnknownObjectNear
+                | Kind::ObjectTwice
+                | Kind::UnknownMaster
+                | Kind::UnknownMasterNear
+        )
     }
 }
 
@@ -132,6 +146,33 @@ impl Explained {
         match near {
             Some(near) => Self::new(Kind::UnknownFieldNear, &[("name", name), ("near", near)]),
             None => Self::new(Kind::UnknownField, &[("name", name)]),
+        }
+    }
+
+    /// O aviso nosso do nome de objecto que a cena não tem (`ph2d.object`, item 8), com o mais perto.
+    #[must_use]
+    pub fn unknown_object(name: &str, near: Option<&str>) -> Self {
+        match near {
+            Some(near) => Self::new(Kind::UnknownObjectNear, &[("name", name), ("near", near)]),
+            None => Self::new(Kind::UnknownObject, &[("name", name)]),
+        }
+    }
+
+    /// O aviso nosso do nome que `count` objectos da cena partilham (item 8).
+    #[must_use]
+    pub fn object_twice(name: &str, count: usize) -> Self {
+        Self::new(
+            Kind::ObjectTwice,
+            &[("name", name), ("count", &count.to_string())],
+        )
+    }
+
+    /// O aviso nosso do mestre que a cena não tem (`ph2d.spawn`, item 8), com o mais perto.
+    #[must_use]
+    pub fn unknown_master(name: &str, near: Option<&str>) -> Self {
+        match near {
+            Some(near) => Self::new(Kind::UnknownMasterNear, &[("name", name), ("near", near)]),
+            None => Self::new(Kind::UnknownMaster, &[("name", name)]),
         }
     }
 

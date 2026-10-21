@@ -73,6 +73,11 @@ pub struct CodeDocs {
     pub(crate) nav: crate::nav::Nav,
     /// O texto que um clique copiou (o «Copy» de um exemplo), à espera do quadro.
     pub(crate) copy_out: Option<String>,
+    /// Os nomes da cena lidos no último quadro (item 8); as abas partilham-nos.
+    pub(crate) scene: crate::scene_names::Shared,
+    /// Scripts cujo texto da biblioteca mudou fora do quadro (o renomear de um objecto): a cena
+    /// recarrega-os no quadro seguinte, que tem a VM.
+    pub(crate) reload: Vec<ScriptId>,
 }
 
 /// O que a gramática de uma aba fez (a sonda do gate da tecla).
@@ -114,6 +119,8 @@ impl Default for CodeDocs {
             help: crate::help::HelpTabs::default(),
             nav: crate::nav::Nav::default(),
             copy_out: None,
+            scene: crate::scene_names::Shared::default(),
+            reload: Vec::new(),
         }
     }
 }

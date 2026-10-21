@@ -15,10 +15,20 @@ use crate::docs::CodeDocs;
 use crate::semantic::{IDLE_ERRORS_NS, IDLE_NS};
 use ph2d_code_buffer::{Text, TextEdit};
 use ph2d_code_explain::Explained;
+use ph2d_code_syntax::ObjectCall;
 use ph2d_panel_code::{Explanation, Problem, Severity};
 use ph2d_script::api_table::HOOKS;
 use ph2d_script::props::RESERVED_NAMES;
 use std::ops::Range;
+use std::sync::Arc;
+
+/// A única sugestão, se for uma (empates não se escolhem).
+fn single(near: &[String]) -> Option<&str> {
+    match near {
+        [one] => Some(one.as_str()),
+        _ => None,
+    }
+}
 
 /// A distância de Damerau restrita (OSA): trocar duas letras vizinhas custa 1.
 fn osa(a: &[char], b: &[char]) -> usize {
@@ -89,12 +99,21 @@ pub(crate) struct FieldLint {
     pub near: Vec<String>,
 }
 
+/// Um nome de objecto (ou de mestre) escrito no script que a cena não confirma (item 8,
+/// `docs/CodeEditor/07_arrastar_para_o_codigo.md` §3.6): nenhum objecto o tem, ou vários.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ObjectLint {
+    pub bytes: Range<usize>,
+    pub explained: Explained,
+}
+
 /// Os avisos de campo da aba e quando foram contados.
 #[derive(Default)]
 pub(crate) struct Lint {
     pub list: Vec<FieldLint>,
-    /// A (revisão do texto, geração da árvore) da última contagem.
-    counted: Option<(u64, u64)>,
+    pub objects: Vec<ObjectLint>,
+    /// A (revisão do texto, geração da árvore, nomes da cena) da última contagem.
+    counted: Option<(u64, u64, usize)>,
     /// A revisão vista no último quadro, e o relógio em que ela apareceu (a pausa conta daí).
     seen: Option<(u64, u128)>,
     /// Avança a cada mudança da lista (a chave dos problemas guardados, `CodeDoc::problems`).
@@ -106,16 +125,18 @@ impl Lint {
     /// a que escreve encostada a ele, antes ou depois.
     pub fn edited(&mut self, edits: &[TextEdit]) {
         self.generation += u64::from(!edits.is_empty());
+        let follows = |e: &TextEdit, bytes: &mut Range<usize>| {
+            if e.old_end_byte < bytes.start {
+                let shift = |b: usize| b - e.old_end_byte + e.new_end_byte;
+                *bytes = shift(bytes.start)..shift(bytes.end);
+                true
+            } else {
+                e.start_byte > bytes.end
+            }
+        };
         for e in edits {
-            self.list.retain_mut(|l| {
-                if e.old_end_byte < l.bytes.start {
-                    let shift = |b: usize| b - e.old_end_byte + e.new_end_byte;
-                    l.bytes = shift(l.bytes.start)..shift(l.bytes.end);
-                    true
-                } else {
-                    e.start_byte > l.bytes.end
-                }
-            });
+            self.list.retain_mut(|l| follows(e, &mut l.bytes));
+            self.objects.retain_mut(|l| follows(e, &mut l.bytes));
         }
     }
 
@@ -142,6 +163,22 @@ impl Lint {
                     }),
                 }
             })
+            .chain(
+                self.objects
+                    .iter()
+                    .filter(|l| l.bytes.end <= text.len())
+                    .map(|l| Problem {
+                        line: text.line_of_byte(l.bytes.start),
+                        severity: Severity::Warning,
+                        culprit: Some(l.bytes.clone()),
+                        message: l.explained.title(),
+                        explanation: Some(Explanation {
+                            kind: l.explained.kind.id(),
+                            title: l.explained.title(),
+                            why: l.explained.why(),
+                        }),
+                    }),
+            )
             .collect()
     }
 }
@@ -159,8 +196,12 @@ impl CodeDoc {
                 t
             }
         };
-        let key = (rev, self.syntax.generation());
-        let idle = if self.lint.list.is_empty() {
+        let key = (
+            rev,
+            self.syntax.generation(),
+            Arc::as_ptr(&self.scene) as usize,
+        );
+        let idle = if self.lint.list.is_empty() && self.lint.objects.is_empty() {
             IDLE_NS
         } else {
             IDLE_ERRORS_NS
@@ -173,7 +214,41 @@ impl CodeDoc {
         }
         self.lint.counted = Some(key);
         self.lint.list = self.field_lints();
+        self.lint.objects = self.object_lints();
         self.lint.generation += 1;
+    }
+
+    /// Os nomes de objecto/mestre escritos que a cena não confirma (item 8). Sem cena lida (nenhum
+    /// objecto nem mestre), cala-se: «não sei a cena» não é «a cena não tem nada».
+    fn object_lints(&self) -> Vec<ObjectLint> {
+        let scene = &*self.scene;
+        if scene.objects.is_empty() && scene.masters.is_empty() {
+            return Vec::new();
+        }
+        let objects = || scene.objects.keys().map(String::as_str);
+        self.syntax
+            .object_references(self.buffer.text())
+            .into_iter()
+            .filter_map(|r| {
+                let explained = match (r.call, scene.objects.get(&r.name)) {
+                    (ObjectCall::Spawn, _) if scene.masters.contains(&r.name) => return None,
+                    (ObjectCall::Spawn, _) => {
+                        let near = did_you_mean(&r.name, scene.masters.iter().map(String::as_str));
+                        Explained::unknown_master(&r.name, single(&near))
+                    }
+                    (_, Some(&n)) if n > 1 => Explained::object_twice(&r.name, n),
+                    (_, Some(_)) | (ObjectCall::FindByName, None) => return None,
+                    (ObjectCall::Object, None) => {
+                        let near = did_you_mean(&r.name, objects());
+                        Explained::unknown_object(&r.name, single(&near))
+                    }
+                };
+                Some(ObjectLint {
+                    bytes: r.range,
+                    explained,
+                })
+            })
+            .collect()
     }
 
     fn field_lints(&self) -> Vec<FieldLint> {

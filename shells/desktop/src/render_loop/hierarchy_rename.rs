@@ -60,8 +60,12 @@ pub(super) fn drain(
         let final_name = ph2d_unique_name::unique_name_excluding(sim, &new_name, entity);
         let was_adjusted = final_name != new_name;
         let sim_w = sim.world_mut();
+        let old = sim_w.get::<Name>(entity).map(|n| n.as_str().to_owned());
         if let Ok(mut entry) = sim_w.get_entity_mut(entity) {
             entry.insert(Name::new(final_name.clone()));
+            // ⭐ Os scripts seguem o nome, no mesmo passo de undo (item 8 do CodeEditor).
+            let old = old.unwrap_or_default();
+            ph2d_app_code::object_renamed(hero, sim_w, entity, &old, &final_name);
             if was_adjusted {
                 toasts.push(Toast::warning(tr_with(
                     "shell.hierarchy_rename.name_in_use_renamed_to",

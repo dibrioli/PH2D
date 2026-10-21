@@ -112,3 +112,128 @@ fn fora_do_texto_nao_aceita_e_sair_apaga_a_marca() {
         "nada se escreveu"
     );
 }
+
+// ── Os nomes da cena: o aviso, o Ctrl+clique, o renomear (§3.5–8) ──────────────────────────────
+
+use crate::completar::{T0, quadro_em};
+use crate::definicao::clica_em;
+use ph2d_ecs::{Entity, MasterRoot, Name, Transform};
+
+fn objecto(m: &mut Mesa, nome: &str) -> Entity {
+    m.sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new(nome)))
+        .id()
+}
+
+fn tipos(m: &mut Mesa, id: ScriptId) -> Vec<&'static str> {
+    m.docs()
+        .problems_of(id)
+        .into_iter()
+        .filter_map(|p| p.explanation.map(|e| e.kind))
+        .collect()
+}
+
+#[test]
+fn o_nome_que_a_cena_nao_tem_e_um_aviso_e_some_quando_a_cena_o_tem() {
+    let src = "function update(self)\n  ph2d.set(ph2d.object(\"Portaa\"), \"x\", 1)\n  ph2d.set(ph2d.object(\"Caixa\"), \"x\", 1)\n  ph2d.spawn(\"Bala\")\n  ph2d.find_by_name(\"Ninguem\")\nend\n";
+    let (mut m, ids) = Mesa::new(&[("a.luau", src)]);
+    let id = ids[0];
+    let porta = objecto(&mut m, "Porta");
+    objecto(&mut m, "Caixa");
+    objecto(&mut m, "Caixa");
+    m.sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Tiro"), MasterRoot));
+    m.pede(id);
+    quadro_em(&mut m, T0);
+    assert_eq!(
+        tipos(&mut m, id),
+        ["unknown_object_near", "object_twice", "unknown_master"],
+        "o find_by_name sem objecto não acusa: nil é resposta"
+    );
+    let p = m.docs().problems_of(id).remove(0);
+    assert!(p.message.contains("Porta"), "o «quis dizer»: {}", p.message);
+    m.sim
+        .world_mut()
+        .entity_mut(porta)
+        .insert(Name::new("Portaa"));
+    quadro_em(&mut m, T0 + 1);
+    assert_eq!(
+        tipos(&mut m, id),
+        ["object_twice", "unknown_master"],
+        "a cena mudou: o aviso some sem tocar no texto"
+    );
+}
+
+#[test]
+fn ctrl_clique_no_nome_selecciona_o_objecto() {
+    let src = "local p = ph2d.object(\"Porta\")\n";
+    let (mut m, ids) = Mesa::new(&[("a.luau", src)]);
+    let id = ids[0];
+    objecto(&mut m, "Outra");
+    let porta = objecto(&mut m, "Porta");
+    m.pede(id);
+    quadro_em(&mut m, T0);
+    m.pinta(id);
+    clica_em(
+        &mut m,
+        id,
+        src.find("Porta").expect("agulha") + 2,
+        crate::ctrl(),
+    );
+    quadro_em(&mut m, T0 + 1);
+    assert_eq!(m.hero.gizmo.selection, Some(porta.to_bits()));
+}
+
+#[test]
+fn renomear_o_objecto_reescreve_os_scripts_e_um_undo_global_devolve() {
+    let aberto = "local p = ph2d.object(\"Porta\")\n";
+    let fechado = "local q = ph2d.find_by_name('Porta')\nph2d.spawn(\"Porta\")\n";
+    let (mut m, ids) = Mesa::new(&[("a.luau", aberto), ("b.luau", fechado)]);
+    let porta = objecto(&mut m, "Porta");
+    m.pede(ids[0]);
+    quadro_em(&mut m, T0);
+    // O que a shell faz no commit do renomear (`hierarchy_rename.rs`).
+    m.sim
+        .world_mut()
+        .entity_mut(porta)
+        .insert(Name::new("Portão"));
+    ph2d_app_code::object_renamed(&mut m.hero, m.sim.world_mut(), porta, "Porta", "Portão");
+    let novo_a = "local p = ph2d.object(\"Portão\")\n";
+    let novo_b = "local q = ph2d.find_by_name('Portão')\nph2d.spawn(\"Porta\")\n";
+    assert_eq!(
+        m.docs().text_of(ids[0]).as_deref(),
+        Some(novo_a),
+        "a aba aberta"
+    );
+    assert_eq!(m.texto_salvo(ids[0]), novo_a, "a biblioteca do aberto");
+    assert_eq!(
+        m.texto_salvo(ids[1]),
+        novo_b,
+        "o fechado; o spawn é de um MESTRE e fica"
+    );
+    let elo = m
+        .hero
+        .undo_links
+        .pending
+        .take()
+        .expect("o passo do renomear leva o elo");
+    m.hero.undo_links.alive.insert(elo);
+    quadro_em(&mut m, T0 + 1);
+    assert_eq!(
+        m.docs().text_of(ids[0]).as_deref(),
+        Some(novo_a),
+        "o quadro não desfaz nada"
+    );
+    // O Ctrl+Z global: a fila desfaz o nome e publica o elo desfeito.
+    m.sim
+        .world_mut()
+        .entity_mut(porta)
+        .insert(Name::new("Porta"));
+    m.hero.undo_links.done.push((elo, false));
+    quadro_em(&mut m, T0 + 2);
+    assert_eq!(m.docs().text_of(ids[0]).as_deref(), Some(aberto));
+    assert_eq!(m.texto_salvo(ids[0]), aberto);
+    assert_eq!(m.texto_salvo(ids[1]), fechado);
+}

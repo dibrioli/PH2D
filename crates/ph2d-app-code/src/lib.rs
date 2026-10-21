@@ -37,6 +37,7 @@ mod lint;
 pub mod list;
 mod nav;
 mod note;
+mod object_rename;
 mod places;
 mod pointer;
 mod problem_list;
@@ -45,6 +46,7 @@ mod reach;
 mod recovery;
 mod refs;
 mod rename;
+mod scene_names;
 mod semantic;
 mod skeleton;
 pub mod smoke;
@@ -60,6 +62,7 @@ pub use frame::frame;
 pub use help::{HELP_TAG, help_doc, member_id};
 pub use help_doc::{DeadLink, dead_links, link_count};
 pub use intel::IntelServer;
+pub use object_rename::object_renamed;
 
 /// A declaração da família à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {

@@ -25,6 +25,17 @@ pub(crate) struct Linked {
     after: String,
 }
 
+impl Linked {
+    pub(crate) fn new(link: UndoLink, script: ScriptId, before: String, after: String) -> Self {
+        Self {
+            link,
+            script,
+            before,
+            after,
+        }
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct Links {
     pub(crate) list: Vec<Linked>,
@@ -41,7 +52,7 @@ pub(crate) fn frame(
     scene_facts(docs, world);
     for i in 0..docs.docs.len() {
         if let Some(job) = docs.docs[i].scene_rename.take()
-            && !apply(docs, i, &job, world, links, host.as_deref_mut())
+            && !apply(docs, &job, world, links, host.as_deref_mut())
         {
             docs.docs[i].buffer.unlink(job.link.0);
         }
@@ -134,7 +145,6 @@ fn scene_facts(docs: &mut CodeDocs, world: &mut World) {
 /// biblioteca não declara a propriedade (nova, por salvar): o rename fica só no texto da aba.
 fn apply(
     docs: &mut CodeDocs,
-    i: usize,
     job: &SceneRename,
     world: &mut World,
     links: &mut UndoLinks,
@@ -157,7 +167,7 @@ fn apply(
             c.own.insert(job.new.clone(), v);
         }
     }
-    set_library(docs, i, job.script, &after, world, host);
+    set_library(docs, job.script, &after, world, host);
     links.pending = Some(job.link);
     docs.links.list.push(Linked {
         link: job.link,
@@ -168,39 +178,44 @@ fn apply(
     true
 }
 
-/// A fila global desfez (`redo = false`) ou refez o passo com o elo `l`: o texto da aba e o da
-/// biblioteca seguem-no.
+/// A fila global desfez (`redo = false`) ou refez o passo com o elo `l`: o texto de cada aba e da
+/// biblioteca que o elo levou segue-o (o renomear de um objecto liga VÁRIOS scripts, item 8).
 fn undone(
     docs: &mut CodeDocs,
     l: UndoLink,
     redo: bool,
     world: &mut World,
-    host: Option<&mut ScriptHost>,
+    mut host: Option<&mut ScriptHost>,
 ) {
-    let Some(x) = docs.links.list.iter().find(|x| x.link == l) else {
-        return;
-    };
-    let (script, text) = (
-        x.script,
-        if redo {
-            x.after.clone()
-        } else {
-            x.before.clone()
-        },
-    );
-    // Do lado de onde o passo sai: o undo antes de desfazer, o redo antes de refazer.
-    let i = docs
-        .docs
+    let texts: Vec<(ScriptId, String)> = docs
+        .links
+        .list
         .iter()
-        .position(|d| d.buffer.history().top_link(redo) == Some(l.0));
-    if let Some(i) = i {
-        let d = &mut docs.docs[i];
+        .filter(|x| x.link == l)
+        .map(|x| {
+            (
+                x.script,
+                if redo {
+                    x.after.clone()
+                } else {
+                    x.before.clone()
+                },
+            )
+        })
+        .collect();
+    // Do lado de onde o passo sai: o undo antes de desfazer, o redo antes de refazer.
+    for d in docs
+        .docs
+        .iter_mut()
+        .filter(|d| d.buffer.history().top_link(redo) == Some(l.0))
+    {
         d.undo_text(redo);
         d.reveal();
-    } else if let Some(p) = docs
+    }
+    for p in docs
         .parked
         .values_mut()
-        .find(|p| p.buffer.history().top_link(redo) == Some(l.0))
+        .filter(|p| p.buffer.history().top_link(redo) == Some(l.0))
     {
         if redo {
             p.buffer.redo();
@@ -208,19 +223,15 @@ fn undone(
             p.buffer.undo();
         }
     }
-    let i = docs
-        .docs
-        .iter()
-        .position(|d| d.script == script)
-        .unwrap_or(usize::MAX);
-    set_library(docs, i, script, &text, world, host);
+    for (script, text) in texts {
+        set_library(docs, script, &text, world, host.as_deref_mut());
+    }
 }
 
-/// O texto da biblioteca muda por um passo ligado: a aba `i` (se é a do script) concorda com ele, e a
-/// cena recarrega.
+/// O texto da biblioteca muda por um passo ligado: a aba do script concorda com ele, e a cena
+/// recarrega.
 fn set_library(
     docs: &mut CodeDocs,
-    i: usize,
     script: ScriptId,
     text: &str,
     world: &mut World,
@@ -229,18 +240,26 @@ fn set_library(
     world
         .get_resource_or_init::<ProjectScripts>()
         .set_text(script, text);
-    if let Some(d) = docs.docs.get_mut(i).filter(|d| d.script == script) {
-        d.synced = text.to_owned();
-        if d.buffer.text().to_string() == text {
-            d.buffer.mark_saved();
-        }
-    } else if let Some(p) = docs.parked.get_mut(&script) {
-        p.synced = text.to_owned();
-        if p.buffer.text().to_string() == text {
-            p.buffer.mark_saved();
-        }
-    }
+    docs.follow_synced(script, text);
     if let Some(h) = host {
         h.request_reload(script);
+    }
+}
+
+impl CodeDocs {
+    /// O texto da biblioteca do script passou a ser `text` por um passo ligado: a aba (aberta ou
+    /// estacionada) concorda com ele — sem isto o `follow_library` trocá-la-ia por uma nova.
+    pub(crate) fn follow_synced(&mut self, script: ScriptId, text: &str) {
+        if let Some(d) = self.docs.iter_mut().find(|d| d.script == script) {
+            d.synced = text.to_owned();
+            if d.buffer.text().to_string() == text {
+                d.buffer.mark_saved();
+            }
+        } else if let Some(p) = self.parked.get_mut(&script) {
+            p.synced = text.to_owned();
+            if p.buffer.text().to_string() == text {
+                p.buffer.mark_saved();
+            }
+        }
     }
 }

@@ -8,6 +8,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "doc.tab.dirty_title" => "{name} ●",
         // A barra de estado do editor (E4): o cursor, os problemas e o selo do último salvar.
         "code.status.position" => "Ln {line}, Col {col}",
+        "code.complete.scene_object" => "object in the scene",
+        "code.complete.scene_master" => "master",
         "code.drop.objects" => "Drop: writes ph2d.object(\"…\") here.",
         "code.drop.ctrl_local" => "Hold Ctrl: a local variable on this line.",
         "code.drop.ctrl_init" => "Hold Ctrl: kept in self, inside init.",

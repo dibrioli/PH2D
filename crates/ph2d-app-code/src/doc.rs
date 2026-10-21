@@ -115,6 +115,10 @@ pub(crate) struct CodeDoc {
     pub last_click: Option<(u128, usize)>,
     /// Um arrasto entre painéis sobre o texto (item 8): onde cairia e o balão.
     pub(crate) dropping: Option<crate::drop_doc::DropMark>,
+    /// Os nomes da cena (item 8): a verificação, as sugestões dentro das aspas, o Ctrl+clique.
+    pub(crate) scene: crate::scene_names::Shared,
+    /// O Ctrl+clique num nome de objecto: seleccioná-lo na cena (a família fá-lo no quadro).
+    pub(crate) select_object: Option<String>,
     derived: Derived,
 }
 
@@ -170,6 +174,8 @@ impl CodeDoc {
             drag: None,
             last_click: None,
             dropping: None,
+            scene: crate::scene_names::Shared::default(),
+            select_object: None,
             derived: Derived::default(),
         }
     }

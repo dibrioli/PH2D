@@ -82,7 +82,9 @@ impl CodeDoc {
         let Hit::Text(b) = self.view.hit(&self.buffer, x, y) else {
             return None;
         };
-        self.goto_word(b).filter(|w| self.drawn_over(w, x, y))
+        self.goto_word(b)
+            .or_else(|| self.object_word(b))
+            .filter(|w| self.drawn_over(w, x, y))
     }
 
     /// Um quadro com o Ctrl `held`: o nome sob o rato pergunta-se ao assistente (uma vez por nome e
@@ -105,11 +107,17 @@ impl CodeDoc {
         let revision = self.buffer.revision();
         let same = |a: &Asked| a.word == word && a.revision == revision;
         if !self.reach.asked.as_ref().is_some_and(same) {
+            // Um nome de objecto da cena (item 8) alcança sem perguntar ao assistente.
+            let verdict = if self.object_word(word.start).as_ref() == Some(&word) {
+                Verdict::Reaches(Dest::Object(word.start))
+            } else {
+                Verdict::Definition
+            };
             self.reach.asked = Some(Asked {
                 word,
                 revision,
                 ticket: None,
-                verdict: Verdict::Definition,
+                verdict,
             });
         }
     }

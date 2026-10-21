@@ -59,6 +59,7 @@ pub fn frame(
         }
         follow_library(docs, lib);
     }
+    docs.follow_scene(world);
     docs.apply_list(world);
     if let Some(lib) = world.get_resource::<ProjectScripts>() {
         follow_library(docs, lib);
@@ -80,6 +81,17 @@ pub fn frame(
     );
     for d in &mut docs.docs {
         d.occurrences_tick();
+    }
+    // Item 8: o Ctrl+clique num nome de objecto selecciona-o; um renomear mudou textos da biblioteca.
+    let picks: Vec<String> = docs
+        .docs
+        .iter_mut()
+        .filter_map(|d| d.select_object.take())
+        .collect();
+    for id in std::mem::take(&mut docs.reload) {
+        if let Some(h) = host.as_deref_mut() {
+            h.request_reload(id);
+        }
     }
     docs.format_arrivals();
     let ask = save(
@@ -108,6 +120,12 @@ pub fn frame(
     }
     if show_scene {
         hero.documents.activate(None);
+    }
+    if let Some(e) = picks
+        .last()
+        .and_then(|n| crate::scene_names::SceneNames::entity_named(sim.world_mut(), n))
+    {
+        hero.gizmo.replace_selection(Some(e.to_bits()));
     }
 }
 

@@ -263,7 +263,14 @@ impl Intel {
                         Answer::Completion(items) => {
                             let props = d.syntax.declared_properties(d.buffer.text());
                             let local = d.complete.session.as_ref().map_or_else(Vec::new, |s| {
-                                crate::skeleton::local_items(d.buffer.text(), &d.syntax, s)
+                                let mut l =
+                                    crate::skeleton::local_items(d.buffer.text(), &d.syntax, s);
+                                l.extend(crate::scene_names::scene_items(
+                                    d.buffer.text(),
+                                    s.anchor,
+                                    &d.scene,
+                                ));
+                                l
                             });
                             let usage = usage_of(&mut self.usage, lib);
                             d.complete.answer(ticket, items, &props, local, usage);

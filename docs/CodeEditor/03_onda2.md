@@ -169,3 +169,11 @@ seguinte; o resto entra em lotes.
    OK a 21/10** (`PH2D_CODE_SMOKE=6`): lei em `posse_do_jogo` (`ph2d-app-components`), composição na shell, moldura no
    `editor-core`; auditoria 2 lentes curada, mutação 15 + controlo, conduzido 15/15. Handoff:
    [HANDOFF_INTEGRACAO_line_CodeEditor_2026-10-20_ONDA2_I7_A_POSSE.md](handoffs/HANDOFF_INTEGRACAO_line_CodeEditor_2026-10-20_ONDA2_I7_A_POSSE.md).
+8. **Arrastar objetos para o código (decisão do dono, 21/10: escolhida a seguir ao smoke OK do item 7; a decisão é a nº 4
+   de [00_decisoes_do_dono.md](00_decisoes_do_dono.md), 15/10)** — arrastar um objecto da Hierarchy (e do Inspector:
+   propriedade, componente; e de assets) para dentro do script escreve código tipado que o aponta; a referência é
+   DURÁVEL (`StableId`/nome, nunca bits), sobrevive a renomear e o editor verifica-a (nome inexistente = diagnóstico).
+   Reverte a regra «scripts só falam por sinais» ⇒ **precisa de ADR**. Plano + oráculo (Godot 4.7.2: arrastar um nó da
+   árvore para o `CodeEdit` — o que escreve, com e sem Ctrl; `$Caminho`/`%Unico`/`@onready var`) antes de codar; o que
+   já existe: `ph2d.find_by_name` (item 6), o drag de assets (`asset_drag_*`), a lista de problemas (I8). Smoke = uma cena
+   nova `PH2D_CODE_SMOKE=7`. A linha fecha depois (ou o dono manda integrar antes).

@@ -1,0 +1,24 @@
+{
+ "prancha": "mx_w_blend.png",
+ "linhas": [
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "sobre_A": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "sobre_B": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  }
+ },
+ "quem": {
+  "oraculo": "default_soft",
+  "nosso": "MX w Blend (escala 1)",
+  "vizinho": "Charcoal (d 3.276, limiar 0.591)"
+ }
+}

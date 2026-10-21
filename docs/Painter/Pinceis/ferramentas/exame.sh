@@ -134,11 +134,13 @@ ESCALA=${PH2D_EXAME_ESCALA:-}
 if [[ -n $ORACULO && -z $ESCALA ]] && ! py -c "
 import json,sys
 sys.path.insert(0,sys.argv[1])
-from exame_regua import acha_foto
+from exame_regua import acha_foto, mede
 bat=json.load(open(sys.argv[2]))
 c=next(c['nome'] for c in bat['cenas'] if any(o.get('nome')=='recto_lento' for o in c['ops']))
-sys.exit(0 if acha_foto(sys.argv[3],c,'A') else 1)" "$F" "$BAT" "$ORACULO"; then
-  # Um oráculo só com a cena «sobre» (os borradores e borrachas do Rebelle): sem o recto, a escala é a nominal.
+f=acha_foto(sys.argv[3],c,'A')
+sys.exit(0 if f and 'largura' in mede(f,c,bat)['tracos']['recto_lento'] else 1)" "$F" "$BAT" "$ORACULO"; then
+  # Um oráculo só com a cena «sobre» (os borradores e borrachas do Rebelle), ou com o recto VAZIO (uma ferramenta que
+  # não pinta, no Krita): sem a largura do recto, a escala é a nominal.
   ESCALA=1
   echo "▸ o oráculo não tem o recto_lento: escala nominal 1 (PH2D_EXAME_ESCALA para outra)"
 fi

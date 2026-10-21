@@ -1,0 +1,1963 @@
+{
+ "oraculo": "/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/docs/Painter/Pinceis/fixtures/rebelle_bateria/WATER/default_soft",
+ "nosso": "/tmp/ph2d_exame_mistura/escala/mx_w_wet1",
+ "ruido": {
+  "largura": 1.0,
+  "largura50": 1.0,
+  "cobertura": 0.0168,
+  "opacidade": 0.0196,
+  "rugosidade": [
+   0.0412,
+   0.229
+  ],
+  "textura": [
+   0.196,
+   0.21
+  ],
+  "var_local": [
+   0.000116,
+   0.392
+  ],
+  "cv": [
+   0.00122,
+   0.29
+  ],
+  "periodo_fracao": [
+   0.034,
+   0.565
+  ],
+  "cor": 5.32,
+  "pontas_ini": 0.0357,
+  "pontas_fim": 0.0513,
+  "alem_ini": [
+   0.0579,
+   0.153
+  ],
+  "alem_fim": 0.146,
+  "perfil": 0.0346,
+  "pressao_largura": 0.0512,
+  "pressao_cobertura": 0.0982,
+  "vermelho_em_cima": [
+   0.0168,
+   0.149
+  ],
+  "vermelho_depois": [
+   7.58e-05,
+   0.239
+  ],
+  "cor_em_cima": 7.81
+ },
+ "ruido_do_oraculo": {},
+ "fotos": [
+  "sobre_A",
+  "sobre_B"
+ ],
+ "linhas": [
+  {
+   "cena": "sobre",
+   "foto": "A",
+   "traco": "faixa_seca",
+   "metricas": {
+    "largura": {
+     "oraculo": 44.0,
+     "nosso": 59.0,
+     "dif": 15.0,
+     "ruido": 1.0,
+     "ruidos": 15.0
+    },
+    "largura50": {
+     "oraculo": 43.0,
+     "nosso": 55.5,
+     "dif": 12.5,
+     "ruido": 1.0,
+     "ruidos": 12.5
+    },
+    "cobertura": {
+     "oraculo": 0.3538460040882051,
+     "nosso": 0.21778167007115157,
+     "dif": -0.13606433401705353,
+     "ruido": 0.0168,
+     "ruidos": 8.099067501015092
+    },
+    "opacidade": {
+     "oraculo": 0.3843137323856354,
+     "nosso": 0.24313725531101227,
+     "dif": -0.1411764770746231,
+     "ruido": 0.0196,
+     "ruidos": 7.202881483399138
+    },
+    "rugosidade": {
+     "oraculo": 1.054174397827636,
+     "nosso": 1.5720500079192705,
+     "dif": 0.5178756100916346,
+     "ruido": 0.24140593710252864,
+     "ruidos": 2.145248026239244
+    },
+    "textura": {
+     "oraculo": 7.260109291674383,
+     "nosso": 6.318471941303369,
+     "dif": -0.941637350371014,
+     "ruido": 1.5246229512516205,
+     "ruidos": 0.6176198184593695
+    },
+    "var_local": {
+     "oraculo": 0.005555425728339025,
+     "nosso": 0.004565382656412532,
+     "dif": -0.0009900430719264929,
+     "ruido": 0.0021777268855088976,
+     "ruidos": 0.4546222386812921
+    },
+    "cv": {
+     "oraculo": 0.018538746502744684,
+     "nosso": 0.020815625922192677,
+     "dif": 0.0022768794194479927,
+     "ruido": 0.0053762364857959585,
+     "ruidos": 0.4235080479557621
+    },
+    "periodo_fracao": {
+     "oraculo": 0.047138665341929224,
+     "nosso": 0.02778899342870696,
+     "dif": -0.019349671913222264,
+     "ruido": 0.034,
+     "ruidos": 0.5691079974477136
+    },
+    "pontas_ini": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0357,
+     "ruidos": 0.0
+    },
+    "pontas_fim": {
+     "oraculo": 0.9772727272727273,
+     "nosso": 0.9830508474576272,
+     "dif": 0.005778120184899871,
+     "ruido": 0.0513,
+     "ruidos": 0.11263392173294096
+    },
+    "alem_ini": {
+     "oraculo": 0.9090909090909091,
+     "nosso": 0.8135593220338984,
+     "dif": -0.0955315870570107,
+     "ruido": 0.13909090909090907,
+     "ruidos": 0.6868284036778548
+    },
+    "alem_fim": {
+     "oraculo": 0.8636363636363636,
+     "nosso": 0.576271186440678,
+     "dif": -0.28736517719568566,
+     "ruido": 0.146,
+     "ruidos": 1.9682546383266142
+    },
+    "perfil": {
+     "oraculo": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0008,
+      0.0749,
+      0.5427,
+      0.6581,
+      0.7165,
+      0.7826,
+      0.8069,
+      0.8245,
+      0.836,
+      0.8429,
+      0.8552,
+      0.848,
+      0.8603,
+      0.8579,
+      0.8538,
+      0.8438,
+      0.8433,
+      0.8134,
+      0.7751,
+      0.7655,
+      0.7176,
+      0.6513,
+      0.5219,
+      0.1469,
+      0.005,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "nosso": [
+      0.0,
+      0.0,
+      0.0,
+      0.0023,
+      0.0194,
+      0.0405,
+      0.3384,
+      0.6986,
+      0.7453,
+      0.758,
+      0.7853,
+      0.8044,
+      0.8129,
+      0.807,
+      0.8142,
+      0.834,
+      0.8443,
+      0.8408,
+      0.8297,
+      0.8097,
+      0.7857,
+      0.7429,
+      0.7159,
+      0.6737,
+      0.6016,
+      0.543,
+      0.4494,
+      0.2687,
+      0.0169,
+      0.001,
+      0.0001,
+      0.0,
+      0.0
+     ],
+     "dif": 0.03973333333333332,
+     "ruido": 0.0346,
+     "ruidos": 1.1483622350674372
+    },
+    "cor": {
+     "oraculo": [
+      231.3,
+      163.7,
+      171.0
+     ],
+     "nosso": [
+      241.0,
+      199.4,
+      203.6
+     ],
+     "dif": 49.308619936072034,
+     "ruido": 5.32,
+     "ruidos": 9.268537581968427
+    },
+    "vermelho_em_cima:cruza_1": {
+     "oraculo": 0.8357829713495634,
+     "nosso": 0.9959561480593383,
+     "dif": 0.16017317670977493,
+     "ruido": 0.12453166273108493,
+     "ruidos": 1.2862044334512315
+    },
+    "vermelho_depois:cruza_1": {
+     "oraculo": 0.9948225219778838,
+     "nosso": 0.9959265554105041,
+     "dif": 0.0011040334326203327,
+     "ruido": 0.23776258275271422,
+     "ruidos": 0.004643427993750331
+    },
+    "cor_em_cima:cruza_1": {
+     "oraculo": [
+      209.5,
+      169.0,
+      178.0
+     ],
+     "nosso": [
+      242.7,
+      206.3,
+      209.7
+     ],
+     "dif": 59.14744288640042,
+     "ruido": 7.81,
+     "ruidos": 7.573296144225406
+    },
+    "vermelho_em_cima:cruza_2": {
+     "oraculo": 0.0,
+     "nosso": 0.9962857266014573,
+     "dif": 0.9962857266014573,
+     "ruido": 0.0168,
+     "ruidos": 59.30272182151532
+    },
+    "vermelho_depois:cruza_2": {
+     "oraculo": 0.9947743449669841,
+     "nosso": 0.9956439960007167,
+     "dif": 0.0008696510337325991,
+     "ruido": 0.2377510684471092,
+     "ruidos": 0.0036578217688475467
+    },
+    "cor_em_cima:cruza_2": {
+     "oraculo": [
+      103.9,
+      206.4,
+      222.9
+     ],
+     "nosso": [
+      243.1,
+      207.8,
+      211.1
+     ],
+     "dif": 139.7062632812144,
+     "ruido": 7.81,
+     "ruidos": 17.888125900283537
+    },
+    "vermelho_em_cima:cruza_3_rapido": {
+     "oraculo": 0.0,
+     "nosso": 0.9960238551816264,
+     "dif": 0.9960238551816264,
+     "ruido": 0.0168,
+     "ruidos": 59.287134237001574
+    },
+    "vermelho_depois:cruza_3_rapido": {
+     "oraculo": 0.9948181390607861,
+     "nosso": 0.9956454493713451,
+     "dif": 0.0008273103105590485,
+     "ruido": 0.23776153523552787,
+     "ruidos": 0.0034795801168574655
+    },
+    "cor_em_cima:cruza_3_rapido": {
+     "oraculo": [
+      104.0,
+      207.0,
+      223.5
+     ],
+     "nosso": [
+      242.6,
+      206.0,
+      209.4
+     ],
+     "dif": 139.31895061333185,
+     "ruido": 7.81,
+     "ruidos": 17.838534009389484
+    }
+   },
+   "vazio": {
+    "oraculo": false,
+    "nosso": false
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "A",
+   "traco": "faixa_molhada",
+   "metricas": {
+    "largura": {
+     "oraculo": 49.0,
+     "nosso": 59.0,
+     "dif": 10.0,
+     "ruido": 1.0,
+     "ruidos": 10.0
+    },
+    "largura50": {
+     "oraculo": 48.0,
+     "nosso": 55.0,
+     "dif": 7.0,
+     "ruido": 1.0,
+     "ruidos": 7.0
+    },
+    "cobertura": {
+     "oraculo": 0.43316270791596845,
+     "nosso": 0.21710373610880768,
+     "dif": -0.21605897180716077,
+     "ruido": 0.0168,
+     "ruidos": 12.860653083759571
+    },
+    "opacidade": {
+     "oraculo": 0.47058823704719543,
+     "nosso": 0.24313725531101227,
+     "dif": -0.22745098173618317,
+     "ruido": 0.0196,
+     "ruidos": 11.604641925315468
+    },
+    "rugosidade": {
+     "oraculo": 0.5165697706537412,
+     "nosso": 1.6683593314124354,
+     "dif": 1.151789560758694,
+     "ruido": 0.11829447747970674,
+     "ruidos": 9.736630021095296
+    },
+    "textura": {
+     "oraculo": 4.048543734551262,
+     "nosso": 6.2940016309201035,
+     "dif": 2.2454578963688414,
+     "ruido": 0.850194184255765,
+     "ruidos": 2.6411118047513455
+    },
+    "var_local": {
+     "oraculo": 0.001983215882536239,
+     "nosso": 0.004554461243538941,
+     "dif": 0.002571245361002702,
+     "ruido": 0.0007774206259542057,
+     "ruidos": 3.3074056375167005
+    },
+    "cv": {
+     "oraculo": 0.10582852534270837,
+     "nosso": 0.024140399278612255,
+     "dif": -0.08168812606409612,
+     "ruido": 0.030690272349385424,
+     "ruidos": 2.661694400562461
+    },
+    "periodo_fracao": {
+     "oraculo": 0.18588440660784633,
+     "nosso": 0.24292901153297372,
+     "dif": 0.05704460492512739,
+     "ruido": 0.10502468973343317,
+     "ruidos": 0.5431542342083018
+    },
+    "pontas_ini": {
+     "oraculo": 0.9795918367346939,
+     "nosso": 0.9830508474576272,
+     "dif": 0.003459010722933309,
+     "ruido": 0.0357,
+     "ruidos": 0.09689105666479857
+    },
+    "pontas_fim": {
+     "oraculo": 1.0,
+     "nosso": 0.9830508474576272,
+     "dif": -0.016949152542372836,
+     "ruido": 0.0513,
+     "ruidos": 0.33039283708329115
+    },
+    "alem_ini": {
+     "oraculo": 0.9387755102040817,
+     "nosso": 0.847457627118644,
+     "dif": -0.09131788308543765,
+     "ruido": 0.1436326530612245,
+     "ruidos": 0.6357738379065707
+    },
+    "alem_fim": {
+     "oraculo": 0.9387755102040817,
+     "nosso": 0.5423728813559322,
+     "dif": -0.3964026288481495,
+     "ruido": 0.146,
+     "ruidos": 2.715086498959928
+    },
+    "perfil": {
+     "oraculo": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0038,
+      0.571,
+      0.7766,
+      0.8025,
+      0.8008,
+      0.8045,
+      0.808,
+      0.8085,
+      0.8126,
+      0.814,
+      0.8139,
+      0.8126,
+      0.8129,
+      0.8088,
+      0.8058,
+      0.802,
+      0.7996,
+      0.7987,
+      0.7911,
+      0.7647,
+      0.7524,
+      0.596,
+      0.0236,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "nosso": [
+      0.0,
+      0.0,
+      0.0,
+      0.0021,
+      0.0193,
+      0.0382,
+      0.3475,
+      0.6747,
+      0.7374,
+      0.7428,
+      0.7751,
+      0.8025,
+      0.8041,
+      0.8018,
+      0.8078,
+      0.8337,
+      0.8492,
+      0.8357,
+      0.8201,
+      0.7974,
+      0.7826,
+      0.7549,
+      0.7324,
+      0.6986,
+      0.6085,
+      0.5408,
+      0.4328,
+      0.229,
+      0.0164,
+      0.0012,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "dif": 0.04958787878787879,
+     "ruido": 0.0346,
+     "ruidos": 1.4331756875109478
+    },
+    "cor": {
+     "oraculo": [
+      143.4,
+      185.1,
+      198.8
+     ],
+     "nosso": [
+      241.0,
+      199.6,
+      203.6
+     ],
+     "dif": 98.78790411786251,
+     "ruido": 5.32,
+     "ruidos": 18.569154909372653
+    },
+    "vermelho_em_cima:cruza_1": {
+     "oraculo": 0.0005394045747532052,
+     "nosso": 0.9958463904550997,
+     "dif": 0.9953069858803465,
+     "ruido": 0.0168,
+     "ruidos": 59.244463445258724
+    },
+    "vermelho_depois:cruza_1": {
+     "oraculo": 0.21768020775907604,
+     "nosso": 0.9961439321182575,
+     "dif": 0.7784637243591814,
+     "ruido": 0.05202556965441917,
+     "ruidos": 14.963098521172212
+    },
+    "cor_em_cima:cruza_1": {
+     "oraculo": [
+      169.3,
+      225.8,
+      235.2
+     ],
+     "nosso": [
+      241.9,
+      203.3,
+      207.0
+     ],
+     "dif": 81.06941470122995,
+     "ruido": 7.81,
+     "ruidos": 10.380206747916766
+    },
+    "vermelho_em_cima:cruza_2": {
+     "oraculo": 0.0,
+     "nosso": 0.9958773562998365,
+     "dif": 0.9958773562998365,
+     "ruido": 0.0168,
+     "ruidos": 59.278414065466464
+    },
+    "vermelho_depois:cruza_2": {
+     "oraculo": 0.010644209993504336,
+     "nosso": 0.9963854378037701,
+     "dif": 0.9857412278102657,
+     "ruido": 0.002543966188447536,
+     "ruidos": 387.4820476335881
+    },
+    "cor_em_cima:cruza_2": {
+     "oraculo": [
+      135.8,
+      237.5,
+      249.4
+     ],
+     "nosso": [
+      241.9,
+      203.1,
+      206.7
+     ],
+     "dif": 119.431402905601,
+     "ruido": 7.81,
+     "ruidos": 15.292113048092318
+    },
+    "vermelho_em_cima:cruza_3_rapido": {
+     "oraculo": 0.0,
+     "nosso": 0.9957964426286767,
+     "dif": 0.9957964426286767,
+     "ruido": 0.0168,
+     "ruidos": 59.27359777551648
+    },
+    "vermelho_depois:cruza_3_rapido": {
+     "oraculo": 0.007097371224975211,
+     "nosso": 0.9959869683651142,
+     "dif": 0.988889597140139,
+     "ruido": 0.0016962717227690753,
+     "ruidos": 582.9782952025093
+    },
+    "cor_em_cima:cruza_3_rapido": {
+     "oraculo": [
+      136.4,
+      237.7,
+      249.5
+     ],
+     "nosso": [
+      242.0,
+      203.7,
+      207.3
+     ],
+     "dif": 118.69372350718464,
+     "ruido": 7.81,
+     "ruidos": 15.19765986007486
+    }
+   },
+   "vazio": {
+    "oraculo": false,
+    "nosso": false
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "A",
+   "traco": "cruza_1",
+   "metricas": {
+    "largura": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 1.0,
+     "ruidos": null
+    },
+    "largura50": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 1.0,
+     "ruidos": null
+    },
+    "cobertura": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0168,
+     "ruidos": null
+    },
+    "opacidade": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0196,
+     "ruidos": null
+    },
+    "rugosidade": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0412,
+     "ruidos": null
+    },
+    "textura": {
+     "oraculo": 7600286.727351089,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 1596060.2127437287,
+     "ruidos": null
+    },
+    "var_local": {
+     "oraculo": 13557.32288772925,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 5314.470571989866,
+     "ruidos": null
+    },
+    "cv": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.00122,
+     "ruidos": null
+    },
+    "periodo_fracao": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.034,
+     "ruidos": null
+    },
+    "pontas_ini": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0357,
+     "ruidos": null
+    },
+    "pontas_fim": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0513,
+     "ruidos": null
+    },
+    "alem_ini": {
+     "oraculo": 6.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.9179999999999999,
+     "ruidos": null
+    },
+    "alem_fim": {
+     "oraculo": 4.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.146,
+     "ruidos": null
+    },
+    "perfil": {
+     "oraculo": [
+      0.8947,
+      0.8947,
+      0.8953,
+      0.8958,
+      0.8964,
+      0.8969,
+      0.8975,
+      0.898,
+      0.8985,
+      0.8991,
+      0.8996,
+      0.8995,
+      0.8991,
+      0.8987,
+      0.8983,
+      0.8979,
+      0.8975,
+      0.8971,
+      0.8967,
+      0.8963,
+      0.8959,
+      0.8957,
+      0.8957,
+      0.8955,
+      0.8953,
+      0.8951,
+      0.8949,
+      0.8947,
+      0.8945,
+      0.8943,
+      0.8941,
+      0.8939,
+      0.8942
+     ],
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0346,
+     "ruidos": null
+    },
+    "cor": {
+     "oraculo": [
+      254.0,
+      254.0,
+      255.0
+     ],
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 5.32,
+     "ruidos": null
+    },
+    "vermelho_em_cima:faixa_seca": {
+     "oraculo": NaN,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0168,
+     "ruidos": null
+    },
+    "vermelho_depois:faixa_seca": {
+     "oraculo": NaN,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 7.58e-05,
+     "ruidos": null
+    },
+    "cor_em_cima:faixa_seca": {
+     "oraculo": null,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 7.81,
+     "ruidos": null
+    },
+    "vermelho_em_cima:faixa_molhada": {
+     "oraculo": NaN,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0168,
+     "ruidos": null
+    },
+    "vermelho_depois:faixa_molhada": {
+     "oraculo": NaN,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 7.58e-05,
+     "ruidos": null
+    },
+    "cor_em_cima:faixa_molhada": {
+     "oraculo": null,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 7.81,
+     "ruidos": null
+    }
+   },
+   "vazio": {
+    "oraculo": false,
+    "nosso": true
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "A",
+   "traco": "cruza_2",
+   "metricas": {
+    "largura": {
+     "oraculo": 39.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 1.0,
+     "ruidos": null
+    },
+    "largura50": {
+     "oraculo": 37.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 1.0,
+     "ruidos": null
+    },
+    "cobertura": {
+     "oraculo": 0.5192763240728977,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0168,
+     "ruidos": null
+    },
+    "opacidade": {
+     "oraculo": 0.572549045085907,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0196,
+     "ruidos": null
+    },
+    "rugosidade": {
+     "oraculo": 0.22441810755147346,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.05139174662928742,
+     "ruidos": null
+    },
+    "textura": {
+     "oraculo": 2.0416292828194,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.42874214939207395,
+     "ruidos": null
+    },
+    "var_local": {
+     "oraculo": 0.00044205919839500503,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.00017328720577084199,
+     "ruidos": null
+    },
+    "cv": {
+     "oraculo": 0.08201032969657959,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.02378299561200808,
+     "ruidos": null
+    },
+    "periodo_fracao": {
+     "oraculo": 0.16102123586390804,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.09097699826310804,
+     "ruidos": null
+    },
+    "pontas_ini": {
+     "oraculo": 1.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0357,
+     "ruidos": null
+    },
+    "pontas_fim": {
+     "oraculo": 0.9743589743589743,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0513,
+     "ruidos": null
+    },
+    "alem_ini": {
+     "oraculo": 0.9743589743589743,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.14907692307692308,
+     "ruidos": null
+    },
+    "alem_fim": {
+     "oraculo": 0.5641025641025641,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.146,
+     "ruidos": null
+    },
+    "perfil": {
+     "oraculo": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.686,
+      0.8728,
+      0.8755,
+      0.8683,
+      0.865,
+      0.8673,
+      0.8648,
+      0.8631,
+      0.8588,
+      0.8548,
+      0.8544,
+      0.8593,
+      0.8603,
+      0.8609,
+      0.8647,
+      0.8702,
+      0.8666,
+      0.8705,
+      0.8742,
+      0.8717,
+      0.713,
+      0.001,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0346,
+     "ruidos": null
+    },
+    "cor": {
+     "oraculo": [
+      121.6,
+      241.9,
+      255.0
+     ],
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 5.32,
+     "ruidos": null
+    },
+    "vermelho_em_cima:faixa_seca": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0168,
+     "ruidos": null
+    },
+    "vermelho_depois:faixa_seca": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 7.58e-05,
+     "ruidos": null
+    },
+    "cor_em_cima:faixa_seca": {
+     "oraculo": [
+      105.7,
+      212.9,
+      228.9
+     ],
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 7.81,
+     "ruidos": null
+    },
+    "vermelho_em_cima:faixa_molhada": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0168,
+     "ruidos": null
+    },
+    "vermelho_depois:faixa_molhada": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 7.58e-05,
+     "ruidos": null
+    },
+    "cor_em_cima:faixa_molhada": {
+     "oraculo": [
+      137.8,
+      239.3,
+      250.9
+     ],
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 7.81,
+     "ruidos": null
+    }
+   },
+   "vazio": {
+    "oraculo": false,
+    "nosso": true
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "A",
+   "traco": "cruza_3_rapido",
+   "metricas": {
+    "largura": {
+     "oraculo": 39.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 1.0,
+     "ruidos": null
+    },
+    "largura50": {
+     "oraculo": 37.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 1.0,
+     "ruidos": null
+    },
+    "cobertura": {
+     "oraculo": 0.5189954148858418,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0168,
+     "ruidos": null
+    },
+    "opacidade": {
+     "oraculo": 0.572549045085907,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0196,
+     "ruidos": null
+    },
+    "rugosidade": {
+     "oraculo": 0.20154107514851405,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.04615290620900972,
+     "ruidos": null
+    },
+    "textura": {
+     "oraculo": 2.002792605942483,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.42058644724792144,
+     "ruidos": null
+    },
+    "var_local": {
+     "oraculo": 0.00041420568397009113,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.00016236862811627574,
+     "ruidos": null
+    },
+    "cv": {
+     "oraculo": 0.08212225085720755,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.023815452748590187,
+     "ruidos": null
+    },
+    "periodo_fracao": {
+     "oraculo": 0.157346496670573,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.08890077061887373,
+     "ruidos": null
+    },
+    "pontas_ini": {
+     "oraculo": 1.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0357,
+     "ruidos": null
+    },
+    "pontas_fim": {
+     "oraculo": 0.9743589743589743,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0513,
+     "ruidos": null
+    },
+    "alem_ini": {
+     "oraculo": 0.9743589743589743,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.14907692307692308,
+     "ruidos": null
+    },
+    "alem_fim": {
+     "oraculo": 0.5641025641025641,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.146,
+     "ruidos": null
+    },
+    "perfil": {
+     "oraculo": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.6797,
+      0.8676,
+      0.8691,
+      0.8635,
+      0.8589,
+      0.8583,
+      0.857,
+      0.8555,
+      0.8537,
+      0.8532,
+      0.8492,
+      0.8507,
+      0.8517,
+      0.8564,
+      0.8578,
+      0.8609,
+      0.8595,
+      0.8605,
+      0.8663,
+      0.8641,
+      0.712,
+      0.0014,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0346,
+     "ruidos": null
+    },
+    "cor": {
+     "oraculo": [
+      121.7,
+      242.0,
+      255.0
+     ],
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 5.32,
+     "ruidos": null
+    },
+    "vermelho_em_cima:faixa_seca": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0168,
+     "ruidos": null
+    },
+    "vermelho_depois:faixa_seca": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 7.58e-05,
+     "ruidos": null
+    },
+    "cor_em_cima:faixa_seca": {
+     "oraculo": [
+      105.7,
+      213.4,
+      229.3
+     ],
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 7.81,
+     "ruidos": null
+    },
+    "vermelho_em_cima:faixa_molhada": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0168,
+     "ruidos": null
+    },
+    "vermelho_depois:faixa_molhada": {
+     "oraculo": 0.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 7.58e-05,
+     "ruidos": null
+    },
+    "cor_em_cima:faixa_molhada": {
+     "oraculo": [
+      138.5,
+      239.4,
+      251.0
+     ],
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 7.81,
+     "ruidos": null
+    }
+   },
+   "vazio": {
+    "oraculo": false,
+    "nosso": true
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "A",
+   "traco": "papel",
+   "metricas": {
+    "largura": {
+     "oraculo": 39.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 1.0,
+     "ruidos": null
+    },
+    "largura50": {
+     "oraculo": 37.0,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 1.0,
+     "ruidos": null
+    },
+    "cobertura": {
+     "oraculo": 0.565506936748423,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0168,
+     "ruidos": null
+    },
+    "opacidade": {
+     "oraculo": 0.5921568870544434,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0196,
+     "ruidos": null
+    },
+    "rugosidade": {
+     "oraculo": 0.17432217063507582,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0412,
+     "ruidos": null
+    },
+    "textura": {
+     "oraculo": 2.485071955550935,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.5218651106656963,
+     "ruidos": null
+    },
+    "var_local": {
+     "oraculo": 0.0005837642760942615,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0002288355962289505,
+     "ruidos": null
+    },
+    "cv": {
+     "oraculo": 0.026870876966078462,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.007792554320162753,
+     "ruidos": null
+    },
+    "periodo_fracao": {
+     "oraculo": 0.03543897766737178,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.034,
+     "ruidos": null
+    },
+    "pontas_ini": {
+     "oraculo": 0.9871794871794872,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0357,
+     "ruidos": null
+    },
+    "pontas_fim": {
+     "oraculo": 0.9743589743589743,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0513,
+     "ruidos": null
+    },
+    "alem_ini": {
+     "oraculo": 0.9743589743589743,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.14907692307692308,
+     "ruidos": null
+    },
+    "alem_fim": {
+     "oraculo": 0.5641025641025641,
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.146,
+     "ruidos": null
+    },
+    "perfil": {
+     "oraculo": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0014,
+      0.7525,
+      0.9211,
+      0.924,
+      0.9166,
+      0.9198,
+      0.9255,
+      0.9194,
+      0.9145,
+      0.91,
+      0.9078,
+      0.9078,
+      0.9082,
+      0.909,
+      0.9121,
+      0.9172,
+      0.9188,
+      0.9152,
+      0.9145,
+      0.924,
+      0.9193,
+      0.7276,
+      0.0001,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 0.0346,
+     "ruidos": null
+    },
+    "cor": {
+     "oraculo": [
+      109.8,
+      240.8,
+      255.0
+     ],
+     "nosso": null,
+     "dif": NaN,
+     "ruido": 5.32,
+     "ruidos": null
+    }
+   },
+   "vazio": {
+    "oraculo": false,
+    "nosso": true
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "B",
+   "traco": "faixa_seca",
+   "metricas": {
+    "largura": {
+     "oraculo": 44.0,
+     "nosso": 59.0,
+     "dif": 15.0,
+     "ruido": 1.0,
+     "ruidos": 15.0
+    },
+    "largura50": {
+     "oraculo": 43.0,
+     "nosso": 55.5,
+     "dif": 12.5,
+     "ruido": 1.0,
+     "ruidos": 12.5
+    },
+    "cobertura": {
+     "oraculo": 0.3538460040882051,
+     "nosso": 0.21778167007115157,
+     "dif": -0.13606433401705353,
+     "ruido": 0.0168,
+     "ruidos": 8.099067501015092
+    },
+    "opacidade": {
+     "oraculo": 0.3843137323856354,
+     "nosso": 0.24313725531101227,
+     "dif": -0.1411764770746231,
+     "ruido": 0.0196,
+     "ruidos": 7.202881483399138
+    },
+    "rugosidade": {
+     "oraculo": 1.054174397827636,
+     "nosso": 1.5720500079192705,
+     "dif": 0.5178756100916346,
+     "ruido": 0.24140593710252864,
+     "ruidos": 2.145248026239244
+    },
+    "textura": {
+     "oraculo": 7.260109291674383,
+     "nosso": 6.318471941303369,
+     "dif": -0.941637350371014,
+     "ruido": 1.5246229512516205,
+     "ruidos": 0.6176198184593695
+    },
+    "var_local": {
+     "oraculo": 0.0055554257283373315,
+     "nosso": 0.004565382656412909,
+     "dif": -0.0009900430719244225,
+     "ruido": 0.002177726885508234,
+     "ruidos": 0.4546222386804799
+    },
+    "cv": {
+     "oraculo": 0.018538746502744684,
+     "nosso": 0.020815625922192677,
+     "dif": 0.0022768794194479927,
+     "ruido": 0.0053762364857959585,
+     "ruidos": 0.4235080479557621
+    },
+    "periodo_fracao": {
+     "oraculo": 0.047138665341929224,
+     "nosso": 0.02778899342870696,
+     "dif": -0.019349671913222264,
+     "ruido": 0.034,
+     "ruidos": 0.5691079974477136
+    },
+    "pontas_ini": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0357,
+     "ruidos": 0.0
+    },
+    "pontas_fim": {
+     "oraculo": 0.9772727272727273,
+     "nosso": 0.9830508474576272,
+     "dif": 0.005778120184899871,
+     "ruido": 0.0513,
+     "ruidos": 0.11263392173294096
+    },
+    "alem_ini": {
+     "oraculo": 0.9090909090909091,
+     "nosso": 0.8135593220338984,
+     "dif": -0.0955315870570107,
+     "ruido": 0.13909090909090907,
+     "ruidos": 0.6868284036778548
+    },
+    "alem_fim": {
+     "oraculo": 0.8636363636363636,
+     "nosso": 0.576271186440678,
+     "dif": -0.28736517719568566,
+     "ruido": 0.146,
+     "ruidos": 1.9682546383266142
+    },
+    "perfil": {
+     "oraculo": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0008,
+      0.0749,
+      0.5427,
+      0.6581,
+      0.7165,
+      0.7826,
+      0.8069,
+      0.8245,
+      0.836,
+      0.8429,
+      0.8552,
+      0.848,
+      0.8603,
+      0.8579,
+      0.8538,
+      0.8438,
+      0.8433,
+      0.8134,
+      0.7751,
+      0.7655,
+      0.7176,
+      0.6513,
+      0.5219,
+      0.1469,
+      0.005,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "nosso": [
+      0.0,
+      0.0,
+      0.0,
+      0.0023,
+      0.0194,
+      0.0405,
+      0.3384,
+      0.6986,
+      0.7453,
+      0.758,
+      0.7853,
+      0.8044,
+      0.8129,
+      0.807,
+      0.8142,
+      0.834,
+      0.8443,
+      0.8408,
+      0.8297,
+      0.8097,
+      0.7857,
+      0.7429,
+      0.7159,
+      0.6737,
+      0.6016,
+      0.543,
+      0.4494,
+      0.2687,
+      0.0169,
+      0.001,
+      0.0001,
+      0.0,
+      0.0
+     ],
+     "dif": 0.03973333333333332,
+     "ruido": 0.0346,
+     "ruidos": 1.1483622350674372
+    },
+    "cor": {
+     "oraculo": [
+      231.3,
+      163.7,
+      171.0
+     ],
+     "nosso": [
+      241.0,
+      199.4,
+      203.6
+     ],
+     "dif": 49.308619936072034,
+     "ruido": 5.32,
+     "ruidos": 9.268537581968427
+    },
+    "vermelho_em_cima:cruza_1": {
+     "oraculo": 0.994750870810776,
+     "nosso": 0.996510785087883,
+     "dif": 0.0017599142771070886,
+     "ruido": 0.1482178797508056,
+     "ruidos": 0.011873832496227723
+    },
+    "vermelho_depois:cruza_1": {
+     "oraculo": 0.9948225219778838,
+     "nosso": 0.9959119886699791,
+     "dif": 0.0010894666920953089,
+     "ruido": 0.23776258275271422,
+     "ruidos": 0.00458216208573244
+    },
+    "cor_em_cima:cruza_1": {
+     "oraculo": [
+      231.1,
+      163.0,
+      170.4
+     ],
+     "nosso": [
+      242.7,
+      206.5,
+      209.7
+     ],
+     "dif": 59.76035475128974,
+     "ruido": 7.81,
+     "ruidos": 7.651773975837355
+    },
+    "vermelho_em_cima:cruza_2": {
+     "oraculo": 0.9948035918978332,
+     "nosso": 0.9968137848879356,
+     "dif": 0.0020101929901024107,
+     "ruido": 0.14822573519277712,
+     "ruidos": 0.013561700250553827
+    },
+    "vermelho_depois:cruza_2": {
+     "oraculo": 0.9947743449669841,
+     "nosso": 0.9956334243778621,
+     "dif": 0.0008590794108779276,
+     "ruido": 0.2377510684471092,
+     "ruidos": 0.003613356678012326
+    },
+    "cor_em_cima:cruza_2": {
+     "oraculo": [
+      232.3,
+      167.7,
+      174.7
+     ],
+     "nosso": [
+      243.1,
+      207.9,
+      211.1
+     ],
+     "dif": 55.29593113421639,
+     "ruido": 7.81,
+     "ruidos": 7.080144831525787
+    },
+    "vermelho_em_cima:cruza_3_rapido": {
+     "oraculo": 0.9945081406788107,
+     "nosso": 0.9963580865000761,
+     "dif": 0.0018499458212654085,
+     "ruido": 0.14818171296114277,
+     "ruidos": 0.012484305818157968
+    },
+    "vermelho_depois:cruza_3_rapido": {
+     "oraculo": 0.9948181390607861,
+     "nosso": 0.9956725586800284,
+     "dif": 0.0008544196192422637,
+     "ruido": 0.23776153523552787,
+     "ruidos": 0.003593599016745375
+    },
+    "cor_em_cima:cruza_3_rapido": {
+     "oraculo": [
+      232.6,
+      169.0,
+      176.0
+     ],
+     "nosso": [
+      242.6,
+      206.2,
+      209.5
+     ],
+     "dif": 51.049877570862,
+     "ruido": 7.81,
+     "ruidos": 6.536476001390781
+    }
+   },
+   "vazio": {
+    "oraculo": false,
+    "nosso": false
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "B",
+   "traco": "faixa_molhada",
+   "metricas": {
+    "largura": {
+     "oraculo": 46.0,
+     "nosso": 59.0,
+     "dif": 13.0,
+     "ruido": 1.0,
+     "ruidos": 13.0
+    },
+    "largura50": {
+     "oraculo": 45.0,
+     "nosso": 55.0,
+     "dif": 10.0,
+     "ruido": 1.0,
+     "ruidos": 10.0
+    },
+    "cobertura": {
+     "oraculo": 0.38170231035980745,
+     "nosso": 0.21783676499045848,
+     "dif": -0.16386554536934897,
+     "ruido": 0.0168,
+     "ruidos": 9.753901510080297
+    },
+    "opacidade": {
+     "oraculo": 0.4431372582912445,
+     "nosso": 0.24313725531101227,
+     "dif": -0.20000000298023224,
+     "ruido": 0.0196,
+     "ruidos": 10.204081784705727
+    },
+    "rugosidade": {
+     "oraculo": 1.1710267623200914,
+     "nosso": 1.6612851217403777,
+     "dif": 0.4902583594202863,
+     "ruido": 0.2681651285713009,
+     "ruidos": 1.82819579127319
+    },
+    "textura": {
+     "oraculo": 6.8894951554021,
+     "nosso": 6.238150881171874,
+     "dif": -0.651344274230226,
+     "ruido": 1.446793982634441,
+     "ruidos": 0.45019835722858415
+    },
+    "var_local": {
+     "oraculo": 0.005416537226026611,
+     "nosso": 0.0044787281908801845,
+     "dif": -0.000937809035146427,
+     "ruido": 0.0021232825926024317,
+     "ruidos": 0.4416788600885141
+    },
+    "cv": {
+     "oraculo": 0.1338066471549221,
+     "nosso": 0.02390941901728602,
+     "dif": -0.10989722813763608,
+     "ruido": 0.03880392767492741,
+     "ruidos": 2.832116095522067
+    },
+    "periodo_fracao": {
+     "oraculo": 0.10186020935825864,
+     "nosso": 0.24485742770497507,
+     "dif": 0.14299721834671641,
+     "ruido": 0.05755101828741613,
+     "ruidos": 2.4847035309188197
+    },
+    "pontas_ini": {
+     "oraculo": 0.9565217391304348,
+     "nosso": 0.9830508474576272,
+     "dif": 0.026529108327192352,
+     "ruido": 0.0357,
+     "ruidos": 0.7431122780726148
+    },
+    "pontas_fim": {
+     "oraculo": 0.9565217391304348,
+     "nosso": 0.9830508474576272,
+     "dif": 0.026529108327192352,
+     "ruido": 0.0513,
+     "ruidos": 0.517136614565153
+    },
+    "alem_ini": {
+     "oraculo": 0.8260869565217391,
+     "nosso": 0.847457627118644,
+     "dif": 0.021370670596904895,
+     "ruido": 0.12639130434782608,
+     "ruidos": 0.16908339309556678
+    },
+    "alem_fim": {
+     "oraculo": 0.7391304347826086,
+     "nosso": 0.5423728813559322,
+     "dif": -0.19675755342667645,
+     "ruido": 0.146,
+     "ruidos": 1.3476544755251811
+    },
+    "perfil": {
+     "oraculo": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0002,
+      0.0666,
+      0.5083,
+      0.5881,
+      0.5996,
+      0.5905,
+      0.599,
+      0.6114,
+      0.6146,
+      0.6263,
+      0.6303,
+      0.632,
+      0.628,
+      0.6279,
+      0.6213,
+      0.6167,
+      0.6069,
+      0.6025,
+      0.5898,
+      0.5739,
+      0.5668,
+      0.528,
+      0.4662,
+      0.2048,
+      0.0047,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "nosso": [
+      0.0,
+      0.0,
+      0.0,
+      0.0021,
+      0.0193,
+      0.0385,
+      0.3503,
+      0.6773,
+      0.7406,
+      0.7457,
+      0.778,
+      0.8053,
+      0.8068,
+      0.8045,
+      0.8108,
+      0.8366,
+      0.8519,
+      0.8383,
+      0.8229,
+      0.8002,
+      0.7852,
+      0.7581,
+      0.735,
+      0.7013,
+      0.6117,
+      0.5432,
+      0.4351,
+      0.2303,
+      0.0163,
+      0.0012,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "dif": 0.09928787878787879,
+     "ruido": 0.0346,
+     "ruidos": 2.869591872482046
+    },
+    "cor": {
+     "oraculo": [
+      229.2,
+      155.2,
+      163.1
+     ],
+     "nosso": [
+      241.0,
+      199.5,
+      203.6
+     ],
+     "dif": 61.17172549470876,
+     "ruido": 5.32,
+     "ruidos": 11.498444641862548
+    },
+    "vermelho_em_cima:cruza_1": {
+     "oraculo": 0.9936102302433244,
+     "nosso": 0.995858965975942,
+     "dif": 0.002248735732617635,
+     "ruido": 0.14804792430625532,
+     "ruidos": 0.015189241883363718
+    },
+    "vermelho_depois:cruza_1": {
+     "oraculo": 0.9949086188059741,
+     "nosso": 0.9957060787476418,
+     "dif": 0.0007974599416676886,
+     "ruido": 0.2377831598946278,
+     "ruidos": 0.0033537275811334924
+    },
+    "cor_em_cima:cruza_1": {
+     "oraculo": [
+      240.7,
+      201.3,
+      206.0
+     ],
+     "nosso": [
+      242.0,
+      203.1,
+      207.0
+     ],
+     "dif": 2.4351591323771773,
+     "ruido": 7.81,
+     "ruidos": 0.3118001449906757
+    },
+    "vermelho_em_cima:cruza_2": {
+     "oraculo": NaN,
+     "nosso": 0.9958253836018381,
+     "dif": NaN,
+     "ruido": 0.0168,
+     "ruidos": null
+    },
+    "vermelho_depois:cruza_2": {
+     "oraculo": 0.993997884010074,
+     "nosso": 0.9957075865525035,
+     "dif": 0.0017097025424294143,
+     "ruido": 0.2375654942784077,
+     "ruidos": 0.007196762928987407
+    },
+    "cor_em_cima:cruza_2": {
+     "oraculo": null,
+     "nosso": [
+      241.9,
+      202.9,
+      206.7
+     ],
+     "dif": NaN,
+     "ruido": 7.81,
+     "ruidos": null
+    },
+    "vermelho_em_cima:cruza_3_rapido": {
+     "oraculo": NaN,
+     "nosso": 0.9959035567633204,
+     "dif": NaN,
+     "ruido": 0.0168,
+     "ruidos": null
+    },
+    "vermelho_depois:cruza_3_rapido": {
+     "oraculo": 0.9941698703139666,
+     "nosso": 0.9954762427975962,
+     "dif": 0.0013063724836295254,
+     "ruido": 0.23760659900503803,
+     "ruidos": 0.005498047988144581
+    },
+    "cor_em_cima:cruza_3_rapido": {
+     "oraculo": null,
+     "nosso": [
+      242.0,
+      203.5,
+      207.3
+     ],
+     "dif": NaN,
+     "ruido": 7.81,
+     "ruidos": null
+    }
+   },
+   "vazio": {
+    "oraculo": false,
+    "nosso": false
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "B",
+   "traco": "cruza_1",
+   "metricas": {},
+   "vazio": {
+    "oraculo": true,
+    "nosso": true
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "B",
+   "traco": "cruza_2",
+   "metricas": {},
+   "vazio": {
+    "oraculo": true,
+    "nosso": true
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "B",
+   "traco": "cruza_3_rapido",
+   "metricas": {},
+   "vazio": {
+    "oraculo": true,
+    "nosso": true
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "B",
+   "traco": "papel",
+   "metricas": {},
+   "vazio": {
+    "oraculo": true,
+    "nosso": true
+   }
+  }
+ ]
+}

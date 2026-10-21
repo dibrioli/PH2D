@@ -1,0 +1,24 @@
+{
+ "prancha": "smudge_finger.png",
+ "linhas": [
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "sobre_A": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  },
+  "sobre_B": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  }
+ },
+ "quem": {
+  "oraculo": "default_soft",
+  "nosso": "Smudge Finger (escala 1)",
+  "vizinho": "Palette Knife (d 3.959, limiar 0.591)"
+ }
+}

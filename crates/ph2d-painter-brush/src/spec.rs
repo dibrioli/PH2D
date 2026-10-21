@@ -197,6 +197,12 @@ pub struct BrushSpec {
     /// `Style: Solid` morreu na W7, quando a mancha passou a ser a região **sob** o traço; ver
     /// `PainterTool::stamp_dabs`.
     pub wire_connection_line: bool,
+    /// ⭐ **Wire — as cordas SORTEADAS** (J4 efeitos; o `Experimental Webs` do Krita): cada uma das
+    /// [`crate::line_kind::WIRE_CURVES_PER_DAB`] cordas de um dab cai num ponto SORTEADO da sua fatia da janela, e
+    /// não no fim dela — o Curve do Krita liga a todos os pontos da história, e a fita sai lisa, num degradê do
+    /// traço para dentro da curva, em vez de quatro fios paralelos. O mesmo custo (a contagem não muda); `false` = as
+    /// fatias de sempre, ao bit.
+    pub wire_sorteio: bool,
     /// **Ribbon — o `Weight`**, a fração do [`crate::line_kind::RIBBON_LAG_MAX_S`] que o traço
     /// atrasa. `0` desliga (sem atraso não há fita).
     ///

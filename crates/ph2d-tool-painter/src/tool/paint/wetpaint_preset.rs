@@ -124,7 +124,7 @@ const NAO_LIDO: &str = "o Wet Paint não o lê (deposita pela lei do fluido)";
 const PLANO: &str = "lido só pelo Digital: o plano do traço — o tecto e as orlas (L8, `traco_plano`)";
 
 /// Os campos do `BrushSpec` que o preset NÃO leva, e porquê.
-pub const CAMPOS_FORA: [(&str, &str); 74] = [
+pub const CAMPOS_FORA: [(&str, &str); 75] = [
     ("radius_px", VOLUME),
     ("strength", VOLUME),
     ("color", DA_OBRA),
@@ -144,6 +144,7 @@ pub const CAMPOS_FORA: [(&str, &str); 74] = [
     ("sketchy_magnetify", DO_GESTO),
     ("wire_history", DO_GESTO),
     ("wire_connection_line", DO_GESTO),
+    ("wire_sorteio", DO_GESTO),
     ("ribbon_weight", DO_GESTO),
     ("ribbon_friction", DO_GESTO),
     ("ribbon_gravity", DO_GESTO),

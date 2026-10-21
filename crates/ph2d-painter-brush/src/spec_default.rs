@@ -68,6 +68,7 @@ impl Default for BrushSpec {
             // LOOK, e o teto (o que o produto SUSTENTA, medido em 24) é outra pergunta.
             wire_history: 6.0,
             wire_connection_line: true,
+            wire_sorteio: false,
             // ⚠️ Estes três já nascem VIVOS, ao contrário do `spray_count`, e a razão é a mesma que
             // fez o Spray precisar de armar um default: **um tipo escolhido tem de FAZER alguma
             // coisa**. Aqui os campos são exclusivos do Ribbon (nenhum outro modo os lê), então

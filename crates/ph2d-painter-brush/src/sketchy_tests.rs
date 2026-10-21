@@ -570,3 +570,26 @@ fn the_wire_neutral_sews_nothing() {
     let (_, armed) = straight(wire_spec(2.0), 400.0, 3.0);
     assert!(!armed.is_empty(), "controle: a fixture tem de costurar");
 }
+
+/// ⭐ **As cordas SORTEADAS do Wire** (J4 efeitos; o `Experimental Webs` do Krita liga a TODA a história, e a fita sai
+/// lisa): sem o sorteio cada corda cai no FIM da sua fatia da janela — num traço reto os comprimentos são os quatro
+/// múltiplos de `janela/4` (mais o passo dos dabs), nenhum abaixo de 0,8 da 1.ª fatia; com ele, cada corda cai num
+/// ponto sorteado da sua fatia — perto de ¼ delas abaixo disso — e a contagem por dab é a MESMA (o custo não muda).
+#[test]
+fn as_cordas_sorteadas_cobrem_a_janela() {
+    let curtas = |sorteio: bool| {
+        let sp = BrushSpec {
+            wire_sorteio: sorteio,
+            ..wire_spec(4.0)
+        };
+        let fatia = sp.wire_history_px() / crate::line_kind::WIRE_CURVES_PER_DAB as f32;
+        let (dabs, fios) = straight(sp, 400.0, 3.0);
+        let n = fios.iter().filter(|f| ((f[2] - f[0]).hypot(f[3] - f[1])) < 0.8 * fatia).count();
+        (n, fios.len(), dabs.len())
+    };
+    let (sem, fios_sem, dabs_sem) = curtas(false);
+    let (com, fios_com, dabs_com) = curtas(true);
+    assert_eq!(sem, 0, "sem sorteio nenhuma corda abaixo da 1.ª fatia");
+    assert!(com * 8 > fios_com, "com sorteio ~¼ das cordas na 1.ª fatia: {com} de {fios_com}");
+    assert_eq!((fios_sem, dabs_sem), (fios_com, dabs_com), "o sorteio não muda a contagem");
+}

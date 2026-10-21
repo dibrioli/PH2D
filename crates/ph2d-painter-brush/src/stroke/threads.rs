@@ -179,8 +179,14 @@ impl Stroke {
         #[allow(clippy::cast_precision_loss)]
         let n = crate::line_kind::WIRE_CURVES_PER_DAB as f32;
         for k in 1..=crate::line_kind::WIRE_CURVES_PER_DAB {
+            // Sorteadas: um ponto da fatia `((k − 1)/n, k/n]` da janela; sem o sorteio, o fim dela (`u = 1`, ao bit).
+            let u = if self.spec.wire_sorteio {
+                1.0 - crate::jitter::next_f32(&mut self.threads.rng)
+            } else {
+                1.0
+            };
             #[allow(clippy::cast_precision_loss)]
-            let back = window * (k as f32) / n;
+            let back = window * (k as f32 - 1.0 + u) / n;
             let want = dab.arc_len - back;
             if want < oldest {
                 // A janela ainda não encheu até aqui — e as seguintes estão mais longe.

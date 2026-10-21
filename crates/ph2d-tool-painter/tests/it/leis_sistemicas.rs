@@ -315,11 +315,22 @@ fn decis(cols: &[(f64, f64, f64)]) -> ([f64; 10], [f64; 10]) {
     (l, c)
 }
 
-/// A distância (RMS, decis 0–9 das duas rampas, cada razão até 1,2) entre a nossa resposta e a do oráculo, só nas
-/// grandezas `qs` (`L` largura, `C` cobertura) — a do ajuste (`03_MOTORES` §7 a).
+/// O INÍCIO do oráculo numa rampa: o 1.º decil em que ele PINTA (a largura medida > 0 na foto). ⭐ Decisão 15 (J4,
+/// `ESTADO.md`): abaixo dele a régua não compara — a entrada tardia do Rebelle (o Wash não pinta abaixo de p 0,3, o Flat
+/// abaixo de 0,2) só se copia com um piso, que a decisão 9 proíbe (a mão do dono vai de 0,24 a 0,86).
+fn inicio(ora_rampa: &Value) -> usize {
+    ora_rampa["largura"]
+        .as_array()
+        .and_then(|l| l.iter().position(|x| x.as_f64().is_some_and(|v| v > 0.0)))
+        .unwrap_or(0)
+}
+
+/// A distância (RMS, decis das duas rampas DESDE O INÍCIO do oráculo, [`inicio`]; cada razão até 1,2) entre a nossa
+/// resposta e a do oráculo, só nas grandezas `qs` (`L` largura, `C` cobertura) — a do ajuste (`03_MOTORES` §7 a).
 fn erro(n: &[([f64; 10], [f64; 10])], o: &Value, qs: &[char]) -> f64 {
     let (mut e, mut k) = (0.0, 0usize);
     for (i, rampa) in ["rampa_0_1", "rampa_afunila"].iter().enumerate() {
+        let d0 = inicio(&o[rampa]);
         for &q in qs {
             let (nosso, chave) = if q == 'L' { (&n[i].0, "largura") } else { (&n[i].1, "cobertura") };
             let Some(ora) = o[rampa][chave].as_array() else {
@@ -329,8 +340,12 @@ fn erro(n: &[([f64; 10], [f64; 10])], o: &Value, qs: &[char]) -> f64 {
                 let (Some(x), y) = (ora[d].as_f64(), nosso[d]) else {
                     continue;
                 };
+                // Abaixo do início o decil conta no denominador com erro 0 (o RMS é o da rampa inteira): a régua
+                // nova nunca lê mais longe que a de antes — tirar o decil inflava o RMS de quem casava os zeros.
                 if y.is_finite() {
-                    e += (x.min(1.2) - y.min(1.2)).powi(2);
+                    if d >= d0 {
+                        e += (x.min(1.2) - y.min(1.2)).powi(2);
+                    }
                     k += 1;
                 }
             }
@@ -358,35 +373,60 @@ const R_MAO: f64 = 2.5;
 /// POUSA, `trail/deposit.rs`). Barra: a distância às rampas do Rebelle ≤ 0,18 (antes: 14 dos 26 acima dela, até 0,33; as
 /// aguarelas e os Flats do dono, que a grelha não leva abaixo de 0,17–0,18, ficam na barra); onde o Rebelle
 /// quase não responde na faixa da mão (tintas, marcadores, óleo de cerdas: 1,3–1,6), a largura é a dele e a mão
-/// responde pela carga (≥ [`R_MAO`]) — conta só a distância da LARGURA.
+/// responde pela carga (≥ [`R_MAO`]) — conta só a distância da LARGURA. ⭐ J4 (decisão 15): só DESDE O INÍCIO do
+/// oráculo ([`inicio`]); o CONTROLO ([`rampa_torta`]) prova que a régua ainda mede a rampa acima dele.
+pub(crate) const BARRA_DA_PRESSAO: f64 = 0.18;
+
+/// A PRESSÃO de `p` contra a da sua origem (`leis_rebelle.json`, pelo NOME — o preset de fábrica ou um em estudo):
+/// `(distância que conta, mão)`. A distância é a da largura quando o Rebelle quase não responde na faixa da mão.
+pub(crate) fn pressao_contra_a_origem(p: &Pincel) -> (f64, f64) {
+    let o = oraculo();
+    let or = &o["leis"][&p.nome]["pressao"];
+    let (px, ts) = pinta(p, "gestos", &["rampa_0_1", "rampa_afunila"]);
+    let n: Vec<([f64; 10], [f64; 10])> = ts.iter().map(|t| decis(&colunas(&px, 1000, t))).collect();
+    let mao_r = or["rampa_0_1"]["mao"].as_f64().unwrap_or(99.0);
+    let m = mao(&n[0].0, &n[0].1);
+    let (e_lc, e_l) = (erro(&n, or, &['L', 'C']), erro(&n, or, &['L']));
+    println!("[pressao] {}: distância {e_lc:.3} (largura {e_l:.3}) · mão {m:.2} (Rebelle {mao_r:.2})", p.nome);
+    (if mao_r >= R_MAO { e_lc } else { e_l }, m)
+}
+
+/// O CONTROLO da régua da rampa (decisão 15): o Wet Wash — cuja origem só pinta desde p 0,3 — com a largura TORTA acima
+/// desse início (a pressão estreita-o até 0,1 do raio, em curva 3). A régua tem de o reprovar.
+fn rampa_torta() -> Pincel {
+    use super::exame_bancada::Fonte;
+    let p = pinceis("Wet Wash").remove(0);
+    let Fonte::Preset { preset, relativo } = p.fonte else { unreachable!() };
+    let mut torto = preset;
+    torto.parametros.engine.insert("pressureSize".into(), 1.0);
+    torto.parametros.engine.insert("pressureSizeCurve".into(), 3.0);
+    Pincel { nome: p.nome, fonte: Fonte::Preset { preset: torto, relativo } }
+}
+
+/// O portão da lei (a): todo preset com origem a ≤ [`BARRA_DA_PRESSAO`] dela, a mão ≥ [`R_MAO`]; o controlo reprova.
 #[test]
 fn a_pressao_de_cada_preset_e_a_da_sua_origem() {
     let o = oraculo();
     let todos = com_origem(&o);
-    let medidas: Vec<(String, Vec<([f64; 10], [f64; 10])>)> = std::thread::scope(|s| {
+    let controlo = rampa_torta();
+    let (medidas, (e_torta, _)) = std::thread::scope(|s| {
         let hs: Vec<_> = todos
             .iter()
-            .map(|p| {
-                s.spawn(move || {
-                    let (px, ts) = pinta(p, "gestos", &["rampa_0_1", "rampa_afunila"]);
-                    (p.nome.clone(), ts.iter().map(|t| decis(&colunas(&px, 1000, t))).collect())
-                })
-            })
+            .map(|p| s.spawn(move || (p.nome.clone(), pressao_contra_a_origem(p))))
             .collect();
-        hs.into_iter().map(|h| h.join().unwrap()).collect()
+        let c = s.spawn(|| pressao_contra_a_origem(&controlo));
+        let v: Vec<(String, (f64, f64))> = hs.into_iter().map(|h| h.join().unwrap()).collect();
+        (v, c.join().unwrap())
     });
     let mut falhas = Vec::new();
-    for (nome, n) in &medidas {
-        let or = &o["leis"][nome]["pressao"];
-        let mao_r = or["rampa_0_1"]["mao"].as_f64().unwrap_or(99.0);
-        let m = mao(&n[0].0, &n[0].1);
-        let (e_lc, e_l) = (erro(n, or, &['L', 'C']), erro(n, or, &['L']));
-        let e = if mao_r >= R_MAO { e_lc } else { e_l };
-        println!("[pressao] {nome}: distância {e_lc:.3} (largura {e_l:.3}) · mão {m:.2} (Rebelle {mao_r:.2})");
-        if e > 0.18 {
+    if e_torta <= BARRA_DA_PRESSAO {
+        falhas.push(format!("o controlo (a rampa torta acima do início) lê {e_torta:.3}: a régua não mede a rampa"));
+    }
+    for (nome, (e, m)) in &medidas {
+        if *e > BARRA_DA_PRESSAO {
             falhas.push(format!("{nome}: a resposta à pressão está a {e:.3} da do Rebelle"));
         }
-        if m < R_MAO {
+        if *m < R_MAO {
             falhas.push(format!("{nome}: a faixa da mão do dono só responde {m:.2}× (< {R_MAO})"));
         }
     }

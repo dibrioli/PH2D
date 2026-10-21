@@ -1404,3 +1404,72 @@ contagem coincide.) Suíte não corrida (1 commit desde a última verde); os doi
    no app, e se o «nasce duas vezes» (W5p) cobre a vista de hoje.
 4. A lei W6d com `DISTANTES` no relógio (o §20.2). 5. A anomalia da r5b (§12). 6. A família (b) (37–38). 7. Os
    zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %. 8. O `rustfmt` do `solver_hrc.rs` (§47).
+
+## 49. O regime do NASCIMENTO (§48.3) — as páginas novas do driver; a vista renasce sozinha uma vez (21/10)
+
+`4e98acba6b`. Régua `target/bug6/nascimento_regua.rs` pelo `LuzDoQuadro` (o caminho do app), a `c2` da vista; lotes
+`nascimento_lote.sh` (um processo por caso) e `nascimento_lote5.sh` (ON × OFF, a `c2` pela série do app:
+`PH2D_LIGHT2D_CUSTO=1 PH2D_LIGHT2D_SERIE=1`).
+
+**O efeito** (`nascimento_1.log`, `_2.log`; a Alta, cena 5, mediana nasce → renasce → renasce → luz nova):
+
+| teto (vista) | bytes da `PassList` | nasce → renasce (ms) |
+|---|---|---|
+| 3440×1440 (4416×1920) | 2,27 GiB | 31,63 → 31,60 |
+| 3200×1800 (4096×2368) | 2,86 GiB | 35,56 → 35,09 |
+| 3600×2000 (4608×2624) | 3,24 GiB | **50,23 → 47,08** |
+| 3840×2160 (4992×2944) | 3,82 GiB | **60,5–64,4 → 53,0–55,4**, em 5 processos |
+| 5120×2880 (6528×3840) | 6,21 GiB | 91,76 → 91,97 |
+
+Não é «o 1.º do processo»: vinda da Média (1,08 GiB) ou da Baixa, a Alta de 2160p nasce lenta na mesma (63,6 · 64,4 →
+55). É a memória que o processo ainda NÃO usou — o regime da W5x (páginas novas lentas; as largadas, rápidas). A
+cura antiga (`hrc_nasce_duas_vezes`, o berço) só refaz os buffers da holográfica e, com os níveis em textura (W5z),
+está desligada: as texturas vêm da `PassList` do solver. A W5z recusou «nascer 2× com textura» como neutro a 1080p e
+1440p — onde o efeito não existe. A régua do §47 (os 52 × 60 ms do §45) era este mesmo efeito.
+
+**A cura** (`quadro_renasce.rs`, o vigia da W6b): a vista que nasce com mais bytes do que todas as deste vigia e acima
+de `PAGINAS_NOVAS_DESDE = 3 GiB` pede o renascimento ao fim de `LEITURAS_NA_GRADE = 10` leituras na mesma grade (o
+arrasto da janela recomeça a conta; encolher antes cancela); o renascimento é o da W6b/W6c (a velha larga-se, a placa
+espera, a nova monta no início do quadro seguinte — o mesmo bit, nenhum quadro sem luz, os gates deles verdes). Custa
+uma montagem a mais (~0,15 s) uma vez por pico. `PH2D_LIGHT2D_RENASCE_PAGINAS_NOVAS=0` compara.
+
+**ON × OFF** (`nascimento_8.log`, leituras 2–9 × 12+, duas rodadas): 2160p Alta OFF 63,4–64,6 estável; ON 63,4 →
+**55,1** (−8,3 ms, −13 %). 3600×2000 Alta OFF 50,4–52,2 → 50,8–51,3; ON 50,4 → **47,0**.
+
+**Gate:** `a_vista_em_paginas_novas_renasce_sozinha_uma_vez` (2160p Alta: 2 montagens em 60 quadros; 1080p Baixa:
+1) + 3 testes de unidade do vigia (uma vez por pico; abaixo do limiar ou desligado nada; o arrasto e o encolher).
+Mutações (`target/bug6/mutacao_paginas.sh`, `mutacao_m3{1..5}_*.log`, controlo `mutacao_paginas_controlo.log`):
+
+| Mutação | Morre |
+|---|---|
+| M31 limiar `u64::MAX` | o gate: 1 montagem |
+| M32 sem o pico | 2 testes de unidade + o gate: 3 montagens |
+| M33 nascer não cancela | o arrasto: renasce na grade que já cabia |
+| M34 `nasceu(0)` no `quadro.rs` | o gate: 1 montagem |
+| M35 limiar 0 | o gate: a 1080p Baixa renasce |
+| controlo | 9 + 1 verdes |
+
+⚠️ **Os testes que leem o custo do app têm de andar ao ritmo do ecrã:** a leitura SEM ESPERA (`ler_sem_esperar`) pede
+o mapa depois do envio; com os quadros colados o envio seguinte cancela-o e o vigia (e o governador) nunca leem. O
+gate espera a placa a cada quadro (`wait_indefinitely`), como a régua da W5e. E só há leituras com a preferência do
+editor (`preferir`) — sem ela o vigia da W6b também não corre.
+
+Por nome, verdes: os 3 de `a_vista_renasce_com_os_mesmos_bits`, a estufa, os 9 de `os_tetos_da_placa`, os 2 de bit.
+
+## ⛔ Recusas MEDIDAS (§49)
+
+| Recusa | Porquê |
+|---|---|
+| Renascer toda vista grande, sem o pico | Renasce a cada 10 leituras para sempre (M32: 3 montagens em 60 quadros). |
+| Nascer 2× dentro do `Solver::novo` em todo nascimento | O arrasto da janela pagaria 2 montagens por quadro; o vigia espera a grade assentar. |
+| Limiar abaixo de ~3 GiB | 2,27–2,86 GiB não ganham (31,63 → 31,60 · 35,56 → 35,09) e pagariam ~0,1 s parado. |
+
+## 50. ABERTO (por ordem — substitui o §48)
+
+1. Smoke do dono: a luz da Baixa igual com e sem (`PH2D_LIGHT2D_JUNTOS=0`); e, num ecrã 4K na Alta, o aviso
+   «nasceu em páginas novas» uma vez e o custo do Inspector ~8 ms mais baixo um segundo depois.
+2. A vista nos níveis de cima (+4,4 ms a 2160p Alta) continua sem cura que dê o mesmo bit — remedir com a vista
+   renascida (o número do §42 pode ter sido do regime lento).
+3. O entorno também nasce em páginas novas? (não medido; a 2160p Alta é 1984×1152.)
+4. A lei W6d com `DISTANTES` no relógio (o §20.2). 5. A anomalia da r5b (§12). 6. A família (b) (37–38). 7. Os
+   zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %. 8. O `rustfmt` do `solver_hrc.rs` (§47).

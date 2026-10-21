@@ -23,6 +23,12 @@ O nome muda se a janela reiniciar (confirme por `ListAgents` antes do sinal).
   Pixel 1px, Glaze Round, Flat Block-in, Mapping Pen — Digital); os 12 pré-existentes curados; 20 reprovados em
   estudo (`EM_ESTUDO`, sem ficheiro); 7 fundidos. Fábrica 34 (Wet 27, Digital 7). Relatórios `exames/<família>.md`.
 
+- **JANELA 4** (a meio, 21/10, base `823c6e1b2b`): uma família por agente — 1.ª onda `pastel_carvao`,
+  `oleo_acrilica`, `aguarela`, `mistura`, `texturas`; 2.ª onda `guache`, `efeitos`. Dono de cada recurso de motor
+  por família (para dois agentes não o fazerem de duas maneiras): troca molhada × molhada e entrada clara → óleo ·
+  fibras/orla/backrun/escorridos → aguarela · gota do pó, grão no tecto → pastel · arrastar/levantar/reabrir →
+  mistura · dispersão, carimbo, cor por carimbo → texturas (que reexamina também J-2, J-3, J-5).
+
 ## Decisões de produto (com o porquê)
 
 1. **Os 3 do P53 saem** (veredito do dono). Voltam SÓ na JANELA 4 e só se passarem o EXAME com o Rebelle ao lado.

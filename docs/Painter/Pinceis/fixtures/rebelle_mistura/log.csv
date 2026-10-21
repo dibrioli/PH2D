@@ -4,3 +4,8 @@ quando,nome,TOOL,preset,cena,estado,motivo,segundos
 2026-10-21T09:05:27,default_round_soft,ERASER,"Default/Round Soft",sobre,ok,"",9
 2026-10-21T09:05:36,default_round_medium,ERASER,"Default/Round Medium",sobre,ok,"",9
 2026-10-21T09:05:45,default_soft,BLEND,"Default/Soft",sobre,ok,"",9
+2026-10-21T13:37:12,default_soft_aq,BLEND,"Default/Soft",sobre,ok,"",9
+2026-10-21T13:37:21,default_textured,BLEND,"Default/Textured",sobre,ok,"",9
+2026-10-21T13:37:34,default_soft,WATER,"Default/Soft",sobre,ok,"",13
+2026-10-21T13:37:44,default_paper,DRY,"Default/Paper",sobre,ok,"",10
+2026-10-21T13:37:53,default_sponge,DRY,"Default/Sponge",sobre,ok,"",9

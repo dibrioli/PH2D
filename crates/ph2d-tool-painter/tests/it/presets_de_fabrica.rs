@@ -13,8 +13,8 @@
 //! `PH2D_REGERA_SO="Ink Brush,Dip Pen"` regera só esses (pelo nome; os nomes da fábrica são únicos nos 4 meios).
 
 use super::receitas_de_fabrica::{
-    DIREITA, PRESETS_DE_FABRICA, Receita, ReceitaMeio, SPACING_DA_FABRICA, grao, receitas,
-    receitas_dos_meios,
+    DIREITA, PRESETS_DE_FABRICA, Receita, ReceitaMeio, SPACING_DA_FABRICA, base_da_ferramenta, grao,
+    modo_da_ferramenta, receitas, receitas_dos_meios,
 };
 use super::sonda_gestos::{fnv1a, largura_que_se_ve, traco_recto_alto};
 use ph2d_brush_presets::{
@@ -83,6 +83,10 @@ fn parametros(r: &Receita) -> Parametros {
     p.volumes.size_px = r.size_px;
     p.volumes.opacity = Some(r.opacity);
     p.volumes.water = Some(r.water);
+    // Uma FERRAMENTA (J4 `mistura`): o modo é da receita, não do ficheiro.
+    if let Some(modo) = modo_da_ferramenta(r.nome) {
+        p.paint_mode = Some(modo.to_owned());
+    }
     p.tilt = Some(r.tilt);
     // As opções da W1g não são do pincel de fábrica: aplicá-lo não mexe nelas (a regra do preset antigo).
     (p.live_water, p.heavy_edge) = (None, None);
@@ -320,6 +324,9 @@ fn direito(p: &Preset) -> Preset {
 
 /// A largura que o pincel `p` deixa a `raio`: `crua` = o raio chega ao MOTOR sem a promessa.
 pub(super) fn largura_de(p: &Preset, raio: f32, crua: bool) -> f32 {
+    if let Some(modo) = p.parametros.paint_mode.as_deref().filter(|m| *m != "Paint") {
+        return largura_da_ferramenta(p, modo, raio, crua);
+    }
     let escala = if crua { (raio / 500.0).max(1.0) } else { 1.0 };
     let (px, w, h) = traco_recto_alto(raio / escala, raio, QUADROS_DA_LEI, |t| {
         t.set_wet_relogio_fixo(true);
@@ -329,6 +336,103 @@ pub(super) fn largura_de(p: &Preset, raio: f32, crua: bool) -> f32 {
         }
     });
     largura_que_se_ve(&px, w, h)
+}
+
+/// **A largura de uma FERRAMENTA** (J4 `mistura`; uma ferramenta não pinta — no papel branco mede 0): a do que ela
+/// MUDA na tinta de [`base_da_ferramenta`]. A base é uma faixa cuja orla de BAIXO corre sobre a linha do traço (a
+/// faixa cobre `[cy − 3r, cy]`, larga o bastante para a pegada caber nela): a ferramenta arrasta, dilui, seca ou tira
+/// essa orla na largura da pegada. A largura é a de [`largura_que_se_ve`] sobre a DIFERENÇA da tela com e sem o traço
+/// da ferramenta (a mesma água, os mesmos quadros) — por coluna, as linhas que mudam ≥ ½ do máximo da coluna.
+fn largura_da_ferramenta(p: &Preset, modo: &str, raio: f32, crua: bool) -> f32 {
+    use ph2d_editor_core::Tool;
+    use ph2d_editor_core::tool::RasterEditTool;
+    let base = super::midias_de_fabrica::de_fabrica(base_da_ferramenta(modo));
+    let escala = if crua { (raio / 500.0).max(1.0) } else { 1.0 };
+    // A tela e o traço de `traco_recto_alto` (a mesma altura, o mesmo gesto), com a base antes e o traço da ferramenta
+    // só num dos dois lados.
+    let w = super::sonda_gestos::W;
+    // A cena é a do raio do MOTOR (o mesmo nas duas leis): com a promessa, o da tabela do preset; crua, o pedido. Sem
+    // isto a base (que acompanha o tamanho) saía outra na tabela e na promessa, e a largura medida também.
+    let motor = if crua {
+        raio
+    } else {
+        raio_do_motor_da_tabela(&p.parametros.width_table, raio)
+    };
+    let h = ((motor * 6.0) as u32 + 80).max(120);
+    let cy = h as f32 * 0.5;
+    let pinta = |com_ferramenta: bool| {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (w * h * 4) as usize], w, h);
+        t.set_wet_relogio_fixo(true);
+        assert!(t.wet_preset_aplicar(&direito(&base)).is_empty());
+        // A faixa da base, ao raio 1,5·m (a promessa da base: 3m de largura), com a orla de baixo em `cy`.
+        t.set_brush_size_px(1.5 * motor);
+        t.set_brush_color_srgb8([191, 0, 18]);
+        super::sonda_gestos::gesto(&mut t, &[[60.0, cy - 1.5 * motor], [940.0, cy - 1.5 * motor]], 3.0, |_| 1.0);
+        assert!(t.wet_preset_aplicar(&direito(p)).is_empty());
+        if crua {
+            t.set_wet_largura_crua(escala);
+        }
+        if com_ferramenta {
+            t.set_brush_size_px(raio / escala);
+            super::sonda_gestos::gesto(&mut t, &[[100.0, cy], [900.0, cy]], 3.0, |_| 1.0);
+        }
+        for _ in 0..QUADROS_DA_LEI {
+            t.on_tick(1000.0 / 60.0);
+        }
+        t.run_full().0
+    };
+    let (com, sem) = (pinta(true), pinta(false));
+    let diferenca: Vec<u8> = com
+        .chunks_exact(4)
+        .zip(sem.chunks_exact(4))
+        .flat_map(|(a, b)| {
+            let d = (0..3).map(|k| a[k].abs_diff(b[k])).max().unwrap_or(0);
+            [255 - d, 255 - d, 255 - d, 255]
+        })
+        .collect();
+    // A meia altura (a mediana de [`largura_mediana`]): o efeito de um misturador cai devagar da pegada para fora, e a
+    // ¼ do máximo a franja dele dobrava a largura num degrau (Blender Soft: 36 px no raio 38,5 → 75 no 42,8).
+    super::sonda_gestos::largura_mediana(&diferenca, w, h)
+}
+
+/// O raio do motor de `raio` pela tabela de largura de um preset — a conta de `LeiDaLargura::raio_do_motor`
+/// (`wetpaint/largura.rs`: os pontos sem traço e os que não crescem saem; abaixo do 1.º e acima do último, a razão
+/// da ponta). Tabela vazia = o raio pedido.
+fn raio_do_motor_da_tabela(tabela: &[[f64; 2]], raio: f32) -> f32 {
+    let mut pontos: Vec<(f64, f64)> = Vec::new();
+    let mut sem_tinta_ate = 0.0f64;
+    for &[r, l] in tabela {
+        if !r.is_finite() || !l.is_finite() {
+            continue;
+        }
+        if l <= 0.0 {
+            if pontos.is_empty() {
+                sem_tinta_ate = sem_tinta_ate.max(r);
+            }
+            continue;
+        }
+        if pontos.last().is_none_or(|&(r0, l0)| r > r0 && l > l0) {
+            pontos.push((r, l));
+        }
+    }
+    if pontos.len() < 2 {
+        return raio;
+    }
+    let alvo = 2.0 * f64::from(raio);
+    let (r0, l0) = pontos[0];
+    if alvo <= l0 {
+        let r = r0 * alvo / l0;
+        return (if r < sem_tinta_ate { r0 } else { r }) as f32;
+    }
+    for w in pontos.windows(2) {
+        let ((ra, la), (rb, lb)) = (w[0], w[1]);
+        if alvo <= lb {
+            return (ra + (rb - ra) * (alvo - la) / (lb - la)) as f32;
+        }
+    }
+    let (rn, ln) = pontos[pontos.len() - 1];
+    (rn * alvo / ln) as f32
 }
 
 /// A lei CRUA medida: raio do motor → largura, numa fila do MAIOR para o menor com `PH2D_LEI_FIOS` trabalhadores

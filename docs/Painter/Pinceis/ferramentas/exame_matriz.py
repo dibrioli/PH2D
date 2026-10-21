@@ -44,7 +44,9 @@ PINCEIS = os.path.dirname(AQUI)
 REBELLE = os.path.join(PINCEIS, "fixtures", "rebelle_bateria")
 ARTRAGE = os.path.join(PINCEIS, "fixtures", "artrage_bateria")
 ESCALA = os.path.join(PINCEIS, "matriz", "escala.json")
-GRUPOS = ("forma", "tinta", "textura", "dinamica", "mistura")
+# O 6.º grupo, «ferramenta» (J4 `mistura`, `matriz_ferramenta.py`), só existe nas FERRAMENTAS: nos pincéis que pintam é
+# NaN, e a média dos grupos de um par deles é a de antes.
+GRUPOS = ("forma", "tinta", "textura", "dinamica", "mistura", "ferramenta")
 # O chão das famílias que o recto repetido não mede, MEDIDO no Rebelle pelo `ruido_regua.py` (04 §3.1, o p75): a
 # pressão por decil (rampa_0_1 × a subida da afunila), o vermelho (cruza_1 × cruza_2, em cima e depois, sobre as
 # duas faixas), as razões (|r − 1| nos pares repetidos). Eram 0,06 · 0,03 · 0,05 (provisórios, 19/10).
@@ -76,7 +78,8 @@ def populacao(biblioteca, rebelle, artrage):
     for d in sorted(glob.glob(os.path.join(biblioteca, "*", "meta.json"))):
         m = json.load(open(d))
         out.append({"id": f"ph2d:{m['nome']}", "nome": m["nome"], "fonte": "ph2d", "ferr": m.get("meio", ""),
-                    "caminho": os.path.dirname(d), "relativo": m.get("relativo", "")})
+                    "caminho": os.path.dirname(d), "relativo": m.get("relativo", ""),
+                    "ferramenta": bool(m.get("ferramenta"))})
     if rebelle and os.path.exists(os.path.join(rebelle, "indice.csv")):
         ok = defaultdict(set)
         for r in csv.DictReader(open(os.path.join(rebelle, "indice.csv"))):
@@ -254,9 +257,14 @@ def escala_de(vecs_oraculo, ruido):
 
 
 class Regua:
-    def __init__(self, escala):
+    def __init__(self, escala, escala_ferramenta=None):
         self.chaves = [tuple(t[:3]) for t in escala["tracos"]]
-        self.esc = np.array([t[3] for t in escala["tracos"]])
+        esc = [t[3] for t in escala["tracos"]]
+        # O grupo «ferramenta» com a escala PRÓPRIA dele (a da pintura, congelada, não muda).
+        for k, e in sorted((escala_ferramenta or {}).get("escala", {}).items()):
+            self.chaves.append(("ferramenta", k, k.split(".")[2]))
+            esc.append(e)
+        self.esc = np.array(esc)
         self.grupos = np.array([k[0] for k in self.chaves])
 
     def Z(self, vecs):
@@ -372,13 +380,20 @@ def main():
                 if ("tamanhos", f) in fs:
                     fs[("tamanhos", f)] = {k: v for k, v in fs[("tamanhos", f)].items() if k != "recto_200"}
     vecs = [vector(f) for f in fotos]
+    # As FERRAMENTAS (o `meta.json` da bancada): o grupo «ferramenta» da cena «sobre».
+    import matriz_ferramenta
+    for e, v in zip(pop, vecs):
+        if e.get("ferramenta"):
+            for k, val in matriz_ferramenta.vector(e["caminho"]).items():
+                v[("ferramenta", k, k.split(".")[2])] = val
     idx = {f: [i for i, e in enumerate(pop) if e["fonte"] == f] for f in ("ph2d", "rebelle", "artrage")}
     ruido = ruido_do_recto([fotos[i] for i in idx["rebelle"]])
     if x.recalibra or not os.path.exists(x.escala):
         esc = escala_de([vecs[i] for i in idx["rebelle"]], ruido)
         os.makedirs(os.path.dirname(x.escala), exist_ok=True)
         json.dump(esc, open(x.escala, "w"), indent=0)
-    regua = Regua(json.load(open(x.escala)))
+    esc_f = os.path.join(os.path.dirname(x.escala), "escala_ferramenta.json")
+    regua = Regua(json.load(open(x.escala)), json.load(open(esc_f)) if os.path.exists(esc_f) else None)
     Z = regua.Z(vecs)
     D, G = regua.dist(Z, Z)
     np.fill_diagonal(D, np.inf)

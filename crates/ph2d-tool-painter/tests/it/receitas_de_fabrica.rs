@@ -3,7 +3,7 @@
 //! (`familias/<família>.rs`, J3); aqui só fica o Wet Round, que é de todas. O gerador e os portões vivem em
 //! `presets_de_fabrica.rs`; o portão por foto em `midias_de_fabrica.rs`.
 
-use super::familias::FAMILIAS;
+use super::familias::{FAMILIAS, FERRAMENTAS_WET};
 use ph2d_brush_presets::Tilt;
 use ph2d_tool_painter::PaintMedia;
 use serde_json::{Value, json};
@@ -68,12 +68,50 @@ pub const PRESETS_DE_FABRICA: usize = {
         n += FAMILIAS[i].wet.len() + FAMILIAS[i].meios.len();
         i += 1;
     }
+    let mut j = 0;
+    while j < FERRAMENTAS_WET.len() {
+        n += FERRAMENTAS_WET[j].len();
+        j += 1;
+    }
     n
 };
 
+/// **Uma FERRAMENTA do Wet Paint** (J4 `mistura`): uma [`Receita`] e o MODO dela — a ferramenta molhada que o preset
+/// arma (`Blend`, `Wet`, `Dry`, `Smear`, `Blow`: o `paint_mode` do ficheiro, `WetTool` no tool). Ao lado da
+/// `Receita` e não um campo dela: os literais das outras famílias não mudam. Uma ferramenta não pinta — a lei da
+/// largura e a miniatura medem-na SOBRE a base do seu meio ([`base_da_ferramenta`]).
+pub struct ReceitaFerramenta {
+    pub receita: Receita,
+    pub modo: &'static str,
+}
+
+/// O modo de uma receita do Wet que é uma ferramenta (`None` = um pincel que pinta).
+pub fn modo_da_ferramenta(nome: &str) -> Option<&'static str> {
+    FERRAMENTAS_WET
+        .iter()
+        .flat_map(|l| l.iter())
+        .find(|f| f.receita.nome == nome)
+        .map(|f| f.modo)
+}
+
+/// A tinta de fábrica sobre a qual uma ferramenta do Wet se mede (a mesma base da bancada,
+/// `exame_bancada::base_padrao`): a aguarela do Wet Round para a água e o secador (o Rebelle fotografou WATER e DRY
+/// sobre o Watercolor Round); para o resto (BLEND/SMUDGE sobre o Round Hard do óleo, uma faixa LISA e cheia) o Ink
+/// Brush — a Acrylic Round riscava a faixa com as cerdas dela (e a ferramenta arrastava as riscas), e o Marker Bullet
+/// (liso) tem o tecto de tamanho de 101 px: a lei da largura da ferramenta perdia a faixa acima do raio 72.
+pub fn base_da_ferramenta(modo: &str) -> &'static str {
+    match modo {
+        "Wet" | "Dry" => "Wet Round",
+        _ => "Ink Brush",
+    }
+}
+
 /// Todas as receitas do Wet Paint: a base e as das famílias, pela ordem do agregador (a ordem não muda nenhum ficheiro).
 pub fn receitas() -> impl Iterator<Item = &'static Receita> {
-    RECEITAS.iter().chain(FAMILIAS.iter().flat_map(|f| f.wet))
+    RECEITAS
+        .iter()
+        .chain(FAMILIAS.iter().flat_map(|f| f.wet))
+        .chain(FERRAMENTAS_WET.iter().flat_map(|l| l.iter().map(|f| &f.receita)))
 }
 
 /// Todas as receitas de Digital, Watercolor e Impasto (as das famílias).

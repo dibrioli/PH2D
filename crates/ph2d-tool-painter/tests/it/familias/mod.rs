@@ -27,7 +27,7 @@ pub mod prelude {
     };
     pub(crate) use crate::midias_de_fabrica::Midia;
     pub(crate) use crate::receitas_de_fabrica::{
-        CHARCOAL, DIREITA, GRAO_DURO, GRAO_MACIO, GRAPHITE_8B, MAIS_PERTO, Receita, ReceitaMeio,
+        CHARCOAL, DIREITA, GRAO_DURO, GRAO_MACIO, GRAPHITE_8B, MAIS_PERTO, Receita, ReceitaFerramenta, ReceitaMeio,
         extras_do_lapis, lapis,
     };
     pub(crate) use ph2d_brush_presets::Tilt;
@@ -55,6 +55,11 @@ macro_rules! familia {
 /// Todas as famílias — J3: básicos (A), grafite e lápis (B), canetas e tintas (C), caligrafia e marcadores (D, E),
 /// aerógrafo (J); J4: pastel e carvão (F), óleo e acrílica (G), guache (H), aguarela (I), texturas (K), mistura (L),
 /// efeitos (M). A ordem não muda nenhum ficheiro gerado.
+/// As FERRAMENTAS do Wet Paint de cada família (J4 `mistura`: `ReceitaFerramenta`, a receita + o modo), lidas pelo
+/// gerador e pela contagem além do `WET` — uma lista ao lado do `Familia` para os ficheiros das outras famílias não
+/// precisarem de a declarar.
+pub const FERRAMENTAS_WET: &[&[crate::receitas_de_fabrica::ReceitaFerramenta]] = &[mistura::WET_FERRAMENTAS];
+
 pub const FAMILIAS: [Familia; 14] = [
     familia!(basicos),
     familia!(grafite),

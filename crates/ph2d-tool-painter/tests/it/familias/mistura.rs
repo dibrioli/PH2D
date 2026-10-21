@@ -7,6 +7,42 @@ use super::prelude::*;
 
 pub const WET: &[Receita] = &[];
 
+/// As FERRAMENTAS do Wet (o modo ao lado da receita, `receitas_de_fabrica::ReceitaFerramenta`).
+pub const WET_FERRAMENTAS: &[ReceitaFerramenta] = &[
+    // L-1 — o misturador do Rebelle «Blend/Default/Soft»: a ferramenta Blend do Wet (o mesmo modelo: mistura a tinta
+    // MOLHADA sob a pegada e esbate-a para cima e para baixo, sem a arrastar longe; A = B). Nasce do Wet Round. O
+    // feltro no máximo (0,2) junta as cerdas — sem ele a mistura sai em riscas verticais; a força 0,5, sobre a faixa
+    // do Ink Brush e à largura do Rebelle (escala 0,45 — o «40» do Blend dele mistura ~33 px; o nosso 37): o vermelho
+    // levado acima e abaixo da faixa (o verde mínimo a y 100·110·115 · 185·190·200·210) 138·56·36 · 125·139·177·207
+    // contra o Rebelle 131·78·48 · 107·130·183·217, o alcance acima · abaixo 24 · 21 px contra 26 · 23 (a 0,4: 19 · 21,
+    // o que os dois revisores da 1.ª prancha viram — «o original sobe mais»; a força 0,8: 25 · 16).
+    ReceitaFerramenta {
+        receita: Receita {
+            meio: "Blend",
+            grupo: "Soft",
+            nome: "Blender Soft",
+            water: 1.0,
+            opacity: 1.0,
+            pigment: 78.0,
+            pickup: 1.0,
+            gate: 0.4,
+            evaporation: 1.0,
+            edge: 12.0,
+            tilt: DIREITA,
+            bristle_size: 2.0,
+            bristle_count: 4000.0,
+            hardness: 0.0,
+            size_px: None,
+            extras: &[("blendForce", 0.5), ("felt", 0.2)],
+            grao: None,
+            achatado: None,
+            pincel: &[],
+            nasce_de: Some("Wet Round"),
+        },
+        modo: "Blend",
+    },
+];
+
 pub const MEIOS: &[ReceitaMeio] = &[
     // L-8 — a borracha macia do Rebelle «Eraser/Default/Round Soft»: tira o ALFA em parte (uma passagem deixa ~0,73
     // da tinta), borda larga e macia; a pressão leva a força.
@@ -165,19 +201,24 @@ impl Identidade {
 /// As FOTOS (a cena `sobre`, A), medidas por `mistura_foto.py` (21/10): o Rebelle refeito com o SET_BRUSH repetido na
 /// troca (`fixtures/rebelle_mistura/`), o Krita onde o Rebelle não tem a ferramenta.
 #[rustfmt::skip]
-const FOTOS: [(&str, &str, Identidade); 4] = [
+const FOTOS: [(&str, &str, Identidade); 5] = [
     ("Smudge Finger", "rebelle SMUDGE/default_soft", Identidade { resto: 0.004, largura: 15.0, borda: 2.5, fundo: 119.0, orla_v: -2.0 }),
     ("Kneaded Eraser", "rebelle ERASER/default_round_soft", Identidade { resto: 0.72, largura: 31.0, borda: 14.5, fundo: 0.0, orla_v: 26.0 }),
     ("Hard Eraser", "rebelle ERASER/default_square_hard", Identidade { resto: 0.0, largura: 39.0, borda: 2.0, fundo: 0.0, orla_v: -4.0 }),
     ("Blur", "krita x) Filter Blur", Identidade { resto: 1.0, largura: 0.0, borda: 0.0, fundo: 0.0, orla_v: 4.0 }),
+    ("Blender Soft", "rebelle BLEND/default_soft", Identidade { resto: 0.984, largura: 0.0, borda: 0.0, fundo: 9.0, orla_v: 17.0 }),
 ];
 
+/// A escala da ferramenta na cena (a do exame: a largura medida igual à do oráculo; as faixas da base à escala 1).
+const ESCALA_DO_EXAME: [(&str, f64); 1] = [("Blender Soft", 0.45)];
+
 /// O que faz a identidade de cada uma.
-const IDENTIDADE: [(&str, &[M]); 4] = [
+const IDENTIDADE: [(&str, &[M]); 5] = [
     ("Smudge Finger", &[M::Resto, M::Largura, M::Fundo]),
     ("Kneaded Eraser", &[M::Resto, M::Largura, M::Borda, M::Fundo]),
     ("Hard Eraser", &[M::Resto, M::Largura, M::Borda, M::Fundo]),
     ("Blur", &[M::Resto, M::OrlaV, M::Fundo]),
+    ("Blender Soft", &[M::Resto, M::OrlaV, M::Fundo]),
 ];
 
 /// A cena `sobre` (foto A) pintada por `nome` sobre a base do meio dele (`exame_bancada::base_padrao`): os píxeis.
@@ -186,12 +227,24 @@ pub(crate) fn sobre_de(nome: &str, preset: Option<ph2d_brush_presets::Preset>) -
     let bat = bateria();
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
-    let sobre = bat["cenas"]
+    let mut sobre = bat["cenas"]
         .as_array()
         .unwrap()
         .iter()
         .find(|c| c["nome"] == "sobre")
-        .unwrap();
+        .unwrap()
+        .clone();
+    // A ferramenta à escala do exame (os traços depois do `pincel: preset`); as faixas da base ficam.
+    let escala = ESCALA_DO_EXAME.iter().find(|e| e.0 == nome).map_or(1.0, |e| e.1);
+    let mut da_ferramenta = false;
+    for op in sobre["ops"].as_array_mut().unwrap() {
+        if op["op"] == "pincel" {
+            da_ferramenta = op["quem"] == "preset";
+        }
+        if da_ferramenta && let Some(d) = op.get("size_px").and_then(serde_json::Value::as_f64) {
+            op["size_px"] = serde_json::json!(d * escala);
+        }
+    }
     let p = match preset {
         Some(pr) => Pincel {
             nome: nome.to_owned(),
@@ -208,9 +261,13 @@ pub(crate) fn sobre_de(nome: &str, preset: Option<ph2d_brush_presets::Preset>) -
             },
         },
     };
-    let base = pinceis(base_padrao(ph2d_tool_painter::PaintMedia::Digital)).remove(0);
+    let Fonte::Preset { preset: pr, .. } = &p.fonte else {
+        unreachable!()
+    };
+    let meio = ph2d_tool_painter::meio_do_preset(&pr.parametros.media).unwrap();
+    let base = pinceis(base_padrao(meio, p.modo())).remove(0);
     // A camada SOBRE o papel (o que o artista vê; a borracha só mexe no alfa) — a foto da bancada (`escreve_ppm`).
-    let mut px = pinta_cena(&p, Some(&base), sobre, tela, papel, 0).1;
+    let mut px = pinta_cena(&p, Some(&base), &sobre, tela, papel, 0).1;
     for c in px.as_chunks_mut::<4>().0 {
         let a = u32::from(c[3]);
         for k in 0..3 {
@@ -223,6 +280,10 @@ pub(crate) fn sobre_de(nome: &str, preset: Option<ph2d_brush_presets::Preset>) -
 
 /// O preset de uma receita da família (a fábrica ou o `EM_ESTUDO`), pela mesma porta do gerador — sem ficheiro.
 fn preset_da_receita(nome: &str) -> ph2d_brush_presets::Preset {
+    // Uma ferramenta do Wet: o ficheiro de fábrica (a receita do Wet parte dele, com a tabela de largura).
+    if WET_FERRAMENTAS.iter().any(|f| f.receita.nome == nome) {
+        return crate::midias_de_fabrica::de_fabrica(nome);
+    }
     let r = MEIOS.iter().chain(EM_ESTUDO).find(|r| r.nome == nome).unwrap();
     let (parametros, texturas) = crate::presets_de_fabrica::parametros_do_meio(r);
     ph2d_brush_presets::Preset {
@@ -305,6 +366,12 @@ fn o_portao_da_mistura_sangra_com_cada_mutacao() {
         })),
         // o desfoque na Strength 1 (abre a orla 10 px, não 4)
         ("Blur", "Strength 1", muta("Blur", &|p| p.volumes.opacity = Some(1.0))),
+        // o misturador sem força: não mistura nada
+        ("Blender Soft", "blendForce 0", muta("Blender Soft", &|p| {
+            p.engine.insert("blendForce".to_owned(), 0.0);
+        })),
+        // o misturador a PINTAR (o modo Paint): uma faixa azul por cima
+        ("Blender Soft", "modo Paint", muta("Blender Soft", &|p| p.paint_mode = Some("Paint".to_owned()))),
     ];
     let sangrou: Vec<(&str, &str, Vec<String>)> = std::thread::scope(|s| {
         let hs: Vec<_> = mutacoes

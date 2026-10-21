@@ -111,6 +111,14 @@ impl Pincel {
             || p.brush.get("blend").and_then(Value::as_str) == Some("EraseAlpha")
     }
 
+    /// O modo do preset (`paint_mode`: a ferramenta molhada, o Smear…); `None` sem preset.
+    pub fn modo(&self) -> Option<&str> {
+        match &self.fonte {
+            Fonte::Preset { preset, .. } => preset.parametros.paint_mode.as_deref(),
+            Fonte::Meio(_) => None,
+        }
+    }
+
     /// `relogio_fixo`: a água em passos síncronos (a mesma tinta duas vezes — as fotos); sem ele, a do ecrã (o custo).
     pub fn aplica(&self, t: &mut PainterTool, relogio_fixo: bool) {
         t.set_semente_dos_tracos(0);
@@ -242,6 +250,14 @@ fn escala() -> f32 {
         .unwrap_or(1.0)
 }
 
+/// A escala das faixas da base (`PH2D_EXAME_ESCALA_BASE`; por omissão a do pincel).
+fn escala_base() -> f32 {
+    std::env::var("PH2D_EXAME_ESCALA_BASE")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or_else(escala)
+}
+
 /// Um ponto `[x, y, pressão]` da bateria, ou `[x, y, pressão, tilt_x°, tilt_y°]` (a caneta DEITADA, em graus à
 /// vertical: `(t, 0)` ao longo de +x, `(0, t)` através — `exames/lapis/bateria_deitado.json`); sem os dois, de pé.
 fn cp(p: &Value, phase: PointerPhase) -> CanvasPointer {
@@ -315,7 +331,14 @@ pub fn pinta_cena(
                 t.set_brush_color_srgb8([0, 1, 2].map(|i| c[i].as_u64().unwrap() as u8));
             }
             "traco" => {
-                t.set_brush_size_px(op["size_px"].as_f64().unwrap() as f32 * escala() * 0.5);
+                // As faixas da BASE de uma ferramenta (`PH2D_EXAME_ESCALA_BASE`): a escala do oráculo é a da ferramenta,
+                // e as faixas do Rebelle são as do pincel da base ao tamanho dele. Sem a variável, a mesma escala.
+                let e = if actual.is_some_and(|a| !std::ptr::eq(a, pincel)) {
+                    escala_base()
+                } else {
+                    escala()
+                };
+                t.set_brush_size_px(op["size_px"].as_f64().unwrap() as f32 * e * 0.5);
                 traco(&mut t, op["pts"].as_array().unwrap());
             }
             "simula" => {
@@ -420,7 +443,7 @@ fn exame_pinta() {
     let padroes: Vec<Option<Pincel>> = todos
         .iter()
         .map(|p| {
-            (base.is_none() && p.nao_pinta()).then(|| pinceis(base_padrao(p.meio())).remove(0))
+            (base.is_none() && p.nao_pinta()).then(|| pinceis(base_padrao(p.meio(), p.modo())).remove(0))
         })
         .collect();
     let bat = bateria();
@@ -480,6 +503,10 @@ fn exame_pinta() {
                     }
                     if let Some(b) = base {
                         e["base"] = json!(b.nome);
+                    }
+                    // A matriz mede uma FERRAMENTA pelo grupo dela (`matriz_ferramenta.py`); só se escreve quando é.
+                    if pincel.nao_pinta() {
+                        e["ferramenta"] = json!(true);
                     }
                     e["fnv"][&chave] = json!(format!("{:#018x}", fnv1a(&px)));
                     e["ms"][&chave] = json!(ms.round());
@@ -603,11 +630,11 @@ fn exame_custo() {
 }
 
 /// A base das faixas da cena «sobre» de uma ferramenta que não pinta ([`Pincel::nao_pinta`]): a tinta lisa do meio dela
-/// — o disco duro no Digital (as faixas lisas do Round Hard do Rebelle), a acrílica no Wet e nos outros (a tinta que as
-/// ferramentas molhadas movem).
-pub fn base_padrao(meio: PaintMedia) -> &'static str {
+/// — o disco duro no Digital (as faixas lisas do Round Hard do Rebelle); no Wet a da fábrica
+/// (`receitas_de_fabrica::base_da_ferramenta`: a aguarela do Wet Round para a água e o secador, a acrílica para o resto).
+pub fn base_padrao(meio: PaintMedia, modo: Option<&str>) -> &'static str {
     match meio {
         PaintMedia::Digital => "Hard Round",
-        _ => "Acrylic Round",
+        _ => crate::receitas_de_fabrica::base_da_ferramenta(modo.unwrap_or("Paint")),
     }
 }

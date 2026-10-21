@@ -1,0 +1,24 @@
+{
+ "prancha": "blender_soft_r3.png",
+ "linhas": [
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "sobre_A": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  },
+  "sobre_B": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  }
+ },
+ "quem": {
+  "oraculo": "default_soft",
+  "nosso": "Blender Soft (escala 0.45)",
+  "vizinho": "Kneaded Eraser (d 2.883, limiar 0.591)"
+ }
+}

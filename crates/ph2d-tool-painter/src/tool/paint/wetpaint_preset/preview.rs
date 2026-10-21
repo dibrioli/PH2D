@@ -83,6 +83,9 @@ pub struct CenaDoPreview {
     /// A Shape Color (prompt 41: pinta cada célula no Wet Paint; smoke do dono 16/10: o preview pintava
     /// o azul do pincel). Só o preview VIVO a instala — ver [`PainterTool::instalar_cena`].
     shape_color: EstadoDaShapeColor,
+    /// A ferramenta molhada do pincel (J4 `mistura`): só a MINIATURA a usa — uma ferramenta que não pinta mostra-se a
+    /// mexer numa faixa de tinta ([`pintar_miniatura`]); o preview vivo pinta sempre o pincel.
+    ferramenta: super::super::wetpaint_settings::WetTool,
 }
 
 /// «Mudou alguma coisa que o preview mostra?» — os mesmos ingredientes da [`CenaDoPreview`], com as
@@ -136,6 +139,7 @@ impl PainterTool {
             opacidade: w.opacidade,
             largura: w.largura.clone(),
             shape_color: self.shape_color_estado(),
+            ferramenta: w.tool,
         }
     }
 
@@ -254,6 +258,9 @@ pub(super) fn pintar_miniatura(
 
     let l = lado as f32;
     let (x0, x1, cy) = (MARGEM, l - MARGEM, l * 0.5);
+    if e_ferramenta(cena) {
+        faixa_da_ferramenta(&mut t, cena, x0, x1, cy);
+    }
     let n = ((x1 - x0) / PASSO_PX).ceil() as u32;
     let cada = n.div_ceil(QUADROS_DO_TRACO).max(1);
     let em = |f: f32| {
@@ -291,6 +298,53 @@ pub(super) fn pintar_miniatura(
         }
     }
     true
+}
+
+/// Uma FERRAMENTA que não pinta (J4 `mistura`): a borracha (`EraseAlpha`) ou uma ferramenta molhada que não é o
+/// Paint. A miniatura dela no papel branco saía EM BRANCO.
+fn e_ferramenta(cena: &CenaDoPreview) -> bool {
+    use super::super::wetpaint_settings::WetTool;
+    cena.brush.blend == ph2d_painter_brush::BrushBlend::EraseAlpha
+        || (cena.meio == PaintMedia::WetPaint && cena.ferramenta != WetTool::Paint)
+}
+
+/// A faixa VERMELHA sobre a qual a miniatura de uma ferramenta mostra o que ela faz: o mesmo pincel a PINTAR (o Mix,
+/// a ferramenta Paint), da altura do S (`2 · AMPLITUDE`, o S atravessa-lhe as duas orlas); depois a ferramenta volta
+/// e o S passa por cima. Os pincéis que pintam nunca chegam aqui (a miniatura deles é a de sempre, ao byte).
+/// O pigmento por dab da faixa no Wet — o da Acrylic Round de fábrica (a tinta cheia que as ferramentas movem).
+const PIGMENTO_DA_FAIXA: f64 = 500.0;
+/// …e a água dela (o volume Water da Acrylic Round: a tinta de corpo, não a aguada).
+const AGUA_DA_FAIXA: f64 = 0.05;
+
+fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f32, cy: f32) {
+    use super::super::wetpaint_settings::WetTool;
+    const VERMELHO: [u8; 3] = [191, 0, 18];
+    use ph2d_wet_paint::tuning::Knob;
+    let (raio, blend, cor) = (t.paint.brush.radius_px, t.paint.brush.blend, t.brush_color_srgb8());
+    let (forca, knobs) = (t.paint.brush.strength, t.paint.wetpaint.knobs);
+    // A faixa é tinta CHEIA (a força da borracha macia, o pigmento da aguarela da ferramenta, a pintariam pálida).
+    t.paint.brush.strength = 1.0;
+    // No Wet: os knobs do pincel SEM preset (o Wet Round: as cerdas dele), com pigmento e água de tinta de corpo.
+    t.paint.wetpaint.knobs = WetKnobs::DEFAULT;
+    t.paint.wetpaint.knobs.set(Knob::PigmentPerDab, PIGMENTO_DA_FAIXA);
+    t.paint.wetpaint.knobs.water = AGUA_DA_FAIXA;
+    t.paint.brush.blend = ph2d_painter_brush::BrushBlend::Mix;
+    t.paint.wetpaint.tool = WetTool::Paint;
+    t.paint.brush.radius_px = AMPLITUDE;
+    t.set_brush_color_srgb8(VERMELHO);
+    let n = ((x1 - x0) / PASSO_PX).ceil() as u32;
+    t.on_canvas_pointer(ponto([x0, cy], 1.0, PointerPhase::Down));
+    for k in 1..=n {
+        t.on_canvas_pointer(ponto([x0 + (x1 - x0) * k as f32 / n as f32, cy], 1.0, PointerPhase::Move));
+        t.on_tick(TICK_MS);
+    }
+    t.on_canvas_pointer(ponto([x1, cy], 1.0, PointerPhase::Up));
+    t.paint.brush.radius_px = raio;
+    t.paint.brush.strength = forca;
+    t.paint.wetpaint.knobs = knobs;
+    t.paint.brush.blend = blend;
+    t.paint.wetpaint.tool = cena.ferramenta;
+    t.set_brush_color_srgb8(cor);
 }
 
 /// **Pinta o preview VIVO de `cena` — EXATO** (dono 10/10: «o preview tem que ser exato»): a física à

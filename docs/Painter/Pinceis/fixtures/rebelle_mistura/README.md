@@ -7,6 +7,10 @@
 #   base      = OIL_AND_ACRYLIC:Round/Round Hard (a mesma das fotos de rebelle_bateria/{SMUDGE,ERASER,BLEND})
 #   eventos   = bateria_rebelle.py com PH2D_REBELLE_REPETE_TROCA=1: na TROCA de ferramenta o SET_BRUSH vai duas vezes
 #   lista     = SMUDGE Default/Soft · ERASER Default/Square Hard, Round Soft, Round Medium · BLEND Default/Soft
+#               2.ª passagem (13:38): BLEND Default/Textured · BLEND Default/Soft _aq · WATER Default/Soft ·
+#               DRY Default/Sponge, Default/Paper (WATER, DRY e as _aq sobre WATERCOLOR:Watercolor/Round)
+#   ⚠️ a foto A do WATER e do DRY é a da água à VISTA (o Rebelle pinta a área molhada a ciano com essas ferramentas):
+#               compara-se a B (seca)
 #   comando   = PH2D_REBELLE_REPETE_TROCA=1 bash ferramentas/vez_do_app.sh rebelle bash ferramentas/lote_bateria.sh <lista> fixtures/rebelle_mistura
 ```
 

@@ -10,7 +10,9 @@ Receitas e portões: `crates/ph2d-tool-painter/tests/it/familias/lapis.rs`. Pran
   baterias de antes pintam ao bit o mesmo). O Krita recebe a inclinação por `handleTabletEvent` (`xTilt`/`yTilt`; cópia
   das ferramentas em `exames/lapis/`). ⚠️ `ferramentas/krita_bateria_dentro.py` tem um defeito: o `base` do preset das
   faixas tapa o `base` do nome da PNG, e a 2.ª/3.ª cena de cada preset gravam `<PyKrita.krita.Resource object …>_<cena>.png`
-  na pasta de onde se corre (curado na cópia).
+  na pasta de onde se corre (curado na cópia; e em `ferramentas/` no fecho da J3, `28edf951f1`).
+- **Fecho da J3**: os três do Digital (Tilted Shade, Rough Sketch, Craft Flat) saíram da fábrica — as receitas vivem em
+  `lapis::EM_ESTUDO` e os portões medem-nas pela receita (`portoes::pincel_de`); `os_reprovados_do_lapis_nao_estao_na_fabrica`.
 - **Os `params` das texturas procedurais**: os DOIS primeiros são o tom (contraste, brilho: `apply_tone`); os do padrão
   começam no 3.º. Um Gradient com `[0, 0, …]` apaga o dab; Stripes com a largura no 1.º é um cinza liso.
 - **A lei da largura do Wet** mede cada tamanho: uma Shape de riscos SEM fundo (contraste 1) mede 1 px e o preset gerado

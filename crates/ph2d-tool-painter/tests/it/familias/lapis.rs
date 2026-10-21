@@ -68,7 +68,12 @@ const TUFOS_DO_4B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "m
 /// O grão do carpinteiro: fraco (a Textura do Rebelle 2,0 contra 10 do 4B — a mina dura e lisa).
 const GRAO_DO_CRAFT: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.1, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
-pub const MEIOS: &[ReceitaMeio] = &[
+/// Nenhum lápis novo do Digital na fábrica: os três reprovaram na revisão cega (`exames/lapis.md`).
+pub const MEIOS: &[ReceitaMeio] = &[];
+
+/// Os REPROVADOS do Digital (B-6, B-9, B-7; o porquê e o que falta: `exames/lapis.md`): receitas medidas, fora da
+/// fábrica (nenhum ficheiro); os portões medem-nas pela receita ([`portoes`]).
+pub const EM_ESTUDO: &[ReceitaMeio] = &[
     // B-6 — o lápis DEITADO do Krita «c) Pencil-5 Tilted» (`exames/lapis.md`, a bateria `exames/lapis/bateria_deitado.json`
     // e as fotos com a caneta em `fixtures/krita_deitado/`): de pé uma linha fina de grafite; deitado, o LADO da mina.
     // A ponta é uma elipse de pé FIXA na tela (0,4 × D, o eixo longo deitado: de pé o recto horizontal fino e o vertical
@@ -215,10 +220,41 @@ mod portoes {
         v[v.len() / 2]
     }
 
-    /// O pincel `nome` de fábrica com uma linha da mão (`engine`) ou um campo do pincel (`brush.<campo>`) trocado — a
-    /// mutação dos portões.
+    /// O pincel `nome`: o da fábrica, ou — um reprovado [`super::EM_ESTUDO`] — o preset que a receita gravaria.
+    fn pincel_de(nome: &str) -> Pincel {
+        let Some(r) = super::EM_ESTUDO.iter().find(|r| r.nome == nome) else {
+            return pinceis(nome).remove(0);
+        };
+        let (parametros, texturas) = crate::presets_de_fabrica::parametros_do_meio(r);
+        let preset = ph2d_brush_presets::Preset {
+            parametros,
+            origem: ph2d_brush_presets::Origem::Fabrica,
+            miniatura: ph2d_brush_presets::Miniatura { largura: 1, altura: 1, rgba: vec![255; 4] },
+            texturas,
+        };
+        Pincel { nome: nome.to_owned(), fonte: Fonte::Preset { preset: Box::new(preset), relativo: nome.to_owned() } }
+    }
+
+    /// Os reprovados não estão na fábrica: nenhum ficheiro com o nome de uma receita [`super::EM_ESTUDO`].
+    #[test]
+    fn os_reprovados_do_lapis_nao_estao_na_fabrica() {
+        let b = ph2d_brush_presets::Biblioteca::carregar(
+            &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes"),
+            None,
+        );
+        let na_fabrica: Vec<&str> = b
+            .entradas
+            .iter()
+            .map(|e| e.preset.parametros.name.as_str())
+            .filter(|n| super::EM_ESTUDO.iter().any(|r| r.nome == *n))
+            .collect();
+        assert!(na_fabrica.is_empty(), "reprovados na fábrica: {na_fabrica:?}");
+    }
+
+    /// O pincel `nome` ([`pincel_de`]) com uma linha da mão (`engine`) ou um campo do pincel (`brush.<campo>`) trocado —
+    /// a mutação dos portões.
     fn com(nome: &str, chave: &str, v: Value) -> Pincel {
-        let mut p = pinceis(nome).remove(0);
+        let mut p = pincel_de(nome);
         if let Fonte::Preset { preset, .. } = &mut p.fonte {
             match chave.strip_prefix("brush.") {
                 Some(c) => {
@@ -259,7 +295,7 @@ mod portoes {
     #[test]
     fn o_tilted_shade_deita_como_o_lapis_do_krita() {
         let (m, sem) = std::thread::scope(|s| {
-            let a = s.spawn(|| larguras_deitado(&pinceis("Tilted Shade").remove(0)));
+            let a = s.spawn(|| larguras_deitado(&pincel_de("Tilted Shade")));
             let b = s.spawn(|| larguras_deitado(&com("Tilted Shade", "tiltLength", 1.0.into())));
             (a.join().unwrap(), b.join().unwrap())
         });
@@ -291,7 +327,7 @@ mod portoes {
     #[test]
     fn o_craft_flat_e_chato_e_fixo_na_tela() {
         let (m, r) = std::thread::scope(|s| {
-            let a = s.spawn(|| chato(&pinceis("Craft Flat").remove(0)));
+            let a = s.spawn(|| chato(&pincel_de("Craft Flat")));
             let b = s.spawn(|| chato(&com("Craft Flat", "brush.dab_flatten", 0.0.into())));
             (a.join().unwrap(), b.join().unwrap())
         });
@@ -314,7 +350,7 @@ mod portoes {
     #[test]
     fn o_rough_sketch_vai_do_claro_ao_escuro_pela_pressao() {
         let (m, sem) = std::thread::scope(|s| {
-            let a = s.spawn(|| rampa(&pinceis("Rough Sketch").remove(0)));
+            let a = s.spawn(|| rampa(&pincel_de("Rough Sketch")));
             let b = s.spawn(|| rampa(&com("Rough Sketch", "pressureOpacity", 0.0.into())));
             (a.join().unwrap(), b.join().unwrap())
         });

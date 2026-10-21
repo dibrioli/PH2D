@@ -48,14 +48,15 @@ Unity e Roblox Studio não correm aqui (Windows/macOS) — documentação, não 
 ## 4. A lei
 
 `o jogo tem o teclado` = **a cena corre** (`Playhead::is_playing`) **∧ a cena está à vista** (nenhuma aba de
-código/quadro por cima) **∧ o foco é do jogo**.
+código/quadro por cima, nenhuma entrada de texto, **nenhuma paleta, menu, diálogo ou pré-visualização do Morph**) **∧ o
+foco é do jogo**. **Tapar a cena LIMPA o foco** (e larga as teclas): destapar não o devolve, só um clique (Godot/Unity).
 
 - **O foco do jogo:** o Play (qualquer porta: botão, Espaço, F5, grafo, cena de smoke) dá-o ao jogo se a cena está à
   vista (Godot: o F5 dá o foco); um clique **na cena** dá-o; um clique **fora** (painel, barra, linha do tempo, aba)
   tira-o. Detectado por quadro (a subida do `is_playing`), nunca por porta — as portas do Play são cinco.
 - **Teclas, com o jogo a ter o teclado:** a tecla nua desce **só** no jogo (nenhum atalho do editor a vê);
   um acorde (Ctrl/Alt/Super) é **só** do editor (a lei de sempre: *«os players pulam sozinhos»* com Ctrl+Z);
-  F5/Shift+F5 são **só** do transporte.
+  F5/Shift+F5 são **só** do transporte; o autorepeat do F5 é ignorado (só a 1.ª pressão alterna).
 - **Sem o jogo a ter o teclado:** nenhuma tecla desce no jogo (Godot: editor em foco ⇒ o jogo não recebe), excepto
   no modo de pré-visualização do morph (o modal que É uma pré-visualização de jogo e lê o `ActionState`).
 - **O soltar chega sempre ao jogo** (a assimetria de sempre; uma subida de tecla não descida é ignorada pelo
@@ -63,32 +64,53 @@ código/quadro por cima) **∧ o foco é do jogo**.
   uma seta presa não deixa o personagem a andar sozinho.
 - **Rato, com a cena a correr:** um botão premido **na cena** vai ao jogo e dá-lhe o foco; nenhum ramo do editor
   age, excepto os botões do HUD (são a interface do JOGO) e o laboratório de física (mão, explosão, atração — sem
-  selecionar). Premido fora da cena, o editor tem-no (e tira o foco ao jogo). O soltar passa sempre a todos. A roda
+  selecionar). Premido fora da cena, o editor tem-no (e tira o foco ao jogo). O soltar passa sempre a todos, **excepto** o de um premir só-do-jogo, que é só do jogo (com o Up do HUD). A roda
   fica do editor (o jogo não a lê — declarado no item 6).
 - **Moldura:** desenhada exactamente quando `o jogo tem o teclado`.
 
 ## 5. Onde
 
-- **Folha pura** `ph2d-app-components::posse` (nova): `GameFocus { frame, press, has_keyboard }` e
-  `route_key(…) -> KeyRoute { feed, consume, transport }` — a decisão inteira testável sem janela.
+- **Folha pura** `ph2d-app-components::posse_do_jogo` (nova): `Cena`, `FocoDoJogo {quadro, tecla, clique, premido,
+  tem_o_teclado}`, `Tecla {desceu, acorde, shift, f5, repete}`, `Transporte`, `Destino` e `destino()` — a decisão inteira
+  testável sem janela. A shell: `input_dispatch/posse_do_jogo.rs`; a moldura: `paint_canvas_overlays::paint_game_frame`.
 - **Shell (composição):** o observador do `key_input` pergunta à folha (alimenta / consome / transporte); o
   `on_mouse_input` pergunta-lhe pelo clique (um irmão `despacho_clique_jogo.rs`, porque `input_dispatch.rs` está a
   586/600); o `push_input_to_script` corre o `frame` antes dos leitores; F5/Shift+F5 ao lado do Espaço (Espaço e F5
   numa porta só; Shift+F5 = o `TransportCmd::Reset` do botão Rebobinar, pelo barramento); a moldura no overlay.
 - O estado `GameFocus` mora no `ComponentsShell` (a catraca `the_app_only_sheds_fields` fica em 172).
 
-## 6. Portões (o vermelho se a propriedade quebrar)
+## 6. Portões (o vermelho se a propriedade quebrar) — os nomes REAIS
 
-- Folha: `o_play_da_o_teclado_ao_jogo` · `um_clique_fora_tira_o_teclado_e_larga_as_teclas` ·
-  `pausar_larga_as_teclas_presas` · `com_o_jogo_a_tecla_nua_e_so_do_jogo` · `um_acorde_e_sempre_do_editor` ·
-  `f5_e_shift_f5_nunca_chegam_ao_jogo` · `sem_o_jogo_nenhuma_tecla_desce_nele` · `o_soltar_passa_sempre` ·
-  `o_morph_continua_a_ler_o_teclado` · `com_uma_aba_por_cima_o_jogo_nao_tem_o_teclado`.
-- Shell (conduzido pelo `key_input`/`on_mouse_input` reais): `o_espaco_com_o_jogo_nao_pausa_a_cena` ·
-  `f5_pausa_e_continua_com_o_jogo_a_ter_o_teclado` · `shift_f5_para_e_rebobina` ·
-  `um_clique_na_cena_a_correr_nao_seleciona` · `a_mao_da_fisica_continua_a_pegar` · `a_moldura_so_com_o_teclado_do_jogo`.
-- Fonte: o observador consulta a folha ANTES de todo atalho (posição na cadeia, como `the_bind_beats_every_editor_shortcut`).
+- **Folha** (`crates/ph2d-app-components/src/posse_do_jogo.rs`, 15 testes): `o_play_da_o_teclado_ao_jogo` ·
+  `com_uma_aba_por_cima_o_play_nao_da_o_teclado` · `um_clique_fora_tira_o_teclado_e_larga_as_teclas` ·
+  `pausar_larga_as_teclas_presas` · `tapar_a_cena_tira_o_foco_e_destapar_nao_o_devolve` ·
+  `o_largar_de_um_clique_do_jogo_e_do_jogo` · `a_tecla_do_jogo_entra_no_teclado_dele_e_so_ela` ·
+  `com_a_cena_tapada_um_clique_nao_e_so_do_jogo` · `com_a_cena_parada_um_clique_nao_e_do_jogo` ·
+  `com_o_jogo_a_tecla_nua_e_so_do_jogo` · `sem_o_jogo_nenhuma_tecla_desce_nele` ·
+  `a_previa_do_morph_continua_a_ler_o_teclado` · `um_acorde_e_sempre_do_editor` · `o_soltar_passa_sempre` ·
+  `f5_e_shift_f5_sao_do_transporte_e_nunca_do_jogo`.
+- **Shell, ordem** (`shells/desktop/tests/it/a_posse_do_teclado_esta_na_ordem.rs`, 4 testes):
+  `a_tecla_pergunta_a_posse_antes_de_todo_atalho` · `o_clique_pergunta_a_posse_antes_do_primeiro_ramo_do_editor` ·
+  `o_foco_anda_antes_dos_leitores_do_teclado` · `o_espaco_e_o_f5_sao_uma_porta` (inclui Shift+F5 = `Reset`).
+- **Re-ancorado:** `the_players_finger_reaches_the_bridge.rs` (os dois testes do bloco antigo, agora por comportamento
+  via `destino`) · `morph_arrow_seam_tests.rs` (agulha `self.tecla_do_jogo(`).
+- **Conduzido** (app real, Xvfb + `xdotool`): `ferramentas/conduz_posse/corre.sh`, 15/15; fixtura `saida.txt`, fotos 01–05.
+- **Mutação:** 15 mutantes + controlo (os 2 sobreviventes ganharam `com_a_cena_tapada_um_clique_nao_e_so_do_jogo` e
+  `a_tecla_do_jogo_entra_no_teclado_dele_e_so_ela`).
 
 ## 7. Smoke = a cena 6
 
 `PH2D_CODE_SMOKE=6`: Espaço atira e a cena **não** pausa; F5 pausa e continua; Shift+F5 rebobina; clicar num painel
 tira a moldura e as setas deixam de mover o círculo; clicar na cena devolve-a; clicar no quadrado não o seleciona.
+
+## 8. Consequências declaradas
+
+- O botão do meio (pan) e o menu do botão direito do canvas, sobre a cena, são do jogo enquanto ela corre (a roda/zoom
+  continua do editor) — consequência do «clique só do jogo».
+- As teclas encaminhadas pelo rato sobre o grafo do Motion/linha do tempo vão ao jogo enquanto ele tem o foco (o foco é por clique, como no Godot).
+- Um quadro de atraso do foco depois do Play (a subida vê-se no início do quadro seguinte).
+- Shift não é acorde: Shift+letra vai ao jogo (Shift+A, o menu Add, fica indisponível a jogar).
+- Teclas sem nome em `ph2d_input` são engolidas enquanto o jogo tem o teclado.
+- Fora de jogo nenhum `keydown` chega ao `InputState` (o jogador não lê as setas ao avançar quadro a quadro com a física armada).
+- Uma cena que começa a correr tapada precisa de um clique.
+- A mão da física, a explosão e a atração mantêm-se (decisão 4).

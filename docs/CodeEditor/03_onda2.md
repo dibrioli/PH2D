@@ -165,3 +165,7 @@ seguinte; o resto entra em lotes.
    **Oráculo corrido e plano (20/10): [06_posse_do_teclado.md](06_posse_do_teclado.md)** — o editor do Godot 4.7.2 numa
    Xvfb (`ferramentas/oraculo_teclado/`); decisões do dono: F5 pausa/continua e Shift+F5 pára, moldura na cena, o clique
    na cena a correr é só do jogo, a mão da física fica. Roteiro conduzido na app real: `ferramentas/conduz_posse/`.
+   **FEITO na linha (20/10, `4b5020cf56` · `cd7f0585dd` · `8676c6e840` · `eaeac6df3c` · `eb371d4963`), smoke do dono
+   PENDENTE** (`PH2D_CODE_SMOKE=6`): lei em `posse_do_jogo` (`ph2d-app-components`), composição na shell, moldura no
+   `editor-core`; auditoria 2 lentes curada, mutação 15 + controlo, conduzido 15/15. Handoff:
+   [HANDOFF_INTEGRACAO_line_CodeEditor_2026-10-20_ONDA2_I7_A_POSSE.md](handoffs/HANDOFF_INTEGRACAO_line_CodeEditor_2026-10-20_ONDA2_I7_A_POSSE.md).

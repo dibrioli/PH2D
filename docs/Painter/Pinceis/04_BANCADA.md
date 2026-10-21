@@ -374,6 +374,10 @@ Um processo por tamanho ⇒ o RSS é deste pincel a este tamanho.
   regerar) · `a_contagem_por_meio` · `cada_pasta_de_fabrica_tem_rotulo` (app-painter, `--features panel-painter-layers`).
   **Só no Wet**: `a_regra_do_spacing_da_fabrica` (a lei da cápsula dele), `a_largura_e_a_prometida` (a tabela do slider)
   e o portão por foto (o controlo é o Wet Round).
+- **O TECTO de tamanho** (decisão 8, o Max Size do Rebelle; `exames/grafite.md` 3.ª ronda): `pincel: &[…, ("size_max_px",
+  "60")]` (Wet ou `ReceitaMeio`, os 4 meios) = o DIÂMETRO do anel que o Size não passa; o valor é a LARGURA que o Rebelle
+  pinta ao tecto (a `recto_200` de `fixtures/leis_escala_rebelle.json` quando o `max_brush_size` < 200), nunca o 80 do
+  ficheiro (o Size dele pinta ~0,75 do que diz). Portão de exemplo: `familias::grafite::portoes::o_tecto_do_preset…`.
 - **Pastas**: pasta e grupo precisam de rótulo; já registados, além dos do Wet: Basic · Calligraphy · Texture · Blend ·
   Effects · Hard · Soft · Flat · Pixel · Glaze · Mechanical · Tilted · Sketch · Craft · Technical · Mapping · Ballpoint ·
   Studio · Fountain · Reed · Wood · Gloop · Bleed · Monoline · Script · Nib · Chisel · Splatter · Stipple · Drips ·

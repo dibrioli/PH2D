@@ -1,0 +1,48 @@
+{
+ "prancha": "splatter.png",
+ "linhas": [
+  "gestos_A",
+  "gestos_B",
+  "tamanhos_A",
+  "tamanhos_B",
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "gestos_A": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "gestos_B": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "tamanhos_A": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "tamanhos_B": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  },
+  "sobre_A": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  },
+  "sobre_B": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  }
+ },
+ "quem": {
+  "oraculo": "spatter_splats",
+  "nosso": "Splatter (escala 1)",
+  "vizinho": "Bokeh (d 2.836, limiar 0.591)"
+ }
+}

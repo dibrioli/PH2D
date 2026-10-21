@@ -1167,6 +1167,8 @@ uma na Alta, a luz da vista com o recorte × sem ele: 0 de 3 932 160 / 3 932 160
 | M10 o recorte 2 colunas DENTRO da janela | 1 690 432 texels |
 | controlo | 0 / 0 / 0 |
 
+**Suíte** (`nextest-impacted`, `target/bug6/suite_41.log`): 17 794 / 17 794 verdes. O binário `smoke` recompilado (2.ª corrida: zero «Compiling»).
+
 ## ⛔ Recusas MEDIDAS (§41)
 
 | Recusa | Porquê |

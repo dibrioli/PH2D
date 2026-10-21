@@ -41,7 +41,7 @@ const CENAS: [(&str, bool, u64); 21] = [
     ("Ink Bullet", false, 0xd3ea3f5b4f847521),
     ("Dip Pen", false, 0x2785d41ac04f93a1),
     ("Ink Brush", false, 0x5856e27ccfe8f621),
-    ("Marker Bullet", false, 0xb30ddf5eaa30b6b8),
+    ("Marker Bullet", false, 0x7c95c14d16114131), // J3 caligrafia_marcadores: a ponta lisa e sem arrasto (era 0xb30ddf5eaa30b6b8)
     ("Airbrush", false, 0xc9c61bd3db4a244e),
     ("Wet Flat", false, 0x270ceb734f4d9aea),
     ("Gouache Flat", false, 0x6111ea627d99cff5),

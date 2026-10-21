@@ -19,7 +19,7 @@ pub(super) struct Foto {
 /// Os pincéis de fábrica com cerdas (o Shape de fábrica) ou grão — todos menos o Airbrush (sem forma) — e a
 /// foto da mídia de cada um; o Wet Dry Brush e o Wet Drip não têm foto na bancada dos gestos.
 #[rustfmt::skip]
-pub(super) const FIOS: [(&str, Option<Foto>); 19] = [
+pub(super) const FIOS: [(&str, Option<Foto>); 18] = [
     ("Wet Round", Some(Foto { nome: "wcround", raio: 16.0, textura: 2.35, cv: 0.038, periodo_fracao: 0.05 })),
     ("Wet Wash", Some(Foto { nome: "wcwash", raio: 20.0, textura: 4.96, cv: 0.018, periodo_fracao: 0.12 })),
     ("Wet Dry Brush", None),
@@ -38,7 +38,6 @@ pub(super) const FIOS: [(&str, Option<Foto>); 19] = [
     ("Dip Pen", Some(Foto { nome: "dippen", raio: 19.0, textura: 1.43, cv: 0.008, periodo_fracao: 0.04 })),
     ("Ink Brush", Some(Foto { nome: "inkbrush", raio: 20.0, textura: 1.27, cv: 0.008, periodo_fracao: 0.04 })),
     ("Marker Bullet", Some(Foto { nome: "markerbullet", raio: 20.0, textura: 0.66, cv: 0.001, periodo_fracao: 0.30 })),
-    ("Marker Liner", Some(Foto { nome: "marker", raio: 9.0, textura: 2.12, cv: 0.001, periodo_fracao: 0.24 })),
 ];
 
 /// A textura no LEVE (a rampa a pressão ~0,33–0,58) e no FORTE (~0,94–1): os recortes da rampa da bancada.

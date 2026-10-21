@@ -461,7 +461,6 @@ fn sonda_as_metricas_das_variantes() {
                 "Dip Pen",
                 "Ink Brush",
                 "Marker Bullet",
-                "Marker Liner",
             ]
             .map(str::to_owned)
             .to_vec()

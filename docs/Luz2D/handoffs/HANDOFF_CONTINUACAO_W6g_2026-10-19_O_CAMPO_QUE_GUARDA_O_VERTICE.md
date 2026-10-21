@@ -1327,3 +1327,80 @@ nome. Os 14 de `teto|memoria|recua|placa` verdes por nome depois do último comm
 3. A vista nos níveis de cima (+4,4 ms a 2160p Alta) continua sem cura que dê o mesmo bit.
 4. A lei W6d com `DISTANTES` no relógio (o §20.2). 5. A anomalia da r5b (§12). 6. A família (b) (37–38). 7. Os
    zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.
+
+## 47. Os cones por fio por nível (§46.2) — pela `c2`: só o nível 0, feito (21/10)
+
+`53142e3f58`. `hrc::DESCIDA_UM_CONE = 1`: o nível 0 da descida vai pelo `soma_da_descida` (`por_fio = 0` no uniforme
+dele) também acima do `POR_FIO_DESDE`. O nível 0 tem UM cone: os mesmos fios, menos código. O mesmo bit.
+
+Instrumento no produto: `Solver::diag_cones_um(gpu, máscara)` (bit `n` = o nível `n` por um cone; `0` = todos pelos
+cones, o antes) reescreve o `por_fio` e os grupos da descida — também no despacho junto (o `primeiro` de cada quadrante
+e o `dobrar`) — sem recompilar. Régua `target/bug6/cones_nivel_regua.rs` (logs `cones_nivel_{1,2,3}.log`).
+
+**Três rodadas, em série por necessidade** — a régua mentia nas duas primeiras:
+
+1. Variantes de 8 quadros, blocos rodados, o mínimo (`_1`): toda máscara MISTA saía ~+25 % (1080p Alta +2,9 ms,
+   2160p Média +3,1) e só a base e o «todos» rápidos. Não era o código.
+2. A base ao lado de cada candidata, com a série dela (`_2`): a base dá 59,2 ms na 1.ª visita e 74 em TODAS as outras
+   (2160p Baixa 5,75 → 7,04 · 2160p Média 11,8 → 15,4 · 1440p Alta 20,4 → 26,4), com os relógios fixos (2 827 /
+   14 001 MHz, `cones_nivel_2_relogios.csv`). Quem caía na 1.ª visita «ganhava».
+3. **As variantes trocadas A CADA QUADRO** (base · base · n0 · 0..=1, a ordem a rodar no ciclo, 60 ciclos), a mediana
+   da diferença contra a base do MESMO ciclo (`_3`) — o controlo base × base dá ≈ 0 em todo teto:
+
+| teto | n0 vista `c2` (q1 · q3) | n0 entorno | 0..=1 vista | 0..=1 entorno |
+|---|---|---|---|---|
+| 1920×1080 Baixa | −0,007 (−0,013 · −0,003) | −0,003 | −0,003 | −0,002 |
+| 1920×1080 Média | −0,011 | −0,004 | −0,010 | −0,004 |
+| 1920×1080 Alta | −0,096 (−0,130 · −0,051) | −0,009 | −0,140 | −0,004 |
+| 2560×1440 Baixa | −0,017 | −0,007 | −0,006 | +0,001 |
+| 2560×1440 Média | −0,022 | −0,002 | −0,012 | −0,003 |
+| 2560×1440 Alta | −0,179 (−0,278 · −0,086) | −0,019 | −0,195 | −0,002 |
+| 3840×2160 Baixa | −0,022 | −0,016 | −0,020 | −0,001 |
+| 3840×2160 Média | −0,127 | −0,011 | −0,155 | −0,003 |
+| 3840×2160 Alta | **−0,549** (−0,866 · −0,105) | −0,063 | −0,622 | −0,020 |
+
+O n0 ganha nos nove, vista e entorno; o 0..=1 perde para ele na Baixa e no entorno (o ganho a mais na Alta, −0,07 ms
+a 2160p, não paga a perda). **Os níveis 0–8 do §43 d eram a fronteira de passe do modo de fases**: pela `c2`, os
+níveis 2–12 sozinhos perdem (2160p Alta +0,02…+0,83, `_1`, nos tetos sem o salto de regime).
+
+**O salto de regime era da RÉGUA, não do produto** (`target/bug6/regime_regua.rs`, `regime_1.log`): um solver do
+produto, 4 fases de 60 quadros com e sem reescrever os uniformes a cada quadro — estável em todas (2160p Alta 62,9 no
+1.º solver e 51,5 no 2.º: o regime do NASCIMENTO do §45; 2160p Baixa 5,73; 1440p Alta 20,2). Só a troca de máscara a
+cada 8 quadros o provocou. ⇒ régua A × B por uniforme: troca a cada quadro, a mediana das diferenças pareadas, com o
+controlo A × A.
+
+**Gate:** `o_nivel_0_por_um_cone_nao_muda_um_bit` (`a_luz_de_fora_nao_atravessa.rs`): o produto × todos pelos cones ×
+todos por um cone, a vista com o entorno, 0 texels em 5 casos (a Baixa — quadrantes juntos — nas duas câmeras deitadas
+e na janela em pé, a Média, a Alta), 8 s. Prova de mutação (`target/bug6/mutacao_n0.sh`, `mutacao_m2{1,2,3,4}_*.log`,
+controlo `mutacao_n0_controlo.log`):
+
+| Mutação | Morre |
+|---|---|
+| M21 1 ulp no `soma_da_descida` só no nível 0 | 397 513 texels (× todos pelos cones) |
+| M22 o vizinho ímpar errado no `soma_da_descida` | 1 682 360 texels |
+| M23 o T reaproveitado errado no `descer_cones` | 1 690 432 texels (× todos por um cone) |
+| M24 1 ulp no `descer_cones` só no nível 0 | 397 513 texels |
+| controlo | 0 nas 10 comparações |
+
+(As duas câmeras deitadas dão o mesmo «1 690 432 acesos» mas imagens diferentes — somas 9,84 M × 33,8 M: só a
+contagem coincide.) Suíte não corrida (1 commit desde a última verde); os dois gates de bit verdes por nome.
+
+⚠️ **Formatação:** `solver_hrc.rs` (4 trechos) e `hrc.rs` (1) não passam o `rustfmt` desde o §44 — formatar põe o
+`solver_hrc.rs` acima das 700 linhas (está em 699). Cura no fecho: mover mais um ajudante para `solver_hrc_ligar.rs`.
+
+## ⛔ Recusas MEDIDAS (§47)
+
+| Recusa | Porquê |
+|---|---|
+| Um cone por fio nos níveis 1–8 (o §43 d) | Pela `c2` perdem; o ganho era a fronteira de passe do modo de fases. |
+| Os níveis 0..=1 | Perdem para o 0 sozinho na Baixa e no entorno. |
+| Reescrever os uniformes a cada quadro para «segurar» o regime rápido | Não muda o regime (`regime_1.log`). |
+
+## 48. ABERTO (por ordem — substitui o §46)
+
+1. Smoke do dono: a luz da Baixa igual com e sem (`PH2D_LIGHT2D_JUNTOS=0`).
+2. A vista nos níveis de cima (+4,4 ms a 2160p Alta) continua sem cura que dê o mesmo bit.
+3. O regime do NASCIMENTO a 2160p Alta (62,9 × 51,5 ms, o mesmo solver nascido em 1.º ou 2.º): qual o produto apanha
+   no app, e se o «nasce duas vezes» (W5p) cobre a vista de hoje.
+4. A lei W6d com `DISTANTES` no relógio (o §20.2). 5. A anomalia da r5b (§12). 6. A família (b) (37–38). 7. Os
+   zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %. 8. O `rustfmt` do `solver_hrc.rs` (§47).

@@ -169,9 +169,14 @@ pub enum Knob {
     /// ⭐ **O nivelamento não atravessa para OUTRO traço** (J2, 03_MOTORES §7 d): o filme de um traço não escoa
     /// para a tinta molhada de outro (`1`); `0` = o nivelamento de sempre, ao bit.
     LevelingOwnStroke,
+    /// ⭐ **A ponta de tinta LÍQUIDA é UM reservatório** (J3 tintas, `docs/Painter/Pinceis/exames/tintas.md` «2.ª
+    /// onda»): a fracção `r` da tinta debaixo da ponta entra nela a cada transfer, mistura-se por SUBTRACÇÃO (o
+    /// produto das duas tintas, nunca a média) e espalha-se pela pegada inteira — o azul escurece um raio ANTES da
+    /// faixa e arrasta depois. `0` = a ponta de sempre (cada texel guarda o que tocou, pelo `Pickup`), ao bit.
+    TipReservoir,
 }
 
-pub const KNOB_COUNT: usize = 93;
+pub const KNOB_COUNT: usize = 94;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

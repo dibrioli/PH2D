@@ -32,9 +32,14 @@ pub const WET: &[Receita] = &[
         size_px: None,
         // Glaze 0,8: a fracção multiplicada que o oráculo MEDIU nesta tinta (doc 42 §3: 0,76 · 0,82); o 1,0 de antes
         // compensava o halo e o azul arrastado para baixo (doc 42 §6).
+        // 2.ª onda: o BORRÃO do cruzamento (o reservatório 0,2 com a ponta que se limpa — sem a limpeza o traço inteiro
+        // ficava preto; a 0,1 não passava a faixa, Rebelle 11 px —, Glaze 0,4: o cruzamento do Rebelle é claro, L 53).
         extras: &[
             ("extDiffusion", 0.01),
-            ("glaze", 0.8),
+            ("glaze", 0.4),
+            ("leveling", 0.5),
+            ("tipReservoir", 0.2),
+            ("tipClean", 0.05),
             ("pressureSizeCurve", 1.0),
             ("pressureOpacity", 0.9),
             ("pressureOpacityCurve", 0.5),
@@ -69,16 +74,20 @@ pub const WET: &[Receita] = &[
         bristle_count: 2000.0,
         hardness: 0.9,
         size_px: None,
+        // 2.ª onda: o BORRÃO (o reservatório 0,4 — a 0,8 só +2 px e o cruzamento ao preto; o Glaze 0,9 → 0,5 porque a
+        // mistura já escurece — a 0,9 o cruzamento ia a L 11 contra 32) e o tecto do Rebelle (Max Size 100 = 91 px).
         extras: &[
-            ("glaze", 0.9),
+            ("glaze", 0.5),
             ("tipClean", 0.05),
+            ("leveling", 0.5),
+            ("tipReservoir", 0.4),
             ("pressureSizeCurve", 1.0),
             ("pressureOpacity", 0.9),
             ("pressureOpacityCurve", 1.5),
         ],
         grao: None,
         achatado: None,
-        pincel: &[("jitter_scale", "0.18"), ("shape", SEM_FORMA)],
+        pincel: &[("jitter_scale", "0.18"), ("shape", SEM_FORMA), ("size_max_px", "91")],
         nasce_de: None,
     },
     // Ink › Pen › Ink Bullet: o mais carregado e seco da tinta. J3 (Rebelle `Pen/Bullet`): a ponta redonda LISA (sem
@@ -102,9 +111,12 @@ pub const WET: &[Receita] = &[
         bristle_count: 2000.0,
         hardness: 0.9,
         size_px: None,
+        // 2.ª onda: o borrão e o tecto (93 px) como o Dip Pen.
         extras: &[
-            ("glaze", 0.9),
+            ("glaze", 0.5),
             ("tipClean", 0.05),
+            ("leveling", 0.5),
+            ("tipReservoir", 0.4),
             ("pressureSize", 0.45),
             ("pressureSizeCurve", 1.0),
             ("pressureOpacity", 0.6),
@@ -115,6 +127,7 @@ pub const WET: &[Receita] = &[
         pincel: &[
             ("shape", SEM_FORMA),
             ("taper", SEM_TAPER),
+            ("size_max_px", "93"),
         ],
         nasce_de: None,
     },
@@ -138,8 +151,10 @@ pub const WET: &[Receita] = &[
         hardness: 0.9,
         size_px: None,
         extras: &[
-            ("glaze", 1.0),
+            ("glaze", 0.5),
             ("tipClean", 0.05),
+            ("leveling", 0.5),
+            ("tipReservoir", 0.4),
             ("pressureSizeCurve", 1.0),
             ("pressureOpacity", 0.9),
             ("pressureOpacityCurve", 2.5),
@@ -151,6 +166,7 @@ pub const WET: &[Receita] = &[
             ("dab_quina", "0.8"),
             ("jitter_scale", "0.15"),
             ("jitter", "0.04"),
+            ("size_max_px", "95"),
         ],
         nasce_de: Some("Dip Pen"),
     },
@@ -175,8 +191,10 @@ pub const WET: &[Receita] = &[
         hardness: 0.95,
         size_px: None,
         extras: &[
-            ("glaze", 0.9),
+            ("glaze", 0.6),
             ("tipClean", 0.05),
+            ("leveling", 0.5),
+            ("tipReservoir", 0.3),
             ("pressureSizeCurve", 1.0),
             ("pressureOpacity", 0.9),
             ("pressureOpacityCurve", 1.5),
@@ -188,6 +206,7 @@ pub const WET: &[Receita] = &[
             ("jitter_scale", "0.3"),
             ("jitter", "0.04"),
             ("taper", r#"{"opacity": 0.6, "start": 1.5, "tip_start": 1.0}"#),
+            ("size_max_px", "97"),
         ],
         nasce_de: Some("Dip Pen"),
     },
@@ -201,19 +220,20 @@ const SEM_FORMA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "None", "mapp
 
 pub const MEIOS: &[ReceitaMeio] = &[
     // C-12 Ink › Gloop › Gloop Pen (ArtRage 6 `Gloop Pen`, fotografado): a gota de tinta translúcida com a ORLA escura
-    // e nítida que MULTIPLICA onde se sobrepõe — o traço do Digital como uma camada (L8: tecto 0,7 e a orla queimada
-    // de 2,5 px) em Multiply; a pressão afina a ponta (a rampa do ArtRage nasce fina) e o traço rápido afina um pouco
+    // e nítida que ESCURECE onde se sobrepõe — o traço do Digital como uma camada (L8: tecto 0,65 e a orla queimada
+    // de 2,5 px) por cima, NORMAL (2.ª onda: o ArtRage compõe a ~0,65 — azul sobre vermelho (74,81,133), azul sobre
+    // azul 1,38×; em Multiply o nosso ia ao preto sobre o vermelho e o 3.º revisor cego o punha com o Gesinski); a pressão afina a ponta (a rampa do ArtRage nasce fina) e o traço rápido afina um pouco
     // (o ArtRage responde à velocidade; 0,25 virava agulha — 2.º revisor cego). A 1.ª receita (a lavagem da Watercolor) fundia a tinta molhada e clareava o vermelho
     // por baixo: `exames/tintas.md`.
     ReceitaMeio {
         pincel: &[
             ("hardness", "0.95"),
-            ("blend", r#""Multiply""#),
+            ("blend", r#""Mix""#),
             ("continuous_spacing", "true"),
             ("spacing", "0.05"),
             (
                 "traco",
-                r#"{"largura": 2.5, "molhada": 0.0, "queimada": 0.8, "tecto": 0.7}"#,
+                r#"{"largura": 2.5, "molhada": 0.0, "queimada": 0.8, "tecto": 0.65}"#,
             ),
         ],
         mao: &[("pressureSize", 0.8), ("speedSize", 0.1)],
@@ -397,10 +417,10 @@ fn cada_tinta_tem_a_sua_identidade() {
     // O pau contra o Dip Pen: os grumos maiores (2,62 contra 1,80) e a tinta que ENTRA clara (0,88 contra 0,99).
     regra(wood.grumo > 2.21, format!("Wood Stick: grumo {:.2} — os grumos são os do Dip Pen", wood.grumo));
     regra(wood.entrada < 0.94, format!("Wood Stick: entrada {:.2} — a tinta não entra clara", wood.entrada));
-    // A orla escura da gota (1,60 contra 1,00 da pena), o que multiplica (1,50) e a largura que a pressão leva pouco
-    // (0,32 contra a pena Gesinski, 0,16).
+    // A orla escura da gota (1,60 contra 1,00 da pena), o que escurece na sobreposição (1,35, ArtRage 1,38, contra ~1,06
+    // das canetas) e a largura que a pressão leva pouco (0,32 contra a pena Gesinski, 0,16).
     regra(gloop.orla > 1.24, format!("Gloop Pen: orla {:.2} — perdeu o aro", gloop.orla));
-    regra(gloop.sobre_si > 1.36, format!("Gloop Pen: sobreposição {:.2} — não multiplica", gloop.sobre_si));
+    regra(gloop.sobre_si > 1.20, format!("Gloop Pen: sobreposição {:.2} — não escurece", gloop.sobre_si));
     regra(gloop.rampa > 0.24, format!("Gloop Pen: rampa {:.2} — a pressão afina-a como a pena", gloop.rampa));
     // A borda que sangra (2,84 contra o Hard Round, o vizinho da matriz, 0).
     regra(bleed.grumo > 1.35, format!("Ink Bleed: grumo {:.2} — a borda deixou de sangrar", bleed.grumo));
@@ -409,5 +429,99 @@ fn cada_tinta_tem_a_sua_identidade() {
     regra(gesinski.miolo < 0.51, format!("Gesinski Ink: miolo {:.2} — a tinta ficou opaca", gesinski.miolo));
     regra(gesinski.orla < 1.24, format!("Gesinski Ink: orla {:.2} — tem o aro da gota", gesinski.orla));
     regra(gesinski.rampa < 0.24, format!("Gesinski Ink: rampa {:.2} — a pressão não a afina", gesinski.rampa));
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// O BORRÃO do cruzamento (cena `sobre`, foto A, o vertical `cruza_1` em x 250): quantos px a MISTURA (≥ 3 píxeis por
+/// linha numa janela de ±60) passa da borda de cima e de baixo da faixa centrada em `yc` — o `borrao.py` da 2.ª onda
+/// (`exames/tintas.md`).
+fn borrao(px: &[u8], yc: usize) -> (usize, usize, f64) {
+    let w = 1000usize;
+    let rgb = |x: usize, y: usize| {
+        let i = (y * w + x) * 4;
+        [f64::from(px[i]), f64::from(px[i + 1]), f64::from(px[i + 2])]
+    };
+    let mediana = |mut v: Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    let cor_mediana = |pts: &[[f64; 3]]| [0, 1, 2].map(|c| mediana(pts.iter().map(|p| p[c]).collect()));
+    // As bordas e o vermelho limpo da faixa, a meio entre os verticais (x 375).
+    let vermelhos: Vec<(usize, [f64; 3])> = (yc - 50..yc + 50)
+        .flat_map(|y| (372..379).map(move |x| (y, x)))
+        .map(|(y, x)| (y, rgb(x, y)))
+        .filter(|(_, c)| c[0] > 110.0 && c[2] < 110.0)
+        .collect();
+    let (topo, fundo) = (vermelhos.iter().map(|v| v.0).min().unwrap(), vermelhos.iter().map(|v| v.0).max().unwrap());
+    // O azul limpo: o vertical sobre o papel entre as faixas.
+    let azuis: Vec<[f64; 3]> = (240..280)
+        .flat_map(|y| (210..291).map(move |x| rgb(x, y)))
+        .filter(|c| c[2] > c[0] + 40.0 && c.iter().sum::<f64>() < 690.0)
+        .collect();
+    let azul = cor_mediana(&azuis);
+    // A mistura vermelho × azul: o verde cai abaixo de 0,65 do azul limpo (o vermelho tem G 0; os grumos do próprio azul
+    // não descem tanto) e não é o vermelho.
+    let da_mistura = |y: usize| -> Vec<f64> {
+        (190..311)
+            .map(|x| rgb(x, y))
+            .filter(|c| c.iter().sum::<f64>() < 690.0 && c[1] < 0.65 * azul[1] && c[0] < 110.0)
+            .map(|c| c[0])
+            .collect()
+    };
+    let mistura = |y: usize| da_mistura(y).len() >= 3;
+    let acima = (1..90).take_while(|&k| mistura(topo - k)).count();
+    let abaixo = (1..90).take_while(|&k| mistura(fundo + k)).count();
+    // O vermelho da mistura acima da faixa (a mediana do R): o produto guarda o R do azul (Rebelle 26–39); a média
+    // das duas cores subia-o para ~100 — o roxo.
+    let r: Vec<f64> = (1..=acima).flat_map(|k| da_mistura(topo - k)).collect();
+    (acima, abaixo, if r.is_empty() { 0.0 } else { mediana(r) })
+}
+
+/// ⭐⭐ **O borrão do cruzamento: a ponta de tinta LÍQUIDA é um reservatório** (J3 tintas, 2.ª onda; `Knob::TipReservoir`).
+/// Rebelle, as cinco tintas na cena `sobre` (`borrao.py`, acima/abaixo): a mistura passa a faixa SECA 11–38 / 5–29 px e
+/// a MOLHADA 11–50 / 2–29 (o pincel apanha a tinta, também a seca, debaixo da pegada inteira e pousa a mistura já
+/// escurecida — o produto, R 26–39, nunca o roxo). Antes da lei o nosso dava 0 px acima (o rectângulo nítido dos
+/// revisores cegos). ⚠️ Fica de fora a subida A MAIS da molhada no Dip e no Reed (45 e 40 contra 21 e 26 na seca): é a
+/// mistura a escoar no azul molhado, física que o filme fino da tinta não exprime (`exames/tintas.md`, 2.ª onda). O
+/// controlo: o Marker Bullet (sem a lei; o do Rebelle 0) continua nítido.
+#[test]
+fn o_borrao_da_tinta_transborda_a_faixa() {
+    use crate::as_leis_da_escala::cena;
+    use crate::exame_bancada::pinceis;
+    let nomes = ["Dip Pen", "Ink Bullet", "Ink Brush", "Reed Pen", "Wood Stick", "Marker Bullet"];
+    let medidas: Vec<(&str, (usize, usize, f64), (usize, usize, f64))> = std::thread::scope(|s| {
+        let h: Vec<_> = nomes
+            .iter()
+            .map(|&n| {
+                (n, s.spawn(move || {
+                    let px = cena(&pinceis(n).remove(0), "sobre");
+                    (borrao(&px, 150), borrao(&px, 470))
+                }))
+            })
+            .collect();
+        h.into_iter().map(|(n, h)| {
+            let (m, sc) = h.join().unwrap();
+            (n, m, sc)
+        }).collect()
+    });
+    let mut falhas = Vec::new();
+    for &(n, molhada, seca) in &medidas {
+        println!("[borrão] {n:>13}: molhada acima/abaixo {molhada:?} · seca {seca:?}");
+        if n == "Marker Bullet" {
+            if seca.0 > 2 || molhada.0 > 2 {
+                falhas.push(format!("{n}: o marcador (sem a lei) borrou {molhada:?} · {seca:?}"));
+            }
+            continue;
+        }
+        if seca.0 < 8 || seca.1 < 4 {
+            falhas.push(format!("{n}: a faixa SECA não borra ({seca:?}; Rebelle ≥ 11 e ≥ 5) — o reservatório"));
+        }
+        if seca.2 > 60.0 {
+            falhas.push(format!("{n}: a mistura acima da seca é ROXA (R {:.0}; Rebelle 26–39) — o produto", seca.2));
+        }
+        if molhada.0 < 6 {
+            falhas.push(format!("{n}: a faixa MOLHADA não borra ({molhada:?}; Rebelle ≥ 11) — o reservatório"));
+        }
+    }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }

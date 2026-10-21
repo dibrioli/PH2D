@@ -681,4 +681,5 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::EmbossSizeRef, KnobGroup::Hidden, "embossSizeRef", 1.0, 1000.0, 0.5, 41.0, None),
     k(Knob::BristleTipRagged, KnobGroup::Hidden, "bristleTipRagged", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::LevelingOwnStroke, KnobGroup::Hidden, "levelingOwnStroke", 0.0, 1.0, 1.0, 0.0, None),
+    k(Knob::TipReservoir, KnobGroup::Hidden, "tipReservoir", 0.0, 1.0, 0.01, 0.0, None),
 ];

@@ -1,0 +1,30 @@
+{
+ "prancha": "tilted_shade_bateria_deitado.png",
+ "linhas": [
+  "deitado_atraves_A",
+  "deitado_mais_A",
+  "deitado_ao_longo_A"
+ ],
+ "chave": {
+  "deitado_atraves_A": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "deitado_mais_A": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  },
+  "deitado_ao_longo_A": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  }
+ },
+ "quem": {
+  "oraculo": "c__Pencil-5_Tilted",
+  "nosso": "Tilted Shade (escala 0.133)",
+  "vizinho": "Grainy Shader (d 0.93, limiar 0.591)"
+ }
+}

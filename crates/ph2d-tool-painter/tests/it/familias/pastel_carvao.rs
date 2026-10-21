@@ -37,52 +37,6 @@ pub const WET: &[Receita] = &[
         ],
         ..CHARCOAL
     },
-    // ⭐ F-2 (J4) `Pencil › Charcoal › Charcoal Flat`: o carvão PRENSADO, a barra de lado — a lâmina FIXA na tela
-    // (Rebelle 16 × 37 px a 40: 2,31; o deitado denso 0,63–0,71, o de pé mais claro 0,41) com as vetas do carvão; o
-    // tecto 40 (o do LADO FINO: a largura que o slider promete é a do recto deitado; a 200 px o Rebelle pinta 40
-    // deitado). r3 (a revisão cega r2 juntava-o ao Pastel Side e via o Rebelle «translúcido, com riscas ao comprido»):
-    // carga 80 e as vetas da barra mais fortes ([`VETAS_DA_BARRA`]); a pressão dá 0,3 do tamanho e a opacidade (curva 1:
-    // a rampa dele já tem largura a 0,1 da pressão).
-    Receita {
-        nome: "Compressed Charcoal",
-        pigment: 80.0,
-        extras: &[
-            ("felt", 0.0),
-            ("drag", 0.02),
-            MAIS_PERTO,
-            ("pressureSize", 0.3),
-            ("pressureOpacity", 1.0),
-            ("pressureOpacityCurve", 1.0),
-        ],
-        achatado: Some((0.55, 0)),
-        pincel: &[
-            ("falloff", "\"Sharp\""),
-            ("jitter", "0.0"),
-            ("shape", VETAS_DA_BARRA),
-            ("size_max_px", "40"),
-        ],
-        nasce_de: Some("Charcoal"),
-        ..CHARCOAL
-    },
-    // ⭐ F-4 (J4) `Pencil › Charcoal › Powder`: o PÓ de carvão — sem linha, ralo (0,16–0,19) e salpicado (o `dust`),
-    // a borda macia; a pressão leve não pinta nada (a rampa do Rebelle só aparece a meio) e depois abre logo.
-    Receita {
-        nome: "Charcoal Powder",
-        pigment: 11.0,
-        hardness: 0.0,
-        extras: &[
-            ("felt", 0.0),
-            ("drag", 0.02),
-            MAIS_PERTO,
-            ("dust", 0.7),
-            ("pressureSizeCurve", 0.8),
-            ("pressureOpacity", 1.0),
-            ("pressureOpacityCurve", 2.5),
-        ],
-        pincel: &[("falloff", "\"Sharp\""), ("jitter", "0.2"), ("shape", SEM_SHAPE), ("size_max_px", "null")],
-        nasce_de: Some("Charcoal"),
-        ..CHARCOAL
-    },
     // Pastel › Pastel Dry › Dry Thin: grão fino e regular. Prompt 35 (14/10), contra o Rebelle NO TEMPO e à
     // mesma largura vista (`ferramentas/pastel_regua.py`, nota 4,76 → 1,38): o grão Noise 0,4 era uma mancha
     // de ~640 px (a largura ia de 15 a 34 px conforme a ALTURA na tela) — Noise 100 é o grão de 2–4 px; o
@@ -164,54 +118,6 @@ pub const WET: &[Receita] = &[
         nasce_de: Some("Soft Pastel"),
         ..SOFT_PASTEL
     },
-    // ⭐ F-7 (J4) `Pastel › Pastel Dry › Flat Soft`: o LADO do bastão — a lâmina FIXA na tela (L3: o deitado fino, o
-    // de pé largo; Rebelle 19 × 36 px a 40, 1,89), as pontas rectas (`dab_quina`), denso, o tecto 50 (o do LADO FINO: a
-    // largura que o slider promete é a do recto deitado; a 200 px o Rebelle pinta 50 deitado). O Soft Pastel com a lâmina 0,47 a 0° e a curva da opacidade 1,2 (a rampa dele 0,05 → 0,62).
-    // r3 (a revisão cega r2): a pressão muda a DENSIDADE e não a largura (`pressureSize` 0,2) e a leve é névoa de grão
-    // (`pressureGrain` 0,5); o lado largo (os de pé) translúcido e riscado — as vetas `ViewPlane` (de pé 0,62, Rebelle 0,64).
-    Receita {
-        nome: "Pastel Side",
-        size_px: None,
-        extras: &[
-            ("felt", 0.0),
-            ("drag", 0.0),
-            MAIS_PERTO,
-            ("pressureSize", 0.2),
-            ("pressureSizeCurve", 0.5),
-            ("pressureOpacity", 1.0),
-            ("pressureOpacityCurve", 1.2),
-            ("pressureGrain", 0.5),
-        ],
-        achatado: Some((0.47, 0)),
-        pincel: &[("dab_quina", "1.0"), ("size_max_px", "50"), ("shape", VETAS_DO_CARVAO)],
-        nasce_de: Some("Soft Pastel"),
-        ..SOFT_PASTEL
-    },
-    // ⭐ F-10 (J4) `Pastel › Pastel Oil › Wax Pencil`: o giz de CERA — denso (0,75–0,86), a borda aos caroços (a orla
-    // do dual, onda 0,045–0,049 no Rebelle) e o miolo manchado; sem estrias. O Oil Pastel sem a Shape em Flow, carga
-    // 300, papel 0,4, o tecto 140.
-    Receita {
-        nome: "Wax Crayon",
-        pigment: 300.0,
-        gate: 0.4,
-        size_px: None,
-        extras: &[
-            ("felt", 0.0),
-            ("drag", 0.05),
-            MAIS_PERTO,
-            ("pressureSizeCurve", 1.0),
-            ("pressureOpacity", 0.9),
-            ("pressureOpacityCurve", 3.5),
-        ],
-        pincel: &[
-            ("jitter", "0.1"),
-            ("shape", MANCHAS_DA_CERA),
-            ("dual", ORLA_DA_CERA),
-            ("size_max_px", "140"),
-        ],
-        nasce_de: Some("Oil Pastel"),
-        ..OIL_PASTEL
-    },
 ];
 
 /// A orla aos caroços do giz de cera (J4): a 2.ª ponta (Multiply) a 0,8 do diâmetro, 2 marcas, espalhadas 0,6 e 0,5
@@ -257,6 +163,113 @@ const MANCHAS_DO_SQUARE: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Nois
 /// — falhas brancas curtas deitadas ao longo do traço, o «Wax Scrape» do Rebelle a 200 px (½-autocorrelação 4 × 2 px,
 /// contraste 0,29; a 40 px liso, 0,13). A 6 × 40 as falhas eram o dobro das dele (contraste 0,39 a 40 px).
 const TRACOS_DA_CERA: &str = r#"{"angle_deg": 0, "flow": true, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.75, 0.78, 0.0, 0.5, 0.5, 0.5], "rake": false, "size": [8.0, 50.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+
+/// ⛔ **Os REPROVADOS da família** (J4, `docs/Painter/Pinceis/exames/pastel_carvao.md`): a receita fica (o próximo exame parte
+/// dela), o ficheiro não — nenhum entra na fábrica sem a revisão cega (`os_reprovados_nao_estao_na_fabrica`).
+pub const EM_ESTUDO: &[Receita] = &[
+    // REPROVADO r2 e r3: os DOIS revisores cegos juntam-no ao Pastel Side (o nosso e o vizinho são o par) e dão o
+    // Rebelle como «outro» — riscas paralelas ao comprido, translúcido, fiapos; o nosso tem o grão do papel por cima.
+    // ⭐ F-2 (J4) `Pencil › Charcoal › Charcoal Flat`: o carvão PRENSADO, a barra de lado — a lâmina FIXA na tela
+    // (Rebelle 16 × 37 px a 40: 2,31; o deitado denso 0,63–0,71, o de pé mais claro 0,41) com as vetas do carvão; o
+    // tecto 40 (o do LADO FINO: a largura que o slider promete é a do recto deitado; a 200 px o Rebelle pinta 40
+    // deitado). r3 (a revisão cega r2 juntava-o ao Pastel Side e via o Rebelle «translúcido, com riscas ao comprido»):
+    // carga 80 e as vetas da barra mais fortes ([`VETAS_DA_BARRA`]); a pressão dá 0,3 do tamanho e a opacidade (curva 1:
+    // a rampa dele já tem largura a 0,1 da pressão).
+    Receita {
+        nome: "Compressed Charcoal",
+        pigment: 80.0,
+        extras: &[
+            ("felt", 0.0),
+            ("drag", 0.02),
+            MAIS_PERTO,
+            ("pressureSize", 0.3),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.0),
+        ],
+        achatado: Some((0.55, 0)),
+        pincel: &[
+            ("falloff", "\"Sharp\""),
+            ("jitter", "0.0"),
+            ("shape", VETAS_DA_BARRA),
+            ("size_max_px", "40"),
+        ],
+        nasce_de: Some("Charcoal"),
+        ..CHARCOAL
+    },
+    // REPROVADO r2 e r3 (duas revisões, confiança média, a mesma diferença): a 200 px o Rebelle é um bloco de borda
+    // definida com nódoas e furos; o nosso um halo gaussiano homogéneo. Falta a gota do pó GROSSA (a fila).
+    // ⭐ F-4 (J4) `Pencil › Charcoal › Powder`: o PÓ de carvão — sem linha, ralo (0,16–0,19) e salpicado (o `dust`),
+    // a borda macia; a pressão leve não pinta nada (a rampa do Rebelle só aparece a meio) e depois abre logo.
+    Receita {
+        nome: "Charcoal Powder",
+        pigment: 11.0,
+        hardness: 0.0,
+        extras: &[
+            ("felt", 0.0),
+            ("drag", 0.02),
+            MAIS_PERTO,
+            ("dust", 0.7),
+            ("pressureSizeCurve", 0.8),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 2.5),
+        ],
+        pincel: &[("falloff", "\"Sharp\""), ("jitter", "0.2"), ("shape", SEM_SHAPE), ("size_max_px", "null")],
+        nasce_de: Some("Charcoal"),
+        ..CHARCOAL
+    },
+    // REPROVADO r2 e r3 (confiança média): falta o PÓ SOLTO à volta do traço (a dispersão de partículas é da família
+    // `texturas`) e as faixas do carimbo do Rebelle a 200 px; a pressão já muda a densidade e não a largura.
+    // ⭐ F-7 (J4) `Pastel › Pastel Dry › Flat Soft`: o LADO do bastão — a lâmina FIXA na tela (L3: o deitado fino, o
+    // de pé largo; Rebelle 19 × 36 px a 40, 1,89), as pontas rectas (`dab_quina`), denso, o tecto 50 (o do LADO FINO: a
+    // largura que o slider promete é a do recto deitado; a 200 px o Rebelle pinta 50 deitado). O Soft Pastel com a lâmina 0,47 a 0° e a curva da opacidade 1,2 (a rampa dele 0,05 → 0,62).
+    // r3 (a revisão cega r2): a pressão muda a DENSIDADE e não a largura (`pressureSize` 0,2) e a leve é névoa de grão
+    // (`pressureGrain` 0,5); o lado largo (os de pé) translúcido e riscado — as vetas `ViewPlane` (de pé 0,62, Rebelle 0,64).
+    Receita {
+        nome: "Pastel Side",
+        size_px: None,
+        extras: &[
+            ("felt", 0.0),
+            ("drag", 0.0),
+            MAIS_PERTO,
+            ("pressureSize", 0.2),
+            ("pressureSizeCurve", 0.5),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.2),
+            ("pressureGrain", 0.5),
+        ],
+        achatado: Some((0.47, 0)),
+        pincel: &[("dab_quina", "1.0"), ("size_max_px", "50"), ("shape", VETAS_DO_CARVAO)],
+        nasce_de: Some("Soft Pastel"),
+        ..SOFT_PASTEL
+    },
+    // REPROVADO r3: o revisor junta-o ao Graphite 8B (o nosso como original, o 8B como imitação) e dá o Rebelle como
+    // «outro» — carimbos rectangulares e festões. Distinto do Soft Pastel só com a Shape e a pressão em curva (0,699).
+    // ⭐ F-10 (J4) `Pastel › Pastel Oil › Wax Pencil`: o giz de CERA — denso (0,75–0,86), a borda aos caroços (a orla
+    // do dual, onda 0,045–0,049 no Rebelle) e o miolo manchado; sem estrias. O Oil Pastel sem a Shape em Flow, carga
+    // 300, papel 0,4, o tecto 140.
+    Receita {
+        nome: "Wax Crayon",
+        pigment: 300.0,
+        gate: 0.4,
+        size_px: None,
+        extras: &[
+            ("felt", 0.0),
+            ("drag", 0.05),
+            MAIS_PERTO,
+            ("pressureSizeCurve", 1.0),
+            ("pressureOpacity", 0.9),
+            ("pressureOpacityCurve", 3.5),
+        ],
+        pincel: &[
+            ("jitter", "0.1"),
+            ("shape", MANCHAS_DA_CERA),
+            ("dual", ORLA_DA_CERA),
+            ("size_max_px", "140"),
+        ],
+        nasce_de: Some("Oil Pastel"),
+        ..OIL_PASTEL
+    },
+];
 
 pub const MEIOS: &[ReceitaMeio] = &[];
 
@@ -522,9 +535,6 @@ mod portoes {
                 exige((m.e200.0 - 75.0).abs() <= 8.0, format!("o tecto: {:.0} px a 200 (Rebelle 74–76)", m.e200.0));
                 exige((0.10..=0.26).contains(&m.e40.1), format!("o contraste {:.2} (Rebelle 0,18)", m.e40.1));
             }
-            // As lâminas FIXAS na tela: de pé ÷ deitada — Flat Soft 1,89, Charcoal Flat 2,31 (o redondo ~1,0).
-            "Pastel Side" => exige((m.lamina - 1.89).abs() <= 0.3, format!("a lâmina {:.2} (Rebelle 1,89)", m.lamina)),
-            "Compressed Charcoal" => exige((m.lamina - 2.31).abs() <= 0.35, format!("a lâmina {:.2} (Rebelle 2,31)", m.lamina)),
             // Square Hard: a largura não muda com a pressão (do 6.º décimo ao fim 31 → 33 px no Rebelle; antes, a pressão
             // leve desfaz-se em grão e a largura medida cai) e só escurece (cobertura 0,07 → 0,63).
             "Square Hard" => {
@@ -533,36 +543,16 @@ mod portoes {
                 exige(varia <= 0.10, format!("a largura varia {:.0} % na rampa (Rebelle ≤ 6 % desde o 6.º décimo)", 100.0 * varia));
                 exige(m.rampa[3].1 <= 0.5 * c_fim, format!("a pressão não escurece: {:.2} → {c_fim:.2}", m.rampa[3].1));
             }
-            // Wax Crayon: a borda aos caroços (onda a 200 px 0,049) e denso.
-            "Wax Crayon" => {
-                exige(m.onda >= 0.04, format!("a borda não tem caroços: onda {:.3} (Rebelle 0,049)", m.onda));
-            }
-            // Charcoal Powder: nada até a meio da rampa (o Rebelle aparece no 6.º décimo) e ralo (0,16–0,19).
-            "Charcoal Powder" => {
-                let cedo = m.rampa[..5].iter().map(|r| r.1).fold(0.0, f64::max);
-                exige(cedo <= 0.03, format!("a pressão leve já pinta ({cedo:.2})"));
-                exige((0.12..=0.26).contains(&m.rampa[9].1), format!("o pó não é ralo: {:.2} (Rebelle 0,15)", m.rampa[9].1));
-            }
             _ => {}
         }
         f
     }
 
-    const FAMILIA: [&str; 9] = [
-        "Charcoal",
-        "Compressed Charcoal",
-        "Charcoal Powder",
-        "Soft Pastel",
-        "Square Hard",
-        "Pastel Side",
-        "Oil Pastel",
-        "Wax Scrape",
-        "Wax Crayon",
-    ];
+    const FAMILIA: [&str; 5] = ["Charcoal", "Soft Pastel", "Square Hard", "Oil Pastel", "Wax Scrape"];
 
     /// ⭐⭐ **Cada pastel e carvão se reconhece pela foto** (J4): a IDENTIDADE de cada um contra o seu Rebelle — as estrias
-    /// do óleo, os traços da cera, o tecto do carvão, as lâminas fixas, o rectângulo do Square Hard, os caroços do giz de
-    /// cera, o pó que só aparece a meio da rampa — e o controlo (o Soft Pastel: sem estrias nem lâmina).
+    /// do óleo, os traços da cera, o tecto do carvão, o rectângulo do Square Hard — e o controlo (o Soft Pastel: sem
+    /// estrias nem lâmina).
     #[test]
     fn cada_pastel_e_carvao_se_reconhece_pela_foto() {
         let presentes: Vec<&str> = FAMILIA.to_vec();
@@ -580,8 +570,7 @@ mod portoes {
     }
 
     /// A mutação do portão de cima, por dentro: cada identidade sem o valor que a faz TEM de reprovar — o óleo sem a
-    /// Shape, a cera sem os traços, o carvão sem o tecto, as lâminas sem o achatado, o Square Hard com a pressão no
-    /// tamanho, o giz de cera sem a orla, o pó sem a curva da opacidade.
+    /// Shape, a cera sem os traços, o carvão sem o tecto, o Square Hard com a pressão no tamanho.
     #[test]
     fn sem_o_que_faz_cada_identidade_o_portao_reprova() {
         let nada = serde_json::json!({"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane",
@@ -591,11 +580,7 @@ mod portoes {
             ("Oil Pastel", "brush.shape", nada.clone()),
             ("Wax Scrape", "brush.shape", nada.clone()),
             ("Charcoal", "brush.size_max_px", serde_json::Value::Null),
-            ("Pastel Side", "brush.dab_flatten", serde_json::json!(0.0)),
-            ("Compressed Charcoal", "brush.dab_flatten", serde_json::json!(0.0)),
             ("Square Hard", "pressureSize", serde_json::json!(0.9)),
-            ("Wax Crayon", "brush.dual", serde_json::Value::Null),
-            ("Charcoal Powder", "pressureOpacityCurve", serde_json::json!(1.0)),
         ];
         let m = mede_todos(casos.iter().map(|(n, c, v)| mutado(n, c, v.clone())).collect());
         let mut sobreviveu = Vec::new();
@@ -645,5 +630,26 @@ mod portoes {
             }
         }
         assert!(f.is_empty(), "{f:?}");
+    }
+
+    /// Os reprovados não estão na fábrica: nenhum ficheiro com o nome de uma receita [`super::EM_ESTUDO`].
+    #[test]
+    fn os_reprovados_nao_estao_na_fabrica() {
+        let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+        let mut achados = Vec::new();
+        let mut pilha = vec![raiz];
+        while let Some(d) = pilha.pop() {
+            for e in std::fs::read_dir(&d).unwrap().flatten() {
+                let p = e.path();
+                if p.is_dir() {
+                    pilha.push(p);
+                } else if let Some(n) = p.file_name().and_then(|n| n.to_str()).and_then(|n| n.strip_suffix(".ph2d-brush.png")) {
+                    if super::EM_ESTUDO.iter().any(|r| r.nome == n) {
+                        achados.push(p.display().to_string());
+                    }
+                }
+            }
+        }
+        assert!(achados.is_empty(), "um reprovado está na fábrica: {achados:?}");
     }
 }

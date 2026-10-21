@@ -468,6 +468,7 @@ impl Holografica {
                 for n in (0..quad.n).rev() {
                     let total = quad.entradas_r(n);
                     let topo = n + 1 == quad.n;
+                    let por_fio = por_fio && (hrc::DESCIDA_UM_CONE >> n) & 1 == 0;
                     let u = UniformeHrc {
                         nivel: n,
                         nx: nx(n),

@@ -20,6 +20,46 @@ pub(super) struct FasesHrc {
 pub type FaseHrc = (&'static str, u32, f64, usize);
 
 impl Holografica {
+    /// ⭐ §46.2 — INSTRUMENTO: os níveis `n` da descida com o bit `n` de `um` fazem um cone por fio.
+    fn diag_cones_um(
+        &mut self,
+        queue: &wgpu::Queue,
+        um: u32,
+        cones: u32,
+        por_fio: bool,
+        juntos: bool,
+    ) {
+        for (etapa, _, grupos, k) in &mut self.passos {
+            if !matches!(etapa, Etapa::Desce) {
+                continue;
+            }
+            let membros = if juntos { 4 } else { 1 };
+            let mut primeiro = 0u32;
+            for u in &mut self.uniformes[*k..*k + membros] {
+                let presente = !juntos || u.grupos[0] * u.grupos[1] * u.grupos[2] > 0;
+                let n = u.nivel;
+                let pf = presente && por_fio && (um >> n) & 1 == 0;
+                let z = (1u32 << n).div_ceil(if pf { cones } else { 1 });
+                if !presente {
+                    u.grupos[3] = primeiro;
+                    continue;
+                }
+                u.por_fio = u32::from(pf);
+                if juntos {
+                    u.grupos[2] = z;
+                    u.grupos[3] = primeiro;
+                    primeiro += u.grupos[0] * u.grupos[1] * z;
+                } else {
+                    grupos[2] = z;
+                }
+            }
+            if juntos {
+                *grupos = dobrar(u64::from(primeiro));
+            }
+        }
+        self.escrever(queue);
+    }
+
     pub(super) fn ligar_fases(&mut self, gpu: &GpuContext, gravacoes: u32) {
         let n = 2 * self.passos.len() as u32 * gravacoes;
         let buffer = |label, usage| {
@@ -143,6 +183,25 @@ impl Solver {
                 true
             }
             None => false,
+        }
+    }
+
+    /// ⭐ §46.2 — INSTRUMENTO: os níveis da descida com o bit em `um` fazem um cone por fio (o
+    /// `soma_da_descida`, sem recompilar) e os outros os cones do `descer_cones`; `0` = todos pelos cones (o antes
+    /// do §46.2), o produto é `hrc::DESCIDA_UM_CONE`.
+    #[doc(hidden)]
+    pub fn diag_cones_um(&mut self, gpu: &GpuContext, um: u32) {
+        let em_3d = self.cfg.hrc_grade_3d && self.cfg.hrc_por_colunas;
+        let cones = if em_3d {
+            self.cfg.hrc_cones_por_fio.max(1)
+        } else {
+            1
+        };
+        let juntos = self.cfg.hrc_juntos();
+        if let Some(h) = &mut self.hrc {
+            let por_fio =
+                em_3d && u64::from(h.grade[0]) * u64::from(h.grade[1]) >= hrc::POR_FIO_DESDE;
+            h.diag_cones_um(&gpu.queue, um, cones, por_fio && cones > 1, juntos);
         }
     }
 

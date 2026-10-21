@@ -79,6 +79,13 @@ pub(crate) const JUNTOS_ATE: u64 = 9 << 16;
 /// 992×576 1,407 · 1,371 · 1,367; 2496×1472 7,32 · — · 6,04 (handoff W5u).
 pub(crate) const POR_FIO_DESDE: u64 = 1 << 17;
 
+/// ⭐ §46.2 (handoff W6g) — os níveis da descida (bit `n`) que fazem UM cone por fio mesmo acima do
+/// [`POR_FIO_DESDE`]: o nível 0 tem um cone só, os mesmos fios, e o `soma_da_descida` é menos código (o mesmo
+/// bit). Medido (RTX 5060 Ti, cena 5, as variantes trocadas a cada quadro, a mediana contra a base do mesmo
+/// ciclo, ms de `c2` da vista · entorno): 2160p Alta −0,55 · −0,06; 1440p Alta −0,18; 2160p Média −0,13; os
+/// outros seis −0,01…−0,03, nenhum perde; os níveis 0..=1 perdem para o 0 na Baixa (`target/bug6/cones_nivel_3.log`).
+pub(crate) const DESCIDA_UM_CONE: u32 = 1;
+
 /// Um quadrante no canónico: `(X ao longo de u, Y ao longo de v, N níveis)`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Quadrante {

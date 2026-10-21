@@ -274,7 +274,13 @@ fn o_emissor_encostado_a_borda_segue_a_grade_esticada() {
     let mut so_o_l = cena_minima();
     so_o_l.emissores.pop();
     so_o_l.luzes -= 1;
-    let pontos = [[-4.2, -2.0], [-2.4, -1.2], [-3.4, -0.9], [-2.2, -2.1], [-5.0, -0.4]];
+    let pontos = [
+        [-4.2, -2.0],
+        [-2.4, -1.2],
+        [-3.4, -0.9],
+        [-2.2, -2.1],
+        [-5.0, -0.4],
+    ];
     let d = DEGRAU_PADRAO;
     let a = Camera2d::new([-4.2, -1.8], 3.8).world_to_screen_affine(WindowSize::new(FHD.0, FHD.1));
     let t = grade_do_quadro(a, FHD, d).expect("grade").texel_m;
@@ -346,7 +352,10 @@ fn o_recorte_do_arquivo_nao_muda_um_bit() {
             let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, FHD);
             s.regiao_fina(i, f);
             let mut ce = config_do_entorno(&gpu.device, a, FHD, d).expect("o entorno");
-            assert!(ce.arquivo_da_borda.is_some(), "o produto lê o entorno pela borda");
+            assert!(
+                ce.arquivo_da_borda.is_some(),
+                "o produto lê o entorno pela borda"
+            );
             ce.hrc_recorta_o_arquivo = recorta;
             let mut e = Solver::novo(&gpu, ce).expect("entorno");
             e.regiao_fina([0; 2], [0; 2]);
@@ -394,21 +403,38 @@ fn os_quadrantes_juntos_nao_mudam_um_bit() {
     assert!(smoke::encenar(&mut w, 5));
     let cena = cena_de_luz(&w);
     for nivel in [NivelDaLuz::Media, NivelDaLuz::Alta] {
-        assert!(!degrau_do(nivel).quadrantes_juntos, "{nivel:?}: a memória ×3,7 só na Baixa");
+        assert!(
+            !degrau_do(nivel).quadrantes_juntos,
+            "{nivel:?}: a memória ×3,7 só na Baixa"
+        );
     }
     let d = degrau_do(NivelDaLuz::Baixa);
     // A 2160p a vista da Baixa (1280×768) já enche a placa e fica um a um; o entorno dela (992×576) junta.
     let a4k = Camera2d::new([-4.2, -1.8], 3.8).world_to_screen_affine(WindowSize::new(3840, 2160));
     let g4k = grade_do_quadro(a4k, (3840, 2160), d).expect("grade");
-    assert!(!config_da_vista(&gpu.device, g4k, a4k, d).hrc_juntos(), "a vista de 2160p passa o JUNTOS_ATE");
-    assert!(config_do_entorno(&gpu.device, a4k, (3840, 2160), d).expect("o entorno").hrc_juntos());
-    for (centro, alvo) in [([-4.2, -1.8], FHD), ([-1.0, 0.5], FHD), ([-4.2, -1.8], (1080, 1920))] {
+    assert!(
+        !config_da_vista(&gpu.device, g4k, a4k, d).hrc_juntos(),
+        "a vista de 2160p passa o JUNTOS_ATE"
+    );
+    assert!(
+        config_do_entorno(&gpu.device, a4k, (3840, 2160), d)
+            .expect("o entorno")
+            .hrc_juntos()
+    );
+    for (centro, alvo) in [
+        ([-4.2, -1.8], FHD),
+        ([-1.0, 0.5], FHD),
+        ([-4.2, -1.8], (1080, 1920)),
+    ] {
         let a = Camera2d::new(centro, 3.8).world_to_screen_affine(WindowSize::new(alvo.0, alvo.1));
         let g = grade_do_quadro(a, alvo, d).expect("grade");
         let luz = |juntos: bool| {
             let mut cv = config_da_vista(&gpu.device, g, a, d);
             let mut ce = config_do_entorno(&gpu.device, a, alvo, d).expect("o entorno");
-            assert!(cv.hrc_juntos() && ce.hrc_juntos(), "o produto junta os quadrantes na Baixa");
+            assert!(
+                cv.hrc_juntos() && ce.hrc_juntos(),
+                "o produto junta os quadrantes na Baixa"
+            );
             cv.hrc_quadrantes_juntos = juntos;
             ce.hrc_quadrantes_juntos = juntos;
             let mut s = Solver::novo(&gpu, cv).expect("vista");
@@ -439,10 +465,94 @@ fn os_quadrantes_juntos_nao_mudam_um_bit() {
             "{centro:?} {alvo:?}: {diferentes} de {} texels diferentes ({acesos} acesos)",
             com.len()
         );
-        assert!(acesos > 0, "{centro:?} {alvo:?}: a vista às escuras não prova nada");
+        assert!(
+            acesos > 0,
+            "{centro:?} {alvo:?}: a vista às escuras não prova nada"
+        );
         assert!(
             com.len() == sem.len() && diferentes == 0,
             "{centro:?} {alvo:?}: juntar os quadrantes mudou {diferentes} texels"
         );
+    }
+}
+
+/// ⭐ §46.2 (handoff W6g) — o nível 0 da descida por UM cone (`hrc::DESCIDA_UM_CONE`) NÃO muda um bit: o produto
+/// contra todos os níveis pelos cones (o antes) e contra todos por um cone, a vista com o entorno; a cena 5, a
+/// Baixa (os quadrantes juntos) nas duas câmeras deitadas e na janela em pé, a Média e a Alta.
+#[test]
+fn o_nivel_0_por_um_cone_nao_muda_um_bit() {
+    use ph2d_app_light2d::qualidade::degrau_do;
+    use ph2d_editor_core::luz_edits::NivelDaLuz;
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — saltado");
+        return;
+    };
+    let mut w = World::new();
+    assert!(smoke::encenar(&mut w, 5));
+    let cena = cena_de_luz(&w);
+    let casos = [
+        (NivelDaLuz::Baixa, [-4.2, -1.8], FHD),
+        (NivelDaLuz::Baixa, [-1.0, 0.5], FHD),
+        (NivelDaLuz::Baixa, [-4.2, -1.8], (1080, 1920)),
+        (NivelDaLuz::Media, [-4.2, -1.8], FHD),
+        (NivelDaLuz::Alta, [-4.2, -1.8], FHD),
+    ];
+    for (nivel, centro, alvo) in casos {
+        let d = degrau_do(nivel);
+        let a = Camera2d::new(centro, 3.8).world_to_screen_affine(WindowSize::new(alvo.0, alvo.1));
+        let g = grade_do_quadro(a, alvo, d).expect("grade");
+        let luz = |um: Option<u32>| {
+            let cv = config_da_vista(&gpu.device, g, a, d);
+            let ce = config_do_entorno(&gpu.device, a, alvo, d).expect("o entorno");
+            assert!(
+                cv.hrc_cones_por_fio > 1,
+                "{nivel:?}: o produto faz cones por fio"
+            );
+            let mut s = Solver::novo(&gpu, cv).expect("vista");
+            let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, alvo);
+            s.regiao_fina(i, f);
+            let mut e = Solver::novo(&gpu, ce).expect("entorno");
+            e.regiao_fina([0; 2], [0; 2]);
+            assert!(e.mascarar_miolo(
+                &gpu,
+                Some([
+                    g.origem_m[0],
+                    g.origem_m[1],
+                    g.origem_m[0] + f64::from(g.largura) * g.texel_m,
+                    g.origem_m[1] + f64::from(g.altura) * g.texel_m,
+                ])
+            ));
+            if let Some(um) = um {
+                s.diag_cones_um(&gpu, um);
+                e.diag_cones_um(&gpu, um);
+            }
+            for _ in 0..30 {
+                e.quadro(&gpu, &cena);
+                assert!(s.somar_entorno(&gpu, Some(&e)));
+                s.quadro(&gpu, &cena);
+            }
+            fluencia_lida(&gpu, &s).v
+        };
+        let produto = luz(None);
+        let acesos = produto
+            .iter()
+            .filter(|v| v.iter().any(|c| *c > 0.0))
+            .count();
+        assert!(
+            acesos > 0,
+            "{nivel:?} {centro:?} {alvo:?}: a vista às escuras não prova nada"
+        );
+        for (nome, um) in [("todos pelos cones", 0), ("todos por um cone", u32::MAX)] {
+            let outra = luz(Some(um));
+            let diferentes = produto.iter().zip(&outra).filter(|(x, y)| x != y).count();
+            eprintln!(
+                "{nivel:?} {centro:?} {alvo:?} × {nome}: {diferentes} de {} texels diferentes ({acesos} acesos)",
+                produto.len()
+            );
+            assert!(
+                produto.len() == outra.len() && diferentes == 0,
+                "{nivel:?} {centro:?} {alvo:?}: o produto × {nome} mudou {diferentes} texels"
+            );
+        }
     }
 }

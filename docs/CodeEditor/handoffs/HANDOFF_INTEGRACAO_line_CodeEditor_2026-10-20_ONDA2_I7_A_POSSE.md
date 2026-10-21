@@ -86,7 +86,7 @@ itens anteriores (regenerar, nunca à mão); o ✗ de LOC é a isenção pré-ex
 ## 4. O que um merge pode partir
 
 - Qualquer linha que toque o bloco observador do `keyboard.rs` ou o prólogo de `on_mouse_input`.
-- Qualquer linha que ACRESCENTE linhas à shell: a catraca `the_shell_only_shrinks` está a **189 008** (medido depois da
+- Qualquer linha que ACRESCENTE linhas à shell: a catraca `the_shell_only_shrinks` está a **189 005** (medido depois da
   última cura) contra o tecto **189 041** — 33 linhas de folga, que **soma entre linhas**.
 - O campo novo em `ViewState`; um literal de `ViewState` noutra linha deixa de compilar.
 - **Semântica:** os `keydown` do `KeyboardState` só chegam ao `InputState` enquanto o jogo tem o teclado, ou na

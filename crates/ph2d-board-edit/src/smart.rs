@@ -250,18 +250,17 @@ impl Editor {
         self.clock = (now_ns, std::time::Instant::now());
     }
 
-    /// ⭐ O estilo do objecto que a caneta dá: o da FERRAMENTA dessa forma neste quadro (o rascunho, o
-    /// `Look`; smoke 21/10 — nascia sempre final) com a cor, a espessura, a opacidade e o tracejado
-    /// da CANETA (o que o artista escolheu nela); sem preenchimento e com cantos vivos (a forma é a
-    /// que a mão desenhou, doc 17 §2.2).
+    /// ⭐ O estilo do objecto que a caneta dá: o da FERRAMENTA dessa forma neste quadro — o rascunho, o
+    /// `Look`, a ESPESSURA e o tracejado — com a cor e a opacidade da CANETA; sem preenchimento e com
+    /// cantos vivos (a forma é a que a mão desenhou, doc 17 §2.2). A espessura é a da ferramenta porque
+    /// o tremor do rascunho é de mundo (~3 px a zoom 1) e não cresce com ela: à da caneta (2) as
+    /// passagens fundiam-se e a forma lia-se lisa (smoke 21/10, medido pela tinta: 5 % × 47 %).
     fn smart_style(&self, pen: &Style) -> Style {
         let ink = pen.stroke.unwrap_or(pen.text_color);
         let mut s = self.style.clone();
         s.fill = None;
         s.stroke = Some(ink);
         s.text_color = ink;
-        s.stroke_width = pen.stroke_width;
-        s.dash = pen.dash;
         s.opacity = pen.opacity;
         s.round = false;
         s

@@ -311,13 +311,15 @@ fn pen_shapes_in_a_sketch_board_are_drawn_like_the_tools_shapes() {
             hand_questions(&tool),
             "{name}: a caneta × a ferramenta (rascunho, look, semente, espécie)"
         );
-        // A cor e a espessura são as da CANETA (o que o artista escolheu nela).
+        // A COR é a da caneta (o que o artista escolheu nela); a espessura e o tracejado, os da
+        // ferramenta — o tremor do rascunho é de mundo, e à espessura da caneta lia-se liso (2.ª).
         let preset = t.board_editor().pen.current(Pen::Pen);
-        let st = pen.style();
+        let (st, ts) = (pen.style(), tool.style());
+        assert_eq!(st.stroke, Some(preset.color), "{name}: a cor da caneta");
         assert_eq!(
-            (st.stroke, st.stroke_width),
-            (Some(preset.color), preset.width),
-            "{name}: o traço da caneta"
+            (st.stroke_width, st.dash),
+            (ts.stroke_width, ts.dash),
+            "{name}: a espessura da ferramenta"
         );
     }
 }

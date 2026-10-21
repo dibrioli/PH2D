@@ -1259,3 +1259,71 @@ mais); confirmar pela `c2` antes.
 3. A vista nos níveis de cima (+4,4 ms a 2160p Alta) continua sem cura que dê o mesmo bit.
 4. A lei W6d com `DISTANTES` no relógio (o §20.2). 5. A anomalia da r5b (§12). 6. A família (b) (37–38). 7. Os
    zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.
+
+## 45. Os 4 quadrantes num despacho (§44.1, ordem do dono 21/10 «construa… ligado só em low») — feito
+
+`024d51d4c7` + `5933700879`. Com `Config::hrc_juntos` (o `Degrau::quadrantes_juntos`, só na Baixa; `PH2D_LIGHT2D_JUNTOS=0`
+compara) cada etapa da holográfica (T0..TN, R_{N−1}..R0, nas duas passagens do entorno) é UM despacho dos 4 quadrantes:
+
+- **Memória:** cada quadrante tem a sua FAIXA em cada nível (`hrc::faixas`, alinhada a 64; os T e o par R dimensionam-se
+  pela soma das faixas). As `bases` do `Hrc` (as ligações `t_a`, `t_b`, `r_cima` e a escrita) somam-se ao índice nos
+  acessores dos dois prelúdios (`base_de`, só com `JUNTOS_HRC`).
+- **Uniforme:** `var<uniform> hrcs: array<Hrc, 4>` — o `Hrc` passa a 256 B (= `PASSO_UNIFORME`) e a ligação de todo passe
+  lê quatro fatias seguidas (o `n_passes` conta-as e mais 3 no fim). Fora do despacho junto o índice é a CONSTANTE 0
+  (`iq()`).
+- **O quadrante do fio:** `id_do_fio` — o grupo (dobrado em 2D) cai no quadrante com o maior 1.º grupo ≤ g (`grupos.w`)
+  e decompõe-se nos `[⌈Y/64⌉, nx, k]` dele; o quadrante sem este nível tem 0 grupos. Só em 3D com um fio por sonda.
+- **A soma** continua um quadrante de cada vez, na ordem q0..q3 (o acumulado: o mesmo bit). **O topo** de um quadrante
+  não é o de outro numa grade não quadrada: junto, a descida liga sempre o R de cima (o topo não o lê).
+- **O teto** (`teto::config_do_quadro`) conta os bytes dos quadrantes juntos.
+
+**`JUNTOS_ATE` = 589 824 texels** (medido, `juntos_2.log`/`juntos_3.log`, a Baixa, cena 5, um a um → juntos, ms):
+
+| teto (vista) | vista `c2` | entorno | soma |
+|---|---|---|---|
+| 1920×1080 (640×384) | 1,908 → 1,494 | 1,392 → 1,037 | **−0,769** |
+| 2560×1440 (832×512) | 2,667 → 2,305 | 1,798 → 1,507 | **−0,653** |
+| 3440×1440 (1120×512) | 3,684 → 3,368 | 2,012 → 1,763 | −0,565 |
+| 3000×1700 (992×576) | 3,654 → 3,395 | 2,073 → 1,816 | −0,516 |
+| 3200×1800 (1056×608, a vista um a um) | 4,392 → 4,412 | 2,114 → 1,861 | −0,233 |
+| 3840×2160 (1280×768, a vista um a um) | 5,717 → 5,728 | 2,946 → 2,795 | −0,140 |
+
+Sem o corte a vista de 1280×768 perdia +0,29 ms (juntos os quatro só disputam a memória numa grade que já enche a placa).
+
+**O caminho um a um não mudou** (`juntos_serie_{1,2,3}.log`, o shader de antes do §44 pelo `modulo_rc` no MESMO processo):
+0 texels diferentes nas 9 combinações (3 tetos × 3 níveis); o tempo empata (+0,2 · +0,1 · 0,0 % na Média). As diferenças
+de +1,5…+15 % que apareceram seguem a ORDEM de criação do solver, não o shader (a 2160p Alta: 52 ou 60 ms conforme o
+solver nasce em 1.º ou 2.º, nos dois sentidos) — o regime da memória da W5p/W5x.
+
+**Gate:** `os_quadrantes_juntos_nao_mudam_um_bit` (`a_luz_de_fora_nao_atravessa.rs`): a cena 5, a Baixa, duas câmeras
+deitadas e uma janela EM PÉ, a vista e o entorno juntos × um a um: 0 de 3 932 160 texels nas três; e o corte (a vista de
+2160p um a um, o entorno dela junto; a Média e a Alta nunca juntam). Prova de mutação (`target/bug6/mutacao_juntos.sh`,
+`mutacao_m1{1,2,3,4}_*.log`, controlo `mutacao_juntos_controlo.log`):
+
+| Mutação | Morre |
+|---|---|
+| M11 o último quadrante nunca escolhido | 1 690 432 texels |
+| M12 sem as faixas (os quadrantes uns por cima dos outros) | 1 690 432 texels |
+| M13 o topo liga o vazio também junto | só a janela EM PÉ: 536 800 texels |
+| M14 `JUNTOS_ATE` = 2^21 | «a vista de 2160p passa o JUNTOS_ATE» |
+| controlo | 0 / 0 / 0 |
+
+**Suíte** (`nextest-impacted`, `target/bug6/suite_44.log`): 17 794 / 17 795 — o vermelho era o tecto de 700 LOC do
+`solver_hrc.rs` (761); curado movendo os ajudantes de ligação e grupos para `solver_hrc_ligar.rs` (698), o gate verde por
+nome. Os 14 de `teto|memoria|recua|placa` verdes por nome depois do último commit.
+
+## ⛔ Recusas MEDIDAS (§45)
+
+| Recusa | Porquê |
+|---|---|
+| Juntar os quadrantes em toda grade da Baixa | A vista de 1280×768 (2160p) +0,29 ms; acima de ~600 mil texels a placa já está cheia. |
+| Juntar na Média/Alta | A memória ×3,7 (+384 MiB a +6,5 GiB) e as grades passam o `JUNTOS_ATE`. |
+| Juntar também a soma | O acumulado soma os quadrantes por ordem; num despacho a ordem (e o bit) perde-se. |
+
+## 46. ABERTO (por ordem — substitui o §44)
+
+1. Smoke do dono: a luz da Baixa igual com e sem (`PH2D_LIGHT2D_JUNTOS=0`).
+2. Os cones por fio por nível (§43 d): confirmar pela `c2` e provar o mesmo bit.
+3. A vista nos níveis de cima (+4,4 ms a 2160p Alta) continua sem cura que dê o mesmo bit.
+4. A lei W6d com `DISTANTES` no relógio (o §20.2). 5. A anomalia da r5b (§12). 6. A família (b) (37–38). 7. Os
+   zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.

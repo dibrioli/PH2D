@@ -296,6 +296,16 @@ gesto de faca, cabe em G-7), Pattern Pens e Image Hose (cabem em K-* com CAP-17)
 Lino/Dry Media (Rb, impressão), Procreate Materials/Abstract/Vintage/Organic (carimbos temáticos ou de pintura 3D; os
 nomes estão no `01b` §1 se a janela 5 quiser alargar), Pixel Dithering (A-5 + padrão).
 
+## §3b — O estado do EXAME, categorias A–E e J (JANELA 3, 2026-10-21)
+
+✅ aprovados (na fábrica): A-1 Hard Round · A-2 Soft Round · A-5 Pixel 1px · A-6 Glaze Round · A-4 Flat Block-in ·
+C-5 Mapping Pen. ◐ pré-existentes curados, não aprovados (decisão 3): B-1..B-4 grafites · B-8 Colored 4B · B-10
+Scratch · C-1 Dip Pen · C-2 Ink Bullet · C-3 Ink Brush · E-1 Marker Bullet · E-2 Marker Liner · J-1 Airbrush.
+✗ em estudo (sem ficheiro; o motor que falta em [`HANDOFF_JANELA_3`](HANDOFF_JANELA_3.md)): B-6 · B-7 · B-9 · B-11 ·
+C-4 · C-6 · C-7 · C-9 · C-11 · C-12 · C-13 · C-14 · C-15 · D-2 · D-3 · D-4 · E-3 · E-4 · J-2 · J-3 · J-4 · J-5.
+🔀 fundidos: A-3 → A-1 · B-5 → A-1 · C-8 → C-2 · C-10 → C-4 · D-1 → A-5 · J-6 → J-1. Por pincel (receita, prancha,
+régua, vizinho, revisão cega, custo, portão): `exames/<família>.md`.
+
 ## §4 — Licenças por ARTEFACTO (medido 19/10 nesta máquina)
 
 | Artefacto | Versão | Licença (fonte) | O que se pode fazer |

@@ -53,6 +53,11 @@ O nome muda se a janela reiniciar (confirme por `ListAgents` antes do sinal).
 11. **J3: o Round Pressure (A-3) funde-se no Hard Round.** Com a opacidade por dab do Krita feita, fica a 0,286 do
     Hard Round (degrau < 0,40) e o revisor cego não os separa nos tamanhos nem no «sobre»; a diferença (a opacidade
     também pela pressão) é uma linha do cartão Pen no Hard Round, não outro pincel.
+12. **J3: «diferença VISÍVEL» na revisão cega** = a que um revisor aponta com confiança média/alta, ou que DOIS
+    revisores novos repetem. A que só sai a medir píxeis com confiança baixa e que revisores seguidos CONTRADIZEM
+    (Mapping Pen: 6 rondas, «o Krita começa em ponta» × «começa redondo») não reprova — senão o exame não fecha.
+13. **J3: a matriz manda nas fusões das canetas duras.** Studio Pen (0,273 do Hard Round) e Technical Pen (0,33 do
+    Pixel 1px) são esses pincéis com outra curva/tamanho — não entram; a curva em S fica como linha do cartão Pen.
 7. **Fórmulas dos modos = W3C em sRGB** (provado contra o Rebelle/Krita); o Saturation/Linear Burn/Dodge do Rebelle a
    10× não seguem fórmula nenhuma — não se perseguem.
 

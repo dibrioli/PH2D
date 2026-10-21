@@ -14,9 +14,9 @@ pub const WET: &[Receita] = &[
     // J3 (`exames/grafite.md`): a base partilhada + a ORLA que ondula (o dual, ver [`ORLA_DO_8B`]), a carga 150 e o
     // papel 0,55 — a cobertura a 40 px 0,85 (Rebelle 0,86), a Textura da mídia 8,76 (9,09).
     // A base `GRAPHITE_8B` fica como estava (os lápis da família `lapis` leem-na).
-    // J3 3.ª ronda: a orla de UMA marca a 0,8 (os caroços maiores do Rebelle), o papel 0,4 (a franja macia: a 0,55 a borda
-    // era salpicada, Borda 0,437 contra 0,320), o grão ao píxel e meio (Size 128: os salpicos FINOS do Rebelle; o Size 32
-    // dava manchas brancas de 8 px), a Shape aos tufos (o miolo manchado) e a carga 280.
+    // J3 3.ª ronda (`exames/grafite.md`): a orla 0,6 × 2 solta (os caroços), o papel 0,4 (a franja macia: a 0,55 a borda
+    // era salpicada, Borda 0,437 contra 0,320), o grão Size 128 (os salpicos FINOS do Rebelle; o Size 32 dava manchas brancas
+    // de 8 px), os tufos e a carga 280; o tecto 69.
     Receita {
         pigment: 280.0,
         gate: 0.4,
@@ -32,8 +32,8 @@ pub const WET: &[Receita] = &[
         ..GRAPHITE_8B
     },
     // ⭐ Os do prompt 53 (doc 53 §8): cada um o 8B inteiro (`nasce_de`) + os overrides; o tamanho é o do preset do Rebelle.
-    // J3: os quatro com a orla do dual; HB e 2H com o grão FINO e FRACO (Size 256 = o píxel, contraste 0,35 e 0,25 — o Rebelle
-    // tem o fino fraco e a onda larga; um Noise só não dava as duas, 03_MOTORES §7.2); o 2H CLARO: a carga 24 dá-lhe o
+    // J3: os quatro com a orla do dual, os tufos, o perfil Smoother e o tecto 60 (3.ª ronda); HB e 2H com o grão de píxel
+    // (Size 256); o 2H CLARO (decisão 10): a carga dá-lhe o
     // tom da cor de fábrica dele no Rebelle (cinza 149 contra o 115 do HB: 106/140 = 0,76 da tinta) — com a MESMA cor,
     // o 2H do Rebelle é o HB (d 0,30 na família dele) e o eixo de dureza não se via (d 0,23 entre os nossos). A carga mais
     // leve pede a curva da carga 1,5 (a 2,0 a rampa da pressão saía a 0,18 da do Rebelle; a 1,5, 0,10).
@@ -61,7 +61,7 @@ pub const WET: &[Receita] = &[
         grao: None,
         ..lapis("Graphite", "Graphite HB", 100.0, 0.18, GRAO_DURO, extras_do_lapis!(0.5, 2.0))
     },
-    // O 2B: o grão de 2 px (Size 128), o papel a 0,4, a carga 46 e a curva do tamanho 0,4 (com a orla a 0,25 a rampa da
+    // O 2B: o grão de 2 px (Size 128), o papel a 0,4 e a curva do tamanho 0,4 (com a orla a 0,25 a rampa da
     // pressão saía a 0,19 da do Rebelle, `a_pressao_de_cada_preset_e_a_da_sua_origem`; a 0,4, 0,09).
     Receita {
         pincel: &[
@@ -77,7 +77,8 @@ pub const WET: &[Receita] = &[
     },
 ];
 
-/// ⭐ **A ORLA do lápis** (J3): a 2.ª ponta (dual, Multiply) a 0,45 do diâmetro, espalhada 0,2 e 0,3 ATRAVÉS, 3 marcas —
+/// ⭐ **A ORLA do lápis** (J3): a 2.ª ponta (dual, Multiply) a 0,45 do diâmetro, espalhada 0,25 e 0,3 ATRAVÉS, 3 marcas
+/// de dureza 0 com a forma de ruído a 0,3 (3.ª ronda: a 0,6 o salpico de píxel que o Rebelle não tem) —
 /// recorta a borda numa onda do tamanho da ponta. O Rebelle tem-na (`edge_wave_jitter` 0,5 + a forma oval girada 180°
 /// por marca): na borda do recto de 40 px a onda é 0,057–0,065 da largura com o comprimento de correlação 6–7 px;
 /// a nossa era 0,026–0,034 com 1–2 px (só o grão) e passa a ~0,06 com 8 px; a 200 px ~0,056 (Rebelle 0,07–0,08).
@@ -89,25 +90,26 @@ const ORLA_DO_LAPIS: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dur
 /// o portão do grão aceita ±35 %).
 const ORLA_DO_2H: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dureza": 0.0, "escala": 0.45, "espalhar": 0.2, "forma": {"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.3, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
 
-/// A orla do 8B: duas marcas a 0,7 do diâmetro, 0,3 espalhadas e 0,1 através — com a dos outros (0,45 × 3) o 8B DEITADO
+/// A orla do 8B: duas marcas a 0,6 do diâmetro, 0,4 espalhadas e 0,4 através (3.ª ronda, os caroços; ao longo deitado 1,30)
+/// — na 2.ª: 0,7 × 2, 0,3 e 0,1 — com a dos outros (0,45 × 3) o 8B DEITADO
 /// perdia o grão (textura através ÷ de pé 0,78, Rebelle 1,01 ± 0,15, `a_caneta_deitada`); assim 0,91, ao longo 1,33
 /// (1,24; a 0,8 × 1, 1,38 saía do vale), a onda 0,053 e o colar a 5 px 0,075 · ac 0,52 (Rebelle 0,072 · 0,50). A 2.ª
 /// revisão cega viu os caroços do Rebelle maiores que os nossos: o espalhar 0,1 → 0,3 (onda 0,045 → 0,053).
 const ORLA_DO_8B: &str = r#"{"angulo": 0, "atraves": 0.4, "contagem": 2, "dureza": 0.3, "escala": 0.6, "espalhar": 0.4, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
 
-/// O grão fino e fraco do HB: Noise `Tiled` Size 256 (o píxel), contraste 0,35 — o colar a 5 px 0,071 (Rebelle 0,066; era
+/// O grão de píxel do HB: Noise `Tiled` Size 256, contraste 0,4 (3.ª ronda, com os tufos; era 0,35) — na 2.ª ronda o colar a 5 px 0,071 (Rebelle 0,066; era
 /// 0,130), a autocorrelação 0,34 (0,24; era 0,78) e os poros brancos que a 1.ª revisão cega não via a 0,3 (a Textura da
 /// mídia 6,69, Rebelle 6,15; a 0,4, 7,71 sai do vale).
 const GRAO_FINO_FRACO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.4, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [256.0, 256.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
-/// O grão do 2B: Noise `Tiled` Size 128 (2 px), contraste 0,55 — os poros que a 1.ª revisão cega pedia («o original tem
+/// O grão do 2B: Noise `Tiled` Size 128 (2 px), contraste 0,56 (3.ª ronda) — os poros que a 1.ª revisão cega pedia («o original tem
 /// poros brancos fortes») e o passo ao HB de grão fino (a 0,5 o HB de 0,35 ficava a 0,36 dele, PASSO INVISÍVEL): a Textura
 /// da mídia 15,8 (Rebelle 13,9), o colar a 5 px 0,168 (0,120; o portão do grão aceita 2×), ac 0,50 (0,52).
 const GRAO_DO_2B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.56, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
-/// ⭐ **Os TUFOS da 1.ª ponta** (J3, 3.ª ronda): a Shape um Noise `Random` de lado 8 a 0,5 — cada dab um tufo manchado,
+/// ⭐ **Os TUFOS da 1.ª ponta** (J3, 3.ª ronda): a Shape um Noise `Random` de lado 4 a 0,4 — cada dab um tufo manchado,
 /// o miolo do traço manchado como o do Rebelle (a forma oval-imagem dele); sem ela o miolo era liso e a 2.ª revisão
-/// cega via «bolhas lisas». Ela clareia o depósito: a carga sobe (HB 40 → 72).
+/// cega via «bolhas lisas». Ela clareia o depósito: a carga sobe (HB 40 → 100). A 0,6 o colar a 40 px passava ±35 %.
 const TUFOS_DO_LAPIS: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.4, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [4.0, 4.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// Os tufos do 2B (0,1): a 0,5 a revisão cega via «nuvens escuras por baixo do grão»; o Rebelle 2B é um pontilhado
@@ -121,8 +123,8 @@ const TUFOS_DO_8B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "m
 /// brancas; a 0,55 a Borda saía 0,56).
 const GRAO_DO_8B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
-/// O 2H: os tufos e o grão mais fracos que os do HB (0,15 · 0,05) — o Rebelle 2H é mais LISO que o HB (Textura da foto
-/// 4,98 contra 6,15); com os do HB o nosso 2H, mais claro, dava 6,90 (o vale vai a 6,41).
+/// O 2H: os tufos e o grão mais fracos que os do HB (0,05 · 0,3) — o Rebelle 2H é mais LISO que o HB (Textura da foto
+/// 4,98 contra 6,15; o vale vai a 6,41: a 0,4 de grão, 7,27); a 0,3 o ac a 5 px 0,50 (a 0,15, 0,52).
 const TUFOS_DO_2H: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.05, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [4.0, 4.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 const GRAO_FINO_DO_2H: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.3, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [256.0, 256.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 

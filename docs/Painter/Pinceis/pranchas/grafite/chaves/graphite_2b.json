@@ -16,33 +16,33 @@
   },
   "gestos_B": {
    "1": "vizinho",
-   "2": "oraculo",
-   "3": "nosso"
+   "2": "nosso",
+   "3": "oraculo"
   },
   "tamanhos_A": {
    "1": "vizinho",
-   "2": "oraculo",
-   "3": "nosso"
+   "2": "nosso",
+   "3": "oraculo"
   },
   "tamanhos_B": {
-   "1": "nosso",
-   "2": "vizinho",
-   "3": "oraculo"
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
   },
   "sobre_A": {
-   "1": "nosso",
-   "2": "vizinho",
-   "3": "oraculo"
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
   },
   "sobre_B": {
-   "1": "vizinho",
-   "2": "nosso",
+   "1": "nosso",
+   "2": "vizinho",
    "3": "oraculo"
   }
  },
  "quem": {
   "oraculo": "graphite_pencil_2b",
   "nosso": "Graphite 2B (escala 0.75)",
-  "vizinho": "Graphite HB (d 0.525, limiar 0.591)"
+  "vizinho": "Graphite HB (d 0.483, limiar 0.591)"
  }
 }

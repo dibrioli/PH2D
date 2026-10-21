@@ -1,110 +1,91 @@
-# EXAME da família `grafite` (J3, catálogo B: B-1 HB · B-2 2H · B-3 2B · B-4 8B · B-5 Mechanical 0.5 · B-11 Erodible)
+# EXAME da família `grafite` (J3, catálogo B: B-1 HB · B-2 2H · B-3 2B · B-4 8B · B-5 Mechanical · B-11 Erodible)
 
-Receitas e portões: `crates/ph2d-tool-painter/tests/it/familias/grafite.rs`. Pranchas: `pranchas/grafite/` (`<slug>.png`
-final, `<slug>_antes.png` o de antes da J3, `_krita`/`_mypaint` o 2.º oráculo; cegas e chaves ao lado). Régua:
-`exames/grafite/`. SHAs: `07bf02f7dc` (orla + grão fino + o dual deita-se) · `8f8b1db5ab` (poros, caroços do 8B) ·
-`8d182780bc` (o 2B com poros).
+Receitas e portões: `crates/ph2d-tool-painter/tests/it/familias/grafite.rs`. Pranchas: `pranchas/grafite/` (cegas e chaves
+ao lado; `_antes`, `_krita`, `_mypaint` são da 2.ª ronda). Régua: `exames/grafite/`. SHAs 1.ª–2.ª ronda: `07bf02f7dc` ·
+`8f8b1db5ab` · `8d182780bc`. **3.ª ronda**: `31f4ae9b13` · `601d9a6cd1` · `cffaa23d57` · `674f87212c` · `2763b29dd1` · `2a53a8dd09`.
 
-## O que mudou nos quatro (o achado)
+## 3.ª ronda (20–21/10) — dois recursos de motor, os quatro recurados, o exame
 
-A revisão cega do 8B (pedida pelo ESTADO) e a 1.ª dos quatro deram o MESMO: o Rebelle era «claramente outro» (borda «aos
-caroços, couve-flor», o traço que ondula) e o nosso parecia-se com o VIZINHO. Os presets do Rebelle explicam porquê
-(`ParametersEx`/`Parameters` do `.rebelle-brush.png`): a forma é uma imagem oval girada 180° por marca, `edge_wave_jitter`
-0,5, espaçamento 0,2 — a borda ondula à escala da PONTA (não do papel). Medido no recto de 40 px (régua `onda` do portão):
-Rebelle 0,057–0,065 da largura, 6–7 px; o nosso 0,026–0,034, 1–2 px (só o grão). A cura é a **orla**: um dual Multiply
-(L6) 0,45 × 3 marcas (0,7 × 2 no 8B) → 0,054–0,063, 8–10 px; o centro do traço também ondula (Rebelle 0,05 · nosso 0,04).
-O **grão fino fraco** dos duros (o pedido do §7.2): Noise `Tiled` Size 256 de contraste 0,35 (HB) / 0,25 (2H) — cv5 HB
-0,130 → 0,071 (Rebelle 0,066), ac5 0,78 → 0,34 (0,24); 2H 0,116 → 0,077 (0,061), ac5 0,77 → 0,36. ⛔ Recusa medida: a
-orla 0,6 × 2 dava a mesma onda mas ac5 0,43 (as marcas de 3 px correlacionam o colar a 5 px).
+**Motor 1 — o TECTO de tamanho (decisão 8).** `BrushSpec::size_max_px: Option<f32>` (o DIÂMETRO do anel; `None` = só o do
+slider), no mapa `brush` do preset só quando fixado (`CAMPOS_DO_PINCEL` ⇒ os 4 meios; ausente = sem tecto, nunca o do pincel
+anterior). O tool não deixa o raio passar de metade dele (`raio_maximo` em `set_brush_size_px`; o pincel que sai do preset
+também, para o Size herdado), salvo na lei CRUA do Wet (a tabela raio do motor → largura: com o tecto ela achatava-se).
+Painel: `BrushSettings::size_max_px`, a faixa do volume «Size px» do Wet acaba nele. `a_largura_e_a_prometida` cumpre
+`min(pedido, tecto)`. **Medido** (fotos `tamanhos`, recto de 200 com `max_brush_size` 80): o Rebelle pinta 2H 59 · HB 60 ·
+2B 59 · 8B 69 px; ÷ o recto de 40 = 1,97–2,00 ⇒ pinta ao 80 dele, mas o Size dele pinta 0,75 do que diz (30 a 40; o 8B
+0,87). ⇒ **a régua do Rebelle NÃO mede 80 no nosso anel: mede 60 (lápis) e 69 (8B)**; o «~41 px» da decisão 8 não se
+reproduz (a ½ do máximo: 47–48; a ¾: 34). Portão red-first `o_tecto_do_preset_pinta_o_grafite_ao_tamanho_do_rebelle`:
+200 px → 196–199 antes, 60 · 61 · 60 · 70 depois (Rebelle 59–69); o painel 60, o Wet Round 200, o Size herdado 60; o
+controlo sem o campo 188. Mutações: tirar o tecto do setter (sangra: 195–200, painel 1024) · desligar o recorte do preset
+(sangra: o herdado 200). Custo: um `min` por mudança de Size — zero no traço. Os outros presets: byte-idênticos (o campo
+não se grava). Como usar: `04_BANCADA.md` §9.
 
-**Motor (pequeno, com portão):** o dual não recebia a caneta (`dual_comeca/estende` sem `set_tilt`, e `pincel()` zerava
-o `pen_tilt`) — com a orla o 8B DEITADO perdia o lado do grafite (através 1,11×, Rebelle 3,45×). Agora a 2.ª ponta deita-se
-com a 1.ª: 3,11× (`a_caneta_deitada` vermelho antes, verde depois); com o rato, ao byte (`o_rato_e_a_caneta_de_pe…`).
-Mutação: tirar o `set_tilt` → `o_lapis_deitado_alarga…` sangra (1,27×); repor o `pen_tilt` neutro →
-`dual::a_segunda_ponta_deita_se_com_a_primeira` sangra.
+**Motor 2 — a 2.ª ponta do dual À FRENTE da 1.ª, no arco do caminho.** O rápido (25 px/evento) pousava 7–12 % mais que o
+lento (3 px) — HB 0,669 → 0,714; sem o dual 0,749 · 0,746; o Rebelle 0,627 · 0,627. Causa: a máscara só chegava a `p` e a
+1.ª carimba até `p + raio`; no lento cada dab perdia a frente. Cura: `dual_estende` estende a 2.ª ponta até `p + raio`
+pelo ARCO da curvatura medida (em linha recta o miolo da espiral saía branco). Portões red-first
+`o_rapido_pousa_o_que_o_lento_pousa` (1,07–1,12 → 0,99–1,03) e `a_espiral_pinta_o_proprio_caminho` (o caminho no 1.º
+quarto ÷ o resto 0,69–0,72 → 0,92–0,98; Rebelle 1,00). Mutações: frente 0 (1,11) · curvatura 0 (0,69–0,72). Só os
+grafites levam dual.
 
-**Portões novos** (`familias::grafite::portoes`): `os_grafites_sao_uma_familia_com_a_borda_do_rebelle` (onda ≥ 0,04 e
-≥ 4 px nos quatro; cv5/ac5 do HB e 2H ≤ 1,6× / +0,15 do Rebelle; 2H ÷ HB = 0,757 ± 0,08 e HB < 8B) e
-`sem_a_orla_e_com_o_grao_de_antes_o_hb_reprova` (o controlo por dentro: sem o dual onda 0,020; o grão de antes cv5
-0,123). Mutação da receita (2H carga 24 → 40): o eixo sangra (2H ÷ HB 1,006). Regravado: o 8B na `a_lei_da_tinta`.
-Verdes por nome: `a_caneta_deitada`, `o_grao_do_lapis` (os dois), `a_pressao_de_cada_preset…` (grafites 0,087–0,118),
-`cada_preset_parece_a_sua_midia` (grafites e irmãos), `os_fios`, `presets_de_fabrica` (receita, miniatura, largura) — os
-vermelhos que sobram nessas são de outras famílias (Ink Bullet/Brush, Wood Stick, Hard Round).
+**As receitas** (a revisão cega via o Rebelle MACIO, manchado, de borda que ondula; o nosso salpicado de píxel): orla do
+lápis 0,45 × 3, através 0,3, espalhar 0,25 (2H 0,2), dureza 0, forma Noise 32 a 0,3; perfil Smoother; tufos (Shape Noise
+`Random` Size 4) HB 0,4 · 2H 0,05 · 2B 0,1; grão de píxel HB 0,4 · 2H 0,3, o 2B Size 128 a 0,56; cargas HB 100 · 2H 58 ·
+2B 120. 8B: orla 0,6 × 2, através 0,4, espalhar 0,4; papel 0,4 (franja macia), grão Size 128 a 0,5, tufos Size 8 a 0,9,
+carga 280. ⚠️ A folga do ac a 5 px do portão da família subiu 0,15 → 0,27 (o chão do Wet a 5 px sem orla nem tufos é 0,68;
+o 0,34 da 2.ª ronda vinha do defeito do Motor 2; a forma da orla a 0,8 dava 0,33 mas tirava a Textura da mídia do vale).
 
-## B-4 Graphite 8B (WP) — ⛔ REPROVADO na revisão cega (a 3.ª), com 2 das 3 diferenças por decisão já tomada
+**Verdes por nome** (cada um depois do último preset): a família (onda 0,069–0,076; cv5 0,082–0,133; tom 2H ÷ HB 0,80),
+a mídia (os quatro), o grão do lápis, o lápis deitado (8B ao longo 1,30, Rebelle 1,24), o rápido = o lento, a espiral, o
+tecto, a largura prometida, miniatura, byte, `a_lei_da_tinta` (o 8B regravado). Vermelhos de OUTRAS famílias no caminho:
+Ink Bullet/Dip Pen/Ink Brush/Marker na `a_lei_da_tinta` e na pressão.
 
-Receita: a base `GRAPHITE_8B` (intacta: a família `lapis` lê-a) + orla 0,7 × 2 (espalhar 0,3, através 0,1), carga 150,
-papel 0,55. Régua 428/454 (antes 416). Vizinho Oil Pastel 0,709 fora; família: Colored 4B 0,59, 2B 0,63. Origem 2.º
-(0,544; 1.º Pastel Dry/Oval 0,534). MyPaint `Dieterle/8B_Pencil_1` 394/454. Razão: valores escuros e tom, o lápis deitado.
-**Revisão cega 3** (novo revisor): achou o oráculo nas 6 linhas, o NOSSO como imitação nas 6, o vizinho «claramente outro»
-nas 6 (as 2 de antes punham o Rebelle como o «outro»). RESUMO dele: (1) a 200 px o original fica ~41 px — é o Max Size 80
-do preset do Rebelle (recusa medida do J1, 04_BANCADA ⛔); (2) a borda do original tem caroços maiores, a nossa «recta, só
-grão fino»; (3) a rampa 0→1 do original entra a ¼ e fica densa cedo, a nossa sobe devagar — o piso de pressão que o
-igualava foi REVOGADO pelo dono (18/10). Fica aberto para a fila: (2) — caroços maiores sem sair do vale do lápis deitado
-(com a orla 0,8 × 1 + através 0,3 o «ao longo» sai do vale, 1,44 × 1,24 ± 0,12).
+### Os quatro — exame (Rebelle), revisão cega NOVA, cruzamento
 
-## B-1 Graphite HB (WP) — ⛔ REPROVADO na revisão cega (a 2.ª)
+| | régua | fora (d) · família | origem | revisor: oráculo · imitação = nosso · 3.º outro |
+|---|---|---|---|---|
+| HB | 430/454 | Rough Sketch 0,819 · 2H 0,57, 2B 0,41 | 5.º 0,719 | 0/6 (tomou o 2B) · 6/6 · **não** («parente próximo») |
+| 2H | 328/454 (o tom, decisão 10) | Rough Sketch 0,825 · HB 0,57 | 3.º 0,739 | 0/6 (o NOSSO por original, o HB por imitação) · — · sim |
+| 2B | 400/454 | Oil Pastel 0,798 · HB 0,48, 4B 0,56 | ✓ 1.º 0,657 | **6/6 · 6/6 · sim** |
+| 8B | 426/454 | Oil Pastel 0,801 · 4B 0,52 | ✓ 1.º 0,541 | **6/6 · 6/6 · sim** |
 
-Receita: lápis 40, papel 0,18, orla 0,45 × 3, grão 256 · 0,35. Régua 424/454 (antes 430). Fora: Oil Pastel 0,838; família
-2H 0,51, 2B 0,52. Origem 5.º (0,656; os do Rebelle 2H/H/HB estão a 0,13–0,17 entre si). Krita `c)_Pencil-2` 198/454.
-Revisão 2: oráculo e imitação = o NOSSO nas 6 linhas; «o terceiro (o 2H) não é outro — é o mesmo desenho, ~76 % do tom»
-(é o eixo de dureza, de propósito: a mesma orla nos dois). RESUMO: (1) Max Size (decisão J1); (2) o original tem grão
-salpicado e borda trémula, o nosso «bolhas lisas» — o dual de disco lê-se como bolhas; (3) a pressão fraca do original afina
-numa ponta salpicada, a nossa esmaece; o rápido nosso sai mais escuro (cobertura 0,69 × 0,63, régua ✗).
+- **8B — ⛔ REPROVADO, um defeito de fora da decisão 9.** Revisor: (1) a rampa entra a ⅓ e enche de repente — decisão 9;
+  (2) **a borda do Rebelle em lóbulos/contas e o recto de 200 px com bossas de ±10 px; a nossa quase lisa**; (3) o azul
+  do Rebelle tapa o vermelho (33/101/174), o nosso deixa um violeta (43/97/164); o de 5 px nosso mais claro. Medido: as
+  bossas são o carimbo do Rebelle (a forma oval-IMAGEM girada a cada 0,2 do diâmetro) — com a regra da fábrica (Spacing
+  0,1 + Continuous, dono 18/10) a cápsula alisa o contorno; a orla do dual (0,8 × 1, 0,6–0,8 × 2–3, dureza 0,6–0,8) e o
+  jitter 0,2–0,4 testados: bossas pequenas, ou o «ao longo» deitado sai do vale (1,55), ou o traço parte-se em blocos.
+  **Para a fila**: decidir se os grafites saem da regra do Spacing (carimbo esparso de imagem) — decisão de produto.
+- **HB — ⛔ REPROVADO.** O revisor tomou o 2B (o vizinho, de grão) pelo original e o Rebelle por «parente próximo» — o
+  traço é já o do Rebelle, mas ele ainda vê: as pontas do Rebelle em tampa REDONDA (as nossas afinam, a rampa forte abre
+  em forquilha); o recto de 5 px do Rebelle mais escuro e contínuo (régua: cobertura 0,58 × 0,50, textura 9,6 × 22,8 à
+  escala 0,75); o cruzamento sobre o vermelho chapado no Rebelle, manchado no nosso.
+- **2H — ⛔ REPROVADO.** Pares iguais pela semente (o nosso 2H e o HB têm o mesmo contorno; o revisor usou-o). O Rebelle:
+  manchas de contorno mais nítido e grão mais marcado que o nosso (que lê «esbatido»). ⚠️ Conflito medido: a Textura da
+  foto do 2H é 4,98 (a do HB 6,15) e o vale da mídia vai a 6,41 — com o grão 0,4 o 2H dava 7,27. Fica para o coordenador.
+- **2B — ⛔ REPROVADO, já identificado (6/6 · 6/6 · o HB «claramente outro»).** O revisor ainda vê: o nosso MAIS ESCURO
+  (cobertura da mídia 0,606 contra 0,544 — dentro do vale, mas lê-se; o cruzamento azul-marinho opaco, o do Rebelle
+  arroxeado); o grão aos montes onde o Rebelle é um salpico miúdo uniforme; o recto de 5 px mais claro e falhado; uma
+  «bolota» no fim forte da rampa. Próxima cura (receita, não motor): a carga 120 → ~105, o grão do 2B mais fino
+  (Size 160–192), e a lei do traço fino (abaixo).
 
-## B-3 Graphite 2B (WP) — ⛔ REPROVADO na revisão cega (a 2.ª)
+**Comum aos três lápis (a fila da próxima ronda):** o traço de 5 px (à escala da bancada, 3,75 px) — o nosso falha pelo
+grão de píxel (Textura 22,8 contra 9,6 no HB), o do Rebelle é contínuo: o grão não deve partir o traço fino (03_MOTORES
+§7.2, «o grão não escala para baixo»). E as pontas: o Rebelle fecha em tampa redonda; a nossa rampa forte abre em
+forquilha (as marcas da orla espalhadas através no fim do traço). Revisões cegas: os nossos dois presets da mesma orla têm
+o MESMO contorno (a mesma semente) e os revisores usam-no para os emparelhar — vale semear a orla pelo preset.
 
-Receita: lápis 46, papel 0,4, curva do tamanho 0,4, orla 0,45 × 3, grão 128 · 0,55. Régua 426/454 (antes 434). Fora:
-Square Hard 0,633; família HB 0,52, Colored 4B 0,57. Origem ✓ 1.º (0,613). MyPaint `deevad/2B_pencil` 264/454.
-Revisão 2: oráculo e o NOSSO como imitação nas 6; o vizinho «claramente outro» nas 6. RESUMO: (1) Max Size; (2) a rampa
-0→1 do original entra a ¼ e engrossa depressa (o piso revogado); (3) poros maiores e borda com fiapos no original.
+## Custo (`--custo`, smoke, 60 Hz; p95 ms 5 · 40 · 200; RSS 200; `load` 1 min) — COM o tecto
 
-## B-2 Graphite 2H (WP) — ⛔ REPROVADO na revisão cega — DECISÃO DE PRODUTO para o coordenador
-
-Com a cor da bateria o 2H do Rebelle É o HB (d 0,30 na família dele: 2H→H 0,17, H→HB 0,13; o nosso estava a 0,23 do HB,
-«PASSO INVISÍVEL»); o eixo de dureza do Rebelle mora na COR de omissão (cinza 149 × 115 do HB), que os nossos presets não
-levam. Escolha: o 2H no tom dela — carga 24 → 2H ÷ HB 0,746 (106/140 = 0,757), passo ao HB 0,51; a Cobertura da mídia do
-2H = a da foto × 106/140 (`COBERTURA_DO_2H`). Régua 320/454 (as ✗ são o tom, de propósito). Revisão 2: o revisor tomou o
-vizinho (2B) por original e o Rebelle por «outro» — o tom separa-os. Razão: linhas de construção que somem. **Alternativa
-para o dono/coordenador**: fundir o 2H no HB (é o que o Rebelle faz com a mesma cor) — sai um preset e a família fica HB ·
-2B · 8B.
-
-## B-5 Mechanical 0.5 — ⛔ FUNDIDO no Hard Round (A-1)
-
-Feito no Wet (o Rebelle `Pentell`: 3,84 px, sem grão, quina 0,6, pressão 1,0) e medido: régua 402/454, mas o vizinho é o
-Hard Round a **0,289** (Dry Ink 0,294, Brush Pen 0,318) — PERTO. O próprio Pentell do Rebelle está a 0,306 do Digital/Round
-Hard dele: a lapiseira do Rebelle é uma ponta dura fina. Receita e ficheiro retirados. ⭐ Achado: no Wet uma ponta seca SEM
-grão pinta as CERDAS do motor (riscas ao longo, textura 4,4 %); um Noise de contraste 0 e brilho 1 arma a ranhura do grão
-e tira-as (0,06 %).
-
-## B-11 Erodible Pencil — ⛔ NÃO SAI: motor GRANDE (L17)
-
-Fonte (WebSearch; a página da Adobe recusa o fetch, 403): a ponta erodível do Photoshop gasta-se com o USO e fica gasta
-entre traços até «Sharpen Tip» (Softness = a velocidade do gasto; formas Point/Flat/Round/Square/Triangle, o quadrado perde
-os cantos). Falta: (1) estado da ponta no tool que atravessa traços + o comando Sharpen (atalho, painel, i18n); (2) a
-FORMA a mudar (cantos a arredondar), não só a largura; (3) a dureza por dab (`Dab` não a tem: o carimbo lê a do `spec`, CPU
-e placa). A superfície de um campo do taper hoje: 12 ficheiros em 5 crates (o painel no tecto de LOC, a macro com censo
-de portas). Uma largura por comprimento DENTRO do traço não é a erodível do Photoshop (afia a cada traço) — não a fiz.
-
-## Custo (`--custo`, smoke, 5 · 40 · 200 px; p95 ms; RSS) — ⚠️ load 15–66 (outras famílias): o relógio não vale, repetir calmo
-
-| pincel | p95 5 · 40 · 200 | RSS 200 | load |
+| HB 4,16 · 7,77 · 6,82 · 86 MiB · 11–13 | 2H 2,46 · 8,48 · 6,77 · 87 MiB · 14–15 | 2B 1,01 · 3,81 · 4,07 · 86 MiB · 10–12 (antes da cura 3c) | 8B 1,04 · 3,15 · 3,58 · 86 MiB · 8–10 |
 |---|---|---|---|
-| HB | 0,83 · 4,26 · 9,07 | 99 MiB | 22–25 |
-| 2H | 1,48 · 4,08 · 10,13 | 99 MiB | 17–20 |
-| 2B | 1,29 · 4,32 · 16,88 | 99 MiB | 14–18 |
-| 8B | 0,64 · 2,79 · 5,97 (o de antes 5,12 a seguir) | 98 MiB | 19–23 |
 
-A/B intercalado com o preset de ANTES (`git show 536d1ae213:…`), a 200 px: 8B 5,97 × 5,12 (load 19 · 14); 2B 23,7 × 7,4
-(load 14 · 19) e na 2.ª volta 29,3 × 31,3 (load 44 · 47) — sob esta carga o A/B não decide (uma volta 3,2× pior, a outra
-igual). ⚠️ Fila: medir o 2B a 200 px calmo antes do fecho (J5); se o p95 passar de 16,7, a orla dele a 2 marcas. Caneta deitada: alarga e alisa (o 8B: através 3,11×, ao longo 1,33×,
-Rebelle 3,45 · 1,24).
+O 2B a 200 px (16,9 ms a load 14–18 na 2.ª ronda) agora 4,07: o tecto pinta-o a 60 px. ⚠️ load 8–15 (outras famílias): o
+relógio é indicativo; todos ≤ 8,5 ms, longe do orçamento.
 
-## Revisões cegas (resumo do cruzamento; as respostas inteiras nas pranchas `pranchas/grafite/cegas`, chaves ao lado)
+## Rondas 1–2 (resumo; o detalhe no git, `32c84ee113`)
 
-| pincel · ronda | oráculo achado | imitação = nosso | o 3.º é outro |
-|---|---|---|---|
-| 8B (pranchas da J2) | 0/6 (o Rebelle foi o «outro») | 0/6 (o vizinho 2H) | — |
-| 8B · HB · 2B · 2H, ronda 1 | 0/6 nos quatro (o Rebelle foi o «outro» nos 24) | — | — |
-| 8B ronda 3 · HB ronda 2 · 2B ronda 2 | 6/6 · 6/6 · 6/6 | 6/6 · 6/6 · 6/6 | sim · não (o 2H, o eixo) · sim |
-| 2H ronda 2 | 0/6 (o tom) | — | — |
+A orla do dual (a borda que ondula), o grão fino fraco dos duros, o dual que se deita com a caneta (motor), o 2H no tom de
+fábrica (decisão 10), **B-5 Mechanical 0.5 fundido no Hard Round** (d 0,289; o Pentell do Rebelle é uma ponta dura fina),
+**B-11 Erodible NÃO SAI** — motor GRANDE (L17: estado da ponta entre traços + «Sharpen Tip», a forma que perde os cantos,
+a dureza por dab; 12 ficheiros em 5 crates).

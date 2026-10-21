@@ -654,7 +654,9 @@ impl PainterTool {
                         cell_y,
                         b,
                         cell_r,
-                        opacidade * f64::from(peso * fino) * esmaece_fino,
+                        // O FILME não pesa por comprimento (o máximo de um dab já é a camada): com o peso, o 1.º dab
+                        // da lane (peso 1) ficava acima dos seguintes (4 ÷ 4,775 a 190 px) — o disco do 1.º toque.
+                        opacidade * f64::from(if filme_liso { fino } else { peso * fino }) * esmaece_fino,
                         Some(&sil),
                         grain_arg,
                         padrao_arg,

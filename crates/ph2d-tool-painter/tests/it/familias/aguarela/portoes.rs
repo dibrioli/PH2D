@@ -102,3 +102,45 @@ fn o_filme_tem_a_mesma_espessura_a_todo_o_tamanho() {
         assert!((m / largo - 1.0).abs() < 0.1, "a {d} px o filme tem {:.2} do de 200", m / largo);
     }
 }
+
+/// ⭐ **O filme não tem o disco do 1.º toque** (`Knob::StrokeFilm`): a água e o pigmento do início do recto de 190 px são
+/// os do meio. Com o peso por comprimento (o pigmento ÷ o passo a que foi afinado) o 1.º dab da lane pesa 1 e os
+/// seguintes 4 ÷ 4,775 — com a soma é um dab entre 48, com o máximo é o filme do disco inteiro (1,19×: o revisor cego viu-o).
+#[test]
+fn o_filme_nao_tem_o_disco_do_primeiro_toque() {
+    let p = pinceis("Wet Liner").remove(0);
+    let Fonte::Preset { preset, .. } = &p.fonte else {
+        unreachable!()
+    };
+    let mut pr = (**preset).clone();
+    for (k, v) in FILME {
+        pr.parametros.engine.insert(k.to_owned(), v);
+    }
+    let mut t = tela();
+    t.set_semente_dos_tracos(0);
+    t.set_wet_relogio_fixo(true);
+    assert!(t.preset_aplicar(&pr).expect("meio").is_empty());
+    t.set_brush_size_px(95.0);
+    t.set_brush_color_srgb8(AZUL);
+    gesto(&mut t, &[[60.0, 320.0], [940.0, 320.0]], 3.0, |_| 1.0);
+    let mut faixa = |x0: f64, x1: f64| -> f64 {
+        let mut s = 0.0;
+        t.wet_sonda_motor(|e| {
+            let g = e.active_grid();
+            let razao = 1000.0 / (g.w as f64);
+            let cel = |v: f64| (v / razao) as usize + 1;
+            let (mut n, mut soma) = (0.0, 0.0);
+            for cy in cel(310.0)..=cel(330.0) {
+                for cx in cel(x0)..=cel(x1) {
+                    soma += f64::from(g.film[cx + cy * g.s]);
+                    n += 1.0;
+                }
+            }
+            s = soma / n;
+        });
+        s
+    };
+    let (inicio, meio) = (faixa(60.0, 120.0), faixa(400.0, 600.0));
+    println!("[filme] a água no início {inicio:.3} · no meio {meio:.3}");
+    assert!((inicio / meio - 1.0).abs() < 0.03, "o 1.º toque tem {:.3} da água do meio", inicio / meio);
+}

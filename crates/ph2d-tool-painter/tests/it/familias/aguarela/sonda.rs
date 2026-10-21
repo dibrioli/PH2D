@@ -105,7 +105,12 @@ fn pgm(t: &mut PainterTool, caixa: [f64; 4], ficheiro: &str) {
         for cy in y0..y1 {
             for cx in x0..x1 {
                 let i = cx + cy * g.s;
-                let m = (f64::from(g.susp[i]) + f64::from(g.sett[i])).clamp(0.0, 6553.5);
+                let m = match std::env::var("PH2D_SONDA_CAMPO").as_deref() {
+                    Ok("sett") => f64::from(g.sett[i]),
+                    Ok("film") => f64::from(g.film[i]) * 100.0,
+                    _ => f64::from(g.susp[i]) + f64::from(g.sett[i]),
+                }
+                .clamp(0.0, 6553.5);
                 out.extend_from_slice(&((m * 10.0) as u16).to_be_bytes());
             }
         }
@@ -149,7 +154,7 @@ fn sonda_o_miolo_liso() {
                     let d2 = std::sync::Arc::clone(&dabs);
                     t.wet_sonda_motor(move |e| {
                         e.on_dab = Some(Box::new(move |b, d| {
-                            d2.lock().unwrap().push([d.x, d.y, d.r, d.intensity, d.opacity, b]);
+                            d2.lock().unwrap().push([d.x, d.y, d.r, d.intensity, d.opacity, d.water_amount]);
                         }));
                     });
                 }
@@ -165,8 +170,10 @@ fn sonda_o_miolo_liso() {
                     let passos: Vec<String> = meio.windows(2).take(12).map(|w| format!("{:.3}", w[1][0] - w[0][0])).collect();
                     let ys: Vec<String> = meio.iter().take(8).map(|d| format!("{:.4}", d[1])).collect();
                     let ex = meio[meio.len() / 2];
+                    let ini: Vec<String> = ds.iter().take(12).map(|d| format!("x{:.0} r{:.1} op{:.3} ag{:.3}", d[0], d[2], d[4], d[5])).collect();
+                    println!("[dabs] início: {}", ini.join(" · "));
                     println!(
-                        "[dabs] {} {rotulo}: {} dabs ({} no meio) · passos {} · y {} · r {:.2} I {:.3} opac {:.3} b {:.2}",
+                        "[dabs] {} {rotulo}: {} dabs ({} no meio) · passos {} · y {} · r {:.2} I {:.3} opac {:.3} água {:.3}",
                         p.nome, ds.len(), meio.len(), passos.join(" "), ys.join(" "), ex[2], ex[3], ex[4], ex[5]
                     );
                 }

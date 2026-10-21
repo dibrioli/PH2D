@@ -1,7 +1,7 @@
 //! ⭐⭐⭐ **A PISTA DO MUNDO** — o `&mut World` emprestado à VM durante os ganchos de um tique
 //! (`docs/CodeEditor/05_api_que_funciona.md` §3.0).
 //!
-//! As funções `ph2d.get` · `find_by_name` · `spawn` · `despawn` · `attach_script` são de Luau e chamam
+//! As funções `ph2d.get` · `find_by_name` · `object` · `spawn` · `despawn` · `attach_script` são de Luau e chamam
 //! a função da pista guardada numa tabela que só o Rust preenche — e só dentro de [`with_lane`], cujo
 //! `Lua::scope` garante que nada do que ela empresta sobrevive ao tique. Fora dele a tabela está
 //! vazia e a função diz porquê.
@@ -336,6 +336,11 @@ pub(crate) fn with_lane<R>(
         })?;
         let find = scope
             .create_function(|_, name: String| Ok(cell.borrow_mut().find(&name).map(id_of)))?;
+        let object = scope.create_function(|_, name: String| {
+            cell.borrow_mut().find(&name).map(id_of).ok_or_else(|| {
+                mlua::Error::RuntimeError(format!("ph2d.object: no object is named \"{name}\""))
+            })
+        })?;
         let spawn = scope.create_function(
             |_, (master, x, y): (Option<String>, Option<f64>, Option<f64>)| {
                 let at = match (x, y) {
@@ -364,6 +369,7 @@ pub(crate) fn with_lane<R>(
         for (k, v) in [
             ("get", get),
             ("find_by_name", find),
+            ("object", object),
             ("spawn", spawn),
             ("despawn", despawn),
             ("attach_script", attach),
@@ -371,7 +377,7 @@ pub(crate) fn with_lane<R>(
             table.raw_set(k, v)?;
         }
         let r = f(&cell);
-        for k in ["get", "find_by_name", "spawn", "despawn", "attach_script"] {
+        for k in ["get", "find_by_name", "object", "spawn", "despawn", "attach_script"] {
             table.raw_set(k, Value::Nil)?;
         }
         Ok(r)
@@ -393,6 +399,7 @@ local function through(name)
 end
 ph2d.get = through("get")
 ph2d.find_by_name = through("find_by_name")
+ph2d.object = through("object")
 ph2d.spawn = through("spawn")
 ph2d.despawn = through("despawn")
 ph2d.attach_script = through("attach_script")

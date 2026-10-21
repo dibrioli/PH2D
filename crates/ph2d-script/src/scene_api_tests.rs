@@ -262,6 +262,42 @@ end
     assert_eq!(p.scale.x, 1.0, "o que nasceu neste tique já se acha");
 }
 
+/// ⭐ `ph2d.object` (item 8, `docs/CodeEditor/07_arrastar_para_o_codigo.md` §3.1): o MESMO achado do
+/// `find_by_name`, mas o tipo não é opcional — sem objecto com o nome é ERRO que pára o objecto, com o
+/// nome na mensagem (o `$Porta` do Godot).
+#[test]
+fn objecto_pelo_nome_e_o_do_find_e_sem_ele_para_com_o_nome() {
+    let mut sim = SimWorld::new();
+    let w = sim.world_mut();
+    let alvo = w
+        .spawn((Transform::IDENTITY, Name::new("Alvo"), RootOrder(1)))
+        .id();
+    let acha = actor(
+        w,
+        1,
+        "acha.luau",
+        r#"function update(self) ph2d.set(self.id, "x", ph2d.object("Alvo") == ph2d.find_by_name("Alvo") and 1 or 0) end"#,
+    );
+    let falha = actor(
+        w,
+        2,
+        "falha.luau",
+        r#"function update(self) ph2d.set(self.id, "x", ph2d.object("Ninguem")) end"#,
+    );
+    let mut host = ScriptHost::new().expect("vm");
+    let r = tick(&mut host, &mut sim);
+    assert_eq!(pose(sim.world(), acha).translation.x, 1.0, "o mesmo objecto que o find");
+    assert!(sim.world().get::<Transform>(alvo).is_some());
+    let parou: Vec<_> = r.failed.iter().filter(|(e, _)| *e == falha).collect();
+    assert_eq!(parou.len(), 1, "sem o objecto, o script pára: {:?}", r.failed);
+    assert!(
+        parou[0].1.message.contains("Ninguem"),
+        "a mensagem diz o nome: {}",
+        parou[0].1.message
+    );
+    assert_eq!(pose(sim.world(), falha).translation.x, 0.0, "nada se escreveu");
+}
+
 // ── §3.3 (c) spawn · despawn · attach_script ─────────────────────────────────────────────────
 
 /// Uma porta de teste: a «cópia» de um mestre é um objecto com o nome e a pose dele, e `Spawned`.

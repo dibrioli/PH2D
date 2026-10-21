@@ -127,6 +127,22 @@ end"#,
 end"#,
     },
     ApiHelp {
+        key: "ph2d.object",
+        params: &[(
+            "name",
+            "The object's name, exactly as written (capitals count). Drag the object from the Hierarchy into the script and this is written for you.",
+        )],
+        returns: "The object's id, ready for [ph2d.get] and [ph2d.set].",
+        more: "It is the way to point at one object you made: the editor checks the name while you type (a name no object has is marked in the list of problems), and renaming the object in the Hierarchy rewrites the name in every script of the project. When no object has that name it is an error that stops this object's script, with the name in the message — use [ph2d.find_by_name] when the object may not exist.\n\nWhen several objects share a name, it gives the first one in the order of the object list, like [ph2d.find_by_name]. It works only while the scene runs, inside a hook; to keep the object for later, keep it in `self` in `init`.",
+        example: r#"function init(self)
+  self.door = ph2d.object("Door")
+end
+
+function update(self, dt)
+  ph2d.set(self.door, "rotation", math.rad(90))
+end"#,
+    },
+    ApiHelp {
         key: "ph2d.spawn",
         params: &[
             (

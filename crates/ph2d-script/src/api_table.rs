@@ -80,7 +80,7 @@ pub const API_TYPES: &[ApiType] = &[
     ApiType {
         ident: "Entity",
         definition: "number",
-        doc: "A scene object, as `self.id`, `ph2d.find_by_name` and `ph2d.spawn` give it.",
+        doc: "A scene object, as `self.id`, `ph2d.object`, `ph2d.find_by_name` and `ph2d.spawn` give it.",
     },
     ApiType {
         ident: "PoseField",
@@ -165,6 +165,12 @@ pub const API: &[ApiEntry] = &[
         ident: "find_by_name",
         luau_type: "(name: string) -> Entity?",
         doc: "The first object with this name, in the order of the object list; nil if none.",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "object",
+        luau_type: "(name: string) -> Entity",
+        doc: "The object with this name (what dragging it from the Hierarchy writes); an error if none.",
     },
     ApiEntry {
         table: "ph2d",

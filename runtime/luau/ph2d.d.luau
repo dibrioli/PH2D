@@ -5,7 +5,7 @@
 -- Regenerate:      cargo run -p ph2d-bindgen -- --write
 -- ============================================================
 
---- A scene object, as `self.id`, `ph2d.find_by_name` and `ph2d.spawn` give it.
+--- A scene object, as `self.id`, `ph2d.object`, `ph2d.find_by_name` and `ph2d.spawn` give it.
 export type Entity = number
 
 --- The pose fields a scene script reads and writes.
@@ -47,6 +47,8 @@ declare ph2d: {
     emit: (signal: string) -> (),
     --- The first object with this name, in the order of the object list; nil if none.
     find_by_name: (name: string) -> Entity?,
+    --- The object with this name (what dragging it from the Hierarchy writes); an error if none.
+    object: (name: string) -> Entity,
     --- Creates a copy of the master with this name right away (an empty object without one); a rewind removes it.
     spawn: (master: string?, x: number?, y: number?) -> Entity,
     --- Removes an object created while the scene runs, at the end of the frame.

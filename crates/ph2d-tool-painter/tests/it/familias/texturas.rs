@@ -58,6 +58,38 @@ pub const MEIOS: &[ReceitaMeio] = &[
         texturas: &[("shape", estrela)],
         ..ReceitaMeio::digital("Stamp", "Stamp", "Stars")
     },
+    // K-4 — o BOKEH (Krita «z) Stamp Bokeh»): discos de luz espalhados, um ARO nítido (0,72) sobre um miolo
+    // translúcido (0,20 — o perfil medido de um disco de 150 px), tamanhos muito variados; o tamanho pela pressão.
+    // J4 «Motor J4»: o passo pelo diâmetro à pressão (o rasto de bolinhas); a pressão a crescer o disco pela curva
+    // 1,5 (r10–r12: o Krita vai de pontinhos a discos grandes); sem micro-pontos (r12: «pontinhos escuros a mais»).
+    ReceitaMeio {
+        pincel: &[
+            ("falloff", "\"Custom\""),
+            ("custom_falloff", ARO),
+            ("hardness", "0.0"),
+            ("borda_px", "0.0"),
+            ("spray_count", "3"),
+            ("spacing", "0.75"),
+            // O passo pelo diâmetro À PRESSÃO (J4 «Motor J4»): na pressão fraca o rasto denso de bolinhas do Krita.
+            ("passo_pela_pressao", "true"),
+            ("jitter", "0.6"),
+            ("jitter_scale", "0.35"),
+            ("continuous_spacing", "false"),
+            (
+                "dab_jitter",
+                r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.1, "particle": 0.6, "roundness": 0.0}"#,
+            ),
+        ],
+        mao: &[("pressureSize", 1.0), ("pressureSizeCurve", 1.5), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 1.0)],
+        size_px: None,
+        opacity: Some(0.75),
+        ..ReceitaMeio::digital("Stamp", "Stamp", "Bokeh")
+    },
+];
+
+/// Os REPROVADOS da família (J4, `docs/Painter/Pinceis/exames/texturas.md`): a receita da última ronda, fora da
+/// fábrica — as revisões cegas acharam o oráculo e listaram o que falta (o exame diz o quê, e a fila o que destrava).
+pub const EM_ESTUDO: &[ReceitaMeio] = &[
     // K-3 — a RELVA (Krita «z) Stamp Grass», MyPaint `long_grass`): tufos de lâminas que sobem do traço, três
     // desenhos nossos ([`tufo`]) sorteados pela mangueira (L19), quase de pé (±15°), a base que esmaece.
     ReceitaMeio {
@@ -84,11 +116,6 @@ pub const MEIOS: &[ReceitaMeio] = &[
         texturas: &[("shape", tufo_0), ("shape_2", tufo_1), ("shape_3", tufo_2)],
         ..ReceitaMeio::digital("Stamp", "Stamp", "Grass")
     },
-];
-
-/// Os REPROVADOS da família (J4, `docs/Painter/Pinceis/exames/texturas.md`): a receita da última ronda, fora da
-/// fábrica — as revisões cegas acharam o oráculo e listaram o que falta (o exame diz o quê, e a fila o que destrava).
-pub const EM_ESTUDO: &[ReceitaMeio] = &[
     // K-2 — a FOLHAGEM (Krita «z) Stamp Leaves»): cada dab é um RAMINHO nosso ([`raminho`]: um pé, sete folhas e um
     // maciço no meio), sorteado em posição, tamanho, rotação e espelho; a pressão leva a opacidade (a rampa 0→1 do Krita
     // 0,165 → 0,341 de cobertura; a nossa 0,161 → 0,337 — J4 «Motor J4»).
@@ -119,33 +146,6 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
         opacity: Some(1.0),
         texturas: &[("shape", raminho)],
         ..ReceitaMeio::digital("Stamp", "Stamp", "Foliage")
-    },
-    // K-4 — o BOKEH (Krita «z) Stamp Bokeh»): discos de luz espalhados, um ARO nítido (0,72) sobre um miolo
-    // translúcido (0,20 — o perfil medido de um disco de 150 px), tamanhos muito variados; o tamanho pela pressão.
-    // J4 «Motor J4»: o passo pelo diâmetro à pressão (o rasto de bolinhas); a pressão a crescer o disco pela curva
-    // 1,5 (r10–r12: o Krita vai de pontinhos a discos grandes); sem micro-pontos (r12: «pontinhos escuros a mais»).
-    ReceitaMeio {
-        pincel: &[
-            ("falloff", "\"Custom\""),
-            ("custom_falloff", ARO),
-            ("hardness", "0.0"),
-            ("borda_px", "0.0"),
-            ("spray_count", "3"),
-            ("spacing", "0.75"),
-            // O passo pelo diâmetro À PRESSÃO (J4 «Motor J4»): na pressão fraca o rasto denso de bolinhas do Krita.
-            ("passo_pela_pressao", "true"),
-            ("jitter", "0.6"),
-            ("jitter_scale", "0.35"),
-            ("continuous_spacing", "false"),
-            (
-                "dab_jitter",
-                r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.1, "particle": 0.6, "roundness": 0.0}"#,
-            ),
-        ],
-        mao: &[("pressureSize", 1.0), ("pressureSizeCurve", 1.5), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 1.0)],
-        size_px: None,
-        opacity: Some(0.75),
-        ..ReceitaMeio::digital("Stamp", "Stamp", "Bokeh")
     },
     // K-8 — o GRÃO SUJO (Krita «y) Texture Noise»): cada dab é um punhado de RISCOS nossos ([`riscos`]: traços
     // curtos e translúcidos em ângulos ao acaso), rodado ao acaso e espalhado — a massa nebulosa, de núcleo mais escuro
@@ -602,7 +602,7 @@ const FOTOS: [(&str, &str, f64, [Faixa; 2]); 6] = [
 const IDENTIDADE: [(&str, &[(usize, M)]); 3] = [
     ("Halftone", &[(1, M::Pontos), (1, M::CvArea), (1, M::Contraste), (0, M::Pontos)]),
     ("Stars", &[(0, M::Gota), (0, M::Contraste), (0, M::CvArea)]),
-    ("Grass", &[(1, M::Alto), (1, M::Contraste), (0, M::Pontos)]),
+    ("Bokeh", &[(1, M::Contraste), (0, M::Pontos), (0, M::CvArea)]),
 ];
 
 /// ⭐ **Cada carimbo reconhece-se pela foto do seu oráculo** (J4, `docs/Painter/Pinceis/exames/texturas.md`): pintado
@@ -656,12 +656,6 @@ fn cada_carimbo_se_reconhece_pela_foto() {
                 falhas.push(format!("{nome}: {propria:.2} tolerâncias da sua foto, {d:.2} da do {outro} — pinta o irmão"));
             }
         }
-    }
-    // A relva DE PÉ (J4, o que a faz relva): a 200 px as manchas mais altas que largas como as do Krita (1,66); a relva
-    // a rodar ao acaso dá 1,25 (a mutação G1 do exame). A tolerância geral do Alto (0,42) deixava-a passar.
-    let k = IDENTIDADE.iter().position(|i| i.0 == "Grass").unwrap();
-    if medidas[k][1].alto < 1.5 {
-        falhas.push(format!("Grass: Alto[1] {:.2} < 1,5 — as lâminas não estão de pé (Krita 1,66)", medidas[k][1].alto));
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }

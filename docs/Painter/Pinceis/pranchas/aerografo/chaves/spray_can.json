@@ -1,0 +1,48 @@
+{
+ "prancha": "spray_can.png",
+ "linhas": [
+  "gestos_A",
+  "gestos_B",
+  "tamanhos_A",
+  "tamanhos_B",
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "gestos_A": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  },
+  "gestos_B": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  },
+  "tamanhos_A": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "tamanhos_B": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  },
+  "sobre_A": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  },
+  "sobre_B": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  }
+ },
+ "quem": {
+  "oraculo": "y__Texture_Spray",
+  "nosso": "Spray Can (escala 1.055)",
+  "vizinho": "Airbrush (d 1.901, limiar 0.591)"
+ }
+}

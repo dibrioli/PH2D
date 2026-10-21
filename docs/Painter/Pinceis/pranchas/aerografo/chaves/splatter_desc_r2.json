@@ -1,0 +1,17 @@
+{
+ "gestos": {
+  "1": "mypaint",
+  "2": "nosso",
+  "3": "vizinho"
+ },
+ "tamanhos": {
+  "1": "mypaint",
+  "2": "vizinho",
+  "3": "nosso"
+ },
+ "sobre": {
+  "1": "nosso",
+  "2": "mypaint",
+  "3": "vizinho"
+ }
+}

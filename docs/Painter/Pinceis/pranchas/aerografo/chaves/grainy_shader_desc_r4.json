@@ -1,0 +1,17 @@
+{
+ "gestos": {
+  "1": "vizinho",
+  "2": "nosso",
+  "3": "airbrush"
+ },
+ "tamanhos": {
+  "1": "nosso",
+  "2": "vizinho",
+  "3": "airbrush"
+ },
+ "sobre": {
+  "1": "nosso",
+  "2": "airbrush",
+  "3": "vizinho"
+ }
+}

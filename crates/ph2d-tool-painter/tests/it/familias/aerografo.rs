@@ -1,5 +1,5 @@
-//! **Família `aerografo`** — J3, catálogo J: Airbrush, Splatter, Grainy Shader (Spray Can, Stipple e Spray Drips
-//! reprovados: `docs/Painter/Pinceis/exames/aerografo.md`).
+//! **Família `aerografo`** — J3, catálogo J: o Airbrush (Spray Can, Splatter, Stipple, Spray Drips e Grainy Shader
+//! reprovados — `docs/Painter/Pinceis/exames/aerografo.md`).
 //! Escreva aqui as receitas e os testes da família; nada fora deste ficheiro (`docs/Painter/Pinceis/04_BANCADA.md` §9).
 
 use super::prelude::*;
@@ -58,60 +58,17 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // do Texture Spray (duas populações de partículas) e o spray que ACUMULA parado (Krita 0,24 → 1,00 a 10 → 200
     // eventos; o nosso Space não pousa nada parado). Saíram da receita e da fábrica; as receitas medidas estão no exame.
     //
-    // J-3 — os salpicos (Procreate Splatter, PS Kyle's Spatter; o MyPaint `splatter-04` da bateria é um colar de discos,
-    // ver o exame): gotas OPACAS de tamanhos muito vários — do pó a gotas de meio pincel —, atiradas à volta do caminho
-    // com vãos, o gesto ainda legível; a pressão dá o tamanho, a opacidade não. Revisão cega 1 (pela descrição): «o
-    // escolhido é claramente diferente», faltas curadas na 2.ª receita (a gama de tamanhos, a pressão, a dispersão).
-    ReceitaMeio {
-        pincel: &[
-            ("hardness", "0.95"),
-            ("falloff", "\"Smooth\""),
-            ("stabilizer", "0.0"),
-            ("spray_count", "8"),
-            ("spacing", "0.6"),
-            ("jitter", "0.45"),
-            ("jitter_scale", "1.0"),
-            ("jitter_spacing", "0.8"),
-            ("dab_jitter", DAB_SALPICO),
-        ],
-        mao: &[("pressureSize", 1.0), ("pressureOpacity", 0.0)],
-        size_px: None,
-        opacity: Some(1.0),
-        ..ReceitaMeio::digital("Airbrush", "Splatter", "Splatter")
-    },
-    // J-6 — o sombreador GRANULADO (Procreate Bonobo Chalk / Noise Brush; sem oráculo que corre): o disco macio de
-    // um aerógrafo que ACUMULA, mordido por um grão PRESO À TELA (Tiled): o degradê sai pontilhado de papel, sem
-    // degraus, e passar outra vez escurece o mesmo grão em vez de o encher. É o que o separa do Airbrush: o pó do
-    // Airbrush é sorteado por dab (dois traços enchem os buracos um do outro); o grão aqui é o do papel. A queda
-    // `Sharp` e o fluxo 0,6 (revisão 1: «a borda esfarela, a sombra é fraca» com `Smooth` e 0,3).
-    ReceitaMeio {
-        pincel: &[
-            ("hardness", "0.0"),
-            ("falloff", "\"Sharp\""),
-            ("stabilizer", "0.0"),
-            ("accumulate", "true"),
-            ("flow", "0.6"),
-            ("texture", GRAO_DO_SOMBREADOR),
-            ("grain_depth", "1.0"),
-        ],
-        mao: &[
-            ("pressureSize", 0.0),
-            ("pressureOpacity", 1.0),
-            ("pressureOpacityCurve", 1.0),
-            ("pressureCeiling", 1.0),
-        ],
-        size_px: None,
-        opacity: Some(1.0),
-        ..ReceitaMeio::digital("Airbrush", "Grain", "Grainy Shader")
-    },
+    // J-3 Splatter: REPROVADO na J3 — duas revisões cegas pela descrição escolheram-no com confiança alta e «claramente
+    // diferente», mas ambas listaram a mesma falta: num só traço não há a gama do PÓ às gotas GRANDES (o `jitter_scale`
+    // sorteia o tamanho UNIFORME; os salpicos pedem uma lei de potência — muitas gotículas, poucas gotas). Saiu da
+    // fábrica; a receita medida está no exame.
+    //
+    // J-6 Grainy Shader: REPROVADO na J3, FUNDIDO no Airbrush — a lei que o separava (o grão PRESO À TELA: passar
+    // outra vez escurece os mesmos picos; portão medido: 0,58–1,00 dos vãos ficam × 0,04 no pó do Airbrush) existe,
+    // mas a revisão cega pela descrição não o sustenta: fraco (Multiply, fluxo 0,3–0,6) as revisões 1–2 escolhem-no e
+    // listam a sombra fraca, a borda esfarelada e o grão que enche; forte (fluxo 1, ou o modo Height) as revisões 3–4
+    // escolhem o AIRBRUSH como «o sombreador granulado» e lêem o nosso como pontilhado de giz. Saiu da fábrica.
 ];
-
-/// O grão do sombreador: ruído preso à tela (Tiled, 128 px), o Multiply de sempre.
-const GRAO_DO_SOMBREADOR: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.6, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
-
-/// O salpico: gotas de 25 % do pincel (sorteadas ×0–2: do pó a meio pincel), de 3 a 8 por ponto, espalhadas
-/// através; um pouco ovais.
-const DAB_SALPICO: &str = r#"{"across": 0.35, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 0.25, "roundness": 0.15}"#;
 
 // O PÓ — a textura, a uniformidade e a orla larga são dele; o «período» não conta (a repetição do Rebelle varia 0,005,
 // o controlo fica a 0,013 — doc 43 §2).
@@ -305,7 +262,18 @@ const FOTOS: [(&str, &str, f64, Identidade); 3] = [
 ];
 
 /// Os pincéis da fábrica que se pintam e o que faz a identidade de cada um (os outros das [`FOTOS`] são só irmãos).
-const IDENTIDADE: [(&str, &[M]); 1] = [("Airbrush", &[M::Largura, M::Cobertura, M::Vazio, M::Rampa])];
+const IDENTIDADE: [(&str, &[M]); 1] = [(
+    "Airbrush",
+    &[
+        M::Largura,
+        M::Cobertura,
+        M::Vazio,
+        M::Pontos,
+        M::Gota,
+        M::Matiz,
+        M::Rampa,
+    ],
+)];
 
 /// A cena `gestos` da bateria com cada `size_px` × `escala`, pintada por `nome` (foto A).
 fn gestos(nome: &str, escala: f64) -> Identidade {
@@ -326,7 +294,10 @@ fn gestos(nome: &str, escala: f64) -> Identidade {
         }
     }
     let p = pinceis(nome).remove(0);
-    Identidade::de(&pinta_cena(&p, None, &cena, tela, papel, 0).1, tela[0] as usize)
+    Identidade::de(
+        &pinta_cena(&p, None, &cena, tela, papel, 0).1,
+        tela[0] as usize,
+    )
 }
 
 /// ⭐ **O aerógrafo reconhece-se pela foto do seu oráculo** (J3): pintado na cena `gestos`, cada medida da identidade
@@ -343,7 +314,10 @@ fn cada_aerografo_se_reconhece_pela_foto() {
         for &m in ms {
             let (v, f) = (m.de(eu), m.de(foto));
             if (v - f).abs() > m.tol(f) {
-                falhas.push(format!("{nome}: {m:?} {v:.3} fora da foto {f:.3} ± {:.3} ({oraculo})", m.tol(f)));
+                falhas.push(format!(
+                    "{nome}: {m:?} {v:.3} fora da foto {f:.3} ± {:.3} ({oraculo})",
+                    m.tol(f)
+                ));
             }
         }
         let distancia = |outra: &Identidade| -> f64 {
@@ -372,100 +346,26 @@ fn sonda(nome: &str, tracos: &[serde_json::Value]) -> Vec<f64> {
     ];
     ops.extend(tracos.iter().cloned());
     ops.push(json!({"op": "foto", "nome": "A"}));
-    let px = pinta_cena(&pinceis(nome).remove(0), None, &json!({"nome": "sonda", "ops": ops}), [1000, 640], [255, 255, 255], 0).1;
+    let px = pinta_cena(
+        &pinceis(nome).remove(0),
+        None,
+        &json!({"nome": "sonda", "ops": ops}),
+        [1000, 640],
+        [255, 255, 255],
+        0,
+    )
+    .1;
     px.as_chunks::<4>()
         .0
         .iter()
-        .map(|p| p[..3].iter().map(|&v| 255.0 - f64::from(v)).fold(0.0, f64::max) / CHEIO)
+        .map(|p| {
+            p[..3]
+                .iter()
+                .map(|&v| 255.0 - f64::from(v))
+                .fold(0.0, f64::max)
+                / CHEIO
+        })
         .collect()
-}
-
-/// Um recto horizontal de `d` px a `y`, de x 100 a 900 a cada 3 px, à pressão `p`.
-fn recto(d: f64, y: f64, p: f64) -> serde_json::Value {
-    let pts: Vec<serde_json::Value> = (0..=266)
-        .map(|i| serde_json::json!([100.0 + 3.0 * f64::from(i), y, p]))
-        .collect();
-    serde_json::json!({"op": "traco", "nome": "recto", "size_px": d, "pts": pts})
-}
-
-/// ⭐ **O salpico pinta GOTAS opacas de tamanhos vários, com vãos** (J-3, pela descrição — Procreate Splatter, PS
-/// Kyle's Spatter; o MyPaint `splatter-04` é um colar de discos à escala da bateria, ver o exame): num recto de
-/// 60 px, as gotas (manchas ≥ 0,35) são opacas (o miolo de cada uma ≥ 0,9), as áreas variam (a do p90 ≥ 6× a do
-/// p10) e a faixa tem mais vão que tinta.
-#[test]
-fn o_salpico_pinta_gotas_opacas_de_tamanhos_varios() {
-    let mede = |nome: &str| {
-        let c = sonda(nome, &[recto(60.0, 320.0, 1.0)]);
-        let (x0, x1, y0, y1) = (150usize, 850usize, 200usize, 440usize);
-        let (fw, fh) = (x1 - x0, y1 - y0);
-        let tinta: Vec<bool> = (0..fw * fh).map(|i| c[(y0 + i / fw) * 1000 + x0 + i % fw] >= 0.35).collect();
-        let mut visto = vec![false; fw * fh];
-        let mut gotas: Vec<(usize, f64)> = Vec::new();
-        for i in 0..fw * fh {
-            if visto[i] || !tinta[i] {
-                continue;
-            }
-            let (mut pilha, mut a, mut pico) = (vec![i], 0usize, 0.0f64);
-            visto[i] = true;
-            while let Some(j) = pilha.pop() {
-                a += 1;
-                pico = pico.max(c[(y0 + j / fw) * 1000 + x0 + j % fw]);
-                let (u, v) = ((j % fw) as i64, (j / fw) as i64);
-                for (du, dv) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
-                    let (uu, vv) = (u + du, v + dv);
-                    if uu >= 0 && vv >= 0 && (uu as usize) < fw && (vv as usize) < fh {
-                        let k = vv as usize * fw + uu as usize;
-                        if !visto[k] && tinta[k] {
-                            visto[k] = true;
-                            pilha.push(k);
-                        }
-                    }
-                }
-            }
-            if a >= 4 {
-                gotas.push((a, pico));
-            }
-        }
-        gotas.sort_unstable_by_key(|g| g.0);
-        let n = gotas.len();
-        let razao = gotas[n * 9 / 10].0 as f64 / gotas[n / 10].0.max(1) as f64;
-        let opacas = gotas.iter().filter(|g| g.1 >= 0.9).count() as f64 / n as f64;
-        let vao = tinta.iter().filter(|&&t| !t).count() as f64 / tinta.len() as f64;
-        (n, razao, opacas, vao)
-    };
-    let (n, razao, opacas, vao) = mede("Splatter");
-    println!("[aerografo] Splatter: {n} gotas, p90/p10 {razao:.1}, opacas {opacas:.2}, vão {vao:.2}");
-    assert!(opacas >= 0.9, "as gotas do Splatter não são opacas: {opacas:.2} com miolo ≥ 0,9");
-    assert!(razao >= 6.0, "as gotas do Splatter são todas do mesmo tamanho: p90/p10 {razao:.1}");
-    assert!(vao >= 0.5, "o Splatter não tem vãos: {vao:.2} da faixa sem tinta");
-}
-
-/// ⭐ **O grão do Grainy Shader é o do PAPEL; o pó do Airbrush, não** (J-6): o MESMO recto pintado duas vezes no mesmo
-/// sítio — no sombreador os vãos do grão (cobertura < metade da mediana) da 1.ª passagem continuam vãos na 2.ª (o
-/// grão está preso à tela: passar outra vez escurece o mesmo grão), no Airbrush o pó novo cai nos buracos do
-/// anterior e enche-os. É a lei que os separa (a régua do recto sozinha mal os distingue).
-#[test]
-fn o_grao_do_sombreador_fica_no_papel() {
-    let mede = |nome: &str| {
-        let um = sonda(nome, &[recto(80.0, 320.0, 1.0)]);
-        let dois = sonda(nome, &[recto(80.0, 320.0, 1.0), recto(80.0, 320.0, 1.0)]);
-        let miolo: Vec<usize> = (300..341).flat_map(|y| (250..750).map(move |x| y * 1000 + x)).collect();
-        let mut v: Vec<f64> = miolo.iter().map(|&i| um[i]).collect();
-        v.sort_by(f64::total_cmp);
-        let mediana = v[v.len() / 2];
-        let vaos: Vec<usize> = miolo.iter().copied().filter(|&i| um[i] < 0.5 * mediana).collect();
-        let mut v2: Vec<f64> = miolo.iter().map(|&i| dois[i]).collect();
-        v2.sort_by(f64::total_cmp);
-        let mediana2 = v2[v2.len() / 2];
-        let ficam = vaos.iter().filter(|&&i| dois[i] < 0.5 * mediana2).count();
-        (vaos.len() as f64 / miolo.len() as f64, ficam as f64 / vaos.len().max(1) as f64)
-    };
-    let (gv, gf) = mede("Grainy Shader");
-    let (av, af) = mede("Airbrush");
-    println!("[aerografo] vãos que ficam na 2.ª passagem: Grainy Shader {gf:.2} (vãos {gv:.2}) · Airbrush {af:.2} (vãos {av:.2})");
-    assert!(gv >= 0.05, "o Grainy Shader não tem grão: {gv:.2} do miolo em vão");
-    assert!(gf >= 0.6, "o grão do Grainy Shader não é o do papel: só {gf:.2} dos vãos ficam");
-    assert!(af < 0.4, "o controlo: o pó do Airbrush devia encher os vãos ({af:.2} ficam)");
 }
 
 /// ⭐ **O aerógrafo PARADO pousa um sopro e não acumula** (J-1): a caneta parada no mesmo ponto, 10 e 200 eventos
@@ -479,11 +379,26 @@ fn o_aerografo_parado_pousa_um_sopro() {
         let pts: Vec<serde_json::Value> = (0..n)
             .map(|i| serde_json::json!([500.0 + 0.01 * (i % 2) as f64, 320.0, 1.0]))
             .collect();
-        let c = sonda("Airbrush", &[serde_json::json!({"op": "traco", "nome": "parado", "size_px": 40.0, "pts": pts})]);
-        (300..341).flat_map(|y| (480..521).map(move |x| (x, y))).map(|(x, y)| c[y * 1000 + x]).sum::<f64>() / 1681.0
+        let c = sonda(
+            "Airbrush",
+            &[serde_json::json!({"op": "traco", "nome": "parado", "size_px": 40.0, "pts": pts})],
+        );
+        (300..341)
+            .flat_map(|y| (480..521).map(move |x| (x, y)))
+            .map(|(x, y)| c[y * 1000 + x])
+            .sum::<f64>()
+            / 1681.0
     };
     let (pouco, muito) = (parado(10), parado(200));
-    println!("[aerografo] Airbrush parado: 10 eventos {pouco:.3} · 200 eventos {muito:.3} (Rebelle 0,053 · 0,057)");
-    assert!(pouco > 0.005, "o Airbrush parado não pousa nada: {pouco:.3}");
-    assert!((muito - pouco).abs() <= 0.02, "o Airbrush parado acumula: {pouco:.3} → {muito:.3} (o Rebelle não)");
+    println!(
+        "[aerografo] Airbrush parado: 10 eventos {pouco:.3} · 200 eventos {muito:.3} (Rebelle 0,053 · 0,057)"
+    );
+    assert!(
+        pouco > 0.005,
+        "o Airbrush parado não pousa nada: {pouco:.3}"
+    );
+    assert!(
+        (muito - pouco).abs() <= 0.02,
+        "o Airbrush parado acumula: {pouco:.3} → {muito:.3} (o Rebelle não)"
+    );
 }

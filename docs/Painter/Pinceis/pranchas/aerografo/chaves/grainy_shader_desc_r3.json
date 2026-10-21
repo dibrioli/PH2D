@@ -1,0 +1,17 @@
+{
+ "gestos": {
+  "1": "nosso",
+  "2": "vizinho",
+  "3": "soft_round"
+ },
+ "tamanhos": {
+  "1": "soft_round",
+  "2": "vizinho",
+  "3": "nosso"
+ },
+ "sobre": {
+  "1": "soft_round",
+  "2": "vizinho",
+  "3": "nosso"
+ }
+}

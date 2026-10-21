@@ -1,0 +1,24 @@
+{
+ "prancha": "burn.png",
+ "linhas": [
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "sobre_A": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  },
+  "sobre_B": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  }
+ },
+ "quem": {
+  "oraculo": "effect_burn",
+  "nosso": "Burn (escala 1)",
+  "vizinho": "Glaze Round (d 2.002, limiar 0.591)"
+ }
+}

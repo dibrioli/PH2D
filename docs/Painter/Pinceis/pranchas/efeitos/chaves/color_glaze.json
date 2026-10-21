@@ -1,0 +1,24 @@
+{
+ "prancha": "color_glaze.png",
+ "linhas": [
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "sobre_A": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "sobre_B": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  }
+ },
+ "quem": {
+  "oraculo": "effect_color",
+  "nosso": "Color Glaze (escala 1)",
+  "vizinho": "Airbrush (d nan, limiar 0.591)"
+ }
+}

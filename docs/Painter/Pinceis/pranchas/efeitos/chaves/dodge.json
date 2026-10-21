@@ -1,0 +1,24 @@
+{
+ "prancha": "dodge.png",
+ "linhas": [
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "sobre_A": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "sobre_B": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  }
+ },
+ "quem": {
+  "oraculo": "effect_dodge",
+  "nosso": "Dodge (escala 1)",
+  "vizinho": "Burn (d 1.422, limiar 0.591)"
+ }
+}

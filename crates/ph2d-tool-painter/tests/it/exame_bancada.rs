@@ -308,11 +308,24 @@ pub fn pinta_cena(
     papel: [u8; 3],
     foto: usize,
 ) -> (String, Vec<u8>) {
+    pinta_cena_com(pincel, base, cena, tela, papel, foto, camada())
+}
+
+/// [`pinta_cena`] com a tela escolhida: `camada` = uma CAMADA transparente sobre o papel (a foto compõe-na; J4
+/// efeitos — o papel não é tinta, e um efeito com «On empty» pousa nele em Normal como o Effect do Rebelle); sem ela,
+/// o papel opaco (`PH2D_EXAME_CAMADA=1` escolhe-a na bancada).
+pub fn pinta_cena_com(
+    pincel: &Pincel,
+    base: Option<&Pincel>,
+    cena: &Value,
+    tela: [u32; 2],
+    papel: [u8; 3],
+    foto: usize,
+    camada: bool,
+) -> (String, Vec<u8>) {
     let [w, h] = tela;
     let mut t = PainterTool::default();
-    // `PH2D_EXAME_CAMADA=1` (J4 efeitos): pinta numa CAMADA transparente sobre o papel (a foto compõe-na) — o papel
-    // não é tinta, e um efeito com «On empty» pousa nele em Normal como o Effect do Rebelle. Sem ela, o papel opaco.
-    let alfa = if camada() { 0 } else { 255 };
+    let alfa = if camada { 0 } else { 255 };
     let fundo: Vec<u8> = (0..w * h)
         .flat_map(|_| [papel[0], papel[1], papel[2], alfa])
         .collect();

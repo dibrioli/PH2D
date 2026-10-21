@@ -1,0 +1,1253 @@
+{
+ "oraculo": "/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/docs/Painter/Pinceis/fixtures/rebelle_bateria/MARKER/effect_color",
+ "nosso": "/tmp/ph2d_exame_efeitos/escala/color_glaze",
+ "ruido": {
+  "largura": 1.0,
+  "largura50": 1.0,
+  "cobertura": 0.0168,
+  "opacidade": 0.0196,
+  "rugosidade": [
+   0.0412,
+   0.229
+  ],
+  "textura": [
+   0.196,
+   0.21
+  ],
+  "var_local": [
+   0.000116,
+   0.392
+  ],
+  "cv": [
+   0.00122,
+   0.29
+  ],
+  "periodo_fracao": [
+   0.034,
+   0.565
+  ],
+  "cor": 5.32,
+  "pontas_ini": 0.0357,
+  "pontas_fim": 0.0513,
+  "alem_ini": [
+   0.0579,
+   0.153
+  ],
+  "alem_fim": 0.146,
+  "perfil": 0.0346,
+  "pressao_largura": 0.0512,
+  "pressao_cobertura": 0.0982,
+  "vermelho_em_cima": [
+   0.0168,
+   0.149
+  ],
+  "vermelho_depois": [
+   7.58e-05,
+   0.239
+  ],
+  "cor_em_cima": 7.81
+ },
+ "ruido_do_oraculo": {},
+ "fotos": [
+  "sobre_A",
+  "sobre_B"
+ ],
+ "linhas": [
+  {
+   "cena": "sobre",
+   "foto": "A",
+   "traco": "faixa_seca",
+   "metricas": {
+    "largura": {
+     "oraculo": 56.0,
+     "nosso": 60.0,
+     "dif": 4.0,
+     "ruido": 1.0,
+     "ruidos": 4.0
+    },
+    "largura50": {
+     "oraculo": 56.0,
+     "nosso": 60.0,
+     "dif": 4.0,
+     "ruido": 1.0,
+     "ruidos": 4.0
+    },
+    "cobertura": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0168,
+     "ruidos": 0.0
+    },
+    "opacidade": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0196,
+     "ruidos": 0.0
+    },
+    "rugosidade": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.0412,
+     "ruidos": 0.0
+    },
+    "textura": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.196,
+     "ruidos": 0.0
+    },
+    "var_local": {
+     "oraculo": -1.4678285541203216e-17,
+     "nosso": -2.9147950044278945e-15,
+     "dif": -2.9001167188866913e-15,
+     "ruido": 0.000116,
+     "ruidos": 2.500100619729906e-11
+    },
+    "cv": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.00122,
+     "ruidos": 0.0
+    },
+    "periodo_fracao": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.034,
+     "ruidos": 0.0
+    },
+    "pontas_ini": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0357,
+     "ruidos": 0.0
+    },
+    "pontas_fim": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0513,
+     "ruidos": 0.0
+    },
+    "alem_ini": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.153,
+     "ruidos": 0.0
+    },
+    "alem_fim": {
+     "oraculo": 0.8214285714285714,
+     "nosso": 0.8333333333333334,
+     "dif": 0.011904761904761973,
+     "ruido": 0.146,
+     "ruidos": 0.08153946510110942
+    },
+    "perfil": {
+     "oraculo": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "nosso": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "dif": 0.0,
+     "ruido": 0.0346,
+     "ruidos": 0.0
+    },
+    "cor": {
+     "oraculo": [
+      191.0,
+      0.0,
+      18.0
+     ],
+     "nosso": [
+      191.0,
+      0.0,
+      18.0
+     ],
+     "dif": 0.0,
+     "ruido": 5.32,
+     "ruidos": 0.0
+    },
+    "vermelho_em_cima:cruza_1": {
+     "oraculo": 0.9619964673250061,
+     "nosso": 0.9600818452833128,
+     "dif": -0.001914622041693348,
+     "ruido": 0.1433374736314259,
+     "ruidos": 0.013357442357443492
+    },
+    "vermelho_depois:cruza_1": {
+     "oraculo": 0.9999999999999999,
+     "nosso": 0.9999999999999999,
+     "dif": 0.0,
+     "ruido": 0.23899999999999996,
+     "ruidos": 0.0
+    },
+    "cor_em_cima:cruza_1": {
+     "oraculo": [
+      184.2,
+      2.6,
+      22.9
+     ],
+     "nosso": [
+      183.9,
+      2.7,
+      23.1
+     ],
+     "dif": 0.374165738677382,
+     "ruido": 7.81,
+     "ruidos": 0.04790854528519616
+    },
+    "vermelho_em_cima:cruza_2": {
+     "oraculo": 0.9620310095515177,
+     "nosso": 0.9600818452833128,
+     "dif": -0.001949164268204906,
+     "ruido": 0.14334262042317614,
+     "ruidos": 0.013597939415720059
+    },
+    "vermelho_depois:cruza_2": {
+     "oraculo": 0.9999999999999999,
+     "nosso": 0.9999999999999999,
+     "dif": 0.0,
+     "ruido": 0.23899999999999996,
+     "ruidos": 0.0
+    },
+    "cor_em_cima:cruza_2": {
+     "oraculo": [
+      184.2,
+      2.6,
+      22.9
+     ],
+     "nosso": [
+      183.9,
+      2.7,
+      23.1
+     ],
+     "dif": 0.374165738677382,
+     "ruido": 7.81,
+     "ruidos": 0.04790854528519616
+    },
+    "vermelho_em_cima:cruza_3_rapido": {
+     "oraculo": 0.9620285034644523,
+     "nosso": 0.9600818452833128,
+     "dif": -0.0019466581811395933,
+     "ruido": 0.1433422470162034,
+     "ruidos": 0.013580491597285643
+    },
+    "vermelho_depois:cruza_3_rapido": {
+     "oraculo": 0.9999999999999999,
+     "nosso": 0.9999999999999999,
+     "dif": 0.0,
+     "ruido": 0.23899999999999996,
+     "ruidos": 0.0
+    },
+    "cor_em_cima:cruza_3_rapido": {
+     "oraculo": [
+      184.2,
+      2.6,
+      22.9
+     ],
+     "nosso": [
+      183.9,
+      2.7,
+      23.1
+     ],
+     "dif": 0.374165738677382,
+     "ruido": 7.81,
+     "ruidos": 0.04790854528519616
+    }
+   },
+   "vazio": {
+    "oraculo": false,
+    "nosso": false
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "A",
+   "traco": "faixa_molhada",
+   "metricas": {
+    "largura": {
+     "oraculo": 62.0,
+     "nosso": 60.0,
+     "dif": -2.0,
+     "ruido": 1.0,
+     "ruidos": 2.0
+    },
+    "largura50": {
+     "oraculo": 60.0,
+     "nosso": 60.0,
+     "dif": 0.0,
+     "ruido": 1.0,
+     "ruidos": 0.0
+    },
+    "cobertura": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0168,
+     "ruidos": 0.0
+    },
+    "opacidade": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0196,
+     "ruidos": 0.0
+    },
+    "rugosidade": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.0412,
+     "ruidos": 0.0
+    },
+    "textura": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.196,
+     "ruidos": 0.0
+    },
+    "var_local": {
+     "oraculo": 6.876255126298813e-16,
+     "nosso": -2.9147950044278945e-15,
+     "dif": -3.602420517057776e-15,
+     "ruido": 0.000116,
+     "ruidos": 3.1055349284980824e-11
+    },
+    "cv": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.00122,
+     "ruidos": 0.0
+    },
+    "periodo_fracao": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.034,
+     "ruidos": 0.0
+    },
+    "pontas_ini": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0357,
+     "ruidos": 0.0
+    },
+    "pontas_fim": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0513,
+     "ruidos": 0.0
+    },
+    "alem_ini": {
+     "oraculo": 0.967741935483871,
+     "nosso": 1.0,
+     "dif": 0.032258064516129004,
+     "ruido": 0.14806451612903226,
+     "ruidos": 0.21786492374727648
+    },
+    "alem_fim": {
+     "oraculo": 0.8064516129032258,
+     "nosso": 0.8333333333333334,
+     "dif": 0.026881720430107614,
+     "ruido": 0.146,
+     "ruidos": 0.18412137280895627
+    },
+    "perfil": {
+     "oraculo": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.9798,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.9797,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "nosso": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "dif": 0.0012272727272727266,
+     "ruido": 0.0346,
+     "ruidos": 0.035470310036784004
+    },
+    "cor": {
+     "oraculo": [
+      191.0,
+      0.0,
+      18.0
+     ],
+     "nosso": [
+      191.0,
+      0.0,
+      18.0
+     ],
+     "dif": 0.0,
+     "ruido": 5.32,
+     "ruidos": 0.0
+    },
+    "vermelho_em_cima:cruza_1": {
+     "oraculo": 0.9620687123959477,
+     "nosso": 0.9600818452833128,
+     "dif": -0.00198686711263496,
+     "ruido": 0.1433482381469962,
+     "ruidos": 0.013860422271793328
+    },
+    "vermelho_depois:cruza_1": {
+     "oraculo": 0.9999999999999999,
+     "nosso": 0.9999999999999999,
+     "dif": 0.0,
+     "ruido": 0.23899999999999996,
+     "ruidos": 0.0
+    },
+    "cor_em_cima:cruza_1": {
+     "oraculo": [
+      184.2,
+      2.6,
+      22.9
+     ],
+     "nosso": [
+      183.9,
+      2.7,
+      23.1
+     ],
+     "dif": 0.374165738677382,
+     "ruido": 7.81,
+     "ruidos": 0.04790854528519616
+    },
+    "vermelho_em_cima:cruza_2": {
+     "oraculo": 0.9620561258693929,
+     "nosso": 0.9600818452833128,
+     "dif": -0.0019742805860801793,
+     "ruido": 0.14334636275453955,
+     "ruidos": 0.013772798612692089
+    },
+    "vermelho_depois:cruza_2": {
+     "oraculo": 0.9999999999999999,
+     "nosso": 0.9999999999999999,
+     "dif": 0.0,
+     "ruido": 0.23899999999999996,
+     "ruidos": 0.0
+    },
+    "cor_em_cima:cruza_2": {
+     "oraculo": [
+      184.2,
+      2.6,
+      22.9
+     ],
+     "nosso": [
+      183.9,
+      2.7,
+      23.1
+     ],
+     "dif": 0.374165738677382,
+     "ruido": 7.81,
+     "ruidos": 0.04790854528519616
+    },
+    "vermelho_em_cima:cruza_3_rapido": {
+     "oraculo": 0.9620857043802605,
+     "nosso": 0.9600818452833128,
+     "dif": -0.00200385909694778,
+     "ruido": 0.1433507699526588,
+     "ruidos": 0.01397871178236119
+    },
+    "vermelho_depois:cruza_3_rapido": {
+     "oraculo": 0.9999999999999999,
+     "nosso": 0.9999999999999999,
+     "dif": 0.0,
+     "ruido": 0.23899999999999996,
+     "ruidos": 0.0
+    },
+    "cor_em_cima:cruza_3_rapido": {
+     "oraculo": [
+      184.2,
+      2.6,
+      22.9
+     ],
+     "nosso": [
+      183.9,
+      2.7,
+      23.1
+     ],
+     "dif": 0.374165738677382,
+     "ruido": 7.81,
+     "ruidos": 0.04790854528519616
+    }
+   },
+   "vazio": {
+    "oraculo": false,
+    "nosso": false
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "A",
+   "traco": "cruza_1",
+   "metricas": {},
+   "vazio": {
+    "oraculo": true,
+    "nosso": true
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "A",
+   "traco": "cruza_2",
+   "metricas": {},
+   "vazio": {
+    "oraculo": true,
+    "nosso": true
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "A",
+   "traco": "cruza_3_rapido",
+   "metricas": {},
+   "vazio": {
+    "oraculo": true,
+    "nosso": true
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "A",
+   "traco": "papel",
+   "metricas": {},
+   "vazio": {
+    "oraculo": true,
+    "nosso": true
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "B",
+   "traco": "faixa_seca",
+   "metricas": {
+    "largura": {
+     "oraculo": 56.0,
+     "nosso": 60.0,
+     "dif": 4.0,
+     "ruido": 1.0,
+     "ruidos": 4.0
+    },
+    "largura50": {
+     "oraculo": 56.0,
+     "nosso": 60.0,
+     "dif": 4.0,
+     "ruido": 1.0,
+     "ruidos": 4.0
+    },
+    "cobertura": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0168,
+     "ruidos": 0.0
+    },
+    "opacidade": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0196,
+     "ruidos": 0.0
+    },
+    "rugosidade": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.0412,
+     "ruidos": 0.0
+    },
+    "textura": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.196,
+     "ruidos": 0.0
+    },
+    "var_local": {
+     "oraculo": -1.4678285541203216e-17,
+     "nosso": -2.9147950044278945e-15,
+     "dif": -2.9001167188866913e-15,
+     "ruido": 0.000116,
+     "ruidos": 2.500100619729906e-11
+    },
+    "cv": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.00122,
+     "ruidos": 0.0
+    },
+    "periodo_fracao": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.034,
+     "ruidos": 0.0
+    },
+    "pontas_ini": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0357,
+     "ruidos": 0.0
+    },
+    "pontas_fim": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0513,
+     "ruidos": 0.0
+    },
+    "alem_ini": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.153,
+     "ruidos": 0.0
+    },
+    "alem_fim": {
+     "oraculo": 0.8214285714285714,
+     "nosso": 0.8333333333333334,
+     "dif": 0.011904761904761973,
+     "ruido": 0.146,
+     "ruidos": 0.08153946510110942
+    },
+    "perfil": {
+     "oraculo": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "nosso": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "dif": 0.0,
+     "ruido": 0.0346,
+     "ruidos": 0.0
+    },
+    "cor": {
+     "oraculo": [
+      191.0,
+      0.0,
+      18.0
+     ],
+     "nosso": [
+      191.0,
+      0.0,
+      18.0
+     ],
+     "dif": 0.0,
+     "ruido": 5.32,
+     "ruidos": 0.0
+    },
+    "vermelho_em_cima:cruza_1": {
+     "oraculo": 0.9619964673250061,
+     "nosso": 0.9600818452833128,
+     "dif": -0.001914622041693348,
+     "ruido": 0.1433374736314259,
+     "ruidos": 0.013357442357443492
+    },
+    "vermelho_depois:cruza_1": {
+     "oraculo": 0.9999999999999999,
+     "nosso": 0.9999999999999999,
+     "dif": 0.0,
+     "ruido": 0.23899999999999996,
+     "ruidos": 0.0
+    },
+    "cor_em_cima:cruza_1": {
+     "oraculo": [
+      184.2,
+      2.6,
+      22.9
+     ],
+     "nosso": [
+      183.9,
+      2.7,
+      23.1
+     ],
+     "dif": 0.374165738677382,
+     "ruido": 7.81,
+     "ruidos": 0.04790854528519616
+    },
+    "vermelho_em_cima:cruza_2": {
+     "oraculo": 0.9620310095515177,
+     "nosso": 0.9600818452833128,
+     "dif": -0.001949164268204906,
+     "ruido": 0.14334262042317614,
+     "ruidos": 0.013597939415720059
+    },
+    "vermelho_depois:cruza_2": {
+     "oraculo": 0.9999999999999999,
+     "nosso": 0.9999999999999999,
+     "dif": 0.0,
+     "ruido": 0.23899999999999996,
+     "ruidos": 0.0
+    },
+    "cor_em_cima:cruza_2": {
+     "oraculo": [
+      184.2,
+      2.6,
+      22.9
+     ],
+     "nosso": [
+      183.9,
+      2.7,
+      23.1
+     ],
+     "dif": 0.374165738677382,
+     "ruido": 7.81,
+     "ruidos": 0.04790854528519616
+    },
+    "vermelho_em_cima:cruza_3_rapido": {
+     "oraculo": 0.9620285034644523,
+     "nosso": 0.9600818452833128,
+     "dif": -0.0019466581811395933,
+     "ruido": 0.1433422470162034,
+     "ruidos": 0.013580491597285643
+    },
+    "vermelho_depois:cruza_3_rapido": {
+     "oraculo": 0.9999999999999999,
+     "nosso": 0.9999999999999999,
+     "dif": 0.0,
+     "ruido": 0.23899999999999996,
+     "ruidos": 0.0
+    },
+    "cor_em_cima:cruza_3_rapido": {
+     "oraculo": [
+      184.2,
+      2.6,
+      22.9
+     ],
+     "nosso": [
+      183.9,
+      2.7,
+      23.1
+     ],
+     "dif": 0.374165738677382,
+     "ruido": 7.81,
+     "ruidos": 0.04790854528519616
+    }
+   },
+   "vazio": {
+    "oraculo": false,
+    "nosso": false
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "B",
+   "traco": "faixa_molhada",
+   "metricas": {
+    "largura": {
+     "oraculo": 62.0,
+     "nosso": 60.0,
+     "dif": -2.0,
+     "ruido": 1.0,
+     "ruidos": 2.0
+    },
+    "largura50": {
+     "oraculo": 60.0,
+     "nosso": 60.0,
+     "dif": 0.0,
+     "ruido": 1.0,
+     "ruidos": 0.0
+    },
+    "cobertura": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0168,
+     "ruidos": 0.0
+    },
+    "opacidade": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0196,
+     "ruidos": 0.0
+    },
+    "rugosidade": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.0412,
+     "ruidos": 0.0
+    },
+    "textura": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.196,
+     "ruidos": 0.0
+    },
+    "var_local": {
+     "oraculo": 6.876255126298813e-16,
+     "nosso": -2.9147950044278945e-15,
+     "dif": -3.602420517057776e-15,
+     "ruido": 0.000116,
+     "ruidos": 3.1055349284980824e-11
+    },
+    "cv": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.00122,
+     "ruidos": 0.0
+    },
+    "periodo_fracao": {
+     "oraculo": 0.0,
+     "nosso": 0.0,
+     "dif": 0.0,
+     "ruido": 0.034,
+     "ruidos": 0.0
+    },
+    "pontas_ini": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0357,
+     "ruidos": 0.0
+    },
+    "pontas_fim": {
+     "oraculo": 1.0,
+     "nosso": 1.0,
+     "dif": 0.0,
+     "ruido": 0.0513,
+     "ruidos": 0.0
+    },
+    "alem_ini": {
+     "oraculo": 0.967741935483871,
+     "nosso": 1.0,
+     "dif": 0.032258064516129004,
+     "ruido": 0.14806451612903226,
+     "ruidos": 0.21786492374727648
+    },
+    "alem_fim": {
+     "oraculo": 0.8064516129032258,
+     "nosso": 0.8333333333333334,
+     "dif": 0.026881720430107614,
+     "ruido": 0.146,
+     "ruidos": 0.18412137280895627
+    },
+    "perfil": {
+     "oraculo": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.9798,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.9797,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "nosso": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "dif": 0.0012272727272727266,
+     "ruido": 0.0346,
+     "ruidos": 0.035470310036784004
+    },
+    "cor": {
+     "oraculo": [
+      191.0,
+      0.0,
+      18.0
+     ],
+     "nosso": [
+      191.0,
+      0.0,
+      18.0
+     ],
+     "dif": 0.0,
+     "ruido": 5.32,
+     "ruidos": 0.0
+    },
+    "vermelho_em_cima:cruza_1": {
+     "oraculo": 0.9620687123959477,
+     "nosso": 0.9600818452833128,
+     "dif": -0.00198686711263496,
+     "ruido": 0.1433482381469962,
+     "ruidos": 0.013860422271793328
+    },
+    "vermelho_depois:cruza_1": {
+     "oraculo": 0.9999999999999999,
+     "nosso": 0.9999999999999999,
+     "dif": 0.0,
+     "ruido": 0.23899999999999996,
+     "ruidos": 0.0
+    },
+    "cor_em_cima:cruza_1": {
+     "oraculo": [
+      184.2,
+      2.6,
+      22.9
+     ],
+     "nosso": [
+      183.9,
+      2.7,
+      23.1
+     ],
+     "dif": 0.374165738677382,
+     "ruido": 7.81,
+     "ruidos": 0.04790854528519616
+    },
+    "vermelho_em_cima:cruza_2": {
+     "oraculo": 0.9620561258693929,
+     "nosso": 0.9600818452833128,
+     "dif": -0.0019742805860801793,
+     "ruido": 0.14334636275453955,
+     "ruidos": 0.013772798612692089
+    },
+    "vermelho_depois:cruza_2": {
+     "oraculo": 0.9999999999999999,
+     "nosso": 0.9999999999999999,
+     "dif": 0.0,
+     "ruido": 0.23899999999999996,
+     "ruidos": 0.0
+    },
+    "cor_em_cima:cruza_2": {
+     "oraculo": [
+      184.2,
+      2.6,
+      22.9
+     ],
+     "nosso": [
+      183.9,
+      2.7,
+      23.1
+     ],
+     "dif": 0.374165738677382,
+     "ruido": 7.81,
+     "ruidos": 0.04790854528519616
+    },
+    "vermelho_em_cima:cruza_3_rapido": {
+     "oraculo": 0.9620857043802605,
+     "nosso": 0.9600818452833128,
+     "dif": -0.00200385909694778,
+     "ruido": 0.1433507699526588,
+     "ruidos": 0.01397871178236119
+    },
+    "vermelho_depois:cruza_3_rapido": {
+     "oraculo": 0.9999999999999999,
+     "nosso": 0.9999999999999999,
+     "dif": 0.0,
+     "ruido": 0.23899999999999996,
+     "ruidos": 0.0
+    },
+    "cor_em_cima:cruza_3_rapido": {
+     "oraculo": [
+      184.2,
+      2.6,
+      22.9
+     ],
+     "nosso": [
+      183.9,
+      2.7,
+      23.1
+     ],
+     "dif": 0.374165738677382,
+     "ruido": 7.81,
+     "ruidos": 0.04790854528519616
+    }
+   },
+   "vazio": {
+    "oraculo": false,
+    "nosso": false
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "B",
+   "traco": "cruza_1",
+   "metricas": {},
+   "vazio": {
+    "oraculo": true,
+    "nosso": true
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "B",
+   "traco": "cruza_2",
+   "metricas": {},
+   "vazio": {
+    "oraculo": true,
+    "nosso": true
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "B",
+   "traco": "cruza_3_rapido",
+   "metricas": {},
+   "vazio": {
+    "oraculo": true,
+    "nosso": true
+   }
+  },
+  {
+   "cena": "sobre",
+   "foto": "B",
+   "traco": "papel",
+   "metricas": {},
+   "vazio": {
+    "oraculo": true,
+    "nosso": true
+   }
+  }
+ ]
+}

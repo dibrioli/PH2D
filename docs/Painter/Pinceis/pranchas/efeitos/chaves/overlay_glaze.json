@@ -1,0 +1,24 @@
+{
+ "prancha": "overlay_glaze.png",
+ "linhas": [
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "sobre_A": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "sobre_B": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  }
+ },
+ "quem": {
+  "oraculo": "effect_overlay",
+  "nosso": "Overlay Glaze (escala 1)",
+  "vizinho": "Glaze Round (d 1.63, limiar 0.591)"
+ }
+}

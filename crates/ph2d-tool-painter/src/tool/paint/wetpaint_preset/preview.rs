@@ -301,10 +301,13 @@ pub(super) fn pintar_miniatura(
 }
 
 /// Uma FERRAMENTA que não pinta (J4 `mistura`): a borracha (`EraseAlpha`) ou uma ferramenta molhada que não é o
-/// Paint. A miniatura dela no papel branco saía EM BRANCO.
+/// Paint. A miniatura dela no papel branco saía EM BRANCO. E um EFEITO (J4 `efeitos`: Dodge, Burn, Color Glaze — o
+/// Marker/Effect do Rebelle): um modo de cor que não é o Mix nem o Multiply do marcador só se vê sobre tinta (o Add e o
+/// Color sobre o branco são branco).
 fn e_ferramenta(cena: &CenaDoPreview) -> bool {
     use super::super::wetpaint_settings::WetTool;
-    cena.brush.blend == ph2d_painter_brush::BrushBlend::EraseAlpha
+    use ph2d_painter_brush::BrushBlend;
+    !matches!(cena.brush.blend, BrushBlend::Mix | BrushBlend::Multiply)
         || (cena.meio == PaintMedia::WetPaint && cena.ferramenta != WetTool::Paint)
 }
 
@@ -322,8 +325,11 @@ fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f
     use ph2d_wet_paint::tuning::Knob;
     let (raio, blend, cor) = (t.paint.brush.radius_px, t.paint.brush.blend, t.brush_color_srgb8());
     let (forca, knobs) = (t.paint.brush.strength, t.paint.wetpaint.knobs);
-    // A faixa é tinta CHEIA (a força da borracha macia, o pigmento da aguarela da ferramenta, a pintariam pálida).
+    let (fluxo, soma) = (t.paint.brush.flow, t.paint.brush.accumulate);
+    // A faixa é tinta CHEIA (a força da borracha macia, o pigmento da aguarela da ferramenta, o fluxo da velatura de um
+    // efeito, a pintariam pálida).
     t.paint.brush.strength = 1.0;
+    (t.paint.brush.flow, t.paint.brush.accumulate) = (1.0, false);
     // No Wet: os knobs do pincel SEM preset (o Wet Round: as cerdas dele), com pigmento e água de tinta de corpo.
     t.paint.wetpaint.knobs = WetKnobs::DEFAULT;
     t.paint.wetpaint.knobs.set(Knob::PigmentPerDab, PIGMENTO_DA_FAIXA);
@@ -341,6 +347,7 @@ fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f
     t.on_canvas_pointer(ponto([x1, cy], 1.0, PointerPhase::Up));
     t.paint.brush.radius_px = raio;
     t.paint.brush.strength = forca;
+    (t.paint.brush.flow, t.paint.brush.accumulate) = (fluxo, soma);
     t.paint.wetpaint.knobs = knobs;
     t.paint.brush.blend = blend;
     t.paint.wetpaint.tool = cena.ferramenta;

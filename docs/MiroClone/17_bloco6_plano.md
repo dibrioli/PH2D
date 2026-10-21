@@ -85,7 +85,7 @@ fora da sessão: e-mail/telemóvel/Slack. O painel de comentários filtra «All 
   | polilinha aberta, pentágono, N-gono sem forma nossa, ou desvio > limiar M3 | `Ink` com a geometria limpa (lei do dono: como no vetor) |
 
   Estilo: contorno = cor e espessura da caneta, sem preenchimento, sem texto — sobre o estilo da FERRAMENTA dessa
-  forma no quadro (o rascunho, o `Look`: smoke 21/10, §9).
+  forma no quadro (o rascunho, o `Look`, e — 2.ª, §9 — a espessura e o tracejado: da caneta só a cor e a opacidade).
 - **Gatilho — DONO 20/10: «exatamente como no módulo Vector».** Só **segurar parado** com a caneta normal, o
   `quickshape_hold::Hold` do vetor tal qual (500 ms, 10 px; arrastar sem soltar escala e roda à volta do `pivot`;
   Shift regulariza ao vivo; soltar confirma; Esc devolve o traço e não volta a tentar nesse gesto) e o interruptor
@@ -357,6 +357,22 @@ Medido pelo ecrã, caneta × ferramenta (rascunho; o `Look` e a semente — do i
 Cura: `Editor::smart_style` = o estilo da ferramenta com a cor, a espessura, a opacidade e o tracejado da CANETA; sem
 fundo, cantos vivos. Gate `board_bar::tests::smart_hand::pen_shapes_in_a_sketch_board_are_drawn_like_the_tools_shapes`
 (as 9 formas, e a cor e a espessura da caneta); a mutação «o estilo de nascença» sangra.
+
+### Smoke 21/10: o Sketch, 2.ª (`8ccb4efe3f`)
+
+Depois do `304d033615` o dono continuou a ver a forma da caneta LISA num quadro em Rascunho: a régua de campos
+(rascunho, `Look`, semente iguais aos da ferramenta) estava no sítio errado. Medido pela TINTA (o `VelloPass` lido de
+volta, as quatro arestas de um rectângulo 300×200 a zoom 1; a régua de píxeis e os PNG antes/depois no scratchpad da
+janela): o tremor do rascunho é de MUNDO (`max_randomness_offset 2 × ROUGHNESS 1,5`, ~3 px) e não cresce com a espessura;
+à espessura da caneta (2) as passagens fundem-se — **0–5 % das linhas com duas passagens à vista**, contra **47–65 %** na
+ferramenta (0,5); a caneta à 0,5 dá 45 % (o controlo: a espessura é TODA a diferença). O oráculo Excalidraw (roughness 1,
+`strokeWidth` 2) também dá 0 % a 2 — o nosso a 2 é o dele; o que se lê como rascunho no quadro é a espessura fina de
+nascença (ordem do dono, 07/10). Cura: a forma da caneta toma da ferramenta também a ESPESSURA e o tracejado; da caneta, a
+cor e a opacidade (corrige o «mantendo a espessura da caneta» do §2.2). Gate pela tinta
+`sketch_paint::the_pens_held_box_reads_as_sketched_as_the_tools` (`ph2d-board-render/tests/it`, placa): 5 % × 47 % antes,
+30 % × 47 % depois, tolerância ≥ metade da ferramenta; a mutação «a espessura da caneta» sangra nele e no gate do ecrã.
+⚠️ Visto de passagem na mesma foto: um rectângulo da ferramenta (semente do id 1) tem uma passagem que sai ~40 px pelo
+canto de cima à direita — é do rascunho do quadro (a ferramenta), não do B13; por medir.
 
 ## §10 — M4: o oráculo Excalidraw `next` (0.18.0-143b5b6) corrido sobre cenas NOSSAS (20/10)
 

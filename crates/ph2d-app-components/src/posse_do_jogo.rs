@@ -22,6 +22,9 @@ pub struct FocoDoJogo {
     corria: bool,
     tinha: bool,
     visto: Option<(bool, bool, bool)>,
+    /// Os botões cujo premido foi SÓ do jogo: o largar deles também o é (as ferramentas do editor não veem um largar
+    /// sem premido).
+    do_jogo: u8,
 }
 
 impl FocoDoJogo {
@@ -52,7 +55,7 @@ impl FocoDoJogo {
         previa: bool,
         nome: &dyn std::fmt::Debug,
     ) -> Destino {
-        let d = destino(t, self.tem_o_teclado(cena), previa && cena.a_vista);
+        let d = destino(t, self.tem_o_teclado(cena), previa);
         if d.jogo
             && let Some(k) = chave
         {
@@ -80,10 +83,18 @@ impl FocoDoJogo {
     ) -> bool {
         let na_cena = desceu && na_cena && cena.a_vista;
         crate::script_input::game_mouse(input, botao, desceu, na_cena);
+        let bit = 1 << (botao as u8);
         if !desceu {
-            return false;
+            let so = self.do_jogo & bit != 0;
+            self.do_jogo &= !bit;
+            return so;
         }
         let so = self.premido(input, cena, na_cena);
+        if so {
+            self.do_jogo |= bit;
+        } else {
+            self.do_jogo &= !bit;
+        }
         registo::clique(&botao, na_cena, so);
         so
     }
@@ -98,6 +109,11 @@ impl FocoDoJogo {
 
     /// ⛔ Perder a posse LARGA tudo: uma seta presa ao pausar ou ao clicar num painel deixava o personagem a andar.
     fn assenta(&mut self, input: &mut InputState, cena: Cena) {
+        // Tapar a cena (uma aba, a paleta, um menu, um campo de texto) tira o foco ao jogo: destapá-la não lho devolve
+        // sem um clique ou um Play (Godot, Unity).
+        if !cena.a_vista {
+            self.focado = false;
+        }
         let tem = self.tem_o_teclado(cena);
         if self.tinha && !tem {
             input.keyboard.release_all();
@@ -122,6 +138,8 @@ pub struct Tecla {
     pub shift: bool,
     /// É o F5 — a tecla do transporte (decisão do dono, 20/10: a do Roblox Studio).
     pub f5: bool,
+    /// A repetição automática de uma tecla segura.
+    pub repete: bool,
 }
 
 /// O que o transporte faz.
@@ -161,7 +179,7 @@ pub fn destino(t: Tecla, jogo_tem: bool, previa: bool) -> Destino {
     if t.f5 {
         return Destino {
             consumida: t.desceu,
-            transporte: t.desceu.then_some(if t.shift {
+            transporte: (t.desceu && !t.repete).then_some(if t.shift {
                 Transporte::Para
             } else {
                 Transporte::Alterna
@@ -203,6 +221,7 @@ mod tests {
             acorde: false,
             shift: false,
             f5: false,
+            repete: false,
         }
     }
 
@@ -282,6 +301,54 @@ mod tests {
     }
 
     #[test]
+    fn tapar_a_cena_tira_o_foco_e_destapar_nao_o_devolve() {
+        let mut f = FocoDoJogo::default();
+        let mut input = InputState::new();
+        f.quadro(&mut input, CORRE);
+        presa(&mut input);
+        let tapada = Cena {
+            a_correr: true,
+            a_vista: false,
+        };
+        f.quadro(&mut input, tapada);
+        assert!(
+            !input.keyboard.held(SETA),
+            "a paleta engolia o soltar: larga-se aqui"
+        );
+        f.quadro(&mut input, CORRE);
+        assert!(
+            !f.tem_o_teclado(CORRE),
+            "sem clique nem Play, o foco não volta"
+        );
+    }
+
+    #[test]
+    fn o_largar_de_um_clique_do_jogo_e_do_jogo() {
+        use ph2d_host::PointerButton::{Middle, Primary};
+        let mut f = FocoDoJogo::default();
+        let mut input = InputState::new();
+        f.quadro(&mut input, CORRE);
+        assert!(f.clique(&mut input, CORRE, Primary, true, true));
+        assert!(
+            !f.clique(&mut input, CORRE, Middle, false, true),
+            "outro botão"
+        );
+        assert!(
+            f.clique(&mut input, CORRE, Primary, false, false),
+            "largado fora da cena, ainda do jogo"
+        );
+        assert!(
+            !f.clique(&mut input, CORRE, Primary, false, true),
+            "uma vez só"
+        );
+        assert!(!f.clique(&mut input, CORRE, Primary, true, false));
+        assert!(
+            !f.clique(&mut input, CORRE, Primary, false, true),
+            "o premido foi do editor"
+        );
+    }
+
+    #[test]
     fn com_a_cena_parada_um_clique_nao_e_do_jogo() {
         let mut f = FocoDoJogo::default();
         let mut input = InputState::new();
@@ -356,6 +423,11 @@ mod tests {
                 false,
             );
             assert!(d.transporte.is_none() && !d.jogo);
+            let d = destino(Tecla { repete: true, ..f5 }, jogo_tem, false);
+            assert!(
+                d.transporte.is_none() && d.consumida,
+                "segurar o F5 não alterna em rajada"
+            );
         }
     }
 }

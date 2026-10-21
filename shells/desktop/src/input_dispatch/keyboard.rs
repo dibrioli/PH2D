@@ -102,7 +102,7 @@ impl App {
         // SÓ dele; um acorde é sempre do editor; F5/Shift+F5 são do transporte; o soltar passa sempre. A lei e o porquê:
         // `ph2d_app_components::posse_do_jogo`. ⚠️ Antes do F9 e de todo atalho, depois da escuta e da paleta.
         if let PhysicalKey::Code(code) = physical_key
-            && self.tecla_do_jogo(code, state == ElementState::Pressed)
+            && self.tecla_do_jogo(code, state == ElementState::Pressed, repeat)
         {
             return;
         }

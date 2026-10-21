@@ -9,11 +9,14 @@ use winit::keyboard::KeyCode;
 impl crate::App {
     /// A cena corre? Está à vista (nenhuma aba de documento por cima, nenhum campo de texto com o teclado)?
     pub(crate) fn cena_do_jogo(&self) -> Cena {
+        // Tapam-na também os modos do editor donos do teclado: a paleta, um menu ou diálogo, a prévia do Morph.
         let a_vista = self.hero_ref().is_some_and(|h| {
             h.documents.active().is_none()
                 && h.documents.surface_active().is_none()
                 && !h.text_entry_focused()
-        });
+        }) && !self.menu_aberto()
+            && !self.command_palette_open()
+            && !self.morph_preview;
         Cena {
             a_correr: self.playhead.is_playing(),
             a_vista,
@@ -31,24 +34,22 @@ impl crate::App {
     }
 
     /// A tecla física: `true` = consumida (nenhum atalho do editor a vê). O normalizador é o TOTAL, não o do editor.
-    pub(super) fn tecla_do_jogo(&mut self, code: KeyCode, desceu: bool) -> bool {
+    pub(super) fn tecla_do_jogo(&mut self, code: KeyCode, desceu: bool, repete: bool) -> bool {
         let m = self.modifiers;
         let t = Tecla {
             desceu,
             acorde: m.control_key() || m.alt_key() || m.super_key(),
             shift: m.shift_key(),
             f5: code == KeyCode::F5,
+            repete,
         };
         let chave = crate::keymap::winit_to_input_keycode(code).map(ph2d_input::Key);
         let cena = self.cena_do_jogo();
-        let d = self.components.foco_do_jogo.tecla(
-            &mut self.input,
-            cena,
-            t,
-            chave,
-            self.morph_preview,
-            &code,
-        );
+        let previa = self.morph_preview && !self.surface_owns_the_keyboard();
+        let d = self
+            .components
+            .foco_do_jogo
+            .tecla(&mut self.input, cena, t, chave, previa, &code);
         match (d.transporte, self.gfx.as_mut()) {
             (Some(Transporte::Alterna), Some(gfx)) => {
                 alterna_o_relogio(
@@ -88,8 +89,14 @@ impl crate::App {
 
     /// O clique SÓ do jogo: além do jogo (já servido), só agem o que é DELE — os botões do HUD (a interface do
     /// jogo) e o laboratório de física (a mão, a explosão, a atração: decisão do dono, 20/10, «fica como está»).
-    pub(super) fn clique_so_do_jogo(&mut self, button: ph2d_host::PointerButton) {
-        if self.ramo_botao_do_hud(PointerKind::Down, button, true)
+    pub(super) fn clique_so_do_jogo(&mut self, button: ph2d_host::PointerButton, down: bool) {
+        let kind = if down {
+            PointerKind::Down
+        } else {
+            PointerKind::Up
+        };
+        if self.ramo_botao_do_hud(kind, button, true)
+            || !down
             || button != ph2d_host::PointerButton::Primary
             || !self.timeline.flags.simulate_physics
         {

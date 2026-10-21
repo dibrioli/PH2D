@@ -402,7 +402,7 @@ impl App {
         // O rato do JOGO (itens 6–7): depois do blur e antes de todo ramo que devolve; com a cena a correr o clique na
         // cena é SÓ dele (`posse_do_jogo`).
         if self.rato_do_jogo(mapped_button, state == ElementState::Pressed) {
-            self.clique_so_do_jogo(mapped_button);
+            self.clique_so_do_jogo(mapped_button, state == ElementState::Pressed);
             return;
         }
         if self.ramo_alca_da_ancora(state, button) {

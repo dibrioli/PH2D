@@ -15,85 +15,47 @@ fn read(path: &str) -> String {
     fs::read_to_string(path).unwrap_or_else(|e| panic!("{path}: {e}"))
 }
 
-/// **(1) A tecla é OBSERVADA, e o bloco que a observa não CONSOME.**
-///
-/// A seta já tem dono (o nudge de nó do Vector), então roubá-la aqui regrediria
-/// uma ferramenta que ninguém pediu para mexer. *"Observa"* e *"observa e
-/// engole"* são indistinguíveis em qualquer teste que não tenha uma janela, então
-/// o oráculo é a **ausência de `return`** dentro do bloco.
-///
-/// ⚠️ **A versão original pinava as TRÊS LINHAS do bloco, verbatim**, e nasceu
-/// vermelha no dia em que a observação ganhou a guarda de acorde do gate
-/// seguinte — o fio estava intacto e o gate reprovava uma correção. *Uma cópia
-/// literal do corpo é um proxy que expira*; o que este gate afirma é a
-/// PROPRIEDADE.
+/// ⚠️ **RE-ANCORADO em 2026-10-20 (CodeEditor item 7, `docs/CodeEditor/06_posse_do_teclado.md`).** O bloco que
+/// «observava sem consumir» saiu: a decisão é a porta `ph2d_app_components::posse_do_jogo`, e com a cena a correr e o
+/// jogo com o foco a tecla nua passa a ser SÓ dele (decisão do dono). As duas leis deste ficheiro continuam — agora
+/// perguntadas à porta, pelo comportamento: sem o jogo a ter o teclado a seta é do editor (o nudge do Vector), e um
+/// acorde nunca chega ao jogador.
+use ph2d_app_components::posse_do_jogo::{Tecla, destino};
+
+fn seta(desceu: bool, acorde: bool) -> Tecla {
+    Tecla {
+        desceu,
+        acorde,
+        shift: false,
+        f5: false,
+        repete: false,
+    }
+}
+
 #[test]
-fn the_walk_keys_are_observed_without_being_consumed() {
-    let src = crate::input_text::keyboard();
-    let (open, call) = observation_block(&src);
+fn the_walk_keys_are_not_consumed_while_the_editor_has_the_keyboard() {
+    assert!(crate::input_text::keyboard().contains("self.tecla_do_jogo("));
+    let d = destino(seta(true, false), false, false);
     assert!(
-        !src[open..call].contains("return"),
-        "o bloco que observa as teclas de caminhada NAO pode consumir a tecla — \
-         um `return` ali dentro rouba a seta do nudge do Vector"
+        !d.consumida,
+        "sem o jogo a ter o teclado a seta é do nudge do Vector"
     );
 }
 
-/// **⚠️ (1b) Um ACORDE nunca é entrada de jogo.**
-///
-/// Report do Enio (cena 112): *"os players pulam e se movem sozinhos"*. As seis
-/// teclas que o dedo do jogador reclama moram debaixo de atalhos que o artista
-/// aperta o tempo todo — **Ctrl+Z** punha `jump`, **Ctrl+A** `left`, **Ctrl+D**
-/// `right`, **Ctrl+S** `down`.
-///
-/// ⚠️ **A varredura de conflito do `player_input` foi feita e ainda assim
-/// errou**, porque mediu a tecla NUA: o doc do `KeyS` afirma que *"um botão de
-/// player nunca vê aquele caminho"* porque o Ctrl+S corre dentro de um braço
-/// guardado por modificador. Ele vê — esta observação corre **antes** de toda
-/// guarda de modificador do arquivo.
-///
-/// ⚠️ **E o RELEASE tem de passar SEMPRE.** Um guard simétrico troca um pulo
-/// espúrio por um personagem que **anda sozinho para sempre**: a tecla apertada
-/// sem modificador e solta com o Ctrl preso nunca seria desarmada.
 #[test]
 fn a_modifier_chord_never_reaches_the_player() {
-    let src = crate::input_text::keyboard();
-    let (open, call) = observation_block(&src);
-    let block = &src[open..call];
-    for probe in ["control_key()", "alt_key()", "super_key()"] {
+    for (jogo_tem, previa) in [(true, false), (false, false), (true, true), (false, true)] {
         assert!(
-            block.contains(probe),
-            "a observacao tem de recusar um acorde: falta `{probe}` no bloco"
+            !destino(seta(true, true), jogo_tem, previa).jogo,
+            "um acorde é do editor"
+        );
+        assert!(
+            destino(seta(false, true), jogo_tem, previa).jogo,
+            "o RELEASE passa sempre"
         );
     }
-    assert!(
-        block.contains("if !pressed || !chord {"),
-        "o RELEASE tem de passar SEMPRE (`!pressed ||`), senao um Ctrl preso na hora \
-         de soltar deixa a tecla armada para sempre"
-    );
 }
 
-/// O bloco que observa a tecla física: `(início do `if let`, a chamada)`.
-fn observation_block(src: &str) -> (usize, usize) {
-    // ⚠️ **RE-ANCORADO em 2026-08-24 (plano 30 W5).** A observação deixou de escrever num
-    // `PlayerKeys` da shell e passa a alimentar o retrato de dispositivos que o Input Map resolve.
-    // A LEI é a mesma (observar sem consumir, recusar acordes); o que mudou foi o endereço.
-    let call = src
-        .find("crate::keymap::winit_to_input_keycode(code)")
-        .expect("o dedo do jogador tem de OBSERVAR a tecla fisica");
-    let open = src[..call]
-        .rfind("if let PhysicalKey::Code(code) = physical_key {")
-        .expect("a observacao mora dentro de um `if let` sobre a tecla fisica");
-    (open, call)
-}
-
-/// **(2) O dedo INTEIRO chega ao dispatch da física.**
-///
-/// Sem esta linha o `PlayerKeys` seria estado que ninguém lê: os gates dele
-/// continuariam verdes e o personagem ficaria parado.
-///
-/// ⚠️ A âncora é a **porta única** (`input()`), não `drive()` — e a diferença não
-/// é cosmética: com dois getters, um dispatch que entrega só metade do dedo é
-/// um build que compila, e o pulo seria a metade esquecida.
 #[test]
 fn the_whole_finger_is_handed_to_the_physics_dispatch() {
     // ⚠️ **O QUADRO lê-se no texto EMENDADO** (OBRA 2, 2026-09-12): a resolução mudou-se para a fase

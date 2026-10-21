@@ -360,7 +360,8 @@ impl Stroke {
             // pincel (sem a partícula) e o heading do traço.
             let (atraves, meia) = if self.spec.stroke_method.allows_jitter() {
                 let j = self.spec.dab_jitter;
-                let diametro = 2.0 * dab.radius_px / j.particula(self.spec.spray_count);
+                let diametro = 2.0 * dab.radius_px
+                    / j.particula_no(self.spec.spray_count, self.spec.clamped_radius());
                 let v = crate::marca::desvio_atraves(&mut self.por_traco.rng, &j, diametro, self.heading);
                 (v, j.across.clamp(0.0, crate::marca::DabJitter::ACROSS_MAX) * diametro)
             } else {

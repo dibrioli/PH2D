@@ -174,7 +174,7 @@ pub(super) fn relativo_do_meio(r: &ReceitaMeio) -> String {
 pub(super) fn parametros_do_meio(r: &ReceitaMeio) -> (Parametros, BTreeMap<String, Vec<u8>>) {
     let m = r.meio;
     assert!(m != PaintMedia::WetPaint, "{}: um preset do Wet Paint é uma `Receita`", r.nome);
-    let (mut p, texturas) = match r.nasce_de {
+    let (mut p, mut texturas) = match r.nasce_de {
         Some(base) => {
             let b = super::midias_de_fabrica::de_fabrica(base);
             assert_eq!(
@@ -223,6 +223,10 @@ pub(super) fn parametros_do_meio(r: &ReceitaMeio) -> (Parametros, BTreeMap<Strin
         p.paint_mode = Some(modo.to_owned());
     }
     p.width_table.clear();
+    // As imagens que a receita DESENHA (J4 `texturas`): por cima das do `nasce_de`, pelo id do ficheiro.
+    for &(id, desenha) in r.texturas {
+        texturas.insert(id.to_owned(), desenha());
+    }
     (p, texturas)
 }
 

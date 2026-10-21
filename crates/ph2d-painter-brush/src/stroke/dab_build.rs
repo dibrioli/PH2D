@@ -167,11 +167,13 @@ impl Stroke {
             rotation = crate::heading::rotate(rotation, [-1.0, 0.0]);
         }
         let particula = if jitter {
-            self.spec.dab_jitter.particula(self.spec.spray_count)
+            self.spec
+                .dab_jitter
+                .particula_no(self.spec.spray_count, self.spec.clamped_radius())
         } else {
             1.0
         };
-        let radius = if particula < 1.0 {
+        let radius = if particula != 1.0 {
             (radius * particula).clamp(0.5, MAX_BRUSH_RADIUS_PX)
         } else {
             radius

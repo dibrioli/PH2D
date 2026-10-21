@@ -129,6 +129,7 @@ fn pincel_mexido() -> BrushSpec {
             angle_per_stroke: 0.7,
             across: 1.2,
             particle: 0.5,
+            particle_px: 6.0,
         },
         hose: ph2d_painter_brush::ImageHose {
             n: 1,

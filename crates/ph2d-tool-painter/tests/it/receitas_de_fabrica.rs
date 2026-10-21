@@ -165,6 +165,10 @@ pub struct ReceitaMeio {
     pub opacity: Option<f64>,
     /// Um preset de fábrica DO MESMO MEIO de onde este nasce (no lugar do pincel por omissão).
     pub nasce_de: Option<&'static str>,
+    /// As IMAGENS do preset (J4 `texturas`, a ponta de imagem e a mangueira L19): o id no ficheiro (`shape`,
+    /// `shape_2`…, `texture`) e a função que desenha a imagem — NOSSA, procedural — já no formato do ficheiro
+    /// (`ph2d_brush_presets::escrever_textura`). Vazio = nenhuma (o de sempre).
+    pub texturas: &'static [(&'static str, fn() -> Vec<u8>)],
 }
 
 impl ReceitaMeio {
@@ -186,6 +190,7 @@ impl ReceitaMeio {
             size_px: None,
             opacity: None,
             nasce_de: None,
+            texturas: &[],
         }
     }
 

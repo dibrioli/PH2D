@@ -343,3 +343,31 @@ fn o_espalhar_atraves_e_dos_preenchimentos_do_arremesso() {
     let no_eixo = all.iter().filter(|d| (d.center[1] - 300.0).abs() < 1e-3).count();
     assert!(no_eixo <= 2, "{no_eixo} de {} dabs sem o desvio através", all.len());
 }
+
+/// ⭐ **A partícula em PÍXEIS** (J4 `texturas`, `docs/Painter/Pinceis/exames/texturas.md`): com `particle_px` cada
+/// marca do spray tem o MESMO diâmetro na tela num pincel de 40 e de 200 px (a gotícula do Krita), e o
+/// espalhamento continua a crescer com o pincel; num pincel MENOR que ela a gota fica do seu tamanho (o cordão do
+/// Krita a 5 px); desligada = a partícula relativa.
+#[test]
+fn a_particula_em_px_e_a_mesma_em_todo_pincel() {
+    let mede = |raio: f32, px: f32| {
+        let mut s = com(|j| j.particle_px = px);
+        s.radius_px = raio;
+        s.jitter_scale = 0.0;
+        let d = recto(s, 5);
+        let r: Vec<f32> = d.iter().map(|d| d.radius_px).collect();
+        let y: Vec<f32> = d.iter().map(|d| d.center[1]).collect();
+        let (lo, hi) = (r.iter().copied().fold(f32::MAX, f32::min), r.iter().copied().fold(0.0, f32::max));
+        (lo, hi, media_sd(&y).1)
+    };
+    let (a_lo, a_hi, a_sd) = mede(20.0, 6.0);
+    let (b_lo, b_hi, b_sd) = mede(100.0, 6.0);
+    assert!((a_lo - 3.0).abs() < 1e-4 && (a_hi - 3.0).abs() < 1e-4, "a 40 px: raio {a_lo}..{a_hi}");
+    assert!((b_lo - 3.0).abs() < 1e-4 && (b_hi - 3.0).abs() < 1e-4, "a 200 px: raio {b_lo}..{b_hi}");
+    assert!(b_sd > 3.0 * a_sd, "o espalhamento é do pincel: sd {a_sd} × {b_sd}");
+    // Num pincel de 4 px a gota de 6 continua de 6; e desligada é a relativa de sempre.
+    let (c_lo, c_hi, _) = mede(2.0, 6.0);
+    assert!((c_lo - 3.0).abs() < 1e-4 && (c_hi - 3.0).abs() < 1e-4, "a 4 px: raio {c_lo}..{c_hi}");
+    let (d_lo, _, _) = mede(100.0, 0.0);
+    assert!((d_lo - 100.0).abs() < 1e-4, "desligada: {d_lo}");
+}

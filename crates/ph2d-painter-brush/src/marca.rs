@@ -39,6 +39,11 @@ pub struct DabJitter {
     /// **Partícula** `0,05..1` (o tamanho de cada marca do spray em fracção do pincel; o espalhamento continua o
     /// do pincel): `1` = a marca do tamanho do pincel. Só com spray (`spray_count > 1`).
     pub particle: f32,
+    /// **Partícula em PÍXEIS** (J4 `texturas`): o diâmetro de cada marca do spray na TELA, o mesmo a 5 e a 200 px
+    /// — o espalhamento continua o do pincel (a gotícula do Spray e do Pointillism do Krita não cresce com o
+    /// pincel: a 200 px são gotas soltas, não discos maiores; a 5 px um cordão de gotas MAIORES que o pincel).
+    /// `0` = desligada (a [`Self::particle`] relativa de sempre). Só com spray (`spray_count > 1`).
+    pub particle_px: f32,
 }
 
 impl DabJitter {
@@ -52,6 +57,7 @@ impl DabJitter {
         angle_per_stroke: 0.0,
         across: 0.0,
         particle: 1.0,
+        particle_px: 0.0,
     };
 
     /// A menor partícula (`5 %` do pincel): abaixo disso o dab do raio mínimo (`0,5 px`) já é o que se pinta.
@@ -63,6 +69,18 @@ impl DabJitter {
     #[must_use]
     pub fn muda_a_forma(&self) -> bool {
         self.flip_x > 0.0 || self.flip_y > 0.0 || self.roundness > 0.0
+    }
+
+    /// ⭐ **A partícula efectiva de um pincel de raio `raio_px`** (o factor do raio de cada marca): a em píxeis
+    /// ([`Self::particle_px`]) quando ligada — `diâmetro ÷ (2·raio)`, acima de `1` num pincel menor que ela —, senão
+    /// a relativa (`≤ 1`).
+    #[must_use]
+    pub fn particula_no(&self, n: u32, raio_px: f32) -> f32 {
+        if n > 1 && self.particle_px > 0.0 && raio_px > 0.0 {
+            self.particle_px / (2.0 * raio_px)
+        } else {
+            self.particula(n)
+        }
     }
 
     /// A partícula efectiva para um spray de `n` marcas (`1` sem spray: o campo não age).

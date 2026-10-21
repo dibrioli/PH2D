@@ -162,7 +162,7 @@ fn textura_de_json(v: Option<&Value>, base: TextureSettings) -> TextureSettings 
 }
 
 fn marca_para_json(j: &DabJitter) -> Value {
-    json!({
+    let mut v = json!({
         "opacity": num(j.opacity),
         "count": num(j.count),
         "flip_x": num(j.flip_x),
@@ -171,7 +171,12 @@ fn marca_para_json(j: &DabJitter) -> Value {
         "angle_per_stroke": num(j.angle_per_stroke),
         "across": num(j.across),
         "particle": num(j.particle),
-    })
+    });
+    // A partícula em píxeis (J4) só ligada: o preset sem ela é o de antes, ao byte.
+    if j.particle_px > 0.0 {
+        v["particle_px"] = num(j.particle_px);
+    }
+    v
 }
 
 /// O jitter da marca (L4) do JSON; uma chave ausente (um preset de antes) = a de `base`.
@@ -188,6 +193,8 @@ fn marca_de_json(v: Option<&Value>, base: DabJitter) -> DabJitter {
         angle_per_stroke: f(o.get("angle_per_stroke"), base.angle_per_stroke),
         across: f(o.get("across"), base.across),
         particle: f(o.get("particle"), base.particle),
+        // AUSENTE = desligada (nunca a do pincel anterior: o preset sem ela é o de antes).
+        particle_px: f(o.get("particle_px"), 0.0).max(0.0),
     }
 }
 

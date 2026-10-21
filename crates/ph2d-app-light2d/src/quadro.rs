@@ -466,7 +466,7 @@ impl LuzDoQuadro {
                 return;
             }
             self.montagens += 1;
-            self.vigia.nasceu();
+            self.vigia.nasceu(renasce::bytes_de(&cfg));
             Solver::novo_com(gpu, cfg, &self.fabrica).map(|mut solver| {
                 // ⭐ W5y — INSTRUMENTO: as etapas da holográfica, cada uma no seu passe (a c2 fica 0).
                 if std::env::var_os("PH2D_LIGHT2D_FASES").is_some() {

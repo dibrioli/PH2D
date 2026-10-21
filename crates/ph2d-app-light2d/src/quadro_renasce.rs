@@ -9,6 +9,11 @@
 //! ([`super::LuzDoQuadro::soltar_se_renasce`]): presos, seguravam a fluência velha e a nova ia a 13 blocos
 //! ([handoff W6c](../../../docs/Luz2D/handoffs/HANDOFF_CONTINUACAO_W6c_2026-10-17_O_PISCAR_DO_RENASCIMENTO.md)).
 //! `PH2D_LIGHT2D_RENASCE_SE_DEGRADA=0` desliga (a régua ON × OFF).
+//!
+//! ⭐ §48.3 (handoff W6g §49) — **as PÁGINAS NOVAS**: a vista que nasce maior do que todas as deste vigia (memória que
+//! o processo ainda não usou) e acima de [`PAGINAS_NOVAS_DESDE`] nasce no regime lento do driver (o da W5x) e lá
+//! fica; renascida, reusa as páginas largadas. Renasce UMA vez, [`LEITURAS_NA_GRADE`] leituras depois (o arrasto da
+//! janela recomeça a conta). `PH2D_LIGHT2D_RENASCE_PAGINAS_NOVAS=0` desliga (a régua ON × OFF).
 
 /// A leitura que DISPARA a vigília: a do evento vai a ~2,6× e ~4,7× o piso (W6a §2).
 const PICO: f64 = 2.0;
@@ -19,6 +24,14 @@ const MARGEM_MS: f64 = 0.3;
 const MARGEM_REL: f64 = 0.03;
 /// O tecto de renascimentos: o evento é 1× por processo; o 2.º cobre um falso positivo.
 const MAX_POR_PROCESSO: u32 = 2;
+/// ⭐ §48.3 — os bytes da `PassList` da vista a partir dos quais as páginas novas pesam. O recurso é a memória NOVA
+/// do driver. Medido (RTX 5060 Ti, cena 5, a Alta pelo `LuzDoQuadro`, um processo por teto, `c2` mediana nasce →
+/// renasce, ms): 2,27 GiB 31,63 → 31,60 · 2,86 GiB 35,56 → 35,09 · 3,24 GiB 50,23 → 47,08 · 3,82 GiB 62,6–64,4 →
+/// 55,0 (também vinda da Média ou da Baixa) · 6,21 GiB 91,76 → 91,97 (`target/bug6/nascimento_2.log`). Abaixo, o
+/// renascimento não ganha e custaria ~0,1 s parado.
+pub(super) const PAGINAS_NOVAS_DESDE: u64 = 3 << 30;
+/// As leituras na MESMA grade antes do renascimento das páginas novas (a grade assentou).
+const LEITURAS_NA_GRADE: u32 = 10;
 
 /// O vigia da `c2` da vista ([`Self::ler`] a cada leitura de custo, [`Self::nasceu`] a cada montagem).
 #[derive(Debug, Default)]
@@ -31,31 +44,64 @@ pub(super) struct Vigia {
     renascidas: u32,
     /// O renascimento pedido (pelo vigia, ou pelo portão dos bits: [`super::LuzDoQuadro::renascer_a_vista`]).
     pedido: bool,
+    /// ⭐ §48.3: as páginas novas ligadas, os maiores bytes que nasceram aqui e as leituras que faltam.
+    novas_ligado: bool,
+    pico_bytes: u64,
+    novas: Option<u32>,
+}
+
+/// Desligado só com `=0` (lida em execução: o MESMO binário mede os dois).
+fn ligado(k: &str) -> bool {
+    !std::env::var(k).is_ok_and(|v| v.trim() == "0")
+}
+
+/// Os bytes da `PassList` da vista que `cfg` monta (a grade efetiva, como o solver).
+pub(super) fn bytes_de(cfg: &ph2d_light2d_gpu::Config) -> u64 {
+    let cfg = ph2d_light2d_gpu::Config {
+        grade: cfg.grade_efetiva(),
+        ..*cfg
+    };
+    ph2d_light2d_gpu::PassList::de(&cfg, false).bytes_alocados()
 }
 
 impl Vigia {
-    /// Ligado salvo `PH2D_LIGHT2D_RENASCE_SE_DEGRADA=0` (lida em execução: o MESMO binário mede os dois).
     pub(super) fn do_ambiente() -> Self {
-        let desligado =
-            std::env::var("PH2D_LIGHT2D_RENASCE_SE_DEGRADA").is_ok_and(|v| v.trim() == "0");
-        Self::com(!desligado)
+        Self {
+            novas_ligado: ligado("PH2D_LIGHT2D_RENASCE_PAGINAS_NOVAS"),
+            ..Self::com(ligado("PH2D_LIGHT2D_RENASCE_SE_DEGRADA"))
+        }
     }
 
     pub(super) fn com(ligado: bool) -> Self {
         Self {
             ligado,
+            novas_ligado: ligado,
             ..Self::default()
         }
     }
 
-    /// Um solver novo da vista: outra geração, outro piso.
-    pub(super) fn nasceu(&mut self) {
+    /// Um solver novo da vista com `bytes`: outra geração, outro piso; nas páginas novas, o renascimento à espera.
+    pub(super) fn nasceu(&mut self, bytes: u64) {
         self.piso = None;
         self.vigilia = None;
+        let novas = self.novas_ligado && bytes > self.pico_bytes && bytes >= PAGINAS_NOVAS_DESDE;
+        self.novas = novas.then_some(LEITURAS_NA_GRADE);
+        self.pico_bytes = self.pico_bytes.max(bytes);
     }
 
     /// Uma leitura da `c2` (ms). `true` = a vista renasce no próximo quadro ([`Self::renascer`]).
     pub(super) fn ler(&mut self, c2: f64) -> bool {
+        if let Some(faltam) = self.novas.as_mut() {
+            *faltam -= 1;
+            if *faltam == 0 {
+                self.novas = None;
+                eprintln!(
+                    "[luz2d] a vista nasceu em páginas novas do driver (c2 {c2:.2} ms) · renasce"
+                );
+                self.pedido = true;
+                return true;
+            }
+        }
         if !self.ligado || self.renascidas >= MAX_POR_PROCESSO || !c2.is_finite() {
             return false;
         }
@@ -206,7 +252,7 @@ mod tests {
         for vez in 0..4 {
             let renasceu = evento(&mut v, 11.5, 12.4);
             assert_eq!(renasceu, vez < MAX_POR_PROCESSO, "vez {vez}");
-            v.nasceu();
+            v.nasceu(0);
             for _ in 0..5 {
                 assert!(!v.ler(11.5));
             }
@@ -222,7 +268,7 @@ mod tests {
     fn cada_nascimento_tem_o_seu_piso() {
         // A grade nova (outro nível) custa outra coisa: o piso velho não dispara nada.
         let mut v = assente(4.0, 5);
-        v.nasceu();
+        v.nasceu(0);
         for _ in 0..100 {
             assert!(!v.ler(11.5));
         }
@@ -230,5 +276,55 @@ mod tests {
         let mut v = Vigia::com(true);
         assert!(!v.ler(30.0));
         assert!(!v.ler(12.4));
+    }
+
+    /// As leituras até o vigia pedir (ou `None` se não pede em `max`).
+    fn pede_em(v: &mut Vigia, max: u32) -> Option<u32> {
+        (1..=max).find(|_| v.ler(55.0))
+    }
+
+    #[test]
+    fn as_paginas_novas_renascem_uma_vez_depois_de_assentar() {
+        let grande = PAGINAS_NOVAS_DESDE + 1;
+        let mut v = Vigia::com(true);
+        v.nasceu(grande);
+        assert_eq!(pede_em(&mut v, 50), Some(LEITURAS_NA_GRADE));
+        // O renascimento monta os MESMOS bytes: já são páginas usadas, não pede outra vez.
+        v.nasceu(grande);
+        assert_eq!(pede_em(&mut v, 50), None);
+        // Mais pequena (outro nível, a janela menor) também não.
+        v.nasceu(grande / 2);
+        assert_eq!(pede_em(&mut v, 50), None);
+        // Maior do que todas: páginas novas outra vez.
+        v.nasceu(2 * grande);
+        assert_eq!(pede_em(&mut v, 50), Some(LEITURAS_NA_GRADE));
+    }
+
+    #[test]
+    fn abaixo_do_limiar_ou_desligado_nao_renasce() {
+        let mut v = Vigia::com(true);
+        v.nasceu(PAGINAS_NOVAS_DESDE - 1);
+        assert_eq!(pede_em(&mut v, 50), None);
+        let mut v = Vigia::com(false);
+        v.nasceu(2 * PAGINAS_NOVAS_DESDE);
+        assert_eq!(pede_em(&mut v, 50), None);
+    }
+
+    #[test]
+    fn o_arrasto_da_janela_recomeca_a_conta() {
+        // Cada quadro do arrasto é uma grade maior: nunca assenta, nunca renasce.
+        let mut v = Vigia::com(true);
+        for k in 1..=40u64 {
+            v.nasceu(PAGINAS_NOVAS_DESDE + k);
+            assert!(!v.ler(55.0), "renasceu a meio do arrasto (quadro {k})");
+        }
+        // Parou: renasce uma vez, na grade final.
+        assert_eq!(pede_em(&mut v, 50), Some(LEITURAS_NA_GRADE - 1));
+        // Encolher antes de assentar cancela (a grade final cabe em páginas usadas).
+        let mut v = Vigia::com(true);
+        v.nasceu(2 * PAGINAS_NOVAS_DESDE);
+        assert!(!v.ler(55.0));
+        v.nasceu(PAGINAS_NOVAS_DESDE);
+        assert_eq!(pede_em(&mut v, 50), None);
     }
 }

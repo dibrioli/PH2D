@@ -13,7 +13,7 @@ use bevy_ecs::world::World;
 use ph2d_app_light2d::qualidade::degrau_do;
 use ph2d_app_light2d::{LuzDoQuadro, smoke};
 use ph2d_ecs::PresentWorld;
-use ph2d_editor_core::luz_edits::NivelDaLuz;
+use ph2d_editor_core::luz_edits::{NivelDaLuz, PreferenciaDaLuz};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 
@@ -125,4 +125,48 @@ fn o_pedido_solta_os_receptores_e_o_ligar_do_mesmo_quadro_acende_os() {
         (false, false),
         "o pedido soltou mais de uma vez"
     );
+}
+
+/// ⭐ §48.3 (handoff W6g §49) — a vista que nasce em PÁGINAS NOVAS do driver (a 2160p Alta, 3,8 GiB, acima do
+/// `PAGINAS_NOVAS_DESDE`) renasce SOZINHA uma vez, com a grade assente, e não mais; a 1080p Baixa nunca.
+#[test]
+fn a_vista_em_paginas_novas_renasce_sozinha_uma_vez() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — gate saltado");
+        return;
+    };
+    let mut w = World::new();
+    assert!(smoke::encenar(&mut w, 5));
+    let r = crate::comum::renderer(&gpu);
+    for (nivel, tam, montagens) in [
+        (NivelDaLuz::Baixa, (1920, 1080), 1),
+        (NivelDaLuz::Alta, (3840, 2160), 2),
+    ] {
+        let afim =
+            Camera2d::new([-3.2, -1.8], 3.8).world_to_screen_affine(WindowSize::new(tam.0, tam.1));
+        let mut l = LuzDoQuadro::com_degrau(degrau_do(nivel));
+        for q in 0..60 {
+            // O editor passa a preferência a cada quadro: é ela que liga as leituras de custo (e o vigia).
+            l.preferir(PreferenciaDaLuz {
+                nivel,
+                automatica: false,
+            });
+            assert!(l.preparar(&w, afim, tam), "a cena 5 tem luz");
+            l.gravar(&gpu, &mut PresentWorld::new(), &r);
+            // O app anda ao ritmo do ecrã: a placa acaba o quadro antes do seguinte, e a leitura de custo SEM
+            // ESPERAR completa-se (colados, o envio seguinte cancelava o mapa pendente).
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+            assert!(
+                l.acesa(),
+                "{nivel:?} quadro {q}: o solver recusou: {:?}",
+                l.erro()
+            );
+            assert!(l.recebida().is_some(), "{nivel:?} quadro {q}: saiu sem luz");
+        }
+        assert_eq!(
+            l.montagens(),
+            montagens,
+            "{nivel:?} {tam:?}: as montagens da vista"
+        );
+    }
 }

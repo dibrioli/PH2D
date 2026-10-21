@@ -230,11 +230,14 @@ fn escala() -> f32 {
         .unwrap_or(1.0)
 }
 
+/// Um ponto `[x, y, pressão]` da bateria, ou `[x, y, pressão, tilt_x°, tilt_y°]` (a caneta DEITADA, em graus à
+/// vertical: `(t, 0)` ao longo de +x, `(0, t)` através — `exames/lapis/bateria_deitado.json`); sem os dois, de pé.
 fn cp(p: &Value, phase: PointerPhase) -> CanvasPointer {
+    let grau = |i: usize| p.get(i).and_then(Value::as_f64).unwrap_or(0.0) as f32 / 90.0;
     CanvasPointer {
         pos: [p[0].as_f64().unwrap() as f32, p[1].as_f64().unwrap() as f32],
         pressure: p[2].as_f64().unwrap() as f32,
-        tilt: [0.0, 0.0],
+        tilt: [grau(3), grau(4)],
         phase,
     }
 }

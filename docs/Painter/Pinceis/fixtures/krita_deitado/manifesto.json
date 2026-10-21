@@ -1,0 +1,43 @@
+{
+ "bateria_sha256": "b6387a9a59c3667a5d01021d29b3ae0be0a81cc0981556342a6b921f58db0b47",
+ "dt_ms": 10,
+ "falta": [],
+ "krita": "6.0.4.1",
+ "passo_ms": 10,
+ "pinceis": {
+  "c) Pencil-5 Tilted": {
+   "base_sobre": "c) Pencil-5 Tilted",
+   "deitado_ao_longo": {
+    "px_com_tinta": 18801,
+    "sha256": "37cf88c9ae887619"
+   },
+   "deitado_atraves": {
+    "px_com_tinta": 34891,
+    "sha256": "beaa299fff5cc0df"
+   },
+   "deitado_mais": {
+    "px_com_tinta": 57996,
+    "sha256": "c34938475c646582"
+   },
+   "ficheiro": "c__Pencil-5_Tilted",
+   "origem": "c)_Pencil-5_Tilted.kpp"
+  },
+  "c) Pencil-6 Quick Shade": {
+   "base_sobre": "c) Pencil-6 Quick Shade",
+   "deitado_ao_longo": {
+    "px_com_tinta": 107037,
+    "sha256": "034380f15ccb48a5"
+   },
+   "deitado_atraves": {
+    "px_com_tinta": 54068,
+    "sha256": "ca549cb30b4fff47"
+   },
+   "deitado_mais": {
+    "px_com_tinta": 53969,
+    "sha256": "20544a003ca6e12f"
+   },
+   "ficheiro": "c__Pencil-6_Quick_Shade",
+   "origem": "c)_Pencil-6_Quick_Shade.kpp"
+  }
+ }
+}

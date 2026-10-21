@@ -1,0 +1,22 @@
+{
+ "gestos": {
+  "1": "Hard Round",
+  "2": "Broad Nib",
+  "3": "Script"
+ },
+ "tamanhos": {
+  "1": "Hard Round",
+  "2": "Broad Nib",
+  "3": "Script"
+ },
+ "sobre": {
+  "1": "Broad Nib",
+  "2": "Hard Round",
+  "3": "Script"
+ },
+ "tremor": {
+  "1": "Broad Nib",
+  "2": "Hard Round",
+  "3": "Script"
+ }
+}

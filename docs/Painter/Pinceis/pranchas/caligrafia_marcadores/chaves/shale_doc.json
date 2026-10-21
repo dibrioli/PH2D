@@ -1,0 +1,22 @@
+{
+ "gestos": {
+  "1": "Soft Pastel",
+  "2": "Hard Round",
+  "3": "Shale"
+ },
+ "tamanhos": {
+  "1": "Hard Round",
+  "2": "Soft Pastel",
+  "3": "Shale"
+ },
+ "sobre": {
+  "1": "Soft Pastel",
+  "2": "Shale",
+  "3": "Hard Round"
+ },
+ "tremor": {
+  "1": "Hard Round",
+  "2": "Shale",
+  "3": "Soft Pastel"
+ }
+}

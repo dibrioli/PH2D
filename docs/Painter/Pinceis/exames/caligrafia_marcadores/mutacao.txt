@@ -1,0 +1,20 @@
+== controlo
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 215 filtered out; finished in 6.79s
+== {"Marker Bullet": {"glaze": 0.0}}
+Marker Bullet: sobreposição 0.99 — não acumula
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 215 filtered out; finished in 6.81s
+== {"Marker Liner": {"brush.dab_flatten": 0.0}}
+Marker Liner: de pé ÷ deitado 1.00 — o bisel não está deitado
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 215 filtered out; finished in 6.82s
+== {"Marker Chisel": {"brush.taper": {"start":0.0,"tip_start":0.0,"opacity":0.0}
+Marker Chisel: entrada 0.91 contra o Liner 0.98 — a ponta não esmaece
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 215 filtered out; finished in 6.78s
+== {"Dry Marker": {"brush.shape": {"angle_deg": 0, "flow": false, "kind": "None"
+Dry Marker: cima ÷ baixo 1.05 — a tinta não acaba de um lado
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 215 filtered out; finished in 6.81s
+== {"Script": {"brush.stabilizer": 0.5}}
+Script: tremor 2.51 px — o estabilizador não age
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 215 filtered out; finished in 6.81s
+== {"Shale": {"brush.hardness": 1.0}}
+Shale: orla 0.29 px — a borda ficou dura
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 215 filtered out; finished in 6.95s

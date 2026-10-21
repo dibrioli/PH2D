@@ -283,7 +283,8 @@ fn largura_na_normal(
 }
 
 /// A cena do tremor: um recto de 12 px de x 60 a 939 em y 100 com a mão que treme (4 px a 9 px de onda, 2 px a 3,1,
-/// e ±1,2 px sorteados por uma lcg fixa) — a mesma de `scratchpad/bateria_tremor.json` do exame.
+/// e ±1,2 px sorteados por uma lcg fixa) — o desenho de `docs/Painter/Pinceis/exames/caligrafia_marcadores/bateria_tremor.json`
+/// (o da bancada, com outro sorteio).
 fn cena_do_tremor() -> serde_json::Value {
     let mut s: u64 = 7;
     let mut sorteio = || {

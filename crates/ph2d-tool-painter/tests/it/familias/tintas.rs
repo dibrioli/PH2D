@@ -513,14 +513,22 @@ fn o_borrao_da_tinta_transborda_a_faixa() {
             }
             continue;
         }
-        if seca.0 < 8 || seca.1 < 4 {
-            falhas.push(format!("{n}: a faixa SECA não borra ({seca:?}; Rebelle ≥ 11 e ≥ 5) — o reservatório"));
+        // O Rebelle (`borrao.py`, x 250): acima da molhada · acima da seca.
+        let (reb_m, reb_s) = match n {
+            "Dip Pen" => (45.0, 21.0),
+            "Ink Bullet" => (40.0, 38.0),
+            "Ink Brush" => (11.0, 11.0),
+            "Reed Pen" => (40.0, 26.0),
+            _ => (19.0, 16.0), // Wood Stick
+        };
+        if (seca.0 as f64) < 0.4 * reb_s || seca.1 < 4 {
+            falhas.push(format!("{n}: a faixa SECA não borra ({seca:?}; ≥ 0,4 × Rebelle {reb_s}) — o reservatório"));
+        }
+        if (molhada.0 as f64) < 0.25 * reb_m {
+            falhas.push(format!("{n}: a MOLHADA borra pouco ({molhada:?}; ≥ 0,25 × Rebelle {reb_m}) — o reservatório"));
         }
         if seca.2 > 60.0 {
             falhas.push(format!("{n}: a mistura acima da seca é ROXA (R {:.0}; Rebelle 26–39) — o produto", seca.2));
-        }
-        if molhada.0 < 6 {
-            falhas.push(format!("{n}: a faixa MOLHADA não borra ({molhada:?}; Rebelle ≥ 11) — o reservatório"));
         }
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));

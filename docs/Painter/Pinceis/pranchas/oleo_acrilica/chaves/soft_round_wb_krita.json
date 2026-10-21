@@ -1,0 +1,48 @@
+{
+ "prancha": "soft_round_wb_krita.png",
+ "linhas": [
+  "gestos_A",
+  "gestos_B",
+  "tamanhos_A",
+  "tamanhos_B",
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "gestos_A": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  },
+  "gestos_B": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "tamanhos_A": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "tamanhos_B": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  },
+  "sobre_A": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  },
+  "sobre_B": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  }
+ },
+ "quem": {
+  "oraculo": "i__Wet_Paint",
+  "nosso": "Soft Round (escala 1.357)",
+  "vizinho": "Graphite 8B (d 1.018, limiar 0.591)"
+ }
+}

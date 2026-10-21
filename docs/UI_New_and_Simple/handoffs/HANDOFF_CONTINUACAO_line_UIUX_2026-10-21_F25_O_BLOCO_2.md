@@ -80,7 +80,7 @@ Fotos e logs: `../vetor_nova_ui/fotos/F25_cena_autokey_{11..15}.{png,log}` (conf
 
 ## 4 — Smoke do dono (em linguagem simples)
 
-Binário: _(a preencher pela janela principal: 2.ª build sem «Compiling»)_
+Binário: `target/smoke/ph2d-host-desktop` já compilado sobre `62f112d671` — 2.ª build `Finished smoke profile [optimized] target(s) in 0.46s`, zero «Compiling».
 
 Em cada passo: (1) rode o comando, (2) olhe a cena, (3) compare, (4) saiba o que é errado. A cena mexe sozinha entre os quadros 12 e 24 e PÁRA no quadro 18 (a meio da volta): os números do painel têm de ser os da tabela.
 

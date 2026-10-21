@@ -103,15 +103,16 @@ const GRAO_FINO_FRACO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise"
 /// O grão do 2B: Noise `Tiled` Size 128 (2 px), contraste 0,55 — os poros que a 1.ª revisão cega pedia («o original tem
 /// poros brancos fortes») e o passo ao HB de grão fino (a 0,5 o HB de 0,35 ficava a 0,36 dele, PASSO INVISÍVEL): a Textura
 /// da mídia 15,8 (Rebelle 13,9), o colar a 5 px 0,168 (0,120; o portão do grão aceita 2×), ac 0,50 (0,52).
-const GRAO_DO_2B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.53, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+const GRAO_DO_2B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.56, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// ⭐ **Os TUFOS da 1.ª ponta** (J3, 3.ª ronda): a Shape um Noise `Random` de lado 8 a 0,5 — cada dab um tufo manchado,
 /// o miolo do traço manchado como o do Rebelle (a forma oval-imagem dele); sem ela o miolo era liso e a 2.ª revisão
 /// cega via «bolhas lisas». Ela clareia o depósito: a carga sobe (HB 40 → 72).
 const TUFOS_DO_LAPIS: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.4, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [4.0, 4.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
-/// Os tufos do 2B (0,5): mais manchado que o HB (o passo HB → 2B na matriz).
-const TUFOS_DO_2B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [4.0, 4.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+/// Os tufos do 2B (0,1): a 0,5 a revisão cega via «nuvens escuras por baixo do grão»; o Rebelle 2B é um pontilhado
+/// uniforme de poros brancos (o grão 0,56 dá-os).
+const TUFOS_DO_2B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.1, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [4.0, 4.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// Os tufos do 8B (0,9): a carga 280 enche o miolo e eles dão-lhe a Textura da foto (8,5; Rebelle 9,09).
 const TUFOS_DO_8B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.9, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [8.0, 8.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;

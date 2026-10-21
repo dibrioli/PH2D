@@ -273,6 +273,9 @@ o do varrimento dos 100 mil que o rectângulo já paga.
 | Worker/thread para o laço | ⛔ o Excalidraw tentou e tirou (*«complexity much worse, perf. not much better»*) |
 | a menção como posições no texto | ⛔ o `TeamWrite::Text` leva só o texto: as posições divergiam entre pares |
 | menção no texto de notas/formas | ⛔ o Miro não notifica por ela; fora |
+| rascunho em unidades de MUNDO de qualquer zoom (o tremor 3 px, traço 0,5 do §9) | ⛔ auditoria 21/10 R2: a zoom 0,29 a forma sai com traço 0,15 px e desvio 1,04 px — a ondinha «não muda nada»; nasce no tamanho do ecrã (`BirthScale`) |
+| linha à mão como traço fino da GPU (pontas redondas, largura 0,5) | ⛔ auditoria 21/10 R3: espigões de 35–82 px fora da caixa (3/60 rects); contorno expandido na CPU e preenchido |
+| a tinta limpa da caneta (triângulo, polilinha) fica crua num quadro em Rascunho | ⛔ auditoria 21/10 R4: o dono vê «não é rascunho»; nasce com o estilo da ferramenta e o pintor `rough_clean` |
 
 ### Feito depois (20/10, 2.ª janela)
 
@@ -372,7 +375,53 @@ cor e a opacidade (corrige o «mantendo a espessura da caneta» do §2.2). Gate 
 `sketch_paint::the_pens_held_box_reads_as_sketched_as_the_tools` (`ph2d-board-render/tests/it`, placa): 5 % × 47 % antes,
 30 % × 47 % depois, tolerância ≥ metade da ferramenta; a mutação «a espessura da caneta» sangra nele e no gate do ecrã.
 ⚠️ Visto de passagem na mesma foto: um rectângulo da ferramenta (semente do id 1) tem uma passagem que sai ~40 px pelo
-canto de cima à direita — é do rascunho do quadro (a ferramenta), não do B13; por medir.
+canto de cima à direita — **medido e curado: [«Auditoria do Sketch (21/10)»](#auditoria-do-sketch-2110--apertei-e-nada-mudou)
+(R3: era o traçador da GPU, não a geometria).**
+
+### Auditoria do Sketch (21/10) — «apertei e nada mudou»
+
+Smoke do dono (cena 28): *«sketch não tem aspecto de rascunho»*, *«o retângulo nem sequer aceita a opção de rascunho»* —
+apertou a ondinha com o rectângulo seleccionado e nada mudou à vista. Auditoria por mecanismo (não por sintoma); sete achados,
+UMA cura.
+
+| # | mecanismo · medida | o gate verde que o deixava passar |
+|---|---|---|
+| R1 | a barra de estilo da PRÓPRIA forma não tem Rascunho (`style_groups(Selected::Shapes)`, `board_bar.rs`); só a onda da barra esquerda. O dono confirmou que o caso dele era o R2 ⇒ **não mexido**; pergunta aberta | — |
+| R2 | a cena abre a zoom ~0,293 (1366; ~0,41 a 1930). Tremor (`max_randomness_offset 2 × ROUGHNESS 1,5`) e traço 0,5 são de MUNDO ⇒ no ecrã: traço **0,15 px**, desvio máx. da aresta **1,04 px**, separação das passagens **0,82 px** (zoom 1: 0,5 / 3,15 / 2,04; Excalidraw zoom 1, roughness 1, largura 2: 2,0 / 2,04 / 0,86). A ondinha mudava o campo, não a tinta | `the_pens_held_box_reads_as_sketched_as_the_tools` só media tinta a zoom 1 e largura 0,5 (e passa verde sem placa) |
+| R3 | espigão ~35 px no canto de cima à direita (rect da ferramenta, semente do id 1): a geometria nunca sai da caixa mais de 3,9 px (5 000 sementes × 5 tamanhos, sonda CPU; caminhos gravados: 2 px); quem o cria é o TRAÇADOR da GPU nas passagens finas (0,5, pontas redondas): 3/60 rects a 0,5 (ids 1, 34), fugas de 4–5 px a 1 e 1,68; 0 no final | nenhum |
+| R4 | tinta limpa da caneta (triângulo qualquer, polilinha) nunca à mão: nascia com o estilo da CANETA (`sketch false`, largura 2), não era `sketchable`, o pintor da tinta ignorava o rascunho | o gate de campos `pen_shapes_in_a_sketch_board_…` CODIFICAVA-o («o que fica tinta limpa pinta-se como a tinta crua») |
+| R5 | botão morto: só tinta livre/frame/vídeo/bloqueados seleccionados ⇒ alvos vazios, o clique não fazia nada; a luz contava os bloqueados, o clique não | — |
+| R6 | Ctrl+Z da ondinha do quadro inteiro devolvia as formas mas não o `board.sketch` (luz «Rascunho», formas finais, novas nasciam à mão) | — |
+| R7 | largar perdido com forma viva (`ink_finish`) gravava UM passo ⇒ Ctrl+Z apagava a forma em vez de devolver o traço (promessa do §2.2) | — |
+
+Varrimento de costura do B13: sessão viva OK por leitura (mesmo id, sem órfão, Esc devolve o traço, Ctrl+Z lápide); copiar/mover
+guarda rascunho e largura, a semente re-deriva do id novo (desenho); `.excalidraw` roughness 1/0 pelo rascunho; nenhum tinha
+teste com forma da caneta. Nota: Ctrl+Z com a caneta premida cancela o gesto E desfaz o passo anterior — regra de todos os
+gestos do quadro, não curada aqui. Lente (a): os gates de CAMPOS que prometem visual («drawn like», «nasceu à mão») não
+medem tinta; 17 nomes de gate do §6 não existem no código sob esse nome (plano e código divergiram).
+
+**Decisões do dono (21/10):** (1) de longe o rascunho **nasce no tamanho do ecrã**: a forma desenhada afastada é tão à mão no
+ecrã como a de perto, e fica assim (aproximar mostra-a maior); (2) a forma da caneta guarda a espessura da FERRAMENTA (fina),
+como `8ccb4efe3f`.
+
+**Cura (um bloco).** `Style::birth: BirthScale(i8)` em quartos de oitava, factor `2^(k/4)` unidades de mundo por px, clamp ±48
+(`element_birth.rs`; `reborn`/`chosen_width`/`choose_width`), renascido a cada `pointer_down` com `BirthScale::of_px`; o
+`Style` fica ≤ 40 bytes. Pintor: o rascunho gera-se no espaço de NASCENÇA (`size / f`, `born()`) e volta a escala por `f`;
+`hand_reach × f`. As linhas à mão (e a hachura importada) expandem-se na CPU (`outline_of`, `expand_stroke`, tol. largura/16) e
+PREENCHEM-SE, em cache com o rascunho: **zero traços finos na GPU** (R3). `Ink::clean`: a tinta limpa da caneta nasce com
+`smart_style`, o pintor `rough_clean` (Douglas–Peucker a 0,5 px de nascença → `polygon`/`linearPath`), `sketchable` inclui-a
+(R4). `Editor::sketch_targets`/`sketch_lit`: UMA porta para a luz e o clique; sem alcance a ondinha vira o quadro (R5).
+`History::apply_mode`/`take_mode`: o passo do quadro inteiro leva o modo; `board_keys::step` e `documents::undo_on` repõem-no
+(R6). `ink_finish` e `ink_up` partilham `keep_drawn` (R7). Formato 16 → 17 (`legacy_v16.rs`, fixture
+`fixtures/format_v16.bin` escrita pelo formato 16 real em `b832018d9e`; ficheiros antigos abrem nascidos a zoom 1), protocolo
+vivo 10 → 11, `Field::Birth` (ALL 40 → 41), `Field::InkBody` leva `clean`. Oráculo Excalidraw re-corrido, nunca editado à mão
+(entradas W8/W9/W10/W15 regeneradas pelos testes «grava_a_entrada»): resultados do Excalidraw iguais (PNG byte a byte),
+`customData` ganha `birth`/`clean`.
+
+**Gates** (vermelho primeiro, pela razão certa; lista inteira no
+[handoff](handoffs/HANDOFF_CONTINUACAO_W23_BLOCO6_SKETCH_2026-10-21.md) §3): `smart_hand::sketch_ink::*` (CPU, caminho real do
+ecrã, tinta em px de ecrã: perto 4,49 × longe 1,51; botão 0,15 → 1,51; limiar +2,5), `a_lost_release_with_the_shape_shown_…`,
+GPU `no_hand_stroke_paints_far_outside_its_box` (antes 82/60/4/5 px, agora 0), legado `v16`. Mutações: 11/11 sangram.
 
 ## §10 — M4: o oráculo Excalidraw `next` (0.18.0-143b5b6) corrido sobre cenas NOSSAS (20/10)
 

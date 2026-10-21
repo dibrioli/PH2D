@@ -58,6 +58,9 @@ O nome muda se a janela reiniciar (confirme por `ListAgents` antes do sinal).
     (Mapping Pen: 6 rondas, «o Krita começa em ponta» × «começa redondo») não reprova — senão o exame não fecha.
 13. **J3: a matriz manda nas fusões das canetas duras.** Studio Pen (0,273 do Hard Round) e Technical Pen (0,33 do
     Pixel 1px) são esses pincéis com outra curva/tamanho — não entram; a curva em S fica como linha do cartão Pen.
+14. **J3: os grafites NÃO saem da regra do Spacing 0,1 + Continuous** (ordem do dono, 18/10). As bossas da borda
+    do 8B do Rebelle (oval girada a cada 0,2·D) que a regra alisa são divergência DECIDIDA. Quando a régua MEDIDA
+    na foto do oráculo e um revisor se contradizem (o grão do 2H: textura 4,98 obriga a grão fraco), vale a foto.
 7. **Fórmulas dos modos = W3C em sRGB** (provado contra o Rebelle/Krita); o Saturation/Linear Burn/Dodge do Rebelle a
    10× não seguem fórmula nenhuma — não se perseguem.
 

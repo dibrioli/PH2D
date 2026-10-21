@@ -129,8 +129,8 @@ fn as_macros_do_painter_trocam_a_sprite_antes_do_extract_e_a_frente_do_editor() 
     let abre = include_str!("fase_frame_open.rs");
     let em = |agulha: &str| abre.find(agulha).expect(agulha);
     assert!(
-        em("self.fase_timeline_drain(") < em("self.fase_macros_do_painter(preview_overrides)")
-            && em("self.fase_macros_do_painter(preview_overrides)") < em("self.fase_sim_extract("),
+        em("self.fase_timeline_drain(") < em("self.fase_macros_do_painter(preview_overrides, dt)")
+            && em("self.fase_macros_do_painter(preview_overrides, dt)") < em("self.fase_sim_extract("),
     );
     let insumos = include_str!("fase_extract_inputs.rs");
     assert!(insumos.contains("            .chain(do_editor)\n"));

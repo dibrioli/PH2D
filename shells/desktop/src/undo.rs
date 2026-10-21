@@ -344,6 +344,8 @@ pub(crate) struct ProjectUndo {
     /// O 4.º campo é a transação do Painter que se desfaz com o degrau (W8).
     undo: Vec<(ProjectState, SelectionMark, u64, Option<u64>)>,
     redo: Vec<(ProjectState, SelectionMark, u64, Option<u64>)>,
+    /// A edição de etapa de uma macro que espera a conta dela (W14): fora do baseline e dos passos.
+    pub(crate) espera: ph2d_app_macros::espera::EdicaoQueEspera,
 }
 
 impl ProjectUndo {

@@ -307,7 +307,7 @@ impl crate::App {
     /// lado e aplica o restaurado.
     pub(crate) fn apply_undo(&mut self, redo: bool) {
         // W14: sem nada por cima da edição de etapa que espera, o Ctrl+Z é dela — regista-se já.
-        if self.edicao_que_espera.antes_de_desfazer(redo)
+        if self.undo.espera.antes_de_desfazer(redo)
             && let Some(atual) = self.capture_project()
         {
             self.empurra(atual);
@@ -315,7 +315,7 @@ impl crate::App {
         let Some(current) = self.capture_project() else {
             return;
         };
-        let antes = self.edicao_que_espera.espera().then(|| current.clone());
+        let antes = self.undo.espera.espera().then(|| current.clone());
         let agora = self.field_selection_mark();
         let transacao = self.undo.transacao_do_topo(redo);
         let restored = if redo {
@@ -327,7 +327,7 @@ impl crate::App {
             // A edição que espera fica como está; o baseline fica sem ela.
             let (aplica, base) = match &antes {
                 Some(a) => {
-                    let (x, b) = self.edicao_que_espera.restaurado(&state, a);
+                    let (x, b) = self.undo.espera.restaurado(&state, a);
                     (x, Some(b))
                 }
                 None => (state, None),
@@ -387,26 +387,6 @@ impl crate::App {
         ids
     }
 
-    /// O baseline vira um passo (com a transação de uma reescrita que aterrou) e `atual` o baseline novo.
-    fn empurra(&mut self, atual: crate::undo::ProjectState) {
-        if let Some(base) = self.undo_baseline.replace(atual) {
-            // ⚠️ **A marca que vai com o passo é a do BASELINE**, não a de agora — ela descreve o
-            // estado que está a ser empurrado. E a de agora passa a ser a do baseline novo, pela
-            // mesma mecânica do próprio `undo_baseline`.
-            let agora = self.field_selection_mark();
-            let mark = std::mem::replace(&mut self.undo_baseline_selection, agora);
-            let t = self
-                .gfx
-                .as_mut()
-                .and_then(|g| g.painter_macros.toma_a_transacao());
-            self.undo.push_undo_em(base, mark, t);
-            if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-                h.documents.scene_stepped();
-            }
-            self.edicao_que_espera.registou();
-        }
-    }
-
     /// **O log do undo está ligado?** Cacheado — os três sítios que o consultam correm por
     /// passo de undo, e ler o ambiente é caro o suficiente para não o fazer em cada um.
     pub(crate) fn undo_log_on() -> bool {
@@ -445,7 +425,7 @@ impl crate::App {
         // W14: a edição de etapa que espera fica fora do baseline; quando a espera acaba, o passo é já.
         let esperam = self.macros_que_esperam();
         let acabou = self
-            .edicao_que_espera
+            .undo.espera
             .quadro(&esperam, self.undo_baseline.as_ref());
         let had_input =
             std::mem::take(&mut self.any_input_this_frame) || self.reescrita_aterrou() || acabou;
@@ -556,7 +536,7 @@ impl crate::App {
         let Some(current) = self.capture_project() else {
             return;
         };
-        let current = self.edicao_que_espera.a_comparar(current);
+        let current = self.undo.espera.a_comparar(current);
         if self.undo_baseline.as_ref() == Some(&current) {
             return; // nada mudou desde o último passo (salvo a edição que espera)
         }
@@ -611,5 +591,25 @@ impl crate::App {
             }
         }
         self.empurra(current);
+    }
+
+    /// O baseline vira um passo (com a transação de uma reescrita que aterrou) e `atual` o baseline novo.
+    fn empurra(&mut self, atual: crate::undo::ProjectState) {
+        if let Some(base) = self.undo_baseline.replace(atual) {
+            // ⚠️ **A marca que vai com o passo é a do BASELINE**, não a de agora — ela descreve o
+            // estado que está a ser empurrado. E a de agora passa a ser a do baseline novo, pela
+            // mesma mecânica do próprio `undo_baseline`.
+            let agora = self.field_selection_mark();
+            let mark = std::mem::replace(&mut self.undo_baseline_selection, agora);
+            let t = self
+                .gfx
+                .as_mut()
+                .and_then(|g| g.painter_macros.toma_a_transacao());
+            self.undo.push_undo_em(base, mark, t);
+            if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                h.documents.scene_stepped();
+            }
+            self.undo.espera.registou();
+        }
     }
 }

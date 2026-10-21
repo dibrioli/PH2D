@@ -17,6 +17,8 @@
 #      os que já saíram, para a matriz e a calibração) · PH2D_EXAME_DIR (o trabalho e a cache; /tmp/ph2d_exame —
 #      um por família em paralelo) · PH2D_EXAME_PUBLICA=1 (o --matriz com PH2D_EXAME_DIR copia para Pinceis/matriz/) ·
 #      PH2D_EXAME_SUFIXO (acrescentado ao nome das pranchas) ·
+#      PH2D_EXAME_CAMADA=1 (o candidato numa camada TRANSPARENTE sobre o papel — um efeito com «On empty» pousa no
+#      papel em Normal, como o Effect do Rebelle; a biblioteca pinta-se sempre sobre o papel opaco) ·
 #      PH2D_EXAME_BASE (o pincel das FAIXAS da cena «sobre» do candidato e do vizinho da prancha: «Acrylic Round» =
 #      o Round Hard do óleo que o Rebelle usou nas fotos de BLEND/SMUDGE/ERASER, «Wet Round» = o Watercolor Round
 #      das `_aq`, WATER e DRY. Um borrador/borracha só se vê sobre tinta. A biblioteca pinta-se SEMPRE sem ela: a
@@ -60,7 +62,7 @@ biblioteca() {
   if [[ ! -f $B/chave || $(cat "$B/chave") != "$chave" ]]; then
     echo "▸ a biblioteca inteira pela bateria do EXAME (chave $chave)…" >&2
     rm -rf "$B" && mkdir -p "$B"
-    (unset PH2D_EXAME_BASE; pinta "todos" "$B" 1 >&2) || exit 1
+    (unset PH2D_EXAME_BASE PH2D_EXAME_CAMADA; pinta "todos" "$B" 1 >&2) || exit 1
     echo "$chave" >"$B/chave"
   fi
   echo "$B"

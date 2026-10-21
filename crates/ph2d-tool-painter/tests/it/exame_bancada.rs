@@ -250,6 +250,11 @@ fn escala() -> f32 {
         .unwrap_or(1.0)
 }
 
+/// A tela nasce uma camada TRANSPARENTE sobre o papel (`PH2D_EXAME_CAMADA=1`; o candidato, nunca a biblioteca).
+fn camada() -> bool {
+    std::env::var("PH2D_EXAME_CAMADA").is_ok_and(|v| v == "1")
+}
+
 /// A escala das faixas da base (`PH2D_EXAME_ESCALA_BASE`; por omissão a do pincel).
 fn escala_base() -> f32 {
     std::env::var("PH2D_EXAME_ESCALA_BASE")
@@ -305,8 +310,11 @@ pub fn pinta_cena(
 ) -> (String, Vec<u8>) {
     let [w, h] = tela;
     let mut t = PainterTool::default();
+    // `PH2D_EXAME_CAMADA=1` (J4 efeitos): pinta numa CAMADA transparente sobre o papel (a foto compõe-na) — o papel
+    // não é tinta, e um efeito com «On empty» pousa nele em Normal como o Effect do Rebelle. Sem ela, o papel opaco.
+    let alfa = if camada() { 0 } else { 255 };
     let fundo: Vec<u8> = (0..w * h)
-        .flat_map(|_| [papel[0], papel[1], papel[2], 255])
+        .flat_map(|_| [papel[0], papel[1], papel[2], alfa])
         .collect();
     t.set_source(fundo, w, h);
     let mut vistas = 0;

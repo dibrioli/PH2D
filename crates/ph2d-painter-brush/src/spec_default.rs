@@ -24,6 +24,7 @@ impl Default for BrushSpec {
     fn default() -> Self {
         Self {
             radius_px: 25.0,
+            size_max_px: None,
             hardness: 0.0,
             borda_px: 0.0,
             strength: 1.0,

@@ -314,6 +314,7 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
         }),
         "input_samples" => json!(b.input_samples),
         "stabilizer" => num(b.stabilizer),
+        "size_max_px" => b.size_max_px.map_or(Value::Null, num),
         "taper" => taper_para_json(&b.taper),
         "texture" => textura_para_json(&b.texture),
         "grain_depth" => num(b.grain_depth),
@@ -458,6 +459,10 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "cor_mao" => b.cor_mao = cor_mao_de_json(v, b.cor_mao),
         "input_samples" => b.input_samples = inteiro(v, b.input_samples),
         "stabilizer" => b.stabilizer = f(v, b.stabilizer),
+        // AUSENTE = sem tecto (só se grava fixado), nunca o do pincel anterior.
+        "size_max_px" => {
+            b.size_max_px = v.and_then(Value::as_f64).filter(|x| x.is_finite() && *x >= 1.0).map(|x| x as f32);
+        }
         "taper" => {
             let o = v.and_then(Value::as_object);
             let g = |k: &str, base: f32| f(o.and_then(|o| o.get(k)), base);
@@ -515,6 +520,8 @@ pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
         .filter(|&&c| !(c == "hose" && b.hose == ImageHose::NEUTRA))
         // O dual brush (L6) só armado: o preset sem ele é o de antes, ao byte.
         .filter(|&&c| !(c == "dual" && b.dual.is_none()))
+        // O tecto de tamanho (J3) só fixado: idem.
+        .filter(|&&c| !(c == "size_max_px" && b.size_max_px.is_none()))
         // A orla em píxeis e o sub-passo fino (J3) só ligados: idem.
         .filter(|&&c| !(c == "borda_px" && b.borda_px <= 0.0))
         .filter(|&&c| !(c == "sub_passo_fino" && !b.sub_passo_fino))
@@ -532,6 +539,10 @@ pub(crate) fn pincel_de_json(
     let mut b = base;
     for &c in campos {
         escrever_campo(&mut b, c, m.get(c));
+    }
+    // O pincel que sai respeita o seu tecto (o Size do artista não passa dele, J3 decisão 8).
+    if let Some(d) = b.size_max_px {
+        b.radius_px = b.radius_px.min(0.5 * d);
     }
     b
 }

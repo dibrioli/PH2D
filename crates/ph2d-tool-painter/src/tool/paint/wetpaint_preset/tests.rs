@@ -108,6 +108,7 @@ fn pincel_mexido() -> BrushSpec {
     .unwrap();
     BrushSpec {
         // ── o preset ──
+        size_max_px: Some(60.0),
         hardness: 0.35,
         falloff: Falloff::Custom,
         custom_falloff: curva,

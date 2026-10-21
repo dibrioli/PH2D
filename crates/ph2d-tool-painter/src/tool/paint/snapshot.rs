@@ -161,6 +161,7 @@ impl PainterTool {
         let wet_preview = self.wet_preview_intensity();
         BrushSettings {
             size_px: b.radius_px,
+            size_max_px: self.raio_maximo(),
             size_norm: size_px_to_norm(b.radius_px),
             strength: b.strength,
             falloff: b.falloff.to_u8(),

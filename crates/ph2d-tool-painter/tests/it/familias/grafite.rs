@@ -26,6 +26,7 @@ pub const WET: &[Receita] = &[
             ("dual", ORLA_DO_8B),
             ("texture", GRAO_DO_8B),
             ("shape", TUFOS_DO_8B),
+            ("size_max_px", TECTO_DO_8B),
         ],
         grao: None,
         ..GRAPHITE_8B
@@ -43,6 +44,7 @@ pub const WET: &[Receita] = &[
             ("dual", ORLA_DO_LAPIS),
             ("texture", GRAO_FINO_DO_2H),
             ("shape", TUFOS_DO_2H),
+            ("size_max_px", TECTO_DO_LAPIS),
         ],
         grao: None,
         ..lapis("Graphite", "Graphite 2H", 46.0, 0.18, GRAO_DURO, extras_do_lapis!(0.5, 1.5))
@@ -54,6 +56,7 @@ pub const WET: &[Receita] = &[
             ("dual", ORLA_DO_LAPIS),
             ("texture", GRAO_FINO_FRACO),
             ("shape", TUFOS_DO_LAPIS),
+            ("size_max_px", TECTO_DO_LAPIS),
         ],
         grao: None,
         ..lapis("Graphite", "Graphite HB", 72.0, 0.18, GRAO_DURO, extras_do_lapis!(0.5, 2.0))
@@ -67,6 +70,7 @@ pub const WET: &[Receita] = &[
             ("dual", ORLA_DO_LAPIS),
             ("texture", GRAO_DO_2B),
             ("shape", TUFOS_DO_LAPIS),
+            ("size_max_px", TECTO_DO_LAPIS),
         ],
         grao: None,
         ..lapis("Graphite", "Graphite 2B", 85.0, 0.4, GRAO_MACIO, extras_do_lapis!(0.4, 2.0))
@@ -298,11 +302,10 @@ mod portoes {
     }
 
     /// ⭐⭐ **O TECTO DE TAMANHO do preset** (decisão 8, o Max Size do Rebelle): pedido a 200 px, cada grafite pinta a
-    /// largura do Rebelle ao tecto (`leis_escala_rebelle.json`, `recto_200`: 59–69 px; o nosso pintava 147 — a nuvem de
-    /// bolhas) e o recto de 40 fica o de antes; o Size do painel mostra o tecto (o artista vê porque não cresce); um
+    /// largura do Rebelle ao tecto (`leis_escala_rebelle.json`, `recto_200`: 59–69 px; o nosso pintava 196–199 — a nuvem
+    /// de bolhas) e o recto de 40 fica o de antes; o Size do painel mostra o tecto (o artista vê porque não cresce); um
     /// pincel sem tecto (o Wet Round) continua a ir aos 200. O controlo por dentro: o HB SEM o campo volta aos ~147.
     #[test]
-    #[ignore = "red-first: o campo do tecto entra com o motor no commit seguinte"]
     fn o_tecto_do_preset_pinta_o_grafite_ao_tamanho_do_rebelle() {
         let pre = |n: &str| format!("PENCIL/graphite_pencil_{}", n.trim_start_matches("Graphite ").to_lowercase());
         let m: Vec<_> = std::thread::scope(|s| {
@@ -317,7 +320,8 @@ mod portoes {
                 crate::as_leis_da_escala::rebelle(&pre(n), "recto_200", "larg"),
             );
             println!("[tecto] {n:<12} 40: {w40:.0} (Rebelle {r40:.0}) · 200: {w200:.0} (Rebelle {r200:.0})");
-            if (w200 - r200).abs() > (0.1 * r200).max(4.0) || (w40 - r40).abs() > 3.0 {
+            // Abaixo do tecto o Size é o que se pede (o nosso 40 pinta 40; o do Rebelle, 0,75 do que diz, 30).
+            if (w200 - r200).abs() > (0.1 * r200).max(4.0) || (w40 - 40.0).abs() > 3.0 {
                 falhas.push(format!("{n}: 200 px pinta {w200:.0} (Rebelle {r200:.0}), 40 px {w40:.0} ({r40:.0})"));
             }
         }
@@ -332,7 +336,7 @@ mod portoes {
             assert!(t.wet_preset_aplicar(&crate::midias_de_fabrica::de_fabrica(n)).is_empty());
             t.set_brush_size_px(100.0);
             let b = t.brush_settings();
-            (b.size_px * 2.0, b.size_px * 2.0)
+            (b.size_px * 2.0, b.size_max_px * 2.0)
         };
         let (hb, hb_max) = slider("Graphite HB");
         let (wr, _) = slider("Wet Round");
@@ -340,6 +344,20 @@ mod portoes {
         let tecto: f32 = super::TECTO_DO_LAPIS.parse().unwrap();
         if (hb - tecto).abs() > 0.01 || hb_max != hb || (wr - 200.0).abs() > 0.01 {
             falhas.push(format!("o Size do painel: HB {hb} (tecto {hb_max}), Wet Round {wr}"));
+        }
+        // Um preset que NÃO fixa o Size (fica o do artista, 200) e traz o tecto: o Size desce ao tecto ao aplicá-lo.
+        let herdado = {
+            let mut t = ph2d_tool_painter::PainterTool::default();
+            assert!(t.wet_preset_aplicar(&crate::midias_de_fabrica::de_fabrica("Wet Round")).is_empty());
+            t.set_brush_size_px(100.0);
+            let mut hb = crate::midias_de_fabrica::de_fabrica("Graphite HB");
+            hb.parametros.volumes.size_px = None;
+            assert!(t.wet_preset_aplicar(&hb).is_empty());
+            t.brush_settings().size_px * 2.0
+        };
+        println!("[tecto] o Size 200 do artista ao aplicar o HB sem Size: {herdado}");
+        if (herdado - tecto).abs() > 0.01 {
+            falhas.push(format!("o Size herdado passa do tecto: {herdado}"));
         }
         assert!(falhas.is_empty(), "{falhas:?}");
     }

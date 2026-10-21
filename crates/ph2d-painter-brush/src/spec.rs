@@ -60,6 +60,9 @@ pub const FLOW_KINDS: [crate::texture::TextureKind; 9] = {
 pub struct BrushSpec {
     /// Dab radius in image pixels (UI label "Radius"). Clamped to `[0.5, MAX_BRUSH_RADIUS_PX]`.
     pub radius_px: f32,
+    /// ⭐ **O TECTO de tamanho do pincel** (J3, decisão 8 — o Max Size do Rebelle): o DIÂMETRO máximo (px, o do anel)
+    /// que o Size do artista alcança; o tool não deixa o raio passar de metade dele. `None` = só o tecto do slider.
+    pub size_max_px: Option<f32>,
     /// Plateau before the falloff begins, `0..1`. `0` = pure falloff curve; `1` = hard disk.
     /// Mirrors Blender's brush `hardness` as a distance remap applied before [`Self::falloff`].
     pub hardness: f32,

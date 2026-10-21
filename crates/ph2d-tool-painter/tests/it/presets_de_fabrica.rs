@@ -708,12 +708,13 @@ fn larguras_da_promessa(p: &Preset, crua: bool) -> Vec<f32> {
     })
 }
 
-fn fora_da_promessa(larguras: &[f32], rel: f32) -> Vec<String> {
+/// `tecto`: o diâmetro máximo do preset (`size_max_px`, J3 decisão 8) — acima dele a promessa é o tecto.
+fn fora_da_promessa(larguras: &[f32], rel: f32, tecto: f32) -> Vec<String> {
     RAIOS_DA_PROMESSA
         .iter()
         .zip(larguras)
-        .filter(|(r, l)| (*l - 2.0 * *r).abs() > TOLERANCIA_PX.max(rel * 2.0 * *r))
-        .map(|(r, l)| format!("raio {r}: {l} px (pedido {})", 2.0 * r))
+        .filter(|(r, l)| (*l - (2.0 * *r).min(tecto)).abs() > TOLERANCIA_PX.max(rel * (2.0 * *r).min(tecto)))
+        .map(|(r, l)| format!("raio {r}: {l} px (pedido {}, tecto {tecto})", 2.0 * r))
         .collect()
 }
 
@@ -758,12 +759,13 @@ fn a_largura_e_a_prometida() {
         } else {
             TOLERANCIA_REL
         };
-        for f in fora_da_promessa(&larguras, tol) {
+        let tecto = p.parametros.brush.get("size_max_px").and_then(serde_json::Value::as_f64).map_or(f32::INFINITY, |d| d as f32);
+        for f in fora_da_promessa(&larguras, tol, tecto) {
             falhas.push(format!("{rel}: {f}"));
         }
         if let Some(crua) = crua {
             assert!(
-                !fora_da_promessa(&crua, TOLERANCIA_REL).is_empty(),
+                !fora_da_promessa(&crua, TOLERANCIA_REL, f32::INFINITY).is_empty(),
                 "controlo: a lei crua do Wet Round já cumpria a promessa — o portão não mede nada"
             );
         }

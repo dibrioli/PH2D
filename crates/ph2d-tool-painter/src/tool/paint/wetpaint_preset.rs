@@ -48,7 +48,9 @@ const TEXTURA_FORMA: &str = "shape";
 const TEXTURA_GRAO: &str = "grain";
 
 /// Os campos do `BrushSpec` que o preset leva, pelo nome do campo.
-pub const CAMPOS_DO_PINCEL: [&str; 36] = [
+pub const CAMPOS_DO_PINCEL: [&str; 37] = [
+    // O tecto de tamanho (J3, decisão 8): os quatro meios; gravado só quando o preset o fixa.
+    "size_max_px",
     "hardness",
     "falloff",
     "custom_falloff",

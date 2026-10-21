@@ -49,6 +49,7 @@ const FALLOFF_PT_NIL: FalloffPoint = FalloffPoint {
 /// (struct-update the one field under test).
 pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     size_px: 25.0,    // LITERAL-PX-OK: defensive pre-publish fallback default
+    size_max_px: ph2d_tool_painter::BRUSH_SIZE_MAX_PX,
     size_norm: 0.217, // LITERAL-PX-OK: defensive pre-publish fallback default
     strength: 1.0,
     falloff: 0,

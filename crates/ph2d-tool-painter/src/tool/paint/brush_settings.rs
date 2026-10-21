@@ -44,6 +44,8 @@ pub(super) fn snap_to_45(anchor: [f32; 2], cursor: [f32; 2]) -> [f32; 2] {
 pub struct BrushSettings {
     /// Radius in image pixels (UI label "Size").
     pub size_px: f32,
+    /// O raio máximo que o Size alcança (o tecto do pincel, J3 decisão 8; sem ele o do slider) — o painel mostra-o.
+    pub size_max_px: f32,
     /// [`Self::size_px`] mapped onto the size slider's `0..1` track (squared, so small brushes get more).
     pub size_norm: f32,
     /// Overall opacity, `0..1` (UI "Strength").

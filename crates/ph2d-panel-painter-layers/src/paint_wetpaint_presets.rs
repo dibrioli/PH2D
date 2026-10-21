@@ -21,7 +21,7 @@ use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
-use ph2d_tool_painter::{BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BrushSettings, ids};
+use ph2d_tool_painter::{BRUSH_SIZE_MIN_PX, BrushSettings, ids};
 use ph2d_vector::ImageQuality;
 
 /// As secções do popover do Preset (o id de cada linha leva a secção). Cada preset aparece UMA vez (dono
@@ -92,9 +92,10 @@ fn paint_volumes(
         "panel.painter_layers.wetpaint.vol_size",
         ids::PAINTER_WETPAINT_VOL_SIZE,
         brush.size_px * DIAMETRO_POR_RAIO,
+        // O tecto do pincel (J3, decisão 8): a faixa acaba nele — o artista vê porque o Size não cresce.
         (
             BRUSH_SIZE_MIN_PX * DIAMETRO_POR_RAIO,
-            BRUSH_SIZE_MAX_PX * DIAMETRO_POR_RAIO,
+            brush.size_max_px * DIAMETRO_POR_RAIO,
         ),
         SIZE_STEP,
         0,

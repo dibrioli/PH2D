@@ -141,7 +141,19 @@ impl PainterTool {
         } else {
             BRUSH_SIZE_MIN_PX
         };
-        self.paint.brush.radius_px = px.clamp(lo, BRUSH_SIZE_MAX_PX);
+        self.paint.brush.radius_px = px.clamp(lo, self.raio_maximo().max(lo));
+    }
+
+    /// O raio máximo do Size: o do slider ou metade do TECTO do pincel (J3, decisão 8 — o Max Size do Rebelle).
+    /// Na lei CRUA do Wet (`set_wet_largura_crua`: a sonda que mede a tabela raio do MOTOR → largura) o tamanho é um
+    /// raio do motor, não o Size do artista: o tecto não entra (com ele a tabela achatava-se no tecto).
+    #[must_use]
+    pub fn raio_maximo(&self) -> f32 {
+        let crua = self.paint_media() == crate::PaintMedia::WetPaint && self.paint.wetpaint.largura.is_none();
+        match self.paint.brush.size_max_px {
+            Some(d) if !crua => (0.5 * d).min(BRUSH_SIZE_MAX_PX),
+            _ => BRUSH_SIZE_MAX_PX,
+        }
     }
 
     /// Set the brush radius from the size slider's `0..1` track.

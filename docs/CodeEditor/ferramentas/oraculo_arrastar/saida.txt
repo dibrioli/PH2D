@@ -1,0 +1,109 @@
+# oráculo «arrastar para o código» — 2026-10-21T22:13Z — loadavg: 10.16 22.20 24.92 24/1942 2084585
+# godot: godot 4.7.2-2.1 (MIT) ; o EDITOR numa Xvfb 1600x1000, arrastos reais por xdotool (XTest); sonda: sonda.gd
+# abre: {"ok":true,"script":"res://main.gd","type_hints":true}
+# colunas: caso | modificador na soltura | destino (linha,coluna base 0) | o que ficou escrito | cursor depois
+# «sob» = o controlo sob o rato na origem/destino (prova de que o gesto apanhou o que se queria)
+
+## base res://main.gd: "extends Node2D\n\nfunc _ready() -> void:\n\t\n\tpass\n"
+main.gd ← nó Porta | - | [1, 0] | "$Porta"   [linhas que mudaram: ""] | cursor [1, 6] | sob: Tree/Porta → CodeEdit(0, 1)
+main.gd ← nó Porta | - | [3, 1] | "\t$Porta"   [linhas que mudaram: "\t"] | cursor [3, 7] | sob: Tree/Porta → CodeEdit(1, 3)
+main.gd ← nó Porta | ctrl | [1, 0] | "@onready var porta: Sprite2D = $Porta" | cursor [2, 0] | sob: Tree/Porta → CodeEdit(0, 1)
+main.gd ← nó Porta | ctrl | [3, 1] | "\t@onready var porta: Sprite2D = $Porta" ⏎ ""   [linhas que mudaram: "\t"] | cursor [4, 0] | sob: Tree/Porta → CodeEdit(1, 3)
+main.gd ← nó Porta | shift | [1, 0] | "$Porta"   [linhas que mudaram: ""] | cursor [1, 6] | sob: Tree/Porta → CodeEdit(0, 1)
+main.gd ← nó Porta | shift | [3, 1] | "\t$Porta"   [linhas que mudaram: "\t"] | cursor [3, 7] | sob: Tree/Porta → CodeEdit(1, 3)
+main.gd ← nó Porta | alt | [1, 0] | "@export var porta: Sprite2D" | cursor [2, 0] | sob: Tree/Porta → CodeEdit(0, 1)
+main.gd ← nó Porta | alt | [3, 1] | "\t@export var porta: Sprite2D" ⏎ ""   [linhas que mudaram: "\t"] | cursor [4, 0] | sob: Tree/Porta → CodeEdit(1, 3)
+main.gd ← nó Jogador/Arma | - | [1, 0] | "$Jogador/Arma"   [linhas que mudaram: ""] | cursor [1, 13] | sob: Tree/Arma → CodeEdit(0, 1)
+main.gd ← nó Jogador/Arma | - | [3, 1] | "\t$Jogador/Arma"   [linhas que mudaram: "\t"] | cursor [3, 14] | sob: Tree/Arma → CodeEdit(1, 3)
+main.gd ← nó Jogador/Arma | ctrl | [1, 0] | "@onready var arma: Node2D = $Jogador/Arma" | cursor [2, 0] | sob: Tree/Arma → CodeEdit(0, 1)
+main.gd ← nó Jogador/Arma | ctrl | [3, 1] | "\t@onready var arma: Node2D = $Jogador/Arma" ⏎ ""   [linhas que mudaram: "\t"] | cursor [4, 0] | sob: Tree/Arma → CodeEdit(1, 3)
+main.gd ← nó Jogador/Arma | shift | [1, 0] | "$Jogador/Arma"   [linhas que mudaram: ""] | cursor [1, 13] | sob: Tree/Arma → CodeEdit(0, 1)
+main.gd ← nó Jogador/Arma | shift | [3, 1] | "\t$Jogador/Arma"   [linhas que mudaram: "\t"] | cursor [3, 14] | sob: Tree/Arma → CodeEdit(1, 3)
+main.gd ← nó Jogador/Arma | alt | [1, 0] | "@export var arma: Node2D" | cursor [2, 0] | sob: Tree/Arma → CodeEdit(0, 1)
+main.gd ← nó Jogador/Arma | alt | [3, 1] | "\t@export var arma: Node2D" ⏎ ""   [linhas que mudaram: "\t"] | cursor [4, 0] | sob: Tree/Arma → CodeEdit(1, 3)
+main.gd ← nó Caixa Grande | - | [1, 0] | "$\"Caixa Grande\""   [linhas que mudaram: ""] | cursor [1, 15] | sob: Tree/Caixa Grande → CodeEdit(0, 1)
+main.gd ← nó Caixa Grande | - | [3, 1] | "\t$\"Caixa Grande\""   [linhas que mudaram: "\t"] | cursor [3, 16] | sob: Tree/Caixa Grande → CodeEdit(1, 3)
+main.gd ← nó Caixa Grande | ctrl | [1, 0] | "@onready var caixa_grande: Node2D = $\"Caixa Grande\"" | cursor [2, 0] | sob: Tree/Caixa Grande → CodeEdit(0, 1)
+main.gd ← nó Caixa Grande | ctrl | [3, 1] | "\t@onready var caixa_grande: Node2D = $\"Caixa Grande\"" ⏎ ""   [linhas que mudaram: "\t"] | cursor [4, 0] | sob: Tree/Caixa Grande → CodeEdit(1, 3)
+main.gd ← nó Caixa Grande | shift | [1, 0] | "$\"Caixa Grande\""   [linhas que mudaram: ""] | cursor [1, 15] | sob: Tree/Caixa Grande → CodeEdit(0, 1)
+main.gd ← nó Caixa Grande | shift | [3, 1] | "\t$\"Caixa Grande\""   [linhas que mudaram: "\t"] | cursor [3, 16] | sob: Tree/Caixa Grande → CodeEdit(1, 3)
+main.gd ← nó Caixa Grande | alt | [1, 0] | "@export var caixa_grande: Node2D" | cursor [2, 0] | sob: Tree/Caixa Grande → CodeEdit(0, 1)
+main.gd ← nó Caixa Grande | alt | [3, 1] | "\t@export var caixa_grande: Node2D" ⏎ ""   [linhas que mudaram: "\t"] | cursor [4, 0] | sob: Tree/Caixa Grande → CodeEdit(1, 3)
+main.gd ← nó Placar | - | [1, 0] | "%Placar"   [linhas que mudaram: ""] | cursor [1, 7] | sob: Tree/Placar → CodeEdit(0, 1)
+main.gd ← nó Placar | - | [3, 1] | "\t%Placar"   [linhas que mudaram: "\t"] | cursor [3, 8] | sob: Tree/Placar → CodeEdit(1, 3)
+main.gd ← nó Placar | ctrl | [1, 0] | "@onready var placar: Label = %Placar" | cursor [2, 0] | sob: Tree/Placar → CodeEdit(0, 1)
+main.gd ← nó Placar | ctrl | [3, 1] | "\t@onready var placar: Label = %Placar" ⏎ ""   [linhas que mudaram: "\t"] | cursor [4, 0] | sob: Tree/Placar → CodeEdit(1, 3)
+main.gd ← nó Placar | shift | [1, 0] | "%Placar"   [linhas que mudaram: ""] | cursor [1, 7] | sob: Tree/Placar → CodeEdit(0, 1)
+main.gd ← nó Placar | shift | [3, 1] | "\t%Placar"   [linhas que mudaram: "\t"] | cursor [3, 8] | sob: Tree/Placar → CodeEdit(1, 3)
+main.gd ← nó Placar | alt | [1, 0] | "@export var placar: Label" | cursor [2, 0] | sob: Tree/Placar → CodeEdit(0, 1)
+main.gd ← nó Placar | alt | [3, 1] | "\t@export var placar: Label" ⏎ ""   [linhas que mudaram: "\t"] | cursor [4, 0] | sob: Tree/Placar → CodeEdit(1, 3)
+seleção antes do arrasto: ['Porta', 'Placar']
+main.gd ← nós Porta+Placar | - | [1, 0] | "$Porta, %Placar"   [linhas que mudaram: ""] | cursor [1, 15] | sob: Tree/Placar → CodeEdit(0, 1)
+seleção antes do arrasto: ['Porta', 'Placar']
+main.gd ← nós Porta+Placar | - | [3, 1] | "\t$Porta, %Placar"   [linhas que mudaram: "\t"] | cursor [3, 16] | sob: Tree/Placar → CodeEdit(1, 3)
+seleção antes do arrasto: ['Porta', 'Placar']
+main.gd ← nós Porta+Placar | ctrl | [1, 0] | "@onready var porta: Sprite2D = $Porta" ⏎ "@onready var placar: Label = %Placar" | cursor [3, 0] | sob: Tree/Placar → CodeEdit(0, 1)
+seleção antes do arrasto: ['Porta', 'Placar']
+main.gd ← nós Porta+Placar | ctrl | [3, 1] | "\t@onready var porta: Sprite2D = $Porta" ⏎ "@onready var placar: Label = %Placar" ⏎ ""   [linhas que mudaram: "\t"] | cursor [5, 0] | sob: Tree/Placar → CodeEdit(1, 3)
+main.gd ← ficheiro res://icon.svg | - | [1, 0] | "\"res://icon.svg\"" | cursor [2, 0] | sob: Tree/res://icon.svg → CodeEdit(0, 1)
+main.gd ← ficheiro res://icon.svg | - | [3, 1] | "\t\"res://icon.svg\"" | cursor [4, 1] | sob: Tree/res://icon.svg → CodeEdit(1, 3)
+main.gd ← ficheiro res://icon.svg | ctrl | [1, 0] | "const ICON = preload(\"uid://btkjsrg8mqkmp\")" | cursor [2, 0] | sob: Tree/res://icon.svg → CodeEdit(0, 1)
+main.gd ← ficheiro res://icon.svg | ctrl | [3, 1] | "\tconst ICON = preload(\"uid://btkjsrg8mqkmp\")" | cursor [4, 1] | sob: Tree/res://icon.svg → CodeEdit(1, 3)
+main.gd ← ficheiro res://icon.svg | shift | [1, 0] | "\"res://icon.svg\"" | cursor [2, 0] | sob: Tree/res://icon.svg → CodeEdit(0, 1)
+main.gd ← ficheiro res://icon.svg | shift | [3, 1] | "\t\"res://icon.svg\"" | cursor [4, 1] | sob: Tree/res://icon.svg → CodeEdit(1, 3)
+main.gd ← ficheiro res://outra.tscn | - | [1, 0] | "\"res://outra.tscn\"" | cursor [2, 0] | sob: Tree/res://outra.tscn → CodeEdit(0, 1)
+main.gd ← ficheiro res://outra.tscn | - | [3, 1] | "\t\"res://outra.tscn\"" | cursor [4, 1] | sob: Tree/res://outra.tscn → CodeEdit(1, 3)
+main.gd ← ficheiro res://outra.tscn | ctrl | [1, 0] | "const OUTRA = preload(\"res://outra.tscn\")" | cursor [2, 0] | sob: Tree/res://outra.tscn → CodeEdit(0, 1)
+main.gd ← ficheiro res://outra.tscn | ctrl | [3, 1] | "\tconst OUTRA = preload(\"res://outra.tscn\")" | cursor [4, 1] | sob: Tree/res://outra.tscn → CodeEdit(1, 3)
+main.gd ← ficheiro res://outra.tscn | shift | [1, 0] | "\"res://outra.tscn\"" | cursor [2, 0] | sob: Tree/res://outra.tscn → CodeEdit(0, 1)
+main.gd ← ficheiro res://outra.tscn | shift | [3, 1] | "\t\"res://outra.tscn\"" | cursor [4, 1] | sob: Tree/res://outra.tscn → CodeEdit(1, 3)
+main.gd ← ficheiro res://dados.tres | - | [1, 0] | "\"res://dados.tres\"" | cursor [2, 0] | sob: Tree/res://dados.tres → CodeEdit(0, 1)
+main.gd ← ficheiro res://dados.tres | - | [3, 1] | "\t\"res://dados.tres\"" | cursor [4, 1] | sob: Tree/res://dados.tres → CodeEdit(1, 3)
+main.gd ← ficheiro res://dados.tres | ctrl | [1, 0] | "const DADOS = preload(\"res://dados.tres\")" | cursor [2, 0] | sob: Tree/res://dados.tres → CodeEdit(0, 1)
+main.gd ← ficheiro res://dados.tres | ctrl | [3, 1] | "\tconst DADOS = preload(\"res://dados.tres\")" | cursor [4, 1] | sob: Tree/res://dados.tres → CodeEdit(1, 3)
+main.gd ← ficheiro res://dados.tres | shift | [1, 0] | "\"res://dados.tres\"" | cursor [2, 0] | sob: Tree/res://dados.tres → CodeEdit(0, 1)
+main.gd ← ficheiro res://dados.tres | shift | [3, 1] | "\t\"res://dados.tres\"" | cursor [4, 1] | sob: Tree/res://dados.tres → CodeEdit(1, 3)
+main.gd ← ficheiro res://jogador.gd | - | [1, 0] | "\"res://jogador.gd\"" | cursor [2, 0] | sob: Tree/res://jogador.gd → CodeEdit(0, 1)
+main.gd ← ficheiro res://jogador.gd | - | [3, 1] | "\t\"res://jogador.gd\"" | cursor [4, 1] | sob: Tree/res://jogador.gd → CodeEdit(1, 3)
+main.gd ← ficheiro res://jogador.gd | ctrl | [1, 0] | "const Jogador = preload(\"uid://bwh3fmoie3877\")" | cursor [2, 0] | sob: Tree/res://jogador.gd → CodeEdit(0, 1)
+main.gd ← ficheiro res://jogador.gd | ctrl | [3, 1] | "\tconst Jogador = preload(\"uid://bwh3fmoie3877\")" | cursor [4, 1] | sob: Tree/res://jogador.gd → CodeEdit(1, 3)
+main.gd ← ficheiro res://jogador.gd | shift | [1, 0] | "\"res://jogador.gd\"" | cursor [2, 0] | sob: Tree/res://jogador.gd → CodeEdit(0, 1)
+main.gd ← ficheiro res://jogador.gd | shift | [3, 1] | "\t\"res://jogador.gd\"" | cursor [4, 1] | sob: Tree/res://jogador.gd → CodeEdit(1, 3)
+main.gd ← propriedade Porta.texture | - | [3, 1] | "\t\"texture\""   [linhas que mudaram: "\t"] | cursor [3, 10] | sob: HBoxContainer/ → CodeEdit(1, 3)
+main.gd ← propriedade Porta.texture | ctrl | [3, 1] | "\t\"texture\""   [linhas que mudaram: "\t"] | cursor [3, 10] | sob: HBoxContainer/ → CodeEdit(1, 3)
+main.gd ← propriedade Porta.texture | shift | [3, 1] | "\t\"texture\""   [linhas que mudaram: "\t"] | cursor [3, 10] | sob: HBoxContainer/ → CodeEdit(1, 3)
+main.gd ← propriedade Porta.texture | alt | [3, 1] | "\t\"texture\""   [linhas que mudaram: "\t"] | cursor [3, 10] | sob: HBoxContainer/ → CodeEdit(1, 3)
+main.gd ← propriedade Placar.text | - | [3, 1] | "\t\"text\""   [linhas que mudaram: "\t"] | cursor [3, 7] | sob: HBoxContainer/ → CodeEdit(1, 3)
+main.gd ← propriedade Placar.text | ctrl | [3, 1] | "\t\"text\""   [linhas que mudaram: "\t"] | cursor [3, 7] | sob: HBoxContainer/ → CodeEdit(1, 3)
+main.gd ← propriedade Placar.text | shift | [3, 1] | "\t\"text\""   [linhas que mudaram: "\t"] | cursor [3, 7] | sob: HBoxContainer/ → CodeEdit(1, 3)
+main.gd ← propriedade Placar.text | alt | [3, 1] | "\t\"text\""   [linhas que mudaram: "\t"] | cursor [3, 7] | sob: HBoxContainer/ → CodeEdit(1, 3)
+
+## base res://jogador.gd: "extends CharacterBody2D\n\nfunc _physics_process(_delta: float) -> void:\n\t\n\tpass\n"
+jogador.gd ← nó Jogador/Arma | - | [3, 1] | "\t$Arma"   [linhas que mudaram: "\t"] | cursor [3, 6] | sob: Tree/Arma → CodeEdit(1, 3)
+jogador.gd ← nó Jogador/Arma | ctrl | [3, 1] | "\t@onready var arma: Node2D = $Arma" ⏎ ""   [linhas que mudaram: "\t"] | cursor [4, 0] | sob: Tree/Arma → CodeEdit(1, 3)
+jogador.gd ← nó Porta | - | [3, 1] | "\t$\"../Porta\""   [linhas que mudaram: "\t"] | cursor [3, 12] | sob: Tree/Porta → CodeEdit(1, 3)
+jogador.gd ← nó Porta | ctrl | [3, 1] | "\t@onready var porta: Sprite2D = $\"../Porta\"" ⏎ ""   [linhas que mudaram: "\t"] | cursor [4, 0] | sob: Tree/Porta → CodeEdit(1, 3)
+jogador.gd ← nó . | - | [3, 1] | "\t$\"..\""   [linhas que mudaram: "\t"] | cursor [3, 6] | sob: Tree/Main → CodeEdit(1, 3)
+jogador.gd ← nó . | ctrl | [3, 1] | "\t@onready var main: Node2D = $\"..\"" ⏎ ""   [linhas que mudaram: "\t"] | cursor [4, 0] | sob: Tree/Main → CodeEdit(1, 3)
+jogador.gd ← nó Placar | - | [3, 1] | "\t%Placar"   [linhas que mudaram: "\t"] | cursor [3, 8] | sob: Tree/Placar → CodeEdit(1, 3)
+jogador.gd ← nó Placar | ctrl | [3, 1] | "\t@onready var placar: Label = %Placar" ⏎ ""   [linhas que mudaram: "\t"] | cursor [4, 0] | sob: Tree/Placar → CodeEdit(1, 3)
+
+## base res://solto.gd: "extends Node\n\nfunc f() -> void:\n\t\n\tpass\n"
+solto.gd ← nó Porta | - | [3, 1] | "\t$Porta"   [linhas que mudaram: "\t"] | cursor [3, 7] | sob: Tree/Porta → CodeEdit(1, 3)
+solto.gd ← nó Porta | ctrl | [3, 1] | "\t@onready var porta: Sprite2D = $Porta" ⏎ ""   [linhas que mudaram: "\t"] | cursor [4, 0] | sob: Tree/Porta → CodeEdit(1, 3)
+avisos_solto: ["100 %", "5 :   1", "Tabs"]
+
+## base res://main.gd: "extends Node2D\n\nfunc _ready() -> void:\n\t\n\tpass\n"
+main.gd ← nó Porta (foto a meio do arrasto, sem modificador) | - | [3, 1] | "\t$Porta"   [linhas que mudaram: "\t"] | cursor [3, 7] | sob: Tree/Porta → CodeEdit(1, 3)
+main.gd ← nó Porta (foto a meio do arrasto, Ctrl) | ctrl | [1, 0] | "@onready var porta: Sprite2D = $Porta" | cursor [2, 0] | sob: Tree/Porta → CodeEdit(0, 1)
+undo: 1 Ctrl+Z depois da soltura | texto: "extends Node2D\n\nfunc _ready() -> void:\n\t\n\tpass\n" | nomes: 
+main.gd ← nó Porta (antes de renomear) | - | [3, 1] | "\t$Porta"   [linhas que mudaram: "\t"] | cursor [3, 7] | sob: Tree/Porta → CodeEdit(1, 3)
+main.gd ← nó Placar (antes de renomear) | ctrl | [1, 0] | "@onready var placar: Label = %Placar" ⏎ "\t$Porta"   [linhas que mudaram: "\t"] | cursor [2, 0] | sob: Tree/Placar → CodeEdit(0, 1)
+depois de renomear Porta→Portao e Placar→Pontos | texto: "extends Node2D\n@onready var placar: Label = %Placar\n\nfunc _ready() -> void:\n\t$Porta\n\tpass\n" | nomes: [{'nome': 'Portao'}, {'nome': 'Pontos'}]
+avisos_depois_de_renomear: ["1", "100 %", "3 :   1", "Tabs"]
+escrever "$" dentro da função → sugestões: ['"." → "."', '"Caixa Grande" → "Caixa Grande"', '%Placar → %Placar', 'Jogador → Jogador', 'Jogador/Arma → Jogador/Arma', 'Placar → Placar', 'Porta → Porta']
+escrever "%" dentro da função → sugestões: []
+escrever "get_node(\"" dentro da função → sugestões: ['"%Placar" → "%Placar"', '"." → "."', '"Caixa Grande" → "Caixa Grande"', '"Jogador" → "Jogador"', '"Jogador/Arma" → "Jogador/Arma"', '"Placar" → "Placar"', '"Porta" → "Porta"']
+main.gd ← nó Porta (para o Ctrl+clique) | - | [3, 1] | "\t$Porta"   [linhas que mudaram: "\t"] | cursor [3, 7] | sob: Tree/Porta → CodeEdit(1, 3)
+Ctrl+clique sobre «Porta» de `$Porta` (Placar seleccionado antes) → seleção ['Placar'] · script aberto res://main.gd · Inspector Placar:<Label#1470388835767> · texto "extends Node2D\n\nfunc _ready() -> void:\n\t$Porta\n\tpass\n" · cursor [3, 4]
+# editor.log: ERROR: Condition "status < 0" is true. Returning: ERR_CANT_OPEN

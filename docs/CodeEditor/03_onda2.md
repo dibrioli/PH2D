@@ -177,3 +177,5 @@ seguinte; o resto entra em lotes.
    árvore para o `CodeEdit` — o que escreve, com e sem Ctrl; `$Caminho`/`%Unico`/`@onready var`) antes de codar; o que
    já existe: `ph2d.find_by_name` (item 6), o drag de assets (`asset_drag_*`), a lista de problemas (I8). Smoke = uma cena
    nova `PH2D_CODE_SMOKE=7`. A linha fecha depois (ou o dono manda integrar antes).
+   **Oráculo corrido e plano (21/10): [07_arrastar_para_o_codigo.md](07_arrastar_para_o_codigo.md)** — o editor do
+   Godot 4.7.2 numa Xvfb, arrastos reais (`ferramentas/oraculo_arrastar/`, duas corridas iguais); fases 8a/8b/8c.

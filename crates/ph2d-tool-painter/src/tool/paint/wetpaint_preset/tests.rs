@@ -137,6 +137,7 @@ fn pincel_mexido() -> BrushSpec {
             po_alcance: 1.1,
             po_px: 2.5,
             po_opacidade: 0.25,
+            po_lado: 0.4,
             veu: 0.4,
             veu_escala: 2.5,
             veu_opacidade: 0.2,

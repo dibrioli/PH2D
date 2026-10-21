@@ -195,6 +195,10 @@ fn marca_para_json(j: &DabJitter) -> Value {
         v["po_alcance"] = num(j.po_alcance);
         v["po_px"] = num(j.po_px);
         v["po_opacidade"] = num(j.po_opacidade);
+        // O lado do pó só ligado: o preset com pó de antes é o de antes, ao byte.
+        if j.po_lado != 0.0 {
+            v["po_lado"] = num(j.po_lado);
+        }
     }
     if j.veu > 0.0 {
         v["veu"] = num(j.veu);
@@ -226,6 +230,7 @@ fn marca_de_json(v: Option<&Value>, base: DabJitter) -> DabJitter {
         po_alcance: f(o.get("po_alcance"), 1.0).max(0.0),
         po_px: f(o.get("po_px"), 2.0).max(0.5),
         po_opacidade: f(o.get("po_opacidade"), 0.3).clamp(0.0, 1.0),
+        po_lado: f(o.get("po_lado"), 0.0).clamp(-1.0, 1.0),
         veu: f(o.get("veu"), 0.0).clamp(0.0, 1.0),
         veu_escala: f(o.get("veu_escala"), 1.0).max(0.05),
         veu_opacidade: f(o.get("veu_opacidade"), 1.0).clamp(0.0, 1.0),

@@ -88,6 +88,7 @@ impl PainterTool {
             roteiro_teve_worker: false,
             ritmo: self.paint.wetpaint.ritmo.clone(),
             marca,
+            po: super::po::PoDoTraco::default(),
         });
         true
     }

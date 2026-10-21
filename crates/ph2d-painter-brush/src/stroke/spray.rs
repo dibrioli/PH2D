@@ -222,12 +222,31 @@ impl Stroke {
         if j.po <= 0.0 || !self.spec.stroke_method.allows_jitter() {
             return;
         }
-        let r = molde.radius_px.max(0.5);
         let passo = self.spec.passo_de(self.spec.spacing);
-        self.por_traco.po_resto += j.po * 0.01 * passo * 2.0 * r;
-        let n = (self.por_traco.po_resto.floor() as u32).min(PO_MAX_POR_PONTO);
-        self.por_traco.po_resto -= self.por_traco.po_resto.floor();
-        let rng = &mut self.por_traco.rng_po;
+        let sym = &self.spec.symmetry;
+        graos_do_po(&j, molde, passo, &mut self.por_traco.po_resto, &mut self.por_traco.rng_po, |grao| {
+            crate::symmetry::push_symmetric(out, grao, sym);
+        });
+    }
+}
+
+/// ⭐ **A lei do PÓ SOLTO** ([`crate::marca::DabJitter::po`]), com dois chamadores: o traço do Digital
+/// ([`Stroke::po_solto`], cada ponto do caminho) e a rota do Wet Paint (`ph2d-tool-painter`, `wetpaint/po.rs`), que
+/// pousa os grãos À PARTE do rasto. O ponto do caminho com o dab `molde` e o passo `passo` (px) pousa
+/// `po/100 × passo × diâmetro` grãos (o resto, em `resto`, passa ao ponto seguinte), sorteados de `rng`.
+pub fn graos_do_po(
+    j: &crate::marca::DabJitter,
+    molde: &Dab,
+    passo: f32,
+    resto: &mut f32,
+    rng: &mut u64,
+    mut pousa: impl FnMut(Dab),
+) {
+    {
+        let r = molde.radius_px.max(0.5);
+        *resto += j.po * 0.01 * passo * 2.0 * r;
+        let n = (resto.floor() as u32).min(PO_MAX_POR_PONTO);
+        *resto -= resto.floor();
         for _ in 0..n {
             let (dx, dy) = loop {
                 let (x, y) = (
@@ -238,6 +257,19 @@ impl Stroke {
                 if q > 0.04 && q <= 1.0 {
                     let n = q.sqrt();
                     break (x / n, y / n);
+                }
+            };
+            // O LADO ([`crate::marca::DabJitter::po_lado`]): o grão do lado contrário passa ao favorecido (espelhado no
+            // rumo) com a probabilidade `|po_lado|`; sem rumo (o 1.º dab) ou a `0`, nada se sorteia.
+            let (dx, dy) = {
+                let (hx, hy) = (molde.dir[0], molde.dir[1]);
+                let lado = (-hy * dx + hx * dy) * j.po_lado.signum();
+                if j.po_lado != 0.0 && lado < 0.0 && crate::jitter::next_f32(rng) < j.po_lado.abs().min(1.0) {
+                    let n = [-hy, hx];
+                    let k = 2.0 * (n[0] * dx + n[1] * dy);
+                    (dx - k * n[0], dy - k * n[1])
+                } else {
+                    (dx, dy)
                 }
             };
             let u = crate::jitter::next_f32(rng);
@@ -252,10 +284,12 @@ impl Stroke {
                 ante: None,
                 ..*molde
             };
-            crate::symmetry::push_symmetric(out, grao, &self.spec.symmetry);
+            pousa(grao);
         }
     }
+}
 
+impl Stroke {
     /// ⭐ **O spray PARADO** (J4, [`BrushSpec::parado_s`]): com o Space, o tempo em que o caminho não pousou nenhum
     /// dab acumula-se e, a cada `parado_s`, uma nuvem cai no cursor (a do caminho, pelo [`Self::stamp_at`]). Um dab
     /// do caminho desde o tique anterior zera o relógio. Desligado (`0`): nada.

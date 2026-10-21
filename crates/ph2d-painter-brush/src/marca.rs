@@ -70,6 +70,11 @@ pub struct DabJitter {
     pub po_px: f32,
     /// A cobertura de um grão em fracção da do dab (× `0,4..1` sorteado; o Rebelle: o tom médio dos grãos ~0,17).
     pub po_opacidade: f32,
+    /// ⭐ O LADO do pó (J4 `pastel_carvao` 2.ª ronda): a fracção `-1..1` dos grãos do lado ESQUERDO que passa para o
+    /// DIREITO do rumo do traço (`<0`: o contrário). Medido no Rebelle (recto de 200 e verticais da bateria): o pó cai
+    /// à direita de quem anda — Soft Pastel 411 × 191 grãos (`0,37`), Charcoal 231 × 91 (`0,43`), Flat Soft ~0,15. `0` =
+    /// à volta por igual, sem sorteio a mais (ao bit).
+    pub po_lado: f32,
     /// O raio de uma marca do véu × isto (`> 0`; só com [`Self::veu`]).
     pub veu_escala: f32,
     /// A cobertura de uma marca do véu × isto (`0..1`; só com [`Self::veu`]).
@@ -97,6 +102,7 @@ impl DabJitter {
         po_alcance: 1.0,
         po_px: 2.0,
         po_opacidade: 0.3,
+        po_lado: 0.0,
     };
 
     /// A menor partícula (`5 %` do pincel): abaixo disso o dab do raio mínimo (`0,5 px`) já é o que se pinta.

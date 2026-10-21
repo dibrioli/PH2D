@@ -182,6 +182,7 @@ impl PainterTool {
         if !sess.stroke_open {
             sess.stroke_open = true;
             sess.lanes.clear();
+            sess.po = super::po::PoDoTraco::default();
             // The eraser and the DIRECT wet tools (Wet/Dry/Blow/Smear) are
             // LANE-LESS (per-dab grid ops, no trail) — open one direct
             // stroke so the sim gets its stroke gate as usual (paused under
@@ -702,6 +703,10 @@ impl PainterTool {
             }
             sess.lanes[li].pos = d.center;
             sess.lanes[li].arco = d.arc_len;
+        }
+        // O PÓ SOLTO (J4 `pastel_carvao`): os grãos do lote, À PARTE do rasto ([`super::po`]); `po = 0`, nada.
+        if !erasing {
+            self.pousa_o_po_do_lote(sess, dabs, &copia, brush, opacidade_da_pressao, strength);
         }
         let deposit_ms = t_dep.elapsed().as_secs_f32() * 1e3;
         self.paint.wetpaint.session = Some(taken);

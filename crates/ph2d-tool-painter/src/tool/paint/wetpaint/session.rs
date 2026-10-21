@@ -145,6 +145,8 @@ pub(in crate::tool::paint) struct WetSession {
     /// A sessão nasceu com a marca do artista (W12): o id que a marca viva lhe deu — a cobertura dela é
     /// o `pa` do composite. `None` = água de outra origem (a gravação), que assa no 1.º toque do artista.
     pub(super) marca: Option<u64>,
+    /// O PÓ SOLTO do traço aberto ([`super::po`]): zerado quando o traço abre.
+    pub(super) po: super::po::PoDoTraco,
 }
 
 /// Um lote de dabs adiado — tudo o que a rota do dab lê por LOTE.
@@ -283,6 +285,7 @@ impl Clone for WetSession {
             roteiro_teve_worker,
             ritmo,
             marca,
+            po,
         } = self;
         assert!(
             worker.is_none(),
@@ -309,6 +312,7 @@ impl Clone for WetSession {
             roteiro_teve_worker: *roteiro_teve_worker,
             ritmo: ritmo.clone(),
             marca: *marca,
+            po: po.clone(),
         }
     }
 }

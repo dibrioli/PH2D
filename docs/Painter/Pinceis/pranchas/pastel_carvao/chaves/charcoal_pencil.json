@@ -1,0 +1,48 @@
+{
+ "prancha": "charcoal_pencil.png",
+ "linhas": [
+  "gestos_A",
+  "gestos_B",
+  "tamanhos_A",
+  "tamanhos_B",
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "gestos_A": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "gestos_B": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  },
+  "tamanhos_A": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "tamanhos_B": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "sobre_A": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  },
+  "sobre_B": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  }
+ },
+ "quem": {
+  "oraculo": "charcoal_charcoal_liner",
+  "nosso": "Charcoal Pencil (escala 0.219)",
+  "vizinho": "Soft Pastel (d 0.616, limiar 0.591)"
+ }
+}

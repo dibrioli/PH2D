@@ -1,0 +1,48 @@
+{
+ "prancha": "oil_pastel.png",
+ "linhas": [
+  "gestos_A",
+  "gestos_B",
+  "tamanhos_A",
+  "tamanhos_B",
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "gestos_A": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  },
+  "gestos_B": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  },
+  "tamanhos_A": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "tamanhos_B": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "sobre_A": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "sobre_B": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  }
+ },
+ "quem": {
+  "oraculo": "pastel_oil_oil_pastel_2",
+  "nosso": "Oil Pastel (escala 0.829)",
+  "vizinho": "Graphite 2B (d 0.777, limiar 0.591)"
+ }
+}

@@ -1,0 +1,48 @@
+{
+ "prancha": "square_hard.png",
+ "linhas": [
+  "gestos_A",
+  "gestos_B",
+  "tamanhos_A",
+  "tamanhos_B",
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "gestos_A": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "gestos_B": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "tamanhos_A": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "tamanhos_B": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "sobre_A": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  },
+  "sobre_B": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  }
+ },
+ "quem": {
+  "oraculo": "pastel_dry_square_hard",
+  "nosso": "Square Hard (escala 0.8)",
+  "vizinho": "Wax Scrape (d 0.831, limiar 0.591)"
+ }
+}

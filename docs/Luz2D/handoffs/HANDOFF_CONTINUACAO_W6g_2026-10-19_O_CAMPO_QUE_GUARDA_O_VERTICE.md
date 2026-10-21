@@ -1185,3 +1185,77 @@ uma na Alta, a luz da vista com o recorte × sem ele: 0 de 3 932 160 / 3 932 160
    numa tabela calculada uma vez (hoje até 4 `de_fora` por fio, ~2× o necessário) e o despacho recortado aos fios que leem.
 3. A lei W6d com `DISTANTES` no relógio (o §20.2). 4. A anomalia da r5b (§12). 5. A família (b) (37–38). 6. Os
    zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.
+
+## 43. O custo fixo dos despachos e a vista nos níveis de cima (§42.1–§42.2) — MEDIDO, nada no produto (20/10)
+
+Instrumento fora do git e reposto: `target/bug6/diag_despacho_42.patch` (`DIAG_DESPACHO`: 0 normal · 1 junta = o q0 ×4
+em z, os q1–q3 saltados · 5 junta DESLOCADA = cada réplica lê outras linhas (`v + r·Y/4`), sem partilhar a cache · 2 vazio
+1 grupo · 3 vazio com os grupos todos · 4 sem os despachos de quadrante); régua `target/bug6/despachos_regua.rs`; logs
+`despachos_1.log`, `despachos_2.log`. Cena 5, h = 3,8, o par vista + entorno com a borda, mesmo processo, blocos rodados,
+o mínimo. Duas rodadas em SÉRIE: a 1.ª deu a junta com réplicas que leem a MESMA memória (otimista); a deslocada decide
+se o ganho é paralelismo ou cache.
+
+**(a) O despacho VAZIO custa 0,15–0,38 µs** (com a barreira; `(vazio 1 grupo − sem) / despachos`): os ~76 por passagem
+somam ~0,02 ms. ⇒ a premissa do §41/§42.1 («o custo fixo é o NÚMERO de despachos») está REFUTADA. O que pesa é cada
+despacho pequeno não encher a placa: 1080p Baixa, o entorno gasta 1,09 ms em 936 despachos de quadrante (1,16 µs cada,
+dos quais 0,18 de lançamento e ~0,07 ms no total de grupos que saem cedo).
+
+**(b) Juntar os 4 quadrantes (proxy):**
+
+| teto | vista `c2` normal → junta / deslocada | entorno normal → junta / deslocada |
+|---|---|---|
+| 1920×1080 Baixa | 1,947 → −0,547 / **−0,518** | 1,437 → −0,503 / **−0,451** |
+| 1920×1080 Média | 2,955 → −0,402 / −0,351 | 1,439 → −0,508 / −0,451 |
+| 1920×1080 Alta | 12,02 → −0,567 / +1,129 ¹ | 3,042 → −0,756 / −0,632 |
+| 2560×1440 Baixa | 2,741 → −0,558 / −0,510 | 1,824 → −0,413 / −0,282 |
+| 2560×1440 Média | 4,675 → −0,405 / −0,423 | 1,829 → −0,417 / −0,286 |
+| 2560×1440 Alta | 20,96 → −0,898 / −0,585 | 4,926 → −0,570 / −0,272 |
+| 3840×2160 Baixa | 5,804 → −0,692 / −0,577 | 3,063 → −0,761 / −0,638 |
+| 3840×2160 Média | 11,90 → −0,380 / +1,320 ¹ | 3,053 → −0,760 / −0,633 |
+| 3840×2160 Alta | 52,35 → −1,123 / −0,627 | 10,05 → −1,423 / −1,310 |
+
+¹ a grade 2496×1472: a réplica deslocada cai em linhas sem o vazio que o q0 salta — artefacto do proxy. O ganho
+SOBREVIVE à deslocada (paralelismo, não cache): ~−1,0 ms por quadro a 1080p Baixa (vista + entorno, ~28 %). O proxy
+corre 4× o q0 (que tem ≥ os níveis do q1), logo o trabalho dele ≥ o real.
+
+**O preço é MEMÓRIA** (os T de todos os níveis e o par R, por quadrante; hoje são partilhados em série):
+
+| grade | hoje | juntos |
+|---|---|---|
+| vista 640×384 (1080p Baixa) | 33 MiB | 124 MiB |
+| vista 1280×768 (1080p Média, 2160p Baixa) | 141 | 524 |
+| vista 2496×1472 | 563 | 2 106 |
+| vista 4992×2944 (2160p Alta) | 2 364 | 8 873 |
+| entorno 512×320 / 992×576 / 1984×1152 | 21 / 81 / 342 | 77 / 295 / 1 248 |
+
+⇒ a cura real (os 4 quadrantes por etapa, `z` = quadrante, um jogo de T/R por quadrante, a soma na ordem q0..q3 — o
+mesmo bit) só cabe abaixo de um orçamento de memória; nas grades grandes fica a série. NÃO construída: à espera do dono.
+
+**(c) §42.2 — a tabela do R de fora: RECUSADA pela contagem** (`conta_de_fora.py`, exata, as chamadas do `soma_da_descida`
+e os valores distintos que elas pedem): a razão chamadas / distintos é 1,21–1,32 nos níveis de cima (onde está o custo:
+n = 11 de 3840×2160, 26,5 M / 21,9 M; o transposto 47,2 M / 35,7 M) e 1,1–1,7 nos de baixo — não os «~2×» do §42.
+Com ~55 % do custo do `de_fora` em leitura (§41 a), uma tabela troca cada chamada por uma leitura e ainda escreve os
+distintos: a 1,2× sai mais cara. O «despacho recortado aos fios que leem» é a mesma tabela só nos distintos — a
+contagem já é essa.
+
+**(d) Achado de passagem — os cones por fio, nível a nível** (`hrc_cones_por_fio` 1 × 4, fases da descida da vista com a
+borda, ms): a 3840×2160 Alta o 1 ganha nos níveis 0–8 (n = 0: 2,068 contra 2,795; 1–8: −0,01…−0,25) e perde nos 9–12
+(+0,09 · +0,10 · +0,29 · +0,21); a 1920×1080 Baixa o 1 ganha em todos (2,006 contra 2,131); a 2560×1440 Média empata (o
+1 só ganha em n = 0–1). Um corte por nível (o `por_fio = 0` no uniforme da descida — a mesma conta do
+`soma_da_descida`, por provar bit a bit) daria ~−1,5 ms a 2160p Alta (~3 %). Medido em modo de fases (fronteira de passe a
+mais); confirmar pela `c2` antes.
+
+## ⛔ Recusas MEDIDAS (§43)
+
+| Recusa | Porquê |
+|---|---|
+| Cortar o NÚMERO de despachos por si | 0,15–0,38 µs cada; ~0,02 ms por passagem. |
+| A tabela do R de fora (e o recorte dela) | Chamadas / distintos 1,2–1,3 onde está o custo: a tabela custa mais do que poupa. |
+
+## 44. ABERTO (por ordem — substitui o §42)
+
+1. **Decisão do dono:** os 4 quadrantes num despacho, só onde a memória ×3,7 cabe (~−1,0 ms por quadro a 1080p Baixa).
+2. Os cones por fio por nível (§43 d): confirmar pela `c2` e provar o mesmo bit.
+3. A vista nos níveis de cima (+4,4 ms a 2160p Alta) continua sem cura que dê o mesmo bit.
+4. A lei W6d com `DISTANTES` no relógio (o §20.2). 5. A anomalia da r5b (§12). 6. A família (b) (37–38). 7. Os
+   zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.

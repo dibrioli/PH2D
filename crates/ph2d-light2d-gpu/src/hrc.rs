@@ -64,6 +64,14 @@ const _: () = assert!(LARGURA_DOS_NIVEIS == 1024 * 8);
 /// garantido).
 const ENTRADAS_POR_TEXTURA: u64 = LARGURA_DOS_NIVEIS as u64 * LARGURA_DOS_NIVEIS as u64;
 
+/// ⭐ §44 (handoff W6g) — a maior grade (texels) cujos quadrantes vão JUNTOS. O recurso é o PARALELISMO da placa:
+/// junto, cada etapa enche a placa que um quadrante sozinho deixava meio vazia; numa grade que já a enche, os
+/// quatro só disputam a memória. Medido (RTX 5060 Ti, a Baixa, cena 5, ms, um a um → juntos, `c2` da vista):
+/// 640×384 −0,41 · 832×512 −0,36 · 992×576 −0,26 · 1120×512 −0,30 · 1056×608 0,00 · 1120×640 +0,06 ·
+/// 1184×672 +0,16 · 1280×768 +0,29; o entorno ganha em todo teto da Baixa (992×576 −0,15). Entre 573 440 e
+/// 642 048 (`target/bug6/juntos_2.log`).
+pub(crate) const JUNTOS_ATE: u64 = 9 << 16;
+
 /// ⭐ W5u — a grade (texels) a partir da qual a holográfica faz `Config::hrc_cones_por_fio` cones e
 /// `Config::hrc_pares_na_subida` pares por fio. O recurso é o PARALELISMO da placa: numa grade pequena,
 /// juntar entradas deixa fios a menos. Medido (RTX 5060 Ti, `c2` por processo, ms, 1 entrada por fio · 2/2
@@ -361,10 +369,12 @@ impl crate::Config {
     }
 
     /// ⭐ §44 — os quadrantes JUNTOS ([`Self::hrc_quadrantes_juntos`]): só com os despachos em 3D e um fio por
-    /// sonda na traça (o despacho junto decompõe grupos `[⌈Y/64⌉, nx, k]`; o 1D dobrado não tem quadrante).
+    /// sonda na traça (o despacho junto decompõe grupos `[⌈Y/64⌉, nx, k]`; o 1D dobrado não tem quadrante) e
+    /// numa grade até [`JUNTOS_ATE`].
     #[must_use]
     pub fn hrc_juntos(&self) -> bool {
         self.hrc_quadrantes_juntos
+            && u64::from(self.grade.largura) * u64::from(self.grade.altura) <= JUNTOS_ATE
             && self.holografica.is_some()
             && self.hrc_grade_3d
             && self.hrc_por_colunas

@@ -62,6 +62,14 @@ struct Hrc {
 @group(3) @binding(4) var<uniform> hrcs: array<Hrc, 4>;
 // O quadrante deste fio no despacho junto (`0` em todo outro passe).
 var<private> qd: u32;
+// O índice do uniforme deste fio: fora do despacho junto, a CONSTANTE 0 (lido de uma variável, o índice dinâmico
+// custava +13,9 % na `c2` da vista a 2160p Alta, §44).
+fn iq() -> u32 {
+    if JUNTOS_HRC {
+        return qd;
+    }
+    return 0u;
+}
 // ⭐ W5z: os T e os R (ligações 5–9) e os seus acessores (`ler_t_a`, `ler_t_b`, `ler_r_cima`,
 // `escrever_t`, `escrever_r`) vêm do prelúdio: `hrc_niveis_buffer.wgsl` ou `hrc_niveis_textura.wgsl`.
 @group(3) @binding(10) var<storage, read_write> acumulado: array<vec4<f32>>;
@@ -134,8 +142,8 @@ const VACUO: Par = Par(vec3<f32>(0.0), 1.0);
 // O ponto canónico (centro do texel (u, v)) na grade.
 fn na_grade(u: f32, v: f32) -> vec2<f32> {
     let c = vec2<f32>(u + 0.5, v + 0.5);
-    let w = vec2<f32>(hrcs[qd].grade);
-    switch hrcs[qd].quadrante {
+    let w = vec2<f32>(hrcs[iq()].grade);
+    switch hrcs[iq()].quadrante {
         case 1u: { return vec2<f32>(w.x - c.y, c.x); }
         case 2u: { return vec2<f32>(w.x - c.x, w.y - c.y); }
         case 3u: { return vec2<f32>(c.y, w.y - c.x); }
@@ -152,7 +160,7 @@ fn texel_da_grade(u: u32, v: u32) -> vec2<u32> {
 // VÁCUO (nem tapa nem brilha: é da vista, que o traça fino) — o R do entorno é então a luz de FORA que chega à
 // borda dela, e a vista lê-o lá sem a versão grossa dos opacos dela pelo meio.
 fn meio_do_traco(x: vec2<f32>) -> Meio {
-    if hrcs[qd].arquivo.w == 1u && no_miolo(x) {
+    if hrcs[iq()].arquivo.w == 1u && no_miolo(x) {
         return Meio(1.0, 0.0, vec2<i32>(0), false, vec4<f32>(0.0));
     }
     return meio(x);
@@ -160,7 +168,7 @@ fn meio_do_traco(x: vec2<f32>) -> Meio {
 
 // ⭐ W5d — `x` (texels da grade) cai no miolo cuja emissão não se recolhe.
 fn no_miolo(x: vec2<f32>) -> bool {
-    return all(x >= hrcs[qd].miolo.xy) && all(x < hrcs[qd].miolo.zw);
+    return all(x >= hrcs[iq()].miolo.xy) && all(x < hrcs[iq()].miolo.zw);
 }
 
 // Traço(A, B) na lei do meio, as entradas em (A, B]; a queda conta-se de A.
@@ -248,45 +256,45 @@ fn arco_conta(n: u32, m: u32) -> f32 {
 
 fn indice_t(nx: u32, n: u32, xi: u32, v: u32, k: u32) -> u32 {
     if COLUNAS_HRC {
-        return (k * nx + xi) * hrcs[qd].eixo.y + v;
+        return (k * nx + xi) * hrcs[iq()].eixo.y + v;
     }
     return (v * nx + xi) * ((1u << n) + 1u) + k;
 }
 
 fn indice_r(nx: u32, n: u32, xi: u32, v: u32, m: u32) -> u32 {
     if COLUNAS_HRC {
-        return (m * nx + xi) * hrcs[qd].eixo.y + v;
+        return (m * nx + xi) * hrcs[iq()].eixo.y + v;
     }
     return (v * nx + xi) * (1u << n) + m;
 }
 
 // T_{n−1} em (xi, v, k) — fora do que se guarda, vácuo.
 fn t_de_baixo(xi: u32, v: i32, k: u32) -> Par {
-    if xi >= hrcs[qd].nx_baixo || v < 0 || v >= i32(hrcs[qd].eixo.y) {
+    if xi >= hrcs[iq()].nx_baixo || v < 0 || v >= i32(hrcs[iq()].eixo.y) {
         return VACUO;
     }
-    return desempacotar(ler_t_a(indice_t(hrcs[qd].nx_baixo, hrcs[qd].nivel - 1u, xi, u32(v), k)));
+    return desempacotar(ler_t_a(indice_t(hrcs[iq()].nx_baixo, hrcs[iq()].nivel - 1u, xi, u32(v), k)));
 }
 
 // T_n (t_a) e T_{n+1} (t_b) na fusão de cima para baixo.
 fn t_deste(xi: u32, v: u32, k: u32) -> Par {
-    return desempacotar(ler_t_a(indice_t(hrcs[qd].nx, hrcs[qd].nivel, xi, v, k)));
+    return desempacotar(ler_t_a(indice_t(hrcs[iq()].nx, hrcs[iq()].nivel, xi, v, k)));
 }
 
 fn t_de_cima(xi: u32, v: u32, k: u32) -> Par {
-    if xi >= hrcs[qd].nx_cima {
+    if xi >= hrcs[iq()].nx_cima {
         return VACUO;
     }
-    return desempacotar(ler_t_b(indice_t(hrcs[qd].nx_cima, hrcs[qd].nivel + 1u, xi, v, k)));
+    return desempacotar(ler_t_b(indice_t(hrcs[iq()].nx_cima, hrcs[iq()].nivel + 1u, xi, v, k)));
 }
 
 // R_{n+1} em (xi, v, j) — no topo, ou fora do que se guarda, o céu × o arco (o que está além).
 fn r_de_cima(xi: u32, v: i32, j: u32) -> vec3<f32> {
-    let n = hrcs[qd].nivel + 1u;
-    if hrcs[qd].topo == 1u || xi >= hrcs[qd].nx_cima || v < 0 || v >= i32(hrcs[qd].eixo.y) {
+    let n = hrcs[iq()].nivel + 1u;
+    if hrcs[iq()].topo == 1u || xi >= hrcs[iq()].nx_cima || v < 0 || v >= i32(hrcs[iq()].eixo.y) {
         return de_fora(xi, v, j, n);
     }
-    return desempacotar(ler_r_cima(indice_r(hrcs[qd].nx_cima, n, xi, u32(v), j))).r;
+    return desempacotar(ler_r_cima(indice_r(hrcs[iq()].nx_cima, n, xi, u32(v), j))).r;
 }
 
 // ⭐ bug 6 (handoff W6g §32) — a luz de FORA entra pela BORDA: no lugar do céu, o R do ENTORNO no mesmo cone,
@@ -296,13 +304,13 @@ fn r_de_cima(xi: u32, v: i32, j: u32) -> vec3<f32> {
 // (nunca uma além, cujo R perderia o que fica entre as duas), no nível mais fino em ângulo cuja coluna ainda cai
 // dentro desta grade; acima dele, o cone-pai pela fração do arco; fora do entorno, o céu.
 fn de_fora(xi: u32, v: i32, j: u32, n: u32) -> vec3<f32> {
-    if hrcs[qd].fora.w == 0u {
+    if hrcs[iq()].fora.w == 0u {
         return cas.ceu.rgb * arco(n, j);
     }
     let lado = f32(1u << n);
     let e = vec2<f32>(f32(xi) * lado + 0.5, f32(v) + 0.5);
     let d = vec2<f32>(lado, 2.0 * f32(j) + 1.0 - lado);
-    let x = vec2<f32>(hrcs[qd].eixo);
+    let x = vec2<f32>(hrcs[iq()].eixo);
     var t = 0.0;
     if e.x > x.x {
         t = max(t, (e.x - x.x) / d.x);
@@ -315,17 +323,17 @@ fn de_fora(xi: u32, v: i32, j: u32, n: u32) -> vec3<f32> {
     }
     let b = clamp(e - t * d, vec2<f32>(0.0), x);
     // b no canónico do entorno (o mesmo quadrante: a escala e uma translação, a direção não muda).
-    let xe = vec2<f32>(hrcs[qd].fora.xy);
-    let ce = b * hrcs[qd].fora_af.z + hrcs[qd].fora_af.xy;
+    let xe = vec2<f32>(hrcs[iq()].fora.xy);
+    let ce = b * hrcs[iq()].fora_af.z + hrcs[iq()].fora_af.xy;
     let passo = d / d.x;
     // O nível: o mais fino em ângulo cuja coluna cabe nesta grade (o `fora.z`, da CPU); a coluna de sondas
     // mais perto ATRÁS de `b` e o recuo até ela, sobre o raio.
-    let m = min(n, hrcs[qd].fora.z);
+    let m = min(n, hrcs[iq()].fora.z);
     let lado_e = f32(1u << m);
     let coluna = floor((ce.x - 0.5) / lado_e);
     let recuo = ce.x - (coluna * lado_e + 0.5);
     let pai = j >> (n - m);
-    let nx = (hrcs[qd].fora.x + (1u << m) - 1u) >> m;
+    let nx = (hrcs[iq()].fora.x + (1u << m) - 1u) >> m;
     // O arquivo guarda a radiância MÉDIA do cone (R / arco): o cone fino `j` é o pai × o arco dele.
     let ceu = cas.ceu.rgb;
     if coluna < 0.0 || coluna >= f32(nx) {
@@ -341,7 +349,7 @@ fn de_fora(xi: u32, v: i32, j: u32, n: u32) -> vec3<f32> {
         if s >= 0.0 && s < xe.y {
             let i = indice_na_janela(m, u32(coluna), u32(s), pai);
             if i != FORA_DA_JANELA {
-                r = desempacotar(arquivo_dos_r[hrcs[qd].fora_base[m / 4u][m % 4u] + i]).r;
+                r = desempacotar(arquivo_dos_r[hrcs[iq()].fora_base[m / 4u][m % 4u] + i]).r;
             }
         }
         soma += select(1.0 - fr, fr, k == 1) * r;
@@ -354,7 +362,7 @@ const FORA_DA_JANELA: u32 = 0xffffffffu;
 // O R (nível `m`, sonda `(k, v)`, cone `c`) na janela do arquivo (a partir da base do nível), ou
 // `FORA_DA_JANELA`. As colunas do nível são as `k` com `k·2ᵐ` em `[U0, U1)` arredondado para fora.
 fn indice_na_janela(m: u32, k: u32, v: u32, c: u32) -> u32 {
-    let j = hrcs[qd].janela;
+    let j = hrcs[iq()].janela;
     let k0 = j.x >> m;
     let colunas = ((j.y + (1u << m) - 1u) >> m) + 1u - k0;
     let linhas = j.w - j.z;
@@ -367,11 +375,11 @@ fn indice_na_janela(m: u32, k: u32, v: u32, c: u32) -> u32 {
 // ⭐ bug 6 — a 2.ª passagem de um ENTORNO guarda o R que acabou de escrever — a radiância MÉDIA do cone
 // (R / arco) —, se a sonda cai na janela.
 fn arquivar(xi: u32, v: u32, c: u32, e: vec2<u32>) {
-    if hrcs[qd].arquivo.y == 1u {
-        let i = indice_na_janela(hrcs[qd].nivel, xi, v, c);
+    if hrcs[iq()].arquivo.y == 1u {
+        let i = indice_na_janela(hrcs[iq()].nivel, xi, v, c);
         if i != FORA_DA_JANELA {
-            let r = desempacotar(e).r / arco(hrcs[qd].nivel, c);
-            arquivo_dos_r[hrcs[qd].arquivo.x + i] = empacotar(Par(r, 0.0));
+            let r = desempacotar(e).r / arco(hrcs[iq()].nivel, c);
+            arquivo_dos_r[hrcs[iq()].arquivo.x + i] = empacotar(Par(r, 0.0));
         }
     }
 }
@@ -380,18 +388,18 @@ fn arquivar(xi: u32, v: u32, c: u32, e: vec2<u32>) {
 // passagem só se leem nele, R_n lê R_{n+1} só para a frente (colunas ≥ xi/2) e n descidas alcançam
 // ±(2^{n+1} − 2) linhas — fora das colunas da janela e das linhas dela ± 2^{n+1}, nada a lê.
 fn fora_do_arquivo(xi: u32, v: u32) -> bool {
-    if hrcs[qd].arquivo.z == 0u {
+    if hrcs[iq()].arquivo.z == 0u {
         return false;
     }
-    let alcance = 2u << hrcs[qd].nivel;
-    let j = hrcs[qd].janela;
-    return xi + 2u < (j.x >> hrcs[qd].nivel) || v + alcance < j.z || v >= j.w + alcance;
+    let alcance = 2u << hrcs[iq()].nivel;
+    let j = hrcs[iq()].janela;
+    return xi + 2u < (j.x >> hrcs[iq()].nivel) || v + alcance < j.z || v >= j.w + alcance;
 }
 
 // ⭐ §44 — o começo da faixa do quadrante no nível ligado em `k` (0 `t_a`, 1 `t_b`, 2 `r_cima`, 3 a escrita).
 fn base_de(k: u32) -> u32 {
     if JUNTOS_HRC {
-        return hrcs[qd].bases[k];
+        return hrcs[iq()].bases[k];
     }
     return 0u;
 }
@@ -431,11 +439,11 @@ fn entrada(gid: vec3<u32>, nw: vec3<u32>) -> u32 {
 // (`t_saida[e]`/`r_saida[e]` é o índice dela).
 fn decompor(e: u32, nk: u32) -> vec3<u32> {
     if COLUNAS_HRC {
-        let resto = e / hrcs[qd].eixo.y;
-        return vec3<u32>(resto / hrcs[qd].nx, resto % hrcs[qd].nx, e % hrcs[qd].eixo.y);
+        let resto = e / hrcs[iq()].eixo.y;
+        return vec3<u32>(resto / hrcs[iq()].nx, resto % hrcs[iq()].nx, e % hrcs[iq()].eixo.y);
     }
     let resto = e / nk;
-    return vec3<u32>(e % nk, resto % hrcs[qd].nx, resto / hrcs[qd].nx);
+    return vec3<u32>(e % nk, resto % hrcs[iq()].nx, resto / hrcs[iq()].nx);
 }
 
 // ── ⭐ W5r: a tabela dos arcos, uma vez ao nascer ──
@@ -469,7 +477,7 @@ fn hrc_ladrilhos(
 
 // As pontas `(A, B)` do intervalo da entrada `e` de T_n (n ≤ 2).
 fn pontas_da_traca(e: u32) -> array<vec2<f32>, 2> {
-    let n = hrcs[qd].nivel;
+    let n = hrcs[iq()].nivel;
     let d = decompor(e, (1u << n) + 1u);
     let u = f32(d.y << n);
     let lado = f32(1u << n);
@@ -482,9 +490,9 @@ fn pontas_da_traca(e: u32) -> array<vec2<f32>, 2> {
 // A sonda `s` de T_n → `(xi, v)`, na ordem do armazenamento (fios vizinhos, v vizinhos por colunas).
 fn decompor_sonda(s: u32) -> vec2<u32> {
     if COLUNAS_HRC {
-        return vec2<u32>(s / hrcs[qd].eixo.y, s % hrcs[qd].eixo.y);
+        return vec2<u32>(s / hrcs[iq()].eixo.y, s % hrcs[iq()].eixo.y);
     }
-    return vec2<u32>(s % hrcs[qd].nx, s / hrcs[qd].nx);
+    return vec2<u32>(s % hrcs[iq()].nx, s / hrcs[iq()].nx);
 }
 
 // O leque da sonda `(u, v)` de T_n: as pontas extremas `[A, B₀, B_{2ⁿ}]` (o triângulo que os intervalos
@@ -499,21 +507,21 @@ fn leque(u: f32, v: f32, lado: f32) -> array<vec2<f32>, 3> {
 
 // A sonda `sv = (xi, v)` de T_n (n ≤ 2): os 2ⁿ + 1 intervalos dela.
 fn tracar_sonda(sv: vec2<u32>) {
-    let n = hrcs[qd].nivel;
+    let n = hrcs[iq()].nivel;
     let u = f32(sv.x << n);
     let v = f32(sv.y);
     let lado = f32(1u << n);
     let l = leque(u, v, lado);
     if SALTA_O_VAZIO_HRC && caixa_vazia(min(l[0], min(l[1], l[2])), max(l[0], max(l[1], l[2]))) {
         for (var k = 0u; k <= (1u << n); k++) {
-            escrever_t(indice_t(hrcs[qd].nx, n, sv.x, sv.y, k), empacotar(VACUO));
+            escrever_t(indice_t(hrcs[iq()].nx, n, sv.x, sv.y, k), empacotar(VACUO));
         }
         return;
     }
     let m0 = meio_do_traco(l[0]);
     for (var k = 0u; k <= (1u << n); k++) {
         let B = na_grade(u + lado, v + 2.0 * f32(k) - lado);
-        escrever_t(indice_t(hrcs[qd].nx, n, sv.x, sv.y, k), empacotar(tracar_de(l[0], m0, B)));
+        escrever_t(indice_t(hrcs[iq()].nx, n, sv.x, sv.y, k), empacotar(tracar_de(l[0], m0, B)));
     }
 }
 
@@ -527,13 +535,13 @@ fn hrc_traca(
 ) {
     let gid = id_do_fio(gid0, wg, li, nw);
     if GRADE3D_HRC && SONDA_HRC && COLUNAS_HRC {
-        if gid.x < hrcs[qd].eixo.y {
+        if gid.x < hrcs[iq()].eixo.y {
             tracar_sonda(vec2<u32>(gid.y, gid.x));
         }
         return;
     }
     let e = entrada(gid, nw);
-    if e >= hrcs[qd].total {
+    if e >= hrcs[iq()].total {
         return;
     }
     if SONDA_HRC {
@@ -550,7 +558,7 @@ fn hrc_traca(
 
 // A entrada (k, xi, v) de T_n pela fusão de T_{n−1}.
 fn fusao_de_baixo(k: u32, xi: u32, v: i32) -> Par {
-    let h = i32(1u << (hrcs[qd].nivel - 1u));
+    let h = i32(1u << (hrcs[iq()].nivel - 1u));
     if k % 2u == 0u {
         let c = k / 2u;
         return fundir(t_de_baixo(2u * xi, v, c), t_de_baixo(2u * xi + 1u, v + 2 * i32(c) - h, c));
@@ -571,24 +579,24 @@ fn hrc_sobe(
     @builtin(local_invocation_id) li: vec3<u32>,
 ) {
     let gid = id_do_fio(gid0, wg, li, nw);
-    if GRADE3D_HRC && COLUNAS_HRC && PARES_SOBE_HRC > 0u && hrcs[qd].por_fio == 1u {
-        if gid.x < hrcs[qd].eixo.y {
+    if GRADE3D_HRC && COLUNAS_HRC && PARES_SOBE_HRC > 0u && hrcs[iq()].por_fio == 1u {
+        if gid.x < hrcs[iq()].eixo.y {
             subir_pares(gid);
         }
         return;
     }
     if GRADE3D_HRC && COLUNAS_HRC {
-        if gid.x < hrcs[qd].eixo.y {
-            escrever_t(indice_t(hrcs[qd].nx, hrcs[qd].nivel, gid.y, gid.x, gid.z),
+        if gid.x < hrcs[iq()].eixo.y {
+            escrever_t(indice_t(hrcs[iq()].nx, hrcs[iq()].nivel, gid.y, gid.x, gid.z),
                 empacotar(fusao_de_baixo(gid.z, gid.y, i32(gid.x))));
         }
         return;
     }
     let e = entrada(gid, nw);
-    if e >= hrcs[qd].total {
+    if e >= hrcs[iq()].total {
         return;
     }
-    let d = decompor(e, (1u << hrcs[qd].nivel) + 1u);
+    let d = decompor(e, (1u << hrcs[iq()].nivel) + 1u);
     escrever_t(e, empacotar(fusao_de_baixo(d.x, d.y, i32(d.z))));
 }
 
@@ -601,24 +609,24 @@ fn hrc_desce(
     @builtin(local_invocation_id) li: vec3<u32>,
 ) {
     let gid = id_do_fio(gid0, wg, li, nw);
-    if GRADE3D_HRC && COLUNAS_HRC && CONES_HRC > 1u && hrcs[qd].por_fio == 1u {
-        if gid.x < hrcs[qd].eixo.y && !fora_do_arquivo(gid.y, gid.x) {
+    if GRADE3D_HRC && COLUNAS_HRC && CONES_HRC > 1u && hrcs[iq()].por_fio == 1u {
+        if gid.x < hrcs[iq()].eixo.y && !fora_do_arquivo(gid.y, gid.x) {
             descer_cones(gid);
         }
         return;
     }
     if GRADE3D_HRC && COLUNAS_HRC {
-        if gid.x < hrcs[qd].eixo.y && !fora_do_arquivo(gid.y, gid.x) {
-            escrever_e_arquivar_r(indice_r(hrcs[qd].nx, hrcs[qd].nivel, gid.y, gid.x, gid.z), gid.y, gid.x, gid.z,
+        if gid.x < hrcs[iq()].eixo.y && !fora_do_arquivo(gid.y, gid.x) {
+            escrever_e_arquivar_r(indice_r(hrcs[iq()].nx, hrcs[iq()].nivel, gid.y, gid.x, gid.z), gid.y, gid.x, gid.z,
                 empacotar(Par(soma_da_descida(gid.z, gid.y, gid.x), 0.0)));
         }
         return;
     }
     let e = entrada(gid, nw);
-    if e >= hrcs[qd].total {
+    if e >= hrcs[iq()].total {
         return;
     }
-    let d = decompor(e, 1u << hrcs[qd].nivel);
+    let d = decompor(e, 1u << hrcs[iq()].nivel);
     if fora_do_arquivo(d.y, d.z) {
         return;
     }
@@ -632,7 +640,7 @@ fn escrever_e_arquivar_r(i: u32, xi: u32, v: u32, c: u32, e: vec2<u32>) {
 
 // R_n no cone `m` da sonda `(xi, v)`: as duas metades do cone.
 fn soma_da_descida(m: u32, xi: u32, v: u32) -> vec3<f32> {
-    let n = hrcs[qd].nivel;
+    let n = hrcs[iq()].nivel;
     let cones = 1u << n;
     let lado = i32(cones);
     var soma = vec3<f32>(0.0);
@@ -663,8 +671,8 @@ fn soma_da_descida(m: u32, xi: u32, v: u32) -> vec3<f32> {
 fn subir_pares(gid: vec3<u32>) {
     let xi = gid.y;
     let v = i32(gid.x);
-    let h = i32(1u << (hrcs[qd].nivel - 1u));
-    let kmax = 1u << hrcs[qd].nivel;
+    let h = i32(1u << (hrcs[iq()].nivel - 1u));
+    let kmax = 1u << hrcs[iq()].nivel;
     let c0 = gid.z * PARES_SOBE_HRC;
     var b_ant = t_de_baixo(2u * xi, v, c0);
     for (var p = 0u; p < PARES_SOBE_HRC; p++) {
@@ -673,14 +681,14 @@ fn subir_pares(gid: vec3<u32>) {
             break;
         }
         let par = fundir(b_ant, t_de_baixo(2u * xi + 1u, v + 2 * i32(c) - h, c));
-        escrever_t(indice_t(hrcs[qd].nx, hrcs[qd].nivel, xi, gid.x, 2u * c), empacotar(par));
+        escrever_t(indice_t(hrcs[iq()].nx, hrcs[iq()].nivel, xi, gid.x, 2u * c), empacotar(par));
         if 2u * c + 1u > kmax {
             break;
         }
         let b_prox = t_de_baixo(2u * xi, v, c + 1u);
         let mais = fundir(b_prox, t_de_baixo(2u * xi + 1u, v + 2 * i32(c + 1u) - h, c));
         let menos = fundir(b_ant, t_de_baixo(2u * xi + 1u, v + 2 * i32(c) - h, c + 1u));
-        escrever_t(indice_t(hrcs[qd].nx, hrcs[qd].nivel, xi, gid.x, 2u * c + 1u),
+        escrever_t(indice_t(hrcs[iq()].nx, hrcs[iq()].nivel, xi, gid.x, 2u * c + 1u),
             empacotar(Par(0.5 * (mais.r + menos.r), 0.5 * (mais.t + menos.t))));
         b_ant = b_prox;
     }
@@ -698,7 +706,7 @@ fn t_da_aresta(xi: u32, v: u32, aresta: u32) -> Par {
 // ⭐ W5u — a metade do cone fino `j` na aresta `aresta`, com o T dela já lido: a MESMA conta do
 // [`soma_da_descida`].
 fn metade_da_descida(xi: u32, v: u32, aresta: u32, j: u32, tr: Par) -> vec3<f32> {
-    let n = hrcs[qd].nivel;
+    let n = hrcs[iq()].nivel;
     let lado = i32(1u << n);
     let a = arco(n + 1u, j);
     if xi % 2u == 1u {
@@ -715,7 +723,7 @@ fn metade_da_descida(xi: u32, v: u32, aresta: u32, j: u32, tr: Par) -> vec3<f32>
 fn descer_cones(gid: vec3<u32>) {
     let xi = gid.y;
     let v = gid.x;
-    let cones = 1u << hrcs[qd].nivel;
+    let cones = 1u << hrcs[iq()].nivel;
     let m0 = gid.z * CONES_HRC;
     var t_ant = t_da_aresta(xi, v, m0);
     for (var c = 0u; c < CONES_HRC; c++) {
@@ -727,15 +735,15 @@ fn descer_cones(gid: vec3<u32>) {
         var soma = vec3<f32>(0.0);
         soma += metade_da_descida(xi, v, m, 2u * m, t_ant);
         soma += metade_da_descida(xi, v, m + 1u, 2u * m + 1u, t_prox);
-        escrever_e_arquivar_r(indice_r(hrcs[qd].nx, hrcs[qd].nivel, xi, v, m), xi, v, m, empacotar(Par(soma, 0.0)));
+        escrever_e_arquivar_r(indice_r(hrcs[iq()].nx, hrcs[iq()].nivel, xi, v, m), xi, v, m, empacotar(Par(soma, 0.0)));
         t_ant = t_prox;
     }
 }
 
 // O R0 do cone 0 na sonda `(u, v)` (além da última: o que vem de fora, [`de_fora`]).
 fn r0_na_sonda(u: u32, v: u32) -> vec3<f32> {
-    if u < hrcs[qd].nx {
-        return desempacotar(ler_r_cima(indice_r(hrcs[qd].nx, 0u, u, v, 0u))).r;
+    if u < hrcs[iq()].nx {
+        return desempacotar(ler_r_cima(indice_r(hrcs[iq()].nx, 0u, u, v, 0u))).r;
     }
     return de_fora(u, i32(v), 0u, 0u);
 }
@@ -744,20 +752,20 @@ fn r0_na_sonda(u: u32, v: u32) -> vec3<f32> {
 @compute @workgroup_size(64)
 fn hrc_soma(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nw: vec3<u32>) {
     let e = entrada(gid, nw);
-    if e >= hrcs[qd].total {
+    if e >= hrcs[iq()].total {
         return;
     }
-    var u = e % hrcs[qd].eixo.x;
-    var v = e / hrcs[qd].eixo.x;
+    var u = e % hrcs[iq()].eixo.x;
+    var v = e / hrcs[iq()].eixo.x;
     if COLUNAS_HRC {
         // Um grupo = um ladrilho 8×8 de (u, v): oito v seguidos do R0 (por colunas) e oito texels
         // seguidos do acumulado em qualquer quadrante. O `total` conta os ladrilhos inteiros.
         let ladrilho = e / 64u;
         let l = e % 64u;
-        let lu = (hrcs[qd].eixo.x + 7u) / 8u;
+        let lu = (hrcs[iq()].eixo.x + 7u) / 8u;
         u = (ladrilho % lu) * 8u + l / 8u;
         v = (ladrilho / lu) * 8u + l % 8u;
-        if u >= hrcs[qd].eixo.x || v >= hrcs[qd].eixo.y {
+        if u >= hrcs[iq()].eixo.x || v >= hrcs[iq()].eixo.y {
             return;
         }
     }
@@ -778,8 +786,8 @@ fn hrc_soma(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
         f *= tau;
     }
     let t = texel_da_grade(u, v);
-    let i = t.y * hrcs[qd].grade.x + t.x;
-    if hrcs[qd].quadrante == 0u {
+    let i = t.y * hrcs[iq()].grade.x + t.x;
+    if hrcs[iq()].quadrante == 0u {
         acumulado[i] = vec4<f32>(f, 0.0);
     } else {
         acumulado[i] += vec4<f32>(f, 0.0);
@@ -789,13 +797,13 @@ fn hrc_soma(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
 // ── A c0: o acumulado (com o filtro em cruz da Eq. 21) e a máscara do preenchimento ──
 @compute @workgroup_size(8, 8)
 fn hrc_saida(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if any(gid.xy >= hrcs[qd].grade) {
+    if any(gid.xy >= hrcs[iq()].grade) {
         return;
     }
     let P = vec2<f32>(gid.xy) + 0.5;
     let tau_p = meio(P).tau;
     let fora = tau_p > 0.0;
-    let i = gid.y * hrcs[qd].grade.x + gid.x;
+    let i = gid.y * hrcs[iq()].grade.x + gid.x;
     var f = acumulado[i].rgb;
     if BORRAO_HRC {
         var soma = 4.0 * f;
@@ -803,7 +811,7 @@ fn hrc_saida(@builtin(global_invocation_id) gid: vec3<u32>) {
         let d = array<vec2<i32>, 4>(vec2<i32>(1, 0), vec2<i32>(-1, 0), vec2<i32>(0, 1), vec2<i32>(0, -1));
         for (var j = 0u; j < 4u; j++) {
             let q = vec2<i32>(gid.xy) + d[j];
-            if any(q < vec2<i32>(0)) || any(q >= vec2<i32>(hrcs[qd].grade)) {
+            if any(q < vec2<i32>(0)) || any(q >= vec2<i32>(hrcs[iq()].grade)) {
                 continue;
             }
             // O vizinho do OUTRO lado de uma borda não entra (a opacidade difere): é outro campo, também
@@ -811,15 +819,15 @@ fn hrc_saida(@builtin(global_invocation_id) gid: vec3<u32>) {
             if meio(vec2<f32>(q) + 0.5).tau != tau_p {
                 continue;
             }
-            soma += acumulado[u32(q.y) * hrcs[qd].grade.x + u32(q.x)].rgb;
+            soma += acumulado[u32(q.y) * hrcs[iq()].grade.x + u32(q.x)].rgb;
             peso += 1.0;
         }
         f = soma / peso;
     }
     // ⭐ W5d — a luz que vem de FORA desta grade (a c0 do entorno, que não recolhe a emissão daqui):
     // os refletores e os corpos que brilham fora da grade da vista (o rebote de fora da grade).
-    if hrcs[qd].entorno.w > 0.5 {
-        let q = (P * hrcs[qd].entorno.z + hrcs[qd].entorno.xy) / vec2<f32>(textureDimensions(entorno_c0));
+    if hrcs[iq()].entorno.w > 0.5 {
+        let q = (P * hrcs[iq()].entorno.z + hrcs[iq()].entorno.xy) / vec2<f32>(textureDimensions(entorno_c0));
         f += textureSampleLevel(entorno_c0, entorno_amostra, q, 0.0).rgb;
     }
     var alfa = 1.0;

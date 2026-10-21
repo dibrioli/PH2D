@@ -35,6 +35,8 @@ pub fn config_do_quadro(g: Grade, mundo_para_tela: Affine, dg: Degrau, rebote: b
         holografica: dg.holografica.then_some(HOLOGRAFICA_PADRAO),
         rebote,
         rebotes_por_quadro: dg.rebotes_por_quadro,
+        // ⭐ §44: os bytes do teto são os dos quadrantes juntos quando o degrau os junta.
+        hrc_quadrantes_juntos: dg.quadrantes_juntos,
         ..Config::padrao(g)
     }
 }

@@ -397,6 +397,11 @@ fn os_quadrantes_juntos_nao_mudam_um_bit() {
         assert!(!degrau_do(nivel).quadrantes_juntos, "{nivel:?}: a memória ×3,7 só na Baixa");
     }
     let d = degrau_do(NivelDaLuz::Baixa);
+    // A 2160p a vista da Baixa (1280×768) já enche a placa e fica um a um; o entorno dela (992×576) junta.
+    let a4k = Camera2d::new([-4.2, -1.8], 3.8).world_to_screen_affine(WindowSize::new(3840, 2160));
+    let g4k = grade_do_quadro(a4k, (3840, 2160), d).expect("grade");
+    assert!(!config_da_vista(&gpu.device, g4k, a4k, d).hrc_juntos(), "a vista de 2160p passa o JUNTOS_ATE");
+    assert!(config_do_entorno(&gpu.device, a4k, (3840, 2160), d).expect("o entorno").hrc_juntos());
     for (centro, alvo) in [([-4.2, -1.8], FHD), ([-1.0, 0.5], FHD), ([-4.2, -1.8], (1080, 1920))] {
         let a = Camera2d::new(centro, 3.8).world_to_screen_affine(WindowSize::new(alvo.0, alvo.1));
         let g = grade_do_quadro(a, alvo, d).expect("grade");

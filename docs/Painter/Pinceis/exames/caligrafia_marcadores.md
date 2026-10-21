@@ -21,7 +21,14 @@
 
 Fotos: o **Fountain Square do Rebelle refotografado** (`53ceb569d2`, guarda `foto_estavel`): a gestos A era a Fountain Round
 B e a tamanhos A/B era uma cena `sobre`. Refeito, ele NÃO é um bico chato: L 25 × T 19 px (quase redondo) e Max Size
-~33 px — o oráculo do Broad Nib passou a ser o MyPaint `classic/calligraphy` (L 48 × T 2,3, eixo 48°).
+~33 px — o oráculo do Broad Nib passou a ser o MyPaint `classic/calligraphy` (L 48 × T 2,3, eixo 48°). O
+`indice.csv` da bateria com as três linhas recontadas no fecho da J3 (`28edf951f1`).
+
+**Fecho da J3 — a MÃO DO DONO** (`leis_sistemicas::a_pressao_de_cada_preset_e_a_da_sua_origem`, R_MAO 2,5; estava
+vermelho desde `127689b266`): sem a forma de cerdas o Marker Bullet cobria cheio desde p 0,3 (mão 2,72 → **1,52**) e o
+Liner no Digital não levava a tinta (**1,33**). Curas de receita: o Bullet com a curva da carga 3 (era 2) → 2,79, a
+largura a 0,139; o Liner com `pressureOpacity` 0,8 e o tecto POR DAB na camada (`tecto_por_dab`: sem ele a camada
+acumulava os dabs ao tecto e a tinta não seguia a mão) → 2,87, a largura a 0,048. A Reed Pen saiu de `MEDIDOS`.
 
 ## O que se aprendeu (comum)
 

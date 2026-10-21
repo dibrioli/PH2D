@@ -1,6 +1,6 @@
-//! **Família `tintas`** — J3, catálogo C (as tintas do Wet Paint): Dip Pen, Ink Bullet, Ink Brush, Reed
-//! Pen (reprovado na 2.ª onda: sai quando a `caligrafia_marcadores` o largar como vizinho). Gloop Pen, Ink Bleed,
-//! Gesinski Ink e Wood Stick saíram na 2.ª onda (`docs/Painter/Pinceis/exames/tintas.md`). Escreva aqui as receitas
+//! **Família `tintas`** — J3, catálogo C (as tintas do Wet Paint): Dip Pen, Ink Bullet, Ink Brush. Gloop Pen, Ink
+//! Bleed, Gesinski Ink e Wood Stick saíram na 2.ª onda, o Reed Pen (reprovado) no fecho da J3
+//! (`docs/Painter/Pinceis/exames/tintas.md`). Escreva aqui as receitas
 //! e os testes da família; nada fora deste ficheiro (`docs/Painter/Pinceis/04_BANCADA.md` §9).
 
 use super::prelude::*;
@@ -55,8 +55,8 @@ pub const WET: &[Receita] = &[
         pincel: &[("shape", SEM_FORMA)],
         nasce_de: None,
     },
-    // Ink › Pen › Dip Pen: duro e cheio, a borda GRUMOSA do aparo (o tamanho de cada carimbo sorteado ±18 %: os
-    // grumos do Rebelle `Pen/Dip Pen`), o cruzamento que escurece (Glaze 0,9) e arrasta um pouco da cor de baixo.
+    // Ink › Pen › Dip Pen: duro e cheio, a borda GRUMOSA do aparo (o tamanho de cada carimbo sorteado ±10 %: os
+    // grumos do Rebelle `Pen/Dip Pen`), o cruzamento que escurece (Glaze 0,75) e arrasta um pouco da cor de baixo.
     Receita {
         meio: "Ink",
         grupo: "Pen",
@@ -73,12 +73,16 @@ pub const WET: &[Receita] = &[
         tilt: DIREITA,
         bristle_size: 2.0,
         bristle_count: 2000.0,
-        hardness: 0.9,
+        // Fecho da J3 (a lei das camadas do dono, `a_lei_da_tinta::a_terceira_camada_da_mesma_tinta_nao_clareia`): a
+        // borda DURA (1,0) com os grumos a ±10 % (grumo 1,15; o Bullet liso 0,42) — a 0,9 × ±18 % a orla de cada grumo
+        // entrava no miolo de uma camada (p95 0,1476 contra o tecto 0,1451; a ±11 % ainda 0,1452).
+        hardness: 1.0,
         size_px: None,
-        // 2.ª onda: o BORRÃO (o reservatório 0,4 — a 0,8 só +2 px e o cruzamento ao preto; o Glaze 0,9 → 0,5 porque a
-        // mistura já escurece — a 0,9 o cruzamento ia a L 11 contra 32) e o tecto do Rebelle (Max Size 100 = 91 px).
+        // 2.ª onda: o BORRÃO (o reservatório 0,4 — a 0,8 só +2 px e o cruzamento ao preto) e o tecto do Rebelle (Max Size
+        // 100 = 91 px). O Glaze 0,75 (fecho da J3): a 0,5 da 2.ª onda a 2.ª e a 3.ª camada da mesma tinta davam o MESMO
+        // tom (medianas 0,1157 · 0,1157) — a lei do dono de 16/10; a 0,75 cada camada escurece (0,1037 · 0,1000 · 0,0967).
         extras: &[
-            ("glaze", 0.5),
+            ("glaze", 0.75),
             ("tipClean", 0.05),
             ("leveling", 0.5),
             ("tipReservoir", 0.4),
@@ -88,21 +92,27 @@ pub const WET: &[Receita] = &[
         ],
         grao: None,
         achatado: None,
-        pincel: &[("jitter_scale", "0.18"), ("shape", SEM_FORMA), ("size_max_px", "91")],
+        pincel: &[("jitter_scale", "0.10"), ("shape", SEM_FORMA), ("size_max_px", "91")],
         nasce_de: None,
     },
     // Ink › Pen › Ink Bullet: o mais carregado e seco da tinta. J3 (Rebelle `Pen/Bullet`): a ponta redonda LISA (sem
     // a forma de cerdas que esfiapava as pontas — o que a punha ao lado do Marker Bullet), a largura que a pressão
     // pouco muda (0,55 → 1) e o cruzamento que arrasta um pouco a cor. ⚠️ A tinta que ENTRA clara do Rebelle (o
     // «loading») não sai: a ponta romba do taper só se vê com o pigmento a ~200, e aí a entrada sai PONTILHADA (o 2.º
-    // revisor cego pôs o nosso ao lado do Marker Liner) — a tinta lisa a 2000 fica; `exames/tintas.md`.
+    // revisor cego pôs o nosso ao lado do Marker Liner) — a tinta lisa fica; `exames/tintas.md`.
+    // ⭐ Fecho da J3 — a MÃO DO DONO (`leis_sistemicas::a_pressao_de_cada_preset_e_a_da_sua_origem`, R_MAO 2,5): o Rebelle
+    // quase não responde na faixa 0,24–0,86 (1,39) e a curadoria da J3 seguiu-o (1,46: «apertar muito e pouco variam
+    // pouco», o que o dono reprovou a 18/10). A mão responde pela CARGA: pigmento 1000 (a 2000 a tinta SATURA desde a
+    // pressão 0,3 e a carga não se vê), o chão 0,01 e a curva 4 — a pressão leve ainda pinta (rampa 0,51; sem chão a
+    // tinta sumia abaixo de 0,15) e a cheia carrega (mão 2,89, a largura a 0,073 da do Rebelle). O Glaze 0,4 (era 0,5):
+    // a 0,5 a tinta de várias camadas CLAREAVA com a água (`as_bordas_nao_esbranquicam…`, 1923 células; a 0,4, 4).
     Receita {
         meio: "Ink",
         grupo: "Pen",
         nome: "Ink Bullet",
         water: 0.15,
         opacity: 1.0,
-        pigment: 2000.0,
+        pigment: 1000.0,
         pickup: 10.0,
         gate: 0.0,
         evaporation: 1.0,
@@ -114,14 +124,14 @@ pub const WET: &[Receita] = &[
         size_px: None,
         // 2.ª onda: o borrão e o tecto (93 px) como o Dip Pen.
         extras: &[
-            ("glaze", 0.5),
+            ("glaze", 0.4),
             ("tipClean", 0.05),
             ("leveling", 0.5),
             ("tipReservoir", 0.4),
             ("pressureSize", 0.45),
             ("pressureSizeCurve", 1.0),
-            ("pressureOpacity", 0.6),
-            ("pressureOpacityCurve", 1.0),
+            ("pressureOpacity", 0.99),
+            ("pressureOpacityCurve", 4.0),
         ],
         grao: None,
         achatado: None,
@@ -131,45 +141,6 @@ pub const WET: &[Receita] = &[
             ("size_max_px", "93"),
         ],
         nasce_de: None,
-    },
-    // C-9 Ink › Reed › Reed Pen (Rebelle `Pen/Reed Pen`): a cana cortada — a ponta CHATA e reta fixa na tela (larga no
-    // horizontal, ~0,57 dela no vertical), a borda áspera (o tamanho e a posição de cada carimbo sorteados um pouco, o
-    // papel que morde: gate 0,6) e a ponta que afina com a pressão.
-    Receita {
-        meio: "Ink",
-        grupo: "Reed",
-        nome: "Reed Pen",
-        water: 0.3,
-        opacity: 1.0,
-        pigment: 200.0,
-        pickup: 16.0,
-        gate: 0.6,
-        evaporation: 1.0,
-        edge: 0.0,
-        tilt: DIREITA,
-        bristle_size: 2.0,
-        bristle_count: 2000.0,
-        hardness: 0.9,
-        size_px: None,
-        extras: &[
-            ("glaze", 0.5),
-            ("tipClean", 0.05),
-            ("leveling", 0.5),
-            ("tipReservoir", 0.4),
-            ("pressureSizeCurve", 1.0),
-            ("pressureOpacity", 0.9),
-            ("pressureOpacityCurve", 2.5),
-        ],
-        grao: None,
-        achatado: Some((0.43, 90)),
-        pincel: &[
-            ("shape", SEM_FORMA),
-            ("dab_quina", "0.8"),
-            ("jitter_scale", "0.15"),
-            ("jitter", "0.04"),
-            ("size_max_px", "95"),
-        ],
-        nasce_de: Some("Dip Pen"),
     },
 ];
 
@@ -261,7 +232,7 @@ fn mede_tinta(nome: &str) -> Tinta {
 #[test]
 fn cada_tinta_tem_a_sua_identidade() {
     let nomes = [
-        "Dip Pen", "Ink Bullet", "Ink Brush", "Reed Pen", "Marker Bullet",
+        "Dip Pen", "Ink Bullet", "Ink Brush", "Marker Bullet",
     ];
     let medidas: Vec<(&str, Tinta)> = std::thread::scope(|s| {
         let h: Vec<_> = nomes.iter().map(|&n| (n, s.spawn(move || mede_tinta(n)))).collect();
@@ -278,7 +249,7 @@ fn cada_tinta_tem_a_sua_identidade() {
         }
     };
     // As fronteiras: o meio entre o pincel e o que a regra separa, medidos na corrida final (20/10, `exames/tintas.md`).
-    let (dip, bullet, brush, reed) = (m("Dip Pen"), m("Ink Bullet"), m("Ink Brush"), m("Reed Pen"));
+    let (dip, bullet, brush) = (m("Dip Pen"), m("Ink Bullet"), m("Ink Brush"));
     // Os grumos do aparo (1,80) contra a ponta lisa do Bullet (0,42).
     regra(dip.grumo > 1.11, format!("Dip Pen: grumo {:.2} — a borda do aparo ficou lisa", dip.grumo));
     // O Bullet quase não afina (0,60) contra o Dip Pen (0,18) e o Marker Bullet (0,07); e é liso.
@@ -289,8 +260,6 @@ fn cada_tinta_tem_a_sua_identidade() {
     regra(brush.entrada < 0.95, format!("Ink Brush: entrada {:.2} — a tinta não entra rala", brush.entrada));
     regra(brush.miolo < 0.635, format!("Ink Brush: miolo {:.2} — a tinta é a carregada das canetas", brush.miolo));
     regra(brush.grumo < 1.11, format!("Ink Brush: grumo {:.2} — os lados ficaram grumosos", brush.grumo));
-    // A ponta chata fixa: de pé 0,64 da largura deitada contra ~1,0 dos redondos.
-    regra(reed.de_pe < 0.82, format!("Reed Pen: de pé ÷ deitado {:.2} — a cana ficou redonda", reed.de_pe));
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
 
@@ -350,7 +319,7 @@ fn borrao(px: &[u8], yc: usize) -> (usize, usize, f64) {
 fn o_borrao_da_tinta_transborda_a_faixa() {
     use crate::as_leis_da_escala::cena;
     use crate::exame_bancada::pinceis;
-    let nomes = ["Dip Pen", "Ink Bullet", "Ink Brush", "Reed Pen", "Marker Bullet"];
+    let nomes = ["Dip Pen", "Ink Bullet", "Ink Brush", "Marker Bullet"];
     let medidas: Vec<(&str, (usize, usize, f64), (usize, usize, f64))> = std::thread::scope(|s| {
         let h: Vec<_> = nomes
             .iter()
@@ -380,7 +349,6 @@ fn o_borrao_da_tinta_transborda_a_faixa() {
             "Dip Pen" => (45.0, 21.0),
             "Ink Bullet" => (40.0, 38.0),
             "Ink Brush" => (11.0, 11.0),
-            "Reed Pen" => (40.0, 26.0),
             _ => unreachable!("{n}"),
         };
         if (seca.0 as f64) < 0.4 * reb_s || seca.1 < 4 {

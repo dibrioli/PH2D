@@ -11,11 +11,25 @@ Réguas, custo e a régua do borrão: `exames/tintas/`. Bancada: `PH2D_EXAME_DIR
 | C-1 Dip Pen (existente) | ⛔ fica com a cura | oráculo certo 6/6; abaixo: «o que falta» |
 | C-2 Ink Bullet (existente) | ⛔ fica com a cura | escolheu o NOSSO como original 6/6, mas as diferenças são visíveis |
 | C-3 Ink Brush (existente) | ⛔ fica com a cura | oráculo certo 6/6 |
-| C-9 Reed Pen | ⛔ reprovado → SAI (pendente) | o NOSSO como original 6/6 (2.ª vez), diferenças visíveis; o `git rm` espera a `caligrafia_marcadores` (mede-o em `MEDIDOS`) |
+| C-9 Reed Pen | ⛔ saiu (fecho da J3) | o NOSSO como original 6/6 (2.ª vez), diferenças visíveis; o ficheiro, a receita e as linhas dele nos portões (e em `MEDIDOS` da `caligrafia_marcadores`) saíram no fecho |
 | C-15 Wood Stick | ⛔ saiu (`612a1046ae`) | oráculo certo 6/6 |
 | C-12 Gloop Pen | ⛔ saiu | ArtRage certo 3/3 |
 | C-13 Ink Bleed | ⛔ saiu | a capilaridade pelas fibras não existe (medido, abaixo) |
 | C-14 Gesinski Ink (doc.) | ⛔ saiu | cumpre translúcido/escurece/borda limpa; falta a densidade viva (motor) |
+
+## Fecho da J3 (21/10) — três leis do dono que a curadoria tinha partido (receita, nenhum motor)
+
+A curadoria de `bff754ff58` (e as ondas seguintes) pôs VERMELHOS três portões que a família não corria — o motor das
+canetas (`c7ec34923e`, `b86d47b8d0`) não mexe neles: medido por bisseção, os números ficam ao bit de um lado e do outro.
+
+- **A mão do dono** (`leis_sistemicas::a_pressao_de_cada_preset_e_a_da_sua_origem`, R_MAO 2,5): o Ink Bullet 3,29 → **1,46**
+  (seguia o Rebelle, 1,39). Cura: a mão responde pela CARGA — pigmento 2000 → 1000 (a 2000 a tinta satura desde p 0,3),
+  `pressureOpacity` 0,99 (o chão: a pressão leve ainda pinta, `rampa` 0,51) e curva 4 → **2,89**, a largura a 0,073.
+- **As bordas não esbranquiçam** (`a_lei_da_tinta::as_bordas…`, ≤ 500): o Ink Bullet 299 → 9955 → **1923** células com o
+  Glaze 0,5. Glaze 0,4 → **4** (0,45: 1087; 0,35: 0).
+- **A 3.ª camada não clareia** (`a_lei_da_tinta::a_terceira_camada…`): o Dip Pen dava 0,1157 · 0,1157 (Glaze 0,5) e o p95
+  de uma camada 0,1476 > 0,1451 (os grumos ±18 % com a borda 0,9). Glaze **0,75**, dureza **1,0**, grumos **±10 %** →
+  0,1037 · 0,1000 · 0,0967, p95 0,1441; grumo 1,15 (> 1,11 do portão de identidade; ±11 % já dá p95 0,1452).
 
 ## O motor: o BORRÃO do cruzamento — a ponta de tinta líquida é um RESERVATÓRIO (`4d70916e0d`, `51acfb80e7`)
 

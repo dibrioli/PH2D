@@ -38,11 +38,13 @@ const CENAS: [(&str, bool, u64); 21] = [
     ("Charcoal", false, 0x319febeb25876cd8), // J2 §7.2: o grão fino (era 0xd747450876d66163)
     ("Soft Pastel", false, 0x6d2510034bf7bea2),
     ("Oil Pastel", false, 0x53088992b4918139),
-    ("Ink Bullet", false, 0xd3ea3f5b4f847521),
-    ("Dip Pen", false, 0x2785d41ac04f93a1),
-    ("Ink Brush", false, 0x5856e27ccfe8f621),
-    ("Marker Bullet", false, 0x7c95c14d16114131), // J3 caligrafia_marcadores: a ponta lisa e sem arrasto (era 0xb30ddf5eaa30b6b8)
-    ("Airbrush", false, 0xc9c61bd3db4a244e),
+    // J3 tintas (bff754ff58 → 4d70916e0d: a ponta lisa, os grumos, o reservatório) e o fecho da J3 (a mão do dono, a lei
+    // das camadas e a das bordas: `familias/tintas.rs`) — era 0xd3ea3f5b4f847521 · 0x2785d41ac04f93a1 · 0x5856e27ccfe8f621.
+    ("Ink Bullet", false, 0xb1339765edcd28c8),
+    ("Dip Pen", false, 0xdc7735c79a6ede68),
+    ("Ink Brush", false, 0xfdeb75056ce1a46a),
+    ("Marker Bullet", false, 0xefa793688cff1b24), // J3 caligrafia_marcadores (127689b266) + a curva da carga 3 do fecho (era 0x7c95c14d16114131)
+    ("Airbrush", false, 0x9f6bc7ea9146fa4e), // J3 aerografo (31cc7d8bde): curado contra o Spray 2 (era 0xc9c61bd3db4a244e)
     ("Wet Flat", false, 0x270ceb734f4d9aea),
     ("Gouache Flat", false, 0x6111ea627d99cff5),
     ("Wet Round", true, 0xab51e31b5a6e8cb0),

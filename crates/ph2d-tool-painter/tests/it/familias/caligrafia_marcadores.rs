@@ -17,7 +17,9 @@ pub const WET: &[Receita] = &[
     // tinta por pincel (prompt 42); a ponta LISA (a forma de cerdas punha franjas nas pontas e na borda), sem arrasto
     // (pickup 0, tipClean 1, drag 0: o Rebelle cruza o vermelho num rectângulo limpo; o arrasto levava 0,02–0,04 de
     // vermelho para fora da faixa — revisão cega r1) e o tecto do Rebelle (Max Size 100: a 200 px pinta 101). Fica no
-    // Wet: as leis da tinta molhada (`a_lei_da_tinta.rs`) têm-no por sujeito.
+    // Wet: as leis da tinta molhada (`a_lei_da_tinta.rs`) têm-no por sujeito. A curva da carga 3 (era 2; fecho da J3):
+    // sem a forma de cerdas a ponta lisa cobria cheia desde a pressão 0,3 e a MÃO DO DONO só respondia 1,52 (R_MAO 2,5,
+    // `leis_sistemicas::a_pressao_de_cada_preset_e_a_da_sua_origem`); a 3, 2,79 com a largura a 0,139 da do Rebelle.
     Receita {
         meio: "Marker",
         grupo: "Marker",
@@ -40,7 +42,7 @@ pub const WET: &[Receita] = &[
             ("drag", 0.0),
             ("pressureSizeCurve", 0.25),
             ("pressureOpacity", 1.0),
-            ("pressureOpacityCurve", 2.0),
+            ("pressureOpacityCurve", 3.0),
         ],
         grao: None,
         achatado: None,
@@ -85,12 +87,18 @@ pub const EM_ESTUDO_WET: &[Receita] = &[
 const CAMADA_DO_MARCADOR: &str =
     r#"{"largura": 7.0, "molhada": 0.0, "queimada": 0.0, "tecto": 0.99}"#;
 
+/// A camada do Liner com o tecto POR DAB (`TracoComposto::tecto_por_dab`): a tinta do traço pára na opacidade da mão.
+const CAMADA_DO_LINER: &str =
+    r#"{"largura": 7.0, "molhada": 0.0, "queimada": 0.0, "tecto": 0.99, "tecto_por_dab": true}"#;
+
 pub const MEIOS: &[ReceitaMeio] = &[
     // E-2 — o marcador de BISEL de borda firme (Rebelle `Marker/Liner`): a ponta fixa na tela (L3: eixo longo deitado — o
     // ajuste dá 4°, a régua prefere 0° —, L 0,94·D × T 0,37·D: achatado 0,55 com a borda macia, que alarga o lado fino; a
     // foto antiga lida como «fina de 18 px» era este bisel visto de lado), a borda que amacia com o tamanho (dureza 0,35:
     // 1 px a 40, ~6 a 200 — o Rebelle 2 e 8), o corte quase recto (quina 0,7), a camada que multiplica, a pressão que
-    // afina pouco (0,4) e não leva a tinta (o Rebelle fica opaco no traço leve). No Digital: o Size é o eixo LONGO
+    // afina pouco (0,4) e leva a tinta (0,8, com o tecto POR DAB: a camada pára na opacidade da mão) — o Rebelle fica
+    // opaco no traço leve, mas a MÃO DO DONO responde (fecho da J3: sem a tinta pela pressão 1,33 < R_MAO 2,5 em
+    // `leis_sistemicas::a_pressao_de_cada_preset_e_a_da_sua_origem`; com ela 2,87, a largura a 0,048). No Digital: o Size é o eixo LONGO
     // do bisel, como no Rebelle (a lei da largura do Wet promete o traço horizontal — o lado FINO —, e o slider a 40
     // pintava um bisel de 102 px de comprido).
     ReceitaMeio {
@@ -101,12 +109,12 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("dab_quina", "0.7"),
             ("blend", r#""Multiply""#),
             ("continuous_spacing", "true"),
-            ("traco", CAMADA_DO_MARCADOR),
+            ("traco", CAMADA_DO_LINER),
         ],
         mao: &[
             ("pressureSize", 0.4),
             ("pressureSizeCurve", 1.0),
-            ("pressureOpacity", 0.0),
+            ("pressureOpacity", 0.8),
         ],
         opacity: Some(1.0),
         ..ReceitaMeio::digital("Marker", "Marker", "Marker Liner")
@@ -474,7 +482,7 @@ fn mede_letra(nome: &str) -> Letra {
 }
 
 /// Os pincéis da família e os vizinhos que a matriz e as pranchas puseram perto.
-const MEDIDOS: [&str; 10] = [
+const MEDIDOS: [&str; 9] = [
     "Marker Bullet",
     "Marker Liner",
     "Marker Chisel",
@@ -482,7 +490,6 @@ const MEDIDOS: [&str; 10] = [
     "Script",
     "Shale",
     "Ink Bullet",
-    "Reed Pen",
     "Hard Round",
     "Flat Block-in",
 ];

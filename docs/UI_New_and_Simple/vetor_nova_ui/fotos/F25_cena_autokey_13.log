@@ -1,0 +1,25 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   187ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   194ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   195ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   204ms] M11: VelloPass initialized (1024×768 intermediate)
+[   207ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   226ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   248ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   253ms] lifecycle: Foreground
+[   253ms] resize: 1024x768 @ 1.00x scale
+[ph2d-gpu] surface present mode → Immediate
+[   267ms] resize: 1930x984 @ 1.00x scale
+warn: dropped 0.117s of sim time (max_substeps cap)
+[autokey-smoke] sprite verde 0xfffffffa 2.4×2.4, sem skew, sem emissão
+[autokey-smoke] q12: skew ← 0.45 · tint ← [1.0, 0.45, 0.1] · emissão ← 0.8
+[autokey-smoke] q12 · trilhas: canal.objeto.emissao[0] 1×1ch · canal.objeto.skew[0] 2×1ch · canal.objeto.tinta[0] 3×1ch
+[autokey-smoke] q24: tudo de volta
+[ph2d-gpu] surface present mode → Fifo
+[autokey-smoke] q24 · trilhas: canal.objeto.emissao[0] 1×2ch · canal.objeto.skew[0] 2×2ch · canal.objeto.tinta[0] 3×2ch
+[autokey-smoke] q18 (a meio): skew 0.2250 · tint Some([0.625, 0.600, 0.275, 1.000]) · emissão Some(0.4) · trilhas: canal.objeto.emissao[0] 1×2ch · canal.objeto.skew[0] 2×2ch · canal.objeto.tinta[0] 3×2ch
+[autokey-smoke] fim · skew 0.2250 · tint Some([0.625, 0.600, 0.275, 1.000]) · emissão Some(0.4)

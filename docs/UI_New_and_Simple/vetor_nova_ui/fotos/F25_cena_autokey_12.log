@@ -1,0 +1,25 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   236ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   245ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   245ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   260ms] M11: VelloPass initialized (1024×768 intermediate)
+[   267ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   290ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   313ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   319ms] lifecycle: Foreground
+[   319ms] resize: 1024x768 @ 1.00x scale
+[ph2d-gpu] surface present mode → Immediate
+[   338ms] resize: 1930x984 @ 1.00x scale
+warn: dropped 0.183s of sim time (max_substeps cap)
+[autokey-smoke] estrela 0 (0xfffffff8): Drop Shadow raio 0.06, perfil pontas 0.15 meio 1; texto 1 (0xfffffff7) «Auto Key texto» tamanho 0.45, fonte embutida, quebra Auto
+[autokey-smoke] q12: texto ← tamanho 0.8 · família Some("DejaVu Serif") · quebra Fixed 2.2
+[autokey-smoke] q12: sombra ← raio 0.35 cor [0.95, 0.1, 0.1, 1.0] · perfil ← pontas 1 meio 3 · trilhas: 
+[ph2d-gpu] surface present mode → Fifo
+[autokey-smoke] q24: texto de volta · trilhas: texto_familia[0] 1×1ch · texto_quebra[0] 2×1ch · texto_tamanho[0] 1×1ch
+[autokey-smoke] q24: estrela de volta · trilhas: filtro[0] 9×1ch · perfil[0] 8×1ch
+[autokey-smoke] q18 (a meio): sombra raio 0.205 cor [0.47, 0.05, 0.05, 0.90] · perfil [0.57@0.00 2.00@0.50 0.57@1.00] · texto tamanho 0.625 família Some("DejaVu Serif") quebra Some(2.200000047683716) · estrela trilhas: filtro[0] 9×2ch · perfil[0] 8×2ch · texto trilhas: texto_familia[0] 1×2ch · texto_quebra[0] 2×2ch · texto_tamanho[0] 1×2ch
+[autokey-smoke] fim · sombra raio 0.205 cor [0.47, 0.05, 0.05, 0.90] · perfil [0.57@0.00 2.00@0.50 0.57@1.00] · texto tamanho 0.625 família Some("DejaVu Serif") quebra Some(2.200000047683716)

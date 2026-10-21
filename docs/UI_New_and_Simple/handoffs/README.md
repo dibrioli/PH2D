@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**77 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **77** são handoffs (registro **morto**).
+**80 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **80** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -92,6 +92,9 @@
 | 2026-10-19 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F23a_O_PAINEL_LE_A_CURVA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F23a_O_PAINEL_LE_A_CURVA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 19/10 — F23 metade A (o painel lê a curva que a tela desenha) feita; met… |
 | 2026-10-20 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24a_O_MOTOR_DOS_CANAIS.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24a_O_MOTOR_DOS_CANAIS.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 20/10 — F24a: o motor dos canais feito (o Auto Key grava o desenho); o d… |
 | 2026-10-20 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24b_O_GRUPO_E_O_LOSANGO.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24b_O_GRUPO_E_O_LOSANGO.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 20/10 — F24b: o grupo no dope-sheet e o losango nos campos do vetor |
+| 2026-10-20 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24c_O_LOSANGO_EM_TODO_CAMPO.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24c_O_LOSANGO_EM_TODO_CAMPO.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 20/10 — F24c: o losango em todo campo que tem canal |
+| 2026-10-20 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24d_O_LOSANGO_SEM_COLUNA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24d_O_LOSANGO_SEM_COLUNA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 20/10 — F24d: o losango nas linhas SEM coluna de decorator |
+| 2026-10-21 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-21_F25_O_BLOCO_2.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-21_F25_O_BLOCO_2.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 21/10 — F25: o bloco 2 (a dívida do gate «todo campo editável é um canal… |
 
 ---
 

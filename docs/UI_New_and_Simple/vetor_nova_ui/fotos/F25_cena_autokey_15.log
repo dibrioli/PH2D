@@ -1,0 +1,24 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   212ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   220ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   221ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   235ms] M11: VelloPass initialized (1024×768 intermediate)
+[   241ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   262ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   291ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   297ms] lifecycle: Foreground
+[   297ms] resize: 1024x768 @ 1.00x scale
+[ph2d-gpu] surface present mode → Immediate
+[   316ms] resize: 1930x984 @ 1.00x scale
+warn: dropped 0.150s of sim time (max_substeps cap)
+[autokey-smoke] dobradiça 0xfffffff8 (limites ±0.4, motor desligado, quebra desligada) · mola 0xfffffff5 (rigidez 20, amortecimento 0.5)
+[autokey-smoke] q12: dobradiça ← limites ±1.4 · motor ligado força 400 · quebra ligada 2000
+[autokey-smoke] q12: mola ← rigidez 200 amortecimento 5
+[ph2d-gpu] surface present mode → Fifo
+[autokey-smoke] q24: tudo de volta · dobradiça trilhas: canal.junta.limite_max[0] 1×2ch · canal.junta.limite_min[0] 1×2ch · canal.junta.motor_forca[0] 1×2ch · canal.junta.motor_ligado[0] 1×2ch · canal.junta.quebra_forca[0] 1×2ch · canal.junta.quebra_ligada[0] 1×2ch · mola trilhas: canal.junta.amortecimento[0] 1×1ch · canal.junta.rigidez[0] 1×1ch
+[autokey-smoke] q18 (a meio): limites -0.900..0.900 · motor true força 225.0 · quebra true 1250.0 · rigidez 110.00 amortecimento 2.750 · dobradiça trilhas: canal.junta.limite_max[0] 1×2ch · canal.junta.limite_min[0] 1×2ch · canal.junta.motor_forca[0] 1×2ch · canal.junta.motor_ligado[0] 1×2ch · canal.junta.quebra_forca[0] 1×2ch · canal.junta.quebra_ligada[0] 1×2ch · mola trilhas: canal.junta.amortecimento[0] 1×2ch · canal.junta.rigidez[0] 1×2ch
+[autokey-smoke] fim · limites -0.900..0.900 · motor true força 225.0 · quebra true 1250.0 · rigidez 110.00 amortecimento 2.750

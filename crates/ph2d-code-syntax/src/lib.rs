@@ -22,7 +22,7 @@ mod syntax;
 
 pub use autoedit::{AutoEdit, IndentStyle, closer_of};
 pub use errors::SyntaxError;
-pub use facts::{Symbol, SymbolKind};
+pub use facts::{ObjectCall, ObjectRef, Symbol, SymbolKind};
 pub use fold::{Fold, fold_captures_visited};
 pub use highlight::{HighlightKind, HighlightSpan};
 pub use indent::closer_tokens;

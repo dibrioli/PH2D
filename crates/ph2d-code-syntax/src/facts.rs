@@ -21,6 +21,52 @@ pub struct Symbol {
     pub byte: usize,
 }
 
+/// A função da API que recebe um nome de objecto ([`Syntax::object_references`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ObjectCall {
+    /// `ph2d.object` — o objecto tem de existir (o editor acusa a falta).
+    Object,
+    /// `ph2d.find_by_name` — a pergunta «existe?» (`nil` é resposta).
+    FindByName,
+    /// `ph2d.spawn` — o nome de um MESTRE.
+    Spawn,
+}
+
+impl ObjectCall {
+    fn of(callee: &str) -> Option<Self> {
+        match callee {
+            "ph2d.object" => Some(Self::Object),
+            "ph2d.find_by_name" => Some(Self::FindByName),
+            "ph2d.spawn" => Some(Self::Spawn),
+            _ => None,
+        }
+    }
+}
+
+/// Um nome de objecto escrito no script: o nome (sem escapes), os bytes DENTRO das aspas e a função.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ObjectRef {
+    pub name: String,
+    pub range: std::ops::Range<usize>,
+    pub call: ObjectCall,
+}
+
+/// O conteúdo de uma string Luau com os escapes simples desfeitos (`\"`, `\'`, `\\`).
+fn unescape(raw: &str) -> String {
+    let mut out = String::with_capacity(raw.len());
+    let mut chars = raw.chars();
+    while let Some(c) = chars.next() {
+        if c == '\\'
+            && let Some(n) = chars.next()
+        {
+            out.push(n);
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
 impl Syntax {
     /// Os nomes das `ph2d.property("<nome>", …)` do topo, pela ordem.
     #[must_use]
@@ -137,6 +183,57 @@ impl Syntax {
         true
     }
 
+    /// ⭐ **Os nomes de objecto escritos no script** (item 8, `docs/CodeEditor/07_arrastar_para_o_codigo.md`
+    /// §3.5–8): o 1.º argumento LITERAL de `ph2d.object`, `ph2d.find_by_name` e `ph2d.spawn` (o mestre),
+    /// a qualquer profundidade, pela ordem do texto. Um nome montado (`"Por" .. "ta"`, uma variável)
+    /// não conta: o renomear só reescreve o que se lê, e o problema só acusa o que se sabe.
+    #[must_use]
+    pub fn object_references(&self, text: &Text) -> Vec<ObjectRef> {
+        fn walk(n: tree_sitter::Node, text: &Text, out: &mut Vec<ObjectRef>) {
+            if n.kind() == "function_call"
+                && let Some(name) = n.child_by_field_name("name")
+                && let Some(call) = ObjectCall::of(&text.slice(name.byte_range()))
+                && let Some(first) = n
+                    .child_by_field_name("arguments")
+                    .and_then(|a| a.named_child(0))
+                    .filter(|a| a.kind() == "string")
+                && let Some(content) = first.child_by_field_name("content")
+            {
+                out.push(ObjectRef {
+                    name: unescape(&text.slice(content.byte_range())),
+                    range: content.byte_range(),
+                    call,
+                });
+            }
+            let mut c = n.walk();
+            for ch in n.named_children(&mut c) {
+                walk(ch, text, out);
+            }
+        }
+        let mut out = Vec::new();
+        walk(self.tree().root_node(), text, &mut out);
+        out
+    }
+
+    /// O byte onde começa a 1.ª linha do CORPO da função do topo `name` (a linha a seguir ao
+    /// cabeçalho), ou `None` se o script não a tem. É onde o Ctrl de um arrasto no topo guarda o
+    /// objecto em `self` (o `init` é o `@onready` do Godot, §3.2).
+    #[must_use]
+    pub fn top_function_body(&self, text: &Text, name: &str) -> Option<usize> {
+        let root = self.tree().root_node();
+        let mut c = root.walk();
+        let f = root.named_children(&mut c).find(|n| {
+            // ⚠️ `local function init` tem o mesmo nó, mas o motor só chama GLOBAIS (`module.hook`).
+            n.kind() == "function_declaration"
+                && n.child(0).is_none_or(|k| k.kind() != "local")
+                && n.child_by_field_name("name")
+                    .is_some_and(|m| text.slice(m.byte_range()) == name)
+        })?;
+        let header_end = f.child_by_field_name("parameters")?.end_byte();
+        let line = text.line_of_byte(header_end);
+        Some(text.byte_of_line(line + 1))
+    }
+
     /// O carácter antes de `byte` é código (nem string nem comentário).
     #[must_use]
     pub fn in_code(&self, text: &Text, byte: usize) -> bool {
@@ -155,6 +252,41 @@ impl Syntax {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn os_nomes_de_objecto_a_qualquer_profundidade_e_so_os_literais() {
+        let src = "local a = ph2d.object(\"Porta\")\nfunction update(self)\n  if ph2d.find_by_name('Caixa Grande') then\n    ph2d.spawn(\"Bala\", 1, 2)\n  end\n  ph2d.object(nome)\n  ph2d.object(\"Por\" .. \"ta\")\n  ph2d.object(\"Diz \\\"oi\\\"\")\n  ph2d.get(\"Porta\")\nend\n";
+        let t = Text::new(src);
+        let got: Vec<(String, ObjectCall, String)> = Syntax::new(&t)
+            .object_references(&t)
+            .into_iter()
+            .map(|r| (r.name, r.call, t.slice(r.range)))
+            .collect();
+        assert_eq!(
+            got,
+            [
+                ("Porta".into(), ObjectCall::Object, "Porta".into()),
+                ("Caixa Grande".into(), ObjectCall::FindByName, "Caixa Grande".into()),
+                ("Bala".into(), ObjectCall::Spawn, "Bala".into()),
+                ("Diz \"oi\"".into(), ObjectCall::Object, "Diz \\\"oi\\\"".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn o_corpo_da_funcao_do_topo_comeca_na_linha_a_seguir_ao_cabecalho() {
+        let src = "local x = 1\nfunction init(self)\n  x = 2\nend\nfunction update(self) end\n";
+        let t = Text::new(src);
+        let s = Syntax::new(&t);
+        assert_eq!(s.top_function_body(&t, "init"), Some(src.find("  x = 2").unwrap()));
+        assert_eq!(s.top_function_body(&t, "nada"), None);
+        let local = Text::new("local function init(self)\nend\n");
+        assert_eq!(
+            Syntax::new(&local).top_function_body(&local, "init"),
+            None,
+            "um local function init não é o gancho"
+        );
+    }
 
     #[test]
     fn as_propriedades_do_topo_e_so_elas() {

@@ -15,6 +15,7 @@ pub mod complete;
 mod complete_doc;
 mod console;
 mod doc;
+pub mod dropping;
 mod docs;
 mod docs_probe;
 mod edit;

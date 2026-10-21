@@ -1,0 +1,48 @@
+{
+ "prancha": "acrylic_round_j4.png",
+ "linhas": [
+  "gestos_A",
+  "gestos_B",
+  "tamanhos_A",
+  "tamanhos_B",
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "gestos_A": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  },
+  "gestos_B": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  },
+  "tamanhos_A": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "tamanhos_B": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "sobre_A": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  },
+  "sobre_B": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  }
+ },
+ "quem": {
+  "oraculo": "round_round_hard",
+  "nosso": "Acrylic Round (escala 1.0)",
+  "vizinho": "Wet Liner (d 1.271, limiar 0.591)"
+ }
+}

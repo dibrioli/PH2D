@@ -1,0 +1,30 @@
+{
+ "prancha": "thick_impasto_artrage.png",
+ "linhas": [
+  "gestos_A",
+  "tamanhos_A",
+  "sobre_A"
+ ],
+ "chave": {
+  "gestos_A": {
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
+  },
+  "tamanhos_A": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  },
+  "sobre_A": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  }
+ },
+ "quem": {
+  "oraculo": "ThickGloss",
+  "nosso": "Thick Impasto (escala 1.051)",
+  "vizinho": "Soft Pastel (d 0.76, limiar 0.591)"
+ }
+}

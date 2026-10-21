@@ -10,24 +10,24 @@
  ],
  "chave": {
   "gestos_A": {
-   "1": "oraculo",
-   "2": "nosso",
-   "3": "vizinho"
-  },
-  "gestos_B": {
-   "1": "vizinho",
-   "2": "nosso",
+   "1": "nosso",
+   "2": "vizinho",
    "3": "oraculo"
   },
-  "tamanhos_A": {
+  "gestos_B": {
    "1": "nosso",
    "2": "oraculo",
    "3": "vizinho"
   },
-  "tamanhos_B": {
+  "tamanhos_A": {
    "1": "oraculo",
    "2": "vizinho",
    "3": "nosso"
+  },
+  "tamanhos_B": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
   },
   "sobre_A": {
    "1": "oraculo",
@@ -35,14 +35,14 @@
    "3": "nosso"
   },
   "sobre_B": {
-   "1": "nosso",
-   "2": "vizinho",
+   "1": "vizinho",
+   "2": "nosso",
    "3": "oraculo"
   }
  },
  "quem": {
   "oraculo": "z__Stamp_Bokeh",
   "nosso": "Bokeh (escala 1)",
-  "vizinho": "Charcoal Powder (d 2.618, limiar 0.591)"
+  "vizinho": "Airbrush (d 2.333, limiar 0.591)"
  }
 }

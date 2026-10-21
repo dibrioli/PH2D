@@ -10,39 +10,39 @@
  ],
  "chave": {
   "gestos_A": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  },
+  "gestos_B": {
    "1": "oraculo",
    "2": "vizinho",
    "3": "nosso"
   },
-  "gestos_B": {
+  "tamanhos_A": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  },
+  "tamanhos_B": {
    "1": "vizinho",
    "2": "nosso",
    "3": "oraculo"
   },
-  "tamanhos_A": {
+  "sobre_A": {
    "1": "vizinho",
    "2": "oraculo",
    "3": "nosso"
   },
-  "tamanhos_B": {
-   "1": "oraculo",
-   "2": "vizinho",
-   "3": "nosso"
-  },
-  "sobre_A": {
-   "1": "oraculo",
-   "2": "nosso",
-   "3": "vizinho"
-  },
   "sobre_B": {
    "1": "nosso",
-   "2": "oraculo",
-   "3": "vizinho"
+   "2": "vizinho",
+   "3": "oraculo"
   }
  },
  "quem": {
   "oraculo": "z__Stamp_Grass",
   "nosso": "Grass (escala 0.909)",
-  "vizinho": "Noise Grit (d 1.929, limiar 0.591)"
+  "vizinho": "Wet Dry Brush (d 2.28, limiar 0.591)"
  }
 }

@@ -10,14 +10,14 @@
  ],
  "chave": {
   "gestos_A": {
-   "1": "nosso",
+   "1": "oraculo",
    "2": "vizinho",
-   "3": "oraculo"
+   "3": "nosso"
   },
   "gestos_B": {
-   "1": "oraculo",
+   "1": "vizinho",
    "2": "nosso",
-   "3": "vizinho"
+   "3": "oraculo"
   },
   "tamanhos_A": {
    "1": "oraculo",
@@ -25,9 +25,9 @@
    "3": "nosso"
   },
   "tamanhos_B": {
-   "1": "oraculo",
-   "2": "nosso",
-   "3": "vizinho"
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
   },
   "sobre_A": {
    "1": "oraculo",
@@ -35,14 +35,14 @@
    "3": "vizinho"
   },
   "sobre_B": {
-   "1": "oraculo",
+   "1": "nosso",
    "2": "vizinho",
-   "3": "nosso"
+   "3": "oraculo"
   }
  },
  "quem": {
   "oraculo": "z__Stamp_Leaves",
-  "nosso": "Foliage (escala 1.0)",
-  "vizinho": "Mapping Pen (d 1.174, limiar 0.591)"
+  "nosso": "Foliage (escala 1)",
+  "vizinho": "Wax Scrape (d 1.226, limiar 0.591)"
  }
 }

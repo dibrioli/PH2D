@@ -86,15 +86,15 @@
       "foreignObjects": 0
     },
     "embed": {
-      "sha256": "e2565cac2f7ebf3ba259f83e97a89779e61eb8c1a7b8336fca54908919517bc8",
+      "sha256": "fa2a67e37a3cf6907ee3cc74fa19480f9edc90d94fbaaec1770d90465db05a95",
       "width": "1020",
       "height": "640.5",
       "viewBox": "0 0 1020 640.5",
-      "bytes": 29279,
+      "bytes": 29207,
       "font_faces": 1,
       "rect_fundo": "<rect x=\"0\" y=\"0\" width=\"1020\" height=\"640.5\" fill=\"#ffffff\"/>",
-      "metadata_inicio": "<!-- payload-type:application/vnd.excalidraw+json --><!-- payload-version:2 --><!-- payload-start -->eyJ2ZXJzaW9uIjoiMSIsImVuY29kaW5nIjoiYnN0cmluZyIsImNvbXByZXNzZWQiOnRydWUsImVuY29kZWQiOiJ4nO1dW2/jNlx1MDAxNn7Pr1xi3Nexyvulb3NFXHUwMDA32C5cdTAwMDZNgX3YXHUwMDFkXGZcdTAwMTRbk1xicSzDVppJi/nveyhfRFKkLN9iZ2r",
-      "metadata_bytes": 8781,
+      "metadata_inicio": "<!-- payload-type:application/vnd.excalidraw+json --><!-- payload-version:2 --><!-- payload-start -->eyJ2ZXJzaW9uIjoiMSIsImVuY29kaW5nIjoiYnN0cmluZyIsImNvbXByZXNzZWQiOnRydWUsImVuY29kZWQiOiJ4nO1dW2/bOFx1MDAxNn7vr1xiPK+NhvfLvPWKKbCzKCZcdTAwMDPsw25RKLaaXGJxLENWJu1cZvrf91C+iKRIWb7FTsfqYicmJeqQPJfvO6Kov19",
+      "metadata_bytes": 8709,
       "clipPaths": 2,
       "images": 0,
       "foreignObjects": 0
@@ -560,8 +560,8 @@
     },
     "embed": {
       "type": "image/png",
-      "bytes": 64074,
-      "sha256": "9da44df2d5348d7de27440e20393c818df1969bb1aed0acb910d7b163a4d8ec6",
+      "bytes": 64140,
+      "sha256": "48c443e76ddc08bd50eecb3f0eb58bab67cdc5debf9c76a79b3534216c26aac7",
       "width": 1020,
       "height": 640,
       "chunks": [
@@ -637,9 +637,9 @@
         },
         {
           "type": "tEXt",
-          "len": 6430,
+          "len": 6496,
           "keyword": "application/vnd.excalidraw+json",
-          "inicio": "{\"version\":\"1\",\"encoding\":\"bstring\",\"compressed\":true,\"encoded\":\"xí][oÛ8\\u0016~Ï¯\\b<¯µ÷Ë¼õ)°»(&\\u0003ìÃnQ¨\\u0018q,CVv\\u0007ýï{(_DR¤,[vìt¬.vb¢Èsù¾#úëâòr"
+          "inicio": "{\"version\":\"1\",\"encoding\":\"bstring\",\"compressed\":true,\"encoded\":\"xí][oÛ8\\u0016~Ï¯\\b<¯µ÷Ë¼õ)°»(&\\u0003ìÃnQ¨\\bq,CVv\\u0007ýï{(_DR¤,ßb§cu±\\u0013\\u0012uHË÷\\u"
         },
         {
           "type": "IEND",

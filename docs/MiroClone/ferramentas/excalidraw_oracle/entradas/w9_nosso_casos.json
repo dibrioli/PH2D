@@ -28,6 +28,7 @@
                   "Shape": {
                     "kind": "Rectangle",
                     "style": {
+                      "birth": 0,
                       "dash": "Solid",
                       "fill": [
                         165,
@@ -177,6 +178,7 @@
                   "Shape": {
                     "kind": "Rectangle",
                     "style": {
+                      "birth": 0,
                       "dash": "Solid",
                       "fill": [
                         165,
@@ -318,6 +320,7 @@
                   "Shape": {
                     "kind": "Rectangle",
                     "style": {
+                      "birth": 0,
                       "dash": "Solid",
                       "fill": [
                         165,
@@ -474,6 +477,7 @@
                       }
                     },
                     "style": {
+                      "birth": 0,
                       "dash": "Solid",
                       "fill": null,
                       "font_size": 20.0,
@@ -627,6 +631,7 @@
                       }
                     },
                     "style": {
+                      "birth": 0,
                       "dash": "Solid",
                       "fill": null,
                       "font_size": 20.0,
@@ -778,6 +783,7 @@
                       ]
                     },
                     "style": {
+                      "birth": 0,
                       "dash": "Solid",
                       "fill": null,
                       "font_size": 20.0,

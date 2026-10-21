@@ -5,10 +5,10 @@
   "licenca": "MIT",
   "chromium": "153.0.8010.12",
   "casos": "w9_nosso_casos.json",
-  "casos_sha256": "475a357c2b7b04bff63849e3ee994b4dd0bf7b978383277aa62d029cf099519e",
+  "casos_sha256": "5998f0d7c5d521b82fb8870fbcf474497853e87be5b6da1da31d38fbb5f52aac",
   "caso": "X_nosso",
   "descricao": "o NOSSO .excalidraw (W9): ponto fixo (inside), órbita e centro (orbit), a curva dele, as pontas novas e o aspecto — escrito por ph2d-board-excalidraw::write",
-  "semente": 523644422,
+  "semente": 2489224768,
   "relogio_fixo_utc": "2026-01-01T00:00:00.000Z",
   "consola": []
  },
@@ -43,6 +43,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -188,6 +189,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -325,6 +327,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -477,6 +480,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -628,6 +632,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -777,6 +782,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -937,6 +943,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -1082,6 +1089,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -1219,6 +1227,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -1371,6 +1380,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -1522,6 +1532,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -1671,6 +1682,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -1831,6 +1843,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -1976,6 +1989,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -2113,6 +2127,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -2265,6 +2280,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -2416,6 +2432,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -2565,6 +2582,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -2730,6 +2748,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -2875,6 +2894,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -3012,6 +3032,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -3164,6 +3185,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -3315,6 +3337,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -3464,6 +3487,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -3624,6 +3648,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -3769,6 +3794,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -3906,6 +3932,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -4058,6 +4085,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -4209,6 +4237,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -4358,6 +4387,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,

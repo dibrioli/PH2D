@@ -15,6 +15,7 @@
             "Frame": {
               "name": "Moldura",
               "style": {
+                "birth": 0,
                 "dash": "Solid",
                 "fill": null,
                 "font_size": 20,
@@ -130,6 +131,7 @@
                 false
               ],
               "style": {
+                "birth": 0,
                 "dash": "Solid",
                 "fill": null,
                 "font_size": 20,
@@ -262,6 +264,7 @@
                 false
               ],
               "style": {
+                "birth": 0,
                 "dash": "Solid",
                 "fill": null,
                 "font_size": 20,
@@ -382,6 +385,7 @@
                 false
               ],
               "style": {
+                "birth": 0,
                 "dash": "Solid",
                 "fill": null,
                 "font_size": 20,
@@ -504,6 +508,7 @@
                 false
               ],
               "style": {
+                "birth": 0,
                 "dash": "Dashed",
                 "fill": null,
                 "font_size": 20,

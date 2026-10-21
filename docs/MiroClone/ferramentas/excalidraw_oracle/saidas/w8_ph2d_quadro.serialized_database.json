@@ -19,6 +19,7 @@
               "Frame": {
                 "name": "Problem",
                 "style": {
+                  "birth": 0,
                   "dash": "Solid",
                   "fill": [
                     255,
@@ -99,6 +100,7 @@
               "Frame": {
                 "name": "Detail",
                 "style": {
+                  "birth": 0,
                   "dash": "Solid",
                   "fill": [
                     255,
@@ -188,6 +190,7 @@
               "Shape": {
                 "kind": "Sticky",
                 "style": {
+                  "birth": 0,
                   "dash": "Solid",
                   "fill": [
                     255,
@@ -349,6 +352,7 @@
               "Shape": {
                 "kind": "Rectangle",
                 "style": {
+                  "birth": 0,
                   "dash": "Dashed",
                   "fill": [
                     165,
@@ -500,6 +504,7 @@
               "Shape": {
                 "kind": "Cylinder",
                 "style": {
+                  "birth": 0,
                   "dash": "Solid",
                   "fill": [
                     165,
@@ -632,11 +637,11 @@
         ],
         [
           119.06254149782512,
-          114.4732458822046
+          114.47324588220454
         ],
         [
           115.7662088723954,
-          117.17839987386543
+          117.17839987386549
         ],
         [
           108.6575537338673,
@@ -664,7 +669,7 @@
         ],
         [
           11.342446266132697,
-          120.19377166395498
+          120.19377166395503
         ],
         [
           4.233791127604604,
@@ -774,6 +779,7 @@
               "Shape": {
                 "kind": "Ellipse",
                 "style": {
+                  "birth": 0,
                   "dash": "Solid",
                   "fill": [
                     165,
@@ -940,6 +946,7 @@
                   }
                 },
                 "style": {
+                  "birth": 0,
                   "dash": "Solid",
                   "fill": null,
                   "font_size": 20,
@@ -1190,6 +1197,7 @@
                   }
                 },
                 "style": {
+                  "birth": 0,
                   "dash": "Solid",
                   "fill": null,
                   "font_size": 20,
@@ -1344,6 +1352,7 @@
                   ]
                 },
                 "style": {
+                  "birth": 0,
                   "dash": "Solid",
                   "fill": null,
                   "font_size": 20,
@@ -1466,6 +1475,7 @@
                   203,
                   42.5713541196082
                 ],
+                "clean": false,
                 "pen": "Pen",
                 "points": [
                   [
@@ -1531,6 +1541,7 @@
                 ],
                 "pressure": false,
                 "style": {
+                  "birth": 0,
                   "dash": "Solid",
                   "fill": null,
                   "font_size": 20,

@@ -5,10 +5,10 @@
   "licenca": "MIT",
   "chromium": "153.0.8010.12",
   "casos": "w10_nosso_casos.json",
-  "casos_sha256": "d0b9975e8ab0a19a25f07916c218736a4ad3d03abcc7c7838c2aa3de55ecc657",
+  "casos_sha256": "e962b9ea4db6e365deb6af8929eca58d6253404d2c77fb97462a252537a2801c",
   "caso": "X10_nosso",
   "descricao": "o NOSSO .excalidraw (W10): rectângulo, elipse e losango (direitos, rodados, de cantos redondos), órbita fora do centro, centro e ponto fixo, recta, a curva dele e a do Miro — escrito por ph2d-board-excalidraw::write",
-  "semente": 2569580061,
+  "semente": 1279629110,
   "relogio_fixo_utc": "2026-01-01T00:00:00.000Z",
   "consola": []
  },
@@ -63,6 +63,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -181,6 +182,7 @@
          "Shape": {
           "kind": "Ellipse",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -279,6 +281,7 @@
          "Shape": {
           "kind": "Diamond",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -373,6 +376,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -471,6 +475,7 @@
          "Shape": {
           "kind": "Ellipse",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -569,6 +574,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -661,6 +667,7 @@
          "Shape": {
           "kind": "Diamond",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -774,6 +781,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -928,6 +936,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -1077,6 +1086,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -1217,6 +1227,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -1366,6 +1377,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -1506,6 +1518,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -1646,6 +1659,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -1786,6 +1800,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -1926,6 +1941,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -2066,6 +2082,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -2206,6 +2223,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -2346,6 +2364,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -2486,6 +2505,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -2626,6 +2646,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -2771,6 +2792,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -2920,6 +2942,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -3069,6 +3092,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -3209,6 +3233,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -3373,6 +3398,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -3518,6 +3544,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -3577,15 +3604,15 @@
          ],
          [
           19.914578675825183,
-          72.98167675003319
+          72.98167675003316
          ],
          [
-          30.82885045693982,
-          84.99047226954471
+          30.82885045693979,
+          84.99047226954468
          ],
          [
           44.97983162722659,
-          95.83746567845463
+          95.83746567845458
          ],
          [
           62.87122584177038,
@@ -3596,15 +3623,15 @@
           113.84852747592353
          ],
          [
-          124.47241442002218,
+          124.47241442002215,
           123.41305801932853
          ],
          [
-          187.96566467621028,
+          187.96566467621034,
           137.07367433751358
          ],
          [
-          225.95744262062067,
+          225.95744262062078,
           147.5091279580147
          ],
          [
@@ -3666,15 +3693,15 @@
       ],
       [
        19.914578675825183,
-       72.98167675003319
+       72.98167675003316
       ],
       [
-       30.82885045693982,
-       84.99047226954471
+       30.82885045693979,
+       84.99047226954468
       ],
       [
        44.97983162722659,
-       95.83746567845463
+       95.83746567845458
       ],
       [
        62.87122584177038,
@@ -3685,15 +3712,15 @@
        113.84852747592353
       ],
       [
-       124.47241442002218,
+       124.47241442002215,
        123.41305801932853
       ],
       [
-       187.96566467621028,
+       187.96566467621034,
        137.07367433751358
       ],
       [
-       225.95744262062067,
+       225.95744262062078,
        147.5091279580147
       ],
       [
@@ -3767,6 +3794,7 @@
          "Shape": {
           "kind": "Diamond",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -3871,6 +3899,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -3981,6 +4010,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -4121,6 +4151,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -4270,6 +4301,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -4410,6 +4442,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -4550,6 +4583,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -4690,6 +4724,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -4830,6 +4865,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -4983,6 +5019,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -5101,6 +5138,7 @@
          "Shape": {
           "kind": "Ellipse",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -5199,6 +5237,7 @@
          "Shape": {
           "kind": "Diamond",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -5293,6 +5332,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -5391,6 +5431,7 @@
          "Shape": {
           "kind": "Ellipse",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -5489,6 +5530,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -5581,6 +5623,7 @@
          "Shape": {
           "kind": "Diamond",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -5694,6 +5737,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -5848,6 +5892,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -5997,6 +6042,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -6137,6 +6183,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -6286,6 +6333,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -6426,6 +6474,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -6566,6 +6615,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -6706,6 +6756,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -6846,6 +6897,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -6986,6 +7038,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -7126,6 +7179,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -7266,6 +7320,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -7406,6 +7461,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -7546,6 +7602,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -7691,6 +7748,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -7840,6 +7898,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -7989,6 +8048,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -8129,6 +8189,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -8293,6 +8354,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -8438,6 +8500,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -8497,15 +8560,15 @@
          ],
          [
           19.914578675825183,
-          72.98167675003319
+          72.98167675003316
          ],
          [
-          30.82885045693982,
-          84.99047226954471
+          30.82885045693979,
+          84.99047226954468
          ],
          [
           44.97983162722659,
-          95.83746567845463
+          95.83746567845458
          ],
          [
           62.87122584177038,
@@ -8516,15 +8579,15 @@
           113.84852747592353
          ],
          [
-          124.47241442002218,
+          124.47241442002215,
           123.41305801932853
          ],
          [
-          187.96566467621028,
+          187.96566467621034,
           137.07367433751358
          ],
          [
-          225.95744262062067,
+          225.95744262062078,
           147.5091279580147
          ],
          [
@@ -8586,15 +8649,15 @@
       ],
       [
        19.914578675825183,
-       72.98167675003319
+       72.98167675003316
       ],
       [
-       30.82885045693982,
-       84.99047226954471
+       30.82885045693979,
+       84.99047226954468
       ],
       [
        44.97983162722659,
-       95.83746567845463
+       95.83746567845458
       ],
       [
        62.87122584177038,
@@ -8605,15 +8668,15 @@
        113.84852747592353
       ],
       [
-       124.47241442002218,
+       124.47241442002215,
        123.41305801932853
       ],
       [
-       187.96566467621028,
+       187.96566467621034,
        137.07367433751358
       ],
       [
-       225.95744262062067,
+       225.95744262062078,
        147.5091279580147
       ],
       [
@@ -8687,6 +8750,7 @@
          "Shape": {
           "kind": "Diamond",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -8791,6 +8855,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -8901,6 +8966,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -9041,6 +9107,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -9190,6 +9257,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -9330,6 +9398,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -9470,6 +9539,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -9610,6 +9680,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -9750,6 +9821,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -9914,6 +9986,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -10032,6 +10105,7 @@
          "Shape": {
           "kind": "Ellipse",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -10130,6 +10204,7 @@
          "Shape": {
           "kind": "Diamond",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -10224,6 +10299,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -10322,6 +10398,7 @@
          "Shape": {
           "kind": "Ellipse",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -10420,6 +10497,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -10512,6 +10590,7 @@
          "Shape": {
           "kind": "Diamond",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -10625,6 +10704,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -10779,6 +10859,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -10928,6 +11009,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -11068,6 +11150,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -11217,6 +11300,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -11357,6 +11441,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -11497,6 +11582,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -11637,6 +11723,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -11777,6 +11864,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -11917,6 +12005,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -12057,6 +12146,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -12197,6 +12287,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -12337,6 +12428,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -12477,6 +12569,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -12622,6 +12715,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -12771,6 +12865,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -12920,6 +13015,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -13060,6 +13156,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -13224,6 +13321,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -13369,6 +13467,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -13428,15 +13527,15 @@
          ],
          [
           19.914578675825183,
-          72.98167675003319
+          72.98167675003316
          ],
          [
-          30.82885045693982,
-          84.99047226954471
+          30.82885045693979,
+          84.99047226954468
          ],
          [
           44.97983162722659,
-          95.83746567845463
+          95.83746567845458
          ],
          [
           62.87122584177038,
@@ -13447,15 +13546,15 @@
           113.84852747592353
          ],
          [
-          124.47241442002218,
+          124.47241442002215,
           123.41305801932853
          ],
          [
-          187.96566467621028,
+          187.96566467621034,
           137.07367433751358
          ],
          [
-          225.95744262062067,
+          225.95744262062078,
           147.5091279580147
          ],
          [
@@ -13517,15 +13616,15 @@
       ],
       [
        19.914579758048788,
-       72.9816767500332
+       72.98167675003317
       ],
       [
-       30.828851539163423,
-       84.99047226954472
+       30.828851539163395,
+       84.9904722695447
       ],
       [
        44.97983270945019,
-       95.83746567845465
+       95.83746567845459
       ],
       [
        62.87122692399399,
@@ -13536,15 +13635,15 @@
        113.84852747592355
       ],
       [
-       124.47241550224578,
+       124.47241550224575,
        123.41305801932855
       ],
       [
-       187.9656657584339,
+       187.96566575843394,
        137.07367433751358
       ],
       [
-       225.95744370284427,
+       225.9574437028444,
        147.5091279580147
       ],
       [
@@ -13618,6 +13717,7 @@
          "Shape": {
           "kind": "Diamond",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -13722,6 +13822,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -13832,6 +13933,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -13972,6 +14074,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -14121,6 +14224,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -14261,6 +14365,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -14401,6 +14506,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -14541,6 +14647,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -14681,6 +14788,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -14834,6 +14942,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -14952,6 +15061,7 @@
          "Shape": {
           "kind": "Ellipse",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -15050,6 +15160,7 @@
          "Shape": {
           "kind": "Diamond",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -15144,6 +15255,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -15242,6 +15354,7 @@
          "Shape": {
           "kind": "Ellipse",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -15340,6 +15453,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -15432,6 +15546,7 @@
          "Shape": {
           "kind": "Diamond",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -15545,6 +15660,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -15699,6 +15815,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -15848,6 +15965,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -15988,6 +16106,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -16137,6 +16256,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -16277,6 +16397,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -16417,6 +16538,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -16557,6 +16679,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -16697,6 +16820,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -16837,6 +16961,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -16977,6 +17102,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -17117,6 +17243,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -17257,6 +17384,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -17397,6 +17525,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -17542,6 +17671,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -17691,6 +17821,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -17840,6 +17971,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -17980,6 +18112,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -18144,6 +18277,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -18289,6 +18423,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -18348,15 +18483,15 @@
          ],
          [
           19.914578675825183,
-          72.98167675003319
+          72.98167675003316
          ],
          [
-          30.82885045693982,
-          84.99047226954471
+          30.82885045693979,
+          84.99047226954468
          ],
          [
           44.97983162722659,
-          95.83746567845463
+          95.83746567845458
          ],
          [
           62.87122584177038,
@@ -18367,15 +18502,15 @@
           113.84852747592353
          ],
          [
-          124.47241442002218,
+          124.47241442002215,
           123.41305801932853
          ],
          [
-          187.96566467621028,
+          187.96566467621034,
           137.07367433751358
          ],
          [
-          225.95744262062067,
+          225.95744262062078,
           147.5091279580147
          ],
          [
@@ -18437,15 +18572,15 @@
       ],
       [
        19.914579758048788,
-       72.9816767500332
+       72.98167675003317
       ],
       [
-       30.828851539163423,
-       84.99047226954472
+       30.828851539163395,
+       84.9904722695447
       ],
       [
        44.97983270945019,
-       95.83746567845465
+       95.83746567845459
       ],
       [
        62.87122692399399,
@@ -18456,15 +18591,15 @@
        113.84852747592355
       ],
       [
-       124.47241550224578,
+       124.47241550224575,
        123.41305801932855
       ],
       [
-       187.9656657584339,
+       187.96566575843394,
        137.07367433751358
       ],
       [
-       225.95744370284427,
+       225.9574437028444,
        147.5091279580147
       ],
       [
@@ -18538,6 +18673,7 @@
          "Shape": {
           "kind": "Diamond",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -18642,6 +18778,7 @@
          "Shape": {
           "kind": "Rectangle",
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": [
             165,
@@ -18752,6 +18889,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -18892,6 +19030,7 @@
            }
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -19041,6 +19180,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -19181,6 +19321,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -19321,6 +19462,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -19461,6 +19603,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,
@@ -19601,6 +19744,7 @@
            ]
           },
           "style": {
+           "birth": 0,
            "dash": "Solid",
            "fill": null,
            "font_size": 20,

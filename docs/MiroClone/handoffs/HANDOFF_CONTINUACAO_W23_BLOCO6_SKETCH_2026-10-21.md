@@ -101,6 +101,12 @@ relação com o diff, NÃO comparado com o `main`. ⚠️ NÃO corridos: clippy 
 copiar/mover guarda rascunho e largura, a semente re-deriva do id novo (desenho); `.excalidraw` roughness 1/0 pelo rascunho.
 Nenhum tinha teste com forma da caneta — agora a tinta limpa e as formas têm.
 
+- `nextest-impacted` (`PH2D_SUITE=onda`): **19 789 testes, 2 vermelhos**, ambos de `ph2d-tool-painter` (sem diff nesta
+  linha desde a base): `mask_gate_tests::the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas` passa sozinho;
+  `mask_tests::the_mask_stroke_cost_does_not_follow_the_canvas` reprova sozinho a `load` 20–30 (a suíte correu a `load`
+  80) — régua de RELÓGIO de outra crate, família [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md); NÃO curado. Se
+  reprovar a `load` < 5, é da linha do Painter.
+
 ## 4. ABERTO (nesta ordem)
 
 1. **Smoke do dono da cena 28** (§5) — se chegar, trate-o primeiro (mecanismo, não sintoma).

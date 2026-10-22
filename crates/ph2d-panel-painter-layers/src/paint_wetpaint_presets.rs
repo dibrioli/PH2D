@@ -22,7 +22,6 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tool_painter::{BRUSH_SIZE_MIN_PX, BrushSettings, ids};
-use ph2d_vector::ImageQuality;
 
 /// As secções do popover do Preset (o id de cada linha leva a secção). Cada preset aparece UMA vez (dono
 /// 09/10: o menu repetia os nomes): os favoritos no topo saem do grupo deles; não há «Recent».
@@ -48,7 +47,7 @@ pub(crate) fn paint_wetpaint_presets(
     if let Some(v) = vista.as_deref() {
         y = paint_navegador(ctx, theme, x, content_w, y, v);
     } else {
-        y = paint_preview(ctx, x, content_w, y);
+        y = paint_preview(ctx, theme, x, content_w, y);
     }
     if brush.wetpaint {
         y = paint_volumes(ctx, theme, x, content_w, y, brush);
@@ -169,7 +168,7 @@ fn paint_navegador(
             a.favorito,
         );
     }
-    y = paint_preview(ctx, x, content_w, y);
+    y = paint_preview(ctx, theme, x, content_w, y);
     // Sem preset activo não há o que guardar por cima nem o que repor: só «Save as New».
     let mut botoes = vec![(
         ids::PAINTER_WETPAINT_PRESET_SAVE_NEW,
@@ -199,25 +198,20 @@ fn paint_navegador(
 }
 
 /// O preview VIVO: o pincel de agora sobre a obra de agora, o quadro que a ponte publica (ela repinta-o
-/// numa thread a cada mudança e toca a animação do traço uma vez).
-fn paint_preview(ctx: &mut PaintCtx, x: f32, content_w: f32, y: f32) -> f32 {
-    let Some((px, w, h)) = st::current_wet_preview().filter(|(_, w, _)| *w > 0) else {
+/// numa thread a cada mudança e toca a animação do traço uma vez). Fixada pelo pino, ela mora na faixa
+/// por cima do corpo ([`crate::preview_pino`]) e não aqui.
+fn paint_preview(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+) -> f32 {
+    if crate::preview_pino::preview_fixada(ctx.host.store()) {
         return y;
-    };
-    let alto = content_w * h as f32 / w as f32;
-    ctx.scene.draw_image_rgba(
-        &px,
-        w,
-        h,
-        (
-            f64::from(x),
-            f64::from(y),
-            f64::from(x + content_w),
-            f64::from(y + alto),
-        ),
-        ImageQuality::Medium,
-    );
-    y + alto + ph2d_tokens::control_gap_px()
+    }
+    crate::preview_pino::pinta(ctx, theme, x, content_w, y)
+        .map_or(y, |fundo| fundo + ph2d_tokens::control_gap_px())
 }
 
 /// Um volume: a fileira numérica e, à direita, o chip dos valores rápidos.

@@ -216,7 +216,7 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
 /// key + `PAINTER_LAYERS_SCROLLBAR_ID`). The open dropdown popover is drained AFTER the clip is
 /// popped, so it floats unclipped over the rows.
 fn paint_brush_view(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, rect: Rect, header_bottom: f32) {
-    let body_top = header_bottom;
+    let body_top = paint_pinned_preview(ctx, theme, rect, header_bottom);
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
     // ⭐ A mesma PORTA da vista Layers — o mesmo painel e a mesma barra.
@@ -252,6 +252,31 @@ fn paint_brush_view(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, rect: Rect, h
     if let Some(chip) = state::take_pending_composite_add_menu() {
         crate::paint_composite_montagem::paint_add_menu_popover(ctx, theme, chip);
     }
+}
+
+/// **A preview FIXADA pelo pino** ([`crate::preview_pino`]): pinta-a numa faixa entre os modos do dock e o
+/// corpo, fora do recorte, e devolve o `y` em que a área rolável começa — por baixo dela, logo o corpo
+/// rola por baixo e nada fica escondido atrás. Desafixada (ou sem quadro, ou num modo que não mostra a
+/// preview) devolve `header_bottom` e a preview fica no cartão do topo.
+fn paint_pinned_preview(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    rect: Rect,
+    header_bottom: f32,
+) -> f32 {
+    crate::preview_pino::esquece();
+    let brush = state::current_brush().unwrap_or(crate::paint_brush::FALLBACK_BRUSH);
+    if !crate::preview_pino::preview_fixada(ctx.host.store())
+        || brush.is_deform
+        || brush.is_selection
+        || !crate::preview_pino::ha_preview()
+    {
+        return header_bottom;
+    }
+    let x = rect.x + PANEL_HEAD_PAD;
+    let w = (rect.w - PANEL_HEAD_PAD - PANEL_HEAD_PAD).max(0.0);
+    crate::preview_pino::pinta(ctx, theme, x, w, header_bottom)
+        .map_or(header_bottom, |fundo| fundo + ph2d_tokens::control_gap_px())
 }
 
 /// ⭐⭐⭐ **OS DOIS MODOS DO DOCK, num grupo segmentado** — devolve o `y` em que o corpo começa.

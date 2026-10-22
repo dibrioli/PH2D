@@ -144,6 +144,20 @@ fn a11y_node_has_button_role_and_click() {
     assert!(node.supports_action(Action::Click));
 }
 
+/// O botão de acção não diz estado; o de ALTERNAR diz `pressed` nos dois sentidos.
+#[test]
+fn a11y_toggle_button_says_pressed() {
+    assert_eq!(fixture().build_a11y(0.0, 0.0, 8.0, 8.0).toggled(), None);
+    for (on, t) in [
+        (true, ph2d_a11y::Toggled::True),
+        (false, ph2d_a11y::Toggled::False),
+    ] {
+        let node = fixture().build_a11y_toggle(on, 0.0, 0.0, 8.0, 8.0);
+        assert_eq!(node.role(), Role::Button);
+        assert_eq!(node.toggled(), Some(t));
+    }
+}
+
 fn smoke(button: Button, theme: Theme) {
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();

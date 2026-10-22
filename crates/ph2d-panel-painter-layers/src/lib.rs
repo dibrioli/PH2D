@@ -110,6 +110,7 @@ mod populate_grid_stamp;
 mod populate_sculpt;
 mod populate_sections;
 mod populate_wetpaint; // a secção Wet Paint do populate (o tecto de 600 LOC)
+mod preview_pino; // o pino que fixa a preview viva no topo da vista Brush
 /// As secções que pintam linhas de marcar, e os rótulos de cada uma (a coluna do nome sai daqui).
 pub mod seccoes;
 pub mod state;
@@ -119,6 +120,7 @@ mod state_shape_cor; // a cor do Shape em duas camadas (prompt 38)
 mod state_wet_presets; // W1: a vista dos presets que a ponte publica
 pub mod stroke_method_offer; // the Method dropdown's narrowing law — pure, gate-tested from `tests/`
 
+pub use preview_pino::{a11y_do_pino, preview_fixada, rect_da_preview, rect_do_pino};
 pub use state::{
     FalloffHit, PainterLayersPanelState, falloff_canvas_norm, falloff_hit_test, last_content_h,
     last_visible_h, selected_falloff_point, set_current_brush, set_current_brush_flow_image,

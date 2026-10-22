@@ -4,6 +4,7 @@
 //! `PH2D_FOTO_DIR=<pasta> PH2D_FOTO_SUFIXO=<depois> cargo test -p ph2d-app-painter --features
 //! panel-painter-layers foto_do_preview -- --ignored`.
 
+use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::{PaintCtx, Panel, PanelHostInternal};
 use ph2d_editor_core::screens::HeroLayout;
 use ph2d_editor_core::tool::RasterEditTool;
@@ -19,11 +20,30 @@ const W: u32 = 380;
 const H: u32 = 640;
 
 fn foto(gpu: &ph2d_gpu::GpuContext, painter: &PainterTool) -> Vec<u8> {
+    foto_rolada(gpu, painter, 0.0, false)
+}
+
+/// [`foto`] com o corpo rolado `rolagem` px e o pino da preview `fixada` (o estado posto no store, como
+/// o clique o deixa).
+fn foto_rolada(
+    gpu: &ph2d_gpu::GpuContext,
+    painter: &PainterTool,
+    rolagem: f32,
+    fixada: bool,
+) -> Vec<u8> {
     let mut pass =
         ph2d_render::VelloPass::new(gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, (W, H)).unwrap();
     set_current_brush(Some(painter.brush_settings()));
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
     host.set_panel_visible(PainterLayersPanel::ID, true);
+    if let Some(InteractiveState::Toggle { on, .. }) = host
+        .store_mut()
+        .get_mut(ph2d_tool_painter::ids::PAINTER_BRUSH_PREVIEW_PIN)
+    {
+        *on = fixada;
+    }
+    host.store_mut()
+        .set_panel_scroll(ph2d_editor_core::ids::PAINTER_LAYERS_PANEL, rolagem);
     let mut st = PainterLayersPanelState;
     let viewport = Rect::new(0.0, 0.0, W as f32, H as f32);
     let layout = HeroLayout::for_viewport(viewport);
@@ -120,4 +140,48 @@ fn foto_do_preview() {
         )
         .unwrap();
     }
+}
+
+/// **A foto do pino da preview** (dono 22/10): o Wet Paint com o Pastel Side, desafixado sem rolar, desafixado
+/// rolado (a preview sai por cima) e fixado rolado (a preview fica no topo e o corpo passa por baixo).
+/// `PH2D_FOTO_DIR=<pasta> cargo test -p ph2d-app-painter --features panel-painter-layers foto_do_pino --
+/// --ignored`.
+#[test]
+#[ignore = "foto do pino da preview — PH2D_FOTO_DIR=<pasta> e --ignored"]
+fn foto_do_pino() {
+    let Ok(dir) = std::env::var("PH2D_FOTO_DIR") else {
+        return;
+    };
+    let gpu = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None)
+        .expect("a foto precisa da placa");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_brush_size_px(16.0);
+    t.set_brush_color_srgb8([30, 60, 220]);
+    preset_de_fabrica(&mut t, "Pastel Side");
+    let mut ultimo = None;
+    assert!(pintar_preview(
+        &t.wet_preview_cena(),
+        &|| false,
+        &mut |px, w, h| ultimo = Some((Arc::new(px.to_vec()), w, h))
+    ));
+    set_current_wet_preview(ultimo);
+    for (nome, rolagem, fixada) in [
+        ("desafixado", 0.0, false),
+        ("desafixado_rolado", 220.0, false),
+        ("fixado_rolado", 220.0, true),
+    ] {
+        let px = foto_rolada(&gpu, &t, rolagem, fixada);
+        image::save_buffer(
+            format!("{dir}/pino_{nome}.png"),
+            &px,
+            W,
+            H,
+            image::ExtendedColorType::Rgba8,
+        )
+        .unwrap();
+    }
+    set_current_wet_preview(None);
 }

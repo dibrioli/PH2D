@@ -42,6 +42,10 @@ pub const PAINTER_WETPAINT_PRESET_SAVE_DEFAULT: NodeId =
 pub const PAINTER_WETPAINT_PRESET_RESET: NodeId =
     hash_node_id("painter_brush.wetpaint_preset_reset");
 
+/// The **pin** over the live brush preview (a `Toggle`, UI-only: the tool never sees it). On = the
+/// preview stays at the top of the Brush view while the rest scrolls under it.
+pub const PAINTER_BRUSH_PREVIEW_PIN: NodeId = hash_node_id("painter_brush.preview_pin");
+
 /// The preset buttons (Click → the tool records the request; the bridge does the disk work).
 pub const PAINTER_WETPAINT_PRESET_BUTTONS: [NodeId; 4] = [
     PAINTER_WETPAINT_PRESET_FAVORITE,

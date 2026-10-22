@@ -16,7 +16,7 @@
 use crate::icons::IconId;
 use crate::paint::{paint_icon, paint_text_centered};
 use crate::zones::Rect;
-use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
+use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role, Toggled};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ICON_BTN_SIZE_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -195,12 +195,23 @@ impl Button {
     /// Build the AccessKit node. Per ADR-0023 §10: every interactive
     /// widget exposes role + label + clickable action.
     pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
+        self.a11y_builder(x, y, w, h).build()
+    }
+
+    /// O nó de um botão de ALTERNAR (o pino da preview do Painter): o mesmo nó de [`Self::build_a11y`]
+    /// com o `Toggled` — o «pressed» de um toggle button.
+    pub fn build_a11y_toggle(&self, on: bool, x: f64, y: f64, w: f64, h: f64) -> Node {
+        self.a11y_builder(x, y, w, h)
+            .toggled(if on { Toggled::True } else { Toggled::False })
+            .build()
+    }
+
+    fn a11y_builder(&self, x: f64, y: f64, w: f64, h: f64) -> NodeBuilder {
         NodeBuilder::new(Role::Button)
             .label(&self.label)
             .bounds(x, y, w, h)
             .focusable(self.state != ButtonState::Disabled)
             .action(Action::Click)
-            .build()
     }
 }
 

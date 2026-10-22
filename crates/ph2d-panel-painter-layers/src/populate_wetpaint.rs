@@ -32,6 +32,8 @@ pub(crate) fn register_wetpaint(store: &mut WidgetStore) {
             canvas: ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1.0, 1.0),
         },
     );
+    // O pino da preview viva (um Toggle: o despacho genérico vira-o).
+    crate::preview_pino::regista(store);
     // A dica da Live Water (W1g): o custo medido de a ligar.
     store.set_tooltip(
         ph2d_tool_painter::ids::PAINTER_WETPAINT_LIVE_WATER,

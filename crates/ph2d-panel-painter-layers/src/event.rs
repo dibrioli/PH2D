@@ -47,6 +47,8 @@ pub(crate) fn apply_event(
 
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     match ev {
+        // O pino da preview: o despacho já virou o Toggle; é estado do painel, o tool não o vê.
+        WidgetEvent::Toggled(id) if id == ph2d_tool_painter::ids::PAINTER_BRUSH_PREVIEW_PIN => true,
         // Close (X) → CancelActiveTool (canon BgRemoval/Painter sidebar).
         WidgetEvent::Click(id) if id == ph2d_tool_painter::ids::PAINTER_LAYERS_CLOSE => {
             host.bus_mut().push(EditorAction::CancelActiveTool);

@@ -34,6 +34,7 @@ mod seam_paint_media;
 mod seam_papel; // o seletor da cor do papel aplica o papel nos quatro meios (2026-10-06)
 mod seam_pen; // L2: o cartão Pen (a mão do pincel) nos quatro meios, pelo ponteiro
 mod seam_pigmento; // a fileira `Pigment`: a tela concorda com a porta, nos dois sentidos
+mod seam_pino_da_preview; // o pino que fixa a preview viva: no ecrã, pelo ponteiro, para quem não vê
 mod seam_ponta; // L9/L18: a ponta de píxel e a lei do grão pelo clique real
 mod seam_sculpt;
 mod seam_shape_deposit;

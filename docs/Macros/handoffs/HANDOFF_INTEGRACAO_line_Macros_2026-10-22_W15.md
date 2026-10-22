@@ -116,7 +116,20 @@ Fotos (`smoke_2026-10-22_W15/`): [a cabeça no 2.º losango](smoke_2026-10-22_W1
 [log](smoke_2026-10-22_W15/etapa.log) (`playhead=3.27 … steps=["1.65", "3.27"]`, `t=3.2711`). O arrasto das chaves
 não se fotografa (a tela virtual ignora eventos sintéticos): a prova é o teste `intents` + o passo 4 do dono.
 
+### §7-bis — Depois do handoff: o 2.º relato do dono (22/10)
+
+«arrastar keyframes de modo que as animações dos traços se sobreponham apaga os keyframes … deve permitir
+sobreposições». Mecanismo: o losango arrastado para trás do fim da etapa anterior gravava uma espera negativa maior que
+o intervalo (`pi::espera` não valida); `efetiva` recusava-a e a Macro inteira deixava de se ler — painel e linha
+3 → 0 etapas. `1b6bc725e1`: `ph2d-app-macros` `etapas::edita` efectiva a trilha antes de gravar e devolve o erro (a
+Macro fica a de antes); gate `gate7_sobrepor_duas_pinceladas_nunca_apaga_as_etapas`, vermelho sem a guarda. Clippy
+app-macros ✓, `gate7_` 9/9. A SOBREPOSIÇÃO em si (duas pinceladas a tocar ao mesmo tempo) pede o motor de pintura com
+mais de um traço aberto: [PROMPT_W16](PROMPT_W16_pinceladas_sobrepostas_2026-10-22.md).
+
 ## §8 — ABERTO
+
+0. **W16 — tocar duas pinceladas sobrepostas** ([prompt](PROMPT_W16_pinceladas_sobrepostas_2026-10-22.md)); até lá o
+   arrasto que sobrepõe é recusado e o painel diz porquê.
 
 1. **Dur(s) 6,208 com um clipe de 4,21 s** (captura do dono): não reproduz no `=6 etapa` (Dur = duração do clipe:
    4,207 · 4,311). `Dur` = `length_override` ou a última chave de QUALQUER faixa (`doc_extent.rs`); arrastar um

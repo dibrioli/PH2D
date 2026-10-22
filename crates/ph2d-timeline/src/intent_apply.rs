@@ -59,6 +59,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         I::RunScene | I::StopScene => {}
         I::Scrub(t) => playhead.seek(snap(t, fps, state.flags.frame_snap)),
         I::SeekFrame(f) => playhead.seek_frame(f, fps),
+        I::ScrubExact(t) => playhead.seek(t),
         I::SetRate(r) => playhead.set_rate(r),
         // The loop belongs to the CLIP, not the document: "walk" cycles over its
         // own two seconds and "run" over its own. And it belongs to the VIEW: the
@@ -150,9 +151,21 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 Some(m) if m + delta < RationalTime::ZERO => RationalTime::ZERO - m,
                 _ => delta,
             };
-            edit(state, |doc, sel| {
-                for_selected_tracks(doc, sel, |track, ids| track.move_keys(ids, delta));
-            });
+            // Inside a drag the move streams per frame: what the group only crosses must survive,
+            // so the absorb waits for the release (`EndEdit`, Enio 22/10: «às vezes alguns são
+            // apagados»).
+            if state.history.is_open() {
+                state.history.note_moved(state.selection.keys());
+                edit(state, |doc, sel| {
+                    for_selected_tracks(doc, sel, |track, ids| {
+                        track.move_keys_unmerged(ids, delta)
+                    });
+                });
+            } else {
+                edit(state, |doc, sel| {
+                    for_selected_tracks(doc, sel, |track, ids| track.move_keys(ids, delta));
+                });
+            }
         }
         I::ScaleSelectedKeys {
             pivot_seconds,
@@ -349,8 +362,14 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         I::SetOnion(onion) => state.onion = onion,
 
         // history
-        I::BeginEdit => state.history.begin(&state.doc),
-        I::EndEdit => state.history.commit_if_changed(&state.doc),
+        I::BeginEdit => {
+            absorb_where_released(state);
+            state.history.begin(&state.doc);
+        }
+        I::EndEdit => {
+            absorb_where_released(state);
+            state.history.commit_if_changed(&state.doc);
+        }
         I::Undo => {
             // A stray bracket (pointer capture lost, panel hidden mid-drag) would
             // otherwise commit a stale pre-state on the next EndEdit.
@@ -544,6 +563,23 @@ pub(crate) fn edit(state: &mut TimelineState, f: impl FnOnce(&mut TimelineDoc, &
     f(&mut state.doc, &mut state.selection);
     settle(&mut state.doc);
     state.history.commit_if_changed(&state.doc);
+}
+
+/// The keys a streamed drag moved absorb the stationary keys under them where it was released.
+/// Also on a `BeginEdit` that finds a bracket never closed (pointer capture lost).
+fn absorb_where_released(state: &mut TimelineState) {
+    let moved = state.history.take_moved();
+    if moved.is_empty() {
+        return;
+    }
+    let mut sel = Selection::default();
+    for k in moved {
+        sel.add(k);
+    }
+    for_selected_tracks(&mut state.doc, &sel, |track, ids| {
+        track.absorb_under_moved(ids);
+    });
+    settle(&mut state.doc);
 }
 
 /// Frames a duplicate is pushed by when it would otherwise land on top of its

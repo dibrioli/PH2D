@@ -47,6 +47,9 @@ pub enum TimelineIntent {
     Scrub(f64),
     /// Seek to a whole frame index at the document fps.
     SeekFrame(i64),
+    /// Seek to an AUTHORED instant that is not a frame (a macro step's end), never snapped: the
+    /// playhead lands on the step's diamond and the step is done there (Enio 22/10).
+    ScrubExact(f64),
     /// Set the playback-rate multiplier.
     SetRate(f64),
     /// Set (or clear) the ACTIVE CLIP's loop: its `[start, end)` range in seconds
@@ -692,4 +695,16 @@ pub enum TimelineIntent {
         /// The easing, or `None` for the factory `smoothstep`.
         curve: Option<Easing>,
     },
+}
+
+impl TimelineIntent {
+    /// The hand moved the clock this frame — a DISCONTINUITY, not a crossing: the shell's drain
+    /// (signals, auto-key) asks here, so a new seek joins every reader at once.
+    #[must_use]
+    pub fn is_seek(&self) -> bool {
+        matches!(
+            self,
+            Self::Scrub(_) | Self::ScrubExact(_) | Self::SeekFrame(_)
+        )
+    }
 }

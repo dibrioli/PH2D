@@ -60,13 +60,10 @@ impl crate::App {
         // *«o relógio não andou»* e voltavam a capturar. *Um gesto inferido de uma consequência
         // perde-se exactamente onde a consequência satura* — e o gesto, esse, está aqui: cada
         // movimento do ponteiro sobre a régua produz um `Scrub`, snap ou não.
-        self.autokey.scrub_now = self.timeline_intents.iter().any(|i| {
-            matches!(
-                i,
-                ph2d_timeline::TimelineIntent::Scrub(_)
-                    | ph2d_timeline::TimelineIntent::SeekFrame(_)
-            )
-        });
+        self.autokey.scrub_now = self
+            .timeline_intents
+            .iter()
+            .any(ph2d_timeline::TimelineIntent::is_seek);
         ph2d_timeline_persist::follow_selection(
             &mut self.timeline,
             active_playhead,

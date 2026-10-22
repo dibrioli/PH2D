@@ -395,12 +395,29 @@ impl Track {
     /// through `to_seconds` would leave it a fraction of a microsecond off, and
     /// every later equality test (upsert, overwrite-on-duplicate) would miss.
     pub fn move_keys(&mut self, ids: &[KeyId], delta: RationalTime) {
+        self.shift_keys(ids, delta);
+        self.merge_moved_over_stationary(ids);
+    }
+
+    /// [`Self::move_keys`] WITHOUT the absorb: one frame of a streamed drag. A key the group only
+    /// passes over must survive the gesture, so the caller absorbs ONCE, where the drag is
+    /// released ([`Self::absorb_under_moved`]).
+    pub fn move_keys_unmerged(&mut self, ids: &[KeyId], delta: RationalTime) {
+        self.shift_keys(ids, delta);
+    }
+
+    /// Where a streamed drag is released: each listed key absorbs the stationary key at its exact
+    /// time — the absorb [`Self::move_keys`] does on every move.
+    pub fn absorb_under_moved(&mut self, ids: &[KeyId]) {
+        self.merge_moved_over_stationary(ids);
+    }
+
+    fn shift_keys(&mut self, ids: &[KeyId], delta: RationalTime) {
         for &id in ids {
             if let Some(i) = self.index_of(id) {
                 self.keys[i].t = self.keys[i].t + delta;
             }
         }
-        self.merge_moved_over_stationary(ids);
         self.resort();
     }
 

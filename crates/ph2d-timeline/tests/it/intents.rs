@@ -2082,3 +2082,114 @@ fn rebuild_ghosts_the_buffered_curve_on_its_owning_track_only() {
         }
     }
 }
+
+// ── W15 — a key only CROSSED mid-drag survives; the absorb is where the drag lands ──────────
+
+/// Entity 1's TranslationX keys at `times` (seconds); selects the one at `pick`.
+fn track_with_keys_selecting(
+    st: &mut TimelineState,
+    ph: &mut Playhead,
+    times: &[f64],
+    pick: f64,
+) -> ph2d_anim::AnimTarget {
+    for (i, &t) in times.iter().enumerate() {
+        #[expect(clippy::cast_precision_loss, reason = "poucas chaves")]
+        add_key(st, ph, 1, PropKind::TranslationX, t, i as f32);
+    }
+    let target = st
+        .doc
+        .binding_for(1, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let track = st.doc.active_clip().track(target).unwrap();
+    let key = track
+        .keys()
+        .iter()
+        .zip(track.ids())
+        .find(|(k, _)| (k.t.to_seconds() - pick).abs() < 1e-9)
+        .map(|(_, id)| *id)
+        .unwrap();
+    apply_intent(st, ph, I::SelectSingle(SelectedKey { target, key }));
+    target
+}
+
+/// Smoke do dono 22/10: «mover keyframes … às vezes alguns são apagados (mesmo se não colocados um
+/// sobre o outro)». The drag streams one move per frame; a key the dragged one PASSES over (lands
+/// on for one frame, then leaves) must still be there on release.
+#[test]
+fn a_key_dragged_across_another_and_released_past_it_keeps_both() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    track_with_keys_selecting(&mut st, &mut ph, &[0.0, 1.0, 2.0], 0.0);
+    apply_intent(&mut st, &mut ph, I::BeginEdit);
+    for _ in 0..3 {
+        // 0 → 0.5 → 1.0 (on the key at 1 s, for one frame) → 1.5
+        apply_intent(&mut st, &mut ph, I::MoveSelectedKeys { delta_seconds: 0.5 });
+    }
+    apply_intent(&mut st, &mut ph, I::EndEdit);
+    assert_eq!(key_times(&st), [1.0, 1.5, 2.0], "the crossed key survives");
+    st.undo();
+    assert_eq!(
+        key_times(&st),
+        [0.0, 1.0, 2.0],
+        "one Ctrl+Z undoes the drag"
+    );
+}
+
+/// The same for a backward group drag that sweeps over a neighbour.
+#[test]
+fn a_group_dragged_backwards_across_a_neighbour_keeps_it() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    track_with_keys_selecting(&mut st, &mut ph, &[0.5, 1.0, 2.0], 2.0);
+    apply_intent(&mut st, &mut ph, I::BeginEdit);
+    for _ in 0..5 {
+        // 2.0 → … → 1.0 (on the neighbour) → … → 0.75
+        apply_intent(
+            &mut st,
+            &mut ph,
+            I::MoveSelectedKeys {
+                delta_seconds: -0.25,
+            },
+        );
+    }
+    apply_intent(&mut st, &mut ph, I::EndEdit);
+    assert_eq!(key_times(&st), [0.5, 0.75, 1.0]);
+}
+
+/// Released ON a key, the moved one still absorbs it (the owner: «que seria normal apagar»).
+#[test]
+fn a_key_released_on_another_still_absorbs_it() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    let target = track_with_keys_selecting(&mut st, &mut ph, &[0.0, 1.0, 2.0], 0.0);
+    apply_intent(&mut st, &mut ph, I::BeginEdit);
+    for _ in 0..4 {
+        apply_intent(&mut st, &mut ph, I::MoveSelectedKeys { delta_seconds: 0.5 });
+    }
+    apply_intent(&mut st, &mut ph, I::EndEdit);
+    assert_eq!(
+        key_times(&st),
+        [1.0, 2.0],
+        "released on the 2 s key: one key there"
+    );
+    let track = st.doc.active_clip().track(target).unwrap();
+    assert_eq!(
+        track.keys()[1].value,
+        AnimValue::Float(0.0),
+        "the moved one wins"
+    );
+}
+
+/// A macro step's end is not a frame: the jump to it is exact even with Snap on; `Scrub` still snaps.
+#[test]
+fn scrub_exact_lands_off_the_frame_grid_and_is_a_seek() {
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(DT);
+    apply_intent(&mut st, &mut ph, I::ScrubExact(1.63));
+    assert!((ph.time() - 1.63).abs() < 1e-12, "{}", ph.time());
+    apply_intent(&mut st, &mut ph, I::Scrub(1.63));
+    assert!((ph.time() - 1.625).abs() < 1e-12, "{}", ph.time());
+    assert!(I::ScrubExact(1.0).is_seek() && I::Scrub(1.0).is_seek() && I::SeekFrame(1).is_seek());
+    assert!(!I::Play.is_seek());
+}

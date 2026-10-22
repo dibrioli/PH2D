@@ -8,6 +8,7 @@
 //! — it is never undoable (per plan B2/T4).
 
 use crate::doc::TimelineDoc;
+use crate::state::SelectedKey;
 
 /// Maximum number of undo steps kept (older steps drop off the bottom).
 pub const HISTORY_CAP: usize = 128;
@@ -18,6 +19,8 @@ pub struct TimelineHistory {
     undo: Vec<TimelineDoc>,
     redo: Vec<TimelineDoc>,
     pending: Option<TimelineDoc>,
+    /// Keys moved inside the open gesture ([`Self::note_moved`]).
+    moved: Vec<SelectedKey>,
     /// ⭐ As covas das purgas de donos mortos ([`ph2d_ecs::graveyard`]) — o undo global que devolve
     /// o objecto devolve os clipes no mesmo quadro (`ph2d-timeline-persist`).
     pub graveyard: ph2d_ecs::Graveyard<TimelineDoc>,
@@ -33,6 +36,22 @@ impl TimelineHistory {
     /// Snapshot the current doc before a gesture that may mutate it.
     pub fn begin(&mut self, doc: &TimelineDoc) {
         self.pending = Some(doc.clone());
+        self.moved.clear();
+    }
+
+    /// The keys this gesture has moved so far: they absorb what lies under them only where the
+    /// gesture closes (`intent_apply`), never at a frame they merely crossed.
+    pub(crate) fn note_moved(&mut self, keys: &[SelectedKey]) {
+        for k in keys {
+            if !self.moved.contains(k) {
+                self.moved.push(*k);
+            }
+        }
+    }
+
+    /// Hand over (and forget) the keys this gesture moved.
+    pub(crate) fn take_moved(&mut self) -> Vec<SelectedKey> {
+        std::mem::take(&mut self.moved)
     }
 
     /// Close a gesture: if `doc` differs from the [`begin`](Self::begin)
@@ -48,6 +67,7 @@ impl TimelineHistory {
     /// Discard the pending snapshot without making a step (cancelled gesture).
     pub fn cancel(&mut self) {
         self.pending = None;
+        self.moved.clear();
     }
 
     /// Whether a gesture is currently bracketed (a `begin` awaits its commit).

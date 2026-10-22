@@ -282,7 +282,7 @@ impl Macros {
                 }
             }
             MacroRequest::VaiPara { t_s, .. } => {
-                c.intents.push(TimelineIntent::Scrub(t_s));
+                c.intents.push(TimelineIntent::ScrubExact(t_s));
             }
             MacroRequest::Edita {
                 entity_bits,
@@ -343,7 +343,7 @@ impl Macros {
                 entity_bits: dono,
                 trilha: e.trilha,
                 k: e.k,
-                t0: e.t0_s,
+                fim: e.t1_s,
                 espera_s: e.espera_s,
             })
             .collect()

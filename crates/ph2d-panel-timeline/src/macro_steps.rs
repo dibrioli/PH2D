@@ -1,5 +1,6 @@
 //! **A linha «Macro steps»** (ADR-0186, W5d; `docs/Macros/02_plano_W5.md` §5): na vista Keys, quando
-//! o clipe activo é o de uma macro, um losango no início de cada etapa (`snap.macro_etapas`, que a
+//! o clipe activo é o de uma macro, um losango no FIM de cada etapa — o instante que o painel MACROS
+//! mostra e para onde leva a cabeça (W15, smoke do dono 22/10) — (`snap.macro_etapas`, que a
 //! shell enche pela `ph2d-app-macros`). Arrastar uma etapa re-cronometra-a e às seguintes — a
 //! pré-visualização anda com elas — e, ao largar, o painel pede `Espera(antiga + Δ)` à família pelo
 //! barramento (`EditorAction::Macro`): o arrasto é um EVENTO que a família lê, nunca uma chamada.
@@ -70,7 +71,7 @@ pub(crate) fn paint(
     let cy = y + ROW_H_PX * 0.5;
     for (i, e) in snap.macro_etapas.iter().enumerate() {
         #[expect(clippy::cast_possible_truncation, reason = "px de ecrã")]
-        let base = view.time_x + ((e.t0 - view.view_start) * view.px_per_s) as f32;
+        let base = view.time_x + ((e.fim - view.view_start) * view.px_per_s) as f32;
         let x = base + preview_dx(state, snap, i);
         if x < view.time_x - tracks::KEY_HIT_HW || x > view.right + tracks::KEY_HIT_HW {
             continue;
@@ -100,7 +101,7 @@ pub(crate) fn paint(
     }
 }
 
-/// O gesto num losango: arrastar re-cronometra ao largar; clicar leva a cabeça ao início da etapa.
+/// O gesto num losango: arrastar re-cronometra ao largar; clicar leva a cabeça ao losango, sem snap.
 pub(crate) fn apply(
     state: &mut TimelinePanelState,
     snap: &TimelineViewSnapshot,
@@ -139,7 +140,7 @@ pub(crate) fn apply(
         GesturePhase::Click | GesturePhase::DoubleClick => {
             state.macro_drag = None;
             if let Some(e) = snap.macro_etapas.get(index) {
-                crate::state::push_intent(TimelineIntent::Scrub(e.t0));
+                crate::state::push_intent(TimelineIntent::ScrubExact(e.fim));
             }
         }
     }
@@ -159,7 +160,7 @@ mod tests {
                     trilha: 0,
                     k,
                     #[expect(clippy::cast_precision_loss, reason = "poucas etapas")]
-                    t0: k as f64,
+                    fim: k as f64,
                     espera_s: 0.25,
                 })
                 .collect(),
@@ -217,5 +218,32 @@ mod tests {
             })
         );
         assert_eq!(st.macro_drag, None);
+    }
+
+    /// Clicar num losango leva a cabeça ao instante DELE, sem o arredondar ao quadro (W15).
+    #[test]
+    fn clicar_num_losango_leva_a_cabeca_ao_instante_dele() {
+        use ph2d_editor_core::interaction::{GestureMods, TimelineHitKind};
+        let s = snap();
+        let mut st = TimelinePanelState::default();
+        let _ = crate::state::drain_intents();
+        apply(
+            &mut st,
+            &s,
+            1,
+            TimelineGesture {
+                surface: ph2d_a11y::NodeId(0),
+                kind: TimelineHitKind::MacroStep { index: 1 },
+                phase: GesturePhase::Click,
+                x: 10.0,
+                y: 0.0,
+                button: ph2d_host::PointerButton::Primary,
+                mods: GestureMods::default(),
+            },
+        );
+        assert_eq!(
+            crate::state::drain_intents(),
+            [TimelineIntent::ScrubExact(s.macro_etapas[1].fim)]
+        );
     }
 }

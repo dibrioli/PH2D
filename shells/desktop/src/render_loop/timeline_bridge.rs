@@ -168,10 +168,7 @@ pub(crate) fn run(
     // forward while playing must not fire every signal it skipped (ADR-0143 §3).
     let mut jumped = false;
     for intent in intents.drain(..) {
-        jumped |= matches!(
-            intent,
-            TimelineIntent::Scrub(_) | TimelineIntent::SeekFrame(_)
-        );
+        jumped |= intent.is_seek();
         apply_intent(timeline, playhead, intent);
     }
     // Publicado para o SEGUNDO produtor (a ponte de Motion, mais abaixo no quadro).

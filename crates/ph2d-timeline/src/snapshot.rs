@@ -182,7 +182,7 @@ pub struct ContainerView {
     pub length: f64,
 }
 
-/// **Uma etapa da macro na linha «Macro steps»** (W5d): o endereço que o arrasto edita e o início
+/// **Uma etapa da macro na linha «Macro steps»** (W5d): o endereço que o arrasto edita e o fim
 /// dela no tempo do clipe (a faixa Macro Time é a identidade `(0,0)→(D′,D′)`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct EtapaDaMacroView {
@@ -192,8 +192,9 @@ pub struct EtapaDaMacroView {
     pub trilha: usize,
     /// A etapa dentro da trilha.
     pub k: usize,
-    /// Início, em segundos do clipe.
-    pub t0: f64,
+    /// O FIM, em segundos do clipe: o instante que o painel MACROS mostra e a que leva a cabeça —
+    /// o losango e o painel dizem o mesmo número (W15).
+    pub fim: f64,
     /// A espera editada antes dela, em segundos: arrastar Δ escreve `espera_s + Δ`.
     pub espera_s: f64,
 }

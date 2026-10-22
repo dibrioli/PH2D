@@ -197,7 +197,7 @@ impl crate::App {
         let (keys, playing) = (self.timeline.keys_mode, self.playhead.is_playing());
         let laco = self.timeline.doc.active_loop_for(keys);
         let etapas: Vec<String> = (self.timeline_view.macro_etapas.iter())
-            .map(|e| format!("{:.2}", e.t0))
+            .map(|e| format!("{:.2}", e.fim))
             .collect();
         regista(&format!(
             "{ms} ms: {quadros} frames keys={keys} playing={playing} playhead={ph:.2} clip={clip:.2} \

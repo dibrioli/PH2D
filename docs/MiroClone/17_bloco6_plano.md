@@ -183,6 +183,8 @@ Cada linha tem um gate de COMPORTAMENTO (o clique sintético percorre a sequênc
 
 ## §6 — Gates (red-first) e a fixture que contém o fenómeno
 
+> ⚠️ 22/10 (auditoria do fecho): **nomes do plano; os gates reais estão no §9 e nos handoffs.** Dos 23 nomes planeados, 21 nunca existiram no código com este nome. Onde o plano diz `PROTOCOL 9` (e `9 → 10`), o código está em **11** (`ph2d-board-sync/src/session.rs`) e o formato do quadro em 17.
+
 - **B15:** `a_paste_into_another_board_never_points_at_a_stranger` (VERMELHO hoje: quadro de destino com um frame,
   um nó e um alvo de link com os MESMOS ids do que não foi copiado) · `copy_to_board_keeps_arrows_frames_and_the_map`
   · `move_leaves_one_step_on_each_board_and_the_toast_undoes_both` · `ctrl_v_in_another_tab_is_the_same_landing` ·
@@ -203,6 +205,8 @@ Cada linha tem um gate de COMPORTAMENTO (o clique sintético percorre a sequênc
 - Provas de mutação no fecho (cobertura, o zerar de referências alheias, `is_for`).
 
 ## §7 — A cena de smoke 28 (o próximo número: `smoke.rs:106` `max_level: 27`)
+
+> ⚠️ 22/10: a cena 28 existe — `max_level` é **28** (`ph2d-app-board/src/smoke.rs`); o próximo número livre é 29.
 
 Um quadro «Bloco 6» com quatro estações (o dono testa tudo de uma vez) e um 2.º quadro «Plan»:
 1. **Laço** — seis notas e duas formas; uma a 95 % dentro de um contorno guia, outra a 60 %, um «C» côncavo.

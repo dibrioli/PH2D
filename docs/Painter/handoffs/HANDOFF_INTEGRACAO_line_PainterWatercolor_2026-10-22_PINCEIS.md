@@ -75,16 +75,14 @@
   esbatida · pontas cortadas a direito num dab redondo · traço de 200 px do filme · mistura em luz linear (decisão do
   dono, muda todos) · orla do secador · misturador com grão perto da tinta · fio do arrasto · lâmina que gira (C38) ·
   partículas/mip. Destrava os 67 «em estudo».
-- **Brecha do gate:** `set_brush_shape_image_rgba` (já no main) recebe `&[u8]` numa linha à parte da assinatura e
-  escapa a `arch_color_space_typed` (o gate não lê assinaturas em várias linhas).
+- **Brecha do gate:** `set_brush_shape_image_rgba` escapa a `arch_color_space_typed` (assinatura em várias linhas).
 - **Custo no app** ([custo_no_app](../Pinceis/exames/custo_no_app.md)): depósito por TEMPO (Filbert 56 → 24 ms a 90 px/qd); falta o pouso do transfer (série).
 - C39–C40 e o resto do [P53 §6](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-19_P53.md) continuam.
 
 ## §8 — Depois do smoke: o navegador de presets (22/10, `9a8754b976` `86cb0f15ea`)
 
-- Um título por CATEGORIA no popover (`painter_bridge_categorias::CATEGORIAS`; o meio de agora primeiro); widget
-  partilhado `DropdownOption::header` (`false` por omissão, sem hit/foco, `Role::Heading`); o Paint Mode subiu para o
-  cartão do topo nos 4 meios. Foto `foto_do_navegador` (`#[ignore]`); tutorial p. 2.
+- Um título por CATEGORIA no popover (`painter_bridge_categorias::CATEGORIAS`); `DropdownOption::header` (sem
+  hit/foco, `Role::Heading`); o Paint Mode no cartão do topo. Foto `foto_do_navegador`.
 
 ## §9 — O preview do pincel pinta pelo caminho da tela (22/10)
 

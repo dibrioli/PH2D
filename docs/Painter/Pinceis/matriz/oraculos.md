@@ -1,25 +1,25 @@
 # Os oráculos pela matriz — de onde sai a lei (gerado por `exame_matriz.py --recalibra`)
 
-População: 228 presets do Rebelle (os que pintam as 3 cenas) · 34 do ArtRage · 28 nossos. Escala congelada em `matriz/escala.json` (o MAD de cada traço sobre o Rebelle, com o chão = o ruído do recto repetido).
+População: 228 presets do Rebelle (os que pintam as 3 cenas) · 36 do ArtRage · 45 nossos. Escala congelada em `matriz/escala.json` (o MAD de cada traço sobre o Rebelle, com o chão = o ruído do recto repetido).
 
 ## (c) O ruído do oráculo — o mesmo recto a 40 pintado duas vezes (recto_lento × recto_40)
 
 | família | p50 | p75 (o chão da escala) | p90 | zeros |
 |---|---|---|---|---|
-| largura | 0.0000 | 0.0250 | 0.0750 | 65% |
-| cobertura | 0.0053 | 0.0150 | 0.0425 | 2% |
-| opacidade | 0.0039 | 0.0186 | 0.0510 | 42% |
-| textura | 0.6150 | 2.4539 | 8.4292 | 1% |
-| var_local | 0.0012 | 0.0101 | 0.0517 | 0% |
-| rugosidade | 0.0791 | 0.2793 | 0.7181 | 2% |
+| largura | 0.0000 | 0.0250 | 0.0625 | 66% |
+| cobertura | 0.0052 | 0.0147 | 0.0402 | 2% |
+| opacidade | 0.0039 | 0.0157 | 0.0490 | 42% |
+| textura | 0.6150 | 2.4021 | 8.2173 | 1% |
+| var_local | 0.0012 | 0.0099 | 0.0508 | 0% |
+| rugosidade | 0.0782 | 0.2710 | 0.6899 | 2% |
 | cv | 0.0044 | 0.0143 | 0.0450 | 2% |
-| periodo_fracao | 0.0294 | 0.0561 | 0.1141 | 2% |
-| pontas | 0.0011 | 0.0455 | 0.1010 | 49% |
-| alem | 0.0656 | 0.1653 | 0.3872 | 25% |
-| perfil | 0.0048 | 0.0224 | 0.0669 | 23% |
-| cor | 0.0031 | 0.0102 | 0.0303 | 13% |
+| periodo_fracao | 0.0294 | 0.0558 | 0.1096 | 2% |
+| pontas | 0.0010 | 0.0455 | 0.1010 | 49% |
+| alem | 0.0609 | 0.1607 | 0.3715 | 26% |
+| perfil | 0.0048 | 0.0222 | 0.0656 | 23% |
+| cor | 0.0027 | 0.0098 | 0.0288 | 13% |
 
-Em DISTÂNCIA (só os traços do recto, as famílias acima): o mesmo preset repintado dá p10 · p25 · p50 · p75 · p90 = **0.10 · 0.18 · 0.32 · 0.66 · 1.39**; o mesmo recto entre um preset e o seu vizinho mais perto: 0.26 · 0.42 · 0.67 · 1.12 · 1.55.
+Em DISTÂNCIA (só os traços do recto, as famílias acima): o mesmo preset repintado dá p10 · p25 · p50 · p75 · p90 = **0.10 · 0.18 · 0.31 · 0.65 · 1.35**; o mesmo recto entre um preset e o seu vizinho mais perto: 0.26 · 0.42 · 0.67 · 1.12 · 1.55.
 
 ## (a) A distância ao vizinho mais perto dentro do Rebelle — p10 · p25 · p50 · p75 · p90
 
@@ -27,14 +27,14 @@ Em DISTÂNCIA (só os traços do recto, as famílias acima): o mesmo preset repi
 |---|---|---|---|
 | AIRBRUSH | 5 | 0.44 · 0.44 · 1.00 · 1.00 · 1.08 | 0.84 · 0.90 · 1.00 · 1.07 · 1.11 |
 | EXPRESS_OIL | 32 | 0.51 · 0.63 · 0.81 · 0.96 · 1.25 | 0.51 · 0.73 · 0.82 · 0.96 · 1.25 |
-| INK_PEN | 10 | 0.91 · 1.03 · 1.17 · 1.33 · 1.64 | 0.91 · 1.03 · 1.17 · 1.40 · 1.64 |
+| INK_PEN | 10 | 0.67 · 0.81 · 1.05 · 1.13 · 1.25 | 0.67 · 0.81 · 1.05 · 1.13 · 1.37 |
 | MARKER | 4 | 0.94 · 0.94 · 1.01 · 1.27 · 1.58 | 1.19 · 1.33 · 1.51 · 1.66 · 1.74 |
 | OIL_AND_ACRYLIC | 62 | 0.46 · 0.64 · 0.86 · 1.12 · 1.42 | 0.51 · 0.64 · 0.89 · 1.12 · 1.42 |
 | PASTEL | 24 | 0.75 · 0.81 · 0.99 · 1.24 · 1.47 | 0.75 · 0.81 · 0.99 · 1.24 · 1.47 |
 | PENCIL | 44 | 0.00 · 0.22 · 0.78 · 0.93 · 1.14 | 0.63 · 0.67 · 0.83 · 0.96 · 1.17 |
-| WATERCOLOR | 47 | 0.61 · 0.74 · 0.86 · 1.46 · 2.08 | 0.69 · 0.77 · 0.87 · 1.58 · 2.11 |
-| TOTAL | 228 | 0.45 · 0.66 · 0.87 · 1.13 · 1.62 | 0.59 · 0.73 · 0.90 · 1.15 · 1.63 |
-| ArtRage (dentro dele) | 34 | 0.37 · 0.78 · 0.96 · 1.10 · 1.93 | — |
+| WATERCOLOR | 47 | 0.61 · 0.74 · 0.84 · 1.48 · 2.08 | 0.69 · 0.77 · 0.86 · 1.58 · 2.11 |
+| TOTAL | 228 | 0.45 · 0.66 · 0.86 · 1.10 · 1.55 | 0.59 · 0.73 · 0.89 · 1.13 · 1.61 |
+| ArtRage (dentro dele) | 36 | 0.37 · 0.83 · 1.00 · 1.19 · 2.08 | — |
 
 **Duplicados** (d < 0.05): 5 pares — Colored Pencil/2B Color = Graphite Pencil/2B (0.000); Colored Pencil/2H Color = Graphite Pencil/2H (0.000); Colored Pencil/4B Color = Graphite Pencil/4B (0.000); Colored Pencil/8B Color = Graphite Pencil/8B (0.000); Colored Pencil/HB Color = Graphite Pencil/HB (0.000). ⚠️ Os «X Color» e os «Graphite Pencil/X» do Rebelle dão fotos IGUAIS AO BYTE com a cor da bateria (sha1 conferido): só a cor de omissão os separa — o Rebelle vende duplicados.
 
@@ -69,7 +69,7 @@ Os 15 pares mais perto do Rebelle (fora da família: a série unida aos duplicad
 | EXPRESS_OIL Grunge/shred (numero) | Shred → Shred 2: 1.04 (textura) · Shred 2 → Shred 3: 0.45 (forma) |
 | EXPRESS_OIL Round/hairy (numero) | Hairy → Hairy 2: 1.76 (textura) |
 | INK_PEN Brush/brush (numero) | Brush → Brush 2: 1.24 (textura) · Brush 2 → Brush 3: 1.94 (mistura) |
-| INK_PEN Pen/fountain (forma) | Fountain Round → Fountain Square: 2.04 (mistura) |
+| INK_PEN Pen/fountain (forma) | Fountain Round → Fountain Square: 1.46 (mistura) |
 | INK_PEN Pen/wood (numero) | Wood → Wood 2: 1.82 (mistura) |
 | MARKER Marker/· (forma) | Bullet → Chisel: 1.70 (mistura) · Chisel → Liner: 0.94 (dinamica) |
 | OIL_AND_ACRYLIC Bristle/bristle (numero+forma) | Bristle Flat → Bristle Flat 2: 0.96 (forma) · Bristle Flat 2 → Bristle Round: 1.11 (forma) · Bristle Round → Bristle Round 2: 1.00 (forma) · Bristle Round 2 → Bristle Wide: 1.12 (forma) |
@@ -102,11 +102,11 @@ Os 15 pares mais perto do Rebelle (fora da família: a série unida aos duplicad
 | WATERCOLOR Granulation/granulation (numero) | Granulation → Granulation 2: 1.68 (textura) |
 | WATERCOLOR Spatter/spatter (numero) | Spatter → Spatter  2: 2.13 (textura) · Spatter  2 → Spatter 3: 2.83 (textura) · Spatter 3 → Spatter 4: 2.33 (forma) · Spatter 4 → Spatter 5: 1.78 (forma) · Spatter 5 → Spatter 6: 2.37 (textura) |
 | WATERCOLOR Spatter/splat (numero) | Splat → Splat 2: 1.40 (forma) |
-| WATERCOLOR Watercolor/· (numero+forma) | Fan → Flat: 1.64 (dinamica) · Flat → Flat 2: 0.95 (dinamica) · Flat 2 → Wash Flat: 2.20 (dinamica) · Wash Flat → Liner: 2.53 (mistura) · Liner → Liner 2: 1.03 (dinamica) · Liner 2 → Mop: 1.96 (forma) · Mop → Round: 1.52 (textura) · Round → Round 2: 1.14 (textura) · Round 2 → Round 3: 1.08 (dinamica) · Round 3 → Round 4: 1.05 (mistura) · Round 4 → Wash Round: 1.47 (textura) |
+| WATERCOLOR Watercolor/· (numero+forma) | Fan → Flat: 1.64 (dinamica) · Flat → Flat 2: 0.95 (dinamica) · Flat 2 → Wash Flat: 2.20 (dinamica) · Wash Flat → Liner: 2.53 (mistura) · Liner → Liner 2: 1.03 (dinamica) · Liner 2 → Mop: 1.39 (dinamica) · Mop → Round: 1.01 (dinamica) · Round → Round 2: 1.14 (textura) · Round 2 → Round 3: 1.08 (dinamica) · Round 3 → Round 4: 1.05 (mistura) · Round 4 → Wash Round: 1.47 (textura) |
 | WATERCOLOR Watercolor/dry (forma) | Filbert Dry → Flat Dry: 1.65 (dinamica) |
 
-Passos de série: 0.44 · 0.95 · 1.26 · 1.70 · 2.16 (n = 112).
+Passos de série: 0.44 · 0.95 · 1.25 · 1.68 · 2.16 (n = 112).
 
 ## A lei (a proposta está no 04 §4)
 
-limiar = p10 do vizinho mais perto no Rebelle, fora da série e dos duplicados = **0.591** (o recto repintado, só os traços do recto: mediana 0.317)
+limiar = p10 do vizinho mais perto no Rebelle, fora da série e dos duplicados = **0.591** (o recto repintado, só os traços do recto: mediana 0.313)

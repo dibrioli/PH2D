@@ -119,8 +119,9 @@ Série: d1 → d2 (o d2 usa o d1); d3 e d4 depois do d2, em paralelo; d5 no fim.
 
 ## 6. Decisões de produto (perguntadas ao dono)
 
-- **P1 — escrever a vida actual.** Um script pode pôr a vida actual directamente (`health.current = 10`)? Ou só por
-  dano e cura, com o piscar, os números e a morte que eles disparam?
+- **P1 — escrever a vida actual** → decisão nº 9 (22/10): **as duas formas.** `ph2d.set(e, "health.current", 10)`
+  põe o valor directo (sem piscar, sem números, sem contar como golpe; em zero morre). Dano e cura continuam à parte,
+  com o piscar, os números e a morte.
 
 ## 7. Estado
 

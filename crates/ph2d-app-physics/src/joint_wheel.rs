@@ -230,6 +230,20 @@ pub fn apply_wheel_edit(
     next.route_differs(&current)
 }
 
+/// **A talha de Weston no lugar** (a curva do canal `RODA_WESTON`): o marcador entra ou sai do
+/// mundo direto, como a escrita de pré-visualização que é; a edição do painel leva o MESMO marcador
+/// pela fila de comandos ([`apply_wheel_edit`]).
+pub(crate) fn weston_axle(world: &mut ph2d_ecs::World, e: Entity, on: bool) {
+    if world.get::<ph2d_physics_ecs::PulleyWheel>(e).is_none() {
+        return;
+    }
+    if on {
+        world.entity_mut(e).insert(ph2d_physics_ecs::WestonAxle);
+    } else {
+        world.entity_mut(e).remove::<ph2d_physics_ecs::WestonAxle>();
+    }
+}
+
 /// **Uma edição aplicada a uma roldana** — a metade pura, e o funil único.
 ///
 /// `None` quando a edição não é uma escrita de componente: um tag de `Wrap` que

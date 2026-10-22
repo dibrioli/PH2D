@@ -75,6 +75,7 @@ mod autokey_smoke_bloco2;
 mod autokey_smoke_campos;
 mod autokey_smoke_desenho;
 mod autokey_smoke_juntas;
+mod autokey_smoke_tipos;
 mod autokey_smoke_tudo;
 pub mod bars_publish;
 pub mod eyedropper;

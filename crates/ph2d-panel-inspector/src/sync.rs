@@ -55,7 +55,6 @@ pub(crate) fn sync_inspector_from_snapshots(
             host.store_mut().set_picker_target(None);
         }
         crate::sync_physics::sync_physics_fields(host);
-        crate::sync_physics::sync_wheel_fields(host);
         crate::sync_physics::sync_player_fields(host);
         if let Some(info) = transform {
             write_transform_rows(host, info, pos_for_display, ang_for_display);
@@ -89,6 +88,7 @@ pub(crate) fn sync_inspector_from_snapshots(
     // mudam os números da junta sem a selecção mudar. Depois do ramo, que já largou foco e arrasto
     // na troca de selecção.
     crate::sync_physics::sync_joint_fields(host);
+    crate::sync_physics::sync_wheel_fields(host);
     let pending_visibility_edit = host
         .bus()
         .iter()

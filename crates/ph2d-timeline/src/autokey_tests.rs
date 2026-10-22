@@ -323,3 +323,23 @@ fn the_anchor_is_refused_under_a_stack() {
         stacked.keys
     );
 }
+
+/// ⛔⛔ **Os quatro números da junta são pose do Auto Key** (smoke do dono, 22/10): o alvo e a taxa
+/// do motor e os dois comprimentos, digitados no Inspector, pedem a chave como a rotação pede.
+#[test]
+fn os_numeros_da_junta_mexidos_no_painel_pedem_a_chave() {
+    let st = doc_with_tx_track();
+    for prop in [
+        PropKind::JointMotorTarget,
+        PropKind::JointMotorSpeed,
+        PropKind::JointRestLength,
+        PropKind::JointMaxLength,
+    ] {
+        let i = PropKind::AUTOKEYED
+            .iter()
+            .position(|&p| p == prop)
+            .unwrap_or_else(|| panic!("{prop:?} fora do AUTOKEYED"));
+        let got = ak(&st, 0.5, &pose(&[(i, 2.0)]), &pose(&[(i, 1.0)]), true);
+        assert_eq!(got.keys, vec![(prop, 2.0)], "{prop:?}");
+    }
+}

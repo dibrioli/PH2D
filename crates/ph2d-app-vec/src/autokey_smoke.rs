@@ -28,7 +28,8 @@ static ESPERA: AtomicU8 = AtomicU8::new(0);
 /// o losango em todo campo — `autokey_smoke_tudo`) · `4` = `=6` (mexe sozinha) · `5` = `=7` (a `=6`
 /// com o Inspector à frente no fim, para a foto) · `6` = `=8` (o dono, o losango nos campos sem
 /// coluna — `autokey_smoke_campos`) · `7` = `=9` (mexe sozinha) · `8` = `=10` (a `=9` rolada até
-/// ao efeito) · `9..=13` = `=11..15` (o bloco 2 — `autokey_smoke_bloco2` e `autokey_smoke_juntas`).
+/// ao efeito) · `9..=13` = `=11..15` (o bloco 2 — `autokey_smoke_bloco2` e `autokey_smoke_juntas`)
+/// · `14..=24` = `=16..26` (uma bancada por tipo de junta — `autokey_smoke_tipos`).
 static DESENHO: AtomicU8 = AtomicU8::new(0);
 /// O estágio da cena — a do desenho avança-o daqui.
 pub(crate) fn avanca(n: u8) {
@@ -67,13 +68,22 @@ pub fn step(
                 "13" => 11,
                 "14" => 12,
                 "15" => 13,
-                _ => 0,
+                // `=16..26`: uma bancada por tipo de junta — `autokey_smoke_tipos`.
+                x => x
+                    .parse::<u8>()
+                    .ok()
+                    .filter(|v| (16..=26).contains(v))
+                    .map_or(0, |v| v - 2),
             };
             DESENHO.store(desenho, Ordering::Relaxed);
             1
         }
         s => s,
     };
+    if DESENHO.load(Ordering::Relaxed) >= 14 {
+        let modo = DESENHO.load(Ordering::Relaxed) - 14;
+        return crate::autokey_smoke_tipos::step(nivel, modo, sim, hero, tl, ph);
+    }
     if DESENHO.load(Ordering::Relaxed) >= 9 {
         return crate::autokey_smoke_bloco2::step(
             nivel,

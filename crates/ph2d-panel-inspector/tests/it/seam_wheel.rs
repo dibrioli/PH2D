@@ -568,3 +568,46 @@ fn typing_an_out_radius_reaches_the_bus() {
         "Out Radius",
     );
 }
+
+/// ⛔ **Os números da roldana seguem o documento com ela seleccionada** (Auto Key, canais JUNTA da
+/// §13): o espelho corria só na troca de selecção, e a curva a mexer o raio deixava o painel no
+/// número velho. A caixa em FOCO fica com o dedo; a do lado continua a seguir.
+#[test]
+fn the_wheel_numbers_follow_the_document_while_the_wheel_stays_selected() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::panel::PanelHostInternal;
+    use ph2d_panel_inspector::ids::{INSP_WHEEL_MOTOR, INSP_WHEEL_RADIUS};
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    let roda = |radius, motor_deg_per_s| InspectorWheelInfo {
+        radius,
+        motor_deg_per_s,
+        ..wheel()
+    };
+    let val = |host: &MockPanelHost, id| match host.store().get(id) {
+        Some(InteractiveState::NumberInput { value, .. }) => *value,
+        other => panic!("{id:?} nao e um NumberInput registrado: {other:?}"),
+    };
+    set_current_inspector_wheel(Some(roda(0.3, 0.0)));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_wheel(Some(roda(0.45, 60.0)));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let (r, m) = (val(&host, INSP_WHEEL_RADIUS), val(&host, INSP_WHEEL_MOTOR));
+    host.store_mut().set_focus(Some(INSP_WHEEL_RADIUS));
+    set_current_inspector_wheel(Some(roda(0.6, 90.0)));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let (r_dedo, m_dedo) = (val(&host, INSP_WHEEL_RADIUS), val(&host, INSP_WHEEL_MOTOR));
+    set_current_inspector_wheel(None);
+    assert!(
+        (r - 0.45).abs() < 1e-6 && (m - 60.0).abs() < 1e-6,
+        "Radius/Motor mostram {r}/{m} sobre uma roldana de 0.45/60 — o painel ficou na selecção"
+    );
+    assert!(
+        (r_dedo - 0.45).abs() < 1e-6,
+        "a caixa em FOCO foi reescrita ({r_dedo})"
+    );
+    assert!(
+        (m_dedo - 90.0).abs() < 1e-6,
+        "a caixa do lado parou de seguir ({m_dedo})"
+    );
+}

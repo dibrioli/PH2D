@@ -317,6 +317,26 @@ pub fn apply_joint_edit(
     }
 }
 
+/// **Prender o lado B ao MUNDO (`true`) ou a um objeto** (W-JointWorld) — a presença do marcador
+/// `JointWorldAnchor` É o booleano, então não passa pelo funil de campos. A porta da edição do
+/// painel e da curva (canal `PONTA_NO_MUNDO`).
+pub fn anchor_to_world(world: &mut World, e: Entity, on: bool) {
+    if world.get::<PhysicsJoint>(e).is_none()
+        || world.get::<ph2d_physics_ecs::JointWorldAnchor>(e).is_some() == on
+    {
+        return;
+    }
+    if on {
+        world
+            .entity_mut(e)
+            .insert(ph2d_physics_ecs::JointWorldAnchor);
+    } else {
+        world
+            .entity_mut(e)
+            .remove::<ph2d_physics_ecs::JointWorldAnchor>();
+    }
+}
+
 /// **Colar as propriedades de `source` neste joint** (W-JointCopy).
 ///
 /// Irmã de [`apply_joint_edit`] com outra entrada: um paste não é a edição de um
@@ -387,6 +407,9 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
                 next.motor_target = 0.0;
             }
         }
+        // ⛔ O MESMO tipo não é uma troca (F26): re-semear as âncoras a cada escrita fazia a curva
+        // de um tipo declarar a junta conduzida em todo quadro — e o Auto Key salta o conduzido.
+        JointFieldEdit::Kind(tag) if kind_of(tag) == prev_kind => {}
         JointFieldEdit::Kind(tag) => {
             next.kind = kind_of(tag);
             // The anchor POLICY depends on the kind: a shared-point joint

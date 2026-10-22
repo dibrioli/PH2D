@@ -45,19 +45,8 @@ impl crate::App {
                 let e = ph2d_ecs::Entity::from_bits(bits);
                 let _ = sim.world_mut().despawn(e);
             } else if let ph2d_editor_core::JointFieldEdit::AnchorToWorld(on) = edit {
-                // Estrutural como os dois irmãos: acrescenta/remove o
-                // MARCADOR `JointWorldAnchor` (W-JointWorld). Não há campo de
-                // `PhysicsJoint` a escrever, então ele não passa pelo funil.
                 let e = ph2d_ecs::Entity::from_bits(bits);
-                if on {
-                    sim.world_mut()
-                        .entity_mut(e)
-                        .insert(ph2d_physics_ecs::JointWorldAnchor);
-                } else {
-                    sim.world_mut()
-                        .entity_mut(e)
-                        .remove::<ph2d_physics_ecs::JointWorldAnchor>();
-                }
+                ph2d_app_physics::joint::anchor_to_world(sim.world_mut(), e, on);
             } else if matches!(edit, ph2d_editor_core::JointFieldEdit::CopyProperties) {
                 // ARMA a área de transferência — estado da shell, nenhum
                 // componente muda (por isso não passa pelo funil nem pela

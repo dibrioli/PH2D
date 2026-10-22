@@ -26,6 +26,18 @@ fn o_vocabulario_da_junta_nao_renumera() {
         (EIXO_MODO, 40),
         (EIXO_MIN, 41),
         (EIXO_MAX, 42),
+        (TIPO, 50),
+        (ATIVA, 51),
+        (COLIDE_PAR, 52),
+        (PONTA_NO_MUNDO, 53),
+        (RODA_RAIO, 60),
+        (RODA_RAIO_SAIDA, 61),
+        (RODA_WESTON, 62),
+        (RODA_ORDEM, 63),
+        (RODA_LADO, 64),
+        (RODA_MOTOR, 65),
+        (RODA_QUEBRA_LIGADA, 66),
+        (RODA_QUEBRA_FORCA, 67),
     ];
     for (n, (atual, gravado)) in fixos.iter().enumerate() {
         assert_eq!(atual, gravado, "a constante nº {n} da junta foi renumerada");
@@ -42,8 +54,19 @@ fn cada_campo_da_junta_diz_o_que_e() {
         QUEBRA_LIGADA,
         LIMITES_LIGADOS,
         SOLDA_MOLE,
+        TIPO,
+        ATIVA,
+        COLIDE_PAR,
+        PONTA_NO_MUNDO,
+        RODA_WESTON,
+        RODA_ORDEM,
+        RODA_LADO,
+        RODA_QUEBRA_LIGADA,
     ] {
         assert!(k(d, 0).info().is_some_and(|i| i.discreto), "campo {d}");
+    }
+    for c in [RODA_RAIO, RODA_RAIO_SAIDA, RODA_MOTOR, RODA_QUEBRA_FORCA] {
+        assert!(k(c, 0).info().is_some_and(|i| !i.discreto), "campo {c}");
     }
     for c in [
         MOTOR_FORCA,

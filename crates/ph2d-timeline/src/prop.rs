@@ -88,10 +88,8 @@ pub enum PropKind {
     /// ele é digitado ou keyado, nunca derivado de um `atan2` de gizmo, que é o
     /// mecanismo inteiro pelo qual a rotação precisa do unwrap.
     ///
-    /// Fora de [`PropKind::ALL`] e de [`PropKind::AUTOKEYED`] pelo mesmo motivo do
-    /// `TimeRemap`: `ALL` é a pose de um sprite, e o auto-key diffa a pose que o
-    /// artista ARRASTA. Um parâmetro de joint é digitado no Inspector, e a porta
-    /// que o keya é o `K` sobre a track (a mesma de todo canal que não é pose).
+    /// Fora de [`PropKind::ALL`] (a pose de um sprite) e DENTRO de [`PropKind::AUTOKEYED`]
+    /// desde 22/10 — ver a nota de lá.
     /// Appended — the discriminant is a frozen wire value.
     JointMotorTarget = 9,
     /// **A TAXA de um motor** — `PhysicsJoint::motor_speed`: a velocidade que a
@@ -242,7 +240,13 @@ impl PropKind {
     /// ⚠️ **Elas não custam nada a quem não é osso:** o amostrador devolve `None` numa entidade sem
     /// `Bone` (e também num osso cujas alças vêm da corrente — a mesma porta que recusa o `K`), e
     /// o diff salta todo `None`.
-    pub const AUTOKEYED: [PropKind; 11] = [
+    ///
+    /// ⛔⛔ **E os QUATRO números da junta pelo mesmo report** (smoke do dono, 22/10: *«algumas
+    /// propriedades das juntas ainda não gravam keys»*): o alvo e a taxa do motor e os dois
+    /// comprimentos nasceram fora daqui («digitados no Inspector, a porta é o K»), e o Auto Key
+    /// armado não os via — a edição do painel voltava à curva no quadro seguinte. *O Auto Key grava
+    /// tudo* (dono, 19/10). Numa entidade sem `PhysicsJoint` o amostrador devolve `None`.
+    pub const AUTOKEYED: [PropKind; 15] = [
         PropKind::TranslationX,
         PropKind::TranslationY,
         PropKind::Rotation,
@@ -254,6 +258,10 @@ impl PropKind {
         PropKind::BoneBendInY,
         PropKind::BoneBendOutX,
         PropKind::BoneBendOutY,
+        PropKind::JointMotorTarget,
+        PropKind::JointMotorSpeed,
+        PropKind::JointRestLength,
+        PropKind::JointMaxLength,
     ];
 
     /// The opaque [`AnimTarget`] a track uses to drive this property.

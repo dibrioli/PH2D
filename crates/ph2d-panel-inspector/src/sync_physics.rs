@@ -160,26 +160,31 @@ pub(crate) fn sync_wheel_fields(host: &mut dyn PanelHostInternal) {
     let Some(info) = state::current_inspector_wheel() else {
         return;
     };
-    host.store_mut()
-        .set_number_value(crate::ids::INSP_WHEEL_RADIUS, f64::from(info.radius));
-    // W4: o SEGUNDO diâmetro. Sem esta linha a row seria WRITE-ONLY — digitar
-    // funcionaria e re-selecionar o tambor mostraria 0, dizendo *roldana comum*
-    // sobre um diferencial. É o gap que a família de zonas já pagou uma vez, e
-    // aqui foi o gate estrutural da §13 que o pegou no minuto em que nasceu.
-    host.store_mut().set_number_value(
-        crate::ids::INSP_WHEEL_RADIUS_OUT,
-        f64::from(info.radius_out),
-    );
-    host.store_mut()
-        .set_number_value(crate::ids::INSP_WHEEL_ORDER, f64::from(info.order_ui));
-    host.store_mut().set_number_value(
-        crate::ids::INSP_WHEEL_MOTOR,
-        f64::from(info.motor_deg_per_s),
-    );
-    host.store_mut().set_number_value(
-        crate::ids::INSP_WHEEL_BREAK_FORCE,
-        f64::from(info.break_force),
-    );
+    // A cada quadro, saltando a caixa do dedo — a mesma lei do [`sync_joint_fields`]: a timeline
+    // (Auto Key, canais JUNTA da §13) muda a roldana sem a selecção mudar.
+    let focus = host.store().focus_id();
+    let drag = host.store().number_input_drag().map(|d| d.id);
+    for (id, v) in [
+        (crate::ids::INSP_WHEEL_RADIUS, f64::from(info.radius)),
+        // W4: o SEGUNDO diâmetro — sem ele a row seria WRITE-ONLY.
+        (
+            crate::ids::INSP_WHEEL_RADIUS_OUT,
+            f64::from(info.radius_out),
+        ),
+        (crate::ids::INSP_WHEEL_ORDER, f64::from(info.order_ui)),
+        (
+            crate::ids::INSP_WHEEL_MOTOR,
+            f64::from(info.motor_deg_per_s),
+        ),
+        (
+            crate::ids::INSP_WHEEL_BREAK_FORCE,
+            f64::from(info.break_force),
+        ),
+    ] {
+        if focus != Some(id) && drag != Some(id) {
+            host.store_mut().set_number_value(id, v);
+        }
+    }
 }
 
 /// §14 Platform Player — o mesmo espelho, e pela mesma razão: sem ele as oito

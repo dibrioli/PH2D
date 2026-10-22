@@ -148,6 +148,13 @@ pub enum Driver {
     /// DISJUNTOS dos outros drivers da sprite: o `tint[3]` é do [`Self::SpriteAlpha`] e o
     /// `self_tint`/`tint_fill` do [`Self::TweenTint`] (a curva usa-o — o mesmo facto, outro motor).
     SpriteCor,
+    /// ⭐ **O lado B de uma junta preso ao MUNDO** que um canal JUNTA escreve — a presença do
+    /// marcador `JointWorldAnchor`, ao lado do [`Self::JointParams`] (outro componente).
+    PontaNoMundo,
+    /// ⭐ **A roldana de uma corda** que os canais JUNTA da §13 escrevem: a `PulleyWheel` inteira
+    /// e o marcador `WestonAxle` (a talha é a presença dele) — um facto só, como o
+    /// [`Self::JointParams`].
+    Roldana,
 }
 
 /// **O FACTO que um motor escreve** — o recorte exacto do componente que é dele, e nada mais.
@@ -225,6 +232,15 @@ pub enum Driven {
         /// `SpriteEmissive`.
         emissao: Option<f32>,
     },
+    /// ⭐ O lado B no mundo — ver [`Driver::PontaNoMundo`].
+    PontaNoMundo(bool),
+    /// ⭐ A roldana e a talha de Weston — ver [`Driver::Roldana`].
+    Roldana {
+        /// A `PulleyWheel`.
+        roda: ph2d_physics_ecs::PulleyWheel,
+        /// O marcador `WestonAxle` está lá.
+        weston: bool,
+    },
 }
 
 impl Driven {
@@ -245,6 +261,8 @@ impl Driven {
             Self::TweenPose(_) => Driver::TweenPose,
             Self::TweenTint { .. } => Driver::TweenTint,
             Self::SpriteCor { .. } => Driver::SpriteCor,
+            Self::PontaNoMundo(_) => Driver::PontaNoMundo,
+            Self::Roldana { .. } => Driver::Roldana,
         }
     }
 
@@ -305,6 +323,21 @@ impl Driven {
                     opacidade: s.opacity,
                     cantos: w.get::<ph2d_ecs::SpriteCornerTint>(entity).map(|c| c.0),
                     emissao: w.get::<ph2d_ecs::SpriteEmissive>(entity).map(|e| e.0),
+                })
+            }
+            Driver::PontaNoMundo => {
+                let w = sim.world();
+                w.get::<ph2d_physics_ecs::PhysicsJoint>(entity)?;
+                Some(Self::PontaNoMundo(
+                    w.get::<ph2d_physics_ecs::JointWorldAnchor>(entity)
+                        .is_some(),
+                ))
+            }
+            Driver::Roldana => {
+                let w = sim.world();
+                Some(Self::Roldana {
+                    roda: *w.get::<ph2d_physics_ecs::PulleyWheel>(entity)?,
+                    weston: w.get::<ph2d_physics_ecs::WestonAxle>(entity).is_some(),
                 })
             }
         }
@@ -453,6 +486,40 @@ impl Driven {
                     && v.hidden != hidden
                 {
                     v.hidden = hidden;
+                }
+            }
+            Self::PontaNoMundo(no_mundo) => {
+                let w = sim.world_mut();
+                if w.get::<ph2d_physics_ecs::PhysicsJoint>(entity).is_none()
+                    || w.get::<ph2d_physics_ecs::JointWorldAnchor>(entity)
+                        .is_some()
+                        == no_mundo
+                {
+                    return;
+                }
+                if no_mundo {
+                    w.entity_mut(entity)
+                        .insert(ph2d_physics_ecs::JointWorldAnchor);
+                } else {
+                    w.entity_mut(entity)
+                        .remove::<ph2d_physics_ecs::JointWorldAnchor>();
+                }
+            }
+            Self::Roldana { roda, weston } => {
+                let w = sim.world_mut();
+                let Some(mut cur) = w.get_mut::<ph2d_physics_ecs::PulleyWheel>(entity) else {
+                    return;
+                };
+                if *cur != roda {
+                    *cur = roda;
+                }
+                if w.get::<ph2d_physics_ecs::WestonAxle>(entity).is_some() != weston {
+                    if weston {
+                        w.entity_mut(entity).insert(ph2d_physics_ecs::WestonAxle);
+                    } else {
+                        w.entity_mut(entity)
+                            .remove::<ph2d_physics_ecs::WestonAxle>();
+                    }
                 }
             }
         }

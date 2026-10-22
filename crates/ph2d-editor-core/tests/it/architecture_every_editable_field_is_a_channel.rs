@@ -80,9 +80,12 @@ const ESCOPO: &[(&str, Option<&[&str]>)] = &[
             "sections/transform.rs",
             "sections/color_tint.rs",
             "sections/emissive_row.rs",
+            "sections/joint.rs",
             "sections/joint_cards.rs",
             "sections/joint_kind_rows.rs",
             "sections/joint_custom.rs",
+            "sections/joint_pair_rows.rs",
+            "sections/wheel.rs",
             "sections/physics.rs",
             "sections/physics_area_rows.rs",
             "sections/physics_body.rs",
@@ -1086,7 +1089,7 @@ fn sem_coluna() -> Vec<(String, String, &'static str, bool)> {
                     .any(|p| corpo.contains(p));
                 for p in SEM_COLUNA {
                     let olho = p.contains("Eye") || p.starts_with("eye_");
-                    if corpo.contains(p) && (!olho || icone) {
+                    if casa(corpo, p) && (!olho || icone) {
                         out.push((ficheiro.clone(), funcao.clone(), *p, coluna));
                     }
                 }
@@ -1094,6 +1097,14 @@ fn sem_coluna() -> Vec<(String, String, &'static str, bool)> {
         }
     }
     out
+}
+
+/// `p` em `corpo` — ⚠️ o `IconId::Eyedropper` (o conta-gotas que ARMA um pick) não é o olho
+/// `IconId::Eye`: o prefixo casava-o, e os conta-gotas da §12/§13 liam-se como campos sem coluna.
+fn casa(corpo: &str, p: &str) -> bool {
+    corpo
+        .match_indices(p)
+        .any(|(i, _)| !corpo[i + p.len()..].starts_with("dropper"))
 }
 
 /// ⭐ **A lei da COLUNA** (F24d): uma caixa de marcar, um chip de menu, um seletor pintado direto ou
@@ -1152,6 +1163,13 @@ fn a_varredura_acha_os_campos_que_se_conhecem() {
         "INSP_JOINT_MOTOR_AXIS",
         "INSP_JOINT_BREAK_FORCE",
         "INSP_JOINT_AXIS_MODE",
+        "INSP_JOINT_KIND",
+        "INSP_JOINT_ACTIVE",
+        "INSP_JOINT_COLLIDE",
+        "INSP_JOINT_ANCHOR_B",
+        "INSP_WHEEL_RADIUS",
+        "INSP_WHEEL_WRAP",
+        "INSP_WHEEL_BREAK_FORCE",
         "VECTOR_OBJ_BLEND",
         "VECTOR_PAINT_BLEND",
         "VECTOR_STROKE_PRESENT",
@@ -1184,4 +1202,38 @@ fn a_varredura_acha_os_campos_que_se_conhecem() {
         );
     }
     assert!(pop.len() > 100, "população suspeita: {}", pop.len());
+}
+
+/// ⭐⭐ **Nenhum campo de JUNTA fica fora do [`ESCOPO`]** (smoke do dono, 22/10: o tipo, o Active e o
+/// Collide Connected em `joint.rs`, e a §13 da roldana inteira, não gravavam — o ficheiro estava
+/// fora da lista e o gate não os via). Todo ficheiro do Inspector que nomeia um id da §12/§13
+/// (`INSP_JOINT_*`, `INSP_WHEEL_*`) é população.
+#[test]
+fn nenhum_campo_de_junta_fica_fora_do_escopo() {
+    let so = ESCOPO
+        .iter()
+        .find(|(k, _)| *k == "ph2d-panel-inspector")
+        .and_then(|(_, so)| *so)
+        .expect("o Inspector está no ESCOPO por ficheiro");
+    let mut fora = Vec::new();
+    let mut vistos = 0;
+    for (ficheiro, s) in fontes("ph2d-panel-inspector") {
+        if !ficheiro.starts_with("sections/") {
+            continue;
+        }
+        if s.contains("ids::INSP_JOINT_") || s.contains("ids::INSP_WHEEL_") {
+            vistos += 1;
+            if !so.contains(&ficheiro.as_str()) {
+                fora.push(ficheiro);
+            }
+        }
+    }
+    assert!(
+        vistos >= 6,
+        "controlo: só {vistos} ficheiros da junta — o leitor partiu"
+    );
+    assert!(
+        fora.is_empty(),
+        "ficheiros do Inspector que pintam a junta/roldana FORA do ESCOPO: {fora:?}"
+    );
 }

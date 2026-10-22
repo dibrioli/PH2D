@@ -8,7 +8,8 @@
 //! `o_vocabulario_da_junta_nao_renumera`).
 //!
 //! O valor é o do DOCUMENTO (o componente): limites em radianos numa dobradiça e em metros num
-//! curso — a mesma unidade do `PropKind::JointMotorTarget`; um bool é 0/1; um enum é a `tag`.
+//! curso — a mesma unidade do `PropKind::JointMotorTarget`; um bool é 0/1 (um marcador também: a
+//! presença); um enum é a `tag`. A §13 (a roldana) mora aqui: uma Pulley é um tipo de junta.
 //! Cada linha do painel é um grupo (um losango por linha).
 
 use crate::canal::CampoInfo;
@@ -43,6 +44,25 @@ pub const EIXO_PASSO: u16 = 3;
 
 /// Quantos eixos um Custom tem.
 pub const N_EIXOS: u16 = 3;
+
+/// `kind` (a tag de `JointKind::ALL`), `active`, `collide_connected`.
+pub const TIPO: u16 = 50;
+pub const ATIVA: u16 = 51;
+pub const COLIDE_PAR: u16 = 52;
+/// O lado B preso ao MUNDO — a presença do marcador `JointWorldAnchor` (0/1).
+pub const PONTA_NO_MUNDO: u16 = 53;
+
+/// **A §13 — a roldana selecionada** (`PulleyWheel`, numa entidade que não é a corda): o raio, o
+/// segundo raio, a talha de Weston (o marcador `WestonAxle`, 0/1), a posição na rota (`order`,
+/// 0-based), o lado da corda (`WrapSide`), o motor (rad/s) e a quebra do eixo.
+pub const RODA_RAIO: u16 = 60;
+pub const RODA_RAIO_SAIDA: u16 = 61;
+pub const RODA_WESTON: u16 = 62;
+pub const RODA_ORDEM: u16 = 63;
+pub const RODA_LADO: u16 = 64;
+pub const RODA_MOTOR: u16 = 65;
+pub const RODA_QUEBRA_LIGADA: u16 = 66;
+pub const RODA_QUEBRA_FORCA: u16 = 67;
 
 /// O campo `base` (`EIXO_MODO`/`EIXO_MIN`/`EIXO_MAX`) do eixo `a`.
 #[must_use]
@@ -120,6 +140,18 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         SOLDA_MOLE => d("canal.junta.solda_mole", campo),
         RIGIDEZ => c("canal.junta.rigidez", campo),
         AMORTECIMENTO => c("canal.junta.amortecimento", campo),
+        TIPO => d("canal.junta.tipo", campo),
+        ATIVA => d("canal.junta.ativa", campo),
+        COLIDE_PAR => d("canal.junta.colide_par", campo),
+        PONTA_NO_MUNDO => d("canal.junta.ponta_no_mundo", campo),
+        RODA_RAIO => c("canal.junta.roda_raio", campo),
+        RODA_RAIO_SAIDA => c("canal.junta.roda_raio_saida", campo),
+        RODA_WESTON => d("canal.junta.roda_weston", campo),
+        RODA_ORDEM => d("canal.junta.roda_ordem", campo),
+        RODA_LADO => d("canal.junta.roda_lado", campo),
+        RODA_MOTOR => c("canal.junta.roda_motor", campo),
+        RODA_QUEBRA_LIGADA => d("canal.junta.roda_quebra_ligada", campo),
+        RODA_QUEBRA_FORCA => c("canal.junta.roda_quebra_forca", campo),
         _ => return None,
     })
 }

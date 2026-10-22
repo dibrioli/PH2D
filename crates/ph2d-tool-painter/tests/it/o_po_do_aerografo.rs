@@ -110,8 +110,10 @@ fn o_po_e_do_pixel() {
 #[test]
 fn sem_po_o_fluxo_do_pincel_nao_anda() {
     // J2 (03_MOTORES §7 b, a): o traço fino repõe o pigmento por área abaixo de ~29 px (a cena a 20 px pesa 1,05×) e
-    // a pressão do Soft Pastel é a da origem no Rebelle.
-    const ANTES: u64 = 0xc6d7748f78a789fe;
+    // a pressão do Soft Pastel é a da origem no Rebelle. J4 (receita, nenhum motor): `3ea7f0ff32` (a família curada,
+    // PressureGrain) e `9965b60b59` (o pó SOLTO, outro knob — `dust` continua ausente); o ficheiro de `77da300cb1`
+    // pinta no HEAD o `0xc6d7748f78a789fe` de antes, ao byte (medido 22/10).
+    const ANTES: u64 = 0x9b486226bdbd2ada;
     let mut p = de_fabrica("Soft Pastel");
     let tex = p.parametros.brush.get_mut("texture").unwrap();
     tex["mapping"] = serde_json::json!("Random");

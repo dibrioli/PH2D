@@ -54,8 +54,8 @@ fn escolher_poe_o_preset_no_pincel_e_lembra_o_ativo() {
     sem_erros(&toasts);
     assert_eq!(
         knob(&t, "pigmentPerDab"),
-        21.0,
-        "o Wash do 02 §6.9 (calibrado contra o Rebelle 10/10)"
+        2.8,
+        "o Wash com o filme (`93e0cc73bd`, J4 aguarela: pigmento 2,8; era 21 do 02 §6.9)"
     );
     // As cerdas moram no Shape (plano 27 W2): o Wash de antes chega com o Shape em Bristles e as dele.
     let b = t.brush_settings();
@@ -75,7 +75,7 @@ fn escolher_poe_o_preset_no_pincel_e_lembra_o_ativo() {
     t2.set_paint_media(PaintMedia::WetPaint);
     let p2 = Presets::abrir_em(pasta_de_fabrica(), Some(uti), &mut t2, &mut toasts);
     assert_eq!(p2.vista.ativo.as_deref(), Some(WASH));
-    assert_eq!(knob(&t2, "pigmentPerDab"), 21.0);
+    assert_eq!(knob(&t2, "pigmentPerDab"), 2.8);
 }
 
 #[test]
@@ -210,9 +210,28 @@ fn o_navegador_abre_em_qualquer_meio_e_escolher_troca_o_meio() {
     sem_erros(&toasts);
     let fabrica = ph2d_brush_presets::Biblioteca::carregar(&pasta_de_fabrica(), None);
     assert_eq!(p.vista.entradas.len(), fabrica.entradas.len() + 3);
-    assert_eq!(
-        p.vista.entradas[0].relativo, LAPIS,
+    // Desde a fábrica nos quatro meios (`938271318c`; o Flat Block-in, `3b4c2b46d3`, é hoje o 1.º do Digital) o
+    // Sketch Pencil do exemplo deixou de ser o único do meio de agora: o bloco do Digital inteiro vem primeiro.
+    let meio_de = |rel: &str| p.bib.procurar(rel).unwrap().preset.parametros.media.clone();
+    let agora = nome_do_meio(PaintMedia::Digital);
+    let n_agora = p
+        .vista
+        .entradas
+        .iter()
+        .filter(|v| meio_de(&v.relativo) == agora)
+        .count();
+    assert!(n_agora > 1, "a fábrica tem pincéis do Digital ({n_agora})");
+    assert!(
+        p.vista.entradas[..n_agora]
+            .iter()
+            .all(|v| meio_de(&v.relativo) == agora),
         "o meio de agora primeiro"
+    );
+    assert!(
+        p.vista.entradas[..n_agora]
+            .iter()
+            .any(|v| v.relativo == LAPIS),
+        "o lápis do exemplo no bloco do meio de agora"
     );
     assert_eq!(p.vista.ativo, None);
     p.atender(&mut t, PedidoPreset::Escolher(EMPASTE.into()), &mut toasts);

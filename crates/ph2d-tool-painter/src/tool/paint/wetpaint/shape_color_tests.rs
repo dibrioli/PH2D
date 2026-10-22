@@ -317,6 +317,12 @@ fn a_falloff_color_le_a_cobertura_como_no_digital() {
 /// homogeneíza o carimbo no primeiro passo») refutada: 10 s depois do traço o desvio de G−R da Texture
 /// Color ainda é ×3,4 (Express Oil) a ×16,5 (Oil Bristle) o do traço sem rampa (medido 16/10). Só o
 /// estado cru de teste, mais molhado que qualquer pincel de fábrica, mistura a rampa toda (×1,0).
+///
+/// Fora da régua (medido 22/10): as FERRAMENTAS que não pintam (o Blender Soft, `bcb4e5425d`; o mesmo filtro de
+/// `presets_de_fabrica::largura`) e o RESERVATÓRIO das tintas líquidas (`4d70916e0d`: «a pegada inteira passa à
+/// média» — a ponta é UMA tinta, de propósito; Ink Brush ×1,8 · Dip Pen ×1,0 · Ink Bullet ×1,8). Essas tintas
+/// medem-se com o reservatório a 0 (×7,3 · ×6,1 · ×9,2: a água não apaga a rampa), e o controlo prova que é
+/// ele quem a mistura.
 #[test]
 fn a_cor_sobrevive_a_agua_nos_pinceis_de_fabrica() {
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
@@ -328,16 +334,20 @@ fn a_cor_sobrevive_a_agua_nos_pinceis_de_fabrica() {
         bib.erros
     );
     let mut fracos = Vec::new();
-    // Só os do Wet Paint (a régua é a da água dele; os outros meios têm presets irmãos desde a J3).
-    for e in bib
-        .entradas
-        .iter()
-        .filter(|e| e.preset.parametros.media == crate::MEIO_DO_PRESET)
-    {
-        let desvio = |c: Option<(bool, bool)>| {
+    let mut reservatorios = 0;
+    // Só os do Wet Paint (a régua é a da água dele; os outros meios têm presets irmãos desde a J3) que PINTAM.
+    for e in bib.entradas.iter().filter(|e| {
+        e.preset.parametros.media == crate::MEIO_DO_PRESET
+            && e.preset
+                .parametros
+                .paint_mode
+                .as_deref()
+                .is_none_or(|m| m == "Paint")
+    }) {
+        let desvio = |pr: &ph2d_brush_presets::Preset, c: Option<(bool, bool)>| {
             let mut t = cena_da_regua(PaintMedia::WetPaint, c, 14.0);
-            assert!(t.wet_preset_aplicar(&e.preset).is_empty());
-            t.wet_preset_aplicar_volumes(&e.preset.parametros.volumes);
+            assert!(t.wet_preset_aplicar(pr).is_empty());
+            t.wet_preset_aplicar_volumes(&pr.parametros.volumes);
             // A cor de cada FIO (W2) é outra fonte de G−R: o controlo sem rampa deixava de ser liso.
             super::verde_no_soltar_tests::sem_os_fios(&mut t);
             t.paint.wetpaint.tilt_on = false;
@@ -352,12 +362,36 @@ fn a_cor_sobrevive_a_agua_nos_pinceis_de_fabrica() {
             traco(&mut t, 64.0, 16.0, 112.0, 600);
             g_menos_r(&t.canvas_rgba).2
         };
-        let r = desvio(Some((true, false))) / desvio(None).max(0.1);
+        let razao = |pr: &ph2d_brush_presets::Preset| {
+            desvio(pr, Some((true, false))) / desvio(pr, None).max(0.1)
+        };
+        let mut pr = e.preset.clone();
+        if pr
+            .parametros
+            .engine
+            .get("tipReservoir")
+            .is_some_and(|&v| v > 0.0)
+        {
+            let com = razao(&pr);
+            pr.parametros.engine.insert("tipReservoir".into(), 0.0);
+            let sem = razao(&pr);
+            assert!(
+                com < sem,
+                "{}: o reservatório já não mistura a rampa (×{com:.1} com, ×{sem:.1} sem)",
+                e.preset.parametros.name
+            );
+            reservatorios += 1;
+        }
+        let r = razao(&pr);
         if r < 2.5 {
             fracos.push(format!("{}: ×{r:.1}", e.preset.parametros.name));
         }
     }
     assert!(fracos.is_empty(), "a água apagou a rampa: {fracos:?}");
+    assert!(
+        reservatorios > 0,
+        "controlo: nenhuma tinta de reservatório medida"
+    );
 }
 
 /// **O PADRÃO QUE VIRA COR DEIXA DE RECORTAR A ÁGUA** (a lei do digital, P38; a da aguada, P39): a mesma

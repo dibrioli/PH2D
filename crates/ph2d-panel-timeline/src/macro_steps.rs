@@ -70,9 +70,7 @@ pub(crate) fn paint(
     );
     let cy = y + ROW_H_PX * 0.5;
     for (i, e) in snap.macro_etapas.iter().enumerate() {
-        #[expect(clippy::cast_possible_truncation, reason = "px de ecrã")]
-        let base = view.time_x + ((e.fim - view.view_start) * view.px_per_s) as f32;
-        let x = base + preview_dx(state, snap, i);
+        let x = view.x(e.fim) + preview_dx(state, snap, i);
         if x < view.time_x - tracks::KEY_HIT_HW || x > view.right + tracks::KEY_HIT_HW {
             continue;
         }

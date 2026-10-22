@@ -1,0 +1,231 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   334ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   341ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   341ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   350ms] M11: VelloPass initialized (1024×768 intermediate)
+[   356ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   391ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   422ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   427ms] lifecycle: Foreground
+[   427ms] resize: 1024x768 @ 1.00x scale
+[macro smoke =5] 'Canvas' (white, 1024²) carries a recorded macro: four Wet Paint strokes (5.0 s), stopped at the start. It opens in Paint mode. Play it in the Timeline's Keys tab: the strokes replay on the white canvas, and what you paint stays on top. Record your own (Record, paint, Stop) and Rewind while the water still runs: the clip starts white — only what you paint after Stop shows over it. When a clip ends, the canvas shows its own picture.
+[ph2d-gpu] surface present mode → Immediate
+[  4442ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 4.283s of sim time (max_substeps cap)
+[macro smoke] the app does the path by itself — Record, two strokes, Stop, three Opacity keys on the canvas (0.5, 1 and 1.5 s), then it clicks the second diamond of the «Macro steps» row in the Timeline's Keys tab. Do not touch the mouse until it stops. The playhead must stand exactly on that diamond: in this log «playhead=» equals the second number of «steps=». Then drag the Opacity key at 0.5 s past the one at 1 s and let go: three keys must remain. This log is also written to /tmp/ph2d-macro-smoke.log
+[macro smoke] 0 ms: 1 frames keys=false playing=false playhead=0.00 clip=0.00 loop=None t=None steps=["0.90", "1.52", "2.13", "2.75"] gravando=None toca=false epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=false
+[macro smoke] 104 ms: 5 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=None toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 205 ms: 7 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=None toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 306 ms: 8 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=None toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 413 ms: 8 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=None toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=true t=0.000 tinta=0
+[ph2d-gpu] surface present mode → Fifo
+[macro smoke] 523 ms: 6 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=None toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 627 ms: 7 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=None toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 735 ms: 7 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=None toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 849 ms: 7 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=None toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 955 ms: 6 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=None toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 1002 ms: Grava
+[macro smoke] 1064 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=false
+[macro smoke] 1180 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=false
+[macro smoke] 1287 ms: 7 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=false
+[macro smoke] 1394 ms: 7 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=false
+[macro smoke] 1499 ms: 7 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=false
+[macro smoke] 1600 ms: 6 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=false
+[macro smoke] 1705 ms: 6 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=false
+[macro smoke] 1807 ms: 6 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=false
+[macro smoke] 1916 ms: 5 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=0 editor=0 | mostrou: troca=false
+[macro smoke] 2004 ms: Desce([0.2, 0.3])
+[macro smoke] 2073 ms: Move([0.21621622, 0.3])
+[macro smoke] 2073 ms: Move([0.23243244, 0.3])
+[macro smoke] 2073 ms: Move([0.24864864, 0.3])
+[macro smoke] 2073 ms: Move([0.26486486, 0.3])
+[macro smoke] 2073 ms: 5 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=1295 editor=766 | mostrou: troca=false
+[macro smoke] 2114 ms: Move([0.28108108, 0.3])
+[macro smoke] 2114 ms: Move([0.2972973, 0.3])
+[macro smoke] 2114 ms: Move([0.31351352, 0.3])
+[macro smoke] 2143 ms: Move([0.32972974, 0.3])
+[macro smoke] 2160 ms: Move([0.34594595, 0.3])
+[macro smoke] 2160 ms: Move([0.36216217, 0.3])
+[macro smoke] 2183 ms: Move([0.3783784, 0.3])
+[macro smoke] 2183 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=3642 editor=2258 | mostrou: troca=false
+[macro smoke] 2209 ms: Move([0.3945946, 0.3])
+[macro smoke] 2209 ms: Move([0.41081083, 0.3])
+[macro smoke] 2233 ms: Move([0.42702705, 0.3])
+[macro smoke] 2257 ms: Move([0.44324327, 0.3])
+[macro smoke] 2257 ms: Move([0.45945948, 0.3])
+[macro smoke] 2280 ms: Move([0.4756757, 0.3])
+[macro smoke] 2301 ms: Move([0.49189192, 0.3])
+[macro smoke] 2301 ms: 5 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=5993 editor=3768 | mostrou: troca=false
+[macro smoke] 2333 ms: Move([0.50810814, 0.3])
+[macro smoke] 2333 ms: Move([0.5243243, 0.3])
+[macro smoke] 2359 ms: Move([0.5405406, 0.3])
+[macro smoke] 2359 ms: Move([0.5567568, 0.3])
+[macro smoke] 2384 ms: Move([0.57297295, 0.3])
+[macro smoke] 2384 ms: Move([0.5891892, 0.3])
+[macro smoke] 2408 ms: Move([0.60540545, 0.3])
+[macro smoke] 2408 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=8298 editor=5268 | mostrou: troca=false
+[macro smoke] 2463 ms: Move([0.62162167, 0.3])
+[macro smoke] 2463 ms: Move([0.6378378, 0.3])
+[macro smoke] 2463 ms: Move([0.6540541, 0.3])
+[macro smoke] 2493 ms: Move([0.6702703, 0.3])
+[macro smoke] 2493 ms: Move([0.6864865, 0.3])
+[macro smoke] 2519 ms: Move([0.7027027, 0.3])
+[macro smoke] 2519 ms: Move([0.7189189, 0.3])
+[macro smoke] 2519 ms: 3 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=10631 editor=6780 | mostrou: troca=false
+[macro smoke] 2562 ms: Move([0.73513514, 0.3])
+[macro smoke] 2562 ms: Move([0.75135136, 0.3])
+[macro smoke] 2562 ms: Move([0.7675676, 0.3])
+[macro smoke] 2582 ms: Move([0.7837838, 0.3])
+[macro smoke] 2599 ms: Move([0.8, 0.3])
+[macro smoke] 2627 ms: Sobe
+[macro smoke] 2627 ms: 5 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=12580 editor=8029 | mostrou: troca=false
+[macro smoke] 2752 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=12580 editor=8029 | mostrou: troca=false
+[macro smoke] 2871 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=13292 editor=8303 | mostrou: troca=false
+[macro smoke] 2972 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=13617 editor=8363 | mostrou: troca=false
+[macro smoke] 3082 ms: 5 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=13788 editor=8556 | mostrou: troca=false
+[macro smoke] 3186 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=13963 editor=8857 | mostrou: troca=false
+[macro smoke] 3291 ms: 5 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=13997 editor=9140 | mostrou: troca=false
+[macro smoke] 3402 ms: 6 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=14104 editor=9482 | mostrou: troca=false
+[macro smoke] 3507 ms: 5 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=14201 editor=9616 | mostrou: troca=false
+[macro smoke] 3614 ms: Desce([0.2, 0.5])
+[macro smoke] 3614 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=14418 editor=9865 | mostrou: troca=false
+[macro smoke] 3697 ms: Move([0.21621622, 0.5])
+[macro smoke] 3697 ms: Move([0.23243244, 0.5])
+[macro smoke] 3697 ms: Move([0.24864864, 0.5])
+[macro smoke] 3697 ms: Move([0.26486486, 0.5])
+[macro smoke] 3697 ms: Move([0.28108108, 0.5])
+[macro smoke] 3697 ms: Move([0.2972973, 0.5])
+[macro smoke] 3723 ms: Move([0.31351352, 0.5])
+[macro smoke] 3723 ms: 2 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=16549 editor=11335 | mostrou: troca=false
+[macro smoke] 3769 ms: Move([0.32972974, 0.5])
+[macro smoke] 3769 ms: Move([0.34594595, 0.5])
+[macro smoke] 3769 ms: Move([0.36216217, 0.5])
+[macro smoke] 3797 ms: Move([0.3783784, 0.5])
+[macro smoke] 3797 ms: Move([0.3945946, 0.5])
+[macro smoke] 3822 ms: Move([0.41081083, 0.5])
+[macro smoke] 3851 ms: Move([0.42702705, 0.5])
+[macro smoke] 3851 ms: Move([0.44324327, 0.5])
+[macro smoke] 3851 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=19190 editor=13123 | mostrou: troca=false
+[macro smoke] 3898 ms: Move([0.45945948, 0.5])
+[macro smoke] 3898 ms: Move([0.4756757, 0.5])
+[macro smoke] 3898 ms: Move([0.49189192, 0.5])
+[macro smoke] 3923 ms: Move([0.50810814, 0.5])
+[macro smoke] 3923 ms: Move([0.5243243, 0.5])
+[macro smoke] 3956 ms: Move([0.5405406, 0.5])
+[macro smoke] 3956 ms: Move([0.5567568, 0.5])
+[macro smoke] 3956 ms: 3 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=21536 editor=14650 | mostrou: troca=false
+[macro smoke] 3996 ms: Move([0.57297295, 0.5])
+[macro smoke] 3996 ms: Move([0.5891892, 0.5])
+[macro smoke] 4020 ms: Move([0.60540545, 0.5])
+[macro smoke] 4020 ms: Move([0.62162167, 0.5])
+[macro smoke] 4048 ms: Move([0.6378378, 0.5])
+[macro smoke] 4048 ms: Move([0.6540541, 0.5])
+[macro smoke] 4081 ms: Move([0.6702703, 0.5])
+[macro smoke] 4081 ms: Move([0.6864865, 0.5])
+[macro smoke] 4081 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=24185 editor=16432 | mostrou: troca=false
+[macro smoke] 4108 ms: Move([0.7027027, 0.5])
+[macro smoke] 4153 ms: Move([0.7189189, 0.5])
+[macro smoke] 4153 ms: Move([0.73513514, 0.5])
+[macro smoke] 4153 ms: Move([0.75135136, 0.5])
+[macro smoke] 4189 ms: Move([0.7675676, 0.5])
+[macro smoke] 4189 ms: Move([0.7837838, 0.5])
+[macro smoke] 4189 ms: 3 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=26195 editor=17737 | mostrou: troca=false
+[macro smoke] 4215 ms: Move([0.8, 0.5])
+[macro smoke] 4250 ms: Sobe
+[macro smoke] 4305 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=26811 editor=18224 | mostrou: troca=false
+[macro smoke] 4425 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=27555 editor=18590 | mostrou: troca=false
+[macro smoke] 4541 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=27894 editor=18776 | mostrou: troca=false
+[macro smoke] 4649 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=28105 editor=19139 | mostrou: troca=false
+[macro smoke] 4760 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=28331 editor=19353 | mostrou: troca=false
+[macro smoke] 4870 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=28350 editor=19807 | mostrou: troca=false
+[macro smoke] 4985 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=28484 editor=20177 | mostrou: troca=false
+[macro smoke] 5102 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=28601 editor=20424 | mostrou: troca=false
+[macro smoke] 5245 ms: Para
+[macro smoke] 5245 ms: 3 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.966666666666667)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=Some(Painter) toca=true epoca=1422 palco=0 marca=28609 editor=20658 | mostrou: troca=false
+[macro smoke] 5368 ms: intents [SetLoop { range: Some((0.0, 4.311227)), ping_pong: false }]
+[macro smoke] 5368 ms: 1 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(0.0) steps=["0.90", "1.52", "2.13", "2.75"] gravando=None toca=true epoca=1422 palco=0 marca=28695 editor=20824 | mostrou: troca=false
+[macro smoke] 5594 ms: 1 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(0.0) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=0 marca=0 editor=20905 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 5728 ms: 2 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(0.0) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=0 marca=0 editor=21329 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 5879 ms: 2 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(0.0) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=0 marca=0 editor=21638 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 5990 ms: 4 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(0.0) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=0 marca=0 editor=21693 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 6034 ms: Chaves
+[macro smoke] 6100 ms: 2 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(0.0) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=0 marca=0 editor=21857 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 6208 ms: 2 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(0.0) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=0 marca=0 editor=21937 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 6315 ms: 3 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(0.0) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=0 marca=0 editor=22047 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 6430 ms: Losango(1)
+[macro smoke] 6430 ms: 2 frames keys=true playing=false playhead=0.00 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(0.0) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=0 marca=0 editor=22186 | mostrou: troca=true t=0.000 tinta=0
+[macro smoke] 6979 ms: 1 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=22249 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 7096 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=22823 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 7211 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=22967 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 7316 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=23010 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 7431 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=23111 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 7549 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=23201 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 7655 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=23245 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 7783 ms: 4 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=23337 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 7908 ms: 5 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=23417 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 8021 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=23504 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 8121 ms: 2 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=23556 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 8224 ms: 2 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=23640 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 8338 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=23682 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 8454 ms: 4 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=23750 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 8573 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=23865 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 8701 ms: 4 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=23906 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 8806 ms: 2 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=23981 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 8922 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=24046 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 9038 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=24108 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 9150 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=24194 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 9271 ms: 4 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=24276 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 9382 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=24331 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 9501 ms: 4 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=24413 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 9607 ms: 4 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=24471 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 9739 ms: 4 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=24583 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 9860 ms: 4 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=24627 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 9966 ms: 5 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=24681 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 10078 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=24767 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 10188 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=24802 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 10296 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=24890 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 10407 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=24946 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 10507 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=24974 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 10607 ms: 4 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25047 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 10717 ms: 5 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25090 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 10822 ms: 3 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25160 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 10932 ms: 5 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25215 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 11034 ms: 4 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25254 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 11157 ms: 6 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25330 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 11273 ms: 7 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25376 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 11382 ms: 5 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25427 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 11496 ms: 6 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25500 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 11599 ms: 7 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25555 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 11702 ms: 6 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25600 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 11804 ms: 6 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25646 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 11915 ms: 7 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25707 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 12034 ms: 5 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25747 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 12150 ms: 6 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25784 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 12276 ms: 6 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25821 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 12377 ms: 4 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25856 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 12480 ms: 6 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25890 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 12594 ms: 7 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25930 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 12701 ms: 5 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25966 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 12802 ms: 6 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=25996 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 12903 ms: 5 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26010 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 13008 ms: 5 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26050 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 13108 ms: 6 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26079 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 13215 ms: 5 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26115 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 13323 ms: 6 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26145 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 13432 ms: 6 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26167 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 13553 ms: 5 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26209 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 13654 ms: 6 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26242 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 13755 ms: 6 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26266 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 13865 ms: 6 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26292 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 13977 ms: 7 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26329 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 14079 ms: 5 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26358 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 14182 ms: 6 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26384 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 14289 ms: 7 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26393 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 14400 ms: 5 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26430 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 14512 ms: 7 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26452 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 14613 ms: 5 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26459 | mostrou: troca=true t=3.271 tinta=18150
+[macro smoke] 14725 ms: 5 frames keys=true playing=false playhead=3.27 clip=0.00 loop=Some((0.0, 4.311227)) t=Some(3.271145820617676) steps=["1.65", "3.27"] gravando=None toca=true epoca=5b6e palco=18150 marca=0 editor=26500 | mostrou: troca=true t=3.271 tinta=18150

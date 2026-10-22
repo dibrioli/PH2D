@@ -632,6 +632,34 @@ fn gate7_clicar_numa_etapa_leva_a_cabeca_ao_losango_dela_sem_arredondar() {
         [TimelineIntent::ScrubExact(fim)],
         "clicar na etapa leva a cabeça ao losango, sem o arredondar ao quadro"
     );
+
+    // E o losango está PINTADO debaixo da linha da cabeça parada nesse instante: a régua espelha a
+    // cabeça no seu valor (`v` = a fracção da faixa), no mesmo eixo em que a linha é desenhada.
+    let snap = ph2d_timeline::TimelineViewSnapshot {
+        fps,
+        frame_snap: true,
+        clip_time: Some(fim),
+        macro_etapas: linha.clone(),
+        ..ph2d_timeline::TimelineViewSnapshot::default()
+    };
+    ph2d_panel_timeline::set_current_timeline(Some(snap));
+    let mut th = MockPanelHost::with_panel::<ph2d_panel_timeline::TimelinePanel>();
+    let mut ts = ph2d_panel_timeline::state::TimelinePanelState::default();
+    let rects = th.paint::<ph2d_panel_timeline::TimelinePanel>(&mut ts, VIEWPORT_TIMELINE);
+    let rect = |id| rects.iter().find(|(n, _)| *n == id).map(|(_, r)| *r);
+    let regua = rect(ph2d_panel_timeline::ids::TIMELINE_RULER).expect("a régua");
+    let losango = rect(ph2d_panel_timeline::ids::timeline_macro_step_id(1)).expect("o losango");
+    let (_, v) = th
+        .store()
+        .slider(ph2d_panel_timeline::ids::TIMELINE_RULER)
+        .expect("a régua é um slider");
+    assert!(v > 0.0 && v < 1.0, "a cabeça à vista: {v}");
+    let cabeca = regua.x + v * regua.w;
+    let x = losango.x + losango.w * 0.5;
+    assert!(
+        (x - cabeca).abs() < 1.0,
+        "o losango em x={x}, a cabeça em {fim} s em x={cabeca}"
+    );
 }
 
 /// W5e — **apagar uma etapa** (decisão do dono, 15/10: o tempo dela fecha-se): o painel e a linha da

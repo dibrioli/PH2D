@@ -111,7 +111,7 @@ impl crate::App {
     /// linha de diagnóstico a cada décimo de segundo. Na `=5` (`conduz = false`) só o registo: o dono
     /// faz o caminho à mão.
     fn caminho_do_dono(&mut self, conduz: bool) {
-        use ph2d_app_painter::macro_track::caminho::{Gesto, passo, regista};
+        use ph2d_app_painter::macro_track::caminho::{self, Gesto, passo, regista};
         let Some(&bits) = TELA.get() else {
             return;
         };
@@ -132,6 +132,20 @@ impl crate::App {
                         .push(TimelineIntent::Scrub(g.segundos()));
                     self.timeline_reveal_after_apply = true;
                 }
+                // A porta do clique no losango: o pedido que `macro_steps::apply` levanta.
+                Gesto::Losango(k) => self.timeline_intents.extend(
+                    (self.timeline_view.macro_etapas.get(k))
+                        .map(|e| TimelineIntent::ScrubExact(e.fim)),
+                ),
+                Gesto::Chaves => self.timeline_intents.extend(caminho::CHAVES_S.map(|s| {
+                    TimelineIntent::AddKey {
+                        entity: bits,
+                        prop: ph2d_timeline::PropKind::Opacity,
+                        t: ph2d_anim::RationalTime::from_seconds(s),
+                        value: ph2d_anim::AnimValue::Float(1.0),
+                        interp: ph2d_anim::Interp::Linear,
+                    }
+                })),
                 Gesto::Play => self.timeline_intents.push(TimelineIntent::TogglePlay),
                 // A porta do botão: o `EditorAction` que o clique levanta.
                 Gesto::PlayDeCima => {

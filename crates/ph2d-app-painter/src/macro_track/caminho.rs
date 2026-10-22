@@ -50,7 +50,15 @@ pub enum Gesto {
     FechaSeletor,
     /// O Done do modal «Fill adjust».
     FillPronto,
+    /// O clique no losango `k` da linha «Macro steps» da Keys (W15).
+    Losango(usize),
+    /// Três chaves de opacidade em quadros inteiros ([`CHAVES_S`]) — o dono arrasta uma por cima
+    /// de outra (W15).
+    Chaves,
 }
+
+/// Os instantes das chaves do [`Gesto::Chaves`]: quadros inteiros a 24 fps.
+pub const CHAVES_S: [f64; 3] = [0.5, 1.0, 1.5];
 
 impl Gesto {
     /// O instante para onde o gesto leva a cabeça da Keys (o ⏮ é o arrasto até `0`).
@@ -99,6 +107,9 @@ pub enum Variante {
     /// W14: Parar e a cabeça da Keys parada no fim do clipe — a água continua até à imagem do artista; o
     /// diagnóstico conta os texels da ranhura que diferem do editor (`≠editor=`).
     Fim,
+    /// W15: Parar e o clique no losango da 2.ª etapa — a cabeça pára EM CIMA dele (`playhead=` e
+    /// `steps=` do diagnóstico dizem o mesmo número).
+    Etapa,
 }
 
 /// A variante desta corrida.
@@ -126,6 +137,7 @@ const NOMES: &[(&str, Variante)] = &[
     ("cor", Variante::Cor),
     ("colordrop", Variante::ColorDrop),
     ("fim", Variante::Fim),
+    ("etapa", Variante::Etapa),
 ];
 
 /// O valor de `PH2D_MACRO_CAMINHO` quando ele existe e não é nenhum caminho.
@@ -186,6 +198,13 @@ pub fn roteiro(v: Variante) -> Vec<(u64, Gesto)> {
     if v == Variante::Fim {
         // Para lá do fim do clipe (4,2 s): a cabeça fica no último instante.
         r.push((para + 500, Gesto::Arrasta(4.5)));
+        return r;
+    }
+    if v == Variante::Etapa {
+        r.extend([
+            (para + 800, Gesto::Chaves),
+            (para + 1_200, Gesto::Losango(1)),
+        ]);
         return r;
     }
     let (rewind, play) = if matches!(v, Variante::Cruza | Variante::CruzaMolhada) {
@@ -431,6 +450,17 @@ pub fn anuncio(conduz: bool) -> String {
                  mouse. At the end of the clip the paint must keep spreading for up to a minute and stop \
                  on the editor's image: «≠editor» in this log reaches 0, and nothing jumps. This log is \
                  also written to {}",
+                f.display()
+            );
+        }
+        Variante::Etapa => {
+            return format!(
+                "the app does the path by itself — Record, two strokes, Stop, three Opacity keys on the \
+                 canvas (0.5, 1 and 1.5 s), then it clicks the second diamond of the «Macro steps» row \
+                 in the Timeline's Keys tab. Do not touch the mouse until it stops. The playhead must \
+                 stand exactly on that diamond: in this log «playhead=» equals the second number of \
+                 «steps=». Then drag the Opacity key at 0.5 s past the one at 1 s and let go: three \
+                 keys must remain. This log is also written to {}",
                 f.display()
             );
         }

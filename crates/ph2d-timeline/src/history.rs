@@ -36,7 +36,6 @@ impl TimelineHistory {
     /// Snapshot the current doc before a gesture that may mutate it.
     pub fn begin(&mut self, doc: &TimelineDoc) {
         self.pending = Some(doc.clone());
-        self.moved.clear();
     }
 
     /// The keys this gesture has moved so far: they absorb what lies under them only where the

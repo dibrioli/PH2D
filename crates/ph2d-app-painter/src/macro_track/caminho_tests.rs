@@ -18,6 +18,7 @@ fn o_roteiro_de_cada_variante_e_o_caminho_do_dono_por_ordem() {
         Variante::Cruza,
         Variante::CruzaMolhada,
         Variante::Fim,
+        Variante::Etapa,
     ] {
         let r = roteiro(v);
         assert!(
@@ -64,6 +65,13 @@ fn o_roteiro_de_cada_variante_e_o_caminho_do_dono_por_ordem() {
                 "{v:?}: {s:?}"
             );
             matches!(r.last().unwrap().1, Gesto::Arrasta(_))
+        } else if v == Variante::Etapa {
+            // Depois do Parar, as chaves e o clique no losango da 2.ª etapa.
+            assert_eq!(arrasta.count(), 0);
+            let ch = pos(Gesto::Chaves).unwrap();
+            ch > para
+                && r.last()
+                    .is_some_and(|(t, g)| *t > r[ch].0 && *g == Gesto::Losango(1))
         } else {
             assert_eq!(arrasta.count(), 0);
             matches!(r.last().unwrap().1, Gesto::Play | Gesto::PlayDeCima)
@@ -71,7 +79,11 @@ fn o_roteiro_de_cada_variante_e_o_caminho_do_dono_por_ordem() {
         assert!(fim, "{v:?}: o Play (ou o arrasto) fecha o caminho");
         let sem = matches!(
             v,
-            Variante::SemRewind | Variante::Topo | Variante::Arrasta | Variante::Fim
+            Variante::SemRewind
+                | Variante::Topo
+                | Variante::Arrasta
+                | Variante::Fim
+                | Variante::Etapa
         );
         assert_eq!(pos(Gesto::Rewind).is_some(), !sem);
         assert!(r.iter().all(|(_, g)| match g {

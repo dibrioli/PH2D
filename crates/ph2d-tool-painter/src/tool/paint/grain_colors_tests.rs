@@ -177,3 +177,199 @@ fn as_grain_colors_esmaecem_onde_o_meio_nao_le_o_grao() {
         "Wet Paint fora da ferramenta Paint: a linha não esmaeceu"
     );
 }
+
+/// O lado da tela das provas de resolução (um traço largo de raio 70 cabe com folga).
+const L: usize = 384;
+
+/// Um traço largo com o Voronoi e as Grain Colors cinza → rosa (os miolos das células saem pontos
+/// cinzentos — o caso da captura do dono, 22/10), armado por `arma`.
+fn pinta_voronoi(m: PaintMedia, arma: impl Fn(&mut PainterTool)) -> Vec<u8> {
+    let mut t = tool(L as u32, m, 70.0);
+    t.set_wet_relogio_fixo(true);
+    t.set_brush_color_srgb8([230, 150, 150]);
+    t.set_brush_texture_kind(TextureKind::Voronoi.to_u8());
+    t.paint.brush.granulation_use_paper = false;
+    t.set_texture_ramp(ColorRamp::new(
+        vec![
+            RampStop::new(0.0, [0.3, 0.3, 0.3, 1.0]),
+            RampStop::new(0.3, [0.9, 0.6, 0.6, 1.0]),
+        ],
+        RampColorMode::Rgb,
+        RampInterp::Linear,
+    ));
+    t.set_texture_ramp_enabled(true);
+    arma(&mut t);
+    let y = L as f32 / 2.0;
+    t.on_canvas_pointer(cp([90.0, y], PointerPhase::Down));
+    t.on_tick(1000.0 / 60.0);
+    for k in 1..=50u16 {
+        t.on_canvas_pointer(cp([90.0 + 4.0 * f32::from(k), y], PointerPhase::Move));
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.on_canvas_pointer(cp([290.0, y], PointerPhase::Up));
+    for _ in 0..4 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.canvas_rgba.to_vec()
+}
+
+/// **A resolução do padrão de cor** no miolo do traço, contra a referência `refe` (o Digital, que
+/// amostra o grão no pixel): `(bloco, correlação)`. O bloco é `1 / (1 − r)`, com `r` = a fracção dos
+/// pares vizinhos (linha e coluna) onde a referência MUDA (≥ 12 níveis na soma RGB) e a tinta sai com o
+/// MESMO RGB — o texel repetido de um padrão ampliado sem filtro; `1,0` = resolução do pixel. A
+/// correlação da luminância com a referência apanha o padrão torcido (deslocado) mesmo sem blocos.
+fn resolucao(px: &[u8], refe: &[u8]) -> (f32, f32) {
+    let lum = |b: &[u8], x: usize, y: usize| {
+        let p = &b[(y * L + x) * 4..][..3];
+        f32::from(p[0]) + f32::from(p[1]) + f32::from(p[2])
+    };
+    let (mut pares, mut iguais) = (0usize, 0usize);
+    let (mut sa, mut sb, mut saa, mut sbb, mut sab, mut n) = (0f64, 0f64, 0f64, 0f64, 0f64, 0f64);
+    for y in 150..234 {
+        for x in 130..250 {
+            let (a, b) = (f64::from(lum(px, x, y)), f64::from(lum(refe, x, y)));
+            (sa, sb, saa, sbb, sab, n) = (
+                sa + a,
+                sb + b,
+                saa + a * a,
+                sbb + b * b,
+                sab + a * b,
+                n + 1.0,
+            );
+            for (xn, yn) in [(x + 1, y), (x, y + 1)] {
+                if (lum(refe, x, y) - lum(refe, xn, yn)).abs() >= 12.0 {
+                    pares += 1;
+                    let p = &px[(y * L + x) * 4..][..3];
+                    let q = &px[(yn * L + xn) * 4..][..3];
+                    iguais += usize::from(p == q);
+                }
+            }
+        }
+    }
+    let r = iguais as f32 / pares.max(1) as f32;
+    let cov = sab / n - (sa / n) * (sb / n);
+    let var = (saa / n - (sa / n).powi(2)) * (sbb / n - (sb / n).powi(2));
+    (
+        1.0 / (1.0 - r).max(1e-3),
+        (cov / var.sqrt().max(1e-9)) as f32,
+    )
+}
+
+/// A tela sobre BRANCO (o que o artista vê), para as fotos.
+fn sobre_branco(px: &[u8]) -> Vec<u8> {
+    px.as_chunks::<4>()
+        .0
+        .iter()
+        .flat_map(|p| {
+            let a = f32::from(p[3]) / 255.0;
+            let c = |i: usize| (f32::from(p[i]) + 255.0 * (1.0 - a)).min(255.0) as u8;
+            [c(0), c(1), c(2), 255]
+        })
+        .collect()
+}
+
+/// ⭐ **O padrão das Grain Colors sai à resolução do PIXEL em todos os meios** (captura do dono 22/10:
+/// o Voronoi na Aquarela em blocos quadrados, no Digital liso). A Aquarela lia a cor depositada no
+/// ponto deslocado pelo Ragged Edge, ao vizinho mais próximo — o campo de deslocamento estica e
+/// comprime, e o padrão do grão saía repetido em blocos e torcido, fora do sítio onde a granulação
+/// assenta (`watercolor_render::pigment::texel_do_deposito`). Medido (miolo do traço, Digital = 1,00 px):
+///
+/// | meio | Ragged Edge | antes: bloco · corr | depois: bloco · corr |
+/// |---|---|---|---|
+/// | Aquarela | 6 (fábrica) | 1,29 px · 0,730 | 1,00 px · 0,979 |
+/// | Aquarela | 20 + Paper Edge 1 | 2,20 px · 0,127 | 1,00 px · 0,952 |
+/// | Wet Paint | — | 1,00 px · 0,984 | 1,00 px · 0,984 |
+/// | Impasto | — | 1,00 px · 0,985 | 1,00 px · 0,985 |
+///
+/// (O resto da correlação com a borda forte são os buracos que o Ragged Edge abre na COBERTURA, não a
+/// cor.) **Mutação que sangra:** `texel_do_deposito` devolver sempre o texel deslocado (a leitura de
+/// antes) — 1,29 px · 0,730 e 2,20 px · 0,127.
+#[test]
+fn o_padrao_das_grain_colors_sai_a_resolucao_do_pixel_em_todos_os_meios() {
+    let refe = pinta_voronoi(PaintMedia::Digital, |_| {});
+    let fotos = std::env::var("PH2D_VORONOI_FOTOS").ok();
+    let mut falhas = Vec::new();
+    let casos: [(PaintMedia, &str, f32, f32); 4] = [
+        (PaintMedia::Watercolor, "aquarela", 6.0, 0.0),
+        (PaintMedia::Watercolor, "aquarela_ragged20", 20.0, 1.0),
+        (PaintMedia::WetPaint, "wet", 6.0, 0.0),
+        (PaintMedia::Impasto, "impasto", 6.0, 0.0),
+    ];
+    for (m, nome, warp, borda) in casos {
+        let px = pinta_voronoi(m, |t| {
+            t.paint.brush.warp = warp;
+            t.paint.brush.paper_edge = borda;
+        });
+        let (bloco, corr) = resolucao(&px, &refe);
+        eprintln!("{nome}: bloco {bloco:.2} px · correlação {corr:.3}");
+        if bloco > 1.05 || corr < 0.9 {
+            falhas.push(format!(
+                "{nome}: o padrão do grão saiu em blocos de {bloco:.2} px (correlação {corr:.3} com o Digital)"
+            ));
+        }
+        if let Some(d) = &fotos {
+            let png = crate::tool::paint::composite_look::png_rgba(
+                &sobre_branco(&px),
+                L as u32,
+                L as u32,
+            );
+            std::fs::write(format!("{d}/voronoi_{nome}.png"), png).expect("a foto grava");
+        }
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// **O custo das Grain Colors na Aquarela** — ms por quadro (move + tick) de um traço de raio 70 numa
+/// tela 2048² (perfil `smoke`), com e sem elas, intercalados; resumo = a MEDIANA de cada traço, o
+/// MÍNIMO entre rondas. Corre-se à mão: `cargo test -p ph2d-tool-painter --profile smoke --lib --
+/// --ignored sonda_custo_das_grain_colors_na_aquarela --nocapture`.
+#[test]
+#[ignore = "sonda: o custo das Grain Colors na Aquarela; corre-se à mão"]
+fn sonda_custo_das_grain_colors_na_aquarela() {
+    const T: u32 = 2048;
+    let traco = |cor: bool| -> (f64, f64) {
+        let mut t = tool(T, PaintMedia::Watercolor, 70.0);
+        t.set_wet_relogio_fixo(true);
+        t.set_brush_texture_kind(TextureKind::Voronoi.to_u8());
+        t.paint.brush.granulation_use_paper = false;
+        if cor {
+            liga(&mut t);
+        }
+        let mut ms = Vec::new();
+        t.on_canvas_pointer(cp([600.0, 1024.0], PointerPhase::Down));
+        t.on_tick(1000.0 / 60.0);
+        for k in 1..=60u16 {
+            let t0 = std::time::Instant::now();
+            t.on_canvas_pointer(cp(
+                [600.0 + 12.0 * f32::from(k), 1024.0],
+                PointerPhase::Move,
+            ));
+            t.on_tick(1000.0 / 60.0);
+            ms.push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        t.on_canvas_pointer(cp([1320.0, 1024.0], PointerPhase::Up));
+        ms.sort_by(f64::total_cmp);
+        (ms[ms.len() / 2], ms[ms.len() * 95 / 100])
+    };
+    let (mut sem, mut com) = ((f64::MAX, f64::MAX), (f64::MAX, f64::MAX));
+    for ronda in 0..6 {
+        for cor in if ronda % 2 == 0 {
+            [false, true]
+        } else {
+            [true, false]
+        } {
+            let (m, p) = traco(cor);
+            let r = if cor { &mut com } else { &mut sem };
+            *r = (r.0.min(m), r.1.min(p));
+        }
+    }
+    let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!(
+        "CUSTO aquarela 2048² r70: sem Grain Colors {:.2} ms (p95 {:.2}) · com {:.2} ms (p95 {:.2}) · load {}",
+        sem.0,
+        sem.1,
+        com.0,
+        com.1,
+        load.trim()
+    );
+}

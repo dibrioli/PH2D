@@ -372,6 +372,15 @@ impl PainterTool {
         self.color_ramp_owner(self.grao_que_a_aguada_le()) != super::ramp_lut::RampLutOwner::None
     }
 
+    /// As Grain Colors da AQUARELA são as donas da cor: o mapa de granulação indexa a rampa
+    /// ([`GraoDaAguada`]) — o predicado de [`Self::grao_da_aguada`] e da marca
+    /// `WetStrokeStyle::cor_no_papel` (no Wet Paint o grão é o do dab, que não passa pelo composite).
+    pub(super) fn aguada_tem_cor_do_grao(&self) -> bool {
+        !matches!(self.paint.paint_mode, PaintMode::WetPaint)
+            && self.color_ramp_owner(self.grao_que_a_aguada_le())
+                == super::ramp_lut::RampLutOwner::Grain
+    }
+
     /// A rampa em cor que este lote lê — `None` com as duas desligadas ou a da Shape no modo B&W (o
     /// caminho de sempre, ao byte).
     pub(super) fn rampa_da_aguada(&mut self) -> Option<RampaDaAguada> {
@@ -393,9 +402,7 @@ impl PainterTool {
     /// O mapa de granulação que indexa as Grain Colors da aquarela — `None` quando elas não são as
     /// donas da cor (ou no Wet Paint, onde o grão é o do dab).
     pub(super) fn grao_da_aguada(&self, rampa: Option<&RampaDaAguada>) -> Option<GraoDaAguada> {
-        if !rampa.is_some_and(RampaDaAguada::do_grao)
-            || matches!(self.paint.paint_mode, PaintMode::WetPaint)
-        {
+        if !(rampa.is_some_and(RampaDaAguada::do_grao) && self.aguada_tem_cor_do_grao()) {
             return None;
         }
         let (fw, fh) = self.source_size;

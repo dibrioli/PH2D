@@ -15,6 +15,24 @@ use super::super::watercolor_lut::Luts;
 /// manter a lei num sítio só.
 use super::BACKRUN_CONC;
 
+/// **O texel do depósito que o pixel `px` lê** (cor e densidade da ponta): o ponto deslocado pela
+/// borda (`deslocado`, o Ragged/Paper Edge), salvo quando a cor é a do PAPEL (`cor_no_papel`, as Grain
+/// Colors) e o próprio texel tem tinta — aí o depósito lê-se no pixel, onde a granulação assenta. Lido
+/// no ponto deslocado, o padrão do grão saía torcido e em blocos (o vizinho mais próximo de um campo
+/// que estica: 29 % dos pares de borda do Voronoi repetidos, correlação 0,73 com o Digital).
+#[inline]
+pub(super) fn texel_do_deposito(
+    cor_no_papel: bool,
+    deposito: Option<&[u8]>,
+    px: usize,
+    deslocado: usize,
+) -> usize {
+    match deposito {
+        Some(buf) if cor_no_papel && buf[px * 4 + 3] > 0 => px,
+        _ => deslocado,
+    }
+}
+
 /// A cor do pigmento em `(x, y)`, das três camadas acima.
 ///
 /// `dono` já vem suavizado pelo campo por-dono ([`super::super::watercolor_rewet_px::StyleField::sample_color`]);

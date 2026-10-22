@@ -220,6 +220,7 @@ impl PainterTool {
             edge_flow: brush.edge_flow,
             paper_edge: brush.paper_edge.clamp(0.0, 1.0),
             deposito_dono: self.aguada_tem_rampa_de_cor(),
+            cor_no_papel: self.aguada_tem_cor_do_grao(),
         };
         // #13 (doc 14): per-owner SUBSTRATE. Single-substrate sessions resolve to the globals
         // (byte-identical + cache live); a multi-substrate session (paper/grain changed mid-session)
@@ -431,7 +432,13 @@ impl PainterTool {
                     } else {
                         0.0
                     };
-                    let ci = (wgy * fw + wgx) * 4;
+                    let didx = pigment::texel_do_deposito(
+                        st.cor_no_papel,
+                        has_color.then_some(color_buf.as_slice()),
+                        gy * fw + gx,
+                        widx,
+                    );
+                    let ci = didx * 4;
                     let col_a = if has_color {
                         f32::from(color_buf[ci + 3]) / 255.0
                     } else {
@@ -480,9 +487,9 @@ impl PainterTool {
                             (1.0 + (0.5 - paper_h) * 2.0 * WET_RAGGED * st_wet_px).max(0.0);
                         edge = (edge * (1.0 + WET_EDGE_BOOST * st_wet_px) * ragged).min(1.5); // LITERAL-PX-OK: wet edge may overshoot the dry clamp; signed (EDGE-3) keeps the pale lobe
                     }
-                    // Tip density at the warped position (nearest, like the colour buffer).
+                    // Tip density at the deposit texel — the colour buffer's (`didx`).
                     let tip_dens = if has_dens {
-                        f32::from(dens_buf[wgy * fw + wgx]) / 255.0
+                        f32::from(dens_buf[didx]) / 255.0
                     } else {
                         1.0
                     };

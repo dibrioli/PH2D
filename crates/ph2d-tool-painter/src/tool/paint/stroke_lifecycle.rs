@@ -164,7 +164,10 @@ impl PainterTool {
             // wash keeps ITS Concentration/Edge/water instead of being re-styled by the current
             // brush (Enio 2026-07-09).
             let forced_wet = self.paint.wet_session_wetness;
-            let dono = self.aguada_tem_rampa_de_cor();
+            let dono = (
+                self.aguada_tem_rampa_de_cor(),
+                self.aguada_tem_cor_do_grao(),
+            );
             self.paint
                 .wet_styles
                 .push_capture(&self.paint.brush, forced_wet, dono);

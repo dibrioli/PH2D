@@ -52,6 +52,10 @@ pub(in crate::tool::paint) struct WetStrokeStyle {
     /// ele tem tinta, nunca puxado para `color` pelo alfa fraco da borda
     /// ([`super::super::watercolor_render`], `pigmento_do_pixel`).
     pub(in crate::tool::paint) deposito_dono: bool,
+    /// **A cor do depósito é a do PAPEL** (as Grain Colors: o mapa de granulação indexa a rampa) — o
+    /// composite lê-a no texel de saída, onde a granulação assenta, e não no ponto deslocado pela borda
+    /// ([`super::super::watercolor_render`], `texel_do_deposito`).
+    pub(in crate::tool::paint) cor_no_papel: bool,
 }
 
 /// **A DILUICAO E QUANTA TINTA, NUNCA ONDE A LAVAGEM ESTA** (o arco palido, Enio 2026-08-11).
@@ -145,6 +149,7 @@ impl WetStrokeStyle {
             edge_flow: spec.edge_flow,
             paper_edge: spec.paper_edge.clamp(0.0, 1.0),
             deposito_dono: false,
+            cor_no_papel: false,
         }
     }
 }
@@ -165,10 +170,11 @@ impl WetSessionStyles {
         &mut self,
         spec: &ph2d_painter_brush::BrushSpec,
         forced_wet: f32,
-        deposito_dono: bool,
+        (deposito_dono, cor_no_papel): (bool, bool),
     ) {
         let st = WetStrokeStyle {
             deposito_dono,
+            cor_no_papel,
             ..WetStrokeStyle::capture(spec, forced_wet)
         };
         if self.table.len() < 255 {

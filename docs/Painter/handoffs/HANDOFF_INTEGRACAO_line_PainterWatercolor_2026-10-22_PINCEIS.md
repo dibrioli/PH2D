@@ -21,10 +21,9 @@
   omissão; portão `o_azul_abre_uma_mancha_redonda_no_vermelho_molhado`, 3 mutações sangram), ligado no Wet Liner e Wet
   Wash; tecto da cauda 1,3 × meia-largura (`eb04c3440d`). Motor J1–J4: [HANDOFF_JANELA_4](../Pinceis/HANDOFF_JANELA_4.md)
   («Motor novo») e `HANDOFF_JANELA_2/3`.
-- Biblioteca: nenhum par fora de família < 0,596; custo calmo p95 ≤ 12,5 ms a 200 px. Tutorial do dono:
-  [`tutorial/01_pinceis.pdf`](../Pinceis/tutorial/01_pinceis.pdf) (12 páginas).
+- Tutorial do dono: [`tutorial/01_pinceis.pdf`](../Pinceis/tutorial/01_pinceis.pdf).
 - **Grain Colors nos 4 meios** (`ae082ffb2e`): o grão indexa a rampa pela lei única `RampPaint::cor` (Aquarela: o mapa de
-  granulação; Wet: o grão do dab, que deixa de morder); esmaece sem leitor (`CorDoGrao*`); o preset grava-a (§9).
+  granulação; Wet: o grão do dab, que deixa de morder); esmaece sem leitor; o preset grava-a (§9).
 
 ## §3 — Fecho (1×, `PH2D_SUITE=fecho`)
 
@@ -34,7 +33,6 @@
   (`a_lei_da_tinta::o_glaze_do_pincel_escurece_o_cruzamento`, `::sem_glaze_cada_preset_de_fabrica_pinta_a_cena_de_antes`;
   sozinhos 8–17 s, 3/3) — promovidos à família de [flakes de carga](../../DevOps/FLAKES_DE_CARGA.md) em `b74b608d0e`
   (tabela + faixa isolada + faixa pesada; `architecture_toda_flake_de_carga_corre_na_faixa_isolada` verde).
-- Antes: 17 falhas reais curadas (`d9d763b06d` … `002c75267b`, um commit por família).
 
 ## §4 — Superfície de colisão (`bash <worktree>/scripts/collision-surface.sh`, base `100d34c8e0`)
 
@@ -44,7 +42,7 @@
 - ADR: a linha criou **0189** (caneta, P46) — reconte contra o main do dia. `Cargo.lock`: só `ph2d-pen` (P46).
 - «Marcadores» ✗ = falso positivo (2 PNG em `fixtures/rebelle_bateria/`); «Tecto de LOC» ✗ `app_state.rs`/`main.rs`
   da shell: de antes. `painter_bridge.rs` 666/700.
-- Fora do Painter: nextest/flakes · `ph2d-i18n` · painéis · `ph2d-pen`/`ph2d-host` · `ph2d-editor-core` · `ph2d-brush-presets` (§9) · shell.
+- Fora do Painter: nextest · `ph2d-i18n` · painéis · `ph2d-pen`/`ph2d-host` · editor-core · `ph2d-brush-presets` · shell.
 
 ## §5 — Números a recontar no merge (contar, nunca escolher)
 
@@ -57,7 +55,7 @@
   Chaves `app.painter.presets.folder.*` e `group_in_media` SAÍRAM (§8): use `category.*`.
 - LOC: 8 ficheiros partidos em `b515ce2549`: quem conflitar em `dab_route.rs`/`tools.rs`/`trail.rs`/`solver.rs`
   reaplica o MOVIMENTO, não funde à mão.
-- Grain Colors (§2): `Dependente::TODOS` **41 → 44** (contar) · `ph2d-i18n/src/painter_layers.rs` **700/700** LOC.
+- Grain Colors (§2) + §11: `Dependente::TODOS` **41 → 42** (contar) · `ph2d-i18n/src/painter_layers.rs` **700/700** LOC.
 
 ## §6 — Smoke do Enio (binário `smoke` compilado)
 
@@ -81,13 +79,11 @@
 
 ## §8 — Depois do smoke: o navegador de presets (22/10, `9a8754b976` `86cb0f15ea`)
 
-- Um título por CATEGORIA no popover (`painter_bridge_categorias::CATEGORIAS`); `DropdownOption::header` (sem
-  hit/foco, `Role::Heading`); o Paint Mode no cartão do topo. Foto `foto_do_navegador`.
+- Títulos por CATEGORIA no popover; `DropdownOption::header` (`Role::Heading`). Foto `foto_do_navegador`.
 
 ## §9 — O preview do pincel pinta pelo caminho da tela (22/10)
 
-- A `CenaDoPreview` deixava fora Grain Colors, ponta de N imagens, dual de imagem, Composite, camadas da Shape, Flow,
-  relevo do depósito, cor do papel e secagem, e a amostra viva pintava à pressão `1`. Agora leva-os (`ForaDoSpec`), o
+- A `CenaDoPreview` leva agora o que deixava fora (`ForaDoSpec`: Grain Colors, N imagens, dual, Composite, Flow…), o
   gesto tem a rampa de pressão e o preset grava as Grain Colors (`grain_color`). Portões: `o_preview_pinta_cada_capacidade_nova_como_a_tela`
   (13 casos, 4 meios, ao byte), `cada_campo_do_pincel_vai_para_o_preview_ou_diz_porque_nao` (censo),
   `o_pincel_gravado_leva_as_grain_colors_e_a_miniatura_mostra_as`; 10 mutações sangram; fábrica 0/45 mudou;
@@ -97,6 +93,12 @@
 
 ## §10 — O pino da preview (22/10, `9e176404cc`)
 
-- Toggle `PAINTER_BRUSH_PREVIEW_PIN` (sessão, como a dobra); fixada, a preview pinta-se numa faixa acima da área rolável,
-  que começa por baixo dela (`paint_pinned_preview`). `Button::build_a11y_toggle` novo (editor-core) · i18n
-  `painter_preview.rs`. Portões `seam_pino_da_preview` (4, 3 mutações sangram); fotos `tutorial/fotos/pino_*`.
+- `PAINTER_BRUSH_PREVIEW_PIN`: fixada, a preview fica acima da área rolável (`paint_pinned_preview`);
+  `Button::build_a11y_toggle` novo (editor-core) · i18n `painter_preview.rs`. Portões `seam_pino_da_preview` (4, 3 mutações sangram); fotos `tutorial/fotos/pino_*`.
+
+## §11 — «Same as Paper» esconde o grão do pincel (22/10, `82e7716afe`)
+
+- Só a Aquarela o tem. Ligado: saem textura, miniatura, Mapping/Angle/Offset/Size/Depth, Grain Behavior e Grain Colors
+  (`BrushSettings::grao_do_papel`); ficam o interruptor e o Amount (sonda: 0 texels nos 75 gestos). Saíram
+  `GrainDaAquarela`/`CorDoGraoDaAquarela` e a dica `same_as_paper_off`. Motor já certo. Portões `seam_same_as_paper`
+  (3, 2 mutações sangram) e do preview; fotos `tutorial/fotos/same_as_paper_*`.

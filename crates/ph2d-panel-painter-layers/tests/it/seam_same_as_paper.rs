@@ -193,7 +193,8 @@ fn com_same_as_paper_a_tinta_e_a_do_papel() {
 }
 
 /// A medição por trás da lei: cada controlo do grão próprio mexido com «Same as Paper» desligado e depois o
-/// interruptor ligado — a tinta tem de ser a do papel. `SAP … n=<texels>`; medido 22/10: `0` em todos.
+/// interruptor ligado — a tinta tem de ser a do papel. `SAP … n=<texels>`; medido 22/10: `0` nos 75
+/// gestos (as 4 opções já escolhidas não chegam à ferramenta: `n=usize::MAX`).
 #[test]
 #[ignore = "sonda: cada controlo do grão próprio com Same as Paper ligado"]
 fn sonda_cada_controlo_do_grao_com_same_as_paper() {

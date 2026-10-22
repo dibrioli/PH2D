@@ -31,8 +31,19 @@ fn foto_rolada(
     rolagem: f32,
     fixada: bool,
 ) -> Vec<u8> {
+    foto_de_altura(gpu, painter, rolagem, fixada, H)
+}
+
+/// [`foto_rolada`] com a altura `h` da janela.
+fn foto_de_altura(
+    gpu: &ph2d_gpu::GpuContext,
+    painter: &PainterTool,
+    rolagem: f32,
+    fixada: bool,
+    h: u32,
+) -> Vec<u8> {
     let mut pass =
-        ph2d_render::VelloPass::new(gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, (W, H)).unwrap();
+        ph2d_render::VelloPass::new(gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, (W, h)).unwrap();
     set_current_brush(Some(painter.brush_settings()));
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
     host.set_panel_visible(PainterLayersPanel::ID, true);
@@ -45,7 +56,7 @@ fn foto_rolada(
     host.store_mut()
         .set_panel_scroll(ph2d_editor_core::ids::PAINTER_LAYERS_PANEL, rolagem);
     let mut st = PainterLayersPanelState;
-    let viewport = Rect::new(0.0, 0.0, W as f32, H as f32);
+    let viewport = Rect::new(0.0, 0.0, W as f32, h as f32);
     let layout = HeroLayout::for_viewport(viewport);
     let mut scene = ph2d_vector::VectorScene::new();
     let mut text = ph2d_text::TextSystem::without_system_fonts();
@@ -68,7 +79,7 @@ fn foto_rolada(
         PainterLayersPanel::paint(&mut st, &mut ctx);
     }
     set_current_brush(None);
-    pass.render_and_readback(gpu, scene.inner(), (W, H))
+    pass.render_and_readback(gpu, scene.inner(), (W, h))
         .unwrap()
 }
 
@@ -184,4 +195,56 @@ fn foto_do_pino() {
         .unwrap();
     }
     set_current_wet_preview(None);
+}
+
+/// **A foto do «Same as Paper»** (dono 22/10): a Aquarela com o Voronoi e as Grain Colors (vermelho → azul),
+/// a secção Grain no topo — antes de marcar «Same as Paper» (o grão do artista na tela) e depois (só o
+/// interruptor e o Amount: o grão próprio sai da tela, e os valores ficam no pincel).
+/// `PH2D_FOTO_DIR=<pasta> cargo test -p ph2d-app-painter --features panel-painter-layers foto_do_same_as_paper
+/// -- --ignored`.
+#[test]
+#[ignore = "foto do Same as Paper — PH2D_FOTO_DIR=<pasta> e --ignored"]
+fn foto_do_same_as_paper() {
+    const ALTA: u32 = 1100;
+    let Ok(dir) = std::env::var("PH2D_FOTO_DIR") else {
+        return;
+    };
+    let gpu = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None)
+        .expect("a foto precisa da placa");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
+    t.set_paint_media(PaintMedia::Watercolor);
+    t.set_brush_size_px(16.0);
+    t.set_brush_color_srgb8([30, 60, 220]);
+    t.toggle_granulation_use_paper(); // a fábrica o tem ligado: o artista escolhe o grão com ele desligado
+    t.set_brush_texture_kind(ph2d_painter_brush::TextureKind::Voronoi.to_u8());
+    t.ramp_set_stop_color(0, [220, 30, 30, 255]);
+    t.ramp_set_stop_color(1, [30, 60, 220, 255]);
+    t.set_texture_ramp_enabled(true);
+    for (nome, papel) in [("antes", false), ("depois", true)] {
+        if t.brush_settings().granulation_use_paper != papel {
+            t.toggle_granulation_use_paper();
+        }
+        // A secção Grain logo abaixo das abas: o cabeçalho dela menos o das abas, no painel sem rolar.
+        set_current_brush(Some(t.brush_settings()));
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let rects = host.paint::<PainterLayersPanel>(
+            &mut PainterLayersPanelState,
+            Rect::new(0.0, 0.0, W as f32, 6000.0),
+        );
+        let y = |id| rects.iter().find(|(i, _)| *i == id).map(|(_, r)| r.y);
+        let grain =
+            y(ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_SECTION).expect("Grain pintada");
+        let abas = y(ph2d_tool_painter::ids::PAINTER_LAYERS_TOGGLE_DOCK).unwrap_or(40.0);
+        let px = foto_de_altura(&gpu, &t, (grain - abas - 40.0).max(0.0), false, ALTA);
+        image::save_buffer(
+            format!("{dir}/same_as_paper_{nome}.png"),
+            &px,
+            W,
+            ALTA,
+            image::ExtendedColorType::Rgba8,
+        )
+        .unwrap();
+    }
 }

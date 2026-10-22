@@ -101,7 +101,8 @@ pub(super) fn mancha(px: &[u8], w: usize) -> (f64, f64) {
 /// sem a lei, o quadrado da largura do traço com as duas tintas somadas (1,00 · 1,27). CONTROLO: o mesmo sem a lei.
 #[test]
 fn o_azul_abre_uma_mancha_redonda_no_vermelho_molhado() {
-    let lei = [("wetOpen".to_owned(), 0.42), ("wetOpenPush".to_owned(), 0.5)];
+    // O Wet Liner de fábrica liga a lei (`MANCHA_DO_LINER`, 0,42 · 0,5); o controlo desliga-a.
+    let lei: [(String, f64); 0] = [];
     let sem = [("wetOpen".to_owned(), 0.0)];
     let [(com_lei, w), (controlo, _)] = std::thread::scope(|s| {
         let a = s.spawn(|| foto("Wet Liner", &lei, "sobre", 0));

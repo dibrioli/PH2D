@@ -28,6 +28,12 @@ const VIDRADO: (&str, f64) = ("glaze", 0.2);
 /// ~1 sem ele) e aos 240 quadros nada secara. Água por dab 0,15 e capilaridade 0,05 (a mancha da água pouca).
 const POUCA_AGUA: [(&str, f64); 2] = [("waterPerDab", 0.15), ("capillary", 0.05)];
 
+/// ⭐ J5 — MOLHADO × MOLHADO (`Knob::WetOpen`, `exames/aguarela.md` «Motor J5»): o azul que entra no vermelho molhado abre
+/// uma mancha redonda e empurra-o. Medido na cena `sobre` (A): o Rebelle `Liner` 1,42 × a largura · escuro 1,06 — com
+/// 0,42 · 0,5 o nosso 1,51 · 1,06 (régua 419 → 430/454); o `Wash Round` 1,17 · 1,30 — 0,15 · 0,4 (373 → 384/454).
+const MANCHA_DO_LINER: [(&str, f64); 2] = [("wetOpen", 0.42), ("wetOpenPush", 0.5)];
+const MANCHA_DO_WASH: [(&str, f64); 2] = [("wetOpen", 0.15), ("wetOpenPush", 0.4)];
+
 pub const WET: &[Receita] = &[
     // J4 3.ª ronda (`exames/aguarela.md`): CURADO, NÃO aprovado — o FILME (o miolo mosqueado e a orla oca que dois revisores
     // repetiram saem), dura 0,9, papel 0, pigmento 2,8, orla 100, largura fixa, a ponta que não se suja; régua 349 → 373/456
@@ -57,6 +63,8 @@ pub const WET: &[Receita] = &[
             FILME,
             SEM_ARRASTO,
             VIDRADO,
+            MANCHA_DO_WASH[0],
+            MANCHA_DO_WASH[1],
         ],
         grao: None,
         achatado: None,
@@ -137,7 +145,7 @@ pub const WET: &[Receita] = &[
         bristle_count: 2000.0,
         hardness: 0.9,
         size_px: Some(29.0),
-        extras: &[FILME, SEM_ARRASTO, PAREDE, VIDRADO, POUCA_AGUA[0], POUCA_AGUA[1]],
+        extras: &[FILME, SEM_ARRASTO, PAREDE, VIDRADO, POUCA_AGUA[0], POUCA_AGUA[1], MANCHA_DO_LINER[0], MANCHA_DO_LINER[1]],
         grao: None,
         achatado: None,
         pincel: &[],

@@ -187,7 +187,7 @@ impl PreviewVivo {
 
     fn quadro(&mut self, painter: &PainterTool, agora: Instant) {
         let chave = painter.wet_preview_chave();
-        if self.chave != Some(chave) {
+        if self.chave.as_ref() != Some(&chave) {
             self.chave = Some(chave);
             let g = self.apresentacao.mudou(agora);
             self.viva.store(g, Ordering::Relaxed);
@@ -230,6 +230,9 @@ pub(crate) fn drive(painter: &PainterTool) {
     });
 }
 
+#[cfg(test)]
+#[path = "painter_bridge_preview_foto_tests.rs"]
+mod foto_tests;
 #[cfg(test)]
 #[path = "painter_bridge_preview_tests.rs"]
 mod tests;

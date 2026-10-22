@@ -448,6 +448,7 @@ impl PainterTool {
             sc.ler_json(v);
         }
         self.set_shape_color_estado(&sc);
+        self.grain_color_de_json(prm.grain_color.as_ref());
         // A largura prometida (W2): a lei MEDIDA do preset; um ficheiro sem ela (de antes da W2) usa a
         // do Wet Round, o pincel de fábrica.
         self.paint.wetpaint.largura = Some(
@@ -565,6 +566,7 @@ impl PainterTool {
         p.live_water = Some(w.agua_viva);
         p.heavy_edge = Some(w.borda_que_pesa);
         p.shape_color = self.shape_color_estado().para_json_se_mexida();
+        p.grain_color = self.grain_color_para_json();
         // A lei da largura do pincel de onde ele veio (W2): um pincel mexido guarda a do preset-base.
         if let Some(lei) = &w.largura {
             p.width_table = lei.tabela();

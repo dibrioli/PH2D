@@ -143,7 +143,7 @@ fn a_chave_muda_com_cada_parametro_e_o_traco_tambem() {
         ("opacity", &|t| t.paint.wetpaint.opacidade = 0.4, true),
     ];
     // Os casos são independentes: um por thread (113 s em série sob a suíte, 11/10).
-    let chave_base = base.wet_preview_chave();
+    let chave_base = &base.wet_preview_chave();
     let ultimo_base = &ultimo_base;
     std::thread::scope(|s| {
         let h: Vec<_> = casos
@@ -152,7 +152,11 @@ fn a_chave_muda_com_cada_parametro_e_o_traco_tambem() {
                 s.spawn(move || {
                     let mut t = molhado();
                     mexe(&mut t);
-                    assert_ne!(t.wet_preview_chave(), chave_base, "{nome}: a chave não viu");
+                    assert_ne!(
+                        &t.wet_preview_chave(),
+                        chave_base,
+                        "{nome}: a chave não viu"
+                    );
                     if pinta_diferente {
                         assert_ne!(
                             &quadros(&t).pop().unwrap(),

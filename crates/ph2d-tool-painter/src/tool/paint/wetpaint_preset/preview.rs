@@ -11,7 +11,11 @@
 //! obra neutra (tela branca, sem papel).
 
 use super::super::brush_settings::BrushTextureImage;
+use super::super::composite::{CompositeLayer, N_CAMADAS};
+use super::super::mangueira::Mangueira;
+use super::super::shape_layers::ShapeLayers;
 use super::super::shape_ramp::EstadoDaShapeColor;
+use super::super::watercolor_flow::MapaDoFluxo;
 use super::super::wetpaint::largura::LeiDaLargura;
 use crate::{LightRig, PaintMedia, PainterTool, WetKnobs};
 use ph2d_brush_presets::LADO_MINIATURA;
@@ -86,11 +90,43 @@ pub struct CenaDoPreview {
     /// A ferramenta molhada do pincel (J4 `mistura`): só a MINIATURA a usa — uma ferramenta que não pinta mostra-se a
     /// mexer numa faixa de tinta ([`pintar_miniatura`]); o preview vivo pinta sempre o pincel.
     ferramenta: super::super::wetpaint_settings::WetTool,
+    /// O que o pincel leva fora do `BrushSpec` e dos knobs (22/10: as Grain Colors, a ponta de N imagens, o
+    /// dual de imagem e o Composite não chegavam ao preview).
+    fora: ForaDoSpec,
+}
+
+/// **O pincel fora do `BrushSpec`** — o que mora no estado do tool por ser pesado ou partilhado: a rampa
+/// do grão (Grain Colors), as camadas da Shape, a imagem da 2.ª ponta, as imagens da ponta, o mapa do Flow,
+/// a pilha do Composite, o relevo do depósito e a obra que a aguada lê (a cor do papel, a secagem). O censo
+/// `cada_campo_do_pincel_vai_para_o_preview_ou_diz_porque_nao` obriga cada campo novo do estado a vir para
+/// aqui ou a dizer porque não vem.
+#[derive(Clone)]
+struct ForaDoSpec {
+    rampa_do_grao: (ph2d_color::ColorRamp, bool, bool),
+    composite: (bool, [CompositeLayer; N_CAMADAS], usize),
+    shape_layers: ShapeLayers,
+    dual: Option<BrushTextureImage>,
+    mangueira: Mangueira,
+    flow_map: MapaDoFluxo,
+    shape_relief: f32,
+    paper_color: [f32; 3],
+    dry_rate_per_s: f32,
+}
+
+/// A chave do [`ForaDoSpec`]: as imagens pela VERSÃO.
+#[derive(Clone, Debug, PartialEq)]
+struct ChaveForaDoSpec {
+    rampa_do_grao: (ph2d_color::ColorRamp, bool, bool),
+    composite: (bool, [CompositeLayer; N_CAMADAS], usize),
+    versoes: (u64, u64, (u64, usize), u64),
+    shape_relief: f32,
+    paper_color: [f32; 3],
+    dry_rate_per_s: f32,
 }
 
 /// «Mudou alguma coisa que o preview mostra?» — os mesmos ingredientes da [`CenaDoPreview`], com as
 /// imagens pela VERSÃO (nunca pelo endereço: um `Arc` novo pode nascer no endereço de um morto).
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ChaveDoPreview {
     meio: PaintMedia,
     dynamics: Dynamics,
@@ -109,6 +145,7 @@ pub struct ChaveDoPreview {
     largura: Option<u64>,
     /// A Shape Color: ligada, B&W e a versão da rampa (cada setter da secção e das camadas a sobe).
     shape_color: (bool, bool, u64),
+    fora: ChaveForaDoSpec,
 }
 
 impl PainterTool {
@@ -140,6 +177,26 @@ impl PainterTool {
             largura: w.largura.clone(),
             shape_color: self.shape_color_estado(),
             ferramenta: w.tool,
+            fora: self.fora_do_spec(),
+        }
+    }
+
+    fn fora_do_spec(&self) -> ForaDoSpec {
+        let p = &self.paint;
+        ForaDoSpec {
+            rampa_do_grao: (
+                p.texture_ramp.clone(),
+                p.texture_ramp_enabled,
+                p.texture_ramp_bw,
+            ),
+            composite: (p.composite_enabled, p.composite, p.composite_len),
+            shape_layers: p.shape_layers.clone(),
+            dual: p.dual.imagem_e_versao().0,
+            mangueira: p.mangueira.so_as_imagens(),
+            flow_map: p.flow_map.clone(),
+            shape_relief: p.shape_relief,
+            paper_color: p.paper_color,
+            dry_rate_per_s: p.dry_rate_per_s,
         }
     }
 
@@ -172,6 +229,27 @@ impl PainterTool {
                 self.paint.shape_color_ramp_bw,
                 self.paint.shape_ramp_version,
             ),
+            fora: ChaveForaDoSpec {
+                rampa_do_grao: (
+                    self.paint.texture_ramp.clone(),
+                    self.paint.texture_ramp_enabled,
+                    self.paint.texture_ramp_bw,
+                ),
+                composite: (
+                    self.paint.composite_enabled,
+                    self.paint.composite,
+                    self.paint.composite_len,
+                ),
+                versoes: (
+                    self.paint.shape_layers.version(),
+                    self.paint.dual.imagem_e_versao().1,
+                    self.paint.mangueira.chave(),
+                    self.paint.flow_map.versao,
+                ),
+                shape_relief: self.paint.shape_relief,
+                paper_color: self.paint.paper_color,
+                dry_rate_per_s: self.paint.dry_rate_per_s,
+            },
         }
     }
 
@@ -220,9 +298,32 @@ impl PainterTool {
         w.opacidade = c.opacidade;
         w.largura.clone_from(&c.largura);
         self.set_shape_color_estado(&c.shape_color);
+        self.instalar_fora_do_spec(&c.fora);
         self.paint.eraser = false;
         self.invalidate_composite();
     }
+
+    fn instalar_fora_do_spec(&mut self, f: &ForaDoSpec) {
+        let p = &mut self.paint;
+        (p.texture_ramp_enabled, p.texture_ramp_bw) = (f.rampa_do_grao.1, f.rampa_do_grao.2);
+        p.texture_ramp.clone_from(&f.rampa_do_grao.0);
+        p.texture_ramp_dirty = true;
+        (p.composite_enabled, p.composite, p.composite_len) = f.composite;
+        p.shape_layers.clone_from(&f.shape_layers);
+        p.dual.poe_imagem(f.dual.clone());
+        p.mangueira = f.mangueira.so_as_imagens();
+        p.flow_map.clone_from(&f.flow_map);
+        p.shape_relief = f.shape_relief;
+        p.paper_color = f.paper_color;
+        p.dry_rate_per_s = f.dry_rate_per_s;
+    }
+}
+
+/// **A pressão do gesto** do preview e da miniatura: sobe de `0,15` a `1` a meio e desce — a rampa que mostra
+/// o que o pincel faz com a pressão (o tamanho, a opacidade, o grão da pressão), que a pressão fixa `1` do
+/// rato escondia no preview vivo (22/10).
+fn pressao(f: f32) -> f32 {
+    0.15 + 0.85 * (f * std::f32::consts::PI).sin()
 }
 
 fn ponto(pos: [f32; 2], pressure: f32, phase: PointerPhase) -> CanvasPointer {
@@ -269,7 +370,6 @@ pub(super) fn pintar_miniatura(
             cy + AMPLITUDE * (f * std::f32::consts::TAU).sin(),
         ]
     };
-    let pressao = |f: f32| 0.15 + 0.85 * (f * std::f32::consts::PI).sin();
     let mut emite_se = |t: &mut PainterTool| {
         if let Some((px, w, h)) = quadro(t) {
             emite(&px, w, h);
@@ -375,16 +475,34 @@ pub fn pintar_preview(
     deve_parar: &dyn Fn() -> bool,
     emite: &mut dyn FnMut(&[u8], u32, u32),
 ) -> bool {
-    let d = (cena.brush.radius_px * 2.0).max(1.0);
-    let lw = ((10.0 * d).clamp(LARGURA_MIN, LARGURA_MAX) as u32) & !1;
-    let lh = lw / 2;
+    let (lw, lh) = tela_do_preview(cena.brush.radius_px);
     let mut t = PainterTool::default();
     let fundo = if cena.papel.is_some() { 0u8 } else { 255 };
     t.set_source(vec![fundo; (lw * lh * 4) as usize], lw, lh);
     t.set_paint_media(cena.meio);
     t.set_wet_relogio_fixo(true);
     t.instalar_cena(cena, true);
+    gesto_do_preview(&mut t, lw, lh, deve_parar, emite)
+}
 
+/// A tela do preview exato para um pincel de raio `raio_px`: `10 ×` o diâmetro, 2:1.
+pub(super) fn tela_do_preview(raio_px: f32) -> (u32, u32) {
+    let d = (raio_px * 2.0).max(1.0);
+    let lw = ((10.0 * d).clamp(LARGURA_MIN, LARGURA_MAX) as u32) & !1;
+    (lw, lw / 2)
+}
+
+/// **O gesto do preview** sobre `t`, cuja tela (`lw × lh`) já está posta: o S com a pressão a subir e a
+/// descer ([`pressao`]) e a água até parar. É o MESMO gesto que a régua da paridade corre sobre a tela de
+/// um pincel armado à mão (`preview_paridade_tests`): o preview é a tela, nunca uma cópia dela.
+pub(super) fn gesto_do_preview(
+    t: &mut PainterTool,
+    lw: u32,
+    lh: u32,
+    deve_parar: &dyn Fn() -> bool,
+    emite: &mut dyn FnMut(&[u8], u32, u32),
+) -> bool {
+    let d = (t.paint.brush.radius_px * 2.0).max(1.0);
     let (l, a) = (lw as f32, lh as f32);
     let margem = d.max(24.0).min(l * 0.25);
     // O S no terço de cima: por baixo cabem ~2,9 diâmetros de fios (medido na tela 1:1, Tilt no máximo,
@@ -405,18 +523,19 @@ pub fn pintar_preview(
             emite(&r, LARGURA_DO_PREVIEW, ALTURA_DO_PREVIEW);
         }
     };
-    t.on_canvas_pointer(ponto(em(0.0), 1.0, PointerPhase::Down));
+    t.on_canvas_pointer(ponto(em(0.0), pressao(0.0), PointerPhase::Down));
     for k in 1..=n {
         if deve_parar() {
             return false;
         }
-        t.on_canvas_pointer(ponto(em(k as f32 / n as f32), 1.0, PointerPhase::Move));
+        let f = k as f32 / n as f32;
+        t.on_canvas_pointer(ponto(em(f), pressao(f), PointerPhase::Move));
         t.on_tick(TICK_MS);
         if k % cada == 0 {
-            emite_se(&mut t);
+            emite_se(t);
         }
     }
-    t.on_canvas_pointer(ponto(em(1.0), 1.0, PointerPhase::Up));
+    t.on_canvas_pointer(ponto(em(1.0), pressao(1.0), PointerPhase::Up));
     for k in 1..=AGUA_MAX_TICKS {
         if deve_parar() {
             return false;
@@ -427,7 +546,7 @@ pub fn pintar_preview(
             !s.engine.active_grid().has_fluid
         });
         if parou || k % TICKS_POR_QUADRO_AGUA == 0 {
-            emite_se(&mut t);
+            emite_se(t);
         }
         if parou {
             break;
@@ -464,6 +583,12 @@ fn reduz(px: &[u8], w: u32, h: u32, ow: u32, oh: u32) -> Vec<u8> {
     out
 }
 
+#[cfg(test)]
+#[path = "preview_censo_tests.rs"]
+mod censo_tests;
+#[cfg(test)]
+#[path = "preview_paridade_tests.rs"]
+mod paridade_tests;
 #[cfg(test)]
 #[path = "preview_tests.rs"]
 mod tests;

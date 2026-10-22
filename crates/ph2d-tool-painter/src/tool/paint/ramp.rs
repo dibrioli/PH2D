@@ -148,3 +148,26 @@ impl PainterTool {
         self.ramp_remove_stop(last);
     }
 }
+
+impl PainterTool {
+    /// ⭐ **As Grain Colors por NOME** — a rampa do grão, ligada e o B&W — como o preset as grava
+    /// (`Parametros::grain_color`, 22/10). `None` = as de fábrica: o preset de antes delas, ao byte.
+    pub(super) fn grain_color_para_json(&self) -> Option<serde_json::Value> {
+        let p = &self.paint;
+        let json = |ligada: bool, bw: bool, rampa: &ph2d_color::ColorRamp| serde_json::json!({ "ligada": ligada, "bw": bw, "rampa": rampa });
+        let v = json(p.texture_ramp_enabled, p.texture_ramp_bw, &p.texture_ramp);
+        (v != json(false, false, &ph2d_color::ColorRamp::default())).then_some(v)
+    }
+
+    /// Instala as Grain Colors de um preset: as de `v`, ou as de FÁBRICA — `None` tira as do pincel anterior
+    /// (um preset é o pincel inteiro, a lei da Shape Color). Um campo ilegível fica o de fábrica.
+    pub(super) fn grain_color_de_json(&mut self, v: Option<&serde_json::Value>) {
+        let p = &mut self.paint;
+        p.texture_ramp = v
+            .and_then(|v| serde_json::from_value(v["rampa"].clone()).ok())
+            .unwrap_or_default();
+        p.texture_ramp_enabled = v.and_then(|v| v["ligada"].as_bool()).unwrap_or(false);
+        p.texture_ramp_bw = v.and_then(|v| v["bw"].as_bool()).unwrap_or(false);
+        p.texture_ramp_dirty = true;
+    }
+}

@@ -58,6 +58,20 @@ pub(crate) struct DualEstado {
     curva: f32,
 }
 
+impl DualEstado {
+    /// A imagem da 2.ª ponta e a versão dela — o que o preview leva e a chave dele.
+    pub(super) fn imagem_e_versao(&self) -> (Option<BrushTextureImage>, u64) {
+        (self.imagem.clone(), self.versao)
+    }
+
+    /// Instala a imagem da 2.ª ponta (a do pincel copiado para o tool do preview).
+    pub(super) fn poe_imagem(&mut self, imagem: Option<BrushTextureImage>) {
+        self.imagem = imagem;
+        self.versao = self.versao.wrapping_add(1);
+        self.cache = None;
+    }
+}
+
 /// ⭐ **O recorte da 2.ª ponta no pigmento do Wet** (L6): a silhueta `s` de um dab que pousa, no píxel `(px, py)`,
 /// recortada pela máscara do traço — o que pousa (e o relevo que o dab penteia) é `modo(s, m)`.
 pub(super) struct RecorteNoWet {

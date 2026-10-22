@@ -38,6 +38,22 @@ pub(super) struct Mangueira {
     dentro: bool,
 }
 
+impl Mangueira {
+    /// As imagens da ponta, sem o pedido nem o trinco do lote — o que o preview leva.
+    pub(super) fn so_as_imagens(&self) -> Self {
+        Self {
+            extras: self.extras.clone(),
+            uid: self.uid,
+            ..Self::default()
+        }
+    }
+
+    /// Muda quando uma imagem entra ou sai (a chave do preview).
+    pub(super) fn chave(&self) -> (u64, usize) {
+        (self.uid, self.extras.len())
+    }
+}
+
 /// ⭐ **A lei da importação RGBA** da Shape — a MESMA para a imagem única e para cada imagem da ponta: a silhueta
 /// pela LUMINÂNCIA (uma imagem importada pode não ter alpha; o alpha fica guardado para o interruptor), a cor
 /// capturada por camada. `false` = a imagem não serve (vazia ou curta).

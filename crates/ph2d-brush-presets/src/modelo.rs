@@ -99,6 +99,10 @@ pub struct Parametros {
     /// anterior (um preset é o pincel inteiro). O meio lê-a; o formato não sobe de versão.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shape_color: Option<Value>,
+    /// **As Grain Colors do pincel** (22/10): a rampa que o valor do grão indexa, ligada e o B&W, por NOME.
+    /// `None` = as de fábrica (desligadas): aplicar o pincel tira as do anterior. O formato não sobe de versão.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grain_color: Option<Value>,
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
 }
@@ -121,6 +125,7 @@ impl Parametros {
             live_water: None,
             heavy_edge: None,
             shape_color: None,
+            grain_color: None,
             extra: BTreeMap::new(),
         }
     }

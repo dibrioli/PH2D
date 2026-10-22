@@ -167,6 +167,7 @@ impl PainterTool {
             sc.ler_json(v);
         }
         self.set_shape_color_estado(&sc);
+        self.grain_color_de_json(prm.grain_color.as_ref());
         self.meio_aplicar_volumes(m, &prm.volumes);
         falhas
     }
@@ -309,6 +310,7 @@ impl PainterTool {
         p.volumes.opacity = v.opacity;
         p.paint_mode = self.meio_modo(m);
         p.shape_color = self.shape_color_estado().para_json_se_mexida();
+        p.grain_color = self.grain_color_para_json();
         (p, self.texturas_do_pincel())
     }
 }

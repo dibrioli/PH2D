@@ -24,7 +24,7 @@
 - Biblioteca: nenhum par fora de família < 0,596; custo calmo p95 ≤ 12,5 ms a 200 px. Tutorial do dono:
   [`tutorial/01_pinceis.pdf`](../Pinceis/tutorial/01_pinceis.pdf) (12 páginas).
 - **Grain Colors nos 4 meios** (`ae082ffb2e`): o grão indexa a rampa pela lei única `RampPaint::cor` (Aquarela: o mapa de
-  granulação; Wet: o grão do dab, que deixa de morder); esmaece sem leitor (`CorDoGrao*`); o preset não grava a rampa.
+  granulação; Wet: o grão do dab, que deixa de morder); esmaece sem leitor (`CorDoGrao*`); o preset grava-a (§9).
 
 ## §3 — Fecho (1×, `PH2D_SUITE=fecho`)
 
@@ -34,9 +34,7 @@
   (`a_lei_da_tinta::o_glaze_do_pincel_escurece_o_cruzamento`, `::sem_glaze_cada_preset_de_fabrica_pinta_a_cena_de_antes`;
   sozinhos 8–17 s, 3/3) — promovidos à família de [flakes de carga](../../DevOps/FLAKES_DE_CARGA.md) em `b74b608d0e`
   (tabela + faixa isolada + faixa pesada; `architecture_toda_flake_de_carga_corre_na_faixa_isolada` verde).
-- Antes disso o fecho achou 17 falhas reais, curadas (`d9d763b06d` … `002c75267b`, um commit por família: portas
-  RGBA tipadas, 8 ficheiros > 700 LOC partidos, citações, `deposit_mask`, controlos mortos, sub-secções recolhidas,
-  ordem do navegador) + 4 commits de estilo.
+- Antes: 17 falhas reais curadas (`d9d763b06d` … `002c75267b`, um commit por família).
 
 ## §4 — Superfície de colisão (`bash <worktree>/scripts/collision-surface.sh`, base `100d34c8e0`)
 
@@ -44,11 +42,9 @@
   registos de componentes 108/109/109 iguais; contratos §6 intocados. A linha não mexe em schema: **nada a recontar**,
   mas confira no main do dia (`python3 <worktree>/scripts/schema-recount.py <valor_do_main>`).
 - ADR: a linha criou **0189** (caneta, P46) — reconte contra o main do dia. `Cargo.lock`: só `ph2d-pen` (P46).
-- «Marcadores de conflito» ✗ = **falso positivo**: 2 PNG binários em `fixtures/rebelle_bateria/OIL_AND_ACRYLIC/`.
-  «Tecto de LOC» ✗ `app_state.rs` 923 e `main.rs` 1060 (shell): de antes (a linha tocou 3 linhas).
-  `painter_bridge.rs` 666/700.
-- Toca fora do Painter: `.config/nextest.toml` · `FLAKES_DE_CARGA.md` · `ph2d-i18n` · `ph2d-panel-painter-layers` ·
-  `ph2d-panel-registry-init` · `ph2d-pen`/`ph2d-host` (P46) · `ph2d-editor-core` (P46 + o `header` do §8) · `shells/desktop`.
+- «Marcadores» ✗ = falso positivo (2 PNG em `fixtures/rebelle_bateria/`); «Tecto de LOC» ✗ `app_state.rs`/`main.rs`
+  da shell: de antes. `painter_bridge.rs` 666/700.
+- Fora do Painter: nextest/flakes · `ph2d-i18n` · painéis · `ph2d-pen`/`ph2d-host` · `ph2d-editor-core` · `ph2d-brush-presets` (§9) · shell.
 
 ## §5 — Números a recontar no merge (contar, nunca escolher)
 
@@ -58,12 +54,9 @@
 - Gates de painel regravados: altura de `painter_layers` **1545** (2091 → 1554 → 1545 no §8; `quantas_entradas_tem_cada_painel.rs`)
   · tecto de nomes que não cabem na coluna 220 px: **15 → 13** (`27179b7792`, gate
   `cada_nome_deste_painel_cabe_na_coluna_da_seccao`) · painel do Painter volta ao tecto de 600 LOC (`265d8ebeb2`).
-  Outra linha que some linhas ao cartão do Pen/Brush/Stroke muda 1545: reconte. Chaves `app.painter.presets.folder.*`
-  (58) e `group_in_media` SAÍRAM (§8): outra linha que as use troca por `category.*`.
-- LOC: 8 ficheiros partidos em `b515ce2549` (`wet-paint` `tools/bordas.rs`, `trail/{bico,medida}.rs`, `solver/gota.rs`,
-  `solver/flow_jacobi/backrun.rs`; `tool-painter` `wetpaint/rota_da_lane.rs`; `painter-brush` `blend.rs`): quem
-  conflitar em `dab_route.rs`/`tools.rs`/`trail.rs`/`solver.rs` reaplica o MOVIMENTO, não funde à mão.
-- Flakes de carga: +2 membros (acima); a lista vive em `FLAKES_DE_CARGA.md` + 2 filtros do `nextest.toml` — duas escritas.
+  Chaves `app.painter.presets.folder.*` e `group_in_media` SAÍRAM (§8): use `category.*`.
+- LOC: 8 ficheiros partidos em `b515ce2549`: quem conflitar em `dab_route.rs`/`tools.rs`/`trail.rs`/`solver.rs`
+  reaplica o MOVIMENTO, não funde à mão.
 - Grain Colors (§2): `Dependente::TODOS` **41 → 44** (contar) · `ph2d-i18n/src/painter_layers.rs` **700/700** LOC.
 
 ## §6 — Smoke do Enio (binário `smoke` compilado)
@@ -89,10 +82,19 @@
 
 ## §8 — Depois do smoke: o navegador de presets (22/10, `9a8754b976` `86cb0f15ea`)
 
-- O popover do Preset tinha um título apagado por PASTA (lia-se «pincel apagado»). Agora **um título por categoria**
-  (`painter_bridge_categorias::CATEGORIAS`): Basic · Pencil · Ink · Marker · Pastel · Oil ·
-  Watercolor · Airbrush · Texture · Blend & Erase · Effects · Other (pasta desconhecida). Dentro da categoria o meio de
-  agora primeiro.
-- Widget partilhado: `DropdownOption::header` (`false` por omissão; consumidores ao bit) — rótulo de secção, sem
-  hit/foco, `Role::Heading`. O **Paint Mode** subiu para o cartão do topo, acima do Preset, nos 4 meios.
-- Foto: `foto_do_navegador` (`#[ignore]`); tutorial p. 2 novo.
+- Um título por CATEGORIA no popover (`painter_bridge_categorias::CATEGORIAS`; o meio de agora primeiro); widget
+  partilhado `DropdownOption::header` (`false` por omissão, sem hit/foco, `Role::Heading`); o Paint Mode subiu para o
+  cartão do topo nos 4 meios. Foto `foto_do_navegador` (`#[ignore]`); tutorial p. 2.
+
+## §9 — O preview do pincel pinta pelo caminho da tela (22/10)
+
+- A `CenaDoPreview` deixava fora Grain Colors, ponta de N imagens, dual de imagem, Composite, camadas da Shape, Flow,
+  relevo do depósito, cor do papel e secagem, e a amostra viva pintava à pressão `1`. Agora leva-os (`ForaDoSpec`), o
+  gesto tem a rampa de pressão e o preset grava as Grain Colors (`grain_color`). Portões: `o_preview_pinta_cada_capacidade_nova_como_a_tela`
+  (13 casos, 4 meios, ao byte), `cada_campo_do_pincel_vai_para_o_preview_ou_diz_porque_nao` (censo),
+  `o_pincel_gravado_leva_as_grain_colors_e_a_miniatura_mostra_as`; 10 mutações sangram; fábrica 0/45 mudou;
+  fotos `tutorial/fotos/preview_*`.
+- `93c454c37a` — Grain Colors da Aquarela à resolução do pixel: o depósito lê-se no texel onde a granulação assenta
+  (`pigment::texel_do_deposito`, `WetStrokeStyle::cor_no_papel`), não no ponto deslocado pelo Ragged/Paper Edge; bloco
+  1,29 → 1,00 px (borda 20: 2,20 → 1,00), custo nulo; portão
+  `o_padrao_das_grain_colors_sai_a_resolucao_do_pixel_em_todos_os_meios`.

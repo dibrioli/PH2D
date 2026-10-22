@@ -126,3 +126,4 @@ Ordem: **8a → 8d → 8b → 8c** (o 8b escreve código da API que o 8d cria).
 ## 7. Estado (21/10)
 
 8a FEITA na linha (`89433a58a4`..`652730fb20`: oráculo+plano, `ph2d.object`, lei `dropping.rs`, fio, nomes da cena, cena 7, corrida conduzida, portão movido) — [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-21_ITEM8A_ARRASTAR.md). Próximo: 8d (plano + oráculo Godot primeiro), depois 8b, 8c, fecho da linha.
+22/10: plano e oráculo do 8d em [08_scripts_tocam_propriedades.md](08_scripts_tocam_propriedades.md).

@@ -80,6 +80,7 @@ razão nenhuma. Cada membro entra pelo **nome**.
 | `n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/src/tool/paint/wetpaint/mistura_camadas_tests.rs) | prazo do nextest (a faixa pesada, 6 × 60 s) — o mesmo par de TIMEOUT de 17/10; sozinho `50,1 s` (`load 16–26`) e `71,6 s` (`load ~10`). Paraleliza por dentro: sob o fan-out disputa os núcleos que pede, e a faixa de prazo sozinha não basta |
 | `o_glaze_do_pincel_escurece_o_cruzamento` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/tests/it/a_lei_da_tinta.rs) | prazo do nextest (a faixa pesada, 6 × 60 s) — TIMEOUT de 180 s em duas suítes seguidas do fecho dos Pincéis (22/10, load15 ~42); sozinho 17 · 8 · 8 s (`load 6,5–10`), 3/3 |
 | `sem_glaze_cada_preset_de_fabrica_pinta_a_cena_de_antes` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/tests/it/a_lei_da_tinta.rs) | prazo do nextest (a faixa pesada) — o mesmo par de TIMEOUT de 22/10; sozinho 10 · 9 · 9 s (`load 10–13`), 3/3; pinta a cena de cada preset de fábrica (45) |
+| `o_deposito_de_um_pincel_pesado_de_fabrica_vai_pela_rota_que_paga` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/tests/it/o_custo_no_caminho_do_app.rs) | razão de relógios (rota nova × antiga, 2,25× calmo) — vermelho na suíte a `load ~30` (22/10), sozinho 2/2 verde |
 
 Uma família entra por padrão e não por nome: `test(/orcamento::the_fit_/)` (`ph2d-app-flip`).
 

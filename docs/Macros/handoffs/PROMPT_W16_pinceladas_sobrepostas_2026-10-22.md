@@ -15,6 +15,25 @@ COMEÇAR antes de a anterior ACABAR é um gesto válido: no ▷ as duas pincelam
 Watercolor, Impasto, Wet Paint). A W15 já impede que o arrasto apague as etapas (a edição é recusada antes de se
 gravar: `gate7_sobrepor_duas_pinceladas_nunca_apaga_as_etapas`); a W16 troca a recusa pela sobreposição.
 
+### 2.º pedido, logo a seguir (verbatim, 22/10) — ALARGA o âmbito
+
+«permita os keys serem colocados em qualquer lugar da timeline, de modo que um traço que inicialmente foi pintado
+depois possa ser colocada na timeline antes»
+
+⇒ O losango de uma etapa é LIVRE: pode ir para QUALQUER instante ≥ 0 — sobrepor-se a outra, passar à frente dela,
+trocar a ordem das pinceladas. Consequências de desenho a resolver no plano:
+- Hoje arrastar a etapa k desloca-a E a todas as seguintes (espera = tempo antes da etapa; ripple, W5d). Colocar
+  uma etapa «em qualquer lugar» pede o modelo de CHAVE: cada etapa tem o seu instante e anda sozinha (como as
+  chaves da Keys). Proposta: o arrasto move só aquela etapa; as outras ficam. Mostre isto ao dono no smoke e
+  confirme (é a leitura de «colocados em qualquer lugar»).
+- A edição deixa de ser `espera_us` relativa e passa a ser um deslocamento/instante POR ETAPA; `efetiva` funde as
+  etapas por tempo (ordenação estável; um relógio por quadro; o que é pintado mais tarde no tempo fica POR CIMA).
+  Reordenar muda a imagem final quando as pinceladas se cruzam — é o pedido, não um defeito.
+- Etapas que dependem da anterior (a água do Wet Paint, o C&F/ColorDrop, a cor escolhida antes da pincelada): o
+  plano diz o que viaja COM a etapa (a cor/pincel dela) e o que é do relógio (a água corre no tempo do clipe).
+- O que já existe e continua: Apagar etapa, editar cor/tamanho/espera no painel, «Edited from step n», o clipe que
+  acompanha a duração (agora = o fim da última etapa no tempo), o undo por diff da `Macro`.
+
 ## O que já se sabe (medido/lido na W15, confira o código antes de acreditar)
 
 - A recusa: `ph2d-macro/src/etapa.rs` `efetiva` — espera negativa maior que o intervalo até ao fim da etapa anterior

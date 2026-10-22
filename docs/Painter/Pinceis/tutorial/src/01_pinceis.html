@@ -1,0 +1,244 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PH2D · Os pincéis de fábrica</title>
+<style>
+  @page { size: A4; margin: 0; }
+  .page { padding: 13mm 14mm 10mm; }
+  :root {
+    --bg: #0f0e12; --card: #17161c; --line: #2a2830;
+    --t1: #ece9f2; --t2: #a9a3b8; --t3: #6f6a7d;
+    --acc: #c9a6ff; --ok: #7ee0b0; --warn: #ffcf7a;
+  }
+  * { box-sizing: border-box; }
+  html, body { background:var(--bg); }
+  body { margin:0; color:var(--t1); -webkit-print-color-adjust:exact; print-color-adjust:exact;
+         font:13px/1.5 "Inter","Segoe UI",system-ui,sans-serif; }
+  .page { break-after: page; }
+  .page:last-child { break-after: auto; }
+  h1 { font-size:30px; line-height:1.15; margin:0 0 4px; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:14px; font-weight:400; color:var(--t2); margin-top:6px; }
+  h2 { font-size:20px; margin:0 0 6px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+  h2 small { font-size:12px; font-weight:400; color:var(--t2); margin-left:6px; }
+  h3 { font-size:14px; margin:14px 0 6px; color:var(--acc); }
+  p { margin:7px 0; }
+  code { font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11.5px; color:var(--t1); }
+  kbd { font-family:ui-monospace,monospace; font-size:11px; background:#22202a; border:1px solid var(--line);
+        border-bottom-width:2px; border-radius:5px; padding:0 5px; }
+  .cmd { background:#080810; border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:8px; padding:11px 13px; color:var(--ok); font-family:ui-monospace,monospace;
+         font-size:11.5px; overflow-wrap:anywhere; margin:8px 0; }
+  .steps { counter-reset:s; list-style:none; padding:0; margin:0; }
+  .steps > li { counter-increment:s; position:relative; padding:0 0 0 40px; margin:0 0 14px; break-inside:avoid; }
+  .steps > li::before { content:counter(s); position:absolute; left:0; top:-1px;
+      width:26px; height:26px; border-radius:50%; background:var(--acc); color:#1a1420;
+      font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .out { color:var(--t2); margin-top:3px; }
+  .out::before { content:"\2192 "; color:var(--acc); }
+  .bad { color:var(--warn); margin-top:3px; }
+  .bad::before { content:"\26A0 "; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:8px; padding:9px 12px; margin:10px 0; font-size:12.5px; break-inside:avoid; }
+  .note b { color:var(--acc); }
+  .ask { border-left-color:var(--warn); }
+  .ask b { color:var(--warn); }
+  table.sum { border-collapse:collapse; width:100%; margin:8px 0; font-size:12px; }
+  table.sum th, table.sum td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.sum th { color:var(--t3); font-weight:600; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; }
+  table.sum td.n { text-align:right; color:var(--acc); font-weight:700; }
+  /* ── grade dos pincéis ── */
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0; }
+  .b { display:grid; grid-template-columns:76px 1fr; gap:9px; background:var(--card);
+       border:1px solid var(--line); border-radius:8px; padding:7px; break-inside:avoid; }
+  .b img { width:76px; height:76px; background:#fff; border-radius:5px; display:block; }
+  .b .nm { font-weight:700; font-size:13px; }
+  .b .tag { display:inline-block; font-size:9.5px; font-weight:600; border-radius:4px; padding:0 5px;
+            margin-left:5px; vertical-align:2px; letter-spacing:.02em; }
+  .tag.ok { color:var(--ok); border:1px solid #2f5a48; }
+  .tag.old { color:var(--t3); border:1px solid var(--line); }
+  .b .what { color:var(--t2); font-size:11.5px; line-height:1.4; margin:2px 0; }
+  .b .err { color:var(--warn); font-size:11px; line-height:1.35; }
+  .b .err::before { content:"\26A0 "; }
+  /* ── prancha recortada: uma fileira de seis ── */
+  .pr { margin:8px 0 4px; }
+  .crop { position:relative; width:100%; aspect-ratio:1524/353; overflow:hidden; border-radius:6px; background:#fff; }
+  .crop img { position:absolute; left:0; width:100%; }
+  .r0 img { top:0; } .r4 img { top:-400%; } .r2 img { top:-200%; }
+  .cap { color:var(--t3); font-size:10.5px; margin-top:3px; }
+  .try { font-size:12px; color:var(--t2); margin:6px 0 0; padding-left:18px; }
+  .try li { margin:2px 0; } .try b { color:var(--t1); }
+  footer { margin-top:18px; padding-top:8px; border-top:1px solid var(--line); color:var(--t3); font-size:10.5px; }
+</style>
+
+<!-- ═════════════ PÁGINA 1 ═════════════ -->
+<div class="page">
+<h1>Os pincéis de fábrica
+  <small>PH2D &middot; Painter &middot; o que a miss&atilde;o Pinc&eacute;is entregou, e como testar cada um</small></h1>
+
+<p style="font-size:15px;margin-top:14px"><b>O que mudou, numa frase:</b> a caixa de pinc&eacute;is que vem com o
+PH2D foi refeita pincel a pincel, cada um pintado lado a lado com o app de refer&ecirc;ncia (o Rebelle, e
+o Krita, o MyPaint ou o ArtRage onde o Rebelle n&atilde;o tem igual) &mdash; e agora s&atilde;o
+<b>45 pinc&eacute;is</b>, cada um com a cara do seu material e diferente dos vizinhos.</p>
+
+<table class="sum">
+  <tr><th>categoria</th><th>o que tem</th><th style="text-align:right">pinc&eacute;is</th><th style="text-align:right">aprovados</th></tr>
+  <tr><td><b>1 &middot; B&aacute;sicos</b></td><td>redondo duro, redondo macio, chato, veladura, pixel</td><td class="n">5</td><td class="n">5</td></tr>
+  <tr><td><b>2 &middot; Efeitos e carimbos</b></td><td>clarear, escurecer, trocar a cor; luzes, estrelas, ret&iacute;cula</td><td class="n">6</td><td class="n">6</td></tr>
+  <tr><td><b>3 &middot; Borrachas e esfuminho</b></td><td>borracha dura, borracha macia, esfumar</td><td class="n">3</td><td class="n">3</td></tr>
+  <tr><td><b>4 &middot; Canetas e nanquim</b></td><td>esferogr&aacute;fica, pena, bico de pena, pincel de nanquim</td><td class="n">5</td><td class="n">2</td></tr>
+  <tr><td><b>5 &middot; Marcadores e aer&oacute;grafo</b></td><td>marcador fino, marcador redondo, spray</td><td class="n">3</td><td class="n">0</td></tr>
+  <tr><td><b>6 &middot; &Oacute;leo</b></td><td>cerdas, esponja, pincel l&iacute;ngua-de-gato, &oacute;leo r&aacute;pido</td><td class="n">4</td><td class="n">1</td></tr>
+  <tr><td><b>7 &middot; Pastel e cera</b></td><td>pastel deitado, pastel macio, pastel duro, pastel a &oacute;leo, raspar cera</td><td class="n">5</td><td class="n">1</td></tr>
+  <tr><td><b>8 &middot; L&aacute;pis e carv&atilde;o</b></td><td>grafite 2H &middot; HB &middot; 2B &middot; 8B, l&aacute;pis de cor, carv&atilde;o, riscar</td><td class="n">7</td><td class="n">0</td></tr>
+  <tr><td><b>9 &middot; Aguarela e guache</b></td><td>seis pinc&eacute;is de &aacute;gua e um de guache</td><td class="n">7</td><td class="n">0</td></tr>
+  <tr><td><b>Total</b></td><td>16 no modo <b>Digital</b> &middot; 29 no modo <b>Wet Paint</b> (tinta molhada)</td><td class="n">45</td><td class="n">18</td></tr>
+</table>
+
+<div class="note"><b>Os dois selos que voc&ecirc; vai ver ao lado do nome.</b><br>
+<span class="tag ok" style="font-size:10px;font-weight:600;border-radius:4px;padding:0 5px;color:var(--ok);border:1px solid #2f5a48">aprovado</span>
+&nbsp;passou no exame lado a lado: dois revisores que n&atilde;o sabiam qual era qual n&atilde;o viram diferen&ccedil;a
+importante para o original.<br>
+<span class="tag old" style="font-size:10px;font-weight:600;border-radius:4px;padding:0 5px;color:var(--t3);border:1px solid var(--line)">ajustado</span>
+&nbsp;pincel que j&aacute; existia, foi corrigido para ficar mais perto do original, mas ainda tem uma
+diferen&ccedil;a vis&iacute;vel &mdash; fica na caixa porque j&aacute; &eacute; &uacute;til e &eacute; diferente
+dos outros. O que falta a cada um est&aacute; na &uacute;ltima p&aacute;gina.</div>
+
+<div class="note"><b>Nenhum pincel pesa:</b> todos foram medidos pintando a 200 px e nenhum passa do tempo de
+um quadro de tela (o mais pesado, o Ink Brush, usa tr&ecirc;s quartos desse tempo).</div>
+
+<div class="note ask"><b>Duas perguntas para voc&ecirc; responder durante o teste</b> est&atilde;o nas
+p&aacute;ginas <b>Canetas e nanquim</b> (a ponta fina no fim do tra&ccedil;o) e <b>L&aacute;pis e carv&atilde;o</b> (o tamanho m&aacute;ximo de cada pincel).
+Elas est&atilde;o marcadas com esta cor.</div>
+
+<p style="color:var(--t3);font-size:11px;margin-top:14px">As miniaturas s&atilde;o as mesmas que o PH2D mostra na
+lista de pinc&eacute;is: &eacute; o pr&oacute;prio pincel a pintar uma onda azul. As faixas largas de cada
+categoria s&atilde;o fotos do exame: o original &agrave; esquerda, o nosso no meio.</p>
+</div>
+
+<!-- ═════════════ PÁGINA 2 ═════════════ -->
+<div class="page">
+<h2>Abrir e achar os pinc&eacute;is</h2>
+<ol class="steps">
+  <li><b>Cole isto inteiro num terminal.</b>
+    <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor &amp;&amp; PH2D_WETPAINT_SMOKE=2 ./target/smoke/ph2d-host-desktop</div>
+    <div class="out">O PH2D abre <b>j&aacute; no Painter</b>, numa tela branca, no modo <b>Wet Paint</b>,
+    com dois tra&ccedil;os azuis inclinados j&aacute; pintados (s&atilde;o do Oil Bristle; servem de
+    &laquo;outra cor&raquo; para voc&ecirc; pintar por cima). H&aacute; muito espa&ccedil;o livre para riscar.</div>
+    <div class="bad">Se a janela n&atilde;o abrir, ou abrir sem a tela branca, pare e me mande o que o
+    terminal escreveu.</div></li>
+
+  <li><b>Abra a lista de pinc&eacute;is.</b> No painel do pincel, no alto, h&aacute; um
+    campo chamado <code>Preset</code> com o nome do pincel atual (<code>Oil Bristle</code>). Clique nele.
+    <div class="out">Abre a lista com as miniaturas, arrumada em grupos. O t&iacute;tulo de cada grupo diz o
+    modo e a pasta &mdash; por exemplo <code>Pencil</code> &middot; <code>Graphite</code>, ou
+    <code>Watercolor</code> &middot; <code>Fluid</code>. Os do modo em que voc&ecirc; est&aacute; aparecem
+    primeiro; os do outro modo v&ecirc;m depois.</div></li>
+
+  <li><b>Clique numa miniatura e risque na tela.</b>
+    <div class="out">Clicar num pincel do outro modo <b>troca o modo sozinho</b>: o campo
+    <code>Paint Mode</code> (no alto do mesmo painel) passa de <code>Wet Paint</code> para
+    <code>Digital</code>, ou ao contr&aacute;rio. N&atilde;o precisa trocar &agrave; m&atilde;o.</div>
+    <div class="out"><kbd>Ctrl</kbd>+<kbd>Z</kbd> tira o &uacute;ltimo tra&ccedil;o.</div></li>
+
+  <li><b>Como saber que deu errado</b> (vale para todas as p&aacute;ginas seguintes):
+    <div class="bad">um pincel pinta em branco, ou n&atilde;o pinta nada (exce&ccedil;&atilde;o: os
+    efeitos de <b>Efeitos e carimbos</b> s&oacute; aparecem <b>por cima</b> de tinta);</div>
+    <div class="bad">dois pinc&eacute;is pintam igual;</div>
+    <div class="bad">clicar num pincel n&atilde;o muda nada na tela, ou aparece um aviso dizendo
+    que o pincel n&atilde;o p&ocirc;de ser aplicado;</div>
+    <div class="bad">a lista diz que alguns ficheiros de pincel n&atilde;o puderam ser lidos;</div>
+    <div class="bad">a miniatura de um pincel n&atilde;o se parece nada com o tra&ccedil;o que ele faz.</div></li>
+</ol>
+
+<h3>O que experimentar em cada pincel (o mesmo roteiro em todas as p&aacute;ginas)</h3>
+<ul class="try">
+  <li><b>Press&atilde;o leve &rarr; forte</b> num s&oacute; tra&ccedil;o: veja se engrossa e/ou escurece aos poucos, sem degrau.</li>
+  <li><b>Tra&ccedil;o r&aacute;pido</b> e <b>tra&ccedil;o lento</b>: o r&aacute;pido n&atilde;o pode virar bolinhas separadas.</li>
+  <li><b>Por cima de outra cor</b> (os tra&ccedil;os azuis j&aacute; pintados, ou um seu de outra cor): veja se cobre, se mistura, ou se fica transparente &mdash; cada p&aacute;gina diz o que esperar.</li>
+  <li><b>Tamanho pequeno e grande</b> (o campo de tamanho, <code>Size</code>): o pincel tem de manter a cara dele nos dois.</li>
+</ul>
+</div>
+<div class="page"><h2>1 &middot; B&aacute;sicos<small>modo Digital &middot; 5 pinc&eacute;is</small></h2><p>Os pinc&eacute;is do dia a dia: bloquear, sombrear, velar, pixel.</p><div class="grid"><div class="b"><img src="../../../../../assets/brushes/Digital/Basic/Hard/Hard%20Round.ph2d-brush.png" alt="Hard Round"><div><div class="nm">Hard Round<span class="tag ok">aprovado</span></div><div class="what">Redondo de borda firme, para bloquear formas e desenhar linhas limpas.</div><div class="err">a borda sai borrada, ou a linha fina de press&atilde;o leve falha.</div></div></div><div class="b"><img src="../../../../../assets/brushes/Digital/Basic/Soft/Soft%20Round.ph2d-brush.png" alt="Soft Round"><div><div class="nm">Soft Round<span class="tag ok">aprovado</span></div><div class="what">Macio, sem borda, para luz e sombra em degrad&ecirc;.</div><div class="err">aparece contorno duro ou textura no degrad&ecirc;.</div></div></div><div class="b"><img src="../../../../../assets/brushes/Digital/Basic/Flat/Flat%20Block-in.ph2d-brush.png" alt="Flat Block-in"><div><div class="nm">Flat Block-in<span class="tag ok">aprovado</span></div><div class="what">Ponta chata e dura: larga no tra&ccedil;o deitado, fina no de p&eacute;, para massas r&aacute;pidas.</div><div class="err">o tra&ccedil;o de p&eacute; sai t&atilde;o largo quanto o deitado, ou a ponta arredonda.</div></div></div><div class="b"><img src="../../../../../assets/brushes/Digital/Basic/Glaze/Glaze%20Round.ph2d-brush.png" alt="Glaze Round"><div><div class="nm">Glaze Round<span class="tag ok">aprovado</span></div><div class="what">V&eacute;u transl&uacute;cido que escurece aos poucos, passada a passada.</div><div class="err">uma &uacute;nica passada j&aacute; cobre tudo, chapado.</div></div></div><div class="b"><img src="../../../../../assets/brushes/Digital/Basic/Pixel/Pixel%201px.ph2d-brush.png" alt="Pixel 1px"><div><div class="nm">Pixel 1px<span class="tag ok">aprovado</span></div><div class="what">Um pixel exato, sem meio-tom, para pixel art.</div><div class="err">a linha sai com borda cinza ou ocupa dois pixels (veja com zoom).</div></div></div></div><div class="pr"><div class="crop r0"><img src="../../pranchas/basicos/hard_round.png" alt=""></div><div class="cap">Foto do exame &mdash; <b>esquerda</b>: o app de refer&ecirc;ncia; <b>meio</b>: o nosso; <b>direita</b>: o nosso pincel mais parecido, para ver que s&atilde;o diferentes.</div></div><h3>Experimente</h3><ul class="try"><li><b>Hard Round</b> com press&atilde;o leve&rarr;forte: a linha engrossa sem degrau.</li><li><b>Glaze Round</b>: passe 3 vezes no mesmo lugar &mdash; cada passada escurece um pouco.</li><li><b>Flat Block-in</b>: risque deitado e depois de p&eacute; &mdash; larguras bem diferentes.</li><li><b>Pixel 1px</b>: aproxime o zoom &mdash; s&oacute; quadradinhos cheios, nada cinza.</li></ul></div>
+<div class="page"><h2>2 &middot; Efeitos e carimbos<small>modo Digital &middot; 6 pinc&eacute;is</small></h2><p>Os tr&ecirc;s primeiros <b>s&oacute; mexem no que j&aacute; est&aacute; pintado</b>: sobre o papel branco vazio eles n&atilde;o deixam nada, e isso &eacute; o certo. Pinte uma mancha de cor antes. Os outros tr&ecirc;s carimbam formas.</p><div class="grid"><div class="b"><img src="../../../../../assets/brushes/Digital/Effects/Effects/Dodge.ph2d-brush.png" alt="Dodge"><div><div class="nm">Dodge<span class="tag ok">aprovado</span></div><div class="what">Clareia o que j&aacute; est&aacute; pintado, como uma luz por cima.</div><div class="err">sobre a cor n&atilde;o clareia. (Sobre o branco vazio n&atilde;o aparecer &eacute; normal.)</div></div></div><div class="b"><img src="../../../../../assets/brushes/Digital/Effects/Effects/Burn.ph2d-brush.png" alt="Burn"><div><div class="nm">Burn<span class="tag ok">aprovado</span></div><div class="what">Escurece o que j&aacute; est&aacute; pintado, como uma sombra por cima.</div><div class="err">escurece numa faixa larga por igual, em vez de mais forte no centro.</div></div></div><div class="b"><img src="../../../../../assets/brushes/Digital/Effects/Effects/Color%20Glaze.ph2d-brush.png" alt="Color Glaze"><div><div class="nm">Color Glaze<span class="tag ok">aprovado</span></div><div class="what">Troca a cor de uma &aacute;rea sem mudar o claro e o escuro dela.</div><div class="err">a &aacute;rea fica mais clara ou mais escura do que estava.</div></div></div><div class="b"><img src="../../../../../assets/brushes/Digital/Stamp/Stamp/Bokeh.ph2d-brush.png" alt="Bokeh"><div><div class="nm">Bokeh<span class="tag ok">aprovado</span></div><div class="what">Discos de luz desfocada, de v&aacute;rios tamanhos, para luzes de fundo.</div><div class="err">os discos saem chapados, sem o anel claro na borda.</div></div></div><div class="b"><img src="../../../../../assets/brushes/Digital/Stamp/Stamp/Stars.ph2d-brush.png" alt="Stars"><div><div class="nm">Stars<span class="tag ok">aprovado</span></div><div class="what">Estrelinhas de luz espalhadas ao longo do tra&ccedil;o, para c&eacute;u noturno.</div><div class="err">a press&atilde;o leve n&atilde;o deixa estrelinhas, ou elas crescem sem parar.</div></div></div><div class="b"><img src="../../../../../assets/brushes/Digital/Texture/Texture/Halftone.ph2d-brush.png" alt="Halftone"><div><div class="nm">Halftone<span class="tag ok">aprovado</span></div><div class="what">Ret&iacute;cula de pontos, a trama do mang&aacute;.</div><div class="err">a trama escorrega junto com o tra&ccedil;o, em vez de ficar presa &agrave; tela.</div></div></div></div><div class="pr"><div class="crop r4"><img src="../../pranchas/efeitos/dodge.png" alt=""></div><div class="cap">Dodge por cima de tinta &mdash; <b>esquerda</b>: o app de refer&ecirc;ncia; <b>meio</b>: o nosso; <b>direita</b>: o nosso Burn, que faz o contr&aacute;rio.</div></div><h3>Experimente</h3><ul class="try"><li>Pinte uma mancha com o <b>Hard Round</b> e passe <b>Dodge</b> numa metade e <b>Burn</b> na outra.</li><li><b>Color Glaze</b> com outra cor sobre a mancha: a cor muda, o claro/escuro fica.</li><li><b>Halftone</b>: dois tra&ccedil;os que se cruzam &mdash; os pontos ficam alinhados na mesma grade.</li></ul></div>
+<div class="page"><h2>3 &middot; Borrachas e esfuminho<small>2 no Digital &middot; 1 no Wet Paint</small></h2><p>Ferramentas que <b>tiram ou movem</b> tinta: tamb&eacute;m s&oacute; fazem sentido por cima do que j&aacute; est&aacute; pintado.</p><div class="grid"><div class="b"><img src="../../../../../assets/brushes/Digital/Eraser/Hard/Hard%20Eraser.ph2d-brush.png" alt="Hard Eraser"><div><div class="nm">Hard Eraser<span class="tag ok">aprovado</span></div><div class="what">Apaga com borda dura, para recortar formas.</div><div class="err">a borda apagada sai esfumada, ou fica resto de tinta em volta.</div></div></div><div class="b"><img src="../../../../../assets/brushes/Digital/Eraser/Soft/Kneaded%20Eraser.ph2d-brush.png" alt="Kneaded Eraser"><div><div class="nm">Kneaded Eraser<span class="tag ok">aprovado</span></div><div class="what">Borracha macia: levanta luz sem furar at&eacute; o papel.</div><div class="err">apaga at&eacute; o branco de uma vez, em vez de s&oacute; clarear.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Blend/Soft/Blender%20Soft.ph2d-brush.png" alt="Blender Soft"><div><div class="nm">Blender Soft<span class="tag ok">aprovado</span></div><div class="what">Funde as cores onde passa, sem as arrastar para longe &mdash; para pele e c&eacute;u (Wet Paint).</div><div class="err">a mistura se espalha muito al&eacute;m da tinta que estava ali.</div></div></div></div><div class="pr"><div class="crop r4"><img src="../../pranchas/mistura/blender_soft_r3.png" alt=""></div><div class="cap">Blender Soft por cima de tinta &mdash; <b>esquerda</b>: o app de refer&ecirc;ncia; <b>meio</b>: o nosso; <b>direita</b>: o nosso pincel mais parecido, para ver que s&atilde;o diferentes.</div></div><h3>Experimente</h3><ul class="try"><li><b>Kneaded Eraser</b> sobre os tra&ccedil;os azuis: clareia, n&atilde;o abre buraco branco.</li><li>Pinte azul e vermelho encostados (Wet Paint) e passe o <b>Blender Soft</b> na junta.</li><li><b>Hard Eraser</b>: corte um tra&ccedil;o ao meio &mdash; a borda do corte fica n&iacute;tida.</li></ul></div>
+<div class="page"><h2>4 &middot; Canetas e nanquim<small>2 no Digital &middot; 3 no Wet Paint</small></h2><p>Do caderno &agrave; arte-final.</p><div class="grid"><div class="b"><img src="../../../../../assets/brushes/Digital/Ink/Ballpoint/Ballpoint.ph2d-brush.png" alt="Ballpoint"><div><div class="nm">Ballpoint<span class="tag ok">aprovado</span></div><div class="what">Esferogr&aacute;fica de caderno: tra&ccedil;o leve, transl&uacute;cido, com falhas (Digital).</div><div class="err">o tra&ccedil;o leve sai cheio e opaco.</div></div></div><div class="b"><img src="../../../../../assets/brushes/Digital/Ink/Mapping/Mapping%20Pen.ph2d-brush.png" alt="Mapping Pen"><div><div class="nm">Mapping Pen<span class="tag ok">aprovado</span></div><div class="what">Pena de tra&ccedil;o fino e firme, para contorno e detalhe (Digital).</div><div class="err">aparece uma bolha no fim da linha, ou pontinhos ao longo dela.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Ink/Pen/Dip%20Pen.ph2d-brush.png" alt="Dip Pen"><div><div class="nm">Dip Pen<span class="tag old">ajustado</span></div><div class="what">Bico de pena: fino a grosso pela press&atilde;o, a tinta empo&ccedil;a (Wet Paint).</div><div class="err">a borda sai como uma fila de bolinhas.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Ink/Pen/Ink%20Bullet.ph2d-brush.png" alt="Ink Bullet"><div><div class="nm">Ink Bullet<span class="tag old">ajustado</span></div><div class="what">Ponta redonda de tinta, largura quase fixa, para contorno uniforme (Wet Paint).</div><div class="err">o come&ccedil;o do tra&ccedil;o sai escuro e cheio logo de cara, sem entrada.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Ink/Brush/Ink%20Brush.ph2d-brush.png" alt="Ink Brush"><div><div class="nm">Ink Brush<span class="tag old">ajustado</span></div><div class="what">Pincel de nanquim de grande varia&ccedil;&atilde;o e ponta afiada, para arte-final (Wet Paint).</div><div class="err">o tra&ccedil;o inteiro sai preto chapado, sem varia&ccedil;&atilde;o.</div></div></div></div><div class="pr"><div class="crop r0"><img src="../../pranchas/tintas/dip_pen_o2.png" alt=""></div><div class="cap">Foto do exame &mdash; <b>esquerda</b>: o app de refer&ecirc;ncia; <b>meio</b>: o nosso; <b>direita</b>: o nosso pincel mais parecido, para ver que s&atilde;o diferentes.</div></div><h3>Experimente</h3><ul class="try"><li><b>Mapping Pen</b> e <b>Ink Brush</b>: press&atilde;o leve&rarr;forte&rarr;leve num s&oacute; tra&ccedil;o.</li><li><b>Ballpoint</b> azul por cima de um tra&ccedil;o vermelho: o cruzamento fica violeta acinzentado.</li><li><b>Dip Pen</b> lento e depois r&aacute;pido: o r&aacute;pido n&atilde;o vira bolinhas.</li></ul><div class="note ask" style="display:grid;grid-template-columns:1fr 190px;gap:12px"><div><b>Pergunta 1 &mdash; a ponta fina no fim do tra&ccedil;o (s&oacute; no modo Digital).</b>
+Nas canetas do Digital (Ballpoint, Mapping Pen) o tra&ccedil;o hoje <b>afina no fim</b> como afina no come&ccedil;o
+&mdash; como na figura ao lado. O Rebelle n&atilde;o faz isso: l&aacute; o fim fica redondo. No Wet
+Paint fica redondo como no Rebelle.<br>
+<b>Como testar:</b> com a Mapping Pen, risque com press&atilde;o constante e solte. <b>Responda:</b>
+(a) <b>fica</b> &mdash; o fim afina no Digital; ou (b) <b>sai</b> &mdash; o fim fica redondo em todo lado, como no Rebelle.
+</div><div><div class="crop" style="aspect-ratio:500/327"><img src="../../pranchas/canetas/cauda_L5_curada.png" style="top:-100%" alt=""></div>
+<div class="cap">As pontas do tra&ccedil;o na caneta do Digital, como est&atilde;o hoje.</div></div></div></div>
+<div class="page"><h2>5 &middot; Marcadores e aer&oacute;grafo<small>1 no Digital &middot; 2 no Wet Paint</small></h2><p>Nenhum dos tr&ecirc;s passou ainda no exame: s&atilde;o pinc&eacute;is antigos, corrigidos, que ficam por serem &uacute;teis.</p><div class="grid"><div class="b"><img src="../../../../../assets/brushes/Digital/Marker/Marker/Marker%20Liner.ph2d-brush.png" alt="Marker Liner"><div><div class="nm">Marker Liner<span class="tag old">ajustado</span></div><div class="what">Marcador de bisel: fino num sentido, largo no outro, para contorno (Digital).</div><div class="err">dois azuis cruzados viram azul-marinho escuro e chapado.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Marker/Marker/Marker%20Bullet.ph2d-brush.png" alt="Marker Bullet"><div><div class="nm">Marker Bullet<span class="tag old">ajustado</span></div><div class="what">Marcador redondo que acumula: escurece onde se sobrep&otilde;e (Wet Paint).</div><div class="err">aparece contorno escuro fino na borda, ou cantos escuros no cruzamento.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Airbrush/Spray/Airbrush.ph2d-brush.png" alt="Airbrush"><div><div class="nm">Airbrush<span class="tag old">ajustado</span></div><div class="what">N&eacute;voa de p&oacute; fino para degrad&ecirc;s e luz; n&atilde;o acumula se voc&ecirc; parar a m&atilde;o (Wet Paint).</div><div class="err">parar a caneta parada num ponto faz uma mancha crescer.</div></div></div></div><div class="pr"><div class="crop r4"><img src="../../pranchas/caligrafia_marcadores/marker_bullet.png" alt=""></div><div class="cap">Marker Bullet cruzando cores &mdash; <b>esquerda</b>: o app de refer&ecirc;ncia; <b>meio</b>: o nosso; <b>direita</b>: o nosso pincel mais parecido, para ver que s&atilde;o diferentes.</div></div><h3>Experimente</h3><ul class="try"><li><b>Marker Bullet</b>: passe duas vezes no mesmo lugar &mdash; o cruzamento escurece.</li><li><b>Marker Liner</b>: risque na horizontal e na vertical &mdash; larguras diferentes.</li><li><b>Airbrush</b>: segure parado um segundo &mdash; n&atilde;o deve formar po&ccedil;a.</li></ul></div>
+<div class="page"><h2>6 &middot; &Oacute;leo<small>modo Wet Paint &middot; 4 pinc&eacute;is</small></h2><p>Tinta grossa que mistura com a que est&aacute; embaixo.</p><div class="grid"><div class="b"><img src="../../../../../assets/brushes/WetPainter/Oil/Flat/Filbert.ph2d-brush.png" alt="Filbert"><div><div class="nm">Filbert<span class="tag ok">aprovado</span></div><div class="what">L&iacute;ngua-de-gato: largo de lado, fino de canto, com os fios vis&iacute;veis &mdash; para retrato.</div><div class="err">a marca sai quadrada e sem os fios.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Oil/Bristle/Oil%20Bristle.ph2d-brush.png" alt="Oil Bristle"><div><div class="nm">Oil Bristle<span class="tag old">ajustado</span></div><div class="what">&Oacute;leo de cerdas, com sulcos que puxam a cor de baixo.</div><div class="err">aparecem degraus ou blocos pretos e brancos nos fios (aproxime o zoom).</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Oil/Dabber/Dabber.ph2d-brush.png" alt="Dabber"><div><div class="nm">Dabber<span class="tag old">ajustado</span></div><div class="what">Toques curtos de cerdas, como esponja: folhagem, impressionismo.</div><div class="err">sai um tra&ccedil;o liso e cont&iacute;nuo, sem as manchas.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/ExpressOil/Round/Express%20Oil.ph2d-brush.png" alt="Express Oil"><div><div class="nm">Express Oil<span class="tag old">ajustado</span></div><div class="what">&Oacute;leo r&aacute;pido e fluido, para estudos de primeira.</div><div class="err">por cima do vermelho fica transparente e fraco.</div></div></div></div><div class="pr"><div class="crop r0"><img src="../../pranchas/oleo_acrilica/filbert_j4f.png" alt=""></div><div class="cap">Foto do exame &mdash; <b>esquerda</b>: o app de refer&ecirc;ncia; <b>meio</b>: o nosso; <b>direita</b>: o nosso pincel mais parecido, para ver que s&atilde;o diferentes.</div></div><h3>Experimente</h3><ul class="try"><li>Por cima dos tra&ccedil;os azuis j&aacute; pintados, com amarelo: a cor de baixo mistura nos sulcos.</li><li><b>Filbert</b> deitado e de p&eacute;: largo e fino.</li><li><b>Dabber</b> com toques curtos, sem arrastar.</li></ul></div>
+<div class="page"><h2>7 &middot; Pastel e cera<small>modo Wet Paint &middot; 5 pinc&eacute;is</small></h2><p>P&oacute; e cera sobre papel com gr&atilde;o: a cor pega nos picos do papel e deixa os vales brancos.</p><div class="grid"><div class="b"><img src="../../../../../assets/brushes/WetPainter/Pastel/Dry/Pastel%20Side.ph2d-brush.png" alt="Pastel Side"><div><div class="nm">Pastel Side<span class="tag ok">aprovado</span></div><div class="what">O bast&atilde;o de pastel deitado: faixa larga, transl&uacute;cida e riscada, para fundos.</div><div class="err">a borda sai em degraus de carimbo.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Pastel/Dry/Soft%20Pastel.ph2d-brush.png" alt="Soft Pastel"><div><div class="nm">Soft Pastel<span class="tag old">ajustado</span></div><div class="what">Pastel macio: cor opaca nos picos do papel.</div><div class="err">a linha fina sai tracejada.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Pastel/Dry/Square%20Hard.ph2d-brush.png" alt="Square Hard"><div><div class="nm">Square Hard<span class="tag old">ajustado</span></div><div class="what">Pastel duro de aresta: linha n&iacute;tida com gr&atilde;o, para detalhe.</div><div class="err">o gr&atilde;o sai salpicado com furos brancos grandes.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Pastel/Oil/Oil%20Pastel.ph2d-brush.png" alt="Oil Pastel"><div><div class="nm">Oil Pastel<span class="tag old">ajustado</span></div><div class="what">Pastel oleoso: cor cremosa que arrasta a de baixo.</div><div class="err">num tamanho grande aparece uma grade de carimbos.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Pastel/Scrape/Wax%20Scrape.ph2d-brush.png" alt="Wax Scrape"><div><div class="nm">Wax Scrape<span class="tag old">ajustado</span></div><div class="what">Raspa a cera e mostra a camada de baixo (como raspar giz de cera).</div><div class="err">as fitas saem com borda dura e falhas.</div></div></div></div><div class="pr"><div class="crop r0"><img src="../../pranchas/pastel_carvao/pastel_side.png" alt=""></div><div class="cap">Foto do exame &mdash; <b>esquerda</b>: o app de refer&ecirc;ncia; <b>meio</b>: o nosso; <b>direita</b>: o nosso pincel mais parecido, para ver que s&atilde;o diferentes.</div></div><h3>Experimente</h3><ul class="try"><li>Press&atilde;o leve&rarr;forte: leve mostra mais papel branco, forte cobre mais.</li><li><b>Wax Scrape</b> por cima dos tra&ccedil;os azuis.</li><li><b>Oil Pastel</b> grande (100 px ou mais), num tra&ccedil;o longo.</li></ul></div>
+<div class="page"><h2>8 &middot; L&aacute;pis e carv&atilde;o<small>modo Wet Paint &middot; 7 pinc&eacute;is</small></h2><p>A s&eacute;rie de grafite vai do mais duro ao mais macio: <b>2H &middot; HB &middot; 2B &middot; 8B</b> &mdash; cada um mais escuro e mais largo que o anterior. Na lista eles j&aacute; aparecem nessa ordem.</p><div class="grid"><div class="b"><img src="../../../../../assets/brushes/WetPainter/Pencil/Graphite/Graphite%202H.ph2d-brush.png" alt="Graphite 2H"><div><div class="nm">Graphite 2H<span class="tag old">ajustado</span></div><div class="what">L&aacute;pis claro e fino, para linhas de constru&ccedil;&atilde;o que somem.</div><div class="err">sai t&atilde;o escuro quanto o HB.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Pencil/Graphite/Graphite%20HB.ph2d-brush.png" alt="Graphite HB"><div><div class="nm">Graphite HB<span class="tag old">ajustado</span></div><div class="what">Cinza m&eacute;dio, o esbo&ccedil;o do dia a dia.</div><div class="err">o tra&ccedil;o fino falha em pontinhos em vez de sair cont&iacute;nuo.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Pencil/Graphite/Graphite%202B.ph2d-brush.png" alt="Graphite 2B"><div><div class="nm">Graphite 2B<span class="tag old">ajustado</span></div><div class="what">Escuro e macio, para esbo&ccedil;o expressivo.</div><div class="err">o gr&atilde;o sai em montes em vez de salpico mi&uacute;do.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Pencil/Graphite/Graphite%208B.ph2d-brush.png" alt="Graphite 8B"><div><div class="nm">Graphite 8B<span class="tag old">ajustado</span></div><div class="what">Negro e largo, para os valores escuros.</div><div class="err">a borda sai lisa demais, como caneta.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Pencil/Colored/Colored%204B.ph2d-brush.png" alt="Colored 4B"><div><div class="nm">Colored 4B<span class="tag old">ajustado</span></div><div class="what">L&aacute;pis de cor ceroso: a cor deixa o branco do papel nos vales.</div><div class="err">sai cinza como grafite, em vez da cor escolhida.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Pencil/Charcoal/Charcoal.ph2d-brush.png" alt="Charcoal"><div><div class="nm">Charcoal<span class="tag old">ajustado</span></div><div class="what">Carv&atilde;o negro e poroso, gr&atilde;o forte, para figura e valor.</div><div class="err">aparecem arranh&otilde;es brancos e manchas de tom.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Pencil/Scratch/Scratch.ph2d-brush.png" alt="Scratch"><div><div class="nm">Scratch<span class="tag old">ajustado</span></div><div class="what">Riscos finos e nervosos, para arranh&otilde;es e pelo.</div><div class="err">num tamanho grande vira n&eacute;voa, em vez de riscos n&iacute;tidos.</div></div></div></div><div class="pr"><div class="crop r0"><img src="../../pranchas/grafite/graphite_hb.png" alt=""></div><div class="cap">Foto do exame &mdash; <b>esquerda</b>: o app de refer&ecirc;ncia; <b>meio</b>: o nosso; <b>direita</b>: o nosso pincel mais parecido, para ver que s&atilde;o diferentes.</div></div><h3>Experimente</h3><ul class="try"><li>Risque os quatro grafites lado a lado, mesma press&atilde;o: do mais claro (2H) ao mais escuro (8B).</li><li>Press&atilde;o leve&rarr;forte num s&oacute;: escurece aos poucos.</li></ul><div class="note ask"><b>Pergunta 2 &mdash; o tamanho m&aacute;ximo de cada pincel.</b>
+Como no Rebelle, cada pincel tem hoje um <b>tamanho m&aacute;ximo pr&oacute;prio</b>: um l&aacute;pis para por
+volta de 60 px mesmo que voc&ecirc; leve o tamanho at&eacute; o fim (um l&aacute;pis de 200 px n&atilde;o
+existe de verdade &mdash; e sem esse limite o pincel ficava quatro vezes mais pesado).<br>
+<b>Como testar:</b> escolha o Graphite 2B e arraste o <code>Size</code> at&eacute; o fim; risque. Depois fa&ccedil;a o
+mesmo com o Soft Round. <b>Responda:</b> (a) <b>fica</b> &mdash; cada pincel tem o seu m&aacute;ximo; ou
+(b) <b>sai</b> &mdash; todo pincel cresce at&eacute; o tamanho que eu pedir.</div></div>
+<div class="page"><h2>9 &middot; Aguarela e guache<small>modo Wet Paint &middot; 7 pinc&eacute;is</small></h2><p>A tinta <b>continua a mexer depois que voc&ecirc; solta</b>: espalha, escurece a borda ao secar. Solte e espere alguns segundos antes de julgar.</p><div class="grid"><div class="b"><img src="../../../../../assets/brushes/WetPainter/Watercolor/Fluid/Wet%20Round.ph2d-brush.png" alt="Wet Round"><div><div class="nm">Wet Round<span class="tag old">ajustado</span></div><div class="what">Pincel de aguarela: escorre e escurece a borda ao secar.</div><div class="err">a cor sai p&aacute;lida e fraca.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Watercolor/Fluid/Wet%20Wash.ph2d-brush.png" alt="Wet Wash"><div><div class="nm">Wet Wash<span class="tag old">ajustado</span></div><div class="what">Lavagem larga e uniforme, para c&eacute;us e fundos.</div><div class="err">a mancha sai com contorno escuro ou em losango n&iacute;tido.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Watercolor/Fluid/Wet%20Flat.ph2d-brush.png" alt="Wet Flat"><div><div class="nm">Wet Flat<span class="tag old">ajustado</span></div><div class="what">Chato molhado: faixas planas de aguarela.</div><div class="err">pinta igual ao Gouache Flat.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Watercolor/Fluid/Wet%20Liner.ph2d-brush.png" alt="Wet Liner"><div><div class="nm">Wet Liner<span class="tag old">ajustado</span></div><div class="what">Fio de aguarela: linha fina molhada para detalhe.</div><div class="err">cruzando o vermelho molhado, sai uma mancha quadrada de aro escuro.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Watercolor/Fluid/Wet%20Dry%20Brush.ph2d-brush.png" alt="Wet Dry Brush"><div><div class="nm">Wet Dry Brush<span class="tag old">ajustado</span></div><div class="what">Pincel seco de riscos soltos, com falhas brancas no gr&atilde;o.</div><div class="err">os riscos saem cheios e cont&iacute;nuos, sem falhas.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Watercolor/Fluid/Wet%20Drip.ph2d-brush.png" alt="Wet Drip"><div><div class="nm">Wet Drip<span class="tag old">ajustado</span></div><div class="what">Aguarela que escorre para baixo, para escorridos.</div><div class="err">n&atilde;o escorre nada depois de soltar.</div></div></div><div class="b"><img src="../../../../../assets/brushes/WetPainter/Watercolor/Gouache/Gouache%20Flat.ph2d-brush.png" alt="Gouache Flat"><div><div class="nm">Gouache Flat<span class="tag old">ajustado</span></div><div class="what">Guache: faixas mates e opacas.</div><div class="err">a cor sai menos carregada que a do Wet Flat.</div></div></div></div><div class="pr"><div class="crop r4"><img src="../../pranchas/aguarela/wet_liner_j5.png" alt=""></div><div class="cap">Wet Liner azul cruzando vermelho molhado &mdash; <b>esquerda</b>: o app de refer&ecirc;ncia; <b>meio</b>: o nosso; <b>direita</b>: o nosso pincel mais parecido, para ver que s&atilde;o diferentes.</div></div><h3>Experimente</h3><ul class="try"><li>Pinte vermelho com o <b>Wet Round</b> e, <b>ainda molhado</b>, cruze com azul.</li><li><b>Wet Drip</b>: um tra&ccedil;o carregado e espere.</li><li><b>Wet Flat</b> e <b>Gouache Flat</b> lado a lado: a guache mais opaca.</li></ul></div>
+
+<!-- ═════════════ PÁGINA FINAL ═════════════ -->
+<div class="page">
+<h2>O que ficou de fora, e porqu&ecirc;</h2>
+
+<h3>O que ainda falta aos 27 pinc&eacute;is &laquo;ajustados&raquo;</h3>
+<p>Eles est&atilde;o na caixa porque j&aacute; s&atilde;o &uacute;teis e diferentes dos outros, mas ao lado do original
+ainda se v&ecirc; uma diferen&ccedil;a. Quase todas caem em seis fam&iacute;lias &mdash; e cada uma &eacute; uma
+pe&ccedil;a do motor de pintura, n&atilde;o do pincel: curada uma, v&aacute;rios pinc&eacute;is melhoram juntos.</p>
+<table class="sum">
+  <tr><th>o que falta</th><th>em quem se nota</th></tr>
+  <tr><td><b>Molhado sobre molhado</b>: no original, a cor nova abre uma mancha redonda e suave na tinta
+      ainda molhada e a empurra para os lados; no nosso sai um aro duro ou um quadrado</td>
+      <td>Wet Liner, Wet Wash, Wet Round, a guache</td></tr>
+  <tr><td><b>Pontas cortadas a direito</b>: o bast&atilde;o de pastel corta reto no come&ccedil;o e no fim; o nosso esmaece ou arredonda</td>
+      <td>Soft Pastel, Square Hard, Charcoal, Wax Scrape</td></tr>
+  <tr><td><b>O tra&ccedil;o muito grande</b>: a 200 px o original esbate as pontas e carrega o miolo</td>
+      <td>Wet Liner, Wet Wash</td></tr>
+  <tr><td><b>Uma cor por cima da outra</b>: azul sobre vermelho e azul sobre azul n&atilde;o se comportam como no original</td>
+      <td>marcadores, Dip Pen, Ink Bullet, Wax Scrape, Graphite 8B</td></tr>
+  <tr><td><b>O gr&atilde;o e a gota</b>: o p&oacute; ou o spray saem finos demais, sem as gotas grossas</td>
+      <td>Airbrush, Charcoal, Square Hard, Soft Pastel</td></tr>
+  <tr><td><b>A entrada e a ondula&ccedil;&atilde;o</b>: a press&atilde;o marca tarde, o contorno n&atilde;o ondula</td>
+      <td>Ink Bullet, Dip Pen, Oil Bristle, Express Oil</td></tr>
+</table>
+
+<h3>Os que foram estudados e n&atilde;o entraram</h3>
+<table class="sum">
+  <tr><th>pincel</th><th>porqu&ecirc;</th></tr>
+  <tr><td><b>Juntou-se a outro</b><br><span style="color:var(--t3)">a ideia ficou noutro pincel</span></td>
+      <td>Acrylic Round, Rigger, Mechanical 0.5 e Monoline &rarr; <b>Hard Round</b> &middot; Charcoal Pencil &rarr; <b>Soft Pastel</b>
+      &middot; Hue e Overlay &rarr; <b>Color Glaze</b> &middot; Fountain Pen &rarr; <b>Ink Bullet</b> &middot; Grainy Shader &rarr;
+      <b>Airbrush</b> &middot; Wax Crayon &rarr; <b>Graphite 8B</b> &middot; Round Pressure e Studio Pen pintavam igual ao Hard Round
+      &middot; Technical Pen pintava igual ao Pixel 1px</td></tr>
+  <tr><td><b>Aguarela e guache</b></td>
+      <td>Mop, Gouache Round, Gouache Wash, Gouache Dry, Water Brush, Bristle Watercolor, Sumi-e, e as manchas
+      de gr&atilde;o, couve-flor e salpico: todos esperam a pe&ccedil;a do <b>molhado sobre molhado</b> ou das cerdas
+      que crescem com o pincel. O Gouache Wash &eacute; o mais perto de passar.</td></tr>
+  <tr><td><b>Tinta e nanquim</b></td>
+      <td>Reed Pen, Wood Stick, Gloop Pen, Gesinski Ink, Dry Ink: o borr&atilde;o, a serrilha das fibras ou o gr&atilde;o
+      n&atilde;o batem. Ink Bleed precisa de a tinta correr pelas fibras do papel, o que o motor ainda n&atilde;o faz.</td></tr>
+  <tr><td><b>L&aacute;pis e carv&atilde;o</b></td>
+      <td>Tilted Shade (sombrear com o lado da mina), Rough Sketch, Craft Flat, Compressed Charcoal, Charcoal Powder:
+      a ponta, a fibra ou as riscas paralelas ainda n&atilde;o saem.</td></tr>
+  <tr><td><b>&Oacute;leo e esp&aacute;tula</b></td>
+      <td>Flat Oily e Knife Smooth sa&iacute;ram no seu teste de 19/10: a l&acirc;mina n&atilde;o gira com o tra&ccedil;o,
+      e um tra&ccedil;o de p&eacute; vira bloco largo. Palette Knife, Rake, Thick Impasto e Flat Bristle seguem em estudo.</td></tr>
+  <tr><td><b>Texturas e spray</b></td>
+      <td>Spray Can, Splatter, Stipple, Foliage, Grass, Noise Grit, Glow, Metallic, Sketchy Web: a gota, os tufos, o brilho
+      ou a teia ainda n&atilde;o ficam certos em tamanho grande.</td></tr>
+  <tr><td><b>Mistura</b></td>
+      <td>Blender Grainy, Dry/Lift, Smudge Finger, Blur: o alcance, a borda ou o fio do arrasto ainda n&atilde;o batem.</td></tr>
+  <tr><td><b>Caligrafia</b></td>
+      <td>Script, Shale, Broad Nib, Marker Chisel, Dry Marker: faltam as pontas c&ocirc;ncavas e o azul sobre azul.</td></tr>
+</table>
+
+<div class="note"><b>Quando terminar o teste, diga s&oacute; tr&ecirc;s coisas:</b> (1) qual pincel, se algum, deu
+errado e como; (2) a resposta da <b>Pergunta 1</b> (a ponta fina, fica ou sai); (3) a resposta da
+<b>Pergunta 2</b> (o tamanho m&aacute;ximo, fica ou sai).</div>
+
+<footer>PH2D &middot; Painter &middot; miss&atilde;o Pinc&eacute;is (janela 5) &middot; cena de teste
+<code>PH2D_WETPAINT_SMOKE=2</code> &middot; 45 pinc&eacute;is de f&aacute;brica, 18 aprovados no exame lado a lado</footer>
+</div>

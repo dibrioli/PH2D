@@ -35,8 +35,8 @@ const CENAS: [(&str, bool, u64); 20] = [
     // J4 oleo_acrilica 2.ª ronda: a Acrylic Round (0xb6475854432e61f0) saiu da fábrica — fundida no Hard Round.
     ("Express Oil", false, 0x324fcd3206cecaff), // J4 oleo_acrilica: os tufos (cerdas 7 × 300, faixa 4 px, pigmento 75) (era 0x6ae408041d1e042f)
     ("Graphite 8B", false, 0xa30d19aed297aa0d), // J3 3.ª ronda: a 2.ª ponta à frente (no arco), a orla 0,8 × 1, os tufos, a carga 280 e o papel 0,4 (era 0x0aed0cb29386b748)
-    ("Charcoal", false, 0x46f876790c63367f), // J4 pastel_carvao: o tecto, o miolo marmoreado e a pressão (era 0x319febeb25876cd8)
-    ("Soft Pastel", false, 0x2cb481e69a9bc110), // J4 pastel_carvao: o papel 0,6 e a pressão leve em grão (era 0x6d2510034bf7bea2)
+    ("Charcoal", false, 0xaebbe231138b2b31), // J4 pastel_carvao 2.ª ronda: o pó solto (`9965b60b59`; era 0x46f876790c63367f)
+    ("Soft Pastel", false, 0xd39987ad156db77d), // J4 pastel_carvao 2.ª ronda: o pó solto (`9965b60b59`; era 0x2cb481e69a9bc110)
     ("Oil Pastel", false, 0x27cb9ff840de7885), // J4 pastel_carvao: as estrias em Flow (era 0x53088992b4918139)
     // J3 tintas (bff754ff58 → 4d70916e0d: a ponta lisa, os grumos, o reservatório) e o fecho da J3 (a mão do dono, a lei
     // das camadas e a das bordas: `familias/tintas.rs`) — era 0xd3ea3f5b4f847521 · 0x2785d41ac04f93a1 · 0x5856e27ccfe8f621.

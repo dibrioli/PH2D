@@ -306,6 +306,13 @@ C-4 · C-6 · C-7 · C-9 · C-11 · C-12 · C-13 · C-14 · C-15 · D-2 · D-3 �
 🔀 fundidos: A-3 → A-1 · B-5 → A-1 · C-8 → C-2 · C-10 → C-4 · D-1 → A-5 · J-6 → J-1. Por pincel (receita, prancha,
 régua, vizinho, revisão cega, custo, portão): `exames/<família>.md`.
 
+## §3c — O estado do EXAME, categorias F–I, K–M (JANELA 4, 2026-10-21)
+
+✅ aprovados: G-5 Filbert · L-1 Blender Soft · L-8 Kneaded Eraser · L-9 Hard Eraser · K-4 Bokeh · K-5 Stars ·
+K-6 Halftone · M-2 Dodge · M-2 Burn · M-3 Color Glaze · C-7 Ballpoint. 🔀 fundidos: G-2 → A-1 (saiu) · G-14 → A-1 ·
+F-3 → F-5 · L-4 → L-3 · Hue/Overlay → M-3. ◐/✗ o resto, com o que falta, em [`HANDOFF_JANELA_4`](HANDOFF_JANELA_4.md)
+e `exames/<família>.md`.
+
 ## §4 — Licenças por ARTEFACTO (medido 19/10 nesta máquina)
 
 | Artefacto | Versão | Licença (fonte) | O que se pode fazer |

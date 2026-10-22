@@ -118,14 +118,10 @@ fn dentro_pelo_campo((campo, cantos, gc): &Campo, p: [f64; 2]) -> bool {
 /// vértice e face, o iso-0 do campo ao longo da normal (texels finos `h`, `+` = para FORA da face
 /// verdadeira) a 0 · ¼ · ½ · 1 · 2 texels do vértice; o arredondado é o desvio junto ao vértice menos o de
 /// longe.
-fn arredondado(
-    zoom: f64,
-    k: u32,
-    d: [f32; 2],
-    h: f64,
-    variantes: &[(&str, fn(Config) -> Config)],
-    campos: &[Campo],
-) {
+/// Uma variante da sonda: o nome e a mudança na configuração do produto.
+type Variante = (&'static str, fn(Config) -> Config);
+
+fn arredondado(zoom: f64, k: u32, d: [f32; 2], h: f64, variantes: &[Variante], campos: &[Campo]) {
     let (cx, cy) = (f64::from(CENTRO[0] + d[0]), f64::from(CENTRO[1] + d[1]));
     let (hx, hy) = (0.5 * f64::from(LADO[0]), 0.5 * f64::from(LADO[1]));
     // A cunha e a 10 (o campo não depende da `Canto`).
@@ -186,7 +182,7 @@ fn medida_luz2d_w6f() {
     let dg = DEGRAU_PADRAO;
     // A 9, a 9′ e a 10 sem a 9 foram medidas e recusadas (handoff W6f §3, §9); W6g: a 10 + 9 leve, sem e
     // com a normal de um lado.
-    let variantes: [(&str, fn(Config) -> Config); 5] = [
+    let variantes: [Variante; 5] = [
         ("antes da W6d", |c| Config {
             borda_continua: false,
             borda_fora: false,
@@ -292,9 +288,8 @@ fn medida_luz2d_w6f() {
                         "    {nome:<12} luz {v:.3} (e {e:+.3}{})",
                         if e.abs() > 0.10 { " ✗" } else { "" }
                     );
-                    for s in 1..=6 {
-                        let x: Vec<f64> =
-                            (0..3).map(|ch| lidas[vi][s].amostra_canal(p, ch)).collect();
+                    for (s, lida) in lidas[vi].iter().enumerate().take(7).skip(1) {
+                        let x: Vec<f64> = (0..3).map(|ch| lida.amostra_canal(p, ch)).collect();
                         l += &format!(" · s{s} ({:+.2},{:+.2},{:+.2})", x[0], x[1], x[2]);
                     }
                     eprintln!("{l}");

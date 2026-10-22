@@ -156,7 +156,11 @@ pub(crate) fn faixas([w, h]: [u32; 2]) -> (Faixas, Vec<u64>, u64) {
     let mut r = 0u64;
     for (q, quad) in quads.iter().enumerate() {
         f.r[q] = r as u32;
-        r += (0..quad.n).map(|n| quad.entradas_r(n)).max().unwrap_or(1).next_multiple_of(ALINHA_FAIXA);
+        r += (0..quad.n)
+            .map(|n| quad.entradas_r(n))
+            .max()
+            .unwrap_or(1)
+            .next_multiple_of(ALINHA_FAIXA);
     }
     (f, t, r)
 }

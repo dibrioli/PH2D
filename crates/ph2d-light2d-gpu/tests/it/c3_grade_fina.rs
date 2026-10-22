@@ -932,8 +932,8 @@ fn medida_luz2d_w6f_f3() {
                     em(lidas[vi][1][k]),
                     em(lidas[vi][6][k])
                 );
-                for s in 1..=6 {
-                    let x = lidas[vi][s][k];
+                for (s, lida) in lidas[vi].iter().enumerate().take(7).skip(1) {
+                    let x = lida[k];
                     l += &format!(" · s{s} ({:+.2},{:+.2},{:+.2})", x[0], x[1], x[2]);
                 }
                 eprintln!("{l}");

@@ -21,6 +21,9 @@ use niveis::Nivel;
 mod ligar;
 use ligar::{armazenado, berco, buf, constantes, dobrar, grupos_1d, vista};
 
+/// Uma etapa de um quadrante: `(chave na rodada, etapa, uniforme, ligados, grupos)`.
+type EtapaDoQuadrante<'a> = (u32, Etapa, UniformeHrc, [&'a Nivel; 5], [u32; 3]);
+
 /// O espelho de `Hrc` do `c2_hrc.wgsl`.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -227,7 +230,7 @@ impl Holografica {
         let pares = if em_3d { e.cfg.hrc_pares_na_subida } else { 0 };
         // A decisão por grade vai no UNIFORME, não nas constantes: redimensionar não recompila a luz.
         let por_fio = em_3d && u64::from(g.largura) * u64::from(g.altura) >= hrc::POR_FIO_DESDE;
-        let constantes = constantes(&e, cones, pares);
+        let constantes = constantes(e, cones, pares);
         let pipelines = ENTRADAS
             .iter()
             .map(|entrada| {
@@ -371,8 +374,7 @@ impl Holografica {
         let soma = 2 * n_max + 1;
         for &arquivando in rodadas {
             // As etapas de cada quadrante: `(chave na rodada, etapa, uniforme, ligados, grupos)`.
-            let mut etapas: [Vec<(u32, Etapa, UniformeHrc, [&Nivel; 5], [u32; 3])>; 4] =
-                Default::default();
+            let mut etapas: [Vec<EtapaDoQuadrante<'_>>; 4] = Default::default();
             for q in 0..4 {
                 let faixa = |bases: [u32; 4]| if juntos.is_some() { bases } else { [0; 4] };
                 let ft = juntos.map_or([0; hrc::NIVEIS_MAX], |f| f.t[q as usize]);

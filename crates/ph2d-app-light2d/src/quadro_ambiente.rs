@@ -135,6 +135,8 @@ pub fn config_da_vista(
         // ⭐ W5v: `=0` = a fina calcula o fundo dos opacos (o mesmo bit, mais lento; comparar).
         miolo_salta_o_fundo: ligado("PH2D_LIGHT2D_FUNDO"),
         hrc_quadrantes_juntos: quadrantes_juntos(dg),
+        // ⭐ §52: `PH2D_LIGHT2D_T_NULO=0` = a descida lê o R de cima também com T = 0 (o mesmo bit, comparar).
+        hrc_salta_o_t_nulo: ligado("PH2D_LIGHT2D_T_NULO"),
         ..crate::teto::config_do_quadro(g, mundo_para_tela, dg, rebote_ligado())
     })
 }

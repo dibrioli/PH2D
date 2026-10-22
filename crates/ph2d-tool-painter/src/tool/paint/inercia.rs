@@ -24,7 +24,6 @@ pub enum Dependente {
     DashLength,
     PaperRoughness,
     Paper,
-    GrainDaAquarela,
     GrainDaAgua,
     Pull,
     DepthSourceGrain,
@@ -37,7 +36,6 @@ pub enum Dependente {
     FollowSemNada,
     ContinuoSemPasso,
     CorDaTexturaSemLeitor,
-    CorDoGraoDaAquarela,
     CorDoGraoDaAgua,
     LeiDoGraoNaAguada,
     TexturaSemForma,
@@ -67,7 +65,7 @@ pub enum Dependente {
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 44] = [
+    pub const TODOS: [Dependente; 42] = [
         Dependente::ForaDaPontaDePixel,
         Dependente::TaperTip,
         Dependente::TaperOpacity,
@@ -77,7 +75,6 @@ impl Dependente {
         Dependente::DashLength,
         Dependente::PaperRoughness,
         Dependente::Paper,
-        Dependente::GrainDaAquarela,
         Dependente::GrainDaAgua,
         Dependente::Pull,
         Dependente::DepthSourceGrain,
@@ -90,7 +87,6 @@ impl Dependente {
         Dependente::FollowSemNada,
         Dependente::ContinuoSemPasso,
         Dependente::CorDaTexturaSemLeitor,
-        Dependente::CorDoGraoDaAquarela,
         Dependente::CorDoGraoDaAgua,
         Dependente::LeiDoGraoNaAguada,
         Dependente::TexturaSemForma,
@@ -130,7 +126,7 @@ impl Dependente {
             ],
             Dependente::PaperRoughness => &[ids::PAINTER_SUBSTRATE_ROUGHNESS],
             Dependente::Paper => &[ids::PAINTER_WATERCOLOR_PAPER_KIND],
-            Dependente::GrainDaAquarela | Dependente::GrainDaAgua => &GRAIN,
+            Dependente::GrainDaAgua => &GRAIN,
             Dependente::Pull => &[ids::PAINTER_WATERCOLOR_PULL],
             Dependente::DepthSourceGrain => &[ids::PAINTER_IMPASTO_SOURCE_GRAIN],
             Dependente::EraseDaAgua => &[ids::PAINTER_WETPAINT_ERASE],
@@ -145,9 +141,7 @@ impl Dependente {
             Dependente::FollowSemNada => &[ids::PAINTER_SHAPE_FOLLOW],
             Dependente::ContinuoSemPasso => &[ids::PAINTER_BRUSH_CONTINUOUS_SPACING],
             Dependente::CorDaTexturaSemLeitor => &[ids::PAINTER_SHAPE_PER_LAYER_COLOR],
-            Dependente::CorDoGraoDaAquarela | Dependente::CorDoGraoDaAgua => {
-                &[ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE]
-            }
+            Dependente::CorDoGraoDaAgua => &[ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE],
             Dependente::LeiDoGraoNaAguada => &[
                 ids::PAINTER_PONTA_FIELDS[1],
                 ids::PAINTER_PONTA_FIELDS[2],
@@ -235,7 +229,6 @@ impl Dependente {
             Dependente::DashLength => "panel.painter_layers.inerte.dash_ratio_below_full",
             Dependente::PaperRoughness => "panel.painter_layers.inerte.paper_and_relief",
             Dependente::Paper => "panel.painter_layers.inerte.relief_above_zero",
-            Dependente::GrainDaAquarela => "panel.painter_layers.inerte.same_as_paper_off",
             Dependente::GrainDaAgua => "panel.painter_layers.inerte.wet_paint_tool",
             Dependente::Pull => "panel.painter_layers.inerte.charge_below_full",
             Dependente::DepthSourceGrain => "panel.painter_layers.inerte.grain_chosen",
@@ -248,7 +241,6 @@ impl Dependente {
             Dependente::FollowSemNada => "panel.painter_layers.inerte.follow_nothing_to_turn",
             Dependente::ContinuoSemPasso => "panel.painter_layers.inerte.method_lays_a_path",
             Dependente::CorDaTexturaSemLeitor => "panel.painter_layers.inerte.texture_colors_media",
-            Dependente::CorDoGraoDaAquarela => "panel.painter_layers.inerte.same_as_paper_off",
             Dependente::CorDoGraoDaAgua => "panel.painter_layers.inerte.paint_tool_only",
             Dependente::LeiDoGraoNaAguada => "panel.painter_ponta.inerte.wash_grain_law",
             Dependente::TexturaSemForma => {
@@ -501,10 +493,6 @@ impl PainterTool {
                 Dependente::Paper,
                 !aquarela && !agua && self.paint.substrate_depth <= 0.0,
             ),
-            (
-                Dependente::GrainDaAquarela,
-                aquarela && b.granulation_use_paper,
-            ),
             // Na água o depósito (Paint), a borracha e o Blend (a máscara dele, J4 mistura L-2) recebem o Grain:
             // Smear, Wet, Dry e Blow ignoram-no de propósito (`wetpaint/dab_route.rs`).
             (
@@ -581,12 +569,9 @@ impl PainterTool {
             // deposita a cor do pincel pela silhueta (`wet_owns_the_dabs`) e a aguada reconstrói-se da cor
             // do pincel (`watercolor_render_active`) — as duas saem antes dessas rotas (26 C1).
             (Dependente::CorDaTexturaSemLeitor, agua || aquarela),
-            // A aguada lê o Grain CRU, como o mapa de granulação próprio (`grao_que_a_aguada_le`): sem a lei do grão e,
-            // com «Same as Paper», nem as Grain Colors; na água só o depósito (Paint) pousa a cor da rampa.
-            (
-                Dependente::CorDoGraoDaAquarela,
-                aquarela && b.granulation_use_paper,
-            ),
+            // A aguada lê o Grain CRU, como o mapa de granulação próprio (`grao_que_a_aguada_le`): sem a lei do grão; com
+            // «Same as Paper» o grão próprio nem está na tela (`BrushSettings::grao_do_papel`); na água só o depósito
+            // (Paint) pousa a cor da rampa.
             (
                 Dependente::LeiDoGraoNaAguada,
                 aquarela && !b.granulation_use_paper,

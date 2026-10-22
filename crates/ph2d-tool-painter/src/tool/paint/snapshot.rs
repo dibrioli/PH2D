@@ -33,6 +33,16 @@ impl BrushSettings {
                 && !self.composite_enabled)
     }
 
+    /// **O grão é o do PAPEL** (dono 22/10): a aguada corre com «Same as Paper» — a granulação assenta no
+    /// dente do papel e nada do slot Grain do pincel chega à tinta (`SubstrateSession::at`). O painel
+    /// ESCONDE então o grão próprio (a textura, a miniatura, o mapeamento, a lei, as Grain Colors); os
+    /// valores ficam no pincel e voltam ao desligar. Fora da aguada (Eraser, Mask, Smear…) o carimbo lê o
+    /// Grain — e ele volta à tela.
+    #[must_use]
+    pub fn grao_do_papel(&self) -> bool {
+        self.watercolor_active && self.granulation_use_paper
+    }
+
     /// **O meio OFERECE o Accumulate (e com ele o Space Attenuation)?** — a porta única da linha do
     /// painel e do traço ([`crate::tool::PainterTool::authored_spec`]).
     ///

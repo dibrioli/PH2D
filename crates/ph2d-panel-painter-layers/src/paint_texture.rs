@@ -83,6 +83,10 @@ pub(crate) fn paint_texture_section(
         y = crate::paint_watercolor_paper::paint_grain_watercolor_extras(
             ctx, theme, x, content_w, y, brush,
         );
+        // «Same as Paper» ligado: o papel é o grão — o grão próprio do pincel sai da tela (dono 22/10).
+        if brush.grao_do_papel() {
+            return close(ctx, fold, y);
+        }
     }
     let kind = TextureKind::from_u8(brush.texture_kind);
     let mapping = TextureMapping::from_u8(brush.texture_mapping);

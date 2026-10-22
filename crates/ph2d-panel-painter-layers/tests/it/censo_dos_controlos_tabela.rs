@@ -329,26 +329,33 @@ fn pre_condicoes() -> Vec<Linha> {
         false,
     ));
     for m in [Digital, Watercolor, Impasto, WetPaint] {
+        // Na Aquarela o menu do Grain só está na tela com «Same as Paper» desligado (dono 22/10).
+        let grao_na_tela = |mut g: Vec<Gesto>| {
+            if m == Watercolor {
+                g.insert(0, Gesto::Clique(PAINTER_WATERCOLOR_GRAN_SAME));
+            }
+            g
+        };
         v.push((
             m,
             "Grain Noise (Detail de fábrica: uma oitava)",
-            vec![opcao(
+            grao_na_tela(vec![opcao(
                 PAINTER_BRUSH_TEXTURE_KIND,
                 painter_brush_texture_kind_option_id(1),
-            )],
+            )]),
             vec![Alvo::Id(PAINTER_BRUSH_TEXTURE_PARAMS[3])],
             false,
         ));
         v.push((
             m,
             "Grain Noise com Detail 0,6",
-            vec![
+            grao_na_tela(vec![
                 opcao(
                     PAINTER_BRUSH_TEXTURE_KIND,
                     painter_brush_texture_kind_option_id(1),
                 ),
                 Gesto::Numero(PAINTER_BRUSH_TEXTURE_PARAMS[2], 0.6),
-            ],
+            ]),
             vec![Alvo::Id(PAINTER_BRUSH_TEXTURE_PARAMS[3])],
             false,
         ));
@@ -356,13 +363,13 @@ fn pre_condicoes() -> Vec<Linha> {
         v.push((
             m,
             "Grain Noise com Depth jitter 0,6",
-            vec![
+            grao_na_tela(vec![
                 opcao(
                     PAINTER_BRUSH_TEXTURE_KIND,
                     painter_brush_texture_kind_option_id(1),
                 ),
                 Gesto::Numero(PAINTER_PONTA_FIELDS[3], 0.6),
-            ],
+            ]),
             vec![
                 Alvo::Id(PAINTER_PONTA_FIELDS[2]),
                 Alvo::Id(PAINTER_PONTA_FIELDS[4]),
@@ -462,37 +469,46 @@ fn pre_condicoes() -> Vec<Linha> {
         false,
     ));
     // As Grain Colors (dono 22/10): a linha «Use Color Ramp» com um Grain escolhido, em cada meio —
-    // viva onde o meio lê o grão; esmaecida na Aquarela com «Same as Paper» (a fábrica) e no Wet Paint
-    // fora da ferramenta Paint.
+    // viva onde o meio lê o grão; esmaecida no Wet Paint fora da ferramenta Paint; na Aquarela com «Same
+    // as Paper» ligado ela SAI da tela com o grão próprio (`seam_same_as_paper`).
     let grao = opcao(
         PAINTER_BRUSH_TEXTURE_KIND,
         painter_brush_texture_kind_option_id(1),
     );
     let ferramenta_wet = |k: usize| PAINTER_WETPAINT_TOOL_IDS[k];
-    for (m, nome, mais) in [
-        (Digital, "Grain escolhido", Vec::new()),
-        (Impasto, "Grain escolhido", Vec::new()),
-        (WetPaint, "Grain escolhido", Vec::new()),
+    // Na Aquarela de fábrica «Same as Paper» está ligado e o menu do Grain nem está na tela: desliga-se antes.
+    let papel = || vec![Gesto::Clique(PAINTER_WATERCOLOR_GRAN_SAME)];
+    for (m, nome, antes, mais) in [
+        (Digital, "Grain escolhido", Vec::new(), Vec::new()),
+        (Impasto, "Grain escolhido", Vec::new(), Vec::new()),
+        (WetPaint, "Grain escolhido", Vec::new(), Vec::new()),
         (
             Watercolor,
-            "Grain escolhido com Same as Paper (a fábrica)",
-            Vec::new(),
+            "Grain escolhido e depois Same as Paper ligado (sai da tela)",
+            papel(),
+            papel(),
         ),
         (
             Watercolor,
             "Grain escolhido com Same as Paper DESLIGADO",
-            vec![Gesto::Clique(PAINTER_WATERCOLOR_GRAN_SAME)],
+            papel(),
+            Vec::new(),
         ),
         (
             WetPaint,
             "Grain escolhido, tinta molhada na tela e a ferramenta Smear",
+            Vec::new(),
             vec![Gesto::Traco, Gesto::Clique(ferramenta_wet(2))],
         ),
     ] {
         v.push((
             m,
             nome,
-            std::iter::once(grao.clone()).chain(mais).collect(),
+            antes
+                .into_iter()
+                .chain(std::iter::once(grao.clone()))
+                .chain(mais)
+                .collect(),
             vec![Alvo::Id(PAINTER_BRUSH_TEXTURE_RAMP_ENABLE)],
             false,
         ));

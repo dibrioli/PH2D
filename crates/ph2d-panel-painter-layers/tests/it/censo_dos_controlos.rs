@@ -464,6 +464,11 @@ impl Bancada {
         b
     }
 
+    /// Os controlos pintados e vivos agora (id, rectângulo).
+    pub(crate) fn rects(&self) -> &[(NodeId, Rect)] {
+        &self.rects
+    }
+
     /// A ferramenta do trilho `modo` pelo botão do trilho (a porta gravada do painel), e o painel
     /// re-pintado com as secções dela.
     pub(crate) fn no_modo(&mut self, modo: &str) {

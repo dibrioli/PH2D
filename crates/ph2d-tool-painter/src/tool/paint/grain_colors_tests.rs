@@ -135,9 +135,10 @@ fn as_grain_colors_pintam_a_cor_do_grao_nos_quatro_meios() {
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
 
-/// **Onde o meio NÃO lê o grão, a linha esmaece com o motivo** — e a tinta não muda: a Aquarela com
-/// «Same as Paper» (a lavagem assenta no papel, o slot Grain não é lido) e o Wet Paint fora da
-/// ferramenta Paint (Smear, Blend, Wet, Dry, Blow não pousam a cor da rampa).
+/// **Onde o meio NÃO lê o grão** a tinta não muda: a Aquarela com «Same as Paper» (a lavagem assenta no
+/// papel, o slot Grain não é lido) ESCONDE o grão próprio — `grao_do_papel`, dono 22/10 — em vez de o
+/// esmaecer; o Wet Paint fora da ferramenta Paint (Smear, Blend, Wet, Dry, Blow não pousam a cor da
+/// rampa) esmaece a linha com o motivo.
 #[test]
 fn as_grain_colors_esmaecem_onde_o_meio_nao_le_o_grao() {
     use crate::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE as ID;
@@ -155,10 +156,14 @@ fn as_grain_colors_esmaecem_onde_o_meio_nao_le_o_grao() {
         t.paint.brush.granulation_use_paper = true;
     };
     let t = pinta_t(PaintMedia::Watercolor, papel);
+    assert!(
+        t.brush_settings().grao_do_papel(),
+        "Aquarela com Same as Paper: o grão próprio não sai da tela"
+    );
     assert_eq!(
         dica(&t),
-        Some("panel.painter_layers.inerte.same_as_paper_off"),
-        "Aquarela com Same as Paper: a linha não esmaeceu"
+        None,
+        "Aquarela com Same as Paper: a linha escondida não esmaece (uma lei só)"
     );
     assert_eq!(
         pinta(PaintMedia::Watercolor, papel),
@@ -167,7 +172,15 @@ fn as_grain_colors_esmaecem_onde_o_meio_nao_le_o_grao() {
             .brush
             .granulation_use_paper =
             true),
-        "Aquarela com Same as Paper: esmaecida mas a tinta mudou"
+        "Aquarela com Same as Paper: escondida mas as Grain Colors pintaram"
+    );
+    assert_eq!(
+        pinta(PaintMedia::Watercolor, papel),
+        pinta(PaintMedia::Watercolor, |t| {
+            t.set_brush_texture_kind(TextureKind::None.to_u8());
+            t.paint.brush.granulation_use_paper = true;
+        }),
+        "Aquarela com Same as Paper: escondida mas a textura própria pintou"
     );
     let mut t = pinta_t(PaintMedia::WetPaint, liga);
     t.pick_wet_tool(2);

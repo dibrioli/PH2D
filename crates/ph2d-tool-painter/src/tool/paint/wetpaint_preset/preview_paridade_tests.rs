@@ -292,6 +292,66 @@ fn o_pincel_gravado_leva_as_grain_colors_e_a_miniatura_mostra_as() {
     });
 }
 
+/// O grão do artista (as Grain Colors) e DEPOIS «Same as Paper» marcado — o caso da captura do dono, 22/10.
+fn grain_colors_com_o_papel(t: &mut PainterTool) {
+    grain_colors(t);
+    t.paint.brush.granulation_use_paper = true;
+}
+
+fn so_o_papel(t: &mut PainterTool) {
+    t.paint.brush.granulation_use_paper = true;
+}
+
+/// ⭐ **«Same as Paper» esconde o grão do pincel, e o preview concorda** (dono 22/10): com o papel a mandar,
+/// o preview da Aquarela é, ao byte, o de sem grão próprio; e o pincel GRAVADO guarda o interruptor E os
+/// valores escondidos (aplicá-lo devolve a textura e as Grain Colors, prontas para quando desligar).
+#[test]
+fn same_as_paper_o_preview_e_do_papel_e_o_preset_guarda_o_grao_escondido() {
+    use crate::tool::paint::wetpaint_preset::nome_do_meio;
+    use ph2d_brush_presets::{Miniatura, Origem, Parametros, Preset};
+    let w = PaintMedia::Watercolor;
+    let papel = do_preview(w, &so_o_papel);
+    assert_eq!(
+        diferentes(&do_preview(w, &grain_colors_com_o_papel), &papel),
+        0,
+        "o grão escondido pintou no preview"
+    );
+    assert_ne!(
+        diferentes(&do_preview(w, &grain_colors), &papel),
+        0,
+        "o controlo: desligado, o grão do artista tem de pintar no preview"
+    );
+    let mut t = PainterTool::default();
+    pincel(w, &mut t, &grain_colors_com_o_papel);
+    let (parametros, texturas) = t.preset_capturar(&Parametros::novo(nome_do_meio(w), "t", "g"));
+    let p = Preset {
+        parametros,
+        origem: Origem::Utilizador,
+        miniatura: Miniatura {
+            largura: 1,
+            altura: 1,
+            rgba: vec![0; 4],
+        },
+        texturas,
+    };
+    let mut u = PainterTool::default();
+    assert!(u.preset_aplicar(&p).is_ok());
+    assert!(
+        u.paint.brush.granulation_use_paper,
+        "o interruptor perdeu-se"
+    );
+    assert_eq!(
+        u.paint.brush.texture.kind,
+        TextureKind::Checker,
+        "a textura escondida perdeu-se"
+    );
+    assert!(
+        u.paint.texture_ramp_enabled,
+        "as Grain Colors escondidas perderam-se"
+    );
+    assert_eq!(u.paint.texture_ramp, verde_vermelho());
+}
+
 /// **Sonda (ignorada): o custo do preview** — no quadro do ecrã, a CHAVE (comparada a cada quadro) e a CENA
 /// (copiada quando a chave muda), com um pincel leve e um pesado (Shape RGBA 512², duas imagens da ponta
 /// 512², Grain Colors); na thread, o primeiro quadro e o fim. O mínimo de `N` corridas.

@@ -125,4 +125,27 @@ Série: d1 → d2 (o d2 usa o d1); d3 e d4 depois do d2, em paralelo; d5 no fim.
 
 ## 7. Estado
 
-22/10: plano + oráculo. Próximo: d1.
+22/10: plano + oráculo (`4f35e2312f`). **d1 FEITA** (`d6a129ce0b`): `FieldDesc.name/key`, `ComponentDesc.code`
+(Vida e Câmera nomeadas), `value_of/set_value/check_value` na vtable, lei `ph2d_ecs::scene::property`, portões em
+`ph2d-app-components/src/property_names_tests.rs`. **d2 FEITA** (`e83fdc775f`):
+- `ph2d.get/set` com nome, `ph2d.properties`, `ph2d.damage/heal`; verifica na chamada, pousa no fim do tique
+  (`WriteValue::{Pose,Property,Health}`); porta `SceneDoors::{property_get,property_set,property_names,health_request}`
+  implementada em `ph2d-app-components/src/script_properties.rs`.
+- Saneamento partilhado com o Inspector (`sanitize_health`, `sanitize_camera`; a tabela `sanitize` em
+  `script_properties.rs` cresce com o d3).
+- Ledger da corrida por campo: `ph2d_preview_drive::FieldDrive` (`fields.rs`); `undo.rs` usa `substitute/restore`.
+- Vida de agora: `health.now`/`health.shield_now` (`api_table::RUNTIME_PROPERTIES`) → `PedidoDeVida::{Define,Escudo}`
+  pela caixa `PedidosDeVida` (esvaziada no `dispatch`; limpa no `rewind`); só a morte é publicada.
+- ⛔ **Recusa MEDIDA:** `PropertyName` como união dos nomes — o `luau-lsp` desdobra o alias na assinatura e a marca do
+  argumento parte-se (sonda 22/10: `activeParameter` sem faixa com ~34 literais). Fica `PoseField | string`; as
+  sugestões nas aspas (`scene_names::property_items`) e o aviso (`lint::property_lints`, `unknown_property(_near)`)
+  são do editor e cobrem a pose também.
+- Testes (todos verdes, por nome): `script_properties` (7), `property_names` (4), `vida_pedida` (6),
+  `arrastar::o_nome_de_propriedade…`, `ph2d-script` inteiro, `ph2d-app-code` inteiro, `controlo_de_cegueira`, `ph2d-i18n`.
+  Mutação: por fazer (fecho).
+
+**Próximo: d3** — contar primeiro os cartões/campos (censo parcial em `scratchpad`, refazer na linha), nomear os
+componentes com cartão (`.coded()` + `.named()`), alargar o `sanitize` por componente a partir dos `apply_*` de cada
+cartão, e o portão «todo campo serde de um componente com cartão está descrito». As 7 divergências de rótulo da Vida
+(cartão × catálogo, ex. «Regen / s») decidem-se aqui: o nome segue o rótulo que o cartão mostra. Depois d4 (imagens),
+d5 (cena 8), 8b, 8c, `/pd-linha-fechar`.

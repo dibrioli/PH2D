@@ -77,10 +77,13 @@ pub const WET: &[Receita] = &[
     // cega r1 via o nosso «fino e uniforme, como ruído»; a Textura da mídia 14 contra 21 com o 160). A pressão leve DESFAZ-SE em
     // grão (`pressureGrain` 0,25: a revisão cega r1 viu o Rebelle em pontos soltos onde o nosso esmaecia liso; a 0,5 a
     // largura da rampa leve caía a 0 e a lei da pressão `leis_sistemicas` ia a 0,24 — a 0,25, 0,10).
+    // J4 2.ª ronda (decisão 16: vale a foto da bateria): o Rebelle cobre o vermelho (o vermelho por baixo do azul 0,16;
+    // o nosso a 75 · papel 1,0 lia 0,30) e é mais denso (cobertura 0,71 contra 0,53) — carga 110 e o papel 0,8. Variante
+    // sq1 v4: régua 188 → 277/295 (só A); o Cruzamento do portão das mídias re-medido (`MIDIAS`).
     Receita {
         nome: "Square Hard",
-        pigment: 75.0,
-        gate: 1.0,
+        pigment: 110.0,
+        gate: 0.8,
         hardness: 0.7,
         size_px: Some(35.0),
         extras: &[
@@ -290,7 +293,11 @@ pub const MIDIAS: &[Midia] = &[
     Midia { preset: "Charcoal", foto: "charcoal", raio: 10.5, metricas: &[(Cobertura, 0.384), (Borda, 0.378), (Orla, 15.0)] },
     Midia { preset: "Soft Pastel", foto: "pastel", raio: 8.5, metricas: &[(Cobertura, 0.752), (Borda, 0.443), (Orla, 6.0)] },
     Midia { preset: "Oil Pastel", foto: "oilpastel2", raio: 15.0, metricas: &[(Cobertura, 0.654), (Textura, 17.354), (Borda, 0.417), (Orla, 11.0)] },
-    Midia { preset: "Square Hard", foto: "squarehard", raio: 15.50, metricas: &[(Cobertura, 0.705), (Textura, 20.884), (Borda, 0.856), (Cv, 0.077), (Cruzamento, 0.579), (Largura, 31.0)] },
+    // Square Hard (J4 2.ª ronda, decisão 16 — vale a foto da bateria, 19/10): a carga que cobre o vermelho como ela (o
+    // cruzamento R 75, Rebelle 74) lê na foto antiga das mídias Textura 13 (20,9) e Cv 0,044 (0,077); na foto nova a
+    // textura e o Cv são os do Rebelle (25 · 23,3 e 0,080 · 0,082, régua 277/295) — saem daqui, e a cobertura do
+    // vermelho prende-se pela foto nova (`o_square_hard_tapa_o_vermelho_como_a_foto`).
+    Midia { preset: "Square Hard", foto: "squarehard", raio: 15.50, metricas: &[(Cobertura, 0.705), (Borda, 0.856), (Cruzamento, 0.579), (Largura, 31.0)] },
     Midia { preset: "Wax Scrape", foto: "waxscrape", raio: 19.5, metricas: &[(Cobertura, 0.763), (Textura, 16.691), (Borda, 0.586), (Largura, 36.0)] },
 ];
 
@@ -353,6 +360,32 @@ const SOFT_PASTEL: Receita = Receita {
     pincel: &[],
     nasce_de: None,
 };
+
+/// Escreve os [`EM_ESTUDO`] (com a tabela da largura e a miniatura, como o gerador) em `$PH2D_EXAME_DIR/estudo/` — o exame
+/// parte deles sem entrarem na fábrica. `PH2D_REGERA_SO="Nome,…"`: só esses.
+#[test]
+#[ignore = "bancada: escreve os EM_ESTUDO fora da fábrica (PH2D_EXAME_DIR)"]
+fn escreve_os_em_estudo() {
+    use crate::presets_de_fabrica::{parametros, tabela_de_largura};
+    let dir = std::path::PathBuf::from(std::env::var("PH2D_EXAME_DIR").expect("PH2D_EXAME_DIR")).join("estudo");
+    let so = std::env::var("PH2D_REGERA_SO").ok();
+    for r in EM_ESTUDO {
+        if so.as_deref().is_some_and(|s| !s.split(',').any(|n| n == r.nome)) {
+            continue;
+        }
+        let mut preset = ph2d_brush_presets::Preset {
+            parametros: parametros(r),
+            origem: ph2d_brush_presets::Origem::Fabrica,
+            miniatura: ph2d_brush_presets::Miniatura { largura: 1, altura: 1, rgba: vec![255; 4] },
+            texturas: Default::default(),
+        };
+        preset.parametros.width_table = tabela_de_largura(&preset);
+        preset.miniatura = ph2d_tool_painter::miniatura_do_preset(&preset);
+        let rel = ph2d_brush_presets::caminho_relativo(ph2d_tool_painter::MOTOR_DOS_PRESETS, r.meio, r.grupo, r.nome);
+        ph2d_brush_presets::gravar(&dir, &rel, &preset).unwrap();
+        println!("[estudo] {}", dir.join(&rel).display());
+    }
+}
 
 // ---- Os portões da família (J4, `docs/Painter/Pinceis/exames/pastel_carvao.md`) ----
 
@@ -747,6 +780,37 @@ mod portoes {
             f.push(format!("o lado: {:.2} com, {:.2} sem (Rebelle 2,15)", lado(com), lado(sem_lado)));
         }
         assert!(f.is_empty(), "{f:?}");
+    }
+
+    /// O VERMELHO por baixo do azul nos cruzamentos da cena `sobre` (x 250 e 500 × as faixas y 150 e 470, ±8 × ±15 px): o
+    /// canal R médio — o azul puro tem R 23, o vermelho 191.
+    fn r_no_cruzamento(px: &[u8]) -> f64 {
+        let mut v = Vec::new();
+        for x in [250usize, 500] {
+            for y in [150usize, 470] {
+                for yy in y - 15..=y + 15 {
+                    for xx in x - 8..=x + 8 {
+                        v.push(f64::from(px[(yy * 1000 + xx) * 4]));
+                    }
+                }
+            }
+        }
+        v.iter().sum::<f64>() / v.len() as f64
+    }
+
+    /// ⭐ **O Square Hard tapa o vermelho como a foto nova** (decisão 16): o R médio nos cruzamentos do azul sobre o vermelho
+    /// — Rebelle «Square Hard» (bateria, `sobre_A`) 74, pelo MESMO recorte; o de antes (carga 75, papel 1,0) 114. Mutação: a
+    /// carga de antes.
+    #[test]
+    fn o_square_hard_tapa_o_vermelho_como_a_foto() {
+        let ps = [pinceis("Square Hard").remove(0), mutado("Square Hard", "pigmentPerDab", serde_json::json!(75.0))];
+        let r: Vec<f64> = std::thread::scope(|s| {
+            let hs: Vec<_> = ps.iter().map(|p| s.spawn(move || r_no_cruzamento(&cena(p, "sobre")))).collect();
+            hs.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        println!("[pastel_carvao] Square Hard: R no cruzamento {:.1} (Rebelle 74) · com a carga de antes {:.1}", r[0], r[1]);
+        assert!(r[0] <= 86.0, "o Square Hard deixa o vermelho passar: R {:.1} (Rebelle 74)", r[0]);
+        assert!(r[1] > 86.0, "o portão não separa a carga de antes ({:.1})", r[1]);
     }
 
     /// Os reprovados não estão na fábrica: nenhum ficheiro com o nome de uma receita [`super::EM_ESTUDO`].

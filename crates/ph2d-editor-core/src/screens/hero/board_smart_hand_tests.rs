@@ -148,7 +148,7 @@ fn shift_alone_regularises_the_held_shape_and_letting_go_gives_it_back() {
         let back = live(&t);
         assert!(
             (back.1 - free.1).abs() <= px && (back.2 - free.2).abs() <= px,
-            "{name}: largar o Shift volta à forma livre: {free:?} → {back:?}"
+            "{name}: largar o Shift volta à forma livre: {free:?} -> {back:?}"
         );
         t.shift(true);
         t.release(end, true);

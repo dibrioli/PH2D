@@ -91,6 +91,12 @@ impl BrushSpec {
         {
             s.grain_depth = s.grain_depth.clamp(0.0, 1.0) * t.grao;
         }
+        // A dureza por dab (J4 efeitos, `Dynamics::speed_hardness`): a mão lenta endurece a queda, a rápida amacia.
+        if let Some(t) = d.tilt
+            && t.dureza != 0.0
+        {
+            s.hardness = (self.hardness + t.dureza).clamp(0.0, 1.0);
+        }
         s
     }
 

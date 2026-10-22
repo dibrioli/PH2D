@@ -94,6 +94,9 @@ pub struct DabTilt {
     pub grao: f32,
     /// A imagem da Shape que ESTE dab carimba (L19, [`crate::mangueira::ImageHose::escolhe`]); `0` = a primeira.
     pub imagem: u8,
+    /// A dureza DESTE dab somada à do pincel (a dureza pela velocidade, J4 efeitos,
+    /// [`crate::Dynamics::dureza_da_velocidade`]); `0` = a do pincel.
+    pub dureza: f32,
 }
 
 impl DabTilt {
@@ -107,6 +110,7 @@ impl DabTilt {
         espelho: false,
         grao: 1.0,
         imagem: 0,
+        dureza: 0.0,
     };
 
     /// A ponta deixa de ser a do pincel (um dos raios mudou).
@@ -235,6 +239,7 @@ impl Tilt {
             espelho: false,
             grao: 1.0,
             imagem: 0,
+            dureza: 0.0,
         })
     }
 }
@@ -313,6 +318,12 @@ impl Pen {
 #[must_use]
 pub fn any_tilted(dabs: &[crate::Dab]) -> bool {
     dabs.iter().any(|d| d.tilt.is_some())
+}
+
+/// Algum dab do lote tem a dureza mexida ([`DabTilt::dureza`]): a tabela de queda de UM traço (o device) não a serve.
+#[must_use]
+pub fn any_dureza(dabs: &[crate::Dab]) -> bool {
+    dabs.iter().any(|d| d.tilt.is_some_and(|t| t.dureza != 0.0))
 }
 
 /// Um passo da corda: o pincel em `anchor` só anda quando a mão (`sample`) está a mais de `len` px, e

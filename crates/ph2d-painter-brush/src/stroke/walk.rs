@@ -133,6 +133,9 @@ impl Stroke {
             if self.spec.passo_pela_pressao && self.spec.leis_do_digital() {
                 let p = lerp(self.last_pressure, target.pressure, traveled / seg.max(1e-6));
                 w *= self.dynamics.radius_scale(p);
+                // …e à VELOCIDADE (L12; J4 efeitos — o `dabs_per_actual_radius` do MyPaint): o traço rápido que
+                // afina não sai em contas. Sem a lei, o factor é 1 ao bit.
+                w *= self.dynamics.speed_radius_scale(self.velocidade_do_dab());
             }
             let step = (base_step * w * self.spacing_mult).max(1.0);
             // A step that shrank below what is already banked (a taper ramp, or a live spacing edit)

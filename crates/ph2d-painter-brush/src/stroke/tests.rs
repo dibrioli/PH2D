@@ -1877,6 +1877,40 @@ fn o_passo_segue_o_diametro_a_pressao() {
     }
 }
 
+/// ⭐ **O passo pelo diâmetro À VELOCIDADE** (J4 efeitos 2.ª ronda, o `dabs_per_actual_radius` do MyPaint): com o
+/// tamanho pela velocidade (`speed_size` 0,45) o traço rápido afina ~4×, e com `passo_pela_pressao` o passo afina
+/// com ele (o fio sem contas do néon rápido) — o dobro dos dabs, ou mais; desligado, o passo é o do pincel.
+#[test]
+fn o_passo_segue_a_velocidade() {
+    let dyn_ = Dynamics {
+        size_pressure: false,
+        speed_size: 0.45,
+        ..Default::default()
+    };
+    let dabs = |ligado: bool| {
+        let spec = BrushSpec {
+            radius_px: 20.0,
+            spacing: 0.1,
+            space_attenuation: false,
+            stabilizer: 0.0,
+            passo_pela_pressao: ligado,
+            ..Default::default()
+        };
+        let mut s = Stroke::new(spec, dyn_, 1);
+        let (mut out, mut n) = (Vec::new(), 0);
+        s.begin(pt(0.0, 0.0, 1.0), &mut out);
+        for i in 1..=40 {
+            s.extend(pt(i as f32 * 50.0, 0.0, 1.0), &mut out);
+            n += out.iter().filter(|d| d.center[0] > 600.0).count();
+            s.tick(0.01, &mut out);
+            n += out.iter().filter(|d| d.center[0] > 600.0).count();
+        }
+        n
+    };
+    let (sem, com) = (dabs(false), dabs(true));
+    assert!(sem > 0 && com >= 2 * sem, "traço rápido: {sem} dabs sem a lei, {com} com ela");
+}
+
 /// ⭐ **O spray PARADO** (J4 `texturas`, [`BrushSpec::parado_s`]; o Texture Spray do Krita parado cobre 0,24 → 1,00 a
 /// 10 → 200 eventos): com o Space e a caneta parada, cada `parado_s` de tique pousa uma nuvem no cursor; a mexer, o
 /// caminho zera o relógio; desligado, parado não pousa nada.

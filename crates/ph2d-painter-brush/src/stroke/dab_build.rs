@@ -261,6 +261,13 @@ impl Stroke {
                 ..t
             });
         }
+        // A dureza pela pressão e pela velocidade (J4 efeitos): viaja na pegada do dab (`DabTilt::dureza`, lida por
+        // `at_dab`).
+        let dureza = self.dynamics.dureza_da_mao(pressure, self.velocidade_do_dab());
+        if dureza != 0.0 {
+            let t = dab.tilt.unwrap_or(crate::DabTilt::NEUTRA);
+            dab.tilt = Some(crate::DabTilt { dureza, ..t });
+        }
         // A imagem DESTE dab (L19): a ponta de N imagens escolhe pelo peso, pela sequência, pela pressão ou pelo rumo;
         // viaja na pegada (`DabTilt::imagem`), e o tool carimba cada uma com a sua.
         if self.spec.hose.ativa() {

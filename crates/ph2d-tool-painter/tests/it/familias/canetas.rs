@@ -47,7 +47,15 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("pigment_espectral", "true"),
             ("traco", r#"{"largura":7.0,"molhada":0.0,"queimada":0.0,"tecto":0.99}"#),
         ],
-        mao: &[("pressureSize", 0.25), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 1.2), ("pressureJitter", 0.35)],
+        // A dureza pela pressão (J4 efeitos, o `hardness 0,2 + 0,3·p` do `deevad/ballpen`; 0,15 na nossa queda —
+        // a 0,3 o traço engordava 9 %): o cheio de 200 px não sai em contas (0,044 → 0,006), o leve continua em fiapos.
+        mao: &[
+            ("pressureSize", 0.25),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.2),
+            ("pressureJitter", 0.35),
+            ("pressureHardness", 0.15),
+        ],
         size_px: Some(5.0),
         opacity: Some(0.7),
         ..ReceitaMeio::digital("Ink", "Ballpoint", "Ballpoint")

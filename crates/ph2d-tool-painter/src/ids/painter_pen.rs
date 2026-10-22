@@ -13,7 +13,7 @@ pub const PAINTER_PEN_RESET: NodeId = hash_node_id("painter_brush.pen_reset");
 
 /// As linhas numéricas do cartão, pela ordem de [`crate::LINHAS_DA_MAO`] — UMA lista para o reencaminhar
 /// do painel (`number_field::is_param_field`), o `populate` e o encaminhamento do tool.
-pub const PAINTER_PEN_FIELDS: [NodeId; 21] = [
+pub const PAINTER_PEN_FIELDS: [NodeId; 23] = [
     hash_node_id("painter_brush.pen.pressureSize"),
     hash_node_id("painter_brush.pen.pressureSizeCurve"),
     hash_node_id("painter_brush.pen.pressureOpacity"),
@@ -35,6 +35,8 @@ pub const PAINTER_PEN_FIELDS: [NodeId; 21] = [
     hash_node_id("painter_brush.pen.pressureSCurve"),
     hash_node_id("painter_brush.pen.pressureJitter"),
     hash_node_id("painter_brush.pen.speedLag"),
+    hash_node_id("painter_brush.pen.speedHardness"),
+    hash_node_id("painter_brush.pen.pressureHardness"),
 ];
 
 /// A linha da rotação do carimbo é um MENU (None · Follow · Pen tilt), não um número: o id da linha 8.

@@ -136,7 +136,8 @@ pub struct BrushSpec {
     /// ⭐ **O passo pelo diâmetro À PRESSÃO** (J4 `texturas`, `docs/Painter/Pinceis/exames/texturas.md` «Motor
     /// J4»), OFF = o de sempre: o passo entre dabs é `spacing ×` o diâmetro do PINCEL. ON: × o diâmetro que a
     /// pressão dá a esse dab ([`crate::Dynamics::radius_scale`]) — na pressão baixa os carimbos pequenos
-    /// vêm apertados (o rasto denso de bolinhas do Stamp Bokeh do Krita). Só no Digital.
+    /// vêm apertados (o rasto denso de bolinhas do Stamp Bokeh do Krita). Só no Digital. E à VELOCIDADE (J4
+    /// efeitos 2.ª ronda, [`crate::Dynamics::speed_size`]): o traço rápido que afina não sai em contas.
     pub passo_pela_pressao: bool,
     /// ⭐ **O spray PARADO** (J4 `texturas`, «Motor J4»), em segundos (`0` = desligado, o de sempre): com o Space e a
     /// caneta parada (nenhum dab do caminho desde o tique anterior), pousa uma nuvem no cursor a cada `parado_s` —

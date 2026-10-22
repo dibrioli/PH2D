@@ -101,12 +101,16 @@ const GLOW: ReceitaMeio =
     // cabeça do recto rápido; o vertical curto acaba antes de o filtro chegar). 0,3 + 0,04 s: 16 · 22 px.
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.0"),
+            // A dureza 0,1 com a queda que a desconta (2.ª ronda): a velocidade tem por onde a AMACIAR — o recto
+            // rápido do MyPaint (a dureza dele 0,05 a 2 500 px/s) é um fio fino; com a dureza 0 não havia como.
+            ("hardness", "0.1"),
             ("falloff", "\"Custom\""),
             ("custom_falloff", NEON),
             ("accumulate", "true"),
             ("flow", "0.45"),
             ("spacing", "0.09"),
+            // O passo pelo diâmetro de CADA dab (o `dabs_per_actual_radius` dele): o rápido que afina sem contas.
+            ("passo_pela_pressao", "true"),
             // A mistura espectral do MyPaint 2 (2.ª ronda): o néon azul sobre o vermelho passa pelo grená escuro.
             ("pigment", "true"),
             ("pigment_mix", "1.0"),
@@ -119,14 +123,19 @@ const GLOW: ReceitaMeio =
             ("speedSize", 0.3),
             ("speedOpacity", 0.0),
             ("speedLag", 0.04),
+            // O caroço onde a caneta pousa (2.ª ronda): a dureza dele a v = 0 (0,24 × 0,13 a 300 px/s) na nossa
+            // queda — o núcleo 1,36× (√ da razão); a nossa dureza é um patamar: 0,27 a v = 0, 0 a 2 500 px/s.
+            ("speedHardness", 0.059),
         ],
         size_px: Some(32.0),
         opacity: Some(1.0),
         ..ReceitaMeio::digital("Effects", "Glow", "Glow")
     };
 
-/// A pegada do néon (a queda do libmypaint com dureza 0,12, em 8 pontos rectos — o tecto da curva é 8).
-const NEON: &str = r#"[{"handle": "Vector", "id": 0, "x": 0.0, "y": 1.0}, {"handle": "Vector", "id": 1, "x": 0.2, "y": 0.7067}, {"handle": "Vector", "id": 2, "x": 0.3464, "y": 0.12}, {"handle": "Vector", "id": 3, "x": 0.5, "y": 0.1023}, {"handle": "Vector", "id": 4, "x": 0.6, "y": 0.0873}, {"handle": "Vector", "id": 5, "x": 0.7, "y": 0.0695}, {"handle": "Vector", "id": 6, "x": 0.85, "y": 0.0378}, {"handle": "Vector", "id": 7, "x": 1.0, "y": 0.0}]"#;
+/// A pegada do néon (a queda do libmypaint com dureza 0,12, em 8 pontos rectos — o tecto da curva é 8), DESCONTADA
+/// da dureza 0,1 do preset: `curva(u) = néon(0,1 + 0,9·u)` — com a dureza 0,1 o dab é o néon de antes (fora do
+/// patamar central de 0,1 do raio, que a soma dos dabs satura).
+const NEON: &str = r#"[{"handle": "Vector", "id": 0, "x": 0.0, "y": 0.8534}, {"handle": "Vector", "id": 1, "x": 0.1111, "y": 0.7067}, {"handle": "Vector", "id": 2, "x": 0.2738, "y": 0.12}, {"handle": "Vector", "id": 3, "x": 0.4444, "y": 0.1023}, {"handle": "Vector", "id": 4, "x": 0.5556, "y": 0.0873}, {"handle": "Vector", "id": 5, "x": 0.6667, "y": 0.0695}, {"handle": "Vector", "id": 6, "x": 0.8333, "y": 0.0378}, {"handle": "Vector", "id": 7, "x": 1.0, "y": 0.0}]"#;
 
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[];
@@ -389,6 +398,58 @@ fn a_mistura_espectral_cruza_como_o_mypaint() {
         }
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// As CONTAS do traço de 200 px (cena `tamanhos`, à escala `escala`): na linha do meio do traço (a de maior α médio
+/// em y 380..500), a mediana de 7 linhas em x 300..700 — `(máx − mín) ÷ média`. O MyPaint `deevad/ballpen`: 0,0125.
+fn contas_a_200_px(preset: ph2d_brush_presets::Preset, escala: f64) -> f64 {
+    use crate::exame_bancada::{Fonte, Pincel, bateria, pinta_cena_com};
+    let bat = bateria();
+    let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
+    let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
+    let mut cena = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "tamanhos").unwrap().clone();
+    for op in cena["ops"].as_array_mut().unwrap() {
+        if let Some(d) = op.get("size_px").and_then(serde_json::Value::as_f64) {
+            op["size_px"] = serde_json::json!(d * escala);
+        }
+    }
+    let p = Pincel { nome: "cand".to_owned(), fonte: Fonte::Preset { preset: Box::new(preset), relativo: String::new() } };
+    let px = pinta_cena_com(&p, None, &cena, tela, papel, 0, false).1;
+    let w = tela[0] as usize;
+    let alfa = |x: usize, y: usize| ((255.0 - f64::from(px[(y * w + x) * 4])) / 232.0).clamp(0.0, 1.0);
+    let media_da_linha = |y: usize| (300..700).map(|x| alfa(x, y)).sum::<f64>() / 400.0;
+    let yc = (380..500).max_by(|&a, &b| media_da_linha(a).total_cmp(&media_da_linha(b))).unwrap();
+    let linha: Vec<f64> = (300..700)
+        .map(|x| {
+            let mut v: Vec<f64> = (yc - 3..=yc + 3).map(|y| alfa(x, y)).collect();
+            v.sort_by(f64::total_cmp);
+            v[3]
+        })
+        .collect();
+    let m = linha.iter().sum::<f64>() / linha.len() as f64;
+    (linha.iter().copied().fold(0.0, f64::max) - linha.iter().copied().fold(1.0, f64::min)) / m.max(1e-6)
+}
+
+/// ⭐ **A esferográfica de 200 px não sai em CONTAS** (2.ª ronda; o revisor da J3: «contas a 200 px»): a dureza pela
+/// pressão (`pressureHardness`, o `hardness 0,2 + 0,3·p` do `deevad/ballpen`) dá ao dab cheio um topo chato, e o
+/// traço de 200 px fica liso como o do MyPaint (0,0125; ≤ 0,025). Mutação permanente: sem a linha (a dureza 0 de
+/// antes, 0,044) tem de sangrar.
+#[test]
+fn a_esferografica_de_200_px_nao_sai_em_contas() {
+    let receita = receita_em_estudo("Ballpoint");
+    let escala = CRUZAMENTOS_DO_MYPAINT.iter().find(|c| c.0 == "Ballpoint").unwrap().2;
+    let (com, sem) = std::thread::scope(|s| {
+        let a = s.spawn(|| contas_a_200_px(crate::presets_de_fabrica::preset_do_meio(receita), escala));
+        let b = s.spawn(|| {
+            let mut p = crate::presets_de_fabrica::preset_do_meio(receita);
+            assert!(p.parametros.engine.remove("pressureHardness").is_some(), "a receita perdeu a linha");
+            contas_a_200_px(p, escala)
+        });
+        (a.join().unwrap(), b.join().unwrap())
+    });
+    println!("[contas] Ballpoint 200 px: {com:.4} (sem a dureza pela pressão {sem:.4}; MyPaint 0,0125)");
+    assert!(com <= 0.025, "a 200 px a esferográfica sai em contas: {com:.4} (MyPaint 0,0125)");
+    assert!(sem > 0.025, "a mutação «sem a dureza pela pressão» NÃO sangrou: {sem:.4}");
 }
 
 /// A bancada dos EM_ESTUDO (e da Ballpoint das `canetas`, cuja lei do pigmento é desta família): grava cada um, pela

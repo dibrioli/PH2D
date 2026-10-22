@@ -314,6 +314,8 @@ impl PainterTool {
             && !accumulate_cap
             && self.device_stamp.is_some()
             && super::stamp_device::eligible(brush)
+            // A dureza por dab (a velocidade, J4 efeitos): a tabela de queda do device é uma por traço.
+            && !ph2d_painter_brush::pen::any_dureza(dabs)
             && super::stamp_device::wants_device(dabs, w, h))
         .then(|| {
             (

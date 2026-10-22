@@ -29,10 +29,14 @@ pub enum LinhaDaMao {
     PressureJitter,
     /// A velocidade com atraso ([`Dynamics::speed_lag_s`], J4 efeitos).
     SpeedLag,
+    /// A velocidade amacia a queda ([`Dynamics::speed_hardness`], J4 efeitos 2.ª ronda).
+    SpeedHardness,
+    /// A pressão endurece a queda ([`Dynamics::pressure_hardness`], J4 efeitos 2.ª ronda).
+    PressureHardness,
 }
 
 /// As linhas do cartão, pela ordem do painel.
-pub const LINHAS_DA_MAO: [LinhaDaMao; 21] = [
+pub const LINHAS_DA_MAO: [LinhaDaMao; 23] = [
     LinhaDaMao::Knob(Knob::PressureSize),
     LinhaDaMao::Knob(Knob::PressureSizeCurve),
     LinhaDaMao::Knob(Knob::PressureOpacity),
@@ -54,6 +58,8 @@ pub const LINHAS_DA_MAO: [LinhaDaMao; 21] = [
     LinhaDaMao::PressureSCurve,
     LinhaDaMao::PressureJitter,
     LinhaDaMao::SpeedLag,
+    LinhaDaMao::SpeedHardness,
+    LinhaDaMao::PressureHardness,
 ];
 
 /// Quantas linhas o cartão tem.
@@ -72,6 +78,8 @@ pub const MAO_DE_FABRICA: [f64; N_LINHAS_DA_MAO] = {
             LinhaDaMao::PressureSCurve => PRESSURE_S_CURVE.4,
             LinhaDaMao::PressureJitter => PRESSURE_JITTER.4,
             LinhaDaMao::SpeedLag => SPEED_LAG.4,
+            LinhaDaMao::SpeedHardness => SPEED_HARDNESS.4,
+            LinhaDaMao::PressureHardness => PRESSURE_HARDNESS.4,
         };
         i += 1;
     }
@@ -95,6 +103,17 @@ const PRESSURE_S_CURVE: (&str, f64, f64, f64, f64) = ("pressureSCurve", 0.0, 1.0
 const PRESSURE_JITTER: (&str, f64, f64, f64, f64) = ("pressureJitter", 0.0, 1.0, 0.01, 0.0);
 /// O atraso da velocidade (s): o `speed1_slowness` do MyPaint (0,04 em 164 dos 196 pincéis dele; o maior 0,2).
 const SPEED_LAG: (&str, f64, f64, f64, f64) = ("speedLag", 0.0, 0.5, 0.01, 0.0);
+/// A pressão endurece a queda: a dureza somada na pressão 1 (a esferográfica do MyPaint: 0,3).
+const PRESSURE_HARDNESS: (&str, f64, f64, f64, f64) = ("pressureHardness", 0.0, 1.0, 0.01, 0.0);
+/// A velocidade amacia a queda: o `k` da curva logarítmica (o `experimental/glow` do MyPaint: 0,04 × 0,94 = 0,038 na
+/// dureza dele; a nossa queda pede mais — `exames/efeitos.md` 2.ª ronda); o tecto é o do motor.
+const SPEED_HARDNESS: (&str, f64, f64, f64, f64) = (
+    "speedHardness",
+    0.0,
+    ph2d_painter_brush::dynamics::VELOCIDADE_EXPOENTE_MAX as f64,
+    0.005,
+    0.0,
+);
 /// A velocidade→opacidade (L12), a mesma lei na cobertura do dab (Thin_Pen ≈ 0,2).
 const SPEED_OPACITY: (&str, f64, f64, f64, f64) = (
     "speedOpacity",
@@ -116,6 +135,8 @@ impl LinhaDaMao {
             Self::PressureSCurve => PRESSURE_S_CURVE.0,
             Self::PressureJitter => PRESSURE_JITTER.0,
             Self::SpeedLag => SPEED_LAG.0,
+            Self::SpeedHardness => SPEED_HARDNESS.0,
+            Self::PressureHardness => PRESSURE_HARDNESS.0,
         }
     }
 
@@ -133,6 +154,8 @@ impl LinhaDaMao {
             Self::PressureSCurve => (PRESSURE_S_CURVE.1, PRESSURE_S_CURVE.2, PRESSURE_S_CURVE.3),
             Self::PressureJitter => (PRESSURE_JITTER.1, PRESSURE_JITTER.2, PRESSURE_JITTER.3),
             Self::SpeedLag => (SPEED_LAG.1, SPEED_LAG.2, SPEED_LAG.3),
+            Self::SpeedHardness => (SPEED_HARDNESS.1, SPEED_HARDNESS.2, SPEED_HARDNESS.3),
+            Self::PressureHardness => (PRESSURE_HARDNESS.1, PRESSURE_HARDNESS.2, PRESSURE_HARDNESS.3),
         }
     }
 
@@ -141,7 +164,10 @@ impl LinhaDaMao {
     /// antes volta ao byte (`cada_preset_de_fabrica_e_a_sua_receita`).
     #[must_use]
     pub fn grava_no_neutro(self) -> bool {
-        !matches!(self, Self::PressureSCurve | Self::PressureJitter | Self::SpeedLag)
+        !matches!(
+            self,
+            Self::PressureSCurve | Self::PressureJitter | Self::SpeedLag | Self::SpeedHardness | Self::PressureHardness
+        )
     }
 
     /// O valor de fábrica (o neutro).
@@ -155,6 +181,8 @@ impl LinhaDaMao {
             Self::PressureSCurve => PRESSURE_S_CURVE.4,
             Self::PressureJitter => PRESSURE_JITTER.4,
             Self::SpeedLag => SPEED_LAG.4,
+            Self::SpeedHardness => SPEED_HARDNESS.4,
+            Self::PressureHardness => PRESSURE_HARDNESS.4,
         }
     }
 
@@ -188,6 +216,8 @@ impl LinhaDaMao {
         !matches!(
             (self, m),
             (Self::TiltOpacity, PaintMedia::WetPaint | PaintMedia::Watercolor)
+                // A dureza pela velocidade é a da queda do carimbo: o Wet deposita pelo fluido e a aguada pela lavagem.
+                | (Self::SpeedHardness | Self::PressureHardness, PaintMedia::WetPaint | PaintMedia::Watercolor)
                 | (
                     Self::Knob(Knob::PressureOpacity | Knob::PressureOpacityCurve)
                         | Self::SpeedOpacity,
@@ -240,6 +270,8 @@ pub(crate) fn escreve(d: &mut Dynamics, t: &mut PenTilt, l: LinhaDaMao, v: f64) 
         LinhaDaMao::PressureSCurve => d.pen.s_curve = f,
         LinhaDaMao::PressureJitter => d.jitter_pressure = f,
         LinhaDaMao::SpeedLag => d.speed_lag_s = f,
+        LinhaDaMao::SpeedHardness => d.speed_hardness = f,
+        LinhaDaMao::PressureHardness => d.pressure_hardness = f,
         LinhaDaMao::Knob(k) => unreachable!("knob fora da mão: {k:?}"),
     }
 }
@@ -285,6 +317,8 @@ pub(crate) fn le(d: &Dynamics, t: &PenTilt, l: LinhaDaMao) -> f64 {
         LinhaDaMao::PressureSCurve => curto(d.pen.s_curve),
         LinhaDaMao::PressureJitter => curto(d.jitter_pressure),
         LinhaDaMao::SpeedLag => curto(d.speed_lag_s),
+        LinhaDaMao::SpeedHardness => curto(d.speed_hardness),
+        LinhaDaMao::PressureHardness => curto(d.pressure_hardness),
         LinhaDaMao::Knob(k) => unreachable!("knob fora da mão: {k:?}"),
     }
 }
@@ -310,6 +344,8 @@ fn da_pressao(l: LinhaDaMao) -> bool {
             | LinhaDaMao::PressureSCurve
             | LinhaDaMao::PressureJitter
             | LinhaDaMao::SpeedLag
+            | LinhaDaMao::SpeedHardness
+            | LinhaDaMao::PressureHardness
     ) || matches!(
         l,
         LinhaDaMao::Knob(
@@ -408,6 +444,8 @@ impl super::PainterTool {
             self.paint.dynamics.pen.s_curve = 0.0;
             self.paint.dynamics.jitter_pressure = 0.0;
             self.paint.dynamics.speed_lag_s = 0.0;
+            self.paint.dynamics.speed_hardness = 0.0;
+            self.paint.dynamics.pressure_hardness = 0.0;
         } else {
             self.repor_mao();
         }
@@ -542,7 +580,13 @@ mod tests {
     fn as_linhas_novas_so_vao_para_o_preset_mexidas() {
         use super::super::wetpaint_preset::nome_do_meio;
         use ph2d_brush_presets::Parametros;
-        let novas = [LinhaDaMao::PressureSCurve, LinhaDaMao::PressureJitter, LinhaDaMao::SpeedLag];
+        let novas = [
+            LinhaDaMao::PressureSCurve,
+            LinhaDaMao::PressureJitter,
+            LinhaDaMao::SpeedLag,
+            LinhaDaMao::SpeedHardness,
+            LinhaDaMao::PressureHardness,
+        ];
         let mut t = super::super::super::PainterTool::default();
         t.set_paint_media(PaintMedia::Digital);
         let base = Parametros::novo(nome_do_meio(PaintMedia::Digital), "g", "n");
@@ -626,6 +670,24 @@ mod velocidade {
                     .count()
             })
             .collect()
+    }
+
+    /// ⭐ **A mão lenta endurece a queda e a rápida amacia** (J4 efeitos 2.ª ronda, `exames/efeitos.md`; o
+    /// `hardness ← speed1` do MyPaint `experimental/glow`): com `speedHardness` e o atraso, o traço a 300 px/s
+    /// NASCE mais largo (a queda mais dura onde a caneta pousa — o caroço do néon) e fica a largura de sempre no meio
+    /// (a curva é zero a 300 px/s); o rápido (2 500 px/s) sai mais fino que sem a linha. Sem ela, o início é o meio.
+    #[test]
+    fn a_mao_lenta_endurece_a_queda() {
+        let xs = [24, 400];
+        let lag = (LinhaDaMao::SpeedLag, 0.04);
+        let dura = (LinhaDaMao::SpeedHardness, 0.3);
+        let sem = alturas_com(PaintMedia::Digital, 2.4, &[lag], &xs);
+        let com = alturas_com(PaintMedia::Digital, 2.4, &[lag, dura], &xs);
+        assert!(sem[0].abs_diff(sem[1]) <= 1, "sem a linha o início é o meio: {sem:?}");
+        assert!(com[0] >= com[1] + 2, "com a linha o traço lento nasce mais largo: {com:?}");
+        assert!(com[1].abs_diff(sem[1]) <= 1, "a 300 px/s a dureza é a do pincel: {com:?} × {sem:?}");
+        // O rápido amacia (a dureza desce): o pincel de omissão já tem a dureza 0, o tecto de baixo — a lei vê-se
+        // na própria curva (`ph2d_painter_brush::dynamics`, `a_dureza_da_velocidade_e_a_curva_do_mypaint`).
     }
 
     /// ⭐ **A velocidade vale desde o 1.º dab** (J3, `docs/Painter/Pinceis/exames/canetas.md` 2.ª onda): o traço só

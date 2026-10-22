@@ -546,6 +546,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.pen.pressure_s_curve" => "Pressure S-curve",
         "panel.painter_layers.pen.pressure_jitter" => "Light-touch scatter",
         "panel.painter_layers.pen.speed_lag" => "Speed lag",
+        "panel.painter_layers.pen.speed_hardness" => "Speed softness",
+        "panel.painter_layers.pen.pressure_hardness" => "Pressure hardness",
         "panel.painter_layers.pen.pressure_smoothing" => "Smoothing",
         "panel.painter_layers.pen.pulled_string" => "Pulled string",
         "panel.painter_layers.pen.dab_rotation" => "Rotation",

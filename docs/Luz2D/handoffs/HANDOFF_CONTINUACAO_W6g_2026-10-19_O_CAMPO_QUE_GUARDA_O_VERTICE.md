@@ -1473,3 +1473,38 @@ Por nome, verdes: os 3 de `a_vista_renasce_com_os_mesmos_bits`, a estufa, os 9 d
 3. O entorno também nasce em páginas novas? (não medido; a 2160p Alta é 1984×1152.)
 4. A lei W6d com `DISTANTES` no relógio (o §20.2). 5. A anomalia da r5b (§12). 6. A família (b) (37–38). 7. Os
    zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %. 8. O `rustfmt` do `solver_hrc.rs` (§47).
+
+## 51. Os níveis de cima e o entorno no regime do nascimento (§50.2–§50.3) — medidos, nada no produto (21/10)
+
+Régua `target/bug6/regime_topo_regua.rs`, lotes `regime_topo_lote{,2,3,4}.sh`, logs `regime_topo_{2,3,4}.log` (o
+`_1`, sem o cadeado da placa, descartado). 2160p Alta, cena 5, céu (`somar_entorno(None)`) × borda (o entorno com o
+arquivo); a conta-sem-ler do §41 precisava do `DIAG_FORA` no produto e ficou de fora.
+
+**(a) Os +4,4 ms dos níveis 11–12 SOBREVIVEM no regime rápido** (fases da descida, mínimo, céu → borda):
+
+| | nasce (lento), 3 processos | renasce (rápido), 2 processos |
+|---|---|---|
+| n = 11 | 2,01–2,03 → 4,26–4,27 | 2,00 → 4,26–4,28 |
+| n = 12 | 0,95–0,99 → 3,05–3,06 | 0,97 → 3,06–3,08 |
+| n 11 + 12 | +4,31…+4,49 | **+4,35 / +4,38** |
+| `c2` da vista (mediana) | céu 52,4–53,5 · borda 59,4–60,5 | céu 45,2–47,3 · borda 51,4–53,5 |
+
+O regime do nascimento soma ~7 ms por igual a céu e borda e não aparece nas fases; a borda continua +6,0…+6,5 ms de
+`c2`. ⇒ o §42.2 / §50.2 segue aberto com o número certo.
+
+**(b) O entorno não precisa da regra das páginas novas** (total, 40 quadros, um processo por teto, 2×): 2160p Alta
+(1984×1152, 0,65 GiB) 10,00–10,13 → 9,85–9,90 ms; 3600×2000 (0,60 GiB) 9,23 → 9,08 — −0,1…−0,25 ms, longe do limiar.
+
+**(c) ⚠️ Um 3.º regime, só da RÉGUA:** a vista renascida depois de uma vida com `medir_fases_da_hrc` cai muitas vezes a
+`c2` 61,9–69,6 ms (pior do que nascer): 8 de 8 processos com fases em todas as vidas, 1 de 4 só no nascimento, 0 de 4
+sem fases antes. Causa não medida (o produto não liga as fases). ⇒ nunca medir uma renascida cuja vida anterior ligou
+as fases.
+
+## 52. ABERTO (por ordem — substitui o §50)
+
+1. Smoke do dono: a luz da Baixa igual com e sem (`PH2D_LIGHT2D_JUNTOS=0`). (As páginas novas só se veem num ecrã 4K
+   na Alta — o do dono é 2560×1080.)
+2. A vista nos níveis de cima: a borda custa +4,35 ms nos níveis 11–12 também no regime rápido — sem cura de mesmo bit
+   (a tabela do R de fora recusada, §43 c).
+3. A lei W6d com `DISTANTES` no relógio (o §20.2). 4. A anomalia da r5b (§12). 5. A família (b) (37–38). 6. Os
+   zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %. 7. O `rustfmt` do `solver_hrc.rs` (§47).

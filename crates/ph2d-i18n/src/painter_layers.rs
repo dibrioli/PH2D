@@ -59,6 +59,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Acts when the Shape's Automatic is off"
         }
         "panel.painter_layers.inerte.spray_count_above_one" => "Acts when Count is above 1",
+        "panel.painter_layers.inerte.speed_on" => {
+            "Acts when Speed size, Speed opacity or Speed softness is above 0"
+        }
         "panel.painter_layers.inerte.wash_ignores_dab_opacity" => {
             "The wash does not read the dab opacity"
         }
@@ -551,19 +554,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.symmetry.custom" => "Custom",
         "panel.painter_layers.symmetry.axis" => "Axis",
         "panel.painter_layers.symmetry.segments" => "Segments",
-        // O cartão Pen (L2): a mão do pincel nos quatro meios — as palavras do painel Tuning do Wet Paint.
+        // O cartão Pen (L2): a mão do pincel nos quatro meios. Nomes curtos à Krita/Procreate (Min/Max pressure,
+        // Pressure curve; «Press.»/«Pen» onde a palavra inteira não cabe na coluna do dock estreito).
         "panel.painter_layers.pen.title" => "Pen",
         "panel.painter_layers.pen.pressure_size" => "Pressure size",
         "panel.painter_layers.pen.pressure_size_curve" => "Size curve",
-        "panel.painter_layers.pen.pressure_opacity" => "Pressure opacity",
+        "panel.painter_layers.pen.pressure_opacity" => "Press. opacity",
         "panel.painter_layers.pen.pressure_opacity_curve" => "Opacity curve",
-        "panel.painter_layers.pen.pressure_floor" => "Pressure floor",
-        "panel.painter_layers.pen.pressure_ceiling" => "Pressure ceiling",
-        "panel.painter_layers.pen.pressure_s_curve" => "Pressure S-curve",
-        "panel.painter_layers.pen.pressure_jitter" => "Light-touch scatter",
+        "panel.painter_layers.pen.pressure_floor" => "Min pressure",
+        "panel.painter_layers.pen.pressure_ceiling" => "Max pressure",
+        "panel.painter_layers.pen.pressure_s_curve" => "Pressure curve",
+        "panel.painter_layers.pen.pressure_jitter" => "Light scatter",
         "panel.painter_layers.pen.speed_lag" => "Speed lag",
         "panel.painter_layers.pen.speed_hardness" => "Speed softness",
-        "panel.painter_layers.pen.pressure_hardness" => "Pressure hardness",
+        "panel.painter_layers.pen.pressure_hardness" => "Pen hardness",
         "panel.painter_layers.pen.pressure_smoothing" => "Smoothing",
         "panel.painter_layers.pen.pulled_string" => "Pulled string",
         "panel.painter_layers.pen.dab_rotation" => "Rotation",

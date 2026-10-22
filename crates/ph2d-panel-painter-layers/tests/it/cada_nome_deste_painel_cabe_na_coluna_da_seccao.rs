@@ -64,7 +64,9 @@ const ELIDEM_POR_LARGURA: &[(f32, usize)] = &[
     // ⚠️ **13 → 15 em 2026-10-20, e NÃO por regressão: o cartão Pen ENTROU na população** (L2, a mão do pincel
     //    nos quatro meios) — «Pressure opacity» e «Pressure ceiling» cortam só aqui, no mínimo do dock; de
     //    `245` para cima a escada não muda.
-    (220.0, 15),
+    // ⬇️ **15 → 13 em 2026-10-22 (J5 fecho): os nomes do Pen ficaram no idioma curto dos grandes apps** («Press.
+    //    opacity», «Min/Max pressure», «Pressure curve», «Light scatter», «Pen hardness») — nenhum corta a `220`.
+    (220.0, 13),
     (245.0, 1),
     // Amostra DATADA da largura do dono (lida em 2026-09-14).
     (273.3, 0),

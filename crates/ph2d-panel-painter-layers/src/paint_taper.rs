@@ -260,7 +260,7 @@ fn paint_fim_do_traco(
             y,
             tr(rotulo),
             id,
-            v.clamp(0.0, hi),
+            ph2d_editor_core::math::safe_clamp(v, 0.0, hi),
             0.0,
             hi,
             crate::number_field::FINE_STEP,

@@ -110,18 +110,18 @@ fn a_rampa_da_shape_aparece_em_todo_meio() {
     }
 }
 
-/// **A Color Ramp do Grain não aparece no Wet Paint nem na Aquarela** — no Wet Paint pela mesma
-/// física da da Shape (achada morta pela procura completa do censo, 2026-10-05: a secção inteira não
-/// muda um texel); na Aquarela o Grain é o mapa de granulação. A lei é a
-/// `BrushSettings::texture_ramp_offered`. Com um Grain escolhido (sem ele a rampa não se pinta).
+/// **As Grain Colors aparecem nos QUATRO meios** (dono 22/10) — o valor do grão indexa a cor em cada
+/// um (no Digital e no Impasto o grão do carimbo, na Aquarela o mapa de granulação, no Wet Paint o
+/// grão do dab; `grain_colors_tests` na ferramenta). Com um Grain escolhido (sem ele a rampa não se
+/// pinta); onde o meio não lê o grão a linha esmaece (`Dependente::CorDoGrao*`).
 #[test]
-fn a_rampa_do_grain_so_onde_o_meio_a_oferece() {
+fn a_rampa_do_grain_aparece_nos_quatro_meios() {
     use ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE;
     for (media, oferece) in [
         (PaintMedia::Digital, true),
-        (PaintMedia::Watercolor, false),
+        (PaintMedia::Watercolor, true),
         (PaintMedia::Impasto, true),
-        (PaintMedia::WetPaint, false),
+        (PaintMedia::WetPaint, true),
     ] {
         let ids = pintados_com(media, |t| t.set_brush_texture_kind(1));
         assert_eq!(

@@ -53,14 +53,6 @@ impl BrushSettings {
             && !self.solid_owns_the_gesture
     }
 
-    /// **O meio OFERECE a Color Ramp do Grain?** — não no Wet Paint, pela física da da Shape (achada
-    /// morta pela procura completa do censo em 2026-10-05: a secção inteira não muda um texel), nem na
-    /// Aquarela, onde o Grain é o mapa de granulação (a cor mora no Paper).
-    #[must_use]
-    pub fn texture_ramp_offered(&self) -> bool {
-        !self.wetpaint && !self.watercolor
-    }
-
     /// **O meio OFERECE o Tooth do papel?** — a aguada e a água mordem o papel por ele, e o Digital
     /// faz a tinta entrar no dente (`PainterTool::papel_como_grain`); o Impasto não o lê.
     #[must_use]

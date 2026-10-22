@@ -140,6 +140,11 @@ impl PainterTool {
                 super::ramp_lut::RampLutOwner::Shape,
                 self.paint.shape_image.is_some(),
             );
+        // As Grain Colors (o grão dono da cor): o valor do grão na célula indexa a rampa e deixa de morder
+        // a cobertura — a lei do digital (`ph2d_painter_brush::RampPaint::cor`).
+        let grao_e_cor = rampa
+            .as_ref()
+            .is_some_and(super::watercolor_accum_cor::RampaDaAguada::do_grao);
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let shape_ramp_lut = (self.paint.shape_color_ramp_enabled
             && self.paint.shape_color_ramp_bw)
@@ -463,10 +468,23 @@ impl PainterTool {
                 memo.as_ref()
                     .map_or_else(|| sil(cx, cy), |m| m.ou(cx, cy, sil))
             };
+            let grao_da_cor = grain_basis.as_ref().filter(|_| grao_e_cor);
+            let grao_img = grain_image.as_ref();
             let cor = rampa.as_ref().map(|r| {
                 move |cx: i32, cy: i32, queda: f64| -> [f32; 4] {
                     let v = forma_da_cor.map(|si| valor_da_forma(si, cx, cy));
-                    let c = r.cor_do_dab(v, queda as f32, d.color_shift);
+                    let g = grao_da_cor.map(|gb| {
+                        ph2d_painter_brush::texture::sample(
+                            &spec_ref.texture,
+                            gb,
+                            grid_map::cell_center_texel(cx, ratio),
+                            grid_map::cell_center_texel(cy, ratio),
+                            d.center,
+                            d.radius_px,
+                            grao_img,
+                        )
+                    });
+                    let c = r.cor_do_dab(v, g, queda as f32, d.color_shift);
                     [c[0] * 255.0, c[1] * 255.0, c[2] * 255.0, c[3]]
                 }
             });
@@ -557,6 +575,7 @@ impl PainterTool {
             let lisa = |_: i32, _: i32| -> f64 { 1.0 };
             let grain_arg: Option<ph2d_wet_paint::brush::CellFn<'_>> =
                 Some(match (grain.as_ref(), cerdas_fn.as_ref()) {
+                    (Some(_), _) if grao_e_cor => &lisa,
                     (Some(g), _) => g,
                     (None, Some(c)) => c,
                     (None, None) => &lisa,

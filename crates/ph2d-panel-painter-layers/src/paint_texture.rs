@@ -200,24 +200,15 @@ pub(crate) fn paint_texture_section(
         y = crate::ponta_linhas::paint_comportamento_do_grao(ctx, theme, x, content_w, y, &brush);
     }
 
-    // A Color Ramp do Grain só onde o meio a oferece (`texture_ramp_offered`: nem na Aquarela, onde o
-    // Grain é o mapa de granulação, nem no Wet Paint). A Texture LAYER (`compact`) guarda a dela.
-    let show_ramp = brush.texture_ramp_offered() || compact;
-    let out = paint_texture_params_and_ramp(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        brush,
-        kind,
-        show_ramp.then_some(layer_alpha),
-    );
+    // As Grain Colors nos QUATRO meios (o valor do grão indexa a cor: no Digital e no Impasto o grão do
+    // carimbo, na Aquarela o mapa de granulação, no Wet Paint o grão do dab); onde o meio não lê o grão
+    // a linha esmaece com o motivo (`Dependente::GrainColorsSemGrao`).
+    let out = paint_texture_params_and_ramp(ctx, theme, x, content_w, y, brush, kind, layer_alpha);
     close(ctx, fold, out)
 }
 
-/// Paint the Grain section's tail — the per-pattern params + (when `ramp` is `Some`) the Color Ramp
-/// sub-editor, which carries the Texture layer's Alpha action (`Some(Some(_))`). Split out to keep
+/// Paint the Grain section's tail — the per-pattern params + the Grain Colors sub-editor, which carries
+/// the Texture layer's Alpha action (`layer_alpha` `Some`). Split out to keep
 /// [`paint_texture_section`] under the function LOC cap; reused by the layer editor.
 #[allow(clippy::too_many_arguments)]
 fn paint_texture_params_and_ramp(
@@ -228,7 +219,7 @@ fn paint_texture_params_and_ramp(
     mut y: f32,
     brush: BrushSettings,
     kind: TextureKind,
-    ramp: Option<Option<u8>>,
+    layer_alpha: Option<u8>,
 ) -> f32 {
     // ── Per-pattern parameters — short labels pair two-per-line, long labels go solo. ──
     let pp = crate::number_field::params_de_padrao(
@@ -239,9 +230,6 @@ fn paint_texture_params_and_ramp(
     let sec = crate::paint_texture_tiling::seccao_do_grao(ctx);
     y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &pp, sec);
 
-    let Some(layer_alpha) = ramp else {
-        return y;
-    };
     // ── Color Ramp sub-editor (maps the texture's scalar to a colour). Shown in ALL modes: in
     //    Smear/Blur/Clone it's forced to a B&W coverage tone (checked + locked) that shapes the grain. ──
     crate::paint_texture_ramp::paint_texture_ramp_section(

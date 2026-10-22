@@ -34,6 +34,9 @@ impl PainterTool {
         let groups = self.paint.dab_groups.clone(); // same group map ⇒ the two passes stay in lock-step
         let mut rng = super::tiling::DabRng::new(self.paint.tex_rng);
         let shape_img_owned = self.paint.shape_image.as_ref().map(|i| i.as_mask());
+        // As Grain Colors: o mapa de granulação indexa a rampa ([`GraoDaAguada`]).
+        let grao = self.grao_da_aguada(rampa.as_ref());
+        let grao_img = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let canvas = [fw as f32, fh as f32];
         // O `Pigment` mistura a cor nova com a tinta que a SESSÃO já tinha ([`super::watercolor_mistura`]).
         // Sobre a tinta molhada da sessão, o Smudge arrasta-a e mistura-a ([`Self::arrasto_da_sessao`])
@@ -195,7 +198,8 @@ impl PainterTool {
                         // como a do pincel no mixer: uma lei ([`super::watercolor_mixer::Apanha`]).
                         let (col, wgt) = match &rampa {
                             Some(r) if wgt > 0.0 => {
-                                let c = r.cor_do_dab(forma, wgt, d.color_shift);
+                                let g = grao.as_ref().map(|g| g.em(grao_img.as_ref(), x, y));
+                                let c = r.cor_do_dab(forma, g, wgt, d.color_shift);
                                 let rgb = [c[0], c[1], c[2]];
                                 let rgb = apanha.map_or(rgb, |a| a.mistura(rgb));
                                 let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
@@ -258,59 +262,157 @@ impl PainterTool {
     }
 }
 
-/// **A Shape Color Ramp na aguada, no modo COR** (B&W desligado) — a mesma lei do traço digital
-/// ([`ph2d_painter_brush::ShapeRampLayers`], prompt 38): a Texture Color pelo valor da textura do Shape
-/// (a densidade do carimbo), a Falloff Color pelo peso do carimbo (o `wgt` do splat), misturadas como
-/// no digital — as camadas são as DONAS da cor. O padrão procedural recolhido pela Texture Color deixa
-/// de ser a densidade do pigmento ([`WetShapeStamp::densidade`]), como no digital deixa de recortar.
-/// O alfa da tinta (o das cores da rampa × Opacity de cada camada) pesa o depósito, sempre — a lei única das rampas do pincel. O modo
-/// TOM (B&W) não mora aqui: remapeia a silhueta da Shape dentro do `WetShapeStamp`, como no digital.
+/// **A rampa de cor na aguada e no Wet Paint** — a MESMA lei do traço digital
+/// ([`ph2d_painter_brush::RampPaint::cor`]), com a dona que o motor escolhe ([`RampLutOwner`]):
+/// - a **Shape Color** (B&W desligado, prompt 38): a Texture Color pelo valor da textura do Shape (a
+///   densidade do carimbo), a Falloff Color pelo peso do carimbo (o `wgt` do splat). O padrão procedural
+///   recolhido pela Texture Color deixa de ser a densidade ([`WetShapeStamp::densidade`]);
+/// - as **Grain Colors**: a cor pelo VALOR do grão no texel — na aguada o mapa de granulação (o Grain é
+///   esse mapa, [`GraoDaAguada`], e continua a assentar a granulação), no Wet Paint o grão do dab — que,
+///   como no digital, deixa de morder a cobertura quando é o dono da cor.
+///
+/// O alfa da tinta pesa o depósito, sempre — a lei única das rampas do pincel. O modo TOM (B&W) da
+/// Shape não mora aqui: remapeia a silhueta dentro do `WetShapeStamp`, como no digital.
 pub(super) struct RampaDaAguada {
     lut: Vec<[f32; 4]>,
     camadas: super::shape_camadas::CamadasDoShape,
+    dona: super::ramp_lut::RampLutOwner,
 }
 
 impl RampaDaAguada {
-    /// A cor das camadas num texel (sRGB reto + alfa da tinta): a Texture Color pelo valor do Shape
-    /// (`forma`), a Falloff Color pelo peso — a MESMA conta nas duas passadas (cor e densidade).
+    /// A rampa como os núcleos do digital a leem, com o desvio `shift` do carimbo.
     #[inline]
-    pub(super) fn cor(&self, forma: Option<f32>, wgt: f32) -> [f32; 4] {
-        self.camadas
-            .motor(forma.is_some())
-            .color(&self.lut, forma.unwrap_or(wgt), wgt)
+    fn pintura(&self, forma: bool, shift: [f32; 3]) -> ph2d_painter_brush::RampPaint<'_> {
+        ph2d_painter_brush::RampPaint {
+            lut: &self.lut,
+            alpha_mode: super::ramp_lut::BRUSH_RAMP_ALPHA,
+            index: self.dona.index(),
+            shape: if self.dona == super::ramp_lut::RampLutOwner::Shape {
+                self.camadas.motor(forma)
+            } else {
+                ph2d_painter_brush::ShapeRampLayers::default()
+            },
+            shift,
+        }
+    }
+
+    /// A cor num texel (sRGB reto + alfa da tinta): `forma` = o valor do Shape, `grao` = o do Grain,
+    /// `wgt` = o peso do carimbo — a MESMA conta nas duas passadas (cor e densidade).
+    #[inline]
+    pub(super) fn cor(&self, forma: Option<f32>, grao: Option<f32>, wgt: f32) -> [f32; 4] {
+        self.pintura(forma.is_some(), [0.0; 3])
+            .cor(wgt, forma, grao)
     }
 
     /// [`Self::cor`] com o Randomize Color do carimbo (`shift` = [`ph2d_painter_brush::Dab::color_shift`])
     /// — a lei do digital ([`ph2d_painter_brush::RampPaint::shift`]): o RGB desloca-se, o alfa fica.
     #[inline]
-    pub(super) fn cor_do_dab(&self, forma: Option<f32>, wgt: f32, shift: [f32; 3]) -> [f32; 4] {
-        let c = self.cor(forma, wgt);
-        let s = ph2d_painter_brush::apply_color_shift([c[0], c[1], c[2]], shift);
-        [s[0], s[1], s[2], c[3]]
+    pub(super) fn cor_do_dab(
+        &self,
+        forma: Option<f32>,
+        grao: Option<f32>,
+        wgt: f32,
+        shift: [f32; 3],
+    ) -> [f32; 4] {
+        self.pintura(forma.is_some(), shift).cor(wgt, forma, grao)
+    }
+
+    /// As Grain Colors são as donas da cor: o valor do grão indexa a rampa (e o grão deixa de morder).
+    #[inline]
+    pub(super) fn do_grao(&self) -> bool {
+        self.dona == super::ramp_lut::RampLutOwner::Grain
+    }
+}
+
+/// **O mapa de granulação da aguada como o índice das Grain Colors** — o MESMO texel que a lavagem
+/// assenta (`watercolor_rewet_px::SubstrateSession::at`, o `gran_h` do mapa próprio): a escala do pincel
+/// ([`super::watercolor_noise::grain_view_to_canvas_size`]), o encaixe do Tiling e o ângulo.
+pub(super) struct GraoDaAguada {
+    tex: ph2d_painter_brush::TextureSettings,
+    rot: [f32; 2],
+    periodo: [f32; 2],
+}
+
+impl GraoDaAguada {
+    /// O valor do grão no texel `(x, y)` do canvas.
+    #[inline]
+    pub(super) fn em(
+        &self,
+        img: Option<&ph2d_painter_brush::texture::ImageMask<'_>>,
+        x: usize,
+        y: usize,
+    ) -> f32 {
+        ph2d_painter_brush::texture::sample_tiled_rot_wrapped(
+            &self.tex,
+            x as i64,
+            y as i64,
+            img,
+            self.rot,
+            self.periodo,
+        )
     }
 }
 
 impl PainterTool {
-    /// A aguada tem a Shape Color Ramp em COR — as camadas são as donas da cor do depósito (o
-    /// predicado do [`Self::rampa_da_aguada`] e da marca `WetStrokeStyle::deposito_dono`).
-    pub(super) fn aguada_tem_rampa_de_cor(&self) -> bool {
-        self.color_ramp_owner(false) == super::ramp_lut::RampLutOwner::Shape
+    /// O Grain que o meio da aguada LÊ (e que por isso pode ser o dono da cor): na aquarela o mapa de
+    /// granulação próprio (`Same as Paper` desligado — a lavagem não lê o slot com ele ligado); no Wet
+    /// Paint o grão que amostra alguma coisa (`grain_samples`, a porta do depósito).
+    pub(super) fn grao_que_a_aguada_le(&self) -> bool {
+        let b = &self.paint.brush;
+        if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
+            b.grain_samples(self.paint.texture_image.is_some())
+        } else {
+            !b.granulation_use_paper && b.texture.is_active()
+        }
     }
 
-    /// A rampa da Shape no modo cor que este lote lê — `None` com ela desligada ou no modo B&W (o
+    /// A aguada tem uma rampa em COR — a Shape Color ou as Grain Colors são as donas da cor do depósito
+    /// (o predicado do [`Self::rampa_da_aguada`] e da marca `WetStrokeStyle::deposito_dono`).
+    pub(super) fn aguada_tem_rampa_de_cor(&self) -> bool {
+        self.color_ramp_owner(self.grao_que_a_aguada_le()) != super::ramp_lut::RampLutOwner::None
+    }
+
+    /// A rampa em cor que este lote lê — `None` com as duas desligadas ou a da Shape no modo B&W (o
     /// caminho de sempre, ao byte).
     pub(super) fn rampa_da_aguada(&mut self) -> Option<RampaDaAguada> {
         if self.paint.shape_color_ramp_enabled && self.paint.shape_color_ramp_bw {
             self.ensure_shape_ramp_lut(); // o tom do `wet_shape_stamp` lê-a
         }
-        if !self.aguada_tem_rampa_de_cor() {
+        let dona = self.color_ramp_owner(self.grao_que_a_aguada_le());
+        if dona == super::ramp_lut::RampLutOwner::None {
             return None;
         }
-        let dona = super::ramp_lut::RampLutOwner::Shape;
         self.ensure_ramp_lut(dona);
         Some(RampaDaAguada {
             lut: self.paint.texture_ramp_lut.clone(),
             camadas: self.paint.shape_camadas.clone(),
+            dona,
+        })
+    }
+
+    /// O mapa de granulação que indexa as Grain Colors da aquarela — `None` quando elas não são as
+    /// donas da cor (ou no Wet Paint, onde o grão é o do dab).
+    pub(super) fn grao_da_aguada(&self, rampa: Option<&RampaDaAguada>) -> Option<GraoDaAguada> {
+        if !rampa.is_some_and(RampaDaAguada::do_grao)
+            || matches!(self.paint.paint_mode, PaintMode::WetPaint)
+        {
+            return None;
+        }
+        let (fw, fh) = self.source_size;
+        let tile = if self.paint.tiling[0] || self.paint.tiling[1] {
+            super::watercolor_noise::NoiseTile::new((fw as usize, fh as usize), self.paint.tiling)
+        } else {
+            super::watercolor_noise::NoiseTile::NONE
+        };
+        let b = &self.paint.brush;
+        let tex = super::watercolor_noise::snap_slot_size(
+            super::watercolor_noise::grain_view_to_canvas_size(b.texture, b.radius_px),
+            tile,
+        );
+        Some(GraoDaAguada {
+            rot: ph2d_painter_brush::texture::angle_basis(tex.angle_deg),
+            tex,
+            periodo: tile.slot_period(),
         })
     }
 }

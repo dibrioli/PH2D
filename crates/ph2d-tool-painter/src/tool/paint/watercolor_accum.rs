@@ -388,6 +388,7 @@ impl PainterTool {
         // A Shape Color Ramp em cor: o alfa da cor das camadas é QUANTA tinta (a lei do digital, alfa ×
         // cobertura) — pesa a densidade, que então existe também sem ponta texturada.
         let rampa = self.rampa_da_aguada();
+        let grao = self.grao_da_aguada(rampa.as_ref());
         let textured_tip = stamp.as_ref().is_some_and(|s| s.shape_active) || rampa.is_some();
         if textured_tip && self.paint.stroke_density.len() != fw * fh {
             let mut dens = vec![0u8; fw * fh];
@@ -401,6 +402,7 @@ impl PainterTool {
             self.paint.stroke_density = dens;
         }
         let shape_img_owned = self.paint.shape_image.as_ref().map(|i| i.as_mask());
+        let grao_img = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let canvas = [fw as f32, fh as f32];
         // MIX-1: per-dab Charge-depletion factors (None = mixer off — byte-identical). The reserve
         // goes into the per-pixel PIGMENT map, NEVER into the coverage: a sub-saturated coverage
@@ -548,7 +550,10 @@ impl PainterTool {
                         // Tip density (textured tip only): max-blend, matching the coverage's "one pass"
                         // union — the composite multiplies it into the interior fill.
                         if textured_tip && wgt > 0.0 {
-                            let dens = rampa.as_ref().map_or(dens, |r| dens * r.cor(forma, wgt)[3]);
+                            let dens = rampa.as_ref().map_or(dens, |r| {
+                                let g = grao.as_ref().map(|g| g.em(grao_img.as_ref(), x, y));
+                                dens * r.cor(forma, g, wgt)[3]
+                            });
                             let dv = (dens * 255.0) as u8;
                             if dv > dens_buf[idx] {
                                 dens_buf[idx] = dv;

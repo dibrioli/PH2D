@@ -215,6 +215,20 @@ impl RampPaint<'_> {
     pub fn reads_shape_value(&self) -> bool {
         self.index == RampIndex::Shape && self.shape.texture
     }
+
+    /// ⭐ **A cor da rampa num texel** (RGB reto já deslocado pelo `shift`, alfa = o da tinta) — a lei ÚNICA
+    /// de quem a indexa: a dona Grain pelo valor do grão (sem grão, a silhueta `w`); a dona Shape pelas
+    /// camadas. O núcleo do carimbo ([`ramp_texel`]), a aguada e o Wet Paint passam por aqui.
+    #[inline]
+    #[must_use]
+    pub fn cor(&self, w: f32, shape: Option<f32>, grain: Option<f32>) -> [f32; 4] {
+        let c = match self.index {
+            RampIndex::Grain => crate::dab::ramp_sample(self.lut, grain.unwrap_or(w)),
+            RampIndex::Shape => self.shape.color(self.lut, shape.unwrap_or(w), w),
+        };
+        let s = crate::jitter::apply_color_shift([c[0], c[1], c[2]], self.shift);
+        [s[0], s[1], s[2], c[3]]
+    }
 }
 
 /// A tinta de um texel: a cor (`None` = a do pincel), o factor de cobertura `g` (Grain × alfa da rampa
@@ -249,14 +263,8 @@ pub(crate) fn ramp_texel(
         t.g = lei.factor(w, s, depth, granulation);
     }
     if let Some(r) = ramp {
-        let c = match r.index {
-            RampIndex::Grain => crate::dab::ramp_sample(r.lut, grain.unwrap_or(w)),
-            RampIndex::Shape => r.shape.color(r.lut, shape.unwrap_or(w), w),
-        };
-        t.color = Some(crate::jitter::apply_color_shift(
-            [c[0], c[1], c[2]],
-            r.shift,
-        ));
+        let c = r.cor(w, shape, grain);
+        t.color = Some([c[0], c[1], c[2]]);
         match r.alpha_mode {
             RampAlphaMode::None => {}
             RampAlphaMode::Strength => t.g *= c[3],

@@ -461,6 +461,42 @@ fn pre_condicoes() -> Vec<Linha> {
             .collect(),
         false,
     ));
+    // As Grain Colors (dono 22/10): a linha «Use Color Ramp» com um Grain escolhido, em cada meio —
+    // viva onde o meio lê o grão; esmaecida na Aquarela com «Same as Paper» (a fábrica) e no Wet Paint
+    // fora da ferramenta Paint.
+    let grao = opcao(
+        PAINTER_BRUSH_TEXTURE_KIND,
+        painter_brush_texture_kind_option_id(1),
+    );
+    let ferramenta_wet = |k: usize| PAINTER_WETPAINT_TOOL_IDS[k];
+    for (m, nome, mais) in [
+        (Digital, "Grain escolhido", Vec::new()),
+        (Impasto, "Grain escolhido", Vec::new()),
+        (WetPaint, "Grain escolhido", Vec::new()),
+        (
+            Watercolor,
+            "Grain escolhido com Same as Paper (a fábrica)",
+            Vec::new(),
+        ),
+        (
+            Watercolor,
+            "Grain escolhido com Same as Paper DESLIGADO",
+            vec![Gesto::Clique(PAINTER_WATERCOLOR_GRAN_SAME)],
+        ),
+        (
+            WetPaint,
+            "Grain escolhido, tinta molhada na tela e a ferramenta Smear",
+            vec![Gesto::Traco, Gesto::Clique(ferramenta_wet(2))],
+        ),
+    ] {
+        v.push((
+            m,
+            nome,
+            std::iter::once(grao.clone()).chain(mais).collect(),
+            vec![Alvo::Id(PAINTER_BRUSH_TEXTURE_RAMP_ENABLE)],
+            false,
+        ));
+    }
     v.push((
         Watercolor,
         "Charge 0,4 (o pincel volta a apanhar)",

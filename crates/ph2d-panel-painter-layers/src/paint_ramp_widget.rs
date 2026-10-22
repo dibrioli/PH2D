@@ -130,8 +130,10 @@ pub(crate) fn paint_color_ramp_section(
     if !view.enabled {
         return crate::paint_brush_top::end_fold(ctx, fold, y); // hide the editor when off (no dead controls)
     }
-    y = paint_ramp_body(ctx, theme, x, content_w, y, ids, view);
-
+    // O editor esmaece com a linha «Use Color Ramp» quando o meio não lê a rampa (a dica mora nela).
+    let area = Rect::new(x, y, content_w, ramp_body_height(content_w, view.bw_button));
+    let corpo = |ctx: &mut PaintCtx| paint_ramp_body(ctx, theme, x, content_w, y, ids, view);
+    y = crate::esmaecer::talvez_esmaecido(ctx, theme, area, &[ids.enable], corpo);
     // A Texture LAYER's Alpha action dropdown (Off / Reduce Strength / Sprite Alpha).
     if let Some(a) = view.alpha {
         let alpha_rect = Rect::new(x, y, content_w, ROW_H_PX);

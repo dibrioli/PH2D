@@ -15,6 +15,9 @@
 /// A cor do papel em cada meio (pedido do dono, 2026-10-05).
 #[path = "cor_do_papel_tests.rs"]
 mod cor_do_papel_tests;
+/// As Grain Colors nos quatro meios (dono 22/10).
+#[path = "grain_colors_tests.rs"]
+mod grain_colors_tests;
 #[path = "impasto_pool_tests.rs"]
 mod impasto_pool_tests;
 #[path = "journal_delta_tests.rs"]

@@ -37,6 +37,9 @@ pub enum Dependente {
     FollowSemNada,
     ContinuoSemPasso,
     CorDaTexturaSemLeitor,
+    CorDoGraoDaAquarela,
+    CorDoGraoDaAgua,
+    LeiDoGraoNaAguada,
     TexturaSemForma,
     CurvaSemOpacidade,
     CanetaDePe,
@@ -64,7 +67,7 @@ pub enum Dependente {
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 41] = [
+    pub const TODOS: [Dependente; 44] = [
         Dependente::ForaDaPontaDePixel,
         Dependente::TaperTip,
         Dependente::TaperOpacity,
@@ -87,6 +90,9 @@ impl Dependente {
         Dependente::FollowSemNada,
         Dependente::ContinuoSemPasso,
         Dependente::CorDaTexturaSemLeitor,
+        Dependente::CorDoGraoDaAquarela,
+        Dependente::CorDoGraoDaAgua,
+        Dependente::LeiDoGraoNaAguada,
         Dependente::TexturaSemForma,
         Dependente::CurvaSemOpacidade,
         Dependente::CanetaDePe,
@@ -139,6 +145,15 @@ impl Dependente {
             Dependente::FollowSemNada => &[ids::PAINTER_SHAPE_FOLLOW],
             Dependente::ContinuoSemPasso => &[ids::PAINTER_BRUSH_CONTINUOUS_SPACING],
             Dependente::CorDaTexturaSemLeitor => &[ids::PAINTER_SHAPE_PER_LAYER_COLOR],
+            Dependente::CorDoGraoDaAquarela | Dependente::CorDoGraoDaAgua => {
+                &[ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE]
+            }
+            Dependente::LeiDoGraoNaAguada => &[
+                ids::PAINTER_PONTA_FIELDS[1],
+                ids::PAINTER_PONTA_FIELDS[2],
+                ids::PAINTER_PONTA_FIELDS[3],
+                ids::PAINTER_PONTA_FIELDS[4],
+            ],
             Dependente::TexturaSemForma => &[
                 ids::PAINTER_SHAPE_TEXTURE_COLOR,
                 ids::PAINTER_SHAPE_TEXTURE_OPACITY,
@@ -233,6 +248,9 @@ impl Dependente {
             Dependente::FollowSemNada => "panel.painter_layers.inerte.follow_nothing_to_turn",
             Dependente::ContinuoSemPasso => "panel.painter_layers.inerte.method_lays_a_path",
             Dependente::CorDaTexturaSemLeitor => "panel.painter_layers.inerte.texture_colors_media",
+            Dependente::CorDoGraoDaAquarela => "panel.painter_layers.inerte.same_as_paper_off",
+            Dependente::CorDoGraoDaAgua => "panel.painter_layers.inerte.paint_tool_only",
+            Dependente::LeiDoGraoNaAguada => "panel.painter_ponta.inerte.wash_grain_law",
             Dependente::TexturaSemForma => {
                 "panel.painter_layers.inerte.texture_color_needs_a_shape"
             }
@@ -563,6 +581,20 @@ impl PainterTool {
             // deposita a cor do pincel pela silhueta (`wet_owns_the_dabs`) e a aguada reconstrói-se da cor
             // do pincel (`watercolor_render_active`) — as duas saem antes dessas rotas (26 C1).
             (Dependente::CorDaTexturaSemLeitor, agua || aquarela),
+            // A aguada lê o Grain CRU, como o mapa de granulação próprio (`grao_que_a_aguada_le`): sem a lei do grão e,
+            // com «Same as Paper», nem as Grain Colors; na água só o depósito (Paint) pousa a cor da rampa.
+            (
+                Dependente::CorDoGraoDaAquarela,
+                aquarela && b.granulation_use_paper,
+            ),
+            (
+                Dependente::LeiDoGraoNaAguada,
+                aquarela && !b.granulation_use_paper,
+            ),
+            (
+                Dependente::CorDoGraoDaAgua,
+                agua && (self.paint.eraser || self.paint.wetpaint.tool != super::WetTool::Paint),
+            ),
             // O cartão Pen (L2), pela lei que o traço lê (`dinamica_do_traco`, `inclinacao_do_pincel`): a
             // curva da opacidade só com a pressão na opacidade; os ângulos e o atraso só com a caneta a mudar
             // o carimbo. (O grão alisado e a rotação NÃO esmaecem: ver `o_censo_so_encolhe`.)

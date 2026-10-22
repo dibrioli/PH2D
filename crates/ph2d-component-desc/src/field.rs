@@ -31,8 +31,34 @@ pub struct FieldDesc {
     /// `o_nome_de_codigo_e_o_rotulo`). Vazio = ainda sem nome: o script não o alcança.
     pub name: &'static str,
     /// A chave serde do campo na struct, quando difere do [`Self::name`] (`height_world` ×
-    /// `height`). Vazio = a mesma.
+    /// `height`). Vazio = a mesma; [`WHOLE`] = o componente inteiro (um newtype).
     pub key: &'static str,
+}
+
+/// A chave de um campo que é o valor inteiro do componente (`OrderInLayer(i32)`).
+pub const WHOLE: &str = ".";
+
+/// **Porque um componente, ou uma chave dele, não tem nome de código** — a ausência declarada (doc
+/// CodeEditor 08 §3.11; gate `todo_campo_de_um_cartao_tem_nome_ou_motivo`).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Hidden {
+    /// Sem valor: a presença É o valor (`LockRotation`). Pôr e tirar é outro verbo.
+    Presence,
+    /// Uma lista: os itens não têm nome estável, e o cartão edita-os linha a linha.
+    List,
+    /// Editado fora do Inspector (o painel do Vetor, o modo do Esqueleto, a cena).
+    OtherEditor,
+    /// Estado da corrida, não autorado (`elapsed_ticks`): o cartão não o mostra.
+    Runtime,
+    /// Tem secção própria no cartão, com a sua lista (as resistências da Vida).
+    OwnSection,
+    /// Máquina do editor: identidade, instância ou documento — não é do jogo.
+    Editor,
+    /// Nenhum cartão do Inspector o mostra: o script alcança o que o artista vê.
+    NoCard,
+    /// ⏳ Uma referência a outro objecto ou a uma imagem: ganha nome pelo NOME do alvo (fase d4, doc
+    /// CodeEditor 08 §5), nunca pelo id cru.
+    Reference,
 }
 
 impl FieldDesc {

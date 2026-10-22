@@ -435,9 +435,9 @@ fn o_dolly_encolhe_os_fundos_e_nao_o_chao() {
 #[test]
 fn o_roteiro_nomeia_o_que_o_painel_pinta() {
     let chaves = [
-        "panel.inspector.camera.camera",
-        "panel.inspector.camera.dolly",
-        "panel.inspector.camera.active",
+        "component.game_camera.name",
+        "component.field.camera_fields.5",
+        "component.field.camera_fields.3",
         "panel.inspector.parallax.parallax",
         "panel.inspector.parallax.scroll_factor",
         "panel.inspector.parallax.repeat_m",

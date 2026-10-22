@@ -90,6 +90,24 @@ Godot no modelo (nome cru, rótulo derivado dele, a lista de propriedades, o obj
 10. **Uma fonte.** Os seis sítios que repetem os campos da pose passam a ler a mesma tabela (o `FieldDesc` com
     nome). Página de ajuda: uma secção por componente, gerada.
 
+11. **O d3 (22/10) — uma chave, um nome, uma lei, nenhuma ausência calada.**
+    - **Uma chave de rótulo:** o cartão pinta a chave do campo no CATÁLOGO (`component.field.<bloco>.<id>`), e
+      a chave paralela do cartão sai. O texto é o do cartão (é o que o artista lê). Gate
+      `o_cartao_pinta_a_chave_do_catalogo` (a chave aparece no código do `ph2d-panel-inspector`).
+    - **O nome é o rótulo do cartão em `snake`**, sem a unidade do fim («Regen / s» → `regen`, «Dodge (0–1)»
+      → `dodge`). Vida: `shield_time`, `shield_delay`, `absorb_rest`; «Armor (0–1)» colidia com «Armor» e o
+      rótulo passa a «Armor Share (0–1)» → `armor_share`. Gate `o_nome_de_codigo_e_o_rotulo`.
+    - **Newtype** (`OrderInLayer(i32)`): um campo com chave `WHOLE` (`"."`) = o valor inteiro.
+    - **A lei do valor** é uma linha por componente com nome em `property_laws::LEIS` — a função que o
+      `apply_*` do cartão também chama, ou `None` se o cartão aceita tudo. Gate
+      `todo_componente_com_nome_tem_a_sua_lei`.
+    - **Ausência declarada:** todo componente com secção possível (`may_have_section`) tem `code`, ou
+      `.hidden(Hidden::…)`; toda chave serde de um componente com `code` tem nome, ou está em
+      `.hiding(&[(chave, Hidden::…)])`. Motivos: `Presence` (a presença é o valor), `List` (itens sem nome
+      estável), `OtherEditor` (Vetor, Esqueleto), `Runtime` (estado da corrida), `OwnSection` (a secção tem a
+      sua lista), `Editor` (identidade/instância/documento). Gate
+      `todo_campo_de_um_cartao_tem_nome_ou_motivo` — começou com **154 queixas** (22/10).
+
 ## 4. Onde
 
 - `ph2d-component-desc`: `FieldDesc.name` (+ `unit`, + `derived`), append-only nos construtores.

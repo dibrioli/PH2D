@@ -31,7 +31,9 @@ const PINTORES: [&str; 8] = [
 ];
 
 /// As tabelas onde as frases vivem.
-const TABELAS: [&str; 5] = [
+const TABELAS: [&str; 6] = [
+    // ⭐ Os rótulos dos campos são as chaves do CATÁLOGO desde o CodeEditor 8d (d3).
+    include_str!("../../../ph2d-i18n/src/component_catalog.rs"),
     include_str!("../../../ph2d-i18n/src/inspector_nav.rs"),
     include_str!("../../../ph2d-i18n/src/inspector.rs"),
     include_str!("../../../ph2d-i18n/src/inspector_game.rs"),

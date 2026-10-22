@@ -10,7 +10,7 @@
 use super::registry::{ComponentRegistry, ComponentTypeEntry};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::world::World;
-use ph2d_component_desc::{FieldDesc, FieldKind};
+use ph2d_component_desc::{FieldDesc, FieldKind, WHOLE};
 use serde_json::Value;
 
 /// Porque um nome não se lê nem se escreve.
@@ -109,12 +109,19 @@ pub fn get(
     name: &str,
 ) -> Result<Value, PropertyError> {
     let r = resolve(reg, name)?;
-    let whole = component_value(&r, world, entity)?;
+    let mut whole = component_value(&r, world, entity)?;
+    slot(&r, &mut whole).cloned()
+}
+
+/// O lugar do campo dentro do valor do componente — o valor inteiro, num newtype ([`WHOLE`]).
+fn slot<'v>(r: &Resolved<'_>, whole: &'v mut Value) -> Result<&'v mut Value, PropertyError> {
+    if r.field.serde_key() == WHOLE {
+        return Ok(whole);
+    }
     whole
-        .get(r.field.serde_key())
-        .cloned()
+        .get_mut(r.field.serde_key())
         .ok_or_else(|| PropertyError::UnknownField {
-            component: code_of(&r).to_owned(),
+            component: code_of(r).to_owned(),
             field: r.field.name.to_owned(),
         })
 }
@@ -129,13 +136,7 @@ pub fn set(
 ) -> Result<(), PropertyError> {
     let r = resolve(reg, name)?;
     let mut whole = component_value(&r, world, entity)?;
-    let slot = whole
-        .get_mut(r.field.serde_key())
-        .ok_or_else(|| PropertyError::UnknownField {
-            component: code_of(&r).to_owned(),
-            field: r.field.name.to_owned(),
-        })?;
-    *slot = normalize(r.field.kind, value);
+    *slot(&r, &mut whole)? = normalize(r.field.kind, value);
     let wrong = || PropertyError::WrongType {
         name: name.to_owned(),
         kind: r.field.kind,
@@ -179,8 +180,8 @@ pub fn check(
 ) -> Result<(), PropertyError> {
     let r = resolve(reg, name)?;
     let mut whole = component_value(&r, world, entity)?;
-    if let Some(slot) = whole.get_mut(r.field.serde_key()) {
-        *slot = normalize(r.field.kind, value);
+    if let Ok(s) = slot(&r, &mut whole) {
+        *s = normalize(r.field.kind, value);
     }
     (r.entry.check_value)(&whole).map_err(|_| PropertyError::WrongType {
         name: name.to_owned(),

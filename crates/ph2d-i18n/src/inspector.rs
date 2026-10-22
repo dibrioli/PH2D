@@ -292,11 +292,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.camera.another_camera_commands_raise_priority" => {
             "Another camera commands \u{2014} raise Priority to take the view."
         }
-        "panel.inspector.camera.height_m" => "Height",
-        "panel.inspector.camera.offset_m" => "Offset",
-        "panel.inspector.camera.priority" => "Priority",
-        "panel.inspector.camera.dolly" => "Dolly",
-        "panel.inspector.camera.active" => "Active",
         "panel.inspector.camera.look_through" => "Look Through",
         "panel.inspector.camera.object_name" => "object name\u{2026}",
         "panel.inspector.camera.nothing_in_the_scene_has" => {
@@ -310,8 +305,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.camera.min_m" => "Min",
         "panel.inspector.camera.max_m" => "Max",
-        "panel.inspector.camera.cull_mask" => "Cull Mask",
-        "panel.inspector.camera.camera" => "Camera",
         "panel.inspector.color_tint.color_and_tint" => "Color & Tint",
         "panel.inspector.color_tint.tint" => "Tint",
         "panel.inspector.color_tint.self_tint" => "Self Tint",

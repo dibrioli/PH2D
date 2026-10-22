@@ -88,19 +88,19 @@ fn camera_body(
     // uma contagem.*
     let linhas = [
         (
-            tr("panel.inspector.camera.height_m"),
+            tr("component.field.camera_fields.0"),
             &[ids::INSP_CAMERA_HEIGHT][..],
             0.5,
             Some(ph2d_editor_core::widget::Unit::Meters),
         ), // LITERAL-PX-OK: passo em metros
         (
-            tr("panel.inspector.camera.offset_m"),
+            tr("component.field.camera_fields.1"),
             &[ids::INSP_CAMERA_OFFSET_X, ids::INSP_CAMERA_OFFSET_Y][..],
             0.1, // LITERAL-PX-OK: passo em metros
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
-            tr("panel.inspector.camera.priority"),
+            tr("component.field.camera_fields.2"),
             &[ids::INSP_CAMERA_PRIORITY][..],
             1.0,
             None,
@@ -108,7 +108,7 @@ fn camera_body(
         // ⭐⭐⭐ **O DOLLY** (plano 24, W5) — ⚠️ **sem `Unit`, e a ausência é a decisão:** ele é uma
         // FRACÇÃO da distância focal, e pintar-lhe «m» seria mentir sobre o que o número é.
         (
-            tr("panel.inspector.camera.dolly"),
+            tr("component.field.camera_fields.5"),
             &[ids::INSP_CAMERA_DOLLY][..],
             0.05, // LITERAL-PX-OK: passo de uma fracção adimensional
             None,
@@ -156,7 +156,7 @@ fn camera_body(
         &[
             (
                 ids::INSP_CAMERA_ACTIVE,
-                tr("panel.inspector.camera.active"),
+                tr("component.field.camera_fields.3"),
                 cam.active,
             ),
             (
@@ -357,7 +357,7 @@ fn cull_mask(
     let header = section_header(
         store,
         ids::INSP_CAMERA_CULL_HEADER,
-        tr("panel.inspector.camera.cull_mask"),
+        tr("component.field.camera_fields.4"),
     )
     .open_t(store.section_open_live(ids::INSP_CAMERA_CULL_HEADER));
     let header_rect = Rect::new(x, yy, w, header_h);
@@ -377,7 +377,7 @@ fn cull_mask(
         Some(fold) => {
             let grid = BitmaskGrid32::new(
                 core_ids::INSP_LIVE_CAMERA_SECTION,
-                tr("panel.inspector.camera.cull_mask"),
+                tr("component.field.camera_fields.4"),
                 ids::INSP_CAMERA_CULL_BIT,
                 mask,
             );
@@ -408,7 +408,7 @@ pub(crate) fn paint_camera_section(
     let header = section_header(
         store,
         core_ids::INSP_LIVE_CAMERA_SECTION,
-        tr("panel.inspector.camera.camera"),
+        tr("component.game_camera.name"),
     );
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);

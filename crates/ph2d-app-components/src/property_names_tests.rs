@@ -6,8 +6,14 @@ use crate::component_registry_for_tests::registo;
 use ph2d_ecs::scene::property::{self, PropertyError};
 use std::collections::BTreeSet;
 
-/// O `snake` de um rótulo inglês: «Armor %» → `armor_percent`, «Cull Mask» → `cull_mask`.
-fn snake(label: &str) -> String {
+/// O `snake` de um rótulo inglês: «Cull Mask» → `cull_mask`; a unidade do fim não entra no nome
+/// («Regen / s» → `regen`, «Dodge (0–1)» → `dodge`).
+pub(crate) fn snake(label: &str) -> String {
+    let label = label.split(" / ").next().unwrap_or(label);
+    let label = match label.rfind(" (") {
+        Some(i) if label.ends_with(')') => &label[..i],
+        _ => label,
+    };
     label
         .replace('%', " percent")
         .split(|c: char| !c.is_ascii_alphanumeric())

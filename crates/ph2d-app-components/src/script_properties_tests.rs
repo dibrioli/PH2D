@@ -119,7 +119,7 @@ fn o_script_obedece_aos_limites_do_inspector() {
         r#"
 function update(self)
   ph2d.set(self.id, "health.max", -5)
-  ph2d.set(self.id, "health.armor_percent", 3)
+  ph2d.set(self.id, "health.armor_share", 3)
   ph2d.set(self.id, "health.team", "  red ")
 end
 "#,

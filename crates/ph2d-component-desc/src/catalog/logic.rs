@@ -19,7 +19,7 @@
 //! encontrado lê-se exactamente como um descritor que não existe.*
 
 use crate::{
-    ComponentCategory as C, ComponentDesc, ComponentDesc as D, FieldDesc, FieldKind as K,
+    ComponentCategory as C, ComponentDesc, ComponentDesc as D, FieldDesc, FieldKind as K, Hidden,
     ObjectKinds as O, Propagation,
 };
 
@@ -203,12 +203,12 @@ const HEALTH_FIELDS: &[FieldDesc] = &[
     f(6, "component.field.health_fields.6", K::Scalar).named_as("regen_delay", "regen_delay_s"),
     f(7, "component.field.health_fields.7", K::Scalar).named_as("shield", "shield_start"),
     f(8, "component.field.health_fields.8", K::Scalar).named("shield_max"),
-    f(9, "component.field.health_fields.9", K::Scalar).named_as("shield_duration", "shield_duration_s"),
+    f(9, "component.field.health_fields.9", K::Scalar).named_as("shield_time", "shield_duration_s"),
     f(10, "component.field.health_fields.10", K::Scalar).named("shield_regen"),
-    f(11, "component.field.health_fields.11", K::Scalar).named_as("shield_regen_delay", "shield_regen_delay_s"),
-    f(12, "component.field.health_fields.12", K::Toggle).named("shield_blocks_excess"),
+    f(11, "component.field.health_fields.11", K::Scalar).named_as("shield_delay", "shield_regen_delay_s"),
+    f(12, "component.field.health_fields.12", K::Toggle).named_as("absorb_rest", "shield_blocks_excess"),
     f(13, "component.field.health_fields.13", K::Scalar).named_as("armor", "armor_flat"),
-    f(14, "component.field.health_fields.14", K::Scalar).named("armor_percent"),
+    f(14, "component.field.health_fields.14", K::Scalar).named_as("armor_share", "armor_percent"),
     f(15, "component.field.health_fields.15", K::Scalar).named("dodge"),
     // ⚠️ **A EQUIPA é texto** — o fogo amigo desligado entre quem partilha o nome.
     f(16, "component.field.health_fields.16", K::Text).named("team"),
@@ -509,7 +509,8 @@ pub const DESCS: &[ComponentDesc] = &[
         HEALTH_FIELDS,
         &["ph2d::physics::RigidBody"],
     )
-    .coded("health"),
+    .coded("health")
+    .hiding(&[("resistances", Hidden::OwnSection)]),
     // ⭐⭐⭐ **A BARRA DE VIDA** (plano 28, W4). ⚠️ **Depois da vida, e é a busca binária:**
     // `Health` < `HealthBar` na ordem dos bytes.
     //

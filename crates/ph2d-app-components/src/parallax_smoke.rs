@@ -357,9 +357,9 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
     // aprovar o smoke com o passo impossível dentro. Há gate.
     let t = ph2d_i18n::tr;
     let (camera, dolly, active) = (
-        t("panel.inspector.camera.camera"),
-        t("panel.inspector.camera.dolly"),
-        t("panel.inspector.camera.active"),
+        t("component.game_camera.name"),
+        t("component.field.camera_fields.5"),
+        t("component.field.camera_fields.3"),
     );
     let (secao, factor, repeat, drift, lmax) = (
         t("panel.inspector.parallax.parallax"),

@@ -236,25 +236,25 @@ fn corpo_vida(
     //    linhas que este quadro não pinta: *uma coluna que salta quando uma linha aparece é uma
     //    coluna por linha com outro nome*.
     let rotulos = [
-        tr("panel.inspector.vida.max_0_no_max"),
-        tr("panel.inspector.vida.start"),
-        tr("panel.inspector.vida.invincible"),
-        tr("panel.inspector.vida.regen"),
-        tr("panel.inspector.vida.regen_delay"),
-        tr("panel.inspector.vida.armor"),
-        tr("panel.inspector.vida.armor_fraction"),
-        tr("panel.inspector.vida.dodge"),
-        tr("panel.inspector.vida.seed"),
-        tr("panel.inspector.vida.shield_max"),
-        tr("panel.inspector.vida.shield_start"),
-        tr("panel.inspector.vida.shield_duration_0_forever"),
-        tr("panel.inspector.vida.shield_regen"),
-        tr("panel.inspector.vida.shield_regen_delay"),
+        tr("component.field.health_fields.1"),
+        tr("component.field.health_fields.2"),
+        tr("component.field.health_fields.3"),
+        tr("component.field.health_fields.5"),
+        tr("component.field.health_fields.6"),
+        tr("component.field.health_fields.13"),
+        tr("component.field.health_fields.14"),
+        tr("component.field.health_fields.15"),
+        tr("component.field.health_fields.20"),
+        tr("component.field.health_fields.8"),
+        tr("component.field.health_fields.7"),
+        tr("component.field.health_fields.9"),
+        tr("component.field.health_fields.10"),
+        tr("component.field.health_fields.11"),
         // Os quatro campos de TEXTO do fim — medidos na MESMA coluna, senão o nome deles cortava.
-        tr("panel.inspector.vida.team"),
-        tr("panel.inspector.vida.on_damage"),
-        tr("panel.inspector.vida.on_heal"),
-        tr("panel.inspector.vida.on_death"),
+        tr("component.field.health_fields.16"),
+        tr("component.field.health_fields.17"),
+        tr("component.field.health_fields.18"),
+        tr("component.field.health_fields.19"),
         // ⭐ W6 — os três do editor da resistência aberta, na MESMA coluna.
         tr("panel.inspector.vida.resist_kind"),
         tr("panel.inspector.vida.resist_rate"),
@@ -315,7 +315,7 @@ fn corpo_vida(
             w,
             cur_y,
             ids::INSP_VIDA_OVERHEAL,
-            tr("panel.inspector.vida.overheal"),
+            tr("component.field.health_fields.4"),
             h.overheal,
             seccao,
         );
@@ -331,7 +331,7 @@ fn corpo_vida(
             w,
             cur_y,
             ids::INSP_VIDA_SHIELD_BLOCKS,
-            tr("panel.inspector.vida.shield_blocks_excess"),
+            tr("component.field.health_fields.12"),
             h.shield_blocks_excess,
             seccao,
         );
@@ -364,22 +364,22 @@ fn corpo_vida(
     );
     for (rotulo, id, dica) in [
         (
-            tr("panel.inspector.vida.team"),
+            tr("component.field.health_fields.16"),
             ids::INSP_VIDA_TEAM,
             tr("panel.inspector.vida.team_hint"),
         ),
         (
-            tr("panel.inspector.vida.on_damage"),
+            tr("component.field.health_fields.17"),
             ids::INSP_VIDA_ON_DAMAGE,
             tr("panel.inspector.vida.on_damage_hint"),
         ),
         (
-            tr("panel.inspector.vida.on_heal"),
+            tr("component.field.health_fields.18"),
             ids::INSP_VIDA_ON_HEAL,
             tr("panel.inspector.vida.on_heal_hint"),
         ),
         (
-            tr("panel.inspector.vida.on_death"),
+            tr("component.field.health_fields.19"),
             ids::INSP_VIDA_ON_DEATH,
             tr("panel.inspector.vida.on_death_hint"),
         ),
@@ -471,7 +471,7 @@ pub(crate) fn paint_health_section(
         w,
         y,
         ph2d_editor_core::ids::INSP_LIVE_HEALTH_SECTION,
-        tr("panel.inspector.vida.health"),
+        tr("component.health.name"),
         info.selected_count,
     ) {
         Ok(v) => v,

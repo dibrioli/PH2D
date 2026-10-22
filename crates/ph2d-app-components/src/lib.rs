@@ -289,6 +289,9 @@ mod instance_tags_tests;
 mod smoke_desenho_e_corpo_tests;
 #[cfg(test)]
 mod property_names_tests;
+#[cfg(test)]
+mod property_coverage_tests;
+pub(crate) mod property_laws;
 pub(crate) mod script_properties;
 
 /// **A declaração da família** — a chave e os roteadores de smoke que ela POSSUI.

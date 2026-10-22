@@ -37,8 +37,10 @@ const PINTORES: [&str; 9] = [
 ];
 
 /// As tabelas onde as frases vivem desde a migração do HR-15.
-const TABELAS: [&str; 4] = [
+const TABELAS: [&str; 5] = [
     include_str!("../../../ph2d-i18n/src/inspector_vida.rs"),
+    // ⭐ Os rótulos dos campos da Vida são as chaves do CATÁLOGO desde o CodeEditor 8d (d3).
+    include_str!("../../../ph2d-i18n/src/component_catalog.rs"),
     include_str!("../../../ph2d-i18n/src/inspector.rs"),
     include_str!("../../../ph2d-i18n/src/inspector_game.rs"),
     include_str!("../../../ph2d-i18n/src/ecs_scene.rs"),

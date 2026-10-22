@@ -19,7 +19,7 @@ end"#,
         key: "type.PropertyName",
         params: &[],
         returns: "",
-        more: "The card's title and the field's label, in snake_case and joined by a dot: «Game Camera» › «Height» is \"game_camera.height\", «Health» › «Armor %» is \"health.armor_percent\". The editor suggests them inside the quotes and underlines a name no component has.",
+        more: "The card's title and the field's label, in snake_case and joined by a dot: «Game Camera» › «Height» is \"game_camera.height\", «Health» › «Regen / s» is \"health.regen\" (the unit at the end stays out). The editor suggests them inside the quotes and underlines a name no component has.",
         example: r#"function update(self, dt)
   local max = ph2d.get(self.id, "health.max")
   ph2d.set(self.id, "health.max", max + dt)

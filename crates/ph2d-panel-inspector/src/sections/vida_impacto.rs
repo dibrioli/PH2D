@@ -31,12 +31,12 @@ pub(super) fn corpo_impacto(
     // ⚠️ A coluna mede os rótulos do bloco INTEIRO, inclusive os que este quadro não pinta — uma
     // coluna que salta quando uma linha aparece é uma coluna por linha com outro nome.
     let rotulos = [
-        tr("panel.inspector.vida.death_hitstop"),
-        tr("panel.inspector.vida.blink"),
-        tr("panel.inspector.vida.knockback_taken"),
-        tr("panel.inspector.vida.numbers_size"),
+        tr("component.field.health_fields.21"),
+        tr("component.field.health_fields.22"),
+        tr("component.field.health_fields.23"),
+        tr("component.field.health_fields.26"),
         // A amostra de cor dos números — na MESMA coluna.
-        tr("panel.inspector.vida.numbers_color"),
+        tr("component.field.health_fields.25"),
     ];
     let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &rotulos);
     let s = Some(Unit::Seconds);
@@ -68,7 +68,7 @@ pub(super) fn corpo_impacto(
         w,
         cur_y,
         ids::INSP_VIDA_NUMBERS,
-        tr("panel.inspector.vida.numbers"),
+        tr("component.field.health_fields.24"),
         h.numbers,
         seccao,
     );
@@ -78,7 +78,7 @@ pub(super) fn corpo_impacto(
     let cell = Rect::new(x, cur_y, w, ph2d_tokens::ROW_H_PX);
     cur_y = super::color_tint::paint_tint_swatch_cell(
         cell,
-        tr("panel.inspector.vida.numbers_color"),
+        tr("component.field.health_fields.25"),
         ids::INSP_VIDA_NUMBERS_COLOR,
         crate::state_tint::tint_f32_to_u8(h.numbers_color),
         false,

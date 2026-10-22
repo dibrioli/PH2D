@@ -93,6 +93,10 @@ pub struct ComponentDesc {
     /// ⭐ **O prefixo com que um SCRIPT o nomeia** (`"health"` em `"health.max"`) — o `snake` do
     /// título do cartão (doc CodeEditor 08 §3.1). Vazio = os scripts ainda não o alcançam.
     pub code: &'static str,
+    /// Porque um script não alcança NENHUM campo dele, quando não alcança.
+    pub hidden: Option<Hidden>,
+    /// As chaves serde que o script não alcança num componente com nome, e porquê.
+    pub hidden_keys: &'static [(&'static str, Hidden)],
 }
 
 impl ComponentDesc {
@@ -100,6 +104,20 @@ impl ComponentDesc {
     #[must_use]
     pub const fn coded(mut self, code: &'static str) -> Self {
         self.code = code;
+        self
+    }
+
+    /// O script não alcança o componente, e porquê.
+    #[must_use]
+    pub const fn hidden(mut self, why: Hidden) -> Self {
+        self.hidden = Some(why);
+        self
+    }
+
+    /// Chaves serde que o script não alcança, e porquê.
+    #[must_use]
+    pub const fn hiding(mut self, keys: &'static [(&'static str, Hidden)]) -> Self {
+        self.hidden_keys = keys;
         self
     }
 
@@ -137,6 +155,8 @@ impl ComponentDesc {
             requires: &[],
             owned_document: false,
             code: "",
+            hidden: None,
+            hidden_keys: &[],
         }
     }
 
@@ -163,6 +183,8 @@ impl ComponentDesc {
             requires,
             owned_document: false,
             code: "",
+            hidden: None,
+            hidden_keys: &[],
         }
     }
 
@@ -185,6 +207,8 @@ impl ComponentDesc {
             requires: &[],
             owned_document: false,
             code: "",
+            hidden: None,
+            hidden_keys: &[],
         }
     }
 
@@ -222,6 +246,8 @@ impl ComponentDesc {
             requires,
             owned_document: false,
             code: "",
+            hidden: None,
+            hidden_keys: &[],
         }
     }
 
@@ -246,6 +272,8 @@ impl ComponentDesc {
             requires: &[],
             owned_document: false,
             code: "",
+            hidden: None,
+            hidden_keys: &[],
         }
     }
 
@@ -269,6 +297,8 @@ impl ComponentDesc {
             requires: &[],
             owned_document: true,
             code: "",
+            hidden: None,
+            hidden_keys: &[],
         }
     }
 
@@ -628,4 +658,4 @@ impl ComponentCategory {
 /// ⭐ **O que um CAMPO é** — irmão por tecto de LOC (HR-18, 700). Os tipos mantêm o endereço
 /// público (`ph2d_component_desc::FieldDesc`), logo nenhum consumidor muda.
 mod field;
-pub use field::{FieldDesc, FieldKind, Propagation, RefKind};
+pub use field::{FieldDesc, FieldKind, Hidden, Propagation, RefKind, WHOLE};

@@ -57,7 +57,9 @@ const PINTORES: [&str; 5] = [
 ///
 /// ⭐ **Por isso a régua tem DUAS metades:** a frase citada tem de ser o texto de uma chave, **e**
 /// essa chave tem de aparecer num pintor. Nenhuma das duas sozinha afirma o que o tutorial promete.
-const TABELAS: [&str; 2] = [
+const TABELAS: [&str; 3] = [
+    // ⭐ Os rótulos dos campos são as chaves do CATÁLOGO desde o CodeEditor 8d (d3).
+    include_str!("../../../ph2d-i18n/src/component_catalog.rs"),
     include_str!("../../../ph2d-i18n/src/inspector_game.rs"),
     include_str!("../../../ph2d-i18n/src/inspector.rs"),
 ];

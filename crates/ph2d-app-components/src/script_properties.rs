@@ -142,7 +142,7 @@ pub(crate) fn set(
     let r = property::resolve(reg, name).map_err(says)?;
     let before = property::get(reg, world, entity, name).map_err(says)?;
     property::set(reg, world, entity, name, value.clone()).map_err(says)?;
-    sanitize(r.entry.canonical_name, world, entity);
+    crate::property_laws::sanitize(r.entry.canonical_name, world, entity);
     let after = property::get(reg, world, entity, name).map_err(says)?;
     // Uma cópia da corrida não é documento: não há autorado a guardar por baixo dela.
     if before != after && !ph2d_ecs::is_transient(world, entity) {
@@ -162,24 +162,6 @@ pub(crate) fn names(reg: &ComponentRegistry, sim: &SimWorld, entity: Entity) -> 
         out.extend(ph2d_script::api_table::RUNTIME_PROPERTIES.iter().map(|n| (*n).to_owned()));
     }
     out
-}
-
-/// ⭐ **Uma lei de números por componente**, a mesma que o cartão do Inspector aplica — sem ela o
-/// script punha o que o painel recusa (doc CodeEditor 08 §3.5).
-fn sanitize(canonical: &str, world: &mut World, entity: Entity) {
-    match canonical {
-        "ph2d::physics::Health" => {
-            if let Some(mut h) = world.get_mut::<ph2d_physics_ecs::Health>(entity) {
-                crate::vida_inspector::sanitize_health(&mut h);
-            }
-        }
-        "ph2d::ecs::GameCamera" => {
-            if let Some(mut c) = world.get_mut::<ph2d_ecs::GameCamera>(entity) {
-                crate::camera_inspector::sanitize_camera(&mut c);
-            }
-        }
-        _ => {}
-    }
 }
 
 /// Um quadro: antes dos ganchos, o que mudou sem o script é outra mão (o Inspector na pausa).

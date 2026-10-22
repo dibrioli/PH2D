@@ -59,10 +59,12 @@ pub enum Dependente {
     // Wet): a aguada e o Impasto não; e só num traço livre que pinta.
     DualForaDoDigital,
     DualForaDoTraco,
+    // O atraso da velocidade (J4) só filtra a velocidade que uma lei da velocidade lê.
+    AtrasoSemVelocidade,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 40] = [
+    pub const TODOS: [Dependente; 41] = [
         Dependente::ForaDaPontaDePixel,
         Dependente::TaperTip,
         Dependente::TaperOpacity,
@@ -103,6 +105,7 @@ impl Dependente {
         Dependente::ProfundidadeSemJitter,
         Dependente::DualForaDoDigital,
         Dependente::DualForaDoTraco,
+        Dependente::AtrasoSemVelocidade,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -198,6 +201,8 @@ impl Dependente {
                 ids::PAINTER_PEN_FIELDS[5],
                 ids::PAINTER_PEN_FIELDS[6],
             ],
+            // «Speed lag», pela ordem de `LINHAS_DA_MAO`.
+            Dependente::AtrasoSemVelocidade => &[ids::PAINTER_PEN_FIELDS[20]],
         }
     }
 
@@ -250,6 +255,7 @@ impl Dependente {
             }
             Dependente::DualForaDoDigital => "panel.painter_ponta.inerte.dual_medium",
             Dependente::DualForaDoTraco => "panel.painter_layers.inerte.freehand_paint_stroke",
+            Dependente::AtrasoSemVelocidade => "panel.painter_layers.inerte.speed_on",
         }
     }
 
@@ -481,11 +487,15 @@ impl PainterTool {
                 Dependente::GrainDaAquarela,
                 aquarela && b.granulation_use_paper,
             ),
-            // Na água só o depósito (Paint) e a borracha recebem o Grain: Blend, Smear, Wet, Dry e
-            // Blow ignoram-no de propósito (`wetpaint/dab_route.rs`).
+            // Na água o depósito (Paint), a borracha e o Blend (a máscara dele, J4 mistura L-2) recebem o Grain:
+            // Smear, Wet, Dry e Blow ignoram-no de propósito (`wetpaint/dab_route.rs`).
             (
                 Dependente::GrainDaAgua,
-                agua && !self.paint.eraser && self.paint.wetpaint.tool != super::WetTool::Paint,
+                agua && !self.paint.eraser
+                    && !matches!(
+                        self.paint.wetpaint.tool,
+                        super::WetTool::Paint | super::WetTool::Blend
+                    ),
             ),
             (Dependente::Pull, aquarela && !self.wet_mixer_active()),
             (Dependente::DepthSourceGrain, !b.texture.is_active()),
@@ -637,6 +647,12 @@ impl PainterTool {
                 let d = self.dinamica_do_traco();
                 !agua && (!d.size_pressure || d.size_min >= 1.0) && !d.strength_pressure
             }),
+            // O traço só mede (e filtra) a velocidade com uma lei dela armada (`Dynamics::speed_armed`, a mesma porta
+            // que arma a `Mao` em `stroke/speed.rs`).
+            (
+                Dependente::AtrasoSemVelocidade,
+                !self.dinamica_do_traco().speed_armed(),
+            ),
         ];
         Inercias {
             dependentes: leis

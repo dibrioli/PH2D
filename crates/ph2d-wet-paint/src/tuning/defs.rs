@@ -692,4 +692,5 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::ThinStrokeFade, KnobGroup::Hidden, "thinStrokeFade", 0.0, 4.0, 0.01, 0.0, None),
     k(Knob::ThinStrokeRef, KnobGroup::Hidden, "thinStrokeRef", 1.0, 400.0, 0.5, 40.0, None),
     k(Knob::WaterPush, KnobGroup::Hidden, "waterPush", 0.0, 1.0, 0.01, 0.0, None),
+    k(Knob::DryerEdge, KnobGroup::Hidden, "dryerEdge", 0.0, 1.0, 0.01, 0.0, None),
 ];

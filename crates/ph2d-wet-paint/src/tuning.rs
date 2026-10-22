@@ -212,9 +212,14 @@ pub enum Knob {
     /// pela tinta molhada, até à frente da água ([`crate::tools::apply_wet_push`]) — o Water Soft do Rebelle abre branco
     /// na faixa molhada (0,13) e deixa a orla escura onde a água pára. `0` = a água de sempre, ao bit.
     WaterPush,
+    /// ⭐ **O secador ASSENTA e deixa ORLA** (J4 mistura, L-7 Dry/Lift, `docs/Painter/Pinceis/exames/mistura.md` «Motor
+    /// J4»): a fracção, por diâmetro de caminho, com que o dab da ferramenta Dry nivela a tinta suspensa da pegada e puxa
+    /// para dentro da borda a tinta molhada ao lado ([`crate::tools::apply_dry_edge`]) — a mancha seca do Rebelle tem a
+    /// linha escura por dentro. `0` = o secador de sempre, ao bit.
+    DryerEdge,
 }
 
-pub const KNOB_COUNT: usize = 104;
+pub const KNOB_COUNT: usize = 105;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

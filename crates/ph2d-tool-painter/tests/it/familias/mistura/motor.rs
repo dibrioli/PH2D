@@ -201,3 +201,72 @@ fn o_grao_modula_o_misturador() {
         .collect();
     assert!(antiga.iter().zip(&sem).all(|(p, q)| p.to_bits() == q.to_bits()), "sem grão a porta mudou");
 }
+
+/// A faixa MOLHADA com SULCOS (uma linha em cada quatro sem pigmento: as riscas das cerdas da tinta fresca).
+fn faixa_riscada() -> Engine {
+    let mut e = faixa(false);
+    let g = e.active_grid_mut();
+    for y in (Y - 12..=Y + 12).filter(|y| y % 4 == 0) {
+        for x in 20..=240 {
+            g.susp[x + 1 + (y + 1) * g.s] = 0.0;
+        }
+    }
+    e
+}
+
+/// O secador (ferramenta Dry) em vertical por x = 130, com o `edge` dado.
+fn seca_com(e: &mut Engine, edge: Option<f64>) {
+    if let Some(v) = edge {
+        e.tuning.set(Knob::DryerEdge, v);
+    }
+    let mut prev: Option<[f64; 2]> = None;
+    let mut y = 20.0;
+    while y <= 120.0 {
+        e.dispatch_pressure_dab_tool(Tool::Dry, X as f64, y, 5.0, 10.0, prev);
+        prev = Some([X as f64, y]);
+        y += 2.0;
+    }
+}
+
+/// ⭐ **O secador assenta e deixa orla** (`Knob::DryerEdge`, L-7 Dry/Lift): com o knob, a mancha que o secador sela
+/// tem a LINHA escura por dentro da borda (o pigmento a ±(r−3..r) passa 1,15× a faixa) e o CLARO por fora (±(r+1..r+2)
+/// abaixo de 0,9×) — a mancha seca do Rebelle: 1,37 dentro, 0,84 fora — e os sulcos das cerdas dentro dela NIVELAM
+/// (o desvio entre linhas no eixo cai abaixo de metade). Sem o knob, o secador de sempre ao bit.
+#[test]
+fn o_secador_assenta_e_deixa_orla() {
+    let mede = |edge: Option<f64>| {
+        let mut e = faixa_riscada();
+        seca_com(&mut e, edge);
+        let g = e.active_grid();
+        let px = |x: usize, y: usize| f64::from(g.susp[x + 1 + (y + 1) * g.s]) + f64::from(g.sett[x + 1 + (y + 1) * g.s]);
+        let faixa_em = |x: usize| (Y - 8..=Y + 8).map(|y| px(x, y)).sum::<f64>() / 17.0;
+        let intacta = (40..80).map(faixa_em).sum::<f64>() / 40.0;
+        let dentro = [X - 9, X - 8, X - 7, X + 7, X + 8, X + 9].map(faixa_em).iter().sum::<f64>() / 6.0 / intacta;
+        let fora = [X - 12, X - 11, X + 11, X + 12].map(faixa_em).iter().sum::<f64>() / 4.0 / intacta;
+        let col: Vec<f64> = (Y - 8..=Y + 8).map(|y| (X - 2..=X + 2).map(|x| px(x, y)).sum::<f64>() / 5.0).collect();
+        let med = col.iter().sum::<f64>() / col.len() as f64;
+        let desvio = (col.iter().map(|v| (v - med).powi(2)).sum::<f64>() / col.len() as f64).sqrt() / med.max(1e-9);
+        println!("[mistura] secador edge={edge:?}: dentro {dentro:.3} · fora {fora:.3} · desvio no eixo {desvio:.3}");
+        (dentro, fora, desvio)
+    };
+    let (d0, f0, s0) = mede(None);
+    let (d1, f1, s1) = mede(Some(0.5));
+    let mut falhas = Vec::new();
+    if d1 < 1.15 {
+        falhas.push(format!("sem linha por dentro da borda: {d1:.3} < 1,15 (sem o knob {d0:.3})"));
+    }
+    if f1 > 0.9 {
+        falhas.push(format!("sem o claro por fora: {f1:.3} > 0,9 (sem o knob {f0:.3})"));
+    }
+    if s1 > 0.5 * s0 {
+        falhas.push(format!("os sulcos não nivelaram: desvio {s1:.3} > ½ de {s0:.3}"));
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+    // Sem o knob = o secador de antes, ao bit.
+    let (mut a, mut b) = (faixa_riscada(), faixa_riscada());
+    seca_com(&mut a, None);
+    seca_com(&mut b, Some(0.0));
+    let bits = |v: &[f32]| v.iter().map(|x| x.to_bits()).collect::<Vec<_>>();
+    assert_eq!(bits(&a.active_grid().susp), bits(&b.active_grid().susp));
+    assert_eq!(bits(&a.active_grid().film), bits(&b.active_grid().film));
+}

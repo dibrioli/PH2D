@@ -122,6 +122,9 @@ pub enum Item {
     Pen(PenItem),
     /// O botão «Rascunho ↔ Final»: a selecção, ou o quadro inteiro sem selecção.
     Sketch,
+    /// W23 — a opção da barra da FORMA: `true` = Rascunho, `false` = Final (a «Sloppiness» do
+    /// Excalidraw); a mesma porta da onda ([`ph2d_board_edit::Editor::set_sketch`]).
+    Look(bool),
     /// Organizar (W5): agrupar, travar, ordem, alinhar, a cor de um frame.
     Organize(OrgItem),
     /// Planear (W6): os modelos e os controlos de um nó de mapa mental.
@@ -150,6 +153,8 @@ const HEADS: [Head; 5] = [
     Head::Bar,
 ];
 const ROUTES: [Route; 3] = [Route::Straight, Route::Elbow, Route::Curved];
+/// Final e Rascunho, nesta ordem (a do Excalidraw: «Architect», «Artist»).
+const LOOKS: [Item; 2] = [Item::Look(false), Item::Look(true)];
 
 /// O que está seleccionado decide que grupos a barra de estilo mostra.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -225,7 +230,12 @@ pub fn items() -> Vec<Item> {
         if !v.contains(&it)
             && !matches!(
                 it,
-                Item::Reshape | Item::Gray | Item::Flip(_) | Item::Crop | Item::MoreHeads(_)
+                Item::Reshape
+                    | Item::Gray
+                    | Item::Flip(_)
+                    | Item::Crop
+                    | Item::MoreHeads(_)
+                    | Item::Look(_)
             )
         {
             v.push(it);
@@ -243,6 +253,7 @@ pub fn items() -> Vec<Item> {
     v.push(Item::Video);
     // W23 — a grelha das pontas, no FIM.
     v.extend(heads::extra_items());
+    v.extend(LOOKS);
     v
 }
 
@@ -276,6 +287,7 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
             stroke,
             width,
             dash,
+            LOOKS.to_vec(),
             vec![Item::Round(false), Item::Round(true)],
             opacity,
             font,
@@ -291,6 +303,7 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
                 .collect(),
             width,
             dash,
+            LOOKS.to_vec(),
             ROUTES.iter().map(|r| Item::Route(*r)).collect(),
             HEADS
                 .iter()
@@ -312,6 +325,7 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
                 .collect(),
             width,
             dash,
+            LOOKS.to_vec(),
             opacity,
             font,
         ],
@@ -321,7 +335,7 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
             .collect(),
         Selected::TextNote => notes::text_groups(false),
         Selected::TextShape => notes::text_groups(true),
-        Selected::Ink => pen::ink_groups(),
+        Selected::Ink => pen::ink_groups(LOOKS.to_vec()),
         Selected::Frames => vec![organize::frame_fill_group(), fac::frame_group()],
         Selected::Mind => return mind::groups(),
         // Os cantos e a opacidade (o que o Excalidraw oferece numa imagem: «Edges» e «Opacity»); a
@@ -331,6 +345,7 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
             stroke,
             width,
             dash,
+            LOOKS.to_vec(),
             opacity,
             vec![Item::Gray],
             vec![Item::Flip(0), Item::Flip(1), Item::Crop],
@@ -381,6 +396,14 @@ pub fn populate(store: &mut WidgetStore) {
     }
 }
 
+#[cfg(test)]
+thread_local! {
+    /// A luz com que cada controlo das barras foi PINTADO no último quadro (o fundo aceso e a cara
+    /// não passam pelo gravador da cena): o que os testes lêem.
+    pub(super) static PAINTED_ON: std::cell::RefCell<Vec<(Item, bool)>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
 /// ⭐ Pinta as barras do quadro activo. `area` é a área do quadro no ecrã.
 #[allow(clippy::too_many_arguments)]
 pub fn paint(
@@ -389,6 +412,8 @@ pub fn paint(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
 ) {
+    #[cfg(test)]
+    PAINTED_ON.with(|v| v.borrow_mut().clear());
     let theme = hero.theme;
     let shapes_open = hero.documents.live.shapes_open;
     let templates_open = mind::sync_gallery(&mut hero.documents.live);
@@ -496,6 +521,8 @@ pub fn paint(
                 .filter(|it| shapes::shows(*it, ed, &board.doc) != Some(false))
                 // W16 — o recorte só aparece quando o clique recorta: UMA imagem editável.
                 .filter(|it| *it != Item::Crop || ed.can_crop(&board.doc))
+                // W23 — Rascunho/Final só onde a onda alcança a SELECÇÃO (senão trocaria o quadro).
+                .filter(|it| !matches!(it, Item::Look(_)) || !ed.sketch_targets(&board.doc).0)
                 .collect()
         })
         .filter(|g: &Vec<Item>| !g.is_empty())
@@ -510,6 +537,7 @@ pub fn paint(
         }
         let on = (it == Item::Gray)
             .then(|| ed.images_gray(&board.doc) == Some(true))
+            .or_else(|| look::look_on(it, ed, &board.doc, board.sketch))
             .or_else(|| mind::is_on(it, ed, &board.doc, templates_open))
             .or_else(|| fac_now.is_on(it))
             .or_else(|| org.is_on(it, style.fill))
@@ -641,6 +669,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         | Item::TextColor(_)
         | Item::Pen(_)
         | Item::Sketch
+        | Item::Look(_)
         | Item::Organize(_)
         | Item::Mind(_)
         | Item::Fac(_)

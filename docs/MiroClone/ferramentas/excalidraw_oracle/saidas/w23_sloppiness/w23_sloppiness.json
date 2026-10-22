@@ -1,0 +1,831 @@
+{
+ "cabecalho": {
+  "sonda": "sonda_w23_sloppiness.mjs",
+  "sha256_do_script": "f1787c05dd3d8c5887617f212b1feb2a773428aa8069b8f471fc4418da5600b6",
+  "excalidraw": "0.18.1",
+  "data": "2026-10-22T21:47:43.592Z",
+  "loadavg": [
+   13.94,
+   12.1,
+   9.15
+  ],
+  "ids_da_cena": [
+   "rect",
+   "rect0",
+   "ell",
+   "dia",
+   "arr",
+   "lin",
+   "txt",
+   "frm",
+   "emb",
+   "ink",
+   "img"
+  ]
+ },
+ "passos": [
+  {
+   "caso": "rectangulo",
+   "seleccao": [
+    "rect"
+   ],
+   "grupos": [
+    "Stroke",
+    "Background",
+    "Stroke width",
+    "Stroke style",
+    "Sloppiness",
+    "Edges",
+    "Layers",
+    "Actions"
+   ],
+   "sloppiness": [
+    {
+     "titulo": "Architect",
+     "marcado": false
+    },
+    {
+     "titulo": "Artist",
+     "marcado": true
+    },
+    {
+     "titulo": "Cartoonist",
+     "marcado": false
+    }
+   ],
+   "roughness_dos_seleccionados": {
+    "rect": 1
+   },
+   "foto": "w23_rectangulo.png"
+  },
+  {
+   "caso": "elipse",
+   "seleccao": [
+    "ell"
+   ],
+   "grupos": [
+    "Stroke",
+    "Background",
+    "Stroke width",
+    "Stroke style",
+    "Sloppiness",
+    "Layers",
+    "Actions"
+   ],
+   "sloppiness": [
+    {
+     "titulo": "Architect",
+     "marcado": false
+    },
+    {
+     "titulo": "Artist",
+     "marcado": true
+    },
+    {
+     "titulo": "Cartoonist",
+     "marcado": false
+    }
+   ],
+   "roughness_dos_seleccionados": {
+    "ell": 1
+   }
+  },
+  {
+   "caso": "losango",
+   "seleccao": [
+    "dia"
+   ],
+   "grupos": [
+    "Stroke",
+    "Background",
+    "Stroke width",
+    "Stroke style",
+    "Sloppiness",
+    "Edges",
+    "Layers",
+    "Actions"
+   ],
+   "sloppiness": [
+    {
+     "titulo": "Architect",
+     "marcado": false
+    },
+    {
+     "titulo": "Artist",
+     "marcado": true
+    },
+    {
+     "titulo": "Cartoonist",
+     "marcado": false
+    }
+   ],
+   "roughness_dos_seleccionados": {
+    "dia": 1
+   }
+  },
+  {
+   "caso": "seta",
+   "seleccao": [
+    "arr"
+   ],
+   "grupos": [
+    "Stroke",
+    "Stroke width",
+    "Stroke style",
+    "Sloppiness",
+    "Arrow type",
+    "Arrowheads",
+    "Layers",
+    "Actions"
+   ],
+   "sloppiness": [
+    {
+     "titulo": "Architect",
+     "marcado": false
+    },
+    {
+     "titulo": "Artist",
+     "marcado": true
+    },
+    {
+     "titulo": "Cartoonist",
+     "marcado": false
+    }
+   ],
+   "roughness_dos_seleccionados": {
+    "arr": 1
+   }
+  },
+  {
+   "caso": "linha",
+   "seleccao": [
+    "lin"
+   ],
+   "grupos": [
+    "Stroke",
+    "Background",
+    "Stroke width",
+    "Stroke style",
+    "Sloppiness",
+    "Edges",
+    "Layers",
+    "Actions"
+   ],
+   "sloppiness": [
+    {
+     "titulo": "Architect",
+     "marcado": false
+    },
+    {
+     "titulo": "Artist",
+     "marcado": true
+    },
+    {
+     "titulo": "Cartoonist",
+     "marcado": false
+    }
+   ],
+   "roughness_dos_seleccionados": {
+    "lin": 1
+   }
+  },
+  {
+   "caso": "texto_nota",
+   "seleccao": [
+    "txt"
+   ],
+   "grupos": [
+    "Stroke",
+    "Font family",
+    "Font size",
+    "Text align",
+    "Layers",
+    "Actions"
+   ],
+   "sloppiness": null,
+   "roughness_dos_seleccionados": {
+    "txt": 1
+   }
+  },
+  {
+   "caso": "tinta_livre",
+   "seleccao": [
+    "ink"
+   ],
+   "grupos": [
+    "Stroke",
+    "Background",
+    "Stroke width",
+    "Layers",
+    "Actions"
+   ],
+   "sloppiness": null,
+   "roughness_dos_seleccionados": {
+    "ink": 1
+   }
+  },
+  {
+   "caso": "imagem",
+   "seleccao": [
+    "img"
+   ],
+   "grupos": [
+    "Edges",
+    "Layers",
+    "Actions"
+   ],
+   "sloppiness": null,
+   "roughness_dos_seleccionados": {
+    "img": 1
+   }
+  },
+  {
+   "caso": "frame",
+   "seleccao": [
+    "frm"
+   ],
+   "grupos": [
+    "Layers",
+    "Actions"
+   ],
+   "sloppiness": null,
+   "roughness_dos_seleccionados": {
+    "frm": 1
+   }
+  },
+  {
+   "caso": "video_embeddable",
+   "seleccao": [
+    "emb"
+   ],
+   "grupos": [
+    "Stroke",
+    "Background",
+    "Stroke width",
+    "Stroke style",
+    "Sloppiness",
+    "Edges",
+    "Layers",
+    "Actions"
+   ],
+   "sloppiness": [
+    {
+     "titulo": "Architect",
+     "marcado": false
+    },
+    {
+     "titulo": "Artist",
+     "marcado": true
+    },
+    {
+     "titulo": "Cartoonist",
+     "marcado": false
+    }
+   ],
+   "roughness_dos_seleccionados": {
+    "emb": 1
+   }
+  },
+  {
+   "caso": "misto_rough1_rough0",
+   "seleccao": [
+    "rect",
+    "rect0"
+   ],
+   "grupos": [
+    "Stroke",
+    "Background",
+    "Stroke width",
+    "Stroke style",
+    "Sloppiness",
+    "Edges",
+    "Layers",
+    "Align",
+    "Actions"
+   ],
+   "sloppiness": [
+    {
+     "titulo": "Architect",
+     "marcado": false
+    },
+    {
+     "titulo": "Artist",
+     "marcado": false
+    },
+    {
+     "titulo": "Cartoonist",
+     "marcado": false
+    }
+   ],
+   "roughness_dos_seleccionados": {
+    "rect": 1,
+    "rect0": 0
+   },
+   "foto": "w23_misto_rough1_rough0.png"
+  },
+  {
+   "caso": "rect_mais_tinta",
+   "seleccao": [
+    "rect",
+    "ink"
+   ],
+   "grupos": [
+    "Stroke",
+    "Background",
+    "Stroke width",
+    "Stroke style",
+    "Sloppiness",
+    "Edges",
+    "Layers",
+    "Align",
+    "Actions"
+   ],
+   "sloppiness": [
+    {
+     "titulo": "Architect",
+     "marcado": false
+    },
+    {
+     "titulo": "Artist",
+     "marcado": true
+    },
+    {
+     "titulo": "Cartoonist",
+     "marcado": false
+    }
+   ],
+   "roughness_dos_seleccionados": {
+    "rect": 1,
+    "ink": 1
+   }
+  },
+  {
+   "caso": "rect_mais_texto",
+   "seleccao": [
+    "rect",
+    "txt"
+   ],
+   "grupos": [
+    "Stroke",
+    "Background",
+    "Stroke width",
+    "Stroke style",
+    "Sloppiness",
+    "Edges",
+    "Font family",
+    "Font size",
+    "Text align",
+    "Layers",
+    "Align",
+    "Actions"
+   ],
+   "sloppiness": [
+    {
+     "titulo": "Architect",
+     "marcado": false
+    },
+    {
+     "titulo": "Artist",
+     "marcado": true
+    },
+    {
+     "titulo": "Cartoonist",
+     "marcado": false
+    }
+   ],
+   "roughness_dos_seleccionados": {
+    "rect": 1,
+    "txt": 1
+   }
+  },
+  {
+   "caso": "rect_mais_imagem",
+   "seleccao": [
+    "rect",
+    "img"
+   ],
+   "grupos": [
+    "Stroke",
+    "Background",
+    "Stroke width",
+    "Stroke style",
+    "Sloppiness",
+    "Edges",
+    "Layers",
+    "Align",
+    "Actions"
+   ],
+   "sloppiness": [
+    {
+     "titulo": "Architect",
+     "marcado": false
+    },
+    {
+     "titulo": "Artist",
+     "marcado": true
+    },
+    {
+     "titulo": "Cartoonist",
+     "marcado": false
+    }
+   ],
+   "roughness_dos_seleccionados": {
+    "rect": 1,
+    "img": 1
+   }
+  },
+  {
+   "caso": "rect_mais_frame",
+   "seleccao": [
+    "rect",
+    "frm"
+   ],
+   "grupos": [
+    "Stroke",
+    "Background",
+    "Stroke width",
+    "Stroke style",
+    "Sloppiness",
+    "Edges",
+    "Layers",
+    "Actions"
+   ],
+   "sloppiness": [
+    {
+     "titulo": "Architect",
+     "marcado": false
+    },
+    {
+     "titulo": "Artist",
+     "marcado": true
+    },
+    {
+     "titulo": "Cartoonist",
+     "marcado": false
+    }
+   ],
+   "roughness_dos_seleccionados": {
+    "rect": 1,
+    "frm": 1
+   }
+  }
+ ],
+ "cliques": [
+  {
+   "caso": "misto_clica_Artist",
+   "seleccao": [
+    "rect",
+    "rect0"
+   ],
+   "clicou": "Artist",
+   "clique": "clicou",
+   "antes": {
+    "grupos": [
+     "Stroke",
+     "Background",
+     "Stroke width",
+     "Stroke style",
+     "Sloppiness",
+     "Edges",
+     "Layers",
+     "Align",
+     "Actions"
+    ],
+    "sloppiness": [
+     {
+      "titulo": "Architect",
+      "marcado": false
+     },
+     {
+      "titulo": "Artist",
+      "marcado": false
+     },
+     {
+      "titulo": "Cartoonist",
+      "marcado": false
+     }
+    ],
+    "roughness_dos_seleccionados": {
+     "rect": 1,
+     "rect0": 0
+    }
+   },
+   "depois": {
+    "grupos": [
+     "Stroke",
+     "Background",
+     "Stroke width",
+     "Stroke style",
+     "Sloppiness",
+     "Edges",
+     "Layers",
+     "Align",
+     "Actions"
+    ],
+    "sloppiness": [
+     {
+      "titulo": "Architect",
+      "marcado": false
+     },
+     {
+      "titulo": "Artist",
+      "marcado": true
+     },
+     {
+      "titulo": "Cartoonist",
+      "marcado": false
+     }
+    ],
+    "roughness_dos_seleccionados": {
+     "rect": 1,
+     "rect0": 1
+    }
+   }
+  },
+  {
+   "caso": "misto_clica_Architect",
+   "seleccao": [
+    "rect",
+    "rect0"
+   ],
+   "clicou": "Architect",
+   "clique": "clicou",
+   "antes": {
+    "grupos": [
+     "Stroke",
+     "Background",
+     "Stroke width",
+     "Stroke style",
+     "Sloppiness",
+     "Edges",
+     "Layers",
+     "Align",
+     "Actions"
+    ],
+    "sloppiness": [
+     {
+      "titulo": "Architect",
+      "marcado": false
+     },
+     {
+      "titulo": "Artist",
+      "marcado": false
+     },
+     {
+      "titulo": "Cartoonist",
+      "marcado": false
+     }
+    ],
+    "roughness_dos_seleccionados": {
+     "rect": 1,
+     "rect0": 0
+    }
+   },
+   "depois": {
+    "grupos": [
+     "Stroke",
+     "Background",
+     "Stroke width",
+     "Stroke style",
+     "Sloppiness",
+     "Edges",
+     "Layers",
+     "Align",
+     "Actions"
+    ],
+    "sloppiness": [
+     {
+      "titulo": "Architect",
+      "marcado": true
+     },
+     {
+      "titulo": "Artist",
+      "marcado": false
+     },
+     {
+      "titulo": "Cartoonist",
+      "marcado": false
+     }
+    ],
+    "roughness_dos_seleccionados": {
+     "rect": 0,
+     "rect0": 0
+    }
+   }
+  },
+  {
+   "caso": "rect_mais_tinta_clica_Architect",
+   "seleccao": [
+    "rect",
+    "ink"
+   ],
+   "clicou": "Architect",
+   "clique": "clicou",
+   "antes": {
+    "grupos": [
+     "Stroke",
+     "Background",
+     "Stroke width",
+     "Stroke style",
+     "Sloppiness",
+     "Edges",
+     "Layers",
+     "Align",
+     "Actions"
+    ],
+    "sloppiness": [
+     {
+      "titulo": "Architect",
+      "marcado": false
+     },
+     {
+      "titulo": "Artist",
+      "marcado": true
+     },
+     {
+      "titulo": "Cartoonist",
+      "marcado": false
+     }
+    ],
+    "roughness_dos_seleccionados": {
+     "rect": 1,
+     "ink": 1
+    }
+   },
+   "depois": {
+    "grupos": [
+     "Stroke",
+     "Background",
+     "Stroke width",
+     "Stroke style",
+     "Sloppiness",
+     "Edges",
+     "Layers",
+     "Align",
+     "Actions"
+    ],
+    "sloppiness": [
+     {
+      "titulo": "Architect",
+      "marcado": true
+     },
+     {
+      "titulo": "Artist",
+      "marcado": false
+     },
+     {
+      "titulo": "Cartoonist",
+      "marcado": false
+     }
+    ],
+    "roughness_dos_seleccionados": {
+     "rect": 0,
+     "ink": 0
+    }
+   }
+  },
+  {
+   "caso": "rect_mais_texto_clica_Architect",
+   "seleccao": [
+    "rect",
+    "txt"
+   ],
+   "clicou": "Architect",
+   "clique": "clicou",
+   "antes": {
+    "grupos": [
+     "Stroke",
+     "Background",
+     "Stroke width",
+     "Stroke style",
+     "Sloppiness",
+     "Edges",
+     "Font family",
+     "Font size",
+     "Text align",
+     "Layers",
+     "Align",
+     "Actions"
+    ],
+    "sloppiness": [
+     {
+      "titulo": "Architect",
+      "marcado": false
+     },
+     {
+      "titulo": "Artist",
+      "marcado": true
+     },
+     {
+      "titulo": "Cartoonist",
+      "marcado": false
+     }
+    ],
+    "roughness_dos_seleccionados": {
+     "rect": 1,
+     "txt": 1
+    }
+   },
+   "depois": {
+    "grupos": [
+     "Stroke",
+     "Background",
+     "Stroke width",
+     "Stroke style",
+     "Sloppiness",
+     "Edges",
+     "Font family",
+     "Font size",
+     "Text align",
+     "Layers",
+     "Align",
+     "Actions"
+    ],
+    "sloppiness": [
+     {
+      "titulo": "Architect",
+      "marcado": true
+     },
+     {
+      "titulo": "Artist",
+      "marcado": false
+     },
+     {
+      "titulo": "Cartoonist",
+      "marcado": false
+     }
+    ],
+    "roughness_dos_seleccionados": {
+     "rect": 0,
+     "txt": 0
+    }
+   }
+  },
+  {
+   "caso": "rect_ja_Artist_clica_Artist",
+   "seleccao": [
+    "rect"
+   ],
+   "clicou": "Artist",
+   "clique": "clicou",
+   "antes": {
+    "grupos": [
+     "Stroke",
+     "Background",
+     "Stroke width",
+     "Stroke style",
+     "Sloppiness",
+     "Edges",
+     "Layers",
+     "Actions"
+    ],
+    "sloppiness": [
+     {
+      "titulo": "Architect",
+      "marcado": false
+     },
+     {
+      "titulo": "Artist",
+      "marcado": true
+     },
+     {
+      "titulo": "Cartoonist",
+      "marcado": false
+     }
+    ],
+    "roughness_dos_seleccionados": {
+     "rect": 1
+    }
+   },
+   "depois": {
+    "grupos": [
+     "Stroke",
+     "Background",
+     "Stroke width",
+     "Stroke style",
+     "Sloppiness",
+     "Edges",
+     "Layers",
+     "Actions"
+    ],
+    "sloppiness": [
+     {
+      "titulo": "Architect",
+      "marcado": false
+     },
+     {
+      "titulo": "Artist",
+      "marcado": true
+     },
+     {
+      "titulo": "Cartoonist",
+      "marcado": false
+     }
+    ],
+    "roughness_dos_seleccionados": {
+     "rect": 1
+    }
+   }
+  }
+ ]
+}

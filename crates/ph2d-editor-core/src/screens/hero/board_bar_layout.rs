@@ -66,20 +66,29 @@ pub fn style_rects(area: Rect, sel: Rect, what: Selected) -> Vec<(Item, Rect)> {
 }
 
 /// O mesmo, para os grupos que a selecção de AGORA pinta (sem os controlos que não teriam efeito).
+/// Fica à direita da barra curta e, sem lugar numa linha, parte-se em linhas (a da forma, com a
+/// letra e o Organizar, passava da área a 1366 — foto da cena 28, 22/10).
 #[must_use]
 pub fn style_rects_of(area: Rect, sel: Rect, groups: Vec<Vec<Item>>) -> Vec<(Item, Rect)> {
     if groups.is_empty() {
         return Vec::new();
     }
+    let left = toolbar_rects(area)
+        .iter()
+        .map(|(_, r)| r.x + r.w)
+        .fold(area.x, f32::max)
+        + Spacing::Md.px();
+    let room = Rect::new(left, area.y, (area.x + area.w - left).max(0.0), area.h);
     let sizes: Vec<usize> = groups.iter().map(Vec::len).collect();
     groups
         .into_iter()
         .flatten()
-        .zip(super::super::float_bar::strip_rects(
-            area,
+        .zip(super::super::float_bar::strip_rects_fitting(
+            room,
             sel,
             &sizes,
             super::super::float_bar::strip_button_px(),
+            Spacing::Lg.px(),
         ))
         .collect()
 }

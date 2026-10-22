@@ -210,6 +210,37 @@ pub fn strip_rects_at(area: Rect, sel: Rect, groups: &[usize], s: f32, gap: f32)
     strip_rows_at(area, sel, &[groups], s, gap)
 }
 
+/// ⭐ **A barra junto da seleção que NUNCA passa da largura de `area`**: numa linha quando cabe; senão
+/// os grupos, pela ordem, partem-se no MENOR número de linhas que cabe, de larguras parecidas
+/// ([`strip_rows_at`]). Um grupo nunca se parte.
+#[must_use]
+pub fn strip_rects_fitting(area: Rect, sel: Rect, groups: &[usize], s: f32, gap: f32) -> Vec<Rect> {
+    let live: Vec<usize> = groups.iter().copied().filter(|&n| n > 0).collect();
+    let width = |r: &[usize]| strip_extent(r, s).0;
+    if width(&live) <= area.w || live.len() < 2 {
+        return strip_rects_at(area, sel, groups, s, gap);
+    }
+    let widest = live.iter().map(|&n| width(&[n])).fold(0.0, f32::max);
+    for k in 2..=live.len() {
+        // Encher cada linha até ~1/k do total (mais um grupo), sem passar da área.
+        let limit = (width(&live) / k as f32 + widest).min(area.w);
+        let mut rows: Vec<Vec<usize>> = vec![Vec::new()];
+        for &n in &live {
+            let row = rows.last_mut().expect("uma linha");
+            row.push(n);
+            if row.len() > 1 && width(row) > limit {
+                row.pop();
+                rows.push(vec![n]);
+            }
+        }
+        if rows.len() <= k {
+            let rows: Vec<&[usize]> = rows.iter().map(Vec::as_slice).collect();
+            return strip_rows_at(area, sel, &rows, s, gap);
+        }
+    }
+    strip_rects_at(area, sel, groups, s, gap)
+}
+
 /// ⭐ **A barra junto da seleção em LINHAS** (dono 15/10: o Alinhar numa 2.ª linha da ④): cada
 /// linha é uma fila de grupos, centrada sob a mais larga; o bloco inteiro pousa como a de uma linha
 /// só — por cima de `sel`, por baixo quando a altura das linhas juntas não cabe por cima.

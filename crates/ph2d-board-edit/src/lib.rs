@@ -558,10 +558,23 @@ impl Editor {
         history: &mut History,
         board: bool,
     ) -> Option<bool> {
+        let on = !self.sketch_lit(doc, board);
+        self.set_sketch(doc, history, board, on)
+    }
+
+    /// A opção «Rascunho»/«Final» da barra da forma (a «Sloppiness» do Excalidraw, decisão do dono
+    /// 22/10): põe `on` em tudo o que o botão alcança — o mesmo alcance, o mesmo passo e o mesmo
+    /// modo do quadro que [`Self::toggle_sketch`], que é esta com o contrário da luz.
+    pub fn set_sketch(
+        &mut self,
+        doc: &mut BoardDoc,
+        history: &mut History,
+        board: bool,
+        on: bool,
+    ) -> Option<bool> {
         // O texto em edição fecha-se antes (é o passo dele): a letra nova não se mede no que está aberto.
         self.commit_text(doc, history);
         let (whole, targets) = self.sketch_targets(doc);
-        let on = !self.sketch_lit(doc, board);
         // A letra fixa que um `.excalidraw` trouxe volta ao modo com o botão (decisão do dono, W10).
         let ops = targets
             .into_iter()
@@ -606,9 +619,18 @@ impl Editor {
     /// que alcança já à mão. Carregar dá sempre o contrário.
     #[must_use]
     pub fn sketch_lit(&self, doc: &BoardDoc, board: bool) -> bool {
+        self.sketch_look(doc, board) == Some(true)
+    }
+
+    /// O aspecto do que o botão alcança: `Some(true)` à mão, `Some(false)` final, `None` misturado
+    /// (nenhuma das duas opções da barra acende, como no Excalidraw). A luz da onda é `Some(true)`.
+    #[must_use]
+    pub fn sketch_look(&self, doc: &BoardDoc, board: bool) -> Option<bool> {
         match self.sketch_targets(doc) {
-            (true, _) => board,
-            (false, t) => t.iter().all(|el| el.style().sketch),
+            (true, _) => Some(board),
+            (false, t) if t.iter().all(|el| el.style().sketch) => Some(true),
+            (false, t) if t.iter().all(|el| !el.style().sketch) => Some(false),
+            (false, _) => None,
         }
     }
 

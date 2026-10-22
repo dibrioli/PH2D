@@ -12,7 +12,7 @@ use ph2d_board_model::{
 };
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::screens::hero::board_nav::team::notify;
-use ph2d_editor_core::screens::hero::board_view::default_style;
+use ph2d_editor_core::screens::hero::board_view::{self, default_style};
 use ph2d_editor_core::screens::hero::{board_nav, document_tabs};
 use ph2d_i18n::{tr, tr_with};
 
@@ -138,6 +138,8 @@ pub(crate) fn scene_block6(hero: &mut HeroScreen) -> Block6 {
     document_tabs::load(hero, set);
     hero.documents.activate(Some(board));
     board_nav::show(hero, false, false);
+    // ② — o exemplo da ferramenta abre SELECCIONADO: a barra dele mostra Final/Rascunho (W23, 22/10).
+    board_view::select(hero, [sketched[0]]);
     // ③ — o fio do Rui CHEGA agora (o que estava antes não avisaria): chama quem está a usar o PH2D —
     // pelo nome do computador, que a família lê na 1.ª pintura (a foto de 20/10: chamava «Me»).
     crate::io::author(hero);

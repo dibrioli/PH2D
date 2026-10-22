@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::smoke::fac_live::tests::{Hand, hero};
+use ph2d_editor_core::screens::hero::board_bar;
 
 #[test]
 fn the_block6_scene_arms_its_four_stations() {
@@ -44,6 +45,14 @@ fn the_block6_scene_arms_its_four_stations() {
         let st = b.doc.get(id).expect("o exemplo").style();
         assert!(st.sketch && st.fill.is_none(), "{id:?} à mão, oco");
         assert_eq!(st.birth, OPEN_BIRTH, "{id:?} nascido ao zoom de abertura");
+    }
+    // ② — o exemplo da ferramenta abre seleccionado: a barra DELE tem Final e Rascunho.
+    for look in [false, true] {
+        let id = board_bar::node(board_bar::Item::Look(look));
+        assert!(
+            h.hit_index.rect_for(id).is_some(),
+            "a opção {look} na barra do exemplo"
+        );
     }
     // ④ — a seta liga as duas caixas.
     let doc = &h.documents.boards().get(s.board).unwrap().doc;

@@ -84,6 +84,7 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         )
         | Item::Pen(_)
         | Item::Sketch
+        | Item::Look(_)
         | Item::Organize(_)
         | Item::Mind(_)
         | Item::Fac(_) => return None,
@@ -206,6 +207,20 @@ pub(super) fn selected_kind(ed: &Editor, doc: &ph2d_board_model::BoardDoc) -> Op
 /// O botão «Rascunho ↔ Final» aceso — a porta do editor ([`Editor::sketch_lit`]), a mesma do clique.
 pub(super) fn sketch_on(ed: &Editor, doc: &ph2d_board_model::BoardDoc, board: bool) -> bool {
     ed.sketch_lit(doc, board)
+}
+
+/// A opção Rascunho/Final da barra da forma acesa: a MESMA porta ([`Editor::sketch_look`]); a de
+/// Rascunho acende sempre que a onda. `None` = não é uma delas.
+pub(super) fn look_on(
+    it: Item,
+    ed: &Editor,
+    doc: &ph2d_board_model::BoardDoc,
+    board: bool,
+) -> Option<bool> {
+    let Item::Look(look) = it else {
+        return None;
+    };
+    Some(ed.sketch_look(doc, board) == Some(look))
 }
 
 /// A caixa no ecrã da selecção: a moldura das formas e as rotas das setas.
@@ -404,6 +419,8 @@ pub(super) fn paint_item(
     r: Rect,
     on: bool,
 ) {
+    #[cfg(test)]
+    super::PAINTED_ON.with(|v| v.borrow_mut().push((it, on)));
     let id = node(it);
     let fg = super::super::float_bar::paint_button(
         scene,
@@ -627,6 +644,7 @@ pub(super) fn paint_item(
         )
         | Item::Pen(_)
         | Item::Sketch
+        | Item::Look(_)
         | Item::Organize(_)
         | Item::Mind(_)
         | Item::Fac(_)

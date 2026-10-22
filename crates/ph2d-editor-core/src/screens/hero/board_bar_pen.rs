@@ -155,7 +155,8 @@ pub fn pen_box(theme: Theme) -> PenBox {
 }
 
 /// Os grupos da barra de estilo de uma selecção de TRAÇOS: a cor, a espessura, a opacidade.
-pub(super) fn ink_groups() -> Vec<Vec<Item>> {
+/// `looks` = Rascunho/Final, que só aparece com a forma da caneta (tinta limpa) seleccionada.
+pub(super) fn ink_groups(looks: Vec<Item>) -> Vec<Vec<Item>> {
     vec![
         std::iter::once(Item::Stroke(Some(None)))
             .chain((0..HIGHLIGHTER_RGBA.len()).map(|i| Item::Stroke(Some(Some(i)))))
@@ -163,6 +164,7 @@ pub(super) fn ink_groups() -> Vec<Vec<Item>> {
         (0..PEN_WIDTHS.len())
             .map(|i| Item::Pen(PenItem::InkWidth(i)))
             .collect(),
+        looks,
         (0..super::OPACITIES.len()).map(Item::Opacity).collect(),
     ]
 }
@@ -303,7 +305,15 @@ pub(super) fn paint_icon(
             fill_rounded_rect(scene, inner, dot, super::shown(color(c, theme), theme));
         }
         Item::Pen(PenItem::Width(i) | PenItem::InkWidth(i)) => mid(scene, width_px(i, inner), fg),
-        Item::Sketch => {
+        Item::Look(false) => {
+            // Uma linha direita: o «final».
+            let y = f64::from(cy);
+            let mut p = BezPath::new();
+            p.move_to((f64::from(inner.x), y));
+            p.line_to((f64::from(inner.x + inner.w), y));
+            stroke_line(scene, &p, fg, line);
+        }
+        Item::Sketch | Item::Look(true) => {
             // Uma linha tremida: o «à mão».
             let at = |[fx, fy]: [f64; 2]| {
                 (
@@ -328,6 +338,8 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
     Some(match it {
         PEN_TOOL => "board.tool.pen",
         Item::Sketch => "board.sketch",
+        Item::Look(true) => "board.style.sketch",
+        Item::Look(false) => "board.style.final",
         Item::Pen(PenItem::Kind(Pen::Pen)) => "board.pen.pen",
         Item::Pen(PenItem::Kind(Pen::Highlighter)) => "board.pen.highlighter",
         Item::Pen(PenItem::Eraser(false)) => "board.pen.eraser",
@@ -359,6 +371,11 @@ pub(super) fn apply(
         PEN_TOOL => ed.tool = Tool::Pen(ed.pen.last),
         Item::Sketch => {
             if let Some(on) = ed.toggle_sketch(doc, history, *sketch) {
+                *sketch = on;
+            }
+        }
+        Item::Look(look) => {
+            if let Some(on) = ed.set_sketch(doc, history, *sketch, look) {
                 *sketch = on;
             }
         }

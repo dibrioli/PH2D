@@ -127,6 +127,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.style.dash" => "Line style",
         "board.style.sharp" => "Sharp corners",
         "board.style.round" => "Round corners",
+        "board.style.final" => "Final \u{2014} clean lines",
+        "board.style.sketch" => "Sketch \u{2014} hand-drawn look",
         "board.style.opacity" => "Opacity",
         "board.style.font" => "Text size",
         "board.tool.note" => "Sticky note (N) — click to place, or drag; type to write",

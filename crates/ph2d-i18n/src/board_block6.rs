@@ -19,8 +19,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "board.smoke.b6.l2" => {
             "2. Pen \u{2192} draw a box, HOLD STILL: a rectangle (Ctrl+Z: the stroke back). Sketch is \
-             on: bottom right, left = Rectangle tool, right = pen. Select one, press the wavy button: \
-             smooth. Again: hand-drawn."
+             on: bottom right, left = Rectangle tool, right = pen. Select one: in its bar, the straight \
+             line = Final (smooth), the wavy line = Sketch (hand-drawn)."
         }
         "board.smoke.b6.l3" => {
             "3. Rui mentioned you: the message at the top, the dot on Comments. Click Show. \

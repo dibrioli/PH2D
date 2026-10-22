@@ -426,3 +426,189 @@ fn undo_of_the_board_sketch_toggle_gives_the_mode_back() {
     assert!(board(&t), "o refazer não repôs o modo");
     assert!(t.elements().iter().all(|e| e.style().sketch));
 }
+
+/// ⭐ W23 (decisão do dono 22/10) — a opção Rascunho/Final da barra da FORMA. A luz com que o pintor
+/// a PINTOU (`PAINTED_ON`), não a de uma função que a diria.
+fn painted_on(t: &mut T, item: Item) -> bool {
+    t.paint();
+    t.find(node(item))
+        .unwrap_or_else(|| panic!("{item:?} não está pintado"));
+    let on: Vec<bool> = super::super::PAINTED_ON.with(|v| {
+        v.borrow()
+            .iter()
+            .filter(|(it, _)| *it == item)
+            .map(|(_, on)| *on)
+            .collect()
+    });
+    assert_eq!(on.len(), 1, "{item:?} pintado uma vez");
+    on[0]
+}
+
+/// As três luzes `[Final, Rascunho, onda]` como pintadas.
+fn lights(t: &mut T) -> [bool; 3] {
+    [
+        painted_on(t, Item::Look(false)),
+        painted_on(t, Item::Look(true)),
+        painted_on(t, Item::Sketch),
+    ]
+}
+
+/// ⭐ Um rectângulo FINAL seleccionado: a barra DELE oferece Rascunho/Final; clicar Rascunho muda a
+/// tinta no ecrã como a onda muda (ao zoom da cena 28 e a zoom 1), clicar de novo não desfaz, Final
+/// devolve a tinta de antes — e a luz pintada de cada opção é a da onda a cada passo.
+#[test]
+fn the_shapes_own_bar_sketches_it_and_its_light_is_the_waves() {
+    for z in [FAR, 1.0] {
+        let mut t = T::new();
+        t.set_zoom(z);
+        t.board_editor().style.fill = None;
+        let el = tool_rect(&mut t, 200.0, 130.0);
+        let bx = t.el_screen_box(&el);
+        let before = top_edge(&t.ink(), bx);
+        let on_edge = ((bx.x0 + bx.x1) as f32 / 2.0, bx.y0 as f32);
+        t.drag(on_edge, on_edge);
+        assert_eq!(t.board_editor().selection().len(), 1);
+        assert_eq!(lights(&mut t), [true, false, false], "zoom {z}: final");
+        t.click_bar(Item::Look(true));
+        assert!(t.elements().iter().all(|e| e.style().sketch), "zoom {z}");
+        assert_eq!(lights(&mut t), [false, true, true], "zoom {z}: rascunho");
+        t.click_bar(Item::Look(true));
+        assert!(
+            t.elements().iter().all(|e| e.style().sketch),
+            "zoom {z}: a opção acesa não troca (é uma escolha, não a onda)"
+        );
+        t.deselect();
+        let sketched = top_edge(&t.ink(), bx);
+        assert!(
+            sketched.0 - before.0 >= 2.5,
+            "zoom {z}: a tinta não mudou à vista: antes {before:?}, depois {sketched:?}"
+        );
+        t.drag(on_edge, on_edge);
+        t.click_bar(Item::Look(false));
+        assert_eq!(lights(&mut t), [true, false, false], "zoom {z}: de volta");
+        t.deselect();
+        let back = top_edge(&t.ink(), bx);
+        assert!(
+            (back.0 - before.0).abs() < 0.25,
+            "zoom {z}: Final não devolveu a tinta: antes {before:?}, depois {back:?}"
+        );
+        assert!(
+            !t.hero.documents.active_board().unwrap().sketch,
+            "zoom {z}: a opção da forma não toca no modo do quadro"
+        );
+    }
+}
+
+/// Uma selecção MISTA (uma à mão, uma final): nenhuma opção acende (o Excalidraw, `sonda_w23_
+/// sloppiness.mjs`: as três apagadas), a onda também não; «Final» põe as DUAS finais — a onda, a
+/// mesma porta com o contrário da luz, poria as duas à mão. Um Ctrl+Z devolve a mistura.
+#[test]
+fn a_mixed_selection_lights_neither_and_final_sets_both() {
+    let mut t = T::new();
+    t.board_editor().style.fill = None;
+    let a = tool_rect(&mut t, 120.0, 80.0);
+    let bx = t.el_screen_box(&a);
+    let on_edge = ((bx.x0 + bx.x1) as f32 / 2.0, bx.y0 as f32);
+    t.drag(on_edge, on_edge);
+    t.click_bar(Item::Look(true));
+    t.key(board_keys::BoardKey::Escape, NO_MODS, None);
+    let p = t.at(0.6, 0.6);
+    t.board_editor().tool = ph2d_board_edit::Tool::Shape(ph2d_board_model::ShapeType::Rectangle);
+    t.drag(p, (p.0 + 120.0, p.1 + 80.0));
+    t.board_editor().tool = ph2d_board_edit::Tool::Select;
+    let ctrl = Modifiers {
+        ctrl: true,
+        ..NO_MODS
+    };
+    t.key(board_keys::BoardKey::Char('a'), ctrl, None);
+    t.paint();
+    let mixed: Vec<bool> = t.elements().iter().map(|e| e.style().sketch).collect();
+    assert_eq!(mixed, [true, false]);
+    assert_eq!(lights(&mut t), [false, false, false], "misturado");
+    t.click_bar(Item::Look(false));
+    assert!(t.elements().iter().all(|e| !e.style().sketch));
+    assert_eq!(lights(&mut t), [true, false, false]);
+    assert!(t.key(board_keys::BoardKey::Char('z'), ctrl, None));
+    let undone: Vec<bool> = t.elements().iter().map(|e| e.style().sketch).collect();
+    assert_eq!(undone, [true, false], "um passo só");
+}
+
+/// Onde a opção aparece: na barra do que a onda alcança (forma, seta, a forma da caneta); nunca na
+/// de um traço livre da caneta (a onda trocaria o QUADRO inteiro — numa barra da forma seria uma
+/// mentira) nem na de uma nota (o Excalidraw não a dá ao texto).
+#[test]
+fn the_option_shows_only_where_the_wave_reaches_the_selection() {
+    let shown = |t: &T| {
+        t.find(node(Item::Look(true))).is_some() && t.find(node(Item::Look(false))).is_some()
+    };
+    let mut t = T::new();
+    let end = t.pen_hold(&hand::hand_rect(), false);
+    t.release(end, false);
+    t.board_editor().tool = ph2d_board_edit::Tool::Select;
+    let el = t.only();
+    let bx = t.el_screen_box(&el);
+    let on_edge = ((bx.x0 + bx.x1) as f32 / 2.0, bx.y0 as f32);
+    t.drag(on_edge, on_edge);
+    assert!(shown(&t), "a forma da caneta");
+
+    let mut t = T::new();
+    t.board_editor().tool = ph2d_board_edit::Tool::Connector;
+    let (a, b) = (t.at(0.3, 0.5), t.at(0.6, 0.5));
+    t.drag(a, b);
+    t.board_editor().tool = ph2d_board_edit::Tool::Select;
+    t.drag(((a.0 + b.0) / 2.0, a.1), ((a.0 + b.0) / 2.0, a.1));
+    assert!(shown(&t), "a seta");
+
+    let mut t = T::new();
+    t.board_editor().tool = ph2d_board_edit::Tool::Pen(ph2d_board_model::Pen::Pen);
+    let (a, b) = (t.at(0.3, 0.5), t.at(0.6, 0.5));
+    t.drag(a, b);
+    t.board_editor().tool = ph2d_board_edit::Tool::Select;
+    t.drag(((a.0 + b.0) / 2.0, a.1), ((a.0 + b.0) / 2.0, a.1));
+    assert_eq!(t.board_editor().selection().len(), 1);
+    assert!(!shown(&t), "o traço livre");
+
+    let mut t = T::new();
+    t.board_editor().tool = ph2d_board_edit::Tool::Shape(ph2d_board_model::ShapeType::Sticky);
+    let p = t.at(0.5, 0.5);
+    t.drag(p, p);
+    t.key(board_keys::BoardKey::Escape, NO_MODS, None);
+    t.board_editor().tool = ph2d_board_edit::Tool::Select;
+    t.drag(p, p);
+    assert_eq!(t.board_editor().selection().len(), 1);
+    assert!(!shown(&t), "a nota");
+}
+
+/// A barra de um rectângulo seleccionado (com Rascunho/Final, a letra e o Organizar) cabe na janela
+/// de 1366 sem tapar a barra curta da esquerda nem sair do quadro: parte-se em linhas (foto da cena
+/// 28, 22/10: uma linha só ia de ponta a ponta, por cima das ferramentas).
+#[test]
+fn the_shapes_bar_never_covers_the_toolbar_nor_leaves_the_board() {
+    for w in [1366.0, 1024.0] {
+        let mut t = T::new();
+        t.vp_w = w;
+        t.paint();
+        t.board_editor().style.fill = None;
+        let el = tool_rect(&mut t, 200.0, 130.0);
+        let bx = t.el_screen_box(&el);
+        let on_edge = ((bx.x0 + bx.x1) as f32 / 2.0, bx.y0 as f32);
+        t.drag(on_edge, on_edge);
+        let area = t.hero.last_canvas;
+        let tools = layout::toolbar_rects(area);
+        let right_of_tools = tools.iter().map(|(_, r)| r.x + r.w).fold(0.0, f32::max);
+        let painted: Vec<Item> =
+            super::super::PAINTED_ON.with(|v| v.borrow().iter().map(|(it, _)| *it).collect());
+        let bar: Vec<_> = painted
+            .into_iter()
+            .filter(|it| !tools.iter().any(|(t, _)| t == it))
+            .filter_map(|it| t.hero.hit_index.rect_for(node(it)).map(|r| (it, r)))
+            .collect();
+        assert!(bar.iter().any(|(it, _)| *it == Item::Look(true)), "{w}");
+        for (it, r) in bar {
+            assert!(
+                r.x > right_of_tools && r.x + r.w <= area.x + area.w,
+                "{w}: {it:?} em {r:?} (ferramentas até {right_of_tools}, quadro {area:?})"
+            );
+        }
+    }
+}

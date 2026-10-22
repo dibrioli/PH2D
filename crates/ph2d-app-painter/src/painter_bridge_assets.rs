@@ -87,7 +87,8 @@ pub(super) fn load_brush_dual_image(
 ) {
     match pick_brush_rgba(asset_db) {
         Ok(Some((rgba, w, h))) => {
-            painter.set_brush_dual_image_rgba(&rgba, w, h);
+            let px: Vec<_> = ph2d_tool_painter::SrgbRgba::iter_byte_slice(&rgba).collect();
+            painter.set_brush_dual_image_rgba(&px, w, h);
             toasts.push(Toast::success(ph2d_i18n::tr(
                 "app.painter.painter_bridge_assets.brush_shape_loaded",
             )));
@@ -112,7 +113,8 @@ pub(super) fn load_brush_shape_hose_image(
 ) {
     match pick_brush_rgba(asset_db) {
         Ok(Some((rgba, w, h))) => {
-            painter.add_brush_shape_hose_image_rgba(&rgba, w, h);
+            let px: Vec<_> = ph2d_tool_painter::SrgbRgba::iter_byte_slice(&rgba).collect();
+            painter.add_brush_shape_hose_image_rgba(&px, w, h);
             toasts.push(Toast::success(ph2d_i18n::tr(
                 "app.painter.painter_bridge_assets.brush_shape_loaded",
             )));

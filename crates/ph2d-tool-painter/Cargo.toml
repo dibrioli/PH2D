@@ -73,6 +73,8 @@ ph2d-inpaint = { path = "../ph2d-inpaint" }
 ph2d-gpu = { path = "../ph2d-gpu", optional = true }
 # Canonical sRGB↔linear byte transfer for the CPU compositor's gamma boundary.
 ph2d-color = { path = "../ph2d-color" }
+# A porta tipada das imagens da ponta (`&[SrgbRgba]`) volta a bytes sem cópia (`cast_slice`), como nas tools irmãs.
+bytemuck = { version = "1", features = ["derive"] }
 # serde for PainterParams + the layer model serialization.
 serde = { version = "1", features = ["derive"] }
 # O preset do Wet Painter (`tool/paint/wetpaint_preset.rs`): o formato `*.ph2d-brush.png` e o JSON
@@ -108,7 +110,6 @@ dhat = "0.3"
 # privada do tool para a workspace inteira — e a lei ainda muda de casa na W1 (o ADR pede um dab
 # AUTORADO, pequeno e animável). `dev`, então o `src/` segue sem device nenhum: quem despacha é a shell.
 wgpu = { version = "29.0.4", features = ["wgsl"] }
-bytemuck = { version = "1", features = ["derive"] }
 ph2d-gpu = { path = "../ph2d-gpu" }
 
 [lints]

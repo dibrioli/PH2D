@@ -80,7 +80,13 @@ impl PainterTool {
 
     /// ⭐ **Acrescenta uma imagem RGBA** à ponta (o botão «Add image» da secção Shape, pelo seletor da shell). Sem
     /// imagem na Shape ela É a primeira (a porta de sempre); acima de [`HOSE_MAX`] é recusada.
-    pub fn add_brush_shape_hose_image_rgba(&mut self, rgba: &[u8], w: u32, h: u32) {
+    pub fn add_brush_shape_hose_image_rgba(
+        &mut self,
+        rgba: &[ph2d_color::SrgbRgba],
+        w: u32,
+        h: u32,
+    ) {
+        let rgba: &[u8] = bytemuck::cast_slice(rgba);
         // A macro guarda a IMAGEM (como a da Shape, `Passo::FormaRgba`): o tocador acrescenta-a sem seletor.
         crate::macro_track::porta!(
             self,

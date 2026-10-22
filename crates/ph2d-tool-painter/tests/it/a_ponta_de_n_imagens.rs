@@ -51,7 +51,7 @@ fn pincel_com(n: usize, forma: bool, f: impl Fn(&mut PainterTool)) -> PainterToo
     t.toggle_brush_shape_per_layer_color();
     for (k, cor) in CORES.iter().enumerate().take(n).skip(1) {
         t.add_brush_shape_hose_image_rgba(
-            &imagem(*cor, if forma { k as u8 } else { 0 }),
+            bytemuck::cast_slice(&imagem(*cor, if forma { k as u8 } else { 0 })),
             LADO,
             LADO,
         );
@@ -225,7 +225,11 @@ fn toques_no_meio(m: PaintMedia, formas: &[u8], toques: &[(f32, f32)]) -> Vec<u8
     t.set_brush_shape_image_rgba(&imagem([255, 255, 255], formas[0]), LADO, LADO, None);
     t.toggle_brush_shape_alpha_from_image();
     for &f in &formas[1..] {
-        t.add_brush_shape_hose_image_rgba(&imagem([255, 255, 255], f), LADO, LADO);
+        t.add_brush_shape_hose_image_rgba(
+            bytemuck::cast_slice(&imagem([255, 255, 255], f)),
+            LADO,
+            LADO,
+        );
     }
     t.set_ponta(LinhaDaPonta::HoseMode, 2.0); // pela pressão: < 0,5 a 1.ª, ≥ 0,5 a 2.ª
     for &(x, p) in toques {
@@ -333,7 +337,7 @@ fn gravar_add_image_e_tocar_e_a_mesma_ponta() {
         t.take_brush_shape_hose_request(),
         "o «Add image» não pediu o seletor"
     );
-    t.add_brush_shape_hose_image_rgba(&imagem(CORES[1], 1), LADO, LADO);
+    t.add_brush_shape_hose_image_rgba(bytemuck::cast_slice(&imagem(CORES[1], 1)), LADO, LADO);
     // O menu «Image order» pelo canal do painel (o que a macro grava): em sequência.
     t.handle_panel_event(PanelEvent::SelectOption(
         ph2d_tool_painter::ids::PAINTER_PONTA_FIELDS[5],
@@ -372,7 +376,11 @@ fn no_wet_o_lote_adiado_carimba_a_imagem_escolhida() {
         t.set_brush_shape_image_rgba(&imagem([255, 255, 255], formas[0]), LADO, LADO, None);
         t.toggle_brush_shape_alpha_from_image();
         for &f in &formas[1..] {
-            t.add_brush_shape_hose_image_rgba(&imagem([255, 255, 255], f), LADO, LADO);
+            t.add_brush_shape_hose_image_rgba(
+                bytemuck::cast_slice(&imagem([255, 255, 255], f)),
+                LADO,
+                LADO,
+            );
         }
         t.set_ponta(LinhaDaPonta::HoseMode, 2.0);
         t.set_brush_spacing(1.0);

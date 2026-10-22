@@ -348,7 +348,8 @@ impl PainterTool {
 
     /// A imagem da 2.ª ponta a partir de RGBA (o seletor de ficheiro da shell): a silhueta pela LUMINÂNCIA, a lei
     /// da importação da Shape ([`super::mangueira::importa_rgba`]).
-    pub fn set_brush_dual_image_rgba(&mut self, rgba: &[u8], w: u32, h: u32) {
+    pub fn set_brush_dual_image_rgba(&mut self, rgba: &[ph2d_color::SrgbRgba], w: u32, h: u32) {
+        let rgba: &[u8] = bytemuck::cast_slice(rgba);
         // A macro guarda a IMAGEM (como a da ponta de N imagens, `Passo::MangueiraRgba`).
         crate::macro_track::porta!(
             self,

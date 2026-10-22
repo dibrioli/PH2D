@@ -188,7 +188,7 @@ fn gravar_e_carregar_o_dual_no_wet_volta_ao_bit() {
     let arma_img = |t: &mut PainterTool| {
         arma(t, 1.0);
         t.set_ponta(LinhaDaPonta::DualTip, f64::from(TextureKind::Image.to_u8()));
-        t.set_brush_dual_image_rgba(&riscas(), 32, 32);
+        t.set_brush_dual_image_rgba(bytemuck::cast_slice(&riscas()), 32, 32);
         t.set_ponta(LinhaDaPonta::DualFollow, 1.0);
     };
     let antes = pinta(pincel(PaintMedia::WetPaint, arma_img));
@@ -284,7 +284,7 @@ fn gravar_e_carregar_com_a_segunda_ponta_de_imagem_volta_ao_bit() {
     let arma_img = |t: &mut PainterTool| {
         arma(t, 2.0);
         t.set_ponta(LinhaDaPonta::DualTip, f64::from(TextureKind::Image.to_u8()));
-        t.set_brush_dual_image_rgba(&riscas(), 32, 32);
+        t.set_brush_dual_image_rgba(bytemuck::cast_slice(&riscas()), 32, 32);
         t.set_ponta(LinhaDaPonta::DualFollow, 2.0);
         t.set_ponta(LinhaDaPonta::DualSize, 0.9);
     };
@@ -375,7 +375,7 @@ fn grava_o_carvao_com_estrias() {
         t.set_brush_falloff(5);
         arma(t, 1.0);
         t.set_ponta(LinhaDaPonta::DualTip, f64::from(TextureKind::Image.to_u8()));
-        t.set_brush_dual_image_rgba(&estrias(), 64, 64);
+        t.set_brush_dual_image_rgba(bytemuck::cast_slice(&estrias()), 64, 64);
         t.set_ponta(LinhaDaPonta::DualFollow, 1.0);
         t.set_ponta(LinhaDaPonta::DualSize, 0.45);
         t.set_ponta(LinhaDaPonta::DualSpacing, 0.35);
@@ -571,7 +571,7 @@ fn grava_o_pincel_seco_do_wet() {
     let t = pincel(PaintMedia::WetPaint, |t| {
         t.set_ponta(LinhaDaPonta::DualMode, 1.0);
         t.set_ponta(LinhaDaPonta::DualTip, f64::from(TextureKind::Image.to_u8()));
-        t.set_brush_dual_image_rgba(&cerdas_secas(), 64, 64);
+        t.set_brush_dual_image_rgba(bytemuck::cast_slice(&cerdas_secas()), 64, 64);
         t.set_ponta(LinhaDaPonta::DualFollow, 1.0);
         t.set_ponta(LinhaDaPonta::DualSize, 1.1);
         t.set_ponta(LinhaDaPonta::DualSpacing, 0.15);

@@ -67,8 +67,8 @@ fn gera_os_pinceis_de_teste_da_ponta() {
     };
     t.set_brush_shape_image_rgba(&forma(0), lado, lado, None);
     t.toggle_brush_shape_alpha_from_image();
-    t.add_brush_shape_hose_image_rgba(&forma(1), lado, lado);
-    t.add_brush_shape_hose_image_rgba(&forma(2), lado, lado);
+    t.add_brush_shape_hose_image_rgba(bytemuck::cast_slice(&forma(1)), lado, lado);
+    t.add_brush_shape_hose_image_rgba(bytemuck::cast_slice(&forma(2)), lado, lado);
     t.set_ponta(LinhaDaPonta::Peso(0), 4.0);
     t.set_ponta(LinhaDaPonta::Peso(1), 2.0);
     t.set_brush_spacing(1.0);

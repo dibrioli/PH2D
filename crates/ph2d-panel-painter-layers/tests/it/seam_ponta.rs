@@ -175,8 +175,16 @@ fn a_ponta_de_n_imagens_pelo_ponteiro() {
         t.take_brush_shape_hose_request(),
         "o Add image não pediu o seletor"
     );
-    t.add_brush_shape_hose_image_rgba(&img(120), 8, 8);
-    t.add_brush_shape_hose_image_rgba(&img(60), 8, 8);
+    t.add_brush_shape_hose_image_rgba(
+        &ph2d_tool_painter::SrgbRgba::iter_byte_slice(&img(120)).collect::<Vec<_>>(),
+        8,
+        8,
+    );
+    t.add_brush_shape_hose_image_rgba(
+        &ph2d_tool_painter::SrgbRgba::iter_byte_slice(&img(60)).collect::<Vec<_>>(),
+        8,
+        8,
+    );
     assert_eq!(t.brush_shape_hose_count(), 3);
     escolhe(&mut t, LinhaDaPonta::HoseMode, 2);
     assert_eq!(

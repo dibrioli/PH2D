@@ -504,11 +504,20 @@ impl TocadorDoPainter {
             Passo::TiraPedidoMangueira => {
                 t.take_brush_shape_hose_request();
             }
-            Passo::MangueiraRgba { rgba, w, h } => t.add_brush_shape_hose_image_rgba(&rgba, w, h),
+            // Um registo de comprimento torto não é imagem: a importação recusava-o, o tocador salta-o.
+            Passo::MangueiraRgba { rgba, w, h } => {
+                if let Ok(px) = bytemuck::try_cast_slice(&rgba) {
+                    t.add_brush_shape_hose_image_rgba(px, w, h);
+                }
+            }
             Passo::TiraPedidoDual => {
                 t.take_brush_dual_image_request();
             }
-            Passo::DualRgba { rgba, w, h } => t.set_brush_dual_image_rgba(&rgba, w, h),
+            Passo::DualRgba { rgba, w, h } => {
+                if let Ok(px) = bytemuck::try_cast_slice(&rgba) {
+                    t.set_brush_dual_image_rgba(px, w, h);
+                }
+            }
             Passo::FalloffPonto { id, d, s } => t.set_brush_falloff_point(id, d, s),
             Passo::FalloffAcrescenta { d, s } => {
                 t.add_brush_falloff_point_at(d, s);

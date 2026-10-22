@@ -340,7 +340,7 @@ fn com_a_ponta_de_pixel_o_grao_a_shape_e_as_imagens_esmaecem() {
         t.set_ponta(LinhaDaPonta::GrainMode, 4.0);
         t.set_brush_grain_depth(0.4);
         t.set_brush_shape_image_rgba(&img(200), lado, lado, None);
-        t.add_brush_shape_hose_image_rgba(&img(90), lado, lado);
+        t.add_brush_shape_hose_image_rgba(bytemuck::cast_slice(&img(90)), lado, lado);
         t.set_brush_color_srgb8([255, 0, 0]);
     });
     assert!(

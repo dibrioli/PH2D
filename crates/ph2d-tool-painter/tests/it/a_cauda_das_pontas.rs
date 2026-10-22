@@ -60,7 +60,7 @@ fn a_cauda_da_ponta_de_n_imagens_guarda_as_imagens() {
     t.set_brush_color_srgb8([0, 0, 0]);
     t.set_brush_shape_image_rgba(&silhueta(false), LADO, LADO, None);
     t.toggle_brush_shape_alpha_from_image();
-    t.add_brush_shape_hose_image_rgba(&silhueta(true), LADO, LADO);
+    t.add_brush_shape_hose_image_rgba(bytemuck::cast_slice(&silhueta(true)), LADO, LADO);
     t.set_ponta(LinhaDaPonta::HoseMode, 1.0); // em SEQUÊNCIA
     t.set_brush_taper_end(8.0);
     t.set_brush_taper_tip_end(1.0);

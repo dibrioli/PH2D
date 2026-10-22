@@ -228,6 +228,12 @@ pub fn edita(
             .ok_or_else(erros::sem_etapa)?
             .edita(track, k, campo)?;
     }
+    // Uma edição que a trilha não toca nunca se grava: a macro de antes fica inteira (o arrasto que
+    // sobrepunha duas pinceladas gravava-se e apagava TODAS as etapas — smoke do dono 22/10).
+    let track = &doc.tracks[trilha];
+    if let Some(l) = leitor(outras, track) {
+        ph2d_macro::etapa::efetiva(track, l).map_err(|e| erros::de_edicao(&e))?;
+    }
     escreve(c, bits, &doc);
     Ok(())
 }

@@ -932,3 +932,53 @@ fn o_laco_que_toca_acompanha_cada_parar() {
         "o 2.º Parar deixou o laço que toca no antigo"
     );
 }
+
+/// W15 — **um arrasto que sobrepõe duas pinceladas não apaga nada** (smoke do dono 22/10: «arrastar
+/// keyframes de modo que as animações dos traços se sobreponham apaga os keyframes»). A espera que a
+/// trilha não toca gravava-se, a macro deixava de se ler e as três etapas sumiam. Agora a edição é
+/// recusada ANTES de se gravar: a macro fica a de antes e o painel diz porquê. (Tocar a sobreposição
+/// é a W16.)
+#[test]
+fn gate7_sobrepor_duas_pinceladas_nunca_apaga_as_etapas() {
+    let mut b = Banca::nova();
+    b.pinta();
+    b.carrega(ids::MACROS_RECORD);
+    b.quadro();
+    let l = LADO as f32;
+    b.pincelada([0.1 * l, 0.2 * l], [0.9 * l, 0.25 * l]);
+    b.pincelada([0.2 * l, 0.5 * l], [0.8 * l, 0.55 * l]);
+    b.pincelada([0.1 * l, 0.8 * l], [0.9 * l, 0.75 * l]);
+    b.pinta();
+    b.carrega(ids::MACROS_STOP);
+    b.quadro();
+    b.pinta();
+    let v = ph2d_panel_macros::current_macros().objeto.unwrap().etapas;
+    let bytes = |b: &Banca| {
+        b.sim
+            .world()
+            .get::<Macro>(Entity::from_bits(b.bits))
+            .unwrap()
+            .doc
+            .clone()
+    };
+    let antes = bytes(&b);
+    // A 3.ª recua até meio da 2.ª: as duas pincelariam ao mesmo tempo.
+    let recua = (v[2].t0_s - v[1].t1_s) + 0.5 * (v[1].t1_s - v[1].t0_s);
+    b.m.pede(MacroRequest::Edita {
+        entity_bits: b.bits,
+        trilha: 0,
+        k: 2,
+        campo: CampoDaEtapa::Espera(-recua),
+    });
+    b.quadro();
+    b.pinta();
+    let o = ph2d_panel_macros::current_macros().objeto.unwrap();
+    assert_eq!(o.etapas.len(), 3, "as etapas continuam todas no painel");
+    assert_eq!(
+        b.m.etapas_na_linha(&b.sim, &b.tl.doc, &[]).len(),
+        3,
+        "e na Timeline"
+    );
+    assert_eq!(bytes(&b), antes, "a macro é a de antes");
+    assert!(o.erro.is_some(), "o painel diz que o arrasto foi recusado");
+}

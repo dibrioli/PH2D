@@ -679,10 +679,16 @@ impl PainterTool {
                     }
                 }
                 // Blend keeps the engine's own fixed-hardness stamp (the
-                // model's tools ignore the brush silhouette on purpose).
-                WetTool::Blend => sess
-                    .engine
-                    .dispatch_pressure_dab_lane_blend(li, cell_x, cell_y, b, cell_r),
+                // model's tools ignore the brush silhouette on purpose) — o Grain armado modula a máscara dele
+                // (J4 mistura, L-2; sem Grain, a de sempre ao bit).
+                WetTool::Blend => sess.engine.dispatch_pressure_dab_lane_blend_grao(
+                    li,
+                    cell_x,
+                    cell_y,
+                    b,
+                    cell_r,
+                    grain.as_ref().map(|g| g as ph2d_wet_paint::brush::CellFn<'_>),
+                ),
                 // Direct tools: per-dab grid ops; the displacement source is
                 // THIS lane's previous centre (host-tracked per copy).
                 WetTool::Wet | WetTool::Dry | WetTool::Blow | WetTool::Smear => {

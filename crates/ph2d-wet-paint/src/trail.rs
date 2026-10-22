@@ -600,6 +600,21 @@ impl Trail {
     /// Accumulate one blend dab: a saturating mask, no water/tip/wetness
     /// writes.
     pub fn accumulate_blend(&mut self, g: &Grid, p: &Params, tex: &[f32], dab: &Dab) -> bool {
+        self.accumulate_blend_grao(g, p, tex, dab, None)
+    }
+
+    /// [`Self::accumulate_blend`] com o GRÃO do hospedeiro (J4 mistura, L-2 Blender Grainy): `grain(x, y)`, quando o
+    /// pincel tem o Grain armado, toma o lugar das cerdas na máscara do misturador — a mesma lei do depósito
+    /// ([`Self::accumulate_paint_shaped`]: o grão SUBSTITUI a textura das cerdas). `None` = a máscara de sempre, ao bit
+    /// (o Blend do Rebelle «Textured» funde em manchas granuladas; o nosso dava a MESMA imagem com seis grãos).
+    pub fn accumulate_blend_grao(
+        &mut self,
+        g: &Grid,
+        p: &Params,
+        tex: &[f32],
+        dab: &Dab,
+        grain: Option<CellFn<'_>>,
+    ) -> bool {
         // A janela do Blend também é medida pelo pincel (ela não era: raio 100 esfregava ± 61).
         self.anchor_first_dab(dab);
         self.ensure_fits(dab);
@@ -620,6 +635,7 @@ impl Trail {
             dab.r,
             dab.hardness,
             |i, x, y, fall, texv| {
+                let texv = grain.map_or(texv, |gr| gr(x, y));
                 let mut stamp = fall * texv * dab.intensity;
                 if stamp > 1.0 {
                     stamp = 1.0;

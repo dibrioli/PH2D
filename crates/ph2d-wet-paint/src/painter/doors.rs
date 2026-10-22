@@ -262,6 +262,21 @@ impl Engine {
         b: f64,
         r: f64,
     ) {
+        self.dispatch_pressure_dab_lane_blend_grao(lane, x, y, b, r, None);
+    }
+
+    /// [`Self::dispatch_pressure_dab_lane_blend`] com o GRÃO do hospedeiro na máscara do misturador
+    /// ([`Trail::accumulate_blend_grao`]; `None` = a de sempre, ao bit).
+    #[allow(clippy::too_many_arguments)]
+    pub fn dispatch_pressure_dab_lane_blend_grao(
+        &mut self,
+        lane: usize,
+        x: f64,
+        y: f64,
+        b: f64,
+        r: f64,
+        grain: Option<crate::brush::CellFn<'_>>,
+    ) {
         let p = self.sim.gather_params(&self.tuning);
         let (dab, _water_unit) = self.pressure_dab(&p, x, y, b, r);
         if let Some(hook) = self.on_dab.as_mut() {
@@ -279,7 +294,7 @@ impl Engine {
             self.brush_tex = Some(tex);
             return;
         };
-        let rect = if trail.accumulate_blend(&layer.grid, &p, &tex, &bd) {
+        let rect = if trail.accumulate_blend_grao(&layer.grid, &p, &tex, &bd, grain) {
             trail.transfer_blend(&mut layer.grid, &p)
         } else {
             None
@@ -320,7 +335,20 @@ impl Engine {
         let tex = self.brush_tex.take().unwrap();
         let layer = &mut self.layers[self.active_layer];
         let rect = match tool {
-            Tool::Wet => apply_wet(&mut layer.grid, &p, &tex, &dab, water_unit),
+            Tool::Wet => {
+                let agua = apply_wet(&mut layer.grid, &p, &tex, &dab, water_unit);
+                // A água que EMPURRA ([`Knob::WaterPush`]; `0` = nada a fazer, ao byte).
+                let empurra = prev.and_then(|pv| crate::tools::apply_wet_push(&mut layer.grid, &p, &dab, pv));
+                match (agua, empurra) {
+                    (Some(a), Some(b)) => Some(crate::trail::TouchedRect {
+                        x0: a.x0.min(b.x0),
+                        y0: a.y0.min(b.y0),
+                        x1: a.x1.max(b.x1),
+                        y1: a.y1.max(b.y1),
+                    }),
+                    (a, b) => a.or(b),
+                }
+            }
             Tool::Dry => apply_dry(&mut layer.grid, &p, &tex, &dab),
             Tool::Blow => {
                 let [px, py] = prev.unwrap_or([x, y]);

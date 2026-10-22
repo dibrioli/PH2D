@@ -5,6 +5,8 @@
 
 use super::prelude::*;
 
+mod motor;
+
 pub const WET: &[Receita] = &[];
 
 /// As FERRAMENTAS do Wet (o modo ao lado da receita, `receitas_de_fabrica::ReceitaFerramenta`).

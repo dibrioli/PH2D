@@ -207,9 +207,14 @@ pub enum Knob {
     ThinStrokeFade,
     /// … o diâmetro (px) a partir do qual a carga é a inteira.
     ThinStrokeRef,
+    /// ⭐ **A ÁGUA EMPURRA o pigmento** (J4 mistura, L-6 Water Brush, `docs/Painter/Pinceis/exames/mistura.md` «Motor
+    /// J4»): a fracção do pigmento SUSPENSO que o traço da ferramenta Wet leva para fora da pegada, para os dois lados,
+    /// pela tinta molhada, até à frente da água ([`crate::tools::apply_wet_push`]) — o Water Soft do Rebelle abre branco
+    /// na faixa molhada (0,13) e deixa a orla escura onde a água pára. `0` = a água de sempre, ao bit.
+    WaterPush,
 }
 
-pub const KNOB_COUNT: usize = 103;
+pub const KNOB_COUNT: usize = 104;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

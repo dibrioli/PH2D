@@ -41,6 +41,35 @@ fn partes(relativo: &str) -> [&str; 4] {
     p
 }
 
+/// O grau de um lápis no fim do nome («Graphite 2H» → −3), da mais dura à mais macia:
+/// `9H … H · F · HB · B … 9B`. `None` quando o nome não acaba num grau.
+fn grau_do_lapis(nome: &str) -> Option<i32> {
+    let g = nome.rsplit(' ').next().filter(|g| g.len() < nome.len())?;
+    match g {
+        "F" => return Some(-1),
+        "HB" => return Some(0),
+        _ => {}
+    }
+    let (n, letra) = g.split_at(g.len().checked_sub(1)?);
+    let n: i32 = if n.is_empty() { 1 } else { n.parse().ok()? };
+    match letra {
+        "H" => Some(-n - 1),
+        "B" => Some(n),
+        _ => None,
+    }
+}
+
+/// A ordem do navegador: por pasta; dentro do grupo, a série de lápis pelo grau (não pelo alfabeto,
+/// que dá `2B · 2H · 8B · HB`), o resto pelo nome.
+fn ordem_do_navegador(relativo: &str) -> (&str, &str, Option<i32>, &str) {
+    let nome = partes(relativo)[3];
+    let pasta = relativo.rsplit_once('/').map_or("", |(p, _)| p);
+    match grau_do_lapis(nome) {
+        Some(g) => (pasta, nome.rsplit_once(' ').map_or(nome, |(s, _)| s), Some(g), relativo),
+        None => (pasta, nome, None, relativo),
+    }
+}
+
 /// O caminho relativo de um preset.
 #[must_use]
 pub fn caminho_relativo(motor: &str, meio: &str, grupo: &str, nome: &str) -> String {
@@ -114,7 +143,7 @@ impl Biblioteca {
             varrer(u, &mut do_utilizador, &mut erros);
         }
         let mut rels: Vec<&String> = de_fabrica.keys().chain(do_utilizador.keys()).collect();
-        rels.sort();
+        rels.sort_by(|a, b| ordem_do_navegador(a).cmp(&ordem_do_navegador(b)));
         rels.dedup();
         let mut entradas = Vec::with_capacity(rels.len());
         for rel in rels {

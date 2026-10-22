@@ -564,7 +564,7 @@ def main():
     por_nome = {pop[i]["nome"]: i for i in nos}
     for i in nos:
         n = pop[i]["nome"]
-        ordem = sorted((j for j in fica if j != i), key=lambda j: D[i, j])
+        ordem = sorted((j for j in fica if j != i), key=lambda j: (bool(np.isnan(D[i, j])), D[i, j]))
         top[n] = [(pop[j]["nome"], round(float(D[i, j]), 3)) for j in ordem[:3]]
         fam = fam_de.get(n)
         fora = [j for j in ordem if fam is None or fam_de.get(pop[j]["nome"]) != fam]

@@ -1,10 +1,11 @@
-# ESTADO da missão Pincéis (a FILA viva; ≤ 8 KB)
+# ESTADO da missão Pincéis — MISSÃO ENCERRADA (J5, 2026-10-22) (≤ 8 KB)
 
-> Toda janela lê isto primeiro e actualiza-o antes de sair. Contrato: [`00_MISSAO.md`](00_MISSAO.md). Custo:
-> [`REGRAS_DE_CUSTO.md`](REGRAS_DE_CUSTO.md) (ordem do dono 21/10 — valem para TODO agente). Última escrita: JANELA 4,
-> 2026-10-21. Detalhe por janela: `HANDOFF_JANELA_<n>.md`; por família: `exames/<família>.md`.
-
-**Quem é quem (20/10):** J2 `ph2d-d2` · J3 `ph2d-94` · J4 `ph2d-d1` · J5 `ph2d-fa` (confirme por `ListAgents`).
+> **Encerrada com o alvo NÃO alcançado:** 18 pincéis APROVADOS (alvo 80–120); fábrica 45 (Wet 29, Digital 16), os
+> outros 27 «curados, não aprovados». Porquê: o que trava os 67 itens restantes é MOTOR (depois da 2.ª ronda o
+> rendimento é zero) e as [regras de custo](REGRAS_DE_CUSTO.md) do dono limitam a uma lacuna de motor por agente. A fila
+> de motor, medida, está em [01_CATALOGO §3d](01_CATALOGO.md) — é o escopo de uma missão futura. Integração:
+> [HANDOFF_INTEGRACAO ...PINCEIS](../handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-22_PINCEIS.md).
+> Contrato: [`00_MISSAO.md`](00_MISSAO.md). Detalhe por janela: `HANDOFF_JANELA_<n>.md`; por família: `exames/<família>.md`.
 
 ## Feito
 
@@ -14,6 +15,11 @@
 - **J4** ([handoff](HANDOFF_JANELA_4.md)): F, G, H, I, K, L, M: **11 aprovados** — Filbert (refeito), Blender Soft
   (Wet); Hard Eraser, Kneaded Eraser, Halftone, Stars, Bokeh, Dodge, Burn, Color Glaze, Ballpoint (Digital).
   Fundidos/saídos: Acrylic Round, Rigger, Charcoal Pencil, Smudge Spiky, Hue/Overlay. **Fábrica 44** (Wet 28, Digital 16).
+- **J5** ([handoff](HANDOFF_JANELA_5.md)): **Pastel Side aprovado** (`c6c99afab7`); curados, não aprovados: Square Hard
+  `2e1212e7ec`, Water Brush/Dry-Lift/Blender Grainy `db170ae238`, Wet Liner/Wet Wash `4c0a2b7457`, Gouache Wash
+  `953eb21e32`; reprovados Mop, Gouache Round; Gouache Flat fica, Wet Dry Brush não funde. Motor `Knob::WetOpen`
+  (`73b8e11688`, `eb04c3440d`). Biblioteca (matriz, custo calmo, ordem) `2d6116b4c3`, `002c75267b`. Tutorial PDF
+  `a054d6508f`. Fecho 1× (fmt, clippy, 19 576 testes, 0 falhas; 17 curas) até `b74b608d0e`. **Total: 18 aprovados, fábrica 45.**
 
 ## Decisões de produto (com o porquê)
 
@@ -23,10 +29,10 @@
    J4: ferramentas (tiram/movem tinta) têm grupo e escala próprios (`matriz/escala_ferramenta.json`).
 3. Os pré-existentes passam o mesmo exame: cura contra a origem, ou fundem/saem; «curado, não aprovado» fica.
 4. Oráculo que manda: Rebelle; ArtRage/MyPaint/Krita onde ele não tem. GIMP fora.
-5. A cauda do taper volta só no Digital. ⚠️ Perguntar no smoke do dono.
+5. A cauda do taper volta só no Digital. ⏳ AGUARDA o smoke do dono (pergunta no PDF).
 6. Dual brush só no Digital e no Wet.
 7. Modos = W3C em sRGB; Saturation/Linear Burn/Dodge do Rebelle a 10× não se perseguem.
-8. Tecto de tamanho por preset (Max Size do Rebelle). ⚠️ Smoke.
+8. Tecto de tamanho por preset (Max Size do Rebelle). ⏳ AGUARDA o smoke do dono (pergunta no PDF).
 9. A rampa de pressão é a do DONO, não a do Rebelle (piso revogado 18/10).
 10. 2H = HB com menos pigmento. 11. Round Pressure → Hard Round. 13. Canetas duras fundem pela matriz.
 12. «Diferença visível» = confiança média/alta, ou repetida por dois revisores novos.
@@ -34,26 +40,19 @@
 15. A régua da rampa não reprova a entrada tardia do oráculo — FEITO na lei (J4, `399a387c6d`): abaixo do 1.º decil
     que o oráculo pinta, erro 0.
 16. Foto nova do Rebelle vence número antigo gravado num portão (Square Hard).
-17. O Dabber fica como está até a matriz final da J5.
+17. O Dabber ficou como está (matriz final da J5: sem par < 0,596).
+18. (J5) Gouache Flat fica (0,763 do Wet Flat; a cura partia 3 leis). Wet Dry Brush não funde (vizinho Airbrush 1,236).
 
-## A FILA (por ordem) — para a JANELA 5, com as regras de custo
+## A FILA para uma missão futura (medida em [01_CATALOGO §3d](01_CATALOGO.md), por pincéis destravados)
 
-**Motor (o que destrava mais pincéis por recurso; medição em cada relatório):**
-1. **Molhado × molhado no Wet** — o azul do Rebelle abre uma mancha redonda e escura no vermelho molhado e o empurra
-   para os lados; o nosso dá quadrado limpo ou lente pálida (Gouache Round, Wet Wash, Mop, Wet Liner, Flat Bristle).
-2. **O traço de 200 px do filme** (`Knob::StrokeFilm`) esbate as pontas em degradê e carrega o miolo (Liner, Wash, Mop).
-3. **Pontas cortadas a direito num dab redondo** — cortar o traço no início/fim, não o dab (Soft Pastel, Charcoal,
-   Wax Scrape); o traço de 5 px tracejado do pastel.
-4. **A mistura em luz linear** (o vermelho cobre mais que o azul é o render em sRGB, `exames/mistura.md`): muda TODOS
-   os presets ⇒ decisão + re-pinar portões num só bloco.
-5. A ondulação lenta do contorno (Oil Bristle) · o tapete das cerdas em px fixos (Gouache Dry) · o advecção do smudge
-   (Smudge Finger) · mip pyramid das pontas de imagem (Foliage, Noise Grit).
-**Exames por fazer (motor já pronto, sem revisão cega):** Square Hard (decisão 16) · Blender Grainy · Dry/Lift ·
-Water Brush 2.ª ronda (`wetLift 0,2`) · Gouache Wash 2.ª ronda (a mais perto de passar) · Pastel Side (valores do pó
-medidos) · Glow (o caroço não pode crescer a 200 px).
-**Decisões pendentes:** Gouache Flat (aplicar a cura que a separa do Wet Flat, ou fundir) · Wet Dry Brush → Wet Flat.
-**Depois:** o resto da J5 (`JANELA_5.md`): matriz final, fecho batched, handoff, smoke/tutorial.
-**Fotos a refazer:** `gouache_gouache_round_2_sobre_{A,B}`, `gouache_gouache_liner_2_gestos_A` (duplicadas).
+1. Borda da mancha molhada esbatida ~10 px (anel 1,04 Rebelle × 1,09–1,25 nosso): Wet Liner, Wet Wash, Mop.
+2. Pontas cortadas a direito num dab redondo: Square Hard, Soft Pastel, Charcoal, Wax Scrape.
+3. O traço de 200 px do filme (`Knob::StrokeFilm`): Liner, Wash, Mop.
+4. A mistura em luz linear (`exames/mistura.md`): muda TODOS os presets ⇒ decisão do dono + re-pinar portões num bloco.
+5. Orla do secador nos lados (Dry/Lift) · misturador com grão perto da tinta (Blender Grainy) · o azul que cobre o
+   vermelho molhado na guache · fio do arrasto (Smudge Finger) · lâmina que gira (Flat Oily/Knife, C38).
+6. Partículas (Particles, Glitter) · ondulação do contorno (Oil Bristle) · mip das pontas de imagem (Foliage, Noise Grit).
+Também: brecha do gate `arch_color_space_typed` (`&[u8]` em linha à parte); Ink Brush a vigiar (p95 12,54 ms a 200 px).
 
 ## Bancada: o essencial
 
@@ -64,5 +63,4 @@ medidos) · Glow (o caroço não pode crescer a 200 px).
   (`PH2D_REBELLE_REPETE_TROCA=1`: o 1.º traço depois de trocar de ferramenta saía ao tamanho anterior).
 - Fábrica: `ReceitaFerramenta`/`FERRAMENTAS_WET` (ferramentas Wet: Blend/Wet/Dry); `ReceitaMeio::texturas` (imagens
   desenhadas por código); a largura e a miniatura das ferramentas medem-se sobre a base.
-- ⚠️ Custo: TODAS as medições da J4 com load 8–68 — a J5 re-mede calmo os 11 novos.
-- ⚠️ Relatórios acima do tecto de 10 KB: `pastel_carvao.md`, `efeitos.md`, `mistura.md` (cortar na J5).
+- Custo da J5: calmo (load 1–3,4), 135 medições, [exames/biblioteca.md](exames/biblioteca.md).

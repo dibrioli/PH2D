@@ -14,6 +14,17 @@
 2. «Mover keyframes tem um bug: às vezes alguns são apagados (mesmo se não colocados um sobre o outro — que seria
    normal apagar).»
 
+### A captura do dono (22/10, depois dos relatos)
+
+Painel MACROS: «1 steps · 4.21 s», «Edited from step 1», a etapa «1. Stroke 1» com o instante **1.63**
+selecionada. Keys: Time(s) **1.625**, Frame 39, Dur(s) 6.208, Loop ligado, Snap ligado; a cabeça está em ~1,6 s
+na régua. Mas o losango da linha **«Macro steps»** está em **~1,0 s**, e a faixa «Canvas · Macro Ti…» (rótulo
+1.62) tem chaves em 0 e ~4,2 s. ⇒ a cabeça vai ao instante da etapa (1,625 ≈ 1,63, só o arredondamento ao
+quadro de 1/24) e é o **losango da etapa que está noutro sítio**. Pergunta a responder: o dono moveu a chave da
+etapa (relato 2) e a etapa não a seguiu, ou a linha «Macro steps» desenha a etapa no tempo errado (relógio do
+clipe ≠ relógio da macro, «Wait before», a edição da etapa)? Também por explicar: Dur 6,208 com um clipe de
+4,21 s. ⚠️ Peça ao dono a sequência exacta de gestos se a reprodução não der o mesmo ecrã.
+
 ## O que a W15 faz
 
 1. **Reproduzir antes de curar** (`/pd-bug-causa`): na cena `=6`, clicar cada etapa no painel MACROS e medir a

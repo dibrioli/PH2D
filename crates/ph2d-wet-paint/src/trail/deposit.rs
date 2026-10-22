@@ -41,6 +41,8 @@ const POEIRA_MAXIMA: f64 = 0.95;
 
 /// A caixa vazia (`x1 < x0`), a sentinela que o [`touch_ext`] já usa.
 const VAZIA: (i32, i32, i32, i32) = (0, 0, -1, -1);
+/// As duas extensões que a caminhada devolve: a da janela e a do que o dab escreveu no grid.
+type Pair = ((i32, i32, i32, i32), (i32, i32, i32, i32));
 
 /// A união de duas caixas envolventes, com [`VAZIA`] como identidade — a redução das linhas.
 fn uniao(a: (i32, i32, i32, i32), b: (i32, i32, i32, i32)) -> (i32, i32, i32, i32) {
@@ -285,12 +287,10 @@ impl Trail {
         else {
             return VAZIA;
         };
-        let mode = mode.unwrap_or_else(|| {
-            Rows::pick(
-                (y1 - y0 + 1) as usize,
-                (x1 - x0 + 1) as usize,
-                par::MIN_CELLS_DEPOSIT,
-            )
+        // Acima do piso de células, em paralelo como sempre; abaixo, a rota MEDIDA ([`par::PISO_NS_DEPOSITO`]).
+        let mode = mode.or_else(|| {
+            let celulas = ((y1 - y0 + 1) * (x1 - x0 + 1)) as usize;
+            (celulas >= par::MIN_CELLS_DEPOSIT).then_some(Rows::Parallel)
         });
         let (s, size, half) = (g.s, self.size, self.half);
         let (ax, ay) = (self.anchor_x, self.anchor_y);
@@ -406,10 +406,14 @@ impl Trail {
             );
             (ext, wrote)
         };
-        let (ext, wrote) =
-            par::walk_items_reduce(mode, &mut linhas, (VAZIA, VAZIA), linha, |a, b| {
-                (uniao(a.0, b.0), uniao(a.1, b.1))
-            });
+        let red = |a: Pair, b: Pair| (uniao(a.0, b.0), uniao(a.1, b.1));
+        let (ext, wrote) = match mode {
+            Some(mode) => par::walk_items_reduce(mode, &mut linhas, (VAZIA, VAZIA), linha, red),
+            None => {
+                let piso = par::PISO_NS_DEPOSITO.load(std::sync::atomic::Ordering::Relaxed);
+                par::walk_items_reduce_medido(&mut linhas, piso, (VAZIA, VAZIA), linha, red)
+            }
+        };
         let janela_antes = (self.lx0, self.ly0, self.lx1, self.ly1);
         (self.lx0, self.ly0, self.lx1, self.ly1) = uniao(janela_antes, ext);
         wrote

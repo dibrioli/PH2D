@@ -235,6 +235,17 @@ where
 /// entre a última linha em prejuízo e a primeira em ganho.
 pub const MIN_CELLS_DEPOSIT: usize = 6 << 10;
 
+/// ⭐ **O piso do depósito ABAIXO de [`MIN_CELLS_DEPOSIT`] é de TEMPO, não de células** (doc
+/// `Pinceis/exames/custo_no_app.md`): aquele piso foi medido com a queda redonda do motor (`~7 ns` por célula), e
+/// a silhueta do hospedeiro custa o que o pincel lhe pede — as cerdas com a ponta desfiada, o relevo e a cor
+/// de cada fio do Filbert, `~120 ns`. A caixa de 64 px dele (4 225 células) ficava em série: `512 µs` por
+/// sub-dab contra `76 µs` em paralelo, e um traço rápido custava `60 ms` por quadro. Abaixo do piso de
+/// células, [`walk_items_reduce_medido`] caminha a linha do MEIO em série, mede-a e estima a caixa; a
+/// estimativa ≥ este piso vai em paralelo. O número sai da MESMA tabela: o pool custa `~25 µs` (prejuízo a
+/// `15 µs` de série, ganho a `48 µs`), e a linha do meio sobrestima um disco ~1,3×.
+pub static PISO_NS_DEPOSITO: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(35_000);
+
 /// Piso do BICO do transfer (a auto-limpeza e a recolha, ADR-0175) — **medido** pela mesma sonda,
 /// em células da JANELA (`size²`): prejuízo a `8 649` (a janela do raio 40), ganho a `19 881` (a do
 /// raio 64). O bico é mais barato por célula que o depósito — a limpeza são três lerps, e a recolha
@@ -302,6 +313,40 @@ where
         Rows::Serial => items.iter_mut().map(&f).fold(ident, &red),
         Rows::Parallel => items.par_iter_mut().map(&f).reduce(|| ident, &red),
     }
+}
+
+/// [`walk_items_reduce`] com a rota MEDIDA: o item do meio corre em série e o relógio dele, vezes os
+/// itens, decide o resto — paralelo quando a estimativa passa `piso_ns`. A mesma resposta nas duas rotas
+/// (a regra do irmão: `red` associativa e comutativa), então o relógio só escolhe o caminhante.
+pub(crate) fn walk_items_reduce_medido<T, R, F, Red>(
+    items: &mut [T],
+    piso_ns: u64,
+    ident: R,
+    f: F,
+    red: Red,
+) -> R
+where
+    T: Send,
+    R: Send + Sync + Copy,
+    F: Fn(&mut T) -> R + Send + Sync,
+    Red: Fn(R, R) -> R + Send + Sync,
+{
+    if items.len() < 2 {
+        return walk_items_reduce(Rows::Serial, items, ident, f, red);
+    }
+    let (antes, resto) = items.split_at_mut(items.len() / 2);
+    let (meio, depois) = resto.split_first_mut().expect("o meio existe");
+    let t0 = std::time::Instant::now();
+    let r_meio = f(meio);
+    let estimativa = t0.elapsed().as_nanos() * (antes.len() + depois.len() + 1) as u128;
+    let mode = if estimativa >= u128::from(piso_ns) {
+        Rows::Parallel
+    } else {
+        Rows::Serial
+    };
+    let mut outros: Vec<&mut T> = antes.iter_mut().chain(depois.iter_mut()).collect();
+    let r = walk_items_reduce(mode, &mut outros, ident, |t| f(t), &red);
+    red(r_meio, r)
 }
 
 /// [`walk_rows`] para um par de escalares POR LINHA (não uma fatia de canvas):

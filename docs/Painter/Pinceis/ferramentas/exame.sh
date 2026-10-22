@@ -4,7 +4,11 @@
 # uso: exame.sh <pincel> [<oraculo-dir>]      a bateria pintada pelo nosso motor, a matriz contra a biblioteca
 #                                             (em cache), a régua contra o oráculo e as pranchas (legível e cega)
 #      exame.sh --matriz                      só a biblioteca inteira: matriz.csv + vizinhos.md em Pinceis/matriz/
-#      exame.sh --custo <pincel> [5,40,200]   ms/quadro a 60 Hz e a memória pico, um processo por tamanho
+#      exame.sh --custo <pincel> [0,40,200] [bateria,30]
+#                                             ms/quadro a 60 Hz e a memória pico, um processo por (tamanho, velocidade):
+#                                             tamanho 0 = o de fábrica; velocidade = px por evento (3 por quadro) ou
+#                                             «bateria» (os pontos exactos, ~3 px: um traço lento). O app anda 10–45 px
+#                                             por evento; o custo de um pincel de cápsula é por px (exames/custo_no_app.md)
 #
 # <pincel>: o nome de um preset de fábrica de qualquer meio ("Graphite 8B") · o caminho de um .ph2d-brush.png · meio:Digital |
 #           meio:Watercolor | meio:Impasto | meio:WetPaint (o pincel do meio, receita em código)
@@ -91,14 +95,18 @@ case "${1:-}" in
     exit 0 ;;
   --custo)
     PINCEL=${2:?pincel}
-    TAMS=${3:-5,40,200}
+    TAMS=${3:-0,40,200}
+    VELS=${4:-bateria,30}
     J="$DIR/custo.jsonl"
     : >"$J"
     for t in ${TAMS//,/ }; do
-      PH2D_EXAME_PRESETS="$PINCEL" PH2D_EXAME_TAMANHO="$t" PH2D_EXAME_BATERIA="$BAT" PH2D_EXAME_EXTRA="$EXTRA" \
-        bash "$RAIZ/scripts/ph2d-run.sh" cargo test -p ph2d-tool-painter --profile smoke --test it \
-        exame_bancada::exame_custo -- --ignored --nocapture --test-threads 1 2>&1 | grep -o '\[custo\] .*' |
-        sed 's/^\[custo\] //' >>"$J"
+      for v in ${VELS//,/ }; do
+        [[ $v == bateria ]] && v=""
+        PH2D_EXAME_PRESETS="$PINCEL" PH2D_EXAME_TAMANHO="$t" PH2D_EXAME_PX_POR_EVENTO="$v" PH2D_EXAME_BATERIA="$BAT" \
+          PH2D_EXAME_EXTRA="$EXTRA" bash "$RAIZ/scripts/ph2d-run.sh" cargo test -p ph2d-tool-painter --profile smoke \
+          --test it exame_bancada::exame_custo -- --ignored --nocapture --test-threads 1 2>&1 | grep -o '\[custo\] .*' |
+          sed 's/^\[custo\] //' >>"$J"
+      done
     done
     py "$F/exame_custo.py" "$J"
     exit 0 ;;

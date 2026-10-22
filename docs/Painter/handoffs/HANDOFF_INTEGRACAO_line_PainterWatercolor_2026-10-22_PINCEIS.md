@@ -83,15 +83,15 @@
   partículas/mip. Destrava os 67 «em estudo».
 - **Brecha do gate:** `set_brush_shape_image_rgba` (já no main) recebe `&[u8]` numa linha à parte da assinatura e
   escapa a `arch_color_space_typed` (o gate não lê assinaturas em várias linhas).
-- **Ink Brush a vigiar:** p95 12,54 ms a 200 px.
+- **Custo no app** ([custo_no_app](../Pinceis/exames/custo_no_app.md)): depósito por TEMPO (Filbert 56 → 24 ms a 90 px/qd); falta o pouso do transfer (série).
 - C39–C40 e o resto do [P53 §6](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-19_P53.md) continuam.
 
 ## §8 — Depois do smoke: o navegador de presets (22/10, `9a8754b976` `86cb0f15ea`)
 
 - O popover do Preset tinha um título apagado por PASTA (lia-se «pincel apagado»). Agora **um título por categoria**
-  (`painter_bridge_categorias::CATEGORIAS`, ordem num só sítio): Basic · Pencil · Ink · Marker · Pastel · Oil ·
+  (`painter_bridge_categorias::CATEGORIAS`): Basic · Pencil · Ink · Marker · Pastel · Oil ·
   Watercolor · Airbrush · Texture · Blend & Erase · Effects · Other (pasta desconhecida). Dentro da categoria o meio de
-  agora primeiro (a lei de `o_navegador_abre_em_qualquer_meio_e_escolher_troca_o_meio` mudou para isto).
+  agora primeiro.
 - Widget partilhado: `DropdownOption::header` (`false` por omissão; consumidores ao bit) — rótulo de secção, sem
   hit/foco, `Role::Heading`. O **Paint Mode** subiu para o cartão do topo, acima do Preset, nos 4 meios.
 - Foto: `foto_do_navegador` (`#[ignore]`) → `tutorial/fotos/`; tutorial p. 2 actualizado.

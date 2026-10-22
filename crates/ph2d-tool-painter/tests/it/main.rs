@@ -32,6 +32,7 @@ mod macro_trilho;
 mod macro_tutorial_fill;
 mod measure_undo_capacity;
 mod midias_de_fabrica;
+mod o_custo_no_caminho_do_app; // o depósito de um pincel pesado pela rota que paga (exames/custo_no_app.md)
 mod o_dual_brush;
 mod o_grao_do_lapis; // 03_MOTORES §7.2: o grão é o papel (o mesmo a todo tamanho) e o do lápis é fino
 mod o_modo_do_grao;
@@ -46,6 +47,7 @@ mod presets_dos_meios;
 mod receitas_de_fabrica;
 mod regua_escada;
 mod regua_midia;
+mod sonda_custo_no_app;
 mod sonda_etapas;
 mod sonda_gestos;
 mod sonda_largura;

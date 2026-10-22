@@ -568,11 +568,16 @@ fn exame_pinta() {
     );
 }
 
-/// O CUSTO a 60 Hz (§3.6): a cena `gestos` com TODOS os traços ao diâmetro `PH2D_EXAME_TAMANHO`, `PH2D_EXAME_
-/// EVENTOS_POR_QUADRO` eventos (3: uma caneta a ~180 Hz) e um tique de 60 Hz por quadro, ao ritmo da parede; depois
-/// 120 quadros parados (a água a correr). A água do ecrã (sem relógio fixo). O `ms/quadro` é o fio do pincel; o
-/// `nucleos` é o CPU do processo inteiro (a água no fio dela) ÷ a parede. Um pincel e um tamanho por processo: o
-/// `VmHWM` é o pico DESTE pincel a este tamanho.
+/// O CUSTO a 60 Hz (§3.6): a cena `gestos` com TODOS os traços ao diâmetro `PH2D_EXAME_TAMANHO` (`0` = o do preset,
+/// o de fábrica), `PH2D_EXAME_EVENTOS_POR_QUADRO` eventos (3: uma caneta a ~180 Hz) e um tique de 60 Hz por quadro, ao
+/// ritmo da parede; depois 120 quadros parados (a água a correr). A água do ecrã (sem relógio fixo). O `ms/quadro` é
+/// o fio do pincel; o `nucleos` é o CPU do processo inteiro (a água no fio dela) ÷ a parede. Um pincel e um tamanho
+/// por processo: o `VmHWM` é o pico DESTE pincel a este tamanho.
+///
+/// ⭐ **A VELOCIDADE do traço é do app, não da bateria** (`exames/custo_no_app.md`): os pontos da bateria andam ~3 px
+/// por evento — 9 px por quadro, um traço LENTO —, e o custo de um pincel de cápsula é por px de caminho. O Filbert
+/// lia 9,7 ms aqui e 60 no app (o depósito dele caía em série). `PH2D_EXAME_PX_POR_EVENTO=<v>` re-amostra cada traço
+/// a `v` px por evento (a pressão e a inclinação interpoladas); sem ele, os pontos exactos da bateria.
 #[test]
 #[ignore = "bancada do EXAME: o custo a 60 Hz; corre-se pelo exame.sh"]
 fn exame_custo() {
@@ -581,6 +586,9 @@ fn exame_custo() {
     let tam: f32 = std::env::var("PH2D_EXAME_TAMANHO").map_or(40.0, |v| v.parse().unwrap());
     let por_quadro: usize =
         std::env::var("PH2D_EXAME_EVENTOS_POR_QUADRO").map_or(3, |v| v.parse().unwrap());
+    let px_por_evento: Option<f32> = std::env::var("PH2D_EXAME_PX_POR_EVENTO")
+        .ok()
+        .and_then(|v| v.parse().ok());
     let bat = bateria();
     let [w, h] = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let gestos = bat["cenas"]
@@ -593,7 +601,10 @@ fn exame_custo() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (w * h * 4) as usize], w, h);
         pincel.aplica(&mut t, false);
-        t.set_brush_size_px(tam * 0.5);
+        if tam > 0.0 {
+            t.set_brush_size_px(tam * 0.5);
+        }
+        let diametro = t.brush_size_px() * 2.0;
         t.set_brush_color_srgb8([23, 101, 179]);
         let (mut quadros, mut parados) = (Vec::new(), Vec::new());
         // Os eventos da cena, por ordem (o Down e o Up de cada traço contam como eventos).
@@ -602,8 +613,8 @@ fn exame_custo() {
             .unwrap()
             .iter()
             .filter(|o| o["op"] == "traco")
-            .flat_map(|op| {
-                let pts = op["pts"].as_array().unwrap();
+            .map(|op| reamostra(op["pts"].as_array().unwrap(), px_por_evento))
+            .flat_map(|pts| {
                 let n = pts.len();
                 pts.iter()
                     .enumerate()
@@ -618,6 +629,7 @@ fn exame_custo() {
                         )
                     })
                     .chain(std::iter::once(cp(&pts[n - 1], PointerPhase::Up)))
+                    .collect::<Vec<_>>()
             })
             .collect();
         // O ritmo de 60 Hz no relógio de PAREDE (`PH2D_EXAME_RITMO=0` desliga): a água do ecrã anda num fio
@@ -659,13 +671,45 @@ fn exame_custo() {
                    "acima_de_16_7": v.iter().filter(|&&x| x > 1000.0 / 60.0).count()})
         };
         let r = json!({
-            "pincel": pincel.nome, "tamanho_px": tam, "eventos_por_quadro": por_quadro,
+            "pincel": pincel.nome, "tamanho_px": diametro, "eventos_por_quadro": por_quadro,
+            "px_por_evento": px_por_evento,
             "quadros_a_pintar_ms": est(&mut quadros), "quadros_parados_ms": est(&mut parados),
             "total_s": total, "cpu_s": cpu, "nucleos": cpu / total, "vm_hwm_kib": hwm, "vm_rss_inicio_kib": rss0,
             "load": std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim(),
         });
         println!("[custo] {r}");
     }
+}
+
+/// Os pontos de um traço da bateria re-amostrados a `v` px por evento ao longo da polilinha (a pressão e a
+/// inclinação interpoladas, o último ponto mantido); `None` = os pontos exactos.
+fn reamostra(pts: &[Value], v: Option<f32>) -> Vec<Value> {
+    let Some(v) = v.filter(|v| *v > 0.0) else {
+        return pts.to_vec();
+    };
+    let num = |p: &Value, i: usize| p.get(i).and_then(Value::as_f64).unwrap_or(0.0);
+    let mut out = vec![pts[0].clone()];
+    let mut falta = f64::from(v);
+    for par in pts.windows(2) {
+        let (a, b) = (&par[0], &par[1]);
+        let l = (num(b, 0) - num(a, 0)).hypot(num(b, 1) - num(a, 1));
+        let mut s = 0.0;
+        while l - s >= falta {
+            s += falta;
+            falta = f64::from(v);
+            let t = s / l;
+            out.push(json!(
+                (0..5)
+                    .map(|i| num(a, i) + (num(b, i) - num(a, i)) * t)
+                    .collect::<Vec<_>>()
+            ));
+        }
+        falta -= l - s;
+    }
+    if out.len() == 1 || falta < f64::from(v) {
+        out.push(pts[pts.len() - 1].clone());
+    }
+    out
 }
 
 /// A base das faixas da cena «sobre» de uma ferramenta que não pinta ([`Pincel::nao_pinta`]): a tinta lisa do meio dela

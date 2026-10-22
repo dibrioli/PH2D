@@ -37,6 +37,9 @@ const ESBATE_ALEM: f64 = 1.0;
 const ESBATE_PASSOS: usize = 8;
 /// O alcance do triângulo de pesos ÷ o do esticão (a média fica a meio dele, como com pesos iguais).
 const ESBATE_CAUDA: f64 = 1.5;
+/// … e a cauda nunca passa `ESBATE_TECTO × meia` (⛔ medido: sem tecto, numa faixa muito mais alta que o dab — o Mop — o
+/// alcance `r + 3 (meia − r)` fazia da mancha um olho de 95 px contra os 59 do Rebelle).
+const ESBATE_TECTO: f64 = 1.3;
 
 /// Uma mancha do traço vivo: o eixo (origem e direcção), o centro `tm` no eixo, o raio e o raio do dab.
 #[derive(Clone, Copy, Debug)]
@@ -160,7 +163,11 @@ impl Trail {
                 let mancha = self.molhado.manchas.iter().find_map(|m| {
                     let (t, s) = m.coords(x, y);
                     let meia = m.meia(t)?;
-                    (s.abs() <= m.r && meia > m.r).then_some((m, s, (meia - m.r) * (1.0 + ESBATE_ALEM) / m.r))
+                    (s.abs() <= m.r && meia > m.r).then_some((
+                        m,
+                        s,
+                        ((meia - m.r) * (1.0 + ESBATE_ALEM) / m.r).min((ESBATE_TECTO * meia / m.r - 1.0) / ESBATE_CAUDA),
+                    ))
                 });
                 // Pesos que descem (o triângulo) até `ESBATE_CAUDA` do esticão: a cauda vai a zero, sem degrau na borda.
                 let total = (ESBATE_PASSOS * (ESBATE_PASSOS + 1) / 2) as f64;

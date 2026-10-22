@@ -22,7 +22,15 @@ fn escreve_os_estudos_da_aguarela() {
         // `"receita": "<nome>"` = uma receita da família (`WET`/`EM_ESTUDO`) feita como o gerador a faz, com a tabela da
         // largura MEDIDA (a de um ficheiro base mente quando a dureza muda: o Mop a 40 px pintava 62).
         let mut p = if let Some(nome) = e["receita"].as_str() {
-            let r = super::WET.iter().chain(super::EM_ESTUDO).find(|r| r.nome == nome).expect("receita da família");
+            // J5: e as do guache e do óleo (o agente molhado examina-as com a lei molhado × molhado).
+            let r = super::WET
+                .iter()
+                .chain(super::EM_ESTUDO)
+                .chain(crate::familias::guache::WET)
+                .chain(crate::familias::guache::EM_ESTUDO)
+                .chain(crate::familias::oleo_acrilica::EM_ESTUDO)
+                .find(|r| r.nome == nome)
+                .expect("receita da família");
             let mut p = ph2d_brush_presets::Preset {
                 parametros: crate::presets_de_fabrica::parametros(r),
                 origem: ph2d_brush_presets::Origem::Fabrica,

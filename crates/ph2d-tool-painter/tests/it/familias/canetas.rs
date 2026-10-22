@@ -1,5 +1,5 @@
-//! **Família `canetas`** — J3, catálogo C (as canetas digitais). Aprovada: a Mapping Pen (C-5). O Studio Pen (C-4), o
-//! Technical Pen (C-6), a Ballpoint (C-7) e o Dry Ink (C-11) foram REPROVADOS no exame e o Brush Pen (C-10) fundiu-se
+//! **Família `canetas`** — J3, catálogo C (as canetas digitais). Aprovadas: a Mapping Pen (C-5) e a Ballpoint (C-7, J4 efeitos).
+//! O Studio Pen (C-4), o Technical Pen (C-6) e o Dry Ink (C-11) foram REPROVADOS no exame e o Brush Pen (C-10) fundiu-se
 //! no G-pen — o porquê, as receitas medidas e o que falta ao motor: `docs/Painter/Pinceis/exames/canetas.md`.
 //! Escreva aqui as receitas e os testes da família; nada fora deste ficheiro (`docs/Painter/Pinceis/04_BANCADA.md` §9).
 //!
@@ -27,13 +27,8 @@ pub const MEIOS: &[ReceitaMeio] = &[
         opacity: Some(0.99),
         ..ReceitaMeio::digital("Ink", "Mapping", "Mapping Pen")
     },
-];
-
-/// As receitas EM ESTUDO — medidas, com o portão, mas fora da fábrica (REPROVADAS no exame; o porquê em
-/// `docs/Painter/Pinceis/exames/canetas.md`). A Ballpoint: o traço leve e o papel casam o MyPaint; o cruzamento
-/// sobre o vermelho pede a mistura ESPECTRAL dele (o K–M de constante única dá azul onde ele dá violeta-cinza).
-pub const EM_ESTUDO: &[ReceitaMeio] = &[
-    // C-7 — a esferográfica (MyPaint `deevad/ballpen`, CC0): translúcida e macia, a tinta e o tamanho pela pressão, e
+    // APROVADA na J4 (`exames/efeitos.md` 2.ª ronda): a mistura ESPECTRAL do MyPaint no cruzamento e a dureza pela
+    // pressão a 200 px. C-7 — a esferográfica (MyPaint `deevad/ballpen`, CC0): translúcida e macia, a tinta e o tamanho pela pressão, e
     // no traço LEVE a tinta não fura — esbate em fiapos; o traço compõe-se UMA vez (o plano) com o pigmento, que sobre
     // o papel é o over e sobre outra tinta escurece (`exames/canetas.md` 2.ª onda).
     ReceitaMeio {
@@ -61,6 +56,10 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
         ..ReceitaMeio::digital("Ink", "Ballpoint", "Ballpoint")
     },
 ];
+
+/// As receitas EM ESTUDO — medidas, com o portão, mas fora da fábrica (REPROVADAS no exame; o porquê em
+/// `docs/Painter/Pinceis/exames/canetas.md`).
+pub const EM_ESTUDO: &[ReceitaMeio] = &[];
 
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[];

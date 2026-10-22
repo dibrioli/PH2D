@@ -359,7 +359,7 @@ fn falhas_do_cruzamento(nome: &str, (centro, escuro): ([f64; 3], [f64; 3])) -> V
 }
 
 fn receita_em_estudo(nome: &str) -> &'static ReceitaMeio {
-    EM_ESTUDO.iter().chain(super::canetas::EM_ESTUDO).find(|r| r.nome == nome).unwrap()
+    EM_ESTUDO.iter().chain(super::canetas::MEIOS).find(|r| r.nome == nome).unwrap()
 }
 
 /// ⭐ **A mistura ESPECTRAL cruza como o MyPaint** (2.ª ronda; o `BrushSpec::pigment_espectral`): o Glow e a Ballpoint
@@ -458,7 +458,7 @@ fn a_esferografica_de_200_px_nao_sai_em_contas() {
 #[ignore = "bancada: escreve os EM_ESTUDO em PH2D_EM_ESTUDO_DIR"]
 fn escreve_os_em_estudo() {
     let dir = std::path::PathBuf::from(std::env::var("PH2D_EM_ESTUDO_DIR").expect("PH2D_EM_ESTUDO_DIR"));
-    for r in EM_ESTUDO.iter().chain(super::canetas::EM_ESTUDO) {
+    for r in EM_ESTUDO {
         let p = crate::presets_de_fabrica::preset_do_meio(r);
         let f = ph2d_brush_presets::gravar(&dir, &format!("{}.ph2d-brush.png", r.nome), &p).unwrap();
         println!("[em estudo] {}", f.display());

@@ -60,16 +60,8 @@ Saturation. **Não tentados:** Glitter (M-5), Particles (M-6) — ver a fila.
   escuro na bateria (179,0,20) com o véu 4× (`pranchas/efeitos/overlay_glaze.png`) — o modo é uma linha do cartão.
   Luminosity e Saturation: ΔE ≤ 1,5 na bateria, e o Saturation do Rebelle não segue fórmula (decisão 7).
 
-## M-1 Glow — REPROVADO (em estudo)
-
-- Receita (Digital): a queda do libmypaint do `experimental/glow` (CC0; h 0,12 em 8 pontos rectos — o tecto da curva
-  é 8: com 11 o preset caía na curva de omissão) somada por dabs densos (passo 0,09, fluxo 0,45); pressão no tamanho
-  0,37; velocidade 0,3 com o ATRASO 0,04 s (o motor 1). Néon medido (pico · núcleo · halo · patamar): MyPaint 0,82 ·
-  18 · 52 · 0,26; nosso 0,79 · 18 · 50 · 0,26; o recto rápido 14 × 16 px, o vertical rápido 22 × 22.
-- Revisores r1 e r2 (média, acharam o MyPaint): (1) os cruzamentos sobre o vermelho a quase PRETO — a mistura
-  ESPECTRAL do MyPaint 2 (o `pigment` do Digital estraga o perfil: núcleo 18 → 40); (2) o CAROÇO escuro onde a caneta
-  pousa (o `slow_tracking` dele empilha dabs no arranque). A cabeça do traço rápido (r1) curou-se com o atraso.
-- Vizinho Mapping Pen 1,67. Custo p95 0,20 · 0,30 · 1,90 ms (load 14–18).
+## M-1 Glow — 1.ª ronda: néon do `experimental/glow` (queda do libmypaint h 0,12, passo 0,09, fluxo 0,45, `speedLag`
+0,04); reprovado pelos cruzamentos escuros e o caroço do arranque — curados na 2.ª ronda (abaixo). `git show 28c5a5bca9`.
 
 ## M-7 Sketchy Web — REPROVADO (em estudo)
 
@@ -89,8 +81,7 @@ o relevo pelo grão sem tirar tinta.
 
 ## Para a fila (coordenador)
 
-1. **Mistura espectral do Digital** (Glow; já na fila desde a Ballpoint da J3) — dono: `texturas` (modos do Digital).
-2. **Os dabs que empilham onde a caneta pousa** (o `slow_tracking` do MyPaint; Glow).
+1–2. ~~Mistura espectral; dabs empilhados~~ — feitos na 2.ª ronda (abaixo).
 3. **Metallic**: textura de vincos + relevo pelo grão que não fura o pigmento (Impasto) — motor médio.
 4. **Particles (M-6)**: partículas com física (CAP-24: estado por partícula que vive além do dab — gravidade, fluxo;
    o motor só emite dabs no ponto do traço) — grande. Os oráculos que correm não o mostram: o `Random Particles` do
@@ -99,3 +90,41 @@ o relevo pelo grão sem tirar tinta.
 6. Sem UI ainda (só pelo preset): `wire_sorteio`, `wire_cordas`.
 7. A base da cena «sobre» do Rebelle para os efeitos é o Marker dele (rectângulo, orla escura): todos os revisores
    acharam o original por ela. Uma base que a imite tiraria o sinal da bancada (o nosso Marker Bullet não o faz).
+
+## 2.ª ronda (21/10) — a mistura espectral; Ballpoint APROVADA, Glow curado não aprovado
+
+**Motor** (aditivo, neutro ao bit; portão + mutação `scratchpad/efeitos2/mutacao.sh`, controlo verde, todas SANGRAM):
+1. `BrushSpec::pigment_espectral` (`9524b6f326`, `espectral.rs`): a lei do MyPaint 2 — `libmypaint` 1.6.1, **licença
+   ISC conferida no artefacto instalado** (`pacman -Qi libmypaint`; tabelas copiadas com o aviso). 10 bandas, média
+   geométrica pesada, peso `a/(a+(1−a)·αb)` (alfa recto: numa CAMADA o azul ralo é azul a α baixo); o papel quase-branco
+   opaco continua a não ser pigmento. Potências polinomiais (HR-5). Na camada (a do oráculo): Ballpoint 66,72,122 ×
+   MyPaint 64,74,121 (K–M 58,63,86); Glow 48,72,127 × 43,73,131 e o anel grená 82,56,90 × 75,52,90. Portão
+   `a_mistura_espectral_cruza_como_o_mypaint` (+ mutação permanente «o K–M»); S1 (peso sem αb), S2 (porta sempre K–M).
+2. **O «caroço» NÃO são dabs empilhados** — medido nos dabs do libmypaint (`efeitos2/dabs.c`): o `slow_tracking`
+   mantém 5,3 px entre dabs desde o 1.º; o caroço é a DUREZA a v = 0 (0,238 × 0,129 a 300 px/s × 0,051 a 2 500,
+   `hardness ← speed1`). ⇒ `Dynamics::speed_hardness` («Speed softness»: `k·ln((Γ+300)/(Γ+v))`, Γ 17,6) e
+   `Dynamics::pressure_hardness` («Pressure hardness»: `k·p`), no `DabTilt::dureza` (lido por `at_dab`; device e
+   caches recusam o lote); e `passo_pela_pressao` segue também a velocidade (o fio rápido sem contas). `0cf5a7d62b`.
+   Portões `a_mao_lenta_endurece_a_queda`, `a_dureza_da_velocidade_e_a_curva_do_mypaint`, `o_passo_segue_a_velocidade`,
+   `a_esferografica_de_200_px_nao_sai_em_contas`; H1–H3 sangram. Painel 21 → 23 linhas.
+
+**C-7 Ballpoint — APROVADA** (sai do `EM_ESTUDO` das canetas para a fábrica `Digital/Ink/Ballpoint`): a receita da J3 +
+espectral + `pressureHardness 0,15` (contas a 200 px 0,044 → 0,006; MyPaint 0,0125). Régua **440/454**
+(`ballpoint_regua.txt`); vizinho Graphite HB **d 0,938**; prancha `pranchas/efeitos/ballpoint_r2.png`. Razão: a
+esferográfica de caderno — translúcida, fiapos no traço leve, e o azul sobre o vermelho em violeta-cinza. Revisor cego
+(sonnet, novo): acertou 3/6 (baixa), escolheu o NOSSO como original nos dois `tamanhos` (média-baixa); diferenças só de
+confiança baixa e contraditórias («o 200 px de um mais cheio», «pontilhado da rampa: pode ser semente») — decisão 12:
+não reprova. Custo p95 0,13 · 0,52 · 1,29 ms (5/40/200), RSS 27–31 MiB, load 8–9. Portões: `cada_caneta_se_reconhece_
+pela_foto`, `a_mistura_espectral…`, `a_esferografica_de_200_px…` (com mutação), e os da fábrica (byte, receita, miniatura,
+contagem) verdes.
+
+**M-1 Glow — CURADO, NÃO APROVADO** (fica `EM_ESTUDO`; regra de custo: 2.ª ronda é a última): espectral, `hardness 0,1`
+com a queda descontada (`néon(0,1+0,9u)`), `speedHardness 0,059`, `passo_pela_pressao`. Os cruzamentos grenás e o
+caroço do arranque casam (`pranchas/efeitos/glow_r2.png`); régua 412/454; vizinho Mapping Pen d 1,48. Revisor cego
+(sonnet): 3/6, média nos `tamanhos`: **o 200 px do MyPaint tem o corpo «em contas» e o arranque pequeno; o nosso é liso
+com um disco grande no arranque** — a dureza pela velocidade não escala com o tamanho (o caroço a 200 px é grande de
+mais) e o MyPaint deixa ver os dabs. Custo p95 0,14 · 0,79 · 1,51 ms, RSS 25 MiB, load 5–7.
+
+**Fila (não feito, ordem de custo do coordenador):** Glow — o caroço que não cresça com o raio a 200 px (o `k` pelo
+tamanho, ou o atraso em px) e as contas do MyPaint a 200 px. Sketchy Web (os rápidos do Krita param a meio; fio da recta
+mais claro; teia irregular) e Metallic (vincos + relevo sem furar a tinta) — inalterados desde a 1.ª ronda.

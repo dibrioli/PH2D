@@ -1584,3 +1584,40 @@ não medido.
 2. A lei W6d com `DISTANTES` no relógio (o §20.2). 3. A anomalia da r5b (§12). 4. A família (b) (37–38). 5. Os
    zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.
 6. A suíte no fecho da onda (não corre desde o §45).
+
+## 55. A lei W6d com `DISTANTES` no relógio (§20.2) — os distantes não pesam; o ENQUADRAMENTO sim (22/10, medido, nada no produto)
+
+Régua fora do git `target/w6g/distantes_custo_regua.rs` (3 testes; registe o mod em `tests/it/main.rs` só para correr),
+logs `target/w6g/distantes_custo_{1,2,3}.log`. O molde do `custo` da `medida_luz2d_w6d` (FHD, `DEGRAU_PADRAO`, sem
+rebote): lei W6d (`borda_vertice: None` + `sem_os_cantos`) × o padrão de hoje (a 10 + 9 com os cantos, §28), 9
+rodadas intercaladas no mesmo processo, o MÍNIMO da C3 (preenche + visibilidade + fina); a lei W6d de novo como
+controlo (±0,2…±2,3 %). `load` 17–32 (as outras linhas): só os relativos do mesmo processo contam.
+
+**(a) Os zooms da vista de fábrica não põem distantes** (0 em 1 · 1,6 · 2,5 · 4, cenas 5 e 6): as lâmpadas ficam
+dentro da grade. A varredura de câmeras (centro −6…6 × −3…3, altura 1,5 e 2,5) acha distantes em 36 de 56 (cena 5,
+até 3) e 14 de 56 (cena 6, até 2).
+
+**(b) Com e sem distantes, as parcelas** (ms; % do padrão sobre a lei W6d com a MESMA escolha de distantes):
+
+| cena · câmera | dist | W6d C3 com / sem dist | padrão com / sem | padrão − W6d: borda · fina (sem dist) |
+|---|---|---|---|---|
+| 5 · [−6, −1] h 2,5 | 3 | 2,351 / 2,198 | 2,487 (+5,8 %) / 2,321 (+5,6 %) | +0,040 · +0,086 |
+| 5 · [6, −1] h 2,5 | 3 | 2,614 / 2,425 | 2,911 (+11,3 %) / 2,746 (**+13,2 %**) | +0,065 · +0,251 |
+| 5 · zoom 1,6 | 0 | 3,630 / 3,625 | 3,825 (+5,4 %) / 3,827 (+5,6 %) | +0,052 · +0,177 |
+| 5 · zoom 1 (a régua do alvo) | 0 | 3,047 / 3,031 | 3,171 (+4,1 %) / 3,177 (+4,8 %) | +0,049 · +0,088 |
+| 6 · [0, −3] h 1,5 | 2 | 1,931 / 1,738 | 2,067 (+7,0 %) / 1,895 (+9,0 %) | +0,037 · +0,126 |
+| 6 · zoom 4 | 0 | 1,534 / 1,535 | 1,671 (+8,9 %) / 1,655 (+7,8 %) | +0,042 · +0,084 |
+| 6 · zoom 1 (a régua do alvo) | 0 | 2,090 / 2,090 | 2,141 (+2,4 %) / 2,148 (+2,8 %) | +0,041 · +0,010 |
+
+⇒ **Os distantes custam o mesmo às duas leis** (+0,15…+0,19 ms, na fina e na visibilidade): a lei W6d com eles no
+relógio não muda o relativo. **O alvo «C3 ≤ +5 % sobre a lei W6d» só foi medido no zoom 1** (+2,4…+4,8 %); noutras
+câmeras das MESMAS cenas o padrão paga +5,4…+13,2 % — a borda dos cantos (+0,04…+0,065 ms, quase fixa) e a fina dos
+cantos (+0,01…+0,25 ms, cresce com os cantos à vista). Em absoluto: +0,05…+0,32 ms por quadro a FHD Baixa.
+
+## 56. ABERTO (por ordem — substitui o §54)
+
+1. **Decisão do dono:** o alvo dos +5 % vale para toda câmera das cenas 5 e 6, ou só para a vista de fábrica (onde
+   passa)? Se para toda: o custo dos cantos na fina e na borda (§55 b) é a próxima rodada (o kill-criterion do §1, a
+   régua de registos do §20.1) — e os zera/limpa por carimbo (§29.5, ~0,008 ms) não chegam para ela.
+2. A vista nos níveis de cima: +3,62 ms de borda em n = 11–12 a 2160p Alta (§54.1).
+3. A anomalia da r5b (§12). 4. A família (b) (37–38).

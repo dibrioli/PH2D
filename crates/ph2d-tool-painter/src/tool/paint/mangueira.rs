@@ -181,10 +181,7 @@ impl PainterTool {
     }
 
     /// A imagem `k` da ponta como a preset a leva: `(silhueta cinzenta, w, h)` e o RGBA quando há cor.
-    pub(super) fn imagem_da_mangueira(
-        &self,
-        k: usize,
-    ) -> Option<ImagemDaPonta<'_>> {
+    pub(super) fn imagem_da_mangueira(&self, k: usize) -> Option<ImagemDaPonta<'_>> {
         if k == 0 {
             let img = self.paint.shape_image.as_ref()?;
             return Some((img.parts(), self.paint.shape_layers.rgba_da_imagem()));

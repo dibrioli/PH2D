@@ -51,6 +51,7 @@ pub mod intent;
 pub mod intent_apply;
 mod intent_apply_fade;
 mod intent_apply_path;
+mod intent_seek;
 pub mod nest;
 pub mod nest_map;
 pub mod onion;

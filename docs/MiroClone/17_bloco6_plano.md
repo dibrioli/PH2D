@@ -423,6 +423,40 @@ vivo 10 → 11, `Field::Birth` (ALL 40 → 41), `Field::InkBody` leva `clean`. O
 ecrã, tinta em px de ecrã: perto 4,49 × longe 1,51; botão 0,15 → 1,51; limiar +2,5), `a_lost_release_with_the_shape_shown_…`,
 GPU `no_hand_stroke_paints_far_outside_its_box` (antes 82/60/4/5 px, agora 0), legado `v16`. Mutações: 11/11 sangram.
 
+### Rascunho/Final na barra da FORMA (22/10, decisão do dono — o R1)
+
+**Oráculo** (`ferramentas/excalidraw_oracle/sonda_w23_sloppiness.mjs`, Excalidraw 0.18.1 montado; saída
+`saidas/w23_sloppiness/w23_sloppiness.json`): o grupo «Sloppiness» (Architect · Artist · Cartoonist) aparece para
+`rectangle`, `ellipse`, `diamond`, `arrow`, `line`, `embeddable`; **não** para `text`, `freedraw`, `image`, `frame`. Fica
+logo depois de «Stroke style» (antes de «Edges» / «Arrow type»). Selecção mista com um tipo que o tem: aparece. Mistura de
+roughness 1 + 0: **nenhuma** opção acesa. O clique **PÕE** o valor em toda a selecção (também no `freedraw`/`text` que não
+mostram o grupo); clicar a opção acesa não muda nada.
+
+**Desenho.** `Item::Look(false|true)` = Final/Rascunho (na tabela no FIM: nenhum id se move), depois do tracejado nas barras
+de formas, setas, ambas, imagens (a moldura é `sketchable`, W15) e da forma da caneta (`Selected::Ink`); filtrado para só
+aparecer quando `sketch_targets` alcança a SELECÇÃO — senão o clique trocaria o quadro inteiro, uma mentira numa barra da
+forma (traço livre, nota, frame, vídeo nunca a mostram). Porta única no editor: `Editor::sketch_look` (`Some(true)`,
+`Some(false)`, `None` misturado) e `Editor::set_sketch`; `toggle_sketch = set_sketch(!sketch_lit)` e `sketch_lit =
+sketch_look == Some(true)` — a luz da opção Rascunho é sempre a da onda, o clique é o da onda com o valor escolhido.
+Recusado: um 3.º estado «Cartoonist» (o nosso rascunho tem um só grau); a opção nas notas (o Excalidraw não a dá ao texto;
+a onda continua a alcançá-las).
+
+**Costura que a foto apanhou:** com a opção, a barra da forma ia de ponta a ponta a 1366 (por cima da barra curta).
+`float_bar::strip_rects_fitting`: a barra fica à direita da barra curta e, sem lugar, parte-se nas linhas mínimas de larguras
+parecidas (um grupo nunca se parte) — 2 linhas a 1366, 1 a 1930.
+
+**Cena 28:** o exemplo da ferramenta abre SELECCIONADO (a barra dele à vista); lição ② ensina «linha reta = Final, ondulada =
+Rascunho». Fotos `ferramentas/w23_fotos/cena28_1366.png`, `cena28_1930.png`.
+
+**Gates** (`smart_hand::sketch_ink`; a luz lida como PINTADA — `board_bar::PAINTED_ON`, `cfg(test)`: o fundo aceso e a cara
+dos botões não passam pelo gravador da cena): `the_shapes_own_bar_sketches_it_and_its_light_is_the_waves` (zoom 0,293 e 1;
+tinta +2,5 px; Final devolve a tinta < 0,25 px; modo do quadro intacto), `a_mixed_selection_lights_neither_and_final_sets_both`,
+`the_option_shows_only_where_the_wave_reaches_the_selection`, `the_shapes_bar_never_covers_the_toolbar_nor_leaves_the_board`
+(1366, 1024, 800, 700); cena `the_block6_scene_arms_its_four_stations` (a opção na barra do exemplo). Vermelho primeiro: «Look
+não está pintado». **Mutações 7/7 sangram** (luz por `sketch_lit`, clique por `toggle_sketch`, sem o filtro do alcance,
+`strip_rects_at` em vez de `_fitting` — sobreviveu a 1366/1024 até o gate ganhar 800/700 —, `room = area`, `sketch_look`
+sem `Some(false)`, cena sem a selecção).
+
 ## §10 — M4: o oráculo Excalidraw `next` (0.18.0-143b5b6) corrido sobre cenas NOSSAS (20/10)
 
 Comandos, armamento e tabelas inteiras: [`ferramentas/excalidraw_oracle/README.md`](ferramentas/excalidraw_oracle/README.md)

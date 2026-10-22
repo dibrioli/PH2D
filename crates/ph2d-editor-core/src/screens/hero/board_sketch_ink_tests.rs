@@ -584,7 +584,7 @@ fn the_option_shows_only_where_the_wave_reaches_the_selection() {
 /// 28, 22/10: uma linha só ia de ponta a ponta, por cima das ferramentas).
 #[test]
 fn the_shapes_bar_never_covers_the_toolbar_nor_leaves_the_board() {
-    for w in [1366.0, 1024.0] {
+    for w in [1366.0, 1024.0, 800.0, 700.0] {
         let mut t = T::new();
         t.vp_w = w;
         t.paint();

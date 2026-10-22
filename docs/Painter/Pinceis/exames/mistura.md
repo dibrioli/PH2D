@@ -6,32 +6,18 @@ Régua: `exames/<slug>_regua.txt`. Identidade por foto: `exames/mistura_foto.py`
 
 **Aprovados: Kneaded Eraser (L-8) · Hard Eraser (L-9)** (Digital, `Eraser/Soft|Hard`) · **Blender Soft (L-1)** (Wet,
 ferramenta Blend, `WetPainter/Blend/Soft`). **Reprovados:** Smudge Finger (L-3) · Blur (L-5) (em estudo, com receita) ·
-Blender Grainy (L-2) · Water Brush (L-6) · Dry/Lift (L-7) (motor). **Fundido:** Smudge Spiky (L-4) → Smudge Finger.
+Blender Grainy (L-2) · Dry/Lift (L-7) (motor feito, exame por fazer). **Curado, não aprovado:** Water Brush (L-6). **Fundido:** Smudge Spiky (L-4) → Smudge Finger.
 
 ## A bancada (`ecdb50bd6e`)
 
-A foto é a camada SOBRE o papel (a borracha só mexe no alfa; com alfa 255 sai ao byte) · a ferramenta que não pinta
-(`Pincel::nao_pinta`) leva as faixas «sobre» da base do seu meio, também na biblioteca · `exame.sh` corre na árvore
-dele e usa a escala 1 sem a largura do recto do oráculo · o Rebelle pintava o 1.º traço depois de TROCAR de ferramenta
-ao tamanho da base (`cruza_1` do Smudge 68 × 15 px): `PH2D_REBELLE_REPETE_TROCA=1` e 10 fotos refeitas em
-`fixtures/rebelle_mistura/` (README com o cabeçalho).
+A foto é a camada SOBRE o papel; a ferramenta que não pinta leva as faixas da base do seu meio; o Rebelle refeito com
+`PH2D_REBELLE_REPETE_TROCA=1` (`fixtures/rebelle_mistura/README.md`).
 
-## A fábrica das FERRAMENTAS (2.ª onda, autorizada pelo coordenador; aditiva)
+## A fábrica das FERRAMENTAS (2.ª onda, `bcb4e5425d`; o detalhe no commit)
 
-1. `ReceitaFerramenta { receita, modo }` + `familias::FERRAMENTAS_WET` (a lista ao lado do `Familia`; a família declara
-   `WET_FERRAMENTAS`): o gerador, a contagem e `receitas()` lêem-nas; os literais `Receita` das outras não mudam.
-2. **A largura de uma ferramenta** (`presets_de_fabrica::largura_da_ferramenta`): a DIFERENÇA da tela com e sem o
-   traço, sobre uma faixa da base (`receitas_de_fabrica::base_da_ferramenta`: Wet Round para Wet/Dry, Ink Brush para o
-   resto — a Acrylic riscava a faixa, o Marker Bullet tem tecto de 101 px) com a orla de baixo na linha do traço; a
-   meia altura (a ¼ a franja de um misturador dobrava num degrau: 36 → 75 px); a cena é a do raio do MOTOR nas duas
-   leis (com a base a acompanhar o pedido, a tabela e a promessa mediam 52 × 48 px). Os pincéis que pintam: a lei de antes.
-3. **A miniatura de uma ferramenta** (`wetpaint_preset/preview.rs::faixa_da_ferramenta`): uma faixa vermelha cheia por
-   baixo do S (só quando `EraseAlpha` ou a ferramenta molhada ≠ Paint) — as borrachas saíam EM BRANCO. Os outros ao byte.
-4. **A matriz: o grupo «ferramenta»** (`ferramentas/matriz_ferramenta.py`, escala própria `matriz/escala_ferramenta.json`:
-   1,4826·MAD sobre 65 fotos de ferramentas do Rebelle): resto · largura · orla · arrasto abaixo e acima · orla vertical
-   nos cruzamentos 2 e 3, A e B. Só no vector de uma ferramenta (`"ferramenta": true` no `meta.json`): a distância
-   entre pincéis que pintam não muda (a escala congelada também não). A Blender Soft: Kneaded Eraser a 2,88.
-5. Bancada: `PH2D_EXAME_ESCALA_BASE` (as faixas da base fora da escala da ferramenta) e a base pelo modo.
+`ReceitaFerramenta`/`FERRAMENTAS_WET` · a largura de uma ferramenta = a DIFERENÇA sobre a faixa da base
+(`base_da_ferramenta`: Wet Round para Wet/Dry, Ink Brush o resto) · a miniatura sobre uma faixa vermelha · o grupo
+«ferramenta» da matriz (`matriz/escala_ferramenta.json`) · `PH2D_EXAME_ESCALA_BASE`.
 
 ## L-9 Hard Eraser — APROVADO
 
@@ -88,23 +74,39 @@ ao tamanho da base (`cruza_1` do Smudge 68 × 15 px): `PH2D_REBELLE_REPETE_TROCA
 - Modo Blur do Digital, Strength 0,2: a orla da faixa abre 4 px, como o Krita `x) Filter Blur`; régua 80/80. O revisor
   leu o original e o nosso como «nada pintado» — falta um oráculo em que o desfoque se VEJA.
 
-## L-2 · L-6 · L-7 — REPROVADOS (motor; a fábrica já os aceitaria)
+## Motor J4 (`8b80f021cc`, `1257a6e547`; portões `familias::mistura::motor::*`, verdes; neutro = ao bit)
 
-- **L-2 Blender Grainy** (Rebelle `BLEND/Default/Textured`, refeito: manchas granuladas): o Blend do Wet IGNORA o grão
-  — 6 texturas (Noise 30/60, Voronoi, Dots, Clouds, Musgrave) dão a MESMA imagem ao byte (md5 iguais). Falta o grão a
-  modular a máscara do misturador (`trail` do Wet; os ficheiros estavam a ser editados por outra família).
-- **L-6 Water Brush** (`WATER/Default/Soft`, refeito; a A é a água a ciano, compara-se a B): o Rebelle ABRE branco na
-  faixa molhada (resto 0,14 numa mancha de 114 px, com a orla escura onde a água pára). O nosso Wet não abre: resto
-  0,87–1,00 com `wetLift` 1, `waterPerDab` 4, `waterCap` 30, `leveling` 2, `capillary` 1, `extBackrun` 2. Falta a água
-  EMPURRAR o pigmento suspenso para fora da pegada (um knob novo em `tuning/defs.rs`, ocupado por outra família).
-- **L-7 Dry/Lift** (`DRY/Default/Sponge`, refeito): o Rebelle deixa a mancha seca com uma ORLA nítida onde ela encontra a
-  tinta ainda molhada; o nosso Dry congela a mancha com as riscas das cerdas e sem orla. Falta a orla do secador.
+- **L-6 Water Brush — `Knob::WaterPush`** (`tools::apply_wet_push`): a água leva `push·w` do pigmento SUSPENSO de cada
+  célula molhada para a frente da água de cada lado (≤ 6,6 r, linha a linha, pela normal; `w = e^{−(|s|−r)/2r}` fora da
+  pegada; 15 % numa rampa de 1 r antes da frente, 85 % pelo caminho); sobre tinta SECA arrasta pelo traço `0,5·push` do
+  que o `wetLift` dissolveu (o escorrido). Bancada (escala 0,56 = 38 px, base Wet Round): eixo 0,11 × Rebelle 0,13;
+  ±30/40 px 0,37/0,63 × 0,34/0,50; as linhas a x 380 · 620 × 380 · 630. Mutações que sangram: empurrão desligado ·
+  frente sem «passa da pegada» · tudo pelo caminho.
+  Preset de exame (fora da fábrica): o Wet Round modo **Wet** + `waterPush 0,87`, `wetLift 0,1`. Régua 36/68 (os ✗: a A
+  do Rebelle é a água a CIANO, e as faixas da base). Vizinho Kneaded Eraser d 2,656. Prancha `pranchas/mistura/water_brush.png`.
+  Revisor cego r1 (sonnet, baixa): não achou o oráculo — juntou o nosso ao vizinho e pôs o Rebelle de «terceiro»: *«mais
+  largo e mais vermelho … "dentes" arredondados nos cruzamentos de baixo»*. **CURADO, NÃO APROVADO** (regra de custo:
+  sem 2.ª ronda): o resto é a BASE (as faixas do Wet Round 33 px e pálidas × 44–49 do Watercolor Round do Rebelle) e o
+  escorrido na faixa seca mais fraco que o «U» do Rebelle (a `wetLift 0,2` ele cresce; por medir na prancha).
+- **L-2 Blender Grainy — o Grain na máscara do Blend** (`Trail::accumulate_blend_grao`, a porta da lane e o `dab_route`):
+  com o Grain armado ele substitui as cerdas na máscara; sem Grain, a porta antiga ao bit. As seis texturas dão agora
+  cinco imagens. Portão `o_grao_modula_o_misturador` (752 · 801 células; mutação «grão ignorado» 0 · 0). Exame NÃO feito
+  (ordem de custo): melhor variante medida = Blender Soft + Noise 12 + `intensity 0,2` à escala 1,0 (manchas como o
+  Rebelle «Textured», mas mais estreito: ~70 × ~95 px, e o rasto abaixo mais longo).
+- **L-7 Dry/Lift — `Knob::DryerEdge`** (`tools::apply_dry_edge`): antes de selar, nivela a tinta suspensa (caixa 0,2 r,
+  onde a maioria tem pigmento) e puxa para dentro da borda a faixa molhada de 0,15 r de cada lado. Portão
+  `o_secador_assenta_e_deixa_orla` (0,5: dentro 1,225 · fora 0,738 · desvio 0,555 → 0,272). Bancada: a linha por dentro
+  1,2–1,3 e o claro 0,56–0,78 (Rebelle 1,37 · 0,84), mas a mancha sai ESTREITA: a faixa do Wet Round nasce com ~28 px e
+  alarga para 60 a secar; o secador congela-a fresca. Exame NÃO feito; o que falta é da aguarela (a faixa a nascer larga).
+- **O vermelho que cobre mais que o azul** (medido, não curado): cobertura em RGB linear na mesma escova (vermelho seco
+  y 470 · azul no papel y 310): Rebelle Round Hard 2 0,766 · 0,752 (azul/vermelho 0,98); nosso Wet Round 0,416 · 0,394
+  (0,95), Gouache Flat 0,888 · 0,817 (0,92), Ink Brush 0,988 · 0,980 (0,99). Em sRGB a razão é ~1 (Wet Round 1,10 ×
+  Rebelle 1,12). ⇒ não é K–M do pigmento: é o alpha-over do render feito em sRGB (o canal que vai a ~0 cai mais depressa
+  em luz linear) e só se vê na tinta rala. A cura (compor em linear / o `km_glaze`) muda TODOS os presets — não aplicada.
 
-## Custo (`exame.sh --custo`, smoke)
+## Custo (`exame.sh --custo`, smoke, load 10–27)
 
-p95 a 5 · 40 · 200 px: **Blender Soft 0,72 · 1,23 · 7,30 ms**, RSS 69–97 MiB (load 19–21) · **Kneaded Eraser 0,14 · 0,27 · 1,07 ms**, RSS 26 MiB (load 24–27) · **Hard Eraser 0,15 ·
-0,94 · 4,74 ms**, RSS 26 MiB (load 10–14). Nenhum quadro > 16,7 ms. O relógio sob carga é indicativo (re-medir calmo
-na J5). Rato e caneta: a pressão leva a FORÇA nas duas (a bateria «sobre» é à pressão 1; a rampa só se vê sobre tinta).
+p95 a 5 · 40 · 200 px: Blender Soft 0,72 · 1,23 · 7,30 ms (RSS ≤ 97 MiB) · Kneaded 0,14 · 0,27 · 1,07 · Hard 0,15 · 0,94 · 4,74.
 
 ## Portões (verdes por nome)
 

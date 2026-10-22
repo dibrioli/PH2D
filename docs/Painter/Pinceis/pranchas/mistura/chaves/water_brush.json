@@ -1,0 +1,24 @@
+{
+ "prancha": "water_brush.png",
+ "linhas": [
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "sobre_A": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "sobre_B": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  }
+ },
+ "quem": {
+  "oraculo": "default_soft",
+  "nosso": "Water Brush (escala 0.56)",
+  "vizinho": "Kneaded Eraser (d 2.656, limiar 0.591)"
+ }
+}

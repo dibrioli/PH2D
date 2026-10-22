@@ -111,3 +111,10 @@ Em cada passo: (1) rode o comando, (2) olhe a cena, (3) compare, (4) saiba o que
 9. O contentor do Envelope entrar na população do autokey é suposto, NÃO verificado.
 10. Ficheiros do Inspector ainda fora do ESCOPO (ex.: `joint.rs` tipo/Active/Collide Connected).
 11. De F24d §6, inalterados: perf de `marcas()` · menu do botão direito na linha de grupo · perf de `linhas::layout` · ADR «o canal de qualquer propriedade» · gate de fecho da LINHA · `CLAUDE.md` §5.1 UI/UX ao fechar (link do handoff; `PH2D_AUTOKEY_SMOKE=1..15`; NÃO alterado nesta onda) · undo da timeline separado do do vetor.
+
+## 7 — Smoke do dono (22/10)
+
+**Cenas 11–15: OK, salvo as juntas** — palavras do dono: *«algumas propriedades das juntas ainda não
+gravam keys»* (não disse quais). Próxima onda começa aqui: achar QUAIS (todo campo pintado no cartão
+da junta, em todos os tipos de junta — inclusive o que ficou fora do ESCOPO do gate, ex. `joint.rs`
+tipo/Active/Collide Connected), o mecanismo de cada um, e curar no mesmo bloco.

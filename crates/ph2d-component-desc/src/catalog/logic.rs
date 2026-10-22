@@ -30,6 +30,8 @@ const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
         kind,
         policy: Propagation::Propagate,
         is_ref: None,
+        name: "",
+        key: "",
     }
 }
 
@@ -193,35 +195,35 @@ const WEAPON_FIELDS: &[FieldDesc] = &[
 /// ⚠️ **A vida AGORA não é campo** (`HealthNow` é derivado e não registado): o descritor descreve o
 /// que o artista AUTORA, e o que a corrida produz não entra no ficheiro nem no `Ctrl+Z`.
 const HEALTH_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.health_fields.1", K::Scalar),
-    f(2, "component.field.health_fields.2", K::Scalar),
-    f(3, "component.field.health_fields.3", K::Scalar),
-    f(4, "component.field.health_fields.4", K::Toggle),
-    f(5, "component.field.health_fields.5", K::Scalar),
-    f(6, "component.field.health_fields.6", K::Scalar),
-    f(7, "component.field.health_fields.7", K::Scalar),
-    f(8, "component.field.health_fields.8", K::Scalar),
-    f(9, "component.field.health_fields.9", K::Scalar),
-    f(10, "component.field.health_fields.10", K::Scalar),
-    f(11, "component.field.health_fields.11", K::Scalar),
-    f(12, "component.field.health_fields.12", K::Toggle),
-    f(13, "component.field.health_fields.13", K::Scalar),
-    f(14, "component.field.health_fields.14", K::Scalar),
-    f(15, "component.field.health_fields.15", K::Scalar),
+    f(1, "component.field.health_fields.1", K::Scalar).named("max"),
+    f(2, "component.field.health_fields.2", K::Scalar).named("start"),
+    f(3, "component.field.health_fields.3", K::Scalar).named_as("invincible", "invincible_s"),
+    f(4, "component.field.health_fields.4", K::Toggle).named("overheal"),
+    f(5, "component.field.health_fields.5", K::Scalar).named("regen"),
+    f(6, "component.field.health_fields.6", K::Scalar).named_as("regen_delay", "regen_delay_s"),
+    f(7, "component.field.health_fields.7", K::Scalar).named_as("shield", "shield_start"),
+    f(8, "component.field.health_fields.8", K::Scalar).named("shield_max"),
+    f(9, "component.field.health_fields.9", K::Scalar).named_as("shield_duration", "shield_duration_s"),
+    f(10, "component.field.health_fields.10", K::Scalar).named("shield_regen"),
+    f(11, "component.field.health_fields.11", K::Scalar).named_as("shield_regen_delay", "shield_regen_delay_s"),
+    f(12, "component.field.health_fields.12", K::Toggle).named("shield_blocks_excess"),
+    f(13, "component.field.health_fields.13", K::Scalar).named_as("armor", "armor_flat"),
+    f(14, "component.field.health_fields.14", K::Scalar).named("armor_percent"),
+    f(15, "component.field.health_fields.15", K::Scalar).named("dodge"),
     // ⚠️ **A EQUIPA é texto** — o fogo amigo desligado entre quem partilha o nome.
-    f(16, "component.field.health_fields.16", K::Text),
+    f(16, "component.field.health_fields.16", K::Text).named("team"),
     // ⚠️ **Vazio = calado**, a lei do consumidor de sinal desta casa.
-    f(17, "component.field.health_fields.17", K::Text),
-    f(18, "component.field.health_fields.18", K::Text),
-    f(19, "component.field.health_fields.19", K::Text),
-    f(20, "component.field.health_fields.20", K::Seed),
+    f(17, "component.field.health_fields.17", K::Text).named("on_damage"),
+    f(18, "component.field.health_fields.18", K::Text).named("on_heal"),
+    f(19, "component.field.health_fields.19", K::Text).named("on_death"),
+    f(20, "component.field.health_fields.20", K::Seed).named("seed"),
     // ⭐ O IMPACTO (plano 28, W5): a pausa da morte · o piscar · o empurrão aceite · os números.
-    f(21, "component.field.health_fields.21", K::Scalar),
-    f(22, "component.field.health_fields.22", K::Scalar),
-    f(23, "component.field.health_fields.23", K::Scalar),
-    f(24, "component.field.health_fields.24", K::Toggle),
-    f(25, "component.field.health_fields.25", K::Color),
-    f(26, "component.field.health_fields.26", K::Scalar),
+    f(21, "component.field.health_fields.21", K::Scalar).named_as("death_pause", "death_hitstop_s"),
+    f(22, "component.field.health_fields.22", K::Scalar).named_as("blink", "blink_s"),
+    f(23, "component.field.health_fields.23", K::Scalar).named_as("push_taken", "knockback_taken"),
+    f(24, "component.field.health_fields.24", K::Toggle).named_as("hit_numbers", "numbers"),
+    f(25, "component.field.health_fields.25", K::Color).named_as("number_color", "numbers_color"),
+    f(26, "component.field.health_fields.26", K::Scalar).named_as("number_size", "numbers_size"),
 ];
 
 /// ⭐⭐⭐ **O DANO** (plano 28) — os nove campos do `Damage`.
@@ -506,7 +508,8 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         HEALTH_FIELDS,
         &["ph2d::physics::RigidBody"],
-    ),
+    )
+    .coded("health"),
     // ⭐⭐⭐ **A BARRA DE VIDA** (plano 28, W4). ⚠️ **Depois da vida, e é a busca binária:**
     // `Health` < `HealthBar` na ordem dos bytes.
     //

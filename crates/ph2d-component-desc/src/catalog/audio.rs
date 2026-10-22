@@ -25,6 +25,8 @@ const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
         kind,
         policy: Propagation::Propagate,
         is_ref: None,
+        name: "",
+        key: "",
     }
 }
 

@@ -86,6 +86,7 @@ ph2d-symmetry = { path = "../ph2d-symmetry" }
 # exactamente o que se quer: o formato fica byte-idêntico e o `PROJECT_SCHEMA` não se mexe.
 # Não acrescenta crate nenhuma ao grafo (é uma feature da serde que já cá está).
 serde = { version = "1", features = ["derive", "rc"] }
+serde_json = "1"
 # postcard wire format for ComponentBlob serialization in the
 # ComponentRegistry (M14.3a). Same crate as ph2d-asset uses for the
 # cooked Prefab/Scene format — single canonical wire format.

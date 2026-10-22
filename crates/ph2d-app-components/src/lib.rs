@@ -287,6 +287,8 @@ pub mod inspector_visibility;
 mod instance_tags_tests;
 #[cfg(test)]
 mod smoke_desenho_e_corpo_tests;
+#[cfg(test)]
+mod property_names_tests;
 
 /// **A declaração da família** — a chave e os roteadores de smoke que ela POSSUI.
 ///

@@ -150,6 +150,7 @@ ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support
 ph2d-label-census = { path = "../ph2d-label-census" }
 # O StyLua fixado: os scripts das cenas já saem limpos do formatar-ao-salvar (CodeEditor I13).
 ph2d-code-format = { path = "../ph2d-code-format" }
+serde_json = "1"
 # A lei da soltura do editor de scripts: a cena 7 corre o que o arrasto escreve (CodeEditor item 8).
 ph2d-app-code = { path = "../ph2d-app-code" }
 # ⭐ O ESTADO de um agente de navegação (plano 30, W3) — o gate da cena lê `Status::Arrived`. Só nos

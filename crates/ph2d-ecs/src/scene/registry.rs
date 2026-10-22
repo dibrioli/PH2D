@@ -57,31 +57,7 @@ pub fn stable_type_id(canonical_name: &str) -> ComponentTypeId {
     u64::from_le_bytes(buf)
 }
 
-/// Errors raised by the registry on insert / serialize.
-#[derive(Debug)]
-pub enum RegistryError {
-    Decode(postcard::Error),
-    Encode(postcard::Error),
-    UnknownTypeId(ComponentTypeId),
-    EntityMissing(Entity),
-}
-
-impl std::fmt::Display for RegistryError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Decode(e) => write!(f, "ComponentRegistry decode error: {e}"),
-            Self::Encode(e) => write!(f, "ComponentRegistry encode error: {e}"),
-            Self::UnknownTypeId(id) => {
-                write!(f, "ComponentRegistry: unknown type_id 0x{id:016x}")
-            }
-            Self::EntityMissing(e) => {
-                write!(f, "ComponentRegistry: entity {:?} not in world", e)
-            }
-        }
-    }
-}
-
-impl std::error::Error for RegistryError {}
+pub use super::registry_value::{RegistryError, SetValueFn, ValueOfFn};
 
 /// Decode `bytes` and insert the resulting component onto `entity`.
 pub type InsertFromBytesFn = fn(&mut World, Entity, &[u8]) -> Result<(), RegistryError>;
@@ -150,6 +126,9 @@ pub struct ComponentTypeEntry {
     /// acrescenta **junto com a varredura por archetype que o lê**. Um campo sem leitor é uma
     /// aposta sobre a forma do leitor futuro.
     pub bevy_component_id: fn(&World) -> Option<bevy_ecs::component::ComponentId>,
+    /// O componente por nome de campo ([`super::registry_value`]).
+    pub value_of: ValueOfFn,
+    pub set_value: SetValueFn,
 }
 
 /// Manual registry of component types known to the spawn / save
@@ -240,6 +219,8 @@ impl ComponentRegistry {
             canonical_name,
             type_id: id,
             bevy_component_id: |world| world.component_id::<T>(),
+            value_of: super::registry_value::value_of::<T>,
+            set_value: super::registry_value::set_value::<T>,
             insert_from_bytes: |world, entity, bytes| {
                 let v: T = postcard::from_bytes(bytes).map_err(RegistryError::Decode)?;
                 let mut e = world

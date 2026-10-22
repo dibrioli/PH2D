@@ -90,9 +90,19 @@ pub struct ComponentDesc {
     ///
     /// ⏳ Ensinar cada documento a copiar-se é o que fecha isto — para o vetor é a **F4.6**.
     pub owned_document: bool,
+    /// ⭐ **O prefixo com que um SCRIPT o nomeia** (`"health"` em `"health.max"`) — o `snake` do
+    /// título do cartão (doc CodeEditor 08 §3.1). Vazio = os scripts ainda não o alcançam.
+    pub code: &'static str,
 }
 
 impl ComponentDesc {
+    /// O prefixo de código do componente ([`Self::code`]).
+    #[must_use]
+    pub const fn coded(mut self, code: &'static str) -> Self {
+        self.code = code;
+        self
+    }
+
     /// ⭐ **A chave das palavras de INTENÇÃO** (doc ObjectsAndComponents 01 §7.3, F6) — derivada da
     /// do nome (`component.<snake>.name` → `component.<snake>.keywords`), nunca um segundo literal.
     /// A busca do *Add Component* acha o componente por elas («fall» ⇒ *Physics Body*).
@@ -126,6 +136,7 @@ impl ComponentDesc {
             fields,
             requires: &[],
             owned_document: false,
+            code: "",
         }
     }
 
@@ -151,6 +162,7 @@ impl ComponentDesc {
             fields,
             requires,
             owned_document: false,
+            code: "",
         }
     }
 
@@ -172,6 +184,7 @@ impl ComponentDesc {
             fields,
             requires: &[],
             owned_document: false,
+            code: "",
         }
     }
 
@@ -208,6 +221,7 @@ impl ComponentDesc {
             fields,
             requires,
             owned_document: false,
+            code: "",
         }
     }
 
@@ -231,6 +245,7 @@ impl ComponentDesc {
             fields: &[],
             requires: &[],
             owned_document: false,
+            code: "",
         }
     }
 
@@ -253,6 +268,7 @@ impl ComponentDesc {
             fields: &[],
             requires: &[],
             owned_document: true,
+            code: "",
         }
     }
 

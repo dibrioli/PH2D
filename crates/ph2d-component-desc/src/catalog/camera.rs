@@ -32,6 +32,8 @@ const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
         kind,
         policy: Propagation::Propagate,
         is_ref: None,
+        name: "",
+        key: "",
     }
 }
 
@@ -50,13 +52,13 @@ const FOLLOW_FIELDS: &[FieldDesc] = &[
 
 /// Os campos da câmera.
 const CAMERA_FIELDS: &[FieldDesc] = &[
-    f(0, "component.field.camera_fields.0", K::Scalar),
-    f(1, "component.field.camera_fields.1", K::Vec2),
-    f(2, "component.field.camera_fields.2", K::Int),
-    f(3, "component.field.camera_fields.3", K::Toggle),
-    f(4, "component.field.camera_fields.4", K::Int),
+    f(0, "component.field.camera_fields.0", K::Scalar).named_as("height", "height_world"),
+    f(1, "component.field.camera_fields.1", K::Vec2).named("offset"),
+    f(2, "component.field.camera_fields.2", K::Int).named("priority"),
+    f(3, "component.field.camera_fields.3", K::Toggle).named("active"),
+    f(4, "component.field.camera_fields.4", K::Int).named("cull_mask"),
     // ⭐⭐⭐ **O DOLLY** (plano 24, W5) — a profundidade, em fracções da distância focal.
-    f(5, "component.field.camera_fields.5", K::Scalar),
+    f(5, "component.field.camera_fields.5", K::Scalar).named("dolly"),
 ];
 
 /// Os limites da fase — a caixa de que a JANELA não sai.
@@ -144,7 +146,8 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Camera,
         O::ANY,
         CAMERA_FIELDS,
-    ),
+    )
+    .coded("game_camera"),
     // ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — *quanto do movimento do mundo este objecto guarda*.
     // ⚠️ Ele mora na família da CÂMERA e nunca vive numa: o número inteiro dele é sobre o movimento
     // DELA, e é ali que o artista o procura (a mesma fronteira do `ShakeEmitter`, abaixo).

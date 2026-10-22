@@ -66,6 +66,8 @@ const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
         kind,
         policy: Propagation::Propagate,
         is_ref: None,
+        name: "",
+        key: "",
     }
 }
 
@@ -94,6 +96,8 @@ const NAME: &[FieldDesc] = &[FieldDesc {
     kind: K::Text,
     policy: Propagation::InstanceLocal,
     is_ref: None,
+    name: "",
+    key: "",
 }];
 
 const VISIBILITY: &[FieldDesc] = &[f(1, "component.field.visibility.1", K::Toggle)];
@@ -115,6 +119,8 @@ const INSTANCE_OF: &[FieldDesc] = &[FieldDesc {
     kind: K::Ref,
     policy: Propagation::Propagate,
     is_ref: Some(crate::RefKind::Object),
+    name: "",
+    key: "",
 }];
 
 // ── Ordenação: a família PILOTO da F0 (a §7 do Inspector) ──────────────────────────
@@ -157,6 +163,8 @@ const TAGS: &[FieldDesc] = &[FieldDesc {
     kind: K::Ref,
     policy: Propagation::Propagate,
     is_ref: Some(RefKind::Tag),
+    name: "",
+    key: "",
 }];
 
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).

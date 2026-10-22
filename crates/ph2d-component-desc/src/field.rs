@@ -26,6 +26,36 @@ pub struct FieldDesc {
     /// Se o campo é uma REFERÊNCIA a outra coisa, o que ele referencia — para o remap em
     /// toda propagação (F4). `None` = valor puro.
     pub is_ref: Option<RefKind>,
+    /// ⭐ **O nome com que um SCRIPT o lê e escreve** (`ph2d.get(e, "<code>.<name>")`) — o `snake`
+    /// do rótulo inglês, a lei do Godot (`capitalize(name)` = rótulo; doc CodeEditor 08 §3.1, gate
+    /// `o_nome_de_codigo_e_o_rotulo`). Vazio = ainda sem nome: o script não o alcança.
+    pub name: &'static str,
+    /// A chave serde do campo na struct, quando difere do [`Self::name`] (`height_world` ×
+    /// `height`). Vazio = a mesma.
+    pub key: &'static str,
+}
+
+impl FieldDesc {
+    /// O nome de código; a chave serde é a mesma.
+    #[must_use]
+    pub const fn named(mut self, name: &'static str) -> Self {
+        self.name = name;
+        self
+    }
+
+    /// O nome de código e a chave serde, quando diferem.
+    #[must_use]
+    pub const fn named_as(mut self, name: &'static str, key: &'static str) -> Self {
+        self.name = name;
+        self.key = key;
+        self
+    }
+
+    /// A chave do campo no valor serde do componente.
+    #[must_use]
+    pub const fn serde_key(&self) -> &'static str {
+        if self.key.is_empty() { self.name } else { self.key }
+    }
 }
 
 /// **Que controlo edita este campo** — espelha o vocabulário do `ParamRow` do Motion (12

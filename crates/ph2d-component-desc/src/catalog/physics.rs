@@ -97,6 +97,8 @@ const fn r(field_id: u16, label_key: &'static str) -> FieldDesc {
         kind: K::Ref,
         policy: Propagation::Propagate,
         is_ref: Some(RefKind::Object),
+        name: "",
+        key: "",
     }
 }
 

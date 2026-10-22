@@ -5176,6 +5176,7 @@ dependencies = [
  "ph2d-vector",
  "postcard",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -6093,6 +6094,7 @@ dependencies = [
  "ph2d-warp-style",
  "postcard",
  "serde",
+ "serde_json",
  "smallvec",
 ]
 

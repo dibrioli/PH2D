@@ -179,4 +179,4 @@ seguinte; o resto entra em lotes.
    nova `PH2D_CODE_SMOKE=7`. A linha fecha depois (ou o dono manda integrar antes).
    **Oráculo corrido e plano (21/10): [07_arrastar_para_o_codigo.md](07_arrastar_para_o_codigo.md)** — o editor do
    Godot 4.7.2 numa Xvfb, arrastos reais (`ferramentas/oraculo_arrastar/`, duas corridas iguais); fases 8a/8b/8c.
-   **8a FEITO na linha (21/10, HEAD `652730fb20`), smoke do dono PENDENTE** (`PH2D_CODE_SMOKE=7`; [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-21_ITEM8A_ARRASTAR.md)). Próximo: 8d (decisão do dono nº 8).
+   **8a FEITO na linha (21/10, HEAD `652730fb20`), smoke do dono OK a 22/10** (`PH2D_CODE_SMOKE=7`; [handoff](handoffs/HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-21_ITEM8A_ARRASTAR.md)). Próximo: 8d (decisão do dono nº 8).

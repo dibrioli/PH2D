@@ -97,3 +97,5 @@ precisa de mais de um toque · o aviso não some quando o nome está certo.
    integração, CLAUDE.md §5.1 com `PH2D_CODE_SMOKE=1..7`.
 - Limites conhecidos: sugestões de nome dentro das aspas só com o `luau-lsp` Ready (a lista abre pela resposta do
   assistente); `ph2d.object` só dentro de hooks (como `find_by_name`).
+
+**Smoke do dono da cena 7: OK (22/10).**

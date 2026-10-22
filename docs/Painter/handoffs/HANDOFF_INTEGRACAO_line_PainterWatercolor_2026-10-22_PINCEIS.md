@@ -16,14 +16,15 @@
 - **18 pincéis APROVADOS** pelo exame de 6 condições (prancha + revisão cega contra o Rebelle); fábrica **28 → 45**
   (Wet 29, Digital 16); 27 «curados, não aprovados» (ficam, com a diferença escrita em `exames/<família>.md`). O alvo
   80–120 da missão **NÃO foi alcançado**: o que trava o resto é motor ([§3d](../Pinceis/01_CATALOGO.md)).
-- Novo na J5: **Pastel Side** aprovado (`c6c99afab7`); 7 curados, 2 reprovados (Mop, Gouache Round) — `ESTADO.md`.
+- J5: **Pastel Side** aprovado (`c6c99afab7`); 7 curados, 2 reprovados — `ESTADO.md`.
 - **Motor J5:** `Knob::WetOpen`/`WetOpenPush` (`ph2d-wet-paint` `trail/molhado.rs`; molhado × molhado; desligado por
   omissão; portão `o_azul_abre_uma_mancha_redonda_no_vermelho_molhado`, 3 mutações sangram), ligado no Wet Liner e Wet
   Wash; tecto da cauda 1,3 × meia-largura (`eb04c3440d`). Motor J1–J4: [HANDOFF_JANELA_4](../Pinceis/HANDOFF_JANELA_4.md)
   («Motor novo») e `HANDOFF_JANELA_2/3`.
-- Biblioteca: nenhum par fora de família < 0,596; custo calmo p95 ≤ 12,5 ms a 200 px, RSS ≤ 105 MiB, load 1–3,4.
-  Série de lápis no navegador por grau (2H · HB · 2B · 8B, `002c75267b`). Tutorial do dono:
+- Biblioteca: nenhum par fora de família < 0,596; custo calmo p95 ≤ 12,5 ms a 200 px. Tutorial do dono:
   [`tutorial/01_pinceis.pdf`](../Pinceis/tutorial/01_pinceis.pdf) (12 páginas).
+- **Grain Colors nos 4 meios** (`ae082ffb2e`): o grão indexa a rampa pela lei única `RampPaint::cor` (Aquarela: o mapa de
+  granulação; Wet: o grão do dab, que deixa de morder); esmaece sem leitor (`CorDoGrao*`); o preset não grava a rampa.
 
 ## §3 — Fecho (1×, `PH2D_SUITE=fecho`)
 
@@ -35,17 +36,16 @@
   (tabela + faixa isolada + faixa pesada; `architecture_toda_flake_de_carga_corre_na_faixa_isolada` verde).
 - Antes disso o fecho achou 17 falhas reais, curadas (`d9d763b06d` … `002c75267b`, um commit por família: portas
   RGBA tipadas, 8 ficheiros > 700 LOC partidos, citações, `deposit_mask`, controlos mortos, sub-secções recolhidas,
-  ordem do navegador); estilo em `1543fb9f5b` `0f3c03a695` `348fb0644c` `cde29e86ed`.
+  ordem do navegador) + 4 commits de estilo.
 
 ## §4 — Superfície de colisão (`bash <worktree>/scripts/collision-surface.sh`, base `100d34c8e0`)
 
 - Schemas **todos iguais à base** (`PROJECT_SCHEMA` 191, tripla `(191, 13, 23)`, vec 23, flip 13, timeline 20);
   registos de componentes 108/109/109 iguais; contratos §6 intocados. A linha não mexe em schema: **nada a recontar**,
   mas confira no main do dia (`python3 <worktree>/scripts/schema-recount.py <valor_do_main>`).
-- ADR: a linha criou **0189** (caneta, P46) — reconte contra o main do dia. `Cargo.lock`: só `ph2d-pen` (crate interna
-  da P46; deps externas `wayland-*`, `rustix`, `zstd`, `cursor-icon`, `raw-window-handle`).
+- ADR: a linha criou **0189** (caneta, P46) — reconte contra o main do dia. `Cargo.lock`: só `ph2d-pen` (P46).
 - «Marcadores de conflito» ✗ = **falso positivo**: 2 PNG binários em `fixtures/rebelle_bateria/OIL_AND_ACRYLIC/`.
-  «Tecto de LOC» ✗ `app_state.rs` 923 e `main.rs` 1060 (shell): a linha só tocou 3 linhas em ambos; são de antes.
+  «Tecto de LOC» ✗ `app_state.rs` 923 e `main.rs` 1060 (shell): de antes (a linha tocou 3 linhas).
   `painter_bridge.rs` 666/700.
 - Toca fora do Painter: `.config/nextest.toml` · `FLAKES_DE_CARGA.md` · `ph2d-i18n` · `ph2d-panel-painter-layers` ·
   `ph2d-panel-registry-init` · `ph2d-pen`/`ph2d-host` (P46) · `ph2d-editor-core` (P46 + o `header` do §8) · `shells/desktop`.
@@ -64,6 +64,7 @@
   `solver/flow_jacobi/backrun.rs`; `tool-painter` `wetpaint/rota_da_lane.rs`; `painter-brush` `blend.rs`): quem
   conflitar em `dab_route.rs`/`tools.rs`/`trail.rs`/`solver.rs` reaplica o MOVIMENTO, não funde à mão.
 - Flakes de carga: +2 membros (acima); a lista vive em `FLAKES_DE_CARGA.md` + 2 filtros do `nextest.toml` — duas escritas.
+- Grain Colors (§2): `Dependente::TODOS` **41 → 44** (contar) · `ph2d-i18n/src/painter_layers.rs` **700/700** LOC.
 
 ## §6 — Smoke do Enio (binário `smoke` compilado)
 
@@ -94,4 +95,4 @@
   agora primeiro.
 - Widget partilhado: `DropdownOption::header` (`false` por omissão; consumidores ao bit) — rótulo de secção, sem
   hit/foco, `Role::Heading`. O **Paint Mode** subiu para o cartão do topo, acima do Preset, nos 4 meios.
-- Foto: `foto_do_navegador` (`#[ignore]`) → `tutorial/fotos/`; tutorial p. 2 actualizado.
+- Foto: `foto_do_navegador` (`#[ignore]`); tutorial p. 2 novo.

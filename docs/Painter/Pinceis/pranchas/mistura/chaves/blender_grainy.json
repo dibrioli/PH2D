@@ -1,0 +1,24 @@
+{
+ "prancha": "blender_grainy.png",
+ "linhas": [
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "sobre_A": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "sobre_B": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  }
+ },
+ "quem": {
+  "oraculo": "default_textured",
+  "nosso": "Blender Grainy (escala 1.0)",
+  "vizinho": "Blender Soft (d 2.322, limiar 0.591)"
+ }
+}

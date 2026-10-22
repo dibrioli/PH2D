@@ -1,0 +1,24 @@
+{
+ "prancha": "dry_lift.png",
+ "linhas": [
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "sobre_A": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  },
+  "sobre_B": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  }
+ },
+ "quem": {
+  "oraculo": "default_sponge",
+  "nosso": "Dry Lift (escala 0.56)",
+  "vizinho": "Airbrush (d nan, limiar 0.591)"
+ }
+}

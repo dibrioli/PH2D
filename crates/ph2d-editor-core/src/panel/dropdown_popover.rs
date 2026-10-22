@@ -61,7 +61,8 @@ pub fn paint_dropdown_list<T: Clone + PartialEq>(
 
 /// ⭐⭐ **A lei da FAIXA VISÍVEL** — cada opção ativa cuja linha rolada mostra pelo menos um pixel
 /// dentro do `panel`, com o recorte dela. Uma linha rolada para fora apanharia o clique por baixo
-/// do popover; as `disabled` pintam-se e nunca se oferecem.
+/// do popover; as `disabled` e os títulos (`header`) pintam-se e nunca se oferecem — nem ao clique,
+/// nem ao foco do teclado (o registo da porta passa por aqui).
 pub fn visible_option_bands<T: Clone + PartialEq>(
     dd: &Dropdown<T>,
     chip: Rect,
@@ -71,7 +72,7 @@ pub fn visible_option_bands<T: Clone + PartialEq>(
     dd.options
         .iter()
         .enumerate()
-        .filter(|(_, opt)| !opt.disabled)
+        .filter(|(_, opt)| !opt.disabled && !opt.header)
         .filter_map(move |(i, opt)| {
             let r = dd.option_rect_in_scrolled(chip, panel, i, scroll);
             let top = r.y.max(panel.y);

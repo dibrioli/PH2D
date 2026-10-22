@@ -2,6 +2,7 @@
 //! two files.
 
 use super::*;
+use crate::paint::rect_to_vello;
 use crate::widget::scrollbar;
 
 /// Paint only the open option list (no chip). Caller is responsible
@@ -46,7 +47,12 @@ pub(crate) fn paint_dropdown_popover_in_viewport<T: Clone + PartialEq>(
     };
     paint_popover_frame(scene, panel, theme);
     for (i, opt) in dd.options.iter().enumerate() {
-        let row = PopoverRow::of(dd, opt, i, dd.option_rect_in(chip_rect, panel, i));
+        let r = dd.option_rect_in(chip_rect, panel, i);
+        if opt.header {
+            paint_popover_header_row(scene, text_system, theme, r, i, &opt.label);
+            continue;
+        }
+        let row = PopoverRow::of(dd, opt, i, r);
         paint_popover_row_default(scene, text_system, theme, row, opt);
     }
 }
@@ -194,6 +200,40 @@ fn paint_popover_row_default<T>(
     );
 }
 
+/// ⭐ **Um TÍTULO de categoria** ([`DropdownOption::header`]) — o rótulo de secção do design system:
+/// caixa alta, `Xs`, `Text3`, à esquerda e assente no fundo da linha, com um separador `Thin` em
+/// `Border` por cima (salvo a 1.ª linha). Nunca leva realce: não se escolhe.
+fn paint_popover_header_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    rect: Rect,
+    index: usize,
+    label: &str,
+) {
+    let pad = Spacing::Sm.px();
+    if index > 0 {
+        let line = Rect::new(
+            rect.x + pad,
+            rect.y,
+            (rect.w - pad * 2.0).max(0.0),
+            StrokeToken::Thin.px(),
+        );
+        scene.fill_rect(rect_to_vello(line), opaque(ColorToken::Border, theme));
+    }
+    let font = TypeToken::Xs.px();
+    paint_text(
+        text_system,
+        scene,
+        &label.to_uppercase(),
+        rect.x + pad,
+        rect.y + rect.h - font - Spacing::Xs.px(),
+        font,
+        (rect.w - pad * 2.0).max(0.0),
+        opaque(ColorToken::Text3, theme),
+    );
+}
+
 /// ⭐⭐ **A lista aberta que ROLA**: moldura, linhas recortadas ao `panel` e subidas de `scroll`, e
 /// a barra quando a lista transborda. `scrollbar` é o PAR visual do polegar
 /// ([`crate::interaction::WidgetStore::scrollbar_visual_for`], chaveado pelo CHIP). `rows`
@@ -230,6 +270,10 @@ pub(crate) fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
         let r = dd.option_rect_in_scrolled(chip_rect, panel, i, scroll);
         if r.y + r.h <= panel.y || r.y >= panel.y + panel.h {
             continue; // fully scrolled out (the clip handles partials)
+        }
+        if opt.header {
+            paint_popover_header_row(scene, text_system, theme, r, i, &opt.label);
+            continue;
         }
         let row = PopoverRow::of(dd, opt, i, r);
         match rows.as_mut() {
@@ -336,6 +380,25 @@ mod tests {
             .build_option_a11y(0, 0.0, 0.0, 200.0, 32.0)
             .unwrap();
         assert_eq!(node.role(), Role::ListBoxOption);
+    }
+
+    /// Um título (`header`) anuncia-se como `Heading`, sem foco nem clique; as opções não mudam.
+    #[test]
+    fn a11y_header_is_a_heading_not_an_option() {
+        let mut d = fixture();
+        d.options
+            .insert(0, DropdownOption::new(NodeId(5), "t", "Tools").header(true));
+        let h = d.build_option_a11y(0, 0.0, 0.0, 200.0, 32.0).unwrap();
+        assert_eq!(h.role(), Role::Heading);
+        assert!(!h.supports_action(Action::Click), "um título não se clica");
+        let o = d.build_option_a11y(1, 0.0, 32.0, 200.0, 32.0).unwrap();
+        assert_eq!(o.role(), Role::ListBoxOption);
+        assert!(o.supports_action(Action::Click));
+        assert!(
+            !fixture().options.iter().any(|o| o.header),
+            "header é `false` por omissão"
+        );
+        smoke(d.open(true), Theme::Forge);
     }
 
     fn smoke(d: Dropdown<&'static str>, theme: Theme) {

@@ -38,6 +38,8 @@ const CHIP: Rect = Rect {
 const DD: NodeId = NodeId(9_100_000);
 const N: usize = 40;
 const APAGADA: usize = 1;
+/// Um TÍTULO de categoria (`header`) — pinta-se como cabeçalho e não se oferece.
+const TITULO: usize = 3;
 
 fn opt(i: usize) -> NodeId {
     NodeId(9_100_001 + i as u64)
@@ -45,7 +47,11 @@ fn opt(i: usize) -> NodeId {
 
 fn lista() -> Dropdown<usize> {
     let options = (0..N)
-        .map(|i| DropdownOption::new(opt(i), i, format!("{i}")).disabled(i == APAGADA))
+        .map(|i| {
+            DropdownOption::new(opt(i), i, format!("{i}"))
+                .disabled(i == APAGADA)
+                .header(i == TITULO)
+        })
         .collect();
     Dropdown::new(DD, "", options).selected(2).open(true)
 }
@@ -197,6 +203,30 @@ fn o_pintor_de_linha_recebe_o_visivel_com_o_estado() {
     assert!(
         r(N - 1).is_none(),
         "uma linha abaixo da dobra chegou ao pintor"
+    );
+}
+
+/// ⭐ **Um título de categoria não é uma opção** (dono 22/10): não se regista (nem clique, nem
+/// foco) e não chega ao pintor de linha — a porta pinta-o como cabeçalho, com o seu próprio aspecto.
+#[test]
+fn um_titulo_nao_se_oferece_nem_chega_ao_pintor_de_linha() {
+    let mut hero = hero();
+    let (_, vistas) = pinta(&mut hero);
+    assert!(
+        hit_de(&hero, opt(TITULO)).is_none(),
+        "o título ofereceu-se ao clique"
+    );
+    assert!(
+        hero.store.get(opt(TITULO)).is_none(),
+        "o título ficou focável"
+    );
+    assert!(
+        vistas.iter().all(|r| r.index != TITULO),
+        "o título chegou ao pintor de linha como uma opção"
+    );
+    assert!(
+        hit_de(&hero, opt(TITULO + 1)).is_some(),
+        "controlo: a opção sob o título continua viva"
     );
 }
 

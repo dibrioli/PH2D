@@ -34,6 +34,10 @@ pub struct DropdownOption<T> {
     /// ensina que não existe, uma apagada ensina que existe e ainda não serve. `false` em todo
     /// chamador de antes.
     pub disabled: bool,
+    /// ⭐ **Um TÍTULO de categoria, não uma opção** — pintado como cabeçalho de secção (caixa alta,
+    /// `Xs`, `Text3`, separador fino), nunca clicável nem focável, e anunciado como `Heading`.
+    /// `false` em todo chamador de antes (dono 22/10: o título apagado lia-se como pincel apagado).
+    pub header: bool,
 }
 
 impl<T> DropdownOption<T> {
@@ -44,6 +48,7 @@ impl<T> DropdownOption<T> {
             label: label.into(),
             icon: None,
             disabled: false,
+            header: false,
         }
     }
 
@@ -51,6 +56,13 @@ impl<T> DropdownOption<T> {
     #[must_use]
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
+        self
+    }
+
+    /// Faz da linha um título de categoria (ver [`Self::header`]).
+    #[must_use]
+    pub fn header(mut self, header: bool) -> Self {
+        self.header = header;
         self
     }
 
@@ -105,9 +117,8 @@ pub enum DropdownState {
     Disabled,
 }
 
-/// **Como um chip de dropdown se SENTE** — o estado reduzido ao vocabulário da porta da moldura
-/// ([`ph2d_tokens::visuals::Feel`]). ⚠️ `pub` pela mesma razão do [`chip_border_color`]: o
-/// `ph2d-panel-painter-layers` desenha um chip de dropdown à mão, e a redução tem de ser UMA.
+/// **Como um chip de dropdown se SENTE** ([`ph2d_tokens::visuals::Feel`]); `pub` pela razão do
+/// [`chip_border_color`].
 #[must_use]
 pub fn dropdown_feel(state: DropdownState) -> ph2d_tokens::visuals::Feel {
     use ph2d_tokens::visuals::Feel;
@@ -119,15 +130,9 @@ pub fn dropdown_feel(state: DropdownState) -> ph2d_tokens::visuals::Feel {
     }
 }
 
-/// **A cor da borda de um CHIP de dropdown, já com o eixo do hover** — a porta ÚNICA.
-///
-/// ⚠️ **Ela é `pub` porque um segundo chip existe:** o `ph2d-panel-painter-layers` desenha o dele
-/// à mão (não constrói um [`Dropdown`]) e carregava uma **quarta cópia** da lei — `if open {
-/// Accent } else { Border }`, sem `BorderEmph` nenhum. Duas cópias divergem no primeiro caso
-/// especial, e esta já tinha divergido: ele não sabia o que era estar sob o ponteiro.
-///
-/// ⚠️ **Só o par `Normal ⇄ Hovered` interpola** — o `Accent` do aberto nomeia um ESTADO, e um
-/// `Accent` a meio leria como *meio-aberto*. É a mesma cerca do `text_input::border_color`.
+/// **A cor da borda de um CHIP de dropdown, já com o eixo do hover** — a porta ÚNICA (`pub`: o
+/// `ph2d-panel-painter-layers` desenha o seu chip à mão). Só o par `Normal ⇄ Hovered` interpola —
+/// o `Accent` do aberto nomeia um ESTADO (a cerca do `text_input::border_color`).
 #[must_use]
 pub fn chip_border_color(state: DropdownState, hover_t: f32, theme: Theme) -> ph2d_vector::Color {
     crate::motion::hover_axis(
@@ -332,14 +337,18 @@ impl<T: Clone + PartialEq> Dropdown<T> {
 
     pub fn build_option_a11y(&self, index: usize, x: f64, y: f64, w: f64, h: f64) -> Option<Node> {
         let opt = self.options.get(index)?;
-        Some(
-            NodeBuilder::new(Role::ListBoxOption)
-                .label(&opt.label)
-                .bounds(x, y, w, h)
-                .focusable(true)
-                .action(Action::Click)
-                .build(),
-        )
+        let b = NodeBuilder::new(if opt.header {
+            Role::Heading
+        } else {
+            Role::ListBoxOption
+        })
+        .label(&opt.label)
+        .bounds(x, y, w, h);
+        Some(if opt.header {
+            b.build()
+        } else {
+            b.focusable(true).action(Action::Click).build()
+        })
     }
 }
 

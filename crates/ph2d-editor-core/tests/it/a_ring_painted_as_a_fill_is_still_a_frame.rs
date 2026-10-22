@@ -47,6 +47,12 @@ const DECLARED: &[(&str, &str, Kind, &str)] = &[
         "o anel da amostra: rect na cor da borda com a cor do artista por cima, recuada",
     ),
     (
+        "widget/dropdown/popover.rs",
+        "scene.fill_rect(rect_to_vello(line), opaque(ColorToken::Border, theme));",
+        Divider,
+        "o separador fino por cima de um TÍTULO de categoria numa lista aberta (`DropdownOption::header`)",
+    ),
+    (
         "widget/showcase/body.rs",
         "scene.fill_rect(rect_to_vello(div), resolve(ColorToken::Border, theme));",
         Divider,

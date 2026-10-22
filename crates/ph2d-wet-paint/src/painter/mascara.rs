@@ -23,6 +23,9 @@ impl Engine {
     /// a janela da faixa não soma dab a dab (tectos suaves, a perda no pouso). `b` é a pressão, a
     /// mesma escala da [`Self::dispatch_pressure_dab_lane`].
     ///
+    /// `peso` é o do traço fino que a máscara enche (`docs/Painter/Pinceis/03_MOTORES.md` §7 b, `95c9597395`):
+    /// o pigmento pesa, a água fica a do dab — a mesma conta da porta da faixa. `1` = a de sempre, ao bit.
+    ///
     /// `grain` (`None` = lisa) substitui a textura de cerdas, como na porta da faixa.
     #[allow(clippy::too_many_arguments)]
     pub fn deposit_mask(
@@ -31,6 +34,7 @@ impl Engine {
         y: f64,
         r: f64,
         b: f64,
+        peso: f64,
         color: [f64; 3],
         sil: crate::brush::CellFn<'_>,
         grain: Option<crate::brush::CellFn<'_>>,
@@ -42,7 +46,9 @@ impl Engine {
             .sim
             .gather_params(&self.tuning)
             .com_pigmento(self.sliders.pigmento);
-        let (dab, _water_unit) = self.pressure_dab(&p, x, y, b, r);
+        let (mut dab, _water_unit) = self.pressure_dab(&p, x, y, b, r);
+        dab.opacity = peso;
+        dab.water_amount *= peso.recip();
         let ext_bypass = self.sim.ext_bypass;
         self.texture();
         let tex = self.brush_tex.take().unwrap();

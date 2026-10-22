@@ -99,7 +99,10 @@ impl PainterTool {
             f64::from(cor[1]) * 255.0,
             f64::from(cor[2]) * 255.0,
         ];
-        sess.engine.deposit_mask(mx, my, r, 10.0, ink, &sil, None);
+        // O traço fino pesa por área (lei b, `95c9597395`): a mancha dele tem o corpo dele.
+        let peso = f64::from(super::lote::peso_do_passo_fino(&self.paint.brush, ratio));
+        sess.engine
+            .deposit_mask(mx, my, r, 10.0, peso, ink, &sil, None);
         self.wetpaint_composite();
     }
 

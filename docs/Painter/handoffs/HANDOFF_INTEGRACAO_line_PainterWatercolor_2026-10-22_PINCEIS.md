@@ -94,7 +94,11 @@
   (13 casos, 4 meios, ao byte), `cada_campo_do_pincel_vai_para_o_preview_ou_diz_porque_nao` (censo),
   `o_pincel_gravado_leva_as_grain_colors_e_a_miniatura_mostra_as`; 10 mutações sangram; fábrica 0/45 mudou;
   fotos `tutorial/fotos/preview_*`.
-- `93c454c37a` — Grain Colors da Aquarela à resolução do pixel: o depósito lê-se no texel onde a granulação assenta
-  (`pigment::texel_do_deposito`, `WetStrokeStyle::cor_no_papel`), não no ponto deslocado pelo Ragged/Paper Edge; bloco
-  1,29 → 1,00 px (borda 20: 2,20 → 1,00), custo nulo; portão
-  `o_padrao_das_grain_colors_sai_a_resolucao_do_pixel_em_todos_os_meios`.
+- `93c454c37a` — Grain Colors da Aquarela à resolução do pixel (`pigment::texel_do_deposito`): bloco 1,29 → 1,00 px,
+  custo nulo; portão `o_padrao_das_grain_colors_sai_a_resolucao_do_pixel_em_todos_os_meios`.
+
+## §10 — O pino da preview (22/10, `9e176404cc`)
+
+- Toggle `PAINTER_BRUSH_PREVIEW_PIN` (sessão, como a dobra); fixada, a preview pinta-se numa faixa acima da área rolável,
+  que começa por baixo dela (`paint_pinned_preview`). `Button::build_a11y_toggle` novo (editor-core) · i18n
+  `painter_preview.rs`. Portões `seam_pino_da_preview` (4, 3 mutações sangram); fotos `tutorial/fotos/pino_*`.

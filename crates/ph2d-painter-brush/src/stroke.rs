@@ -209,6 +209,7 @@ const SETTLE_EPS_PX: f32 = 0.5;
 const MAX_AIRBRUSH_DABS_PER_TICK: u32 = 8;
 
 /// O batente de MEMÓRIA do percurso (o porquê e a medição: [`walk::MAX_DABS_PER_WALK`]).
+#[cfg(test)]
 pub(crate) use walk::MAX_DABS_PER_WALK;
 
 impl Stroke {

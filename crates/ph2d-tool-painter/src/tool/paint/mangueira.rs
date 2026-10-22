@@ -11,6 +11,9 @@ use std::mem::swap;
 use ph2d_painter_brush::{Dab, HOSE_MAX, TextureKind};
 
 use super::PainterTool;
+
+/// Uma imagem da ponta: a silhueta cinzenta `(lum, w, h)` e o RGBA `(rgba, w, h)` quando há cor.
+type ImagemDaPonta<'a> = ((&'a [u8], u32, u32), Option<(Vec<u8>, u32, u32)>);
 use super::brush_image::BrushTextureImage;
 use super::shape_layers::ShapeLayers;
 
@@ -181,7 +184,7 @@ impl PainterTool {
     pub(super) fn imagem_da_mangueira(
         &self,
         k: usize,
-    ) -> Option<((&[u8], u32, u32), Option<(Vec<u8>, u32, u32)>)> {
+    ) -> Option<ImagemDaPonta<'_>> {
         if k == 0 {
             let img = self.paint.shape_image.as_ref()?;
             return Some((img.parts(), self.paint.shape_layers.rgba_da_imagem()));

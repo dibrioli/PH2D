@@ -301,11 +301,13 @@ mod tests {
     /// O pincel da 2.ª ponta pinta BRANCO a cobertura cheia, com a ponta dela e o caminho da 1.ª.
     #[test]
     fn o_pincel_da_segunda_e_a_ponta_dela_no_caminho_da_primeira() {
-        let mut p = BrushSpec::default();
-        p.radius_px = 40.0;
-        p.stabilizer = 0.4;
-        p.color = [0.2, 0.1, 0.0];
-        p.strength = 0.3;
+        let mut p = BrushSpec {
+            radius_px: 40.0,
+            stabilizer: 0.4,
+            color: [0.2, 0.1, 0.0],
+            strength: 0.3,
+            ..BrushSpec::default()
+        };
         let d = DualTip {
             escala: 0.25,
             contagem: 3,

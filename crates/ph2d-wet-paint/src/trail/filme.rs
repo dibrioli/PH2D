@@ -109,7 +109,7 @@ mod tests {
         }
         f.limpa();
         assert!(f.campo.iter().all(|&v| v == 0.0));
-        assert_eq!(f.caixa.2 < f.caixa.0, true);
+        assert!(f.caixa.2 < f.caixa.0);
     }
 
     /// A espessura é a do miolo de um traço largo (40 dabs a 0,025) e desfaz o peso do fino.

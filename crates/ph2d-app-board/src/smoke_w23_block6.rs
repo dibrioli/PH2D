@@ -47,6 +47,10 @@ const F4: [f64; 4] = [F2[0], ROW2, F2[2], 420.0];
 /// Os exemplos do rascunho no canto de baixo à direita de ②: a caixa e o vão.
 const EXAMPLE: [f64; 2] = [220.0, 140.0];
 const EXAMPLE_GAP: f64 = 20.0;
+/// O vão entre um frame e a lição dele: a cena abre com o exemplo de ② seleccionado, e os pontos de
+/// ligação (32 px de ecrã abaixo da caixa, ~110 do mundo a 1366) tapavam a 1.ª linha da lição com o
+/// vão das notas (fotos de 22/10).
+const LESSON_GAP: f64 = 4.0 * GAP;
 /// A escala de nascença dos exemplos: a do zoom com que a cena abre a 1366 (~0,293, um px = 3,4 do
 /// mundo; quartos de oitava, `BirthScale::of_px`).
 const OPEN_BIRTH: ph2d_board_model::BirthScale = ph2d_board_model::BirthScale(7);
@@ -131,7 +135,11 @@ pub(crate) fn scene_block6(hero: &mut HeroScreen) -> Block6 {
             ShapeType::StickyWide,
             0,
             super::note_text(&key),
-            [f[0], f[1] + f[3] + GAP, f[2].min(2.0 * STICKY_SIDE * 1.6)],
+            [
+                f[0],
+                f[1] + f[3] + LESSON_GAP,
+                f[2].min(2.0 * STICKY_SIDE * 1.6),
+            ],
         );
     }
     set.get_mut(board).expect("acabou de nascer").sketch = true;

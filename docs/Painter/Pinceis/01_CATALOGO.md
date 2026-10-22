@@ -313,6 +313,27 @@ K-6 Halftone · M-2 Dodge · M-2 Burn · M-3 Color Glaze · C-7 Ballpoint. 🔀 
 F-3 → F-5 · L-4 → L-3 · Hue/Overlay → M-3. ◐/✗ o resto, com o que falta, em [`HANDOFF_JANELA_4`](HANDOFF_JANELA_4.md)
 e `exames/<família>.md`.
 
+## §3d — O fecho do EXAME (JANELA 5, 2026-10-22) — sob as REGRAS_DE_CUSTO do dono (21/10)
+
+✅ **18 aprovados**: os 17 de §3b–§3c + **F-7 Pastel Side** (J5, `c6c99afab7`). **Fábrica 45** (Wet 29, Digital 16),
+os outros 27 = pré-existentes ou novos «curados, não aprovados» (decisão 3: ficam, com a diferença escrita no
+relatório da família). Biblioteca inteira: nenhum par fora de família abaixo de 0,596; nenhum acima do tecto de
+custo (p95 ≤ 12,5 ms a 200 px, RSS ≤ 105 MiB, load 1–3,4) — [`exames/biblioteca.md`](exames/biblioteca.md).
+J5, curados não aprovados (2 rondas gastas): Square Hard · Water Brush · Dry/Lift · Blender Grainy · Wet Liner ·
+Wet Wash · Gouache Wash. Reprovados: Mop (a mancha do molhado é «carimbo») · Gouache Round. Decisões: Gouache Flat
+fica (0,763 do Wet Flat; a cura partia 3 leis) · Wet Dry Brush não se funde (vizinho Airbrush 1,236).
+
+**O alvo 80–120 NÃO foi alcançado — e porquê (medido):** o que trava os 67 itens restantes do catálogo («em estudo»
+em §3b–§3c) é MOTOR, não valores: depois da 2.ª ronda o rendimento é zero (J4: 6 rondas no Halftone/Filbert, 0
+mudança de veredito), e o dono limitou a uma lacuna de motor por agente. A fila de motor que os destrava, por ordem
+de pincéis destravados (medição em cada `exames/<família>.md` «Para a fila»): (1) a borda da mancha molhada esbatida
+em ~10 px (anel 1,04 Rebelle × 1,09–1,25 nosso; Wet Liner, Wet Wash, Mop) · (2) pontas cortadas a direito num dab
+redondo (Square Hard, Soft Pastel, Charcoal, Wax Scrape) · (3) o traço de 200 px do filme (Liner, Wash, Mop) · (4)
+a mistura em luz linear (muda TODOS: decisão do dono) · (5) a orla do secador nos lados do traço (Dry/Lift 1,90 ×
+1,16) · (6) o misturador com grão só perto da tinta (Blender Grainy 52–66 px × 28) · (7) o azul que cobre o vermelho
+molhado na guache · (8) o fio do arrasto (Smudge Finger) · (9) a lâmina que gira (Flat Oily/Knife, C38) · (10)
+partículas (Particles, Glitter), ondulação do contorno (Oil Bristle), mip das pontas de imagem (Foliage, Noise Grit).
+
 ## §4 — Licenças por ARTEFACTO (medido 19/10 nesta máquina)
 
 | Artefacto | Versão | Licença (fonte) | O que se pode fazer |

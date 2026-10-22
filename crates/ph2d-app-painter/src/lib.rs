@@ -60,6 +60,8 @@ pub mod painter_bridge;
 pub mod painter_bridge_assets;
 /// The brush-cursor ring, split from `painter_bridge_overlays` for the HR-18 file-LOC cap.
 pub mod painter_bridge_brush_ring;
+#[cfg(feature = "panel-painter-layers")]
+mod painter_bridge_categorias; // as categorias do navegador de presets (dono 22/10)
 /// The Curve / Free Hand editor overlay (spine + control dots + tangent handles), split from
 /// `painter_bridge_overlays` for the HR-18 file-LOC cap.
 pub mod painter_bridge_curve_overlay;

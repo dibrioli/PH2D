@@ -79,10 +79,15 @@ pub(crate) fn paint_brush_body(
     //    ([`PlanoCtx`]); quem se arrasta e quem fica no lugar está em [`crate::plano_corpo`].
     let mut plano = PlanoCtx::new();
 
-    // **Preset** dropdown at the very TOP — one-click media presets (Digital Basic / Watercolor
-    // Basic) — and "Sync with other tools" under it. Off (default) = this tool keeps its own
-    // settings; on = all paint tools share them (the panel where it's checked seeds the others).
+    // O cartão do TOPO: **Paint Mode** (dono 22/10: o modo primeiro, porque ele reinterpreta tudo o que
+    // está por baixo — escondido em Inpaint, como sempre), o **Preset** e "Sync with other tools". Off
+    // (default) = this tool keeps its own settings; on = all paint tools share them.
     plano.bloco(move |ctx, theme, y| {
+        let y = if brush.is_inpaint {
+            y
+        } else {
+            crate::paint_brush_sections::paint_media_row(ctx, theme, x, content_w, y, brush)
+        };
         // A fileira «Preset» é o navegador dos presets nos QUATRO meios (W1, L1); no Wet Paint com os
         // volumes vivos, nos outros com o pincel de partida do meio por baixo.
         let y = crate::paint_wetpaint_presets::paint_wetpaint_presets(

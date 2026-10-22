@@ -1,7 +1,7 @@
 //! **O bloco de presets** (W1, `docs/Painter/NewFeaturesWetPaint/02 §5`; L1 — os QUATRO meios,
 //! `docs/Painter/Pinceis/03_MOTORES.md` §2): a fileira «Preset» de todo meio. Os volumes vivos são só do Wet
 //! Paint (nos outros o Size e a Strength têm as suas fileiras no corpo). De cima para baixo: o chip Preset (o navegador:
-//! Favoritos · os grupos, que são as pastas), Favorite, o preview VIVO, Save as New ·
+//! Favoritos · um título por categoria), Favorite, o preview VIVO, Save as New ·
 //! Save as Default · Reset, os volumes VIVOS (Size px = o diâmetro do anel · Water · Opacity, a do Wet
 //! Paint, que dilui a cor para o papel) com os valores rápidos, e a política dos volumes. A força
 //! partilhada continua sem leitor no Wet Paint (gate `a_opacidade_nao_tem_leitor_no_wet_paint`); Pressure e
@@ -276,23 +276,30 @@ fn nome_da_politica(i: u8) -> &'static str {
     }
 }
 
-/// As linhas do popover do Preset: títulos (desactivados) e presets, com o índice corrido como valor.
+/// As linhas do popover do Preset: os Favoritos e um TÍTULO por categoria (linhas `header`, dono 22/10 —
+/// nunca uma por pasta) e os presets, com o índice corrido como valor.
 fn opcoes_do_preset(v: &VistaPresets) -> (Vec<DropdownOption<usize>>, usize) {
     let mut out = Vec::new();
     let mut atual = usize::MAX;
     let titulo = |out: &mut Vec<DropdownOption<usize>>, texto: String| {
         let k = out.len();
         out.push(
-            DropdownOption::new(ids::painter_wetpaint_preset_title_id(k), k, texto).disabled(true),
+            DropdownOption::new(ids::painter_wetpaint_preset_title_id(k), k, texto).header(true),
         );
     };
     if v.ilegiveis > 0 {
-        titulo(
-            &mut out,
-            tr_with(
-                "panel.painter_layers.wetpaint.preset_unreadable",
-                &[("n", &v.ilegiveis)],
-            ),
+        // Um aviso, não um título: apagado, como sempre.
+        let k = out.len();
+        out.push(
+            DropdownOption::new(
+                ids::painter_wetpaint_preset_title_id(k),
+                k,
+                tr_with(
+                    "panel.painter_layers.wetpaint.preset_unreadable",
+                    &[("n", &v.ilegiveis)],
+                ),
+            )
+            .disabled(true),
         );
     }
     let mut linha = |out: &mut Vec<DropdownOption<usize>>, secao: u8, e: &st::VistaPreset| {
@@ -316,11 +323,11 @@ fn opcoes_do_preset(v: &VistaPresets) -> (Vec<DropdownOption<usize>>, usize) {
             linha(&mut out, SECAO_FAVORITOS, e);
         }
     }
-    let mut grupo_atual: Option<&str> = None;
+    let mut categoria_atual: Option<&str> = None;
     for e in v.entradas.iter().filter(|e| !e.favorito) {
-        if grupo_atual != Some(e.grupo.as_str()) {
-            grupo_atual = Some(e.grupo.as_str());
-            titulo(&mut out, e.grupo.clone());
+        if categoria_atual != Some(e.categoria.as_str()) {
+            categoria_atual = Some(e.categoria.as_str());
+            titulo(&mut out, e.categoria.clone());
         }
         linha(&mut out, SECAO_GRUPO, e);
     }
@@ -416,3 +423,7 @@ pub(crate) fn escolher_preset(host: &mut dyn PanelHostInternal, relativo: String
             relativo,
         )));
 }
+
+#[cfg(test)]
+#[path = "paint_wetpaint_presets_tests.rs"]
+mod tests;

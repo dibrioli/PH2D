@@ -73,77 +73,28 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.painter.skin_suspend.images_unbound_from_the_bones" => {
             "The image size or margins changed: {soltas} image(s) unbound from the bones. Ctrl+Z brings the binding back."
         }
-        // Os presets nos quatro meios (L1): o grupo do navegador leva o meio; um meio que este PH2D não
-        // conhece é recusado; um modo que o meio não tem não se aplica.
-        "app.painter.presets.group_in_media" => "{engine} · {media} · {group}",
+        // Os presets nos quatro meios (L1): um meio que este PH2D não conhece é recusado; um modo que o
+        // meio não tem não se aplica.
         "app.painter.presets.unknown_media" => {
             "The brush {name} is for a paint medium this PH2D does not know ({media}): it was not applied"
         }
         "app.painter.presets.mode_not_applied" => {
             "The brush {name} asks for a tool this paint medium does not have ({mode})"
         }
-        // As pastas da FÁBRICA dos presets do Wet Painter (`assets/brushes/WetPainter/<meio>/<grupo>`),
-        // como o navegador as mostra; a pasta do artista mostra-se como ele a chamou.
-        "app.painter.presets.folder.watercolor" => "Watercolor",
-        "app.painter.presets.folder.fluid" => "Fluid",
-        "app.painter.presets.folder.oil" => "Oil",
-        "app.painter.presets.folder.express_oil" => "Express Oil",
-        "app.painter.presets.folder.pencil" => "Pencil",
-        "app.painter.presets.folder.pastel" => "Pastel",
-        "app.painter.presets.folder.bristle" => "Bristle",
-        "app.painter.presets.folder.round" => "Round",
-        "app.painter.presets.folder.graphite" => "Graphite",
-        "app.painter.presets.folder.charcoal" => "Charcoal",
-        "app.painter.presets.folder.dry" => "Dry",
-        "app.painter.presets.folder.ink" => "Ink",
-        "app.painter.presets.folder.pen" => "Pen",
-        "app.painter.presets.folder.brush" => "Brush",
-        "app.painter.presets.folder.marker" => "Marker",
-        "app.painter.presets.folder.airbrush" => "Airbrush",
-        "app.painter.presets.folder.spray" => "Spray",
-        "app.painter.presets.folder.gouache" => "Gouache",
-        "app.painter.presets.folder.colored" => "Colored",
-        "app.painter.presets.folder.scratch" => "Scratch",
-        "app.painter.presets.folder.scrape" => "Scrape",
-        "app.painter.presets.folder.dabber" => "Dabber",
-        // O vocabulário das pastas das FAMÍLIAS de pincéis (J3, `docs/Painter/Pinceis/04_BANCADA.md` §9), registado
-        // antes delas: cada família usa estes nomes sem tocar neste ficheiro.
-        "app.painter.presets.folder.basic" => "Basic",
-        "app.painter.presets.folder.calligraphy" => "Calligraphy",
-        "app.painter.presets.folder.texture" => "Texture",
-        "app.painter.presets.folder.blend" => "Blend",
-        "app.painter.presets.folder.effects" => "Effects",
-        "app.painter.presets.folder.hard" => "Hard",
-        "app.painter.presets.folder.soft" => "Soft",
-        "app.painter.presets.folder.flat" => "Flat",
-        "app.painter.presets.folder.pixel" => "Pixel",
-        "app.painter.presets.folder.glaze" => "Glaze",
-        "app.painter.presets.folder.mechanical" => "Mechanical",
-        "app.painter.presets.folder.tilted" => "Tilted",
-        "app.painter.presets.folder.sketch" => "Sketch",
-        "app.painter.presets.folder.craft" => "Craft",
-        "app.painter.presets.folder.technical" => "Technical",
-        "app.painter.presets.folder.mapping" => "Mapping",
-        "app.painter.presets.folder.ballpoint" => "Ballpoint",
-        "app.painter.presets.folder.studio" => "Studio",
-        "app.painter.presets.folder.fountain" => "Fountain",
-        "app.painter.presets.folder.reed" => "Reed",
-        "app.painter.presets.folder.wood" => "Wood",
-        "app.painter.presets.folder.gloop" => "Gloop",
-        "app.painter.presets.folder.bleed" => "Bleed",
-        "app.painter.presets.folder.monoline" => "Monoline",
-        "app.painter.presets.folder.script" => "Script",
-        "app.painter.presets.folder.nib" => "Nib",
-        "app.painter.presets.folder.chisel" => "Chisel",
-        "app.painter.presets.folder.splatter" => "Splatter",
-        "app.painter.presets.folder.stipple" => "Stipple",
-        "app.painter.presets.folder.drips" => "Drips",
-        "app.painter.presets.folder.grain" => "Grain",
-        "app.painter.presets.folder.knife" => "Knife",
-        "app.painter.presets.folder.smudge" => "Smudge",
-        "app.painter.presets.folder.eraser" => "Eraser",
-        "app.painter.presets.folder.stamp" => "Stamp",
-        "app.painter.presets.folder.glow" => "Glow",
+        // As CATEGORIAS do navegador de presets (dono 22/10), na ordem da tabela
+        // `painter_bridge_categorias::CATEGORIAS`: a pasta do meio decide, os motores fundem-se.
+        "app.painter.presets.category.basic" => "Basic",
+        "app.painter.presets.category.pencil" => "Pencil",
+        "app.painter.presets.category.ink" => "Ink",
+        "app.painter.presets.category.marker" => "Marker",
+        "app.painter.presets.category.pastel" => "Pastel",
+        "app.painter.presets.category.oil" => "Oil",
+        "app.painter.presets.category.watercolor" => "Watercolor",
+        "app.painter.presets.category.airbrush" => "Airbrush",
+        "app.painter.presets.category.texture" => "Texture",
+        "app.painter.presets.category.blend_erase" => "Blend & Erase",
+        "app.painter.presets.category.effects" => "Effects",
+        "app.painter.presets.category.other" => "Other",
         _ => return None,
     })
 }

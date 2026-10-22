@@ -9,21 +9,23 @@
 //! Default»); o «Reset» apaga-o. Favoritos, a política, os volumes lembrados e o activo de cada meio vivem em
 //! `estado.json` na raiz do artista.
 //!
-//! A biblioteca abre com o Painter, em qualquer meio; o navegador lista os quatro, o meio de agora primeiro.
+//! A biblioteca abre com o Painter, em qualquer meio; o navegador lista os quatro por categoria, o meio de
+//! agora primeiro dentro de cada uma.
 //! Escolher um preset de outro meio TROCA o meio (`preset_aplicar`); um meio desconhecido é recusado com
 //! aviso. O preset lembrado de cada meio aplica-se UMA vez por sessão, no 1.º quadro em que esse meio está
 //! activo (o comportamento de sempre do Wet Paint, agora em cada meio).
 
+use crate::painter_bridge_categorias::{categoria_da_pasta, rotulo_da_categoria};
 use ph2d_brush_presets::{
     Biblioteca, Entrada, EstadoDoUtilizador, Origem, Parametros, Politica, Preset, apagar,
     caminho_relativo, gravar, pasta_do_utilizador,
 };
 use ph2d_editor_core::toast::{Toast, ToastQueue};
-use ph2d_i18n::{Idioma, idioma, tr, tr_em, tr_with};
+use ph2d_i18n::{idioma, tr, tr_with};
 use ph2d_panel_painter_layers::{VistaPreset, VistaPresets, set_current_wet_presets};
 use ph2d_tool_painter::{
-    MeioDesconhecido, PaintMedia, PainterTool, PedidoPreset, meio_do_preset, miniatura_do_preset,
-    motor_do_meio, nome_do_meio,
+    MeioDesconhecido, PaintMedia, PainterTool, PedidoPreset, miniatura_do_preset, motor_do_meio,
+    nome_do_meio,
 };
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
@@ -345,42 +347,35 @@ impl Presets {
         self.publicar();
     }
 
-    /// A vista do navegador: os quatro meios agrupados (`meio · pasta · grupo`), o meio de agora primeiro; o
-    /// activo é o do meio de agora.
+    /// A vista do navegador: os quatro meios por CATEGORIA (`painter_bridge_categorias`, ordem fixa) e,
+    /// dentro de cada uma, o meio de agora primeiro e depois a ordem da biblioteca; o activo é o do meio
+    /// de agora.
     fn publicar(&mut self) {
         let agora = nome_do_meio(self.meio);
-        let mut entradas: Vec<(bool, VistaPreset)> = self
+        let mut entradas: Vec<(usize, bool, VistaPreset)> = self
             .bib
             .entradas
             .iter()
             .map(|e| {
-                let [_, meio, grupo, nome] = e.partes();
-                let media = &e.preset.parametros.media;
-                let motor = meio_do_preset(media).map_or(media.as_str(), |m| tr(m.name_key()));
-                let (meio, grupo) = (
-                    rotulo_da_pasta(idioma(), meio),
-                    rotulo_da_pasta(idioma(), grupo),
-                );
+                let [_, meio, _, nome] = e.partes();
+                let cat = categoria_da_pasta(meio);
                 let vista = VistaPreset {
                     relativo: e.relativo.clone(),
                     nome: nome.to_owned(),
-                    grupo: tr_with(
-                        "app.painter.presets.group_in_media",
-                        &[("engine", &motor), ("media", &meio), ("group", &grupo)],
-                    ),
+                    categoria: rotulo_da_categoria(idioma(), cat).to_owned(),
                     favorito: self.estado.favoritos.contains(&e.relativo),
                 };
-                (media.as_str() != agora, vista)
+                (cat, e.preset.parametros.media.as_str() != agora, vista)
             })
             .collect();
-        // Estável: dentro de cada metade, a ordem da biblioteca.
-        entradas.sort_by_key(|(outro, _)| *outro);
+        // Estável: dentro de cada (categoria, meio), a ordem da biblioteca (a série de lápis pelo grau).
+        entradas.sort_by_key(|(cat, outro, _)| (*cat, *outro));
         let politica = Politica::TODAS
             .iter()
             .position(|p| *p == self.estado.politica)
             .unwrap_or(0) as u8;
         self.vista = Arc::new(VistaPresets {
-            entradas: entradas.into_iter().map(|(_, v)| v).collect(),
+            entradas: entradas.into_iter().map(|(_, _, v)| v).collect(),
             ativo: self.aplicado.get(&self.meio.to_u8()).cloned(),
             politica,
             ilegiveis: self.bib.erros.len(),
@@ -407,73 +402,9 @@ pub(crate) fn drive(painter: &mut PainterTool, toasts: &mut ToastQueue) {
     });
 }
 
-/// O nome de uma pasta da FÁBRICA como rótulo de interface (HR-15); a pasta do artista é texto DELE e
-/// mostra-se como está. Pasta de fábrica nova = um braço aqui (`cada_pasta_de_fabrica_tem_rotulo`).
-fn rotulo_da_pasta(idioma: Idioma, nome: &str) -> &str {
-    match nome {
-        "Watercolor" => tr_em(idioma, "app.painter.presets.folder.watercolor"),
-        "Fluid" => tr_em(idioma, "app.painter.presets.folder.fluid"),
-        "Oil" => tr_em(idioma, "app.painter.presets.folder.oil"),
-        "ExpressOil" => tr_em(idioma, "app.painter.presets.folder.express_oil"),
-        "Pencil" => tr_em(idioma, "app.painter.presets.folder.pencil"),
-        "Pastel" => tr_em(idioma, "app.painter.presets.folder.pastel"),
-        "Bristle" => tr_em(idioma, "app.painter.presets.folder.bristle"),
-        "Round" => tr_em(idioma, "app.painter.presets.folder.round"),
-        "Graphite" => tr_em(idioma, "app.painter.presets.folder.graphite"),
-        "Charcoal" => tr_em(idioma, "app.painter.presets.folder.charcoal"),
-        "Dry" => tr_em(idioma, "app.painter.presets.folder.dry"),
-        "Ink" => tr_em(idioma, "app.painter.presets.folder.ink"),
-        "Pen" => tr_em(idioma, "app.painter.presets.folder.pen"),
-        "Brush" => tr_em(idioma, "app.painter.presets.folder.brush"),
-        "Marker" => tr_em(idioma, "app.painter.presets.folder.marker"),
-        "Airbrush" => tr_em(idioma, "app.painter.presets.folder.airbrush"),
-        "Spray" => tr_em(idioma, "app.painter.presets.folder.spray"),
-        "Gouache" => tr_em(idioma, "app.painter.presets.folder.gouache"),
-        "Colored" => tr_em(idioma, "app.painter.presets.folder.colored"),
-        "Scratch" => tr_em(idioma, "app.painter.presets.folder.scratch"),
-        "Scrape" => tr_em(idioma, "app.painter.presets.folder.scrape"),
-        "Dabber" => tr_em(idioma, "app.painter.presets.folder.dabber"),
-        // O vocabulário das famílias (J3, 04_BANCADA §9).
-        "Basic" => tr_em(idioma, "app.painter.presets.folder.basic"),
-        "Calligraphy" => tr_em(idioma, "app.painter.presets.folder.calligraphy"),
-        "Texture" => tr_em(idioma, "app.painter.presets.folder.texture"),
-        "Blend" => tr_em(idioma, "app.painter.presets.folder.blend"),
-        "Effects" => tr_em(idioma, "app.painter.presets.folder.effects"),
-        "Hard" => tr_em(idioma, "app.painter.presets.folder.hard"),
-        "Soft" => tr_em(idioma, "app.painter.presets.folder.soft"),
-        "Flat" => tr_em(idioma, "app.painter.presets.folder.flat"),
-        "Pixel" => tr_em(idioma, "app.painter.presets.folder.pixel"),
-        "Glaze" => tr_em(idioma, "app.painter.presets.folder.glaze"),
-        "Mechanical" => tr_em(idioma, "app.painter.presets.folder.mechanical"),
-        "Tilted" => tr_em(idioma, "app.painter.presets.folder.tilted"),
-        "Sketch" => tr_em(idioma, "app.painter.presets.folder.sketch"),
-        "Craft" => tr_em(idioma, "app.painter.presets.folder.craft"),
-        "Technical" => tr_em(idioma, "app.painter.presets.folder.technical"),
-        "Mapping" => tr_em(idioma, "app.painter.presets.folder.mapping"),
-        "Ballpoint" => tr_em(idioma, "app.painter.presets.folder.ballpoint"),
-        "Studio" => tr_em(idioma, "app.painter.presets.folder.studio"),
-        "Fountain" => tr_em(idioma, "app.painter.presets.folder.fountain"),
-        "Reed" => tr_em(idioma, "app.painter.presets.folder.reed"),
-        "Wood" => tr_em(idioma, "app.painter.presets.folder.wood"),
-        "Gloop" => tr_em(idioma, "app.painter.presets.folder.gloop"),
-        "Bleed" => tr_em(idioma, "app.painter.presets.folder.bleed"),
-        "Monoline" => tr_em(idioma, "app.painter.presets.folder.monoline"),
-        "Script" => tr_em(idioma, "app.painter.presets.folder.script"),
-        "Nib" => tr_em(idioma, "app.painter.presets.folder.nib"),
-        "Chisel" => tr_em(idioma, "app.painter.presets.folder.chisel"),
-        "Splatter" => tr_em(idioma, "app.painter.presets.folder.splatter"),
-        "Stipple" => tr_em(idioma, "app.painter.presets.folder.stipple"),
-        "Drips" => tr_em(idioma, "app.painter.presets.folder.drips"),
-        "Grain" => tr_em(idioma, "app.painter.presets.folder.grain"),
-        "Knife" => tr_em(idioma, "app.painter.presets.folder.knife"),
-        "Smudge" => tr_em(idioma, "app.painter.presets.folder.smudge"),
-        "Eraser" => tr_em(idioma, "app.painter.presets.folder.eraser"),
-        "Stamp" => tr_em(idioma, "app.painter.presets.folder.stamp"),
-        "Glow" => tr_em(idioma, "app.painter.presets.folder.glow"),
-        _ => nome,
-    }
-}
-
+#[cfg(test)]
+#[path = "painter_bridge_presets_foto_tests.rs"]
+mod foto_tests;
 #[cfg(test)]
 #[path = "painter_bridge_presets_tests.rs"]
 mod tests;

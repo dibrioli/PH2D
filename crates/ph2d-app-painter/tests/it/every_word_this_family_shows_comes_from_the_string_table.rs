@@ -20,6 +20,12 @@ const TABLE: &str = "crates/ph2d-i18n/src/app_painter.rs";
 /// Um ficheiro isento inteiro, com o mecanismo.
 const FORA: &[Isento] = &[
     (
+        "painter_bridge_categorias.rs",
+        "a tabela das CATEGORIAS do navegador: cada literal é um nome de PASTA de meio no disco \
+         (`assets/brushes/<motor>/<meio>/…`, a identidade durável do preset) ou uma CHAVE da tabela; o \
+         rótulo que o ecrã mostra sai só por `tr_em` (dono 22/10)",
+    ),
+    (
         "paint_perf.rs",
         "o RETRATO de performance impresso no terminal (`GPU`/`CPU`, `TELA`/`rect` numa linha de \
          `println!`) — diagnóstico de quem caça um engasgo, nunca ecrã",

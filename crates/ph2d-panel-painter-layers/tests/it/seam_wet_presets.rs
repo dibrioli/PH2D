@@ -29,7 +29,7 @@ fn vista(ativo: Option<&str>) -> Arc<VistaPresets> {
     let e = |rel: &str, nome: &str| VistaPreset {
         relativo: rel.to_owned(),
         nome: nome.to_owned(),
-        grupo: "Watercolor · Fluid".to_owned(),
+        categoria: "Watercolor".to_owned(),
         // O Round é favorito: o menu mostra-o no topo e NÃO no grupo (cada pincel uma vez — dono 09/10).
         favorito: rel == ROUND,
     };
@@ -366,5 +366,64 @@ fn cada_pincel_aparece_uma_vez_no_menu() {
     assert!(!pintado(0, WASH), "um não-favorito nos Favoritos");
     for rel in [ROUND, WASH] {
         assert!(!pintado(1, rel), "a secção «Recent» voltou: {rel}");
+    }
+}
+
+const MEIOS: [PaintMedia; 4] = [
+    PaintMedia::Digital,
+    PaintMedia::Watercolor,
+    PaintMedia::Impasto,
+    PaintMedia::WetPaint,
+];
+
+/// (iii) O **Paint Mode** encabeça o cartão do topo, ACIMA do Preset, em cada um dos quatro meios (dono
+/// 22/10: o modo reinterpreta tudo o que está por baixo, o Preset incluído).
+#[test]
+fn o_paint_mode_esta_acima_do_preset_em_cada_meio() {
+    for meio in MEIOS {
+        let mut t = PainterTool::default();
+        t.set_paint_media(meio);
+        let (_, _, rects) = novo(&t, Some(ROUND));
+        let modo = rect_of(&rects, ids::PAINTER_BRUSH_MEDIA)
+            .unwrap_or_else(|| panic!("{meio:?}: o Paint Mode não está pintado"));
+        let preset = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET)
+            .unwrap_or_else(|| panic!("{meio:?}: o Preset não está pintado"));
+        assert!(
+            modo.y + modo.h <= preset.y,
+            "{meio:?}: o Paint Mode ({}) não está acima do Preset ({})",
+            modo.y,
+            preset.y
+        );
+    }
+}
+
+/// (iv) O **Preset** está visível e POPULADO em cada um dos quatro meios: aberto o chip, cada pincel da
+/// vista tem a sua linha viva, e nenhum título se oferece ao clique.
+#[test]
+fn o_preset_aparece_e_lista_tudo_em_cada_meio() {
+    for meio in MEIOS {
+        let mut t = PainterTool::default();
+        t.set_paint_media(meio);
+        let (mut host, mut st, rects) = novo(&t, Some(ROUND));
+        let chip = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET)
+            .unwrap_or_else(|| panic!("{meio:?}: o Preset não está pintado"));
+        for ev in host.click_at(chip.x + chip.w * 0.5, chip.y + chip.h * 0.5) {
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+        }
+        let rects = painted(&t, &mut host, &mut st);
+        assert!(
+            rect_of(&rects, ids::painter_wetpaint_preset_option_id(0, ROUND)).is_some(),
+            "{meio:?}: o favorito não está na lista"
+        );
+        assert!(
+            rect_of(&rects, ids::painter_wetpaint_preset_option_id(2, WASH)).is_some(),
+            "{meio:?}: o pincel da categoria não está na lista"
+        );
+        for k in 0..4 {
+            assert!(
+                rect_of(&rects, ids::painter_wetpaint_preset_title_id(k)).is_none(),
+                "{meio:?}: o título {k} ofereceu-se ao clique"
+            );
+        }
     }
 }

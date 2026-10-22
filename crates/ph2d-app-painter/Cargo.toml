@@ -72,6 +72,9 @@ panel-painter-layers = ["dep:ph2d-panel-painter-layers", "dep:ph2d-brush-presets
 [dev-dependencies]
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
+# A foto do navegador de presets (`painter_bridge_presets_foto_tests`, `#[ignore]`): o painel REAL com a
+# vista que esta ponte publica sobre a fábrica, desenhado na placa e gravado em PNG.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 
 [lints]
 workspace = true

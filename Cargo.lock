@@ -5404,6 +5404,7 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-tool-painter",
  "ph2d-tool-runtime",
+ "ph2d-ui-testkit",
  "ph2d-vector",
  "rfd",
  "wgpu",

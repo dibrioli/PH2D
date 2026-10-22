@@ -14,7 +14,7 @@ use ph2d_tool_painter::{BrushSettings, PaintMedia};
 ///
 /// The current value comes from the tool's own [`BrushSettings::media`] — derived there from the three
 /// master flags — so the chip cannot disagree with the section painted under it.
-fn paint_media_row(
+pub(crate) fn paint_media_row(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
@@ -85,38 +85,29 @@ pub(crate) fn declara_aparencia(
     //    dragging it under what it governs would put the governor below the governed. Hidden in
     //    Inpaint like the rest of the appearance half.
     //
-    //    ⚠️ Exactly ONE of the four entries paints, and the exclusivity is the tool's
-    //    (`set_paint_media`), not a re-derivation here. The chip rides INSIDE its medium's entry so
-    //    the two share one card, as they always did. Impasto keeps its own `impasto_section_applies`
-    //    gate — a medium can be selected in a mode it does not act in (the rail's Blur, say), and
-    //    that returns `y` untouched. ──
+    //    ⚠️ Exactly ONE of the media sections paints, and the exclusivity is the tool's
+    //    (`set_paint_media`), not a re-derivation here. The CHIP itself left these sections on
+    //    2026-10-22 (owner, after the smoke): it heads the top card, ABOVE the Preset
+    //    (`paint_brush_body`). Impasto keeps its own `impasto_section_applies` gate — a medium can
+    //    be selected in a mode it does not act in (the rail's Blur, say), and that returns `y`
+    //    untouched. ──
     let meio = move |m: PaintMedia| !brush.is_inpaint && PaintMedia::from_u8(brush.media) == m;
-    plano.bloco(move |ctx, theme, y| {
-        if meio(PaintMedia::Digital) {
-            paint_media_row(ctx, theme, x, content_w, y, brush)
-        } else {
-            y
-        }
-    });
     plano.fixa(pids::PAINTER_WATERCOLOR_SECTION, move |ctx, theme, y| {
         if !meio(PaintMedia::Watercolor) {
             return y;
         }
-        let y = paint_media_row(ctx, theme, x, content_w, y, brush);
         crate::paint_watercolor::paint_watercolor_section(ctx, theme, x, content_w, y, brush)
     });
     plano.fixa(pids::PAINTER_IMPASTO_SECTION, move |ctx, theme, y| {
         if !meio(PaintMedia::Impasto) {
             return y;
         }
-        let y = paint_media_row(ctx, theme, x, content_w, y, brush);
         crate::paint_impasto::paint_impasto_section(ctx, theme, x, content_w, y, brush)
     });
     plano.fixa(pids::PAINTER_WETPAINT_SECTION, move |ctx, theme, y| {
         if !meio(PaintMedia::WetPaint) {
             return y;
         }
-        let y = paint_media_row(ctx, theme, x, content_w, y, brush);
         crate::paint_wetpaint::paint_wetpaint_section(ctx, theme, x, content_w, y, brush)
     });
 

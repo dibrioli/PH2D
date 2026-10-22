@@ -12,15 +12,15 @@ pub struct VistaPreset {
     /// O caminho na biblioteca — a chave de tudo (o pedido `Escolher` leva-o).
     pub relativo: String,
     pub nome: String,
-    /// `meio · grupo` (as pastas).
-    pub grupo: String,
+    /// O rótulo da CATEGORIA (a ponte deriva-o da pasta do meio; o popover põe um título por categoria).
+    pub categoria: String,
     pub favorito: bool,
 }
 
 /// O navegador inteiro.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct VistaPresets {
-    /// Pela ordem da biblioteca (meio, grupo, nome).
+    /// Pela ordem do navegador: categoria, o meio de agora primeiro, e a ordem da biblioteca.
     pub entradas: Vec<VistaPreset>,
     pub ativo: Option<String>,
     /// A política dos volumes, índice em `Politica::TODAS`.

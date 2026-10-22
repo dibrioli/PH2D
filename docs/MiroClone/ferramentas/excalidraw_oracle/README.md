@@ -451,8 +451,10 @@ a seta já parada a g (os pontos mostrados são o encaixe no meio do lado), e o 
 Entradas: `entradas/w14_imagens.excalidraw` (gerada por `entradas/gera_w14_imagens.py`: uma PNG 4×2 de
 oito cores, uma por píxel, e seis elementos `image` — inteira, `scale [-1,1]`, `crop` 2×2 de 4×2,
 `roundness {type:3}` + `opacity 50` + `angle 0.5`, `fileId` sem ficheiro com `status:"pending"`, e
-`scale [1,-1]` + `crop` 2×1) e `entradas/w14_nosso.excalidraw` (escrita pelo NOSSO escritor, o teste
-ignorado `grava_a_entrada_do_oraculo_w14`). ⚠️ Antes de correr: `www/` do `$ORACLE_HOME` tem de existir
+`scale [1,-1]` + `crop` 2×1) e `entradas/w14_nosso.excalidraw` (escrita pelo NOSSO escritor da época do W14;
+o teste que a gravava, `grava_a_entrada_do_oraculo_w14`, saiu em `fc201ec74d` — o escritor mudou no W15 e a entrada
+que se regrava é a `w15_nosso`, por `grava_a_entrada_do_oraculo_w15` em `image_w15_tests.rs`; a `w14_nosso` fica de
+propósito como ficheiro antigo que tem de continuar a abrir igual). ⚠️ Antes de correr: `www/` do `$ORACLE_HOME` tem de existir
 (o passo do `esbuild` do `instala.sh`; em 11/10 estava vazio e o `corre.sh` recusava).
 
 Medido (SVG + PNG + `restored.json`):

@@ -1616,9 +1616,11 @@ cantos (+0,01…+0,25 ms, cresce com os cantos à vista). Em absoluto: +0,05…+
 
 ## 56. ABERTO (por ordem — substitui o §54)
 
-1. **Decisão do dono:** o alvo dos +5 % vale para toda câmera das cenas 5 e 6, ou só para a vista de fábrica (onde
-   passa)? Se para toda: o custo dos cantos na fina e na borda (§55 b) é a próxima rodada (o kill-criterion do §1, a
-   régua de registos do §20.1) — e os zera/limpa por carimbo (§29.5, ~0,008 ms) não chegam para ela.
+1. **DECIDIDO (22/10, o dono delegou: «de modo que o app seja o mais capaz possível»):** os cantos vivos FICAM no
+   padrão (a imagem não se troca) e o alvo «C3 ≤ +5 % sobre a lei W6d» vale para TODA câmera das cenas 5 e 6 — as
+   7 câmeras do §55 b são a régua. A próxima rodada: o custo dos cantos na fina (+0,01…+0,25 ms) e na borda
+   (+0,04…+0,065, quase fixa) — o kill-criterion do §1, a régua de registos do §20.1; os zera/limpa por carimbo
+   (§29.5, ~0,008 ms) não chegam para ela.
 2. A vista nos níveis de cima: +3,62 ms de borda em n = 11–12 a 2160p Alta (§54.1).
 3. A anomalia da r5b (§12). 4. A família (b) (37–38).
 

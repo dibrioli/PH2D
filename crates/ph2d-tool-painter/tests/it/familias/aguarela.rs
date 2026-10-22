@@ -5,6 +5,7 @@
 use super::prelude::*;
 
 mod estudo;
+mod molhado;
 mod portoes;
 mod sonda;
 

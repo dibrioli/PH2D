@@ -246,6 +246,8 @@ impl Trail {
         let mut out = [0.0f64; 3];
         let mix = p.mix;
         self.tip_rows(g, p, mode);
+        // Molhado × molhado ([`Knob::WetOpen`]): a janela estica-se na mancha do cruzamento (sem manchas, nada).
+        self.molhado_estica();
         if self.lx1 < self.lx0 {
             self.roll_window();
             return None;

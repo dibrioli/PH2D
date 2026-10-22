@@ -19,6 +19,7 @@ use crate::brush::{CellFn, ColorFn, for_each_stamp_pixel};
 mod deposit; // o que um dab POUSA — a lei da célula e o caminho por linhas (ADR-0175)
 mod filme; // o filme do traço (Knob::StrokeFilm): o máximo por célula, nunca a soma
 mod janela;
+mod molhado; // molhado × molhado (Knob::WetOpen): a mancha redonda do cruzamento
 mod transfer; // the window-landing half of §10 (LOC-cap split) // a janela cresce NO LUGAR para caber cada dab (smoke do dono 16/10)
 use crate::grid::Grid;
 use crate::jsmath::js_round;
@@ -133,6 +134,8 @@ pub struct Trail {
     por_assentar_pendente: bool,
     /// O máximo por célula do traço vivo ([`Knob::StrokeFilm`]); vazio sem a lei.
     filme: filme::Filme,
+    /// As manchas do cruzamento molhado ([`Knob::WetOpen`]); vazio sem a lei.
+    molhado: molhado::Molhado,
 }
 
 /// Canvas rect touched by a transfer (cell coords, inclusive).
@@ -236,6 +239,7 @@ impl Default for Trail {
             por_assentar: Vec::new(),
             por_assentar_pendente: false,
             filme: filme::Filme::default(),
+            molhado: molhado::Molhado::default(),
         }
     }
 }
@@ -261,6 +265,7 @@ impl Trail {
         self.window_size = 0;
         self.corda = 0.0;
         self.filme.limpa();
+        self.molhado.limpa();
         self.lx0 = 0;
         self.ly0 = 0;
         self.lx1 = -1;
@@ -499,6 +504,7 @@ impl Trail {
         cor: Option<ColorFn<'_>>,
         mode: Option<crate::par::Rows>,
     ) -> Accumulated {
+        self.molhado_dab(g, p, dab.x, dab.y, dab.r);
         self.anchor_first_dab(dab);
         self.ensure_fits(dab);
         if cor.is_some() {
@@ -543,6 +549,7 @@ impl Trail {
         dab: &Dab,
         ext_bypass: bool,
     ) -> Accumulated {
+        self.molhado_dab(g, p, dab.x, dab.y, dab.r);
         self.anchor_first_dab(dab);
         self.ensure_fits(dab);
         let law = deposit::DepositLaw::new(p, dab, ext_bypass);

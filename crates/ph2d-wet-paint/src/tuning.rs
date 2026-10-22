@@ -217,9 +217,16 @@ pub enum Knob {
     /// para dentro da borda a tinta molhada ao lado ([`crate::tools::apply_dry_edge`]) — a mancha seca do Rebelle tem a
     /// linha escura por dentro. `0` = o secador de sempre, ao bit.
     DryerEdge,
+    /// ⭐ **Molhado × molhado** (J5, a FILA 1, `docs/Painter/Pinceis/exames/aguarela.md` «Motor J5»): a tinta que entra
+    /// na molhada de OUTRA tinta abre nela uma mancha REDONDA — o raio da mancha passa o do dab por esta fracção, até à
+    /// metade da faixa molhada que o traço atravessa ([`crate::trail::Trail`], `trail/molhado.rs`). `0` = o cruzamento de
+    /// sempre, ao bit.
+    WetOpen,
+    /// … a fracção da tinta de baixo que a mancha EMPURRA para fora dela (só com [`Knob::WetOpen`]).
+    WetOpenPush,
 }
 
-pub const KNOB_COUNT: usize = 105;
+pub const KNOB_COUNT: usize = 107;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KnobGroup {

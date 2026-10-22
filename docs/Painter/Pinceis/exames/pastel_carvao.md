@@ -87,3 +87,48 @@ fora, `pressureSize` 0,9: todas SANGRAM) · `a_pressao_leve_desfaz_o_traco_em_gr
 | `pressureGrain` 0,5 no Square Hard | a largura da rampa leve cai a 0, a lei da pressão 0,24 (> 0,18) |
 | Square Hard com o grão Noise 160 | Textura da mídia 14 contra 21 do Rebelle, «ruído fino» para o revisor |
 | a gota do pó grossa (8) no Powder | grão 4 × 4 px mas sem as nódoas; régua 246 → 229 |
+
+## 2.ª ronda (J4, 21/10) — o pó solto no Wet
+
+SHAs `e0ea982caf` (motor) · `9965b60b59` (Soft Pastel e Charcoal com o pó) · `3d79d08cd6` (Square Hard). Pranchas
+`pranchas/pastel_carvao/r4/` (as da fábrica de hoje) e `r5/` (variantes recusadas). Medição do pó: `po2.py` (o `po.py` do
+motor das texturas por faixa de distância à borda; scratchpad `pastel2/`). Corte de custo do dono a meio: 2 rondas no máximo.
+
+**Motor (aditivo, `po = 0` ao byte):** `stroke::spray::graos_do_po` = a lei dos grãos com dois chamadores (o Digital ao bit
+e o Wet) · `Engine::pousa_grao_solto` (wet-paint `painter/po.rs`): cada grão pela lei do dab num rasto PRÓPRIO, recomeçado e
+pousado logo — sem corda, âncora nem carga da lane (o miolo não muda: 191 → 193 px; antes 92 → 109) · `wetpaint/po.rs`: os
+grãos de cada dab do lote depois do lote, à volta do raio VISTO (não o do motor), peso `1 ÷ FRACAO_DO_FINO` (com o de um dab
+eram névoa) · ⭐ `DabJitter::po_lado` — medido no Rebelle: o pó cai à DIREITA de quem anda (recto: 411 × 191 em baixo; vertical
+para baixo: à esquerda), Soft Pastel 0,37, Charcoal 0,43 · `presets_de_fabrica::direito` mede a largura SEM o pó (com ele a
+tabela do Charcoal lia 1,5× e o miolo ficava mais fino que o slider). Portão red-first `o_po_solto_cai_a_volta_do_traco_no_wet`
+(Soft Pastel a 200 px: 94 grãos/100 px longe da borda, 0 sem o pó, lado 2,99 × 1,38); mutações M1 (sem pousar), M2 (sem o
+lado), M3 (sem o peso) SANGRAM. Verdes: volta_ao_byte, a_miniatura, a_lei_da_tinta, leis_sistemicas, wetpaint_preset (lib),
+o_po_solto_espalha (Digital), a_largura_e_a_prometida, parece_a_sua_midia, a_pressao_de_cada_preset.
+
+| Rebelle (recto 200, `po2.py`) | grãos/100 px a ≥ 0,2 meia-larg. | área · tom | nosso |
+|---|---|---|---|
+| Soft Pastel `Dry Thin` | 56 (16 13 15 13 15 7 6 por faixa) | 3 · 0,18 | 54 · 2 · 0,20 (`po` 2,5 · 1,0 · 1,5 px · 0,08 · lado 0,37) |
+| Charcoal | 24 (todos a 0,1–0,5) | 2 · 0,15 | 0 25 10 6 2 · 3 · 0,16 (3,5 · 0,4 · 1,5 · 0,1 · 0,43) |
+| Flat Soft (Pastel Side) | 60, 21 além de 1,5 | 2 · 0,21 | ps2 v0 63 · 4 · 0,30 (2,5 · 4 · 1,5 · 0,12 · 0,35) — não aplicado |
+
+**Soft Pastel — curado, NÃO aprovado.** Régua 414/454, vizinho Hard Round 0,782. r4 (6/6, baixa→média): o pó já não é o
+defeito principal; ficam (1) grão aos grumos com furos × riscas finas ao longo e borda que se esvai em névoa, (2) pontas
+RECTAS no Rebelle e a rampa que ganha LARGURA em lente, (3) a 5 px o Rebelle tracejado (o nosso contínuo: cv 0,02 × 0,28) e
+o azul que tapa mais o vermelho. Ronda 2 (r5, `dab_quina` 0,5–0,7 com o dab a seguir o traço): as pontas ficam rectas mas a
+mídia lê Orla 3 × 6 (a quina endurece a borda lateral) — recusada, a fábrica fica a da r4.
+**Charcoal — curado, NÃO aprovado.** Régua 424/454, vizinho Graphite 2H 0,865. r4 (6/6 alta) e r5 (estrias em Flow +
+quina, régua 396; 6/6 média) dizem o mesmo: o Rebelle tem manchas de tom e arranhões brancos (fibra), é mais escuro e
+compacto, a rampa some no leve e engrossa de repente em fuso agudo; o nosso mais pálido, auréola de pontinhos mais larga,
+pontas redondas. Fábrica = r4 (mármore + pó).
+**Square Hard — curado, sem revisão cega (corte de custo).** Decisão 16: carga 110 · papel 0,8 — R nos cruzamentos 75,6
+(Rebelle 74; antes 114), régua 188 → 277/295 (variante só A). O MIDIAS perde Textura e Cv (a foto antiga lia 13 × 20,9 e
+0,044 × 0,077; na foto nova os do Rebelle) e ganha `o_square_hard_tapa_o_vermelho_como_a_foto` (a carga de antes: 97).
+**Pastel Side, ponta de imagem: não feitos** (corte de custo; o `escreve_os_em_estudo` já os pinta fora da fábrica).
+
+### Fila (com a medição)
+- **Tampa RECTA de um dab redondo** (Soft Pastel, Charcoal, Wax Scrape — as revisões r1–r5 repetem): a `dab_quina` dá-a mas
+  endurece a borda lateral (Orla 3 × 6). Falta cortar a cápsula a direito no início e no fim do traço, não o carimbo (motor).
+- **O fino tracejado** (Soft Pastel a 5 px, cv 0,28 no Rebelle × 0,02): o peso do traço fino enche-o; uma lei de dente pelo
+  diâmetro (motor).
+- Pastel Side com o pó (valores da tabela) + carga 150 (tom); Square Hard pela revisão cega; a ponta de imagem (Compressed
+  Charcoal, Wax Scrape, Oil Pastel, Powder) por medir com `GrainLaw::area`.

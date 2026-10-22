@@ -1,0 +1,48 @@
+{
+ "prancha": "wet_wash_a3b.png",
+ "linhas": [
+  "gestos_A",
+  "gestos_B",
+  "tamanhos_A",
+  "tamanhos_B",
+  "sobre_A",
+  "sobre_B"
+ ],
+ "chave": {
+  "gestos_A": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  },
+  "gestos_B": {
+   "1": "vizinho",
+   "2": "oraculo",
+   "3": "nosso"
+  },
+  "tamanhos_A": {
+   "1": "oraculo",
+   "2": "vizinho",
+   "3": "nosso"
+  },
+  "tamanhos_B": {
+   "1": "vizinho",
+   "2": "nosso",
+   "3": "oraculo"
+  },
+  "sobre_A": {
+   "1": "nosso",
+   "2": "vizinho",
+   "3": "oraculo"
+  },
+  "sobre_B": {
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
+  }
+ },
+ "quem": {
+  "oraculo": "watercolor_wash_round",
+  "nosso": "Wet Wash (escala 1.0)",
+  "vizinho": "Gouache Wash (d 0.954, limiar 0.591)"
+ }
+}

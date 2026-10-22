@@ -108,7 +108,9 @@ pub const WET: &[Receita] = &[
 ///   lista o vermelho da base opaco e saturado (cobertura 0,92 contra 0,72 — o vermelho do K–M a 200 de pigmento cobre
 ///   mais que o azul; não é do preset) e o portão `a_pressao_de_cada_preset_e_a_da_sua_origem` dá 0,202 (barra 0,18): a
 ///   entrada tardia do Rebelle (nada abaixo de p 0,2) só se copia com um piso, que a decisão 9 proíbe. O ficheiro gerado
-///   vive em `fixtures/presets_teste/` ([`FLAT_EM_ESTUDO`]) para os portões da família.
+///   vive em `fixtures/presets_teste/` ([`FLAT_EM_ESTUDO`]) para os portões da família. J4 3.ª ronda (`exames/aguarela.md`):
+///   com a decisão 15 na lei a rampa lê 0,130 (passa); o revisor cego novo achou o Rebelle nas 6 linhas (baixa) e REPETE
+///   o vermelho opaco, os nós escuros onde o azul cruza o azul e as pontas desfiadas contra as redondas — fica em estudo.
 /// - G-9 Rake: régua 390/454, a 0,83 do Filbert; o 1.º revisor escolheu o nosso como original (baixa), o 2.º achou o
 ///   Rebelle nas 6 linhas (média) e os dois listam as PONTAS (as do Rebelle cortadas a direito, as nossas desfiadas
 ///   cerda a cerda) e, a 200 px, as ~15 riscas escuras espaçadas dele contra o nosso campo denso de estrias.

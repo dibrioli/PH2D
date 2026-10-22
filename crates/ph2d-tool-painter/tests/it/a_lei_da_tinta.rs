@@ -22,10 +22,10 @@ const RAIO_DA_CENA: f32 = 18.0;
 #[rustfmt::skip]
 const CENAS: [(&str, bool, u64); 20] = [
     ("Wet Round", false, 0x8e37a39e8ee2ba79),
-    ("Wet Wash", false, 0xb08be15433107c85),
+    ("Wet Wash", false, 0x94c4915c9762415f), // J4 aguarela 3.ª ronda: o filme, orla 100, a ponta que não se suja (era 0xb08be15433107c85)
     ("Wet Dry Brush", false, 0xf45f7dcaa32eb88e),
     ("Wet Drip", false, 0x6ad975ec85398727),
-    ("Wet Liner", false, 0xc458dcf08bfe5390),
+    ("Wet Liner", false, 0xc8c30d93e4c6ffd3), // J4 aguarela 3.ª ronda: a ponta limpa, a parede, o vidrado, a água pouca (era 0xc458dcf08bfe5390)
     // Os dois com os FIOS da W2 (prompt 48, doc 48_medicao): repinados pela lei nova; os outros 20 ao bit.
     // O Oil Bristle repintado pelo relevo sem escada (W3b, prompt 50, doc 50_medicao): os outros 21 ao bit.
     // Os 22 repintados pela regra do prompt 51 (Spacing 0,1 + Continuous em todos, doc 51_medicao); o Airbrush também
@@ -48,7 +48,7 @@ const CENAS: [(&str, bool, u64); 20] = [
     ("Wet Flat", false, 0x270ceb734f4d9aea),
     ("Gouache Flat", false, 0x6111ea627d99cff5),
     ("Wet Round", true, 0xab51e31b5a6e8cb0),
-    ("Wet Liner", true, 0x8a3c8be418ae2ca9),
+    ("Wet Liner", true, 0x88a2105dbd6a9777), // J4 aguarela 3.ª ronda (era 0x8a3c8be418ae2ca9)
 ];
 
 fn cena(preset: &str, obra: bool) -> u64 {
@@ -118,9 +118,13 @@ pub fn cruzamento(px: &[u8], w: u32) -> f64 {
     lum(294, 307) / lum(800, 860).min(lum(120, 200)).max(1e-6)
 }
 
-/// O Wet Liner (duro, cheio) com o Glaze do pincel `g` — a mesma receita, só a lei muda.
+/// O Wet Liner (duro, cheio) com o Glaze do pincel `g` — a mesma receita, só a lei muda. (J4 aguarela 3.ª ronda: o Liner
+/// de fábrica levou a água pouca, a ponta que não se suja e a parede — aqui ficam os de omissão de antes, a régua do Glaze.)
 fn liner_com_glaze(g: f64) -> ph2d_brush_presets::Preset {
     let mut p = de_fabrica("Wet Liner");
+    for (k, v) in [("waterPerDab", 1.0), ("capillary", 0.2), ("pickup", 0.005), ("levelingOwnStroke", 0.0)] {
+        p.parametros.engine.insert(k.to_owned(), v);
+    }
     p.parametros.engine.insert("glaze".to_owned(), g);
     p
 }

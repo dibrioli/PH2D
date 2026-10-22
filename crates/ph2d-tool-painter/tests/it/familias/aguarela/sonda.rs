@@ -194,6 +194,9 @@ fn sonda_o_miolo_liso() {
                 if std::env::var("PH2D_SONDA_PERFIL").is_ok() {
                     let s: Vec<String> = p0.iter().map(|(yy, s)| format!("{yy:.0}:{:.0}/{:.0}", s[0] + s[1], p1.iter().find(|q| q.0 == *yy).map_or(0.0, |q| q.1[0] + q.1[1]))).collect();
                     println!("[perfil] {nome} {}", s.join(" "));
+                    // A ÁGUA (o `film`, ×1000) logo depois do traço e aos 240 quadros: onde a orla nasce (ou não).
+                    let f: Vec<String> = p0.iter().map(|(yy, s)| format!("{yy:.0}:{:.0}/{:.0}", s[2] * 1e3, p1.iter().find(|q| q.0 == *yy).map_or(0.0, |q| q.1[2] * 1e3))).collect();
+                    println!("[agua] {nome} {}", f.join(" "));
                 }
             }
         }

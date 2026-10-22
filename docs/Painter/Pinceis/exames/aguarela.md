@@ -168,3 +168,73 @@ o tecto de água, o peso por comprimento, o 2.º gole. Custo (smoke, load 18–2
 **orla de 1 px** do Rebelle (o Liner e o Mop: nenhum knob a dá com o filme — `capillary`, evaporação, `leveling`,
 `extEdgeTint`, `retention`: orla 1,00–1,04 contra 1,07–1,28); (3) a pegada varrida sob o filme (o Flat fino); (4) o
 cruzamento molhado (o azul arrasta o vermelho; contas) — do `oleo_acrilica`; (5) o recto de 5 px do Mop.
+
+## 3.ª ronda (J4, 21/10) — a decisão 15 na lei, o cruzamento molhado, o fio da borda
+
+Bancada `PH2D_EXAME_DIR=/tmp/ph2d_exame_aguarela3`, variantes num processo; réguas novas (scratchpad `aguarela3/`):
+`cruz.py` (o vermelho que o azul LEVA: R−B do vertical abaixo da faixa molhada menos acima dela), `cor.py` (as cores do
+cruzamento molhado/seco), `liso.py` (orla/miolo). Load 8–260 (o relógio não vale; nenhum custo novo medido).
+
+**1. A decisão 15 na LEI** (`leis_sistemicas::a_pressao_de_cada_preset_e_a_da_sua_origem`, `399a387c6d`): abaixo do 1.º
+decil em que o oráculo PINTA (largura > 0 na foto da rampa) o decil conta no RMS com erro 0. ⛔ Medido e recusado: TIRAR
+o decil do RMS — infla quem casava os zeros (Charcoal 0,179 → 0,192, Gouache Flat 0,176 → 0,186: reprovavam). Com o
+denominador da rampa inteira a régua nova nunca lê mais longe que a de antes: os 25 de fábrica todos ≤ (Wet Wash 0,179 →
+0,143, Wet Flat 0,170 → 0,115, Express Oil 0,168 → 0,113…; os que começam no decil 0 iguais). CONTROLO novo no portão (o
+Wet Wash com a largura torta acima do início, `pressureSize` 1 em curva 3): 0,533. Mutações: o corte de TUDO (d0 = 10) →
+o controlo 0,000, VERMELHO; o controlo sem a rampa torta → 0,143, VERMELHO. Com ela: Flat Bristle 0,202 → **0,130**, o
+Wash de filme 0,28–0,39 → **0,12** (passam). `pressao_contra_a_origem` fica `pub(crate)`.
+
+**2. O cruzamento molhado — NÃO era motor.** Medido no Wet Liner (Rebelle `Liner`): R−B do vertical abaixo da faixa
+molhada **+33** (o nosso) contra **−3,2** (Rebelle): a ponta apanhava o vermelho (`Knob::Pickup` 0,005 por janela; a ponta
+limpa-se a 0,001) e levava-o pelo vertical inteiro — o «azul que arrasta o vermelho» dos revisores. `pickup` 0 → −4,2 e a
+régua 375 → 391/456; `tipClean` 0,05 dá o mesmo. No Mop a lente lilás PÁLIDA era o escoamento da tinta nova para a molhada
+de outro traço: a parede da J2 (`levelingOwnStroke` 1) dá a cor do cruzamento [183,170,194] contra o Rebelle [182,176,200]
+(sem ela [206,195,211]); régua 375 → 393. O seco: `glaze` 0,2 leva o violeta-cinza [86,116,179] ao azul-marinho [77,105,160]
+(Rebelle [78,96,155]); 0,5 já é roxo escuro. ⛔ O que FICA aberto (motor, devolvido): o Rebelle `Wash`/`Mop` EMPURRA o
+vermelho molhado para os lados (empurra 1,16) e o azul abre uma mancha REDONDA escura; o nosso, com a parede, um quadrado
+limpo, sem ela uma lente pálida — a mistura subtractiva de duas tintas na MESMA água que se espalha (o recurso «molhado ×
+molhado»). Portão `familias::aguarela::portoes::o_azul_nao_leva_o_vermelho_molhado` (Liner 1,1; controlo = a ponta que se
+suja 36,1 — a mutação do valor).
+
+**3. O fio escuro da borda — NÃO era motor.** A orla nasce na borda que SECA antes do miolo (`drying.rs`, a evaporação
+pela borda) e o pigmento corre para ela. Sonda (`sonda_o_miolo_liso`, `PH2D_SONDA_PERFIL`, agora com a água): com o filme
+a célula tem **3,5** de água (sem ele ~1) e aos 240 quadros ainda 3,0 — nada secou, a orla 1,00–1,04; sem o filme a borda
+seca (água 0) e junta 272 contra 155 do miolo. Água por dab 1 → 0,3 · 0,15 · 0,1: orla a 40 px 1,02 → 1,06 · 1,18 · 1,20
+(Rebelle 1,25); 0,1 mancha (0,025). Fica 0,15 + capilaridade 0,05 (mancha 0,005): régua 417. Portão
+`o_liner_tem_o_fio_escuro_da_borda` (1,195; controlo com a água de omissão 1,012). No **Wash** o fio é ERRADO (o revisor:
+«contorno duro»; o Rebelle esbate): o Wash fica sem a água pouca, orla 100. No **Mop** a água pouca não deu orla (0,97–1,04).
+
+**Os pincéis** (seis condições; revisores cegos NOVOS, pranchas `pranchas/aguarela/*_a3*.png`, `cegas/`, `chaves/`):
+- **Wet Liner** — receita: filme + `pickup` 0 + parede + vidrado 0,2 + água por dab 0,15 + capilaridade 0,05. Régua 375 →
+  **419/456**; vizinho Soft Pastel **0,705** (≥ 0,596). Revisor q3: achou o Rebelle 6/6 (baixa/média) e lista: a 200 px as
+  pontas do Rebelle esbatem em degradê e o miolo é mais carregado (o nosso chapado — repetido do t9 ⇒ visível), a espiral
+  dele tem costuras ténues entre as voltas, a rampa dele esmaece no bico, os nossos cruzamentos azul × azul mais escuros e o
+  cruzamento molhado dele um bloco escuro. Já NÃO lista o fio nem o arrasto. ⇒ **CURADO, NÃO APROVADO**.
+- **Wet Wash** (com o filme) — dura 0,9, papel 0, pigmento 2,8, orla 100, largura fixa, `pickup` 0, vidrado 0,2: régua 349 →
+  **373/456** no exame do preset regerado (variantes sobre o de orla 200 — orla 20/50/100/200: 373/369/385/375); rampa 0,12. Revisor q4 (a versão com a água pouca, 375): achou o Rebelle
+  6/6 (média): o nosso contorno escuro (saiu: orla 100 sem a água pouca), as pontas duras a 200 px, o vermelho molhado que o
+  Rebelle levanta e empurra, os azul × azul mais escuros, a entrada tardia (decisão 9). ⇒ **CURADO, NÃO APROVADO**; fica o
+  filme (o miolo mosqueado e a orla oca dos revisores r1/r2 já não aparecem).
+- **Mop** (em estudo; o preset de estudo pela receita com a tabela da largura MEDIDA, `familias/aguarela/estudo.rs` — a de um
+  ficheiro base mentia: 62 px a 40) — `pickup` 0 + parede + vidrado: régua 405 → **390/456**. Revisor q5: tomou o NOSSO pelo
+  original nos gestos (baixa), achou o Rebelle nos tamanhos e no «sobre» (média): as pontas do 200 px, a mancha redonda que
+  o azul abre no vermelho molhado (o nosso um quadrado), a espiral com anéis. ⇒ **REPROVADO ainda**.
+- **Flat Bristle** (`fixtures/presets_teste/`, receita intacta) — régua **368/456**, 1.º dos 228 do Rebelle (0,838), vizinho
+  Oil Bristle 1,078, a rampa 0,130 (passa). Revisor q1 (novo): o Rebelle 6/6 (baixa) e REPETE o o2c: o vermelho opaco (K–M,
+  não do preset), os nós escuros onde o azul cruza o azul, as pontas desfiadas contra as redondas, a estria fina regular ⇒
+  repetida por dois revisores (decisão 12) ⇒ **CURADO, NÃO APROVADO** (em estudo).
+- **Wet Round** pigmento 125 (estudo, não aplicado): régua 297 → **419/456**, vizinho Gouache Round 0,924. Revisor q2: tomou o
+  VIZINHO pelo original e o NOSSO pela imitação 6/6 (média), o Rebelle «claramente outro» — a cura aproxima-o da guache, não
+  do Rebelle (a 200 px uma nuvem de centro escuro e halo contra a faixa chapada riscada dele; 5 px contínuo contra o
+  pontilhado). ⇒ **não passa: fica como está**; as `MIDIAS` das famílias não mudam.
+
+Portões tocados (por nome, verdes): `leis_sistemicas` (3), `cada_preset_parece_a_sua_midia`, `…_e_a_sua_receita`,
+`…_volta_ao_byte`, `a_miniatura_…`, `a_largura_e_a_prometida`, `a_regra_do_spacing_…`, `the_factory_presets_are_counted`,
+`familias::aguarela` (7). `a_lei_da_tinta`: as cenas do Wash e do Liner (sem e com as caixas) repinadas; o
+`o_glaze_do_pincel_escurece_o_cruzamento` fixa no seu Liner a água, a capilaridade, a sujidade e a parede de omissão (a régua
+do Glaze; com as do Liner novo o «sem Glaze» lia 0,617). Os motores do filme (`portoes.rs`) fixam o mesmo (a régua do motor).
+
+**Para a fila**: (1) motor — duas tintas na MESMA água: o azul abre uma mancha redonda e escura e empurra o vermelho
+(Wash, Mop, o bloco do Liner; e os nós azul × azul do Flat Bristle); (2) motor — a 200 px a lavagem do Rebelle esbate as
+pontas em degradê e carrega o miolo (Liner, Wash, Mop: o filme é chapado); (3) as costuras das voltas da espiral do Liner;
+(4) o recto de 5 px do Mop e o Sumi-e: não feitos.

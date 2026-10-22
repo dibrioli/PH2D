@@ -4,6 +4,7 @@
 
 use super::prelude::*;
 
+mod estudo;
 mod portoes;
 mod sonda;
 
@@ -16,32 +17,45 @@ const CURVA_DO_FLAT: f64 = 1.75;
 /// das cerdas — e o pincel de filme leva o arrasto a 0 (medido no portão do motor).
 const FILME: (&str, f64) = ("strokeFilm", 1.0);
 const SEM_ARRASTO: (&str, f64) = ("drag", 0.0);
+/// ⭐ J4 3.ª ronda — o CRUZAMENTO MOLHADO do Rebelle (`exames/aguarela.md` «3.ª ronda»): a ponta da aguarela não se
+/// suja (`pickup` 0 na receita: o azul que levava o vermelho da faixa molhada pelo vertical abaixo, R−B +33 contra −3
+/// do Rebelle) e a tinta nova não escoa para a molhada de outro traço (a parede da J2): a lente pálida do Mop sai.
+const PAREDE: (&str, f64) = ("levelingOwnStroke", 1.0);
+/// O cruzamento SECO do Rebelle é um vidrado (azul-marinho, não o violeta-cinza da mistura): 0,2.
+const VIDRADO: (&str, f64) = ("glaze", 0.2);
+/// ⭐ O FIO escuro da borda: a orla nasce na borda que seca ANTES do miolo — o filme encharcava (água 3,5 por célula contra
+/// ~1 sem ele) e aos 240 quadros nada secara. Água por dab 0,15 e capilaridade 0,05 (a mancha da água pouca).
+const POUCA_AGUA: [(&str, f64); 2] = [("waterPerDab", 0.15), ("capillary", 0.05)];
 
 pub const WET: &[Receita] = &[
-    // J4 (`exames/aguarela.md` I-2): NÃO aprovado, receita de antes. A cura medida contra o Rebelle `Wash Round` (dura
-    // 0,9, papel 0, pigmento 5, orla 200, água por dab 2, largura fixa) leva a régua 349 → 384/454, mas dois revisores
-    // cegos repetiram o miolo mosqueado e a orla oca na pressão fraca, e ela parte duas leis da J2 (`leis_sistemicas`:
-    // o traço de 5 px cobre 0,77 do de 40 — Rebelle 0,98; a rampa a 0,277 da origem > 0,18).
+    // J4 3.ª ronda (`exames/aguarela.md`): CURADO, NÃO aprovado — o FILME (o miolo mosqueado e a orla oca que dois revisores
+    // repetiram saem), dura 0,9, papel 0, pigmento 2,8, orla 100, largura fixa, a ponta que não se suja; régua 349 → 373/456
+    // e a rampa a 0,12 da origem desde que ela pinta (decisão 15). O revisor novo ainda vê a 200 px as pontas duras (o
+    // Rebelle esbate em degradê) e o vermelho molhado que o Rebelle empurra para os lados.
     Receita {
         meio: "Watercolor",
         grupo: "Fluid",
         nome: "Wet Wash",
         water: 0.4,
         opacity: 1.0,
-        pigment: 21.0,
-        pickup: 0.6,
-        gate: 0.3,
+        pigment: 2.8,
+        pickup: 0.0,
+        gate: 0.0,
         evaporation: 0.7,
-        edge: 20.0,
+        edge: 100.0,
         tilt: DIREITA,
         bristle_size: 3.0,
         bristle_count: 3000.0,
-        hardness: 0.0,
+        hardness: 0.9,
         size_px: None,
         extras: &[
+            ("pressureSize", 0.0),
             ("pressureSizeCurve", 0.35),
             ("pressureOpacity", 1.0),
             ("pressureOpacityCurve", 1.0),
+            FILME,
+            SEM_ARRASTO,
+            VIDRADO,
         ],
         grao: None,
         achatado: None,
@@ -103,8 +117,9 @@ pub const WET: &[Receita] = &[
     // (`Watercolor/Liner`: duro, carregado, papel 0,10 — o grão quase não fura, 28,86 px). Medido contra
     // `fixtures/rebelle/wcliner.png` (cobertura 0,65 · textura 1,7 %) à largura 38; o Wet Round dá 0,19 · 8,1.
     // J4 motor (`exames/aguarela.md` «Motor J4»): com o FILME (sem o tapete, sem a soma), papel 0, orla 200, pigmento 17
-    // — régua 322 → 375/456, as listras e o grão saem (o revisor novo vê-o liso); curado, NÃO aprovado: falta-lhe o fio
-    // escuro da borda e o miolo mais carregado do Rebelle a 200 px, e o cruzamento molhado arrasta o vermelho.
+    // — régua 322 → 375/456, as listras e o grão saem (o revisor novo vê-o liso). J4 3.ª ronda: a ponta que não se suja,
+    // a parede, o vidrado 0,2 e a água pouca (o FIO escuro da borda) — régua 419/456; curado, NÃO aprovado: a 200 px o
+    // Rebelle esbate as pontas e carrega o miolo (o nosso chapado), e a espiral dele mostra as costuras das voltas.
     Receita {
         meio: "Watercolor",
         grupo: "Fluid",
@@ -112,7 +127,7 @@ pub const WET: &[Receita] = &[
         water: 0.5,
         opacity: 1.0,
         pigment: 17.0,
-        pickup: 1.0,
+        pickup: 0.0,
         gate: 0.0,
         evaporation: 1.0,
         edge: 200.0,
@@ -121,7 +136,7 @@ pub const WET: &[Receita] = &[
         bristle_count: 2000.0,
         hardness: 0.9,
         size_px: Some(29.0),
-        extras: &[FILME, SEM_ARRASTO],
+        extras: &[FILME, SEM_ARRASTO, PAREDE, VIDRADO, POUCA_AGUA[0], POUCA_AGUA[1]],
         grao: None,
         achatado: None,
         pincel: &[],
@@ -165,7 +180,10 @@ pub const EM_ESTUDO: &[Receita] = &[
     // funde-se num disco), a pressão estreita (curva 0,5) E esmaece. J4 motor: com o FILME a régua 368/445 → 405/456 e o
     // revisor cego novo leu o NOSSO como o original em 6/6 (média); reprovado ainda pelo que ele listou do nosso lado: o
     // recto de 5 px quase some, a rampa 0,15→1→0,15 de tampas redondas (o Rebelle afina), a mancha lilás com contas no
-    // cruzamento molhado (`exames/aguarela.md` «Motor J4»).
+    // cruzamento molhado (`exames/aguarela.md` «Motor J4»). 3.ª ronda: a ponta que não se suja e a parede (a lente lilás
+    // pálida sai: a cor do cruzamento molhado [183,170,194] contra o Rebelle [182,176,200]); régua 390/456; o revisor novo
+    // tomou o NOSSO pelo original nos gestos e acha o Rebelle nos tamanhos e no «sobre»: as pontas do 200 px, a mancha
+    // redonda que o azul abre no vermelho molhado (o nosso, com a parede, um quadrado) — reprovado ainda.
     Receita {
         meio: "Watercolor",
         grupo: "Fluid",
@@ -173,7 +191,7 @@ pub const EM_ESTUDO: &[Receita] = &[
         water: 1.0,
         opacity: 1.0,
         pigment: 5.2,
-        pickup: 0.6,
+        pickup: 0.0,
         gate: 0.05,
         evaporation: 0.7,
         edge: 12.0,
@@ -190,6 +208,8 @@ pub const EM_ESTUDO: &[Receita] = &[
             ("pressureOpacityCurve", 1.3),
             FILME,
             SEM_ARRASTO,
+            PAREDE,
+            VIDRADO,
         ],
         grao: None,
         achatado: None,

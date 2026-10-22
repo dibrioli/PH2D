@@ -10,39 +10,39 @@
  ],
  "chave": {
   "gestos_A": {
-   "1": "oraculo",
-   "2": "vizinho",
-   "3": "nosso"
+   "1": "nosso",
+   "2": "oraculo",
+   "3": "vizinho"
   },
   "gestos_B": {
-   "1": "vizinho",
+   "1": "nosso",
    "2": "oraculo",
-   "3": "nosso"
+   "3": "vizinho"
   },
   "tamanhos_A": {
-   "1": "vizinho",
-   "2": "oraculo",
-   "3": "nosso"
+   "1": "oraculo",
+   "2": "nosso",
+   "3": "vizinho"
   },
   "tamanhos_B": {
    "1": "oraculo",
-   "2": "vizinho",
-   "3": "nosso"
+   "2": "nosso",
+   "3": "vizinho"
   },
   "sobre_A": {
-   "1": "oraculo",
-   "2": "nosso",
+   "1": "nosso",
+   "2": "oraculo",
    "3": "vizinho"
   },
   "sobre_B": {
    "1": "oraculo",
-   "2": "nosso",
-   "3": "vizinho"
+   "2": "vizinho",
+   "3": "nosso"
   }
  },
  "quem": {
   "oraculo": "pastel_dry_flat_soft",
-  "nosso": "Pastel Side (escala 0.475)",
-  "vizinho": "Compressed Charcoal (d 0.729, limiar 0.591)"
+  "nosso": "Pastel Side (escala 0.452)",
+  "vizinho": "Soft Pastel (d 1.093, limiar 0.591)"
  }
 }

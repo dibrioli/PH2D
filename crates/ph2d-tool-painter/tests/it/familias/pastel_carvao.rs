@@ -1,5 +1,5 @@
 //! **Família `pastel_carvao`** — J4, catálogo F (carvão, giz, pastel): Charcoal, Soft Pastel, Oil Pastel, Square Hard,
-//! Wax Scrape. Escreva aqui as receitas e os testes da família; nada fora deste ficheiro
+//! Wax Scrape; Pastel Side (J5). Escreva aqui as receitas e os testes da família; nada fora deste ficheiro
 //! (`docs/Painter/Pinceis/04_BANCADA.md` §9). O `CHARCOAL` é base PARTILHADA (o Scratch da família `lapis` nasce dele).
 
 use super::prelude::*;
@@ -123,6 +123,34 @@ pub const WET: &[Receita] = &[
         nasce_de: Some("Soft Pastel"),
         ..SOFT_PASTEL
     },
+    // ✅ APROVADO J5 (revisão cega r4: o revisor toma o NOSSO por original em 4 de 6 linhas, confiança média; o Rebelle
+    // só nas «sobre», confiança baixa) — o pó solto medido e a carga 150 (`exames/pastel_carvao.md`).
+    // ⭐ F-7 (J4) `Pastel › Pastel Dry › Flat Soft`: o LADO do bastão — a lâmina FIXA na tela (L3: o deitado fino, o
+    // de pé largo; Rebelle 19 × 36 px a 40, 1,89), as pontas rectas (`dab_quina`), denso, o tecto 50 (o do LADO FINO: a
+    // largura que o slider promete é a do recto deitado; a 200 px o Rebelle pinta 50 deitado). O Soft Pastel com a lâmina 0,47 a 0° e a curva da opacidade 1,2 (a rampa dele 0,05 → 0,62).
+    // r3 (a revisão cega r2): a pressão muda a DENSIDADE e não a largura (`pressureSize` 0,2) e a leve é névoa de grão
+    // (`pressureGrain` 0,5); o lado largo (os de pé) translúcido e riscado — as vetas `ViewPlane` (de pé 0,62, Rebelle 0,64).
+    // J5: o pó solto MEDIDO no Rebelle `Flat Soft` (recto 200, `po2.py`: 60 grãos/100 px, 21 além de 1,5 meia-largura;
+    // a variante ps2 v0 63 · área 4 · tom 0,30) e a carga 150 (o tom: o nosso mais claro).
+    Receita {
+        nome: "Pastel Side",
+        pigment: 150.0,
+        size_px: None,
+        extras: &[
+            ("felt", 0.0),
+            ("drag", 0.0),
+            MAIS_PERTO,
+            ("pressureSize", 0.2),
+            ("pressureSizeCurve", 0.5),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.2),
+            ("pressureGrain", 0.5),
+        ],
+        achatado: Some((0.47, 0)),
+        pincel: &[("dab_quina", "1.0"), ("size_max_px", "50"), ("shape", VETAS_DO_CARVAO), ("dab_jitter", PO_DO_LADO)],
+        nasce_de: Some("Soft Pastel"),
+        ..SOFT_PASTEL
+    },
 ];
 
 /// A orla aos caroços do giz de cera (J4): a 2.ª ponta (Multiply) a 0,8 do diâmetro, 2 marcas, espalhadas 0,6 e 0,5
@@ -155,6 +183,8 @@ const PO_DO_PASTEL: &str = r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 
 const PO_DO_CARVAO: &str = r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 0.0, "po": 3.5, "po_alcance": 0.4, "po_px": 1.5, "po_opacidade": 0.1, "po_lado": 0.43}"#;
 
 /// O tecto do Charcoal (decisão 8): o recto de 200 px do Rebelle pinta 73–76 px (`fixtures/leis_escala_rebelle.json`).
+/// O pó do Pastel Side (J5): a variante ps2 v0 medida contra o Rebelle `Flat Soft` (o pó vai mais longe: alcance 4).
+const PO_DO_LADO: &str = r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 0.0, "po": 2.5, "po_alcance": 4.0, "po_px": 1.5, "po_opacidade": 0.12, "po_lado": 0.35}"#;
 const TECTO_DO_CARVAO: &str = "76";
 
 /// Sem Shape (o `None` do pincel): os que nascem de um preset com Shape e não a querem.
@@ -230,31 +260,6 @@ pub const EM_ESTUDO: &[Receita] = &[
         pincel: &[("falloff", "\"Sharp\""), ("jitter", "0.2"), ("shape", SEM_SHAPE), ("size_max_px", "null")],
         nasce_de: Some("Charcoal"),
         ..CHARCOAL
-    },
-    // REPROVADO r2 e r3 (confiança média): falta o PÓ SOLTO à volta do traço (a dispersão de partículas é da família
-    // `texturas`) e as faixas do carimbo do Rebelle a 200 px; a pressão já muda a densidade e não a largura.
-    // ⭐ F-7 (J4) `Pastel › Pastel Dry › Flat Soft`: o LADO do bastão — a lâmina FIXA na tela (L3: o deitado fino, o
-    // de pé largo; Rebelle 19 × 36 px a 40, 1,89), as pontas rectas (`dab_quina`), denso, o tecto 50 (o do LADO FINO: a
-    // largura que o slider promete é a do recto deitado; a 200 px o Rebelle pinta 50 deitado). O Soft Pastel com a lâmina 0,47 a 0° e a curva da opacidade 1,2 (a rampa dele 0,05 → 0,62).
-    // r3 (a revisão cega r2): a pressão muda a DENSIDADE e não a largura (`pressureSize` 0,2) e a leve é névoa de grão
-    // (`pressureGrain` 0,5); o lado largo (os de pé) translúcido e riscado — as vetas `ViewPlane` (de pé 0,62, Rebelle 0,64).
-    Receita {
-        nome: "Pastel Side",
-        size_px: None,
-        extras: &[
-            ("felt", 0.0),
-            ("drag", 0.0),
-            MAIS_PERTO,
-            ("pressureSize", 0.2),
-            ("pressureSizeCurve", 0.5),
-            ("pressureOpacity", 1.0),
-            ("pressureOpacityCurve", 1.2),
-            ("pressureGrain", 0.5),
-        ],
-        achatado: Some((0.47, 0)),
-        pincel: &[("dab_quina", "1.0"), ("size_max_px", "50"), ("shape", VETAS_DO_CARVAO)],
-        nasce_de: Some("Soft Pastel"),
-        ..SOFT_PASTEL
     },
     // REPROVADO r3: o revisor junta-o ao Graphite 8B (o nosso como original, o 8B como imitação) e dá o Rebelle como
     // «outro» — carimbos rectangulares e festões. Distinto do Soft Pastel só com a Shape e a pressão em curva (0,699).
@@ -780,6 +785,46 @@ mod portoes {
             f.push(format!("o lado: {:.2} com, {:.2} sem (Rebelle 2,15)", lado(com), lado(sem_lado)));
         }
         assert!(f.is_empty(), "{f:?}");
+    }
+
+    /// A identidade do Pastel Side medida: (lâmina de pé ÷ deitado, grãos do pó/100 px a 200 px).
+    fn lado_do_bastao(p: &Pincel) -> (f64, f64) {
+        (lamina(&cobertura(&cena(p, "gestos"))), po_solto(&cobertura(&tamanhos(p))).por_100)
+    }
+
+    /// As falhas da identidade do Pastel Side contra o Rebelle `Flat Soft`: a lâmina 1,89 (de pé 36 ÷ deitado 19 px a
+    /// 40) e o pó solto 60 grãos/100 px longe da borda do recto de 200 (`po2.py`).
+    fn falhas_do_lado(n: &str, (lamina, po): (f64, f64)) -> Vec<String> {
+        let mut f = Vec::new();
+        if !(1.6..=2.3).contains(&lamina) {
+            f.push(format!("{n}: a lâmina {lamina:.2} (Rebelle 1,89)"));
+        }
+        if po < 30.0 {
+            f.push(format!("{n}: o pó solto {po:.1} grãos/100 px (Rebelle 60)"));
+        }
+        f
+    }
+
+    /// ⭐ **O Pastel Side é o LADO do bastão com o pó** (J5, `exames/pastel_carvao.md`): a lâmina fixa na tela e o pó solto
+    /// à volta, contra a foto do Rebelle `Flat Soft`. Mutação por dentro: sem a lâmina (`dab_flatten` 0, redondo) e sem o pó
+    /// (`po` 0) o mesmo critério TEM de reprovar.
+    #[test]
+    fn o_pastel_side_e_o_lado_do_bastao_com_po() {
+        let ps = [
+            pinceis("Pastel Side").remove(0),
+            mutado("Pastel Side", "brush.dab_flatten", serde_json::json!(0.0)),
+            com_po("Pastel Side", 0.0, 4.0, 1.5, 0.12, 0.35),
+        ];
+        let m: Vec<(f64, f64)> = std::thread::scope(|s| {
+            let hs: Vec<_> = ps.iter().map(|p| s.spawn(move || lado_do_bastao(p))).collect();
+            hs.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        println!("[pastel_carvao] Pastel Side (lâmina, pó/100 px): {:?} · sem a lâmina {:?} · sem o pó {:?}", m[0], m[1], m[2]);
+        let f = falhas_do_lado("Pastel Side", m[0]);
+        assert!(f.is_empty(), "{f:?}");
+        for (i, o) in [(1, "sem a lâmina"), (2, "sem o pó")] {
+            assert!(!falhas_do_lado(o, m[i]).is_empty(), "a mutação «{o}» sobreviveu: {:?}", m[i]);
+        }
     }
 
     /// O VERMELHO por baixo do azul nos cruzamentos da cena `sobre` (x 250 e 500 × as faixas y 150 e 470, ±8 × ±15 px): o

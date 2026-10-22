@@ -108,6 +108,8 @@ kinds! {
     ObjectTwice => "object_twice",
     UnknownMaster => "unknown_master",
     UnknownMasterNear => "unknown_master_near",
+    UnknownProperty => "unknown_property",
+    UnknownPropertyNear => "unknown_property_near",
 }
 
 impl Kind {
@@ -123,6 +125,8 @@ impl Kind {
                 | Kind::ObjectTwice
                 | Kind::UnknownMaster
                 | Kind::UnknownMasterNear
+                | Kind::UnknownProperty
+                | Kind::UnknownPropertyNear
         )
     }
 }
@@ -173,6 +177,16 @@ impl Explained {
         match near {
             Some(near) => Self::new(Kind::UnknownMasterNear, &[("name", name), ("near", near)]),
             None => Self::new(Kind::UnknownMaster, &[("name", name)]),
+        }
+    }
+
+    /// O aviso nosso do nome de propriedade que nenhum componente tem (`ph2d.get/set`, doc
+    /// CodeEditor 08), com o mais perto.
+    #[must_use]
+    pub fn unknown_property(name: &str, near: Option<&str>) -> Self {
+        match near {
+            Some(near) => Self::new(Kind::UnknownPropertyNear, &[("name", name), ("near", near)]),
+            None => Self::new(Kind::UnknownProperty, &[("name", name)]),
         }
     }
 

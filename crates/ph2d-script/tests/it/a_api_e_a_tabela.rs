@@ -248,7 +248,7 @@ fn os_ganchos_da_tabela_sao_os_que_a_cena_chama() {
 /// nomeia uma linha que não existe (texto morto).
 #[test]
 fn toda_entrada_da_api_tem_ajuda() {
-    use ph2d_script::api_help::API_HELP;
+    use ph2d_script::api_help::all_help;
     use ph2d_script::api_table::luau_params;
     // (chave, assinatura, precisa de exemplo)
     let linhas: Vec<(String, &str, bool)> = API
@@ -267,7 +267,7 @@ fn toda_entrada_da_api_tem_ajuda() {
         .collect();
     let mut erros = Vec::new();
     for (key, sig, exemplo) in &linhas {
-        let ajudas: Vec<_> = API_HELP.iter().filter(|h| h.key == *key).collect();
+        let ajudas: Vec<_> = all_help().filter(|h| h.key == *key).collect();
         let [h] = ajudas.as_slice() else {
             erros.push(format!("{key}: {} ajudas", ajudas.len()));
             continue;
@@ -298,7 +298,7 @@ fn toda_entrada_da_api_tem_ajuda() {
             erros.push(format!("{key}: parágrafos mal separados"));
         }
     }
-    for h in API_HELP {
+    for h in all_help() {
         if !linhas.iter().any(|(k, _, _)| k == h.key) {
             erros.push(format!("{}: ajuda sem linha na tabela", h.key));
         }

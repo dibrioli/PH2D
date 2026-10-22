@@ -237,3 +237,20 @@ fn renomear_o_objecto_reescreve_os_scripts_e_um_undo_global_devolve() {
     assert_eq!(m.texto_salvo(ids[0]), aberto);
     assert_eq!(m.texto_salvo(ids[1]), fechado);
 }
+
+/// ⭐ Doc CodeEditor 08 §3.4: um `componente.campo` em `ph2d.get/set` que nenhum componente tem é um
+/// aviso com «quis dizer»; a pose (`"x"`) e um nome montado não contam.
+#[test]
+fn o_nome_de_propriedade_que_nenhum_componente_tem_e_um_aviso() {
+    let src = "function update(self)\n  ph2d.set(self.id, \"health.maxx\", 1)\n  ph2d.get(self.id, \"health.max\")\n  ph2d.get(self.id, \"x\")\n  ph2d.get(self.id, \"vida\" .. \".max\")\n  ph2d.get(self.id, \"jetpack.fuel\")\nend\n";
+    let (mut m, ids) = Mesa::new(&[("a.luau", src)]);
+    let id = ids[0];
+    m.pede(id);
+    quadro_em(&mut m, T0);
+    assert_eq!(
+        tipos(&mut m, id),
+        ["unknown_property_near", "unknown_property"]
+    );
+    let p = m.docs().problems_of(id).remove(0);
+    assert!(p.message.contains("\"health.max\""), "o «quis dizer»: {}", p.message);
+}

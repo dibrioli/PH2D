@@ -57,7 +57,7 @@ pub fn stable_type_id(canonical_name: &str) -> ComponentTypeId {
     u64::from_le_bytes(buf)
 }
 
-pub use super::registry_value::{RegistryError, SetValueFn, ValueOfFn};
+pub use super::registry_value::{CheckValueFn, RegistryError, SetValueFn, ValueOfFn};
 
 /// Decode `bytes` and insert the resulting component onto `entity`.
 pub type InsertFromBytesFn = fn(&mut World, Entity, &[u8]) -> Result<(), RegistryError>;
@@ -129,6 +129,7 @@ pub struct ComponentTypeEntry {
     /// O componente por nome de campo ([`super::registry_value`]).
     pub value_of: ValueOfFn,
     pub set_value: SetValueFn,
+    pub check_value: CheckValueFn,
 }
 
 /// Manual registry of component types known to the spawn / save
@@ -221,6 +222,7 @@ impl ComponentRegistry {
             bevy_component_id: |world| world.component_id::<T>(),
             value_of: super::registry_value::value_of::<T>,
             set_value: super::registry_value::set_value::<T>,
+            check_value: super::registry_value::check_value::<T>,
             insert_from_bytes: |world, entity, bytes| {
                 let v: T = postcard::from_bytes(bytes).map_err(RegistryError::Decode)?;
                 let mut e = world

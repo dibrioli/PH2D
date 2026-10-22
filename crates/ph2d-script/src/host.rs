@@ -433,7 +433,7 @@ fn wire_ph2d_api(
             q.push(EntityWrite {
                 entity,
                 field,
-                value,
+                value: crate::io::WriteValue::Pose(value),
             })
             .map_err(|e| mlua::Error::RuntimeError(format!("ph2d.set: {e}")))
         },

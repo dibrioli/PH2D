@@ -19,6 +19,7 @@ ph2d-render = { path = "../ph2d-render" }
 # `PhysicsJoint`, e ali todas as crates eram dependência do binário. ⭐ É a crate dos COMPONENTES
 # da ponte, não a `ph2d-app-physics` -- depender de um componente não é depender de uma família.
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+serde_json = "1"
 
 # ⚠️ **`test-support` tem o tamanho do que ATRAVESSA a fronteira, e nada mais** (HOWTO §2.5):
 # dos itens `#[cfg(test)]` deste módulo, EXACTAMENTE DOIS são lidos por gates da shell

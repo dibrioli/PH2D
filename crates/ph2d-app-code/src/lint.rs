@@ -215,6 +215,7 @@ impl CodeDoc {
         self.lint.counted = Some(key);
         self.lint.list = self.field_lints();
         self.lint.objects = self.object_lints();
+        self.lint.objects.extend(self.property_lints());
         self.lint.generation += 1;
     }
 
@@ -247,6 +248,25 @@ impl CodeDoc {
                     bytes: r.range,
                     explained,
                 })
+            })
+            .collect()
+    }
+
+    /// Os nomes escritos em `ph2d.get/set` que nem a pose nem um componente têm (doc CodeEditor 08
+    /// §3.4) — não precisa da cena: o catálogo é o mesmo para todas.
+    fn property_lints(&self) -> Vec<ObjectLint> {
+        let mut known = ph2d_script::api_table::property_names();
+        known.extend(ph2d_script::io::POSE_FIELDS.iter().map(|f| (*f).to_owned()));
+        self.syntax
+            .property_references(self.buffer.text())
+            .into_iter()
+            .filter(|(name, _)| !known.contains(name))
+            .map(|(name, bytes)| {
+                let near = did_you_mean(&name, known.iter().map(String::as_str));
+                ObjectLint {
+                    bytes,
+                    explained: Explained::unknown_property(&name, single(&near)),
+                }
             })
             .collect()
     }

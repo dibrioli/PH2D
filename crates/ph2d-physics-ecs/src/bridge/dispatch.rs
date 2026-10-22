@@ -135,6 +135,11 @@ impl PhysicsBridge {
         self.discard_health_events();
         // ⭐ E os de NAVEGAÇÃO (plano 30, W3), pela mesma razão.
         self.discard_nav_events();
+        if let Some(mut caixa) = sim.world_mut().get_resource_mut::<super::health::PedidosDeVida>() {
+            for (alvo, pedido) in std::mem::take(&mut caixa.0) {
+                self.pede_vida(alvo, pedido);
+            }
+        }
         // ⭐ E as ARESTAS dos raios (suplente #21), que são **do dispatch** como as do contacto —
         // ⛔ e o `ray_hits` NÃO é limpo aqui: ele é a memória entre tiques, e um dispatch não é uma
         // descontinuidade. Quem o limpa é o `rebuild_from_rest`, que é uma.

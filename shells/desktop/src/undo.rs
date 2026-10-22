@@ -152,7 +152,7 @@ impl ProjectState {
         prev: Option<&Self>,
     ) -> Self {
         // O mundo passa ao estado AUTORADO só durante a fotografia, e volta ao vivo a seguir.
-        let live = drive.substitute_authored(sim);
+        let live = drive.substitute(sim);
         let mut world = WorldSnapshot::new();
         // ⭐ **A captura é INCREMENTAL desde a F2** (ADR-0164 §2.7): ela reaproveita a linha de
         // quem não mudou, então um passo custa o tamanho da EDIÇÃO e não o do mundo.
@@ -171,7 +171,7 @@ impl ProjectState {
             registry,
             &mut world,
         );
-        ph2d_preview_drive::PreviewDrive::restore_live(sim, &live);
+        ph2d_preview_drive::PreviewDrive::restore(sim, &live);
         Self {
             world,
             vec: match prev {

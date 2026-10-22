@@ -76,6 +76,10 @@ fn textual(ty: &str, name: &str) -> Option<String> {
         .next()
         .unwrap_or("")
         .trim();
+    // A 1.ª alternativa pode ser outro tipo da tabela (`PropertyName` = `PoseField | string`).
+    if first != ty && API_TYPES.iter().any(|t| t.ident == first) {
+        return textual(first, name);
+    }
     if first == "string" {
         Some(name.to_owned())
     } else {

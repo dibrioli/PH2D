@@ -117,6 +117,28 @@ pub fn build_camera_info(
     })
 }
 
+/// ⭐ **A lei dos números da CÂMERA** — o painel e o script (`ph2d.set(e, "game_camera.height", …)`,
+/// doc CodeEditor 08 §3.5) passam os dois por aqui.
+pub(crate) fn sanitize_camera(c: &mut GameCamera) {
+    let livre = GameCamera::default();
+    // A saturação da altura é do MOTOR; um valor não finito volta ao ponto neutro.
+    c.height_world = if c.height_world.is_finite() {
+        c.height_world.clamp(CAMERA_MIN_HEIGHT_WORLD, CAMERA_MAX_HEIGHT_WORLD) // CLAMP-OK: o teto é o do motor
+    } else {
+        livre.height_world
+    };
+    // ⛔ A cerca do dolly é do DOMÍNIO DA LEI: em `δ = 1` o plano do mundo tem tamanho aparente zero
+    // e acima disso a escala inverte o sinal (`ScrollFactor::escala_do_dolly`).
+    c.dolly = if c.dolly.is_finite() {
+        c.dolly.clamp(
+            ph2d_editor_core::screens::hero::DOLLY_MIN,
+            ph2d_editor_core::screens::hero::DOLLY_MAX,
+        )
+    } else {
+        livre.dolly
+    };
+}
+
 /// Aplica uma [`CameraFieldEdit`] que toca no DOCUMENTO.
 ///
 /// ⚠️ **`Preview` devolve sem escrever nada** — ele não é um campo, e quem o serve é o dreno. Ver o
@@ -148,7 +170,7 @@ pub fn apply_camera_edit(
                 CameraFieldEdit::Height(v) => {
                     // ⚠️ **A saturação é do MOTOR**, e mora aqui porque é aqui que o valor entra na
                     // cena — a mesma conta do `AudioSource2D::max_distance`.
-                    c.height_world = v.clamp(CAMERA_MIN_HEIGHT_WORLD, CAMERA_MAX_HEIGHT_WORLD); // CLAMP-OK: o teto é o do motor
+                    c.height_world = *v;
                 }
                 CameraFieldEdit::Offset(v) => c.offset = *v,
                 CameraFieldEdit::Priority(v) => c.priority = *v,
@@ -158,12 +180,7 @@ pub fn apply_camera_edit(
                 // saturação medida. Ver [`ph2d_ecs::ScrollFactor::escala_do_dolly`].
                 // ⚠️ A faixa é a PORTA partilhada com a pista do painel (auditoria 26, §2.6), e um
                 // valor não-finito não chega a escrever.
-                CameraFieldEdit::Dolly(v) if v.is_finite() => {
-                    c.dolly = v.clamp(
-                        ph2d_editor_core::screens::hero::DOLLY_MIN,
-                        ph2d_editor_core::screens::hero::DOLLY_MAX,
-                    );
-                }
+                CameraFieldEdit::Dolly(v) if v.is_finite() => c.dolly = *v,
                 CameraFieldEdit::Dolly(_) => {}
                 CameraFieldEdit::Active(on) => c.active = *on,
                 CameraFieldEdit::CullBit(bit, on) => {
@@ -176,6 +193,7 @@ pub fn apply_camera_edit(
                 }
                 _ => unreachable!("o braço externo já separou as variantes"),
             }
+            sanitize_camera(&mut c);
             queue_set(queue, registry, entity_bits, CAMERA, &c);
         }
 

@@ -17,7 +17,9 @@ use mlua::{Lua, Table, Value};
 use ph2d_ecs::{ChildOf, Entity, MasterRoot, Name, SimWorld, Spawned, StableId, Transform, World};
 
 use crate::component::{LuauScript, ProjectScripts};
-use crate::io::pose_field;
+use crate::io::{EntityWrite, WriteQueue, WriteValue, pose_field};
+use crate::lane_property::{from_lua, to_lua};
+use ph2d_component_desc::FieldKind;
 
 /// **O que só quem conhece mestres e documentos sabe fazer** — a porta da `Factory`
 /// (`ph2d-app-components`). O `ph2d-script` não conhece instâncias nem o documento do vetor.
@@ -39,6 +41,64 @@ pub trait SceneDoors {
     /// `ph2d.attach_script` acabou de pôr um script em `entity` — quem conhece instâncias regista-o
     /// como DELA (senão o sync mestre → instância, sem eco do mestre, apaga-o no passe seguinte).
     fn attached(&mut self, _sim: &mut SimWorld, _entity: Entity) {}
+
+    /// ⭐ `ph2d.get(e, "health.max")` — uma propriedade nomeada (doc CodeEditor 08), com o tipo do
+    /// campo para o valor chegar ao Luau na forma certa.
+    ///
+    /// # Errors
+    /// Porque não se lê, em texto para o script.
+    fn property_get(
+        &mut self,
+        _sim: &mut SimWorld,
+        _entity: Entity,
+        _name: &str,
+    ) -> Result<(serde_json::Value, FieldKind), String> {
+        Err(NO_PROPERTIES.into())
+    }
+
+    /// `ph2d.set(e, "health.max", v)` — `dry` só verifica (na chamada); sem ele, escreve (no fim
+    /// do tique).
+    ///
+    /// # Errors
+    /// Porque não se escreve, em texto para o script.
+    fn property_set(
+        &mut self,
+        _sim: &mut SimWorld,
+        _entity: Entity,
+        _name: &str,
+        _value: &serde_json::Value,
+        _dry: bool,
+    ) -> Result<(), String> {
+        Err(NO_PROPERTIES.into())
+    }
+
+    /// `ph2d.damage`/`ph2d.heal` — um pedido à VIDA, que a corrida aplica no próximo tique.
+    ///
+    /// # Errors
+    /// Porque não se pede, em texto para o script.
+    fn health_request(
+        &mut self,
+        _sim: &mut SimWorld,
+        _entity: Entity,
+        _request: HealthRequest,
+        _dry: bool,
+    ) -> Result<(), String> {
+        Err(NO_PROPERTIES.into())
+    }
+
+    /// `ph2d.properties(e)` — os nomes que o objecto tem, na ordem do Inspector.
+    fn property_names(&mut self, _sim: &mut SimWorld, _entity: Entity) -> Vec<String> {
+        Vec::new()
+    }
+}
+
+const NO_PROPERTIES: &str = "this scene cannot reach component properties";
+
+/// O que `ph2d.damage`/`ph2d.heal` pedem (pontos finitos `> 0`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum HealthRequest {
+    Damage(f64),
+    Heal(f64),
 }
 
 /// Sem portas: um objecto vazio nasce, uma cópia de mestre não.
@@ -282,12 +342,92 @@ impl<'w> Lane<'w> {
         Ok(true)
     }
 
+    /// `ph2d.get` — a pose, ou uma propriedade nomeada; `nil` se o id já não é de ninguém.
+    fn get(&mut self, lua: &Lua, id: f64, field: &str) -> mlua::Result<Value> {
+        if pose_field(field).is_some() || !field.contains('.') {
+            let v = self.pose(id, field).map_err(mlua::Error::RuntimeError)?;
+            return Ok(v.map_or(Value::Nil, Value::Number));
+        }
+        let Some(e) = self.alive(id) else {
+            return Ok(Value::Nil);
+        };
+        let (v, kind) = self
+            .doors
+            .property_get(self.sim, e, field)
+            .map_err(|why| mlua::Error::RuntimeError(format!("ph2d.get: {why}")))?;
+        to_lua(lua, &v, kind)
+    }
+
+    /// `ph2d.set` de uma propriedade: verifica JÁ (o erro aponta a linha) e pousa no fim do tique.
+    fn set_property(&mut self, lua: &Lua, id: f64, field: &str, value: &Value) -> mlua::Result<()> {
+        let Some(e) = self.alive(id) else {
+            return Ok(());
+        };
+        let v = from_lua(value).map_err(|why| mlua::Error::RuntimeError(format!("ph2d.set: {why}")))?;
+        self.doors
+            .property_set(self.sim, e, field, &v, true)
+            .map_err(|why| mlua::Error::RuntimeError(format!("ph2d.set: {why}")))?;
+        push(lua, e, field, WriteValue::Property(v))
+    }
+
+    /// `ph2d.properties` — a pose primeiro, depois os nomes dos componentes que ele tem.
+    fn properties(&mut self, id: f64) -> Vec<String> {
+        let Some(e) = self.alive(id) else {
+            return Vec::new();
+        };
+        let mut out: Vec<String> = if self.sim.world().get::<Transform>(e).is_some() {
+            crate::io::POSE_FIELDS.iter().map(|f| (*f).to_owned()).collect()
+        } else {
+            Vec::new()
+        };
+        out.extend(self.doors.property_names(self.sim, e));
+        out
+    }
+
+    /// `ph2d.damage`/`ph2d.heal`.
+    fn health(&mut self, lua: &Lua, verb: &str, id: f64, amount: f64) -> mlua::Result<()> {
+        if !(amount.is_finite() && amount > 0.0) {
+            return Err(mlua::Error::RuntimeError(format!(
+                "ph2d.{verb}: the amount must be a number above 0, not {amount}"
+            )));
+        }
+        let Some(e) = self.alive(id) else {
+            return Ok(());
+        };
+        let request = if verb == "heal" {
+            HealthRequest::Heal(amount)
+        } else {
+            HealthRequest::Damage(amount)
+        };
+        self.doors
+            .health_request(self.sim, e, request, true)
+            .map_err(|why| mlua::Error::RuntimeError(format!("ph2d.{verb}: {why}")))?;
+        push(lua, e, verb, WriteValue::Health(request))
+    }
+
+    fn alive(&self, id: f64) -> Option<Entity> {
+        entity_of(id).filter(|&e| self.sim.world().get_entity(e).is_ok())
+    }
+
     fn label(&self, e: Entity) -> String {
         self.sim
             .world()
             .get::<Name>(e)
             .map_or_else(|| format!("{}", e.to_bits()), |n| n.as_str().to_owned())
     }
+}
+
+/// Uma escrita para a fila do fim do tique (HR-8), com o nome de quem a pediu no erro.
+fn push(lua: &Lua, e: Entity, field: &str, value: WriteValue) -> mlua::Result<()> {
+    let q = lua
+        .app_data_ref::<WriteQueue>()
+        .ok_or_else(|| mlua::Error::RuntimeError("ph2d.set: WriteQueue not registered".into()))?;
+    q.push(EntityWrite {
+        entity: e.to_bits(),
+        field: field.to_owned(),
+        value,
+    })
+    .map_err(|err| mlua::Error::RuntimeError(format!("ph2d.{field}: {err}")))
 }
 
 /// Um «não» da pista: o erro sobe; a recusa vai ao console como aviso e a função devolve `false`.
@@ -313,10 +453,19 @@ pub(crate) fn with_lane<R>(
     let table: Table = lua.named_registry_value(LANE_KEY)?;
     let cell = RefCell::new(lane);
     let r = lua.scope(|scope| {
-        let get = scope.create_function(|_, (id, field): (f64, String)| {
-            cell.borrow()
-                .pose(id, &field)
-                .map_err(mlua::Error::RuntimeError)
+        let get = scope.create_function(|lua, (id, field): (f64, String)| {
+            cell.borrow_mut().get(lua, id, &field)
+        })?;
+        let set_property = scope.create_function(|lua, (id, field, v): (f64, String, Value)| {
+            cell.borrow_mut().set_property(lua, id, &field, &v)
+        })?;
+        let properties =
+            scope.create_function(|_, id: f64| Ok(cell.borrow_mut().properties(id)))?;
+        let damage = scope.create_function(|lua, (id, n): (f64, f64)| {
+            cell.borrow_mut().health(lua, "damage", id, n)
+        })?;
+        let heal = scope.create_function(|lua, (id, n): (f64, f64)| {
+            cell.borrow_mut().health(lua, "heal", id, n)
         })?;
         let find = scope
             .create_function(|_, name: String| Ok(cell.borrow_mut().find(&name).map(id_of)))?;
@@ -357,6 +506,10 @@ pub(crate) fn with_lane<R>(
             ("spawn", spawn),
             ("despawn", despawn),
             ("attach_script", attach),
+            ("set_property", set_property),
+            ("properties", properties),
+            ("damage", damage),
+            ("heal", heal),
         ] {
             table.raw_set(k, v)?;
         }
@@ -368,6 +521,10 @@ pub(crate) fn with_lane<R>(
             "spawn",
             "despawn",
             "attach_script",
+            "set_property",
+            "properties",
+            "damage",
+            "heal",
         ] {
             table.raw_set(k, Value::Nil)?;
         }
@@ -394,6 +551,18 @@ ph2d.object = through("object")
 ph2d.spawn = through("spawn")
 ph2d.despawn = through("despawn")
 ph2d.attach_script = through("attach_script")
+ph2d.properties = through("properties")
+ph2d.damage = through("damage")
+ph2d.heal = through("heal")
+-- A pose vai pela fila do `ph2d.set` de sempre; um nome `componente.campo` pela pista.
+local set_pose = ph2d.set
+local set_property = through("set_property")
+ph2d.set = function(entity, field, value)
+  if type(field) == "string" and string.find(field, ".", 1, true) then
+    return set_property(entity, field, value)
+  end
+  return set_pose(entity, field, value)
+end
 "#;
 
 /// Instala as funções da pista (antes da sandbox).

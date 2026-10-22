@@ -23,6 +23,7 @@
 
 /// O texto da página de ajuda de cada linha da `api_table`.
 pub mod api_help;
+mod api_help_props;
 /// A API Luau como tabela — a fonte única do `ph2d.d.luau`.
 pub mod api_table;
 pub mod component;
@@ -34,6 +35,7 @@ pub mod host;
 pub mod io;
 /// A pista do mundo: o `&mut World` emprestado à VM durante os ganchos (CodeEditor item 6).
 pub mod lane;
+mod lane_property;
 pub mod lateral;
 pub mod messaging;
 pub mod module;
@@ -55,8 +57,8 @@ pub use console::{
 };
 pub use diagnostic::{DiagnosticKind, ScriptDiagnostic};
 pub use host::ScriptHost;
-pub use io::{Devices, Edge, EntityWrite, InputSnapshot, QueueFull, WriteQueue};
-pub use lane::{NoDoors, SceneDoors};
+pub use io::{Devices, Edge, EntityWrite, InputSnapshot, QueueFull, WriteQueue, WriteValue};
+pub use lane::{HealthRequest, NoDoors, SceneDoors};
 pub use lateral::{PodKey, PodValue, StateTable};
 pub use messaging::{EntityId, Handler, Message, MessageBus, MessageId};
 pub use module::{ScriptModule, load_module};

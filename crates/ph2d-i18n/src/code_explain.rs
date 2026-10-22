@@ -258,6 +258,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.explain.unknown_master_near.why" => {
             "ph2d.spawn copies a master by its name (capitals count). The closest master is \"{near}\"."
         }
+        // ── As nossas (as propriedades dos componentes, item 8d) ──
+        "code.explain.unknown_property" => "No component has a property \"{name}\"",
+        "code.explain.unknown_property.why" => {
+            "A property is the card's title and the field's label as the Inspector shows them, in snake_case and joined by a dot, like \"health.max\". With a name no component has, the line stops this object's script when it runs."
+        }
+        "code.explain.unknown_property_near" => {
+            "No component has a property \"{name}\" — did you mean \"{near}\"?"
+        }
+        "code.explain.unknown_property_near.why" => {
+            "A property is the card's title and the field's label as the Inspector shows them, in snake_case and joined by a dot. The closest name is \"{near}\"."
+        }
         _ => return None,
     })
 }

@@ -2,7 +2,7 @@
 //! `Lua::sandbox(true)` blocks unsafe globals, hot reload via
 //! reset+restore actually rebuilds the VM (HR-8/9/16).
 
-use ph2d_script::{EntityWrite, ScriptHost};
+use ph2d_script::{EntityWrite, ScriptHost, WriteValue};
 
 #[test]
 fn script_writes_one_hundred_entities_in_one_tick() {
@@ -27,7 +27,7 @@ fn script_writes_one_hundred_entities_in_one_tick() {
         Some(&EntityWrite {
             entity: 0,
             field: "x".into(),
-            value: 0.0
+            value: WriteValue::Pose(0.0)
         })
     );
 
@@ -37,7 +37,7 @@ fn script_writes_one_hundred_entities_in_one_tick() {
         Some(&EntityWrite {
             entity: 50,
             field: "y".into(),
-            value: 10.0
+            value: WriteValue::Pose(10.0)
         })
     );
 }
@@ -84,7 +84,7 @@ fn hot_reload_resets_vm_only_when_source_changes() {
     assert!(changed, "first load is always a reset");
     assert_eq!(host.reset_count(), 1);
     let writes = host.drain_writes();
-    assert_eq!(writes[0].value, 100.0);
+    assert_eq!(writes[0].value, WriteValue::Pose(100.0));
 
     // Re-load identical source → no reset.
     let changed = host.load_script(src_v1).unwrap();
@@ -98,7 +98,7 @@ fn hot_reload_resets_vm_only_when_source_changes() {
     assert!(changed, "changed source must rebuild VM");
     assert_eq!(host.reset_count(), 2);
     let writes = host.drain_writes();
-    assert_eq!(writes[0].value, 200.0);
+    assert_eq!(writes[0].value, WriteValue::Pose(200.0));
 }
 
 #[test]
@@ -184,7 +184,9 @@ fn ph2d_input_resolves_from_input_snapshot() {
     let writes = host.drain_writes();
     let mut by_field: std::collections::BTreeMap<String, f64> = Default::default();
     for w in writes {
-        by_field.insert(w.field, w.value);
+        if let WriteValue::Pose(v) = w.value {
+            by_field.insert(w.field, v);
+        }
     }
     assert_eq!(by_field.get("south_held"), Some(&1.0));
     assert!((by_field["axis_doubled"] - 0.84).abs() < 1e-6);
@@ -218,7 +220,7 @@ fn input_snapshot_survives_reset() {
     host.load_script(r#" ph2d.set(0, "v", ph2d.input("test_key") or -1) "#)
         .unwrap();
     let writes = host.drain_writes();
-    assert_eq!(writes[0].value, 9.0);
+    assert_eq!(writes[0].value, WriteValue::Pose(9.0));
 
     // Different source → reset_count++. Same key still resolves
     // because InputSnapshot survives the rebuild (Arc-shared).
@@ -226,5 +228,5 @@ fn input_snapshot_survives_reset() {
         .unwrap();
     assert_eq!(host.reset_count(), 2);
     let writes = host.drain_writes();
-    assert_eq!(writes[0].value, 9.0);
+    assert_eq!(writes[0].value, WriteValue::Pose(9.0));
 }

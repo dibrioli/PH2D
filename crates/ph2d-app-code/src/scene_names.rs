@@ -103,6 +103,62 @@ pub(crate) fn scene_items(
         .collect()
 }
 
+/// ⭐ **Os nomes de propriedade dentro das aspas** do 2.º argumento de `ph2d.get(`/`ph2d.set(` (doc
+/// CodeEditor 08 §3.9): a pose e os `componente.campo` do catálogo — só o resto do nome, como os da
+/// cena. O tipo do argumento é `string` (o alias desdobrado partia a assinatura), logo é o editor
+/// que os sugere.
+pub(crate) fn property_items(
+    text: &ph2d_code_buffer::Text,
+    anchor: usize,
+) -> Vec<crate::complete::Item> {
+    let line = text.byte_of_line(text.line_of_byte(anchor));
+    let before = text.slice(line..anchor);
+    let Some(after) = ["ph2d.get(", "ph2d.set("]
+        .iter()
+        .filter_map(|c| before.rfind(c).map(|i| &before[i + c.len()..]))
+        .min_by_key(|rest| rest.len())
+    else {
+        return Vec::new();
+    };
+    // `entity, "…` — o 1.º argumento sem aspas nem parênteses por fechar (uma chamada dentro dele
+    // empurraria a vírgula para outro nível).
+    let Some((first, second)) = after.split_once(',') else {
+        return Vec::new();
+    };
+    if first.contains(['"', '\'']) || first.matches('(').count() != first.matches(')').count() {
+        return Vec::new();
+    }
+    let second = second.trim_start();
+    let Some(q) = second.chars().next().filter(|c| matches!(c, '"' | '\'')) else {
+        return Vec::new();
+    };
+    let typed = &second[1..];
+    if typed.contains(q) {
+        return Vec::new();
+    }
+    let detail = ph2d_i18n::tr("code.complete.property");
+    ph2d_script::io::POSE_FIELDS
+        .iter()
+        .map(|f| (*f).to_owned())
+        .chain(ph2d_script::api_table::property_names())
+        .filter_map(|n| {
+            let rest = n.strip_prefix(typed)?.to_owned();
+            (!rest.is_empty()).then(|| crate::complete::Item {
+                label: n.clone(),
+                kind: Some(12),
+                detail: Some(detail.to_owned()),
+                documentation: None,
+                sort_text: "0".to_owned(),
+                filter: Some(rest.clone()),
+                insert: rest,
+                snippet: false,
+                signature: false,
+                usage: 0,
+            })
+        })
+        .collect()
+}
+
 /// O que as abas leem (partilhado; trocado só quando a cena muda de nomes).
 pub(crate) type Shared = Arc<SceneNames>;
 

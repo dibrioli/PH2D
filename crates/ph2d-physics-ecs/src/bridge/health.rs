@@ -100,7 +100,18 @@ pub enum PedidoDeVida {
     Dano(f64),
     /// Devolve `f64` pontos (um morto não é curado — a regra da casa).
     Cura(f64),
+    /// ⭐ **Põe a vida em `f64`** — o `SetHealth` da lei (`Vida::define`): sem piscar nem números de
+    /// golpe, e em zero morre (decisão do dono nº 9, doc CodeEditor 08). Finito `≥ 0`.
+    Define(f64),
+    /// Põe o escudo em `f64` (`Vida::activa_escudo`, sem renovar o relógio). Finito `≥ 0`.
+    Escudo(f64),
 }
+
+/// ⭐ **A caixa por onde quem não tem a ponte pede vida** (os scripts, doc CodeEditor 08): um recurso
+/// do mundo que a ponte esvazia no início de cada `dispatch` para a mesma fila do [`PhysicsBridge::pede_vida`]
+/// — o ECS desacopla, nenhum sistema chama o outro (ADR-0075).
+#[derive(bevy_ecs::prelude::Resource, Default, Debug)]
+pub struct PedidosDeVida(pub Vec<(Entity, PedidoDeVida)>);
 
 /// **Um facto de vida** — quem o sofreu, quem o causou, e o quê.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -148,6 +159,7 @@ impl PhysicsBridge {
     pub fn pede_vida(&mut self, alvo: Entity, pedido: PedidoDeVida) {
         let valido = match pedido {
             PedidoDeVida::Dano(x) | PedidoDeVida::Cura(x) => x.is_finite() && x > 0.0,
+            PedidoDeVida::Define(x) | PedidoDeVida::Escudo(x) => x.is_finite() && x >= 0.0,
         };
         if valido {
             self.pedidos_de_vida.push((alvo, pedido));
@@ -297,12 +309,20 @@ impl PhysicsBridge {
                             .golpe(&cfg, Regras::CASA, quanto, true, true, &mut || sorteio(rng));
                     }
                     PedidoDeVida::Cura(quanto) => st.vida.cura(&cfg, Regras::CASA, quanto),
+                    PedidoDeVida::Define(valor) => st.vida.define(&cfg, Regras::CASA, valor),
+                    PedidoDeVida::Escudo(valor) => st.vida.activa_escudo(&cfg, valor, false),
                 }
                 if publicar {
                     // ⚠️ **A fonte é o PRÓPRIO alvo** — um verbo não tem quem bata. É o idioma que
                     // os eventos de player já usam (o `other` deles é ele próprio), e é o que faz
                     // o `From Myself` da tabela continuar a funcionar.
-                    for kind in factos(&antes, &st.vida) {
+                    // ⚠️ Pôr a vida/o escudo NÃO é um golpe (decisão do dono nº 9): sem `Damaged`,
+                    // `Healed` nem `Shielded` (que acendem sinais, números e o piscar) — só a morte.
+                    let posto = matches!(pedido, PedidoDeVida::Define(_) | PedidoDeVida::Escudo(_));
+                    for kind in factos(&antes, &st.vida)
+                        .into_iter()
+                        .filter(|k| !posto || *k == HealthEventKind::Died)
+                    {
                         self.health_events.push(HealthEvent {
                             target: alvo,
                             source: alvo,

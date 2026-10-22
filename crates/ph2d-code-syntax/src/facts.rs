@@ -215,6 +215,33 @@ impl Syntax {
         out
     }
 
+    /// ⭐ **Os nomes de propriedade escritos no script** (doc CodeEditor 08 §3.4): o 2.º argumento
+    /// LITERAL de `ph2d.get`/`ph2d.set` (a pose ou `"health.max"`), pela ordem do texto —
+    /// `(nome sem escapes, bytes DENTRO das aspas)`.
+    #[must_use]
+    pub fn property_references(&self, text: &Text) -> Vec<(String, std::ops::Range<usize>)> {
+        fn walk(n: tree_sitter::Node, text: &Text, out: &mut Vec<(String, std::ops::Range<usize>)>) {
+            if n.kind() == "function_call"
+                && let Some(name) = n.child_by_field_name("name")
+                && matches!(&*text.slice(name.byte_range()), "ph2d.get" | "ph2d.set")
+                && let Some(second) = n
+                    .child_by_field_name("arguments")
+                    .and_then(|a| a.named_child(1))
+                    .filter(|a| a.kind() == "string")
+                && let Some(content) = second.child_by_field_name("content")
+            {
+                out.push((unescape(&text.slice(content.byte_range())), content.byte_range()));
+            }
+            let mut c = n.walk();
+            for ch in n.named_children(&mut c) {
+                walk(ch, text, out);
+            }
+        }
+        let mut out = Vec::new();
+        walk(self.tree().root_node(), text, &mut out);
+        out
+    }
+
     /// O byte onde começa a 1.ª linha do CORPO da função do topo `name` (a linha a seguir ao
     /// cabeçalho), ou `None` se o script não a tem. É onde o Ctrl de um arrasto no topo guarda o
     /// objecto em `self` (o `init` é o `@onready` do Godot, §3.2).

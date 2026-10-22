@@ -9032,6 +9032,7 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-physics-ecs",
  "ph2d-render",
+ "serde_json",
 ]
 
 [[package]]
@@ -9108,6 +9109,7 @@ dependencies = [
  "bevy_ecs",
  "blake3",
  "mlua",
+ "ph2d-component-desc",
  "ph2d-ecs",
  "ph2d-input",
  "ph2d-script-doc",

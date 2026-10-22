@@ -43,7 +43,7 @@ pub use bridge::anchors::JointSide;
 pub use bridge::contacts::{
     BodyContact, CONTACT_FLASH_TICKS, ContactEvent, ContactFlash, ContactPhase,
 };
-pub use bridge::health::{HealthEvent, HealthEventKind, PedidoDeVida};
+pub use bridge::health::{HealthEvent, HealthEventKind, PedidoDeVida, PedidosDeVida};
 pub use bridge::joint_break::JointBreakEvent;
 pub use bridge::nav::{NavEvent, OrdemDeNavegacao, PedidoDeNavegacao, Ronda};
 pub use bridge::signals::SignalEvent;

@@ -397,11 +397,17 @@ fn o_assistente_fixado_completa_a_api() {
     let mut l = abre(&mut m, b, "self.");
     l.sort_unstable();
     assert_eq!(l, ["amplitude", "t"]);
-    // O literal: os campos de `ph2d.set`.
+    // O literal: os campos de `ph2d.set` — a pose e as propriedades dos componentes (doc CodeEditor 08).
     let c = ids[2];
     let mut l = abre(&mut m, c, "ph2d.set(self.id, \"");
     l.sort_unstable();
-    assert_eq!(l, ["rotation", "scale_x", "scale_y", "x", "y"]);
+    let mut esperado: Vec<String> = ph2d_script::io::POSE_FIELDS
+        .iter()
+        .map(|f| (*f).to_owned())
+        .chain(ph2d_script::api_table::property_names())
+        .collect();
+    esperado.sort_unstable();
+    assert_eq!(l, esperado);
 }
 
 /// ⭐ I5 com o `luau-lsp` FIXADO, pelo caminho do produto: dentro de `ph2d.set(e, |` a assinatura
@@ -711,7 +717,7 @@ fn os_esqueletos_preenchidos_passam_limpos_normal_e_estrito() {
 /// cliente, o mesmo do editor; o controlo prova que o caminho acusa um exemplo mau.
 #[test]
 fn os_exemplos_da_api_nao_dao_aviso() {
-    use ph2d_script::api_help::API_HELP;
+    use ph2d_script::api_help::all_help;
     use ph2d_script::api_table::{DEFINITIONS_PACKAGE, luau_definitions, luau_docs};
     let dir = std::env::temp_dir().join(format!("ph2d-gate-exemplos-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("pasta");
@@ -730,7 +736,7 @@ fn os_exemplos_da_api_nao_dao_aviso() {
     };
     let mut avisos = Vec::new();
     let mut vistos = 0;
-    for (i, h) in API_HELP.iter().enumerate() {
+    for (i, h) in all_help().enumerate() {
         if h.example.is_empty() {
             continue;
         }
@@ -753,7 +759,7 @@ fn os_exemplos_da_api_nao_dao_aviso() {
     let controlo = abre(
         &mut c,
         "file:///ph2d-gate/controlo.luau",
-        "function update(self, dt)\n  local sobra = 1\n  ph2d.set(self.id, \"alpha\", dt)\nend\n",
+        "function update(self, dt)\n  local sobra = 1\n  ph2d.alpha(self.id, dt)\nend\n",
     );
     c.shutdown().expect("shutdown");
     let _ = std::fs::remove_dir_all(&dir);

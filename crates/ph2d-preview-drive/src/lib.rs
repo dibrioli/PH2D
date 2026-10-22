@@ -262,6 +262,14 @@ struct Entry {
 #[derive(Default)]
 pub struct PreviewDrive {
     memo: BTreeMap<(u64, Driver), Entry>,
+    /// ⭐ Os campos nomeados que um script escreve a correr ([`fields`]).
+    pub fields: FieldDrive,
+}
+
+/// O vivo que a [`PreviewDrive::substitute`] deslocou: o do memo e o dos campos.
+pub struct Displaced {
+    drivers: Vec<((u64, Driver), Driven)>,
+    fields: fields::DisplacedFields,
 }
 
 impl PreviewDrive {
@@ -448,6 +456,22 @@ impl PreviewDrive {
         live
     }
 
+    /// **A captura inteira**: o memo e os campos ([`Self::substitute_authored`] +
+    /// [`FieldDrive::substitute`]).
+    #[must_use]
+    pub fn substitute(&self, sim: &mut SimWorld) -> Displaced {
+        Displaced {
+            drivers: self.substitute_authored(sim),
+            fields: self.fields.substitute(sim),
+        }
+    }
+
+    /// Devolve ao mundo o que a [`Self::substitute`] deslocou.
+    pub fn restore(sim: &mut SimWorld, live: &Displaced) {
+        FieldDrive::restore(sim, &live.fields);
+        Self::restore_live(sim, &live.drivers);
+    }
+
     /// Devolve ao mundo o que a [`Self::substitute_authored`] deslocou. Ordem inversa não importa
     /// (uma entrada por entidade-e-motor), mas o par tem de correr **sempre**: sair a meio deixaria
     /// a cena a mostrar o autorado em vez do vivo, e o artista veria a animação saltar para trás.
@@ -467,6 +491,9 @@ mod consultas;
 /// componentes do mundo. Irmão por tecto de LOC e por responsabilidade: cresce uma variante por
 /// motor novo (F25–F26 da UIUX passaram os 700), e o ledger de cima não muda com ele.
 mod facto;
+/// ⭐ Os campos escritos por script — irmão por LOC e por chave (doc CodeEditor 08 §3.6).
+pub mod fields;
+pub use fields::{FieldDrive, FieldRef};
 
 // ⚠️ **Os gates desta lei NÃO vivem aqui, e a ausência é a decisão** (HOWTO §1.2): cada um deles
 // passa pela `ProjectState::capture` e pelo `tick_sprite_animations` da shell — eles medem *a

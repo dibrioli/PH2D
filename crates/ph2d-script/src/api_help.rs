@@ -35,15 +35,15 @@ pub const API_HELP: &[ApiHelp] = &[
             ),
             (
                 "field",
-                r#"Which part of the pose: "x" or "y" (position, relative to the parent), "rotation" (radians, counter-clockwise), "scale_x" or "scale_y" (1 = original size)."#,
+                r#"Which part of the pose: "x" or "y" (position, relative to the parent), "rotation" (radians, counter-clockwise), "scale_x" or "scale_y" (1 = original size). Or a component property, as the Inspector names it: "health.max", "game_camera.height" (see [PropertyName])."#,
             ),
             (
                 "value",
-                "The new value. It must be a real number: `nil`, infinity or NaN stop the object.",
+                "The new value. A pose field takes a real number (`nil`, infinity or NaN stop the object); a property takes what its Inspector field holds — a number, true or false, a text, a [ph2d.vec2] or a [ph2d.color].",
             ),
         ],
         returns: "",
-        more: "The write waits in a queue and lands when every script has run its hook for this tick, so [ph2d.get] on the same field still gives the old value until the next tick. When two writes hit the same field, the last one wins (objects run in a fixed order).\n\nA wrong field name or a value that is not a number is not refused on the spot: when the hook ends the object stops running its script and the console says why. Poses written while playing are a preview — rewinding puts each object back where you left it.",
+        more: "The write waits in a queue and lands when every script has run its hook for this tick, so [ph2d.get] on the same field still gives the old value until the next tick. When two writes hit the same field, the last one wins (objects run in a fixed order).\n\nA wrong pose name or a value that is not a number is not refused on the spot: when the hook ends the object stops running its script and the console says why. A property is checked on the spot: a name no component has, an object without that component or a value of the wrong kind stops the object at that line. It obeys the same limits as the Inspector (a health below 0 becomes 0).\n\nWhat a script writes while playing is a preview — rewinding puts each object back as you left it, and it never becomes a step of Ctrl+Z.",
         example: r#"ph2d.property("speed", 2)
 
 function update(self, dt)
@@ -60,11 +60,11 @@ end"#,
             ),
             (
                 "field",
-                r#"One of "x", "y", "rotation", "scale_x" or "scale_y"."#,
+                r#"One of "x", "y", "rotation", "scale_x" or "scale_y", or a component property such as "health.max" (see [PropertyName])."#,
             ),
         ],
-        returns: "The number as it was at the start of this tick, or `nil` when the id is not an object with a pose (it was removed, or never existed).",
-        more: "Every script reads the scene as it was before the first hook of the tick, so the order in which objects run never changes what they see. A [ph2d.set] made earlier in the same hook is not visible yet; an object made by [ph2d.spawn] in this tick is, at the place it was made.\n\nA field that is not one of the five is an error that stops the object, so a typo cannot read as `nil`. It works only while the scene runs, inside a hook.",
+        returns: "The value as it was at the start of this tick — a number for the pose; for a property what its Inspector field holds — or `nil` when the id is not an object (it was removed, or never existed).",
+        more: "Every script reads the scene as it was before the first hook of the tick, so the order in which objects run never changes what they see. A [ph2d.set] made earlier in the same hook is not visible yet; an object made by [ph2d.spawn] in this tick is, at the place it was made.\n\nA field that is not one of the five nor a property of the object is an error that stops the object, so a typo cannot read as `nil`. It works only while the scene runs, inside a hook.",
         example: r#"ph2d.property("height", 0.5)
 
 function init(self)
@@ -647,5 +647,10 @@ end"#,
 /// O texto da entrada `key`.
 #[must_use]
 pub fn api_help(key: &str) -> Option<&'static ApiHelp> {
-    API_HELP.iter().find(|h| h.key == key)
+    all_help().find(|h| h.key == key)
+}
+
+/// Todas as páginas: as da [`API_HELP`] e as das propriedades dos componentes (irmão por LOC).
+pub fn all_help() -> impl Iterator<Item = &'static ApiHelp> {
+    API_HELP.iter().chain(crate::api_help_props::PROPERTY_HELP)
 }

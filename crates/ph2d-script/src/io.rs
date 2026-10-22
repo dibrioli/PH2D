@@ -34,7 +34,19 @@ pub struct EntityWrite {
     /// dentro do quadro** — nunca se gravam (a lei do `StableId`).
     pub entity: u64,
     pub field: String,
-    pub value: f64,
+    pub value: WriteValue,
+}
+
+/// O que um `ph2d.set` escreve: um número da pose, ou o valor de uma propriedade nomeada
+/// (`"health.max"`, doc CodeEditor 08) — os dois pela MESMA fila, para pousarem no fim do tique (HR-8)
+/// e caírem juntos quando o objecto falha.
+#[derive(Debug, Clone, PartialEq)]
+pub enum WriteValue {
+    Pose(f64),
+    Property(serde_json::Value),
+    /// `ph2d.damage`/`ph2d.heal` — pela MESMA fila, para pousar na ordem em que o script os escreveu
+    /// (um `health.now = 10` seguido de `damage(5)` acaba em 5).
+    Health(crate::lane::HealthRequest),
 }
 
 /// Returned by [`WriteQueue::push`] when the cap is reached. Carried
@@ -293,7 +305,7 @@ mod tests {
         EntityWrite {
             entity: e,
             field: f.into(),
-            value: v,
+            value: WriteValue::Pose(v),
         }
     }
 

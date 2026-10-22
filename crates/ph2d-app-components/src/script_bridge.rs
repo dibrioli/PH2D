@@ -98,6 +98,40 @@ impl SceneDoors for ScriptDoors<'_, '_> {
         self.tick
     }
 
+    fn property_get(
+        &mut self,
+        sim: &mut SimWorld,
+        entity: Entity,
+        name: &str,
+    ) -> Result<(serde_json::Value, ph2d_component_desc::FieldKind), String> {
+        crate::script_properties::get(self.registry, sim, entity, name)
+    }
+
+    fn property_set(
+        &mut self,
+        sim: &mut SimWorld,
+        entity: Entity,
+        name: &str,
+        value: &serde_json::Value,
+        dry: bool,
+    ) -> Result<(), String> {
+        crate::script_properties::set(self.registry, sim, entity, name, value, dry)
+    }
+
+    fn health_request(
+        &mut self,
+        sim: &mut SimWorld,
+        entity: Entity,
+        request: ph2d_script::HealthRequest,
+        dry: bool,
+    ) -> Result<(), String> {
+        crate::script_properties::health_request(sim, entity, request, dry)
+    }
+
+    fn property_names(&mut self, sim: &mut SimWorld, entity: Entity) -> Vec<String> {
+        crate::script_properties::names(self.registry, sim, entity)
+    }
+
     /// ⭐ **O script que um script põe numa cópia é um OVERRIDE dela** (ADR-0164): o sync mestre →
     /// instância propaga a AUSÊNCIA de um componente, e sem eco do mestre «o mestre ganha» — a
     /// 1.ª cópia de uma corrida perdia o script no passe seguinte (medido na foto da cena 6).
@@ -191,6 +225,7 @@ pub fn frame(
     let mut out = ScriptFrame::default();
     host.scene_sync(sim.world_mut());
     let mut before = poses(sim, drive);
+    crate::script_properties::observe(sim, drive);
     if playing {
         for _ in 0..ticks {
             let r = host.scene_tick_with(sim, fixed_dt, doors);
@@ -203,6 +238,7 @@ pub fn frame(
         host.devices().forget_edges();
     }
     declare(sim, &before, drive);
+    crate::script_properties::declare(sim, drive);
     out
 }
 
@@ -259,6 +295,10 @@ pub fn rewind(host: &mut ScriptHost, sim: &mut SimWorld, drive: &mut PreviewDriv
     for entity in drive.driven_by(Driver::ScriptPose) {
         drive.release_to_authored(sim, entity, Driver::ScriptPose);
     }
+    drive.fields.release(sim);
+    // Um pedido de vida que nenhum tique vivo levou não atravessa o rebobinar.
+    sim.world_mut()
+        .remove_resource::<ph2d_physics_ecs::PedidosDeVida>();
     n
 }
 

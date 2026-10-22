@@ -40,7 +40,7 @@ use ph2d_ecs::{Entity, SimWorld, StableId, Transform, World};
 use crate::component::{LuauScript, ScriptSource};
 use crate::console::speaking;
 use crate::diagnostic::ScriptDiagnostic;
-use crate::io::{EntityWrite, WriteQueue, pose_field};
+use crate::io::{EntityWrite, WriteQueue, WriteValue, pose_field};
 use crate::lane::{Lane, SceneDoors, with_lane};
 use crate::module::ScriptModule;
 use crate::props::{PropDecl, ScriptValue};
@@ -407,6 +407,7 @@ impl SceneScripts {
         });
         absorb_lane(lua, ran, &mut report);
         apply_writes(sim.world_mut(), &writes, &mut report);
+        crate::lane_property::apply(sim, doors, &writes, &mut report);
         crate::motion_api::apply(sim.world_mut(), &report.motion);
         report.wrote.sort_by_key(|e| e.to_bits());
         report.wrote.dedup();
@@ -513,6 +514,7 @@ impl SceneScripts {
         });
         absorb_lane(lua, ran, &mut report);
         apply_writes(sim.world_mut(), &writes, &mut report);
+        crate::lane_property::apply(sim, doors, &writes, &mut report);
         crate::motion_api::apply(sim.world_mut(), &report.motion);
         report.wrote.sort_by_key(|e| e.to_bits());
         report.wrote.dedup();
@@ -577,7 +579,7 @@ fn settle_call(
         Err(e) => Some(ScriptDiagnostic::from_error(&e, &inst.chunk)),
         Ok(()) => mine
             .iter()
-            .find(|w| pose_field(&w.field).is_none())
+            .find(|w| matches!(w.value, WriteValue::Pose(_)) && pose_field(&w.field).is_none())
             .map(|w| {
                 ScriptDiagnostic::runtime(format!(
                     "ph2d.set: unknown field '{}' (x, y, rotation, scale_x, scale_y)",
@@ -585,11 +587,11 @@ fn settle_call(
                 ))
             })
             .or_else(|| {
-                mine.iter().find(|w| !w.value.is_finite()).map(|w| {
-                    ScriptDiagnostic::runtime(format!(
-                        "ph2d.set: '{}' got {} — not a number",
-                        w.field, w.value
-                    ))
+                mine.iter().find_map(|w| match w.value {
+                    WriteValue::Pose(v) if !v.is_finite() => Some(ScriptDiagnostic::runtime(
+                        format!("ph2d.set: '{}' got {v} — not a number", w.field),
+                    )),
+                    _ => None,
                 })
             }),
     };
@@ -633,8 +635,8 @@ fn apply_writes(world: &mut World, writes: &[EntityWrite], report: &mut SceneRep
         let Some(entity) = Entity::try_from_bits(w.entity) else {
             continue;
         };
-        let Some(i) = pose_field(&w.field) else {
-            continue; // validado no `settle_call`
+        let (Some(i), WriteValue::Pose(value)) = (pose_field(&w.field), &w.value) else {
+            continue; // validado no `settle_call`; as propriedades pousam pela porta da cena
         };
         let Some(mut t) = world.get_mut::<Transform>(entity) else {
             continue; // um id que não é de um objecto com pose
@@ -643,7 +645,7 @@ fn apply_writes(world: &mut World, writes: &[EntityWrite], report: &mut SceneRep
             clippy::cast_possible_truncation,
             reason = "o `Transform` da casa é f32; o número do Luau é f64"
         )]
-        let v = w.value as f32;
+        let v = *value as f32;
         let cur = match i {
             0 => t.translation.x,
             1 => t.translation.y,

@@ -49,6 +49,15 @@ pub type ValueOfFn = fn(&World, Entity) -> Result<Option<serde_json::Value>, Reg
 /// Reconstrói o componente a partir de um `Value` e substitui-o na entidade.
 pub type SetValueFn = fn(&mut World, Entity, serde_json::Value) -> Result<(), RegistryError>;
 
+/// Cabe no tipo? — a verificação sem escrever (o `ph2d.set` verifica na chamada, pousa no fim).
+pub type CheckValueFn = fn(&serde_json::Value) -> Result<(), RegistryError>;
+
+pub(super) fn check_value<T: DeserializeOwned>(value: &serde_json::Value) -> Result<(), RegistryError> {
+    T::deserialize(value)
+        .map(drop)
+        .map_err(|e| RegistryError::Value(e.to_string()))
+}
+
 pub(super) fn value_of<T: Component + Serialize>(
     world: &World,
     entity: Entity,

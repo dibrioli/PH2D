@@ -11,6 +11,9 @@ export type Entity = number
 --- The pose fields a scene script reads and writes.
 export type PoseField = "x" | "y" | "rotation" | "scale_x" | "scale_y"
 
+--- What `ph2d.get` and `ph2d.set` reach: a pose field, or a component property `component.field`.
+export type PropertyName = PoseField | string
+
 --- A position, as `ph2d.vec2` builds it and `self` reads it.
 export type Vec2 = { __kind: "vec2", x: number, y: number }
 
@@ -37,10 +40,12 @@ export type ScriptSelf = { id: Entity, [string]: any }
 
 --- The PH2D scene API: move objects, read input, signals, properties, values.
 declare ph2d: {
-    --- Writes a pose field; applied at the end of the tick (everyone reads the same photo).
-    set: (entity: Entity, field: PoseField, value: number) -> (),
-    --- Reads a pose field of any object as it was at the start of the tick; nil if the id is no object.
-    get: (entity: Entity, field: PoseField) -> number?,
+    --- Writes a pose field or a component property; applied at the end of the tick (everyone reads the same photo).
+    set: (entity: Entity, field: PropertyName, value: any) -> (),
+    --- Reads a pose field or a component property of any object as it was at the start of the tick; nil if the id is no object.
+    get: (entity: Entity, field: PropertyName) -> any,
+    --- The names `ph2d.get` and `ph2d.set` reach on this object, in the Inspector's order.
+    properties: (entity: Entity) -> { string },
     --- The value of a gamepad button or axis this frame; nil when not held.
     input: (key: string) -> number?,
     --- Emits a signal from this object; an empty name is an error.
@@ -51,6 +56,10 @@ declare ph2d: {
     object: (name: string) -> Entity,
     --- Creates a copy of the master with this name right away (an empty object without one); a rewind removes it.
     spawn: (master: string?, x: number?, y: number?) -> Entity,
+    --- Hits an object's Health for `amount` points, as a hit does (blink, numbers, death at 0).
+    damage: (entity: Entity, amount: number) -> (),
+    --- Gives an object's Health `amount` points back, up to its Max.
+    heal: (entity: Entity, amount: number) -> (),
     --- Removes an object created while the scene runs, at the end of the frame.
     despawn: (entity: Entity) -> boolean,
     --- Gives an object created while the scene runs a project script, by its name (e.g. "bob.luau").

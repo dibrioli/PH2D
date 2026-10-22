@@ -270,6 +270,10 @@ impl Intel {
                                     s.anchor,
                                     &d.scene,
                                 ));
+                                l.extend(crate::scene_names::property_items(
+                                    d.buffer.text(),
+                                    s.anchor,
+                                ));
                                 l
                             });
                             let usage = usage_of(&mut self.usage, lib);

@@ -169,34 +169,34 @@ fn positivo(v: f32) -> f32 {
 /// **Uma edição da VIDA.** `true` = tocou no mundo.
 fn apply_health(h: &mut Health, edit: &E) -> bool {
     match edit {
-        E::Max(v) => h.max = positivo(*v),
-        E::Start(v) => h.start = positivo(*v),
-        E::InvincibleS(v) => h.invincible_s = positivo(*v),
+        E::Max(v) => h.max = *v,
+        E::Start(v) => h.start = *v,
+        E::InvincibleS(v) => h.invincible_s = *v,
         E::Overheal(b) => h.overheal = *b,
-        E::Regen(v) => h.regen = positivo(*v),
-        E::RegenDelayS(v) => h.regen_delay_s = positivo(*v),
-        E::ShieldStart(v) => h.shield_start = positivo(*v),
-        E::ShieldMax(v) => h.shield_max = positivo(*v),
+        E::Regen(v) => h.regen = *v,
+        E::RegenDelayS(v) => h.regen_delay_s = *v,
+        E::ShieldStart(v) => h.shield_start = *v,
+        E::ShieldMax(v) => h.shield_max = *v,
         // ⚠️ **`≤ 0` é «nunca expira»** — a lei do alvo; o painel só produz `≥ 0`, e o zero é a
         // forma autorável de dizer «para sempre».
-        E::ShieldDurationS(v) => h.shield_duration_s = positivo(*v),
-        E::ShieldRegen(v) => h.shield_regen = positivo(*v),
-        E::ShieldRegenDelayS(v) => h.shield_regen_delay_s = positivo(*v),
+        E::ShieldDurationS(v) => h.shield_duration_s = *v,
+        E::ShieldRegen(v) => h.shield_regen = *v,
+        E::ShieldRegenDelayS(v) => h.shield_regen_delay_s = *v,
         E::ShieldBlocksExcess(b) => h.shield_blocks_excess = *b,
-        E::ArmorFlat(v) => h.armor_flat = positivo(*v),
-        E::ArmorPercent(v) => h.armor_percent = fraccao(*v),
-        E::Dodge(v) => h.dodge = fraccao(*v),
-        E::Team(t) => h.team = t.trim().to_string(),
-        E::OnDamage(t) => h.on_damage = t.trim().to_string(),
-        E::OnHeal(t) => h.on_heal = t.trim().to_string(),
-        E::OnDeath(t) => h.on_death = t.trim().to_string(),
+        E::ArmorFlat(v) => h.armor_flat = *v,
+        E::ArmorPercent(v) => h.armor_percent = *v,
+        E::Dodge(v) => h.dodge = *v,
+        E::Team(t) => h.team = t.clone(),
+        E::OnDamage(t) => h.on_damage = t.clone(),
+        E::OnHeal(t) => h.on_heal = t.clone(),
+        E::OnDeath(t) => h.on_death = t.clone(),
         E::Seed(n) => h.seed = *n,
-        E::DeathHitstopS(v) => h.death_hitstop_s = positivo(*v),
-        E::BlinkS(v) => h.blink_s = positivo(*v),
-        E::KnockbackTaken(v) => h.knockback_taken = positivo(*v),
+        E::DeathHitstopS(v) => h.death_hitstop_s = *v,
+        E::BlinkS(v) => h.blink_s = *v,
+        E::KnockbackTaken(v) => h.knockback_taken = *v,
         E::Numbers(b) => h.numbers = *b,
-        E::NumbersColor(c) => h.numbers_color = cor(*c),
-        E::NumbersSize(v) => h.numbers_size = positivo(*v),
+        E::NumbersColor(c) => h.numbers_color = *c,
+        E::NumbersSize(v) => h.numbers_size = *v,
         // ⭐ W6 — a tabela de resistências. ⚠️ Juntar pára no TECTO (o gate da shell amarra-o à
         // lista que o painel pinta) e um índice fora da tabela não toca em nada — e diz `false`.
         E::AddResistance => {
@@ -212,13 +212,13 @@ fn apply_health(h: &mut Health, edit: &E) -> bool {
             h.resistances.remove(usize::from(*i));
         }
         E::ResistanceKind(i, t) => match h.resistances.get_mut(usize::from(*i)) {
-            Some(r) => r.kind = t.trim().to_string(),
+            Some(r) => r.kind = t.clone(),
             None => return false,
         },
         // ⚠️ **A taxa é `≥ 0`** — o oráculo mediu que uma taxa negativa NÃO cura (curar é o
         // «absorve»), logo um negativo gravado seria um número que mente sobre o que faz.
         E::ResistanceRate(i, v) => match h.resistances.get_mut(usize::from(*i)) {
-            Some(r) => r.rate = positivo(*v),
+            Some(r) => r.rate = *v,
             None => return false,
         },
         E::ResistanceAbsorbs(i, b) => match h.resistances.get_mut(usize::from(*i)) {
@@ -227,7 +227,48 @@ fn apply_health(h: &mut Health, edit: &E) -> bool {
         },
         _ => return false,
     }
+    sanitize_health(h);
     true
+}
+
+/// ⭐ **A lei dos números da VIDA** — o que o painel e o script (`ph2d.set(e, "health.max", …)`,
+/// doc CodeEditor 08 §3.5) podem lá pôr: tempos e quantidades `≥ 0`, fracções em `0..=1`, textos
+/// sem espaços nas pontas. Idempotente: corre depois de cada escrita, de qualquer porta.
+pub(crate) fn sanitize_health(h: &mut Health) {
+    for v in [
+        &mut h.max,
+        &mut h.start,
+        &mut h.invincible_s,
+        &mut h.regen,
+        &mut h.regen_delay_s,
+        &mut h.shield_start,
+        &mut h.shield_max,
+        &mut h.shield_duration_s,
+        &mut h.shield_regen,
+        &mut h.shield_regen_delay_s,
+        &mut h.armor_flat,
+        &mut h.death_hitstop_s,
+        &mut h.blink_s,
+        &mut h.knockback_taken,
+        &mut h.numbers_size,
+    ] {
+        *v = positivo(*v);
+    }
+    h.armor_percent = fraccao(h.armor_percent);
+    h.dodge = fraccao(h.dodge);
+    h.numbers_color = cor(h.numbers_color);
+    for t in [&mut h.team, &mut h.on_damage, &mut h.on_heal, &mut h.on_death] {
+        if t.trim().len() != t.len() {
+            *t = t.trim().to_string();
+        }
+    }
+    h.resistances.truncate(RESISTANCES_MAX);
+    for r in &mut h.resistances {
+        r.rate = positivo(r.rate);
+        if r.kind.trim().len() != r.kind.len() {
+            r.kind = r.kind.trim().to_string();
+        }
+    }
 }
 
 /// **Uma edição do DANO.** `true` = tocou no mundo.

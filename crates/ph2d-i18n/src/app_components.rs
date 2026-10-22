@@ -100,6 +100,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         // CodeEditor item 6 — porque `ph2d.spawn("Mestre")` não deu uma cópia (o console do script).
         "app.components.script_bridge.it_is_not_a_master" => "it is not a master",
+        // O `ph2d.set` de uma propriedade com o valor errado (doc CodeEditor 08 §3.4).
+        "app.components.script_property.takes_number" => "'{name}' takes a number",
+        "app.components.script_property.takes_whole_number" => "'{name}' takes a whole number",
+        "app.components.script_property.takes_vec2" => "'{name}' takes a ph2d.vec2",
+        "app.components.script_property.takes_four_numbers" => "'{name}' takes four numbers",
+        "app.components.script_property.takes_color" => "'{name}' takes a ph2d.color",
+        "app.components.script_property.takes_bool" => "'{name}' takes true or false",
+        "app.components.script_property.takes_option" => "'{name}' takes one of its option names",
+        "app.components.script_property.takes_text" => "'{name}' takes a text",
+        "app.components.script_property.takes_table" => "'{name}' takes a table",
+        "app.components.script_property.takes_nothing" => "'{name}' is a marker and takes no value",
         "app.components.script_bridge.the_copy_would_land_inside_its_own_master" => {
             "the copy would land inside its own master"
         }

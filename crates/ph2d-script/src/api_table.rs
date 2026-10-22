@@ -35,6 +35,7 @@ pub struct ApiType {
     pub doc: &'static str,
 }
 
+
 /// Um gancho: função GLOBAL do script que o MOTOR chama (`ScriptModule::hook`).
 pub struct ApiHook {
     pub ident: &'static str,
@@ -86,6 +87,14 @@ pub const API_TYPES: &[ApiType] = &[
         ident: "PoseField",
         definition: "\"x\" | \"y\" | \"rotation\" | \"scale_x\" | \"scale_y\"",
         doc: "The pose fields a scene script reads and writes.",
+    },
+    // ⚠️ `string` e não a união dos nomes: o `luau-lsp` desdobra o alias na assinatura, e centenas
+    // de literais partem a marca do argumento (medido 22/10). Os nomes sugerem-se e verificam-se
+    // pelo editor (`scene_names::property_items`, `lint::property_lints`; doc CodeEditor 08 §3.9).
+    ApiType {
+        ident: "PropertyName",
+        definition: "PoseField | string",
+        doc: "What `ph2d.get` and `ph2d.set` reach: a pose field, or a component property `component.field`.",
     },
     ApiType {
         ident: "Vec2",
@@ -139,14 +148,20 @@ pub const API: &[ApiEntry] = &[
     ApiEntry {
         table: "ph2d",
         ident: "set",
-        luau_type: "(entity: Entity, field: PoseField, value: number) -> ()",
-        doc: "Writes a pose field; applied at the end of the tick (everyone reads the same photo).",
+        luau_type: "(entity: Entity, field: PropertyName, value: any) -> ()",
+        doc: "Writes a pose field or a component property; applied at the end of the tick (everyone reads the same photo).",
     },
     ApiEntry {
         table: "ph2d",
         ident: "get",
-        luau_type: "(entity: Entity, field: PoseField) -> number?",
-        doc: "Reads a pose field of any object as it was at the start of the tick; nil if the id is no object.",
+        luau_type: "(entity: Entity, field: PropertyName) -> any",
+        doc: "Reads a pose field or a component property of any object as it was at the start of the tick; nil if the id is no object.",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "properties",
+        luau_type: "(entity: Entity) -> { string }",
+        doc: "The names `ph2d.get` and `ph2d.set` reach on this object, in the Inspector's order.",
     },
     ApiEntry {
         table: "ph2d",
@@ -177,6 +192,18 @@ pub const API: &[ApiEntry] = &[
         ident: "spawn",
         luau_type: "(master: string?, x: number?, y: number?) -> Entity",
         doc: "Creates a copy of the master with this name right away (an empty object without one); a rewind removes it.",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "damage",
+        luau_type: "(entity: Entity, amount: number) -> ()",
+        doc: "Hits an object's Health for `amount` points, as a hit does (blink, numbers, death at 0).",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "heal",
+        luau_type: "(entity: Entity, amount: number) -> ()",
+        doc: "Gives an object's Health `amount` points back, up to its Max.",
     },
     ApiEntry {
         table: "ph2d",
@@ -304,6 +331,26 @@ pub const API: &[ApiEntry] = &[
     },
 ];
 
+/// ⭐ **Os valores da CORRIDA que o cartão mostra e que não são campo do componente** — a vida e o
+/// escudo de agora («Now», «Shield now»). Escrevem-se directo, sem golpe (decisão do dono nº 9).
+pub const RUNTIME_PROPERTIES: &[&str] = &["health.now", "health.shield_now"];
+
+/// Todos os `componente.campo` que um script alcança, pela ordem do catálogo.
+#[must_use]
+pub fn property_names() -> Vec<String> {
+    let runtime = RUNTIME_PROPERTIES.iter().map(|n| (*n).to_owned());
+    ph2d_component_desc::all()
+        .filter(|d| !d.code.is_empty())
+        .flat_map(|d| {
+            d.fields
+                .iter()
+                .filter(|f| !f.name.is_empty())
+                .map(move |f| format!("{}.{}", d.code, f.name))
+        })
+        .chain(runtime)
+        .collect()
+}
+
 /// ⭐ **O `ph2d.d.luau`** — as definições que o `luau-lsp` carrega, geradas da tabela.
 #[must_use]
 pub fn luau_definitions() -> String {
@@ -318,7 +365,9 @@ pub fn luau_definitions() -> String {
     for t in API_TYPES {
         out.push_str(&format!(
             "\n--- {}\nexport type {} = {}\n",
-            t.doc, t.ident, t.definition
+            t.doc,
+            t.ident,
+            t.definition
         ));
     }
     for g in API_GLOBALS {

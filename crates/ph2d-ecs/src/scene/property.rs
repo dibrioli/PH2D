@@ -39,32 +39,14 @@ impl std::fmt::Display for PropertyError {
                 write!(f, "'{component}' has no property '{field}'")
             }
             Self::Missing { component } => write!(f, "the object has no '{component}'"),
-            Self::WrongType { name, kind } => {
-                write!(f, "'{name}' takes {}", kind_word(*kind))
-            }
+            // A palavra do tipo é de quem pinta a mensagem (a ponte dos scripts, pela tabela).
+            Self::WrongType { name, kind } => write!(f, "'{name}' takes a {kind:?} value"),
             Self::NoEntity => f.write_str("the object no longer exists"),
         }
     }
 }
 
 impl std::error::Error for PropertyError {}
-
-/// A palavra que diz ao script que valor um campo aceita.
-#[must_use]
-pub fn kind_word(kind: FieldKind) -> &'static str {
-    match kind {
-        FieldKind::Scalar | FieldKind::Angle => "a number",
-        FieldKind::Int | FieldKind::Seed => "a whole number",
-        FieldKind::Vec2 => "a vec2",
-        FieldKind::Vec4 => "four numbers",
-        FieldKind::Color => "a color",
-        FieldKind::Toggle => "true or false",
-        FieldKind::Enum => "one of its option names",
-        FieldKind::Text | FieldKind::Ref => "a text",
-        FieldKind::Curve | FieldKind::Gradient | FieldKind::Palette => "a table",
-        FieldKind::Marker => "nothing (it is a marker)",
-    }
-}
 
 /// Um nome resolvido: a entrada do registo e o campo.
 #[derive(Clone, Copy)]
@@ -185,4 +167,23 @@ fn component_value(r: &Resolved<'_>, world: &World, entity: Entity) -> Result<Va
         }),
         Err(_) => Err(PropertyError::NoEntity),
     }
+}
+
+/// Como [`set`], sem escrever: `Ok` = a escrita pousaria.
+pub fn check(
+    reg: &ComponentRegistry,
+    world: &World,
+    entity: Entity,
+    name: &str,
+    value: Value,
+) -> Result<(), PropertyError> {
+    let r = resolve(reg, name)?;
+    let mut whole = component_value(&r, world, entity)?;
+    if let Some(slot) = whole.get_mut(r.field.serde_key()) {
+        *slot = normalize(r.field.kind, value);
+    }
+    (r.entry.check_value)(&whole).map_err(|_| PropertyError::WrongType {
+        name: name.to_owned(),
+        kind: r.field.kind,
+    })
 }

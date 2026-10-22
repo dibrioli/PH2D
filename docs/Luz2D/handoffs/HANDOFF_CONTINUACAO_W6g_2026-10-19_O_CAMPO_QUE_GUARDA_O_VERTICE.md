@@ -1508,3 +1508,79 @@ as fases.
    (a tabela do R de fora recusada, §43 c).
 3. A lei W6d com `DISTANTES` no relógio (o §20.2). 4. A anomalia da r5b (§12). 5. A família (b) (37–38). 6. Os
    zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %. 7. O `rustfmt` do `solver_hrc.rs` (§47).
+
+## 53. A vista nos níveis de cima (§52.2) — o salto do T nulo, o mesmo bit (22/10, smoke do §52.1 aprovado pelo dono)
+
+Instrumento fora do git e reposto: `target/bug6/diag_borda_52.patch` (`DIAG_FORA_W` = o `fora.w` por quadro: 0 céu ·
+|2 sem ler o arquivo · |4 salta T = 0; `DIAG_VAR` = um de 6 jogos de pipelines no MESMO solver, `override
+DIAG_VAR_HRC`); réguas `target/bug6/borda_topo52_regua.rs` (3 testes), `produto52_regua.rs` + `produto52_lote{,2}.sh`;
+logs `borda_topo52_{1,2,3}.log`, `borda_nove_52_1.log`, `borda_bit_52_1.log`, `produto52_{1,2}.log`,
+`mutacao_t_nulo.log`. Cena 5, h = 3,8, a vista renascida, as variantes A CADA QUADRO, a mediana pareada, A × A.
+
+**(a) O que custa no topo é a FORMA do código, não a leitura** (2160p Alta, `fora.w` por quadro): sem ler o arquivo
+−1,04 ms de `c2`, n = 11 / 12 só −0,30 / −0,25; o instrumento com dois `if` de uniforme a mais pôs +0,45 ms em
+n = 11 SÓ por existir (4,71 contra 4,26). ⇒ as variantes medem-se como CONSTANTES de pipeline, nunca como uniforme.
+
+**(b) As variantes da `metade_da_descida`** (C1 = T = 0 não lê o R de cima; C2a = o termo de longe num sítio só —
+com xi ímpar `(xi + 1)/2 = xi/2 + 1`, só o `q` muda; C2b = um sítio para f0 e f1 num laço):
+
+| 2160p Alta, a rodada limpa (A × A +0,011) | `c2` − A | n = 11 | n = 12 | o bit (18 vistas: 9 tetos × 2 câmeras) |
+|---|---|---|---|---|
+| A | — | 4,310 | 3,075 | A × A e a pipeline gémea: 0 |
+| C1: `return 0` no lugar de `T·R` | −0,11 | 3,824 | 2,766 | **8 e 10 texels** (1440p Média, 2160p Baixa; rel. 8,8e-4 = 1 ULP do f16) |
+| C2a sozinho | (−1,0, outra rodada) | | | **18 texels** a 1080p Alta |
+| C1′: só a FONTE do R muda (`R = 0` se T = 0), `a·T.r + T.t·R` igual | −0,32 | 3,978 | 2,804 | 0 |
+| **C1′ + C2a** | **−0,75** | **3,881** | **2,729** | **0** |
+
+O `if` que devolve 0 no lugar do produto parte a FMA que o driver faz de `a·T.r + T.t·R` — muda 1 ULP também onde
+T ≠ 0. Manter a árvore da conta e trocar só a fonte do R guarda o bit. As rodadas 2–3 (−4,4 / −8,7 ms) eram do REGIME
+(o A delas a 63,9 / 61,6 contra 56,5): só a rodada com o A × A apertado (±0,12) conta.
+
+**(c) No produto** (`Config::hrc_salta_o_t_nulo`, `override T_NULO_HRC`, `PH2D_LIGHT2D_T_NULO=0` compara; um processo
+por caso, ABAB, `c2` mediana):
+
+| teto | vista sem → com | entorno sem → com |
+|---|---|---|
+| 1080p Baixa | 1,48 → 1,42 | 1,035 → 1,020 |
+| 1080p Média | 2,84 → 2,81 | 1,398 → 1,406 |
+| 1080p Alta | 11,70 → 11,54 | 2,942 → 2,956 |
+| 1440p Baixa | 2,30 → 2,18 | 1,510 → 1,470 |
+| 1440p Média | 4,71 → 4,61 | 1,803 → 1,816 |
+| 1440p Alta | 20,22 → 19,86 | 4,820 → 4,846 |
+| 2160p Baixa | 5,81 → 5,74 | 2,804 → 2,686 |
+| 2160p Média | 11,71 → 11,55 | 2,942 → 2,956 |
+| 2160p Alta | 51,7 → 50,9 (n 11: 4,258 → 3,872 · n 12: 3,065 → 2,730) | 9,92 → 9,94 |
+
+A borda nos níveis 11–12 a 2160p Alta: +4,35 → +3,62 ms (−17 %). Vista + entorno ganham em todo teto.
+
+**Gate:** `a_descida_sem_o_t_nulo_nao_muda_um_bit` (`a_luz_de_fora_nao_atravessa.rs`): 1080p Baixa e Alta, 1440p
+Média, 2160p Baixa (as vistas que apanharam C1 e C2a), com × sem: 0 texels nas 4. Prova de mutação
+(`target/bug6/mutacao_t_nulo.sh`):
+
+| Mutação | Morre |
+|---|---|
+| M1 o `if` à volta da SOMA (a forma do C1) | 8 texels a 1440p Média |
+| M2 salta também T ≠ 0 (`t > 0,25`) | 1 445 493 |
+| M3 o `q` de par e ímpar trocados | 1 690 432 |
+| M4 a coluna `(xi + 1)/2` no termo unificado | 1 690 431 |
+
+Também: as constantes de pipeline da holográfica passam a `solver_hrc_ligar::constantes`; o `solver_hrc.rs` formatado
+pelo `rustfmt` fica com 687 linhas (o §52.7 fechado). O nível 0 (`soma_da_descida`, um cone por fio) não leva o salto:
+não medido.
+
+## ⛔ Recusas MEDIDAS (§53)
+
+| Recusa | Porquê |
+|---|---|
+| Devolver 0 no lugar de `T·R` (o C1) | Parte a FMA do driver: 8–10 texels (1 ULP do f16) em 2 de 18 vistas. |
+| C2a sem o salto, C2b (um sítio num laço), C1 + C2b | 18 texels (C2a); +1,9 ms (C1 + C2b); C2b sozinho −0,13 com q3 +3,4. |
+| Medir variantes de forma de código por um `if` de uniforme | Os `if` a mais custam por si (+0,45 ms em n = 11). |
+| Desligar o salto no entorno fora da Baixa | +0,006…+0,026 ms por quadro (≤ 0,5 % do entorno) não paga uma regra por grade. |
+
+## 54. ABERTO (por ordem — substitui o §52)
+
+1. A vista nos níveis de cima: +3,62 ms de borda em n = 11–12 a 2160p Alta — sem outra cura de mesmo bit à vista (a
+   tabela do R de fora recusada, §43 c; a leitura do arquivo só pesa ~0,55 ms lá, §53 a).
+2. A lei W6d com `DISTANTES` no relógio (o §20.2). 3. A anomalia da r5b (§12). 4. A família (b) (37–38). 5. Os
+   zera/limpa por um carimbo de quadro — só se o C3 voltar à linha dos +5 %.
+6. A suíte no fecho da onda (não corre desde o §45).

@@ -175,16 +175,6 @@ impl PainterTool {
         let groups = self.paint.dab_groups.clone();
         let mut dab_rng = super::tiling::DabRng::new(self.paint.tex_rng);
         let canvas_wh = [w as f32, h as f32];
-        // The engine speaks sRGB **0..255** (its boot colour is `[50, 140, 210]` and the render
-        // writes plane values straight through `clamp_u8`); the dab stores sRGB 0..1. Passing the
-        // normalized value painted BLACK — Enio's W1 smoke, "a cor está preta".
-        let ink = |c: [f32; 3]| {
-            [
-                f64::from(c[0]) * 255.0,
-                f64::from(c[1]) * 255.0,
-                f64::from(c[2]) * 255.0,
-            ]
-        };
         if !sess.stroke_open {
             sess.stroke_open = true;
             sess.lanes.clear();
@@ -209,26 +199,7 @@ impl PainterTool {
         let sub = super::lote::sub_passo_do_lote(&sess.engine.tuning, brush, ratio);
         let fino = super::lote::peso_do_passo_fino(brush, ratio);
         super::lote::acerta_o_lote(&mut sess.engine, brush, fino);
-        // ⭐ O pincel de cerdas FINO esmaece (`Knob::ThinStrokeFade`, J4 óleo): `(D ÷ ref)^γ` abaixo do diâmetro de
-        // referência — `γ = 0` = 1, a lei de sempre ao bit.
-        let esmaece_fino = {
-            let g = sess
-                .engine
-                .tuning
-                .get(ph2d_wet_paint::tuning::Knob::ThinStrokeFade);
-            if g > 0.0 {
-                let r = sess
-                    .engine
-                    .tuning
-                    .get(ph2d_wet_paint::tuning::Knob::ThinStrokeRef)
-                    .max(1.0);
-                (2.0 * f64::from(brush.clamped_radius()) / r)
-                    .clamp(0.0, 1.0)
-                    .powf(g)
-            } else {
-                1.0
-            }
-        };
+        let esmaece_fino = super::rota_da_lane::esmaece_fino(&sess.engine, brush);
         let sub_dabs: Vec<(usize, u64, Option<f32>, Dab)> = dabs
             .iter()
             .enumerate()
@@ -244,68 +215,11 @@ impl PainterTool {
         let copia = super::copias::copia_de_cada_dab(dabs, brush, &groups);
         for (didx, sub_k, passo, d) in sub_dabs.iter().map(|(i, k, p, d)| (*i, *k, *p, d)) {
             let [x, y] = d.center;
-            // LANE matching, geometric: the dab belongs to the lane whose
-            // last position is within its own radius (consecutive dabs of one
-            // copy are a spacing apart; other copies are far). A dab with no
-            // lane in reach BEGINS one — a symmetry copy at stroke start, or
-            // a Tiling wrap born mid-stroke at the sprite edge. Near a radial
-            // centre the copies converge and may swap lanes; there their
-            // positions coincide, so a swap deposits the same paint.
-            // The ERASER skips the lanes entirely — every copy just erases
-            // where it lands. The direct wet tools keep the geometric lane
-            // MATCHING (it is what carries each symmetry/tiling copy's own
-            // previous dab centre — the smear/blow displacement source) but
-            // never touch the engine's lane trails.
-            let mut lane_born = false;
-            let li = if erasing {
-                0
+            // A lane do dab ([`super::rota_da_lane::casa_a_lane`]); a borracha não tem lanes.
+            let (li, lane_born) = if erasing {
+                (0, false)
             } else {
-                let thr = brush.limiar_da_lane(d.radius_px);
-                let mut best = thr * thr;
-                let mut lane = None;
-                for (i, l) in sess.lanes.iter().enumerate() {
-                    let (ddx, ddy) = (x - l.pos[0], y - l.pos[1]);
-                    let d2 = ddx * ddx + ddy * ddy;
-                    if l.copia == copia[didx] && d2 <= best {
-                        best = d2;
-                        lane = Some(i);
-                    }
-                }
-                match lane {
-                    Some(i) => {
-                        if wet_tool.uses_lanes() {
-                            // A janela do rasto anda pela CORDA entre centros: pelo sub-passo antes de arredondar, o
-                            // dab do resto pesava um sub-passo inteiro — a escada do Oil Bristle a 103 px (doc 51 §4).
-                            let chord = grid_map::px_len_to_cell(f64::from(best.sqrt()), ratio);
-                            let arco = (d.arc_len - sess.lanes[i].arco).max(0.0);
-                            let caminho = grid_map::px_len_to_cell(f64::from(arco), ratio);
-                            sess.engine.direct_segment_no_caminho(i, chord, caminho);
-                        }
-                        i
-                    }
-                    None => {
-                        let i = sess.lanes.len();
-                        lane_born = true;
-                        if wet_tool.uses_lanes() {
-                            // The DAB's colour, not the brush's: Randomize
-                            // is already resolved per dab by the stroke
-                            // engine (W2.2).
-                            sess.engine.color = ink(d.color);
-                            sess.engine.begin_direct_stroke(
-                                i,
-                                grid_map::px_to_cell(f64::from(x), ratio),
-                                grid_map::px_to_cell(f64::from(y), ratio),
-                            );
-                        }
-                        sess.lanes.push(Lane {
-                            pos: d.center,
-                            ink: d.color,
-                            arco: d.arc_len,
-                            copia: copia[didx],
-                        });
-                        i
-                    }
-                }
+                super::rota_da_lane::casa_a_lane(sess, d, brush, copia[didx], wet_tool)
             };
             // The lane's PREVIOUS centre (before this dab updates it) — the
             // direct tools' displacement source; a born lane has none, and
@@ -314,26 +228,17 @@ impl PainterTool {
             // Per-dab fresh ink (Randomize): reload the lane's trail — a
             // brush dipped in new paint (see `Trail::set_base_color`).
             if !erasing && wet_tool == WetTool::Paint && d.color != sess.lanes[li].ink {
-                sess.engine.set_stroke_color(li, ink(d.color));
+                sess.engine
+                    .set_stroke_color(li, super::rota_da_lane::tinta(d.color));
                 sess.lanes[li].ink = d.color;
             }
-            let (b, opacidade) = match opacidade_da_pressao {
-                Some(ov) if wet_tool == WetTool::Paint => (
-                    f64::from(ov) * 10.0,
-                    (f64::from(d.coverage) / (f64::from(strength) * f64::from(ov)).max(1e-9))
-                        .clamp(0.0, 1.0),
-                ),
-                _ => (((d.coverage / strength).clamp(0.0, 1.0) as f64) * 10.0, 1.0),
-            };
-            // ⭐ O FALL-OFF (L5) no Wet é a carga do PIGMENTO (o que pousa), não a pressão: a cobertura do dab já
-            // o leva (`Taper::fall`), e no `b` da pressão ele desfaz-se para pousar na opacidade. Neutro = `1`.
-            let carga = f64::from(brush.taper.fall(d.arc_len, 2.0 * brush.clamped_radius()));
-            let (b, opacidade) =
-                if carga < 1.0 && !(opacidade_da_pressao.is_some() && wet_tool == WetTool::Paint) {
-                    ((b / carga.max(1e-6)).min(10.0), opacidade * carga)
-                } else {
-                    (b, opacidade)
-                };
+            let (b, opacidade) = super::rota_da_lane::b_e_opacidade(
+                d,
+                brush,
+                strength,
+                opacidade_da_pressao,
+                wet_tool,
+            );
             // Per-dab silhouette closure — the impasto walk's exact recipe
             // (spec at the dab's radius → rotor → footprint → Shape basis in
             // the stroke frame), evaluated per engine cell (cell − 1 = px).
@@ -365,7 +270,7 @@ impl PainterTool {
             // sub-dabs pousavam a mesma textura e o traço ganhava o período do Spacing (doc 51 §3, `os_fios`). O
             // `k = 0` é o próprio dab, o último: o fluxo segue para o próximo dab como sem a cápsula.
             if sub_k > 0 {
-                *tex_rng = sorteio_do_sub_dab(*tex_rng, sub_k);
+                *tex_rng = super::rota_da_lane::sorteio_do_sub_dab(*tex_rng, sub_k);
             }
             let shape_basis = (shape_active || cerdas).then(|| {
                 ph2d_painter_brush::texture::shape_basis(
@@ -762,12 +667,4 @@ impl PainterTool {
         self.wetpaint_composite();
         crate::wet_diag::note_stamp(dabs.len(), deposit_ms, t_comp.elapsed().as_secs_f32() * 1e3);
     }
-}
-
-/// O estado do fluxo do sub-dab `k` da cápsula, tirado do do dab (o splitmix64).
-fn sorteio_do_sub_dab(rng: u64, k: u64) -> u64 {
-    let mut z = (rng ^ k.wrapping_mul(0xD1B5_4A32_D192_ED03)).wrapping_add(0x9E37_79B9_7F4A_7C15);
-    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-    z ^ (z >> 31)
 }

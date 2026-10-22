@@ -315,6 +315,7 @@ pub(super) mod largura; // a LARGURA PROMETIDA (W2): o raio do motor sai da tabe
 mod lote; // o papel e o sub-passo da cápsula de cada lote — filho de dab_route por LOC
 mod po; // o PÓ SOLTO pousado à parte do rasto (J4 pastel_carvao) — filho de dab_route por LOC
 mod ponta_das_cerdas; // a ponta RECTA e DESFIADA das cerdas (J2 §7 c) — filho de dab_route por LOC
+mod rota_da_lane; // a lane de cada dab, a tinta do motor e o b/opacidade — filho de dab_route por LOC
 mod session; // what a wet SESSION is (data model) — child file (LOC cap)
 use session::{Lane, PaperKey};
 pub(super) use session::{WetEngineFacts, WetSession};

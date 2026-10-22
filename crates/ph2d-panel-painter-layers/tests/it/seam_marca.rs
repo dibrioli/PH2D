@@ -25,7 +25,8 @@ fn painted(tool: &PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(
     if rect_of(&rects, ids::PAINTER_MARCA_SECONDARY).is_some() {
         return (host, st, rects);
     }
-    let cab = rect_of(&rects, ids::PAINTER_BRUSH_RANDOMIZE_SECTION).expect("o cabeçalho Randomize Color");
+    let cab =
+        rect_of(&rects, ids::PAINTER_BRUSH_RANDOMIZE_SECTION).expect("o cabeçalho Randomize Color");
     for ev in host.click_at(cab.x + cab.w * 0.5, cab.y + cab.h * 0.5) {
         host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
     }
@@ -60,8 +61,13 @@ fn o_cartao_jitter_pinta_as_linhas_da_marca() {
         let sec = rect_of(&rects, ids::PAINTER_MARCA_SECONDARY).expect("a amostra da secundária");
         let (mut yj, mut yc) = (rot.y, sec.y);
         for (l, id) in LINHAS_DA_MARCA.into_iter().zip(ids::PAINTER_MARCA_FIELDS) {
-            let r = rect_of(&rects, id).unwrap_or_else(|| panic!("{m:?}: a linha {} não pintada", l.chave()));
-            let y = if l.cartao() == CartaoDaMarca::Jitter { &mut yj } else { &mut yc };
+            let r = rect_of(&rects, id)
+                .unwrap_or_else(|| panic!("{m:?}: a linha {} não pintada", l.chave()));
+            let y = if l.cartao() == CartaoDaMarca::Jitter {
+                &mut yj
+            } else {
+                &mut yc
+            };
             assert!(r.y > *y, "{m:?}: {} fora de ordem", l.chave());
             *y = r.y;
         }
@@ -83,7 +89,12 @@ fn digitar_uma_linha_da_marca_muda_o_pincel() {
                 t.handle_panel_event(pe);
             }
         }
-        assert_eq!(t.brush_settings().marca[i], 0.5, "{}", LINHAS_DA_MARCA[i].chave());
+        assert_eq!(
+            t.brush_settings().marca[i],
+            0.5,
+            "{}",
+            LINHAS_DA_MARCA[i].chave()
+        );
     }
 }
 
@@ -96,8 +107,12 @@ fn a_amostra_da_secundaria_abre_o_seletor_e_volta_ao_pincel() {
     for ev in host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
         host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
     }
-    assert_eq!(host.store().picker_target(), Some(ids::PAINTER_MARCA_SECONDARY));
-    host.store_mut().set_widget_color(ids::PAINTER_MARCA_SECONDARY, [255, 0, 51, 255]);
+    assert_eq!(
+        host.store().picker_target(),
+        Some(ids::PAINTER_MARCA_SECONDARY)
+    );
+    host.store_mut()
+        .set_widget_color(ids::PAINTER_MARCA_SECONDARY, [255, 0, 51, 255]);
     let _ = host.paint::<PainterLayersPanel>(&mut st, viewport());
     for action in host.drained_actions() {
         if let EditorAction::ToolPanelEvent(pe) = action {

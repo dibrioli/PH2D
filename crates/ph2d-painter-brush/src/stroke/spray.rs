@@ -208,7 +208,8 @@ impl Stroke {
             return;
         }
         if crate::jitter::next_f32(&mut self.por_traco.rng_veu) < j.veu.clamp(0.0, 1.0) {
-            d.radius_px = (d.radius_px * j.veu_escala.max(0.05)).clamp(0.5, crate::MAX_BRUSH_RADIUS_PX);
+            d.radius_px =
+                (d.radius_px * j.veu_escala.max(0.05)).clamp(0.5, crate::MAX_BRUSH_RADIUS_PX);
             d.coverage *= j.veu_opacidade.clamp(0.0, 1.0);
         }
     }
@@ -224,9 +225,16 @@ impl Stroke {
         }
         let passo = self.spec.passo_de(self.spec.spacing);
         let sym = &self.spec.symmetry;
-        graos_do_po(&j, molde, passo, &mut self.por_traco.po_resto, &mut self.por_traco.rng_po, |grao| {
-            crate::symmetry::push_symmetric(out, grao, sym);
-        });
+        graos_do_po(
+            &j,
+            molde,
+            passo,
+            &mut self.por_traco.po_resto,
+            &mut self.por_traco.rng_po,
+            |grao| {
+                crate::symmetry::push_symmetric(out, grao, sym);
+            },
+        );
     }
 }
 
@@ -264,7 +272,10 @@ pub fn graos_do_po(
             let (dx, dy) = {
                 let (hx, hy) = (molde.dir[0], molde.dir[1]);
                 let lado = (-hy * dx + hx * dy) * j.po_lado.signum();
-                if j.po_lado != 0.0 && lado < 0.0 && crate::jitter::next_f32(rng) < j.po_lado.abs().min(1.0) {
+                if j.po_lado != 0.0
+                    && lado < 0.0
+                    && crate::jitter::next_f32(rng) < j.po_lado.abs().min(1.0)
+                {
                     let n = [-hy, hx];
                     let k = 2.0 * (n[0] * dx + n[1] * dy);
                     (dx - k * n[0], dy - k * n[1])

@@ -12,7 +12,12 @@ fn deposito(nome: &str, engine: &[(&str, f64)], diametro: f32, y: f32) -> [f64; 
 }
 
 /// [`deposito`] e o mesmo traço depois de 240 quadros de água (a massa `susp + sett`).
-fn deposito_e_agua(nome: &str, engine: &[(&str, f64)], diametro: f32, y: f32) -> ([f64; 6], [f64; 6]) {
+fn deposito_e_agua(
+    nome: &str,
+    engine: &[(&str, f64)],
+    diametro: f32,
+    y: f32,
+) -> ([f64; 6], [f64; 6]) {
     let p = pinceis(nome).remove(0);
     let Fonte::Preset { preset, .. } = &p.fonte else {
         unreachable!("{nome} é um preset de ficheiro")
@@ -26,7 +31,10 @@ fn deposito_e_agua(nome: &str, engine: &[(&str, f64)], diametro: f32, y: f32) ->
     t.set_wet_relogio_fixo(true);
     let falhas = t.preset_aplicar(&pr).expect("meio");
     // Um knob que o motor não conhece não pinta nada de novo: a régua abaixo é que o diz (o vermelho de antes do filme).
-    assert!(falhas.is_empty() || !engine.is_empty(), "{nome}: {falhas:?}");
+    assert!(
+        falhas.is_empty() || !engine.is_empty(),
+        "{nome}: {falhas:?}"
+    );
     if !falhas.is_empty() {
         println!("[filme] {nome}: {falhas:?}");
     }
@@ -39,7 +47,10 @@ fn deposito_e_agua(nome: &str, engine: &[(&str, f64)], diametro: f32, y: f32) ->
     for _ in 0..240 {
         t.on_tick(1000.0 / 60.0);
     }
-    (antes, medidas(&perfil(&mut t, y0, y1, 300.0, 700.0), 9).expect("a tinta ficou"))
+    (
+        antes,
+        medidas(&perfil(&mut t, y0, y1, 300.0, 700.0), 9).expect("a tinta ficou"),
+    )
 }
 
 /// O pincel das réguas: o Wet Liner de antes do filme (pigmento 30 — o filme sem o tapete pousa ~3× o miolo da soma, e
@@ -56,8 +67,14 @@ const BASE: [(&str, f64); 8] = [
     ("levelingOwnStroke", 0.0),
 ];
 /// `BASE` e mais três.
-const fn com(a: (&'static str, f64), b: (&'static str, f64), c: (&'static str, f64)) -> [(&'static str, f64); 11] {
-    [BASE[0], BASE[1], BASE[2], BASE[3], BASE[4], BASE[5], BASE[6], BASE[7], a, b, c]
+const fn com(
+    a: (&'static str, f64),
+    b: (&'static str, f64),
+    c: (&'static str, f64),
+) -> [(&'static str, f64); 11] {
+    [
+        BASE[0], BASE[1], BASE[2], BASE[3], BASE[4], BASE[5], BASE[6], BASE[7], a, b, c,
+    ]
 }
 /// A soma de sempre (o controlo): sem o filme, o arrasto e o tecto de água de omissão.
 const SOMA: [(&str, f64); 11] = com(("strokeFilm", 0.0), ("drag", 0.16), ("waterCap", 8.0));
@@ -75,11 +92,31 @@ fn o_filme_do_traco_e_liso() {
         // mancha 0,055 com o 0,16, 0,008 sem ele — o pincel de filme leva `drag` 0.)
         let filme = deposito("Wet Liner", &FILME, diametro, y);
         println!("[filme] {diametro} px · soma {soma:.3?} · filme {filme:.3?}");
-        assert!(soma[2] > 0.03, "{diametro} px: o controlo já não tem listras ({:.4}) — a régua não vê o defeito", soma[2]);
-        assert!(filme[2] < 0.01, "{diametro} px: listras {:.4} com o filme", filme[2]);
-        assert!(filme[3] > 0.93, "{diametro} px: o domo (ombros ÷ centro {:.3}) com o filme", filme[3]);
-        assert!(filme[4] == 0.0, "{diametro} px: buracos {:.3} no miolo do filme", filme[4]);
-        assert!(filme[5] < 0.02, "{diametro} px: manchas ao longo do traço ({:.3}) com o filme", filme[5]);
+        assert!(
+            soma[2] > 0.03,
+            "{diametro} px: o controlo já não tem listras ({:.4}) — a régua não vê o defeito",
+            soma[2]
+        );
+        assert!(
+            filme[2] < 0.01,
+            "{diametro} px: listras {:.4} com o filme",
+            filme[2]
+        );
+        assert!(
+            filme[3] > 0.93,
+            "{diametro} px: o domo (ombros ÷ centro {:.3}) com o filme",
+            filme[3]
+        );
+        assert!(
+            filme[4] == 0.0,
+            "{diametro} px: buracos {:.3} no miolo do filme",
+            filme[4]
+        );
+        assert!(
+            filme[5] < 0.02,
+            "{diametro} px: manchas ao longo do traço ({:.3}) com o filme",
+            filme[5]
+        );
     }
 }
 
@@ -95,13 +132,26 @@ fn o_filme_do_traco_continua_liso_depois_da_agua() {
     let (_, agua) = deposito_e_agua("Wet Liner", &molhado, 200.0, 440.0);
     println!("[filme] 200 px molhado depois de 240 quadros: {agua:.3?}");
     // (0,038 com a lei; 0,078 com o tecto da janela de volta — o disco do 1.º toque e os arcos da água.)
-    assert!(agua[3] > 0.93 && agua[5] < 0.055, "molhado: ombros ÷ centro {:.3}, manchas {:.3}", agua[3], agua[5]);
+    assert!(
+        agua[3] > 0.93 && agua[5] < 0.055,
+        "molhado: ombros ÷ centro {:.3}, manchas {:.3}",
+        agua[3],
+        agua[5]
+    );
     let (_, agua) = deposito_e_agua("Wet Liner", &FILME, 200.0, 440.0);
     println!("[filme] 200 px depois de 240 quadros: {agua:.3?}");
     // (A água nivela o que sobra das listras também na soma — aqui elas são só a régua do ruído: 0,009–0,011.)
     assert!(agua[2] < 0.015, "listras {:.4} depois da água", agua[2]);
-    assert!(agua[3] > 0.93, "o domo (ombros ÷ centro {:.3}) depois da água", agua[3]);
-    assert!(agua[5] < 0.03, "manchas ao longo do traço ({:.3}) depois da água", agua[5]);
+    assert!(
+        agua[3] > 0.93,
+        "o domo (ombros ÷ centro {:.3}) depois da água",
+        agua[3]
+    );
+    assert!(
+        agua[5] < 0.03,
+        "manchas ao longo do traço ({:.3}) depois da água",
+        agua[5]
+    );
 }
 
 /// ⭐ **O filme tem a MESMA espessura a todo o tamanho** (`Knob::StrokeFilm`): o miolo do recto de 5, 12, 40 e 200 px pousa a
@@ -114,7 +164,11 @@ fn o_filme_tem_a_mesma_espessura_a_todo_o_tamanho() {
     for d in [5.0f32, 12.0, 40.0] {
         let m = deposito("Wet Liner", &FILME, d, 320.0)[1];
         println!("[filme] miolo a {d} px {m:.1} · a 200 px {largo:.1}");
-        assert!((m / largo - 1.0).abs() < 0.1, "a {d} px o filme tem {:.2} do de 200", m / largo);
+        assert!(
+            (m / largo - 1.0).abs() < 0.1,
+            "a {d} px o filme tem {:.2} do de 200",
+            m / largo
+        );
     }
 }
 
@@ -157,23 +211,41 @@ fn o_filme_nao_tem_o_disco_do_primeiro_toque() {
     };
     let (inicio, meio) = (faixa(60.0, 120.0), faixa(400.0, 600.0));
     println!("[filme] a água no início {inicio:.3} · no meio {meio:.3}");
-    assert!((inicio / meio - 1.0).abs() < 0.03, "o 1.º toque tem {:.3} da água do meio", inicio / meio);
+    assert!(
+        (inicio / meio - 1.0).abs() < 0.03,
+        "o 1.º toque tem {:.3} da água do meio",
+        inicio / meio
+    );
 }
 
 /// A cena `cena` da bateria (foto A) pintada pelo Wet `nome` com o mapa `engine` sobreposto: os píxeis RGBA e a largura.
 fn foto_a(nome: &str, engine: &[(&str, f64)], cena: &str) -> (Vec<u8>, usize) {
     use crate::exame_bancada::{Pincel, bateria, pinta_cena};
     let p = pinceis(nome).remove(0);
-    let Fonte::Preset { preset, relativo } = p.fonte else { unreachable!() };
+    let Fonte::Preset { preset, relativo } = p.fonte else {
+        unreachable!()
+    };
     let mut pr = preset;
     for (k, v) in engine {
         pr.parametros.engine.insert((*k).to_owned(), *v);
     }
-    let p = Pincel { nome: p.nome, fonte: Fonte::Preset { preset: pr, relativo } };
+    let p = Pincel {
+        nome: p.nome,
+        fonte: Fonte::Preset {
+            preset: pr,
+            relativo,
+        },
+    };
     let bat = bateria();
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
-    let c = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == cena).unwrap().clone();
+    let c = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == cena)
+        .unwrap()
+        .clone();
     (pinta_cena(&p, None, &c, tela, papel, 0).1, tela[0] as usize)
 }
 
@@ -191,7 +263,11 @@ fn sujidade(px: &[u8], w: usize) -> f64 {
         }
         s / ((y1 - y0) * 11) as f64
     };
-    [250, 500, 750].iter().map(|&c| rb(c, 190, 280) - rb(c, 70, 110)).sum::<f64>() / 3.0
+    [250, 500, 750]
+        .iter()
+        .map(|&c| rb(c, 190, 280) - rb(c, 70, 110))
+        .sum::<f64>()
+        / 3.0
 }
 
 /// ⭐ **O azul não leva o vermelho molhado** (J4 3.ª ronda, o cruzamento molhado): a ponta da aguarela do Rebelle não se
@@ -206,9 +282,17 @@ fn o_azul_nao_leva_o_vermelho_molhado() {
         [a.join().unwrap(), b.join().unwrap()]
     });
     let (l, c) = (sujidade(&limpo, w), sujidade(&sujo, w));
-    println!("[cruzamento] Wet Liner R−B abaixo da faixa molhada {l:.1} (Rebelle −3,2) · com a ponta que se suja {c:.1}");
-    assert!(c > 15.0, "o controlo (a ponta que se suja) lê {c:.1}: a régua não vê o vermelho levado");
-    assert!(l < 6.0, "o Wet Liner leva o vermelho molhado pelo vertical: R−B {l:.1} (Rebelle −3,2)");
+    println!(
+        "[cruzamento] Wet Liner R−B abaixo da faixa molhada {l:.1} (Rebelle −3,2) · com a ponta que se suja {c:.1}"
+    );
+    assert!(
+        c > 15.0,
+        "o controlo (a ponta que se suja) lê {c:.1}: a régua não vê o vermelho levado"
+    );
+    assert!(
+        l < 6.0,
+        "o Wet Liner leva o vermelho molhado pelo vertical: R−B {l:.1} (Rebelle −3,2)"
+    );
 }
 
 /// A ORLA do recto de 40 px (cena `tamanhos`, foto A, y 190, x 300..700): o perfil através (a escuridão média em x) — o
@@ -216,15 +300,24 @@ fn o_azul_nao_leva_o_vermelho_molhado() {
 fn orla_40(px: &[u8], w: usize) -> f64 {
     let esc = |x: usize, y: usize| {
         let i = (y * w + x) * 4;
-        1.0 - (0.2126 * f64::from(px[i]) + 0.7152 * f64::from(px[i + 1]) + 0.0722 * f64::from(px[i + 2])) / 255.0
+        1.0 - (0.2126 * f64::from(px[i])
+            + 0.7152 * f64::from(px[i + 1])
+            + 0.0722 * f64::from(px[i + 2]))
+            / 255.0
     };
-    let p: Vec<f64> = (150..230).map(|y| (300..700).map(|x| esc(x, y)).sum::<f64>() / 400.0).collect();
+    let p: Vec<f64> = (150..230)
+        .map(|y| (300..700).map(|x| esc(x, y)).sum::<f64>() / 400.0)
+        .collect();
     let mx = p.iter().copied().fold(0.0, f64::max);
     let on: Vec<usize> = (0..p.len()).filter(|&i| p[i] > 0.25 * mx).collect();
     let (a, b) = (on[0], on[on.len() - 1] + 1);
     let f = |t: f64| a + (t * (b - a) as f64).round() as usize;
     let centro = p[f(0.4)..f(0.6)].iter().sum::<f64>() / (f(0.6) - f(0.4)) as f64;
-    let fora = p[a..=f(0.06)].iter().chain(&p[f(0.94) - 1..b]).copied().fold(0.0, f64::max);
+    let fora = p[a..=f(0.06)]
+        .iter()
+        .chain(&p[f(0.94) - 1..b])
+        .copied()
+        .fold(0.0, f64::max);
     fora / centro
 }
 
@@ -236,11 +329,23 @@ fn orla_40(px: &[u8], w: usize) -> f64 {
 fn o_liner_tem_o_fio_escuro_da_borda() {
     let [(fio, w), (sem, _)] = std::thread::scope(|s| {
         let a = s.spawn(|| foto_a("Wet Liner", &[], "tamanhos"));
-        let b = s.spawn(|| foto_a("Wet Liner", &[("waterPerDab", 1.0), ("capillary", 0.2)], "tamanhos"));
+        let b = s.spawn(|| {
+            foto_a(
+                "Wet Liner",
+                &[("waterPerDab", 1.0), ("capillary", 0.2)],
+                "tamanhos",
+            )
+        });
         [a.join().unwrap(), b.join().unwrap()]
     });
     let (o, c) = (orla_40(&fio, w), orla_40(&sem, w));
     println!("[orla] Wet Liner a 40 px {o:.3} (Rebelle 1,247) · com a água de omissão {c:.3}");
-    assert!(c < 1.06, "o controlo (o filme encharcado) já tem orla {c:.3}: a régua não vê o fio");
-    assert!(o > 1.12, "o Wet Liner sem o fio escuro da borda: orla {o:.3} (Rebelle 1,247)");
+    assert!(
+        c < 1.06,
+        "o controlo (o filme encharcado) já tem orla {c:.3}: a régua não vê o fio"
+    );
+    assert!(
+        o > 1.12,
+        "o Wet Liner sem o fio escuro da borda: orla {o:.3} (Rebelle 1,247)"
+    );
 }

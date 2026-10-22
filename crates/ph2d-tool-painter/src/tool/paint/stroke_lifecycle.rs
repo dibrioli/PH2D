@@ -208,7 +208,13 @@ impl PainterTool {
             },
             &mut dabs,
         );
-        self.dual_comeca(StrokePoint { pos: ev.pos, pressure: ev.pressure }, ev.tilt); // a 2.ª ponta (L6)
+        self.dual_comeca(
+            StrokePoint {
+                pos: ev.pos,
+                pressure: ev.pressure,
+            },
+            ev.tilt,
+        ); // a 2.ª ponta (L6)
         self.stamp_stroke_dabs(&dabs);
         self.paint.dabs = dabs;
         // ⚠️ O traço volta ANTES do composite: o `park_stroke` fecha o evento (fios e a mancha do
@@ -307,7 +313,13 @@ impl PainterTool {
             },
             &mut dabs,
         );
-        self.dual_estende(StrokePoint { pos, pressure: ev.pressure }, ev.tilt); // a 2.ª ponta (L6), o mesmo caminho
+        self.dual_estende(
+            StrokePoint {
+                pos,
+                pressure: ev.pressure,
+            },
+            ev.tilt,
+        ); // a 2.ª ponta (L6), o mesmo caminho
         // **Style: Solid** — o caminho E a mancha são escritos pela porta do carimbo (`stamp_dabs` a
         // bracketa, `super::solid_deposit`), e não por uma chamada solta neste sítio. ⚠️ Desde a W7 o
         // dab **é** carimbado (a tinta do gesto é a região cercada **MAIS** o traço que a cerca, como

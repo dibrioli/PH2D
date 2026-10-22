@@ -6,7 +6,9 @@
 //! ⚠️ A tradução `DeviceDab → GpuDab` é a do `measure_product_stamp` (a cópia deliberada; o arch-gate
 //! `the_shell_installs_the_stamp_bridge_at_the_document_bind` pina a do produto).
 
-use ph2d_editor_core::tool::{CanvasPaintTool as _, CanvasPointer, PointerPhase, RasterEditTool as _};
+use ph2d_editor_core::tool::{
+    CanvasPaintTool as _, CanvasPointer, PointerPhase, RasterEditTool as _,
+};
 use ph2d_paint_gpu::{GpuDab, Region, StampPass};
 use ph2d_tool_painter::{DeviceStamp, DeviceStampJob, LinhaDaPonta, PaintMedia, PainterTool};
 use std::sync::Arc;
@@ -73,7 +75,10 @@ fn pinta(gpu: Option<(&ph2d_gpu::GpuContext, &Arc<AtomicUsize>)>, dual: bool) ->
     let cp = |k: usize, phase| {
         let u = k as f32 / 14.0;
         CanvasPointer {
-            pos: [60.0 + 520.0 * u, 200.0 + 110.0 * (u * std::f32::consts::TAU).sin()],
+            pos: [
+                60.0 + 520.0 * u,
+                200.0 + 110.0 * (u * std::f32::consts::TAU).sin(),
+            ],
             pressure: 1.0,
             tilt: [0.0, 0.0],
             phase,
@@ -97,7 +102,8 @@ fn pior_e_quantos(a: &[u8], b: &[u8]) -> (u8, usize) {
 #[test]
 #[ignore = "precisa de adapter — rode com `-- --ignored` na máquina com GPU"]
 fn a_placa_pinta_o_dual_como_a_cpu() {
-    let Some(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).ok() else {
+    let Some(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).ok()
+    else {
         eprintln!("sem adapter: skip");
         return;
     };
@@ -107,11 +113,23 @@ fn a_placa_pinta_o_dual_como_a_cpu() {
         let placa = pinta(Some((&gpu, &chamadas)), dual);
         let n = chamadas.load(Ordering::Relaxed);
         let (pior, quantos) = pior_e_quantos(&cpu, &placa);
-        eprintln!("dual {dual}: {n} lotes na placa · pior {pior} · {quantos} de {} bytes", cpu.len());
-        assert!(n > 0, "dual {dual}: a ponte nem foi chamada — o gate estaria verde sobre a rota desligada");
+        eprintln!(
+            "dual {dual}: {n} lotes na placa · pior {pior} · {quantos} de {} bytes",
+            cpu.len()
+        );
+        assert!(
+            n > 0,
+            "dual {dual}: a ponte nem foi chamada — o gate estaria verde sobre a rota desligada"
+        );
         assert!(cpu.iter().any(|&b| b != 255), "a fixture não pintou");
         assert!(pior <= 2, "dual {dual}: pior delta {pior}");
-        assert!(quantos * 400 <= cpu.len(), "dual {dual}: {quantos} bytes diferem (> 0,25 %)");
+        assert!(
+            quantos * 400 <= cpu.len(),
+            "dual {dual}: {quantos} bytes diferem (> 0,25 %)"
+        );
     }
-    assert!(pinta(None, true) != pinta(None, false), "a 2.ª ponta não mudou a tela");
+    assert!(
+        pinta(None, true) != pinta(None, false),
+        "a 2.ª ponta não mudou a tela"
+    );
 }

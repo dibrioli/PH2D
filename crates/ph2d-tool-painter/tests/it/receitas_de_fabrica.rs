@@ -111,7 +111,11 @@ pub fn receitas() -> impl Iterator<Item = &'static Receita> {
     RECEITAS
         .iter()
         .chain(FAMILIAS.iter().flat_map(|f| f.wet))
-        .chain(FERRAMENTAS_WET.iter().flat_map(|l| l.iter().map(|f| &f.receita)))
+        .chain(
+            FERRAMENTAS_WET
+                .iter()
+                .flat_map(|l| l.iter().map(|f| &f.receita)),
+        )
 }
 
 /// Todas as receitas de Digital, Watercolor e Impasto (as das famílias).

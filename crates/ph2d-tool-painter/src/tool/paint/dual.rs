@@ -95,7 +95,11 @@ impl RecorteNoWet {
                 f64::from(m)
             } else {
                 let s = sil(x, y);
-                if s > 0.0 { f64::from(self.modo.recorta(s as f32, m)) / s } else { 0.0 }
+                if s > 0.0 {
+                    f64::from(self.modo.recorta(s as f32, m)) / s
+                } else {
+                    0.0
+                }
             };
             padrao.map_or(1.0, |p| p(x, y)) * f
         }
@@ -109,7 +113,10 @@ fn frente_no_arco(p: [f32; 2], rumo: [f32; 2], k: f32, l: f32) -> [f32; 2] {
         return [p[0] + rumo[0] * l, p[1] + rumo[1] * l];
     }
     let (t0, k) = (rumo[1].atan2(rumo[0]), kl / l);
-    [p[0] + ((t0 + kl).sin() - t0.sin()) / k, p[1] - ((t0 + kl).cos() - t0.cos()) / k]
+    [
+        p[0] + ((t0 + kl).sin() - t0.sin()) / k,
+        p[1] - ((t0 + kl).cos() - t0.cos()) / k,
+    ]
 }
 
 impl PainterTool {
@@ -138,7 +145,11 @@ impl PainterTool {
         self.paint.dual.tex_rng = self.paint.seed ^ SEMENTE_DO_DUAL.rotate_left(17);
         let mut out = Vec::new();
         m.set_tilt(tilt);
-        (self.paint.dual.ultimo, self.paint.dual.rumo, self.paint.dual.curva) = (p.pos, [0.0; 2], 0.0);
+        (
+            self.paint.dual.ultimo,
+            self.paint.dual.rumo,
+            self.paint.dual.curva,
+        ) = (p.pos, [0.0; 2], 0.0);
         m.begin(p, &mut out);
         self.paint.dual.pendentes.extend(out);
         self.paint.dual.motor = Some(m);
@@ -174,13 +185,17 @@ impl PainterTool {
         if l > 1e-3 {
             let novo = [passo[0] / l, passo[1] / l];
             if e.rumo != [0.0; 2] {
-                let giro = (e.rumo[0] * novo[1] - e.rumo[1] * novo[0]).atan2(e.rumo[0] * novo[0] + e.rumo[1] * novo[1]);
+                let giro = (e.rumo[0] * novo[1] - e.rumo[1] * novo[0])
+                    .atan2(e.rumo[0] * novo[0] + e.rumo[1] * novo[1]);
                 e.curva += (1.0 - (-l / (0.5 * frente)).exp()) * (giro / l - e.curva);
             }
             e.rumo = novo;
         }
         e.ultimo = p.pos;
-        let p = StrokePoint { pos: frente_no_arco(p.pos, e.rumo, e.curva, frente), ..p };
+        let p = StrokePoint {
+            pos: frente_no_arco(p.pos, e.rumo, e.curva, frente),
+            ..p
+        };
         self.dual_passo(|m, out| {
             m.set_canvas_dab(
                 vivo.radius_px,

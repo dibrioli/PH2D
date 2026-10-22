@@ -126,7 +126,11 @@ pub fn escrever_textura(lum: &[u8], w: u32, h: u32) -> Vec<u8> {
 /// Shape com «Use Texture Colors», cada imagem da ponta de N imagens).
 #[must_use]
 pub fn escrever_textura_rgba(rgba: &[u8], w: u32, h: u32) -> Vec<u8> {
-    assert_eq!(rgba.len(), w as usize * h as usize * 4, "textura RGBA {w}×{h}");
+    assert_eq!(
+        rgba.len(),
+        w as usize * h as usize * 4,
+        "textura RGBA {w}×{h}"
+    );
     png_8bits(6, 4, w, h, rgba, &[])
 }
 

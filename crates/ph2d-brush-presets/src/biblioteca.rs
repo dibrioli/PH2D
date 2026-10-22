@@ -65,7 +65,12 @@ fn ordem_do_navegador(relativo: &str) -> (&str, &str, Option<i32>, &str) {
     let nome = partes(relativo)[3];
     let pasta = relativo.rsplit_once('/').map_or("", |(p, _)| p);
     match grau_do_lapis(nome) {
-        Some(g) => (pasta, nome.rsplit_once(' ').map_or(nome, |(s, _)| s), Some(g), relativo),
+        Some(g) => (
+            pasta,
+            nome.rsplit_once(' ').map_or(nome, |(s, _)| s),
+            Some(g),
+            relativo,
+        ),
         None => (pasta, nome, None, relativo),
     }
 }

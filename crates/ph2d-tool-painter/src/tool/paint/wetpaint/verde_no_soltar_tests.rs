@@ -122,7 +122,11 @@ fn o_azul_sobre_azul_nao_fica_verde_no_soltar() {
 fn sonda_verde() {
     let b = super::mistura_wet_drip_tests::biblioteca();
     // Só os do Wet Paint (os outros meios têm presets irmãos desde a J3).
-    for e in b.entradas.iter().filter(|e| e.preset.parametros.media == crate::MEIO_DO_PRESET) {
+    for e in b
+        .entradas
+        .iter()
+        .filter(|e| e.preset.parametros.media == crate::MEIO_DO_PRESET)
+    {
         for forca in [1.0, 0.3, 0.1] {
             for par in PARES {
                 let [a, d, s] = cena(&e.preset, false, par, forca);

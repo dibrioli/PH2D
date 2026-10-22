@@ -198,7 +198,11 @@ impl Taper {
         if self.tip_start < 1.0 || self.opacity <= 0.0 {
             return 1.0;
         }
-        ramp(from_start, self.start_px(diameter_px), 1.0 - self.opacity.clamp(0.0, 1.0))
+        ramp(
+            from_start,
+            self.start_px(diameter_px),
+            1.0 - self.opacity.clamp(0.0, 1.0),
+        )
     }
 
     /// The **coverage multiplier** that goes with a width multiplier `w`. `opacity = 0` leaves the dab

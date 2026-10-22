@@ -369,15 +369,33 @@ fn a_placa_pinta_a_pegada_deitada_como_a_cpu() {
             ..brush
         };
         let _ = stamp_dab_textured_masked(
-            &mut disco, W, H, d.center, &s, d.coverage, false,
-            None, None, None, None, None,
-            s.dab_rotor(d), None,
+            &mut disco,
+            W,
+            H,
+            d.center,
+            &s,
+            d.coverage,
+            false,
+            None,
+            None,
+            None,
+            None,
+            None,
+            s.dab_rotor(d),
+            None,
         );
     }
     let (_, controlo) = worst_and_count(&want, &disco);
-    assert!(controlo * 100 > want.len(), "a pegada deitada não mudou a tinta: {controlo}");
+    assert!(
+        controlo * 100 > want.len(),
+        "a pegada deitada não mudou a tinta: {controlo}"
+    );
     let (worst, diff) = worst_and_count(&want, &got);
     eprintln!("deitada: pior delta {worst}, {diff} bytes diferem (controlo {controlo})");
     assert!(worst <= 1, "pior delta {worst} (>1 nível)");
-    assert!(diff * 400 <= want.len(), "{diff} de {} bytes diferem (>0,25%)", want.len());
+    assert!(
+        diff * 400 <= want.len(),
+        "{diff} de {} bytes diferem (>0,25%)",
+        want.len()
+    );
 }

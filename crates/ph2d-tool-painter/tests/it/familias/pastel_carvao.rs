@@ -97,7 +97,11 @@ pub const WET: &[Receita] = &[
             ("pressureGrain", 0.25),
         ],
         grao: None,
-        pincel: &[("dab_quina", "1.0"), ("texture", GRAO_DO_SQUARE), ("shape", MANCHAS_DO_SQUARE)],
+        pincel: &[
+            ("dab_quina", "1.0"),
+            ("texture", GRAO_DO_SQUARE),
+            ("shape", MANCHAS_DO_SQUARE),
+        ],
         nasce_de: Some("Soft Pastel"),
         ..SOFT_PASTEL
     },
@@ -147,7 +151,12 @@ pub const WET: &[Receita] = &[
             ("pressureGrain", 0.5),
         ],
         achatado: Some((0.47, 0)),
-        pincel: &[("dab_quina", "1.0"), ("size_max_px", "50"), ("shape", VETAS_DO_CARVAO), ("dab_jitter", PO_DO_LADO)],
+        pincel: &[
+            ("dab_quina", "1.0"),
+            ("size_max_px", "50"),
+            ("shape", VETAS_DO_CARVAO),
+            ("dab_jitter", PO_DO_LADO),
+        ],
         nasce_de: Some("Soft Pastel"),
         ..SOFT_PASTEL
     },
@@ -257,7 +266,12 @@ pub const EM_ESTUDO: &[Receita] = &[
             ("pressureOpacity", 1.0),
             ("pressureOpacityCurve", 2.5),
         ],
-        pincel: &[("falloff", "\"Sharp\""), ("jitter", "0.2"), ("shape", SEM_SHAPE), ("size_max_px", "null")],
+        pincel: &[
+            ("falloff", "\"Sharp\""),
+            ("jitter", "0.2"),
+            ("shape", SEM_SHAPE),
+            ("size_max_px", "null"),
+        ],
         nasce_de: Some("Charcoal"),
         ..CHARCOAL
     },
@@ -372,21 +386,34 @@ const SOFT_PASTEL: Receita = Receita {
 #[ignore = "bancada: escreve os EM_ESTUDO fora da fábrica (PH2D_EXAME_DIR)"]
 fn escreve_os_em_estudo() {
     use crate::presets_de_fabrica::{parametros, tabela_de_largura};
-    let dir = std::path::PathBuf::from(std::env::var("PH2D_EXAME_DIR").expect("PH2D_EXAME_DIR")).join("estudo");
+    let dir = std::path::PathBuf::from(std::env::var("PH2D_EXAME_DIR").expect("PH2D_EXAME_DIR"))
+        .join("estudo");
     let so = std::env::var("PH2D_REGERA_SO").ok();
     for r in EM_ESTUDO {
-        if so.as_deref().is_some_and(|s| !s.split(',').any(|n| n == r.nome)) {
+        if so
+            .as_deref()
+            .is_some_and(|s| !s.split(',').any(|n| n == r.nome))
+        {
             continue;
         }
         let mut preset = ph2d_brush_presets::Preset {
             parametros: parametros(r),
             origem: ph2d_brush_presets::Origem::Fabrica,
-            miniatura: ph2d_brush_presets::Miniatura { largura: 1, altura: 1, rgba: vec![255; 4] },
+            miniatura: ph2d_brush_presets::Miniatura {
+                largura: 1,
+                altura: 1,
+                rgba: vec![255; 4],
+            },
             texturas: Default::default(),
         };
         preset.parametros.width_table = tabela_de_largura(&preset);
         preset.miniatura = ph2d_tool_painter::miniatura_do_preset(&preset);
-        let rel = ph2d_brush_presets::caminho_relativo(ph2d_tool_painter::MOTOR_DOS_PRESETS, r.meio, r.grupo, r.nome);
+        let rel = ph2d_brush_presets::caminho_relativo(
+            ph2d_tool_painter::MOTOR_DOS_PRESETS,
+            r.meio,
+            r.grupo,
+            r.nome,
+        );
         ph2d_brush_presets::gravar(&dir, &rel, &preset).unwrap();
         println!("[estudo] {}", dir.join(&rel).display());
     }
@@ -415,7 +442,10 @@ mod portoes {
                     preset.parametros.brush.insert(c.to_owned(), valor);
                 }
                 None => {
-                    preset.parametros.engine.insert(campo.to_owned(), valor.as_f64().unwrap());
+                    preset
+                        .parametros
+                        .engine
+                        .insert(campo.to_owned(), valor.as_f64().unwrap());
                 }
             }
         }
@@ -425,13 +455,18 @@ mod portoes {
     /// As bordas (topo, fundo) de cada coluna de `x0..x1` no recto horizontal em `y` (±`h`), ao limiar ¼ do p90 dos picos.
     fn bordas(c: &[f64], y: usize, h: usize, x0: usize, x1: usize) -> Vec<Option<(usize, usize)>> {
         let col = |x: usize| -> Vec<f64> { (y - h..=y + h).map(|yy| c[yy * 1000 + x]).collect() };
-        let mut p: Vec<f64> = (x0..x1).map(|x| col(x).into_iter().fold(0.0, f64::max)).collect();
+        let mut p: Vec<f64> = (x0..x1)
+            .map(|x| col(x).into_iter().fold(0.0, f64::max))
+            .collect();
         p.sort_by(f64::total_cmp);
         let limiar = 0.25 * p[(0.9 * (p.len() - 1) as f64) as usize];
         (x0..x1)
             .map(|x| {
                 let v = col(x);
-                Some((v.iter().position(|&q| q >= limiar)?, v.iter().rposition(|&q| q >= limiar)?))
+                Some((
+                    v.iter().position(|&q| q >= limiar)?,
+                    v.iter().rposition(|&q| q >= limiar)?,
+                ))
             })
             .collect()
     }
@@ -447,8 +482,20 @@ mod portoes {
     pub(super) fn estrias(c: &[f64], y: usize, h: usize) -> (f64, f64, usize, usize) {
         let (x0, x1) = (200, 800);
         let b = bordas(c, y, h, x0, x1);
-        let w = mediana(b.iter().flatten().map(|(t, f)| (f - t + 1) as f64).collect());
-        let centro = mediana(b.iter().flatten().map(|(t, f)| (t + f) as f64 / 2.0).collect()) as usize + y - h;
+        let w = mediana(
+            b.iter()
+                .flatten()
+                .map(|(t, f)| (f - t + 1) as f64)
+                .collect(),
+        );
+        let centro = mediana(
+            b.iter()
+                .flatten()
+                .map(|(t, f)| (t + f) as f64 / 2.0)
+                .collect(),
+        ) as usize
+            + y
+            - h;
         let hh = ((w * 0.3) as usize).max(1);
         let (n, m) = (x1 - x0, 2 * hh + 1);
         let mut z: Vec<f64> = (0..m)
@@ -481,7 +528,10 @@ mod portoes {
                 let (mut ws, mut cs) = (Vec::new(), Vec::new());
                 for x in 60 + 50 * b..60 + 50 * (b + 1) {
                     let col: Vec<f64> = (355..=445).map(|y| c[y * 1000 + x]).collect();
-                    match (col.iter().position(|&q| q >= 0.08), col.iter().rposition(|&q| q >= 0.08)) {
+                    match (
+                        col.iter().position(|&q| q >= 0.08),
+                        col.iter().rposition(|&q| q >= 0.08),
+                    ) {
                         (Some(t), Some(f)) => {
                             ws.push((f - t + 1) as f64);
                             cs.push(col[t..=f].iter().sum::<f64>() / (f - t + 1) as f64);
@@ -501,32 +551,52 @@ mod portoes {
     /// da cena `gestos` (`lamina.py` da família) — a de pé ÷ a deitada.
     fn lamina(c: &[f64]) -> f64 {
         let largura = |amostras: Vec<Vec<f64>>| -> f64 {
-            let mut p: Vec<f64> = amostras.iter().map(|v| v.iter().copied().fold(0.0, f64::max)).collect();
+            let mut p: Vec<f64> = amostras
+                .iter()
+                .map(|v| v.iter().copied().fold(0.0, f64::max))
+                .collect();
             p.sort_by(f64::total_cmp);
             let limiar = 0.25 * p[(0.9 * (p.len() - 1) as f64) as usize];
             mediana(
                 amostras
                     .iter()
                     .filter_map(|v| {
-                        Some((v.iter().rposition(|&q| q >= limiar)? - v.iter().position(|&q| q >= limiar)? + 1) as f64)
+                        Some(
+                            (v.iter().rposition(|&q| q >= limiar)?
+                                - v.iter().position(|&q| q >= limiar)?
+                                + 1) as f64,
+                        )
                     })
                     .collect(),
             )
         };
-        let h = largura((80..560).map(|x| (40..141).map(|y| c[y * 1000 + x]).collect()).collect());
-        let v = largura((470..591).map(|y| (640..761).map(|x| c[y * 1000 + x]).collect()).collect());
+        let h = largura(
+            (80..560)
+                .map(|x| (40..141).map(|y| c[y * 1000 + x]).collect())
+                .collect(),
+        );
+        let v = largura(
+            (470..591)
+                .map(|y| (640..761).map(|x| c[y * 1000 + x]).collect())
+                .collect(),
+        );
         v / h
     }
 
     /// A «onda» da borda do recto de 200 px (y 440 ± 170, colunas 200..800): o desvio das duas bordas ÷ a largura.
     fn onda(c: &[f64]) -> f64 {
-        let b: Vec<(usize, usize)> = bordas(c, 440, 170, 200, 800).into_iter().flatten().collect();
+        let b: Vec<(usize, usize)> = bordas(c, 440, 170, 200, 800)
+            .into_iter()
+            .flatten()
+            .collect();
         let w = mediana(b.iter().map(|(t, f)| (f - t + 1) as f64).collect());
         let sd = |v: Vec<f64>| {
             let m = v.iter().sum::<f64>() / v.len() as f64;
             (v.iter().map(|x| (x - m).powi(2)).sum::<f64>() / v.len() as f64).sqrt()
         };
-        (sd(b.iter().map(|p| p.0 as f64).collect()) + sd(b.iter().map(|p| p.1 as f64).collect())) / 2.0 / w
+        (sd(b.iter().map(|p| p.0 as f64).collect()) + sd(b.iter().map(|p| p.1 as f64).collect()))
+            / 2.0
+            / w
     }
 
     /// As medidas de um pincel nas cenas `tamanhos` e `gestos`: as estrias a 40 e a 200, a rampa, a lâmina e a onda.
@@ -541,7 +611,13 @@ mod portoes {
     fn mede(p: &Pincel) -> Medidas {
         let t = cobertura(&tamanhos(p));
         let g = cobertura(&cena(p, "gestos"));
-        Medidas { e40: estrias(&t, 190, 60), e200: estrias(&t, 440, 170), rampa: rampa(&g), lamina: lamina(&g), onda: onda(&t) }
+        Medidas {
+            e40: estrias(&t, 190, 60),
+            e200: estrias(&t, 440, 170),
+            rampa: rampa(&g),
+            lamina: lamina(&g),
+            onda: onda(&t),
+        }
     }
 
     /// Mede vários pincéis em paralelo (cada um num fio).
@@ -553,9 +629,24 @@ mod portoes {
     }
 
     fn imprime(n: &str, m: &Medidas) {
-        let f = |e: &(f64, f64, usize, usize)| format!("w {:.0} contr {:.2} ao longo {} através {}", e.0, e.1, e.2, e.3);
-        let r: Vec<String> = m.rampa.iter().map(|(w, c)| format!("{w:.0}/{c:.2}")).collect();
-        println!("[pastel_carvao] {n:<20} 40: {} | 200: {} | lâmina {:.2} · onda {:.3}", f(&m.e40), f(&m.e200), m.lamina, m.onda);
+        let f = |e: &(f64, f64, usize, usize)| {
+            format!(
+                "w {:.0} contr {:.2} ao longo {} através {}",
+                e.0, e.1, e.2, e.3
+            )
+        };
+        let r: Vec<String> = m
+            .rampa
+            .iter()
+            .map(|(w, c)| format!("{w:.0}/{c:.2}"))
+            .collect();
+        println!(
+            "[pastel_carvao] {n:<20} 40: {} | 200: {} | lâmina {:.2} · onda {:.3}",
+            f(&m.e40),
+            f(&m.e200),
+            m.lamina,
+            m.onda
+        );
         println!("[pastel_carvao] {n:<20} rampa {}", r.join(" "));
     }
 
@@ -571,33 +662,72 @@ mod portoes {
         match n {
             // Oil Pastel 2: a 200 px ½-autocorrelação 600 px ao longo × 6 através, contraste 0,23 (o Soft Pastel 1 × 1).
             "Oil Pastel" => {
-                exige(m.e200.2 >= 30 && m.e200.3 <= 8, format!("as estrias: {} × {} px (Rebelle 600 × 6)", m.e200.2, m.e200.3));
-                exige((0.12..=0.35).contains(&m.e200.1), format!("o contraste das estrias {:.2} (Rebelle 0,23)", m.e200.1));
+                exige(
+                    m.e200.2 >= 30 && m.e200.3 <= 8,
+                    format!(
+                        "as estrias: {} × {} px (Rebelle 600 × 6)",
+                        m.e200.2, m.e200.3
+                    ),
+                );
+                exige(
+                    (0.12..=0.35).contains(&m.e200.1),
+                    format!("o contraste das estrias {:.2} (Rebelle 0,23)", m.e200.1),
+                );
             }
             // Wax Scrape: os traços curtos a 200 px — 4 × 2 px, contraste 0,29 (o Soft Pastel 0,15 e liso).
             "Wax Scrape" => {
-                exige((3..=40).contains(&m.e200.2) && m.e200.3 <= 4, format!("os traços: {} × {} px (Rebelle 4 × 2)", m.e200.2, m.e200.3));
-                exige(m.e200.1 >= 0.22, format!("o contraste dos traços {:.2} (Rebelle 0,29)", m.e200.1));
+                exige(
+                    (3..=40).contains(&m.e200.2) && m.e200.3 <= 4,
+                    format!("os traços: {} × {} px (Rebelle 4 × 2)", m.e200.2, m.e200.3),
+                );
+                exige(
+                    m.e200.1 >= 0.22,
+                    format!("o contraste dos traços {:.2} (Rebelle 0,29)", m.e200.1),
+                );
             }
             // Charcoal: o tecto (73–76 px a 200) e o contraste do miolo 0,17–0,18.
             "Charcoal" => {
-                exige((m.e200.0 - 75.0).abs() <= 8.0, format!("o tecto: {:.0} px a 200 (Rebelle 74–76)", m.e200.0));
-                exige((0.10..=0.26).contains(&m.e40.1), format!("o contraste {:.2} (Rebelle 0,18)", m.e40.1));
+                exige(
+                    (m.e200.0 - 75.0).abs() <= 8.0,
+                    format!("o tecto: {:.0} px a 200 (Rebelle 74–76)", m.e200.0),
+                );
+                exige(
+                    (0.10..=0.26).contains(&m.e40.1),
+                    format!("o contraste {:.2} (Rebelle 0,18)", m.e40.1),
+                );
             }
             // Square Hard: a largura não muda com a pressão (do 6.º décimo ao fim 31 → 33 px no Rebelle; antes, a pressão
             // leve desfaz-se em grão e a largura medida cai) e só escurece (cobertura 0,07 → 0,63).
             "Square Hard" => {
                 let (w_fim, c_fim) = m.rampa[9];
-                let varia = m.rampa[5..].iter().map(|(w, _)| (w - w_fim).abs() / w_fim).fold(0.0, f64::max);
-                exige(varia <= 0.10, format!("a largura varia {:.0} % na rampa (Rebelle ≤ 6 % desde o 6.º décimo)", 100.0 * varia));
-                exige(m.rampa[3].1 <= 0.5 * c_fim, format!("a pressão não escurece: {:.2} → {c_fim:.2}", m.rampa[3].1));
+                let varia = m.rampa[5..]
+                    .iter()
+                    .map(|(w, _)| (w - w_fim).abs() / w_fim)
+                    .fold(0.0, f64::max);
+                exige(
+                    varia <= 0.10,
+                    format!(
+                        "a largura varia {:.0} % na rampa (Rebelle ≤ 6 % desde o 6.º décimo)",
+                        100.0 * varia
+                    ),
+                );
+                exige(
+                    m.rampa[3].1 <= 0.5 * c_fim,
+                    format!("a pressão não escurece: {:.2} → {c_fim:.2}", m.rampa[3].1),
+                );
             }
             _ => {}
         }
         f
     }
 
-    const FAMILIA: [&str; 5] = ["Charcoal", "Soft Pastel", "Square Hard", "Oil Pastel", "Wax Scrape"];
+    const FAMILIA: [&str; 5] = [
+        "Charcoal",
+        "Soft Pastel",
+        "Square Hard",
+        "Oil Pastel",
+        "Wax Scrape",
+    ];
 
     /// ⭐⭐ **Cada pastel e carvão se reconhece pela foto** (J4): a IDENTIDADE de cada um contra o seu Rebelle — as estrias
     /// do óleo, os traços da cera, o tecto do carvão, o rectângulo do Square Hard — e o controlo (o Soft Pastel: sem
@@ -613,7 +743,10 @@ mod portoes {
         }
         let sp = &m[presentes.iter().position(|&n| n == "Soft Pastel").unwrap()];
         if sp.e200.2 > 5 || (sp.lamina - 1.0).abs() > 0.15 {
-            f.push(format!("o controlo Soft Pastel tem estrias ({}) ou lâmina ({:.2})", sp.e200.2, sp.lamina));
+            f.push(format!(
+                "o controlo Soft Pastel tem estrias ({}) ou lâmina ({:.2})",
+                sp.e200.2, sp.lamina
+            ));
         }
         assert!(f.is_empty(), "{f:#?}");
     }
@@ -631,7 +764,12 @@ mod portoes {
             ("Charcoal", "brush.size_max_px", serde_json::Value::Null),
             ("Square Hard", "pressureSize", serde_json::json!(0.9)),
         ];
-        let m = mede_todos(casos.iter().map(|(n, c, v)| mutado(n, c, v.clone())).collect());
+        let m = mede_todos(
+            casos
+                .iter()
+                .map(|(n, c, v)| mutado(n, c, v.clone()))
+                .collect(),
+        );
         let mut sobreviveu = Vec::new();
         for ((n, c, _), m) in casos.iter().zip(&m) {
             imprime(&format!("{n} sem {c}"), m);
@@ -639,7 +777,10 @@ mod portoes {
                 sobreviveu.push(format!("{n} sem {c}"));
             }
         }
-        assert!(sobreviveu.is_empty(), "a mutação sobreviveu (o portão não mede a identidade): {sobreviveu:?}");
+        assert!(
+            sobreviveu.is_empty(),
+            "a mutação sobreviveu (o portão não mede a identidade): {sobreviveu:?}"
+        );
     }
 
     /// O GRÃO da pressão leve: no 4.º–6.º décimo da rampa 0 → 1 (x 210..360, y 380..420 — a pressão 0,3–0,6), o p90 da
@@ -652,7 +793,10 @@ mod portoes {
             .collect();
         v.sort_by(f64::total_cmp);
         let media = v.iter().sum::<f64>() / v.len().max(1) as f64;
-        v.get((0.9 * v.len() as f64) as usize).copied().unwrap_or(0.0) / media.max(1e-9)
+        v.get((0.9 * v.len() as f64) as usize)
+            .copied()
+            .unwrap_or(0.0)
+            / media.max(1e-9)
     }
 
     /// ⭐⭐ **A pressão leve DESFAZ o traço em grão** (`Knob::PressureGrain`, J4): a parte da opacidade da pressão que
@@ -664,18 +808,29 @@ mod portoes {
     fn a_pressao_leve_desfaz_o_traco_em_grao() {
         let nomes = ["Square Hard"];
         let mut ps: Vec<Pincel> = nomes.iter().map(|n| pinceis(n).remove(0)).collect();
-        ps.extend(nomes.iter().map(|n| mutado(n, "pressureGrain", serde_json::json!(0.0))));
+        ps.extend(
+            nomes
+                .iter()
+                .map(|n| mutado(n, "pressureGrain", serde_json::json!(0.0))),
+        );
         let g: Vec<f64> = std::thread::scope(|s| {
-            let hs: Vec<_> = ps.iter().map(|p| s.spawn(move || grao_da_rampa(&cobertura(&cena(p, "gestos"))))).collect();
+            let hs: Vec<_> = ps
+                .iter()
+                .map(|p| s.spawn(move || grao_da_rampa(&cobertura(&cena(p, "gestos")))))
+                .collect();
             hs.into_iter().map(|h| h.join().unwrap()).collect()
         });
         let mut f = Vec::new();
         for (i, n) in nomes.iter().enumerate() {
             let (com, sem) = (g[i], g[i + nomes.len()]);
-            println!("[pastel_carvao] {n:<12} grão da rampa leve: com a lei {com:.2} · sem {sem:.2}");
+            println!(
+                "[pastel_carvao] {n:<12} grão da rampa leve: com a lei {com:.2} · sem {sem:.2}"
+            );
             // Medido: 1,81 com a lei (0,25) contra 1,53 sem ela (0,5 dava 1,97); sem a lei as duas são iguais ao bit.
             if com < 1.12 * sem {
-                f.push(format!("{n}: a pressão leve não se desfaz em grão ({com:.2} contra {sem:.2} sem a lei)"));
+                f.push(format!(
+                    "{n}: a pressão leve não se desfaz em grão ({com:.2} contra {sem:.2} sem a lei)"
+                ));
             }
         }
         assert!(f.is_empty(), "{f:?}");
@@ -690,10 +845,14 @@ mod portoes {
         let (y0, y1, x0, x1) = (290usize, 640usize, 150usize, 850usize);
         let (h, w) = (y1 - y0, x1 - x0);
         let b = |y: usize, x: usize| c[(y0 + y) * 1000 + x0 + x];
-        let perfil: Vec<f64> = (0..h).map(|y| (0..w).map(|x| b(y, x)).sum::<f64>() / w as f64).collect();
+        let perfil: Vec<f64> = (0..h)
+            .map(|y| (0..w).map(|x| b(y, x)).sum::<f64>() / w as f64)
+            .collect();
         let pico = perfil.iter().copied().fold(0.0, f64::max);
         let miolo: Vec<usize> = (0..h).filter(|&y| perfil[y] > 0.25 * pico).collect();
-        let (Some(&m0), Some(&m1)) = (miolo.first(), miolo.last()) else { return Po::default() };
+        let (Some(&m0), Some(&m1)) = (miolo.first(), miolo.last()) else {
+            return Po::default();
+        };
         let meia = (m1 - m0) as f64 / 2.0;
         let fora = |y: usize| y + 3 < m0 || y > m1 + 3;
         let mut visto = vec![false; h * w];
@@ -708,9 +867,15 @@ mod portoes {
                 while let Some((yy, xx)) = pilha.pop() {
                     soma += yy as f64;
                     n += 1.0;
-                    let viz = [(yy + 1, xx), (yy.wrapping_sub(1), xx), (yy, xx + 1), (yy, xx.wrapping_sub(1))];
+                    let viz = [
+                        (yy + 1, xx),
+                        (yy.wrapping_sub(1), xx),
+                        (yy, xx + 1),
+                        (yy, xx.wrapping_sub(1)),
+                    ];
                     for (vy, vx) in viz {
-                        if vy < h && vx < w && !visto[vy * w + vx] && fora(vy) && b(vy, vx) >= 0.12 {
+                        if vy < h && vx < w && !visto[vy * w + vx] && fora(vy) && b(vy, vx) >= 0.12
+                        {
                             visto[vy * w + vx] = true;
                             pilha.push((vy, vx));
                         }
@@ -720,13 +885,23 @@ mod portoes {
                 let d = (cy - m0 as f64).abs().min((cy - m1 as f64).abs()) / meia.max(1.0);
                 if d >= 0.2 {
                     dist.push(d);
-                    if cy < m0 as f64 { cima += 1 } else { baixo += 1 }
+                    if cy < m0 as f64 {
+                        cima += 1
+                    } else {
+                        baixo += 1
+                    }
                 }
             }
         }
         let por_100 = dist.len() as f64 / (w as f64 / 100.0);
         let p50 = if dist.is_empty() { 0.0 } else { mediana(dist) };
-        Po { miolo: m1 - m0 + 1, por_100, p50, cima, baixo }
+        Po {
+            miolo: m1 - m0 + 1,
+            por_100,
+            p50,
+            cima,
+            baixo,
+        }
     }
 
     /// O pó solto medido por [`po_solto`].
@@ -761,35 +936,59 @@ mod portoes {
             com_po("Soft Pastel", 2.5, 1.0, 1.5, 0.08, 0.0),
         ];
         let m: Vec<Po> = std::thread::scope(|s| {
-            let hs: Vec<_> = ps.iter().map(|p| s.spawn(move || po_solto(&cobertura(&tamanhos(p))))).collect();
+            let hs: Vec<_> = ps
+                .iter()
+                .map(|p| s.spawn(move || po_solto(&cobertura(&tamanhos(p)))))
+                .collect();
             hs.into_iter().map(|h| h.join().unwrap()).collect()
         });
         let (sem, com, sem_lado) = (m[0], m[1], m[2]);
-        println!("[pastel_carvao] o pó a 200 px: sem {sem:?} · com {com:?} · sem o lado {sem_lado:?}");
+        println!(
+            "[pastel_carvao] o pó a 200 px: sem {sem:?} · com {com:?} · sem o lado {sem_lado:?}"
+        );
         let mut f = Vec::new();
         if sem.por_100 > 8.0 {
-            f.push(format!("sem o pó o traço já larga {:.1} grãos/100 px longe da borda", sem.por_100));
+            f.push(format!(
+                "sem o pó o traço já larga {:.1} grãos/100 px longe da borda",
+                sem.por_100
+            ));
         }
         if com.por_100 < 30.0 {
-            f.push(format!("com o pó só {:.1} grãos/100 px longe da borda (Rebelle 56)", com.por_100));
+            f.push(format!(
+                "com o pó só {:.1} grãos/100 px longe da borda (Rebelle 56)",
+                com.por_100
+            ));
         }
         if com.miolo.abs_diff(sem.miolo) > 4 {
-            f.push(format!("o pó mexe no MIOLO do traço: {} → {} px (as nódoas da lane)", sem.miolo, com.miolo));
+            f.push(format!(
+                "o pó mexe no MIOLO do traço: {} → {} px (as nódoas da lane)",
+                sem.miolo, com.miolo
+            ));
         }
         if !(0.25..=1.0).contains(&com.p50) {
-            f.push(format!("os grãos a {:.2} da meia-largura (Rebelle 0,44 dos que passam 0,2)", com.p50));
+            f.push(format!(
+                "os grãos a {:.2} da meia-largura (Rebelle 0,44 dos que passam 0,2)",
+                com.p50
+            ));
         }
         let lado = |p: Po| p.baixo as f64 / p.cima.max(1) as f64;
         // Medido: 2,99 com o lado, 1,38 sem (a orla do pastel deitado à direita já pende para baixo).
         if lado(com) < 1.5 * lado(sem_lado) {
-            f.push(format!("o lado: {:.2} com, {:.2} sem (Rebelle 2,15)", lado(com), lado(sem_lado)));
+            f.push(format!(
+                "o lado: {:.2} com, {:.2} sem (Rebelle 2,15)",
+                lado(com),
+                lado(sem_lado)
+            ));
         }
         assert!(f.is_empty(), "{f:?}");
     }
 
     /// A identidade do Pastel Side medida: (lâmina de pé ÷ deitado, grãos do pó/100 px a 200 px).
     fn lado_do_bastao(p: &Pincel) -> (f64, f64) {
-        (lamina(&cobertura(&cena(p, "gestos"))), po_solto(&cobertura(&tamanhos(p))).por_100)
+        (
+            lamina(&cobertura(&cena(p, "gestos"))),
+            po_solto(&cobertura(&tamanhos(p))).por_100,
+        )
     }
 
     /// As falhas da identidade do Pastel Side contra o Rebelle `Flat Soft`: a lâmina 1,89 (de pé 36 ÷ deitado 19 px a
@@ -816,14 +1015,24 @@ mod portoes {
             com_po("Pastel Side", 0.0, 4.0, 1.5, 0.12, 0.35),
         ];
         let m: Vec<(f64, f64)> = std::thread::scope(|s| {
-            let hs: Vec<_> = ps.iter().map(|p| s.spawn(move || lado_do_bastao(p))).collect();
+            let hs: Vec<_> = ps
+                .iter()
+                .map(|p| s.spawn(move || lado_do_bastao(p)))
+                .collect();
             hs.into_iter().map(|h| h.join().unwrap()).collect()
         });
-        println!("[pastel_carvao] Pastel Side (lâmina, pó/100 px): {:?} · sem a lâmina {:?} · sem o pó {:?}", m[0], m[1], m[2]);
+        println!(
+            "[pastel_carvao] Pastel Side (lâmina, pó/100 px): {:?} · sem a lâmina {:?} · sem o pó {:?}",
+            m[0], m[1], m[2]
+        );
         let f = falhas_do_lado("Pastel Side", m[0]);
         assert!(f.is_empty(), "{f:?}");
         for (i, o) in [(1, "sem a lâmina"), (2, "sem o pó")] {
-            assert!(!falhas_do_lado(o, m[i]).is_empty(), "a mutação «{o}» sobreviveu: {:?}", m[i]);
+            assert!(
+                !falhas_do_lado(o, m[i]).is_empty(),
+                "a mutação «{o}» sobreviveu: {:?}",
+                m[i]
+            );
         }
     }
 
@@ -848,14 +1057,31 @@ mod portoes {
     /// carga de antes.
     #[test]
     fn o_square_hard_tapa_o_vermelho_como_a_foto() {
-        let ps = [pinceis("Square Hard").remove(0), mutado("Square Hard", "pigmentPerDab", serde_json::json!(75.0))];
+        let ps = [
+            pinceis("Square Hard").remove(0),
+            mutado("Square Hard", "pigmentPerDab", serde_json::json!(75.0)),
+        ];
         let r: Vec<f64> = std::thread::scope(|s| {
-            let hs: Vec<_> = ps.iter().map(|p| s.spawn(move || r_no_cruzamento(&cena(p, "sobre")))).collect();
+            let hs: Vec<_> = ps
+                .iter()
+                .map(|p| s.spawn(move || r_no_cruzamento(&cena(p, "sobre"))))
+                .collect();
             hs.into_iter().map(|h| h.join().unwrap()).collect()
         });
-        println!("[pastel_carvao] Square Hard: R no cruzamento {:.1} (Rebelle 74) · com a carga de antes {:.1}", r[0], r[1]);
-        assert!(r[0] <= 86.0, "o Square Hard deixa o vermelho passar: R {:.1} (Rebelle 74)", r[0]);
-        assert!(r[1] > 86.0, "o portão não separa a carga de antes ({:.1})", r[1]);
+        println!(
+            "[pastel_carvao] Square Hard: R no cruzamento {:.1} (Rebelle 74) · com a carga de antes {:.1}",
+            r[0], r[1]
+        );
+        assert!(
+            r[0] <= 86.0,
+            "o Square Hard deixa o vermelho passar: R {:.1} (Rebelle 74)",
+            r[0]
+        );
+        assert!(
+            r[1] > 86.0,
+            "o portão não separa a carga de antes ({:.1})",
+            r[1]
+        );
     }
 
     /// Os reprovados não estão na fábrica: nenhum ficheiro com o nome de uma receita [`super::EM_ESTUDO`].
@@ -869,14 +1095,21 @@ mod portoes {
                 let p = e.path();
                 if p.is_dir() {
                     pilha.push(p);
-                } else if let Some(n) = p.file_name().and_then(|n| n.to_str()).and_then(|n| n.strip_suffix(".ph2d-brush.png")) {
+                } else if let Some(n) = p
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .and_then(|n| n.strip_suffix(".ph2d-brush.png"))
+                {
                     if super::EM_ESTUDO.iter().any(|r| r.nome == n) {
                         achados.push(p.display().to_string());
                     }
                 }
             }
         }
-        assert!(achados.is_empty(), "um reprovado está na fábrica: {achados:?}");
+        assert!(
+            achados.is_empty(),
+            "um reprovado está na fábrica: {achados:?}"
+        );
     }
 
     /// O Charcoal de fábrica com o pó do Charcoal Powder (`EM_ESTUDO`: `dust` 0,7, carga 11, sem Shape nem jitter de
@@ -888,7 +1121,10 @@ mod portoes {
             for (k, v) in [("dust", 0.7), ("pigmentPerDab", 11.0), ("dustDrop", gota)] {
                 e.insert(k.to_owned(), v);
             }
-            preset.parametros.brush.insert("size_max_px".to_owned(), serde_json::Value::Null);
+            preset
+                .parametros
+                .brush
+                .insert("size_max_px".to_owned(), serde_json::Value::Null);
         }
         p
     }
@@ -903,7 +1139,10 @@ mod portoes {
             let b = s.spawn(|| estrias(&cobertura(&tamanhos(&po_com_gota(8.0))), 440, 170));
             (a.join().unwrap(), b.join().unwrap())
         });
-        println!("[pastel_carvao] o pó a 200 px: gota 2 → {} × {} px · gota 8 → {} × {} px", fina.2, fina.3, grossa.2, grossa.3);
+        println!(
+            "[pastel_carvao] o pó a 200 px: gota 2 → {} × {} px · gota 8 → {} × {} px",
+            fina.2, fina.3, grossa.2, grossa.3
+        );
         assert!(
             grossa.2 + grossa.3 >= fina.2 + fina.3 + 2,
             "a gota de 8 não engrossa o pó ({} × {} contra {} × {})",

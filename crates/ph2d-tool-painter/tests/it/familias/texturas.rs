@@ -52,7 +52,11 @@ pub const MEIOS: &[ReceitaMeio] = &[
         // A pressão no tamanho e o tamanho = os do preset do Rebelle (`pressure_size_influence` 1, Size 108). O tecto
         // da estrela em px (J4 «Motor J4»): a 200 px o Rebelle espalha-as por ~234 px mas nenhuma passa de 56 px (a
         // caixa da imagem dele; as que passariam saem QUADRADAS — o defeito não se imita, o tamanho sim).
-        mao: &[("pressureSize", 1.0), ("pressureSizeCurve", 1.0), ("pressureOpacity", 0.6)],
+        mao: &[
+            ("pressureSize", 1.0),
+            ("pressureSizeCurve", 1.0),
+            ("pressureOpacity", 0.6),
+        ],
         size_px: Some(108.0),
         opacity: Some(0.6),
         texturas: &[("shape", estrela)],
@@ -80,7 +84,12 @@ pub const MEIOS: &[ReceitaMeio] = &[
                 r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.1, "particle": 0.6, "roundness": 0.0}"#,
             ),
         ],
-        mao: &[("pressureSize", 1.0), ("pressureSizeCurve", 1.5), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 1.0)],
+        mao: &[
+            ("pressureSize", 1.0),
+            ("pressureSizeCurve", 1.5),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.0),
+        ],
         size_px: None,
         opacity: Some(0.75),
         ..ReceitaMeio::digital("Stamp", "Stamp", "Bokeh")
@@ -98,7 +107,10 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("falloff", "\"Constant\""),
             ("borda_px", "0.0"),
             ("shape", IMAGEM_AREA),
-            ("hose", r#"{"n": 3, "mode": 0, "pesos": [1, 1, 1, 1, 1, 1, 1, 1]}"#),
+            (
+                "hose",
+                r#"{"n": 3, "mode": 0, "pesos": [1, 1, 1, 1, 1, 1, 1, 1]}"#,
+            ),
             ("spray_count", "1"),
             ("spacing", "0.75"),
             ("jitter", "0.06"),
@@ -164,7 +176,11 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("accumulate", "true"),
             ("flow", "0.6"),
         ],
-        mao: &[("pressureSize", 0.3), ("pressureOpacity", 0.7), ("pressureOpacityCurve", 1.0)],
+        mao: &[
+            ("pressureSize", 0.3),
+            ("pressureOpacity", 0.7),
+            ("pressureOpacityCurve", 1.0),
+        ],
         size_px: None,
         opacity: Some(1.0),
         texturas: &[("shape", riscos)],
@@ -247,8 +263,6 @@ fn raminho() -> Vec<u8> {
     })
 }
 
-
-
 /// Uma lâmina de relva: da base `(bx, 0,92)` à ponta `(tx, ty)`, a curva de Bézier quadrática pelo controlo
 /// abaixo da ponta (sobe e dobra para a direita, em gancho), fina na base e aguda na ponta, a tinta escura na
 /// base e a esmaecer para a ponta (`1 − 0,55·s`: o tufo do Krita, revisão cega r2), a orla macia.
@@ -268,7 +282,10 @@ fn tufo(laminas: &[Lamina]) -> Vec<u8> {
     let mut alta = vec![0.0f64; m * m];
     for l in laminas {
         let (x0, y0, x2, y2) = (l.bx, 0.92, l.tx, l.ty);
-        let (x1, y1) = (l.bx + 0.15 * (l.tx - l.bx), 0.35 * (0.92 + l.ty) + 0.3 * l.ty);
+        let (x1, y1) = (
+            l.bx + 0.15 * (l.tx - l.bx),
+            0.35 * (0.92 + l.ty) + 0.3 * l.ty,
+        );
         for k in 0..=400 {
             let s = f64::from(k) / 400.0;
             let u = 1.0 - s;
@@ -313,7 +330,9 @@ fn tufo(laminas: &[Lamina]) -> Vec<u8> {
 fn tufo_sorteado(semente: u64, n: usize) -> Vec<u8> {
     let mut e = semente;
     let mut u = || {
-        e = e.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        e = e
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
         (e >> 40) as f64 / (1u64 << 24) as f64
     };
     let laminas: Vec<Lamina> = (0..n)
@@ -323,8 +342,18 @@ fn tufo_sorteado(semente: u64, n: usize) -> Vec<u8> {
             let bx = (u() - 0.5) * 1.2 - 0.05;
             let inclina = 0.0 + 0.8 * u();
             let ty = -0.3 - 0.55 * u();
-            let forca = if u() < 0.25 { 0.3 + 0.3 * u() } else { 0.85 + 0.15 * u() };
-            Lamina { bx, tx: (bx + inclina).clamp(-0.9, 0.9), ty, w: 0.025 + 0.025 * u(), forca }
+            let forca = if u() < 0.25 {
+                0.3 + 0.3 * u()
+            } else {
+                0.85 + 0.15 * u()
+            };
+            Lamina {
+                bx,
+                tx: (bx + inclina).clamp(-0.9, 0.9),
+                ty,
+                w: 0.025 + 0.025 * u(),
+                forca,
+            }
         })
         .collect();
     tufo(&laminas)
@@ -403,7 +432,9 @@ fn ao_segmento(p: (f64, f64), a: (f64, f64), b: (f64, f64)) -> (f64, f64) {
 pub(crate) fn mancha() -> Vec<u8> {
     let mut e = 0x5EED_u64;
     let u = |e: &mut u64| {
-        *e = e.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        *e = e
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
         (*e >> 40) as f64 / (1u64 << 24) as f64
     };
     let direccao = |e: &mut u64| loop {
@@ -424,7 +455,10 @@ pub(crate) fn mancha() -> Vec<u8> {
     for _ in 0..16 {
         let (dx, dy) = direccao(&mut e);
         let comprimento = 0.27 + 0.1 * u(&mut e);
-        raios.push(((dx * comprimento, dy * comprimento), 0.035 + 0.02 * u(&mut e)));
+        raios.push((
+            (dx * comprimento, dy * comprimento),
+            0.035 + 0.02 * u(&mut e),
+        ));
     }
     for _ in 0..4 {
         let (dx, dy) = direccao(&mut e);
@@ -507,7 +541,10 @@ fn faixa(px: &[u8], w: usize, (y0, y1): (usize, usize)) -> Faixa {
         .map(|i| {
             let (x, y) = (X0 + i % lw, y0 + i / lw);
             let p = &px[(y * w + x) * 4..(y * w + x) * 4 + 3];
-            p.iter().map(|&v| (255.0 - f64::from(v)).abs()).fold(0.0, f64::max) / CHEIO
+            p.iter()
+                .map(|&v| (255.0 - f64::from(v)).abs())
+                .fold(0.0, f64::max)
+                / CHEIO
         })
         .collect();
     let cob = c.iter().sum::<f64>() / c.len() as f64;
@@ -600,9 +637,20 @@ const FOTOS: [(&str, &str, f64, [Faixa; 2]); 6] = [
 /// QUADRADO (o carimbo dele ao tecto), fora; o salpico a 200 px parte-se em gotículas que a régua das manchas conta.
 /// Só os APROVADOS; as outras fotos da família ficam como IRMÃOS (a lei dos irmãos mede contra todas).
 const IDENTIDADE: [(&str, &[(usize, M)]); 3] = [
-    ("Halftone", &[(1, M::Pontos), (1, M::CvArea), (1, M::Contraste), (0, M::Pontos)]),
+    (
+        "Halftone",
+        &[
+            (1, M::Pontos),
+            (1, M::CvArea),
+            (1, M::Contraste),
+            (0, M::Pontos),
+        ],
+    ),
     ("Stars", &[(0, M::Gota), (0, M::Contraste), (0, M::CvArea)]),
-    ("Bokeh", &[(1, M::Contraste), (0, M::Pontos), (0, M::CvArea)]),
+    (
+        "Bokeh",
+        &[(1, M::Contraste), (0, M::Pontos), (0, M::CvArea)],
+    ),
 ];
 
 /// ⭐ **Cada carimbo reconhece-se pela foto do seu oráculo** (J4, `docs/Painter/Pinceis/exames/texturas.md`): pintado
@@ -614,7 +662,12 @@ fn cada_carimbo_se_reconhece_pela_foto() {
     let bat = bateria();
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
-    let tamanhos = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "tamanhos").unwrap();
+    let tamanhos = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == "tamanhos")
+        .unwrap();
     let medidas: Vec<[Faixa; 2]> = std::thread::scope(|s| {
         let hs: Vec<_> = IDENTIDADE
             .iter()
@@ -643,11 +696,16 @@ fn cada_carimbo_se_reconhece_pela_foto() {
         for &(f, m) in ms {
             let (v, alvo) = (m.de(&eu[f]), m.de(&foto[f]));
             if (v - alvo).abs() > m.tol(alvo) {
-                falhas.push(format!("{nome}: {m:?}[{f}] {v:.3} fora da foto {alvo:.3} ± {:.3} ({oraculo})", m.tol(alvo)));
+                falhas.push(format!(
+                    "{nome}: {m:?}[{f}] {v:.3} fora da foto {alvo:.3} ± {:.3} ({oraculo})",
+                    m.tol(alvo)
+                ));
             }
         }
         let distancia = |outra: &[Faixa; 2]| -> f64 {
-            ms.iter().map(|&(f, m)| (m.de(&eu[f]) - m.de(&outra[f])).abs() / m.tol(m.de(&foto[f]))).sum()
+            ms.iter()
+                .map(|&(f, m)| (m.de(&eu[f]) - m.de(&outra[f])).abs() / m.tol(m.de(&foto[f])))
+                .sum()
         };
         let propria = distancia(foto);
         for (outro, _, _, f2) in FOTOS.iter().filter(|f| f.0 != nome) {
@@ -668,12 +726,20 @@ fn os_em_estudo_nao_estao_na_fabrica() {
     let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     for r in EM_ESTUDO.iter().chain(super::aerografo::EM_ESTUDO) {
         let rel = relativo_do_meio(r);
-        assert!(!raiz.join(&rel).exists(), "{}: em estudo mas na fábrica ({rel})", r.nome);
+        assert!(
+            !raiz.join(&rel).exists(),
+            "{}: em estudo mas na fábrica ({rel})",
+            r.nome
+        );
         let (p, t) = parametros_do_meio(r);
         assert_eq!(p.name, r.nome);
         // As imagens que a receita desenha chegam ao preset, cada uma pelo seu id.
         for (id, _) in r.texturas {
-            assert!(t.contains_key(*id), "{}: a imagem {id} não chegou ao preset", r.nome);
+            assert!(
+                t.contains_key(*id),
+                "{}: a imagem {id} não chegou ao preset",
+                r.nome
+            );
         }
     }
 }
@@ -685,7 +751,9 @@ fn os_em_estudo_nao_estao_na_fabrica() {
 fn riscos() -> Vec<u8> {
     let mut e = 0x6E01_5E_u64;
     let mut u = move || {
-        e = e.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        e = e
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
         (e >> 40) as f64 / (1u64 << 24) as f64
     };
     let no_disco = |r: f64, u: &mut dyn FnMut() -> f64| loop {
@@ -707,7 +775,13 @@ fn riscos() -> Vec<u8> {
         let (cx, cy) = no_disco(0.62, &mut u);
         let (dx, dy) = direccao(&mut u);
         let l = 0.1 + 0.2 * u();
-        traco.push(((cx - dx * l, cy - dy * l), (cx + dx * l, cy + dy * l), 0.06 + 0.07 * u(), 0.2 + 0.22 * u(), 0.8));
+        traco.push((
+            (cx - dx * l, cy - dy * l),
+            (cx + dx * l, cy + dy * l),
+            0.06 + 0.07 * u(),
+            0.2 + 0.22 * u(),
+            0.8,
+        ));
     }
     for _ in 0..12 {
         let mut p = no_disco(0.62, &mut u);
@@ -741,10 +815,14 @@ fn riscos() -> Vec<u8> {
 #[ignore = "bancada: PH2D_EXAME_DIR=… cargo test … familias::texturas::escreve_os_em_estudo -- --ignored"]
 fn escreve_os_em_estudo() {
     use crate::presets_de_fabrica::{preset_do_meio, relativo_do_meio};
-    let dir = std::path::PathBuf::from(std::env::var("PH2D_EXAME_DIR").expect("PH2D_EXAME_DIR")).join("estudo");
+    let dir = std::path::PathBuf::from(std::env::var("PH2D_EXAME_DIR").expect("PH2D_EXAME_DIR"))
+        .join("estudo");
     let so = std::env::var("PH2D_REGERA_SO").ok();
     for r in EM_ESTUDO.iter().chain(super::aerografo::EM_ESTUDO) {
-        if so.as_deref().is_some_and(|s| !s.split(',').any(|n| n == r.nome)) {
+        if so
+            .as_deref()
+            .is_some_and(|s| !s.split(',').any(|n| n == r.nome))
+        {
             continue;
         }
         let rel = relativo_do_meio(r);

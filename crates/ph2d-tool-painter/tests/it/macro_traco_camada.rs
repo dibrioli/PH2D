@@ -107,9 +107,16 @@ fn grava_e_toca(quando: Quando) -> (Lado, Lado) {
 fn as_linhas_do_traco_viajam_na_macro() {
     for quando in [Quando::AntesDeArmar, Quando::AGravar] {
         let ((pa, ta), (pb, tb)) = grava_e_toca(quando);
-        assert!(pa.2 && pa.1.tecto < 1.0 && pa.0.fall_off > 0.0, "{quando:?}: as linhas não chegaram ao pincel");
+        assert!(
+            pa.2 && pa.1.tecto < 1.0 && pa.0.fall_off > 0.0,
+            "{quando:?}: as linhas não chegaram ao pincel"
+        );
         assert_eq!(pa, pb, "{quando:?}: o tool que toca acaba com outro pincel");
-        assert_eq!(texels_diferentes(&ta, &tb), 0, "{quando:?}: a tela tocada é outra");
+        assert_eq!(
+            texels_diferentes(&ta, &tb),
+            0,
+            "{quando:?}: a tela tocada é outra"
+        );
     }
 }
 
@@ -118,5 +125,8 @@ fn as_linhas_do_traco_viajam_na_macro() {
 fn sem_as_linhas_a_tela_e_outra() {
     let ((_, com), _) = grava_e_toca(Quando::AGravar);
     let ((_, sem), _) = grava_e_toca(Quando::Nunca);
-    assert!(texels_diferentes(&com, &sem) > 0, "as linhas não mudam a tela");
+    assert!(
+        texels_diferentes(&com, &sem) > 0,
+        "as linhas não mudam a tela"
+    );
 }

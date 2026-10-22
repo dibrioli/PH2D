@@ -301,7 +301,8 @@ pub fn apply_wet_push(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Op
             [-1.0, 1.0].map(|sinal| {
                 let mut d = 0.0;
                 let mut q = 1.0;
-                while q <= alcance && molhada(g, ax + sinal * q * nx, ay + sinal * q * ny).is_some() {
+                while q <= alcance && molhada(g, ax + sinal * q * nx, ay + sinal * q * ny).is_some()
+                {
                     d = q;
                     q += 1.0;
                 }
@@ -355,14 +356,19 @@ pub fn apply_wet_push(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Op
             if g.film[i] <= WATER_WET_FILM || g.susp[i] <= 0.0 {
                 continue;
             }
-            let w = if s.abs() <= r { 1.0 } else { (-(s.abs() - r) / (WATER_SPILL_RADII * r)).exp() };
+            let w = if s.abs() <= r {
+                1.0
+            } else {
+                (-(s.abs() - r) / (WATER_SPILL_RADII * r)).exp()
+            };
             let parte = 1.0 - (1.0 - (push * w).min(1.0)).powf(expoente);
             let sinal = if lado == 1 { 1.0 } else { -1.0 };
             let m = f64::from(g.susp[i]) * parte;
             let mut levou = 0.0;
             // A orla e o caminho ([`ORLA_PESOS`]): cada célula nos seus pontos, sorteados pela posição dela (sem riscas).
             let sorteio = |k: u64| {
-                let mut z = (i as u64 ^ k.wrapping_mul(0xD1B5_4A32_D192_ED03)).wrapping_add(0x9E37_79B9_7F4A_7C15);
+                let mut z = (i as u64 ^ k.wrapping_mul(0xD1B5_4A32_D192_ED03))
+                    .wrapping_add(0x9E37_79B9_7F4A_7C15);
                 z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
                 z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
                 ((z ^ (z >> 31)) >> 11) as f64 / (1u64 << 53) as f64
@@ -377,7 +383,11 @@ pub fn apply_wet_push(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Op
                 };
                 let mut d = d0.max(s.abs() + 1.0);
                 let destino = loop {
-                    if let Some(j) = molhada(g, dab.x + t * tx + sinal * d * nx, dab.y + t * ty + sinal * d * ny) {
+                    if let Some(j) = molhada(
+                        g,
+                        dab.x + t * tx + sinal * d * nx,
+                        dab.y + t * ty + sinal * d * ny,
+                    ) {
                         break Some(j);
                     }
                     d -= 1.0;
@@ -403,7 +413,16 @@ pub fn apply_wet_push(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Op
         if ja > 0.0 {
             let u = g.susp_rgb[j];
             let [cr, cg, cb] = c.map(f64::from);
-            mix.mix(f64::from(u[0]), f64::from(u[1]), f64::from(u[2]), cr, cg, cb, m / (m + ja), &mut out);
+            mix.mix(
+                f64::from(u[0]),
+                f64::from(u[1]),
+                f64::from(u[2]),
+                cr,
+                cg,
+                cb,
+                m / (m + ja),
+                &mut out,
+            );
             g.susp_rgb[j] = out.map(|v| v as f32);
         } else {
             g.susp_rgb[j] = c;
@@ -511,7 +530,10 @@ pub fn apply_dry_edge(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Op
             }
             let d = 2.0 * r - s.abs();
             let sinal = s.signum();
-            let (fx, fy) = (dab.x + t * tx + sinal * d * nx, dab.y + t * ty + sinal * d * ny);
+            let (fx, fy) = (
+                dab.x + t * tx + sinal * d * nx,
+                dab.y + t * ty + sinal * d * ny,
+            );
             let (qx, qy) = (fx.round() as i64, fy.round() as i64);
             if qx < 1 || qy < 1 || qx > g.w as i64 || qy > g.h as i64 {
                 continue;
@@ -527,7 +549,16 @@ pub fn apply_dry_edge(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Op
         if ja > 0.0 {
             let u = g.susp_rgb[j];
             let [cr, cg, cb] = c.map(f64::from);
-            mix.mix(f64::from(u[0]), f64::from(u[1]), f64::from(u[2]), cr, cg, cb, m / (m + ja), &mut out);
+            mix.mix(
+                f64::from(u[0]),
+                f64::from(u[1]),
+                f64::from(u[2]),
+                cr,
+                cg,
+                cb,
+                m / (m + ja),
+                &mut out,
+            );
             g.susp_rgb[j] = out.map(|v| v as f32);
         } else {
             g.susp_rgb[j] = c;

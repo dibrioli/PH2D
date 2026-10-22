@@ -39,7 +39,6 @@ use crate::tuning::Knob;
 /// Com o pó a 1, a fracção das gotas que FALTAM num dab (uma em 20 cai).
 const POEIRA_MAXIMA: f64 = 0.95;
 
-
 /// A caixa vazia (`x1 < x0`), a sentinela que o [`touch_ext`] já usa.
 const VAZIA: (i32, i32, i32, i32) = (0, 0, -1, -1);
 
@@ -219,7 +218,12 @@ struct LinhaDaJanela<'a> {
 }
 
 /// Uma linha do depósito: o `y`, a linha do grid (`wet`) e — se a janela a cobre — a linha dela.
-type Linha<'a> = (i32, &'a mut [u8], Option<LinhaDaJanela<'a>>, Option<&'a mut [f32]>);
+type Linha<'a> = (
+    i32,
+    &'a mut [u8],
+    Option<LinhaDaJanela<'a>>,
+    Option<&'a mut [f32]>,
+);
 
 /// **A cor de um dab numa célula da janela**: a primeira tinta na célula pousa a cor dele inteira; as
 /// seguintes misturam-se pela massa (`soma ÷ (antes + soma)`), como duas tintas no pincel.

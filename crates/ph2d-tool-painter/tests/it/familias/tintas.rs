@@ -92,7 +92,11 @@ pub const WET: &[Receita] = &[
         ],
         grao: None,
         achatado: None,
-        pincel: &[("jitter_scale", "0.10"), ("shape", SEM_FORMA), ("size_max_px", "91")],
+        pincel: &[
+            ("jitter_scale", "0.10"),
+            ("shape", SEM_FORMA),
+            ("size_max_px", "91"),
+        ],
         nasce_de: None,
     },
     // Ink › Pen › Ink Bullet: o mais carregado e seco da tinta. J3 (Rebelle `Pen/Bullet`): a ponta redonda LISA (sem
@@ -201,7 +205,15 @@ fn mede_tinta(nome: &str) -> Tinta {
     let bat = bateria();
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
-    let cena = |n: &str| bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == n).unwrap().clone();
+    let cena = |n: &str| {
+        bat["cenas"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["nome"] == n)
+            .unwrap()
+            .clone()
+    };
     let p = pinceis(nome).remove(0);
     let w = tela[0] as usize;
     let (_, g) = pinta_cena(&p, None, &cena("gestos"), tela, papel, 0);
@@ -210,20 +222,35 @@ fn mede_tinta(nome: &str) -> Tinta {
     centro.sort_by(f64::total_cmp);
     let miolo = centro[centro.len() / 2];
     let lim = 0.25 * miolo;
-    let larguras: Vec<f64> = (100..520).map(|x| coluna(&g, w, x, 50, 131, lim).0).collect();
+    let larguras: Vec<f64> = (100..520)
+        .map(|x| coluna(&g, w, x, 50, 131, lim).0)
+        .collect();
     let largura = larguras.iter().sum::<f64>() / larguras.len() as f64;
-    let grumo = (larguras.iter().map(|l| (l - largura).powi(2)).sum::<f64>() / larguras.len() as f64).sqrt();
+    let grumo = (larguras.iter().map(|l| (l - largura).powi(2)).sum::<f64>()
+        / larguras.len() as f64)
+        .sqrt();
     // O vertical lento: x 700, y 440..610 — a largura por linha, no meio dele.
     let de_pe_l: Vec<f64> = (480..570)
         .map(|y| (650..751).filter(|&x| escuro(&g, w, x, y) > lim).count() as f64)
         .collect();
     let de_pe = de_pe_l.iter().sum::<f64>() / de_pe_l.len() as f64 / largura;
     // A rampa 0→1: y 400, x 60 → 560 (a pressão linear no x).
-    let larg_em = |x0: usize| (x0..x0 + 10).map(|x| coluna(&g, w, x, 360, 441, lim).0).sum::<f64>() / 10.0;
+    let larg_em = |x0: usize| {
+        (x0..x0 + 10)
+            .map(|x| coluna(&g, w, x, 360, 441, lim).0)
+            .sum::<f64>()
+            / 10.0
+    };
     let rampa = larg_em(115) / larg_em(535).max(1.0);
     // A entrada: a tinta na linha do centro nos primeiros 12 px depois da tampa (x 62..74) ÷ o miolo.
     let entrada = (62..74).map(|x| escuro(&g, w, x, 90)).sum::<f64>() / 12.0 / miolo;
-    Tinta { grumo, de_pe, rampa, entrada, miolo }
+    Tinta {
+        grumo,
+        de_pe,
+        rampa,
+        entrada,
+        miolo,
+    }
 }
 
 /// ⭐ **Cada tinta é a SUA tinta** (J3, `docs/Painter/Pinceis/exames/tintas.md`): o que a prancha mostrou contra o
@@ -231,11 +258,12 @@ fn mede_tinta(nome: &str) -> Tinta {
 /// o ponto médio entre o pincel e o vizinho que ela separa (medido na 1.ª corrida, abaixo).
 #[test]
 fn cada_tinta_tem_a_sua_identidade() {
-    let nomes = [
-        "Dip Pen", "Ink Bullet", "Ink Brush", "Marker Bullet",
-    ];
+    let nomes = ["Dip Pen", "Ink Bullet", "Ink Brush", "Marker Bullet"];
     let medidas: Vec<(&str, Tinta)> = std::thread::scope(|s| {
-        let h: Vec<_> = nomes.iter().map(|&n| (n, s.spawn(move || mede_tinta(n)))).collect();
+        let h: Vec<_> = nomes
+            .iter()
+            .map(|&n| (n, s.spawn(move || mede_tinta(n))))
+            .collect();
         h.into_iter().map(|(n, h)| (n, h.join().unwrap())).collect()
     });
     let m = |n: &str| medidas.iter().find(|(k, _)| *k == n).unwrap().1;
@@ -251,15 +279,51 @@ fn cada_tinta_tem_a_sua_identidade() {
     // As fronteiras: o meio entre o pincel e o que a regra separa, medidos na corrida final (20/10, `exames/tintas.md`).
     let (dip, bullet, brush) = (m("Dip Pen"), m("Ink Bullet"), m("Ink Brush"));
     // Os grumos do aparo (1,80) contra a ponta lisa do Bullet (0,42).
-    regra(dip.grumo > 1.11, format!("Dip Pen: grumo {:.2} — a borda do aparo ficou lisa", dip.grumo));
+    regra(
+        dip.grumo > 1.11,
+        format!(
+            "Dip Pen: grumo {:.2} — a borda do aparo ficou lisa",
+            dip.grumo
+        ),
+    );
     // O Bullet quase não afina (0,60) contra o Dip Pen (0,18) e o Marker Bullet (0,07); e é liso.
-    regra(bullet.rampa > 0.39, format!("Ink Bullet: rampa {:.2} — a pressão afina-o como uma pena", bullet.rampa));
-    regra(bullet.grumo < 1.11, format!("Ink Bullet: grumo {:.2} — a ponta deixou de ser lisa", bullet.grumo));
+    regra(
+        bullet.rampa > 0.39,
+        format!(
+            "Ink Bullet: rampa {:.2} — a pressão afina-o como uma pena",
+            bullet.rampa
+        ),
+    );
+    regra(
+        bullet.grumo < 1.11,
+        format!(
+            "Ink Bullet: grumo {:.2} — a ponta deixou de ser lisa",
+            bullet.grumo
+        ),
+    );
     // A tinta RALA do pincel (pigmento 150): entra clara (0,92 contra ≥ 0,98 das canetas) e o miolo é mais claro que o
     // do Dip Pen (0,61 contra 0,66); e os lados lisos.
-    regra(brush.entrada < 0.95, format!("Ink Brush: entrada {:.2} — a tinta não entra rala", brush.entrada));
-    regra(brush.miolo < 0.635, format!("Ink Brush: miolo {:.2} — a tinta é a carregada das canetas", brush.miolo));
-    regra(brush.grumo < 1.11, format!("Ink Brush: grumo {:.2} — os lados ficaram grumosos", brush.grumo));
+    regra(
+        brush.entrada < 0.95,
+        format!(
+            "Ink Brush: entrada {:.2} — a tinta não entra rala",
+            brush.entrada
+        ),
+    );
+    regra(
+        brush.miolo < 0.635,
+        format!(
+            "Ink Brush: miolo {:.2} — a tinta é a carregada das canetas",
+            brush.miolo
+        ),
+    );
+    regra(
+        brush.grumo < 1.11,
+        format!(
+            "Ink Brush: grumo {:.2} — os lados ficaram grumosos",
+            brush.grumo
+        ),
+    );
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
 
@@ -276,14 +340,18 @@ fn borrao(px: &[u8], yc: usize) -> (usize, usize, f64) {
         v.sort_by(f64::total_cmp);
         v[v.len() / 2]
     };
-    let cor_mediana = |pts: &[[f64; 3]]| [0, 1, 2].map(|c| mediana(pts.iter().map(|p| p[c]).collect()));
+    let cor_mediana =
+        |pts: &[[f64; 3]]| [0, 1, 2].map(|c| mediana(pts.iter().map(|p| p[c]).collect()));
     // As bordas e o vermelho limpo da faixa, a meio entre os verticais (x 375).
     let vermelhos: Vec<(usize, [f64; 3])> = (yc - 50..yc + 50)
         .flat_map(|y| (372..379).map(move |x| (y, x)))
         .map(|(y, x)| (y, rgb(x, y)))
         .filter(|(_, c)| c[0] > 110.0 && c[2] < 110.0)
         .collect();
-    let (topo, fundo) = (vermelhos.iter().map(|v| v.0).min().unwrap(), vermelhos.iter().map(|v| v.0).max().unwrap());
+    let (topo, fundo) = (
+        vermelhos.iter().map(|v| v.0).min().unwrap(),
+        vermelhos.iter().map(|v| v.0).max().unwrap(),
+    );
     // O azul limpo: o vertical sobre o papel entre as faixas.
     let azuis: Vec<[f64; 3]> = (240..280)
         .flat_map(|y| (210..291).map(move |x| rgb(x, y)))
@@ -324,23 +392,30 @@ fn o_borrao_da_tinta_transborda_a_faixa() {
         let h: Vec<_> = nomes
             .iter()
             .map(|&n| {
-                (n, s.spawn(move || {
-                    let px = cena(&pinceis(n).remove(0), "sobre");
-                    (borrao(&px, 150), borrao(&px, 470))
-                }))
+                (
+                    n,
+                    s.spawn(move || {
+                        let px = cena(&pinceis(n).remove(0), "sobre");
+                        (borrao(&px, 150), borrao(&px, 470))
+                    }),
+                )
             })
             .collect();
-        h.into_iter().map(|(n, h)| {
-            let (m, sc) = h.join().unwrap();
-            (n, m, sc)
-        }).collect()
+        h.into_iter()
+            .map(|(n, h)| {
+                let (m, sc) = h.join().unwrap();
+                (n, m, sc)
+            })
+            .collect()
     });
     let mut falhas = Vec::new();
     for &(n, molhada, seca) in &medidas {
         println!("[borrão] {n:>13}: molhada acima/abaixo {molhada:?} · seca {seca:?}");
         if n == "Marker Bullet" {
             if seca.0 > 2 || molhada.0 > 2 {
-                falhas.push(format!("{n}: o marcador (sem a lei) borrou {molhada:?} · {seca:?}"));
+                falhas.push(format!(
+                    "{n}: o marcador (sem a lei) borrou {molhada:?} · {seca:?}"
+                ));
             }
             continue;
         }
@@ -352,13 +427,18 @@ fn o_borrao_da_tinta_transborda_a_faixa() {
             _ => unreachable!("{n}"),
         };
         if (seca.0 as f64) < 0.4 * reb_s || seca.1 < 4 {
-            falhas.push(format!("{n}: a faixa SECA não borra ({seca:?}; ≥ 0,4 × Rebelle {reb_s}) — o reservatório"));
+            falhas.push(format!(
+                "{n}: a faixa SECA não borra ({seca:?}; ≥ 0,4 × Rebelle {reb_s}) — o reservatório"
+            ));
         }
         if (molhada.0 as f64) < 0.25 * reb_m {
             falhas.push(format!("{n}: a MOLHADA borra pouco ({molhada:?}; ≥ 0,25 × Rebelle {reb_m}) — o reservatório"));
         }
         if seca.2 > 60.0 {
-            falhas.push(format!("{n}: a mistura acima da seca é ROXA (R {:.0}; Rebelle 26–39) — o produto", seca.2));
+            falhas.push(format!(
+                "{n}: a mistura acima da seca é ROXA (R {:.0}; Rebelle 26–39) — o produto",
+                seca.2
+            ));
         }
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));

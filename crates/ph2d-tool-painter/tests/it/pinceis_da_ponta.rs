@@ -6,8 +6,11 @@ use ph2d_tool_painter::{LinhaDaPonta, PaintMedia, PainterTool, miniatura_do_pres
 
 /// Grava o pincel de `t` (Digital) em `dir/<nome>.ph2d-brush.png`.
 pub(crate) fn grava(t: &PainterTool, dir: &str, nome: &str) -> std::path::PathBuf {
-    let (parametros, texturas) =
-        t.preset_capturar(&Parametros::novo(nome_do_meio(PaintMedia::Digital), "Ponta", nome));
+    let (parametros, texturas) = t.preset_capturar(&Parametros::novo(
+        nome_do_meio(PaintMedia::Digital),
+        "Ponta",
+        nome,
+    ));
     let mut p = Preset {
         parametros,
         origem: Origem::Utilizador,

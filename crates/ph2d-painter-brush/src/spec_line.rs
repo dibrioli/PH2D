@@ -187,8 +187,14 @@ impl BrushSpec {
         if self.wire_cordas == 0 {
             return base;
         }
-        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let teto = ((base as f32 * crate::line_kind::WIRE_HISTORY_MAX) / self.wire_history.max(1e-3)).floor() as usize;
+        #[allow(
+            clippy::cast_precision_loss,
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss
+        )]
+        let teto = ((base as f32 * crate::line_kind::WIRE_HISTORY_MAX)
+            / self.wire_history.max(1e-3))
+        .floor() as usize;
         usize::from(self.wire_cordas).clamp(1, teto.max(1))
     }
 

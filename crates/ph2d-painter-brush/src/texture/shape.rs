@@ -260,9 +260,18 @@ fn area_do_pixel(
         ]
     };
     let (t0, tx, ty) = (tex([0.0, 0.0]), tex([1.0, 0.0]), tex([0.0, 1.0]));
-    let (hw, hh) = (img.width.max(1) as f32 * 0.5, img.height.max(1) as f32 * 0.5);
+    let (hw, hh) = (
+        img.width.max(1) as f32 * 0.5,
+        img.height.max(1) as f32 * 0.5,
+    );
     let texels = |d: [f32; 2]| ((d[0] - t0[0]) * hw).hypot((d[1] - t0[1]) * hh);
-    let lado = |t: f32| if t.is_finite() { (0.5 * t).ceil().clamp(1.0, AREA_MAX) } else { 1.0 };
+    let lado = |t: f32| {
+        if t.is_finite() {
+            (0.5 * t).ceil().clamp(1.0, AREA_MAX)
+        } else {
+            1.0
+        }
+    };
     let (nx, ny) = (lado(texels(tx)), lado(texels(ty)));
     if nx <= 1.0 && ny <= 1.0 {
         return shape_value(s, b, em([0.0, 0.0]), size, Some(img));

@@ -68,10 +68,18 @@ pub fn mistura(base: [f32; 3], tinta: [f32; 3], fac: f32) -> [f32; 3] {
 /// geométrica com o peso do source-over (`a / (a + (1 − a)·αb)`) — sobre o vazio (`αb = 0`) é a tinta, o `plain`.
 #[must_use]
 #[inline]
-pub fn blend_over_espectral(mode: BrushBlend, dst: [f32; 4], color: [f32; 3], a: f32, mix: f32) -> [f32; 4] {
+pub fn blend_over_espectral(
+    mode: BrushBlend,
+    dst: [f32; 4],
+    color: [f32; 3],
+    a: f32,
+    mix: f32,
+) -> [f32; 4] {
     let plain = blend_over(mode, dst, color, a);
     let ab = dst[3].clamp(0.0, 1.0);
-    let tinta = ((1.0 - dst[0].min(dst[1]).min(dst[2]).clamp(0.0, 1.0)) / (1.0 - PAPEL_DO_PIGMENTO)).min(1.0);
+    let tinta = ((1.0 - dst[0].min(dst[1]).min(dst[2]).clamp(0.0, 1.0))
+        / (1.0 - PAPEL_DO_PIGMENTO))
+        .min(1.0);
     let m = mix.clamp(0.0, 1.0) * tinta;
     let a = a.clamp(0.0, 1.0);
     if m <= 0.0 || ab <= 0.0 || a <= 0.0 || !mode.lays_pigment() {
@@ -80,7 +88,12 @@ pub fn blend_over_espectral(mode: BrushBlend, dst: [f32; 4], color: [f32; 3], a:
     let fac = a / (a + (1.0 - a) * ab);
     let sub = mistura([dst[0], dst[1], dst[2]], color, fac);
     let l = |p: f32, s: f32| p + (s - p) * m;
-    [l(plain[0], sub[0]), l(plain[1], sub[1]), l(plain[2], sub[2]), plain[3]]
+    [
+        l(plain[0], sub[0]),
+        l(plain[1], sub[1]),
+        l(plain[2], sub[2]),
+        plain[3],
+    ]
 }
 
 /// `log2(x)` para `x > 0` normal: a mantissa em `[√½, √2)` e a série de `atanh` até `t⁹` (erro < 1e-7).
@@ -107,7 +120,10 @@ fn exp2(y: f32) -> f32 {
     let n = (y + 0.5).floor();
     let x = (y - n) * std::f32::consts::LN_2;
     let p = 1.0
-        + x * (1.0 + x * (0.5 + x * (1.0 / 6.0 + x * (1.0 / 24.0 + x * (1.0 / 120.0 + x * (1.0 / 720.0 + x / 5040.0))))));
+        + x * (1.0
+            + x * (0.5
+                + x * (1.0 / 6.0
+                    + x * (1.0 / 24.0 + x * (1.0 / 120.0 + x * (1.0 / 720.0 + x / 5040.0))))));
     p * f32::from_bits(((n as i32 + 127) as u32) << 23)
 }
 
@@ -134,24 +150,45 @@ mod tests {
     #[test]
     fn o_azul_sobre_o_vermelho_da_o_violeta_cinza_do_mypaint() {
         let (ab, a) = (0.686f32, 0.687f32);
-        let out = blend_over_espectral(BrushBlend::Mix, [VERMELHO[0], VERMELHO[1], VERMELHO[2], ab], AZUL, a, 1.0);
+        let out = blend_over_espectral(
+            BrushBlend::Mix,
+            [VERMELHO[0], VERMELHO[1], VERMELHO[2], ab],
+            AZUL,
+            a,
+            1.0,
+        );
         let sobre_papel = [0, 1, 2].map(|k| ((out[k] * out[3] + 1.0 - out[3]) * 255.0).round());
         let mypaint = [64.0, 74.0, 121.0];
         for k in 0..3 {
-            assert!((sobre_papel[k] - mypaint[k]).abs() <= 6.0, "{sobre_papel:?} × MyPaint {mypaint:?}");
+            assert!(
+                (sobre_papel[k] - mypaint[k]).abs() <= 6.0,
+                "{sobre_papel:?} × MyPaint {mypaint:?}"
+            );
         }
-        assert!(sobre_papel[1] < 80.0, "o verde fica no dos 3 canais: {sobre_papel:?}");
+        assert!(
+            sobre_papel[1] < 80.0,
+            "o verde fica no dos 3 canais: {sobre_papel:?}"
+        );
     }
 
     /// A mesma tinta sobre ela própria é ela própria (o néon que se soma não escurece) e sobre o vazio é o `plain`.
     #[test]
     fn a_mesma_tinta_e_o_vazio_nao_mudam() {
         let azul = [AZUL[0], AZUL[1], AZUL[2], 0.3];
-        let (e, o) = (blend_over_espectral(BrushBlend::Mix, azul, AZUL, 0.45, 1.0), blend_over(BrushBlend::Mix, azul, AZUL, 0.45));
+        let (e, o) = (
+            blend_over_espectral(BrushBlend::Mix, azul, AZUL, 0.45, 1.0),
+            blend_over(BrushBlend::Mix, azul, AZUL, 0.45),
+        );
         assert!((0..4).all(|k| (e[k] - o[k]).abs() < 1e-6), "{e:?} × {o:?}");
         let vazio = [0.0, 0.0, 0.0, 0.0];
-        assert_eq!(blend_over_espectral(BrushBlend::Mix, vazio, AZUL, 0.45, 1.0), blend_over(BrushBlend::Mix, vazio, AZUL, 0.45));
+        assert_eq!(
+            blend_over_espectral(BrushBlend::Mix, vazio, AZUL, 0.45, 1.0),
+            blend_over(BrushBlend::Mix, vazio, AZUL, 0.45)
+        );
         let papel = [1.0, 1.0, 1.0, 1.0];
-        assert_eq!(blend_over_espectral(BrushBlend::Mix, papel, AZUL, 0.45, 1.0), blend_over(BrushBlend::Mix, papel, AZUL, 0.45));
+        assert_eq!(
+            blend_over_espectral(BrushBlend::Mix, papel, AZUL, 0.45, 1.0),
+            blend_over(BrushBlend::Mix, papel, AZUL, 0.45)
+        );
     }
 }

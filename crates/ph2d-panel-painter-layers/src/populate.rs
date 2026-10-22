@@ -155,8 +155,7 @@ fn register_brush_inputs(store: &mut WidgetStore) {
         (0..ph2d_tool_painter::N_LINHAS_DA_PONTA)
             .filter(|&i| !crate::ponta_linhas::e_menu(i))
             .map(|i| ph2d_tool_painter::ids::PAINTER_PONTA_FIELDS[i]),
-    )
-    {
+    ) {
         store.register(
             id,
             InteractiveState::NumberInput {
@@ -564,8 +563,7 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         (0..ph2d_tool_painter::N_LINHAS_DA_PONTA)
             .filter(|&i| crate::ponta_linhas::e_menu(i))
             .map(|i| ph2d_tool_painter::ids::PAINTER_PONTA_FIELDS[i]),
-    )
-    {
+    ) {
         store.register(
             id,
             InteractiveState::Dropdown {

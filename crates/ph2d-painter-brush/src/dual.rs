@@ -185,7 +185,9 @@ impl DualTip {
         s.jitter_scale = 0.0;
         s.jitter_rotate = self.rotacao.clamp(0.0, 1.0);
         s.jitter_spacing = 0.0;
-        s.spray_count = self.contagem.clamp(1, crate::stroke::spray::SPRAY_COUNT_MAX);
+        s.spray_count = self
+            .contagem
+            .clamp(1, crate::stroke::spray::SPRAY_COUNT_MAX);
         s.dab_jitter = DabJitter {
             across: self.atraves.clamp(0.0, DabJitter::ACROSS_MAX),
             ..DabJitter::NEUTRO
@@ -273,7 +275,9 @@ mod tests {
             .map(|k| {
                 let modo = DualMode::from_u8(k);
                 (1..20)
-                    .flat_map(|i| (1..20).map(move |j| modo.recorta(i as f32 / 20.0, j as f32 / 20.0)))
+                    .flat_map(|i| {
+                        (1..20).map(move |j| modo.recorta(i as f32 / 20.0, j as f32 / 20.0))
+                    })
                     .collect()
             })
             .collect();
@@ -284,7 +288,12 @@ mod tests {
                     .zip(&grelha[y])
                     .filter(|(p, q)| (*p - *q).abs() > 1e-3)
                     .count();
-                assert!(difere > 30, "{:?} × {:?}: {difere}", DualMode::from_u8(x as u8), DualMode::from_u8(y as u8));
+                assert!(
+                    difere > 30,
+                    "{:?} × {:?}: {difere}",
+                    DualMode::from_u8(x as u8),
+                    DualMode::from_u8(y as u8)
+                );
             }
         }
     }

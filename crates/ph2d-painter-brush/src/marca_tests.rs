@@ -55,7 +55,10 @@ fn com(f: impl Fn(&mut DabJitter)) -> BrushSpec {
 fn media_sd(v: &[f32]) -> (f32, f32) {
     let n = v.len() as f32;
     let m = v.iter().sum::<f32>() / n;
-    (m, (v.iter().map(|x| (x - m) * (x - m)).sum::<f32>() / n).sqrt())
+    (
+        m,
+        (v.iter().map(|x| (x - m) * (x - m)).sum::<f32>() / n).sqrt(),
+    )
 }
 
 /// ⭐ O neutro não sorteia nada: nenhum número sai do fluxo, a contagem e o rotor são os de sempre.
@@ -85,44 +88,80 @@ fn cada_campo_muda_so_o_que_e_dele() {
     let op = recto(com(|j| j.opacity = 0.3), 3);
     assert_eq!(op.len(), base.len());
     for (a, b) in base.iter().zip(&op) {
-        assert_eq!((a.center, a.radius_px, a.color), (b.center, b.radius_px, b.color));
+        assert_eq!(
+            (a.center, a.radius_px, a.color),
+            (b.center, b.radius_px, b.color)
+        );
     }
     assert!(base.iter().zip(&op).any(|(a, b)| a.coverage != b.coverage));
     // A redondeza: só a pegada (o dab leva a forma; o raio fica a menos de um ulp do eixo maior).
     let rd = recto(com(|j| j.roundness = 0.6), 3);
     for (a, b) in base.iter().zip(&rd) {
-        assert_eq!((a.center, a.color, a.coverage), (b.center, b.color, b.coverage));
+        assert_eq!(
+            (a.center, a.color, a.coverage),
+            (b.center, b.color, b.coverage)
+        );
         assert!((a.radius_px - b.radius_px).abs() <= 1e-4 * a.radius_px);
-        assert!(b.tilt.is_some_and(|t| t.round <= 1.0 && t.round >= 0.4 && !t.espelho));
+        assert!(
+            b.tilt
+                .is_some_and(|t| t.round <= 1.0 && t.round >= 0.4 && !t.espelho)
+        );
     }
     // Através: só o centro, e só na perpendicular (o traço é horizontal ⇒ o `x` fica).
     let at = recto(com(|j| j.across = 1.0), 3);
     for (a, b) in base.iter().zip(&at) {
-        assert_eq!((a.radius_px, a.color, a.coverage), (b.radius_px, b.color, b.coverage));
+        assert_eq!(
+            (a.radius_px, a.color, a.coverage),
+            (b.radius_px, b.color, b.coverage)
+        );
         assert!((a.center[0] - b.center[0]).abs() < 1e-3, "{a:?} {b:?}");
     }
-    assert!(base.iter().zip(&at).any(|(a, b)| a.center[1] != b.center[1]));
+    assert!(
+        base.iter()
+            .zip(&at)
+            .any(|(a, b)| a.center[1] != b.center[1])
+    );
     // O ângulo do traço: só a rotação, e a MESMA em todo dab (o rotor é um só).
     let an = recto(com(|j| j.angle_per_stroke = 1.0), 3);
     for (a, b) in base.iter().zip(&an) {
-        assert_eq!((a.center, a.radius_px, a.color, a.coverage), (b.center, b.radius_px, b.color, b.coverage));
+        assert_eq!(
+            (a.center, a.radius_px, a.color, a.coverage),
+            (b.center, b.radius_px, b.color, b.coverage)
+        );
     }
     let r = rotor_do_traco(&com(|j| j.angle_per_stroke = 1.0).dab_jitter, 3);
     assert_ne!(r, [1.0, 0.0]);
-    assert_ne!(r, rotor_do_traco(&com(|j| j.angle_per_stroke = 1.0).dab_jitter, 4), "outro traço, outro ângulo");
+    assert_ne!(
+        r,
+        rotor_do_traco(&com(|j| j.angle_per_stroke = 1.0).dab_jitter, 4),
+        "outro traço, outro ângulo"
+    );
     // A partícula: só o raio, × o factor.
     let pa = recto(com(|j| j.particle = 0.25), 3);
     for (a, b) in base.iter().zip(&pa) {
-        assert_eq!((a.center, a.color, a.coverage), (b.center, b.color, b.coverage));
+        assert_eq!(
+            (a.center, a.color, a.coverage),
+            (b.center, b.color, b.coverage)
+        );
         assert!((b.radius_px - (a.radius_px * 0.25).max(0.5)).abs() < 1e-4);
     }
     // Os espelhos: só a pegada e a meia-volta do X.
     let fx = recto(com(|j| j.flip_x = 0.5), 3);
     for (a, b) in base.iter().zip(&fx) {
-        assert_eq!((a.center, a.radius_px, a.color, a.coverage), (b.center, b.radius_px, b.color, b.coverage));
+        assert_eq!(
+            (a.center, a.radius_px, a.color, a.coverage),
+            (b.center, b.radius_px, b.color, b.coverage)
+        );
     }
-    let virados = fx.iter().filter(|d| d.tilt.is_some_and(|t| t.espelho)).count();
-    assert!(virados > fx.len() / 4 && virados < fx.len() * 3 / 4, "{virados}/{}", fx.len());
+    let virados = fx
+        .iter()
+        .filter(|d| d.tilt.is_some_and(|t| t.espelho))
+        .count();
+    assert!(
+        virados > fx.len() / 4 && virados < fx.len() * 3 / 4,
+        "{virados}/{}",
+        fx.len()
+    );
     // Nada ligado = a base inteira.
     let nada = recto(com(|_| {}), 3);
     assert!(base.iter().zip(&nada).all(|(a, b)| iguais(a, b)));
@@ -155,11 +194,21 @@ fn o_espalhar_atraves_e_anisotropico() {
     let sem = recto(base, 5);
     let atraves: Vec<f32> = dabs.iter().map(|x| (x.center[1] - 300.0) / d).collect();
     // O ao longo é o do disco: o desvio de `x` à base sem disco não se mede aqui, mas o do disco ⊂ ±0,15·D.
-    let ao_longo: Vec<f32> = sem.iter().map(|x| x.center[1] - 300.0).map(|v| v / d).collect();
+    let ao_longo: Vec<f32> = sem
+        .iter()
+        .map(|x| x.center[1] - 300.0)
+        .map(|v| v / d)
+        .collect();
     let (_, sd_at) = media_sd(&atraves);
     let (_, sd_disco) = media_sd(&ao_longo);
-    assert!((0.6..=0.9).contains(&sd_at), "através sd {sd_at}·D (Rebelle 0,61–0,92)");
-    assert!(sd_at >= 2.5 * sd_disco, "através {sd_at} × disco {sd_disco}");
+    assert!(
+        (0.6..=0.9).contains(&sd_at),
+        "através sd {sd_at}·D (Rebelle 0,61–0,92)"
+    );
+    assert!(
+        sd_at >= 2.5 * sd_disco,
+        "através {sd_at} × disco {sd_disco}"
+    );
 }
 
 /// A contagem sorteada fica entre 1 e `n`, e varia.
@@ -197,7 +246,11 @@ fn o_espelho_vira_a_ponta() {
     let (r, re) = (fp.linear_rows(), e.linear_rows());
     assert_eq!((r[0], [-r[1][0], -r[1][1]]), (re[0], re[1]));
     assert_eq!(fp.espelhada(false), fp);
-    assert!(!crate::FootprintDeform::identity().espelhada(true).is_identity());
+    assert!(
+        !crate::FootprintDeform::identity()
+            .espelhada(true)
+            .is_identity()
+    );
 }
 
 /// Um recto vertical de 600 px a `passo` px por evento, um tique de 10 ms por evento (300 px/s a 3 px).
@@ -255,9 +308,15 @@ fn a_velocidade_estreita_como_o_fineliner() {
     let lento = raio_assente(3.0, fineliner);
     for (passo, krita) in [(6.0, 0.95), (12.0, 0.95), (25.0, 0.90), (50.0, 0.85)] {
         let r = raio_assente(passo, fineliner) / lento;
-        assert!((r - krita).abs() <= 0.04, "{passo} px/evento: {r} (Krita {krita})");
+        assert!(
+            (r - krita).abs() <= 0.04,
+            "{passo} px/evento: {r} (Krita {krita})"
+        );
         let n = raio_assente(passo, neutro) / raio_assente(3.0, neutro);
-        assert!((n - 1.0).abs() <= 1e-3, "sem a lei a velocidade não conta: {n}");
+        assert!(
+            (n - 1.0).abs() <= 1e-3,
+            "sem a lei a velocidade não conta: {n}"
+        );
     }
     // A cobertura pela mesma lei (o Thin_Pen do MyPaint: 0,57 a 5 000 px/s com `p ≈ 0,2`).
     let thin = Dynamics {
@@ -307,12 +366,22 @@ fn o_espalhar_atraves_e_de_cada_sub_dab_da_capsula() {
                 sds.push(media_sd(&y).1);
             }
         }
-        assert!(sds.len() > 5, "o recto tem de pousar cápsulas: {}", sds.len());
+        assert!(
+            sds.len() > 5,
+            "o recto tem de pousar cápsulas: {}",
+            sds.len()
+        );
         sds.iter().sum::<f32>() / sds.len() as f32
     };
-    assert!(sd_dentro(0.0) < 1e-4, "controlo: sem através a cápsula é uma faixa");
+    assert!(
+        sd_dentro(0.0) < 1e-4,
+        "controlo: sem através a cápsula é uma faixa"
+    );
     let v = sd_dentro(1.0);
-    assert!(v >= 0.2, "dentro de uma cápsula o através não varia: sd {v}·D");
+    assert!(
+        v >= 0.2,
+        "dentro de uma cápsula o através não varia: sd {v}·D"
+    );
 }
 
 /// ⭐ **O espalhar através também é dos dabs que preenchem o vão do ARREMESSO** (`LineKind::Speed`, `speed.rs`): cada
@@ -340,8 +409,15 @@ fn o_espalhar_atraves_e_dos_preenchimentos_do_arremesso() {
         all.extend_from_slice(&out);
     }
     assert!(all.len() > 40, "o arremesso preenche: {}", all.len());
-    let no_eixo = all.iter().filter(|d| (d.center[1] - 300.0).abs() < 1e-3).count();
-    assert!(no_eixo <= 2, "{no_eixo} de {} dabs sem o desvio através", all.len());
+    let no_eixo = all
+        .iter()
+        .filter(|d| (d.center[1] - 300.0).abs() < 1e-3)
+        .count();
+    assert!(
+        no_eixo <= 2,
+        "{no_eixo} de {} dabs sem o desvio através",
+        all.len()
+    );
 }
 
 /// ⭐ **A partícula em PÍXEIS** (J4 `texturas`, `docs/Painter/Pinceis/exames/texturas.md`): com `particle_px` cada
@@ -357,17 +433,32 @@ fn a_particula_em_px_e_a_mesma_em_todo_pincel() {
         let d = recto(s, 5);
         let r: Vec<f32> = d.iter().map(|d| d.radius_px).collect();
         let y: Vec<f32> = d.iter().map(|d| d.center[1]).collect();
-        let (lo, hi) = (r.iter().copied().fold(f32::MAX, f32::min), r.iter().copied().fold(0.0, f32::max));
+        let (lo, hi) = (
+            r.iter().copied().fold(f32::MAX, f32::min),
+            r.iter().copied().fold(0.0, f32::max),
+        );
         (lo, hi, media_sd(&y).1)
     };
     let (a_lo, a_hi, a_sd) = mede(20.0, 6.0);
     let (b_lo, b_hi, b_sd) = mede(100.0, 6.0);
-    assert!((a_lo - 3.0).abs() < 1e-4 && (a_hi - 3.0).abs() < 1e-4, "a 40 px: raio {a_lo}..{a_hi}");
-    assert!((b_lo - 3.0).abs() < 1e-4 && (b_hi - 3.0).abs() < 1e-4, "a 200 px: raio {b_lo}..{b_hi}");
-    assert!(b_sd > 3.0 * a_sd, "o espalhamento é do pincel: sd {a_sd} × {b_sd}");
+    assert!(
+        (a_lo - 3.0).abs() < 1e-4 && (a_hi - 3.0).abs() < 1e-4,
+        "a 40 px: raio {a_lo}..{a_hi}"
+    );
+    assert!(
+        (b_lo - 3.0).abs() < 1e-4 && (b_hi - 3.0).abs() < 1e-4,
+        "a 200 px: raio {b_lo}..{b_hi}"
+    );
+    assert!(
+        b_sd > 3.0 * a_sd,
+        "o espalhamento é do pincel: sd {a_sd} × {b_sd}"
+    );
     // Num pincel de 4 px a gota de 6 continua de 6; e desligada é a relativa de sempre.
     let (c_lo, c_hi, _) = mede(2.0, 6.0);
-    assert!((c_lo - 3.0).abs() < 1e-4 && (c_hi - 3.0).abs() < 1e-4, "a 4 px: raio {c_lo}..{c_hi}");
+    assert!(
+        (c_lo - 3.0).abs() < 1e-4 && (c_hi - 3.0).abs() < 1e-4,
+        "a 4 px: raio {c_lo}..{c_hi}"
+    );
     let (d_lo, _, _) = mede(100.0, 0.0);
     assert!((d_lo - 100.0).abs() < 1e-4, "desligada: {d_lo}");
 }
@@ -386,14 +477,22 @@ fn o_tecto_da_particula_corta_so_as_maiores() {
     let mut cortadas = 0;
     for (a, b) in sem.iter().zip(&com_tecto) {
         assert_eq!(a.center, b.center, "o espalhamento é do pincel");
-        assert!(b.radius_px <= 100.0 + 1e-4, "raio {} acima do tecto", b.radius_px);
+        assert!(
+            b.radius_px <= 100.0 + 1e-4,
+            "raio {} acima do tecto",
+            b.radius_px
+        );
         if a.radius_px <= 100.0 {
             assert_eq!(a.radius_px, b.radius_px);
         } else {
             cortadas += 1;
         }
     }
-    assert!(cortadas > 0 && cortadas < sem.len(), "{cortadas} de {} cortadas", sem.len());
+    assert!(
+        cortadas > 0 && cortadas < sem.len(),
+        "{cortadas} de {} cortadas",
+        sem.len()
+    );
     // O PISO (J4, o Foliage a 5 px): num pincel de 5 px nenhuma marca fica abaixo de metade dele, as posições ficam.
     let mut s = spec_base();
     s.radius_px = 2.5;
@@ -403,10 +502,17 @@ fn o_tecto_da_particula_corta_so_as_maiores() {
     let mut subidas = 0;
     for (a, b) in sem.iter().zip(&com_piso) {
         assert_eq!(a.center, b.center);
-        assert!(b.radius_px >= 2.0 - 1e-4, "raio {} abaixo do piso", b.radius_px);
+        assert!(
+            b.radius_px >= 2.0 - 1e-4,
+            "raio {} abaixo do piso",
+            b.radius_px
+        );
         subidas += usize::from(a.radius_px < 2.0);
     }
-    assert!(subidas > 0, "nenhuma marca abaixo do piso: o controlo não mede nada");
+    assert!(
+        subidas > 0,
+        "nenhuma marca abaixo do piso: o controlo não mede nada"
+    );
 }
 
 /// ⭐ **O VÉU** (J4 `texturas`, o Texture Spray do Krita: a névoa clara por baixo das gotas): a fracção `veu` das marcas
@@ -428,7 +534,12 @@ fn o_veu_e_uma_segunda_populacao_maior_e_palida() {
             assert_eq!(a.coverage, b.coverage);
         } else {
             veu += 1;
-            assert!((b.radius_px - 3.0 * a.radius_px).abs() < 1e-3, "{} × {}", b.radius_px, a.radius_px);
+            assert!(
+                (b.radius_px - 3.0 * a.radius_px).abs() < 1e-3,
+                "{} × {}",
+                b.radius_px,
+                a.radius_px
+            );
             assert!((b.coverage - 0.2 * a.coverage).abs() < 1e-5);
         }
     }
@@ -460,11 +571,28 @@ fn o_po_solto_espalha_graos_a_volta_do_traco() {
     // 880 px × 100 px de diâmetro × 0,009 por px² ≈ 792 (o primeiro e o último ponto somam ±1 passo).
     assert!((700..=900).contains(&graos.len()), "{} grãos", graos.len());
     for g in &graos {
-        assert!(g.radius_px <= 1.5 + 1e-4 && g.radius_px >= 0.5, "grão de raio {}", g.radius_px);
+        assert!(
+            g.radius_px <= 1.5 + 1e-4 && g.radius_px >= 0.5,
+            "grão de raio {}",
+            g.radius_px
+        );
         let fora = (g.center[1] - 300.0).abs();
-        assert!(fora <= 50.0 * 2.1 + 1e-3, "grão a {fora} px do caminho (alcance 1,1 raio além da borda)");
-        assert!(g.step == [0.0, 0.0] && g.ante.is_none(), "um grão não se arrasta");
+        assert!(
+            fora <= 50.0 * 2.1 + 1e-3,
+            "grão a {fora} px do caminho (alcance 1,1 raio além da borda)"
+        );
+        assert!(
+            g.step == [0.0, 0.0] && g.ante.is_none(),
+            "um grão não se arrasta"
+        );
     }
-    let alem = graos.iter().filter(|g| (g.center[1] - 300.0).abs() > 50.0).count();
-    assert!(alem * 3 > graos.len(), "{alem} de {} além da borda", graos.len());
+    let alem = graos
+        .iter()
+        .filter(|g| (g.center[1] - 300.0).abs() > 50.0)
+        .count();
+    assert!(
+        alem * 3 > graos.len(),
+        "{alem} de {} além da borda",
+        graos.len()
+    );
 }

@@ -10,7 +10,9 @@ fn riscas() -> Vec<u8> {
     let mut e = 0x51A7_u64;
     (0..128 * 128)
         .map(|_| {
-            e = e.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+            e = e
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
             if (e >> 40) & 1 == 1 { 255 } else { 0 }
         })
         .collect()
@@ -20,7 +22,10 @@ fn ponta(area: bool) -> TextureSettings {
     TextureSettings {
         kind: TextureKind::Image,
         mapping: TextureMapping::ViewPlane,
-        lei: GrainLaw { area, ..GrainLaw::NEUTRA },
+        lei: GrainLaw {
+            area,
+            ..GrainLaw::NEUTRA
+        },
         ..Default::default()
     }
 }
@@ -28,7 +33,11 @@ fn ponta(area: bool) -> TextureSettings {
 /// Os valores dos píxeis do MIOLO de um dab de raio `r` (os que ficam inteiros dentro da ponta).
 fn miolo(area: bool, r: f32) -> Vec<f32> {
     let lum = riscas();
-    let img = ImageMask { lum: &lum, width: 128, height: 128 };
+    let img = ImageMask {
+        lum: &lum,
+        width: 128,
+        height: 128,
+    };
     let s = ponta(area);
     let b = dab_basis(&s, &mut 0u64, [256.0, 256.0], FootprintDeform::identity());
     let c = [100.0_f32, 100.0];
@@ -53,7 +62,10 @@ fn a_imagem_reduzida_le_se_pela_area_do_pixel() {
         let com = miolo(true, r);
         assert!(!com.is_empty());
         for (k, v) in com.iter().enumerate() {
-            assert!((v - 0.5).abs() <= 0.15, "raio {r}, píxel {k}: {v} (a média do ruído é ½)");
+            assert!(
+                (v - 0.5).abs() <= 0.15,
+                "raio {r}, píxel {k}: {v} (a média do ruído é ½)"
+            );
         }
     }
     // O controlo: sem a lei, o mesmo miolo afasta-se de ½ (a amostra num ponto).
@@ -73,7 +85,11 @@ fn ampliada_a_area_e_a_amostra_de_sempre() {
 fn a_forma_unitaria_le_a_mesma_area() {
     use super::{sample_shape_silhouette_unit, sample_shape_silhouette_unit_px};
     let lum = riscas();
-    let img = ImageMask { lum: &lum, width: 128, height: 128 };
+    let img = ImageMask {
+        lum: &lum,
+        width: 128,
+        height: 128,
+    };
     let (c, r) = ([100.0_f32, 100.0], 4.0_f32);
     for area in [true, false] {
         let s = ponta(area);
@@ -83,7 +99,10 @@ fn a_forma_unitaria_le_a_mesma_area() {
                 let (u, v) = ((px as f32 + 0.5 - c[0]) / r, (py as f32 + 0.5 - c[1]) / r);
                 let un = sample_shape_silhouette_unit_px(&s, &b, u, v, 1.0 / r, Some(&img));
                 let pix = sample_shape(&s, &b, px, py, c, r, Some(&img));
-                assert!((un - pix).abs() < 1e-4, "área {area} ({px}, {py}): {un} × {pix}");
+                assert!(
+                    (un - pix).abs() < 1e-4,
+                    "área {area} ({px}, {py}): {un} × {pix}"
+                );
                 if !area {
                     assert_eq!(un, sample_shape_silhouette_unit(&s, &b, u, v, Some(&img)));
                 }

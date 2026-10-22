@@ -431,7 +431,11 @@ fn a_lei_densa_dos_presets_de_fabrica() {
         .collect();
     std::thread::scope(|s| {
         // Só os do Wet Paint (os outros meios têm presets irmãos desde a J3).
-        for e in bib.entradas.iter().filter(|e| e.preset.parametros.media == ph2d_tool_painter::MEIO_DO_PRESET) {
+        for e in bib
+            .entradas
+            .iter()
+            .filter(|e| e.preset.parametros.media == ph2d_tool_painter::MEIO_DO_PRESET)
+        {
             let (out, raios) = (&out, &raios);
             s.spawn(move || {
                 let t0 = std::time::Instant::now();

@@ -393,7 +393,10 @@ impl FootprintDeform {
         let e = if self.espelho { -1.0 } else { 1.0 };
         [
             [self.cos, self.sin],
-            [-self.sin * self.inv_minor * e, self.cos * self.inv_minor * e],
+            [
+                -self.sin * self.inv_minor * e,
+                self.cos * self.inv_minor * e,
+            ],
         ]
     }
 

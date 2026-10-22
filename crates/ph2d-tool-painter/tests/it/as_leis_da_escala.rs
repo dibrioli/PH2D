@@ -517,7 +517,10 @@ fn a_ponta_desfiada_nao_depende_da_grade() {
         (a.join().unwrap(), b.join().unwrap())
     });
     println!("[grade] desfiado a 40 px: 1 · 2 px/célula {a:.2} · {b:.2}");
-    assert!((b / a - 1.0).abs() <= 0.25, "o desfiado muda com a grade: {a:.2} → {b:.2}");
+    assert!(
+        (b / a - 1.0).abs() <= 0.25,
+        "o desfiado muda com a grade: {a:.2} → {b:.2}"
+    );
 }
 
 /// ⭐⭐ **(d) A tinta molhada NÃO ALARGA o traço** (03_MOTORES §7 d; `Knob::LevelingOwnStroke`): o azul do Oil
@@ -538,7 +541,10 @@ fn a_tinta_molhada_nao_alarga_o_traco() {
         .collect();
     println!("[lente] molhada (com a lei) / seca (sem a lei) {l:?}");
     for (m, s) in &l {
-        assert!(*m <= s + 1.0, "a lente: {m} px sobre a molhada contra {s} sobre a seca sem a lei");
+        assert!(
+            *m <= s + 1.0,
+            "a lente: {m} px sobre a molhada contra {s} sobre a seca sem a lei"
+        );
     }
 }
 
@@ -548,7 +554,12 @@ fn a_tinta_molhada_nao_alarga_o_traco() {
 #[test]
 fn a_parede_e_da_tinta_e_nao_do_pincel_activo() {
     let bat = bateria();
-    let c = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "sobre").unwrap();
+    let c = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == "sobre")
+        .unwrap();
     let mut ops = c["ops"].as_array().unwrap().clone();
     let k = ops.iter().rposition(|o| o["op"] == "simula").unwrap();
     ops.insert(k, serde_json::json!({"op": "pincel", "quem": "base"}));
@@ -556,11 +567,25 @@ fn a_parede_e_da_tinta_e_nao_do_pincel_activo() {
     let oleo = pinceis("Oil Bristle").remove(0);
     // O outro pincel é o MESMO óleo sem a lei (o mesmo nivelamento: um Wet Round nivela pouco e não provaria nada).
     let outro = com("Oil Bristle", "levelingOwnStroke=0");
-    let px = super::exame_bancada::pinta_cena(&oleo, Some(&outro), &cena_troca, [1000, 640], [255; 3], 0).1;
-    let l: Vec<(f64, f64)> = [250usize, 500, 750].iter().map(|&x| lente(&px, x)).collect();
+    let px = super::exame_bancada::pinta_cena(
+        &oleo,
+        Some(&outro),
+        &cena_troca,
+        [1000, 640],
+        [255; 3],
+        0,
+    )
+    .1;
+    let l: Vec<(f64, f64)> = [250usize, 500, 750]
+        .iter()
+        .map(|&x| lente(&px, x))
+        .collect();
     println!("[parede] com o pincel sem a lei activo: molhada/seca {l:?}");
     for (m, s) in &l {
-        assert!(*m <= s + 1.0, "trocar de pincel tirou a parede: {m} px contra {s}");
+        assert!(
+            *m <= s + 1.0,
+            "trocar de pincel tirou a parede: {m} px contra {s}"
+        );
     }
 }
 

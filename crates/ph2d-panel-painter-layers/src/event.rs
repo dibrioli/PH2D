@@ -6,6 +6,7 @@
 //! snapshot; dropdown chips open/close via the generic `Dropdown` dispatch, not here.
 
 use crate::state::{self, PainterLayersPanelState};
+use decode::decode_blend_option;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
@@ -13,10 +14,9 @@ use ph2d_editor_core::tool::PanelEvent;
 use ph2d_tool_painter::ids::{
     PainterLayerWidget, painter_curve_add_id, painter_curve_editor_id, painter_curve_remove_id,
     painter_curve_tab_id, painter_gradient_add_id, painter_gradient_editor_id,
-    painter_gradient_remove_id, painter_layer_widget_id,
-    painter_mixer_tab_id, painter_selcolor_bucket_id,
+    painter_gradient_remove_id, painter_layer_widget_id, painter_mixer_tab_id,
+    painter_selcolor_bucket_id,
 };
-use decode::decode_blend_option;
 use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack};
 
 mod curve_drag;

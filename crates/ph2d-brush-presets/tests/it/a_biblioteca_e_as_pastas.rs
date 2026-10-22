@@ -74,7 +74,14 @@ fn o_do_utilizador_sobrepoe_e_o_reset_volta_a_fabrica() {
 #[test]
 fn a_serie_de_lapis_vem_da_mais_dura_a_mais_macia() {
     let fab = pasta("graus");
-    let nomes = ["Graphite 2B", "Graphite 2H", "Graphite 8B", "Graphite HB", "Graphite F", "Grain"];
+    let nomes = [
+        "Graphite 2B",
+        "Graphite 2H",
+        "Graphite 8B",
+        "Graphite HB",
+        "Graphite F",
+        "Grain",
+    ];
     for n in nomes {
         let rel = caminho_relativo("WetPainter", "Pencil", "Graphite", n);
         gravar(&fab, &rel, &preset(n, Origem::Fabrica)).unwrap();
@@ -83,7 +90,14 @@ fn a_serie_de_lapis_vem_da_mais_dura_a_mais_macia() {
     let ordem: Vec<&str> = bib.entradas.iter().map(|e| e.partes()[3]).collect();
     assert_eq!(
         ordem,
-        ["Grain", "Graphite 2H", "Graphite F", "Graphite HB", "Graphite 2B", "Graphite 8B"],
+        [
+            "Grain",
+            "Graphite 2H",
+            "Graphite F",
+            "Graphite HB",
+            "Graphite 2B",
+            "Graphite 8B"
+        ],
         "o grau ordena a série; o resto vai pelo nome"
     );
 }

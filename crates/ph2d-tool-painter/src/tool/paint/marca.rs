@@ -126,7 +126,11 @@ impl LinhaDaMarca {
     #[must_use]
     pub fn limpa(self, v: f64) -> f64 {
         let (lo, hi, _) = self.faixa();
-        if v.is_nan() { self.omissao() } else { v.clamp(lo, hi) }
+        if v.is_nan() {
+            self.omissao()
+        } else {
+            v.clamp(lo, hi)
+        }
     }
 }
 
@@ -212,7 +216,10 @@ impl super::PainterTool {
         let PanelEvent::SetValue(id, v) = event else {
             return false;
         };
-        let Some(i) = crate::ids::PAINTER_MARCA_FIELDS.iter().position(|f| f == id) else {
+        let Some(i) = crate::ids::PAINTER_MARCA_FIELDS
+            .iter()
+            .position(|f| f == id)
+        else {
             return false;
         };
         self.set_marca(LINHAS_DA_MARCA[i], *v);
@@ -240,7 +247,10 @@ mod tests {
     /// Os ids são os das linhas, pela ordem e pela chave; ler e voltar a escrever é a identidade.
     #[test]
     fn cada_linha_da_marca_tem_o_seu_id_e_volta() {
-        for (l, id) in LINHAS_DA_MARCA.into_iter().zip(crate::ids::PAINTER_MARCA_FIELDS) {
+        for (l, id) in LINHAS_DA_MARCA
+            .into_iter()
+            .zip(crate::ids::PAINTER_MARCA_FIELDS)
+        {
             let pela_chave = ph2d_tool_registry::hash_node_id_runtime(&format!(
                 "painter_brush.marca.{}",
                 l.chave()
@@ -321,9 +331,7 @@ mod pintura {
 
     /// As linhas com tinta na coluna do meio (`x = 100`): a altura da faixa.
     fn altura(px: &[u8]) -> usize {
-        (0..120)
-            .filter(|y| px[(y * 200 + 100) * 4] < 250)
-            .count()
+        (0..120).filter(|y| px[(y * 200 + 100) * 4] < 250).count()
     }
 
     /// ⭐ **A forma da marca CHEGA à tinta** (L4) nos meios que leem a pegada: a redondeza sorteada achata as

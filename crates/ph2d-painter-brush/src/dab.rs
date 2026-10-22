@@ -196,7 +196,9 @@ pub fn grain_at(
 ) -> f32 {
     let s = crate::texture::sample(&spec.texture, basis, px, py, center, radius, image);
     // O relevo e o Wet mordem com a ponta CHEIA (`w = 1`, L9): o Height e o Linear Height valem por inteiro.
-    spec.texture.lei.factor(1.0, s, spec.grain_depth(), spec.effective_granulation())
+    spec.texture
+        .lei
+        .factor(1.0, s, spec.grain_depth(), spec.effective_granulation())
         * crate::texture::stencil_gate(&spec.texture, basis, px, py)
 }
 
@@ -215,8 +217,12 @@ pub fn grain_at_na_ponta(
     w: f32,
 ) -> f32 {
     let s = crate::texture::sample(&spec.texture, basis, px, py, center, radius, image);
-    spec.texture.lei.factor(w.clamp(0.0, 1.0), s, spec.grain_depth(), spec.effective_granulation())
-        * crate::texture::stencil_gate(&spec.texture, basis, px, py)
+    spec.texture.lei.factor(
+        w.clamp(0.0, 1.0),
+        s,
+        spec.grain_depth(),
+        spec.effective_granulation(),
+    ) * crate::texture::stencil_gate(&spec.texture, basis, px, py)
 }
 
 /// Axis-aligned region of the buffer touched by a dab, in pixels (half-open: `[x, x+w)`).

@@ -182,7 +182,8 @@ impl PainterTool {
         // A rampa de cor da Shape pela QUEDA («Falloff Color»): a cor de cada píxel no perfil dele, o alfa binário.
         // A Texture Color e a rampa do Grain leem a textura, que a ponta de píxel não carimba (esmaecem).
         let p = &self.paint;
-        let rampa_viva = p.shape_color_ramp_enabled && !p.shape_color_ramp_bw && p.shape_camadas.alguma(false);
+        let rampa_viva =
+            p.shape_color_ramp_enabled && !p.shape_color_ramp_bw && p.shape_camadas.alguma(false);
         if rampa_viva {
             self.ensure_ramp_lut(super::ramp_lut::RampLutOwner::Shape);
         }
@@ -210,9 +211,16 @@ impl PainterTool {
                 shift: d.color_shift,
                 ..r
             });
-            if let Some(r) =
-                pixel::carimba(buf, w, h, d, &spec, alpha_locked, mask.as_deref_mut(), rampa.as_ref())
-            {
+            if let Some(r) = pixel::carimba(
+                buf,
+                w,
+                h,
+                d,
+                &spec,
+                alpha_locked,
+                mask.as_deref_mut(),
+                rampa.as_ref(),
+            ) {
                 let q = Region {
                     x: r.x,
                     y: r.y,
@@ -228,4 +236,3 @@ impl PainterTool {
         }
     }
 }
-

@@ -108,20 +108,40 @@ fn the_s_curve_softens_the_floor_and_the_ceiling_into_the_g_pen_ramp() {
     };
     for i in 0..=100 {
         let p = i as f32 / 100.0;
-        assert_eq!(Pen { s_curve: 0.0, ..recta }.read(p).to_bits(), recta.read(p).to_bits());
+        assert_eq!(
+            Pen {
+                s_curve: 0.0,
+                ..recta
+            }
+            .read(p)
+            .to_bits(),
+            recta.read(p).to_bits()
+        );
     }
     let s = Pen {
         s_curve: 1.0,
         ..recta
     };
     let (e, lo, hi) = (1e-3f32, 0.14f32, 0.86f32);
-    assert!((s.read(lo + e) - s.read(lo)) / e < 0.05, "o pé ainda tem quina");
-    assert!((s.read(hi) - s.read(hi - e)) / e < 0.05, "o ombro ainda tem quina");
-    assert!((recta.read(hi) - recta.read(hi - e)) / e > 1.0, "a recta tem a quina que o S tira");
+    assert!(
+        (s.read(lo + e) - s.read(lo)) / e < 0.05,
+        "o pé ainda tem quina"
+    );
+    assert!(
+        (s.read(hi) - s.read(hi - e)) / e < 0.05,
+        "o ombro ainda tem quina"
+    );
+    assert!(
+        (recta.read(hi) - recta.read(hi - e)) / e > 1.0,
+        "a recta tem a quina que o S tira"
+    );
     let mut antes = 0.0f32;
     for i in 0..=100 {
         let v = s.read(i as f32 / 100.0);
-        assert!(v >= antes && (0.0..=1.0).contains(&v), "não monótona a {i} %");
+        assert!(
+            v >= antes && (0.0..=1.0).contains(&v),
+            "não monótona a {i} %"
+        );
         antes = v;
     }
     let d = Dynamics {

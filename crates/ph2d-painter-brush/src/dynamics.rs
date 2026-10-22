@@ -166,7 +166,8 @@ impl Dynamics {
             return 0.0;
         }
         let k = self.speed_hardness.min(VELOCIDADE_EXPOENTE_MAX);
-        k * ((DUREZA_GAMA_PX_S + VELOCIDADE_DE_REFERENCIA_PX_S) / (DUREZA_GAMA_PX_S + v.max(0.0))).ln()
+        k * ((DUREZA_GAMA_PX_S + VELOCIDADE_DE_REFERENCIA_PX_S) / (DUREZA_GAMA_PX_S + v.max(0.0)))
+            .ln()
     }
 
     /// A dureza que a MÃO soma à do pincel neste dab: a da pressão `p` ([`Self::pressure_hardness`]) e a da
@@ -266,10 +267,17 @@ mod tests {
     /// diferença à de 300 px/s, ± 0,005; e `0` sem a linha.
     #[test]
     fn a_dureza_da_velocidade_e_a_curva_do_mypaint() {
-        let d = Dynamics { speed_hardness: 0.04 * 0.939, ..Dynamics::default() };
+        let d = Dynamics {
+            speed_hardness: 0.04 * 0.939,
+            ..Dynamics::default()
+        };
         for (v, mypaint) in [(0.0, 0.238), (300.0, 0.129), (2500.0, 0.051)] {
             let dh = d.dureza_da_velocidade(v);
-            assert!((dh - (mypaint - 0.129)).abs() < 0.005, "v {v}: {dh} × {}", mypaint - 0.129);
+            assert!(
+                (dh - (mypaint - 0.129)).abs() < 0.005,
+                "v {v}: {dh} × {}",
+                mypaint - 0.129
+            );
         }
         assert_eq!(Dynamics::default().dureza_da_velocidade(0.0), 0.0);
     }

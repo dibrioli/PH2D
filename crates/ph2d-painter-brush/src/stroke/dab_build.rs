@@ -193,7 +193,9 @@ impl Stroke {
         };
         // O tecto da partícula em px (J4): o espalhamento acima já leu o raio do pincel.
         let radius = if jitter {
-            self.spec.dab_jitter.com_tecto(self.spec.spray_count, radius)
+            self.spec
+                .dab_jitter
+                .com_tecto(self.spec.spray_count, radius)
         } else {
             radius
         };
@@ -263,7 +265,9 @@ impl Stroke {
         }
         // A dureza pela pressão e pela velocidade (J4 efeitos): viaja na pegada do dab (`DabTilt::dureza`, lida por
         // `at_dab`).
-        let dureza = self.dynamics.dureza_da_mao(pressure, self.velocidade_do_dab());
+        let dureza = self
+            .dynamics
+            .dureza_da_mao(pressure, self.velocidade_do_dab());
         if dureza != 0.0 {
             let t = dab.tilt.unwrap_or(crate::DabTilt::NEUTRA);
             dab.tilt = Some(crate::DabTilt { dureza, ..t });
@@ -272,10 +276,10 @@ impl Stroke {
         // viaja na pegada (`DabTilt::imagem`), e o tool carimba cada uma com a sua.
         if self.spec.hose.ativa() {
             let u = crate::jitter::next_f32(&mut self.por_traco.rng_imagem);
-            let k = self
-                .spec
-                .hose
-                .escolhe(pressure, self.heading, u, &mut self.por_traco.seq_imagem);
+            let k =
+                self.spec
+                    .hose
+                    .escolhe(pressure, self.heading, u, &mut self.por_traco.seq_imagem);
             let t = dab.tilt.unwrap_or(crate::DabTilt::NEUTRA);
             dab.tilt = Some(crate::DabTilt { imagem: k, ..t });
         }
@@ -311,7 +315,12 @@ impl Stroke {
     /// jitter unit: `Brush` → radius `jitter × diameter`; `View` → radius `2 × jitter_absolute_px`
     /// (Blender `BKE_brush_jitter_pos`). No-op for methods that disable jitter (DragDot/Anchored).
     /// Devolve também o raio do disco (`0` = sem Jitter) — o [`crate::capsula::Salto`] do dab.
-    pub(super) fn apply_jitter(&mut self, pos: [f32; 2], radius: f32, extra: f32) -> ([f32; 2], f32) {
+    pub(super) fn apply_jitter(
+        &mut self,
+        pos: [f32; 2],
+        radius: f32,
+        extra: f32,
+    ) -> ([f32; 2], f32) {
         if !self.spec.stroke_method.allows_jitter() {
             return (pos, 0.0);
         }

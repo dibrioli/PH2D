@@ -59,7 +59,11 @@ fn so_valores_zero_e_um_na_camada() {
         for modo in [1.0, 2.0] {
             let (frac, cor, tinta) = fraccoes(&traco(r, modo));
             assert!(tinta > 50, "raio {r} modo {modo}: pintou só {tinta} px");
-            assert_eq!((frac, cor), (0, 0), "raio {r} modo {modo}: fracções/cores fora");
+            assert_eq!(
+                (frac, cor),
+                (0, 0),
+                "raio {r} modo {modo}: fracções/cores fora"
+            );
         }
     }
 }
@@ -103,14 +107,27 @@ fn a_largura_da_ponta_de_pixel_e_inteira() {
     let um = alturas(&recto(0.5, 2.0));
     assert!(um.iter().all(|&a| a == 1), "1 px perfeito: {um:?}");
     let hoje_um = alturas(&recto(0.5, 0.0));
-    assert!(hoje_um.iter().filter(|&&a| a >= 2).count() > 60, "o controlo: hoje o «1 px» já pinta 1? {hoje_um:?}");
+    assert!(
+        hoje_um.iter().filter(|&&a| a >= 2).count() > 60,
+        "o controlo: hoje o «1 px» já pinta 1? {hoje_um:?}"
+    );
     for (r, d) in [(1.0, 2), (1.5, 3), (2.5, 5)] {
         let hoje = alturas(&recto(r, 0.0));
         let px = alturas(&recto(r, 1.0));
         let (lo, hi) = (*px.iter().min().unwrap(), *px.iter().max().unwrap());
-        println!("[pixel] r {r}: hoje {:?} · pixel {lo}..{hi}", (hoje.iter().min(), hoje.iter().max()));
-        assert!(lo == d && hi <= d + 1, "r {r}: colunas {lo}..{hi} ≠ {d}..{}", d + 1);
-        assert!(hoje.iter().any(|&a| a < d), "o controlo: hoje nenhuma coluna afina abaixo de {d} (r {r})");
+        println!(
+            "[pixel] r {r}: hoje {:?} · pixel {lo}..{hi}",
+            (hoje.iter().min(), hoje.iter().max())
+        );
+        assert!(
+            lo == d && hi <= d + 1,
+            "r {r}: colunas {lo}..{hi} ≠ {d}..{}",
+            d + 1
+        );
+        assert!(
+            hoje.iter().any(|&a| a < d),
+            "o controlo: hoje nenhuma coluna afina abaixo de {d} (r {r})"
+        );
     }
 }
 
@@ -187,7 +204,10 @@ fn a_ponta_desligada_e_o_carimbo_de_hoje() {
     let mut t = PainterTool::default();
     t.set_ponta(LinhaDaPonta::Pixel, 0.0);
     assert_eq!(t.ponta(), ph2d_tool_painter::PONTA_DE_FABRICA);
-    assert_eq!(PainterTool::default().ponta(), ph2d_tool_painter::PONTA_DE_FABRICA);
+    assert_eq!(
+        PainterTool::default().ponta(),
+        ph2d_tool_painter::PONTA_DE_FABRICA
+    );
 }
 
 /// Um traço de píxel (raio 4) na camada TRANSPARENTE com `f` a armar o pincel; a tela.
@@ -226,8 +246,15 @@ fn a_ponta_de_pixel_honra_o_modo_sobre_o_vazio() {
     });
     let sem = traco_com(|t| t.set_brush_blend(multiply));
     let (frac, cor, tinta) = fraccoes(&com);
-    assert!(tinta > 200 && frac == 0 && cor == 0, "com o vazio: {tinta} px, {frac} fracções, {cor} cores");
-    assert_eq!(fraccoes(&sem).2, 0, "sem o vazio o Multiply pintou no transparente");
+    assert!(
+        tinta > 200 && frac == 0 && cor == 0,
+        "com o vazio: {tinta} px, {frac} fracções, {cor} cores"
+    );
+    assert_eq!(
+        fraccoes(&sem).2,
+        0,
+        "sem o vazio o Multiply pintou no transparente"
+    );
 }
 
 /// ⭐ **A ponta de píxel pinta a cor da rampa da QUEDA** («Falloff Color»): cada píxel tem a cor da rampa no perfil
@@ -244,8 +271,15 @@ fn a_ponta_de_pixel_pinta_a_cor_da_rampa_da_queda() {
         .collect();
     cores.sort_unstable();
     cores.dedup();
-    assert!(px.chunks_exact(4).all(|p| p[3] == 0 || p[3] == 255), "alfa fraccionário");
-    assert!(cores.len() >= 3, "a rampa não chegou: {} cores {cores:?}", cores.len());
+    assert!(
+        px.chunks_exact(4).all(|p| p[3] == 0 || p[3] == 255),
+        "alfa fraccionário"
+    );
+    assert!(
+        cores.len() >= 3,
+        "a rampa não chegou: {} cores {cores:?}",
+        cores.len()
+    );
 }
 
 /// ⭐ **Desligar a ponta de píxel repõe o piso do raio**: o 1 px (raio 0,5) é só dela; a ponta com AA volta a 1.
@@ -257,7 +291,11 @@ fn desligar_a_ponta_de_pixel_repoe_o_raio() {
     t.set_brush_size_px(0.5);
     assert_eq!(t.brush_size_px(), 0.5);
     t.set_ponta(LinhaDaPonta::Pixel, 0.0);
-    assert_eq!(t.brush_size_px(), 1.0, "o raio ficou abaixo do piso da ponta com AA");
+    assert_eq!(
+        t.brush_size_px(),
+        1.0,
+        "o raio ficou abaixo do piso da ponta com AA"
+    );
 }
 
 /// ⭐ **Com a ponta de píxel o grão, a Shape e as N imagens ESMAECEM — e não agem**: a dica está nas linhas (o Grain,
@@ -278,11 +316,19 @@ fn com_a_ponta_de_pixel_o_grao_a_shape_e_as_imagens_esmaecem() {
         t.set_ponta(LinhaDaPonta::Pixel, pixel);
         let inercias = t.brush_settings().inercias;
         for id in linhas {
-            assert_eq!(inercias.dica_de(id).is_some(), pixel > 0.0, "pixel {pixel}: {id:?}");
+            assert_eq!(
+                inercias.dica_de(id).is_some(),
+                pixel > 0.0,
+                "pixel {pixel}: {id:?}"
+            );
         }
     }
     let lado = 8u32;
-    let img = |c: u8| -> Vec<u8> { (0..lado * lado).flat_map(|i| [c, c, c, if i % 3 == 0 { 0 } else { 255 }]).collect() };
+    let img = |c: u8| -> Vec<u8> {
+        (0..lado * lado)
+            .flat_map(|i| [c, c, c, if i % 3 == 0 { 0 } else { 255 }])
+            .collect()
+    };
     let hoje = traco_com(|_| {});
     let armado = traco_com(|t| {
         t.set_brush_texture_kind(27);
@@ -292,5 +338,8 @@ fn com_a_ponta_de_pixel_o_grao_a_shape_e_as_imagens_esmaecem() {
         t.add_brush_shape_hose_image_rgba(&img(90), lado, lado);
         t.set_brush_color_srgb8([255, 0, 0]);
     });
-    assert!(hoje == armado, "o grão, a Shape ou as imagens mudaram a tinta de píxel");
+    assert!(
+        hoje == armado,
+        "o grão, a Shape ou as imagens mudaram a tinta de píxel"
+    );
 }

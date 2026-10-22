@@ -122,7 +122,8 @@ pub(crate) fn paint_shape_section(
     //    Squishes/rotates the whole dab footprint (falloff + Shape + View-Grain). ──
     y = crate::paint_shape_dab::paint_shape_dab_gizmo(ctx, theme, x, content_w, y, brush);
     // ── A ponta de PÍXEL (L18): o carimbo binário alinhado à grelha — só o Digital a lê. ──
-    if ph2d_tool_painter::PaintMedia::from_u8(brush.media) == ph2d_tool_painter::PaintMedia::Digital {
+    if ph2d_tool_painter::PaintMedia::from_u8(brush.media) == ph2d_tool_painter::PaintMedia::Digital
+    {
         y = crate::ponta_linhas::paint_linhas_da_ponta(
             ctx,
             theme,

@@ -179,7 +179,15 @@ pub fn carimba(
     cobre(c, d, fp, w, h, |px, py, t| {
         let cor = match ramp {
             Some(r) => {
-                let x = crate::ramp_alpha::ramp_texel(Some(r), spec.falloff_weight(t), None, None, 0.0, 0.0, &neutra);
+                let x = crate::ramp_alpha::ramp_texel(
+                    Some(r),
+                    spec.falloff_weight(t),
+                    None,
+                    None,
+                    0.0,
+                    0.0,
+                    &neutra,
+                );
                 if x.g * x.stamp_alpha < 0.5 {
                     return;
                 }
@@ -197,8 +205,14 @@ pub fn carimba(
         let i = p * 4;
         let prev = [0, 1, 2, 3].map(|k| f32::from(buf[i + k]) / 255.0);
         let a = if preserve_alpha { a * prev[3] } else { a };
-        let out =
-            crate::blend_vazio::blend_over_pigment_modo(spec.blend, prev, cor, a, mix, spec.blend_sobre_vazio);
+        let out = crate::blend_vazio::blend_over_pigment_modo(
+            spec.blend,
+            prev,
+            cor,
+            a,
+            mix,
+            spec.blend_sobre_vazio,
+        );
         for k in 0..4 {
             buf[i + k] = crate::dab::encode(out[k]);
         }
@@ -225,7 +239,14 @@ mod tests {
             for c in [[10.0, 10.0], [10.3, 10.7], [10.49, 9.51]] {
                 let a = ancora(c, d);
                 let mut k = 0;
-                cobre(centro(a, d), d, FootprintDeform::identity(), 40, 40, |_, _, _| k += 1);
+                cobre(
+                    centro(a, d),
+                    d,
+                    FootprintDeform::identity(),
+                    40,
+                    40,
+                    |_, _, _| k += 1,
+                );
                 assert_eq!(k, n, "d {d} em {c:?}");
             }
         }

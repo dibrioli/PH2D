@@ -323,7 +323,11 @@ fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f
     use super::super::wetpaint_settings::WetTool;
     const VERMELHO: [u8; 3] = [191, 0, 18];
     use ph2d_wet_paint::tuning::Knob;
-    let (raio, blend, cor) = (t.paint.brush.radius_px, t.paint.brush.blend, t.brush_color_srgb8());
+    let (raio, blend, cor) = (
+        t.paint.brush.radius_px,
+        t.paint.brush.blend,
+        t.brush_color_srgb8(),
+    );
     let (forca, knobs) = (t.paint.brush.strength, t.paint.wetpaint.knobs);
     let (fluxo, soma) = (t.paint.brush.flow, t.paint.brush.accumulate);
     // A faixa é tinta CHEIA (a força da borracha macia, o pigmento da aguarela da ferramenta, o fluxo da velatura de um
@@ -332,7 +336,10 @@ fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f
     (t.paint.brush.flow, t.paint.brush.accumulate) = (1.0, false);
     // No Wet: os knobs do pincel SEM preset (o Wet Round: as cerdas dele), com pigmento e água de tinta de corpo.
     t.paint.wetpaint.knobs = WetKnobs::DEFAULT;
-    t.paint.wetpaint.knobs.set(Knob::PigmentPerDab, PIGMENTO_DA_FAIXA);
+    t.paint
+        .wetpaint
+        .knobs
+        .set(Knob::PigmentPerDab, PIGMENTO_DA_FAIXA);
     t.paint.wetpaint.knobs.water = AGUA_DA_FAIXA;
     t.paint.brush.blend = ph2d_painter_brush::BrushBlend::Mix;
     t.paint.wetpaint.tool = WetTool::Paint;
@@ -341,7 +348,11 @@ fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f
     let n = ((x1 - x0) / PASSO_PX).ceil() as u32;
     t.on_canvas_pointer(ponto([x0, cy], 1.0, PointerPhase::Down));
     for k in 1..=n {
-        t.on_canvas_pointer(ponto([x0 + (x1 - x0) * k as f32 / n as f32, cy], 1.0, PointerPhase::Move));
+        t.on_canvas_pointer(ponto(
+            [x0 + (x1 - x0) * k as f32 / n as f32, cy],
+            1.0,
+            PointerPhase::Move,
+        ));
         t.on_tick(TICK_MS);
     }
     t.on_canvas_pointer(ponto([x1, cy], 1.0, PointerPhase::Up));

@@ -634,7 +634,9 @@ impl Stroke {
         if !self.spec.taper.is_active() || !self.taper_head {
             return 1.0;
         }
-        self.spec.taper.fade_blunt(arc, 2.0 * self.spec.clamped_radius())
+        self.spec
+            .taper
+            .fade_blunt(arc, 2.0 * self.spec.clamped_radius())
     }
 
     /// The live **stroke heading** (unit vector; `[0, 0]` = not established yet), i.e. the direction the

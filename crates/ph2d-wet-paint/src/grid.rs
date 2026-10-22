@@ -25,10 +25,10 @@ pub use scratch::{AdvCell, SolverScratch};
 
 #[path = "grid/altura.rs"]
 pub mod altura;
-#[path = "grid/traco.rs"]
-pub mod traco;
 #[path = "grid/patch.rs"]
-mod patch; // o campo PREGUIÇOSO da altura dos fios (W3) — filho por LOC
+mod patch;
+#[path = "grid/traco.rs"]
+pub mod traco; // o campo PREGUIÇOSO da altura dos fios (W3) — filho por LOC
 pub use patch::{GridPatch, restore_grid_region, snapshot_grid_region};
 
 pub const DEFAULT_WIDTH: usize = 900;

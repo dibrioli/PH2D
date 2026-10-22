@@ -47,7 +47,14 @@ pub const WET: &[Receita] = &[
             ("size_max_px", TECTO_DO_LAPIS),
         ],
         grao: None,
-        ..lapis("Graphite", "Graphite 2H", 58.0, 0.18, GRAO_DURO, extras_do_lapis!(0.5, 1.5))
+        ..lapis(
+            "Graphite",
+            "Graphite 2H",
+            58.0,
+            0.18,
+            GRAO_DURO,
+            extras_do_lapis!(0.5, 1.5),
+        )
     },
     Receita {
         pincel: &[
@@ -59,7 +66,14 @@ pub const WET: &[Receita] = &[
             ("size_max_px", TECTO_DO_LAPIS),
         ],
         grao: None,
-        ..lapis("Graphite", "Graphite HB", 100.0, 0.18, GRAO_DURO, extras_do_lapis!(0.5, 2.0))
+        ..lapis(
+            "Graphite",
+            "Graphite HB",
+            100.0,
+            0.18,
+            GRAO_DURO,
+            extras_do_lapis!(0.5, 2.0),
+        )
     },
     // O 2B: o grão de 2 px (Size 128), o papel a 0,4 e a curva do tamanho 0,4 (com a orla a 0,25 a rampa da
     // pressão saía a 0,19 da do Rebelle, `a_pressao_de_cada_preset_e_a_da_sua_origem`; a 0,4, 0,09).
@@ -73,7 +87,14 @@ pub const WET: &[Receita] = &[
             ("size_max_px", TECTO_DO_LAPIS),
         ],
         grao: None,
-        ..lapis("Graphite", "Graphite 2B", 120.0, 0.4, GRAO_MACIO, extras_do_lapis!(0.4, 2.0))
+        ..lapis(
+            "Graphite",
+            "Graphite 2B",
+            120.0,
+            0.4,
+            GRAO_MACIO,
+            extras_do_lapis!(0.4, 2.0),
+        )
     },
 ];
 
@@ -170,14 +191,19 @@ mod portoes {
     /// 6–7 px no recto de 40 px; o ruído do grão sozinho dá ~0,03 com 1–2 px.
     pub(super) fn onda(c: &[f64], y: usize, h: usize) -> (f64, usize) {
         let col = |x: usize| -> Vec<f64> { (y - h..=y + h).map(|yy| c[yy * 1000 + x]).collect() };
-        let picos: Vec<f64> = (148..852).map(|x| col(x).into_iter().fold(0.0, f64::max)).collect();
+        let picos: Vec<f64> = (148..852)
+            .map(|x| col(x).into_iter().fold(0.0, f64::max))
+            .collect();
         let mut p = picos.clone();
         p.sort_by(f64::total_cmp);
         let limiar = 0.25 * p[(0.9 * (p.len() - 1) as f64) as usize];
         let (mut t, mut b) = (Vec::new(), Vec::new());
         for x in 148..852 {
             let v = col(x);
-            if let (Some(a), Some(z)) = (v.iter().position(|&q| q >= limiar), v.iter().rposition(|&q| q >= limiar)) {
+            if let (Some(a), Some(z)) = (
+                v.iter().position(|&q| q >= limiar),
+                v.iter().rposition(|&q| q >= limiar),
+            ) {
                 t.push(a as f64);
                 b.push(z as f64);
             }
@@ -189,9 +215,17 @@ mod portoes {
             let n = e.len() as f64;
             let xm = (n - 1.0) / 2.0;
             let em = e.iter().sum::<f64>() / n;
-            let sxy: f64 = e.iter().enumerate().map(|(i, v)| (i as f64 - xm) * (v - em)).sum();
+            let sxy: f64 = e
+                .iter()
+                .enumerate()
+                .map(|(i, v)| (i as f64 - xm) * (v - em))
+                .sum();
             let sxx: f64 = (0..e.len()).map(|i| (i as f64 - xm).powi(2)).sum();
-            let r: Vec<f64> = e.iter().enumerate().map(|(i, v)| v - em - sxy / sxx * (i as f64 - xm)).collect();
+            let r: Vec<f64> = e
+                .iter()
+                .enumerate()
+                .map(|(i, v)| v - em - sxy / sxx * (i as f64 - xm))
+                .collect();
             let var = r.iter().map(|v| v * v).sum::<f64>() / n;
             let ac = |k: usize| {
                 r.windows(k + 1).map(|q| q[0] * q[k]).sum::<f64>() / (n - k as f64) / var.max(1e-12)
@@ -221,7 +255,10 @@ mod portoes {
             .split(',')
             .enumerate()
             .flat_map(|(i, n)| {
-                std::iter::once("").chain(kvs.split('|')).enumerate().map(move |(j, k)| (i, j, n.to_owned(), k.to_owned()))
+                std::iter::once("")
+                    .chain(kvs.split('|'))
+                    .enumerate()
+                    .map(move |(j, k)| (i, j, n.to_owned(), k.to_owned()))
             })
             .collect()
     }
@@ -248,7 +285,8 @@ mod portoes {
     const ONDA_MIN: f64 = 0.04;
     const GRAFITES: [&str; 4] = ["Graphite 2H", "Graphite HB", "Graphite 2B", "Graphite 8B"];
     /// O colar a 5 px do Rebelle (cv · ac, `fixtures/leis_escala_rebelle.json` e `o_grao_do_lapis::AC5_DO_REBELLE`).
-    const FINO_DO_REBELLE: [(&str, f64, f64); 2] = [("Graphite 2H", 0.061, 0.24), ("Graphite HB", 0.066, 0.24)];
+    const FINO_DO_REBELLE: [(&str, f64, f64); 2] =
+        [("Graphite 2H", 0.061, 0.24), ("Graphite HB", 0.066, 0.24)];
     /// ⚠️ A folga da autocorrelação a 5 px sobre a do Rebelle (0,24): o CHÃO do Wet a 5 px, sem a orla nem os tufos, é
     /// 0,68 (o HB, 3.ª ronda); o 0,34 da 2.ª ronda vinha do defeito da 2.ª ponta atrás da 1.ª (os dabs cortados ao
     /// acaso), curado; a forma da orla a 0,8 levava-o a 0,33 mas a Textura da mídia a 8,2–8,7 (o vale vai a 6,9).
@@ -265,18 +303,25 @@ mod portoes {
     #[test]
     fn os_grafites_sao_uma_familia_com_a_borda_do_rebelle() {
         let m: Vec<_> = std::thread::scope(|s| {
-            let hs: Vec<_> = GRAFITES.iter().map(|&n| s.spawn(move || medidas(&pinceis(n).remove(0)))).collect();
+            let hs: Vec<_> = GRAFITES
+                .iter()
+                .map(|&n| s.spawn(move || medidas(&pinceis(n).remove(0))))
+                .collect();
             hs.into_iter().map(|h| h.join().unwrap()).collect()
         });
         let mut falhas = Vec::new();
         for (n, ((o, lag), (cv5, ac5), cob)) in GRAFITES.iter().zip(&m) {
-            println!("[grafite] {n:<12} onda {o:.3} ({lag} px) · cv5 {cv5:.3} ac5 {ac5:.2} · cob40 {cob:.3}");
+            println!(
+                "[grafite] {n:<12} onda {o:.3} ({lag} px) · cv5 {cv5:.3} ac5 {ac5:.2} · cob40 {cob:.3}"
+            );
             if *o < ONDA_MIN || *lag < 4 {
                 falhas.push(format!("{n}: a borda não ondula ({o:.3}, {lag} px)"));
             }
             if let Some(&(_, rc, ra)) = FINO_DO_REBELLE.iter().find(|f| f.0 == *n) {
                 if *cv5 > 1.6 * rc || *ac5 > ra + AC5_FOLGA {
-                    falhas.push(format!("{n}: o grão a 5 px não é o fino fraco (cv {cv5:.3}, ac {ac5:.2})"));
+                    falhas.push(format!(
+                        "{n}: o grão a 5 px não é o fino fraco (cv {cv5:.3}, ac {ac5:.2})"
+                    ));
                 }
             }
         }
@@ -284,7 +329,11 @@ mod portoes {
         let tom = cob("Graphite 2H") / cob("Graphite HB");
         println!("[grafite] tom 2H ÷ HB {tom:.3} (alvo {TOM_2H_SOBRE_HB:.3})");
         if (tom - TOM_2H_SOBRE_HB).abs() > 0.08 || cob("Graphite HB") >= cob("Graphite 8B") {
-            falhas.push(format!("o eixo de dureza: 2H ÷ HB {tom:.3}, HB {:.3} · 8B {:.3}", cob("Graphite HB"), cob("Graphite 8B")));
+            falhas.push(format!(
+                "o eixo de dureza: 2H ÷ HB {tom:.3}, HB {:.3} · 8B {:.3}",
+                cob("Graphite HB"),
+                cob("Graphite 8B")
+            ));
         }
         assert!(falhas.is_empty(), "{falhas:?}");
     }
@@ -292,13 +341,18 @@ mod portoes {
     /// A largura mediana do recto horizontal em `y` (±`h`): o limiar a ¼ do p90 dos picos das colunas 148..852.
     fn largura(c: &[f64], y: usize, h: usize) -> f64 {
         let col = |x: usize| -> Vec<f64> { (y - h..=y + h).map(|yy| c[yy * 1000 + x]).collect() };
-        let mut p: Vec<f64> = (148..852).map(|x| col(x).into_iter().fold(0.0, f64::max)).collect();
+        let mut p: Vec<f64> = (148..852)
+            .map(|x| col(x).into_iter().fold(0.0, f64::max))
+            .collect();
         p.sort_by(f64::total_cmp);
         let limiar = 0.25 * p[(0.9 * (p.len() - 1) as f64) as usize];
         let mut w: Vec<f64> = (148..852)
             .filter_map(|x| {
                 let v = col(x);
-                Some((v.iter().rposition(|&q| q >= limiar)? - v.iter().position(|&q| q >= limiar)? + 1) as f64)
+                Some(
+                    (v.iter().rposition(|&q| q >= limiar)? - v.iter().position(|&q| q >= limiar)?
+                        + 1) as f64,
+                )
             })
             .collect();
         w.sort_by(f64::total_cmp);
@@ -317,10 +371,24 @@ mod portoes {
     /// pincel sem tecto (o Wet Round) continua a ir aos 200. O controlo por dentro: o HB SEM o campo volta aos ~147.
     #[test]
     fn o_tecto_do_preset_pinta_o_grafite_ao_tamanho_do_rebelle() {
-        let pre = |n: &str| format!("PENCIL/graphite_pencil_{}", n.trim_start_matches("Graphite ").to_lowercase());
+        let pre = |n: &str| {
+            format!(
+                "PENCIL/graphite_pencil_{}",
+                n.trim_start_matches("Graphite ").to_lowercase()
+            )
+        };
         let m: Vec<_> = std::thread::scope(|s| {
-            let mut hs: Vec<_> = GRAFITES.iter().map(|&n| s.spawn(move || larguras(&pinceis(n).remove(0)))).collect();
-            hs.push(s.spawn(|| larguras(&com_campo("Graphite HB", "size_max_px", serde_json::Value::Null))));
+            let mut hs: Vec<_> = GRAFITES
+                .iter()
+                .map(|&n| s.spawn(move || larguras(&pinceis(n).remove(0))))
+                .collect();
+            hs.push(s.spawn(|| {
+                larguras(&com_campo(
+                    "Graphite HB",
+                    "size_max_px",
+                    serde_json::Value::Null,
+                ))
+            }));
             hs.into_iter().map(|h| h.join().unwrap()).collect()
         });
         let mut falhas = Vec::new();
@@ -329,21 +397,30 @@ mod portoes {
                 crate::as_leis_da_escala::rebelle(&pre(n), "recto_40", "larg"),
                 crate::as_leis_da_escala::rebelle(&pre(n), "recto_200", "larg"),
             );
-            println!("[tecto] {n:<12} 40: {w40:.0} (Rebelle {r40:.0}) · 200: {w200:.0} (Rebelle {r200:.0})");
+            println!(
+                "[tecto] {n:<12} 40: {w40:.0} (Rebelle {r40:.0}) · 200: {w200:.0} (Rebelle {r200:.0})"
+            );
             // Abaixo do tecto o Size é o que se pede (o nosso 40 pinta 40; o do Rebelle, 0,75 do que diz, 30).
             if (w200 - r200).abs() > (0.1 * r200).max(4.0) || (w40 - 40.0).abs() > 3.0 {
-                falhas.push(format!("{n}: 200 px pinta {w200:.0} (Rebelle {r200:.0}), 40 px {w40:.0} ({r40:.0})"));
+                falhas.push(format!(
+                    "{n}: 200 px pinta {w200:.0} (Rebelle {r200:.0}), 40 px {w40:.0} ({r40:.0})"
+                ));
             }
         }
         let sem = m[GRAFITES.len()].1;
         println!("[tecto] HB sem o campo: 200 → {sem:.0}");
         if sem < 120.0 {
-            falhas.push(format!("sem o campo o HB ainda pára ({sem:.0}): o portão não mede o tecto"));
+            falhas.push(format!(
+                "sem o campo o HB ainda pára ({sem:.0}): o portão não mede o tecto"
+            ));
         }
         // O painel: o Size do HB não passa do tecto; o do Wet Round (sem tecto) vai aos 200.
         let slider = |n: &str| {
             let mut t = ph2d_tool_painter::PainterTool::default();
-            assert!(t.wet_preset_aplicar(&crate::midias_de_fabrica::de_fabrica(n)).is_empty());
+            assert!(
+                t.wet_preset_aplicar(&crate::midias_de_fabrica::de_fabrica(n))
+                    .is_empty()
+            );
             t.set_brush_size_px(100.0);
             let b = t.brush_settings();
             (b.size_px * 2.0, b.size_max_px * 2.0)
@@ -353,12 +430,17 @@ mod portoes {
         println!("[tecto] Size pedido 200: HB {hb} (tecto do painel {hb_max}) · Wet Round {wr}");
         let tecto: f32 = super::TECTO_DO_LAPIS.parse().unwrap();
         if (hb - tecto).abs() > 0.01 || hb_max != hb || (wr - 200.0).abs() > 0.01 {
-            falhas.push(format!("o Size do painel: HB {hb} (tecto {hb_max}), Wet Round {wr}"));
+            falhas.push(format!(
+                "o Size do painel: HB {hb} (tecto {hb_max}), Wet Round {wr}"
+            ));
         }
         // Um preset que NÃO fixa o Size (fica o do artista, 200) e traz o tecto: o Size desce ao tecto ao aplicá-lo.
         let herdado = {
             let mut t = ph2d_tool_painter::PainterTool::default();
-            assert!(t.wet_preset_aplicar(&crate::midias_de_fabrica::de_fabrica("Wet Round")).is_empty());
+            assert!(
+                t.wet_preset_aplicar(&crate::midias_de_fabrica::de_fabrica("Wet Round"))
+                    .is_empty()
+            );
             t.set_brush_size_px(100.0);
             let mut hb = crate::midias_de_fabrica::de_fabrica("Graphite HB");
             hb.parametros.volumes.size_px = None;
@@ -380,13 +462,23 @@ mod portoes {
             "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [64.0, 64.0],
             "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]});
         let (o, cv5) = std::thread::scope(|s| {
-            let a = s.spawn(|| medidas(&com_campo("Graphite HB", "dual", serde_json::Value::Null)).0.0);
+            let a = s.spawn(|| {
+                medidas(&com_campo("Graphite HB", "dual", serde_json::Value::Null))
+                    .0
+                    .0
+            });
             let b = s.spawn(|| medidas(&com_campo("Graphite HB", "texture", antes)).1.0);
             (a.join().unwrap(), b.join().unwrap())
         });
         println!("[grafite] sem a orla: onda {o:.3} · grão de antes: cv5 {cv5:.3}");
-        assert!(o < ONDA_MIN, "sem o dual a borda ainda ondula ({o:.3}): o portão não mede a orla");
-        assert!(cv5 > 1.6 * 0.066, "com o grão de antes o cv5 {cv5:.3} passa: o portão não mede o grão fino");
+        assert!(
+            o < ONDA_MIN,
+            "sem o dual a borda ainda ondula ({o:.3}): o portão não mede a orla"
+        );
+        assert!(
+            cv5 > 1.6 * 0.066,
+            "com o grão de antes o cv5 {cv5:.3} passa: o portão não mede o grão fino"
+        );
     }
 
     /// O preset de fábrica `nome` com as variantes `kv` (`c=` contraste do grão · `grao=` o Size · `pig=` a carga ·
@@ -425,7 +517,9 @@ mod portoes {
                 "sc" => b.get_mut("shape").unwrap()["params"][0] = serde_json::json!(v),
                 // O perfil da 1.ª ponta pelo índice de `Falloff` (0 Smooth · 1 Smoother · 2 Sphere · 3 Root · 4 Sharp · 5 Linear · 6 Pow4).
                 "fo" => {
-                    let n = ["Smooth", "Smoother", "Sphere", "Root", "Sharp", "Linear", "Pow4"][v as usize];
+                    let n = [
+                        "Smooth", "Smoother", "Sphere", "Root", "Sharp", "Linear", "Pow4",
+                    ][v as usize];
                     b.insert("falloff".into(), serde_json::json!(n));
                 }
                 "jit" => {
@@ -457,7 +551,10 @@ mod portoes {
     fn lento_e_rapido(p: &Pincel) -> (f64, f64) {
         let c = cobertura(&crate::as_leis_da_escala::cena(p, "gestos"));
         let media = |x0: usize, x1: usize| {
-            let v: Vec<f64> = (80..=100).flat_map(|y| (x0..x1).map(move |x| (y, x))).map(|(y, x)| c[y * 1000 + x]).collect();
+            let v: Vec<f64> = (80..=100)
+                .flat_map(|y| (x0..x1).map(move |x| (y, x)))
+                .map(|(y, x)| c[y * 1000 + x])
+                .collect();
             v.iter().sum::<f64>() / v.len() as f64
         };
         (media(160, 460), media(700, 880))
@@ -470,12 +567,18 @@ mod portoes {
     #[test]
     fn o_rapido_pousa_o_que_o_lento_pousa() {
         let m: Vec<_> = std::thread::scope(|s| {
-            let hs: Vec<_> = GRAFITES.iter().map(|&n| s.spawn(move || lento_e_rapido(&pinceis(n).remove(0)))).collect();
+            let hs: Vec<_> = GRAFITES
+                .iter()
+                .map(|&n| s.spawn(move || lento_e_rapido(&pinceis(n).remove(0))))
+                .collect();
             hs.into_iter().map(|h| h.join().unwrap()).collect()
         });
         let mut falhas = Vec::new();
         for (n, (l, r)) in GRAFITES.iter().zip(&m) {
-            println!("[velocidade] {n:<12} lento {l:.3} · rápido {r:.3} · ÷ {:.3}", r / l);
+            println!(
+                "[velocidade] {n:<12} lento {l:.3} · rápido {r:.3} · ÷ {:.3}",
+                r / l
+            );
             if (r / l - 1.0).abs() > 0.03 {
                 falhas.push(format!("{n}: o rápido ÷ o lento {:.3}", r / l));
             }
@@ -488,13 +591,26 @@ mod portoes {
     fn espiral(p: &Pincel) -> f64 {
         let c = cobertura(&crate::as_leis_da_escala::cena(p, "gestos"));
         let bat = crate::exame_bancada::bateria();
-        let cena = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "gestos").unwrap();
-        let op = cena["ops"].as_array().unwrap().iter().find(|o| o["nome"] == "espiral").unwrap();
+        let cena = bat["cenas"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["nome"] == "gestos")
+            .unwrap();
+        let op = cena["ops"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|o| o["nome"] == "espiral")
+            .unwrap();
         let v: Vec<f64> = op["pts"]
             .as_array()
             .unwrap()
             .iter()
-            .map(|q| c[q[1].as_f64().unwrap().round() as usize * 1000 + q[0].as_f64().unwrap().round() as usize])
+            .map(|q| {
+                c[q[1].as_f64().unwrap().round() as usize * 1000
+                    + q[0].as_f64().unwrap().round() as usize]
+            })
             .collect();
         let q = v.len() / 4;
         let media = |s: &[f64]| s.iter().sum::<f64>() / s.len() as f64;
@@ -508,7 +624,10 @@ mod portoes {
     #[test]
     fn a_espiral_pinta_o_proprio_caminho() {
         let m: Vec<_> = std::thread::scope(|s| {
-            let hs: Vec<_> = GRAFITES.iter().map(|&n| s.spawn(move || espiral(&pinceis(n).remove(0)))).collect();
+            let hs: Vec<_> = GRAFITES
+                .iter()
+                .map(|&n| s.spawn(move || espiral(&pinceis(n).remove(0))))
+                .collect();
             hs.into_iter().map(|h| h.join().unwrap()).collect()
         });
         let mut falhas = Vec::new();
@@ -526,7 +645,10 @@ mod portoes {
     #[test]
     #[ignore = "sonda: o rápido contra o lento por variante; corre-se à mão"]
     fn sonda_a_velocidade() {
-        let casos: Vec<(String, String)> = casos_da_sonda("Graphite HB").into_iter().map(|c| (c.2, c.3)).collect();
+        let casos: Vec<(String, String)> = casos_da_sonda("Graphite HB")
+            .into_iter()
+            .map(|c| (c.2, c.3))
+            .collect();
         let linhas: Vec<String> = std::thread::scope(|s| {
             let hs: Vec<_> = casos
                 .iter()
@@ -534,10 +656,16 @@ mod portoes {
                     s.spawn(move || {
                         let pincel = Pincel {
                             nome: n.clone(),
-                            fonte: Fonte::Preset { preset: Box::new(variante(n, kv)), relativo: String::new() },
+                            fonte: Fonte::Preset {
+                                preset: Box::new(variante(n, kv)),
+                                relativo: String::new(),
+                            },
                         };
                         let (l, r) = lento_e_rapido(&pincel);
-                        format!("[velocidade] {n} {kv:<28} lento {l:.3} · rápido {r:.3} · ÷ {:.3}", r / l)
+                        format!(
+                            "[velocidade] {n} {kv:<28} lento {l:.3} · rápido {r:.3} · ÷ {:.3}",
+                            r / l
+                        )
                     })
                 })
                 .collect();
@@ -553,14 +681,21 @@ mod portoes {
     #[test]
     #[ignore = "sonda: as fotos por variante; corre-se à mão"]
     fn sonda_fotos_das_variantes() {
-        let dir = std::path::PathBuf::from(std::env::var("PH2D_SONDA_PPM").expect("PH2D_SONDA_PPM"));
+        let dir =
+            std::path::PathBuf::from(std::env::var("PH2D_SONDA_PPM").expect("PH2D_SONDA_PPM"));
         std::fs::create_dir_all(&dir).unwrap();
         let casos = casos_da_sonda("Graphite HB");
         std::thread::scope(|s| {
             for (i, j, n, kv) in &casos {
                 let dir = &dir;
                 s.spawn(move || {
-                    let p = Pincel { nome: n.clone(), fonte: Fonte::Preset { preset: Box::new(variante(n, kv)), relativo: String::new() } };
+                    let p = Pincel {
+                        nome: n.clone(),
+                        fonte: Fonte::Preset {
+                            preset: Box::new(variante(n, kv)),
+                            relativo: String::new(),
+                        },
+                    };
                     for cena in ["tamanhos", "gestos"] {
                         let px = crate::as_leis_da_escala::cena(&p, cena);
                         let mut f = format!("P6\n1000 640\n255\n").into_bytes();
@@ -576,7 +711,9 @@ mod portoes {
     /// A largura e a textura do traço recto do preset `pr` com a caneta a `tilt` graus (a cena de `a_caneta_deitada`).
     fn deitado(pr: &ph2d_brush_presets::Preset, tilt: [f32; 2]) -> (f64, f64) {
         use ph2d_editor_core::Tool;
-        use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+        use ph2d_editor_core::tool::{
+            CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool,
+        };
         let mut t = ph2d_tool_painter::PainterTool::default();
         t.set_source(vec![255u8; 1000 * 400 * 4], 1000, 400);
         t.set_wet_relogio_fixo(true);
@@ -584,7 +721,12 @@ mod portoes {
         t.set_brush_size_px(15.0);
         t.set_brush_color_srgb8([23, 101, 179]);
         let tilt = [tilt[0] / 90.0, tilt[1] / 90.0];
-        let cp = |x: f32, phase| CanvasPointer { pos: [x, 200.0], pressure: 1.0, tilt, phase };
+        let cp = |x: f32, phase| CanvasPointer {
+            pos: [x, 200.0],
+            pressure: 1.0,
+            tilt,
+            phase,
+        };
         t.on_canvas_pointer(cp(200.0, PointerPhase::Down));
         let mut x = 200.0;
         while x < 700.0 {
@@ -606,7 +748,10 @@ mod portoes {
     #[test]
     #[ignore = "sonda: as métricas da mídia e do lápis deitado por variante; corre-se à mão"]
     fn sonda_as_variantes_da_familia() {
-        let casos: Vec<(String, String)> = casos_da_sonda("Graphite 8B").into_iter().map(|c| (c.2, c.3)).collect();
+        let casos: Vec<(String, String)> = casos_da_sonda("Graphite 8B")
+            .into_iter()
+            .map(|c| (c.2, c.3))
+            .collect();
         let linhas: Vec<String> = std::thread::scope(|s| {
             let hs: Vec<_> = casos
                 .iter()

@@ -93,7 +93,8 @@ fn outra(g: &Grid, x: f64, y: f64, cor: [f64; 3]) -> bool {
 
 fn celula(g: &Grid, x: f64, y: f64) -> Option<usize> {
     let (cx, cy) = (x.round() as i64, y.round() as i64);
-    (cx >= 2 && cy >= 2 && cx < g.w as i64 - 1 && cy < g.h as i64 - 1).then(|| cx as usize + cy as usize * g.s)
+    (cx >= 2 && cy >= 2 && cx < g.w as i64 - 1 && cy < g.h as i64 - 1)
+        .then(|| cx as usize + cy as usize * g.s)
 }
 
 impl Trail {
@@ -127,14 +128,24 @@ impl Trail {
             ta -= 1.0;
         }
         let mut tb = frente;
-        while tb < frente + ALCANCE_RAIOS * r && outra(g, x + (tb + 1.0) * tx, y + (tb + 1.0) * ty, cor) {
+        while tb < frente + ALCANCE_RAIOS * r
+            && outra(g, x + (tb + 1.0) * tx, y + (tb + 1.0) * ty, cor)
+        {
             tb += 1.0;
         }
         let raio = (0.5 * (tb - ta + 1.0)).min(r * (1.0 + abre));
         if raio <= r {
             return;
         }
-        let m = Mancha { ox: x, oy: y, tx, ty, tm: 0.5 * (ta + tb), raio, r };
+        let m = Mancha {
+            ox: x,
+            oy: y,
+            tx,
+            ty,
+            tm: 0.5 * (ta + tb),
+            raio,
+            r,
+        };
         empurra(g, p, &m, cor, p.k(Knob::WetOpenPush));
         self.molhado.manchas.push(m);
     }
@@ -166,7 +177,8 @@ impl Trail {
                     (s.abs() <= m.r && meia > m.r).then_some((
                         m,
                         s,
-                        ((meia - m.r) * (1.0 + ESBATE_ALEM) / m.r).min((ESBATE_TECTO * meia / m.r - 1.0) / ESBATE_CAUDA),
+                        ((meia - m.r) * (1.0 + ESBATE_ALEM) / m.r)
+                            .min((ESBATE_TECTO * meia / m.r - 1.0) / ESBATE_CAUDA),
                     ))
                 });
                 // Pesos que descem (o triângulo) até `ESBATE_CAUDA` do esticão: a cauda vai a zero, sem degrau na borda.
@@ -175,40 +187,47 @@ impl Trail {
                     Some((m, s, k)) => (0..ESBATE_PASSOS)
                         .map(|j| {
                             let d = s * k * ESBATE_CAUDA * (j as f64 + 0.5) / ESBATE_PASSOS as f64;
-                            (x - d * m.ty, y + d * m.tx, (ESBATE_PASSOS - j) as f64 / total)
+                            (
+                                x - d * m.ty,
+                                y + d * m.tx,
+                                (ESBATE_PASSOS - j) as f64 / total,
+                            )
                         })
                         .collect(),
                     None => vec![(x, y, 1.0)],
                 };
                 for (dx, dy, parte) in destinos {
-                let (fx, fy) = (dx - f64::from(self.anchor_x - half), dy - f64::from(self.anchor_y - half));
-                let (x0, y0) = (fx.floor(), fy.floor());
-                let (ax, ay) = (fx - x0, fy - y0);
-                for (qx, qy, peso) in [
-                    (x0, y0, parte * (1.0 - ax) * (1.0 - ay)),
-                    (x0 + 1.0, y0, parte * ax * (1.0 - ay)),
-                    (x0, y0 + 1.0, parte * (1.0 - ax) * ay),
-                    (x0 + 1.0, y0 + 1.0, parte * ax * ay),
-                ] {
-                    let (qx, qy) = (qx as i32, qy as i32);
-                    if peso <= 0.0 || !(0..size).contains(&qx) || !(0..size).contains(&qy) {
-                        continue;
-                    }
-                    let q = (qx + qy * size) as usize;
-                    let dv = f64::from(v) * peso;
-                    let antes = f64::from(pig[q]);
-                    if dv > 0.0 {
-                        let w = dv / (antes + dv);
-                        for k in 0..3 {
-                            cor[q][k] += (tip[k] - cor[q][k]) * w;
+                    let (fx, fy) = (
+                        dx - f64::from(self.anchor_x - half),
+                        dy - f64::from(self.anchor_y - half),
+                    );
+                    let (x0, y0) = (fx.floor(), fy.floor());
+                    let (ax, ay) = (fx - x0, fy - y0);
+                    for (qx, qy, peso) in [
+                        (x0, y0, parte * (1.0 - ax) * (1.0 - ay)),
+                        (x0 + 1.0, y0, parte * ax * (1.0 - ay)),
+                        (x0, y0 + 1.0, parte * (1.0 - ax) * ay),
+                        (x0 + 1.0, y0 + 1.0, parte * ax * ay),
+                    ] {
+                        let (qx, qy) = (qx as i32, qy as i32);
+                        if peso <= 0.0 || !(0..size).contains(&qx) || !(0..size).contains(&qy) {
+                            continue;
                         }
-                    } else if antes <= 0.0 {
-                        cor[q] = tip;
+                        let q = (qx + qy * size) as usize;
+                        let dv = f64::from(v) * peso;
+                        let antes = f64::from(pig[q]);
+                        if dv > 0.0 {
+                            let w = dv / (antes + dv);
+                            for k in 0..3 {
+                                cor[q][k] += (tip[k] - cor[q][k]) * w;
+                            }
+                        } else if antes <= 0.0 {
+                            cor[q] = tip;
+                        }
+                        pig[q] = (antes + dv) as f32;
+                        agua[q] = (f64::from(agua[q]) + f64::from(a) * peso) as f32;
+                        super::touch_ext(&mut ext, qx, qy);
                     }
-                    pig[q] = (antes + dv) as f32;
-                    agua[q] = (f64::from(agua[q]) + f64::from(a) * peso) as f32;
-                    super::touch_ext(&mut ext, qx, qy);
-                }
                 }
             }
         }
@@ -236,7 +255,9 @@ fn empurra(g: &mut Grid, p: &Params, m: &Mancha, cor: [f64; 3], forca: f64) {
     let passos = (ORLA_RAIO * m.raio).ceil().max(1.0) as usize;
     let largura = passos as f64;
     let total = (passos * (passos + 1) / 2) as f64;
-    let orla: Vec<(f64, f64)> = (0..passos).map(|k| (1.0 + k as f64, (passos - k) as f64 / total)).collect();
+    let orla: Vec<(f64, f64)> = (0..passos)
+        .map(|k| (1.0 + k as f64, (passos - k) as f64 / total))
+        .collect();
     let alcance = m.raio + largura + 2.0;
     let (cx, cy) = (m.ox + m.tm * m.tx, m.oy + m.tm * m.ty);
     let mut levar: Vec<(usize, f64, [f32; 3])> = Vec::new();
@@ -271,7 +292,9 @@ fn empurra(g: &mut Grid, p: &Params, m: &Mancha, cor: [f64; 3], forca: f64) {
                     (bx, by + 1.0, (1.0 - ax) * ay),
                     (bx + 1.0, by + 1.0, ax * ay),
                 ] {
-                    if let Some(j) = celula(g, qx, qy).filter(|&j| b > 0.0 && j != i && g.film[j] > MOLHADA) {
+                    if let Some(j) =
+                        celula(g, qx, qy).filter(|&j| b > 0.0 && j != i && g.film[j] > MOLHADA)
+                    {
                         levar.push((j, massa * peso * b, g.susp_rgb[i]));
                         levou += massa * peso * b;
                     }

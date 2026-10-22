@@ -108,7 +108,9 @@ fn a_agua_empurra_o_pigmento_para_a_orla() {
             .map(|x| l[x] / base[x].max(1e-9))
             .fold(0.0, f64::max);
         let esc = escorrido(&e);
-        println!("[mistura] água seca={seca} push={push:?}: miolo {miolo:.3} · orla {orla:.3} · borda {borda:.3} · escorrido {esc:.1}");
+        println!(
+            "[mistura] água seca={seca} push={push:?}: miolo {miolo:.3} · orla {orla:.3} · borda {borda:.3} · escorrido {esc:.1}"
+        );
         (miolo, orla, borda, esc)
     };
     let (m0, _, _, _) = mede(false, None);
@@ -117,16 +119,22 @@ fn a_agua_empurra_o_pigmento_para_a_orla() {
     let (_, _, _, e3) = mede(true, None);
     let mut falhas = Vec::new();
     if m0 < 0.8 {
-        falhas.push(format!("sem o knob a água abriu a faixa molhada: miolo {m0:.3} < 0,8"));
+        falhas.push(format!(
+            "sem o knob a água abriu a faixa molhada: miolo {m0:.3} < 0,8"
+        ));
     }
     if m1 > 0.35 {
-        falhas.push(format!("com waterPush 0,87 o miolo ficou {m1:.3} > 0,35 (não abriu)"));
+        falhas.push(format!(
+            "com waterPush 0,87 o miolo ficou {m1:.3} > 0,35 (não abriu)"
+        ));
     }
     if o1 < 2.2 {
         falhas.push(format!("com waterPush 0,87 a orla ficou {o1:.3} < 2,2× a faixa (o pigmento não foi para a frente)"));
     }
     if b2 > 1.1 {
-        falhas.push(format!("sobre a faixa SECA o knob fez orla na borda da pegada: {b2:.3} > 1,1"));
+        falhas.push(format!(
+            "sobre a faixa SECA o knob fez orla na borda da pegada: {b2:.3} > 1,1"
+        ));
     }
     if e2 < 500.0 + e3 {
         falhas.push(format!("sobre a faixa SECA o dissolvido não escorreu pelo traço: {e2:.1} < 500 + {e3:.1} sem o knob"));
@@ -147,8 +155,6 @@ fn a_agua_sem_empurrao_e_a_de_antes() {
     assert_eq!(bits(&ga.sett), bits(&gb.sett));
     assert_eq!(bits(&ga.film), bits(&gb.film));
 }
-
-
 
 /// A faixa vermelha MOLHADA misturada por um traço do Blend (ferramenta do motor) em vertical por x = 130, com o grão
 /// `grao` na máscara do misturador; devolve o pigmento suspenso da área do cruzamento.
@@ -180,10 +186,18 @@ fn o_grao_modula_o_misturador() {
     let riscas = |x: i32, _y: i32| f64::from(u8::from((x / 3) % 2 == 0));
     let a = mistura_com_grao(Some(&xadrez));
     let b = mistura_com_grao(Some(&riscas));
-    let difere = |u: &[f32], v: &[f32]| u.iter().zip(v).filter(|(p, q)| (*p - *q).abs() > 0.5).count();
+    let difere = |u: &[f32], v: &[f32]| {
+        u.iter()
+            .zip(v)
+            .filter(|(p, q)| (*p - *q).abs() > 0.5)
+            .count()
+    };
     let (sa, ab) = (difere(&sem, &a), difere(&a, &b));
     println!("[mistura] grão no Blend: células que mudam sem × xadrez {sa} · xadrez × riscas {ab}");
-    assert!(sa > 100 && ab > 100, "o grão não mudou a mistura: {sa} · {ab} células");
+    assert!(
+        sa > 100 && ab > 100,
+        "o grão não mudou a mistura: {sa} · {ab} células"
+    );
     // Sem grão = a porta antiga, ao bit.
     let mut e = faixa(false);
     e.tool = Tool::Blend;
@@ -199,7 +213,13 @@ fn o_grao_modula_o_misturador() {
         .flat_map(|y| (110..150).map(move |x| x + 1 + (y + 1) * g.s))
         .map(|i| g.susp[i])
         .collect();
-    assert!(antiga.iter().zip(&sem).all(|(p, q)| p.to_bits() == q.to_bits()), "sem grão a porta mudou");
+    assert!(
+        antiga
+            .iter()
+            .zip(&sem)
+            .all(|(p, q)| p.to_bits() == q.to_bits()),
+        "sem grão a porta mudou"
+    );
 }
 
 /// A faixa MOLHADA com SULCOS (uma linha em cada quatro sem pigmento: as riscas das cerdas da tinta fresca).
@@ -238,28 +258,51 @@ fn o_secador_assenta_e_deixa_orla() {
         let mut e = faixa_riscada();
         seca_com(&mut e, edge);
         let g = e.active_grid();
-        let px = |x: usize, y: usize| f64::from(g.susp[x + 1 + (y + 1) * g.s]) + f64::from(g.sett[x + 1 + (y + 1) * g.s]);
+        let px = |x: usize, y: usize| {
+            f64::from(g.susp[x + 1 + (y + 1) * g.s]) + f64::from(g.sett[x + 1 + (y + 1) * g.s])
+        };
         let faixa_em = |x: usize| (Y - 8..=Y + 8).map(|y| px(x, y)).sum::<f64>() / 17.0;
         let intacta = (40..80).map(faixa_em).sum::<f64>() / 40.0;
-        let dentro = [X - 9, X - 8, X - 7, X + 7, X + 8, X + 9].map(faixa_em).iter().sum::<f64>() / 6.0 / intacta;
-        let fora = [X - 12, X - 11, X + 11, X + 12].map(faixa_em).iter().sum::<f64>() / 4.0 / intacta;
-        let col: Vec<f64> = (Y - 8..=Y + 8).map(|y| (X - 2..=X + 2).map(|x| px(x, y)).sum::<f64>() / 5.0).collect();
+        let dentro = [X - 9, X - 8, X - 7, X + 7, X + 8, X + 9]
+            .map(faixa_em)
+            .iter()
+            .sum::<f64>()
+            / 6.0
+            / intacta;
+        let fora = [X - 12, X - 11, X + 11, X + 12]
+            .map(faixa_em)
+            .iter()
+            .sum::<f64>()
+            / 4.0
+            / intacta;
+        let col: Vec<f64> = (Y - 8..=Y + 8)
+            .map(|y| (X - 2..=X + 2).map(|x| px(x, y)).sum::<f64>() / 5.0)
+            .collect();
         let med = col.iter().sum::<f64>() / col.len() as f64;
-        let desvio = (col.iter().map(|v| (v - med).powi(2)).sum::<f64>() / col.len() as f64).sqrt() / med.max(1e-9);
-        println!("[mistura] secador edge={edge:?}: dentro {dentro:.3} · fora {fora:.3} · desvio no eixo {desvio:.3}");
+        let desvio = (col.iter().map(|v| (v - med).powi(2)).sum::<f64>() / col.len() as f64).sqrt()
+            / med.max(1e-9);
+        println!(
+            "[mistura] secador edge={edge:?}: dentro {dentro:.3} · fora {fora:.3} · desvio no eixo {desvio:.3}"
+        );
         (dentro, fora, desvio)
     };
     let (d0, f0, s0) = mede(None);
     let (d1, f1, s1) = mede(Some(0.5));
     let mut falhas = Vec::new();
     if d1 < 1.15 {
-        falhas.push(format!("sem linha por dentro da borda: {d1:.3} < 1,15 (sem o knob {d0:.3})"));
+        falhas.push(format!(
+            "sem linha por dentro da borda: {d1:.3} < 1,15 (sem o knob {d0:.3})"
+        ));
     }
     if f1 > 0.9 {
-        falhas.push(format!("sem o claro por fora: {f1:.3} > 0,9 (sem o knob {f0:.3})"));
+        falhas.push(format!(
+            "sem o claro por fora: {f1:.3} > 0,9 (sem o knob {f0:.3})"
+        ));
     }
     if s1 > 0.5 * s0 {
-        falhas.push(format!("os sulcos não nivelaram: desvio {s1:.3} > ½ de {s0:.3}"));
+        falhas.push(format!(
+            "os sulcos não nivelaram: desvio {s1:.3} > ½ de {s0:.3}"
+        ));
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
     // Sem o knob = o secador de antes, ao bit.

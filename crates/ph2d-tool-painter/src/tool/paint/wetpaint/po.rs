@@ -63,9 +63,16 @@ impl PainterTool {
             if po.restos.len() <= k {
                 po.restos.resize(k + 1, 0.0);
             }
-            ph2d_painter_brush::stroke::spray::graos_do_po(&j, d, passo, &mut po.restos[k], rng, |g| {
-                graos.push(g);
-            });
+            ph2d_painter_brush::stroke::spray::graos_do_po(
+                &j,
+                d,
+                passo,
+                &mut po.restos[k],
+                rng,
+                |g| {
+                    graos.push(g);
+                },
+            );
         }
         if graos.is_empty() {
             return;
@@ -80,9 +87,13 @@ impl PainterTool {
             let (b, opacidade) = match opacidade_da_pressao {
                 Some(ov) => (
                     f64::from(ov) * 10.0,
-                    (f64::from(g.coverage) / (f64::from(strength) * f64::from(ov)).max(1e-9)).clamp(0.0, 1.0),
+                    (f64::from(g.coverage) / (f64::from(strength) * f64::from(ov)).max(1e-9))
+                        .clamp(0.0, 1.0),
                 ),
-                None => (f64::from((g.coverage / strength).clamp(0.0, 1.0)) * 10.0, 1.0),
+                None => (
+                    f64::from((g.coverage / strength).clamp(0.0, 1.0)) * 10.0,
+                    1.0,
+                ),
             };
             let opacidade = opacidade * peso;
             let (c, r) = (g.center, g.radius_px);
@@ -115,7 +126,8 @@ impl PainterTool {
 
 /// A semente do fluxo dos grãos: os bits do centro do 1.º dab, dobrados (splitmix64).
 fn semente(c: [f32; 2]) -> u64 {
-    let mut z = (u64::from(c[0].to_bits()) << 32 | u64::from(c[1].to_bits())) ^ 0x706F_5F77_6574_0000;
+    let mut z =
+        (u64::from(c[0].to_bits()) << 32 | u64::from(c[1].to_bits())) ^ 0x706F_5F77_6574_0000;
     z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
     z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
     z ^ (z >> 31)

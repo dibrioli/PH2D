@@ -33,7 +33,11 @@ pub(super) fn cv_do_recto(px: &[u8], y: usize, h: usize) -> (f64, f64, f64) {
         let b = col.iter().rposition(|&v| v >= 0.25 * m).unwrap();
         larg.push((b - a + 1) as f64);
         let s: f64 = col.iter().sum();
-        let o: f64 = col.iter().enumerate().map(|(i, v)| (i as f64 - h as f64) * v).sum();
+        let o: f64 = col
+            .iter()
+            .enumerate()
+            .map(|(i, v)| (i as f64 - h as f64) * v)
+            .sum();
         cen.push(o / s.max(1e-9));
     }
     let banda = (0.35 * mediana(larg)).max(0.5);
@@ -47,13 +51,22 @@ pub(super) fn cv_do_recto(px: &[u8], y: usize, h: usize) -> (f64, f64, f64) {
                 .filter(|&(i, _)| (i as f64 - h as f64 - ce).abs() <= banda)
                 .map(|(_, &v)| v)
                 .collect();
-            if v.is_empty() { 0.0 } else { v.iter().sum::<f64>() / v.len() as f64 }
+            if v.is_empty() {
+                0.0
+            } else {
+                v.iter().sum::<f64>() / v.len() as f64
+            }
         })
         .collect();
     let n = serie.len() as f64;
     let m = serie.iter().sum::<f64>() / n;
     let var = serie.iter().map(|v| (v - m).powi(2)).sum::<f64>() / n;
-    let ac1 = serie.windows(2).map(|w| (w[0] - m) * (w[1] - m)).sum::<f64>() / (n - 1.0) / var.max(1e-12);
+    let ac1 = serie
+        .windows(2)
+        .map(|w| (w[0] - m) * (w[1] - m))
+        .sum::<f64>()
+        / (n - 1.0)
+        / var.max(1e-12);
     (var.sqrt() / m.max(1e-6), ac1, m)
 }
 
@@ -100,7 +113,9 @@ fn com_grao(nome: &str, s: Option<f64>, kv: &str) -> Pincel {
 #[test]
 #[ignore = "sonda: o grão fino dos lápis por Size; corre-se à mão"]
 fn sonda_o_grao_fino_por_size() {
-    use ph2d_painter_brush::texture::{TextureKind, TextureMapping, TextureSettings, sample_tiled_rot};
+    use ph2d_painter_brush::texture::{
+        TextureKind, TextureMapping, TextureSettings, sample_tiled_rot,
+    };
     let sizes = std::env::var("PH2D_SONDA_SIZES").unwrap_or_else(|_| "-".to_owned());
     let sizes: Vec<(Option<f64>, String)> = sizes
         .split(',')
@@ -123,9 +138,19 @@ fn sonda_o_grao_fino_por_size() {
         let m = v.iter().sum::<f64>() / v.len() as f64;
         let var = v.iter().map(|a| (a - m).powi(2)).sum::<f64>() / v.len() as f64;
         let ac = |k: usize| {
-            v.windows(k + 1).map(|w| (w[0] - m) * (w[k] - m)).sum::<f64>() / (v.len() - k) as f64 / var
+            v.windows(k + 1)
+                .map(|w| (w[0] - m) * (w[k] - m))
+                .sum::<f64>()
+                / (v.len() - k) as f64
+                / var
         };
-        println!("[campo] Size {s}: período {:.2} px, ac 1·2·3 {:.2} {:.2} {:.2}", 256.0 / s, ac(1), ac(2), ac(3));
+        println!(
+            "[campo] Size {s}: período {:.2} px, ac 1·2·3 {:.2} {:.2} {:.2}",
+            256.0 / s,
+            ac(1),
+            ac(2),
+            ac(3)
+        );
     }
     let casos: Vec<(&str, &str, Option<f64>, &str)> = LAPIS
         .iter()
@@ -159,7 +184,6 @@ fn sonda_o_grao_fino_por_size() {
     }
 }
 
-
 /// ⭐⭐ **O traço do lápis tem o grão do Rebelle** (03_MOTORES §7.2): nos 6 lápis/carvão de fábrica com origem no
 /// Rebelle, o colar de contas a 40 px a ±35 % do da origem, a 5 px até 2× (o 8B 1,1×; o resto dos duros é o vale da
 /// Textura da mídia, que pede o grão de 4 px) e o tamanho do grão a 5 px (a autocorrelação a 1 px do colar) até 0,6
@@ -172,8 +196,16 @@ fn o_traco_fino_do_lapis_tem_o_grao_do_rebelle() {
             .map(|&(n, o)| {
                 s.spawn(move || {
                     let px = tamanhos(&pinceis(n).remove(0));
-                    let reb = [rebelle(o, "recto_5", "cv"), rebelle(o, "recto_40", "cv"), AC5_DO_REBELLE.iter().find(|(k, _)| *k == o).unwrap().1];
-                    (n, [cv_do_recto(&px, 70, 40), cv_do_recto(&px, 190, 70)], reb)
+                    let reb = [
+                        rebelle(o, "recto_5", "cv"),
+                        rebelle(o, "recto_40", "cv"),
+                        AC5_DO_REBELLE.iter().find(|(k, _)| *k == o).unwrap().1,
+                    ];
+                    (
+                        n,
+                        [cv_do_recto(&px, 70, 40), cv_do_recto(&px, 190, 70)],
+                        reb,
+                    )
                 })
             })
             .collect();
@@ -181,7 +213,10 @@ fn o_traco_fino_do_lapis_tem_o_grao_do_rebelle() {
     });
     let mut falhas = Vec::new();
     for (n, [a, b], [r5, r40, ac]) in &r {
-        println!("[grão] {n:<12} cv 5 {:.3}/{r5:.3} · 40 {:.3}/{r40:.3} · ac 5 {:.2}/{ac:.2}", a.0, b.0, a.1);
+        println!(
+            "[grão] {n:<12} cv 5 {:.3}/{r5:.3} · 40 {:.3}/{r40:.3} · ac 5 {:.2}/{ac:.2}",
+            a.0, b.0, a.1
+        );
         if a.1 > ac + 0.6 || (b.0 / r40 - 1.0).abs() > 0.35 || a.0 > 2.0 * r5 {
             falhas.push(*n);
         }
@@ -204,7 +239,10 @@ const AC5_DO_REBELLE: [(&str, f64); 6] = [
 /// o diâmetro `d`.
 fn perfil(p: &Pincel, d: f32) -> Vec<f64> {
     let mut t = tela_com(p, d);
-    traco(&mut t, &super::as_leis_da_escala::pontos("tamanhos", "recto_40"));
+    traco(
+        &mut t,
+        &super::as_leis_da_escala::pontos("tamanhos", "recto_40"),
+    );
     for _ in 0..120 {
         t.on_tick(1000.0 / 60.0);
     }
@@ -212,7 +250,10 @@ fn perfil(p: &Pincel, d: f32) -> Vec<f64> {
     (150..850)
         .map(|x| {
             let i = (190 * 1000 + x) * 4;
-            (0..3).map(|k| 255.0 - f64::from(px[i + k])).fold(0.0, f64::max) / 255.0
+            (0..3)
+                .map(|k| 255.0 - f64::from(px[i + k]))
+                .fold(0.0, f64::max)
+                / 255.0
         })
         .collect()
 }
@@ -240,6 +281,12 @@ fn o_grao_e_o_papel_preso_a_tela() {
     });
     let (mesmo, slider) = (correlacao(&fino, &largo), correlacao(&fino, &outro));
     println!("[papel] Size 4: 8 px × 40 px {mesmo:.2} · a 8 px Size 4 × Size 8 {slider:.2}");
-    assert!(mesmo >= 0.6, "o papel muda com o tamanho da ponta: {mesmo:.2}");
-    assert!(slider <= 0.6, "o Size do grão não age na ponta fina: {slider:.2}");
+    assert!(
+        mesmo >= 0.6,
+        "o papel muda com o tamanho da ponta: {mesmo:.2}"
+    );
+    assert!(
+        slider <= 0.6,
+        "o Size do grão não age na ponta fina: {slider:.2}"
+    );
 }

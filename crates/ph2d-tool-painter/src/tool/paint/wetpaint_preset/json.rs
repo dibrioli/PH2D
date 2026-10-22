@@ -7,8 +7,9 @@
 
 use ph2d_painter_brush::line_kind::LineKind;
 use ph2d_painter_brush::{
-    BrushBlend, BrushSpec, ColorJitterScope, CorDaMao, DabJitter, GrainLaw, GrainMode, HOSE_MAX, HoseMode, ImageHose, PixelTip, Falloff, FalloffCurve, FalloffPoint, FootprintCurve,
-    HandleType, JitterUnit, MAX_BRUSH_BLEND_MODES, MAX_TEX_PARAMS, MirrorAxis, StrokeMethod,
+    BrushBlend, BrushSpec, ColorJitterScope, CorDaMao, DabJitter, Falloff, FalloffCurve,
+    FalloffPoint, FootprintCurve, GrainLaw, GrainMode, HOSE_MAX, HandleType, HoseMode, ImageHose,
+    JitterUnit, MAX_BRUSH_BLEND_MODES, MAX_TEX_PARAMS, MirrorAxis, PixelTip, StrokeMethod,
     TextureKind, TextureMapping, TextureSettings,
 };
 use serde_json::{Value, json};
@@ -485,7 +486,11 @@ fn escrever_campo_da_obra(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "wire_connection_line" => b.wire_connection_line = booleano(v, b.wire_connection_line),
         // J4: ausente = desligado (só se grava ligado), nunca o do pincel anterior.
         "wire_sorteio" => b.wire_sorteio = booleano(v, false),
-        "wire_cordas" => b.wire_cordas = v.and_then(Value::as_u64).map_or(0, |c| c.min(u64::from(u8::MAX)) as u8),
+        "wire_cordas" => {
+            b.wire_cordas = v
+                .and_then(Value::as_u64)
+                .map_or(0, |c| c.min(u64::from(u8::MAX)) as u8)
+        }
         "ribbon_weight" => b.ribbon_weight = f(v, b.ribbon_weight),
         "ribbon_friction" => b.ribbon_friction = f(v, b.ribbon_friction),
         "ribbon_gravity" => b.ribbon_gravity = f(v, b.ribbon_gravity),
@@ -525,7 +530,10 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "stabilizer" => b.stabilizer = f(v, b.stabilizer),
         // AUSENTE = sem tecto (só se grava fixado), nunca o do pincel anterior.
         "size_max_px" => {
-            b.size_max_px = v.and_then(Value::as_f64).filter(|x| x.is_finite() && *x >= 1.0).map(|x| x as f32);
+            b.size_max_px = v
+                .and_then(Value::as_f64)
+                .filter(|x| x.is_finite() && *x >= 1.0)
+                .map(|x| x as f32);
         }
         "taper" => {
             let o = v.and_then(Value::as_object);

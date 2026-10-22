@@ -123,7 +123,11 @@ impl ImageHose {
                 // O «ângulo de losango» (`0..4`, monótono no ângulo, sem transcendentais: HR-5).
                 let [x, y] = dir;
                 let d = if y >= 0.0 {
-                    if x >= 0.0 { y / (x + y) } else { 1.0 - x / (-x + y) }
+                    if x >= 0.0 {
+                        y / (x + y)
+                    } else {
+                        1.0 - x / (-x + y)
+                    }
                 } else if x < 0.0 {
                     2.0 - y / (-x - y)
                 } else {
@@ -186,13 +190,18 @@ mod tests {
             mode: HoseMode::Sequence,
             ..h
         };
-        let v: Vec<u8> = (0..6).map(|_| s.escolhe(1.0, [0.0; 2], 0.0, &mut seq)).collect();
+        let v: Vec<u8> = (0..6)
+            .map(|_| s.escolhe(1.0, [0.0; 2], 0.0, &mut seq))
+            .collect();
         assert_eq!(v, [0, 1, 2, 3, 0, 1]);
         let p = ImageHose {
             mode: HoseMode::Pressure,
             ..h
         };
-        assert_eq!([0.0, 0.3, 0.6, 1.0].map(|q| p.escolhe(q, [0.0; 2], 0.0, &mut seq)), [0, 1, 2, 3]);
+        assert_eq!(
+            [0.0, 0.3, 0.6, 1.0].map(|q| p.escolhe(q, [0.0; 2], 0.0, &mut seq)),
+            [0, 1, 2, 3]
+        );
         let a = ImageHose {
             mode: HoseMode::Angle,
             ..h

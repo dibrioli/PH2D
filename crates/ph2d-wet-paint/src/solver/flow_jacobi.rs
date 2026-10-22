@@ -275,7 +275,12 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                 // eixo. (Diferença finita ⇒ leva o `dif`.)
                 let fx = fx_off as usize;
                 let [wx, wy] = super::parede_do_traco(isola.then(|| {
-                    let viz = [frow + kfl, frow + kfr, fy_u * fine_s + fx + kf, fy_d * fine_s + fx + kf];
+                    let viz = [
+                        frow + kfl,
+                        frow + kfr,
+                        fy_u * fine_s + fx + kf,
+                        fy_d * fine_s + fx + kf,
+                    ];
                     (traco_full, susp_full, frow + kf, viz)
                 }));
                 let mut lx = if wx {
@@ -424,8 +429,16 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                 if let Some(gt) = c.gota {
                     (ex, ey) = gt.aplica(ex, ey, fi, fine_s, film_full, wet_full);
                 }
-                fxr[x as usize] = if wx { 0.0 } else { clamp_sym(ex, c.max_v) as f32 };
-                fyr[x as usize] = if wy { 0.0 } else { clamp_sym(ey, c.max_v) as f32 };
+                fxr[x as usize] = if wx {
+                    0.0
+                } else {
+                    clamp_sym(ex, c.max_v) as f32
+                };
+                fyr[x as usize] = if wy {
+                    0.0
+                } else {
+                    clamp_sym(ey, c.max_v) as f32
+                };
                 i += 1;
             }
         },

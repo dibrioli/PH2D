@@ -128,7 +128,11 @@ impl Trail {
                 let i = cx as usize + cy as usize * s;
                 // A tinta líquida re-molha a SECA (o reservatório: as cinco tintas do Rebelle misturam-se 15–38 px
                 // antes da faixa seca); os outros pincéis só apanham a molhada (`pickup_assentado` do produto 0).
-                let assentado = if reservatorio > 0.0 { 1.0 } else { p.pickup_assentado };
+                let assentado = if reservatorio > 0.0 {
+                    1.0
+                } else {
+                    p.pickup_assentado
+                };
                 let w_s = alpha_of_mass(g.sett[i] as f64) * assentado;
                 let w_f = alpha_of_mass(g.susp[i] as f64);
                 let fe = w_s + w_f;

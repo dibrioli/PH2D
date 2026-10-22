@@ -24,7 +24,9 @@ impl PainterTool {
     pub(in crate::tool::paint) fn stamp_dabs_wetpaint(&mut self, dabs: &[Dab], brush: &BrushSpec) {
         // A ponta de N imagens (L19): também o lote ADIADO (pousado no tique) carimba cada corrida com a sua imagem.
         if self.mangueira_viva() {
-            return self.stamp_dabs_mangueira_com(dabs, |t, corrida| t.stamp_dabs_wetpaint(corrida, brush));
+            return self.stamp_dabs_mangueira_com(dabs, |t, corrida| {
+                t.stamp_dabs_wetpaint(corrida, brush)
+            });
         }
         let (w, h) = self.source_size;
         // Two doors in, one belt (doc 21): a LIVE incremental gesture (the
@@ -146,7 +148,11 @@ impl PainterTool {
         // `texv`, que hoje vinha do tapete do próprio motor) — a silhueta fica o contorno da ponta. Um Shape
         // que não é Bristles não tem cerdas: a ponta é LISA (`texv = 1`, D4).
         let cerdas = brush.shape.kind == ph2d_painter_brush::TextureKind::Bristles;
-        let filme_liso = sess.engine.tuning.get(ph2d_wet_paint::tuning::Knob::StrokeFilm) > 0.0;
+        let filme_liso = sess
+            .engine
+            .tuning
+            .get(ph2d_wet_paint::tuning::Knob::StrokeFilm)
+            > 0.0;
         let fios = self.fios_do_pincel();
         let relevo = self.relevo_do_pincel();
         // ⭐ O pigmento por COMPRIMENTO (prompt 51, doc 51 §2): cada dab pousa o do caminho desde o dab anterior da
@@ -206,10 +212,19 @@ impl PainterTool {
         // ⭐ O pincel de cerdas FINO esmaece (`Knob::ThinStrokeFade`, J4 óleo): `(D ÷ ref)^γ` abaixo do diâmetro de
         // referência — `γ = 0` = 1, a lei de sempre ao bit.
         let esmaece_fino = {
-            let g = sess.engine.tuning.get(ph2d_wet_paint::tuning::Knob::ThinStrokeFade);
+            let g = sess
+                .engine
+                .tuning
+                .get(ph2d_wet_paint::tuning::Knob::ThinStrokeFade);
             if g > 0.0 {
-                let r = sess.engine.tuning.get(ph2d_wet_paint::tuning::Knob::ThinStrokeRef).max(1.0);
-                (2.0 * f64::from(brush.clamped_radius()) / r).clamp(0.0, 1.0).powf(g)
+                let r = sess
+                    .engine
+                    .tuning
+                    .get(ph2d_wet_paint::tuning::Knob::ThinStrokeRef)
+                    .max(1.0);
+                (2.0 * f64::from(brush.clamped_radius()) / r)
+                    .clamp(0.0, 1.0)
+                    .powf(g)
             } else {
                 1.0
             }
@@ -517,12 +532,24 @@ impl PainterTool {
                 [0, 1].map(|i| cell_r * alc * f64::from(e[i]))
             };
             // A PONTA DESFIADA (J2 §7 c): cada fio com o seu desvio ao longo do traço ([`super::ponta_das_cerdas`]).
-            let rho = sess.engine.tuning.get(ph2d_wet_paint::tuning::Knob::BristleTipRagged);
+            let rho = sess
+                .engine
+                .tuning
+                .get(ph2d_wet_paint::tuning::Knob::BristleTipRagged);
             let alc = meia[0].max(meia[1]) * px_cel;
             let ponta = super::ponta_das_cerdas::PontaDasCerdas::nova(
-                relevo_dab.or(fios_dab), rho, [centro_x, centro_y], px_cel, alc, &sil,
+                relevo_dab.or(fios_dab),
+                rho,
+                [centro_x, centro_y],
+                px_cel,
+                alc,
+                &sil,
             );
-            let sil = |cx: i32, cy: i32| ponta.as_ref().map_or_else(|| sil(cx, cy), |p| p.recorta(&sil, cx, cy));
+            let sil = |cx: i32, cy: i32| {
+                ponta
+                    .as_ref()
+                    .map_or_else(|| sil(cx, cy), |p| p.recorta(&sil, cx, cy))
+            };
             // O depósito, o pente e o grão que lê a ponta leem a MESMA silhueta (com a ponta), avaliada UMA vez por célula
             // e guardada no dab ([`super::sil_memo`]), ao byte.
             let memo = (relevo_dab.is_some() || grain_active && spec.texture.lei.mode.le_a_ponta())
@@ -577,7 +604,14 @@ impl PainterTool {
                     let py = grid_map::cell_center_texel(cy, ratio);
                     let w = if na_ponta { sil(cx, cy) as f32 } else { 1.0 };
                     f64::from(ph2d_painter_brush::dab::grain_at_na_ponta(
-                        spec_ref, gb, gimg, px, py, d.center, d.radius_px, w,
+                        spec_ref,
+                        gb,
+                        gimg,
+                        px,
+                        py,
+                        d.center,
+                        d.radius_px,
+                        w,
                     ))
                 }
             });
@@ -585,7 +619,9 @@ impl PainterTool {
             // centro do dab (`x − cx`, como `brush.rs::stamp_row_shaped`) — no neutro, o `sample_bristle` do
             // motor ao bit. Um Grain armado continua a tomar o lugar delas (W2.4; D7 medido no 27 §6.7).
             // Com o FILME do traço (`Knob::StrokeFilm`, J4 aguarela) o tapete fica de fora: a lavagem é lisa.
-            let cerdas_sb = shape_basis.as_ref().filter(|_| cerdas && grain.is_none() && !filme_liso);
+            let cerdas_sb = shape_basis
+                .as_ref()
+                .filter(|_| cerdas && grain.is_none() && !filme_liso);
             let cerdas_fn = cerdas_sb.map(|sb| {
                 let forma = &spec_ref.shape;
                 let px_por_celula = f64::from(ratio);
@@ -626,7 +662,9 @@ impl PainterTool {
             // quando a razão muda: o mesmo disco, resolvido mais grosso.
             // O dual brush (L6) recorta o que POUSA pelo canal do padrão (depois do portão do papel, `RecorteNoWet`).
             let pad = dual.as_ref().map(|r| r.padrao(padrao_arg, &sil, ratio));
-            let padrao_arg = pad.as_ref().map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));
+            let padrao_arg = pad
+                .as_ref()
+                .map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));
             if erasing {
                 // W2.6: the same §9 mapping, routed to the engine's ERASER —
                 // silhouette and grain shape the erase exactly as they shape
@@ -657,7 +695,9 @@ impl PainterTool {
                         cell_r,
                         // O FILME não pesa por comprimento (o máximo de um dab já é a camada): com o peso, o 1.º dab
                         // da lane (peso 1) ficava acima dos seguintes (4 ÷ 4,775 a 190 px) — o disco do 1.º toque.
-                        opacidade * f64::from(if filme_liso { fino } else { peso * fino }) * esmaece_fino,
+                        opacidade
+                            * f64::from(if filme_liso { fino } else { peso * fino })
+                            * esmaece_fino,
                         Some(&sil),
                         grain_arg,
                         padrao_arg,
@@ -687,7 +727,9 @@ impl PainterTool {
                     cell_y,
                     b,
                     cell_r,
-                    grain.as_ref().map(|g| g as ph2d_wet_paint::brush::CellFn<'_>),
+                    grain
+                        .as_ref()
+                        .map(|g| g as ph2d_wet_paint::brush::CellFn<'_>),
                 ),
                 // Direct tools: per-dab grid ops; the displacement source is
                 // THIS lane's previous centre (host-tracked per copy).

@@ -541,7 +541,10 @@ fn o_pincel_inteiro_vai_e_volta_pelo_json_da_macro() {
     let fabrica = json::pincel_para_json(&d, &campos);
     let m = json::pincel_para_json(&b, &campos);
     // `get`: a ponta de píxel e a de N imagens (L18/L19) só se gravam fora do neutro — na fábrica faltam.
-    let parados: Vec<&&str> = campos.iter().filter(|c| fabrica.get(**c) == m.get(**c)).collect();
+    let parados: Vec<&&str> = campos
+        .iter()
+        .filter(|c| fabrica.get(**c) == m.get(**c))
+        .collect();
     assert!(parados.is_empty(), "a fixtura não mexe em {parados:?}");
     assert_eq!(json::pincel_de_json(&m, &campos, d), b);
 }

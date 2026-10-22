@@ -53,9 +53,15 @@ mod tests {
         let t = [1u32, 2, 2, 0, 0];
         let m = [1.0f32; 5];
         assert!(separa(&t, &m, 0, 1));
-        assert!(!separa(&t, &[1.0, 0.0, 1.0, 1.0, 1.0], 0, 1), "a tinta seca virou parede");
+        assert!(
+            !separa(&t, &[1.0, 0.0, 1.0, 1.0, 1.0], 0, 1),
+            "a tinta seca virou parede"
+        );
         assert!(!separa(&t, &m, 1, 2));
-        assert!(separa(&t, &m, 2, 3), "a tinta com a lei escoou para a sem ela");
+        assert!(
+            separa(&t, &m, 2, 3),
+            "a tinta com a lei escoou para a sem ela"
+        );
         assert!(!separa(&t, &m, 3, 4));
     }
 

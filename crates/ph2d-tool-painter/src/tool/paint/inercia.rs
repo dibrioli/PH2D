@@ -245,7 +245,9 @@ impl Dependente {
             Dependente::VazioSemModoDeCor => "panel.painter_layers.inerte.color_blend_mode",
             Dependente::PlanoForaDoTraco => "panel.painter_layers.inerte.freehand_paint_stroke",
             Dependente::FallOffDaAgua => "panel.painter_layers.inerte.wet_paint_tool",
-            Dependente::ProfundidadeSemJitter => "panel.painter_layers.inerte.depth_jitter_above_zero",
+            Dependente::ProfundidadeSemJitter => {
+                "panel.painter_layers.inerte.depth_jitter_above_zero"
+            }
             Dependente::DualForaDoDigital => "panel.painter_ponta.inerte.dual_medium",
             Dependente::DualForaDoTraco => "panel.painter_layers.inerte.freehand_paint_stroke",
         }

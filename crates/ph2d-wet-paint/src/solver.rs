@@ -288,7 +288,12 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
             // (Diferença finita ⇒ leva o `dif`.)
             let fx = fx_off as usize;
             let [wx, wy] = parede_do_traco(isola.then(|| {
-                let viz = [frow + kfl, frow + kfr, fy_u * fine_s + fx + kf, fy_d * fine_s + fx + kf];
+                let viz = [
+                    frow + kfl,
+                    frow + kfr,
+                    fy_u * fine_s + fx + kf,
+                    fy_d * fine_s + fx + kf,
+                ];
                 (traco_full, &susp[..], frow + kf, viz)
             }));
             let mut lx = if wx {
@@ -615,7 +620,9 @@ pub fn smooth_velocity_rows(g: &mut Grid, p: &Params, mode: Rows) {
                     fy = -max_v;
                 }
                 let [wx, wy] = parede_do_traco(traco.map(|t| {
-                    let pi = |dx: i32, dy: i32| crate::flow::probe_idx(x + dx, y + dy, gw, gh, s, geom.rf);
+                    let pi = |dx: i32, dy: i32| {
+                        crate::flow::probe_idx(x + dx, y + dy, gw, gh, s, geom.rf)
+                    };
                     (t, susp, fi, [pi(-1, 0), pi(1, 0), pi(0, -1), pi(0, 1)])
                 }));
                 fxr[x as usize] = if wx { 0.0 } else { fx as f32 };

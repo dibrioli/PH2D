@@ -53,7 +53,10 @@ fn rampa(dura: bool, f: impl Fn(&mut PainterTool)) -> Vec<u8> {
 fn decis(px: &[u8]) -> Vec<(f64, f64)> {
     let escuro = |x: usize, y: usize| 1.0 - f64::from(px[(y * W + x) * 4]) / 255.0;
     let dmax = {
-        let mut v: Vec<f64> = (480..560).flat_map(|x| (58..63).map(move |y| (x, y))).map(|(x, y)| escuro(x, y)).collect();
+        let mut v: Vec<f64> = (480..560)
+            .flat_map(|x| (58..63).map(move |y| (x, y)))
+            .map(|(x, y)| escuro(x, y))
+            .collect();
         v.sort_by(|a, b| a.total_cmp(b));
         v[v.len() * 95 / 100].max(1e-6)
     };
@@ -67,7 +70,8 @@ fn decis(px: &[u8]) -> Vec<(f64, f64)> {
             let com: Vec<f64> = tinta.into_iter().filter(|v| *v > 0.03).collect();
             let frac = com.len() as f64 / n;
             let m = com.iter().sum::<f64>() / com.len().max(1) as f64;
-            let sd = (com.iter().map(|v| (v - m).powi(2)).sum::<f64>() / com.len().max(1) as f64).sqrt();
+            let sd =
+                (com.iter().map(|v| (v - m).powi(2)).sum::<f64>() / com.len().max(1) as f64).sqrt();
             (frac, if com.len() > 20 { sd / m } else { f64::NAN })
         })
         .collect()
@@ -88,7 +92,12 @@ fn o_height_abre_o_grao_com_a_pressao() {
     };
     let (height, linear, multiply) = (pela_pressao(4.0), pela_pressao(5.0), pela_pressao(0.0));
     let hoje = decis(&rampa(true, |_| {}));
-    let fmt = |d: &[(f64, f64)]| d.iter().map(|(f, c)| format!("{f:.2}|{c:.2}")).collect::<Vec<_>>().join(" ");
+    let fmt = |d: &[(f64, f64)]| {
+        d.iter()
+            .map(|(f, c)| format!("{f:.2}|{c:.2}"))
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
     println!(
         "[grao] height   {}\n[grao] linear   {}\n[grao] multiply {}\n[grao] hoje     {}",
         fmt(&height),
@@ -97,15 +106,32 @@ fn o_height_abre_o_grao_com_a_pressao() {
         fmt(&hoje)
     );
     // O Height: a ponta toca só os picos e pinta-os inteiros (a fracção abre, a tinta é binária).
-    assert!(height[3].0 < 0.5 && height[9].0 > 0.9, "Height: a fracção não abre");
+    assert!(
+        height[3].0 < 0.5 && height[9].0 > 0.9,
+        "Height: a fracção não abre"
+    );
     // O Linear Height (o lápis): a fracção abre E a tinta gradua — o cv cai como no Rebelle (≥ 2×; Rebelle 3–6×).
     let (f_baixa, cv_baixa) = linear[3];
     let (f_cheia, cv_cheia) = linear[9];
-    assert!(f_baixa < 0.5 && f_cheia > 0.9, "Linear Height: a fracção não abre: {f_baixa:.2} → {f_cheia:.2}");
-    assert!(cv_baixa >= 2.0 * cv_cheia, "Linear Height: o cv não cai: {cv_baixa:.2} → {cv_cheia:.2}");
+    assert!(
+        f_baixa < 0.5 && f_cheia > 0.9,
+        "Linear Height: a fracção não abre: {f_baixa:.2} → {f_cheia:.2}"
+    );
+    assert!(
+        cv_baixa >= 2.0 * cv_cheia,
+        "Linear Height: o cv não cai: {cv_baixa:.2} → {cv_cheia:.2}"
+    );
     // O controlo: o grão de hoje (Multiply) pinta o miolo INTEIRO em toda pressão — não abre.
-    assert!(hoje[3].0 > 0.9, "o controlo: o grão de hoje já abria? {:.2}", hoje[3].0);
-    assert!(multiply[3].0 > 0.9, "o Multiply com a profundidade pela pressão não abre: {:.2}", multiply[3].0);
+    assert!(
+        hoje[3].0 > 0.9,
+        "o controlo: o grão de hoje já abria? {:.2}",
+        hoje[3].0
+    );
+    assert!(
+        multiply[3].0 > 0.9,
+        "o Multiply com a profundidade pela pressão não abre: {:.2}",
+        multiply[3].0
+    );
 }
 
 /// O neutro: a lei de fábrica é o Multiply sem profundidade por dab — e as linhas voltam a ela.

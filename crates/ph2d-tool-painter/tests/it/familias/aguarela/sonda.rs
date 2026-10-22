@@ -60,14 +60,17 @@ pub(super) fn medidas(p: &[(f64, [f64; 5])], campo: usize) -> Option<[f64; 6]> {
     let (a, b) = (on[0], on[on.len() - 1] + 1);
     let w = (b - a) as f64;
     let f = |t: f64| a + (t * w).round() as usize;
-    let media = |r: std::ops::Range<usize>| r.clone().map(|i| v[i]).sum::<f64>() / r.len().max(1) as f64;
+    let media =
+        |r: std::ops::Range<usize>| r.clone().map(|i| v[i]).sum::<f64>() / r.len().max(1) as f64;
     let miolo = f(0.15)..f(0.85);
     let m = media(miolo.clone());
     let alis = |i: usize| {
         let (l, r) = (i.saturating_sub(4), (i + 5).min(v.len()));
         (l..r).map(|j| v[j]).sum::<f64>() / (r - l) as f64
     };
-    let lis = (miolo.clone().map(|i| (v[i] - alis(i)).powi(2)).sum::<f64>() / miolo.len() as f64).sqrt() / m;
+    let lis = (miolo.clone().map(|i| (v[i] - alis(i)).powi(2)).sum::<f64>() / miolo.len() as f64)
+        .sqrt()
+        / m;
     let centro = media(f(0.40)..f(0.60));
     let ombros = (media(f(0.10)..f(0.25)) + media(f(0.75)..f(0.90))) / 2.0;
     let buracos = miolo.clone().map(|i| p[i].1[3]).sum::<f64>() / miolo.len() as f64;
@@ -79,7 +82,14 @@ pub(super) fn medidas(p: &[(f64, [f64; 5])], campo: usize) -> Option<[f64; 6]> {
         })
         .sum::<f64>()
         / miolo.len() as f64;
-    Some([w * (p[1].0 - p[0].0), m, lis, ombros / centro, buracos, mancha])
+    Some([
+        w * (p[1].0 - p[0].0),
+        m,
+        lis,
+        ombros / centro,
+        buracos,
+        mancha,
+    ])
 }
 
 fn resume(nome: &str, p: &[(f64, [f64; 5])], campo: usize) -> String {
@@ -138,8 +148,14 @@ fn sonda_o_miolo_liso() {
             }
             // `PH2D_SONDA_TAMANHOS="5,40,200"`: os rectos a esses diâmetros, pressão 1 (por omissão o de 200 e o fraco de 40).
             let cenas: Vec<(String, f32, f32, f32)> = match std::env::var("PH2D_SONDA_TAMANHOS") {
-                Ok(l) => l.split(',').map(|d| (d.to_owned(), d.parse::<f32>().unwrap() / 2.0, 320.0, 1.0)).collect(),
-                Err(_) => vec![("200".into(), 100.0, 440.0, 1.0), ("fraca40".into(), 20.0, 190.0, 0.25)],
+                Ok(l) => l
+                    .split(',')
+                    .map(|d| (d.to_owned(), d.parse::<f32>().unwrap() / 2.0, 320.0, 1.0))
+                    .collect(),
+                Err(_) => vec![
+                    ("200".into(), 100.0, 440.0, 1.0),
+                    ("fraca40".into(), 20.0, 190.0, 0.25),
+                ],
             };
             for (rotulo, raio, y, pressao) in cenas {
                 let mut t = tela();
@@ -149,32 +165,66 @@ fn sonda_o_miolo_liso() {
                 assert!(falhas.is_empty(), "{falhas:?}");
                 t.set_brush_size_px(raio);
                 t.set_brush_color_srgb8(AZUL);
-                let dabs: std::sync::Arc<std::sync::Mutex<Vec<[f64; 6]>>> = std::sync::Arc::default();
+                let dabs: std::sync::Arc<std::sync::Mutex<Vec<[f64; 6]>>> =
+                    std::sync::Arc::default();
                 if std::env::var("PH2D_SONDA_DABS").is_ok() {
                     let d2 = std::sync::Arc::clone(&dabs);
                     t.wet_sonda_motor(move |e| {
                         e.on_dab = Some(Box::new(move |b, d| {
-                            d2.lock().unwrap().push([d.x, d.y, d.r, d.intensity, d.opacity, d.water_amount]);
+                            d2.lock().unwrap().push([
+                                d.x,
+                                d.y,
+                                d.r,
+                                d.intensity,
+                                d.opacity,
+                                d.water_amount,
+                            ]);
                         }));
                     });
                 }
-                let env = |k: &str, o: f32| std::env::var(k).ok().and_then(|v| v.parse().ok()).unwrap_or(o);
+                let env = |k: &str, o: f32| {
+                    std::env::var(k)
+                        .ok()
+                        .and_then(|v| v.parse().ok())
+                        .unwrap_or(o)
+                };
                 let (x0, x1) = (env("PH2D_SONDA_X0", 60.0), env("PH2D_SONDA_X1", 940.0));
                 gesto(&mut t, &[[x0, y], [x1, y]], 3.0, |_| pressao);
                 let ds = dabs.lock().unwrap().clone();
                 if !ds.is_empty() {
-                    let mut meio: Vec<&[f64; 6]> = ds.iter().filter(|d| d[0] > 300.0 && d[0] < 700.0).collect();
+                    let mut meio: Vec<&[f64; 6]> =
+                        ds.iter().filter(|d| d[0] > 300.0 && d[0] < 700.0).collect();
                     if meio.is_empty() {
                         meio = ds.iter().collect();
                     }
-                    let passos: Vec<String> = meio.windows(2).take(12).map(|w| format!("{:.3}", w[1][0] - w[0][0])).collect();
-                    let ys: Vec<String> = meio.iter().take(8).map(|d| format!("{:.4}", d[1])).collect();
+                    let passos: Vec<String> = meio
+                        .windows(2)
+                        .take(12)
+                        .map(|w| format!("{:.3}", w[1][0] - w[0][0]))
+                        .collect();
+                    let ys: Vec<String> = meio
+                        .iter()
+                        .take(8)
+                        .map(|d| format!("{:.4}", d[1]))
+                        .collect();
                     let ex = meio[meio.len() / 2];
-                    let ini: Vec<String> = ds.iter().take(12).map(|d| format!("x{:.0} r{:.1} op{:.3} ag{:.3}", d[0], d[2], d[4], d[5])).collect();
+                    let ini: Vec<String> = ds
+                        .iter()
+                        .take(12)
+                        .map(|d| format!("x{:.0} r{:.1} op{:.3} ag{:.3}", d[0], d[2], d[4], d[5]))
+                        .collect();
                     println!("[dabs] início: {}", ini.join(" · "));
                     println!(
                         "[dabs] {} {rotulo}: {} dabs ({} no meio) · passos {} · y {} · r {:.2} I {:.3} opac {:.3} água {:.3}",
-                        p.nome, ds.len(), meio.len(), passos.join(" "), ys.join(" "), ex[2], ex[3], ex[4], ex[5]
+                        p.nome,
+                        ds.len(),
+                        meio.len(),
+                        passos.join(" "),
+                        ys.join(" "),
+                        ex[2],
+                        ex[3],
+                        ex[4],
+                        ex[5]
                     );
                 }
                 let m = f64::from(raio) * 1.6;
@@ -192,10 +242,30 @@ fn sonda_o_miolo_liso() {
                 println!("[liso] {nome} 240q massa {}", resume("", &p1, 9));
                 println!("[liso] {nome} 240q sett  {}", resume("", &p1, 1));
                 if std::env::var("PH2D_SONDA_PERFIL").is_ok() {
-                    let s: Vec<String> = p0.iter().map(|(yy, s)| format!("{yy:.0}:{:.0}/{:.0}", s[0] + s[1], p1.iter().find(|q| q.0 == *yy).map_or(0.0, |q| q.1[0] + q.1[1]))).collect();
+                    let s: Vec<String> = p0
+                        .iter()
+                        .map(|(yy, s)| {
+                            format!(
+                                "{yy:.0}:{:.0}/{:.0}",
+                                s[0] + s[1],
+                                p1.iter()
+                                    .find(|q| q.0 == *yy)
+                                    .map_or(0.0, |q| q.1[0] + q.1[1])
+                            )
+                        })
+                        .collect();
                     println!("[perfil] {nome} {}", s.join(" "));
                     // A ÁGUA (o `film`, ×1000) logo depois do traço e aos 240 quadros: onde a orla nasce (ou não).
-                    let f: Vec<String> = p0.iter().map(|(yy, s)| format!("{yy:.0}:{:.0}/{:.0}", s[2] * 1e3, p1.iter().find(|q| q.0 == *yy).map_or(0.0, |q| q.1[2] * 1e3))).collect();
+                    let f: Vec<String> = p0
+                        .iter()
+                        .map(|(yy, s)| {
+                            format!(
+                                "{yy:.0}:{:.0}/{:.0}",
+                                s[2] * 1e3,
+                                p1.iter().find(|q| q.0 == *yy).map_or(0.0, |q| q.1[2] * 1e3)
+                            )
+                        })
+                        .collect();
                     println!("[agua] {nome} {}", f.join(" "));
                 }
             }

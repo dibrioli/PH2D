@@ -93,8 +93,10 @@ impl Pincel {
     fn meio(&self) -> PaintMedia {
         match &self.fonte {
             // O meio do FICHEIRO (L1): um preset de qualquer meio; um desconhecido é recusado no `aplica`.
-            Fonte::Preset { preset, .. } => ph2d_tool_painter::meio_do_preset(&preset.parametros.media)
-                .unwrap_or(PaintMedia::WetPaint),
+            Fonte::Preset { preset, .. } => {
+                ph2d_tool_painter::meio_do_preset(&preset.parametros.media)
+                    .unwrap_or(PaintMedia::WetPaint)
+            }
             Fonte::Meio(r) => r.meio,
         }
     }
@@ -209,13 +211,20 @@ fn variantes(pinceis: Vec<Pincel>) -> Vec<Pincel> {
             continue;
         };
         let lista = v.get(&p.nome).or_else(|| v.get("*"));
-        for (k, m) in lista.and_then(Value::as_array).into_iter().flatten().enumerate() {
+        for (k, m) in lista
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .enumerate()
+        {
             let mut pr = preset.clone();
             for (chave, valor) in m.as_object().unwrap() {
                 if let Some(campo) = chave.strip_prefix("brush.") {
                     pr.parametros.brush.insert(campo.to_owned(), valor.clone());
                 } else {
-                    pr.parametros.engine.insert(chave.clone(), valor.as_f64().unwrap());
+                    pr.parametros
+                        .engine
+                        .insert(chave.clone(), valor.as_f64().unwrap());
                 }
             }
             out.push(Pincel {
@@ -398,9 +407,11 @@ fn escreve_ppm(path: &Path, rgba: &[u8], w: u32, h: u32, papel: [u8; 3]) {
     let mut f = format!("P6\n{w} {h}\n255\n").into_bytes();
     for px in rgba.as_chunks::<4>().0 {
         let a = u32::from(px[3]);
-        f.extend((0..3).map(|i| {
-            ((u32::from(px[i]) * a + u32::from(papel[i]) * (255 - a) + 127) / 255) as u8
-        }));
+        f.extend(
+            (0..3).map(|i| {
+                ((u32::from(px[i]) * a + u32::from(papel[i]) * (255 - a) + 127) / 255) as u8
+            }),
+        );
     }
     std::fs::write(path, f).unwrap();
 }
@@ -464,7 +475,8 @@ fn exame_pinta() {
     let padroes: Vec<Option<Pincel>> = todos
         .iter()
         .map(|p| {
-            (base.is_none() && p.nao_pinta()).then(|| pinceis(base_padrao(p.meio(), p.modo())).remove(0))
+            (base.is_none() && p.nao_pinta())
+                .then(|| pinceis(base_padrao(p.meio(), p.modo())).remove(0))
         })
         .collect();
     let bat = bateria();
@@ -512,7 +524,13 @@ fn exame_pinta() {
                     let (foto, px) = pinta_cena(pincel, base, cena, tela, papel, f);
                     let ms = t1.elapsed().as_secs_f64() * 1e3;
                     let chave = format!("{nome_cena}_{foto}");
-                    escreve_ppm(&dir.join(format!("{chave}.ppm")), &px, tela[0], tela[1], papel);
+                    escreve_ppm(
+                        &dir.join(format!("{chave}.ppm")),
+                        &px,
+                        tela[0],
+                        tela[1],
+                        papel,
+                    );
                     println!("[exame] {} · {chave}: {ms:.0} ms", pincel.nome);
                     let mut m = metas.lock().unwrap();
                     let e = &mut m[p];

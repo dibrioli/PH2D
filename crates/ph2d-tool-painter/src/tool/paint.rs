@@ -137,15 +137,15 @@ mod tiling;
 mod wet_editable;
 mod wetpaint; // Wet Paint (PaintMode::WetPaint): the fluid-engine session — ADR-0134; see its module doc
 pub(crate) use wetpaint::fita; // a fita do worker que a trilha da macro (`crate::macro_track`) grava e toca
+mod dual; // o DUAL BRUSH (L6): a 2.ª ponta, o motor dela e a máscara do traço que recorta a 1.ª
 mod macro_estado;
+mod mangueira; // a ponta de N IMAGENS (L19): as imagens além da Shape e o carimbo em corridas
+pub mod mao; // a MÃO do pincel (pressão, inclinação) nos quatro meios, por uma lei só (L2, Pinceis/03 §4)
 pub mod marca; // as linhas da MARCA (o jitter da L4) no cartão Jitter, nos quatro meios
+mod pixel_route; // a ponta de PÍXEL (L18): o trilho ancorado e o carimbo binário, só no Digital
+pub mod ponta; // as linhas da PONTA (L9 o grão · L18 o píxel · L19 as imagens) nas secções Brush/Grain/Shape
 mod traco_plano; // o PLANO do traço: o tecto, as orlas (L8) e a cauda re-pintada (L5), só no Digital
 mod traco_settings; // as portas do painel do traço (L8) e do modo sobre o vazio (L7)
-pub mod ponta; // as linhas da PONTA (L9 o grão · L18 o píxel · L19 as imagens) nas secções Brush/Grain/Shape
-mod mangueira; // a ponta de N IMAGENS (L19): as imagens além da Shape e o carimbo em corridas
-mod dual; // o DUAL BRUSH (L6): a 2.ª ponta, o motor dela e a máscara do traço que recorta a 1.ª
-mod pixel_route; // a ponta de PÍXEL (L18): o trilho ancorado e o carimbo binário, só no Digital
-pub mod mao; // a MÃO do pincel (pressão, inclinação) nos quatro meios, por uma lei só (L2, Pinceis/03 §4)
 mod wetpaint_commit;
 pub mod wetpaint_preset; // o preset do Wet Painter: aplicar / capturar / miniatura (W1, NewFeaturesWetPaint/02 §5) // as configurações que o estado inicial de uma macro leva (crate::macro_track)
 pub(crate) use macro_estado::ErroDoEstado;
@@ -213,17 +213,8 @@ mod accumulate_probe;
 /// **Accumulate** — a metade que AFIRMA; a sonda irmã é dona da fixture.
 #[cfg(test)]
 mod accumulate_tests;
-/// **L7** — o efeito do pincel compõe no seu modo (W3C em sRGB), contra a fórmula e as fotos do Rebelle.
-#[cfg(test)]
-mod efeito_modos_tests;
-/// **L7** — o modo do pincel sobre o VAZIO (a fórmula geral do W3C), no Digital e no Wet.
-#[cfg(test)]
-mod efeito_vazio_tests;
 #[cfg(test)]
 mod composite_look;
-/// **L8 + L5** — o tecto por traço, as orlas, a cauda e o fall-off (o plano do traço).
-#[cfg(test)]
-mod traco_plano_tests;
 #[cfg(test)]
 mod composite_probe;
 /// **O entalhe no cruzamento** — a sonda que decide se a aquarela usa a UNIÃO (o vinco que o FLIP
@@ -234,6 +225,12 @@ mod crossing_probe;
 /// acima abriu ao refutar a união.
 #[cfg(test)]
 mod crossing_scale_probe;
+/// **L7** — o efeito do pincel compõe no seu modo (W3C em sRGB), contra a fórmula e as fotos do Rebelle.
+#[cfg(test)]
+mod efeito_modos_tests;
+/// **L7** — o modo do pincel sobre o VAZIO (a fórmula geral do W3C), no Digital e no Wet.
+#[cfg(test)]
+mod efeito_vazio_tests;
 /// **Grid Stamp** — o que o carimbo de fato PINTA (o irmão do módulo acima, que mede os controles).
 #[cfg(test)]
 mod grid_stamp_paint_tests;
@@ -245,6 +242,9 @@ mod shape_relief_tests;
 /// **O esfregão numa CURVA** — o tecto do transporte, e a prova de que a RECTA não mexeu.
 #[cfg(test)]
 mod smear_curva_tests;
+/// **L8 + L5** — o tecto por traço, as orlas, a cauda e o fall-off (o plano do traço).
+#[cfg(test)]
+mod traco_plano_tests;
 pub(crate) use composite::{CompositeLayer, CompositeOp};
 mod clone;
 mod eyedropper;

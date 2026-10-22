@@ -131,7 +131,11 @@ impl Stroke {
             let mut w = self.taper_width_at(base_arc + traveled);
             // O passo pelo diâmetro À PRESSÃO (J4, `BrushSpec::passo_pela_pressao`): a do ponto onde se está.
             if self.spec.passo_pela_pressao && self.spec.leis_do_digital() {
-                let p = lerp(self.last_pressure, target.pressure, traveled / seg.max(1e-6));
+                let p = lerp(
+                    self.last_pressure,
+                    target.pressure,
+                    traveled / seg.max(1e-6),
+                );
                 w *= self.dynamics.radius_scale(p);
                 // …e à VELOCIDADE (L12; J4 efeitos — o `dabs_per_actual_radius` do MyPaint): o traço rápido que
                 // afina não sai em contas. Sem a lei, o factor é 1 ao bit.

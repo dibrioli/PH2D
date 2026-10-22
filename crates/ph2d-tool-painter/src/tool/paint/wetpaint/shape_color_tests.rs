@@ -329,7 +329,11 @@ fn a_cor_sobrevive_a_agua_nos_pinceis_de_fabrica() {
     );
     let mut fracos = Vec::new();
     // Só os do Wet Paint (a régua é a da água dele; os outros meios têm presets irmãos desde a J3).
-    for e in bib.entradas.iter().filter(|e| e.preset.parametros.media == crate::MEIO_DO_PRESET) {
+    for e in bib
+        .entradas
+        .iter()
+        .filter(|e| e.preset.parametros.media == crate::MEIO_DO_PRESET)
+    {
         let desvio = |c: Option<(bool, bool)>| {
             let mut t = cena_da_regua(PaintMedia::WetPaint, c, 14.0);
             assert!(t.wet_preset_aplicar(&e.preset).is_empty());

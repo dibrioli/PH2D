@@ -105,7 +105,10 @@ pub fn render_stamp_mask(
             w = crate::height::film_coverage(lays_body, w);
             if w > 0.0 && grain_active {
                 let g = crate::texture::sample_unit(&spec.texture, &grain_basis, u, v, grain_image);
-                w *= spec.texture.lei.factor(w, g, depth, spec.effective_granulation());
+                w *= spec
+                    .texture
+                    .lei
+                    .factor(w, g, depth, spec.effective_granulation());
             }
             data[row + i as usize] = encode(w);
         }
@@ -547,7 +550,11 @@ fn canvas_blit_band(
             w = crate::height::film_coverage(ctx.spec.deposits_height(), w);
             // GRAIN Depth + watercolor Granulation (the shared combine); byte-identical at Depth 1 / Gran 0.
             let g = f32::from(tex[mi]) / 255.0;
-            w *= ctx.spec.texture.lei.factor(w, g, depth, ctx.spec.effective_granulation());
+            w *= ctx
+                .spec
+                .texture
+                .lei
+                .factor(w, g, depth, ctx.spec.effective_granulation());
             if w <= 0.0 {
                 continue;
             }

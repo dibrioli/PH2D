@@ -57,8 +57,7 @@ const CAMADAS_COMO_PINCEL: &str =
 const ACESSOR: &str = "acessor do contrato: não muda nada";
 const ETAPA_EDITADA: &str =
     "a edição de uma etapa chega à imagem: obra da própria macro, nunca um passo de outra";
-const IMAGENS_DA_PONTA: &str =
-    "a silhueta cinzenta da ponta (L19) é a porta do PRESET (que a macro grava inteiro); o artista acrescenta pelo RGBA";
+const IMAGENS_DA_PONTA: &str = "a silhueta cinzenta da ponta (L19) é a porta do PRESET (que a macro grava inteiro); o artista acrescenta pelo RGBA";
 const GRAVACAO: &str =
     "arma, drena ou pára a gravação (o painel MACROS): controla a macro, não é um passo da obra";
 

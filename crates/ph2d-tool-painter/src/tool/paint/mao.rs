@@ -155,7 +155,11 @@ impl LinhaDaMao {
             Self::PressureJitter => (PRESSURE_JITTER.1, PRESSURE_JITTER.2, PRESSURE_JITTER.3),
             Self::SpeedLag => (SPEED_LAG.1, SPEED_LAG.2, SPEED_LAG.3),
             Self::SpeedHardness => (SPEED_HARDNESS.1, SPEED_HARDNESS.2, SPEED_HARDNESS.3),
-            Self::PressureHardness => (PRESSURE_HARDNESS.1, PRESSURE_HARDNESS.2, PRESSURE_HARDNESS.3),
+            Self::PressureHardness => (
+                PRESSURE_HARDNESS.1,
+                PRESSURE_HARDNESS.2,
+                PRESSURE_HARDNESS.3,
+            ),
         }
     }
 
@@ -166,7 +170,11 @@ impl LinhaDaMao {
     pub fn grava_no_neutro(self) -> bool {
         !matches!(
             self,
-            Self::PressureSCurve | Self::PressureJitter | Self::SpeedLag | Self::SpeedHardness | Self::PressureHardness
+            Self::PressureSCurve
+                | Self::PressureJitter
+                | Self::SpeedLag
+                | Self::SpeedHardness
+                | Self::PressureHardness
         )
     }
 
@@ -204,9 +212,7 @@ impl LinhaDaMao {
     #[must_use]
     pub fn lida(self, m: PaintMedia, automatica: bool) -> bool {
         self.lida_por(m)
-            && !(m == PaintMedia::Watercolor
-                && automatica
-                && self == Self::Knob(Knob::DabRotation))
+            && !(m == PaintMedia::Watercolor && automatica && self == Self::Knob(Knob::DabRotation))
     }
 
     /// **O meio LÊ esta linha?** A Watercolor não lê a cobertura do dab (`WASH_DEPOSIT_PEAK`: a Strength e
@@ -440,7 +446,10 @@ impl super::PainterTool {
                     self.paint.wetpaint.knobs.set(kn, v);
                 }
             }
-            (self.paint.dynamics.speed_size, self.paint.dynamics.speed_opacity) = (0.0, 0.0);
+            (
+                self.paint.dynamics.speed_size,
+                self.paint.dynamics.speed_opacity,
+            ) = (0.0, 0.0);
             self.paint.dynamics.pen.s_curve = 0.0;
             self.paint.dynamics.jitter_pressure = 0.0;
             self.paint.dynamics.speed_lag_s = 0.0;
@@ -493,9 +502,14 @@ mod tests {
     /// Os ids do cartão Pen são os das linhas, pela ordem e pela chave.
     #[test]
     fn cada_linha_tem_o_seu_id_pela_chave() {
-        for (l, id) in LINHAS_DA_MAO.into_iter().zip(crate::ids::PAINTER_PEN_FIELDS) {
-            let pela_chave =
-                ph2d_tool_registry::hash_node_id_runtime(&format!("painter_brush.pen.{}", l.chave()));
+        for (l, id) in LINHAS_DA_MAO
+            .into_iter()
+            .zip(crate::ids::PAINTER_PEN_FIELDS)
+        {
+            let pela_chave = ph2d_tool_registry::hash_node_id_runtime(&format!(
+                "painter_brush.pen.{}",
+                l.chave()
+            ));
             assert_eq!(id, pela_chave, "{}", l.chave());
         }
         assert_eq!(MAO_DE_FABRICA, LINHAS_DA_MAO.map(LinhaDaMao::omissao));
@@ -528,7 +542,11 @@ mod tests {
         for (k, v) in valores {
             wet.set_mao(LinhaDaMao::Knob(k), v);
         }
-        for m in [PaintMedia::Digital, PaintMedia::Watercolor, PaintMedia::Impasto] {
+        for m in [
+            PaintMedia::Digital,
+            PaintMedia::Watercolor,
+            PaintMedia::Impasto,
+        ] {
             let mut t = super::super::super::PainterTool::default();
             t.set_paint_media(m);
             for (k, v) in valores {
@@ -538,13 +556,23 @@ mod tests {
             let (mut ti, wi) = (t.inclinacao_do_pincel(), wet.inclinacao_do_pincel());
             if m == PaintMedia::Watercolor {
                 // A Shape «Automatic» (a de fábrica da Watercolor) não lê a pegada deitada.
-                assert_eq!((ti.width, ti.length, ti.rotation), (1.0, 1.0, DabRotation::None));
+                assert_eq!(
+                    (ti.width, ti.length, ti.rotation),
+                    (1.0, 1.0, DabRotation::None)
+                );
                 (ti.width, ti.length, ti.rotation) = (wi.width, wi.length, wi.rotation);
             }
             assert_eq!(ti, wi, "{m:?}");
-            assert_eq!((d.size_min, d.size_curve, d.pen), (w.size_min, w.size_curve, w.pen), "{m:?}");
+            assert_eq!(
+                (d.size_min, d.size_curve, d.pen),
+                (w.size_min, w.size_curve, w.pen),
+                "{m:?}"
+            );
             if m == PaintMedia::Watercolor {
-                assert!(!d.strength_pressure, "a Watercolor não lê a opacidade do dab");
+                assert!(
+                    !d.strength_pressure,
+                    "a Watercolor não lê a opacidade do dab"
+                );
             } else {
                 assert_eq!(d, w, "{m:?}");
             }
@@ -571,7 +599,10 @@ mod tests {
             .unwrap()
             .remove("opacity");
         let lida = super::super::wetpaint_preset::json::pincel_de_json(&m, &["pen_tilt"], b);
-        assert_eq!(lida.pen_tilt.opacity, 0.0, "a pen_tilt antiga não traz a opacidade de agora");
+        assert_eq!(
+            lida.pen_tilt.opacity, 0.0,
+            "a pen_tilt antiga não traz a opacidade de agora"
+        );
     }
 
     /// ⭐ **As linhas que nasceram depois da fábrica só vão para o preset MEXIDAS** (a curva em S, a pressão leve —
@@ -592,12 +623,21 @@ mod tests {
         let base = Parametros::novo(nome_do_meio(PaintMedia::Digital), "g", "n");
         let (p, _) = t.preset_capturar(&base);
         for l in novas {
-            assert!(!p.engine.contains_key(l.chave()), "{} no preset de fábrica", l.chave());
+            assert!(
+                !p.engine.contains_key(l.chave()),
+                "{} no preset de fábrica",
+                l.chave()
+            );
             t.set_mao(l, 0.5);
         }
         let (p, _) = t.preset_capturar(&base);
         for l in novas {
-            assert_eq!(p.engine.get(l.chave()).copied(), Some(0.5), "{} mexida e não gravada", l.chave());
+            assert_eq!(
+                p.engine.get(l.chave()).copied(),
+                Some(0.5),
+                "{} mexida e não gravada",
+                l.chave()
+            );
         }
     }
 
@@ -641,7 +681,12 @@ mod velocidade {
     }
 
     /// [`alturas`] com várias linhas da mão.
-    fn alturas_com(m: PaintMedia, passo: f32, linhas: &[(LinhaDaMao, f64)], xs: &[usize]) -> Vec<usize> {
+    fn alturas_com(
+        m: PaintMedia,
+        passo: f32,
+        linhas: &[(LinhaDaMao, f64)],
+        xs: &[usize],
+    ) -> Vec<usize> {
         let mut t = super::super::super::PainterTool::default();
         t.set_source(vec![255u8; 600 * 120 * 4], 600, 120);
         t.set_paint_media(m);
@@ -683,9 +728,18 @@ mod velocidade {
         let dura = (LinhaDaMao::SpeedHardness, 0.3);
         let sem = alturas_com(PaintMedia::Digital, 2.4, &[lag], &xs);
         let com = alturas_com(PaintMedia::Digital, 2.4, &[lag, dura], &xs);
-        assert!(sem[0].abs_diff(sem[1]) <= 1, "sem a linha o início é o meio: {sem:?}");
-        assert!(com[0] >= com[1] + 2, "com a linha o traço lento nasce mais largo: {com:?}");
-        assert!(com[1].abs_diff(sem[1]) <= 1, "a 300 px/s a dureza é a do pincel: {com:?} × {sem:?}");
+        assert!(
+            sem[0].abs_diff(sem[1]) <= 1,
+            "sem a linha o início é o meio: {sem:?}"
+        );
+        assert!(
+            com[0] >= com[1] + 2,
+            "com a linha o traço lento nasce mais largo: {com:?}"
+        );
+        assert!(
+            com[1].abs_diff(sem[1]) <= 1,
+            "a 300 px/s a dureza é a do pincel: {com:?} × {sem:?}"
+        );
         // O rápido amacia (a dureza desce): o pincel de omissão já tem a dureza 0, o tecto de baixo — a lei vê-se
         // na própria curva (`ph2d_painter_brush::dynamics`, `a_dureza_da_velocidade_e_a_curva_do_mypaint`).
     }
@@ -701,7 +755,11 @@ mod velocidade {
         for m in [PaintMedia::Digital, PaintMedia::Impasto] {
             let h = alturas(m, 50.0, Some((LinhaDaMao::SpeedSize, 0.45)), &xs);
             for (x, a) in xs.iter().zip(&h) {
-                assert!(a.abs_diff(h[3]) <= 1, "{m:?}: a {x} px a largura é {a}, a do meio {} — {h:?}", h[3]);
+                assert!(
+                    a.abs_diff(h[3]) <= 1,
+                    "{m:?}: a {x} px a largura é {a}, a do meio {} — {h:?}",
+                    h[3]
+                );
             }
         }
     }
@@ -720,10 +778,22 @@ mod velocidade {
         let curto = alturas_com(PaintMedia::Digital, 50.0, &[marker, lag(0.04)], &xs);
         let longo = alturas_com(PaintMedia::Digital, 50.0, &[marker, lag(0.2)], &xs);
         let sem = alturas_com(PaintMedia::Digital, 50.0, &[marker], &xs);
-        assert!(sem[0].abs_diff(sem[2]) <= 1, "sem atraso o início é o meio: {sem:?}");
-        assert!(curto[0] + 1 >= plena[0], "com atraso o 1.º dab sai à largura cheia: {curto:?} × {plena:?}");
-        assert!(curto[2] + 3 <= curto[0], "com atraso o traço afina: {curto:?}");
-        assert!(longo[1] >= curto[1] + 2, "o atraso maior afina mais tarde: {longo:?} × {curto:?}");
+        assert!(
+            sem[0].abs_diff(sem[2]) <= 1,
+            "sem atraso o início é o meio: {sem:?}"
+        );
+        assert!(
+            curto[0] + 1 >= plena[0],
+            "com atraso o 1.º dab sai à largura cheia: {curto:?} × {plena:?}"
+        );
+        assert!(
+            curto[2] + 3 <= curto[0],
+            "com atraso o traço afina: {curto:?}"
+        );
+        assert!(
+            longo[1] >= curto[1] + 2,
+            "o atraso maior afina mais tarde: {longo:?} × {curto:?}"
+        );
     }
 
     /// A velocidade→opacidade chega ao Wet Paint (a mão dele herda a `Dynamics` do pincel): no recto rápido a
@@ -766,7 +836,10 @@ mod velocidade {
     fn a_velocidade_estreita_o_traco() {
         for m in [PaintMedia::Digital, PaintMedia::Impasto] {
             let (lento, rapido) = (altura(m, 3.0, None), altura(m, 50.0, None));
-            assert!(lento > 8 && lento.abs_diff(rapido) <= 1, "{m:?} neutro: {lento} × {rapido}");
+            assert!(
+                lento > 8 && lento.abs_diff(rapido) <= 1,
+                "{m:?} neutro: {lento} × {rapido}"
+            );
             let marker = Some((LinhaDaMao::SpeedSize, 0.45));
             let (l, r) = (altura(m, 3.0, marker), altura(m, 50.0, marker));
             let esperado = l as f32 * (6250.0f32 / 375.0).powf(-0.45);
@@ -791,7 +864,12 @@ mod pressao_leve {
         t.set_paint_media(PaintMedia::Digital);
         t.set_brush_size_px(16.0);
         t.set_mao(LinhaDaMao::PressureJitter, j);
-        let cp = |x: f32, phase| CanvasPointer { pos: [x, 60.0], pressure: p, tilt: [0.0, 0.0], phase };
+        let cp = |x: f32, phase| CanvasPointer {
+            pos: [x, 60.0],
+            pressure: p,
+            tilt: [0.0, 0.0],
+            phase,
+        };
         t.on_canvas_pointer(cp(20.0, PointerPhase::Down));
         let mut x: f32 = 20.0;
         while x < 580.0 {
@@ -805,7 +883,9 @@ mod pressao_leve {
 
     /// As linhas da tela com tinta (algum texel abaixo de 250 no vermelho).
     fn linhas_com_tinta(px: &[u8]) -> usize {
-        (0..120).filter(|y| (100..500).any(|x| px[(y * 600 + x) * 4] < 250)).count()
+        (0..120)
+            .filter(|y| (100..500).any(|x| px[(y * 600 + x) * 4] < 250))
+            .count()
     }
 
     /// ⭐ **A pressão leve espalha** (`Dynamics::jitter_pressure`; a esferográfica do MyPaint, `offset_by_random`
@@ -813,8 +893,17 @@ mod pressao_leve {
     /// lei não move um dab (a tela é a de sem ela, ao byte).
     #[test]
     fn a_pressao_leve_espalha_e_a_cheia_nao() {
-        let (sem, com) = (linhas_com_tinta(&recto(0.2, 0.0)), linhas_com_tinta(&recto(0.2, 0.5)));
-        assert!(com >= sem + 4, "à pressão 0,2 a lei não espalhou: {sem} → {com} linhas");
-        assert!(recto(1.0, 0.0) == recto(1.0, 0.5), "à pressão 1 a lei mexeu na tinta");
+        let (sem, com) = (
+            linhas_com_tinta(&recto(0.2, 0.0)),
+            linhas_com_tinta(&recto(0.2, 0.5)),
+        );
+        assert!(
+            com >= sem + 4,
+            "à pressão 0,2 a lei não espalhou: {sem} → {com} linhas"
+        );
+        assert!(
+            recto(1.0, 0.0) == recto(1.0, 0.5),
+            "à pressão 1 a lei mexeu na tinta"
+        );
     }
 }

@@ -48,21 +48,37 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.same_as_paper_off" => "Acts when Same as Paper is off",
         "panel.painter_layers.inerte.charge_below_full" => "Acts when Charge is below 100%",
         "panel.painter_layers.inerte.grain_chosen" => "Acts when a Grain is chosen",
-        "panel.painter_layers.inerte.pressure_opacity_on" => "Acts when Pressure opacity is above 0",
+        "panel.painter_layers.inerte.pressure_opacity_on" => {
+            "Acts when Pressure opacity is above 0"
+        }
         "panel.painter_layers.inerte.pressure_size_on" => "Acts when Pressure size is above 0",
-        "panel.painter_layers.inerte.pressure_on" => "Acts when Pressure size or Pressure opacity is above 0",
-        "panel.painter_layers.inerte.shape_automatic_off" => "Acts when the Shape's Automatic is off",
+        "panel.painter_layers.inerte.pressure_on" => {
+            "Acts when Pressure size or Pressure opacity is above 0"
+        }
+        "panel.painter_layers.inerte.shape_automatic_off" => {
+            "Acts when the Shape's Automatic is off"
+        }
         "panel.painter_layers.inerte.spray_count_above_one" => "Acts when Count is above 1",
-        "panel.painter_layers.inerte.wash_ignores_dab_opacity" => "The wash does not read the dab opacity",
-        "panel.painter_layers.inerte.color_owned_by_ramp" => "Acts when no Color Ramp or Texture Color paints the colour",
+        "panel.painter_layers.inerte.wash_ignores_dab_opacity" => {
+            "The wash does not read the dab opacity"
+        }
+        "panel.painter_layers.inerte.color_owned_by_ramp" => {
+            "Acts when no Color Ramp or Texture Color paints the colour"
+        }
         // O fim do traço (L5), o traço como uma camada (L8) e o modo sobre o vazio (L7).
-        "panel.painter_layers.inerte.taper_end_length" => "Acts with a Tail length on a freehand stroke",
+        "panel.painter_layers.inerte.taper_end_length" => {
+            "Acts with a Tail length on a freehand stroke"
+        }
         "panel.painter_layers.inerte.fall_off_length" => "Acts with a Fall-off length",
         "panel.painter_layers.inerte.edges_above_zero" => "Acts with Wet or Burnt edges",
-        "panel.painter_layers.inerte.color_blend_mode" => "Acts with a colour Blend (Multiply, Color, Hue…)",
+        "panel.painter_layers.inerte.color_blend_mode" => {
+            "Acts with a colour Blend (Multiply, Color, Hue…)"
+        }
         "panel.painter_layers.inerte.freehand_paint_stroke" => "Acts on a freehand paint stroke",
         // A profundidade do grão por dab (L9).
-        "panel.painter_layers.inerte.depth_jitter_above_zero" => "Acts when Depth jitter is above 0",
+        "panel.painter_layers.inerte.depth_jitter_above_zero" => {
+            "Acts when Depth jitter is above 0"
+        }
         "panel.painter_layers.inerte.tilt_law_on" => {
             "Acts when the pen tilt changes the dab: Tilt width, length, smooth or opacity, or Rotation: Pen tilt"
         }

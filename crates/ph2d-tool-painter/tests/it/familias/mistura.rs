@@ -54,7 +54,11 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("falloff", "\"Sharp\""),
             ("blend", "\"EraseAlpha\""),
         ],
-        mao: &[("pressureSize", 0.0), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 1.0)],
+        mao: &[
+            ("pressureSize", 0.0),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.0),
+        ],
         opacity: Some(0.26),
         ..ReceitaMeio::digital("Eraser", "Soft", "Kneaded Eraser")
     },
@@ -68,7 +72,11 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("continuous_spacing", "true"),
             ("blend", "\"EraseAlpha\""),
         ],
-        mao: &[("pressureSize", 0.0), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 1.0)],
+        mao: &[
+            ("pressureSize", 0.0),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.0),
+        ],
         opacity: Some(1.0),
         ..ReceitaMeio::digital("Eraser", "Hard", "Hard Eraser")
     },
@@ -89,7 +97,11 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
     ReceitaMeio {
         modo: Some("Smear"),
         pincel: &[("hardness", "0.0"), ("falloff", "\"Smooth\"")],
-        mao: &[("pressureSize", 0.0), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 1.0)],
+        mao: &[
+            ("pressureSize", 0.0),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.0),
+        ],
         opacity: Some(1.0),
         ..ReceitaMeio::digital("Smudge", "Smudge", "Smudge Finger")
     },
@@ -101,7 +113,11 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
     ReceitaMeio {
         modo: Some("Blur"),
         pincel: &[("hardness", "0.0"), ("falloff", "\"Smooth\"")],
-        mao: &[("pressureSize", 0.0), ("pressureOpacity", 1.0), ("pressureOpacityCurve", 1.0)],
+        mao: &[
+            ("pressureSize", 0.0),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.0),
+        ],
         opacity: Some(0.2),
         ..ReceitaMeio::digital("Blend", "Soft", "Blur")
     },
@@ -176,7 +192,10 @@ impl Identidade {
         let largura = (420..=580)
             .filter(|&x| {
                 let c = rgb(x, y0);
-                (0..3).map(|k| (c[k] - ref_rgb[k]).abs()).fold(0.0, f64::max) > 15.0
+                (0..3)
+                    .map(|k| (c[k] - ref_rgb[k]).abs())
+                    .fold(0.0, f64::max)
+                    > 15.0
             })
             .count() as f64;
         let borda = linha.iter().filter(|&&r| r > 0.1 && r < 0.9).count() as f64 / 2.0;
@@ -217,7 +236,10 @@ const ESCALA_DO_EXAME: [(&str, f64); 1] = [("Blender Soft", 0.45)];
 /// O que faz a identidade de cada uma.
 const IDENTIDADE: [(&str, &[M]); 5] = [
     ("Smudge Finger", &[M::Resto, M::Largura, M::Fundo]),
-    ("Kneaded Eraser", &[M::Resto, M::Largura, M::Borda, M::Fundo]),
+    (
+        "Kneaded Eraser",
+        &[M::Resto, M::Largura, M::Borda, M::Fundo],
+    ),
     ("Hard Eraser", &[M::Resto, M::Largura, M::Borda, M::Fundo]),
     ("Blur", &[M::Resto, M::OrlaV, M::Fundo]),
     ("Blender Soft", &[M::Resto, M::OrlaV, M::Fundo]),
@@ -237,7 +259,10 @@ pub(crate) fn sobre_de(nome: &str, preset: Option<ph2d_brush_presets::Preset>) -
         .unwrap()
         .clone();
     // A ferramenta à escala do exame (os traços depois do `pincel: preset`); as faixas da base ficam.
-    let escala = ESCALA_DO_EXAME.iter().find(|e| e.0 == nome).map_or(1.0, |e| e.1);
+    let escala = ESCALA_DO_EXAME
+        .iter()
+        .find(|e| e.0 == nome)
+        .map_or(1.0, |e| e.1);
     let mut da_ferramenta = false;
     for op in sobre["ops"].as_array_mut().unwrap() {
         if op["op"] == "pincel" {
@@ -286,12 +311,20 @@ fn preset_da_receita(nome: &str) -> ph2d_brush_presets::Preset {
     if WET_FERRAMENTAS.iter().any(|f| f.receita.nome == nome) {
         return crate::midias_de_fabrica::de_fabrica(nome);
     }
-    let r = MEIOS.iter().chain(EM_ESTUDO).find(|r| r.nome == nome).unwrap();
+    let r = MEIOS
+        .iter()
+        .chain(EM_ESTUDO)
+        .find(|r| r.nome == nome)
+        .unwrap();
     let (parametros, texturas) = crate::presets_de_fabrica::parametros_do_meio(r);
     ph2d_brush_presets::Preset {
         parametros,
         origem: ph2d_brush_presets::Origem::Fabrica,
-        miniatura: ph2d_brush_presets::Miniatura { largura: 1, altura: 1, rgba: vec![255; 4] },
+        miniatura: ph2d_brush_presets::Miniatura {
+            largura: 1,
+            altura: 1,
+            rgba: vec![255; 4],
+        },
         texturas,
     }
 }
@@ -305,17 +338,24 @@ fn falhas_da_identidade(nome: &str, eu: &Identidade) -> Vec<String> {
     for &m in ms {
         let (v, f) = (m.de(eu), m.de(foto));
         if (v - f).abs() > m.tol(f) {
-            falhas.push(format!("{nome}: {m:?} {v:.3} fora da foto {f:.3} ± {:.3} ({oraculo})", m.tol(f)));
+            falhas.push(format!(
+                "{nome}: {m:?} {v:.3} fora da foto {f:.3} ± {:.3} ({oraculo})",
+                m.tol(f)
+            ));
         }
     }
     let distancia = |outra: &Identidade| -> f64 {
-        ms.iter().map(|&m| (m.de(eu) - m.de(outra)).abs() / m.tol(m.de(foto))).sum()
+        ms.iter()
+            .map(|&m| (m.de(eu) - m.de(outra)).abs() / m.tol(m.de(foto)))
+            .sum()
     };
     let propria = distancia(foto);
     for (outro, _, f2) in FOTOS.iter().filter(|f| f.0 != nome) {
         let d = distancia(f2);
         if propria >= d {
-            falhas.push(format!("{nome}: {propria:.2} tolerâncias da sua foto, {d:.2} da do {outro} — faz o irmão"));
+            falhas.push(format!(
+                "{nome}: {propria:.2} tolerâncias da sua foto, {d:.2} da do {outro} — faz o irmão"
+            ));
         }
     }
     falhas
@@ -331,14 +371,19 @@ fn cada_ferramenta_da_mistura_se_reconhece_pela_foto() {
     let medidas: Vec<(&str, Identidade)> = std::thread::scope(|s| {
         let hs: Vec<_> = FOTOS
             .iter()
-            .map(|&(nome, _, _)| s.spawn(move || (nome, Identidade::de(&sobre_de(nome, None), 1000))))
+            .map(|&(nome, _, _)| {
+                s.spawn(move || (nome, Identidade::de(&sobre_de(nome, None), 1000)))
+            })
             .collect();
         hs.into_iter().map(|h| h.join().unwrap()).collect()
     });
     let mut falhas = Vec::new();
     for (nome, eu) in &medidas {
         let foto = FOTOS.iter().find(|f| f.0 == *nome).unwrap();
-        println!("[mistura] {nome}: {eu:?}\n          foto {}: {:?}", foto.1, foto.2);
+        println!(
+            "[mistura] {nome}: {eu:?}\n          foto {}: {:?}",
+            foto.1, foto.2
+        );
         falhas.extend(falhas_da_identidade(nome, eu));
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
@@ -357,23 +402,53 @@ fn o_portao_da_mistura_sangra_com_cada_mutacao() {
     };
     let mutacoes: Vec<(&str, &str, ph2d_brush_presets::Preset)> = vec![
         // o dedo com a Strength 0,8: a corrente não relaia (o V encurta para um dente)
-        ("Smudge Finger", "Strength 0,8", muta("Smudge Finger", &|p| p.volumes.opacity = Some(0.8))),
+        (
+            "Smudge Finger",
+            "Strength 0,8",
+            muta("Smudge Finger", &|p| p.volumes.opacity = Some(0.8)),
+        ),
         // o dedo a PINTAR (sem o modo Smear): é um disco macio
-        ("Smudge Finger", "modo Paint", muta("Smudge Finger", &|p| p.paint_mode = Some("Paint".to_owned()))),
+        (
+            "Smudge Finger",
+            "modo Paint",
+            muta("Smudge Finger", &|p| {
+                p.paint_mode = Some("Paint".to_owned())
+            }),
+        ),
         // a borracha macia a tirar tudo
-        ("Kneaded Eraser", "Strength 1", muta("Kneaded Eraser", &|p| p.volumes.opacity = Some(1.0))),
+        (
+            "Kneaded Eraser",
+            "Strength 1",
+            muta("Kneaded Eraser", &|p| p.volumes.opacity = Some(1.0)),
+        ),
         // a borracha dura com a borda macia
-        ("Hard Eraser", "dureza 0", muta("Hard Eraser", &|p| {
-            p.brush.insert("hardness".to_owned(), json!(0.0));
-        })),
+        (
+            "Hard Eraser",
+            "dureza 0",
+            muta("Hard Eraser", &|p| {
+                p.brush.insert("hardness".to_owned(), json!(0.0));
+            }),
+        ),
         // o desfoque na Strength 1 (abre a orla 10 px, não 4)
-        ("Blur", "Strength 1", muta("Blur", &|p| p.volumes.opacity = Some(1.0))),
+        (
+            "Blur",
+            "Strength 1",
+            muta("Blur", &|p| p.volumes.opacity = Some(1.0)),
+        ),
         // o misturador sem força: não mistura nada
-        ("Blender Soft", "blendForce 0", muta("Blender Soft", &|p| {
-            p.engine.insert("blendForce".to_owned(), 0.0);
-        })),
+        (
+            "Blender Soft",
+            "blendForce 0",
+            muta("Blender Soft", &|p| {
+                p.engine.insert("blendForce".to_owned(), 0.0);
+            }),
+        ),
         // o misturador a PINTAR (o modo Paint): uma faixa azul por cima
-        ("Blender Soft", "modo Paint", muta("Blender Soft", &|p| p.paint_mode = Some("Paint".to_owned()))),
+        (
+            "Blender Soft",
+            "modo Paint",
+            muta("Blender Soft", &|p| p.paint_mode = Some("Paint".to_owned())),
+        ),
     ];
     let sangrou: Vec<(&str, &str, Vec<String>)> = std::thread::scope(|s| {
         let hs: Vec<_> = mutacoes
@@ -393,5 +468,8 @@ fn o_portao_da_mistura_sangra_com_cada_mutacao() {
         .filter(|(_, _, f)| f.is_empty())
         .map(|(n, o, _)| format!("{n} · {o}"))
         .collect();
-    assert!(sobreviveu.is_empty(), "mutações que o portão NÃO apanha: {sobreviveu:?}");
+    assert!(
+        sobreviveu.is_empty(),
+        "mutações que o portão NÃO apanha: {sobreviveu:?}"
+    );
 }

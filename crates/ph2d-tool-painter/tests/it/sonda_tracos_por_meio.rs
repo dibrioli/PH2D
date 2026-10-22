@@ -93,7 +93,11 @@ fn os_presets_do_wet_painter() {
     assert!(bib.erros.is_empty(), "{:?}", bib.erros);
     let mut n = 0;
     // Só os do Wet Paint (os outros meios têm presets irmãos desde a J3).
-    for e in bib.entradas.iter().filter(|e| e.preset.parametros.media == ph2d_tool_painter::MEIO_DO_PRESET) {
+    for e in bib
+        .entradas
+        .iter()
+        .filter(|e| e.preset.parametros.media == ph2d_tool_painter::MEIO_DO_PRESET)
+    {
         let nome = &e.preset.parametros.name;
         if qual != "todos" && qual != *nome {
             continue;

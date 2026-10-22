@@ -78,7 +78,9 @@ fn o_neutro_da_mao_e_o_traco_de_hoje() {
             },
         }));
         if h != esperado {
-            erros.push(format!("{m:?} gravado: 0x{h:016x} (esperado 0x{esperado:016x})"));
+            erros.push(format!(
+                "{m:?} gravado: 0x{h:016x} (esperado 0x{esperado:016x})"
+            ));
         }
     }
     assert!(erros.is_empty(), "o neutro mudou o traço: {erros:#?}");
@@ -255,7 +257,10 @@ fn o_meio_do_preset_e_o_meio_que_pinta() {
         t.set_paint_media(de);
         let antes = t.preset_capturar(&Parametros::novo("x", "G", "N"));
         let r = t.preset_aplicar(&estranho);
-        assert_eq!(r, Err(ph2d_tool_painter::MeioDesconhecido("Fluid".to_owned())));
+        assert_eq!(
+            r,
+            Err(ph2d_tool_painter::MeioDesconhecido("Fluid".to_owned()))
+        );
         assert_eq!(t.paint_media(), de, "a recusa mudou o meio");
         assert_eq!(
             t.preset_capturar(&Parametros::novo("x", "G", "N")),
@@ -309,7 +314,12 @@ fn a_contagem_por_meio() {
         for e in &b.entradas {
             let m = meio_do_preset(&e.preset.parametros.media)
                 .unwrap_or_else(|| panic!("{}: meio desconhecido", e.relativo));
-            assert_eq!(e.partes()[0], motor_do_meio(m), "{}: fora da pasta do meio", e.relativo);
+            assert_eq!(
+                e.partes()[0],
+                motor_do_meio(m),
+                "{}: fora da pasta do meio",
+                e.relativo
+            );
             n[usize::from(m.to_u8())] += 1;
         }
         n
@@ -408,7 +418,10 @@ fn a_caneta_deitada_tira_a_opacidade() {
         let (meia, _) = recto_inclinado(m, 0.5, [0.9, 0.0]);
         let (nada, _) = recto_inclinado(m, 1.0, [0.9, 0.0]);
         let r = meia as f64 / cheia as f64;
-        assert!((0.3..0.9).contains(&r), "{m:?}: deitada a 0,5 leva {r:.3} da tinta");
+        assert!(
+            (0.3..0.9).contains(&r),
+            "{m:?}: deitada a 0,5 leva {r:.3} da tinta"
+        );
         assert_eq!(nada, 0, "{m:?}: deitada inteira a 1 não pinta");
         assert_eq!(
             recto_inclinado(m, 0.5, [0.0, 0.0]).1,
@@ -543,7 +556,10 @@ fn a_aquarela_automatica_nao_le_a_pegada_deitada() {
     let (neutro, _) = deitado(PaintMedia::Watercolor, &[], true);
     let (com, i) = deitado(PaintMedia::Watercolor, &pegada, true);
     assert!(com == neutro, "Automatic: a pegada deitada mudou a tinta");
-    assert!(i.inerte(Dependente::PegadaDaAutomatica), "Automatic: as linhas acesas");
+    assert!(
+        i.inerte(Dependente::PegadaDaAutomatica),
+        "Automatic: as linhas acesas"
+    );
     let (neutro, _) = deitado(PaintMedia::Watercolor, &[], false);
     let (com, i) = deitado(PaintMedia::Watercolor, &pegada, false);
     assert!(com != neutro, "sem Automatic a pegada deitada age");
@@ -579,12 +595,20 @@ fn as_linhas_da_pressao_apagam_sem_pressao() {
         assert!(i.inerte(Dependente::CurvaDoTamanhoSemPressao), "{m:?}");
         assert!(i.inerte(Dependente::MaoSemPressao), "{m:?}");
         let todas: Vec<_> = sem.iter().chain(&mexe).copied().collect();
-        assert!(deitado(m, &todas, true).0 == base, "{m:?}: sem pressão as linhas mudaram a tinta");
+        assert!(
+            deitado(m, &todas, true).0 == base,
+            "{m:?}: sem pressão as linhas mudaram a tinta"
+        );
         let com = [(LinhaDaMao::Knob(Knob::PressureSize), 0.5)];
         let (base, i) = deitado(m, &com, true);
-        assert!(!i.inerte(Dependente::CurvaDoTamanhoSemPressao) && !i.inerte(Dependente::MaoSemPressao));
+        assert!(
+            !i.inerte(Dependente::CurvaDoTamanhoSemPressao) && !i.inerte(Dependente::MaoSemPressao)
+        );
         let todas: Vec<_> = com.iter().chain(&mexe).copied().collect();
-        assert!(deitado(m, &todas, true).0 != base, "{m:?}: com pressão as linhas agem");
+        assert!(
+            deitado(m, &todas, true).0 != base,
+            "{m:?}: com pressão as linhas agem"
+        );
     }
 }
 
@@ -597,7 +621,19 @@ fn a_captura_no_wet_sobre_base_de_outro_meio_so_empresta_o_nome() {
     t.set_paint_media(PaintMedia::WetPaint);
     let (p, _) = t.preset_capturar(&digital.parametros);
     assert_eq!(p.media, nome_do_meio(PaintMedia::WetPaint));
-    assert_eq!((p.name.as_str(), p.group.as_str()), (digital.parametros.name.as_str(), digital.parametros.group.as_str()));
-    assert!(!p.brush.contains_key("stroke_method"), "o gesto do Digital entrou no Wet");
-    assert!(!p.engine.contains_key("tiltOpacity"), "a mão do Digital entrou no Wet");
+    assert_eq!(
+        (p.name.as_str(), p.group.as_str()),
+        (
+            digital.parametros.name.as_str(),
+            digital.parametros.group.as_str()
+        )
+    );
+    assert!(
+        !p.brush.contains_key("stroke_method"),
+        "o gesto do Digital entrou no Wet"
+    );
+    assert!(
+        !p.engine.contains_key("tiltOpacity"),
+        "a mão do Digital entrou no Wet"
+    );
 }

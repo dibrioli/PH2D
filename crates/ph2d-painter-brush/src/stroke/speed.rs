@@ -151,7 +151,11 @@ impl Stroke {
     /// No pen-up sem nenhum tique (um toque mais rápido que um quadro): os dabs segurados saem como estão — sem
     /// tempo não há velocidade.
     pub(super) fn solta_sem_velocidade(&mut self, out: &mut Vec<Dab>) {
-        if let Some(mut h) = self.mao_da_velocidade.as_mut().and_then(|m| m.segura.take()) {
+        if let Some(mut h) = self
+            .mao_da_velocidade
+            .as_mut()
+            .and_then(|m| m.segura.take())
+        {
             h.append(out);
             *out = h;
         }
@@ -372,8 +376,16 @@ impl Stroke {
                 let j = self.spec.dab_jitter;
                 let diametro = 2.0 * dab.radius_px
                     / j.particula_no(self.spec.spray_count, self.spec.clamped_radius());
-                let v = crate::marca::desvio_atraves(&mut self.por_traco.rng, &j, diametro, self.heading);
-                (v, j.across.clamp(0.0, crate::marca::DabJitter::ACROSS_MAX) * diametro)
+                let v = crate::marca::desvio_atraves(
+                    &mut self.por_traco.rng,
+                    &j,
+                    diametro,
+                    self.heading,
+                );
+                (
+                    v,
+                    j.across.clamp(0.0, crate::marca::DabJitter::ACROSS_MAX) * diametro,
+                )
             } else {
                 ([0.0, 0.0], 0.0)
             };

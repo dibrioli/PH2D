@@ -9,15 +9,13 @@
 //! globais não cabem num binário, e um contador global veria as alocações dos vizinhos): fica em `tests/`.
 
 mod a_caneta_deitada;
-mod a_ponta_de_n_imagens;
-mod o_dual_brush;
-mod a_ponta_de_pixel;
-mod a_lei_da_tinta;
 mod a_cauda_das_pontas; // L5 + L18/L19: a cauda pela porta do despacho e com o fim do trilho de píxel
+mod a_lei_da_tinta;
 mod a_luz_do_impasto_e_a_de_antes_da_poda;
+mod a_ponta_de_n_imagens;
+mod a_ponta_de_pixel;
 mod as_formas;
 mod as_leis_da_escala; // 03_MOTORES §7 c, d, b-resto: o relevo, a ponta das cerdas, a lente, o grão fino
-mod o_grao_do_lapis; // 03_MOTORES §7.2: o grão é o papel (o mesmo a todo tamanho) e o do lápis é fino
 mod exame_bancada;
 mod familias; // J3: as receitas da fábrica, um ficheiro por família (familias/mod.rs as lista todas)
 mod leis_sistemicas;
@@ -34,9 +32,11 @@ mod macro_trilho;
 mod macro_tutorial_fill;
 mod measure_undo_capacity;
 mod midias_de_fabrica;
+mod o_dual_brush;
+mod o_grao_do_lapis; // 03_MOTORES §7.2: o grão é o papel (o mesmo a todo tamanho) e o do lápis é fino
+mod o_modo_do_grao;
 mod o_pigmento_por_comprimento;
 mod o_po_do_aerografo;
-mod o_modo_do_grao;
 mod o_relevo_dos_fios;
 mod os_fios;
 mod os_outros_meios_nao_mudam;

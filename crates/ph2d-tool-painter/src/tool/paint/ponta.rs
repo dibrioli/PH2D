@@ -5,8 +5,8 @@
 //! O preset grava os campos inteiros no `BrushSpec` (`pixel`, `texture.lei`), não estas chaves.
 
 use ph2d_painter_brush::{
-    BrushSpec, DabJitter, DualMode, DualTip, GrainMode, HOSE_MAX, HoseMode, PixelTip, TEX_SIZE_MAX, TEX_SIZE_MIN,
-    TextureKind,
+    BrushSpec, DabJitter, DualMode, DualTip, GrainMode, HOSE_MAX, HoseMode, PixelTip, TEX_SIZE_MAX,
+    TEX_SIZE_MIN, TextureKind,
 };
 
 /// Uma linha numérica da ponta.
@@ -138,11 +138,23 @@ impl LinhaDaPonta {
             Self::DualFollow => ("dualFollow", 0.0, 2.0, 1.0, 0.0),
             Self::DualSize => {
                 let d = DualTip::DE_FABRICA.escala as f64;
-                ("dualSize", DualTip::ESCALA_MIN as f64, DualTip::ESCALA_MAX as f64, 0.01, d)
+                (
+                    "dualSize",
+                    DualTip::ESCALA_MIN as f64,
+                    DualTip::ESCALA_MAX as f64,
+                    0.01,
+                    d,
+                )
             }
             Self::DualSpacing => {
                 let d = DualTip::DE_FABRICA.passo as f64;
-                ("dualSpacing", DualTip::PASSO_MIN as f64, DualTip::PASSO_MAX as f64, 0.01, d)
+                (
+                    "dualSpacing",
+                    DualTip::PASSO_MIN as f64,
+                    DualTip::PASSO_MAX as f64,
+                    0.01,
+                    d,
+                )
             }
             Self::DualScatter => ("dualScatter", 0.0, 1.0, 0.01, 0.0),
             Self::DualAcross => ("dualAcross", 0.0, DabJitter::ACROSS_MAX as f64, 0.01, 0.0),
@@ -155,8 +167,20 @@ impl LinhaDaPonta {
             ),
             Self::DualAngle => ("dualAngle", 0.0, 359.0, 1.0, 0.0),
             Self::DualRotation => ("dualRotation", 0.0, 1.0, 0.01, 0.0),
-            Self::DualHardness => ("dualHardness", 0.0, 1.0, 0.01, DualTip::DE_FABRICA.dureza as f64),
-            Self::DualPattern => ("dualPattern", TEX_SIZE_MIN as f64, TEX_SIZE_MAX as f64, 0.01, 1.0),
+            Self::DualHardness => (
+                "dualHardness",
+                0.0,
+                1.0,
+                0.01,
+                DualTip::DE_FABRICA.dureza as f64,
+            ),
+            Self::DualPattern => (
+                "dualPattern",
+                TEX_SIZE_MIN as f64,
+                TEX_SIZE_MAX as f64,
+                0.01,
+                1.0,
+            ),
         }
     }
 
@@ -404,7 +428,10 @@ impl super::PainterTool {
             },
             _ => return false,
         };
-        let Some(i) = crate::ids::PAINTER_PONTA_FIELDS.iter().position(|f| f == id) else {
+        let Some(i) = crate::ids::PAINTER_PONTA_FIELDS
+            .iter()
+            .position(|f| f == id)
+        else {
             return false;
         };
         self.set_ponta(LINHAS_DA_PONTA[i], v);
@@ -433,7 +460,10 @@ mod tests {
             escreve(&mut c, l, v);
         }
         assert_eq!(c, c0);
-        for (l, id) in LINHAS_DA_PONTA.into_iter().zip(crate::ids::PAINTER_PONTA_FIELDS) {
+        for (l, id) in LINHAS_DA_PONTA
+            .into_iter()
+            .zip(crate::ids::PAINTER_PONTA_FIELDS)
+        {
             let pela_chave = ph2d_tool_registry::hash_node_id_runtime(&format!(
                 "painter_brush.ponta.{}",
                 l.chave()

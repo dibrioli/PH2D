@@ -30,9 +30,7 @@ mod shape_color_tests;
 #[cfg(test)]
 mod tests;
 
-pub use meios::{
-    MeioDesconhecido, campos_do_meio, meio_do_preset, motor_do_meio, nome_do_meio,
-};
+pub use meios::{MeioDesconhecido, campos_do_meio, meio_do_preset, motor_do_meio, nome_do_meio};
 pub use miniatura::{DIAMETRO_DA_MINIATURA, miniatura_do_preset};
 pub use preview::{
     ALTURA_DO_PREVIEW, CenaDoPreview, ChaveDoPreview, LARGURA_DO_PREVIEW, pintar_preview,
@@ -116,14 +114,16 @@ const DA_OBRA: &str =
 const DO_GESTO: &str = "do gesto (o método do traço e o cartão Line), não do pincel";
 const DO_MEIO: &str = "a porta do meio (`set_paint_media`) é a dona";
 const DO_SCULPT: &str = "canal derivado do Sculpt (`sculpt_panel.rs`)";
-const POR_DAB: &str = "a pegada deitada de UM dab (`BrushSpec::at_dab`): `None` no pincel do artista";
+const POR_DAB: &str =
+    "a pegada deitada de UM dab (`BrushSpec::at_dab`): `None` no pincel do artista";
 const AQUARELA: &str = "lido só pela Watercolor";
 const IMPASTO: &str = "lido só pelo Impasto";
 const DIGITAL: &str =
     "lido só pelo Digital (a ponta de píxel, L18; a orla em píxeis e o sub-passo fino, J3)";
 const DOS_KNOBS: &str = "a caneta deitada: no Wet Paint são os knobs do pincel (`dabRotation`…`tiltLag`, W6), no mapa `engine`";
 const NAO_LIDO: &str = "o Wet Paint não o lê (deposita pela lei do fluido)";
-const PLANO: &str = "lido só pelo Digital: o plano do traço — o tecto e as orlas (L8, `traco_plano`)";
+const PLANO: &str =
+    "lido só pelo Digital: o plano do traço — o tecto e as orlas (L8, `traco_plano`)";
 
 /// Os campos do `BrushSpec` que o preset NÃO leva, e porquê.
 pub const CAMPOS_FORA: [(&str, &str); 76] = [
@@ -408,9 +408,21 @@ impl PainterTool {
         self.paint.wetpaint.knobs = k;
         // A velocidade (L12) não é knob do motor: mora na `Dynamics` do pincel, que a mão do Wet herda. Ausente
         // = a de fábrica (sem velocidade), nunca a do pincel anterior.
-        for l in [super::mao::LinhaDaMao::SpeedSize, super::mao::LinhaDaMao::SpeedOpacity] {
-            let v = prm.engine.get(l.chave()).copied().unwrap_or_else(|| l.omissao());
-            super::mao::escreve(&mut self.paint.dynamics, &mut self.paint.brush.pen_tilt, l, l.limpa(v));
+        for l in [
+            super::mao::LinhaDaMao::SpeedSize,
+            super::mao::LinhaDaMao::SpeedOpacity,
+        ] {
+            let v = prm
+                .engine
+                .get(l.chave())
+                .copied()
+                .unwrap_or_else(|| l.omissao());
+            super::mao::escreve(
+                &mut self.paint.dynamics,
+                &mut self.paint.brush.pen_tilt,
+                l,
+                l.limpa(v),
+            );
         }
 
         if let Some(m) = prm.paint_mode.as_deref() {
@@ -528,7 +540,10 @@ impl PainterTool {
         }
         p.engine.insert(CHAVE_ERASE.to_owned(), k.erase);
         // A velocidade (L12) só quando o pincel a tem: o preset sem ela é o de antes, ao byte.
-        for l in [super::mao::LinhaDaMao::SpeedSize, super::mao::LinhaDaMao::SpeedOpacity] {
+        for l in [
+            super::mao::LinhaDaMao::SpeedSize,
+            super::mao::LinhaDaMao::SpeedOpacity,
+        ] {
             let v = super::mao::le(&self.paint.dynamics, &self.paint.brush.pen_tilt, l);
             if v == l.omissao() {
                 p.engine.remove(l.chave());

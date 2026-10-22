@@ -127,9 +127,15 @@ impl GrainLaw {
         }
         let (t, d) = (t.clamp(0.0, 1.0), depth.clamp(0.0, 1.0));
         let r = match self.mode {
-            GrainMode::Height => return f32::from(u8::from(t > 1.0 - d)) * super::granulation_gate(t, granulation),
+            GrainMode::Height => {
+                return f32::from(u8::from(t > 1.0 - d)) * super::granulation_gate(t, granulation);
+            }
             GrainMode::LinearHeight => {
-                let f = if d > 0.0 { ((t - (1.0 - d)) / d).clamp(0.0, 1.0) } else { 0.0 };
+                let f = if d > 0.0 {
+                    ((t - (1.0 - d)) / d).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                };
                 return f * super::granulation_gate(t, granulation);
             }
             _ if w <= 0.0 => return 0.0,
@@ -137,7 +143,11 @@ impl GrainLaw {
             GrainMode::Darken => w.min(1.0 - d * (1.0 - t)),
             GrainMode::ColorBurn => {
                 let tt = 1.0 - d * (1.0 - t);
-                if tt <= 0.0 { 0.0 } else { (1.0 - (1.0 - w) / tt).max(0.0) }
+                if tt <= 0.0 {
+                    0.0
+                } else {
+                    (1.0 - (1.0 - w) / tt).max(0.0)
+                }
             }
             GrainMode::Multiply => unreachable!("o Multiply sai pela porta de sempre"),
         };
@@ -192,8 +202,18 @@ mod tests {
             mode: GrainMode::Height,
             ..GrainLaw::NEUTRA
         };
-        let area = |d: f32| (0..100).filter(|i| h.factor(1.0, *i as f32 / 99.0, d, 0.0) > 0.0).count();
-        assert!(area(0.1) < area(0.5) && area(0.5) < area(0.95), "{} {} {}", area(0.1), area(0.5), area(0.95));
+        let area = |d: f32| {
+            (0..100)
+                .filter(|i| h.factor(1.0, *i as f32 / 99.0, d, 0.0) > 0.0)
+                .count()
+        };
+        assert!(
+            area(0.1) < area(0.5) && area(0.5) < area(0.95),
+            "{} {} {}",
+            area(0.1),
+            area(0.5),
+            area(0.95)
+        );
     }
 
     #[test]

@@ -135,7 +135,11 @@ impl DabJitter {
         if n <= 1 {
             return raio;
         }
-        let raio = if self.particle_min_px > 0.0 { raio.max(0.5 * self.particle_min_px) } else { raio };
+        let raio = if self.particle_min_px > 0.0 {
+            raio.max(0.5 * self.particle_min_px)
+        } else {
+            raio
+        };
         if self.particle_max_px > 0.0 {
             raio.min((0.5 * self.particle_max_px).max(0.5))
         } else {
@@ -207,7 +211,12 @@ pub(crate) fn sorteia(rng: &mut u64, j: &DabJitter, diametro: f32, dir: [f32; 2]
 
 /// O desvio ATRAVÉS do traço (`dir` = o heading; `[0, 0]` sem direcção), sorteado do fluxo da marca só com o
 /// campo ligado — a UMA conta do dab do caminho ([`sorteia`]) e dos que preenchem o vão do arremesso (`speed.rs`).
-pub(crate) fn desvio_atraves(rng: &mut u64, j: &DabJitter, diametro: f32, dir: [f32; 2]) -> [f32; 2] {
+pub(crate) fn desvio_atraves(
+    rng: &mut u64,
+    j: &DabJitter,
+    diametro: f32,
+    dir: [f32; 2],
+) -> [f32; 2] {
     if j.across <= 0.0 {
         return [0.0, 0.0];
     }
@@ -232,8 +241,8 @@ pub(crate) fn rotor_do_traco(j: &DabJitter, seed: u64) -> [f32; 2] {
         return [1.0, 0.0];
     }
     let mut rng = seed ^ 0x616E_676C_6550_5354;
-    let deg = ((next_f32(&mut rng) * 2.0 - 1.0) * j.angle_per_stroke.clamp(0.0, 1.0) * 180.0).round()
-        as i32;
+    let deg = ((next_f32(&mut rng) * 2.0 - 1.0) * j.angle_per_stroke.clamp(0.0, 1.0) * 180.0)
+        .round() as i32;
     crate::texture::rotate_by_degrees((((deg % 360) + 360) % 360) as u16)
 }
 

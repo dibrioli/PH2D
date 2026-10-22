@@ -95,7 +95,11 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ),
         ],
         // A pressão no tamanho e o tamanho = os do preset do Rebelle (`pressure_size_influence` 0,6, Size 84).
-        mao: &[("pressureSize", 0.6), ("pressureSizeCurve", 1.0), ("pressureOpacity", 0.6)],
+        mao: &[
+            ("pressureSize", 0.6),
+            ("pressureSizeCurve", 1.0),
+            ("pressureOpacity", 0.6),
+        ],
         size_px: Some(84.0),
         opacity: Some(0.55),
         texturas: &[("shape", super::texturas::mancha)],
@@ -159,7 +163,6 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
         ..ReceitaMeio::digital("Splatter", "Splatter", "Spray Can")
     },
 ];
-
 
 // O PÓ — a textura, a uniformidade e a orla larga são dele; o «período» não conta (a repetição do Rebelle varia 0,005,
 // o controlo fica a 0,013 — doc 43 §2).

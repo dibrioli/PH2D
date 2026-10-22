@@ -123,7 +123,11 @@ pub(super) fn peso_do_passo_fino(brush: &BrushSpec, ratio: u8) -> f32 {
 /// dab) e ⭐ **o relevo pelo diâmetro** (J2, `docs/Painter/Pinceis/03_MOTORES.md` §7 c): o `Emboss` que a célula
 /// guarda vezes `(ref ÷ D)^γ` ([`ph2d_wet_paint::tuning::Knob::EmbossSizeExp`]), com `D` o diâmetro do PINCEL (o do
 /// traço — o do dab traz a pressão e mudaria o relevo dentro de uma rampa). `γ = 0` = `1`, ao bit.
-pub(super) fn acerta_o_lote(engine: &mut ph2d_wet_paint::painter::Engine, brush: &BrushSpec, fino: f32) {
+pub(super) fn acerta_o_lote(
+    engine: &mut ph2d_wet_paint::painter::Engine,
+    brush: &BrushSpec,
+    fino: f32,
+) {
     use ph2d_wet_paint::tuning::Knob;
     engine.agua_do_dab = f64::from(fino).recip();
     let gama = engine.tuning.get(Knob::EmbossSizeExp);
@@ -186,7 +190,9 @@ mod peso_tests {
     fn o_fino_nao_passa_o_pigmento_por_area_do_largo() {
         let tecto = 1.0 / super::FRACAO_DO_FINO;
         for ratio in [1u8, 2, 3, 4] {
-            for r in [0.5f32, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0, 14.0, 20.0, 60.0] {
+            for r in [
+                0.5f32, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0, 14.0, 20.0, 60.0,
+            ] {
                 let b = ph2d_painter_brush::BrushSpec {
                     radius_px: r,
                     ..Default::default()
@@ -199,8 +205,14 @@ mod peso_tests {
                 } else {
                     1.0
                 };
-                assert!(p <= tecto + 1e-3, "r {r} grelha {ratio}: peso {p} > o tecto {tecto}");
-                assert!((p - esperado).abs() < 1e-3 * esperado, "r {r} grelha {ratio}: {p} ≠ {esperado}");
+                assert!(
+                    p <= tecto + 1e-3,
+                    "r {r} grelha {ratio}: peso {p} > o tecto {tecto}"
+                );
+                assert!(
+                    (p - esperado).abs() < 1e-3 * esperado,
+                    "r {r} grelha {ratio}: {p} ≠ {esperado}"
+                );
             }
         }
     }

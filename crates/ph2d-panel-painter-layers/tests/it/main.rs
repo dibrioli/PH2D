@@ -29,19 +29,19 @@ mod seam_grid_stamp;
 mod seam_impasto_rig;
 mod seam_impasto_tool;
 mod seam_line_card;
+mod seam_marca; // L4: as linhas da marca no cartão Jitter, pelo ponteiro
 mod seam_paint_media;
-mod seam_pen; // L2: o cartão Pen (a mão do pincel) nos quatro meios, pelo ponteiro
-mod seam_ponta; // L9/L18: a ponta de píxel e a lei do grão pelo clique real
 mod seam_papel; // o seletor da cor do papel aplica o papel nos quatro meios (2026-10-06)
+mod seam_pen; // L2: o cartão Pen (a mão do pincel) nos quatro meios, pelo ponteiro
 mod seam_pigmento; // a fileira `Pigment`: a tela concorda com a porta, nos dois sentidos
+mod seam_ponta; // L9/L18: a ponta de píxel e a lei do grão pelo clique real
 mod seam_sculpt;
 mod seam_shape_deposit;
-mod seam_marca; // L4: as linhas da marca no cartão Jitter, pelo ponteiro
-mod seam_traco; // L5/L7/L8: a cauda, o fall-off, o modo sobre o vazio e o traço como camada, pelo ponteiro
 mod seam_spray;
 mod seam_substrate;
 mod seam_taper;
 mod seam_texture_colors;
+mod seam_traco; // L5/L7/L8: a cauda, o fall-off, o modo sobre o vazio e o traço como camada, pelo ponteiro
 mod seam_watercolor_cards;
 mod seam_watercolor_flow; // as linhas da forma da borda: Flow, Size, Angle, Paper Edge (BUGS #31)
 mod seam_wet_presets;

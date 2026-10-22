@@ -253,7 +253,10 @@ impl ShapeLayers {
 
     /// O RGBA da imagem importada (a cor capturada + o alpha de origem), para o preset a levar (L19); `None` sem cor.
     pub(super) fn rgba_da_imagem(&self) -> Option<(Vec<u8>, u32, u32)> {
-        let (src, rgb) = (self.src.first()?, self.rgb.first().filter(|c| !c.is_empty())?);
+        let (src, rgb) = (
+            self.src.first()?,
+            self.rgb.first().filter(|c| !c.is_empty())?,
+        );
         let (alpha, w, h) = src.parts();
         Some((
             alpha

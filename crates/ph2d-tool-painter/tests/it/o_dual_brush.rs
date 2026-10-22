@@ -5,7 +5,9 @@
 use ph2d_brush_presets::{Miniatura, Origem, Parametros, Preset};
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
-use ph2d_tool_painter::{DualMode, LinhaDaPonta, PaintMedia, PainterTool, TextureKind, nome_do_meio};
+use ph2d_tool_painter::{
+    DualMode, LinhaDaPonta, PaintMedia, PainterTool, TextureKind, nome_do_meio,
+};
 
 const W: usize = 360;
 const H: usize = 200;
@@ -27,10 +29,15 @@ fn pinta(mut t: PainterTool) -> Vec<u8> {
         (0..=80)
             .map(|k| {
                 let u = k as f32 / 80.0;
-                [30.0 + 300.0 * u, 100.0 + 55.0 * (u * std::f32::consts::TAU).sin()]
+                [
+                    30.0 + 300.0 * u,
+                    100.0 + 55.0 * (u * std::f32::consts::TAU).sin(),
+                ]
             })
             .collect(),
-        (0..=60).map(|k| [40.0 + 280.0 * k as f32 / 60.0, 60.0]).collect(),
+        (0..=60)
+            .map(|k| [40.0 + 280.0 * k as f32 / 60.0, 60.0])
+            .collect(),
     ];
     for c in &caminhos {
         let cp = |p: [f32; 2], phase| CanvasPointer {
@@ -86,9 +93,16 @@ fn o_dual_brush_so_tira() {
     let com = tinta(&pinta(pincel(PaintMedia::Digital, |t| arma(t, 1.0))));
     let mais = sem.iter().zip(&com).filter(|(s, c)| **c > **s + 2).count();
     assert_eq!(mais, 0, "{mais} píxeis com MAIS tinta que sem o dual");
-    let (ts, tc) = (sem.iter().sum::<i32>() as f64, com.iter().sum::<i32>() as f64);
+    let (ts, tc) = (
+        sem.iter().sum::<i32>() as f64,
+        com.iter().sum::<i32>() as f64,
+    );
     eprintln!("tinta sem {ts} · com {tc} ({:.3})", tc / ts);
-    assert!(tc < 0.85 * ts && tc > 0.05 * ts, "a 2.ª ponta tirou {:.3} da tinta", 1.0 - tc / ts);
+    assert!(
+        tc < 0.85 * ts && tc > 0.05 * ts,
+        "a 2.ª ponta tirou {:.3} da tinta",
+        1.0 - tc / ts
+    );
 }
 
 /// ⭐ **A 2.ª ponta acompanha o traço INTEIRO**: um disco duro maior que a 1.ª, denso e sem espalhar, em Multiply,
@@ -110,9 +124,19 @@ fn a_segunda_ponta_acompanha_no(m: PaintMedia) {
         t.set_ponta(LinhaDaPonta::DualSpacing, 0.05);
         t.set_ponta(LinhaDaPonta::DualHardness, 1.0);
     })));
-    let longe: Vec<(usize, i32, i32)> =
-        sem.iter().zip(&com).enumerate().filter(|(_, (s, c))| s.abs_diff(**c) > 3).map(|(i, (s, c))| (i, *s, *c)).collect();
-    assert!(longe.is_empty(), "{m:?}: {} píxeis fora do traço sem dual: {:?}", longe.len(), &longe[..longe.len().min(8)]);
+    let longe: Vec<(usize, i32, i32)> = sem
+        .iter()
+        .zip(&com)
+        .enumerate()
+        .filter(|(_, (s, c))| s.abs_diff(**c) > 3)
+        .map(|(i, (s, c))| (i, *s, *c))
+        .collect();
+    assert!(
+        longe.is_empty(),
+        "{m:?}: {} píxeis fora do traço sem dual: {:?}",
+        longe.len(),
+        &longe[..longe.len().min(8)]
+    );
 }
 
 /// ⭐ **Sem dual o Wet é o de hoje, ao bit**: armar a 2.ª ponta, mexer-lhe e voltar a «Off» pinta a MESMA tela no Wet
@@ -135,10 +159,23 @@ fn o_dual_so_tira_pigmento_no_wet() {
     let sem = tinta(&pinta(pincel(PaintMedia::WetPaint, |_| {})));
     let com = tinta(&pinta(pincel(PaintMedia::WetPaint, |t| arma(t, 1.0))));
     let mais = sem.iter().zip(&com).filter(|(s, c)| **c > **s + 8).count();
-    let (ts, tc) = (sem.iter().sum::<i32>() as f64, com.iter().sum::<i32>() as f64);
-    eprintln!("Wet: tinta sem {ts} · com {tc} ({:.3}) · {mais} píxeis com mais", tc / ts);
-    assert!(mais * 200 <= sem.len(), "{mais} píxeis com MAIS tinta que sem o dual");
-    assert!(tc < 0.85 * ts && tc > 0.05 * ts, "a 2.ª ponta tirou {:.3} do pigmento", 1.0 - tc / ts);
+    let (ts, tc) = (
+        sem.iter().sum::<i32>() as f64,
+        com.iter().sum::<i32>() as f64,
+    );
+    eprintln!(
+        "Wet: tinta sem {ts} · com {tc} ({:.3}) · {mais} píxeis com mais",
+        tc / ts
+    );
+    assert!(
+        mais * 200 <= sem.len(),
+        "{mais} píxeis com MAIS tinta que sem o dual"
+    );
+    assert!(
+        tc < 0.85 * ts && tc > 0.05 * ts,
+        "a 2.ª ponta tirou {:.3} do pigmento",
+        1.0 - tc / ts
+    );
 }
 
 /// ⭐ **Gravar → carregar volta ao bit no Wet**, com a 2.ª ponta de imagem.
@@ -152,9 +189,15 @@ fn gravar_e_carregar_o_dual_no_wet_volta_ao_bit() {
     };
     let antes = pinta(pincel(PaintMedia::WetPaint, arma_img));
     let fonte = pincel(PaintMedia::WetPaint, arma_img);
-    let (parametros, texturas) =
-        fonte.preset_capturar(&Parametros::novo(nome_do_meio(PaintMedia::WetPaint), "Dual", "Wet"));
-    assert!(parametros.brush.contains_key("dual"), "o preset do Wet não levou o dual");
+    let (parametros, texturas) = fonte.preset_capturar(&Parametros::novo(
+        nome_do_meio(PaintMedia::WetPaint),
+        "Dual",
+        "Wet",
+    ));
+    assert!(
+        parametros.brush.contains_key("dual"),
+        "o preset do Wet não levou o dual"
+    );
     assert!(texturas.contains_key("dual_shape"));
     let p = Preset {
         parametros,
@@ -170,10 +213,19 @@ fn gravar_e_carregar_o_dual_no_wet_volta_ao_bit() {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_brush_color_srgb8([0, 0, 0]);
-    assert!(t.preset_aplicar(&lido).unwrap().is_empty(), "texturas por ler");
+    assert!(
+        t.preset_aplicar(&lido).unwrap().is_empty(),
+        "texturas por ler"
+    );
     t.set_brush_size_px(36.0);
-    assert!(antes != pinta(pincel(PaintMedia::WetPaint, |_| {})), "o dual não mudou o Wet");
-    assert!(antes == pinta(t), "o preset do Wet com a 2.ª ponta pinta outra tela");
+    assert!(
+        antes != pinta(pincel(PaintMedia::WetPaint, |_| {})),
+        "o dual não mudou o Wet"
+    );
+    assert!(
+        antes == pinta(t),
+        "o preset do Wet com a 2.ª ponta pinta outra tela"
+    );
 }
 
 /// ⭐ **Cada modo do dual é outra tela** (a 1.ª macia, para a cobertura parcial distinguir as leis).
@@ -194,8 +246,17 @@ fn cada_modo_do_dual_e_outro() {
                 .zip(telas[b].chunks_exact(4))
                 .filter(|(p, q)| p[0].abs_diff(q[0]) > 4)
                 .count();
-            eprintln!("{:?} × {:?}: {n} px", DualMode::from_u8(a as u8), DualMode::from_u8(b as u8));
-            assert!(n > 300, "{:?} × {:?}: só {n} px diferem", DualMode::from_u8(a as u8), DualMode::from_u8(b as u8));
+            eprintln!(
+                "{:?} × {:?}: {n} px",
+                DualMode::from_u8(a as u8),
+                DualMode::from_u8(b as u8)
+            );
+            assert!(
+                n > 300,
+                "{:?} × {:?}: só {n} px diferem",
+                DualMode::from_u8(a as u8),
+                DualMode::from_u8(b as u8)
+            );
         }
     }
 }
@@ -224,9 +285,15 @@ fn gravar_e_carregar_com_a_segunda_ponta_de_imagem_volta_ao_bit() {
     let antes = pinta(pincel(PaintMedia::Digital, arma_img));
     let fonte = pincel(PaintMedia::Digital, arma_img);
     assert!(fonte.brush_dual_has_image());
-    let (parametros, texturas) =
-        fonte.preset_capturar(&Parametros::novo(nome_do_meio(PaintMedia::Digital), "Dual", "Riscas"));
-    assert!(texturas.contains_key("dual_shape"), "a imagem da 2.ª ponta não foi para o ficheiro");
+    let (parametros, texturas) = fonte.preset_capturar(&Parametros::novo(
+        nome_do_meio(PaintMedia::Digital),
+        "Dual",
+        "Riscas",
+    ));
+    assert!(
+        texturas.contains_key("dual_shape"),
+        "a imagem da 2.ª ponta não foi para o ficheiro"
+    );
     let p = Preset {
         parametros,
         origem: Origem::Utilizador,
@@ -241,11 +308,17 @@ fn gravar_e_carregar_com_a_segunda_ponta_de_imagem_volta_ao_bit() {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_brush_color_srgb8([0, 0, 0]);
-    assert!(t.preset_aplicar(&lido).unwrap().is_empty(), "texturas por ler");
+    assert!(
+        t.preset_aplicar(&lido).unwrap().is_empty(),
+        "texturas por ler"
+    );
     assert!(t.brush_dual_has_image());
     t.set_brush_size_px(36.0);
     let depois = pinta(t);
-    assert!(antes != pinta(pincel(PaintMedia::Digital, |_| {})), "a 2.ª ponta de imagem não mudou a tela");
+    assert!(
+        antes != pinta(pincel(PaintMedia::Digital, |_| {})),
+        "a 2.ª ponta de imagem não mudou a tela"
+    );
     assert!(antes == depois, "o preset com a 2.ª ponta pinta outra tela");
 }
 
@@ -270,7 +343,9 @@ fn estrias() -> Vec<u8> {
     }
     let mut s: u64 = 0x5EED_CA2B;
     let mut sorteio = |n: u64| {
-        s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        s = s
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
         (s >> 33) % n
     };
     for _ in 0..150 {
@@ -302,8 +377,11 @@ fn grava_o_carvao_com_estrias() {
         t.set_ponta(LinhaDaPonta::DualAcross, 0.55);
         t.set_ponta(LinhaDaPonta::DualCount, 3.0);
     });
-    let (parametros, texturas) =
-        t.preset_capturar(&Parametros::novo(nome_do_meio(PaintMedia::Digital), "Teste", "Carvao Estrias Dual"));
+    let (parametros, texturas) = t.preset_capturar(&Parametros::novo(
+        nome_do_meio(PaintMedia::Digital),
+        "Teste",
+        "Carvao Estrias Dual",
+    ));
     let p = Preset {
         parametros,
         origem: Origem::Utilizador,
@@ -314,7 +392,8 @@ fn grava_o_carvao_com_estrias() {
         },
         texturas,
     };
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/Painter/Pinceis/fixtures/presets_teste");
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/Painter/Pinceis/fixtures/presets_teste");
     std::fs::create_dir_all(&dir).unwrap();
     let f = dir.join("Carvao Estrias Dual.ph2d-brush.png");
     std::fs::write(&f, ph2d_brush_presets::escrever(&p).unwrap()).unwrap();
@@ -329,12 +408,18 @@ fn grava_o_carvao_com_estrias() {
 fn mede_o_custo_do_dual() {
     let tam: f32 = std::env::var("PH2D_DUAL_TAMANHO").map_or(200.0, |v| v.parse().unwrap());
     let nome = std::env::var("PH2D_DUAL_PRESET").unwrap_or_else(|_| "Carvao Estrias Dual".into());
-    let f = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join(format!("../../docs/Painter/Pinceis/fixtures/presets_teste/{nome}.ph2d-brush.png"));
+    let f = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(format!(
+        "../../docs/Painter/Pinceis/fixtures/presets_teste/{nome}.ph2d-brush.png"
+    ));
     let preset = ph2d_brush_presets::ler(&std::fs::read(&f).unwrap()).unwrap();
     let bat = crate::exame_bancada::bateria();
     let [w, h] = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
-    let cena = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "gestos").unwrap();
+    let cena = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == "gestos")
+        .unwrap();
     let eventos: Vec<CanvasPointer> = cena["ops"]
         .as_array()
         .unwrap()
@@ -384,7 +469,12 @@ fn mede_o_custo_do_dual() {
             })
             .collect()
     };
-    eprintln!("load {}", std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim());
+    eprintln!(
+        "load {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
     let mut minimo: [Vec<f64>; 2] = [Vec::new(), Vec::new()];
     let mut picos: [Vec<usize>; 2] = [Vec::new(), Vec::new()];
     for rodada in 0..10 {
@@ -426,7 +516,12 @@ fn mede_o_custo_do_dual() {
             &piores[..6.min(piores.len())]
         );
     }
-    eprintln!("load {}", std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim());
+    eprintln!(
+        "load {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
 }
 
 /// As CERDAS secas da 2.ª ponta do pincel seco de teste: 64×64 em faixas horizontais de 1–4 px com vãos de 1–3 px
@@ -435,19 +530,30 @@ fn mede_o_custo_do_dual() {
 fn cerdas_secas() -> Vec<u8> {
     let mut s: u64 = 0xD2B_5EC0;
     let mut sorteio = |n: u64| {
-        s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        s = s
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
         (s >> 33) % n
     };
     let mut linhas = vec![0u8; 64];
     let mut y = 0;
     while y < 64 {
-        let (faixa, vao, v) = (1 + sorteio(4) as usize, 1 + sorteio(3) as usize, 170 + sorteio(86) as u8);
+        let (faixa, vao, v) = (
+            1 + sorteio(4) as usize,
+            1 + sorteio(3) as usize,
+            170 + sorteio(86) as u8,
+        );
         for k in y..(y + faixa).min(64) {
             linhas[k] = v;
         }
         y += faixa + vao;
     }
-    (0..64 * 64).flat_map(|i| { let v = linhas[i / 64]; [v, v, v, 255] }).collect()
+    (0..64 * 64)
+        .flat_map(|i| {
+            let v = linhas[i / 64];
+            [v, v, v, 255]
+        })
+        .collect()
 }
 
 /// **O preset de TESTE do pincel seco no Wet** (L6, G-11 Dry Brush; não é de fábrica): o pincel do Wet com a 2.ª
@@ -464,8 +570,11 @@ fn grava_o_pincel_seco_do_wet() {
         t.set_ponta(LinhaDaPonta::DualSize, 1.1);
         t.set_ponta(LinhaDaPonta::DualSpacing, 0.15);
     });
-    let (parametros, texturas) =
-        t.preset_capturar(&Parametros::novo(nome_do_meio(PaintMedia::WetPaint), "Teste", "Pincel Seco Dual"));
+    let (parametros, texturas) = t.preset_capturar(&Parametros::novo(
+        nome_do_meio(PaintMedia::WetPaint),
+        "Teste",
+        "Pincel Seco Dual",
+    ));
     let p = Preset {
         parametros,
         origem: Origem::Utilizador,
@@ -476,7 +585,8 @@ fn grava_o_pincel_seco_do_wet() {
         },
         texturas,
     };
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/Painter/Pinceis/fixtures/presets_teste");
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/Painter/Pinceis/fixtures/presets_teste");
     std::fs::create_dir_all(&dir).unwrap();
     let f = dir.join("Pincel Seco Dual.ph2d-brush.png");
     std::fs::write(&f, ph2d_brush_presets::escrever(&p).unwrap()).unwrap();
@@ -524,8 +634,15 @@ fn o_dual_nao_parte_o_sorteio_das_copias_da_costura_no_wet() {
         cobre(t);
     })));
     assert!(sem[100 * W + 20] > 0, "a cópia da costura não pintou");
-    let longe = sem.iter().zip(&com).filter(|(s, c)| s.abs_diff(**c) > 3).count();
-    assert_eq!(longe, 0, "{longe} píxeis diferem do traço ladrilhado sem dual");
+    let longe = sem
+        .iter()
+        .zip(&com)
+        .filter(|(s, c)| s.abs_diff(**c) > 3)
+        .count();
+    assert_eq!(
+        longe, 0,
+        "{longe} píxeis diferem do traço ladrilhado sem dual"
+    );
 }
 
 /// ⭐ **Dual + Composite no Wet**: o Composite não age no Wet (`composite_active` pede o modo Paint), e a máscara é
@@ -537,5 +654,8 @@ fn o_composite_nao_carimba_a_mascara_no_wet() {
         t.toggle_composite();
         arma(t, 1.0);
     }));
-    assert!(sem == com, "com o Composite ligado o dual do Wet pinta outra tela");
+    assert!(
+        sem == com,
+        "com o Composite ligado o dual do Wet pinta outra tela"
+    );
 }

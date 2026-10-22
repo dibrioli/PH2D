@@ -46,12 +46,20 @@ impl Filme {
     }
 
     /// As linhas `y0..=y1` do campo (stride `s`), uma fatia cada — o depósito por linhas parte-as como parte o `wet`.
-    pub(crate) fn linhas(&mut self, (x0, y0, x1, y1): (i32, i32, i32, i32)) -> std::slice::ChunksMut<'_, f32> {
+    pub(crate) fn linhas(
+        &mut self,
+        (x0, y0, x1, y1): (i32, i32, i32, i32),
+    ) -> std::slice::ChunksMut<'_, f32> {
         let s = self.s;
         self.caixa = if self.caixa.2 < self.caixa.0 {
             (x0, y0, x1, y1)
         } else {
-            (self.caixa.0.min(x0), self.caixa.1.min(y0), self.caixa.2.max(x1), self.caixa.3.max(y1))
+            (
+                self.caixa.0.min(x0),
+                self.caixa.1.min(y0),
+                self.caixa.2.max(x1),
+                self.caixa.3.max(y1),
+            )
         };
         self.campo[y0 as usize * s..(y1 as usize + 1) * s].chunks_mut(s)
     }

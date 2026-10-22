@@ -13,8 +13,8 @@
 //! `PH2D_REGERA_SO="Ink Brush,Dip Pen"` regera só esses (pelo nome; os nomes da fábrica são únicos nos 4 meios).
 
 use super::receitas_de_fabrica::{
-    DIREITA, PRESETS_DE_FABRICA, Receita, ReceitaMeio, SPACING_DA_FABRICA, base_da_ferramenta, grao,
-    modo_da_ferramenta, receitas, receitas_dos_meios,
+    DIREITA, PRESETS_DE_FABRICA, Receita, ReceitaMeio, SPACING_DA_FABRICA, base_da_ferramenta,
+    grao, modo_da_ferramenta, receitas, receitas_dos_meios,
 };
 use super::sonda_gestos::{fnv1a, largura_que_se_ve, traco_recto_alto};
 use ph2d_brush_presets::{
@@ -177,7 +177,11 @@ pub(super) fn relativo_do_meio(r: &ReceitaMeio) -> String {
 /// outros meios não a lê).
 pub(super) fn parametros_do_meio(r: &ReceitaMeio) -> (Parametros, BTreeMap<String, Vec<u8>>) {
     let m = r.meio;
-    assert!(m != PaintMedia::WetPaint, "{}: um preset do Wet Paint é uma `Receita`", r.nome);
+    assert!(
+        m != PaintMedia::WetPaint,
+        "{}: um preset do Wet Paint é uma `Receita`",
+        r.nome
+    );
     let (mut p, mut texturas) = match r.nasce_de {
         Some(base) => {
             let b = super::midias_de_fabrica::de_fabrica(base);
@@ -212,8 +216,17 @@ pub(super) fn parametros_do_meio(r: &ReceitaMeio) -> (Parametros, BTreeMap<Strin
             .iter()
             .find(|l| l.chave() == chave)
             .unwrap_or_else(|| panic!("{}: a linha da mão {chave} não existe", r.nome));
-        assert!(l.lida_por(m), "{}: o meio {m:?} não lê a linha da mão {chave}", r.nome);
-        assert!(l.limpa(v) == v, "{}: {chave} = {v} fora da faixa {:?}", r.nome, l.faixa());
+        assert!(
+            l.lida_por(m),
+            "{}: o meio {m:?} não lê a linha da mão {chave}",
+            r.nome
+        );
+        assert!(
+            l.limpa(v) == v,
+            "{}: {chave} = {v} fora da faixa {:?}",
+            r.nome,
+            l.faixa()
+        );
         p.engine.insert(chave.to_owned(), v);
     }
     assert!(
@@ -262,7 +275,8 @@ fn json_perto(a: &Value, b: &Value) -> bool {
         }
         (Value::Object(x), Value::Object(y)) => {
             x.len() == y.len()
-                && x.iter().all(|(k, v)| y.get(k).is_some_and(|w| json_perto(v, w)))
+                && x.iter()
+                    .all(|(k, v)| y.get(k).is_some_and(|w| json_perto(v, w)))
         }
         _ => a == b,
     }
@@ -273,8 +287,18 @@ fn json_perto(a: &Value, b: &Value) -> bool {
 /// ou ignora (tipo errado, fora do domínio) acusa aqui, nunca vira um preset que mente.
 pub(super) fn confere_receita_do_meio(r: &ReceitaMeio, p: &Preset) {
     let mut t = PainterTool::default();
-    assert_eq!(t.preset_aplicar(p), Ok(Vec::new()), "{}: o preset não se aplica inteiro", r.nome);
-    assert_eq!(t.paint_media(), r.meio, "{}: o preset arma outro meio", r.nome);
+    assert_eq!(
+        t.preset_aplicar(p),
+        Ok(Vec::new()),
+        "{}: o preset não se aplica inteiro",
+        r.nome
+    );
+    assert_eq!(
+        t.paint_media(),
+        r.meio,
+        "{}: o preset arma outro meio",
+        r.nome
+    );
     let (lido, _) = t.preset_capturar(&p.parametros);
     for (campo, json) in r.pincel {
         let v: Value = serde_json::from_str(json).unwrap();
@@ -295,11 +319,19 @@ pub(super) fn confere_receita_do_meio(r: &ReceitaMeio, p: &Preset) {
     }
     if let Some(d) = r.size_px {
         let w = lido.volumes.size_px.unwrap_or(f64::NAN);
-        assert!((w - d).abs() <= 1e-3, "{}: o tamanho pedia {d}, ficou {w}", r.nome);
+        assert!(
+            (w - d).abs() <= 1e-3,
+            "{}: o tamanho pedia {d}, ficou {w}",
+            r.nome
+        );
     }
     if let Some(o) = r.opacity {
         let w = lido.volumes.opacity.unwrap_or(f64::NAN);
-        assert!((w - o).abs() <= 1e-4, "{}: a Strength pedia {o}, ficou {w}", r.nome);
+        assert!(
+            (w - o).abs() <= 1e-4,
+            "{}: a Strength pedia {o}, ficou {w}",
+            r.nome
+        );
     }
     if let Some(modo) = r.modo {
         assert_eq!(lido.paint_mode.as_deref(), Some(modo), "{}: o modo", r.nome);
@@ -321,7 +353,12 @@ fn raios_da_lei() -> Vec<f32> {
 fn direito(p: &Preset) -> Preset {
     let mut d = p.clone();
     d.parametros.tilt = Some(DIREITA);
-    if let Some(j) = d.parametros.brush.get_mut("dab_jitter").and_then(|j| j.as_object_mut()) {
+    if let Some(j) = d
+        .parametros
+        .brush
+        .get_mut("dab_jitter")
+        .and_then(|j| j.as_object_mut())
+    {
         j.remove("po");
     }
     d
@@ -373,7 +410,12 @@ fn largura_da_ferramenta(p: &Preset, modo: &str, raio: f32, crua: bool) -> f32 {
         // A faixa da base, ao raio 1,5·m (a promessa da base: 3m de largura), com a orla de baixo em `cy`.
         t.set_brush_size_px(1.5 * motor);
         t.set_brush_color_srgb8([191, 0, 18]);
-        super::sonda_gestos::gesto(&mut t, &[[60.0, cy - 1.5 * motor], [940.0, cy - 1.5 * motor]], 3.0, |_| 1.0);
+        super::sonda_gestos::gesto(
+            &mut t,
+            &[[60.0, cy - 1.5 * motor], [940.0, cy - 1.5 * motor]],
+            3.0,
+            |_| 1.0,
+        );
         assert!(t.wet_preset_aplicar(&direito(p)).is_empty());
         if crua {
             t.set_wet_largura_crua(escala);
@@ -487,7 +529,10 @@ fn gera_os_presets_de_fabrica() {
     let escreve = std::env::var("PH2D_REGERA_PRESETS").as_deref() == Ok("1");
     // `PH2D_REGERA_SO="Nome,Nome"`: só esses (cada preset do Wet custa ~2 min de lei da largura sob carga).
     let so = std::env::var("PH2D_REGERA_SO").ok();
-    let pedido = |nome: &str| so.as_deref().is_none_or(|s| s.split(',').any(|n| n == nome));
+    let pedido = |nome: &str| {
+        so.as_deref()
+            .is_none_or(|s| s.split(',').any(|n| n == nome))
+    };
     if let Some(s) = so.as_deref() {
         let nomes: Vec<&str> = receitas()
             .map(|r| r.nome)
@@ -608,7 +653,12 @@ fn the_factory_presets_are_counted() {
     for e in &b.entradas {
         let m = meio_do_preset(&e.preset.parametros.media)
             .unwrap_or_else(|| panic!("{}: meio desconhecido", e.relativo));
-        assert_eq!(e.partes()[0], motor_do_meio(m), "{}: fora da pasta do meio", e.relativo);
+        assert_eq!(
+            e.partes()[0],
+            motor_do_meio(m),
+            "{}: fora da pasta do meio",
+            e.relativo
+        );
         assert_eq!(e.preset.origem, Origem::Fabrica, "{}", e.relativo);
         assert_eq!(
             e.partes()[3],
@@ -640,7 +690,10 @@ fn cada_preset_de_fabrica_e_a_sua_receita() {
             mudaram.push(rel);
         }
     }
-    assert!(mudaram.is_empty(), "a receita mudou e o ficheiro não — regere: {mudaram:?}");
+    assert!(
+        mudaram.is_empty(),
+        "a receita mudou e o ficheiro não — regere: {mudaram:?}"
+    );
     for r in receitas_dos_meios() {
         let rel = relativo_do_meio(r);
         let f = ler(&std::fs::read(raiz().join(&rel)).unwrap_or_else(|e| panic!("{rel}: {e}")))
@@ -662,32 +715,56 @@ fn uma_receita_de_cada_meio_vira_um_preset_desse_meio() {
     const PROVAS: [ReceitaMeio; 3] = [
         ReceitaMeio {
             pincel: &[("hardness", "0.3"), ("spacing", "0.05")],
-            mao: &[("pressureSize", 0.6), ("pressureOpacity", 0.5), ("tiltOpacity", 0.4)],
+            mao: &[
+                ("pressureSize", 0.6),
+                ("pressureOpacity", 0.5),
+                ("tiltOpacity", 0.4),
+            ],
             size_px: Some(12.0),
             opacity: Some(0.85),
             ..ReceitaMeio::digital("Pencil", "Graphite", "prova Digital")
         },
         ReceitaMeio {
-            pincel: &[("granulation", "0.4"), ("wet_dilution", "0.3"), ("depth", "1.6")],
+            pincel: &[
+                ("granulation", "0.4"),
+                ("wet_dilution", "0.3"),
+                ("depth", "1.6"),
+            ],
             mao: &[("pressureSize", 0.3)],
             size_px: Some(30.0),
             ..ReceitaMeio::aquarela("Watercolor", "Round", "prova Watercolor")
         },
         ReceitaMeio {
-            pincel: &[("impasto_depth", "0.6"), ("impasto_body", "0.7"), ("dab_flatten", "0.4")],
+            pincel: &[
+                ("impasto_depth", "0.6"),
+                ("impasto_body", "0.7"),
+                ("dab_flatten", "0.4"),
+            ],
             mao: &[("pressureOpacity", 0.4)],
             modo: Some("Knife"),
             ..ReceitaMeio::impasto("Oil", "Bristle", "prova Impasto")
         },
     ];
-    let neutros: Vec<Vec<u8>> = [PaintMedia::Digital, PaintMedia::Watercolor, PaintMedia::Impasto]
-        .into_iter()
-        .map(|m| preset_do_meio(&ReceitaMeio::novo(m, "P", "G", "neutro")).miniatura.rgba)
-        .collect();
+    let neutros: Vec<Vec<u8>> = [
+        PaintMedia::Digital,
+        PaintMedia::Watercolor,
+        PaintMedia::Impasto,
+    ]
+    .into_iter()
+    .map(|m| {
+        preset_do_meio(&ReceitaMeio::novo(m, "P", "G", "neutro"))
+            .miniatura
+            .rgba
+    })
+    .collect();
     for (r, neutro) in PROVAS.iter().zip(&neutros) {
         let p = preset_do_meio(r);
         assert_eq!(p.parametros.media, nome_do_meio(r.meio));
-        assert!(p.parametros.width_table.is_empty(), "{}: tabela de largura fora do Wet", r.nome);
+        assert!(
+            p.parametros.width_table.is_empty(),
+            "{}: tabela de largura fora do Wet",
+            r.nome
+        );
         confere_receita_do_meio(r, &p);
         let rgba = &p.miniatura.rgba;
         let tinta = rgba.chunks(4).filter(|c| c[..3] != rgba[..3]).count();
@@ -699,8 +776,16 @@ fn uma_receita_de_cada_meio_vira_um_preset_desse_meio() {
             rgba.len() / 4,
             fnv1a(rgba)
         );
-        assert!(tinta > 100, "{}: a miniatura não tem tinta ({tinta} px)", r.nome);
-        assert!(rgba != neutro, "{}: a receita pinta a miniatura do pincel neutro", r.nome);
+        assert!(
+            tinta > 100,
+            "{}: a miniatura não tem tinta ({tinta} px)",
+            r.nome
+        );
+        assert!(
+            rgba != neutro,
+            "{}: a receita pinta a miniatura do pincel neutro",
+            r.nome
+        );
     }
 }
 
@@ -826,7 +911,9 @@ fn fora_da_promessa(larguras: &[f32], rel: f32, tecto: f32) -> Vec<String> {
     RAIOS_DA_PROMESSA
         .iter()
         .zip(larguras)
-        .filter(|(r, l)| (*l - (2.0 * *r).min(tecto)).abs() > TOLERANCIA_PX.max(rel * (2.0 * *r).min(tecto)))
+        .filter(|(r, l)| {
+            (*l - (2.0 * *r).min(tecto)).abs() > TOLERANCIA_PX.max(rel * (2.0 * *r).min(tecto))
+        })
         .map(|(r, l)| format!("raio {r}: {l} px (pedido {}, tecto {tecto})", 2.0 * r))
         .collect()
 }
@@ -872,7 +959,12 @@ fn a_largura_e_a_prometida() {
         } else {
             TOLERANCIA_REL
         };
-        let tecto = p.parametros.brush.get("size_max_px").and_then(serde_json::Value::as_f64).map_or(f32::INFINITY, |d| d as f32);
+        let tecto = p
+            .parametros
+            .brush
+            .get("size_max_px")
+            .and_then(serde_json::Value::as_f64)
+            .map_or(f32::INFINITY, |d| d as f32);
         for f in fora_da_promessa(&larguras, tol, tecto) {
             falhas.push(format!("{rel}: {f}"));
         }
@@ -1005,9 +1097,10 @@ fn sonda_memoria_da_lei() {
         p.parametros.width_table = tabela;
     }
     if let Some(j) = var("PH2D_SONDA_JITTER") {
-        p.parametros
-            .brush
-            .insert("jitter".into(), serde_json::json!(j.parse::<f64>().unwrap()));
+        p.parametros.brush.insert(
+            "jitter".into(),
+            serde_json::json!(j.parse::<f64>().unwrap()),
+        );
     }
     let escala = if crua { (raio / 500.0).max(1.0) } else { 1.0 };
     let h = ((raio * 6.0) as u32 + 80).max(120);
@@ -1081,7 +1174,15 @@ fn memoria_num_filho(raio: f32) -> (f64, usize) {
         .nth(1)
         .unwrap_or_else(|| panic!("a sonda não respondeu a raio {raio}:\n{txt}"));
     let num = |k: &str| -> f64 {
-        linha.split(k).nth(1).unwrap().split_whitespace().next().unwrap().parse().unwrap()
+        linha
+            .split(k)
+            .nth(1)
+            .unwrap()
+            .split_whitespace()
+            .next()
+            .unwrap()
+            .parse()
+            .unwrap()
     };
     println!("[memoria]{}", linha.lines().next().unwrap_or(""));
     (num(" gesto "), num(" lanes ") as usize)
@@ -1105,8 +1206,14 @@ const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 230.0), (1000.0, 1800.0)]
 fn a_memoria_do_dabber_cabe() {
     for (raio, tecto) in TECTO_DA_MEMORIA_MIB {
         let (pico, lanes) = memoria_num_filho(raio);
-        assert_eq!(lanes, 1, "raio {raio}: o Jitter partiu o traço em {lanes} lanes");
-        assert!(pico <= tecto, "raio {raio}: pico do gesto {pico:.0} MiB > tecto {tecto:.0}");
+        assert_eq!(
+            lanes, 1,
+            "raio {raio}: o Jitter partiu o traço em {lanes} lanes"
+        );
+        assert!(
+            pico <= tecto,
+            "raio {raio}: pico do gesto {pico:.0} MiB > tecto {tecto:.0}"
+        );
     }
 }
 
@@ -1133,11 +1240,16 @@ fn wet_com_copias(count: u32, simetria: bool, pts: &[[f32; 2]]) -> Copias {
         .wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, "g", "copias"))
         .0;
     p.brush.insert("jitter".into(), serde_json::json!(0.5));
-    p.brush.insert("spray_count".into(), serde_json::json!(count));
+    p.brush
+        .insert("spray_count".into(), serde_json::json!(count));
     let preset = Preset {
         parametros: p,
         origem: Origem::Fabrica,
-        miniatura: ph2d_brush_presets::Miniatura { largura: 1, altura: 1, rgba: vec![255; 4] },
+        miniatura: ph2d_brush_presets::Miniatura {
+            largura: 1,
+            altura: 1,
+            rgba: vec![255; 4],
+        },
         texturas: Default::default(),
     };
     t.set_wet_relogio_fixo(true);
@@ -1168,7 +1280,12 @@ fn wet_com_copias(count: u32, simetria: bool, pts: &[[f32; 2]]) -> Copias {
     for (i, c) in px.chunks_exact(4).enumerate() {
         tinta[usize::from(i as u32 % pw >= pw / 2)] += f64::from(255 - c[0]);
     }
-    Copias { tinta, lanes, dabs: dabs.load(Ordering::Relaxed), sem_pigmento: zero.load(Ordering::Relaxed) }
+    Copias {
+        tinta,
+        lanes,
+        dabs: dabs.load(Ordering::Relaxed),
+        sem_pigmento: zero.load(Ordering::Relaxed),
+    }
 }
 
 /// ⭐ **Cada marca do spray é uma ponta** (L13): no Wet com Count 3 e Jitter, as três marcas de cada ponto
@@ -1178,7 +1295,10 @@ fn wet_com_copias(count: u32, simetria: bool, pts: &[[f32; 2]]) -> Copias {
 #[test]
 fn cada_marca_do_spray_pousa_no_wet() {
     let pts = [[150.0, 320.0], [850.0, 320.0]];
-    let (um, tres) = (wet_com_copias(1, false, &pts), wet_com_copias(3, false, &pts));
+    let (um, tres) = (
+        wet_com_copias(1, false, &pts),
+        wet_com_copias(3, false, &pts),
+    );
     let razao = (tres.tinta[0] + tres.tinta[1]) / (um.tinta[0] + um.tinta[1]);
     println!(
         "[copias] spray: Count 1 {} lane(s) · Count 3 {} lanes, {} de {} dabs sem pigmento · tinta ×{razao:.2}",
@@ -1186,7 +1306,11 @@ fn cada_marca_do_spray_pousa_no_wet() {
     );
     assert_eq!(um.lanes, 1, "Count 1 com Jitter: uma ponta, uma lane");
     assert_eq!(tres.lanes, 3, "Count 3: uma lane por marca");
-    assert_eq!(tres.sem_pigmento, 0, "{} de {} marcas não pousaram pigmento", tres.sem_pigmento, tres.dabs);
+    assert_eq!(
+        tres.sem_pigmento, 0,
+        "{} de {} marcas não pousaram pigmento",
+        tres.sem_pigmento, tres.dabs
+    );
     assert!(razao >= 2.0, "Count 3 pousa ×{razao:.2} a tinta do Count 1");
 }
 
@@ -1203,7 +1327,11 @@ fn as_copias_da_simetria_pintam_as_duas_no_wet() {
         c.lanes, c.sem_pigmento, c.dabs, c.tinta[0], c.tinta[1]
     );
     assert_eq!(c.lanes, 2, "a simetria: uma lane por cópia");
-    assert_eq!(c.sem_pigmento, 0, "{} de {} dabs da simetria não pousaram pigmento", c.sem_pigmento, c.dabs);
+    assert_eq!(
+        c.sem_pigmento, 0,
+        "{} de {} dabs da simetria não pousaram pigmento",
+        c.sem_pigmento, c.dabs
+    );
     // As cópias sobrepõem-se a 12 px do eixo e a 2.ª pousa sobre a tinta molhada da 1.ª: a razão é física, não 1.
     assert!(r >= 0.85, "uma cópia da simetria pinta {r:.3} da outra");
 }

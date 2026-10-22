@@ -104,7 +104,11 @@ pub const EM_ESTUDO: &[Receita] = &[
         ],
         grao: None,
         achatado: None,
-        pincel: &[("dab_quina", "1.0"), ("dab_flatten", "0.0"), ("size_max_px", "56")],
+        pincel: &[
+            ("dab_quina", "1.0"),
+            ("dab_flatten", "0.0"),
+            ("size_max_px", "56"),
+        ],
         nasce_de: Some("Gouache Flat"),
     },
     // J4 H-3: a guache QUASE SECA do Rebelle (`Gouache/Gouache Dry`): o corpo do Wet Dry Brush (pouca água, as cerdas
@@ -161,5 +165,8 @@ fn os_reprovados_do_guache_nao_estao_na_fabrica() {
         .map(|e| e.preset.parametros.name.as_str())
         .filter(|n| EM_ESTUDO.iter().any(|r| r.nome == *n))
         .collect();
-    assert!(na_fabrica.is_empty(), "reprovados na fábrica: {na_fabrica:?}");
+    assert!(
+        na_fabrica.is_empty(),
+        "reprovados na fábrica: {na_fabrica:?}"
+    );
 }

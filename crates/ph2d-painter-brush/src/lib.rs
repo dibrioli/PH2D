@@ -39,8 +39,12 @@ mod canvas_warp_curve;
 pub mod capsula;
 pub mod clone;
 pub mod clone_grain;
+/// A cor secundária e a cor pela MÃO da L11 (pressão → matiz, saturação, valor, secundária).
+pub mod cor_mao;
 pub mod curve_fit;
 pub mod dab;
+/// O DUAL BRUSH da L6: a 2.ª ponta que recorta a 1.ª por um modo.
+pub mod dual;
 pub mod dynamics;
 /// A mistura de pigmento ESPECTRAL (a do MyPaint 2, `libmypaint` ISC — J4 efeitos).
 pub mod espectral;
@@ -63,12 +67,6 @@ mod height_film_lut_wiring_tests; // a LUT no laço REAL dos dois kernels (plano
 pub mod height_modes;
 pub mod height_push;
 pub(crate) mod jitter;
-/// A cor secundária e a cor pela MÃO da L11 (pressão → matiz, saturação, valor, secundária).
-pub mod cor_mao;
-/// O DUAL BRUSH da L6: a 2.ª ponta que recorta a 1.ª por um modo.
-pub mod dual;
-/// O jitter da MARCA da L4 (opacidade, contagem, espelhos, redondeza, ângulo por traço, através, partícula).
-pub mod marca;
 /// O TIPO de linha procedural (plano 38) — a lei que decora o traço, ortogonal ao `StrokeMethod`.
 pub mod line_kind;
 #[cfg(test)]
@@ -80,13 +78,15 @@ mod line_speed_probe; // sonda do arremesso (plano 38 W2)
 #[cfg(test)]
 #[path = "line_speed_tests.rs"]
 mod line_speed_tests; // os gates do Speed Shapes (plano 38 W2)
-pub mod mask_ops;
-pub mod pixel;
 pub mod mangueira;
+/// O jitter da MARCA da L4 (opacidade, contagem, espelhos, redondeza, ângulo por traço, através, partícula).
+pub mod marca;
+pub mod mask_ops;
 pub mod material;
 pub mod pen;
 #[cfg(test)]
 mod pen_tests;
+pub mod pixel;
 /// The **local plane** fitted to a dab's footprint — the engine behind Flatten / Scrape / Fill. Tilted,
 /// which is the whole point: a horizontal fit cuts a crater into a hillside.
 pub mod plane;
@@ -152,8 +152,6 @@ pub(crate) mod stroke_cover;
 pub mod stroke_method;
 pub mod symmetry;
 pub mod taper;
-/// O traço como uma CAMADA — o tecto por traço e as orlas (L8).
-pub mod traco;
 #[cfg(test)]
 mod taper_tests;
 pub mod texture;
@@ -162,6 +160,8 @@ pub mod texture;
 pub(crate) mod tip;
 #[cfg(test)]
 mod tip_kernel_tests;
+/// O traço como uma CAMADA — o tecto por traço e as orlas (L8).
+pub mod traco;
 
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
 pub use blend_vazio::{blend_over_modo, blend_over_pigment_modo, blend_over_w3c};
@@ -170,11 +170,13 @@ pub use blur_grain::blur_blit_grain;
 pub use blur_peso::{blur_region_borrado, blur_region_por_peso, mistura_linha_por_peso};
 pub use clone::{clone_blit_stamp, clone_dab};
 pub use clone_grain::clone_blit_grain;
+pub use cor_mao::CorDaMao;
 pub use curve_fit::{CurveFit, auto_handles, fit_curve, flatten_bezier};
 pub use dab::{
     DirtyRect, PARALLEL_MIN_AREA, ShapeInput, band_count, stamp_dab, stamp_dab_ramped,
     stamp_dab_textured, stamp_dab_textured_masked, stamp_dab_textured_masked_with,
 };
+pub use dual::{DualMode, DualTip};
 pub use dynamics::Dynamics;
 pub use falloff::{Falloff, MAX_FALLOFF};
 pub use falloff_curve::{
@@ -184,13 +186,11 @@ pub use falloff_curve::{
 pub use footprint::{DAB_FLATTEN_MAX, FootprintCurve, FootprintDeform};
 pub use height::{DepthSource, DrawTo};
 pub use jitter::{ColorJitterScope, apply_color_shift};
-pub use cor_mao::CorDaMao;
-pub use marca::DabJitter;
-pub use dual::{DualMode, DualTip};
-pub use pixel::PixelTip;
 pub use mangueira::{HOSE_MAX, HoseMode, ImageHose};
+pub use marca::DabJitter;
 pub use mask_ops::{MaskCanvasOp, apply_mask_op};
 pub use pen::{DabRotation, DabTilt, Pen, Tilt as PenTilt};
+pub use pixel::PixelTip;
 pub use ramp_alpha::{
     RampAlphaMode, RampIndex, RampPaint, ShapeRampLayers, compose_shape_ramp_layers, shift_ramp_lut,
 };
@@ -223,9 +223,10 @@ pub use stroke_method::{JitterUnit, StrokeMethod};
 pub use symmetry::{MirrorAxis, SYMMETRY_MAX_SEGMENTS, SYMMETRY_MIN_SEGMENTS, SymmetrySettings};
 pub use texture::patterns::{render_texture_layer, render_texture_preview};
 pub use texture::{
-    DEG_STEP, Escala, GrainLaw, GrainMode, ImageMask, ImageRgb, MAX_TEX_PARAMS, ParamSpec, TEX_ANGLE_MAX_DEG,
-    TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TEX_TILE_BASE_PX, TexDabBasis,
-    TextureKind, TextureMapping, TextureSettings, compose_shape_silhouette_kind, param_escala,
-    param_inerte, param_specs, render_shape_preview, render_stencil_preview, stencil_frame,
+    DEG_STEP, Escala, GrainLaw, GrainMode, ImageMask, ImageRgb, MAX_TEX_PARAMS, ParamSpec,
+    TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,
+    TEX_TILE_BASE_PX, TexDabBasis, TextureKind, TextureMapping, TextureSettings,
+    compose_shape_silhouette_kind, param_escala, param_inerte, param_specs, render_shape_preview,
+    render_stencil_preview, stencil_frame,
 };
 pub use traco::TracoComposto;

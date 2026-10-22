@@ -340,7 +340,11 @@ impl FiosNoDab {
         let n = ruido(self.arco / f.veio_px.max(1.0), fio, SEMENTE_VEIO);
         let corte = f.veio_corte.clamp(0.0, 0.95);
         let e = (2.0 * (n.abs() - corte) / (1.0 - corte)).clamp(0.0, 1.0);
-        if n > 0.0 { -f.veio[0] * e } else { f.veio[1] * e }
+        if n > 0.0 {
+            -f.veio[0] * e
+        } else {
+            f.veio[1] * e
+        }
     }
 
     /// O fio em `u` (larguras de fio na normal): o `k` com `fronteira(k) ≤ u < fronteira(k + 1)`. Cada fronteira

@@ -169,7 +169,13 @@ pub fn render_color_stamp_mask(
             // that multiplies the premultiplied composite — tinting the tip by the Grain pattern.
             if acc[3] > 0.0 && grain_active {
                 let g = crate::texture::sample_unit(&spec.texture, &grain_basis, u, v, grain_image);
-                let m = grain_modulation(g, depth, spec.effective_granulation(), grain_ramp, &spec.texture.lei);
+                let m = grain_modulation(
+                    g,
+                    depth,
+                    spec.effective_granulation(),
+                    grain_ramp,
+                    &spec.texture.lei,
+                );
                 acc[0] *= m[0];
                 acc[1] *= m[1];
                 acc[2] *= m[2];

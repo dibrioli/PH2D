@@ -40,7 +40,10 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("pigment_mix", "1.0"),
             // A lei do MyPaint 2 (J4 efeitos, `exames/efeitos.md` 2.ª ronda): o azul sobre o vermelho em violeta-cinza.
             ("pigment_espectral", "true"),
-            ("traco", r#"{"largura":7.0,"molhada":0.0,"queimada":0.0,"tecto":0.99}"#),
+            (
+                "traco",
+                r#"{"largura":7.0,"molhada":0.0,"queimada":0.0,"tecto":0.99}"#,
+            ),
         ],
         // A dureza pela pressão (J4 efeitos, o `hardness 0,2 + 0,3·p` do `deevad/ballpen`; 0,15 na nossa queda —
         // a 0,3 o traço engordava 9 %): o cheio de 200 px não sai em contas (0,044 → 0,006), o leve continua em fiapos.
@@ -149,17 +152,29 @@ impl Identidade {
     fn de(px: &[u8], w: usize) -> Self {
         let c = |x: usize, y: usize| {
             let p = &px[(y * w + x) * 4..(y * w + x) * 4 + 3];
-            p.iter().map(|&v| (255.0 - f64::from(v)).abs()).fold(0.0, f64::max) / CHEIO
+            p.iter()
+                .map(|&v| (255.0 - f64::from(v)).abs())
+                .fold(0.0, f64::max)
+                / CHEIO
         };
-        let col = |x: usize, y0: usize, y1: usize| -> Vec<f64> { (y0..y1).map(|y| c(x, y)).collect() };
+        let col =
+            |x: usize, y0: usize, y1: usize| -> Vec<f64> { (y0..y1).map(|y| c(x, y)).collect() };
         let pico = |v: &[f64]| v.iter().copied().fold(0.0, f64::max);
         let largura = |v: &[f64]| {
             let m = pico(v);
-            if m > 0.02 { v.iter().filter(|&&a| a >= 0.25 * m).count() as f64 } else { 0.0 }
+            if m > 0.02 {
+                v.iter().filter(|&&a| a >= 0.25 * m).count() as f64
+            } else {
+                0.0
+            }
         };
         let borda = |v: &[f64]| {
             let m = pico(v);
-            if m > 0.02 { v.iter().filter(|&&a| a > 0.1 * m && a < 0.9 * m).count() as f64 / 2.0 } else { 0.0 }
+            if m > 0.02 {
+                v.iter().filter(|&&a| a > 0.1 * m && a < 0.9 * m).count() as f64 / 2.0
+            } else {
+                0.0
+            }
         };
         let media = |v: &[f64]| v.iter().sum::<f64>() / v.len() as f64;
         let rec: Vec<Vec<f64>> = (200..=420).step_by(20).map(|x| col(x, 30, 150)).collect();
@@ -170,35 +185,76 @@ impl Identidade {
             .map(|x| {
                 let v = col(x, 30, 150);
                 let m = pico(&v);
-                if m > 0.02 { v.iter().position(|&a| a >= 0.5 * m).unwrap_or(0) as f64 } else { 0.0 }
+                if m > 0.02 {
+                    v.iter().position(|&a| a >= 0.5 * m).unwrap_or(0) as f64
+                } else {
+                    0.0
+                }
             })
             .collect();
-        let rugosidade = media(&topo.windows(2).map(|p| (p[1] - p[0]).abs()).collect::<Vec<_>>());
-        let leve = media(&(85..=185).step_by(5).map(|x| pico(&col(x, 340, 460))).collect::<Vec<_>>());
+        let rugosidade = media(
+            &topo
+                .windows(2)
+                .map(|p| (p[1] - p[0]).abs())
+                .collect::<Vec<_>>(),
+        );
+        let leve = media(
+            &(85..=185)
+                .step_by(5)
+                .map(|x| pico(&col(x, 340, 460)))
+                .collect::<Vec<_>>(),
+        );
         let banda = |x0: usize, x1: usize| -> (f64, f64) {
             let cols: Vec<Vec<f64>> = (x0..x1).map(|x| col(x, 340, 460)).collect();
             let tinta = media(&cols.iter().map(|v| media(v)).collect::<Vec<_>>());
             let dif = media(
                 &cols
                     .windows(2)
-                    .map(|p| media(&p[0].iter().zip(&p[1]).map(|(a, b)| (b - a).abs()).collect::<Vec<_>>()))
+                    .map(|p| {
+                        media(
+                            &p[0]
+                                .iter()
+                                .zip(&p[1])
+                                .map(|(a, b)| (b - a).abs())
+                                .collect::<Vec<_>>(),
+                        )
+                    })
                     .collect::<Vec<_>>(),
             );
             let sigma = |v: &Vec<f64>| {
                 let w = v.iter().sum::<f64>() + 1e-9;
                 let mu = v.iter().enumerate().map(|(y, a)| a * y as f64).sum::<f64>() / w;
-                (v.iter().enumerate().map(|(y, a)| a * (y as f64 - mu).powi(2)).sum::<f64>() / w).sqrt()
+                (v.iter()
+                    .enumerate()
+                    .map(|(y, a)| a * (y as f64 - mu).powi(2))
+                    .sum::<f64>()
+                    / w)
+                    .sqrt()
             };
-            (dif / tinta.max(1e-6), media(&cols.iter().map(sigma).collect::<Vec<_>>()))
+            (
+                dif / tinta.max(1e-6),
+                media(&cols.iter().map(sigma).collect::<Vec<_>>()),
+            )
         };
         let ((aspereza_leve, sigma_leve), (_, sigma_cheio)) = (banda(85, 185), banda(500, 545));
         let picos: Vec<f64> = (85..185).map(|x| pico(&col(x, 340, 460))).collect();
         let n = picos.len() as f64;
         let (mx, my) = ((n - 1.0) / 2.0, media(&picos));
-        let inclina = picos.iter().enumerate().map(|(x, y)| (x as f64 - mx) * (y - my)).sum::<f64>()
-            / picos.iter().enumerate().map(|(x, _)| (x as f64 - mx).powi(2)).sum::<f64>();
-        let resto: Vec<f64> =
-            picos.iter().enumerate().map(|(x, y)| (y - my - inclina * (x as f64 - mx)).powi(2)).collect();
+        let inclina = picos
+            .iter()
+            .enumerate()
+            .map(|(x, y)| (x as f64 - mx) * (y - my))
+            .sum::<f64>()
+            / picos
+                .iter()
+                .enumerate()
+                .map(|(x, _)| (x as f64 - mx).powi(2))
+                .sum::<f64>();
+        let resto: Vec<f64> = picos
+            .iter()
+            .enumerate()
+            .map(|(x, y)| (y - my - inclina * (x as f64 - mx)).powi(2))
+            .collect();
         let borrao = media(&resto).sqrt() / my.max(1e-6);
         Self {
             borda: media(&rec.iter().map(|v| borda(v)).collect::<Vec<_>>()),
@@ -246,7 +302,12 @@ fn cada_caneta_se_reconhece_pela_foto() {
     let bat = bateria();
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
-    let gestos = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "gestos").unwrap();
+    let gestos = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == "gestos")
+        .unwrap();
     let mut falhas = Vec::new();
     for (nome, escala, ms) in CANETAS {
         let mut cena = gestos.clone();
@@ -255,26 +316,48 @@ fn cada_caneta_se_reconhece_pela_foto() {
                 op["size_px"] = serde_json::json!(d * escala);
             }
         }
-        let r = MEIOS.iter().chain(EM_ESTUDO).find(|r| r.nome == nome).unwrap();
+        let r = MEIOS
+            .iter()
+            .chain(EM_ESTUDO)
+            .find(|r| r.nome == nome)
+            .unwrap();
         let (parametros, texturas) = crate::presets_de_fabrica::parametros_do_meio(r);
         let preset = ph2d_brush_presets::Preset {
             parametros,
             origem: ph2d_brush_presets::Origem::Fabrica,
-            miniatura: ph2d_brush_presets::Miniatura { largura: 1, altura: 1, rgba: vec![255; 4] },
+            miniatura: ph2d_brush_presets::Miniatura {
+                largura: 1,
+                altura: 1,
+                rgba: vec![255; 4],
+            },
             texturas,
         };
-        let p = Pincel { nome: nome.to_owned(), fonte: Fonte::Preset { preset: Box::new(preset), relativo: nome.to_owned() } };
-        let eu = Identidade::de(&pinta_cena(&p, None, &cena, tela, papel, 0).1, tela[0] as usize);
+        let p = Pincel {
+            nome: nome.to_owned(),
+            fonte: Fonte::Preset {
+                preset: Box::new(preset),
+                relativo: nome.to_owned(),
+            },
+        };
+        let eu = Identidade::de(
+            &pinta_cena(&p, None, &cena, tela, papel, 0).1,
+            tela[0] as usize,
+        );
         let (_, oraculo, foto) = FOTOS.iter().find(|f| f.0 == nome).unwrap();
         println!("[canetas] {nome}: {eu:?}\n          foto {oraculo}: {foto:?}");
         for &m in ms {
             let (v, f) = (m.de(&eu), m.de(foto));
             if (v - f).abs() > m.tol(f) {
-                falhas.push(format!("{nome}: {m:?} {v:.3} fora da foto {f:.3} ± {:.3} ({oraculo})", m.tol(f)));
+                falhas.push(format!(
+                    "{nome}: {m:?} {v:.3} fora da foto {f:.3} ± {:.3} ({oraculo})",
+                    m.tol(f)
+                ));
             }
         }
         let distancia = |outra: &Identidade| -> f64 {
-            ms.iter().map(|&m| (m.de(&eu) - m.de(outra)).abs() / m.tol(m.de(foto))).sum()
+            ms.iter()
+                .map(|&m| (m.de(&eu) - m.de(outra)).abs() / m.tol(m.de(foto)))
+                .sum()
         };
         let propria = distancia(foto);
         for (outra, _, f2) in FOTOS.iter().filter(|f| f.0 != nome) {

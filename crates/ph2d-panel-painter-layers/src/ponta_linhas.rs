@@ -121,7 +121,9 @@ pub(crate) fn paint_ponta_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
         .opcoes()
         .iter()
         .enumerate()
-        .map(|(k, chave)| DropdownOption::new(ids::painter_ponta_option_id(i, k as u8), k as u8, tr(chave)))
+        .map(|(k, chave)| {
+            DropdownOption::new(ids::painter_ponta_option_id(i, k as u8), k as u8, tr(chave))
+        })
         .collect();
     crate::dropdown_popover::paint_dropdown_popover(
         ctx,
@@ -183,7 +185,8 @@ pub(crate) fn decode_dual_follow_option(id: ph2d_a11y::NodeId) -> Option<u8> {
 fn visivel(i: usize, brush: &BrushSettings) -> bool {
     let n = usize::from(brush.shape_hose_count);
     let dual = brush.ponta[indice(LinhaDaPonta::DualMode)] > 0.0;
-    let forma = ph2d_tool_painter::TextureKind::from_u8(brush.ponta[indice(LinhaDaPonta::DualTip)] as u8);
+    let forma =
+        ph2d_tool_painter::TextureKind::from_u8(brush.ponta[indice(LinhaDaPonta::DualTip)] as u8);
     match LINHAS_DA_PONTA[i] {
         LinhaDaPonta::HoseMode => n > 1,
         LinhaDaPonta::Peso(k) => n > 1 && usize::from(k) < n && brush.ponta[5] == 0.0,
@@ -258,9 +261,19 @@ pub(crate) fn paint_mangueira(
         ctx.host.hit_index_mut().register(id, rect);
         y + ph2d_tokens::row_pitch_px()
     };
-    y = botao(ctx, y, ids::PAINTER_SHAPE_HOSE_ADD, "panel.painter_ponta.hose_add");
+    y = botao(
+        ctx,
+        y,
+        ids::PAINTER_SHAPE_HOSE_ADD,
+        "panel.painter_ponta.hose_add",
+    );
     if brush.shape_hose_count > 1 {
-        y = botao(ctx, y, ids::PAINTER_SHAPE_HOSE_CLEAR, "panel.painter_ponta.hose_clear");
+        y = botao(
+            ctx,
+            y,
+            ids::PAINTER_SHAPE_HOSE_CLEAR,
+            "panel.painter_ponta.hose_clear",
+        );
     }
     paint_linhas_da_ponta(ctx, theme, x, w, y, brush, CartaoDaPonta::Forma)
 }

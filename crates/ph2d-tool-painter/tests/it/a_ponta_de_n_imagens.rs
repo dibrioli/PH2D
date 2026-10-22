@@ -22,7 +22,11 @@ fn imagem(c: [u8; 3], forma: u8) -> Vec<u8> {
                 1 => x * x + y * y < m * m,
                 _ => x.abs() + y.abs() < m,
             };
-            if dentro { [c[0], c[1], c[2], 255] } else { [0, 0, 0, 0] }
+            if dentro {
+                [c[0], c[1], c[2], 255]
+            } else {
+                [0, 0, 0, 0]
+            }
         })
         .collect()
 }
@@ -46,7 +50,11 @@ fn pincel_com(n: usize, forma: bool, f: impl Fn(&mut PainterTool)) -> PainterToo
     t.toggle_brush_shape_alpha_from_image();
     t.toggle_brush_shape_per_layer_color();
     for k in 1..n {
-        t.add_brush_shape_hose_image_rgba(&imagem(CORES[k], if forma { k as u8 } else { 0 }), LADO, LADO);
+        t.add_brush_shape_hose_image_rgba(
+            &imagem(CORES[k], if forma { k as u8 } else { 0 }),
+            LADO,
+            LADO,
+        );
     }
     f(&mut t);
     t
@@ -98,7 +106,10 @@ fn uma_imagem_e_o_carimbo_de_hoje() {
     }));
     assert!(por_cor(&hoje)[0] > 1000, "a imagem não pintou");
     assert!(hoje == limpa, "acrescentar e tirar imagens mudou a tinta");
-    assert!(hoje == mexida, "o modo e o peso com uma imagem mudaram a tinta");
+    assert!(
+        hoje == mexida,
+        "o modo e o peso com uma imagem mudaram a tinta"
+    );
 }
 
 /// ⭐ **O sorteio respeita o PESO**: pesos 4 · 2 · 1 nas três imagens — a parte da tinta de cada uma (a mesma
@@ -118,9 +129,14 @@ fn o_sorteio_respeita_o_peso() {
         let p = peso / 7.0;
         let medido = carimbos[k] / n;
         let sd = (p * (1.0 - p) / estampas).sqrt();
-        assert!((medido - p).abs() < 4.0 * sd + 0.02, "imagem {k}: {medido:.3} × {p:.3} ± {sd:.3}");
+        assert!(
+            (medido - p).abs() < 4.0 * sd + 0.02,
+            "imagem {k}: {medido:.3} × {p:.3} ± {sd:.3}"
+        );
     }
-    let s = por_cor(&pinta(pincel(3, |t| t.set_ponta(LinhaDaPonta::HoseMode, 1.0))));
+    let s = por_cor(&pinta(pincel(3, |t| {
+        t.set_ponta(LinhaDaPonta::HoseMode, 1.0)
+    })));
     let tot: f64 = s.iter().map(|&v| v as f64).sum();
     assert!(
         s.iter().all(|&v| (v as f64 / tot - 1.0 / 3.0).abs() < 0.04),
@@ -148,8 +164,11 @@ fn gravar_e_carregar_com_n_imagens_volta_ao_bit() {
         };
         let antes = pinta(pincel_com(3, true, arma));
         let fonte = pincel_com(3, true, arma);
-        let (parametros, texturas) =
-            fonte.preset_capturar(&Parametros::novo(nome_do_meio(PaintMedia::Digital), "Ponta", "N"));
+        let (parametros, texturas) = fonte.preset_capturar(&Parametros::novo(
+            nome_do_meio(PaintMedia::Digital),
+            "Ponta",
+            "N",
+        ));
         let p = Preset {
             parametros,
             origem: Origem::Utilizador,
@@ -164,11 +183,17 @@ fn gravar_e_carregar_com_n_imagens_volta_ao_bit() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
         t.set_brush_color_srgb8(tinta);
-        assert!(t.preset_aplicar(&lido).unwrap().is_empty(), "texturas por ler");
+        assert!(
+            t.preset_aplicar(&lido).unwrap().is_empty(),
+            "texturas por ler"
+        );
         assert_eq!(t.brush_shape_hose_count(), 3);
         t.set_brush_size_px(10.0);
         let depois = pinta(t);
-        assert!(antes == depois, "cor {cor}: o preset com 3 imagens pinta outra tela");
+        assert!(
+            antes == depois,
+            "cor {cor}: o preset com 3 imagens pinta outra tela"
+        );
     }
 }
 
@@ -214,7 +239,9 @@ fn toques_no_meio(m: PaintMedia, formas: &[u8], toques: &[(f32, f32)]) -> Vec<u8
 
 /// O recorte `±24` px à volta de `(x, 80)`.
 fn recorte(px: &[u8], x: usize) -> Vec<u8> {
-    (56..105).flat_map(|y| px[(y * W + x - 24) * 4..(y * W + x + 25) * 4].to_vec()).collect()
+    (56..105)
+        .flat_map(|y| px[(y * W + x - 24) * 4..(y * W + x + 25) * 4].to_vec())
+        .collect()
 }
 
 /// ⭐ **Cada meio carimba a imagem ESCOLHIDA**: a ponta de duas imagens (quadrado, losango) pela pressão — o toque
@@ -223,7 +250,12 @@ fn recorte(px: &[u8], x: usize) -> Vec<u8> {
 /// o mesmo carimbo (o controlo inverte). Antes do adiado do Wet passar pela ponta, o Wet carimbava sempre a 1.ª.
 #[test]
 fn a_ponta_de_n_imagens_age_nos_meios() {
-    for m in [PaintMedia::Digital, PaintMedia::Impasto, PaintMedia::WetPaint, PaintMedia::Watercolor] {
+    for m in [
+        PaintMedia::Digital,
+        PaintMedia::Impasto,
+        PaintMedia::WetPaint,
+        PaintMedia::Watercolor,
+    ] {
         let ponta = toques_no_meio(m, &[0, 2], &[(160.0, 0.3), (480.0, 0.9)]);
         let quadrado = toques_no_meio(m, &[0], &[(160.0, 0.3)]);
         let losango = toques_no_meio(m, &[2], &[(480.0, 0.9)]);
@@ -234,11 +266,23 @@ fn a_ponta_de_n_imagens_age_nos_meios() {
         // leve). A rota por dab (a ponta de N imagens leva a imagem na pegada) arredonda a orla diferente da cache
         // da imagem única — por isso a régua é a SILHUETA e não o byte.
         let silhueta = |c: &[u8]| -> Vec<bool> {
-            let minimo = c.chunks_exact(4).map(|p| i32::from(p[0])).min().unwrap_or(255);
+            let minimo = c
+                .chunks_exact(4)
+                .map(|p| i32::from(p[0]))
+                .min()
+                .unwrap_or(255);
             let limiar = 255 - (255 - minimo) * 3 / 10;
-            c.chunks_exact(4).map(|p| i32::from(p[0]) < limiar).collect()
+            c.chunks_exact(4)
+                .map(|p| i32::from(p[0]) < limiar)
+                .collect()
         };
-        let difere = |a: &[u8], b: &[u8]| silhueta(a).iter().zip(silhueta(b)).filter(|(x, y)| **x != *y).count();
+        let difere = |a: &[u8], b: &[u8]| {
+            silhueta(a)
+                .iter()
+                .zip(silhueta(b))
+                .filter(|(x, y)| **x != *y)
+                .count()
+        };
         println!(
             "[mangueira] {m:?}: silhueta leve×quadrado {} · forte×losango {} · quadrado×losango {} px",
             difere(&pa, &qa),
@@ -247,13 +291,25 @@ fn a_ponta_de_n_imagens_age_nos_meios() {
         );
         let controlo = difere(&quadrado_forte, &lb);
         if m == PaintMedia::Watercolor {
-            assert_eq!(controlo, 0, "a Watercolor «Automatic» passou a ler a Shape?");
+            assert_eq!(
+                controlo, 0,
+                "a Watercolor «Automatic» passou a ler a Shape?"
+            );
             continue;
         }
         // O Wet espalha a tinta do toque: o controlo dele é menor (36 px medidos) e continua a separar.
-        assert!(controlo > 20, "{m:?}: o quadrado e o losango pintam o mesmo (o controlo)");
-        assert!(difere(&pa, &qa) * 20 < controlo, "{m:?}: o toque leve não é o quadrado");
-        assert!(difere(&pb, &lb) * 20 < controlo, "{m:?}: o toque forte não é o losango");
+        assert!(
+            controlo > 20,
+            "{m:?}: o quadrado e o losango pintam o mesmo (o controlo)"
+        );
+        assert!(
+            difere(&pa, &qa) * 20 < controlo,
+            "{m:?}: o toque leve não é o quadrado"
+        );
+        assert!(
+            difere(&pb, &lb) * 20 < controlo,
+            "{m:?}: o toque forte não é o losango"
+        );
     }
 }
 
@@ -265,17 +321,28 @@ fn gravar_add_image_e_tocar_e_a_mesma_ponta() {
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = pincel(1, |_| {});
     let mut g = Gravador::arma(&mut t);
-    t.handle_panel_event(PanelEvent::Click(ph2d_tool_painter::ids::PAINTER_SHAPE_HOSE_ADD));
+    t.handle_panel_event(PanelEvent::Click(
+        ph2d_tool_painter::ids::PAINTER_SHAPE_HOSE_ADD,
+    ));
     g.quadro(&mut t);
-    assert!(t.take_brush_shape_hose_request(), "o «Add image» não pediu o seletor");
+    assert!(
+        t.take_brush_shape_hose_request(),
+        "o «Add image» não pediu o seletor"
+    );
     t.add_brush_shape_hose_image_rgba(&imagem(CORES[1], 1), LADO, LADO);
     // O menu «Image order» pelo canal do painel (o que a macro grava): em sequência.
-    t.handle_panel_event(PanelEvent::SelectOption(ph2d_tool_painter::ids::PAINTER_PONTA_FIELDS[5], "1".into()));
+    t.handle_panel_event(PanelEvent::SelectOption(
+        ph2d_tool_painter::ids::PAINTER_PONTA_FIELDS[5],
+        "1".into(),
+    ));
     g.quadro(&mut t);
     let doc = g.para(&mut t);
     let mut toc = toca(&doc).expect("a macro toca");
     let tocado = toc.tool_mut();
-    assert!(!tocado.take_brush_shape_hose_request(), "ficou um pedido de seletor pendente ao tocar");
+    assert!(
+        !tocado.take_brush_shape_hose_request(),
+        "ficou um pedido de seletor pendente ao tocar"
+    );
     assert_eq!(tocado.brush_shape_hose_count(), 2);
     assert_eq!(tocado.brush_shape_hose_count(), t.brush_shape_hose_count());
     let mut a = std::mem::take(tocado);
@@ -284,7 +351,6 @@ fn gravar_add_image_e_tocar_e_a_mesma_ponta() {
     b.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
     assert!(pinta(a) == pinta(b), "a ponta tocada pinta outra tela");
 }
-
 
 /// ⭐ **No Wet o lote ADIADO carimba a imagem escolhida**: com o worker em voo (o ritmo escrito do `macro_comum`)
 /// parte dos lotes fica na fila e pousa no tique, fora da porta do lote; a ponta de duas imagens (todo dab escolhe
@@ -330,14 +396,29 @@ fn no_wet_o_lote_adiado_carimba_a_imagem_escolhida() {
         t.run_full().0
     };
     let silhueta = |c: &[u8]| -> Vec<bool> {
-        let minimo = c.chunks_exact(4).map(|p| i32::from(p[0])).min().unwrap_or(255);
+        let minimo = c
+            .chunks_exact(4)
+            .map(|p| i32::from(p[0]))
+            .min()
+            .unwrap_or(255);
         let limiar = 255 - (255 - minimo) * 3 / 10;
-        c.chunks_exact(4).map(|p| i32::from(p[0]) < limiar).collect()
+        c.chunks_exact(4)
+            .map(|p| i32::from(p[0]) < limiar)
+            .collect()
     };
-    let difere = |a: &[u8], b: &[u8]| silhueta(a).iter().zip(silhueta(b)).filter(|(x, y)| **x != *y).count();
+    let difere = |a: &[u8], b: &[u8]| {
+        silhueta(a)
+            .iter()
+            .zip(silhueta(b))
+            .filter(|(x, y)| **x != *y)
+            .count()
+    };
     let (ponta, losango, quadrado) = (traco(&[0, 2]), traco(&[2]), traco(&[0]));
     let (d, controlo) = (difere(&ponta, &losango), difere(&quadrado, &losango));
     println!("[mangueira] Wet adiado: ponta×losango {d} · quadrado×losango {controlo} px");
     assert!(controlo > 50, "o controlo não separa: {controlo}");
-    assert!(d * 20 < controlo, "os lotes adiados não carimbaram o losango: {d} × {controlo}");
+    assert!(
+        d * 20 < controlo,
+        "os lotes adiados não carimbaram o losango: {d} × {controlo}"
+    );
 }

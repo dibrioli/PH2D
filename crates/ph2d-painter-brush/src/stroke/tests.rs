@@ -1855,25 +1855,41 @@ fn o_passo_segue_o_diametro_a_pressao() {
         size_min: 0.0,
         ..Default::default()
     };
-    let rampa: Vec<StrokePoint> = (0..=50).map(|i| pt(i as f32 * 10.0, 0.0, i as f32 / 50.0)).collect();
+    let rampa: Vec<StrokePoint> = (0..=50)
+        .map(|i| pt(i as f32 * 10.0, 0.0, i as f32 / 50.0))
+        .collect();
     let fracos = |ligado: bool| {
         let spec = BrushSpec {
             passo_pela_pressao: ligado,
             ..straight_spec(20.0, 0.5)
         };
-        collect_stroke(spec, dyn_, &rampa).iter().filter(|d| d.center[0] < 250.0).count()
+        collect_stroke(spec, dyn_, &rampa)
+            .iter()
+            .filter(|d| d.center[0] < 250.0)
+            .count()
     };
     let (sem, com) = (fracos(false), fracos(true));
-    assert!(sem > 0 && com >= 3 * sem, "metade fraca: {sem} dabs sem a lei, {com} com ela");
+    assert!(
+        sem > 0 && com >= 3 * sem,
+        "metade fraca: {sem} dabs sem a lei, {com} com ela"
+    );
     // A metade forte (pressão ~1) fica com o passo do pincel.
     let spec = BrushSpec {
         passo_pela_pressao: true,
         ..straight_spec(20.0, 0.5)
     };
     let dabs = collect_stroke(spec, dyn_, &rampa);
-    let fim: Vec<f32> = dabs.iter().map(|d| d.center[0]).filter(|&x| x > 450.0).collect();
+    let fim: Vec<f32> = dabs
+        .iter()
+        .map(|d| d.center[0])
+        .filter(|&x| x > 450.0)
+        .collect();
     for w in fim.windows(2) {
-        assert!((w[1] - w[0] - 20.0).abs() < 2.5, "passo forte {} (o do pincel 20)", w[1] - w[0]);
+        assert!(
+            (w[1] - w[0] - 20.0).abs() < 2.5,
+            "passo forte {} (o do pincel 20)",
+            w[1] - w[0]
+        );
     }
 }
 
@@ -1908,7 +1924,10 @@ fn o_passo_segue_a_velocidade() {
         n
     };
     let (sem, com) = (dabs(false), dabs(true));
-    assert!(sem > 0 && com >= 2 * sem, "traço rápido: {sem} dabs sem a lei, {com} com ela");
+    assert!(
+        sem > 0 && com >= 2 * sem,
+        "traço rápido: {sem} dabs sem a lei, {com} com ela"
+    );
 }
 
 /// ⭐ **O spray PARADO** (J4 `texturas`, [`BrushSpec::parado_s`]; o Texture Spray do Krita parado cobre 0,24 → 1,00 a
@@ -1928,14 +1947,20 @@ fn o_spray_parado_pousa_pelo_tempo() {
             s.extend(pt(50.0 + 0.01 * (i % 2) as f32, 50.0, 1.0), &mut out);
             n += out.len();
             s.tick(0.008, &mut out);
-            assert!(out.iter().all(|d| (d.center[0] - 50.0).abs() < 0.1 && d.center[1] == 50.0));
+            assert!(
+                out.iter()
+                    .all(|d| (d.center[0] - 50.0).abs() < 0.1 && d.center[1] == 50.0)
+            );
             n += out.len();
         }
         n
     };
     assert_eq!(parado(0.0), 0, "desligado: o Space parado não pousa nada");
     let n = parado(0.04);
-    assert!((19..=21).contains(&n), "0,8 s a 0,04 s = 20 nuvens, deu {n}");
+    assert!(
+        (19..=21).contains(&n),
+        "0,8 s a 0,04 s = 20 nuvens, deu {n}"
+    );
     // A mexer, cada tique vem depois de dabs do caminho: o relógio parado zera e nada se acrescenta.
     let spec = BrushSpec {
         parado_s: 0.004,

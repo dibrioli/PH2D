@@ -274,15 +274,34 @@ fn sem_preset_activo_so_ha_guardar_como_novo() {
 /// («Basic brush») por baixo. Era `fora_do_wet_paint_o_bloco_nao_aparece`, a decisão que a L1 revogou.
 #[test]
 fn fora_do_wet_paint_o_navegador_aparece_sem_os_volumes() {
-    for meio in [PaintMedia::Digital, PaintMedia::Watercolor, PaintMedia::Impasto] {
+    for meio in [
+        PaintMedia::Digital,
+        PaintMedia::Watercolor,
+        PaintMedia::Impasto,
+    ] {
         let mut t = PainterTool::default();
         t.set_paint_media(meio);
         let (_, _, rects) = novo(&t, Some(ROUND));
-        assert!(rect_of(&rects, ids::PAINTER_WETPAINT_PRESET).is_some(), "{meio:?}");
-        assert!(rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_SAVE_NEW).is_some(), "{meio:?}");
-        assert!(rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_POLICY).is_some(), "{meio:?}");
-        for vol in [ids::PAINTER_WETPAINT_VOL_SIZE, ids::PAINTER_WETPAINT_VOL_OPACITY] {
-            assert!(rect_of(&rects, vol).is_none(), "{meio:?}: volume do Wet fora dele");
+        assert!(
+            rect_of(&rects, ids::PAINTER_WETPAINT_PRESET).is_some(),
+            "{meio:?}"
+        );
+        assert!(
+            rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_SAVE_NEW).is_some(),
+            "{meio:?}"
+        );
+        assert!(
+            rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_POLICY).is_some(),
+            "{meio:?}"
+        );
+        for vol in [
+            ids::PAINTER_WETPAINT_VOL_SIZE,
+            ids::PAINTER_WETPAINT_VOL_OPACITY,
+        ] {
+            assert!(
+                rect_of(&rects, vol).is_none(),
+                "{meio:?}: volume do Wet fora dele"
+            );
         }
         assert!(
             rect_of(&rects, ids::PAINTER_BRUSH_PRESET).is_some(),

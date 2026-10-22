@@ -33,11 +33,24 @@ fn pinta(p: &Pincel, cena: &str, nomes: &[&str]) -> (Vec<u8>, Vec<Value>) {
         .filter(|o| o["op"] == "traco" && nomes.contains(&o["nome"].as_str().unwrap()))
         .cloned()
         .collect();
-    let mut ops = vec![json!({"op": "pincel", "quem": "preset"}), json!({"op": "cor", "rgb": [23, 101, 179]})];
+    let mut ops = vec![
+        json!({"op": "pincel", "quem": "preset"}),
+        json!({"op": "cor", "rgb": [23, 101, 179]}),
+    ];
     ops.extend(tracos.iter().cloned());
-    ops.extend([json!({"op": "simula", "quadros": 240}), json!({"op": "foto", "nome": "A"})]);
+    ops.extend([
+        json!({"op": "simula", "quadros": 240}),
+        json!({"op": "foto", "nome": "A"}),
+    ]);
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
-    let (_, px) = pinta_cena(p, None, &json!({"nome": cena, "ops": ops}), tela, [255; 3], 0);
+    let (_, px) = pinta_cena(
+        p,
+        None,
+        &json!({"nome": cena, "ops": ops}),
+        tela,
+        [255; 3],
+        0,
+    );
     (px, tracos)
 }
 
@@ -48,7 +61,10 @@ fn coluna(px: &[u8], w: usize, x: usize, y: f64, h: f64) -> (Vec<f64>, f64, f64)
     let c: Vec<f64> = (y0..=y1)
         .map(|yy| {
             let i = (yy * w + x) * 4;
-            (0..3).map(|k| 255.0 - f64::from(px[i + k])).fold(0.0, f64::max) / 255.0
+            (0..3)
+                .map(|k| 255.0 - f64::from(px[i + k]))
+                .fold(0.0, f64::max)
+                / 255.0
         })
         .collect();
     let mx = c.iter().copied().fold(0.0, f64::max);
@@ -130,7 +146,10 @@ fn o_traco_fino_pesa_por_area_o_que_o_largo_pesa() {
             .map(|p| {
                 s.spawn(move || {
                     let (px, ts) = pinta(p, "tamanhos", &["recto_5", "recto_40"]);
-                    let c: Vec<f64> = ts.iter().map(|t| cobertura(&colunas(&px, 1000, t))).collect();
+                    let c: Vec<f64> = ts
+                        .iter()
+                        .map(|t| cobertura(&colunas(&px, 1000, t)))
+                        .collect();
                     (p.nome.clone(), c[0], c[1])
                 })
             })
@@ -143,7 +162,9 @@ fn o_traco_fino_pesa_por_area_o_que_o_largo_pesa() {
         let r = c5 / c40.max(1e-6);
         println!("[fino] {nome}: 5 px {c5:.3} · 40 px {c40:.3} · razão {r:.2} (Rebelle {alvo:.2})");
         if r < alvo.min(1.0) - 0.20 {
-            falhas.push(format!("{nome}: o recto de 5 px cobre {r:.2} do de 40 px (o Rebelle {alvo:.2})"));
+            falhas.push(format!(
+                "{nome}: o recto de 5 px cobre {r:.2} do de 40 px (o Rebelle {alvo:.2})"
+            ));
         }
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
@@ -257,7 +278,11 @@ fn sonda_a_lente_sobre_a_molhada() {
     for nome in ["Oil Bristle", "Dabber"] {
         let p = pinceis(nome).remove(0);
         let px = cena_inteira(&p, "sobre");
-        for (k, x) in [("cruza_1", 250usize), ("cruza_2", 500), ("cruza_3_rapido", 750)] {
+        for (k, x) in [
+            ("cruza_1", 250usize),
+            ("cruza_2", 500),
+            ("cruza_3_rapido", 750),
+        ] {
             let l = lente(&px, 1000, x, 150, 470);
             let alvo = o["leis"][nome]["molhada"][k]["lente"].as_f64().unwrap();
             println!("[lente] {nome} {k}: {l:.2} (Rebelle {alvo:.2})");
@@ -332,7 +357,11 @@ fn erro(n: &[([f64; 10], [f64; 10])], o: &Value, qs: &[char]) -> f64 {
     for (i, rampa) in ["rampa_0_1", "rampa_afunila"].iter().enumerate() {
         let d0 = inicio(&o[rampa]);
         for &q in qs {
-            let (nosso, chave) = if q == 'L' { (&n[i].0, "largura") } else { (&n[i].1, "cobertura") };
+            let (nosso, chave) = if q == 'L' {
+                (&n[i].0, "largura")
+            } else {
+                (&n[i].1, "cobertura")
+            };
             let Some(ora) = o[rampa][chave].as_array() else {
                 continue;
             };
@@ -387,7 +416,10 @@ pub(crate) fn pressao_contra_a_origem(p: &Pincel) -> (f64, f64) {
     let mao_r = or["rampa_0_1"]["mao"].as_f64().unwrap_or(99.0);
     let m = mao(&n[0].0, &n[0].1);
     let (e_lc, e_l) = (erro(&n, or, &['L', 'C']), erro(&n, or, &['L']));
-    println!("[pressao] {}: distância {e_lc:.3} (largura {e_l:.3}) · mão {m:.2} (Rebelle {mao_r:.2})", p.nome);
+    println!(
+        "[pressao] {}: distância {e_lc:.3} (largura {e_l:.3}) · mão {m:.2} (Rebelle {mao_r:.2})",
+        p.nome
+    );
     (if mao_r >= R_MAO { e_lc } else { e_l }, m)
 }
 
@@ -396,11 +428,22 @@ pub(crate) fn pressao_contra_a_origem(p: &Pincel) -> (f64, f64) {
 fn rampa_torta() -> Pincel {
     use super::exame_bancada::Fonte;
     let p = pinceis("Wet Wash").remove(0);
-    let Fonte::Preset { preset, relativo } = p.fonte else { unreachable!() };
+    let Fonte::Preset { preset, relativo } = p.fonte else {
+        unreachable!()
+    };
     let mut torto = preset;
     torto.parametros.engine.insert("pressureSize".into(), 1.0);
-    torto.parametros.engine.insert("pressureSizeCurve".into(), 3.0);
-    Pincel { nome: p.nome, fonte: Fonte::Preset { preset: torto, relativo } }
+    torto
+        .parametros
+        .engine
+        .insert("pressureSizeCurve".into(), 3.0);
+    Pincel {
+        nome: p.nome,
+        fonte: Fonte::Preset {
+            preset: torto,
+            relativo,
+        },
+    }
 }
 
 /// O portão da lei (a): todo preset com origem a ≤ [`BARRA_DA_PRESSAO`] dela, a mão ≥ [`R_MAO`]; o controlo reprova.
@@ -420,14 +463,20 @@ fn a_pressao_de_cada_preset_e_a_da_sua_origem() {
     });
     let mut falhas = Vec::new();
     if e_torta <= BARRA_DA_PRESSAO {
-        falhas.push(format!("o controlo (a rampa torta acima do início) lê {e_torta:.3}: a régua não mede a rampa"));
+        falhas.push(format!(
+            "o controlo (a rampa torta acima do início) lê {e_torta:.3}: a régua não mede a rampa"
+        ));
     }
     for (nome, (e, m)) in &medidas {
         if *e > BARRA_DA_PRESSAO {
-            falhas.push(format!("{nome}: a resposta à pressão está a {e:.3} da do Rebelle"));
+            falhas.push(format!(
+                "{nome}: a resposta à pressão está a {e:.3} da do Rebelle"
+            ));
         }
         if *m < R_MAO {
-            falhas.push(format!("{nome}: a faixa da mão do dono só responde {m:.2}× (< {R_MAO})"));
+            falhas.push(format!(
+                "{nome}: a faixa da mão do dono só responde {m:.2}× (< {R_MAO})"
+            ));
         }
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
@@ -451,7 +500,12 @@ fn no_wet_o_modo_do_grao_que_le_a_ponta_morde() {
         t.set_ponta(ph2d_tool_painter::LinhaDaPonta::GrainMode, modo);
         t.set_brush_size_px(16.0);
         t.set_brush_color_srgb8([23, 101, 179]);
-        let cp = |x: f32, phase| CanvasPointer { pos: [x, 50.0], pressure: 1.0, tilt: [0.0, 0.0], phase };
+        let cp = |x: f32, phase| CanvasPointer {
+            pos: [x, 50.0],
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        };
         t.on_canvas_pointer(cp(40.0, PointerPhase::Down));
         for k in 1..=100 {
             t.on_canvas_pointer(cp(40.0 + 3.2 * k as f32, PointerPhase::Move));
@@ -467,10 +521,16 @@ fn no_wet_o_modo_do_grao_que_le_a_ponta_morde() {
     let mut falhas = Vec::new();
     for (modo, nome) in [(1.0, "Subtract"), (2.0, "Darken"), (3.0, "Color Burn")] {
         let px = pinta_com(modo);
-        let diferem = px.chunks(4).zip(multiply.chunks(4)).filter(|(a, b)| a != b).count();
+        let diferem = px
+            .chunks(4)
+            .zip(multiply.chunks(4))
+            .filter(|(a, b)| a != b)
+            .count();
         println!("[grao] {nome}: {diferem} px diferem do Multiply");
         if diferem < 200 {
-            falhas.push(format!("{nome}: só {diferem} px diferem do Multiply no Wet"));
+            falhas.push(format!(
+                "{nome}: só {diferem} px diferem do Multiply no Wet"
+            ));
         }
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));

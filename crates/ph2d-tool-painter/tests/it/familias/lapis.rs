@@ -206,12 +206,20 @@ mod portoes {
 
     /// O pico e a largura (limiar ¼ do p90 dos picos) de cada coluna `x0..x1` da faixa horizontal `y ± h`.
     fn colunas(c: &[f64], y: usize, h: usize, x0: usize, x1: usize) -> (Vec<f64>, Vec<f64>) {
-        let col = |x: usize| -> Vec<f64> { (y.saturating_sub(h)..=(y + h).min(639)).map(|yy| c[yy * 1000 + x]).collect() };
-        let picos: Vec<f64> = (x0..x1).map(|x| col(x).into_iter().fold(0.0, f64::max)).collect();
+        let col = |x: usize| -> Vec<f64> {
+            (y.saturating_sub(h)..=(y + h).min(639))
+                .map(|yy| c[yy * 1000 + x])
+                .collect()
+        };
+        let picos: Vec<f64> = (x0..x1)
+            .map(|x| col(x).into_iter().fold(0.0, f64::max))
+            .collect();
         let mut p = picos.clone();
         p.sort_by(f64::total_cmp);
         let lim = 0.25 * p[(0.9 * (p.len() - 1) as f64) as usize];
-        let w = (x0..x1).map(|x| col(x).iter().filter(|&&q| q >= lim.max(1e-3)).count() as f64).collect();
+        let w = (x0..x1)
+            .map(|x| col(x).iter().filter(|&&q| q >= lim.max(1e-3)).count() as f64)
+            .collect();
         (picos, w)
     }
 
@@ -229,10 +237,20 @@ mod portoes {
         let preset = ph2d_brush_presets::Preset {
             parametros,
             origem: ph2d_brush_presets::Origem::Fabrica,
-            miniatura: ph2d_brush_presets::Miniatura { largura: 1, altura: 1, rgba: vec![255; 4] },
+            miniatura: ph2d_brush_presets::Miniatura {
+                largura: 1,
+                altura: 1,
+                rgba: vec![255; 4],
+            },
             texturas,
         };
-        Pincel { nome: nome.to_owned(), fonte: Fonte::Preset { preset: Box::new(preset), relativo: nome.to_owned() } }
+        Pincel {
+            nome: nome.to_owned(),
+            fonte: Fonte::Preset {
+                preset: Box::new(preset),
+                relativo: nome.to_owned(),
+            },
+        }
     }
 
     /// Os reprovados não estão na fábrica: nenhum ficheiro com o nome de uma receita [`super::EM_ESTUDO`].
@@ -248,7 +266,10 @@ mod portoes {
             .map(|e| e.preset.parametros.name.as_str())
             .filter(|n| super::EM_ESTUDO.iter().any(|r| r.nome == *n))
             .collect();
-        assert!(na_fabrica.is_empty(), "reprovados na fábrica: {na_fabrica:?}");
+        assert!(
+            na_fabrica.is_empty(),
+            "reprovados na fábrica: {na_fabrica:?}"
+        );
     }
 
     /// O pincel `nome` ([`pincel_de`]) com uma linha da mão (`engine`) ou um campo do pincel (`brush.<campo>`) trocado —
@@ -261,7 +282,10 @@ mod portoes {
                     preset.parametros.brush.insert(c.to_owned(), v);
                 }
                 None => {
-                    preset.parametros.engine.insert(chave.to_owned(), v.as_f64().unwrap());
+                    preset
+                        .parametros
+                        .engine
+                        .insert(chave.to_owned(), v.as_f64().unwrap());
                 }
             }
         }
@@ -273,15 +297,29 @@ mod portoes {
         let f = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/Painter/Pinceis/exames/lapis/bateria_deitado.json");
         let bat: Value = serde_json::from_str(&std::fs::read_to_string(f).unwrap()).unwrap();
-        let c = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == cena).unwrap();
+        let c = bat["cenas"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["nome"] == cena)
+            .unwrap();
         cobertura(&pinta_cena(p, None, c, [1000, 640], [255; 3], 0).1)
     }
 
     /// A largura (px) de pé, através a 35° e a 63° e ao longo a 63° da bateria deitada.
     fn larguras_deitado(p: &Pincel) -> [f64; 4] {
-        let (at, mais, lo) = (deitada(p, "deitado_atraves"), deitada(p, "deitado_mais"), deitada(p, "deitado_ao_longo"));
+        let (at, mais, lo) = (
+            deitada(p, "deitado_atraves"),
+            deitada(p, "deitado_mais"),
+            deitada(p, "deitado_ao_longo"),
+        );
         let w = |c: &[f64], y, h| mediana(colunas(c, y, h, 160, 460).1);
-        [w(&at, 80, 79), w(&at, 240, 79), w(&mais, 400, 79), w(&lo, 570, 37)]
+        [
+            w(&at, 80, 79),
+            w(&at, 240, 79),
+            w(&mais, 400, 79),
+            w(&lo, 570, 37),
+        ]
     }
 
     /// O Krita «c) Pencil-5 Tilted» com a caneta (`fixtures/krita_deitado/`, a 40 px): de pé 2 px, através a 35° 9 e a
@@ -301,24 +339,51 @@ mod portoes {
         });
         let r = |w: &[f64; 4]| [w[0] / w[2], w[1] / w[2], w[3] / w[2]];
         let (rm, rs) = (r(&m), r(&sem));
-        println!("[deitado] Tilted Shade {m:?} → {rm:.3?} (Krita {KRITA_DEITADO:.3?}) · sem esticar {sem:?} → {rs:.3?}");
-        assert!(rm[0] <= 0.2, "de pé ÷ deitado através {:.3} (Krita 0,12)", rm[0]);
-        assert!((rm[1] - KRITA_DEITADO[1]).abs() <= 0.12, "35° ÷ 63° {:.3} (Krita 0,53)", rm[1]);
-        assert!((rm[2] - KRITA_DEITADO[2]).abs() <= 0.08, "ao longo ÷ através {:.3} (Krita 0,35)", rm[2]);
-        assert!(rs[0] > 0.2, "sem esticar a ponta deitada o portão ainda passa ({:.3}): não mede a caneta", rs[0]);
+        println!(
+            "[deitado] Tilted Shade {m:?} → {rm:.3?} (Krita {KRITA_DEITADO:.3?}) · sem esticar {sem:?} → {rs:.3?}"
+        );
+        assert!(
+            rm[0] <= 0.2,
+            "de pé ÷ deitado através {:.3} (Krita 0,12)",
+            rm[0]
+        );
+        assert!(
+            (rm[1] - KRITA_DEITADO[1]).abs() <= 0.12,
+            "35° ÷ 63° {:.3} (Krita 0,53)",
+            rm[1]
+        );
+        assert!(
+            (rm[2] - KRITA_DEITADO[2]).abs() <= 0.08,
+            "ao longo ÷ através {:.3} (Krita 0,35)",
+            rm[2]
+        );
+        assert!(
+            rs[0] > 0.2,
+            "sem esticar a ponta deitada o portão ainda passa ({:.3}): não mede a caneta",
+            rs[0]
+        );
     }
 
     /// A largura do recto horizontal lento (y 90, x 160..460) e do vertical lento (x 700, y 460..590) da cena `gestos`.
     fn chato(p: &Pincel) -> (f64, f64) {
         let c = cobertura(&crate::as_leis_da_escala::cena(p, "gestos"));
         let h = mediana(colunas(&c, 90, 40, 160, 460).1);
-        let t: Vec<f64> = c.chunks_exact(1000).flat_map(|l| l[660..741].to_vec()).collect();
+        let t: Vec<f64> = c
+            .chunks_exact(1000)
+            .flat_map(|l| l[660..741].to_vec())
+            .collect();
         // A vertical transposta: as linhas 460..590 viram colunas de uma tela 81 de largura.
-        let picos: Vec<f64> = (460..590).map(|y| (0..81).map(|x| t[y * 81 + x]).fold(0.0, f64::max)).collect();
+        let picos: Vec<f64> = (460..590)
+            .map(|y| (0..81).map(|x| t[y * 81 + x]).fold(0.0, f64::max))
+            .collect();
         let mut p9 = picos.clone();
         p9.sort_by(f64::total_cmp);
         let lim = 0.25 * p9[(0.9 * (p9.len() - 1) as f64) as usize];
-        let v = mediana((460..590).map(|y| (0..81).filter(|&x| t[y * 81 + x] >= lim).count() as f64).collect());
+        let v = mediana(
+            (460..590)
+                .map(|y| (0..81).filter(|&x| t[y * 81 + x] >= lim).count() as f64)
+                .collect(),
+        );
         (h, v)
     }
 
@@ -331,17 +396,33 @@ mod portoes {
             let b = s.spawn(|| chato(&com("Craft Flat", "brush.dab_flatten", 0.0.into())));
             (a.join().unwrap(), b.join().unwrap())
         });
-        println!("[chato] Craft Flat {m:?} → {:.3} (Rebelle 0,70) · redondo {r:?} → {:.3}", m.0 / m.1, r.0 / r.1);
-        assert!((m.0 / m.1 - 0.70).abs() <= 0.08, "horizontal ÷ vertical {:.3} (Rebelle 0,70)", m.0 / m.1);
-        assert!(r.0 / r.1 > 0.85, "a ponta redonda ainda passa ({:.3}): o portão não mede a mina chata", r.0 / r.1);
+        println!(
+            "[chato] Craft Flat {m:?} → {:.3} (Rebelle 0,70) · redondo {r:?} → {:.3}",
+            m.0 / m.1,
+            r.0 / r.1
+        );
+        assert!(
+            (m.0 / m.1 - 0.70).abs() <= 0.08,
+            "horizontal ÷ vertical {:.3} (Rebelle 0,70)",
+            m.0 / m.1
+        );
+        assert!(
+            r.0 / r.1 > 0.85,
+            "a ponta redonda ainda passa ({:.3}): o portão não mede a mina chata",
+            r.0 / r.1
+        );
     }
 
     /// A cobertura (o pico médio) e a largura na pressão ~0,4 (x 240..280) e ~0,95 (x 515..555) da rampa 0 → 1 (y 400).
     fn rampa(p: &Pincel) -> (f64, f64) {
         let c = cobertura(&crate::as_leis_da_escala::cena(p, "gestos"));
         let (pk, w) = colunas(&c, 400, 35, 60, 560);
-        let media = |v: &[f64], a: usize, b: usize| v[a - 60..b - 60].iter().sum::<f64>() / (b - a) as f64;
-        (media(&pk, 240, 280) / media(&pk, 515, 555), media(&w, 240, 280) / media(&w, 515, 555))
+        let media =
+            |v: &[f64], a: usize, b: usize| v[a - 60..b - 60].iter().sum::<f64>() / (b - a) as f64;
+        (
+            media(&pk, 240, 280) / media(&pk, 515, 555),
+            media(&w, 240, 280) / media(&w, 515, 555),
+        )
     }
 
     /// ⭐⭐ **O Rough Sketch vai do claro ao escuro pela pressão** (B-7): na rampa 0 → 1 a tinta e a largura na pressão
@@ -354,10 +435,25 @@ mod portoes {
             let b = s.spawn(|| rampa(&com("Rough Sketch", "pressureOpacity", 0.0.into())));
             (a.join().unwrap(), b.join().unwrap())
         });
-        println!("[rampa] Rough Sketch cobertura {:.3} largura {:.3} (Krita 0,505 · 0,325) · sem a pressão na tinta {:.3}", m.0, m.1, sem.0);
-        assert!((m.0 - 0.505).abs() <= 0.08, "a cobertura a 0,4 ÷ cheia {:.3} (Krita 0,505)", m.0);
-        assert!((m.1 - 0.325).abs() <= 0.08, "a largura a 0,4 ÷ cheia {:.3} (Krita 0,325)", m.1);
-        assert!((sem.0 - 0.505).abs() > 0.08, "sem a pressão na tinta ainda passa ({:.3}): o portão não mede a tinta", sem.0);
+        println!(
+            "[rampa] Rough Sketch cobertura {:.3} largura {:.3} (Krita 0,505 · 0,325) · sem a pressão na tinta {:.3}",
+            m.0, m.1, sem.0
+        );
+        assert!(
+            (m.0 - 0.505).abs() <= 0.08,
+            "a cobertura a 0,4 ÷ cheia {:.3} (Krita 0,505)",
+            m.0
+        );
+        assert!(
+            (m.1 - 0.325).abs() <= 0.08,
+            "a largura a 0,4 ÷ cheia {:.3} (Krita 0,325)",
+            m.1
+        );
+        assert!(
+            (sem.0 - 0.505).abs() > 0.08,
+            "sem a pressão na tinta ainda passa ({:.3}): o portão não mede a tinta",
+            sem.0
+        );
     }
 
     /// A onda da borda do recto de 40 px (cena `tamanhos`, y 190 ± 70): o desvio das bordas ÷ a largura.
@@ -371,7 +467,10 @@ mod portoes {
         let (mut t, mut b) = (Vec::new(), Vec::new());
         for x in 148..852 {
             let v = col(x);
-            if let (Some(a), Some(z)) = (v.iter().position(|&q| q >= lim), v.iter().rposition(|&q| q >= lim)) {
+            if let (Some(a), Some(z)) = (
+                v.iter().position(|&q| q >= lim),
+                v.iter().rposition(|&q| q >= lim),
+            ) {
                 t.push(a as f64);
                 b.push(z as f64);
             }
@@ -381,9 +480,18 @@ mod portoes {
             let n = e.len() as f64;
             let xm = (n - 1.0) / 2.0;
             let em = e.iter().sum::<f64>() / n;
-            let sxy: f64 = e.iter().enumerate().map(|(i, v)| (i as f64 - xm) * (v - em)).sum();
+            let sxy: f64 = e
+                .iter()
+                .enumerate()
+                .map(|(i, v)| (i as f64 - xm) * (v - em))
+                .sum();
             let sxx: f64 = (0..e.len()).map(|i| (i as f64 - xm).powi(2)).sum();
-            (e.iter().enumerate().map(|(i, v)| (v - em - sxy / sxx * (i as f64 - xm)).powi(2)).sum::<f64>() / n).sqrt()
+            (e.iter()
+                .enumerate()
+                .map(|(i, v)| (v - em - sxy / sxx * (i as f64 - xm)).powi(2))
+                .sum::<f64>()
+                / n)
+                .sqrt()
         };
         let tinta = mediana(pk);
         ((desvio(&t) + desvio(&b)) / 2.0 / larg, tinta)
@@ -395,16 +503,37 @@ mod portoes {
     #[test]
     fn o_colored_4b_tem_a_borda_aos_carocos_entre_o_2b_e_o_8b() {
         let m: Vec<_> = std::thread::scope(|s| {
-            let hs: Vec<_> = [pinceis("Colored 4B").remove(0), pinceis("Graphite 2B").remove(0), pinceis("Graphite 8B").remove(0),
-                com("Colored 4B", "brush.dual", Value::Null)]
+            let hs: Vec<_> = [
+                pinceis("Colored 4B").remove(0),
+                pinceis("Graphite 2B").remove(0),
+                pinceis("Graphite 8B").remove(0),
+                com("Colored 4B", "brush.dual", Value::Null),
+            ]
             .into_iter()
             .map(|p| s.spawn(move || onda(&p)))
             .collect();
             hs.into_iter().map(|h| h.join().unwrap()).collect()
         });
-        println!("[4B] onda {:.3} tinta {:.3} · 2B {:.3} · 8B {:.3} · sem a orla onda {:.3}", m[0].0, m[0].1, m[1].1, m[2].1, m[3].0);
-        assert!(m[0].0 >= 0.055, "a borda do 4B não ondula ({:.3}; Rebelle 0,061)", m[0].0);
-        assert!(m[1].1 < m[0].1 && m[0].1 < m[2].1, "o tom: 2B {:.3} · 4B {:.3} · 8B {:.3}", m[1].1, m[0].1, m[2].1);
-        assert!(m[3].0 < 0.055, "sem a orla a borda ainda ondula ({:.3}): o portão não mede a orla", m[3].0);
+        println!(
+            "[4B] onda {:.3} tinta {:.3} · 2B {:.3} · 8B {:.3} · sem a orla onda {:.3}",
+            m[0].0, m[0].1, m[1].1, m[2].1, m[3].0
+        );
+        assert!(
+            m[0].0 >= 0.055,
+            "a borda do 4B não ondula ({:.3}; Rebelle 0,061)",
+            m[0].0
+        );
+        assert!(
+            m[1].1 < m[0].1 && m[0].1 < m[2].1,
+            "o tom: 2B {:.3} · 4B {:.3} · 8B {:.3}",
+            m[1].1,
+            m[0].1,
+            m[2].1
+        );
+        assert!(
+            m[3].0 < 0.055,
+            "sem a orla a borda ainda ondula ({:.3}): o portão não mede a orla",
+            m[3].0
+        );
     }
 }

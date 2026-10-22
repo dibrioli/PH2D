@@ -435,7 +435,13 @@ fn mede_oleo(nome: &str) -> Oleo {
     let bat = bateria();
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
-    let cena = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "gestos").unwrap().clone();
+    let cena = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == "gestos")
+        .unwrap()
+        .clone();
     let p = pinceis(nome).remove(0);
     let w = tela[0] as usize;
     let (_, g) = pinta_cena(&p, None, &cena, tela, papel, 0);
@@ -449,21 +455,39 @@ fn mede_oleo(nome: &str) -> Oleo {
         .sum::<f64>()
         / 420.0;
     // O vertical lento: x 700, y 440..610.
-    let linhas: Vec<Vec<f64>> = (480..570).map(|y| (640..761).map(|x| escuro(&g, w, x, y)).collect()).collect();
-    let de_pe = linhas.iter().map(|l| l.iter().filter(|&&v| v > lim).count() as f64).sum::<f64>()
+    let linhas: Vec<Vec<f64>> = (480..570)
+        .map(|y| (640..761).map(|x| escuro(&g, w, x, y)).collect())
+        .collect();
+    let de_pe = linhas
+        .iter()
+        .map(|l| l.iter().filter(|&&v| v > lim).count() as f64)
+        .sum::<f64>()
         / linhas.len() as f64
         / largura.max(1.0);
     // O perfil médio por linha através do recto (x 150..470).
-    let atraves: Vec<f64> = (50..131).map(|y| (150..470).map(|x| escuro(&g, w, x, y)).sum::<f64>() / 320.0).collect();
+    let atraves: Vec<f64> = (50..131)
+        .map(|y| (150..470).map(|x| escuro(&g, w, x, y)).sum::<f64>() / 320.0)
+        .collect();
     let nucleo = &atraves[28..53];
     let m = nucleo.iter().sum::<f64>() / nucleo.len() as f64;
-    let estria = (nucleo.iter().map(|v| (v - m).powi(2)).sum::<f64>() / nucleo.len() as f64).sqrt() / m.max(1e-6);
+    let estria = (nucleo.iter().map(|v| (v - m).powi(2)).sum::<f64>() / nucleo.len() as f64).sqrt()
+        / m.max(1e-6);
     let topo: Vec<f64> = (100..520)
-        .filter_map(|x| (50..131).find(|&y| escuro(&g, w, x, y) > lim).map(|y| y as f64))
+        .filter_map(|x| {
+            (50..131)
+                .find(|&y| escuro(&g, w, x, y) > lim)
+                .map(|y| y as f64)
+        })
         .collect();
     let mt = topo.iter().sum::<f64>() / topo.len().max(1) as f64;
-    let rasgo = (topo.iter().map(|v| (v - mt).powi(2)).sum::<f64>() / topo.len().max(1) as f64).sqrt();
-    Oleo { de_pe, miolo, estria, rasgo }
+    let rasgo =
+        (topo.iter().map(|v| (v - mt).powi(2)).sum::<f64>() / topo.len().max(1) as f64).sqrt();
+    Oleo {
+        de_pe,
+        miolo,
+        estria,
+        rasgo,
+    }
 }
 
 /// ⭐ **Cada óleo é o SEU óleo** (J4, `docs/Painter/Pinceis/exames/oleo_acrilica.md`): o que a prancha mostrou contra o
@@ -471,9 +495,18 @@ fn mede_oleo(nome: &str) -> Oleo {
 /// de cada regra é o meio entre o pincel e o que ela separa, medidos na corrida de calibração (abaixo, por regra).
 #[test]
 fn cada_oleo_tem_a_sua_identidade() {
-    let nomes = ["Oil Bristle", "Filbert", "Express Oil", "Dabber", "Hard Round"];
+    let nomes = [
+        "Oil Bristle",
+        "Filbert",
+        "Express Oil",
+        "Dabber",
+        "Hard Round",
+    ];
     let medidas: Vec<(&str, Oleo)> = std::thread::scope(|s| {
-        let h: Vec<_> = nomes.iter().map(|&n| (n, s.spawn(move || mede_oleo(n)))).collect();
+        let h: Vec<_> = nomes
+            .iter()
+            .map(|&n| (n, s.spawn(move || mede_oleo(n))))
+            .collect();
         h.into_iter().map(|(n, h)| (n, h.join().unwrap())).collect()
     });
     for (n, o) in &medidas {
@@ -486,20 +519,64 @@ fn cada_oleo_tem_a_sua_identidade() {
             falhas.push(o_que);
         }
     };
-    let (oil, filbert, express, dabber) = (m("Oil Bristle"), m("Filbert"), m("Express Oil"), m("Dabber"));
+    let (oil, filbert, express, dabber) = (
+        m("Oil Bristle"),
+        m("Filbert"),
+        m("Express Oil"),
+        m("Dabber"),
+    );
     // A lâmina FIXA de pé do Bristle Flat (o vertical 0,30 do recto) contra os redondos que seguem o traço (≥ 1,0).
-    regra(oil.de_pe < 0.65, format!("Oil Bristle: de pé {:.2} — a lâmina deixou de ser fixa", oil.de_pe));
+    regra(
+        oil.de_pe < 0.65,
+        format!(
+            "Oil Bristle: de pé {:.2} — a lâmina deixou de ser fixa",
+            oil.de_pe
+        ),
+    );
     // O Filbert SEGUE o traço (1,0) — não é a lâmina do Oil Bristle —, tem as faixas de cerdas (0,036 contra o redondo
     // liso do Hard Round, 0) e a borda limpa (0,05 contra a esponja rasgada do Dabber, 1,75).
-    regra((0.85..1.15).contains(&filbert.de_pe), format!("Filbert: de pé {:.2} — não segue o traço", filbert.de_pe));
-    regra(filbert.estria > 0.018, format!("Filbert: estria {:.3} — sem as faixas de cerdas (é o Hard Round)", filbert.estria));
-    regra(filbert.rasgo < 0.9, format!("Filbert: rasgo {:.2} — a borda rasgou (é o Dabber)", filbert.rasgo));
+    regra(
+        (0.85..1.15).contains(&filbert.de_pe),
+        format!("Filbert: de pé {:.2} — não segue o traço", filbert.de_pe),
+    );
+    regra(
+        filbert.estria > 0.018,
+        format!(
+            "Filbert: estria {:.3} — sem as faixas de cerdas (é o Hard Round)",
+            filbert.estria
+        ),
+    );
+    regra(
+        filbert.rasgo < 0.9,
+        format!(
+            "Filbert: rasgo {:.2} — a borda rasgou (é o Dabber)",
+            filbert.rasgo
+        ),
+    );
     // Os TUFOS do Express Oil: as faixas separadas por papel (estria 0,175 contra 0,036 do Filbert e 0,079 do Oil Bristle)
     // e a tinta clara (miolo 0,57 contra 0,72 do Oil Bristle).
-    regra(express.estria > 0.12, format!("Express Oil: estria {:.3} — os tufos fundiram-se", express.estria));
-    regra(express.miolo < 0.645, format!("Express Oil: miolo {:.2} — a tinta é a carregada do Oil Bristle", express.miolo));
+    regra(
+        express.estria > 0.12,
+        format!(
+            "Express Oil: estria {:.3} — os tufos fundiram-se",
+            express.estria
+        ),
+    );
+    regra(
+        express.miolo < 0.645,
+        format!(
+            "Express Oil: miolo {:.2} — a tinta é a carregada do Oil Bristle",
+            express.miolo
+        ),
+    );
     // A esponja do Dabber: a borda rasgada (1,75 contra ≤ 0,07 de todos os outros).
-    regra(dabber.rasgo > 0.9, format!("Dabber: rasgo {:.2} — a borda da esponja ficou lisa", dabber.rasgo));
+    regra(
+        dabber.rasgo > 0.9,
+        format!(
+            "Dabber: rasgo {:.2} — a borda da esponja ficou lisa",
+            dabber.rasgo
+        ),
+    );
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
 
@@ -514,9 +591,14 @@ fn os_reprovados_do_oleo_nao_estao_na_fabrica() {
         .entradas
         .iter()
         .map(|e| e.preset.parametros.name.as_str())
-        .filter(|n| EM_ESTUDO.iter().any(|r| r.nome == *n) || EM_ESTUDO_MEIOS.iter().any(|r| r.nome == *n))
+        .filter(|n| {
+            EM_ESTUDO.iter().any(|r| r.nome == *n) || EM_ESTUDO_MEIOS.iter().any(|r| r.nome == *n)
+        })
         .collect();
-    assert!(na_fabrica.is_empty(), "reprovados na fábrica: {na_fabrica:?}");
+    assert!(
+        na_fabrica.is_empty(),
+        "reprovados na fábrica: {na_fabrica:?}"
+    );
 }
 
 /// Os VEIOS de um traço (J4 2.ª ronda, `exames/oleo_acrilica.md`): no recto de 200 px da cena `tamanhos` (foto A, linhas
@@ -536,7 +618,13 @@ fn mede_veios(p: &crate::exame_bancada::Pincel) -> Veios {
     let bat = bateria();
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
-    let cena = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "tamanhos").unwrap().clone();
+    let cena = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == "tamanhos")
+        .unwrap()
+        .clone();
     let (_, g) = pinta_cena(p, None, &cena, tela, papel, 0);
     let w = tela[0] as usize;
     const K: usize = 7;
@@ -585,21 +673,38 @@ fn mede_veios(p: &crate::exame_bancada::Pincel) -> Veios {
 fn os_fios_do_oil_bristle_aparecem_e_somem() {
     use crate::exame_bancada::{Fonte, Pincel, pinceis};
     let p = pinceis("Oil Bristle").remove(0);
-    let Fonte::Preset { preset, relativo } = &p.fonte else { unreachable!() };
+    let Fonte::Preset { preset, relativo } = &p.fonte else {
+        unreachable!()
+    };
     let mut sem = preset.clone();
-    for k in ["bristleStreak", "bristleStreakLight", "bristleStreakLength", "bristleStreakCut"] {
+    for k in [
+        "bristleStreak",
+        "bristleStreakLight",
+        "bristleStreakLength",
+        "bristleStreakCut",
+    ] {
         sem.parametros.engine.remove(k);
     }
-    let controlo = Pincel { nome: "sem veio".into(), fonte: Fonte::Preset { preset: sem, relativo: relativo.clone() } };
+    let controlo = Pincel {
+        nome: "sem veio".into(),
+        fonte: Fonte::Preset {
+            preset: sem,
+            relativo: relativo.clone(),
+        },
+    };
     let (v, c) = std::thread::scope(|s| {
         let a = s.spawn(|| mede_veios(&p));
         let b = s.spawn(|| mede_veios(&controlo));
         (a.join().unwrap(), b.join().unwrap())
     });
-    println!("[veios] Oil Bristle {v:?} · sem o veio {c:?} · Rebelle escuro 0,0154 (84 px) claro 0,0074");
+    println!(
+        "[veios] Oil Bristle {v:?} · sem o veio {c:?} · Rebelle escuro 0,0154 (84 px) claro 0,0074"
+    );
     let mut falhas = Vec::new();
     if c.escuro > 0.003 || c.claro > 0.003 {
-        falhas.push(format!("o controlo já tem veios ({c:?}): a régua não mede o veio"));
+        falhas.push(format!(
+            "o controlo já tem veios ({c:?}): a régua não mede o veio"
+        ));
     }
     if !(0.0077..0.039).contains(&v.escuro) {
         falhas.push(format!("troços escuros {:.4} (Rebelle 0,0154)", v.escuro));
@@ -608,14 +713,20 @@ fn os_fios_do_oil_bristle_aparecem_e_somem() {
         falhas.push(format!("troços claros {:.4} (Rebelle 0,0074)", v.claro));
     }
     if v.corrida_escura < 15.0 {
-        falhas.push(format!("corridas escuras de {:.1} px: o fio pisca em vez de pesar a troços", v.corrida_escura));
+        falhas.push(format!(
+            "corridas escuras de {:.1} px: o fio pisca em vez de pesar a troços",
+            v.corrida_escura
+        ));
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
 
 /// O Flat Bristle em estudo (fora da fábrica): o ficheiro gerado pela receita [`FLAT_BRISTLE`], guardado com os presets de
 /// teste da bancada para os portões da família o lerem.
-const FLAT_EM_ESTUDO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/Painter/Pinceis/fixtures/presets_teste/Flat Bristle.ph2d-brush.png");
+const FLAT_EM_ESTUDO: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../docs/Painter/Pinceis/fixtures/presets_teste/Flat Bristle.ph2d-brush.png"
+);
 
 /// A tinta do recto de 5 px ÷ a do de 40 (cena `tamanhos`, foto A): a escuridão de PICO de cada coluna x 200..800 na
 /// faixa do traço, a mediana. O Rebelle (a mesma conta): `Flat` 0,228 · `Bristle Flat` 0,952.
@@ -624,7 +735,13 @@ fn fino_sobre_largo(p: &crate::exame_bancada::Pincel) -> f64 {
     let bat = bateria();
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
-    let cena = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "tamanhos").unwrap().clone();
+    let cena = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == "tamanhos")
+        .unwrap()
+        .clone();
     let (_, g) = pinta_cena(p, None, &cena, tela, papel, 0);
     let w = tela[0] as usize;
     let pico = |ys: std::ops::Range<usize>| {
@@ -646,24 +763,38 @@ fn o_chato_pequeno_esmaece() {
     use crate::exame_bancada::{Fonte, Pincel, pinceis};
     let flat = pinceis(FLAT_EM_ESTUDO).remove(0);
     let oil = pinceis("Oil Bristle").remove(0);
-    let Fonte::Preset { preset, relativo } = &flat.fonte else { unreachable!() };
+    let Fonte::Preset { preset, relativo } = &flat.fonte else {
+        unreachable!()
+    };
     let mut sem = preset.clone();
     sem.parametros.engine.remove("thinStrokeFade");
-    let controlo = Pincel { nome: "sem a lei".into(), fonte: Fonte::Preset { preset: sem, relativo: relativo.clone() } };
+    let controlo = Pincel {
+        nome: "sem a lei".into(),
+        fonte: Fonte::Preset {
+            preset: sem,
+            relativo: relativo.clone(),
+        },
+    };
     let [f, o, c] = std::thread::scope(|s| {
         let h = [&flat, &oil, &controlo].map(|p| s.spawn(move || fino_sobre_largo(p)));
         h.map(|h| h.join().unwrap())
     });
-    println!("[fino] Flat Bristle {f:.3} (Rebelle 0,228) · Oil Bristle {o:.3} (0,952) · Flat sem a lei {c:.3}");
+    println!(
+        "[fino] Flat Bristle {f:.3} (Rebelle 0,228) · Oil Bristle {o:.3} (0,952) · Flat sem a lei {c:.3}"
+    );
     let mut falhas = Vec::new();
     if c < 0.7 {
-        falhas.push(format!("o controlo {c:.3} já esmaece: a régua não mede a lei"));
+        falhas.push(format!(
+            "o controlo {c:.3} já esmaece: a régua não mede a lei"
+        ));
     }
     if !(0.13..0.35).contains(&f) {
         falhas.push(format!("Flat Bristle: 5 px ÷ 40 px {f:.3} (Rebelle 0,228)"));
     }
     if o < 0.75 {
-        falhas.push(format!("Oil Bristle: 5 px ÷ 40 px {o:.3} — a lei vazou para quem não a tem (Rebelle 0,952)"));
+        falhas.push(format!(
+            "Oil Bristle: 5 px ÷ 40 px {o:.3} — a lei vazou para quem não a tem (Rebelle 0,952)"
+        ));
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }

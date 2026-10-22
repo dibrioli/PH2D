@@ -207,7 +207,10 @@ impl BrushSpec {
     /// ([`Self::pigment_espectral`]).
     #[must_use]
     pub fn pigmento(&self) -> crate::blend::Pigmento {
-        crate::blend::Pigmento { mix: self.effective_pigment_mix(), espectral: self.pigment_espectral }
+        crate::blend::Pigmento {
+            mix: self.effective_pigment_mix(),
+            espectral: self.pigment_espectral,
+        }
     }
 
     /// Whether this brush's dabs deposit **height** (the impasto relief). The master switch must be on,
@@ -323,9 +326,7 @@ impl BrushSpec {
     pub fn shape_has_per_dab_rotation(&self, has_shape_image: bool) -> bool {
         self.shape_silhouette_active(has_shape_image)
             && self.shape.mapping.uses_dab_rotation()
-            && (self.shape.rake
-                || self.shape.flow
-                || self.gira_a_marca())
+            && (self.shape.rake || self.shape.flow || self.gira_a_marca())
     }
 
     /// **O pincel roda a marca por conta própria** — o Jitter Rotate (por dab) ou o ângulo do traço (L4, um por

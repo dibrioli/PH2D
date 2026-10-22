@@ -157,10 +157,21 @@ impl Efeito {
         };
         let canal = |x: usize, y: usize, k: usize| f64::from(px[(y * w + x) * 4 + k]);
         let cima = [0, 1, 2].map(|k| {
-            mediana((498..=502).flat_map(|x| (148..=152).map(move |y| (x, y))).map(|(x, y)| canal(x, y, k)).collect())
+            mediana(
+                (498..=502)
+                    .flat_map(|x| (148..=152).map(move |y| (x, y)))
+                    .map(|(x, y)| canal(x, y, k))
+                    .collect(),
+            )
         });
         let veu = (280..=340)
-            .map(|y| mediana((280..=320).map(|x| ((255.0 - canal(x, y, 0)) / 232.0).clamp(0.0, 1.0)).collect()))
+            .map(|y| {
+                mediana(
+                    (280..=320)
+                        .map(|x| ((255.0 - canal(x, y, 0)) / 232.0).clamp(0.0, 1.0))
+                        .collect(),
+                )
+            })
             .fold(0.0, f64::max);
         Self { cima, veu }
     }
@@ -169,7 +180,9 @@ impl Efeito {
     /// azul e 10 % do vermelho, que nenhuma fórmula a um α dá — decisão 7: o resíduo do B fica 5) e 0,02 no véu (o
     /// Rebelle pousa o Burn a α 0,088 no papel e 0,107 na tinta; o nosso, um α só, fica 0,017 acima no papel).
     fn distancia(&self, outra: &Self) -> f64 {
-        let c = (0..3).map(|k| (self.cima[k] - outra.cima[k]).abs() / 6.0).fold(0.0, f64::max);
+        let c = (0..3)
+            .map(|k| (self.cima[k] - outra.cima[k]).abs() / 6.0)
+            .fold(0.0, f64::max);
         c.max((self.veu - outra.veu).abs() / 0.02)
     }
 }
@@ -184,12 +197,20 @@ const FOTOS_EFEITO: [(&str, &str, Efeito); 3] = [
 
 /// O preset de uma receita da família (a fábrica ou o `EM_ESTUDO`), pela mesma porta do gerador — sem ficheiro.
 fn preset_da_receita(nome: &str) -> ph2d_brush_presets::Preset {
-    let r = MEIOS.iter().chain(EM_ESTUDO).find(|r| r.nome == nome).unwrap();
+    let r = MEIOS
+        .iter()
+        .chain(EM_ESTUDO)
+        .find(|r| r.nome == nome)
+        .unwrap();
     let (parametros, texturas) = crate::presets_de_fabrica::parametros_do_meio(r);
     ph2d_brush_presets::Preset {
         parametros,
         origem: ph2d_brush_presets::Origem::Fabrica,
-        miniatura: ph2d_brush_presets::Miniatura { largura: 1, altura: 1, rgba: vec![255; 4] },
+        miniatura: ph2d_brush_presets::Miniatura {
+            largura: 1,
+            altura: 1,
+            rgba: vec![255; 4],
+        },
         texturas,
     }
 }
@@ -201,10 +222,18 @@ fn sobre_em_camada(nome: &str, preset: ph2d_brush_presets::Preset) -> Vec<u8> {
     let bat = bateria();
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
-    let sobre = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "sobre").unwrap();
+    let sobre = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == "sobre")
+        .unwrap();
     let p = Pincel {
         nome: nome.to_owned(),
-        fonte: Fonte::Preset { preset: Box::new(preset), relativo: String::new() },
+        fonte: Fonte::Preset {
+            preset: Box::new(preset),
+            relativo: String::new(),
+        },
     };
     let base = pinceis("Hard Round").remove(0);
     let mut px = pinta_cena_com(&p, Some(&base), sobre, tela, papel, 0, true).1;
@@ -225,12 +254,16 @@ fn falhas_do_efeito(nome: &str, eu: &Efeito) -> Vec<String> {
     let mut falhas = Vec::new();
     let propria = eu.distancia(foto);
     if propria > 1.0 {
-        falhas.push(format!("{nome}: {eu:?} a {propria:.2} tolerâncias da foto {foto:?} ({oraculo})"));
+        falhas.push(format!(
+            "{nome}: {eu:?} a {propria:.2} tolerâncias da foto {foto:?} ({oraculo})"
+        ));
     }
     for (outro, _, f2) in FOTOS_EFEITO.iter().filter(|f| f.0 != nome) {
         let d = eu.distancia(f2);
         if propria >= d {
-            falhas.push(format!("{nome}: {propria:.2} tolerâncias da sua foto, {d:.2} da do {outro} — faz o irmão"));
+            falhas.push(format!(
+                "{nome}: {propria:.2} tolerâncias da sua foto, {d:.2} da do {outro} — faz o irmão"
+            ));
         }
     }
     falhas
@@ -245,7 +278,14 @@ fn cada_efeito_se_reconhece_pela_foto() {
     let medidas: Vec<(&str, Efeito)> = std::thread::scope(|s| {
         let hs: Vec<_> = FOTOS_EFEITO
             .iter()
-            .map(|&(nome, _, _)| s.spawn(move || (nome, Efeito::de(&sobre_em_camada(nome, preset_da_receita(nome)), 1000))))
+            .map(|&(nome, _, _)| {
+                s.spawn(move || {
+                    (
+                        nome,
+                        Efeito::de(&sobre_em_camada(nome, preset_da_receita(nome)), 1000),
+                    )
+                })
+            })
             .collect();
         hs.into_iter().map(|h| h.join().unwrap()).collect()
     });
@@ -273,11 +313,31 @@ fn o_portao_dos_efeitos_sangra_com_cada_mutacao() {
         }
     };
     let mutacoes: Vec<(&str, &str, ph2d_brush_presets::Preset)> = vec![
-        ("Dodge", "o modo Mix (pinta o azul)", muta("Dodge", &campo("blend", json!("Mix")))),
-        ("Dodge", "sem «On empty» (sem véu no papel)", muta("Dodge", &campo("blend_sobre_vazio", json!(false)))),
-        ("Burn", "o fluxo × 3 (a velatura vira tinta)", muta("Burn", &campo("flow", json!(0.033)))),
-        ("Burn", "o modo Screen (clareia)", muta("Burn", &campo("blend", json!("Screen")))),
-        ("Color Glaze", "o modo Luminosity", muta("Color Glaze", &campo("blend", json!("Luminosity")))),
+        (
+            "Dodge",
+            "o modo Mix (pinta o azul)",
+            muta("Dodge", &campo("blend", json!("Mix"))),
+        ),
+        (
+            "Dodge",
+            "sem «On empty» (sem véu no papel)",
+            muta("Dodge", &campo("blend_sobre_vazio", json!(false))),
+        ),
+        (
+            "Burn",
+            "o fluxo × 3 (a velatura vira tinta)",
+            muta("Burn", &campo("flow", json!(0.033))),
+        ),
+        (
+            "Burn",
+            "o modo Screen (clareia)",
+            muta("Burn", &campo("blend", json!("Screen"))),
+        ),
+        (
+            "Color Glaze",
+            "o modo Luminosity",
+            muta("Color Glaze", &campo("blend", json!("Luminosity"))),
+        ),
     ];
     let sangrou: Vec<(&str, &str, Vec<String>)> = std::thread::scope(|s| {
         let hs: Vec<_> = mutacoes
@@ -292,9 +352,15 @@ fn o_portao_dos_efeitos_sangra_com_cada_mutacao() {
             .collect();
         hs.into_iter().map(|h| h.join().unwrap()).collect()
     });
-    let sobreviveu: Vec<String> =
-        sangrou.iter().filter(|(_, _, f)| f.is_empty()).map(|(n, o, _)| format!("{n} · {o}")).collect();
-    assert!(sobreviveu.is_empty(), "mutações que o portão NÃO apanha: {sobreviveu:?}");
+    let sobreviveu: Vec<String> = sangrou
+        .iter()
+        .filter(|(_, _, f)| f.is_empty())
+        .map(|(n, o, _)| format!("{n} · {o}"))
+        .collect();
+    assert!(
+        sobreviveu.is_empty(),
+        "mutações que o portão NÃO apanha: {sobreviveu:?}"
+    );
 }
 
 /// O cruzamento da cena `sobre` como o MyPaint o pinta (2.ª ronda, `exames/efeitos.md`): numa CAMADA transparente
@@ -306,13 +372,25 @@ fn cruzamento_do_mypaint(preset: ph2d_brush_presets::Preset, escala: f64) -> ([f
     let bat = bateria();
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
-    let mut sobre = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "sobre").unwrap().clone();
+    let mut sobre = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == "sobre")
+        .unwrap()
+        .clone();
     for op in sobre["ops"].as_array_mut().unwrap() {
         if let Some(d) = op.get("size_px").and_then(serde_json::Value::as_f64) {
             op["size_px"] = serde_json::json!(d * escala);
         }
     }
-    let p = Pincel { nome: "cand".to_owned(), fonte: Fonte::Preset { preset: Box::new(preset), relativo: String::new() } };
+    let p = Pincel {
+        nome: "cand".to_owned(),
+        fonte: Fonte::Preset {
+            preset: Box::new(preset),
+            relativo: String::new(),
+        },
+    };
     let mut px = pinta_cena_com(&p, None, &sobre, tela, papel, 0, true).1;
     for c in px.as_chunks_mut::<4>().0 {
         let a = u32::from(c[3]);
@@ -323,7 +401,10 @@ fn cruzamento_do_mypaint(preset: ph2d_brush_presets::Preset, escala: f64) -> ([f
     let w = tela[0] as usize;
     let cor = |x: usize, y: usize| [0, 1, 2].map(|k| f64::from(px[(y * w + x) * 4 + k]));
     let centro = [0, 1, 2].map(|k| {
-        let mut v: Vec<f64> = (498..=502).flat_map(|x| (148..=152).map(move |y| (x, y))).map(|(x, y)| cor(x, y)[k]).collect();
+        let mut v: Vec<f64> = (498..=502)
+            .flat_map(|x| (148..=152).map(move |y| (x, y)))
+            .map(|(x, y)| cor(x, y)[k])
+            .collect();
         v.sort_by(f64::total_cmp);
         v[v.len() / 2]
     });
@@ -349,17 +430,25 @@ fn falhas_do_cruzamento(nome: &str, (centro, escuro): ([f64; 3], [f64; 3])) -> V
     let (_, oraculo, _, c_mp, e_mp) = CRUZAMENTOS_DO_MYPAINT.iter().find(|c| c.0 == nome).unwrap();
     let mut falhas = Vec::new();
     if (0..3).any(|k| (centro[k] - c_mp[k]).abs() > 10.0) {
-        falhas.push(format!("{nome}: o meio do cruzamento {centro:?} × {c_mp:?} ({oraculo})"));
+        falhas.push(format!(
+            "{nome}: o meio do cruzamento {centro:?} × {c_mp:?} ({oraculo})"
+        ));
     }
     let soma = |c: &[f64; 3]| c.iter().sum::<f64>();
     if (soma(&escuro) - soma(e_mp)).abs() > 25.0 || (escuro[1] - e_mp[1]).abs() > 12.0 {
-        falhas.push(format!("{nome}: o anel escuro {escuro:?} × {e_mp:?} ({oraculo})"));
+        falhas.push(format!(
+            "{nome}: o anel escuro {escuro:?} × {e_mp:?} ({oraculo})"
+        ));
     }
     falhas
 }
 
 fn receita_em_estudo(nome: &str) -> &'static ReceitaMeio {
-    EM_ESTUDO.iter().chain(super::canetas::MEIOS).find(|r| r.nome == nome).unwrap()
+    EM_ESTUDO
+        .iter()
+        .chain(super::canetas::MEIOS)
+        .find(|r| r.nome == nome)
+        .unwrap()
 }
 
 /// ⭐ **A mistura ESPECTRAL cruza como o MyPaint** (2.ª ronda; o `BrushSpec::pigment_espectral`): o Glow e a Ballpoint
@@ -369,8 +458,10 @@ fn receita_em_estudo(nome: &str) -> &'static ReceitaMeio {
 #[test]
 fn a_mistura_espectral_cruza_como_o_mypaint() {
     use serde_json::json;
-    let casos: Vec<(&str, bool)> =
-        CRUZAMENTOS_DO_MYPAINT.iter().flat_map(|c| [(c.0, true), (c.0, false)]).collect();
+    let casos: Vec<(&str, bool)> = CRUZAMENTOS_DO_MYPAINT
+        .iter()
+        .flat_map(|c| [(c.0, true), (c.0, false)])
+        .collect();
     let medidas: Vec<(&str, bool, Vec<String>)> = std::thread::scope(|s| {
         let hs: Vec<_> = casos
             .into_iter()
@@ -378,11 +469,20 @@ fn a_mistura_espectral_cruza_como_o_mypaint() {
                 s.spawn(move || {
                     let mut p = crate::presets_de_fabrica::preset_do_meio(receita_em_estudo(nome));
                     if !espectral {
-                        p.parametros.brush.insert("pigment_espectral".to_owned(), json!(false));
+                        p.parametros
+                            .brush
+                            .insert("pigment_espectral".to_owned(), json!(false));
                     }
-                    let escala = CRUZAMENTOS_DO_MYPAINT.iter().find(|c| c.0 == nome).unwrap().2;
+                    let escala = CRUZAMENTOS_DO_MYPAINT
+                        .iter()
+                        .find(|c| c.0 == nome)
+                        .unwrap()
+                        .2;
                     let m = cruzamento_do_mypaint(p, escala);
-                    println!("[espectral] {nome} (espectral {espectral}): meio {:?} · anel {:?}", m.0, m.1);
+                    println!(
+                        "[espectral] {nome} (espectral {espectral}): meio {:?} · anel {:?}",
+                        m.0, m.1
+                    );
                     (nome, espectral, falhas_do_cruzamento(nome, m))
                 })
             })
@@ -407,18 +507,33 @@ fn contas_a_200_px(preset: ph2d_brush_presets::Preset, escala: f64) -> f64 {
     let bat = bateria();
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
-    let mut cena = bat["cenas"].as_array().unwrap().iter().find(|c| c["nome"] == "tamanhos").unwrap().clone();
+    let mut cena = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == "tamanhos")
+        .unwrap()
+        .clone();
     for op in cena["ops"].as_array_mut().unwrap() {
         if let Some(d) = op.get("size_px").and_then(serde_json::Value::as_f64) {
             op["size_px"] = serde_json::json!(d * escala);
         }
     }
-    let p = Pincel { nome: "cand".to_owned(), fonte: Fonte::Preset { preset: Box::new(preset), relativo: String::new() } };
+    let p = Pincel {
+        nome: "cand".to_owned(),
+        fonte: Fonte::Preset {
+            preset: Box::new(preset),
+            relativo: String::new(),
+        },
+    };
     let px = pinta_cena_com(&p, None, &cena, tela, papel, 0, false).1;
     let w = tela[0] as usize;
-    let alfa = |x: usize, y: usize| ((255.0 - f64::from(px[(y * w + x) * 4])) / 232.0).clamp(0.0, 1.0);
+    let alfa =
+        |x: usize, y: usize| ((255.0 - f64::from(px[(y * w + x) * 4])) / 232.0).clamp(0.0, 1.0);
     let media_da_linha = |y: usize| (300..700).map(|x| alfa(x, y)).sum::<f64>() / 400.0;
-    let yc = (380..500).max_by(|&a, &b| media_da_linha(a).total_cmp(&media_da_linha(b))).unwrap();
+    let yc = (380..500)
+        .max_by(|&a, &b| media_da_linha(a).total_cmp(&media_da_linha(b)))
+        .unwrap();
     let linha: Vec<f64> = (300..700)
         .map(|x| {
             let mut v: Vec<f64> = (yc - 3..=yc + 3).map(|y| alfa(x, y)).collect();
@@ -427,7 +542,8 @@ fn contas_a_200_px(preset: ph2d_brush_presets::Preset, escala: f64) -> f64 {
         })
         .collect();
     let m = linha.iter().sum::<f64>() / linha.len() as f64;
-    (linha.iter().copied().fold(0.0, f64::max) - linha.iter().copied().fold(1.0, f64::min)) / m.max(1e-6)
+    (linha.iter().copied().fold(0.0, f64::max) - linha.iter().copied().fold(1.0, f64::min))
+        / m.max(1e-6)
 }
 
 /// ⭐ **A esferográfica de 200 px não sai em CONTAS** (2.ª ronda; o revisor da J3: «contas a 200 px»): a dureza pela
@@ -437,19 +553,35 @@ fn contas_a_200_px(preset: ph2d_brush_presets::Preset, escala: f64) -> f64 {
 #[test]
 fn a_esferografica_de_200_px_nao_sai_em_contas() {
     let receita = receita_em_estudo("Ballpoint");
-    let escala = CRUZAMENTOS_DO_MYPAINT.iter().find(|c| c.0 == "Ballpoint").unwrap().2;
+    let escala = CRUZAMENTOS_DO_MYPAINT
+        .iter()
+        .find(|c| c.0 == "Ballpoint")
+        .unwrap()
+        .2;
     let (com, sem) = std::thread::scope(|s| {
-        let a = s.spawn(|| contas_a_200_px(crate::presets_de_fabrica::preset_do_meio(receita), escala));
+        let a =
+            s.spawn(|| contas_a_200_px(crate::presets_de_fabrica::preset_do_meio(receita), escala));
         let b = s.spawn(|| {
             let mut p = crate::presets_de_fabrica::preset_do_meio(receita);
-            assert!(p.parametros.engine.remove("pressureHardness").is_some(), "a receita perdeu a linha");
+            assert!(
+                p.parametros.engine.remove("pressureHardness").is_some(),
+                "a receita perdeu a linha"
+            );
             contas_a_200_px(p, escala)
         });
         (a.join().unwrap(), b.join().unwrap())
     });
-    println!("[contas] Ballpoint 200 px: {com:.4} (sem a dureza pela pressão {sem:.4}; MyPaint 0,0125)");
-    assert!(com <= 0.025, "a 200 px a esferográfica sai em contas: {com:.4} (MyPaint 0,0125)");
-    assert!(sem > 0.025, "a mutação «sem a dureza pela pressão» NÃO sangrou: {sem:.4}");
+    println!(
+        "[contas] Ballpoint 200 px: {com:.4} (sem a dureza pela pressão {sem:.4}; MyPaint 0,0125)"
+    );
+    assert!(
+        com <= 0.025,
+        "a 200 px a esferográfica sai em contas: {com:.4} (MyPaint 0,0125)"
+    );
+    assert!(
+        sem > 0.025,
+        "a mutação «sem a dureza pela pressão» NÃO sangrou: {sem:.4}"
+    );
 }
 
 /// A bancada dos EM_ESTUDO (e da Ballpoint das `canetas`, cuja lei do pigmento é desta família): grava cada um, pela
@@ -457,10 +589,12 @@ fn a_esferografica_de_200_px_nao_sai_em_contas() {
 #[test]
 #[ignore = "bancada: escreve os EM_ESTUDO em PH2D_EM_ESTUDO_DIR"]
 fn escreve_os_em_estudo() {
-    let dir = std::path::PathBuf::from(std::env::var("PH2D_EM_ESTUDO_DIR").expect("PH2D_EM_ESTUDO_DIR"));
+    let dir =
+        std::path::PathBuf::from(std::env::var("PH2D_EM_ESTUDO_DIR").expect("PH2D_EM_ESTUDO_DIR"));
     for r in EM_ESTUDO {
         let p = crate::presets_de_fabrica::preset_do_meio(r);
-        let f = ph2d_brush_presets::gravar(&dir, &format!("{}.ph2d-brush.png", r.nome), &p).unwrap();
+        let f =
+            ph2d_brush_presets::gravar(&dir, &format!("{}.ph2d-brush.png", r.nome), &p).unwrap();
         println!("[em estudo] {}", f.display());
     }
 }
@@ -473,7 +607,11 @@ fn os_em_estudo_dos_efeitos_nao_estao_na_fabrica() {
     let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     for r in EM_ESTUDO {
         let rel = relativo_do_meio(r);
-        assert!(!raiz.join(&rel).exists(), "{}: em estudo mas na fábrica ({rel})", r.nome);
+        assert!(
+            !raiz.join(&rel).exists(),
+            "{}: em estudo mas na fábrica ({rel})",
+            r.nome
+        );
         assert_eq!(parametros_do_meio(r).0.name, r.nome);
     }
 }

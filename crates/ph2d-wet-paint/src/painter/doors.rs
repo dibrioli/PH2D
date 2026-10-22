@@ -70,7 +70,10 @@ impl Engine {
     /// cima delas — a parede é a da tinta a nivelar-se, não um muro para o sopro ([`crate::sim::Sim::paredes`]).
     #[must_use]
     pub fn paredes_valem(&self) -> bool {
-        !matches!(self.tool, Tool::Blow | Tool::Wet | Tool::Smear | Tool::Blend)
+        !matches!(
+            self.tool,
+            Tool::Blow | Tool::Wet | Tool::Smear | Tool::Blend
+        )
     }
 
     pub fn begin_direct_stroke(&mut self, lane: usize, x: f64, y: f64) {
@@ -338,7 +341,8 @@ impl Engine {
             Tool::Wet => {
                 let agua = apply_wet(&mut layer.grid, &p, &tex, &dab, water_unit);
                 // A água que EMPURRA ([`Knob::WaterPush`]; `0` = nada a fazer, ao byte).
-                let empurra = prev.and_then(|pv| crate::tools::apply_wet_push(&mut layer.grid, &p, &dab, pv));
+                let empurra =
+                    prev.and_then(|pv| crate::tools::apply_wet_push(&mut layer.grid, &p, &dab, pv));
                 match (agua, empurra) {
                     (Some(a), Some(b)) => Some(crate::trail::TouchedRect {
                         x0: a.x0.min(b.x0),
@@ -351,7 +355,8 @@ impl Engine {
             }
             Tool::Dry => {
                 // O secador que assenta e deixa orla ([`Knob::DryerEdge`]; `0` = nada a fazer, ao byte) — ANTES de selar.
-                let orla = prev.and_then(|pv| crate::tools::apply_dry_edge(&mut layer.grid, &p, &dab, pv));
+                let orla =
+                    prev.and_then(|pv| crate::tools::apply_dry_edge(&mut layer.grid, &p, &dab, pv));
                 let seca = apply_dry(&mut layer.grid, &p, &tex, &dab);
                 match (orla, seca) {
                     (Some(a), Some(b)) => Some(crate::trail::TouchedRect {

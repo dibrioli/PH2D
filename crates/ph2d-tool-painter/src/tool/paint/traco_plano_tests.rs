@@ -303,7 +303,11 @@ fn a_cauda_com_a_capsula_afila_como_a_cabeca() {
             falhas.push(format!("a {k} px: cabeça {h} × cauda {c}"));
         }
     }
-    assert!(falhas.is_empty(), "a cauda com a cápsula não espelha a cabeça:\n{}", falhas.join("\n"));
+    assert!(
+        falhas.is_empty(),
+        "a cauda com a cápsula não espelha a cabeça:\n{}",
+        falhas.join("\n")
+    );
 }
 
 /// O ArtRage Oil **ThinAndDry** (`fixtures/artrage_bateria/OilBrush/ThinAndDry_tamanhos_A.png`, recto de 880

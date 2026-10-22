@@ -44,7 +44,9 @@ pub(super) fn importa_rgba(c: &mut ShapeLayers, rgba: &[u8], w: u32, h: u32) -> 
         return false;
     }
     let alpha: Vec<u8> = (0..n).map(|i| rgba[i * 4 + 3]).collect();
-    let rgb: Vec<u8> = (0..n).flat_map(|i| [rgba[i * 4], rgba[i * 4 + 1], rgba[i * 4 + 2]]).collect();
+    let rgb: Vec<u8> = (0..n)
+        .flat_map(|i| [rgba[i * 4], rgba[i * 4 + 1], rgba[i * 4 + 2]])
+        .collect();
     c.set_layers(vec![(alpha, w, h)]);
     c.set_layers_meta(vec![rgb], vec![1.0], vec![0], vec![0]);
     c.set_alpha_from_image(false);
@@ -98,7 +100,9 @@ impl PainterTool {
         if self.brush_shape_hose_count() >= HOSE_MAX || !importa_rgba(&mut layers, rgba, w, h) {
             return;
         }
-        let image = layers.flatten().map(|(lum, w, h)| BrushTextureImage::new(lum, w, h));
+        let image = layers
+            .flatten()
+            .map(|(lum, w, h)| BrushTextureImage::new(lum, w, h));
         self.empurra(image, layers);
     }
 
@@ -115,7 +119,10 @@ impl PainterTool {
             return self.sincroniza_a_mangueira();
         }
         if self.brush_shape_hose_count() < HOSE_MAX && lum.len() == (w as usize) * (h as usize) {
-            self.empurra(Some(BrushTextureImage::new(lum, w, h)), ShapeLayers::default());
+            self.empurra(
+                Some(BrushTextureImage::new(lum, w, h)),
+                ShapeLayers::default(),
+            );
         }
     }
 
@@ -131,8 +138,10 @@ impl PainterTool {
     /// ⭐ As imagens da ponta seguem os interruptores da Shape (Per-Layer Color, a silhueta pelo alpha) — a
     /// silhueta de cada uma é a que se carimba E a que o preset grava. Chamada por quem os vira.
     pub(super) fn sincroniza_as_imagens(&mut self) {
-        let (por_camada, pelo_alpha) =
-            (self.paint.shape_layers.per_layer_color(), self.paint.shape_layers.alpha_from_image());
+        let (por_camada, pelo_alpha) = (
+            self.paint.shape_layers.per_layer_color(),
+            self.paint.shape_layers.alpha_from_image(),
+        );
         for e in &mut self.paint.mangueira.extras {
             if e.layers.is_empty() {
                 continue;
@@ -142,7 +151,10 @@ impl PainterTool {
             }
             if e.layers.alpha_from_image() != pelo_alpha {
                 e.layers.set_alpha_from_image(pelo_alpha);
-                e.image = e.layers.flatten().map(|(lum, w, h)| BrushTextureImage::new(lum, w, h));
+                e.image = e
+                    .layers
+                    .flatten()
+                    .map(|(lum, w, h)| BrushTextureImage::new(lum, w, h));
             }
         }
     }
@@ -166,7 +178,10 @@ impl PainterTool {
     }
 
     /// A imagem `k` da ponta como a preset a leva: `(silhueta cinzenta, w, h)` e o RGBA quando há cor.
-    pub(super) fn imagem_da_mangueira(&self, k: usize) -> Option<((&[u8], u32, u32), Option<(Vec<u8>, u32, u32)>)> {
+    pub(super) fn imagem_da_mangueira(
+        &self,
+        k: usize,
+    ) -> Option<((&[u8], u32, u32), Option<(Vec<u8>, u32, u32)>)> {
         if k == 0 {
             let img = self.paint.shape_image.as_ref()?;
             return Some((img.parts(), self.paint.shape_layers.rgba_da_imagem()));
@@ -187,14 +202,20 @@ impl PainterTool {
 
     /// [`Self::stamp_dabs_mangueira`] com o carimbo `f` de cada corrida — o Wet carimba por aqui também o lote
     /// ADIADO, que pousa no tique, fora da porta do lote (`wetpaint::dab_route`).
-    pub(super) fn stamp_dabs_mangueira_com(&mut self, dabs: &[Dab], mut f: impl FnMut(&mut Self, &[Dab])) {
+    pub(super) fn stamp_dabs_mangueira_com(
+        &mut self,
+        dabs: &[Dab],
+        mut f: impl FnMut(&mut Self, &[Dab]),
+    ) {
         let n = self.brush_shape_hose_count();
         let k_de = |d: &Dab| d.tilt.map_or(0, |t| usize::from(t.imagem)).min(n - 1);
         self.paint.mangueira.dentro = true;
         let mut i = 0;
         while i < dabs.len() {
             let k = k_de(&dabs[i]);
-            let j = (i..dabs.len()).find(|&j| k_de(&dabs[j]) != k).unwrap_or(dabs.len());
+            let j = (i..dabs.len())
+                .find(|&j| k_de(&dabs[j]) != k)
+                .unwrap_or(dabs.len());
             self.com_imagem(k, |t| f(t, &dabs[i..j]));
             i = j;
         }
@@ -213,7 +234,8 @@ impl PainterTool {
         swap(&mut p.shape_image, &mut e.image);
         swap(&mut p.shape_layers, &mut e.layers);
         let marca = VERSAO_DA_MANGUEIRA | (uid << 32);
-        p.shape_layers.set_version(marca | (versao_camadas & 0xFFFF_FFFF));
+        p.shape_layers
+            .set_version(marca | (versao_camadas & 0xFFFF_FFFF));
         p.shape_image_version = marca | (versao & 0xFFFF_FFFF);
         f(self);
         let p = &mut self.paint;
@@ -226,18 +248,29 @@ impl PainterTool {
 
 /// O id da textura da imagem `k` no preset (`shape` = a primeira, a de sempre; `shape_2`… as outras).
 fn id_da_imagem(k: usize) -> String {
-    if k == 0 { "shape".to_owned() } else { format!("shape_{}", k + 1) }
+    if k == 0 {
+        "shape".to_owned()
+    } else {
+        format!("shape_{}", k + 1)
+    }
 }
 
 /// O id da COR da imagem `k` (o RGBA; `_alpha` = a silhueta pelo alpha da imagem, o interruptor da Shape).
 fn id_da_cor(k: usize, alfa: bool) -> String {
-    format!("{}_rgba{}", id_da_imagem(k), if alfa { "_alpha" } else { "" })
+    format!(
+        "{}_rgba{}",
+        id_da_imagem(k),
+        if alfa { "_alpha" } else { "" }
+    )
 }
 
 impl PainterTool {
     /// ⭐ **As imagens da ponta no preset** (L19): as silhuetas além da primeira (que vai como `shape`, a de sempre)
     /// e, com o modo de cor da Shape ligado, a COR de cada uma (RGBA) — o preset volta ao bit.
-    pub(super) fn texturas_da_mangueira(&self, t: &mut std::collections::BTreeMap<String, Vec<u8>>) {
+    pub(super) fn texturas_da_mangueira(
+        &self,
+        t: &mut std::collections::BTreeMap<String, Vec<u8>>,
+    ) {
         let cor = self.paint.shape_layers.is_color_mode();
         let alfa = self.paint.shape_layers.alpha_from_image();
         for k in 0..self.brush_shape_hose_count() {
@@ -245,10 +278,16 @@ impl PainterTool {
                 continue;
             };
             if k > 0 {
-                t.insert(id_da_imagem(k), ph2d_brush_presets::escrever_textura(lum, w, h));
+                t.insert(
+                    id_da_imagem(k),
+                    ph2d_brush_presets::escrever_textura(lum, w, h),
+                );
             }
             if let (true, Some((rgba, w, h))) = (cor, rgba) {
-                t.insert(id_da_cor(k, alfa), ph2d_brush_presets::escrever_textura_rgba(&rgba, w, h));
+                t.insert(
+                    id_da_cor(k, alfa),
+                    ph2d_brush_presets::escrever_textura_rgba(&rgba, w, h),
+                );
             }
         }
     }
@@ -282,8 +321,9 @@ impl PainterTool {
         for k in 1..n {
             if let Some((rgba, w, h)) = cor(k) {
                 self.empurra_rgba(&rgba, w, h);
-            } else if let Some((lum, w, h)) =
-                t.get(&id_da_imagem(k)).and_then(|b| ph2d_brush_presets::ler_textura(b).ok())
+            } else if let Some((lum, w, h)) = t
+                .get(&id_da_imagem(k))
+                .and_then(|b| ph2d_brush_presets::ler_textura(b).ok())
             {
                 self.empurra_lum(lum, w, h);
             } else {

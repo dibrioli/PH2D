@@ -149,7 +149,8 @@ impl PainterTool {
     /// raio do motor, não o Size do artista: o tecto não entra (com ele a tabela achatava-se no tecto).
     #[must_use]
     pub fn raio_maximo(&self) -> f32 {
-        let crua = self.paint_media() == crate::PaintMedia::WetPaint && self.paint.wetpaint.largura.is_none();
+        let crua = self.paint_media() == crate::PaintMedia::WetPaint
+            && self.paint.wetpaint.largura.is_none();
         match self.paint.brush.size_max_px {
             Some(d) if !crua => (0.5 * d).min(BRUSH_SIZE_MAX_PX),
             _ => BRUSH_SIZE_MAX_PX,

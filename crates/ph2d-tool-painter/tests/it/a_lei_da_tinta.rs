@@ -122,7 +122,12 @@ pub fn cruzamento(px: &[u8], w: u32) -> f64 {
 /// de fábrica levou a água pouca, a ponta que não se suja e a parede — aqui ficam os de omissão de antes, a régua do Glaze.)
 fn liner_com_glaze(g: f64) -> ph2d_brush_presets::Preset {
     let mut p = de_fabrica("Wet Liner");
-    for (k, v) in [("waterPerDab", 1.0), ("capillary", 0.2), ("pickup", 0.005), ("levelingOwnStroke", 0.0)] {
+    for (k, v) in [
+        ("waterPerDab", 1.0),
+        ("capillary", 0.2),
+        ("pickup", 0.005),
+        ("levelingOwnStroke", 0.0),
+    ] {
         p.parametros.engine.insert(k.to_owned(), v);
     }
     p.parametros.engine.insert("glaze".to_owned(), g);

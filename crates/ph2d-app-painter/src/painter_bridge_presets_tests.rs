@@ -210,7 +210,10 @@ fn o_navegador_abre_em_qualquer_meio_e_escolher_troca_o_meio() {
     sem_erros(&toasts);
     let fabrica = ph2d_brush_presets::Biblioteca::carregar(&pasta_de_fabrica(), None);
     assert_eq!(p.vista.entradas.len(), fabrica.entradas.len() + 3);
-    assert_eq!(p.vista.entradas[0].relativo, LAPIS, "o meio de agora primeiro");
+    assert_eq!(
+        p.vista.entradas[0].relativo, LAPIS,
+        "o meio de agora primeiro"
+    );
     assert_eq!(p.vista.ativo, None);
     p.atender(&mut t, PedidoPreset::Escolher(EMPASTE.into()), &mut toasts);
     sem_erros(&toasts);
@@ -257,7 +260,10 @@ fn guardar_como_novo_no_digital_vai_para_a_pasta_do_digital() {
     let (mut p, mut t, mut toasts, uti) = com_exemplos("novo_digital", PaintMedia::Digital);
     p.atender(&mut t, PedidoPreset::GuardarComoNovo, &mut toasts);
     sem_erros(&toasts);
-    let rel = format!("Digital/User/User/{}.ph2d-brush.png", tr("app.painter.presets.new_name"));
+    let rel = format!(
+        "Digital/User/User/{}.ph2d-brush.png",
+        tr("app.painter.presets.new_name")
+    );
     assert!(uti.join(&rel).is_file(), "{rel}");
     let e = p.bib.procurar(&rel).unwrap();
     assert_eq!(e.preset.parametros.media, "Digital");

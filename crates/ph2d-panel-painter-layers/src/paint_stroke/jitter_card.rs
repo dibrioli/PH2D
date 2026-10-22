@@ -48,7 +48,8 @@ pub(super) fn paint_jitter_card(
     const SLIDER_ROWS: f32 = 5.0; // LITERAL-PX-OK: Count/Position/Scale/Spacing/Rotation
     // As linhas da MARCA (L4) por baixo: uma por `LINHAS_DA_MARCA`, cada uma da altura de uma linha de campo.
     #[allow(clippy::cast_precision_loss)]
-    let marca_h = ph2d_tokens::row_pitch_px() * linhas_do_cartao(CartaoDaMarca::Jitter).count() as f32;
+    let marca_h =
+        ph2d_tokens::row_pitch_px() * linhas_do_cartao(CartaoDaMarca::Jitter).count() as f32;
     let rows_h = slider_row_h * SLIDER_ROWS + (ROW_H_PX + sm) + marca_h;
     let card_h = pad + title_h + rows_h + xs;
     let card = Rect::new(x, y, content_w, card_h);
@@ -172,7 +173,16 @@ pub(super) fn paint_jitter_card(
     // ⭐ As linhas da MARCA (L4): opacidade, contagem, redondeza, espelhos, ângulo do traço, através,
     // partícula — uma tabela no tool (`marca.rs`); a coluna é a da secção delas.
     let sec = crate::seccoes::seccao_da_chave(ctx.text_system, ROTULOS_DA_MARCA[0]);
-    iy = paint_linhas_da_marca(ctx, theme, inner_x, inner_w, iy, &brush, CartaoDaMarca::Jitter, sec);
+    iy = paint_linhas_da_marca(
+        ctx,
+        theme,
+        inner_x,
+        inner_w,
+        iy,
+        &brush,
+        CartaoDaMarca::Jitter,
+        sec,
+    );
     let _ = iy;
     y + card_h + ph2d_tokens::control_gap_px()
 }

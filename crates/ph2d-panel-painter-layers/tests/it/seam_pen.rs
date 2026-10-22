@@ -82,7 +82,10 @@ fn clica(
 
 fn digita(tool: &mut PainterTool, id: NodeId, texto: &str) {
     let (mut host, mut st, rects) = novo(tool);
-    assert!(rect_of(&rects, id).is_some(), "a linha {id:?} não está pintada");
+    assert!(
+        rect_of(&rects, id).is_some(),
+        "a linha {id:?} não está pintada"
+    );
     for ev in host.type_into_number(id, texto) {
         host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
     }
@@ -90,7 +93,10 @@ fn digita(tool: &mut PainterTool, id: NodeId, texto: &str) {
 }
 
 fn indice(chave: &str) -> usize {
-    LINHAS_DA_MAO.iter().position(|l| l.chave() == chave).unwrap()
+    LINHAS_DA_MAO
+        .iter()
+        .position(|l| l.chave() == chave)
+        .unwrap()
 }
 
 /// ⭐ O cartão Pen está nos QUATRO meios, com as linhas que cada meio lê — e só essas.
@@ -120,7 +126,11 @@ fn o_cartao_pen_pinta_as_linhas_que_o_meio_le() {
 #[test]
 fn digitar_uma_linha_muda_a_mao_do_meio() {
     let i = indice("pressureSize");
-    for m in [PaintMedia::Digital, PaintMedia::Impasto, PaintMedia::WetPaint] {
+    for m in [
+        PaintMedia::Digital,
+        PaintMedia::Impasto,
+        PaintMedia::WetPaint,
+    ] {
         let mut t = no_meio(m);
         digita(&mut t, ids::PAINTER_PEN_FIELDS[i], "0.5");
         assert_eq!(t.brush_settings().mao[i], 0.5, "{m:?}");
@@ -128,7 +138,10 @@ fn digitar_uma_linha_muda_a_mao_do_meio() {
     // No Wet a linha é o knob da caneta: o mesmo valor no mapa do motor.
     let mut t = no_meio(PaintMedia::WetPaint);
     digita(&mut t, ids::PAINTER_PEN_FIELDS[i], "0.4");
-    assert_ne!(t.brush_settings().wet_knobs, no_meio(PaintMedia::WetPaint).brush_settings().wet_knobs);
+    assert_ne!(
+        t.brush_settings().wet_knobs,
+        no_meio(PaintMedia::WetPaint).brush_settings().wet_knobs
+    );
     let o = indice("tiltOpacity");
     let mut t = no_meio(PaintMedia::Digital);
     digita(&mut t, ids::PAINTER_PEN_FIELDS[o], "0.6");
@@ -145,10 +158,7 @@ fn a_rotacao_escolhe_se_no_menu() {
     let rects = painted(&t, &mut host, &mut st);
     let op = rect_of(&rects, ids::painter_pen_rotation_option_id(2)).expect("a opção Pen tilt");
     clica(&mut host, &mut st, &mut t, op);
-    assert_eq!(
-        t.brush_settings().mao[indice("dabRotation")],
-        2.0
-    );
+    assert_eq!(t.brush_settings().mao[indice("dabRotation")], 2.0);
 }
 
 /// O Reset do cartão devolve a mão de fábrica do meio.

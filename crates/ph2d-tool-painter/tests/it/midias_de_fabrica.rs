@@ -456,14 +456,9 @@ const IRMAOS: [(&str, &str); 2] = [
 fn sonda_as_metricas_das_variantes() {
     let presets: Vec<String> = std::env::var("PH2D_SONDA_PRESETS").map_or_else(
         |_| {
-            [
-                "Ink Bullet",
-                "Dip Pen",
-                "Ink Brush",
-                "Marker Bullet",
-            ]
-            .map(str::to_owned)
-            .to_vec()
+            ["Ink Bullet", "Dip Pen", "Ink Brush", "Marker Bullet"]
+                .map(str::to_owned)
+                .to_vec()
         },
         |v| v.split(',').map(str::to_owned).collect(),
     );

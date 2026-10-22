@@ -103,8 +103,16 @@ fn a_pressao_leva_a_cor() {
     // (pressão, S, V) do long_grass nos extremos medidos; o meio pela recta do oráculo.
     for (p, s_or, v_or) in [(0.0, 0.29, 0.62), (0.45, 0.45, 0.765), (0.9, 0.61, 0.91)] {
         let hsv = rgb_to_hsv(c.aplica(base, p, &mut rng));
-        assert!((hsv[1] - s_or).abs() <= 0.05, "p {p}: S {} × {s_or}", hsv[1]);
-        assert!((hsv[2] - v_or).abs() <= 0.05, "p {p}: V {} × {v_or}", hsv[2]);
+        assert!(
+            (hsv[1] - s_or).abs() <= 0.05,
+            "p {p}: S {} × {s_or}",
+            hsv[1]
+        );
+        assert!(
+            (hsv[2] - v_or).abs() <= 0.05,
+            "p {p}: V {} × {v_or}",
+            hsv[2]
+        );
         assert!((hsv[0] - 0.3).abs() * 360.0 <= 3.0, "a matiz fica");
     }
 }
@@ -144,7 +152,10 @@ fn a_marca_deliberada_nao_leva_a_cor_pela_mao() {
         st.finish(&mut out);
         all.extend_from_slice(&out);
         assert!(!all.is_empty(), "{m:?} pousa a marca");
-        assert!(all.iter().all(|d| d.color == AZUL), "{m:?}: a cor mudou pela mão");
+        assert!(
+            all.iter().all(|d| d.color == AZUL),
+            "{m:?}: a cor mudou pela mão"
+        );
     }
 }
 
@@ -160,9 +171,27 @@ fn o_vies_desloca_a_cor_de_cada_dab() {
     let hb = crate::jitter::rgb_to_hsv(AZUL);
     for d in &com {
         let h = crate::jitter::rgb_to_hsv(d.color);
-        assert!((h[0] - (hb[0] + 0.02)).abs() < 1e-3, "matiz {} × {}", h[0], hb[0] + 0.02);
-        assert!((h[1] - (hb[1] - 0.1)).abs() < 1e-3, "saturação {} × {}", h[1], hb[1] - 0.1);
-        assert!((h[2] - (hb[2] + 0.12)).abs() < 1e-3, "valor {} × {}", h[2], hb[2] + 0.12);
+        assert!(
+            (h[0] - (hb[0] + 0.02)).abs() < 1e-3,
+            "matiz {} × {}",
+            h[0],
+            hb[0] + 0.02
+        );
+        assert!(
+            (h[1] - (hb[1] - 0.1)).abs() < 1e-3,
+            "saturação {} × {}",
+            h[1],
+            hb[1] - 0.1
+        );
+        assert!(
+            (h[2] - (hb[2] + 0.12)).abs() < 1e-3,
+            "valor {} × {}",
+            h[2],
+            hb[2] + 0.12
+        );
     }
-    assert!(base.iter().all(|d| d.color == AZUL), "desligado: a cor de sempre");
+    assert!(
+        base.iter().all(|d| d.color == AZUL),
+        "desligado: a cor de sempre"
+    );
 }

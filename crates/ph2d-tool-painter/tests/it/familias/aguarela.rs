@@ -145,7 +145,16 @@ pub const WET: &[Receita] = &[
         bristle_count: 2000.0,
         hardness: 0.9,
         size_px: Some(29.0),
-        extras: &[FILME, SEM_ARRASTO, PAREDE, VIDRADO, POUCA_AGUA[0], POUCA_AGUA[1], MANCHA_DO_LINER[0], MANCHA_DO_LINER[1]],
+        extras: &[
+            FILME,
+            SEM_ARRASTO,
+            PAREDE,
+            VIDRADO,
+            POUCA_AGUA[0],
+            POUCA_AGUA[1],
+            MANCHA_DO_LINER[0],
+            MANCHA_DO_LINER[1],
+        ],
         grao: None,
         achatado: None,
         pincel: &[],
@@ -313,5 +322,8 @@ fn os_reprovados_da_aguarela_nao_estao_na_fabrica() {
         .map(|e| e.preset.parametros.name.as_str())
         .filter(|n| EM_ESTUDO.iter().any(|r| r.nome == *n))
         .collect();
-    assert!(na_fabrica.is_empty(), "reprovados na fábrica: {na_fabrica:?}");
+    assert!(
+        na_fabrica.is_empty(),
+        "reprovados na fábrica: {na_fabrica:?}"
+    );
 }

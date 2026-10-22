@@ -217,7 +217,9 @@ pub fn blend_over_pigment(
     // `64,74,121`). O papel é o QUASE-branco: a mistura entra inteira com o canal mais escuro do fundo até
     // [`PAPEL_DO_PIGMENTO`] e desliga-se em recta até ao branco — toda tinta de cor (o amarelo do K–M de sempre, o
     // vermelho) mistura como antes, ao bit; só o papel e o quase-branco deixam de ser pigmento.
-    let tinta = ((1.0 - dst[0].min(dst[1]).min(dst[2]).clamp(0.0, 1.0)) / (1.0 - PAPEL_DO_PIGMENTO)).min(1.0);
+    let tinta = ((1.0 - dst[0].min(dst[1]).min(dst[2]).clamp(0.0, 1.0))
+        / (1.0 - PAPEL_DO_PIGMENTO))
+        .min(1.0);
     let m = mix.clamp(0.0, 1.0) * dst[3].clamp(0.0, 1.0) * tinta;
     if m <= 0.0 || !mode.lays_pigment() {
         return plain; // byte-identical to `blend_over` when Pigment é off, o canvas é nu, ou o
@@ -253,14 +255,23 @@ pub struct Pigmento {
 
 impl From<f32> for Pigmento {
     fn from(mix: f32) -> Self {
-        Self { mix, espectral: false }
+        Self {
+            mix,
+            espectral: false,
+        }
     }
 }
 
 /// ⭐ **A porta da lei do pigmento** — `espectral = false` é a [`blend_over_pigment`] ao bit.
 #[must_use]
 #[inline]
-pub fn blend_over_pigmento(mode: BrushBlend, dst: [f32; 4], color: [f32; 3], a: f32, p: Pigmento) -> [f32; 4] {
+pub fn blend_over_pigmento(
+    mode: BrushBlend,
+    dst: [f32; 4],
+    color: [f32; 3],
+    a: f32,
+    p: Pigmento,
+) -> [f32; 4] {
     if p.espectral {
         crate::espectral::blend_over_espectral(mode, dst, color, a, p.mix)
     } else {
@@ -653,7 +664,10 @@ mod tests {
             blend_over_pigment(BrushBlend::Mix, vermelho, azul, 0.68, 1.0),
             blend_over(BrushBlend::Mix, vermelho, azul, 0.68),
         );
-        assert!(pig[0] + pig[1] + pig[2] < over[0] + over[1] + over[2], "sobre a tinta não escureceu: {pig:?} × {over:?}");
+        assert!(
+            pig[0] + pig[1] + pig[2] < over[0] + over[1] + over[2],
+            "sobre a tinta não escureceu: {pig:?} × {over:?}"
+        );
     }
 
     /// The pigment path mixes a blue canvas + a yellow dab **toward green** — the subtractive hallmark

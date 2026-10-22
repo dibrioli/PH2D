@@ -584,14 +584,24 @@ fn as_cordas_sorteadas_cobrem_a_janela() {
         };
         let fatia = sp.wire_history_px() / crate::line_kind::WIRE_CURVES_PER_DAB as f32;
         let (dabs, fios) = straight(sp, 400.0, 3.0);
-        let n = fios.iter().filter(|f| ((f[2] - f[0]).hypot(f[3] - f[1])) < 0.8 * fatia).count();
+        let n = fios
+            .iter()
+            .filter(|f| ((f[2] - f[0]).hypot(f[3] - f[1])) < 0.8 * fatia)
+            .count();
         (n, fios.len(), dabs.len())
     };
     let (sem, fios_sem, dabs_sem) = curtas(false);
     let (com, fios_com, dabs_com) = curtas(true);
     assert_eq!(sem, 0, "sem sorteio nenhuma corda abaixo da 1.ª fatia");
-    assert!(com * 8 > fios_com, "com sorteio ~¼ das cordas na 1.ª fatia: {com} de {fios_com}");
-    assert_eq!((fios_sem, dabs_sem), (fios_com, dabs_com), "o sorteio não muda a contagem");
+    assert!(
+        com * 8 > fios_com,
+        "com sorteio ~¼ das cordas na 1.ª fatia: {com} de {fios_com}"
+    );
+    assert_eq!(
+        (fios_sem, dabs_sem),
+        (fios_com, dabs_com),
+        "o sorteio não muda a contagem"
+    );
 }
 
 /// ⭐ **As cordas por dab do Wire** (J4 efeitos): `0` = as quatro de sempre; 16 a 3 diâmetros desenham 4× os fios
@@ -609,6 +619,12 @@ fn as_cordas_por_dab_respeitam_o_orcamento() {
     let (quatro, c4) = fios(0, 3.0);
     let (dezasseis, c16) = fios(16, 3.0);
     assert_eq!((c4, c16), (crate::line_kind::WIRE_CURVES_PER_DAB, 16));
-    assert!(dezasseis > 3 * quatro, "16 cordas a 3 diâmetros: {dezasseis} fios contra {quatro}");
-    assert_eq!(fios(255, crate::line_kind::WIRE_HISTORY_MAX).1, crate::line_kind::WIRE_CURVES_PER_DAB);
+    assert!(
+        dezasseis > 3 * quatro,
+        "16 cordas a 3 diâmetros: {dezasseis} fios contra {quatro}"
+    );
+    assert_eq!(
+        fios(255, crate::line_kind::WIRE_HISTORY_MAX).1,
+        crate::line_kind::WIRE_CURVES_PER_DAB
+    );
 }

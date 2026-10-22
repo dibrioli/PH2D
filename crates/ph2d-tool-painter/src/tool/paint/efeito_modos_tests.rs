@@ -169,14 +169,23 @@ fn o_efeito_do_pincel_compoe_no_seu_modo() {
     let mut falhas = Vec::new();
     for m in MODOS {
         for base in bases {
-            for (alfa, n) in [(0.056, 1), (0.088, 1), (0.216, 1), (0.9, 1), (0.056, 10), (0.216, 10)] {
+            for (alfa, n) in [
+                (0.056, 1),
+                (0.088, 1),
+                (0.216, 1),
+                (0.9, 1),
+                (0.056, 10),
+                (0.216, 10),
+            ] {
                 let nosso = toques(base, m, alfa, n);
                 let p = previsto(base, m, f64::from(alfa), n);
                 let erro = (0..3)
                     .map(|k| (f64::from(nosso[k]) - p[k]).abs())
                     .fold(0.0, f64::max);
                 if erro > 2.0 {
-                    falhas.push(format!("{m:?} base {base:?} α {alfa} ×{n}: {nosso:?} × W3C {p:?}"));
+                    falhas.push(format!(
+                        "{m:?} base {base:?} α {alfa} ×{n}: {nosso:?} × W3C {p:?}"
+                    ));
                 }
             }
         }
@@ -192,9 +201,27 @@ fn o_efeito_do_pincel_compoe_no_seu_modo() {
 fn o_efeito_a_dez_passagens_e_o_do_rebelle() {
     // (modo, α/passagem, foto 10× sobre cinza, foto 10× sobre pastel, erro do ajuste do 06)
     let fotos = [
-        (BrushBlend::Hue, 0.055, [128u8, 128, 128], [208u8, 191, 186], 0.45),
-        (BrushBlend::Luminosity, 0.055, [111, 111, 111], [182, 136, 113], 1.07),
-        (BrushBlend::Overlay, 0.21, [19, 83, 203], [133, 148, 217], 1.84),
+        (
+            BrushBlend::Hue,
+            0.055,
+            [128u8, 128, 128],
+            [208u8, 191, 186],
+            0.45,
+        ),
+        (
+            BrushBlend::Luminosity,
+            0.055,
+            [111, 111, 111],
+            [182, 136, 113],
+            1.07,
+        ),
+        (
+            BrushBlend::Overlay,
+            0.21,
+            [19, 83, 203],
+            [133, 148, 217],
+            1.84,
+        ),
     ];
     for (m, alfa, cinza, pastel, ajuste) in fotos {
         for (base, foto) in [([128u8, 128, 128], cinza), ([230, 184, 161], pastel)] {

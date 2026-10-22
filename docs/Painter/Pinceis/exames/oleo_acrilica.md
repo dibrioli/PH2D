@@ -63,6 +63,9 @@ fundida no Hard Round. Dry Brush e Fan sem candidato. Portões `cada_oleo_tem_a_
   0,35/0,29/**0,20**/0,23/0,25; a largura pela pressão piora (0,21–0,60). Só um piso a copia — a decisão 9 proíbe-o.
   **Decisão para o coordenador**: o Flat do Rebelle fica fora da barra (como os Flats do dono a 0,17–0,18), ou o pincel
   não entra. O Flat Bristle está no `leis_rebelle.json` (Flat/Flat, medido) e no `ORIGEM`: entra na fábrica ⇒ o portão vê-o.
+- **J5 (molhado × molhado): a lei NÃO se aplica** — o Rebelle `Flat` não abre mancha no vermelho molhado (largura 0,86 ×
+  a do papel, `OIL_AND_ACRYLIC/flat_flat_sobre_A`); os «nós azul × azul» são a MESMA tinta (fora da lei, `outra_tinta` 0).
+  Sem recurso novo para ele ⇒ sem 3.ª ronda; fica curado não aprovado.
 
 ### G-2 Acrylic Round — RETIRADA (ordem do coordenador; fundida no Hard Round)
 Preset apagado; `MIDIAS`; `a_lei_da_tinta` (21 → 20 cenas); `os_fios::FIOS` (18 → 17); `o_relevo_dos_fios::OLEOS`,

@@ -90,7 +90,7 @@ fn sonda_o_molhado() {
     });
 }
 
-/// A MANCHA do cruzamento molhado (cena `sobre`, foto A; o `blot.py` do relatório), a média dos três verticais:
+/// A MANCHA do cruzamento molhado (cena `sobre`, foto A; a régua da mancha do relatório), a média dos três verticais:
 /// `(redondo, escuro)` — a largura da mancha no meio da faixa (y 150: a distância de cor à faixa longe passa metade da do
 /// centro, contínua a partir dele) ÷ a do vertical no papel (y 240), e a escuridão do miolo ÷ a do azul no papel.
 /// O Rebelle `Liner` 1,42 · 1,06; `Mop` 1,44 · 1,06; `Wash` 1,17 · 1,30.

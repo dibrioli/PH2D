@@ -296,7 +296,7 @@ fn o_azul_nao_leva_o_vermelho_molhado() {
 }
 
 /// A ORLA do recto de 40 px (cena `tamanhos`, foto A, y 190, x 300..700): o perfil através (a escuridão média em x) — o
-/// máximo nos 6 % de fora de cada lado ÷ o centro (40..60 %). A régua do `liso.py` da 3.ª ronda.
+/// máximo nos 6 % de fora de cada lado ÷ o centro (40..60 %). A régua do liso da 3.ª ronda.
 fn orla_40(px: &[u8], w: usize) -> f64 {
     let esc = |x: usize, y: usize| {
         let i = (y * w + x) * 4;

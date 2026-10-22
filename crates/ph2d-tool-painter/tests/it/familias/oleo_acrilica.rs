@@ -604,7 +604,7 @@ fn os_reprovados_do_oleo_nao_estao_na_fabrica() {
 /// Os VEIOS de um traço (J4 2.ª ronda, `exames/oleo_acrilica.md`): no recto de 200 px da cena `tamanhos` (foto A, linhas
 /// 355..530, x 150..850), a luminância de cada linha alisada ao longo (caixa de 7 px — o pontilhado fino do relevo não
 /// parte um troço) e o desvio à mediana da linha; os troços ESCUROS e CLAROS a mais de 25 níveis: a fracção da área e o
-/// comprimento médio das corridas ao longo de x. O Rebelle `Bristle Flat` (a mesma conta, `veios.py` da 2.ª ronda): escuros
+/// comprimento médio das corridas ao longo de x. O Rebelle `Bristle Flat` (a mesma conta, a régua dos veios da 2.ª ronda): escuros
 /// 0,0154 em corridas de 84 px, claros 0,0074 de 56 px.
 #[derive(Debug, Clone, Copy)]
 struct Veios {

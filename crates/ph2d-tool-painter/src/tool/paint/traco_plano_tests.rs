@@ -311,14 +311,14 @@ fn a_cauda_com_a_capsula_afila_como_a_cabeca() {
 }
 
 /// O ArtRage Oil **ThinAndDry** (`fixtures/artrage_bateria/OilBrush/ThinAndDry_tamanhos_A.png`, recto de 880
-/// px a 40 px): a cobertura por bloco de 40 px ÷ a dos blocos 1–2 (`curva_fall.py` do 06 §5) — a carga acaba.
+/// px a 40 px): a cobertura por bloco de 40 px ÷ a dos blocos 1–2 (a régua da curva do 06 §5) — a carga acaba.
 const THIN_AND_DRY: [f32; 22] = [
     0.79, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 0.93, 0.83, 0.69, 0.62, 0.57, 0.53, 0.25, 0.07, 0.02,
     0.01, 0.01, 0.01, 0.00, 0.00, 0.00,
 ];
 
 /// ⭐ **L5 — o fall-off esmaece ao longo** contra o oráculo que o TEM. ⚠️ O Charcoal Wide do Rebelle (a «0,63»
-/// do 06 §5) NÃO tem fall-off: medido por bloco de 40 px (`curva_fall.py`) a curva dele é ruído (0,56–1,18,
+/// do 06 §5) NÃO tem fall-off: medido por bloco de 40 px (a mesma régua) a curva dele é ruído (0,56–1,18,
 /// sem tendência) e o 0,63 era o bloco da TAMPA do fim; o Rebelle não esgota (`paint_fadeout_length` = 1 nos
 /// 281). O ArtRage ThinAndDry esgota: patamar até ~7·D e nada aos ~15·D. Com `fall_off_start 6` e
 /// `fall_off 10` (a mesma área de carga), a curva do recto: patamar ≥ 0,97, o fim ≤ 0,05, a carga total ± 10 % e

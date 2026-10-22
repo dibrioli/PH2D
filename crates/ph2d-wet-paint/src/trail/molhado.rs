@@ -1,7 +1,7 @@
 //! ⭐ **Molhado × molhado** ([`Knob::WetOpen`], J5 — `docs/Painter/Pinceis/exames/aguarela.md` «Motor J5»): a tinta
 //! que entra na molhada de OUTRA tinta abre nela uma mancha REDONDA e empurra a de baixo para os lados.
 //!
-//! Medido no Rebelle (cena `sobre`, foto A, `blot.py`): o azul de 40 px que atravessa a faixa vermelha molhada de 60 abre
+//! Medido no Rebelle (cena `sobre`, foto A, a régua da mancha): o azul de 40 px que atravessa a faixa vermelha molhada de 60 abre
 //! uma mancha de 54–60 px no meio da faixa (Liner 1,42 × a largura no papel, Mop 1,44, Wash 1,17, Gouache Round 1,25),
 //! mais estreita junto às bordas da faixa (redonda), e tão escura como o azul no papel (1,06) — o vermelho saiu dela.
 //! O nosso: um quadrado da largura do traço e 1,27 × mais escuro (as duas tintas somadas na célula).

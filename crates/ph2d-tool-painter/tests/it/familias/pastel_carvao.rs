@@ -134,7 +134,7 @@ pub const WET: &[Receita] = &[
     // largura que o slider promete é a do recto deitado; a 200 px o Rebelle pinta 50 deitado). O Soft Pastel com a lâmina 0,47 a 0° e a curva da opacidade 1,2 (a rampa dele 0,05 → 0,62).
     // r3 (a revisão cega r2): a pressão muda a DENSIDADE e não a largura (`pressureSize` 0,2) e a leve é névoa de grão
     // (`pressureGrain` 0,5); o lado largo (os de pé) translúcido e riscado — as vetas `ViewPlane` (de pé 0,62, Rebelle 0,64).
-    // J5: o pó solto MEDIDO no Rebelle `Flat Soft` (recto 200, `po2.py`: 60 grãos/100 px, 21 além de 1,5 meia-largura;
+    // J5: o pó solto MEDIDO no Rebelle `Flat Soft` (recto 200, a régua do pó: 60 grãos/100 px, 21 além de 1,5 meia-largura;
     // a variante ps2 v0 63 · área 4 · tom 0,30) e a carga 150 (o tom: o nosso mais claro).
     Receita {
         nome: "Pastel Side",
@@ -183,7 +183,7 @@ const VETAS_DA_BARRA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise",
 const MARMORE_DO_CARVAO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.6, 0.55, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [8.0, 8.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// ⭐ **O PÓ SOLTO do pastel seco** (J4 2.ª ronda, `wetpaint/po.rs`): os grãos à volta do traço, à parte do rasto. Rebelle
-/// «Dry Thin», recto de 200 px (`po2.py`): 56 grãos por 100 px a ≥ 0,2 da meia-largura, área p50 3 px, tom 0,18, 2,15×
+/// «Dry Thin», recto de 200 px (a régua do pó): 56 grãos por 100 px a ≥ 0,2 da meia-largura, área p50 3 px, tom 0,18, 2,15×
 /// mais à direita de quem anda (`po_lado` 0,37); o nosso (variante sp6 v0, à escala 0,475): 54, área 2, tom 0,20.
 const PO_DO_PASTEL: &str = r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 0.0, "po": 2.5, "po_alcance": 1.0, "po_px": 1.5, "po_opacidade": 0.08, "po_lado": 0.37}"#;
 
@@ -478,7 +478,7 @@ mod portoes {
         v[v.len() / 2]
     }
 
-    /// ⭐ **As ESTRIAS** do recto horizontal em `y` (±`h`, colunas 200..800; `ferramentas/…/estrias.py` da família, ao
+    /// ⭐ **As ESTRIAS** do recto horizontal em `y` (±`h`, colunas 200..800; a régua das estrias da família, ao
     /// mesmo método): a largura mediana, o contraste do miolo (desvio ÷ média, na faixa de ±0,3 da largura) e a
     /// ½-autocorrelação (circular, a do FFT do script) AO LONGO e ATRAVÉS — em px, o 1.º desfasamento abaixo de ½.
     pub(super) fn estrias(c: &[f64], y: usize, h: usize) -> (f64, f64, usize, usize) {
@@ -523,7 +523,7 @@ mod portoes {
     }
 
     /// A largura mediana e a cobertura média de cada uma das 10 faixas de 50 px da rampa 0 → 1 (cena `gestos`, y 400 ± 45,
-    /// x 60..560, limiar 0,08 — `rampa.py` da família).
+    /// x 60..560, limiar 0,08 — a régua da rampa da família).
     fn rampa(c: &[f64]) -> Vec<(f64, f64)> {
         (0..10)
             .map(|b| {
@@ -550,7 +550,7 @@ mod portoes {
     }
 
     /// A LÂMINA: a largura do recto horizontal lento (y 40..141, x 80..560) e a da vertical lenta (x 640..761, y 470..591)
-    /// da cena `gestos` (`lamina.py` da família) — a de pé ÷ a deitada.
+    /// da cena `gestos` (a régua da lâmina da família) — a de pé ÷ a deitada.
     fn lamina(c: &[f64]) -> f64 {
         let largura = |amostras: Vec<Vec<f64>>| -> f64 {
             let mut p: Vec<f64> = amostras
@@ -838,7 +838,7 @@ mod portoes {
         assert!(f.is_empty(), "{f:?}");
     }
 
-    /// ⭐ **O PÓ SOLTO** do recto de 200 px (cena `tamanhos`, y 290..640, x 150..850 — `po2.py` da família, o método da
+    /// ⭐ **O PÓ SOLTO** do recto de 200 px (cena `tamanhos`, y 290..640, x 150..850 — a régua do pó da família, o método da
     /// medição do Rebelle em `exames/texturas.md` «Motor J4»): o miolo = as linhas cuja cobertura média passa ¼ do pico;
     /// fora dele (3 px de folga) as manchas 4-ligadas de cobertura ≥ 0,12 a ≥ 0,2 da meia-largura da borda (as de mais
     /// perto são a orla granulosa do próprio traço) — a largura do miolo, quantas por 100 px, a distância mediana em
@@ -994,7 +994,7 @@ mod portoes {
     }
 
     /// As falhas da identidade do Pastel Side contra o Rebelle `Flat Soft`: a lâmina 1,89 (de pé 36 ÷ deitado 19 px a
-    /// 40) e o pó solto 60 grãos/100 px longe da borda do recto de 200 (`po2.py`).
+    /// 40) e o pó solto 60 grãos/100 px longe da borda do recto de 200 (a régua do pó).
     fn falhas_do_lado(n: &str, (lamina, po): (f64, f64)) -> Vec<String> {
         let mut f = Vec::new();
         if !(1.6..=2.3).contains(&lamina) {

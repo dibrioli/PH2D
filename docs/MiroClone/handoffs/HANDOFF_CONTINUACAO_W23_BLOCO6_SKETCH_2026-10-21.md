@@ -109,6 +109,10 @@ Nenhum tinha teste com forma da caneta — agora a tinta limpa e as formas têm.
 
 ## 4. ABERTO (nesta ordem)
 
+> **Decisões do dono, 22/10:** (a) **SIM** — a opção Rascunho/Final também na barra da FORMA seleccionada (a
+> «Sloppiness» do Excalidraw), além da ondinha da barra da esquerda: é o PRÓXIMO item. (b) O `Ctrl+Z` com a
+> caneta pousada **fica como está** (desfaz o gesto e o passo anterior) — fechado, não mexer.
+
 1. **Smoke do dono da cena 28** (§5) — se chegar, trate-o primeiro (mecanismo, não sintoma).
 2. **R1 — perguntar ao dono** se a barra da PRÓPRIA forma deve oferecer Rascunho/Final (o Excalidraw põe aí o «Sloppiness»).
 3. **Ctrl+Z com a caneta premida** cancela o gesto E desfaz o passo anterior — regra de TODOS os gestos do quadro; decidir se

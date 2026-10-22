@@ -74,4 +74,19 @@ pub(crate) fn register_collapsible_sections(store: &mut WidgetStore) {
     ] {
         store.set_collapsed_if_unchosen(collapsed, true);
     }
+
+    // ⭐ **O ajuste fino em sub-secções RECOLHIDAS** (J5 fecho, o Rendering/Dynamics do Procreate): o Texture e o
+    //    Stroke continuam a nascer abertos (a decisão do dono), e o que é afinação vive numa dobra dentro deles.
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SECTION);
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_BRUSH_GRAIN_BEHAVIOR_SECTION);
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_BRUSH_RENDERING_SECTION);
+    store.set_collapsed_if_unchosen(ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SECTION, true);
+    store.set_collapsed_if_unchosen(
+        ph2d_tool_painter::ids::PAINTER_BRUSH_GRAIN_BEHAVIOR_SECTION,
+        true,
+    );
+    store.set_collapsed_if_unchosen(
+        ph2d_tool_painter::ids::PAINTER_BRUSH_RENDERING_SECTION,
+        true,
+    );
 }

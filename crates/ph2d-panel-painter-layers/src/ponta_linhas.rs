@@ -58,6 +58,32 @@ pub(crate) fn e_menu(i: usize) -> bool {
     !LINHAS_DA_PONTA[i].opcoes().is_empty()
 }
 
+/// **A sub-secção «Grain Behavior»** (recolhida, o nome do Procreate): as linhas da lei do grão (L9) dentro da
+/// secção Grain. Devolve o `y` seguinte.
+pub(crate) fn paint_comportamento_do_grao(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
+    let (y, fold) = crate::paint_brush_top::paint_sub_section(
+        ctx,
+        theme,
+        x,
+        w,
+        y,
+        tr("panel.painter_layers.grain.behavior"),
+        ids::PAINTER_BRUSH_GRAIN_BEHAVIOR_SECTION,
+    );
+    let Some(fold) = fold else {
+        return y;
+    };
+    let y = paint_linhas_da_ponta(ctx, theme, x, w, y, brush, CartaoDaPonta::Grao);
+    crate::paint_brush_top::end_fold(ctx, fold, y)
+}
+
 /// Pinta as linhas da ponta do cartão `c`; devolve o `y` seguinte.
 pub(crate) fn paint_linhas_da_ponta(
     ctx: &mut PaintCtx,

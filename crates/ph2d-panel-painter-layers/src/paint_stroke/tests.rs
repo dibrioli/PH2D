@@ -21,6 +21,8 @@ use ph2d_vector::VectorScene;
 /// defaults) and return every widget id that registered a hit rect this frame.
 fn painted_hit_ids(method: StrokeMethod) -> Vec<NodeId> {
     let mut host = MockPanelHost::with_panel::<crate::PainterLayersPanel>();
+    // A sub-secção «Jitter» nasce recolhida: aberta, o que decide uma linha é só o método.
+    host.open_all_sections();
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
     // Tall viewport so no row is clipped out for a reason other than the gate.
@@ -52,6 +54,7 @@ fn painted_hit_ids(method: StrokeMethod) -> Vec<NodeId> {
 /// As [`painted_hit_ids`] but keep each id's registered hit rect, for geometry assertions.
 fn painted_hit_rects(method: StrokeMethod, content_w: f32) -> Vec<(NodeId, Rect)> {
     let mut host = MockPanelHost::with_panel::<crate::PainterLayersPanel>();
+    host.open_all_sections();
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
     let viewport = Rect::new(0.0, 0.0, 360.0, 4000.0);

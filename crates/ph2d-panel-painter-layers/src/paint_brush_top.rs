@@ -168,6 +168,34 @@ pub(crate) fn paint_collapsible_section(
     (body_top, fold)
 }
 
+/// **Uma sub-secção recolhível DENTRO de outra** (o ajuste fino: Jitter, Grain Behavior, Rendering) — o mesmo
+/// cabeçalho e a mesma dobra de [`paint_collapsible_section`], sem o Reset (a secção de fora tem o dela) e sem pega
+/// (`plano_corpo::Lugar::Dentro`). Nasce recolhida pelo `populate_sections`. Devolve `(y do corpo, dobra)`.
+pub(crate) fn paint_sub_section(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    label: &str,
+    section_id: ph2d_a11y::NodeId,
+) -> (f32, Option<SectionFold>) {
+    let header_h = TypeToken::Md.px() + Spacing::Md.px();
+    let header = crate::plano_corpo::cabecalho(ctx, section_id, label);
+    let header_rect = Rect::new(x, y, content_w, header_h);
+    {
+        let scene = &mut *ctx.scene;
+        let text_system = &mut *ctx.text_system;
+        paint_section_header(&header, header_rect, scene, text_system, theme);
+    }
+    crate::plano_corpo::regista(ctx, section_id, header_rect);
+    let body_top = y + header_h + Spacing::Xs.px();
+    let scene = &mut *ctx.scene;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let fold = SectionFold::begin(store, section_id, x, content_w, body_top, scene, hit_index);
+    (body_top, fold)
+}
+
 /// Fecha a dobra aberta por [`paint_collapsible_section`] e devolve o `y` de saida.
 ///
 /// Vive aqui, ao lado de quem a abre, porque o `finish` quer `&WidgetStore`, `&mut VectorScene` e

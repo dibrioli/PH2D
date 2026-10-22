@@ -470,6 +470,15 @@ pub const PAINTER_BRUSH_STROKE_SECTION: NodeId = hash_node_id("painter_brush.str
 
 pub const PAINTER_BRUSH_TILING_SECTION: NodeId = hash_node_id("painter_brush.tiling_section");
 
+// Sub-secções RECOLHIDAS do ajuste fino (J5 fecho, o padrão Rendering/Dynamics do Procreate), dentro das secções que
+// o dono quer abertas: o Jitter no Stroke, o comportamento do grão (L9) no Texture, o Rendering (L7/L8) no Brush.
+pub const PAINTER_BRUSH_JITTER_SECTION: NodeId = hash_node_id("painter_brush.jitter_section");
+
+pub const PAINTER_BRUSH_GRAIN_BEHAVIOR_SECTION: NodeId =
+    hash_node_id("painter_brush.grain_behavior_section");
+
+pub const PAINTER_BRUSH_RENDERING_SECTION: NodeId = hash_node_id("painter_brush.rendering_section");
+
 // Per-section **reset** icon buttons (Inspector-Transform pattern: an `IconId::Reset` button in the
 // header, just left of the colour dot). Clicking restores that section's brush fields to defaults
 // (Enio 2026-06-24). Registered as Buttons in `crate::populate`; the tool resets on the forwarded Click.

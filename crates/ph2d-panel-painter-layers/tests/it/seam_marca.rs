@@ -16,24 +16,32 @@ fn viewport() -> Rect {
     Rect::new(0.0, 0.0, 1600.0, 4000.0)
 }
 
-/// O painel pintado com a secção Randomize Color ABERTA (se nasce recolhida, o clique no cabeçalho abre-a).
+/// O painel pintado com a secção Randomize Color e a sub-secção Jitter ABERTAS (nascem recolhidas: o clique no
+/// cabeçalho abre cada uma, como o artista faz).
 fn painted(tool: &PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeId, Rect)>) {
     set_current_brush(Some(tool.brush_settings()));
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
     let mut st = PainterLayersPanelState;
-    let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
-    if rect_of(&rects, ids::PAINTER_MARCA_SECONDARY).is_some() {
-        return (host, st, rects);
+    let mut rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    for (cab, dentro) in [
+        (
+            ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
+            ids::PAINTER_MARCA_SECONDARY,
+        ),
+        (ids::PAINTER_BRUSH_JITTER_SECTION, ids::PAINTER_BRUSH_JITTER),
+    ] {
+        if rect_of(&rects, dentro).is_some() {
+            continue;
+        }
+        let r = rect_of(&rects, cab).expect("o cabeçalho da secção");
+        for ev in host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+        }
+        let _ = host.drained_actions();
+        host.settle_section_folds();
+        set_current_brush(Some(tool.brush_settings()));
+        rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
     }
-    let cab =
-        rect_of(&rects, ids::PAINTER_BRUSH_RANDOMIZE_SECTION).expect("o cabeçalho Randomize Color");
-    for ev in host.click_at(cab.x + cab.w * 0.5, cab.y + cab.h * 0.5) {
-        host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
-    }
-    let _ = host.drained_actions();
-    host.settle_section_folds();
-    set_current_brush(Some(tool.brush_settings()));
-    let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
     (host, st, rects)
 }
 

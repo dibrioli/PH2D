@@ -554,8 +554,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.symmetry.custom" => "Custom",
         "panel.painter_layers.symmetry.axis" => "Axis",
         "panel.painter_layers.symmetry.segments" => "Segments",
-        // O cartão Pen (L2): a mão do pincel nos quatro meios. Nomes curtos à Krita/Procreate (Min/Max pressure,
-        // Pressure curve; «Press.»/«Pen» onde a palavra inteira não cabe na coluna do dock estreito).
+        // O cartão Pen (L2): a mão nos quatro meios; nomes curtos à Krita/Procreate (cabem no dock estreito).
         "panel.painter_layers.pen.title" => "Pen",
         "panel.painter_layers.pen.pressure_size" => "Pressure size",
         "panel.painter_layers.pen.pressure_size_curve" => "Size curve",
@@ -591,6 +590,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.taper.fall_off" => "Fall-off",
         "panel.painter_layers.taper.fall_off_start" => "Full for",
         "panel.painter_layers.grain.grain" => "Grain",
+        "panel.painter_layers.grain.behavior" => "Grain Behavior",
+        "panel.painter_layers.brush.rendering" => "Rendering",
         "panel.painter_layers.grain.mapping" => "Mapping",
         "panel.painter_layers.grain.rake" => "Rake",
         "panel.painter_layers.grain.angle" => "Angle",

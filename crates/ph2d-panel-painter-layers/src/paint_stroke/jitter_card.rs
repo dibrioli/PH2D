@@ -8,12 +8,12 @@
 use crate::paint_brush_rows::paint_dropdown_row;
 use crate::paint_brush_top::paint_slider_chip_row;
 use crate::state;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken};
 use ph2d_tool_painter::ids::painter_brush_jitter_unit_option_id;
 use ph2d_tool_painter::{
     BRUSH_JITTER_ABS_MAX_PX, BrushSettings, CartaoDaMarca, JitterUnit, SPRAY_COUNT_MAX,
@@ -34,8 +34,6 @@ pub(super) fn paint_jitter_card(
     let pad = Spacing::Sm.px();
     let xs = Spacing::Xs.px();
     let sm = Spacing::Sm.px();
-    let font = TypeToken::Sm.px();
-    let title_h = ROW_H_PX;
     let inner_w = (content_w - pad * 2.0).max(0.0);
     // Pre-compute the card height. The 4 slider rows (Position / Scale / Spacing / Rotation) use the
     // ADAPTIVE slider-with-chip, which DEMOTES the label to its own row when the card's inner width is
@@ -51,7 +49,7 @@ pub(super) fn paint_jitter_card(
     let marca_h =
         ph2d_tokens::row_pitch_px() * linhas_do_cartao(CartaoDaMarca::Jitter).count() as f32;
     let rows_h = slider_row_h * SLIDER_ROWS + (ROW_H_PX + sm) + marca_h;
-    let card_h = pad + title_h + rows_h + xs;
+    let card_h = pad + rows_h + xs;
     let card = Rect::new(x, y, content_w, card_h);
     // ⭐ Raio e moldura pela porta do TEMA: o cartão é plano num tema moderno.
     let card_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px());
@@ -74,17 +72,8 @@ pub(super) fn paint_jitter_card(
         resolve(ColorToken::Border, theme),
     );
     let inner_x = x + pad;
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        tr("panel.painter_layers.stroke.jitter.jitter"),
-        inner_x,
-        y + pad + (title_h - font) * 0.5,
-        font,
-        inner_w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let mut iy = y + pad + title_h;
+    // O título é o cabeçalho da sub-secção «Jitter» que o embrulha (`paint_stroke`): o cartão não o repete.
+    let mut iy = y + pad;
     // **Count** — o SPRAY (plano 38 W5), e ele abre o card de propósito: é o número que transforma
     // as três rows abaixo dele de *tremer* em *espalhar*. Com `1` cada ponto do caminho deixa uma
     // marca (o traço de sempre); acima disso deixa `n`, cada uma sorteando o seu próprio

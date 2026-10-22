@@ -2137,7 +2137,11 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    do Stroke (smoke do dono 13/10, *«uma opção a mais»*, commit `72a6ee6bc1`), uma caixa abaixo do
     //    Spacing: `ROW_H_PX (25)` exactos — medido pela porta deste gate no commit dela, sem o resto da
     //    linha. ⚠️ Recolher o Stroke esconderia o controlo que o dono está a smokar.
-    ("painter_layers", 1630.0),
+    // ⬇️ `1 630 → 1 554` em 2026-10-22 (Pincéis J5 fecho): a missão somou `+461` em secções abertas (o Rendering
+    //    L7/L8 `125`, a lei do grão L9 `100`, a marca L4 `200`, o cabeçalho do Pen `36`, medido por sonda), e o ajuste
+    //    fino foi para três sub-secções RECOLHIDAS dentro delas — «Rendering» (Brush), «Grain Behavior» (Grain) e
+    //    «Jitter» (Stroke, com as linhas antigas do cartão). O Texture e o Stroke continuam a nascer abertos.
+    ("painter_layers", 1554.0),
     // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):

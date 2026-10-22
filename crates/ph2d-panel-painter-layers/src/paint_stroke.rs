@@ -144,8 +144,24 @@ pub(crate) fn paint_stroke_section(
 
     // ── Jitter group — Position / Scale / Rotation scatter, inside a decorative card (all but Drag
     //    Dot/Anchored) ──
+    //    Recolhido na sub-secção «Jitter» (J5 fecho): é ajuste fino, e o Stroke nasce aberto.
     if method.allows_jitter() {
-        y = paint_jitter_card(ctx, theme, x, content_w, y, brush);
+        let (ny, jfold) = crate::paint_brush_top::paint_sub_section(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            tr("panel.painter_layers.stroke.jitter.jitter"),
+            ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SECTION,
+        );
+        y = match jfold {
+            Some(f) => {
+                let fim = paint_jitter_card(ctx, theme, x, content_w, ny, brush);
+                crate::paint_brush_top::end_fold(ctx, f, fim)
+            }
+            None => ny,
+        };
     }
 
     // ── Dash ratio + length — only the spacing-driven methods ──

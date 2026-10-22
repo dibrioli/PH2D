@@ -30,6 +30,16 @@ fn painted(tool: &PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
     let mut st = PainterLayersPanelState;
     let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    // A sub-secção «Jitter» nasce recolhida: o clique no cabeçalho abre-a, como o artista faz.
+    let cab = rect_of(&rects, ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SECTION)
+        .expect("o cabeçalho Jitter");
+    for ev in host.click_at(cab.x + cab.w * 0.5, cab.y + cab.h * 0.5) {
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+    }
+    let _ = host.drained_actions();
+    host.settle_section_folds();
+    set_current_brush(Some(tool.brush_settings()));
+    let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
     (host, st, rects)
 }
 

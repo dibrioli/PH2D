@@ -58,6 +58,11 @@ fn aberto(t: &mut PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(
             ids::PAINTER_BRUSH_TEXTURE_SECTION,
             ids::PAINTER_BRUSH_TEXTURE_KIND,
         ),
+        // A lei do grão (L9) vive na sub-secção «Grain Behavior», que nasce recolhida dentro do Grain.
+        (
+            ids::PAINTER_BRUSH_GRAIN_BEHAVIOR_SECTION,
+            ids::PAINTER_PONTA_FIELDS[1],
+        ),
     ] {
         if rect_of(&rects, dentro).is_none()
             && let Some(r) = rect_of(&rects, cab)

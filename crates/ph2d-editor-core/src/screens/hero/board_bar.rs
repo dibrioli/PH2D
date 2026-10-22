@@ -542,7 +542,7 @@ pub fn paint(
             .or_else(|| fac_now.is_on(it))
             .or_else(|| org.is_on(it, style.fill))
             .or_else(|| notes::is_current(it, Some(&style), &now))
-            .or_else(|| pen::is_current(it, ed, Some(style.stroke_width), theme))
+            .or_else(|| pen::is_current(it, ed, Some(style.chosen_width()), theme))
             .unwrap_or_else(|| is_current(it, &style, arrow.as_ref(), theme));
         paint_item(
             scene,
@@ -575,6 +575,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let Some(it) = item_of(id) else {
         return false;
     };
+    super::board_view::sync_mode(hero);
     let theme = hero.theme;
     let reshaping = shapes::toggle(&mut hero.documents.live, it);
     heads::toggle(&mut hero.documents.live, it);

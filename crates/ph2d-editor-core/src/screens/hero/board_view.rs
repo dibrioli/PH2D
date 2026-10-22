@@ -101,6 +101,16 @@ pub fn select(hero: &mut HeroScreen, ids: impl IntoIterator<Item = ph2d_board_mo
     }
 }
 
+/// O que nasce num quadro em rascunho nasce à mão (W4): o estilo do editor activo toma o MODO do
+/// quadro — em cada entrada que pode fazer nascer (rato, barra, teclado), porque o modo também muda por
+/// fora delas (um colega ao vivo, o Ctrl+Z do aviso; auditoria do fecho, 22/10).
+pub(crate) fn sync_mode(hero: &mut HeroScreen) {
+    let theme = hero.theme;
+    if let Some((board, live)) = hero.documents.active_parts() {
+        editor(&mut live.editor, theme).style.sketch = board.sketch;
+    }
+}
+
 /// As formas e notas `ids` do quadro activo ajustam a altura ao texto no próximo desenho (uma cena
 /// de smoke montada por código não tem o moldador).
 pub fn fit_later(

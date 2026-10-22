@@ -612,3 +612,64 @@ fn the_shapes_bar_never_covers_the_toolbar_nor_leaves_the_board() {
         }
     }
 }
+
+/// O modo do quadro mudado por FORA do rato (um colega ao vivo, o Ctrl+Z do aviso): o que nasce a
+/// seguir por um clique na BARRA (um modelo) nasce no modo de agora — o estilo do editor só se
+/// renovava no `pointer_down` do quadro (auditoria do fecho, 22/10).
+#[test]
+fn what_the_bar_births_follows_a_board_mode_changed_elsewhere() {
+    use crate::screens::hero::board_bar::mind::{MindItem, TEMPLATES};
+    let mut t = T::new();
+    t.board_sketch(true);
+    t.click_bar(TEMPLATES);
+    let k = ph2d_board_edit::Template::ALL
+        .iter()
+        .position(|x| *x == ph2d_board_edit::Template::Flowchart)
+        .expect("o fluxograma");
+    t.click_bar(Item::Mind(MindItem::Template(k)));
+    let born: Vec<bool> = t
+        .elements()
+        .iter()
+        .filter(|e| e.shape().is_some_and(|s| !s.kind.is_note()) || e.connector().is_some())
+        .map(|e| e.style().sketch)
+        .collect();
+    assert!(!born.is_empty(), "o modelo pôs formas");
+    assert!(
+        born.iter().all(|s| *s),
+        "nasceram finais num quadro em rascunho: {born:?}"
+    );
+}
+
+/// A forma da CANETA desenhada de longe (nascida a outra escala): escolher a espessura na barra dela
+/// grava a espessura ESCOLHIDA à escala de nascença, e a luz acende nessa (auditoria do fecho, 22/10:
+/// gravava-se crua e a luz lia a crua — nenhuma acendia).
+#[test]
+fn a_far_pen_shapes_width_is_chosen_at_its_birth_scale_and_lit() {
+    use crate::screens::hero::board_bar::pen::PenItem;
+    let mut t = T::new();
+    t.set_zoom(FAR);
+    let end = t.pen_hold(&hand::hand_triangle(), false);
+    t.release(end, false);
+    t.board_editor().tool = ph2d_board_edit::Tool::Select;
+    t.key(board_keys::BoardKey::Escape, NO_MODS, None);
+    let el = t.only();
+    assert!(el.ink().is_some_and(|i| i.clean) && el.style().birth.0 != 0);
+    let ctrl = Modifiers {
+        ctrl: true,
+        ..NO_MODS
+    };
+    t.key(board_keys::BoardKey::Char('a'), ctrl, None);
+    t.paint();
+    let i = ph2d_board_edit::PEN_WIDTHS.len() - 1;
+    t.click_bar(Item::Pen(PenItem::InkWidth(i)));
+    let w = t.only().style().chosen_width();
+    assert!(
+        (w - ph2d_board_edit::PEN_WIDTHS[i]).abs() < 1e-9,
+        "escolhida {w}, pedida {}",
+        ph2d_board_edit::PEN_WIDTHS[i]
+    );
+    assert!(
+        painted_on(&mut t, Item::Pen(PenItem::InkWidth(i))),
+        "a luz da espessura"
+    );
+}

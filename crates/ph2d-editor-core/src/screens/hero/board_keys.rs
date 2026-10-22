@@ -69,6 +69,7 @@ pub fn key(
     if hero.documents.active().is_none() {
         return KeyOutcome::default();
     }
+    super::board_view::sync_mode(hero);
     // Com um menu aberto sobre o quadro, `Esc` só o fecha (a selecção fica) — pedido do dono, 19/10.
     if pressed && k == BoardKey::Escape && hero.store.context_menu().is_some() {
         hero.store.close_context_menu();

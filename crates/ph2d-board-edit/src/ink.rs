@@ -542,7 +542,7 @@ impl Editor {
             .filter(|el| el.ink().is_some())
             .map(|el| {
                 let mut el = el.clone();
-                el.style_mut().stroke_width = width;
+                el.style_mut().choose_width(width);
                 BoardOp::Put(el)
             })
             .collect();

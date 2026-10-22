@@ -1621,3 +1621,9 @@ cantos (+0,01…+0,25 ms, cresce com os cantos à vista). Em absoluto: +0,05…+
    régua de registos do §20.1) — e os zera/limpa por carimbo (§29.5, ~0,008 ms) não chegam para ela.
 2. A vista nos níveis de cima: +3,62 ms de borda em n = 11–12 a 2160p Alta (§54.1).
 3. A anomalia da r5b (§12). 4. A família (b) (37–38).
+
+**Suíte do fecho da onda** (`nextest-impacted`, base = merge-base, `target/bug6/suite_52.log`): 17 799 / 17 801 verdes. As 2
+vermelhas são razões de relógio do `ph2d-tool-painter` (que esta linha não toca), com `load` 108–215:
+`the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas` (verde ao repetir) e
+`a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs` (vermelha 1 de 3 repetições, verde 2) — candidatas
+à família dos flakes de carga (`docs/DevOps/FLAKES_DE_CARGA.md`), por confirmar com a máquina calma pela linha do Painter.

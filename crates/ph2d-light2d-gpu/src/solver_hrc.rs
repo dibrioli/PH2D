@@ -19,7 +19,7 @@ mod niveis;
 use niveis::Nivel;
 #[path = "solver_hrc_ligar.rs"]
 mod ligar;
-use ligar::{armazenado, berco, buf, dobrar, grupos_1d, vista};
+use ligar::{armazenado, berco, buf, constantes, dobrar, grupos_1d, vista};
 
 /// O espelho de `Hrc` do `c2_hrc.wgsl`.
 #[repr(C)]
@@ -227,29 +227,7 @@ impl Holografica {
         let pares = if em_3d { e.cfg.hrc_pares_na_subida } else { 0 };
         // A decisão por grade vai no UNIFORME, não nas constantes: redimensionar não recompila a luz.
         let por_fio = em_3d && u64::from(g.largura) * u64::from(g.altura) >= hrc::POR_FIO_DESDE;
-        let constantes = [
-            ("PASSO_HRC", f64::from(e.escolhas.passo)),
-            ("BORRAO_HRC", f64::from(u8::from(e.escolhas.borrao))),
-            ("MAIS_UM_HRC", f64::from(u8::from(e.escolhas.mais_um))),
-            (
-                "MASCARA_C0",
-                f64::from(u8::from(e.cfg.preenchimento.is_some())),
-            ),
-            ("COLUNAS_HRC", f64::from(u8::from(e.cfg.hrc_por_colunas))),
-            (
-                "ARCOS_TABELA",
-                f64::from(u8::from(e.cfg.hrc_arcos_em_tabela)),
-            ),
-            (
-                "SALTA_O_VAZIO_HRC",
-                f64::from(u8::from(e.cfg.hrc_salta_o_vazio)),
-            ),
-            ("SONDA_HRC", f64::from(u8::from(e.cfg.hrc_fio_por_sonda))),
-            ("GRADE3D_HRC", f64::from(u8::from(e.cfg.hrc_grade_3d))),
-            ("CONES_HRC", f64::from(cones)),
-            ("PARES_SOBE_HRC", f64::from(pares)),
-            ("JUNTOS_HRC", f64::from(u8::from(e.cfg.hrc_juntos()))),
-        ];
+        let constantes = constantes(&e, cones, pares);
         let pipelines = ENTRADAS
             .iter()
             .map(|entrada| {
@@ -316,7 +294,10 @@ impl Holografica {
         let mut uniformes = Vec::new();
         let mut passos = Vec::new();
         // Um passe com o uniforme de cada quadrante dele (⭐ §44: quatro no despacho junto, um nos outros).
-        let mut passo = |etapa: Etapa, us: &[UniformeHrc], ligados: [&Nivel; 5], grupos: [u32; 3]| {
+        let mut passo = |etapa: Etapa,
+                         us: &[UniformeHrc],
+                         ligados: [&Nivel; 5],
+                         grupos: [u32; 3]| {
             let k = uniformes.len() as u64;
             uniformes.extend_from_slice(us);
             let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -390,7 +371,8 @@ impl Holografica {
         let soma = 2 * n_max + 1;
         for &arquivando in rodadas {
             // As etapas de cada quadrante: `(chave na rodada, etapa, uniforme, ligados, grupos)`.
-            let mut etapas: [Vec<(u32, Etapa, UniformeHrc, [&Nivel; 5], [u32; 3])>; 4] = Default::default();
+            let mut etapas: [Vec<(u32, Etapa, UniformeHrc, [&Nivel; 5], [u32; 3])>; 4] =
+                Default::default();
             for q in 0..4 {
                 let faixa = |bases: [u32; 4]| if juntos.is_some() { bases } else { [0; 4] };
                 let ft = juntos.map_or([0; hrc::NIVEIS_MAX], |f| f.t[q as usize]);
@@ -443,7 +425,11 @@ impl Holografica {
                     let (etapa, ler, bases) = if n <= 2 {
                         (Etapa::Traca, &vazio_l, [0, 0, 0, ft[n as usize]])
                     } else {
-                        (Etapa::Sobe, &t[(n - 1) as usize], [ft[(n - 1) as usize], 0, 0, ft[n as usize]])
+                        (
+                            Etapa::Sobe,
+                            &t[(n - 1) as usize],
+                            [ft[(n - 1) as usize], 0, 0, ft[n as usize]],
+                        )
                     };
                     let u = UniformeHrc {
                         bases: faixa(bases),
@@ -568,7 +554,9 @@ impl Holografica {
                     });
                     passo(etapa, &us, ligados, dobrar(u64::from(primeiro)));
                 }
-                for (_, etapa, u, ligados, grupos) in etapas.iter().flatten().filter(|x| x.0 == soma) {
+                for (_, etapa, u, ligados, grupos) in
+                    etapas.iter().flatten().filter(|x| x.0 == soma)
+                {
                     passo(*etapa, &[*u], *ligados, *grupos);
                 }
             }

@@ -115,6 +115,8 @@ override CONES_HRC: u32 = 4u;
 override PARES_SOBE_HRC: u32 = 4u;
 // ⭐ §44 (handoff W6g) — os 4 quadrantes de cada etapa num só despacho (`Config::hrc_juntos`).
 override JUNTOS_HRC: bool = false;
+// ⭐ §52 (handoff W6g) — `Config::hrc_salta_o_t_nulo` ([`r_de_cima_se`]).
+override T_NULO_HRC: bool = true;
 const LADO_DO_VAZIO: u32 = 8u;
 
 struct Par {
@@ -709,6 +711,17 @@ fn metade_da_descida(xi: u32, v: u32, aresta: u32, j: u32, tr: Par) -> vec3<f32>
     let n = hrcs[iq()].nivel;
     let lado = i32(1u << n);
     let a = arco(n + 1u, j);
+    if T_NULO_HRC {
+        // Um só termo de longe: com xi ímpar, (xi + 1)/2 = xi/2 + 1 — só o q muda.
+        let par = xi % 2u == 0u;
+        let q = select(i32(v) + 2 * i32(aresta) - lado, i32(v) + 2 * i32(2u * aresta) - 2 * lado, par);
+        let f1 = a * tr.r + tr.t * r_de_cima_se(tr.t, xi / 2u + 1u, q, j);
+        if !par {
+            return f1;
+        }
+        let f0 = r_de_cima(xi / 2u, i32(v), j);
+        return 0.5 * (f0 + f1);
+    }
     if xi % 2u == 1u {
         let q = i32(v) + 2 * i32(aresta) - lado;
         return a * tr.r + tr.t * r_de_cima((xi + 1u) / 2u, q, j);
@@ -717,6 +730,16 @@ fn metade_da_descida(xi: u32, v: u32, aresta: u32, j: u32, tr: Par) -> vec3<f32>
     let q = i32(v) + 2 * i32(2u * aresta) - 2 * lado;
     let f1 = a * tr.r + tr.t * r_de_cima(xi / 2u + 1u, q, j);
     return 0.5 * (f0 + f1);
+}
+
+// ⭐ §52 — o R de cima que T multiplica, ou 0 se T = 0 (sem o ler). Só a FONTE muda: a conta `a·T.r + T.t·R`
+// fica a mesma — devolver 0 no lugar do produto desfazia a FMA do driver (1 ULP em 2 de 18 vistas, handoff §53).
+fn r_de_cima_se(t: f32, xi: u32, v: i32, j: u32) -> vec3<f32> {
+    var r = vec3<f32>(0.0);
+    if t != 0.0 {
+        r = r_de_cima(xi, v, j);
+    }
+    return r;
 }
 
 // ⭐ W5u — os cones `m0..m0 + CONES_HRC` da sonda `(xi, v)` de R_n: o T da aresta m + 1 passa ao cone m + 1.

@@ -556,3 +556,87 @@ fn o_nivel_0_por_um_cone_nao_muda_um_bit() {
         }
     }
 }
+
+/// ⭐ §52 (handoff W6g) — a descida que não lê o R de cima onde T = 0 (`Config::hrc_salta_o_t_nulo`) NÃO muda um
+/// bit: o produto × a descida que lê sempre, a vista com o entorno, a cena 5. As vistas são as que apanharam as
+/// formas erradas da mesma cura (1440p Média e 2160p Baixa: o termo de longe a 0 desfazia a FMA; 1080p Alta: o
+/// termo unificado sem o salto).
+#[test]
+fn a_descida_sem_o_t_nulo_nao_muda_um_bit() {
+    use ph2d_app_light2d::qualidade::degrau_do;
+    use ph2d_app_light2d::teto::{Tetos, fina_que_cabe};
+    use ph2d_editor_core::luz_edits::NivelDaLuz;
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — saltado");
+        return;
+    };
+    let mut w = World::new();
+    assert!(smoke::encenar(&mut w, 5));
+    let cena = cena_de_luz(&w);
+    let casos = [
+        (NivelDaLuz::Baixa, [-4.2, -1.8], FHD),
+        (NivelDaLuz::Alta, [-4.2, -1.8], FHD),
+        (NivelDaLuz::Media, [-3.2, -1.8], (2560, 1440)),
+        (NivelDaLuz::Baixa, [-3.2, -1.8], (3840, 2160)),
+    ];
+    for (nivel, centro, alvo) in casos {
+        let a = Camera2d::new(centro, 3.8).world_to_screen_affine(WindowSize::new(alvo.0, alvo.1));
+        let k = fina_que_cabe(
+            a,
+            alvo,
+            degrau_do(nivel),
+            Tetos {
+                lado: 8192,
+                recusou: None,
+            },
+        )
+        .expect("cabe");
+        let d = degrau_do(nivel).com_fina_engrossada(k);
+        let g = grade_do_quadro(a, alvo, d).expect("grade");
+        let luz = |salta: bool| {
+            let mut cv = config_da_vista(&gpu.device, g, a, d);
+            let mut ce = config_do_entorno(&gpu.device, a, alvo, d).expect("o entorno");
+            assert!(
+                cv.hrc_salta_o_t_nulo && ce.hrc_salta_o_t_nulo,
+                "o produto salta o T nulo"
+            );
+            cv.hrc_salta_o_t_nulo = salta;
+            ce.hrc_salta_o_t_nulo = salta;
+            let mut s = Solver::novo(&gpu, cv).expect("vista");
+            let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, alvo);
+            s.regiao_fina(i, f);
+            let mut e = Solver::novo(&gpu, ce).expect("entorno");
+            e.regiao_fina([0; 2], [0; 2]);
+            assert!(e.mascarar_miolo(
+                &gpu,
+                Some([
+                    g.origem_m[0],
+                    g.origem_m[1],
+                    g.origem_m[0] + f64::from(g.largura) * g.texel_m,
+                    g.origem_m[1] + f64::from(g.altura) * g.texel_m,
+                ])
+            ));
+            for _ in 0..30 {
+                e.quadro(&gpu, &cena);
+                assert!(s.somar_entorno(&gpu, Some(&e)));
+                s.quadro(&gpu, &cena);
+            }
+            fluencia_lida(&gpu, &s).v
+        };
+        let (com, sem) = (luz(true), luz(false));
+        let acesos = com.iter().filter(|v| v.iter().any(|c| *c > 0.0)).count();
+        assert!(
+            acesos > 0,
+            "{nivel:?} {centro:?} {alvo:?}: a vista às escuras não prova nada"
+        );
+        let diferentes = com.iter().zip(&sem).filter(|(x, y)| x != y).count();
+        eprintln!(
+            "{nivel:?} {centro:?} {alvo:?}: {diferentes} de {} texels diferentes ({acesos} acesos)",
+            com.len()
+        );
+        assert!(
+            com.len() == sem.len() && diferentes == 0,
+            "{nivel:?} {centro:?} {alvo:?}: saltar o T nulo mudou {diferentes} texels"
+        );
+    }
+}

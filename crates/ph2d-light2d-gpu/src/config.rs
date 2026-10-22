@@ -228,6 +228,9 @@ pub struct Config {
     /// ⭐ §40.2 (handoff W6g) — a descida da 2.ª passagem do entorno só onde o arquivo depende (as colunas da
     /// janela em diante, as linhas dela ± o alcance); `false` = a passagem inteira (o mesmo bit, mais lenta).
     pub hrc_recorta_o_arquivo: bool,
+    /// ⭐ §52 (handoff W6g) — na descida, T = 0 não lê o R de cima (a conta é a mesma, só a fonte do R muda);
+    /// `false` = lê sempre (o mesmo bit, mais lento nos níveis de cima).
+    pub hrc_salta_o_t_nulo: bool,
     /// ⭐ W5c — a CASCATA HOLOGRÁFICA (HRC, a do produto em todo nível) no lugar das cascatas de Sannikov: a mesma
     /// c0, outra conta (`c2_hrc.wgsl`). `None` = as cascatas.
     pub holografica: Option<Holografica>,
@@ -412,6 +415,7 @@ impl Config {
             so_a_c0: false,
             arquivo_da_borda: None,
             hrc_recorta_o_arquivo: true,
+            hrc_salta_o_t_nulo: true,
             holografica: None,
             modulo_rc: None,
             hrc_nasce_duas_vezes: true,

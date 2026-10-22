@@ -174,6 +174,8 @@ pub fn config_do_entorno(
         arquivo_da_borda: if borda_ligada() { janela() } else { None },
         // ⭐ §40.2: `PH2D_LIGHT2D_RECORTE=0` = a 2.ª passagem inteira (o mesmo bit, comparar).
         hrc_recorta_o_arquivo: ligado("PH2D_LIGHT2D_RECORTE"),
+        // ⭐ §52: `PH2D_LIGHT2D_T_NULO=0` = a descida lê o R de cima também com T = 0 (o mesmo bit, comparar).
+        hrc_salta_o_t_nulo: ligado("PH2D_LIGHT2D_T_NULO"),
         hrc_quadrantes_juntos: quadrantes_juntos(dg),
         hrc_nasce_duas_vezes: hrc_duas_vezes(),
         hrc_berco: hrc_berco(),

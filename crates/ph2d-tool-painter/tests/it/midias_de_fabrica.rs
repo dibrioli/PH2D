@@ -25,8 +25,6 @@ pub(crate) enum Metrica {
     Orla,
     /// A largura do traço DE PÉ (D4–D6) sobre a do DEITADO (A2–F2): o pincel chato (prompt 23).
     Chato,
-    /// A tinta mediana no miolo do A2–F2 (0 = papel): a claridade do Express Oil (prompt 23).
-    Tinta,
     /// O CRUZAMENTO vermelho × azul (18 §2): a identidade da tinta e do marcador (prompt 42).
     Cruzamento,
     /// A uniformidade ao longo do traço (`uniformidade_cv`): o pó do aerógrafo (prompt 43).
@@ -53,7 +51,6 @@ impl Metrica {
             Metrica::Borda => m.borda,
             Metrica::Orla => m.orla,
             Metrica::Chato => c.de_pe / c.deitado,
-            Metrica::Tinta => c.tinta,
             Metrica::Cruzamento => c.cruz,
             Metrica::Cv => m.cv,
             Metrica::Ponta => c.ponta,
@@ -72,7 +69,6 @@ impl Metrica {
             // Uma foto só tem um traço de pé: o ruído é o de 1 px de largura nos dois (≈ 0,03) e a tinta é
             // lida como a cobertura.
             Metrica::Chato => 0.05,
-            Metrica::Tinta => 0.012,
             // O controlo da sessão de 16/10: o Dip Pen de 11/10 refeito deu 0,283 contra 0,223.
             Metrica::Cruzamento => 0.06,
             Metrica::Cv => 0.012,
@@ -96,7 +92,6 @@ impl Metrica {
 pub(super) struct FamiliaC {
     de_pe: f64,
     deitado: f64,
-    tinta: f64,
     cruz: f64,
     ponta: f64,
     /// A rampa da pressão: a largura e a cobertura (`regua_midia::rampa`).
@@ -150,20 +145,10 @@ impl FamiliaC {
             })
             .sum::<f64>()
             / 2.0;
-        let mut o = deitado.clone();
-        o.sort_by(f64::total_cmp);
-        let pico = o[((o.len() - 1) as f64 * 0.95).round() as usize];
-        let mut miolo: Vec<f64> = deitado
-            .iter()
-            .copied()
-            .filter(|&v| v > 0.15 * pico)
-            .collect();
-        miolo.sort_by(f64::total_cmp);
         let (rampa, rampa_cob) = super::regua_midia::rampa(px, w as u32, (px.len() / 4 / w) as u32);
         Self {
             de_pe,
             deitado: acima(&deitado),
-            tinta: miolo[miolo.len() / 2],
             cruz: super::a_lei_da_tinta::cruzamento(px, w as u32),
             ponta: super::regua_midia::ponta(px, w as u32),
             rampa,
@@ -188,7 +173,7 @@ pub(crate) struct Midia {
     pub metricas: &'static [(Metrica, f64)],
 }
 
-use Metrica::{Cruzamento, Largura, Pontas, Tinta};
+use Metrica::{Cruzamento, Largura, Pontas};
 
 /// ⭐ As mídias de TODAS as famílias (`familias/<família>.rs::MIDIAS`, J3): cada família põe a foto dos seus pincéis no
 /// próprio ficheiro. ⛔ As PONTAS da rampa do Rebelle saíram dos pincéis da tinta, do óleo, dos lápis e dos pastéis por
@@ -360,12 +345,9 @@ fn cada_preset_parece_a_sua_midia() {
         );
         for &(met, r) in m.metricas {
             let (nv, cv) = (met.de(n), met.de(c));
-            // A Tinta é uma FAIXA dos dois lados do Rebelle: o controlo (o Round, aquarela: 0,18) fica do lado
-            // CLARO e o defeito medido do Express Oil era o opaco (0,91) — o vale aprovava-o (prompt 23).
-            // O Cruzamento também: o vale (meio caminho do controlo, 0,96) aprovaria 0,49 para um marcador de
+            // O Cruzamento é uma FAIXA dos dois lados do Rebelle: o vale (meio caminho do controlo, 0,96) aprovaria 0,49 para um marcador de
             // 0,016 — a faixa de 3× o ruído do Rebelle é o que o distingue da tinta.
             let dentro = match met {
-                Tinta => (nv - r).abs() < 4.0 * met.ruido(),
                 Cruzamento => (nv - r).abs() < 3.0 * met.ruido(),
                 Largura => (nv - r).abs() <= 2.0 * met.ruido(),
                 // A barra da W6: o Rebelle a ≥ 60 % ⇒ nós também.
@@ -526,7 +508,6 @@ fn sonda_as_metricas_das_variantes() {
                     .map(|&(met, r)| {
                         let (nv, cv) = (met.de(&n), met.de(&c));
                         let ok = match met {
-                            Tinta => (nv - r).abs() < 4.0 * met.ruido(),
                             Cruzamento => (nv - r).abs() < 3.0 * met.ruido(),
                             _ => no_vale(nv, r, cv),
                         };

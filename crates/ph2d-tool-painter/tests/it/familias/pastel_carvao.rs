@@ -428,7 +428,9 @@ mod portoes {
 
     /// A cobertura (0..1) de cada píxel da tela 1000 × 640 sobre o papel branco (`ferramentas/leis_escala.py`).
     fn cobertura(px: &[u8]) -> Vec<f64> {
-        px.chunks_exact(4)
+        px.as_chunks::<4>()
+            .0
+            .iter()
             .map(|c| (0..3).map(|k| 255.0 - f64::from(c[k])).fold(0.0, f64::max) / 255.0)
             .collect()
     }
@@ -1099,10 +1101,9 @@ mod portoes {
                     .file_name()
                     .and_then(|n| n.to_str())
                     .and_then(|n| n.strip_suffix(".ph2d-brush.png"))
+                    && super::EM_ESTUDO.iter().any(|r| r.nome == n)
                 {
-                    if super::EM_ESTUDO.iter().any(|r| r.nome == n) {
-                        achados.push(p.display().to_string());
-                    }
+                    achados.push(p.display().to_string());
                 }
             }
         }

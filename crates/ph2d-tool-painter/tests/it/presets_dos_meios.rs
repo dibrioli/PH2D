@@ -351,8 +351,7 @@ fn caminho_do_exemplo(i: usize) -> PathBuf {
 /// fábrica: uma mudança de lei nos meios antigos acusa aqui.
 #[test]
 fn os_exemplos_sao_os_que_o_motor_grava() {
-    for i in 0..EXEMPLOS.len() {
-        let (r, grupo, nome) = &EXEMPLOS[i];
+    for (i, (r, grupo, nome)) in EXEMPLOS.iter().enumerate() {
         let f = caminho_do_exemplo(i);
         let guardado = std::fs::read(&f).unwrap_or_else(|e| panic!("{f:?}: {e}"));
         assert!(guardado == grava(r, grupo, nome), "{f:?} mudou — regenere");
@@ -362,8 +361,7 @@ fn os_exemplos_sao_os_que_o_motor_grava() {
 #[test]
 #[ignore = "gerador: escreve os três presets de exemplo em docs/Painter/Pinceis/fixtures/presets_exemplo"]
 fn gera_os_presets_de_exemplo() {
-    for i in 0..EXEMPLOS.len() {
-        let (r, grupo, nome) = &EXEMPLOS[i];
+    for (i, (r, grupo, nome)) in EXEMPLOS.iter().enumerate() {
         let f = caminho_do_exemplo(i);
         std::fs::create_dir_all(f.parent().unwrap()).unwrap();
         std::fs::write(&f, grava(r, grupo, nome)).unwrap();

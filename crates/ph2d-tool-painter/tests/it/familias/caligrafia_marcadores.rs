@@ -267,8 +267,7 @@ fn largura_na_normal(
     px: &[u8],
     w: usize,
     hh: usize,
-    x: f64,
-    y: f64,
+    (x, y): (f64, f64),
     n: (f64, f64),
     h: f64,
     lim: f64,
@@ -423,7 +422,7 @@ fn mede_letra(nome: &str) -> Letra {
         if !(25.0..=65.0).contains(&ang) {
             continue;
         }
-        let larg = largura_na_normal(&g, w, hh, pts[k].0, pts[k].1, (-dy / l, dx / l), 45.0, lim);
+        let larg = largura_na_normal(&g, w, hh, pts[k], (-dy / l, dx / l), 45.0, lim);
         if dy < 0.0 {
             sobe.push(larg)
         } else {

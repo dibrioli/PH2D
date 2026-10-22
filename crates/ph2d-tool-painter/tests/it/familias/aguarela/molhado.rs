@@ -55,7 +55,8 @@ fn sonda_o_molhado() {
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(0);
-    let tarefas: Vec<(usize, &str, usize, Vec<(String, f64)>)> = nomes
+    type Tarefa<'a> = (usize, &'a str, usize, Vec<(String, f64)>);
+    let tarefas: Vec<Tarefa> = nomes
         .split('|')
         .enumerate()
         .flat_map(|(i, n)| {

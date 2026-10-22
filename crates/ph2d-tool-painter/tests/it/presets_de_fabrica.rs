@@ -431,8 +431,10 @@ fn largura_da_ferramenta(p: &Preset, modo: &str, raio: f32, crua: bool) -> f32 {
     };
     let (com, sem) = (pinta(true), pinta(false));
     let diferenca: Vec<u8> = com
-        .chunks_exact(4)
-        .zip(sem.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(sem.as_chunks::<4>().0)
         .flat_map(|(a, b)| {
             let d = (0..3).map(|k| a[k].abs_diff(b[k])).max().unwrap_or(0);
             [255 - d, 255 - d, 255 - d, 255]
@@ -1277,7 +1279,7 @@ fn wet_com_copias(count: u32, simetria: bool, pts: &[[f32; 2]]) -> Copias {
     }
     let (px, pw, _) = t.run_full();
     let mut tinta = [0.0; 2];
-    for (i, c) in px.chunks_exact(4).enumerate() {
+    for (i, c) in px.as_chunks::<4>().0.iter().enumerate() {
         tinta[usize::from(i as u32 % pw >= pw / 2)] += f64::from(255 - c[0]);
     }
     Copias {

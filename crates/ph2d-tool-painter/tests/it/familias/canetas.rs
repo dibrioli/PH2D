@@ -281,7 +281,7 @@ const FOTOS: [(&str, &str, Identidade); 5] = [
     ("G-pen", "krita d) Ink-3 Gpen", Identidade { borda: 1.0, opacidade: 1.0, rampa_fio: 0.1, rampa_meio: 0.567, rampa_baixa: 0.217, rampa_alta: 0.9, rugosidade: 0.0, leve: 0.99, aspereza_leve: 0.009, espalha_leve: 0.099, borrao: 0.003 }),
     ("Fineliner", "krita d) Ink-2 Fineliner", Identidade { borda: 1.0, opacidade: 1.0, rampa_fio: 0.789, rampa_meio: 0.895, rampa_baixa: 0.842, rampa_alta: 0.947, rugosidade: 0.0, leve: 1.0, aspereza_leve: 0.002, espalha_leve: 0.801, borrao: 0.0 }),
     ("Ballpoint", "mypaint deevad/ballpen", Identidade { borda: 13.0, opacidade: 0.687, rampa_fio: 0.807, rampa_meio: 0.833, rampa_baixa: 0.772, rampa_alta: 0.921, rugosidade: 0.0, leve: 0.125, aspereza_leve: 0.04, espalha_leve: 0.918, borrao: 0.28 }),
-    ("Pen Rough", "krita d) Ink-4 Pen Rough", Identidade { borda: 0.833, opacidade: 1.0, rampa_fio: 0.145, rampa_meio: 0.5, rampa_baixa: 0.318, rampa_alta: 0.755, rugosidade: 0.145, leve: 0.99, aspereza_leve: 0.084, espalha_leve: 0.141, borrao: 0.018 }),
+    ("Pen Rough", "krita d) Ink-4 Pen Rough", Identidade { borda: 0.833, opacidade: 1.0, rampa_fio: 0.145, rampa_meio: 0.5, rampa_baixa: 318.0 / 1000.0, rampa_alta: 0.755, rugosidade: 0.145, leve: 0.99, aspereza_leve: 0.084, espalha_leve: 0.141, borrao: 0.018 }),
 ];
 
 /// As canetas de fábrica da família: o nome, a escala do exame e o que faz a identidade.

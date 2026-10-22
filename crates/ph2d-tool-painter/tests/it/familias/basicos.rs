@@ -193,9 +193,7 @@ impl Identidade {
         let lar = |vs: &[Vec<f64>]| media(&vs.iter().map(|v| largura(v)).collect::<Vec<_>>());
         let pic = |vs: &[Vec<f64>]| media(&vs.iter().map(|v| pico(v)).collect::<Vec<_>>());
         let ver = media(
-            &[500, 525, 550]
-                .map(|y| largura(&(640..761).map(|x| c(x, y)).collect::<Vec<_>>()))
-                .to_vec(),
+            &[500, 525, 550].map(|y| largura(&(640..761).map(|x| c(x, y)).collect::<Vec<_>>())),
         );
         let hor = media(&rec.iter().map(|v| largura(v)).collect::<Vec<_>>());
         let espiral = (170..374)

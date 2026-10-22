@@ -180,7 +180,9 @@ mod portoes {
 
     /// A cobertura (0..1) de cada píxel da tela 1000 × 640 sobre o papel branco (`leis_escala.py`).
     fn cobertura(px: &[u8]) -> Vec<f64> {
-        px.chunks_exact(4)
+        px.as_chunks::<4>()
+            .0
+            .iter()
             .map(|c| (0..3).map(|k| 255.0 - f64::from(c[k])).fold(0.0, f64::max) / 255.0)
             .collect()
     }
@@ -317,12 +319,12 @@ mod portoes {
             if *o < ONDA_MIN || *lag < 4 {
                 falhas.push(format!("{n}: a borda não ondula ({o:.3}, {lag} px)"));
             }
-            if let Some(&(_, rc, ra)) = FINO_DO_REBELLE.iter().find(|f| f.0 == *n) {
-                if *cv5 > 1.6 * rc || *ac5 > ra + AC5_FOLGA {
-                    falhas.push(format!(
-                        "{n}: o grão a 5 px não é o fino fraco (cv {cv5:.3}, ac {ac5:.2})"
-                    ));
-                }
+            if let Some(&(_, rc, ra)) = FINO_DO_REBELLE.iter().find(|f| f.0 == *n)
+                && (*cv5 > 1.6 * rc || *ac5 > ra + AC5_FOLGA)
+            {
+                falhas.push(format!(
+                    "{n}: o grão a 5 px não é o fino fraco (cv {cv5:.3}, ac {ac5:.2})"
+                ));
             }
         }
         let cob = |n: &str| m[GRAFITES.iter().position(|&g| g == n).unwrap()].2;
@@ -698,8 +700,13 @@ mod portoes {
                     };
                     for cena in ["tamanhos", "gestos"] {
                         let px = crate::as_leis_da_escala::cena(&p, cena);
-                        let mut f = format!("P6\n1000 640\n255\n").into_bytes();
-                        f.extend(px.chunks_exact(4).flat_map(|c| [c[0], c[1], c[2]]));
+                        let mut f = "P6\n1000 640\n255\n".to_string().into_bytes();
+                        f.extend(
+                            px.as_chunks::<4>()
+                                .0
+                                .iter()
+                                .flat_map(|c| [c[0], c[1], c[2]]),
+                        );
                         std::fs::write(dir.join(format!("{i}_{j}_{cena}.ppm")), f).unwrap();
                     }
                     println!("[foto] {i}_{j} = {n} {kv}");

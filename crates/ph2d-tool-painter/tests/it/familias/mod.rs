@@ -23,7 +23,7 @@ pub mod tintas;
 pub mod prelude {
     pub(crate) use crate::midias_de_fabrica::Metrica::{
         Borda, Chato, Cobertura, Cruzamento, Cv, Largura, Orla, Ponta, Pontas, RampaCobertura,
-        RampaLargura, Textura, Tinta,
+        RampaLargura, Textura,
     };
     pub(crate) use crate::midias_de_fabrica::Midia;
     pub(crate) use crate::receitas_de_fabrica::{

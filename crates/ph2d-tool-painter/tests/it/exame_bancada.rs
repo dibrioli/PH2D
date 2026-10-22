@@ -636,7 +636,7 @@ fn exame_custo() {
         for quadro in eventos.chunks(por_quadro) {
             let q0 = Instant::now();
             for e in quadro {
-                t.on_canvas_pointer(e.clone());
+                t.on_canvas_pointer(*e);
             }
             t.on_tick(1000.0 / 60.0);
             quadros.push(q0.elapsed().as_secs_f64() * 1e3);

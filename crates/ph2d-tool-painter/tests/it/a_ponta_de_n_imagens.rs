@@ -49,9 +49,9 @@ fn pincel_com(n: usize, forma: bool, f: impl Fn(&mut PainterTool)) -> PainterToo
     t.set_brush_shape_image_rgba(&imagem(CORES[0], 0), LADO, LADO, None);
     t.toggle_brush_shape_alpha_from_image();
     t.toggle_brush_shape_per_layer_color();
-    for k in 1..n {
+    for (k, cor) in CORES.iter().enumerate().take(n).skip(1) {
         t.add_brush_shape_hose_image_rgba(
-            &imagem(CORES[k], if forma { k as u8 } else { 0 }),
+            &imagem(*cor, if forma { k as u8 } else { 0 }),
             LADO,
             LADO,
         );
@@ -84,7 +84,7 @@ fn pinta(mut t: PainterTool) -> Vec<u8> {
 /// Os píxeis de cada cor primária (o canal dominante, os outros baixos).
 fn por_cor(px: &[u8]) -> [usize; 3] {
     let mut c = [0; 3];
-    for p in px.chunks_exact(4) {
+    for p in px.as_chunks::<4>().0 {
         for (k, cor) in CORES.iter().enumerate() {
             if (0..3).all(|j| if cor[j] == 255 { p[j] > 200 } else { p[j] < 80 }) {
                 c[k] += 1;
@@ -267,12 +267,16 @@ fn a_ponta_de_n_imagens_age_nos_meios() {
         // da imagem única — por isso a régua é a SILHUETA e não o byte.
         let silhueta = |c: &[u8]| -> Vec<bool> {
             let minimo = c
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|p| i32::from(p[0]))
                 .min()
                 .unwrap_or(255);
             let limiar = 255 - (255 - minimo) * 3 / 10;
-            c.chunks_exact(4)
+            c.as_chunks::<4>()
+                .0
+                .iter()
                 .map(|p| i32::from(p[0]) < limiar)
                 .collect()
         };
@@ -397,12 +401,16 @@ fn no_wet_o_lote_adiado_carimba_a_imagem_escolhida() {
     };
     let silhueta = |c: &[u8]| -> Vec<bool> {
         let minimo = c
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|p| i32::from(p[0]))
             .min()
             .unwrap_or(255);
         let limiar = 255 - (255 - minimo) * 3 / 10;
-        c.chunks_exact(4)
+        c.as_chunks::<4>()
+            .0
+            .iter()
             .map(|p| i32::from(p[0]) < limiar)
             .collect()
     };

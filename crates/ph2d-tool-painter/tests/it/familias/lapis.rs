@@ -199,7 +199,9 @@ mod portoes {
 
     /// A cobertura (0..1) de cada píxel da tela 1000 × 640 sobre o papel branco.
     fn cobertura(px: &[u8]) -> Vec<f64> {
-        px.chunks_exact(4)
+        px.as_chunks::<4>()
+            .0
+            .iter()
             .map(|c| (0..3).map(|k| 255.0 - f64::from(c[k])).fold(0.0, f64::max) / 255.0)
             .collect()
     }
@@ -369,7 +371,9 @@ mod portoes {
         let c = cobertura(&crate::as_leis_da_escala::cena(p, "gestos"));
         let h = mediana(colunas(&c, 90, 40, 160, 460).1);
         let t: Vec<f64> = c
-            .chunks_exact(1000)
+            .as_chunks::<1000>()
+            .0
+            .iter()
             .flat_map(|l| l[660..741].to_vec())
             .collect();
         // A vertical transposta: as linhas 460..590 viram colunas de uma tela 81 de largura.

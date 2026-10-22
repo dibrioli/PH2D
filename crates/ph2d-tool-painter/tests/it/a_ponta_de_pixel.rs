@@ -37,7 +37,7 @@ fn traco(r: f32, pixel: f64) -> Vec<u8> {
 /// `(alfa fraccionário, opacos de outra cor, opacos)`.
 fn fraccoes(px: &[u8]) -> (usize, usize, usize) {
     let (mut frac, mut cor, mut tinta) = (0, 0, 0);
-    for p in px.chunks_exact(4) {
+    for p in px.as_chunks::<4>().0 {
         match p[3] {
             0 => {}
             255 => {
@@ -132,7 +132,7 @@ fn a_largura_da_ponta_de_pixel_e_inteira() {
 }
 
 fn pintados(px: &[u8]) -> Vec<bool> {
-    px.chunks_exact(4).map(|p| p[3] > 0).collect()
+    px.as_chunks::<4>().0.iter().map(|p| p[3] > 0).collect()
 }
 
 /// As quinas de L: um píxel com um vizinho de lado na horizontal e outro na vertical que se tocam na diagonal.
@@ -265,14 +265,19 @@ fn a_ponta_de_pixel_pinta_a_cor_da_rampa_da_queda() {
         t.set_shape_ramp_enabled(true); // a Falloff Color nasce ligada: a rampa da Shape pinta pela queda
     });
     let mut cores: Vec<[u8; 3]> = px
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[3] == 255)
         .map(|p| [p[0], p[1], p[2]])
         .collect();
     cores.sort_unstable();
     cores.dedup();
     assert!(
-        px.chunks_exact(4).all(|p| p[3] == 0 || p[3] == 255),
+        px.as_chunks::<4>()
+            .0
+            .iter()
+            .all(|p| p[3] == 0 || p[3] == 255),
         "alfa fraccionário"
     );
     assert!(

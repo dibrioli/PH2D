@@ -170,7 +170,7 @@ fn sonda_o_miolo_liso() {
                 if std::env::var("PH2D_SONDA_DABS").is_ok() {
                     let d2 = std::sync::Arc::clone(&dabs);
                     t.wet_sonda_motor(move |e| {
-                        e.on_dab = Some(Box::new(move |b, d| {
+                        e.on_dab = Some(Box::new(move |_, d| {
                             d2.lock().unwrap().push([
                                 d.x,
                                 d.y,

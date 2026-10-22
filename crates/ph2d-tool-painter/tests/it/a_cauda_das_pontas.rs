@@ -110,7 +110,9 @@ fn a_cauda_da_ponta_de_pixel_guarda_o_ultimo_pixel() {
         t.set_brush_taper_end(end);
         t.set_brush_taper_tip_end(1.0);
         let px = escada(t);
-        px.chunks_exact(4)
+        px.as_chunks::<4>()
+            .0
+            .iter()
             .map(|p| p[0] < 128)
             .collect::<Vec<bool>>()
     };

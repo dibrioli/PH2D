@@ -58,7 +58,11 @@ fn pinta(mut t: PainterTool) -> Vec<u8> {
 
 /// A tinta de cada píxel (`255 − R`, a tela é branca e o pincel preto).
 fn tinta(px: &[u8]) -> Vec<i32> {
-    px.chunks_exact(4).map(|p| 255 - i32::from(p[0])).collect()
+    px.as_chunks::<4>()
+        .0
+        .iter()
+        .map(|p| 255 - i32::from(p[0]))
+        .collect()
 }
 
 /// A 2.ª ponta de teste: um disco a 0,4 do diâmetro, espalhado, três por ponto, no modo `k` (`1..=7`).
@@ -242,8 +246,10 @@ fn cada_modo_do_dual_e_outro() {
     for a in 0..telas.len() {
         for b in a + 1..telas.len() {
             let n = telas[a]
-                .chunks_exact(4)
-                .zip(telas[b].chunks_exact(4))
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .zip(telas[b].as_chunks::<4>().0)
                 .filter(|(p, q)| p[0].abs_diff(q[0]) > 4)
                 .count();
             eprintln!(
@@ -338,7 +344,7 @@ fn a_aguada_e_o_impasto_nao_leem_o_dual() {
 /// do Rebelle (06 §6: ½-autocorrelação 8 px ao longo × 1 px através).
 fn estrias() -> Vec<u8> {
     let mut px = vec![0u8; 64 * 64 * 4];
-    for p in px.chunks_exact_mut(4) {
+    for p in px.as_chunks_mut::<4>().0 {
         p[3] = 255;
     }
     let mut s: u64 = 0x5EED_CA2B;
@@ -462,7 +468,7 @@ fn mede_o_custo_do_dual() {
             .map(|q| {
                 let t0 = std::time::Instant::now();
                 for e in q {
-                    t.on_canvas_pointer(e.clone());
+                    t.on_canvas_pointer(*e);
                 }
                 t.on_tick(1000.0 / 60.0);
                 t0.elapsed().as_secs_f64() * 1e3
@@ -535,7 +541,7 @@ fn cerdas_secas() -> Vec<u8> {
             .wrapping_add(1_442_695_040_888_963_407);
         (s >> 33) % n
     };
-    let mut linhas = vec![0u8; 64];
+    let mut linhas = [0u8; 64];
     let mut y = 0;
     while y < 64 {
         let (faixa, vao, v) = (
@@ -543,8 +549,8 @@ fn cerdas_secas() -> Vec<u8> {
             1 + sorteio(3) as usize,
             170 + sorteio(86) as u8,
         );
-        for k in y..(y + faixa).min(64) {
-            linhas[k] = v;
+        for l in linhas.iter_mut().take((y + faixa).min(64)).skip(y) {
+            *l = v;
         }
         y += faixa + vao;
     }

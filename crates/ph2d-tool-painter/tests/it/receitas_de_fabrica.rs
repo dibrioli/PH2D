@@ -185,10 +185,13 @@ pub struct Receita {
     pub nasce_de: Option<&'static str>,
 }
 
+/// Uma imagem do preset: o id no ficheiro e a função que a desenha.
+pub type TexturaDeReceita = (&'static str, fn() -> Vec<u8>);
+
 /// **Um preset de Digital, Watercolor ou Impasto** (J3): parte do pincel por omissão do meio (`PainterTool::default`
 /// + `set_paint_media` + `preset_capturar`) — ou do ficheiro de [`Self::nasce_de`] — e fixa o que lista. Grava em
-/// `assets/brushes/<motor_do_meio>/<pasta>/<grupo>/<nome>.ph2d-brush.png`. ⚠️ Ao contrário do Wet, NÃO parte do
-/// próprio ficheiro: a receita é a verdade inteira (`cada_preset_dos_meios_e_a_sua_receita`).
+///   `assets/brushes/<motor_do_meio>/<pasta>/<grupo>/<nome>.ph2d-brush.png`. ⚠️ Ao contrário do Wet, NÃO parte do
+///   próprio ficheiro: a receita é a verdade inteira (`cada_preset_dos_meios_e_a_sua_receita`).
 pub struct ReceitaMeio {
     pub meio: PaintMedia,
     /// A pasta de cima, a categoria («Pencil», «Ink»…): tem de ter rótulo (`rotulo_da_pasta`, ver 04_BANCADA §9).
@@ -210,7 +213,7 @@ pub struct ReceitaMeio {
     /// As IMAGENS do preset (J4 `texturas`, a ponta de imagem e a mangueira L19): o id no ficheiro (`shape`,
     /// `shape_2`…, `texture`) e a função que desenha a imagem — NOSSA, procedural — já no formato do ficheiro
     /// (`ph2d_brush_presets::escrever_textura`). Vazio = nenhuma (o de sempre).
-    pub texturas: &'static [(&'static str, fn() -> Vec<u8>)],
+    pub texturas: &'static [TexturaDeReceita],
 }
 
 impl ReceitaMeio {

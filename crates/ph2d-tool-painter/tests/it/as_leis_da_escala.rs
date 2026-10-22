@@ -137,9 +137,10 @@ fn sonda_o_relevo_por_tamanho() {
             for _ in 0..240 {
                 t.on_tick(1000.0 / 60.0);
             }
+            let r = relevo_no_miolo(&mut t, y, d);
             println!(
-                "[relevo] {kv:?} {nome}: {:?}",
-                relevo_no_miolo(&mut t, y, d)
+                "[relevo] {kv:?} {nome}: Relevo {{ massa: {:?}, emb_massa: {:?}, emb_altura: {:?}, emb_total: {:?} }}",
+                r.massa, r.emb_massa, r.emb_altura, r.emb_total
             );
         }
     }

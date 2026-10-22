@@ -190,7 +190,8 @@ fn sonda_o_grao_fino_por_size() {
 /// acima da origem. Antes (o Noise 16–64 e a lei pelo diâmetro): a 40 px 1,4–2,4× o do Rebelle.
 #[test]
 fn o_traco_fino_do_lapis_tem_o_grao_do_rebelle() {
-    let r: Vec<(&str, [(f64, f64, f64); 2], [f64; 3])> = std::thread::scope(|s| {
+    type Medida<'a> = (&'a str, [(f64, f64, f64); 2], [f64; 3]);
+    let r: Vec<Medida> = std::thread::scope(|s| {
         let hs: Vec<_> = LAPIS[..6]
             .iter()
             .map(|&(n, o)| {

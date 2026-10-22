@@ -419,9 +419,22 @@ fn cruzamento_do_mypaint(preset: ph2d_brush_presets::Preset, escala: f64) -> ([f
 /// As fotos do MyPaint (`fixtures/mypaint_bateria`, a cena `sobre`): o pincel, a escala do exame, o meio do
 /// cruzamento e o píxel mais escuro do anel (medidos por `scratchpad`/`exames/efeitos.md` 2.ª ronda, 21/10).
 #[rustfmt::skip]
-const CRUZAMENTOS_DO_MYPAINT: [(&str, &str, f64, [f64; 3], [f64; 3]); 2] = [
-    ("Glow", "mypaint experimental/glow", 1.636, [43.0, 73.0, 131.0], [75.0, 52.0, 90.0]),
-    ("Ballpoint", "mypaint deevad/ballpen", 1.462, [64.0, 74.0, 121.0], [70.0, 71.0, 115.0]),
+type CruzamentoMp = (&'static str, &'static str, f64, [f64; 3], [f64; 3]);
+const CRUZAMENTOS_DO_MYPAINT: [CruzamentoMp; 2] = [
+    (
+        "Glow",
+        "mypaint experimental/glow",
+        1.636,
+        [43.0, 73.0, 131.0],
+        [75.0, 52.0, 90.0],
+    ),
+    (
+        "Ballpoint",
+        "mypaint deevad/ballpen",
+        1.462,
+        [64.0, 74.0, 121.0],
+        [70.0, 71.0, 115.0],
+    ),
 ];
 
 /// As falhas de um cruzamento contra a foto do MyPaint: o meio a ±10 níveis por canal, e o anel ESCURO (o grená do

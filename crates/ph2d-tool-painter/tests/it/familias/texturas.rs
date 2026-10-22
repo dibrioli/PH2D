@@ -242,11 +242,13 @@ fn na_folha(x: f64, y: f64, (bx, by): (f64, f64), (dx, dy): (f64, f64), l: f64) 
     (0.0..=1.0).contains(&s) && perp < 0.85 * l * s.sqrt() * (1.0 - s) * dente
 }
 
+type Folha = ((f64, f64), (f64, f64), f64);
+
 /// UM raminho (o carimbo da folhagem): um pé que sobe, sete folhas alternadas a ±45° dele (a de cima de pé) e um
 /// maciço no meio (o carimbo do Krita é um aglomerado) — as direcções são as constantes de 45° (sem trigonometria).
 fn raminho() -> Vec<u8> {
     const R: f64 = std::f64::consts::FRAC_1_SQRT_2;
-    let folhas: [((f64, f64), (f64, f64), f64); 7] = [
+    let folhas: [Folha; 7] = [
         ((0.0, 0.55), (-R, -R), 0.42),
         ((0.02, 0.35), (R, -R), 0.45),
         ((0.03, 0.12), (-R, -R), 0.45),
@@ -484,14 +486,10 @@ pub(crate) fn mancha() -> Vec<u8> {
 /// 4-ligados de `c ≥ 0,3` com área ≥ 3 px.
 #[derive(Clone, Copy, Debug)]
 struct Faixa {
-    /// A cobertura média da faixa.
-    cob: f64,
     /// Manchas por 100 px de comprimento.
     pontos: f64,
     /// A área mediana das manchas (px).
     gota: f64,
-    /// A mediana de altura ÷ largura da caixa das manchas com área ≥ 10 (as lâminas de pé da relva).
-    alto: f64,
     /// p90 ÷ p50 da cobertura dos píxeis com `c ≥ 0,1` (o aro do bokeh sobre o miolo).
     contraste: f64,
     /// O desvio-padrão ÷ a média das áreas (os pontos iguais da retícula).
@@ -500,10 +498,8 @@ struct Faixa {
 
 #[derive(Clone, Copy, Debug)]
 enum M {
-    Cob,
     Pontos,
     Gota,
-    Alto,
     Contraste,
     CvArea,
 }
@@ -511,10 +507,8 @@ enum M {
 impl M {
     fn de(self, f: &Faixa) -> f64 {
         match self {
-            M::Cob => f.cob,
             M::Pontos => f.pontos,
             M::Gota => f.gota,
-            M::Alto => f.alto,
             M::Contraste => f.contraste,
             M::CvArea => f.cv_area,
         }
@@ -522,9 +516,8 @@ impl M {
     /// A tolerância contra a foto: as contagens e as áreas são relativas (o sorteio muda de semente para semente).
     fn tol(self, foto: f64) -> f64 {
         match self {
-            M::Cob => 0.02 + 0.3 * foto,
             M::Pontos | M::Gota => 0.45 * foto.max(2.0),
-            M::Alto | M::Contraste => 0.25 + 0.1 * foto,
+            M::Contraste => 0.25 + 0.1 * foto,
             M::CvArea => 0.15 + 0.35 * foto,
         }
     }
@@ -547,20 +540,18 @@ fn faixa(px: &[u8], w: usize, (y0, y1): (usize, usize)) -> Faixa {
                 / CHEIO
         })
         .collect();
-    let cob = c.iter().sum::<f64>() / c.len() as f64;
     let mut visto = vec![false; c.len()];
-    let (mut areas, mut altos) = (Vec::new(), Vec::new());
+    let mut areas = Vec::new();
     for i in 0..c.len() {
         if visto[i] || c[i] < 0.3 {
             continue;
         }
         visto[i] = true;
         let mut pilha = vec![i];
-        let (mut n, mut xa, mut xb, mut ya, mut yb) = (0usize, lw, 0, lh, 0);
+        let mut n = 0usize;
         while let Some(k) = pilha.pop() {
             let (x, y) = (k % lw, k / lw);
             n += 1;
-            (xa, xb, ya, yb) = (xa.min(x), xb.max(x), ya.min(y), yb.max(y));
             let viz = [
                 (x + 1 < lw).then(|| k + 1),
                 (x > 0).then(|| k - 1),
@@ -576,9 +567,6 @@ fn faixa(px: &[u8], w: usize, (y0, y1): (usize, usize)) -> Faixa {
         }
         if n >= 3 {
             areas.push(n as f64);
-            if n >= 10 {
-                altos.push((yb - ya + 1) as f64 / (xb - xa + 1) as f64);
-            }
         }
     }
     let mediana = |v: &mut Vec<f64>| {
@@ -597,10 +585,8 @@ fn faixa(px: &[u8], w: usize, (y0, y1): (usize, usize)) -> Faixa {
     let m = areas.iter().sum::<f64>() / n.max(1.0);
     let sd = (areas.iter().map(|a| (a - m) * (a - m)).sum::<f64>() / n.max(1.0)).sqrt();
     Faixa {
-        cob,
         pontos: n / (lw as f64 / 100.0),
         gota: mediana(&mut areas.clone()),
-        alto: mediana(&mut altos),
         contraste: q(0.9) / q(0.5).max(1e-6),
         cv_area: if m > 0.0 { sd / m } else { 0.0 },
     }
@@ -614,23 +600,23 @@ const CHEIO: f64 = 255.0 - 23.0;
 #[rustfmt::skip]
 const FOTOS: [(&str, &str, f64, [Faixa; 2]); 6] = [
     ("Halftone", "krita y) Screentones Regular", 1.04, [
-        Faixa { cob: 0.05, pontos: 72.76, gota: 14.0, alto: 1.0, contraste: 1.13, cv_area: 0.37 },
-        Faixa { cob: 0.158, pontos: 338.29, gota: 15.0, alto: 1.25, contraste: 1.01, cv_area: 0.16 }]),
+        Faixa { pontos: 72.76, gota: 14.0, contraste: 1.13, cv_area: 0.37 },
+        Faixa { pontos: 338.29, gota: 15.0, contraste: 1.01, cv_area: 0.16 }]),
     ("Foliage", "krita z) Stamp Leaves", 0.794, [
-        Faixa { cob: 0.155, pontos: 1.58, gota: 16.0, alto: 1.0, contraste: 1.01, cv_area: 3.29 },
-        Faixa { cob: 0.373, pontos: 2.24, gota: 185.0, alto: 1.13, contraste: 1.0, cv_area: 3.85 }]),
+        Faixa { pontos: 1.58, gota: 16.0, contraste: 1.01, cv_area: 3.29 },
+        Faixa { pontos: 2.24, gota: 185.0, contraste: 1.0, cv_area: 3.85 }]),
     ("Grass", "krita z) Stamp Grass", 0.909, [
-        Faixa { cob: 0.059, pontos: 10.53, gota: 15.0, alto: 1.48, contraste: 1.93, cv_area: 1.73 },
-        Faixa { cob: 0.132, pontos: 10.13, gota: 20.0, alto: 1.66, contraste: 1.85, cv_area: 2.78 }]),
+        Faixa { pontos: 10.53, gota: 15.0, contraste: 1.93, cv_area: 1.73 },
+        Faixa { pontos: 10.13, gota: 20.0, contraste: 1.85, cv_area: 2.78 }]),
     ("Bokeh", "krita z) Stamp Bokeh", 1.0, [
-        Faixa { cob: 0.031, pontos: 21.18, gota: 5.0, alto: 1.0, contraste: 1.89, cv_area: 2.99 },
-        Faixa { cob: 0.078, pontos: 3.03, gota: 7.0, alto: 1.0, contraste: 2.04, cv_area: 2.32 }]),
+        Faixa { pontos: 21.18, gota: 5.0, contraste: 1.89, cv_area: 2.99 },
+        Faixa { pontos: 3.03, gota: 7.0, contraste: 2.04, cv_area: 2.32 }]),
     ("Stars", "rebelle WATERCOLOR/spatter_star", 1.0, [
-        Faixa { cob: 0.041, pontos: 4.47, gota: 216.0, alto: 0.97, contraste: 1.21, cv_area: 0.77 },
-        Faixa { cob: 0.028, pontos: 0.79, gota: 2683.0, alto: 1.0, contraste: 1.04, cv_area: 0.49 }]),
+        Faixa { pontos: 4.47, gota: 216.0, contraste: 1.21, cv_area: 0.77 },
+        Faixa { pontos: 0.79, gota: 2683.0, contraste: 1.04, cv_area: 0.49 }]),
     ("Splatter", "rebelle WATERCOLOR/spatter_splats", 1.0, [
-        Faixa { cob: 0.047, pontos: 8.42, gota: 49.0, alto: 1.0, contraste: 1.74, cv_area: 1.55 },
-        Faixa { cob: 0.038, pontos: 9.08, gota: 6.0, alto: 1.0, contraste: 1.12, cv_area: 3.26 }]),
+        Faixa { pontos: 8.42, gota: 49.0, contraste: 1.74, cv_area: 1.55 },
+        Faixa { pontos: 9.08, gota: 6.0, contraste: 1.12, cv_area: 3.26 }]),
 ];
 
 /// O que faz a identidade de cada um: (faixa 0 = 40 px · 1 = 200 px, a medida). A estrela do Rebelle a 200 px é um
@@ -749,7 +735,7 @@ fn os_em_estudo_nao_estao_na_fabrica() {
 /// curvam (polilinhas que rodam um pouco a cada passo), espalhados por igual no disco — sorteados por um gerador
 /// INTEIRO; as rotações por polinómios (cos ≈ 1 − t²/2, sen ≈ t − t³/6) e raízes, sem trigonometria.
 fn riscos() -> Vec<u8> {
-    let mut e = 0x6E01_5E_u64;
+    let mut e = 0x006E_015E_u64;
     let mut u = move || {
         e = e
             .wrapping_mul(6_364_136_223_846_793_005)
@@ -770,7 +756,8 @@ fn riscos() -> Vec<u8> {
         }
     };
     // (a, b, meia-largura, tinta, a fracção da meia-largura que é orla)
-    let mut traco: Vec<((f64, f64), (f64, f64), f64, f64, f64)> = Vec::new();
+    type Risco = ((f64, f64), (f64, f64), f64, f64, f64);
+    let mut traco: Vec<Risco> = Vec::new();
     for _ in 0..18 {
         let (cx, cy) = no_disco(0.62, &mut u);
         let (dx, dy) = direccao(&mut u);

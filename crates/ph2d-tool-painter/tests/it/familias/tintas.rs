@@ -175,8 +175,6 @@ pub const MIDIAS: &[Midia] = &[
 struct Tinta {
     /// O desvio-padrão da largura do recto lento (px, tinta > 0,25): os grumos do aparo, a borda da cana.
     grumo: f64,
-    /// A largura do vertical lento ÷ a do recto: a ponta chata fixa na tela.
-    de_pe: f64,
     /// A largura da rampa 0→1 na pressão ~0,12 ÷ na pressão ~0,96: quanto a pressão afina.
     rampa: f64,
     /// A tinta dos primeiros 12 px do recto ÷ a do meio: a tinta que ENTRA clara.
@@ -229,11 +227,6 @@ fn mede_tinta(nome: &str) -> Tinta {
     let grumo = (larguras.iter().map(|l| (l - largura).powi(2)).sum::<f64>()
         / larguras.len() as f64)
         .sqrt();
-    // O vertical lento: x 700, y 440..610 — a largura por linha, no meio dele.
-    let de_pe_l: Vec<f64> = (480..570)
-        .map(|y| (650..751).filter(|&x| escuro(&g, w, x, y) > lim).count() as f64)
-        .collect();
-    let de_pe = de_pe_l.iter().sum::<f64>() / de_pe_l.len() as f64 / largura;
     // A rampa 0→1: y 400, x 60 → 560 (a pressão linear no x).
     let larg_em = |x0: usize| {
         (x0..x0 + 10)
@@ -246,7 +239,6 @@ fn mede_tinta(nome: &str) -> Tinta {
     let entrada = (62..74).map(|x| escuro(&g, w, x, 90)).sum::<f64>() / 12.0 / miolo;
     Tinta {
         grumo,
-        de_pe,
         rampa,
         entrada,
         miolo,
@@ -388,7 +380,8 @@ fn o_borrao_da_tinta_transborda_a_faixa() {
     use crate::as_leis_da_escala::cena;
     use crate::exame_bancada::pinceis;
     let nomes = ["Dip Pen", "Ink Bullet", "Ink Brush", "Marker Bullet"];
-    let medidas: Vec<(&str, (usize, usize, f64), (usize, usize, f64))> = std::thread::scope(|s| {
+    type Par = (usize, usize, f64);
+    let medidas: Vec<(&str, Par, Par)> = std::thread::scope(|s| {
         let h: Vec<_> = nomes
             .iter()
             .map(|&n| {

@@ -669,34 +669,11 @@ pub fn imagens_da_gravacao(
     track: &Track,
     parar: &AtomicBool,
 ) -> Result<Option<ImagensDaGravacao>, ErroDaMacro> {
-    let tocavel = track
-        .tocavel(&LeitorDoPainter)
-        .map_err(ErroDaMacro::Edicao)?;
-    let mut toc = TocadorDoPainter::novo(
-        &tocavel.initial,
-        tocavel.events.iter().map(|e| e.payload.as_slice()),
-    )?;
-    // ⛔ Nunca o `run_full`: numa pilha trivial ele LEVA a tela, e o fim saía vazio (W7).
-    let vazia = || (Vec::new(), 0, 0);
-    let (inicio, wi, hi) = toc.tool().imagem_aplicada().unwrap_or_else(vazia);
-    for e in &tocavel.events {
-        if parar.load(Ordering::Relaxed) {
-            return Ok(None);
-        }
-        toc.aplica(&e.payload)?;
-    }
-    toc.passa_ao_relogio_fixo();
+    let Some((mut toc, (inicio, wi, hi))) = super::fim::tocador_no_fim(track, None, parar)? else {
+        return Ok(None);
+    };
     let t = toc.tool_mut();
-    for _ in 0..QUADROS_ATE_A_AGUA_DO_FIM_PARAR {
-        if t.wet_assentada() {
-            break;
-        }
-        if parar.load(Ordering::Relaxed) {
-            return Ok(None);
-        }
-        t.drena_sem_compor();
-        ph2d_editor_core::tool::Tool::on_tick(t, super::roteiro::DT_MS);
-    }
+    let vazia = || (Vec::new(), 0, 0);
     let (fim, w, h) = t.imagem_aplicada().unwrap_or_else(vazia);
     let modelo = ModeloDoFim(t.snapshot_model());
     // Uma gravação que muda o tamanho da tela não tem píxeis do início a comparar.

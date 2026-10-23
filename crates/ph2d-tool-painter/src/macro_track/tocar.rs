@@ -7,7 +7,7 @@
 //! ou um passo desconhecido PÁRAM o tocador em voz alta ([`ErroDaMacro`]): nunca se salta um passo.
 
 use super::inicial::{self, ErroDoInicial};
-use super::passo::{Passo, abs, faixa_de};
+use super::passo::{Passo, faixa_de};
 use crate::tool::paint::fita::{
     self, Divergencia, Fita, FitaPartilhada, MarcaDaAgua, RespostaDoWorker,
 };
@@ -137,6 +137,12 @@ impl TocadorDoPainter {
         let mut tool = inicial::tool_no_inicial(inicial).map_err(ErroDaMacro::Inicial)?;
         tool.bind_document(inicial::ENTIDADE_DO_TOCADOR + 1, rgba, w, h);
         Self::com_tool(inicial, tool, cargas)
+    }
+
+    /// **Onde a pintura cai por cima** ([`super::encaixe`]; `None` = a identidade em px). Só muda uma
+    /// trilha com tamanho gravado, e só os passos que vierem depois.
+    pub fn poe_encaixe(&mut self, e: Option<super::encaixe::Encaixe>) {
+        self.tool.poe_encaixe_da_macro(e);
     }
 
     fn com_tool<'a>(
@@ -403,9 +409,9 @@ impl TocadorDoPainter {
     /// # Errors
     /// [`ErroDaMacro`].
     pub(crate) fn aplica_ao_tool(t: &mut PainterTool, passo: Passo) -> Result<bool, ErroDaMacro> {
-        let (tw, th) = t.source_size();
-        let (tw, th) = (f64::from(tw), f64::from(th));
-        let escala = |p: [f64; 2]| abs(p, tw, th);
+        // Por cima, as posições caem pelo encaixe sobre o tamanho gravado ([`super::encaixe`]).
+        let (onde, tela) = (t.macro_por_cima, t.source_size());
+        let escala = |p: [f64; 2]| super::encaixe::posicao(onde, tela, p);
         let mut mudou = false;
         match passo {
             Passo::Ponteiro {

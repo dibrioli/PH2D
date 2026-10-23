@@ -5,6 +5,7 @@
 //! ```text
 //! inicial = 1 versão (varint) · 2 configurações (JSON) · 3 textura* {1 id · 2 png}
 //!         · 4 documento (postcard) · 5 versão do documento (varint)
+//!         · 6 tamanho gravado {1 w · 2 h} (só por cima: a tela da gravação, ≠ a do documento)
 //! ```
 //! ⚠️ O postcard é POSICIONAL: o documento lê-se só na [`VERSAO_DO_DOCUMENTO`] em que foi gravado, e o
 //! gate `o_documento_da_macro_tem_a_versao_do_seu_formato` prende o número ao formato.
@@ -92,9 +93,79 @@ pub fn tool_no_inicial(bytes: &[u8]) -> Result<PainterTool, ErroDoInicial> {
     let mut t = PainterTool::default();
     t.install_document(ENTIDADE_DO_TOCADOR, doc);
     t.bind_document(ENTIDADE_DO_TOCADOR, Vec::new(), w, h);
+    t.macro_por_cima = gravado(&campos)?.map(|(gw, gh)| super::encaixe::PorCima {
+        gravado: (f64::from(gw), f64::from(gh)),
+        encaixe: super::encaixe::Encaixe::IDENTIDADE,
+    });
     t.macro_estado_aplica(cfg, texturas).map_err(|e| match e {
         crate::tool::paint::ErroDoEstado::Json(s) => ErroDoInicial::Configuracoes(s),
         crate::tool::paint::ErroDoEstado::Texturas(v) => ErroDoInicial::Texturas(v),
     })?;
     Ok(t)
+}
+
+/// O tamanho gravado (etiqueta 6) dos `campos`.
+fn gravado(campos: &[(u32, &[u8])]) -> Result<Option<(u32, u32)>, ErroDoInicial> {
+    let Some((_, sub)) = campos.iter().rev().find(|(t, _)| *t == 6) else {
+        return Ok(None);
+    };
+    let c = rec::fields(sub).map_err(ErroDoInicial::Registo)?;
+    let lado = |k: u32| -> Result<u32, ErroDoInicial> {
+        let v = c
+            .iter()
+            .rev()
+            .find(|(t, _)| *t == k)
+            .map_or(Ok(0), |(_, v)| rec::as_varint(v))
+            .map_err(ErroDoInicial::Registo)?;
+        u32::try_from(v).map_err(|_| ErroDoInicial::Documento(format!("lado gravado {v}")))
+    };
+    Ok(Some((lado(1)?, lado(2)?)))
+}
+
+/// **O tamanho da tela em que a trilha se gravou**, quando ela toca por cima de outro documento
+/// ([`sobre_documento`]). `None` = a trilha normal: a tela do documento É a gravada.
+#[must_use]
+pub fn tamanho_gravado(inicial: &[u8]) -> Option<(u32, u32)> {
+    gravado(&rec::fields(inicial).ok()?).ok()?
+}
+
+/// **O estado inicial `inicial` posto sobre `doc`** (aplicar por cima, W18): as mesmas configurações e
+/// texturas, o documento trocado por `doc`, e o tamanho gravado (etiqueta 6) — o do documento velho, ou o
+/// que o `inicial` já guardava (reaplicar nunca esquece a tela da gravação).
+///
+/// # Errors
+/// [`ErroDoInicial`] — o `inicial` não se lê.
+pub fn sobre_documento(inicial: &[u8], doc: &PaintedDocument) -> Result<Vec<u8>, ErroDoInicial> {
+    let campos = rec::fields(inicial).map_err(ErroDoInicial::Registo)?;
+    let (w, h) = match gravado(&campos)? {
+        Some(t) => t,
+        None => {
+            let vd = campos
+                .iter()
+                .rev()
+                .find(|(t, _)| *t == 5)
+                .map_or(Ok(0), |(_, v)| rec::as_varint(v))
+                .map_err(ErroDoInicial::Registo)?;
+            if vd != VERSAO_DO_DOCUMENTO {
+                return Err(ErroDoInicial::DocumentoNoutroFormato(vd));
+            }
+            let velho = campos.iter().rev().find(|(t, _)| *t == 4).map(|(_, v)| *v);
+            let velho: PaintedDocument = postcard::from_bytes(velho.unwrap_or_default())
+                .map_err(|e| ErroDoInicial::Documento(e.to_string()))?;
+            velho.size
+        }
+    };
+    let mut r = Record::new();
+    for (t, v) in campos.iter().filter(|(t, _)| !matches!(t, 4..=6)) {
+        r.bytes(*t, v);
+    }
+    r.bytes(
+        4,
+        &postcard::to_allocvec(doc).expect("o documento é serde e serializa sempre"),
+    );
+    r.varint(5, VERSAO_DO_DOCUMENTO);
+    let mut tam = Record::new();
+    tam.varint(1, u64::from(w)).varint(2, u64::from(h));
+    r.bytes(6, &tam.finish());
+    Ok(r.finish())
 }

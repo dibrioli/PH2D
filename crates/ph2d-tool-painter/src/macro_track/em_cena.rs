@@ -10,6 +10,7 @@
 //! para antes dele recomeça e limpa-o.
 
 use super::FAMILIA;
+use super::encaixe::Encaixe;
 use super::etapas::LeitorDoPainter;
 use super::instantaneos::Instantaneos;
 use super::tocar::{ErroDaMacro, Recomeco, TocadorDoPainter};
@@ -29,11 +30,16 @@ pub struct MacroEmCena {
     fotos: Instantaneos,
     /// A etapa de cujo instantâneo a última volta atrás recomeçou (`None` = do estado inicial).
     recomecou_de: Option<usize>,
+    /// Onde a pintura cai por cima ([`Self::poe_encaixe`]).
+    encaixe: Option<Encaixe>,
 }
 
-fn tocador_de(doc: &MacroDoc) -> Result<TocadorDoPainter, ErroDaMacro> {
+fn tocador_de(doc: &MacroDoc, encaixe: Option<Encaixe>) -> Result<TocadorDoPainter, ErroDaMacro> {
     let t = &doc.tracks[0];
-    TocadorDoPainter::novo(&t.initial, t.events.iter().map(|e| e.payload.as_slice()))
+    let mut toc =
+        TocadorDoPainter::novo(&t.initial, t.events.iter().map(|e| e.payload.as_slice()))?;
+    toc.poe_encaixe(encaixe);
+    Ok(toc)
 }
 
 /// A trilha do Painter de um `Macro.doc`, já a que toca. `Ok(None)` = sem trilha do Painter.
@@ -81,7 +87,7 @@ impl MacroEmCena {
         let Some(doc) = le(bytes)? else {
             return Ok(None);
         };
-        let tocador = tocador_de(&doc)?;
+        let tocador = tocador_de(&doc, None)?;
         let player = MacroPlayer::new(&doc);
         Ok(Some(Self {
             inicios: inicios_de(&doc),
@@ -91,6 +97,7 @@ impl MacroEmCena {
             erro: None,
             fotos: Instantaneos::em(razao),
             recomecou_de: None,
+            encaixe: None,
         }))
     }
 
@@ -121,7 +128,7 @@ impl MacroEmCena {
         }
         self.recomecou_de = None;
         self.player = MacroPlayer::new(&self.doc);
-        match tocador_de(&self.doc) {
+        match tocador_de(&self.doc, self.encaixe) {
             Ok(t) => {
                 self.tocador = t;
                 Ok(())
@@ -201,6 +208,22 @@ impl MacroEmCena {
         self.doc = doc;
         self.recomeca_ate(MacroTime(u64::MAX))?;
         Ok(true)
+    }
+
+    /// **O objecto Macro mudou de sítio** (aplicar por cima, W18 §2.7): o encaixe lê-se vivo, nunca se
+    /// assa — um encaixe diferente larga os instantâneos (pintados no sítio velho) e a reprodução recomeça
+    /// do estado inicial. Numa trilha sem tamanho gravado o encaixe não muda nada.
+    pub fn poe_encaixe(&mut self, e: Option<Encaixe>) {
+        if e == self.encaixe {
+            return;
+        }
+        self.encaixe = e;
+        if super::inicial::tamanho_gravado(&self.doc.tracks[0].initial).is_none() {
+            return;
+        }
+        self.fotos.refaz(|_| None);
+        // O erro de recomeçar fica em [`Self::erro`], como no [`Self::reedita`].
+        let _ = self.recomeca_ate(MacroTime(0));
     }
 
     /// **Um ponto de partida para conferir `track`** (a trilha com as edições, [`super::etapas::confere`]):

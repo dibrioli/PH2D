@@ -10,7 +10,9 @@
 //! de meio a gravar é um passo do painel como outro qualquer.
 
 pub mod em_cena;
+pub mod encaixe;
 pub mod etapas;
+pub mod fim;
 pub(crate) mod forca;
 pub mod inicial;
 pub mod instantaneos;
@@ -36,6 +38,8 @@ mod fim_tests;
 mod marca_cobertura_tests;
 #[cfg(test)]
 mod marca_painter_tests;
+#[cfg(test)]
+mod por_cima_tests;
 #[cfg(test)]
 mod pressao_tests;
 #[cfg(test)]

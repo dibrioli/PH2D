@@ -329,6 +329,8 @@ pub struct PainterTool {
     mask_view_grayscale: Option<RtLayerId>,
     /// A gravação de uma macro em curso ([`crate::macro_track`]); `None` = nada a gravar.
     pub(crate) macro_gravacao: Option<Box<crate::macro_track::Gravacao>>,
+    /// O encaixe de uma reprodução por cima ([`crate::macro_track::encaixe`]); `None` = a tela é a gravada.
+    pub(crate) macro_por_cima: Option<crate::macro_track::encaixe::PorCima>,
     /// Segundos (pelos `dt` do [`Tool::on_tick`]) desde o último `Up` na tela; `None` = nenhum ainda. A
     /// idade da água do tutorial ([`PainterTool::segundos_desde_o_ultimo_up`]).
     desde_o_ultimo_up: Option<f64>,
@@ -422,6 +424,7 @@ impl Default for PainterTool {
             shape_source_preview_dirty: false,
             mask_view_grayscale: None,
             macro_gravacao: None,
+            macro_por_cima: None,
             desde_o_ultimo_up: None,
         }
     }

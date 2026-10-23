@@ -91,7 +91,7 @@ impl PainterTool {
     fn margem_da_orla(&self) -> u32 {
         let t = &self.paint.brush.traco;
         if t.tem_orla() {
-            t.core_r(self.paint.brush.radius_px) as u32 + 1
+            t.core_r(self.raio_do_pincel()) as u32 + 1
         } else {
             0
         }

@@ -47,7 +47,7 @@ impl PainterTool {
         // O dab do Wet tem o raio do MOTOR (a largura prometida, `largura.rs`: o portão do papel come a orla); o pó cai
         // à volta da borda que se VÊ — o raio do artista. Sem a lei, o mesmo.
         let visto = if brush.radius_px > 0.0 {
-            (self.paint.brush.radius_px / brush.radius_px).min(1.0)
+            (self.raio_do_pincel() / brush.radius_px).min(1.0)
         } else {
             1.0
         };

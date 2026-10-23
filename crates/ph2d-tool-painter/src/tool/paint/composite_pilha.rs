@@ -427,7 +427,7 @@ impl PainterTool {
                 self.paint.composite[p].strength > 0.0
                     && matches!(self.paint.composite[p].op, CompositeOp::Blur)
             })
-            .map(|p| self.paint.brush.radius_px * self.tamanho_da_camada(p))
+            .map(|p| self.raio_do_pincel() * self.tamanho_da_camada(p))
             .fold(0.0f32, f32::max);
         // O raio do núcleo é fracção do raio do dab; o `+1` é a borda de amostragem.
         (maior * 0.5).ceil().max(0.0) as u32 + 1

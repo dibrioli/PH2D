@@ -486,7 +486,7 @@ impl PainterTool {
             #[cfg(test)]
             let t_sub = std::time::Instant::now();
             if algum {
-                let raio = self.paint.brush.radius_px * self.tamanho_da_camada(pos);
+                let raio = self.raio_do_pincel() * self.tamanho_da_camada(pos);
                 // ⭐⭐ **UMA passagem de raio `P·k`, e não `P` passagens de raio `k`.** A variância
                 //    do núcleo é LINEAR no raio (`σ² = k/2`, ver `blur_caixa`), logo `P` passagens
                 //    compõem-se numa de raio `P·k` — e o núcleo de CAIXA custa o mesmo em qualquer
@@ -609,7 +609,7 @@ impl PainterTool {
             .iter()
             .map(|&p| {
                 let k = ph2d_painter_brush::kernel_radius(
-                    self.paint.brush.radius_px * self.tamanho_da_camada(p),
+                    self.raio_do_pincel() * self.tamanho_da_camada(p),
                 ) * passagens;
                 if largo {
                     k

@@ -445,7 +445,7 @@ impl PainterTool {
         // One structural undo step (pre-op scratch → post-op), so a canvas Modifier rolls back like a
         // mask stroke does.
         let before = self.snapshot_model();
-        let radius = self.paint.brush.radius_px;
+        let radius = self.raio_do_pincel();
         {
             let buf = Arc::make_mut(&mut self.paint.mask_scratch_rgba);
             ph2d_painter_brush::apply_mask_op(buf, w, h, mop, radius);

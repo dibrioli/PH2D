@@ -75,6 +75,7 @@ impl PainterTool {
             shape_source_preview_dirty,
             mask_view_grayscale,
             macro_gravacao,
+            macro_por_cima,
             desde_o_ultimo_up,
         } = self;
         if macro_gravacao.is_some() {
@@ -138,6 +139,7 @@ impl PainterTool {
             shape_source_preview_dirty: *shape_source_preview_dirty,
             mask_view_grayscale: *mask_view_grayscale,
             macro_gravacao: None,
+            macro_por_cima: *macro_por_cima,
             desde_o_ultimo_up: *desde_o_ultimo_up,
         };
         copia.wet_fita_propria();

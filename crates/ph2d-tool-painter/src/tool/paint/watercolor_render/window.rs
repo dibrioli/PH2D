@@ -185,7 +185,7 @@ impl PainterTool {
         let warp_amp = self.paint.brush.warp.max(0.0);
         let wet = self.paint.brush.wet_rewet.clamp(0.0, 1.0);
         // Silhouette-feather radius (`inner`), capped so a pool keeps a saturated core.
-        let core_r = spread.min(((self.paint.brush.radius_px * 0.5).round() as usize).max(1));
+        let core_r = spread.min(((self.raio_do_pincel() * 0.5).round() as usize).max(1));
         // EDGE-1 per-stroke style (doc 13 topo): geometry/field paths take the SESSION MAXIMA
         // (see `session_maxima`) — per-pixel terms resolve the OWNER's values in the loop.
         let (wet_any, warp_any, spread_any, core_any) = self
@@ -210,7 +210,7 @@ impl PainterTool {
         // Bleed e entra no alcance. Sem mixer o mapa não existe ⇒ a janela é a de sempre, ao byte.
         let reach = if self.paint.stroke_deplete.len() == n {
             let cur = super::super::watercolor_reserve::reserve_radius(
-                self.paint.brush.radius_px,
+                self.raio_do_pincel(),
                 core_r,
                 spread,
                 wet,

@@ -301,10 +301,9 @@ pub(super) fn le_as_fases(
     )
 }
 
-/// As rotas da [`sonda_as_fases_do_quadro_hibrido`]: `A` o carimbo recusado (a de antes) · `B` hoje ·
-/// `S1` hoje com UMA varredura do passe em cada sink · `SO` hoje sem a ordenação dos baldes do passe
-/// · `C` hoje sem colisor (o `Drive` que escreve `collider` passa a escrever o nome do controlo:
-/// nenhum passe arma). ⚠️ As saídas procuram-se pelo TIPO: `m.sinks` só se enche no 1.º quadro.
+/// Rotas da [`sonda_as_fases_do_quadro_hibrido`]: `A` carimbo recusado · `B` hoje · `S1` UMA varredura
+/// por sink · `SO` sem a ordenação dos baldes · `C` sem colisor (nenhum passe arma). ⚠️ As saídas
+/// procuram-se pelo TIPO: `m.sinks` só se enche no 1.º quadro.
 fn arma_a_rota(m: &mut MotionState, rota: &str) {
     match rota {
         "A" => rota_de_antes(m),
@@ -343,11 +342,9 @@ fn saidas(m: &MotionState) -> Vec<ph2d_nodegraph::graph::NodeId> {
         .collect()
 }
 
-/// **O censo do passe** da cena `n` a `×k`, pela rota da CPU depois de 30 quadros, sobre a corrente
-/// que chega a cada saída: os pares que se TOCAM (círculos de alcance, pares ordenados, força
-/// bruta) contra os candidatos da grelha da CPU; a grelha da PLACA (lado `2·alcance_max`, a chave
-/// `grid::cpu_bucket`) em baldes ocupados, o maior e `Σk²` (o trabalho da ordenação por inserção);
-/// e o passe inteiro da CPU (16 varreduras) no relógio.
+/// **O censo do passe** da cena `n` a `×k` (rota da CPU, 30 quadros): pares que se TOCAM contra os
+/// candidatos da grelha da CPU; a grelha da PLACA (lado `2·alcance_max`, `grid::cpu_bucket`) em baldes
+/// ocupados, o maior e `Σk²`; e o passe inteiro da CPU (16 varreduras) no relógio.
 fn censo_do_passe(n: &str, k: f32, dt: f64) {
     use ph2d_nodegraph::attr::Column;
     let Some(mut c) = monta_demo(n) else { return };
@@ -429,9 +426,8 @@ fn censo_do_passe(n: &str, k: f32, dt: f64) {
         let ocupados = baldes.iter().filter(|&&b| b > 0).count();
         let maior = baldes.iter().max().copied().unwrap_or(0);
         let soma_k2: u64 = baldes.iter().map(|b| b * b).sum();
-        // As grelhas da C2 (doc 120 §8.3.5), por CÉLULA verdadeira (sem o hash): os cursores que cada
-        // peça visitaria e os candidatos — a de hoje (3×3 de lado `2R`), a fixa 5×5 de lado `R` e a
-        // ADAPTATIVA (lado `R`, o quadrado `r_i + R` à volta de cada peça).
+        // Grelhas da C2 (doc 120 §8.3.5) por CÉLULA verdadeira: cursores e candidatos — hoje (3×3,
+        // lado `2R`), fixa 5×5 de lado `R` e ADAPTATIVA (lado `R`, quadrado `r_i + R`).
         let grelha = |lado: f32| {
             let mut c: std::collections::HashMap<(i32, i32), u64> = Default::default();
             for &(i, _) in &pecas {
@@ -646,8 +642,7 @@ fn sonda_as_fases_do_quadro_hibrido() {
                 tipos.len()
             );
         }
-        // Por rota: as médias de cada bloco (fases) e a soma dos contadores; a ordem roda a cada
-        // rodada.
+        // Por rota: médias de cada bloco e soma dos contadores; a ordem roda a cada rodada.
         let mut blocos: Vec<Vec<[f64; 21]>> = rotas.iter().map(|_| Vec::new()).collect();
         let mut contas = vec![[0.0f64; 6]; rotas.len()];
         for r in 0..rodadas {

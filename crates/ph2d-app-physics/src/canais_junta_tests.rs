@@ -83,7 +83,7 @@ fn a_curva_chega_ao_componente_e_nao_ao_documento() {
         w.escrever(b, k(j::QUEBRA_FORCA), 42.0);
     }
     let mut drive = PreviewDrive::default();
-    assert!(aplicar(&mut sim, &mut drive));
+    assert!(aplicar(&mut sim, &mut drive, &TimelineDoc::default()));
     let pj = *sim.world().get::<PhysicsJoint>(e).unwrap();
     assert!(pj.break_enabled);
     assert_eq!(pj.break_force, 42.0);
@@ -151,7 +151,7 @@ fn a_curva_que_liga_a_quebra_parte_a_corda() {
                 w.escrever(corda.to_bits(), k(j::QUEBRA_LIGADA), 1.0);
                 w.escrever(corda.to_bits(), k(j::QUEBRA_FORCA), 50.0);
             }
-            aplicar(&mut sim, &mut drive);
+            aplicar(&mut sim, &mut drive, &TimelineDoc::default());
             ph2d_physics_ecs::resolve_body_names(sim.world_mut());
             bridge.dispatch(&mut sim, true, t);
             partiu += crate::bridge::dispatch::break_reports(&bridge, &sim).len();
@@ -229,7 +229,7 @@ fn o_tipo_o_active_o_collide_e_o_mundo_chegam_pela_curva() {
         w.escrever(b, k(j::PONTA_NO_MUNDO), 1.0);
     }
     let mut drive = PreviewDrive::default();
-    assert!(aplicar(&mut sim, &mut drive));
+    assert!(aplicar(&mut sim, &mut drive, &TimelineDoc::default()));
     let pj = *sim.world().get::<PhysicsJoint>(e).unwrap();
     assert_eq!(pj.kind, JointKind::Slider);
     assert!(
@@ -284,7 +284,7 @@ fn a_roldana_chega_pela_curva_e_a_rota_reabre_a_corda() {
         }
     }
     let mut drive = PreviewDrive::default();
-    assert!(aplicar(&mut sim, &mut drive));
+    assert!(aplicar(&mut sim, &mut drive, &TimelineDoc::default()));
     for (c, v) in alvos {
         let lido = ler_mundo(sim.world(), roda, k(c)).expect("campo da roldana");
         assert!(perto(lido, v), "campo {c}: escreveu {v}, leu {lido}");
@@ -333,7 +333,7 @@ fn cada_campo_novo_mexido_pelo_painel_pede_a_sua_chave() {
         let base = lidos(&sim, b).into_iter().collect();
         match ed {
             JointFieldEdit::AnchorToWorld(on) => {
-                crate::joint::anchor_to_world(sim.world_mut(), e, on)
+                crate::joint::anchor_to_world(sim.world_mut(), e, on);
             }
             _ => {
                 let pj = *sim.world().get::<PhysicsJoint>(e).unwrap();
@@ -398,7 +398,7 @@ fn escrever_o_mesmo_tipo_nao_mexe_na_junta() {
         .escrever(e.to_bits(), k(j::TIPO), tag);
     let mut drive = PreviewDrive::default();
     assert!(
-        !aplicar(&mut sim, &mut drive),
+        !aplicar(&mut sim, &mut drive, &TimelineDoc::default()),
         "a curva parada no mesmo tipo mexeu na junta"
     );
     assert!(

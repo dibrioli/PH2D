@@ -347,6 +347,8 @@ mod joint_break_tests;
 #[cfg(test)]
 mod joint_kind_tests;
 #[cfg(test)]
+mod joint_lado_b_tests;
+#[cfg(test)]
 mod joint_motor_tests;
 #[cfg(test)]
 mod joint_pair_tests;

@@ -90,7 +90,8 @@ impl crate::App {
             crate::vec_text_ride::recook(sim, vec_scene, &self.vec.entities, id, e);
         }
         ph2d_app_components::canais_objeto::aplicar(sim, &mut self.preview_drive);
-        ph2d_app_physics::canais_junta::aplicar(sim, &mut self.preview_drive);
+        let doc = &self.timeline.doc;
+        ph2d_app_physics::canais_junta::aplicar(sim, &mut self.preview_drive, doc);
         let conducao = &mut self.physics.conducao;
         ph2d_app_physics::canais_corpo::aplicar(sim, component_registry, conducao);
         ph2d_app_flip::canais_camada::aplicar(sim, flip, &mut self.flip_state.conducao);

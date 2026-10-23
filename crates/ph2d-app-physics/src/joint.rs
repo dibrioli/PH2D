@@ -289,6 +289,13 @@ pub fn set_joint_body(sim: &mut SimWorld, joint_bits: u64, slot_b: bool, target:
     {
         *j = next;
     }
+    // Escolher o corpo B É escolher «Body»: o rótulo diria «World» sobre um corpo escolhido, e o
+    // clique em «Body» sem corpo B (recusado por `anchor_to_world`) só termina aqui.
+    if slot_b {
+        sim.world_mut()
+            .entity_mut(joint_e)
+            .remove::<ph2d_physics_ecs::JointWorldAnchor>();
+    }
     true
 }
 
@@ -319,22 +326,35 @@ pub fn apply_joint_edit(
 
 /// **Prender o lado B ao MUNDO (`true`) ou a um objeto** (W-JointWorld) — a presença do marcador
 /// `JointWorldAnchor` É o booleano, então não passa pelo funil de campos. A porta da edição do
-/// painel e da curva (canal `PONTA_NO_MUNDO`).
-pub fn anchor_to_world(world: &mut World, e: Entity, on: bool) {
-    if world.get::<PhysicsJoint>(e).is_none()
-        || world.get::<ph2d_physics_ecs::JointWorldAnchor>(e).is_some() == on
-    {
-        return;
+/// painel e da curva (canal `PONTA_NO_MUNDO`). Devolve se o lado B ficou como pedido.
+///
+/// ⛔ **Soltar do mundo uma junta que não nomeia dois corpos é RECUSADO** — ela ficaria dormente
+/// (`is_anchored`), e o corpo cairia sem o artista ter apagado nada. O painel arma então o
+/// conta-gotas do corpo B; a curva só ecoa o que ficou.
+///
+/// ⚠️ Trocar o lado B muda o referencial de `local_b` (o ponto do mundo ↔ o corpo B), por isso a
+/// junta volta a `anchored: false` e o reconcile re-deriva as âncoras — como na troca de corpo e de
+/// tipo. Sem isso a ponta saltava para o centro do corpo B.
+pub fn anchor_to_world(world: &mut World, e: Entity, on: bool) -> bool {
+    let Some(&pj) = world.get::<PhysicsJoint>(e) else {
+        return false;
+    };
+    if world.get::<ph2d_physics_ecs::JointWorldAnchor>(e).is_some() == on {
+        return true;
     }
+    if !on && !pj.names_two_bodies() {
+        return false;
+    }
+    let mut ent = world.entity_mut(e);
     if on {
-        world
-            .entity_mut(e)
-            .insert(ph2d_physics_ecs::JointWorldAnchor);
+        ent.insert(ph2d_physics_ecs::JointWorldAnchor);
     } else {
-        world
-            .entity_mut(e)
-            .remove::<ph2d_physics_ecs::JointWorldAnchor>();
+        ent.remove::<ph2d_physics_ecs::JointWorldAnchor>();
     }
+    if let Some(mut j) = ent.get_mut::<PhysicsJoint>() {
+        j.anchored = false;
+    }
+    true
 }
 
 /// **Colar as propriedades de `source` neste joint** (W-JointCopy).

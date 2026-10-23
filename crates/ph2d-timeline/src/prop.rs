@@ -51,7 +51,8 @@ pub enum PropKind {
     /// deixava isso ambíguo e o smoke do Enio (2026-07-28) cobrou: *"nem autokey funcionou para
     /// morph"*. `ALL` é a pose; quem o auto-key varre é [`PropKind::AUTOKEYED`], e Morph está lá.
     /// O próprio [`PropKind::Position`] já provava que o array não é a fronteira (ele também fica
-    /// fora do `ALL` e é autokeyado, por um ramo de geometria 2D). Appended — the discriminant is
+    /// fora do `ALL` e do `AUTOKEYED`, e é autokeyado pelo ramo da âncora, `AutokeyPlan::path_key`,
+    /// gate `the_anchor_is_refused_under_a_stack`). Appended — the discriminant is
     /// a frozen wire value.
     Morph = 7,
     /// **Position** — the object's place on the canvas as ONE channel, following an

@@ -24,6 +24,7 @@ use ph2d_physics_ecs::{
     WestonAxle, WrapSide,
 };
 use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
+use ph2d_timeline::{PropKind, TimelineDoc};
 
 const fn k(campo: u16) -> FieldKey {
     FieldKey::new(JUNTA, campo, 0, 0)
@@ -296,6 +297,15 @@ pub fn publicar(sim: &mut SimWorld, entidades: &[u64]) {
     }
 }
 
+/// O alvo e a velocidade do motor que uma faixa da timeline conduz (`None` = sem faixa).
+fn motor_das_faixas(doc: &TimelineDoc, b: u64, pj: &PhysicsJoint) -> [Option<f32>; 2] {
+    let tem = |p| doc.binding_for(b, p).is_some();
+    [
+        tem(PropKind::JointMotorTarget).then_some(pj.motor_target),
+        tem(PropKind::JointMotorSpeed).then_some(pj.motor_speed),
+    ]
+}
+
 /// O que a pré-visualização guarda desta entidade, por driver.
 fn fotografia(sim: &SimWorld, e: Entity) -> [Option<Driven>; 3] {
     [Driver::JointParams, Driver::PontaNoMundo, Driver::Roldana].map(|d| Driven::read(d, sim, e))
@@ -333,7 +343,7 @@ fn escrever_mundo(w: &mut World, e: Entity, kk: FieldKey, v: f32) -> bool {
 
 /// ⭐ **Aplica às juntas e às roldanas o que a curva mandou neste quadro**, regista o eco e declara
 /// a escrita à pré-visualização. Devolve `true` se alguma mudou.
-pub fn aplicar(sim: &mut SimWorld, drive: &mut PreviewDrive) -> bool {
+pub fn aplicar(sim: &mut SimWorld, drive: &mut PreviewDrive, doc: &TimelineDoc) -> bool {
     let Some(mut escritas) = sim
         .world_mut()
         .get_resource_mut::<CanaisEscritos>()
@@ -360,11 +370,28 @@ pub fn aplicar(sim: &mut SimWorld, drive: &mut PreviewDrive) -> bool {
             continue;
         }
         let antes = fotografia(sim, e);
+        // ⛔ O alvo e a velocidade do motor com faixa própria já foram escritos NESTE quadro (a
+        // timeline corre antes); o re-semear da troca de eixo ou de tipo apagava a chave do artista.
+        let das_faixas = sim
+            .world()
+            .get::<PhysicsJoint>(e)
+            .map(|pj| motor_das_faixas(doc, lote[0].0, pj));
         let mut rota = false;
         for &(b, kk, v) in lote {
             rota |= escrever_mundo(sim.world_mut(), e, kk, v);
             if let Some(ficou) = ler_mundo(sim.world(), e, kk) {
                 ecos.push((b, kk, v, ficou));
+            }
+        }
+        if let Some([alvo, vel]) = das_faixas
+            && let Some(mut pj) = sim.world_mut().get_mut::<PhysicsJoint>(e)
+        {
+            let novo = [
+                alvo.unwrap_or(pj.motor_target),
+                vel.unwrap_or(pj.motor_speed),
+            ];
+            if novo != [pj.motor_target, pj.motor_speed] {
+                [pj.motor_target, pj.motor_speed] = novo;
             }
         }
         // A rota mudou: o comprimento da corda re-abre, como na edição do painel — e a corda é

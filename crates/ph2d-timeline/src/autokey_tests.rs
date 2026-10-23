@@ -294,6 +294,10 @@ fn a_fresh_entity_takes_the_toggle_default() {
 #[test]
 fn the_anchor_is_refused_under_a_stack() {
     let st = doc_with_path();
+    assert!(
+        !PropKind::AUTOKEYED.contains(&PropKind::Position),
+        "a Position keya por este ramo"
+    );
     // O MESMO gesto nas duas: em t=0.5 a trajetória reta desenha x=5, e o objeto foi
     // arrastado para (5, 3) — fora dela.
     let (world, base) = (pose(&[(TX, 5.0), (TY, 3.0)]), pose(&[(TX, 5.0), (TY, 0.0)]));

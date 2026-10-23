@@ -56,7 +56,7 @@ fn por_cima_do_texto_mostra_onde_cai_e_largar_escreve_num_passo_de_undo() {
     let fim = b + "ph2d.object(\"Porta\")".len();
     assert_eq!(
         m.docs().selection_of(id),
-        [fim..fim],
+        std::slice::from_ref(&(fim..fim)),
         "o cursor no fim do que se escreveu"
     );
     assert!(m.docs().undo(id.0, false));
@@ -97,7 +97,7 @@ fn fora_do_texto_nao_aceita_e_sair_apaga_a_marca() {
     let porta = ["Porta".to_owned()];
     assert!(m.docs().drop_hover(id.0, Some(em(p, &porta, false))));
     assert!(
-        m.docs().drop_hover(id.0, None) == false && m.docs().drop_mark_of(id).is_none(),
+        !m.docs().drop_hover(id.0, None) && m.docs().drop_mark_of(id).is_none(),
         "saiu"
     );
     let calha = (1.0, p.1);

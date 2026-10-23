@@ -24,7 +24,7 @@ fn corre(host: &mut ScriptHost, sim: &mut SimWorld, n: usize) {
 
 #[test]
 fn ctrl_soltar_a_porta_na_linha_vazia_poe_a_porta_a_mexer() {
-    assert!(CENAS >= 7);
+    const { assert!(CENAS >= 7) };
     let (mut sim, mut cena, mut mapa) = (
         SimWorld::new(),
         VecScene::default(),

@@ -162,8 +162,26 @@ Série: d1 → d2 (o d2 usa o d1); d3 e d4 depois do d2, em paralelo; d5 no fim.
   `arrastar::o_nome_de_propriedade…`, `ph2d-script` inteiro, `ph2d-app-code` inteiro, `controlo_de_cegueira`, `ph2d-i18n`.
   Mutação: por fazer (fecho).
 
-**Próximo: d3** — contar primeiro os cartões/campos (censo parcial em `scratchpad`, refazer na linha), nomear os
-componentes com cartão (`.coded()` + `.named()`), alargar o `sanitize` por componente a partir dos `apply_*` de cada
-cartão, e o portão «todo campo serde de um componente com cartão está descrito». As 7 divergências de rótulo da Vida
-(cartão × catálogo, ex. «Regen / s») decidem-se aqui: o nome segue o rótulo que o cartão mostra. Depois d4 (imagens),
-d5 (cena 8), 8b, 8c, `/pd-linha-fechar`.
+**d3 FEITA** (22/10, `1af469bdff` lei+piloto · `3cb9cfb865` catálogo · `73539a3a32` vistas/linhas/nome curto ·
+`3620da4c20` skew na pose · `9b3dabfbca` vistas aplicadas): 156/156 componentes com secção possível têm `code` ou
+`Hidden::…`; o cartão pinta a chave do catálogo; a lei do valor em `property_laws::LEIS`; `View` (Degrees · Scale ·
+Offset · Not · Toggle · Options · Unbounded · Percent · Srgb) — **o valor do script é o do cartão, ângulos sempre em
+radianos**; `row_of` (uma linha no neutro lê-se, escrever cria-a, parar tira-a — `FieldDrive.born`); o nome curto
+(`gravity_scale`); `skew_x`/`skew_y` na pose. Portões: `o_cartao_pinta_a_chave_do_catalogo`,
+`todo_campo_de_um_cartao_tem_nome_ou_motivo`, `todo_componente_com_nome_tem_a_sua_lei`,
+`toda_vista_vai_e_volta_pelo_valor_do_cartao`, `uma_linha_no_neutro_nasce_ao_escrever_e_sai_ao_rebobinar`.
+Mutação: por fazer (fecho).
+
+**Perguntas de produto ao dono (22/10):** renomear um objecto pelo script durante o jogo (`Name` está `Editor`)?
+o cartão «Render Source» × o componente «Sprite» (o nome é `sprite`; o portão tem a excepção)? os subtítulos por
+componente nos cartões compostos (Câmera, Paralaxe, HUD)?
+
+**Próximo: d4** — TODA `Hidden::Reference` ganha nome pelo NOME do alvo, num bloco só (§0.10): imagens
+(`sprite.source` pelo nome da biblioteca — o nome hoje é o basename e NÃO é único, `asset_index_build.rs` ≈286; a
+troca na corrida exige extrair do `commit_edited_texture`/`rebind_to_individual` da shell uma porta sobre `SimWorld`
++ renderer injectado), objectos (`camera_follow.target`, `health_bar.target`, `joint` corpos, `homing_target`,
+`factory.master`, `path_follow` caminho, `sequence_player.container`, `nav_*` alvos — `stable_id_named`/
+`entity_of_stable_id`), tags e camadas de ordenação pelo nome do projecto, `animator.current` pelo nome da
+animação. Facto lido em 22/10 no scratchpad da sessão (não versionado): o `SimWorld` não tem `AssetDb`; o
+`ScriptHost` recebe snapshots (`input_snapshot`) — o padrão para um snapshot de nomes de imagem. Depois d5 (cena
+`PH2D_CODE_SMOKE=8`), 8b, 8c, `/pd-linha-fechar` (com a prova de mutação das leis do 8d).

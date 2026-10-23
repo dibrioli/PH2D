@@ -40,7 +40,15 @@ Commits novos: `142e0cb029` (8b-2) · `2ca88f48fd` (8c) · `53224c86ba` (cena 9)
 
 ## 4. ABERTO
 
-1. Smoke do dono da cena 9 (passos na resposta ao dono, 23/10).
+1. ~~Smoke do dono da cena 9~~ — **OK (23/10).**
+1b. **Ordem do dono (23/10, no smoke OK):** *«como no Godot, a variável exposta no painel deve aparecer mesmo sem
+   salvar o script»*. Hoje o cartão Script lê as declarações do texto SALVO da biblioteca (o `ScriptHost` só recarrega
+   no Ctrl+S) — medido na cena 9: `ph2d.property("door", …)` só ganha o campo depois do Ctrl+S, e com o script partido
+   o cartão não mostra nenhuma propriedade. Antes de desenhar: CORRER o oráculo Godot 4.7.2 (MIT; método em
+   `docs/_ComoInvestigarApps/`) — quando o `@export` aparece (a cada tecla? ao parar de escrever? ao salvar?), e o que
+   o Inspector mostra com o script com erro de sintaxe (o último válido?). Caminho provável: as declarações do BUFFER
+   da aba (passe de declaração numa VM à parte, sem cena), última versão válida mantida enquanto o texto está partido;
+   o valor próprio do objecto continua no `LuauScript.own`. Smoke: estender a cena 9 (Alt → o campo aparece sem Ctrl+S).
 2. `/pd-linha-fechar`: gate batched inteiro, auditoria, handoff de integração, §5.1 com `1..9`.
 3. **Não curado:** `scripts/cargo-test-narrow.sh` dá «0 falharam · 0 passaram» com exit 1 quando o alvo de teste não
    compila (contrato: exit 2) — mordeu outra vez nesta sessão.

@@ -132,3 +132,25 @@
 - **O resto (−4 %) curado pela grossura (20/10, handoff W6g §37, por ordem do dono):** o erro segue o texel do entorno
   em METROS e só a Baixa a 8× era grossa demais; o entorno da Baixa passa a 4× (Média e Alta 8×): a cena 5 −4,0…−4,7 % →
   −1,2…−1,4 %, o emissor encostado à borda +11 % → ±1,6 %, por +0,48 ms a 1080p. Gates 0,025 e 0,03, mutação M8.
+
+## 7. «Numa placa integrada, 7 testes da Luz 2D reprovam» (23/10, achado da `line/Velocidade`) — ABERTO
+
+- **O achado:** o `main` em `972f411a6f` (sem a W6h) só na Radeon 610M do 9950X (RADV / radeonsi; o `nvidia-smi`
+  sem nenhum processo da corrida): 5 573 / 5 580 verdes, os 7 vermelhos todos da Luz 2D, os mesmos 7 verdes na
+  RTX 5060 Ti (junit do ship 23/10 05:28). A Luz 2D corre ~5,6× mais lenta lá (2 004 s contra 358 s na
+  `ph2d-app-light2d`, a NVIDIA com `load` ~40: ordem de grandeza).
+- **Três famílias, por separar:**
+  1. *O mesmo bit que só vale na NVIDIA:* `a_descida_sem_o_t_nulo_nao_muda_um_bit` (19 texels, Baixa 1080p) e
+     `o_nivel_0_por_um_cone_nao_muda_um_bit` (495). Hipóteses por medir: a FMA do driver (o mecanismo do W6g §53 b —
+     a RADV contrai `a·T.r + T.t·R` noutro sítio) ou o subgrupo 64. A lei «não muda um bit» é por dispositivo ou
+     de toda a placa: decide-se e o teste di-lo.
+  2. *A memória:* `g5_o_que_a_placa_alocou…` — `luz2d/buf/hrc_r0` com enchimento 524 288 contra o teto 3 072 (um
+     alinhamento do adaptador?). Régua ou o produto a reservar 170× numa integrada: medir primeiro.
+  3. *Precisão ou lei de custo:* `a_holografica_junto_a_uma_face_e_o_gabarito` (0,0042), `…_nao_muda_com_o_pan`
+     (0,00072), `g9_o_rebote_na_holografica` (0,0154), `o_custo_do_miolo_desce_com_a_base` (1,001 contra 0,8).
+- **Reprodução sem a NVIDIA:** o bloco do prompt da `line/Velocidade` (as variáveis `VK_DRIVER_FILES` /
+  `VK_ICD_FILENAMES` / `__EGL_VENDOR_LIBRARY_FILENAMES` / `__GLX_VENDOR_LIBRARY_NAME` para a Radeon + `PH2D_GPU_VEZ`
+  numa pasta com `pronto` — só COM as variáveis); conferir pelo exemplo `o_que_a_placa_anuncia` (só `RADV
+  RAPHAEL_MENDOCINO` e `radeonsi`). Material bruto copiado para `target/radeon_achado/` (nextest e os dois junit).
+- **Consequência:** a Luz 2D fica presa à NVIDIA na fila da placa até isto fechar; quando passar na Radeon, o
+  handoff di-lo. ⚠️ Toda cura «de mesmo bit» desta linha (a da borda do W6h §13 incluída) prova-se também na Radeon.

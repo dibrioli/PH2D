@@ -82,6 +82,7 @@ razão nenhuma. Cada membro entra pelo **nome**.
 | `sem_glaze_cada_preset_de_fabrica_pinta_a_cena_de_antes` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/tests/it/a_lei_da_tinta.rs) | prazo do nextest (a faixa pesada) — o mesmo par de TIMEOUT de 22/10; sozinho 10 · 9 · 9 s (`load 10–13`), 3/3; pinta a cena de cada preset de fábrica (45) |
 | `o_deposito_de_um_pincel_pesado_de_fabrica_vai_pela_rota_que_paga` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/tests/it/o_custo_no_caminho_do_app.rs) | razão de relógios (rota nova × antiga, 2,25× calmo) — vermelho na suíte a `load ~30` (22/10), sozinho 2/2 verde |
 | `a_tinta_nao_muda_com_o_spacing` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/tests/it/o_pigmento_por_comprimento.rs) | prazo do nextest (180 s → a faixa pesada, 6 × 60 s) — TIMEOUT na suíte inteira do ship de 23/10 (load ~40), zero linhas da crate no diff do ship; sozinho no `ci-test` 22,0 · 21,9 s (`load 3–14`), 2/2 |
+| `opening_the_room_says_how_to_open_the_firewall` | [`ph2d-app-board`](../../crates/ph2d-app-board/src/live_firewall_tests.rs) | espera de ~100 ms (50 × `service` de 2 ms) pela thread da sonda do firewall — vermelho em 0,058 s na suíte do fecho W24 do MiroClone (23/10, load 70–78), zero linhas do teste nem do firewall no diff; sozinho 0,50 · 0,50 · 0,50 s (`load 9–10`), 3/3 |
 
 Uma família entra por padrão e não por nome: `test(/orcamento::the_fit_/)` (`ph2d-app-flip`).
 

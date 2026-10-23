@@ -53,7 +53,7 @@ mod tests {
     fn escurecidos(b: &[u8]) -> (usize, usize) {
         let mut meio = 0;
         let mut escuros = 0;
-        for p in b.chunks_exact(4) {
+        for p in b.as_chunks::<4>().0 {
             if p[3] > 0 && p[3] < 255 {
                 meio += 1;
                 if (0..3).any(|c| i32::from(p[c]) < i32::from(AMARELO[c]) - 1) {

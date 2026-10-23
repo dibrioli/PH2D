@@ -62,6 +62,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.error.wait_longer_than_gap" => {
             "Cannot shorten the wait past the end of the previous step."
         }
+        "panel.macros.error.before_start" => "A step cannot start before the clip does.",
+        "panel.macros.error.changes_what_undo_takes_back" => {
+            "Moving this step would change which stroke a recorded Undo takes back."
+        }
         "panel.macros.error.not_a_stroke" => "Only a stroke has a colour and a size.",
         "panel.macros.error.not_a_value" => "Only a parameter step has a value.",
         "panel.macros.error.no_such_step" => "That step is no longer in the recording.",

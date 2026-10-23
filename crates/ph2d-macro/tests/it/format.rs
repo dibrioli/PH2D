@@ -174,7 +174,7 @@ fn a_rich_document_round_trips_to_the_byte() {
             },
         ],
     };
-    // As edições de uma etapa, todas as etiquetas — a 8 (o texto do balão do tutorial) inclusive.
+    // As edições de uma etapa, todas as etiquetas — a 8 (o texto do balão do tutorial) e a 9 (W16) inclusive.
     let mut doc = doc;
     doc.tracks[0].edicoes = vec![ph2d_macro::EdicaoDeEtapa {
         ancora: 3,
@@ -185,6 +185,7 @@ fn a_rich_document_round_trips_to_the_byte() {
         insercoes: vec![(5, vec![3])],
         sai_da_gravacao: true,
         apagada: true,
+        desloca_us: -1_500,
     }];
     let bytes = codec::write(&doc);
     let back = codec::read(&bytes).expect("lê");

@@ -45,6 +45,16 @@ pub trait LeitorDaFamilia {
     fn sem_o_gesto(&self, _carga: &[u8]) -> Option<Vec<u8>> {
         None
     }
+    /// **A carga de um evento da etapa deslocada que toca na faixa `n ≥ 1`** — o Painter abre um traço por
+    /// faixa (duas pinceladas sobrepostas pintam ao mesmo tempo). `None` = a família não tem faixas.
+    fn na_faixa(&self, _carga: &[u8], _n: u32) -> Option<Vec<u8>> {
+        None
+    }
+    /// O evento age sobre «o último» que se fez (o Desfazer do Painter): deslocar uma etapa não pode mudar
+    /// qual é a última que acaba antes dele.
+    fn e_barreira(&self, _carga: &[u8]) -> bool {
+        false
+    }
 }
 
 /// As edições de UMA etapa.
@@ -59,6 +69,9 @@ pub struct EdicaoDeEtapa {
     pub dica: Option<String>,
     /// Tempo acrescentado (+) ou tirado (−) ANTES da etapa, µs; tudo o que vem depois anda com ela.
     pub espera_us: i64,
+    /// **A etapa anda SOZINHA** Δ µs (o losango arrastado na Timeline, W16): as outras ficam, e ela pode
+    /// sobrepor-se a outra ou passar-lhe à frente. O relógio fica onde está (um relógio por quadro).
+    pub desloca_us: i64,
     /// Cargas trocadas: `(evento da gravação, carga nova)`.
     pub trocas: Vec<(usize, Vec<u8>)>,
     /// Cargas acrescentadas ANTES de um evento da gravação, no instante dele: `(evento, carga)`.
@@ -82,6 +95,11 @@ pub enum ErroDeEdicao {
     ForaDaGravacao(usize),
     /// Encurtar mais do que o intervalo até à etapa anterior.
     EsperaMaiorQueOIntervalo(usize),
+    /// A etapa deslocada começaria antes do instante 0.
+    ComecaAntesDoZero(usize),
+    /// A etapa deslocada mudaria a etapa que um evento de «o último» desfaz
+    /// ([`LeitorDaFamilia::e_barreira`]).
+    MudaOQueODesfazerDesfaz(usize),
 }
 
 /// **A trilha que toca**: a gravação com as edições aplicadas. Sem edições = a gravação, ao bit.
@@ -101,6 +119,7 @@ pub fn efetiva(track: &Track, leitor: &dyn LeitorDaFamilia) -> Result<Vec<Event>
     let mut janela: BTreeMap<usize, usize> = BTreeMap::new();
     // As etapas apagadas: início → fim.
     let mut apagadas: BTreeMap<usize, usize> = BTreeMap::new();
+    let mut moveis: Vec<Movel> = Vec::new();
     for ed in &track.edicoes {
         let k = etapas
             .iter()
@@ -112,6 +131,14 @@ pub fn efetiva(track: &Track, leitor: &dyn LeitorDaFamilia) -> Result<Vec<Event>
         if ed.apagada {
             apagadas.insert(ed.ancora, etapas[k].fim);
             continue;
+        }
+        if ed.desloca_us != 0 {
+            moveis.push(Movel {
+                inicio: ed.ancora,
+                fim: etapas[k].fim,
+                desloca_us: ed.desloca_us,
+                faixa: u32::try_from(k + 1).unwrap_or(u32::MAX),
+            });
         }
         for (i, c) in &ed.trocas {
             if *i >= ev.len() {
@@ -140,18 +167,15 @@ pub fn efetiva(track: &Track, leitor: &dyn LeitorDaFamilia) -> Result<Vec<Event>
         }
     }
 
-    let mut out = Vec::with_capacity(ev.len());
+    let mut out = Saida::default();
     let mut andou: i64 = 0;
     let mut saiu = false;
     let marca = leitor.sai_da_gravacao();
-    let sai = |out: &mut Vec<Event>, t: u64, saiu: &mut bool| {
+    let sai = |out: &mut Saida, t: u64, saiu: &mut bool| {
         if !*saiu {
             *saiu = true;
             if let Some(m) = &marca {
-                out.push(Event {
-                    t: MacroTime(t),
-                    payload: m.clone(),
-                });
+                out.push(None, t, m.clone());
             }
         }
     };
@@ -175,14 +199,12 @@ pub fn efetiva(track: &Track, leitor: &dyn LeitorDaFamilia) -> Result<Vec<Event>
         if let Some((fim, dur, aqui)) = fecha {
             // As inserções de OUTRAS etapas antes de um evento apagado tocam onde ele fechou.
             for c in insercoes.get(&i).into_iter().flatten() {
-                out.push(Event {
-                    t: MacroTime(aqui),
-                    payload: if andou == 0 {
-                        c.to_vec()
-                    } else {
-                        leitor.desloca(c, andou).unwrap_or_else(|| c.to_vec())
-                    },
-                });
+                let carga = if andou == 0 {
+                    c.to_vec()
+                } else {
+                    leitor.desloca(c, andou).unwrap_or_else(|| c.to_vec())
+                };
+                out.push(Some(i), aqui, carga);
             }
             if i == fim {
                 andou -= dur;
@@ -242,13 +264,9 @@ pub fn efetiva(track: &Track, leitor: &dyn LeitorDaFamilia) -> Result<Vec<Event>
                 sai(&mut out, aqui, &mut saiu);
             }
             if ed.espera_us > 0 {
-                out.extend(leitor.espera(
-                    ev,
-                    i,
-                    MacroTime(aqui),
-                    ed.espera_us.unsigned_abs(),
-                    andou,
-                ));
+                for q in leitor.espera(ev, i, MacroTime(aqui), ed.espera_us.unsigned_abs(), andou) {
+                    out.push(None, q.t.0, q.payload);
+                }
             }
             andou += ed.espera_us;
         }
@@ -263,7 +281,135 @@ pub fn efetiva(track: &Track, leitor: &dyn LeitorDaFamilia) -> Result<Vec<Event>
             &insercoes,
         );
     }
-    Ok(out)
+    if moveis.is_empty() {
+        return Ok(out.ev);
+    }
+    desloca_as_etapas(out, ev, &etapas, &moveis, leitor, saiu)
+}
+
+/// Os eventos da trilha que toca e o evento da gravação de que cada um veio (`None` = sintetizado).
+#[derive(Default)]
+struct Saida {
+    ev: Vec<Event>,
+    orig: Vec<Option<usize>>,
+}
+
+impl Saida {
+    fn push(&mut self, orig: Option<usize>, t: u64, payload: Vec<u8>) {
+        self.ev.push(Event {
+            t: MacroTime(t),
+            payload,
+        });
+        self.orig.push(orig);
+    }
+}
+
+/// Uma etapa que anda sozinha: os eventos `inicio..=fim` da gravação, Δ, a faixa.
+struct Movel {
+    inicio: usize,
+    fim: usize,
+    desloca_us: i64,
+    faixa: u32,
+}
+
+/// **As etapas que andam sozinhas** (W16): os eventos NÃO-relógio delas somam Δ e tocam na faixa delas; o
+/// relógio fica (um relógio por quadro); a fusão é estável (empate = a ordem de antes). Uma etapa levada
+/// para lá do último evento estende o relógio ([`LeitorDaFamilia::espera`]) e o fim da gravação anda com
+/// ela. A marca de saída da gravação cai no menor instante que mudou.
+fn desloca_as_etapas(
+    out: Saida,
+    ev: &[Event],
+    etapas: &[Etapa],
+    moveis: &[Movel],
+    leitor: &dyn LeitorDaFamilia,
+    saiu: bool,
+) -> Result<Vec<Event>, ErroDeEdicao> {
+    let Saida { ev: mut sai, orig } = out;
+    let de = |i: usize| moveis.iter().find(|m| (m.inicio..=m.fim).contains(&i));
+    let em_etapa = |i: usize| etapas.iter().position(|g| (g.inicio..=g.fim).contains(&i));
+    // O fim de cada etapa (o instante do último evento dela), antes e depois de deslocar.
+    let mut fim: Vec<Option<(u64, u64)>> = vec![None; etapas.len()];
+    let mut corte = u64::MAX;
+    for (e, o) in sai.iter().zip(&orig) {
+        let Some(i) = *o else { continue };
+        let Some(k) = em_etapa(i) else { continue };
+        let d = de(i).map_or(0, |m| m.desloca_us);
+        let Some(novo) = e.t.0.checked_add_signed(d) else {
+            return Err(ErroDeEdicao::ComecaAntesDoZero(etapas[k].inicio));
+        };
+        if d != 0 {
+            corte = corte.min(e.t.0.min(novo));
+        }
+        let f = fim[k].get_or_insert((e.t.0, novo));
+        *f = (f.0.max(e.t.0), f.1.max(novo));
+    }
+    for (e, o) in sai.iter().zip(&orig) {
+        if o.is_some_and(|i| em_etapa(i).is_some()) || !leitor.e_barreira(&e.payload) {
+            continue;
+        }
+        let tb = e.t.0;
+        let ultima = |novo: bool| {
+            fim.iter()
+                .enumerate()
+                .filter_map(|(k, f)| f.map(|f| (if novo { f.1 } else { f.0 }, k)))
+                .filter(|&(t, _)| t <= tb)
+                .max()
+        };
+        let (antes, depois) = (ultima(false), ultima(true));
+        let empata = fim.iter().enumerate().any(|(k, f)| {
+            f.is_some_and(|f| f.1 == tb && f.0 != f.1) && depois.is_some_and(|d| d.1 != k)
+        });
+        if antes.map(|a| a.1) != depois.map(|d| d.1) || empata {
+            let culpadas = [antes, depois].map(|x| x.map(|x| etapas[x.1].inicio));
+            let m = moveis
+                .iter()
+                .find(|m| culpadas.contains(&Some(m.inicio)))
+                .unwrap_or(&moveis[0]);
+            return Err(ErroDeEdicao::MudaOQueODesfazerDesfaz(m.inicio));
+        }
+    }
+    let fim_antes = sai.last().map_or(0, |e| e.t.0);
+    let mut fim_novo = fim_antes;
+    for (e, o) in sai.iter_mut().zip(&orig) {
+        let Some(m) = o.and_then(de) else { continue };
+        if leitor.e_relogio(&e.payload) {
+            continue;
+        }
+        e.t = MacroTime(e.t.0.saturating_add_signed(m.desloca_us));
+        fim_novo = fim_novo.max(e.t.0);
+        if let Some(c) = leitor.na_faixa(&e.payload, m.faixa) {
+            e.payload = c;
+        }
+    }
+    if fim_novo > fim_antes {
+        // O fim da gravação (o que não é relógio no último instante, fora das etapas que andam) vai para o
+        // fim da última etapa; o relógio estende-se até lá.
+        for (e, o) in sai.iter_mut().zip(&orig) {
+            if e.t.0 == fim_antes
+                && !o.is_some_and(|i| em_etapa(i).is_some())
+                && !leitor.e_relogio(&e.payload)
+            {
+                e.t = MacroTime(fim_novo);
+            }
+        }
+        let mais = leitor.espera(ev, ev.len(), MacroTime(fim_antes), fim_novo - fim_antes, 0);
+        sai.extend(mais);
+    }
+    sai.sort_by_key(|e| e.t);
+    if !saiu
+        && corte != u64::MAX
+        && let Some(m) = leitor.sai_da_gravacao()
+    {
+        let k = sai.partition_point(|e| e.t.0 < corte);
+        sai.insert(
+            k,
+            Event {
+                t: MacroTime(corte),
+                payload: m,
+            },
+        );
+    }
+    Ok(sai)
 }
 
 /// **Quantos quadros de `quadro_us` cabem numa espera de `us`**, e o resto (µs) que não enche um. A
@@ -287,7 +433,7 @@ pub fn no_quadro(j: u64, quadro_us: f64) -> u64 {
     reason = "o passo de saída e as duas tabelas da edição"
 )]
 fn empurra(
-    out: &mut Vec<Event>,
+    out: &mut Saida,
     leitor: &dyn LeitorDaFamilia,
     e: &Event,
     i: usize,
@@ -304,16 +450,10 @@ fn empurra(
         }
     };
     for c in insercoes.get(&i).into_iter().flatten() {
-        out.push(Event {
-            t: MacroTime(t),
-            payload: anda(c),
-        });
+        out.push(Some(i), t, anda(c));
     }
     let carga = trocas.get(&i).copied().unwrap_or(&e.payload);
-    out.push(Event {
-        t: MacroTime(t),
-        payload: anda(carga),
-    });
+    out.push(Some(i), t, anda(carga));
 }
 
 impl Track {

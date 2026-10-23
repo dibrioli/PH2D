@@ -13,7 +13,7 @@
 //! Event    : 1 t_us (varint) · 2 payload (bytes)
 //! Edicao   : 1 ancora (varint) · 2 nome (utf8) · 3 espera_us (zigzag) · 4 troca* · 5 insercao*
 //!            · 6 sai_da_gravacao (varint) · 7 apagada (varint) · 8 dica (utf8; um leitor sem ela
-//!            ignora-a: não muda o que toca)
+//!            ignora-a: não muda o que toca) · 9 desloca_us (zigzag; 1.2, `exige` "etapa.desloca")
 //!            — troca/insercao: 1 evento (varint) · 2 carga (bytes)
 //! ```
 //! Etiqueta repetida de campo único: vence a última.
@@ -29,11 +29,14 @@ use crate::rec::{Cursor, Record, put_field, varint_bytes};
 
 pub const MAGIC: &[u8; 9] = b"PH2DMACRO";
 pub const MAJOR: u16 = 1;
-pub const MINOR: u16 = 1;
+pub const MINOR: u16 = 2;
 /// O que este leitor sabe aplicar (`exige`).
-pub const SABE: &[&str] = &[EXIGE_ETAPAS];
+pub const SABE: &[&str] = &[EXIGE_ETAPAS, EXIGE_DESLOCA];
 /// As edições das etapas (1.1).
 pub const EXIGE_ETAPAS: &str = "etapas";
+/// A etapa que anda sozinha no tempo (`EdicaoDeEtapa::desloca_us`, 1.2): um leitor sem ela tocá-la-ia
+/// no instante gravado, calado.
+pub const EXIGE_DESLOCA: &str = "etapa.desloca";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CodecError {
@@ -74,9 +77,18 @@ impl std::error::Error for CodecError {}
 pub fn write(doc: &MacroDoc) -> Vec<u8> {
     let mut out = Vec::with_capacity(64);
     let editado = doc.tracks.iter().any(|t| !t.edicoes.is_empty());
+    let desloca = doc
+        .tracks
+        .iter()
+        .any(|t| t.edicoes.iter().any(|e| e.desloca_us != 0));
+    let minor: u16 = if desloca {
+        MINOR
+    } else {
+        u16::from(editado)
+    };
     out.extend_from_slice(MAGIC);
     out.extend_from_slice(&MAJOR.to_le_bytes());
-    out.extend_from_slice(&if editado { MINOR } else { 0 }.to_le_bytes());
+    out.extend_from_slice(&minor.to_le_bytes());
     let mut rec = Vec::new();
     let mut r = Vec::with_capacity(8);
     r.extend_from_slice(&doc.reference.w.to_le_bytes());
@@ -87,6 +99,9 @@ pub fn write(doc: &MacroDoc) -> Vec<u8> {
     }
     if editado {
         put_field(&mut rec, 3, EXIGE_ETAPAS.as_bytes());
+    }
+    if desloca {
+        put_field(&mut rec, 3, EXIGE_DESLOCA.as_bytes());
     }
     rec.push(0);
     out.extend_from_slice(&rec);
@@ -136,6 +151,9 @@ fn write_edicao(ed: &EdicaoDeEtapa) -> Vec<u8> {
     }
     if let Some(d) = &ed.dica {
         r.str(8, d);
+    }
+    if ed.desloca_us != 0 {
+        r.varint(9, zigzag(ed.desloca_us));
     }
     r.finish()
 }
@@ -286,6 +304,7 @@ fn read_edicao(bytes: &[u8]) -> Result<EdicaoDeEtapa, CodecError> {
                         .to_owned(),
                 );
             }
+            9 => ed.desloca_us = unzigzag(Cursor(body).varint()?),
             _ => {}
         }
     }

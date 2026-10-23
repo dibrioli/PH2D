@@ -65,6 +65,14 @@ impl LeitorDaFamilia for Brinquedo {
     fn sai_da_gravacao(&self) -> Option<Vec<u8>> {
         Some(carga(9, 0))
     }
+    fn na_faixa(&self, c: &[u8], n: u32) -> Option<Vec<u8>> {
+        let mut v = c[..9].to_vec();
+        v.push(u8::try_from(n).expect("poucas faixas"));
+        Some(v)
+    }
+    fn e_barreira(&self, c: &[u8]) -> bool {
+        c[0] == 5
+    }
 }
 
 /// Relógio a cada `Q`; três gestos de 3 quadros com 4 quadros de relógio entre eles; uma propriedade
@@ -382,6 +390,7 @@ fn editado() -> MacroDoc {
             insercoes: vec![(a, vec![])],
             sai_da_gravacao: true,
             apagada: false,
+            desloca_us: 0,
         },
         EdicaoDeEtapa {
             ancora: ancora(&g0, 0),
@@ -448,3 +457,6 @@ fn uma_espera_de_k_quadros_arredondada_a_us_tem_k_quadros_e_nenhum_resto() {
         assert_eq!(quadros_da_espera(no_quadro(k, q), q), (k, 0), "{k} quadros");
     }
 }
+
+#[path = "etapas_desloca.rs"]
+mod desloca;

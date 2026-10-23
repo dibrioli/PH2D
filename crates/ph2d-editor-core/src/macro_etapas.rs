@@ -75,6 +75,8 @@ pub mod erros {
     pub const PRESET: &str = "panel.macros.error.missing_preset";
     pub const NAO_CABE: &str = "panel.macros.error.edit_does_not_fit";
     pub const ESPERA: &str = "panel.macros.error.wait_longer_than_gap";
+    pub const ANTES_DO_ZERO: &str = "panel.macros.error.before_start";
+    pub const DESFAZER: &str = "panel.macros.error.changes_what_undo_takes_back";
     pub const NAO_PINCELADA: &str = "panel.macros.error.not_a_stroke";
     pub const NAO_VALOR: &str = "panel.macros.error.not_a_value";
     pub const SEM_ETAPA: &str = "panel.macros.error.no_such_step";
@@ -96,6 +98,8 @@ pub mod erros {
         PRESET,
         NAO_CABE,
         ESPERA,
+        ANTES_DO_ZERO,
+        DESFAZER,
         NAO_PINCELADA,
         NAO_VALOR,
         SEM_ETAPA,
@@ -141,6 +145,8 @@ pub mod erros {
     pub fn de_edicao(e: &ErroDeEdicao) -> ErroDaMacroView {
         match e {
             ErroDeEdicao::EsperaMaiorQueOIntervalo(_) => erro(ESPERA),
+            ErroDeEdicao::ComecaAntesDoZero(_) => erro(ANTES_DO_ZERO),
+            ErroDeEdicao::MudaOQueODesfazerDesfaz(_) => erro(DESFAZER),
             _ => erro(NAO_CABE),
         }
     }

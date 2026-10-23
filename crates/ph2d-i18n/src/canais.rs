@@ -207,6 +207,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "canal.m.vao" => "Gap",
         "canal.m.x" => "X",
         "canal.m.y" => "Y",
+        "canal.m.z" => "Z",
+        "canal.m.w" => "W",
         "canal.m.valor" => "Value",
         "canal.m.parametro" => "Parameter",
         "canal.vetor.widget_icone" => "Widget Icon",

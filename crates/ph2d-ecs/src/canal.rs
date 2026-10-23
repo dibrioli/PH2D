@@ -73,6 +73,7 @@ impl FieldKey {
             familia::JUNTA => crate::canal_junta::membro(self.campo),
             familia::FLIP => crate::canal_flip::membro(self.campo),
             familia::FISICA => crate::canal_fisica::membro(self.campo),
+            familia::COMPONENTE => crate::canal_componente::membro(self),
             _ => None,
         }
     }
@@ -171,6 +172,9 @@ pub mod familia {
     pub const FLIP: u16 = 4;
     /// O corpo de física da §11 (`RigidBody`, `Collider` e os opcionais) — `crate::canal_fisica`.
     pub const FISICA: u16 = 5;
+    /// QUALQUER campo do catálogo (`ph2d-component-desc`), pelo id estável do componente e o
+    /// `field_id` — `crate::canal_componente`.
+    pub const COMPONENTE: u16 = 6;
 }
 
 /// ⭐ **A porta única de «o que é este campo»** — `None` = endereço que nenhuma família declara (um
@@ -183,6 +187,7 @@ pub fn info(k: FieldKey) -> Option<CampoInfo> {
         familia::JUNTA => crate::canal_junta::info(k.campo),
         familia::FLIP => crate::canal_flip::info(k.campo),
         familia::FISICA => crate::canal_fisica::info(k.campo),
+        familia::COMPONENTE => crate::canal_componente::info(k),
         _ => None,
     }
 }

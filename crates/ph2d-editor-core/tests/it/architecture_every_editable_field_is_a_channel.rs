@@ -78,6 +78,7 @@ const ESCOPO: &[(&str, Option<&[&str]>)] = &[
         "ph2d-panel-inspector",
         Some(&[
             "sections/transform.rs",
+            "sections/camera.rs",
             "sections/color_tint.rs",
             "sections/emissive_row.rs",
             "sections/joint.rs",
@@ -469,6 +470,31 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
             "INSP_JOINT_DAMPING",
         ],
         "o par de limites e a mola da junta, num laço (canais JUNTA)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "camera_body",
+        Canal,
+        &["INSP_CAMERA_OFFSET_X", "INSP_CAMERA_OFFSET_Y"],
+        "o par offset da câmera, numa tabela (família COMPONENTE, F27)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "follow_body",
+        Canal,
+        &[
+            "INSP_CAMERA_DAMP_X",
+            "INSP_CAMERA_DEAD_X",
+            "INSP_CAMERA_LOOK_X",
+        ],
+        "os pares do seguimento, numa tabela (família COMPONENTE, F27)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "limits_body",
+        Canal,
+        &["INSP_CAMERA_MIN_X", "INSP_CAMERA_MAX_Y"],
+        "os pares min/max dos limites, numa tabela (família COMPONENTE, F27)",
     ),
     (
         "ph2d-panel-inspector",

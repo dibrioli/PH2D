@@ -16,6 +16,7 @@ impl crate::App {
             hero_screen,
             vec_scene,
             flip,
+            component_registry,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -53,6 +54,7 @@ impl crate::App {
         publicar.dedup();
         ph2d_app_vec::canais::publicar(sim, vec_scene, &publicar);
         ph2d_app_components::canais_objeto::publicar(sim, &publicar);
+        ph2d_app_components::canais_componente::publicar(sim, component_registry, &publicar);
         ph2d_app_physics::canais_junta::publicar(sim, &publicar);
         ph2d_app_physics::canais_corpo::publicar(sim, &publicar);
         ph2d_app_flip::canais_camada::publicar(sim, flip, &publicar);

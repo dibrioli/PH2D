@@ -305,3 +305,38 @@ fn a_fisica_do_corpo_tem_um_losango_por_linha() {
     );
     assert_eq!(gravados(&i), vec![fis(fs::VEL_X), fis(fs::VEL_Y)]);
 }
+
+/// ⭐ **F27 B1 — os campos da família COMPONENTE**: cada controlo derivado aponta para canais que o
+/// catálogo resolve (nenhuma lista vazia — um `field_id` errado deixaria o losango mudo), e o X e o
+/// Y de um par são o MESMO grupo (um losango por campo).
+#[test]
+fn os_campos_derivados_resolvem_no_catalogo() {
+    assert!(
+        derivados().len() >= COMPONENTES.len() + 32,
+        "controlo: a máscara e a tabela"
+    );
+    for (id, reps) in derivados() {
+        assert!(
+            !reps.is_empty(),
+            "{id:?}: nenhum canal — field_id ou faixa errados"
+        );
+        for r in reps.iter() {
+            let PropKind::Field(k) = r else {
+                panic!("{id:?}: não é canal de família");
+            };
+            assert!(
+                ph2d_ecs::canal_componente::resolver(*k).is_some(),
+                "{id:?} {k:?}"
+            );
+        }
+        assert_eq!(canal_do_campo(*id), &**reps);
+    }
+    let [PropKind::Field(x)] = canal_do_campo(insp::INSP_CAMERA_OFFSET_X) else {
+        panic!("offset X");
+    };
+    let [PropKind::Field(y)] = canal_do_campo(insp::INSP_CAMERA_OFFSET_Y) else {
+        panic!("offset Y");
+    };
+    assert_ne!(x, y);
+    assert!(x.mesmo_grupo(*y), "o offset é UM losango");
+}

@@ -85,7 +85,7 @@
 - Só a Aquarela; ligado, saem as linhas do grão próprio (`BrushSettings::grao_do_papel`), ficam o interruptor e o Amount.
   Portões `seam_same_as_paper`; fotos `tutorial/fotos/same_as_paper_*`.
 
-## §12 — Estado escondido que pintava (22/10, ver SHAs no `git log`)
+## §12 — Estado escondido que pintava (22/10, `b58532d9ce`)
 
 - **Causa** (captura do dono): na sessão molhada da Aquarela, uma mancha com Grain Colors (ou Shape texturada) arma o
   plano `stroke_density`; a mancha seguinte, lisa, lia esse plano (0 no miolo) → só a orla (miolo 247,6 × 208,2).

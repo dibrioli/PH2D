@@ -393,6 +393,7 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
                 .and_then(|t| t.find(needle))
                 .map(|b| b + ahead);
             let Some((x, y)) = at.and_then(|at| docs.glyph_center(id, at)) else {
+                at.map(|at| docs.scroll_to(id, at));
                 return false;
             };
             let mut ts = TextSystem::without_system_fonts();
@@ -431,6 +432,7 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
                 .and_then(|t| t.find(needle))
                 .map(|b| b + ahead);
             let Some(p) = at.and_then(|at| docs.glyph_center(id, at)) else {
+                at.map(|at| docs.scroll_to(id, at));
                 return false;
             };
             click(docs, id.0, p, mods);

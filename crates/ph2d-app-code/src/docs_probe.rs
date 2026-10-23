@@ -166,6 +166,14 @@ impl CodeDocs {
         Some(((a.x + b.x) * 0.5, a.y + a.h * 0.5))
     }
 
+    /// ⚠️ SONDA (o condutor das fotos): rola a aba até o byte `at` ficar à vista — o que a roda do
+    /// artista faria antes de apontar; a janela das fotos é mais baixa que a dos testes.
+    pub fn scroll_to(&mut self, id: ScriptId, at: usize) {
+        if let Some(d) = self.docs.iter_mut().find(|d| d.script == id) {
+            d.view.ensure_visible(&d.buffer, at);
+        }
+    }
+
     /// ⚠️ SONDA: a gramática da aba do script `id`.
     #[must_use]
     pub fn grammar_of(&self, id: ScriptId) -> Option<GrammarProbe> {

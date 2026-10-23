@@ -339,7 +339,7 @@ pub(crate) fn paint_anim_section(
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
     let title = if info.rows.is_empty() {
-        String::from(tr("panel.inspector.animation.animation"))
+        String::from(tr("component.field.sprite_animator.0"))
     } else {
         tr_with(
             "panel.inspector.animation.title_count",

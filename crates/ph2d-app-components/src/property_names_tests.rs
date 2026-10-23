@@ -28,8 +28,17 @@ fn o_nome_de_codigo_e_o_rotulo() {
     let mut codes = BTreeSet::new();
     let mut vistos = 0;
     for d in ph2d_component_desc::all().filter(|d| !d.code.is_empty()) {
-        assert!(codes.insert(d.code), "dois componentes chamam-se '{}'", d.code);
-        assert_eq!(d.code, snake(ph2d_i18n::tr(d.display_key)), "{}", d.canonical_name);
+        assert!(
+            codes.insert(d.code),
+            "dois componentes chamam-se '{}'",
+            d.code
+        );
+        assert_eq!(
+            d.code,
+            snake(ph2d_i18n::tr(d.display_key)),
+            "{}",
+            d.canonical_name
+        );
         let mut nomes = BTreeSet::new();
         for f in d.fields {
             if f.name.is_empty() {
@@ -49,7 +58,13 @@ fn o_nome_de_codigo_e_o_rotulo() {
                 continue;
             }
             assert!(nomes.insert(f.name), "{}.{} repetido", d.code, f.name);
-            assert_eq!(f.name, snake(ph2d_i18n::tr(f.label_key)), "{}.{}", d.code, f.name);
+            assert_eq!(
+                f.name,
+                snake(ph2d_i18n::tr(f.label_key)),
+                "{}.{}",
+                d.code,
+                f.name
+            );
             vistos += 1;
         }
     }
@@ -75,11 +90,31 @@ fn ler_e_escrever_o_mesmo_valor_nao_muda_um_byte() {
         let antes = (entry.serialize)(&world, e).expect("bytes");
         for f in d.fields.iter().filter(|f| !f.name.is_empty()) {
             let nome = property::full_name(d.code, f.name);
-            let v = property::get(&reg, &world, e, &nome).unwrap_or_else(|err| panic!("{nome}: {err}"));
-            property::set(&reg, &mut world, e, &nome, v).unwrap_or_else(|err| panic!("{nome}: {err}"));
+            let v = property::get(
+                &reg,
+                &world,
+                e,
+                &nome,
+                ph2d_ecs::scene::property_ref::RefNames::default(),
+            )
+            .unwrap_or_else(|err| panic!("{nome}: {err}"));
+            property::set(
+                &reg,
+                &mut world,
+                e,
+                &nome,
+                v,
+                ph2d_ecs::scene::property_ref::RefNames::default(),
+            )
+            .unwrap_or_else(|err| panic!("{nome}: {err}"));
             campos += 1;
         }
-        assert_eq!(antes, (entry.serialize)(&world, e).expect("bytes"), "{}", d.code);
+        assert_eq!(
+            antes,
+            (entry.serialize)(&world, e).expect("bytes"),
+            "{}",
+            d.code
+        );
     }
     assert!(campos >= 32, "{campos}");
 }
@@ -89,12 +124,38 @@ fn escrever_um_campo_muda_so_esse() {
     let reg = registo();
     let mut world = bevy_ecs::world::World::new();
     let e = world.spawn(ph2d_physics_ecs::Health::default()).id();
-    property::set(&reg, &mut world, e, "health.max", serde_json::json!(50.0)).unwrap();
-    property::set(&reg, &mut world, e, "health.seed", serde_json::json!(7.0)).unwrap();
+    property::set(
+        &reg,
+        &mut world,
+        e,
+        "health.max",
+        serde_json::json!(50.0),
+        ph2d_ecs::scene::property_ref::RefNames::default(),
+    )
+    .unwrap();
+    property::set(
+        &reg,
+        &mut world,
+        e,
+        "health.seed",
+        serde_json::json!(7.0),
+        ph2d_ecs::scene::property_ref::RefNames::default(),
+    )
+    .unwrap();
     let h = world.get::<ph2d_physics_ecs::Health>(e).unwrap();
     assert_eq!((h.max, h.seed), (50.0, 7));
     assert_eq!(h.start, ph2d_physics_ecs::Health::default().start);
-    assert_eq!(property::get(&reg, &world, e, "health.max").unwrap(), serde_json::json!(50.0));
+    assert_eq!(
+        property::get(
+            &reg,
+            &world,
+            e,
+            "health.max",
+            ph2d_ecs::scene::property_ref::RefNames::default()
+        )
+        .unwrap(),
+        serde_json::json!(50.0)
+    );
 }
 
 #[test]
@@ -102,18 +163,46 @@ fn um_nome_ou_um_valor_errado_diz_porque() {
     let reg = registo();
     let mut world = bevy_ecs::world::World::new();
     let e = world.spawn(ph2d_physics_ecs::Health::default()).id();
-    let mut erro = |n: &str, v| property::set(&reg, &mut world, e, n, v).unwrap_err();
-    assert_eq!(erro("max", serde_json::json!(1)), PropertyError::NotQualified("max".into()));
-    assert_eq!(erro("vida.max", serde_json::json!(1)), PropertyError::UnknownComponent("vida".into()));
-    assert!(matches!(erro("health.maxx", serde_json::json!(1)), PropertyError::UnknownField { .. }));
-    assert!(matches!(erro("health.max", serde_json::json!("abc")), PropertyError::WrongType { .. }));
-    assert!(matches!(erro("health.seed", serde_json::json!(3.7)), PropertyError::WrongType { .. }));
+    let mut erro = |n: &str, v| {
+        property::set(
+            &reg,
+            &mut world,
+            e,
+            n,
+            v,
+            ph2d_ecs::scene::property_ref::RefNames::default(),
+        )
+        .unwrap_err()
+    };
+    assert_eq!(
+        erro("max", serde_json::json!(1)),
+        PropertyError::NotQualified("max".into())
+    );
+    assert_eq!(
+        erro("vida.max", serde_json::json!(1)),
+        PropertyError::UnknownComponent("vida".into())
+    );
+    assert!(matches!(
+        erro("health.maxx", serde_json::json!(1)),
+        PropertyError::UnknownField { .. }
+    ));
+    assert!(matches!(
+        erro("health.max", serde_json::json!("abc")),
+        PropertyError::WrongType { .. }
+    ));
+    assert!(matches!(
+        erro("health.seed", serde_json::json!(3.7)),
+        PropertyError::WrongType { .. }
+    ));
     assert!(matches!(
         erro("game_camera.height", serde_json::json!(2.0)),
         PropertyError::Missing { .. }
     ));
     // Nada do que falhou chegou ao componente.
-    assert_eq!(world.get::<ph2d_physics_ecs::Health>(e), Some(&ph2d_physics_ecs::Health::default()));
+    assert_eq!(
+        world.get::<ph2d_physics_ecs::Health>(e),
+        Some(&ph2d_physics_ecs::Health::default())
+    );
 }
 
 /// ⭐ Toda ESCOLHA, toda caixa e todo booleano invertido vai e volta pelo nome que o script usa: o json
@@ -141,7 +230,9 @@ fn toda_vista_vai_e_volta_pelo_valor_do_cartao() {
                 View::Options(opts) => opts
                     .iter()
                     .map(|(n, _)| {
-                        let snake = n.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
+                        let snake = n
+                            .chars()
+                            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
                         assert!(snake, "{nome}: a opção '{n}' não é snake");
                         json!(n)
                     })
@@ -150,8 +241,27 @@ fn toda_vista_vai_e_volta_pelo_valor_do_cartao() {
                 _ => continue,
             };
             for v in valores {
-                property::set(&reg, &mut world, e, &nome, v.clone()).unwrap_or_else(|err| panic!("{nome} = {v}: {err}"));
-                assert_eq!(property::get(&reg, &world, e, &nome).unwrap(), v, "{nome}");
+                property::set(
+                    &reg,
+                    &mut world,
+                    e,
+                    &nome,
+                    v.clone(),
+                    ph2d_ecs::scene::property_ref::RefNames::default(),
+                )
+                .unwrap_or_else(|err| panic!("{nome} = {v}: {err}"));
+                assert_eq!(
+                    property::get(
+                        &reg,
+                        &world,
+                        e,
+                        &nome,
+                        ph2d_ecs::scene::property_ref::RefNames::default()
+                    )
+                    .unwrap(),
+                    v,
+                    "{nome}"
+                );
                 vistas += 1;
             }
         }

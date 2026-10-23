@@ -138,6 +138,7 @@ fn a_cena_6_e_um_jogo_que_responde_ao_teclado_e_ao_rato() {
         let antes = copias(&mut sim);
         let mut portas = crate::script_bridge::ScriptDoors {
             registry: &reg,
+            tags: &ph2d_tags::TagTree::new(),
             docs: crate::instance_docs::OwnedDocs {
                 vec_scene: &mut vec,
                 vec_entities: &mut mapa,

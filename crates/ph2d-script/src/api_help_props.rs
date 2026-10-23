@@ -19,7 +19,7 @@ end"#,
         key: "type.PropertyName",
         params: &[],
         returns: "",
-        more: "The card's title and the field's label, in snake_case and joined by a dot: «Game Camera» › «Height» is \"game_camera.height\", «Health» › «Regen / s» is \"health.regen\" (the unit at the end stays out). The editor suggests them inside the quotes and underlines a name no component has.",
+        more: "The card's title and the field's label, in snake_case and joined by a dot: «Game Camera» › «Height» is \"game_camera.height\", «Health» › «Regen / s» is \"health.regen\" (the unit at the end stays out). The editor suggests them inside the quotes and underlines a name no component has. A field that points at something else takes its NAME: an object's name (\"camera_follow.target\"), a tag's path (\"Enemy/Flying\"; \"tags\" is a list of them), a sorting layer's name; nil = nobody, and a name nothing has is an error. A choice with rows under it (the agent's «Target», the factory's «Where») has one name per row: writing \"nav_agent.object\" also picks «Object», and a row of a choice not in use reads nil.",
         example: r#"function update(self, dt)
   local max = ph2d.get(self.id, "health.max")
   ph2d.set(self.id, "health.max", max + dt)

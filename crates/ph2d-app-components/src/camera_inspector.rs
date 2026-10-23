@@ -123,7 +123,8 @@ pub(crate) fn sanitize_camera(c: &mut GameCamera) {
     let livre = GameCamera::default();
     // A saturação da altura é do MOTOR; um valor não finito volta ao ponto neutro.
     c.height_world = if c.height_world.is_finite() {
-        c.height_world.clamp(CAMERA_MIN_HEIGHT_WORLD, CAMERA_MAX_HEIGHT_WORLD) // CLAMP-OK: o teto é o do motor
+        c.height_world
+            .clamp(CAMERA_MIN_HEIGHT_WORLD, CAMERA_MAX_HEIGHT_WORLD) // CLAMP-OK: o teto é o do motor
     } else {
         livre.height_world
     };

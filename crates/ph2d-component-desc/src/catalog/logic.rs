@@ -105,7 +105,7 @@ const ACTION_FIELDS: &[FieldDesc] = &[
 /// ⚠️ **UM campo, e a lista curta é a wave:** duração, repetir e *«está a correr»* são do `Timer`,
 /// que este componente EXIGE. Um `Duration` aqui seria um segundo relógio (plano 16 §1-bis).
 const SEQUENCE_FIELDS: &[FieldDesc] =
-    &[f(1, "component.field.sequence_fields.1", K::Text).keyed("container")];
+    &[f(1, "component.field.sequence_fields.1", K::Text).named_as("cutscene", "container")];
 
 /// ⚠️ `lifetime` é a chave `duration_us`: o cartão mostra segundos, o valor guardado é µs.
 const LIFETIME_FIELDS: &[FieldDesc] = &[
@@ -117,8 +117,9 @@ const LIFETIME_FIELDS: &[FieldDesc] = &[
 ];
 
 /// ADR-0186: o `Macro` descreve só o modo — o campo 1 é a gravação, que nenhum controlo edita.
-const MACRO_FIELDS: &[FieldDesc] =
-    &[f(2, "component.field.macro_fields.2", K::Enum).named_as("playback", "modo").viewed(crate::options![
+const MACRO_FIELDS: &[FieldDesc] = &[f(2, "component.field.macro_fields.2", K::Enum)
+    .named_as("playback", "modo")
+    .viewed(crate::options![
         "faithful" => Fiel,
         "explanatory" => Explicativo,
         "do_it" => Fazer,
@@ -127,12 +128,14 @@ const MACRO_FIELDS: &[FieldDesc] =
 /// ⭐ Ciclo 19 do Motion (doc 128 §3.6): os campos do `Motion Input`, na ordem da struct.
 const MOTION_INPUT_FIELDS: &[FieldDesc] = &[
     f(1, "component.field.motion_input_fields.1", K::Text).named_as("input", "name"),
-    f(2, "component.field.motion_input_fields.2", K::Enum).named("source").viewed(crate::options![
-        "value" => Value,
-        "color" => Color,
-        "health" => Health,
-        "damage" => Damage,
-    ]),
+    f(2, "component.field.motion_input_fields.2", K::Enum)
+        .named("source")
+        .viewed(crate::options![
+            "value" => Value,
+            "color" => Color,
+            "health" => Health,
+            "damage" => Damage,
+        ]),
     f(3, "component.field.motion_input_fields.3", K::Scalar).named("value"),
     f(4, "component.field.motion_input_fields.4", K::Color).named("color"),
 ];
@@ -147,14 +150,32 @@ const OUTSIDE_FIELDS: &[FieldDesc] =
 /// que o `requires` puxa quando o artista acrescenta a fábrica. Um `rate` aqui seria um **segundo
 /// relógio** para a mesma lei.
 ///
-/// ⏳ A receita (`master`) e o ONDE (`at`, que guarda a identidade da tag) são referências.
+/// A receita (`master`, um `StableId`) e a tag do ONDE lêem-se pelo NOME; `at` é um enum com dados:
+/// «Where» escolhe a variante e cada linha dela é um campo de variante (`at:{molde}`).
 const FACTORY_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.factory_fields.1", K::Text).keyed("master"),
+    f(1, "component.field.factory_fields.1", K::Text)
+        .named_as("recipe", "master")
+        .viewed(crate::View::Named(crate::Target::Stable)),
     f(2, "component.field.factory_fields.2", K::Text).named("on_signal"),
-    f(3, "component.field.factory_fields.3", K::Enum).keyed("at"),
-    f(4, "component.field.factory_fields.4", K::Vec2).keyed("at"),
-    f(5, "component.field.factory_fields.5", K::Text).keyed("at"),
-    f(6, "component.field.factory_fields.6", K::Enum).keyed("at"),
+    f(3, "component.field.factory_fields.3", K::Enum)
+        .named_as("where", "at")
+        .viewed(crate::options![
+            "here" => Here,
+            "area" => {"Area": {"w": 4.0, "h": 1.0}},
+            "at_tag" => {"Tagged": {"tag": 0, "pick": "Cycle"}},
+        ]),
+    f(4, "component.field.factory_fields.4", K::Vec2)
+        .named_as("area", r#"at:{"Area":{"w":4.0,"h":1.0}}"#)
+        .viewed(View::Pair("w", "h")),
+    f(5, "component.field.factory_fields.5", K::Text)
+        .named_as("spawn_tag", r#"at:{"Tagged":{"tag":0,"pick":"Cycle"}}/tag"#)
+        .viewed(crate::View::Named(crate::Target::Tag)),
+    f(6, "component.field.factory_fields.6", K::Toggle)
+        .named_as(
+            "pick_at_random",
+            r#"at:{"Tagged":{"tag":0,"pick":"Cycle"}}/pick"#,
+        )
+        .viewed(View::Toggle(stringify!(Random), stringify!(Cycle))),
     f(7, "component.field.factory_fields.7", K::Int).named("burst"),
     f(8, "component.field.factory_fields.8", K::Int).named_as("max_alive", "alive_max"),
     f(9, "component.field.factory_fields.9", K::Int).named_as("max_total", "total_max"),
@@ -175,29 +196,35 @@ const FACTORY_FIELDS: &[FieldDesc] = &[
 ///
 /// `curve` e `ease` são as duas metades da chave `easing` (`{family, mode}`): cada uma a sua.
 const PATH_FOLLOW_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.path_follow_fields.1", K::Text).keyed("caminho"),
+    f(1, "component.field.path_follow_fields.1", K::Text)
+        .named_as("shape", "caminho")
+        .viewed(crate::View::Named(crate::Target::Name)),
     f(2, "component.field.path_follow_fields.2", K::Scalar).named_as("timer_slot", "relogio"),
     f(3, "component.field.path_follow_fields.3", K::Enum)
         .named_as("cycle", "ciclo")
         .viewed(crate::options!["restart" => Reinicia, "ping_pong" => PingPong]),
-    f(4, "component.field.path_follow_fields.4", K::Enum).named_as("curve", "easing/family").viewed(crate::options![
-        "linear" => Linear,
-        "quad" => Quad,
-        "cubic" => Cubic,
-        "quart" => Quart,
-        "quint" => Quint,
-        "back" => Back,
-        "bounce" => Bounce,
-        "sine" => Sine,
-        "expo" => Expo,
-        "circ" => Circ,
-        "elastic" => Elastic,
-    ]),
-    f(5, "component.field.path_follow_fields.5", K::Enum).named_as("ease", "easing/mode").viewed(crate::options![
-        "in" => In,
-        "out" => Out,
-        "in_out" => InOut,
-    ]),
+    f(4, "component.field.path_follow_fields.4", K::Enum)
+        .named_as("curve", "easing/family")
+        .viewed(crate::options![
+            "linear" => Linear,
+            "quad" => Quad,
+            "cubic" => Cubic,
+            "quart" => Quart,
+            "quint" => Quint,
+            "back" => Back,
+            "bounce" => Bounce,
+            "sine" => Sine,
+            "expo" => Expo,
+            "circ" => Circ,
+            "elastic" => Elastic,
+        ]),
+    f(5, "component.field.path_follow_fields.5", K::Enum)
+        .named_as("ease", "easing/mode")
+        .viewed(crate::options![
+            "in" => In,
+            "out" => Out,
+            "in_out" => InOut,
+        ]),
     f(6, "component.field.path_follow_fields.6", K::Enum)
         .named_as("when_done", "ao_acabar")
         .viewed(crate::options!["hold" => Hold, "rewind" => Rewind]),
@@ -250,8 +277,10 @@ const HEALTH_FIELDS: &[FieldDesc] = &[
     f(8, "component.field.health_fields.8", K::Scalar).named("shield_max"),
     f(9, "component.field.health_fields.9", K::Scalar).named_as("shield_time", "shield_duration_s"),
     f(10, "component.field.health_fields.10", K::Scalar).named("shield_regen"),
-    f(11, "component.field.health_fields.11", K::Scalar).named_as("shield_delay", "shield_regen_delay_s"),
-    f(12, "component.field.health_fields.12", K::Toggle).named_as("absorb_rest", "shield_blocks_excess"),
+    f(11, "component.field.health_fields.11", K::Scalar)
+        .named_as("shield_delay", "shield_regen_delay_s"),
+    f(12, "component.field.health_fields.12", K::Toggle)
+        .named_as("absorb_rest", "shield_blocks_excess"),
     f(13, "component.field.health_fields.13", K::Scalar).named_as("armor", "armor_flat"),
     f(14, "component.field.health_fields.14", K::Scalar).named_as("block", "armor_percent"),
     f(15, "component.field.health_fields.15", K::Scalar).named("dodge"),
@@ -298,7 +327,9 @@ const DAMAGE_FIELDS: &[FieldDesc] = &[
 /// ⚠️ **`Target` é o NOME de outro objecto, vazio = este** — é ele que põe a vida do herói no placar
 /// sem que o placar tenha vida.
 const HEALTH_BAR_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.health_bar_fields.1", K::Text).keyed("target"),
+    f(1, "component.field.health_bar_fields.1", K::Text)
+        .named("target")
+        .viewed(crate::View::Named(crate::Target::Name)),
     f(2, "component.field.health_bar_fields.2", K::Scalar).named("width"),
     f(3, "component.field.health_bar_fields.3", K::Scalar).named("height"),
     f(4, "component.field.health_bar_fields.4", K::Scalar).named("offset_x"),
@@ -394,14 +425,7 @@ pub const DESCS: &[ComponentDesc] = &[
         &["ph2d::ecs::Timers"],
     )
     .coded("factory")
-    .hiding(&[
-        ("master", Hidden::Reference),
-        // Um enum COM DADOS (`"Here"` · `{Area: {w, h}}` · `{Tagged: {tag, pick}}`): a linha «Where»
-        // escolhe a variante e as outras três só existem dentro dela, e o `Tagged` guarda a tag pelo
-        // id. Ganha nome com as referências (d4), não por um caminho que muda com a variante.
-        ("at", Hidden::Reference),
-        ("spread_deg", Hidden::NoCard),
-    ]),
+    .hiding(&[("spread_deg", Hidden::NoCard)]),
     D::authored(
         "ph2d::ecs::Lifetime",
         "component.lifetime.name",
@@ -448,8 +472,7 @@ pub const DESCS: &[ComponentDesc] = &[
         PATH_FOLLOW_FIELDS,
         &["ph2d::ecs::Timers"],
     )
-    .coded("path_follow")
-    .hiding(&[("caminho", Hidden::Reference)]),
+    .coded("path_follow"),
     // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — este objecto toca um container da timeline.
     //
     // ⭐⭐ **Ele REQUER os `Timers`**, e é o mesmo mecanismo da fábrica: o relógio de corrida JÁ
@@ -468,8 +491,7 @@ pub const DESCS: &[ComponentDesc] = &[
         SEQUENCE_FIELDS,
         &["ph2d::ecs::Timers"],
     )
-    .coded("sequence_player")
-    .hiding(&[("container", Hidden::Reference)]),
+    .coded("sequence_player"),
     // ⭐⭐⭐ **O consumidor que faltava aos sinais** — e `O::ANY` pela mesma razão do relógio: quem
     // reage a um sinal é tantas vezes um objecto VAZIO («o cérebro da cena») quanto uma sprite.
     D::authored(
@@ -606,6 +628,5 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         HEALTH_BAR_FIELDS,
     )
-    .coded("health_bar")
-    .hiding(&[("target", Hidden::Reference)]),
+    .coded("health_bar"),
 ];

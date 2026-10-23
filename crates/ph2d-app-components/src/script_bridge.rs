@@ -55,9 +55,19 @@ pub struct ScriptFrame {
 /// rebobinar varre-a (`sweep_spawned`).
 pub struct ScriptDoors<'a, 'd> {
     pub registry: &'a ComponentRegistry,
+    /// A árvore das tags: uma propriedade que guarda uma tag lê-se pelo caminho.
+    pub tags: &'a ph2d_tags::TagTree,
     pub docs: crate::instance_docs::OwnedDocs<'d>,
     /// O tique do passo fixo — o `born_tick` de quem nasce.
     pub tick: u64,
+}
+
+impl ScriptDoors<'_, '_> {
+    fn names(&self) -> ph2d_ecs::scene::property_ref::RefNames<'_> {
+        ph2d_ecs::scene::property_ref::RefNames {
+            tags: Some(self.tags),
+        }
+    }
 }
 
 impl SceneDoors for ScriptDoors<'_, '_> {
@@ -104,7 +114,7 @@ impl SceneDoors for ScriptDoors<'_, '_> {
         entity: Entity,
         name: &str,
     ) -> Result<(serde_json::Value, ph2d_component_desc::FieldKind), String> {
-        crate::script_properties::get(self.registry, sim, entity, name)
+        crate::script_properties::get(self.registry, self.names(), sim, entity, name)
     }
 
     fn property_set(
@@ -115,7 +125,7 @@ impl SceneDoors for ScriptDoors<'_, '_> {
         value: &serde_json::Value,
         dry: bool,
     ) -> Result<(), String> {
-        crate::script_properties::set(self.registry, sim, entity, name, value, dry)
+        crate::script_properties::set(self.registry, self.names(), sim, entity, name, value, dry)
     }
 
     fn health_request(

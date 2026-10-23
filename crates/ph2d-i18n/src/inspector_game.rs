@@ -87,7 +87,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.particles.switch_off_u" => "switch off\u{2026}",
         "panel.inspector.particles.restart_u" => "restart\u{2026}",
         "panel.inspector.particles.shout_when_done_u" => "shout when done\u{2026}",
-        "panel.inspector.physics.only_for_tag_u_any" => "Only for tag\u{2026}  (any)",
+        "panel.inspector.physics.only_for_tag_u_any" => "{field}\u{2026}  (any)",
         "panel.inspector.physics.that_tag_was_deleted_u_this_reaches_nobody" => {
             "That tag was deleted \u{b7} this reaches nobody."
         }
@@ -245,7 +245,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.statemachine.this_transition_never_fires_it_has_no_signal_name" => {
             "This transition never fires: it has no signal name."
         }
-        "panel.inspector.tags.tags" => "Tags",
         "panel.inspector.tags.tags_count" => "Tags  ({n})",
         "panel.inspector.tags.no_tags_yet" => "No tags yet.",
         "panel.inspector.tags.this_object_holds_the_most_tags_the_section_can_show_remove_one_to_add_another" => {
@@ -544,7 +543,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.counter_watch.counter_label" => "Counter",
         "panel.inspector.counter_watch.signal_label" => "Signal",
         "panel.inspector.emitter.on_label" => "On",
-        "panel.inspector.projectile.homing_target_label" => "Target",
         "panel.inspector.script.source_label" => "Script",
         "panel.inspector.statemachine.name_label" => "Name",
         "panel.inspector.statemachine.on_enter_label" => "On Enter",

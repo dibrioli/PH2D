@@ -183,7 +183,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.actions.signal_actions" => "Signal Actions",
         "panel.inspector.actions.no_actions_yet" => "No actions yet.",
-        "panel.inspector.anchors.rides_parent_anchor" => "Rides Parent Anchor",
         "panel.inspector.anchors.the_parent_has_no_anchor" => {
             "The parent has no anchor with that name."
         }
@@ -226,7 +225,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "This sprite has no animation with that name, or the grid shrank under it."
         }
         "panel.inspector.animation.rewind" => "Rewind",
-        "panel.inspector.animation.animation" => "Animation",
         "panel.inspector.animation.this_sprite_does_not_play" => {
             "This sprite does not play animations yet."
         }
@@ -322,8 +320,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.joint.anchor_b" => "Anchor B",
         "panel.inspector.joint.object" => "Object",
         "panel.inspector.joint.world" => "World",
-        "panel.inspector.joint.body_a" => "Body A",
-        "panel.inspector.joint.body_b" => "Body B",
         "panel.inspector.joint.missing" => "(missing)",
         "panel.inspector.material.mix" => "Mix",
         "panel.inspector.material.add" => "Add",
@@ -494,10 +490,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.wheel.differential" => "Differential",
         "panel.inspector.wheel.off" => "Off",
         "panel.inspector.wheel.on" => "On",
-        "panel.inspector.wheel.mounted_on" => "Mounted On",
         "panel.inspector.wheel.scenery" => "(scenery)",
         "panel.inspector.wheel.gear" => "Gear",
-        "panel.inspector.wheel.rope" => "Rope",
         "panel.inspector.wheel.no_rope" => "(no rope)",
         "panel.inspector.anchors.position_x_y_px" => "Position X / Y",
         "panel.inspector.anchors.bounds_x_y_w_h" => "Bounds X / Y / W / H",

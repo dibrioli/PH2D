@@ -37,19 +37,23 @@ const FIELDS: &[FieldDesc] = &[
     f(7, "component.field.fields.7", K::Scalar).named_as("preprocess", "prewarm"),
     f(8, "component.field.fields.8", K::Scalar).named_as("speed_scale", "time_scale"),
     f(9, "component.field.fields.9", K::Seed).named("seed"),
-    f(10, "component.field.fields.10", K::Enum).named_as("emission_shape", "shape").viewed(crate::options![
-        "point" => Point,
-        "disc" => Disc,
-        "ring" => Ring,
-        "rect" => Rect,
-    ]),
+    f(10, "component.field.fields.10", K::Enum)
+        .named_as("emission_shape", "shape")
+        .viewed(crate::options![
+            "point" => Point,
+            "disc" => Disc,
+            "ring" => Ring,
+            "rect" => Rect,
+        ]),
     f(11, "component.field.fields.11", K::Vec2).named("shape_size"),
     f(12, "component.field.fields.12", K::Scalar).named("speed"),
     f(13, "component.field.fields.13", K::Scalar).named_as("speed_randomness", "speed_random"),
     f(14, "component.field.fields.14", K::Angle)
         .named_as("direction", "angle")
         .viewed(View::Degrees),
-    f(15, "component.field.fields.15", K::Angle).named("spread").viewed(View::Degrees),
+    f(15, "component.field.fields.15", K::Angle)
+        .named("spread")
+        .viewed(View::Degrees),
     f(16, "component.field.fields.16", K::Vec2).named("gravity"),
     f(17, "component.field.fields.17", K::Scalar).named("damping"),
     f(18, "component.field.fields.18", K::Scalar).named("size"),

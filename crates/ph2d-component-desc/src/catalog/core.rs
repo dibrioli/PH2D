@@ -103,8 +103,9 @@ const NAME: &[FieldDesc] = &[FieldDesc {
 }];
 
 /// A caixa «Visible» ao lado do nome: o campo guarda `hidden`, o inverso (`View::Not`).
-const VISIBILITY: &[FieldDesc] =
-    &[f(1, "component.field.visibility.1", K::Toggle).named_as("visible", "hidden").viewed(View::Not)];
+const VISIBILITY: &[FieldDesc] = &[f(1, "component.field.visibility.1", K::Toggle)
+    .named_as("visible", "hidden")
+    .viewed(View::Not)];
 
 /// ⭐ A linha *Emissive* da §Render Source — o newtype da intensidade.
 const SPRITE_EMISSIVE: &[FieldDesc] =
@@ -134,10 +135,11 @@ const INSTANCE_OF: &[FieldDesc] = &[FieldDesc {
 
 // ── Ordenação: a família PILOTO da F0 (a §7 do Inspector) ──────────────────────────
 
-// ⭐ Os newtypes da §7: um campo só, o valor inteiro (`WHOLE`). ⏳ A camada é o ÍNDICE: os nomes são
-// do projecto (`SortingLayers`), e uma escolha pelo nome lê-os de lá (fase d4, com as referências).
-const SORTING_LAYER: &[FieldDesc] =
-    &[f(1, "component.field.sorting_layer.1", K::Enum).named_as("sorting_layer", WHOLE)];
+// ⭐ Os newtypes da §7: um campo só, o valor inteiro (`WHOLE`). A camada guarda o ÍNDICE e o script lê
+// o NOME do projecto (`SortingLayers`).
+const SORTING_LAYER: &[FieldDesc] = &[f(1, "component.field.sorting_layer.1", K::Enum)
+    .named_as("sorting_layer", WHOLE)
+    .viewed(View::Named(crate::Target::Layer))];
 const ORDER_IN_LAYER: &[FieldDesc] =
     &[f(1, "component.field.order_in_layer.1", K::Int).named_as("order_in_layer", WHOLE)];
 const Z_INDEX: &[FieldDesc] =
@@ -154,29 +156,32 @@ const SORTING_GROUP: &[FieldDesc] =
 const Y_SORT: &[FieldDesc] = &[
     f(1, "component.field.y_sort.1", K::Toggle).named_as("y_sort", "enabled"),
     f(2, "component.field.y_sort.2", K::Vec2).named("axis"),
-    f(3, "component.field.y_sort.3", K::Enum).named("sort_point").viewed(crate::options![
-        "center" => Center,
-        "pivot" => Pivot,
-        "custom" => Custom,
-    ]),
+    f(3, "component.field.y_sort.3", K::Enum)
+        .named("sort_point")
+        .viewed(crate::options![
+            "center" => Center,
+            "pivot" => Pivot,
+            "custom" => Custom,
+        ]),
 ];
 // ⚠️ A §8 pinta só o MODO (a linha «Clip Children»; `Disabled` destaca o componente) — o corte
 // alfa dele não tem linha (a «Mask Alpha Cutoff» é da `MaskInteraction`).
 const CLIP_CHILDREN: &[FieldDesc] = &[
-    f(1, "component.field.clip_children.1", K::Enum).named_as("clip_children", "mode").viewed(
-        crate::options![
+    f(1, "component.field.clip_children.1", K::Enum)
+        .named_as("clip_children", "mode")
+        .viewed(crate::options![
             "disabled" => Disabled,
             "clip" => ClipOnly,
             "clip_draw" => ClipAndDraw,
-        ],
-    ),
+        ]),
     f(2, "component.field.clip_children.2", K::Scalar).keyed("alpha_cutoff"),
 ];
 
 // ── As linhas da §8 Visibility, §9 Sampling e §10 Material & Blend (CodeEditor 08 d3) ──────────
 
-const BLEND_MODE: &[FieldDesc] =
-    &[f(1, "component.field.blend_mode.1", K::Enum).named_as("blend_mode", WHOLE).viewed(crate::options![
+const BLEND_MODE: &[FieldDesc] = &[f(1, "component.field.blend_mode.1", K::Enum)
+    .named_as("blend_mode", WHOLE)
+    .viewed(crate::options![
         "mix" => Mix,
         "add" => Add,
         "subtract" => Subtract,
@@ -185,20 +190,21 @@ const BLEND_MODE: &[FieldDesc] =
         "premult" => PremultAlpha,
     ])];
 const MASK_INTERACTION: &[FieldDesc] = &[
-    f(1, "component.field.mask_interaction.1", K::Enum).named_as("mask_interaction", "mode").viewed(
-        crate::options![
+    f(1, "component.field.mask_interaction.1", K::Enum)
+        .named_as("mask_interaction", "mode")
+        .viewed(crate::options![
             "none" => None,
             "inside" => VisibleInside,
             "outside" => VisibleOutside,
-        ],
-    ),
+        ]),
     f(2, "component.field.mask_interaction.2", K::Scalar)
         .named_as("mask_alpha_cutoff", "alpha_cutoff"),
 ];
 const ON_SCREEN_ENABLER: &[FieldDesc] =
     &[f(1, "component.field.on_screen_enabler.1", K::Vec4).named_as("enabler_rect", "rect")];
-const TEXTURE_FILTER: &[FieldDesc] =
-    &[f(1, "component.field.texture_filter.1", K::Enum).named_as("texture_filter", WHOLE).viewed(crate::options![
+const TEXTURE_FILTER: &[FieldDesc] = &[f(1, "component.field.texture_filter.1", K::Enum)
+    .named_as("texture_filter", WHOLE)
+    .viewed(crate::options![
         "inherit" => 0,
         "nearest" => 1,
         "linear" => 2,
@@ -206,8 +212,9 @@ const TEXTURE_FILTER: &[FieldDesc] =
         "lin_mip" => 4,
         "lin_aniso" => 6,
     ])];
-const TEXTURE_REPEAT: &[FieldDesc] =
-    &[f(1, "component.field.texture_repeat.1", K::Enum).named_as("texture_repeat", WHOLE).viewed(crate::options![
+const TEXTURE_REPEAT: &[FieldDesc] = &[f(1, "component.field.texture_repeat.1", K::Enum)
+    .named_as("texture_repeat", WHOLE)
+    .viewed(crate::options![
         "inherit" => Inherit,
         "clamp" => Disabled,
         "repeat" => Enabled,
@@ -235,13 +242,13 @@ const MARKER: &[FieldDesc] = &[f(1, "component.field.marker.1", K::Marker)];
 /// copiar (ver [`RefKind::Tag`]).
 const TAGS: &[FieldDesc] = &[FieldDesc {
     field_id: 1,
-    label_key: "component.field.tags.1",
+    label_key: "component.tags.name",
     kind: K::Ref,
     policy: Propagation::Propagate,
     is_ref: Some(RefKind::Tag),
-    name: "",
-    key: "",
-    view: crate::View::Same,
+    name: "tags",
+    key: WHOLE,
+    view: crate::View::Named(crate::Target::TagSet),
 }];
 
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).
@@ -451,7 +458,7 @@ pub const DESCS: &[D] = &[
     // ⭐⭐⭐ **As TAGS** (TOP-20 #9). `C::Identity` porque dizem O QUE o objecto é (a secção nasce
     // logo abaixo da *Identity*), e `O::ANY` porque o objecto vazio que o artista usa como
     // *«o cérebro da cena»* e um grupo são tão marcáveis quanto uma sprite.
-    // ⏳ `Reference`: são identidades da árvore de tags — ganham nome pelo NOME da tag (d4).
+    // Identidades da árvore de tags, lidas pelo caminho (`ph2d.get(e, "tags")` = `{"Enemy/Flying"}`).
     D::authored(
         "ph2d::ecs::Tags",
         "component.tags.name",
@@ -459,7 +466,7 @@ pub const DESCS: &[D] = &[
         O::ANY,
         TAGS,
     )
-    .hidden(Hidden::Reference),
+    .coded("tags"),
     D::authored(
         "ph2d::ecs::TextureFilter",
         "component.texture_filter.name",

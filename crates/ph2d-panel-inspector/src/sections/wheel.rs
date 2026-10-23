@@ -282,9 +282,9 @@ fn seccao_dos_nomes(text_system: &mut TextSystem) -> ph2d_editor_core::property_
         text_system,
         1,
         &[
-            tr("panel.inspector.wheel.mounted_on"),
+            tr("component.field.pulley_wheel.7"),
             tr("panel.inspector.wheel.gear"),
-            tr("panel.inspector.wheel.rope"),
+            tr("component.field.pulley_wheel.1"),
         ],
     )
 }
@@ -332,7 +332,7 @@ fn paint_mount_row(
         w,
         y,
         h,
-        tr("panel.inspector.wheel.mounted_on"),
+        tr("component.field.pulley_wheel.7"),
         sec,
     );
     let (vx, vw) = (linha.control.x, linha.control.w);
@@ -478,7 +478,7 @@ fn paint_rope_row(
         w,
         y,
         h,
-        tr("panel.inspector.wheel.rope"),
+        tr("component.field.pulley_wheel.1"),
         sec,
     );
     let (vx, vw) = (linha.control.x, linha.control.w);

@@ -7,10 +7,11 @@
 //! Divergência declarada do Godot (oráculo `ferramentas/oraculo_propriedades/`): lá o `set` de um
 //! nome ou tipo errado é calado; aqui é um [`PropertyError`] com o que se esperava.
 
+use super::property_ref::{self, RefNames};
 use super::registry::{ComponentRegistry, ComponentTypeEntry};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::world::World;
-use ph2d_component_desc::{FieldDesc, FieldKind, View, WHOLE};
+use ph2d_component_desc::{FieldDesc, FieldKind, Target, View, WHOLE};
 use serde_json::Value;
 
 /// Porque um nome não se lê nem se escreve.
@@ -30,6 +31,14 @@ pub enum PropertyError {
     NoEntity,
     /// Uma escolha que o campo não tem; `options` são as que tem.
     NoSuchOption { name: String, options: String },
+    /// Nenhum alvo se chama `wanted` (um objecto, uma tag).
+    NoTarget {
+        name: String,
+        wanted: String,
+        target: Target,
+    },
+    /// Mais itens do que o campo guarda.
+    TooMany { name: String, max: usize },
 }
 
 impl std::fmt::Display for PropertyError {
@@ -45,6 +54,24 @@ impl std::fmt::Display for PropertyError {
             Self::WrongType { name, kind } => write!(f, "'{name}' takes a {kind:?} value"),
             Self::NoEntity => f.write_str("the object no longer exists"),
             Self::NoSuchOption { name, options } => write!(f, "'{name}' takes one of: {options}"),
+            Self::NoTarget {
+                name,
+                wanted,
+                target: Target::Tag | Target::TagSet,
+            } => {
+                write!(f, "'{name}': the project has no tag '{wanted}'")
+            }
+            Self::NoTarget {
+                name,
+                wanted,
+                target: Target::Layer,
+            } => {
+                write!(f, "'{name}': the project has no sorting layer '{wanted}'")
+            }
+            Self::NoTarget { name, wanted, .. } => {
+                write!(f, "'{name}': no object is named '{wanted}'")
+            }
+            Self::TooMany { name, max } => write!(f, "'{name}' holds at most {max}"),
         }
     }
 }
@@ -101,28 +128,43 @@ pub fn all_names(reg: &ComponentRegistry) -> Vec<String> {
 /// O nome com que um script alcança o campo `field` do componente `code`.
 #[must_use]
 pub fn full_name(code: &str, field: &str) -> String {
-    if code == field { code.to_owned() } else { format!("{code}.{field}") }
+    if code == field {
+        code.to_owned()
+    } else {
+        format!("{code}.{field}")
+    }
 }
 
 /// Os nomes que ESTE objecto tem (o `get_property_list` do Godot), na ordem do catálogo.
 pub fn names_of(reg: &ComponentRegistry, world: &World, entity: Entity) -> Vec<String> {
     all_names(reg)
         .into_iter()
-        .filter(|n| get(reg, world, entity, n).is_ok())
+        .filter(|n| get(reg, world, entity, n, RefNames::default()).is_ok())
         .collect()
 }
 
-/// Lê `name` do objecto.
+/// Lê `name` do objecto. O campo de uma variante que o enum não está a usar lê-se `null`.
 pub fn get(
     reg: &ComponentRegistry,
     world: &World,
     entity: Entity,
     name: &str,
+    names: RefNames<'_>,
 ) -> Result<Value, PropertyError> {
-    get_stored(reg, world, entity, name).map(|(v, r)| seen(r.field.view, v))
+    let r = resolve(reg, name)?;
+    let mut whole = component_value(reg, &r, world, entity)?;
+    if !in_variant(&r, &mut whole) {
+        return Ok(Value::Null);
+    }
+    let v = slot(&r, &mut whole)?.clone();
+    Ok(match r.field.view {
+        View::Named(t) => property_ref::name_of(world, names, t, &v),
+        view => seen(view, v),
+    })
 }
 
-/// O valor GUARDADO de `name` (sem a [`View`]) — o que o ledger da corrida grava e repõe.
+/// O valor GUARDADO de `name` (sem a [`View`]) na chave que o ledger da corrida grava e repõe — o
+/// enum inteiro, num campo de variante ([`FieldDesc::stored_key`]).
 pub fn get_stored<'r>(
     reg: &'r ComponentRegistry,
     world: &World,
@@ -131,8 +173,31 @@ pub fn get_stored<'r>(
 ) -> Result<(Value, Resolved<'r>), PropertyError> {
     let r = resolve(reg, name)?;
     let mut whole = component_value(reg, &r, world, entity)?;
-    let v = slot(&r, &mut whole)?.clone();
+    let v = slot_in(&mut whole, r.field.stored_key())
+        .ok_or_else(|| unknown(&r))?
+        .clone();
     Ok((v, r))
+}
+
+/// `false` = o campo é de uma variante e o enum está noutra.
+fn in_variant(r: &Resolved<'_>, whole: &mut Value) -> bool {
+    let Some((top, molde, _)) = property_ref::variant(r.field.serde_key()) else {
+        return true;
+    };
+    let agora = slot_in(whole, top).and_then(|v| property_ref::variant_name(v).map(str::to_owned));
+    agora.as_deref() == property_ref::variant_name(&molde)
+}
+
+/// Escrever num campo de variante passa o enum ao molde primeiro, se estiver noutra.
+fn enter_variant(r: &Resolved<'_>, whole: &mut Value) {
+    if in_variant(r, whole) {
+        return;
+    }
+    if let Some((top, molde, _)) = property_ref::variant(r.field.serde_key())
+        && let Some(s) = slot_in(whole, top)
+    {
+        *s = molde;
+    }
 }
 
 /// O valor guardado, como o script o vê ([`View`]).
@@ -154,17 +219,35 @@ fn seen(view: View, v: Value) -> Value {
         (View::Toggle(t, _), v) => Value::Bool(json(t) == v),
         (View::Options(opts), v) => opts
             .iter()
-            .find(|(_, j)| json(j) == v)
+            .find(|(_, j)| same_option(&json(j), &v))
             .map_or(v, |(n, _)| Value::String((*n).to_owned())),
+        (View::Pair(a, b), Value::Object(o)) => Value::Array(vec![
+            o.get(a).cloned().unwrap_or(Value::Null),
+            o.get(b).cloned().unwrap_or(Value::Null),
+        ]),
         (_, v) => v,
     }
+}
+
+/// A opção `j` é o valor `v`: igual, ou — num enum com dados — a mesma variante.
+fn same_option(j: &Value, v: &Value) -> bool {
+    j == v
+        || (j.is_object()
+            && property_ref::variant_name(j).is_some()
+            && property_ref::variant_name(j) == property_ref::variant_name(v))
 }
 
 /// O valor que o script deu, como o componente o guarda; `stored` é o que lá está (um inteiro
 /// guardado continua inteiro).
 fn stored_from(view: View, v: Value, stored: &Value, name: &str) -> Result<Value, PropertyError> {
     let num = |v: &Value| v.as_f64();
-    let inteiro = |x: f64| if stored.is_i64() || stored.is_u64() { Value::from(x.round() as i64) } else { Value::from(x) };
+    let inteiro = |x: f64| {
+        if stored.is_i64() || stored.is_u64() {
+            Value::from(x.round() as i64)
+        } else {
+            Value::from(x)
+        }
+    };
     Ok(match (view, v) {
         (View::Srgb, v) if num(&v).is_some() => Value::from(srgb_to_linear(num(&v).unwrap_or(0.0))),
         (View::Percent, v) if num(&v).is_some() => Value::from(num(&v).unwrap_or(0.0) / 100.0),
@@ -178,15 +261,26 @@ fn stored_from(view: View, v: Value, stored: &Value, name: &str) -> Result<Value
         (View::Offset(o), v) if num(&v).is_some() => inteiro(num(&v).unwrap_or(0.0) - f64::from(o)),
         (View::Not, Value::Bool(b)) => Value::Bool(!b),
         (View::Toggle(t, f), Value::Bool(b)) => json(if b { t } else { f }),
-        (View::Options(opts), v) => match v.as_str().and_then(|s| opts.iter().find(|(n, _)| *n == s)) {
-            Some((_, j)) => json(j),
-            None => {
-                return Err(PropertyError::NoSuchOption {
-                    name: name.to_owned(),
-                    options: opts.iter().map(|(n, _)| format!("\"{n}\"")).collect::<Vec<_>>().join(", "),
-                });
+        (View::Options(opts), v) => {
+            match v.as_str().and_then(|s| opts.iter().find(|(n, _)| *n == s)) {
+                // A variante que já lá está guarda o seu conteúdo; outra entra pelo molde.
+                Some((_, j)) if same_option(&json(j), stored) => stored.clone(),
+                Some((_, j)) => json(j),
+                None => {
+                    return Err(PropertyError::NoSuchOption {
+                        name: name.to_owned(),
+                        options: opts
+                            .iter()
+                            .map(|(n, _)| format!("\"{n}\""))
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                    });
+                }
             }
-        },
+        }
+        (View::Pair(a, b), Value::Array(p)) if p.len() == 2 => {
+            serde_json::json!({ a: p[0], b: p[1] })
+        }
         (_, v) => v,
     })
 }
@@ -194,11 +288,19 @@ fn stored_from(view: View, v: Value, stored: &Value, name: &str) -> Result<Value
 /// O valor guardado de uma opção: json (`0`, `null`, `true`) ou o nome de uma variante (`Full`).
 /// A curva sRGB de um canal (IEC 61966-2-1).
 fn linear_to_srgb(c: f64) -> f64 {
-    if c <= 0.003_130_8 { c * 12.92 } else { 1.055 * c.powf(1.0 / 2.4) - 0.055 }
+    if c <= 0.003_130_8 {
+        c * 12.92
+    } else {
+        1.055 * c.powf(1.0 / 2.4) - 0.055
+    }
 }
 
 fn srgb_to_linear(c: f64) -> f64 {
-    if c <= 0.040_45 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) }
+    if c <= 0.040_45 {
+        c / 12.92
+    } else {
+        ((c + 0.055) / 1.055).powf(2.4)
+    }
 }
 
 fn json(s: &str) -> Value {
@@ -212,6 +314,15 @@ fn json(s: &str) -> Value {
 pub fn slot_in<'v>(whole: &'v mut Value, key: &str) -> Option<&'v mut Value> {
     if key == WHOLE {
         return Some(whole);
+    }
+    if let Some((top, molde, rest)) = property_ref::variant(key) {
+        let enum_ = slot_in(whole, top)?;
+        let payload = property_ref::payload_mut(enum_, property_ref::variant_name(&molde)?)?;
+        return if rest.is_empty() {
+            Some(payload)
+        } else {
+            rest.split('/').try_fold(payload, slot_one)
+        };
     }
     key.split('/').try_fold(whole, slot_one)
 }
@@ -232,10 +343,28 @@ fn slot_one<'v>(whole: &'v mut Value, key: &str) -> Option<&'v mut Value> {
 
 /// O lugar do campo dentro do valor do componente ([`slot_in`]).
 fn slot<'v>(r: &Resolved<'_>, whole: &'v mut Value) -> Result<&'v mut Value, PropertyError> {
-    slot_in(whole, r.field.serde_key()).ok_or_else(|| PropertyError::UnknownField {
+    slot_in(whole, r.field.serde_key()).ok_or_else(|| unknown(r))
+}
+
+fn unknown(r: &Resolved<'_>) -> PropertyError {
+    PropertyError::UnknownField {
         component: code_of(r).to_owned(),
         field: r.field.name.to_owned(),
-    })
+    }
+}
+
+/// O valor do script, com a referência já trocada pela identidade do alvo ([`View::Named`]).
+fn by_id(
+    world: &World,
+    names: RefNames<'_>,
+    r: &Resolved<'_>,
+    name: &str,
+    value: Value,
+) -> Result<Value, PropertyError> {
+    match r.field.view {
+        View::Named(t) => property_ref::id_of(world, names, t, name, value),
+        _ => Ok(value),
+    }
 }
 
 /// Escreve `value` em `name` no objecto; os outros campos do componente ficam. `Ok(true)` = a
@@ -246,12 +375,22 @@ pub fn set(
     entity: Entity,
     name: &str,
     value: Value,
+    names: RefNames<'_>,
 ) -> Result<bool, PropertyError> {
     let r = resolve(reg, name)?;
     let mut whole = component_value(reg, &r, world, entity)?;
     let born = matches!((r.entry.value_of)(world, entity), Ok(None));
+    // `nil` num campo de uma variante que o enum não usa não o muda de variante.
+    if value.is_null() && !in_variant(&r, &mut whole) {
+        return Ok(false);
+    }
+    let value = by_id(world, names, &r, name, value)?;
+    enter_variant(&r, &mut whole);
     let s = slot(&r, &mut whole)?;
-    *s = fit(normalize(r.field.kind, stored_from(r.field.view, value, s, name)?), s);
+    *s = fit(
+        normalize(r.field.kind, stored_from(r.field.view, value, s, name)?),
+        s,
+    );
     let wrong = || PropertyError::WrongType {
         name: name.to_owned(),
         kind: r.field.kind,
@@ -312,8 +451,18 @@ fn component_value(
 }
 
 /// O valor neutro de uma LINHA que falta onde o dono dela está: o que o cartão mostra.
-fn neutral_row(reg: &ComponentRegistry, r: &Resolved<'_>, world: &World, entity: Entity) -> Option<Value> {
-    let host = r.entry.desc.filter(|d| d.row_neutral).map(|d| d.row_of).filter(|h| !h.is_empty())?;
+fn neutral_row(
+    reg: &ComponentRegistry,
+    r: &Resolved<'_>,
+    world: &World,
+    entity: Entity,
+) -> Option<Value> {
+    let host = r
+        .entry
+        .desc
+        .filter(|d| d.row_neutral)
+        .map(|d| d.row_of)
+        .filter(|h| !h.is_empty())?;
     let host = reg.get_by_name(host)?;
     (host.value_of)(world, entity).ok()??;
     let insert = r.entry.insert_default?;
@@ -330,11 +479,20 @@ pub fn check(
     entity: Entity,
     name: &str,
     value: Value,
+    names: RefNames<'_>,
 ) -> Result<(), PropertyError> {
     let r = resolve(reg, name)?;
     let mut whole = component_value(reg, &r, world, entity)?;
+    if value.is_null() && !in_variant(&r, &mut whole) {
+        return Ok(());
+    }
+    let value = by_id(world, names, &r, name, value)?;
+    enter_variant(&r, &mut whole);
     if let Ok(s) = slot(&r, &mut whole) {
-        *s = fit(normalize(r.field.kind, stored_from(r.field.view, value, s, name)?), s);
+        *s = fit(
+            normalize(r.field.kind, stored_from(r.field.view, value, s, name)?),
+            s,
+        );
     }
     (r.entry.check_value)(&whole).map_err(|_| PropertyError::WrongType {
         name: name.to_owned(),
@@ -357,7 +515,11 @@ mod tests {
         assert_eq!(slot_in(&mut v, "axis[1]"), Some(&mut json!(2)));
         assert_eq!(slot_in(&mut v, "m[0]/k[1]"), Some(&mut json!(6)));
         *slot_in(&mut v, "easing/family").unwrap() = json!("Sine");
-        assert_eq!(v["easing"], json!({"family": "Sine", "mode": "In"}), "o vizinho fica");
+        assert_eq!(
+            v["easing"],
+            json!({"family": "Sine", "mode": "In"}),
+            "o vizinho fica"
+        );
         for falta in ["easing/curve", "nada/family", "axis[2]", "easing/family/x"] {
             assert_eq!(slot_in(&mut v, falta), None, "{falta}");
         }

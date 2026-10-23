@@ -32,7 +32,7 @@ pub(super) fn tag_row(
         w,
         y,
         ROW_H_PX,
-        tr("panel.inspector.nav.target_tag"),
+        tr("component.field.nav_agent.13"),
         seccao,
     );
     hit_index.register(ids::INSP_NAV_TAG_PICK, linha.control);

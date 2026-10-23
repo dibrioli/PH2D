@@ -208,7 +208,7 @@ pub(crate) fn paint_tags_section(
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
     let title = if info.on_object.is_empty() {
-        String::from(tr("panel.inspector.tags.tags"))
+        String::from(tr("component.tags.name"))
     } else {
         tr_with(
             "panel.inspector.tags.tags_count",

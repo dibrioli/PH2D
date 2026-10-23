@@ -72,7 +72,9 @@ const SPRITE: &[FieldDesc] = &[
     // 5 — APOSENTADO (era "Frame"; ver a nota acima).
     // ⭐ CodeEditor 08 d3: o que a §Color & Tint e a §Sprite Sheet pintam e o catálogo não tinha.
     f(6, "component.field.sprite.6", K::Color).named("self_tint"),
-    f(7, "component.field.sprite.7", K::Scalar).named("opacity").viewed(View::Percent),
+    f(7, "component.field.sprite.7", K::Scalar)
+        .named("opacity")
+        .viewed(View::Percent),
     f(8, "component.field.sprite.8", K::Toggle).named("tint_fill"),
     f(9, "component.field.sprite.9", K::Toggle).named("centered"),
     f(10, "component.field.sprite.10", K::Vec2).named("offset"),
@@ -118,19 +120,26 @@ const SLICE_NINE: &[FieldDesc] = &[
 ];
 
 /// ⭐ O leitor da §11 Animation (CodeEditor 08 d3). `speed` guarda q16 e o cartão mostra `1.0x`.
+/// O valor é o NOME de uma âncora do pai (`""` = solto).
+const ANCHOR_MOUNT: &[FieldDesc] =
+    &[f(1, "component.field.anchor_mount.1", K::Text).named_as("rides_parent_anchor", "anchor")];
 const SPRITE_ANIMATOR: &[FieldDesc] = &[
+    // A animação a tocar, pelo nome; um nome que a lista não tem não toca (`AnimatorState::NoTag`).
+    f(0, "component.field.sprite_animator.0", K::Text).named_as("animation", "current"),
     f(1, "component.field.sprite_animator.1", K::Toggle).named("playing"),
     f(2, "component.field.sprite_animator.2", K::Toggle).named("autoplay"),
     f(3, "component.field.sprite_animator.3", K::Int)
         .named_as("speed", "speed_q16")
         .viewed(View::Scale(65_536)),
-    f(4, "component.field.sprite_animator.4", K::Enum).named("direction_override").viewed(crate::options![
-        "inherit" => null,
-        "fwd" => Forward,
-        "rev" => Reverse,
-        "pp" => PingPong,
-        "pp_rev" => PingPongReverse,
-    ]),
+    f(4, "component.field.sprite_animator.4", K::Enum)
+        .named("direction_override")
+        .viewed(crate::options![
+            "inherit" => null,
+            "fwd" => Forward,
+            "rev" => Reverse,
+            "pp" => PingPong,
+            "pp_rev" => PingPongReverse,
+        ]),
     f(5, "component.field.sprite_animator.5", K::Enum)
         .named("loop_override")
         .viewed(crate::options!["inherit" => null, "on" => true, "off" => false]),
@@ -160,9 +169,11 @@ pub const DESCS: &[D] = &[
         "component.anchor_mount.name",
         C::Anchors,
         O::ANY,
-        &[],
+        ANCHOR_MOUNT,
     )
-    .hidden(Hidden::Reference),
+    .coded("anchor_mount")
+    // A linha do cartão das âncoras; ausente não é «Free» para o script (o `+` é que a põe).
+    .row_without_neutral("ph2d::ecs::NamedAnchorList"),
     // ⇒ a porta é a caixa «Always show anchors» da §12, pintada sempre que o objecto TEM âncoras (`anchor_mount_row::paint_visibility_rows`).
     D::intrinsic(
         "ph2d::ecs::AnchorVisibility",
@@ -211,7 +222,6 @@ pub const DESCS: &[D] = &[
     // Sem tocador o cartão mostra `1.0x`; o `Default` do tipo guarda 0.
     .row_without_neutral("ph2d::ecs::SpriteAnimations")
     .hiding(&[
-        ("current", Hidden::Reference),
         ("elapsed_ticks", Hidden::Runtime),
         ("pingpong_reverse", Hidden::Runtime),
         ("repeat_count", Hidden::Runtime),

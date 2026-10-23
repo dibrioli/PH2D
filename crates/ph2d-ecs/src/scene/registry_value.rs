@@ -52,7 +52,9 @@ pub type SetValueFn = fn(&mut World, Entity, serde_json::Value) -> Result<(), Re
 /// Cabe no tipo? — a verificação sem escrever (o `ph2d.set` verifica na chamada, pousa no fim).
 pub type CheckValueFn = fn(&serde_json::Value) -> Result<(), RegistryError>;
 
-pub(super) fn check_value<T: DeserializeOwned>(value: &serde_json::Value) -> Result<(), RegistryError> {
+pub(super) fn check_value<T: DeserializeOwned>(
+    value: &serde_json::Value,
+) -> Result<(), RegistryError> {
     T::deserialize(value)
         .map(drop)
         .map_err(|e| RegistryError::Value(e.to_string()))

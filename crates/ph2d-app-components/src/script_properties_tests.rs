@@ -15,6 +15,7 @@ struct Cena {
     host: ScriptHost,
     drive: PreviewDrive,
     heroi: Entity,
+    tags: ph2d_tags::TagTree,
 }
 
 fn cena(fonte: &str) -> Cena {
@@ -38,6 +39,7 @@ fn cena(fonte: &str) -> Cena {
         host: ScriptHost::new().expect("vm"),
         drive: PreviewDrive::default(),
         heroi,
+        tags: ph2d_tags::TagTree::new(),
     }
 }
 
@@ -46,6 +48,7 @@ impl Cena {
         let (mut vec_scene, mut vec_entities) = crate::instance_docs::empty_docs();
         let mut portas = ScriptDoors {
             registry: &self.reg,
+            tags: &self.tags,
             docs: crate::instance_docs::OwnedDocs {
                 vec_scene: &mut vec_scene,
                 vec_entities: &mut vec_entities,
@@ -133,11 +136,26 @@ end
 #[test]
 fn um_nome_ou_um_valor_errado_para_o_objecto_e_diz_porque() {
     for (linha, espera) in [
-        (r#"ph2d.set(self.id, "health.maxx", 1)"#, "'health' has no property 'maxx'"),
-        (r#"ph2d.get(self.id, "game_camera.height")"#, "has no 'game_camera'"),
-        (r#"ph2d.set(self.id, "health.max", "muito")"#, "'health.max' takes a number"),
-        (r#"ph2d.set(self.id, "health.seed", 1.5)"#, "takes a whole number"),
-        (r#"ph2d.get(self.id, "vida.max")"#, "no component named 'vida'"),
+        (
+            r#"ph2d.set(self.id, "health.maxx", 1)"#,
+            "'health' has no property 'maxx'",
+        ),
+        (
+            r#"ph2d.get(self.id, "game_camera.height")"#,
+            "has no 'game_camera'",
+        ),
+        (
+            r#"ph2d.set(self.id, "health.max", "muito")"#,
+            "'health.max' takes a number",
+        ),
+        (
+            r#"ph2d.set(self.id, "health.seed", 1.5)"#,
+            "takes a whole number",
+        ),
+        (
+            r#"ph2d.get(self.id, "vida.max")"#,
+            "no component named 'vida'",
+        ),
     ] {
         let mut c = cena(&format!("function update(self)\n  {linha}\nend\n"));
         let antes = c.vida().clone();
@@ -199,7 +217,10 @@ end
             (e, PedidoDeVida::Escudo(0.0)),
         ]
     );
-    assert!(c.drive.fields.is_empty(), "a vida de agora é da corrida: o rebobinar já a refaz");
+    assert!(
+        c.drive.fields.is_empty(),
+        "a vida de agora é da corrida: o rebobinar já a refaz"
+    );
 }
 
 #[test]
@@ -208,7 +229,10 @@ fn dano_sem_vida_ou_quantia_invalida_para_o_objecto() {
         (r#"ph2d.damage(self.id, 0)"#, "above 0"),
         (r#"ph2d.heal(self.id, -1)"#, "above 0"),
         (r#"ph2d.damage(ph2d.spawn(), 3)"#, "has no 'health'"),
-        (r#"ph2d.set(self.id, "health.now", "x")"#, "'health.now' takes a number"),
+        (
+            r#"ph2d.set(self.id, "health.now", "x")"#,
+            "'health.now' takes a number",
+        ),
     ] {
         let mut c = cena(&format!("function update(self)\n  {linha}\nend\n"));
         let msg = Cena::falhas(&c.quadro(true));
@@ -243,11 +267,18 @@ end
     let w = c.sim.world();
     assert_eq!(w.get::<ph2d_ecs::OrderInLayer>(c.heroi).unwrap().0, 7);
     let s = w.get::<ph2d_ecs::SliceNine>(c.heroi).unwrap();
-    assert_eq!(s.borders, [12.0, 0.0, 3.0, 4.0], "a borda negativa saneia-se como no cartão");
+    assert_eq!(
+        s.borders,
+        [12.0, 0.0, 3.0, 4.0],
+        "a borda negativa saneia-se como no cartão"
+    );
     rewind(&mut c.host, &mut c.sim, &mut c.drive);
     let w = c.sim.world();
     assert_eq!(w.get::<ph2d_ecs::OrderInLayer>(c.heroi).unwrap().0, 3);
-    assert_eq!(w.get::<ph2d_ecs::SliceNine>(c.heroi).unwrap().borders, autorado.borders);
+    assert_eq!(
+        w.get::<ph2d_ecs::SliceNine>(c.heroi).unwrap().borders,
+        autorado.borders
+    );
 }
 
 /// ⭐ O valor do script é o do CARTÃO (doc CodeEditor 08 §3.12): o ângulo em radianos chega ao
@@ -293,7 +324,11 @@ end
     assert!(f.failed.is_empty(), "{}", Cena::falhas(&f));
     let w = c.sim.world();
     let p = w.get::<ParticleEmitter>(c.heroi).unwrap();
-    assert!((p.angle - 90.0).abs() < 1e-4, "graus no componente: {}", p.angle);
+    assert!(
+        (p.angle - 90.0).abs() < 1e-4,
+        "graus no componente: {}",
+        p.angle
+    );
     assert_eq!(p.shape, EmissionShape::Ring);
     assert_eq!(w.get::<Lifetime>(c.heroi).unwrap().duration_us, 1_500_000);
     assert_eq!(w.get::<Damage>(c.heroi).unwrap().on_hit, OnHit::Vanish);
@@ -301,7 +336,9 @@ end
     assert_eq!(w.get::<Luz>(c.heroi).unwrap().alcance_m, 5.0);
     // E volta ao infinito, e a lei da Luz é a do cartão (um alcance negativo é «sem limite»).
     for (linha, alcance) in [("math.huge", f32::INFINITY), ("-3", f32::INFINITY)] {
-        let mut c = cena(&format!("function init(self)\n  ph2d.set(self.id, \"light_2d.range\", {linha})\nend\n"));
+        let mut c = cena(&format!(
+            "function init(self)\n  ph2d.set(self.id, \"light_2d.range\", {linha})\nend\n"
+        ));
         let luz = Luz {
             alcance_m: 2.0,
             ..Luz::default()
@@ -309,13 +346,19 @@ end
         c.sim.world_mut().entity_mut(c.heroi).insert(luz);
         let f = c.quadro(true);
         assert!(f.failed.is_empty(), "{linha}: {}", Cena::falhas(&f));
-        assert_eq!(c.sim.world().get::<Luz>(c.heroi).unwrap().alcance_m, alcance, "{linha}");
+        assert_eq!(
+            c.sim.world().get::<Luz>(c.heroi).unwrap().alcance_m,
+            alcance,
+            "{linha}"
+        );
     }
 }
 
 #[test]
 fn uma_escolha_errada_diz_as_opcoes() {
-    let mut c = cena("function update(self)\n  ph2d.set(self.id, \"particles.emission_shape\", \"cube\")\nend\n");
+    let mut c = cena(
+        "function update(self)\n  ph2d.set(self.id, \"particles.emission_shape\", \"cube\")\nend\n",
+    );
     c.sim
         .world_mut()
         .entity_mut(c.heroi)
@@ -341,12 +384,22 @@ function init(self)
 end
 "#,
     );
-    c.sim.world_mut().entity_mut(c.heroi).insert(RigidBody::default());
+    c.sim
+        .world_mut()
+        .entity_mut(c.heroi)
+        .insert(RigidBody::default());
     let f = c.quadro(true);
     assert!(f.failed.is_empty(), "{}", Cena::falhas(&f));
-    assert_eq!(c.sim.world().get::<GravityScale>(c.heroi), Some(&GravityScale(2.0)));
+    assert_eq!(
+        c.sim.world().get::<GravityScale>(c.heroi),
+        Some(&GravityScale(2.0))
+    );
     rewind(&mut c.host, &mut c.sim, &mut c.drive);
-    assert_eq!(c.sim.world().get::<GravityScale>(c.heroi), None, "o rebobinar tira-o");
+    assert_eq!(
+        c.sim.world().get::<GravityScale>(c.heroi),
+        None,
+        "o rebobinar tira-o"
+    );
     assert!(c.drive.fields.is_empty());
     // Sem o corpo (o dono da linha), não há linha: o objecto não tem a propriedade.
     let mut c = cena("function update(self)\n  ph2d.get(self.id, \"gravity_scale\")\nend\n");
@@ -370,5 +423,82 @@ end
     let f = c.quadro(true);
     assert!(f.failed.is_empty(), "{}", Cena::falhas(&f));
     let cor = c.sim.world().get::<Luz>(c.heroi).unwrap().cor;
-    assert!((cor[0] - 0.214_04).abs() < 1e-4, "linear no componente: {cor:?}");
+    assert!(
+        (cor[0] - 0.214_04).abs() < 1e-4,
+        "linear no componente: {cor:?}"
+    );
+}
+
+/// ⭐ d4: um script aponta o agente a um objecto PELO NOME e muda a variante do alvo; rebobinar devolve o
+/// enum inteiro (o ledger grava a chave `target`, nunca o conteúdo de uma variante).
+#[test]
+fn o_alvo_pelo_nome_muda_a_variante_e_rebobinar_a_devolve() {
+    use ph2d_physics_ecs::{NavAgent, NavTarget};
+    let mut c = cena(
+        r#"
+function update(self)
+  ph2d.set(self.id, "nav_agent.object", "Alvo")
+  ph2d.set(self.id, "tags", {"Inimigo"})
+end
+"#,
+    );
+    c.tags.create("Inimigo").expect("tag");
+    c.sim.world_mut().spawn(ph2d_ecs::Name::from("Alvo"));
+    c.sim
+        .world_mut()
+        .entity_mut(c.heroi)
+        .insert((NavAgent::default(), ph2d_ecs::Tags::default()));
+    let f = c.quadro(true);
+    assert!(f.failed.is_empty(), "{}", Cena::falhas(&f));
+    let alvo = |c: &Cena| {
+        c.sim
+            .world()
+            .get::<NavAgent>(c.heroi)
+            .expect("agente")
+            .target
+    };
+    assert_eq!(alvo(&c), NavTarget::Named(ph2d_ecs::stable_name_id("Alvo")));
+    assert_eq!(
+        c.sim
+            .world()
+            .get::<ph2d_ecs::Tags>(c.heroi)
+            .expect("tags")
+            .len(),
+        1
+    );
+    rewind(&mut c.host, &mut c.sim, &mut c.drive);
+    assert_eq!(
+        alvo(&c),
+        NavTarget::None,
+        "o enum inteiro volta ao do artista"
+    );
+    assert!(
+        c.sim
+            .world()
+            .get::<ph2d_ecs::Tags>(c.heroi)
+            .expect("tags")
+            .is_empty()
+    );
+}
+
+/// Um nome que nenhum objecto tem é uma gralha dita no console, e o campo não muda.
+#[test]
+fn um_alvo_que_nao_existe_diz_o_nome_que_falta() {
+    let mut c = cena(
+        r#"
+function update(self)
+  ph2d.set(self.id, "camera_follow.target", "Heroo")
+end
+"#,
+    );
+    c.sim
+        .world_mut()
+        .entity_mut(c.heroi)
+        .insert(ph2d_ecs::CameraFollow::default());
+    let f = c.quadro(true);
+    assert!(
+        Cena::falhas(&f).contains("no object is named 'Heroo'"),
+        "{}",
+        Cena::falhas(&f)
+    );
 }

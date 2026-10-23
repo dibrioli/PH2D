@@ -44,7 +44,9 @@ const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
 /// com bits novos, e um `Entity` gravado daria uma câmera a seguir o vazio depois do primeiro
 /// `Ctrl+Z`. É a mesma decisão do `SignalActions` e do `AnchorMount`.
 const FOLLOW_FIELDS: &[FieldDesc] = &[
-    f(0, "component.field.follow_fields.0", K::Text).keyed("target"),
+    f(0, "component.field.follow_fields.0", K::Text)
+        .named("target")
+        .viewed(crate::View::Named(crate::Target::Name)),
     f(1, "component.field.follow_fields.1", K::Vec2).named("damping"),
     f(2, "component.field.follow_fields.2", K::Vec2).named("dead_zone"),
     f(3, "component.field.follow_fields.3", K::Vec2).named("lookahead"),
@@ -121,8 +123,7 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         FOLLOW_FIELDS,
     )
-    .coded("camera_follow")
-    .hiding(&[("target", Hidden::Reference)]),
+    .coded("camera_follow"),
     D::authored(
         "ph2d::ecs::CameraLimits",
         "component.camera_limits.name",

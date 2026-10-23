@@ -38,6 +38,7 @@ pub mod logic;
 /// ⭐⭐⭐ **O EMISSOR DE PARTÍCULAS** (TOP-20 #18) — a fachada sobre a simulação do Motion.
 pub mod particles;
 pub mod physics;
+mod physics_fields;
 pub mod script;
 pub mod skeleton;
 pub mod vector;

@@ -257,7 +257,12 @@ pub(crate) fn sanitize_health(h: &mut Health) {
     h.armor_percent = fraccao(h.armor_percent);
     h.dodge = fraccao(h.dodge);
     h.numbers_color = cor(h.numbers_color);
-    for t in [&mut h.team, &mut h.on_damage, &mut h.on_heal, &mut h.on_death] {
+    for t in [
+        &mut h.team,
+        &mut h.on_damage,
+        &mut h.on_heal,
+        &mut h.on_death,
+    ] {
         if t.trim().len() != t.len() {
             *t = t.trim().to_string();
         }

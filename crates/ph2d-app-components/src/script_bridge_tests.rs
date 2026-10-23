@@ -246,6 +246,7 @@ end
     let mut drive = PreviewDrive::default();
     let mut portas = super::ScriptDoors {
         registry: &reg,
+        tags: &ph2d_tags::TagTree::new(),
         docs: crate::instance_docs::OwnedDocs {
             vec_scene: &mut vec_scene,
             vec_entities: &mut vec_entities,

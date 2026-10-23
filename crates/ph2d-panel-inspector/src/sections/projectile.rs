@@ -228,7 +228,7 @@ fn corpo(
             x,
             w,
             cur_y,
-            tr("panel.inspector.projectile.homing_target_label"),
+            tr("component.field.projectile_motion.9"),
             crate::ids::INSP_PJ_HOMING_TARGET,
             TextInput::new(crate::ids::INSP_PJ_HOMING_TARGET, "")
                 .placeholder(tr("panel.inspector.projectile.target_object_name_u")),

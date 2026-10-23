@@ -285,18 +285,20 @@ mod asset_texture_door_census_tests;
 /// número. A §8 *Visibility* do Inspector não tocava em nada da shell (zero `crate::`): ela é
 /// código desta família, e o sítio dela é aqui.
 pub mod inspector_visibility;
-/// ⭐ A lei do valor dos cartões do núcleo e da imagem — a que o Inspector e o script partilham.
-pub mod sprite_inspector;
 #[cfg(test)]
 mod instance_tags_tests;
 #[cfg(test)]
-mod smoke_desenho_e_corpo_tests;
+mod property_coverage_tests;
+pub(crate) mod property_laws;
 #[cfg(test)]
 mod property_names_tests;
 #[cfg(test)]
-mod property_coverage_tests;
-pub(crate) mod property_laws;
+mod property_refs_tests;
 pub(crate) mod script_properties;
+#[cfg(test)]
+mod smoke_desenho_e_corpo_tests;
+/// ⭐ A lei do valor dos cartões do núcleo e da imagem — a que o Inspector e o script partilham.
+pub mod sprite_inspector;
 
 /// **A declaração da família** — a chave e os roteadores de smoke que ela POSSUI.
 ///

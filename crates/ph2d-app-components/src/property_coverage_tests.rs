@@ -21,13 +21,20 @@ fn fontes_dos_cartoes() -> String {
             }
         }
     }
-    assert!(out.len() > 100_000, "o painel não foi lido: {} bytes", out.len());
+    assert!(
+        out.len() > 100_000,
+        "o painel não foi lido: {} bytes",
+        out.len()
+    );
     out
 }
 
 /// ⏳ O único cartão cujo título não é o nome do componente: «Render Source» × «Sprite» (o script diz
 /// `sprite.*`). Decisão do dono: renomear um ou o outro.
-const SPRITE: (&str, &str) = ("ph2d::render::Sprite", "panel.inspector.render_source.render_source");
+const SPRITE: (&str, &str) = (
+    "ph2d::render::Sprite",
+    "panel.inspector.render_source.render_source",
+);
 
 #[test]
 fn o_cartao_pinta_a_chave_do_catalogo() {
@@ -37,7 +44,11 @@ fn o_cartao_pinta_a_chave_do_catalogo() {
     for d in ph2d_component_desc::all().filter(|d| !d.code.is_empty()) {
         // Uma LINHA do cartão de outro (`row_of`: a Gravidade no corpo, o Blend na imagem) não tem
         // título próprio — o cartão do dono pinta as linhas dela, e essas conferem-se abaixo.
-        let titulo = if d.canonical_name == SPRITE.0 { SPRITE.1 } else { d.display_key };
+        let titulo = if d.canonical_name == SPRITE.0 {
+            SPRITE.1
+        } else {
+            d.display_key
+        };
         if d.row_of.is_empty() && !fontes.contains(&format!("\"{titulo}\"")) {
             faltam.push(format!("{} (título {titulo})", d.code));
         }
@@ -52,11 +63,19 @@ fn o_cartao_pinta_a_chave_do_catalogo() {
         }
     }
     assert!(vistos >= 32, "{vistos}");
-    assert!(faltam.is_empty(), "o cartão não pinta a chave do catálogo:\n  {}", faltam.join("\n  "));
+    assert!(
+        faltam.is_empty(),
+        "o cartão não pinta a chave do catálogo:\n  {}",
+        faltam.join("\n  ")
+    );
 }
 
 /// Uma instância de um componente com cartão e SEM `Default`, para o portão lhe ler as chaves.
-fn amostra(canonical: &str, world: &mut bevy_ecs::world::World, e: bevy_ecs::entity::Entity) -> bool {
+fn amostra(
+    canonical: &str,
+    world: &mut bevy_ecs::world::World,
+    e: bevy_ecs::entity::Entity,
+) -> bool {
     let mut pos = |c: &dyn Fn(&mut bevy_ecs::world::EntityWorldMut<'_>)| {
         c(&mut world.entity_mut(e));
         true
@@ -96,8 +115,10 @@ fn chaves(entry: &ph2d_ecs::scene::ComponentTypeEntry) -> Result<Option<BTreeSet
 }
 
 /// A chave serde de topo de uma chave de campo: o elemento `"axis[0]"` é da chave `axis`, e `"[0]"`
-/// é do valor inteiro de um newtype de array; `"easing/family"` é da chave `easing`.
+/// é do valor inteiro de um newtype de array; `"easing/family"` é da chave `easing`; o campo de
+/// variante `"at:{molde}/tag"` é da chave `at`.
 fn topo(k: &str) -> &str {
+    let k = k.split_once(':').map_or(k, |(top, _)| top);
     let k = k.split('/').next().unwrap_or(k);
     match k.split_once('[') {
         Some(("", _)) => WHOLE,
@@ -135,7 +156,8 @@ fn todo_campo_de_um_cartao_tem_nome_ou_motivo() {
             .map(|f| topo(f.serde_key()))
             .collect();
         let ocultas: BTreeSet<&str> = d.hidden_keys.iter().map(|(k, _)| topo(k)).collect();
-        let esperadas: BTreeSet<String> = chaves.unwrap_or_else(|| BTreeSet::from([WHOLE.to_owned()]));
+        let esperadas: BTreeSet<String> =
+            chaves.unwrap_or_else(|| BTreeSet::from([WHOLE.to_owned()]));
         for k in &esperadas {
             match (nomeadas.contains(k.as_str()), ocultas.contains(k.as_str())) {
                 (true, false) => nomeados += 1,
@@ -151,7 +173,12 @@ fn todo_campo_de_um_cartao_tem_nome_ou_motivo() {
         }
     }
     assert!(nomeados >= 32, "{nomeados}");
-    assert!(queixas.is_empty(), "{} queixas:\n  {}", queixas.len(), queixas.join("\n  "));
+    assert!(
+        queixas.is_empty(),
+        "{} queixas:\n  {}",
+        queixas.len(),
+        queixas.join("\n  ")
+    );
 }
 
 #[test]
@@ -161,7 +188,11 @@ fn todo_componente_com_nome_tem_a_sua_lei() {
     for d in ph2d_component_desc::all().filter(|d| !d.code.is_empty()) {
         com_nome.insert(d.canonical_name);
         let n = leis.iter().filter(|l| **l == d.canonical_name).count();
-        assert_eq!(n, 1, "{}: {n} linhas em LEIS (uma, `None` se o cartão aceita tudo)", d.code);
+        assert_eq!(
+            n, 1,
+            "{}: {n} linhas em LEIS (uma, `None` se o cartão aceita tudo)",
+            d.code
+        );
     }
     for l in &leis {
         assert!(com_nome.contains(l), "{l} está em LEIS sem nome de código");

@@ -34,10 +34,14 @@ const LUZ_FIELDS: &[FieldDesc] = &[
     f(0, "component.field.luz_fields.0", K::Enum)
         .named_as("type", "tipo")
         .viewed(crate::options!["point" => Ponto, "ambient" => Ambiente]),
-    f(1, "component.field.luz_fields.1", K::Color).named_as("color", "cor").viewed(View::Srgb),
+    f(1, "component.field.luz_fields.1", K::Color)
+        .named_as("color", "cor")
+        .viewed(View::Srgb),
     f(2, "component.field.luz_fields.2", K::Scalar).named_as("intensity", "intensidade"),
     f(3, "component.field.luz_fields.3", K::Scalar).named_as("size", "tamanho_m"),
-    f(4, "component.field.luz_fields.4", K::Scalar).named_as("range", "alcance_m").viewed(View::Unbounded),
+    f(4, "component.field.luz_fields.4", K::Scalar)
+        .named_as("range", "alcance_m")
+        .viewed(View::Unbounded),
 ];
 
 /// O campo do oclusor.

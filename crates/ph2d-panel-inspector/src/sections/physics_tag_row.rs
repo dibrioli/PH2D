@@ -10,7 +10,7 @@
 
 use super::*;
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
-use ph2d_i18n::tr;
+use ph2d_i18n::{tr, tr_with};
 
 /// A row do filtro por tag, e o aviso quando ele deixou de alcançar alguém. Devolve o `y` seguinte.
 ///
@@ -37,7 +37,10 @@ pub(super) fn signal_tag_row(
         Some(InteractiveState::Dropdown { open: true, .. })
     );
     let mut dd = Dropdown::new(ids::INSP_PHYS_SIGNAL_TAG, "", phys_tag_options())
-        .placeholder(tr("panel.inspector.physics.only_for_tag_u_any"))
+        .placeholder(tr_with(
+            "panel.inspector.physics.only_for_tag_u_any",
+            &[("field", &tr("component.field.signal_tag_filter.0"))],
+        ))
         .open(open)
         .visual(store.dropdown_visual(ids::INSP_PHYS_SIGNAL_TAG));
     if let Some(t) = signal_tag.filter(|t| *t != 0) {

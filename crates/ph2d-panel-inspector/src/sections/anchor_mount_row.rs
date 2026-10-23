@@ -85,7 +85,7 @@ fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Secca
         text_system,
         1,
         &[
-            tr("panel.inspector.anchors.rides_parent_anchor"),
+            tr("component.field.anchor_mount.1"),
             tr("component.field.anchor_visibility.1"),
             RUNTIME_BOX_LABEL.tr(),
         ],
@@ -118,7 +118,7 @@ pub(crate) fn paint_mount_row(
     ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
-        tr("panel.inspector.anchors.rides_parent_anchor"),
+        tr("component.field.anchor_mount.1"),
         row.label.x,
         row.label.y + (h - font) * 0.5,
         font,

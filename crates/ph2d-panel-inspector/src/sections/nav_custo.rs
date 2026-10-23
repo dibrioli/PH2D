@@ -232,7 +232,7 @@ pub(crate) fn paint_nav_link_section(
         text_system,
         2,
         &[
-            tr("panel.inspector.nav.link_exit"),
+            tr("component.field.nav_link.0"),
             tr("component.field.nav_link.3"),
             tr("component.field.nav_link.4"),
         ],
@@ -248,7 +248,7 @@ pub(crate) fn paint_nav_link_section(
         x,
         w,
         cur_y,
-        tr("panel.inspector.nav.link_exit"),
+        tr("component.field.nav_link.0"),
         crate::ids::INSP_NAV_LINK_TO,
         TextInput::new(crate::ids::INSP_NAV_LINK_TO, "")
             .placeholder(tr("panel.inspector.nav.exit_object_name_u")),

@@ -64,6 +64,29 @@ pub enum View {
     Percent,
     /// Cor guardada LINEAR; o cartão e o script em sRGB (cada canal de cor).
     Srgb,
+    /// Uma referência guardada pela IDENTIDADE do alvo; o script lê e escreve o NOME dele (`nil` =
+    /// ninguém). Lei em `ph2d_ecs::scene::property_ref`.
+    Named(Target),
+    /// Um par guardado como `{a, b}` (`SpawnAt::Area {w, h}`); o script vê `vec2(a, b)`.
+    Pair(&'static str, &'static str),
+}
+
+/// **A que identidade um [`View::Named`] dá nome.**
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Target {
+    /// Um objecto pelo próprio NOME (`String`, vazio = ninguém): o valor já é o nome, e escrever um
+    /// que nenhum objecto tem é a gralha que se diz.
+    Name,
+    /// Um objecto pelo `stable_name_id` do seu `Name` (`u64`, `0` = ninguém).
+    NameHash,
+    /// Um objecto pelo seu `StableId` (`u64`, `0` = nenhum).
+    Stable,
+    /// Uma tag da árvore do projecto, pelo caminho (`"Enemy/Flying"`); `u64`, `0` = nenhuma.
+    Tag,
+    /// Um conjunto de tags (os `Tags` do objecto): uma lista de caminhos.
+    TagSet,
+    /// Uma camada de ordenação do projecto (`SortingLayers`), pelo nome; guardada pelo índice.
+    Layer,
 }
 
 /// ⭐ **Uma [`View::Options`]**: `options!["full" => Full, "none" => Nothing, "inherit" => null]`. O
@@ -134,10 +157,23 @@ impl FieldDesc {
         self
     }
 
-    /// A chave do campo no valor serde do componente.
+    /// A chave do campo no valor serde do componente. Num enum com dados, `"chave:MOLDE/resto"`: o
+    /// campo é o conteúdo da variante do molde json (`"target:{\"Named\":0}"`, `"at:{…}/tag"`), e
+    /// escrevê-lo noutra variante passa o enum ao molde primeiro.
     #[must_use]
     pub const fn serde_key(&self) -> &'static str {
-        if self.key.is_empty() { self.name } else { self.key }
+        if self.key.is_empty() {
+            self.name
+        } else {
+            self.key
+        }
+    }
+
+    /// A chave que o ledger da corrida grava e repõe: o enum inteiro, num campo de variante.
+    #[must_use]
+    pub fn stored_key(&self) -> &'static str {
+        let k = self.serde_key();
+        k.split_once(':').map_or(k, |(top, _)| top)
     }
 }
 

@@ -7,6 +7,7 @@ use bevy_ecs::prelude::Resource;
 use ph2d_component_desc::FieldKind;
 use ph2d_ecs::scene::ComponentRegistry;
 use ph2d_ecs::scene::property::{self, PropertyError};
+use ph2d_ecs::scene::property_ref::RefNames;
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_physics_ecs::{Health, HealthNow, PedidoDeVida, PedidosDeVida};
 use ph2d_preview_drive::{FieldRef, PreviewDrive};
@@ -53,13 +54,23 @@ fn runtime_get(sim: &SimWorld, entity: Entity, name: &str) -> Option<Result<f64,
             component: "health".into(),
         })));
     };
-    let born = if name == "health.now" { h.start } else { h.shield_start };
+    let born = if name == "health.now" {
+        h.start
+    } else {
+        h.shield_start
+    };
     Some(Ok(w.get::<HealthNow>(entity).map_or(f64::from(born), pick)))
 }
 
 /// Escrever a vida/o escudo de agora é um pedido à ponte da física (`PedidoDeVida::Define`/`Escudo`):
 /// sem piscar nem números, e em zero morre (decisão do dono nº 9).
-fn runtime_set(sim: &mut SimWorld, entity: Entity, name: &str, value: &Value, dry: bool) -> Option<Result<(), String>> {
+fn runtime_set(
+    sim: &mut SimWorld,
+    entity: Entity,
+    name: &str,
+    value: &Value,
+    dry: bool,
+) -> Option<Result<(), String>> {
     runtime_get(sim, entity, name)?.err().map(Err).or_else(|| {
         let Some(x) = value.as_f64().filter(|x| x.is_finite()) else {
             return Some(Err(says(PropertyError::WrongType {
@@ -111,6 +122,7 @@ pub(crate) fn health_request(
 /// `ph2d.get` de uma propriedade nomeada: o valor e o tipo do campo.
 pub(crate) fn get(
     reg: &ComponentRegistry,
+    names: RefNames<'_>,
     sim: &SimWorld,
     entity: Entity,
     name: &str,
@@ -119,13 +131,14 @@ pub(crate) fn get(
         return v.map(|x| (Value::from(x), FieldKind::Scalar));
     }
     let r = property::resolve(reg, name).map_err(says)?;
-    let v = property::get(reg, sim.world(), entity, name).map_err(says)?;
+    let v = property::get(reg, sim.world(), entity, name, names).map_err(says)?;
     Ok((v, r.field.kind))
 }
 
 /// `ph2d.set` de uma propriedade nomeada; `dry` só verifica.
 pub(crate) fn set(
     reg: &ComponentRegistry,
+    names: RefNames<'_>,
     sim: &mut SimWorld,
     entity: Entity,
     name: &str,
@@ -137,16 +150,16 @@ pub(crate) fn set(
     }
     let world = sim.world_mut();
     if dry {
-        return property::check(reg, world, entity, name, value.clone()).map_err(says);
+        return property::check(reg, world, entity, name, value.clone(), names).map_err(says);
     }
     // O ledger guarda o valor GUARDADO, nunca o que o script vê (a `View`).
     let (before, r) = property::get_stored(reg, world, entity, name).map_err(says)?;
-    let born = property::set(reg, world, entity, name, value.clone()).map_err(says)?;
+    let born = property::set(reg, world, entity, name, value.clone(), names).map_err(says)?;
     crate::property_laws::sanitize(r.entry.canonical_name, world, entity);
     let (after, _) = property::get_stored(reg, world, entity, name).map_err(says)?;
     // Uma cópia da corrida não é documento: não há autorado a guardar por baixo dela.
     if (born || before != after) && !ph2d_ecs::is_transient(world, entity) {
-        let field = FieldRef::of(r.entry, r.field.serde_key());
+        let field = FieldRef::of(r.entry, r.field.stored_key());
         world
             .get_resource_or_init::<ScriptFieldWrites>()
             .0
@@ -159,7 +172,11 @@ pub(crate) fn set(
 pub(crate) fn names(reg: &ComponentRegistry, sim: &SimWorld, entity: Entity) -> Vec<String> {
     let mut out = property::names_of(reg, sim.world(), entity);
     if sim.world().get::<Health>(entity).is_some() {
-        out.extend(ph2d_script::api_table::RUNTIME_PROPERTIES.iter().map(|n| (*n).to_owned()));
+        out.extend(
+            ph2d_script::api_table::RUNTIME_PROPERTIES
+                .iter()
+                .map(|n| (*n).to_owned()),
+        );
     }
     out
 }

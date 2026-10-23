@@ -693,4 +693,4 @@ impl ComponentCategory {
 /// ⭐ **O que um CAMPO é** — irmão por tecto de LOC (HR-18, 700). Os tipos mantêm o endereço
 /// público (`ph2d_component_desc::FieldDesc`), logo nenhum consumidor muda.
 mod field;
-pub use field::{FieldDesc, FieldKind, Hidden, Propagation, RefKind, View, WHOLE};
+pub use field::{FieldDesc, FieldKind, Hidden, Propagation, RefKind, Target, View, WHOLE};

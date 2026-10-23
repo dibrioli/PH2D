@@ -15,14 +15,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.nav.no_layer_blocks" => {
             "No layer is a wall \u{2014} agents walk straight through everything."
         }
-        "panel.inspector.nav.target" => "Target",
         "panel.inspector.nav.target_none" => "None",
         "panel.inspector.nav.target_object" => "Object",
         "panel.inspector.nav.target_point" => "Point",
         "panel.inspector.nav.object_name_u" => "object name\u{2026}",
         "panel.inspector.nav.target_tag" => "Tag",
         "panel.inspector.nav.target_patrol" => "Patrol",
-        "panel.inspector.nav.shape" => "Shape",
         "panel.inspector.nav.shape_name_u" => "shape name\u{2026}",
         "panel.inspector.nav.pick_a_tag_u" => "pick a tag\u{2026}",
         "panel.inspector.nav.that_tag_was_deleted" => {
@@ -93,7 +91,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.nav.area_narrower_than_body" => {
             "Narrower than the body that walks it (radius {radius} m) \u{2014} it never fits inside, so nobody takes it. Make it wider."
         }
-        "panel.inspector.nav.link_exit" => "Exit",
         "panel.inspector.nav.exit_object_name_u" => "exit object name\u{2026}",
         "panel.inspector.nav.signal_when_an_agent_crosses_u" => {
             "signal when an agent crosses\u{2026}"

@@ -127,20 +127,20 @@ fn paint_body_rows(
         text_system,
         1,
         &[
-            tr("panel.inspector.joint.body_a"),
-            tr("panel.inspector.joint.body_b"),
+            tr("component.field.joint.1"),
+            tr("component.field.joint.2"),
         ],
     );
     let gap = Spacing::Xs.px();
     for (slot_label, name, id, armed) in [
         (
-            tr("panel.inspector.joint.body_a"),
+            tr("component.field.joint.1"),
             &info.body_a_name,
             ids::INSP_JOINT_PICK_A,
             info.pick_armed == 1,
         ),
         (
-            tr("panel.inspector.joint.body_b"),
+            tr("component.field.joint.2"),
             &info.body_b_name,
             ids::INSP_JOINT_PICK_B,
             info.pick_armed == 2,

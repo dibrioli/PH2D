@@ -317,9 +317,9 @@ pub(crate) fn paint_nav_agent_section(
         text_system,
         2,
         &[
-            tr("panel.inspector.nav.target"),
-            tr("panel.inspector.nav.target_tag"),
-            tr("panel.inspector.nav.shape"),
+            tr("component.field.nav_agent.0"),
+            tr("component.field.nav_agent.13"),
+            tr("component.field.nav_agent.14"),
             tr("component.field.nav_agent.1"),
             tr("component.field.nav_agent.2"),
             tr("component.field.nav_agent.3"),
@@ -448,7 +448,7 @@ fn linha_do_alvo(
         x,
         w,
         cur_y,
-        tr("panel.inspector.nav.target"),
+        tr("component.field.nav_agent.0"),
         &segmentos,
         seccao,
     );
@@ -466,7 +466,7 @@ fn linha_do_alvo(
                 x,
                 w,
                 cur_y,
-                tr("panel.inspector.nav.target_object"),
+                tr("component.field.nav_agent.11"),
                 crate::ids::INSP_NAV_TARGET_NAME,
                 TextInput::new(crate::ids::INSP_NAV_TARGET_NAME, "")
                     .placeholder(tr("panel.inspector.nav.object_name_u")),
@@ -499,7 +499,7 @@ fn linha_do_alvo(
                 x,
                 w,
                 cur_y,
-                tr("panel.inspector.nav.shape"),
+                tr("component.field.nav_agent.14"),
                 crate::ids::INSP_NAV_TARGET_NAME,
                 TextInput::new(crate::ids::INSP_NAV_TARGET_NAME, "")
                     .placeholder(tr("panel.inspector.nav.shape_name_u")),
@@ -516,7 +516,7 @@ fn linha_do_alvo(
                 x,
                 w,
                 cur_y,
-                tr("panel.inspector.nav.target_point"),
+                tr("component.field.nav_agent.12"),
                 &[crate::ids::INSP_NAV_TARGET_X, crate::ids::INSP_NAV_TARGET_Y],
                 0.1, // LITERAL-PX-OK: passo de arrasto em METROS, mundo
                 Some(Unit::Meters),

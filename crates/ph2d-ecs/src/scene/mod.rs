@@ -10,11 +10,12 @@ pub mod commands;
 pub mod incremental;
 /// ⭐ Uma propriedade por NOME (`"health.max"`) — a lei de quem nomeia um campo (doc CodeEditor 08).
 pub mod property;
+pub mod property_ref;
 pub mod registry;
-/// O valor de um componente por nome de campo — irmão por CAP de LOC.
-mod registry_value;
 /// ⭐ O registo da família da CÂMERA — irmão por CAP de LOC; ver o cabeçalho.
 mod registry_camera;
+/// O valor de um componente por nome de campo — irmão por CAP de LOC.
+mod registry_value;
 pub mod save;
 pub mod save_v1;
 pub mod snapshot;

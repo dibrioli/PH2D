@@ -181,10 +181,8 @@ impl crate::App {
         let r = &mut self.signal_readers;
         let mut portas = ph2d_app_components::script_bridge::ScriptDoors {
             registry: component_registry,
-            docs: ph2d_app_components::instance_docs::OwnedDocs {
-                vec_scene,
-                vec_entities,
-            },
+            tags,
+            docs: ph2d_app_components::instance_docs::OwnedDocs { vec_scene, vec_entities },
             tick: self.fixed_step.tick_count(),
         };
         deaths.extend(motores::correm(

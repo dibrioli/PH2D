@@ -410,16 +410,11 @@ pub struct WidgetStore {
     /// widget filters the model by it, and `Enter` picks the top match. Cleared on open/close so a fresh
     /// palette never inherits the last query.
     pub(super) command_palette_query: String,
-    /// ⭐ **A caixa da banda foi clicada** (ADR-0166 / F3), à espera de quem a abriu.
-    ///
-    /// ⚠️ **É um sinal, não o estado.** O widget não sabe o que *"mostrar tudo"* significa — quem
-    /// abriu a paleta é que sabe, e é ele que reconstrói o modelo. É a mesma lei do `command_pick`:
-    /// o editor-core nunca aprende o que um item quer dizer.
+    /// A caixa da banda foi clicada (ADR-0166 / F3): um SINAL para quem abriu a paleta reconstruir
+    /// o modelo (a lei do `command_pick`: o editor-core nunca aprende o que um item quer dizer).
     pub(super) command_palette_toggled: bool,
     /// Os prefixos `>` `@` `:` de quem abriu a paleta e a busca do último pick (CodeEditor I14).
     pub(super) command_palette_scope: crate::widget::command_palette::ScopeState,
-    // ⚠️ A rolagem da lista da paleta NÃO mora aqui desde 2026-09-29: ela passou às tabelas de todo
-    // painel com a chave `widget::command_palette::CMD_PALETTE_CARD` (a porta `scroll_area`, W5).
     /// Section-header id → highlighter color index (0..4 for the 5
     /// canonical colors; missing entry == "no outline"). Painted by
     /// the inspector as a colored stroke around the section block.
@@ -561,13 +556,9 @@ pub struct WidgetStore {
     pub(super) asset_drag: Option<crate::interaction::drag_payload::InFlightDrag>,
     /// Onde o `Down` do arrasto de asset aconteceu — o ponto contra o qual o limiar é medido.
     pub(super) asset_drag_origin: (f32, f32),
-    /// O nome do que vai na mão, quando a carga o tem (um objecto da Hierarquia: o fantasma diz
-    /// `Porta`, como o do Godot) — `None` = o rótulo da família ([`DragPayload::kind_label`]).
-    ///
-    /// [`DragPayload::kind_label`]: crate::interaction::drag_payload::DragPayload::kind_label
+    /// O nome do que vai na mão (o objecto da Hierarquia); `None` = o rótulo da família da carga.
     pub(super) asset_drag_label: Option<String>,
-    /// Os cartões que o navegador de assets **pinta** agora (`id → índice`), republicados por
-    /// quadro. Ver [`super::asset_drag_ops`].
+    /// Os cartões que o navegador de assets pinta agora (`id → índice`), republicados por quadro.
     pub(super) asset_cells: std::collections::BTreeMap<NodeId, usize>,
     /// M14.6B: every NodeId currently displayed as a hierarchy row.
     /// Painter republishes the set each frame (fixture + live

@@ -28,6 +28,26 @@ a_fim=$(awk '/A_FIM/ {print $2}' "$T/a"); b=$(awk '{print $2}' "$T/b")
 ok "B só entrou depois de A acabar" "awk -v a=$a_fim -v b=$b 'BEGIN { exit !(b >= a) }'"
 ok "B ouviu quem segura (linha, comando)" "grep -q 'echo A' $T/b.err"
 
+echo "— a vez larga-se quando o pedinte acaba, não no fim da árvore —"
+run bash -c "bash -c 'bash scripts/vez-da-placa.sh; sleep 1'; sleep 4" 2>/dev/null &
+sleep 0.5; t0=$(agora)
+PH2D_GPU=1 run true 2>/dev/null
+ok "a outra árvore entra quando o pedinte acaba (< 2,5 s), não no fim da árvore (~4,5 s)" \
+  "awk -v d=\$(dif $t0 \$(agora)) 'BEGIN { exit !(d < 2.5) }'"
+wait
+
+echo "— quem volta a pedir espera a vez de novo —"
+run bash -c "bash -c 'bash scripts/vez-da-placa.sh; sleep 0.5'; sleep 1.5; bash -c 'bash scripts/vez-da-placa.sh; echo A2 \$(date +%s.%N) > $T/a2'" 2>/dev/null &
+sleep 1.2
+PH2D_GPU=1 run bash -c "sleep 2; echo B_FIM \$(date +%s.%N) > $T/bfim" 2>/dev/null
+wait
+ok "o 2.º pedido da mesma árvore entrou depois de a outra acabar" \
+  "awk -v a=\$(awk '{print \$2}' $T/a2) -v b=\$(awk '{print \$2}' $T/bfim) 'BEGIN { exit !(a >= b) }'"
+
+echo "— dois pedintes da mesma árvore entram juntos —"
+run bash -c "bash -c 'bash scripts/vez-da-placa.sh; sleep 2' & sleep 0.5; t=\$(date +%s.%N); bash -c 'bash scripts/vez-da-placa.sh'; echo \$t \$(date +%s.%N) > $T/dois; wait" 2>/dev/null
+ok "o 2.º pedinte não espera o 1.º (< 1 s)" "awk '{ exit !(\$2 - \$1 < 1) }' $T/dois"
+
 echo "— quem nunca pede não segura nada —"
 run bash -c 'sleep 3' 2>/dev/null &
 sleep 0.5; t0=$(agora)
@@ -68,7 +88,7 @@ PH2D_GPU=1 bash scripts/ph2d-run.sh sleep 30 2>/dev/null &
 porta=$!
 sleep 1; kill -9 "$porta"; t0=$(agora)
 PH2D_GPU=1 run true 2>/dev/null
-ok "a placa liberta-se em ≤ 7 s (o porteiro vigia o dono a cada 5 s)" "[ \$(dif $t0 \$(agora) | cut -d. -f1) -lt 7 ]"
+ok "a placa liberta-se em ≤ 7 s (o porteiro vigia o dono a cada 0,5 s)" "[ \$(dif $t0 \$(agora) | cut -d. -f1) -lt 7 ]"
 wait 2>/dev/null
 
 echo "— o comando não herda o cadeado —"

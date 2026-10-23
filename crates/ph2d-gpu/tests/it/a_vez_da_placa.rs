@@ -97,16 +97,36 @@ mod protocolo {
             .unwrap()
     }
 
+    fn a_minha_vez(d: &Path) -> PathBuf {
+        d.join(format!("vez.{}", std::process::id()))
+    }
+
+    /// O porteiro larga a vez quando o último pedinte acaba: a árvore na placa não dispensa o pedido,
+    /// e a vez de OUTRO pid não é a deste.
     #[test]
-    fn com_a_vez_ja_na_arvore_nao_pede_nada() {
-        let d = pasta("pronto");
+    fn a_vez_de_outro_pid_nao_dispensa_o_pedido() {
+        let d = pasta("outro");
+        let porta = porteiro(&d, std::process::id());
         std::fs::write(d.join("pronto"), "").unwrap();
+        std::fs::write(d.join("vez.1"), "").unwrap();
+        let d2 = d.clone();
+        let atende = std::thread::spawn(move || {
+            let mut pedido = String::new();
+            BufReader::new(porta).read_line(&mut pedido).unwrap();
+            std::thread::sleep(Duration::from_millis(300));
+            std::fs::write(a_minha_vez(&d2), "").unwrap();
+        });
+        let t0 = Instant::now();
         assert_eq!(pede_em(&d), Ok(()));
-        assert!(!d.join("porta").exists());
+        assert!(
+            t0.elapsed() >= Duration::from_millis(300),
+            "entrou sem esperar a SUA vez"
+        );
+        atende.join().unwrap();
     }
 
     #[test]
-    fn pede_pela_porta_e_espera_o_pronto() {
+    fn pede_pela_porta_e_espera_a_sua_vez() {
         let d = pasta("espera");
         let porta = porteiro(&d, std::process::id());
         let d2 = d.clone();
@@ -114,7 +134,7 @@ mod protocolo {
             let mut pedido = String::new();
             BufReader::new(porta).read_line(&mut pedido).unwrap();
             std::thread::sleep(Duration::from_millis(300));
-            std::fs::write(d2.join("pronto"), "").unwrap();
+            std::fs::write(a_minha_vez(&d2), "").unwrap();
             pedido
         });
         let t0 = Instant::now();

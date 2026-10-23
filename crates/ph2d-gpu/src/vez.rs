@@ -30,13 +30,13 @@ pub fn vez_da_placa() {
     });
 }
 
-/// O protocolo, sobre a pasta do porteiro: `porta` (FIFO: «pid nome»), `pronto`, `recusa`,
-/// `porteiro` (o pid dele). `Err` = o texto da recusa.
+/// O protocolo, sobre a pasta do porteiro: `porta` (FIFO: «pid nome»), `vez.<pid>` (a vez chegou a
+/// este processo, até ele acabar), `recusa`, `porteiro` (o pid dele). `Err` = o texto da recusa.
+///
+/// ⚠️ Pede SEMPRE, mesmo com a árvore já na placa: o porteiro larga a vez quando o último pedinte
+/// acaba, e só segura por quem conhece.
 pub fn pede_em(dir: &Path) -> Result<(), String> {
-    let pronto = dir.join("pronto");
-    if pronto.exists() {
-        return Ok(());
-    }
+    let pronto = dir.join(format!("vez.{}", std::process::id()));
     let porteiro_vivo = || {
         std::fs::read_to_string(dir.join("porteiro"))
             .is_ok_and(|p| Path::new("/proc").join(p.trim()).exists())

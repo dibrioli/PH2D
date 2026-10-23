@@ -124,8 +124,10 @@ fi
 
 # ── a placa: a VEZ (docs/DevOps/A_VEZ_DA_PLACA.md) ────────────────────────────
 # ⭐ Toda árvore que passa por esta porta tem um PORTEIRO, e ninguém precisa de se lembrar de nada:
-# ele pede a placa ao cadeado partilhado (`ph2d-gpu.lock`, exclusivo entre árvores) na PRIMEIRA vez
-# que alguém da árvore a pede, e segura-a até o comando acabar. Pedem-na: o `GpuContext` do
+# ele pede a placa ao cadeado partilhado (`ph2d-gpu.lock`, exclusivo entre árvores) quando alguém da
+# árvore a pede, e segura-a enquanto um processo que a PEDIU vive — larga-a quando o último acaba e
+# volta a pedi-la no pedido seguinte (§5 do doc: a suíte inteira prendia a placa nos minutos de CPU).
+# O `PH2D_GPU=1` pede-a pela própria porta, que vive o comando inteiro. Pedem-na: o `GpuContext` do
 # `ph2d-gpu` (antes do adaptador — é ele que põe o processo na placa), o `vez-da-placa.sh` (o que não
 # é Rust: o `kwin --virtual` das fotos e das medições) e o `PH2D_GPU=1` (já à partida, para medir).
 # ⛔ Exclusiva de propósito: duas linhas na placa ao mesmo tempo penduraram o driver em 14/09.
@@ -144,39 +146,58 @@ vez_viva() { # a árvore de fora tem porteiro vivo?
     && kill -0 "$(cat "$PH2D_GPU_VEZ/porteiro" 2>/dev/null || echo x)" 2>/dev/null
 }
 porteiro() { # $1 = o pid desta porta (o dono da árvore) · $2 = o tempo de desistir (vazio = nunca)
-  local dono="$1" espera="$2" pedido="" fpid="" tenho=""
+  local dono="$1" espera="$2" pedido="" fpid="" tenho="" p
+  local -a pedintes vivos
   trap 'exit 0' TERM INT HUP
   trap '[ -n "$fpid" ] && kill "$fpid" 2>/dev/null; [ -n "$tenho" ] && rm -f "${fechadura}.dono"' EXIT
-  # 1. o 1.º pedido, sem gastar nada (um `read` no FIFO), de olho no dono (um `kill -9` não corre traps)
-  until read -r -t 5 -u 3 pedido; do kill -0 "$dono" 2>/dev/null || exit 0; done
-  local t0=$SECONDS
-  exec 9>"$fechadura"
-  if ! flock -n 9; then
-    { echo "⏳ a placa está com outra árvore — à espera da vez (por ordem de chegada):"
-      sed 's/^/    /' "${fechadura}.dono" 2>/dev/null; } >&2
-    # Em fundo + `wait`: o `wait` interrompe-se pelo TERM do dono; um `flock` em primeiro plano não.
-    flock ${espera:+-w "$espera"} 9 &
-    fpid=$!
-    if ! wait "$fpid"; then
+  # Cada pedinte espera o SEU `vez.<pid>`: um `pronto` da árvore deixaria entrar sem a vez quem pede
+  # no instante em que ela se larga.
+  while :; do
+    # 1. o pedido, sem gastar nada (um `read` no FIFO), de olho no dono (um `kill -9` não corre traps)
+    until read -r -t 0.5 -u 3 pedido; do kill -0 "$dono" 2>/dev/null || exit 0; done
+    local t0=$SECONDS
+    exec 9>"$fechadura"
+    if ! flock -n 9; then
+      { echo "⏳ a placa está com outra árvore — à espera da vez (por ordem de chegada):"
+        sed 's/^/    /' "${fechadura}.dono" 2>/dev/null; } >&2
+      # Em fundo + `wait`: o `wait` interrompe-se pelo TERM do dono; um `flock` em primeiro plano não.
+      flock ${espera:+-w "$espera"} 9 &
+      fpid=$!
+      if ! wait "$fpid"; then
+        fpid=""
+        { echo "a placa está com outra árvore há mais de ${espera}s — quem a segura:"
+          sed 's/^/    /' "${fechadura}.dono" 2>/dev/null
+          # Sem `.dono` a fechadura está com quem a HERDOU e não a pediu (um daemon de uma worktree velha).
+          [ -s "${fechadura}.dono" ] || fuser -v "$fechadura" 2>&1 | sed 's/^/    /'
+        } > "$vez/recusa.tmp"
+        mv "$vez/recusa.tmp" "$vez/recusa"
+        exit 0
+      fi
       fpid=""
-      { echo "a placa está com outra árvore há mais de ${espera}s — quem a segura:"
-        sed 's/^/    /' "${fechadura}.dono" 2>/dev/null
-        # Sem `.dono` a fechadura está com quem a HERDOU e não a pediu (um daemon de uma worktree velha).
-        [ -s "${fechadura}.dono" ] || fuser -v "$fechadura" 2>&1 | sed 's/^/    /'
-      } > "$vez/recusa.tmp"
-      mv "$vez/recusa.tmp" "$vez/recusa"
-      exit 0
+      echo "▸ a vez da placa chegou ao fim de $((SECONDS - t0)) s (pedida por ${pedido})" >&2
     fi
-    fpid=""
-    echo "▸ a vez da placa chegou ao fim de $((SECONDS - t0)) s (pedida por ${pedido})" >&2
-  fi
-  tenho=1
-  printf 'linha %s · pid %s · desde %s · %s · pedida por %s\n' \
-    "$linha" "$dono" "$(date +%T)" "$cmd_txt" "$pedido" > "${fechadura}.dono"
-  : > "$vez/pronto"
-  # 2. segura até o dono acabar (o `trap` dele mata-me; se ele morrer sem `trap`, saio em ≤ 5 s)
-  while kill -0 "$dono" 2>/dev/null; do read -r -t 5 -u 3 _; done
-  exit 0
+    tenho=1
+    printf 'linha %s · pid %s · desde %s · %s · pedida por %s\n' \
+      "$linha" "$dono" "$(date +%T)" "$cmd_txt" "$pedido" > "${fechadura}.dono"
+    pedintes=("${pedido%% *}")
+    : > "$vez/vez.${pedintes[0]}"
+    # 2. segura enquanto um pedinte vive (sem o dono, saio em ≤ 0,5 s)
+    while [ "${#pedintes[@]}" -gt 0 ]; do
+      while read -r -t 0.2 -u 3 pedido; do
+        pedintes+=("${pedido%% *}")
+        : > "$vez/vez.${pedido%% *}"
+      done
+      kill -0 "$dono" 2>/dev/null || exit 0
+      vivos=()
+      for p in "${pedintes[@]}"; do kill -0 "$p" 2>/dev/null && vivos+=("$p"); done
+      pedintes=("${vivos[@]}")
+    done
+    # 3. larga; um pedido que chegue agora fica no FIFO e é o próximo `read` do passo 1
+    rm -f "$vez"/vez.* "${fechadura}.dono"
+    tenho=""
+    flock -u 9
+    exec 9>&-
+  done
 }
 cmd_txt="$*"
 porteiro_pid=""

@@ -1261,6 +1261,10 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
     // `paint_ramp_widget.rs` e ao `paint_shape.rs`** (tecto de 600). ⚠️ Medido: zero `NodeId`, `hit_index`
     // ou `register(` — a leitura do selector de cor e a COR da prévia da ponta.
     (
+        "ph2d-panel-painter-layers/src/paint_ramp_lut.rs",
+        "o bake do preview de uma rampa (stops -> LUT sRGB de 256 entradas); nao pinta nem regista um id — 0 ocorrencias de NodeId / hit_index. / register(; desceu do `paint_ramp_widget.rs` no tecto de 600 (integracao 23/10)",
+    ),
+    (
         "ph2d-panel-painter-layers/src/paint_ramp_leitura.rs",
         "a leitura viva do selector de cor de uma rampa (empurra o SelectOption da caixa que o widget ja' registou); nao pinta nem regista um id — 0 ocorrencias de NodeId / hit_index. / register(",
     ),

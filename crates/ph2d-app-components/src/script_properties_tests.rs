@@ -531,7 +531,10 @@ function init(self)
 end
 "#,
     );
-    c.sim.world_mut().entity_mut(c.heroi).insert(Collider::default());
+    c.sim
+        .world_mut()
+        .entity_mut(c.heroi)
+        .insert(Collider::default());
     let f = c.quadro(true);
     assert!(f.failed.is_empty(), "{}", Cena::falhas(&f));
     let col = c.sim.world().get::<Collider>(c.heroi).unwrap();
@@ -544,8 +547,12 @@ end
 /// k1: o alvo por `StableId` (`factory.master`) com um nome que nenhum objecto tem é uma gralha dita.
 #[test]
 fn uma_receita_que_nao_existe_diz_o_nome_que_falta() {
-    let mut c = cena("function update(self)\n  ph2d.set(self.id, \"factory.recipe\", \"Nope\")\nend\n");
-    c.sim.world_mut().entity_mut(c.heroi).insert(ph2d_ecs::Factory::default());
+    let mut c =
+        cena("function update(self)\n  ph2d.set(self.id, \"factory.recipe\", \"Nope\")\nend\n");
+    c.sim
+        .world_mut()
+        .entity_mut(c.heroi)
+        .insert(ph2d_ecs::Factory::default());
     let msg = Cena::falhas(&c.quadro(true));
     assert!(msg.contains("no object is named 'Nope'"), "{msg}");
 }

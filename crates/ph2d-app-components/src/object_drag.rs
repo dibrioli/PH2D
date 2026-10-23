@@ -273,8 +273,14 @@ mod tests {
         assert!(into_script_slot(&mut sim, bits, "porta", 9));
         let s = sim.world().get::<LuauScript>(heroi).expect("script");
         assert_eq!(s.own["porta"], ScriptValue::Object("Porta".into()));
-        assert!(!into_script_slot(&mut sim, bits, "porta", 9), "o mesmo: nada muda");
-        assert!(!into_script_slot(&mut sim, bits, "porta", 77), "nenhum objecto");
+        assert!(
+            !into_script_slot(&mut sim, bits, "porta", 9),
+            "o mesmo: nada muda"
+        );
+        assert!(
+            !into_script_slot(&mut sim, bits, "porta", 77),
+            "nenhum objecto"
+        );
     }
 
     #[test]

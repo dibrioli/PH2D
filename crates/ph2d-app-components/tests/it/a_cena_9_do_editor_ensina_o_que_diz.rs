@@ -64,7 +64,11 @@ fn os_quatro_passos_da_cena_9_fazem_o_que_o_script_diz() {
         .map(|&e| sim.world().get::<Name>(e).expect("nome").as_str())
         .collect();
     assert_eq!(nomes, ["Ship", "Door", "Lamp"]);
-    assert!(pecas.iter().all(|&e| sim.world().get::<StableId>(e).is_some()));
+    assert!(
+        pecas
+            .iter()
+            .all(|&e| sim.world().get::<StableId>(e).is_some())
+    );
     let (nave, porta, lampada) = (pecas[0], pecas[1], pecas[2]);
     let id = sim
         .world()
@@ -81,17 +85,31 @@ fn os_quatro_passos_da_cena_9_fazem_o_que_o_script_diz() {
     );
     let (p, rot) = carga(&reg, &sim, nave, &rotacao).expect("Rotation arrasta");
     assert_eq!(p, DragPayload::Property { script: 0 });
-    let giro = linha(tr("panel.inspector.script.script"), "giro", Some(LIGAR_NAME));
+    let giro = linha(
+        tr("panel.inspector.script.script"),
+        "giro",
+        Some(LIGAR_NAME),
+    );
     let (p, g) = carga(&reg, &sim, nave, &giro).expect("giro arrasta");
     assert_eq!(p, DragPayload::Property { script: id.0 });
     let fmt = ph2d_code_format::Program::pinned().expect("`bash scripts/stylua-fetch.sh`");
-    assert_eq!(fmt.format(LIGAR_LUAU).as_deref(), Ok(LIGAR_LUAU), "começa limpo e válido");
+    assert_eq!(
+        fmt.format(LIGAR_LUAU).as_deref(),
+        Ok(LIGAR_LUAU),
+        "começa limpo e válido"
+    );
     let ate = "para logo ANTES do  )\n";
     let vazia = LIGAR_LUAU.rfind(ate).expect("o passo ②") + ate.len();
     let mut um = LIGAR_LUAU.to_owned();
     // o `(` escrito traz o `)` (o par automático do editor): larga-se antes dele
     um.insert_str(vazia, "  ph2d.set(self.id, )");
-    let um = largar(&um, vazia, "ph2d.set(self.id, ", &names_of_label(&rot), false);
+    let um = largar(
+        &um,
+        vazia,
+        "ph2d.set(self.id, ",
+        &names_of_label(&rot),
+        false,
+    );
     let pos = um[vazia..].find("\"rotation\"").expect("①") + vazia + "\"rotation\"".len();
     let mut dois = um.clone();
     dois.insert_str(pos, ", tempo * ");
@@ -105,10 +123,16 @@ fn os_quatro_passos_da_cena_9_fazem_o_que_o_script_diz() {
     let vazia = dois.find("aqui em baixo:\n").expect("o passo ③") + "aqui em baixo:\n".len();
     let tres = alt_dropped_into(&dois, vazia, &["Door".to_owned()]);
     assert!(
-        tres.contains("aqui em baixo:\nph2d.property(\"door\", ph2d.object(\"Door\"))\n\nlocal tempo"),
+        tres.contains(
+            "aqui em baixo:\nph2d.property(\"door\", ph2d.object(\"Door\"))\n\nlocal tempo"
+        ),
         "{tres}"
     );
-    assert_eq!(fmt.format(&tres).as_deref(), Ok(tres.as_str()), "o texto final sai limpo");
+    assert_eq!(
+        fmt.format(&tres).as_deref(),
+        Ok(tres.as_str()),
+        "o texto final sai limpo"
+    );
 
     let mut host = ScriptHost::new().expect("vm");
     sim.world_mut()

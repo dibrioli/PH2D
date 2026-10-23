@@ -592,7 +592,10 @@ mod texture_slot_target_tests {
     #[test]
     fn a_property_row_writes_code_on_text_and_cancels_everywhere_else() {
         let p = DragPayload::Property { script: 0 };
-        assert_eq!(resolve(p, DropTarget::Code { on_text: true }), DropAction::WriteCode);
+        assert_eq!(
+            resolve(p, DropTarget::Code { on_text: true }),
+            DropAction::WriteCode
+        );
         for t in [
             DropTarget::Code { on_text: false },
             DropTarget::Chrome,
@@ -602,7 +605,10 @@ mod texture_slot_target_tests {
             },
             DropTarget::CatalogRow { catalog: None },
             DropTarget::InspectorTexture { entity_bits: 1 },
-            DropTarget::ScriptObject { entity_bits: 1, row: 0 },
+            DropTarget::ScriptObject {
+                entity_bits: 1,
+                row: 0,
+            },
         ] {
             assert_eq!(resolve(p, t), DropAction::Cancel, "{t:?}");
         }

@@ -250,21 +250,29 @@ fn renomear_um_objecto_leva_a_propriedade_de_objecto_e_um_mestre_nao() {
     use ph2d_script::{LuauScript, ScriptValue};
     let (mut m, ids) = Mesa::new(&[("a.luau", TEXTO)]);
     let mut s = LuauScript::library(ids[0]);
-    s.own.insert("porta".into(), ScriptValue::Object("Porta".into()));
+    s.own
+        .insert("porta".into(), ScriptValue::Object("Porta".into()));
     let dono = m.sim.world_mut().spawn(s).id();
-    let valor = |m: &Mesa| {
-        m.sim.world().get::<LuauScript>(dono).expect("script").own["porta"].clone()
-    };
+    let valor =
+        |m: &Mesa| m.sim.world().get::<LuauScript>(dono).expect("script").own["porta"].clone();
     let mestre = m
         .sim
         .world_mut()
         .spawn((Transform::IDENTITY, Name::new("Porta"), MasterRoot))
         .id();
     ph2d_app_code::object_renamed(&mut m.hero, m.sim.world_mut(), mestre, "Porta", "Portão");
-    assert_eq!(valor(&m), ScriptValue::Object("Porta".into()), "um mestre não leva");
+    assert_eq!(
+        valor(&m),
+        ScriptValue::Object("Porta".into()),
+        "um mestre não leva"
+    );
     let porta = objecto(&mut m, "Porta");
     ph2d_app_code::object_renamed(&mut m.hero, m.sim.world_mut(), porta, "Porta", "Portão");
-    assert_eq!(valor(&m), ScriptValue::Object("Portão".into()), "um objecto leva");
+    assert_eq!(
+        valor(&m),
+        ScriptValue::Object("Portão".into()),
+        "um objecto leva"
+    );
 }
 
 /// ⭐ Doc CodeEditor 08 §3.4: um `componente.campo` em `ph2d.get/set` que nenhum componente tem é um
@@ -411,10 +419,14 @@ fn uma_linha_do_inspector_cai_pelo_nome_e_a_do_proprio_script_por_self() {
     assert_eq!(balao.len(), 1, "{balao:?}");
     assert!(balao[0].contains("in quotes"), "{balao:?}");
     assert!(m.docs().drop_hover(id.0, Some(linha(Some(id.0), false))));
-    let (_, balao) = m.docs().drop_mark_of(id).expect("a marca do próprio script");
+    let (_, balao) = m
+        .docs()
+        .drop_mark_of(id)
+        .expect("a marca do próprio script");
     assert!(balao[0].contains("self."), "{balao:?}");
     assert!(
-        !m.docs().drop_hover(id.0, Some(linha(Some(id.0 + 1), false))),
+        !m.docs()
+            .drop_hover(id.0, Some(linha(Some(id.0 + 1), false))),
         "a propriedade de outro script não cai aqui"
     );
     assert!(m.docs().drop_mark_of(id).is_none());

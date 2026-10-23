@@ -23,7 +23,11 @@ fn health() -> &'static ph2d_component_desc::ComponentDesc {
 }
 
 fn rotulo_de(campo: &str) -> &'static str {
-    let f = health().fields.iter().find(|f| f.name == campo).expect("campo");
+    let f = health()
+        .fields
+        .iter()
+        .find(|f| f.name == campo)
+        .expect("campo");
     tr(f.label_key)
 }
 
@@ -73,13 +77,24 @@ fn uma_linha_do_inspector_da_o_nome_com_que_o_script_a_le() {
             "{rotulo}"
         );
     }
-    let vel = linha(tr("panel.inspector.script.script"), "velocidade", Some("heroi.luau"));
+    let vel = linha(
+        tr("panel.inspector.script.script"),
+        "velocidade",
+        Some("heroi.luau"),
+    );
     assert_eq!(
         carga(&reg, &sim, heroi, &vel),
-        Some((DragPayload::Property { script: id.0 }, "velocidade".to_owned()))
+        Some((
+            DragPayload::Property { script: id.0 },
+            "velocidade".to_owned()
+        ))
     );
     let fonte = linha(tr("panel.inspector.script.script"), "Source", None);
-    assert_eq!(carga(&reg, &sim, heroi, &fonte), None, "uma linha que não é propriedade");
+    assert_eq!(
+        carga(&reg, &sim, heroi, &fonte),
+        None,
+        "uma linha que não é propriedade"
+    );
     assert_eq!(names_of_label("x, y"), ["x", "y"]);
 }
 
@@ -88,7 +103,9 @@ fn par_de_rotulo_comum(
     reg: &ComponentRegistry,
     sim: &mut SimWorld,
 ) -> Option<(Entity, &'static str, String, &'static str, String, String)> {
-    let descs: Vec<_> = ph2d_component_desc::all().filter(|d| !d.code.is_empty()).collect();
+    let descs: Vec<_> = ph2d_component_desc::all()
+        .filter(|d| !d.code.is_empty())
+        .collect();
     for (i, a) in descs.iter().enumerate() {
         for b in &descs[i + 1..] {
             if tr(a.display_key) == tr(b.display_key) {
@@ -99,7 +116,10 @@ fn par_de_rotulo_comum(
                     if tr(fa.label_key) != tr(fb.label_key) {
                         continue;
                     }
-                    let e = sim.world_mut().spawn((Transform::IDENTITY, StableId(99))).id();
+                    let e = sim
+                        .world_mut()
+                        .spawn((Transform::IDENTITY, StableId(99)))
+                        .id();
                     let mut ok = true;
                     for d in [a, b] {
                         let ins = reg
@@ -139,5 +159,9 @@ fn dois_componentes_com_o_mesmo_rotulo_decidem_se_pelo_titulo_do_cartao() {
     let carga_de = |cartao: &str| carga(&reg, &sim, e, &linha(cartao, &rotulo, None)).map(|c| c.1);
     assert_eq!(carga_de(cartao_a), Some(nome_a));
     assert_eq!(carga_de(cartao_b), Some(nome_b));
-    assert_eq!(carga_de("Nonsense"), None, "cartão que não é de nenhum: nunca um nome à sorte");
+    assert_eq!(
+        carga_de("Nonsense"),
+        None,
+        "cartão que não é de nenhum: nunca um nome à sorte"
+    );
 }

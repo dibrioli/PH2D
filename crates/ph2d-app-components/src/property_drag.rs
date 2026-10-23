@@ -78,7 +78,12 @@ pub fn carga(
 }
 
 /// O `Down` sobre o nome de uma linha do Inspector semeia o arrasto (ainda clique até ao limiar).
-pub fn seed(hero: &mut HeroScreen, sim: &SimWorld, reg: &ComponentRegistry, at: (f32, f32)) -> bool {
+pub fn seed(
+    hero: &mut HeroScreen,
+    sim: &SimWorld,
+    reg: &ComponentRegistry,
+    at: (f32, f32),
+) -> bool {
     if hero.chrome_panel_at(at.0, at.1) != Some(ph2d_editor_core::ids::INSP_PANEL) {
         return false;
     }

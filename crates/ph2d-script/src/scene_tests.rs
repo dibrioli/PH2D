@@ -652,8 +652,15 @@ end
     let mut sim = SimWorld::new();
     let w = sim.world_mut();
     actor(w, 1, &path, &[]);
-    actor(w, 2, &path, &[("porta", ScriptValue::Object("Placar".into()))]);
-    let porta = w.spawn((Transform::IDENTITY, StableId(10), Name::new("Porta"))).id();
+    actor(
+        w,
+        2,
+        &path,
+        &[("porta", ScriptValue::Object("Placar".into()))],
+    );
+    let porta = w
+        .spawn((Transform::IDENTITY, StableId(10), Name::new("Porta")))
+        .id();
     let mut host = ScriptHost::new().expect("vm");
     host.scene_sync(sim.world_mut());
     let Some(ScriptInfo::Ready(decls)) = info(&host, sim.world_mut(), &path) else {
@@ -661,13 +668,20 @@ end
     };
     assert_eq!(decls[0].default, ScriptValue::Object("Porta".into()));
     let r = frame(&mut host, &mut sim, 1.0);
-    assert!(r.failed.is_empty(), "o Placar ainda não existe: nil, sem erro");
+    assert!(
+        r.failed.is_empty(),
+        "o Placar ainda não existe: nil, sem erro"
+    );
     assert_eq!(x(sim.world(), porta), 1.0, "o default aponta a Porta");
     let placar = sim
         .world_mut()
         .spawn((Transform::IDENTITY, StableId(11), Name::new("Placar")))
         .id();
     frame(&mut host, &mut sim, 1.0);
-    assert_eq!(x(sim.world(), placar), 1.0, "o objecto que o artista pôs, quando aparece");
+    assert_eq!(
+        x(sim.world(), placar),
+        1.0,
+        "o objecto que o artista pôs, quando aparece"
+    );
     assert_eq!(x(sim.world(), porta), 2.0);
 }

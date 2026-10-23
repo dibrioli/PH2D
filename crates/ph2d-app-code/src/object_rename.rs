@@ -147,9 +147,12 @@ mod tests {
         use ph2d_script::ScriptValue;
         let mut w = World::new();
         let mut s = LuauScript::library(ScriptId(1));
-        s.own.insert("porta".into(), ScriptValue::Object("Porta".into()));
-        s.own.insert("outra".into(), ScriptValue::Object("Placar".into()));
-        s.own.insert("nome".into(), ScriptValue::Text("Porta".into()));
+        s.own
+            .insert("porta".into(), ScriptValue::Object("Porta".into()));
+        s.own
+            .insert("outra".into(), ScriptValue::Object("Placar".into()));
+        s.own
+            .insert("nome".into(), ScriptValue::Text("Porta".into()));
         let e = w.spawn(s).id();
         rename_object_properties(&mut w, "Porta", "Portão");
         let s = w.get::<LuauScript>(e).expect("script");

@@ -15,7 +15,8 @@ use ph2d_editor_core::interaction::drag_payload::DragPayload;
 use ph2d_editor_core::widget::arrasto::Linha;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_script::{ProjectScripts, ScriptHost};
+use ph2d_app_components::script_inspector::build_info;
+use ph2d_script::{ProjectScripts, ScriptDrafts, ScriptHost};
 use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::VecScene;
 
@@ -120,11 +121,11 @@ fn os_quatro_passos_da_cena_9_fazem_o_que_o_script_diz() {
     );
 
     // ③ — Alt + a «Door» na linha vazia do topo.
-    let vazia = dois.find("aqui em baixo:\n").expect("o passo ③") + "aqui em baixo:\n".len();
+    let vazia = dois.find("SEM salvar:\n").expect("o passo ③") + "SEM salvar:\n".len();
     let tres = alt_dropped_into(&dois, vazia, &["Door".to_owned()]);
     assert!(
         tres.contains(
-            "aqui em baixo:\nph2d.property(\"door\", ph2d.object(\"Door\"))\n\nlocal tempo"
+            "SEM salvar:\nph2d.property(\"door\", ph2d.object(\"Door\"))\n\nlocal tempo"
         ),
         "{tres}"
     );
@@ -135,6 +136,25 @@ fn os_quatro_passos_da_cena_9_fazem_o_que_o_script_diz() {
     );
 
     let mut host = ScriptHost::new().expect("vm");
+    // ③ antes do Ctrl+S (1b): o campo «door» já está no cartão — a lista do texto da aba.
+    sim.world_mut()
+        .resource_mut::<ProjectScripts>()
+        .set_text(id, &dois);
+    host.scene_sync(sim.world_mut());
+    let antes = |sim: &SimWorld, host: &ScriptHost| -> Vec<String> {
+        build_info(sim, Some(host), nave.to_bits(), 1, false)
+            .expect("cartão")
+            .props
+            .into_iter()
+            .map(|p| p.name)
+            .collect()
+    };
+    assert_eq!(antes(&sim, &host), ["giro"], "salvo: só o giro");
+    let rascunho = host.draft_decls(LIGAR_NAME, &tres).expect("o texto da aba carrega");
+    sim.world_mut()
+        .insert_resource(ScriptDrafts([(id, rascunho)].into_iter().collect()));
+    assert_eq!(antes(&sim, &host), ["giro", "door"], "③ sem salvar: o campo aparece");
+    sim.world_mut().remove_resource::<ScriptDrafts>();
     sim.world_mut()
         .resource_mut::<ProjectScripts>()
         .set_text(id, &tres);

@@ -43,8 +43,8 @@ arrasta() { # x0 y0 x1 y1 modificador|- foto_a_meio
   [ "$5" != - ] && xdotool keyup "$5"
   sleep 1
 }
-L15=297      # a linha vazia do update (①/②)
-L6=126       # a linha vazia do topo (③)
+L15=316      # a linha vazia do update (①/②)
+L6=145       # a linha vazia do topo (③)
 foto foto_00_cena9
 # ① escrever o começo (o editor fecha o parêntese) e arrastar «Rotation» do cartão Transform para antes do «)»
 clica 640 $L15
@@ -63,12 +63,13 @@ clica 268 10; sleep 2
 foto foto_06_cena_a_nave_gira
 clica 330 10; sleep 1
 [ "$ATE" -le 2 ] && exit 0
-# ③ Alt + arrastar «Door» da Hierarquia para a linha vazia do topo; Ctrl+S
+# ③ Alt + arrastar «Door» da Hierarquia para a linha vazia do topo: o campo «door» aparece SEM Ctrl+S (1b)
 arrasta 66 214 640 $L6 alt foto_07_a_meio_alt_door
 foto foto_08_depois_alt
 clica 1000 375
-xdotool key ctrl+s; sleep 2.5
-foto foto_09_campo_door
+sleep 2.5
+foto foto_09_campo_door_sem_salvar
+xdotool key ctrl+s; sleep 2
 [ "$ATE" -le 3 ] && exit 0
 clica 268 10; sleep 1.5
 foto foto_10_cena_a_porta_sobe

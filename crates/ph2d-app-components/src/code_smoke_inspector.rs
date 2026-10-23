@@ -11,14 +11,15 @@ use ph2d_vec_scene::{VecScene, rectangle, regular_polygon, star};
 
 pub const LIGAR_NAME: &str = "ligar.luau";
 
-/// ⭐ **O script da cena 9.** Começa VÁLIDO: o cartão Script só mostra as propriedades de um script
-/// que corre (o «giro» do passo ②). O dono escreve o começo da linha e arrasta os nomes para o fim dela
-/// (o idioma da cena 7).
+/// ⭐ **O script da cena 9.** Começa VÁLIDO: o cartão Script mostra as propriedades da última versão
+/// boa do texto (o «giro» do passo ②; a «door» do ③ aparece na pausa da escrita, sem Ctrl+S — 1b). O
+/// dono escreve o começo da linha e arrasta os nomes para o fim dela (o idioma da cena 7).
 pub const LIGAR_LUAU: &str = r#"-- ligar.luau — a NAVE AZUL corre ESTE script. Aqui você arrasta NOMES do Inspector (à direita)
--- e objetos da Hierarquia (à esquerda) para o código. Depois de cada passo: Ctrl+S, e a aba «Cena».
+-- e objetos da Hierarquia (à esquerda) para o código. Para ver a cena mexer: Ctrl+S, e a aba «Cena».
 ph2d.property("giro", 1, { min = 0, max = 5 })
 
--- ③ Segure Alt e arraste «Door» da Hierarquia para a LINHA VAZIA aqui em baixo:
+-- ③ Segure Alt e arraste «Door» da Hierarquia para a LINHA VAZIA aqui em baixo. O campo «door»
+--    aparece no cartão Script logo que você pára, SEM salvar:
 
 local tempo = 0
 

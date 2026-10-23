@@ -31,14 +31,26 @@ pub struct Inicial {
 /// O estado inicial de `m`, agora.
 #[must_use]
 pub fn captura(m: &MotionState) -> Vec<u8> {
+    escreve(&Inicial {
+        doc: m.doc.clone(),
+        base: m.doc.graph.next_id(),
+        lei: m.pump.a_lei(),
+        uv: m.default_uv_rect,
+        tamanho: m.default_size,
+    })
+}
+
+/// Os bytes de `ini` — a porta de [`captura`] e da trilha transposta ([`super::transpor`]).
+#[must_use]
+pub fn escreve(ini: &Inicial) -> Vec<u8> {
     let mut r = Record::new();
-    r.str(1, &m.doc.to_text())
-        .varint(2, u64::from(m.doc.graph.next_id()))
-        .bool(5, m.pump.a_lei());
-    for (i, v) in m.default_uv_rect.iter().enumerate() {
+    r.str(1, &ini.doc.to_text())
+        .varint(2, u64::from(ini.base))
+        .bool(5, ini.lei);
+    for (i, v) in ini.uv.iter().enumerate() {
         r.f32(6 + i as u32, *v);
     }
-    for (i, v) in m.default_size.iter().enumerate() {
+    for (i, v) in ini.tamanho.iter().enumerate() {
         r.f32(10 + i as u32, *v);
     }
     r.finish()

@@ -298,9 +298,35 @@ impl MotionDoc {
         map
     }
 
+    /// **O nó `node` de `src` entra neste com o id `id`**, de `to` — os atributos de
+    /// [`Self::import_owner`]; os fios e os params dirigidos ficam com quem chama (a macro reescreve o
+    /// documento de um passo noutro com os ids que os passos seguintes nomeiam). `false` = `node` não
+    /// está em `src`, ou `id` já está ocupado.
+    pub fn import_node_as(&mut self, src: &MotionDoc, node: NodeId, id: NodeId, to: u64) -> bool {
+        if self.graph.node(id).is_some() {
+            return false;
+        }
+        let Some(a) = Atributos::de(&src.graph, node) else {
+            return false;
+        };
+        self.planta_em(a, to, Some(id));
+        true
+    }
+
     /// Um nó novo de `to` com os atributos `a`.
     fn planta(&mut self, a: Atributos, to: u64) -> NodeId {
-        let twin = self.graph.add_node(a.tipo);
+        self.planta_em(a, to, None)
+    }
+
+    /// [`Self::planta`] com o id escolhido (`None` = o próximo).
+    fn planta_em(&mut self, a: Atributos, to: u64, id: Option<NodeId>) -> NodeId {
+        let twin = match id {
+            Some(id) => {
+                self.graph.insert_raw(id, a.tipo);
+                id
+            }
+            None => self.graph.add_node(a.tipo),
+        };
         for (k, v) in a.params {
             self.graph.set_param(twin, k, v);
         }

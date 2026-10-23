@@ -168,6 +168,8 @@ pub struct MacroPanelInfo {
     /// O nome do objecto escolhido por cima do qual «Aplicar por cima» toca; `None` = o botão não se
     /// pinta e [`Self::por_cima_recusa`] diz porquê.
     pub por_cima_de: Option<String>,
+    /// Os bits desse objecto — o `alvo` de [`OndeAplicar::PorCima`].
+    pub por_cima_alvo: Option<u64>,
     pub por_cima_recusa: Option<&'static str>,
     /// A frase do último gesto da biblioteca (guardou, exportou para…, recusou porque…): a chave e o
     /// detalhe que ela cita.

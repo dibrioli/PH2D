@@ -185,6 +185,10 @@ pub(crate) fn build(
 
         let mut entry = AssetEntry::new(AssetRef::Component { stable_id }, name);
         entry.detail = piece_count_label(pieces.len());
+        // ⭐ A receita guardada do objecto Macro (W18) mostra-se como Macro — derivado do mundo,
+        // sem loja própria. O detalhe fica o das peças: ler famílias e duração pediria descodificar
+        // a gravação a cada quadro.
+        entry.receita_de_macro = sim.world().get::<ph2d_ecs::Macro>(entity).is_some();
         // ⭐⭐ **A cor e a miniatura de um Prefab saem da MESMA peça** (auditoria de 2026-08-30,
         // achado nº 2).
         //

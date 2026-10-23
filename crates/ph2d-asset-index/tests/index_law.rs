@@ -311,3 +311,29 @@ fn the_relation_composes_with_the_search_instead_of_replacing_it() {
         "a busca tem de continuar a estreitar dentro da relacao"
     );
 }
+
+/// ⭐ **Macro é uma receita marcada** (W18): o endereço continua `Component`, a família refina-se
+/// pela marca, e a marca sobre uma textura é ignorada — o endereço manda.
+#[test]
+fn a_macro_is_a_marked_recipe_and_the_mark_never_overrides_a_texture_address() {
+    let mut ix = AssetIndex::new();
+    let mut m = comp(5, "Tree macro");
+    m.receita_de_macro = true;
+    let mut t = tex(4, "leaf.png");
+    t.receita_de_macro = true;
+    ix.push(m);
+    ix.push(comp(6, "Ragdoll"));
+    ix.push(t);
+    let counts = ix.counts();
+    assert_eq!(counts.get(&AssetKind::Macro), Some(&1));
+    assert_eq!(counts.get(&AssetKind::Component), Some(&1));
+    assert_eq!(counts.get(&AssetKind::Texture), Some(&1));
+    let so_macros = ix.query(&Query {
+        kind: Some(AssetKind::Macro),
+        ..Query::default()
+    });
+    assert_eq!(so_macros.len(), 1);
+    assert_eq!(so_macros[0].name, "Tree macro");
+    assert!(AssetKind::ALL.contains(&AssetKind::Macro));
+    assert_eq!(AssetKind::Macro.label_key(), "asset.kind.macro");
+}

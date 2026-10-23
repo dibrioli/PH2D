@@ -248,7 +248,7 @@ fn paint_controls(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect) -> 
         ids::ASSET_KIND_FILTERS,
         |i| AssetBrowserState::kind_chip_label(i).to_string(),
         |i| AssetBrowserState::kind_for_chip(i) == state.kind,
-        ids::ASSET_KIND,
+        &ids::ASSET_KIND,
     );
     y = paint_chip_row(
         ctx,
@@ -263,7 +263,7 @@ fn paint_controls(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect) -> 
                 .map_or_else(String::new, |s| tr(s.label_key()).to_string())
         },
         |i| ph2d_asset_index::SortBy::ALL.get(i) == Some(&state.sort),
-        ids::ASSET_SORT,
+        &ids::ASSET_SORT,
     );
 
     // ── O slider do tamanho do cartão ──────────────────────────────────────────────────────────
@@ -295,7 +295,7 @@ fn paint_chip_row(
     count: usize,
     label: impl Fn(usize) -> String,
     selected: impl Fn(usize) -> bool,
-    table: [ph2d_a11y::NodeId; 3],
+    table: &[ph2d_a11y::NodeId],
 ) -> f32 {
     let theme = ctx.host.theme();
     let step = (w + gap()) / count as f32;

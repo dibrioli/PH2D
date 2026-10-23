@@ -559,3 +559,44 @@ fn an_entry_carries_the_catalog_the_taxonomy_gives_it() {
     };
     assert_eq!(index.query(&q).len(), index.len());
 }
+
+/// ⭐ **A receita guardada de um objecto Macro mostra-se como Macro** (W18, plano 16 §2.6): o
+/// endereço continua o da receita (`Component{stable_id}`), a família sai do mundo (a `Macro` na
+/// raiz). Controlo: a mesma receita sem `Macro` continua Prefab.
+#[test]
+fn a_receita_com_macro_aparece_como_macro_no_indice() {
+    let db = AssetDb::new();
+    let (mut sim, _) = world_with_one_component(&db);
+    let build_now = |sim: &mut SimWorld| {
+        build(
+            sim,
+            &db,
+            &no_atlas(),
+            &no_catalogs(),
+            &mut CardArt::new(),
+            &mut TextureLibrary::default(),
+            100.0,
+        )
+    };
+    let key = AssetRef::Component { stable_id: 1 };
+    assert_eq!(
+        build_now(&mut sim).get(&key).map(AssetEntry::kind),
+        Some(AssetKind::Component),
+        "controlo: sem Macro é um Prefab"
+    );
+    let root = sim
+        .world_mut()
+        .query_filtered::<Entity, bevy_ecs::prelude::With<MasterRoot>>()
+        .single(sim.world())
+        .expect("uma raiz");
+    sim.world_mut()
+        .entity_mut(root)
+        .insert(ph2d_ecs::Macro::default());
+    let index = build_now(&mut sim);
+    assert_eq!(
+        index.get(&key).map(AssetEntry::kind),
+        Some(AssetKind::Macro)
+    );
+    assert_eq!(index.counts().get(&AssetKind::Macro), Some(&1));
+    assert_eq!(index.counts().get(&AssetKind::Component), None);
+}

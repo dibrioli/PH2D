@@ -91,6 +91,8 @@ fn the_kind_chips_reach_the_state_and_all_is_the_absence_of_a_filter() {
     assert_eq!(st.kind, Some(AssetKind::Component));
     host.apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(ids::ASSET_KIND[2]));
     assert_eq!(st.kind, Some(AssetKind::Texture));
+    host.apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(ids::ASSET_KIND[3]));
+    assert_eq!(st.kind, Some(AssetKind::Macro));
     host.apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(ids::ASSET_KIND[0]));
     assert_eq!(st.kind, None, "`All` tem de ser a AUSENCIA de filtro");
 }

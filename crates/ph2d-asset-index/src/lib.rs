@@ -46,6 +46,9 @@ pub enum AssetKind {
     Component,
     /// Pixels endereçados por conteúdo.
     Texture,
+    /// Uma receita cuja raiz tem uma `Macro` (W18, `docs/Macros/16_W18_plano.md` §2.6): o mesmo
+    /// endereço de um [`Self::Component`], marcado por [`AssetEntry::receita_de_macro`].
+    Macro,
 }
 
 impl AssetKind {
@@ -79,13 +82,15 @@ impl AssetKind {
         match self {
             AssetKind::Component => "asset.kind.component",
             AssetKind::Texture => "asset.kind.texture",
+            AssetKind::Macro => "asset.kind.macro",
         }
     }
 
     /// Todas as famílias, na ordem de apresentação. **É a fonte** — um filtro por família deriva
     /// daqui, nunca de uma lista escrita à mão ao lado (memória
     /// `feedback_a_hand_written_list_beside_a_predicate_is_two_answers`).
-    pub const ALL: &'static [AssetKind] = &[AssetKind::Component, AssetKind::Texture];
+    pub const ALL: &'static [AssetKind] =
+        &[AssetKind::Component, AssetKind::Texture, AssetKind::Macro];
 }
 
 /// **O endereço durável de um asset** — e note-se que ele é de tipos DIFERENTES por família.
@@ -184,6 +189,9 @@ pub struct AssetEntry {
     pub deps: Vec<AssetRef>,
     /// Ordem de descoberta — é o que `SortBy::Recent` ordena (maior primeiro).
     pub seq: u64,
+    /// ⭐ **A receita leva uma `Macro` na raiz** (W18): a família passa a [`AssetKind::Macro`]. Só
+    /// vale sobre um endereço `Component` — numa textura é ignorado (o endereço manda).
+    pub receita_de_macro: bool,
 }
 
 impl AssetEntry {
@@ -201,13 +209,18 @@ impl AssetEntry {
             tags: Vec::new(),
             deps: Vec::new(),
             seq: 0,
+            receita_de_macro: false,
         }
     }
 
-    /// A família — **lida do endereço**, nunca de um campo próprio (ver [`AssetRef::kind`]).
+    /// A família — **lida do endereço** (ver [`AssetRef::kind`]); a única refinação é a receita com
+    /// `Macro`, e ela só existe sobre um endereço de receita.
     #[must_use]
     pub fn kind(&self) -> AssetKind {
-        self.key.kind()
+        match self.key {
+            AssetRef::Component { .. } if self.receita_de_macro => AssetKind::Macro,
+            k => k.kind(),
+        }
     }
 
     /// Este asset casa com o texto procurado?

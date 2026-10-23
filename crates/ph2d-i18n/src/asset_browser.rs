@@ -16,6 +16,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         //    RUNTIME, que não tem filtro de população nenhum.
         "asset.kind.component" => "Prefab",
         "asset.kind.texture" => "Image",
+        "asset.kind.macro" => "Macro",
         "asset.sort.kind" => "Type",
         "asset.sort.name" => "Name",
         "asset.sort.recent" => "Recent",

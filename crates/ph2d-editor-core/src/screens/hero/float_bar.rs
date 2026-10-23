@@ -233,30 +233,41 @@ pub fn strip_rects_clear_of(
             .filter(|&&y| y >= area.y && y + h <= bottom)
             .find_map(|&y| free_x(area, keep, (y, h), w, cx).map(|x| rows_from(x, y, w, rows, s)))
     };
-    for rows in &layouts {
-        let rows: Vec<&[usize]> = rows.iter().map(Vec::as_slice).collect();
+    fn slices(rows: &[Vec<usize>]) -> Vec<&[usize]> {
+        rows.iter().map(Vec::as_slice).collect()
+    }
+    for rows in layouts.iter().map(|l| slices(l)) {
         let h = rows_extent(&rows, s).1;
         let near = [sel.y - h - gap, (sel.y + sel.h + gap).min(bottom - h)];
         if let Some(out) = place(&rows, &near) {
             return out;
         }
     }
-    let Some(rows) = layouts.last() else {
+    // Sem vão junto da seleção: a altura livre mais perto dela, rente a um painel ou a um bordo.
+    for rows in layouts.iter().map(|l| slices(l)) {
+        let h = rows_extent(&rows, s).1;
+        let mut ys: Vec<f32> = keep
+            .iter()
+            .flat_map(|k| [k.y + k.h + gap, k.y - h - gap])
+            .chain([area.y, bottom - h])
+            .collect();
+        ys.sort_by(|a, b| (a - sel.y).abs().total_cmp(&(b - sel.y).abs()));
+        if let Some(out) = place(&rows, &ys) {
+            return out;
+        }
+    }
+    // Nem isso (a janela não leva a barra sem tapar algo): a forma mais baixa que cabe na largura.
+    let Some(rows) = layouts
+        .iter()
+        .map(|l| slices(l))
+        .find(|r| rows_extent(r, s).0 <= area.w)
+        .or_else(|| layouts.last().map(|l| slices(l)))
+    else {
         return Vec::new();
     };
-    let rows: Vec<&[usize]> = rows.iter().map(Vec::as_slice).collect();
     let (w, h) = rows_extent(&rows, s);
-    let mut ys: Vec<f32> = keep
-        .iter()
-        .flat_map(|k| [k.y + k.h + gap, k.y - h - gap])
-        .chain([area.y, bottom - h])
-        .collect();
-    ys.sort_by(|a, b| (a - sel.y).abs().total_cmp(&(b - sel.y).abs()));
-    if let Some(out) = place(&rows, &ys) {
-        return out;
-    }
     let above = sel.y - h - gap;
-    let y = if above >= area.y { above } else { (sel.y + sel.h + gap).min(bottom - h) };
+    let y = if above >= area.y { above } else { (sel.y + sel.h + gap).min(bottom - h) }.max(area.y);
     rows_from((cx - w / 2.0).min(area.x + area.w - w).max(area.x), y, w, &rows, s)
 }
 

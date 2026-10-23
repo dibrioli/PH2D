@@ -159,7 +159,7 @@ fn the_style_bar_never_covers_the_right_hand_panels() {
 #[test]
 fn in_a_tiny_window_the_style_bar_stays_right_of_the_toolbar() {
     let mut bad = Vec::new();
-    for (w, h) in [(420.0, 560.0), (360.0, 480.0), (320.0, 420.0)] {
+    for (w, h) in [(420.0, 560.0), (320.0, 420.0), (260.0, 420.0), (220.0, 420.0), (200.0, 400.0)] {
         let mut t = T::new();
         (t.vp_w, t.vp_h) = (w, h);
         t.paint();

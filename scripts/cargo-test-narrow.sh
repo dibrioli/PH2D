@@ -78,8 +78,10 @@ if [ "${PH2D_SKIP_CHECK:-0}" != "1" ]; then
     case "$1" in
       --) break ;;
       --profile | --features | -F | --test | --bench | --example | --bin | --target | -j | --jobs | \
-        --manifest-path | --target-dir | --config | -Z)
+        --manifest-path | --target-dir | --config | -Z | --color | -p | --package | --exclude)
         opts+=("$1"); [ $# -gt 1 ] && opts+=("$2"); shift 2 || shift ;;
+      --message-format) shift 2 || shift ;; # a porta lê JSON: o formato é dela
+      --message-format=*) shift ;;
       -*) opts+=("$1"); shift ;;
       *) shift ;;
     esac
@@ -195,8 +197,9 @@ if [ "$rc" -eq 0 ]; then
   exit 0
 fi
 
-# Nenhuma suíte chegou ao `test result:` — o cargo parou antes (compilação, argumento), não um teste.
-if ! grep -qE '^test result:' "$out"; then
+# Nenhuma suíte chegou ao `test result:` e nenhum binário de teste arrancou (`Running`) — o cargo
+# parou antes (compilação, argumento). Um binário que arrancou e morreu (abort, pilha) é vermelho de TESTE.
+if ! grep -qE '^test result:' "$out" && ! grep -qE '^ +Running ' "$out"; then
   echo "✗ $crate — NÃO CORREU nenhum teste (o cargo parou antes, exit $rc):"
   grep -E "^error" "$out" | head -5
   echo
@@ -205,6 +208,7 @@ if ! grep -qE '^test result:' "$out"; then
 fi
 
 echo "✗ $crate — ${fail} falharam · ${pass} passaram · ${ign} ignorados"
+[ "$fail" -eq 0 ] && echo "  (um binário de teste MORREU antes do agregado — abort, pilha ou sinal; ver a saída inteira)"
 echo
 # Cada falha com o seu panic e o file:line — é isto que os filtros à mão perdiam.
 grep -E "^---- .* stdout ----|panicked at |^assertion|^  left:|^ right:" "$out" \

@@ -283,8 +283,9 @@ impl ScriptHost {
     }
 
     /// ⭐ **As declarações de um texto POR SALVAR** (CodeEditor 1b) — o topo corre na VM da casa,
-    /// sob o prazo, como numa recarga, mas não entra na cena: o `print` não chega ao console e o que
-    /// ele escreveu ou emitiu é deitado fora.
+    /// sob o prazo, como numa recarga, mas não entra na cena: o `print` não chega ao console, o que
+    /// ele escreveu ou emitiu é deitado fora e o `ph2d.state_set` volta atrás (a colheita corre a
+    /// cada pausa da escrita).
     ///
     /// # Errors
     /// O diagnóstico do texto partido (o painel guarda a última lista boa).
@@ -295,9 +296,10 @@ impl ScriptHost {
     ) -> Result<Vec<crate::props::PropDecl>, crate::ScriptDiagnostic> {
         let lua = self.runtime.lua();
         let console = lua.remove_app_data::<Console>();
-        let loaded = self
-            .deadline
-            .within(|| crate::module::load_module(lua, chunk_name, source));
+        let loaded = self.state_table.untouched(|| {
+            self.deadline
+                .within(|| crate::module::load_module(lua, chunk_name, source))
+        });
         if let Some(c) = console {
             lua.set_app_data(c);
         }

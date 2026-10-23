@@ -284,6 +284,15 @@ impl StateTable {
         }
         out
     }
+
+    /// Corre `f` e devolve a tabela ao estado de antes — o topo de um texto POR SALVAR não escreve
+    /// estado de ninguém ([`crate::ScriptHost::draft_decls`]).
+    pub(crate) fn untouched<T>(&self, f: impl FnOnce() -> T) -> T {
+        let before = self.inner.lock().unwrap_or_else(|p| p.into_inner()).clone();
+        let out = f();
+        *self.inner.lock().unwrap_or_else(|p| p.into_inner()) = before;
+        out
+    }
 }
 
 #[cfg(test)]

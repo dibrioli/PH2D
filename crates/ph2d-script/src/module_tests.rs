@@ -345,4 +345,7 @@ fn as_declaracoes_de_um_texto_por_salvar_nao_falam_nem_congelam() {
         h.scene().info(ph2d_script_doc::ScriptId(1)).is_none(),
         "a cena não soube"
     );
+    h.draft_decls("bob.luau", "ph2d.state_set(7, \"n\", 1)\n")
+        .expect("carrega");
+    assert!(h.state_table().is_empty(), "o estado dos objectos não muda");
 }

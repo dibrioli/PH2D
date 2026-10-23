@@ -67,6 +67,9 @@ use crate::widget::{
 };
 use crate::zones::Rect;
 
+/// W24 B14 — onde um rótulo está num texto: os `[início, fim)` em bytes (quem arma decide a lei).
+pub type WordFinder = fn(&str, &str) -> Vec<(usize, usize)>;
+
 #[derive(Debug, Default)]
 pub struct WidgetStore {
     pub(super) states: BTreeMap<NodeId, InteractiveState>,
@@ -652,7 +655,7 @@ pub struct WidgetStore {
     /// por drenar. `None` = as setas são do campo (nada).
     pub(super) list_nav: Option<(NodeId, i32)>,
     /// W24 B14 — o campo de texto e os rótulos que o `Backspace` apaga INTEIROS (as menções do `@`).
-    pub(super) atomic_words: Option<(NodeId, Vec<String>)>,
+    pub(super) atomic_words: Option<(NodeId, Vec<String>, WordFinder)>,
     /// Per-surface canvas rect, republished by the panel each frame so
     /// `dispatch_wheel` can tell when the cursor is over a graph (mirror of
     /// `panel_rects`, scoped to graph surfaces).

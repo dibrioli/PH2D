@@ -142,15 +142,16 @@ impl WidgetStore {
         }
     }
 
-    /// W24 B14 — no campo `id`, cada um de `words` apaga-se INTEIRO com o `Backspace` (`None` = largar).
-    pub fn arm_atomic_words(&mut self, id: Option<NodeId>, words: Vec<String>) {
-        self.atomic_words = id.map(|id| (id, words));
+    /// W24 B14 — no campo `id`, cada um de `words` apaga-se INTEIRO com o `Backspace` (`None` = largar);
+    /// `find` diz onde um rótulo está no texto (a lei de quem arma: a palavra inteira das menções).
+    pub fn arm_atomic_words(&mut self, id: Option<NodeId>, words: Vec<String>, find: WordFinder) {
+        self.atomic_words = id.map(|id| (id, words, find));
     }
 
     /// O `Backspace` no campo focado com o cursor dentro ou no fim de um rótulo armado: apaga-o todo.
     /// `true` = era um rótulo.
     pub(crate) fn delete_atomic_word(&mut self) -> bool {
-        let Some((id, words)) = &self.atomic_words else {
+        let Some((id, words, find)) = &self.atomic_words else {
             return false;
         };
         if self.focus_id != Some(*id) {
@@ -161,14 +162,12 @@ impl WidgetStore {
             return false;
         };
         let at = *caret;
+        // O mais comprido que contém o cursor (`@Rui Costa` ganha a `@Rui`).
         let Some((s, e)) = words
             .iter()
-            .filter(|w| !w.is_empty())
-            .flat_map(|w| {
-                text.match_indices(w.as_str())
-                    .map(|(s, w)| (s, s + w.len()))
-            })
-            .find(|&(s, e)| s < at && at <= e)
+            .flat_map(|w| find(text, w))
+            .filter(|&(s, e)| s < at && at <= e)
+            .max_by_key(|&(s, e)| e - s)
         else {
             return false;
         };

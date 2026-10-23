@@ -291,4 +291,17 @@ fn backspace_takes_a_mention_whole_and_typing_before_it_carries_it() {
     let m = &t.team().threads.last().unwrap().messages[0];
     assert_eq!(m.mentions, vec![Who::Person("Rui".into())]);
     assert_eq!(m.text.find("@Rui"), Some(4), "a pessoa andou com o texto");
+
+    // A palavra INTEIRA: o Rui chamado e «@Ruiva» escrito à mão — o Backspace no «@Ruiva» é do texto.
+    let mut t = T::composing();
+    t.type_in("@r");
+    t.hero_key(KEY_ENTER);
+    t.type_in("and @Ruiva");
+    t.hero_key(KEY_BACKSPACE);
+    assert_eq!(t.field(), "@Rui and @Ruiv", "o «@Ruiva» não é o Rui");
+    for _ in 0..3 {
+        t.hero_key(KEY_ARROW_LEFT);
+    }
+    t.hero_key(KEY_BACKSPACE);
+    assert_eq!(t.field(), "@Rui and @uiv", "dentro do «@Ruiva»: uma letra");
 }

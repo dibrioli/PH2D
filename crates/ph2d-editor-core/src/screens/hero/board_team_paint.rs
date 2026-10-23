@@ -109,11 +109,9 @@ pub(super) fn mention_spans(m: &Message) -> Vec<std::ops::Range<usize>> {
         .mentions
         .iter()
         .flat_map(|w| {
-            let label = w.label();
-            m.text
-                .match_indices(label.as_str())
-                .map(|(i, l)| i..i + l.len())
-                .collect::<Vec<_>>()
+            ph2d_board_model::label_spans(&m.text, &w.label())
+                .into_iter()
+                .map(|(s, e)| s..e)
         })
         .collect();
     all.sort_by_key(|r| (r.start, std::cmp::Reverse(r.end)));

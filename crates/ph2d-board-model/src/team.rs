@@ -56,6 +56,24 @@ pub enum Who {
     Everyone,
 }
 
+/// ⭐ W24 — onde o rótulo `label` está no `text` como PALAVRA inteira (bytes `[início, fim)`): nem colado
+/// a uma letra antes nem depois — `@Rui` não está em `@Ruiva` nem em `x@Rui`. A porta única do
+/// [`Message::keep_mentions`], dos trechos que o fio pinta e do `Backspace` que apaga a menção inteira.
+#[must_use]
+pub fn label_spans(text: &str, label: &str) -> Vec<(usize, usize)> {
+    let word = |c: char| c.is_alphanumeric() || c == '_';
+    if label.is_empty() {
+        return Vec::new();
+    }
+    text.match_indices(label)
+        .map(|(s, l)| (s, s + l.len()))
+        .filter(|&(s, e)| {
+            !text[..s].chars().next_back().is_some_and(word)
+                && !text[e..].chars().next().is_some_and(word)
+        })
+        .collect()
+}
+
 impl Who {
     /// O que o texto mostra: `@Rui`, `@everyone`.
     #[must_use]
@@ -104,7 +122,8 @@ impl Message {
     /// par chega à mesma lista sem a lista viajar (o `TeamWrite::Text` leva só o texto).
     pub fn keep_mentions(&mut self) {
         let text = &self.text;
-        self.mentions.retain(|w| text.contains(&w.label()));
+        self.mentions
+            .retain(|w| !label_spans(text, &w.label()).is_empty());
         self.mentions.sort();
         self.mentions.dedup();
     }

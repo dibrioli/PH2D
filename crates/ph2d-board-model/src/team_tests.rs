@@ -595,3 +595,27 @@ fn the_mentions_are_one_sorted_list_without_repeats() {
         "o Zé não está no texto, a Bia uma vez só"
     );
 }
+
+/// ⭐ W24 — a menção está no texto como PALAVRA inteira: `@Rui` não está em `@Ruiva` nem em `x@Rui`, e
+/// está antes de pontuação; o que o texto já não mostra assim deixa de chamar.
+#[test]
+fn a_mention_is_a_whole_word_of_the_text() {
+    assert_eq!(crate::label_spans("@Ruiva and @Rui.", "@Rui"), [(11, 15)]);
+    assert!(crate::label_spans("x@Rui", "@Rui").is_empty());
+    assert_eq!(crate::label_spans("@Rui Costa", "@Rui Costa"), [(0, 10)]);
+    assert_eq!(crate::label_spans("olá @Zé!", "@Zé"), [(5, 9)]);
+    let mut team = Team::default();
+    let t = team
+        .open_calling(
+            Pin::Point([0.0; 2]),
+            "Enio",
+            "hi @Ruiva",
+            &[crate::Who::Person("Rui".into())],
+            1,
+        )
+        .unwrap();
+    assert!(
+        team.thread(t).unwrap().messages[0].mentions.is_empty(),
+        "«@Ruiva» não chama o Rui"
+    );
+}

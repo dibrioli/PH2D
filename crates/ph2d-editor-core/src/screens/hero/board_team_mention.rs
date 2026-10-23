@@ -131,8 +131,11 @@ fn arm_called(hero: &mut HeroScreen) {
                 .flat_map(|x| x.mentions.iter().map(Who::label)),
         );
     }
-    hero.store
-        .arm_atomic_words(Some(crate::ids::BOARD_COMMENT_INPUT), words);
+    hero.store.arm_atomic_words(
+        Some(crate::ids::BOARD_COMMENT_INPUT),
+        words,
+        ph2d_board_model::label_spans,
+    );
 }
 
 /// ⭐ Pinta a lista por baixo do campo `field` (ou por cima, se não cabe na área `area`) e arma as

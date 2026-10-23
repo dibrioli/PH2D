@@ -58,6 +58,7 @@ pub use rich::{Mark, Marks, RichText, Span};
 pub use session::SESSION_ID_BIT;
 pub use team::{
     EVERYONE, Message, MessageId, Pin, Team, TeamOp, Thread, ThreadId, Version, VersionId, Who,
+    label_spans,
 };
 
 /// Espessura do contorno de uma forma nova, em unidades do mundo: a MAIS FINA que o quadro oferece,

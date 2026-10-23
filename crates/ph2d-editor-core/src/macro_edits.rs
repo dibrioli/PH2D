@@ -159,6 +159,39 @@ pub struct MacroPanelInfo {
     pub armado: bool,
     /// O nome do objecto Macro que o Gravar arma — ou em que se grava.
     pub objeto_macro: Option<String>,
+    /// **A biblioteca do utilizador** (W18), por nome.
+    pub biblioteca: Vec<MacroDaBibliotecaView>,
+    /// Quantos ficheiros da pasta não se leram (nunca em silêncio).
+    pub biblioteca_ilegiveis: usize,
+    /// O objecto escolhido tem uma gravação que se pode guardar (o «Guardar na biblioteca»).
+    pub pode_guardar: bool,
+    /// O nome do objecto escolhido por cima do qual «Aplicar por cima» toca; `None` = o botão não se
+    /// pinta e [`Self::por_cima_recusa`] diz porquê.
+    pub por_cima_de: Option<String>,
+    pub por_cima_recusa: Option<&'static str>,
+    /// A frase do último gesto da biblioteca (guardou, exportou para…, recusou porque…): a chave e o
+    /// detalhe que ela cita.
+    pub aviso: Option<ErroDaMacroView>,
+}
+
+/// Uma macro da biblioteca como o painel a lista.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MacroDaBibliotecaView {
+    pub nome: String,
+    /// As famílias das trilhas, pela ordem.
+    pub familias: Vec<FamiliaDaMacro>,
+    pub duracao_s: f64,
+    /// O tamanho da imagem que a macro cria (a 1.ª trilha do Painter).
+    pub tela: Option<(u32, u32)>,
+}
+
+/// Onde «Aplicar» põe a macro (decisão 3 do dono: «escolho na hora»).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum OndeAplicar {
+    /// Nasce o objecto Macro e o que ele cria; `em` = o ponto do mundo (`None` = o centro da vista).
+    Novo { em: Option<[f32; 2]> },
+    /// O objecto Macro nasce por cima do objecto `alvo` (bits) e toca nele.
+    PorCima { alvo: u64 },
 }
 
 /// Uma propriedade de uma etapa.
@@ -203,6 +236,18 @@ pub enum MacroRequest {
     MostraMe { entity_bits: u64 },
     /// O tutorial «fazer»: o objecto volta ao estado inicial (o balão, «Recomeçar»).
     Recomeca { entity_bits: u64 },
+    /// **Biblioteca** (W18): guarda a gravação do objecto Macro `entity_bits`.
+    Guarda { entity_bits: u64 },
+    /// Aplica a macro `nome` da biblioteca.
+    Aplica { nome: String, onde: OndeAplicar },
+    Renomeia { de: String, para: String },
+    ApagaDaBiblioteca { nome: String },
+    /// Exportar…: o diálogo de gravar escolhe o ficheiro.
+    Exporta { nome: String },
+    /// Importar…: o diálogo de abrir escolhe o ficheiro.
+    Importa,
+    /// Guarda a gravação do objecto Macro `entity_bits` como asset do projecto (receita).
+    GuardaComoAsset { entity_bits: u64 },
 }
 
 /// Gravar: o Painter não tem tela.

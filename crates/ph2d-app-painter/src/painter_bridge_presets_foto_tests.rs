@@ -119,7 +119,7 @@ fn foto_do_navegador() {
 }
 
 /// **A foto da biblioteca** (23/10): a fileira «Preset library» sobre um pincel do artista (Import · Export ·
-/// Delete · Reset positions), o mesmo Delete armado, e o popover com o pincel do artista ARRASTADO para
+/// Delete · Reset positions), a janela de confirmação do Delete, e o popover com o pincel do artista ARRASTADO para
 /// cima do Wet Round, a barra da queda a meio do gesto.
 /// `PH2D_FOTO_DIR=<pasta> cargo test -p ph2d-app-painter --features panel-painter-layers foto_da_biblioteca
 /// -- --ignored`.
@@ -166,7 +166,7 @@ fn foto_da_biblioteca() {
     };
     grava("1_fileira", foto(&gpu, &t, None));
     grava(
-        "2_delete_armado",
+        "2_confirmar_delete",
         foto_com(&gpu, &t, None, |host| {
             let r = host
                 .registos_da_ultima_pintura()

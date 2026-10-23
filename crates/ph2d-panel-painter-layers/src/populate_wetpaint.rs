@@ -11,7 +11,11 @@ pub(crate) fn register_wetpaint(store: &mut WidgetStore) {
     // Wet Paint section (doc 22): Enable + reset + the 7 tool buttons + the
     // tilt toggle + the canvas actions + Show Wet + Paper + Tuning — ONE
     // membership list shared with the paint and the click forward.
-    for id in ph2d_tool_painter::ids::PAINTER_WETPAINT_CLICKS {
+    // + a janela de confirmação do Delete do preset (só do painel: o tool vê o Delete confirmado).
+    for id in ph2d_tool_painter::ids::PAINTER_WETPAINT_CLICKS
+        .into_iter()
+        .chain(ph2d_tool_painter::ids::PAINTER_WETPAINT_PRESET_DELETE_DIALOG)
+    {
         store.register(
             id,
             InteractiveState::Button {

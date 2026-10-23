@@ -29,6 +29,10 @@ pub(super) fn route(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> 
         super::taper_gizmo::on_taper_gizmo_value_changed(host);
         return true;
     }
+    // As barras da marca no cartão Jitter: o tool recebe o valor VERDADEIRO da linha.
+    if crate::paint_stroke::jitter_linhas::encaminha_marca(host, id) {
+        return true;
+    }
     // Wet Paint TILT pad (doc 22): drain + snap + forward ring/spoke (the
     // body lives beside the dial's paint — one conversion, one house).
     if id == ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD {

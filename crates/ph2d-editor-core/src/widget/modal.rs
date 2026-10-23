@@ -46,6 +46,23 @@ impl Modal {
         self
     }
 
+    /// `(cancel, confirm)` — where [`paint_modal`] paints the two buttons, for the caller's hit rects.
+    #[must_use]
+    pub fn button_rects(&self, dialog_rect: Rect) -> (Rect, Rect) {
+        let footer = self.footer_rect(dialog_rect);
+        let pad = Spacing::Lg.px();
+        let btn_w = 96.0_f32; // LITERAL-PX-OK: modal action button width (chrome-specific)
+        let btn_h = Spacing::Xl3.px();
+        let gap = Spacing::Md.px();
+        let confirm_x = footer.x + footer.w - pad - btn_w;
+        let cancel_x = confirm_x - gap - btn_w;
+        let btn_y = footer.y + (footer.h - btn_h) * 0.5;
+        (
+            Rect::new(cancel_x, btn_y, btn_w, btn_h),
+            Rect::new(confirm_x, btn_y, btn_w, btn_h),
+        )
+    }
+
     /// True iff `(x, y)` lies outside the dialog (i.e. on the scrim).
     /// Use this to implement click-on-scrim-to-dismiss behavior.
     pub fn is_on_scrim(&self, dialog_rect: Rect, x: f32, y: f32) -> bool {
@@ -160,27 +177,9 @@ pub fn paint_modal(
         StrokeToken::Default.px(),
     );
 
-    let footer = modal.footer_rect(dialog_rect);
-    let btn_w = 96.0_f32; // LITERAL-PX-OK: modal action button width (chrome-specific)
-    let btn_h = Spacing::Xl3.px();
-    let gap = Spacing::Md.px();
-    let confirm_x = footer.x + footer.w - pad - btn_w;
-    let cancel_x = confirm_x - gap - btn_w;
-    let btn_y = footer.y + (footer.h - btn_h) * 0.5;
-    paint_button(
-        &modal.cancel,
-        Rect::new(cancel_x, btn_y, btn_w, btn_h),
-        scene,
-        text_system,
-        theme,
-    );
-    paint_button(
-        &modal.confirm,
-        Rect::new(confirm_x, btn_y, btn_w, btn_h),
-        scene,
-        text_system,
-        theme,
-    );
+    let (cancel, confirm) = modal.button_rects(dialog_rect);
+    paint_button(&modal.cancel, cancel, scene, text_system, theme);
+    paint_button(&modal.confirm, confirm, scene, text_system, theme);
 }
 
 /// Push a clip layer matching `modal.body_rect(host)` so consumer

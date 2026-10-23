@@ -313,6 +313,7 @@ pub fn blur_blit_stamp(
     let (min_x, min_y, bw, bh) = footprint_bbox(center, radius, fw, fh, 1)?;
     let k = kernel_radius(radius);
     let blurred = blur_region(buf, fw, fh, min_x, min_y, bw, bh, k, wrap, nucleo);
+    let mask = mask.nivel_para(2.0 * radius);
     let inv_r = 1.0 / radius;
     blend_blurred(buf, fw, min_x, min_y, bw, bh, &blurred, |i, j| {
         let u = ((min_x + i as i64) as f32 + 0.5 - center[0]) * inv_r;

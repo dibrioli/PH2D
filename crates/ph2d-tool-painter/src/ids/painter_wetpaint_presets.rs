@@ -56,6 +56,16 @@ pub const PAINTER_WETPAINT_PRESET_EXPORT: NodeId =
 /// the 1st click (the label names the brush) and only the 2nd reaches the tool.
 pub const PAINTER_WETPAINT_PRESET_DELETE: NodeId =
     hash_node_id("painter_brush.wetpaint_preset_delete");
+/// The Delete confirmation dialog the panel opens (UI-only: the tool sees only the confirmed
+/// [`PAINTER_WETPAINT_PRESET_DELETE`]): its confirm and cancel buttons, its close X, the card and the scrim
+/// around it (a click there cancels).
+pub const PAINTER_WETPAINT_PRESET_DELETE_DIALOG: [NodeId; 5] = [
+    hash_node_id("painter_brush.wetpaint_preset_delete_confirm"),
+    hash_node_id("painter_brush.wetpaint_preset_delete_cancel"),
+    hash_node_id("painter_brush.wetpaint_preset_delete_close"),
+    hash_node_id("painter_brush.wetpaint_preset_delete_card"),
+    hash_node_id("painter_brush.wetpaint_preset_delete_scrim"),
+];
 /// **Reset positions** — the navigator back to the default order (drops the order the artist dragged).
 pub const PAINTER_WETPAINT_PRESET_RESET_ORDER: NodeId =
     hash_node_id("painter_brush.wetpaint_preset_reset_order");

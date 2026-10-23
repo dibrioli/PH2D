@@ -339,6 +339,7 @@ pub(crate) fn paint_wetpaint_presets_popovers(ctx: &mut PaintCtx, theme: ph2d_to
     } else {
         crate::paint_wetpaint_presets_biblioteca::sem_popover(ctx);
     }
+    crate::paint_wetpaint_presets_biblioteca::paint_dialogo(ctx, theme);
     if let Some((r, cur)) = st::PENDING_POLICY_DD.with(std::cell::Cell::take) {
         let opcoes = (0..ids::PAINTER_WETPAINT_PRESET_POLICY_COUNT)
             .map(|i| {

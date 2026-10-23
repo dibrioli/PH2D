@@ -661,7 +661,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.preset_import" => "Import…",
         "panel.painter_layers.wetpaint.preset_export" => "Export…",
         "panel.painter_layers.wetpaint.preset_delete" => "Delete",
-        "panel.painter_layers.wetpaint.preset_delete_confirm" => "Delete {name}?",
+        "panel.painter_layers.wetpaint.preset_delete_confirm" => "Delete the preset {name}?",
+        "panel.painter_layers.wetpaint.preset_delete_body" => {
+            "The file leaves your brush folder. This cannot be undone."
+        }
+        "panel.painter_layers.wetpaint.preset_cancel" => "Cancel",
         "panel.painter_layers.wetpaint.preset_reset_order" => "Reset positions",
         "panel.painter_layers.wetpaint.vol_size" => "Size px",
         "panel.painter_layers.wetpaint.vol_opacity" => "Opacity",

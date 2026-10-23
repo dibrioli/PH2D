@@ -25,3 +25,21 @@ pub const PAINTER_MARCA_FIELDS: [NodeId; 13] = [
 /// A amostra da cor SECUNDÁRIA (L11) na secção Randomize Color: o clique abre o seletor partilhado, que devolve
 /// `SelectOption` «r,g,b».
 pub const PAINTER_MARCA_SECONDARY: NodeId = hash_node_id("painter_brush.marca.secondary");
+
+/// O chip numérico ligado à barra de cada linha da marca, pela ordem de [`PAINTER_MARCA_FIELDS`] — só as do cartão
+/// Jitter se registam e pintam (a barra é o próprio id da linha; o chip mostra e aceita o valor VERDADEIRO dela).
+pub const PAINTER_MARCA_CHIPS: [NodeId; 13] = [
+    hash_node_id("painter_brush.marca.opacity.chip"),
+    hash_node_id("painter_brush.marca.count.chip"),
+    hash_node_id("painter_brush.marca.roundness.chip"),
+    hash_node_id("painter_brush.marca.flipX.chip"),
+    hash_node_id("painter_brush.marca.flipY.chip"),
+    hash_node_id("painter_brush.marca.anglePerStroke.chip"),
+    hash_node_id("painter_brush.marca.across.chip"),
+    hash_node_id("painter_brush.marca.particle.chip"),
+    hash_node_id("painter_brush.marca.secondaryJitter.chip"),
+    hash_node_id("painter_brush.marca.pressureSecondary.chip"),
+    hash_node_id("painter_brush.marca.pressureHue.chip"),
+    hash_node_id("painter_brush.marca.pressureSat.chip"),
+    hash_node_id("painter_brush.marca.pressureVal.chip"),
+];

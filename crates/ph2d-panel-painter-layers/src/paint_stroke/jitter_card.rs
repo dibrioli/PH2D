@@ -2,28 +2,23 @@
 //!
 //! Filho de [`super`] (a seção Stroke), cortado por ASSUNTO quando o pai cruzou o teto de LOC: a
 //! seção responde *como este caminho é percorrido*, este card responde *com que aparência cada
-//! marca cai*. As cinco rows (Count / Position / Scale / Spacing / Rotation), a unidade do
-//! espalhamento e a conversão da contagem moram aqui porque são a mesma pergunta.
+//! marca cai*. A moldura do cartão, a unidade do espalhamento e a conversão da contagem moram aqui; as
+//! fileiras e a ordem delas, em [`super::jitter_linhas`].
 
-use crate::paint_brush_rows::paint_dropdown_row;
-use crate::paint_brush_top::paint_slider_chip_row;
-use crate::state;
+use super::jitter_linhas;
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken};
 use ph2d_tool_painter::ids::painter_brush_jitter_unit_option_id;
-use ph2d_tool_painter::{
-    BRUSH_JITTER_ABS_MAX_PX, BrushSettings, CartaoDaMarca, JitterUnit, SPRAY_COUNT_MAX,
-};
+use ph2d_tool_painter::{BrushSettings, CartaoDaMarca, JitterUnit, SPRAY_COUNT_MAX};
 
-/// Paint the **Jitter** group inside a decorative rounded-rect card: a titled panel holding the
-/// per-dab **Position** scatter (unit-aware) + its Unit, the **Scale** scatter, and (texture only)
-/// the **Rotation** scatter — so the three jitter modes read clearly. The card background is drawn
-/// first (its height pre-computed from the row count), then the rows on top. Returns the next `y`.
-pub(super) fn paint_jitter_card(
+/// Paint the **Jitter** group inside a decorative rounded-rect card: the Unit menu on top, then every
+/// numeric row as a slider-with-chip, in the order of [`super::jitter_linhas::FILEIRAS_DO_JITTER`]. The
+/// card background is drawn first (its height summed from the same table), then the rows. Returns the next `y`.
+pub(crate) fn paint_jitter_card(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
@@ -33,22 +28,13 @@ pub(super) fn paint_jitter_card(
 ) -> f32 {
     let pad = Spacing::Sm.px();
     let xs = Spacing::Xs.px();
-    let sm = Spacing::Sm.px();
     let inner_w = (content_w - pad * 2.0).max(0.0);
-    // Pre-compute the card height. The 4 slider rows (Position / Scale / Spacing / Rotation) use the
-    // ADAPTIVE slider-with-chip, which DEMOTES the label to its own row when the card's inner width is
-    // narrow — so each slider row is taller then. `slider_with_chip_height` reports that exact height, so
-    // the card background grows to contain them (the bug: a fixed `ROW_H` per row overflowed the card and
-    // the next section overlapped — Enio 2026-06-29). Unit is a (non-adaptive) dropdown row (ROW_H + Sm).
-    let slider_row_h = ph2d_editor_core::widget::slider_with_chip_height(ROW_H_PX, inner_w) + xs;
-    // A altura é CONTADA a partir das rows que este card pinta, nunca escolhida; foi um número fixo
-    // por row que a fez transbordar em 2026-06-29.
-    const SLIDER_ROWS: f32 = 5.0; // LITERAL-PX-OK: Count/Position/Scale/Spacing/Rotation
-    // As linhas da MARCA (L4) por baixo: uma por `LINHAS_DA_MARCA`, cada uma da altura de uma linha de campo.
-    #[allow(clippy::cast_precision_loss)]
-    let marca_h =
-        ph2d_tokens::row_pitch_px() * linhas_do_cartao(CartaoDaMarca::Jitter).count() as f32;
-    let rows_h = slider_row_h * SLIDER_ROWS + (ROW_H_PX + sm) + marca_h;
+    // A altura é CONTADA das fileiras que o cartão pinta (a mesma tabela, o mesmo avanço), nunca escolhida: um
+    // número fixo por fileira fê-la transbordar em 2026-06-29.
+    let rows_h: f32 = jitter_linhas::FILEIRAS_DO_JITTER
+        .iter()
+        .map(|f| jitter_linhas::altura(*f, inner_w))
+        .sum();
     let card_h = pad + rows_h + xs;
     let card = Rect::new(x, y, content_w, card_h);
     // ⭐ Raio e moldura pela porta do TEMA: o cartão é plano num tema moderno.
@@ -73,106 +59,8 @@ pub(super) fn paint_jitter_card(
     );
     let inner_x = x + pad;
     // O título é o cabeçalho da sub-secção «Jitter» que o embrulha (`paint_stroke`): o cartão não o repete.
-    let mut iy = y + pad;
-    // **Count** — o SPRAY (plano 38 W5), e ele abre o card de propósito: é o número que transforma
-    // as três rows abaixo dele de *tremer* em *espalhar*. Com `1` cada ponto do caminho deixa uma
-    // marca (o traço de sempre); acima disso deixa `n`, cada uma sorteando o seu próprio
-    // Position/Scale/Rotation — que é por que o spray não traz gêmeos daquelas três.
-    iy = paint_slider_chip_row(
-        ctx,
-        theme,
-        inner_x,
-        inner_w,
-        iy,
-        tr("panel.painter_layers.stroke.jitter.count"),
-        ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT,
-        ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP,
-        spray_count_track(brush.spray_count),
-    );
-    // Position: the main per-dab position scatter. The slider track is `0..1` in BOTH units (View maps
-    // the absolute px onto the `0..MAX` track); the tool maps it back per the unit.
-    let jval = if brush.jitter_unit == JitterUnit::View.to_u8() {
-        brush.jitter_absolute_px / BRUSH_JITTER_ABS_MAX_PX
-    } else {
-        brush.jitter
-    };
-    iy = paint_slider_chip_row(
-        ctx,
-        theme,
-        inner_x,
-        inner_w,
-        iy,
-        tr("panel.painter_layers.stroke.jitter.position"),
-        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER,
-        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_CHIP,
-        jval,
-    );
-    // Unit (Brush / View) for the Position scatter.
-    let (ny, open) = paint_dropdown_row(
-        ctx,
-        theme,
-        inner_x,
-        inner_w,
-        iy,
-        "panel.painter_layers.stroke.jitter.unit",
-        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_UNIT,
-        brush.jitter_unit,
-        jitter_unit_name(brush.jitter_unit),
-    );
-    iy = ny;
-    if let Some(r) = open {
-        state::set_pending_brush_jitter_unit_dd(Some((r, brush.jitter_unit)));
-    }
-    // Scale: per-dab radius scatter.
-    iy = paint_slider_chip_row(
-        ctx,
-        theme,
-        inner_x,
-        inner_w,
-        iy,
-        tr("panel.painter_layers.stroke.jitter.scale"),
-        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SCALE,
-        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SCALE_CHIP,
-        brush.jitter_scale,
-    );
-    // Spacing: per-gap scatter of the dab spacing (always relevant — placement, not appearance).
-    iy = paint_slider_chip_row(
-        ctx,
-        theme,
-        inner_x,
-        inner_w,
-        iy,
-        tr("panel.painter_layers.stroke.jitter.spacing"),
-        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SPACING,
-        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_SPACING_CHIP,
-        brush.jitter_spacing,
-    );
-    // Rotation: per-dab stamp-rotation scatter (Shape + Grain) — always shown (Enio 2026-06-28).
-    iy = paint_slider_chip_row(
-        ctx,
-        theme,
-        inner_x,
-        inner_w,
-        iy,
-        tr("panel.painter_layers.stroke.jitter.rotation"),
-        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_ROTATE,
-        ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER_ROTATE_CHIP,
-        brush.jitter_rotate,
-    );
-    // ⭐ As linhas da MARCA (L4): opacidade, contagem, redondeza, espelhos, ângulo do traço, através,
-    // partícula — uma tabela no tool (`marca.rs`); a coluna é a da secção delas.
-    let sec = crate::seccoes::seccao_da_chave(ctx.text_system, ROTULOS_DA_MARCA[0]);
-    iy = paint_linhas_da_marca(
-        ctx,
-        theme,
-        inner_x,
-        inner_w,
-        iy,
-        &brush,
-        CartaoDaMarca::Jitter,
-        sec,
-    );
-    let _ = iy;
+    // ⭐ As fileiras pela ordem do dono (23/10): uma tabela, `jitter_linhas::FILEIRAS_DO_JITTER`.
+    jitter_linhas::paint_fileiras(ctx, theme, inner_x, inner_w, y + pad, &brush);
     y + card_h + ph2d_tokens::control_gap_px()
 }
 
@@ -252,7 +140,7 @@ pub(super) fn spray_count_track(count: u32) -> f32 {
 }
 
 /// Display name for a jitter-unit wire discriminant.
-fn jitter_unit_name(u: u8) -> &'static str {
+pub(super) fn jitter_unit_name(u: u8) -> &'static str {
     match JitterUnit::from_u8(u) {
         JitterUnit::Brush => tr("panel.painter_layers.stroke.jitter.brush"),
         JitterUnit::View => tr("panel.painter_layers.stroke.jitter.view"),

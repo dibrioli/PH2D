@@ -505,29 +505,39 @@ pub fn sample(
         // `texvec = size · co`): a LARGER Size scales coords up → the pattern reads SMALLER / denser.
         let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
         let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
-        // Raw coordinates before rotation, in tile units (footprint-relative or canvas-tiled).
-        let rel = match s.mapping {
-            TextureMapping::Tiled => {
-                let base = TEX_TILE_BASE_PX;
-                [p[0] / base, p[1] / base]
-            }
-            // View / Random anchor to the dab footprint; the dab flatten/rotate deforms it FIRST so
-            // the pattern flattens with the falloff (the texture's own Size stays relative to it).
-            _ => {
-                let r = radius.max(1e-3);
-                b.footprint
-                    .apply([(p[0] - center[0]) / r, (p[1] - center[1]) / r])
-            }
+        // `o` = um desvio dentro do píxel, em píxeis (`[0, 0]` = o centro): a área do grão de imagem lê-o.
+        let em = |o: [f32; 2]| {
+            let q = [p[0] + o[0], p[1] + o[1]];
+            // Raw coordinates before rotation, in tile units (footprint-relative or canvas-tiled).
+            let rel = match s.mapping {
+                TextureMapping::Tiled => {
+                    let base = TEX_TILE_BASE_PX;
+                    [q[0] / base, q[1] / base]
+                }
+                // View / Random anchor to the dab footprint; the dab flatten/rotate deforms it FIRST so
+                // the pattern flattens with the falloff (the texture's own Size stays relative to it).
+                _ => {
+                    let r = radius.max(1e-3);
+                    b.footprint
+                        .apply([(q[0] - center[0]) / r, (q[1] - center[1]) / r])
+                }
+            };
+            // ⚠️ **Size scales AFTER the rotation**, i.e. along the PATTERN's own axes — Blender's order
+            // (`BKE_brush_sample_tex_3d` rotates the normalised coordinate, then `RE_texture_evaluate` applies
+            // `mtex->size`). Scaling first stretches along the CANVAS axes, so a non-uniform Size + a non-zero
+            // Angle SHEARED the pattern instead of rotating a stretched one. At Angle 0 the rotation is the
+            // identity, so both orders are bit-identical for every Size; only rotated textures move.
+            [
+                (rel[0] * b.u[0] + rel[1] * b.u[1]) * sx + s.offset[0] + b.jitter[0],
+                (rel[0] * b.v[0] + rel[1] * b.v[1]) * sy + s.offset[1] + b.jitter[1],
+            ]
         };
-        // ⚠️ **Size scales AFTER the rotation**, i.e. along the PATTERN's own axes — Blender's order
-        // (`BKE_brush_sample_tex_3d` rotates the normalised coordinate, then `RE_texture_evaluate` applies
-        // `mtex->size`). Scaling first stretches along the CANVAS axes, so a non-uniform Size + a non-zero
-        // Angle SHEARED the pattern instead of rotating a stretched one. At Angle 0 the rotation is the
-        // identity, so both orders are bit-identical for every Size; only rotated textures move.
-        [
-            (rel[0] * b.u[0] + rel[1] * b.u[1]) * sx + s.offset[0] + b.jitter[0],
-            (rel[0] * b.v[0] + rel[1] * b.v[1]) * sy + s.offset[1] + b.jitter[1],
-        ]
+        if s.kind == TextureKind::Image
+            && let Some(img) = image
+        {
+            return grao_de_imagem_pela_area(s, img, em);
+        }
+        em([0.0, 0.0])
     };
     patterns::sample_kind(s.kind, tex, s.params, image).clamp(0.0, 1.0)
 }
@@ -535,6 +545,74 @@ pub fn sample(
 /// Sample the **View-mapped** texture at the dab-relative unit coord `(u, v) ∈ [-1, 1]` — the
 /// scale-invariant form baking the cached brush stamp ([`crate::stamp`]): depends only on
 /// `(u, v)·size` + rotation, never the radius. View-only; returns the coverage in `[0, 1]`.
+#[must_use]
+pub fn sample_unit_px(
+    s: &TextureSettings,
+    b: &TexDabBasis,
+    u: f32,
+    v: f32,
+    passo: f32,
+    image: Option<&ImageMask>,
+) -> f32 {
+    if !s.is_active() {
+        return 1.0;
+    }
+    if s.kind == TextureKind::Image
+        && let Some(img) = image
+    {
+        let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+        let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+        return grao_de_imagem_pela_area(s, img, |o| {
+            let rel = b.footprint.apply([u + o[0] * passo, v + o[1] * passo]);
+            [
+                (rel[0] * b.u[0] + rel[1] * b.u[1]) * sx + s.offset[0],
+                (rel[0] * b.v[0] + rel[1] * b.v[1]) * sy + s.offset[1],
+            ]
+        });
+    }
+    sample_unit(s, b, u, v, image)
+}
+
+/// ⭐ **O GRÃO de imagem pela ÁREA do píxel** (o Stars pequeno, 23/10 — a mesma lei da ponta de imagem,
+/// [`shape::sample_shape`]): reduzida, a imagem lida num ponto por píxel acende e apaga os traços finos em
+/// degraus (erro 0,55 contra a área a raio 5). A média de `nx × ny` amostras pelo píxel (`em(desvio)` = a
+/// coordenada da textura), `n` = metade dos texels que um passo de um píxel atravessa (≤ 8); ampliada é a amostra
+/// no centro ao bit.
+fn grao_de_imagem_pela_area(
+    s: &TextureSettings,
+    img: &ImageMask,
+    em: impl Fn([f32; 2]) -> [f32; 2],
+) -> f32 {
+    let ler = |t: [f32; 2]| patterns::sample_kind(s.kind, t, s.params, Some(img)).clamp(0.0, 1.0);
+    let t0 = em([0.0, 0.0]);
+    let (hw, hh) = (
+        img.width.max(1) as f32 * 0.5,
+        img.height.max(1) as f32 * 0.5,
+    );
+    let texels = |d: [f32; 2]| ((d[0] - t0[0]) * hw).hypot((d[1] - t0[1]) * hh);
+    let lado = |t: f32| {
+        if t.is_finite() {
+            (0.5 * t).ceil().clamp(1.0, shape::AREA_MAX)
+        } else {
+            1.0
+        }
+    };
+    let (nx, ny) = (lado(texels(em([1.0, 0.0]))), lado(texels(em([0.0, 1.0]))));
+    if nx <= 1.0 && ny <= 1.0 {
+        return ler(t0);
+    }
+    let mut soma = 0.0;
+    for j in 0..ny as u32 {
+        let oy = (j as f32 + 0.5) / ny - 0.5;
+        for i in 0..nx as u32 {
+            let ox = (i as f32 + 0.5) / nx - 0.5;
+            soma += ler(em([ox, oy]));
+        }
+    }
+    soma / (nx * ny)
+}
+
+/// [`sample_unit_px`] num ponto (a amostra do grão sem a área — o oráculo das réguas e a de quem não tem píxel).
 #[must_use]
 pub fn sample_unit(
     s: &TextureSettings,

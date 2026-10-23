@@ -67,7 +67,8 @@ fn forward(
     }
 }
 
-/// **O card Jitter pinta a row `Count`, e ela é a PRIMEIRA dele.**
+/// **O card Jitter pinta a row `Count`, e ela é a PRIMEIRA barra dele** (logo abaixo do Unit: ordem do dono
+/// 23/10, *«Jitter Unit deveria ir para o topo»* — a ordem inteira é `seam_marca::o_cartao_jitter_tem_o_unit_no_topo_e_so_barras`).
 ///
 /// ⚠️ A posição é a feature, não decoração: o Count é o número que transforma as três rows abaixo
 /// dele — Position, Scale, Rotation — de *tremer* em *espalhar*. Escondê-lo no fim faria o artista

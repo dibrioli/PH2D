@@ -25,9 +25,53 @@ pub struct ColorStampMask {
     size: u32,
     /// O domínio assado em raios ([`crate::tip::stamp_domain`]); quem amostra percorre `radius · reach`.
     reach: f32,
+    /// ⭐ A pirâmide premultiplicada (`size/2`, `size/4`…, caixa 2×2), como a de [`crate::StampMask`]: cada dab lê
+    /// o nível do SEU tamanho ([`Self::nivel_para`] / [`Self::indice_do_nivel`]) — nunca a máscara do maior dab do
+    /// lote num ponto por píxel (os degraus do Stars pequeno, 23/10).
+    niveis: Vec<ColorStampMask>,
 }
 
 impl ColorStampMask {
+    fn novo(data: Vec<u8>, size: u32, reach: f32) -> Self {
+        let niveis = crate::stamp::piramide(&data, size, 4)
+            .into_iter()
+            .map(|(data, size)| ColorStampMask {
+                data,
+                size,
+                reach,
+                niveis: Vec::new(),
+            })
+            .collect();
+        ColorStampMask {
+            data,
+            size,
+            reach,
+            niveis,
+        }
+    }
+
+    /// O índice do nível para um dab que percorre `lado_px` píxeis (`0` = este): escolhido UMA vez por dab;
+    /// [`Self::nivel`] devolve-o. Camadas assadas do mesmo tamanho dão o mesmo índice.
+    #[must_use]
+    pub fn indice_do_nivel(&self, lado_px: f32) -> usize {
+        crate::stamp::indice_do_nivel(self.size, self.niveis.len(), lado_px)
+    }
+
+    /// O nível `k` da pirâmide (`0` = este; além do último, o último).
+    #[must_use]
+    pub fn nivel(&self, k: usize) -> &ColorStampMask {
+        match k {
+            0 => self,
+            k => &self.niveis[(k - 1).min(self.niveis.len().saturating_sub(1))],
+        }
+    }
+
+    /// O nível do tamanho de um dab que percorre `lado_px` píxeis (o menor com `size ≥ lado_px`).
+    #[must_use]
+    pub fn nivel_para(&self, lado_px: f32) -> &ColorStampMask {
+        self.nivel(self.indice_do_nivel(lado_px))
+    }
+
     /// The stamp's resolution (texels per side).
     #[must_use]
     pub fn size(&self) -> u32 {
@@ -136,11 +180,12 @@ pub fn render_color_stamp_mask(
             // Composite the layers bottom→top — each higher layer "over" the accumulated lower ones.
             let mut acc = [0.0f32; 4]; // premultiplied rgba
             for (li, layer) in layers.iter().enumerate() {
-                let a = crate::texture::sample_shape_silhouette_unit(
+                let a = crate::texture::sample_shape_silhouette_unit_px(
                     &spec.shape,
                     &shape_basis,
                     u,
                     v,
+                    inv * reach,
                     Some(layer),
                 ) * layer_opacity.get(li).copied().unwrap_or(1.0);
                 if a <= 0.0 {
@@ -168,7 +213,14 @@ pub fn render_color_stamp_mask(
             // Grain Colour Ramp, the Grain value indexes a COLOUR (depth-blended toward neutral white)
             // that multiplies the premultiplied composite — tinting the tip by the Grain pattern.
             if acc[3] > 0.0 && grain_active {
-                let g = crate::texture::sample_unit(&spec.texture, &grain_basis, u, v, grain_image);
+                let g = crate::texture::sample_unit_px(
+                    &spec.texture,
+                    &grain_basis,
+                    u,
+                    v,
+                    inv * reach,
+                    grain_image,
+                );
                 let m = grain_modulation(
                     g,
                     depth,
@@ -188,7 +240,7 @@ pub fn render_color_stamp_mask(
             data[o + 3] = encode(acc[3]);
         }
     }
-    ColorStampMask { data, size, reach }
+    ColorStampMask::novo(data, size, reach)
 }
 
 /// Render the unit **ramp-coloured** stamp at `size`×`size` — the cached fast path for a **Grain +
@@ -240,11 +292,12 @@ pub fn render_ramp_color_stamp(
             let t = footprint.falloff_t(u, v);
             let (w, forma) = match &shape_basis {
                 Some(sb) => {
-                    let raw = crate::texture::sample_shape_silhouette_unit(
+                    let raw = crate::texture::sample_shape_silhouette_unit_px(
                         &spec.shape,
                         sb,
                         u,
                         v,
+                        inv * reach,
                         shape_image,
                     );
                     let sv = crate::texture::remap_shape_value(raw, shape_tone_lut);
@@ -267,7 +320,14 @@ pub fn render_ramp_color_stamp(
             // The ramp's OWNER indexes it, and the Grain bites unless it is the owner — the same door
             // as the per-pixel kernel ([`crate::ramp_alpha::ramp_texel`]).
             let s = grain_active.then(|| {
-                crate::texture::sample_unit(&spec.texture, &grain_basis, u, v, grain_image)
+                crate::texture::sample_unit_px(
+                    &spec.texture,
+                    &grain_basis,
+                    u,
+                    v,
+                    inv * reach,
+                    grain_image,
+                )
             });
             let tinta = crate::ramp_alpha::ramp_texel(
                 Some(&ramp),
@@ -290,7 +350,7 @@ pub fn render_ramp_color_stamp(
             data[o + 3] = encode(a);
         }
     }
-    ColorStampMask { data, size, reach }
+    ColorStampMask::novo(data, size, reach)
 }
 
 /// Read-only per-dab context for the coloured-stamp blit, shared across the row bands.
@@ -340,6 +400,7 @@ pub fn blit_color_stamp(
     }
     // O carimbo cobre `[-reach, reach]²` raios ([`crate::tip::stamp_domain`]).
     let radius = radius * stamp.reach;
+    let stamp = stamp.nivel_para(2.0 * radius);
     let (cx, cy) = (center[0], center[1]);
     let x0 = (cx - radius).floor().max(0.0) as i64;
     let y0 = (cy - radius).floor().max(0.0) as i64;
@@ -464,5 +525,7 @@ pub use accumulate_batch::{
     accumulate_shape_layers_rgba_batch,
 };
 
+#[cfg(test)]
+mod estrela_tests;
 #[cfg(test)]
 mod tests;

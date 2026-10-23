@@ -453,7 +453,8 @@ fn a_fileira_da_biblioteca_pede_o_que_diz() {
 }
 
 #[test]
-fn o_delete_confirma_no_segundo_clique_e_nunca_aparece_na_fabrica() {
+fn o_delete_abre_uma_janela_de_confirmacao_e_nunca_aparece_na_fabrica() {
+    let [confirma, cancela, fecha, _, fora] = ids::PAINTER_WETPAINT_PRESET_DELETE_DIALOG;
     let mut t = molhado();
     let (_, _, rects) = novo(&t, Some(ROUND));
     assert!(
@@ -461,25 +462,46 @@ fn o_delete_confirma_no_segundo_clique_e_nunca_aparece_na_fabrica() {
         "um pincel de fábrica não se apaga"
     );
     let (mut host, mut st, rects) = novo(&t, Some(WASH));
-    let r = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_DELETE).expect("o Delete do Wash");
-    clica(&mut host, &mut st, &mut t, r);
-    assert_eq!(t.take_wet_preset_request(), None, "o 1.º clique só arma");
+    assert!(rect_of(&rects, confirma).is_none(), "fechada até ao Delete");
+    // Cada saída sem apagar (Cancel, o X, o clique fora) fecha a janela e não pede nada.
+    for sai in [cancela, fecha, fora] {
+        let rects = painted(&t, &mut host, &mut st);
+        let d = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_DELETE).expect("o Delete do Wash");
+        clica(&mut host, &mut st, &mut t, d);
+        assert_eq!(
+            t.take_wet_preset_request(),
+            None,
+            "o Delete só abre a janela"
+        );
+        let rects = painted(&t, &mut host, &mut st);
+        let r = rect_of(&rects, sai).unwrap_or_else(|| panic!("{sai:?} pintado na janela"));
+        let (x, y) = if sai == fora {
+            (r.x + 2.0, r.y + 2.0)
+        } else {
+            (r.x + r.w * 0.5, r.y + r.h * 0.5)
+        };
+        clica(
+            &mut host,
+            &mut st,
+            &mut t,
+            Rect::new(x - 1.0, y - 1.0, 2.0, 2.0),
+        );
+        assert_eq!(t.take_wet_preset_request(), None, "{sai:?} não apaga");
+        let rects = painted(&t, &mut host, &mut st);
+        assert!(
+            rect_of(&rects, confirma).is_none(),
+            "{sai:?} fecha a janela"
+        );
+    }
     let rects = painted(&t, &mut host, &mut st);
-    let r = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_DELETE).expect("armado, continua lá");
-    clica(&mut host, &mut st, &mut t, r);
+    let d = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_DELETE).unwrap();
+    clica(&mut host, &mut st, &mut t, d);
+    let rects = painted(&t, &mut host, &mut st);
+    let c = rect_of(&rects, confirma).expect("o Delete da janela");
+    clica(&mut host, &mut st, &mut t, c);
     assert_eq!(t.take_wet_preset_request(), Some(PedidoPreset::Apagar));
-    // Desarma: outro clique entre os dois e o Delete volta a pedir dois.
     let rects = painted(&t, &mut host, &mut st);
-    let d = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_DELETE).unwrap();
-    clica(&mut host, &mut st, &mut t, d);
-    let rects = painted(&t, &mut host, &mut st);
-    let f = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_FAVORITE).unwrap();
-    clica(&mut host, &mut st, &mut t, f);
-    let _ = t.take_wet_preset_request();
-    let rects = painted(&t, &mut host, &mut st);
-    let d = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_DELETE).unwrap();
-    clica(&mut host, &mut st, &mut t, d);
-    assert_eq!(t.take_wet_preset_request(), None, "outro clique desarmou");
+    assert!(rect_of(&rects, confirma).is_none(), "e a janela fechou");
 }
 
 /// **Arrastar um pincel no popover aberto** pede a ordem nova, com os caminhos e o lado da queda (a metade

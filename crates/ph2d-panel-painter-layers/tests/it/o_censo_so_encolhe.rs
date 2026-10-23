@@ -76,12 +76,9 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     // lhes chega, o X sim pela meia-volta).
     let ponta = "a ponta redonda de fábrica não tem lado para virar nem eixo para achatar; NÃO esmaece pela \
                  razão do Jitter Rotate (a rota por dab arredonda diferente da cache: a tinta muda por ACIDENTE)";
-    let (vira_x, vira_y, redonda, angulo) = (
-        PAINTER_MARCA_FIELDS[3],
-        PAINTER_MARCA_FIELDS[4],
-        PAINTER_MARCA_FIELDS[2],
-        PAINTER_MARCA_FIELDS[5],
-    );
+    // Desde 23/10 (dono: «todos sliders») cada uma é uma barra com o chip ligado — os DOIS gestos entram, como o
+    // par do Jitter Rotate acima.
+    let (vira_x, vira_y, redonda, angulo) = (3, 4, 2, 5);
     for (m, id) in [
         (Digital, vira_x),
         (Digital, vira_y),
@@ -94,7 +91,8 @@ fn inertes_com_motivo() -> Vec<Inerte> {
         (Impasto, vira_y),
         (WetPaint, vira_y),
     ] {
-        v.push((m, id, ponta));
+        v.push((m, PAINTER_MARCA_FIELDS[id], ponta));
+        v.push((m, PAINTER_MARCA_CHIPS[id], ponta));
     }
     // ⛔ A velocidade→opacidade (L12) no Wet SAIU daqui (J3 canetas 2.ª onda): a L12 lê a velocidade da MÃO, não a do
     // traço atrasado pelo estabilizador, e o traço do censo já passa dos 300 px/s — a linha age.

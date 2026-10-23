@@ -53,13 +53,43 @@ fn miolo(area: bool, r: f32) -> Vec<f32> {
     v
 }
 
+/// A amostra NUM PONTO (no centro de cada píxel) do mesmo miolo de [`miolo`] — a lei de antes de 23/10.
+fn ponto(r: f32) -> Vec<f32> {
+    let lum = riscas();
+    let img = ImageMask {
+        lum: &lum,
+        width: 128,
+        height: 128,
+    };
+    let s = ponta(false);
+    let b = dab_basis(&s, &mut 0u64, [256.0, 256.0], FootprintDeform::identity());
+    let c = [100.0_f32, 100.0];
+    let mut v = Vec::new();
+    for py in 0..200 {
+        for px in 0..200 {
+            let (dx, dy) = (px as f32 + 0.5 - c[0], py as f32 + 0.5 - c[1]);
+            if dx.abs() + 0.5 < 0.8 * r && dy.abs() + 0.5 < 0.8 * r {
+                v.push(super::sample_shape_silhouette_unit(
+                    &s,
+                    &b,
+                    dx / r,
+                    dy / r,
+                    Some(&img),
+                ));
+            }
+        }
+    }
+    v
+}
+
 /// ⭐ **Reduzida, a imagem lê-se pela área**: a 5 px (raio 2,5 e 4) cada píxel do miolo é a MÉDIA do ruído
-/// (½ ± 0,15) — o carimbo pequeno é uma mancha contínua, não pontos acesos e apagados. Desligada, a amostra
-/// no centro do píxel cai nas riscas ao acaso (o pontilhado do Foliage a 5 px).
+/// (½ ± 0,15) — o carimbo pequeno é uma mancha contínua, não pontos acesos e apagados. A amostra no centro do
+/// píxel cai nas riscas ao acaso (o pontilhado do Foliage a 5 px). Desde 23/10 (o Stars pequeno) é a lei de toda
+/// ponta de imagem, com ou sem o campo `area`.
 #[test]
 fn a_imagem_reduzida_le_se_pela_area_do_pixel() {
-    for r in [2.5_f32, 4.0] {
-        let com = miolo(true, r);
+    for (r, area) in [(2.5_f32, true), (4.0, true), (2.5, false), (4.0, false)] {
+        let com = miolo(area, r);
         assert!(!com.is_empty());
         for (k, v) in com.iter().enumerate() {
             assert!(
@@ -68,22 +98,23 @@ fn a_imagem_reduzida_le_se_pela_area_do_pixel() {
             );
         }
     }
-    // O controlo: sem a lei, o mesmo miolo afasta-se de ½ (a amostra num ponto).
-    let sem = miolo(false, 4.0);
+    // O controlo: a amostra num ponto no mesmo miolo afasta-se de ½.
+    let sem = ponto(4.0);
     assert!(sem.iter().any(|v| (v - 0.5).abs() > 0.25), "{sem:?}");
 }
 
-/// Ampliada (mais píxeis que texels), a lei é a amostra no centro do píxel AO BIT — e desligada nunca muda.
+/// Ampliada (mais píxeis que texels), a lei é a amostra no centro do píxel AO BIT, com ou sem o campo.
 #[test]
 fn ampliada_a_area_e_a_amostra_de_sempre() {
-    assert_eq!(miolo(true, 200.0), miolo(false, 200.0));
+    assert_eq!(miolo(true, 200.0), ponto(200.0));
+    assert_eq!(miolo(false, 200.0), ponto(200.0));
 }
 
 /// A forma em unidades do dab numa grelha de píxeis (`passo = 1/raio`, a rota das camadas de cor) lê a MESMA área
-/// que a forma em píxeis; sem a lei é a amostra de sempre ao bit.
+/// que a forma em píxeis, com ou sem o campo `area`.
 #[test]
 fn a_forma_unitaria_le_a_mesma_area() {
-    use super::{sample_shape_silhouette_unit, sample_shape_silhouette_unit_px};
+    use super::sample_shape_silhouette_unit_px;
     let lum = riscas();
     let img = ImageMask {
         lum: &lum,
@@ -103,9 +134,6 @@ fn a_forma_unitaria_le_a_mesma_area() {
                     (un - pix).abs() < 1e-4,
                     "área {area} ({px}, {py}): {un} × {pix}"
                 );
-                if !area {
-                    assert_eq!(un, sample_shape_silhouette_unit(&s, &b, u, v, Some(&img)));
-                }
             }
         }
     }

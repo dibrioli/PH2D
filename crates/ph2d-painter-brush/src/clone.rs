@@ -139,6 +139,7 @@ pub fn clone_blit_stamp(
     let (min_x, min_y, bw, bh) = footprint_bbox(center, radius, fw, fh, 1)?;
     let off = [offset[0].round() as i64, offset[1].round() as i64];
     let lifted = lift_offset(buf, fw, fh, min_x, min_y, bw, bh, off, wrap);
+    let mask = mask.nivel_para(2.0 * radius);
     let inv_r = 1.0 / radius;
     for j in 0..bh {
         let y = min_y + j as i64;

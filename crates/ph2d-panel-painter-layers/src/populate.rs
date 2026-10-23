@@ -148,8 +148,15 @@ fn register_brush_inputs(store: &mut WidgetStore) {
             .into_iter()
             .filter(|id| *id != ph2d_tool_painter::ids::PAINTER_PEN_ROTATION),
     )
-    // As linhas da MARCA (L4), no cartão Jitter.
-    .chain(ph2d_tool_painter::ids::PAINTER_MARCA_FIELDS)
+    // As linhas da MARCA da cor pela mão (L11, Randomize Color); as do cartão Jitter são BARRAS
+    // (`populate_brush_chips::register_marca_bars`).
+    .chain(
+        ph2d_tool_painter::ids::PAINTER_MARCA_FIELDS
+            .into_iter()
+            .zip(ph2d_tool_painter::LINHAS_DA_MARCA)
+            .filter(|(_, l)| l.cartao() == ph2d_tool_painter::CartaoDaMarca::Cor)
+            .map(|(id, _)| id),
+    )
     // As linhas numéricas da PONTA (L9/L18); as de modo são menus, registadas com os menus.
     .chain(
         (0..ph2d_tool_painter::N_LINHAS_DA_PONTA)

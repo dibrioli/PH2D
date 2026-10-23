@@ -46,6 +46,8 @@ mod esmaecer; // a linha esmaecida: o controlo que depende de outro e agora não
 mod event;
 mod event_brush_forward;
 #[cfg(test)]
+mod foto_jitter_tests; // a foto do cartão Jitter, `#[ignore]` (dono 23/10)
+#[cfg(test)]
 mod foto_shape_color_tests; // a foto da secção, `#[ignore]` (prompt 38)
 /// As barras do card Line: a tabela que o pintor, o registo e o encaminhamento leem.
 pub mod line_barras;

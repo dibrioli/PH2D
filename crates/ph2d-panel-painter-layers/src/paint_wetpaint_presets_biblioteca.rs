@@ -3,20 +3,20 @@
 //! dentro do popover aberto (a família `PainterPreset` da máquina de linhas do despacho; a queda vai à
 //! ponte como `PAINTER_WETPAINT_PRESET_MOVE`, que reordena o `estado.json`).
 //!
-//! O Delete confirma-se no próprio botão: o 1.º clique ARMA-o e o rótulo passa a nomear o pincel
-//! («Delete Wet Round?»); só o 2.º, sobre o mesmo pincel, chega ao tool. Qualquer outro clique desarma.
-//! Sem desfazer: o ficheiro é do artista e o rótulo diz o tamanho do estrago (a regra do `TAGS_DELETE`).
+//! O Delete abre uma JANELA DE CONFIRMAÇÃO (dono 23/10: «melhor um modal») — o [`Modal`] da fundação, com
+//! o nome do pincel no título; só o «Delete» dela chega ao tool. Cancel, o X e o clique fora fecham-na.
+//! Sem desfazer: o ficheiro é do artista e a janela diz o tamanho do estrago.
 
 use crate::paint_wetpaint_presets::{escolher_preset, preset_escolhido};
 use crate::state_wet_presets::{VistaPresets, current_wet_presets};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{PanelRowDrop, PanelRowFamily, WidgetEvent};
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_block, resolve};
 use ph2d_editor_core::panel::{
     PaintCtx, PanelHostInternal, paint_dropdown_list, visible_option_bands,
 };
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_editor_core::widget::{Dropdown, DropdownOption};
+use ph2d_editor_core::widget::{Button, Dropdown, DropdownOption, Modal, paint_modal};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tokens::{ColorToken, Radius};
@@ -24,7 +24,7 @@ use ph2d_tool_painter::ids;
 use std::cell::RefCell;
 
 thread_local! {
-    /// O pincel cujo Delete foi armado pelo 1.º clique.
+    /// O pincel cuja janela de confirmação do Delete está aberta.
     static ARMADO: RefCell<Option<String>> = const { RefCell::new(None) };
 }
 
@@ -48,17 +48,9 @@ pub(crate) fn paint_biblioteca(
             tr("panel.painter_layers.wetpaint.preset_export").to_owned(),
         ));
         if a.apagavel {
-            let armado = ARMADO.with(|c| c.borrow().as_deref() == Some(a.relativo.as_str()));
             botoes.push((
                 ids::PAINTER_WETPAINT_PRESET_DELETE,
-                if armado {
-                    tr_with(
-                        "panel.painter_layers.wetpaint.preset_delete_confirm",
-                        &[("name", &a.nome)],
-                    )
-                } else {
-                    tr("panel.painter_layers.wetpaint.preset_delete").to_owned()
-                },
+                tr("panel.painter_layers.wetpaint.preset_delete").to_owned(),
             ));
         }
     }
@@ -134,13 +126,87 @@ pub(crate) fn sem_popover(ctx: &mut PaintCtx) {
         .set_panel_row_ids(PanelRowFamily::PainterPreset, Default::default());
 }
 
+const DIALOGO_W: f32 = 360.0; // LITERAL-PX-OK: the confirm dialog's card width (fits title + two buttons)
+const DIALOGO_H: f32 = 168.0; // LITERAL-PX-OK: header + one body line + footer of the Modal
+
+/// [confirm, cancel, close, card, scrim] — os ids da janela, pela ordem de [`ids::PAINTER_WETPAINT_PRESET_DELETE_DIALOG`].
+const CONFIRMA: ph2d_a11y::NodeId = ids::PAINTER_WETPAINT_PRESET_DELETE_DIALOG[0];
+const CANCELA: ph2d_a11y::NodeId = ids::PAINTER_WETPAINT_PRESET_DELETE_DIALOG[1];
+const FECHA: ph2d_a11y::NodeId = ids::PAINTER_WETPAINT_PRESET_DELETE_DIALOG[2];
+const CARTAO: ph2d_a11y::NodeId = ids::PAINTER_WETPAINT_PRESET_DELETE_DIALOG[3];
+const FORA: ph2d_a11y::NodeId = ids::PAINTER_WETPAINT_PRESET_DELETE_DIALOG[4];
+
+/// A janela de confirmação do Delete, por cima de tudo (o passe dos popovers), enquanto está aberta.
+pub(crate) fn paint_dialogo(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
+    let Some(rel) = ARMADO.with(|c| c.borrow().clone()) else {
+        return;
+    };
+    let Some(nome) = current_wet_presets().and_then(|v| v.procurar(&rel).map(|e| e.nome.clone()))
+    else {
+        desarmar();
+        return;
+    };
+    let vp = ctx.viewport;
+    let w = DIALOGO_W.min(vp.w);
+    let card = Rect::new(
+        vp.x + (vp.w - w) * 0.5,
+        vp.y + (vp.h - DIALOGO_H) * 0.5,
+        w,
+        DIALOGO_H,
+    );
+    let modal = Modal::new(
+        FECHA,
+        tr_with(
+            "panel.painter_layers.wetpaint.preset_delete_confirm",
+            &[("name", &nome)],
+        ),
+        Button::new(CANCELA, tr("panel.painter_layers.wetpaint.preset_cancel")),
+        Button::new(CONFIRMA, tr("panel.painter_layers.wetpaint.preset_delete")).danger(),
+    );
+    paint_modal(&modal, vp, card, ctx.scene, ctx.text_system, theme);
+    let corpo = modal.body_rect(card);
+    let _ = paint_text_block(
+        ctx.text_system,
+        ctx.scene,
+        tr("panel.painter_layers.wetpaint.preset_delete_body"),
+        corpo.x,
+        corpo.y,
+        ph2d_tokens::TypeToken::Base.px(),
+        corpo.w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let (cancel, confirm) = modal.button_rects(card);
+    // Por ordem: o último registado ganha o clique.
+    let alvos = [
+        (FORA, vp),
+        (CARTAO, card),
+        (FECHA, modal.close_rect(card)),
+        (CANCELA, cancel),
+        (CONFIRMA, confirm),
+    ];
+    let (_, hit) = ctx.host.store_and_hit_index_mut();
+    for (id, r) in alvos {
+        hit.register(id, r);
+    }
+}
+
 /// Os eventos da biblioteca (antes do resto do painel). `None` = não é daqui.
 pub(crate) fn try_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<bool> {
     match ev {
         WidgetEvent::Click(id) if id == ids::PAINTER_WETPAINT_PRESET_DELETE => {
-            clicar_apagar(host);
+            let ativo = current_wet_presets().and_then(|v| v.ativo.clone());
+            ARMADO.with(|c| *c.borrow_mut() = ativo);
             Some(true)
         }
+        WidgetEvent::Click(id) if id == CONFIRMA => {
+            confirmar_apagar(host);
+            Some(true)
+        }
+        WidgetEvent::Click(id) if [CANCELA, FECHA, FORA].contains(&id) => {
+            desarmar();
+            Some(true)
+        }
+        WidgetEvent::Click(id) if id == CARTAO => Some(true),
         // Um preset do navegador (o valor é o caminho na biblioteca, não um u8).
         WidgetEvent::Click(id) if preset_escolhido(id).is_some() => {
             desarmar();
@@ -167,21 +233,11 @@ fn desarmar() {
     ARMADO.with(|c| c.borrow_mut().take());
 }
 
-fn clicar_apagar(host: &mut dyn PanelHostInternal) {
-    let Some(rel) = current_wet_presets().and_then(|v| v.ativo.clone()) else {
-        return;
-    };
-    let confirma = ARMADO.with(|c| {
-        let mut c = c.borrow_mut();
-        if c.as_deref() == Some(rel.as_str()) {
-            *c = None;
-            true
-        } else {
-            *c = Some(rel);
-            false
-        }
-    });
-    if confirma {
+/// O «Delete» da janela: só apaga se o pincel dela ainda for o activo (o artista não trocou por baixo).
+fn confirmar_apagar(host: &mut dyn PanelHostInternal) {
+    let aberto = ARMADO.with(|c| c.borrow_mut().take());
+    let ativo = current_wet_presets().and_then(|v| v.ativo.clone());
+    if aberto.is_some() && aberto == ativo {
         host.bus_mut()
             .push(EditorAction::ToolPanelEvent(PanelEvent::Click(
                 ids::PAINTER_WETPAINT_PRESET_DELETE,

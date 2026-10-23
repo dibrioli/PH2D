@@ -261,8 +261,8 @@ fn every_doc22_wet_click_forwards_through_the_panel() {
     use ph2d_editor_core::panel::EventOutcome;
     use ph2d_editor_core::tool::PanelEvent;
     use ph2d_panel_painter_layers::{VistaPreset, VistaPresets, set_current_wet_presets};
-    // O Delete confirma-se (o 1.º clique arma, o 2.º chega — `o_delete_confirma_no_segundo_clique…`): precisa
-    // de um pincel do artista activo, e de DOIS cliques.
+    // O Delete confirma-se numa janela (`o_delete_abre_uma_janela_de_confirmacao…`): precisa
+    // de um pincel do artista activo: o clique abre a janela de confirmação, e o «Delete» DELA chega.
     let meu = "WetPainter/Watercolor/Fluid/Meu.ph2d-brush.png";
     set_current_wet_presets(Some(std::sync::Arc::new(VistaPresets {
         entradas: vec![VistaPreset {
@@ -278,15 +278,18 @@ fn every_doc22_wet_click_forwards_through_the_panel() {
     for clicked in ph2d_tool_painter::ids::PAINTER_WETPAINT_CLICKS {
         let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
         let mut st = PainterLayersPanelState;
-        if clicked == ph2d_tool_painter::ids::PAINTER_WETPAINT_PRESET_DELETE {
+        let evento = if clicked == ph2d_tool_painter::ids::PAINTER_WETPAINT_PRESET_DELETE {
             host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
             assert!(
                 host.drained_actions().is_empty(),
-                "o 1.º clique do Delete só arma"
+                "o Delete só abre a janela"
             );
-        }
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_PRESET_DELETE_DIALOG[0]
+        } else {
+            clicked
+        };
         let outcome =
-            host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(evento));
         assert_eq!(
             outcome,
             EventOutcome::Consumed,

@@ -469,8 +469,8 @@ fn every_kernel(spec: &BrushSpec, dab_deg: f32) -> Vec<Escrita> {
 }
 
 /// ⭐⭐ **Bug #52, por KERNEL: a ponta rodada, de Size < 1 ou deslocada sai INTEIRA e não transborda.**
-/// Os por-pixel escrevem exactamente a caixa da ponta; os assados, a menos de 1 px (a orla bilinear de um
-/// texel de `≤ 0,6` px). Antes da cura todos paravam em `± r` — a Size 0,6 isso corta 13 px de cada lado.
+/// Todos a menos de 1 px: os assados pela orla bilinear de um texel de `≤ 0,6` px, os por-pixel pela área do píxel
+/// da orla (a imagem reduzida lê-se pela área desde 23/10). Antes da cura todos paravam em `± r` — a Size 0,6 isso corta 13 px de cada lado.
 ///
 /// **Mutação que tem de sangrar:** [`crate::tip::dab_extent`] devolver `base` (a caixa `± raio`), ou
 /// [`crate::tip::stamp_domain`] devolver `1`.
@@ -511,8 +511,10 @@ fn no_kernel_cuts_or_overflows_a_rotated_or_scaled_tip() {
     let mut bad: Vec<String> = Vec::new();
     for (nome, spec, dab_deg) in casos {
         let want = tip_box(&spec, dab_deg);
-        for (kernel, exact, got) in every_kernel(&spec, dab_deg) {
-            let tol = if exact { 0 } else { 1 };
+        for (kernel, _exacto, got) in every_kernel(&spec, dab_deg) {
+            // Os por-pixel leem a ponta de imagem REDUZIDA pela área do píxel (o Stars pequeno, 23/10): o píxel cujo
+            // centro fica fora mas cuja área a ponta toca leva a fracção dela — a orla de 1 px, como a dos assados.
+            let tol = 1;
             let off = [
                 got.0 - want.0,
                 got.1 - want.1,

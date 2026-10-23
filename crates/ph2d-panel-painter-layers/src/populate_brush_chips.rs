@@ -189,6 +189,46 @@ pub(crate) fn register_brush_slider_chips(store: &mut WidgetStore) {
         store.set_number_range(chip, min, max, step);
     }
     register_spray_count_chip(store);
+    register_marca_bars(store);
+}
+
+/// ⭐ **As barras das linhas da MARCA do cartão Jitter** (ordem do dono 23/10: *«todos sliders»*): a barra é o id
+/// da linha (`PAINTER_MARCA_FIELDS[i]`), o chip (`PAINTER_MARCA_CHIPS[i]`) vive no espaço VERDADEIRO dela pela lei
+/// única [`crate::paint_stroke::jitter_linhas::escala_da_marca`] — o Scatter `0..ACROSS_MAX`, a Particle
+/// `PARTICULA_MIN..1`, o resto `0..1`.
+fn register_marca_bars(store: &mut WidgetStore) {
+    use ph2d_editor_core::widget::{SliderOrientation, SliderState};
+    use ph2d_tool_painter::ids::{PAINTER_MARCA_CHIPS, PAINTER_MARCA_FIELDS};
+    for f in crate::paint_stroke::jitter_linhas::FILEIRAS_DO_JITTER {
+        let crate::paint_stroke::jitter_linhas::Fileira::Marca(l) = f else {
+            continue;
+        };
+        let i = crate::paint_stroke::jitter_linhas::indice_da_marca(l);
+        let (slider, chip) = (PAINTER_MARCA_FIELDS[i], PAINTER_MARCA_CHIPS[i]);
+        let (lo, hi, passo) = l.faixa();
+        store.register(
+            slider,
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: 0.0,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+        store.register(
+            chip,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: l.omissao(),
+                buffer: String::new(),
+                caret: 0,
+                last_committed: l.omissao(),
+                selection_anchor: None,
+            },
+        );
+        let (escala, desloc) = crate::paint_stroke::jitter_linhas::escala_da_marca(l);
+        store.link_slider_number_mapped(slider, chip, escala, desloc);
+        store.set_number_range(chip, lo, hi, passo);
+    }
 }
 
 /// O chip do **Spray Count** — irmão exato do da Symmetry: um inteiro `1..=SPRAY_COUNT_MAX`

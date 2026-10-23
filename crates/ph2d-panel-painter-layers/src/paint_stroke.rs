@@ -437,6 +437,8 @@ mod grid_card;
 /// W5, quantas MARCAS cada ponto do caminho deixa. Irmão dos dois ao lado, cortado por ASSUNTO: a
 /// seção percorre o TRAÇO, este card descreve a MARCA.
 pub(crate) mod jitter_card;
+/// As fileiras do card Jitter — a ordem da tela como DADO (ordem do dono 23/10).
+pub(crate) mod jitter_linhas;
 mod op_card;
 use apply::{paint_apply_row, paint_merge_row, paint_offset_card, paint_simplify_row};
 use grid_card::paint_grid_stamp_card;

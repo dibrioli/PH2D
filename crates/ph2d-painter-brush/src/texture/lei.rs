@@ -83,8 +83,10 @@ pub struct GrainLaw {
     pub depth_pressure: bool,
     /// ⭐ A ponta de IMAGEM lê-se pela ÁREA que o píxel cobre (o mipmap do Krita; J4 `texturas`,
     /// `docs/Painter/Pinceis/exames/texturas.md` «Motor J4»): reduzida a 5 px, a imagem amostrada num ponto por
-    /// píxel parte-se em pontos; pela área dá a média (a linha contínua). Só na Shape `Image` e sem o Flow;
-    /// desligado = a amostra no centro do píxel, ao bit. Ver [`super::shape::sample_shape`].
+    /// píxel parte-se em pontos; pela área dá a média (a linha contínua). Só na Shape `Image` e sem o Flow.
+    /// ⚠️ Desde 23/10 (o Stars pequeno) a área é a lei de TODA ponta de imagem, nas duas rotas (por píxel e a
+    /// máscara em cache, pela pirâmide); ligada, este campo só obriga a rota POR PÍXEL (a área exacta do píxel da
+    /// tela em vez do nível da pirâmide) — `dab_mask_cacheable` e o roteador colorido. Ver [`super::shape::sample_shape`].
     pub area: bool,
 }
 

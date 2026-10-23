@@ -75,6 +75,9 @@ pub fn accumulate_color_stamps_fused_batch(
         cy: f32,
         inv_radius: f32,
         coverage: f32,
+        /// O nível da pirâmide do tamanho deste dab (escolhido uma vez) e o lado dele.
+        k: usize,
+        size: u32,
     }
     let reach = stamps[0].reach;
     let mut boxes: Vec<Box_> = Vec::with_capacity(dabs.len());
@@ -103,6 +106,8 @@ pub fn accumulate_color_stamps_fused_batch(
             cy,
             inv_radius: 1.0 / r,
             coverage,
+            k: stamps[0].indice_do_nivel(2.0 * r),
+            size: stamps[0].nivel_para(2.0 * r).size,
         });
     }
     if boxes.is_empty() {
@@ -149,7 +154,6 @@ pub fn accumulate_color_stamps_fused_batch(
     if size == 0 || stamps.iter().any(|s| s.size != size) {
         return None; // a mixed-size batch would index `stamps[i].data` with stamps[0]'s stride
     }
-    let sz = size as usize;
     let boxes = &boxes;
     // Per-band touched flags (one per dab), OR-merged after the join so the returned union rect is
     // exactly the per-dab loop's (a dab whose stamp contributed nothing returns no rect).
@@ -168,14 +172,15 @@ pub fn accumulate_color_stamps_fused_batch(
                         for py in y0..y1 {
                             let v = ((py as f32 + 0.5) - b.cy) * b.inv_radius;
                             // Fora da ponta não há dab ([`crate::tip::axis_taps`]).
-                            let Some((ty0, ty1, ty)) = crate::tip::axis_taps(v, size) else {
+                            let Some((ty0, ty1, ty)) = crate::tip::axis_taps(v, b.size) else {
                                 continue;
                             };
+                            let sz = b.size as usize;
                             let (yr0, yr1) = (ty0 * sz, ty1 * sz);
                             let row = ((py - band_y0) as usize) * wus;
                             for px in b.x0..b.x1 {
                                 let u = ((px as f32 + 0.5) - b.cx) * b.inv_radius;
-                                let Some((xc0, xc1, tx)) = crate::tip::axis_taps(u, size) else {
+                                let Some((xc0, xc1, tx)) = crate::tip::axis_taps(u, b.size) else {
                                     continue;
                                 };
                                 let o00 = (yr0 + xc0) * 4 + 3;
@@ -184,7 +189,7 @@ pub fn accumulate_color_stamps_fused_batch(
                                 let o11 = (yr1 + xc1) * 4 + 3;
                                 let idx = row + px as usize;
                                 for (i, stamp) in stamps.iter().enumerate() {
-                                    let d = &stamp.data;
+                                    let d = &stamp.nivel(b.k).data;
                                     let c = |o: usize| f32::from(d[o]) / 255.0;
                                     let top = c(o00) + (c(o10) - c(o00)) * tx;
                                     let bot = c(o01) + (c(o11) - c(o01)) * tx;
@@ -434,11 +439,12 @@ pub fn accumulate_shape_layers_rgba_batch(
                                                     grain_image,
                                                 )
                                             } else {
-                                                crate::texture::sample_unit(
+                                                crate::texture::sample_unit_px(
                                                     &d.spec.texture,
                                                     gb,
                                                     u,
                                                     v,
+                                                    b.inv_radius,
                                                     grain_image,
                                                 )
                                             };
@@ -544,6 +550,9 @@ pub fn accumulate_color_stamps_rgba_batch(
         cy: f32,
         inv_radius: f32,
         coverage: f32,
+        /// O nível da pirâmide do tamanho deste dab (escolhido uma vez) e o lado dele.
+        k: usize,
+        size: u32,
     }
     let reach = stamps[0].reach;
     let mut boxes: Vec<Box_> = Vec::with_capacity(dabs.len());
@@ -572,6 +581,8 @@ pub fn accumulate_color_stamps_rgba_batch(
             cy,
             inv_radius: 1.0 / r,
             coverage,
+            k: stamps[0].indice_do_nivel(2.0 * r),
+            size: stamps[0].nivel_para(2.0 * r).size,
         });
     }
     if boxes.is_empty() {
@@ -600,7 +611,6 @@ pub fn accumulate_color_stamps_rgba_batch(
             rest = tail;
         }
     }
-    let sz = size as usize;
     let boxes = &boxes;
     let touched_by_band: Vec<Vec<bool>> = std::thread::scope(|scope| {
         let handles: Vec<_> = bands
@@ -617,14 +627,15 @@ pub fn accumulate_color_stamps_rgba_batch(
                         for py in y0..y1 {
                             let v = ((py as f32 + 0.5) - b.cy) * b.inv_radius;
                             // Fora da ponta não há dab ([`crate::tip::axis_taps`]).
-                            let Some((ty0, ty1, ty)) = crate::tip::axis_taps(v, size) else {
+                            let Some((ty0, ty1, ty)) = crate::tip::axis_taps(v, b.size) else {
                                 continue;
                             };
+                            let sz = b.size as usize;
                             let (yr0, yr1) = (ty0 * sz, ty1 * sz);
                             let row = ((py - band_y0) as usize) * wus;
                             for px in b.x0..b.x1 {
                                 let u = ((px as f32 + 0.5) - b.cx) * b.inv_radius;
-                                let Some((xc0, xc1, tx)) = crate::tip::axis_taps(u, size) else {
+                                let Some((xc0, xc1, tx)) = crate::tip::axis_taps(u, b.size) else {
                                     continue;
                                 };
                                 // The four texel byte offsets, shared by every layer.
@@ -634,7 +645,7 @@ pub fn accumulate_color_stamps_rgba_batch(
                                 let o11 = (yr1 + xc1) * 4;
                                 let o = (row + px as usize) * 4;
                                 for (i, stamp) in stamps.iter().enumerate() {
-                                    let d = &stamp.data;
+                                    let d = &stamp.nivel(b.k).data;
                                     // Premultiplied 4-channel bilinear (shared coords).
                                     let ch = |c: usize| {
                                         let f = |off: usize| f32::from(d[off + c]) / 255.0;

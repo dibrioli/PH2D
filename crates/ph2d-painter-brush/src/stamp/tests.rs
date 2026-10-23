@@ -563,6 +563,7 @@ fn a_mask_with_an_opaque_rim_reads_nothing_outside_the_unit_square() {
         data: vec![255u8; 8 * 8],
         size: 8,
         reach: 1.0,
+        niveis: Vec::new(),
     };
     assert!(
         sample_mask(&mask, 0.99, 0.0) > 0.9,

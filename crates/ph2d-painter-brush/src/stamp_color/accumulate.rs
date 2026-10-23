@@ -34,6 +34,7 @@ pub fn accumulate_color_stamp_coverage(
     }
     // O carimbo cobre `[-reach, reach]²` raios ([`crate::tip::stamp_domain`]).
     let radius = radius * stamp.reach;
+    let stamp = stamp.nivel_para(2.0 * radius);
     let (cx, cy) = (center[0], center[1]);
     let x0 = (cx - radius).floor().max(0.0) as i64;
     let y0 = (cy - radius).floor().max(0.0) as i64;
@@ -97,13 +98,15 @@ pub fn accumulate_color_stamps_fused(
         return None;
     }
     debug_assert_eq!(covs.len(), n, "one coverage map per layer");
-    let size = stamps[0].size;
     debug_assert!(
-        stamps.iter().all(|s| s.size == size),
+        stamps.iter().all(|s| s.size == stamps[0].size),
         "fused accumulate requires all stamps baked at the same size"
     );
     // Todas as camadas assam com o MESMO pincel ⇒ o mesmo domínio ([`crate::tip::stamp_domain`]).
     let radius = radius * stamps[0].reach;
+    // O nível da pirâmide do tamanho DESTE dab, uma vez (as camadas do mesmo tamanho partilham-no).
+    let k = stamps[0].indice_do_nivel(2.0 * radius);
+    let size = stamps[0].nivel(k).size;
     let (cx, cy) = (center[0], center[1]);
     let x0 = (cx - radius).floor().max(0.0) as i64;
     let y0 = (cy - radius).floor().max(0.0) as i64;
@@ -135,7 +138,7 @@ pub fn accumulate_color_stamps_fused(
             let o11 = (yr1 + xc1) * 4 + 3;
             let idx = row + px as usize;
             for (i, stamp) in stamps.iter().enumerate() {
-                let d = &stamp.data;
+                let d = &stamp.nivel(k).data;
                 // Alpha-only bilinear — identical arithmetic to `sample_color_mask`'s `lerp2(3)`.
                 let c = |o: usize| f32::from(d[o]) / 255.0;
                 let top = c(o00) + (c(o10) - c(o00)) * tx;
@@ -247,7 +250,7 @@ pub fn accumulate_shape_layer_rgba(
                 let g = if spec.texture.mapping.is_canvas_fixed() {
                     crate::texture::sample(&spec.texture, gb, px, py, center, radius, gi)
                 } else {
-                    crate::texture::sample_unit(&spec.texture, gb, u, v, gi)
+                    crate::texture::sample_unit_px(&spec.texture, gb, u, v, inv_radius, gi)
                 };
                 let m = grain_modulation(
                     g,

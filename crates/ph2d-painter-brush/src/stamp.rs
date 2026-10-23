@@ -25,6 +25,10 @@ pub struct StampMask {
     /// O domínio assado em raios (`[-reach, reach]²`, [`crate::tip::stamp_domain`]); `1` sem ponta de
     /// imagem. Quem blita percorre `radius · reach`.
     reach: f32,
+    /// ⭐ A pirâmide (o mipmap): `size/2`, `size/4`… por caixa 2×2, cada nível sem pirâmide própria. Quem blita
+    /// pede o nível do TAMANHO do dab ([`Self::nivel_para`]) — nunca reduz a máscara mais de 2:1 (o Stars
+    /// pequeno, 23/10: a máscara do maior dab do lote lida num ponto por píxel num dab 3× menor dava degraus).
+    niveis: Vec<StampMask>,
 }
 
 impl StampMask {
@@ -39,6 +43,66 @@ impl StampMask {
     pub fn reach(&self) -> f32 {
         self.reach
     }
+
+    /// ⭐ O nível da pirâmide para um dab que percorre `lado_px` píxeis da tela de borda a borda da máscara: o
+    /// MENOR com `size ≥ lado_px` (um texel ≤ um píxel, a redução bilinear ≤ 2:1). Maior que a máscara = ela mesma.
+    #[must_use]
+    pub fn nivel_para(&self, lado_px: f32) -> &StampMask {
+        match indice_do_nivel(self.size, self.niveis.len(), lado_px) {
+            0 => self,
+            k => &self.niveis[k - 1],
+        }
+    }
+
+    fn com_niveis(mut self) -> Self {
+        self.niveis = piramide(&self.data, self.size, 1)
+            .into_iter()
+            .map(|(data, size)| StampMask {
+                data,
+                size,
+                reach: self.reach,
+                niveis: Vec::new(),
+            })
+            .collect();
+        self
+    }
+}
+
+/// ⭐ A pirâmide de uma máscara quadrada de `canais` bytes por texel: `size/2`, `size/4`… por caixa 2×2 (a média
+/// arredondada), enquanto o lado for par. Premultiplicada, a caixa do RGBA é a média certa da cor.
+pub(crate) fn piramide(data: &[u8], size: u32, canais: usize) -> Vec<(Vec<u8>, u32)> {
+    let mut niveis: Vec<(Vec<u8>, u32)> = Vec::new();
+    let mut size = size;
+    while size >= 2 && size.is_multiple_of(2) {
+        let src = niveis.last().map_or(data, |(d, _)| d.as_slice());
+        let (s, h) = (size as usize, (size / 2) as usize);
+        let mut meio = vec![0u8; h * h * canais];
+        for j in 0..h {
+            for i in 0..h {
+                for c in 0..canais {
+                    let at = |x: usize, y: usize| u32::from(src[(y * s + x) * canais + c]);
+                    let soma = at(2 * i, 2 * j)
+                        + at(2 * i + 1, 2 * j)
+                        + at(2 * i, 2 * j + 1)
+                        + at(2 * i + 1, 2 * j + 1);
+                    meio[(j * h + i) * canais + c] = ((soma + 2) / 4) as u8;
+                }
+            }
+        }
+        size /= 2;
+        niveis.push((meio, size));
+    }
+    niveis
+}
+
+/// O índice do nível de uma pirâmide de lados `topo, topo/2, …` (`0` = o topo) para um dab que percorre
+/// `lado_px` píxeis: o MENOR com lado `≥ lado_px` (a redução bilinear ≤ 2:1); `n` = quantos níveis há abaixo do topo.
+pub(crate) fn indice_do_nivel(topo: u32, n: usize, lado_px: f32) -> usize {
+    let mut k = 0;
+    while k < n && (topo >> (k + 1)) as f32 >= lado_px {
+        k += 1;
+    }
+    k
 }
 
 /// Render the unit brush stamp (**silhouette × Grain**) at `size`×`size`. The silhouette is the Shape
@@ -76,6 +140,8 @@ pub fn render_stamp_mask(
     });
     let reach = crate::tip::stamp_domain(&spec.shape, shape_basis.as_ref());
     let inv = 2.0 / size as f32;
+    // O lado de um texel da máscara em unidades do dab: a imagem da Shape lê-se pela ÁREA dele.
+    let passo = inv * reach;
     for j in 0..size {
         let v = ((j as f32 + 0.5) * inv - 1.0) * reach;
         let row = (j as usize) * (size as usize);
@@ -83,11 +149,12 @@ pub fn render_stamp_mask(
             let u = ((i as f32 + 0.5) * inv - 1.0) * reach;
             let mut w = match &shape_basis {
                 Some(sb) => {
-                    let raw = crate::texture::sample_shape_silhouette_unit(
+                    let raw = crate::texture::sample_shape_silhouette_unit_px(
                         &spec.shape,
                         sb,
                         u,
                         v,
+                        passo,
                         shape_image,
                     );
                     let sv = crate::texture::remap_shape_value(raw, shape_ramp_lut);
@@ -104,7 +171,14 @@ pub fn render_stamp_mask(
             // not carve the body, so cutting through it would strand the light on bare paper.
             w = crate::height::film_coverage(lays_body, w);
             if w > 0.0 && grain_active {
-                let g = crate::texture::sample_unit(&spec.texture, &grain_basis, u, v, grain_image);
+                let g = crate::texture::sample_unit_px(
+                    &spec.texture,
+                    &grain_basis,
+                    u,
+                    v,
+                    passo,
+                    grain_image,
+                );
                 w *= spec
                     .texture
                     .lei
@@ -113,7 +187,13 @@ pub fn render_stamp_mask(
             data[row + i as usize] = encode(w);
         }
     }
-    StampMask { data, size, reach }
+    StampMask {
+        data,
+        size,
+        reach,
+        niveis: Vec::new(),
+    }
+    .com_niveis()
 }
 
 /// Read-only per-dab blit context shared by the row bands.
@@ -165,6 +245,7 @@ pub fn blit_stamp(
     }
     // O carimbo cobre `[-reach, reach]²` raios ([`crate::tip::stamp_domain`]).
     let radius = radius * mask.reach;
+    let mask = mask.nivel_para(2.0 * radius);
     let (cx, cy) = (center[0], center[1]);
     let x0 = (cx - radius).floor().max(0.0) as i64;
     let y0 = (cy - radius).floor().max(0.0) as i64;

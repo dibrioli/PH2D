@@ -143,7 +143,7 @@ pub fn render_shape_preview(
         let v = (j as f32 + 0.5) * inv_h - 1.0;
         for i in 0..w {
             let u = (i as f32 + 0.5) * inv_w - 1.0;
-            let raw = sample_shape_silhouette_unit(&shape, &basis, u, v, image);
+            let raw = sample_shape_silhouette_unit_px(&shape, &basis, u, v, inv_w, image);
             let sv = remap_shape_value(raw, shape_ramp_lut);
             let t = footprint.falloff_t(u, v).min(1.0);
             let f = falloff_lut[((t * (n - 1) as f32) as usize).min(n - 1)];
@@ -197,8 +197,9 @@ pub fn sample_shape(
         b.footprint
             .apply([(p[0] + o[0] - center[0]) / r, (p[1] + o[1] - center[1]) / r])
     };
-    if s.lei.area
-        && s.kind == TextureKind::Image
+    // A imagem REDUZIDA lê-se sempre pela área do píxel (o Stars pequeno, 23/10: num ponto, o aro fino acendia e
+    // apagava em degraus); ampliada é a amostra no centro ao bit.
+    if s.kind == TextureKind::Image
         && let Some(img) = image
     {
         return area_do_pixel(s, b, [sx, sy], img, em);
@@ -207,8 +208,8 @@ pub fn sample_shape(
 }
 
 /// ⭐ [`sample_shape_silhouette_unit`] numa grelha de píxeis: `passo` = o lado de UM píxel da tela em unidades do
-/// dab (`1 / raio`). Com a lei da área ([`super::GrainLaw::area`]) na Shape de imagem lê a área desse píxel, como
-/// o [`sample_shape`]; sem ela (ou com o Flow) é o [`sample_shape_silhouette_unit`] ao bit.
+/// dab (`1 / raio`; o lado de um texel ao assar a máscara em cache). A Shape de imagem lê a área desse píxel, como
+/// o [`sample_shape`]; com o Flow (ou um kind procedural) é o [`sample_shape_silhouette_unit`] ao bit.
 #[must_use]
 pub fn sample_shape_silhouette_unit_px(
     s: &TextureSettings,
@@ -218,8 +219,7 @@ pub fn sample_shape_silhouette_unit_px(
     passo: f32,
     image: Option<&ImageMask>,
 ) -> f32 {
-    if s.lei.area
-        && s.kind == TextureKind::Image
+    if s.kind == TextureKind::Image
         && !s.flow
         && let Some(img) = image
     {
@@ -238,7 +238,7 @@ pub fn sample_shape_silhouette_unit_px(
 /// CPU por dab: reduzido, o custo de um dab é ~`(texels que ele cobre ÷ 2)²` (cada toque bilinear já cobre 2
 /// texels por eixo); com 16 e um toque por texel o Foliage a 40 px media p95 33 ms/quadro (load 26), e a 5 px a
 /// grelha de 8 põe as amostras a ≤ 3,2 texels numa imagem de 128 (`area_tests` mede a média ±0,15).
-const AREA_MAX: f32 = 8.0;
+pub(super) const AREA_MAX: f32 = 8.0;
 
 /// ⭐ **A ponta de IMAGEM pela ÁREA do píxel** ([`super::GrainLaw::area`]): a média de `nx × ny` amostras
 /// espalhadas pelo píxel (o quadrado `± ½` em volta do centro; `em(desvio em px)` = a coordenada da pegada), cada
@@ -477,3 +477,5 @@ fn sample_image_clamped(img: &ImageMask, u: f32, v: f32) -> f32 {
 
 #[cfg(test)]
 mod area_tests;
+#[cfg(test)]
+mod estrela_tests;

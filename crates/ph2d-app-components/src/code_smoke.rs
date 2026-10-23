@@ -20,8 +20,8 @@
 //!   escolhido dentro do `entity` de outro funde os buracos.
 //! - **5** — a página de ajuda (Onda 2, item 5): as mesmas três formas correm o `ajuda.luau` e
 //!   balançam para os lados. O Ctrl+clique em `sin` abre a página `math` no membro; um link na
-//!   mesma página só rola; Alt+← volta ao script; F12 em `ph2d.set` abre a `ph2d`; o `PoseField` da
-//!   assinatura leva à `types`; Ctrl+F conta; Ctrl+W fecha; o Ctrl sobre `local` não dá a mão.
+//!   mesma página só rola; Alt+← volta ao script; F12 em `ph2d.set` abre a `ph2d`; o `PropertyName`
+//!   da assinatura leva à `types`; Ctrl+F conta; Ctrl+W fecha; o Ctrl sobre `local` não dá a mão.
 //! - **6** — a API que funciona (Onda 2, item 6): um JOGO pequeno. O círculo corre o `jogo.luau`:
 //!   as setas movem-no (`ph2d.key_down`), o espaço atira (`ph2d.spawn("Bullet")` + `attach_script`
 //!   do `bala.luau`, que sobe e, com `ph2d.wait(1.5)`, se apaga), um clique na cena leva o quadrado
@@ -155,7 +155,7 @@ pub const AJUDA_LUAU: &str = r#"-- ajuda.luau — as TRÊS formas da esquerda co
 -- 2) No texto da página, clique em «math.noise»: a página rola até ele, na mesma aba.
 -- 3) Alt+← volta ao script, onde foi o Ctrl+clique (rolar dentro da página não conta).
 -- 4) Cursor em «set», na linha do ph2d.set, e F12: a página «ph2d», no «set».
---    Na assinatura, clique em «PoseField»: a página «types». Alt+← volta ao «set».
+--    Na assinatura, clique em «PropertyName»: a página «types». Alt+← volta ao «set».
 -- 5) Ctrl+F na página e escreva entity: quantas vezes aparece. Ctrl+W fecha a página.
 -- 6) Ctrl por cima de «local»: nada sublinha (uma palavra da linguagem não tem página).
 

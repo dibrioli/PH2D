@@ -2,8 +2,8 @@
 //! a lei pura: o texto da soltura, o nome da variável e a reescrita do renomear. O gesto e o
 //! oráculo (o editor do Godot 4.7.2 corrido, `ferramentas/oraculo_arrastar/saida.txt`) estão no doc.
 
+use crate::{LUAU_KEYWORDS, ObjectCall, Syntax};
 use ph2d_code_buffer::Text;
-use ph2d_code_syntax::{LUAU_KEYWORDS, ObjectCall, Syntax};
 
 /// O que a soltura escreve: `text` em `at`, e o cursor fica em `caret` (bytes do texto DEPOIS).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -263,10 +263,7 @@ mod tests {
             ("bala-azul", "bala_azul"),
         ] {
             assert_eq!(variable_name(nome), var, "{nome}");
-            assert!(
-                ph2d_code_syntax::is_identifier(&variable_name(nome)),
-                "{nome}"
-            );
+            assert!(crate::is_identifier(&variable_name(nome)), "{nome}");
         }
     }
 

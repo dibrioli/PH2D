@@ -1,10 +1,10 @@
 //! ⭐ **A cena 7 do editor de scripts ensina o que diz** (`PH2D_CODE_SMOKE=7`, item 8 —
 //! `docs/CodeEditor/07_arrastar_para_o_codigo.md`): a cena montada como a shell a monta; o passo ① do
-//! script (Ctrl + soltar a «Door» na linha vazia) feito pela LEI da soltura (`ph2d_app_code::dropping`)
+//! script (Ctrl + soltar a «Door» na linha vazia) feito pela LEI da soltura (`ph2d_code_syntax::dropping`)
 //! e o texto corrido pela VM real — a porta tem de passar a mexer, e antes do passo não.
 
-use ph2d_app_code::dropping::dropped_into;
 use ph2d_app_components::code_smoke::{ARRASTAR_LUAU, ARRASTAR_NAME, CENAS, monta_em};
+use ph2d_code_syntax::dropping::dropped_into;
 use ph2d_ecs::{Entity, Name, SimWorld, StableId, Transform};
 use ph2d_script::{ProjectScripts, ScriptEditRequests, ScriptHost};
 use ph2d_vec_entities::entities::VecEntityMap;

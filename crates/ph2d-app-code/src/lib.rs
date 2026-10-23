@@ -18,7 +18,6 @@ mod doc;
 mod docs;
 mod docs_probe;
 mod drop_doc;
-pub mod dropping;
 mod edit;
 mod find;
 mod folds;

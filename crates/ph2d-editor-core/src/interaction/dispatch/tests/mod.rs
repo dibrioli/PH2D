@@ -287,6 +287,7 @@ mod eyedropper;
 mod field_hover;
 mod graph;
 mod harmony;
+mod hierarchy_drop;
 mod ime;
 mod inputs;
 mod note_body;

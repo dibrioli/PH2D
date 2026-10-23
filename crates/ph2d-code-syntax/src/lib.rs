@@ -10,6 +10,7 @@
 
 mod autoedit;
 mod brackets;
+pub mod dropping;
 mod errors;
 mod facts;
 mod fold;

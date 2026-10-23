@@ -342,7 +342,7 @@ impl<'w> Lane<'w> {
 
     /// `ph2d.get` — a pose, ou uma propriedade nomeada; `nil` se o id já não é de ninguém.
     fn get(&mut self, lua: &Lua, id: f64, field: &str) -> mlua::Result<Value> {
-        if pose_field(field).is_some() || !is_property_name(field) {
+        if !is_named_property(field) {
             let v = self.pose(id, field).map_err(mlua::Error::RuntimeError)?;
             return Ok(v.map_or(Value::Nil, Value::Number));
         }
@@ -540,6 +540,13 @@ pub(crate) fn with_lane<R>(
     Ok((r, cell.into_inner().finish()))
 }
 
+/// ⭐ A porta única de *«este nome vai pela pista das propriedades?»* — o `ph2d.get` e o `ph2d.set`
+/// do Luau perguntam AQUI. Um nome da pose, ou um que não existe, vai pela pose (a fila de sempre, que
+/// corre também fora da cena).
+fn is_named_property(field: &str) -> bool {
+    pose_field(field).is_none() && is_property_name(field)
+}
+
 /// Um nome de propriedade: `componente.campo`, ou o curto de um campo que se chama como o
 /// componente (`gravity_scale`). O resto é a pose (ou um nome que não existe).
 fn is_property_name(field: &str) -> bool {
@@ -558,7 +565,7 @@ fn is_property_name(field: &str) -> bool {
 
 /// As funções `ph2d.*` que passam pela pista — Luau, para o erro apontar a linha do script.
 pub(crate) const LANE_LUAU: &str = r#"
-local lane, POSE = ...
+local lane, is_property = ...
 local function through(name)
   return function(...)
     local f = lane[name]
@@ -577,12 +584,12 @@ ph2d.attach_script = through("attach_script")
 ph2d.properties = through("properties")
 ph2d.damage = through("damage")
 ph2d.heal = through("heal")
--- A pose vai pela fila do `ph2d.set` de sempre; qualquer outro nome (`componente.campo`, ou o curto
--- `gravity_scale`) pela pista.
+-- Uma propriedade (`componente.campo`, ou o curto `gravity_scale`) vai pela pista; a pose, ou um
+-- nome que não existe, pela fila do `ph2d.set` de sempre — a mesma lei do `ph2d.get` (Rust).
 local set_pose = ph2d.set
 local set_property = through("set_property")
 ph2d.set = function(entity, field, value)
-  if type(field) == "string" and not POSE[field] then
+  if type(field) == "string" and is_property(field) then
     return set_property(entity, field, value)
   end
   return set_pose(entity, field, value)
@@ -593,11 +600,8 @@ end
 pub(crate) fn wire(lua: &Lua) -> mlua::Result<()> {
     let table = lua.create_table()?;
     lua.set_named_registry_value(LANE_KEY, table.clone())?;
-    let pose = lua.create_table()?;
-    for f in crate::io::POSE_FIELDS {
-        pose.raw_set(f, true)?;
-    }
+    let is_property = lua.create_function(|_, f: String| Ok(is_named_property(&f)))?;
     lua.load(LANE_LUAU)
         .set_name("=ph2d")
-        .call::<()>((table, pose))
+        .call::<()>((table, is_property))
 }

@@ -1,10 +1,10 @@
 //! ⭐ **A aba de script como alvo de um arrasto** (item 8, `docs/CodeEditor/07_arrastar_para_o_codigo.md`
 //! §3.11–12): por cima do texto ela mostra onde cairia (o cursor fino pela MESMA `hit` do clique) e o
-//! balão das teclas; ao largar escreve pela lei pura ([`crate::dropping`]) num passo de undo.
+//! balão das teclas; ao largar escreve pela lei pura ([`ph2d_code_syntax::dropping`]) num passo de undo.
 
 use crate::doc::CodeDoc;
-use crate::dropping::insertion;
 use ph2d_code_buffer::{Range, Selection};
+use ph2d_code_syntax::dropping::insertion;
 use ph2d_editor_core::doc_surface::{DropAt, Dropping};
 use ph2d_i18n::tr;
 use ph2d_panel_code::Hit;

@@ -153,7 +153,8 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 # O StyLua fixado: os scripts das cenas já saem limpos do formatar-ao-salvar (CodeEditor I13).
 ph2d-code-format = { path = "../ph2d-code-format" }
 # A lei da soltura do editor de scripts: a cena 7 corre o que o arrasto escreve (CodeEditor item 8).
-ph2d-app-code = { path = "../ph2d-app-code" }
+# É a folha da gramática, nunca a família `ph2d-app-code` (família → família reprova as camadas).
+ph2d-code-syntax = { path = "../ph2d-code-syntax" }
 # ⭐ O ESTADO de um agente de navegação (plano 30, W3) — o gate da cena lê `Status::Arrived`. Só nos
 # testes: o produto lê a navegação pela ponte da física, que já a reexporta onde precisa.
 ph2d-nav = { path = "../ph2d-nav" }

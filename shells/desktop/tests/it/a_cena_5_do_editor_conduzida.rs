@@ -5,7 +5,7 @@
 //! cada quadro como a shell a pinta; cada passo confere o que o smoke do dono promete — a mão no
 //! `sin`, a página `math` no `sin` (assinatura e exemplo pintados), o link na mesma página que só
 //! rola, o Alt+← que volta ao SCRIPT (o link na mesma página não empilha, como no Godot 4.7.2), o
-//! F12 na `ph2d` com os três argumentos e o exemplo, o `PoseField` que leva à `types`, o Alt+← que
+//! F12 na `ph2d` com os três argumentos e o exemplo, o `PropertyName` que leva à `types`, o Alt+← que
 //! volta ao `set` na mesma rolagem, a contagem do Ctrl+F, o Ctrl+W, e nada sobre `local`. Precisa
 //! do `luau-lsp` fixado (`bash scripts/luau-lsp-fetch.sh`).
 
@@ -265,10 +265,7 @@ fn confere(p: &mut Palco, passo: usize, mem: &mut Memoria) {
             for (o_que, s) in [
                 ("o argumento entity", "The object to change, usually"),
                 ("o argumento field", "Which part of the pose:"),
-                (
-                    "o argumento value",
-                    "The new value. It must be a real number:",
-                ),
+                ("o argumento value", "The new value. A pose field takes"),
                 ("o exemplo", "ph2d.set(self.id, \"x\", x + self.speed * dt)"),
             ] {
                 assert!(pintou(&pr, s), "{o_que} não foi pintado: {:#?}", pr.lines);
@@ -284,7 +281,7 @@ fn confere(p: &mut Palco, passo: usize, mem: &mut Memoria) {
         }
         6 => {
             let pr = p.na("types");
-            topo(&pr, "types", "PoseField");
+            topo(&pr, "types", "PropertyName");
             assert_eq!(p.abertas(), ["math", "ph2d", "types"], "uma aba por página");
             let types = p.docs().help_tab_id("types").unwrap();
             assert_eq!(p.docs().nav_can(types), (true, false));

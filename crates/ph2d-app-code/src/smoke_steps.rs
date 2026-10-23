@@ -215,16 +215,16 @@ pub const STEPS_5: &[&[Gesture]] = &[
             member: "set",
         }),
     ],
-    // 6 — o `PoseField` da assinatura do `set`: a página `types` (empilha).
+    // 6 — o `PropertyName` da assinatura do `set`: a página `types` (empilha).
     &[
         Gesture::Link {
             page: "ph2d",
             to: "types",
-            member: "PoseField",
+            member: "PropertyName",
         },
         Gesture::Wait(Until::Page {
             page: "types",
-            member: "PoseField",
+            member: "PropertyName",
         }),
     ],
     // 7 — Alt+←: de volta à `ph2d`, no `set`.

@@ -255,69 +255,6 @@ fn hierarchy_expand_companion_click_emits_click_event() {
 }
 
 #[test]
-fn hierarchy_drag_in_live_mode_emits_reparent_intent() {
-    // Pre-M14.6B regression: dragging a live (ECS-bridge) row
-    // used `is_hierarchy_entity_id` which only matched the
-    // fixture range 400..=411 — so live rows (NodeIds in the
-    // 100_000+ range) never became drag candidates and Up
-    // emitted no `HierReparent`. This test pins the new
-    // contract: the row set published via
-    // `set_hierarchy_row_ids` is the single source of truth.
-    let mut store = WidgetStore::with_capacity(8);
-    // Two "live" rows from the bridge — far outside the
-    // fixture range that the old code looked at.
-    let parent_id = ph2d_a11y::NodeId(100_000);
-    let dragged_id = ph2d_a11y::NodeId(100_001);
-    store.register(parent_id, InteractiveState::Plain);
-    store.register(dragged_id, InteractiveState::Plain);
-    let mut row_set = std::collections::BTreeSet::new();
-    row_set.insert(parent_id);
-    row_set.insert(dragged_id);
-    store.set_hierarchy_row_ids(row_set);
-    store.set_hierarchy_order(vec![parent_id, dragged_id]);
-    let mut hits = HitIndex::new();
-    // Parent row at y=0..20, dragged row at y=30..50.
-    hits.register(parent_id, Rect::new(0.0, 0.0, 200.0, 20.0));
-    hits.register(dragged_id, Rect::new(0.0, 30.0, 200.0, 20.0));
-    let arena = Bump::new();
-    // Down on dragged row.
-    let _ = dispatch_pointer(
-        &mut store,
-        &hits,
-        pointer(PointerKind::Down, 100.0, 40.0),
-        &arena,
-    );
-    // Move enough to cross the drag threshold (8 px in any axis;
-    // bumping the cursor 50 px up clears it comfortably).
-    let _ = dispatch_pointer(
-        &mut store,
-        &hits,
-        pointer(PointerKind::Move, 100.0, 10.0),
-        &arena,
-    );
-    // Up over the middle of the parent row → HierDrop::Inside,
-    // which emits HierReparent { dragged, new_parent: Some(parent), before: None }.
-    let evts = dispatch_pointer(
-        &mut store,
-        &hits,
-        pointer(PointerKind::Up, 100.0, 10.0),
-        &arena,
-    );
-    assert!(
-        evts.iter().any(|e| matches!(
-            e,
-            WidgetEvent::HierReparent {
-                dragged,
-                new_parent: Some(np),
-                before: None,
-                after: _,
-            } if *dragged == dragged_id && *np == parent_id
-        )),
-        "expected HierReparent Inside({parent_id:?}); got {evts:?}"
-    );
-}
-
-#[test]
 fn painter_layer_drag_emits_reparent_with_resolved_drop() {
     // W3 T3.8: Primary Down on a painter layer row + a threshold-crossing
     // Move + Up over the middle of a target row resolves to

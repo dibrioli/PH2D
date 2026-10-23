@@ -7,10 +7,10 @@
 //! juntos, pela costura do I10 ([`crate::link`]).
 
 use crate::docs::CodeDocs;
-use crate::dropping::rename_edits;
 use crate::link::Linked;
 use ph2d_code_buffer::{Buffer, Edits, Range, Selection};
 use ph2d_code_syntax::Syntax;
+use ph2d_code_syntax::dropping::rename_edits;
 use ph2d_ecs::{Entity, MasterRoot, World};
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::undo_link::UndoLink;

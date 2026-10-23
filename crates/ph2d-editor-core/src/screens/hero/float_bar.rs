@@ -350,7 +350,7 @@ fn free_x(area: Rect, keep: &[Rect], (y, h): (f32, f32), w: f32, cx: f32) -> Opt
     let want = cx - w / 2.0;
     free.into_iter()
         .filter(|(lo, hi)| hi - lo >= w)
-        .map(|(lo, hi)| want.clamp(lo, hi - w))
+        .map(|(lo, hi)| want.clamp(lo, hi - w)) // CLAMP-OK: o filtro acima garante lo ≤ hi − w.
         .min_by(|a, b| (a - want).abs().total_cmp(&(b - want).abs()))
 }
 

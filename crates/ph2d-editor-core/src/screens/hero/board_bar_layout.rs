@@ -99,3 +99,31 @@ pub fn style_rects_of(
         ))
         .collect()
 }
+
+/// W24 — as gavetas abertas (formas, notas, caneta, modelos) entram no chrome que a barra de estilo, a
+/// última a pintar, não tapa.
+pub(super) fn float_drawers(
+    nav: &mut crate::documents::nav::Nav,
+    area: Rect,
+    tool: ph2d_board_edit::Tool,
+    [shapes_open, templates_open]: [bool; 2],
+) {
+    let drawers = [
+        (shapes_open, shapes_rects(area)),
+        (
+            super::notes::flyout_open(tool),
+            super::notes::flyout_rects(area),
+        ),
+        (
+            super::pen::flyout_open(tool),
+            super::pen::flyout_rects(area),
+        ),
+        (templates_open, super::mind::gallery_rects(area)),
+    ];
+    for (_, rects) in drawers.into_iter().filter(|(open, _)| *open) {
+        let panel = super::super::float_bar::panel_of(rects.into_iter().map(|(_, r)| r));
+        panel
+            .into_iter()
+            .for_each(|r| super::super::board_nav::fit::float(nav, r));
+    }
+}

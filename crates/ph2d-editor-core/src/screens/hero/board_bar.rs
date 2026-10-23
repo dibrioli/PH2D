@@ -491,19 +491,7 @@ pub fn paint(
         let (hit, store) = (&mut hero.hit_index, &hero.store);
         mind::paint_gallery(scene, text_system, theme, hit, store, area);
     }
-    // W24 — as gavetas abertas e o aviso: o chrome que a barra de estilo (a última) não tapa.
-    let drawers = [
-        (shapes_open, shapes_rects(area)),
-        (notes::flyout_open(tool), notes::flyout_rects(area)),
-        (pen::flyout_open(tool), pen::flyout_rects(area)),
-        (templates_open, mind::gallery_rects(area)),
-    ];
-    for (_, rects) in drawers.into_iter().filter(|(open, _)| *open) {
-        let panel = super::float_bar::panel_of(rects.into_iter().map(|(_, r)| r));
-        panel
-            .into_iter()
-            .for_each(|r| super::board_nav::fit::float(&mut live.nav, r));
-    }
+    layout::float_drawers(&mut live.nav, area, tool, [shapes_open, templates_open]);
     if let Some((key, _)) = notice {
         let r = organize::paint_notice(scene, text_system, theme, area, key);
         super::board_nav::fit::float(&mut live.nav, r);

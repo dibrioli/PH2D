@@ -33,7 +33,7 @@ pub(super) type GrupoDaFina<'a> = (
 );
 
 /// Uma entrada de buffer de armazenamento do grupo 3.
-pub(super) fn armazenamento(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
+fn armazenamento(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
         binding,
         visibility: wgpu::ShaderStages::COMPUTE,

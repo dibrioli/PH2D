@@ -47,10 +47,18 @@ fn medida_luz2d_regua_registos() {
                 .filter(|(k, _)| proprias.iter().all(|(o, _)| o != k))
                 .map(|(k, x)| format!("{k} {x}")),
         );
-        linhas.push("DISTANTES 0".into());
         std::fs::write(pasta.join(format!("v{v}.wgsl")), fonte).expect("o módulo");
-        std::fs::write(pasta.join(format!("v{v}.txt")), linhas.join("\n") + "\n")
-            .expect("as constantes");
+        // `v<v>.txt` com `DISTANTES 0` (o de sempre) e `v<v>_d1.txt` com 1 (os degraus da W6h §6).
+        for d in [0, 1] {
+            let mut l = linhas.clone();
+            l.push(format!("DISTANTES {d}"));
+            let nome = if d == 0 {
+                format!("v{v}.txt")
+            } else {
+                format!("v{v}_d1.txt")
+            };
+            std::fs::write(pasta.join(nome), l.join("\n") + "\n").expect("as constantes");
+        }
         eprintln!(
             "REGUA · v{v} = {nome} · {entrada} · {} constantes",
             linhas.len() - 2

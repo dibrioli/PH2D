@@ -197,12 +197,7 @@ fn na_cunha(y: vec2<f32>, w: vec4<f32>) -> bool {
 
 // ⭐ W5k — `pc` está DENTRO de um CORPO (τ < 1: todo emissor e todo oclusor de opacidade > 0): o
 // predicado GEOMÉTRICO da C3 (preencher, o pé na face, o `x⁺` do rebote). A marcha lê o τ (transporte).
-// ⭐ W6h §10 — na `c3_fina_enxuta` (`FINA_ENXUTA`), pelo `meio_sem_cunha` (o `meio` sem o ramo da cunha,
-// gerado dele na montagem do módulo: `shaders.rs`): os grupos dela não leem bloco com cunha.
 fn num_corpo(pc: vec2<f32>) -> bool {
-    if FINA_ENXUTA {
-        return meio_sem_cunha(pc).tau < 1.0;
-    }
     return meio(pc).tau < 1.0;
 }
 

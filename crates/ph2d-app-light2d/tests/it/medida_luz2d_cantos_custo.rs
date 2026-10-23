@@ -340,9 +340,23 @@ fn medida_luz2d_cantos_custo() {
         loadavg()
     );
     let extras = modulos_extra();
-    let nomes: Vec<&str> = VARIANTES
+    // `PH2D_CANTOS_CUSTO_SO=0,4,6`: só essas das [`VARIANTES`] (a 1.ª é a régua dos relativos; o limite de
+    // solvers vivos com as formas de `PH2D_CANTOS_CUSTO_MODULOS`).
+    let bases: Vec<usize> = std::env::var("PH2D_CANTOS_CUSTO_SO").map_or_else(
+        |_| (0..VARIANTES.len()).collect(),
+        |v| {
+            v.split(',')
+                .map(|x| x.trim().parse().expect("PH2D_CANTOS_CUSTO_SO"))
+                .collect()
+        },
+    );
+    assert_eq!(bases.first(), Some(&0), "a lei W6d primeiro");
+    // `PH2D_CANTOS_CUSTO_MODULOS_BASE=6`: a variante sobre a qual as formas correm (por omissão o padrão).
+    let base_das_formas: usize = std::env::var("PH2D_CANTOS_CUSTO_MODULOS_BASE")
+        .map_or(4, |v| v.parse().expect("PH2D_CANTOS_CUSTO_MODULOS_BASE"));
+    let nomes: Vec<&str> = bases
         .iter()
-        .copied()
+        .map(|&v| VARIANTES[v])
         .chain(extras.iter().map(|(n, _)| n.as_str()))
         .collect();
     for (n, cam) in CAMERAS {
@@ -352,16 +366,16 @@ fn medida_luz2d_cantos_custo() {
         let a = afim(cam);
         let base = config(&gpu, a, false);
         let mut solvers: Vec<_> = (0..nomes.len())
-            .map(|v| match extras.get(v.wrapping_sub(VARIANTES.len())) {
+            .map(|v| match extras.get(v.wrapping_sub(bases.len())) {
                 Some(&(_, m)) => solver(
                     &gpu,
                     a,
                     Config {
                         modulo_rc: Some(m),
-                        ..variante(base, 4)
+                        ..variante(base, base_das_formas)
                     },
                 ),
-                None => solver(&gpu, a, variante(base, v)),
+                None => solver(&gpu, a, variante(base, bases[v])),
             })
             .collect();
         let mut minimo = vec![f64::INFINITY; solvers.len()];
@@ -381,8 +395,9 @@ fn medida_luz2d_cantos_custo() {
             }
         }
         let distantes = solvers[0].quadro(&gpu, &cena).distantes;
-        let blocos = blocos_com_cunha(&gpu, &solvers[4]);
-        let recusados = solvers[4].cantos_recusados(&gpu);
+        let padrao = &solvers[bases.iter().position(|&v| v == 4).unwrap_or(0)];
+        let blocos = blocos_com_cunha(&gpu, padrao);
+        let recusados = padrao.cantos_recusados(&gpu);
         eprintln!(
             "CAMERA · cena {n} · {} · distantes {distantes} · blocos com cunha {blocos:?} · recusados {recusados:?} · loadavg {}",
             nome(cam),

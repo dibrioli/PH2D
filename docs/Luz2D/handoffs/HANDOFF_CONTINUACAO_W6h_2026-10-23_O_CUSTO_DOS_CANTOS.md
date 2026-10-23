@@ -240,3 +240,63 @@ Logs (`target/`): `cantos_custo_clock{1..6}.log`, `regua_registos/{head,head2,b,
   [6, −1].
 - **Kill-criterion**: o do §5.1 tal e qual + a enxuta ≤ 128 registos com `DISTANTES 0/1`. Falhar ⇒ produto reposto pelo
   git e PROVAR O MODELO (não há 3.ª forma).
+- **A regra EXATA** (a mesma na CPU e na placa; refinada depois de ler o `pe_na_borda` e o `outra_face`): o disco do
+  `pe_na_borda` tem raio `d + 2h` à volta do texel e não o segmento; `d` ≤ a semente mais perto das 3×3 células, a
+  outra face < `d + 2h` ⇒ o grupo dilatado por 17 + `d_max` + 4, OU o segmento até cada semente dilatado por 1 texel
+  (a bissecção do `na_fronteira` só lê à volta dele). Fração marcada: c5 [−6, −1] 0,1 % · [6, −1] 4,2 % · zoom 1,6
+  18,2 % · zoom 1 16,1 % · c6 [0, −3] 0,2 % · zoom 4 2,6 % · zoom 1 5,2 % (régua `medida_luz2d_cantos_perto`, linha `EXATA`).
+
+## 11. A 2.ª reconstrução — construída, de mesmo bit, e MORRE pelo custo; o modelo provado; produto reposto
+
+- **O produto** (`9070f679d8`, revertido no commit seguinte — `git show 9070f679d8` o reconstrói): a tabela das áreas
+  dos blocos com cunha (`c3_fina_cunhas_linhas`/`_colunas`, 256 fios por linha/coluna), a `c3_fina_marca` (a regra
+  exata), a `c3_fina_enxuta` (`FINA_ENXUTA`: o `num_corpo` pelo `meio_sem_cunha`, GERADO do `meio` na montagem do
+  módulo, `shaders.rs`, por transformação contada) e a `c3_fina_listada` por despacho indireto; `Config::fina_dupla`.
+  **Mesmo bit: 32 casos, 0 bytes** contra a base. **Registos: as cinco em 128** (enxuta 260 KB, listada 323 KB, com
+  `DISTANTES 0/1`). Portões com placa: memória +3,0 %, os dois do teto verdes.
+- **O custo reprova** (3 processos, `load` 12–16, controlo lei W6d ±1 %): o padrão a **+19,3…+28,9 %** sobre a lei
+  W6d nas 7 câmeras (o de antes, no mesmo processo, +2,2…+12,2 %).
+- **A bisseção** (`spikes/regua-registos/formas_w6h_dupla.py` sobre o `v4.wgsl` da régua de registos; `load` ~3,5;
+  `d0_igual` = o padrão ±1 %) — a fina em ms:
+
+| forma | c5 [−6, −1] | c5 [6, −1] | c5 z 1,6 | c5 z 1 | c6 [0, −3] | c6 z 4 | c6 z 1 |
+|---|---|---|---|---|---|---|---|
+| lei W6d | 1,381 | 1,607 | 2,257 | 1,951 | 1,060 | 0,924 | 1,113 |
+| padrão de antes (uma fina) | 1,503 | 1,840 | 2,395 | 2,030 | 1,181 | 1,024 | 1,132 |
+| só a enxuta, passes vazios (`d3`) | 1,500 | 1,757 | 2,265 | 1,946 | 1,143 | 0,925 | 1,132 |
+| + a tabela (`d2`) | 1,528 | 1,808 | 2,313 | 1,995 | 1,182 | 0,970 | 1,160 |
+| + a marcação, nada listado (`d1`) | 1,575 | 1,810 | 2,363 | 2,026 | 1,226 | 1,011 | 1,202 |
+| as duas finas (`d0`) | 1,950 | 2,074 | 3,029 | 2,569 | 1,439 | 1,338 | 1,499 |
+
+  e, noutra rodada (`load` ~5), sobre o padrão de UMA fina: a `ga` e a `e1` antigas da §8 e o módulo de hoje com o
+  `num_corpo` sem cunha em todo o lado (`g1`) — os três iguais, C3 −3,9…+4,9 % (a enxuta EM SI está certa: os ~0,09 ms
+  de `d3` acima de `g1` são os quatro despachos a mais e as barreiras).
+- ⇒ **O MODELO**: o 2.º despacho da fina pesada custa a LATÊNCIA da cadeia mais longa dos grupos dele — **0,26–0,42 ms
+  com 0,1 % ou com 5 % dos grupos listados** (0,72 com 18 %) —, e os grupos perto de uma cunha são os mais lentos. Numa
+  fina só eles sobrepõem-se aos outros 11 mil; num despacho próprio correm com a placa vazia. É o MESMO mecanismo do
+  passe dos cantos da W6g §12 (~0,45–0,5 ms quase igual com 6 367 ou 2 548 texels). A tabela (0,03 ms) e a marcação
+  (0,05–0,08) somam pouco; o `d_max` (576 leituras por fio) é a maior parte da marcação.
+- **Two-strikes atingido** (§5.1): (a) a máscara de bits e (b) as duas pipelines. Produto reposto pelo git (o mesmo bit
+  contra a base conferido depois: 32 casos, 0 bytes). Instrumentos que ficam: o censo `medida_luz2d_sementes_sem_porta`,
+  a linha `MARCA`/`EXATA` do `medida_luz2d_cantos_perto`, `PH2D_CANTOS_CUSTO_SO` e `PH2D_CANTOS_CUSTO_MODULOS_BASE` na
+  régua do custo, a régua de registos com `_d1`, e o `formas_w6h_dupla.py`.
+
+## ⛔ Recusas MEDIDAS (§10–§11)
+
+| Recusa | Porquê |
+|---|---|
+| A lista ADIADA por texel (as sementes sem porta numa lista, um passe por texel) | 300–9 500 texels; um passe por texel em lista custa ~0,5 ms de latência (W6g §12). |
+| As duas pipelines da fina EM SÉRIE (marca → enxuta → listada indireta) | O 2.º despacho custa a latência dos grupos lentos, 0,26–0,42 ms fixos: +19…+29 % (§11). |
+| A regra pelo SEGMENTO até à semente com dilatação 17 (sem o disco) | Inexata: o `pe_na_borda` consulta um disco de raio `d + 2h` (§10). |
+
+## 12. ABERTO (por ordem — substitui o §9) — é o DONO que decide se o item 1 continua
+
+1. **A cura do custo da `V2`: o two-strikes chegou.** O que o modelo deixa (cada uma seria uma 3.ª forma, só com ordem):
+   (a) a listada SEM barreira com a enxuta — a escrever num buffer seu (o grupo 2 sem as saídas, o molde do
+   `c3_fina_cantos`) e uma junta no fim, para a placa as sobrepor (⚠️ a anomalia r5b: pré-lista ‖ fina sem barreira saiu
+   MAIS cara que a soma — medi-la primeiro); (b) um despacho só com o ramo UNIFORME por grupo no TOPO (as duas finas
+   inteiras num kernel; ⚠️ o ramo uniforme no `num_corpo` foi a 168 registos — régua antes); (c) aceitar o custo de hoje
+   (+2…+12 % na C3 com os cantos).
+2. A borda nos níveis 11–12 a 2160p Alta: +3,62 ms (W6g §54.1).
+3. A anomalia da r5b (W6g §12) — agora com a mesma família de (1a): a latência de um despacho pequeno da fina pesada; a
+   família (b) (W5g §37–38).

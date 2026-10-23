@@ -62,6 +62,7 @@ pub(crate) fn process(
     // Read the scale AFTER the wheel landed, so a same-frame zoom and the key
     // drag agree on px-per-second.
     let px_per_s = state.px_per_s;
+    crate::macro_steps::envelhece_a_largada(state, snap);
     let gestures: Vec<TimelineGesture> = ctx.host.store_mut().drain_timeline_gestures().collect();
     for g in gestures {
         // Resize grippers own the gesture whatever the button.

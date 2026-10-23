@@ -71,7 +71,7 @@ pub(crate) fn paint(
     );
     let cy = y + ROW_H_PX * 0.5;
     for (i, e) in snap.macro_etapas.iter().enumerate() {
-        let x = view.x(e.fim) + preview_dx(state, snap, i);
+        let x = view.x(largada_de(state, e).unwrap_or(e.fim)) + preview_dx(state, snap, i);
         if x < view.time_x - tracks::KEY_HIT_HW || x > view.right + tracks::KEY_HIT_HW {
             continue;
         }
@@ -99,6 +99,32 @@ pub(crate) fn paint(
         ctx.host.hit_index_mut().register(id, hit);
     }
 }
+
+/// Onde a etapa `e` caiu, enquanto a linha ainda não traz a edição dela.
+fn largada_de(state: &TimelinePanelState, e: &ph2d_timeline::EtapaDaMacroView) -> Option<f64> {
+    state
+        .macro_largada
+        .filter(|l| (l.entity_bits, l.trilha, l.k) == (e.entity_bits, e.trilha, e.k))
+        .filter(|l| e.fim == l.antes)
+        .map(|l| l.fim)
+}
+
+/// Um quadro passou: a largada sai quando a linha traz a edição ou quando esgota a espera (recusada).
+pub(crate) fn envelhece_a_largada(state: &mut TimelinePanelState, snap: &TimelineViewSnapshot) {
+    let Some(l) = state.macro_largada.as_mut() else {
+        return;
+    };
+    let chegou = snap.macro_etapas.iter().any(|e| {
+        (e.entity_bits, e.trilha, e.k) == (l.entity_bits, l.trilha, l.k) && e.fim != l.antes
+    });
+    l.quadros = l.quadros.saturating_sub(1);
+    if chegou || l.quadros == 0 {
+        state.macro_largada = None;
+    }
+}
+
+/// Quadros que um losango largado espera pela edição (ela chega ao 2.º, medido em 23/10).
+const ESPERA_DA_LARGADA: u8 = 8;
 
 /// **O pedido do losango `e` largado `delta` segundos adiante** (W16): o instante do fim dele + Δ, só
 /// para ele. A porta única do largar — a cena `=6 sobrepor` pede-o por aqui também.
@@ -140,7 +166,22 @@ pub(crate) fn apply(
             if delta != 0.0
                 && let Some(e) = snap.macro_etapas.get(d.index)
             {
-                state.macro_pedido = Some(pedido_ao_largar(e, delta));
+                let pedido = pedido_ao_largar(e, delta);
+                if let MacroRequest::Edita {
+                    campo: CampoDaEtapa::Instante(fim),
+                    ..
+                } = pedido
+                {
+                    state.macro_largada = Some(crate::state::MacroLargada {
+                        entity_bits: e.entity_bits,
+                        trilha: e.trilha,
+                        k: e.k,
+                        antes: e.fim,
+                        fim,
+                        quadros: ESPERA_DA_LARGADA,
+                    });
+                }
+                state.macro_pedido = Some(pedido);
             }
         }
         GesturePhase::Click | GesturePhase::DoubleClick => {
@@ -248,5 +289,57 @@ mod tests {
             crate::state::drain_intents(),
             [TimelineIntent::ScrubExact(s.macro_etapas[1].fim)]
         );
+    }
+
+    /// W17 (smoke do dono 23/10): largado, o losango fica onde caiu até a linha trazer a edição (chega
+    /// dois quadros depois) — nunca volta ao sítio antigo pelo meio; recusada, volta ao fim da espera.
+    /// Mutações que sangram: `largada_de` sempre `None` · o `e.fim == l.antes` tirado · a espera a `1`.
+    #[test]
+    fn largado_o_losango_fica_onde_caiu_ate_a_edicao_chegar() {
+        use ph2d_editor_core::interaction::{GestureMods, TimelineHitKind};
+        let s = snap();
+        let mut st = TimelinePanelState::default();
+        let g = |phase, x| TimelineGesture {
+            surface: ph2d_a11y::NodeId(0),
+            kind: TimelineHitKind::MacroStep { index: 2 },
+            phase,
+            x,
+            y: 0.0,
+            button: ph2d_host::PointerButton::Primary,
+            mods: GestureMods::default(),
+        };
+        apply(&mut st, &s, 2, g(GesturePhase::Begin, 10.0));
+        #[expect(clippy::cast_possible_truncation, reason = "px de ecrã")]
+        let meio = (0.5 * st.px_per_s) as f32;
+        apply(&mut st, &s, 2, g(GesturePhase::End, 10.0 + meio));
+        let onde = |st: &TimelinePanelState, s: &TimelineViewSnapshot| {
+            s.macro_etapas
+                .iter()
+                .map(|e| largada_de(st, e).unwrap_or(e.fim))
+                .collect::<Vec<_>>()
+        };
+        // Os dois quadros em que a linha ainda é a antiga.
+        for _ in 0..2 {
+            assert_eq!(
+                onde(&st, &s),
+                [0.0, 1.0, 2.5],
+                "onde caiu, as outras no sítio"
+            );
+            envelhece_a_largada(&mut st, &s);
+        }
+        // A edição chega (a família ajustou ao quadro: 2,5 → 2,4833…).
+        let mut nova = s.clone();
+        nova.macro_etapas[2].fim = 2.483_333;
+        envelhece_a_largada(&mut st, &nova);
+        assert_eq!(st.macro_largada, None, "a linha já a traz");
+        assert_eq!(onde(&st, &nova), [0.0, 1.0, 2.483_333]);
+        // Recusada: a linha nunca muda e, esgotada a espera, o losango volta.
+        apply(&mut st, &s, 2, g(GesturePhase::Begin, 10.0));
+        apply(&mut st, &s, 2, g(GesturePhase::End, 10.0 + meio));
+        for _ in 0..ESPERA_DA_LARGADA {
+            assert_eq!(onde(&st, &s)[2], 2.5);
+            envelhece_a_largada(&mut st, &s);
+        }
+        assert_eq!(onde(&st, &s)[2], 2.0, "recusada, volta ao sítio dela");
     }
 }

@@ -243,6 +243,21 @@ pub struct MacroDrag {
     pub cur_x: f32,
 }
 
+/// **O losango largado à espera da edição** (W17, smoke do dono 23/10: ao largar ele saltava ao sítio
+/// antigo e depois ao novo): o pedido só chega à linha dois quadros depois, e até lá ele fica onde caiu.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MacroLargada {
+    pub entity_bits: u64,
+    pub trilha: usize,
+    pub k: usize,
+    /// O fim antes do largar: quando a linha traz outro, a edição chegou.
+    pub antes: f64,
+    /// Onde caiu.
+    pub fim: f64,
+    /// Quadros que ainda espera (uma edição recusada volta ao sítio dela).
+    pub quadros: u8,
+}
+
 /// An in-progress dope-sheet key drag: pointer x at Begin + the latest x. The
 /// time delta is `(cur_x - start_x) / px_per_s`, frame-snapped on commit.
 #[derive(Clone, Copy, Debug, PartialEq)]

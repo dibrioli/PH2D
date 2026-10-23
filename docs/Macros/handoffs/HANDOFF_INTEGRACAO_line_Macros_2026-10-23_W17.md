@@ -78,3 +78,13 @@ fotos 01–02 = as duas a crescer no MESMO quadro, cada uma na sua cor; 03 = int
 - **Guarda W16 nova (verde, hipótese do retângulo refutada):** `sobrepor_tests::duas_pinceladas_que_se_cruzam_
   ao_mesmo_tempo_nao_se_apagam` — fora do cruzamento nada do que a série pinta volta ao papel: 0 em Digital,
   Aguarela e Impasto; 13 de 5 947 no Wet Paint (borda da água, tecto 1 %).
+
+## §6 — 3.º smoke do dono (23/10): «aprovado; ao largar, o losango dá dois saltos (antigo → novo)»
+
+- **Mecanismo:** no `End`, `macro_drag.take()` tira a pré-visualização no quadro N; o pedido sai pelo
+  barramento no paint de N, a família aplica-o no `fase_macros` de N+1, depois do `fase_timeline_drain` ⇒ a
+  linha só traz o fim novo em N+2 (dois quadros no sítio antigo).
+- **Cura (painel):** `MacroLargada` (`state_drags.rs`): o losango largado desenha-se onde caiu até a linha
+  trazer outro fim para a mesma `(entity, trilha, k)` ou até 8 quadros (a recusa volta ao sítio);
+  `envelhece_a_largada` no topo do `interact::process`. Gate
+  `macro_steps::tests::largado_o_losango_fica_onde_caiu_ate_a_edicao_chegar`.

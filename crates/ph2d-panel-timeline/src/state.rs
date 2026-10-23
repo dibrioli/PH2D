@@ -101,6 +101,8 @@ pub struct TimelinePanelState {
     pub key_drag: Option<KeyDrag>,
     /// O arrasto de uma etapa da linha «Macro steps» (W5d).
     pub macro_drag: Option<MacroDrag>,
+    /// O losango largado até a linha trazer a edição (W17).
+    pub macro_largada: Option<crate::state::MacroLargada>,
     /// O pedido que o arrasto de uma etapa deixou para o barramento (o `process` empurra-o).
     pub macro_pedido: Option<ph2d_editor_core::macro_edits::MacroRequest>,
     /// The move emitted THIS frame but not yet visible in the published snapshot
@@ -283,6 +285,7 @@ impl Default for TimelinePanelState {
             add_track_open: false,
             key_drag: None,
             macro_drag: None,
+            macro_largada: None,
             macro_pedido: None,
             pending_move_dx: None,
             scale_drag: None,

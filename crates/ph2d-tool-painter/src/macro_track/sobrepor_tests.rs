@@ -214,3 +214,14 @@ fn sobrepor_um_preenchimento_ou_outro_meio_recusa_se() {
         "a água do Wet Paint é da tela: antes de a armar não há Wet Paint"
     );
 }
+
+/// Levar a etapa de volta ao sítio dela não deixa edição vazia: o ficheiro volta a ser o de antes.
+#[test]
+fn deslocar_para_o_sitio_dela_nao_guarda_edicao() {
+    let g = gravada(&disjuntas(), &[PaintMedia::Digital]);
+    let e = etapas::etapas(&g).expect("lê-se");
+    let mut tr = levada(&g, 1, e[1].t0.0 + 100_000).expect("aceite");
+    assert_eq!(tr.edicoes.len(), 1);
+    etapas::desloca(&mut tr, 1, 0).expect("de volta");
+    assert_eq!(tr.edicoes, g.edicoes, "sem edição vazia");
+}

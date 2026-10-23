@@ -26,6 +26,8 @@ pub(crate) struct Casa {
     aviso: Option<ErroDaMacroView>,
     /// As receitas a aplicar no próximo quadro: (bits da receita, onde nasce, sobre que objecto).
     receitas: Vec<(u64, Option<[f32; 2]>, Option<u64>)>,
+    /// O objecto Macro que o último aplicar fez nascer: a composição escolhe-o (como o Add).
+    aplicado: Option<u64>,
 }
 
 fn do_disco(e: &bib::Erro) -> ErroDaMacroView {
@@ -234,6 +236,12 @@ impl Macros {
         self.biblioteca.receitas.push((bits, em, sobre));
     }
 
+    /// **O objecto a escolher** depois do quadro: o objecto Macro que um aplicar fez nascer (novo ou
+    /// por cima). Uma vez.
+    pub fn toma_o_aplicado(&mut self) -> Option<u64> {
+        self.biblioteca.aplicado.take()
+    }
+
     pub(crate) fn receitas(&mut self, f: &mut Familias<'_>, c: &mut Cena<'_>) {
         for (bits, em, sobre) in std::mem::take(&mut self.biblioteca.receitas) {
             let r = aplicar::ficheiro_de(c.sim, bits).and_then(|fi| {
@@ -268,6 +276,9 @@ impl Macros {
         };
         let r = aplicar::aplica(fi, onde, f, c, &mut p);
         f.portas = Some(p);
+        if let Ok(b) = r {
+            self.biblioteca.aplicado = Some(b);
+        }
         r
     }
 
@@ -368,7 +379,11 @@ impl Macros {
                     .unwrap_or_default()
             }),
             por_cima_alvo: alvo,
-            por_cima_recusa: alvo.is_none().then_some(m::MACRO_APLICAR_INCOMPATIVEL),
+            por_cima_recusa: alvo.is_none().then_some(if escolhido.is_some() {
+                m::MACRO_APLICAR_INCOMPATIVEL
+            } else {
+                m::MACRO_POR_CIMA_ESCOLHA
+            }),
             aviso: self.biblioteca.aviso.clone(),
             ..MacroPanelInfo::default()
         }

@@ -143,6 +143,18 @@ thread_local! {
     static MACROS: RefCell<Macros> = RefCell::new(Macros::do_utilizador());
 }
 
+/// **O relógio das macros**: microssegundos desde a 1.ª leitura (o núcleo nunca lê o de parede; a
+/// composição passa este a [`Macros::quadro`]).
+#[must_use]
+pub fn relogio_us() -> u64 {
+    static INICIO: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    let us = INICIO
+        .get_or_init(std::time::Instant::now)
+        .elapsed()
+        .as_micros();
+    u64::try_from(us).unwrap_or(u64::MAX)
+}
+
 /// O estado da família neste processo.
 pub fn com<R>(f: impl FnOnce(&mut Macros) -> R) -> R {
     MACROS.with(|m| f(&mut m.borrow_mut()))

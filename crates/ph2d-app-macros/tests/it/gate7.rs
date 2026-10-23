@@ -140,6 +140,17 @@ impl Banca {
 
     /// A shell publica o instantâneo e o painel pinta; os gestos que a pintura levanta vão à família.
     pub(crate) fn pinta(&mut self) {
+        let info = self.info(self.escolhido.or(Some(self.bits)));
+        set_current_macros(info);
+        self.rects = self.host.paint::<MacrosPanel>(&mut self.st, VIEWPORT);
+        self.drena();
+    }
+
+    /// O instantâneo que a shell publica com `escolhido` escolhido.
+    pub(crate) fn info(
+        &mut self,
+        escolhido: Option<u64>,
+    ) -> ph2d_editor_core::macro_edits::MacroPanelInfo {
         let imagens = &self.imagens;
         let e_imagem = |_: &SimWorld, b: u64| imagens.borrow().contains_key(&b);
         let (mut nada, mut sem) = (
@@ -162,12 +173,7 @@ impl Banca {
             motion_na_mao: false,
             etapas: &[],
         };
-        let info = self
-            .m
-            .info(&f, &self.sim, self.escolhido.or(Some(self.bits)), None);
-        set_current_macros(info);
-        self.rects = self.host.paint::<MacrosPanel>(&mut self.st, VIEWPORT);
-        self.drena();
+        self.m.info(&f, &self.sim, escolhido, None)
     }
 
     fn drena(&mut self) {

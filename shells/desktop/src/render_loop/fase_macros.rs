@@ -24,16 +24,6 @@ pub(super) use atlas_da_cena;
 /// As etapas das famílias que a MACROS não conhece: a composição injecta o Motion.
 pub(super) const ETAPAS: Injectadas<'static> = &[&EtapasDoMotion];
 
-/// O relógio das macros: microssegundos desde o 1.º quadro (o núcleo nunca lê o de parede).
-fn agora_us() -> u64 {
-    static INICIO: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
-    let us = INICIO
-        .get_or_init(std::time::Instant::now)
-        .elapsed()
-        .as_micros();
-    u64::try_from(us).unwrap_or(u64::MAX)
-}
-
 impl crate::App {
     /// Depois de o Painter consumir a entrada do quadro.
     pub(super) fn fase_macros(&mut self) {
@@ -76,8 +66,14 @@ impl crate::App {
             intents: &mut self.timeline_intents,
             partidas: Some(&|b, t| palcos.partida(b, t)),
         };
-        let agora = agora_us();
+        let agora = ph2d_app_macros::relogio_us();
         ph2d_app_macros::com(|m| m.quadro(&mut f, &mut c, agora));
+        // O objecto Macro que um aplicar fez nascer fica escolhido (como o Add).
+        if let Some(b) = ph2d_app_macros::com(ph2d_app_macros::Macros::toma_o_aplicado)
+            && let Some(h) = gfx.hero_screen.as_mut()
+        {
+            h.gizmo.replace_selection(Some(b));
+        }
         let hero = gfx.hero_screen.as_ref();
         // O erro da reprodução em cena: só a shell alcança os palcos.
         let erro = escolhido.and_then(|b| {

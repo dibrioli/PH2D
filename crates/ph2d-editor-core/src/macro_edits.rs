@@ -322,6 +322,8 @@ pub const MACRO_APLICADA: &str = "app.macros.apply.applied";
 pub const MACRO_APLICAR_MISTO: &str = "app.macros.apply.over_mixed";
 /// Por cima: o objecto escolhido não recebe esta macro (nem imagem nem objecto Motion).
 pub const MACRO_APLICAR_INCOMPATIVEL: &str = "app.macros.apply.over_incompatible";
+/// Por cima: nada escolhido — escolha uma imagem ou um objecto Motion.
+pub const MACRO_POR_CIMA_ESCOLHA: &str = "panel.macros.lib.apply_over_needs_target";
 /// O objecto alvo já não existe.
 pub const MACRO_APLICAR_SEM_ALVO: &str = "app.macros.apply.no_target";
 /// O objecto que a macro cria não nasceu (`{detail}`).

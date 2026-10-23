@@ -339,3 +339,58 @@ fn guardar_como_asset_e_instanciar_aplica_novo() {
         .map(|(_, i)| (i.1, i.2));
     assert_eq!(filho, Some((48, 40)), "a imagem gravada nasceu dentro dela");
 }
+
+/// ⭐ Aplicar escolhe o objecto Macro que nasceu (novo e por cima), como o Add: a composição lê-o
+/// uma vez depois do quadro.
+#[test]
+fn aplicar_escolhe_o_objeto_macro_nascido() {
+    let lib = pasta("escolhe");
+    let (mut b, dono) = banca(64, 64, &lib);
+    grava(&mut b, [10.0, 30.0], [54.0, 30.0]);
+    b.m.pede(MacroRequest::Guarda { entity_bits: dono });
+    b.quadro();
+    assert_eq!(b.m.toma_o_aplicado(), None, "guardar não escolhe nada");
+    let antes = macros(&mut b);
+    b.m.pede(MacroRequest::Aplica {
+        nome: "Splash".into(),
+        onde: OndeAplicar::Novo { em: None },
+    });
+    b.quadro();
+    let novo: Vec<u64> = macros(&mut b)
+        .into_iter()
+        .filter(|x| !antes.contains(x))
+        .collect();
+    assert_eq!(b.m.toma_o_aplicado(), novo.first().copied(), "o novo");
+    assert_eq!(b.m.toma_o_aplicado(), None, "uma vez");
+    let antes = macros(&mut b);
+    b.m.pede(MacroRequest::Aplica {
+        nome: "Splash".into(),
+        onde: OndeAplicar::PorCima { alvo: b.bits },
+    });
+    b.quadro();
+    assert_eq!(aviso(&b), m::MACRO_APLICADA, "{:?}", b.m.aviso());
+    let raiz: Vec<u64> = macros(&mut b)
+        .into_iter()
+        .filter(|x| !antes.contains(x))
+        .collect();
+    assert_eq!(raiz.len(), 1);
+    assert_ne!(raiz[0], b.bits);
+    assert_eq!(b.m.toma_o_aplicado(), Some(raiz[0]), "o objecto Macro por cima");
+}
+
+/// ⭐ Sem nada escolhido o «Aplicar por cima» pede que se escolha uma imagem ou um objecto Motion; com
+/// um objecto que não serve, diz que esse não serve.
+#[test]
+fn sem_escolha_o_por_cima_pede_que_se_escolha() {
+    let lib = pasta("sem-escolha");
+    let (mut b, _) = banca(32, 32, &lib);
+    let i = b.info(None);
+    assert_eq!(i.por_cima_alvo, None);
+    assert_eq!(i.por_cima_recusa, Some(m::MACRO_POR_CIMA_ESCOLHA));
+    assert!(ph2d_i18n::tr(m::MACRO_POR_CIMA_ESCOLHA).contains("select"));
+    let vazio = b.sim.world_mut().spawn(Transform::IDENTITY).id().to_bits();
+    let i = b.info(Some(vazio));
+    assert_eq!(i.por_cima_recusa, Some(m::MACRO_APLICAR_INCOMPATIVEL));
+    let i = b.info(Some(b.bits));
+    assert_eq!((i.por_cima_alvo, i.por_cima_recusa), (Some(b.bits), None), "controlo");
+}

@@ -119,7 +119,7 @@ Os passos são os do §5 do handoff de continuação, repetidos:
 
 ## 7 — ABERTO depois da linha
 
-1. **Smoke do dono da cena 29** (§6) — se chegar, mecanismo antes de sintoma.
+1. ~~**Smoke do dono da cena 29**~~ — ✅ **APROVADO pelo dono em 23/10** («smoke ok»: os passos 1–7 do §6, com o Backspace da menção).
 2. **Ordem de pintura:** alerta e barra do vídeo ficam por BAIXO da barra de ferramentas e das gavetas. Além disso os flyouts ancorados à barra de estilo (formas, pontas de seta,
    facilitar) NÃO estão em `keep` e podem sobrepor uma gaveta aberta (achado da auditoria; não curado).
 3. Herdados: letra que não nasce à escala do ecrã; README do oráculo (o W14 nomeia um teste apagado); pendentes do §4.2 da lista-mãe da W23.

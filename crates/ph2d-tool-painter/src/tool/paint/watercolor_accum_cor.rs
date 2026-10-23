@@ -69,11 +69,17 @@ impl PainterTool {
                 let caixa = dabs
                     .iter()
                     .filter(|d| d.radius_px > 0.0)
-                    .map(|d| {
-                        let (cx, cy, r) = (d.center[0], d.center[1], d.radius_px);
-                        let lo = |v: f32, n: usize| ((v - r).floor().max(0.0) as usize).min(n);
-                        let hi = |v: f32, n: usize| ((v + r).ceil().max(0.0) as usize).min(n);
-                        [lo(cx, fw), lo(cy, fh), hi(cx, fw), hi(cy, fh)]
+                    // Cada SUB-dab da cápsula (o mesmo `off(k)` do depósito abaixo): só o centro do
+                    // dab deixava os do Continuous fora da caixa, e o `parceiro` lia fora dela.
+                    .flat_map(|d| {
+                        let capsula = d.capsula(&spec);
+                        (0..capsula.map_or(1, |c| c.n())).map(move |k| {
+                            let o = capsula.map_or([0.0, 0.0], |c| c.off(k));
+                            let (cx, cy, r) = (d.center[0] + o[0], d.center[1] + o[1], d.radius_px);
+                            let lo = |v: f32, n: usize| ((v - r).floor().max(0.0) as usize).min(n);
+                            let hi = |v: f32, n: usize| ((v + r).ceil().max(0.0) as usize).min(n);
+                            [lo(cx, fw), lo(cy, fh), hi(cx, fw), hi(cy, fh)]
+                        })
                     })
                     .reduce(|a, b| {
                         [

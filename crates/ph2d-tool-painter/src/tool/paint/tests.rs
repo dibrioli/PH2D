@@ -242,6 +242,7 @@ mod sonda_p40_passo0; // prompt 40 passo 0: onde a caixa está ligada e a cápsu
 mod stroke_and_session;
 mod textura_tinge; // Bug #51: textura × tinta, o Randomize na textura, e o Randomize «a cada traço» (12/10)
 mod texture_and_tiling;
+mod watercolor_agua_capsula; // o Rewet com o Continuous não lê fora da caixa da água (23/10)
 mod watercolor_arrasto_molhado; // o Smudge arrasta a tinta MOLHADA da sessão (2026-09-29)
 mod watercolor_flow; // o Ragged Edge com FLUXO e PAPEL (BUGS #31, 2026-10-02)
 mod watercolor_look;

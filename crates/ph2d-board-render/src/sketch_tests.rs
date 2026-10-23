@@ -275,10 +275,19 @@ fn a_hand_drawn_curved_arrow_follows_its_route() {
 /// Quantos traços à mão a imagem de UMA forma em rascunho gerou, com o lado maior a `px` no ecrã, e a
 /// espessura (mundo) do traço mais grosso que pintou.
 fn hand_drawn_at(px: f64, detail: crate::Detail) -> (usize, f64) {
+    let (n, w, _) = drawn_at(px, detail, ph2d_board_model::FillStyle::Solid);
+    (n, w)
+}
+
+/// [`hand_drawn_at`] com o preenchimento `fill`, e a opacidade de cada preenchimento LISO pintado na
+/// cor da forma.
+fn drawn_at(px: f64, detail: crate::Detail, fill: ph2d_board_model::FillStyle) -> (usize, f64, Vec<u8>) {
     let mut set = ph2d_board_model::BoardSet::default();
     let id = set.create("b6".into());
     let b = set.get_mut(id).unwrap();
-    ph2d_board_model::BoardOp::Put(rect(1)).apply(&mut b.doc);
+    let mut el = rect(1);
+    el.shape_mut().unwrap().style.look.fill_style = fill;
+    ph2d_board_model::BoardOp::Put(el).apply(&mut b.doc);
     b.camera = ph2d_board_model::Camera {
         center_x: 80.0,
         center_y: 50.0,
@@ -307,15 +316,57 @@ fn hand_drawn_at(px: f64, detail: crate::Detail) -> (usize, f64) {
         &routes,
         None,
     );
-    let widest = scene
-        .take_record()
+    let ops = scene.take_record();
+    let widest = ops
         .iter()
         .filter_map(|op| match op {
             ph2d_vector::DrawOp::Stroke { style, .. } => Some(style.width),
             _ => None,
         })
         .fold(0.0, f64::max);
-    (cache.sketch.rough.len(), widest)
+    let tones = ops
+        .iter()
+        .filter_map(|op| match op {
+            ph2d_vector::DrawOp::Fill {
+                brush: ph2d_vector::Brush::Solid(c),
+                ..
+            } => Some(c.to_rgba8()),
+            _ => None,
+        })
+        .filter(|c| [c.r, c.g, c.b] == [250, 200, 100])
+        .map(|c| c.a)
+        .collect();
+    (cache.sketch.rough.len(), widest, tones)
+}
+
+/// ⭐ W24 (`measure_hatch_far`) — abaixo de [`crate::HATCH_FINAL_BELOW_PX`] no ecrã as RISCAS são o final:
+/// nenhum traço à mão, o contorno engrossado e o preenchimento LISO no tom medido de cada riscas; acima,
+/// à mão; o limiar a zero devolve o desenho de antes.
+#[test]
+fn a_far_hatched_shape_is_drawn_final_in_its_measured_tone() {
+    use ph2d_board_model::FillStyle;
+    let lim = crate::HATCH_FINAL_BELOW_PX;
+    let w = rect(1).shape().unwrap().style.stroke_width;
+    // Os números MEDIDOS (doc 16 §4), não as constantes: o gate vigia-as.
+    for (fill, tone) in [
+        (FillStyle::Hachure, 0.25),
+        (FillStyle::CrossHatch, 0.5),
+        (FillStyle::Zigzag, 0.25),
+    ] {
+        let a = (tone * 255.0_f32).round() as u8;
+        assert_eq!(
+            drawn_at(lim - 1.0, crate::Detail::default(), fill),
+            (0, w * 2.5, vec![a]),
+            "{fill:?} de longe: final, contorno engrossado, liso no tom {tone}"
+        );
+        let (n, _, _) = drawn_at(lim + 1.0, crate::Detail::default(), fill);
+        assert_eq!(n, 1, "{fill:?} de perto: à mão");
+        let off = crate::Detail {
+            hatch_final_below_px: 0.0,
+            ..crate::Detail::default()
+        };
+        assert_eq!(drawn_at(lim - 1.0, off, fill).0, 1, "{fill:?} sem limiar: à mão");
+    }
 }
 
 /// ⭐ B6 (doc 16 §1) — abaixo de [`crate::SKETCH_FINAL_BELOW_PX`] no ecrã o rascunho é o FINAL (nenhum traço

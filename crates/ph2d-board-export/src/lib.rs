@@ -254,6 +254,8 @@ pub fn paint_page(
             frame_title_only_px: 0.0,
             note_blocks: false,
             sketch_final_below_px: 0.0,
+            hatch_final_below_px: 0.0,
+            hatch_tone: [0.0; 3],
         };
     }
     cache.hide_votes = true;

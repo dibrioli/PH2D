@@ -28,6 +28,13 @@ pub struct Detail {
     /// Uma forma em rascunho cujo lado maior fica abaixo disto no ecrã desenha-se FINAL (B6). `0` =
     /// sempre à mão.
     pub sketch_final_below_px: f64,
+    /// Uma forma com preenchimento às RISCAS cujo lado maior fica abaixo disto no ecrã desenha-se
+    /// FINAL, com o contorno engrossado e o preenchimento liso no tom [`Detail::hatch_tone`] (W24).
+    /// `0` = sempre à mão.
+    pub hatch_final_below_px: f64,
+    /// A opacidade do preenchimento liso que faz as vezes das riscas de longe: riscas, cruzadas,
+    /// ziguezague.
+    pub hatch_tone: [f32; 3],
 }
 
 impl Default for Detail {
@@ -36,6 +43,8 @@ impl Default for Detail {
             frame_title_only_px: FRAME_TITLE_ONLY_PX,
             note_blocks: true,
             sketch_final_below_px: SKETCH_FINAL_BELOW_PX,
+            hatch_final_below_px: HATCH_FINAL_BELOW_PX,
+            hatch_tone: HATCH_TONE,
         }
     }
 }
@@ -43,6 +52,15 @@ impl Default for Detail {
 /// O limiar de nascença de [`Detail::sketch_final_below_px`]. Medido (doc 16 §1, `measure_bloco4`): até 10 px
 /// o final de contorno engrossado não se distingue do rascunho (abaixo do controlo de ½ px); a 12 px já.
 pub const SKETCH_FINAL_BELOW_PX: f64 = 11.0;
+
+/// O limiar de nascença de [`Detail::hatch_final_below_px`]. Medido (doc 16 §4, `measure_hatch_far`): até
+/// 10 px o final no tom não se distingue das riscas à mão, em rascunho e no final importado; a 11 px as
+/// cruzadas e o importado chegam ao controlo de ½ px.
+pub const HATCH_FINAL_BELOW_PX: f64 = 11.0;
+
+/// Os tons de nascença de [`Detail::hatch_tone`] — o mínimo da razão de 5 a 10 px (doc 16 §4): riscas
+/// 0,25, cruzadas 0,5; o ziguezague desenha-se com as riscas (`sketch::options`).
+pub const HATCH_TONE: [f32; 3] = [0.25, 0.5, 0.25];
 
 /// O limiar de nascença de [`Detail::frame_title_only_px`]. ⚠️ Medido na 2.ª rodada da W5 (ver a
 /// tabela no handoff W5 e na régua).

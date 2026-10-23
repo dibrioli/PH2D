@@ -119,11 +119,44 @@ baralhado com empates, chaves longas, vídeos).
 | M8 a partição dos vídeos ao contrário | ordem | sangrou |
 | M9 prefixo de 4 bytes em vez de 8 | — | sobrevive: EQUIVALENTE (o empate cai no texto) |
 
+## 5. W24 — as riscas de longe (23/10, `measure_hatch_far`)
+
+**A pergunta** (a recusa «NÃO medido» abaixo): as formas com preenchimento às riscas desenham-se SEMPRE à mão, mesmo de longe.
+Custam? E um final de contorno engrossado (×2,5, o de §1) com o preenchimento LISO num tom passa por elas?
+
+Custo (10 mil formas em rascunho, 1920×1080, mínimo de 7×20, ms CPU / placa; `load` 17→9; «de longe» = a candidata):
+
+| forma no ecrã | sólido (produto) | riscas à mão | riscas de longe | cruzadas à mão | cruzadas de longe |
+|---|---|---|---|---|---|
+| 5 px | 10,2 / 3,8 | 28,6 / 15,3 | 10,5 / 3,8 | 33,3 / 20,6 | 11,1 / 3,8 |
+| 8 px | 11,1 / 4,8 | 29,0 / 19,7 | 11,0 / 8,8 | 34,0 / 41,9 | 11,1 / 8,7 |
+| 10 px | 8,9 / 7,4 | 25,0 / 32,9 | 9,0 / 7,2 | 29,5 / 37,6 | 9,0 / 7,9 |
+
+⇒ as riscas custavam 2,6–3× a CPU e 2–5× a placa do sólido de longe. Visibilidade (400 formas, 640×480; razão = |Δ luma|
+à mão × de longe ÷ controlo de longe × ele ½ px; ≤ 1 não se vê), o tom VARRIDO de 0,1 a 0,7, o mínimo por linha:
+
+| forma no ecrã | riscas, tom 0,25 | cruzadas, tom 0,5 | riscas do final importado, tom 0,25 |
+|---|---|---|---|
+| 5 px | 0,46 | 0,46 | 0,54 |
+| 8 px | 0,65 | 0,68 | 0,70 |
+| 10 px | 0,74 | 0,84 | 0,80 |
+| 11 px | 0,90 | 1,01 | 1,00 |
+| 12 px | 0,94 | 1,06 | 1,06 |
+| 16 px | 1,29 | 1,48 | 1,54 |
+
+O tom das cruzadas é um mínimo em U (0,4 → 0,71 · 0,5 → 0,68 · 0,6 → 0,71 a 8 px); o ziguezague desenha-se com as riscas
+(`sketch::options`) e mede igual. Fotos conferidas a 1× (a 4× as riscas à mão lêem-se como textura e a candidata lisa; a 1×
+não). **A lei** (`lib.rs::paint_shape`): `tone = hatch_tone(fill_style)` quando `lado × zoom < lod(hatch_final_below_px)`;
+com `tone`, o final com contorno ×2,5 e o preenchimento na cor da forma × tom. `HATCH_FINAL_BELOW_PX = 11` (as cruzadas e o
+importado chegam ao controlo aos 11), `HATCH_TONE = [0,25, 0,5, 0,25]`; o export vectorial continua à mão. Gate
+`sketch::tests::a_far_hatched_shape_is_drawn_final_in_its_measured_tone`; mutações: tom ignorado e tons trocados ⇒ vermelho.
+
 ## ⛔ Recusas MEDIDAS
 
 | proposta | porquê não |
 |---|---|
 | desenhar o FINAL simples abaixo de N px (o candidato da W5) | perde o contorno: razão 1,5–2,3 contra o controlo ½ px em TODOS os tamanhos de 5 a 32 px — vê-se |
 | limiar acima de 11 px | ×2,5 passa o controlo exigente a 12 px (1,08) e o tremido aparece nas fotos |
-| levar o caminho de longe às formas com preenchimento às riscas (`fill_style` ≠ sólido) | NÃO medido (a régua só tem o sólido): o final pinta-as sólidas, o que muda o tom — ficam à mão até uma régua as medir |
+| levar às riscas o caminho de longe do SÓLIDO (preenchimento cheio) | muda o tom; MEDIDO na W24 (§5): o que passa é o liso no tom das riscas (0,25 / 0,5), não o cheio |
+| limiar das riscas acima de 11 px | cruzadas 1,01 e importado 1,00 aos 11 px, 1,06 aos 12 (§5) |
 | `sort_unstable` sobre as referências (sem prefixo) | igual ao de antes (20,2 contra 21,7 ms baralhado): o custo é ir ao texto, não a estabilidade |

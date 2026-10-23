@@ -25,7 +25,7 @@ mod video;
 
 pub use anim::{Animate, frame_ms, install_animator};
 pub use facilitate::{paint_stamp, paint_votes, stamp_color, stamp_path};
-pub use frames::{Detail, FRAME_TITLE_ONLY_PX, SKETCH_FINAL_BELOW_PX};
+pub use frames::{Detail, FRAME_TITLE_ONLY_PX, HATCH_FINAL_BELOW_PX, HATCH_TONE, SKETCH_FINAL_BELOW_PX};
 pub use gray::{gray_of, to_gray};
 pub use grid::{dot_grid, grid_step_world};
 pub use image::{Decode, Images, Pixels, Salvage, install_decoder, install_salvager, level_to_box};
@@ -445,10 +445,13 @@ fn paint_shape(
     // O rascunho, ou um final com o preenchimento às riscas que veio de um `.excalidraw` (W9).
     // De longe o rascunho é o final com o contorno engrossado: a mesma imagem, sem o traço à mão (B6, doc 16).
     let solid = st.look.fill_style == ph2d_board_model::FillStyle::Solid;
-    let far =
-        st.sketch && solid && el.w.max(el.h) * zoom < cache.lod(cache.detail.sketch_final_below_px);
-    let hand = (st.sketch && !far) || !solid;
-    let width = st.stroke_width * if far { SKETCH_FAR_STROKE } else { 1.0 };
+    let side = el.w.max(el.h) * zoom;
+    let far = st.sketch && solid && side < cache.lod(cache.detail.sketch_final_below_px);
+    // W24 — as riscas de longe: o final com o preenchimento liso no tom medido (`measure_hatch_far`).
+    let tone = hatch_tone(st.look.fill_style, cache.detail.hatch_tone)
+        .filter(|_| side < cache.lod(cache.detail.hatch_final_below_px));
+    let hand = ((st.sketch && !far) || !solid) && tone.is_none();
+    let width = st.stroke_width * if far || tone.is_some() { SKETCH_FAR_STROKE } else { 1.0 };
     if faded {
         let [x0, y0, x1, y1] = el.aabb();
         let pad = width
@@ -474,7 +477,9 @@ fn paint_shape(
         sketch::paint_shape(scene, &mut cache.sketch, frame, at, el, shape.kind, o, t);
     } else {
         if let Some(c) = st.fill {
-            scene.fill_path(&o.fill, &Brush::Solid(doc_color(c)), t);
+            let c = doc_color(c);
+            let c = tone.map_or(c, |k| c.multiply_alpha(k));
+            scene.fill_path(&o.fill, &Brush::Solid(c), t);
         }
         if let Some(c) = st.stroke.filter(|_| st.stroke_width > 0.0) {
             let stroke = style_stroke(width, st.dash);
@@ -623,6 +628,17 @@ fn point(p: [f64; 2]) -> Point {
 fn token(t: ColorToken, theme: Theme) -> Color {
     let c = t.resolve(theme);
     Color::from_rgba8(c.r, c.g, c.b, c.a)
+}
+
+/// O tom do preenchimento liso que faz as vezes das riscas `fill` de longe; `None` no sólido.
+fn hatch_tone(fill: ph2d_board_model::FillStyle, tones: [f32; 3]) -> Option<f32> {
+    use ph2d_board_model::FillStyle;
+    match fill {
+        FillStyle::Solid => None,
+        FillStyle::Hachure => Some(tones[0]),
+        FillStyle::CrossHatch => Some(tones[1]),
+        FillStyle::Zigzag => Some(tones[2]),
+    }
 }
 
 fn doc_color(Rgba([r, g, b, a]): Rgba) -> Color {

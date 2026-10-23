@@ -25,18 +25,18 @@ use ph2d_vector::VectorScene;
 use std::time::Instant;
 
 /// O lado da forma da mistura, em unidades do mundo (`board_with`).
-const SIDE: f64 = 24.0;
+pub(super) const SIDE: f64 = 24.0;
 /// Os tamanhos da forma no ecrã medidos (px). Abaixo de 4 já é um ponto de cor (`DOT_PX`).
 const PX: [f64; 9] = [5.0, 6.0, 8.0, 10.0, 11.0, 12.0, 16.0, 24.0, 32.0];
-const LOOK: (u32, u32) = (640, 480);
+pub(super) const LOOK: (u32, u32) = (640, 480);
 
-fn at_px(mut set: BoardSet, px: f64) -> BoardSet {
+pub(super) fn at_px(mut set: BoardSet, px: f64) -> BoardSet {
     let id = set.boards()[0].id;
     set.get_mut(id).unwrap().camera.zoom = px / SIDE;
     set
 }
 
-fn cache_for(final_below: f64) -> RenderCache {
+pub(super) fn cache_for(final_below: f64) -> RenderCache {
     let mut c = RenderCache::default();
     c.detail = Detail {
         sketch_final_below_px: final_below,
@@ -45,7 +45,7 @@ fn cache_for(final_below: f64) -> RenderCache {
     c
 }
 
-fn loadavg() -> String {
+pub(super) fn loadavg() -> String {
     std::fs::read_to_string("/proc/loadavg")
         .unwrap_or_default()
         .trim()
@@ -159,7 +159,7 @@ fn render_look(
 }
 
 /// A média e o p99,9 de |Δ luma| (0–255) entre duas imagens.
-fn diff(a: &[u8], b: &[u8]) -> (f64, f64) {
+pub(super) fn diff(a: &[u8], b: &[u8]) -> (f64, f64) {
     let luma =
         |p: &[u8]| 0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2]);
     let mut d: Vec<f64> = a

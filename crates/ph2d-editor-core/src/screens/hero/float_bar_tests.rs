@@ -279,3 +279,35 @@ fn the_frame_top_margin_keeps_the_strip_above_the_framed_selection() {
         "sem ④, a margem de sempre"
     );
 }
+
+/// ⭐ W24 (auditoria do fecho) — sem vão por cima nem por baixo da seleção, a barra fica na altura livre
+/// mais perto (rente a um painel ou ao lado da seleção),
+/// à folga com que o vão se mede (o fundo da barra mais um `gap`): com só o `gap` a altura «rente»
+/// tocava o painel, nunca servia, e a barra fugia para o bordo da janela, longe da seleção. E o «rente»
+/// nunca tapa a própria seleção (o vão entre os painéis, aqui, é ela).
+#[test]
+fn with_no_room_by_the_selection_the_strip_takes_the_nearest_free_height() {
+    let a = Rect::new(0.0, 0.0, 1000.0, 2000.0);
+    let sel = Rect::new(450.0, 1000.0, 100.0, 40.0);
+    let above = Rect::new(0.0, 800.0, 1000.0, 190.0);
+    let below = Rect::new(0.0, 1045.0, 1000.0, 400.0);
+    let keep = [above, below];
+    let r = strip_rects_clear_of(a, sel, &[4, 2], strip_button_px(), gap(), &keep);
+    assert!(!r.is_empty(), "a barra");
+    // Os botões (sem o fundo): a folga do vão é o fundo `Xs` mais um `gap`.
+    let pad = Spacing::Xs.px() + gap();
+    for b in &r {
+        for k in [above, below, sel] {
+            let apart = b.x + b.w <= k.x - pad + 1e-3
+                || b.x >= k.x + k.w + pad - 1e-3
+                || b.y + b.h <= k.y - pad + 1e-3
+                || b.y >= k.y + k.h + pad - 1e-3;
+            assert!(apart, "o botão {b:?} toca {k:?}");
+        }
+    }
+    let y0 = r.iter().map(|b| b.y).fold(f32::INFINITY, f32::min);
+    assert!(
+        (y0 - sel.y).abs() < 100.0,
+        "junto da seleção, não no bordo da janela: y {y0}"
+    );
+}

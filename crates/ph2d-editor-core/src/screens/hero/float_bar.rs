@@ -227,7 +227,7 @@ pub fn strip_rects_clear_of(
     let layouts = strip_layouts(area.w, groups, s);
     let bottom = area.y + area.h;
     let cx = sel.x + sel.w / 2.0;
-    let place = |rows: &[&[usize]], ys: &[f32]| {
+    let place = |rows: &[&[usize]], ys: &[f32], keep: &[Rect]| {
         let (w, h) = rows_extent(rows, s);
         ys.iter()
             .filter(|&&y| y >= area.y && y + h <= bottom)
@@ -239,21 +239,27 @@ pub fn strip_rects_clear_of(
     for rows in layouts.iter().map(|l| slices(l)) {
         let h = rows_extent(&rows, s).1;
         let near = [sel.y - h - gap, (sel.y + sel.h + gap).min(bottom - h)];
-        if let Some(out) = place(&rows, &near) {
+        if let Some(out) = place(&rows, &near, keep) {
             return out;
         }
     }
-    // Sem vão junto da seleção: a altura livre mais perto dela, rente a um painel ou a um bordo.
-    for rows in layouts.iter().map(|l| slices(l)) {
-        let h = rows_extent(&rows, s).1;
-        let mut ys: Vec<f32> = keep
-            .iter()
-            .flat_map(|k| [k.y + k.h + gap, k.y - h - gap])
-            .chain([area.y, bottom - h])
-            .collect();
-        ys.sort_by(|a, b| (a - sel.y).abs().total_cmp(&(b - sel.y).abs()));
-        if let Some(out) = place(&rows, &ys) {
-            return out;
+    // Sem vão junto da seleção: a altura livre mais perto dela, rente a um painel ou a um bordo — à
+    // folga do vão (`keep_pad`; com só o `gap` o «rente» tocava o painel). Primeiro sem tapar a
+    // seleção; só depois por cima dela (o mal menor: o chrome nunca).
+    let pad = keep_pad();
+    let with_sel: Vec<Rect> = keep.iter().copied().chain([sel]).collect();
+    for clear in [&with_sel[..], keep] {
+        for rows in layouts.iter().map(|l| slices(l)) {
+            let h = rows_extent(&rows, s).1;
+            let mut ys: Vec<f32> = clear
+                .iter()
+                .flat_map(|k| [k.y + k.h + pad, k.y - h - pad])
+                .chain([area.y, bottom - h])
+                .collect();
+            ys.sort_by(|a, b| (a - sel.y).abs().total_cmp(&(b - sel.y).abs()));
+            if let Some(out) = place(&rows, &ys, clear) {
+                return out;
+            }
         }
     }
     // Nem isso (a janela não leva a barra sem tapar algo): a forma mais baixa que cabe na largura.
@@ -319,11 +325,16 @@ fn strip_layouts(room: f32, groups: &[usize], s: f32) -> Vec<Vec<Vec<usize>>> {
     out
 }
 
+/// A folga entre os botões da barra e o que ela evita: o respiro do fundo ([`panel_of`]) mais um [`gap`].
+fn keep_pad() -> f32 {
+    Spacing::Xs.px() + gap()
+}
+
 /// O `x` da barra de largura `w` na faixa `(y, h)`: o vão de `area` sem `keep` mais perto de a
 /// centrar em `cx`. A folga é o respiro do fundo da barra ([`panel_of`]) mais um [`gap`]: a foto da
 /// cena 29 (23/10) com só o `gap` encostava os dois fundos.
 fn free_x(area: Rect, keep: &[Rect], (y, h): (f32, f32), w: f32, cx: f32) -> Option<f32> {
-    let pad = Spacing::Xs.px() + gap();
+    let pad = keep_pad();
     let mut free = vec![(area.x, area.x + area.w)];
     for k in keep
         .iter()

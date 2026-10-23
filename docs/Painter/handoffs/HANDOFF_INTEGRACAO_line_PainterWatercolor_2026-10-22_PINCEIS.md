@@ -98,3 +98,13 @@
   composite, Shape no predicado, Composite/Shape Color no reset). Fotos `tutorial/fotos/vazamento_{antes,depois}.png`.
 - **Aberto (física, não estado):** o Wet Paint acopla manchas longe pela cadência de secagem GLOBAL (`ph2d_wet_paint::sim`,
   `vmax` da grade): 175 texels Δ5 sem estado diferente no pincel; o portão pinta a 3.ª mancha numa tela nova no Wet.
+
+## §13 — Integração 23/10 (no main por fast-forward)
+
+- **Base:** o `main` de `d850fc1167` (507 commits desde o merge-base `100d34c8e0`: Luz2D W6b–g, UIUX F18–F26, Macros W16, CodeEditor). Rebase de 332 commits, 50 ficheiros em comum; `PROJECT_SCHEMA` 193 (a linha não mexe), ADR 0189 livre, `Cargo.lock` só `ph2d-pen`, chaves `folder.*`/`group_in_media` sem consumidor novo.
+- **Conflitos (pelos estágios):** `despacho_metodos_janela_e_vetor.rs` (o cursor da caneta depois do dedup do cursor do main) · `roteiro.rs` (Macros reescreveu `grava`: `Pincelada.pressao` + `grava_vivo` sobre `grava_com`) · `composite.rs`/`session.rs` (inserções vizinhas: as duas) · `censo_dos_controlos*.rs` (o main partiu o ficheiro em três: os 4 deltas da linha reaplicados no ficheiro novo) · `every_word_…string_table.rs` (isenções das duas) · `passo.rs`: **as chaves do codec colidiam** (Macros 53–56 = ColorDrop/Fill, linha 53–56 = Mangueira/Dual) → Mangueira 57–58, Dual 59–60 (formato ainda não gravado).
+- **Fusão sem conflito mas partida:** o `Lane` da linha ganhou `arco`/`copia` e o `faixas.rs` do main não; `painter_canvas_move` ganhou `pressure` e o `macro_smoke.rs` do main chamava-o; `stamp_dab_textured_masked` ganhou `forca` no main (2 chamadas de teste da linha); um `let mapped_button` duplicado em `input_dispatch.rs`. Curas em cada commit de origem (autosquash); 13 de 332 commits diferem do original, todos explicados.
+- **Curas no tip (5 commits `fix(PainterWatercolor integração 23/10)`):** `plano_do_traco`/`pixel_trilhos` DO TRAÇO, `mangueira`/`dual` PARTILHADOS (+ `DualEstado::troca_o_traco`, com gate) no censo `tracos.rs`; `tracos_fora`/`composta` fora do preview, com o porquê; tectos de LOC somados: `bands.rs` 706→603, `paint_ramp_widget.rs` 602→559, `state.rs` 702→700; `paint_ramp_lut.rs` na lista HR-12; 3 gates na faixa pesada do nextest (solo no `ci-test`: 43 · 71 · 39 s).
+- **Portão:** fmt ✓ · clippy workspace `-D warnings` ✓ · censos 12/12 e 121/121 ✓ · nextest-impacted 20 601, 20 601 passaram. ⚠️ O `a_linha_esmaecida_e_a_que_nao_age` leva ~260 s no perfil `dev` (igual antes e depois do rebase) — corra-o sempre no `ci-test`.
+- **Para decisão humana:** nenhuma de produto. Aberto: `tabela` do censo dos controlos a 737 linhas (testes, sem tecto) — parta-a na próxima onda.
+

@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**83 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **83** são handoffs (registro **morto**).
+**84 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **84** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -97,6 +97,7 @@
 | 2026-10-21 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-21_F25_O_BLOCO_2.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-21_F25_O_BLOCO_2.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 21/10 — F25: o bloco 2 (a dívida do gate «todo campo editável é um canal… |
 | 2026-10-22 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-22_F26_AS_JUNTAS.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-22_F26_AS_JUNTAS.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 22/10 — F26: as juntas (todo campo da junta e da roldana grava no Auto K… |
 | 2026-10-22 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-22_F18_A_F26.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-22_F18_A_F26.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-22 — F18 a F26 (Auto Key em todo campo, canais por família, losan… |
+| 2026-10-23 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_B1_COMPONENTE.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_B1_COMPONENTE.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 23/10 — F27 B1: a família COMPONENTE e a Câmera de ponta a ponta |
 | 2026-10-23 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_BLOCO_A.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_BLOCO_A.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 23/10 — F27 Bloco A: o lado B da junta e o motor com faixa |
 
 ---

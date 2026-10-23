@@ -57,6 +57,19 @@ impl Luz {
             ..Self::default()
         }
     }
+
+    /// ⭐ **A lei do valor** — a mesma no cartão (`ph2d-app-light2d::inspector`) e no script
+    /// (`ph2d.set`, `property_laws::LEIS`): cor e intensidade e tamanho nunca negativos nem `NaN`
+    /// (`NaN` vira `0`); um alcance que não é positivo é «sem limite» (`∞`, física pura).
+    pub fn sanitize(&mut self) {
+        let positivo = |v: f32| if v.is_nan() { 0.0 } else { v.clamp(0.0, f32::MAX) };
+        self.cor = self.cor.map(positivo);
+        self.intensidade = positivo(self.intensidade);
+        self.tamanho_m = positivo(self.tamanho_m);
+        if self.alcance_m.is_nan() || self.alcance_m <= 0.0 {
+            self.alcance_m = f32::INFINITY;
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -81,6 +94,13 @@ pub struct BloqueiaLuz {
 impl Default for BloqueiaLuz {
     fn default() -> Self {
         Self { opacidade: 1.0 }
+    }
+}
+
+impl BloqueiaLuz {
+    /// A lei do valor (cartão e script): a opacidade é uma fracção, `0..=1`; `NaN` volta à de fábrica.
+    pub fn sanitize(&mut self) {
+        self.opacidade = if self.opacidade.is_nan() { 1.0 } else { self.opacidade.clamp(0.0, 1.0) };
     }
 }
 

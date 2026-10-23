@@ -119,7 +119,7 @@ fn o_script_obedece_aos_limites_do_inspector() {
         r#"
 function update(self)
   ph2d.set(self.id, "health.max", -5)
-  ph2d.set(self.id, "health.armor_share", 3)
+  ph2d.set(self.id, "health.block", 3)
   ph2d.set(self.id, "health.team", "  red ")
 end
 "#,
@@ -248,4 +248,127 @@ end
     let w = c.sim.world();
     assert_eq!(w.get::<ph2d_ecs::OrderInLayer>(c.heroi).unwrap().0, 3);
     assert_eq!(w.get::<ph2d_ecs::SliceNine>(c.heroi).unwrap().borders, autorado.borders);
+}
+
+/// ⭐ O valor do script é o do CARTÃO (doc CodeEditor 08 §3.12): o ângulo em radianos chega ao
+/// componente em graus, o tempo em segundos chega em µs, a escolha pelo nome do cartão, a caixa sobre
+/// um enum e a «Visible» sobre `hidden` como booleanos, e o alcance sem limite é `math.huge`.
+#[test]
+fn o_script_ve_o_valor_do_cartao() {
+    use ph2d_ecs::{EmissionShape, Lifetime, ParticleEmitter, Visibility};
+    use ph2d_light2d_ecs::Luz;
+    use ph2d_physics_ecs::{Damage, OnHit};
+    let mut c = cena(
+        r#"
+function init(self)
+  ph2d.set(self.id, "particles.direction", math.pi / 2)
+  assert(math.abs(ph2d.get(self.id, "particles.spread") - math.rad(30)) < 1e-6, "lê radianos")
+  ph2d.set(self.id, "lifetime", 1.5)
+  assert(ph2d.get(self.id, "particles.emission_shape") == "point")
+  ph2d.set(self.id, "particles.emission_shape", "ring")
+  assert(ph2d.get(self.id, "damage.vanish_on_hit") == false)
+  ph2d.set(self.id, "damage.vanish_on_hit", true)
+  assert(ph2d.get(self.id, "visibility.visible") == true)
+  ph2d.set(self.id, "visibility.visible", false)
+  assert(ph2d.get(self.id, "light_2d.range") == math.huge, "sem limite")
+  ph2d.set(self.id, "light_2d.range", 5)
+end
+"#,
+    );
+    let emissor = ParticleEmitter {
+        spread: 30.0,
+        ..ParticleEmitter::default()
+    };
+    c.sim.world_mut().entity_mut(c.heroi).insert((
+        emissor,
+        Lifetime {
+            duration_us: 1,
+            on_death: String::new(),
+        },
+        Damage::default(),
+        Visibility::default(),
+        Luz::default(),
+    ));
+    let f = c.quadro(true);
+    assert!(f.failed.is_empty(), "{}", Cena::falhas(&f));
+    let w = c.sim.world();
+    let p = w.get::<ParticleEmitter>(c.heroi).unwrap();
+    assert!((p.angle - 90.0).abs() < 1e-4, "graus no componente: {}", p.angle);
+    assert_eq!(p.shape, EmissionShape::Ring);
+    assert_eq!(w.get::<Lifetime>(c.heroi).unwrap().duration_us, 1_500_000);
+    assert_eq!(w.get::<Damage>(c.heroi).unwrap().on_hit, OnHit::Vanish);
+    assert!(w.get::<Visibility>(c.heroi).unwrap().hidden);
+    assert_eq!(w.get::<Luz>(c.heroi).unwrap().alcance_m, 5.0);
+    // E volta ao infinito, e a lei da Luz é a do cartão (um alcance negativo é «sem limite»).
+    for (linha, alcance) in [("math.huge", f32::INFINITY), ("-3", f32::INFINITY)] {
+        let mut c = cena(&format!("function init(self)\n  ph2d.set(self.id, \"light_2d.range\", {linha})\nend\n"));
+        let luz = Luz {
+            alcance_m: 2.0,
+            ..Luz::default()
+        };
+        c.sim.world_mut().entity_mut(c.heroi).insert(luz);
+        let f = c.quadro(true);
+        assert!(f.failed.is_empty(), "{linha}: {}", Cena::falhas(&f));
+        assert_eq!(c.sim.world().get::<Luz>(c.heroi).unwrap().alcance_m, alcance, "{linha}");
+    }
+}
+
+#[test]
+fn uma_escolha_errada_diz_as_opcoes() {
+    let mut c = cena("function update(self)\n  ph2d.set(self.id, \"particles.emission_shape\", \"cube\")\nend\n");
+    c.sim
+        .world_mut()
+        .entity_mut(c.heroi)
+        .insert(ph2d_ecs::ParticleEmitter::default());
+    let msg = Cena::falhas(&c.quadro(true));
+    assert!(
+        msg.contains(r#"takes one of: "point", "disc", "ring", "rect""#),
+        "{msg}"
+    );
+}
+
+/// ⭐ Uma LINHA do cartão do corpo (`gravity_scale`): sem o componente o script lê o neutro, escrever
+/// cria-o, e rebobinar TIRA-O — o mundo volta sem ele, como o artista o deixou.
+#[test]
+fn uma_linha_no_neutro_nasce_ao_escrever_e_sai_ao_rebobinar() {
+    use ph2d_physics_ecs::{GravityScale, RigidBody};
+    let mut c = cena(
+        r#"
+function init(self)
+  assert(ph2d.get(self.id, "gravity_scale") == 1, "o neutro do cartão")
+  assert(table.find(ph2d.properties(self.id), "gravity_scale"))
+  ph2d.set(self.id, "gravity_scale", 2)
+end
+"#,
+    );
+    c.sim.world_mut().entity_mut(c.heroi).insert(RigidBody::default());
+    let f = c.quadro(true);
+    assert!(f.failed.is_empty(), "{}", Cena::falhas(&f));
+    assert_eq!(c.sim.world().get::<GravityScale>(c.heroi), Some(&GravityScale(2.0)));
+    rewind(&mut c.host, &mut c.sim, &mut c.drive);
+    assert_eq!(c.sim.world().get::<GravityScale>(c.heroi), None, "o rebobinar tira-o");
+    assert!(c.drive.fields.is_empty());
+    // Sem o corpo (o dono da linha), não há linha: o objecto não tem a propriedade.
+    let mut c = cena("function update(self)\n  ph2d.get(self.id, \"gravity_scale\")\nend\n");
+    let msg = Cena::falhas(&c.quadro(true));
+    assert!(msg.contains("has no 'gravity_scale'"), "{msg}");
+}
+
+/// ⭐ A opacidade em percentagem e a cor da luz em sRGB — como o cartão as mostra.
+#[test]
+fn percentagem_e_srgb_como_o_cartao() {
+    use ph2d_light2d_ecs::Luz;
+    let mut c = cena(
+        r#"
+function init(self)
+  assert(math.abs(ph2d.get(self.id, "light_2d.color").r - 1) < 1e-6, "o branco é branco nas duas")
+  ph2d.set(self.id, "light_2d.color", ph2d.color(0.5, 0.5, 0.5, 1))
+end
+"#,
+    );
+    c.sim.world_mut().entity_mut(c.heroi).insert(Luz::default());
+    let f = c.quadro(true);
+    assert!(f.failed.is_empty(), "{}", Cena::falhas(&f));
+    let cor = c.sim.world().get::<Luz>(c.heroi).unwrap().cor;
+    assert!((cor[0] - 0.214_04).abs() < 1e-4, "linear no componente: {cor:?}");
 }

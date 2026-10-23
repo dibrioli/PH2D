@@ -49,7 +49,12 @@ const SOURCE_FIELDS: &[FieldDesc] = &[
     f(7, "component.field.source_fields.7", K::Scalar).named("non_spatialized_radius"),
     f(8, "component.field.source_fields.8", K::Scalar).named("panning_strength"),
     f(9, "component.field.source_fields.9", K::Int).named("max_polyphony"),
-    f(10, "component.field.source_fields.10", K::Enum).named_as("bus", "bus_tag"),
+    f(10, "component.field.source_fields.10", K::Enum).named_as("bus", "bus_tag").viewed(crate::options![
+        "sfx" => 0,
+        "music" => 1,
+        "voice" => 2,
+        "master" => 3,
+    ]),
 ];
 
 /// Os descritores da família.

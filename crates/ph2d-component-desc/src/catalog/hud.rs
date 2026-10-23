@@ -55,7 +55,11 @@ const BUTTON_FIELDS: &[FieldDesc] = &[
 const CANVAS_FIELDS: &[FieldDesc] = &[
     f(1, "component.field.canvas_fields.1", K::Scalar).named_as("reference_width", "ref_w"),
     f(2, "component.field.canvas_fields.2", K::Scalar).named_as("reference_height", "ref_h"),
-    f(3, "component.field.canvas_fields.3", K::Enum).named("fit"),
+    f(3, "component.field.canvas_fields.3", K::Enum).named("fit").viewed(crate::options![
+        "keep" => Keep,
+        "stretch" => Stretch,
+        "expand" => Expand,
+    ]),
 ];
 
 /// O rótulo cujo número o jogo muda.

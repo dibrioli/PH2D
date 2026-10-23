@@ -25,18 +25,9 @@ fn fontes_dos_cartoes() -> String {
     out
 }
 
-/// Componentes `Authored` SEM cartão próprio: linhas de um cartão partilhado, cujo título é o que os
-/// nomeia ao artista (a §10 *Material & Blend*, a §9 *Sampling*, a §8 *Visibility*).
-const CARTAO_PARTILHADO: &[(&str, &str)] = &[
-    ("ph2d::ecs::BlendMode", "panel.inspector.material.material_and_blend"),
-    ("ph2d::ecs::ClipChildren", "component.visibility_layer.name"),
-    ("ph2d::ecs::MaskInteraction", "component.visibility_layer.name"),
-    ("ph2d::ecs::OnScreenEnabler", "component.visibility_layer.name"),
-    ("ph2d::ecs::SpriteAnimator", "panel.inspector.animation.animation"),
-    ("ph2d::ecs::TextureFilter", "panel.inspector.sampling.sampling"),
-    ("ph2d::ecs::TextureRepeat", "panel.inspector.sampling.sampling"),
-    ("ph2d::ecs::UvTransform", "panel.inspector.sampling.sampling"),
-];
+/// ⏳ O único cartão cujo título não é o nome do componente: «Render Source» × «Sprite» (o script diz
+/// `sprite.*`). Decisão do dono: renomear um ou o outro.
+const SPRITE: (&str, &str) = ("ph2d::render::Sprite", "panel.inspector.render_source.render_source");
 
 #[test]
 fn o_cartao_pinta_a_chave_do_catalogo() {
@@ -44,15 +35,14 @@ fn o_cartao_pinta_a_chave_do_catalogo() {
     let mut faltam = Vec::new();
     let mut vistos = 0;
     for d in ph2d_component_desc::all().filter(|d| !d.code.is_empty()) {
-        // Uma linha de secção (`Intrinsic`: a Gravidade, a Massa… no cartão do corpo) não tem título
-        // próprio — o cartão pinta as linhas dela, e essas conferem-se abaixo.
-        let linha = d.attach == ph2d_component_desc::Attach::Intrinsic;
-        let titulo = CARTAO_PARTILHADO
-            .iter()
-            .find(|(c, _)| *c == d.canonical_name)
-            .map_or(d.display_key, |(_, t)| *t);
-        if !linha && !fontes.contains(&format!("\"{titulo}\"")) {
+        // Uma LINHA do cartão de outro (`row_of`: a Gravidade no corpo, o Blend na imagem) não tem
+        // título próprio — o cartão do dono pinta as linhas dela, e essas conferem-se abaixo.
+        let titulo = if d.canonical_name == SPRITE.0 { SPRITE.1 } else { d.display_key };
+        if d.row_of.is_empty() && !fontes.contains(&format!("\"{titulo}\"")) {
             faltam.push(format!("{} (título {titulo})", d.code));
+        }
+        if !d.row_of.is_empty() && ph2d_component_desc::desc_for(d.row_of).is_none() {
+            faltam.push(format!("{}: o dono '{}' não existe", d.code, d.row_of));
         }
         for f in d.fields.iter().filter(|f| !f.name.is_empty()) {
             vistos += 1;
@@ -106,8 +96,9 @@ fn chaves(entry: &ph2d_ecs::scene::ComponentTypeEntry) -> Result<Option<BTreeSet
 }
 
 /// A chave serde de topo de uma chave de campo: o elemento `"axis[0]"` é da chave `axis`, e `"[0]"`
-/// é do valor inteiro de um newtype de array.
+/// é do valor inteiro de um newtype de array; `"easing/family"` é da chave `easing`.
 fn topo(k: &str) -> &str {
+    let k = k.split('/').next().unwrap_or(k);
     match k.split_once('[') {
         Some(("", _)) => WHOLE,
         Some((base, _)) => base,

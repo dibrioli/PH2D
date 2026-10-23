@@ -52,12 +52,28 @@ pub enum View {
     Offset(i32),
     /// Booleano invertido: o cartão «Visible», o componente `hidden`.
     Not,
-    /// Uma caixa no cartão sobre um enum: `(json de true, json de false)`.
+    /// Uma caixa no cartão sobre um enum: `(valor de true, valor de false)`, como em [`Self::Options`].
     Toggle(&'static str, &'static str),
-    /// Uma escolha: `(nome no script, json guardado)` — o nome é o `snake` do rótulo da opção.
+    /// Uma escolha: `(nome no script, valor guardado)` — o nome é o `snake` do rótulo da opção no
+    /// cartão; o valor é json (`0`, `null`, `true`) ou, se não o for, o NOME serde de uma variante
+    /// unitária (`Full`). Escreve-se com [`crate::options!`].
     Options(&'static [(&'static str, &'static str)]),
     /// Pode ser infinito (sem limite): `math.huge` no script, `null` no valor serde.
     Unbounded,
+    /// Guardado em fracção (0–1); o cartão e o script em percentagem (0–100).
+    Percent,
+    /// Cor guardada LINEAR; o cartão e o script em sRGB (cada canal de cor).
+    Srgb,
+}
+
+/// ⭐ **Uma [`View::Options`]**: `options!["full" => Full, "none" => Nothing, "inherit" => null]`. O
+/// valor guardado escreve-se como IDENTIFICADOR (a variante serde, o `0`, o `null`): é código, nunca
+/// texto pintado — o censo do HR-15 não o confunde com língua. [`View::Toggle`] usa `stringify!`.
+#[macro_export]
+macro_rules! options {
+    ($($nome:literal => $v:tt),* $(,)?) => {
+        $crate::View::Options(&[$(($nome, stringify!($v))),*])
+    };
 }
 
 /// A chave de um campo que é o valor inteiro do componente (`OrderInLayer(i32)`).

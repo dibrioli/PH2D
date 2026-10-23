@@ -7,7 +7,7 @@ use bevy_ecs::prelude::Resource;
 use ph2d_component_desc::FieldKind;
 use ph2d_ecs::scene::ComponentRegistry;
 use ph2d_ecs::scene::property::{self, PropertyError};
-use ph2d_ecs::{Entity, SimWorld, World};
+use ph2d_ecs::{Entity, SimWorld};
 use ph2d_physics_ecs::{Health, HealthNow, PedidoDeVida, PedidosDeVida};
 use ph2d_preview_drive::{FieldRef, PreviewDrive};
 use ph2d_script::HealthRequest;

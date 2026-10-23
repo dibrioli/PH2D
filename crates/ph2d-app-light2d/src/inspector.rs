@@ -71,6 +71,7 @@ fn aplicar(l: &mut Luz, edit: &LuzFieldEdit) -> bool {
         },
         _ => return false,
     }
+    l.sanitize();
     *l != antes
 }
 
@@ -95,10 +96,11 @@ fn aplicar_ao_corpo(w: &mut World, e: Entity, edit: &LuzFieldEdit) -> bool {
     match *edit {
         LuzFieldEdit::Opacidade(v) if v.is_finite() => {
             w.get_mut::<BloqueiaLuz>(e).is_some_and(|mut b| {
-                let nova = v.clamp(0.0, 1.0);
-                let mudou = b.opacidade != nova;
+                let mut nova = BloqueiaLuz { opacidade: v };
+                nova.sanitize();
+                let mudou = *b != nova;
                 if mudou {
-                    b.opacidade = nova;
+                    *b = nova;
                 }
                 mudou
             })

@@ -292,7 +292,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.color_tint.corner_tint_of" => "{corner} corner tint",
         "panel.inspector.color_tint.equalize_corners" => "Equalize Corners",
         "panel.inspector.identity.name" => "Name\u{2026}",
-        "panel.inspector.identity.visible" => "Visible",
         "panel.inspector.instance.edit_prefab" => "Edit Prefab",
         "panel.inspector.joint.pin" => "Pin",
         "panel.inspector.joint.spring" => "Spring",

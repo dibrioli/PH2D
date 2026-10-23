@@ -20,9 +20,10 @@ pub(crate) fn to_lua(lua: &Lua, v: &Json, kind: FieldKind) -> mlua::Result<Value
                 return Ok(tabela_de(lua, &ScriptValue::Vec2([n[0], n[1]]))?.unwrap_or(Value::Nil));
             }
         }
-        (FieldKind::Color, Json::Array(a)) if a.len() == 4 => {
+        // Uma cor sem opacidade (a da Luz, `[f32; 3]`) lê-se opaca.
+        (FieldKind::Color, Json::Array(a)) if a.len() == 3 || a.len() == 4 => {
             if let Some(n) = par(a) {
-                let c = ScriptValue::Color([n[0], n[1], n[2], n[3]]);
+                let c = ScriptValue::Color([n[0], n[1], n[2], n.get(3).copied().unwrap_or(1.0)]);
                 return Ok(tabela_de(lua, &c)?.unwrap_or(Value::Nil));
             }
         }

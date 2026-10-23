@@ -115,3 +115,46 @@ fn um_nome_ou_um_valor_errado_diz_porque() {
     // Nada do que falhou chegou ao componente.
     assert_eq!(world.get::<ph2d_physics_ecs::Health>(e), Some(&ph2d_physics_ecs::Health::default()));
 }
+
+/// ⭐ Toda ESCOLHA, toda caixa e todo booleano invertido vai e volta pelo nome que o script usa: o json
+/// de cada opção é um valor que o componente aceita (o `ler_e_escrever` só prova a opção de fábrica),
+/// e o nome é `snake`.
+#[test]
+fn toda_vista_vai_e_volta_pelo_valor_do_cartao() {
+    use ph2d_component_desc::View;
+    use serde_json::json;
+    let reg = registo();
+    let mut world = bevy_ecs::world::World::new();
+    let mut vistas = 0;
+    for entry in reg.iter() {
+        let (Some(d), Some(insert_default)) = (entry.desc, entry.insert_default) else {
+            continue;
+        };
+        if d.code.is_empty() {
+            continue;
+        }
+        let e = world.spawn_empty().id();
+        insert_default(&mut world, e).expect("default");
+        for f in d.fields.iter().filter(|f| !f.name.is_empty()) {
+            let nome = property::full_name(d.code, f.name);
+            let valores: Vec<serde_json::Value> = match f.view {
+                View::Options(opts) => opts
+                    .iter()
+                    .map(|(n, _)| {
+                        let snake = n.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
+                        assert!(snake, "{nome}: a opção '{n}' não é snake");
+                        json!(n)
+                    })
+                    .collect(),
+                View::Toggle(..) | View::Not => vec![json!(true), json!(false)],
+                _ => continue,
+            };
+            for v in valores {
+                property::set(&reg, &mut world, e, &nome, v.clone()).unwrap_or_else(|err| panic!("{nome} = {v}: {err}"));
+                assert_eq!(property::get(&reg, &world, e, &nome).unwrap(), v, "{nome}");
+                vistas += 1;
+            }
+        }
+    }
+    assert!(vistas >= 100, "{vistas}");
+}

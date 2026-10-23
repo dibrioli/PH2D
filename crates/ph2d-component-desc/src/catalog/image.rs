@@ -39,7 +39,7 @@
 
 use crate::{
     ComponentCategory as C, ComponentDesc as D, FieldDesc, FieldKind as K, Hidden,
-    ObjectKinds as O, Propagation, WHOLE,
+    ObjectKinds as O, Propagation, View, WHOLE,
 };
 
 const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
@@ -72,7 +72,7 @@ const SPRITE: &[FieldDesc] = &[
     // 5 — APOSENTADO (era "Frame"; ver a nota acima).
     // ⭐ CodeEditor 08 d3: o que a §Color & Tint e a §Sprite Sheet pintam e o catálogo não tinha.
     f(6, "component.field.sprite.6", K::Color).named("self_tint"),
-    f(7, "component.field.sprite.7", K::Scalar).named("opacity"),
+    f(7, "component.field.sprite.7", K::Scalar).named("opacity").viewed(View::Percent),
     f(8, "component.field.sprite.8", K::Toggle).named("tint_fill"),
     f(9, "component.field.sprite.9", K::Toggle).named("centered"),
     f(10, "component.field.sprite.10", K::Vec2).named("offset"),
@@ -107,19 +107,33 @@ const SLICE_NINE: &[FieldDesc] = &[
     f(3, "component.field.slice_nine.3", K::Scalar).named_as("top", "borders[1]"),
     f(4, "component.field.slice_nine.4", K::Scalar).named_as("bottom", "borders[3]"),
     f(5, "component.field.slice_nine.5", K::Toggle).named("fill_center"),
-    f(6, "component.field.slice_nine.6", K::Enum).named("tile_mode"),
+    f(6, "component.field.slice_nine.6", K::Enum)
+        .named("tile_mode")
+        .viewed(crate::options!["continuous" => Continuous, "whole" => Whole]),
     f(7, "component.field.slice_nine.7", K::Vec2).named("size"),
-    // ⚠️ A caixa liga `Sliced`; o valor é o nome do modo (`"Simple"` · `"Sliced"`).
-    f(8, "component.field.slice_nine.8", K::Enum).named_as("enable_9_slice", "draw_mode"),
+    // A caixa liga `Sliced`: o script lê o booleano da caixa.
+    f(8, "component.field.slice_nine.8", K::Enum)
+        .named_as("enable_9_slice", "draw_mode")
+        .viewed(View::Toggle(stringify!(Sliced), stringify!(Simple))),
 ];
 
-/// ⭐ O leitor da §11 Animation (CodeEditor 08 d3). ⚠️ `speed` é o `speed_q16` CRU (`65536` = 1×).
+/// ⭐ O leitor da §11 Animation (CodeEditor 08 d3). `speed` guarda q16 e o cartão mostra `1.0x`.
 const SPRITE_ANIMATOR: &[FieldDesc] = &[
     f(1, "component.field.sprite_animator.1", K::Toggle).named("playing"),
     f(2, "component.field.sprite_animator.2", K::Toggle).named("autoplay"),
-    f(3, "component.field.sprite_animator.3", K::Int).named_as("speed", "speed_q16"),
-    f(4, "component.field.sprite_animator.4", K::Enum).named("direction_override"),
-    f(5, "component.field.sprite_animator.5", K::Enum).named("loop_override"),
+    f(3, "component.field.sprite_animator.3", K::Int)
+        .named_as("speed", "speed_q16")
+        .viewed(View::Scale(65_536)),
+    f(4, "component.field.sprite_animator.4", K::Enum).named("direction_override").viewed(crate::options![
+        "inherit" => null,
+        "fwd" => Forward,
+        "rev" => Reverse,
+        "pp" => PingPong,
+        "pp_rev" => PingPongReverse,
+    ]),
+    f(5, "component.field.sprite_animator.5", K::Enum)
+        .named("loop_override")
+        .viewed(crate::options!["inherit" => null, "on" => true, "off" => false]),
 ];
 
 /// As duas caixas da §12 que mostram as âncoras.
@@ -156,7 +170,8 @@ pub const DESCS: &[D] = &[
         C::Anchors,
         ANCHOR_VISIBILITY,
     )
-    .coded("anchor_visibility"),
+    .coded("anchor_visibility")
+    .row_of("ph2d::ecs::NamedAnchorList"),
     D::authored(
         "ph2d::ecs::NamedAnchorList",
         "component.named_anchor_list.name",
@@ -193,6 +208,8 @@ pub const DESCS: &[D] = &[
         SPRITE_ANIMATOR,
     )
     .coded("animator")
+    // Sem tocador o cartão mostra `1.0x`; o `Default` do tipo guarda 0.
+    .row_without_neutral("ph2d::ecs::SpriteAnimations")
     .hiding(&[
         ("current", Hidden::Reference),
         ("elapsed_ticks", Hidden::Runtime),
@@ -209,7 +226,8 @@ pub const DESCS: &[D] = &[
         C::Image,
         SPRITE_CORNER_TINT,
     )
-    .coded("corner_tint"),
+    .coded("corner_tint")
+    .row_of("ph2d::render::Sprite"),
     // ⚠️ Categoria `Image` e não `Animation`: a grelha é um FATO da textura (como ela se
     // divide), e é a `SpriteAnimations` que a percorre. Pô-la em Animation faria um sprite com
     // folha estática — o caso comum — procurar a grelha na secção errada.
@@ -220,7 +238,8 @@ pub const DESCS: &[D] = &[
         C::Image,
         SPRITE_GRID,
     )
-    .coded("sprite_grid"),
+    .coded("sprite_grid")
+    .row_of("ph2d::render::Sprite"),
     // Os pixels editados desta sprite (`project_sprite_pixels.rs`): identidade de CONTEÚDO,
     // posta pelo funil de commit das oito ferramentas de imagem. O artista não a anexa.
     D::machinery(
@@ -235,7 +254,9 @@ pub const DESCS: &[D] = &[
         C::Image,
         SPRITE_REGION,
     )
-    .coded("region"),
+    .coded("region")
+    // A presença é a caixa «Region»: ausente não é um rectângulo.
+    .row_without_neutral("ph2d::render::Sprite"),
     // Proveniência de autoria (que folha esta sprite veio de), não índice de célula — o
     // índice vivo é o `SpriteGrid::frame`. Máquina: quem a põe é o importador.
     D::machinery(

@@ -20,7 +20,7 @@
 
 use crate::{
     ComponentCategory as C, ComponentDesc, ComponentDesc as D, FieldDesc, FieldKind as K, Hidden,
-    ObjectKinds as O, Propagation,
+    ObjectKinds as O, Propagation, View,
 };
 
 const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
@@ -109,18 +109,30 @@ const SEQUENCE_FIELDS: &[FieldDesc] =
 
 /// ⚠️ `lifetime` é a chave `duration_us`: o cartão mostra segundos, o valor guardado é µs.
 const LIFETIME_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.lifetime_fields.1", K::Scalar).named_as("lifetime", "duration_us"),
+    // Guarda µs; o cartão mostra segundos.
+    f(1, "component.field.lifetime_fields.1", K::Scalar)
+        .named_as("lifetime", "duration_us")
+        .viewed(View::Scale(1_000_000)),
     f(2, "component.field.lifetime_fields.2", K::Text).named("on_death"),
 ];
 
 /// ADR-0186: o `Macro` descreve só o modo — o campo 1 é a gravação, que nenhum controlo edita.
 const MACRO_FIELDS: &[FieldDesc] =
-    &[f(2, "component.field.macro_fields.2", K::Enum).named_as("playback", "modo")];
+    &[f(2, "component.field.macro_fields.2", K::Enum).named_as("playback", "modo").viewed(crate::options![
+        "faithful" => Fiel,
+        "explanatory" => Explicativo,
+        "do_it" => Fazer,
+    ])];
 
 /// ⭐ Ciclo 19 do Motion (doc 128 §3.6): os campos do `Motion Input`, na ordem da struct.
 const MOTION_INPUT_FIELDS: &[FieldDesc] = &[
     f(1, "component.field.motion_input_fields.1", K::Text).named_as("input", "name"),
-    f(2, "component.field.motion_input_fields.2", K::Enum).named("source"),
+    f(2, "component.field.motion_input_fields.2", K::Enum).named("source").viewed(crate::options![
+        "value" => Value,
+        "color" => Color,
+        "health" => Health,
+        "damage" => Damage,
+    ]),
     f(3, "component.field.motion_input_fields.3", K::Scalar).named("value"),
     f(4, "component.field.motion_input_fields.4", K::Color).named("color"),
 ];
@@ -161,17 +173,39 @@ const FACTORY_FIELDS: &[FieldDesc] = &[
 ///
 /// ⛔ **Não há campo de DURAÇÃO**, pela mesma razão do tween e da fábrica: o tempo vem do `Timers`.
 ///
-/// ⚠️ `curve` e `ease` são a MESMA chave serde (`easing`, `{family, mode}`): o nome alcança o par.
+/// `curve` e `ease` são as duas metades da chave `easing` (`{family, mode}`): cada uma a sua.
 const PATH_FOLLOW_FIELDS: &[FieldDesc] = &[
     f(1, "component.field.path_follow_fields.1", K::Text).keyed("caminho"),
     f(2, "component.field.path_follow_fields.2", K::Scalar).named_as("timer_slot", "relogio"),
-    f(3, "component.field.path_follow_fields.3", K::Enum).named_as("cycle", "ciclo"),
-    f(4, "component.field.path_follow_fields.4", K::Enum).named_as("curve", "easing"),
-    f(5, "component.field.path_follow_fields.5", K::Enum).named_as("ease", "easing"),
-    f(6, "component.field.path_follow_fields.6", K::Enum).named_as("when_done", "ao_acabar"),
+    f(3, "component.field.path_follow_fields.3", K::Enum)
+        .named_as("cycle", "ciclo")
+        .viewed(crate::options!["restart" => Reinicia, "ping_pong" => PingPong]),
+    f(4, "component.field.path_follow_fields.4", K::Enum).named_as("curve", "easing/family").viewed(crate::options![
+        "linear" => Linear,
+        "quad" => Quad,
+        "cubic" => Cubic,
+        "quart" => Quart,
+        "quint" => Quint,
+        "back" => Back,
+        "bounce" => Bounce,
+        "sine" => Sine,
+        "expo" => Expo,
+        "circ" => Circ,
+        "elastic" => Elastic,
+    ]),
+    f(5, "component.field.path_follow_fields.5", K::Enum).named_as("ease", "easing/mode").viewed(crate::options![
+        "in" => In,
+        "out" => Out,
+        "in_out" => InOut,
+    ]),
+    f(6, "component.field.path_follow_fields.6", K::Enum)
+        .named_as("when_done", "ao_acabar")
+        .viewed(crate::options!["hold" => Hold, "rewind" => Rewind]),
     f(7, "component.field.path_follow_fields.7", K::Scalar).named_as("start_at", "deslocamento"),
     f(8, "component.field.path_follow_fields.8", K::Toggle).named_as("face_path", "alinha"),
-    f(9, "component.field.path_follow_fields.9", K::Angle).named_as("angle", "angulo"),
+    f(9, "component.field.path_follow_fields.9", K::Angle)
+        .named_as("angle", "angulo")
+        .viewed(View::Degrees),
     f(10, "component.field.path_follow_fields.10", K::Scalar).named_as("side_offset", "lado"),
 ];
 
@@ -219,7 +253,7 @@ const HEALTH_FIELDS: &[FieldDesc] = &[
     f(11, "component.field.health_fields.11", K::Scalar).named_as("shield_delay", "shield_regen_delay_s"),
     f(12, "component.field.health_fields.12", K::Toggle).named_as("absorb_rest", "shield_blocks_excess"),
     f(13, "component.field.health_fields.13", K::Scalar).named_as("armor", "armor_flat"),
-    f(14, "component.field.health_fields.14", K::Scalar).named_as("armor_share", "armor_percent"),
+    f(14, "component.field.health_fields.14", K::Scalar).named_as("block", "armor_percent"),
     f(15, "component.field.health_fields.15", K::Scalar).named("dodge"),
     // ⚠️ **A EQUIPA é texto** — o fogo amigo desligado entre quem partilha o nome.
     f(16, "component.field.health_fields.16", K::Text).named("team"),
@@ -245,7 +279,9 @@ const DAMAGE_FIELDS: &[FieldDesc] = &[
     f(4, "component.field.damage_fields.4", K::Toggle).named_as("pierce_shield", "ignores_shield"),
     f(5, "component.field.damage_fields.5", K::Toggle).named_as("pierce_armor", "ignores_armor"),
     // ⚠️ O cartão pinta uma caixa («Vanish on Hit»); o valor é a opção (`Stay`/`Vanish`).
-    f(6, "component.field.damage_fields.6", K::Enum).named_as("vanish_on_hit", "on_hit"),
+    f(6, "component.field.damage_fields.6", K::Enum)
+        .named_as("vanish_on_hit", "on_hit")
+        .viewed(View::Toggle(stringify!(Vanish), stringify!(Stay))),
     // ⭐ O IMPACTO de quem bate (plano 28, W5): a pausa no golpe e o empurrão.
     f(7, "component.field.damage_fields.7", K::Scalar).named_as("hit_pause", "hitstop_s"),
     f(8, "component.field.damage_fields.8", K::Scalar).named_as("push", "knockback"),
@@ -360,6 +396,9 @@ pub const DESCS: &[ComponentDesc] = &[
     .coded("factory")
     .hiding(&[
         ("master", Hidden::Reference),
+        // Um enum COM DADOS (`"Here"` · `{Area: {w, h}}` · `{Tagged: {tag, pick}}`): a linha «Where»
+        // escolhe a variante e as outras três só existem dentro dela, e o `Tagged` guarda a tag pelo
+        // id. Ganha nome com as referências (d4), não por um caminho que muda com a variante.
         ("at", Hidden::Reference),
         ("spread_deg", Hidden::NoCard),
     ]),

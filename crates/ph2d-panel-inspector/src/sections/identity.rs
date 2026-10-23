@@ -74,7 +74,7 @@ pub(crate) fn paint_visibility_row(
     let sec = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
         1,
-        &[tr("panel.inspector.identity.visible")],
+        &[tr("component.field.visibility.1")],
     );
     ph2d_editor_core::property_row::paint_check_row(
         scene,
@@ -87,7 +87,7 @@ pub(crate) fn paint_visibility_row(
         y,
         (
             ids::INSP_VISIBILITY_CHECK,
-            tr("panel.inspector.identity.visible"),
+            tr("component.field.visibility.1"),
             matches!(value, CheckboxValue::Checked),
         ),
         sec,

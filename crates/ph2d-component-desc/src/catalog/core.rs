@@ -55,7 +55,7 @@
 
 use crate::{
     ComponentCategory as C, ComponentDesc as D, FieldDesc, FieldKind as K, Hidden,
-    ObjectKinds as O, Propagation, RefKind, WHOLE,
+    ObjectKinds as O, Propagation, RefKind, View, WHOLE,
 };
 
 /// Um campo simples que segue o mestre e não é referência — o caso esmagadoramente comum.
@@ -102,9 +102,9 @@ const NAME: &[FieldDesc] = &[FieldDesc {
     view: crate::View::Same,
 }];
 
-/// ⏳ **`Editor` provisório (CodeEditor 08 d3):** o cartão pinta «Visible» e o campo guarda `hidden` —
-/// o inverso. Um nome `visible` sobre a chave `hidden` leria ao contrário; decisão pendente.
-const VISIBILITY: &[FieldDesc] = &[f(1, "component.field.visibility.1", K::Toggle)];
+/// A caixa «Visible» ao lado do nome: o campo guarda `hidden`, o inverso (`View::Not`).
+const VISIBILITY: &[FieldDesc] =
+    &[f(1, "component.field.visibility.1", K::Toggle).named_as("visible", "hidden").viewed(View::Not)];
 
 /// ⭐ A linha *Emissive* da §Render Source — o newtype da intensidade.
 const SPRITE_EMISSIVE: &[FieldDesc] =
@@ -134,7 +134,8 @@ const INSTANCE_OF: &[FieldDesc] = &[FieldDesc {
 
 // ── Ordenação: a família PILOTO da F0 (a §7 do Inspector) ──────────────────────────
 
-// ⭐ Os newtypes da §7: um campo só, o valor inteiro (`WHOLE`) — o script lê o índice da camada.
+// ⭐ Os newtypes da §7: um campo só, o valor inteiro (`WHOLE`). ⏳ A camada é o ÍNDICE: os nomes são
+// do projecto (`SortingLayers`), e uma escolha pelo nome lê-os de lá (fase d4, com as referências).
 const SORTING_LAYER: &[FieldDesc] =
     &[f(1, "component.field.sorting_layer.1", K::Enum).named_as("sorting_layer", WHOLE)];
 const ORDER_IN_LAYER: &[FieldDesc] =
@@ -153,30 +154,65 @@ const SORTING_GROUP: &[FieldDesc] =
 const Y_SORT: &[FieldDesc] = &[
     f(1, "component.field.y_sort.1", K::Toggle).named_as("y_sort", "enabled"),
     f(2, "component.field.y_sort.2", K::Vec2).named("axis"),
-    f(3, "component.field.y_sort.3", K::Enum).named("sort_point"),
+    f(3, "component.field.y_sort.3", K::Enum).named("sort_point").viewed(crate::options![
+        "center" => Center,
+        "pivot" => Pivot,
+        "custom" => Custom,
+    ]),
 ];
 // ⚠️ A §8 pinta só o MODO (a linha «Clip Children»; `Disabled` destaca o componente) — o corte
 // alfa dele não tem linha (a «Mask Alpha Cutoff» é da `MaskInteraction`).
 const CLIP_CHILDREN: &[FieldDesc] = &[
-    f(1, "component.field.clip_children.1", K::Enum).named_as("clip_children", "mode"),
+    f(1, "component.field.clip_children.1", K::Enum).named_as("clip_children", "mode").viewed(
+        crate::options![
+            "disabled" => Disabled,
+            "clip" => ClipOnly,
+            "clip_draw" => ClipAndDraw,
+        ],
+    ),
     f(2, "component.field.clip_children.2", K::Scalar).keyed("alpha_cutoff"),
 ];
 
 // ── As linhas da §8 Visibility, §9 Sampling e §10 Material & Blend (CodeEditor 08 d3) ──────────
 
 const BLEND_MODE: &[FieldDesc] =
-    &[f(1, "component.field.blend_mode.1", K::Enum).named_as("blend_mode", WHOLE)];
+    &[f(1, "component.field.blend_mode.1", K::Enum).named_as("blend_mode", WHOLE).viewed(crate::options![
+        "mix" => Mix,
+        "add" => Add,
+        "subtract" => Subtract,
+        "multiply" => Multiply,
+        "screen" => Screen,
+        "premult" => PremultAlpha,
+    ])];
 const MASK_INTERACTION: &[FieldDesc] = &[
-    f(1, "component.field.mask_interaction.1", K::Enum).named_as("mask_interaction", "mode"),
+    f(1, "component.field.mask_interaction.1", K::Enum).named_as("mask_interaction", "mode").viewed(
+        crate::options![
+            "none" => None,
+            "inside" => VisibleInside,
+            "outside" => VisibleOutside,
+        ],
+    ),
     f(2, "component.field.mask_interaction.2", K::Scalar)
         .named_as("mask_alpha_cutoff", "alpha_cutoff"),
 ];
 const ON_SCREEN_ENABLER: &[FieldDesc] =
     &[f(1, "component.field.on_screen_enabler.1", K::Vec4).named_as("enabler_rect", "rect")];
 const TEXTURE_FILTER: &[FieldDesc] =
-    &[f(1, "component.field.texture_filter.1", K::Enum).named_as("texture_filter", WHOLE)];
+    &[f(1, "component.field.texture_filter.1", K::Enum).named_as("texture_filter", WHOLE).viewed(crate::options![
+        "inherit" => 0,
+        "nearest" => 1,
+        "linear" => 2,
+        "near_mip" => 3,
+        "lin_mip" => 4,
+        "lin_aniso" => 6,
+    ])];
 const TEXTURE_REPEAT: &[FieldDesc] =
-    &[f(1, "component.field.texture_repeat.1", K::Enum).named_as("texture_repeat", WHOLE)];
+    &[f(1, "component.field.texture_repeat.1", K::Enum).named_as("texture_repeat", WHOLE).viewed(crate::options![
+        "inherit" => Inherit,
+        "clamp" => Disabled,
+        "repeat" => Enabled,
+        "mirror" => Mirror,
+    ])];
 const UV_TRANSFORM: &[FieldDesc] = &[
     f(1, "component.field.uv_transform.1", K::Vec2).named_as("uv_scale", "scale"),
     f(2, "component.field.uv_transform.2", K::Vec2).named_as("uv_offset", "offset"),
@@ -217,7 +253,8 @@ pub const DESCS: &[D] = &[
         O::IMAGE,
         BLEND_MODE,
     )
-    .coded("blend_mode"),
+    .coded("blend_mode")
+    .row_of("ph2d::render::Sprite"),
     D::authored(
         "ph2d::ecs::ClipChildren",
         "component.clip_children.name",
@@ -226,6 +263,7 @@ pub const DESCS: &[D] = &[
         CLIP_CHILDREN,
     )
     .coded("clip_children")
+    .row_of("ph2d::ecs::Transform")
     .hiding(&[("alpha_cutoff", Hidden::NoCard)]),
     // ⇒ a porta é o alternador de GRUPO da Hierarquia, em toda linha.
     D::intrinsic(
@@ -290,7 +328,8 @@ pub const DESCS: &[D] = &[
         O::IMAGE,
         MASK_INTERACTION,
     )
-    .coded("mask_interaction"),
+    .coded("mask_interaction")
+    .row_of("ph2d::render::Sprite"),
     // ⚠️ `Name` NÃO tem `Default` (o compilador disse-o ao converter o registador), e a
     // ausência está certa: um objeto sem nome não é um objeto com nome vazio. Ele chega com
     // o gesto que cria o objeto e é **base** — a paleta oferecê-lo seria oferecer algo que
@@ -346,6 +385,8 @@ pub const DESCS: &[D] = &[
         ON_SCREEN_ENABLER,
     )
     .coded("on_screen_enabler")
+    // A presença é o «ligado» da caixa: ausente não é o rectângulo zero.
+    .row_without_neutral("ph2d::render::Sprite")
     .hiding(&[("mode", Hidden::NoCard)]),
     // ⇒ a porta é §7 Ordering, pintada em TODO objecto.
     D::intrinsic(
@@ -354,7 +395,8 @@ pub const DESCS: &[D] = &[
         C::Ordering,
         ORDER_IN_LAYER,
     )
-    .coded("order_in_layer"),
+    .coded("order_in_layer")
+    .row_of("ph2d::ecs::Transform"),
     // ⚠️ Máquina: o editor mantém-no para desempatar raízes (*"não se escolhe um desempate
     // melhor, não se tem empate"*). Um artista que o pusesse à mão estaria a escrever num
     // campo que o próprio editor reescreve no quadro seguinte.
@@ -394,7 +436,9 @@ pub const DESCS: &[D] = &[
         C::Ordering,
         SORTING_LAYER,
     )
-    .coded("sorting_layer"),
+    .coded("sorting_layer")
+    // Ausente = a camada por omissão do PROJECTO, não o índice 0.
+    .row_without_neutral("ph2d::ecs::Transform"),
     // ⇒ a porta é a row *Emissive* do §Render Source, pintada em toda sprite (ausente **é** `EMISSIVE_OFF`).
     D::intrinsic(
         "ph2d::ecs::SpriteEmissive",
@@ -402,7 +446,8 @@ pub const DESCS: &[D] = &[
         C::Rendering,
         SPRITE_EMISSIVE,
     )
-    .coded("emissive"),
+    .coded("emissive")
+    .row_of("ph2d::render::Sprite"),
     // ⭐⭐⭐ **As TAGS** (TOP-20 #9). `C::Identity` porque dizem O QUE o objecto é (a secção nasce
     // logo abaixo da *Identity*), e `O::ANY` porque o objecto vazio que o artista usa como
     // *«o cérebro da cena»* e um grupo são tão marcáveis quanto uma sprite.
@@ -422,7 +467,8 @@ pub const DESCS: &[D] = &[
         O::IMAGE,
         TEXTURE_FILTER,
     )
-    .coded("texture_filter"),
+    .coded("texture_filter")
+    .row_of("ph2d::render::Sprite"),
     D::authored(
         "ph2d::ecs::TextureRepeat",
         "component.texture_repeat.name",
@@ -430,7 +476,8 @@ pub const DESCS: &[D] = &[
         O::IMAGE,
         TEXTURE_REPEAT,
     )
-    .coded("texture_repeat"),
+    .coded("texture_repeat")
+    .row_of("ph2d::render::Sprite"),
     // ⇒ a porta é §7 Ordering.
     D::intrinsic(
         "ph2d::ecs::TopLevel",
@@ -456,7 +503,8 @@ pub const DESCS: &[D] = &[
         O::IMAGE,
         UV_TRANSFORM,
     )
-    .coded("uv_transform"),
+    .coded("uv_transform")
+    .row_of("ph2d::render::Sprite"),
     // ⇒ a porta é o OLHO da Hierarquia, em toda linha.
     D::intrinsic(
         "ph2d::ecs::Visibility",
@@ -464,7 +512,8 @@ pub const DESCS: &[D] = &[
         C::Identity,
         VISIBILITY,
     )
-    .hidden(Hidden::Editor),
+    .coded("visibility")
+    .row_of("ph2d::ecs::Name"),
     D::authored(
         "ph2d::ecs::VisibilityLayer",
         "component.visibility_layer.name",
@@ -480,7 +529,9 @@ pub const DESCS: &[D] = &[
         C::Ordering,
         Y_SORT,
     )
-    .coded("y_sort"),
+    .coded("y_sort")
+    // Ausente = desligado; o `Default` do tipo é ligado.
+    .row_without_neutral("ph2d::ecs::Transform"),
     // ⇒ a porta é §7 Ordering.
     D::intrinsic(
         "ph2d::ecs::ZAsRelative",
@@ -488,7 +539,8 @@ pub const DESCS: &[D] = &[
         C::Ordering,
         Z_AS_RELATIVE,
     )
-    .coded("z_as_relative"),
+    .coded("z_as_relative")
+    .row_of("ph2d::ecs::Transform"),
     // ⇒ a porta é §7 Ordering — e o `—` dela é a AUSENCIA deste componente.
     D::intrinsic(
         "ph2d::ecs::ZIndexOverride",
@@ -496,7 +548,9 @@ pub const DESCS: &[D] = &[
         C::Ordering,
         Z_INDEX,
     )
-    .coded("z_index"),
+    .coded("z_index")
+    // Ausente = «—» (a ordem da árvore), não o 0.
+    .row_without_neutral("ph2d::ecs::Transform"),
 ];
 
 #[cfg(test)]

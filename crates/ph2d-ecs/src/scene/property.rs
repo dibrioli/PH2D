@@ -1,4 +1,4 @@
-//! ⭐ **Uma propriedade por NOME** — `"health.max"` → o componente (pelo [`ComponentDesc::code`]) e
+//! ⭐ **Uma propriedade por NOME** — `"health.max"` → o componente (pelo [`ph2d_component_desc::ComponentDesc::code`]) e
 //! o campo (pelo [`FieldDesc::name`]), lido e escrito pela vtable do registo (doc CodeEditor 08 §3).
 //!
 //! É a lei única de quem nomeia um campo: os scripts (`ph2d.get/set`), o lint do editor e o arrasto
@@ -10,7 +10,7 @@
 use super::registry::{ComponentRegistry, ComponentTypeEntry};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::world::World;
-use ph2d_component_desc::{ComponentDesc, FieldDesc, FieldKind, View, WHOLE};
+use ph2d_component_desc::{FieldDesc, FieldKind, View, WHOLE};
 use serde_json::Value;
 
 /// Porque um nome não se lê nem se escreve.
@@ -139,7 +139,11 @@ pub fn get_stored<'r>(
 fn seen(view: View, v: Value) -> Value {
     let k = |x: f64, f: &dyn Fn(f64) -> f64| Value::from(f(x));
     match (view, v) {
-        (View::Degrees, Value::Array(a)) => Value::Array(a.into_iter().map(|x| seen(view, x)).collect()),
+        (View::Degrees | View::Srgb, Value::Array(a)) => {
+            Value::Array(a.into_iter().map(|x| seen(view, x)).collect())
+        }
+        (View::Srgb, Value::Number(n)) => k(n.as_f64().unwrap_or(0.0), &linear_to_srgb),
+        (View::Percent, Value::Number(n)) => k(n.as_f64().unwrap_or(0.0), &|x| x * 100.0),
         (View::Degrees, Value::Number(n)) => k(n.as_f64().unwrap_or(0.0), &f64::to_radians),
         (View::Scale(q), Value::Number(n)) => k(n.as_f64().unwrap_or(0.0), &|x| x / f64::from(q)),
         (View::Offset(o), Value::Number(n)) => match n.as_i64() {
@@ -162,7 +166,9 @@ fn stored_from(view: View, v: Value, stored: &Value, name: &str) -> Result<Value
     let num = |v: &Value| v.as_f64();
     let inteiro = |x: f64| if stored.is_i64() || stored.is_u64() { Value::from(x.round() as i64) } else { Value::from(x) };
     Ok(match (view, v) {
-        (View::Degrees, Value::Array(a)) => Value::Array(
+        (View::Srgb, v) if num(&v).is_some() => Value::from(srgb_to_linear(num(&v).unwrap_or(0.0))),
+        (View::Percent, v) if num(&v).is_some() => Value::from(num(&v).unwrap_or(0.0) / 100.0),
+        (View::Degrees | View::Srgb, Value::Array(a)) => Value::Array(
             a.into_iter()
                 .map(|x| stored_from(view, x, &Value::Null, name))
                 .collect::<Result<_, _>>()?,
@@ -185,17 +191,33 @@ fn stored_from(view: View, v: Value, stored: &Value, name: &str) -> Result<Value
     })
 }
 
+/// O valor guardado de uma opção: json (`0`, `null`, `true`) ou o nome de uma variante (`Full`).
+/// A curva sRGB de um canal (IEC 61966-2-1).
+fn linear_to_srgb(c: f64) -> f64 {
+    if c <= 0.003_130_8 { c * 12.92 } else { 1.055 * c.powf(1.0 / 2.4) - 0.055 }
+}
+
+fn srgb_to_linear(c: f64) -> f64 {
+    if c <= 0.040_45 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) }
+}
+
 fn json(s: &str) -> Value {
-    serde_json::from_str(s).expect("o json de uma View é literal do catálogo")
+    serde_json::from_str(s).unwrap_or_else(|_| Value::String(s.to_owned()))
 }
 
 /// O lugar de uma chave dentro do valor do componente: o valor inteiro num newtype ([`WHOLE`]), um
 /// ELEMENTO de um array com `[i]` (`"axis[0]"`; `"[2]"` num newtype de array) — a linha «Axis X» do
-/// cartão é um elemento, não o par. A lei única de quem lê ou repõe um campo pela chave.
+/// cartão é um elemento, não o par —, e um campo DENTRO de outro com `/` (`"easing/family"`: as linhas
+/// «Curve» e «Ease» são as duas metades de um par). A lei única de quem lê ou repõe um campo pela chave.
 pub fn slot_in<'v>(whole: &'v mut Value, key: &str) -> Option<&'v mut Value> {
     if key == WHOLE {
         return Some(whole);
     }
+    key.split('/').try_fold(whole, slot_one)
+}
+
+/// Um passo de [`slot_in`]: uma chave, ou um elemento `[i]` dela.
+fn slot_one<'v>(whole: &'v mut Value, key: &str) -> Option<&'v mut Value> {
     let Some((base, rest)) = key.split_once('[') else {
         return whole.get_mut(key);
     };
@@ -217,7 +239,7 @@ fn slot<'v>(r: &Resolved<'_>, whole: &'v mut Value) -> Result<&'v mut Value, Pro
 }
 
 /// Escreve `value` em `name` no objecto; os outros campos do componente ficam. `Ok(true)` = a
-/// escrita CRIOU o componente (uma linha que estava no neutro, [`ComponentDesc::row_of`]).
+/// escrita CRIOU o componente (uma linha que estava no neutro, [`ph2d_component_desc::ComponentDesc::row_of`]).
 pub fn set(
     reg: &ComponentRegistry,
     world: &mut World,
@@ -229,7 +251,7 @@ pub fn set(
     let mut whole = component_value(reg, &r, world, entity)?;
     let born = matches!((r.entry.value_of)(world, entity), Ok(None));
     let s = slot(&r, &mut whole)?;
-    *s = normalize(r.field.kind, stored_from(r.field.view, value, s, name)?);
+    *s = fit(normalize(r.field.kind, stored_from(r.field.view, value, s, name)?), s);
     let wrong = || PropertyError::WrongType {
         name: name.to_owned(),
         kind: r.field.kind,
@@ -243,6 +265,17 @@ pub fn set(
         (r.entry.remove)(world, entity);
     }
     res.map(|()| born)
+}
+
+/// Uma cor de quatro canais (a do script) num campo de três (sem opacidade) perde a opacidade.
+fn fit(v: Value, stored: &Value) -> Value {
+    match (v, stored) {
+        (Value::Array(mut a), Value::Array(b)) if a.len() == 4 && b.len() == 3 => {
+            a.truncate(3);
+            Value::Array(a)
+        }
+        (v, _) => v,
+    }
 }
 
 /// Um número inteiro chega do Luau como real (`3.0`); o serde de um `i32`/`u64` não o aceita.
@@ -280,7 +313,7 @@ fn component_value(
 
 /// O valor neutro de uma LINHA que falta onde o dono dela está: o que o cartão mostra.
 fn neutral_row(reg: &ComponentRegistry, r: &Resolved<'_>, world: &World, entity: Entity) -> Option<Value> {
-    let host = r.entry.desc.map(|d| d.row_of).filter(|h| !h.is_empty())?;
+    let host = r.entry.desc.filter(|d| d.row_neutral).map(|d| d.row_of).filter(|h| !h.is_empty())?;
     let host = reg.get_by_name(host)?;
     (host.value_of)(world, entity).ok()??;
     let insert = r.entry.insert_default?;
@@ -301,10 +334,35 @@ pub fn check(
     let r = resolve(reg, name)?;
     let mut whole = component_value(reg, &r, world, entity)?;
     if let Ok(s) = slot(&r, &mut whole) {
-        *s = normalize(r.field.kind, stored_from(r.field.view, value, s, name)?);
+        *s = fit(normalize(r.field.kind, stored_from(r.field.view, value, s, name)?), s);
     }
     (r.entry.check_value)(&whole).map_err(|_| PropertyError::WrongType {
         name: name.to_owned(),
         kind: r.field.kind,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::slot_in;
+    use serde_json::json;
+
+    /// O lugar de uma chave: o valor inteiro, um elemento, e um campo DENTRO de outro (`a/b`, com
+    /// elementos pelo caminho) — e um caminho que não existe é `None`, nunca um lugar novo.
+    #[test]
+    fn slot_in_alcanca_o_inteiro_o_elemento_e_o_aninhado() {
+        let mut v = json!({"easing": {"family": "Quad", "mode": "In"}, "axis": [1, 2], "m": [{"k": [5, 6]}]});
+        assert_eq!(slot_in(&mut v, "easing/family"), Some(&mut json!("Quad")));
+        assert_eq!(slot_in(&mut v, "easing/mode"), Some(&mut json!("In")));
+        assert_eq!(slot_in(&mut v, "axis[1]"), Some(&mut json!(2)));
+        assert_eq!(slot_in(&mut v, "m[0]/k[1]"), Some(&mut json!(6)));
+        *slot_in(&mut v, "easing/family").unwrap() = json!("Sine");
+        assert_eq!(v["easing"], json!({"family": "Sine", "mode": "In"}), "o vizinho fica");
+        for falta in ["easing/curve", "nada/family", "axis[2]", "easing/family/x"] {
+            assert_eq!(slot_in(&mut v, falta), None, "{falta}");
+        }
+        let mut n = json!([1, 2, 3]);
+        assert_eq!(slot_in(&mut n, "[2]"), Some(&mut json!(3)));
+        assert_eq!(slot_in(&mut n, "."), Some(&mut json!([1, 2, 3])));
+    }
 }

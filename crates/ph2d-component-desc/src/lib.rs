@@ -101,6 +101,10 @@ pub struct ComponentDesc {
     /// do dono. Onde o dono está e ele falta, o cartão mostra o valor neutro — e o script lê-o, e ao
     /// escrever cria-o (o parar tira-o). Vazio = um cartão próprio.
     pub row_of: &'static str,
+    /// A ausência de uma LINHA ([`Self::row_of`]) é o `Default` do tipo — o que o cartão pinta. `false`
+    /// = a ausência é outra coisa (herdada da árvore ou do projecto, «sem tocador»): o script não a
+    /// lê nem a cria sem o componente.
+    pub row_neutral: bool,
 }
 
 impl ComponentDesc {
@@ -122,6 +126,14 @@ impl ComponentDesc {
     #[must_use]
     pub const fn row_of(mut self, host: &'static str) -> Self {
         self.row_of = host;
+        self
+    }
+
+    /// Uma linha do cartão de `host` cuja ausência NÃO é o `Default` do tipo ([`Self::row_neutral`]).
+    #[must_use]
+    pub const fn row_without_neutral(mut self, host: &'static str) -> Self {
+        self.row_of = host;
+        self.row_neutral = false;
         self
     }
 
@@ -169,6 +181,7 @@ impl ComponentDesc {
             hidden: None,
             hidden_keys: &[],
             row_of: "",
+            row_neutral: true,
         }
     }
 
@@ -198,6 +211,7 @@ impl ComponentDesc {
             hidden: None,
             hidden_keys: &[],
             row_of: "",
+            row_neutral: true,
         }
     }
 
@@ -223,6 +237,7 @@ impl ComponentDesc {
             hidden: None,
             hidden_keys: &[],
             row_of: "",
+            row_neutral: true,
         }
     }
 
@@ -263,6 +278,7 @@ impl ComponentDesc {
             hidden: None,
             hidden_keys: &[],
             row_of: "",
+            row_neutral: true,
         }
     }
 
@@ -290,6 +306,7 @@ impl ComponentDesc {
             hidden: None,
             hidden_keys: &[],
             row_of: "",
+            row_neutral: true,
         }
     }
 
@@ -316,6 +333,7 @@ impl ComponentDesc {
             hidden: None,
             hidden_keys: &[],
             row_of: "",
+            row_neutral: true,
         }
     }
 

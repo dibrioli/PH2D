@@ -12,7 +12,7 @@
 
 use crate::{
     ComponentCategory as C, ComponentDesc, ComponentDesc as D, FieldDesc, FieldKind as K, Hidden,
-    ObjectKinds as O, Propagation,
+    ObjectKinds as O, Propagation, View,
 };
 
 const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
@@ -28,13 +28,16 @@ const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
     }
 }
 
-/// Os campos da lâmpada, na ordem do cartão. «Limit Range» não é chave: é `range` finito.
+/// Os campos da lâmpada, na ordem do cartão. «Limit Range» não é chave: é `range` finito (sem limite
+/// = `math.huge` no script, `null` no valor serde).
 const LUZ_FIELDS: &[FieldDesc] = &[
-    f(0, "component.field.luz_fields.0", K::Enum).named_as("type", "tipo"),
-    f(1, "component.field.luz_fields.1", K::Color).named_as("color", "cor"),
+    f(0, "component.field.luz_fields.0", K::Enum)
+        .named_as("type", "tipo")
+        .viewed(crate::options!["point" => Ponto, "ambient" => Ambiente]),
+    f(1, "component.field.luz_fields.1", K::Color).named_as("color", "cor").viewed(View::Srgb),
     f(2, "component.field.luz_fields.2", K::Scalar).named_as("intensity", "intensidade"),
     f(3, "component.field.luz_fields.3", K::Scalar).named_as("size", "tamanho_m"),
-    f(4, "component.field.luz_fields.4", K::Scalar).named_as("range", "alcance_m"),
+    f(4, "component.field.luz_fields.4", K::Scalar).named_as("range", "alcance_m").viewed(View::Unbounded),
 ];
 
 /// O campo do oclusor.
@@ -51,15 +54,13 @@ pub const DESCS: &[ComponentDesc] = &[
         OCCLUDER_FIELDS,
     )
     .coded("light_occluder"),
-    // ⏳ `.coded("light_2d")` espera a ida-e-volta de um real NÃO FINITO: o alcance de fábrica é
-    // `f32::INFINITY`, que o `serde_json` escreve `null` e não lê de volta — `ph2d.set` de QUALQUER
-    // campo da luz falharia (doc CodeEditor 08 §3.11). Os nomes já estão prontos.
     D::intrinsic(
         "ph2d::light2d::Luz",
         "component.luz.name",
         C::Light,
         LUZ_FIELDS,
-    ),
+    )
+    .coded("light_2d"),
     D::authored(
         "ph2d::light2d::NaoRecebeLuz",
         "component.nao_recebe_luz.name",

@@ -36,6 +36,7 @@ pub(crate) const LEIS: &[(&str, Lei)] = &[
     ("ph2d::ecs::TextureFilter", None),
     ("ph2d::ecs::TextureRepeat", None),
     ("ph2d::ecs::UvTransform", None),
+    ("ph2d::ecs::Visibility", None),
     ("ph2d::ecs::VisibilityLayer", None),
     ("ph2d::ecs::YSort", None),
     ("ph2d::ecs::ZAsRelative", None),
@@ -97,8 +98,9 @@ pub(crate) const LEIS: &[(&str, Lei)] = &[
     ("ph2d::ecs::ScrollMotion", None),
     ("ph2d::ecs::ScrollRepeat", Some(|w, e| em(w, e, crate::parallax_inspector::sanitize_parallax_repeat))),
     ("ph2d::ecs::AudioSource2D", Some(|w, e| em(w, e, crate::audio_inspector::sanitize_audio_source))),
-    // ⏳ a lei mora em ph2d_app_light2d::inspector::aplicar_ao_corpo (sem dependência)
-    ("ph2d::light2d::BloqueiaLuz", None),
+    // A lei mora com o tipo; o cartão (`ph2d_app_light2d::inspector`) chama a mesma.
+    ("ph2d::light2d::BloqueiaLuz", Some(|w, e| em(w, e, ph2d_light2d_ecs::BloqueiaLuz::sanitize))),
+    ("ph2d::light2d::Luz", Some(|w, e| em(w, e, ph2d_light2d_ecs::Luz::sanitize))),
     ("ph2d::ecs::ParticleEmitter", None),
 ];
 

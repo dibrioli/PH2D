@@ -52,8 +52,8 @@
   ambiente da foto (os passos da cena 5 precisam).
 - **NÃO curado:** `scripts/cargo-test-narrow.sh` imprime «0 falharam · 0 passaram» com exit 1 quando o alvo de teste
   não compila (o contrato diz exit 2).
-- Fotos da cena 5 (`PH2D_CODE_SMOKE=5 PH2D_CODE_SMOKE_PASSO=0..10`, 1330×772, espera 15): **em curso / conferir** —
-  confirme que existem `docs/CodeEditor/ferramentas/smoke/cena5/passo_0..10.png`; se faltarem, refotografe.
+- Fotos da cena 5 **refeitas** (`9e7bda1861`; `PH2D_CODE_SMOKE=5 PH2D_CODE_SMOKE_PASSO=0..10`, 1330×772, espera 45 s,
+  `PH2D_LUAU_LSP` apontado): cada log diz «passo n feito». O condutor passou a ROLAR até o alvo fora da vista (`docs.scroll_to`) — o 1.º passo parava e as 11 saíam iguais.
 
 ## 5. O que um MERGE pode partir
 

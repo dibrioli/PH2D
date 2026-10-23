@@ -199,4 +199,15 @@ extract desenha a imagem inteira no `Sprite.size` autorado (`script_image::cut`)
 variante `top:MOLDE/rest`; `RefNames`/`ScriptDoors.tags`). **d4b** `5d95dd7853` · catálogo `aab733e875` · fecho
 `3e88dc7bc1` (a lei da soltura desceu para `ph2d-code-syntax/src/dropping.rs`; `ph2d.set` volta a perguntar a
 `lane::is_named_property`). Detalhe e superfície no [handoff de integração](handoffs/HANDOFF_INTEGRACAO_line_CodeEditor_2026-10-22_ONDA2_ATE_8D.md).
-**Falta:** d5 (cena `PH2D_CODE_SMOKE=8`), 8b, 8c e a mutação das leis do 8d.
+**d5 FEITA** (23/10): cena `PH2D_CODE_SMOKE=8` (`ph2d-app-components/src/code_smoke_props.rs`). O herói «Hero»
+(sprite, corpo `Kinematic`, `Health` 100) corre o `aventura.luau` e anda sozinho: «Spikes» → `ph2d.damage` 40;
+«Coin» → `health.max` +50, `ph2d.heal` 50, `visibility.visible = false`; «Door» → `sprite.image = "door_open"`;
+«Camera» → `game_camera.height` 16 → 5 (⚠️ o nome é `game_camera.height`, o código do componente — o `camera.height`
+deste plano era palpite). As barras «Life Max»/«Life» são sprites que o script estica pelo que LÊ (`health.max`,
+`health.now`). As portas são PNG em `ferramentas/smoke/cena8/` (nome na biblioteca = nome do ficheiro), sobem ao
+átlas em `sobe_as_portas` (fase `fase_sprite_inspector_smokes` da shell, que tem o renderer); a cena liga a física
+(a vida só corre sobre corpos) e a vista pela câmera. Teste
+`code_smoke_props::tests::a_porta_abre_pelo_nome_o_maximo_sobe_a_camera_aproxima_e_rebobinar_devolve` (biblioteca
+real, ponte do jogo, rebobinar); corrida conduzida com 6 fotos em `ferramentas/conduz_propriedades/` (1.ª corrida:
+a porta nascia fora da vista e o herói sumia atrás dela — refeita com a câmera mais alta e a porta por baixo).
+**Falta:** 8b, 8c e a mutação das leis do 8d.

@@ -34,6 +34,7 @@
 //!   `local door = ph2d.object("Door")` e a porta sobe e desce; sem o Ctrl, a «Gold Coin» dentro de um
 //!   `ph2d.set(` faz a moeda girar. Renomear a «Door» na Hierarquia muda o script (um Ctrl+Z desfaz os
 //!   dois); `ph2d.object("` sugere os nomes; um nome errado é um aviso; Ctrl+clique selecciona.
+//! - **8** — as propriedades pelo nome (fase 8d): [`crate::code_smoke_props`].
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_script::{LuauScript, ProjectScripts, ScriptEditRequests, ScriptId, ScriptValue};
@@ -41,7 +42,7 @@ use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecScene, ellipse, rectangle, regular_polygon, star};
 
 /// Quantas cenas este roteador serve — o `max_level` do roteador da família (conferido em teste).
-pub const CENAS: u32 = 7;
+pub const CENAS: u32 = 8;
 
 /// O nome do script das formas nos scripts do projeto.
 pub const BOB_NAME: &str = "bob.luau";
@@ -245,7 +246,7 @@ pub const SHAPE_Y: f32 = 0.75;
 /// O meio-tamanho de cada forma (metros).
 pub const SHAPE_R: f64 = 0.8;
 
-fn tinta(mut p: VecPath, rgb: [u8; 3]) -> VecPath {
+pub(crate) fn tinta(mut p: VecPath, rgb: [u8; 3]) -> VecPath {
     p.fill = Some(Paint::Solid(Rgba8::new(rgb[0], rgb[1], rgb[2], 255)));
     p
 }
@@ -291,6 +292,9 @@ pub fn monta_em(
     }
     if nivel == 7 {
         return monta_arrastar(sim, cena, mapa);
+    }
+    if nivel == 8 {
+        return crate::code_smoke_props::monta(sim, cena, mapa);
     }
     let (bob, broken) = {
         let mut lib = sim.world_mut().get_resource_or_init::<ProjectScripts>();
@@ -515,6 +519,9 @@ pub fn piloto(input: &mut ph2d_input::InputState, n: u64) -> [f64; 2] {
 /// aprende a escolher), a ESTRELA no 3 (o Inspector mostra o valor próprio dela).
 pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
     let nivel = nivel.clamp(1, CENAS);
+    if nivel == 8 {
+        return crate::code_smoke_props::montar(cx);
+    }
     let formas = monta_em(cx.sim, cx.vec_scene, cx.vec_entities, nivel);
     if nivel == 3 {
         println!(

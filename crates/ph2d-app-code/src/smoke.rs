@@ -8,7 +8,7 @@
 use std::sync::OnceLock;
 
 /// O maior nível — o mesmo `ph2d_app_components::code_smoke::CENAS` (as cenas contam-se lá).
-pub const CENAS: u32 = 7;
+pub const CENAS: u32 = 8;
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_CODE_SMOKE",
@@ -46,7 +46,8 @@ mod tests {
         assert_eq!(armed_level_in(com("5")), Some(5));
         assert_eq!(armed_level_in(com("6")), Some(6));
         assert_eq!(armed_level_in(com("7")), Some(7));
-        assert_eq!(armed_level_in(com("8")), None);
+        assert_eq!(armed_level_in(com("8")), Some(8));
+        assert_eq!(armed_level_in(com("9")), None);
         assert_eq!(armed_level_in(com("x")), None);
         assert_eq!(armed_level_in(|_| None), None);
     }

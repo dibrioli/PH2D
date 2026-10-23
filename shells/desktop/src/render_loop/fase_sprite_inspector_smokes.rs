@@ -21,6 +21,14 @@ impl crate::App {
             atlas_asset_map,
             ..
         } = FrameGfx::of(gfx);
+        // A cena 8 do editor de scripts: as imagens da porta (no-op sem ela).
+        ph2d_app_components::code_smoke_props::sobe_as_portas(
+            sim,
+            renderer,
+            asset_db,
+            next_import_cell,
+            atlas_asset_map,
+        );
 
         // **9-SLICE** (`PH2D_SLICE_SMOKE=1`, spec Sprite 03 §3.5): duas caixas do MESMO desenho,
         // esticadas ao mesmo tamanho — a da esquerda sem 9-slice (cantos redondos viram elipses),

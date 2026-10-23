@@ -1,0 +1,3 @@
+# cena 8 conduzida — 2026-10-23T19:37Z — loadavg: 78.82 62.26 79.87 5/1964 1928629 · HEAD 28f33f41ee
+[   336ms] M7: ScriptHost initialized (placeholder script loaded)
+[code-smoke] =8 propriedades pelo nome: o herói azul corre o aventura.luau e anda para a direita — os espinhos tiram vida, a moeda sobe o máximo, a porta troca de imagem e a câmera aproxima. Rebobinar devolve tudo.

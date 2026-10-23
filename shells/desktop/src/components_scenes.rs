@@ -376,6 +376,8 @@ impl crate::App {
             }
         };
         self.components.smokes.script = true;
+        // A vida da cena 8 é da física.
+        self.timeline.flags.simulate_physics |= code == Some(8);
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             crate::components_scenes::abre_a_regua_da_corrida(hero);
             // ⚠️ O `clear()` anda colado ao `selection` (a lei da cena de física).

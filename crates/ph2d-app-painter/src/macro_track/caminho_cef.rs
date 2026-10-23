@@ -69,15 +69,3 @@ pub(super) fn roteiro_do_cef(v: Variante) -> Vec<(u64, Gesto)> {
     r.extend([(para + 500, Gesto::Rewind), (para + 1_000, Gesto::Play)]);
     r
 }
-
-/// O que a consola diz ao dono na `sobrepor`.
-pub(super) fn mensagem_sobrepor(f: &std::path::Path) -> String {
-    format!(
-        "the app does the path by itself — Record, a Digital stroke, the C&F picks red, a second stroke \
-         below it, Stop; then it drags the second diamond of the «Macro steps» row in the Timeline's Keys \
-         tab back, so the red stroke starts while the first one is still being painted; Rewind and Play. \
-         Do not touch the mouse for 15 s. After Play both strokes must grow AT THE SAME TIME, each in its \
-         own colour, and the other diamonds must not move. This log is also written to {}",
-        f.display()
-    )
-}

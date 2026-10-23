@@ -49,9 +49,7 @@ pub(crate) struct PaintState {
     pub(super) tex_rng: u64,
     /// Model snapshot at pointer-down (before the first dab) — committed to undo at pointer-up so the whole stroke undoes as one unit.
     pub(super) stroke_undo: Option<crate::undo::ModelSnapshot>,
-    /// **Traços abertos FORA deste** (W16, [`super::tracos`]): a macro toca pinceladas sobrepostas, cada uma
-    /// no seu traço; enquanto houver outro aberto, o que é PARTILHADO (o passo do desfazer, a aguada, o
-    /// relevo, a água) não recomeça num pen-down nem fecha num pen-up — fecha no último.
+    /// Traços abertos FORA deste (W16): o partilhado fecha no último ([`super::tracos`]).
     pub(super) tracos_fora: u32,
     /// Eraser mode: overrides the brush blend with Erase Alpha at stamp time (`brush.blend` preserved for when it's off).
     pub(super) eraser: bool,

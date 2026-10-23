@@ -237,6 +237,18 @@ pub use cef::{COR_DO_DROP, COR_NOVA, SOBREPOR_S};
 #[path = "caminho_cef.rs"]
 mod cef;
 
+/// O que a consola diz ao dono na `sobrepor`.
+fn mensagem_sobrepor(f: &std::path::Path) -> String {
+    format!(
+        "the app does the path by itself — Record, a Digital stroke, the C&F picks red, a second stroke \
+         below it, Stop; then it drags the second diamond of the «Macro steps» row in the Timeline's Keys \
+         tab back, so the red stroke starts while the first one is still being painted; Rewind and Play. \
+         Do not touch the mouse for 15 s. After Play both strokes must grow AT THE SAME TIME, each in its \
+         own colour, and the other diamonds must not move. This log is also written to {}",
+        f.display()
+    )
+}
+
 /// Uma pincelada vertical na coluna `u`, de `v = 0,2` a `0,6` (cruza as duas gravadas), de `t0` (ms).
 fn vertical(r: &mut Vec<(u64, Gesto)>, t0: u64, u: f32, dura: u64) {
     let passos = dura / PASSO_MS;
@@ -405,7 +417,7 @@ pub fn anuncio(conduz: bool) -> String {
                 f.display()
             );
         }
-        Variante::Sobrepor => return cef::mensagem_sobrepor(&f),
+        Variante::Sobrepor => return mensagem_sobrepor(&f),
         Variante::Etapa => {
             return format!(
                 "the app does the path by itself — Record, two strokes, Stop, three Opacity keys on the \

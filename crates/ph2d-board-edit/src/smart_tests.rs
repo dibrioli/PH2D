@@ -478,15 +478,15 @@ fn every_recognised_shape_lands_on_an_element_that_draws_it() {
             },
             Lands::Shape(ShapeType::Ellipse),
         ),
-        ("arco", QuickShape::Arc(arc.clone()), Lands::Ink),
+        ("arco", QuickShape::Arc(arc), Lands::Ink),
         (
             "biarco",
             QuickShape::Biarc([
-                arc.clone(),
+                arc,
                 ArcShape {
                     centre: [200.0 + 2.0 * 150.0 * (0.3f64 + 2.2).cos(), 200.0],
                     sweep: -1.5,
-                    ..arc.clone()
+                    ..arc
                 },
             ]),
             Lands::Ink,

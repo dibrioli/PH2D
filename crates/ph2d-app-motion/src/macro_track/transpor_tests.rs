@@ -72,7 +72,7 @@ fn com_documento() -> Track {
     t
 }
 
-type Canon = (
+pub(crate) type Canon = (
     Vec<String>,
     Vec<(usize, u16, usize, u16, bool)>,
     Vec<(usize, String, usize, u16)>,
@@ -80,7 +80,7 @@ type Canon = (
 
 /// O grafo de `dono` a menos dos ids: cada nó pela ordem de id entre os do dono (o `import_owner` e os
 /// criados guardam-na), os fios e os params dirigidos por essa ordem.
-fn canon(d: &MotionDoc, dono: u64) -> Canon {
+pub(crate) fn canon(d: &MotionDoc, dono: u64) -> Canon {
     let ids = d.nodes_of(dono);
     let r = |n: NodeId| ids.iter().position(|x| *x == n).expect("do dono");
     let g = &d.graph;

@@ -700,11 +700,14 @@ impl ph2d_editor_core::macro_tutorial::TranspoeDaFamilia for crate::motion_state
         &mut self,
         track: &Track,
         dono: u64,
+        vida: u64,
     ) -> Result<Track, ph2d_editor_core::macro_edits::ErroDaMacroView> {
         let (t, doc) = aplica(track, &self.doc, dono).map_err(|e| erro_view(&e))?;
         if doc != self.doc {
             let pre = std::mem::replace(&mut self.doc, doc);
-            self.history.push_undo(pre);
+            self.objeto
+                .atados
+                .ata(&mut self.history, vida, pre, &self.doc);
             self.pump.mark_dirty();
         }
         Ok(t)
@@ -713,4 +716,4 @@ impl ph2d_editor_core::macro_tutorial::TranspoeDaFamilia for crate::motion_state
 
 #[cfg(all(test, feature = "panel-motion-graph"))]
 #[path = "transpor_tests.rs"]
-mod tests;
+pub(crate) mod tests;

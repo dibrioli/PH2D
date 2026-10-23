@@ -53,10 +53,10 @@ impl crate::App {
     /// `MotionHistory` stack is populated by the graph-edit intents (add / delete
     /// / connect / disconnect = one step each; a node drag is one bracketed step).
     /// Restoring the doc changes the cook, so re-cook via `mark_dirty`.
-    pub(super) fn motion_undo_e_do_global(&self) -> bool {
+    pub(super) fn motion_undo_e_do_global(&self, redo: bool) -> bool {
         self.gfx
             .as_ref()
-            .is_some_and(|g| ph2d_app_motion::motion_objeto::undo_e_do_global(&g.motion))
+            .is_some_and(|g| ph2d_app_motion::motion_objeto::undo_e_do_global(&g.motion, redo))
     }
 
     pub(super) fn motion_undo(&mut self) {

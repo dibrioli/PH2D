@@ -354,6 +354,12 @@ impl MotionHistory {
         self.undo.last()
     }
 
+    /// O passo que um Ctrl+Y refaria agora (o topo do redo).
+    #[must_use]
+    pub fn top_redo(&self) -> Option<&MotionDoc> {
+        self.redo.last()
+    }
+
     /// Tira o passo do topo se ele for `pre` — o cemitério do objecto Motion a desfazer a purga
     /// sozinho, quando o undo global devolveu o dono. Não vai para o redo.
     pub fn take_top_if(&mut self, pre: &MotionDoc) -> Option<MotionDoc> {

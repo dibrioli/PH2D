@@ -130,11 +130,12 @@ pub trait TranspoeDaFamilia {
         ))
     }
     /// Aplica a trilha ao objecto `dono` (`StableId`) no documento vivo, que passa ao fim dela (um passo
-    /// de undo); devolve a trilha a instalar.
+    /// de undo preso à vida do objecto Macro `vida`: o undo global que o tira desfá-lo); devolve a
+    /// trilha a instalar.
     ///
     /// # Errors
     /// O porquê — o documento vivo fica intacto.
-    fn aplica(&mut self, _track: &Track, _dono: u64) -> Result<Track, ErroDaMacroView> {
+    fn aplica(&mut self, _track: &Track, _dono: u64, _vida: u64) -> Result<Track, ErroDaMacroView> {
         Err(crate::macro_etapas::erros::erro(
             crate::macro_edits::MACRO_NAO_TRANSPOE,
         ))

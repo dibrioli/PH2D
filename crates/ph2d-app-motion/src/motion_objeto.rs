@@ -32,6 +32,9 @@ pub mod object_add;
 #[path = "motion_objeto_origem.rs"]
 pub mod origem;
 
+/// ⭐ O passo de um aplicar de macro preso à vida do objecto Macro.
+#[path = "motion_objeto_atados.rs"]
+pub mod atados;
 #[path = "motion_objeto_entradas.rs"]
 pub mod entradas;
 /// `PH2D_MOTION_OBJETO_SMOKE=1|2` — a cena do smoke do dono.
@@ -85,6 +88,8 @@ pub struct ObjetoState {
     /// ⭐ As covas das purgas ([`ph2d_ecs::graveyard`]): o undo global que devolve o objecto devolve
     /// os nós dele no mesmo quadro.
     pub cemiterio: ph2d_ecs::Graveyard<ph2d_motion_doc::MotionDoc>,
+    /// ⭐ Os passos dos aplicar de macro ([`atados`]): o undo global que tira o objecto Macro tira-os.
+    pub atados: atados::Atados,
 }
 
 impl ObjetoState {
@@ -128,6 +133,13 @@ pub fn upkeep(
     let mut feito = Manutencao::default();
     ph2d_ecs::assign_missing_stable_ids(world);
     motion.objeto.donos = vivos(world);
+    if motion
+        .objeto
+        .atados
+        .acompanha(&mut motion.history, &mut motion.doc, world)
+    {
+        motion.pump.mark_dirty();
+    }
     copias(motion, world, &mut feito);
     ressuscita(motion, &mut feito);
     mortes(motion, playing, &mut feito);
@@ -313,15 +325,22 @@ fn copias(motion: &mut MotionState, world: &mut World, feito: &mut Manutencao) {
     motion.pump.mark_dirty();
 }
 
-/// ⭐ O Ctrl+Z da ferramenta Motion pertence ao undo GLOBAL? Sim quando o topo da fila do Motion é a
-/// purga de um objecto apagado, enterrada à espera dele ([`ph2d_ecs::Graveyard::holds`]): desfazê-la
-/// ali daria os nós a outro objecto (a migração), e o objecto nunca voltaria.
+/// ⭐ O Ctrl+Z (`redo = false`) ou Ctrl+Y da ferramenta Motion pertence ao undo GLOBAL? Sim quando o
+/// topo da fila do Motion é a purga de um objecto apagado, enterrada à espera dele
+/// ([`ph2d_ecs::Graveyard::holds`]) — desfazê-la ali daria os nós a outro objecto e o objecto nunca
+/// voltaria —, ou o passo de um aplicar de macro ([`atados`]), que é do objecto Macro.
 #[must_use]
-pub fn undo_e_do_global(motion: &MotionState) -> bool {
-    motion
-        .history
-        .top()
-        .is_some_and(|t| motion.objeto.cemiterio.holds(t))
+pub fn undo_e_do_global(motion: &MotionState, redo: bool) -> bool {
+    let atado = motion
+        .objeto
+        .atados
+        .topo_e_atado(&motion.history, &motion.doc, redo);
+    atado
+        || (!redo
+            && motion
+                .history
+                .top()
+                .is_some_and(|t| motion.objeto.cemiterio.holds(t)))
 }
 
 /// ⭐ O objecto que o undo global devolveu traz os nós dele de volta, no mesmo Ctrl+Z (o cemitério).

@@ -297,7 +297,7 @@ fn um_ctrl_z_global_devolve_o_objecto_com_os_nos() {
     upkeep(&mut m, sim.world_mut(), None, false);
     assert!(m.doc.graph.nodes().is_empty());
     assert!(
-        undo_e_do_global(&m),
+        undo_e_do_global(&m, false),
         "o Ctrl+Z da ferramenta Motion passa ao undo global (não dá os nós a outro objecto)"
     );
 
@@ -309,7 +309,7 @@ fn um_ctrl_z_global_devolve_o_objecto_com_os_nos() {
     ));
     let feito = upkeep(&mut m, sim.world_mut(), None, false);
     assert!(feito.ressuscitados);
-    assert!(!undo_e_do_global(&m));
+    assert!(!undo_e_do_global(&m, false));
     assert_eq!(m.doc.graph, grafo, "os nós voltaram com o objecto");
     assert_eq!(m.doc.owner_ids(), BTreeSet::from([sid]));
     assert!(

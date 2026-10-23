@@ -233,23 +233,20 @@ impl crate::App {
             && (self.modifiers.control_key() || self.modifiers.super_key())
             && let PhysicalKey::Code(code) = physical_key
         {
+            let redo = code == KeyCode::KeyY || self.modifiers.shift_key();
             let handled = match code {
-                KeyCode::KeyZ if self.modifiers.shift_key() => {
-                    self.motion_redo();
+                // ⭐ A purga de um objecto apagado e o passo de um aplicar de macro são do undo GLOBAL
+                // (ele devolve ou tira o objecto e os nós) — direto, sem passar pela timeline.
+                KeyCode::KeyZ | KeyCode::KeyY if self.motion_undo_e_do_global(redo) => {
+                    self.undo_or_redo(redo);
                     true
                 }
-                // ⭐ A purga de um objecto apagado é do undo GLOBAL (ele devolve o objecto e os nós) —
-                // direto, sem passar pela timeline, que podia ter um passo antigo sem relação.
-                KeyCode::KeyZ if self.motion_undo_e_do_global() => {
-                    self.undo_or_redo(false);
+                KeyCode::KeyZ | KeyCode::KeyY if redo => {
+                    self.motion_redo();
                     true
                 }
                 KeyCode::KeyZ => {
                     self.motion_undo();
-                    true
-                }
-                KeyCode::KeyY => {
-                    self.motion_redo();
                     true
                 }
                 _ => false,

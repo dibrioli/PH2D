@@ -492,13 +492,13 @@ fn a_buried_purge_sends_ctrl_z_to_the_global_undo() {
     );
     let mo = std::fs::read_to_string(raiz.join("keyboard_cadeia.rs")).unwrap();
     let braco = mo
-        .find("KeyCode::KeyZ if self.motion_undo_e_do_global()")
+        .find("KeyCode::KeyZ | KeyCode::KeyY if self.motion_undo_e_do_global(redo)")
         .expect("o Ctrl+Z do Motion tem de perguntar se é do global");
     assert!(
         mo[braco..]
             .lines()
             .take(4)
-            .any(|l| l.contains("self.undo_or_redo(false)")),
+            .any(|l| l.contains("self.undo_or_redo(redo)")),
         "e mandá-lo DIRETO ao undo global"
     );
 }

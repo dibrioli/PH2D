@@ -50,18 +50,36 @@ pub fn instala(
     doc: &MacroDoc,
     modo: ModoDaMacro,
 ) -> Result<usize, &'static str> {
-    let bytes = ph2d_macro::codec::write(doc);
-    let d = segundos(doc, outras);
-    if let Ok(mut e) = c.sim.world_mut().get_entity_mut(Entity::from_bits(dono)) {
-        e.insert(Macro { doc: bytes, modo });
-    }
     // Criar ou re-cronometrar o clipe é UM passo da pilha da Timeline (o undo dos clipes é o dela);
     // a `Macro` entra no diff do mundo. O clipe da macro fica ACTIVO: a linha «Macro steps» mostra-se.
-    let st = &mut *c.timeline;
-    st.history.begin(&st.doc);
-    let r = clipe(&mut st.doc, dono, d);
-    st.history.commit_if_changed(&st.doc);
-    rearma_o_laco(st, c.intents);
+    c.timeline.history.begin(&c.timeline.doc);
+    let r = instala_nascido(c, outras, dono, doc, modo);
+    c.timeline.history.commit_if_changed(&c.timeline.doc);
+    r
+}
+
+/// [`instala`] num objecto Macro que nasceu NESTE gesto (aplicar): o clipe sem passo próprio na
+/// Timeline — vive e morre com o dono (a purga e a ressurreição do cemitério dela), e o aplicar
+/// inteiro é UM Ctrl+Z do undo global.
+///
+/// # Errors
+/// A chave da frase: o clipe não coube na animação.
+pub fn instala_nascido(
+    c: &mut Cena<'_>,
+    outras: Injectadas<'_>,
+    dono: u64,
+    doc: &MacroDoc,
+    modo: ModoDaMacro,
+) -> Result<usize, &'static str> {
+    let d = segundos(doc, outras);
+    if let Ok(mut e) = c.sim.world_mut().get_entity_mut(Entity::from_bits(dono)) {
+        e.insert(Macro {
+            doc: ph2d_macro::codec::write(doc),
+            modo,
+        });
+    }
+    let r = clipe(&mut c.timeline.doc, dono, d);
+    rearma_o_laco(c.timeline, c.intents);
     r
 }
 

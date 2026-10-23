@@ -241,7 +241,7 @@ pub fn aplica(
         OndeAplicar::PorCima { alvo } => por_cima(fi, alvo, f, c, portas),
     }?;
     let (raiz, doc) = r;
-    crate::instala::instala(c, f.etapas, raiz, &doc, modo_de(fi.modo)).map_err(erro)?;
+    crate::instala::instala_nascido(c, f.etapas, raiz, &doc, modo_de(fi.modo)).map_err(erro)?;
     Ok(raiz)
 }
 
@@ -309,17 +309,18 @@ fn novo(
             poe!(sim, b, (pose, Macro::default()));
             let sid = sid_de(sim, b);
             for t in &mut doc.tracks {
-                *t = muda_o_alvo(t, familia(t), sid, f)?;
+                *t = muda_o_alvo(t, familia(t), sid, sid, f)?;
             }
             b
         } else {
             let raiz = nasce_a_raiz(sim, portas, &fi.nome, pose);
             nascidos.push(raiz);
             let pai = Entity::from_bits(raiz);
+            let vida = sid_de(sim, raiz);
             for t in &mut doc.tracks {
                 let Some(n) = t.nasce.clone() else {
                     // Uma trilha sem ficha numa macro com fichas: o próprio objecto Macro.
-                    *t = muda_o_alvo(t, familia(t), sid_de(sim, raiz), f)?;
+                    *t = muda_o_alvo(t, familia(t), vida, vida, f)?;
                     continue;
                 };
                 let fam = familia(t);
@@ -333,7 +334,7 @@ fn novo(
                 };
                 nascidos.push(b);
                 poe!(sim, b, (transform_local(n.local), ChildOf(pai)));
-                *t = muda_o_alvo(t, fam, sid_de(sim, b), f)?;
+                *t = muda_o_alvo(t, fam, sid_de(sim, b), vida, f)?;
             }
             raiz
         };
@@ -349,11 +350,13 @@ fn novo(
 }
 
 /// A trilha a instalar com o alvo `sid`: o Painter só troca o `target`; o Motion junta os nós ao
-/// documento vivo (que passa ao fim dela) e devolve a trilha transposta.
+/// documento vivo (que passa ao fim dela, num passo preso à vida do objecto Macro `vida`) e devolve
+/// a trilha transposta.
 fn muda_o_alvo(
     t: &Track,
     fam: FamiliaDaMacro,
     sid: u64,
+    vida: u64,
     f: &mut Familias<'_>,
 ) -> Result<Track, ErroDaMacroView> {
     match fam {
@@ -363,7 +366,7 @@ fn muda_o_alvo(
             Ok(t)
         }
         FamiliaDaMacro::Motion => {
-            let mut n = f.motion.aplica(t, sid)?;
+            let mut n = f.motion.aplica(t, sid, vida)?;
             n.nasce.clone_from(&t.nasce);
             Ok(n)
         }
@@ -399,9 +402,10 @@ fn por_cima(
     let pose = ph2d_ecs::world_transform(sim.world(), Entity::from_bits(alvo)).unwrap_or_default();
     let raiz = nasce_a_raiz(sim, portas, &fi.nome, pose);
     if fam == FamiliaDaMacro::Motion {
+        let vida = sid_de(sim, raiz);
         let mut feitas = Vec::with_capacity(doc.tracks.len());
         for t in &doc.tracks {
-            match f.motion.aplica(t, sid) {
+            match f.motion.aplica(t, sid, vida) {
                 Ok(mut n) => {
                     n.nasce = None;
                     feitas.push(n);

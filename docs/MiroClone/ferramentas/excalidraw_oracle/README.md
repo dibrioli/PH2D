@@ -442,9 +442,10 @@ recta do ponto vizinho por \|focus\|·K (focus = d/h(n)) a `gap` da forma — \|
 redondo não tem lei (resíduo até 3,7 px) — ⇒ tem: a lei das peças, §W23 B9. No next, o arrasto de uma ponta NÃO marca o foco: só o contorno azul e
 a seta já parada a g (os pontos mostrados são o encaixe no meio do lado), e o foco do gesto na faixa é o cursor.
 
-**Quando o escritor muda, regravam-se as TRÊS entradas nossas:** W8 (`grava_a_entrada_do_oraculo` +
+**Quando o escritor muda, regravam-se as QUATRO entradas nossas:** W8 (`grava_a_entrada_do_oraculo` +
 `corre_esquema.mjs entradas/w8_ph2d_quadro.excalidraw`, devolvendo o `w8_sondas.json` ao da W8); W9
-(`grava_a_entrada_w9_nosso` + `corre_fidelidade.mjs entradas/w9_nosso_casos.json`); W10 (os comandos acima).
+(`grava_a_entrada_w9_nosso` + `corre_fidelidade.mjs entradas/w9_nosso_casos.json`); W10 (os comandos acima);
+W15 (`grava_a_entrada_do_oraculo_w15` + `corre.sh saidas/w15 entradas/w15_nosso.excalidraw`, §W14 abaixo).
 
 ### W14 — a IMAGEM: `corre.sh saidas/w14 entradas/w14_*.excalidraw`
 

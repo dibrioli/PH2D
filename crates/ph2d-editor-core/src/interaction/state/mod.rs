@@ -582,16 +582,11 @@ pub struct WidgetStore {
     pub(super) multiline_text_ids: std::collections::BTreeSet<NodeId>,
     /// TextInputs that **abort on Esc** rather than merely blurring — they emit
     /// `WidgetEvent::Cancel` so the panel can drop whatever mode the field was serving
-    /// (a rename, a search).
-    ///
-    /// It was a hardcoded `id == HIER_RENAME_INPUT || id == TIMELINE_MARKER_RENAME_INPUT`
-    /// inside `dispatch_key` — a second list of ids that every new cancel-on-escape field
-    /// had to be added to, in a file it has no other business in. A widget's behaviour
-    /// belongs to the widget.
+    /// (a rename, a search). A widget's behaviour belongs to the widget — never a second id
+    /// list inside `dispatch_key`.
     pub(super) cancel_on_escape_ids: std::collections::BTreeSet<NodeId>,
-    /// BulkSelect: os `NumberInput` cuja seleção difere neste campo — sem foco, pintam em branco
-    /// (o «misto»); o `value`/`last_committed` continuam os do primário. Tabela ao lado, e não
-    /// campo da variante, porque a variante tem 120+ sítios de construção.
+    /// BulkSelect: os `NumberInput` cuja seleção difere (o «misto», em branco sem foco); tabela ao
+    /// lado e não campo da variante, que tem 120+ sítios de construção.
     pub(super) mixed_numbers: std::collections::BTreeSet<NodeId>,
     /// M14.A polish: in-progress drag on a NumberInput body. Captured
     /// on Down inside the box (NOT inside the up/down arrow), held

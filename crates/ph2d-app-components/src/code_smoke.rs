@@ -42,7 +42,7 @@ use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecScene, ellipse, rectangle, regular_polygon, star};
 
 /// Quantas cenas este roteador serve — o `max_level` do roteador da família (conferido em teste).
-pub const CENAS: u32 = 8;
+pub const CENAS: u32 = 9;
 
 /// O nome do script das formas nos scripts do projeto.
 pub const BOB_NAME: &str = "bob.luau";
@@ -521,6 +521,9 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
     let nivel = nivel.clamp(1, CENAS);
     if nivel == 8 {
         return crate::code_smoke_props::montar(cx);
+    }
+    if nivel == 9 {
+        return crate::code_smoke_inspector::montar(cx);
     }
     let formas = monta_em(cx.sim, cx.vec_scene, cx.vec_entities, nivel);
     if nivel == 3 {

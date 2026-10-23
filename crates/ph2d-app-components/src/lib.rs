@@ -94,6 +94,7 @@ pub mod canais_componente;
 pub mod canais_objeto;
 pub mod canais_script;
 pub mod code_smoke;
+pub mod code_smoke_inspector;
 pub mod code_smoke_props;
 pub mod component_attach;
 pub mod component_palette;

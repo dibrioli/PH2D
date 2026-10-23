@@ -8,7 +8,7 @@
 use std::sync::OnceLock;
 
 /// O maior nível — o mesmo `ph2d_app_components::code_smoke::CENAS` (as cenas contam-se lá).
-pub const CENAS: u32 = 8;
+pub const CENAS: u32 = 9;
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_CODE_SMOKE",

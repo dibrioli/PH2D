@@ -343,6 +343,16 @@ pub fn rename_edits(
     out
 }
 
+/// O texto `src` depois de uma soltura com Alt em `byte` ([`object_property_insertion`], sem aba).
+#[must_use]
+pub fn alt_dropped_into(src: &str, byte: usize, names: &[String]) -> String {
+    let t = Text::new(src);
+    let i = object_property_insertion(&t, &Syntax::new(&t), byte, names);
+    let mut out = src.to_owned();
+    out.insert_str(i.at, &i.text);
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -411,8 +411,14 @@ fn escrever_o_mesmo_tipo_nao_mexe_na_junta() {
 #[test]
 fn so_a_corda_da_polia_tem_o_comprimento_da_rota() {
     let mut sim = SimWorld::new();
-    let polia = sim.world_mut().spawn(PhysicsJoint::of_kind(JointKind::Pulley)).id();
-    let corda = sim.world_mut().spawn(PhysicsJoint::of_kind(JointKind::Rope)).id();
+    let polia = sim
+        .world_mut()
+        .spawn(PhysicsJoint::of_kind(JointKind::Pulley))
+        .id();
+    let corda = sim
+        .world_mut()
+        .spawn(PhysicsJoint::of_kind(JointKind::Rope))
+        .id();
     assert!(e_polia(sim.world(), polia.to_bits()));
     assert!(!e_polia(sim.world(), corda.to_bits()));
 }

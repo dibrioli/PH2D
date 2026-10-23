@@ -8,14 +8,14 @@ use ph2d_tool_painter::{MEIO_DO_PRESET, PaintMedia};
 const ROUND: &str = "WetPainter/Watercolor/Fluid/Wet Round.ph2d-brush.png";
 const WASH: &str = "WetPainter/Watercolor/Fluid/Wet Wash.ph2d-brush.png";
 
-fn pasta(nome: &str) -> PathBuf {
+pub(super) fn pasta(nome: &str) -> PathBuf {
     let d = std::env::temp_dir().join(format!("ph2d_bridge_presets_{}_{nome}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d
 }
 
-fn abre(nome: &str) -> (Presets, PainterTool, ToastQueue, PathBuf) {
+pub(super) fn abre(nome: &str) -> (Presets, PainterTool, ToastQueue, PathBuf) {
     let uti = pasta(nome);
     let mut t = PainterTool::default();
     t.set_paint_media(PaintMedia::WetPaint);
@@ -24,7 +24,7 @@ fn abre(nome: &str) -> (Presets, PainterTool, ToastQueue, PathBuf) {
     (p, t, toasts, uti)
 }
 
-fn sem_erros(toasts: &ToastQueue) {
+pub(super) fn sem_erros(toasts: &ToastQueue) {
     let erros: Vec<&str> = toasts
         .iter()
         .filter(|t| t.severity == ToastSeverity::ErrorState)
@@ -263,7 +263,7 @@ fn com_exemplos(nome: &str, meio: PaintMedia) -> (Presets, PainterTool, ToastQue
 const LAPIS: &str = "Digital/Pencil/Graphite/Sketch Pencil.ph2d-brush.png";
 const EMPASTE: &str = "Impasto/Oil/Bristle/Thick Impasto.ph2d-brush.png";
 
-/// ⭐ O navegador abre SEM o Wet Paint, lista os quatro meios (o de agora primeiro) e escolher um preset de outro
+/// ⭐ O navegador abre SEM o Wet Paint, lista os quatro meios e escolher um preset de outro
 /// meio TROCA o meio; o activo é o de cada meio.
 #[test]
 fn o_navegador_abre_em_qualquer_meio_e_escolher_troca_o_meio() {
@@ -271,19 +271,8 @@ fn o_navegador_abre_em_qualquer_meio_e_escolher_troca_o_meio() {
     sem_erros(&toasts);
     let fabrica = ph2d_brush_presets::Biblioteca::carregar(&pasta_de_fabrica(), None);
     assert_eq!(p.vista.entradas.len(), fabrica.entradas.len() + 3);
-    // Desde as CATEGORIAS (dono 22/10) a lei é «o meio de agora primeiro DENTRO de cada categoria» (era o meio
-    // de agora primeiro na lista inteira): o Sketch Pencil do exemplo, o único lápis do Digital, abre o Pencil.
-    let meio_de = |rel: &str| p.bib.procurar(rel).unwrap().preset.parametros.media.clone();
-    let agora = nome_do_meio(PaintMedia::Digital);
-    for par in p.vista.entradas.windows(2) {
-        if par[0].categoria == par[1].categoria {
-            assert!(
-                !(meio_de(&par[0].relativo) != agora && meio_de(&par[1].relativo) == agora),
-                "{}: um pincel do meio de agora depois de um de outro meio na mesma categoria",
-                par[1].relativo
-            );
-        }
-    }
+    // O «meio de agora primeiro» saiu a 23/10 (era ele que trocava a ordem ao escolher um pincel de outro
+    // meio — `a_ordem_nao_muda_sozinha`): a ordem é a da biblioteca, e o Digital vem antes do Wet Painter.
     let i = p
         .vista
         .entradas

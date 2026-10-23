@@ -121,6 +121,17 @@ pub enum PanelRowFamily {
     PainterLayer,
     /// ⭐ As tags do projecto (TOP-20 #9, W4b) — a `TagTree` é do documento.
     TagTree,
+    /// Os pincéis no navegador de presets do Painter (23/10) — a ordem é do `estado.json` do artista.
+    PainterPreset,
+}
+
+impl PanelRowFamily {
+    /// A família tem linhas DENTRO de linhas. Sem isso a queda não tem `Inside`: a linha parte-se ao
+    /// meio em `Before` / `After`.
+    #[must_use]
+    pub fn aninha(self) -> bool {
+        !matches!(self, Self::PainterPreset)
+    }
 }
 
 /// Onde uma linha arrastada foi largada, relativamente a uma linha-alvo. Espelho do `HierDrop` da

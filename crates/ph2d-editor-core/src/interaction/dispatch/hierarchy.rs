@@ -183,8 +183,11 @@ pub(super) fn find_panel_row_drop(
         if cursor_y < top || cursor_y >= bot {
             continue;
         }
-        let inside_top = top + rect.h * 0.3;
-        let inside_bot = top + rect.h * 0.7;
+        let (inside_top, inside_bot) = if family.aninha() {
+            (top + rect.h * 0.3, top + rect.h * 0.7)
+        } else {
+            (top + rect.h * 0.5, top + rect.h * 0.5)
+        };
         if cursor_y < inside_top {
             return PanelRowDrop::Before(id);
         } else if cursor_y < inside_bot {

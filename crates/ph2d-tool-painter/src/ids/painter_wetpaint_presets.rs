@@ -46,12 +46,35 @@ pub const PAINTER_WETPAINT_PRESET_RESET: NodeId =
 /// preview stays at the top of the Brush view while the rest scrolls under it.
 pub const PAINTER_BRUSH_PREVIEW_PIN: NodeId = hash_node_id("painter_brush.preview_pin");
 
+/// **Import…** — one or more `*.ph2d-brush.png` files into the artist's folder (the bridge opens the picker).
+pub const PAINTER_WETPAINT_PRESET_IMPORT: NodeId =
+    hash_node_id("painter_brush.wetpaint_preset_import");
+/// **Export…** — the active preset as ONE portable file, with every image slot it carries.
+pub const PAINTER_WETPAINT_PRESET_EXPORT: NodeId =
+    hash_node_id("painter_brush.wetpaint_preset_export");
+/// **Delete** — the active preset when it is the artist's own (never a factory one). The panel arms it on
+/// the 1st click (the label names the brush) and only the 2nd reaches the tool.
+pub const PAINTER_WETPAINT_PRESET_DELETE: NodeId =
+    hash_node_id("painter_brush.wetpaint_preset_delete");
+/// **Reset positions** — the navigator back to the default order (drops the order the artist dragged).
+pub const PAINTER_WETPAINT_PRESET_RESET_ORDER: NodeId =
+    hash_node_id("painter_brush.wetpaint_preset_reset_order");
+/// A preset dragged to another place in the open navigator: `SelectOption(_, "<dragged>\u{1f}<target>\u{1f}<before|after>")`
+/// (library paths). Never painted: the panel sends it on the drop.
+pub const PAINTER_WETPAINT_PRESET_MOVE: NodeId = hash_node_id("painter_brush.wetpaint_preset_move");
+/// The separator of [`PAINTER_WETPAINT_PRESET_MOVE`]'s value (no file name carries it).
+pub const PRESET_MOVE_SEP: char = '\u{1f}';
+
 /// The preset buttons (Click → the tool records the request; the bridge does the disk work).
-pub const PAINTER_WETPAINT_PRESET_BUTTONS: [NodeId; 4] = [
+pub const PAINTER_WETPAINT_PRESET_BUTTONS: [NodeId; 8] = [
     PAINTER_WETPAINT_PRESET_FAVORITE,
     PAINTER_WETPAINT_PRESET_SAVE_NEW,
     PAINTER_WETPAINT_PRESET_SAVE_DEFAULT,
     PAINTER_WETPAINT_PRESET_RESET,
+    PAINTER_WETPAINT_PRESET_IMPORT,
+    PAINTER_WETPAINT_PRESET_EXPORT,
+    PAINTER_WETPAINT_PRESET_DELETE,
+    PAINTER_WETPAINT_PRESET_RESET_ORDER,
 ];
 
 /// **Size px** volume — the DIAMETER the artist sees (the cursor ring); the tool stores half of it.

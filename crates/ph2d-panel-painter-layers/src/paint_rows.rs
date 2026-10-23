@@ -28,7 +28,7 @@ const BLEND_CHIP_W: f32 = 92.0; // LITERAL-PX-OK: blend-mode dropdown chip colum
 pub(crate) const OPACITY_PCT_W: f32 = 44.0; // LITERAL-PX-OK: plain "NN%" readout column right of the bare opacity slider
 const REORDER_W: f32 = 16.0; // LITERAL-PX-OK: far-right reorder button column width
 pub(crate) const PCT_SCALE: f32 = 100.0; // LITERAL-PX-OK: fraction-to-percent scale, not a design value
-const DROP_BAR_H: f32 = 2.0; // LITERAL-PX-OK: W3.T3.8 drag drop-indicator bar thickness
+pub(crate) const DROP_BAR_H: f32 = 2.0; // LITERAL-PX-OK: W3.T3.8 drag drop-indicator bar thickness
 const GHOST_PAD: f32 = 7.0; // LITERAL-PX-OK: floating drag-ghost pill horizontal text padding
 const DROP_BAND_TOP: f32 = 0.3; // LITERAL-PX-OK: top 30% = insert-before band (mirror of find_painter_layer_drop)
 const DROP_BAND_BOT: f32 = 0.7; // LITERAL-PX-OK: bottom 30% = insert-after band (mirror of find_painter_layer_drop)

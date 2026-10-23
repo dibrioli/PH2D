@@ -17,6 +17,7 @@
 mod biblioteca;
 mod estado;
 mod modelo;
+mod ordem;
 mod png;
 
 pub use biblioteca::{
@@ -26,6 +27,7 @@ pub use estado::{EstadoDoUtilizador, FICHEIRO_ESTADO, Lembrado, Politica};
 pub use modelo::{
     Erro, LADO_MINIATURA, Miniatura, Origem, Parametros, Preset, SCHEMA, Tilt, Volumes,
 };
+pub use ordem::{mesclar as mesclar_ordem, mover as mover_na_ordem};
 pub use png::{
     escrever, escrever_textura, escrever_textura_rgba, ler, ler_textura, ler_textura_rgba,
 };

@@ -44,6 +44,9 @@ pub const MOTOR_DOS_PRESETS: &str = "WetPainter";
 const CHAVE_ERASE: &str = "erase";
 const TEXTURA_FORMA: &str = "shape";
 const TEXTURA_GRAO: &str = "grain";
+/// A imagem do Flow da Ragged Edge («Use as Flow»): só a Aquarela a lê. O Paper NÃO viaja — é da obra
+/// (`CAMPOS_FORA`, `DA_OBRA`): o mesmo papel sob todos os pincéis.
+const TEXTURA_FLUXO: &str = "flow";
 
 /// Os campos do `BrushSpec` que o preset leva, pelo nome do campo.
 pub const CAMPOS_DO_PINCEL: [&str; 38] = [
@@ -243,6 +246,20 @@ pub enum PedidoPreset {
     Repor,
     /// A política dos volumes, pelo índice em `Politica::TODAS`.
     Politica(u8),
+    /// Ficheiros de preset para a pasta do artista (a ponte abre o seletor).
+    Importar,
+    /// O preset activo num ficheiro portátil (a ponte abre o seletor).
+    Exportar,
+    /// Apagar o preset activo — só o do artista; o painel já confirmou.
+    Apagar,
+    /// A ordem do navegador volta à por omissão.
+    ReporPosicoes,
+    /// `arrastado` passa para antes (ou `depois`) de `alvo` no navegador.
+    Mover {
+        arrastado: String,
+        alvo: String,
+        depois: bool,
+    },
 }
 
 impl PainterTool {
@@ -266,6 +283,31 @@ impl PainterTool {
             }
             PanelEvent::Click(id) if *id == ids::PAINTER_WETPAINT_PRESET_RESET => {
                 PedidoPreset::Repor
+            }
+            PanelEvent::Click(id) if *id == ids::PAINTER_WETPAINT_PRESET_IMPORT => {
+                PedidoPreset::Importar
+            }
+            PanelEvent::Click(id) if *id == ids::PAINTER_WETPAINT_PRESET_EXPORT => {
+                PedidoPreset::Exportar
+            }
+            PanelEvent::Click(id) if *id == ids::PAINTER_WETPAINT_PRESET_DELETE => {
+                PedidoPreset::Apagar
+            }
+            PanelEvent::Click(id) if *id == ids::PAINTER_WETPAINT_PRESET_RESET_ORDER => {
+                PedidoPreset::ReporPosicoes
+            }
+            PanelEvent::SelectOption(id, v) if *id == ids::PAINTER_WETPAINT_PRESET_MOVE => {
+                let mut it = v.split(ids::PRESET_MOVE_SEP);
+                match (it.next(), it.next(), it.next(), it.next()) {
+                    (Some(a), Some(b), Some(lado @ ("before" | "after")), None) => {
+                        PedidoPreset::Mover {
+                            arrastado: a.to_owned(),
+                            alvo: b.to_owned(),
+                            depois: lado == "after",
+                        }
+                    }
+                    _ => return false,
+                }
             }
             PanelEvent::SelectOption(id, rel) if *id == ids::PAINTER_WETPAINT_PRESET => {
                 PedidoPreset::Escolher(rel.clone())
@@ -588,6 +630,11 @@ impl PainterTool {
         {
             texturas.insert(TEXTURA_GRAO.to_owned(), escrever_textura(lum, w, h));
         }
+        if self.le_o_fluxo()
+            && let Some((lum, w, h)) = self.brush_flow_image()
+        {
+            texturas.insert(TEXTURA_FLUXO.to_owned(), escrever_textura(lum, w, h));
+        }
         self.texturas_da_mangueira(&mut texturas); // as imagens da ponta e a cor delas (L19)
         self.texturas_do_dual(&mut texturas); // a imagem da 2.ª ponta (L6)
         texturas
@@ -630,8 +677,28 @@ impl PainterTool {
         }
         self.paint.texture_image_pending = false;
         self.paint.texture_image_version = self.paint.texture_image_version.wrapping_add(1);
+        // O Flow só se mexe no meio que o lê: noutro, o `edge_flow` do pincel nem veio do ficheiro.
+        if self.paint_media() == PaintMedia::Watercolor {
+            self.paint.flow_map.imagem = None;
+            if self.paint.brush.edge_flow.kind == TextureKind::Image {
+                match ler(TEXTURA_FLUXO) {
+                    Some((lum, w, h)) => self
+                        .paint
+                        .flow_map
+                        .instala(BrushTextureImage::new(lum, w, h)),
+                    None => self.paint.brush.edge_flow.kind = TextureKind::None,
+                }
+            }
+            self.paint.flow_map.versao = self.paint.flow_map.versao.wrapping_add(1);
+        }
         self.instala_a_mangueira(texturas, &mut falhas); // as imagens da ponta (L19)
         self.instala_o_dual(texturas, &mut falhas); // a imagem da 2.ª ponta (L6)
         falhas
+    }
+
+    /// O pincel tem um Flow de imagem que o meio de agora lê.
+    fn le_o_fluxo(&self) -> bool {
+        self.paint_media() == PaintMedia::Watercolor
+            && self.paint.brush.edge_flow.kind == TextureKind::Image
     }
 }

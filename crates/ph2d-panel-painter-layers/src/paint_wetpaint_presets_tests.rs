@@ -9,6 +9,7 @@ fn e(rel: &str, nome: &str, categoria: &str, favorito: bool) -> st::VistaPreset 
         nome: nome.to_owned(),
         categoria: categoria.to_owned(),
         favorito,
+        apagavel: false,
     }
 }
 
@@ -42,6 +43,7 @@ fn vista(ilegiveis: usize) -> VistaPresets {
         ativo: None,
         politica: 0,
         ilegiveis,
+        ordem_manual: false,
     }
 }
 

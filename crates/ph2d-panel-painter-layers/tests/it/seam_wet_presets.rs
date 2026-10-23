@@ -32,12 +32,15 @@ fn vista(ativo: Option<&str>) -> Arc<VistaPresets> {
         categoria: "Watercolor".to_owned(),
         // O Round é favorito: o menu mostra-o no topo e NÃO no grupo (cada pincel uma vez — dono 09/10).
         favorito: rel == ROUND,
+        // O Wash é do artista (pode-se apagar); o Round é de fábrica.
+        apagavel: rel == WASH,
     };
     Arc::new(VistaPresets {
         entradas: vec![e(ROUND, "Wet Round"), e(WASH, "Wet Wash")],
         ativo: ativo.map(str::to_owned),
         politica: 0,
         ilegiveis: 0,
+        ordem_manual: true,
     })
 }
 
@@ -425,5 +428,91 @@ fn o_preset_aparece_e_lista_tudo_em_cada_meio() {
                 "{meio:?}: o título {k} ofereceu-se ao clique"
             );
         }
+    }
+}
+
+/// **A fileira da biblioteca** (23/10): Import · Export · Reset positions pedem o que dizem; o Delete só
+/// existe sobre um pincel do artista e só pede ao 2.º clique (o 1.º arma-o e nomeia o pincel).
+#[test]
+fn a_fileira_da_biblioteca_pede_o_que_diz() {
+    for (id, pedido) in [
+        (ids::PAINTER_WETPAINT_PRESET_IMPORT, PedidoPreset::Importar),
+        (ids::PAINTER_WETPAINT_PRESET_EXPORT, PedidoPreset::Exportar),
+        (
+            ids::PAINTER_WETPAINT_PRESET_RESET_ORDER,
+            PedidoPreset::ReporPosicoes,
+        ),
+    ] {
+        let mut t = molhado();
+        let (mut host, mut st, rects) = novo(&t, Some(WASH));
+        let r =
+            rect_of(&rects, id).unwrap_or_else(|| panic!("{pedido:?}: o botão não está pintado"));
+        clica(&mut host, &mut st, &mut t, r);
+        assert_eq!(t.take_wet_preset_request(), Some(pedido));
+    }
+}
+
+#[test]
+fn o_delete_confirma_no_segundo_clique_e_nunca_aparece_na_fabrica() {
+    let mut t = molhado();
+    let (_, _, rects) = novo(&t, Some(ROUND));
+    assert!(
+        rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_DELETE).is_none(),
+        "um pincel de fábrica não se apaga"
+    );
+    let (mut host, mut st, rects) = novo(&t, Some(WASH));
+    let r = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_DELETE).expect("o Delete do Wash");
+    clica(&mut host, &mut st, &mut t, r);
+    assert_eq!(t.take_wet_preset_request(), None, "o 1.º clique só arma");
+    let rects = painted(&t, &mut host, &mut st);
+    let r = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_DELETE).expect("armado, continua lá");
+    clica(&mut host, &mut st, &mut t, r);
+    assert_eq!(t.take_wet_preset_request(), Some(PedidoPreset::Apagar));
+    // Desarma: outro clique entre os dois e o Delete volta a pedir dois.
+    let rects = painted(&t, &mut host, &mut st);
+    let d = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_DELETE).unwrap();
+    clica(&mut host, &mut st, &mut t, d);
+    let rects = painted(&t, &mut host, &mut st);
+    let f = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_FAVORITE).unwrap();
+    clica(&mut host, &mut st, &mut t, f);
+    let _ = t.take_wet_preset_request();
+    let rects = painted(&t, &mut host, &mut st);
+    let d = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_DELETE).unwrap();
+    clica(&mut host, &mut st, &mut t, d);
+    assert_eq!(t.take_wet_preset_request(), None, "outro clique desarmou");
+}
+
+/// **Arrastar um pincel no popover aberto** pede a ordem nova, com os caminhos e o lado da queda (a metade
+/// de cima da linha-alvo = antes, a de baixo = depois); o popover continua aberto.
+#[test]
+fn arrastar_no_navegador_pede_a_ordem_nova() {
+    // 0,45 / 0,55: uma família que não aninha parte a linha AO MEIO (com o 30/40/30 das camadas seriam «dentro»).
+    for (frac, lado) in [(0.25, false), (0.45, false), (0.55, true), (0.75, true)] {
+        let mut t = molhado();
+        let (mut host, mut st, rects) = novo(&t, Some(WASH));
+        let c = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET).unwrap();
+        clica(&mut host, &mut st, &mut t, c);
+        let rects = painted(&t, &mut host, &mut st);
+        let de = rect_of(&rects, ids::painter_wetpaint_preset_option_id(2, WASH)).unwrap();
+        let para = rect_of(&rects, ids::painter_wetpaint_preset_option_id(0, ROUND)).unwrap();
+        let x = de.x + de.w * 0.5;
+        for ev in host.drag_at(x, de.y + de.h * 0.5, x, para.y + para.h * frac) {
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+        }
+        entrega(&mut host, &mut t);
+        assert_eq!(
+            t.take_wet_preset_request(),
+            Some(PedidoPreset::Mover {
+                arrastado: WASH.to_owned(),
+                alvo: ROUND.to_owned(),
+                depois: lado,
+            }),
+            "fração {frac}"
+        );
+        assert_eq!(
+            host.dropdown_is_open(ids::PAINTER_WETPAINT_PRESET),
+            Some(true),
+            "o popover fica aberto para ver a ordem nova"
+        );
     }
 }

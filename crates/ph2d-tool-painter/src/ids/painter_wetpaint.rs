@@ -88,7 +88,7 @@ pub const PAINTER_WETPAINT_TUNING: NodeId = hash_node_id("painter_brush.wetpaint
 /// The Wet Paint **Click** ids — ONE membership check for the panel's click forward in its
 /// `event.rs` (the allowlist without which a painted, registered checkbox is dead under the
 /// mouse) and for the populate loop.
-pub const PAINTER_WETPAINT_CLICKS: [NodeId; 20] = [
+pub const PAINTER_WETPAINT_CLICKS: [NodeId; 24] = [
     PAINTER_WETPAINT_RESET,
     PAINTER_WETPAINT_TOOL_IDS[0],
     PAINTER_WETPAINT_TOOL_IDS[1],
@@ -109,6 +109,10 @@ pub const PAINTER_WETPAINT_CLICKS: [NodeId; 20] = [
     super::PAINTER_WETPAINT_PRESET_BUTTONS[1],
     super::PAINTER_WETPAINT_PRESET_BUTTONS[2],
     super::PAINTER_WETPAINT_PRESET_BUTTONS[3],
+    super::PAINTER_WETPAINT_PRESET_BUTTONS[4],
+    super::PAINTER_WETPAINT_PRESET_BUTTONS[5],
+    super::PAINTER_WETPAINT_PRESET_BUTTONS[6],
+    super::PAINTER_WETPAINT_PRESET_BUTTONS[7],
 ];
 
 /// **Grid Size (px)** — quantos pixels de canvas medem uma célula de fluido

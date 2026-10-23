@@ -99,6 +99,7 @@ mod paint_watercolor_flow;
 mod paint_watercolor_paper;
 mod paint_wetpaint;
 mod paint_wetpaint_presets; // W1: o navegador de presets do Wet Painter + os volumes vivos
+mod paint_wetpaint_presets_biblioteca; // a fileira da biblioteca, o Delete, o arrasto no popover
 mod paint_wetpaint_tilt; // doc 22: the TILT dial (polar pad) of the Wet Paint section
 mod plano_corpo; // quais secções do corpo se arrastam, quais ficam, e o cabeçalho de cada
 mod ponta_linhas; // as linhas da PONTA (L9 o grão · L18 o píxel) nas secções Shape/Grain

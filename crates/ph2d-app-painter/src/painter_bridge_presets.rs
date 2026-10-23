@@ -13,9 +13,11 @@
 //! agora primeiro dentro de cada uma.
 //! Escolher um preset de outro meio TROCA o meio (`preset_aplicar`); um meio desconhecido é recusado com
 //! aviso. O preset lembrado de cada meio aplica-se UMA vez por sessão, no 1.º quadro em que esse meio está
-//! activo (o comportamento de sempre do Wet Paint, agora em cada meio).
+//! activo (o comportamento de sempre do Wet Paint, agora em cada meio). A ordem, apagar, exportar e
+//! importar: [`biblioteca`].
 
 use crate::painter_bridge_categorias::{categoria_da_pasta, rotulo_da_categoria};
+use biblioteca::Seletor;
 use ph2d_brush_presets::{
     Biblioteca, Entrada, EstadoDoUtilizador, Origem, Parametros, Politica, Preset, apagar,
     caminho_relativo, gravar, pasta_do_utilizador,
@@ -59,6 +61,7 @@ struct Presets {
     /// O meio que a vista publicada mostra.
     meio: PaintMedia,
     vista: Arc<VistaPresets>,
+    seletor: Seletor,
 }
 
 thread_local! {
@@ -97,6 +100,7 @@ impl Presets {
             abertos: BTreeSet::new(),
             meio: painter.paint_media(),
             vista: Arc::default(),
+            seletor: Seletor::default(),
         };
         p.dizer_ilegiveis(toasts);
         p.abrir_meio(painter, toasts);
@@ -341,44 +345,45 @@ impl Presets {
                     self.estado.politica = p;
                 }
             }
+            PedidoPreset::Importar => self.importar(painter, toasts),
+            PedidoPreset::Exportar => self.exportar(painter, toasts),
+            PedidoPreset::Apagar => self.apagar_ativo(painter, toasts),
+            PedidoPreset::ReporPosicoes => self.estado.ordem.clear(),
+            PedidoPreset::Mover {
+                arrastado,
+                alvo,
+                depois,
+            } => self.mover(&arrastado, &alvo, depois),
         }
         self.gravar_estado(toasts);
         self.meio = painter.paint_media();
         self.publicar();
     }
 
-    /// A vista do navegador: os quatro meios por CATEGORIA (`painter_bridge_categorias`, ordem fixa) e,
-    /// dentro de cada uma, o meio de agora primeiro e depois a ordem da biblioteca; o activo é o do meio
-    /// de agora.
+    /// A vista do navegador, pela ordem de [`Self::ordem_do_navegador`]; o activo é o do meio de agora.
     fn publicar(&mut self) {
-        let agora = nome_do_meio(self.meio);
-        let mut entradas: Vec<(usize, bool, VistaPreset)> = self
-            .bib
-            .entradas
-            .iter()
-            .map(|e| {
-                let [_, meio, _, nome] = e.partes();
-                let cat = categoria_da_pasta(meio);
-                let vista = VistaPreset {
-                    relativo: e.relativo.clone(),
-                    nome: nome.to_owned(),
-                    categoria: rotulo_da_categoria(idioma(), cat).to_owned(),
-                    favorito: self.estado.favoritos.contains(&e.relativo),
-                };
-                (cat, e.preset.parametros.media.as_str() != agora, vista)
+        let entradas = self
+            .ordem_do_navegador()
+            .into_iter()
+            .map(|e| VistaPreset {
+                relativo: e.relativo.clone(),
+                nome: e.partes()[3].to_owned(),
+                categoria: rotulo_da_categoria(idioma(), categoria_da_pasta(e.partes()[1]))
+                    .to_owned(),
+                favorito: self.estado.favoritos.contains(&e.relativo),
+                apagavel: e.origem == Origem::Utilizador && !e.tem_fabrica,
             })
             .collect();
-        // Estável: dentro de cada (categoria, meio), a ordem da biblioteca (a série de lápis pelo grau).
-        entradas.sort_by_key(|(cat, outro, _)| (*cat, *outro));
         let politica = Politica::TODAS
             .iter()
             .position(|p| *p == self.estado.politica)
             .unwrap_or(0) as u8;
         self.vista = Arc::new(VistaPresets {
-            entradas: entradas.into_iter().map(|(_, _, v)| v).collect(),
+            entradas,
             ativo: self.aplicado.get(&self.meio.to_u8()).cloned(),
             politica,
             ilegiveis: self.bib.erros.len(),
+            ordem_manual: !self.estado.ordem.is_empty(),
         });
     }
 }
@@ -402,6 +407,11 @@ pub(crate) fn drive(painter: &mut PainterTool, toasts: &mut ToastQueue) {
     });
 }
 
+#[path = "painter_bridge_presets_biblioteca.rs"]
+mod biblioteca;
+#[cfg(test)]
+#[path = "painter_bridge_presets_biblioteca_tests.rs"]
+mod biblioteca_tests;
 #[cfg(test)]
 #[path = "painter_bridge_presets_foto_tests.rs"]
 mod foto_tests;

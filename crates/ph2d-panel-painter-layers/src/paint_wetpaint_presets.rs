@@ -184,7 +184,7 @@ fn paint_navegador(
             tr("panel.painter_layers.wetpaint.preset_reset").to_owned(),
         ));
     }
-    crate::paint_seg_row::seg_row_owned(
+    let y = crate::paint_seg_row::seg_row_owned(
         ctx,
         theme,
         x,
@@ -194,7 +194,8 @@ fn paint_navegador(
         tr("panel.painter_layers.wetpaint.preset_actions"),
         &botoes,
         usize::MAX,
-    )
+    );
+    crate::paint_wetpaint_presets_biblioteca::paint_biblioteca(ctx, theme, x, content_w, y, v)
 }
 
 /// O preview VIVO: o pincel de agora sobre a obra de agora, o quadro que a ponte publica (ela repinta-o
@@ -334,14 +335,9 @@ pub(crate) fn paint_wetpaint_presets_popovers(ctx: &mut PaintCtx, theme: ph2d_to
         && let Some(v) = st::current_wet_presets()
     {
         let (opcoes, atual) = opcoes_do_preset(&v);
-        crate::dropdown_popover::paint_dropdown_popover(
-            ctx,
-            theme,
-            ids::PAINTER_WETPAINT_PRESET,
-            opcoes,
-            r,
-            atual,
-        );
+        crate::paint_wetpaint_presets_biblioteca::paint_popover(ctx, theme, opcoes, r, atual);
+    } else {
+        crate::paint_wetpaint_presets_biblioteca::sem_popover(ctx);
     }
     if let Some((r, cur)) = st::PENDING_POLICY_DD.with(std::cell::Cell::take) {
         let opcoes = (0..ids::PAINTER_WETPAINT_PRESET_POLICY_COUNT)

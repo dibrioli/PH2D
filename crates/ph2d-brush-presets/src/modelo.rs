@@ -103,6 +103,10 @@ pub struct Parametros {
     /// `None` = as de fábrica (desligadas): aplicar o pincel tira as do anterior. O formato não sobe de versão.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub grain_color: Option<Value>,
+    /// **A pasta do meio** (o 2.º nível, `Ink`, `Watercolor`…) de onde um ficheiro EXPORTADO saiu — a
+    /// categoria dele no navegador de quem o importa. Só no exportado: na biblioteca é o caminho que a diz.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub library_folder: Option<String>,
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
 }
@@ -126,6 +130,7 @@ impl Parametros {
             heavy_edge: None,
             shape_color: None,
             grain_color: None,
+            library_folder: None,
             extra: BTreeMap::new(),
         }
     }

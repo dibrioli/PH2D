@@ -39,7 +39,9 @@ pub(crate) fn apply_event(
     ev: WidgetEvent,
 ) -> EventOutcome {
     // Brush-section widgets are fixed-id + tool-global → route before the per-layer dispatch.
-    if let Some(consumed) = try_apply_brush_event(host, ev) {
+    if let Some(consumed) = crate::paint_wetpaint_presets_biblioteca::try_event(host, ev)
+        .or_else(|| try_apply_brush_event(host, ev))
+    {
         return EventOutcome::from_bool(consumed);
     }
     EventOutcome::from_bool(apply_event_impl(host, ev))
@@ -520,12 +522,6 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         // A Shape-layer "B" blend option was picked → close that chip + forward (per-layer factory ids).
         WidgetEvent::Click(id) if shape_layer_picker::blend_option(id).is_some() => {
             shape_layer_picker::on_blend_option(host, id);
-            Some(true)
-        }
-        // Um preset do navegador do Wet Painter (o valor é o caminho na biblioteca, não um u8).
-        WidgetEvent::Click(id) if crate::paint_wetpaint_presets::preset_escolhido(id).is_some() => {
-            let rel = crate::paint_wetpaint_presets::preset_escolhido(id).unwrap_or_default();
-            crate::paint_wetpaint_presets::escolher_preset(host, rel);
             Some(true)
         }
         // A dropdown popover option was picked → close the chip + apply (table-driven, see `option_route`).

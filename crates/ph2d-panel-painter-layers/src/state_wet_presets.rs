@@ -15,18 +15,23 @@ pub struct VistaPreset {
     /// O rótulo da CATEGORIA (a ponte deriva-o da pasta do meio; o popover põe um título por categoria).
     pub categoria: String,
     pub favorito: bool,
+    /// É do artista e só dele (sem um de fábrica por baixo): o «Delete» aparece.
+    pub apagavel: bool,
 }
 
 /// O navegador inteiro.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct VistaPresets {
-    /// Pela ordem do navegador: categoria, o meio de agora primeiro, e a ordem da biblioteca.
+    /// Pela ordem do navegador: categoria e, dentro dela, a ordem que o artista arrastou sobre a da
+    /// biblioteca (`ph2d_brush_presets::mesclar_ordem`). Nunca depende do meio de agora.
     pub entradas: Vec<VistaPreset>,
     pub ativo: Option<String>,
     /// A política dos volumes, índice em `Politica::TODAS`.
     pub politica: u8,
     /// Quantos ficheiros da biblioteca não se leram (o navegador di-lo; a ponte diz quais).
     pub ilegiveis: usize,
+    /// O artista arrastou a ordem (o «Reset positions» aparece).
+    pub ordem_manual: bool,
 }
 
 impl VistaPresets {

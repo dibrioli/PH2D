@@ -55,6 +55,10 @@ pub struct EstadoDoUtilizador {
     /// de um meio abre com o dele, e trocar de meio não esquece o do outro.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub ativo_por_meio: BTreeMap<String, String>,
+    /// A ordem do navegador que o artista arrastou (caminhos relativos; vazia = a por omissão). Lê-se
+    /// sempre por [`crate::mesclar_ordem`], nunca crua.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ordem: Vec<String>,
     /// [`VERSAO_DO_ESTADO`] ao ler e ao gravar; `0` só num ficheiro de antes dela.
     #[serde(default)]
     pub versao: u32,
@@ -71,6 +75,7 @@ impl Default for EstadoDoUtilizador {
             lembrados: BTreeMap::new(),
             ativo: None,
             ativo_por_meio: BTreeMap::new(),
+            ordem: Vec::new(),
             versao: VERSAO_DO_ESTADO,
             extra: BTreeMap::new(),
         }
@@ -166,6 +171,18 @@ impl EstadoDoUtilizador {
     /// O preset deixou de existir no caminho (apagado) ou voltou à fábrica: esquece o lembrado.
     pub fn esquecer(&mut self, relativo: &str) {
         self.lembrados.remove(relativo);
+    }
+
+    /// O ficheiro foi APAGADO: nada do artista continua a apontar para ele (o lembrado, o favorito, a
+    /// posição, o activo de cada meio).
+    pub fn apagado(&mut self, relativo: &str) {
+        self.esquecer(relativo);
+        self.favoritos.remove(relativo);
+        self.ordem.retain(|r| r != relativo);
+        if self.ativo.as_deref() == Some(relativo) {
+            self.ativo = None;
+        }
+        self.ativo_por_meio.retain(|_, r| r != relativo);
     }
 }
 

@@ -35,6 +35,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "app.painter.presets.no_user_folder" => "No folder for your presets (HOME is not set)",
         "app.painter.presets.new_name" => "My brush",
+        "app.painter.presets.deleted" => {
+            "Preset deleted: {name} (it stays on the brush until you pick another)"
+        }
+        "app.painter.presets.delete_failed" => "The preset could not be deleted: {e}",
+        "app.painter.presets.exported" => "Preset exported: {path}",
+        "app.painter.presets.export_failed" => "The preset could not be exported: {e}",
+        "app.painter.presets.imported" => "Presets imported: {n}",
+        "app.painter.presets.import_failed" => "{file} could not be imported: {e}",
+        "app.painter.presets.import_unknown_media" => {
+            "{file} is a preset for {media}, which this PH2D does not have"
+        }
+        "app.painter.presets.file_filter" => "PH2D brush preset",
         "app.painter.painter_bridge_assets.not_an_rgba_image" => "not an RGBA image",
         "app.painter.painter_bridge_assets.asset_missing" => "asset missing",
         "app.painter.painter_bridge_assets.decode" => "decode: {e}",

@@ -25,7 +25,9 @@ mod video;
 
 pub use anim::{Animate, frame_ms, install_animator};
 pub use facilitate::{paint_stamp, paint_votes, stamp_color, stamp_path};
-pub use frames::{Detail, FRAME_TITLE_ONLY_PX, HATCH_FINAL_BELOW_PX, HATCH_TONE, SKETCH_FINAL_BELOW_PX};
+pub use frames::{
+    Detail, FRAME_TITLE_ONLY_PX, HATCH_FINAL_BELOW_PX, HATCH_TONE, SKETCH_FINAL_BELOW_PX,
+};
 pub use gray::{gray_of, to_gray};
 pub use grid::{dot_grid, grid_step_world};
 pub use image::{Decode, Images, Pixels, Salvage, install_decoder, install_salvager, level_to_box};
@@ -451,7 +453,12 @@ fn paint_shape(
     let tone = hatch_tone(st.look.fill_style, cache.detail.hatch_tone)
         .filter(|_| side < cache.lod(cache.detail.hatch_final_below_px));
     let hand = ((st.sketch && !far) || !solid) && tone.is_none();
-    let width = st.stroke_width * if far || tone.is_some() { SKETCH_FAR_STROKE } else { 1.0 };
+    let width = st.stroke_width
+        * if far || tone.is_some() {
+            SKETCH_FAR_STROKE
+        } else {
+            1.0
+        };
     if faded {
         let [x0, y0, x1, y1] = el.aabb();
         let pad = width

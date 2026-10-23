@@ -500,7 +500,9 @@ pub fn paint(
     ];
     for (_, rects) in drawers.into_iter().filter(|(open, _)| *open) {
         let panel = super::float_bar::panel_of(rects.into_iter().map(|(_, r)| r));
-        panel.into_iter().for_each(|r| super::board_nav::fit::float(&mut live.nav, r));
+        panel
+            .into_iter()
+            .for_each(|r| super::board_nav::fit::float(&mut live.nav, r));
     }
     if let Some((key, _)) = notice {
         let r = organize::paint_notice(scene, text_system, theme, area, key);

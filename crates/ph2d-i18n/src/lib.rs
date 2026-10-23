@@ -53,8 +53,6 @@ mod blend_modes;
 mod board;
 /// O QUADRO — «Send to board…» da Hierarquia (W15).
 mod board_block6;
-/// O QUADRO — a cena 29 (W24): a barra de estilo foge do resto do chrome.
-mod board_w24;
 /// O QUADRO — facilitar (W7): cronómetro, votação, carimbos, agrupar.
 mod board_facilitate;
 /// O QUADRO — a fidelidade ao Excalidraw (W9): a cena 11.
@@ -65,6 +63,8 @@ mod board_live;
 mod board_private;
 mod board_send;
 mod board_team;
+/// O QUADRO — a cena 29 (W24): a barra de estilo foge do resto do chrome.
+mod board_w24;
 /// Os rótulos dos canais de família (plano 35 da UI/UX).
 mod canais;
 /// As strings dos MENUS da moldura (barra de menus, menus de contexto, paleta de comandos).

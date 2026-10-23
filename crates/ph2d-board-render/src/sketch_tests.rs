@@ -281,7 +281,11 @@ fn hand_drawn_at(px: f64, detail: crate::Detail) -> (usize, f64) {
 
 /// [`hand_drawn_at`] com o preenchimento `fill`, e a opacidade de cada preenchimento LISO pintado na
 /// cor da forma.
-fn drawn_at(px: f64, detail: crate::Detail, fill: ph2d_board_model::FillStyle) -> (usize, f64, Vec<u8>) {
+fn drawn_at(
+    px: f64,
+    detail: crate::Detail,
+    fill: ph2d_board_model::FillStyle,
+) -> (usize, f64, Vec<u8>) {
     let mut set = ph2d_board_model::BoardSet::default();
     let id = set.create("b6".into());
     let b = set.get_mut(id).unwrap();
@@ -365,7 +369,11 @@ fn a_far_hatched_shape_is_drawn_final_in_its_measured_tone() {
             hatch_final_below_px: 0.0,
             ..crate::Detail::default()
         };
-        assert_eq!(drawn_at(lim - 1.0, off, fill).0, 1, "{fill:?} sem limiar: à mão");
+        assert_eq!(
+            drawn_at(lim - 1.0, off, fill).0,
+            1,
+            "{fill:?} sem limiar: à mão"
+        );
     }
 }
 

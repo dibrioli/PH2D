@@ -50,9 +50,13 @@ pub(crate) fn scene_bars(hero: &mut HeroScreen) -> Bars {
         ph2d_board_model::BoardOp::Put(el).apply(doc);
         id
     });
-    for (i, key) in ["board.smoke.w24.l1", "board.smoke.w24.l2", "board.smoke.w24.l3"]
-        .into_iter()
-        .enumerate()
+    for (i, key) in [
+        "board.smoke.w24.l1",
+        "board.smoke.w24.l2",
+        "board.smoke.w24.l3",
+    ]
+    .into_iter()
+    .enumerate()
     {
         super::put_note(
             doc,

@@ -267,8 +267,19 @@ pub fn strip_rects_clear_of(
     };
     let (w, h) = rows_extent(&rows, s);
     let above = sel.y - h - gap;
-    let y = if above >= area.y { above } else { (sel.y + sel.h + gap).min(bottom - h) }.max(area.y);
-    rows_from((cx - w / 2.0).min(area.x + area.w - w).max(area.x), y, w, &rows, s)
+    let y = if above >= area.y {
+        above
+    } else {
+        (sel.y + sel.h + gap).min(bottom - h)
+    }
+    .max(area.y);
+    rows_from(
+        (cx - w / 2.0).min(area.x + area.w - w).max(area.x),
+        y,
+        w,
+        &rows,
+        s,
+    )
 }
 
 /// As formas da barra, da de menos linhas para a mais estreita: numa linha; os grupos, pela ordem, em
@@ -300,9 +311,9 @@ fn strip_layouts(room: f32, groups: &[usize], s: f32) -> Vec<Vec<Vec<usize>>> {
     }
     let cols = live.iter().map(|&n| strip_cols(n)).max().unwrap_or(1);
     for c in (1..cols).rev() {
-        let pieces = live.iter().flat_map(|&n| {
-            (0..n.div_ceil(c)).map(move |i| vec![c.min(n - i * c)])
-        });
+        let pieces = live
+            .iter()
+            .flat_map(|&n| (0..n.div_ceil(c)).map(move |i| vec![c.min(n - i * c)]));
         out.push(pieces.collect());
     }
     out
@@ -314,7 +325,10 @@ fn strip_layouts(room: f32, groups: &[usize], s: f32) -> Vec<Vec<Vec<usize>>> {
 fn free_x(area: Rect, keep: &[Rect], (y, h): (f32, f32), w: f32, cx: f32) -> Option<f32> {
     let pad = Spacing::Xs.px() + gap();
     let mut free = vec![(area.x, area.x + area.w)];
-    for k in keep.iter().filter(|k| k.y - pad < y + h && y < k.y + k.h + pad) {
+    for k in keep
+        .iter()
+        .filter(|k| k.y - pad < y + h && y < k.y + k.h + pad)
+    {
         let (a, b) = (k.x - pad, k.x + k.w + pad);
         free = free
             .into_iter()

@@ -11,7 +11,12 @@ fn style_bar() -> Vec<(Item, Rect)> {
 }
 
 fn ed(t: &mut T) -> &mut ph2d_board_edit::Editor {
-    t.hero.documents.live.editor.as_mut().expect("o editor do quadro")
+    t.hero
+        .documents
+        .live
+        .editor
+        .as_mut()
+        .expect("o editor do quadro")
 }
 
 fn meets(a: Rect, b: Rect) -> bool {
@@ -82,7 +87,12 @@ fn spots(t: &T) -> Vec<((f32, f32), (f32, f32))> {
 fn the_style_bar_never_covers_an_open_drawer() {
     let drawers: [(&str, Item); 4] = [
         ("formas", Item::MoreShapes),
-        ("notas", Item::Tool(ph2d_board_edit::Tool::Shape(ph2d_board_model::ShapeType::Sticky))),
+        (
+            "notas",
+            Item::Tool(ph2d_board_edit::Tool::Shape(
+                ph2d_board_model::ShapeType::Sticky,
+            )),
+        ),
         ("caneta", super::super::pen::PEN_TOOL),
         ("modelos", super::super::mind::TEMPLATES),
     ];
@@ -113,12 +123,20 @@ fn the_style_bar_never_covers_an_open_drawer() {
                     continue;
                 }
                 *seen.entry(name).or_insert(0) += 1;
-                bad.extend(collisions(&t, &[]).into_iter().map(|c| format!("{w} {name}: {c}")));
+                bad.extend(
+                    collisions(&t, &[])
+                        .into_iter()
+                        .map(|c| format!("{w} {name}: {c}")),
+                );
             }
         }
     }
     eprintln!("caixas com a barra pintada, por gaveta: {seen:?}");
-    assert_eq!(seen.len(), drawers.len(), "uma gaveta nunca teve a barra ao lado: {seen:?}");
+    assert_eq!(
+        seen.len(),
+        drawers.len(),
+        "uma gaveta nunca teve a barra ao lado: {seen:?}"
+    );
     assert!(bad.is_empty(), "{}", bad.join("\n"));
 }
 
@@ -135,7 +153,8 @@ fn the_style_bar_never_covers_the_right_hand_panels() {
                 t.vp_w = w;
                 t.paint();
                 for b in [NavButton::Frames, NavButton::Comments, NavButton::Minimap] {
-                    t.hero.apply_event(WidgetEvent::Click(board_nav::button_node(b)));
+                    t.hero
+                        .apply_event(WidgetEvent::Click(board_nav::button_node(b)));
                 }
                 t.paint();
                 let c = t.hero.last_canvas;
@@ -146,7 +165,11 @@ fn the_style_bar_never_covers_the_right_hand_panels() {
                 seen += 1;
                 let corner = board_nav::corner(&t.hero, c);
                 let map = board_nav::minimap_rect(corner);
-                bad.extend(collisions(&t, &[map]).into_iter().map(|m| format!("{w} {fx},{fy}: {m}")));
+                bad.extend(
+                    collisions(&t, &[map])
+                        .into_iter()
+                        .map(|m| format!("{w} {fx},{fy}: {m}")),
+                );
             }
         }
     }
@@ -159,7 +182,13 @@ fn the_style_bar_never_covers_the_right_hand_panels() {
 #[test]
 fn in_a_tiny_window_the_style_bar_stays_right_of_the_toolbar() {
     let mut bad = Vec::new();
-    for (w, h) in [(420.0, 560.0), (320.0, 420.0), (260.0, 420.0), (220.0, 420.0), (200.0, 400.0)] {
+    for (w, h) in [
+        (420.0, 560.0),
+        (320.0, 420.0),
+        (260.0, 420.0),
+        (220.0, 420.0),
+        (200.0, 400.0),
+    ] {
         let mut t = T::new();
         (t.vp_w, t.vp_h) = (w, h);
         t.paint();
@@ -173,10 +202,16 @@ fn in_a_tiny_window_the_style_bar_stays_right_of_the_toolbar() {
         assert!(!bar.is_empty(), "{w}×{h}: sem barra");
         for (it, r) in &bar {
             if r.x <= right || r.x + r.w > c.x + c.w || r.y < c.y || r.y + r.h > c.y + c.h {
-                bad.push(format!("{w}×{h}: {it:?} {r:?} (ferramentas até {right}, quadro {c:?})"));
+                bad.push(format!(
+                    "{w}×{h}: {it:?} {r:?} (ferramentas até {right}, quadro {c:?})"
+                ));
             }
         }
-        bad.extend(collisions(&t, &[]).into_iter().map(|m| format!("{w}×{h}: {m}")));
+        bad.extend(
+            collisions(&t, &[])
+                .into_iter()
+                .map(|m| format!("{w}×{h}: {m}")),
+        );
     }
     assert!(bad.is_empty(), "{}", bad.join("\n"));
 }

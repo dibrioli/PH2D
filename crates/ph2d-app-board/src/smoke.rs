@@ -48,8 +48,6 @@ mod w23;
 /// A cena 28 (W23 bloco 6), num ficheiro filho.
 #[path = "smoke_w23_block6.rs"]
 mod w23_block6;
-#[path = "smoke_w24_bars.rs"]
-mod w24_bars;
 /// A cena 25 (W23 B5(1)), num ficheiro filho.
 #[path = "smoke_w23_elbow.rs"]
 mod w23_elbow;
@@ -58,6 +56,8 @@ mod w23_tabs;
 /// A cena 26 (W23 B5(2)), num ficheiro filho.
 #[path = "smoke_w23_text.rs"]
 mod w23_text;
+#[path = "smoke_w24_bars.rs"]
+mod w24_bars;
 
 /// A cena 9 (W7), num ficheiro filho.
 #[path = "smoke_facilitate.rs"]

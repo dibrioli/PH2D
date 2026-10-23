@@ -130,7 +130,9 @@ fn cost() {
             min_med(v).0.to_string().chars().take(5).collect()
         }
     };
-    println!("\n## Custo — 10 mil formas em rascunho, ms (mínimo de {ROUNDS}×{FRAMES}): CPU / placa");
+    println!(
+        "\n## Custo — 10 mil formas em rascunho, ms (mínimo de {ROUNDS}×{FRAMES}): CPU / placa"
+    );
     let head: Vec<&str> = cols.iter().map(|c| c.0.as_str()).collect();
     println!("| forma no ecrã | {} |", head.join(" | "));
     for (p, px) in PX.iter().enumerate() {
@@ -155,14 +157,28 @@ fn render(g: &mut (GpuContext, VelloPass), set: &BoardSet, tone: Option<f32>, dx
     let (mut scene, mut ts) = (VectorScene::new(), TextSystem::without_system_fonts());
     let mut c = cache(tone);
     let area = [0.0, 0.0, f64::from(LOOK.0), f64::from(LOOK.1)];
-    ph2d_board_render::paint(board, area, &mut scene, Theme::Forge, &mut ts, &mut c, &routes, None);
+    ph2d_board_render::paint(
+        board,
+        area,
+        &mut scene,
+        Theme::Forge,
+        &mut ts,
+        &mut c,
+        &routes,
+        None,
+    );
     g.1.render_and_readback(&g.0, scene.inner(), LOOK)
         .expect("readback")
 }
 
 fn ppm(dir: &std::path::Path, name: &str, buf: &[u8]) {
     let mut out = format!("P6\n{} {}\n255\n", LOOK.0, LOOK.1).into_bytes();
-    out.extend(buf.as_chunks::<4>().0.iter().flat_map(|p| [p[0], p[1], p[2]]));
+    out.extend(
+        buf.as_chunks::<4>()
+            .0
+            .iter()
+            .flat_map(|p| [p[0], p[1], p[2]]),
+    );
     std::fs::write(dir.join(name), out).expect("ppm");
 }
 
@@ -179,7 +195,11 @@ fn looks() {
     for (name, fill, sketch) in HATCHES
         .iter()
         .map(|(n, f)| (n.to_string(), *f, true))
-        .chain([("riscas, final importado".to_owned(), FillStyle::Hachure, false)])
+        .chain([(
+            "riscas, final importado".to_owned(),
+            FillStyle::Hachure,
+            false,
+        )])
     {
         println!(
             "\n## Visibilidade — {name}: razão = |Δ luma|(à mão × de longe no tom) ÷ controlo ½ px (≤ 1 não se vê)"

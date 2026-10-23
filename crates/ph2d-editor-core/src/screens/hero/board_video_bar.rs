@@ -393,7 +393,9 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     };
     let panel = float_bar::panel_of(lay.ctls.iter().map(|(_, r)| *r).chain([lay.time]));
     if !full {
-        panel.into_iter().for_each(|r| super::board_nav::fit::float(&mut live.nav, r));
+        panel
+            .into_iter()
+            .for_each(|r| super::board_nav::fit::float(&mut live.nav, r));
     }
     float_bar::paint_panel(
         scene,

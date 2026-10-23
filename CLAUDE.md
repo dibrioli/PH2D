@@ -125,6 +125,9 @@ contexto*. As alavancas, por ordem:
   prazo 30 min; a placa: a VEZ pede-se sozinha, `PH2D_GPU=1` só para medir —
   [A_VEZ_DA_PLACA.md](docs/DevOps/A_VEZ_DA_PLACA.md)). O guarda recusa vigia de fundo sem prazo.
   Tectos e porquê: [TETOS_DE_RECURSO_POR_LINHA.md](docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md).
+- ⛔⛔ **Dono 23/10: a suíte COMPLETA só corre ANTES DA INTEGRAÇÃO** (quem a corre é o integrador) — na
+  linha, até no fecho, só testes por NOME e provas de mutação; sem `motivo:` para a contornar
+  ([feedback](project-memory/feedback_full_suite_only_before_integration.md)).
 - **Gate batched no fim do módulo:** `scripts/nextest-impacted.sh` + clippy `--all-targets` + auditoria,
   **1× sobre o diff acumulado**. ⛔ **clippy só no fecho** (`PH2D_SUITE=fecho …`; o guarda R7 recusa o
   resto — medido 14/10: 1 161 corridas a meio, 8 h/semana). ⛔ **A suíte tem CADÊNCIA, no script** (dono 13/10: *«a cada mínima

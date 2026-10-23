@@ -19,6 +19,7 @@ use mlua::{Lua, Table, Value};
 const SATURATE_LUAU: &str = r##"
 local MAXI, MINI = 2147483647, -2147483648
 local function sat(v)
+  if type(v) == "string" then v = tonumber(v) or v end
   if type(v) ~= "number" then return v end
   if v ~= v then error("bad argument: number has no integer representation (nan)", 3) end
   if v > MAXI then return MAXI end
@@ -44,6 +45,9 @@ t.unpack = function(x, i, j) return tunpack(x, sat(i), sat(j)) end
 t.concat = function(x, sep, i, j) return concat(x, sep, sat(i), sat(j)) end
 t.move = function(a1, f, e, to, a2) return move(a1, sat(f), sat(e), sat(to), a2) end
 t.remove = function(x, pos) if pos == nil then return remove(x) end return remove(x, sat(pos)) end
+local tfind, sel = t.find, select
+t.find = function(x, v, init) return tfind(x, v, sat(init)) end
+select = function(n, ...) return sel(sat(n), ...) end
 -- O lugar de um insert não satura: pôr em 2^31-1 o que foi pedido em 2^32+1 seria outra mentira.
 local insert = t.insert
 t.insert = function(x, ...)

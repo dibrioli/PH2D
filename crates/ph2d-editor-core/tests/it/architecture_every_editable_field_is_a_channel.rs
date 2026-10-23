@@ -1030,7 +1030,7 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
         "easing_rows",
         NaoAnimavel,
         &[],
-        "a curva da transição de um estado É a animação",
+        "a curva da transição de um estado é parâmetro de uma animação; não se anima a si própria",
     ),
     (
         "ph2d-panel-inspector",
@@ -1055,26 +1055,29 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
         "ph2d-panel-inspector",
         "camera_body",
         Canal,
-        &["INSP_CAMERA_OFFSET_X", "INSP_CAMERA_OFFSET_Y"],
-        "o par offset da câmera, numa tabela (família COMPONENTE, F27)",
+        &["component.field.camera_fields.1"],
+        "o par offset da câmera: o rótulo do catálogo vem da lista local (F27 B2)",
     ),
     (
         "ph2d-panel-inspector",
         "follow_body",
         Canal,
         &[
-            "INSP_CAMERA_DAMP_X",
-            "INSP_CAMERA_DEAD_X",
-            "INSP_CAMERA_LOOK_X",
+            "component.field.follow_fields.1",
+            "component.field.follow_fields.2",
+            "component.field.follow_fields.3",
         ],
-        "os pares do seguimento, numa tabela (família COMPONENTE, F27)",
+        "os pares do seguimento: o rótulo do catálogo vem da lista local (F27 B2)",
     ),
     (
         "ph2d-panel-inspector",
         "limits_body",
         Canal,
-        &["INSP_CAMERA_MIN_X", "INSP_CAMERA_MAX_Y"],
-        "os pares min/max dos limites, numa tabela (família COMPONENTE, F27)",
+        &[
+            "component.field.limits_fields.0",
+            "component.field.limits_fields.1",
+        ],
+        "os pares min/max dos limites: o rótulo do catálogo vem da lista local (F27 B2)",
     ),
     (
         "ph2d-panel-inspector",
@@ -1303,6 +1306,62 @@ const DIVIDA_CRATE: &[(&str, Classe, &str)] = &[
         "ph2d-panel-wet-tuning",
         NaoAnimavel,
         "a afinação do motor de pintura é da ferramenta",
+    ),
+];
+
+/// ⭐ F27 B3 — **cada primitivo [`SEM_COLUNA`] de uma crate fora do [`ESCOPO`] e da
+/// [`DIVIDA_CRATE`] escolheu o seu lado**: (crate, `ficheiro.rs::fn`, classe, porquê). Antes só as
+/// [`PORTAS`] contavam, e um painel com um chip ou um olho e nenhuma porta passava sem lado.
+const SEM_COLUNA_FORA: &[(&str, &str, Classe, &str)] = &[
+    (
+        "ph2d-panel-hierarchy",
+        "filter.rs::paint_chip",
+        NaoAnimavel,
+        "o filtro da lista é da vista (§8)",
+    ),
+    (
+        "ph2d-panel-hierarchy",
+        "row.rs::paint_row_eye",
+        Canal,
+        "o olho escreve o `Visibility.hidden` do objecto: o canal COMPONENTE da linha «Visible» \
+         do Inspector (F27 B2); o Auto Key compara-o com a curva do objecto selecionado depois \
+         de toda escrita da UI (`fase_autokey`), venha ela do olho ou da linha",
+    ),
+    (
+        "ph2d-panel-skeleton",
+        "section_tip.rs::tip_row",
+        NaoAnimavel,
+        "quem manda na ponta do osso é fiação, não propriedade",
+    ),
+    (
+        "ph2d-panel-skeleton",
+        "section_smart.rs::smart_action_row",
+        NaoAnimavel,
+        "o clip que o osso inteligente dispara é fiação, não propriedade",
+    ),
+    (
+        "ph2d-panel-timeline",
+        "transport_animation.rs::chip",
+        NaoAnimavel,
+        "que animação a Timeline mostra é da vista (§8)",
+    ),
+    (
+        "ph2d-panel-timeline",
+        "transport_clips.rs::cluster",
+        NaoAnimavel,
+        "de onde a aba de clips lê é da vista (§8)",
+    ),
+    (
+        "ph2d-panel-timeline",
+        "stack_lane_paint.rs::paint_lane",
+        NaoAnimavel,
+        "o mudo de uma faixa da pilha é parâmetro da animação; não se anima a si própria",
+    ),
+    (
+        "ph2d-panel-flip-frames",
+        "paint_toolbar.rs::dropdown_chip",
+        NaoAnimavel,
+        "o ease do tween e o ciclo do Flip são parâmetros da animação; não se animam a si próprios",
     ),
 ];
 
@@ -1680,12 +1739,24 @@ fn nenhuma_isencao_sobrevive_ao_codigo_que_a_explicava() {
 #[test]
 fn toda_crate_que_pinta_campos_escolheu_o_seu_lado() {
     let portas: BTreeSet<&str> = PORTAS.iter().copied().collect();
-    let pinta = |krate: &str| {
+    let pinta_porta = |krate: &str| {
         fontes(krate)
             .iter()
             .any(|(_, s)| !chamadas(s, &portas).is_empty())
     };
+    // (ficheiro, função, primitivo) de cada SEM_COLUNA da crate.
+    let sem = |krate: &str| -> Vec<(String, String, &'static str)> {
+        (fontes(krate).iter())
+            .flat_map(|(f, s)| {
+                primitivos(s)
+                    .into_iter()
+                    .map(|(func, p, _)| (f.clone(), func, p))
+            })
+            .collect()
+    };
+    let pinta = |krate: &str| pinta_porta(krate) || !sem(krate).is_empty();
     let mut erros = Vec::new();
+    let mut usadas = BTreeSet::new();
     let Ok(dir) = std::fs::read_dir(crates_root()) else {
         panic!("crates/ ilegível");
     };
@@ -1698,9 +1769,32 @@ fn toda_crate_que_pinta_campos_escolheu_o_seu_lado() {
     for k in &todas {
         let dentro =
             ESCOPO.iter().any(|(e, _)| e == k) || DIVIDA_CRATE.iter().any(|(d, ..)| d == k);
-        if pinta(k) && !dentro {
+        if dentro {
+            continue;
+        }
+        if pinta_porta(k) {
             erros.push(format!(
                 "{k} pinta campos com losango e não está no ESCOPO nem em DIVIDA_CRATE"
+            ));
+        }
+        for (f, func, p) in sem(k) {
+            let lado = SEM_COLUNA_FORA
+                .iter()
+                .position(|&(c, ff, ..)| c == k && ff == format!("{f}::{func}"));
+            match lado {
+                Some(i) => {
+                    usadas.insert(i);
+                }
+                None => erros.push(format!(
+                    "{k} · {f}::{func} pinta `{p}` sem lado (SEM_COLUNA_FORA, ESCOPO ou DIVIDA_CRATE)"
+                )),
+            }
+        }
+    }
+    for (i, &(k, f, _, porque)) in SEM_COLUNA_FORA.iter().enumerate() {
+        if !usadas.contains(&i) {
+            erros.push(format!(
+                "SEM_COLUNA_FORA {k} · {f} ({porque}) já não pinta nada"
             ));
         }
     }
@@ -1722,19 +1816,27 @@ fn sem_coluna() -> Vec<(String, String, &'static str, bool)> {
             {
                 continue;
             }
-            for (funcao, corpo) in funcoes(&s) {
-                let coluna = COLUNA.iter().any(|c| corpo.contains(c));
-                // O ícone pintado direto, pela porta do painel (`.icon(`) ou por um helper do card
-                // (`.filter_icon(`).
-                let icone = ["paint_icon_button(", ".icon(", ".filter_icon("]
-                    .iter()
-                    .any(|p| corpo.contains(p));
-                for p in SEM_COLUNA {
-                    let olho = p.contains("Eye") || p.starts_with("eye_");
-                    if casa(corpo, p) && (!olho || icone) {
-                        out.push((ficheiro.clone(), funcao.clone(), *p, coluna));
-                    }
-                }
+            out.extend((primitivos(&s).into_iter()).map(|(f, p, c)| (ficheiro.clone(), f, p, c)));
+        }
+    }
+    out
+}
+
+/// Os primitivos [`SEM_COLUNA`] de um fonte: (função, primitivo, a função pinta a coluna?).
+fn primitivos(s: &str) -> Vec<(String, &'static str, bool)> {
+    let mut out = Vec::new();
+    for (funcao, corpo) in funcoes(s) {
+        let coluna = COLUNA.iter().any(|c| corpo.contains(c));
+        // O ícone pintado direto, pela porta do painel (`.icon(`), por um helper do card
+        // (`.filter_icon(`), pelo pintor de ícones (`paint_icon(`, o olho da Hierarquia) ou entregue
+        // a um botão (`_button(`, o mudo da faixa da Timeline).
+        let icone = ["_button(", ".icon(", ".filter_icon(", "paint_icon("]
+            .iter()
+            .any(|p| corpo.contains(p));
+        for p in SEM_COLUNA {
+            let olho = p.contains("Eye") || p.starts_with("eye_");
+            if casa(corpo, p) && (!olho || icone) {
+                out.push((funcao.clone(), *p, coluna));
             }
         }
     }

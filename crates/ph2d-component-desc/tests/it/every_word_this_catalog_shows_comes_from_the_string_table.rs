@@ -52,6 +52,60 @@ const NOT_LANGUAGE: &[Excecao] = &[
         "catalog/image.rs",
         "borders[3]",
         "a chave serde de um ELEMENTO do array `borders` (lida por `property::slot_in`), nunca texto pintado",
+    ),    (
+        "catalog/logic.rs",
+        "Area",
+        "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",
+    ),
+    (
+        "catalog/logic.rs",
+        "Tagged",
+        "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",
+    ),
+    (
+        "catalog/logic.rs",
+        "Cycle",
+        "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",
+    ),
+    (
+        "catalog/physics_fields.rs",
+        "Named",
+        "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",
+    ),
+    (
+        "catalog/physics_fields.rs",
+        "Point",
+        "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",
+    ),
+    (
+        "catalog/physics_fields.rs",
+        "NearestTagged",
+        "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",
+    ),
+    (
+        "catalog/physics_fields.rs",
+        "Patrol",
+        "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",
+    ),
+    (
+        "catalog/physics_fields.rs",
+        r#"target:{"Named":0}"#,
+        "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",
+    ),
+    (
+        "catalog/physics_fields.rs",
+        r#"target:{"Point":[0.0,0.0]}"#,
+        "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",
+    ),
+    (
+        "catalog/physics_fields.rs",
+        r#"target:{"NearestTagged":0}"#,
+        "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",
+    ),
+    (
+        "catalog/physics_fields.rs",
+        r#"target:{"Patrol":0}"#,
+        "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",
     ),
 ];
 

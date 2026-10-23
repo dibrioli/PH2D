@@ -610,6 +610,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.sprite_sheet_ref.name" => "Sheet Source",
         "component.state_machine.name" => "State Machine",
         "component.tags.name" => "Tags",
+        "component.field.tags.1" => "Tags",
         "component.texture_filter.name" => "Texture Filter",
         "component.texture_repeat.name" => "Texture Repeat",
         "component.timers.name" => "Timers",

@@ -245,7 +245,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.statemachine.this_transition_never_fires_it_has_no_signal_name" => {
             "This transition never fires: it has no signal name."
         }
-        "panel.inspector.tags.tags_count" => "Tags  ({n})",
+        "panel.inspector.tags.tags_count" => "{field}  ({n})",
         "panel.inspector.tags.no_tags_yet" => "No tags yet.",
         "panel.inspector.tags.this_object_holds_the_most_tags_the_section_can_show_remove_one_to_add_another" => {
             "This object holds the most tags the section can show. Remove one to add another."

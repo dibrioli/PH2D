@@ -242,7 +242,7 @@ const MARKER: &[FieldDesc] = &[f(1, "component.field.marker.1", K::Marker)];
 /// copiar (ver [`RefKind::Tag`]).
 const TAGS: &[FieldDesc] = &[FieldDesc {
     field_id: 1,
-    label_key: "component.tags.name",
+    label_key: "component.field.tags.1",
     kind: K::Ref,
     policy: Propagation::Propagate,
     is_ref: Some(RefKind::Tag),

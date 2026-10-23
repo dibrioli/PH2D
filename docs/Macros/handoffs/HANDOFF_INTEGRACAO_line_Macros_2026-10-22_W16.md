@@ -111,7 +111,7 @@ Crates novas 0 · chaves i18n +5 · ADR 0 · `PROJECT_SCHEMA` 0 · contratos 0 �
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Macros-Automação && PH2D_MACRO_SMOKE=6 PH2D_MACRO_CAMINHO=sobrepor ./target/smoke/ph2d-host-desktop`
    (depois da integração o binário é o do `main`).
-2. Não mexa no rato: a cena grava, pinta um traço PRETO (Digital), escolhe o vermelho no Conta-gotas e faz um
+2. Não mexa no rato: a cena grava, pinta um traço PRETO (Digital), escolhe o vermelho no botão «C&F» da barra do Painter e faz um
    traço vermelho por baixo, pára, arrasta o losango da 2.ª etapa 1,85 s para trás, volta ao início e toca.
 3. O que tem de acontecer: as duas pinceladas passam a ser pintadas AO MESMO TEMPO; a vermelha começa quando a
    preta vai a meio, cada uma na sua cor; a linha «Macro steps» tem os losangos mais juntos e o laço encurta.

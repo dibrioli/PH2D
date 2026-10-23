@@ -15,6 +15,10 @@
 //!            · 6 sai_da_gravacao (varint) · 7 apagada (varint) · 8 dica (utf8; um leitor sem ela
 //!            ignora-a: não muda o que toca) · 9 desloca_us (zigzag; 1.2, `exige` "etapa.desloca")
 //!            — troca/insercao: 1 evento (varint) · 2 carga (bytes)
+//! Track    : … · 8 nasce (1.3, `exige` "objeto"): 1 inicio_us (varint) · 2 nome (utf8)
+//!            · 3 local (7 × f32le) · 4 pai+1 (varint; ausente = o objecto Macro)
+//! MacroDoc : 4, 5, … no topo são do FICHEIRO ([`crate::ficheiro`]): o componente nunca as escreve, e
+//!            [`read_com_extras`] devolve-as a quem as conhece
 //! ```
 //! Etiqueta repetida de campo único: vence a última.
 //!
@@ -23,20 +27,23 @@
 //! O escritor só sobe o MINOR e só escreve `exige` quando o documento os usa: uma gravação sem edições
 //! continua a ser um ficheiro 1.0, ao byte.
 
-use crate::doc::{Event, MacroDoc, MacroTime, RefRect, Track};
+use crate::doc::{Event, MacroDoc, MacroTime, Nascimento, RefRect, Track};
 use crate::etapa::EdicaoDeEtapa;
 use crate::rec::{Cursor, Record, put_field, varint_bytes};
 
 pub const MAGIC: &[u8; 9] = b"PH2DMACRO";
 pub const MAJOR: u16 = 1;
-pub const MINOR: u16 = 2;
+pub const MINOR: u16 = 3;
 /// O que este leitor sabe aplicar (`exige`).
-pub const SABE: &[&str] = &[EXIGE_ETAPAS, EXIGE_DESLOCA];
+pub const SABE: &[&str] = &[EXIGE_ETAPAS, EXIGE_DESLOCA, EXIGE_OBJETO];
 /// As edições das etapas (1.1).
 pub const EXIGE_ETAPAS: &str = "etapas";
 /// A etapa que anda sozinha no tempo (`EdicaoDeEtapa::desloca_us`, 1.2): um leitor sem ela tocá-la-ia
 /// no instante gravado, calado.
 pub const EXIGE_DESLOCA: &str = "etapa.desloca";
+/// O objecto da trilha nasce dentro do objecto Macro ([`crate::Nascimento`], 1.3): um leitor sem ela
+/// tocaria a pintura no objecto que tem a `Macro`, calado.
+pub const EXIGE_OBJETO: &str = "objeto";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CodecError {
@@ -75,13 +82,27 @@ impl std::error::Error for CodecError {}
 
 #[must_use]
 pub fn write(doc: &MacroDoc) -> Vec<u8> {
+    write_com_extras(doc, &[])
+}
+
+/// [`write`] com campos de topo de quem embrulha o documento (o ficheiro): etiquetas ≥ 4.
+#[must_use]
+pub fn write_com_extras(doc: &MacroDoc, extras: &[(u32, &[u8])]) -> Vec<u8> {
+    debug_assert!(extras.iter().all(|(t, _)| *t >= 4), "1..=3 são do documento");
     let mut out = Vec::with_capacity(64);
     let editado = doc.tracks.iter().any(|t| !t.edicoes.is_empty());
     let desloca = doc
         .tracks
         .iter()
         .any(|t| t.edicoes.iter().any(|e| e.desloca_us != 0));
-    let minor: u16 = if desloca { MINOR } else { u16::from(editado) };
+    let objeto = doc.tracks.iter().any(|t| t.nasce.is_some());
+    let minor: u16 = if objeto {
+        MINOR
+    } else if desloca {
+        2
+    } else {
+        u16::from(editado)
+    };
     out.extend_from_slice(MAGIC);
     out.extend_from_slice(&MAJOR.to_le_bytes());
     out.extend_from_slice(&minor.to_le_bytes());
@@ -98,6 +119,12 @@ pub fn write(doc: &MacroDoc) -> Vec<u8> {
     }
     if desloca {
         put_field(&mut rec, 3, EXIGE_DESLOCA.as_bytes());
+    }
+    if objeto {
+        put_field(&mut rec, 3, EXIGE_OBJETO.as_bytes());
+    }
+    for (tag, b) in extras {
+        put_field(&mut rec, *tag, b);
     }
     rec.push(0);
     out.extend_from_slice(&rec);
@@ -119,8 +146,64 @@ fn write_track(tr: &Track) -> Vec<u8> {
     for ed in &tr.edicoes {
         put_field(&mut rec, 5, &write_edicao(ed));
     }
+    if let Some(n) = &tr.nasce {
+        put_field(&mut rec, 8, &write_nasce(n));
+    }
     rec.push(0);
     rec
+}
+
+fn write_nasce(n: &Nascimento) -> Vec<u8> {
+    let mut r = Record::new();
+    r.varint(1, n.inicio.0).str(2, &n.nome);
+    let mut local = Vec::with_capacity(28);
+    for v in n.local {
+        local.extend_from_slice(&v.to_le_bytes());
+    }
+    r.bytes(3, &local);
+    if let Some(p) = n.pai {
+        r.varint(4, u64::from(p) + 1);
+    }
+    r.finish()
+}
+
+fn read_nasce(bytes: &[u8]) -> Result<Nascimento, CodecError> {
+    let mut n = Nascimento {
+        inicio: MacroTime::ZERO,
+        nome: String::new(),
+        local: [0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0],
+        pai: None,
+    };
+    for (tag, body) in Cursor(bytes).record()? {
+        match tag {
+            1 => n.inicio = MacroTime(Cursor(body).varint()?),
+            2 => {
+                n.nome = std::str::from_utf8(body)
+                    .map_err(|_| CodecError::BadUtf8)?
+                    .to_owned();
+            }
+            3 => {
+                if body.len() != 28 {
+                    return Err(CodecError::BadFieldLength {
+                        record: "Nascimento",
+                        tag,
+                    });
+                }
+                for (i, c) in body.chunks_exact(4).enumerate() {
+                    n.local[i] = f32::from_le_bytes([c[0], c[1], c[2], c[3]]);
+                }
+            }
+            4 => {
+                let p = Cursor(body).varint()?;
+                n.pai = p
+                    .checked_sub(1)
+                    .map(|p| u32::try_from(p).map_err(|_| CodecError::BadVarint))
+                    .transpose()?;
+            }
+            _ => {}
+        }
+    }
+    Ok(n)
 }
 
 fn write_edicao(ed: &EdicaoDeEtapa) -> Vec<u8> {
@@ -166,6 +249,12 @@ fn unzigzag(v: u64) -> i64 {
 
 /// Lê um ficheiro de macro. Etiquetas desconhecidas saltam-se; MAJOR diferente recusa.
 pub fn read(bytes: &[u8]) -> Result<MacroDoc, CodecError> {
+    read_com_extras(bytes).map(|(d, _)| d)
+}
+
+/// [`read`], devolvendo também os campos de topo que o documento não conhece (etiqueta ≥ 4), pela
+/// ordem do ficheiro.
+pub fn read_com_extras(bytes: &[u8]) -> Result<(MacroDoc, Vec<(u32, Vec<u8>)>), CodecError> {
     let rest = bytes.strip_prefix(MAGIC).ok_or(CodecError::NotAMacro)?;
     if rest.len() < 4 {
         return Err(CodecError::Truncated);
@@ -180,6 +269,7 @@ pub fn read(bytes: &[u8]) -> Result<MacroDoc, CodecError> {
     let mut cur = Cursor(&rest[4..]);
     let mut reference = None;
     let mut tracks = Vec::new();
+    let mut extras = Vec::new();
     for (tag, body) in cur.record()? {
         match tag {
             1 => {
@@ -201,7 +291,7 @@ pub fn read(bytes: &[u8]) -> Result<MacroDoc, CodecError> {
                     return Err(CodecError::Exige(nome.to_owned()));
                 }
             }
-            _ => {}
+            t => extras.push((t, body.to_vec())),
         }
     }
     let doc = MacroDoc {
@@ -218,7 +308,7 @@ pub fn read(bytes: &[u8]) -> Result<MacroDoc, CodecError> {
     {
         return Err(CodecError::NonMonotonicTime { track });
     }
-    Ok(doc)
+    Ok((doc, extras))
 }
 
 fn read_track(bytes: &[u8]) -> Result<Track, CodecError> {
@@ -227,6 +317,7 @@ fn read_track(bytes: &[u8]) -> Result<Track, CodecError> {
     let mut initial = Vec::new();
     let mut events = Vec::new();
     let mut edicoes = Vec::new();
+    let mut nasce = None;
     for (tag, body) in Cursor(bytes).record()? {
         match tag {
             1 => {
@@ -240,6 +331,7 @@ fn read_track(bytes: &[u8]) -> Result<Track, CodecError> {
             3 => initial = body.to_vec(),
             4 => events.push(read_event(body)?),
             5 => edicoes.push(read_edicao(body)?),
+            8 => nasce = Some(read_nasce(body)?),
             _ => {}
         }
     }
@@ -252,6 +344,7 @@ fn read_track(bytes: &[u8]) -> Result<Track, CodecError> {
         initial,
         events,
         edicoes,
+        nasce,
     })
 }
 

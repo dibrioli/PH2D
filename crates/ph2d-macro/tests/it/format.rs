@@ -21,6 +21,7 @@ fn expected() -> MacroDoc {
                 payload: vec![1, 2],
             }],
             edicoes: vec![],
+            nasce: None,
         }],
     }
 }
@@ -164,6 +165,7 @@ fn a_rich_document_round_trips_to_the_byte() {
                     })
                     .collect(),
                 edicoes: vec![],
+                nasce: None,
             },
             Track {
                 family: "motion".into(),
@@ -171,6 +173,7 @@ fn a_rich_document_round_trips_to_the_byte() {
                 initial: vec![],
                 events: vec![],
                 edicoes: vec![],
+                nasce: None,
             },
         ],
     };

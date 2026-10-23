@@ -113,6 +113,7 @@ fn gravacao() -> Track {
         initial: vec![],
         events,
         edicoes: vec![],
+        nasce: None,
     }
 }
 

@@ -211,6 +211,7 @@ mod leitor {
             initial: vec![],
             events,
             edicoes: vec![],
+            nasce: None,
         }
     }
 

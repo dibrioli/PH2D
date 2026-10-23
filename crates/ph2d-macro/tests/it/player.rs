@@ -16,6 +16,7 @@ fn track(family: &str, times_ms: &[u64]) -> Track {
             })
             .collect(),
         edicoes: vec![],
+        nasce: None,
     }
 }
 

@@ -48,7 +48,25 @@ pub struct Track {
     pub events: Vec<Event>,
     /// As edições das etapas ([`crate::etapa`]): a trilha que toca é [`Track::tocavel`].
     pub edicoes: Vec<crate::etapa::EdicaoDeEtapa>,
+    /// **O objecto da trilha nasce DENTRO do objecto Macro** (W18, `docs/Macros/16_W18_plano.md` §2.4).
+    /// `None` = o alvo é o próprio objecto que tem a `Macro` (as gravações de antes da W18).
+    pub nasce: Option<Nascimento>,
 }
+
+/// **A ficha de nascimento** do objecto de uma trilha. O tamanho e o conteúdo inicial NÃO estão aqui:
+/// vivem no estado inicial da família ([`Track::initial`]) — uma verdade só.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Nascimento {
+    /// Quando nasce, no relógio da macro.
+    pub inicio: MacroTime,
+    pub nome: String,
+    /// A transformada LOCAL ao pai: `[tx, ty, rotação, sx, sy, skew_x, skew_y]`.
+    pub local: [f32; 7],
+    /// O índice da trilha cujo objecto é o pai; `None` = o objecto Macro.
+    pub pai: Option<u32>,
+}
+
+impl Eq for Nascimento {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MacroDoc {

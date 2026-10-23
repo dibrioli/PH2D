@@ -396,6 +396,7 @@ pub fn edita_cor(track: &mut Track, k: usize, cor: [u8; 3]) -> Result<(), ErroDe
     let (etapa, down, _) = pincelada(track, k)?;
     let original = etapas(&Track {
         edicoes: Vec::new(),
+        nasce: None,
         ..track.clone()
     })
     .map_err(ErroDeEdicaoDoPainter::Macro)?[k]
@@ -422,6 +423,7 @@ pub fn edita_tamanho(track: &mut Track, k: usize, px: f32) -> Result<(), ErroDeE
     }
     let original = etapas(&Track {
         edicoes: Vec::new(),
+        nasce: None,
         ..track.clone()
     })
     .map_err(ErroDeEdicaoDoPainter::Macro)?[k]

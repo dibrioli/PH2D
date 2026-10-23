@@ -71,6 +71,7 @@ fn confere(track: &Track, k: usize) -> Result<(), ErroDeEdicaoDoPainter> {
     // tela — o do instante novo tem de ser o da gravação.
     let gravado = super::etapas(&Track {
         edicoes: Vec::new(),
+        nasce: None,
         ..track.clone()
     })
     .map_err(m)?

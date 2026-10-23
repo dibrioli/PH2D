@@ -582,6 +582,7 @@ impl Track {
             initial: self.initial.clone(),
             events: efetiva(self, leitor)?,
             edicoes: Vec::new(),
+            nasce: self.nasce.clone(),
         })
     }
 }

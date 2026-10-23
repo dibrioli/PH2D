@@ -22,6 +22,7 @@ fn sem_a_pincelada(track: &Track, k: usize) -> Result<Track, ErroDaMacro> {
         initial: Vec::new(),
         events: track.events.clone(),
         edicoes: track.edicoes.clone(),
+        nasce: track.nasce.clone(),
     };
     let gravadas = LeitorDoPainter.etapas(&track.events);
     let e = gravadas[k];

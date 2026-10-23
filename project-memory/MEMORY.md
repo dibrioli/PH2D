@@ -46,8 +46,6 @@
 - ⛔ [Tilemap (TOP-20 #17) é do projeto `docs/Tilling`, não da line/components — o dono mandou pular (16/09)](project_tilemap_belongs_to_the_tiling_project.md)
 - ⛔ [Painel lateral de params do Motion VAI SAIR (params só no cartão) — não invista nele (19/09)](project_o_painel_lateral_dos_params_do_motion_vai_sair.md)
 - ⛔ [Só o Wet Paint evolui (07/10): Digital/Impasto/Watercolor ficam; prompt da linha em NewFeaturesWetPaint/04](project_wet_paint_is_the_only_painter_mode_to_evolve_2026_10_07.md)
-- ⭐ [Dono (20/10): Wet Paint pintado depois de Parar fica POR CIMA da gravada — não se funde; a água dela pára no 1.º toque](project_wet_paint_after_stop_paints_over_the_recording_2026_10_20.md)
-- ⭐ [Dono (20/10): no fim de um clipe de Wet Paint a água CONTINUA (~1 min) até à imagem final — sem salto, clipe do mesmo tamanho](project_the_water_keeps_flowing_after_the_clip_ends_2026_10_20.md)
 - ⛔⛔ [Um SELO é texto E chave da COR — traduzi-lo apaga o tom](feedback_a_badge_is_painted_text_and_the_key_of_its_own_colour.md)
 - ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo mesmo com a ferramenta defeituosa** ([§SUPRESSÃO, 29/08](feedback_perfection_no_deferrals.md)) — e meio-feito é pior que não começar
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)

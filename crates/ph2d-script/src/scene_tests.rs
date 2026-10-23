@@ -633,3 +633,41 @@ fn a_blank_motion_name_stops_the_object_and_its_writes_do_not_land() {
 /// ADR-0188: o texto vem da biblioteca do projeto.
 #[path = "scene_library_tests.rs"]
 mod library;
+
+/// ⭐ **8c — uma propriedade de OBJECTO** (`ph2d.property("porta", ph2d.object("Porta"))`, o
+/// `@export` do Godot): o default declara o objecto pelo nome, o artista aponta outro, e `self.porta`
+/// é a entidade — `nil` enquanto ninguém tem o nome, até ele aparecer.
+#[test]
+fn uma_propriedade_de_objecto_aponta_o_objecto_pelo_nome() {
+    use ph2d_ecs::Name;
+    let path = script_file(
+        "objecto",
+        r#"
+ph2d.property("porta", ph2d.object("Porta"))
+function update(self, dt)
+  if self.porta ~= nil then ph2d.set(self.porta, "x", ph2d.get(self.porta, "x") + 1) end
+end
+"#,
+    );
+    let mut sim = SimWorld::new();
+    let w = sim.world_mut();
+    actor(w, 1, &path, &[]);
+    actor(w, 2, &path, &[("porta", ScriptValue::Object("Placar".into()))]);
+    let porta = w.spawn((Transform::IDENTITY, StableId(10), Name::new("Porta"))).id();
+    let mut host = ScriptHost::new().expect("vm");
+    host.scene_sync(sim.world_mut());
+    let Some(ScriptInfo::Ready(decls)) = info(&host, sim.world_mut(), &path) else {
+        panic!("{:?}", info(&host, sim.world_mut(), &path));
+    };
+    assert_eq!(decls[0].default, ScriptValue::Object("Porta".into()));
+    let r = frame(&mut host, &mut sim, 1.0);
+    assert!(r.failed.is_empty(), "o Placar ainda não existe: nil, sem erro");
+    assert_eq!(x(sim.world(), porta), 1.0, "o default aponta a Porta");
+    let placar = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, StableId(11), Name::new("Placar")))
+        .id();
+    frame(&mut host, &mut sim, 1.0);
+    assert_eq!(x(sim.world(), placar), 1.0, "o objecto que o artista pôs, quando aparece");
+    assert_eq!(x(sim.world(), porta), 2.0);
+}

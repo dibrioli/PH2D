@@ -13,6 +13,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.drop.objects" => "Drop: writes ph2d.object(\"…\") here.",
         "code.drop.ctrl_local" => "Hold Ctrl: a local variable on this line.",
         "code.drop.ctrl_init" => "Hold Ctrl: kept in self, inside init.",
+        "code.drop.alt_property" => "Hold Alt: an object property, set in the Inspector.",
         "code.drop.names" => "Drop: writes the name, in quotes, here.",
         "code.drop.ctrl_const" => "Hold Ctrl: a local constant on this line.",
         "code.drop.property" => "Drop: writes the property name, in quotes, here.",

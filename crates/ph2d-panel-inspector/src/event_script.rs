@@ -96,9 +96,12 @@ pub(crate) fn apply_script_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
             E::Source(text)
         } else if let Some(i) = linha(&crate::ids::INSP_SCRIPT_TEXT, id)
             && let Some(p) = info.props.get(i)
-            && matches!(p.value, V::Text(_))
+            && matches!(p.value, V::Text(_) | V::Object(_))
         {
-            E::SetText(p.name.clone(), text)
+            match p.value {
+                V::Object(_) => E::SetObject(p.name.clone(), text),
+                _ => E::SetText(p.name.clone(), text),
+            }
         } else {
             return false;
         };

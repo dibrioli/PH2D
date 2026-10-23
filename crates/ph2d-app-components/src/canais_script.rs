@@ -64,7 +64,8 @@ fn faixas(v: &ScriptValue, textos: &mut TextosDosCanais) -> Vec<f32> {
     match v {
         ScriptValue::Number(n) => vec![f(*n)],
         ScriptValue::Bool(b) => vec![if *b { 1.0 } else { 0.0 }],
-        ScriptValue::Text(t) => vec![textos.indice(Some(t))],
+        // Um objecto é o NOME dele: a chave troca de objecto como um texto troca de palavra.
+        ScriptValue::Text(t) | ScriptValue::Object(t) => vec![textos.indice(Some(t))],
         ScriptValue::Vec2(p) => p.iter().copied().map(f).collect(),
         ScriptValue::Color(c) => c.iter().copied().map(f).collect(),
     }
@@ -78,7 +79,7 @@ fn faixa_de(v: &ScriptValue, faixa: u16, textos: &TextosDosCanais) -> Option<f32
     match v {
         ScriptValue::Number(n) => Some(f(*n)),
         ScriptValue::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
-        ScriptValue::Text(t) => textos.procura(t),
+        ScriptValue::Text(t) | ScriptValue::Object(t) => textos.procura(t),
         ScriptValue::Vec2(p) => p.get(i).copied().map(f),
         ScriptValue::Color(c) => c.get(i).copied().map(f),
     }
@@ -91,7 +92,7 @@ fn com_faixa(v: &ScriptValue, faixa: u16, x: f32, textos: &TextosDosCanais) -> O
     match &mut v {
         ScriptValue::Number(n) => *n = f64::from(x),
         ScriptValue::Bool(b) => *b = x >= 0.5,
-        ScriptValue::Text(t) => *t = textos.texto(x)?.to_owned(),
+        ScriptValue::Text(t) | ScriptValue::Object(t) => *t = textos.texto(x)?.to_owned(),
         ScriptValue::Vec2(p) => *p.get_mut(i)? = f64::from(x),
         ScriptValue::Color(c) => *c.get_mut(i)? = f64::from(x),
     }

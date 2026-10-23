@@ -15,7 +15,9 @@ pub(super) fn campos_da_linha(i: usize, p: &InspectorScriptProp) -> Vec<NodeId> 
         InspectorScriptValue::Number(_) => vec![ids::INSP_SCRIPT_NUM[i]],
         InspectorScriptValue::Bool(_) => vec![ids::INSP_SCRIPT_BOOL[i]],
         InspectorScriptValue::Text(_) if !p.options.is_empty() => vec![ids::INSP_SCRIPT_ENUM[i]],
-        InspectorScriptValue::Text(_) => vec![ids::INSP_SCRIPT_TEXT[i]],
+        InspectorScriptValue::Text(_) | InspectorScriptValue::Object(_) => {
+            vec![ids::INSP_SCRIPT_TEXT[i]]
+        }
         InspectorScriptValue::Vec2(_) => {
             vec![ids::INSP_SCRIPT_VEC2_X[i], ids::INSP_SCRIPT_VEC2_Y[i]]
         }
@@ -184,7 +186,9 @@ pub(super) fn controlo(
                 theme,
             );
         }
-        InspectorScriptValue::Text(_) => {
+        // ⭐ Um objecto é o campo do NOME (escreve-se, ou larga-se nele um objecto da Hierarquia —
+        // `crate::script_object_slot_pick`).
+        InspectorScriptValue::Text(_) | InspectorScriptValue::Object(_) => {
             let id = ids::INSP_SCRIPT_TEXT[i];
             hit_index.register(id, ctrl);
             let (state, text, caret, anchor) = match store.get(id) {
@@ -196,7 +200,10 @@ pub(super) fn controlo(
                 }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
                 _ => (TextInputState::Normal, None, 0, None),
             };
-            let input = TextInput::new(id, "").visual((state, store.hover_live(id)));
+            let mut input = TextInput::new(id, "").visual((state, store.hover_live(id)));
+            if matches!(p.value, InspectorScriptValue::Object(_)) {
+                input = input.placeholder(ph2d_i18n::tr("panel.inspector.script.object_drop"));
+            }
             paint_text_input_with_buffer(
                 &input,
                 text,

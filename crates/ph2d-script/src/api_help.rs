@@ -133,7 +133,7 @@ end"#,
             "The object's name, exactly as written (capitals count). Drag the object from the Hierarchy into the script and this is written for you.",
         )],
         returns: "The object's id, ready for [ph2d.get] and [ph2d.set].",
-        more: "It is the way to point at one object you made: the editor checks the name while you type (a name no object has is marked in the list of problems), and renaming the object in the Hierarchy rewrites the name in every script of the project. When no object has that name it is an error that stops this object's script, with the name in the message — use [ph2d.find_by_name] when the object may not exist.\n\nWhen several objects share a name, it gives the first one in the order of the object list, like [ph2d.find_by_name]. It works only while the scene runs, inside a hook; to keep the object for later, keep it in `self` in `init`.",
+        more: "It is the way to point at one object you made: the editor checks the name while you type (a name no object has is marked in the list of problems), and renaming the object in the Hierarchy rewrites the name in every script of the project. When no object has that name it is an error that stops this object's script, with the name in the message — use [ph2d.find_by_name] when the object may not exist.\n\nWhen several objects share a name, it gives the first one in the order of the object list, like [ph2d.find_by_name]. It works only while the scene runs, inside a hook; to keep the object for later, keep it in `self` in `init`. The one exception is the default of [ph2d.property] at the top of the script, which declares an object property.",
         example: r#"function init(self)
   self.door = ph2d.object("Door")
 end
@@ -304,7 +304,7 @@ end"#,
             ),
             (
                 "default",
-                "The starting value. Its kind picks the Inspector control: a number, `true`/`false`, text, a position made by `ph2d.vec2`, or a colour made by `ph2d.color` (every channel from 0 to 1).",
+                "The starting value. Its kind picks the Inspector control: a number, `true`/`false`, text, a position made by `ph2d.vec2`, a colour made by `ph2d.color` (every channel from 0 to 1), or an object of the scene made by [ph2d.object].",
             ),
             (
                 "options",
@@ -312,7 +312,7 @@ end"#,
             ),
         ],
         returns: "",
-        more: "Call it at the top of the script, outside any function: the editor runs the top once when the script loads to collect the properties, and a call inside a hook is an error. A script can declare up to 32 properties.\n\nThe value is in `self.<name>` before [hooks.init] runs. When you change it in the Inspector, the new value reaches `self` on the next tick, even while playing. If the script changed `self.<name>` itself, the Inspector only overwrites it when you change the value there again.",
+        more: "Call it at the top of the script, outside any function: the editor runs the top once when the script loads to collect the properties, and a call inside a hook is an error. A script can declare up to 32 properties.\n\nThe value is in `self.<name>` before [hooks.init] runs. When you change it in the Inspector, the new value reaches `self` on the next tick, even while playing. If the script changed `self.<name>` itself, the Inspector only overwrites it when you change the value there again.\n\nAn object property (`ph2d.property(\"door\", ph2d.object(\"Door\"))`, what Alt writes when you drop an object from the Hierarchy) is a field in the Inspector where you can drop another object; `self.door` is that object's id, or `nil` while no object has the name. Renaming the object keeps the field pointing at it.",
         example: r#"ph2d.property("speed", 2, { min = 0, max = 10, step = 0.1 })
 ph2d.property("mode", "walk", { options = { "walk", "run" } })
 

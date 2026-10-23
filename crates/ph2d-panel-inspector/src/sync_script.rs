@@ -31,7 +31,7 @@ fn assinatura(info: &InspectorScriptInfo) -> u64 {
         match &p.value {
             V::Number(n) => n.to_bits().hash(&mut h),
             V::Bool(b) => b.hash(&mut h),
-            V::Text(t) => t.hash(&mut h),
+            V::Text(t) | V::Object(t) => t.hash(&mut h),
             // ⚠️ **Toda componente entra na assinatura**: se só o `x` entrasse, mexer no `y` de um
             // objecto e voltar a ele deixaria o campo com o valor velho — a aresta não armava.
             V::Vec2(v) => v.map(f64::to_bits).hash(&mut h),
@@ -90,7 +90,7 @@ pub(crate) fn sync(
                     host.store_mut().set_number_value(id, *v);
                 }
             }
-            V::Text(t) => {
+            V::Text(t) | V::Object(t) => {
                 if let Some(&id) = crate::ids::INSP_SCRIPT_TEXT.get(i) {
                     crate::sync_text_field::escreve_texto(host, focus, id, t);
                 }

@@ -38,6 +38,8 @@ pub(crate) const MARCA: &str = "__kind";
 pub(crate) const VEC2: &str = "vec2";
 /// O valor da [`MARCA`] numa cor.
 pub(crate) const COR: &str = "color";
+/// O valor da [`MARCA`] num objecto declarado no topo (`ph2d.object` fora da cena).
+pub(crate) const OBJECTO: &str = "object";
 
 /// **A tabela que o Luau vê** — `None` para os valores que não são tabela (número, sim/não, texto).
 ///
@@ -61,6 +63,12 @@ pub(crate) fn tabela_de(lua: &Lua, v: &ScriptValue) -> mlua::Result<Option<Value
             t.set("a", *a)?;
             t
         }
+        ScriptValue::Object(nome) => {
+            let t = lua.create_table()?;
+            t.set(MARCA, OBJECTO)?;
+            t.set("name", nome.as_str())?;
+            t
+        }
         ScriptValue::Number(_) | ScriptValue::Bool(_) | ScriptValue::Text(_) => return Ok(None),
     };
     Ok(Some(Value::Table(t)))
@@ -77,6 +85,10 @@ pub(crate) fn tabela_tipada(t: &Table) -> Option<ScriptValue> {
             numero(t, "b")?,
             numero(t, "a")?,
         ])),
+        OBJECTO => match t.get::<Value>("name").ok()? {
+            Value::String(s) => Some(ScriptValue::Object(s.to_str().ok()?.to_owned())),
+            _ => None,
+        },
         _ => None,
     }
 }

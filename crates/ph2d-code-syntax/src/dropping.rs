@@ -195,6 +195,42 @@ pub fn insertion(
     }
 }
 
+/// ⭐ **Alt: uma propriedade de OBJECTO** (§3.4, o `@export` do Godot) —
+/// `ph2d.property("porta", ph2d.object("Porta"))` por objecto, uma por linha. É uma declaração, que só
+/// corre no topo: no topo cai no início da linha da soltura; dentro de uma função, por cima dela. O
+/// script lê-a em `self.porta`, e o Inspector mostra o campo onde se larga outro objecto.
+#[must_use]
+pub fn object_property_insertion(
+    text: &Text,
+    syntax: &Syntax,
+    byte: usize,
+    names: &[String],
+) -> Insertion {
+    let byte = byte.min(text.len());
+    let line_start = text.byte_of_line(text.line_of_byte(byte));
+    let at = if syntax.at_top_level(text, byte) {
+        line_start
+    } else {
+        syntax.top_statement_line(text, byte)
+    };
+    let decls = names
+        .iter()
+        .map(|n| {
+            format!(
+                "ph2d.property({}, {})",
+                luau_string(&variable_name(n)),
+                reference(n)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    Insertion {
+        at,
+        caret: at + decls.len(),
+        text: format!("{decls}\n"),
+    }
+}
+
 /// O nome da constante do Ctrl (§3.9, o `const ICON` do Godot): o nome sem a extensão, em
 /// `UPPER_SNAKE` — `bob.luau` → `BOB`, `door_open` → `DOOR_OPEN`, `Inimigo` → `INIMIGO`.
 #[must_use]
@@ -542,5 +578,25 @@ mod tests {
         let i = property_insertion(b, &["velocidade".into()], true);
         assert_eq!(i.text, "self.velocidade");
         assert_eq!(i.caret, b + "self.velocidade".len());
+    }
+
+    #[test]
+    fn com_alt_um_objecto_vira_uma_propriedade_de_objecto_no_topo() {
+        let src = "local VEL = 2\nfunction update(self)\n  ph2d.set(self.id, \"x\", VEL)\nend\n";
+        let t = Text::new(src);
+        let s = Syntax::new(&t);
+        let nomes = ["Caixa Grande".to_owned(), "Porta".to_owned()];
+        let dentro = object_property_insertion(&t, &s, at(src, "VEL)"), &nomes);
+        let got = apply(src, &dentro);
+        assert_eq!(
+            got,
+            "local VEL = 2\nph2d.property(\"caixa_grande\", ph2d.object(\"Caixa Grande\"))\nph2d.property(\"porta\", ph2d.object(\"Porta\"))\nfunction update(self)\n  ph2d.set(self.id, \"x\", VEL)\nend\n",
+            "dentro de uma função, por cima dela"
+        );
+        assert!(got[..dentro.caret].ends_with("ph2d.object(\"Porta\"))"));
+        assert!(Syntax::new(&Text::new(&got)).errors().is_empty());
+        let topo = object_property_insertion(&t, &s, at(src, "= 2"), &nomes[1..]);
+        assert_eq!(topo.at, 0, "no topo, o início da linha da soltura");
+        assert_eq!(topo.text, "ph2d.property(\"porta\", ph2d.object(\"Porta\"))\n");
     }
 }

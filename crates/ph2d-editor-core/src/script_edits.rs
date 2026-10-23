@@ -41,6 +41,8 @@ pub enum InspectorScriptValue {
     Vec2([f64; 2]),
     /// ⭐ Uma cor — **uma amostra** que abre o selector da casa.
     Color([f64; 4]),
+    /// ⭐ Um objecto da cena, pelo nome — um campo que aceita um objecto largado da Hierarquia.
+    Object(String),
 }
 
 /// Uma linha de propriedade, na ordem da declaração.
@@ -223,6 +225,8 @@ pub enum ScriptFieldEdit {
     SetVec2(String, [f64; 2]),
     /// ⭐ O artista PÔS esta cor.
     SetColor(String, [f64; 4]),
+    /// ⭐ O artista PÔS este objecto (o nome; escrito, ou largado da Hierarquia).
+    SetObject(String, String),
     /// `Reset` numa linha, e `Remove` num órfão — a MESMA porta (`ph2d_script::props::forget`).
     Forget(String),
 }
@@ -318,6 +322,7 @@ mod tests {
             InspectorScriptValue::Text(String::new()),
             InspectorScriptValue::Vec2([0.0, 0.0]),
             InspectorScriptValue::Color([1.0, 1.0, 1.0, 1.0]),
+            InspectorScriptValue::Object("Porta".into()),
         ] {
             let e = match v {
                 InspectorScriptValue::Number(n) => ScriptFieldEdit::SetNumber("a".into(), n),
@@ -325,6 +330,7 @@ mod tests {
                 InspectorScriptValue::Text(t) => ScriptFieldEdit::SetText("a".into(), t),
                 InspectorScriptValue::Vec2(p) => ScriptFieldEdit::SetVec2("a".into(), p),
                 InspectorScriptValue::Color(c) => ScriptFieldEdit::SetColor("a".into(), c),
+                InspectorScriptValue::Object(o) => ScriptFieldEdit::SetObject("a".into(), o),
             };
             assert!(!matches!(e, ScriptFieldEdit::Forget(_)));
         }

@@ -61,6 +61,9 @@ pub enum DropTarget {
     ///
     /// `entity_bits` é a sprite que a ranhura descreve — resolvida pelo painel que a pintou.
     InspectorTexture { entity_bits: u64 },
+    /// ⭐ O campo de uma propriedade de OBJECTO no cartão Script (8c do CodeEditor): o objecto do
+    /// cartão e a linha.
+    ScriptObject { entity_bits: u64, row: u16 },
     /// ⭐⭐ **Sobre uma aba de SCRIPT** (item 8 do CodeEditor, `docs/CodeEditor/07_arrastar_para_o_codigo.md`).
     /// `on_text` = o cursor está sobre o TEXTO (a aba mostra onde cairia); na calha ou na barra, não.
     Code { on_text: bool },
@@ -111,6 +114,13 @@ pub enum DropAction {
     },
     /// ⭐⭐ A aba de script escreve o código que aponta os objectos largados (item 8 do CodeEditor).
     WriteCode,
+    /// ⭐ O objecto `stable_id` passa a ser o valor da propriedade de objecto na linha `row` do
+    /// script de `entity_bits` (8c do CodeEditor).
+    SetScriptObject {
+        entity_bits: u64,
+        row: u16,
+        stable_id: u64,
+    },
     /// ⛔ **Nada acontece, e VÊ-SE.** Ver o doc do módulo.
     Refuse,
     /// ⭐ **Nada acontece, e é SILENCIOSO** — o artista desistiu. Ver [`DropTarget::Source`].
@@ -158,11 +168,21 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
         // ele escreve o código que o aponta; em qualquer outro sítio recusa — e vê-se, como as
         // cargas da biblioteca. Antes do braço da gaveta: arrumar é de assets.
         (DragPayload::Object { .. }, DropTarget::Code { on_text: true }) => DropAction::WriteCode,
+        // ⭐ No campo de uma propriedade de objecto, o objecto passa a ser o valor dela (8c).
+        (DragPayload::Object { stable_id }, DropTarget::ScriptObject { entity_bits, row }) => {
+            DropAction::SetScriptObject {
+                entity_bits,
+                row,
+                stable_id,
+            }
+        }
         (DragPayload::Object { .. }, _) => DropAction::Refuse,
         // ⭐ Uma linha do Inspector (8b) só sabe ir para o texto; em qualquer outro sítio, desiste
         // calada — como o Godot, onde soltar uma propriedade fora do script não faz nada.
         (DragPayload::Property { .. }, DropTarget::Code { on_text: true }) => DropAction::WriteCode,
         (DragPayload::Property { .. }, _) => DropAction::Cancel,
+        // ⛔ Um asset não é um objecto da cena: o campo de objecto recusa-o.
+        (_, DropTarget::ScriptObject { .. }) => DropAction::Refuse,
         // ⭐ Um mestre ou uma imagem no texto escreve o NOME (o 8b: `ph2d.spawn`, `sprite.image`);
         // fora do texto, nada.
         (_, DropTarget::Code { on_text: true }) => DropAction::WriteCode,

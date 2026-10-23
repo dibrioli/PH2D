@@ -4,7 +4,9 @@
 
 use crate::doc::CodeDoc;
 use ph2d_code_buffer::{Range, Selection};
-use ph2d_code_syntax::dropping::{Insertion, insertion, name_insertion, property_insertion};
+use ph2d_code_syntax::dropping::{
+    Insertion, insertion, name_insertion, object_property_insertion, property_insertion,
+};
 use ph2d_editor_core::doc_surface::{DropAt, Dropping};
 use ph2d_i18n::tr;
 use ph2d_panel_code::Hit;
@@ -42,6 +44,9 @@ impl CodeDoc {
     fn drop_insertion(&self, b: usize, at: DropAt<'_>) -> Insertion {
         let text = self.buffer.text();
         match at.what {
+            Dropping::Objects(names) if at.mods.alt => {
+                object_property_insertion(text, &self.syntax, b, names)
+            }
             Dropping::Objects(names) => insertion(
                 text,
                 &self.syntax,
@@ -80,7 +85,10 @@ impl CodeDoc {
             };
             Some(DropMark {
                 at: ins.at,
-                hint: hint(&[what, ctrl]),
+                hint: match at.what {
+                    Dropping::Objects(_) => hint(&[what, ctrl, "code.drop.alt_property"]),
+                    _ => hint(&[what, ctrl]),
+                },
             })
         });
         self.dropping.is_some()

@@ -54,6 +54,20 @@ pub fn seed(hero: &mut HeroScreen, world: &World, row_bits: Option<u64>, at: (f3
     }
 }
 
+/// ⭐ **Um objecto largado no campo de uma propriedade de objecto** (8c): o nome dele passa a ser o
+/// valor da propriedade `prop` do script de `entity_bits` — a mesma edição de escrever o nome.
+pub fn into_script_slot(sim: &mut SimWorld, entity_bits: u64, prop: &str, stable_id: u64) -> bool {
+    let w = sim.world_mut();
+    let Some(nome) = ph2d_ecs::entity_of_stable_id(w, StableId(stable_id))
+        .and_then(|e| w.get::<Name>(e))
+        .map(|n| n.as_str().to_owned())
+    else {
+        return false;
+    };
+    let edit = ph2d_editor_core::script_edits::ScriptFieldEdit::SetObject(prop.to_owned(), nome);
+    crate::script_inspector::apply(sim, entity_bits, &edit)
+}
+
 fn selection(hero: &HeroScreen) -> Vec<u64> {
     hero.gizmo
         .selection
@@ -227,6 +241,42 @@ mod tests {
 
     /// ⭐ 8b: o que a aba recebe de uma carga da biblioteca — o nome do mestre (o do `ph2d.spawn`) e o
     /// da imagem (o do `sprite.image`, pelo ficheiro).
+    /// ⭐ 8c: um objecto largado no campo de uma propriedade de objecto passa a ser o valor dela, pelo
+    /// nome; um asset nesse campo recusa.
+    #[test]
+    fn um_objecto_largado_no_campo_de_objecto_e_o_valor_da_propriedade() {
+        use crate::asset_drop::{DropTarget, resolve};
+        use ph2d_script::{LuauScript, ScriptId, ScriptValue};
+        let alvo = DropTarget::ScriptObject {
+            entity_bits: 3,
+            row: 1,
+        };
+        assert_eq!(
+            resolve(DragPayload::Object { stable_id: 9 }, alvo),
+            DropAction::SetScriptObject {
+                entity_bits: 3,
+                row: 1,
+                stable_id: 9
+            }
+        );
+        assert_eq!(
+            resolve(DragPayload::Image { asset: [0; 32] }, alvo),
+            DropAction::Refuse
+        );
+        let mut sim = SimWorld::new();
+        let heroi = sim
+            .world_mut()
+            .spawn((StableId(1), LuauScript::library(ScriptId(1))))
+            .id();
+        obj(sim.world_mut(), 9, "Porta", 1);
+        let bits = heroi.to_bits();
+        assert!(into_script_slot(&mut sim, bits, "porta", 9));
+        let s = sim.world().get::<LuauScript>(heroi).expect("script");
+        assert_eq!(s.own["porta"], ScriptValue::Object("Porta".into()));
+        assert!(!into_script_slot(&mut sim, bits, "porta", 9), "o mesmo: nada muda");
+        assert!(!into_script_slot(&mut sim, bits, "porta", 77), "nenhum objecto");
+    }
+
     #[test]
     fn um_mestre_e_uma_imagem_chegam_ao_script_pelo_nome() {
         let mut sim = SimWorld::new();

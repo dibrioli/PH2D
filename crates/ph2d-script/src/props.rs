@@ -64,6 +64,10 @@ pub enum ScriptValue {
     /// escreve uma cor é o selector, que é limitado por construção. *Inventar uma quarta razão de
     /// orfandade para um estado que nada produz é construir para um fantasma.*
     Color([f64; 4]),
+    /// ⭐ **Um OBJECTO da cena, pelo NOME** — `ph2d.property("porta", ph2d.object("Porta"))` (o
+    /// `@export` do Godot, doc CodeEditor 07 §3.4). O script lê em `self` a entidade com esse nome
+    /// (`nil` se nenhuma); renomear o objecto reescreve o valor guardado.
+    Object(String),
 }
 
 /// **De que tipo um valor é** — a pergunta do D3, com uma resposta só.
@@ -79,6 +83,8 @@ pub enum ScriptValueKind {
     Vec2,
     /// Uma cor.
     Color,
+    /// Um objecto da cena.
+    Object,
 }
 
 impl ScriptValue {
@@ -91,6 +97,7 @@ impl ScriptValue {
             Self::Text(_) => ScriptValueKind::Text,
             Self::Vec2(_) => ScriptValueKind::Vec2,
             Self::Color(_) => ScriptValueKind::Color,
+            Self::Object(_) => ScriptValueKind::Object,
         }
     }
 
@@ -104,7 +111,7 @@ impl ScriptValue {
     pub fn componentes(&self) -> &[f64] {
         match self {
             Self::Number(n) => std::slice::from_ref(n),
-            Self::Bool(_) | Self::Text(_) => &[],
+            Self::Bool(_) | Self::Text(_) | Self::Object(_) => &[],
             Self::Vec2(v) => v.as_slice(),
             Self::Color(c) => c.as_slice(),
         }
@@ -124,6 +131,7 @@ impl ScriptValueKind {
             // três de cima: a mensagem devolve-lhe a palavra do ficheiro dele.
             Self::Vec2 => "vec2",
             Self::Color => "color",
+            Self::Object => "object",
         }
     }
 }

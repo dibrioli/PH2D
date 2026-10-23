@@ -14,7 +14,7 @@ use ph2d_code_syntax::dropping::rename_edits;
 use ph2d_ecs::{Entity, MasterRoot, World};
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::undo_link::UndoLink;
-use ph2d_script::{ProjectScripts, ScriptId};
+use ph2d_script::{LuauScript, ProjectScripts, ScriptId};
 
 /// O texto `before` com o nome reescrito (`None` = nenhum nome a mudar).
 fn rewritten(before: &str, old: &str, new: &str, master: bool) -> Option<String> {
@@ -82,6 +82,9 @@ pub fn object_renamed(
         return;
     }
     let master = world.get::<MasterRoot>(entity).is_some();
+    if !master {
+        rename_object_properties(world, old, new);
+    }
     let Some(docs) = hero.documents.surfaces_mut().find_mut::<CodeDocs>() else {
         return;
     };
@@ -119,9 +122,45 @@ pub fn object_renamed(
     }
 }
 
+/// As propriedades de objecto (`ph2d.property("porta", ph2d.object("Porta"))`, 8c) que o artista
+/// apontou a `old` seguem o objecto — no mesmo passo de undo que o nome (o diff do quadro).
+fn rename_object_properties(world: &mut World, old: &str, new: &str) {
+    let alvos: Vec<Entity> = world
+        .query::<(Entity, &LuauScript)>()
+        .iter(world)
+        .filter(|(_, s)| s.names_object(old))
+        .map(|(e, _)| e)
+        .collect();
+    for e in alvos {
+        if let Some(mut s) = world.get_mut::<LuauScript>(e) {
+            s.rename_object(old, new);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn renomear_um_objecto_leva_as_propriedades_de_objecto_que_o_apontam() {
+        use ph2d_script::ScriptValue;
+        let mut w = World::new();
+        let mut s = LuauScript::library(ScriptId(1));
+        s.own.insert("porta".into(), ScriptValue::Object("Porta".into()));
+        s.own.insert("outra".into(), ScriptValue::Object("Placar".into()));
+        s.own.insert("nome".into(), ScriptValue::Text("Porta".into()));
+        let e = w.spawn(s).id();
+        rename_object_properties(&mut w, "Porta", "Portão");
+        let s = w.get::<LuauScript>(e).expect("script");
+        assert_eq!(s.own["porta"], ScriptValue::Object("Portão".into()));
+        assert_eq!(s.own["outra"], ScriptValue::Object("Placar".into()));
+        assert_eq!(
+            s.own["nome"],
+            ScriptValue::Text("Porta".into()),
+            "um texto não é um objecto"
+        );
+    }
 
     #[test]
     fn o_texto_e_o_buffer_reescrevem_se_e_um_undo_volta() {

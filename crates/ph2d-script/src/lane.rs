@@ -221,6 +221,11 @@ impl<'w> Lane<'w> {
     }
 
     /// `ph2d.find_by_name` — o primeiro objecto (não-receita) com esse nome, pela ordem da lista.
+    /// O `id` com que o script vê o objecto `name` (uma propriedade de objecto, §3.4).
+    pub(crate) fn object_id(&mut self, name: &str) -> Option<f64> {
+        self.find(name).map(id_of)
+    }
+
     fn find(&mut self, name: &str) -> Option<Entity> {
         if self.names.is_none() {
             let mut map = BTreeMap::new();
@@ -565,7 +570,7 @@ fn is_property_name(field: &str) -> bool {
 
 /// As funções `ph2d.*` que passam pela pista — Luau, para o erro apontar a linha do script.
 pub(crate) const LANE_LUAU: &str = r#"
-local lane, is_property = ...
+local lane, is_property, declared_object = ...
 local function through(name)
   return function(...)
     local f = lane[name]
@@ -577,7 +582,18 @@ local function through(name)
 end
 ph2d.get = through("get")
 ph2d.find_by_name = through("find_by_name")
-ph2d.object = through("object")
+-- No topo (as declarações), `ph2d.object("Porta")` é o objecto a DECLARAR numa propriedade (§3.4).
+ph2d.object = function(...)
+  local f = lane.object
+  if f == nil then
+    local declared = declared_object(...)
+    if declared ~= nil then
+      return declared
+    end
+    error("ph2d.object: only while the scene runs (inside init, update or on_signal)", 2)
+  end
+  return f(...)
+end
 ph2d.spawn = through("spawn")
 ph2d.despawn = through("despawn")
 ph2d.attach_script = through("attach_script")
@@ -601,7 +617,17 @@ pub(crate) fn wire(lua: &Lua) -> mlua::Result<()> {
     let table = lua.create_table()?;
     lua.set_named_registry_value(LANE_KEY, table.clone())?;
     let is_property = lua.create_function(|_, f: String| Ok(is_named_property(&f)))?;
+    let declared = lua.create_function(|lua, name: Value| {
+        let declaring = lua.app_data_ref::<crate::module::DeclSink>().is_some();
+        match name {
+            Value::String(s) if declaring => {
+                let v = crate::props::ScriptValue::Object(s.to_str()?.to_owned());
+                crate::valores::tabela_de(lua, &v)
+            }
+            _ => Ok(None),
+        }
+    })?;
     lua.load(LANE_LUAU)
         .set_name("=ph2d")
-        .call::<()>((table, is_property))
+        .call::<()>((table, is_property, declared))
 }

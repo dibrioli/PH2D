@@ -15,7 +15,11 @@ use crate::props::{PropDecl, ScriptValue, resolve};
 /// ([`crate::valores::tabela_de`]): o que o artista escreve na declaração e o que ele lê em `self`
 /// têm de ser a mesma forma, senão copiar uma para a outra produz um default que o painel não sabe
 /// pintar. Há gate de ida-e-volta.
-fn to_lua(lua: &Lua, v: &ScriptValue) -> mlua::Result<Value> {
+/// Um objecto lê-se como a entidade com esse nome (`objects`), `nil` se nenhuma.
+fn to_lua(lua: &Lua, v: &ScriptValue, objects: &mut Objects<'_>) -> mlua::Result<Value> {
+    if let ScriptValue::Object(nome) = v {
+        return Ok(objects(nome).map_or(Value::Nil, Value::Number));
+    }
     if let Some(t) = crate::valores::tabela_de(lua, v)? {
         return Ok(t);
     }
@@ -24,7 +28,9 @@ fn to_lua(lua: &Lua, v: &ScriptValue) -> mlua::Result<Value> {
         ScriptValue::Bool(b) => Value::Boolean(*b),
         ScriptValue::Text(s) => Value::String(lua.create_string(s)?),
         // A [`crate::valores::tabela_de`] já os devolveu acima.
-        ScriptValue::Vec2(_) | ScriptValue::Color(_) => unreachable!("a porta ja' os cobriu"),
+        ScriptValue::Vec2(_) | ScriptValue::Color(_) | ScriptValue::Object(_) => {
+            unreachable!("a porta ja' os cobriu")
+        }
     })
 }
 
@@ -48,13 +54,24 @@ pub(super) fn born(lua: &Lua, a: &Actor, bits: u64, chunk: String) -> mlua::Resu
 
 /// Escreve no `self` os números que MUDARAM desde a última vez (§3.5): a mão do artista manda,
 /// mas só onde mexeu.
-pub(super) fn apply_props(lua: &Lua, inst: &mut Instance, decls: &[PropDecl], cfg: &LuauScript) {
+/// A entidade (`id` do Luau) de um objecto pelo nome.
+pub(super) type Objects<'a> = dyn FnMut(&str) -> Option<f64> + 'a;
+
+pub(super) fn apply_props(
+    lua: &Lua,
+    inst: &mut Instance,
+    decls: &[PropDecl],
+    cfg: &LuauScript,
+    objects: &mut Objects<'_>,
+) {
     let r = resolve(Some(decls), &cfg.own);
     for p in &r.values {
         if inst.applied.get(&p.name) == Some(&p.value) {
             continue;
         }
-        if let Ok(v) = to_lua(lua, &p.value)
+        // Um objecto que ainda não existe fica por aplicar: tenta-se no quadro seguinte.
+        if let Ok(v) = to_lua(lua, &p.value, objects)
+            && !(v.is_nil() && matches!(p.value, ScriptValue::Object(_)))
             && inst.this.raw_set(p.name.as_str(), v).is_ok()
         {
             inst.applied.insert(p.name.clone(), p.value.clone());

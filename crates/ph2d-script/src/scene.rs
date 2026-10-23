@@ -490,7 +490,7 @@ impl SceneScripts {
                             continue;
                         }
                     };
-                    apply_props(lua, inst, &decls, &a.cfg);
+                    apply_props(lua, inst, &decls, &a.cfg, &mut |n| cell.borrow_mut().object_id(n));
                     if let Some(init) = init {
                         report.calls += 1;
                         let ran = speaking(lua, inst.script, Some(a.entity), || {
@@ -506,7 +506,7 @@ impl SceneScripts {
                 if inst.failed.is_some() || cell.borrow().is_dying(a.entity) {
                     continue;
                 }
-                apply_props(lua, inst, &decls, &a.cfg);
+                apply_props(lua, inst, &decls, &a.cfg, &mut |n| cell.borrow_mut().object_id(n));
                 if let Some(update) = update {
                     report.calls += 1;
                     let ran = speaking(lua, inst.script, Some(a.entity), || {

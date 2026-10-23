@@ -156,6 +156,7 @@ impl crate::App {
         // ⚠️ Resolvidos ANTES de pegar o `gfx` mutável — são leituras, e adiá-las para dentro do
         // bloco mutável seria pedir dois empréstimos do mesmo `self`.
         let inspector_slot = self.inspector_slot_under(x, y);
+        let script_slot = self.chrome_id_under(x, y).and_then(ph2d_panel_inspector::script_object_slot_pick);
         let catalog_row = self.catalog_row_under(x, y);
         let mods = Self::convert_modifiers(self.modifiers);
         let (on_canvas, world, code, home) = {
@@ -182,6 +183,8 @@ impl crate::App {
         };
         Some(if let Some(entity_bits) = inspector_slot {
             DropTarget::InspectorTexture { entity_bits }
+        } else if let Some((entity_bits, row)) = script_slot {
+            DropTarget::ScriptObject { entity_bits, row }
         } else if let Some(catalog) = catalog_row {
             DropTarget::CatalogRow { catalog }
         } else if home {
@@ -225,8 +228,11 @@ impl crate::App {
     /// —, e o **Inspector** responde *«aquele id é a minha ranhura, e de que sprite»*. A shell
     /// conhecer o literal do id seria conhecer a tabela de outro painel.
     fn inspector_slot_under(&self, x: f32, y: f32) -> Option<u64> {
-        let hero = self.gfx.as_ref()?.hero_screen.as_ref()?;
-        ph2d_panel_inspector::texture_slot_pick(hero.chrome_hit(x, y)?)
+        ph2d_panel_inspector::texture_slot_pick(self.chrome_id_under(x, y)?)
+    }
+
+    fn chrome_id_under(&self, x: f32, y: f32) -> Option<ph2d_editor_core::NodeId> {
+        self.gfx.as_ref()?.hero_screen.as_ref()?.chrome_hit(x, y)
     }
 
     /// O objecto debaixo do cursor, no resumo de que a lei precisa.
@@ -266,6 +272,17 @@ impl crate::App {
                 over,
             } => {
                 self.drop_place_prefab(stable_id, world, over);
+            }
+            DropAction::SetScriptObject {
+                entity_bits,
+                row,
+                stable_id,
+            } => {
+                if let Some(gfx) = self.gfx.as_mut()
+                    && let Some(prop) = ph2d_panel_inspector::script_prop_name(entity_bits, row)
+                {
+                    object_drag::into_script_slot(&mut gfx.sim, entity_bits, &prop, stable_id);
+                }
             }
             DropAction::RetextureSprite { entity_bits, asset } => {
                 self.drop_retexture(entity_bits, asset);

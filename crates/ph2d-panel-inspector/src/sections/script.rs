@@ -53,6 +53,7 @@ fn legivel(v: &InspectorScriptValue) -> String {
         InspectorScriptValue::Color([r, g, b, a]) => {
             format!("color({}, {}, {}, {})", n(*r), n(*g), n(*b), n(*a))
         }
+        InspectorScriptValue::Object(o) => format!("object(\u{201c}{o}\u{201d})"),
     }
 }
 

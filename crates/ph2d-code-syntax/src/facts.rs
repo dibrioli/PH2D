@@ -268,6 +268,20 @@ impl Syntax {
         Some(text.byte_of_line(line + 1))
     }
 
+    /// O início da linha da instrução do TOPO que contém `byte` (a função onde ele está) — por cima
+    /// dela vai o que só corre no topo (uma `ph2d.property`). Fora de qualquer instrução, a linha dele.
+    #[must_use]
+    pub fn top_statement_line(&self, text: &Text, byte: usize) -> usize {
+        let byte = byte.min(text.len());
+        let root = self.tree().root_node();
+        let mut c = root.walk();
+        let start = root
+            .named_children(&mut c)
+            .find(|n| n.start_byte() <= byte && byte < n.end_byte())
+            .map_or(byte, |n| n.start_byte());
+        text.byte_of_line(text.line_of_byte(start))
+    }
+
     /// O carácter antes de `byte` é código (nem string nem comentário).
     #[must_use]
     pub fn in_code(&self, text: &Text, byte: usize) -> bool {

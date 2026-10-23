@@ -47,7 +47,12 @@ fn por_cima_do_texto_mostra_onde_cai_e_largar_escreve_num_passo_de_undo() {
     );
     let (at, balao) = m.docs().drop_mark_of(id).expect("a marca");
     assert_eq!(at, b, "o cursor fino é o byte do clique");
-    assert_eq!(balao.len(), 2, "o que larga e o que o Ctrl faz: {balao:?}");
+    assert_eq!(
+        balao.len(),
+        3,
+        "o que larga, o que o Ctrl faz e o que o Alt faz: {balao:?}"
+    );
+    assert!(balao[2].contains("Alt"), "{balao:?}");
     m.pinta(id);
     assert!(m.docs().drop(id.0, em(p, &porta, false)));
     assert!(m.docs().drop_mark_of(id).is_none(), "largar apaga a marca");

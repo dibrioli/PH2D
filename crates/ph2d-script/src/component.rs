@@ -65,6 +65,25 @@ impl LuauScript {
             own: BTreeMap::new(),
         }
     }
+
+    /// ⭐ As propriedades de objecto que guardam `old` — renomear o objecto reescreve-as (8c).
+    #[must_use]
+    pub fn names_object(&self, old: &str) -> bool {
+        self.own
+            .values()
+            .any(|v| matches!(v, ScriptValue::Object(n) if n == old))
+    }
+
+    /// Reescreve `old` → `new` nas propriedades de objecto (ver [`Self::names_object`]).
+    pub fn rename_object(&mut self, old: &str, new: &str) {
+        for v in self.own.values_mut() {
+            if let ScriptValue::Object(n) = v
+                && n == old
+            {
+                new.clone_into(n);
+            }
+        }
+    }
 }
 
 impl SimComponent for LuauScript {}

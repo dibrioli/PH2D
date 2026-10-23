@@ -24,7 +24,7 @@ pub(crate) fn tipo_de(v: &ScriptValue) -> cs::Tipo {
     match v {
         ScriptValue::Number(_) => cs::Tipo::Number,
         ScriptValue::Bool(_) => cs::Tipo::Bool,
-        ScriptValue::Text(_) => cs::Tipo::Text,
+        ScriptValue::Text(_) | ScriptValue::Object(_) => cs::Tipo::Text,
         ScriptValue::Vec2(_) => cs::Tipo::Vec2,
         ScriptValue::Color(_) => cs::Tipo::Color,
     }
@@ -38,6 +38,7 @@ fn para_painel(v: &ScriptValue) -> InspectorScriptValue {
         ScriptValue::Text(t) => InspectorScriptValue::Text(t.clone()),
         ScriptValue::Vec2(v) => InspectorScriptValue::Vec2(*v),
         ScriptValue::Color(c) => InspectorScriptValue::Color(*c),
+        ScriptValue::Object(n) => InspectorScriptValue::Object(n.clone()),
     }
 }
 
@@ -241,6 +242,9 @@ pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
         E::SetText(n, t) => posto(n, ScriptValue::Text(t.clone())).map(|v| Mexe::Poe(n.clone(), v)),
         E::SetVec2(n, p) => posto(n, ScriptValue::Vec2(*p)).map(|v| Mexe::Poe(n.clone(), v)),
         E::SetColor(n, c) => posto(n, ScriptValue::Color(*c)).map(|v| Mexe::Poe(n.clone(), v)),
+        E::SetObject(n, o) => {
+            posto(n, ScriptValue::Object(o.clone())).map(|v| Mexe::Poe(n.clone(), v))
+        }
         E::Forget(n) => cfg.own.contains_key(n).then(|| Mexe::Larga(n.clone())),
     };
     let Some(mexe) = mexe else {

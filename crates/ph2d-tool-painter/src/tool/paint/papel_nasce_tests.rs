@@ -95,6 +95,7 @@ pub(super) fn novo(meio: PaintMedia, raio: f32) -> PainterTool {
     let mut t = PainterTool::default();
     t.bind_document(1, vec![255u8; LADO * LADO * 4], LADO as u32, LADO as u32);
     t.set_paint_media(meio);
+    super::aquarela_neutra(&mut t);
     t.set_brush_size_px(raio);
     t
 }

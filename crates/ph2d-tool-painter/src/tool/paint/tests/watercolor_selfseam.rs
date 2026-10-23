@@ -16,7 +16,7 @@
 //! transição (`max |ΔI| / contraste`), porque um degrau de 40 bytes e um de 200 não se comparam em
 //! bytes por pixel.
 //!
-//! ⚠️ A fixtura usa o **preset do produto** (`apply_brush_preset(1)`, Ragged Edge `6 px` incluído):
+//! ⚠️ A fixtura usa o **preset do produto** de antes de 23/10 (`watercolor_basic_de_antes`, Ragged Edge `6 px`):
 //! sem o warp a escada de pixel não existe e a régua mediria outro programa. Só a granulação é
 //! zerada — ela é ruído multiplicativo por pixel e infla `max |ΔI|` exatamente onde o contraste é
 //! menor (a costura), que é o lado que a barra julga.
@@ -104,7 +104,7 @@ pub(super) fn paint_u_live(u: UStroke, k: SeamKnobs) -> PainterTool {
     t.set_source(vec![255u8; (u.size * u.size * 4) as usize], u.size, u.size);
     t.paint.brush.radius_px = u.r;
     t.paint.brush.color = [0.85, 0.12, 0.10];
-    t.apply_brush_preset(1);
+    watercolor_basic_de_antes(&mut t);
     // span = MIX_DEPLETE_SPAN(120)·r·c/(1−c)  ⇒  c = s/(1+s), s = span/(120·r).
     let s = k.span_factor * u.travel() / (120.0 * u.r);
     t.paint.brush.wet_charge = s / (1.0 + s);
@@ -475,7 +475,7 @@ fn the_level_planes_do_not_depend_on_how_the_dabs_are_batched() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (u.size * u.size * 4) as usize], u.size, u.size);
         t.paint.brush.radius_px = u.r;
-        t.apply_brush_preset(1);
+        watercolor_basic_de_antes(&mut t);
         t.paint.brush.wet_charge = 0.4;
         t.paint.brush.wet_smudge = 0.7;
         let seed = t.paint.brush;

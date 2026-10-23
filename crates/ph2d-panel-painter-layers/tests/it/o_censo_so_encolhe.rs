@@ -107,27 +107,8 @@ fn inertes_com_motivo() -> Vec<Inerte> {
          muda um byte; com Reach 3 ele sai do rastro e pinta (208 texels). O «só com Solid» de 2026-10-03 \
          era a corda do Solid a estragar o traço (curado: `a_corda_nao_deixa_rasto_nos_acumuladores_do_traco`)",
     ));
-    v.push((
-        Watercolor,
-        PAINTER_SHAPE_WATERCOLOR_AUTO,
-        "a porta das opções da Shape: desligá-lo põe o Falloff Watercolor, o MESMO carimbo de propósito \
-         (`toggle_brush_watercolor_shape_auto`) — esmaecê-lo esconderia o caminho para escolher uma Shape",
-    ));
-    v.push((
-        Watercolor,
-        PAINTER_WATERCOLOR_SPREAD,
-        "age, mas não PARA CIMA sem água: o aro usa `core_r = min(Spread, raio/2)` — na fábrica (raio 10, \
-         Spread 7) baixá-lo a 1 muda 1 841 texels, subi-lo a 48 muda 0; acima de raio/2 só a água (Wet, \
-         Dilution) o lê. Não é um dependente (não esmaece): o censo leva-o para cima (doc 46 §2-4)",
-    ));
-    v.push((
-        Watercolor,
-        painter_line_type_option_id(2),
-        "age, mas não na FÁBRICA: o Reach de fábrica (1 diâmetro) costura dentro da própria aguada, e dentro \
-         da tinta molhada o fio deposita só PIGMENTO da mesma cor (`watercolor_fios`: estender a cobertura ali \
-         fazia o aro riscá-la de preto) — com Reach 3 a teia sai para o papel seco e pinta \
-         (`o_sketchy_tinge_a_aguada_alem_do_rastro`)",
-    ));
+    // Saíram a 23/10 (a fábrica da Aquarela passou a ser a do painel do dono: Rewet 0,5, Bleed 4, Charge
+    // 0,5…): o Automatic, o Spread e a teia (Sketchy) passaram a mudar a tinta da fábrica.
     for modo in [6u8, 7] {
         v.push((
             WetPaint,

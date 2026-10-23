@@ -17,6 +17,7 @@ fn traco(w: u32, y: f32, ajusta: impl Fn(&mut PainterTool)) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (w * w * 4) as usize], w, w);
     t.set_paint_media(PaintMedia::Watercolor);
+    aquarela_neutra(&mut t);
     t.paint.brush.color = [0.2, 0.3, 0.8];
     t.paint.brush.radius_px = 14.0;
     ajusta(&mut t);
@@ -113,6 +114,7 @@ fn faixa(ajusta: impl Fn(&mut PainterTool)) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; 256 * 256 * 4], 256, 256);
     t.set_paint_media(PaintMedia::Watercolor);
+    aquarela_neutra(&mut t);
     t.paint.brush.color = [0.2, 0.3, 0.8];
     t.paint.brush.radius_px = 30.0;
     ajusta(&mut t);

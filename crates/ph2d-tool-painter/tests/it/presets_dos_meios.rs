@@ -27,12 +27,24 @@ pub fn gestos(pincel: &Pincel) -> Vec<u8> {
 }
 
 fn meio(m: PaintMedia) -> Pincel {
-    let r = RECEITAS_DE_MEIO.iter().find(|r| r.meio == m).unwrap();
+    let r = if m == PaintMedia::Watercolor {
+        &AQUARELA_NEUTRA
+    } else {
+        RECEITAS_DE_MEIO.iter().find(|r| r.meio == m).unwrap()
+    };
     Pincel {
         nome: r.nome.to_owned(),
         fonte: Fonte::Meio(r),
     }
 }
+
+/// A Aquarela NEUTRA (`exame_bancada::aquarela_neutra`): desde 23/10 a de fábrica é a do dono, e o neutro da
+/// MÃO mede-se sobre o pincel em que estes hashes foram gravados.
+static AQUARELA_NEUTRA: crate::exame_bancada::ReceitaDeMeio = crate::exame_bancada::ReceitaDeMeio {
+    nome: "meio:Watercolor neutra",
+    meio: PaintMedia::Watercolor,
+    prepara: crate::exame_bancada::aquarela_neutra,
+};
 
 /// A cena `gestos` (a rampa 0→1 incluída) nos três meios antigos ANTES da L2 — `pressureSize 0,9` (o
 /// `size_min 0,1` de sempre), sem pressão na opacidade, a inclinação de pé. Medido em `0797d99072`.
@@ -55,6 +67,9 @@ fn o_neutro_da_mao_e_o_traco_de_hoje() {
         // E pela LEI da mão: o pincel de fábrica gravado e carregado (a mão volta por `mao::escreve`).
         let mut t = ph2d_tool_painter::PainterTool::default();
         t.set_paint_media(m);
+        if m == PaintMedia::Watercolor {
+            crate::exame_bancada::aquarela_neutra(&mut t);
+        }
         let (parametros, texturas) = t.preset_capturar(&ph2d_brush_presets::Parametros::novo(
             ph2d_tool_painter::nome_do_meio(m),
             "G",
@@ -107,6 +122,7 @@ fn lapis(t: &mut PainterTool) {
 }
 
 fn aguada(t: &mut PainterTool) {
+    crate::exame_bancada::aquarela_neutra(t); // o exemplo parte da Aquarela neutra, não da fábrica de 23/10
     t.set_brush_depth(1.6);
     t.set_brush_edge_gain(2.0);
     t.set_brush_granulation(0.4);

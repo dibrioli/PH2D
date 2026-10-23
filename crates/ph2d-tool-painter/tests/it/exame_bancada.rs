@@ -38,6 +38,24 @@ pub struct ReceitaDeMeio {
 
 fn nada(_: &mut PainterTool) {}
 
+/// **A Aquarela NEUTRA** pela porta pública — desde 23/10 o slot `Paint` nasce com os números do dono
+/// (`state_default::aquarela_de_fabrica`); os portões de LEI do motor medem o `BrushSpec::default()`.
+/// O gêmeo de `tool::paint::tests::aquarela_neutra` (que esta crate de teste não alcança).
+pub fn aquarela_neutra(t: &mut PainterTool) {
+    let d = ph2d_painter_brush::BrushSpec::default();
+    t.set_brush_fill(d.fill);
+    t.set_brush_depth(d.depth);
+    t.set_brush_edge_gain(d.edge_gain);
+    t.set_brush_edge_spread(d.edge_spread);
+    t.set_brush_warp(d.warp);
+    t.set_brush_edge_flow_size(d.edge_flow.size[0]);
+    t.set_brush_wet_charge(d.wet_charge);
+    t.set_brush_wet_dilution(d.wet_dilution);
+    t.set_brush_wet_pull(d.wet_pull);
+    t.set_brush_wet_rewet(d.wet_rewet);
+    t.set_brush_wet_smudge(d.wet_smudge);
+}
+
 /// Os pincéis de fábrica de cada meio (o que `set_paint_media` dá). Os meios Digital, Watercolor e Impasto ainda
 /// não têm presets em ficheiro: uma receita nova é uma linha aqui.
 pub const RECEITAS_DE_MEIO: &[ReceitaDeMeio] = &[

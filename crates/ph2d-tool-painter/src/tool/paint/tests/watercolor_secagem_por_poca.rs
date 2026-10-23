@@ -297,8 +297,8 @@ fn sonda_o_custo_de_assar_a_4096() {
 }
 
 /// ⭐⭐⭐ **O gesto do dono (smoke de 2026-10-04): Dry Time 2 s, cinco traços SEPARADOS, um por
-/// segundo — o 1.º tem de estar seco (assado) quando o 5.º começa.** Com o pincel de FÁBRICA da
-/// aquarela (raio 10). A 1.ª versão do assar exigia ~65 px entre poças (células de 16 px e um elo de
+/// segundo — o 1.º tem de estar seco (assado) quando o 5.º começa.** Com o pincel NEUTRO da
+/// aquarela ([`aquarela_neutra`], raio 10). A 1.ª versão do assar exigia ~65 px entre poças (células de 16 px e um elo de
 /// quatro células), e traços a 40 px uns dos outros eram «uma poça só» — nada secava enquanto se
 /// pintava ao lado.
 #[test]
@@ -306,6 +306,7 @@ fn cinco_tracos_separados_cada_um_seca_no_seu_tempo() {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (LADO * LADO * 4) as usize], LADO, LADO);
     t.set_paint_media(crate::PaintMedia::Watercolor);
+    aquarela_neutra(&mut t);
     t.set_dry_time_s(2.0);
     let fw = LADO as usize;
     for (k, x) in [40.0f32, 80.0, 120.0, 160.0, 200.0].into_iter().enumerate() {
@@ -331,7 +332,7 @@ fn cinco_tracos_separados_cada_um_seca_no_seu_tempo() {
 }
 
 /// ⭐⭐⭐ **A [`separacao`](super::super::watercolor_secagem) é EXACTA na fronteira** — a varredura da
-/// distância entre duas poças, píxel a píxel, com o pincel de fábrica (Ragged Edge 6 px), com Rewet
+/// distância entre duas poças, píxel a píxel, com o pincel neutro (Ragged Edge 6 px), com Rewet
 /// (a dissolução lê a base) e com Dilution (a água serrilhada). Em CADA distância: se a poça seca
 /// assou, o pen-up do traço longe (que re-renderiza a união inteira) não muda um byte fora dele. E a
 /// varredura tem de chegar a assar perto (a régua de que mede alguma coisa).
@@ -352,6 +353,7 @@ fn a_separacao_das_pocas_e_exacta_na_fronteira() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (LADO * LADO * 4) as usize], LADO, LADO);
         t.set_paint_media(crate::PaintMedia::Watercolor);
+        aquarela_neutra(&mut t);
         ajusta(&mut t.paint.brush);
         t.set_dry_time_s(2.0);
         vertical(&mut t, 40.0);

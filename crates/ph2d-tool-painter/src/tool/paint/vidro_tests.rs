@@ -48,6 +48,7 @@ fn sobre_chao(chao: [u8; 3], cor: [u8; 3], corpo: f32, dois: bool) -> Vec<u8> {
         .expect("o chão");
     t.add_raster_layer("aguada").expect("a aguada");
     t.set_paint_media(PaintMedia::Watercolor);
+    super::aquarela_neutra(&mut t);
     t.set_brush_size_px(14.0);
     tracos(&mut t, cor, corpo, dois);
     imagem(&mut t)
@@ -56,6 +57,7 @@ fn sobre_chao(chao: [u8; 3], cor: [u8; 3], corpo: f32, dois: bool) -> Vec<u8> {
 /// O que o produto mostra: um desenho novo, os traços, e DEPOIS o papel de cor pelo seletor.
 fn no_papel(t: &mut PainterTool, cor: [u8; 3], corpo: f32, dois: bool) -> Vec<u8> {
     t.set_paint_media(PaintMedia::Watercolor);
+    super::aquarela_neutra(t);
     t.set_brush_size_px(14.0);
     tracos(t, cor, corpo, dois);
     escolhe_o_papel(t, PAPEL);

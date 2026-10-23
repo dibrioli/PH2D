@@ -77,6 +77,7 @@ fn carimbo_em(
     let mut t = PainterTool::default();
     t.set_source(vec![0u8; (W * W * 4) as usize], W, W);
     t.set_paint_media(meio);
+    aquarela_neutra(&mut t);
     let b = &mut t.paint.brush;
     b.radius_px = R;
     b.color = [0.0, 0.0, 0.0];

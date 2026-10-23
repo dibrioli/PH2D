@@ -33,6 +33,7 @@ fn tela(meio: PaintMedia, faixa: bool, pincel: fn(&mut PainterTool)) -> PainterT
     let mut t = PainterTool::default();
     t.set_source(src, LADO, LADO);
     t.set_paint_media(meio);
+    crate::tool::paint::tests::aquarela_neutra(&mut t);
     t.poe_a_marca(Some(MarcaDoArtista::nova(LADO, LADO, 1)));
     t.set_brush_size_px(16.0);
     t.set_brush_color_srgb8([0, 0, 0]);

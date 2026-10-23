@@ -374,7 +374,7 @@ pub(crate) use substrate_relief::SubstrateKey;
 #[cfg(test)]
 mod substrate_relief_tests;
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 #[cfg(test)]
 mod use_as_relief_tests; // sonda: o que os quatro "Use as ..." leem (report do Enio 2026-08-09) // de onde a silhueta do Shape vem (report do Enio 2026-08-09)
 // Each gate family below gets its own file rather than the end of the 21k-line `tests` — a wave's

@@ -62,7 +62,36 @@ impl PaintState {
             ..base
         };
         brush_by_mode[PaintMode::WetPaint.slot()] = wet;
+        brush_by_mode[PaintMode::Paint.slot()] = aquarela_de_fabrica(base);
         brush_by_mode
+    }
+}
+
+/// **A Aquarela com que o pincel nasce** — os números do dono (foto do painel, 23/10): o slot onde a
+/// Aquarela trabalha (`PaintMedia::works_in`) leva-os, e o Reset da secção volta a eles
+/// ([`crate::tool::PainterTool::spec_de_fabrica`]). Inertes fora da Aquarela (o portão `watercolor`).
+/// Drying Time `10 s` e Preview `0,3` são da tela e já são os de fábrica.
+fn aquarela_de_fabrica(base: BrushSpec) -> BrushSpec {
+    BrushSpec {
+        fill: 0.25,
+        depth: 2.0,
+        opacity: 0.4,
+        edge_gain: 0.2,
+        edge_spread: 4.0,
+        warp: 12.0,
+        edge_flow: ph2d_painter_brush::TextureSettings {
+            size: [2.0, 2.0],
+            angle_deg: 0,
+            ..base.edge_flow
+        },
+        paper_edge: 0.0,
+        smooth_edges: true,
+        wet_charge: 0.5,
+        wet_dilution: 0.2,
+        wet_pull: 0.6,
+        wet_rewet: 0.5,
+        wet_smudge: 0.5,
+        ..base
     }
 }
 

@@ -432,6 +432,7 @@ fn na_aguada_o_papel_nao_entra_na_tinta() {
     let mut b = PainterTool::default();
     b.bind_document(1, vec![255u8; 128 * 128 * 4], 128, 128);
     b.set_paint_media(PaintMedia::Watercolor);
+    super::aquarela_neutra(&mut b); // o mesmo pincel que o `tool` de `a`
     b.set_brush_size_px(10.0);
     traco(&mut b);
     let pior = |x: &[u8], y: &[u8]| x.iter().zip(y).map(|(p, q)| p.abs_diff(*q)).max();

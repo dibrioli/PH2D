@@ -47,6 +47,7 @@ pub(super) fn pincel(
         Meio::Watercolor => PaintMedia::Watercolor,
         Meio::WetPaint => PaintMedia::WetPaint,
     });
+    aquarela_neutra(&mut t);
     if meio == Meio::Composite {
         use crate::tool::paint::composite::{CompositeLayer, CompositeOp};
         t.paint.composite_enabled = true;

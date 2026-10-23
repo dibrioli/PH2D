@@ -584,11 +584,12 @@ impl PainterTool {
         self.paint.brush.granulation = 0.65; // LITERAL-OK: pronounced mineral-settling granulation
     }
 
-    /// Apply a one-click **brush preset** (the top-of-panel dropdown): `0` = **Digital Basic** (the plain
-    /// brush), `1` = **Watercolor Basic** (the optical wash configured to reproduce
-    /// `docs/Painter/wet_edges_paint.html`). Both PRESERVE the current colour + radius (a preset is a
-    /// look, not a reset of what/where you paint); everything else is set from scratch so switching is
-    /// deterministic. Plain state edit (no undo / pixel touch), like the section resets.
+    /// Apply a one-click **brush preset** (the top-of-panel dropdown): `0` = **Digital Basic**, `1` =
+    /// **Watercolor Basic**. Both are the FACTORY brush of the paint slot
+    /// ([`super::PaintState::pinceis_de_fabrica`] — since 23/10 it carries the owner's watercolor numbers, the
+    /// same the factory preset file `Watercolor Basic` records) and PRESERVE the current colour + radius
+    /// (a preset is a look, not a reset of what/where you paint); everything else is set from scratch so
+    /// switching is deterministic. Plain state edit (no undo / pixel touch), like the section resets.
     ///
     /// ⚠️ **It finishes by going through the MEDIUM door** (2026-07-22). A preset writes `watercolor`
     /// straight into the `BrushSpec`, which made it a *second* way to switch medium — and a second door
@@ -601,37 +602,10 @@ impl PainterTool {
     pub fn apply_brush_preset(&mut self, idx: u8) {
         self.repoe_o_pincel_fora_do_spec();
         let cur = self.paint.brush;
-        self.paint.brush = match idx {
-            // Watercolor Basic — wet_edges defaults: soft round dab (`Falloff::Smooth`, `hardness 0`),
-            // Mix blend, dense spacing, the optical render-path on (Fill/Depth/Edge/Spread/Warp/Granulation
-            // set to the wet_edges constants). Pigment stays off (wet_edges default `realistic = false`).
-            1 => BrushSpec {
-                radius_px: cur.radius_px,
-                color: cur.color,
-                spacing: 0.05, // LITERAL-OK: dense wash dabs (wet_edges segments ≈ r·0.22)
-                watercolor: true,
-                fill: 0.12,        // LITERAL-OK: wet_edges fillDensity
-                depth: 1.2,        // LITERAL-OK: wet_edges DEPTH
-                edge_gain: 3.0,    // LITERAL-OK: wet_edges edgeGain
-                edge_spread: 7.0,  // LITERAL-OK: wet_edges spread
-                warp: 6.0,         // LITERAL-OK: wet_edges warpAmp
-                granulation: 0.30, // LITERAL-OK: wet_edges granAmt
-                pigment: false,
-                // Paper slot = a canvas-anchored cold-press paper (the substrate the wash sits on);
-                // Granulation follows the paper's tooth (Same as Paper, the default).
-                paper: TextureSettings {
-                    kind: TextureKind::PaperCold,
-                    mapping: TextureMapping::Tiled,
-                    ..TextureSettings::default()
-                },
-                ..BrushSpec::default()
-            },
-            // Digital Basic (0 or any unknown) — the plain default brush, keeping the user's colour + size.
-            _ => BrushSpec {
-                radius_px: cur.radius_px,
-                color: cur.color,
-                ..BrushSpec::default()
-            },
+        self.paint.brush = BrushSpec {
+            radius_px: cur.radius_px,
+            color: cur.color,
+            ..super::PaintState::pinceis_de_fabrica()[super::PaintMode::Paint.slot()]
         };
         // The medium the preset implies, switched by the one door that knows they are exclusive.
         // ⚠️ **O preset semeia o PINCEL INTEIRO, e o papel vem dentro dele** — logo ele é o oitavo

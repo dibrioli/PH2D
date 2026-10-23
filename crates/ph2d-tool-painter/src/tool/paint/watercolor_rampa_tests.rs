@@ -177,6 +177,7 @@ fn papel_a8() -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![0u8; (W * W * 4) as usize], W, W);
     t.set_paint_media(PaintMedia::Watercolor);
+    super::aquarela_neutra(&mut t);
     t
 }
 

@@ -238,7 +238,24 @@ fn panel_events_drive_watercolor_state() {
         !b.pigment,
         "reset turned the Pigment gate back to its factory value"
     );
-    assert_eq!(b.edge_gain, 1.5, "reset restored the default Edge gain");
+    // A fábrica é a da Aquarela do dono desde 23/10 (`aquarela_de_fabrica`), não o `BrushSpec::default`.
+    let fabrica = t.spec_de_fabrica();
+    assert_eq!(
+        (b.edge_gain, b.edge_spread, b.fill, b.warp, b.wet_rewet),
+        (
+            fabrica.edge_gain,
+            fabrica.edge_spread,
+            fabrica.fill,
+            fabrica.warp,
+            fabrica.wet_rewet
+        ),
+        "reset restored the factory watercolor"
+    );
+    assert_ne!(
+        fabrica.edge_gain,
+        ph2d_painter_brush::BrushSpec::default().edge_gain,
+        "a régua: a fábrica da Aquarela não é o BrushSpec::default"
+    );
 }
 
 /// The Preset dropdown seam: `SelectOption(PAINTER_BRUSH_PRESET, idx)` reconfigures the whole brush.
@@ -258,9 +275,13 @@ fn preset_dropdown_reconfigures_the_brush() {
     ));
     let b = t.brush_settings();
     assert!(b.watercolor, "Watercolor Basic turns the render-path on");
-    assert_eq!(b.edge_gain, 3.0, "wet_edges edge gain");
-    assert_eq!(b.fill, 0.12, "wet_edges fill");
-    assert_eq!(b.depth, 1.2, "wet_edges depth");
+    // Desde 23/10 o Watercolor Basic É a Aquarela de fábrica do slot Paint (os números do dono).
+    let fabrica =
+        super::super::PaintState::pinceis_de_fabrica()[super::super::PaintMode::Paint.slot()];
+    assert_eq!(b.edge_gain, fabrica.edge_gain, "factory edge gain");
+    assert_eq!(b.fill, fabrica.fill, "factory fill");
+    assert_eq!(b.depth, fabrica.depth, "factory depth");
+    assert_eq!(b.wet_rewet, fabrica.wet_rewet, "factory rewet");
     assert_eq!(
         b.color,
         [0.2, 0.6, 0.9],
@@ -270,16 +291,11 @@ fn preset_dropdown_reconfigures_the_brush() {
         t.paint.brush.radius_px, 40.0,
         "radius preserved across the preset"
     );
-    // Paper slot wired to a canvas-anchored cold-press paper (the substrate the wash sits on).
+    // O papel é o do pincel de fábrica (23/10: o preset deixou de semear o cold-press próprio).
     assert_eq!(
-        t.paint.brush.paper.kind,
-        TextureKind::PaperCold,
-        "Paper = cold-press"
-    );
-    assert_eq!(
-        t.paint.brush.paper.mapping,
-        TextureMapping::Tiled,
-        "paper is canvas-anchored"
+        (t.paint.brush.paper.kind, t.paint.brush.paper.mapping),
+        (fabrica.paper.kind, fabrica.paper.mapping),
+        "Paper = the factory brush's"
     );
 
     // Digital Basic (idx 0): back to the plain brush, colour + size still preserved.

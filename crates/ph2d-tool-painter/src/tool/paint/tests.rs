@@ -238,6 +238,7 @@ mod solid_carimbos; // o Solid com imagem no Shape enche-se de carimbos (smoke 1
 mod sonda_a8_carga_rampa; // lista 26 A8: que parâmetros da aguada apagam as cores da rampa do Shape
 mod sonda_a9_continuo_impasto; // lista 26 A9
 mod sonda_a9_impasto_luz; // smoke P39: o Impasto com Continuous na tela ILUMINADA (lista 26 C25)
+mod sonda_custo_aquarela_de_fabrica;
 mod sonda_p40_passo0; // prompt 40 passo 0: onde a caixa está ligada e a cápsula não age
 mod stroke_and_session;
 mod textura_tinge; // Bug #51: textura × tinta, o Randomize na textura, e o Randomize «a cada traço» (12/10)
@@ -295,6 +296,65 @@ fn white_canvas(size: u32, radius: f32) -> PainterTool {
     let seed = t.paint.brush;
     t.paint.brush_by_mode.fill(seed);
     t
+}
+
+/// **A Aquarela NEUTRA** — desde 23/10 o slot `Paint` nasce com os números do dono
+/// (`state_default::aquarela_de_fabrica`); os portões de LEI do motor medem o pincel neutro de
+/// `BrushSpec::default()`. Chame-a logo depois de armar o meio e antes dos knobs do próprio teste.
+pub(crate) fn aquarela_neutra(t: &mut PainterTool) {
+    let d = BrushSpec::default();
+    let neutro = |b: &mut BrushSpec| {
+        (b.fill, b.depth, b.edge_gain, b.edge_spread, b.warp) =
+            (d.fill, d.depth, d.edge_gain, d.edge_spread, d.warp);
+        b.edge_flow = d.edge_flow;
+        (
+            b.wet_charge,
+            b.wet_dilution,
+            b.wet_pull,
+            b.wet_rewet,
+            b.wet_smudge,
+        ) = (
+            d.wet_charge,
+            d.wet_dilution,
+            d.wet_pull,
+            d.wet_rewet,
+            d.wet_smudge,
+        );
+    };
+    neutro(&mut t.paint.brush_by_mode[PaintMode::Paint.slot()]);
+    if t.paint.paint_mode == PaintMode::Paint {
+        neutro(&mut t.paint.brush);
+    }
+}
+
+/// **O «Watercolor Basic» de ANTES de 23/10** (as constantes wet_edges: Spacing 0,05, Edge 3, Ragged
+/// Edge 6, papel cold-press) — desde 23/10 o `apply_brush_preset(1)` dá a fábrica do dono; os portões de
+/// LEI que usavam o preset como fixtura medem este pincel. O corpo é o do `apply_brush_preset` de então.
+pub(crate) fn watercolor_basic_de_antes(t: &mut PainterTool) {
+    use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
+    t.repoe_o_pincel_fora_do_spec();
+    let cur = t.paint.brush;
+    t.paint.brush = BrushSpec {
+        radius_px: cur.radius_px,
+        color: cur.color,
+        spacing: 0.05,
+        watercolor: true,
+        fill: 0.12,
+        depth: 1.2,
+        edge_gain: 3.0,
+        edge_spread: 7.0,
+        warp: 6.0,
+        granulation: 0.30,
+        pigment: false,
+        paper: TextureSettings {
+            kind: TextureKind::PaperCold,
+            mapping: TextureMapping::Tiled,
+            ..TextureSettings::default()
+        },
+        ..BrushSpec::default()
+    };
+    t.sync_paper_across_slots();
+    t.set_paint_media(crate::PaintMedia::Watercolor);
 }
 
 /// **Close a FRAME.** The app delivers the frame's pointer events and *then* ticks the active tool

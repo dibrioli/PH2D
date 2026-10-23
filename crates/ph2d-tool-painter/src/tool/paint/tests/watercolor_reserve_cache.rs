@@ -84,7 +84,7 @@ fn sessao() -> (Vec<Vec<u8>>, Vec<u64>, bool) {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
     t.paint.brush.color = [0.85, 0.12, 0.10];
-    t.apply_brush_preset(1);
+    watercolor_basic_de_antes(&mut t);
     t.paint.brush.wet_charge = 0.95;
     t.paint.brush.wet_smudge = 0.5;
     t.paint.brush.edge_spread = 24.0;

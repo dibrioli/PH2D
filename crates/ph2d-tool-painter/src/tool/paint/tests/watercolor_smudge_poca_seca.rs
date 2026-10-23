@@ -10,6 +10,7 @@ fn tela(fundo: u8) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![fundo; (LADO * LADO * 4) as usize], LADO, LADO);
     t.set_paint_media(PaintMedia::Watercolor);
+    aquarela_neutra(&mut t);
     t.set_brush_size_px(60.0);
     t.set_brush_color_srgb8([250, 225, 20]);
     t.set_brush_wet_smudge(0.0);

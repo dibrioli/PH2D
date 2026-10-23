@@ -5,7 +5,7 @@
   [F18–F26](HANDOFF_INTEGRACAO_line_UIUX_2026-10-22_F18_A_F26.md).
 - Desenho e medição: [`../F27_bloco_B_plano.md`](../F27_bloco_B_plano.md) §5. **Não está copiado aqui.**
 - Decisão do dono (23/10), mantida: `ph2d-panel-painter-layers` fica FORA do Bloco B.
-- Estado: B2 construída e verificada por nome; **smoke do dono por fazer**. Próxima LLM: janela nova.
+- Estado: B2 construída e verificada por nome; **smoke do dono OK em 23/10** (cena `=29`). Próxima LLM: janela nova.
 
 ## 1 — Commits
 
@@ -101,7 +101,7 @@ corta o log: leia `app.log` com `FOTO_GUARDA_TMP=1`.
 5. «Look Through» não tem ponto ao lado.
 6. Deu errado se: o Target não muda, a Box B não some nem volta, ou o terminal diz «PARADA».
 
-Estado: **smoke do dono por fazer**.
+Estado: **smoke do dono OK em 23/10**.
 
 ## 5 — Verificação
 

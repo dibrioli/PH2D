@@ -195,6 +195,7 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
     let x = card_x(at[0] + s + g, w, area, m);
     let y = (at[1] - s).min(area.y + area.h - m - h).max(area.y + m);
     let card = Rect::new(x, y, w, h);
+    crate::screens::hero::board_nav::fit::float(&mut hero.documents.live.nav, card);
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, card, radius, resolve(ColorToken::BgElev, theme));
     // O fundo toma o clique (registado ANTES dos botões, que ganham por cima dele).
@@ -643,6 +644,7 @@ fn paint_message(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts:
     let h = Spacing::Xl2.px();
     let y = area.y + Spacing::Md.px() + h + Spacing::Xs.px();
     let r = Rect::new(area.x + (area.w - w) / 2.0, y, w, h);
+    crate::screens::hero::board_nav::fit::float(&mut hero.documents.live.nav, r);
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
     paint_text_centered(ts, scene, &text, r, font, resolve(ColorToken::Text1, theme));

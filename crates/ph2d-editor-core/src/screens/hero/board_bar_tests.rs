@@ -578,3 +578,6 @@ fn the_short_bar_wraps_in_a_low_window_and_every_button_stays_clickable() {
         );
     }
 }
+
+#[path = "board_bar_place_tests.rs"]
+mod place;

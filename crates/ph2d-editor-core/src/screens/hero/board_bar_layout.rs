@@ -62,14 +62,20 @@ pub fn shapes_rects(area: Rect) -> Vec<(Item, Rect)> {
 /// por baixo da selecção quando não cabe por cima.
 #[must_use]
 pub fn style_rects(area: Rect, sel: Rect, what: Selected) -> Vec<(Item, Rect)> {
-    style_rects_of(area, sel, style_groups(what))
+    style_rects_of(area, sel, style_groups(what), &[])
 }
 
 /// O mesmo, para os grupos que a selecção de AGORA pinta (sem os controlos que não teriam efeito).
-/// Fica à direita da barra curta e, sem lugar numa linha, parte-se em linhas (a da forma, com a
-/// letra e o Organizar, passava da área a 1366 — foto da cena 28, 22/10).
+/// Fica à direita da barra curta, fora de todo o chrome de `keep` (gavetas, painéis, avisos — W24) e,
+/// sem lugar numa linha, parte-se em linhas (a da forma, com a letra e o Organizar, passava da área a
+/// 1366 — foto da cena 28, 22/10).
 #[must_use]
-pub fn style_rects_of(area: Rect, sel: Rect, groups: Vec<Vec<Item>>) -> Vec<(Item, Rect)> {
+pub fn style_rects_of(
+    area: Rect,
+    sel: Rect,
+    groups: Vec<Vec<Item>>,
+    keep: &[Rect],
+) -> Vec<(Item, Rect)> {
     if groups.is_empty() {
         return Vec::new();
     }
@@ -83,12 +89,13 @@ pub fn style_rects_of(area: Rect, sel: Rect, groups: Vec<Vec<Item>>) -> Vec<(Ite
     groups
         .into_iter()
         .flatten()
-        .zip(super::super::float_bar::strip_rects_fitting(
+        .zip(super::super::float_bar::strip_rects_clear_of(
             room,
             sel,
             &sizes,
             super::super::float_bar::strip_button_px(),
             Spacing::Lg.px(),
+            keep,
         ))
         .collect()
 }

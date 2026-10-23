@@ -7,7 +7,7 @@
 
 use super::super::HeroScreen;
 use super::super::board_view::area_of;
-use crate::documents::nav::FitHold;
+use crate::documents::nav::{FitHold, Nav};
 use crate::zones::Rect;
 use ph2d_board_model::Camera;
 
@@ -32,6 +32,19 @@ pub(crate) fn cover(hero: &mut HeroScreen, r: Rect) {
     if r.w > 0.0 && r.h > 0.0 {
         hero.documents.live.nav.covers.push(r);
     }
+}
+
+/// Um painel PASSAGEIRO do quadro (gaveta, aviso, cartão de um fio) pintou `r` nesta pintura.
+pub(crate) fn float(nav: &mut Nav, r: Rect) {
+    if r.w > 0.0 && r.h > 0.0 {
+        nav.floats.push(r);
+    }
+}
+
+/// ⭐ Tudo o que o chrome do quadro pintou ATÉ AGORA nesta pintura — o que a barra de estilo, a
+/// última a pintar-se, não pode tapar.
+pub(crate) fn painted(nav: &Nav) -> Vec<Rect> {
+    nav.covers.iter().chain(&nav.floats).copied().collect()
 }
 
 /// A vista em que um clique ou uma tecla enquadram: a da última pintura.
@@ -103,6 +116,7 @@ fn search(r: Rect, covers: &[Rect], zoom: &impl Fn(&Rect) -> f64, best: &mut (f6
 pub(crate) fn settle(hero: &mut HeroScreen, area: Rect) {
     let nav = &mut hero.documents.live.nav;
     nav.shown = std::mem::take(&mut nav.covers);
+    nav.floats.clear();
     let target = nav.fit_box.take();
     let pending = std::mem::take(&mut nav.fit_pending);
     let held = nav.fit_hold.take();

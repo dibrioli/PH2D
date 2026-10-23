@@ -402,6 +402,9 @@ thread_local! {
     /// não passam pelo gravador da cena): o que os testes lêem.
     pub(super) static PAINTED_ON: std::cell::RefCell<Vec<(Item, bool)>> =
         const { std::cell::RefCell::new(Vec::new()) };
+    /// A barra de estilo do último quadro, botão a botão (vazia sem selecção).
+    pub(super) static STYLE_BAR: std::cell::RefCell<Vec<(Item, Rect)>> =
+        const { std::cell::RefCell::new(Vec::new()) };
 }
 
 /// ⭐ Pinta as barras do quadro activo. `area` é a área do quadro no ecrã.
@@ -414,6 +417,8 @@ pub fn paint(
 ) {
     #[cfg(test)]
     PAINTED_ON.with(|v| v.borrow_mut().clear());
+    #[cfg(test)]
+    STYLE_BAR.with(|v| v.borrow_mut().clear());
     let theme = hero.theme;
     let shapes_open = hero.documents.live.shapes_open;
     let templates_open = mind::sync_gallery(&mut hero.documents.live);
@@ -486,8 +491,20 @@ pub fn paint(
         let (hit, store) = (&mut hero.hit_index, &hero.store);
         mind::paint_gallery(scene, text_system, theme, hit, store, area);
     }
+    // W24 — as gavetas abertas e o aviso: o chrome que a barra de estilo (a última) não tapa.
+    let drawers = [
+        (shapes_open, shapes_rects(area)),
+        (notes::flyout_open(tool), notes::flyout_rects(area)),
+        (pen::flyout_open(tool), pen::flyout_rects(area)),
+        (templates_open, mind::gallery_rects(area)),
+    ];
+    for (_, rects) in drawers.into_iter().filter(|(open, _)| *open) {
+        let panel = super::float_bar::panel_of(rects.into_iter().map(|(_, r)| r));
+        panel.into_iter().for_each(|r| super::board_nav::fit::float(&mut live.nav, r));
+    }
     if let Some((key, _)) = notice {
-        organize::paint_notice(scene, text_system, theme, area, key);
+        let r = organize::paint_notice(scene, text_system, theme, area, key);
+        super::board_nav::fit::float(&mut live.nav, r);
     }
     fac::sync_flyouts(
         &mut live.fac,
@@ -527,7 +544,10 @@ pub fn paint(
         })
         .filter(|g: &Vec<Item>| !g.is_empty())
         .collect();
-    let bar = layout::style_rects_of(area, sel, groups);
+    let keep = super::board_nav::fit::painted(&live.nav);
+    let bar = layout::style_rects_of(area, sel, groups, &keep);
+    #[cfg(test)]
+    STYLE_BAR.with(|v| v.borrow_mut().clone_from(&bar));
     paint_panel(scene, &bar, theme);
     for (it, r) in bar.clone() {
         if it == shapes::RESHAPE {

@@ -49,6 +49,9 @@ pub(crate) struct Nav {
     pub(crate) covers: Vec<Rect>,
     /// As da última pintura (as que um clique ou uma tecla de enquadrar descontam).
     pub(crate) shown: Vec<Rect>,
+    /// O chrome PASSAGEIRO pintado nesta pintura (gavetas, avisos, o cartão de um fio, a barra do
+    /// vídeo): o enquadrar não o desconta, a barra de estilo foge dele como das `covers` (W24).
+    pub(crate) floats: Vec<Rect>,
     /// O chão da fila do canto quando o HUD de baixo a tapa (janela estreita com os painéis laterais
     /// abertos), escrito a cada pintura: a fila e o que se apoia nela sobem por cima dele.
     pub(crate) floor: Option<f32>,

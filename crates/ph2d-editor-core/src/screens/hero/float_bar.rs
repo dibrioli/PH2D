@@ -210,20 +210,70 @@ pub fn strip_rects_at(area: Rect, sel: Rect, groups: &[usize], s: f32, gap: f32)
     strip_rows_at(area, sel, &[groups], s, gap)
 }
 
-/// ⭐ **A barra junto da seleção que NUNCA passa da largura de `area`**: numa linha quando cabe; senão
-/// os grupos, pela ordem, partem-se no MENOR número de linhas que cabe, de larguras parecidas
-/// ([`strip_rows_at`]). Um grupo nunca se parte.
+/// ⭐ **A barra junto da seleção que fica DENTRO de `area` e não tapa nenhum rectângulo de `keep`**
+/// (o resto do chrome, no ecrã). Uma regra só, por ordem: a forma com menos linhas ([`strip_layouts`])
+/// por cima de `sel`, senão por baixo, deslizada para o vão livre mais perto do centro dela; não cabendo,
+/// a forma seguinte. Sem vão junto da seleção, a altura livre mais perto dela. Nunca sai pela esquerda
+/// de `area` (W24: com a sala mais estreita que um grupo passava por cima da barra das ferramentas).
 #[must_use]
-pub fn strip_rects_fitting(area: Rect, sel: Rect, groups: &[usize], s: f32, gap: f32) -> Vec<Rect> {
-    let live: Vec<usize> = groups.iter().copied().filter(|&n| n > 0).collect();
-    let width = |r: &[usize]| strip_extent(r, s).0;
-    if width(&live) <= area.w || live.len() < 2 {
-        return strip_rects_at(area, sel, groups, s, gap);
+pub fn strip_rects_clear_of(
+    area: Rect,
+    sel: Rect,
+    groups: &[usize],
+    s: f32,
+    gap: f32,
+    keep: &[Rect],
+) -> Vec<Rect> {
+    let layouts = strip_layouts(area.w, groups, s);
+    let bottom = area.y + area.h;
+    let cx = sel.x + sel.w / 2.0;
+    let place = |rows: &[&[usize]], ys: &[f32]| {
+        let (w, h) = rows_extent(rows, s);
+        ys.iter()
+            .filter(|&&y| y >= area.y && y + h <= bottom)
+            .find_map(|&y| free_x(area, keep, (y, h), w, cx).map(|x| rows_from(x, y, w, rows, s)))
+    };
+    for rows in &layouts {
+        let rows: Vec<&[usize]> = rows.iter().map(Vec::as_slice).collect();
+        let h = rows_extent(&rows, s).1;
+        let near = [sel.y - h - gap, (sel.y + sel.h + gap).min(bottom - h)];
+        if let Some(out) = place(&rows, &near) {
+            return out;
+        }
     }
+    let Some(rows) = layouts.last() else {
+        return Vec::new();
+    };
+    let rows: Vec<&[usize]> = rows.iter().map(Vec::as_slice).collect();
+    let (w, h) = rows_extent(&rows, s);
+    let mut ys: Vec<f32> = keep
+        .iter()
+        .flat_map(|k| [k.y + k.h + gap, k.y - h - gap])
+        .chain([area.y, bottom - h])
+        .collect();
+    ys.sort_by(|a, b| (a - sel.y).abs().total_cmp(&(b - sel.y).abs()));
+    if let Some(out) = place(&rows, &ys) {
+        return out;
+    }
+    let above = sel.y - h - gap;
+    let y = if above >= area.y { above } else { (sel.y + sel.h + gap).min(bottom - h) };
+    rows_from((cx - w / 2.0).min(area.x + area.w - w).max(area.x), y, w, &rows, s)
+}
+
+/// As formas da barra, da de menos linhas para a mais estreita: numa linha; os grupos, pela ordem, em
+/// `k` linhas de larguras parecidas, sem passar de `room`; e, com a sala mais estreita que um grupo,
+/// cada grupo partido em pedaços de `c` botões, um por linha.
+fn strip_layouts(room: f32, groups: &[usize], s: f32) -> Vec<Vec<Vec<usize>>> {
+    let live: Vec<usize> = groups.iter().copied().filter(|&n| n > 0).collect();
+    if live.is_empty() {
+        return Vec::new();
+    }
+    let width = |r: &[usize]| strip_extent(r, s).0;
     let widest = live.iter().map(|&n| width(&[n])).fold(0.0, f32::max);
+    let mut out = vec![vec![live.clone()]];
     for k in 2..=live.len() {
-        // Encher cada linha até ~1/k do total (mais um grupo), sem passar da área.
-        let limit = (width(&live) / k as f32 + widest).min(area.w);
+        // Encher cada linha até ~1/k do total (mais um grupo), sem passar da sala.
+        let limit = (width(&live) / k as f32 + widest).min(room);
         let mut rows: Vec<Vec<usize>> = vec![Vec::new()];
         for &n in &live {
             let row = rows.last_mut().expect("uma linha");
@@ -233,12 +283,38 @@ pub fn strip_rects_fitting(area: Rect, sel: Rect, groups: &[usize], s: f32, gap:
                 rows.push(vec![n]);
             }
         }
-        if rows.len() <= k {
-            let rows: Vec<&[usize]> = rows.iter().map(Vec::as_slice).collect();
-            return strip_rows_at(area, sel, &rows, s, gap);
+        if rows.len() <= k && !out.contains(&rows) {
+            out.push(rows);
         }
     }
-    strip_rects_at(area, sel, groups, s, gap)
+    let cols = live.iter().map(|&n| strip_cols(n)).max().unwrap_or(1);
+    for c in (1..cols).rev() {
+        let pieces = live.iter().flat_map(|&n| {
+            (0..n.div_ceil(c)).map(move |i| vec![c.min(n - i * c)])
+        });
+        out.push(pieces.collect());
+    }
+    out
+}
+
+/// O `x` da barra de largura `w` na faixa `(y, h)`: o vão de `area` sem `keep` (a um [`gap`] de
+/// distância) mais perto de a centrar em `cx`.
+fn free_x(area: Rect, keep: &[Rect], (y, h): (f32, f32), w: f32, cx: f32) -> Option<f32> {
+    let pad = gap();
+    let mut free = vec![(area.x, area.x + area.w)];
+    for k in keep.iter().filter(|k| k.y - pad < y + h && y < k.y + k.h + pad) {
+        let (a, b) = (k.x - pad, k.x + k.w + pad);
+        free = free
+            .into_iter()
+            .flat_map(|(lo, hi)| [(lo, hi.min(a)), (lo.max(b), hi)])
+            .filter(|(lo, hi)| hi > lo)
+            .collect();
+    }
+    let want = cx - w / 2.0;
+    free.into_iter()
+        .filter(|(lo, hi)| hi - lo >= w)
+        .map(|(lo, hi)| want.clamp(lo, hi - w))
+        .min_by(|a, b| (a - want).abs().total_cmp(&(b - want).abs()))
 }
 
 /// ⭐ **A barra junto da seleção em LINHAS** (dono 15/10: o Alinhar numa 2.ª linha da ④): cada

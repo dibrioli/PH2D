@@ -327,7 +327,9 @@ fn screen_rect(pl: &Placement, el_w: f64, el_h: f64) -> Rect {
 
 /// ⭐ Pinta a barra do vídeo activo (e, no ecrã inteiro, o vídeo a encher a área). `area` = a do quadro.
 pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem) {
-    let _ = paint_install(hero, area, scene, ts);
+    for r in paint_install(hero, area, scene, ts) {
+        super::board_nav::fit::float(&mut hero.documents.live.nav, r);
+    }
     let theme = hero.theme;
     let nav = hero
         .documents
@@ -389,6 +391,10 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
     let Some(lay) = layout(area, video, time_w, nav.is_some()) else {
         return;
     };
+    let panel = float_bar::panel_of(lay.ctls.iter().map(|(_, r)| *r).chain([lay.time]));
+    if !full {
+        panel.into_iter().for_each(|r| super::board_nav::fit::float(&mut live.nav, r));
+    }
     float_bar::paint_panel(
         scene,
         lay.ctls.iter().map(|(_, r)| *r).chain([lay.time]),

@@ -343,7 +343,7 @@ pub(super) fn paint_notice(
     theme: Theme,
     area: Rect,
     key: &'static str,
-) {
+) -> Rect {
     let text = ph2d_i18n::tr(key);
     let font = TypeToken::Sm.px();
     let w = rect_for_label(text_system.prefix_width(text, font)).min(area.w);
@@ -359,4 +359,5 @@ pub(super) fn paint_notice(
         font,
         resolve(ColorToken::Text1, theme),
     );
+    r
 }

@@ -89,6 +89,7 @@ pub(super) fn paint(
     let button = alert.action.is_some_and(|a| can(hero, a));
     let theme: Theme = hero.theme;
     let (r, b) = layout(text_system, area, &alert, button);
+    super::board_nav::fit::float(&mut hero.documents.live.nav, r);
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
     let font = TypeToken::Sm.px();

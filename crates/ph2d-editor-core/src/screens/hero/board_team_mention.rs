@@ -150,6 +150,7 @@ pub(super) fn paint(
         field_r.y - Spacing::Xs.px() - h
     };
     let list = Rect::new(field_r.x, y, field_r.w, h);
+    crate::screens::hero::board_nav::fit::float(&mut hero.documents.live.nav, list);
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, list, radius, resolve(ColorToken::BgElev, theme));
     crate::paint::stroke_frame(

@@ -40,8 +40,8 @@
   branca ficar preta». Não é defeito do produto (num arrasto real o botão está premido); é a cena.
 - **Cura:** a `sobrepor` desce e sobe o C&F no MESMO quadro (`caminho_cef.rs`) — um clique, sem janela para
   o rato real; gate `caminho_tests::a_sobrepor_recua_…` confere o par no mesmo instante.
-- **Fica:** as variantes `cor` (o arrasto curto à esquerda do smoke de 19/10, de propósito) e `colordrop`
-  continuam com a janela de ~250 ms ao rato real — o anúncio já diz «não toque no rato».
+- As variantes `cor` e `colordrop` mantêm o arrasto (de propósito); o rato real deixou de as alcançar
+  com a guarda do §5 (`a_cena_conduz_o_ponteiro`, toda a `=6`).
 
 ### Ferramenta — `fotografa_cena.sh`
 
@@ -71,7 +71,7 @@ fotos 01–02 = as duas a crescer no MESMO quadro, cada uma na sua cor; 03 = int
 - **Reproduzido** (sonda temporária: `Move` para esse ponto a cada 3.º gesto do 2.º traço + o arrasto dele): o
   leque sai igual. **Não reproduzido:** o retângulo branco e o traço preto cortado — com leque e arrasto,
   `inteira=0` e `fresca=0` em todas as linhas (o palco = o tocador = uma reprodução à parte), e a foto limpa.
-  Aberto: pedir ao dono como capturou (o aspeto desbotado da captura também não sai aqui).
+  O dono aprovou o smoke seguinte (23/10) sem o retângulo: fica registado, sem seguimento.
 - **Cura (cena):** `caminho::a_cena_conduz_o_ponteiro()` — na `=6`, até ao último gesto do roteiro, a janela
   ignora `CursorMoved`/`MouseInput`/`Touch` reais (`main.rs`, 3 linhas de composição); depois devolve o rato.
   Gate `caminho_tests::a_cena_conduz_o_ponteiro_ate_ao_ultimo_gesto_e_devolve_o`.

@@ -23,6 +23,7 @@ mod fotos_do_f4;
 mod g11_pan_sem_tremor;
 mod g6_ponto_neutro;
 mod medida_luz2d_cantos_bits;
+mod medida_luz2d_borda_topo;
 mod medida_luz2d_cantos_custo;
 mod medida_luz2d_regua_registos;
 mod medida_luz2d_w3;

@@ -511,3 +511,5 @@ CAIR e um `0,60` o segurava, com a fronteira exactamente em `0,533`.
 ---
 
 `sha256` do `project_schema_history.rs` movido: `9e89bc0c992891c77eb64e81a820393bd500499afe6a6253a5cd17815e4aea73`
+
+> 2026-10-23 (integração da `line/Macros-Automação`): o `project_schema_history.rs` (sha acima, idêntico a este texto) **saiu da shell** — a catraca `the_shell_only_shrinks` somou 189 522 contra 189 041 entre linhas; este arquivo passa a ser o único exemplar.

@@ -19,7 +19,7 @@
 /// Versão do formato de arquivo de projeto. Bump ⇒ migração ou hard-break.
 ///
 /// ⚠️ **Os degraus de v2 a v160 estão ARQUIVADOS**, verbatim, em SEIS arquivos por faixa:
-/// [`super::project_schema_history`] (`v2`..`v82`), [`super::project_schema_history_v83`]
+/// `project_schema_history` (`v2`..`v82`, ARQUIVADO verbatim em `docs/archive/project-schema/escada_v2_a_v82.md`), [`super::project_schema_history_v83`]
 /// (`v83`..`v98`), [`super::project_schema_history_v99`] (`v99`..`v111`),
 /// [`super::project_schema_history_v112`] (`v112`..`v128`),
 /// [`super::project_schema_history_v128`] (`v128`..`v144`) e

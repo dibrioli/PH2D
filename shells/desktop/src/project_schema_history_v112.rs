@@ -1,7 +1,7 @@
 //! **A ESCADA do `PROJECT_SCHEMA`, de v112 a v128** — a QUARTA faixa arquivada.
 //!
 //! ⚠️ **O corte por IDADE repete-se pela quarta vez, e o gatilho é sempre o mesmo:** o tecto de
-//! 600 linhas do HR-18. O irmão [`super::project_schema_history`] nasceu em `v82`; o
+//! 600 linhas do HR-18. O irmão `project_schema_history` (hoje em `docs/archive/project-schema/escada_v2_a_v82.md`) nasceu em `v82`; o
 //! [`super::project_schema_history_v83`] em 2026-09-07, com o degrau `122`; o
 //! [`super::project_schema_history_v99`] em 2026-09-15, com o degrau `132`; e este na integração
 //! de 2026-09-17, quando os **quatro** degraus da `line/3DModeling` (o material do modo RENDER e

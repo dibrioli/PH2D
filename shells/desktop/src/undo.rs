@@ -442,6 +442,8 @@ impl ProjectUndo {
 /// arquivo a `620 / 600`. O cabeçalho de lá tem o mecanismo.
 #[path = "undo_app.rs"]
 mod app;
+#[path = "undo_app_macros.rs"]
+mod app_macros;
 
 #[cfg(test)]
 #[path = "undo_tests.rs"]

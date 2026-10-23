@@ -1,7 +1,7 @@
 //! **A ESCADA do `PROJECT_SCHEMA`, de v99 a v111** — a TERCEIRA faixa arquivada.
 //!
 //! ⚠️ **O corte por IDADE repete-se pela terceira vez, e o gatilho é sempre o mesmo:** o teto de
-//! 600 linhas do HR-18. O irmão [`super::project_schema_history`] nasceu em `v82`; o
+//! 600 linhas do HR-18. O irmão `project_schema_history` (hoje em `docs/archive/project-schema/escada_v2_a_v82.md`) nasceu em `v82`; o
 //! [`super::project_schema_history_v83`] em 2026-09-07, com o degrau `122`; este em 2026-09-15,
 //! com o degrau `132` (o `ProjectileMotion` do TOP-20 #14), que levou a escada viva a `602`.
 //!

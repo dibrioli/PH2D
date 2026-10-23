@@ -1,7 +1,7 @@
 //! **A ESCADA do `PROJECT_SCHEMA`, de v128 a v144** — a QUINTA faixa arquivada.
 //!
 //! ⚠️ **O corte por IDADE repete-se pela quinta vez, e o gatilho é sempre o mesmo:** o tecto de
-//! 600 linhas do HR-18. O irmão [`super::project_schema_history`] nasceu em `v82`; o
+//! 600 linhas do HR-18. O irmão `project_schema_history` (hoje em `docs/archive/project-schema/escada_v2_a_v82.md`) nasceu em `v82`; o
 //! [`super::project_schema_history_v83`] em 2026-09-07; o
 //! [`super::project_schema_history_v99`] em 2026-09-15; o
 //! [`super::project_schema_history_v112`] na integração de 2026-09-17; e este em 2026-09-19, com o

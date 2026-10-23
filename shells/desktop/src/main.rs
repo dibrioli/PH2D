@@ -353,7 +353,6 @@ mod project_migrate_sprite;
 mod project_painter;
 mod project_schema;
 /// A metade ARQUIVADA da escada do `PROJECT_SCHEMA` (v2..v79) — irmã por LOC (HR-18).
-mod project_schema_history;
 mod project_schema_history_v112;
 mod project_schema_history_v128;
 /// A escada arquivada de `v144` a `v160` — a sexta faixa (integração de 2026-09-25).

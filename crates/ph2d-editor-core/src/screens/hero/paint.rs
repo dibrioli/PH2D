@@ -300,9 +300,11 @@ pub fn paint_hero_screen(
             .then(|| super::bottom_hud::bottom_hud_rect(&layout, text_system, hero.stats));
             super::board_nav::clear_of(hero, r, hud);
             super::board_nav::paint(hero, r, scene, text_system);
+            // W24/W25 — cada um por cima do que já se pintou e fora dele: a barra curta e as gavetas, o
+            // aviso do topo, a barra do vídeo, e por último a de estilo com os menus dela.
+            super::board_bar::paint_tools(hero, r, scene, text_system);
             super::board_alert::paint(hero, r, scene, text_system);
             super::board_video_bar::paint(hero, r, scene, text_system);
-            // W24 — as barras por ÚLTIMO: a de estilo foge de todo o chrome já pintado.
             super::board_bar::paint(hero, r, scene, text_system);
         } else {
             super::board_video_bar::paint(hero, r, scene, text_system);

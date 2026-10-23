@@ -629,11 +629,31 @@ fn the_bar_goes_under_or_over_the_video_never_on_it() {
     use crate::zones::Rect;
     let area = Rect::new(0.0, 0.0, 1000.0, 600.0);
     let time = 80.0;
-    let under = layout(area, Rect::new(100.0, 100.0, 560.0, 315.0), time, false).unwrap();
+    let under = layout(
+        area,
+        Rect::new(100.0, 100.0, 560.0, 315.0),
+        (time, false),
+        &[],
+    )
+    .unwrap();
     assert!(under.ctls.iter().all(|(_, r)| r.y >= 415.0));
-    let over = layout(area, Rect::new(100.0, 250.0, 560.0, 340.0), time, false).unwrap();
+    let over = layout(
+        area,
+        Rect::new(100.0, 250.0, 560.0, 340.0),
+        (time, false),
+        &[],
+    )
+    .unwrap();
     assert!(over.ctls.iter().all(|(_, r)| r.y + r.h <= 250.0));
-    assert!(layout(area, Rect::new(0.0, 10.0, 1000.0, 580.0), time, false).is_none());
+    assert!(
+        layout(
+            area,
+            Rect::new(0.0, 10.0, 1000.0, 580.0),
+            (time, false),
+            &[]
+        )
+        .is_none()
+    );
 }
 
 #[path = "board_video_click_tests.rs"]
@@ -649,6 +669,9 @@ fn without_a_browser_each_video_says_to_install_one_below_it() {
     let id = video(&t).unwrap().id;
     let area = t.hero.last_canvas;
     let install = |t: &mut T| {
+        // Chamada fora do quadro: os flutuantes da pintura anterior (a própria frase) saem, como no
+        // início de cada pintura (`fit::settle`) — senão a frase fugia de si mesma (W25).
+        t.hero.documents.live.nav.floats.clear();
         board_video_bar::paint_install(
             &mut t.hero,
             area,
@@ -679,3 +702,6 @@ fn without_a_browser_each_video_says_to_install_one_below_it() {
     let shown = crate::text_elide::fit(&mut t.ts, text, TypeToken::Sm.px(), budget);
     assert_eq!(shown, text, "a frase sai cortada");
 }
+
+#[path = "board_video_overlay_tests.rs"]
+mod overlay;

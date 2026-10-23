@@ -42,8 +42,8 @@ pub use notes::{flyout_open, flyout_rects};
 /// Onde fica cada controlo (módulo filho: o ficheiro estava no tecto de LOC).
 #[path = "board_bar_layout.rs"]
 mod layout;
-use layout::{btn_px, gap};
-pub use layout::{shapes_rects, style_rects, toolbar_rects};
+use layout::{MenuRoom, btn_px, gap};
+pub use layout::{paint_tools, shapes_rects, style_rects, toolbar_rects};
 
 /// Organizar (W5, módulo filho): o Frame, agrupar, travar, ordem, alinhar e o aviso das recusas.
 #[path = "board_bar_organize.rs"]
@@ -61,7 +61,6 @@ pub use fac::FacItem;
 /// As duas grelhas das formas: a ferramenta e o «Forma» que troca o tipo (módulo filho).
 #[path = "board_bar_shapes.rs"]
 mod shapes;
-pub use shapes::reshape_rects;
 
 /// A caneta e o rascunho (W4, módulo filho: o ficheiro estava no tecto de LOC).
 #[path = "board_bar_pen.rs"]
@@ -407,8 +406,8 @@ thread_local! {
         const { std::cell::RefCell::new(Vec::new()) };
 }
 
-/// ⭐ Pinta as barras do quadro activo. `area` é a área do quadro no ecrã.
-#[allow(clippy::too_many_arguments)]
+/// ⭐ Pinta a barra de estilo do quadro activo e os menus dela (a barra curta e as gavetas já se pintaram,
+/// [`paint_tools`]). `area` é a área do quadro no ecrã.
 pub fn paint(
     hero: &mut HeroScreen,
     area: Rect,
@@ -416,11 +415,8 @@ pub fn paint(
     text_system: &mut TextSystem,
 ) {
     #[cfg(test)]
-    PAINTED_ON.with(|v| v.borrow_mut().clear());
-    #[cfg(test)]
     STYLE_BAR.with(|v| v.borrow_mut().clear());
     let theme = hero.theme;
-    let shapes_open = hero.documents.live.shapes_open;
     let templates_open = mind::sync_gallery(&mut hero.documents.live);
     let fac_now = fac::Now::of(hero);
     let Some((board, live)) = hero.documents.active_parts() else {
@@ -429,7 +425,6 @@ pub fn paint(
     // W23 B15 — o aviso com botão, se é o mais novo, tapa o da recusa.
     let alert_on = super::board_alert::shown(live).is_some();
     let ed = super::board_view::editor(&mut live.editor, theme);
-    let tool = ed.tool;
     let sel_style = selected_style(ed, &board.doc);
     let arrow = selected_arrow(ed, &board.doc);
     let what = selected_kind(ed, &board.doc);
@@ -451,49 +446,11 @@ pub fn paint(
     let sel_box = (!ed.is_busy())
         .then(|| selection_box(ed, &board.doc, &board.camera, area_w))
         .flatten();
-    let tools = toolbar_rects(area);
-    paint_panel(scene, &tools, theme);
-    let note_tool = Item::Tool(Tool::Shape(ShapeType::Sticky));
-    let sketch_on = look::sketch_on(ed, &board.doc, board.sketch);
-    for (it, r) in tools {
-        let on = matches!(it, Item::Tool(t) if t == tool)
-            || (it == Item::MoreShapes && shapes_open)
-            || (it == note_tool && notes::flyout_open(tool))
-            || (it == pen::PEN_TOOL && pen::flyout_open(tool))
-            || (it == Item::Sketch && sketch_on)
-            || (it == organize::FRAME_TOOL && tool == Tool::Frame)
-            || mind::is_on(it, ed, &board.doc, templates_open) == Some(true)
-            || fac_now.is_on(it) == Some(true);
-        paint_item(
-            scene,
-            text_system,
-            theme,
-            &mut hero.hit_index,
-            &hero.store,
-            it,
-            r,
-            on,
-        );
-    }
-    if shapes_open {
-        let (hit, store) = (&mut hero.hit_index, &hero.store);
-        shapes::paint_tool_grid(scene, text_system, theme, hit, store, area, tool);
-    }
-    if notes::flyout_open(tool) {
-        let (hit, store) = (&mut hero.hit_index, &hero.store);
-        notes::paint_flyout(scene, text_system, theme, hit, store, area, tool, &now);
-    }
-    if pen::flyout_open(tool) {
-        let (hit, store) = (&mut hero.hit_index, &hero.store);
-        pen::paint_flyout(scene, text_system, theme, hit, store, area, ed);
-    }
-    if templates_open {
-        let (hit, store) = (&mut hero.hit_index, &hero.store);
-        mind::paint_gallery(scene, text_system, theme, hit, store, area);
-    }
-    layout::float_drawers(&mut live.nav, area, tool, [shapes_open, templates_open]);
     if let Some((key, _)) = notice {
-        let r = organize::paint_notice(scene, text_system, theme, area, key);
+        let keep = super::board_nav::fit::painted(&live.nav);
+        let r = organize::paint_notice(scene, text_system, theme, (area, &keep), key);
+        #[cfg(test)]
+        super::board_alert::BANNER.with(|b| b.set(Some(r)));
         super::board_nav::fit::float(&mut live.nav, r);
     }
     fac::sync_flyouts(
@@ -565,15 +522,22 @@ pub fn paint(
             on,
         );
     }
+    let tools = super::float_bar::panel_of(toolbar_rects(area).into_iter().map(|(_, r)| r));
+    let keep: Vec<Rect> = keep.into_iter().chain(tools).collect();
+    let room = MenuRoom {
+        area,
+        bar: &bar,
+        keep: &keep,
+    };
     let (hit, store) = (&mut hero.hit_index, &hero.store);
-    fac::paint_flyout(scene, text_system, theme, hit, store, &bar, fac_now);
+    fac::paint_flyout(scene, text_system, theme, hit, store, &room, fac_now);
     if reshape_open {
         let now = reshape_now;
-        shapes::paint_reshape_grid(scene, text_system, theme, hit, store, area, &bar, now);
+        shapes::paint_reshape_grid(scene, text_system, theme, (hit, store), &room, now);
     }
     if let Some(i) = heads_open {
         let now = arrow.as_ref().map(|c| c.heads[i]);
-        heads::paint_grid(scene, text_system, theme, hit, store, area, &bar, (i, now));
+        heads::paint_grid(scene, text_system, theme, hit, store, &room, (i, now));
     }
 }
 

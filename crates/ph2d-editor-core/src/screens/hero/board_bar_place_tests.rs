@@ -215,3 +215,6 @@ fn in_a_tiny_window_the_style_bar_stays_right_of_the_toolbar() {
     }
     assert!(bad.is_empty(), "{}", bad.join("\n"));
 }
+
+#[path = "board_bar_overlay_tests.rs"]
+mod overlay;

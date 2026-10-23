@@ -229,9 +229,7 @@ pub fn strip_rects_clear_of(
     let cx = sel.x + sel.w / 2.0;
     let place = |rows: &[&[usize]], ys: &[f32], keep: &[Rect]| {
         let (w, h) = rows_extent(rows, s);
-        ys.iter()
-            .filter(|&&y| y >= area.y && y + h <= bottom)
-            .find_map(|&y| free_x(area, keep, (y, h), w, cx).map(|x| rows_from(x, y, w, rows, s)))
+        rect_clear_of(area, keep, (w, h), ys, cx).map(|r| rows_from(r.x, r.y, w, rows, s))
     };
     fn slices(rows: &[Vec<usize>]) -> Vec<&[usize]> {
         rows.iter().map(Vec::as_slice).collect()
@@ -244,18 +242,14 @@ pub fn strip_rects_clear_of(
         }
     }
     // Sem vão junto da seleção: a altura livre mais perto dela, rente a um painel ou a um bordo — à
-    // folga do vão (`keep_pad`; com só o `gap` o «rente» tocava o painel). Primeiro sem tapar a
+    // folga do vão ([`heights_beside`]; com só o `gap` o «rente» tocava o painel). Primeiro sem tapar a
     // seleção; só depois por cima dela (o mal menor: o chrome nunca).
-    let pad = keep_pad();
     let with_sel: Vec<Rect> = keep.iter().copied().chain([sel]).collect();
     for clear in [&with_sel[..], keep] {
         for rows in layouts.iter().map(|l| slices(l)) {
             let h = rows_extent(&rows, s).1;
-            let mut ys: Vec<f32> = clear
-                .iter()
-                .flat_map(|k| [k.y + k.h + pad, k.y - h - pad])
-                .chain([area.y, bottom - h])
-                .collect();
+            let mut ys = heights_beside(clear, h);
+            ys.extend([area.y, bottom - h]);
             ys.sort_by(|a, b| (a - sel.y).abs().total_cmp(&(b - sel.y).abs()));
             if let Some(out) = place(&rows, &ys, clear) {
                 return out;
@@ -328,6 +322,31 @@ fn strip_layouts(room: f32, groups: &[usize], s: f32) -> Vec<Vec<Vec<usize>>> {
 /// A folga entre os botões da barra e o que ela evita: o respiro do fundo ([`panel_of`]) mais um [`gap`].
 fn keep_pad() -> f32 {
     Spacing::Xs.px() + gap()
+}
+
+/// ⭐ **Um painel flutuante `w×h` que não tapa o chrome** (W25 — a mesma regra da barra de estilo para os
+/// menus dela, o aviso do topo e a barra do vídeo): na 1.ª altura de `ys` (por ordem de preferência) que
+/// cabe em `area`, no vão sem `keep` mais perto de o centrar em `cx`; `None` se nenhuma tem vão.
+#[must_use]
+pub fn rect_clear_of(
+    area: Rect,
+    keep: &[Rect],
+    (w, h): (f32, f32),
+    ys: &[f32],
+    cx: f32,
+) -> Option<Rect> {
+    ys.iter()
+        .filter(|&&y| y >= area.y && y + h <= area.y + area.h)
+        .find_map(|&y| free_x(area, keep, (y, h), w, cx).map(|x| Rect::new(x, y, w, h)))
+}
+
+/// As alturas de um painel `h` rente a cada rectângulo de `keep`, por cima e por baixo, à folga do vão.
+#[must_use]
+pub fn heights_beside(keep: &[Rect], h: f32) -> Vec<f32> {
+    let pad = keep_pad();
+    keep.iter()
+        .flat_map(|k| [k.y + k.h + pad, k.y - h - pad])
+        .collect()
 }
 
 /// O `x` da barra de largura `w` na faixa `(y, h)`: o vão de `area` sem `keep` mais perto de a

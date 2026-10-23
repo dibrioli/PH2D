@@ -2,13 +2,13 @@
 //! do fluxograma; o «…» de cada grupo de pontas abre a grelha das quinze do catálogo para essa ponta
 //! (as de UML e as de cardinalidade incluídas) — o Excalidraw e o Miro abrem as pontas numa janela.
 
-use super::{HEADS, Item, paint_item};
+use super::{HEADS, Item, MenuRoom, paint_item};
 use crate::documents::BoardLive;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::zones::Rect;
 use ph2d_board_model::Head;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Spacing, Theme};
+use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
 /// Colunas da grelha das pontas.
@@ -56,21 +56,13 @@ pub(super) fn toggle(live: &mut BoardLive, it: Item) {
     }
 }
 
-/// A grelha das pontas `i`, por baixo do «…» (por cima, se não cabe), presa dentro de `area`.
+/// A grelha das pontas `i`, aberta pelo «…» dela ([`MenuRoom::origin`]).
 #[must_use]
-pub fn heads_rects(area: Rect, button: Rect, i: usize) -> Vec<(Item, Rect)> {
+pub(super) fn heads_rects(room: &MenuRoom, button: Rect, i: usize) -> Vec<(Item, Rect)> {
     let (s, g) = (super::btn_px(), super::gap());
     let n = Head::ALL.len();
     let rows = n.div_ceil(COLS) as f32;
-    let (w, h) = (COLS as f32 * (s + g) - g, rows * (s + g) - g);
-    let pad = Spacing::Sm.px();
-    let below = button.y + button.h + pad;
-    let y = if below + h <= area.y + area.h {
-        below
-    } else {
-        (button.y - pad - h).max(area.y)
-    };
-    let x = button.x.min(area.x + area.w - w).max(area.x);
+    let (x, y) = room.origin(button, (COLS as f32 * (s + g) - g, rows * (s + g) - g));
     Head::ALL
         .iter()
         .enumerate()
@@ -84,7 +76,7 @@ pub fn heads_rects(area: Rect, button: Rect, i: usize) -> Vec<(Item, Rect)> {
         .collect()
 }
 
-/// Pinta a grelha aberta da ponta `i`, ancorada no «…» dela na barra `bar`; acesa a ponta actual.
+/// Pinta a grelha aberta da ponta `i`, ancorada no «…» dela na barra; acesa a ponta actual.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_grid(
     scene: &mut VectorScene,
@@ -92,14 +84,13 @@ pub(super) fn paint_grid(
     theme: Theme,
     hit: &mut HitIndex,
     store: &WidgetStore,
-    area: Rect,
-    bar: &[(Item, Rect)],
+    room: &MenuRoom,
     (i, now): (usize, Option<Head>),
 ) {
-    let Some((_, button)) = bar.iter().find(|(it, _)| *it == more(i)) else {
+    let Some((_, button)) = room.bar.iter().find(|(it, _)| *it == more(i)) else {
         return;
     };
-    let grid = heads_rects(area, *button, i);
+    let grid = heads_rects(room, *button, i);
     super::look::paint_panel(scene, &grid, theme);
     for (it, r) in grid {
         let on = matches!(it, Item::Head(_, h) if Some(h) == now);

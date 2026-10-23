@@ -100,6 +100,98 @@ pub fn style_rects_of(
         .collect()
 }
 
+/// ⭐ Pinta a barra curta do quadro activo e as gavetas abertas — a 1.ª metade das barras (W25): o aviso do
+/// topo e a barra do vídeo pintam-se a seguir, por cima delas e fora delas, e a barra de estilo por último
+/// ([`super::paint`]). `area` é a área do quadro no ecrã.
+pub fn paint_tools(
+    hero: &mut super::HeroScreen,
+    area: Rect,
+    scene: &mut ph2d_vector::VectorScene,
+    text_system: &mut ph2d_text::TextSystem,
+) {
+    use super::{fac, mind, notes, paint_item, pen, shapes};
+    use ph2d_board_edit::Tool;
+    #[cfg(test)]
+    super::PAINTED_ON.with(|v| v.borrow_mut().clear());
+    let theme = hero.theme;
+    let shapes_open = hero.documents.live.shapes_open;
+    let templates_open = mind::sync_gallery(&mut hero.documents.live);
+    let fac_now = fac::Now::of(hero);
+    let Some((board, live)) = hero.documents.active_parts() else {
+        return;
+    };
+    let ed = super::super::board_view::editor(&mut live.editor, theme);
+    let tool = ed.tool;
+    let now = notes::Now::of(ed, &board.doc);
+    let tools = toolbar_rects(area);
+    super::paint_panel(scene, &tools, theme);
+    let note_tool = Item::Tool(Tool::Shape(ShapeType::Sticky));
+    let sketch_on = super::look::sketch_on(ed, &board.doc, board.sketch);
+    let (hit, store) = (&mut hero.hit_index, &hero.store);
+    for (it, r) in tools {
+        let on = matches!(it, Item::Tool(t) if t == tool)
+            || (it == Item::MoreShapes && shapes_open)
+            || (it == note_tool && notes::flyout_open(tool))
+            || (it == pen::PEN_TOOL && pen::flyout_open(tool))
+            || (it == Item::Sketch && sketch_on)
+            || (it == super::organize::FRAME_TOOL && tool == Tool::Frame)
+            || mind::is_on(it, ed, &board.doc, templates_open) == Some(true)
+            || fac_now.is_on(it) == Some(true);
+        paint_item(scene, text_system, theme, hit, store, it, r, on);
+    }
+    if shapes_open {
+        shapes::paint_tool_grid(scene, text_system, theme, hit, store, area, tool);
+    }
+    if notes::flyout_open(tool) {
+        notes::paint_flyout(scene, text_system, theme, hit, store, area, tool, &now);
+    }
+    if pen::flyout_open(tool) {
+        pen::paint_flyout(scene, text_system, theme, hit, store, area, ed);
+    }
+    if templates_open {
+        mind::paint_gallery(scene, text_system, theme, hit, store, area);
+    }
+    float_drawers(&mut live.nav, area, tool, [shapes_open, templates_open]);
+}
+
+/// ⭐ W25 — onde abre um menu da barra de estilo (o «Forma», as pontas, os carimbos, o agrupar): a área, a
+/// barra pintada e o chrome que ele não tapa.
+pub(super) struct MenuRoom<'a> {
+    pub(super) area: Rect,
+    pub(super) bar: &'a [(Item, Rect)],
+    pub(super) keep: &'a [Rect],
+}
+
+impl MenuRoom<'_> {
+    /// O canto de cima de um menu `w×h` aberto pelo botão `button`: por baixo da barra INTEIRA (aberto por
+    /// baixo do botão tapava as outras linhas dela), senão por cima, a começar no botão e fora do chrome;
+    /// sem lugar livre, rente ao botão como antes.
+    pub(super) fn origin(&self, button: Rect, (w, h): (f32, f32)) -> (f32, f32) {
+        let fb = super::super::float_bar::panel_of(self.bar.iter().map(|(_, r)| *r));
+        let bar = fb.unwrap_or(button);
+        let pad = Spacing::Sm.px();
+        let ys = [bar.y + bar.h + pad, bar.y - pad - h];
+        let clear = super::super::float_bar::rect_clear_of(
+            self.area,
+            self.keep,
+            (w, h),
+            &ys,
+            button.x + w / 2.0,
+        );
+        if let Some(r) = clear {
+            return (r.x, r.y);
+        }
+        let below = button.y + button.h + pad;
+        let y = if below + h <= self.area.y + self.area.h {
+            below
+        } else {
+            (button.y - pad - h).max(self.area.y)
+        };
+        let x = button.x.min(self.area.x + self.area.w - w).max(self.area.x);
+        (x, y)
+    }
+}
+
 /// W24 — as gavetas abertas (formas, notas, caneta, modelos) entram no chrome que a barra de estilo, a
 /// última a pintar, não tapa.
 pub(super) fn float_drawers(

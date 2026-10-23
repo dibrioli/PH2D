@@ -6,7 +6,7 @@
 //! ⚠️ Um controlo que não faria nada à selecção de agora NÃO se pinta: Agrupar só com duas notas ou
 //! mais (as dos frames contam).
 
-use super::{HeroScreen, Item, paint_item, paint_panel};
+use super::{HeroScreen, Item, MenuRoom, paint_item, paint_panel};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{paint_icon as icon, paint_text_centered};
@@ -15,7 +15,7 @@ use ph2d_board_edit::{ClusterBy, ClusterNames, Editor};
 use ph2d_board_model::{BoardDoc, Stamp};
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Spacing, Theme, TypeToken};
+use ph2d_tokens::{Theme, TypeToken};
 use ph2d_vector::{Affine, Color, VectorScene};
 
 /// Um controlo de facilitar.
@@ -209,17 +209,18 @@ pub(super) fn paint_icon(
     true
 }
 
-/// Os rectângulos de uma janela aberta, por baixo do botão que a abriu (`bar` = a barra de contexto
-/// pintada agora).
-pub(super) fn flyout_rects(bar: &[(Item, Rect)], now: Now) -> Vec<(Item, Rect)> {
+/// Os rectângulos de uma janela aberta pelo botão dela na barra de contexto ([`MenuRoom::origin`]).
+pub(super) fn flyout_rects(room: &MenuRoom, now: Now) -> Vec<(Item, Rect)> {
     let (s, g) = (super::btn_px(), super::gap());
-    let below = |it: Item| {
-        bar.iter()
+    let at = |it: Item, size: (f32, f32)| {
+        room.bar
+            .iter()
             .find(|(x, _)| *x == it)
-            .map(|(_, r)| (r.x, r.y + r.h + Spacing::Sm.px()))
+            .map(|(_, r)| room.origin(*r, size))
     };
+    let span = |n: usize, s: f32| n as f32 * (s + g) - g;
     if now.stamps
-        && let Some((x, y)) = below(STAMPS)
+        && let Some((x, y)) = at(STAMPS, (span(Stamp::ALL.len(), s), s))
     {
         return (0..Stamp::ALL.len())
             .map(|i| {
@@ -229,7 +230,7 @@ pub(super) fn flyout_rects(bar: &[(Item, Rect)], now: Now) -> Vec<(Item, Rect)> 
             .collect();
     }
     if now.cluster
-        && let Some((x, y)) = below(CLUSTER)
+        && let Some((x, y)) = at(CLUSTER, (s * CLUSTER_W, span(CLUSTER_BY.len(), s)))
     {
         return (0..CLUSTER_BY.len())
             .map(|i| {
@@ -249,10 +250,10 @@ pub(super) fn paint_flyout(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    bar: &[(Item, Rect)],
+    room: &MenuRoom,
     now: Now,
 ) {
-    let rects = flyout_rects(bar, now);
+    let rects = flyout_rects(room, now);
     paint_panel(scene, &rects, theme);
     for (it, r) in rects {
         paint_item(scene, text_system, theme, hit_index, store, it, r, false);

@@ -3,14 +3,14 @@
 //! idioma do Miro). As duas pintam os mesmos `Item::Pick` — nunca abertas juntas.
 
 use super::look::{paint_panel, shape_icon};
-use super::{HeroScreen, Item, paint_item};
+use super::{HeroScreen, Item, MenuRoom, paint_item};
 use crate::documents::BoardLive;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::zones::Rect;
 use ph2d_board_edit::{Editor, Tool};
 use ph2d_board_model::{BoardDoc, ShapeType};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme};
+use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
 /// O botão «Forma» da barra de contexto de uma selecção de formas.
@@ -134,22 +134,14 @@ pub(super) fn paint_button(
     shape_icon(scene, t, inner, fg, line, false);
 }
 
-/// A grelha «Forma», por baixo do botão (por cima, se não cabe), presa dentro de `area`.
+/// A grelha «Forma», aberta pelo botão dela ([`MenuRoom::origin`]).
 #[must_use]
-pub fn reshape_rects(area: Rect, button: Rect) -> Vec<(Item, Rect)> {
+pub(super) fn reshape_rects(room: &MenuRoom, button: Rect) -> Vec<(Item, Rect)> {
     let (s, g) = (super::btn_px(), super::gap());
     let n = ShapeType::ALL.len();
     let cols = RESHAPE_COLS.min(n);
     let rows = n.div_ceil(cols) as f32;
-    let (w, h) = (cols as f32 * (s + g) - g, rows * (s + g) - g);
-    let pad = Spacing::Sm.px();
-    let below = button.y + button.h + pad;
-    let y = if below + h <= area.y + area.h {
-        below
-    } else {
-        (button.y - pad - h).max(area.y)
-    };
-    let x = button.x.min(area.x + area.w - w).max(area.x);
+    let (x, y) = room.origin(button, (cols as f32 * (s + g) - g, rows * (s + g) - g));
     ShapeType::ALL
         .iter()
         .enumerate()
@@ -163,22 +155,19 @@ pub fn reshape_rects(area: Rect, button: Rect) -> Vec<(Item, Rect)> {
         .collect()
 }
 
-/// Pinta a grelha «Forma» aberta, ancorada no botão da barra `bar`; acesa a forma actual.
-#[allow(clippy::too_many_arguments)]
+/// Pinta a grelha «Forma» aberta, ancorada no botão dela na barra; acesa a forma actual.
 pub(super) fn paint_reshape_grid(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-    hit: &mut HitIndex,
-    store: &WidgetStore,
-    area: Rect,
-    bar: &[(Item, Rect)],
+    (hit, store): (&mut HitIndex, &WidgetStore),
+    room: &MenuRoom,
     now: Option<ShapeType>,
 ) {
-    let Some((_, button)) = bar.iter().find(|(it, _)| *it == RESHAPE) else {
+    let Some((_, button)) = room.bar.iter().find(|(it, _)| *it == RESHAPE) else {
         return;
     };
-    let grid = reshape_rects(area, *button);
+    let grid = reshape_rects(room, *button);
     paint_panel(scene, &grid, theme);
     for (it, r) in grid {
         let on = matches!(it, Item::Pick(t) if Some(t) == now);

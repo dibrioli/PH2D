@@ -17,6 +17,12 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
+#[cfg(test)]
+thread_local! {
+    /// O aviso do topo (este ou o da recusa) que a última pintura pôs no ecrã.
+    pub(crate) static BANNER: std::cell::Cell<Option<Rect>> = const { std::cell::Cell::new(None) };
+}
+
 /// O aviso que se vê agora: vivo e mais novo que a última recusa.
 pub(crate) fn shown(live: &BoardLive) -> Option<&Alert> {
     let a = live.alert.as_ref()?;
@@ -45,10 +51,10 @@ fn can(hero: &HeroScreen, action: Action) -> bool {
     }
 }
 
-/// Onde ficam a faixa e o botão, na área do quadro `area`.
+/// Onde ficam a faixa e o botão, na área do quadro `area`, fora do chrome `keep` ([`banner_rect`]).
 pub(crate) fn layout(
     text_system: &mut TextSystem,
-    area: Rect,
+    (area, keep): (Rect, &[Rect]),
     alert: &Alert,
     button: bool,
 ) -> (Rect, Option<Rect>) {
@@ -59,11 +65,29 @@ pub(crate) fn layout(
         .action
         .filter(|_| button)
         .map(|a| rect_for_label(text_system.prefix_width(tr(a.label()), font)));
-    let w = (text_w + button_w.map_or(0.0, |b| gap + b)).min(area.w);
-    let h = Spacing::Xl2.px();
-    let r = Rect::new(area.x + (area.w - w) / 2.0, area.y + Spacing::Md.px(), w, h);
-    let b = button_w.map(|bw| Rect::new(r.x + r.w - bw, r.y, bw, h));
+    let r = banner_rect(area, keep, text_w + button_w.map_or(0.0, |b| gap + b));
+    let b = button_w.map(|bw| Rect::new(r.x + r.w - bw, r.y, bw, r.h));
     (r, b)
+}
+
+/// ⭐ W25 — **onde fica um aviso do topo** de largura `w` (este e o da recusa): na altura mais alta que não
+/// toca o chrome já pintado (`keep`: os painéis da direita, as gavetas) nem a barra curta, o mais perto do
+/// meio da área à direita dela; sem nenhuma livre, no topo, por cima (antes ficava sempre no topo e tapava o
+/// painel «Frames»).
+pub(crate) fn banner_rect(area: Rect, keep: &[Rect], w: f32) -> Rect {
+    let tools = super::board_bar::toolbar_rects(area);
+    let left = tools.iter().map(|(_, r)| r.x + r.w).fold(area.x, f32::max) + Spacing::Md.px();
+    let tools = super::float_bar::panel_of(tools.into_iter().map(|(_, r)| r));
+    let keep: Vec<Rect> = keep.iter().copied().chain(tools).collect();
+    let (h, top) = (Spacing::Xl2.px(), area.y + Spacing::Md.px());
+    let w = w.min(area.x + area.w - left);
+    let mut ys = super::float_bar::heights_beside(&keep, h);
+    ys.retain(|&y| y > top);
+    ys.sort_by(f32::total_cmp);
+    ys.insert(0, top);
+    let cx = (left + area.x + area.w) / 2.0;
+    super::float_bar::rect_clear_of(area, &keep, (w, h), &ys, cx)
+        .unwrap_or_else(|| Rect::new(cx - w / 2.0, top, w, h))
 }
 
 /// Regista o botão (focável desde o arranque).
@@ -83,13 +107,18 @@ pub(super) fn paint(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
 ) {
+    #[cfg(test)]
+    BANNER.with(|b| b.set(None));
     let Some(alert) = shown(&hero.documents.live).cloned() else {
         return;
     };
     let button = alert.action.is_some_and(|a| can(hero, a));
     let theme: Theme = hero.theme;
-    let (r, b) = layout(text_system, area, &alert, button);
+    let keep = super::board_nav::fit::painted(&hero.documents.live.nav);
+    let (r, b) = layout(text_system, (area, &keep), &alert, button);
     super::board_nav::fit::float(&mut hero.documents.live.nav, r);
+    #[cfg(test)]
+    BANNER.with(|b| b.set(Some(r)));
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
     let font = TypeToken::Sm.px();

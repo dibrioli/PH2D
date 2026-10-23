@@ -16,7 +16,7 @@ use crate::zones::Rect;
 use ph2d_board_edit::{Align, Axis, Command, Editor, Order, Tool};
 use ph2d_board_model::{BoardDoc, Dash, History};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Theme, TypeToken};
 use ph2d_vector::{BezPath, Color, VectorScene};
 
 /// Um controlo de organizar.
@@ -336,19 +336,19 @@ pub(super) fn paint_icon(
     true
 }
 
-/// ⭐ **O aviso de uma recusa**, no topo do quadro, enquanto é fresco (a duração de um toast).
+/// ⭐ **O aviso de uma recusa**, no topo do quadro e fora de `keep` (o lugar do outro aviso,
+/// [`super::super::board_alert::banner_rect`]), enquanto é fresco (a duração de um toast).
 pub(super) fn paint_notice(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-    area: Rect,
+    (area, keep): (Rect, &[Rect]),
     key: &'static str,
 ) -> Rect {
     let text = ph2d_i18n::tr(key);
     let font = TypeToken::Sm.px();
-    let w = rect_for_label(text_system.prefix_width(text, font)).min(area.w);
-    let h = Spacing::Xl2.px();
-    let r = Rect::new(area.x + (area.w - w) / 2.0, area.y + Spacing::Md.px(), w, h);
+    let w = rect_for_label(text_system.prefix_width(text, font));
+    let r = super::super::board_alert::banner_rect(area, keep, w);
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
     paint_text_centered(

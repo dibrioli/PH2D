@@ -141,11 +141,43 @@ pub struct Layout {
     pub time: Rect,
 }
 
-/// ⭐ A barra para um vídeo no rectângulo de ecrã `video`, dentro de `area`: por baixo dele, ou por cima
-/// se em baixo não couber — NUNCA à frente dele; `None` se não couber (`time_w` = a largura do tempo). W20:
-/// `nav` = a janela navegou (as setas e o «voltar ao original» entram à esquerda).
+/// ⭐ Onde fica um painel `w×h` do vídeo no rectângulo de ecrã `video` (a barra, a frase do navegador): por
+/// baixo dele, senão por cima — NUNCA à frente dele — e fora do chrome `keep` (W25: a barra curta e as
+/// gavetas tapavam a barra e levavam-lhe o clique), na 1.ª largura de `ws` que tem vão; sem nenhuma, na 1.ª
+/// onde couber, por cima do chrome; `None` se em lado nenhum. Devolve `(x, y, w)`.
+fn by_video(
+    area: Rect,
+    video: Rect,
+    (ws, h): (&[f32], f32),
+    keep: &[Rect],
+) -> Option<(f32, f32, f32)> {
+    let pad = Spacing::Xs.px();
+    let ys = [video.y + video.h + pad, video.y - pad - h];
+    let cx = video.x + video.w / 2.0;
+    let ws: Vec<f32> = ws.iter().copied().filter(|&w| w <= area.w).collect();
+    let clear = ws.iter().find_map(|&w| {
+        float_bar::rect_clear_of(area, keep, (w, h), &ys, cx).map(|r| (r.x, r.y, w))
+    });
+    if clear.is_some() {
+        return clear;
+    }
+    let w = *ws.first()?;
+    let y = ys
+        .into_iter()
+        .find(|&y| y >= area.y && y + h <= area.y + area.h)?;
+    Some(((cx - w / 2.0).max(area.x).min(area.x + area.w - w), y, w))
+}
+
+/// ⭐ A barra para um vídeo no rectângulo de ecrã `video`, dentro de `area` e fora de `keep` ([`by_video`]);
+/// `None` se não couber (`time_w` = a largura do tempo). W20: `nav` = a janela navegou (as setas e o
+/// «voltar ao original» entram à esquerda).
 #[must_use]
-pub fn layout(area: Rect, video: Rect, time_w: f32, nav: bool) -> Option<Layout> {
+pub fn layout(
+    area: Rect,
+    video: Rect,
+    (time_w, nav): (f32, bool),
+    keep: &[Rect],
+) -> Option<Layout> {
     let s = float_bar::button_px();
     let (pad, gap) = (Spacing::Xs.px(), float_bar::gap());
     let vol_w = Spacing::Xl4.px();
@@ -154,23 +186,10 @@ pub fn layout(area: Rect, video: Rect, time_w: f32, nav: bool) -> Option<Layout>
     let fixed = 4.0 * s + time_w + vol_w + 6.0 * gap + 2.0 * pad; // LITERAL-PX-OK: 4 botões, 6 vãos, 2 margens
     let nav_n: f32 = if nav { 3.0 } else { 0.0 }; // LITERAL-PX-OK: as setas e o «voltar ao original»
     let fixed = fixed + nav_n * (s + gap);
-    let w = video.w.max(fixed + seek_min);
-    if w > area.w {
-        return None;
-    }
+    // A da largura do vídeo; sem vão para ela, a mais curta (a barra do tempo encolhe).
+    let ws = [video.w.max(fixed + seek_min), fixed + seek_min];
     let h = s + 2.0 * pad; // LITERAL-PX-OK: as duas margens
-    let below = video.y + video.h + pad;
-    let above = video.y - pad - h;
-    let y = if below + h <= area.y + area.h {
-        below
-    } else if above >= area.y {
-        above
-    } else {
-        return None;
-    };
-    let x = (video.x + video.w / 2.0 - w / 2.0)
-        .max(area.x)
-        .min(area.x + area.w - w);
+    let (x, y, w) = by_video(area, video, (&ws, h), keep)?;
     let seek_w = w - fixed;
     let mut cx = x + pad;
     let mut put = |width: f32| {
@@ -217,30 +236,25 @@ pub fn fullscreen_rect(area: Rect, aspect: f32) -> Rect {
 }
 
 /// ⭐ W21 — a frase «instale um navegador» para o vídeo no rectângulo de ecrã `video` (com a borda), dentro de
-/// `area`: uma faixa da largura do texto (`text_w`) e do ícone, por baixo do vídeo ou por cima se em baixo
-/// não couber — nunca à frente dele, como a barra; `None` se não couber.
+/// `area`: uma faixa da largura do texto (`text_w`) e do ícone, posta como a barra ([`by_video`]).
 #[must_use]
-pub fn install_rect(area: Rect, video: Rect, text_w: f32) -> Option<Rect> {
+pub fn install_rect(area: Rect, video: Rect, text_w: f32, keep: &[Rect]) -> Option<Rect> {
     let s = float_bar::button_px();
     let (pad, gap) = (Spacing::Xs.px(), float_bar::gap());
     let w = s + gap + text_w + 2.0 * pad; // LITERAL-PX-OK: as duas margens
     let h = s + 2.0 * pad; // LITERAL-PX-OK: as duas margens
-    if w > area.w {
-        return None;
-    }
-    let below = video.y + video.h + pad;
-    let above = video.y - pad - h;
-    let y = if below + h <= area.y + area.h {
-        below
-    } else if above >= area.y {
-        above
-    } else {
-        return None;
-    };
-    let x = (video.x + video.w / 2.0 - w / 2.0)
-        .max(area.x)
-        .min(area.x + area.w - w);
+    let (x, y, w) = by_video(area, video, (&[w], h), keep)?;
     Some(Rect::new(x, y, w, h))
+}
+
+/// O chrome do quadro já pintado que a barra e a frase de um vídeo não tapam: os painéis e as gavetas
+/// (`fit::painted`) e a barra curta.
+fn chrome(hero: &HeroScreen, area: Rect) -> Vec<Rect> {
+    let tools = super::board_bar::toolbar_rects(area);
+    super::board_nav::fit::painted(&hero.documents.live.nav)
+        .into_iter()
+        .chain(float_bar::panel_of(tools.into_iter().map(|(_, r)| r)))
+        .collect()
 }
 
 /// O rectângulo de ecrã da CAIXA de um vídeo com a borda (o tocador recua por ela, W20).
@@ -266,6 +280,7 @@ pub(crate) fn paint_install(
     ts: &mut TextSystem,
 ) -> Vec<Rect> {
     let theme = hero.theme;
+    let keep = chrome(hero, area);
     let Some((board, live)) = hero.documents.active_parts() else {
         return Vec::new();
     };
@@ -284,7 +299,7 @@ pub(crate) fn paint_install(
             continue;
         };
         let Some(e) = el.embed() else { continue };
-        let Some(r) = install_rect(area, box_rect(pl, el, e), text_w) else {
+        let Some(r) = install_rect(area, box_rect(pl, el, e), text_w, &keep) else {
             continue;
         };
         float_bar::paint_panel(scene, [r], theme);
@@ -338,6 +353,12 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
         .videos
         .active
         .and_then(|id| super::board_video::trail(hero, id));
+    // No ecrã inteiro o vídeo enche a área e não há chrome por baixo.
+    let keep = if hero.documents.live.render_cache.videos.fullscreen {
+        Vec::new()
+    } else {
+        chrome(hero, area)
+    };
     let Some((board, live)) = hero.documents.active_parts() else {
         return;
     };
@@ -388,7 +409,7 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
         .replace("{now}", &clock(status.duration))
         .replace("{total}", &clock(status.duration));
     let time_w = ts.prefix_width(&widest, font) + Spacing::Sm.px();
-    let Some(lay) = layout(area, video, time_w, nav.is_some()) else {
+    let Some(lay) = layout(area, video, (time_w, nav.is_some()), &keep) else {
         return;
     };
     let panel = float_bar::panel_of(lay.ctls.iter().map(|(_, r)| *r).chain([lay.time]));

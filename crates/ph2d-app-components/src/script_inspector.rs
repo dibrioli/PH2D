@@ -15,8 +15,8 @@ use ph2d_editor_core::script_edits::{
 };
 use ph2d_script::props::{forget, put, resolve};
 use ph2d_script::{
-    LuauScript, Origin, OrphanWhy, ProjectScripts, ScriptDiagnostic, ScriptEditRequests,
-    ScriptHost, ScriptInfo, ScriptSource, ScriptValue,
+    LuauScript, Origin, OrphanWhy, ProjectScripts, ScriptDiagnostic, ScriptDrafts,
+    ScriptEditRequests, ScriptHost, ScriptInfo, ScriptSource, ScriptValue,
 };
 
 /// O tipo do canal de um valor de script (`ph2d_ecs::canal_script`).
@@ -101,7 +101,17 @@ pub fn build_info(
         (Some(_), _, Some(ScriptInfo::Broken(d))) => InspectorScriptStatus::Broken(no_cartao(d)),
         (Some(_), _, Some(ScriptInfo::Ready(_))) => InspectorScriptStatus::Ready,
     };
-    let decls = known.and_then(ScriptInfo::decls);
+    // ⭐ (1b, oráculo Godot) O texto por salvar da aba manda; senão a versão que os objectos correm
+    // — com o texto salvo partido, a anterior boa, nunca a lista vazia.
+    let decls = match &cfg.source {
+        ScriptSource::Library(id) => sim
+            .world()
+            .get_resource::<ScriptDrafts>()
+            .and_then(|d| d.0.get(id))
+            .map(Vec::as_slice)
+            .or_else(|| host.and_then(|h| h.scene().decls_in_use(*id))),
+        _ => None,
+    };
     let r = resolve(decls, &cfg.own);
     let textos = sim.world().get_resource::<ph2d_ecs::TextosDosCanais>();
     let props = r

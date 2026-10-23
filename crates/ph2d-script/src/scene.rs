@@ -316,6 +316,16 @@ impl SceneScripts {
         self.slots.get(&id).map(|s| &s.info)
     }
 
+    /// ⭐ As declarações da versão que os objectos CORREM — a do texto actual, ou a anterior boa
+    /// quando o actual foi recusado (o Inspector do Godot mostra a última válida, oráculo 1b).
+    #[must_use]
+    pub fn decls_in_use(&self, id: ScriptId) -> Option<&[PropDecl]> {
+        self.slots
+            .get(&id)
+            .and_then(|s| s.module.as_ref())
+            .map(|m| m.decls.as_slice())
+    }
+
     /// Porque o objecto parou de correr o script, se parou.
     #[must_use]
     pub fn failure(&self, entity: Entity) -> Option<&ScriptDiagnostic> {
@@ -490,7 +500,9 @@ impl SceneScripts {
                             continue;
                         }
                     };
-                    apply_props(lua, inst, &decls, &a.cfg, &mut |n| cell.borrow_mut().object_id(n));
+                    apply_props(lua, inst, &decls, &a.cfg, &mut |n| {
+                        cell.borrow_mut().object_id(n)
+                    });
                     if let Some(init) = init {
                         report.calls += 1;
                         let ran = speaking(lua, inst.script, Some(a.entity), || {
@@ -506,7 +518,9 @@ impl SceneScripts {
                 if inst.failed.is_some() || cell.borrow().is_dying(a.entity) {
                     continue;
                 }
-                apply_props(lua, inst, &decls, &a.cfg, &mut |n| cell.borrow_mut().object_id(n));
+                apply_props(lua, inst, &decls, &a.cfg, &mut |n| {
+                    cell.borrow_mut().object_id(n)
+                });
                 if let Some(update) = update {
                     report.calls += 1;
                     let ran = speaking(lua, inst.script, Some(a.entity), || {

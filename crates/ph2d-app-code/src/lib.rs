@@ -17,6 +17,7 @@ mod console;
 mod doc;
 mod docs;
 mod docs_probe;
+mod draft;
 mod drop_doc;
 mod edit;
 mod find;

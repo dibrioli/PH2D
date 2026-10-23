@@ -50,7 +50,9 @@ pub mod scene;
 mod stdlib;
 mod valores;
 
-pub use component::{LibraryEpoch, LuauScript, ProjectScripts, ScriptEditRequests, ScriptSource};
+pub use component::{
+    LibraryEpoch, LuauScript, ProjectScripts, ScriptDrafts, ScriptEditRequests, ScriptSource,
+};
 pub use console::{
     CONSOLE_BYTES_MAX, CONSOLE_LINE_BYTES_MAX, CONSOLE_LINES_MAX, Console, ConsoleKind,
     ConsoleLine, clip_console_text,

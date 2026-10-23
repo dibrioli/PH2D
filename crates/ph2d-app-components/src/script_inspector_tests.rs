@@ -569,3 +569,76 @@ fn o_seletor_do_cartao_lista_e_aponta_os_scripts_do_projeto() {
         ScriptSource::Library(b)
     );
 }
+
+/// 1b (oráculo Godot): com o texto salvo partido o cartão mostra a versão que os objectos CORREM — a
+/// anterior boa —, e o valor próprio continua nela.
+#[test]
+fn com_o_texto_salvo_partido_o_cartao_mostra_a_versao_que_corre() {
+    let (mut sim, bits) = cena_com(DOIS, &[("vidas", ScriptValue::Number(9.0))]);
+    let mut h = pronto(&mut sim);
+    let id = match sim
+        .world()
+        .get::<LuauScript>(ph2d_ecs::Entity::from_bits(bits))
+    {
+        Some(LuauScript {
+            source: ScriptSource::Library(id),
+            ..
+        }) => *id,
+        outro => panic!("{outro:?}"),
+    };
+    sim.world_mut()
+        .resource_mut::<ProjectScripts>()
+        .set_text(id, "ph2d.property(\"novo\", 1)\nfunction (");
+    h.scene_sync(sim.world_mut());
+    let info = build_info(&sim, Some(&h), bits, 1, false).expect("tem");
+    assert!(
+        matches!(info.status, S::BrokenRunsPrevious(_)),
+        "{:?}",
+        info.status
+    );
+    let nomes: Vec<&str> = info.props.iter().map(|p| p.name.as_str()).collect();
+    assert_eq!(nomes, ["amplitude", "vidas", "ativo", "nome"]);
+    assert_eq!(info.props[1].value, V::Number(9.0));
+    assert!(info.props[1].own);
+}
+
+/// 1b: a lista do texto POR SALVAR ([`ScriptDrafts`]) manda sobre a da cena; o valor próprio do
+/// objecto aplica-se a ela pelo nome.
+#[test]
+fn a_lista_do_texto_por_salvar_manda_sobre_a_da_cena() {
+    let (mut sim, bits) = cena_com(DOIS, &[("vidas", ScriptValue::Number(9.0))]);
+    let h = pronto(&mut sim);
+    let id = match sim
+        .world()
+        .get::<LuauScript>(ph2d_ecs::Entity::from_bits(bits))
+    {
+        Some(LuauScript {
+            source: ScriptSource::Library(id),
+            ..
+        }) => *id,
+        outro => panic!("{outro:?}"),
+    };
+    let rascunho = h
+        .draft_decls(
+            "i.luau",
+            "ph2d.property(\"vidas\", 3)\nph2d.property(\"porta\", 2)\n",
+        )
+        .expect("carrega");
+    sim.world_mut().insert_resource(ph2d_script::ScriptDrafts(
+        [(id, rascunho)].into_iter().collect(),
+    ));
+    let info = build_info(&sim, Some(&h), bits, 1, false).expect("tem");
+    let nomes: Vec<&str> = info.props.iter().map(|p| p.name.as_str()).collect();
+    assert_eq!(nomes, ["vidas", "porta"]);
+    assert_eq!(
+        info.props[0].value,
+        V::Number(9.0),
+        "o próprio segue pelo nome"
+    );
+    assert_eq!(info.props[1].value, V::Number(2.0));
+    assert!(
+        matches!(info.status, S::Ready),
+        "o estado é o da cena: {:?}",
+        info.status
+    );
+}

@@ -1,0 +1,158 @@
+# Oráculo: o @export aparece no Inspector do Godot sem salvar? (CodeEditor 1b)
+# corrido 2026-10-23T23:33Z · godot 4.7.2-2.1 (MIT) · loadavg 16.07 23.00 24.46 26/1705 3839530
+# gerado por corre.sh — teclas reais (xdotool, 120 ms/tecla) no script aberto, nó seleccionado, sem salvar até ao 9
+# t_ms = relógio da sonda desde o início do passo; «fim das teclas» marca a última tecla
+
+## inicial: {"auto_reload_scripts_on_external_change": true, "code_complete_delay": 0.3, "idle_parse_delay": 1.5, "ok": true}
+   props: []
+   props: []
+   props: ['vida=10']
+
+## passo 1 escrever @export var velocidade := 3.0
+        0 ms  texto=84  props=['vida=10']  obj=Jogador:<Node2D#1469231207832>
+      249 ms  texto=86  obj=Jogador:<Node2D#1469231207832>
+      356 ms  texto=87  obj=Jogador:<Node2D#1469231207832>
+      491 ms  texto=88  obj=Jogador:<Node2D#1469231207832>
+      599 ms  texto=89  obj=Jogador:<Node2D#1469231207832>
+      747 ms  texto=90  obj=Jogador:<Node2D#1469231207832>
+      851 ms  texto=91  obj=Jogador:<Node2D#1469231207832>
+      996 ms  texto=92  obj=Jogador:<Node2D#1469231207832>
+     1092 ms  texto=93  obj=Jogador:<Node2D#1469231207832>
+     1197 ms  texto=94  obj=Jogador:<Node2D#1469231207832>
+     1347 ms  texto=95  obj=Jogador:<Node2D#1469231207832>
+     1449 ms  texto=96  obj=Jogador:<Node2D#1469231207832>
+     1596 ms  texto=97  obj=Jogador:<Node2D#1469231207832>
+     1699 ms  texto=98  obj=Jogador:<Node2D#1469231207832>
+     1844 ms  texto=99  obj=Jogador:<Node2D#1469231207832>
+     1948 ms  texto=100  obj=Jogador:<Node2D#1469231207832>
+     2047 ms  texto=101  obj=Jogador:<Node2D#1469231207832>
+     2196 ms  texto=102  obj=Jogador:<Node2D#1469231207832>
+     2294 ms  texto=103  obj=Jogador:<Node2D#1469231207832>
+     2444 ms  texto=104  obj=Jogador:<Node2D#1469231207832>
+     2541 ms  texto=105  obj=Jogador:<Node2D#1469231207832>
+     2647 ms  texto=106  obj=Jogador:<Node2D#1469231207832>
+     2789 ms  texto=107  obj=Jogador:<Node2D#1469231207832>
+     2895 ms  texto=108  obj=Jogador:<Node2D#1469231207832>
+     3038 ms  texto=109  obj=Jogador:<Node2D#1469231207832>
+     3141 ms  texto=110  obj=Jogador:<Node2D#1469231207832>
+     3248 ms  texto=111  obj=Jogador:<Node2D#1469231207832>
+     3396 ms  texto=112  obj=Jogador:<Node2D#1469231207832>
+     3500 ms  texto=113  obj=Jogador:<Node2D#1469231207832>
+     3645 ms  texto=114  obj=Jogador:<Node2D#1469231207832>
+     3748 ms  ── fim das teclas
+     5147 ms  texto=114  props=['vida=10', 'velocidade=3.0']  obj=Jogador:<Node2D#1469231207832>
+   avisos: ['100 %', '4 :  30', 'Tabs']
+   abas: ['jogador.gd(*)', '_process']
+   texto: "extends Node2D\n\n@export var vida := 10\n@export var velocidade := 3.0\n\nfunc _process(_delta: float) -> void:\n\tpass\n"
+
+## passo 2 mudar o padrão 3.0→5.0 com valor próprio 7
+        0 ms  texto=114  props=['vida=10', 'velocidade=7.0']  obj=Jogador:<Node2D#1469231207832>
+      206 ms  texto=112  obj=Jogador:<Node2D#1469231207832>
+      401 ms  texto=113  obj=Jogador:<Node2D#1469231207832>
+      498 ms  texto=114  obj=Jogador:<Node2D#1469231207832>
+      649 ms  ── fim das teclas
+   avisos: ['100 %', '4 :  30', 'Tabs']
+   abas: ['jogador.gd(*)', '_process']
+   texto: "extends Node2D\n\n@export var vida := 10\n@export var velocidade := 5.0\n\nfunc _process(_delta: float) -> void:\n\tpass\n"
+
+## passo 3 erro de sintaxe (var = =)
+        0 ms  texto=114  props=['vida=10', 'velocidade=7.0']  obj=Jogador:<Node2D#1469231207832>
+      201 ms  texto=115  obj=Jogador:<Node2D#1469231207832>
+      248 ms  texto=116  obj=Jogador:<Node2D#1469231207832>
+      352 ms  texto=117  obj=Jogador:<Node2D#1469231207832>
+      497 ms  texto=118  obj=Jogador:<Node2D#1469231207832>
+      600 ms  texto=119  obj=Jogador:<Node2D#1469231207832>
+      699 ms  texto=120  obj=Jogador:<Node2D#1469231207832>
+      848 ms  texto=121  obj=Jogador:<Node2D#1469231207832>
+      952 ms  texto=122  obj=Jogador:<Node2D#1469231207832>
+     1097 ms  ── fim das teclas
+   avisos: ['Error at (5, 1): Expected variable name after "var".', '1', '100 %', '5 :   8', 'Tabs']
+   abas: ['jogador.gd(*)', '_process']
+   texto: "extends Node2D\n\n@export var vida := 10\n@export var velocidade := 5.0\nvar = =\n\nfunc _process(_delta: float) -> void:\n\tpass\n"
+
+## passo 4 nova @export escudo com o erro presente
+        0 ms  texto=122  props=['vida=10', 'velocidade=7.0']  obj=Jogador:<Node2D#1469231207832>
+      201 ms  texto=123  obj=Jogador:<Node2D#1469231207832>
+      249 ms  texto=124  obj=Jogador:<Node2D#1469231207832>
+      352 ms  texto=125  obj=Jogador:<Node2D#1469231207832>
+      451 ms  texto=126  obj=Jogador:<Node2D#1469231207832>
+      600 ms  texto=127  obj=Jogador:<Node2D#1469231207832>
+      704 ms  texto=128  obj=Jogador:<Node2D#1469231207832>
+      849 ms  texto=129  obj=Jogador:<Node2D#1469231207832>
+      953 ms  texto=130  obj=Jogador:<Node2D#1469231207832>
+     1052 ms  texto=131  obj=Jogador:<Node2D#1469231207832>
+     1201 ms  texto=132  obj=Jogador:<Node2D#1469231207832>
+     1300 ms  texto=133  obj=Jogador:<Node2D#1469231207832>
+     1449 ms  texto=134  obj=Jogador:<Node2D#1469231207832>
+     1553 ms  texto=135  obj=Jogador:<Node2D#1469231207832>
+     1652 ms  texto=136  obj=Jogador:<Node2D#1469231207832>
+     1801 ms  texto=137  obj=Jogador:<Node2D#1469231207832>
+     1899 ms  texto=138  obj=Jogador:<Node2D#1469231207832>
+     2050 ms  texto=139  obj=Jogador:<Node2D#1469231207832>
+     2146 ms  texto=140  obj=Jogador:<Node2D#1469231207832>
+     2252 ms  texto=141  obj=Jogador:<Node2D#1469231207832>
+     2402 ms  texto=142  obj=Jogador:<Node2D#1469231207832>
+     2501 ms  texto=143  obj=Jogador:<Node2D#1469231207832>
+     2650 ms  texto=144  obj=Jogador:<Node2D#1469231207832>
+     2747 ms  texto=145  obj=Jogador:<Node2D#1469231207832>
+     2899 ms  texto=146  obj=Jogador:<Node2D#1469231207832>
+     3002 ms  ── fim das teclas
+   avisos: ['Error at (6, 1): Expected variable name after "var".', '1', '100 %', '4 :  24', 'Tabs']
+   abas: ['jogador.gd(*)', '_process']
+   texto: "extends Node2D\n\n@export var vida := 10\n@export var escudo := 1\n@export var velocidade := 5.0\nvar = =\n\nfunc _process(_delta: float) -> void:\n\tpass\n"
+
+## passo 5 reseleccionar o nó com o script partido
+        0 ms  texto=146  props=['vida=10', 'velocidade=7.0']  obj=Jogador:<Node2D#1469231207832>
+      151 ms  texto=146  props=[]  obj=<Object#null>
+     1247 ms  texto=146  props=['vida=10', 'velocidade=7.0']  obj=Jogador:<Node2D#1469231207832>
+     1295 ms  ── fim das teclas
+   avisos: ['Error at (6, 1): Expected variable name after "var".', '1', '100 %', '4 :  24', 'Tabs']
+   abas: ['jogador.gd(*)', '_process']
+   texto: "extends Node2D\n\n@export var vida := 10\n@export var escudo := 1\n@export var velocidade := 5.0\nvar = =\n\nfunc _process(_delta: float) -> void:\n\tpass\n"
+
+## passo 6 apagar a linha do erro
+        0 ms  texto=146  props=['vida=10', 'velocidade=7.0']  obj=Jogador:<Node2D#1469231207832>
+      257 ms  texto=138  obj=Jogador:<Node2D#1469231207832>
+      304 ms  ── fim das teclas
+      766 ms  texto=138  props=['vida=10', 'escudo=1', 'velocidade=7.0']  obj=Jogador:<Node2D#1469231207832>
+   avisos: ['100 %', '5 :  30', 'Tabs']
+   abas: ['jogador.gd(*)', '_process']
+   texto: "extends Node2D\n\n@export var vida := 10\n@export var escudo := 1\n@export var velocidade := 5.0\n\nfunc _process(_delta: float) -> void:\n\tpass\n"
+
+## passo 7 renomear velocidade→rapidez
+        0 ms  texto=138  props=['vida=10', 'escudo=1', 'velocidade=7.0']  obj=Jogador:<Node2D#1469231207832>
+      202 ms  texto=135  obj=Jogador:<Node2D#1469231207832>
+      250 ms  texto=131  obj=Jogador:<Node2D#1469231207832>
+      325 ms  texto=129  obj=Jogador:<Node2D#1469231207832>
+      447 ms  texto=130  obj=Jogador:<Node2D#1469231207832>
+      604 ms  texto=131  obj=Jogador:<Node2D#1469231207832>
+      700 ms  texto=132  obj=Jogador:<Node2D#1469231207832>
+      846 ms  texto=133  obj=Jogador:<Node2D#1469231207832>
+      942 ms  texto=134  obj=Jogador:<Node2D#1469231207832>
+     1050 ms  texto=135  obj=Jogador:<Node2D#1469231207832>
+     1198 ms  ── fim das teclas
+     2571 ms  texto=135  props=['vida=10', 'escudo=1', 'rapidez=5.0']  obj=Jogador:<Node2D#1469231207832>
+   avisos: ['100 %', '5 :  20', 'Tabs']
+   abas: ['jogador.gd(*)', '_process']
+   texto: "extends Node2D\n\n@export var vida := 10\n@export var escudo := 1\n@export var rapidez := 5.0\n\nfunc _process(_delta: float) -> void:\n\tpass\n"
+
+## passo 8 apagar a linha @export escudo
+        0 ms  texto=135  props=['vida=10', 'escudo=1', 'rapidez=5.0']  obj=Jogador:<Node2D#1469231207832>
+      304 ms  texto=111  obj=Jogador:<Node2D#1469231207832>
+      304 ms  ── fim das teclas
+     1809 ms  texto=111  props=['vida=10', 'rapidez=5.0']  obj=Jogador:<Node2D#1469231207832>
+   avisos: ['100 %', '3 :  23', 'Tabs']
+   abas: ['jogador.gd(*)', '_process']
+   texto: "extends Node2D\n\n@export var vida := 10\n@export var rapidez := 5.0\n\nfunc _process(_delta: float) -> void:\n\tpass\n"
+
+## {"disco_igual_ao_original_antes_do_ctrl_s": true}
+
+## passo 9 Ctrl+S
+        0 ms  texto=111  props=['vida=10', 'rapidez=5.0']  obj=Jogador:<Node2D#1469231207832>
+      105 ms  ── fim das teclas
+   avisos: ['100 %', '3 :  23', 'Tabs']
+   abas: ['jogador.gd', '_process']
+   texto: "extends Node2D\n\n@export var vida := 10\n@export var rapidez := 5.0\n\nfunc _process(_delta: float) -> void:\n\tpass\n"
+
+# editor.log: ERROR: Condition "status < 0" is true. Returning: ERR_CANT_OPEN
+# editor.log: ERROR: Parameter "p_node" is null.

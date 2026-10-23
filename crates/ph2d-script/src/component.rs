@@ -158,6 +158,12 @@ impl ProjectScripts {
 #[derive(Resource, Clone, Debug, Default, PartialEq, Eq)]
 pub struct ScriptEditRequests(pub Vec<ScriptId>);
 
+/// ⭐ **As declarações dos textos POR SALVAR** (CodeEditor 1b, o `@export` do Godot): a família do
+/// editor escreve, por aba aberta, a lista da última versão boa do texto que o artista escreve; o
+/// cartão Script lê-a antes da da cena. Não é documento — o projeto guarda o texto salvo.
+#[derive(Resource, Clone, Debug, Default, PartialEq)]
+pub struct ScriptDrafts(pub std::collections::BTreeMap<ScriptId, Vec<crate::props::PropDecl>>);
+
 impl std::ops::Deref for ProjectScripts {
     type Target = ScriptLibrary;
     fn deref(&self) -> &ScriptLibrary {

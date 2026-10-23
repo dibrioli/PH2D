@@ -282,6 +282,29 @@ impl ScriptHost {
         self.scene.failure(entity)
     }
 
+    /// ⭐ **As declarações de um texto POR SALVAR** (CodeEditor 1b) — o topo corre na VM da casa,
+    /// sob o prazo, como numa recarga, mas não entra na cena: o `print` não chega ao console e o que
+    /// ele escreveu ou emitiu é deitado fora.
+    ///
+    /// # Errors
+    /// O diagnóstico do texto partido (o painel guarda a última lista boa).
+    pub fn draft_decls(
+        &self,
+        chunk_name: &str,
+        source: &str,
+    ) -> Result<Vec<crate::props::PropDecl>, crate::ScriptDiagnostic> {
+        let lua = self.runtime.lua();
+        let console = lua.remove_app_data::<Console>();
+        let loaded = self
+            .deadline
+            .within(|| crate::module::load_module(lua, chunk_name, source));
+        if let Some(c) = console {
+            lua.set_app_data(c);
+        }
+        crate::scene::discard_queues(lua);
+        loaded.map(|m| m.decls)
+    }
+
     /// Os scripts da cena, para leitura (gates e diagnóstico).
     #[must_use]
     pub fn scene(&self) -> &SceneScripts {

@@ -102,6 +102,7 @@ pub fn frame(
         our_active,
         toasts,
     );
+    docs.drafts(world, host.as_deref());
     if let Some(h) = host {
         hear(docs, h);
     }

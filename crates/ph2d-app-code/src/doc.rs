@@ -84,6 +84,8 @@ pub(crate) struct CodeDoc {
     pub(crate) actions: Option<crate::actions::Actions>,
     /// Os campos do `self` que ninguém dá (I7).
     pub(crate) lint: crate::lint::Lint,
+    /// As declarações do texto por salvar (1b, [`crate::draft`]).
+    pub(crate) draft: crate::draft::Draft,
     /// A caixinha do F2 (I10), e o rename de propriedade à espera da metade da cena.
     pub(crate) rename: Option<crate::rename::Renaming>,
     pub(crate) scene_rename: Option<crate::rename::SceneRename>,
@@ -156,6 +158,7 @@ impl CodeDoc {
             reach: crate::reach::Reach::default(),
             actions: None,
             lint: crate::lint::Lint::default(),
+            draft: crate::draft::Draft::default(),
             rename: None,
             scene_rename: None,
             link_ask: None,

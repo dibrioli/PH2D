@@ -319,3 +319,30 @@ fn uma_tabela_crua_nao_e_um_default() {
         );
     }
 }
+
+/// 1b: o texto POR SALVAR colhe-se na VM da casa sem tocar a cena — o `print` do topo não chega ao
+/// console (e o console continua a ouvir depois), e um laço sem saída no topo acaba no prazo.
+#[test]
+fn as_declaracoes_de_um_texto_por_salvar_nao_falam_nem_congelam() {
+    let h = host();
+    let d = h
+        .draft_decls(
+            "bob.luau",
+            "print(\"no topo\")\nph2d.emit(\"x\")\nph2d.property(\"vida\", 10)\n",
+        )
+        .expect("carrega");
+    assert_eq!(d.len(), 1);
+    assert_eq!(d[0].name, "vida");
+    assert!(h.drain_console().is_empty(), "o topo do rascunho não fala");
+    h.runtime().eval("print(\"depois\")").expect("corre");
+    assert_eq!(h.drain_console().len(), 1, "o console volta a ouvir");
+    assert!(h.draft_decls("bob.luau", "local = =\n").is_err());
+    assert!(
+        h.draft_decls("bob.luau", "while true do end\n").is_err(),
+        "o prazo vale no topo do rascunho"
+    );
+    assert!(
+        h.scene().info(ph2d_script_doc::ScriptId(1)).is_none(),
+        "a cena não soube"
+    );
+}

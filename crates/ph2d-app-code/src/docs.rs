@@ -78,6 +78,8 @@ pub struct CodeDocs {
     /// Scripts cujo texto da biblioteca mudou fora do quadro (o renomear de um objecto): a cena
     /// recarrega-os no quadro seguinte, que tem a VM.
     pub(crate) reload: Vec<ScriptId>,
+    /// A última lista boa de cada texto aberto ou estacionado (1b) — o que o quadro publica.
+    pub(crate) drafts: BTreeMap<ScriptId, Vec<ph2d_script::props::PropDecl>>,
 }
 
 /// O que a gramática de uma aba fez (a sonda do gate da tecla).
@@ -121,6 +123,7 @@ impl Default for CodeDocs {
             copy_out: None,
             scene: crate::scene_names::Shared::default(),
             reload: Vec::new(),
+            drafts: BTreeMap::new(),
         }
     }
 }

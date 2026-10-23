@@ -140,6 +140,8 @@ teclado, OK 21/10), 7 (arrastar, OK 22/10). Nada de novo para o dono ver da d4/d
 3. Dê Play: a porta mexe. Ctrl+Z: a soltura desfaz-se.
 4. Errado se: o objecto é reparentado, a linha sai sem recuo, ou o Ctrl+Z não desfaz a soltura.
 
+**Smoke do dono da cena 7 no `main`: OK (23/10).**
+
 ## 10. ABERTO
 
 - **Fases do plano 08:** **d5** (cena de smoke `PH2D_CODE_SMOKE=8` que ensina nomes, vistas e imagens), **8b**, **8c**,

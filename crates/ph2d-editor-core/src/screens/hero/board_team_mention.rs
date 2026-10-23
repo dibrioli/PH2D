@@ -112,9 +112,27 @@ pub(super) fn choose(hero: &mut HeroScreen, n: usize) {
     let team = &mut hero.documents.live.team;
     team.calling.push(who);
     team.mention_pick = 0;
+    arm_called(hero);
     // O teclado continua no compositor (o `Enter` do despacho largou-o).
     hero.store.set_focus(Some(id));
     hero.store.mark_cancel_on_escape(id);
+}
+
+/// ⭐ A menção é uma PESSOA, não letras: o `Backspace` apaga inteiro o rótulo de quem está chamado — os
+/// escolhidos agora e, a editar, os que a mensagem já chamava (doc 17 §2.3).
+fn arm_called(hero: &mut HeroScreen) {
+    let team = &hero.documents.live.team;
+    let mut words: Vec<String> = team.calling.iter().map(Who::label).collect();
+    if let (Some((t, m)), Some(board)) = (team.editing, hero.documents.active_board()) {
+        let old = board.team.threads.iter().find(|th| th.id == t);
+        let msg = old.and_then(|th| th.messages.iter().find(|x| x.id == m));
+        words.extend(
+            msg.into_iter()
+                .flat_map(|x| x.mentions.iter().map(Who::label)),
+        );
+    }
+    hero.store
+        .arm_atomic_words(Some(crate::ids::BOARD_COMMENT_INPUT), words);
 }
 
 /// ⭐ Pinta a lista por baixo do campo `field` (ou por cima, se não cabe na área `area`) e arma as
@@ -127,6 +145,7 @@ pub(super) fn paint(
     ts: &mut TextSystem,
 ) {
     let id = crate::ids::BOARD_COMMENT_INPUT;
+    arm_called(hero);
     let Some((_, _, found)) = open_now(hero, true) else {
         hero.store.arm_list_nav(None);
         let team = &mut hero.documents.live.team;

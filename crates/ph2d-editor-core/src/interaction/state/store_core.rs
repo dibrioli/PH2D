@@ -126,6 +126,7 @@ impl WidgetStore {
             graph_zoom: BTreeMap::new(),
             graph_keys: Vec::new(),
             list_nav: None,
+            atomic_words: None,
             graph_canvas: BTreeMap::new(),
             graph_focused: None,
             graph_slop: crate::interaction::PressSlop::default(),

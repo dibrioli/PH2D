@@ -245,3 +245,50 @@ fn the_open_thread_paints_the_mention_in_its_own_colour() {
     );
     assert_eq!(with.1, plain.1, "nenhum glifo se perde");
 }
+
+/// ⭐ W24 — a menção é uma PESSOA, não letras: o `Backspace` colado a ela ou dentro dela apaga-a
+/// INTEIRA (nunca deixa `@Ru` sem ninguém chamado); escrever antes dela leva-a consigo.
+#[test]
+fn backspace_takes_a_mention_whole_and_typing_before_it_carries_it() {
+    use crate::interaction::{KEY_ARROW_LEFT, KEY_BACKSPACE};
+    let mut t = T::composing();
+    t.type_in("hi @r");
+    t.hero_key(KEY_ENTER);
+    assert_eq!(t.field(), "hi @Rui ");
+    t.hero_key(KEY_BACKSPACE);
+    assert_eq!(t.field(), "hi @Rui", "o espaço é texto");
+    t.hero_key(KEY_BACKSPACE);
+    assert_eq!(t.field(), "hi ", "colado ao fim, a pessoa sai inteira");
+    t.type_in("ok");
+    t.hero_key(KEY_ENTER);
+    let m = &t.team().threads.last().unwrap().messages[0];
+    assert_eq!((m.text.as_str(), m.mentions.len()), ("hi ok", 0));
+
+    let mut t = T::composing();
+    t.type_in("@r");
+    t.hero_key(KEY_ENTER);
+    t.type_in("now");
+    assert_eq!(t.field(), "@Rui now");
+    for _ in 0..6 {
+        t.hero_key(KEY_ARROW_LEFT);
+    }
+    t.hero_key(KEY_BACKSPACE);
+    assert_eq!(t.field(), " now", "dentro dela, a pessoa sai inteira");
+
+    let mut t = T::composing();
+    t.type_in("@r");
+    t.hero_key(KEY_ENTER);
+    t.type_in("x");
+    for _ in 0..6 {
+        t.hero_key(KEY_ARROW_LEFT);
+    }
+    t.type_in("hey ");
+    assert_eq!(t.field(), "hey @Rui x");
+    t.hero_key(KEY_BACKSPACE);
+    assert_eq!(t.field(), "hey@Rui x", "o Backspace antes dela é do texto");
+    t.type_in(" ");
+    t.hero_key(KEY_ENTER);
+    let m = &t.team().threads.last().unwrap().messages[0];
+    assert_eq!(m.mentions, vec![Who::Person("Rui".into())]);
+    assert_eq!(m.text.find("@Rui"), Some(4), "a pessoa andou com o texto");
+}

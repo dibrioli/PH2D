@@ -294,7 +294,7 @@ pub fn dispatch_key<'frame>(
         }
         KEY_BACKSPACE => {
             if let Some(id) = store.focus_id() {
-                if delete_selection_if_any(store, id) {
+                if delete_selection_if_any(store, id) || store.delete_atomic_word() {
                     events.push(WidgetEvent::TextChanged(id));
                 } else {
                     match store.get_mut(id) {

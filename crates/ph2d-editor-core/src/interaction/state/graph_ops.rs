@@ -142,6 +142,50 @@ impl WidgetStore {
         }
     }
 
+    /// W24 B14 — no campo `id`, cada um de `words` apaga-se INTEIRO com o `Backspace` (`None` = largar).
+    pub fn arm_atomic_words(&mut self, id: Option<NodeId>, words: Vec<String>) {
+        self.atomic_words = id.map(|id| (id, words));
+    }
+
+    /// O `Backspace` no campo focado com o cursor dentro ou no fim de um rótulo armado: apaga-o todo.
+    /// `true` = era um rótulo.
+    pub(crate) fn delete_atomic_word(&mut self) -> bool {
+        let Some((id, words)) = &self.atomic_words else {
+            return false;
+        };
+        if self.focus_id != Some(*id) {
+            return false;
+        }
+        let id = *id;
+        let Some(InteractiveState::TextInput { text, caret, .. }) = self.states.get(&id) else {
+            return false;
+        };
+        let at = *caret;
+        let Some((s, e)) = words
+            .iter()
+            .filter(|w| !w.is_empty())
+            .flat_map(|w| {
+                text.match_indices(w.as_str())
+                    .map(|(s, w)| (s, s + w.len()))
+            })
+            .find(|&(s, e)| s < at && at <= e)
+        else {
+            return false;
+        };
+        if let Some(InteractiveState::TextInput {
+            text,
+            caret,
+            selection_anchor,
+            ..
+        }) = self.states.get_mut(&id)
+        {
+            text.replace_range(s..e, "");
+            *caret = s;
+            *selection_anchor = None;
+        }
+        true
+    }
+
     /// Uma seta no campo focado com a lista armada: `true` = era da lista.
     pub(crate) fn list_step(&mut self, down: bool) -> bool {
         let focus = self.focus_id;

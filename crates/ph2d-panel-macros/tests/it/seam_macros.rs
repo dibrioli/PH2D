@@ -18,7 +18,7 @@ const VIEWPORT: Rect = Rect {
     w: 320.0,
     h: 1600.0,
 };
-const BITS: u64 = 42;
+pub(crate) const BITS: u64 = 42;
 
 fn etapa(k: usize, props: PropsDaEtapa) -> EtapaView {
     #[expect(clippy::cast_precision_loss, reason = "poucas etapas")]
@@ -37,7 +37,7 @@ fn etapa(k: usize, props: PropsDaEtapa) -> EtapaView {
     }
 }
 
-fn info(pode: Option<FamiliaDaMacro>, gravando: Option<FamiliaDaMacro>) -> MacroPanelInfo {
+pub(crate) fn info(pode: Option<FamiliaDaMacro>, gravando: Option<FamiliaDaMacro>) -> MacroPanelInfo {
     MacroPanelInfo {
         gravando,
         pode_gravar: pode,
@@ -61,17 +61,18 @@ fn info(pode: Option<FamiliaDaMacro>, gravando: Option<FamiliaDaMacro>) -> Macro
         }),
         armado: gravando.is_some(),
         objeto_macro: None,
+        ..MacroPanelInfo::default()
     }
 }
 
-struct Palco {
-    host: MockPanelHost,
-    st: MacrosPanelState,
+pub(crate) struct Palco {
+    pub(crate) host: MockPanelHost,
+    pub(crate) st: MacrosPanelState,
     rects: Vec<(ph2d_a11y::NodeId, Rect)>,
 }
 
 impl Palco {
-    fn novo(i: MacroPanelInfo) -> Self {
+    pub(crate) fn novo(i: MacroPanelInfo) -> Self {
         let mut p = Self {
             host: MockPanelHost::with_panel::<MacrosPanel>(),
             st: MacrosPanelState::default(),
@@ -82,15 +83,15 @@ impl Palco {
         p
     }
 
-    fn pinta(&mut self) {
+    pub(crate) fn pinta(&mut self) {
         self.rects = self.host.paint::<MacrosPanel>(&mut self.st, VIEWPORT);
     }
 
-    fn rect(&self, id: ph2d_a11y::NodeId) -> Option<Rect> {
+    pub(crate) fn rect(&self, id: ph2d_a11y::NodeId) -> Option<Rect> {
         self.rects.iter().find(|(n, _)| *n == id).map(|(_, r)| *r)
     }
 
-    fn carrega(&mut self, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
+    pub(crate) fn carrega(&mut self, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
         let r = self
             .rect(id)
             .unwrap_or_else(|| panic!("o painel nunca pintou {id:?}"));
@@ -108,7 +109,7 @@ impl Palco {
     }
 }
 
-fn so(a: &[EditorAction], r: MacroRequest) {
+pub(crate) fn so(a: &[EditorAction], r: MacroRequest) {
     assert_eq!(a, [EditorAction::Macro(r)]);
 }
 

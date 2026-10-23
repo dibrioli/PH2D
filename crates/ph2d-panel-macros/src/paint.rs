@@ -25,6 +25,16 @@ pub(crate) fn paint(st: &mut MacrosPanelState, ctx: &mut PaintCtx) {
         st.renomeando = false;
         st.dica = false;
     }
+    // A macro da biblioteca que saiu da lista (apagada, renomeada noutro sítio) deixa de estar
+    // escolhida.
+    if st
+        .lib_escolhida
+        .as_deref()
+        .is_some_and(|n| !state::na_biblioteca(n))
+    {
+        st.lib_escolhida = None;
+        st.lib_renomeando = false;
+    }
     let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();
     ctx.host.store_mut().set_panel_rect(ids::MACROS_PANEL, rect);
@@ -52,6 +62,9 @@ pub(crate) fn paint(st: &mut MacrosPanelState, ctx: &mut PaintCtx) {
             .collect()
     });
     crate::seam::register_rows(ctx.host.store_mut(), &linhas);
+    let nomes: Vec<String> =
+        state::with_current(|i| i.biblioteca.iter().map(|m| m.nome.clone()).collect());
+    crate::seam::register_lib_rows(ctx.host.store_mut(), &nomes);
     crate::seam::semeia(st, ctx.host);
 
     let inner_x = rect.x + PANEL_HEAD_PAD;

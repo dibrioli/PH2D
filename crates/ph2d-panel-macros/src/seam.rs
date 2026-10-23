@@ -9,18 +9,75 @@ use crate::ids;
 use crate::state::{self, Escolhida, MacrosPanelState};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore};
-use ph2d_editor_core::macro_edits::{CampoDaEtapa, MacroRequest, PropsDaEtapa};
+use ph2d_editor_core::macro_edits::{
+    CampoDaEtapa, MacroPanelInfo, MacroRequest, OndeAplicar, PropsDaEtapa,
+};
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::{ButtonState, TextInputState};
 
 /// Os botões, numa tabela: pintar, registar e despachar leem a MESMA.
-pub(crate) const BOTOES: [ph2d_a11y::NodeId; 6] = [
+pub(crate) const BOTOES: [ph2d_a11y::NodeId; 13] = [
     ids::MACROS_CLOSE,
     ids::MACROS_RECORD,
     ids::MACROS_STOP,
     ids::MACROS_RENAME,
     ids::MACROS_DELETE,
     ids::MACROS_HINT,
+    ids::MACROS_LIB_SAVE,
+    ids::MACROS_LIB_SAVE_ASSET,
+    ids::MACROS_LIB_IMPORT,
+    ids::MACROS_LIB_APPLY_NEW,
+    ids::MACROS_LIB_APPLY_OVER,
+    ids::MACROS_LIB_EXPORT,
+    ids::MACROS_LIB_DELETE,
+];
+
+/// **Os verbos da biblioteca**: o botão e o pedido que ele faz, numa tabela só — a pintura e o
+/// despacho leem-na (`None` = o gesto não é possível agora, e o botão pinta-se apagado).
+pub(crate) fn pedido_da_biblioteca(
+    id: ph2d_a11y::NodeId,
+    info: &MacroPanelInfo,
+    escolhida: Option<&str>,
+) -> Option<MacroRequest> {
+    let mostrado = || {
+        info.objeto
+            .as_ref()
+            .filter(|_| info.pode_guardar)
+            .map(|o| o.entity_bits)
+    };
+    let nome = || escolhida.map(str::to_owned);
+    match id {
+        ids::MACROS_LIB_SAVE => mostrado().map(|entity_bits| MacroRequest::Guarda { entity_bits }),
+        ids::MACROS_LIB_SAVE_ASSET => {
+            mostrado().map(|entity_bits| MacroRequest::GuardaComoAsset { entity_bits })
+        }
+        ids::MACROS_LIB_IMPORT => Some(MacroRequest::Importa),
+        ids::MACROS_LIB_APPLY_NEW => nome().map(|nome| MacroRequest::Aplica {
+            nome,
+            onde: OndeAplicar::Novo { em: None },
+        }),
+        ids::MACROS_LIB_APPLY_OVER => {
+            let alvo = info.por_cima_alvo.filter(|_| info.por_cima_de.is_some())?;
+            nome().map(|nome| MacroRequest::Aplica {
+                nome,
+                onde: OndeAplicar::PorCima { alvo },
+            })
+        }
+        ids::MACROS_LIB_EXPORT => nome().map(|nome| MacroRequest::Exporta { nome }),
+        ids::MACROS_LIB_DELETE => nome().map(|nome| MacroRequest::ApagaDaBiblioteca { nome }),
+        _ => None,
+    }
+}
+
+/// Os ids da tabela [`pedido_da_biblioteca`].
+pub(crate) const VERBOS_DA_BIBLIOTECA: [ph2d_a11y::NodeId; 7] = [
+    ids::MACROS_LIB_SAVE,
+    ids::MACROS_LIB_SAVE_ASSET,
+    ids::MACROS_LIB_IMPORT,
+    ids::MACROS_LIB_APPLY_NEW,
+    ids::MACROS_LIB_APPLY_OVER,
+    ids::MACROS_LIB_EXPORT,
+    ids::MACROS_LIB_DELETE,
 ];
 
 /// Os campos numéricos e a escala do arrasto de cada um (unidades por px — sem faixa: a família
@@ -70,10 +127,22 @@ pub(crate) fn register_rows(store: &mut WidgetStore, linhas: &[(usize, usize)]) 
     }
 }
 
+/// O registo POR QUADRO das linhas da biblioteca (os ids derivam do nome).
+pub(crate) fn register_lib_rows(store: &mut WidgetStore, nomes: &[String]) {
+    for n in nomes {
+        store.register_if_absent(ids::lib_row_id(n), InteractiveState::Plain);
+    }
+}
+
 /// Abre o campo de renomear com `seed` dentro e o cursor no fim.
 pub(crate) fn open_rename(store: &mut WidgetStore, seed: &str) {
+    abre_campo(store, ids::MACROS_RENAME_INPUT, seed);
+}
+
+/// Abre o campo de texto `id` com `seed` dentro, focado, e o Esc a cancelar.
+fn abre_campo(store: &mut WidgetStore, id: ph2d_a11y::NodeId, seed: &str) {
     store.register(
-        ids::MACROS_RENAME_INPUT,
+        id,
         InteractiveState::TextInput {
             state: TextInputState::Focused,
             text: seed.to_string(),
@@ -81,8 +150,18 @@ pub(crate) fn open_rename(store: &mut WidgetStore, seed: &str) {
             selection_anchor: None,
         },
     );
-    store.set_focus(Some(ids::MACROS_RENAME_INPUT));
-    store.mark_cancel_on_escape(ids::MACROS_RENAME_INPUT);
+    store.set_focus(Some(id));
+    store.mark_cancel_on_escape(id);
+}
+
+/// A macro da biblioteca de uma linha, se `id` for uma delas.
+fn macro_de(id: ph2d_a11y::NodeId) -> Option<String> {
+    state::with_current(|i| {
+        i.biblioteca
+            .iter()
+            .find(|m| ids::lib_row_id(&m.nome) == id)
+            .map(|m| m.nome.clone())
+    })
 }
 
 /// A etapa de uma linha, se `id` for uma delas.
@@ -127,6 +206,52 @@ pub(crate) fn apply_event(
     ev: WidgetEvent,
 ) -> EventOutcome {
     match ev {
+        // ── A biblioteca ──
+        WidgetEvent::DoubleClick(id) if macro_de(id).is_some() => {
+            let nome = macro_de(id).expect("acabou de ser lida");
+            abre_campo(host.store_mut(), ids::MACROS_LIB_RENAME_INPUT, &nome);
+            st.lib_escolhida = Some(nome);
+            st.lib_renomeando = true;
+            EventOutcome::Consumed
+        }
+        WidgetEvent::Click(id) if macro_de(id).is_some() => {
+            st.lib_escolhida = macro_de(id);
+            st.lib_renomeando = false;
+            EventOutcome::Consumed
+        }
+        WidgetEvent::Click(id) if VERBOS_DA_BIBLIOTECA.contains(&id) => {
+            let pedido =
+                state::with_current(|i| pedido_da_biblioteca(id, i, st.lib_escolhida.as_deref()));
+            if let Some(r) = pedido {
+                if id == ids::MACROS_LIB_DELETE {
+                    st.lib_escolhida = None;
+                    st.lib_renomeando = false;
+                }
+                pede(host, r);
+            }
+            EventOutcome::Consumed
+        }
+        WidgetEvent::Submit(id) if id == ids::MACROS_LIB_RENAME_INPUT => {
+            st.lib_renomeando = false;
+            let texto = match host.store().get(id) {
+                Some(InteractiveState::TextInput { text, .. }) => text.trim().to_owned(),
+                _ => String::new(),
+            };
+            if let Some(de) = st.lib_escolhida.clone()
+                && !texto.is_empty()
+                && texto != de
+            {
+                // A escolha segue o nome novo (cai se a família recusar o renomear).
+                st.lib_escolhida = Some(texto.clone());
+                pede(host, MacroRequest::Renomeia { de, para: texto });
+            }
+            EventOutcome::Consumed
+        }
+        WidgetEvent::Cancel(id) if id == ids::MACROS_LIB_RENAME_INPUT => {
+            st.lib_renomeando = false;
+            EventOutcome::Consumed
+        }
+        // ── As etapas ──
         WidgetEvent::DoubleClick(id) if etapa_de(id).is_some() => {
             let (e, _) = etapa_de(id).expect("acabou de ser lida");
             st.escolhida = Some(e);

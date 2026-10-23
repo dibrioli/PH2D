@@ -18,6 +18,10 @@ pub struct MacrosPanelState {
     pub renomeando: bool,
     /// O campo aberto escreve o texto do balão do tutorial, não o nome.
     pub dica: bool,
+    /// A macro da biblioteca escolhida, pelo nome (cai quando ela sai da lista).
+    pub lib_escolhida: Option<String>,
+    /// O campo de renomear está aberto sobre a macro escolhida da biblioteca.
+    pub lib_renomeando: bool,
 }
 
 thread_local! {
@@ -53,6 +57,11 @@ pub(crate) fn etapa(e: Escolhida) -> Option<EtapaView> {
             .find(|x| x.trilha == e.trilha && x.k == e.k)
             .cloned()
     })
+}
+
+/// A macro `nome` está na biblioteca do instantâneo actual?
+pub(crate) fn na_biblioteca(nome: &str) -> bool {
+    with_current(|i| i.biblioteca.iter().any(|m| m.nome == nome))
 }
 
 pub(crate) fn set_last_content_h(h: f32) {

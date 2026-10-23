@@ -98,6 +98,26 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.error.other_size" => {
             "This image is not the size the tutorial was recorded on ({detail})."
         }
+        // A biblioteca do utilizador (W18).
+        "panel.macros.lib.title" => "Library",
+        "panel.macros.lib.save" => "Save to library",
+        "panel.macros.lib.save_asset" => "Save as asset",
+        "panel.macros.lib.import" => "Import\u{2026}",
+        "panel.macros.lib.apply_new" => "Create new",
+        "panel.macros.lib.apply_over" => "Apply over \u{201c}{name}\u{201d}",
+        "panel.macros.lib.apply_over_needs_target" => {
+            "To apply it over something, select an image or a Motion object first."
+        }
+        "panel.macros.lib.export" => "Export\u{2026}",
+        "panel.macros.lib.delete" => "Delete",
+        "panel.macros.lib.empty" => {
+            "Your library is empty \u{2014} record a macro, then press Save to library."
+        }
+        "panel.macros.lib.unreadable" => "{n} files in the library folder could not be read.",
+        "panel.macros.lib.detail" => "{families} \u{b7} {seconds} s",
+        "panel.macros.lib.detail_canvas" => "{families} \u{b7} {seconds} s \u{b7} {w}\u{d7}{h}",
+        "panel.macros.lib.family.painter" => "Painting",
+        "panel.macros.lib.family.motion" => "Motion",
         // O balão do tutorial «fazer» (W6).
         "panel.macros.tutorial.step" => "Step {n} of {total}",
         "panel.macros.tutorial.before" => "Before you start",

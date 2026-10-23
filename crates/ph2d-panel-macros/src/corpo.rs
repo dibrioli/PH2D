@@ -5,15 +5,15 @@ use crate::ids;
 use crate::nomes;
 use crate::seam::PASSO_FINO;
 use crate::state::{Escolhida, MacrosPanelState};
-use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
+use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::macro_edits::{
     EtapaView, FamiliaDaMacro, MacroObjetoView, MacroPanelInfo, PropsDaEtapa, TipoDaEtapaView,
 };
 use ph2d_editor_core::paint::{paint_text, paint_text_block, resolve};
 use ph2d_editor_core::panel::rows::{RowCtx, value_col};
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ColorSwatch, RowHighlight, TextInput, TextInputState, Unit, paint_button,
-    paint_color_swatch, paint_row_highlight, paint_text_input_with_buffer,
+    Button, ButtonKind, ColorSwatch, RowHighlight, Unit, paint_button, paint_color_swatch,
+    paint_row_highlight,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
@@ -33,6 +33,12 @@ pub(crate) struct Corpo<'a> {
 
 impl Corpo<'_> {
     pub(crate) fn tudo(&mut self, info: &MacroPanelInfo, st: &MacrosPanelState, y: f32) -> f32 {
+        let y = self.atual(info, st, y);
+        self.biblioteca(info, st, y + Spacing::Md.px())
+    }
+
+    /// Gravar ▸ Parar e a macro do objecto mostrado.
+    fn atual(&mut self, info: &MacroPanelInfo, st: &MacrosPanelState, y: f32) -> f32 {
         let mut y = self.gravar(info, y);
         let Some(o) = &info.objeto else {
             return self.bloco(tr("panel.macros.empty"), ColorToken::Text3, y);
@@ -124,7 +130,7 @@ impl Corpo<'_> {
         }
     }
 
-    fn linha(&mut self, texto: &str, cor: ColorToken, y: f32) -> f32 {
+    pub(crate) fn linha(&mut self, texto: &str, cor: ColorToken, y: f32) -> f32 {
         paint_text(
             self.text_system,
             self.scene,
@@ -139,7 +145,7 @@ impl Corpo<'_> {
     }
 
     /// Uma frase que QUEBRA (nunca cortada): a linha cresce pelo que ela transborda.
-    fn bloco(&mut self, texto: &str, cor: ColorToken, y: f32) -> f32 {
+    pub(crate) fn bloco(&mut self, texto: &str, cor: ColorToken, y: f32) -> f32 {
         let topo = y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5;
         let alta = paint_text_block(
             self.text_system,
@@ -197,28 +203,9 @@ impl Corpo<'_> {
         let nome_x = self.x + Spacing::Sm.px();
         let nome_w = (direita - Spacing::Sm.px() - nome_x).max(1.0);
         if renomeando {
-            let r = Rect::new(nome_x, y, nome_w, ROW_H_PX);
-            self.hit_index.register(ids::MACROS_RENAME_INPUT, r);
-            let (st, text, caret, anchor) = match self.store.get(ids::MACROS_RENAME_INPUT) {
-                Some(InteractiveState::TextInput {
-                    state,
-                    text,
-                    caret,
-                    selection_anchor,
-                }) => (*state, text.clone(), *caret, *selection_anchor),
-                _ => (TextInputState::Focused, String::new(), 0, None),
-            };
-            let input = TextInput::new(ids::MACROS_RENAME_INPUT, "")
-                .visual((st, self.store.hover_live(ids::MACROS_RENAME_INPUT)));
-            paint_text_input_with_buffer(
-                &input,
-                Some(text.as_str()),
-                Some(caret),
-                anchor,
-                r,
-                self.scene,
-                self.text_system,
-                self.theme,
+            self.campo_de_texto(
+                ids::MACROS_RENAME_INPUT,
+                Rect::new(nome_x, y, nome_w, ROW_H_PX),
             );
         } else {
             let texto = format!("{}. {}", i + 1, nomes::nome(e));

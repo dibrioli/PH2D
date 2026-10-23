@@ -137,6 +137,13 @@ impl crate::App {
                     (self.timeline_view.macro_etapas.get(k))
                         .map(|e| TimelineIntent::ScrubExact(e.fim)),
                 ),
+                // A porta do losango largado: o pedido que `macro_steps::apply` levanta (W16).
+                Gesto::ArrastaLosango(k, d) => {
+                    if let Some(e) = self.timeline_view.macro_etapas.get(k) {
+                        let r = ph2d_panel_timeline::pedido_ao_largar(e, d);
+                        ph2d_app_macros::com(|m| m.pede(r));
+                    }
+                }
                 Gesto::Chaves => self.timeline_intents.extend(caminho::CHAVES_S.map(|s| {
                     TimelineIntent::AddKey {
                         entity: bits,

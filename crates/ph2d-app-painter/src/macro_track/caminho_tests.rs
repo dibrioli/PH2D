@@ -106,3 +106,22 @@ fn o_condutor_da_cada_gesto_uma_vez() {
     assert_eq!(n, todos);
     assert!(c.gestos_ate(u64::MAX).is_empty());
 }
+
+/// W16 — a `sobrepor`: a 2.ª pincelada noutra cor, Parar, o losango dela recuado para ela começar a meio
+/// da 1.ª, e só depois ⏮ e ▷.
+#[test]
+fn a_sobrepor_recua_o_losango_da_segunda_depois_de_parar_e_antes_de_tocar() {
+    let r = roteiro(Variante::Sobrepor);
+    assert!(r.windows(2).all(|w| w[0].0 <= w[1].0), "por ordem");
+    let pos = |f: &dyn Fn(&Gesto) -> bool| r.iter().position(|(_, g)| f(g)).unwrap();
+    let para = pos(&|g| *g == Gesto::Para);
+    let larga = pos(&|g| matches!(g, Gesto::ArrastaLosango(1, d) if *d < 0.0));
+    let cor = pos(&|g| matches!(g, Gesto::EscolheCor(_)));
+    let (rw, play) = (pos(&|g| *g == Gesto::Rewind), pos(&|g| *g == Gesto::Play));
+    let desce: Vec<usize> = (0..r.len())
+        .filter(|&i| matches!(r[i].1, Gesto::Desce(_)))
+        .collect();
+    assert_eq!(desce.len(), 2);
+    assert!(desce[0] < cor && cor < desce[1], "a 2.ª noutra cor");
+    assert!(para < larga && larga < rw && rw < play);
+}

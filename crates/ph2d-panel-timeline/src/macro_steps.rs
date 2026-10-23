@@ -100,6 +100,18 @@ pub(crate) fn paint(
     }
 }
 
+/// **O pedido do losango `e` largado `delta` segundos adiante** (W16): o instante do fim dele + Δ, só
+/// para ele. A porta única do largar — a cena `=6 sobrepor` pede-o por aqui também.
+#[must_use]
+pub fn pedido_ao_largar(e: &ph2d_timeline::EtapaDaMacroView, delta: f64) -> MacroRequest {
+    MacroRequest::Edita {
+        entity_bits: e.entity_bits,
+        trilha: e.trilha,
+        k: e.k,
+        campo: CampoDaEtapa::Instante(e.fim + delta),
+    }
+}
+
 /// O gesto num losango: arrastar re-cronometra ao largar; clicar leva a cabeça ao losango, sem snap.
 pub(crate) fn apply(
     state: &mut TimelinePanelState,
@@ -128,12 +140,7 @@ pub(crate) fn apply(
             if delta != 0.0
                 && let Some(e) = snap.macro_etapas.get(d.index)
             {
-                state.macro_pedido = Some(MacroRequest::Edita {
-                    entity_bits: e.entity_bits,
-                    trilha: e.trilha,
-                    k: e.k,
-                    campo: CampoDaEtapa::Instante(e.fim + delta),
-                });
+                state.macro_pedido = Some(pedido_ao_largar(e, delta));
             }
         }
         GesturePhase::Click | GesturePhase::DoubleClick => {

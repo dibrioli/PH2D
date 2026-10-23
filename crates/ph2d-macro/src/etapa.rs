@@ -364,36 +364,53 @@ fn desloca_as_etapas(
             });
         }
     }
-    let fim_antes = sai.last().map_or(0, |e| e.t.0);
-    let mut fim_novo = fim_antes;
+    let fim_antes = sai.iter().map(|e| e.t.0).max().unwrap_or(0);
     for (e, o) in sai.iter_mut().zip(&orig) {
         let Some(m) = o.and_then(de) else { continue };
         if leitor.e_relogio(&e.payload) {
             continue;
         }
         e.t = MacroTime(e.t.0.saturating_add_signed(m.desloca_us));
-        fim_novo = fim_novo.max(e.t.0);
         if let Some(c) = leitor.na_faixa(&e.payload, m.faixa) {
             e.payload = c;
         }
     }
-    if fim_novo > fim_antes {
-        // O fim da gravação (o que não é relógio no último instante, fora das etapas) vai para o fim da
-        // última etapa; o relógio estende-se até lá.
-        for (e, o) in sai.iter_mut().zip(&orig) {
-            if e.t.0 == fim_antes
-                && !o.is_some_and(|i| em_etapa(i).is_some())
-                && !leitor.e_relogio(&e.payload)
-            {
+    // A CAUDA (do fim da última etapa no tempo ao fim da gravação: a água a assentar até ao Parar) anda
+    // com a última etapa: o fim da trilha, e o clipe com ela, segue-a para lá e para cá.
+    let ultima = |depois: bool| vaos.iter().filter_map(|v| v.de(depois)).map(|v| v.1).max();
+    let d_fim = match (ultima(false), ultima(true)) {
+        (Some(a), Some(d)) => i64::try_from(d).unwrap_or(i64::MAX) - i64::try_from(a).unwrap_or(0),
+        _ => 0,
+    };
+    let fim_novo = fim_antes.saturating_add_signed(d_fim);
+    if fim_novo != fim_antes {
+        let mut fica = Vec::with_capacity(sai.len());
+        for (mut e, o) in sai.into_iter().zip(&orig) {
+            let relogio = leitor.e_relogio(&e.payload);
+            let da_etapa = !relogio && o.is_some_and(|i| em_etapa(i).is_some());
+            if da_etapa || (e.t.0 < fim_antes && e.t.0 <= fim_novo) {
+                fica.push(e);
+            } else if !relogio {
+                // O que fecha a gravação (o Parar) vai para o fim novo.
                 e.t = MacroTime(fim_novo);
+                fica.push(e);
+            } else if e.t.0 <= fim_novo {
+                fica.push(e);
             }
+            // O relógio da cauda que o fim novo deixou para trás sai.
         }
-        let mais = leitor.espera(ev, ev.len(), MacroTime(fim_antes), fim_novo - fim_antes, 0);
-        sai.extend(mais);
+        sai = fica;
+        if fim_novo > fim_antes {
+            sai.extend(leitor.espera(ev, ev.len(), MacroTime(fim_antes), fim_novo - fim_antes, 0));
+        }
     }
     // A marca da faixa fica no instante GRAVADO da etapa, depois do que lá estava (a cor escolhida antes
     // do toque, no mesmo instante): é o pincel dali que a etapa leva.
-    sai.extend(marcas);
+    // A cauda que encurtou leva-a consigo: o pincel de ali é o do fim novo.
+    sai.extend(marcas.into_iter().map(|mut m| {
+        m.t = m.t.min(MacroTime(fim_novo));
+        m
+    }));
     sai.sort_by_key(|e| e.t);
     if !saiu
         && corte != u64::MAX

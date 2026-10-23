@@ -196,6 +196,7 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
                 | super::caminho::Variante::Arrasta
                 | super::caminho::Variante::Cruza
                 | super::caminho::Variante::Cor
+                | super::caminho::Variante::Sobrepor
                 | super::caminho::Variante::ColorDrop
         );
     if !matches!(cena.as_deref(), Ok("4" | "6"))

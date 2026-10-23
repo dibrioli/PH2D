@@ -59,6 +59,7 @@ mod key_drag;
 pub mod linhas;
 mod loop_drag;
 mod macro_steps;
+pub use macro_steps::pedido_ao_largar;
 mod marker_drag;
 mod marker_menu;
 mod marker_rename;

@@ -392,8 +392,8 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
     );
     let d = b.tl.doc.clip_length_override(clip).unwrap();
     assert!(
-        d > duracao && (d - depois[2].fim.max(duracao)).abs() < 1e-6,
-        "o clipe acompanha a última etapa no tempo: {duracao} → {d}"
+        (d - (duracao + anda(2))).abs() < 1e-6,
+        "o clipe acompanha a última etapa no tempo (a cauda anda com ela): {duracao} → {d}"
     );
 
     // ⭐ O UNDO das duas pilhas. A macro é do diff do mundo: devolvê-la à de antes do arrasto (o

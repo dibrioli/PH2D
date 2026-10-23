@@ -55,6 +55,8 @@ pub enum Gesto {
     /// Três chaves de opacidade em quadros inteiros ([`CHAVES_S`]) — o dono arrasta uma por cima
     /// de outra (W15).
     Chaves,
+    /// O losango `k` da linha «Macro steps» arrastado `Δ` segundos e largado (W16): só aquela etapa anda.
+    ArrastaLosango(usize, f64),
 }
 
 /// Os instantes das chaves do [`Gesto::Chaves`]: quadros inteiros a 24 fps.
@@ -110,6 +112,9 @@ pub enum Variante {
     /// W15: Parar e o clique no losango da 2.ª etapa — a cabeça pára EM CIMA dele (`playhead=` e
     /// `steps=` do diagnóstico dizem o mesmo número).
     Etapa,
+    /// W16: em Digital, a 2.ª pincelada noutra cor; Parar e o losango dela arrastado para trás até ela
+    /// começar a meio da 1.ª; ⏮ e ▷ — as duas pintam ao mesmo tempo, cada uma na sua cor.
+    Sobrepor,
 }
 
 /// A variante desta corrida.
@@ -138,6 +143,7 @@ const NOMES: &[(&str, Variante)] = &[
     ("colordrop", Variante::ColorDrop),
     ("fim", Variante::Fim),
     ("etapa", Variante::Etapa),
+    ("sobrepor", Variante::Sobrepor),
 ];
 
 /// O valor de `PH2D_MACRO_CAMINHO` quando ele existe e não é nenhum caminho.
@@ -168,7 +174,7 @@ fn pincelada(r: &mut Vec<(u64, Gesto)>, t0: u64, v: f32, dura: u64) {
 /// **O roteiro da variante `v`**: cada gesto e o instante (ms do relógio da cena), por ordem.
 #[must_use]
 pub fn roteiro(v: Variante) -> Vec<(u64, Gesto)> {
-    if matches!(v, Variante::Cor | Variante::ColorDrop) {
+    if matches!(v, Variante::Cor | Variante::ColorDrop | Variante::Sobrepor) {
         return roteiro_do_cef(v);
     }
     let mut r = Vec::new();
@@ -226,7 +232,7 @@ pub fn roteiro(v: Variante) -> Vec<(u64, Gesto)> {
 }
 
 use cef::roteiro_do_cef;
-pub use cef::{COR_DO_DROP, COR_NOVA};
+pub use cef::{COR_DO_DROP, COR_NOVA, SOBREPOR_S};
 
 #[path = "caminho_cef.rs"]
 mod cef;
@@ -399,6 +405,7 @@ pub fn anuncio(conduz: bool) -> String {
                 f.display()
             );
         }
+        Variante::Sobrepor => return cef::mensagem_sobrepor(&f),
         Variante::Etapa => {
             return format!(
                 "the app does the path by itself — Record, two strokes, Stop, three Opacity keys on the \

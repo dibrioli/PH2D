@@ -24,6 +24,10 @@ fn gestos(ev: &[Event]) -> Vec<(u64, u8, u8)> {
         .collect()
 }
 
+fn ate(r: Vec<(MacroTime, Vec<u8>)>, q: u64) -> Vec<(MacroTime, Vec<u8>)> {
+    r.into_iter().filter(|(t, _)| *t <= MacroTime(q * Q)).collect()
+}
+
 fn relogio(ev: &[Event]) -> Vec<(MacroTime, Vec<u8>)> {
     ev.iter()
         .filter(|e| e.payload[0] == 0)
@@ -36,7 +40,11 @@ fn relogio(ev: &[Event]) -> Vec<(MacroTime, Vec<u8>)> {
 fn deslocar_move_so_a_etapa_e_o_relogio_fica() {
     let g = gravacao();
     let ev = efetiva(&desloca(&g, 2, -8 * Q as i64), &Brinquedo).expect("sobrepor é aceite");
-    assert_eq!(relogio(&ev), relogio(&g.events), "um relógio só, o da gravação");
+    assert_eq!(
+        relogio(&ev),
+        ate(relogio(&g.events), 14),
+        "um relógio só, o da gravação — até ao fim novo (a última etapa no tempo é a 1, até 14Q)"
+    );
     assert_eq!(
         gestos(&ev),
         vec![
@@ -68,7 +76,11 @@ fn deslocar_move_so_a_etapa_e_o_relogio_fica() {
         .collect();
     assert_eq!(pincel.len(), 1, "uma marca de faixa por etapa deslocada");
     let (i, t, n) = pincel[0];
-    assert_eq!((t, n), (19, 3), "no instante GRAVADO do gesto 2, para a faixa 3");
+    assert_eq!(
+        (t, n),
+        (14, 3),
+        "no instante GRAVADO do gesto 2 (19Q), puxado para o fim novo da trilha, para a faixa 3"
+    );
     assert!(
         ev[i + 1..].iter().all(|e| e.t > ev[i].t),
         "depois de tudo o que já estava nesse instante"
@@ -82,7 +94,7 @@ fn uma_etapa_passa_a_frente_das_outras() {
     let ev = efetiva(&desloca(&g, 2, -19 * Q as i64), &Brinquedo).expect("aceite");
     let primeiros: Vec<_> = gestos(&ev).into_iter().take(3).collect();
     assert_eq!(primeiros, vec![(0, 1, 3), (1, 2, 3), (2, 3, 3)]);
-    assert_eq!(relogio(&ev), relogio(&g.events));
+    assert_eq!(relogio(&ev), ate(relogio(&g.events), 14));
 }
 
 #[test]
@@ -182,5 +194,26 @@ fn o_ficheiro_guarda_o_deslocamento_e_exige_quem_o_aplique() {
             .windows(exige.len())
             .any(|w| w == exige),
         "sem deslocamento não se exige"
+    );
+}
+
+/// A cauda anda com a última etapa no tempo: a última levada para trás encurta a trilha (o relógio que
+/// sobra sai), e o fim volta a ser o fim da última que acaba.
+#[test]
+fn a_ultima_etapa_levada_para_tras_encurta_a_trilha() {
+    let g = gravacao();
+    let ev = efetiva(&desloca(&g, 2, -8 * Q as i64), &Brinquedo).expect("aceite");
+    assert_eq!(
+        ev.last().map(|e| e.t),
+        Some(MacroTime(14 * Q)),
+        "o fim é o do gesto 1 (14Q): a gravação acabava no fim do gesto 2"
+    );
+    assert!(relogio(&ev).iter().all(|(t, _)| *t <= MacroTime(14 * Q)));
+    assert!(ev.windows(2).all(|w| w[0].t <= w[1].t));
+    let ev = efetiva(&desloca(&g, 0, 2 * Q as i64), &Brinquedo).expect("aceite");
+    assert_eq!(
+        ev.last().map(|e| e.t),
+        Some(MacroTime(21 * Q)),
+        "deslocar uma do meio não mexe no fim"
     );
 }

@@ -238,6 +238,7 @@ pub(crate) fn build_initial_state(
         sheet_textures: std::collections::BTreeMap::new(),
         next_sheet_id: 0,
         next_painted_doc: 1, // 0 fica livre como "nenhum"
+        painter_reata: Default::default(),
         atlas_asset_map: BTreeMap::new(),
         catalogs: ph2d_asset_index::CatalogTree::new(),
         library_cache: crate::project_library::LibraryCache::default(),

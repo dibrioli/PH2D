@@ -122,6 +122,8 @@ pub(crate) struct AppGfx {
     /// As macros do Painter em cena (ADR-0186): as ranhuras de textura delas são do `renderer`, e
     /// vivem e morrem com ele.
     pub(crate) painter_macros: ph2d_app_painter::macro_track::PalcosDoPainter,
+    /// Os documentos do Painter atravessam o restauro do undo pela identidade estável.
+    pub(crate) painter_reata: ph2d_app_painter::documentos_no_projecto::Reata,
     /// O compositor está a ler o acumulador (em vez da saída do tonemap)?
     ///
     /// ⚠️ **Ele guarda o `game_view` num bind group construído uma vez**, então trocar a fonte é um

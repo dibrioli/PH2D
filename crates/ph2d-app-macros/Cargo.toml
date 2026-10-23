@@ -37,6 +37,8 @@ ph2d-panel-macros = { path = "../ph2d-panel-macros" }
 ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
 # A4 (W9): o relógio do clipe que o Parar tem de re-armar.
 ph2d-core = { path = "../ph2d-core" }
+# Desfazer o aplicar: a porta dos documentos do Painter à volta do restauro (`Reata`).
+ph2d-app-painter = { path = "../ph2d-app-painter" }
 
 [lints]
 workspace = true

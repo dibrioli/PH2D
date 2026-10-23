@@ -182,6 +182,24 @@ impl PainterTool {
         }
     }
 
+    /// **Os documentos mudam de chave** (`de → para`): o restauro do undo respawna o mundo e a mesma
+    /// imagem volta com bits novos. Tudo sai antes de entrar: uma chave nova nunca pisa outra velha.
+    pub fn reata_documentos(&mut self, de_para: &BTreeMap<u64, u64>) {
+        let mut saem: Vec<(u64, crate::tool::documents::StashedDoc)> = Vec::new();
+        for de in de_para.keys() {
+            if let Some(d) = self.doc_cache.remove(de) {
+                saem.push((de_para[de], d));
+            }
+        }
+        self.doc_cache.extend(saem);
+        let novo = |b: Option<u64>| b.map(|x| de_para.get(&x).copied().unwrap_or(x));
+        self.bound_doc = novo(self.bound_doc);
+        self.shape_source_doc = novo(self.shape_source_doc);
+        if let Some((b, _)) = self.pending_layer.as_mut() {
+            *b = de_para.get(b).copied().unwrap_or(*b);
+        }
+    }
+
     /// Os pixels que o sprite deve mostrar depois de um load — o documento instalado, composto e (se
     /// houver relevo) **iluminado**.
     ///

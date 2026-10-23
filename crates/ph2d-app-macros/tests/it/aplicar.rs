@@ -20,7 +20,7 @@ const OBJETO: u64 = 20;
 struct SemMotion;
 impl ph2d_editor_core::macro_tutorial::TranspoeDaFamilia for SemMotion {}
 
-fn pasta(nome: &str) -> PathBuf {
+pub(crate) fn pasta(nome: &str) -> PathBuf {
     let p = std::env::temp_dir().join(format!(
         "ph2d-macros-aplicar-{nome}-{}-{:?}",
         std::process::id(),
@@ -31,7 +31,7 @@ fn pasta(nome: &str) -> PathBuf {
 }
 
 /// Uma banca cuja imagem tem `w×h` (branca) e vive dentro de um objecto Macro; devolve o objecto.
-fn banca(w: u32, h: u32, lib: &PathBuf) -> (Banca, u64) {
+pub(crate) fn banca(w: u32, h: u32, lib: &PathBuf) -> (Banca, u64) {
     let mut b = Banca::nova();
     b.m.com_pasta(lib.clone());
     let wd = b.sim.world_mut();
@@ -59,7 +59,7 @@ fn banca(w: u32, h: u32, lib: &PathBuf) -> (Banca, u64) {
     (b, dono.to_bits())
 }
 
-fn grava(b: &mut Banca, de: [f32; 2], para: [f32; 2]) {
+pub(crate) fn grava(b: &mut Banca, de: [f32; 2], para: [f32; 2]) {
     b.m.pede(MacroRequest::Grava);
     b.quadro();
     b.pincelada(de, para);
@@ -375,7 +375,11 @@ fn aplicar_escolhe_o_objeto_macro_nascido() {
         .collect();
     assert_eq!(raiz.len(), 1);
     assert_ne!(raiz[0], b.bits);
-    assert_eq!(b.m.toma_o_aplicado(), Some(raiz[0]), "o objecto Macro por cima");
+    assert_eq!(
+        b.m.toma_o_aplicado(),
+        Some(raiz[0]),
+        "o objecto Macro por cima"
+    );
 }
 
 /// ⭐ Sem nada escolhido o «Aplicar por cima» pede que se escolha uma imagem ou um objecto Motion; com
@@ -392,5 +396,9 @@ fn sem_escolha_o_por_cima_pede_que_se_escolha() {
     let i = b.info(Some(vazio));
     assert_eq!(i.por_cima_recusa, Some(m::MACRO_APLICAR_INCOMPATIVEL));
     let i = b.info(Some(b.bits));
-    assert_eq!((i.por_cima_alvo, i.por_cima_recusa), (Some(b.bits), None), "controlo");
+    assert_eq!(
+        (i.por_cima_alvo, i.por_cima_recusa),
+        (Some(b.bits), None),
+        "controlo"
+    );
 }

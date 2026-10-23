@@ -180,7 +180,9 @@ impl crate::App {
                 field_selection_ids(gfx.sim.world(), &bits)
             }),
         };
-        let (vec, map, flip, flip_map) = state.restore(&mut gfx.sim, &gfx.component_registry);
+        let reg = &gfx.component_registry;
+        let (vec, map, flip, flip_map) =
+            (gfx.painter_reata).em_volta(&mut gfx.sim, &mut gfx.tools, |s| state.restore(s, reg));
         gfx.vec_scene = vec;
         gfx.flip = flip;
         gfx.guides = state.guides.clone();

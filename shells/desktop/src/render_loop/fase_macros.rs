@@ -30,8 +30,10 @@ impl crate::App {
             .tools
             .active()
             .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("motion"));
+        let escolhido = gfx.hero_screen.as_ref().and_then(|h| h.gizmo.selection);
         let painter = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools);
         let mut f = Familias {
+            escolhido,
             painter,
             painter_activo,
             motion_em_edicao: gfx.motion.objeto.editing,
@@ -49,7 +51,6 @@ impl crate::App {
         let agora = agora_us();
         ph2d_app_macros::com(|m| m.quadro(&mut f, &mut c, agora));
         let hero = gfx.hero_screen.as_ref();
-        let escolhido = hero.and_then(|h| h.gizmo.selection);
         // O erro da reprodução em cena: só a shell alcança os palcos.
         let erro = escolhido.and_then(|b| {
             gfx.painter_macros

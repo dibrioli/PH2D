@@ -7,6 +7,8 @@
 /// A tradução de uma chave deste menu, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
+        // W18: o objecto Macro (`ph2d_app_macros::object_add`).
+        "object_add.macro" => "Macro",
         // ph2d-migrar-texto:begin
         "object_add.title" => "Add Object",
         "object_add.group.two_d" => "2D",

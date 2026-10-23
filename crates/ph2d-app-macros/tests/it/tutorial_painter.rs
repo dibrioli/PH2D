@@ -110,6 +110,7 @@ impl Banca {
     fn um_quadro(&mut self) -> BalaoDoTutorial {
         let mut motion = SemMotion;
         let mut f = Familias {
+            escolhido: None,
             painter: Some(&mut self.t),
             painter_activo: self.activo,
             motion: &mut motion,

@@ -45,6 +45,7 @@ impl crate::App {
             ) {
                 Ok((label, bits)) => {
                     *next_import_cell = next_import_cell.saturating_add(1);
+                    ph2d_app_macros::com(|m| m.nasceu(sim, bits));
                     hero.gizmo.replace_selection(Some(bits));
                     hero.bus
                         .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {

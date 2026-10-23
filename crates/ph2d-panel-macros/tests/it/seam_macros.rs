@@ -59,6 +59,8 @@ fn info(pode: Option<FamiliaDaMacro>, gravando: Option<FamiliaDaMacro>) -> Macro
             editada_desde: None,
             erro: None,
         }),
+        armado: gravando.is_some(),
+        objeto_macro: None,
     }
 }
 

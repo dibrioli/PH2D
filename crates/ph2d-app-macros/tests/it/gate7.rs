@@ -38,8 +38,10 @@ const QUADRO_US: u64 = 16_667;
 const DT_MS: f32 = 1000.0 / 60.0;
 
 pub(crate) struct Banca {
-    sim: SimWorld,
-    painter: PainterTool,
+    pub(crate) sim: SimWorld,
+    pub(crate) painter: PainterTool,
+    /// O objecto escolhido (W18: dentro de um objecto Macro, o Gravar arma-o).
+    pub(crate) escolhido: Option<u64>,
     /// O Motion como a composição o passa: a gravadora e o objecto em edição (esta crate não
     /// depende da família dele).
     motion: MotionDeBrinquedo,
@@ -69,6 +71,7 @@ impl Banca {
         Self {
             sim,
             painter,
+            escolhido: None,
             motion: MotionDeBrinquedo,
             motion_em_edicao: None,
             tl: TimelineState::default(),
@@ -89,6 +92,7 @@ impl Banca {
         self.painter.on_tick(DT_MS);
         self.agora += QUADRO_US;
         let mut f = Familias {
+            escolhido: self.escolhido,
             painter: Some(&mut self.painter),
             painter_activo: self.activo,
             motion: &mut self.motion,
@@ -108,6 +112,7 @@ impl Banca {
     /// A shell publica o instantâneo e o painel pinta; os gestos que a pintura levanta vão à família.
     pub(crate) fn pinta(&mut self) {
         let f = Familias {
+            escolhido: self.escolhido,
             painter: Some(&mut self.painter),
             painter_activo: self.activo,
             motion: &mut self.motion,
@@ -115,7 +120,9 @@ impl Banca {
             motion_na_mao: false,
             etapas: &[],
         };
-        let info = self.m.info(&f, &self.sim, Some(self.bits), None);
+        let info = self
+            .m
+            .info(&f, &self.sim, self.escolhido.or(Some(self.bits)), None);
         set_current_macros(info);
         self.rects = self.host.paint::<MacrosPanel>(&mut self.st, VIEWPORT);
         self.drena();

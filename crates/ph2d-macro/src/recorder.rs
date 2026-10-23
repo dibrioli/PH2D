@@ -80,6 +80,12 @@ impl MacroRecorder {
         &self.doc
     }
 
+    /// O documento em curso, para quem abre uma trilha e lhe dá o alvo e a ficha depois (a sessão do
+    /// objecto Macro, W18) ou acerta o quadro de referência.
+    pub fn doc_mut(&mut self) -> &mut MacroDoc {
+        &mut self.doc
+    }
+
     #[must_use]
     pub fn finish(self) -> MacroDoc {
         self.doc

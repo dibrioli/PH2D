@@ -154,6 +154,11 @@ pub struct MacroPanelInfo {
     /// A chave da frase: porque não se pode gravar, ou porque a última tentativa recusou.
     pub recusa: Option<&'static str>,
     pub objeto: Option<MacroObjetoView>,
+    /// Uma gravação está armada (o botão é Parar), com ou sem família aberta (W18: o objecto Macro arma
+    /// vazio).
+    pub armado: bool,
+    /// O nome do objecto Macro que o Gravar arma — ou em que se grava.
+    pub objeto_macro: Option<String>,
 }
 
 /// Uma propriedade de uma etapa.
@@ -206,3 +211,11 @@ pub const MACRO_RECUSA_SEM_TELA: &str = "panel.macros.refusal.no_canvas";
 pub const MACRO_RECUSA_JA_GRAVA: &str = "panel.macros.refusal.already_recording";
 /// Gravar: nenhuma família grava aqui (nem o Painter em Wet Paint nem um objecto Motion em edição).
 pub const MACRO_RECUSA_SEM_FAMILIA: &str = "panel.macros.refusal.nothing_to_record";
+/// Gravar no objecto Macro: a família trabalha num objecto que não está dentro dele (W18).
+pub const MACRO_RECUSA_FORA_DO_OBJETO: &str = "panel.macros.refusal.outside_the_macro";
+/// Gravar no objecto Macro: a imagem (ou o Motion) está dentro de outro objecto dentro dele.
+pub const MACRO_RECUSA_FUNDO_DEMAIS: &str = "panel.macros.refusal.too_deep";
+/// Gravar no objecto Macro: esta gravação já leva uma imagem (ou um Motion) — uma de cada família.
+pub const MACRO_RECUSA_UM_DE_CADA: &str = "panel.macros.refusal.one_per_family";
+/// Parar sem que nada tenha sido gravado.
+pub const MACRO_RECUSA_NADA_GRAVADO: &str = "panel.macros.refusal.nothing_recorded";

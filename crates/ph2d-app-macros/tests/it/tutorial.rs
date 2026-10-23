@@ -165,6 +165,7 @@ impl Banca {
 
     fn quadro(&mut self) -> Option<BalaoDoTutorial> {
         let mut f = Familias {
+            escolhido: None,
             painter: None,
             painter_activo: false,
             motion: &mut self.aluno,

@@ -76,18 +76,19 @@ impl Corpo<'_> {
 
     /// Gravar ▸ Parar. O botão Gravar só se pinta quando há quem grave; senão a frase diz porquê.
     fn gravar(&mut self, info: &MacroPanelInfo, y: f32) -> f32 {
-        let (id, rotulo, kind) = match (info.gravando, info.pode_gravar) {
-            (Some(_), _) => (
+        let pode = info.pode_gravar.is_some() || info.objeto_macro.is_some();
+        let (id, rotulo, kind) = match (info.armado || info.gravando.is_some(), pode) {
+            (true, _) => (
                 ids::MACROS_STOP,
                 tr("panel.macros.stop"),
                 ButtonKind::Danger,
             ),
-            (None, Some(_)) => (
+            (false, true) => (
                 ids::MACROS_RECORD,
                 tr("panel.macros.record"),
                 ButtonKind::Accent,
             ),
-            (None, None) => {
+            (false, false) => {
                 let k = info
                     .recusa
                     .unwrap_or("panel.macros.refusal.nothing_to_record");
@@ -104,17 +105,20 @@ impl Corpo<'_> {
         paint_button(&b, rect, self.scene, self.text_system, self.theme);
         self.hit_index.register(id, rect);
         let y = y + ROW_H_PX + ph2d_tokens::control_gap_px();
-        let frase = match (info.gravando, info.pode_gravar) {
-            (Some(f), _) => tr_with("panel.macros.recording", &[("family", &nomes::familia(f))]),
-            (None, Some(f)) => tr_with("panel.macros.ready", &[("family", &nomes::familia(f))]),
-            (None, None) => String::new(),
+        let frase = match (&info.objeto_macro, info.armado, info.gravando, info.pode_gravar) {
+            (Some(n), true, _, _) => tr_with("panel.macros.recording_into", &[("name", n)]),
+            (Some(n), false, _, _) => tr_with("panel.macros.ready_into", &[("name", n)]),
+            (None, _, Some(f), _) => {
+                tr_with("panel.macros.recording", &[("family", &nomes::familia(f))])
+            }
+            (None, _, None, Some(f)) => {
+                tr_with("panel.macros.ready", &[("family", &nomes::familia(f))])
+            }
+            (None, _, None, None) => String::new(),
         };
         let y = self.bloco(&frase, ColorToken::Text3, y);
         // A recusa da última tentativa (o Parar que não coube na animação) fica à vista.
-        match info
-            .recusa
-            .filter(|_| info.gravando.is_some() || info.pode_gravar.is_some())
-        {
+        match info.recusa.filter(|_| info.armado || pode) {
             Some(k) => self.bloco(tr(k), ColorToken::Danger, y),
             None => y,
         }

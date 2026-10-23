@@ -5,11 +5,13 @@
 //!
 //! O estado é da família ([`com`], um `thread_local`), nunca um campo da `App` (ADR-0075).
 
+pub mod biblioteca;
 mod conferencia;
 pub mod erros;
 pub mod espera;
 pub mod etapas;
 pub mod instala;
+pub mod object_add;
 pub mod sessao;
 mod tutorial;
 
@@ -37,6 +39,8 @@ pub struct Familias<'a> {
     /// A ferramenta Motion está na mão: com o objecto em edição, é o modo Edit (o tutorial pede-o).
     pub motion_na_mao: bool,
     pub etapas: Injectadas<'a>,
+    /// Os bits do objecto escolhido: dentro de um objecto Macro, o Gravar arma-o (W18).
+    pub escolhido: Option<u64>,
 }
 
 impl Familias<'_> {
@@ -45,6 +49,15 @@ impl Familias<'_> {
             self.painter.as_deref().filter(|_| self.painter_activo),
             self.motion_em_edicao,
         )
+    }
+
+    /// **O que o Gravar arma agora**: o objecto Macro do escolhido; sem ele, a família que grava o seu
+    /// próprio objecto (antes da W18).
+    fn armacao(&self, sim: &SimWorld) -> Result<sessao::Armacao, &'static str> {
+        if let Some(m) = self.escolhido.and_then(|b| sessao::objeto_macro_de(sim, b)) {
+            return Ok(sessao::Armacao::Objeto(m));
+        }
+        self.quem_grava().map(sessao::Armacao::Familia)
     }
 }
 
@@ -176,28 +189,38 @@ impl Macros {
     /// ele gravou NESTE quadro, no relógio dele — em [`Macros::quadro`] ainda não tinham acontecido.
     pub fn depois_do_motion(&mut self, motion: &mut dyn ph2d_macro::Gravadora) {
         let agora = self.agora_us;
-        if let Some(s) = self
-            .sessao
-            .as_mut()
-            .filter(|s| s.familia() == FamiliaDaMacro::Motion)
-        {
-            s.passos(motion, agora);
+        if let Some(s) = self.sessao.as_mut() {
+            s.passos_do_motion(motion, agora);
         }
+    }
+
+    /// **Um objecto nasceu** (o Add, uma imagem nova): a gravar um objecto Macro, ele nasce DENTRO dele
+    /// e a ficha guarda quando. Devolve `true` se o pendurou.
+    pub fn nasceu(&mut self, sim: &mut SimWorld, bits: u64) -> bool {
+        let agora = self.agora_us;
+        self.sessao
+            .as_mut()
+            .is_some_and(|s| s.nasceu(sim, bits, agora))
     }
 
     /// **A sprite que o Painter está a gravar**: o palco dela em cena cede-a ao traço vivo do editor
     /// (uma 2.ª tomada sobre uma sprite com macro mostra o que o artista pinta, não a tomada antiga).
     #[must_use]
     pub fn sprite_gravada(&self) -> Option<u64> {
-        self.sessao
-            .as_ref()
-            .filter(|s| s.familia() == FamiliaDaMacro::Painter)
-            .map(sessao::Sessao::dono)
+        self.sessao.as_ref().and_then(Sessao::sprite_gravada)
     }
 
+    /// A família da trilha que grava (o Painter primeiro); `None` também enquanto um objecto Macro está
+    /// armado sem nada aberto — ver [`Self::armado`].
     #[must_use]
     pub fn gravando(&self) -> Option<FamiliaDaMacro> {
-        self.sessao.as_ref().map(Sessao::familia)
+        self.sessao.as_ref().and_then(Sessao::familia)
+    }
+
+    /// Há uma gravação armada (o Parar é o botão).
+    #[must_use]
+    pub fn armado(&self) -> bool {
+        self.sessao.is_some()
     }
 
     /// **O quadro**: os pedidos por ordem, depois os passos que as famílias gravaram neste quadro.
@@ -212,12 +235,8 @@ impl Macros {
         }
         // O Painter consumiu a entrada do quadro antes desta fase; o Motion corre DEPOIS dela
         // ([`Macros::depois_do_motion`]).
-        if let Some(s) = self
-            .sessao
-            .as_mut()
-            .filter(|s| s.familia() == FamiliaDaMacro::Painter)
-        {
-            s.quadro(f, agora_us);
+        if let Some(s) = self.sessao.as_mut() {
+            s.quadro(f, c.sim, agora_us);
         }
         self.sincroniza(c, f.etapas);
         ph2d_editor_core::macro_tutorial::set_balao(self.tutorial.balao(f, c.sim));
@@ -263,8 +282,8 @@ impl Macros {
                     return;
                 }
                 let r = f
-                    .quem_grava()
-                    .and_then(|fam| Sessao::abre(fam, f, c.sim, agora_us));
+                    .armacao(c.sim)
+                    .and_then(|a| Sessao::abre(a, f, c.sim, agora_us));
                 match r {
                     Ok(s) => {
                         self.sessao = Some(s);
@@ -394,7 +413,20 @@ impl Macros {
             Ok(fam) => (Some(fam), None),
             Err(k) => (None, Some(k)),
         };
-        let objeto = escolhido.and_then(|bits| {
+        // O objecto Macro do escolhido (ele, ou o antepassado que grava): é a macro dele que se mostra.
+        let macro_do_escolhido = escolhido.and_then(|b| sessao::objeto_macro_de(sim, b));
+        let em = self
+            .sessao
+            .as_ref()
+            .map(Sessao::dono)
+            .or(macro_do_escolhido);
+        let objeto_macro = em.and_then(|b| {
+            sim.world()
+                .get::<ph2d_ecs::Name>(ph2d_ecs::Entity::from_bits(b))
+                .map(|n| n.0.clone())
+        });
+        let recusa_da_sessao = self.sessao.as_ref().and_then(Sessao::recusa);
+        let objeto = macro_do_escolhido.or(escolhido).and_then(|bits| {
             let bytes = &sim
                 .world()
                 .get::<ph2d_ecs::Macro>(ph2d_ecs::Entity::from_bits(bits))?
@@ -417,8 +449,13 @@ impl Macros {
             } else {
                 pode_gravar
             },
-            recusa: self.recusa.or(recusa_agora),
+            recusa: self
+                .recusa
+                .or(recusa_da_sessao)
+                .or(recusa_agora.filter(|_| macro_do_escolhido.is_none())),
             objeto,
+            armado: self.sessao.is_some(),
+            objeto_macro,
         }
     }
 }

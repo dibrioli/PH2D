@@ -41,6 +41,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.step.default_value" => "default",
         "panel.macros.refusal.no_canvas" => "The Painter has no canvas to record on.",
         "panel.macros.refusal.already_recording" => "Already recording.",
+        "panel.macros.recording_into" => "Recording into \u{201c}{name}\u{201d}\u{2026}",
+        "panel.macros.ready_into" => "Record what you build inside \u{201c}{name}\u{201d}.",
+        "panel.macros.refusal.outside_the_macro" => {
+            "This is outside the Macro being recorded \u{2014} work on something inside it."
+        }
+        "panel.macros.refusal.too_deep" => {
+            "Put this right inside the Macro (not inside another object in it) to record it."
+        }
+        "panel.macros.refusal.one_per_family" => {
+            "This recording already has one image and one Motion \u{2014} stop and record another Macro for this one."
+        }
+        "panel.macros.refusal.nothing_recorded" => "Nothing was recorded.",
         "panel.macros.refusal.nothing_to_record" => {
             "Nothing to record here: paint in Wet Paint, or edit a Motion object."
         }

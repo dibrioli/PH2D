@@ -34,6 +34,7 @@
 #   1  vermelho de TESTE — compilou, algum teste falhou
 #   2  vermelho de COMPILAÇÃO — nenhum teste chegou a correr
 #   3  PENDUROU — bateu no tecto de tempo (ver `PH2D_TEST_TIMEOUT` abaixo)
+#   4  NENHUM teste casou o filtro — o «verde» de zero testes não responde nada
 #
 # ⚠️ **Isto NÃO é o gate de fechamento.** O gate batched continua sendo
 # `scripts/nextest-impacted.sh` + clippy `--all-targets` + auditoria, 1× sobre o
@@ -60,6 +61,7 @@ fi
 
 crate="${1:?uso: cargo-test-narrow.sh <crate> [args extra do cargo]}"
 shift || true
+orig=("$@")
 
 command -v jq >/dev/null 2>&1 || { echo "✗ jq não encontrado (o script depende dele)"; exit 2; }
 
@@ -68,12 +70,35 @@ command -v jq >/dev/null 2>&1 || { echo "✗ jq não encontrado (o script depend
 # o exit do `head` e um vermelho passa por verde.
 if [ "${PH2D_SKIP_CHECK:-0}" != "1" ]; then
   chk="$(mktemp)"; trap 'rm -f "$chk"' EXIT
+  # ⛔ Só as OPÇÕES do cargo vão ao `check`: o nome do teste (e tudo depois do `--`) é do libtest, e o
+  # `check` recusava-o («unexpected argument») sem uma mensagem de compilador — a porta lia 0 erros e
+  # o vermelho de compilação saía como «0 falharam · 0 passaram», exit 1 (medido 23/10).
+  opts=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --) break ;;
+      --profile | --features | -F | --test | --bench | --example | --bin | --target | -j | --jobs | \
+        --manifest-path | --target-dir | --config | -Z)
+        opts+=("$1"); [ $# -gt 1 ] && opts+=("$2"); shift 2 || shift ;;
+      -*) opts+=("$1"); shift ;;
+      *) shift ;;
+    esac
+  done
+  set -- "${orig[@]}"
   # `--all-targets` de propósito: o teste vive em `tests/`, e um `check -p` sem
   # isto compila só a lib — daria verde com o teste quebrado, que é o modo de
   # falha exato que esta porta existe para impedir.
-  cargo check -p "$crate" --all-targets --message-format=json "$@" >"$chk" 2>/dev/null
+  cargo check -p "$crate" --all-targets --message-format=json "${opts[@]}" >"$chk" 2>"$chk.err"
+  crc=$?
   nerr=$(jq -rs '[ .[] | select(.reason=="compiler-message") | .message
                        | select(.level=="error") ] | length' "$chk" 2>/dev/null || echo 0)
+  if [ "$crc" -ne 0 ] && [ "${nerr:-0}" -eq 0 ]; then
+    echo "✗ o check não correu (exit $crc) — nenhum teste correu:"
+    grep -E "^error" "$chk.err" | head -3
+    rm -f "$chk.err"
+    exit 2
+  fi
+  rm -f "$chk.err"
   if [ "${nerr:-0}" -gt 0 ]; then
     echo "✗ NÃO COMPILA — nenhum teste correu ($nerr erro(s)):"
     jq -rs '[ .[] | select(.reason=="compiler-message") | .message
@@ -161,9 +186,22 @@ pass=$(grep -oE '^test result: ok\. [0-9]+ passed' "$out" | grep -oE '[0-9]+' | 
 fail=$(grep -oE '[0-9]+ failed' "$out" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')
 ign=$(grep -oE '[0-9]+ ignored' "$out" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')
 
+if [ "$rc" -eq 0 ] && [ "$pass" -eq 0 ]; then
+  echo "✗ $crate — o filtro não casou NENHUM teste (0 correram · ${ign} ignorados): confira o nome"
+  exit 4
+fi
 if [ "$rc" -eq 0 ]; then
   echo "✓ $crate — ${pass} passaram · ${ign} ignorados"
   exit 0
+fi
+
+# Nenhuma suíte chegou ao `test result:` — o cargo parou antes (compilação, argumento), não um teste.
+if ! grep -qE '^test result:' "$out"; then
+  echo "✗ $crate — NÃO CORREU nenhum teste (o cargo parou antes, exit $rc):"
+  grep -E "^error" "$out" | head -5
+  echo
+  echo "(saída inteira: cargo test -p $crate $*)"
+  exit 2
 fi
 
 echo "✗ $crate — ${fail} falharam · ${pass} passaram · ${ign} ignorados"

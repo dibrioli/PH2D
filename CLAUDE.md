@@ -119,7 +119,7 @@ contexto*. As alavancas, por ordem:
   rodada em `37 s` contra `4`–`5 h` (doc 121 §9.16).
 - **Inner loop = `bash scripts/cargo-check-narrow.sh <crate>`.** O teste não responde «a minha edição
   entrou?». **Corrida dirigida = `bash scripts/cargo-test-narrow.sh <crate> <nome>`** (corre `check` na frente;
-  exit `0` verde · `1` vermelho · `2` não compilou). Medido em 02/10: `cargo test` ainda corre **~3×**
+  exit `0` verde · `1` vermelho · `2` não compilou · `4` o nome não casou nenhum teste). Medido em 02/10: `cargo test` ainda corre **~3×**
   mais que `check` (alvo ≤ 1), e é a maior parte do relógio de ferramentas.
 - ⛔ **Comando pesado vai por `bash scripts/ph2d-run.sh <cmd>`** (fatia da LINHA: CPU ≤ 50 %, RAM ≤ 24G,
   prazo 30 min; a placa: a VEZ pede-se sozinha, `PH2D_GPU=1` só para medir —

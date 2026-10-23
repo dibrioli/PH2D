@@ -35,6 +35,13 @@ pub(crate) mod constantes;
 /// ⭐ W6g r5: o canto num passe próprio (ficheiro irmão pelo tecto de 700 LOC).
 #[path = "solver_c3_fina_cantos.rs"]
 mod fina_cantos;
+/// ⭐ W6h §10: as duas pipelines da fina (ficheiro irmão pelo tecto de 700 LOC).
+#[path = "solver_c3_fina_dupla.rs"]
+mod fina_dupla;
+/// Os layouts e as ligações dos grupos (ficheiro irmão pelo tecto de 700 LOC).
+#[path = "solver_c3_ligacoes.rs"]
+mod ligacoes;
+use ligacoes::{layout, textura_vazia, vista};
 
 /// O que os passes C3 pegam do solver ao nascer.
 pub(super) struct Entradas<'a> {
@@ -71,6 +78,8 @@ pub(super) struct C3 {
     borda: Option<borda::Borda>,
     /// ⭐ W6g r5: o passe dos cantos depois da fina (`Config::adia_o_canto`).
     fina_cantos: Option<fina_cantos::FinaCantos>,
+    /// ⭐ W6h §10: as duas pipelines da fina (`Config::usa_fina_dupla`; no lugar da `fina`).
+    fina_dupla: Option<fina_dupla::FinaDupla>,
     /// ⭐ W6g r9: a tabela da `V2` esparsa (vazia sem os cantos).
     tabela: wgpu::Buffer,
     /// A grade das cascatas (a fonte do rebote cobre-a inteira).
@@ -79,49 +88,6 @@ pub(super) struct C3 {
     /// O uniforme deste quadro: a grade fina inteira por omissão, a região da janela com
     /// [`Self::regiao`].
     u: UniformeFina,
-}
-
-fn layout(
-    device: crate::Placa<'_>,
-    rotulo: &str,
-    entradas: &[wgpu::BindGroupLayoutEntry],
-) -> wgpu::BindGroupLayout {
-    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some(rotulo),
-        entries: entradas,
-    })
-}
-
-/// Uma textura de 1 × 1 para uma ligação que o shader cita e este solver não alimenta.
-fn textura_vazia(
-    device: &wgpu::Device,
-    rotulo: &str,
-    formato: wgpu::TextureFormat,
-    uso: wgpu::TextureUsages,
-) -> wgpu::TextureView {
-    device
-        .create_texture(&wgpu::TextureDescriptor {
-            label: Some(rotulo),
-            size: wgpu::Extent3d {
-                width: 1,
-                height: 1,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: formato,
-            usage: uso,
-            view_formats: &[],
-        })
-        .create_view(&wgpu::TextureViewDescriptor::default())
-}
-
-fn vista(binding: u32, v: &wgpu::TextureView) -> wgpu::BindGroupEntry<'_> {
-    wgpu::BindGroupEntry {
-        binding,
-        resource: wgpu::BindingResource::TextureView(v),
-    }
 }
 
 impl C3 {
@@ -345,152 +311,160 @@ impl C3 {
                 super::miolo::grupo_do_anel(device, &entradas, &grupo, e.vistas, m[0], l)
             });
         let entrada_anel = format!("{entrada_fina}_anel");
-        let adia = cfg.adia_o_canto();
+        let (adia, dupla) = (cfg.adia_o_canto(), cfg.usa_fina_dupla());
         // ⭐ W5p: a fina e o anel (os únicos que levam segundos a frio no compilador do driver) compilam
         // nos seus fios enquanto este monta o resto da C3 (a abertura em série: +0,3 s).
-        let (fina, anel, preenchimento, rebote, borda, fina_cantos) = std::thread::scope(|s| {
-            let anel = grupos_anel.as_ref().map(|(l, _)| {
-                s.spawn(|| pipeline("luz2d c3 anel", l, &entrada_anel, &constantes_fina))
-            });
-            let fina = (!cfg.so_a_c0 && !adia).then(|| {
-                s.spawn(|| pipeline("luz2d c3 fina", &g2, entrada_fina, &constantes_fina))
-            });
-            let fina_cantos = (adia && !cfg.so_a_c0).then(|| {
-                s.spawn(|| {
-                    let g = (entradas.as_slice(), grupo.as_slice(), &g2);
-                    let l = [&cena_layout, e.lampadas_layout];
-                    fina_cantos::FinaCantos::nova(e, &pipeline_em, l, g, &constantes_fina)
-                })
-            });
-            // ⭐ W5a (F3): o JFA do complemento — grupo 3 (o 1 e o 2 ficam vazios).
-            let preenchimento = cfg
-                .grade_do_preenchimento()
-                .zip(op.preenche)
-                .zip(e.uni_preenche)
-                .map(|(((celulas, saltos), p), uniforme)| {
+        let (fina, anel, preenchimento, rebote, borda, fina_cantos, fina_dupla) =
+            std::thread::scope(|s| {
+                let anel = grupos_anel.as_ref().map(|(l, _)| {
+                    s.spawn(|| pipeline("luz2d c3 anel", l, &entrada_anel, &constantes_fina))
+                });
+                let fina = (!cfg.so_a_c0 && !adia && !dupla).then(|| {
+                    s.spawn(|| pipeline("luz2d c3 fina", &g2, entrada_fina, &constantes_fina))
+                });
+                let fina_cantos = (adia && !cfg.so_a_c0).then(|| {
+                    s.spawn(|| {
+                        let g = (entradas.as_slice(), grupo.as_slice(), &g2);
+                        let l = [&cena_layout, e.lampadas_layout];
+                        fina_cantos::FinaCantos::nova(e, &pipeline_em, l, g, &constantes_fina)
+                    })
+                });
+                let fina_dupla = dupla.then(|| {
+                    s.spawn(|| {
+                        let l = [&cena_layout, e.lampadas_layout];
+                        fina_dupla::FinaDupla::nova(e, &pipeline_em, l, &g2, &constantes_fina)
+                    })
+                });
+                // ⭐ W5a (F3): o JFA do complemento — grupo 3 (o 1 e o 2 ficam vazios).
+                let preenchimento = cfg
+                    .grade_do_preenchimento()
+                    .zip(op.preenche)
+                    .zip(e.uni_preenche)
+                    .map(|(((celulas, saltos), p), uniforme)| {
+                        let g3 = layout(
+                            device,
+                            "luz2d c3 preenche",
+                            &[
+                                entrada_uniforme(0, wgpu::ShaderStages::COMPUTE),
+                                entrada_textura(1, wgpu::TextureSampleType::Uint),
+                                entrada_escrita(2, wgpu::TextureFormat::R32Uint),
+                            ],
+                        );
+                        let grupos = [Some(&cena_layout), None, None, Some(&g3)];
+                        let bytes = size_of::<UniformePreenche>() as u64;
+                        let grupo = |j: usize, entrada: usize, saida: usize| {
+                            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                                label: Some("luz2d c3 preenche"),
+                                layout: &g3,
+                                entries: &[
+                                    wgpu::BindGroupEntry {
+                                        binding: 0,
+                                        resource: fatia_uniforme(uniforme, j as u64, bytes),
+                                    },
+                                    vista(1, &e.vistas[entrada]),
+                                    vista(2, &e.vistas[saida]),
+                                ],
+                            })
+                        };
+                        // A semente escreve a 1.ª (e liga a 2.ª como entrada, que ela não lê); o salto j lê
+                        // j % 2 e escreve a outra.
+                        let mut gs = vec![grupo(0, p[1], p[0])];
+                        for j in 0..saltos.len() {
+                            gs.push(grupo(j + 1, p[j % 2], p[(j + 1) % 2]));
+                        }
+                        Preenchimento {
+                            semente: pipeline_em(
+                                "luz2d c3 preenche semente",
+                                &grupos,
+                                "c3_preenche_semente",
+                                &[],
+                            ),
+                            salto: pipeline_em(
+                                "luz2d c3 preenche salto",
+                                &grupos,
+                                "c3_preenche_salto",
+                                &[],
+                            ),
+                            grupos: gs,
+                            uniforme: uniforme.clone(),
+                            saltos,
+                            u: UniformePreenche {
+                                celulas,
+                                inicio: [0; 2],
+                                fim: celulas,
+                                celula: cfg.preenchimento.unwrap_or(1),
+                                salto: 0,
+                                fina: cfg.fina,
+                                _p: [0; 3],
+                            },
+                        }
+                    });
+
+                // ⭐ W5c: a fonte do rebote, na grade das cascatas inteira (a marcha e o passo da luz direta).
+                let rebote = op.rebote.map(|[_, fonte]| {
+                    let g2 = layout(device, "luz2d c3 rebote c0", &[entrada_textura(1, FLOAT)]);
                     let g3 = layout(
                         device,
-                        "luz2d c3 preenche",
-                        &[
-                            entrada_uniforme(0, wgpu::ShaderStages::COMPUTE),
-                            entrada_textura(1, wgpu::TextureSampleType::Uint),
-                            entrada_escrita(2, wgpu::TextureFormat::R32Uint),
-                        ],
+                        "luz2d c3 rebote saida",
+                        &[entrada_escrita(3, wgpu::TextureFormat::Rgba16Float)],
                     );
-                    let grupos = [Some(&cena_layout), None, None, Some(&g3)];
-                    let bytes = size_of::<UniformePreenche>() as u64;
-                    let grupo = |j: usize, entrada: usize, saida: usize| {
+                    let grupo = |l: &wgpu::BindGroupLayout, b: u32, v: usize| {
                         device.create_bind_group(&wgpu::BindGroupDescriptor {
-                            label: Some("luz2d c3 preenche"),
-                            layout: &g3,
-                            entries: &[
-                                wgpu::BindGroupEntry {
-                                    binding: 0,
-                                    resource: fatia_uniforme(uniforme, j as u64, bytes),
-                                },
-                                vista(1, &e.vistas[entrada]),
-                                vista(2, &e.vistas[saida]),
-                            ],
+                            label: Some("luz2d c3 rebote"),
+                            layout: l,
+                            entries: &[vista(b, &e.vistas[v])],
                         })
                     };
-                    // A semente escreve a 1.ª (e liga a 2.ª como entrada, que ela não lê); o salto j lê
-                    // j % 2 e escreve a outra.
-                    let mut gs = vec![grupo(0, p[1], p[0])];
-                    for j in 0..saltos.len() {
-                        gs.push(grupo(j + 1, p[j % 2], p[(j + 1) % 2]));
+                    let grupos = [grupo(&g2, 1, c0), grupo(&g3, 3, fonte)];
+                    let mut constantes = vec![("PASSO", fino(true))];
+                    if let Some(b) = bordas {
+                        constantes.push(("RAIOS_DIRETOS", f64::from(b.raios)));
+                        constantes.push(("BISSECOES", f64::from(b.bissecoes)));
                     }
-                    Preenchimento {
-                        semente: pipeline_em(
-                            "luz2d c3 preenche semente",
-                            &grupos,
-                            "c3_preenche_semente",
-                            &[],
-                        ),
-                        salto: pipeline_em(
-                            "luz2d c3 preenche salto",
-                            &grupos,
-                            "c3_preenche_salto",
-                            &[],
-                        ),
-                        grupos: gs,
-                        uniforme: uniforme.clone(),
-                        saltos,
-                        u: UniformePreenche {
-                            celulas,
-                            inicio: [0; 2],
-                            fim: celulas,
-                            celula: cfg.preenchimento.unwrap_or(1),
-                            salto: 0,
-                            fina: cfg.fina,
-                            _p: [0; 3],
-                        },
-                    }
+                    let em = |d: f64| {
+                        let c: Vec<(&str, f64)> = constantes
+                            .iter()
+                            .copied()
+                            // ⭐ W6g r9: a fonte do rebote, na grade GROSSA, sem a cunha da captura fina (o G9
+                            // no Baixo: 0,0105 → 0,0071; handoff W6g §28).
+                            .chain([("DISTANTES", d), ("BORDA_CANTOS", 0.0)])
+                            .collect();
+                        pipeline_em(
+                            "luz2d c3 rebote",
+                            &[
+                                Some(&cena_layout),
+                                Some(e.lampadas_layout),
+                                Some(&g2),
+                                Some(&g3),
+                            ],
+                            "c3_rebote",
+                            &c,
+                        )
+                    };
+                    (Par::em_paralelo(cfg.distantes, em), grupos)
                 });
 
-            // ⭐ W5c: a fonte do rebote, na grade das cascatas inteira (a marcha e o passo da luz direta).
-            let rebote = op.rebote.map(|[_, fonte]| {
-                let g2 = layout(device, "luz2d c3 rebote c0", &[entrada_textura(1, FLOAT)]);
-                let g3 = layout(
-                    device,
-                    "luz2d c3 rebote saida",
-                    &[entrada_escrita(3, wgpu::TextureFormat::Rgba16Float)],
-                );
-                let grupo = |l: &wgpu::BindGroupLayout, b: u32, v: usize| {
-                    device.create_bind_group(&wgpu::BindGroupDescriptor {
-                        label: Some("luz2d c3 rebote"),
-                        layout: l,
-                        entries: &[vista(b, &e.vistas[v])],
-                    })
-                };
-                let grupos = [grupo(&g2, 1, c0), grupo(&g3, 3, fonte)];
-                let mut constantes = vec![("PASSO", fino(true))];
-                if let Some(b) = bordas {
-                    constantes.push(("RAIOS_DIRETOS", f64::from(b.raios)));
-                    constantes.push(("BISSECOES", f64::from(b.bissecoes)));
-                }
-                let em = |d: f64| {
-                    let c: Vec<(&str, f64)> = constantes
-                        .iter()
-                        .copied()
-                        // ⭐ W6g r9: a fonte do rebote, na grade GROSSA, sem a cunha da captura fina (o G9
-                        // no Baixo: 0,0105 → 0,0071; handoff W6g §28).
-                        .chain([("DISTANTES", d), ("BORDA_CANTOS", 0.0)])
-                        .collect();
-                    pipeline_em(
-                        "luz2d c3 rebote",
-                        &[
-                            Some(&cena_layout),
-                            Some(e.lampadas_layout),
-                            Some(&g2),
-                            Some(&g3),
-                        ],
-                        "c3_rebote",
-                        &c,
+                // ⭐ W5d: a borda exata (e, W6f, os cantos) — `solver_c3_borda.rs`.
+                let borda = op.borda.map(|b| {
+                    borda::Borda::nova(
+                        e,
+                        b,
+                        cob,
+                        (op.cantos, op.vertices_vazia),
+                        &tabela,
+                        &pipeline_em,
                     )
-                };
-                (Par::em_paralelo(cfg.distantes, em), grupos)
-            });
-
-            // ⭐ W5d: a borda exata (e, W6f, os cantos) — `solver_c3_borda.rs`.
-            let borda = op.borda.map(|b| {
-                borda::Borda::nova(
-                    e,
-                    b,
-                    cob,
-                    (op.cantos, op.vertices_vazia),
-                    &tabela,
-                    &pipeline_em,
+                });
+                (
+                    fina.map(|h| h.join().expect("a compilação da fina")),
+                    anel.map(|h| h.join().expect("a compilação do anel")),
+                    preenchimento,
+                    rebote,
+                    borda,
+                    fina_cantos.map(|h| h.join().expect("a compilação dos cantos")),
+                    fina_dupla.map(|h| h.join().expect("a compilação da fina dupla")),
                 )
             });
-            (
-                fina.map(|h| h.join().expect("a compilação da fina")),
-                anel.map(|h| h.join().expect("a compilação do anel")),
-                preenchimento,
-                rebote,
-                borda,
-                fina_cantos.map(|h| h.join().expect("a compilação dos cantos")),
-            )
-        });
         let anel = anel.zip(grupos_anel.map(|(_, g)| g));
         // ⭐ W6g r5: com o canto num passe próprio a fina é a `c3_fina_adia` dele.
         let (fina, fina_cantos) = match fina_cantos {
@@ -509,6 +483,7 @@ impl C3 {
             rebote,
             borda,
             fina_cantos,
+            fina_dupla,
             tabela,
             tamanho_grosso: [cfg.grade.largura, cfg.grade.altura],
             uniforme: e.uni_c3.clone(),
@@ -594,6 +569,9 @@ impl C3 {
         if let Some(fc) = &self.fina_cantos {
             fc.zera(gpu);
         }
+        if let Some(fd) = &self.fina_dupla {
+            fd.zera(gpu);
+        }
         let grupos =
             |a: [u32; 2], b: [u32; 2]| [(b[0] - a[0]).div_ceil(8), (b[1] - a[1]).div_ceil(8)];
         let grossa = grupos(self.u.inicio_grosso, self.u.fim_grosso);
@@ -669,15 +647,22 @@ impl C3 {
             timestamp_writes: tempos.map(|t| t.escrita_compute(tempos::C3_FINA)),
         });
         // O entorno (`so_a_c0`) não tem a fina.
-        let Some(par) = &self.fina else { return };
-        p.set_pipeline(par.de(distantes));
+        if self.fina.is_none() && self.fina_dupla.is_none() {
+            return;
+        }
         p.set_bind_group(0, &self.cena, &[]);
         p.set_bind_group(1, lampadas, &[]);
         p.set_bind_group(2, &self.grupo_fina, &[]);
-        if let Some(fc) = &self.fina_cantos {
-            p.set_bind_group(3, fc.grupo(), &[]);
+        if let Some(fd) = &self.fina_dupla {
+            fd.gravar(&mut p, distantes, fina);
         }
-        p.dispatch_workgroups(fina[0], fina[1], 1);
+        if let Some(par) = &self.fina {
+            p.set_pipeline(par.de(distantes));
+            if let Some(fc) = &self.fina_cantos {
+                p.set_bind_group(3, fc.grupo(), &[]);
+            }
+            p.dispatch_workgroups(fina[0], fina[1], 1);
+        }
         if let Some(fc) = &self.fina_cantos {
             fc.depois(&mut p, distantes, &self.grupo_fina);
         }

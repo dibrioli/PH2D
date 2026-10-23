@@ -186,6 +186,9 @@ pub struct Config {
     /// captura (o recurso é a memória; a cena 2 pede ~1 %: handoff W6g §25–§26). Acima dele o bloco fica na
     /// lei W6d e conta-se ([`crate::Solver::cantos_recusados`]).
     pub cantos_por_blocos: u32,
+    /// ⭐ W6h §10 — as DUAS pipelines da fina ([`Self::usa_fina_dupla`]): os grupos longe de toda cunha sem o
+    /// ramo dela no `num_corpo` (mesmo bit; o ramo custava até +14 % na C3: handoff W6h §6).
+    pub fina_dupla: bool,
     /// ⭐ W6f — a SONDA de cor do `c3_fina` (o `sonda_cor` do `c3_direta.wgsl`): `0` = a luz; `1..=6`
     /// gravam no lugar dela o que a escolha das faces decidiu (só a lei antiga, `miolo: None`, o lê).
     pub sonda: u32,
@@ -404,6 +407,7 @@ impl Config {
             canto: Canto::LIGADO,
             borda_cantos: true,
             cantos_por_blocos: CANTOS_POR_BLOCOS_PADRAO,
+            fina_dupla: true,
             sonda: 0,
             pe_na_borda: true,
             vis_na_face: true,
@@ -454,6 +458,17 @@ impl Config {
     #[must_use]
     pub fn usa_cantos(&self) -> bool {
         self.borda_cantos && self.borda_exata && self.borda_continua && self.borda_vertice.is_some()
+    }
+
+    /// ⭐ W6h §10: a fina corre em duas pipelines ([`Self::fina_dupla`]) — só na `c3_fina` com os cantos.
+    #[must_use]
+    pub fn usa_fina_dupla(&self) -> bool {
+        self.fina_dupla
+            && self.usa_cantos()
+            && !self.adia_o_canto()
+            && matches!(self.refino, Refino::Bordas(_))
+            && self.usa_visibilidade()
+            && !self.so_a_c0
     }
 
     /// ⭐ W6g r5: o canto ([`Self::canto`]) corre no passe próprio (`c3_fina_cantos`) — só na `c3_fina`

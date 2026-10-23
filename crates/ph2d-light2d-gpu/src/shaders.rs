@@ -110,6 +110,37 @@ const RC: [[[&str; 2]; 2]; 2] = [
 /// (`niveis_em_textura`, ⭐ W5z: [`crate::Config::hrc_niveis_em_textura`]) ou em buffer.
 #[must_use]
 pub fn rc(aritmetica: Precisao, armazenamento: Precisao, niveis_em_textura: bool) -> &'static str {
+    static PRONTOS: [std::sync::OnceLock<&'static str>; 8] =
+        [const { std::sync::OnceLock::new() }; 8];
     let k = |p| usize::from(p == Precisao::F32);
-    RC[k(aritmetica)][k(armazenamento)][usize::from(niveis_em_textura)]
+    let (a, b, c) = (
+        k(aritmetica),
+        k(armazenamento),
+        usize::from(niveis_em_textura),
+    );
+    PRONTOS[4 * a + 2 * b + c]
+        .get_or_init(|| Box::leak(com_meio_sem_cunha(RC[a][b][c]).into_boxed_str()))
+}
+
+/// ⭐ W6h §10 — o módulo com o `meio_sem_cunha` (o `meio` com o ramo da cunha trocado pelo da lei W6d) logo
+/// depois do `meio`: uma lei só no texto, a variante gerada dela (a do `num_corpo` da `c3_fina_enxuta`).
+fn com_meio_sem_cunha(fonte: &str) -> String {
+    const MEIO: &str = "fn meio(pc: vec2<f32>) -> Meio {";
+    const RAMO: &str = "            let e = cantos_tabela[";
+    const FIM_DO_RAMO: &str =
+        "            } else if d < 0.0 {\n                return m;\n            }\n";
+    const LEI_W6D: &str = "            if d < 0.0 {\n                return m;\n            }\n";
+    assert_eq!(fonte.matches(MEIO).count(), 1, "um meio");
+    let k = fonte.find(MEIO).expect("o meio");
+    let k2 = k + fonte[k..].find("\n}\n").expect("o fim do meio") + 3;
+    let meio = &fonte[k..k2];
+    let i = meio.find(RAMO).expect("o ramo da cunha");
+    let j = i + meio[i..].find(FIM_DO_RAMO).expect("o fim do ramo") + FIM_DO_RAMO.len();
+    assert_eq!(meio.matches(RAMO).count(), 1, "um ramo da cunha");
+    let sem = format!(
+        "{}{LEI_W6D}{}",
+        &meio[..i].replacen("fn meio(", "fn meio_sem_cunha(", 1),
+        &meio[j..]
+    );
+    format!("{}{sem}{}", &fonte[..k2], &fonte[k2..])
 }

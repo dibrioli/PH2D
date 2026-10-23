@@ -95,6 +95,8 @@ override CANTO_FRACAO: bool = false;
 override CANTO_UM_LADO: bool = false;
 // ⭐ W6g r5 — o texel de duas faces fica para o [`c3_fina_cantos`] (a [`c3_fina_adia`] compila sem o canto).
 override CANTO_ADIA: bool = false;
+// ⭐ W6h §10 — a fina dos grupos LONGE de toda cunha (a [`c3_fina_enxuta`]): o `num_corpo` sem o ramo dela.
+override FINA_ENXUTA: bool = false;
 // ⭐ W5d — o ponto de fronteira que um texel do INTERIOR lê toma a c0 pela média AO LONGO da face,
 // nesta meia-largura (texels das cascatas; 0 = no ponto): ver [`c0_ao_longo_da_face`].
 override C0_AO_LONGO_DA_FACE: f32 = 0.0;
@@ -1043,7 +1045,11 @@ fn fundo_do_grupo(alvo: vec2<u32>, na_regiao: bool, lid: u32) -> bool {
 
 @compute @workgroup_size(8, 8)
 fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(local_invocation_index) lid: u32) {
-    let alvo = gid.xy + fina.inicio;
+    fina_no_texel(gid.xy + fina.inicio, lid);
+}
+
+// O texel `alvo` da fina (a [`c3_fina`], a [`c3_fina_enxuta`] e a [`c3_fina_listada`]).
+fn fina_no_texel(alvo: vec2<u32>, lid: u32) {
     let na_regiao = all(alvo < fina.fim);
     if fundo_do_grupo(alvo, na_regiao, lid) || !na_regiao {
         return;
@@ -1051,6 +1057,226 @@ fn c3_fina(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(local_invocat
     borda_aqui = true;
     let tau = meio(ponto_fino(alvo)).tau;
     luz_da_fina(alvo, onde_calcular(alvo), tau);
+}
+
+// ⭐ W6h §10 — as DUAS pipelines da fina: a [`c3_fina_marca`] lista os grupos 8×8 PERTO de uma cunha (um
+// `num_corpo` deles pode ler um bloco com cunha), a [`c3_fina_enxuta`] calcula os outros sem o ramo dela e a
+// [`c3_fina_listada`] (a fina de sempre) os listados, por despacho INDIRETO. Os blocos com cunha somam-se numa
+// tabela de áreas ([`c3_fina_cunhas_linhas`] e [`c3_fina_cunhas_colunas`]): o retângulo de um grupo pergunta-se
+// em 4 leituras. Cabeçalho = o despacho (`x` = os grupos listados) e `n` = os grupos da grade; depois o mapa
+// (um `u32` por grupo da região) e, a partir de `n`, a lista.
+struct Marcas {
+    x: atomic<u32>,
+    y: u32,
+    z: u32,
+    n: u32,
+    grupos: array<u32>,
+}
+struct MarcasLidas {
+    x: u32,
+    y: u32,
+    z: u32,
+    n: u32,
+    grupos: array<u32>,
+}
+@group(3) @binding(25) var<storage, read_write> fina_marcas: Marcas;
+@group(3) @binding(26) var<storage, read> fina_marcas_lidas: MarcasLidas;
+// Por bloco 8×8 da captura: a cunha (θ₁ < 50 num texel do slot dele, a do `meio`) e depois a soma da área.
+@group(3) @binding(27) var<storage, read_write> fina_cunhas: array<u32>;
+
+// O raio das consultas do `num_corpo` à volta de um texel da fina, fora da marcha (texels da fina; o máximo
+// medido é ~16,4: handoff W6h §8 i).
+const RAIO_DO_NUM_CORPO: f32 = 17.0;
+var<workgroup> parciais: array<u32, 256>;
+
+fn blocos_da_captura() -> vec2<u32> {
+    return (vec2<u32>(vec2<f32>(cas.tamanho) * ESCALA_DA_CAPTURA) + 7u) / 8u;
+}
+
+fn grupos_da_regiao() -> vec2<u32> {
+    return (fina.fim - fina.inicio + 7u) / 8u;
+}
+
+// O bloco `b` tem um texel com cunha no atlas (o ramo do `meio` só difere do `meio_sem_cunha` aí).
+fn bloco_com_cunha(b: vec2<u32>, nb: vec2<u32>) -> u32 {
+    let e = cantos_tabela[b.y * nb.x + b.x];
+    if e == 0u {
+        return 0u;
+    }
+    let a = vec2<i32>(i32((e - 1u) % 128u), i32((e - 1u) / 128u)) * 8;
+    for (var y = 0; y < 8; y++) {
+        for (var x = 0; x < 8; x++) {
+            if textureLoad(cantos, a + vec2<i32>(x, y), 0).x < 50.0 {
+                return 1u;
+            }
+        }
+    }
+    return 0u;
+}
+
+// A soma prefixa inclusiva dos `parciais` do grupo de 256.
+fn soma_dos_parciais(lid: u32) {
+    for (var s = 1u; s < 256u; s *= 2u) {
+        var v = parciais[lid];
+        if lid >= s {
+            v += parciais[lid - s];
+        }
+        workgroupBarrier();
+        parciais[lid] = v;
+        workgroupBarrier();
+    }
+}
+
+// A soma de `n` valores de `fina_cunhas` a partir de `inicio`, de `passo` em `passo` (uma linha ou uma
+// coluna da tabela), no lugar; nas `linhas` o valor é a cunha do bloco, gravada antes de somar.
+fn soma_prefixa(inicio: u32, passo: u32, n: u32, lid: u32, linhas: bool) {
+    let por = (n + 255u) / 256u;
+    var soma = 0u;
+    for (var i = 0u; i < por; i++) {
+        let j = lid * por + i;
+        if j < n {
+            var v = fina_cunhas[inicio + j * passo];
+            if linhas {
+                let nb = blocos_da_captura();
+                v = bloco_com_cunha(vec2<u32>(j, inicio / nb.x), nb);
+                fina_cunhas[inicio + j * passo] = v;
+            }
+            soma += v;
+        }
+    }
+    parciais[lid] = soma;
+    workgroupBarrier();
+    soma_dos_parciais(lid);
+    var acc = 0u;
+    if lid > 0u {
+        acc = parciais[lid - 1u];
+    }
+    for (var i = 0u; i < por; i++) {
+        let j = lid * por + i;
+        if j < n {
+            acc += fina_cunhas[inicio + j * passo];
+            fina_cunhas[inicio + j * passo] = acc;
+        }
+    }
+}
+
+// Um grupo por linha de blocos da captura: a cunha de cada bloco e a soma ao longo da linha.
+@compute @workgroup_size(256)
+fn c3_fina_cunhas_linhas(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_index) lid: u32) {
+    let nb = blocos_da_captura();
+    soma_prefixa(wid.x * nb.x, 1u, nb.x, lid, true);
+}
+
+// Um grupo por coluna: a soma ao longo dela (a tabela das áreas).
+@compute @workgroup_size(256)
+fn c3_fina_cunhas_colunas(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_index) lid: u32) {
+    let nb = blocos_da_captura();
+    soma_prefixa(wid.x, nb.x, nb.y, lid, false);
+}
+
+fn area(x: i32, y: i32, nb: vec2<u32>) -> u32 {
+    if x < 0 || y < 0 {
+        return 0u;
+    }
+    return fina_cunhas[u32(y) * nb.x + u32(x)];
+}
+
+// Algum bloco com cunha no retângulo `[lo, hi]` (texels da captura).
+fn ha_cunha(lo: vec2<f32>, hi: vec2<f32>, nb: vec2<u32>) -> bool {
+    let m = vec2<f32>(nb - 1u);
+    let a = vec2<i32>(min(floor(max(lo, vec2<f32>(0.0)) / 8.0), m));
+    let b = vec2<i32>(min(floor(max(hi, vec2<f32>(0.0)) / 8.0), m));
+    let s = area(b.x, b.y, nb) - area(a.x - 1, b.y, nb) - area(b.x, a.y - 1, nb) + area(a.x - 1, a.y - 1, nb);
+    return s != 0u;
+}
+
+// Um fio por grupo 8×8 da região: PERTO se o grupo dilatado por `RAIO_DO_NUM_CORPO` + o disco do `pe_na_borda`
+// (`d + 2h` à volta do texel nas duas faces; `d` ≤ a semente mais perto das 3×3 células dele) toca uma cunha,
+// ou se o segmento até alguma semente que o `onde_calcular` pode ler (a bissecção do `na_fronteira`) a toca.
+@compute @workgroup_size(64)
+fn c3_fina_marca(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let gr = grupos_da_regiao();
+    let g = gid.x;
+    if g >= gr.x * gr.y {
+        return;
+    }
+    let nb = blocos_da_captura();
+    let t0 = fina.inicio + vec2<u32>(g % gr.x, g / gr.x) * 8u;
+    let t1 = min(t0 + 7u, fina.fim - 1u);
+    let h = 1.0 / f32(fina.fina);
+    let k = ESCALA_DA_CAPTURA * h;
+    let lo = (vec2<f32>(t0) + 0.5) * k;
+    let hi = (vec2<f32>(t1) + 0.5) * k;
+    var d_max = 0.0;
+    var perto = false;
+    if PREENCHE {
+        let dims = vec2<i32>(textureDimensions(preenchido));
+        for (var ty = t0.y; ty <= t1.y; ty++) {
+            for (var tx = t0.x; tx <= t1.x; tx++) {
+                let c = vec2<i32>(vec2<u32>(tx, ty) / CELULA_PREENCHE);
+                let P = ponto_fino(vec2<u32>(tx, ty));
+                var d_min = 3.4e38;
+                for (var dy = -1; dy <= 1; dy++) {
+                    for (var dx = -1; dx <= 1; dx++) {
+                        let q = c + vec2<i32>(dx, dy);
+                        if any(q < vec2<i32>(0)) || any(q >= dims) {
+                            continue;
+                        }
+                        let s = textureLoad(preenchido, q, 0).x;
+                        if s != SEM_SEMENTE {
+                            d_min = min(d_min, distance(ponto_fino(vec2<u32>(s & 0xffffu, s >> 16u)), P));
+                        }
+                    }
+                }
+                if d_min < 3.4e38 {
+                    d_max = max(d_max, d_min / h);
+                }
+            }
+        }
+        let c0 = max(vec2<i32>(t0 / CELULA_PREENCHE) - 1, vec2<i32>(0));
+        let c1 = min(vec2<i32>(t1 / CELULA_PREENCHE) + 1, dims - 1);
+        for (var qy = c0.y; qy <= c1.y; qy++) {
+            for (var qx = c0.x; qx <= c1.x; qx++) {
+                let s = textureLoad(preenchido, vec2<i32>(qx, qy), 0).x;
+                if s != SEM_SEMENTE && !perto {
+                    let ps = ponto_fino(vec2<u32>(s & 0xffffu, s >> 16u)) * ESCALA_DA_CAPTURA;
+                    perto = ha_cunha(min(lo, ps) - k, max(hi, ps) + k, nb);
+                }
+            }
+        }
+    }
+    let r = (RAIO_DO_NUM_CORPO + d_max + 4.0) * k;
+    perto = perto || ha_cunha(lo - r, hi + r, nb);
+    fina_marcas.grupos[g] = select(0u, 1u, perto);
+    if perto {
+        let i = atomicAdd(&fina_marcas.x, 1u);
+        fina_marcas.grupos[fina_marcas.n + i] = g;
+    }
+}
+
+// A fina dos grupos que a [`c3_fina_marca`] não listou (com `FINA_ENXUTA`).
+@compute @workgroup_size(8, 8)
+fn c3_fina_enxuta(
+    @builtin(global_invocation_id) gid: vec3<u32>,
+    @builtin(workgroup_id) wid: vec3<u32>,
+    @builtin(local_invocation_index) lid: u32,
+) {
+    if fina_marcas_lidas.grupos[wid.y * grupos_da_regiao().x + wid.x] != 0u {
+        return;
+    }
+    fina_no_texel(gid.xy + fina.inicio, lid);
+}
+
+// A fina de sempre, em despacho indireto sobre os grupos listados.
+@compute @workgroup_size(8, 8)
+fn c3_fina_listada(
+    @builtin(workgroup_id) wid: vec3<u32>,
+    @builtin(local_invocation_id) l: vec3<u32>,
+    @builtin(local_invocation_index) lid: u32,
+) {
+    let gr = grupos_da_regiao();
+    let g = fina_marcas_lidas.grupos[fina_marcas_lidas.n + wid.x];
+    fina_no_texel(fina.inicio + vec2<u32>(g % gr.x, g / gr.x) * 8u + l.xy, lid);
 }
 
 // A luz do texel da fina, a sonda e a gravação (a [`c3_fina`], a [`c3_fina_adia`] e a [`c3_fina_cantos`]).

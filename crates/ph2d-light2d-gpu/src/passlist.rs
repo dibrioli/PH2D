@@ -5,7 +5,7 @@
 use crate::config::{Config, Precisao};
 
 #[path = "passlist_cantos.rs"]
-mod cantos;
+pub(crate) mod cantos;
 pub(crate) use cantos::{
     NOME_CONTADORES_DOS_CANTOS, NOME_LISTA_COM_CUNHA, NOME_LISTA_DOS_CANTOS,
     NOME_MARCAS_DOS_BLOCOS, NOME_TABELA_DOS_CANTOS, NOME_TABELA_VAZIA_C2, NOME_TABELA_VAZIA_C3,
@@ -482,6 +482,7 @@ impl PassList {
         }
         if let (Some(_), Some(b)) = (op.cantos, op.borda) {
             buffers.extend(buffers_dos_cantos(texturas[b].tamanho));
+            buffers.extend(cantos::buffers_da_fina_dupla(cfg, texturas[b].tamanho));
         }
         buffers.extend(tabelas_vazias(
             op.cantos.is_some(),

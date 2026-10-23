@@ -198,3 +198,45 @@ Logs (`target/`): `cantos_custo_clock{1..6}.log`, `regua_registos/{head,head2,b,
    construção; a prova é o `medida_luz2d_cantos_bits` contra a base do §6.
 2. A borda nos níveis 11–12 a 2160p Alta: +3,62 ms (W6g §54.1).
 3. A anomalia da r5b (W6g §12); a família (b) (W5g §37–38).
+
+## 10. As duas pipelines da fina — o censo e o desenho (escrito ANTES de mexer no produto; 2.ª e última reconstrução)
+
+- **A base do mesmo bit confere no HEAD `e5725967e4`**: 32 casos, 0 bytes diferentes (`target/cantos_bits/hoje`).
+- **O censo das sementes sem porta** (`medida_luz2d_sementes_sem_porta`, `0b2872cdd0`: o padrão com a sonda 7 por remendo
+  CONTADO da `fonte_do_rc`, sem tocar no produto). ⚠️ O padrão corre com o miolo, que liga o `FUNDO_SEM_LUZ` (salta os
+  grupos do fundo, onde mora a maioria destes texels); a sonda só chega à fluência sem o miolo ⇒ o salto emula-se à
+  força. Com o fundo saltado (o caminho real):
+
+| câmera | texels sem porta | distância máx. (texels da fina) | perto de uma cunha (texels / grupos ≈) |
+|---|---|---|---|
+| 5 · [−6, −1] | 0 | — | 0 |
+| 5 · [6, −1] | 2 179 (0,30 %) | 77 | 2 179 / 110 |
+| 5 · zoom 1,6 | 13 040 (1,3 %) | 39 | 5 154 / 359 |
+| 5 · zoom 1 | 6 132 (0,9 %) | 19 | 4 314 / 259 |
+| 6 · [0, −3] | 0 | — | 0 |
+| 6 · zoom 4 | 7 076 (1,0 %) | 141 | 305 / 20 |
+| 6 · zoom 1 | 3 313 (0,5 %) | 19 | 943 / 54 |
+| cena 2 (fábrica) | 12 197 (1,7 %) | 19 | 9 525 / 878 |
+
+  Sem o salto (a lei sem miolo) são até 15 % (c5 zoom 1,6). ⇒ **NÃO são raros**: a lista ADIADA por texel do §9.1 b
+  teria 300–9 500 texels, e um passe por texel em lista custa ~0,5 ms de LATÊNCIA (W6g §12, recusado) — sozinho passa
+  o alvo (~0,15 ms). **A lista por texel morre antes de construir.**
+- **O desenho** — a marcação é por GRUPO e cobre as sementes:
+  - **(a) `c3_fina_marca`**, um fio por grupo 8×8 da fina, depois do `c3_cantos` e do preenchimento: o grupo é PERTO se
+    o retângulo dele dilatado por R = 17 texels da fina toca um bloco 8×8 da captura com cunha, OU se o retângulo que
+    junta o grupo a alguma semente do `preenchido` que o `onde_calcular` pode ler (as células da janela 5×5 e as 3×3
+    vizinhas de cada texel do grupo), dilatado por R, toca um. Os perto entram numa lista (cabeçalho = despacho
+    indireto) e num mapa por grupo. Exata: todo `num_corpo` fora da marcha cai a ≤ ~16,4 texels do texel OU — sem
+    porta — do segmento texel → semente (o `na_fronteira`, o `pe_na_borda` e o resto à volta do ponto remapeado);
+    as sementes COM porta estão a < 6 texels.
+  - **(b) a enxuta**: a `c3_fina` com `override NUM_CORPO_SEM_CANTO` (o `num_corpo` pelo `meio` sem o ramo da cunha; a
+    marcha com ele — a forma `ga`) e a saída do grupo marcado ANTES do `fundo_do_grupo` (a forma `e1`, uma leitura
+    uniforme). Régua de registos com `DISTANTES 0` e `1`: ≤ 128.
+  - **(c) a fina de hoje** por despacho indireto sobre a lista (o grupo listado → o `gid` dele; o `fundo_do_grupo`
+    corre igual).
+- **A fração marcada** (`medida_luz2d_cantos_perto`, linha `MARCA`): c5 [−6, −1] 0,1 % · [6, −1] **4,0 %** · zoom 1,6
+  12,2 % · zoom 1 13,3 % · c6 [0, −3] 0,2 % · zoom 4 0,9 % · zoom 1 3,1 %. Estimativa (NÃO medida): enxuta + fração ×
+  (padrão − enxuta) ⇒ [6, −1] ~+4,5 %, as outras ≤ ~+3,7 %, mais o passe a mais e o 2.º despacho — apertada na
+  [6, −1].
+- **Kill-criterion**: o do §5.1 tal e qual + a enxuta ≤ 128 registos com `DISTANTES 0/1`. Falhar ⇒ produto reposto pelo
+  git e PROVAR O MODELO (não há 3.ª forma).

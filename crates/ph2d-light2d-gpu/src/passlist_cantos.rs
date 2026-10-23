@@ -63,3 +63,27 @@ pub(crate) fn buffers_dos_cantos(captura: [u32; 2]) -> [Buffer; 5] {
     ]
     .map(|(nome, bytes, usos)| Buffer { nome, bytes, usos })
 }
+
+/// ⭐ W6h §10 — as marcas dos grupos 8×8 da fina (o cabeçalho do despacho indireto, o mapa e a lista: `grupos`
+/// da grade fina) e a tabela das áreas dos blocos com cunha da captura `[w, h]`.
+pub(crate) const NOME_FINA_MARCAS: &str = "luz2d/buf/fina_marcas";
+pub(crate) const NOME_FINA_CUNHAS: &str = "luz2d/buf/fina_cunhas";
+/// Nenhum sem as duas pipelines ([`crate::Config::usa_fina_dupla`]).
+pub(crate) fn buffers_da_fina_dupla(cfg: &crate::Config, [w, h]: [u32; 2]) -> Vec<Buffer> {
+    use wgpu::BufferUsages as B;
+    let gf = cfg.grade_da_fluencia();
+    let grupos = u64::from(gf.largura.div_ceil(8)) * u64::from(gf.altura.div_ceil(8));
+    let blocos = u64::from(w.div_ceil(8)) * u64::from(h.div_ceil(8));
+    [
+        (
+            NOME_FINA_MARCAS,
+            4 * (4 + 2 * grupos),
+            B::STORAGE | B::INDIRECT | B::COPY_DST,
+        ),
+        (NOME_FINA_CUNHAS, 4 * blocos, B::STORAGE),
+    ]
+    .into_iter()
+    .filter(|_| cfg.usa_fina_dupla())
+    .map(|(nome, bytes, usos)| Buffer { nome, bytes, usos })
+    .collect()
+}

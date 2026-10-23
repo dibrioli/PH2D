@@ -226,6 +226,18 @@ impl MacroEmCena {
         let _ = self.recomeca_ate(MacroTime(0));
     }
 
+    /// O encaixe posto ([`Self::poe_encaixe`]).
+    #[must_use]
+    pub fn encaixe(&self) -> Option<Encaixe> {
+        self.encaixe
+    }
+
+    /// O tamanho da tela da gravação, quando a trilha toca por cima de outra imagem (etiqueta 6).
+    #[must_use]
+    pub fn tamanho_gravado(&self) -> Option<(u32, u32)> {
+        super::inicial::tamanho_gravado(&self.doc.tracks[0].initial)
+    }
+
     /// **Um ponto de partida para conferir `track`** (a trilha com as edições, [`super::etapas::confere`]):
     /// o instantâneo mais tardio que ainda é um estado dela — os passos despachados são prefixo comum
     /// desta macro e da trilha que toca de `track`, até ao [`super::etapas::limite_da_partida`] —, com a

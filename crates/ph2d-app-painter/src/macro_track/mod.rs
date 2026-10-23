@@ -25,6 +25,8 @@ use std::sync::Arc;
 /// `PH2D_MACRO_SMOKE=6` — o caminho do dono, sozinho, e a linha de diagnóstico do palco.
 pub mod caminho;
 mod cauda;
+/// O encaixe vivo de uma macro aplicada por cima (W18) e a imagem que uma aplicada faz nascer.
+pub mod encaixe_vivo;
 mod fim;
 mod marcas;
 mod reescrita;
@@ -548,6 +550,12 @@ impl PalcosDoPainter {
                 Some(alvo)
             };
             p.chave = sid.or(sprite).map(|s| (s, p.epoca));
+            // Por cima (W18): o gizmo do objecto Macro diz, a cada quadro, onde a gravação cai no alvo.
+            if let (Some(g), Some(s)) = (p.em_cena.tamanho_gravado(), sprite) {
+                let tela = p.em_cena.tocador().tool().source_size();
+                let e = encaixe_vivo::do_mundo(world, e, Entity::from_bits(s), tela, g);
+                p.em_cena.poe_encaixe(e);
+            }
             let Some(s) = segundos else {
                 continue;
             };

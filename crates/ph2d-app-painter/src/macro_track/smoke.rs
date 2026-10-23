@@ -240,3 +240,39 @@ pub fn ponto_da_tela(
     #[expect(clippy::cast_possible_truncation, reason = "um ponto do ecrã")]
     Some((p.x as f32, p.y as f32))
 }
+
+/// O relógio da shell que a linha de diagnóstico do caminho (`=5`/`=6`) cita.
+pub struct Relogio {
+    pub keys: bool,
+    pub playing: bool,
+    pub playhead: f64,
+    pub clip: f64,
+    pub laco: Option<(f64, f64)>,
+    /// O fim de cada etapa na linha «Macro steps».
+    pub etapas: Vec<f64>,
+    pub gravando: String,
+}
+
+impl super::PalcosDoPainter {
+    /// **A linha de diagnóstico do quadro** do caminho do dono: o relógio da shell, o `MacroTempo` da
+    /// tela `bits` e o palco dela ([`Self::diagnostico`]), no registo da cena.
+    pub fn regista_o_quadro(
+        &mut self,
+        (bits, ms, quadros): (u64, u64, u32),
+        painter: Option<&ph2d_tool_painter::PainterTool>,
+        mundo: &ph2d_ecs::World,
+        r: &Relogio,
+    ) {
+        let t = mundo
+            .get::<ph2d_ecs::MacroTempo>(Entity::from_bits(bits))
+            .map(|t| t.segundos);
+        let linha = self.diagnostico(bits, painter, mundo);
+        let etapas: Vec<String> = r.etapas.iter().map(|e| format!("{e:.2}")).collect();
+        let Relogio { keys, playing, .. } = r;
+        super::caminho::regista(&format!(
+            "{ms} ms: {quadros} frames keys={keys} playing={playing} playhead={:.2} clip={:.2} \
+             loop={:?} t={t:?} steps={etapas:?} gravando={} {linha}",
+            r.playhead, r.clip, r.laco, r.gravando
+        ));
+    }
+}

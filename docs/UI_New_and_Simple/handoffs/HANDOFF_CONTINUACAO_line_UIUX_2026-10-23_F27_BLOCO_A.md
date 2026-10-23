@@ -91,3 +91,13 @@ Fechados por esta onda: itens 7 e 8 do §6 do F18–F26.
 5. **FORA desta linha:** gravidade animável (decisão do Enio), física a meio da simulação, `IkBendSide`, Rope Length da Pulley, áudio do mixer.
 6. Próxima cena de smoke: `PH2D_AUTOKEY_SMOKE=28`.
 7. Smoke do dono da F27 (§4): ainda não feito.
+
+## 7 — Smoke do dono (23/10)
+
+Passo 3 reprovou: *«o painel não aceita eu selecionar Object»*. O clique armava o conta-gotas do
+corpo B, mas num pino de mundo a row B não o desenha (`joint_pair_rows.rs`, `world_b`) — um pick
+invisível. Cura `359b6881ec`: `build_joint_info` mostra `world_anchored = false` com `pick_armed == 2`
+(seg «Object» aceso + conta-gotas do B aceso; o marcador só sai em `set_joint_body`) e
+`pick_after_anchor_b` (app-physics) decide o pick depois de Anchor B («World» desarma). Testes
+`com_a_escolha_do_corpo_b_armada_o_painel_mostra_object` (mutação M5) e
+`o_conta_gotas_segue_o_clique_em_anchor_b`. Lição: um clique recusado tem de mudar algo na tela.

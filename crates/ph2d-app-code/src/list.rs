@@ -27,6 +27,15 @@ pub enum Ask {
     Delete(ScriptId),
 }
 
+/// Um carregar numa linha da lista: ao largar é um clique; passado o limiar, arrasta o NOME do script
+/// para o texto (8b, `docs/CodeEditor/07_arrastar_para_o_codigo.md` §3.9 — o que o `attach_script` recebe).
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct ListDrag {
+    pub id: ScriptId,
+    pub from: (f32, f32),
+    pub moved: bool,
+}
+
 pub(crate) struct ListState {
     pub open: bool,
     pub filter: Buffer,
@@ -37,6 +46,7 @@ pub(crate) struct ListState {
     pub entries: Vec<(ScriptId, String)>,
     pub asks: Vec<Ask>,
     pub view: ScriptListView,
+    pub drag: Option<ListDrag>,
     last_click: Option<(u128, u64)>,
 }
 
@@ -51,6 +61,7 @@ impl Default for ListState {
             entries: Vec::new(),
             asks: Vec::new(),
             view: ScriptListView::default(),
+            drag: None,
             last_click: None,
         }
     }
@@ -149,6 +160,14 @@ impl ListState {
             ListHit::Delete(id) => self.asks.push(Ask::Delete(ScriptId(id))),
             ListHit::Body => self.focus = None,
         }
+    }
+
+    /// O nome do script `id` (o da lista).
+    pub(crate) fn name_of(&self, id: ScriptId) -> Option<String> {
+        self.entries
+            .iter()
+            .find(|(i, _)| *i == id)
+            .map(|(_, n)| n.clone())
     }
 
     /// Começa a renomear `id`: o campo nasce com o nome inteiro seleccionado.

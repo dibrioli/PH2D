@@ -155,7 +155,9 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
         // cargas da biblioteca. Antes do braço da gaveta: arrumar é de assets.
         (DragPayload::Object { .. }, DropTarget::Code { on_text: true }) => DropAction::WriteCode,
         (DragPayload::Object { .. }, _) => DropAction::Refuse,
-        // ⛔ Um asset num script ainda não escreve nada (o 8b do item 8); fora do texto, nada.
+        // ⭐ Um mestre ou uma imagem no texto escreve o NOME (o 8b: `ph2d.spawn`, `sprite.image`);
+        // fora do texto, nada.
+        (_, DropTarget::Code { on_text: true }) => DropAction::WriteCode,
         (_, DropTarget::Code { .. }) => DropAction::Refuse,
 
         // ⭐⭐ **Uma linha de catálogo aceita as DUAS famílias** — arrumar não olha ao tipo, ao
@@ -513,8 +515,8 @@ mod texture_slot_target_tests {
     }
 
     /// ⭐⭐ **Um objecto da cena só se larga no TEXTO de um script** (item 8 do CodeEditor); em todo
-    /// outro sítio recusa e vê-se — e voltar à Hierarquia é desistir. Uma carga da biblioteca num
-    /// script ainda recusa (8b).
+    /// outro sítio recusa e vê-se — e voltar à Hierarquia é desistir. Um mestre ou uma imagem no
+    /// texto escreve o nome (8b); fora dele, recusa.
     #[test]
     fn um_objecto_so_se_larga_no_texto_de_um_script() {
         let o = DragPayload::Object { stable_id: 7 };
@@ -548,6 +550,10 @@ mod texture_slot_target_tests {
         ] {
             assert_eq!(
                 resolve(p, DropTarget::Code { on_text: true }),
+                DropAction::WriteCode
+            );
+            assert_eq!(
+                resolve(p, DropTarget::Code { on_text: false }),
                 DropAction::Refuse
             );
         }

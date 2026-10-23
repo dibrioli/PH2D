@@ -258,3 +258,87 @@ fn o_nome_de_propriedade_que_nenhum_componente_tem_e_um_aviso() {
         p.message
     );
 }
+
+/// ⭐ 8b (§3.9): um NOME (um mestre, uma imagem, um script) cai como texto entre aspas; com o Ctrl, uma
+/// constante no início da linha — e o balão di-lo.
+#[test]
+fn um_nome_cai_entre_aspas_e_com_ctrl_vira_uma_constante() {
+    let (mut m, id) = mesa();
+    let b = TEXTO.find(", \"x\"").expect("agulha");
+    let p = ponto(&mut m, id, b);
+    let nome = ["door_open".to_owned()];
+    let solto = |ctrl| DropAt {
+        what: Dropping::Names(&nome),
+        ..em(p, &nome, ctrl)
+    };
+    assert!(m.docs().drop_hover(id.0, Some(solto(true))));
+    let (at, balao) = m.docs().drop_mark_of(id).expect("a marca");
+    assert_eq!(
+        at,
+        TEXTO.find("ph2d.set").expect("linha"),
+        "com Ctrl, o início da linha"
+    );
+    assert!(balao[0].contains("in quotes"), "{balao:?}");
+    m.pinta(id);
+    assert!(m.docs().drop(id.0, solto(false)));
+    let esperado = TEXTO.replacen("set(,", "set(\"door_open\",", 1);
+    assert_eq!(m.docs().text_of(id).as_deref(), Some(esperado.as_str()));
+}
+
+/// ⭐ 8b: arrastar uma linha da LISTA de scripts para o texto escreve o nome do script (o que o
+/// `attach_script` recebe), e a aba aberta não muda; um clique sem arrastar continua a abrir.
+#[test]
+fn arrastar_um_script_da_lista_para_o_texto_escreve_o_nome() {
+    use crate::centro;
+    use ph2d_editor_core::doc_surface::PointerInput;
+    use ph2d_host::{PointerButton, PointerKind};
+    use ph2d_panel_code::ListHit;
+    use ph2d_text::TextSystem;
+    let (mut m, ids) = Mesa::new(&[("a.luau", TEXTO), ("bob.luau", "")]);
+    let (id, bob) = (ids[0], ids[1]);
+    m.pede(id);
+    m.pinta(id);
+    let b = TEXTO.find(", \"x\"").expect("agulha");
+    let alvo = ponto(&mut m, id, b);
+    let linha = centro(
+        m.docs()
+            .list_target(ListHit::Row(bob.0))
+            .expect("a linha do bob"),
+    );
+    let mut ts = TextSystem::without_system_fonts();
+    fn input(ts: &mut TextSystem) -> PointerInput<'_> {
+        PointerInput {
+            text: ts,
+            mods: Modifiers::default(),
+            now_ns: 1,
+        }
+    }
+    let d = m.docs();
+    assert!(d.pointer(
+        id.0,
+        input(&mut ts),
+        PointerKind::Down,
+        PointerButton::Primary,
+        linha.0,
+        linha.1
+    ));
+    assert!(d.pointer_move(id.0, input(&mut ts), alvo.0, alvo.1));
+    assert!(d.drop_mark_of(id).is_some(), "a marca segue o rato");
+    assert!(d.pointer(
+        id.0,
+        input(&mut ts),
+        PointerKind::Up,
+        PointerButton::Primary,
+        alvo.0,
+        alvo.1
+    ));
+    let esperado = TEXTO.replacen("set(,", "set(\"bob.luau\",", 1);
+    assert_eq!(m.docs().text_of(id).as_deref(), Some(esperado.as_str()));
+    assert!(m.docs().drop_mark_of(id).is_none(), "largar apaga a marca");
+    m.shell_drena();
+    assert_eq!(
+        m.docs().text_of(bob).as_deref(),
+        None,
+        "arrastar não abriu o bob"
+    );
+}

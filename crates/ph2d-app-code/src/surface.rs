@@ -4,14 +4,18 @@
 
 use crate::docs::{A11Y_SALT, CodeDocs, blink_on};
 use crate::help::page_of;
+use crate::list::ListDrag;
 use ph2d_a11y::{Node, NodeId};
 use ph2d_editor_core::doc_surface::{
-    Compose, DocCommand, DocTab, DocumentSurface, DropAt, Key, KeyInput, KeyOutcome, PointerInput,
-    PointerLook,
+    Compose, DocCommand, DocTab, DocumentSurface, DropAt, Dropping, Key, KeyInput, KeyOutcome,
+    PointerInput, PointerLook,
 };
 use ph2d_editor_core::ime::ComposeKey;
+use ph2d_editor_core::interaction::drag::DRAG_THRESHOLD_PX;
 use ph2d_editor_core::zones::Rect;
+use ph2d_host::Modifiers;
 use ph2d_host::{PointerButton, PointerKind};
+use ph2d_panel_code::ListHit;
 use ph2d_script::ScriptId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -81,8 +85,28 @@ impl DocumentSurface for CodeDocs {
         if matches!((kind, button), (PointerKind::Down, PointerButton::Primary))
             && let Some(h) = self.list.view.hit(input.text, x, y)
         {
-            self.list.press(h, input.now_ns);
+            match h {
+                ListHit::Row(row) => {
+                    self.list.drag = Some(ListDrag {
+                        id: ScriptId(row),
+                        from: (x, y),
+                        moved: false,
+                    });
+                }
+                _ => self.list.press(h, input.now_ns),
+            }
             self.pressed = true;
+            return true;
+        }
+        if matches!(kind, PointerKind::Up)
+            && let Some(drag) = self.list.drag.take()
+        {
+            self.pressed = false;
+            if drag.moved {
+                self.list_drop(id, drag.id, input.mods, (x, y), true);
+            } else {
+                self.list.press(ListHit::Row(drag.id.0), input.now_ns);
+            }
             return true;
         }
         if matches!(kind, PointerKind::Down) {
@@ -112,6 +136,15 @@ impl DocumentSurface for CodeDocs {
     }
 
     fn pointer_move(&mut self, id: u64, input: PointerInput<'_>, x: f32, y: f32) -> bool {
+        if let Some(drag) = self.list.drag.as_mut() {
+            let (dx, dy) = (x - drag.from.0, y - drag.from.1);
+            drag.moved |= dx.hypot(dy) > DRAG_THRESHOLD_PX;
+            let (moved, script) = (drag.moved, drag.id);
+            if moved {
+                self.list_drop(id, script, input.mods, (x, y), false);
+            }
+            return true;
+        }
         if let Some(page) = page_of(id) {
             return self.help_pointer_move(page, input, x, y);
         }
@@ -360,6 +393,36 @@ impl CodeDocs {
                 Some(taken)
             }
             _ => None,
+        }
+    }
+}
+
+impl CodeDocs {
+    /// O nome do script `script` arrastado da lista sobre a aba `id`: a marca (`drop = false`) ou a
+    /// escrita (`true`), pela MESMA lei de um nome largado de fora (`Dropping::Names`).
+    fn list_drop(
+        &mut self,
+        id: u64,
+        script: ScriptId,
+        mods: Modifiers,
+        at: (f32, f32),
+        drop: bool,
+    ) {
+        let names: Vec<String> = self.list.name_of(script).into_iter().collect();
+        if page_of(id).is_some() {
+            return;
+        }
+        let Some(d) = self.doc(id) else { return };
+        let at = DropAt {
+            x: at.0,
+            y: at.1,
+            what: Dropping::Names(&names),
+            mods,
+        };
+        if drop {
+            d.drop(at);
+        } else {
+            d.drop_hover(Some(at));
         }
     }
 }

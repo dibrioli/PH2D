@@ -4,7 +4,7 @@
 
 use crate::doc::CodeDoc;
 use ph2d_code_buffer::{Range, Selection};
-use ph2d_code_syntax::dropping::insertion;
+use ph2d_code_syntax::dropping::{Insertion, insertion, name_insertion};
 use ph2d_editor_core::doc_surface::{DropAt, Dropping};
 use ph2d_i18n::tr;
 use ph2d_panel_code::Hit;
@@ -28,28 +28,37 @@ impl CodeDoc {
         }
     }
 
-    /// Um arrasto passa (`Some`) ou saiu (`None`). `true` = largar aqui escreve.
-    pub(crate) fn drop_hover(&mut self, at: Option<DropAt<'_>>) -> bool {
-        self.dropping = at.and_then(|at| {
-            let b = self.drop_byte(at.x, at.y)?;
-            let Dropping::Objects(names) = at.what;
-            let ins = insertion(
-                self.buffer.text(),
+    /// O que a soltura em `b` escreve, pela lei do que chega.
+    fn drop_insertion(&self, b: usize, at: DropAt<'_>) -> Insertion {
+        let text = self.buffer.text();
+        match at.what {
+            Dropping::Objects(names) => insertion(
+                text,
                 &self.syntax,
                 b,
                 names,
                 at.mods.ctrl,
                 &self.auto.unit(),
-            );
-            let top = self.syntax.at_top_level(self.buffer.text(), b);
-            let ctrl = if top {
-                "code.drop.ctrl_init"
-            } else {
-                "code.drop.ctrl_local"
+            ),
+            Dropping::Names(names) => name_insertion(text, b, names, at.mods.ctrl),
+        }
+    }
+
+    /// Um arrasto passa (`Some`) ou saiu (`None`). `true` = largar aqui escreve.
+    pub(crate) fn drop_hover(&mut self, at: Option<DropAt<'_>>) -> bool {
+        self.dropping = at.and_then(|at| {
+            let b = self.drop_byte(at.x, at.y)?;
+            let ins = self.drop_insertion(b, at);
+            let (what, ctrl) = match at.what {
+                Dropping::Names(_) => ("code.drop.names", "code.drop.ctrl_const"),
+                Dropping::Objects(_) if self.syntax.at_top_level(self.buffer.text(), b) => {
+                    ("code.drop.objects", "code.drop.ctrl_init")
+                }
+                Dropping::Objects(_) => ("code.drop.objects", "code.drop.ctrl_local"),
             };
             Some(DropMark {
                 at: ins.at,
-                hint: vec![tr("code.drop.objects").to_owned(), tr(ctrl).to_owned()],
+                hint: vec![tr(what).to_owned(), tr(ctrl).to_owned()],
             })
         });
         self.dropping.is_some()
@@ -61,18 +70,11 @@ impl CodeDoc {
         let Some(b) = self.drop_byte(at.x, at.y) else {
             return false;
         };
-        let Dropping::Objects(names) = at.what;
+        let (Dropping::Objects(names) | Dropping::Names(names)) = at.what;
         if names.is_empty() {
             return false;
         }
-        let ins = insertion(
-            self.buffer.text(),
-            &self.syntax,
-            b,
-            names,
-            at.mods.ctrl,
-            &self.auto.unit(),
-        );
+        let ins = self.drop_insertion(b, at);
         self.buffer.seal_history();
         self.buffer
             .set_selection(Selection::single(Range::new(ins.at, ins.at)));

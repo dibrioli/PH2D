@@ -3,11 +3,13 @@
 //! os nomes que a aba de script recebe. A shell só chama; a decisão vive aqui.
 
 use crate::asset_drop::DropAction;
-use ph2d_ecs::{Entity, Name, StableId, World};
+use ph2d_asset::{AssetDb, AssetId};
+use ph2d_ecs::{Entity, Name, SimWorld, StableId, World};
 use ph2d_editor_core::doc_surface::{DropAt, Dropping};
 use ph2d_editor_core::interaction::drag_payload::DragPayload;
 use ph2d_editor_core::screens::hero::{HeroScreen, surface_input};
 use ph2d_host::Modifiers;
+use std::collections::BTreeMap;
 
 /// A carga de arrastar o objecto `bits` e o nome dele (o fantasma diz-o); `None` = sem `StableId`.
 #[must_use]
@@ -60,29 +62,74 @@ fn selection(hero: &HeroScreen) -> Vec<u64> {
         .collect()
 }
 
+/// Onde a queda acha os NOMES de uma carga da biblioteca: o mundo (o mestre, quem usa a imagem) e a
+/// biblioteca de imagens ([`crate::library_names`]).
+pub struct Libraries<'a> {
+    pub sim: &'a mut SimWorld,
+    pub db: &'a AssetDb,
+    pub atlas: &'a BTreeMap<u32, AssetId>,
+}
+
+/// O que a aba escreve para uma carga: objectos (pela selecção) ou nomes (8b).
+enum Cargo {
+    Objects(Vec<String>),
+    Names(Vec<String>),
+}
+
+/// ⭐ **Os nomes de uma carga**: um objecto e a selecção dele; um mestre pelo `Name` dele (o que o
+/// `ph2d.spawn` recebe); uma imagem pelo nome da biblioteca (o que o `sprite.image` recebe).
+fn cargo_of(payload: DragPayload, libs: &mut Libraries<'_>, hero: &HeroScreen) -> Option<Cargo> {
+    match payload {
+        DragPayload::Object { stable_id } => Some(Cargo::Objects(dropped_names(
+            libs.sim.world_mut(),
+            stable_id,
+            &selection(hero),
+        ))),
+        _ => library_name(payload, libs).map(|n| Cargo::Names(vec![n])),
+    }
+}
+
+/// O nome que o script recebe para uma carga da biblioteca: o `Name` do mestre, o nome da imagem.
+fn library_name(payload: DragPayload, libs: &mut Libraries<'_>) -> Option<String> {
+    match payload {
+        DragPayload::Prefab { stable_id } => {
+            let w = libs.sim.world_mut();
+            let e = ph2d_ecs::entity_of_stable_id(w, StableId(stable_id))?;
+            Some(w.get::<Name>(e)?.as_str().to_owned())
+        }
+        DragPayload::Image { asset } => {
+            let names = crate::library_names::session_library(libs.sim, libs.db, libs.atlas);
+            names.get(&AssetId::from_digest(asset)).cloned()
+        }
+        DragPayload::Object { .. } => None,
+    }
+}
+
 /// ⭐ **A aba de script debaixo do cursor**, para a lei da queda: `None` = não há aba de família
 /// activa ou o cursor não está sobre ela (`over_doc`); `Some(on_text)` = está, e a aba diz se
-/// escreveria ali (e mostra onde). Cada chamada sem objecto sobre a aba apaga a marca dela.
+/// escreveria ali (e mostra onde). Cada chamada sem carga sobre a aba apaga a marca dela.
 pub fn hover_code(
     hero: &mut HeroScreen,
-    world: &mut World,
+    mut libs: Libraries<'_>,
     at: (f32, f32),
     over_doc: bool,
     mods: Modifiers,
 ) -> Option<bool> {
-    let object = hero.store.asset_drag().and_then(|d| match d.payload {
-        DragPayload::Object { stable_id } if d.armed => Some(stable_id),
-        _ => None,
-    });
+    let payload = hero
+        .store
+        .asset_drag()
+        .and_then(|d| d.armed.then_some(d.payload));
     let doc = over_doc && hero.documents.surface_active().is_some();
-    let Some(stable_id) = object.filter(|_| doc) else {
+    let cargo = payload
+        .filter(|_| doc)
+        .and_then(|p| cargo_of(p, &mut libs, hero));
+    let Some(cargo) = cargo else {
         surface_input::drop_hover(hero, None);
         return doc.then_some(false);
     };
-    let names = dropped_names(world, stable_id, &selection(hero));
     Some(surface_input::drop_hover(
         hero,
-        Some(drop_at(at, &names, mods)),
+        Some(drop_at(at, &cargo, mods)),
     ))
 }
 
@@ -92,25 +139,30 @@ pub fn write_code(
     action: DropAction,
     payload: DragPayload,
     hero: &mut HeroScreen,
-    world: &mut World,
+    mut libs: Libraries<'_>,
     at: (f32, f32),
     mods: Modifiers,
 ) -> bool {
-    let (DropAction::WriteCode, DragPayload::Object { stable_id }) = (action, payload) else {
+    let cargo = (action == DropAction::WriteCode)
+        .then(|| cargo_of(payload, &mut libs, hero))
+        .flatten();
+    let Some(cargo) = cargo else {
         surface_input::drop_hover(hero, None);
         return false;
     };
-    let names = dropped_names(world, stable_id, &selection(hero));
-    surface_input::drop(hero, drop_at(at, &names, mods));
+    surface_input::drop(hero, drop_at(at, &cargo, mods));
     surface_input::drop_hover(hero, None);
     true
 }
 
-fn drop_at(at: (f32, f32), names: &[String], mods: Modifiers) -> DropAt<'_> {
+fn drop_at(at: (f32, f32), cargo: &Cargo, mods: Modifiers) -> DropAt<'_> {
     DropAt {
         x: at.0,
         y: at.1,
-        what: Dropping::Objects(names),
+        what: match cargo {
+            Cargo::Objects(n) => Dropping::Objects(n),
+            Cargo::Names(n) => Dropping::Names(n),
+        },
         mods,
     }
 }
@@ -155,5 +207,45 @@ mod tests {
         let (p, nome) = payload_of(&w, c.to_bits()).expect("carga");
         assert_eq!(p, DragPayload::Object { stable_id: 3 });
         assert_eq!(nome, "Fora");
+    }
+
+    /// ⭐ 8b: o que a aba recebe de uma carga da biblioteca — o nome do mestre (o do `ph2d.spawn`) e o
+    /// da imagem (o do `sprite.image`, pelo ficheiro).
+    #[test]
+    fn um_mestre_e_uma_imagem_chegam_ao_script_pelo_nome() {
+        let mut sim = SimWorld::new();
+        let mestre = sim
+            .world_mut()
+            .spawn((Name::new("Inimigo"), StableId(41), ph2d_ecs::MasterRoot))
+            .id();
+        let db = AssetDb::new();
+        let porta = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/CodeEditor/ferramentas/smoke/cena8/door_open.png");
+        let img = db.load_png_path(&porta).expect("png");
+        let atlas: BTreeMap<u32, AssetId> = [(5, img)].into_iter().collect();
+        let mut libs = Libraries {
+            sim: &mut sim,
+            db: &db,
+            atlas: &atlas,
+        };
+        assert_eq!(
+            library_name(DragPayload::Prefab { stable_id: 41 }, &mut libs).as_deref(),
+            Some("Inimigo")
+        );
+        assert_eq!(
+            library_name(
+                DragPayload::Image {
+                    asset: *img.as_bytes()
+                },
+                &mut libs
+            )
+            .as_deref(),
+            Some("door_open")
+        );
+        assert_eq!(
+            library_name(DragPayload::Prefab { stable_id: 9 }, &mut libs),
+            None
+        );
+        let _ = mestre;
     }
 }

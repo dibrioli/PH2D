@@ -124,14 +124,12 @@ impl crate::App {
             return true;
         };
         let action = ph2d_app_components::asset_drop::resolve(drag.payload, target);
-        if object_drag::write_code(
-            action,
-            drag.payload,
-            hero,
-            gfx.sim.world_mut(),
-            (x, y),
-            mods,
-        ) {
+        let libs = object_drag::Libraries {
+            sim: &mut gfx.sim,
+            db: &gfx.asset_db,
+            atlas: &gfx.atlas_asset_map,
+        };
+        if object_drag::write_code(action, drag.payload, hero, libs, (x, y), mods) {
             return true;
         }
         self.perform_drop(action, drag.payload);
@@ -169,7 +167,12 @@ impl crate::App {
             // escondida por trás dela**, em silêncio.
             let on_canvas = panel.is_none() && hero.chrome_hit(x, y).is_none();
             let world = gfx.camera.screen_to_world((x, y), window);
-            let code = object_drag::hover_code(hero, gfx.sim.world_mut(), (x, y), on_canvas, mods);
+            let libs = object_drag::Libraries {
+                sim: &mut gfx.sim,
+                db: &gfx.asset_db,
+                atlas: &gfx.atlas_asset_map,
+            };
+            let code = object_drag::hover_code(hero, libs, (x, y), on_canvas, mods);
             (on_canvas, world, code, home)
         };
         Some(if let Some(entity_bits) = inspector_slot {

@@ -147,6 +147,8 @@ pub struct PointerInput<'a> {
 pub enum Dropping<'a> {
     /// Objectos da cena (os nomes, pela ordem da lista de objectos).
     Objects(&'a [String]),
+    /// Nomes que o script recebe como TEXTO: um mestre, uma imagem da biblioteca, um script (8b).
+    Names(&'a [String]),
 }
 
 /// Um arrasto entre painéis sobre a aba, agora: onde, o quê e os modificadores premidos.

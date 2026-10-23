@@ -210,4 +210,5 @@ deste plano era palpite). As barras «Life Max»/«Life» são sprites que o scr
 `code_smoke_props::tests::a_porta_abre_pelo_nome_o_maximo_sobe_a_camera_aproxima_e_rebobinar_devolve` (biblioteca
 real, ponte do jogo, rebobinar); corrida conduzida com 6 fotos em `ferramentas/conduz_propriedades/` (1.ª corrida:
 a porta nascia fora da vista e o herói sumia atrás dela — refeita com a câmera mais alta e a porta por baixo).
+**Smoke do dono da cena 8: OK (23/10).**
 **Falta:** 8b, 8c e a mutação das leis do 8d.

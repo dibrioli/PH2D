@@ -195,6 +195,55 @@ pub fn insertion(
     }
 }
 
+/// O nome da constante do Ctrl (§3.9, o `const ICON` do Godot): o nome sem a extensão, em
+/// `UPPER_SNAKE` — `bob.luau` → `BOB`, `door_open` → `DOOR_OPEN`, `Inimigo` → `INIMIGO`.
+#[must_use]
+pub fn constant_name(name: &str) -> String {
+    let stem = match name.rsplit_once('.') {
+        Some((s, ext)) if !s.is_empty() && ext.chars().all(|c| c.is_ascii_alphanumeric()) => s,
+        _ => name,
+    };
+    variable_name(stem).to_ascii_uppercase()
+}
+
+/// ⭐ **A soltura de um NOME que o script recebe como texto** (§3.9 — um mestre para o `ph2d.spawn`,
+/// uma imagem para o `sprite.image`, um script para o `attach_script`), em `byte`.
+///
+/// - Sem modificador: `"A", "B"` no cursor.
+/// - Com Ctrl: um `local NOME = "…"` por nome, no INÍCIO da linha e com o recuo dela — no topo também
+///   (uma constante não toca a cena, não precisa do `init`).
+#[must_use]
+pub fn name_insertion(text: &Text, byte: usize, names: &[String], ctrl: bool) -> Insertion {
+    let byte = byte.min(text.len());
+    if !ctrl {
+        let s = names
+            .iter()
+            .map(|n| luau_string(n))
+            .collect::<Vec<_>>()
+            .join(", ");
+        return Insertion {
+            at: byte,
+            caret: byte + s.len(),
+            text: s,
+        };
+    }
+    let line = text.line_of_byte(byte);
+    let own = indent_of(text, line);
+    let line_start = text.byte_of_line(line) + own.len();
+    let indent = indent_for(text, line);
+    let pad = &indent[own.len().min(indent.len())..];
+    let decls = names
+        .iter()
+        .map(|n| format!("local {} = {}", constant_name(n), luau_string(n)))
+        .collect::<Vec<_>>()
+        .join(&format!("\n{indent}"));
+    Insertion {
+        at: line_start,
+        caret: line_start + pad.len() + decls.len(),
+        text: format!("{pad}{decls}\n{indent}"),
+    }
+}
+
 /// O texto `src` depois da soltura em `byte` — a lei inteira sem aba (as cenas de smoke e os testes
 /// que correm o resultado).
 #[must_use]
@@ -388,6 +437,49 @@ mod tests {
         assert!(
             Syntax::new(&Text::new(&got)).errors().is_empty(),
             "o script continua válido"
+        );
+    }
+
+    #[test]
+    fn um_nome_cai_como_texto_e_com_ctrl_vira_uma_constante_na_linha() {
+        for (nome, c) in [
+            ("bob.luau", "BOB"),
+            ("door_open", "DOOR_OPEN"),
+            ("Inimigo", "INIMIGO"),
+            ("Caixa Grande", "CAIXA_GRANDE"),
+            ("v1.2 final", "V1_2_FINAL"),
+        ] {
+            assert_eq!(constant_name(nome), c, "{nome}");
+        }
+        let src = "function update(self)\n  ph2d.set(self.id, \"sprite.image\", )\nend\n";
+        let t = Text::new(src);
+        let b = at(src, ")\nend");
+        let i = name_insertion(&t, b, &["door_open".into(), "Porta \"A\"".into()], false);
+        assert_eq!(
+            apply(src, &i),
+            "function update(self)\n  ph2d.set(self.id, \"sprite.image\", \"door_open\", \"Porta \\\"A\\\"\")\nend\n"
+        );
+        assert_eq!(i.caret, i.at + i.text.len());
+        let vazia = "function update(self)\n  local x = 1\n\n  ph2d.spawn()\nend\n";
+        let t = Text::new(vazia);
+        let i = name_insertion(
+            &t,
+            at(vazia, "\n\n") + 1,
+            &["Inimigo".into(), "bob.luau".into()],
+            true,
+        );
+        let got = apply(vazia, &i);
+        assert_eq!(
+            got,
+            "function update(self)\n  local x = 1\n  local INIMIGO = \"Inimigo\"\n  local BOB = \"bob.luau\"\n  \n  ph2d.spawn()\nend\n"
+        );
+        assert!(Syntax::new(&Text::new(&got)).errors().is_empty());
+        let topo = "-- jogo\n";
+        let i = name_insertion(&Text::new(topo), topo.len(), &["Inimigo".into()], true);
+        assert_eq!(
+            apply(topo, &i),
+            "-- jogo\nlocal INIMIGO = \"Inimigo\"\n",
+            "no topo também"
         );
     }
 

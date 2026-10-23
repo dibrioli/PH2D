@@ -188,6 +188,62 @@ fn medida_luz2d_cantos_perto() {
                 100.0 * f64::from(perto) / f64::from(gx * gy)
             );
         }
+        // A marcação do W6h §10: o grupo dilatado por 17 OU o retângulo dele até cada semente do
+        // preenchimento que a janela 5×5 e as 3×3 células vizinhas do `onde_calcular` podem ler.
+        let rc = 17.0 * esc;
+        let toca = |lo: [f32; 2], hi: [f32; 2]| {
+            let bloco = |v: f32, m: u32| ((v.max(0.0) / 8.0) as u32).min(m - 1);
+            (bloco(lo[1] - rc, by)..=bloco(hi[1] + rc, by)).any(|j| {
+                (bloco(lo[0] - rc, bx)..=bloco(hi[0] + rc, bx)).any(|k| com[(j * bx + k) as usize])
+            })
+        };
+        let cel = s.config().preenchimento.expect("o preenchimento");
+        let (celulas, saltos) = s.config().grade_do_preenchimento().expect("a grade");
+        let nome_final = ["luz2d/tex/preenche_a", "luz2d/tex/preenche_b"][saltos.len() % 2];
+        let (mut ts, _) = s.recursos_da_lista();
+        let tp = ts
+            .find(|(n, _)| *n == nome_final)
+            .expect("o preenchimento")
+            .1;
+        let sementes = crate::comum::ler(&gpu, tp, 4);
+        let semente = |cx: u32, cy: u32| {
+            let o = 4 * (cy * celulas[0] + cx) as usize;
+            let v = u32::from_le_bytes(sementes[o..o + 4].try_into().expect("u32"));
+            (v != u32::MAX).then(|| [v & 0xffff, v >> 16].map(|t| (t as f32 + 0.5) * esc))
+        };
+        let (mut so_grupo, mut marcados) = (0u32, 0u32);
+        for y in 0..gy {
+            for x in 0..gx {
+                let t0 = [i[0] + 8 * x, i[1] + 8 * y];
+                let lo = t0.map(|v| (v as f32 + 0.5) * esc);
+                let hi = t0.map(|v| (v as f32 + 7.5) * esc);
+                if toca(lo, hi) {
+                    so_grupo += 1;
+                    marcados += 1;
+                    continue;
+                }
+                let c_lo = t0.map(|v| (v.saturating_sub(2) / cel).saturating_sub(1));
+                let c_hi = [0, 1].map(|k| ((t0[k] + 9) / cel + 1).min(celulas[k] - 1));
+                let pela_semente = (c_lo[1]..=c_hi[1]).any(|cy| {
+                    (c_lo[0]..=c_hi[0]).any(|cx| {
+                        semente(cx, cy).is_some_and(|p| {
+                            toca(
+                                [lo[0].min(p[0]), lo[1].min(p[1])],
+                                [hi[0].max(p[0]), hi[1].max(p[1])],
+                            )
+                        })
+                    })
+                });
+                marcados += u32::from(pela_semente);
+            }
+        }
+        eprintln!(
+            "MARCA · cena {n} · {} · grupos {} · R 17 {so_grupo} ({:.1} %) · + sementes {marcados} ({:.1} %) · célula {cel}",
+            nome(cam),
+            gx * gy,
+            100.0 * f64::from(so_grupo) / f64::from(gx * gy),
+            100.0 * f64::from(marcados) / f64::from(gx * gy)
+        );
     }
 }
 

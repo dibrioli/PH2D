@@ -41,7 +41,7 @@ const CAMERAS: [(u32, Camera); 7] = [
     (6, Camera::Zoom(1.0)),
 ];
 
-const VARIANTES: [&str; 7] = [
+pub(crate) const VARIANTES: [&str; 7] = [
     "lei W6d",
     "cunha",
     "cunha + V2",
@@ -66,7 +66,7 @@ fn nome(c: Camera) -> String {
     }
 }
 
-fn variante(c: Config, v: usize) -> Config {
+pub(crate) fn variante(c: Config, v: usize) -> Config {
     let lei = Config {
         borda_vertice: None,
         ..c.sem_os_cantos()
@@ -118,6 +118,29 @@ fn blocos_com_cunha(gpu: &ph2d_gpu::GpuContext, s: &ph2d_light2d_gpu::Solver) ->
     Some(com.iter().filter(|&&c| c).count())
 }
 
+/// `PH2D_CANTOS_CUSTO_MODULOS=<pasta>`: cada `<pasta>/<nome>.wgsl` é mais uma variante — o PADRÃO com o
+/// módulo das cascatas trocado (`Config::modulo_rc`), no mesmo processo (as formas de diagnóstico e as
+/// candidatas da W6h §5.1, escritas sobre o `.wgsl` que o `medida_luz2d_regua_registos` grava).
+fn modulos_extra() -> Vec<(String, &'static str)> {
+    let Ok(pasta) = std::env::var("PH2D_CANTOS_CUSTO_MODULOS") else {
+        return Vec::new();
+    };
+    let mut fs: Vec<_> = std::fs::read_dir(&pasta)
+        .expect("PH2D_CANTOS_CUSTO_MODULOS")
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .filter(|f| f.extension().is_some_and(|x| x == "wgsl"))
+        .collect();
+    fs.sort();
+    fs.iter()
+        .map(|f| {
+            let nome = f.file_stem().expect("nome").to_string_lossy().into_owned();
+            let texto = std::fs::read_to_string(f).expect("o módulo");
+            (nome, &*Box::leak(texto.into_boxed_str()))
+        })
+        .collect()
+}
+
 #[test]
 #[ignore = "a régua do custo dos cantos: corre-se à mão (cabeçalho)"]
 fn medida_luz2d_cantos_custo() {
@@ -135,14 +158,30 @@ fn medida_luz2d_cantos_custo() {
         },
         loadavg()
     );
+    let extras = modulos_extra();
+    let nomes: Vec<&str> = VARIANTES
+        .iter()
+        .copied()
+        .chain(extras.iter().map(|(n, _)| n.as_str()))
+        .collect();
     for (n, cam) in CAMERAS {
         let mut w = bevy_ecs::world::World::new();
         assert!(smoke::encenar(&mut w, n));
         let cena = ph2d_light2d_ecs::coleta::cena_de_luz(&w);
         let a = afim(cam);
         let base = config(&gpu, a, false);
-        let mut solvers: Vec<_> = (0..VARIANTES.len())
-            .map(|v| solver(&gpu, a, variante(base, v)))
+        let mut solvers: Vec<_> = (0..nomes.len())
+            .map(|v| match extras.get(v.wrapping_sub(VARIANTES.len())) {
+                Some(&(_, m)) => solver(
+                    &gpu,
+                    a,
+                    Config {
+                        modulo_rc: Some(m),
+                        ..variante(base, 4)
+                    },
+                ),
+                None => solver(&gpu, a, variante(base, v)),
+            })
             .collect();
         let mut minimo = vec![f64::INFINITY; solvers.len()];
         let mut partes_min = vec![[0.0; 4]; solvers.len()];
@@ -168,7 +207,7 @@ fn medida_luz2d_cantos_custo() {
             nome(cam),
             loadavg()
         );
-        for (v, nome_v) in VARIANTES.iter().enumerate() {
+        for (v, nome_v) in nomes.iter().enumerate() {
             let [p, b, vis, f] = partes_min[v];
             eprintln!(
                 "CUSTO · cena {n} · {} · {nome_v} · C3 {:.3} ms ({:+.1} % sobre a lei W6d) · preenche {p:.3} [borda {b:.3}] · visibilidade {vis:.3} · fina {f:.3}",

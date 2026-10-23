@@ -1,0 +1,19 @@
+# A régua de REGISTOS da luz 2D (handoff W6g §18 / W6h §5.1 b): o módulo WGSL e as constantes `override`
+# de uma pipeline compilados pelo MESMO caminho do wgpu-hal 29 (naga `process_overrides` + `spv::write_vec`
+# com as opções dele) num `VkDevice` próprio com `VK_KHR_pipeline_executable_properties` — o driver devolve
+# os registos, o binário e a memória partilhada. A da W6g vivia em `target/w6g/` e perdeu-se.
+#
+# ⚠️ Workspace PRÓPRIA (o `[workspace]` vazio), como a `field-spike`: o `Cargo.lock` da PH2D não é tocado.
+# As versões do naga e do ash são as do `Cargo.lock` da PH2D (`=`): outra versão é outro compilador.
+[workspace]
+
+[package]
+name = "regua-registos"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+ash = "=0.38.0"
+hashbrown = "0.16"
+naga = { version = "=29.0.4", features = ["wgsl-in", "spv-out"] }

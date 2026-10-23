@@ -503,3 +503,49 @@ end
         Cena::falhas(&f)
     );
 }
+
+/// m1: escrever a vida de agora abaixo de zero pede `Define(0)` (em zero morre; nunca um número negativo).
+#[test]
+fn a_vida_de_agora_negativa_pede_zero() {
+    use ph2d_physics_ecs::{PedidoDeVida, PedidosDeVida};
+    let mut c = cena("function init(self)\n  ph2d.set(self.id, \"health.now\", -5)\nend\n");
+    let f = c.quadro(true);
+    assert!(f.failed.is_empty(), "{}", Cena::falhas(&f));
+    assert_eq!(
+        c.sim.world().resource::<PedidosDeVida>().0,
+        [(c.heroi, PedidoDeVida::Define(0.0))]
+    );
+}
+
+/// o1: um valor fora da lei escrito pelo script sai saneado como no cartão (o Collider, por inteiro).
+#[test]
+fn o_collider_escrito_pelo_script_sai_saneado() {
+    use ph2d_physics_ecs::{Collider, MAX_LAYERS};
+    let mut c = cena(
+        r#"
+function init(self)
+  ph2d.set(self.id, "collision_shape.density", -5)
+  ph2d.set(self.id, "collision_shape.bounce", 3)
+  ph2d.set(self.id, "collision_shape.friction", -1)
+  ph2d.set(self.id, "collision_shape.layer", 99)
+end
+"#,
+    );
+    c.sim.world_mut().entity_mut(c.heroi).insert(Collider::default());
+    let f = c.quadro(true);
+    assert!(f.failed.is_empty(), "{}", Cena::falhas(&f));
+    let col = c.sim.world().get::<Collider>(c.heroi).unwrap();
+    assert_eq!(
+        (col.density, col.restitution, col.friction, col.layer),
+        (0.0, 1.0, 0.0, MAX_LAYERS as u8 - 1)
+    );
+}
+
+/// k1: o alvo por `StableId` (`factory.master`) com um nome que nenhum objecto tem é uma gralha dita.
+#[test]
+fn uma_receita_que_nao_existe_diz_o_nome_que_falta() {
+    let mut c = cena("function update(self)\n  ph2d.set(self.id, \"factory.recipe\", \"Nope\")\nend\n");
+    c.sim.world_mut().entity_mut(c.heroi).insert(ph2d_ecs::Factory::default());
+    let msg = Cena::falhas(&c.quadro(true));
+    assert!(msg.contains("no object is named 'Nope'"), "{msg}");
+}

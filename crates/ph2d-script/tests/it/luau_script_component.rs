@@ -38,6 +38,7 @@ fn the_world_functions_outside_a_tick_say_why() {
         "ph2d.spawn()",
         "ph2d.despawn(12345)",
         "ph2d.attach_script(7, 'bob.luau')",
+        "ph2d.object('Player')",
     ] {
         let err = host.runtime().eval(call).unwrap_err().to_string();
         assert!(err.contains("only while the scene runs"), "{call}: {err}");

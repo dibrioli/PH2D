@@ -243,6 +243,30 @@ fn renomear_o_objecto_reescreve_os_scripts_e_um_undo_global_devolve() {
     assert_eq!(m.texto_salvo(ids[1]), fechado);
 }
 
+/// ⭐ 8c: renomear um objecto leva as propriedades de objecto que o apontam; renomear um MESTRE não
+/// (o mestre não é o objecto de cena que elas apontam).
+#[test]
+fn renomear_um_objecto_leva_a_propriedade_de_objecto_e_um_mestre_nao() {
+    use ph2d_script::{LuauScript, ScriptValue};
+    let (mut m, ids) = Mesa::new(&[("a.luau", TEXTO)]);
+    let mut s = LuauScript::library(ids[0]);
+    s.own.insert("porta".into(), ScriptValue::Object("Porta".into()));
+    let dono = m.sim.world_mut().spawn(s).id();
+    let valor = |m: &Mesa| {
+        m.sim.world().get::<LuauScript>(dono).expect("script").own["porta"].clone()
+    };
+    let mestre = m
+        .sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Porta"), MasterRoot))
+        .id();
+    ph2d_app_code::object_renamed(&mut m.hero, m.sim.world_mut(), mestre, "Porta", "Portão");
+    assert_eq!(valor(&m), ScriptValue::Object("Porta".into()), "um mestre não leva");
+    let porta = objecto(&mut m, "Porta");
+    ph2d_app_code::object_renamed(&mut m.hero, m.sim.world_mut(), porta, "Porta", "Portão");
+    assert_eq!(valor(&m), ScriptValue::Object("Portão".into()), "um objecto leva");
+}
+
 /// ⭐ Doc CodeEditor 08 §3.4: um `componente.campo` em `ph2d.get/set` que nenhum componente tem é um
 /// aviso com «quis dizer»; a pose (`"x"`) e um nome montado não contam.
 #[test]
@@ -287,6 +311,24 @@ fn um_nome_cai_entre_aspas_e_com_ctrl_vira_uma_constante() {
     m.pinta(id);
     assert!(m.docs().drop(id.0, solto(false)));
     let esperado = TEXTO.replacen("set(,", "set(\"door_open\",", 1);
+    assert_eq!(m.docs().text_of(id).as_deref(), Some(esperado.as_str()));
+}
+
+/// Dois nomes sem Ctrl caem como texto separados por `, `.
+#[test]
+fn dois_nomes_sem_ctrl_caem_separados_por_virgula_e_espaco() {
+    let (mut m, id) = mesa();
+    let b = TEXTO.find(", \"x\"").expect("agulha");
+    let p = ponto(&mut m, id, b);
+    let nomes = ["a".to_owned(), "b".to_owned()];
+    assert!(m.docs().drop(
+        id.0,
+        DropAt {
+            what: Dropping::Names(&nomes),
+            ..em(p, &nomes, false)
+        }
+    ));
+    let esperado = TEXTO.replacen("set(,", "set(\"a\", \"b\",", 1);
     assert_eq!(m.docs().text_of(id).as_deref(), Some(esperado.as_str()));
 }
 
@@ -367,6 +409,10 @@ fn uma_linha_do_inspector_cai_pelo_nome_e_a_do_proprio_script_por_self() {
     let (at, balao) = m.docs().drop_mark_of(id).expect("a marca");
     assert_eq!(at, b, "no cursor, mesmo com Ctrl");
     assert_eq!(balao.len(), 1, "{balao:?}");
+    assert!(balao[0].contains("in quotes"), "{balao:?}");
+    assert!(m.docs().drop_hover(id.0, Some(linha(Some(id.0), false))));
+    let (_, balao) = m.docs().drop_mark_of(id).expect("a marca do próprio script");
+    assert!(balao[0].contains("self."), "{balao:?}");
     assert!(
         !m.docs().drop_hover(id.0, Some(linha(Some(id.0 + 1), false))),
         "a propriedade de outro script não cai aqui"

@@ -138,6 +138,36 @@ mod tests {
     }
 
     #[test]
+    fn o_clip_julga_o_centro_da_area_e_nao_o_canto() {
+        let _g = Gravacao::nova(Rect::new(0.0, 0.0, 100.0, 100.0));
+        // Centro (10, 17) dentro, canto (-20, 10) fora.
+        linha(Rect::new(-20.0, 10.0, 60.0, 14.0), "CentroDentro");
+        // Canto (90, 40) dentro, centro (140, 47) fora.
+        linha(Rect::new(90.0, 40.0, 100.0, 14.0), "CantoDentro");
+        assert_eq!(sob(10.0, 17.0).expect("centro dentro").texto, "CentroDentro");
+        assert_eq!(sob(95.0, 45.0), None, "só o canto está no clip: não grava");
+    }
+
+    #[test]
+    fn um_cartao_novo_esquece_o_script_do_anterior() {
+        let _g = Gravacao::nova(CLIP_DO_PAINEL);
+        cartao("Script");
+        script_do_cartao("heroi.luau");
+        cartao("Health");
+        linha(r(20.0), "Max");
+        e_propriedade_do_script();
+        assert_eq!(sob(50.0, 25.0).expect("Max").script, None);
+    }
+
+    #[test]
+    fn sob_areas_sobrepostas_vence_a_ultima_pintada() {
+        let _g = Gravacao::nova(CLIP_DO_PAINEL);
+        linha(r(20.0), "Por baixo");
+        linha(r(20.0), "Por cima");
+        assert_eq!(sob(50.0, 25.0).expect("sobreposta").texto, "Por cima");
+    }
+
+    #[test]
     fn fora_da_gravacao_ou_do_clip_nada_entra_e_um_quadro_novo_esquece() {
         linha(r(20.0), "Max");
         {

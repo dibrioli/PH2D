@@ -517,6 +517,7 @@ mod tests {
             ("Inimigo", "INIMIGO"),
             ("Caixa Grande", "CAIXA_GRANDE"),
             ("v1.2 final", "V1_2_FINAL"),
+            (".bashrc", "BASHRC"),
         ] {
             assert_eq!(constant_name(nome), c, "{nome}");
         }
@@ -608,5 +609,26 @@ mod tests {
         let topo = object_property_insertion(&t, &s, at(src, "= 2"), &nomes[1..]);
         assert_eq!(topo.at, 0, "no topo, o início da linha da soltura");
         assert_eq!(topo.text, "ph2d.property(\"porta\", ph2d.object(\"Porta\"))\n");
+    }
+
+    #[test]
+    fn no_topo_a_propriedade_cai_na_linha_da_soltura_mesmo_numa_instrucao_de_varias_linhas() {
+        let src = "local T = {\n  a = 1,\n}\nlocal X = 2\n";
+        let t = Text::new(src);
+        let s = Syntax::new(&t);
+        let nomes = ["Porta".to_owned()];
+        let b = at(src, "a = 1");
+        let i = object_property_insertion(&t, &s, b, &nomes);
+        assert_eq!(i.at, at(src, "  a = 1"), "o início da linha da soltura, não o da instrução");
+    }
+
+    #[test]
+    fn o_fim_de_uma_instrucao_ja_nao_lhe_pertence() {
+        let src = "local T = {\n  a = 1,\n}\nlocal X = 2\n";
+        let t = Text::new(src);
+        let s = Syntax::new(&t);
+        let fim = at(src, "}\n") + 1;
+        assert_eq!(s.top_statement_line(&t, fim - 1), 0, "dentro: a linha da instrução");
+        assert_eq!(s.top_statement_line(&t, fim), at(src, "}"), "no fim exacto: a linha dele");
     }
 }

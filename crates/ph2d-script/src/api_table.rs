@@ -345,7 +345,7 @@ pub fn property_names() -> Vec<String> {
             d.fields
                 .iter()
                 .filter(|f| !f.name.is_empty())
-                .map(move |f| format!("{}.{}", d.code, f.name))
+                .map(move |f| ph2d_ecs::scene::property::full_name(d.code, f.name))
         })
         .chain(runtime)
         .collect()

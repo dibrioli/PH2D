@@ -33,6 +33,31 @@ pub struct FieldDesc {
     /// A chave serde do campo na struct, quando difere do [`Self::name`] (`height_world` ×
     /// `height`). Vazio = a mesma; [`WHOLE`] = o componente inteiro (um newtype).
     pub key: &'static str,
+    /// Como o script vê o valor guardado: o que o CARTÃO mostra (doc CodeEditor 08 §3.12).
+    pub view: View,
+}
+
+/// ⭐ **Como o script vê um valor guardado** — o que o cartão mostra, com uma excepção: um ângulo no
+/// script é sempre em RADIANOS (a pose `rotation`, o `math.sin`, o Godot). Lei única em
+/// `ph2d_ecs::scene::property`; gate de ida e volta em `ph2d-app-components`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum View {
+    /// O valor guardado, tal e qual.
+    Same,
+    /// Guardado em graus; o script lê e escreve radianos (num par, cada elemento).
+    Degrees,
+    /// Guardado = script × k (`1_000_000`: µs no componente, segundos no cartão; `65_536`: q16).
+    Scale(u32),
+    /// Guardado = script − n: o cartão conta a partir de `n` e o componente de 0.
+    Offset(i32),
+    /// Booleano invertido: o cartão «Visible», o componente `hidden`.
+    Not,
+    /// Uma caixa no cartão sobre um enum: `(json de true, json de false)`.
+    Toggle(&'static str, &'static str),
+    /// Uma escolha: `(nome no script, json guardado)` — o nome é o `snake` do rótulo da opção.
+    Options(&'static [(&'static str, &'static str)]),
+    /// Pode ser infinito (sem limite): `math.huge` no script, `null` no valor serde.
+    Unbounded,
 }
 
 /// A chave de um campo que é o valor inteiro do componente (`OrderInLayer(i32)`).
@@ -83,6 +108,13 @@ impl FieldDesc {
     #[must_use]
     pub const fn keyed(mut self, key: &'static str) -> Self {
         self.key = key;
+        self
+    }
+
+    /// Como o script vê o valor ([`View`]).
+    #[must_use]
+    pub const fn viewed(mut self, view: View) -> Self {
+        self.view = view;
         self
     }
 

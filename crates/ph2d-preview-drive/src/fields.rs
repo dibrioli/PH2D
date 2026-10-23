@@ -10,7 +10,9 @@
 
 use std::collections::BTreeMap;
 
-use ph2d_ecs::scene::registry::{ComponentTypeEntry, SetValueFn, ValueOfFn};
+use ph2d_ecs::scene::registry::{
+    ComponentTypeEntry, InsertDefaultFn, RemoveFn, SetValueFn, ValueOfFn,
+};
 
 /// Um campo de um componente, com as portas da vtable que o lêem e escrevem.
 #[derive(Clone, Copy, Debug)]
@@ -19,6 +21,9 @@ pub struct FieldRef {
     pub key: &'static str,
     pub value_of: ValueOfFn,
     pub set_value: SetValueFn,
+    /// Para tirar o componente que o SCRIPT criou (uma linha no neutro) e o voltar a pôr.
+    pub remove: RemoveFn,
+    pub insert_default: Option<InsertDefaultFn>,
 }
 
 impl FieldRef {
@@ -29,6 +34,8 @@ impl FieldRef {
             key,
             value_of: entry.value_of,
             set_value: entry.set_value,
+            remove: entry.remove,
+            insert_default: entry.insert_default,
         }
     }
 }
@@ -41,6 +48,8 @@ struct FieldEntry {
     last_written: Value,
     value_of: ValueOfFn,
     set_value: SetValueFn,
+    /// O script criou o componente: o autorado é a AUSÊNCIA.
+    born: Option<(RemoveFn, Option<InsertDefaultFn>)>,
 }
 
 /// `(bits da entidade, nome canónico, chave serde)`.
@@ -53,7 +62,7 @@ pub struct FieldDrive {
 }
 
 /// O que a [`FieldDrive::substitute`] deslocou — o vivo, para o [`FieldDrive::restore`].
-pub struct DisplacedFields(Vec<(Key, Value, SetValueFn, ValueOfFn)>);
+pub struct DisplacedFields(Vec<(Key, Value, FieldEntry)>);
 
 fn read(value_of: ValueOfFn, sim: &SimWorld, entity: Entity, key: &str) -> Option<Value> {
     // ⚠️ Pela lei do nome (`slot_in`): um newtype (`"."`) e um elemento (`"axis[0]"`) também.
@@ -80,8 +89,8 @@ fn write(
 
 impl FieldDrive {
     /// Um script escreveu `key` do componente de `entry`: `before` é o que lá estava, `after` o que
-    /// deixou.
-    pub fn driven(&mut self, entity: Entity, field: FieldRef, before: Value, after: Value) {
+    /// deixou; `born` = a escrita criou o componente.
+    pub fn driven(&mut self, entity: Entity, field: FieldRef, before: Value, after: Value, born: bool) {
         let k = (entity.to_bits(), field.canonical_name, field.key);
         let entry = field;
         match self.memo.get_mut(&k) {
@@ -93,6 +102,7 @@ impl FieldDrive {
                         last_written: after,
                         value_of: entry.value_of,
                         set_value: entry.set_value,
+                        born: born.then_some((entry.remove, entry.insert_default)),
                     },
                 );
             }
@@ -124,6 +134,10 @@ impl FieldDrive {
     pub fn release(&mut self, sim: &mut SimWorld) -> usize {
         let n = self.memo.len();
         for ((bits, _, key), e) in std::mem::take(&mut self.memo) {
+            if let Some((remove, _)) = e.born {
+                remove(sim.world_mut(), Entity::from_bits(bits));
+                continue;
+            }
             write(
                 e.value_of,
                 e.set_value,
@@ -145,16 +159,25 @@ impl FieldDrive {
             let Some(now) = read(e.value_of, sim, entity, k.2) else {
                 continue;
             };
-            write(e.value_of, e.set_value, sim, entity, k.2, &e.authored);
-            live.push((k, now, e.set_value, e.value_of));
+            match e.born {
+                Some((remove, _)) => remove(sim.world_mut(), entity),
+                None => write(e.value_of, e.set_value, sim, entity, k.2, &e.authored),
+            }
+            live.push((k, now, e.clone()));
         }
         DisplacedFields(live)
     }
 
     /// Devolve ao mundo o que a [`Self::substitute`] deslocou.
     pub fn restore(sim: &mut SimWorld, live: &DisplacedFields) {
-        for ((bits, _, key), v, set_value, value_of) in &live.0 {
-            write(*value_of, *set_value, sim, Entity::from_bits(*bits), key, v);
+        for ((bits, _, key), v, e) in &live.0 {
+            let entity = Entity::from_bits(*bits);
+            if let Some((_, Some(insert))) = e.born
+                && matches!((e.value_of)(sim.world(), entity), Ok(None))
+            {
+                let _ = insert(sim.world_mut(), entity);
+            }
+            write(e.value_of, e.set_value, sim, entity, key, v);
         }
     }
 

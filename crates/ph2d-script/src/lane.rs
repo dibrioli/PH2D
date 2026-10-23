@@ -344,7 +344,7 @@ impl<'w> Lane<'w> {
 
     /// `ph2d.get` — a pose, ou uma propriedade nomeada; `nil` se o id já não é de ninguém.
     fn get(&mut self, lua: &Lua, id: f64, field: &str) -> mlua::Result<Value> {
-        if pose_field(field).is_some() || !field.contains('.') {
+        if pose_field(field).is_some() || !is_property_name(field) {
             let v = self.pose(id, field).map_err(mlua::Error::RuntimeError)?;
             return Ok(v.map_or(Value::Nil, Value::Number));
         }
@@ -360,6 +360,11 @@ impl<'w> Lane<'w> {
 
     /// `ph2d.set` de uma propriedade: verifica JÁ (o erro aponta a linha) e pousa no fim do tique.
     fn set_property(&mut self, lua: &Lua, id: f64, field: &str, value: &Value) -> mlua::Result<()> {
+        if !is_property_name(field) {
+            return Err(mlua::Error::RuntimeError(format!(
+                "ph2d.set: unknown field '{field}' (x, y, rotation, scale_x, scale_y)"
+            )));
+        }
         let Some(e) = self.alive(id) else {
             return Ok(());
         };
@@ -533,9 +538,25 @@ pub(crate) fn with_lane<R>(
     Ok((r, cell.into_inner().finish()))
 }
 
+/// Um nome de propriedade: `componente.campo`, ou o curto de um campo que se chama como o
+/// componente (`gravity_scale`). O resto é a pose (ou um nome que não existe).
+fn is_property_name(field: &str) -> bool {
+    static CURTOS: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+    field.contains('.')
+        || CURTOS
+            .get_or_init(|| {
+                crate::api_table::property_names()
+                    .into_iter()
+                    .filter(|n| !n.contains('.'))
+                    .collect()
+            })
+            .iter()
+            .any(|n| n == field)
+}
+
 /// As funções `ph2d.*` que passam pela pista — Luau, para o erro apontar a linha do script.
 pub(crate) const LANE_LUAU: &str = r#"
-local lane = ...
+local lane, POSE = ...
 local function through(name)
   return function(...)
     local f = lane[name]
@@ -554,11 +575,12 @@ ph2d.attach_script = through("attach_script")
 ph2d.properties = through("properties")
 ph2d.damage = through("damage")
 ph2d.heal = through("heal")
--- A pose vai pela fila do `ph2d.set` de sempre; um nome `componente.campo` pela pista.
+-- A pose vai pela fila do `ph2d.set` de sempre; qualquer outro nome (`componente.campo`, ou o curto
+-- `gravity_scale`) pela pista.
 local set_pose = ph2d.set
 local set_property = through("set_property")
 ph2d.set = function(entity, field, value)
-  if type(field) == "string" and string.find(field, ".", 1, true) then
+  if type(field) == "string" and not POSE[field] then
     return set_property(entity, field, value)
   end
   return set_pose(entity, field, value)
@@ -569,5 +591,9 @@ end
 pub(crate) fn wire(lua: &Lua) -> mlua::Result<()> {
     let table = lua.create_table()?;
     lua.set_named_registry_value(LANE_KEY, table.clone())?;
-    lua.load(LANE_LUAU).set_name("=ph2d").call::<()>(table)
+    let pose = lua.create_table()?;
+    for f in crate::io::POSE_FIELDS {
+        pose.raw_set(f, true)?;
+    }
+    lua.load(LANE_LUAU).set_name("=ph2d").call::<()>((table, pose))
 }

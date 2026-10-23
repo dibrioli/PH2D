@@ -17,6 +17,7 @@ pub struct Luz {
     /// Raio da FONTE, em metros do mundo (não escala com o `Transform`). Decide a penumbra.
     pub tamanho_m: f32,
     /// Alcance da queda autoral (`queda`, janela de Karis); `f32::INFINITY` = física pura.
+    #[serde(with = "sem_limite")]
     pub alcance_m: f32,
     pub tipo: TipoDeLuz,
 }
@@ -86,3 +87,26 @@ impl Default for BloqueiaLuz {
 /// **Opt-out de receber luz** (HUD, fundo pintado com luz própria). Por omissão TUDO recebe.
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NaoRecebeLuz;
+
+/// ⭐ **O infinito num formato LEGÍVEL é `null`** — o JSON não tem infinito, e o script lê e escreve
+/// as propriedades por ele (doc CodeEditor 08 §3.12, `View::Unbounded`). O postcard (o projecto
+/// gravado) continua a guardar o `f32` cru: o formato gravado não muda.
+mod sem_limite {
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub(super) fn serialize<S: Serializer>(v: &f32, s: S) -> Result<S::Ok, S::Error> {
+        if s.is_human_readable() && v.is_infinite() {
+            s.serialize_none()
+        } else {
+            s.serialize_f32(*v)
+        }
+    }
+
+    pub(super) fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<f32, D::Error> {
+        if d.is_human_readable() {
+            Ok(Option::<f32>::deserialize(d)?.unwrap_or(f32::INFINITY))
+        } else {
+            f32::deserialize(d)
+        }
+    }
+}

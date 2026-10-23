@@ -27,6 +27,7 @@ const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
         is_ref: None,
         name: "",
         key: "",
+        view: crate::View::Same,
     }
 }
 

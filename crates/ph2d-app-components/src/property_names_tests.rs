@@ -74,7 +74,7 @@ fn ler_e_escrever_o_mesmo_valor_nao_muda_um_byte() {
         insert_default(&mut world, e).expect("default");
         let antes = (entry.serialize)(&world, e).expect("bytes");
         for f in d.fields.iter().filter(|f| !f.name.is_empty()) {
-            let nome = format!("{}.{}", d.code, f.name);
+            let nome = property::full_name(d.code, f.name);
             let v = property::get(&reg, &world, e, &nome).unwrap_or_else(|err| panic!("{nome}: {err}"));
             property::set(&reg, &mut world, e, &nome, v).unwrap_or_else(|err| panic!("{nome}: {err}"));
             campos += 1;

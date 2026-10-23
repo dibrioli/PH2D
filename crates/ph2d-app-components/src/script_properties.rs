@@ -15,7 +15,7 @@ use serde_json::Value;
 
 /// As escritas deste quadro, à espera do ledger (a porta não o vê; o `frame` sim).
 #[derive(Resource, Default)]
-struct ScriptFieldWrites(Vec<(Entity, FieldRef, Value, Value)>);
+struct ScriptFieldWrites(Vec<(Entity, FieldRef, Value, Value, bool)>);
 
 /// O erro como o console do script o mostra — a palavra do tipo pela tabela (HR-15).
 fn says(e: PropertyError) -> String {
@@ -139,18 +139,18 @@ pub(crate) fn set(
     if dry {
         return property::check(reg, world, entity, name, value.clone()).map_err(says);
     }
-    let r = property::resolve(reg, name).map_err(says)?;
-    let before = property::get(reg, world, entity, name).map_err(says)?;
-    property::set(reg, world, entity, name, value.clone()).map_err(says)?;
+    // O ledger guarda o valor GUARDADO, nunca o que o script vê (a `View`).
+    let (before, r) = property::get_stored(reg, world, entity, name).map_err(says)?;
+    let born = property::set(reg, world, entity, name, value.clone()).map_err(says)?;
     crate::property_laws::sanitize(r.entry.canonical_name, world, entity);
-    let after = property::get(reg, world, entity, name).map_err(says)?;
+    let (after, _) = property::get_stored(reg, world, entity, name).map_err(says)?;
     // Uma cópia da corrida não é documento: não há autorado a guardar por baixo dela.
-    if before != after && !ph2d_ecs::is_transient(world, entity) {
+    if (born || before != after) && !ph2d_ecs::is_transient(world, entity) {
         let field = FieldRef::of(r.entry, r.field.serde_key());
         world
             .get_resource_or_init::<ScriptFieldWrites>()
             .0
-            .push((entity, field, before, after));
+            .push((entity, field, before, after, born));
     }
     Ok(())
 }
@@ -174,8 +174,8 @@ pub(crate) fn declare(sim: &mut SimWorld, drive: &mut PreviewDrive) {
     let Some(mut w) = sim.world_mut().get_resource_mut::<ScriptFieldWrites>() else {
         return;
     };
-    for (entity, field, before, after) in std::mem::take(&mut w.0) {
-        drive.fields.driven(entity, field, before, after);
+    for (entity, field, before, after, born) in std::mem::take(&mut w.0) {
+        drive.fields.driven(entity, field, before, after, born);
     }
 }
 

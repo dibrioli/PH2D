@@ -216,7 +216,7 @@ fn dano_sem_vida_ou_quantia_invalida_para_o_objecto() {
     }
 }
 
-/// ⭐ Um NEWTYPE (`order_in_layer`, a chave `"."`) e um ELEMENTO (`9_slice.top`, `"borders[1]"`)
+/// ⭐ Um NEWTYPE (`order_in_layer` — o nome curto —, a chave `"."`) e um ELEMENTO (`9_slice.top`, `"borders[1]"`)
 /// também se escrevem a correr e voltam ao do artista: o livro da corrida resolve a chave pela
 /// MESMA lei do nome (`property::slot_in`), e a lei do valor do Inspector vale para o script.
 #[test]
@@ -224,7 +224,7 @@ fn um_newtype_e_um_elemento_tambem_voltam_ao_do_artista() {
     let mut c = cena(
         r#"
 function update(self)
-  ph2d.set(self.id, "order_in_layer.order_in_layer", 7)
+  ph2d.set(self.id, "order_in_layer", 7)
   ph2d.set(self.id, "9_slice.top", -4)
   ph2d.set(self.id, "9_slice.left", 12)
 end

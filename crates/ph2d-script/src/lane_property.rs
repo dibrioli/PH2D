@@ -26,6 +26,8 @@ pub(crate) fn to_lua(lua: &Lua, v: &Json, kind: FieldKind) -> mlua::Result<Value
                 return Ok(tabela_de(lua, &c)?.unwrap_or(Value::Nil));
             }
         }
+        // Um número sem limite (`View::Unbounded`) é `null` no valor serde e `math.huge` no Luau.
+        (FieldKind::Scalar, Json::Null) => return Ok(Value::Number(f64::INFINITY)),
         _ => {}
     }
     plain(lua, v)
@@ -60,6 +62,7 @@ pub(crate) fn from_lua(v: &Value) -> Result<Json, String> {
         Value::Nil => Json::Null,
         Value::Boolean(b) => Json::Bool(*b),
         Value::Integer(i) => Json::from(*i),
+        Value::Number(n) if *n == f64::INFINITY => Json::Null,
         Value::Number(n) => serde_json::Number::from_f64(*n)
             .map(Json::Number)
             .ok_or_else(|| format!("{n} is not a number"))?,

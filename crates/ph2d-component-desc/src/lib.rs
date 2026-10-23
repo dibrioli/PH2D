@@ -97,6 +97,10 @@ pub struct ComponentDesc {
     pub hidden: Option<Hidden>,
     /// As chaves serde que o script não alcança num componente com nome, e porquê.
     pub hidden_keys: &'static [(&'static str, Hidden)],
+    /// ⭐ **Uma LINHA do cartão de outro componente** (a «Gravity Scale» do corpo): o nome canónico
+    /// do dono. Onde o dono está e ele falta, o cartão mostra o valor neutro — e o script lê-o, e ao
+    /// escrever cria-o (o parar tira-o). Vazio = um cartão próprio.
+    pub row_of: &'static str,
 }
 
 impl ComponentDesc {
@@ -111,6 +115,13 @@ impl ComponentDesc {
     #[must_use]
     pub const fn hidden(mut self, why: Hidden) -> Self {
         self.hidden = Some(why);
+        self
+    }
+
+    /// Uma linha do cartão do componente `host` ([`Self::row_of`]).
+    #[must_use]
+    pub const fn row_of(mut self, host: &'static str) -> Self {
+        self.row_of = host;
         self
     }
 
@@ -157,6 +168,7 @@ impl ComponentDesc {
             code: "",
             hidden: None,
             hidden_keys: &[],
+            row_of: "",
         }
     }
 
@@ -185,6 +197,7 @@ impl ComponentDesc {
             code: "",
             hidden: None,
             hidden_keys: &[],
+            row_of: "",
         }
     }
 
@@ -209,6 +222,7 @@ impl ComponentDesc {
             code: "",
             hidden: None,
             hidden_keys: &[],
+            row_of: "",
         }
     }
 
@@ -248,6 +262,7 @@ impl ComponentDesc {
             code: "",
             hidden: None,
             hidden_keys: &[],
+            row_of: "",
         }
     }
 
@@ -274,6 +289,7 @@ impl ComponentDesc {
             code: "",
             hidden: None,
             hidden_keys: &[],
+            row_of: "",
         }
     }
 
@@ -299,6 +315,7 @@ impl ComponentDesc {
             code: "",
             hidden: None,
             hidden_keys: &[],
+            row_of: "",
         }
     }
 
@@ -658,4 +675,4 @@ impl ComponentCategory {
 /// ⭐ **O que um CAMPO é** — irmão por tecto de LOC (HR-18, 700). Os tipos mantêm o endereço
 /// público (`ph2d_component_desc::FieldDesc`), logo nenhum consumidor muda.
 mod field;
-pub use field::{FieldDesc, FieldKind, Hidden, Propagation, RefKind, WHOLE};
+pub use field::{FieldDesc, FieldKind, Hidden, Propagation, RefKind, View, WHOLE};

@@ -68,6 +68,7 @@ const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
         is_ref: None,
         name: "",
         key: "",
+        view: crate::View::Same,
     }
 }
 
@@ -98,6 +99,7 @@ const NAME: &[FieldDesc] = &[FieldDesc {
     is_ref: None,
     name: "",
     key: "",
+    view: crate::View::Same,
 }];
 
 /// ⏳ **`Editor` provisório (CodeEditor 08 d3):** o cartão pinta «Visible» e o campo guarda `hidden` —
@@ -127,6 +129,7 @@ const INSTANCE_OF: &[FieldDesc] = &[FieldDesc {
     is_ref: Some(crate::RefKind::Object),
     name: "",
     key: "",
+    view: crate::View::Same,
 }];
 
 // ── Ordenação: a família PILOTO da F0 (a §7 do Inspector) ──────────────────────────
@@ -202,6 +205,7 @@ const TAGS: &[FieldDesc] = &[FieldDesc {
     is_ref: Some(RefKind::Tag),
     name: "",
     key: "",
+    view: crate::View::Same,
 }];
 
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).

@@ -10,7 +10,7 @@
 use super::registry::{ComponentRegistry, ComponentTypeEntry};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::world::World;
-use ph2d_component_desc::{FieldDesc, FieldKind, WHOLE};
+use ph2d_component_desc::{ComponentDesc, FieldDesc, FieldKind, View, WHOLE};
 use serde_json::Value;
 
 /// Porque um nome não se lê nem se escreve.
@@ -28,6 +28,8 @@ pub enum PropertyError {
     WrongType { name: String, kind: FieldKind },
     /// A entidade já não existe.
     NoEntity,
+    /// Uma escolha que o campo não tem; `options` são as que tem.
+    NoSuchOption { name: String, options: String },
 }
 
 impl std::fmt::Display for PropertyError {
@@ -42,6 +44,7 @@ impl std::fmt::Display for PropertyError {
             // A palavra do tipo é de quem pinta a mensagem (a ponte dos scripts, pela tabela).
             Self::WrongType { name, kind } => write!(f, "'{name}' takes a {kind:?} value"),
             Self::NoEntity => f.write_str("the object no longer exists"),
+            Self::NoSuchOption { name, options } => write!(f, "'{name}' takes one of: {options}"),
         }
     }
 }
@@ -55,15 +58,17 @@ pub struct Resolved<'r> {
     pub field: &'static FieldDesc,
 }
 
-/// `"health.max"` → a entrada e o campo, ou porque não.
+/// `"health.max"` → a entrada e o campo, ou porque não. Um campo que se chama como o componente
+/// tem o nome curto: `"gravity_scale"`, e nunca `"gravity_scale.gravity_scale"` ([`full_name`]).
 pub fn resolve<'r>(reg: &'r ComponentRegistry, name: &str) -> Result<Resolved<'r>, PropertyError> {
-    let (code, field) = name
-        .split_once('.')
-        .ok_or_else(|| PropertyError::NotQualified(name.to_owned()))?;
-    let entry = reg
-        .iter()
-        .find(|e| e.desc.is_some_and(|d| d.code == code))
-        .ok_or_else(|| PropertyError::UnknownComponent(code.to_owned()))?;
+    let entry_of = |code: &str| reg.iter().find(|e| e.desc.is_some_and(|d| d.code == code));
+    let (code, field) = match name.split_once('.') {
+        Some((code, field)) if field != code => (code, field),
+        Some(_) => return Err(PropertyError::NotQualified(name.to_owned())),
+        None if entry_of(name).is_some() => (name, name),
+        None => return Err(PropertyError::NotQualified(name.to_owned())),
+    };
+    let entry = entry_of(code).ok_or_else(|| PropertyError::UnknownComponent(code.to_owned()))?;
     let desc = entry.desc.expect("filtrado acima");
     let field = desc
         .fields
@@ -87,10 +92,16 @@ pub fn all_names(reg: &ComponentRegistry) -> Vec<String> {
             d.fields
                 .iter()
                 .filter(|f| !f.name.is_empty())
-                .map(|f| format!("{}.{}", d.code, f.name)),
+                .map(|f| full_name(d.code, f.name)),
         );
     }
     out
+}
+
+/// O nome com que um script alcança o campo `field` do componente `code`.
+#[must_use]
+pub fn full_name(code: &str, field: &str) -> String {
+    if code == field { code.to_owned() } else { format!("{code}.{field}") }
 }
 
 /// Os nomes que ESTE objecto tem (o `get_property_list` do Godot), na ordem do catálogo.
@@ -108,9 +119,74 @@ pub fn get(
     entity: Entity,
     name: &str,
 ) -> Result<Value, PropertyError> {
+    get_stored(reg, world, entity, name).map(|(v, r)| seen(r.field.view, v))
+}
+
+/// O valor GUARDADO de `name` (sem a [`View`]) — o que o ledger da corrida grava e repõe.
+pub fn get_stored<'r>(
+    reg: &'r ComponentRegistry,
+    world: &World,
+    entity: Entity,
+    name: &str,
+) -> Result<(Value, Resolved<'r>), PropertyError> {
     let r = resolve(reg, name)?;
-    let mut whole = component_value(&r, world, entity)?;
-    slot(&r, &mut whole).cloned()
+    let mut whole = component_value(reg, &r, world, entity)?;
+    let v = slot(&r, &mut whole)?.clone();
+    Ok((v, r))
+}
+
+/// O valor guardado, como o script o vê ([`View`]).
+fn seen(view: View, v: Value) -> Value {
+    let k = |x: f64, f: &dyn Fn(f64) -> f64| Value::from(f(x));
+    match (view, v) {
+        (View::Degrees, Value::Array(a)) => Value::Array(a.into_iter().map(|x| seen(view, x)).collect()),
+        (View::Degrees, Value::Number(n)) => k(n.as_f64().unwrap_or(0.0), &f64::to_radians),
+        (View::Scale(q), Value::Number(n)) => k(n.as_f64().unwrap_or(0.0), &|x| x / f64::from(q)),
+        (View::Offset(o), Value::Number(n)) => match n.as_i64() {
+            Some(i) => Value::from(i + i64::from(o)),
+            None => Value::Number(n),
+        },
+        (View::Not, Value::Bool(b)) => Value::Bool(!b),
+        (View::Toggle(t, _), v) => Value::Bool(json(t) == v),
+        (View::Options(opts), v) => opts
+            .iter()
+            .find(|(_, j)| json(j) == v)
+            .map_or(v, |(n, _)| Value::String((*n).to_owned())),
+        (_, v) => v,
+    }
+}
+
+/// O valor que o script deu, como o componente o guarda; `stored` é o que lá está (um inteiro
+/// guardado continua inteiro).
+fn stored_from(view: View, v: Value, stored: &Value, name: &str) -> Result<Value, PropertyError> {
+    let num = |v: &Value| v.as_f64();
+    let inteiro = |x: f64| if stored.is_i64() || stored.is_u64() { Value::from(x.round() as i64) } else { Value::from(x) };
+    Ok(match (view, v) {
+        (View::Degrees, Value::Array(a)) => Value::Array(
+            a.into_iter()
+                .map(|x| stored_from(view, x, &Value::Null, name))
+                .collect::<Result<_, _>>()?,
+        ),
+        (View::Degrees, v) if num(&v).is_some() => Value::from(num(&v).unwrap_or(0.0).to_degrees()),
+        (View::Scale(q), v) if num(&v).is_some() => inteiro(num(&v).unwrap_or(0.0) * f64::from(q)),
+        (View::Offset(o), v) if num(&v).is_some() => inteiro(num(&v).unwrap_or(0.0) - f64::from(o)),
+        (View::Not, Value::Bool(b)) => Value::Bool(!b),
+        (View::Toggle(t, f), Value::Bool(b)) => json(if b { t } else { f }),
+        (View::Options(opts), v) => match v.as_str().and_then(|s| opts.iter().find(|(n, _)| *n == s)) {
+            Some((_, j)) => json(j),
+            None => {
+                return Err(PropertyError::NoSuchOption {
+                    name: name.to_owned(),
+                    options: opts.iter().map(|(n, _)| format!("\"{n}\"")).collect::<Vec<_>>().join(", "),
+                });
+            }
+        },
+        (_, v) => v,
+    })
+}
+
+fn json(s: &str) -> Value {
+    serde_json::from_str(s).expect("o json de uma View é literal do catálogo")
 }
 
 /// O lugar de uma chave dentro do valor do componente: o valor inteiro num newtype ([`WHOLE`]), um
@@ -140,22 +216,33 @@ fn slot<'v>(r: &Resolved<'_>, whole: &'v mut Value) -> Result<&'v mut Value, Pro
     })
 }
 
-/// Escreve `value` em `name` no objecto; os outros campos do componente ficam.
+/// Escreve `value` em `name` no objecto; os outros campos do componente ficam. `Ok(true)` = a
+/// escrita CRIOU o componente (uma linha que estava no neutro, [`ComponentDesc::row_of`]).
 pub fn set(
     reg: &ComponentRegistry,
     world: &mut World,
     entity: Entity,
     name: &str,
     value: Value,
-) -> Result<(), PropertyError> {
+) -> Result<bool, PropertyError> {
     let r = resolve(reg, name)?;
-    let mut whole = component_value(&r, world, entity)?;
-    *slot(&r, &mut whole)? = normalize(r.field.kind, value);
+    let mut whole = component_value(reg, &r, world, entity)?;
+    let born = matches!((r.entry.value_of)(world, entity), Ok(None));
+    let s = slot(&r, &mut whole)?;
+    *s = normalize(r.field.kind, stored_from(r.field.view, value, s, name)?);
     let wrong = || PropertyError::WrongType {
         name: name.to_owned(),
         kind: r.field.kind,
     };
-    (r.entry.set_value)(world, entity, whole).map_err(|_| wrong())
+    if born {
+        let insert = r.entry.insert_default.ok_or_else(wrong)?;
+        insert(world, entity).map_err(|_| wrong())?;
+    }
+    let res = (r.entry.set_value)(world, entity, whole).map_err(|_| wrong());
+    if res.is_err() && born {
+        (r.entry.remove)(world, entity);
+    }
+    res.map(|()| born)
 }
 
 /// Um número inteiro chega do Luau como real (`3.0`); o serde de um `i32`/`u64` não o aceita.
@@ -177,17 +264,30 @@ fn code_of(r: &Resolved<'_>) -> &'static str {
 }
 
 fn component_value(
+    reg: &ComponentRegistry,
     r: &Resolved<'_>,
     world: &World,
     entity: Entity,
 ) -> Result<Value, PropertyError> {
     match (r.entry.value_of)(world, entity) {
         Ok(Some(v)) => Ok(v),
-        Ok(None) => Err(PropertyError::Missing {
+        Ok(None) => neutral_row(reg, r, world, entity).ok_or_else(|| PropertyError::Missing {
             component: code_of(r).to_owned(),
         }),
         Err(_) => Err(PropertyError::NoEntity),
     }
+}
+
+/// O valor neutro de uma LINHA que falta onde o dono dela está: o que o cartão mostra.
+fn neutral_row(reg: &ComponentRegistry, r: &Resolved<'_>, world: &World, entity: Entity) -> Option<Value> {
+    let host = r.entry.desc.map(|d| d.row_of).filter(|h| !h.is_empty())?;
+    let host = reg.get_by_name(host)?;
+    (host.value_of)(world, entity).ok()??;
+    let insert = r.entry.insert_default?;
+    let mut scratch = World::new();
+    let e = scratch.spawn_empty().id();
+    insert(&mut scratch, e).ok()?;
+    (r.entry.value_of)(&scratch, e).ok()?
 }
 
 /// Como [`set`], sem escrever: `Ok` = a escrita pousaria.
@@ -199,9 +299,9 @@ pub fn check(
     value: Value,
 ) -> Result<(), PropertyError> {
     let r = resolve(reg, name)?;
-    let mut whole = component_value(&r, world, entity)?;
+    let mut whole = component_value(reg, &r, world, entity)?;
     if let Ok(s) = slot(&r, &mut whole) {
-        *s = normalize(r.field.kind, value);
+        *s = normalize(r.field.kind, stored_from(r.field.view, value, s, name)?);
     }
     (r.entry.check_value)(&whole).map_err(|_| PropertyError::WrongType {
         name: name.to_owned(),

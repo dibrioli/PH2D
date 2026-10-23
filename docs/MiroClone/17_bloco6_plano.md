@@ -183,25 +183,36 @@ Cada linha tem um gate de COMPORTAMENTO (o clique sintético percorre a sequênc
 
 ## §6 — Gates (red-first) e a fixture que contém o fenómeno
 
-> ⚠️ 22/10 (auditoria do fecho): **nomes do plano; os gates reais estão no §9 e nos handoffs.** Dos 23 nomes planeados, 21 nunca existiram no código com este nome. Onde o plano diz `PROTOCOL 9` (e `9 → 10`), o código está em **11** (`ph2d-board-sync/src/session.rs`) e o formato do quadro em 17.
+> W24 (23/10): a lista do plano tinha 23 nomes, 21 nunca existiram com esse nome (auditoria do fecho de 22/10). Abaixo,
+> cada propriedade planeada com o gate REAL que a cobre (conferido por `grep` no código) ou «nenhum». O protocolo vivo
+> está em **11** (`ph2d-board-sync/src/session.rs`) e o formato do quadro em 17; o plano dizia 9.
 
-- **B15:** `a_paste_into_another_board_never_points_at_a_stranger` (VERMELHO hoje: quadro de destino com um frame,
-  um nó e um alvo de link com os MESMOS ids do que não foi copiado) · `copy_to_board_keeps_arrows_frames_and_the_map`
-  · `move_leaves_one_step_on_each_board_and_the_toast_undoes_both` · `ctrl_v_in_another_tab_is_the_same_landing` ·
-  `the_board_menu_sends_through_the_scene_picker` (comportamento, clique sintético).
-- **B12:** `coverage_is_exact_on_analytic_cases` (quadrado × semiplano = ½, círculo × quadrado inscrito = 2/π,
-  laço em 8 non-zero) · `the_lasso_takes_what_is_ninety_percent_inside` (fixture: 100 %, 95 %, 89 %, 60 % e o
-  côncavo em «C» cuja CAIXA está dentro e a área não — o fenómeno que um teste por caixa aprova) ·
-  `the_marquee_and_the_lasso_ask_one_door` (travados, ramo recolhido, grupos) · `w4_lasso_contain_matches_excalidraw_next`
-  (oráculo, `cover = 1.0`) · M2 como gate de tecto com a tabela.
-- **B13:** `every_quickshape_lands_on_a_board_element_or_stays_ink` · `the_hand_fixtures_recognise_on_the_board_as_in_the_vector`
-  (a MESMA lei) · `a_recognised_line_touching_a_shape_is_bound` · `undo_gives_back_the_stroke_as_drawn` ·
-  `the_board_hold_is_the_vector_hold` (mesmos `HOLD_NS`/`HOLD_SLOP_PX`, Shift, Esc, interruptor) ·
-  `a_stroke_without_holding_stays_ink` · `the_board_has_no_recognition_thresholds_of_its_own` (censo) ·
-  `w4_draw_to_shape_agreement` (oráculo; as divergências escritas, com o porquê).
-- **B14:** `a_mention_is_a_person_not_letters` · `a_mention_reaches_the_person_live_and_in_the_file` (duas réplicas;
-  e o ficheiro reaberto) · `my_own_message_never_notifies_me` · `format_15_reads_with_no_mentions` ·
-  `protocol_9_peer_is_refused_cleanly` · `the_toast_show_opens_the_thread` (comportamento).
+| bloco | propriedade planeada | gate real |
+|---|---|---|
+| B15 | colar noutro quadro nunca aponta para um estranho | `ph2d-board-edit/src/paste_elsewhere_tests.rs` `a_link_pasted_in_another_board_never_points_at_a_stranger` (+ nó e forma no mesmo ficheiro) |
+| B15 | copiar guarda setas, frames e mapa | parcial: `ph2d-editor-core/…/board_send_tests.rs` `copy_to_board_keeps_both_and_offers_no_undo_button` (não confere setas/frames/mapa) |
+| B15 | mover = um passo em cada quadro, o aviso desfaz os dois | `board_send_tests.rs` `move_to_board_from_the_menu_lands_on_the_other_board_and_undo_puts_them_back` |
+| B15 | Ctrl+V noutra aba é o mesmo pouso | `board_send_tests.rs` `ctrl_v_in_another_tab_lands_in_the_middle_of_its_view` |
+| B15 | o menu manda pelo escolhedor de cena | parcial: `ph2d-app-board/src/send_to_board_tests.rs` `the_choice_reads_the_scene_counts_the_deleted_and_names_the_nameless` (lê a escolha, não clica) |
+| B12 | cobertura exacta nos casos analíticos | `ph2d-board-geom/src/cover_tests.rs` `half_a_square_is_one_half` · `the_inscribed_square_covers_two_over_pi_of_a_circle` · `a_figure_eight_counts_both_loops` |
+| B12 | o laço leva o que está ≥ 90 % dentro | `ph2d-board-edit/src/lasso_tests.rs` `the_lasso_takes_what_is_ninety_percent_inside` |
+| B12 | rectângulo e laço perguntam a uma porta | `lasso_tests.rs` `the_lasso_and_the_marquee_ask_one_door` |
+| B12 | oráculo: contain do Excalidraw | parcial: `ph2d-board-excalidraw/src/fidelity_bloco6_tests.rs` `our_lasso_at_full_cover_is_their_contain` (só cover = 1) |
+| B13 | toda forma reconhecida pousa num elemento ou fica tinta | nenhum (só os casos de `smart_hand_tests.rs`) |
+| B13 | as fixtures de mão reconhecem-se como no Vetor | `ph2d-board-edit/src/smart_hand_tests.rs` `hand_strokes_recognise_on_the_board_as_in_the_vector_pencil` |
+| B13 | linha reconhecida a tocar numa forma liga-se | parcial: `smart_tests.rs` `a_line_from_a_box_to_a_box_is_a_bound_arrow` |
+| B13 | Ctrl+Z devolve o traço como foi desenhado | parcial: `smart_tests.rs` `holding_a_box_makes_a_rectangle_and_ctrl_z_gives_the_stroke_back` (só a caixa) |
+| B13 | o segurar do quadro é o do Vetor | `smart_tests.rs` `the_board_hold_is_the_vector_hold` |
+| B13 | sem segurar, fica tinta | nenhum (o mais perto: `a_triangle_the_board_cannot_draw_stays_a_clean_stroke`, forma não reconhecível) |
+| B13 | o quadro não tem limiares próprios (censo) | nenhum |
+| B13 | oráculo «Draw to shape» | nenhum |
+| B14 | uma menção é uma pessoa, não letras | parcial: `ph2d-editor-core/…/board_team_tests.rs` `mention_spans_cover_every_label_the_text_shows` |
+| B14 | a menção chega ao vivo e no ficheiro | nenhum (só o aviso, abaixo; sem duas réplicas nem reabrir) |
+| B14 | a minha mensagem nunca me avisa | `ph2d-board-model/src/team_tests.rs` `my_own_reply_and_my_later_reply_are_never_for_me` |
+| B14 | o formato 15 lê-se sem menções | `team_tests.rs` `format_15_reads_with_no_mentions_and_16_keeps_them` |
+| B14 | par de protocolo antigo recusado limpo | `ph2d-board-sync/src/session_tests.rs` `the_old_hello_and_the_new_one_are_refused_across_versions` |
+| B14 | «Show» do aviso abre o fio | `ph2d-editor-core/…/board_mention_tests.rs` `a_mention_that_arrives_alerts_and_show_opens_the_thread` |
+
 - Provas de mutação no fecho (cobertura, o zerar de referências alheias, `is_for`).
 
 ## §7 — A cena de smoke 28 (o próximo número: `smoke.rs:106` `max_level: 27`)

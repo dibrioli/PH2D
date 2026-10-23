@@ -66,3 +66,40 @@ fn a_row_that_left_takes_its_number_with_it() {
     v.publish(&[], |_, _| Some(0.5));
     assert_eq!(v.get(1), None, "a track saiu e o numero dela ficou");
 }
+
+/// **UMA ROW DE TEXTO LEVA OS SEUS TEXTOS** — o valor de agora e o de cada chave; uma row de número
+/// não leva nenhum, e o índice `0` («nenhum») não nomeia texto.
+///
+/// ⚠️ Mutação que tem de sangrar: não filtrar por `is_text` (a opacidade `1.0` publicaria o 1.º
+/// texto da tabela e o painel escreveria um nome ao lado de um número).
+#[test]
+fn a_text_row_carries_its_texts_and_a_number_row_none() {
+    use ph2d_ecs::canal::familia;
+    use ph2d_ecs::{FieldKey, TextosDosCanais, canal_vetor};
+    let conteudo = FieldKey::new(familia::VETOR, canal_vetor::TEXTO_CONTEUDO, 0, 0);
+    let mut tabela = TextosDosCanais::default();
+    let (a, b) = (tabela.indice(Some("Box A")), tabela.indice(Some("Box C")));
+    let mut texto = row(1, 7, PropKind::Field(conteudo));
+    texto.keys.push(crate::KeyView {
+        id: crate::KeyId::new(1),
+        t_seconds: 0.0,
+        value: b,
+        interp: ph2d_anim::Interp::Hold,
+        selected: false,
+        roving: false,
+    });
+    let tracks = [texto, row(2, 7, PropKind::Opacity)];
+    let mut v = TrackValues::default();
+    v.publish_com_textos(&tracks, Some(&tabela), |_, p| {
+        Some(if p == PropKind::Opacity { 1.0 } else { a })
+    });
+    assert_eq!(
+        v.get(1).and_then(|x| v.texto(x)),
+        Some("Box A"),
+        "o valor de agora"
+    );
+    assert_eq!(v.texto(b), Some("Box C"), "o valor da chave");
+    assert_eq!(v.texto(0.0), None, "o 0 é «nenhum»");
+    v.publish_com_textos(&tracks[1..], Some(&tabela), |_, _| Some(1.0));
+    assert_eq!(v.texto(1.0), None, "uma row de número não publica texto");
+}

@@ -112,11 +112,17 @@ pub(crate) fn paint_name_and_value(
     let Some(v) = snap.values.get(track.target.get()).filter(|_| mostra) else {
         return;
     };
+    // Um canal de TEXTO vale um índice: escreve-se o texto que ele nomeia, nunca o índice.
+    let valor = if track.prop.is_text() {
+        snap.values.texto(v).unwrap_or_default().to_owned()
+    } else {
+        text(v)
+    };
     let font = TypeToken::Xs.px();
     paint_text_elided(
         ctx.text_system,
         ctx.scene,
-        &text(v),
+        &valor,
         right - VALUE_W - Spacing::Xs.px(),
         y + (ROW_H_PX - font) * 0.5,
         font,

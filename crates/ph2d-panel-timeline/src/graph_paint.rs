@@ -9,13 +9,14 @@
 
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, paint_text, rect_to_vello, resolve, stroke_polyline,
+    fill_circle, fill_rounded_rect, paint_text, paint_text_elided, rect_to_vello, resolve,
+    stroke_polyline,
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{
-    KeyView, TrackView, drawn_extent, sample_keys, sample_speed, segment_handle_points,
-    speed_extent, speed_handle_tip,
+    KeyView, TrackValues, TrackView, drawn_extent, sample_keys, sample_speed,
+    segment_handle_points, speed_extent, speed_handle_tip,
 };
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
@@ -50,6 +51,11 @@ const GRIP_BAR_H: f32 = 2.0; // LITERAL-PX-OK: graph-height grabber bar thicknes
 
 /// Paint one expanded track's graph band and register its handle hits, then let
 /// an in-flight handle drag resolve against the geometry it can finally see.
+/// `values` nomeia os textos de uma row de texto (cada chave escreve o seu, ver [`paint_anchors`]).
+#[expect(
+    clippy::too_many_arguments,
+    reason = "a row, a sua geometria e os textos do quadro"
+)]
 pub(crate) fn paint_track(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -58,6 +64,7 @@ pub(crate) fn paint_track(
     label_w: f32,
     view: TimeView,
     track: &TrackView,
+    values: &TrackValues,
 ) {
     // Aligned with the lanes above it: the curve for `t = view_start` lands on
     // the band's left edge, clear of the splitter grip.
@@ -81,7 +88,14 @@ pub(crate) fn paint_track(
         drawn_extent_of(&band_rect, view, track)
     };
     let band = graph::band_for(state, band_rect, target, extent);
-    paint_frame(ctx, theme, rect, band_rect, label_w, &band);
+    paint_frame(
+        ctx,
+        theme,
+        (rect, band_rect),
+        label_w,
+        &band,
+        track.prop.is_text(),
+    );
     if track.keys.is_empty() {
         return;
     }
@@ -110,7 +124,7 @@ pub(crate) fn paint_track(
             CURVE_W,
             ColorToken::TimelineCurve,
         );
-        paint_anchors(ctx, theme, state, &band, view, track);
+        paint_anchors(ctx, theme, state, &band, view, (track, values));
         paint_handles(ctx, theme, state, &band, view, track);
     }
     ctx.scene.pop_layer();
@@ -180,13 +194,15 @@ fn drawn_extent_of(band_rect: &Rect, view: TimeView, track: &TrackView) -> Optio
 
 /// The inset background + border, and the fitted range's min/max labels in the
 /// label column (P6: no ambiguous spec — the vertical scale is always readable).
+/// `texto` ⇒ a escala não se escreve: o eixo de um canal de texto são índices da tabela, não uma
+/// grandeza (o texto vai junto de cada chave).
 fn paint_frame(
     ctx: &mut PaintCtx,
     theme: Theme,
-    row: Rect,
-    band_rect: Rect,
+    (row, band_rect): (Rect, Rect),
     label_w: f32,
     band: &Band,
+    texto: bool,
 ) {
     // ⭐ Raio e moldura pela porta do TEMA: a banda é plana num tema moderno.
     let band_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px());
@@ -205,6 +221,9 @@ fn paint_frame(
         StrokeToken::Thin.px(),
         resolve(ColorToken::Border, theme),
     );
+    if texto {
+        return;
+    }
     let font = TypeToken::Xs.px();
     let x = row.x + Spacing::Xs.px();
     let w = (label_w - Spacing::Xs.px() * 2.0).max(0.0);
@@ -260,16 +279,19 @@ fn paint_curve(
 /// Registered BEFORE the handles so that where the two overlap the handle — the
 /// smaller, more precise target, and the one that only appears on a selected
 /// segment — wins the hit (`HitIndex::hit` walks its rects in reverse).
+/// Numa row de texto cada chave escreve o seu texto à direita, até à chave seguinte (o `Hold` segura-o
+/// até lá).
 fn paint_anchors(
     ctx: &mut PaintCtx,
     theme: Theme,
     state: &TimelinePanelState,
     band: &Band,
     view: TimeView,
-    track: &TrackView,
+    (track, values): (&TrackView, &TrackValues),
 ) {
     let target = track.target.get();
-    for k in &track.keys {
+    let texto = track.prop.is_text();
+    for (n, k) in track.keys.iter().enumerate() {
         let (x, y) = (view.x(k.t_seconds), band.y(f64::from(k.value)));
         if x < band.rect.x || x > band.rect.x + band.rect.w {
             continue;
@@ -283,6 +305,24 @@ fn paint_anchors(
         };
         let r = if k.roving { ROVE_ANCHOR_R } else { ANCHOR_R };
         fill_circle(ctx.scene, x, y, r, resolve(tok, theme));
+        if let Some(s) = values.texto(k.value).filter(|_| texto) {
+            let fim = track
+                .keys
+                .get(n + 1)
+                .map_or(band.rect.x + band.rect.w, |p| view.x(p.t_seconds));
+            let font = TypeToken::Xs.px();
+            let x0 = x + ANCHOR_HIT_R;
+            paint_text_elided(
+                ctx.text_system,
+                ctx.scene,
+                s,
+                x0,
+                y - font * 0.5,
+                font,
+                (fim - x0 - Spacing::Xs.px()).max(0.0),
+                resolve(ColorToken::Text2, theme),
+            );
+        }
 
         // A key dragged (or eased) beyond the band is drawn clipped; leaving its
         // grab target behind would let it be grabbed through another row.

@@ -306,39 +306,21 @@ fn a_fisica_do_corpo_tem_um_losango_por_linha() {
     assert_eq!(gravados(&i), vec![fis(fs::VEL_X), fis(fs::VEL_Y)]);
 }
 
-/// ⭐ **F27 B1 — os campos da família COMPONENTE**: cada controlo derivado aponta para canais que o
-/// catálogo resolve (nenhuma lista vazia — um `field_id` errado deixaria o losango mudo), e o X e o
-/// Y de um par são o MESMO grupo (um losango por campo).
+/// ⭐ **F27 B1 — a máscara de culling**: as 32 células e o cabeçalho apontam para UM canal que o
+/// catálogo resolve (um `field_id` errado deixaria o losango mudo).
 #[test]
-fn os_campos_derivados_resolvem_no_catalogo() {
-    assert!(
-        derivados().len() >= COMPONENTES.len() + 32,
-        "controlo: a máscara e a tabela"
-    );
-    for (id, reps) in derivados() {
+fn a_mascara_da_camera_resolve_no_catalogo() {
+    assert_eq!(mascara().len(), 33, "controlo: 32 bits e o cabeçalho");
+    for (id, reps) in mascara() {
+        let [PropKind::Field(k)] = &**reps else {
+            panic!("{id:?}: a máscara é UM canal");
+        };
         assert!(
-            !reps.is_empty(),
-            "{id:?}: nenhum canal — field_id ou faixa errados"
+            ph2d_ecs::canal_componente::resolver(*k).is_some(),
+            "{id:?} {k:?}"
         );
-        for r in reps.iter() {
-            let PropKind::Field(k) = r else {
-                panic!("{id:?}: não é canal de família");
-            };
-            assert!(
-                ph2d_ecs::canal_componente::resolver(*k).is_some(),
-                "{id:?} {k:?}"
-            );
-        }
         assert_eq!(canal_do_campo(*id), &**reps);
     }
-    let [PropKind::Field(x)] = canal_do_campo(insp::INSP_CAMERA_OFFSET_X) else {
-        panic!("offset X");
-    };
-    let [PropKind::Field(y)] = canal_do_campo(insp::INSP_CAMERA_OFFSET_Y) else {
-        panic!("offset Y");
-    };
-    assert_ne!(x, y);
-    assert!(x.mesmo_grupo(*y), "o offset é UM losango");
 }
 
 /// ⭐⭐ **F27 B2 — o canal sai do RÓTULO pintado**: uma linha pintada com o `label_key` de um campo
@@ -356,7 +338,13 @@ fn a_linha_pintada_com_o_rotulo_do_catalogo_tem_o_canal_dele() {
     let mut cena = ph2d_vector::VectorScene::new();
     let r = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 10.0, 10.0);
     let offset = TextKey::new("component.field.follow_fields.4");
-    let _ = paint_decorator_campo(&mut cena, ph2d_tokens::Theme::Dark, r, &[A, B], offset.into());
+    let _ = paint_decorator_campo(
+        &mut cena,
+        ph2d_tokens::Theme::Dark,
+        r,
+        &[A, B],
+        offset.into(),
+    );
     let vista = Rotulo::vista(TextKey::new("panel.inspector.camera.look_through"));
     let _ = paint_decorator_campo(&mut cena, ph2d_tokens::Theme::Dark, r, &[V], vista);
     let quer: Vec<PropKind> = ph2d_ecs::canal_componente::chaves_do_rotulo(offset.key())
@@ -373,5 +361,8 @@ fn a_linha_pintada_com_o_rotulo_do_catalogo_tem_o_canal_dele() {
     let m = marcas(&d, &[E], em(0.0), na_curva);
     assert_eq!((m.get(&A), m.get(&V)), (Some(&KeyMark::Chave), None));
     set_key_marks(BTreeMap::new());
-    assert!(canal_do_campo(A).is_empty(), "o que não voltou a ser pintado esquece-se");
+    assert!(
+        canal_do_campo(A).is_empty(),
+        "o que não voltou a ser pintado esquece-se"
+    );
 }

@@ -228,55 +228,19 @@ const CAMPOS: &[(NodeId, &[PropKind])] = &[
     (insp::INSP_PHYS_DAMPMODE[1], &[fi(fs::AMORT_MODO)]),
 ];
 
-/// O grupo que o campo `id` do Inspector mostra (vazio = sem canal).
-const CAMERA: &str = "ph2d::ecs::GameCamera";
-const SEGUE: &str = "ph2d::ecs::CameraFollow";
-const LIMITES: &str = "ph2d::ecs::CameraLimits";
-
-/// ⭐ **Os campos da família COMPONENTE** (F27 Bloco B): o controlo → `(componente, field_id, faixa)`
-/// do catálogo; `None` = todas as faixas do campo. A chave sai do `stable_type_id` (não é `const`),
-/// por isso a lista de `PropKind` constrói-se uma vez ([`derivados`]).
-const COMPONENTES: &[(NodeId, &str, u16, Option<u16>)] = &[
-    (insp::INSP_CAMERA_HEIGHT, CAMERA, 0, None),
-    (insp::INSP_CAMERA_OFFSET_X, CAMERA, 1, Some(0)),
-    (insp::INSP_CAMERA_OFFSET_Y, CAMERA, 1, Some(1)),
-    (insp::INSP_CAMERA_PRIORITY, CAMERA, 2, None),
-    (insp::INSP_CAMERA_ACTIVE, CAMERA, 3, None),
-    (insp::INSP_CAMERA_CULL_HEADER, CAMERA, 4, None),
-    (insp::INSP_CAMERA_DOLLY, CAMERA, 5, None),
-    (insp::INSP_CAMERA_DAMP_X, SEGUE, 1, Some(0)),
-    (insp::INSP_CAMERA_DAMP_Y, SEGUE, 1, Some(1)),
-    (insp::INSP_CAMERA_DEAD_X, SEGUE, 2, Some(0)),
-    (insp::INSP_CAMERA_DEAD_Y, SEGUE, 2, Some(1)),
-    (insp::INSP_CAMERA_LOOK_X, SEGUE, 3, Some(0)),
-    (insp::INSP_CAMERA_LOOK_Y, SEGUE, 3, Some(1)),
-    (insp::INSP_CAMERA_FOLLOW_OFF_X, SEGUE, 4, Some(0)),
-    (insp::INSP_CAMERA_FOLLOW_OFF_Y, SEGUE, 4, Some(1)),
-    (insp::INSP_CAMERA_MIN_X, LIMITES, 0, Some(0)),
-    (insp::INSP_CAMERA_MIN_Y, LIMITES, 0, Some(1)),
-    (insp::INSP_CAMERA_MAX_X, LIMITES, 1, Some(0)),
-    (insp::INSP_CAMERA_MAX_Y, LIMITES, 1, Some(1)),
-];
-
-/// [`COMPONENTES`] com as chaves feitas — e os 32 bits do `INSP_CAMERA_CULL_BIT` no campo da máscara.
-fn derivados() -> &'static [(NodeId, Box<[PropKind]>)] {
+/// ⭐ **A máscara de culling da câmera** (`camera_fields.4`): 32 células e o cabeçalho, sem linha
+/// que pinte o rótulo — o único campo COMPONENTE que não sai de [`do_rotulo`].
+fn mascara() -> &'static [(NodeId, Box<[PropKind]>)] {
     static D: std::sync::OnceLock<Vec<(NodeId, Box<[PropKind]>)>> = std::sync::OnceLock::new();
     D.get_or_init(|| {
-        let reps = |nome: &str, field_id: u16, faixa: Option<u16>| -> Box<[PropKind]> {
-            let n = ph2d_component_desc::desc_for(nome)
-                .and_then(|d| d.fields.iter().find(|f| f.field_id == field_id))
-                .map_or(0, ph2d_ecs::canal_componente::faixas);
-            faixa
-                .map_or(0..n, |f| f..f + 1)
-                .filter_map(|f| ph2d_ecs::canal_componente::chave(nome, field_id, f))
+        let reps: Box<[PropKind]> =
+            ph2d_ecs::canal_componente::chave("ph2d::ecs::GameCamera", 4, 0)
                 .map(PropKind::Field)
-                .collect()
-        };
-        let mascara = (insp::INSP_CAMERA_CULL_BIT.iter()).map(|&id| (id, reps(CAMERA, 4, None)));
-        COMPONENTES
-            .iter()
-            .map(|&(id, nome, field_id, faixa)| (id, reps(nome, field_id, faixa)))
-            .chain(mascara)
+                .into_iter()
+                .collect();
+        (insp::INSP_CAMERA_CULL_BIT.iter())
+            .chain([&insp::INSP_CAMERA_CULL_HEADER])
+            .map(|&id| (id, reps.clone()))
             .collect()
     })
 }
@@ -305,7 +269,7 @@ fn todos() -> impl Iterator<Item = (NodeId, &'static [PropKind])> {
     CAMPOS
         .iter()
         .map(|&(c, g)| (c, g))
-        .chain(derivados().iter().map(|(c, g)| (*c, &**g)))
+        .chain(mascara().iter().map(|(c, g)| (*c, &**g)))
         .chain(
             (key_mark::rotulos_pintados().into_iter())
                 .map(|(c, r)| (c, do_rotulo(r)))
@@ -313,6 +277,7 @@ fn todos() -> impl Iterator<Item = (NodeId, &'static [PropKind])> {
         )
 }
 
+/// O grupo que o campo `id` do Inspector mostra (vazio = sem canal).
 #[must_use]
 pub fn canal_do_campo(id: NodeId) -> &'static [PropKind] {
     todos().find(|(c, _)| *c == id).map_or(&[], |(_, g)| g)

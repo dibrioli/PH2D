@@ -186,8 +186,8 @@ pub(crate) fn blur_region(
 }
 
 /// Blend the blurred region into `buf` over the footprint bbox, weighting each pixel by `weight(i, j)`
-/// (the dab mask × strength; `0` skips). `dest = lerp(dest, blurred, w)` per straight channel — the
-/// `IMB_BLEND_INTERPOLATE` composite Blender's soften uses. Shared with the canvas-fixed Grain path
+/// (the dab mask × strength; `0` skips). `dest = lerp(dest, blurred, w)` in premultiplied alpha
+/// ([`crate::mistura`]; on opaque texels it is the straight `IMB_BLEND_INTERPOLATE`). Shared with the canvas-fixed Grain path
 /// ([`crate::blur_grain`]), which supplies a per-pixel silhouette × Grain weight closure.
 #[allow(clippy::too_many_arguments)]
 #[inline]
@@ -211,10 +211,7 @@ pub(crate) fn blend_blurred(
             let px = min_x + i as i64;
             let src = blurred[j * bw + i];
             let di = ((py * fw + px) * 4) as usize;
-            for c in 0..4 {
-                let d = f32::from(buf[di + c]);
-                buf[di + c] = (d + (src[c] - d) * w).round().clamp(0.0, 255.0) as u8;
-            }
+            crate::mistura::mistura_premultiplicada(&mut buf[di..di + 4], src, w);
         }
     }
 }

@@ -63,7 +63,7 @@ pub(crate) fn lift_offset(
 /// the brush falloff (with `spec.hardness`) × `strength`. The round-falloff path (no Shape / Grain /
 /// flatten). `offset` is the source→dest vector in image px (the sampled source minus the stroke's
 /// start). `strength` in `[0, 1]` is the blend-back amount. Returns `None` for zero strength/radius or
-/// a fully off-canvas footprint. Channels interpolated straight, like [`crate::smear_dab`].
+/// a fully off-canvas footprint. Blended back in premultiplied alpha ([`crate::mistura`]).
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn clone_dab(
@@ -102,11 +102,7 @@ pub fn clone_dab(
             }
             let src = lifted[j * bw + i];
             let di = ((y * fw + x) * 4) as usize;
-            for c in 0..4 {
-                let d = f32::from(buf[di + c]);
-                let s = f32::from(src[c]);
-                buf[di + c] = (d + (s - d) * w).round().clamp(0.0, 255.0) as u8;
-            }
+            crate::mistura::mistura_premultiplicada_u8(&mut buf[di..di + 4], src, w);
         }
     }
     Some(DirtyRect {
@@ -156,11 +152,7 @@ pub fn clone_blit_stamp(
             }
             let src = lifted[j * bw + i];
             let di = ((y * fw + x) * 4) as usize;
-            for c in 0..4 {
-                let d = f32::from(buf[di + c]);
-                let s = f32::from(src[c]);
-                buf[di + c] = (d + (s - d) * w).round().clamp(0.0, 255.0) as u8;
-            }
+            crate::mistura::mistura_premultiplicada_u8(&mut buf[di..di + 4], src, w);
         }
     }
     Some(DirtyRect {

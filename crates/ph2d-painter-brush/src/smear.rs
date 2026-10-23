@@ -101,19 +101,9 @@ fn mistura_recta(dst: &mut [u8], src: [u8; 4], w: f32) {
     }
 }
 
-/// A mesma interpolação em alfa pré-multiplicado, de volta a recto.
+/// A mesma interpolação em alfa pré-multiplicado, de volta a recto ([`crate::mistura`]).
 fn mistura_premultiplicada(dst: &mut [u8], src: [u8; 4], w: f32) {
-    let da = f32::from(dst[3]) / 255.0;
-    let sa = f32::from(src[3]) / 255.0;
-    let na = da + (sa - da) * w;
-    if na > 0.0 {
-        for c in 0..3 {
-            let pd = f32::from(dst[c]) * da;
-            let ps = f32::from(src[c]) * sa;
-            dst[c] = ((pd + (ps - pd) * w) / na).round().clamp(0.0, 255.0) as u8;
-        }
-    }
-    dst[3] = (na * 255.0).round().clamp(0.0, 255.0) as u8;
+    crate::mistura::mistura_premultiplicada_u8(dst, src, w);
 }
 
 #[allow(clippy::too_many_arguments)]

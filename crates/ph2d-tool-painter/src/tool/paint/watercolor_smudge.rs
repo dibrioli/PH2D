@@ -51,6 +51,10 @@ impl PainterTool {
     /// centre and stamps it at its own, weight `wet_smudge × coverage` through the brush falloff.
     /// Blank paper smears nothing (canonical: a smudge brush without paint under it barely paints).
     ///
+    /// ⚠️ **Pré-multiplicado:** numa camada TRANSPARENTE a base guarda `0,0,0,0` fora da tinta, e o
+    /// arrasto recto escurecia a orla da poça seca em degraus (smoke 23/10,
+    /// `o_smudge_sobre_a_poca_seca_numa_camada_transparente_e_o_do_papel`); sobre opaco é o mesmo byte.
+    ///
     /// The base is per-stroke and baked by the pen-up composite, so undo restores it whole. Chained by
     /// [`PaintState::wet_smear_pos`](super::PaintState) across batches; each smear's write rect is folded
     /// into the dirty tracking (belt-and-braces — it stays inside the dab bbox the accumulate tracked).
@@ -154,7 +158,7 @@ impl PainterTool {
                 for &off in &offs[..n] {
                     let f = [prev[0] + off[0], prev[1] + off[1]];
                     let t = [d.center[0] + off[0], d.center[1] + off[1]];
-                    if let Some(r) = ph2d_painter_brush::smear_dab(
+                    if let Some(r) = ph2d_painter_brush::smear_dab_premultiplicado(
                         buf,
                         w,
                         h,

@@ -83,6 +83,7 @@ pub mod mangueira;
 pub mod marca;
 pub mod mask_ops;
 pub mod material;
+mod mistura;
 pub mod pen;
 #[cfg(test)]
 mod pen_tests;

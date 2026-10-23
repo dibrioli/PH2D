@@ -254,6 +254,7 @@ mod watercolor_secagem_por_poca; // cada poça seca no seu tempo: a seca vela, a
 mod watercolor_selfseam; // a costura do retorno sobre o PROPRIO traco (doc 40): a regua e os gates
 mod watercolor_session;
 mod watercolor_smudge_borda; // o Smudge na borda da tela nao abre transparencia (report 2026-09-24)
+mod watercolor_smudge_poca_seca; // o Smudge na poça seca numa camada transparente não escurece (smoke 23/10)
 mod watercolor_water;
 
 use super::*;

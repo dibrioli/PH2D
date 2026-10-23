@@ -203,10 +203,11 @@
 | [0187](0187-o-quadro-pela-internet-e-quic-sobre-udp-com-encontro-na-dht.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | O quadro ao vivo PELA INTERNET é QUIC sobre UDP, com encontro na DHT e furo no NAT |
 | [0188](0188-o-editor-de-scripts-mora-no-ph2d-e-o-script-mora-no-projeto.md) | Accepted — o PRODUTO é decisão do DONO (15/10: script *«dentro»* do projeto | O editor de scripts mora no PH2D, e o script mora no projeto |
 | [0189](0189-a-caneta-chega-pelo-tablet-v2-ao-lado-do-winit.md) | Accepted — o produto (a caneta conduz a UI inteira, a pressão chega a todos os meios… | A caneta chega pelo `zwp_tablet_v2` ao lado do winit, numa crate nossa |
+| [0190](0190-a-macro-e-um-objeto-e-leva-tudo-o-que-usa.md) | Accepted — o PRODUTO é do DONO (23/10, decisões 1–8 em `docs/Macros/16_W18_plano.… | A macro é um OBJECTO e leva tudo o que usa |
 
 ---
 
-**194 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**195 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

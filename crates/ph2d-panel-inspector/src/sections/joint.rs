@@ -127,11 +127,11 @@ const fn kind_has_limits(kind_tag: u8) -> bool {
 /// *limited*; a Wheel's range is its suspension **travel**, which is the word
 /// the artist is looking for — the same "same id, different label" the Rope and
 /// the Rod already share for their one number.
-fn limits_label(kind_tag: u8) -> &'static str {
+fn limits_label(kind_tag: u8) -> ph2d_editor_core::widget::key_mark::Rotulo<'static> {
     if kind_tag == KIND_WHEEL {
-        tr("panel.inspector.joint.travel")
+        tr("panel.inspector.joint.travel").into()
     } else {
-        tr("component.field.joint.4")
+        TextKey::new("component.field.joint.4").into()
     }
 }
 
@@ -317,7 +317,7 @@ pub(crate) fn paint_joint_section(
         x,
         w,
         yy,
-        tr("component.field.joint.22"),
+        TextKey::new("component.field.joint.22"),
         ids::INSP_JOINT_ACTIVE_GROUP,
         &ids::INSP_JOINT_ACTIVE,
         &SWITCH_LABELS.map(TextKey::tr),
@@ -349,7 +349,7 @@ pub(crate) fn paint_joint_section(
         x,
         w,
         yy,
-        tr("component.field.joint.3"),
+        TextKey::new("component.field.joint.3"),
         ids::INSP_JOINT_KIND_GROUP,
         &ids::INSP_JOINT_KIND,
         &KIND_LABELS.map(TextKey::tr),

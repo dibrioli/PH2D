@@ -32,6 +32,8 @@ use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
+use ph2d_editor_core::widget::key_mark::Rotulo;
+use ph2d_i18n::TextKey;
 
 /// Pinta a face de peça e devolve o `y` final da seção.
 #[allow(clippy::too_many_arguments)]
@@ -83,7 +85,7 @@ pub(super) fn paint_part_face(
         x,
         w,
         yy,
-        tr("component.field.collider.0"),
+        TextKey::new("component.field.collider.0"),
         core_ids::INSP_LIVE_PHYSICS_GRIP,
         &ids::INSP_PHYS_SHAPE,
         &super::physics::SHAPE_LABELS.map(TextKey::tr),
@@ -110,12 +112,12 @@ pub(super) fn paint_part_face(
     );
     for (label, id, unit) in [
         (
-            off_x.as_str(),
+            Rotulo::from(off_x.as_str()),
             ids::INSP_PHYS_OFFSET_X,
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
-            off_y.as_str(),
+            Rotulo::from(off_y.as_str()),
             ids::INSP_PHYS_OFFSET_Y,
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
@@ -123,7 +125,7 @@ pub(super) fn paint_part_face(
         // composto. O toggle Auto|Manual do W-Mass fica de fora porque o
         // `MassOverride` é do CORPO — uma peça não tem massa própria a sobrepor.
         (
-            tr("component.field.collider.1"),
+            Rotulo::from(TextKey::new("component.field.collider.1")),
             ids::INSP_PHYS_DENSITY,
             None,
         ),

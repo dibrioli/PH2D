@@ -67,20 +67,24 @@ fn corpo_barra(
     // ⚠️ O ALVO vem logo a seguir à frase que fala dele — é o campo que a cura de duas das três
     // queixas pede.
     let rotulos = [
-        tr("component.field.health_bar_fields.2"),
-        tr("component.field.health_bar_fields.3"),
-        tr("component.field.health_bar_fields.4"),
-        tr("component.field.health_bar_fields.5"),
-        tr("component.field.health_bar_fields.9"),
-        tr("component.field.health_bar_fields.10"),
+        TextKey::new("component.field.health_bar_fields.2"),
+        TextKey::new("component.field.health_bar_fields.3"),
+        TextKey::new("component.field.health_bar_fields.4"),
+        TextKey::new("component.field.health_bar_fields.5"),
+        TextKey::new("component.field.health_bar_fields.9"),
+        TextKey::new("component.field.health_bar_fields.10"),
         // O ALVO — o campo de texto do topo, medido na MESMA coluna.
-        tr("component.field.health_bar_fields.1"),
+        TextKey::new("component.field.health_bar_fields.1"),
         // As três amostras de cor do fim.
-        tr("component.field.health_bar_fields.6"),
-        tr("component.field.health_bar_fields.7"),
-        tr("component.field.health_bar_fields.8"),
+        TextKey::new("component.field.health_bar_fields.6"),
+        TextKey::new("component.field.health_bar_fields.7"),
+        TextKey::new("component.field.health_bar_fields.8"),
     ];
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &rotulos);
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &rotulos.iter().map(|k| k.tr()).collect::<Vec<_>>(),
+    );
     cur_y = nome(
         scene,
         text_system,
@@ -90,7 +94,7 @@ fn corpo_barra(
         x,
         w,
         cur_y,
-        tr("component.field.health_bar_fields.1"),
+        TextKey::new("component.field.health_bar_fields.1"),
         ids::INSP_BARRA_TARGET,
         tr("panel.inspector.vida.bar_target_hint"),
         seccao,
@@ -129,7 +133,7 @@ fn corpo_barra(
         let cell = Rect::new(x, cur_y, w, ph2d_tokens::ROW_H_PX);
         cur_y = super::color_tint::paint_tint_swatch_cell(
             cell,
-            tr(chave),
+            TextKey::new(chave),
             id,
             crate::state_tint::tint_f32_to_u8(rgba),
             false,
@@ -151,7 +155,7 @@ fn corpo_barra(
         w,
         cur_y,
         ids::INSP_BARRA_HIDE_FULL,
-        tr("component.field.health_bar_fields.11"),
+        TextKey::new("component.field.health_bar_fields.11"),
         b.hide_when_full,
         seccao,
     )

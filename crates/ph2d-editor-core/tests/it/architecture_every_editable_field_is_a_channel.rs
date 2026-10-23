@@ -6,6 +6,8 @@
 //! chip numérico do rail, o próprio `paint_decorator_for`) ou de um helper de linha de um painel
 //! que só a repassa ([`LINHAS`]). Cada chamada tem de cair numa classe:
 //!
+//! - **canal pelo rótulo** (F27 B2): o nome dela é `TextKey::new("component.field.…")`, um campo do
+//!   catálogo com canal (`ph2d_ecs::canal_componente::chaves_do_rotulo`) — a porta regista-o;
 //! - **canal**: um dos ids dela está numa tabela de canais ([`TABELAS`]: `ph2d_app_vec::marcas`,
 //!   `ph2d_app_components::marcas_inspector`, `ph2d_app_flip::marcas_camada`);
 //! - **⛔ não-animável** ou **dívida**: um id (ou prefixo) dela está em [`POR_ID`], a função dela
@@ -47,7 +49,12 @@ const PORTAS: &[&str] = &[
     "paint_slider_with_chip",
     "paint_slider_with_chip_layout_adaptive",
     "paint_choice_row",
+    "paint_check_row",
+    "paint_check_rows",
     "paint_decorator_for",
+    "paint_decorator_campo",
+    // O ponto pintado à mão (sem ids): uma linha que o desenha nunca tem losango (F27 B2).
+    "paint_decorator_dot",
     // `ToolRailEntry::number` / `::compound` — o chip numérico e o de opção do rail (o losango à
     // direita deles).
     "number",
@@ -68,35 +75,21 @@ const SEM_COLUNA: &[&str] = &[
 ];
 
 /// O que uma função escreve quando pinta a coluna do decorator.
-const COLUNA: &[&str] = &["paint_decorator_for(", ".decorator("];
+const COLUNA: &[&str] = &[
+    "paint_decorator_for(",
+    "paint_decorator_campo(",
+    "paint_decorator_dot(",
+    "paint_check_row(",
+    "coluna_da_caixa(",
+    ".decorator(",
+];
 
 /// As crates cujos campos este gate classifica um a um; `None` = todos os ficheiros de `src/`,
 /// `Some` = só estes (o resto da crate é dívida do bloco 2).
 const ESCOPO: &[(&str, Option<&[&str]>)] = &[
     ("ph2d-panel-vector", None),
-    (
-        "ph2d-panel-inspector",
-        Some(&[
-            "sections/transform.rs",
-            "sections/camera.rs",
-            "sections/color_tint.rs",
-            "sections/emissive_row.rs",
-            "sections/joint.rs",
-            "sections/joint_cards.rs",
-            "sections/joint_kind_rows.rs",
-            "sections/joint_custom.rs",
-            "sections/joint_pair_rows.rs",
-            "sections/wheel.rs",
-            "sections/physics.rs",
-            "sections/physics_area_rows.rs",
-            "sections/physics_body.rs",
-            "sections/physics_doors.rs",
-            "sections/physics_join_rows.rs",
-            "sections/physics_part.rs",
-            "sections/physics_rows.rs",
-            "sections/physics_tag_row.rs",
-        ]),
-    ),
+    // ⭐ F27 B2: o Inspector INTEIRO — o canal sai do rótulo do catálogo que a linha pinta.
+    ("ph2d-panel-inspector", None),
     ("ph2d-panel-flip", None),
 ];
 
@@ -132,12 +125,41 @@ const LINHAS: &[(&str, &str)] = &[
     ("ph2d-panel-inspector", "seg_row"),
     ("ph2d-panel-inspector", "paint_tint_swatch_cell"),
     ("ph2d-panel-inspector", "bloco_de_cores"),
+    ("ph2d-panel-inspector", "check_row"),
+    ("ph2d-panel-inspector", "caixa"),
+    ("ph2d-panel-inspector", "segmented_row"),
+    ("ph2d-panel-inspector", "text_row"),
+    ("ph2d-panel-inspector", "grupo"),
+    ("ph2d-panel-inspector", "nome_row"),
+    ("ph2d-panel-inspector", "signal_row"),
+    ("ph2d-panel-inspector", "txt_row"),
+    ("ph2d-panel-inspector", "coluna_da_caixa"),
     ("ph2d-panel-flip", "slider_row"),
     ("ph2d-panel-flip", "slider_row_linked"),
 ];
 
 /// A classe de uma chamada por um dos seus ids — exacto, ou PREFIXO quando acaba em `_`.
 const POR_ID: &[(&str, Classe, &str)] = &[
+    (
+        "INSP_VIS_ON_SCREEN",
+        NaoAnimavel,
+        "a caixa diz se o componente EXISTE (acrescentar/tirar é estrutura); o rectângulo dele tem canal",
+    ),
+    (
+        "INSP_VIS_MASK_SOURCE",
+        NaoAnimavel,
+        "a caixa diz se o componente Mask2D EXISTE: estrutura, não valor",
+    ),
+    (
+        "INSP_LUZ_ALCANCE_LIGADO",
+        NaoAnimavel,
+        "o interruptor só diz se o alcance tem número; o número tem canal (`luz_fields.4`)",
+    ),
+    (
+        "INSP_PLAYER_EMIT",
+        Divida,
+        "o conjunto de sinais que o jogador emite não está no catálogo",
+    ),
     (
         "VECTOR_PENCIL_",
         NaoAnimavel,
@@ -218,8 +240,566 @@ const POR_ID: &[(&str, Classe, &str)] = &[
 ];
 
 /// As chamadas cujo id vem numa VARIÁVEL, pela função que as faz. Para [`Canal`], os nomes que a
-/// variável pode ter estão no ficheiro da função E numa tabela.
+/// variável pode ter estão no ficheiro da função E numa tabela (ou são rótulos do catálogo com
+/// canal). ⭐ `ficheiro.rs::fn` (F27 B2) nomeia UMA função e vale para todas as chamadas dela — o
+/// rótulo vem de uma tabela, mesmo com o id literal.
 const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
+    (
+        "ph2d-panel-inspector",
+        "sections/action_trigger.rs::linha_da_aresta",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/actions.rs::verb_row",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/actions.rs::tag_pick_row",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/actions_editor.rs::clip_row",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/counter_watch.rs::linha_da_comparacao",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/identity.rs::paint_entity_name_row",
+        NaoAnimavel,
+        &[],
+        "o NOME do objecto é a referência durável de quem o nomeia: renomeá-lo no tempo partiria os alvos",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/tags.rs::pick_row",
+        NaoAnimavel,
+        &[],
+        "escolher uma tag para acrescentar: um verbo, não um valor",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/ordering.rs::number_row",
+        Canal,
+        &["component.field.z_index.1", "component.field.y_sort.2"],
+        "o rótulo do catálogo vem do chamador (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/ordering.rs::layer_row",
+        Divida,
+        &[],
+        "a camada de ordenação é um Enum de NOME (`View::Named(Layer)`): por desenhar como canal de texto",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/script_seletor.rs::seletor",
+        Divida,
+        &[],
+        "o ficheiro do script não tem chave serde no catálogo (`script_fields.1` sem `named`)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/sprite_sheet.rs::paint_sprite_sheet_section",
+        Canal,
+        &["component.field.sprite_grid.1", "component.field.sprite.10"],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/visibility.rs::number_row",
+        Canal,
+        &[
+            "component.field.clip_children.1",
+            "component.field.mask_interaction.2",
+        ],
+        "o rótulo do catálogo vem do chamador (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/audio.rs::source_body",
+        Canal,
+        &[
+            "component.field.source_fields.0",
+            "component.field.source_fields.1",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/factory.rs::factory_body",
+        Canal,
+        &[
+            "component.field.factory_fields.1",
+            "component.field.factory_fields.12",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/hud.rs::num_row",
+        Canal,
+        &[
+            "component.field.canvas_fields.1",
+            "component.field.canvas_fields.2",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/hud_corpo.rs::bloco_raiz",
+        Canal,
+        &["component.field.canvas_fields.3"],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/hud_corpo.rs::bloco_contador",
+        Canal,
+        &[
+            "component.field.counter_fields.1",
+            "component.field.counter_fields.3",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/macro_card.rs::paint_macro_section",
+        Canal,
+        &["component.field.macro_fields.2"],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/motion_input.rs::paint_motion_input_section",
+        Canal,
+        &[
+            "component.field.motion_input_fields.1",
+            "component.field.motion_input_fields.2",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/nav.rs::paint_nav_agent_section",
+        Canal,
+        &["component.field.nav_agent.1", "component.field.nav_agent.2"],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/nav_custo.rs::interruptores_do_agente",
+        Canal,
+        &[
+            "component.field.nav_agent.10",
+            "component.field.nav_agent.5",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/nav_custo.rs::paint_nav_link_section",
+        Canal,
+        &["component.field.nav_link.0", "component.field.nav_link.1"],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/ordering.rs::call",
+        Canal,
+        &[
+            "component.field.sorting_group.1",
+            "component.field.y_sort.1",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/parallax.rs::corpo",
+        Canal,
+        &[
+            "component.field.limits_fields.0",
+            "component.field.limits_fields.1",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/particles.rs::num_row",
+        Canal,
+        &["component.field.fields.11", "component.field.fields.12"],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/particles.rs::vec_row",
+        Canal,
+        &["component.field.fields.11", "component.field.fields.12"],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/particles_avisos.rs::corpo",
+        Canal,
+        &["component.field.fields.1", "component.field.fields.10"],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/particles_avisos.rs::sinais",
+        Canal,
+        &["component.field.fields.24", "component.field.fields.25"],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/path_follow.rs::corpo",
+        Canal,
+        &[
+            "component.field.path_follow_fields.1",
+            "component.field.path_follow_fields.10",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/player.rs::paint_cards",
+        Canal,
+        &[
+            "component.field.platform_player.52",
+            "component.field.platform_player.53",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/projectile.rs::corpo",
+        Canal,
+        &[
+            "component.field.projectile_motion.0",
+            "component.field.projectile_motion.1",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/ray.rs::corpo",
+        Canal,
+        &[
+            "component.field.ray_sensor.0",
+            "component.field.ray_sensor.1",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/shake.rs::corpo",
+        Canal,
+        &[
+            "component.field.shake_fields.0",
+            "component.field.shake_fields.1",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/slice_nine.rs::paint_slice_section",
+        Canal,
+        &["component.field.slice_nine.7"],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/topdown.rs::corpo",
+        Canal,
+        &[
+            "component.field.top_down_player.0",
+            "component.field.top_down_player.1",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/topdown.rs::deslize",
+        Canal,
+        &[
+            "component.field.top_down_player.10",
+            "component.field.top_down_player.8",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/vida.rs::numeros",
+        Canal,
+        &[
+            "component.field.health_fields.1",
+            "component.field.health_fields.10",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/vida.rs::nome",
+        Canal,
+        &[
+            "component.field.health_fields.1",
+            "component.field.health_fields.10",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/vida_barra.rs::corpo_barra",
+        Canal,
+        &[
+            "component.field.health_bar_fields.1",
+            "component.field.health_bar_fields.10",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/vida_dano.rs::corpo_dano",
+        Canal,
+        &[
+            "component.field.damage_fields.1",
+            "component.field.damage_fields.10",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/vida_impacto.rs::corpo_impacto",
+        Canal,
+        &[
+            "component.field.health_fields.21",
+            "component.field.health_fields.22",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/weapon.rs::corpo",
+        Canal,
+        &[
+            "component.field.weapon_fields.1",
+            "component.field.weapon_fields.2",
+        ],
+        "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/action_trigger.rs::editor",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/actions.rs::target_rows",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/actions_editor.rs::editor",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/actions_editor.rs::from_row",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/anchors.rs::anchor_editor",
+        Divida,
+        &[],
+        "item de LISTA (`VecAnchors`): a família COMPONENTE endereça campos, não o item n",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/counter_watch.rs::editor",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sync_counter_watch.rs::sync",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/timers.rs::editor",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/path_follow.rs::relogio",
+        Divida,
+        &[],
+        "o relógio do PathFollow é um item da LISTA `Timers` (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/tween_editor.rs::relogio",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/tween_editor.rs::campos_de_para",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/tween_editor.rs::curva_e_ease",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/tween_editor.rs::editor",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/statemachine.rs::paint_statemachine_section",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/statemachine.rs::estados",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/statemachine_setas.rs::setas",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/shake_emitter.rs::editor",
+        Divida,
+        &[],
+        "item de LISTA do componente: a família COMPONENTE endereça campos, não o item n (F27 B2 §ABERTO)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/vida_resist.rs::corpo_resistencias",
+        Divida,
+        &[],
+        "item de LISTA (as resistências): a família COMPONENTE endereça campos, não o item n",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/hud_corpo.rs::bloco_rotulo",
+        Divida,
+        &[],
+        "a fonte do rótulo é um Enum SEM opções no catálogo: o canal não sabe os valores (dar-lhe `options!`)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "event_vida.rs::apply_vida_event",
+        NaoAnimavel,
+        &[],
+        "o `caixa(` daqui é o leitor do evento, não uma linha pintada (nome partilhado)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/anim.rs::player_block",
+        NaoAnimavel,
+        &[],
+        "a duração de UM quadro do clip: o parâmetro da própria animação (§8)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/anim_rows.rs::range_and_timing_rows",
+        NaoAnimavel,
+        &[],
+        "o intervalo e o tempo do clip: o parâmetro da própria animação (§8)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/anim_rows.rs::editor",
+        NaoAnimavel,
+        &[],
+        "o nome, a direcção e os sinais do clip: o parâmetro da própria animação (§8)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/render_source.rs::paint_strategy_row",
+        NaoAnimavel,
+        &[],
+        "como o asset se empacota (atlas/individual): importação, não cena",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/render_source_precision.rs::paint_precision_row",
+        NaoAnimavel,
+        &[],
+        "o formato de pixel do asset: importação, não cena",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/sprite_sheet.rs::sheet_preview_row",
+        NaoAnimavel,
+        &[],
+        "mostrar a folha no canvas: estado da vista",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/tags.rs::paint_tags_section",
+        NaoAnimavel,
+        &[],
+        "a caixa de uma tag NOVA é um verbo (acrescentar), não um valor",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/motion_input.rs::nomes_do_grafo",
+        NaoAnimavel,
+        &[],
+        "os nomes que o grafo lê: leitura do grafo, não um campo",
+    ),
     (
         "ph2d-panel-vector",
         "dash_rows",
@@ -656,7 +1236,11 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
 ];
 
 /// Ficheiros inteiros em dívida — famílias sem vocabulário ainda.
-const DIVIDA_FICHEIRO: &[(&str, &str, &str)] = &[];
+const DIVIDA_FICHEIRO: &[(&str, &str, &str)] = &[(
+    "ph2d-panel-inspector",
+    "sections/script.rs",
+    "as propriedades que o SCRIPT declara (dinâmicas, fora do catálogo) e o ficheiro que corre",
+)];
 
 /// As crates que pintam campos fora do [`ESCOPO`] (plano 35 §10, bloco 2).
 const DIVIDA_CRATE: &[(&str, Classe, &str)] = &[
@@ -892,6 +1476,26 @@ struct Chamada {
     funcao: String,
     porta: String,
     ids: Vec<String>,
+    /// O nome é um rótulo do catálogo com canal (a porta regista os ids sob ele).
+    pelo_rotulo: bool,
+}
+
+/// O prefixo literal de um rótulo do catálogo passado tipado a uma porta.
+const TEXTKEY_DO_CATALOGO: &str = "TextKey::new(\"component.field.";
+
+/// Um rótulo do catálogo que é canal (tem chaves).
+fn rotulo_e_canal(r: &str) -> bool {
+    !ph2d_ecs::canal_componente::chaves_do_rotulo(r).is_empty()
+}
+
+/// Os rótulos do catálogo tipados (`TextKey::new("component.field.…")`) de um texto.
+fn rotulos_em(args: &str) -> Vec<&str> {
+    args.match_indices(TEXTKEY_DO_CATALOGO)
+        .filter_map(|(i, _)| {
+            let ini = i + "TextKey::new(\"".len();
+            args[ini..].find('"').map(|f| &args[ini..ini + f])
+        })
+        .collect()
 }
 
 fn populacao() -> Vec<Chamada> {
@@ -911,12 +1515,23 @@ fn populacao() -> Vec<Chamada> {
                         funcao: funcao.clone(),
                         porta,
                         ids: ids_em(args),
+                        pelo_rotulo: rotulos_em(args).into_iter().any(rotulo_e_canal),
                     });
                 }
             }
         }
     }
     out
+}
+
+/// A entrada `f` de [`POR_FUNCAO`] casa a chamada `c`: o nome curto (só id numa variável) ou
+/// `ficheiro.rs::fn` (todas as chamadas da função).
+fn casa_funcao(krate: &str, f: &str, c: &Chamada) -> bool {
+    krate == c.krate
+        && match f.split_once(".rs::") {
+            Some((fic, fun)) => c.funcao == fun && c.ficheiro == format!("{fic}.rs"),
+            None => f == c.funcao && c.ids.is_empty(),
+        }
 }
 
 fn e_linha(krate: &str, funcao: &str) -> bool {
@@ -940,11 +1555,10 @@ fn todo_campo_pintado_com_losango_tem_canal_ou_porque() {
         if na_divida(c.krate, &c.ficheiro) {
             continue;
         }
-        let ok = if c.ids.is_empty() {
+        let ok = if c.pelo_rotulo || POR_FUNCAO.iter().any(|&(k, f, ..)| casa_funcao(k, f, &c)) {
+            true
+        } else if c.ids.is_empty() {
             e_linha(c.krate, &c.funcao)
-                || POR_FUNCAO
-                    .iter()
-                    .any(|&(k, f, ..)| k == c.krate && f == c.funcao)
         } else {
             c.ids.iter().any(|id| canais.contains(id)) || por_id(&c.ids).is_some()
         };
@@ -982,6 +1596,7 @@ fn nenhuma_isencao_sobrevive_ao_codigo_que_a_explicava() {
     for &(chave, _, porque) in POR_ID {
         let casa = pop.iter().any(|c| {
             !na_divida(c.krate, &c.ficheiro)
+                && !c.pelo_rotulo
                 && !c.ids.iter().any(|id| canais.contains(id))
                 && por_id(&c.ids).is_some_and(|e| e.0 == chave)
         });
@@ -990,26 +1605,26 @@ fn nenhuma_isencao_sobrevive_ao_codigo_que_a_explicava() {
         }
     }
     for &(krate, funcao, classe, nomes, porque) in POR_FUNCAO {
-        let casa = pop
-            .iter()
-            .any(|c| c.krate == krate && c.funcao == funcao && c.ids.is_empty());
+        let casa = pop.iter().any(|c| casa_funcao(krate, funcao, c));
         if !casa {
             velhas.push(format!("POR_FUNCAO {krate}::{funcao} ({porque})"));
         }
         if classe == Canal {
             let ficheiro = pop
                 .iter()
-                .find(|c| c.krate == krate && c.funcao == funcao)
+                .find(|c| casa_funcao(krate, funcao, c))
                 .map(|c| c.ficheiro.clone())
                 .unwrap_or_default();
-            let fonte = fontes(krate)
+            // Um rótulo do catálogo pode vir da tabela de um ficheiro irmão (`player_rows.rs`).
+            let fonte: String = fontes(krate)
                 .into_iter()
-                .find(|(f, _)| *f == ficheiro)
+                .filter(|(f, _)| *f == ficheiro || funcao.contains(".rs::"))
                 .map(|(_, s)| s)
-                .unwrap_or_default();
+                .collect();
             assert!(!nomes.is_empty(), "{krate}::{funcao} é Canal sem nomes");
             for n in nomes {
-                if !fonte.contains(n) || !texto_tabelas.contains(n) {
+                let canal = texto_tabelas.contains(n) || rotulo_e_canal(n);
+                if !fonte.contains(n) || !canal {
                     velhas.push(format!(
                         "POR_FUNCAO {krate}::{funcao}: `{n}` não está no ficheiro E numa tabela"
                     ));
@@ -1045,7 +1660,8 @@ fn nenhuma_isencao_sobrevive_ao_codigo_que_a_explicava() {
     }
     for c in &pop {
         for id in &c.ids {
-            if canais.contains(id) && por_id(std::slice::from_ref(id)).is_some() {
+            if (canais.contains(id) || c.pelo_rotulo) && por_id(std::slice::from_ref(id)).is_some()
+            {
                 velhas.push(format!("POR_ID isenta `{id}`, que já tem canal"));
             }
         }
@@ -1230,36 +1846,29 @@ fn a_varredura_acha_os_campos_que_se_conhecem() {
     assert!(pop.len() > 100, "população suspeita: {}", pop.len());
 }
 
-/// ⭐⭐ **Nenhum campo de JUNTA fica fora do [`ESCOPO`]** (smoke do dono, 22/10: o tipo, o Active e o
-/// Collide Connected em `joint.rs`, e a §13 da roldana inteira, não gravavam — o ficheiro estava
-/// fora da lista e o gate não os via). Todo ficheiro do Inspector que nomeia um id da §12/§13
-/// (`INSP_JOINT_*`, `INSP_WHEEL_*`) é população.
+/// ⭐⭐ **O Inspector é população INTEIRO** (F27 B2) — a lista de ficheiros deixava de fora o que
+/// não estava nela (smoke do dono, 22/10: a junta e a roldana não gravavam). Controlo: os ficheiros
+/// da junta são vistos.
 #[test]
-fn nenhum_campo_de_junta_fica_fora_do_escopo() {
-    let so = ESCOPO
-        .iter()
-        .find(|(k, _)| *k == "ph2d-panel-inspector")
-        .and_then(|(_, so)| *so)
-        .expect("o Inspector está no ESCOPO por ficheiro");
-    let mut fora = Vec::new();
-    let mut vistos = 0;
-    for (ficheiro, s) in fontes("ph2d-panel-inspector") {
-        if !ficheiro.starts_with("sections/") {
-            continue;
-        }
-        if s.contains("ids::INSP_JOINT_") || s.contains("ids::INSP_WHEEL_") {
-            vistos += 1;
-            if !so.contains(&ficheiro.as_str()) {
-                fora.push(ficheiro);
-            }
-        }
-    }
+fn o_inspector_inteiro_e_populacao() {
     assert!(
-        vistos >= 6,
-        "controlo: só {vistos} ficheiros da junta — o leitor partiu"
+        ESCOPO.contains(&("ph2d-panel-inspector", None)),
+        "o Inspector voltou a ser uma lista de ficheiros"
     );
+    let pop = populacao();
+    let junta = (pop.iter())
+        .filter(|c| c.krate == "ph2d-panel-inspector")
+        .filter(|c| {
+            c.ids
+                .iter()
+                .any(|i| i.starts_with("INSP_JOINT_") || i.starts_with("INSP_WHEEL_"))
+        })
+        .map(|c| c.ficheiro.as_str())
+        .collect::<BTreeSet<_>>();
+    assert!(junta.len() >= 6, "controlo: só {junta:?} — o leitor partiu");
+    let pelo_rotulo = pop.iter().filter(|c| c.pelo_rotulo).count();
     assert!(
-        fora.is_empty(),
-        "ficheiros do Inspector que pintam a junta/roldana FORA do ESCOPO: {fora:?}"
+        pelo_rotulo > 50,
+        "controlo: só {pelo_rotulo} linhas com canal pelo rótulo"
     );
 }

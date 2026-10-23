@@ -95,7 +95,7 @@ losango sem canal — um controlo que mente. Cura na B2: classificar `NaoAnimave
 5. Clique o losango ao lado de «Priority»: tem de nascer uma faixa «Camera · Priority».
 6. Deu errado se: não há losangos, faltam faixas, ou o terminal diz «PARADA».
 
-Estado: **smoke do dono ainda não feito** (B1).
+Estado: **smoke do dono OK em 23/10** — cenas `=27` (Bloco A) e `=28` (B1), registado na abertura da B2.
 
 ## 5 — Verificação
 

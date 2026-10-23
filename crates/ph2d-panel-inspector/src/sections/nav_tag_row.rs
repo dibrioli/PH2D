@@ -54,7 +54,15 @@ pub(super) fn tag_row(
     if aberto {
         crate::state_popovers::set_pending_nav_tag_dd(Some(linha.control));
     }
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, linha.dot);
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        linha.dot,
+        &[ids::INSP_NAV_TAG_PICK],
+        TextKey::new("component.field.nav_agent.13").into(),
+    ) {
+        hit_index.register(alvo, linha.dot);
+    }
     let mut cur_y = y + ph2d_tokens::row_pitch_px();
     if tag != 0 && !viva {
         cur_y = super::rows::aviso(

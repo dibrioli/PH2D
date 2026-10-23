@@ -1,7 +1,7 @@
 //! Os gates da família COMPONENTE: a chave é estável, não colide, e ida e volta pelo catálogo.
 
 use super::*;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// ⛔ **Dois componentes com os mesmos 32 bits seriam o MESMO canal** — gravado num ficheiro, uma
 /// curva da câmera a escrever na vida. O catálogo inteiro, sem colisão.
@@ -167,4 +167,52 @@ fn a_forma_do_valor_ida_e_volta() {
         &mut serde_json::json!(1.0),
         f32::NAN
     ));
+}
+
+/// ⛔ **Um rótulo nomeia UM conceito** — o Inspector acha o canal pelo rótulo que pinta (F27 B2).
+/// Partilhado só entre campos do MESMO tipo e faixas (os `LIMITS_FIELDS`), e as chaves dele são as
+/// de todos; os partilhados contam-se (um novo par é uma decisão, não um acaso).
+#[test]
+fn cada_rotulo_nomeia_um_conceito_so() {
+    let mut vistos: BTreeMap<&str, (FieldKind, u16, usize)> = BTreeMap::new();
+    let mut n = 0;
+    for d in ph2d_component_desc::all() {
+        for f in d.fields {
+            n += 1;
+            let e = vistos.entry(f.label_key).or_insert((f.kind, faixas(f), 0));
+            assert_eq!((e.0, e.1), (f.kind, faixas(f)), "{} · {}", d.canonical_name, f.label_key);
+            e.2 += 1;
+            assert!(campo_do_rotulo(f.label_key).is_some(), "{}", f.label_key);
+        }
+    }
+    for (r, &(_, fx, quantos)) in &vistos {
+        let ks = chaves_do_rotulo(r);
+        assert_eq!(ks.len(), usize::from(fx) * quantos, "{r}");
+        assert!(ks.iter().all(|&k| resolver(k).is_some_and(|(_, g, _)| g.label_key == *r)));
+    }
+    let partilhados: Vec<_> = (vistos.iter())
+        .filter(|(_, v)| v.2 > 1 && v.1 > 0)
+        .map(|(r, _)| *r)
+        .collect();
+    assert_eq!(
+        partilhados,
+        ["component.field.limits_fields.0", "component.field.limits_fields.1"],
+        "rótulos de canal partilhados entre componentes"
+    );
+    assert!(n > 300, "controlo: {n} campos — a varredura mediu o nada");
+}
+
+/// ⭐ **O «Visible» é o canal do que o artista vê** (F27 B2): o campo guarda `hidden` (`View::Not`),
+/// e a curva lê e escreve `1 = visível` — senão o gráfico diria o contrário do cartão.
+#[test]
+fn o_visible_le_e_escreve_o_que_se_ve() {
+    let d = ph2d_component_desc::all()
+        .find(|d| d.fields.iter().any(|f| f.label_key == "component.field.visibility.1"))
+        .expect("Visibility");
+    let f = &d.fields[0];
+    assert_eq!(faixas(f), 1);
+    assert_eq!(ler_valor(f, 0, &Value::Bool(false)), Some(1.0), "não escondido = visível");
+    let mut v = Value::Bool(false);
+    assert!(escrever_valor(f, 0, &mut v, 0.0));
+    assert_eq!(v, Value::Bool(true), "0 = escondido");
 }

@@ -11,6 +11,7 @@ use ph2d_editor_core::screens::hero::InspectorVisibilitySectionInfo;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
+use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
 /// Os nomes que esta secção pinta à esquerda — a fonte da coluna dela.
@@ -40,7 +41,7 @@ fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Secca
 /// Mirrors §9 Sampling's `uv_pair_row` but for one value (cutoff, a rect
 /// component).
 #[allow(clippy::too_many_arguments)]
-fn number_row(
+fn number_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -49,7 +50,7 @@ fn number_row(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     id: NodeId,
     // ⚠️ **A coluna é da SECÇÃO** — ver [`seccao`]. Sem ela esta linha respondia pela metade da
     //    linha enquanto a vizinha de quatro componentes cedia, e a secção saía esfarrapada.
@@ -57,6 +58,8 @@ fn number_row(
 ) -> f32 {
     // ⭐ **Rótulo à ESQUERDA, pela porta** (report do dono, 14/09) — esta era a SEGUNDA das duas
     // funções do Inspector que empilhavam o rótulo, gémea da `sections/rows::num_row`.
+    let rotulo = label.into();
+    let label = rotulo.texto;
     let h = ROW_H_PX;
     let row = ph2d_editor_core::property_row::colunas_da_linha(x, w, y, h, sec);
     let label_font = TypeToken::Sm.px();
@@ -86,14 +89,22 @@ fn number_row(
         text_system,
         theme,
     );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, row.dot);
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        row.dot,
+        &[id],
+        rotulo,
+    ) {
+        hit_index.register(alvo, row.dot);
+    }
     y + h + ph2d_tokens::control_gap_px()
 }
 
 /// Paint a 3-tab segmented control (label above), registering each tab's
 /// hit rect. Returns the next `y`.
 #[allow(clippy::too_many_arguments)]
-fn segmented_row(
+fn segmented_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -102,7 +113,7 @@ fn segmented_row(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     ids3: [NodeId; 3],
     labels3: [&str; 3],
     // `None` = a seleção diverge; nenhum segmento acende.
@@ -110,6 +121,8 @@ fn segmented_row(
     // ⚠️ **A coluna é da SECÇÃO** — ver [`seccao`].
     sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
+    let rotulo = label.into();
+    let label = rotulo.texto;
     let h = ROW_H_PX;
     // ⭐⭐ **O nome à ESQUERDA** (2026-09-15): esta porta é irmã da `rows::seg_row`, que já o fazia,
     //    e a única diferença dela é poder dizer «misto» — não a disposição da linha.
@@ -137,7 +150,11 @@ fn segmented_row(
         store,
         hit_index,
     );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, row.dot);
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene, theme, row.dot, &ids3, rotulo,
+    ) {
+        hit_index.register(alvo, row.dot);
+    }
     y + seg_h.max(h) + ph2d_tokens::control_gap_px()
 }
 
@@ -219,7 +236,7 @@ pub(crate) fn paint_visibility_section(
         x,
         w,
         yy,
-        tr("component.field.clip_children.1"),
+        TextKey::new("component.field.clip_children.1"),
         ids::INSP_VIS_CLIP,
         [
             tr("panel.inspector.visibility.disabled"),
@@ -240,7 +257,7 @@ pub(crate) fn paint_visibility_section(
         x,
         w,
         yy,
-        tr("component.field.mask_interaction.1"),
+        TextKey::new("component.field.mask_interaction.1"),
         ids::INSP_VIS_MASK,
         [
             tr("panel.inspector.visibility.none"),
@@ -262,7 +279,7 @@ pub(crate) fn paint_visibility_section(
             x,
             w,
             yy,
-            tr("component.field.mask_interaction.2"),
+            TextKey::new("component.field.mask_interaction.2"),
             ids::INSP_VIS_ALPHA_CUTOFF,
             sec,
         );
@@ -277,6 +294,7 @@ pub(crate) fn paint_visibility_section(
         tr("panel.inspector.visibility.mask_source_mask2d"),
     )
     .visual(store.checkbox_visual(ids::INSP_VIS_MASK_SOURCE))
+    .coluna_de_fora()
     .seccao(sec)
     .value(if info.mask_source {
         CheckboxValue::Checked
@@ -284,6 +302,15 @@ pub(crate) fn paint_visibility_section(
         CheckboxValue::Unchecked
     });
     paint_checkbox(&src_cb, src_rect, scene, text_system, theme);
+    let ter = tr("panel.inspector.visibility.mask_source_mask2d");
+    super::rows::coluna_da_caixa(
+        scene,
+        theme,
+        hit_index,
+        src_rect,
+        ids::INSP_VIS_MASK_SOURCE,
+        ter,
+    );
     yy += h + row_gap;
 
     yy = paint_enabler_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
@@ -321,6 +348,7 @@ fn paint_enabler_rows(
         tr("panel.inspector.visibility.on_screen_enabler"),
     )
     .visual(store.checkbox_visual(ids::INSP_VIS_ON_SCREEN))
+    .coluna_de_fora()
     .seccao(sec)
     .value(if info.on_screen {
         CheckboxValue::Checked
@@ -328,6 +356,15 @@ fn paint_enabler_rows(
         CheckboxValue::Unchecked
     });
     paint_checkbox(&on_cb, on_rect, scene, text_system, theme);
+    let ter = tr("panel.inspector.visibility.on_screen_enabler");
+    super::rows::coluna_da_caixa(
+        scene,
+        theme,
+        hit_index,
+        on_rect,
+        ids::INSP_VIS_ON_SCREEN,
+        ter,
+    );
     yy += h + row_gap;
 
     // Enabler Rect — canonical Rect2Editor (X/Y/W/H in one row), only
@@ -354,7 +391,7 @@ fn paint_enabler_rows(
             x,
             w,
             yy,
-            tr("component.field.on_screen_enabler.1"),
+            TextKey::new("component.field.on_screen_enabler.1"),
             &[
                 ids::INSP_VIS_RECT_X,
                 ids::INSP_VIS_RECT_Y,

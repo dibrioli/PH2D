@@ -3,6 +3,7 @@
 
 use super::*;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
 /// Uma linha do deslocamento: o nome do campo (`sprite.offset`) mais o eixo.
@@ -99,12 +100,12 @@ pub(crate) fn paint_sprite_sheet_section(
                       text_system: &mut TextSystem,
                       hit_index: &mut HitIndex,
                       row_y: f32,
-                      label: &str,
+                      label: ph2d_editor_core::widget::key_mark::Rotulo<'_>,
                       id: NodeId| {
         ph2d_editor_core::widget::paint_property_label(
             text_system,
             scene,
-            label,
+            label.texto,
             x,
             row_y + (field_h - label_font) * 0.5,
             label_font,
@@ -129,7 +130,15 @@ pub(crate) fn paint_sprite_sheet_section(
             theme,
         );
         let (_, dot) = ph2d_editor_core::widget::form_row_columns(x, w, row_y, field_h);
-        ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+        if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+            scene,
+            theme,
+            dot,
+            &[id],
+            label,
+        ) {
+            hit_index.register(alvo, dot);
+        }
     };
     // Origin controls (spec §3.4) — Centered toggle (quad center vs
     // texture top-left + offset) + Offset X/Y (intrinsic px). Render via
@@ -148,7 +157,7 @@ pub(crate) fn paint_sprite_sheet_section(
         cur_y,
         (
             ids::INSP_SPRITE_CENTERED,
-            tr("component.field.sprite.9"),
+            TextKey::new("component.field.sprite.9"),
             matches!(ce_value, CheckboxValue::Checked),
         ),
         sec,
@@ -158,7 +167,10 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        &eixo("panel.inspector.sprite_sheet.offset_x"),
+        ph2d_editor_core::widget::key_mark::Rotulo::de_campo(
+            &eixo("panel.inspector.sprite_sheet.offset_x"),
+            TextKey::new("component.field.sprite.10"),
+        ),
         ids::INSP_SPRITE_OFFSET_X,
     );
     cur_y += field_h + row_gap;
@@ -167,7 +179,10 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        &eixo("panel.inspector.sprite_sheet.offset_y"),
+        ph2d_editor_core::widget::key_mark::Rotulo::de_campo(
+            &eixo("panel.inspector.sprite_sheet.offset_y"),
+            TextKey::new("component.field.sprite.10"),
+        ),
         ids::INSP_SPRITE_OFFSET_Y,
     );
     cur_y += field_h + row_gap;
@@ -188,7 +203,7 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        tr("component.field.sprite_grid.1"),
+        TextKey::new("component.field.sprite_grid.1").into(),
         ids::INSP_SPRITE_HFRAMES,
     );
     cur_y += field_h + row_gap;
@@ -197,7 +212,7 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        tr("component.field.sprite_grid.2"),
+        TextKey::new("component.field.sprite_grid.2").into(),
         ids::INSP_SPRITE_VFRAMES,
     );
     cur_y += field_h + row_gap;
@@ -206,7 +221,7 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        tr("component.field.sprite_grid.3"),
+        TextKey::new("component.field.sprite_grid.3").into(),
         ids::INSP_SPRITE_FRAME,
     );
     cur_y += field_h + row_gap;
@@ -328,12 +343,12 @@ fn paint_flip_rows(
         &[
             (
                 ids::INSP_SPRITE_FLIP_X,
-                tr("component.field.sprite.2"),
+                TextKey::new("component.field.sprite.2"),
                 matches!(fx_value, CheckboxValue::Checked),
             ),
             (
                 ids::INSP_SPRITE_FLIP_Y,
-                tr("component.field.sprite.3"),
+                TextKey::new("component.field.sprite.3"),
                 matches!(fy_value, CheckboxValue::Checked),
             ),
         ],

@@ -60,7 +60,7 @@ fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Secca
 /// Um segmentado. ⚠️ **A selecção vem do SNAPSHOT, nunca do store**: ler o store faria o primeiro
 /// clique depois de trocar de objecto mandar o valor anterior.
 #[allow(clippy::too_many_arguments)]
-fn seg_row(
+fn seg_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -69,7 +69,7 @@ fn seg_row(
     x: f32,
     w: f32,
     y: f32,
-    titulo_txt: &str,
+    titulo_txt: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     ids: &[ph2d_a11y::NodeId],
     rotulos: &[&'static str],
     escolhido: usize,
@@ -104,7 +104,7 @@ fn seg_row(
 /// altura escrita à mão (`18`, que é a aresta da MARCA e não a altura da LINHA) — o report do
 /// dono de 2026-09-21: *«apenas o checkbox tem sua moldura e ele próprio menores que o padrão»*.
 #[allow(clippy::too_many_arguments)]
-fn check_row(
+fn check_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -114,7 +114,7 @@ fn check_row(
     w: f32,
     y: f32,
     id: ph2d_a11y::NodeId,
-    label: &str,
+    label: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     on: bool,
 ) -> f32 {
     // ⚠️ A MESMA coluna que a [`num_row`] desta secção mede, e pela mesma tabela — senão o nome
@@ -163,7 +163,7 @@ fn num_row(
         x,
         w,
         y,
-        chave.tr(),
+        chave,
         &[crate::ids::INSP_HUD_NUM[i]],
         step,
         unidade,
@@ -183,7 +183,7 @@ fn txt_row(
     w: f32,
     y: f32,
     i: usize,
-    rotulo: &'static str,
+    rotulo: TextKey,
 ) -> f32 {
     let id = crate::ids::INSP_HUD_TEXT[i];
     // ⭐⭐⭐ **O nome VOLTOU À COLUNA, e isto é o fim de um remendo NOMEADO.**
@@ -203,7 +203,7 @@ fn txt_row(
         &[
             tr("component.field.button_fields.1"),
             tr("component.field.counter_fields.1"),
-            rotulo,
+            rotulo.tr(),
         ],
     );
     super::anim_rows::text_row(

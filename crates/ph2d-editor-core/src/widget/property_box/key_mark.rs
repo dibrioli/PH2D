@@ -10,6 +10,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 use ph2d_a11y::NodeId;
+use ph2d_i18n::TextKey;
 use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_vector::{Affine, BezPath, Fill, VectorScene};
 
@@ -43,6 +44,128 @@ thread_local! {
     static MARCAS: RefCell<BTreeMap<NodeId, KeyMark>> = const { RefCell::new(BTreeMap::new()) };
     static ALVOS: RefCell<Vec<(NodeId, Vec<NodeId>)>> = const { RefCell::new(Vec::new()) };
     static PEDIDO: RefCell<Option<KeyMarkClick>> = const { RefCell::new(None) };
+    static ROTULOS: RefCell<BTreeMap<NodeId, &'static str>> = const { RefCell::new(BTreeMap::new()) };
+}
+
+/// O prefixo das chaves de rótulo do catálogo (`ph2d-component-desc`): cada uma nomeia UM campo.
+pub const ROTULO_DO_CATALOGO: &str = "component.field.";
+
+/// ⭐ **O nome de uma linha de campo** (F27 B2): o texto que se pinta e, quando é a chave de um campo
+/// do catálogo, o canal que o losango da linha mostra — a ligação controlo → campo sai do rótulo,
+/// sem tabela à mão. `&str` = só texto; [`Rotulo::vista`] = estado da vista, sem coluna.
+#[derive(Clone, Copy, Debug)]
+pub struct Rotulo<'a> {
+    pub texto: &'a str,
+    chave: Option<&'static str>,
+    /// Uma chave por campo da linha (a linha que junta dois campos do catálogo, cada caixa o seu).
+    por_campo: &'static [TextKey],
+    coluna: bool,
+}
+
+impl<'a> From<&'a str> for Rotulo<'a> {
+    fn from(texto: &'a str) -> Self {
+        Self {
+            texto,
+            chave: None,
+            por_campo: &[],
+            coluna: true,
+        }
+    }
+}
+
+impl<'a> From<&'a String> for Rotulo<'a> {
+    fn from(texto: &'a String) -> Self {
+        Self::from(texto.as_str())
+    }
+}
+
+impl From<TextKey> for Rotulo<'static> {
+    fn from(k: TextKey) -> Self {
+        Self {
+            texto: k.tr(),
+            chave: Some(k.key()),
+            por_campo: &[],
+            coluna: true,
+        }
+    }
+}
+
+impl Rotulo<'static> {
+    /// ⛔ Estado da VISTA ou da ferramenta (não documento): a coluna fica reservada e VAZIA — um
+    /// ponto ali diria «isto anima».
+    #[must_use]
+    pub fn vista(k: TextKey) -> Self {
+        Self {
+            coluna: false,
+            ..Self::from(k)
+        }
+    }
+}
+
+impl<'a> Rotulo<'a> {
+    /// Um nome composto (`tr_with`) para o campo `campo` do catálogo.
+    #[must_use]
+    pub fn de_campo(texto: &'a str, campo: TextKey) -> Self {
+        Self {
+            chave: Some(campo.key()),
+            ..Self::from(texto)
+        }
+    }
+
+    /// Um nome para uma linha cujas caixas são campos DIFERENTES do catálogo, pela ordem dos ids.
+    #[must_use]
+    pub fn de_campos(texto: &'a str, campos: &'static [TextKey]) -> Self {
+        Self {
+            por_campo: campos,
+            ..Self::from(texto)
+        }
+    }
+
+    /// A chave do campo do catálogo que este rótulo nomeia.
+    #[must_use]
+    pub fn do_catalogo(&self) -> Option<&'static str> {
+        self.chave.filter(|k| k.starts_with(ROTULO_DO_CATALOGO))
+    }
+}
+
+/// [`paint_decorator_for`] de uma linha com nome: regista cada campo sob o rótulo do catálogo (a
+/// shell resolve-o no quadro seguinte: [`rotulos_pintados`]); [`Rotulo::vista`] não pinta nada.
+#[must_use]
+pub fn paint_decorator_campo(
+    scene: &mut VectorScene,
+    theme: Theme,
+    r: Rect,
+    fields: &[NodeId],
+    rotulo: Rotulo<'_>,
+) -> Option<NodeId> {
+    if !rotulo.coluna {
+        return None;
+    }
+    let de = |k: &'static str| Some(k).filter(|k| k.starts_with(ROTULO_DO_CATALOGO));
+    ROTULOS.with(|m| {
+        let mut m = m.borrow_mut();
+        if rotulo.por_campo.is_empty() {
+            if let Some(k) = rotulo.do_catalogo() {
+                m.extend(fields.iter().map(|&f| (f, k)));
+            }
+        } else {
+            let pares = fields.iter().zip(rotulo.por_campo);
+            m.extend(pares.filter_map(|(&f, k)| Some((f, de(k.key())?))));
+        }
+    });
+    paint_decorator_for(scene, theme, r, fields)
+}
+
+/// Os campos pintados desde o último [`set_key_marks`] com o rótulo do catálogo de cada um.
+#[must_use]
+pub fn rotulos_pintados() -> Vec<(NodeId, &'static str)> {
+    ROTULOS.with(|m| m.borrow().iter().map(|(&f, &k)| (f, k)).collect())
+}
+
+/// O rótulo do catálogo com que o campo `id` foi pintado (o clique resolve-o assim).
+#[must_use]
+pub fn rotulo_de(id: NodeId) -> Option<&'static str> {
+    ROTULOS.with(|m| m.borrow().get(&id).copied())
 }
 
 /// O sal do id do losango: um campo `f` regista o seu losango como `f ^ SAL` no índice de alvos.
@@ -61,6 +184,7 @@ pub const fn key_mark_id(campo: NodeId) -> NodeId {
 pub fn set_key_marks(marks: BTreeMap<NodeId, KeyMark>) {
     MARCAS.with(|m| *m.borrow_mut() = marks);
     ALVOS.with(|a| a.borrow_mut().clear());
+    ROTULOS.with(|r| r.borrow_mut().clear());
 }
 
 /// O losango de uma linha com estes campos: o estado mais forte entre eles (`Mudado` > `Chave` >

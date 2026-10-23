@@ -106,7 +106,15 @@ fn linha_do_selector(
     if aberto {
         crate::state_popovers::set_pending_seq_dd(Some(row.control));
     }
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, row.dot);
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        row.dot,
+        &[crate::ids::INSP_SEQ_PICK],
+        TextKey::new("component.field.sequence_fields.1").into(),
+    ) {
+        hit_index.register(alvo, row.dot);
+    }
     y + ph2d_tokens::row_pitch_px()
 }
 

@@ -60,6 +60,8 @@ pub(crate) struct BooleanMark {
     pub box_px: Option<f32>,
     /// Reserva e desenha a coluna de animação. Ver [`Checkbox::decorator`].
     pub decorator: bool,
+    /// `false` = a coluna é reservada e o chamador pinta-a ([`super::Checkbox::coluna_de_fora`]).
+    pub pinta_coluna: bool,
     /// ⭐⭐⭐ **A linha de formulário a que esta marca pertence** — ver [`Checkbox::seccao`].
     ///
     /// `Some(sec)` faz a marca viver **dentro de uma CAIXA** que ocupa a coluna do controlo;
@@ -91,6 +93,7 @@ pub(crate) fn paint_boolean_mark(
         hover_t,
         box_px,
         decorator,
+        pinta_coluna,
         linha,
     } = m;
     // A moldura é o TETO em qualquer dos dois casos (a caixa não transborda o que a contém);
@@ -332,7 +335,7 @@ pub(crate) fn paint_boolean_mark(
         CheckboxValue::Unchecked => {}
     }
 
-    if decorator {
+    if decorator && pinta_coluna {
         crate::widget::property_box::paint_decorator(
             scene,
             theme,

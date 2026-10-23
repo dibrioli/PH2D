@@ -20,7 +20,7 @@ use ph2d_ecs::canal_fisica as fs;
 use ph2d_ecs::canal_junta as j;
 use ph2d_ecs::canal_objeto as o;
 use ph2d_editor_core::NodeId;
-use ph2d_editor_core::widget::key_mark::KeyMark;
+use ph2d_editor_core::widget::key_mark::{self, KeyMark};
 use ph2d_panel_inspector::ids as insp;
 use ph2d_timeline::{Forca, Instante, PropKind, TimelineDoc, TimelineIntent};
 
@@ -281,14 +281,41 @@ fn derivados() -> &'static [(NodeId, Box<[PropKind]>)] {
     })
 }
 
-#[must_use]
-pub fn canal_do_campo(id: NodeId) -> &'static [PropKind] {
+/// ⭐ **O grupo de um rótulo do catálogo** (F27 B2): a linha pintada com o `label_key` de um campo
+/// mostra o canal dele — `ph2d_ecs::canal_componente::chaves_do_rotulo`, uma vez por rótulo.
+fn do_rotulo(rotulo: &str) -> &'static [PropKind] {
+    static D: std::sync::OnceLock<BTreeMap<&'static str, Box<[PropKind]>>> =
+        std::sync::OnceLock::new();
+    D.get_or_init(|| {
+        ph2d_component_desc::all()
+            .flat_map(|d| d.fields.iter().map(|f| f.label_key))
+            .map(|r| {
+                let ks = ph2d_ecs::canal_componente::chaves_do_rotulo(r);
+                (r, ks.iter().map(|&k| PropKind::Field(k)).collect())
+            })
+            .filter(|(_, g): &(_, Box<[PropKind]>)| !g.is_empty())
+            .collect()
+    })
+    .get(rotulo)
+    .map_or(&[], |g| g)
+}
+
+/// Os campos do quadro: as tabelas e os pintados com um rótulo do catálogo.
+fn todos() -> impl Iterator<Item = (NodeId, &'static [PropKind])> {
     CAMPOS
         .iter()
         .map(|&(c, g)| (c, g))
         .chain(derivados().iter().map(|(c, g)| (*c, &**g)))
-        .find(|(c, _)| *c == id)
-        .map_or(&[], |(_, g)| g)
+        .chain(
+            (key_mark::rotulos_pintados().into_iter())
+                .map(|(c, r)| (c, do_rotulo(r)))
+                .filter(|(_, g)| !g.is_empty()),
+        )
+}
+
+#[must_use]
+pub fn canal_do_campo(id: NodeId) -> &'static [PropKind] {
+    todos().find(|(c, _)| *c == id).map_or(&[], |(_, g)| g)
 }
 
 fn marca(f: Forca) -> KeyMark {
@@ -314,11 +341,7 @@ pub fn marcas(
     }
     // Um grupo é perguntado uma vez: os cantos, os interruptores e os eixos repetem-no.
     let mut por_grupo: BTreeMap<&[PropKind], KeyMark> = BTreeMap::new();
-    let todos = CAMPOS
-        .iter()
-        .map(|&(c, g)| (c, g))
-        .chain(derivados().iter().map(|(c, g)| (*c, &**g)));
-    for (id, reps) in todos {
+    for (id, reps) in todos() {
         let m = *por_grupo.entry(reps).or_insert_with(|| {
             marca(ph2d_timeline::estado_do_grupo(doc, entidades, reps, inst, &valor).0)
         });

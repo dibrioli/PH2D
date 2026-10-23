@@ -81,7 +81,8 @@ fn fns_de(texto: &str) -> Vec<(String, String)> {
             .unwrap_or(l);
         let corpo = corpo.strip_prefix("const ").unwrap_or(corpo);
         if let Some(resto) = corpo.strip_prefix("fn ")
-            && let Some((nome, _)) = resto.split_once('(')
+            // `fn nome<'a>(` conta como `nome` (as portas com o `Rotulo` são genéricas).
+            && let Some((nome, _)) = resto.split_once(['(', '<'])
             && !nome.is_empty()
             && nome.chars().all(|c| c.is_alphanumeric() || c == '_')
         {
@@ -151,6 +152,7 @@ fn doors() -> Vec<String> {
         .skip(1)
         .filter_map(|bloco| {
             let (nome, corpo) = bloco.split_once('(')?;
+            let nome = nome.split('<').next().unwrap_or(nome);
             Some((nome.to_string(), corpo.to_string()))
         })
         .collect();

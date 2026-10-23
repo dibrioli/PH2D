@@ -9,7 +9,8 @@ use ph2d_ecs::canal::familia::COMPONENTE;
 use ph2d_ecs::canal_componente as cc;
 use ph2d_ecs::scene::property::slot_in;
 use ph2d_ecs::scene::registry::{ComponentRegistry, ComponentTypeEntry};
-use ph2d_ecs::{CanaisEscritos, CanaisLidos, Entity, FieldKey, SimWorld, World};
+use ph2d_component_desc::FieldKind;
+use ph2d_ecs::{CanaisEscritos, CanaisLidos, Entity, FieldKey, SimWorld, TextosDosCanais, World};
 use ph2d_preview_drive::{FieldRef, PreviewDrive};
 use serde_json::Value;
 
@@ -35,8 +36,10 @@ pub fn campos(reg: &ComponentRegistry, w: &World, e: Entity) -> Vec<FieldKey> {
             cc::chaves_de(d)
                 .filter(|&k| {
                     cc::resolver(k).is_some_and(|(_, f, faixa)| {
-                        slot_in(&mut v, f.serde_key())
-                            .is_some_and(|s| cc::ler_valor(f, faixa, s).is_some())
+                        slot_in(&mut v, f.serde_key()).is_some_and(|s| {
+                            cc::ler_valor(f, faixa, s).is_some()
+                                || (f.kind == FieldKind::Text && (s.is_string() || s.is_null()))
+                        })
                     })
                 })
                 .collect::<Vec<_>>()
@@ -44,11 +47,18 @@ pub fn campos(reg: &ComponentRegistry, w: &World, e: Entity) -> Vec<FieldKey> {
         .collect()
 }
 
-#[must_use]
-pub fn ler(reg: &ComponentRegistry, w: &World, e: Entity, k: FieldKey) -> Option<f32> {
+/// O valor do canal; um texto entra na tabela da sessão (`textos`) e lê-se pelo índice.
+pub fn ler(
+    reg: &ComponentRegistry,
+    w: &World,
+    e: Entity,
+    k: FieldKey,
+    textos: &mut TextosDosCanais,
+) -> Option<f32> {
     let (entry, f, faixa) = alvo(reg, k)?;
     let mut v = (entry.value_of)(w, e).ok()??;
-    cc::ler_valor(f, faixa, slot_in(&mut v, f.serde_key())?)
+    let s = slot_in(&mut v, f.serde_key())?;
+    cc::ler_texto(f, s, textos).or_else(|| cc::ler_valor(f, faixa, s))
 }
 
 /// Uma escrita que mudou o componente: o que o `FieldDrive` guarda (o valor GUARDADO inteiro do
@@ -66,12 +76,19 @@ pub fn escrever(
     e: Entity,
     k: FieldKey,
     x: f32,
+    textos: &TextosDosCanais,
 ) -> Option<Escrita> {
     let (entry, f, faixa) = alvo(reg, k)?;
     let mut inteiro = (entry.value_of)(w, e).ok()??;
     let guardado = |v: &mut Value| slot_in(v, f.stored_key()).cloned();
     let antes = guardado(&mut inteiro)?;
-    if !cc::escrever_valor(f, faixa, slot_in(&mut inteiro, f.serde_key())?, x) {
+    let slot = slot_in(&mut inteiro, f.serde_key())?;
+    let mudou = if f.kind == FieldKind::Text {
+        cc::escrever_texto(f, slot, x, textos)
+    } else {
+        cc::escrever_valor(f, faixa, slot, x)
+    };
+    if !mudou {
         return None;
     }
     (entry.set_value)(w, e, inteiro).ok()?;
@@ -86,6 +103,7 @@ pub fn escrever(
 
 /// Publica o valor de cada canal das `entidades` (o que o Auto Key e o losango comparam).
 pub fn publicar(sim: &mut SimWorld, reg: &ComponentRegistry, entidades: &[u64]) {
+    let mut textos = tirar_textos(sim);
     let lotes: Vec<(u64, Vec<(FieldKey, f32)>)> = entidades
         .iter()
         .filter_map(|&b| {
@@ -94,11 +112,12 @@ pub fn publicar(sim: &mut SimWorld, reg: &ComponentRegistry, entidades: &[u64]) 
             w.get_entity(e).ok()?;
             let v = campos(reg, w, e)
                 .into_iter()
-                .filter_map(|k| Some((k, ler(reg, w, e, k)?)))
+                .filter_map(|k| Some((k, ler(reg, w, e, k, &mut textos)?)))
                 .collect();
             Some((b, v))
         })
         .collect();
+    sim.world_mut().insert_resource(textos);
     let mut lidos = sim
         .world_mut()
         .get_resource_or_insert_with(CanaisLidos::default);
@@ -123,6 +142,7 @@ pub fn aplicar(sim: &mut SimWorld, reg: &ComponentRegistry, drive: &mut PreviewD
         return false;
     };
     escritas.sort_by_key(|&(b, k, _)| (b, k));
+    let mut textos = tirar_textos(sim);
     let mut mudou = false;
     let mut ecos = Vec::with_capacity(escritas.len());
     for (b, k, x) in escritas {
@@ -132,7 +152,7 @@ pub fn aplicar(sim: &mut SimWorld, reg: &ComponentRegistry, drive: &mut PreviewD
         if sim.world().get_entity(e).is_err() {
             continue;
         }
-        if let Some(esc) = escrever(reg, sim.world_mut(), e, k, x) {
+        if let Some(esc) = escrever(reg, sim.world_mut(), e, k, x, &textos) {
             // Uma cópia da corrida não é documento: não há autorado a guardar por baixo dela.
             if !ph2d_ecs::is_transient(sim.world(), e) {
                 drive
@@ -141,10 +161,11 @@ pub fn aplicar(sim: &mut SimWorld, reg: &ComponentRegistry, drive: &mut PreviewD
             }
             mudou = true;
         }
-        if let Some(ficou) = ler(reg, sim.world(), e, k) {
+        if let Some(ficou) = ler(reg, sim.world(), e, k, &mut textos) {
             ecos.push((b, k, x, ficou));
         }
     }
+    sim.world_mut().insert_resource(textos);
     let mut lidos = sim
         .world_mut()
         .get_resource_or_insert_with(CanaisLidos::default);
@@ -152,6 +173,13 @@ pub fn aplicar(sim: &mut SimWorld, reg: &ComponentRegistry, drive: &mut PreviewD
         lidos.eco(b, k, x, f);
     }
     mudou
+}
+
+/// A tabela dos textos da sessão, fora do mundo enquanto o funil o lê e escreve (volta no fim).
+fn tirar_textos(sim: &mut SimWorld) -> TextosDosCanais {
+    sim.world_mut()
+        .remove_resource::<TextosDosCanais>()
+        .unwrap_or_default()
 }
 
 #[cfg(test)]

@@ -51,7 +51,15 @@ pub(super) fn seletor(
 ) {
     let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(r.x, r.w, r.y, r.h);
     let r = Rect::new(r.x, r.y, control_w, r.h);
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        dot,
+        &[ids::INSP_SCRIPT_PICK],
+        TextKey::new("component.field.script_fields.1").into(),
+    ) {
+        hit_index.register(alvo, dot);
+    }
     if info.library.is_empty() {
         paint_button(
             &Button::new(

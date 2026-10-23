@@ -40,7 +40,7 @@ pub(super) const fn chave_da_queixa(q: VidaQueixa) -> &'static str {
 /// 2026-09-25): a marca tem a altura de uma LINHA (`ROW_H_PX`), e a coluna do nome é da SECÇÃO.
 /// A redacção anterior pintava a moldura com a aresta da MARCA (`18 px`) e encolhia as duas.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn caixa(
+pub(super) fn caixa<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -50,7 +50,7 @@ pub(super) fn caixa(
     w: f32,
     y: f32,
     id: NodeId,
-    rotulo: &str,
+    rotulo: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     ligada: bool,
     seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
@@ -70,7 +70,7 @@ pub(super) fn caixa(
 
 /// Um campo de texto (uma equipa ou um sinal). ⛔ Pela porta que já existe (`anim_rows::text_row`).
 #[allow(clippy::too_many_arguments)]
-pub(super) fn nome(
+pub(super) fn nome<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -79,7 +79,7 @@ pub(super) fn nome(
     x: f32,
     w: f32,
     y: f32,
-    rotulo: &str,
+    rotulo: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     id: NodeId,
     dica: &str,
     seccao: ph2d_editor_core::property_row::Seccao,
@@ -158,7 +158,7 @@ fn leitura(
 
 /// Uma lista de números numa coluna de secção. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn numeros(
+pub(super) fn numeros<'a, L: Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>> + Copy>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -167,7 +167,7 @@ pub(super) fn numeros(
     x: f32,
     w: f32,
     y: f32,
-    linhas: &[(&str, NodeId, f64, Option<Unit>)],
+    linhas: &[(L, NodeId, f64, Option<Unit>)],
     seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     let mut cur_y = y;
@@ -236,33 +236,37 @@ fn corpo_vida(
     //    linhas que este quadro não pinta: *uma coluna que salta quando uma linha aparece é uma
     //    coluna por linha com outro nome*.
     let rotulos = [
-        tr("component.field.health_fields.1"),
-        tr("component.field.health_fields.2"),
-        tr("component.field.health_fields.3"),
-        tr("component.field.health_fields.5"),
-        tr("component.field.health_fields.6"),
-        tr("component.field.health_fields.13"),
-        tr("component.field.health_fields.14"),
-        tr("component.field.health_fields.15"),
-        tr("component.field.health_fields.20"),
-        tr("component.field.health_fields.8"),
-        tr("component.field.health_fields.7"),
-        tr("component.field.health_fields.9"),
-        tr("component.field.health_fields.10"),
-        tr("component.field.health_fields.11"),
+        TextKey::new("component.field.health_fields.1"),
+        TextKey::new("component.field.health_fields.2"),
+        TextKey::new("component.field.health_fields.3"),
+        TextKey::new("component.field.health_fields.5"),
+        TextKey::new("component.field.health_fields.6"),
+        TextKey::new("component.field.health_fields.13"),
+        TextKey::new("component.field.health_fields.14"),
+        TextKey::new("component.field.health_fields.15"),
+        TextKey::new("component.field.health_fields.20"),
+        TextKey::new("component.field.health_fields.8"),
+        TextKey::new("component.field.health_fields.7"),
+        TextKey::new("component.field.health_fields.9"),
+        TextKey::new("component.field.health_fields.10"),
+        TextKey::new("component.field.health_fields.11"),
         // Os quatro campos de TEXTO do fim — medidos na MESMA coluna, senão o nome deles cortava.
-        tr("component.field.health_fields.16"),
-        tr("component.field.health_fields.17"),
-        tr("component.field.health_fields.18"),
-        tr("component.field.health_fields.19"),
+        TextKey::new("component.field.health_fields.16"),
+        TextKey::new("component.field.health_fields.17"),
+        TextKey::new("component.field.health_fields.18"),
+        TextKey::new("component.field.health_fields.19"),
         // ⭐ W6 — os três do editor da resistência aberta, na MESMA coluna.
-        tr("panel.inspector.vida.resist_kind"),
-        tr("panel.inspector.vida.resist_rate"),
-        tr("panel.inspector.vida.resist_absorbs"),
+        TextKey::new("panel.inspector.vida.resist_kind"),
+        TextKey::new("panel.inspector.vida.resist_rate"),
+        TextKey::new("panel.inspector.vida.resist_absorbs"),
     ];
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &rotulos);
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &rotulos.iter().map(|k| k.tr()).collect::<Vec<_>>(),
+    );
     let s = Some(Unit::Seconds);
-    let mut linhas: Vec<(&str, NodeId, f64, Option<Unit>)> = vec![
+    let mut linhas: Vec<(TextKey, NodeId, f64, Option<Unit>)> = vec![
         (rotulos[0], ids::INSP_VIDA_MAX, 1.0, None), // LITERAL-PX-OK: pontos
         (rotulos[1], ids::INSP_VIDA_START, 1.0, None), // LITERAL-PX-OK: pontos
         (rotulos[2], ids::INSP_VIDA_INVINCIBLE, 0.05, s), // LITERAL-PX-OK: segundos
@@ -315,7 +319,7 @@ fn corpo_vida(
             w,
             cur_y,
             ids::INSP_VIDA_OVERHEAL,
-            tr("component.field.health_fields.4"),
+            TextKey::new("component.field.health_fields.4"),
             h.overheal,
             seccao,
         );
@@ -331,7 +335,7 @@ fn corpo_vida(
             w,
             cur_y,
             ids::INSP_VIDA_SHIELD_BLOCKS,
-            tr("component.field.health_fields.12"),
+            TextKey::new("component.field.health_fields.12"),
             h.shield_blocks_excess,
             seccao,
         );
@@ -364,22 +368,22 @@ fn corpo_vida(
     );
     for (rotulo, id, dica) in [
         (
-            tr("component.field.health_fields.16"),
+            TextKey::new("component.field.health_fields.16"),
             ids::INSP_VIDA_TEAM,
             tr("panel.inspector.vida.team_hint"),
         ),
         (
-            tr("component.field.health_fields.17"),
+            TextKey::new("component.field.health_fields.17"),
             ids::INSP_VIDA_ON_DAMAGE,
             tr("panel.inspector.vida.on_damage_hint"),
         ),
         (
-            tr("component.field.health_fields.18"),
+            TextKey::new("component.field.health_fields.18"),
             ids::INSP_VIDA_ON_HEAL,
             tr("panel.inspector.vida.on_heal_hint"),
         ),
         (
-            tr("component.field.health_fields.19"),
+            TextKey::new("component.field.health_fields.19"),
             ids::INSP_VIDA_ON_DEATH,
             tr("panel.inspector.vida.on_death_hint"),
         ),

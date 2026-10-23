@@ -146,7 +146,15 @@ pub(crate) fn paint_mount_row(
     if open {
         crate::state_popovers::set_pending_mount_dd(Some(rect));
     }
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        dot,
+        &[ids::INSP_MOUNT_PICK],
+        TextKey::new("component.field.anchor_mount.1").into(),
+    ) {
+        hit_index.register(alvo, dot);
+    }
     let mut cur_y = y + h;
 
     if info.mount_dangling() {
@@ -264,40 +272,38 @@ pub(crate) fn paint_visibility_rows(
     if info.rows.is_empty() {
         return y;
     }
-    let mut cur_y = y;
-    // ⚠️ **Estas duas NÃO passam pela [`ph2d_editor_core::property_row::paint_check_row`]**, e a
-    // razão é a segunda: ela nasce **PARADA** (ver [`RUNTIME_BOX_LABEL`]), e o estado dela não vem
-    // do store. A porta serve quem lê o par visual da loja; aqui o painel sobrepõe-se a ele.
-    // ⭐ O que a porta dá — **a coluna da SECÇÃO** — chega na mesma, pelo `.seccao(..)`.
+    // ⚠️ **A segunda NÃO passa pela [`ph2d_editor_core::property_row::paint_check_row`]**: ela nasce
+    // **PARADA** (ver [`RUNTIME_BOX_LABEL`]) e a porta não tem estado desligado. A primeira passa, e
+    // a coluna dela leva o canal do campo pelo rótulo do catálogo.
     let sec = seccao(text_system);
-    for (id, label, on) in [
+    let mut cur_y = ph2d_editor_core::property_row::paint_check_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
         (
             ids::INSP_ANCHOR_VIS_EDITOR,
-            tr("component.field.anchor_visibility.1"),
+            TextKey::new("component.field.anchor_visibility.1"),
             info.vis_in_editor,
         ),
-        (
-            ids::INSP_ANCHOR_VIS_RUNTIME,
-            RUNTIME_BOX_LABEL.tr(),
-            info.vis_at_runtime,
-        ),
-    ] {
-        let cb_h = CHECK_H;
-        let rect = Rect::new(x, cur_y, w, cb_h);
-        hit_index.register(id, rect);
-        let mut cb = Checkbox::new(id, label)
-            .visual(store.checkbox_visual(id))
-            .value(if on {
-                CheckboxValue::Checked
-            } else {
-                CheckboxValue::Unchecked
-            })
-            .seccao(sec);
-        if id == ids::INSP_ANCHOR_VIS_RUNTIME {
-            cb = cb.state(CheckboxState::Disabled);
-        }
-        paint_checkbox(&cb, rect, scene, text_system, theme);
-        cur_y += cb_h + ph2d_tokens::control_gap_px();
-    }
+        sec,
+    );
+    let id = ids::INSP_ANCHOR_VIS_RUNTIME;
+    let rect = Rect::new(x, cur_y, w, CHECK_H);
+    hit_index.register(id, rect);
+    let cb = Checkbox::new(id, RUNTIME_BOX_LABEL.tr())
+        .value(if info.vis_at_runtime {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        })
+        .seccao(sec)
+        .state(CheckboxState::Disabled);
+    paint_checkbox(&cb, rect, scene, text_system, theme);
+    cur_y += CHECK_H + ph2d_tokens::control_gap_px();
     cur_y + ph2d_tokens::control_gap_px()
 }

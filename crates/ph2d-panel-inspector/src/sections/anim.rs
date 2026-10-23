@@ -26,6 +26,7 @@ use ph2d_editor_core::screens::hero::InspectorAnimInfo;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
+use ph2d_i18n::TextKey;
 
 /// Espessura da barra de frames.
 ///
@@ -41,7 +42,7 @@ const BAR_H: f32 = 10.0; // LITERAL-PX-OK: altura de trilha de slider, é o alvo
 /// que o dono reprovou duas vezes. ⇒ a porta [`ph2d_editor_core::property_row::paint_choice_row`],
 /// com a coluna da secção (`anim_rows::seccao_da_animacao`, que já conta estes dois nomes).
 #[allow(clippy::too_many_arguments)]
-fn segmented_row(
+fn segmented_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -50,7 +51,7 @@ fn segmented_row(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     ids_: &[NodeId],
     labels: &[&str],
     sel: usize,
@@ -107,7 +108,7 @@ fn override_rows(
         x,
         w,
         y,
-        tr("component.field.sprite_animator.4"),
+        TextKey::new("component.field.sprite_animator.4"),
         &ids::INSP_ANIM_DIR_OVERRIDE,
         &[
             tr("panel.inspector.animation.inherit"),
@@ -127,7 +128,7 @@ fn override_rows(
         x,
         w,
         cur_y,
-        tr("component.field.sprite_animator.5"),
+        TextKey::new("component.field.sprite_animator.5"),
         &ids::INSP_ANIM_LOOP_OVERRIDE,
         &[
             tr("panel.inspector.animation.inherit"),
@@ -173,12 +174,12 @@ fn player_block(
         &[
             (
                 ids::INSP_ANIM_PLAYING,
-                tr("component.field.sprite_animator.1"),
+                TextKey::new("component.field.sprite_animator.1"),
                 info.playing,
             ),
             (
                 ids::INSP_ANIM_AUTOPLAY,
-                tr("component.field.sprite_animator.2"),
+                TextKey::new("component.field.sprite_animator.2"),
                 info.autoplay,
             ),
         ],
@@ -194,7 +195,7 @@ fn player_block(
         x,
         w,
         cur_y,
-        tr("component.field.sprite_animator.3"),
+        TextKey::new("component.field.sprite_animator.3"),
         &[ids::INSP_ANIM_SPEED],
         0.1, // LITERAL-PX-OK: passo de scrub em MÚLTIPLOS de velocidade, não em pixels
         None,

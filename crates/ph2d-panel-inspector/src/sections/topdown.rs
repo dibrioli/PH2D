@@ -25,6 +25,7 @@ use ph2d_editor_core::topdown_edits::{
 };
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::tr;
+use ph2d_i18n::TextKey;
 
 /// Um segmentado. ⚠️ **A selecção vem do SNAPSHOT, nunca do store** — ler o store faria o primeiro
 /// clique depois de trocar de objecto mandar o valor do objecto anterior.
@@ -34,7 +35,7 @@ use ph2d_i18n::tr;
 /// idioma a que o gate textual ficou cego. ⇒ a porta
 /// [`ph2d_editor_core::property_row::paint_choice_row`], com a coluna da SECÇÃO.
 #[allow(clippy::too_many_arguments)]
-fn seg_row(
+fn seg_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -43,7 +44,7 @@ fn seg_row(
     x: f32,
     w: f32,
     y: f32,
-    titulo: &str,
+    titulo: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     ids: &[ph2d_a11y::NodeId],
     rotulos: &[&'static str],
     escolhido: usize,
@@ -175,19 +176,19 @@ fn corpo(
     );
     for (label, id, step, unidade) in [
         (
-            tr("component.field.top_down_player.0"),
+            TextKey::new("component.field.top_down_player.0"),
             crate::ids::INSP_TD_SPEED,
             0.1, // LITERAL-PX-OK: passo de scrub em m/s
             Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
         ), // LITERAL-PX-OK: m/s
         (
-            tr("component.field.top_down_player.1"),
+            TextKey::new("component.field.top_down_player.1"),
             crate::ids::INSP_TD_ACCEL,
             0.5,
             None,
         ), // LITERAL-PX-OK: m/s²
         (
-            tr("component.field.top_down_player.2"),
+            TextKey::new("component.field.top_down_player.2"),
             crate::ids::INSP_TD_DECEL,
             0.5,
             None,
@@ -195,7 +196,7 @@ fn corpo(
         // ⭐ O EMPURRÃO (plano 28, W5): um golpe de uma `Damage` com `Push` fá-lo deslizar, e isto
         // diz quão depressa ele pára de deslizar.
         (
-            tr("component.field.top_down_player.11"),
+            TextKey::new("component.field.top_down_player.11"),
             crate::ids::INSP_TD_KNOCKBACK_RECOVERY,
             0.5,
             None,
@@ -231,7 +232,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.top_down_player.3"),
+        TextKey::new("component.field.top_down_player.3"),
         &crate::ids::INSP_TD_DIRECTIONS,
         &rotulos,
         usize::from(i.directions.tag()),
@@ -248,7 +249,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.top_down_player.4"),
+        TextKey::new("component.field.top_down_player.4"),
         &crate::ids::INSP_TD_VIEWPOINT,
         &rotulos,
         usize::from(i.viewpoint.tag()),
@@ -265,7 +266,7 @@ fn corpo(
             x,
             w,
             cur_y,
-            tr("component.field.top_down_player.5"),
+            TextKey::new("component.field.top_down_player.5"),
             &[crate::ids::INSP_TD_VIEW_ANGLE],
             0.5, // LITERAL-PX-OK: graus
             Some(ph2d_editor_core::widget::Unit::Degrees),
@@ -283,7 +284,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.top_down_player.6"),
+        TextKey::new("component.field.top_down_player.6"),
         &crate::ids::INSP_TD_FACING,
         &rotulos,
         usize::from(i.facing.tag()),
@@ -300,7 +301,7 @@ fn corpo(
             x,
             w,
             cur_y,
-            tr("component.field.top_down_player.7"),
+            TextKey::new("component.field.top_down_player.7"),
             &[crate::ids::INSP_TD_TURN_SPEED],
             10.0, // LITERAL-PX-OK: graus/s
             Some(ph2d_editor_core::widget::Unit::DegreesPerSecond),
@@ -342,13 +343,13 @@ fn deslize(
     let mut cur_y = y;
     for (label, id, step, unidade) in [
         (
-            tr("component.field.top_down_player.8"),
+            TextKey::new("component.field.top_down_player.8"),
             crate::ids::INSP_TD_MIN_SLIDE,
             1.0,
             Some(ph2d_editor_core::widget::Unit::Degrees),
         ), // LITERAL-PX-OK: graus
         (
-            tr("component.field.top_down_player.9"),
+            TextKey::new("component.field.top_down_player.9"),
             crate::ids::INSP_TD_MAX_SLIDES,
             1.0,
             None,
@@ -382,7 +383,7 @@ fn deslize(
         cur_y,
         (
             crate::ids::INSP_TD_DEFAULT_CONTROLS,
-            tr("component.field.top_down_player.10"),
+            TextKey::new("component.field.top_down_player.10"),
             i.default_controls,
         ),
         seccao,

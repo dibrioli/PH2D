@@ -5,6 +5,7 @@
 //! o tecto. O corte é por RESPONSABILIDADE, que é o que o tecto pede.
 
 use super::*;
+use ph2d_i18n::TextKey;
 
 /// **Os AVISOS** — a metade que responde a *«pus o componente e não vejo nada»*.
 #[allow(clippy::too_many_arguments)]
@@ -94,7 +95,7 @@ fn corpo(
         w,
         cur_y,
         crate::ids::INSP_PART_EMITTING,
-        tr("component.field.fields.1"),
+        TextKey::new("component.field.fields.1"),
         i.emitting,
     );
     cur_y = check_row(
@@ -107,7 +108,7 @@ fn corpo(
         w,
         cur_y,
         crate::ids::INSP_PART_ONE_SHOT,
-        tr("component.field.fields.2"),
+        TextKey::new("component.field.fields.2"),
         i.one_shot,
     );
     for n in [
@@ -131,7 +132,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.fields.10"),
+        TextKey::new("component.field.fields.10"),
         &crate::ids::INSP_PART_SHAPE,
         &[
             tr("panel.inspector.particles.point"),
@@ -225,12 +226,12 @@ fn corpo(
         &[
             (
                 crate::ids::INSP_PART_COLOR,
-                tr("component.field.fields.21"),
+                TextKey::new("component.field.fields.21"),
                 i.color,
             ),
             (
                 crate::ids::INSP_PART_COLOR_END,
-                tr("component.field.fields.22"),
+                TextKey::new("component.field.fields.22"),
                 i.color_end,
             ),
         ],
@@ -245,7 +246,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.fields.23"),
+        TextKey::new("component.field.fields.23"),
         &crate::ids::INSP_PART_SPACE,
         &[
             tr("panel.inspector.particles.world"),
@@ -287,12 +288,16 @@ fn sinais(
         ][k];
         // ⭐ O NOME ao lado da dica, na mesma ordem — report do dono de 2026-09-22.
         let rotulos = [
-            tr("component.field.fields.24"),
-            tr("component.field.fields.25"),
-            tr("component.field.fields.26"),
-            tr("component.field.fields.27"),
+            TextKey::new("component.field.fields.24"),
+            TextKey::new("component.field.fields.25"),
+            TextKey::new("component.field.fields.26"),
+            TextKey::new("component.field.fields.27"),
         ];
-        let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &rotulos);
+        let seccao = ph2d_editor_core::property_row::Seccao::medida(
+            text_system,
+            1,
+            &rotulos.map(|k| k.tr()),
+        );
         cur_y = super::anim_rows::text_row(
             scene,
             text_system,

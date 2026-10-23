@@ -1,6 +1,7 @@
 //! **O corpo da secção HUD** — irmão do [`super`] por CAP de FICHEIRO, o mesmo corte das irmãs.
 
 use super::*;
+use ph2d_i18n::TextKey;
 
 /// Os quatro blocos, cada um só quando o objecto tem o componente dele.
 #[allow(clippy::too_many_arguments)]
@@ -63,7 +64,7 @@ fn bloco_raiz(
             x,
             w,
             cur_y,
-            tr("component.field.canvas_fields.3"),
+            TextKey::new("component.field.canvas_fields.3"),
             &crate::ids::INSP_HUD_FIT,
             // ⚠️ A ORDEM é a do `ph2d_hud::Fit::ALL`, e o gate
             // `o_selector_do_fit_oferece_todos_os_modos` prende-as uma à outra: um modo novo na
@@ -149,7 +150,7 @@ fn bloco_rotulo(
             x,
             w,
             cur_y,
-            tr("component.field.label_fields.1"),
+            TextKey::new("component.field.label_fields.1"),
             &crate::ids::INSP_HUD_SOURCE,
             &[
                 tr("panel.inspector.hud.source_authored"),
@@ -160,9 +161,9 @@ fn bloco_rotulo(
             usize::from(i.source),
         );
         for (k, dica) in [
-            (T::SourceName, tr("component.field.label_fields.2")),
-            (T::Prefix, tr("component.field.label_fields.3")),
-            (T::Suffix, tr("component.field.label_fields.4")),
+            (T::SourceName, TextKey::new("component.field.label_fields.2")),
+            (T::Prefix, TextKey::new("component.field.label_fields.3")),
+            (T::Suffix, TextKey::new("component.field.label_fields.4")),
         ] {
             if !i.mostra_texto(k) {
                 continue;
@@ -261,7 +262,7 @@ fn bloco_botao(
                 w,
                 cur_y,
                 idx,
-                tr("component.field.button_fields.1"),
+                TextKey::new("component.field.button_fields.1"),
             );
         }
         cur_y = check_row(
@@ -274,7 +275,7 @@ fn bloco_botao(
             w,
             cur_y,
             crate::ids::INSP_HUD_DISABLED,
-            tr("component.field.button_fields.2"),
+            TextKey::new("component.field.button_fields.2"),
             i.disabled,
         );
         // ⚠️ As DUAS razões de um botão não responder, e elas são diferentes.
@@ -347,7 +348,7 @@ fn bloco_contador(
                 w,
                 cur_y,
                 idx,
-                tr("component.field.counter_fields.1"),
+                TextKey::new("component.field.counter_fields.1"),
             );
         }
         cur_y = num_row(
@@ -375,7 +376,7 @@ fn bloco_contador(
             w,
             cur_y,
             crate::ids::INSP_HUD_COUNTER_KEEP,
-            tr("component.field.counter_fields.3"),
+            TextKey::new("component.field.counter_fields.3"),
             i.counter_keep,
         );
         // ⚠️ **E o que ele NÃO faz, dito onde se lê a caixa:** um rebobinar do transporte repõe-no

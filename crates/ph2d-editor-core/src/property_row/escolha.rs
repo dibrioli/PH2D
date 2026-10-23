@@ -115,15 +115,16 @@ fn decorador(
     hit_index: &mut HitIndex,
     dot: Rect,
     segmentos: &[(&str, bool, NodeId)],
+    rotulo: crate::widget::key_mark::Rotulo<'_>,
 ) {
     let ids: Vec<NodeId> = segmentos.iter().map(|&(_, _, id)| id).collect();
-    if let Some(alvo) = crate::widget::key_mark::paint_decorator_for(scene, theme, dot, &ids) {
+    if let Some(alvo) = crate::widget::key_mark::paint_decorator_campo(scene, theme, dot, &ids, rotulo) {
         hit_index.register(alvo, dot);
     }
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn paint_choice_row(
+pub fn paint_choice_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -132,10 +133,12 @@ pub fn paint_choice_row(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: impl Into<crate::widget::key_mark::Rotulo<'a>>,
     segmentos: &[(&str, bool, NodeId)],
     seccao: Seccao,
 ) -> f32 {
+    let rotulo = label.into();
+    let label = rotulo.texto;
     let rotulos: Vec<&str> = segmentos.iter().map(|(t, _, _)| *t).collect();
     let fileiras = fileiras_ao_lado(text_system, x, w, &rotulos, seccao);
     let ao_lado = fileiras <= 1;
@@ -151,7 +154,7 @@ pub fn paint_choice_row(
             store,
             hit_index,
         );
-        decorador(scene, theme, hit_index, row.dot, segmentos);
+        decorador(scene, theme, hit_index, row.dot, segmentos, rotulo);
         y + seg_h.max(ROW_H_PX) + ph2d_tokens::control_gap_px()
     } else {
         // ⭐ A PALETA: o nome é o cabeçalho dela. O degrau entre o cabeçalho e o grupo é o
@@ -174,7 +177,7 @@ pub fn paint_choice_row(
         let ids: Vec<NodeId> = segmentos.iter().map(|&(_, _, id)| id).collect();
         if crate::widget::key_mark::key_mark_of(&ids).is_some() {
             let (_, dot) = crate::widget::form_row_columns(x, w, y, font);
-            decorador(scene, theme, hit_index, dot, segmentos);
+            decorador(scene, theme, hit_index, dot, segmentos, rotulo);
         }
         let seg_h = crate::widget::panel_chrome::paint_segmented_group_adaptive(
             Rect::new(x, gy, w, ROW_H_PX),

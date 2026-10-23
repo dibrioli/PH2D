@@ -111,7 +111,7 @@ pub(crate) fn phys_tag_options() -> Vec<DropdownOption<u64>> {
 /// diferem no id e no placeholder; duas cópias divergiriam no dia em que uma
 /// delas ganhasse um estado (foco, erro, dimmed) e a outra não.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn signal_row(
+pub(super) fn signal_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -121,7 +121,7 @@ pub(super) fn signal_row(
     w: f32,
     y: f32,
     id: ph2d_a11y::NodeId,
-    rotulo: &str,
+    rotulo: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     placeholder: &str,
     seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {

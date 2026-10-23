@@ -31,6 +31,7 @@ use ph2d_editor_core::screens::hero::{
 };
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::{tr, tr_with};
+use ph2d_i18n::TextKey;
 
 /// O segmentado do ONDE — **pela porta da ESCOLHA**, com o nome ao LADO.
 ///
@@ -65,7 +66,7 @@ fn where_row(
         x,
         w,
         y,
-        tr("component.field.factory_fields.3"),
+        TextKey::new("component.field.factory_fields.3"),
         &segmentos,
         seccao,
     )
@@ -119,7 +120,7 @@ fn onde_rows(
             x,
             w,
             cur_y,
-            tr("component.field.factory_fields.4"),
+            TextKey::new("component.field.factory_fields.4"),
             &[
                 crate::ids::INSP_FACTORY_AREA_W,
                 crate::ids::INSP_FACTORY_AREA_H,
@@ -139,7 +140,7 @@ fn onde_rows(
             x,
             w,
             cur_y,
-            tr("component.field.factory_fields.5"),
+            TextKey::new("component.field.factory_fields.5"),
             crate::ids::INSP_FACTORY_TAG,
             TextInput::new(crate::ids::INSP_FACTORY_TAG, "")
                 .placeholder(ph2d_i18n::tr("panel.factory.tag")),
@@ -156,7 +157,7 @@ fn onde_rows(
             cur_y,
             (
                 crate::ids::INSP_FACTORY_PICK_RANDOM,
-                tr("component.field.factory_fields.6"),
+                TextKey::new("component.field.factory_fields.6"),
                 f.pick_random,
             ),
             seccao,
@@ -223,7 +224,7 @@ fn factory_body(
         x,
         w,
         cur_y,
-        tr("component.field.factory_fields.1"),
+        TextKey::new("component.field.factory_fields.1"),
         crate::ids::INSP_FACTORY_RECIPE,
         TextInput::new(crate::ids::INSP_FACTORY_RECIPE, "")
             .placeholder(ph2d_i18n::tr("panel.factory.recipe")),
@@ -238,7 +239,7 @@ fn factory_body(
         x,
         w,
         cur_y,
-        tr("component.field.factory_fields.2"),
+        TextKey::new("component.field.factory_fields.2"),
         crate::ids::INSP_FACTORY_ON_SIGNAL,
         TextInput::new(crate::ids::INSP_FACTORY_ON_SIGNAL, "")
             .placeholder(ph2d_i18n::tr("panel.factory.on_signal")),
@@ -272,7 +273,7 @@ fn factory_body(
         cur_y,
         (
             crate::ids::INSP_FACTORY_AIM,
-            tr("component.field.factory_fields.13"),
+            TextKey::new("component.field.factory_fields.13"),
             f.aim_from_spawner,
         ),
         seccao,
@@ -280,22 +281,22 @@ fn factory_body(
 
     for (label, id, step) in [
         (
-            tr("component.field.factory_fields.7"),
+            TextKey::new("component.field.factory_fields.7"),
             crate::ids::INSP_FACTORY_BURST,
             1.0,
         ), // LITERAL-PX-OK: contagem
         (
-            tr("component.field.factory_fields.8"),
+            TextKey::new("component.field.factory_fields.8"),
             crate::ids::INSP_FACTORY_ALIVE_MAX,
             1.0,
         ), // LITERAL-PX-OK: contagem
         (
-            tr("component.field.factory_fields.9"),
+            TextKey::new("component.field.factory_fields.9"),
             crate::ids::INSP_FACTORY_TOTAL_MAX,
             1.0,
         ), // LITERAL-PX-OK: contagem
         (
-            tr("component.field.factory_fields.12"),
+            TextKey::new("component.field.factory_fields.12"),
             crate::ids::INSP_FACTORY_SEED,
             1.0,
         ), // LITERAL-PX-OK: contagem
@@ -340,7 +341,7 @@ fn factory_body(
             x,
             w,
             cur_y,
-            tr(rotulo),
+            TextKey::new(rotulo),
             id,
             TextInput::new(id, "").placeholder(ph),
             seccao,

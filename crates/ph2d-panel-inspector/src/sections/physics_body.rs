@@ -15,6 +15,7 @@
 use super::rows::{num_row_unit, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
+use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
@@ -86,7 +87,7 @@ pub(super) fn paint_body_face(
         x,
         w,
         yy,
-        tr("component.field.rigid_body.0"),
+        TextKey::new("component.field.rigid_body.0"),
         core_ids::INSP_LIVE_PHYSICS_SECTION,
         &ids::INSP_PHYS_KIND,
         &KIND_LABELS.map(TextKey::tr),
@@ -101,7 +102,7 @@ pub(super) fn paint_body_face(
         x,
         w,
         yy,
-        tr("component.field.collider.0"),
+        TextKey::new("component.field.collider.0"),
         core_ids::INSP_LIVE_PHYSICS_GRIP,
         &ids::INSP_PHYS_SHAPE,
         &SHAPE_LABELS.map(TextKey::tr),
@@ -295,29 +296,29 @@ fn paint_dynamics_rows(
     );
     for (label, id, unit) in [
         (
-            tr("component.field.gravity_scale.0"),
+            Rotulo::from(TextKey::new("component.field.gravity_scale.0")),
             ids::INSP_PHYS_GRAVITY_SCALE,
             None,
         ),
         (
-            vel_x.as_str(),
+            Rotulo::from(vel_x.as_str()),
             ids::INSP_PHYS_LINVEL_X,
             Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
         ),
         (
-            vel_y.as_str(),
+            Rotulo::from(vel_y.as_str()),
             ids::INSP_PHYS_LINVEL_Y,
             Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
         ),
         (
-            tr("component.field.initial_velocity.1"),
+            Rotulo::from(TextKey::new("component.field.initial_velocity.1")),
             ids::INSP_PHYS_ANGVEL,
             Some(ph2d_editor_core::widget::Unit::DegreesPerSecond),
         ),
         // Dominance (collision priority): a higher value bulldozes lower ones.
         // Dynamic-only like the rest — a non-dynamic body is already at the max.
         (
-            tr("component.field.dominance.0"),
+            Rotulo::from(TextKey::new("component.field.dominance.0")),
             ids::INSP_PHYS_DOMINANCE,
             None,
         ),

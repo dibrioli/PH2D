@@ -241,7 +241,8 @@ fn cada_letra_solta_deste_painel_vem_da_tabela() {
     const PINTOR: &str = include_str!("../../src/sections/render_source_regiao.rs");
     let mut do_fonte: Vec<String> = Vec::new();
     for pedaco in PINTOR.split("TextKey::new(\"").skip(1) {
-        if let Some(k) = pedaco.split('"').next() {
+        // O NOME da linha (o rótulo do catálogo, F27 B2) não é letra de célula.
+        if let Some(k) = pedaco.split('"').next().filter(|k| !k.starts_with("component.field.")) {
             do_fonte.push(k.to_string());
         }
     }

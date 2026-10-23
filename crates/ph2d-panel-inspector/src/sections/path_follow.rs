@@ -31,6 +31,7 @@ use super::*;
 use ph2d_editor_core::path_follow_edits::{InspectorPathFollowInfo, PathFollowQueixa};
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::{tr, tr_with};
+use ph2d_i18n::TextKey;
 
 /// A chave da frase de cada queixa. ⚠️ Um `match` e não uma tabela indexada: a posição de uma
 /// variante não é a tag de nada aqui, e uma tabela criaria essa dependência do nada.
@@ -179,7 +180,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.path_follow_fields.1"),
+        TextKey::new("component.field.path_follow_fields.1"),
         crate::ids::INSP_PF_CAMINHO,
         TextInput::new(crate::ids::INSP_PF_CAMINHO, "")
             .placeholder(tr("panel.inspector.path_follow.drawn_shape_name_u")),
@@ -195,7 +196,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.path_follow_fields.2"),
+        TextKey::new("component.field.path_follow_fields.2"),
         &[crate::ids::INSP_PF_RELOGIO],
         1.0, // LITERAL-PX-OK: índice
         None,
@@ -220,7 +221,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.path_follow_fields.3"),
+        TextKey::new("component.field.path_follow_fields.3"),
         &crate::ids::INSP_PF_CICLO,
         &ciclos,
         i.ciclo as usize,
@@ -239,7 +240,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.path_follow_fields.4"),
+        TextKey::new("component.field.path_follow_fields.4"),
         &crate::ids::INSP_PF_FAMILIA,
         &familias,
         i.familia as usize,
@@ -258,7 +259,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.path_follow_fields.5"),
+        TextKey::new("component.field.path_follow_fields.5"),
         &crate::ids::INSP_PF_MODO,
         &modos,
         i.modo as usize,
@@ -277,7 +278,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.path_follow_fields.6"),
+        TextKey::new("component.field.path_follow_fields.6"),
         &crate::ids::INSP_PF_AO_ACABAR,
         &fins,
         i.ao_acabar as usize,
@@ -288,19 +289,19 @@ fn corpo(
     // que dois sítios a dizer a mesma unidade divergem no dia em que um deles mudar.
     for (label, id, step, unidade) in [
         (
-            tr("component.field.path_follow_fields.7"),
+            TextKey::new("component.field.path_follow_fields.7"),
             crate::ids::INSP_PF_DESLOCAMENTO,
             0.01, // LITERAL-PX-OK: fracção do percurso
             None,
         ),
         (
-            tr("component.field.path_follow_fields.9"),
+            TextKey::new("component.field.path_follow_fields.9"),
             crate::ids::INSP_PF_ANGULO,
             5.0, // LITERAL-PX-OK: graus
             Some(ph2d_editor_core::widget::Unit::Degrees),
         ),
         (
-            tr("component.field.path_follow_fields.10"),
+            TextKey::new("component.field.path_follow_fields.10"),
             crate::ids::INSP_PF_LADO,
             0.1, // LITERAL-PX-OK: metros
             Some(ph2d_editor_core::widget::Unit::Meters),
@@ -336,7 +337,7 @@ fn corpo(
         cur_y,
         &[(
             crate::ids::INSP_PF_ALINHA,
-            tr("component.field.path_follow_fields.8"),
+            TextKey::new("component.field.path_follow_fields.8"),
             i.alinha,
         )],
         seccao,

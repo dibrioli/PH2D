@@ -22,6 +22,7 @@ use crate::interaction::{HitIndex, WidgetStore};
 //    declaração de uma linha pertence a quem sabe repartir a linha.*
 use crate::paint::resolve;
 use crate::widget::showcase::read_number_input;
+use crate::widget::key_mark::Rotulo;
 use crate::widget::{NumberInput, PropertyRow, Unit, paint_number_input_with_buffer};
 pub use crate::widget::{Seccao, colunas_da_linha};
 
@@ -168,7 +169,7 @@ fn paint_fields_row_inner(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: Rotulo<'_>,
     field_ids: &[NodeId],
     step: f64,
     unit: Option<Unit>,
@@ -181,7 +182,7 @@ fn paint_fields_row_inner(
         x,
         w,
         y,
-        label,
+        label.texto,
         field_ids.len(),
         seccao,
     );
@@ -217,7 +218,7 @@ fn paint_fields_row_inner(
         );
     }
     if let Some(alvo) =
-        crate::widget::key_mark::paint_decorator_for(scene, theme, row.dot, field_ids)
+        crate::widget::key_mark::paint_decorator_campo(scene, theme, row.dot, field_ids, label)
     {
         hit_index.register(alvo, row.dot);
     }
@@ -226,7 +227,7 @@ fn paint_fields_row_inner(
 
 /// ⭐⭐⭐ **A LINHA DE VÁRIAS COMPONENTES** — ver [`paint_fields_row_inner`]. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
-pub fn paint_fields_row(
+pub fn paint_fields_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -235,7 +236,7 @@ pub fn paint_fields_row(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: impl Into<Rotulo<'a>>,
     field_ids: &[NodeId],
     step: f64,
     unit: Option<Unit>,
@@ -250,7 +251,7 @@ pub fn paint_fields_row(
         x,
         w,
         y,
-        label,
+        label.into(),
         field_ids,
         step,
         unit,
@@ -271,7 +272,7 @@ pub fn paint_fields_row(
 /// sobre ele* — que é literalmente o defeito que a `widget::surface_rect` existe para impedir, um
 /// nível abaixo.
 #[allow(clippy::too_many_arguments)]
-pub fn paint_field_row(
+pub fn paint_field_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -280,7 +281,7 @@ pub fn paint_field_row(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: impl Into<Rotulo<'a>>,
     id: NodeId,
     step: f64,
     unit: Option<Unit>,
@@ -295,7 +296,7 @@ pub fn paint_field_row(
         x,
         w,
         y,
-        label,
+        label.into(),
         &[id],
         step,
         unit,
@@ -340,7 +341,7 @@ pub fn property_row_fits(w: f32, label_w: f32) -> bool {
 /// ⚠️ **A geometria e o nome saem da MESMA [`row_and_layout`] que a irmã usa** — não há aqui uma
 /// segunda conta de onde a coluna acaba.
 #[allow(clippy::too_many_arguments)]
-pub fn paint_field_row_value(
+pub fn paint_field_row_value<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -348,7 +349,7 @@ pub fn paint_field_row_value(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: impl Into<Rotulo<'a>>,
     id: NodeId,
     value: f64,
     buffer: Option<&str>,
@@ -359,7 +360,9 @@ pub fn paint_field_row_value(
     unit: Option<Unit>,
     seccao: Seccao,
 ) -> (f32, Rect) {
-    let (row, _, linhas, cw) = row_and_layout(text_system, scene, theme, x, w, y, label, 1, seccao);
+    let label = label.into();
+    let (row, _, linhas, cw) =
+        row_and_layout(text_system, scene, theme, x, w, y, label.texto, 1, seccao);
     let rect = Rect::new(row.control.x, row.control.y, cw, ROW_H_PX);
     hit_index.register(id, rect);
     let input = NumberInput::new(id, "", value)
@@ -376,7 +379,7 @@ pub fn paint_field_row_value(
         text_system,
         theme,
     );
-    if let Some(alvo) = crate::widget::key_mark::paint_decorator_for(scene, theme, row.dot, &[id]) {
+    if let Some(alvo) = crate::widget::key_mark::paint_decorator_campo(scene, theme, row.dot, &[id], label) {
         hit_index.register(alvo, row.dot);
     }
     (y + ph2d_tokens::row_pitch_px() * linhas as f32, rect)
@@ -400,7 +403,7 @@ pub fn paint_field_row_value(
 /// alinhadas todas à direita»*), e o espaço reservado FICA — ele deixa de carregar o sentido e
 /// passa a ser o que sempre devia ter sido: um EXEMPLO.
 #[allow(clippy::too_many_arguments)]
-pub fn paint_text_row(
+pub fn paint_text_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -409,14 +412,15 @@ pub fn paint_text_row(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: impl Into<Rotulo<'a>>,
     id: NodeId,
     input: crate::widget::TextInput,
     seccao: Seccao,
 ) -> f32 {
     // ⚠️ A geometria e o nome saem da MESMA `row_and_layout` das irmãs — não há aqui uma segunda
     //    conta de onde a coluna do nome acaba.
-    let (row, _, _, cw) = row_and_layout(text_system, scene, theme, x, w, y, label, 1, seccao);
+    let label = label.into();
+    let (row, _, _, cw) = row_and_layout(text_system, scene, theme, x, w, y, label.texto, 1, seccao);
     let rect = Rect::new(row.control.x, row.control.y, cw, ROW_H_PX);
     hit_index.register(id, rect);
     // ⚠️ **O alvo do clique é a CAIXA e não a linha** — é o que as linhas de número já fazem, e
@@ -441,7 +445,7 @@ pub fn paint_text_row(
         text_system,
         theme,
     );
-    if let Some(alvo) = crate::widget::key_mark::paint_decorator_for(scene, theme, row.dot, &[id]) {
+    if let Some(alvo) = crate::widget::key_mark::paint_decorator_campo(scene, theme, row.dot, &[id], label) {
         hit_index.register(alvo, row.dot);
     }
     y + ph2d_tokens::row_pitch_px()
@@ -458,7 +462,7 @@ pub fn paint_text_row(
 /// para a caixa *Playing*: ler o visual faria o primeiro clique depois de trocar de objecto mandar
 /// o valor do objecto **anterior**.
 #[allow(clippy::too_many_arguments)]
-pub fn paint_check_row(
+pub fn paint_check_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -467,13 +471,15 @@ pub fn paint_check_row(
     x: f32,
     w: f32,
     y: f32,
-    caixa: (NodeId, &str, bool),
+    caixa: (NodeId, impl Into<Rotulo<'a>>, bool),
     seccao: Seccao,
 ) -> f32 {
     let (id, label, on) = caixa;
+    let label = label.into();
     let rect = Rect::new(x, y, w, ROW_H_PX);
     hit_index.register(id, rect);
-    let cb = crate::widget::Checkbox::new(id, label)
+    let cb = crate::widget::Checkbox::new(id, label.texto)
+        .coluna_de_fora()
         .visual(store.checkbox_visual(id))
         .value(if on {
             crate::widget::CheckboxValue::Checked
@@ -482,6 +488,11 @@ pub fn paint_check_row(
         })
         .seccao(seccao);
     crate::widget::paint_checkbox(&cb, rect, scene, text_system, theme);
+    let dot = crate::widget::decorator_rect(rect);
+    if let Some(alvo) = crate::widget::key_mark::paint_decorator_campo(scene, theme, dot, &[id], label)
+    {
+        hit_index.register(alvo, dot);
+    }
     y + ph2d_tokens::row_pitch_px()
 }
 
@@ -513,7 +524,7 @@ pub fn paint_check_row(
 /// mesma fileira. Quando desemparelham, cada uma entra na coluna da **secção**, que é o que as
 /// alinha com os números ao lado.
 #[allow(clippy::too_many_arguments)]
-pub fn paint_check_rows(
+pub fn paint_check_rows<'a, L: Into<Rotulo<'a>> + Copy>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -522,9 +533,11 @@ pub fn paint_check_rows(
     x: f32,
     w: f32,
     y: f32,
-    caixas: &[(NodeId, &str, bool)],
+    caixas: &[(NodeId, L, bool)],
     seccao: Seccao,
 ) -> f32 {
+    let caixas: Vec<(NodeId, Rotulo<'a>, bool)> =
+        caixas.iter().map(|&(id, l, on)| (id, l.into(), on)).collect();
     let gap = ph2d_tokens::Spacing::Sm.px();
     let meia = ((w - gap) * 0.5).max(1.0);
     let fonte = TypeToken::Sm.px();
@@ -536,12 +549,12 @@ pub fn paint_check_rows(
         //    par cuja coluna comum não cabe em nenhuma das duas.*
         let par = (i + 1 < caixas.len()).then(|| {
             text_system
-                .prefix_width(caixas[i].1, fonte)
-                .max(text_system.prefix_width(caixas[i + 1].1, fonte))
+                .prefix_width(caixas[i].1.texto, fonte)
+                .max(text_system.prefix_width(caixas[i + 1].1.texto, fonte))
         });
         match par {
             Some(quer) if property_row_fits(meia, quer) => {
-                let sec = Seccao::medida(text_system, 1, &[caixas[i].1, caixas[i + 1].1]);
+                let sec = Seccao::medida(text_system, 1, &[caixas[i].1.texto, caixas[i + 1].1.texto]);
                 paint_check_row(
                     scene,
                     text_system,
@@ -608,7 +621,7 @@ pub fn paint_check_rows(
 /// ⚠️ **O hit é a BARRA INTEIRA**, não o quadradinho: com o alvo do tamanho do controlo, apontar a
 /// cor deixa de ser pontaria.
 #[allow(clippy::too_many_arguments)]
-pub fn paint_color_row(
+pub fn paint_color_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -617,21 +630,22 @@ pub fn paint_color_row(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: impl Into<Rotulo<'a>>,
     id: NodeId,
     fallback_rgba: [u8; 4],
     mixed: bool,
     seccao: Seccao,
 ) -> f32 {
+    let label = label.into();
     let (row, _por_linha, _linhas, cw) =
-        row_and_layout(text_system, scene, theme, x, w, y, label, 1, seccao);
+        row_and_layout(text_system, scene, theme, x, w, y, label.texto, 1, seccao);
     let rect = Rect::new(row.control.x, row.control.y, cw, ROW_H_PX);
     // ⚠️ Quem resolve o valor é ESTE lado — ver o doc do `paint_swatch_or_mixed`.
     let rgba = (!mixed).then(|| store.widget_color(id).unwrap_or(fallback_rgba));
     let aberto = store.picker_target() == Some(id);
-    crate::widget::paint_swatch_or_mixed(rect, id, label, rgba, aberto, scene, theme);
+    crate::widget::paint_swatch_or_mixed(rect, id, label.texto, rgba, aberto, scene, theme);
     hit_index.register(id, rect);
-    if let Some(alvo) = crate::widget::key_mark::paint_decorator_for(scene, theme, row.dot, &[id]) {
+    if let Some(alvo) = crate::widget::key_mark::paint_decorator_campo(scene, theme, row.dot, &[id], label) {
         hit_index.register(alvo, row.dot);
     }
     y + ph2d_tokens::row_pitch_px()

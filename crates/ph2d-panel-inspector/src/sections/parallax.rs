@@ -142,13 +142,13 @@ fn corpo(
     #[allow(clippy::type_complexity)]
     let mut linhas: Vec<(
         Option<&'static str>,
-        &'static str,
+        TextKey,
         &[ph2d_a11y::NodeId],
         f64,
         Option<Unit>,
     )> = vec![(
         None,
-        tr("component.field.scroll_fields.0"),
+        TextKey::new("component.field.scroll_fields.0"),
         &[ids::INSP_PARALLAX_K_X, ids::INSP_PARALLAX_K_Y][..],
         0.05, // LITERAL-PX-OK: fracção adimensional
         None,
@@ -156,7 +156,7 @@ fn corpo(
     if i.repeat.is_some() {
         linhas.push((
             Some(tr("component.scroll_repeat.name")),
-            tr("component.field.repeat_fields.0"),
+            TextKey::new("component.field.repeat_fields.0"),
             &[ids::INSP_PARALLAX_TILE_X, ids::INSP_PARALLAX_TILE_Y][..],
             0.5, // LITERAL-PX-OK: passo em metros
             Some(Unit::Meters),
@@ -165,7 +165,7 @@ fn corpo(
     if i.motion.is_some() {
         linhas.push((
             Some(tr("component.scroll_motion.name")),
-            tr("component.field.motion_fields.0"),
+            TextKey::new("component.field.motion_fields.0"),
             &[ids::INSP_PARALLAX_VEL_X, ids::INSP_PARALLAX_VEL_Y][..],
             0.05, // LITERAL-PX-OK: passo em m/s
             // ⚠️ A unidade existe e o doc dizia m/s — a fileira pintava sem nenhuma (auditoria 26).
@@ -175,14 +175,14 @@ fn corpo(
     if i.limits.is_some() {
         linhas.push((
             Some(tr("component.scroll_limits.name")),
-            tr("component.field.limits_fields.0"),
+            TextKey::new("component.field.limits_fields.0"),
             &[ids::INSP_PARALLAX_MIN_X, ids::INSP_PARALLAX_MIN_Y][..],
             0.5, // LITERAL-PX-OK: passo em metros
             Some(Unit::Meters),
         ));
         linhas.push((
             None,
-            tr("component.field.limits_fields.1"),
+            TextKey::new("component.field.limits_fields.1"),
             &[ids::INSP_PARALLAX_MAX_X, ids::INSP_PARALLAX_MAX_Y][..],
             0.5, // LITERAL-PX-OK: passo em metros
             Some(Unit::Meters),
@@ -191,7 +191,7 @@ fn corpo(
     let seccao = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
         2,
-        &linhas.iter().map(|t| t.1).collect::<Vec<_>>(),
+        &linhas.iter().map(|t| t.1.tr()).collect::<Vec<_>>(),
     );
     for (n, (dono, label, ids2, step, unit)) in linhas.into_iter().enumerate() {
         if let Some(dono) = dono {

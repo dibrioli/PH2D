@@ -32,7 +32,7 @@ pub const FORM_ROWS_SHOW_DECORATOR: bool = true;
 /// **ONDE cai a coluna de animação** — a lei, com dois leitores: a caixa única e a linha de
 /// verificação. ⛔ Derivada da [`surface_rect`], para que reservar e desenhar não possam divergir.
 #[must_use]
-pub(crate) fn decorator_rect(rect: Rect) -> Rect {
+pub fn decorator_rect(rect: Rect) -> Rect {
     let s = surface_rect(rect, true);
     Rect::new(s.x + s.w, rect.y, DECORATOR_W, rect.h)
 }

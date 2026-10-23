@@ -118,7 +118,15 @@ pub(crate) fn paint_material_blend_section(
         store,
         hit_index,
     );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, blend_row.dot);
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        blend_row.dot,
+        &ids::INSP_SAMPLE_BLEND,
+        TextKey::new("component.field.blend_mode.1").into(),
+    ) {
+        hit_index.register(alvo, blend_row.dot);
+    }
     yy += seg_h.max(h) + row_gap;
 
     // Material slot — read-only placeholder. The renderer is

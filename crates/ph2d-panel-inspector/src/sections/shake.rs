@@ -22,6 +22,7 @@ use super::*;
 use ph2d_editor_core::shake_edits::InspectorShakeInfo;
 use ph2d_editor_core::widget::{SectionFold, Unit};
 use ph2d_i18n::{tr, tr_with};
+use ph2d_i18n::TextKey;
 
 /// Os rótulos dos chips dos PERFIS. ⭐ **O motor publica a CHAVE e quem pinta é que a resolve** —
 /// a lei da fronteira dos motores; um motor que devolvesse a palavra seria uma 2.ª tabela de texto.
@@ -91,19 +92,19 @@ fn corpo(
     for (id, label, step, unidade) in [
         (
             crate::ids::INSP_SHAKE_AMPLITUDE,
-            tr("component.field.shake_fields.0"),
+            TextKey::new("component.field.shake_fields.0"),
             0.01, // LITERAL-PX-OK: passo de scrub em METROS de vista, como o `lado` do seguidor
             Some(Unit::Meters),
         ),
         (
             crate::ids::INSP_SHAKE_FREQUENCIA,
-            tr("component.field.shake_fields.1"),
+            TextKey::new("component.field.shake_fields.1"),
             0.5, // LITERAL-PX-OK: passo de scrub em Hz
             None,
         ),
         (
             crate::ids::INSP_SHAKE_DECAIMENTO,
-            tr("component.field.shake_fields.2"),
+            TextKey::new("component.field.shake_fields.2"),
             0.1, // LITERAL-PX-OK: passo de scrub em trauma/s
             None,
         ),
@@ -154,7 +155,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.shake_fields.3"),
+        TextKey::new("component.field.shake_fields.3"),
         &crate::ids::INSP_SHAKE_EXPOENTE,
         &refs,
         usize::from(i.expoente.saturating_sub(ph2d_shake::EXPOENTE_MIN)),
@@ -169,7 +170,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.shake_fields.4"),
+        TextKey::new("component.field.shake_fields.4"),
         &[crate::ids::INSP_SHAKE_SEMENTE],
         1.0,
         None,

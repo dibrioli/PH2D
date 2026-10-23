@@ -95,7 +95,7 @@ pub(super) fn seccao_do_tween(
 /// peça leva o que a PALAVRA dela pede — que é o que a foto de 2026-09-19 (os `Positio…` cortados)
 /// pedia, sem a medida escrita à parte.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn grupo(
+pub(super) fn grupo<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -104,7 +104,7 @@ pub(super) fn grupo(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     ids_: &[NodeId],
     labels: &[&str],
     sel: usize,

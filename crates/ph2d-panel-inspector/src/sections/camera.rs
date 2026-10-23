@@ -34,6 +34,8 @@ use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::{BitmaskGrid32, paint_bitmask_grid32};
 use ph2d_i18n::tr;
+use ph2d_i18n::TextKey;
+use ph2d_editor_core::widget::key_mark::Rotulo;
 
 // ⭐ **A caixa de marcar desta secção MUDOU-SE para a porta** (2026-09-15) — este ficheiro tinha a
 //    quarta cópia do mesmo `register` + `checkbox_visual` + `bool → CheckboxValue`, e a lei *«o
@@ -88,19 +90,19 @@ fn camera_body(
     // uma contagem.*
     let linhas = [
         (
-            tr("component.field.camera_fields.0"),
+            TextKey::new("component.field.camera_fields.0"),
             &[ids::INSP_CAMERA_HEIGHT][..],
             0.5,
             Some(ph2d_editor_core::widget::Unit::Meters),
         ), // LITERAL-PX-OK: passo em metros
         (
-            tr("component.field.camera_fields.1"),
+            TextKey::new("component.field.camera_fields.1"),
             &[ids::INSP_CAMERA_OFFSET_X, ids::INSP_CAMERA_OFFSET_Y][..],
             0.1, // LITERAL-PX-OK: passo em metros
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
-            tr("component.field.camera_fields.2"),
+            TextKey::new("component.field.camera_fields.2"),
             &[ids::INSP_CAMERA_PRIORITY][..],
             1.0,
             None,
@@ -108,7 +110,7 @@ fn camera_body(
         // ⭐⭐⭐ **O DOLLY** (plano 24, W5) — ⚠️ **sem `Unit`, e a ausência é a decisão:** ele é uma
         // FRACÇÃO da distância focal, e pintar-lhe «m» seria mentir sobre o que o número é.
         (
-            tr("component.field.camera_fields.5"),
+            TextKey::new("component.field.camera_fields.5"),
             &[ids::INSP_CAMERA_DOLLY][..],
             0.05, // LITERAL-PX-OK: passo de uma fracção adimensional
             None,
@@ -120,7 +122,7 @@ fn camera_body(
     let seccao = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
         2,
-        &linhas.iter().map(|t| t.0).collect::<Vec<_>>(),
+        &linhas.iter().map(|t| t.0.tr()).collect::<Vec<_>>(),
     );
     for (label, ids3, step, unit) in linhas {
         cur_y = super::rows::fields_row(
@@ -156,12 +158,13 @@ fn camera_body(
         &[
             (
                 ids::INSP_CAMERA_ACTIVE,
-                tr("component.field.camera_fields.3"),
+                Rotulo::from(TextKey::new("component.field.camera_fields.3")),
                 cam.active,
             ),
+            // ⛔ Olhar pela câmera é estado da VISTA, não documento: sem losango.
             (
                 ids::INSP_CAMERA_PREVIEW,
-                tr("panel.inspector.camera.look_through"),
+                Rotulo::vista(TextKey::new("panel.inspector.camera.look_through")),
                 info.preview_on,
             ),
         ],
@@ -184,25 +187,25 @@ fn follow_body(
 ) -> f32 {
     let linhas = [
         (
-            tr("component.field.follow_fields.1"),
+            TextKey::new("component.field.follow_fields.1"),
             [ids::INSP_CAMERA_DAMP_X, ids::INSP_CAMERA_DAMP_Y],
             0.5, // LITERAL-PX-OK: passo em 1/s
             Some(ph2d_editor_core::widget::Unit::PerSecond),
         ),
         (
-            tr("component.field.follow_fields.2"),
+            TextKey::new("component.field.follow_fields.2"),
             [ids::INSP_CAMERA_DEAD_X, ids::INSP_CAMERA_DEAD_Y],
             0.05, // LITERAL-PX-OK: fracção da meia-janela
             None,
         ),
         (
-            tr("component.field.follow_fields.3"),
+            TextKey::new("component.field.follow_fields.3"),
             [ids::INSP_CAMERA_LOOK_X, ids::INSP_CAMERA_LOOK_Y],
             0.05, // LITERAL-PX-OK: passo em segundos
             Some(ph2d_editor_core::widget::Unit::Seconds),
         ),
         (
-            tr("component.field.follow_fields.4"),
+            TextKey::new("component.field.follow_fields.4"),
             [ids::INSP_CAMERA_FOLLOW_OFF_X, ids::INSP_CAMERA_FOLLOW_OFF_Y],
             0.1, // LITERAL-PX-OK: passo em metros
             Some(ph2d_editor_core::widget::Unit::Meters),
@@ -217,7 +220,7 @@ fn follow_body(
     //    caixa do alvo arrancava a `136` enquanto as seis linhas de baixo arrancavam a `111` — duas
     //    colunas dentro de UMA secção. *Duas declarações para o mesmo corpo são duas colunas.*
     let nomes: Vec<&str> = std::iter::once(tr("component.field.follow_fields.0"))
-        .chain(linhas.iter().map(|t| t.0))
+        .chain(linhas.iter().map(|t| t.0.tr()))
         .collect();
     let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 2, &nomes);
     let cur_y = super::rows::subtitulo(
@@ -238,7 +241,7 @@ fn follow_body(
         x,
         w,
         cur_y,
-        tr("component.field.follow_fields.0"),
+        TextKey::new("component.field.follow_fields.0"),
         ids::INSP_CAMERA_TARGET,
         TextInput::new(ids::INSP_CAMERA_TARGET, "")
             .placeholder(tr("panel.inspector.camera.object_name")),
@@ -314,12 +317,12 @@ fn limits_body(
     }
     let linhas = [
         (
-            tr("component.field.limits_fields.0"),
+            TextKey::new("component.field.limits_fields.0"),
             [ids::INSP_CAMERA_MIN_X, ids::INSP_CAMERA_MIN_Y],
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
-            tr("component.field.limits_fields.1"),
+            TextKey::new("component.field.limits_fields.1"),
             [ids::INSP_CAMERA_MAX_X, ids::INSP_CAMERA_MAX_Y],
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
@@ -330,7 +333,7 @@ fn limits_body(
     let seccao = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
         2,
-        &linhas.iter().map(|t| t.0).collect::<Vec<_>>(),
+        &linhas.iter().map(|t| t.0.tr()).collect::<Vec<_>>(),
     );
     for (label, ids2, unit) in linhas {
         cur_y = super::rows::fields_row(

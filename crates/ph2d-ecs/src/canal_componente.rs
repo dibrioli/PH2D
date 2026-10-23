@@ -15,7 +15,7 @@ use ph2d_component_desc::{ComponentDesc, FieldDesc, FieldKind, View};
 use serde_json::Value;
 
 use crate::canal::familia::COMPONENTE;
-use crate::canal::{CampoInfo, FieldKey};
+use crate::canal::{CampoInfo, FieldKey, TextosDosCanais};
 use crate::scene::registry::stable_type_id;
 
 /// Quantas faixas cabem nos 2 bits baixos do `campo`.
@@ -47,14 +47,17 @@ pub fn faixas(f: &FieldDesc) -> u16 {
     if f.serde_key().is_empty() || f.is_ref.is_some() {
         return 0;
     }
-    if matches!(f.view, View::Named(_) | View::Not) {
+    // ⭐ Um `Named` de texto é o NOME do objecto (a referência durável): anima por degraus — o
+    // corte da câmera para outro alvo. Um `Named` de outra forma não tem valor que a curva leia.
+    if matches!(f.view, View::Not) && f.kind != FieldKind::Toggle
+        || matches!(f.view, View::Named(_)) && f.kind != FieldKind::Text
+    {
         return 0;
     }
     match (f.kind, f.view) {
         (FieldKind::Enum, View::Options(_)) | (FieldKind::Enum, View::Toggle(..)) => 1,
         (
             FieldKind::Enum
-            | FieldKind::Text
             | FieldKind::Curve
             | FieldKind::Gradient
             | FieldKind::Palette
@@ -69,7 +72,8 @@ pub fn faixas(f: &FieldDesc) -> u16 {
             | FieldKind::Int
             | FieldKind::Angle
             | FieldKind::Seed
-            | FieldKind::Toggle,
+            | FieldKind::Toggle
+            | FieldKind::Text,
             _,
         ) => 1,
     }
@@ -78,6 +82,8 @@ pub fn faixas(f: &FieldDesc) -> u16 {
 struct Tabela {
     por_id: BTreeMap<u32, &'static ComponentDesc>,
     grupos: BTreeMap<(u32, u16), u16>,
+    por_rotulo: BTreeMap<&'static str, (&'static ComponentDesc, &'static FieldDesc)>,
+    chaves_do_rotulo: BTreeMap<&'static str, Box<[FieldKey]>>,
 }
 
 fn tabela() -> &'static Tabela {
@@ -85,15 +91,32 @@ fn tabela() -> &'static Tabela {
     T.get_or_init(|| {
         let mut por_id = BTreeMap::new();
         let mut grupos = BTreeMap::new();
+        let mut por_rotulo = BTreeMap::new();
+        let mut chaves_do_rotulo: BTreeMap<&'static str, Vec<FieldKey>> = BTreeMap::new();
         for d in ph2d_component_desc::all() {
             let id = id32(d.canonical_name);
             por_id.insert(id, d);
+            for f in d.fields {
+                por_rotulo.entry(f.label_key).or_insert((d, f));
+            }
             for f in d.fields.iter().filter(|f| faixas(f) > 0) {
                 let n = u16::try_from(grupos.len()).unwrap_or(u16::MAX);
                 grupos.entry((id, f.field_id)).or_insert(n);
+                let ks = (0..faixas(f)).filter_map(|x| chave(d.canonical_name, f.field_id, x));
+                chaves_do_rotulo
+                    .entry(f.label_key)
+                    .or_insert_with(Vec::new)
+                    .extend(ks);
             }
         }
-        Tabela { por_id, grupos }
+        Tabela {
+            por_id,
+            grupos,
+            por_rotulo,
+            chaves_do_rotulo: (chaves_do_rotulo.into_iter())
+                .map(|(r, k)| (r, k.into_boxed_slice()))
+                .collect(),
+        }
     })
 }
 
@@ -110,6 +133,21 @@ pub fn resolver(k: FieldKey) -> Option<(&'static ComponentDesc, &'static FieldDe
     (faixa < faixas(f)).then_some((d, f, faixa))
 }
 
+/// ⭐ **O campo que um rótulo do catálogo nomeia** (F27 B2: o Inspector pinta cada campo com o
+/// `label_key` dele, e é por ele que a linha acha o canal). Um rótulo partilhado (os `LIMITS_FIELDS`
+/// da câmera e do scroll) nomeia o MESMO conceito em cada um (gate); este devolve o primeiro.
+#[must_use]
+pub fn campo_do_rotulo(rotulo: &str) -> Option<(&'static ComponentDesc, &'static FieldDesc)> {
+    tabela().por_rotulo.get(rotulo).copied()
+}
+
+/// As chaves (todas as faixas) dos campos que `rotulo` nomeia — de cada componente que o partilha:
+/// o objecto só publica o que tem, e o clique só grava o publicado. Vazio = não é canal.
+#[must_use]
+pub fn chaves_do_rotulo(rotulo: &str) -> &'static [FieldKey] {
+    tabela().chaves_do_rotulo.get(rotulo).map_or(&[], |k| &**k)
+}
+
 /// Todas as chaves de um componente do catálogo, campo a campo e faixa a faixa.
 pub fn chaves_de(d: &'static ComponentDesc) -> impl Iterator<Item = FieldKey> {
     d.fields.iter().flat_map(move |f| {
@@ -124,11 +162,15 @@ pub fn info(k: FieldKey) -> Option<CampoInfo> {
         rotulo: f.label_key,
         discreto: matches!(
             f.kind,
-            FieldKind::Int | FieldKind::Seed | FieldKind::Toggle | FieldKind::Enum
+            FieldKind::Int
+                | FieldKind::Seed
+                | FieldKind::Toggle
+                | FieldKind::Enum
+                | FieldKind::Text
         ),
         grupo: *tabela().grupos.get(&(id32(d.canonical_name), f.field_id))?,
         por_i: false,
-        texto: false,
+        texto: f.kind == FieldKind::Text,
     })
 }
 
@@ -177,7 +219,36 @@ fn lugar<'v>(f: &FieldDesc, faixa: u16, v: &'v mut Value) -> Option<&'v mut Valu
     (faixa == 0).then_some(v)
 }
 
-/// ⭐ **A faixa `faixa` do valor guardado de `f`, como número** — a leitura única do canal.
+/// ⭐ **O texto de um campo `Text` como o canal o guarda**: o índice em `textos` (`0` = nenhum).
+pub fn ler_texto(f: &FieldDesc, v: &Value, textos: &mut TextosDosCanais) -> Option<f32> {
+    if f.kind != FieldKind::Text {
+        return None;
+    }
+    match v {
+        Value::String(s) => Some(textos.indice(Some(s))),
+        Value::Null => Some(textos.indice(None)),
+        _ => None,
+    }
+}
+
+/// Escreve o texto que o índice `x` nomeia num campo `Text`; devolve se mudou. Um índice que a
+/// tabela não tem (ou `0` num campo que não aceita nenhum) não escreve.
+pub fn escrever_texto(f: &FieldDesc, v: &mut Value, x: f32, textos: &TextosDosCanais) -> bool {
+    if f.kind != FieldKind::Text {
+        return false;
+    }
+    let Some(t) = textos.texto(x) else {
+        return false;
+    };
+    if v.as_str() == Some(t) {
+        return false;
+    }
+    *v = Value::String(t.to_owned());
+    true
+}
+
+/// ⭐ **A faixa `faixa` do valor guardado de `f`, como número** — a leitura única do canal (o
+/// texto lê-se por [`ler_texto`], que precisa da tabela).
 #[must_use]
 pub fn ler_valor(f: &FieldDesc, faixa: u16, v: &Value) -> Option<f32> {
     if let Some(e) = escolhas(f) {
@@ -189,7 +260,9 @@ pub fn ler_valor(f: &FieldDesc, faixa: u16, v: &Value) -> Option<f32> {
     #[expect(clippy::cast_possible_truncation, reason = "o canal é f32")]
     match lugar(f, faixa, &mut v)? {
         Value::Number(n) => n.as_f64().map(|x| x as f32),
-        Value::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
+        // ⭐ `View::Not` (o `hidden` que o cartão mostra como «Visible»): o canal é o que o artista
+        // vê, ou a curva diria o contrário do losango.
+        Value::Bool(b) => Some(if *b != matches!(f.view, View::Not) { 1.0 } else { 0.0 }),
         _ => None,
     }
 }
@@ -200,6 +273,7 @@ pub fn escrever_valor(f: &FieldDesc, faixa: u16, v: &mut Value, x: f32) -> bool 
     if !x.is_finite() {
         return false;
     }
+    let x = if matches!(f.view, View::Not) { 1.0 - x } else { x };
     let Some(e) = escolhas(f) else {
         return lugar(f, faixa, v).is_some_and(|slot| numero(slot, x));
     };

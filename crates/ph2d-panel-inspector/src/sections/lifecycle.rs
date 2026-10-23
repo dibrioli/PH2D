@@ -20,6 +20,7 @@ use super::*;
 use ph2d_editor_core::screens::hero::{InspectorFactoryInfo, InspectorLifecycle};
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::tr;
+use ph2d_i18n::TextKey;
 
 /// O corpo do CICLO DE VIDA.
 #[allow(clippy::too_many_arguments)]
@@ -74,7 +75,7 @@ fn lifecycle_body(
             x,
             w,
             cur_y,
-            tr("component.field.lifetime_fields.1"),
+            TextKey::new("component.field.lifetime_fields.1"),
             &[crate::ids::INSP_LIFE_SECONDS],
             0.1, // LITERAL-PX-OK: passo em segundos
             Some(ph2d_editor_core::widget::Unit::Seconds),
@@ -89,7 +90,7 @@ fn lifecycle_body(
             x,
             w,
             cur_y,
-            ph2d_i18n::tr("component.field.lifetime_fields.2"),
+            TextKey::new("component.field.lifetime_fields.2"),
             crate::ids::INSP_LIFE_ON_DEATH,
             TextInput::new(crate::ids::INSP_LIFE_ON_DEATH, "")
                 .placeholder(ph2d_i18n::tr("panel.factory.on_death")),
@@ -118,7 +119,7 @@ fn lifecycle_body(
             x,
             w,
             cur_y,
-            tr("component.field.outside_fields.1"),
+            TextKey::new("component.field.outside_fields.1"),
             &[crate::ids::INSP_LIFE_OUTSIDE_MARGIN],
             0.1, // LITERAL-PX-OK: passo em metros
             Some(ph2d_editor_core::widget::Unit::Meters),

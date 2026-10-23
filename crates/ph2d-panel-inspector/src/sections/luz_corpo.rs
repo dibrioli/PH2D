@@ -6,6 +6,7 @@
 use super::*;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::tr;
+use ph2d_i18n::TextKey;
 
 /// O cabeçalho com a dobra. `Err(y)` = o cartão está dobrado; `y` é o de baixo do cabeçalho.
 fn cabecalho(
@@ -70,7 +71,7 @@ pub(crate) fn paint_oclusor(
         x,
         w,
         cur_y,
-        tr("component.field.occluder_fields.0"),
+        TextKey::new("component.field.occluder_fields.0"),
         &[ids::INSP_LUZ_OPACIDADE],
         0.01, // LITERAL-PX-OK: passo de scrub da fração bloqueada (0..1)
         None,

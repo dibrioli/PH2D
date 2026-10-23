@@ -3,6 +3,7 @@
 
 use super::*;
 use ph2d_i18n::tr;
+use ph2d_i18n::TextKey;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_entity_name_row(
@@ -87,7 +88,7 @@ pub(crate) fn paint_visibility_row(
         y,
         (
             ids::INSP_VISIBILITY_CHECK,
-            tr("component.field.visibility.1"),
+            TextKey::new("component.field.visibility.1"),
             matches!(value, CheckboxValue::Checked),
         ),
         sec,

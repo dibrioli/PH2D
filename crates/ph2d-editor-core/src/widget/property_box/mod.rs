@@ -45,7 +45,8 @@ pub use seccao::{Seccao, colunas_da_linha};
 // ⚠️ Os três internos que o pintor da caixa e a checkbox consomem — re-exportados no MESMO
 //    caminho de antes, para o corte não mudar um chamador.
 pub(crate) use label::fit_label;
-pub(crate) use row::{decorator_rect, paint_decorator};
+pub use row::decorator_rect;
+pub(crate) use row::paint_decorator;
 
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};

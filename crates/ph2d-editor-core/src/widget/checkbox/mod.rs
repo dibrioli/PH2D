@@ -73,6 +73,8 @@ pub struct Checkbox {
     /// ⚠️ **É um campo PRÓPRIO, e tinha de ser** — derivar isto do `box_px` ou do `decorator` seria
     /// exactamente o erro que o doc do `box_px` acima regista, e que um gate já apanhou uma vez.
     pub seccao: Option<crate::widget::Seccao>,
+    /// Ver [`Checkbox::coluna_de_fora`].
+    pub coluna_de_fora: bool,
 }
 
 impl Checkbox {
@@ -88,7 +90,16 @@ impl Checkbox {
             // ⚠️ **O default é «sou uma linha de formulário»** — são 27 sítios contra UM (a pele de
             //    canvas), e o que erra em silêncio é o caso raro escolher o default do caso comum.
             seccao: Some(crate::widget::Seccao::apenas_campos(1)),
+            coluna_de_fora: false,
         }
+    }
+
+    /// A coluna do losango fica reservada mas quem a pinta é o chamador (a linha de marcar do
+    /// formulário: `property_row::paint_check_row`, com o canal do campo).
+    #[must_use]
+    pub fn coluna_de_fora(mut self) -> Self {
+        self.coluna_de_fora = true;
+        self
     }
 
     /// ⭐ **A declaração da SECÇÃO a que esta linha pertence** — ver [`Checkbox::seccao`].

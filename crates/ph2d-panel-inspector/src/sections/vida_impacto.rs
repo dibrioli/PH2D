@@ -13,7 +13,6 @@ use super::vida::{caixa, numeros};
 use super::*;
 use ph2d_editor_core::vida_edits::InspectorHealthInfo;
 use ph2d_editor_core::widget::Unit;
-use ph2d_i18n::tr;
 
 /// As linhas do IMPACTO. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
@@ -31,16 +30,17 @@ pub(super) fn corpo_impacto(
     // ⚠️ A coluna mede os rótulos do bloco INTEIRO, inclusive os que este quadro não pinta — uma
     // coluna que salta quando uma linha aparece é uma coluna por linha com outro nome.
     let rotulos = [
-        tr("component.field.health_fields.21"),
-        tr("component.field.health_fields.22"),
-        tr("component.field.health_fields.23"),
-        tr("component.field.health_fields.26"),
+        TextKey::new("component.field.health_fields.21"),
+        TextKey::new("component.field.health_fields.22"),
+        TextKey::new("component.field.health_fields.23"),
+        TextKey::new("component.field.health_fields.26"),
         // A amostra de cor dos números — na MESMA coluna.
-        tr("component.field.health_fields.25"),
+        TextKey::new("component.field.health_fields.25"),
     ];
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &rotulos);
+    let seccao =
+        ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &rotulos.map(|k| k.tr()));
     let s = Some(Unit::Seconds);
-    let mut linhas: Vec<(&str, NodeId, f64, Option<Unit>)> =
+    let mut linhas: Vec<(TextKey, NodeId, f64, Option<Unit>)> =
         vec![(rotulos[0], ids::INSP_VIDA_DEATH_HITSTOP, 0.01, s)]; // LITERAL-PX-OK: segundos
     if h.invincible_s > 0.0 {
         linhas.push((rotulos[1], ids::INSP_VIDA_BLINK, 0.01, s)); // LITERAL-PX-OK: segundos
@@ -68,7 +68,7 @@ pub(super) fn corpo_impacto(
         w,
         cur_y,
         ids::INSP_VIDA_NUMBERS,
-        tr("component.field.health_fields.24"),
+        TextKey::new("component.field.health_fields.24"),
         h.numbers,
         seccao,
     );
@@ -78,7 +78,7 @@ pub(super) fn corpo_impacto(
     let cell = Rect::new(x, cur_y, w, ph2d_tokens::ROW_H_PX);
     cur_y = super::color_tint::paint_tint_swatch_cell(
         cell,
-        tr("component.field.health_fields.25"),
+        rotulos[4],
         ids::INSP_VIDA_NUMBERS_COLOR,
         crate::state_tint::tint_f32_to_u8(h.numbers_color),
         false,

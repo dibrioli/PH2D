@@ -111,20 +111,20 @@ pub(super) fn paint_area_rows(
         // is just as wet). Painted below them the row would read as governing all six.
         for (label, id) in [
             (
-                tr("component.field.area_torque.0"),
+                TextKey::new("component.field.area_torque.0"),
                 ids::INSP_PHYS_AREA_TORQUE,
             ),
             (
-                tr("component.field.area_falloff.0"),
+                TextKey::new("component.field.area_falloff.0"),
                 ids::INSP_PHYS_AREA_FALLOFF,
             ),
-            (tr("component.field.area_drag.0"), ids::INSP_PHYS_AREA_DRAG),
+            (TextKey::new("component.field.area_drag.0"), ids::INSP_PHYS_AREA_DRAG),
             (
-                tr("component.field.area_buoyancy.0"),
+                TextKey::new("component.field.area_buoyancy.0"),
                 ids::INSP_PHYS_AREA_DENSITY,
             ),
             (
-                tr("component.field.area_form_drag.0"),
+                TextKey::new("component.field.area_form_drag.0"),
                 ids::INSP_PHYS_AREA_FORM_DRAG,
             ),
         ] {

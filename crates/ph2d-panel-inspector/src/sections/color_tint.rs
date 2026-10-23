@@ -4,6 +4,8 @@
 use super::*;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::tr;
+use ph2d_i18n::TextKey;
+use ph2d_editor_core::widget::key_mark::Rotulo;
 
 /// Paint one labeled tint swatch (label left, swatch right) inside
 /// `cell`. The swatch fill reads `widget_color(swatch_id)` (kept in
@@ -39,7 +41,7 @@ pub(super) fn seccao_de_cores(
 /// ⚠️ **A coluna sai de TODOS os nomes do bloco**, que é o que alinha as linhas entre si — a outra
 /// metade do report do dono de 2026-09-21 sobre alinhamento.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn bloco_de_cores(
+pub(super) fn bloco_de_cores<'a, L: Into<Rotulo<'a>> + Copy>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -48,14 +50,17 @@ pub(super) fn bloco_de_cores(
     x: f32,
     w: f32,
     mut y: f32,
-    cores: &[(NodeId, &str, [f32; 4])],
+    cores: &[(NodeId, L, [f32; 4])],
 ) -> f32 {
-    let rotulos: Vec<&str> = cores.iter().map(|(_, l, _)| *l).collect();
+    let rotulos: Vec<&str> = cores
+        .iter()
+        .map(|(_, l, _)| Into::<Rotulo<'a>>::into(*l).texto)
+        .collect();
     let sec = seccao_de_cores(text_system, &rotulos);
     for (id, label, rgba) in cores {
         y = paint_tint_swatch_cell(
             Rect::new(x, y, w, ph2d_tokens::ROW_H_PX),
-            label,
+            *label,
             *id,
             crate::state_tint::tint_f32_to_u8(*rgba),
             false,
@@ -71,9 +76,9 @@ pub(super) fn bloco_de_cores(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(super) fn paint_tint_swatch_cell(
+pub(super) fn paint_tint_swatch_cell<'a>(
     cell: Rect,
-    label: &str,
+    label: impl Into<Rotulo<'a>>,
     swatch_id: NodeId,
     fallback_rgba: [u8; 4],
     mixed: bool,
@@ -177,7 +182,7 @@ pub(crate) fn paint_color_tint_section(
     );
     cur_y = paint_tint_swatch_cell(
         Rect::new(x, cur_y, w, field_h),
-        tr("component.field.sprite.1"),
+        TextKey::new("component.field.sprite.1"),
         ids::INSP_SPRITE_TINT_SWATCH,
         tint_seed,
         sp.as_ref().is_some_and(|s| s.mixed.tint),
@@ -196,7 +201,7 @@ pub(crate) fn paint_color_tint_section(
         .unwrap_or([0xff, 0xff, 0xff, 0xff]); // LITERAL-COLOR-OK: WHITE = self_tint default
     cur_y = paint_tint_swatch_cell(
         Rect::new(x, cur_y, w, field_h),
-        tr("component.field.sprite.6"),
+        TextKey::new("component.field.sprite.6"),
         ids::INSP_SPRITE_SELF_TINT_SWATCH,
         self_seed,
         sp.as_ref().is_some_and(|s| s.mixed.self_tint),
@@ -255,11 +260,12 @@ pub(crate) fn paint_color_tint_section(
     );
     // A caixa fica na largura do controlo; a coluna do decorator leva o losango da silhueta.
     let (check_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, cur_y, field_h);
-    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_for(
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
         scene,
         theme,
         dot,
         &[ids::INSP_SPRITE_TINT_FILL],
+        TextKey::new("component.field.sprite.8").into(),
     ) {
         hit_index.register(alvo, dot);
     }
@@ -274,7 +280,7 @@ pub(crate) fn paint_color_tint_section(
         cur_y,
         (
             ids::INSP_SPRITE_TINT_FILL,
-            tr("component.field.sprite.8"),
+            TextKey::new("component.field.sprite.8"),
             matches!(tf_value, CheckboxValue::Checked),
         ),
         sec,
@@ -382,9 +388,13 @@ fn paint_per_corner_tab(
         hit_index.register(corner_ids[i], sr);
     }
     // Um losango para o degradê inteiro (os quatro cantos são um grupo de canais).
-    if let Some(alvo) =
-        ph2d_editor_core::widget::key_mark::paint_decorator_for(scene, theme, row.dot, &corner_ids)
-    {
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        row.dot,
+        &corner_ids,
+        TextKey::new("component.field.sprite_corner_tint.5").into(),
+    ) {
         hit_index.register(alvo, row.dot);
     }
     let grid_h = alto;

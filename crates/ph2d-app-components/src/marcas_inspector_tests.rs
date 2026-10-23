@@ -340,3 +340,38 @@ fn os_campos_derivados_resolvem_no_catalogo() {
     assert_ne!(x, y);
     assert!(x.mesmo_grupo(*y), "o offset é UM losango");
 }
+
+/// ⭐⭐ **F27 B2 — o canal sai do RÓTULO pintado**: uma linha pintada com o `label_key` de um campo
+/// do catálogo ganha o losango dele (o X e o Y do par, um grupo) sem entrada na tabela; a linha de
+/// VISTA não regista nada; e o quadro seguinte esquece o que não voltou a ser pintado.
+#[test]
+fn a_linha_pintada_com_o_rotulo_do_catalogo_tem_o_canal_dele() {
+    use ph2d_editor_core::widget::key_mark::{Rotulo, paint_decorator_campo, set_key_marks};
+    use ph2d_i18n::TextKey;
+    const A: NodeId = NodeId(0xB2_0001);
+    const B: NodeId = NodeId(0xB2_0002);
+    const V: NodeId = NodeId(0xB2_0003);
+    ph2d_editor_core::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
+    set_key_marks(BTreeMap::new());
+    let mut cena = ph2d_vector::VectorScene::new();
+    let r = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 10.0, 10.0);
+    let offset = TextKey::new("component.field.follow_fields.4");
+    let _ = paint_decorator_campo(&mut cena, ph2d_tokens::Theme::Dark, r, &[A, B], offset.into());
+    let vista = Rotulo::vista(TextKey::new("panel.inspector.camera.look_through"));
+    let _ = paint_decorator_campo(&mut cena, ph2d_tokens::Theme::Dark, r, &[V], vista);
+    let quer: Vec<PropKind> = ph2d_ecs::canal_componente::chaves_do_rotulo(offset.key())
+        .iter()
+        .map(|&k| PropKind::Field(k))
+        .collect();
+    assert_eq!(quer.len(), 2, "o offset é um par");
+    assert_eq!(canal_do_campo(A), &quer[..]);
+    assert_eq!(canal_do_campo(B), &quer[..]);
+    assert!(canal_do_campo(V).is_empty(), "a vista não é canal");
+    let mut d = TimelineDoc::new();
+    d.fps_display = 24.0;
+    chave(&mut d, quer[1], 0.0);
+    let m = marcas(&d, &[E], em(0.0), na_curva);
+    assert_eq!((m.get(&A), m.get(&V)), (Some(&KeyMark::Chave), None));
+    set_key_marks(BTreeMap::new());
+    assert!(canal_do_campo(A).is_empty(), "o que não voltou a ser pintado esquece-se");
+}

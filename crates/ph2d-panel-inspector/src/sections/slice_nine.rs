@@ -17,6 +17,7 @@
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorSliceInfo;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
@@ -28,6 +29,16 @@ fn bordas(a: &str, b: &str) -> String {
         &[("a", &tr(a)), ("b", &tr(b))],
     )
 }
+
+/// As duas linhas das bordas: cada caixa é um campo do catálogo (`[L, T]` e `[R, B]`).
+const BORDA_LT: [TextKey; 2] = [
+    TextKey::new("component.field.slice_nine.1"),
+    TextKey::new("component.field.slice_nine.3"),
+];
+const BORDA_RB: [TextKey; 2] = [
+    TextKey::new("component.field.slice_nine.2"),
+    TextKey::new("component.field.slice_nine.4"),
+];
 
 /// A linha do tamanho: o nome do campo (`9_slice.size`) mais os eixos.
 fn tamanho() -> String {
@@ -146,7 +157,15 @@ fn tiled_rows(
     )
     .max(ALTURA_DE_CAMPO)
         + Spacing::Sm.px();
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, tm_row.dot);
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        tm_row.dot,
+        &ids::INSP_SLICE_TILE_MODE,
+        TextKey::new("component.field.slice_nine.6").into(),
+    ) {
+        hit_index.register(alvo, tm_row.dot);
+    }
     // ⚠️ **A emenda rente ao canto tem NOME aqui** (smoke do Enio, 2026-08-22). Ela não é um
     // defeito de textura: é o último ladrilho cortado a meio, e o utilizador não tem como
     // adivinhar que o remédio se chama «Whole». Uma linha diz onde ele está.
@@ -242,11 +261,21 @@ pub(crate) fn paint_slice_section(
         &Checkbox::new(ids::INSP_SLICE_ENABLE, tr("component.field.slice_nine.8"))
             .visual(store.checkbox_visual(ids::INSP_SLICE_ENABLE))
             .value(en_value)
-            .seccao(seccao(text_system)),
+            .seccao(seccao(text_system))
+            .coluna_de_fora(),
         en_rect,
         scene,
         text_system,
         theme,
+    );
+    let enable = TextKey::new("component.field.slice_nine.8");
+    super::rows::coluna_da_caixa(
+        scene,
+        theme,
+        hit_index,
+        en_rect,
+        ids::INSP_SLICE_ENABLE,
+        enable,
     );
     cur_y += cb_h + ph2d_tokens::control_gap_px();
 
@@ -267,10 +296,7 @@ pub(crate) fn paint_slice_section(
         x,
         w,
         cur_y,
-        &bordas(
-            "component.field.slice_nine.1",
-            "component.field.slice_nine.3",
-        ),
+        Rotulo::de_campos(&bordas(BORDA_LT[0].key(), BORDA_LT[1].key()), &BORDA_LT),
         &[ids::INSP_SLICE_BORDER[0], ids::INSP_SLICE_BORDER[1]],
         1.0,
         Some(ph2d_editor_core::widget::Unit::Px),
@@ -285,10 +311,7 @@ pub(crate) fn paint_slice_section(
         x,
         w,
         cur_y,
-        &bordas(
-            "component.field.slice_nine.2",
-            "component.field.slice_nine.4",
-        ),
+        Rotulo::de_campos(&bordas(BORDA_RB[0].key(), BORDA_RB[1].key()), &BORDA_RB),
         &[ids::INSP_SLICE_BORDER[2], ids::INSP_SLICE_BORDER[3]],
         1.0,
         Some(ph2d_editor_core::widget::Unit::Px),
@@ -303,7 +326,7 @@ pub(crate) fn paint_slice_section(
         x,
         w,
         cur_y,
-        &tamanho(),
+        Rotulo::de_campo(&tamanho(), TextKey::new("component.field.slice_nine.7")),
         &[ids::INSP_SLICE_SIZE[0], ids::INSP_SLICE_SIZE[1]],
         SIZE_STEP,
         Some(ph2d_editor_core::widget::Unit::Meters),
@@ -323,11 +346,21 @@ pub(crate) fn paint_slice_section(
         )
         .visual(store.checkbox_visual(ids::INSP_SLICE_FILL_CENTER))
         .value(fc_value)
-        .seccao(sec),
+        .seccao(sec)
+        .coluna_de_fora(),
         fc_rect,
         scene,
         text_system,
         theme,
+    );
+    let fill = TextKey::new("component.field.slice_nine.5");
+    super::rows::coluna_da_caixa(
+        scene,
+        theme,
+        hit_index,
+        fc_rect,
+        ids::INSP_SLICE_FILL_CENTER,
+        fill,
     );
     cur_y += cb_h + ph2d_tokens::control_gap_px();
 

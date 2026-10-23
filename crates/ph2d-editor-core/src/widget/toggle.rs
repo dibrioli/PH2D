@@ -152,6 +152,7 @@ pub fn paint_toggle(toggle: &Toggle, rect: Rect, scene: &mut VectorScene, theme:
             // não a linha. Reservar `14 px` ali espremia a marca sem pôr a bolinha na margem do
             // formulário, que é o único sítio onde ela diz alguma coisa.
             decorator: false,
+            pinta_coluna: true,
         },
         scene,
         theme,

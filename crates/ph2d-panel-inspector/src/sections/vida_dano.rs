@@ -43,9 +43,9 @@ fn corpo_dano(
         );
     }
     let rotulo = if d.per_second {
-        tr("panel.inspector.vida.amount_per_second")
+        TextKey::new("panel.inspector.vida.amount_per_second")
     } else {
-        tr("component.field.damage_fields.1")
+        TextKey::new("component.field.damage_fields.1")
     };
     let seccao = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
@@ -78,19 +78,19 @@ fn corpo_dano(
             (rotulo, ids::INSP_DANO_AMOUNT, 1.0, None), // LITERAL-PX-OK: pontos
             // ⭐ O IMPACTO de quem bate (plano 28, W5).
             (
-                tr("component.field.damage_fields.7"),
+                TextKey::new("component.field.damage_fields.7"),
                 ids::INSP_DANO_HITSTOP,
                 0.01, // LITERAL-PX-OK: segundos
                 Some(ph2d_editor_core::widget::Unit::Seconds),
             ),
             (
-                tr("component.field.damage_fields.8"),
+                TextKey::new("component.field.damage_fields.8"),
                 ids::INSP_DANO_KNOCKBACK,
                 0.5, // LITERAL-PX-OK: m/s
                 v,
             ),
             (
-                tr("component.field.damage_fields.9"),
+                TextKey::new("component.field.damage_fields.9"),
                 ids::INSP_DANO_KNOCKBACK_LIFT,
                 0.5, // LITERAL-PX-OK: m/s
                 v,
@@ -102,12 +102,12 @@ fn corpo_dano(
     //    sempre entregaria dois controlos mortos (a lei do `tem_escudo`).
     let s = Some(ph2d_editor_core::widget::Unit::Seconds);
     let mut dura: Vec<(
-        &str,
+        TextKey,
         ph2d_a11y::NodeId,
         f64,
         Option<ph2d_editor_core::widget::Unit>,
     )> = vec![(
-        tr("component.field.damage_fields.11"),
+        TextKey::new("component.field.damage_fields.11"),
         ids::INSP_DANO_OT_PER_S,
         0.5, // LITERAL-PX-OK: pontos/s
         None,
@@ -115,13 +115,13 @@ fn corpo_dano(
     if d.dura() {
         dura.extend([
             (
-                tr("component.field.damage_fields.12"),
+                TextKey::new("component.field.damage_fields.12"),
                 ids::INSP_DANO_OT_S,
                 0.1, // LITERAL-PX-OK: segundos
                 s,
             ),
             (
-                tr("component.field.damage_fields.13"),
+                TextKey::new("component.field.damage_fields.13"),
                 ids::INSP_DANO_OT_EVERY,
                 0.05, // LITERAL-PX-OK: segundos
                 s,
@@ -172,7 +172,7 @@ fn corpo_dano(
             w,
             cur_y,
             id,
-            tr(chave),
+            TextKey::new(chave),
             ligada,
             seccao,
         );
@@ -187,7 +187,7 @@ fn corpo_dano(
         x,
         w,
         cur_y,
-        tr("component.field.damage_fields.10"),
+        TextKey::new("component.field.damage_fields.10"),
         ids::INSP_DANO_KIND,
         tr("panel.inspector.vida.damage_kind_hint"),
         seccao,
@@ -201,7 +201,7 @@ fn corpo_dano(
         x,
         w,
         cur_y,
-        tr("component.field.damage_fields.2"),
+        TextKey::new("component.field.damage_fields.2"),
         ids::INSP_DANO_TEAM,
         tr("panel.inspector.vida.damage_team_hint"),
         seccao,

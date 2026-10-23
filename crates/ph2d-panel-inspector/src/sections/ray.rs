@@ -138,13 +138,13 @@ fn corpo(
     // vector, e parti-las em quatro linhas faria o artista procurar o par.
     for (label, ids, step, unidade) in [
         (
-            tr("component.field.ray_sensor.0"),
+            TextKey::new("component.field.ray_sensor.0"),
             [crate::ids::INSP_RAY_ORIGIN_X, crate::ids::INSP_RAY_ORIGIN_Y],
             0.1, // LITERAL-PX-OK: passo de arrasto em METROS, locais
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
-            tr("component.field.ray_sensor.1"),
+            TextKey::new("component.field.ray_sensor.1"),
             [crate::ids::INSP_RAY_DIR_X, crate::ids::INSP_RAY_DIR_Y],
             0.1, // LITERAL-PX-OK: passo de arrasto de uma DIRECÇÃO, adimensional
             None,
@@ -168,13 +168,13 @@ fn corpo(
     }
     for (label, id, step, unidade) in [
         (
-            tr("component.field.ray_sensor.2"),
+            TextKey::new("component.field.ray_sensor.2"),
             crate::ids::INSP_RAY_REACH,
             0.1, // LITERAL-PX-OK: passo de arrasto em METROS
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
-            tr("component.field.ray_sensor.3"),
+            TextKey::new("component.field.ray_sensor.3"),
             crate::ids::INSP_RAY_LAYER,
             1.0,
             None,
@@ -211,7 +211,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.ray_signals.0"),
+        TextKey::new("component.field.ray_signals.0"),
         crate::ids::INSP_RAY_ON_ENTER,
         TextInput::new(crate::ids::INSP_RAY_ON_ENTER, "")
             .placeholder(tr("panel.inspector.ray.signal_when_it_starts_seeing_u")),
@@ -226,7 +226,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.ray_signals.1"),
+        TextKey::new("component.field.ray_signals.1"),
         crate::ids::INSP_RAY_ON_EXIT,
         TextInput::new(crate::ids::INSP_RAY_ON_EXIT, "")
             .placeholder(tr("panel.inspector.ray.signal_when_it_stops_seeing_u")),

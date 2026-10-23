@@ -538,7 +538,7 @@ fn editor(
 /// ⚠️ **O `label` e a `seccao` não têm valor de omissão de propósito** — um `""` aqui seria o
 /// defeito a voltar em silêncio, e a coluna é da SECÇÃO (§6-ter), nunca desta linha.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn text_row(
+pub(super) fn text_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -547,7 +547,7 @@ pub(super) fn text_row(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     id: ph2d_a11y::NodeId,
     input: TextInput,
     seccao: ph2d_editor_core::property_row::Seccao,

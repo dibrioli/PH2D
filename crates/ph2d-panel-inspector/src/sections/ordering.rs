@@ -75,7 +75,7 @@ fn label_color(theme: Theme) -> VelloColor {
 
 /// One left-label + checkbox row. Returns the next `y`.
 #[allow(clippy::too_many_arguments)]
-fn check_row(
+fn check_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -85,7 +85,7 @@ fn check_row(
     w: f32,
     y: f32,
     id: NodeId,
-    label: &str,
+    label: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     let (_, value) = store
@@ -107,7 +107,7 @@ fn check_row(
 
 /// One left-label + single NumberInput row. Returns the next `y`.
 #[allow(clippy::too_many_arguments)]
-fn number_row(
+fn number_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -117,9 +117,10 @@ fn number_row(
     w: f32,
     y: f32,
     id: NodeId,
-    label: &str,
+    label: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
+    let rotulo = label.into();
     // ⭐ **A coluna do rótulo deixou de ser um literal** (14/09): ela era `96 px` escritos aqui, e
     // a mesma pergunta tinha SEIS respostas no app (`96` · `78` · `84` · `76` · `72` · `150`).
     // ⛔ Uma largura fixa está errada por construção — a coluna docada é arrastável.
@@ -129,7 +130,7 @@ fn number_row(
     ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
-        label,
+        rotulo.texto,
         row.label.x,
         row.label.y + (h - TypeToken::Sm.px()) * 0.5,
         TypeToken::Sm.px(),
@@ -153,7 +154,11 @@ fn number_row(
         text_system,
         theme,
     );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+    if let Some(alvo) =
+        ph2d_editor_core::widget::key_mark::paint_decorator_campo(scene, theme, dot, &[id], rotulo)
+    {
+        hit_index.register(alvo, dot);
+    }
     y + h + ph2d_tokens::control_gap_px()
 }
 
@@ -207,7 +212,15 @@ fn layer_row(
     if open {
         crate::state_popovers::set_pending_ordering_dd(Some((sel, rect)));
     }
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        dot,
+        &[ids::INSP_ORDER_SORTING_LAYER],
+        TextKey::new("component.field.sorting_layer.1").into(),
+    ) {
+        hit_index.register(alvo, dot);
+    }
     y + h + ph2d_tokens::control_gap_px()
 }
 
@@ -265,7 +278,7 @@ fn ysort_point_rows(
         x,
         w,
         y,
-        tr("component.field.y_sort.3"),
+        TextKey::new("component.field.y_sort.3"),
         &segmentos,
         sec,
     );
@@ -281,7 +294,10 @@ fn ysort_point_rows(
             w,
             cur_y,
             ids::INSP_ORDER_AXIS_X,
-            &eixo("panel.inspector.ordering.axis_x"),
+            ph2d_editor_core::widget::key_mark::Rotulo::de_campo(
+                &eixo("panel.inspector.ordering.axis_x"),
+                TextKey::new("component.field.y_sort.2"),
+            ),
             sec,
         );
         cur_y = number_row(
@@ -294,7 +310,10 @@ fn ysort_point_rows(
             w,
             cur_y,
             ids::INSP_ORDER_AXIS_Y,
-            &eixo("panel.inspector.ordering.axis_y"),
+            ph2d_editor_core::widget::key_mark::Rotulo::de_campo(
+                &eixo("panel.inspector.ordering.axis_y"),
+                TextKey::new("component.field.y_sort.2"),
+            ),
             sec,
         );
     }
@@ -386,11 +405,15 @@ pub(crate) fn paint_ordering_section(
     // style): a non-zero value attaches `ZIndexOverride`, `0` detaches it
     // (= default, pure DFS / hierarchy order — `0` and absent sort
     // identically). Z as Relative pairs with it.
-    yy = ni!(yy, ids::INSP_ORDER_Z_INDEX, tr("component.field.z_index.1"));
+    yy = ni!(
+        yy,
+        ids::INSP_ORDER_Z_INDEX,
+        TextKey::new("component.field.z_index.1")
+    );
     yy = cb!(
         yy,
         ids::INSP_ORDER_Z_RELATIVE,
-        tr("component.field.z_as_relative.1")
+        TextKey::new("component.field.z_as_relative.1")
     );
     yy = cb!(
         yy,
@@ -400,7 +423,7 @@ pub(crate) fn paint_ordering_section(
     yy = ni!(
         yy,
         ids::INSP_ORDER_ORDER_IN_LAYER,
-        tr("component.field.order_in_layer.1")
+        TextKey::new("component.field.order_in_layer.1")
     );
     yy = layer_row(
         scene,
@@ -417,7 +440,7 @@ pub(crate) fn paint_ordering_section(
     yy = cb!(
         yy,
         ids::INSP_ORDER_YSORT_ENABLED,
-        tr("component.field.y_sort.1")
+        TextKey::new("component.field.y_sort.1")
     );
     if live(store, ids::INSP_ORDER_YSORT_ENABLED, info.y_sort_enabled) {
         yy = ysort_point_rows(
@@ -444,7 +467,7 @@ pub(crate) fn paint_ordering_section(
         yy = cb!(
             yy,
             ids::INSP_ORDER_SORT_AT_ROOT,
-            tr("component.field.sorting_group.1")
+            TextKey::new("component.field.sorting_group.1")
         );
     }
     yy = cb!(

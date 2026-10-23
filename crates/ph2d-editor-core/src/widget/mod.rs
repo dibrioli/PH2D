@@ -156,6 +156,7 @@ pub use property_box::{
     property_fields_layout, property_label_col_w, property_label_col_w_for, property_label_origin,
     property_row_columns, property_row_columns_for, surface_rect, value_column,
 };
+pub use property_box::decorator_rect;
 // ⭐⭐ **A DECLARAÇÃO de uma secção** — ver `property_box::seccao`. Ela vive do lado do `widget`
 //    porque é a ENTRADA da repartição de uma linha, e pô-la no `property_row` faria o `widget`
 //    depender dele (um ciclo que o gate do DAG recusa).

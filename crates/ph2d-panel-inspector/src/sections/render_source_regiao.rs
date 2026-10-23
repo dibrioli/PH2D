@@ -8,6 +8,7 @@
 //! `FILE_OVERAGE_OK` (`CLAUDE.md` §5.0).
 
 use super::*;
+use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
 /// **Uma célula X/Y/W/H da região** — rótulo do eixo + o campo numérico.
@@ -110,7 +111,7 @@ pub(super) fn paint_region_rows(
             cur_y,
             (
                 ids::INSP_REGION_ENABLED,
-                tr("component.field.sprite_region.1"),
+                TextKey::new("component.field.sprite_region.1"),
                 matches!(re_value, CheckboxValue::Checked),
             ),
             sec,
@@ -144,7 +145,20 @@ pub(super) fn paint_region_rows(
                 label_font,
                 theme,
             );
-            ph2d_editor_core::widget::paint_decorator_dot(scene, theme, region_dot);
+            if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+                scene,
+                theme,
+                region_dot,
+                &[
+                    ids::INSP_REGION_X,
+                    ids::INSP_REGION_Y,
+                    ids::INSP_REGION_W,
+                    ids::INSP_REGION_H,
+                ],
+                TextKey::new("component.field.sprite_region.1").into(),
+            ) {
+                hit_index.register(alvo, region_dot);
+            }
             cur_y += field_h + row_gap;
             paint_region_num_cell(
                 scene,
@@ -184,7 +198,7 @@ pub(super) fn paint_region_rows(
                 cur_y,
                 (
                     ids::INSP_REGION_FILTER_CLIP,
-                    tr("component.field.sprite_region.2"),
+                    TextKey::new("component.field.sprite_region.2"),
                     matches!(fc_value, CheckboxValue::Checked),
                 ),
                 sec,

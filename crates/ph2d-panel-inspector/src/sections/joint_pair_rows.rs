@@ -81,7 +81,7 @@ pub(super) fn paint_pair_rows(
         x,
         w,
         yy,
-        tr("component.field.joint.23"),
+        TextKey::new("component.field.joint.23"),
         ids::INSP_JOINT_COLLIDE_GROUP,
         &ids::INSP_JOINT_COLLIDE,
         &SWITCH_LABELS.map(TextKey::tr),

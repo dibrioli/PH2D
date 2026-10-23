@@ -21,6 +21,7 @@ use super::*;
 use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::tr;
+use ph2d_i18n::TextKey;
 
 /// **Os AVISOS** — a metade que responde a *«pus o componente e ele não faz nada»*.
 ///
@@ -123,31 +124,31 @@ fn corpo(
     );
     for (label, id, step, unidade) in [
         (
-            tr("component.field.projectile_motion.0"),
+            TextKey::new("component.field.projectile_motion.0"),
             crate::ids::INSP_PJ_SPEED,
             0.5,
             Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
         ), // LITERAL-PX-OK: m/s
         (
-            tr("component.field.projectile_motion.1"),
+            TextKey::new("component.field.projectile_motion.1"),
             crate::ids::INSP_PJ_ACCEL,
             0.5,
             None,
         ), // LITERAL-PX-OK: m/s²
         (
-            tr("component.field.projectile_motion.2"),
+            TextKey::new("component.field.projectile_motion.2"),
             crate::ids::INSP_PJ_MAX_SPEED,
             0.5,
             None,
         ), // LITERAL-PX-OK: m/s
         (
-            tr("component.field.projectile_motion.3"),
+            TextKey::new("component.field.projectile_motion.3"),
             crate::ids::INSP_PJ_GRAVITY,
             0.5,
             None,
         ), // LITERAL-PX-OK: m/s²
         (
-            tr("component.field.projectile_motion.5"),
+            TextKey::new("component.field.projectile_motion.5"),
             crate::ids::INSP_PJ_MAX_BOUNCES,
             1.0,
             None,
@@ -180,7 +181,7 @@ fn corpo(
             x,
             w,
             cur_y,
-            tr("component.field.projectile_motion.4"),
+            TextKey::new("component.field.projectile_motion.4"),
             &[crate::ids::INSP_PJ_BOUNCINESS],
             0.05, // LITERAL-PX-OK: fracção
             None,
@@ -196,7 +197,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.projectile_motion.6"),
+        TextKey::new("component.field.projectile_motion.6"),
         &[crate::ids::INSP_PJ_RANGE],
         1.0, // LITERAL-PX-OK: metros
         Some(ph2d_editor_core::widget::Unit::Meters),
@@ -211,7 +212,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.projectile_motion.8"),
+        TextKey::new("component.field.projectile_motion.8"),
         &[crate::ids::INSP_PJ_HOMING_ACCEL],
         10.0, // LITERAL-PX-OK: m/s²
         None,
@@ -228,7 +229,7 @@ fn corpo(
             x,
             w,
             cur_y,
-            tr("component.field.projectile_motion.9"),
+            TextKey::new("component.field.projectile_motion.9"),
             crate::ids::INSP_PJ_HOMING_TARGET,
             TextInput::new(crate::ids::INSP_PJ_HOMING_TARGET, "")
                 .placeholder(tr("panel.inspector.projectile.target_object_name_u")),
@@ -261,7 +262,7 @@ fn corpo(
         cur_y,
         (
             crate::ids::INSP_PJ_FACE_VELOCITY,
-            tr("component.field.projectile_motion.7"),
+            TextKey::new("component.field.projectile_motion.7"),
             i.face_velocity,
         ),
         seccao,

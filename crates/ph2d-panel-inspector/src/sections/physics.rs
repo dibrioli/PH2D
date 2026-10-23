@@ -214,7 +214,7 @@ pub(super) fn paint_shape_dims(
             x,
             w,
             yy,
-            label,
+            *label,
             *id,
             // ⭐ As tres dimensoes deste laco sao METROS — `radius`, `half_width`, `half_height`.
             Some(ph2d_editor_core::widget::Unit::Meters),

@@ -36,6 +36,7 @@ pub fn paint_checkbox(
             hover_t: cb.hover_t,
             box_px: cb.box_px,
             decorator: cb.decorator,
+            pinta_coluna: !cb.coluna_de_fora,
             linha: cb.seccao,
         },
         scene,

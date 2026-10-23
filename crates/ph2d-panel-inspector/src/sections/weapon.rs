@@ -95,7 +95,7 @@ fn leitura(
 
 /// Uma linha de texto da secção. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
-fn nome_row(
+fn nome_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -105,7 +105,7 @@ fn nome_row(
     w: f32,
     y: f32,
     id: ph2d_a11y::NodeId,
-    rotulo: &str,
+    rotulo: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     dica: &str,
     seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
@@ -182,11 +182,11 @@ fn corpo(
     );
     for (label, id) in [
         (
-            tr("component.field.weapon_fields.2"),
+            TextKey::new("component.field.weapon_fields.2"),
             crate::ids::INSP_WEAPON_COOLDOWN,
         ),
         (
-            tr("component.field.weapon_fields.4"),
+            TextKey::new("component.field.weapon_fields.4"),
             crate::ids::INSP_WEAPON_RELOAD_MS,
         ),
     ] {
@@ -210,39 +210,39 @@ fn corpo(
     for (id, rotulo, dica) in [
         (
             crate::ids::INSP_WEAPON_ON_SIGNAL,
-            tr("component.field.weapon_fields.1"),
+            TextKey::new("component.field.weapon_fields.1"),
             tr("panel.inspector.weapon.signal_that_pulls_the_trigger_u"),
         ),
         (
             crate::ids::INSP_WEAPON_ON_FIRE,
-            tr("component.field.weapon_fields.6"),
+            TextKey::new("component.field.weapon_fields.6"),
             tr("panel.inspector.weapon.signal_it_publishes_on_each_shot_u"),
         ),
         (
             crate::ids::INSP_WEAPON_AMMO,
-            tr("component.field.weapon_fields.3"),
+            TextKey::new("component.field.weapon_fields.3"),
             tr("panel.inspector.weapon.counter_that_is_the_magazine_u"),
         ),
         (
             crate::ids::INSP_WEAPON_RELOAD_ON,
-            tr("component.field.weapon_fields.5"),
+            TextKey::new("component.field.weapon_fields.5"),
             tr("panel.inspector.weapon.signal_that_reloads_it_u"),
         ),
         (
             crate::ids::INSP_WEAPON_ON_EMPTY,
-            tr("component.field.weapon_fields.7"),
+            TextKey::new("component.field.weapon_fields.7"),
             tr("panel.inspector.weapon.signal_on_the_dry_click_u"),
         ),
         (
             crate::ids::INSP_WEAPON_ON_RELOADED,
-            tr("component.field.weapon_fields.8"),
+            TextKey::new("component.field.weapon_fields.8"),
             tr("panel.inspector.weapon.signal_when_the_magazine_is_full_u"),
         ),
         // ⭐⭐ **O DEPÓSITO, colado ao pente** — eles são a mesma pergunta em dois degraus, e
         // separá-los por três sinais faria o artista ler o segundo como sendo de outro assunto.
         (
             crate::ids::INSP_WEAPON_RESERVE,
-            tr("component.field.weapon_fields.9"),
+            TextKey::new("component.field.weapon_fields.9"),
             tr("panel.inspector.weapon.counter_that_is_the_depot_u"),
         ),
     ] {

@@ -208,7 +208,20 @@ pub(crate) fn paint_sampling_section(
         store,
         hit_index,
     );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, filter_row.dot);
+    let filter_ids: Vec<NodeId> = ids::INSP_SAMPLE_FILTER
+        .iter()
+        .zip(FILTER_LABELS)
+        .filter_map(|(&id, label)| label.map(|_| id))
+        .collect();
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        filter_row.dot,
+        &filter_ids,
+        TextKey::new("component.field.texture_filter.1").into(),
+    ) {
+        hit_index.register(alvo, filter_row.dot);
+    }
     yy += seg_h.max(h) + row_gap;
 
     // Texture Repeat — Inherit / Disabled / Enabled / Mirror (0/1/2/3).
@@ -246,7 +259,15 @@ pub(crate) fn paint_sampling_section(
         store,
         hit_index,
     );
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, repeat_row.dot);
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        repeat_row.dot,
+        &ids::INSP_SAMPLE_REPEAT,
+        TextKey::new("component.field.texture_repeat.1").into(),
+    ) {
+        hit_index.register(alvo, repeat_row.dot);
+    }
     yy += repeat_h.max(h) + row_gap;
 
     // UV tiling (scale > 1 tiles) + scroll (offset) — W3 UvTransform. The
@@ -260,7 +281,7 @@ pub(crate) fn paint_sampling_section(
         x,
         w,
         yy,
-        tr("component.field.uv_transform.1"),
+        TextKey::new("component.field.uv_transform.1"),
         &[ids::INSP_SAMPLE_UV_SCALE_X, ids::INSP_SAMPLE_UV_SCALE_Y],
         0.1, // LITERAL-PX-OK: passo de scrub em UV, não em pixels
         None,
@@ -275,7 +296,7 @@ pub(crate) fn paint_sampling_section(
         x,
         w,
         yy,
-        tr("component.field.uv_transform.2"),
+        TextKey::new("component.field.uv_transform.2"),
         &[ids::INSP_SAMPLE_UV_OFFSET_X, ids::INSP_SAMPLE_UV_OFFSET_Y],
         0.1, // LITERAL-PX-OK: passo de scrub em UV, não em pixels
         None,

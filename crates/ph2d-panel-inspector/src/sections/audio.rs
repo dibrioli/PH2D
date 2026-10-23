@@ -31,6 +31,7 @@ use super::*;
 use ph2d_editor_core::screens::hero::{InspectorAudioInfo, InspectorAudioSource};
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
+use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
 
@@ -135,7 +136,15 @@ fn bus_row(
     if open {
         crate::state_popovers::set_pending_audio_dd(Some((sel, rect)));
     }
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        dot,
+        &[ids::INSP_AUDIO_BUS_PICK],
+        TextKey::new("component.field.source_fields.10").into(),
+    ) {
+        hit_index.register(alvo, dot);
+    }
     y + ph2d_tokens::row_pitch_px()
 }
 
@@ -155,43 +164,43 @@ fn source_body(
 ) -> f32 {
     let linhas = [
         (
-            tr("component.field.source_fields.1"),
+            TextKey::new("component.field.source_fields.1"),
             ids::INSP_AUDIO_VOLUME,
             1.0,
             None,
         ), // LITERAL-PX-OK: passo em decibéis
         (
-            tr("component.field.source_fields.2"),
+            TextKey::new("component.field.source_fields.2"),
             ids::INSP_AUDIO_PITCH,
             0.05, // LITERAL-PX-OK: passo do factor de tom
             None,
         ),
         (
-            tr("component.field.source_fields.5"),
+            TextKey::new("component.field.source_fields.5"),
             ids::INSP_AUDIO_MAX_DIST,
             0.5,
             Some(ph2d_editor_core::widget::Unit::Meters),
         ), // LITERAL-PX-OK: passo em metros
         (
-            tr("component.field.source_fields.6"),
+            TextKey::new("component.field.source_fields.6"),
             ids::INSP_AUDIO_ATTENUATION,
             0.1, // LITERAL-PX-OK: passo do expoente
             None,
         ),
         (
-            tr("component.field.source_fields.7"),
+            TextKey::new("component.field.source_fields.7"),
             ids::INSP_AUDIO_RADIUS,
             0.1, // LITERAL-PX-OK: metros
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
-            tr("component.field.source_fields.8"),
+            TextKey::new("component.field.source_fields.8"),
             ids::INSP_AUDIO_PANNING,
             0.05, // LITERAL-PX-OK: passo da fracção
             None,
         ),
         (
-            tr("component.field.source_fields.9"),
+            TextKey::new("component.field.source_fields.9"),
             ids::INSP_AUDIO_POLYPHONY,
             1.0,
             None,
@@ -206,7 +215,7 @@ fn source_body(
     //    arrancava `6 px` à esquerda das sete linhas de número por baixo dela. *Duas declarações
     //    para o mesmo corpo são duas colunas.*
     let nomes: Vec<&str> = std::iter::once(tr("component.field.source_fields.0"))
-        .chain(linhas.iter().map(|t| t.0))
+        .chain(linhas.iter().map(|t| t.0.tr()))
         .chain(std::iter::once(tr("component.field.source_fields.10")))
         .collect();
     let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &nomes);
@@ -219,7 +228,7 @@ fn source_body(
         x,
         w,
         y,
-        tr("component.field.source_fields.0"),
+        TextKey::new("component.field.source_fields.0"),
         ids::INSP_AUDIO_SOUND,
         TextInput::new(ids::INSP_AUDIO_SOUND, "")
             .placeholder(tr("panel.inspector.audio.sound_file")),
@@ -324,12 +333,12 @@ fn source_body(
         &[
             (
                 ids::INSP_AUDIO_LOOP,
-                tr("component.field.source_fields.3"),
+                TextKey::new("component.field.source_fields.3"),
                 src.looping,
             ),
             (
                 ids::INSP_AUDIO_AUTOPLAY,
-                tr("component.field.source_fields.4"),
+                TextKey::new("component.field.source_fields.4"),
                 src.autoplay,
             ),
         ],

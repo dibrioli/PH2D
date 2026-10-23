@@ -10,6 +10,7 @@ use super::*;
 use ph2d_editor_core::luz_edits::{AvisoDaLuz, InspectorLuzInfo, TIPOS};
 use ph2d_editor_core::widget::{SectionFold, Unit};
 use ph2d_i18n::{tr, tr_with};
+use ph2d_i18n::TextKey;
 
 /// A frase de um aviso, e a cor dele.
 fn frase(a: AvisoDaLuz) -> (String, ColorToken) {
@@ -180,7 +181,7 @@ fn corpo(
         x,
         w,
         y,
-        tr("component.field.luz_fields.0"),
+        TextKey::new("component.field.luz_fields.0"),
         &crate::ids::INSP_LUZ_TIPO,
         &rotulos,
         usize::from(i.tipo),
@@ -189,7 +190,7 @@ fn corpo(
     let [r, g, b] = i.cor_srgb;
     cur_y = super::color_tint::paint_tint_swatch_cell(
         Rect::new(x, cur_y, w, ph2d_tokens::ROW_H_PX),
-        tr("component.field.luz_fields.1"),
+        TextKey::new("component.field.luz_fields.1"),
         crate::ids::INSP_LUZ_COR,
         [r, g, b, u8::MAX],
         false,
@@ -209,7 +210,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.luz_fields.2"),
+        TextKey::new("component.field.luz_fields.2"),
         &[crate::ids::INSP_LUZ_INTENSIDADE],
         0.1, // LITERAL-PX-OK: passo de scrub da fluência (2π = branco a 1 m)
         None,
@@ -227,7 +228,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.luz_fields.3"),
+        TextKey::new("component.field.luz_fields.3"),
         &[crate::ids::INSP_LUZ_TAMANHO],
         0.01, // LITERAL-PX-OK: passo de scrub em METROS do raio da lâmpada
         Some(Unit::Meters),
@@ -262,7 +263,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("component.field.luz_fields.4"),
+        TextKey::new("component.field.luz_fields.4"),
         &[crate::ids::INSP_LUZ_ALCANCE],
         0.1, // LITERAL-PX-OK: passo de scrub em METROS
         Some(Unit::Meters),

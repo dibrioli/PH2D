@@ -19,6 +19,7 @@ use ph2d_editor_core::nav_edits::{
 use ph2d_editor_core::property_row::{Seccao, paint_check_row};
 use ph2d_editor_core::widget::Unit;
 use ph2d_i18n::tr;
+use ph2d_i18n::TextKey;
 
 #[must_use]
 const fn chave_da_area(q: CostAreaQueixa) -> &'static str {
@@ -56,17 +57,17 @@ pub(super) fn interruptores_do_agente(
     for caixa in [
         (
             crate::ids::INSP_NAV_ACTIVE,
-            tr("component.field.nav_agent.5"),
+            TextKey::new("component.field.nav_agent.5"),
             a.active,
         ),
         (
             crate::ids::INSP_NAV_AVOIDANCE,
-            tr("component.field.nav_agent.9"),
+            TextKey::new("component.field.nav_agent.9"),
             a.avoidance,
         ),
         (
             crate::ids::INSP_NAV_AVOID_HARM,
-            tr("component.field.nav_agent.10"),
+            TextKey::new("component.field.nav_agent.10"),
             a.avoid_harm,
         ),
     ] {
@@ -158,7 +159,7 @@ pub(crate) fn paint_nav_cost_area_section(
         cur_y,
         (
             crate::ids::INSP_NAV_AREA_FORBIDDEN,
-            tr("component.field.nav_cost_area.1"),
+            TextKey::new("component.field.nav_cost_area.1"),
             c.forbidden,
         ),
         seccao,
@@ -186,7 +187,7 @@ pub(crate) fn paint_nav_cost_area_section(
             x,
             w,
             cur_y,
-            tr("component.field.nav_cost_area.0"),
+            TextKey::new("component.field.nav_cost_area.0"),
             &[crate::ids::INSP_NAV_AREA_COST],
             0.05, // LITERAL-PX-OK: passo de arrasto, × chão
             None,
@@ -248,7 +249,7 @@ pub(crate) fn paint_nav_link_section(
         x,
         w,
         cur_y,
-        tr("component.field.nav_link.0"),
+        TextKey::new("component.field.nav_link.0"),
         crate::ids::INSP_NAV_LINK_TO,
         TextInput::new(crate::ids::INSP_NAV_LINK_TO, "")
             .placeholder(tr("panel.inspector.nav.exit_object_name_u")),
@@ -257,12 +258,12 @@ pub(crate) fn paint_nav_link_section(
     for caixa in [
         (
             crate::ids::INSP_NAV_LINK_TELEPORT,
-            tr("component.field.nav_link.2"),
+            TextKey::new("component.field.nav_link.2"),
             l.teleport,
         ),
         (
             crate::ids::INSP_NAV_LINK_TWO_WAY,
-            tr("component.field.nav_link.1"),
+            TextKey::new("component.field.nav_link.1"),
             l.two_way,
         ),
     ] {
@@ -288,7 +289,7 @@ pub(crate) fn paint_nav_link_section(
         x,
         w,
         cur_y,
-        tr("component.field.nav_link.3"),
+        TextKey::new("component.field.nav_link.3"),
         &[crate::ids::INSP_NAV_LINK_COST],
         0.1, // LITERAL-PX-OK: passo de arrasto em METROS de chão
         Some(Unit::Meters),
@@ -303,7 +304,7 @@ pub(crate) fn paint_nav_link_section(
         x,
         w,
         cur_y,
-        tr("component.field.nav_link.4"),
+        TextKey::new("component.field.nav_link.4"),
         crate::ids::INSP_NAV_LINK_ON_CROSSED,
         TextInput::new(crate::ids::INSP_NAV_LINK_ON_CROSSED, "")
             .placeholder(tr("panel.inspector.nav.signal_when_an_agent_crosses_u")),

@@ -100,8 +100,8 @@ pub(crate) fn paint_macro_section(
         Ok(v) => v,
         Err(y) => return y,
     };
-    let rotulo = tr("component.field.macro_fields.2");
-    let seccao = Seccao::medida(text_system, 1, &[rotulo]);
+    let rotulo = TextKey::new("component.field.macro_fields.2");
+    let seccao = Seccao::medida(text_system, 1, &[rotulo.tr()]);
     let modos: Vec<(&str, bool, NodeId)> = crate::ids::INSP_MACRO_MODO
         .iter()
         .enumerate()

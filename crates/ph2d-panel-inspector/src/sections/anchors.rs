@@ -34,7 +34,7 @@ const DEG_STEP: f64 = 1.0; // LITERAL-PX-OK: passo em graus
 
 /// Uma checkbox simples. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn check_row(
+pub(super) fn check_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -43,30 +43,26 @@ pub(super) fn check_row(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     id: NodeId,
+    on: bool,
     // ⭐⭐ **A linha de MARCAR é uma linha de propriedade** (2026-09-15): o nome dela vai à coluna
     //    do nome da SECÇÃO, como as de número. Sem isto a secção tem duas colunas de nome,
     //    alternando linha sim linha não.
     sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let cb_h = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
-    let (_, value) = store
-        .checkbox(id)
-        .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
-    let rect = Rect::new(x, y, w, cb_h);
-    hit_index.register(id, rect);
-    paint_checkbox(
-        &Checkbox::new(id, label)
-            .visual(store.checkbox_visual(id))
-            .value(value)
-            .seccao(sec),
-        rect,
+    ph2d_editor_core::property_row::paint_check_row(
         scene,
         text_system,
         theme,
-    );
-    y + cb_h + ph2d_tokens::control_gap_px()
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        (id, label, on),
+        sec,
+    )
 }
 
 /// A lista de âncoras. Devolve o `y` seguinte.
@@ -260,6 +256,7 @@ fn anchor_editor(
         cur_y,
         tr("panel.inspector.anchors.bounds_makes_it_a_slice"),
         ids::INSP_ANCHOR_BOUNDS_ON,
+        row.bounds.is_some(),
         seccao,
     );
     // ⚠️ Os campos da área só existem quando ela existe. Pintá-los sobre um Socket seria
@@ -291,6 +288,7 @@ fn anchor_editor(
             cur_y,
             tr("panel.inspector.anchors.center_makes_it_a_9"),
             ids::INSP_ANCHOR_CENTER_ON,
+            row.center.is_some(),
             seccao,
         );
         if row.center.is_some() {

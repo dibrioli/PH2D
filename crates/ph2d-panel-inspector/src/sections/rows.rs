@@ -10,7 +10,7 @@ use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segment
 
 /// A labelled segmented control. Returns the next `y`.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn seg_row(
+pub(super) fn seg_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -19,7 +19,7 @@ pub(super) fn seg_row(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     group_id: NodeId,
     option_ids: &[NodeId],
     labels: &[&str],
@@ -34,6 +34,8 @@ pub(super) fn seg_row(
     // coluna dele — e é por isso que a altura devolvida é a do que ele de facto ocupou
     // (`seg_h`), nunca `ROW_H_PX`. *O que mantém a secção legível é a coluna da esquerda estar
     // sempre no mesmo `x`; o lado direito pode crescer.*
+    let rotulo = label.into();
+    let label = rotulo.texto;
     let row = ph2d_editor_core::widget::property_row_columns(x, w, y, ROW_H_PX);
     let label_font = TypeToken::Sm.px();
     ph2d_editor_core::widget::paint_property_label(
@@ -65,12 +67,35 @@ pub(super) fn seg_row(
         store,
         hit_index,
     );
-    if let Some(alvo) =
-        ph2d_editor_core::widget::key_mark::paint_decorator_for(scene, theme, row.dot, option_ids)
-    {
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene, theme, row.dot, option_ids, rotulo,
+    ) {
         hit_index.register(alvo, row.dot);
     }
     y + seg_h.max(ROW_H_PX) + ph2d_tokens::control_gap_px()
+}
+
+/// ⭐ **A coluna do losango de uma caixa que diz «misto»** (F27 B2): a porta
+/// (`property_row::paint_check_row`) só pinta `bool`, por isso estas pintam a caixa com
+/// `Checkbox::coluna_de_fora` e a coluna aqui, com o canal pelo rótulo.
+pub(super) fn coluna_da_caixa<'a>(
+    scene: &mut VectorScene,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    linha: ph2d_editor_core::zones::Rect,
+    id: NodeId,
+    rotulo: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
+) {
+    let r = ph2d_editor_core::widget::decorator_rect(linha);
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        r,
+        &[id],
+        rotulo.into(),
+    ) {
+        hit_index.register(alvo, r);
+    }
 }
 
 /// ⭐ **O NOME de uma linha** — hoje é a porta de `ph2d-editor-core`, aqui só com o nome curto.
@@ -189,7 +214,7 @@ pub(super) fn card_frame(
 /// ⭐ **Sem unidade** — a forma que a esmagadora maioria das secções usa. Quem tem uma unidade
 /// física chama a [`num_row_unit`], que é esta com o sufixo ao fim do campo.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn num_row(
+pub(super) fn num_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -198,7 +223,7 @@ pub(super) fn num_row(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     id: NodeId,
 ) -> f32 {
     num_row_unit(
@@ -234,7 +259,7 @@ pub(super) fn num_row(
 /// declara. ⛔ Ligar as duas exige converter também o VALOR — mostrar `px` sobre um número em
 /// metros seria trocar um rótulo comprido por um rótulo MENTIROSO. Wave própria.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn num_row_unit(
+pub(super) fn num_row_unit<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -243,7 +268,7 @@ pub(super) fn num_row_unit(
     x: f32,
     w: f32,
     y: f32,
-    label: &str,
+    label: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     id: NodeId,
     unit: Option<ph2d_editor_core::widget::Unit>,
     // ⭐⭐ **O rótulo mais largo que a SECÇÃO vai pintar** — ver
@@ -261,6 +286,8 @@ pub(super) fn num_row_unit(
     // ⚠️ **A altura de uma row cai de `label_h + passo` para o PASSO** (~16 px por linha), e é por
     // isso que a [`num_row_h`] encolheu no mesmo commit: a `card_h` deriva dela, e as duas têm de
     // continuar a ser a mesma resposta — senão a moldura do card nasce por cima das caixas.
+    let rotulo = label.into();
+    let label = rotulo.texto;
     let row = ph2d_editor_core::widget::property_row_columns_for(
         x,
         w,
@@ -301,9 +328,13 @@ pub(super) fn num_row_unit(
         text_system,
         theme,
     );
-    if let Some(alvo) =
-        ph2d_editor_core::widget::key_mark::paint_decorator_for(scene, theme, row.dot, &[id])
-    {
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene,
+        theme,
+        row.dot,
+        &[id],
+        rotulo,
+    ) {
         hit_index.register(alvo, row.dot);
     }
     y + ph2d_tokens::row_pitch_px()

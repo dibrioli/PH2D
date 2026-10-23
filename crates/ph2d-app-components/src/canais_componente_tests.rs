@@ -45,6 +45,7 @@ fn a_camera_publica_os_seus_campos() {
 fn cada_campo_le_o_que_escreveu() {
     let reg = registo();
     let (mut sim, e) = cena();
+    let mut t = TextosDosCanais::default();
     for (kk, x) in [
         (k(0, 0), 12.5),
         (k(1, 1), -3.0),
@@ -52,9 +53,9 @@ fn cada_campo_le_o_que_escreveu() {
         (k(3, 0), 0.0),
         (k(5, 0), 0.25),
     ] {
-        let esc = escrever(&reg, sim.world_mut(), e, kk, x).expect("mudou");
+        let esc = escrever(&reg, sim.world_mut(), e, kk, x, &t).expect("mudou");
         assert_ne!(esc.antes, esc.depois);
-        assert_eq!(ler(&reg, sim.world(), e, kk), Some(x), "{kk:?}");
+        assert_eq!(ler(&reg, sim.world(), e, kk, &mut t), Some(x), "{kk:?}");
     }
     let c = sim.world().get::<GameCamera>(e).expect("câmera");
     assert_eq!(
@@ -62,7 +63,7 @@ fn cada_campo_le_o_que_escreveu() {
         (12.5, -3.0, 4, false)
     );
     assert!(
-        escrever(&reg, sim.world_mut(), e, k(0, 0), 12.5).is_none(),
+        escrever(&reg, sim.world_mut(), e, k(0, 0), 12.5, &t).is_none(),
         "o mesmo valor não é escrita"
     );
 }
@@ -121,4 +122,29 @@ fn a_curva_chega_ao_componente_e_nao_ao_documento() {
     publicar(&mut sim, &reg, &[e.to_bits()]);
     let l = sim.world().resource::<CanaisLidos>();
     assert_eq!(l.valor(e.to_bits(), k(0, 0)), Some(antes + 7.0));
+}
+
+/// ⭐ **O alvo da câmera é um canal de texto** (F27 B2): o nome entra na tabela da sessão, a curva
+/// escreve outro nome pelo índice, e o eco lê-o — o corte para outro alvo num quadro.
+#[test]
+fn o_alvo_da_camera_anima_por_nome() {
+    let reg = registo();
+    let mut sim = SimWorld::new();
+    let e = (sim.world_mut())
+        .spawn((GameCamera::default(), ph2d_ecs::CameraFollow::default()))
+        .id();
+    let alvo = chave("ph2d::ecs::CameraFollow", 0, 0).expect("cabe");
+    assert!(campos(&reg, sim.world(), e).contains(&alvo), "o alvo não é canal");
+    assert!(alvo.info().is_some_and(|i| i.texto && i.discreto));
+    let mut t = TextosDosCanais::default();
+    let heroi = t.indice(Some("Heroi"));
+    sim.world_mut().insert_resource(t);
+    sim.world_mut()
+        .get_resource_or_insert_with(CanaisEscritos::default)
+        .escrever(e.to_bits(), alvo, heroi);
+    assert!(aplicar(&mut sim, &reg, &mut PreviewDrive::default()));
+    let segue = sim.world().get::<ph2d_ecs::CameraFollow>(e).expect("segue");
+    assert_eq!(segue.target, "Heroi");
+    publicar(&mut sim, &reg, &[e.to_bits()]);
+    assert_eq!(sim.world().resource::<CanaisLidos>().valor(e.to_bits(), alvo), Some(heroi));
 }

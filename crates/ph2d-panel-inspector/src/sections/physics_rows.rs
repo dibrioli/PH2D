@@ -69,11 +69,11 @@ pub(super) fn paint_damping_rows(
     let mut yy = y;
     for (label, id) in [
         (
-            tr("component.field.damping_override.0"),
+            TextKey::new("component.field.damping_override.0"),
             ids::INSP_PHYS_LINEAR_DAMPING,
         ),
         (
-            tr("component.field.damping_override.1"),
+            TextKey::new("component.field.damping_override.1"),
             ids::INSP_PHYS_ANGULAR_DAMPING,
         ),
     ] {
@@ -99,7 +99,7 @@ pub(super) fn paint_damping_rows(
         x,
         w,
         yy,
-        tr("component.field.damping_override.2"),
+        TextKey::new("component.field.damping_override.2"),
         ids::INSP_LIVE_PHYSICS_DAMPMODE,
         &ids::INSP_PHYS_DAMPMODE,
         &DAMP_MODE_LABELS.map(TextKey::tr),
@@ -131,8 +131,8 @@ pub(super) fn paint_material_rows(
 ) -> f32 {
     let mut yy = y;
     for (label, id) in [
-        (tr("component.field.collider.2"), ids::INSP_PHYS_RESTITUTION),
-        (tr("component.field.collider.3"), ids::INSP_PHYS_FRICTION),
+        (TextKey::new("component.field.collider.2"), ids::INSP_PHYS_RESTITUTION),
+        (TextKey::new("component.field.collider.3"), ids::INSP_PHYS_FRICTION),
     ] {
         yy = num_row(
             scene,
@@ -151,13 +151,13 @@ pub(super) fn paint_material_rows(
     // each, sitting right under the value it governs.
     for (label, group, ids, tag) in [
         (
-            tr("component.field.material_combine.0"),
+            TextKey::new("component.field.material_combine.0"),
             ids::INSP_LIVE_PHYSICS_REST_COMBINE,
             &ids::INSP_PHYS_REST_COMBINE,
             restitution_combine_tag,
         ),
         (
-            tr("component.field.material_combine.1"),
+            TextKey::new("component.field.material_combine.1"),
             ids::INSP_LIVE_PHYSICS_FRIC_COMBINE,
             &ids::INSP_PHYS_FRIC_COMBINE,
             friction_combine_tag,
@@ -229,9 +229,9 @@ pub(super) fn paint_mass_source(
             u8::from(mass_manual),
         );
         let (label, id) = if mass_manual {
-            (tr("component.field.mass_override.0"), ids::INSP_PHYS_MASS)
+            (TextKey::new("component.field.mass_override.0"), ids::INSP_PHYS_MASS)
         } else {
-            (tr("component.field.collider.1"), ids::INSP_PHYS_DENSITY)
+            (TextKey::new("component.field.collider.1"), ids::INSP_PHYS_DENSITY)
         };
         yy = num_row(
             scene,
@@ -255,7 +255,7 @@ pub(super) fn paint_mass_source(
             x,
             w,
             yy,
-            tr("component.field.collider.1"),
+            TextKey::new("component.field.collider.1"),
             ids::INSP_PHYS_DENSITY,
         );
     }
@@ -340,14 +340,14 @@ pub(super) fn paint_collision_rows(
     // is a world rule and lives in the Physics panel; a body only says where it belongs.
     for (label, group, opts, labels, sel) in [
         (
-            tr("component.field.collider.4"),
+            TextKey::new("component.field.collider.4"),
             ids::INSP_LIVE_PHYSICS_LAYER,
             &ids::INSP_PHYS_LAYER[..],
             &LAYER_LABELS[..],
             layer,
         ),
         (
-            tr("component.field.collider.5"),
+            TextKey::new("component.field.collider.5"),
             ids::INSP_LIVE_PHYSICS_SENSOR,
             &ids::INSP_PHYS_SENSOR[..],
             &SENSOR_LABELS.map(TextKey::tr),
@@ -417,12 +417,12 @@ pub(super) fn paint_collision_rows(
     );
     for (label, id, unit) in [
         (
-            tr("component.field.walk_surface.0"),
+            TextKey::new("component.field.walk_surface.0"),
             ids::INSP_PHYS_WALK_GRIP,
             None,
         ),
         (
-            tr("component.field.walk_surface.1"),
+            TextKey::new("component.field.walk_surface.1"),
             ids::INSP_PHYS_WALK_BELT,
             Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
         ),
@@ -470,12 +470,12 @@ pub(super) fn paint_collision_rows(
     for (id, rotulo, placeholder) in [
         (
             ids::INSP_PHYS_SIGNAL,
-            tr("component.field.signal_on_hit.0"),
+            TextKey::new("component.field.signal_on_hit.0"),
             tr("panel.inspector.physics.signal_on_hit"),
         ),
         (
             ids::INSP_PHYS_SIGNAL_LEAVE,
-            tr("component.field.signal_on_leave.0"),
+            TextKey::new("component.field.signal_on_leave.0"),
             tr("panel.inspector.physics.signal_on_leave"),
         ),
     ] {

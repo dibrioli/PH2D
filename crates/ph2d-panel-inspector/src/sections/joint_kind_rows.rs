@@ -9,6 +9,7 @@
 use super::rows::{num_row, num_row_unit, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorJointInfo;
+use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
@@ -62,8 +63,8 @@ pub(super) fn paint_kind_params(
         if info.limits_enabled {
             let unit = limit_unit(info.kind_tag);
             for (label, id) in [
-                (tr("component.field.joint.5"), ids::INSP_JOINT_LIMIT_MIN),
-                (tr("component.field.joint.6"), ids::INSP_JOINT_LIMIT_MAX),
+                (TextKey::new("component.field.joint.5"), ids::INSP_JOINT_LIMIT_MIN),
+                (TextKey::new("component.field.joint.6"), ids::INSP_JOINT_LIMIT_MAX),
             ] {
                 yy = num_row_unit(
                     scene,
@@ -92,7 +93,7 @@ pub(super) fn paint_kind_params(
             x,
             w,
             yy,
-            tr("component.field.joint.10"),
+            TextKey::new("component.field.joint.10"),
             ids::INSP_JOINT_REST_LENGTH,
             Some(ph2d_editor_core::widget::Unit::Meters),
             None,
@@ -110,7 +111,7 @@ pub(super) fn paint_kind_params(
             x,
             w,
             yy,
-            tr("component.field.joint.24"),
+            TextKey::new("component.field.joint.24"),
             ids::INSP_JOINT_SOFT_GROUP,
             &ids::INSP_JOINT_SOFT,
             &SOFT_LABELS.map(TextKey::tr),
@@ -123,8 +124,8 @@ pub(super) fn paint_kind_params(
     // re-semeia a ESCALA deles.
     if kind_has_spring(info.kind_tag, info.soft) {
         for (label, id) in [
-            (tr("component.field.joint.11"), ids::INSP_JOINT_STIFFNESS),
-            (tr("component.field.joint.12"), ids::INSP_JOINT_DAMPING),
+            (TextKey::new("component.field.joint.11"), ids::INSP_JOINT_STIFFNESS),
+            (TextKey::new("component.field.joint.12"), ids::INSP_JOINT_DAMPING),
         ] {
             yy = num_row(
                 scene,
@@ -146,9 +147,9 @@ pub(super) fn paint_kind_params(
         // dos dois ramos). Um segundo id seria um segundo lugar para o mesmo
         // campo do componente.
         let label = match info.kind_tag {
-            KIND_ROD => tr("panel.inspector.joint.length_m"),
-            KIND_PULLEY => tr("panel.inspector.joint.rope_length_m"),
-            _ => tr("component.field.joint.13"),
+            KIND_ROD => Rotulo::from(tr("panel.inspector.joint.length_m")),
+            KIND_PULLEY => Rotulo::from(tr("panel.inspector.joint.rope_length_m")),
+            _ => Rotulo::from(TextKey::new("component.field.joint.13")),
         };
         yy = num_row(
             scene,

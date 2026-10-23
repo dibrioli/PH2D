@@ -109,7 +109,7 @@ fn the_painter_does_not_hardcode_the_row_labels() {
         // note que `contains('"')` sozinho não serve, porque a porta derivada também leva
         // aspas (o nome canónico é uma string). A pergunta certa é pela PORTA.
         assert!(
-            block.contains("tr(\"component."),
+            block.contains("tr(\"component.") || block.contains("TextKey::new(\"component."),
             "ordering.rs:{start_line}: linha emitida sem a chave do CATALOGO — o rotulo \
              e' `tr(\"component.…\")` (a chave do campo ou, num marcador, a do componente), senao \
              voltam a existir duas fontes para a mesma string (foi assim que 'Sort At Root' e \

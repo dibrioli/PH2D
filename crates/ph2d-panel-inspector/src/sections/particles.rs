@@ -159,7 +159,7 @@ fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Secca
 /// Um segmentado. ⚠️ **A selecção vem do SNAPSHOT, nunca do store** (a lei do irmão de vista de
 /// cima): ler o store faria o primeiro clique depois de trocar de objecto mandar o valor anterior.
 #[allow(clippy::too_many_arguments)]
-fn seg_row(
+fn seg_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -168,7 +168,7 @@ fn seg_row(
     x: f32,
     w: f32,
     y: f32,
-    titulo_txt: &str,
+    titulo_txt: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     ids: &[ph2d_a11y::NodeId],
     rotulos: &[&'static str],
     escolhido: usize,
@@ -203,7 +203,7 @@ fn seg_row(
 /// ⛔⛔ Ela era uma cópia local do [`ph2d_editor_core::property_row::paint_check_row`] com a
 /// altura escrita à mão (`18`, que é a aresta da MARCA e não a altura da LINHA) — o report do
 /// dono de 2026-09-21: *«apenas o checkbox tem sua moldura e ele próprio menores que o padrão»*.
-fn check_row(
+fn check_row<'a>(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -213,7 +213,7 @@ fn check_row(
     w: f32,
     y: f32,
     id: ph2d_a11y::NodeId,
-    label: &str,
+    label: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
     on: bool,
 ) -> f32 {
     // ⚠️ A MESMA coluna que a [`num_row`] desta secção mede, e pela mesma tabela — senão o nome
@@ -250,7 +250,7 @@ fn num_row(
         return y;
     };
     let (chave, step, unidade) = ROTULOS[i];
-    let label = chave.tr();
+    let label = chave;
     // ⭐⭐ **A coluna do nome é da SECÇÃO** (`line/UIUX`, 2026-09-15): aqui ela mede-se da
     //    própria tabela, que É a lista de nomes desta secção — as 19 linhas partilham-na, e
     //    medir só a desta faria a coluna saltar de linha para linha.
@@ -301,7 +301,7 @@ fn vec_row(
         x,
         w,
         y,
-        chave.tr(),
+        chave,
         &[crate::ids::INSP_PART_NUM[i], crate::ids::INSP_PART_NUM[j]],
         step,
         unidade,

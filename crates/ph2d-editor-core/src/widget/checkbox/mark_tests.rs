@@ -47,6 +47,7 @@ fn a_marca_nunca_toca_a_caixa_e_encosta_mais_que_o_texto() {
             hover_t: crate::motion::SETTLED,
             box_px: None,
             decorator: true,
+            pinta_coluna: true,
             linha: Some(crate::widget::Seccao::apenas_campos(1)),
         },
         &mut scene,

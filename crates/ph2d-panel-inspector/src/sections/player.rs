@@ -132,7 +132,7 @@ pub(crate) fn paint_player_section(
         x,
         w,
         yy,
-        tr("component.field.player_mode.0"),
+        TextKey::new("component.field.player_mode.0"),
         ids::INSP_PLAYER_MODE,
         &ids::INSP_PLAYER_MODE_IDS,
         &[
@@ -191,7 +191,7 @@ pub(crate) fn paint_player_section(
         x,
         w,
         yy,
-        tr("component.field.platform_player.52"),
+        TextKey::new("component.field.platform_player.52"),
         ids::INSP_PLAYER_LIFT_POLICY,
         &ids::INSP_PLAYER_LIFT_POLICY_IDS,
         &[
@@ -213,7 +213,7 @@ pub(crate) fn paint_player_section(
         x,
         w,
         yy,
-        tr("component.field.platform_player.53"),
+        TextKey::new("component.field.platform_player.53"),
         ids::INSP_PLAYER_WALK_OFF,
         &ids::INSP_PLAYER_WALK_OFF_IDS,
         &[
@@ -234,7 +234,7 @@ pub(crate) fn paint_player_section(
             x,
             w,
             yy,
-            tr("component.field.platform_player.54"),
+            TextKey::new("component.field.platform_player.54"),
             ids::INSP_PLAYER_CROUCH_WALK_OFF,
             &ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS,
             &[
@@ -485,7 +485,7 @@ fn paint_cards(
                 ix,
                 iw,
                 ry,
-                label.tr(),
+                *label,
                 *id,
                 *unit,
                 coluna,

@@ -131,11 +131,17 @@ pub(crate) fn paint_motion_input_section(
             ColorToken::Warn,
         );
     }
+    let chaves = [
+        TextKey::new("component.field.motion_input_fields.1"),
+        TextKey::new("component.field.motion_input_fields.2"),
+        TextKey::new("component.field.motion_input_fields.3"),
+        TextKey::new("component.field.motion_input_fields.4"),
+    ];
     let rotulos = [
-        tr("component.field.motion_input_fields.1"),
-        tr("component.field.motion_input_fields.2"),
-        tr("component.field.motion_input_fields.3"),
-        tr("component.field.motion_input_fields.4"),
+        chaves[0].tr(),
+        chaves[1].tr(),
+        chaves[2].tr(),
+        chaves[3].tr(),
         tr("panel.inspector.motion_input.graph_reads"),
     ];
     let seccao = Seccao::medida(text_system, 1, &rotulos);
@@ -149,7 +155,7 @@ pub(crate) fn paint_motion_input_section(
         x,
         w,
         cur_y,
-        rotulos[0],
+        chaves[0],
         nome,
         TextInput::new(nome, "").placeholder(tr("panel.inspector.motion_input.name_hint")),
         seccao,
@@ -180,7 +186,7 @@ pub(crate) fn paint_motion_input_section(
         x,
         w,
         cur_y,
-        rotulos[1],
+        chaves[1],
         &fontes,
         seccao,
     );
@@ -194,7 +200,7 @@ pub(crate) fn paint_motion_input_section(
             x,
             w,
             cur_y,
-            rotulos[2],
+            chaves[2],
             &[crate::ids::INSP_MI_VALUE],
             0.01, // LITERAL-PX-OK: passo de arrasto de uma fracção 0..1
             None,
@@ -211,7 +217,7 @@ pub(crate) fn paint_motion_input_section(
             x,
             w,
             cur_y,
-            &[(crate::ids::INSP_MI_COLOR, rotulos[3], i.color)],
+            &[(crate::ids::INSP_MI_COLOR, chaves[3], i.color)],
         );
     }
     fold.finish(store, scene, hit_index, cur_y)

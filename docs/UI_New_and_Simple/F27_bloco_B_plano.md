@@ -66,3 +66,28 @@ guarda o autorado por `(entidade, componente, chave)`.
 
 `marcas()` e `linhas::layout` com N canais: a família genérica multiplica as linhas do
 dope-sheet. A tabela da medição fica aqui antes de qualquer tecto.
+
+## 5 — B2: medido e decidido (23/10)
+
+**A ligação controlo → campo deriva-se do RÓTULO, não do id.** Medido sobre as 188 chamadas de
+linha do Inspector:
+
+| régua | resultado |
+|---|---|
+| nome do id `INSP_*` casa o `key`/`label_key` por regra mecânica | 136 / 1975 (6,9 %) ⛔ |
+| `label_key` do catálogo únicos | 438, partilhados só os `LIMITS_FIELDS` (câmera × scroll, mesmo conceito) e os marcadores |
+| rótulos do catálogo que o Inspector já pinta | 391 / 438 (89 %) |
+| chamadas com id E rótulo do catálogo na MESMA chamada (gerar a tabela do fonte) | 65 / 188 (35 %) ⛔ |
+
+⇒ a linha regista, ao PINTAR, os seus ids sob o rótulo (`key_mark::Rotulo` / `paint_decorator_campo`;
+o `TextKey` do catálogo é a chave), e as marcas e o clique resolvem o rótulo pelo catálogo
+(`canal_componente::chaves_do_rotulo`) no quadro seguinte. Sem tabela à mão; o tipo obriga.
+
+| decisão | porquê |
+|---|---|
+| `FieldKind::Text` é canal (discreto, `TextosDosCanais`) — também o `Named` de texto (o alvo da câmera) | «grava tudo»; o corte para outro alvo num quadro; a tabela de textos já viajava no documento |
+| `View::Not` (o `hidden` do «Visible») é canal do que se VÊ (`1 = visível`) | a curva não pode dizer o contrário do cartão |
+| rótulo partilhado ⇒ as chaves dos dois componentes | o objecto só publica o que tem; o clique só grava o publicado |
+| itens de LISTA (Timers, Tweens, StateMachine, CounterWatch, SignalActions, VecAnchors, ShakeEmitter, resistências) = `Divida` | a chave endereça campos, não «o item n»: desenho próprio |
+| caixa «misto» fora da porta: `Checkbox::coluna_de_fora` + `rows::coluna_da_caixa` | a porta só pinta `bool` |
+| `Look Through` = `Rotulo::vista` (coluna reservada e VAZIA) | estado da vista |

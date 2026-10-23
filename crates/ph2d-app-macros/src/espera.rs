@@ -10,6 +10,25 @@
 use std::collections::BTreeMap;
 
 /// O estado do projeto que o desfazer global fotografa, visto daqui: o `Macro` de cada objecto.
+/// **Os objectos (`StableId`) cuja edição de etapa espera a conta dela**: os `bits` que a composição
+/// alcança (a reescrita do Painter em cena) mais as conferências desta família, por ordem, sem repetir.
+#[must_use]
+pub fn os_que_esperam(world: &ph2d_ecs::World, bits: impl IntoIterator<Item = u64>) -> Vec<u64> {
+    let conferir = crate::com(|m| m.a_conferir_em());
+    let mut ids: Vec<u64> = bits
+        .into_iter()
+        .chain(conferir)
+        .filter_map(|b| {
+            world
+                .get::<ph2d_ecs::StableId>(ph2d_ecs::Entity::from_bits(b))
+                .map(|s| s.0)
+        })
+        .collect();
+    ids.sort_unstable();
+    ids.dedup();
+    ids
+}
+
 pub trait EstadoComMacros: Clone {
     /// Os bytes do componente `Macro` do objecto `id` (`StableId`), se ele o tem.
     fn macro_de(&self, id: u64) -> Option<Vec<u8>>;

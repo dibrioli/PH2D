@@ -13,22 +13,10 @@ impl crate::App {
     /// **Os objectos (`StableId`) cuja edição de etapa espera a conta dela** (W14): a imagem nova da
     /// reescrita ou a conferência da água gravada.
     pub(super) fn macros_que_esperam(&self) -> Vec<u64> {
-        let Some(g) = self.gfx.as_ref() else {
-            return Vec::new();
-        };
-        let mut bits: Vec<u64> = g.painter_macros.a_reescrever_em().collect();
-        bits.extend(ph2d_app_macros::com(|m| m.a_conferir_em()));
-        let w = g.sim.world();
-        let mut ids: Vec<u64> = bits
-            .into_iter()
-            .filter_map(|b| {
-                w.get::<ph2d_ecs::StableId>(ph2d_ecs::Entity::from_bits(b))
-                    .map(|s| s.0)
-            })
-            .collect();
-        ids.sort_unstable();
-        ids.dedup();
-        ids
+        self.gfx.as_ref().map_or_else(Vec::new, |g| {
+            let bits = g.painter_macros.a_reescrever_em();
+            ph2d_app_macros::espera::os_que_esperam(g.sim.world(), bits)
+        })
     }
 
     /// O baseline vira um passo (com a transação de uma reescrita que aterrou) e `atual` o baseline novo.

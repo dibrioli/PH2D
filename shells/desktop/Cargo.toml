@@ -451,6 +451,9 @@ ph2d-node-motion-trail = { path = "../../crates/ph2d-node-motion-trail" }
 ph2d-node-motion-strobe = { path = "../../crates/ph2d-node-motion-strobe" }
 # …e o TERCEIRO escritor da coluna (doc 89 folha 11): o `shadow_blend` do `fx.drop_shadow`.
 ph2d-node-fx-drop-shadow = { path = "../../crates/ph2d-node-fx-drop-shadow" }
+# W18: o gate da imagem de uma macro aplicada que volta do ficheiro (`aplicar::sem_placa`, o `codec`).
+ph2d-app-macros = { path = "../../crates/ph2d-app-macros", features = ["test-support"] }
+ph2d-macro = { path = "../../crates/ph2d-macro" }
 # ⚠️ §2.5 — a feature que torna o `driven_value_for_probe` visível ao `driven_row_smoke`.
 ph2d-app-motion = { path = "../../crates/ph2d-app-motion", features = ["test-support"] }
 # ⚠️ **O arnês do §11 da física** (HOWTO §2.5): três gates ficam nesta shell

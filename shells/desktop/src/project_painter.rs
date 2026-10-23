@@ -19,70 +19,28 @@
 //!    caminho normal do preview) e sobe para um slot novo do `IndividualTextureStore`; o `Sprite.source`
 //!    passa a apontar para ele. Sem isto o sprite carregado referenciaria a textura morta do save.
 
-use ph2d_ecs::{Entity, PaintedDoc};
+use ph2d_app_painter::documentos_no_projecto;
+use ph2d_ecs::Entity;
 use ph2d_render::{Sprite, SpriteSource};
 use ph2d_tool_painter::tool::persist::PaintedDocument;
-use std::collections::BTreeMap;
 
 impl crate::App {
-    /// Carimba um [`PaintedDoc`] em cada sprite que o Painter tem documento, e devolve o mapa
-    /// `entity bits → id estável` que a coleta usa.
-    ///
-    /// Feito no SAVE (e não a cada bind) de propósito: é o único momento em que a identidade precisa
-    /// existir, e assim um documento que o artista abriu e fechou sem pintar não deixa componente
-    /// nenhum no mundo.
-    fn stamp_painted_docs(&mut self) -> BTreeMap<u64, u32> {
-        let Some(gfx) = self.gfx.as_mut() else {
-            return BTreeMap::new();
-        };
-        let Some(painter) = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools)
-        else {
-            return BTreeMap::new();
-        };
-        let entities = painter.document_entities();
-        let mut ids = BTreeMap::new();
-        for bits in entities {
-            let entity = Entity::from_bits(bits);
-            let world = gfx.sim.world_mut();
-            if world.get_entity(entity).is_err() {
-                continue; // o sprite já não existe (deletado); o documento morre com ele
-            }
-            let id = match world.get::<PaintedDoc>(entity) {
-                Some(d) => d.0,
-                None => {
-                    let id = gfx.next_painted_doc;
-                    gfx.next_painted_doc = gfx.next_painted_doc.saturating_add(1);
-                    gfx.sim
-                        .world_mut()
-                        .entity_mut(entity)
-                        .insert(PaintedDoc(id));
-                    id
-                }
-            };
-            ids.insert(bits, id);
-        }
-        ids
-    }
-
-    /// Os documentos do Painter para embutir no arquivo. Vazio quando nada foi pintado.
+    /// Os documentos do Painter para embutir no arquivo (carimba o [`ph2d_ecs::PaintedDoc`]); vazio
+    /// quando nada foi pintado. A lei: [`ph2d_app_painter::documentos_no_projecto::carimba_e_colhe`].
     pub(crate) fn collect_painted_docs(&mut self) -> Vec<PaintedDocument> {
-        let ids = self.stamp_painted_docs();
-        if ids.is_empty() {
-            return Vec::new();
-        }
         let Some(gfx) = self.gfx.as_mut() else {
             return Vec::new();
         };
-        ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools)
-            .map(|p| p.collect_documents(&ids))
-            .unwrap_or_default()
+        let Some(p) = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools) else {
+            return Vec::new();
+        };
+        documentos_no_projecto::carimba_e_colhe(&mut gfx.sim, p, &mut gfx.next_painted_doc)
     }
 
     /// Devolve cada documento ao seu sprite e re-materializa a textura que o sprite mostra.
     ///
-    /// Roda DEPOIS de `apply_project` (o mundo já foi restaurado, com bits novos): varre os sprites
-    /// procurando o [`PaintedDoc`] e reata cada um ao documento de mesmo id. É o mesmo padrão do
-    /// `cooked_texture_bridge` — o snapshot referencia simbolicamente, um bridge materializa.
+    /// Roda DEPOIS de `apply_project` (o mundo já foi restaurado, com bits novos); o reatar pelo id
+    /// estável é de [`documentos_no_projecto::devolve`], a textura é daqui.
     pub(crate) fn restore_painted_docs(&mut self, docs: Vec<PaintedDocument>) {
         if docs.is_empty() {
             return;
@@ -90,41 +48,12 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        // Ids futuros nesta sessão não podem colidir com os do projeto (o contrato do `next_import_cell`).
-        if let Some(max) = docs.iter().map(|d| d.id).max() {
-            gfx.next_painted_doc = gfx.next_painted_doc.max(max.saturating_add(1));
-        }
-        // 1. Que sprite (bits NOVOS) tem que documento (id estável)?
-        let mut targets: Vec<(u64, u32)> = Vec::new();
-        {
-            let world = gfx.sim.world_mut();
-            let mut q = world.query::<(Entity, &PaintedDoc)>();
-            for (e, d) in q.iter(world) {
-                targets.push((e.to_bits(), d.0));
-            }
-        }
-        if targets.is_empty() {
+        let Some(p) = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools) else {
             return;
-        }
-        let by_id: BTreeMap<u32, PaintedDocument> = docs.into_iter().map(|d| (d.id, d)).collect();
-
-        // 2. Instala no Painter e compõe os pixels que o sprite deve mostrar. O composite sai do
-        //    caminho NORMAL do preview (que já assa a luz do impasto) — não há um segundo bake aqui.
-        let mut baked: Vec<(u64, Vec<u8>, u32, u32)> = Vec::new();
-        if let Some(painter) = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools) {
-            for (bits, id) in &targets {
-                let Some(doc) = by_id.get(id).cloned() else {
-                    continue; // sprite carimbado sem documento no arquivo — nada a devolver
-                };
-                painter.install_document(*bits, doc);
-                if let Some((px, w, h)) = painter.baked_document_pixels(*bits) {
-                    baked.push((*bits, px, w, h));
-                }
-            }
-        }
-
-        // 3. Sobe cada composite para uma textura individual NOVA e re-aponta o sprite: o `texture_id`
-        //    do save morreu com o processo que o criou.
+        };
+        let baked = documentos_no_projecto::devolve(&mut gfx.sim, p, &mut gfx.next_painted_doc, docs);
+        // Sobe cada composite para uma textura individual NOVA e re-aponta o sprite: o `texture_id`
+        // do save morreu com o processo que o criou.
         for (bits, mut px, w, h) in baked {
             // O sprite amostra PREMULTIPLICADO — o mesmo passo que o bridge do preview e o Apply dão.
             ph2d_render::premultiply_rgba8(&mut px);

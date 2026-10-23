@@ -245,6 +245,53 @@ pub fn aplica(
     Ok(raiz)
 }
 
+/// **Aplicar sem placa** (os gates que só a composição alcança): a imagem nasce como a porta de produto
+/// a deixa no mundo, sem o atlas — os píxeis são do documento do Painter.
+#[cfg(feature = "test-support")]
+pub fn sem_placa(
+    fi: &Ficheiro,
+    onde: OndeAplicar,
+    sim: &mut SimWorld,
+    painter: &mut PainterTool,
+    motion: &mut dyn ph2d_editor_core::macro_tutorial::GravadoraQueEnsina,
+    raiz: &dyn Fn(&mut SimWorld, &str) -> u64,
+) -> Result<u64, ErroDaMacroView> {
+    let mut imagem = |s: &mut SimWorld, i: Imagem| {
+        let b = s
+            .world_mut()
+            .spawn((Name::new(i.nome), Transform::IDENTITY))
+            .id();
+        ph2d_ecs::assign_missing_stable_ids(s.world_mut());
+        Ok(b.to_bits())
+    };
+    let (mut pixeis, e_imagem) = (|_: &SimWorld, _: u64| None, |_: &SimWorld, _: u64| false);
+    let mut portas = Portas {
+        raiz,
+        imagem: &mut imagem,
+        pixeis: &mut pixeis,
+        e_imagem: &e_imagem,
+        centro: [0.0, 0.0],
+    };
+    let mut f = Familias {
+        painter: Some(painter),
+        painter_activo: false,
+        motion,
+        motion_em_edicao: None,
+        motion_na_mao: false,
+        etapas: &[],
+        escolhido: None,
+        portas: None,
+    };
+    let mut tl = ph2d_timeline::TimelineState::default();
+    let mut c = Cena {
+        sim,
+        timeline: &mut tl,
+        intents: &mut Vec::new(),
+        partidas: None,
+    };
+    aplica(fi, onde, &mut f, &mut c, &mut portas)
+}
+
 /// O objecto Macro de nome `nome` com a pose `t`; devolve os bits.
 fn nasce_a_raiz(sim: &mut SimWorld, portas: &Portas<'_>, nome: &str, t: Transform) -> u64 {
     let b = (portas.raiz)(sim, nome);

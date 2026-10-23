@@ -48,6 +48,8 @@ pub mod canvas_map;
 pub mod image_edit_mode;
 /// As macros do Painter em cena (ADR-0186, W4 item 5.5 D).
 pub mod macro_track;
+/// Os documentos do Painter no ficheiro de projecto (a metade sem placa da porta da shell).
+pub mod documentos_no_projecto;
 pub mod paint_mode;
 /// `PH2D_PAINT_PERF` aggregation (one summary line per window, not per frame).
 ///

@@ -194,3 +194,9 @@ caminho → blake3; o MESMO para o painel Assets e o script); a troca é o `Imag
 (`script_image::upload`, na `fase_macros_do_painter`, antes do extract) e as texturas devolvem-se no rebobinar; o
 extract desenha a imagem inteira no `Sprite.size` autorado (`script_image::cut`). `source` fica oculta com
 `Hidden::ScriptDoor`.
+
+**d4 FEITA** (22/10, `6c0987b565`): as referências pelo NOME do alvo (`View::Named` — objecto, tag, camada; campos de
+variante `top:MOLDE/rest`; `RefNames`/`ScriptDoors.tags`). **d4b** `5d95dd7853` · catálogo `aab733e875` · fecho
+`3e88dc7bc1` (a lei da soltura desceu para `ph2d-code-syntax/src/dropping.rs`; `ph2d.set` volta a perguntar a
+`lane::is_named_property`). Detalhe e superfície no [handoff de integração](handoffs/HANDOFF_INTEGRACAO_line_CodeEditor_2026-10-22_ONDA2_ATE_8D.md).
+**Falta:** d5 (cena `PH2D_CODE_SMOKE=8`), 8b, 8c e a mutação das leis do 8d.

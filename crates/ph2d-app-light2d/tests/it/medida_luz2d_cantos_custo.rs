@@ -11,6 +11,8 @@
 //! (preenche + visibilidade + fina) e as parcelas da rodada mínima. A lei W6d entra duas vezes — o 2.º
 //! solver é o controlo do ruído. As câmeras correm uma de cada vez (7 solvers vivos, não 49).
 
+use std::collections::BTreeSet;
+
 use ph2d_app_light2d::smoke;
 use ph2d_light2d_gpu::{Canto, Config, VERTICE_PADRAO};
 use ph2d_render::Camera2d;
@@ -289,4 +291,151 @@ fn medida_luz2d_cantos_custo() {
         }
     }
     eprintln!("# loadavg depois {}", loadavg());
+}
+
+/// Algum bloco 8×8 da captura com entrada na tabela dos cantos (superconjunto das cunhas) no retângulo do
+/// segmento `p0`–`ps` dilatado por 17 texels da fina (o raio do `num_corpo`, W6h §8 i).
+const PERTO_DE_CUNHA: &str = "
+fn perto_de_cunha(p0: vec2<f32>, ps: vec2<f32>, h: f32) -> bool {
+    let n = vec2<i32>(vec2<f32>(cas.tamanho) * ESCALA_DA_CAPTURA);
+    let r = 17.0 * h * ESCALA_DA_CAPTURA;
+    let lo = clamp(vec2<i32>(floor(min(p0, ps) * ESCALA_DA_CAPTURA - r)), vec2<i32>(0), n - 1) / 8;
+    let hi = clamp(vec2<i32>(floor(max(p0, ps) * ESCALA_DA_CAPTURA + r)), vec2<i32>(0), n - 1) / 8;
+    for (var y = lo.y; y <= hi.y; y++) {
+        for (var x = lo.x; x <= hi.x; x++) {
+            if cantos_tabela[y * ((n.x + 7) / 8) + x] != 0u {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+";
+
+/// O módulo do padrão com a sonda `7` (W6h §9.1 b): o texel que tomou uma semente do JFA SEM PORTA no
+/// `onde_calcular` (a janela 5×5 sem texel de fora: nenhum filtro de distância) grava `-7` e a maior distância
+/// às sementes, em texels da fina; os outros da fina `-3`. A mistura do translúcido sai com a sonda. `fundo`: o
+/// `FUNDO_SEM_LUZ` ligado à força (o que o miolo do padrão liga; com ele a sonda não chega à fluência).
+fn modulo_sem_porta(cfg: &Config, fundo: bool) -> &'static str {
+    let mut f = ph2d_light2d_gpu::fonte_do_rc(
+        cfg.aritmetica,
+        cfg.armazenamento,
+        cfg.hrc_niveis_em_textura(),
+    )
+    .to_owned();
+    let troca = |f: &mut String, velho: &str, novo: &str| {
+        assert_eq!(f.matches(velho).count(), 1, "{velho}");
+        *f = f.replace(velho, novo);
+    };
+    troca(
+        &mut f,
+        "var<private> canto_adiado: bool = false;",
+        "var<private> canto_adiado: bool = false;\nvar<private> sem_porta: f32 = -1.0;\nvar<private> sem_porta_cunha: bool = false;",
+    );
+    troca(
+        &mut f,
+        "                cand[n_cand] = na_fronteira(P0, ps);",
+        "                if na_janela == 0u {\n                    sem_porta = max(sem_porta, distance(ps, P0) / h);\n                    sem_porta_cunha = sem_porta_cunha || perto_de_cunha(P0, ps, h);\n                }\n                cand[n_cand] = na_fronteira(P0, ps);",
+    );
+    troca(
+        &mut f,
+        "        case 6u: { return vec3<f32>((onde.p2 - P0) / h, onde.f2); }",
+        "        case 6u: { return vec3<f32>((onde.p2 - P0) / h, onde.f2); }\n        case 7u: { return vec3<f32>(select(-3.0, -7.0, sem_porta >= 0.0), max(sem_porta, 0.0), select(0.0, 1.0, sem_porta_cunha)); }",
+    );
+    f.push_str(PERTO_DE_CUNHA);
+    troca(
+        &mut f,
+        "    if !MIOLO && translucido {",
+        "    if !MIOLO && translucido && SONDA == 0u {",
+    );
+    if fundo {
+        troca(
+            &mut f,
+            "    if !FUNDO_SEM_LUZ {\n        return false;\n    }\n    if lid == 0u {",
+            "    if lid == 0u {",
+        );
+        troca(
+            &mut f,
+            "    if !FUNDO_SEM_LUZ || tau > 0.0 ||",
+            "    if tau > 0.0 ||",
+        );
+    }
+    Box::leak(f.into_boxed_str())
+}
+
+/// **O censo das sementes sem porta** (handoff W6h §9.1): por cena 1–8 (vista de fábrica) e pelas 7 câmeras,
+/// o padrão sem miolo (a sonda só chega à fluência sem ele) com o [`modulo_sem_porta`], a saltar o fundo como o
+/// miolo do padrão faz e sem saltar:
+/// os texels da fina, os que tomaram semente sem porta, os grupos 8×8 deles e a maior distância. À mão:
+///
+/// ```text
+/// PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-app-light2d --profile smoke --test it \
+///     medida_luz2d_sementes_sem_porta -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "o censo das sementes sem porta: corre-se à mão (cabeçalho)"]
+fn medida_luz2d_sementes_sem_porta() {
+    let Some(gpu) = gpu() else {
+        eprintln!("medida: sem placa");
+        return;
+    };
+    let fabrica = (1..=8u32).map(|n| (n, Camera::Zoom(1.0)));
+    for (n, cam) in fabrica.chain(CAMERAS) {
+        let mut w = bevy_ecs::world::World::new();
+        assert!(smoke::encenar(&mut w, n));
+        let cena = ph2d_light2d_ecs::coleta::cena_de_luz(&w);
+        let a = afim(cam);
+        let padrao = variante(config(&gpu, a, false), 4);
+        for (rotulo, fundo) in [("salta o fundo", true), ("sem saltar", false)] {
+            let cfg = Config {
+                miolo: None,
+                sonda: 7,
+                modulo_rc: Some(modulo_sem_porta(&padrao, fundo)),
+                ..padrao
+            };
+            let mut s = solver(&gpu, a, cfg);
+            for _ in 0..3 {
+                s.quadro(&gpu, &cena);
+            }
+            let t = s.fluencia();
+            let f32_ = t.format() == wgpu::TextureFormat::Rgba32Float;
+            let bpp = if f32_ { 16 } else { 8 };
+            let b = crate::comum::ler(&gpu, t, bpp);
+            let canal = |k: usize, c: usize| {
+                let o = k * bpp as usize + c * bpp as usize / 4;
+                if f32_ {
+                    f32::from_le_bytes(b[o..o + 4].try_into().expect("f32"))
+                } else {
+                    half::f16::from_le_bytes([b[o], b[o + 1]]).to_f32()
+                }
+            };
+            let (largura, altura) = (t.width() as usize, t.height() as usize);
+            let (mut fina, mut sem, mut longe, mut max, mut cunha) = (0u64, 0u64, 0u64, 0f32, 0u64);
+            let (mut grupos, mut grupos_cunha) = (BTreeSet::new(), BTreeSet::new());
+            for k in 0..largura * altura {
+                let r = canal(k, 0);
+                if r == -3.0 {
+                    fina += 1;
+                } else if r == -7.0 {
+                    fina += 1;
+                    sem += 1;
+                    let d = canal(k, 1);
+                    max = max.max(d);
+                    longe += u64::from(d > 17.0);
+                    grupos.insert((k % largura / 8, k / largura / 8));
+                    if canal(k, 2) == 1.0 {
+                        cunha += 1;
+                        grupos_cunha.insert((k % largura / 8, k / largura / 8));
+                    }
+                }
+            }
+            eprintln!(
+                "SEM PORTA · cena {n} · {} · {rotulo} · fina {fina} · sem porta {sem} ({:.3} %) · grupos ~{} · > 17 texels {longe} · max {max:.1} · perto de cunha {cunha} em ~{} grupos",
+                nome(cam),
+                100.0 * sem as f64 / fina.max(1) as f64,
+                grupos.len(),
+                grupos_cunha.len()
+            );
+        }
+    }
 }

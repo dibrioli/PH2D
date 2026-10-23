@@ -44,7 +44,8 @@ fn todo_pedido_de_adaptador_passa_pela_vez() {
             for (i, _) in fonte.match_indices(agulha) {
                 vistos += 1;
                 let rel = f.strip_prefix(&raiz).unwrap_or(f).display().to_string();
-                no_contexto |= rel.ends_with("ph2d-gpu/src/context.rs");
+                // Por componentes: no Windows o `rel` traz `\`.
+                no_contexto |= f.ends_with(Path::new("ph2d-gpu/src/context.rs"));
                 // Da `fn` que o contém até ao pedido.
                 let inicio = fonte[..i].rfind("fn ").unwrap_or(0);
                 if !fonte[inicio..i].contains(vez) {

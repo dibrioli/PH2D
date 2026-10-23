@@ -75,13 +75,14 @@ pub fn marcas(
     valor: impl Fn(u64, PropKind) -> Option<f32>,
 ) -> BTreeMap<NodeId, KeyMark> {
     let mut out = BTreeMap::new();
+    let lig = ph2d_timeline::Ligacoes::de(doc, &[entidade], inst);
     for l in obj.layers() {
         for &(campo, kinds) in CAMPOS {
             let Some(kk) = crate::canais_camada::chave(campo, l.id) else {
                 continue;
             };
             let reps = [PropKind::Field(kk)];
-            let m = marca(ph2d_timeline::estado_do_grupo(doc, &[entidade], &reps, inst, &valor).0);
+            let m = marca(lig.estado(&reps, &valor).0);
             for &k in kinds {
                 out.insert(flip_layer_widget_id(u64::from(l.id.0), k), m);
             }

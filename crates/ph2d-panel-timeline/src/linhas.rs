@@ -337,3 +337,7 @@ pub(crate) fn keys_in_rect(
 #[cfg(test)]
 #[path = "linhas_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "linhas_custo_tests.rs"]
+mod custo;

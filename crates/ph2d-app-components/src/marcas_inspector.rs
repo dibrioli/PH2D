@@ -306,10 +306,11 @@ pub fn marcas(
     }
     // Um grupo é perguntado uma vez: os cantos, os interruptores e os eixos repetem-no.
     let mut por_grupo: BTreeMap<&[PropKind], KeyMark> = BTreeMap::new();
+    let lig = ph2d_timeline::Ligacoes::de(doc, entidades, inst);
     for (id, reps) in todos() {
-        let m = *por_grupo.entry(reps).or_insert_with(|| {
-            marca(ph2d_timeline::estado_do_grupo(doc, entidades, reps, inst, &valor).0)
-        });
+        let m = *por_grupo
+            .entry(reps)
+            .or_insert_with(|| marca(lig.estado(reps, &valor).0));
         out.insert(id, m);
     }
     out
@@ -369,3 +370,7 @@ pub fn clique(
 #[cfg(test)]
 #[path = "marcas_inspector_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "marcas_inspector_custo_tests.rs"]
+mod custo;

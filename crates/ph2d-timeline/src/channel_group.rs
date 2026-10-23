@@ -5,6 +5,8 @@
 //! losango acende se QUALQUER membro tem chave, e o clique grava ou apaga o grupo todo. Os grupos
 //! de família (`PropKind::Field`) alargam-se por `FieldKey::mesmo_grupo`; os outros são a lista dada.
 
+use std::collections::BTreeMap;
+
 use crate::{ChannelMark, PropKind, SelectedKey, TimelineDoc, TimelineIntent};
 use ph2d_ecs::FieldKey;
 
@@ -31,24 +33,104 @@ pub enum Forca {
     Mudado,
 }
 
-fn mesmo_canal(p: PropKind, rep: PropKind) -> bool {
-    match (p, rep) {
-        (PropKind::Field(a), PropKind::Field(b)) => a.mesmo_grupo(b),
-        _ => p == rep,
+/// O GRUPO de um canal: o da família (`FieldKey::grupo`), ou o próprio canal — dois canais são do
+/// mesmo grupo se e só se o endereço é igual (a lei de `FieldKey::mesmo_grupo`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Grupo {
+    Familia((u16, u16, u16)),
+    Canal(PropKind),
+}
+
+fn grupo_de(p: PropKind) -> Grupo {
+    match p {
+        PropKind::Field(k) => k.grupo().map_or(Grupo::Canal(p), Grupo::Familia),
+        _ => Grupo::Canal(p),
     }
 }
 
-/// Os canais do grupo `reps` que `entity` tem LIGADOS na timeline.
-fn ligados(doc: &TimelineDoc, entity: u64, reps: &[PropKind]) -> Vec<PropKind> {
-    doc.bindings()
-        .iter()
-        .filter(|b| b.entity == entity && reps.iter().any(|&r| mesmo_canal(b.prop, r)))
-        .map(|b| b.prop)
-        .collect()
+/// ⭐ **As ligações dos objectos `entidades` por GRUPO, e o relógio de cada um** — construídas UMA
+/// vez por quadro por quem pergunta por centenas de grupos (o Inspector inteiro, os campos do
+/// vetor, as camadas do Flip). Sem elas cada grupo varria todas as ligações do documento e recompunha
+/// o `remapped_time`: 17 ms por quadro com 462 canais (plano F27 §4).
+pub struct Ligacoes<'d> {
+    doc: &'d TimelineDoc,
+    inst: Instante,
+    /// `(entidade, t_src)`, pela ordem de `entidades`.
+    relogios: Vec<(u64, f64)>,
+    /// Os índices em `doc.bindings()` de cada `(entidade, grupo)`, pela ordem do documento.
+    por_grupo: BTreeMap<(u64, Grupo), Vec<usize>>,
 }
 
-/// ⭐ **O estado do grupo `reps` nos objectos `entidades`** — o mais forte entre membros e objectos
-/// — e as chaves deste quadro (para o clique as apagar). `valor(e, p)` = o que o mundo vale agora.
+impl<'d> Ligacoes<'d> {
+    /// As ligações dos objectos `entidades` do documento, no instante `inst`.
+    #[must_use]
+    pub fn de(doc: &'d TimelineDoc, entidades: &[u64], inst: Instante) -> Self {
+        let mut por_grupo: BTreeMap<(u64, Grupo), Vec<usize>> = BTreeMap::new();
+        for (i, b) in doc.bindings().iter().enumerate() {
+            if entidades.contains(&b.entity) {
+                por_grupo
+                    .entry((b.entity, grupo_de(b.prop)))
+                    .or_default()
+                    .push(i);
+            }
+        }
+        let relogios = (entidades.iter())
+            .map(|&e| (e, crate::remapped_time(doc, e, inst.t_cut)))
+            .collect();
+        Self {
+            doc,
+            inst,
+            relogios,
+            por_grupo,
+        }
+    }
+
+    /// ⭐ **O estado do grupo `reps`** — o mais forte entre membros e objectos — e as chaves deste
+    /// quadro (para o clique as apagar). `valor(e, p)` = o que o mundo vale agora.
+    #[must_use]
+    pub fn estado(
+        &self,
+        reps: &[PropKind],
+        valor: &impl Fn(u64, PropKind) -> Option<f32>,
+    ) -> (Forca, Vec<SelectedKey>) {
+        let mut grupos: Vec<Grupo> = reps.iter().map(|&r| grupo_de(r)).collect();
+        grupos.sort_unstable();
+        grupos.dedup();
+        let mut forca = Forca::Livre;
+        let mut chaves = Vec::new();
+        for &(e, t_src) in &self.relogios {
+            let mut ix: Vec<usize> = (grupos.iter())
+                .filter_map(|&g| self.por_grupo.get(&(e, g)))
+                .flatten()
+                .copied()
+                .collect();
+            ix.sort_unstable();
+            for b in ix.into_iter().map(|i| &self.doc.bindings()[i]) {
+                let mark = crate::channel_mark::channel_mark_b(
+                    self.doc,
+                    b,
+                    t_src,
+                    self.inst.solo,
+                    valor(e, b.prop),
+                );
+                let m = match mark {
+                    ChannelMark::Livre => Forca::Livre,
+                    ChannelMark::Animado => Forca::Animado,
+                    ChannelMark::Chave(k) => {
+                        chaves.push(k);
+                        Forca::Chave
+                    }
+                    ChannelMark::Mudado => Forca::Mudado,
+                };
+                forca = forca.max(m);
+            }
+        }
+        (forca, chaves)
+    }
+}
+
+/// [`Ligacoes::estado`] de um grupo só (o clique; quem pergunta por muitos constrói as
+/// [`Ligacoes`] uma vez).
 #[must_use]
 pub fn estado_do_grupo(
     doc: &TimelineDoc,
@@ -57,24 +139,7 @@ pub fn estado_do_grupo(
     inst: Instante,
     valor: &impl Fn(u64, PropKind) -> Option<f32>,
 ) -> (Forca, Vec<SelectedKey>) {
-    let mut forca = Forca::Livre;
-    let mut chaves = Vec::new();
-    for &e in entidades {
-        let t_src = crate::remapped_time(doc, e, inst.t_cut);
-        for p in ligados(doc, e, reps) {
-            let m = match crate::channel_mark(doc, e, p, t_src, inst.solo, valor(e, p)) {
-                ChannelMark::Livre => Forca::Livre,
-                ChannelMark::Animado => Forca::Animado,
-                ChannelMark::Chave(k) => {
-                    chaves.push(k);
-                    Forca::Chave
-                }
-                ChannelMark::Mudado => Forca::Mudado,
-            };
-            forca = forca.max(m);
-        }
-    }
-    (forca, chaves)
+    Ligacoes::de(doc, entidades, inst).estado(reps, valor)
 }
 
 /// ⭐ **O que o clique no losango do grupo `reps` escreve.** Com chave neste quadro em algum membro

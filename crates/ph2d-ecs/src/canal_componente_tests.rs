@@ -180,7 +180,13 @@ fn cada_rotulo_nomeia_um_conceito_so() {
         for f in d.fields {
             n += 1;
             let e = vistos.entry(f.label_key).or_insert((f.kind, faixas(f), 0));
-            assert_eq!((e.0, e.1), (f.kind, faixas(f)), "{} · {}", d.canonical_name, f.label_key);
+            assert_eq!(
+                (e.0, e.1),
+                (f.kind, faixas(f)),
+                "{} · {}",
+                d.canonical_name,
+                f.label_key
+            );
             e.2 += 1;
             assert!(campo_do_rotulo(f.label_key).is_some(), "{}", f.label_key);
         }
@@ -188,7 +194,10 @@ fn cada_rotulo_nomeia_um_conceito_so() {
     for (r, &(_, fx, quantos)) in &vistos {
         let ks = chaves_do_rotulo(r);
         assert_eq!(ks.len(), usize::from(fx) * quantos, "{r}");
-        assert!(ks.iter().all(|&k| resolver(k).is_some_and(|(_, g, _)| g.label_key == *r)));
+        assert!(
+            ks.iter()
+                .all(|&k| resolver(k).is_some_and(|(_, g, _)| g.label_key == *r))
+        );
     }
     let partilhados: Vec<_> = (vistos.iter())
         .filter(|(_, v)| v.2 > 1 && v.1 > 0)
@@ -196,7 +205,10 @@ fn cada_rotulo_nomeia_um_conceito_so() {
         .collect();
     assert_eq!(
         partilhados,
-        ["component.field.limits_fields.0", "component.field.limits_fields.1"],
+        [
+            "component.field.limits_fields.0",
+            "component.field.limits_fields.1"
+        ],
         "rótulos de canal partilhados entre componentes"
     );
     assert!(n > 300, "controlo: {n} campos — a varredura mediu o nada");
@@ -207,12 +219,45 @@ fn cada_rotulo_nomeia_um_conceito_so() {
 #[test]
 fn o_visible_le_e_escreve_o_que_se_ve() {
     let d = ph2d_component_desc::all()
-        .find(|d| d.fields.iter().any(|f| f.label_key == "component.field.visibility.1"))
+        .find(|d| {
+            d.fields
+                .iter()
+                .any(|f| f.label_key == "component.field.visibility.1")
+        })
         .expect("Visibility");
     let f = &d.fields[0];
     assert_eq!(faixas(f), 1);
-    assert_eq!(ler_valor(f, 0, &Value::Bool(false)), Some(1.0), "não escondido = visível");
+    assert_eq!(
+        ler_valor(f, 0, &Value::Bool(false)),
+        Some(1.0),
+        "não escondido = visível"
+    );
     let mut v = Value::Bool(false);
     assert!(escrever_valor(f, 0, &mut v, 0.0));
     assert_eq!(v, Value::Bool(true), "0 = escondido");
+}
+
+/// ⭐ **O `info` de um canal não faz hash** (plano F27 §4): o id do componente vem da CHAVE. O
+/// `blake3` do nome por chamada custava 51 ms por quadro ao losango com 462 canais.
+#[test]
+fn o_info_le_o_id_da_chave_sem_hash() {
+    let fonte = include_str!("canal_componente.rs");
+    let corpo = fonte
+        .split("pub fn info(k: FieldKey)")
+        .nth(1)
+        .and_then(|s| s.split("\n}\n").next())
+        .expect("o `info` existe com esta assinatura");
+    for proibido in [["id32", "("].concat(), ["stable_type", "_id("].concat()] {
+        assert!(
+            !corpo.contains(&proibido),
+            "o `info` voltou a chamar `{proibido}`"
+        );
+    }
+    let k = chave("ph2d::ecs::GameCamera", 1, 1).expect("o offset Y da câmera");
+    assert!(info(k).is_some_and(|i| {
+        i.grupo
+            == info(chave("ph2d::ecs::GameCamera", 1, 0).unwrap())
+                .unwrap()
+                .grupo
+    }));
 }

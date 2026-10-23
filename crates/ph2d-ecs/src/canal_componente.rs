@@ -157,7 +157,10 @@ pub fn chaves_de(d: &'static ComponentDesc) -> impl Iterator<Item = FieldKey> {
 
 #[must_use]
 pub fn info(k: FieldKey) -> Option<CampoInfo> {
-    let (d, f, _) = resolver(k)?;
+    let (_, f, _) = resolver(k)?;
+    // ⚠️ O id vem da CHAVE, nunca do hash do nome: o blake3 por chamada custava 51 ms por quadro ao
+    // losango com 462 canais (plano F27 §4).
+    let id = u32::from(k.i) << 16 | u32::from(k.j);
     Some(CampoInfo {
         rotulo: f.label_key,
         discreto: matches!(
@@ -168,7 +171,7 @@ pub fn info(k: FieldKey) -> Option<CampoInfo> {
                 | FieldKind::Enum
                 | FieldKind::Text
         ),
-        grupo: *tabela().grupos.get(&(id32(d.canonical_name), f.field_id))?,
+        grupo: *tabela().grupos.get(&(id, f.field_id))?,
         por_i: false,
         texto: f.kind == FieldKind::Text,
     })
@@ -262,7 +265,11 @@ pub fn ler_valor(f: &FieldDesc, faixa: u16, v: &Value) -> Option<f32> {
         Value::Number(n) => n.as_f64().map(|x| x as f32),
         // ⭐ `View::Not` (o `hidden` que o cartão mostra como «Visible»): o canal é o que o artista
         // vê, ou a curva diria o contrário do losango.
-        Value::Bool(b) => Some(if *b != matches!(f.view, View::Not) { 1.0 } else { 0.0 }),
+        Value::Bool(b) => Some(if *b != matches!(f.view, View::Not) {
+            1.0
+        } else {
+            0.0
+        }),
         _ => None,
     }
 }
@@ -273,7 +280,11 @@ pub fn escrever_valor(f: &FieldDesc, faixa: u16, v: &mut Value, x: f32) -> bool 
     if !x.is_finite() {
         return false;
     }
-    let x = if matches!(f.view, View::Not) { 1.0 - x } else { x };
+    let x = if matches!(f.view, View::Not) {
+        1.0 - x
+    } else {
+        x
+    };
     let Some(e) = escolhas(f) else {
         return lugar(f, faixa, v).is_some_and(|slot| numero(slot, x));
     };

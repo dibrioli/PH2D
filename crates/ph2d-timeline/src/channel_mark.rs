@@ -36,13 +36,25 @@ pub fn channel_mark(
     solo: bool,
     world: Option<f32>,
 ) -> ChannelMark {
-    let Some(b) = doc.binding_for(entity, prop) else {
-        return ChannelMark::Livre;
-    };
+    match doc.binding_for(entity, prop) {
+        Some(b) => channel_mark_b(doc, b, t_src, solo, world),
+        None => ChannelMark::Livre,
+    }
+}
+
+/// [`channel_mark`] com a ligação JÁ resolvida (quem pergunta por centenas de grupos:
+/// [`crate::channel_group::Ligacoes`]).
+pub(crate) fn channel_mark_b(
+    doc: &TimelineDoc,
+    b: &crate::TargetBinding,
+    t_src: f64,
+    solo: bool,
+    world: Option<f32>,
+) -> ChannelMark {
     let Some(track) = doc.active_clip().track(b.target).filter(|t| !t.is_empty()) else {
         return ChannelMark::Livre;
     };
-    let curva = crate::autokey::curve_seen(doc, entity, prop, t_src, solo);
+    let curva = crate::autokey::curve_seen_b(doc, b.entity, b.prop, Some(b), t_src, solo);
     // ⚠️ `!=` exacto, a regra do diff do auto-key: o apply escreve no mundo o próprio `f32` da curva.
     if let (Some(v), Some(c)) = (world, curva)
         && v != c

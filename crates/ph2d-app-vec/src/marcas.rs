@@ -380,11 +380,12 @@ pub fn marcas(
     if entidades.is_empty() {
         return out;
     }
+    let lig = ph2d_timeline::Ligacoes::de(doc, entidades, inst);
     for id in ids(ctx) {
         let reps = canal_do_campo(id, ctx);
-        let m = *por_grupo.entry(reps).or_insert_with_key(|reps| {
-            marca(ph2d_timeline::estado_do_grupo(doc, entidades, reps, inst, &valor).0)
-        });
+        let m = *por_grupo
+            .entry(reps)
+            .or_insert_with_key(|reps| marca(lig.estado(reps, &valor).0));
         out.insert(id, m);
     }
     out

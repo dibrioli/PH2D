@@ -67,6 +67,41 @@ guarda o autorado por `(entidade, componente, chave)`.
 `marcas()` e `linhas::layout` com N canais: a família genérica multiplica as linhas do
 dope-sheet. A tabela da medição fica aqui antes de qualquer tecto.
 
+**Medido 23/10** (sondas `#[ignore]` `marcas_inspector_custo_tests.rs` e `linhas_custo_tests.rs`,
+`--profile smoke`, 9 rodadas × blocos de 20 intercalados, o MÍNIMO, `load` 13–21; o catálogo tem
+**462** canais e **438** rótulos). Um quadro do Inspector cheio = registo + `rotulos_pintados` +
+`do_rotulo` × R + `marcas()`:
+
+| variante (canais animados × objectos · rótulos pintados) | registo | `rotulos_pintados` | `do_rotulo` × R | `marcas()` antes | `marcas()` depois |
+|---|---|---|---|---|---|
+| 0 × 1 · 40 | 31 µs | 0,6 µs | 0,9 µs | 19,5 µs | 21,8 µs |
+| 0 × 1 · 438 | 343 µs | 5,8 µs | 14 µs | 83 µs | 108 µs |
+| 64 × 1 · 438 | 349 µs | 5,9 µs | 14 µs | ⛔ **6 855 µs** | 131 µs |
+| 462 × 1 · 438 | 345 µs | 5,8 µs | 15 µs | ⛔ **51 522 µs** | 228 µs |
+| 462 × 16 · 438 | 349 µs | 5,8 µs | 15 µs | ⛔ **56 156 µs** | 239 µs |
+
+Duas causas, as duas curadas (nenhum tecto):
+
+1. `canal_componente::info` fazia o `blake3` do nome do componente a CADA chamada, e `mesmo_grupo`
+   chama-o duas vezes por comparação — o id vem agora da chave (51,5 → 17,4 ms; gate
+   `o_info_le_o_id_da_chave_sem_hash`).
+2. `estado_do_grupo` varria TODAS as ligações por grupo (e recompunha o `remapped_time`): ~560
+   grupos × N ligações. ⇒ `ph2d_timeline::Ligacoes` — o índice `(objecto, grupo)` e o relógio de
+   cada objecto, construídos uma vez por quadro, nos três pintores do losango (Inspector, vetor,
+   camadas do Flip); `estado_do_grupo` passa a ser o caso de um grupo só (17,4 → 0,23 ms; gate
+   `as_ligacoes_respondem_o_que_a_varredura_respondia`, com mutação vista vermelha).
+
+O registo é ~0,8 µs por rótulo PINTADO (a pintura do ponto incluída): o Inspector real pinta as
+secções abertas (~40 linhas ⇒ ~31 µs). `linhas::layout` é linear e não pede cura:
+
+| faixas no dope-sheet | linhas | `layout()` |
+|---|---|---|
+| 8 | 8 | 1,4 µs |
+| 64 | 47 | 10,6 µs |
+| 462 | 386 | 85 µs |
+| 462, grupos abertos | 506 | 87 µs |
+| 7 392 (462 × 16 objectos), grupos abertos | 8 096 | 2 074 µs |
+
 ## 5 — B2: medido e decidido (23/10)
 
 **A ligação controlo → campo deriva-se do RÓTULO, não do id.** Medido sobre as 188 chamadas de

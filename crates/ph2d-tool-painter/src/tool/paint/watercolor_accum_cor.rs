@@ -381,6 +381,20 @@ impl PainterTool {
                 == super::ramp_lut::RampLutOwner::Grain
     }
 
+    /// ⭐ As [`super::watercolor_field::MarcasDaAguada`] do estado EFECTIVO — a porta única do pen-down
+    /// (o estilo do dono) e do composite (os texels sem dono). A ponta é texturada quando a silhueta
+    /// da Shape manual está activa ou uma rampa em cor pesa a densidade — o mesmo predicado que arma
+    /// o plano `stroke_density` no splat.
+    pub(super) fn marcas_da_aguada(&self) -> super::watercolor_field::MarcasDaAguada {
+        let deposito_dono = self.aguada_tem_rampa_de_cor();
+        super::watercolor_field::MarcasDaAguada {
+            deposito_dono,
+            cor_no_papel: self.aguada_tem_cor_do_grao(),
+            ponta_texturada: deposito_dono
+                || self.wet_shape_stamp().is_some_and(|s| s.forma_ativa()),
+        }
+    }
+
     /// A rampa em cor que este lote lê — `None` com as duas desligadas ou a da Shape no modo B&W (o
     /// caminho de sempre, ao byte).
     pub(super) fn rampa_da_aguada(&mut self) -> Option<RampaDaAguada> {

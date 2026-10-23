@@ -302,7 +302,7 @@ fn ponteiro(pos: [f32; 2], pressure: f32, tilt: [f32; 2], phase: PointerPhase) -
 /// sem dormir, a água nunca andava (a 1.ª corrida leu Water, Flow, Gravity… «mortos»); dormindo, sob
 /// carga, duas corridas iguais divergiam em 1 148 texels (um «vivo» podia ser ruído). ⇒ a ferramenta do
 /// censo corre a água no relógio FIXO ([`ferramenta`]): cada tique deve os passos de 16,7 ms.
-fn tique(t: &mut PainterTool, ultima: &mut Option<Vec<u8>>) {
+pub(crate) fn tique(t: &mut PainterTool, ultima: &mut Option<Vec<u8>>) {
     t.on_tick(1000.0 / 60.0);
     if let Some((px, _, _)) = t.take_preview_arc() {
         *ultima = Some(px.as_ref().clone());
@@ -311,7 +311,7 @@ fn tique(t: &mut PainterTool, ultima: &mut Option<Vec<u8>>) {
 
 /// Um traço de 40 amostras de `de` a `ate`, ondulado, com a pressão de `p0` a `p1`; cada amostra fecha
 /// um quadro.
-fn traco(
+pub(crate) fn traco(
     t: &mut PainterTool,
     ultima: &mut Option<Vec<u8>>,
     de: [f32; 2],

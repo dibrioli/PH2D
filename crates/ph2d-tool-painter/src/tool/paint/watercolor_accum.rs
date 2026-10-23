@@ -389,7 +389,11 @@ impl PainterTool {
         // cobertura) — pesa a densidade, que então existe também sem ponta texturada.
         let rampa = self.rampa_da_aguada();
         let grao = self.grao_da_aguada(rampa.as_ref());
-        let textured_tip = stamp.as_ref().is_some_and(|s| s.shape_active) || rampa.is_some();
+        let textured_tip = self.marcas_da_aguada().ponta_texturada;
+        debug_assert_eq!(
+            textured_tip,
+            stamp.as_ref().is_some_and(|s| s.shape_active) || rampa.is_some()
+        );
         if textured_tip && self.paint.stroke_density.len() != fw * fh {
             let mut dens = vec![0u8; fw * fh];
             // Sessão molhada: washs ANTERIORES (tip liso ⇒ densidade plena) não podem ler 0 do

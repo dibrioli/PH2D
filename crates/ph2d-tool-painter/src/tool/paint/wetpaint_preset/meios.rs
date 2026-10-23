@@ -125,7 +125,22 @@ impl PainterTool {
         ))
     }
 
+    /// ⭐ **O que o pincel guarda FORA do `BrushSpec` volta ao de fábrica** antes de um preset: a pilha do
+    /// Composite, a Shape Color e as Grain Colors. Escolher um preset dá ESSE pincel, nunca ele com a pilha ou as
+    /// rampas do anterior (medido 22/10, `o_preset_nao_herda`: o Composite sobrevivia aos presets de ficheiro e ao
+    /// «Basic»; a Shape Color ao «Basic»). A porta única das três entradas de preset.
+    pub(in crate::tool::paint) fn repoe_o_pincel_fora_do_spec(&mut self) {
+        let p = &mut self.paint;
+        p.composite_enabled = false;
+        p.composite_len = 0;
+        p.composite = std::array::from_fn(|_| Default::default());
+        p.composite_add_op = super::super::CompositeOp::Brush;
+        self.set_shape_color_estado(&Default::default());
+        self.grain_color_de_json(None);
+    }
+
     fn meio_preset_aplicar_corpo(&mut self, m: PaintMedia, p: &Preset) -> Vec<String> {
+        self.repoe_o_pincel_fora_do_spec();
         if self.paint_media() != m {
             self.set_paint_media(m);
         }

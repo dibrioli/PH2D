@@ -38,6 +38,7 @@ mod o_grao_do_lapis; // 03_MOTORES §7.2: o grão é o papel (o mesmo a todo tam
 mod o_modo_do_grao;
 mod o_pigmento_por_comprimento;
 mod o_po_do_aerografo;
+mod o_preset_nao_herda; // o preset escolhido depois de sujar o pincel é o preset (a família do estado escondido)
 mod o_relevo_dos_fios;
 mod os_fios;
 mod os_outros_meios_nao_mudam;

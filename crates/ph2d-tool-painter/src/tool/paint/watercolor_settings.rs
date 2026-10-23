@@ -599,6 +599,7 @@ impl PainterTool {
     /// Routing the tail through `set_paint_media` makes the preset a *look* again, with the medium it
     /// implies switched by the one thing that owns that question.
     pub fn apply_brush_preset(&mut self, idx: u8) {
+        self.repoe_o_pincel_fora_do_spec();
         let cur = self.paint.brush;
         self.paint.brush = match idx {
             // Watercolor Basic — wet_edges defaults: soft round dab (`Falloff::Smooth`, `hardness 0`),

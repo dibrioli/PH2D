@@ -25,6 +25,7 @@ mod seam_composite_montagem; // o `+`, o menu e o `x` da pilha: pintados, regist
 mod seam_curve_drag_ownership;
 mod seam_deform;
 mod seam_dock_modes;
+mod seam_estado_escondido; // o interruptor que neutraliza: a tinta depois dele é a do pincel limpo (22/10)
 mod seam_grid_stamp;
 mod seam_impasto_rig;
 mod seam_impasto_tool;

@@ -365,6 +365,7 @@ impl PainterTool {
     }
 
     fn wet_preset_aplicar_corpo(&mut self, p: &Preset) -> Vec<String> {
+        self.repoe_o_pincel_fora_do_spec();
         if !self.paint.wetpaint.armed {
             self.set_paint_media(PaintMedia::WetPaint);
         }

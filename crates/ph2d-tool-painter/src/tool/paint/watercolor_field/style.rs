@@ -56,6 +56,21 @@ pub(in crate::tool::paint) struct WetStrokeStyle {
     /// composite lê-a no texel de saída, onde a granulação assenta, e não no ponto deslocado pela borda
     /// ([`super::super::watercolor_render`], `texel_do_deposito`).
     pub(in crate::tool::paint) cor_no_papel: bool,
+    /// **A ponta deste traço é TEXTURADA** (a silhueta da Shape manual ou uma rampa em cor pesam a
+    /// densidade): só então o plano `stroke_density` da sessão pesa o miolo. O traço liso lê densidade
+    /// cheia mesmo com o plano armado por um vizinho texturado da mesma sessão.
+    pub(in crate::tool::paint) ponta_texturada: bool,
+}
+
+/// ⭐ **As marcas da aguada que o traço CAPTURA** — derivadas do estado EFECTIVO do pincel numa porta só
+/// ([`crate::tool::PainterTool::marcas_da_aguada`]): o pen-down as grava no estilo do dono e o composite
+/// as usa para os texels sem dono. Um interruptor que esconde (Same as Paper, Grain None, a rampa
+/// desligada) desliga-as aqui, nunca por um teste de flag em cada consumidor.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(in crate::tool::paint) struct MarcasDaAguada {
+    pub(in crate::tool::paint) deposito_dono: bool,
+    pub(in crate::tool::paint) cor_no_papel: bool,
+    pub(in crate::tool::paint) ponta_texturada: bool,
 }
 
 /// **A DILUICAO E QUANTA TINTA, NUNCA ONDE A LAVAGEM ESTA** (o arco palido, Enio 2026-08-11).
@@ -110,6 +125,16 @@ pub(in crate::tool::paint) fn cor_em_bytes(c: [f32; 3]) -> [u8; 3] {
 }
 
 impl WetStrokeStyle {
+    /// O estilo com as [`MarcasDaAguada`] do estado efectivo do pincel.
+    pub(in crate::tool::paint) fn com_marcas(self, m: MarcasDaAguada) -> Self {
+        Self {
+            deposito_dono: m.deposito_dono,
+            cor_no_papel: m.cor_no_papel,
+            ponta_texturada: m.ponta_texturada,
+            ..self
+        }
+    }
+
     /// Capture the current brush's wash params — the composite's exact clamps, verbatim. `forced_wet`
     /// is the **Wet the layer** floor (#3): the captured Rewet is `max(brush Rewet, forced)`, so strokes
     /// made after the Wet button lift the existing paint even at brush Rewet `0` (`forced = 0` ⇒ verbatim).
@@ -150,6 +175,7 @@ impl WetStrokeStyle {
             paper_edge: spec.paper_edge.clamp(0.0, 1.0),
             deposito_dono: false,
             cor_no_papel: false,
+            ponta_texturada: false,
         }
     }
 }
@@ -170,13 +196,9 @@ impl WetSessionStyles {
         &mut self,
         spec: &ph2d_painter_brush::BrushSpec,
         forced_wet: f32,
-        (deposito_dono, cor_no_papel): (bool, bool),
+        marcas: MarcasDaAguada,
     ) {
-        let st = WetStrokeStyle {
-            deposito_dono,
-            cor_no_papel,
-            ..WetStrokeStyle::capture(spec, forced_wet)
-        };
+        let st = WetStrokeStyle::capture(spec, forced_wet).com_marcas(marcas);
         if self.table.len() < 255 {
             self.table.push(st);
         } else if let Some(last) = self.table.last_mut() {

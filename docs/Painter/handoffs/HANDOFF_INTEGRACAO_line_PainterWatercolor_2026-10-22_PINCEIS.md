@@ -21,7 +21,6 @@
   omissão; portão `o_azul_abre_uma_mancha_redonda_no_vermelho_molhado`, 3 mutações sangram), ligado no Wet Liner e Wet
   Wash; tecto da cauda 1,3 × meia-largura (`eb04c3440d`). Motor J1–J4: [HANDOFF_JANELA_4](../Pinceis/HANDOFF_JANELA_4.md)
   («Motor novo») e `HANDOFF_JANELA_2/3`.
-- Tutorial do dono: [`tutorial/01_pinceis.pdf`](../Pinceis/tutorial/01_pinceis.pdf).
 - **Grain Colors nos 4 meios** (`ae082ffb2e`): o grão indexa a rampa pela lei única `RampPaint::cor` (Aquarela: o mapa de
   granulação; Wet: o grão do dab, que deixa de morder); esmaece sem leitor; o preset grava-a (§9).
 
@@ -29,10 +28,8 @@
 
 - fmt ✓ · clippy workspace `--all-targets --features ph2d-spike/bevy_ecs -D warnings` ✓ · censos da árvore combinada
   12/12 e 121/121 ✓.
-- nextest-impacted: **19 576 corridos, 19 574 ✓, 0 falharam, 2 TIMEOUT de carga**
-  (`a_lei_da_tinta::o_glaze_do_pincel_escurece_o_cruzamento`, `::sem_glaze_cada_preset_de_fabrica_pinta_a_cena_de_antes`;
-  sozinhos 8–17 s, 3/3) — promovidos à família de [flakes de carga](../../DevOps/FLAKES_DE_CARGA.md) em `b74b608d0e`
-  (tabela + faixa isolada + faixa pesada; `architecture_toda_flake_de_carga_corre_na_faixa_isolada` verde).
+- nextest-impacted: 19 576, 0 falharam, 2 TIMEOUT de carga (`a_lei_da_tinta::o_glaze_…`, `::sem_glaze_…`) promovidos a
+  [flakes de carga](../../DevOps/FLAKES_DE_CARGA.md) em `b74b608d0e`.
 
 ## §4 — Superfície de colisão (`bash <worktree>/scripts/collision-surface.sh`, base `100d34c8e0`)
 
@@ -77,28 +74,27 @@
 - **Custo no app** ([custo_no_app](../Pinceis/exames/custo_no_app.md)): depósito por TEMPO (Filbert 56 → 24 ms a 90 px/qd); falta o pouso do transfer (série).
 - C39–C40 e o resto do [P53 §6](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-19_P53.md) continuam.
 
-## §8 — Depois do smoke: o navegador de presets (22/10, `9a8754b976` `86cb0f15ea`)
+## §8–§10 — Depois do smoke (22/10)
 
-- Títulos por CATEGORIA no popover; `DropdownOption::header` (`Role::Heading`). Foto `foto_do_navegador`.
-
-## §9 — O preview do pincel pinta pelo caminho da tela (22/10)
-
-- A `CenaDoPreview` leva agora o que deixava fora (`ForaDoSpec`: Grain Colors, N imagens, dual, Composite, Flow…), o
-  gesto tem a rampa de pressão e o preset grava as Grain Colors (`grain_color`). Portões: `o_preview_pinta_cada_capacidade_nova_como_a_tela`
-  (13 casos, 4 meios, ao byte), `cada_campo_do_pincel_vai_para_o_preview_ou_diz_porque_nao` (censo),
-  `o_pincel_gravado_leva_as_grain_colors_e_a_miniatura_mostra_as`; 10 mutações sangram; fábrica 0/45 mudou;
-  fotos `tutorial/fotos/preview_*`.
-- `93c454c37a` — Grain Colors da Aquarela à resolução do pixel (`pigment::texel_do_deposito`): bloco 1,29 → 1,00 px,
-  custo nulo; portão `o_padrao_das_grain_colors_sai_a_resolucao_do_pixel_em_todos_os_meios`.
-
-## §10 — O pino da preview (22/10, `9e176404cc`)
-
-- `PAINTER_BRUSH_PREVIEW_PIN`: fixada, a preview fica acima da área rolável (`paint_pinned_preview`);
-  `Button::build_a11y_toggle` novo (editor-core) · i18n `painter_preview.rs`. Portões `seam_pino_da_preview` (4, 3 mutações sangram); fotos `tutorial/fotos/pino_*`.
+- §8 navegador por CATEGORIA (`9a8754b976` `86cb0f15ea`) · §9 o preview pinta pelo caminho da tela (`b7191a512c`, portões
+  `o_preview_pinta_cada_capacidade_nova_como_a_tela`, `cada_campo_do_pincel_vai_para_o_preview_ou_diz_porque_nao`) e as
+  Grain Colors da Aquarela ao pixel (`93c454c37a`) · §10 o pino da preview (`9e176404cc`, `seam_pino_da_preview`).
 
 ## §11 — «Same as Paper» esconde o grão do pincel (22/10, `82e7716afe`)
 
-- Só a Aquarela o tem. Ligado: saem textura, miniatura, Mapping/Angle/Offset/Size/Depth, Grain Behavior e Grain Colors
-  (`BrushSettings::grao_do_papel`); ficam o interruptor e o Amount (sonda: 0 texels nos 75 gestos). Saíram
-  `GrainDaAquarela`/`CorDoGraoDaAquarela` e a dica `same_as_paper_off`. Motor já certo. Portões `seam_same_as_paper`
-  (3, 2 mutações sangram) e do preview; fotos `tutorial/fotos/same_as_paper_*`.
+- Só a Aquarela; ligado, saem as linhas do grão próprio (`BrushSettings::grao_do_papel`), ficam o interruptor e o Amount.
+  Portões `seam_same_as_paper`; fotos `tutorial/fotos/same_as_paper_*`.
+
+## §12 — Estado escondido que pintava (22/10, ver SHAs no `git log`)
+
+- **Causa** (captura do dono): na sessão molhada da Aquarela, uma mancha com Grain Colors (ou Shape texturada) arma o
+  plano `stroke_density`; a mancha seguinte, lisa, lia esse plano (0 no miolo) → só a orla (miolo 247,6 × 208,2).
+  **Cura:** `MarcasDaAguada` — uma porta (`marcas_da_aguada`) deriva do estado efectivo `deposito_dono`/`cor_no_papel`/
+  `ponta_texturada`; o pen-down grava-as no estilo do dono e o composite só pesa a densidade com `ponta_texturada`.
+- **Presets** (`o_preset_nao_herda`): o Composite sobrevivia ao preset de ficheiro e ao «Basic», a Shape Color ao
+  «Basic» → `repoe_o_pincel_fora_do_spec` nas três portas de preset.
+- Portões: `seam_estado_escondido` (13 interruptores × meios, tela + preview ao byte, controlo de não-vácuo; censo dos
+  que escondem — `sonda_quem_esconde` `#[ignore]`, 12 min+) e `o_preset_nao_herda`. Mutações sangram (gate do
+  composite, Shape no predicado, Composite/Shape Color no reset). Fotos `tutorial/fotos/vazamento_{antes,depois}.png`.
+- **Aberto (física, não estado):** o Wet Paint acopla manchas longe pela cadência de secagem GLOBAL (`ph2d_wet_paint::sim`,
+  `vmax` da grade): 175 texels Δ5 sem estado diferente no pincel; o portão pinta a 3.ª mancha numa tela nova no Wet.

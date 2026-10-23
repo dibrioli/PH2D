@@ -87,7 +87,10 @@ impl SemAPincelada {
             sem.events.len()
         }
         .max(desde);
-        let respostas = Recomeco::de(&sem.initial, sem.events.iter().map(|e| e.payload.as_slice()))?;
+        let respostas = Recomeco::de(
+            &sem.initial,
+            sem.events.iter().map(|e| e.payload.as_slice()),
+        )?;
         Ok(Self {
             k,
             c,

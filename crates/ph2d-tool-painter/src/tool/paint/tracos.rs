@@ -280,15 +280,17 @@ impl PainterTool {
     pub(crate) fn toque_simples(&self) -> bool {
         use super::PaintMode;
         use ph2d_painter_brush::StrokeMethod;
-        matches!(self.paint.paint_mode, PaintMode::Paint | PaintMode::WetPaint)
-            && !matches!(
-                self.paint.brush.stroke_method,
-                StrokeMethod::Arc
-                    | StrokeMethod::FreeHand
-                    | StrokeMethod::Ellipse
-                    | StrokeMethod::Polygon
-                    | StrokeMethod::Line
-            )
+        matches!(
+            self.paint.paint_mode,
+            PaintMode::Paint | PaintMode::WetPaint
+        ) && !matches!(
+            self.paint.brush.stroke_method,
+            StrokeMethod::Arc
+                | StrokeMethod::FreeHand
+                | StrokeMethod::Ellipse
+                | StrokeMethod::Polygon
+                | StrokeMethod::Line
+        )
     }
 
     /// Há um traço aberto no tool.

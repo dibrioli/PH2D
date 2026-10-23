@@ -105,10 +105,11 @@ fn pinceladas_em(track: &Track, tocavel: &Track) -> Result<Vec<Pinc>, ErroDaMacr
                 passos.push(p);
             }
         }
-        let (cor, raio, meio, limiar) = e.no_toque.map_or(
-            ([0; 3], 0.0, PaintMedia::default(), 0.0),
-            |p| (p.cor, p.tamanho_px, p.meio, p.limiar),
-        );
+        let (cor, raio, meio, limiar) = e
+            .no_toque
+            .map_or(([0; 3], 0.0, PaintMedia::default(), 0.0), |p| {
+                (p.cor, p.tamanho_px, p.meio, p.limiar)
+            });
         out.push(Pinc {
             k: e.k,
             tipo,

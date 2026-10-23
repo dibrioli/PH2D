@@ -25,7 +25,8 @@ pub(crate) struct Tocada {
 /// dela, entrelaçada ou noutra ordem; as outras, pela ordem.
 pub(crate) fn tocadas(track: &Track, tocavel: &Track) -> Result<Vec<Tocada>, ErroDaMacro> {
     let gravadas = LeitorDoPainter.etapas(&track.events);
-    let faixa_de = |e: &Etapa| crate::macro_track::passo::faixa_de(&tocavel.events[e.inicio].payload);
+    let faixa_de =
+        |e: &Etapa| crate::macro_track::passo::faixa_de(&tocavel.events[e.inicio].payload);
     let tocaveis = LeitorDoPainter.etapas(&tocavel.events);
     let mut na_ordem = tocaveis.iter().filter(|e| faixa_de(e) == 0);
     let mut por_faixa: BTreeMap<u32, Etapa> = tocaveis
@@ -89,4 +90,3 @@ pub(crate) fn tocadas(track: &Track, tocavel: &Track) -> Result<Vec<Tocada>, Err
     }
     Ok(out)
 }
-

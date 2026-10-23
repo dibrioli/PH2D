@@ -37,13 +37,13 @@ mod marca_cobertura_tests;
 #[cfg(test)]
 mod marca_painter_tests;
 #[cfg(test)]
-mod sonda_w12_tests;
-#[cfg(test)]
-mod sonda_w14_tests;
+mod sobrepor_fecho_tests;
 #[cfg(test)]
 mod sobrepor_tests;
 #[cfg(test)]
-mod sobrepor_fecho_tests;
+mod sonda_w12_tests;
+#[cfg(test)]
+mod sonda_w14_tests;
 #[cfg(test)]
 mod tests;
 

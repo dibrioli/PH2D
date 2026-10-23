@@ -358,10 +358,7 @@ fn desloca_as_etapas(
             .zip(&orig)
             .find(|(_, o)| o.is_some_and(|i| (m.inicio..=m.fim).contains(&i)));
         if let (Some((e, _)), Some(c)) = (primeiro, leitor.marca_da_faixa(m.faixa)) {
-            marcas.push(Event {
-                t: e.t,
-                payload: c,
-            });
+            marcas.push(Event { t: e.t, payload: c });
         }
     }
     let fim_antes = sai.iter().map(|e| e.t.0).max().unwrap_or(0);

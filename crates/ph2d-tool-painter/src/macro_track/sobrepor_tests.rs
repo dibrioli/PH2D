@@ -123,7 +123,9 @@ fn duas_pinceladas_sobrepostas_pintam_ao_mesmo_tempo_nos_quatro_meios() {
         let [sc, sb] = [false, true].map(|b| regiao(&serie, &ini, b));
         let [fc, fb] = [false, true].map(|b| regiao(&fim, &ini, b));
         let [mc, mb] = [false, true].map(|b| regiao(&meio_t, &ini, b));
-        eprintln!("{meio:?}: série {sc:?} {sb:?} · sobreposta {fc:?} {fb:?} · a meio {mc:?} {mb:?}");
+        eprintln!(
+            "{meio:?}: série {sc:?} {sb:?} · sobreposta {fc:?} {fb:?} · a meio {mc:?} {mb:?}"
+        );
         for (a_meio, fim, serie, onde) in [(mc, fc, sc, "a vermelha"), (mb, fb, sb, "a azul")] {
             assert!(
                 a_meio.n * 4 > serie.n && a_meio.n < fim.n,
@@ -139,7 +141,10 @@ fn duas_pinceladas_sobrepostas_pintam_ao_mesmo_tempo_nos_quatro_meios() {
             );
         }
         assert!(fc.r > fc.b, "{meio:?}: a de cima é vermelha {fc:?}");
-        assert!(fb.b > fb.r, "{meio:?}: a de baixo é azul — o pincel viaja com ela {fb:?}");
+        assert!(
+            fb.b > fb.r,
+            "{meio:?}: a de baixo é azul — o pincel viaja com ela {fb:?}"
+        );
         assert_eq!(
             diferentes(&fim, &telas(&s, None).0),
             0,
@@ -190,7 +195,11 @@ fn sobrepor_um_preenchimento_ou_outro_meio_recusa_se() {
     let e = etapas::etapas(&mistas).expect("lê-se");
     let mut tr = mistas.clone();
     assert_eq!(
-        etapas::desloca(&mut tr, 1, -i64::try_from(e[1].t0.0 - e[0].t0.0).expect("µs")),
+        etapas::desloca(
+            &mut tr,
+            1,
+            -i64::try_from(e[1].t0.0 - e[0].t0.0).expect("µs")
+        ),
         Err(ErroDeEdicaoDoPainter::OutroMeio(1)),
         "Watercolor em cima de Digital"
     );
@@ -200,7 +209,8 @@ fn sobrepor_um_preenchimento_ou_outro_meio_recusa_se() {
         antes.is_some(),
         "sobrepor no início também é sobrepor (a vermelha começa em 0)"
     );
-    let depois = levada(&mistas, 0, e[1].t1.0 + 100_000).expect("sem sobrepor, o meio viaja no pincel");
+    let depois =
+        levada(&mistas, 0, e[1].t1.0 + 100_000).expect("sem sobrepor, o meio viaja no pincel");
     let v = etapas::etapas(&depois).expect("lê-se");
     assert_eq!(
         (v[0].meio, v[1].meio),

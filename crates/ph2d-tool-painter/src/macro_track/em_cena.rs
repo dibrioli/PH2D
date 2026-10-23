@@ -222,8 +222,11 @@ impl MacroEmCena {
             .count();
         let limite = super::etapas::limite_da_partida(track).ok()?.min(comum);
         let f = self.fotos.ate_feitos(limite)?;
-        let recomeco =
-            Recomeco::de(&novo.initial, novo.events.iter().map(|e| e.payload.as_slice())).ok()?;
+        let recomeco = Recomeco::de(
+            &novo.initial,
+            novo.events.iter().map(|e| e.payload.as_slice()),
+        )
+        .ok()?;
         Some(super::etapas::Partida {
             tocador: f.tocador.recomeca(&recomeco)?,
             feitos: f.player.dispatched(),

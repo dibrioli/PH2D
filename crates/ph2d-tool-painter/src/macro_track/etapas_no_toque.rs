@@ -4,11 +4,11 @@
 use crate::PaintMedia;
 use crate::macro_track::inicial;
 use crate::macro_track::passo::Passo;
+use crate::macro_track::passo::faixa_de;
 use crate::macro_track::tocar::{ErroDaMacro, TocadorDoPainter};
 use crate::tool::PainterTool;
-use ph2d_editor_core::tool::PointerPhase;
-use crate::macro_track::passo::faixa_de;
 use crate::tool::paint::tracos::{PincelDoTraco, TracoGuardado};
+use ph2d_editor_core::tool::PointerPhase;
 use ph2d_macro::Track;
 use std::collections::BTreeMap;
 
@@ -88,7 +88,11 @@ pub(crate) struct NoToque {
 /// tool no estado inicial que só recebe os passos de configuração; os de uma faixa (W16) mudam o pincel
 /// do traço dela, que nasce com o da [`pinceis_das_faixas`].
 pub(crate) fn pinceis(tocavel: &Track) -> Result<Vec<(u32, NoToque)>, ErroDaMacro> {
-    let cargas: Vec<&[u8]> = tocavel.events.iter().map(|e| e.payload.as_slice()).collect();
+    let cargas: Vec<&[u8]> = tocavel
+        .events
+        .iter()
+        .map(|e| e.payload.as_slice())
+        .collect();
     let das_faixas = pinceis_das_faixas(&tocavel.initial, &cargas)?;
     let mut t: PainterTool =
         inicial::tool_no_inicial(&tocavel.initial).map_err(ErroDaMacro::Inicial)?;

@@ -20,12 +20,20 @@ fn desloca(g: &Track, k: usize, us: i64) -> Track {
 fn gestos(ev: &[Event]) -> Vec<(u64, u8, u8)> {
     ev.iter()
         .filter(|e| !matches!(e.payload[0], 0 | 7 | 9))
-        .map(|e| (e.t.0 / Q, e.payload[0], e.payload.get(9).copied().unwrap_or(0)))
+        .map(|e| {
+            (
+                e.t.0 / Q,
+                e.payload[0],
+                e.payload.get(9).copied().unwrap_or(0),
+            )
+        })
         .collect()
 }
 
 fn ate(r: Vec<(MacroTime, Vec<u8>)>, q: u64) -> Vec<(MacroTime, Vec<u8>)> {
-    r.into_iter().filter(|(t, _)| *t <= MacroTime(q * Q)).collect()
+    r.into_iter()
+        .filter(|(t, _)| *t <= MacroTime(q * Q))
+        .collect()
 }
 
 fn relogio(ev: &[Event]) -> Vec<(MacroTime, Vec<u8>)> {
@@ -61,9 +69,19 @@ fn deslocar_move_so_a_etapa_e_o_relogio_fica() {
         ],
         "o gesto 2 começa a meio do intervalo (depois do que já lá estava) e acaba a meio do gesto 1, na faixa 3; o resto não anda"
     );
-    assert!(ev.windows(2).all(|w| w[0].t <= w[1].t), "o tempo nunca recua");
-    let marca = ev.iter().position(|e| e.payload[0] == 9).expect("sai da gravação");
-    assert_eq!(ev[marca].t, MacroTime(11 * Q), "no menor instante que mudou");
+    assert!(
+        ev.windows(2).all(|w| w[0].t <= w[1].t),
+        "o tempo nunca recua"
+    );
+    let marca = ev
+        .iter()
+        .position(|e| e.payload[0] == 9)
+        .expect("sai da gravação");
+    assert_eq!(
+        ev[marca].t,
+        MacroTime(11 * Q),
+        "no menor instante que mudou"
+    );
     assert!(
         ev[..marca].iter().all(|e| e.t < MacroTime(11 * Q)),
         "a marca vem antes de tudo o que toca nesse instante"
@@ -104,7 +122,10 @@ fn antes_do_zero_recusa_se() {
         efetiva(&desloca(&g, 0, -5 * Q as i64), &Brinquedo),
         Err(ErroDeEdicao::ComecaAntesDoZero(ancora(&g, 0)))
     );
-    assert!(efetiva(&desloca(&g, 0, -4 * Q as i64), &Brinquedo).is_ok(), "até ao 0 vai");
+    assert!(
+        efetiva(&desloca(&g, 0, -4 * Q as i64), &Brinquedo).is_ok(),
+        "até ao 0 vai"
+    );
 }
 
 /// Um Desfazer gravado (tipo 5) logo a seguir ao gesto 1 desfaz «o último»: deslocar pode tudo, desde que
@@ -128,8 +149,16 @@ fn um_desfazer_gravado_continua_a_desfazer_a_mesma_etapa() {
         "o gesto 1 levado para depois do Desfazer: ele desfaria o gesto 0"
     );
     for (k, d, porque) in [
-        (2, -7, "o gesto 2 a acabar no mesmo instante do Desfazer: ambíguo"),
-        (2, -8, "o gesto 2 a tocar com o gesto 1: o Desfazer levaria os dois"),
+        (
+            2,
+            -7,
+            "o gesto 2 a acabar no mesmo instante do Desfazer: ambíguo",
+        ),
+        (
+            2,
+            -8,
+            "o gesto 2 a tocar com o gesto 1: o Desfazer levaria os dois",
+        ),
         (0, 9, "o gesto 0 a tocar com o gesto 1: idem"),
     ] {
         assert_eq!(

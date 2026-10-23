@@ -8,10 +8,10 @@
 
 use super::inicial::{self, ErroDoInicial};
 use super::passo::{Passo, abs, faixa_de};
-use crate::tool::paint::tracos::{PincelDoTraco, TracoGuardado};
 use crate::tool::paint::fita::{
     self, Divergencia, Fita, FitaPartilhada, MarcaDaAgua, RespostaDoWorker,
 };
+use crate::tool::paint::tracos::{PincelDoTraco, TracoGuardado};
 use crate::tool::{PainterTool, SemInstantaneo};
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, RasterEditTool, Tool};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};

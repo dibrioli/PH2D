@@ -1023,13 +1023,20 @@ fn gate7_largar_o_losango_leva_so_aquela_etapa_e_sobrepoe() {
     assert_eq!(o.erro, None, "sobrepor é aceite");
     assert_eq!(o.etapas.len(), 3);
     let fim = |o: &ph2d_editor_core::macro_edits::MacroObjetoView, k: usize| o.etapas[k].t1_s;
-    assert!((fim(&o, 1) - alvo).abs() < 1e-3, "o losango largado: {}", fim(&o, 1));
+    assert!(
+        (fim(&o, 1) - alvo).abs() < 1e-3,
+        "o losango largado: {}",
+        fim(&o, 1)
+    );
     assert!(
         (fim(&o, 0) - e[0].t1_s).abs() < 1e-6 && (fim(&o, 2) - e[2].t1_s).abs() < 1e-6,
         "as outras ficam onde estavam"
     );
     let linha = b.m.etapas_na_linha(&b.sim, &b.tl.doc, &[]);
-    assert!((linha[1].fim - alvo).abs() < 1e-3, "e a linha da Timeline também");
+    assert!(
+        (linha[1].fim - alvo).abs() < 1e-3,
+        "e a linha da Timeline também"
+    );
     assert_eq!(o.editada_desde, Some(1), "«Edited from step 2»");
     // A 3.ª para lá do fim: o clipe estica.
     let o = pede(&mut b, 2, dur + 1.0);

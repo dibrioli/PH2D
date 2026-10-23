@@ -12,8 +12,8 @@ use super::tocar::{ErroDaMacro, TocadorDoPainter};
 use crate::PaintMedia;
 use ph2d_editor_core::tool::PointerPhase;
 use ph2d_macro::{Etapa, Event, LeitorDaFamilia, MacroTime, Track};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::collections::BTreeMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 pub struct LeitorDoPainter;
 
@@ -78,7 +78,11 @@ impl Aberta {
                 ..
             } => {
                 self.fecha_solto(out);
-                self.toque = Some(if self.drop { self.marco.unwrap_or(i) } else { i });
+                self.toque = Some(if self.drop {
+                    self.marco.unwrap_or(i)
+                } else {
+                    i
+                });
             }
             Passo::Ponteiro {
                 fase: PointerPhase::Up,
@@ -101,7 +105,12 @@ impl Aberta {
             p if self.drop && fecha_o_drop(p) => {
                 self.drop = false;
                 self.marco = None;
-                if let Some(d) = self.solto.take().map(|(d, _)| d).or_else(|| self.toque.take()) {
+                if let Some(d) = self
+                    .solto
+                    .take()
+                    .map(|(d, _)| d)
+                    .or_else(|| self.toque.take())
+                {
                     out.push(Etapa { inicio: d, fim: i });
                 }
             }

@@ -21,18 +21,24 @@ fn sobreposta(meio: PaintMedia) -> Track {
         ate: [0.85, y],
         curva: 0.0,
     };
-    let (b, _) =
-        grava_nos_meios(LADO, &[p([220, 30, 30], 0.25), p([30, 40, 220], 0.75)], &[meio]).expect("grava");
+    let (b, _) = grava_nos_meios(
+        LADO,
+        &[p([220, 30, 30], 0.25), p([30, 40, 220], 0.75)],
+        &[meio],
+    )
+    .expect("grava");
     let g = codec::read(&b).expect("lê-se").tracks.remove(0);
     let e = etapas::etapas(&g).expect("lê-se");
     let mut s = g;
-    let d = i64::try_from((e[0].t0.0 + e[0].t1.0) / 2).expect("µs") - i64::try_from(e[1].t0.0).expect("µs");
+    let d = i64::try_from((e[0].t0.0 + e[0].t1.0) / 2).expect("µs")
+        - i64::try_from(e[1].t0.0).expect("µs");
     etapas::desloca(&mut s, 1, d).expect("sobrepor é aceite");
     s.tocavel(&LeitorDoPainter).expect("cabe")
 }
 
 fn tocador(t: &Track) -> TocadorDoPainter {
-    TocadorDoPainter::novo(&t.initial, t.events.iter().map(|e| e.payload.as_slice())).expect("tocador")
+    TocadorDoPainter::novo(&t.initial, t.events.iter().map(|e| e.payload.as_slice()))
+        .expect("tocador")
 }
 
 /// O índice do `Up` da faixa `n`.
@@ -71,7 +77,10 @@ fn o_quadro_corre_em_cada_traco_guardado() {
             );
         }
     }
-    assert!(vistos > 3, "controlo: houve quadros com um traço guardado ({vistos})");
+    assert!(
+        vistos > 3,
+        "controlo: houve quadros com um traço guardado ({vistos})"
+    );
 }
 
 /// Duas pinceladas sobrepostas são UM passo do desfazer: um Ctrl+Z leva as duas. Mutação que sangra: cada
@@ -86,7 +95,11 @@ fn o_grupo_sobreposto_e_um_passo_do_desfazer() {
     }
     assert!(toc.tool_mut().undo_last(), "há um passo");
     let depois = toc.tool_mut().run_full().0;
-    let diferentes = depois.chunks(4).zip(inicio.chunks(4)).filter(|(a, b)| a != b).count();
+    let diferentes = depois
+        .chunks(4)
+        .zip(inicio.chunks(4))
+        .filter(|(a, b)| a != b)
+        .count();
     assert_eq!(diferentes, 0, "um Ctrl+Z levou as duas");
 }
 
@@ -101,7 +114,10 @@ fn a_agua_do_wet_paint_fecha_no_ultimo_pen_up() {
     for (i, e) in t.events.iter().enumerate() {
         toc.aplica(&e.payload).expect("toca");
         if i == primeiro {
-            assert!(toc.tool().wet_traco_directo_aberto(), "a azul ainda pinta na água");
+            assert!(
+                toc.tool().wet_traco_directo_aberto(),
+                "a azul ainda pinta na água"
+            );
         }
         if i == ultimo {
             assert!(!toc.tool().wet_traco_directo_aberto(), "a última fecha-a");

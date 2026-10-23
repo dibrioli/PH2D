@@ -81,11 +81,7 @@ pub fn write(doc: &MacroDoc) -> Vec<u8> {
         .tracks
         .iter()
         .any(|t| t.edicoes.iter().any(|e| e.desloca_us != 0));
-    let minor: u16 = if desloca {
-        MINOR
-    } else {
-        u16::from(editado)
-    };
+    let minor: u16 = if desloca { MINOR } else { u16::from(editado) };
     out.extend_from_slice(MAGIC);
     out.extend_from_slice(&MAJOR.to_le_bytes());
     out.extend_from_slice(&minor.to_le_bytes());

@@ -16,10 +16,17 @@ fn cada_campo_do_paint_state_e_do_traco_ou_partilhado() {
         .filter_map(|l| l.strip_prefix("    pub(super) "))
         .filter_map(|l| l.split(':').next())
         .collect();
-    assert!(campos.len() > 100, "a varredura viu a struct: {}", campos.len());
+    assert!(
+        campos.len() > 100,
+        "a varredura viu a struct: {}",
+        campos.len()
+    );
     for c in &campos {
         let (t, p) = (DO_TRACO.contains(c), PARTILHADO.contains(c));
-        assert!(t ^ p, "`{c}`: do traço {t}, partilhado {p} — classifique-o em `tracos.rs`");
+        assert!(
+            t ^ p,
+            "`{c}`: do traço {t}, partilhado {p} — classifique-o em `tracos.rs`"
+        );
     }
     for c in DO_TRACO.iter().chain(PARTILHADO) {
         assert!(campos.contains(c), "`{c}` já não é campo do `PaintState`");

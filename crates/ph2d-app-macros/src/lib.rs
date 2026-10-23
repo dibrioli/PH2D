@@ -5,11 +5,13 @@
 //!
 //! O estado é da família ([`com`], um `thread_local`), nunca um campo da `App` (ADR-0075).
 
+pub mod aplicar;
 pub mod biblioteca;
 mod conferencia;
 pub mod erros;
 pub mod espera;
 pub mod etapas;
+mod gestos;
 pub mod instala;
 pub mod object_add;
 pub mod sessao;
@@ -41,6 +43,8 @@ pub struct Familias<'a> {
     pub etapas: Injectadas<'a>,
     /// Os bits do objecto escolhido: dentro de um objecto Macro, o Gravar arma-o (W18).
     pub escolhido: Option<u64>,
+    /// O que só a composição alcança para APLICAR uma macro (W18); `None` = aplicar recusa.
+    pub portas: Option<aplicar::Portas<'a>>,
 }
 
 impl Familias<'_> {
@@ -72,6 +76,7 @@ pub struct Cena<'a> {
 }
 
 pub use conferencia::Partidas;
+pub use gestos::{aplica_se_receita, e_receita, guarda_como_asset};
 
 /// As cenas de `PH2D_MACRO_SMOKE`: `=1` o Splash (Painter), `=2` o Motion nó a nó, `=3` o tutorial
 /// «fazer» do Motion, `=4` o do Painter, `=5` a imagem é do artista (W7 item 1), `=6` o caminho do dono
@@ -129,6 +134,9 @@ pub struct Macros {
     tutorial: tutorial::Tutorial,
     /// O relógio do quadro corrente (o de [`Macros::quadro`]).
     agora_us: u64,
+    /// A biblioteca do utilizador (W18): a pasta, a leitura dela (relida só depois de um gesto) e a
+    /// frase do último gesto.
+    biblioteca: gestos::Casa,
 }
 
 thread_local! {
@@ -230,6 +238,7 @@ impl Macros {
         for r in std::mem::take(&mut self.pedidos) {
             self.aplica(r, f, c, agora_us);
         }
+        self.receitas(f, c);
         if let Some(e) = self.conferencias.quadro(c) {
             self.erro_de_edicao = Some(e);
         }
@@ -326,6 +335,7 @@ impl Macros {
             MacroRequest::Recomeca { entity_bits } => {
                 self.tutorial.recomeca(f, c.sim, entity_bits);
             }
+            outro => self.gesto(outro, f, c),
         }
     }
 
@@ -456,6 +466,7 @@ impl Macros {
             objeto,
             armado: self.sessao.is_some(),
             objeto_macro,
+            ..self.info_da_biblioteca(f, sim, escolhido, macro_do_escolhido)
         }
     }
 }

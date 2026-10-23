@@ -95,6 +95,19 @@ fn clipe(tl: &mut TimelineDoc, dono: u64, d: f64) -> Result<usize, &'static str>
     Ok(clip)
 }
 
+/// **O clipe de uma cena de `PH2D_MACRO_SMOKE`** sobre a macro de `dono` com `d` segundos: activo, o
+/// laço `[0, d]`, e o Autoplay só se a cena não abre parada ([`crate::a_cena_abre_parada`]). `false` = o
+/// clipe não coube.
+pub fn clipe_da_cena(tl: &mut TimelineDoc, dono: u64, d: f64, parada: bool) -> bool {
+    let Ok(clip) = tl.add_macro_clip(ph2d_i18n::tr(NOME_DO_CLIPE).to_owned(), dono, d) else {
+        return false;
+    };
+    tl.set_active(clip);
+    tl.set_active_loop_for(true, Some((0.0, d)));
+    tl.set_autoplay(clip, !parada);
+    true
+}
+
 /// **O Autoplay do Parar não rouba a entrada do artista** (decisão de 18/10, handoff W9 §8 item 4): o clipe
 /// da macro passa a ser a entrada — o Play de cima toca a gravação nova, em qualquer tomada — só quando
 /// nenhum OUTRO clipe do objecto o é; o `set_autoplay` desligaria esse outro. Um clipe que toca a macro

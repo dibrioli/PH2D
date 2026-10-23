@@ -144,12 +144,14 @@ impl crate::App {
     /// escalado — é a mesma cerca que o `duplicate_subtree` já declara para o passo dele. Curá-lo
     /// pede a inversa do mundo do pai, e isso é wave própria: hoje o caso comum (receita na raiz)
     /// é exacto.
-    pub(super) fn drop_place_prefab(&mut self, stable_id: u64, world: [f32; 2]) {
+    pub(super) fn drop_place_prefab(&mut self, stable_id: u64, world: [f32; 2], over: Option<u64>) {
         // ⭐ **O MESMO verbo do duplo-clique**, com o `at` preenchido. O dreno já sabe pôr a cópia
         // no ponto e seleccioná-la — ver `render_loop::hierarchy`. Uma segunda rota de instanciar
         // aqui seria a que diverge no dia em que o verbo ganhar um passo.
+        // W18: uma receita de MACRO aplica-se — por cima do objecto debaixo da mão, se ele a recebe.
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(hero) = gfx.hero_screen.as_mut()
+            && !ph2d_app_macros::aplica_se_receita(&mut gfx.sim, stable_id, Some(world), over)
         {
             hero.bus.push(
                 ph2d_editor_core::action_bus::EditorAction::AssetInstantiate {

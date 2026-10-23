@@ -56,6 +56,19 @@ pub(crate) struct Banca {
     rects: Vec<(NodeId, Rect)>,
     /// O Painter é a ferramenta activa.
     activo: bool,
+    /// As imagens que a porta de produto da composição fez nascer (W18), pelos bits: os píxeis.
+    pub(crate) imagens: std::cell::RefCell<std::collections::BTreeMap<u64, (Vec<u8>, u32, u32)>>,
+}
+
+/// O vazio do Add, como a shell o faz nascer (nome, `Transform`, `StableId`).
+pub(crate) fn raiz(sim: &mut SimWorld, nome: &str) -> u64 {
+    let b = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Name::new(nome), ph2d_ecs::Transform::IDENTITY))
+        .id()
+        .to_bits();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    b
 }
 
 impl Banca {
@@ -83,6 +96,7 @@ impl Banca {
             bits,
             rects: Vec::new(),
             activo: true,
+            imagens: std::cell::RefCell::default(),
         }
     }
 
@@ -91,7 +105,22 @@ impl Banca {
         drop(self.painter.take_preview_arc());
         self.painter.on_tick(DT_MS);
         self.agora += QUADRO_US;
+        let imagens = &self.imagens;
+        let mut nasce = |sim: &mut SimWorld, i: ph2d_app_macros::aplicar::Imagem| {
+            let b = raiz(sim, &i.nome);
+            imagens.borrow_mut().insert(b, (i.rgba, i.w, i.h));
+            Ok(b)
+        };
+        let mut pixeis = |_: &SimWorld, b: u64| imagens.borrow().get(&b).cloned();
+        let e_imagem = |_: &SimWorld, b: u64| imagens.borrow().contains_key(&b);
         let mut f = Familias {
+            portas: Some(ph2d_app_macros::aplicar::Portas {
+                raiz: &raiz,
+                imagem: &mut nasce,
+                pixeis: &mut pixeis,
+                e_imagem: &e_imagem,
+                centro: [0.0, 0.0],
+            }),
             escolhido: self.escolhido,
             painter: Some(&mut self.painter),
             painter_activo: self.activo,
@@ -111,7 +140,20 @@ impl Banca {
 
     /// A shell publica o instantâneo e o painel pinta; os gestos que a pintura levanta vão à família.
     pub(crate) fn pinta(&mut self) {
+        let imagens = &self.imagens;
+        let e_imagem = |_: &SimWorld, b: u64| imagens.borrow().contains_key(&b);
+        let (mut nada, mut sem) = (
+            |_: &mut SimWorld, _: ph2d_app_macros::aplicar::Imagem| Err(String::new()),
+            |_: &SimWorld, _: u64| None,
+        );
         let f = Familias {
+            portas: Some(ph2d_app_macros::aplicar::Portas {
+                raiz: &raiz,
+                imagem: &mut nada,
+                pixeis: &mut sem,
+                e_imagem: &e_imagem,
+                centro: [0.0, 0.0],
+            }),
             escolhido: self.escolhido,
             painter: Some(&mut self.painter),
             painter_activo: self.activo,
@@ -830,6 +872,7 @@ impl ph2d_macro::Gravadora for MotionDeBrinquedo {
     }
 }
 
+impl ph2d_editor_core::macro_tutorial::TranspoeDaFamilia for MotionDeBrinquedo {}
 impl ph2d_editor_core::macro_tutorial::TutorialDaFamilia for MotionDeBrinquedo {}
 
 /// Uma família de brinquedo: grava um passo marcado por quadro em que «correu».

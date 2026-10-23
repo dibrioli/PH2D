@@ -117,9 +117,36 @@ pub trait TutorialDaFamilia {
     }
 }
 
+/// **Levar uma trilha a outro documento** (W18, `docs/Macros/16_W18_plano.md` §2.5/§2.7): exportar e
+/// aplicar. Por omissão a família não o sabe fazer e recusa com a frase.
+pub trait TranspoeDaFamilia {
+    /// A trilha como sai no ficheiro (só o que é do dono), provada a tocar até ao fim.
+    ///
+    /// # Errors
+    /// O porquê.
+    fn exporta(&self, _track: &Track) -> Result<Track, ErroDaMacroView> {
+        Err(crate::macro_etapas::erros::erro(
+            crate::macro_edits::MACRO_NAO_TRANSPOE,
+        ))
+    }
+    /// Aplica a trilha ao objecto `dono` (`StableId`) no documento vivo, que passa ao fim dela (um passo
+    /// de undo); devolve a trilha a instalar.
+    ///
+    /// # Errors
+    /// O porquê — o documento vivo fica intacto.
+    fn aplica(&mut self, _track: &Track, _dono: u64) -> Result<Track, ErroDaMacroView> {
+        Err(crate::macro_etapas::erros::erro(
+            crate::macro_edits::MACRO_NAO_TRANSPOE,
+        ))
+    }
+}
+
 /// A gravadora de uma família que também ensina — o que a composição passa à família MACROS.
-pub trait GravadoraQueEnsina: ph2d_macro::Gravadora + TutorialDaFamilia {}
-impl<T: ph2d_macro::Gravadora + TutorialDaFamilia> GravadoraQueEnsina for T {}
+pub trait GravadoraQueEnsina:
+    ph2d_macro::Gravadora + TutorialDaFamilia + TranspoeDaFamilia
+{
+}
+impl<T: ph2d_macro::Gravadora + TutorialDaFamilia + TranspoeDaFamilia> GravadoraQueEnsina for T {}
 
 /// **O balão** como o herói o pinta.
 #[derive(Clone, Debug, PartialEq)]

@@ -221,7 +221,10 @@ pub enum MacroRequest {
     /// Pára: o objecto fica com a `Macro` e o clipe na Timeline.
     Para,
     /// Leva a cabeça de leitura ao fim da etapa.
-    VaiPara { entity_bits: u64, t_s: f64 },
+    VaiPara {
+        entity_bits: u64,
+        t_s: f64,
+    },
     Edita {
         entity_bits: u64,
         trilha: usize,
@@ -235,21 +238,39 @@ pub enum MacroRequest {
         k: usize,
     },
     /// O tutorial «fazer»: a etapa corrente feita pelo aluno (o balão, «Mostra-me»).
-    MostraMe { entity_bits: u64 },
+    MostraMe {
+        entity_bits: u64,
+    },
     /// O tutorial «fazer»: o objecto volta ao estado inicial (o balão, «Recomeçar»).
-    Recomeca { entity_bits: u64 },
+    Recomeca {
+        entity_bits: u64,
+    },
     /// **Biblioteca** (W18): guarda a gravação do objecto Macro `entity_bits`.
-    Guarda { entity_bits: u64 },
+    Guarda {
+        entity_bits: u64,
+    },
     /// Aplica a macro `nome` da biblioteca.
-    Aplica { nome: String, onde: OndeAplicar },
-    Renomeia { de: String, para: String },
-    ApagaDaBiblioteca { nome: String },
+    Aplica {
+        nome: String,
+        onde: OndeAplicar,
+    },
+    Renomeia {
+        de: String,
+        para: String,
+    },
+    ApagaDaBiblioteca {
+        nome: String,
+    },
     /// Exportar…: o diálogo de gravar escolhe o ficheiro.
-    Exporta { nome: String },
+    Exporta {
+        nome: String,
+    },
     /// Importar…: o diálogo de abrir escolhe o ficheiro.
     Importa,
     /// Guarda a gravação do objecto Macro `entity_bits` como asset do projecto (receita).
-    GuardaComoAsset { entity_bits: u64 },
+    GuardaComoAsset {
+        entity_bits: u64,
+    },
 }
 
 /// Gravar: o Painter não tem tela.
@@ -266,3 +287,44 @@ pub const MACRO_RECUSA_FUNDO_DEMAIS: &str = "panel.macros.refusal.too_deep";
 pub const MACRO_RECUSA_UM_DE_CADA: &str = "panel.macros.refusal.one_per_family";
 /// Parar sem que nada tenha sido gravado.
 pub const MACRO_RECUSA_NADA_GRAVADO: &str = "panel.macros.refusal.nothing_recorded";
+
+// ─── A biblioteca e o aplicar (W18, `docs/Macros/16_W18_plano.md` §2.5–2.7): as frases do `aviso` ───
+
+/// A família da trilha não sabe levá-la a outro documento.
+pub const MACRO_NAO_TRANSPOE: &str = "app.macros.lib.family_cannot_transpose";
+/// Guardou na biblioteca (`{detail}` = o nome).
+pub const MACRO_LIB_GUARDADA: &str = "app.macros.lib.saved";
+/// O objecto escolhido não tem gravação.
+pub const MACRO_LIB_SEM_GRAVACAO: &str = "app.macros.lib.nothing_to_save";
+/// O disco recusou (`{detail}` = o caminho e o porquê).
+pub const MACRO_LIB_DISCO: &str = "app.macros.lib.disk";
+/// Já há uma macro com esse nome (`{detail}`).
+pub const MACRO_LIB_JA_EXISTE: &str = "app.macros.lib.name_taken";
+/// O nome, limpo, ficou vazio.
+pub const MACRO_LIB_NOME_VAZIO: &str = "app.macros.lib.empty_name";
+/// O ficheiro não é uma macro que este build toque.
+pub const MACRO_LIB_ILEGIVEL: &str = "app.macros.lib.unreadable";
+/// Não há pasta da biblioteca (nem `HOME`).
+pub const MACRO_LIB_SEM_PASTA: &str = "app.macros.lib.no_folder";
+/// A macro `{detail}` já não está na biblioteca.
+pub const MACRO_LIB_NAO_HA: &str = "app.macros.lib.missing";
+/// Exportou para `{detail}`.
+pub const MACRO_LIB_EXPORTADA: &str = "app.macros.lib.exported";
+/// Importou como `{detail}`.
+pub const MACRO_LIB_IMPORTADA: &str = "app.macros.lib.imported";
+pub const MACRO_LIB_RENOMEADA: &str = "app.macros.lib.renamed";
+pub const MACRO_LIB_APAGADA: &str = "app.macros.lib.deleted";
+/// A macro não toca até ao fim (`{detail}` = onde parou): não se exporta nem se aplica.
+pub const MACRO_LIB_NAO_TOCA: &str = "app.macros.lib.does_not_play";
+/// Aplicou `{detail}`.
+pub const MACRO_APLICADA: &str = "app.macros.apply.applied";
+/// Por cima: a macro tem trilhas de duas famílias e o alvo é um objecto só.
+pub const MACRO_APLICAR_MISTO: &str = "app.macros.apply.over_mixed";
+/// Por cima: o objecto escolhido não recebe esta macro (nem imagem nem objecto Motion).
+pub const MACRO_APLICAR_INCOMPATIVEL: &str = "app.macros.apply.over_incompatible";
+/// O objecto alvo já não existe.
+pub const MACRO_APLICAR_SEM_ALVO: &str = "app.macros.apply.no_target";
+/// O objecto que a macro cria não nasceu (`{detail}`).
+pub const MACRO_APLICAR_NAO_NASCE: &str = "app.macros.apply.not_born";
+/// Guardou a receita nos assets do projecto (`{detail}` = o nome).
+pub const MACRO_ASSET_GUARDADO: &str = "app.macros.asset.saved";

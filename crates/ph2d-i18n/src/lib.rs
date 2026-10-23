@@ -135,6 +135,8 @@ mod inspector_vida;
 mod luz2d;
 /// As MACROS (ADR-0186, W5d): o painel e o nome do clipe.
 mod macros;
+/// A biblioteca de macros (W18): guardar, exportar, importar, aplicar.
+mod macros_biblioteca;
 /// Os nomes dos nós — a 3.ª fatia da fronteira dos motores.
 mod node_catalog;
 /// ⭐⭐ **Os nomes das SECÇÕES** do painel de params de um nó — 38 palavras sobre 229 sítios.
@@ -532,6 +534,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| canais::tr(k))
             .or_else(|| tags::tr(k))
             .or_else(|| macros::tr(k))
+            .or_else(|| macros_biblioteca::tr(k))
             .or_else(|| factory::tr(k))
             .or_else(|| topdown::tr(k))
             .or_else(|| component_catalog::tr(k))

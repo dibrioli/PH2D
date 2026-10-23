@@ -122,8 +122,7 @@ fn transpoe(track: &Track, ini: &Inicial, destino: &MotionDoc, novo: u64) -> Res
     let dono = track.target;
     let i = &ini.doc;
     fios_so_do_dono(i, |n| i.owner_of(n) == Some(dono))?;
-    if i
-        .nodes_of(dono)
+    if i.nodes_of(dono)
         .iter()
         .any(|n| em_grupo_desligado(i, *n, u32::MAX))
     {
@@ -142,7 +141,10 @@ fn transpoe(track: &Track, ini: &Inicial, destino: &MotionDoc, novo: u64) -> Res
         nos,
         base: ini.base,
         base_nova: j.graph.next_id(),
-        grupos: (subgraph::next_id(&i.subgraphs), subgraph::next_id(&destino.subgraphs)),
+        grupos: (
+            subgraph::next_id(&i.subgraphs),
+            subgraph::next_id(&destino.subgraphs),
+        ),
         fundos: (proxima_moldura(i), proxima_moldura(destino)),
     };
     let initial = inicial::escreve(&Inicial {
@@ -206,7 +208,11 @@ fn em_grupo_desligado(d: &MotionDoc, n: NodeId, limite: u32) -> bool {
         if id < limite && d.bypassed_subgraphs.contains(&id) {
             return true;
         }
-        s = d.subgraphs.iter().find(|x| x.id == id).and_then(|x| x.parent);
+        s = d
+            .subgraphs
+            .iter()
+            .find(|x| x.id == id)
+            .and_then(|x| x.parent);
     }
     false
 }
@@ -511,9 +517,7 @@ impl Mapa<'_> {
                 x: *x,
                 y: *y,
             },
-            I::CutWires(v) => {
-                I::CutWires(v.iter().map(|w| self.fio(w)).collect::<Result<_, _>>()?)
-            }
+            I::CutWires(v) => I::CutWires(v.iter().map(|w| self.fio(w)).collect::<Result<_, _>>()?),
             I::MoveWireEnd {
                 from,
                 from_port,
@@ -664,6 +668,46 @@ impl Mapa<'_> {
             o.backdrops.push(Backdrop { id, ..b.clone() });
         }
         Ok(())
+    }
+}
+
+/// A frase do porquê a trilha não viaja.
+#[must_use]
+pub fn erro_view(e: &ErroAoTranspor) -> ph2d_editor_core::macro_edits::ErroDaMacroView {
+    use ph2d_editor_core::macro_edits::MACRO_LIB_NAO_TOCA;
+    match e {
+        E::Tocar(x) | E::Documento(x) => super::vistas::do_motion(x),
+        outro => ph2d_editor_core::macro_etapas::erros::erro_com(
+            MACRO_LIB_NAO_TOCA,
+            format!("{outro:?}"),
+        ),
+    }
+}
+
+/// **A família MACROS leva a trilha por esta porta** (W18): exportar = só o grafo do dono, tocado até ao
+/// fim; aplicar = os nós da macro no documento vivo, que passa ao fim dela num passo de undo.
+impl ph2d_editor_core::macro_tutorial::TranspoeDaFamilia for crate::motion_state::MotionState {
+    fn exporta(
+        &self,
+        track: &Track,
+    ) -> Result<Track, ph2d_editor_core::macro_edits::ErroDaMacroView> {
+        let t = so_do_dono(track).map_err(|e| erro_view(&e))?;
+        fim(&t).map_err(|e| super::vistas::do_motion(&e))?;
+        Ok(t)
+    }
+
+    fn aplica(
+        &mut self,
+        track: &Track,
+        dono: u64,
+    ) -> Result<Track, ph2d_editor_core::macro_edits::ErroDaMacroView> {
+        let (t, doc) = aplica(track, &self.doc, dono).map_err(|e| erro_view(&e))?;
+        if doc != self.doc {
+            let pre = std::mem::replace(&mut self.doc, doc);
+            self.history.push_undo(pre);
+            self.pump.mark_dirty();
+        }
+        Ok(t)
     }
 }
 

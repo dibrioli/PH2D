@@ -1,6 +1,7 @@
 //! `PH2D_MACRO_SMOKE` — as cenas de [`ph2d_app_macros::CENAS_DO_SMOKE`]. A família monta o objecto e
 //! grava a macro; aqui monta-se o clipe (`add_macro_clip`, o laço `[0, D]`, o Autoplay) e a cena corre.
 
+use ph2d_app_painter::macro_track::encaixe_vivo::MontaTela;
 use ph2d_editor_core::macro_edits::MacroRequest;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_timeline::TimelineIntent;
@@ -9,30 +10,10 @@ static FEITO: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new
 /// A tela da cena (`=6` conduz-se sobre ela).
 static TELA: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
 
-/// A montagem de uma cena do Painter: a tela nasce na próxima célula de importação.
-type MontaTela<T> = fn(
-    &mut ph2d_ecs::SimWorld,
-    &mut ph2d_render::SpriteRenderer,
-    &ph2d_asset::AssetDb,
-    u32,
-    f32,
-    &mut std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
-) -> Option<T>;
-
 impl crate::App {
     fn com_tela<T>(&mut self, monta: MontaTela<T>) -> Option<T> {
         let gfx = self.gfx.as_mut()?;
-        let ppm = gfx.hero_screen.as_ref()?.project.pixels_per_meter;
-        let r = monta(
-            &mut gfx.sim,
-            &mut gfx.renderer,
-            &gfx.asset_db,
-            gfx.next_import_cell,
-            ppm,
-            &mut gfx.atlas_asset_map,
-        );
-        gfx.next_import_cell += u32::from(r.is_some());
-        r
+        super::super::fase_macros::atlas_da_cena!(gfx).monta(&mut gfx.sim, monta)
     }
 
     pub(crate) fn macro_smoke(&mut self) {
@@ -83,14 +64,10 @@ impl crate::App {
             return;
         };
         let _ = TELA.set(bits);
-        let doc = &mut self.timeline.doc;
-        let Ok(clip) = doc.add_macro_clip("Macro".into(), bits, duracao) else {
-            return;
-        };
-        doc.set_active(clip);
-        doc.set_active_loop_for(true, Some((0.0, duracao)));
         let parada = ph2d_app_macros::a_cena_abre_parada(&nivel);
-        doc.set_autoplay(clip, !parada);
+        if !ph2d_app_macros::instala::clipe_da_cena(&mut self.timeline.doc, bits, duracao, parada) {
+            return;
+        }
         if !parada {
             self.timeline_intents
                 .push(ph2d_timeline::TimelineIntent::RunScene);
@@ -203,27 +180,23 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let e = ph2d_ecs::Entity::from_bits(bits);
-        let t = gfx
-            .sim
-            .world()
-            .get::<ph2d_ecs::MacroTempo>(e)
-            .map(|t| t.segundos);
-        let gravando = ph2d_app_macros::com(|m| m.gravando());
         let painter = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools);
-        let linha = gfx
-            .painter_macros
-            .diagnostico(bits, painter.as_deref(), gfx.sim.world());
-        let (ph, clip) = (self.playhead.time(), self.clip_playhead.time());
-        let (keys, playing) = (self.timeline.keys_mode, self.playhead.is_playing());
-        let laco = self.timeline.doc.active_loop_for(keys);
-        let etapas: Vec<String> = (self.timeline_view.macro_etapas.iter())
-            .map(|e| format!("{:.2}", e.fim))
-            .collect();
-        regista(&format!(
-            "{ms} ms: {quadros} frames keys={keys} playing={playing} playhead={ph:.2} clip={clip:.2} \
-             loop={laco:?} t={t:?} steps={etapas:?} gravando={gravando:?} {linha}"
-        ));
+        let r = ph2d_app_painter::macro_track::smoke::Relogio {
+            keys: self.timeline.keys_mode,
+            playing: self.playhead.is_playing(),
+            playhead: self.playhead.time(),
+            clip: self.clip_playhead.time(),
+            laco: self.timeline.doc.active_loop_for(self.timeline.keys_mode),
+            etapas: self
+                .timeline_view
+                .macro_etapas
+                .iter()
+                .map(|e| e.fim)
+                .collect(),
+            gravando: format!("{:?}", ph2d_app_macros::com(|m| m.gravando())),
+        };
+        let w = gfx.sim.world();
+        (gfx.painter_macros).regista_o_quadro((bits, ms, quadros), painter.as_deref(), w, &r);
     }
 
     /// Os gestos do C&F (W11) pelas portas da janela: o Down no botão, o arrasto, o Up; o valor do

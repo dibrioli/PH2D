@@ -21,6 +21,8 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 # O Painter grava por esta crate; o Motion é outra família e chega pela composição (a gravadora e
 # `ph2d_editor_core::macro_etapas::EtapasDaFamilia`).
 ph2d-tool-painter = { path = "../ph2d-tool-painter" }
+# Exportar…/Importar… (W18): o diálogo nativo, só pela porta `ph2d_app_host::modal`.
+rfd = "0.17"
 
 [dev-dependencies]
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

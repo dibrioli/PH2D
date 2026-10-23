@@ -2,8 +2,24 @@
 //! de etapas, os passos que as famílias gravaram neste quadro e o instantâneo do painel. A lei vive
 //! na `ph2d-app-macros`.
 
+use ph2d_app_macros::aplicar::Imagem;
 use ph2d_app_macros::{Cena, Familias, erros, etapas::Injectadas};
 use ph2d_app_motion::macro_track::vistas::{EtapasDoMotion, do_motion};
+
+/// O atlas da cena sobre os campos do `gfx` (aplicar uma macro, montar uma cena de smoke).
+macro_rules! atlas_da_cena {
+    ($g:expr) => {
+        ph2d_app_painter::macro_track::encaixe_vivo::AtlasDaCena {
+            ppm: $g.hero_screen.as_ref().map(|h| h.project.pixels_per_meter),
+            renderer: &mut $g.renderer,
+            asset_db: &$g.asset_db,
+            proxima_celula: &mut $g.next_import_cell,
+            atlas: &mut $g.atlas_asset_map,
+            le: crate::hero_intents::texture_edit::read_sprite_straight,
+        }
+    };
+}
+pub(super) use atlas_da_cena;
 
 /// As etapas das famílias que a MACROS não conhece: a composição injecta o Motion.
 pub(super) const ETAPAS: Injectadas<'static> = &[&EtapasDoMotion];
@@ -32,7 +48,19 @@ impl crate::App {
             .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("motion"));
         let escolhido = gfx.hero_screen.as_ref().and_then(|h| h.gizmo.selection);
         let painter = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools);
+        // W18: o que só a composição alcança para APLICAR uma macro (o atlas, o leitor de píxeis).
+        let atlas = std::cell::RefCell::new(atlas_da_cena!(gfx));
+        let mut imagem =
+            |s: &mut _, i: Imagem| atlas.borrow_mut().nasce(s, (i.w, i.h, i.rgba), &i.nome);
+        let mut pixeis = |s: &_, b| atlas.borrow_mut().pixeis(s, b);
         let mut f = Familias {
+            portas: Some(ph2d_app_macros::aplicar::Portas {
+                raiz: &ph2d_app_components::object_add::spawn_empty_root,
+                imagem: &mut imagem,
+                pixeis: &mut pixeis,
+                e_imagem: &ph2d_app_painter::macro_track::encaixe_vivo::e_imagem,
+                centro: gfx.camera.center,
+            }),
             escolhido,
             painter,
             painter_activo,

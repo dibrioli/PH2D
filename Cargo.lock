@@ -5274,6 +5274,7 @@ dependencies = [
  "ph2d-timeline",
  "ph2d-tool-painter",
  "ph2d-ui-testkit",
+ "rfd",
 ]
 
 [[package]]

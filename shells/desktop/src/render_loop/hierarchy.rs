@@ -422,6 +422,9 @@ fn drain_instance_verbs(
     }
     // ⭐ O gémeo por `StableId`. ⚠️ **Ele corre DEPOIS do irmão e os dois não podem estar armados
     // ao mesmo tempo** — um quadro tem um gesto.
+    // W18: uma receita de MACRO aplica-se em vez de se instanciar.
+    let instance_verb_stable_id = instance_verb_stable_id
+        .filter(|&(sid, _, at)| !ph2d_app_macros::aplica_se_receita(sim, sid, at, None));
     // ⛔ **Uma queda que não achou a receita DIZ que não achou.** O `if let` abaixo curto-circuita
     // quando o `StableId` já não existe (a receita foi apagada entre o `Down` e o `Up`), e sem esta
     // linha o gesto acabava em silêncio total — o artista conclui que colocou.

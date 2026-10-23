@@ -41,6 +41,7 @@ impl ph2d_macro::Gravadora for Aluno {
     }
 }
 
+impl ph2d_editor_core::macro_tutorial::TranspoeDaFamilia for Aluno {}
 impl TutorialDaFamilia for Aluno {
     fn avalia(
         &mut self,
@@ -165,6 +166,7 @@ impl Banca {
 
     fn quadro(&mut self) -> Option<BalaoDoTutorial> {
         let mut f = Familias {
+            portas: None,
             escolhido: None,
             painter: None,
             painter_activo: false,

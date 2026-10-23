@@ -252,8 +252,12 @@ impl crate::App {
                         )));
                 }
             }
-            DropAction::PlacePrefab { stable_id, world } => {
-                self.drop_place_prefab(stable_id, world);
+            DropAction::PlacePrefab {
+                stable_id,
+                world,
+                over,
+            } => {
+                self.drop_place_prefab(stable_id, world, over);
             }
             DropAction::RetextureSprite { entity_bits, asset } => {
                 self.drop_retexture(entity_bits, asset);

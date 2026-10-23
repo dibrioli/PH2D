@@ -30,6 +30,7 @@ impl ph2d_macro::Gravadora for SemMotion {
         Vec::new()
     }
 }
+impl ph2d_editor_core::macro_tutorial::TranspoeDaFamilia for SemMotion {}
 impl ph2d_editor_core::macro_tutorial::TutorialDaFamilia for SemMotion {}
 
 struct Banca {
@@ -110,6 +111,7 @@ impl Banca {
     fn um_quadro(&mut self) -> BalaoDoTutorial {
         let mut motion = SemMotion;
         let mut f = Familias {
+            portas: None,
             escolhido: None,
             painter: Some(&mut self.t),
             painter_activo: self.activo,

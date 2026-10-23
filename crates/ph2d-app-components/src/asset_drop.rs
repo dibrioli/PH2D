@@ -91,7 +91,13 @@ pub struct DropOver {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum DropAction {
     /// Instanciar o prefab `stable_id` com a raiz em `world`.
-    PlacePrefab { stable_id: u64, world: [f32; 2] },
+    /// `over` = o objecto debaixo da mão: uma receita de MACRO aplica-se por cima dele (W18); qualquer
+    /// outro prefab ignora-o.
+    PlacePrefab {
+        stable_id: u64,
+        world: [f32; 2],
+        over: Option<u64>,
+    },
     /// A sprite `entity_bits` passa a mostrar `asset`.
     RetextureSprite { entity_bits: u64, asset: [u8; 32] },
     /// Nasce uma sprite nova em `world`, mostrando `asset`.
@@ -174,11 +180,15 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
         // ⛔ Fora do canvas, das linhas de catálogo e da ranhura, nada sabe receber.
         (_, DropTarget::Chrome) => DropAction::Refuse,
 
-        (DragPayload::Prefab { stable_id }, DropTarget::Canvas { world, .. }) => {
+        (DragPayload::Prefab { stable_id }, DropTarget::Canvas { world, over }) => {
             // ⚠️ **Um prefab ignora o que está por baixo**, e é deliberado: largar sobre uma sprite
             // não pode significar *«substitui aquela sprite»* — isso é destruir trabalho com um
-            // gesto de colocar.
-            DropAction::PlacePrefab { stable_id, world }
+            // gesto de colocar. O objecto viaja só para a receita de MACRO, que toca POR CIMA dele (W18).
+            DropAction::PlacePrefab {
+                stable_id,
+                world,
+                over: over.map(|o| o.entity_bits),
+            }
         }
 
         (
@@ -232,7 +242,8 @@ mod tests {
             resolve(DragPayload::Prefab { stable_id: 7 }, canvas(None)),
             DropAction::PlacePrefab {
                 stable_id: 7,
-                world: [3.0, 4.0]
+                world: [3.0, 4.0],
+                over: None
             }
         );
     }
@@ -245,7 +256,8 @@ mod tests {
             resolve(DragPayload::Prefab { stable_id: 7 }, canvas(sprite(99))),
             DropAction::PlacePrefab {
                 stable_id: 7,
-                world: [3.0, 4.0]
+                world: [3.0, 4.0],
+                over: Some(99)
             }
         );
     }
@@ -402,7 +414,8 @@ mod catalog_target_tests {
             ),
             DropAction::PlacePrefab {
                 stable_id: 1,
-                world: [2.0, 3.0]
+                world: [2.0, 3.0],
+                over: None
             }
         );
         assert_eq!(resolve(p, DropTarget::Chrome), DropAction::Refuse);

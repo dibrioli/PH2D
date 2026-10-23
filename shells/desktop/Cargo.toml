@@ -436,10 +436,6 @@ ph2d-app-audio = { path = "../../crates/ph2d-app-audio" }
 ph2d-audio-decode = { path = "../../crates/ph2d-audio-decode" }
 
 [dev-dependencies]
-# A gravidade, o separador da lista de problemas e a sonda da página de ajuda que os gates conduzidos
-# das cenas 4 e 5 do editor de scripts conferem — desceram da `ph2d-app-components` (família → família
-# em `dev` reprova a lei das camadas; quem compõe as duas famílias é a shell).
-ph2d-panel-code = { path = "../../crates/ph2d-panel-code" }
 # A régua lexical do HR-15 — o gate `every_word_the_shell_shows_comes_from_the_string_table`.
 ph2d-label-census = { path = "../../crates/ph2d-label-census" }
 # A população de painéis do `no_open_panel_leaves_its_column_blank`: a MESMA varredura do gerador

@@ -164,7 +164,6 @@ mod dock_resize;
 /// Sem `cfg`, de propósito: o que atravessa é `Vec<f32>`, nunca um tipo do módulo 3D.
 /// ⭐⭐⭐ **As FAIXAS de desenho** (ADR-0154 Fase 2) — a lei que põe vetor e sprite na MESMA ordem
 /// total, e parte essa ordem nas passagens que o presente desenha.
-mod draw_bands;
 /// `PH2D_EMISSIVE_SMOKE` — a sprite como fonte de luz (plano `docs/Sprite_projeto/18` W8).
 mod emissive_smoke;
 /// As cenas de smoke do Envelope (ADR-0129) — irmão de `build_smoke`, teto de LOC.

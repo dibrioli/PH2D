@@ -32,6 +32,7 @@ pub mod compressed_pipeline;
 /// makes [`SpriteSource::CookedTexture`] render. See
 /// [`docs/plans/2026-05-texture-compression-waves.md`](../../../docs/plans/2026-05-texture-compression-waves.md).
 pub mod cooked_texture;
+pub mod draw_bands;
 pub mod frost;
 pub mod fx_atlas;
 pub mod fx_stack;

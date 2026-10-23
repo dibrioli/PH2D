@@ -1,0 +1,33 @@
+[package]
+name = "ph2d-host-code-scenes"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# ⭐ Os gates CONDUZIDOS das cenas 3–5 do editor de scripts (`PH2D_CODE_SMOKE`): precisam da família do
+# editor (`ph2d-app-code`) e da que monta a cena (`ph2d-app-components`) — família → família reprova a
+# lei das camadas, e só a COMPOSIÇÃO (`shells/`) as vê juntas. Moram aqui e não em `shells/desktop`
+# porque a catraca `the_shell_only_shrinks` conta cada linha de lá (1 091 linhas à integração de 23/10).
+
+[lib]
+path = "src/lib.rs"
+
+[dev-dependencies]
+ph2d-app-code = { path = "../../crates/ph2d-app-code" }
+ph2d-app-components = { path = "../../crates/ph2d-app-components", features = ["test-support"] }
+ph2d-ecs = { path = "../../crates/ph2d-ecs" }
+ph2d-editor-core = { path = "../../crates/ph2d-editor-core" }
+# A gravidade, o separador da lista de problemas e a sonda da página de ajuda das cenas 4 e 5.
+ph2d-panel-code = { path = "../../crates/ph2d-panel-code" }
+ph2d-script = { path = "../../crates/ph2d-script" }
+ph2d-text = { path = "../../crates/ph2d-text" }
+ph2d-tokens = { path = "../../crates/ph2d-tokens" }
+ph2d-vec-entities = { path = "../../crates/ph2d-vec-entities" }
+ph2d-vec-scene = { path = "../../crates/ph2d-vec-scene" }
+ph2d-vector = { path = "../../crates/ph2d-vector" }
+
+[lints]
+workspace = true

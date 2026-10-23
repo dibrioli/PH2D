@@ -257,7 +257,7 @@ pub(crate) struct AppGfx {
     ///
     /// ⚠️ Vive aqui pela razão do `sort_inputs` ao lado: ela é reusada e limpa por quadro, para o
     /// caminho quente ficar sem alocação depois do aquecimento (HR-3).
-    pub(crate) frame_order: crate::draw_bands::FrameOrder,
+    pub(crate) frame_order: ph2d_render::draw_bands::FrameOrder,
     /// M14.4a live-bridge state. Present in the default editor mode
     /// (i.e. always unless `PH2D_M5_DEMO=1` switched to the legacy
     /// untouched.

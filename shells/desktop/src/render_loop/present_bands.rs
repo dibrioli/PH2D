@@ -40,7 +40,7 @@ pub(super) struct BandGear<'a> {
 /// O plano de faixas deste quadro — as quatro respostas que os dois passes e o compositor leem.
 pub(super) struct FramePlan {
     /// As faixas, em ordem de desenho.
-    pub bands: Vec<crate::draw_bands::Band>,
+    pub bands: Vec<ph2d_render::draw_bands::Band>,
     /// A cena passou do tecto de faixas e caiu na ordem da Fase 1.
     pub degraded: bool,
     /// Há intercalação a fazer? `false` ⇒ o quadro é o de sempre, **byte-idêntico**.
@@ -50,12 +50,12 @@ pub(super) struct FramePlan {
 }
 
 /// Lê a ordem do quadro e responde as quatro.
-pub(super) fn plan_frame(frame_order: &crate::draw_bands::FrameOrder) -> FramePlan {
+pub(super) fn plan_frame(frame_order: &ph2d_render::draw_bands::FrameOrder) -> FramePlan {
     let (bands, degraded) = frame_order.plan();
-    let banded = crate::draw_bands::needs_banding(&bands);
+    let banded = ph2d_render::draw_bands::needs_banding(&bands);
     let last_sprite = bands
         .iter()
-        .rposition(|b| b.family == crate::draw_bands::Family::Sprite);
+        .rposition(|b| b.family == ph2d_render::draw_bands::Family::Sprite);
     FramePlan {
         bands,
         degraded,
@@ -76,7 +76,7 @@ pub(super) fn draw_lower_bands(
         // ⛔ Acima do tecto de faixas — a ordem da Fase 1, e ela DIZ.
         eprintln!(
             "[zorder] cena com mais de {} alternancias vetor/sprite: a ordem cai na da Fase 1",
-            crate::draw_bands::MAX_BANDS
+            ph2d_render::draw_bands::MAX_BANDS
         );
     }
     g.world_rt
@@ -108,7 +108,7 @@ pub(super) fn draw_lower_bands(
     let mut doc_i = 0usize;
     for band in plan.bands.iter().take(upto) {
         match band.family {
-            crate::draw_bands::Family::Sprite => {
+            ph2d_render::draw_bands::Family::Sprite => {
                 // ⚠️ Sem `extra` e sem `gpu_extra`: o fluxo cozido do Motion não
                 // tem rank (ele não passa pelo ECS) e pertence à faixa que corre o
                 // pipeline inteiro — a última.
@@ -135,7 +135,7 @@ pub(super) fn draw_lower_bands(
                     ph2d_render::BandSource::Sprites,
                 );
             }
-            crate::draw_bands::Family::Vector => {
+            ph2d_render::draw_bands::Family::Vector => {
                 if let Some(scene) = g.band_doc_scenes.get(doc_i) {
                     if let Err(e) = g.vello_pass.render_to_intermediate(
                         gpu,
@@ -185,10 +185,10 @@ pub(super) fn draw_upper_bands(gpu: &ph2d_gpu::GpuContext, plan: &FramePlan, g: 
         .bands
         .iter()
         .take(from)
-        .filter(|b| b.family == crate::draw_bands::Family::Vector)
+        .filter(|b| b.family == ph2d_render::draw_bands::Family::Vector)
         .count();
     for band in plan.bands.iter().skip(from) {
-        if band.family != crate::draw_bands::Family::Vector {
+        if band.family != ph2d_render::draw_bands::Family::Vector {
             continue;
         }
         if let Some(scene) = g.band_doc_scenes.get(doc_i) {

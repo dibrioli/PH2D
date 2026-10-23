@@ -4,7 +4,7 @@
 //! Este passe é deliberadamente pequeno: um triângulo de tela cheia, uma textura, dois
 //! interruptores de convenção.
 //!
-//! ⛔ **Ele não decide ordem nenhuma.** Quem sabe a ordem é o `draw_bands` do shell; aqui só se
+//! ⛔ **Ele não decide ordem nenhuma.** Quem sabe a ordem é o [`crate::draw_bands`]; aqui só se
 //! executa uma colagem.
 
 use ph2d_gpu::GpuContext;

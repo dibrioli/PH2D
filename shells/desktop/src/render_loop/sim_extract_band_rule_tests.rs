@@ -1,6 +1,6 @@
 use super::*;
-use crate::draw_bands::Family;
 use ph2d_ecs::{Name, RootOrder, SimWorld, Transform, VecPathRef};
+use ph2d_render::draw_bands::Family;
 
 /// ⭐ Uma forma vetorial ocupa um rank.
 #[test]
@@ -76,7 +76,7 @@ fn the_conversion_records_every_rank_not_only_the_shapes() {
         .collect();
     let mut scratch = SortScratch::new();
     ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
-    let mut order = crate::draw_bands::FrameOrder::default();
+    let mut order = ph2d_render::draw_bands::FrameOrder::default();
     build_frame_order(&inputs, &[(shape, 7)], &scratch, &mut order);
 
     // ⛔ **`complete()`, e não `families` cru** — é ele que distingue «não registado» de
@@ -105,7 +105,7 @@ fn running_the_conversion_twice_gives_the_same_order() {
     }];
     let mut scratch = SortScratch::new();
     ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
-    let mut order = crate::draw_bands::FrameOrder::default();
+    let mut order = ph2d_render::draw_bands::FrameOrder::default();
     build_frame_order(&inputs, &[(shape, 7)], &scratch, &mut order);
     let first = order.complete();
     build_frame_order(&inputs, &[(shape, 7)], &scratch, &mut order);

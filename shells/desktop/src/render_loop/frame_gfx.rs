@@ -65,7 +65,7 @@ pub(super) struct FrameGfx<'a> {
     pub(super) worklist: &'a mut WorklistBuf,
     pub(super) sort_scratch: &'a mut ph2d_ecs::sort_key::SortScratch,
     pub(super) sort_inputs: &'a mut Vec<ph2d_ecs::sort_key::SortInput>,
-    pub(super) frame_order: &'a mut crate::draw_bands::FrameOrder,
+    pub(super) frame_order: &'a mut ph2d_render::draw_bands::FrameOrder,
     pub(super) world_rt: &'a mut ph2d_render::WorldRt,
     pub(super) band_doc_scenes: &'a mut Vec<ph2d_vector::VectorScene>,
     pub(super) compositor_reads_world: &'a mut bool,

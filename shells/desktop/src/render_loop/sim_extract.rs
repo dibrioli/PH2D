@@ -210,7 +210,7 @@ pub(super) fn build_frame_order(
     sort_inputs: &[SortInput],
     vector_inputs: &[(Entity, u64)],
     scratch: &SortScratch,
-    out: &mut crate::draw_bands::FrameOrder,
+    out: &mut ph2d_render::draw_bands::FrameOrder,
 ) {
     out.clear();
     for input in sort_inputs {
@@ -268,7 +268,7 @@ pub(super) fn run(
     // ⚠️ **Out-param e não valor de retorno**: esta função já devolve por escrita em `present`, e
     // um `Vec` novo por quadro seria uma alocação por quadro (HR-3) — o `clear` mantém a
     // capacidade.
-    order_out: &mut crate::draw_bands::FrameOrder,
+    order_out: &mut ph2d_render::draw_bands::FrameOrder,
 ) {
     // As formas vetoriais que entraram na ordem, na travessia: `(entidade, VecPathRef.0)`.
     let mut vector_inputs: Vec<(ph2d_ecs::Entity, u64)> = Vec::new();

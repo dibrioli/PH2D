@@ -6424,6 +6424,23 @@ name = "ph2d-host"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-host-code-scenes"
+version = "0.0.0"
+dependencies = [
+ "ph2d-app-code",
+ "ph2d-app-components",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-panel-code",
+ "ph2d-script",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vec-entities",
+ "ph2d-vec-scene",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-host-desktop"
 version = "0.0.0"
 dependencies = [
@@ -6497,7 +6514,6 @@ dependencies = [
  "ph2d-panel-audio-mixer",
  "ph2d-panel-authored",
  "ph2d-panel-bgremoval",
- "ph2d-panel-code",
  "ph2d-panel-color-equalization",
  "ph2d-panel-equalize-sizes",
  "ph2d-panel-flip",

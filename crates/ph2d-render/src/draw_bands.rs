@@ -28,7 +28,7 @@
 
 /// A que motor um rank pertence.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum Family {
+pub enum Family {
     /// Rasterizado pelo `SpriteRenderer` no `game_rt` (HDR) e tonemapeado.
     Sprite,
     /// Rasterizado pelo Vello, no espaço do desenhista.
@@ -37,7 +37,7 @@ pub(crate) enum Family {
 
 /// Uma corrida contígua de ranks da mesma família — **uma passagem de desenho**.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Band {
+pub struct Band {
     pub family: Family,
     /// Primeiro rank da faixa.
     pub lo: u32,
@@ -54,7 +54,7 @@ pub(crate) struct Band {
 /// ⚠️ **O número é MEDIDO**, não escolhido: acima dele a lei degrada para o agrupamento por família
 /// (o de sempre) **e o log diz**, em vez de o quadro cair em silêncio.
 /// ⛔ Um teto sem degradação nomeada seria um congelamento a partir de uma forma a mais.
-pub(crate) const MAX_BANDS: usize = 16;
+pub const MAX_BANDS: usize = 16;
 
 /// Parte a ordem total em faixas.
 ///
@@ -63,7 +63,7 @@ pub(crate) const MAX_BANDS: usize = 16;
 /// ⚠️ **Uma faixa VAZIA nunca sai daqui** — uma passagem que não desenha nada ainda paga a colagem
 /// de tela cheia, e um `Vec` com buracos faria o laço do presente ter de os saltar (que é a linha
 /// que alguém esquece).
-pub(crate) fn bands(families: &[Family]) -> Vec<Band> {
+pub fn bands(families: &[Family]) -> Vec<Band> {
     let mut out: Vec<Band> = Vec::new();
     for (rank, &fam) in families.iter().enumerate() {
         let rank = rank as u32;
@@ -88,7 +88,7 @@ pub(crate) fn bands(families: &[Family]) -> Vec<Band> {
 /// ⚠️ E ela devolve as faixas **por rank**, não por família: o consumidor continua a desenhar
 /// intervalos de rank, então o caminho de degradação usa o MESMO laço. *Um caminho de fallback com
 /// um laço próprio é o que diverge.*
-pub(crate) fn collapsed(families: &[Family]) -> Vec<Band> {
+pub fn collapsed(families: &[Family]) -> Vec<Band> {
     let n = families.len() as u32;
     let mut out = Vec::new();
     if families.contains(&Family::Sprite) {
@@ -111,7 +111,7 @@ pub(crate) fn collapsed(families: &[Family]) -> Vec<Band> {
 /// A lei inteira: as faixas desta ordem, já com o teto aplicado.
 ///
 /// Devolve `(faixas, degradou?)` — o segundo é o que o log imprime.
-pub(crate) fn plan(families: &[Family]) -> (Vec<Band>, bool) {
+pub fn plan(families: &[Family]) -> (Vec<Band>, bool) {
     let b = bands(families);
     if b.len() > MAX_BANDS {
         (collapsed(families), true)
@@ -126,7 +126,7 @@ pub(crate) fn plan(families: &[Family]) -> (Vec<Band>, bool) {
 /// que é o **único** ordenador do app. ⛔ Nada aqui reordena coisa nenhuma: isto é a leitura do que
 /// ele decidiu, na forma de que o presente precisa.
 #[derive(Clone, Debug, Default)]
-pub(crate) struct FrameOrder {
+pub struct FrameOrder {
     /// `families[rank]` — a família do objecto naquele rank (0 = mais atrás).
     ///
     /// ⛔⛔ **`Option`, e o `None` é a razão de este campo não ser um `Vec<Family>`.** A primeira
@@ -232,7 +232,7 @@ impl FrameOrder {
 ///
 /// ⭐ `forcar` = as formas do Motion vão à PLACA neste quadro (doc 121, W2): a camada delas é
 /// colada no acumulador por cima do documento, logo o documento TEM de ir às faixas.
-pub(crate) fn doc_bands_of(order: &FrameOrder, forcar: bool) -> Vec<Band> {
+pub fn doc_bands_of(order: &FrameOrder, forcar: bool) -> Vec<Band> {
     let (bands, _degraded) = order.plan();
     if !forcar && !needs_banding(&bands) {
         return Vec::new();
@@ -244,7 +244,7 @@ pub(crate) fn doc_bands_of(order: &FrameOrder, forcar: bool) -> Vec<Band> {
 }
 
 /// O plano precisa do laço de faixas, ou o pipeline de sempre já o desenha?
-pub(crate) fn needs_banding(bands: &[Band]) -> bool {
+pub fn needs_banding(bands: &[Band]) -> bool {
     match bands {
         [] => false,
         [one] => {

@@ -139,7 +139,8 @@ impl crate::App {
         // ⭐ A LUZ 2D (W3): acesa, o documento vai às FAIXAS (a colagem acende-o); sem `Luz`, `false`.
         let docs = (&mut *vec_scene, &vec_xf, &mut *flip);
         let luz_acesa = luz2d.codificar(sim.world_mut(), surface, cam_affine, docs);
-        let doc_bands = crate::draw_bands::doc_bands_of(frame_order, placa || palcos || luz_acesa);
+        let doc_bands =
+            ph2d_render::draw_bands::doc_bands_of(frame_order, placa || palcos || luz_acesa);
         for band in &doc_bands {
             let keep = frame_order.vector_ids_in(*band);
             let mut band_view = vec_view.clone();

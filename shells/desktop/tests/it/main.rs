@@ -8,9 +8,6 @@
 
 mod a_aba_do_encaixe_passa_no_preview;
 mod a_accao_pedida_pela_fileira_nasce_no_mapa;
-mod a_cena_3_do_editor_conduzida;
-mod a_cena_4_do_editor_conduzida;
-mod a_cena_5_do_editor_conduzida;
 mod a_coluna_pintada_encolhe_com_a_janela;
 mod a_fabrica_nasce_antes_de_a_morte_drenar;
 mod a_frames_handle_resizes_it_and_does_not_scale_it;

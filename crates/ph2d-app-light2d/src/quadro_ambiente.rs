@@ -186,3 +186,27 @@ pub fn config_do_entorno(
         ..Config::padrao_para(device, ge)
     }))
 }
+
+impl super::LuzDoQuadro {
+    /// A configuração do solver da vista para o degrau `dg` na grade `g` ([`config_da_vista`]).
+    pub(super) fn config_do_solver(
+        &self,
+        gpu: &ph2d_gpu::GpuContext,
+        g: Grade,
+        dg: Degrau,
+    ) -> Config {
+        Config {
+            cantos_por_blocos: self.cantos_por_blocos,
+            ..config_da_vista(&gpu.device, g, self.mundo_para_tela, dg)
+        }
+    }
+
+    /// ⭐ W6g r9 — o teto dos cantos da vista (`Config::cantos_por_blocos`; o padrão é
+    /// [`ph2d_light2d_gpu::CANTOS_POR_BLOCOS_PADRAO`]). `u32::MAX` dá o atlas mínimo: o portão do elo
+    /// até ao aviso do Inspector (`AvisoDaLuz::CantosArredondados`) força a recusa por aqui.
+    #[must_use]
+    pub fn com_teto_dos_cantos(mut self, cantos_por_blocos: u32) -> Self {
+        self.cantos_por_blocos = cantos_por_blocos;
+        self
+    }
+}

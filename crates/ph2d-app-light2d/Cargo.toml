@@ -61,6 +61,9 @@ half = "2"
 ph2d-light2d-ref = { path = "../ph2d-light2d-ref" }
 # Os escopos de erro do dispositivo (`pop` é um futuro) nas rodadas que medem recusas.
 pollster = "0.4.0"
+# O elo do aviso dos cantos até à frase pintada no cartão LUZ (família → painel: aresta permitida).
+ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 
 [lints]
 workspace = true

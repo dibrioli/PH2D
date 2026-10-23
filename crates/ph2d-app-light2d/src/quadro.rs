@@ -12,7 +12,7 @@ use crate::qualidade::Governador;
 use ph2d_gpu::GpuContext;
 use ph2d_light2d_ecs::CenaDeLuz;
 use ph2d_light2d_ecs::coleta::cena_de_luz;
-use ph2d_light2d_gpu::{Config, ErroSolver, Grade, RelatorioC0, Solver};
+use ph2d_light2d_gpu::{ErroSolver, Grade, RelatorioC0, Solver};
 use ph2d_render::tonemap::Tonemap;
 use ph2d_render::{BandBlit, LuzRecebida, SpriteRenderer};
 
@@ -74,6 +74,8 @@ pub struct LuzDoQuadro {
     sprites_por_texel: (usize, usize),
     /// ⭐ W6g r9: os blocos que o teto dos cantos recusou (os tempos de há poucos quadros).
     cantos_recusados: u32,
+    /// O teto dos cantos da vista (`Config::cantos_por_blocos`).
+    cantos_por_blocos: u32,
     /// ⭐ Os caminhos vetoriais que bloqueiam, desenhados na grade (W3).
     vetores: crate::vetor::CamadaVetorial,
     /// ⭐ W5e: os OUTROS que bloqueiam (o Flip, o Motion), desenhados pela família dona.
@@ -149,6 +151,7 @@ impl LuzDoQuadro {
             erro: None,
             sprites_por_texel: (0, 0),
             cantos_recusados: 0,
+            cantos_por_blocos: ph2d_light2d_gpu::CANTOS_POR_BLOCOS_PADRAO,
             vetores: crate::vetor::CamadaVetorial::default(),
             outros: crate::outras::CamadaDeOutros::default(),
             fabrica: ph2d_light2d_gpu::Fabrica::default(),
@@ -190,11 +193,6 @@ impl LuzDoQuadro {
     #[must_use]
     pub fn aquecendo(&self) -> bool {
         self.aquecendo
-    }
-
-    /// A configuração do solver da vista para o degrau `dg` na grade `g` ([`config_da_vista`]).
-    fn config_do_solver(&self, gpu: &GpuContext, g: Grade, dg: Degrau) -> Config {
-        config_da_vista(&gpu.device, g, self.mundo_para_tela, dg)
     }
 
     /// ⭐ W5i — adianta à estufa os três níveis e o entorno nesta vista (uma vez): a troca de nível (o

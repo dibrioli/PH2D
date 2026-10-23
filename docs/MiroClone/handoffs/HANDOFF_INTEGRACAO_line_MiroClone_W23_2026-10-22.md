@@ -137,3 +137,16 @@ sem OK escrito no handoff.
 3. Elementos antigos de nascença 0 ficam a escala do mundo (desenho: ficheiros de antes abrem nascidos a zoom 1).
 4. Otimização do caminho de longe da hachura: sem medição (doc 16, recusas).
 5. Doc 17 §6: nomes planeados que nunca existiram (nota ⚠️ posta; os gates reais estão no §9 e nos handoffs).
+
+## 9 — Integração no `main` (22/10, integrador)
+
+- Ordem: uma linha só; `main` parado na base `100d34c8e0` ⇒ rebase vazio, **fast-forward** para `764578e085` (106 commits), sem
+  commit de regen (os três geradores não mudaram nada).
+- `collision-surface.sh` (caminho absoluto, na worktree): `PROJECT_SCHEMA` 191 = base (tripla `(191, 13, 23)`), registo de componentes
+  108/109/109 = base, contratos §6 intocados, ADR nenhum (próximo livre 0189), `Cargo.lock` sem pacote externo novo, zero marcadores.
+  Único `✗`: `shells/desktop/src/main.rs` 1061/600 — isento em `file_loc_caps.rs:36`, era 1060 na base.
+- Portão da árvore combinada (`foundational-integrate.sh` sob `ph2d-run.sh`): staleness ✓ · `CARGO_BUILD_WARNINGS=deny cargo check
+  --workspace --all-targets` ✓ · `PH2D_SUITE=fecho nextest-impacted` **19 269/19 269** (841 s, `loadavg` 5–56).
+- Bateria depois do merge: `cargo fmt --all --check` ✓ · `clippy --workspace --all-targets -D warnings` ✓ · `censos-da-arvore-combinada.sh`
+  121/121 (12 de 12 censos correram) · `file_loc_caps` 4/4. Nenhum flake, nada curado.
+- Binário do smoke compilado no primário (`--profile smoke`). **Sem push** (ship = outra ordem do dono).

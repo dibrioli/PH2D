@@ -55,6 +55,11 @@ pub trait LeitorDaFamilia {
     fn e_barreira(&self, _carga: &[u8]) -> bool {
         false
     }
+    /// **O passo que, no instante GRAVADO de uma etapa deslocada, guarda o pincel de ali para a faixa
+    /// `n`** — a etapa leva o seu pincel para onde for. `None` = a família não precisa.
+    fn marca_da_faixa(&self, _n: u32) -> Option<Vec<u8>> {
+        None
+    }
 }
 
 /// As edições de UMA etapa.
@@ -327,8 +332,7 @@ fn desloca_as_etapas(
     let Saida { ev: mut sai, orig } = out;
     let de = |i: usize| moveis.iter().find(|m| (m.inicio..=m.fim).contains(&i));
     let em_etapa = |i: usize| etapas.iter().position(|g| (g.inicio..=g.fim).contains(&i));
-    // O fim de cada etapa (o instante do último evento dela), antes e depois de deslocar.
-    let mut fim: Vec<Option<(u64, u64)>> = vec![None; etapas.len()];
+    let mut vaos = vec![Vao::default(); etapas.len()];
     let mut corte = u64::MAX;
     for (e, o) in sai.iter().zip(&orig) {
         let Some(i) = *o else { continue };
@@ -340,32 +344,24 @@ fn desloca_as_etapas(
         if d != 0 {
             corte = corte.min(e.t.0.min(novo));
         }
-        let f = fim[k].get_or_insert((e.t.0, novo));
-        *f = (f.0.max(e.t.0), f.1.max(novo));
+        vaos[k].junta(e.t.0, novo);
     }
     for (e, o) in sai.iter().zip(&orig) {
-        if o.is_some_and(|i| em_etapa(i).is_some()) || !leitor.e_barreira(&e.payload) {
-            continue;
+        if !o.is_some_and(|i| em_etapa(i).is_some()) && leitor.e_barreira(&e.payload) {
+            barreira(e.t.0, &vaos, etapas, moveis)?;
         }
-        let tb = e.t.0;
-        let ultima = |novo: bool| {
-            fim.iter()
-                .enumerate()
-                .filter_map(|(k, f)| f.map(|f| (if novo { f.1 } else { f.0 }, k)))
-                .filter(|&(t, _)| t <= tb)
-                .max()
-        };
-        let (antes, depois) = (ultima(false), ultima(true));
-        let empata = fim.iter().enumerate().any(|(k, f)| {
-            f.is_some_and(|f| f.1 == tb && f.0 != f.1) && depois.is_some_and(|d| d.1 != k)
-        });
-        if antes.map(|a| a.1) != depois.map(|d| d.1) || empata {
-            let culpadas = [antes, depois].map(|x| x.map(|x| etapas[x.1].inicio));
-            let m = moveis
-                .iter()
-                .find(|m| culpadas.contains(&Some(m.inicio)))
-                .unwrap_or(&moveis[0]);
-            return Err(ErroDeEdicao::MudaOQueODesfazerDesfaz(m.inicio));
+    }
+    let mut marcas = Vec::new();
+    for m in moveis {
+        let primeiro = sai
+            .iter()
+            .zip(&orig)
+            .find(|(_, o)| o.is_some_and(|i| (m.inicio..=m.fim).contains(&i)));
+        if let (Some((e, _)), Some(c)) = (primeiro, leitor.marca_da_faixa(m.faixa)) {
+            marcas.push(Event {
+                t: e.t,
+                payload: c,
+            });
         }
     }
     let fim_antes = sai.last().map_or(0, |e| e.t.0);
@@ -382,8 +378,8 @@ fn desloca_as_etapas(
         }
     }
     if fim_novo > fim_antes {
-        // O fim da gravação (o que não é relógio no último instante, fora das etapas que andam) vai para o
-        // fim da última etapa; o relógio estende-se até lá.
+        // O fim da gravação (o que não é relógio no último instante, fora das etapas) vai para o fim da
+        // última etapa; o relógio estende-se até lá.
         for (e, o) in sai.iter_mut().zip(&orig) {
             if e.t.0 == fim_antes
                 && !o.is_some_and(|i| em_etapa(i).is_some())
@@ -395,6 +391,9 @@ fn desloca_as_etapas(
         let mais = leitor.espera(ev, ev.len(), MacroTime(fim_antes), fim_novo - fim_antes, 0);
         sai.extend(mais);
     }
+    // A marca da faixa fica no instante GRAVADO da etapa, depois do que lá estava (a cor escolhida antes
+    // do toque, no mesmo instante): é o pincel dali que a etapa leva.
+    sai.extend(marcas);
     sai.sort_by_key(|e| e.t);
     if !saiu
         && corte != u64::MAX
@@ -410,6 +409,83 @@ fn desloca_as_etapas(
         );
     }
     Ok(sai)
+}
+
+/// O vão de uma etapa na trilha que toca: o primeiro e o último instante, antes e depois de deslocar.
+#[derive(Clone, Copy, Default)]
+struct Vao {
+    antes: Option<(u64, u64)>,
+    depois: Option<(u64, u64)>,
+}
+
+impl Vao {
+    fn junta(&mut self, antes: u64, depois: u64) {
+        let alarga = |v: &mut Option<(u64, u64)>, t: u64| {
+            let (a, b) = v.get_or_insert((t, t));
+            *a = (*a).min(t);
+            *b = (*b).max(t);
+        };
+        alarga(&mut self.antes, antes);
+        alarga(&mut self.depois, depois);
+    }
+
+    fn de(&self, depois: bool) -> Option<(u64, u64)> {
+        if depois { self.depois } else { self.antes }
+    }
+}
+
+/// **Um evento de «o último» (o Desfazer) no instante `tb`**: a última etapa a acabar antes dele tem de
+/// ser a mesma depois de deslocar, sem empate no instante dele, e nenhuma deslocada passa a tocar ao
+/// mesmo tempo que ela (ele desfaria as duas).
+fn barreira(tb: u64, vaos: &[Vao], etapas: &[Etapa], moveis: &[Movel]) -> Result<(), ErroDeEdicao> {
+    let ultima = |depois: bool| {
+        vaos.iter()
+            .enumerate()
+            .filter_map(|(k, v)| v.de(depois).map(|(_, f)| (f, k)))
+            .filter(|&(f, _)| f <= tb)
+            .max()
+            .map(|(_, k)| k)
+    };
+    let (antes, depois) = (ultima(false), ultima(true));
+    let movida = |k: usize| moveis.iter().any(|m| m.inicio == etapas[k].inicio);
+    let empata = vaos
+        .iter()
+        .enumerate()
+        .any(|(k, v)| movida(k) && v.depois.is_some_and(|(_, f)| f == tb) && depois != Some(k));
+    let cruza = |a: (u64, u64), b: (u64, u64)| a.0 <= b.1 && b.0 <= a.1;
+    let sobrepoe = antes.is_some_and(|l| {
+        vaos.iter().enumerate().any(|(k, v)| {
+            k != l
+                && movida(k)
+                && match (v.antes, v.depois, vaos[l].antes, vaos[l].depois) {
+                    (Some(a), Some(d), Some(la), Some(ld)) => cruza(d, ld) && !cruza(a, la),
+                    _ => false,
+                }
+        })
+    });
+    if antes == depois && !empata && !sobrepoe {
+        return Ok(());
+    }
+    let culpada = moveis
+        .iter()
+        .find(|m| {
+            [antes, depois]
+                .iter()
+                .flatten()
+                .any(|&k| etapas[k].inicio == m.inicio)
+        })
+        .or_else(|| {
+            moveis.iter().find(|m| {
+                etapas.iter().position(|g| g.inicio == m.inicio).is_some_and(|k| {
+                    vaos[k].depois.is_some_and(|(_, f)| f == tb)
+                        || antes.is_some_and(|l| {
+                            matches!((vaos[k].depois, vaos[l].depois), (Some(d), Some(ld)) if cruza(d, ld))
+                        })
+                })
+            })
+        })
+        .unwrap_or(&moveis[0]);
+    Err(ErroDeEdicao::MudaOQueODesfazerDesfaz(culpada.inicio))
 }
 
 /// **Quantos quadros de `quadro_us` cabem numa espera de `us`**, e o resto (µs) que não enche um. A

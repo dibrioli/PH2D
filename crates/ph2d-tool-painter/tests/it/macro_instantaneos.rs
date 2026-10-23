@@ -314,7 +314,7 @@ fn o_instantaneo_que_consumiu_uma_resposta_mudada_nao_recomeca() {
     assert!(t.respostas_por_pedir() < todas.len(), "já consumiu");
     let iguais: Arc<[_]> = todas.clone().into();
     assert!(
-        t.recomeca(&iguais).is_some(),
+        t.recomeca(&iguais.into()).is_some(),
         "controlo: a mesma trilha recomeça"
     );
     // A 1.ª resposta (já consumida) troca com a 1.ª que difere dela: quantas respostas iguais vêm à
@@ -325,5 +325,5 @@ fn o_instantaneo_que_consumiu_uma_resposta_mudada_nao_recomeca() {
         .expect("controlo: a gravação tem duas respostas diferentes");
     let mut mudadas = todas;
     mudadas.swap(0, j);
-    assert!(t.recomeca(&mudadas.into()).is_none());
+    assert!(t.recomeca(&Arc::<[_]>::from(mudadas).into()).is_none());
 }

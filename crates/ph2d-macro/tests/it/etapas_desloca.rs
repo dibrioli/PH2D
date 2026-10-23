@@ -16,10 +16,10 @@ fn desloca(g: &Track, k: usize, us: i64) -> Track {
     )
 }
 
-/// `(t, tipo, faixa)` dos eventos que não são relógio nem a marca de saída.
+/// `(t, tipo, faixa)` dos eventos que não são relógio, nem a marca de saída, nem a da faixa.
 fn gestos(ev: &[Event]) -> Vec<(u64, u8, u8)> {
     ev.iter()
-        .filter(|e| !matches!(e.payload[0], 0 | 9))
+        .filter(|e| !matches!(e.payload[0], 0 | 7 | 9))
         .map(|e| (e.t.0 / Q, e.payload[0], e.payload.get(9).copied().unwrap_or(0)))
         .collect()
 }
@@ -59,6 +59,19 @@ fn deslocar_move_so_a_etapa_e_o_relogio_fica() {
     assert!(
         ev[..marca].iter().all(|e| e.t < MacroTime(11 * Q)),
         "a marca vem antes de tudo o que toca nesse instante"
+    );
+    let pincel: Vec<_> = ev
+        .iter()
+        .enumerate()
+        .filter(|(_, e)| e.payload[0] == 7)
+        .map(|(i, e)| (i, e.t.0 / Q, e.payload[9]))
+        .collect();
+    assert_eq!(pincel.len(), 1, "uma marca de faixa por etapa deslocada");
+    let (i, t, n) = pincel[0];
+    assert_eq!((t, n), (19, 3), "no instante GRAVADO do gesto 2, para a faixa 3");
+    assert!(
+        ev[i + 1..].iter().all(|e| e.t > ev[i].t),
+        "depois de tudo o que já estava nesse instante"
     );
 }
 
@@ -102,15 +115,21 @@ fn um_desfazer_gravado_continua_a_desfazer_a_mesma_etapa() {
         Err(ErroDeEdicao::MudaOQueODesfazerDesfaz(a1)),
         "o gesto 1 levado para depois do Desfazer: ele desfaria o gesto 0"
     );
-    assert_eq!(
-        efetiva(&desloca(&g, 2, -7 * Q as i64), &Brinquedo),
-        Err(ErroDeEdicao::MudaOQueODesfazerDesfaz(ancora(&g, 2))),
-        "o gesto 2 a acabar no mesmo instante do Desfazer: ambíguo"
-    );
-    for (k, d) in [(1, -2), (0, 9), (2, -8), (2, -1)] {
+    for (k, d, porque) in [
+        (2, -7, "o gesto 2 a acabar no mesmo instante do Desfazer: ambíguo"),
+        (2, -8, "o gesto 2 a tocar com o gesto 1: o Desfazer levaria os dois"),
+        (0, 9, "o gesto 0 a tocar com o gesto 1: idem"),
+    ] {
+        assert_eq!(
+            efetiva(&desloca(&g, k, d * Q as i64), &Brinquedo),
+            Err(ErroDeEdicao::MudaOQueODesfazerDesfaz(ancora(&g, k))),
+            "{porque}"
+        );
+    }
+    for (k, d) in [(1, -2), (0, 2), (2, -1)] {
         assert!(
             efetiva(&desloca(&g, k, d * Q as i64), &Brinquedo).is_ok(),
-            "gesto {k} Δ {d}Q: o Desfazer continua a desfazer o gesto 1"
+            "gesto {k} Δ {d}Q: o Desfazer continua a desfazer só o gesto 1"
         );
     }
 }

@@ -73,6 +73,11 @@ impl LeitorDaFamilia for Brinquedo {
     fn e_barreira(&self, c: &[u8]) -> bool {
         c[0] == 5
     }
+    fn marca_da_faixa(&self, n: u32) -> Option<Vec<u8>> {
+        let mut v = carga(7, 0);
+        v.push(u8::try_from(n).expect("poucas faixas"));
+        Some(v)
+    }
 }
 
 /// Relógio a cada `Q`; três gestos de 3 quadros com 4 quadros de relógio entre eles; uma propriedade

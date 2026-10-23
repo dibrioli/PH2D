@@ -82,19 +82,20 @@ fn pinceladas(track: &Track) -> Result<Vec<Pinc>, ErroDaMacro> {
 
 /// As pinceladas de `track` nos eventos da trilha que toca `tocavel` (a dela).
 fn pinceladas_em(track: &Track, tocavel: &Track) -> Result<Vec<Pinc>, ErroDaMacro> {
-    let tocadas = LeitorDoPainter.etapas(&tocavel.events);
-    let mut pinceis = etapas::pinceis(tocavel)?.into_iter();
     let mut out = Vec::new();
-    // `etapas` lê uma tocada por etapa viva e um pincel por toque, pela ordem: as listas andam juntas.
-    for (e, t) in etapas::etapas(track)?.into_iter().zip(tocadas) {
+    for e in etapas::tocadas(track, tocavel)? {
         let tipo = match e.tipo {
             TipoDaEtapa::Pincelada(_) => TipoDoCriterio::Pincelada,
             TipoDaEtapa::Preenchimento(_) => TipoDoCriterio::Preenchimento,
             TipoDaEtapa::Recusada(_) => continue,
         };
-        let limiar = pinceis.next().map_or(0.0, |p| p.limiar);
+        let t = e.tocada;
         let mut passos = Vec::new();
-        for ev in &tocavel.events[t.inicio..=t.fim] {
+        // Só os passos da faixa dela: uma deslocada (W16) toca entrelaçada com outra.
+        for ev in tocavel.events[t.inicio..=t.fim]
+            .iter()
+            .filter(|ev| super::passo::faixa_de(&ev.payload) == e.faixa)
+        {
             let p = Passo::descodifica(&ev.payload).map_err(ErroDaMacro::Passo)?;
             let entra = match tipo {
                 TipoDoCriterio::Pincelada => matches!(p, Passo::Ponteiro { .. }),
@@ -104,14 +105,18 @@ fn pinceladas_em(track: &Track, tocavel: &Track) -> Result<Vec<Pinc>, ErroDaMacr
                 passos.push(p);
             }
         }
+        let (cor, raio, meio, limiar) = e.no_toque.map_or(
+            ([0; 3], 0.0, PaintMedia::default(), 0.0),
+            |p| (p.cor, p.tamanho_px, p.meio, p.limiar),
+        );
         out.push(Pinc {
             k: e.k,
             tipo,
             inicio: t.inicio,
             fim: t.fim,
-            cor: e.cor,
-            raio: e.tamanho_px,
-            meio: e.meio,
+            cor,
+            raio,
+            meio,
             limiar,
             passos,
         });

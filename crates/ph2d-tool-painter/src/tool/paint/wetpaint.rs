@@ -370,6 +370,9 @@ impl PainterTool {
         // A fila pousa ANTES de o gesto deixar de ser vivo (a rota recusa um lote de um gesto morto).
         self.wetpaint_pousa_adiados();
         self.paint.wetpaint.live_gesture = false;
+        if self.paint.tracos_fora > 0 {
+            return; // a água é dos traços abertos: o último fecha-a (W16)
+        }
         if let Some(sess) = self.paint.wetpaint.session.as_mut()
             && sess.stroke_open
         {
@@ -541,6 +544,7 @@ impl PainterTool {
 mod authored_actions; // canvas actions + session birth + facts — child file (LOC cap)
 mod authoring; // o rascunho é a PRÓPRIA água (o preview de autoria) — filho por LOC
 mod cauda; // a água depois do fim de um clipe (W14)
+pub(super) mod faixas; // as lanes de um traço guardado (W16)
 
 mod composite;
 /// O Solid e os fios na água, pela porta da MÁSCARA do motor (doc 46 item 9).

@@ -55,12 +55,18 @@ impl PainterTool {
         self.paint.solid_fill_owed = false;
         // **O passo de undo começa AQUI** (doc 28 §5.26): a cadeia é reconciliada e o journal passa a
         // descrever este traço em vez do intervalo desde o último commit.
-        self.begin_undo_step();
+        // Pinceladas sobrepostas (W16): o grupo inteiro é UM passo, aberto no primeiro pen-down.
+        let sozinho = self.paint.tracos_fora == 0;
+        if sozinho {
+            self.begin_undo_step();
+        }
         // ⚠️ **ELIDINDO o relevo** (degrau 4, doc 28 §5.72): este `before` DESCREVE os três planos em
         // vez de os segurar, e é isso que deixa o 1º dab escrever no lugar — a porta de fork copia
         // quando `strong_count > 1`, e um `Weak` não conta. O lado `before` do delta sai do journal.
-        let before = self.snapshot_model_eliding_relief();
-        self.paint.stroke_undo = Some(before);
+        if sozinho {
+            let before = self.snapshot_model_eliding_relief();
+            self.paint.stroke_undo = Some(before);
+        }
         self.paint.drag_preview = None;
         self.mancha_na_aguada = None; // a do gesto anterior é tinta (ou foi descascada)
         self.paint.wetpaint.pending_deposit.clear(); // doc 21: a new gesture invalidates the stash
@@ -70,7 +76,7 @@ impl PainterTool {
         // rect + session base, so the bake re-renders the union with a single rim (the previous
         // stroke's inner rim melts). Anything else (dried, foreign edit, mode/layer change) starts
         // a fresh session over the current canvas.
-        let wet_session = self.wet_session_continues();
+        let wet_session = !sozinho || self.wet_session_continues();
         // Reset the Accumulate-OFF cap mask (re-grown by the first dab) + the per-layer-colour
         // accumulation (so the recomposite snapshots THIS stroke's pre-pixels) — both per stroke.
         self.paint.stroke_mask.clear();
@@ -100,11 +106,15 @@ impl PainterTool {
                 .tex_rng
                 .wrapping_add((i as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15))
         });
-        self.reset_stroke_height(); // Impasto: this stroke's relief starts empty (see `super::impasto`)
+        if sozinho {
+            self.reset_stroke_height(); // Impasto: this stroke's relief starts empty (see `super::impasto`)
+        }
         // Sculpt: belt-and-braces. A committed gesture already ended its own session, so this normally
         // finds nothing — but any path that leaves one open (a shape abandoned without Cancel) would
         // otherwise have THIS stroke re-render from a `pre` frozen for a different one.
-        self.end_sculpt_session();
+        if sozinho {
+            self.end_sculpt_session();
+        }
         // ⚠️ The protection epoch deliberately SURVIVES a pen-down (§13.13, Enio's call): a protection
         // that restarted per stroke let `1 − (1−keep)^N` through, so eight passes erased it (0.522 → 1.000
         // measured). It ends when the thing it describes changes, not when a gesture does — asked once, in
@@ -120,9 +130,11 @@ impl PainterTool {
             self.paint.stroke_water = Vec::new();
             self.paint.wet_cum_dirty = None;
         }
-        self.paint.wet_frame_dirty = None;
-        self.paint.wet_frame_linhas.clear();
-        self.paint.wet_mistura.novo_traco(); // o `proprio` da mistura molhada é deste traço só
+        if sozinho {
+            self.paint.wet_frame_dirty = None;
+            self.paint.wet_frame_linhas.clear();
+            self.paint.wet_mistura.novo_traco(); // o `proprio` da mistura molhada é deste traço só
+        }
         self.paint.wet_mistura.ha_tinta_da_sessao = wet_session; // o Smudge sobre tinta molhada
         // THIS-stroke footprint restarts every stroke (even continuing a wet session): only what THIS
         // stroke paints re-wets the moisture map, so earlier washes keep their own drying clocks (#4).
@@ -352,12 +364,19 @@ impl PainterTool {
         // Grain/Paper texture param re-renders the WHOLE committed wash (central + every Tiling copy) so the
         // wet wash reflects the new texture live — not only the next stroke. Inert unless a param changed.
         if self.paint.stroke.is_none()
+            && self.paint.tracos_fora == 0
             && self.watercolor_render_active()
             && self.paint.wet_editable_base.is_some()
             && self.paint.wet_editable_tex != Some(self.wet_editable_sig())
         {
             self.rerender_editable_wash();
         }
+        self.paint_tick_do_traco(dt_s);
+    }
+
+    /// O quadro do traço aberto no tool — o resto do `paint_tick`, sem o que é do quadro inteiro (W16: o
+    /// tocador corre-o também em cada traço guardado, [`super::tracos`]).
+    pub(super) fn paint_tick_do_traco(&mut self, dt_s: f32) {
         let parked = !self.paint.moved_this_frame;
         self.paint.moved_this_frame = false;
         let Some(mut stroke) = self.paint.stroke.take() else {
@@ -454,7 +473,7 @@ impl PainterTool {
         }
         // Watercolor render-path: bake the final optical composite over the frozen base (`commit` drops
         // the base). BEFORE close_stroke so pre-stroke → wash is one undo step (mirror of heal_inpaint).
-        if self.watercolor_render_active() {
+        if self.watercolor_render_active() && self.paint.tracos_fora == 0 {
             // Keep the pre-wash BASE + frozen GROUND the bake composites over, so the wash stays
             // re-renderable while the paper is wet (live Grain/Paper edits, Enio 2026-07-11): the commit
             // drops the live base and `close_stroke` drops the ground, so capture them first.
@@ -488,6 +507,15 @@ impl PainterTool {
         // ⭐ A composição adiada do último quadro entra na tela ANTES de tudo o que se segue ler a
         // tela (o undo, o relevo) e antes de o esfregão perder a sessão (`composite_por_quadro`).
         self.compoe_o_pendente();
+        if self.paint.tracos_fora > 0 {
+            // Pinceladas sobrepostas (W16): este traço fecha; o relevo, a aguada, o vidro e o passo do
+            // desfazer são do grupo e fecham no último.
+            self.paint.stroke = None;
+            self.paint.pilha.fecha();
+            self.paint.line_anchor = None;
+            self.paint.last_smear_pos = None;
+            return;
+        }
         // Impasto: fold this stroke's relief into the layer BEFORE the undo entry is recorded, so the
         // step captures the height together with the pigment that made it — one Ctrl+Z takes both.
         self.commit_stroke_height();

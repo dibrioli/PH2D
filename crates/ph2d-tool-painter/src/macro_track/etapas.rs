@@ -13,10 +13,11 @@ use crate::PaintMedia;
 use ph2d_editor_core::tool::PointerPhase;
 use ph2d_macro::{Etapa, Event, LeitorDaFamilia, MacroTime, Track};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::collections::BTreeMap;
 
 pub struct LeitorDoPainter;
 
-fn passo(c: &[u8]) -> Option<Passo> {
+pub(super) fn passo(c: &[u8]) -> Option<Passo> {
     Passo::descodifica(c).ok()
 }
 
@@ -35,7 +36,7 @@ fn fecha_o_drop(p: &Passo) -> bool {
 
 /// A etapa que começa no último de `eventos` é um ColorDrop: o último marco até lá é o C&F a entrar em
 /// Fill.
-fn e_um_colordrop(eventos: &[Event]) -> bool {
+pub(super) fn e_um_colordrop(eventos: &[Event]) -> bool {
     eventos
         .iter()
         .rev()
@@ -51,63 +52,88 @@ fn e_um_colordrop(eventos: &[Event]) -> bool {
         .unwrap_or(false)
 }
 
+/// O que está aberto numa faixa enquanto se leem as etapas.
+#[derive(Default)]
+struct Aberta {
+    toque: Option<usize>,
+    drop: bool,
+    marco: Option<usize>,
+    solto: Option<(usize, usize)>,
+}
+
+impl Aberta {
+    fn fecha_solto(&mut self, out: &mut Vec<Etapa>) {
+        if let Some((inicio, fim)) = self.solto.take() {
+            out.push(Etapa { inicio, fim });
+        }
+    }
+
+    /// Uma pincelada é `Down..Up`. Um ColorDrop (W11) vai da entrada em Fill (`ColorDropComeca`, W13:
+    /// apagá-lo leva-a, senão a pincelada seguinte tocava em Fill) ao passo que o fecha — o limiar
+    /// afinado depois de soltar é dele —, e o do gesto parado não tem `Up`.
+    fn le(&mut self, i: usize, p: &Passo, out: &mut Vec<Etapa>) {
+        match p {
+            Passo::Ponteiro {
+                fase: PointerPhase::Down,
+                ..
+            } => {
+                self.fecha_solto(out);
+                self.toque = Some(if self.drop { self.marco.unwrap_or(i) } else { i });
+            }
+            Passo::Ponteiro {
+                fase: PointerPhase::Up,
+                ..
+            } => {
+                if let Some(d) = self.toque.take() {
+                    if self.drop {
+                        self.solto = Some((d, i));
+                    } else {
+                        out.push(Etapa { inicio: d, fim: i });
+                    }
+                }
+            }
+            Passo::ColorDropComeca(_) => {
+                if !self.drop {
+                    self.marco = Some(i);
+                }
+                self.drop = true;
+            }
+            p if self.drop && fecha_o_drop(p) => {
+                self.drop = false;
+                self.marco = None;
+                if let Some(d) = self.solto.take().map(|(d, _)| d).or_else(|| self.toque.take()) {
+                    out.push(Etapa { inicio: d, fim: i });
+                }
+            }
+            Passo::Recusada(_) if self.toque.is_none() => {
+                self.fecha_solto(out);
+                out.push(Etapa { inicio: i, fim: i });
+            }
+            _ => {}
+        }
+    }
+}
+
 impl LeitorDaFamilia for LeitorDoPainter {
     /// Uma pincelada é `Down..Up`. Um ColorDrop (W11) vai da entrada em Fill (`ColorDropComeca`, W13:
     /// apagá-lo leva-a, senão a pincelada seguinte tocava em Fill) ao passo que o fecha — o limiar
     /// afinado depois de soltar é dele —, e o do gesto parado não tem `Up`.
     fn etapas(&self, eventos: &[Event]) -> Vec<Etapa> {
+        // Cada faixa tem o seu toque aberto (W16: duas pinceladas deslocadas tocam entrelaçadas); a
+        // gravação só tem a faixa 0.
+        let mut faixas: BTreeMap<u32, Aberta> = BTreeMap::new();
         let mut out: Vec<Etapa> = Vec::new();
-        let mut toque = None;
-        let mut drop = false;
-        let mut marco = None;
-        let mut solto: Option<(usize, usize)> = None;
-        let fecha_solto = |out: &mut Vec<Etapa>, solto: &mut Option<(usize, usize)>| {
-            if let Some((inicio, fim)) = solto.take() {
-                out.push(Etapa { inicio, fim });
-            }
-        };
         for (i, e) in eventos.iter().enumerate() {
-            match passo(&e.payload) {
-                Some(Passo::Ponteiro {
-                    fase: PointerPhase::Down,
-                    ..
-                }) => {
-                    fecha_solto(&mut out, &mut solto);
-                    toque = Some(if drop { marco.unwrap_or(i) } else { i });
-                }
-                Some(Passo::Ponteiro {
-                    fase: PointerPhase::Up,
-                    ..
-                }) => {
-                    if let Some(d) = toque.take() {
-                        if drop {
-                            solto = Some((d, i));
-                        } else {
-                            out.push(Etapa { inicio: d, fim: i });
-                        }
-                    }
-                }
-                Some(Passo::ColorDropComeca(_)) => {
-                    if !drop {
-                        marco = Some(i);
-                    }
-                    drop = true;
-                }
-                Some(p) if drop && fecha_o_drop(&p) => {
-                    drop = false;
-                    marco = None;
-                    if let Some(d) = solto.take().map(|(d, _)| d).or_else(|| toque.take()) {
-                        out.push(Etapa { inicio: d, fim: i });
-                    }
-                }
-                Some(Passo::Recusada(_)) if toque.is_none() => {
-                    fecha_solto(&mut out, &mut solto);
-                    out.push(Etapa { inicio: i, fim: i });
-                }
-                _ => {}
-            }
+            let Some(p) = passo(&e.payload) else { continue };
+            faixas
+                .entry(super::passo::faixa_de(&e.payload))
+                .or_default()
+                .le(i, &p, &mut out);
         }
-        fecha_solto(&mut out, &mut solto);
+        for a in faixas.values_mut() {
+            a.fecha_solto(&mut out);
+        }
+        out.sort_by_key(|e| e.inicio);
         out
     }
 
@@ -164,6 +190,20 @@ impl LeitorDaFamilia for LeitorDoPainter {
     fn sai_da_gravacao(&self) -> Option<Vec<u8>> {
         Some(Passo::SaiDaGravacao.codifica())
     }
+
+    /// Cada pincelada deslocada abre o seu traço (W16): duas sobrepostas pintam ao mesmo tempo.
+    fn na_faixa(&self, carga: &[u8], n: u32) -> Option<Vec<u8>> {
+        super::passo::na_faixa(carga, n)
+    }
+
+    fn marca_da_faixa(&self, n: u32) -> Option<Vec<u8>> {
+        Some(Passo::PincelDaFaixa(n).codifica())
+    }
+
+    /// O Desfazer e o Refazer agem sobre «o último» passo da pilha.
+    fn e_barreira(&self, carga: &[u8]) -> bool {
+        matches!(passo(carga), Some(Passo::Desfaz | Passo::Refaz))
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -197,7 +237,13 @@ pub struct EtapaDoPainter {
 }
 #[path = "etapas_no_toque.rs"]
 mod no_toque;
-pub(crate) use no_toque::pinceis;
+pub(crate) use no_toque::{NoToque, pinceis, pinceis_das_faixas};
+#[path = "etapas_tocadas.rs"]
+mod tocadas;
+pub(crate) use tocadas::{Tocada, tocadas};
+#[path = "etapas_desloca.rs"]
+mod desloca;
+pub use desloca::desloca;
 
 /// **As etapas VIVAS de uma trilha do Painter**, com as edições dela aplicadas (uma apagada sai; a
 /// numeração das pinceladas é a da gravação).
@@ -208,55 +254,33 @@ pub fn etapas(track: &Track) -> Result<Vec<EtapaDoPainter>, ErroDaMacro> {
     let tocavel = track
         .tocavel(&LeitorDoPainter)
         .map_err(ErroDaMacro::Edicao)?;
-    let gravadas = LeitorDoPainter.etapas(&track.events);
-    let mut tocadas = LeitorDoPainter.etapas(&tocavel.events).into_iter();
-    let mut pinceis = pinceis(&tocavel)?.into_iter();
-    let (mut n, mut f) = (0, 0);
-    let mut out = Vec::with_capacity(gravadas.len());
-    for (k, g) in gravadas.iter().enumerate() {
-        let tipo = match passo(&track.events[g.fim].payload) {
-            Some(Passo::Recusada(porta)) => TipoDaEtapa::Recusada(porta),
-            _ if e_um_colordrop(&track.events[..=g.inicio]) => {
-                f += 1;
-                TipoDaEtapa::Preenchimento(f)
-            }
-            _ => {
-                n += 1;
-                TipoDaEtapa::Pincelada(n)
-            }
-        };
-        if apagada(track, g) {
-            continue;
-        }
-        let Some(t) = tocadas.next() else { break };
-        let (cor, tamanho_px, meio) = match tipo {
-            TipoDaEtapa::Pincelada(_) | TipoDaEtapa::Preenchimento(_) => pinceis
-                .next()
-                .map_or(([0; 3], 0.0, PaintMedia::default()), |p| {
-                    (p.cor, p.tamanho_px, p.meio)
-                }),
-            TipoDaEtapa::Recusada(_) => ([0; 3], 0.0, PaintMedia::default()),
-        };
+    let mut out = Vec::new();
+    for e in tocadas(track, &tocavel)? {
+        let (cor, tamanho_px, meio) = e
+            .no_toque
+            .map_or(([0; 3], 0.0, PaintMedia::default()), |p| {
+                (p.cor, p.tamanho_px, p.meio)
+            });
         out.push(EtapaDoPainter {
-            k,
-            etapa: *g,
-            tipo,
-            t0: tocavel.events[t.inicio].t,
-            t1: tocavel.events[t.fim].t,
+            k: e.k,
+            etapa: e.gravada,
+            tipo: e.tipo,
+            t0: tocavel.events[e.tocada.inicio].t,
+            t1: tocavel.events[e.tocada.fim].t,
             cor,
             tamanho_px,
             meio,
             nome: track
                 .edicoes
                 .iter()
-                .find(|e| e.ancora == g.inicio)
-                .and_then(|e| e.nome.clone()),
+                .find(|x| x.ancora == e.gravada.inicio)
+                .and_then(|x| x.nome.clone()),
         });
     }
     Ok(out)
 }
 
-fn apagada(track: &Track, g: &Etapa) -> bool {
+pub(super) fn apagada(track: &Track, g: &Etapa) -> bool {
     track
         .edicoes
         .iter()
@@ -281,6 +305,12 @@ pub enum ErroDeEdicaoDoPainter {
     SemEtapa(usize),
     NaoEPincelada(usize),
     Macro(ErroDaMacro),
+    /// Só duas pinceladas simples tocam ao mesmo tempo (W16): um preenchimento, uma forma, uma seleção
+    /// ou uma porta recusada não se sobrepõem a outra etapa.
+    SoPinceladasSeSobrepoem(usize),
+    /// A etapa tocaria noutro meio (duas sobrepostas de meios diferentes, ou a água do Wet Paint que a
+    /// tela tem no instante novo).
+    OutroMeio(usize),
 }
 
 fn pincelada(

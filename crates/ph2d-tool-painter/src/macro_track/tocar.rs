@@ -7,13 +7,14 @@
 //! ou um passo desconhecido PÁRAM o tocador em voz alta ([`ErroDaMacro`]): nunca se salta um passo.
 
 use super::inicial::{self, ErroDoInicial};
-use super::passo::{Passo, abs};
+use super::passo::{Passo, abs, faixa_de};
+use crate::tool::paint::tracos::{PincelDoTraco, TracoGuardado};
 use crate::tool::paint::fita::{
     self, Divergencia, Fita, FitaPartilhada, MarcaDaAgua, RespostaDoWorker,
 };
 use crate::tool::{PainterTool, SemInstantaneo};
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, RasterEditTool, Tool};
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -49,6 +50,46 @@ pub struct TocadorDoPainter {
     /// tocador de que veio, não o que difere do que a cena tem — a 1.ª [`Self::caixa_da_tela`] é a tela
     /// inteira (o arrasto da Timeline, gate `palcos_arrasto_tests`).
     por_ler: bool,
+    /// Os traços das faixas que não estão no tool (W16: pinceladas sobrepostas, uma por faixa).
+    faixas: BTreeMap<u32, TracoGuardado>,
+    /// O pincel que cada faixa leva ([`Passo::PincelDaFaixa`]), lido antes de tocar.
+    pinceis: BTreeMap<u32, PincelDoTraco>,
+    /// As faixas que já abriram um traço (o pincel delas já pintou).
+    pintaram: BTreeSet<u32>,
+}
+
+/// **O que um instantâneo precisa de uma trilha nova para recomeçar nela** ([`TocadorDoPainter::recomeca`]):
+/// as respostas do worker e o pincel de cada faixa.
+pub struct Recomeco {
+    respostas: Arc<[RespostaDoWorker]>,
+    pinceis: BTreeMap<u32, PincelDoTraco>,
+}
+
+impl Recomeco {
+    /// De todas as cargas da trilha que toca nova.
+    ///
+    /// # Errors
+    /// [`ErroDaMacro`].
+    pub fn de<'a>(
+        inicial: &[u8],
+        cargas: impl IntoIterator<Item = &'a [u8]>,
+    ) -> Result<Self, ErroDaMacro> {
+        let cargas: Vec<&[u8]> = cargas.into_iter().collect();
+        Ok(Self {
+            pinceis: super::etapas::pinceis_das_faixas(inicial, &cargas)?,
+            respostas: respostas_de(cargas)?.into(),
+        })
+    }
+}
+
+impl From<Arc<[RespostaDoWorker]>> for Recomeco {
+    /// Uma trilha sem etapas deslocadas (sem faixas).
+    fn from(respostas: Arc<[RespostaDoWorker]>) -> Self {
+        Self {
+            respostas,
+            pinceis: BTreeMap::new(),
+        }
+    }
 }
 
 /// As respostas do worker de uma trilha, pela ordem das cargas.
@@ -78,7 +119,7 @@ impl TocadorDoPainter {
         cargas: impl IntoIterator<Item = &'a [u8]>,
     ) -> Result<Self, ErroDaMacro> {
         let tool = inicial::tool_no_inicial(inicial).map_err(ErroDaMacro::Inicial)?;
-        Self::com_tool(tool, cargas)
+        Self::com_tool(inicial, tool, cargas)
     }
 
     /// Com as configurações do estado inicial mas sobre OUTRA tela (`rgba` `w × h`): as posições caem no
@@ -95,13 +136,16 @@ impl TocadorDoPainter {
     ) -> Result<Self, ErroDaMacro> {
         let mut tool = inicial::tool_no_inicial(inicial).map_err(ErroDaMacro::Inicial)?;
         tool.bind_document(inicial::ENTIDADE_DO_TOCADOR + 1, rgba, w, h);
-        Self::com_tool(tool, cargas)
+        Self::com_tool(inicial, tool, cargas)
     }
 
     fn com_tool<'a>(
+        inicial: &[u8],
         mut tool: PainterTool,
         cargas: impl IntoIterator<Item = &'a [u8]>,
     ) -> Result<Self, ErroDaMacro> {
+        let cargas: Vec<&[u8]> = cargas.into_iter().collect();
+        let pinceis = super::etapas::pinceis_das_faixas(inicial, &cargas)?;
         let respostas: Arc<[RespostaDoWorker]> = respostas_de(cargas)?.into();
         let fita: FitaPartilhada = Arc::new(Mutex::new(Fita::Toca {
             fila: respostas.iter().copied().collect(),
@@ -115,6 +159,9 @@ impl TocadorDoPainter {
             respostas,
             fita_viva: true,
             por_ler: true,
+            faixas: BTreeMap::new(),
+            pinceis,
+            pintaram: BTreeSet::new(),
         })
     }
 
@@ -135,6 +182,9 @@ impl TocadorDoPainter {
             respostas: Arc::clone(&self.respostas),
             fita_viva: self.fita_viva,
             por_ler: true,
+            faixas: self.faixas.clone(),
+            pinceis: self.pinceis.clone(),
+            pintaram: self.pintaram.clone(),
         })
     }
 
@@ -145,14 +195,25 @@ impl TocadorDoPainter {
         self.tool.bytes_do_instantaneo()
     }
 
-    /// **Recomeça deste instantâneo uma trilha EDITADA** cujas respostas do worker são `respostas`: a
-    /// fita passa a ser a da trilha nova, a partir das que este já consumiu. `None` = este instantâneo
-    /// não é um estado da trilha nova (ela mudou alguma resposta que ele já consumiu).
+    /// **Recomeça deste instantâneo uma trilha EDITADA** ([`Recomeco`]): a fita passa a ser a da trilha
+    /// nova, a partir das que este já consumiu, e os pincéis das faixas os dela. `None` = este instantâneo
+    /// não é um estado da trilha nova (ela mudou alguma resposta que ele já consumiu, ou o pincel de uma
+    /// faixa que já pintou).
     ///
-    /// Só a fita se confere aqui: quem chama garante que os eventos já despachados são os mesmos.
+    /// Só a fita e os pincéis se conferem aqui: quem chama garante que os eventos já despachados são os
+    /// mesmos.
     #[must_use]
-    pub fn recomeca(&self, respostas: &Arc<[RespostaDoWorker]>) -> Option<Self> {
+    pub fn recomeca(&self, r: &Recomeco) -> Option<Self> {
+        let respostas = &r.respostas;
+        if self
+            .pintaram
+            .iter()
+            .any(|n| self.pinceis.get(n) != r.pinceis.get(n))
+        {
+            return None;
+        }
         let mut c = self.instantaneo().ok()?;
+        c.pinceis = r.pinceis.clone();
         if c.fita_viva {
             let ja = self.respostas.len() - self.respostas_por_pedir();
             if respostas.get(..ja)? != self.respostas.get(..ja)? {
@@ -236,7 +297,10 @@ impl TocadorDoPainter {
     /// [`ErroDaMacro`] — o tocador não avança mais (quem chama pára).
     pub fn aplica(&mut self, carga: &[u8]) -> Result<(), ErroDaMacro> {
         let passo = Passo::descodifica(carga).map_err(ErroDaMacro::Passo)?;
-        self.aplica_passo(passo)?;
+        match faixa_de(carga) {
+            0 => self.aplica_passo(passo)?,
+            n => self.aplica_na_faixa(n, passo)?,
+        }
         if let Fita::Toca {
             divergiu: Some(d), ..
         } = &*fita::trava(&self.fita)
@@ -247,12 +311,84 @@ impl TocadorDoPainter {
     }
 
     fn aplica_passo(&mut self, passo: Passo) -> Result<(), ErroDaMacro> {
-        if matches!(passo, Passo::SaiDaGravacao) {
-            self.passa_ao_relogio_fixo();
-            return Ok(());
+        match passo {
+            Passo::SaiDaGravacao => {
+                self.passa_ao_relogio_fixo();
+                return Ok(());
+            }
+            Passo::PincelDaFaixa(_) => return Ok(()),
+            _ => {}
         }
+        let tique = match passo {
+            Passo::Tique(dt) => Some(dt),
+            _ => None,
+        };
+        self.tool.poe_tracos_fora(self.abertas(None));
         self.mudou |= Self::aplica_ao_tool(&mut self.tool, passo)?;
+        if let Some(dt) = tique {
+            self.tique_das_faixas(dt);
+        }
         Ok(())
+    }
+
+    /// Quantos traços estão abertos, fora do tool, sem contar a faixa `menos`.
+    fn abertas(&self, menos: Option<u32>) -> u32 {
+        let n = self
+            .faixas
+            .iter()
+            .filter(|(k, g)| Some(**k) != menos && g.aberto())
+            .count();
+        u32::try_from(n).unwrap_or(u32::MAX)
+    }
+
+    /// **Um passo da faixa `n`** (W16): o traço dela entra no tool, o passo aplica-se, e o do tool volta.
+    fn aplica_na_faixa(&mut self, n: u32, passo: Passo) -> Result<(), ErroDaMacro> {
+        let mut g = match self.faixas.remove(&n) {
+            Some(g) => g,
+            None => {
+                let pincel = self
+                    .pinceis
+                    .get(&n)
+                    .copied()
+                    .unwrap_or_else(|| self.tool.pincel_do_traco());
+                self.tool.traco_novo(&pincel)
+            }
+        };
+        self.pintaram.insert(n);
+        let fora = self.abertas(None) + u32::from(self.tool.traco_aberto());
+        self.tool.troca_o_traco(&mut g);
+        self.tool.poe_tracos_fora(fora);
+        let r = Self::aplica_ao_tool(&mut self.tool, passo);
+        self.tool.troca_o_traco(&mut g);
+        if g.aberto() {
+            self.faixas.insert(n, g);
+        }
+        self.tool.poe_tracos_fora(self.abertas(None));
+        self.mudou |= r?;
+        Ok(())
+    }
+
+    /// O quadro de cada traço guardado, depois do `on_tick` do tool (que já correu o quadro inteiro e o
+    /// traço dele).
+    fn tique_das_faixas(&mut self, dt_ms: f32) {
+        let abertas: Vec<u32> = self
+            .faixas
+            .iter()
+            .filter(|(_, g)| g.aberto())
+            .map(|(k, _)| *k)
+            .collect();
+        for n in abertas {
+            let Some(mut g) = self.faixas.remove(&n) else {
+                continue;
+            };
+            let fora = self.abertas(None) + u32::from(self.tool.traco_aberto());
+            self.tool.troca_o_traco(&mut g);
+            self.tool.poe_tracos_fora(fora);
+            self.tool.tique_do_traco(dt_ms);
+            self.tool.troca_o_traco(&mut g);
+            self.faixas.insert(n, g);
+        }
+        self.tool.poe_tracos_fora(self.abertas(None));
     }
 
     /// **Um passo pela porta que o gravou**, num tool qualquer (o do tocador, ou o da leitura das
@@ -382,6 +518,8 @@ impl TocadorDoPainter {
             Passo::EscalaUniforme(b) => t.set_uniform_scale(b),
             Passo::Agua(_) => {}
             Passo::SaiDaGravacao => t.wet_passa_ao_relogio_fixo(),
+            // O pincel de uma faixa é do tocador ([`TocadorDoPainter::aplica`]); um tool sem faixas não o lê.
+            Passo::PincelDaFaixa(_) => {}
             Passo::ColorDropComeca(modo) => t.begin_colordrop_fill(&modo),
             Passo::LimiarDoFill(v) => t.set_fill_threshold(v),
             Passo::FillCommit => t.fill_commit(),

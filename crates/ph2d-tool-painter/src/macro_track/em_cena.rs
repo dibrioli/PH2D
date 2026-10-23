@@ -12,7 +12,7 @@
 use super::FAMILIA;
 use super::etapas::LeitorDoPainter;
 use super::instantaneos::Instantaneos;
-use super::tocar::{ErroDaMacro, TocadorDoPainter, respostas_de};
+use super::tocar::{ErroDaMacro, Recomeco, TocadorDoPainter};
 use ph2d_core::razao::Razao;
 use ph2d_macro::{LeitorDaFamilia, MacroDoc, MacroPlayer, MacroTime};
 use std::sync::Arc;
@@ -177,8 +177,8 @@ impl MacroEmCena {
         let Some(doc) = le(bytes)? else {
             return Ok(false);
         };
-        let respostas: Arc<[_]> =
-            respostas_de(doc.tracks[0].events.iter().map(|e| e.payload.as_slice()))?.into();
+        let tr = &doc.tracks[0];
+        let recomeco = Recomeco::de(&tr.initial, tr.events.iter().map(|e| e.payload.as_slice()))?;
         let (velho, novo) = (&self.doc.tracks[0], &doc.tracks[0]);
         let comum = if velho.initial == novo.initial && velho.target == novo.target {
             velho
@@ -194,7 +194,7 @@ impl MacroEmCena {
             if f.player.dispatched() > comum {
                 return None;
             }
-            let t = f.tocador.recomeca(&respostas)?;
+            let t = f.tocador.recomeca(&recomeco)?;
             Some(Instantaneos::foto(f.etapa, f.player.clone(), t))
         });
         self.inicios = inicios_de(&doc);
@@ -222,11 +222,10 @@ impl MacroEmCena {
             .count();
         let limite = super::etapas::limite_da_partida(track).ok()?.min(comum);
         let f = self.fotos.ate_feitos(limite)?;
-        let respostas: Arc<[_]> = respostas_de(novo.events.iter().map(|e| e.payload.as_slice()))
-            .ok()?
-            .into();
+        let recomeco =
+            Recomeco::de(&novo.initial, novo.events.iter().map(|e| e.payload.as_slice())).ok()?;
         Some(super::etapas::Partida {
-            tocador: f.tocador.recomeca(&respostas)?,
+            tocador: f.tocador.recomeca(&recomeco)?,
             feitos: f.player.dispatched(),
         })
     }

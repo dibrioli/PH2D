@@ -84,6 +84,8 @@ mod stamp_color_cache; // the cached multi-layer coloured stamp (bake the compos
 mod stamp_color_dynamic;
 /// Stroke begin/extend/tick/end lifecycle; split from `paint.rs` (LOC cap).
 mod stroke_lifecycle;
+/// Pinceladas sobrepostas da macro (W16): um traço guardado por faixa, trocado à vez.
+pub(crate) mod tracos;
 /// Watercolor field math (noise, blur, samplers, per-stroke styles); split from `watercolor_render`.
 mod watercolor_aa;
 /// Watercolor stroke buffers: per-stroke coverage + deposited-colour accumulation (+ dirty tracking).

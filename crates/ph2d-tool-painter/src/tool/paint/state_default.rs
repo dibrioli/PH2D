@@ -82,6 +82,7 @@ impl Default for PaintState {
             seed: 0,
             tex_rng: 0,
             stroke_undo: None,
+            tracos_fora: 0,
             eraser: false,
             paint_mode: PaintMode::default(),
             mask_brush: 0,         // Paint (conceal) — the default mask sub-brush

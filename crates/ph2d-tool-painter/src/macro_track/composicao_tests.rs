@@ -57,7 +57,6 @@ fn a_composicao_de_uma_vez_por_quadro_e_a_completa_ao_bit() {
 #[test]
 fn a_copia_de_um_tocador_sobe_inteira_na_primeira_leitura() {
     use super::roteiro::grava_no_papel_nos_meios;
-    use super::tocar::respostas_de;
     use crate::PaintMedia;
     let (bytes, _) = grava_no_papel_nos_meios(96, 0, &[PaintMedia::Digital; 2]).expect("arma");
     let doc = ph2d_macro::codec::read(&bytes).expect("lê-se");
@@ -70,7 +69,7 @@ fn a_copia_de_um_tocador_sobe_inteira_na_primeira_leitura() {
         Some(None),
         "um tocador novo sobe inteiro"
     );
-    let respostas = respostas_de(cargas()).expect("lê-se").into();
+    let respostas = super::tocar::Recomeco::de(&doc.tracks[0].initial, cargas()).expect("lê-se");
     // As cópias do instante em que o original, lido, sobe só uma caixa (com a caixa suja dele por ler).
     let mut achado = None;
     for (k, e) in ev.iter().enumerate() {

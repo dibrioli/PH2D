@@ -109,6 +109,10 @@ pub enum Passo {
     FillCommit,
     /// `restore_after_colordrop`: o C&F volta ao modo de antes.
     ColorDropRestaura,
+    /// **A faixa `n` leva o pincel daqui** (W16): no instante GRAVADO de uma etapa deslocada, o pincel em
+    /// vigor passa a ser o do traço dela, onde quer que ela toque. Nunca gravado — só a trilha que toca o
+    /// tem (`ph2d_macro::etapa`), como o [`Passo::SaiDaGravacao`]; o número fica longe dos gravados.
+    PincelDaFaixa(u32),
     /// Um tipo que este leitor não conhece (gravado por uma versão mais nova).
     Desconhecido(u64),
 }
@@ -350,6 +354,10 @@ impl Passo {
             }
             Passo::FillCommit => k(&mut r, 55),
             Passo::ColorDropRestaura => k(&mut r, 56),
+            Passo::PincelDaFaixa(n) => {
+                k(&mut r, 200);
+                r.varint(2, u64::from(*n));
+            }
             Passo::Desconhecido(n) => k(&mut r, *n),
         }
         r.finish()
@@ -506,9 +514,39 @@ impl Passo {
             54 => Passo::LimiarDoFill(f32_(2)?),
             55 => Passo::FillCommit,
             56 => Passo::ColorDropRestaura,
+            200 => Passo::PincelDaFaixa(u32_(2)?),
             n => Passo::Desconhecido(n),
         })
     }
+}
+
+/// **A etiqueta da faixa** (W16) — em qualquer passo, nunca gravada: só a trilha QUE TOCA a tem, nos
+/// passos de uma etapa deslocada (`ph2d_macro::etapa`); o tocador abre um traço por faixa. Os passos usam
+/// as etiquetas `1..=7`.
+const FAIXA: u32 = 15;
+
+/// A carga `carga` a tocar na faixa `n` (`0` = a do tool).
+#[must_use]
+pub fn na_faixa(carga: &[u8], n: u32) -> Option<Carga> {
+    let campos = rec::fields(carga).ok()?;
+    let mut r = Record::new();
+    for (t, b) in campos.into_iter().filter(|(t, _)| *t != FAIXA) {
+        r.bytes(t, b);
+    }
+    if n != 0 {
+        r.varint(FAIXA, u64::from(n));
+    }
+    Some(r.finish())
+}
+
+/// A faixa de uma carga (`0` = a do tool, a de toda a gravação).
+#[must_use]
+pub fn faixa_de(carga: &[u8]) -> u32 {
+    rec::fields(carga)
+        .ok()
+        .and_then(|c| c.into_iter().rev().find(|(t, _)| *t == FAIXA))
+        .and_then(|(_, b)| rec::as_varint(b).ok())
+        .map_or(0, |v| u32::try_from(v).unwrap_or(u32::MAX))
 }
 
 /// Uma posição de tela relativa ao quadro `(w, h)`.

@@ -4,7 +4,7 @@
 use super::mede::Paragem;
 use super::{Curva, EnsinoDoPainter, idade_de, toca};
 use crate::macro_track::etapas::{self, LeitorDoPainter};
-use crate::macro_track::tocar::{ErroDaMacro, TocadorDoPainter, respostas_de};
+use crate::macro_track::tocar::{ErroDaMacro, Recomeco, TocadorDoPainter};
 use crate::tool::PainterTool;
 use ph2d_macro::{LeitorDaFamilia, Track};
 
@@ -53,8 +53,9 @@ pub(super) struct SemAPincelada {
     pub(super) desde: usize,
     /// Os eventos da trilha sem a pincelada `desde..` o instante da medida.
     eventos: Vec<Vec<u8>>,
-    /// As respostas do worker da trilha sem a pincelada (a fita do instantâneo passa a ser esta).
-    respostas: std::sync::Arc<[crate::tool::paint::fita::RespostaDoWorker]>,
+    /// As respostas do worker e os pincéis das faixas da trilha sem a pincelada (o instantâneo passa a
+    /// tocá-la).
+    respostas: Recomeco,
 }
 
 impl SemAPincelada {
@@ -86,7 +87,7 @@ impl SemAPincelada {
             sem.events.len()
         }
         .max(desde);
-        let respostas = respostas_de(sem.events.iter().map(|e| e.payload.as_slice()))?;
+        let respostas = Recomeco::de(&sem.initial, sem.events.iter().map(|e| e.payload.as_slice()))?;
         Ok(Self {
             k,
             c,
@@ -95,7 +96,7 @@ impl SemAPincelada {
                 .iter()
                 .map(|e| e.payload.clone())
                 .collect(),
-            respostas: respostas.into(),
+            respostas,
         })
     }
 

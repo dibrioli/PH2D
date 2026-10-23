@@ -88,3 +88,20 @@ fn um_ficheiro_estragado_fica_nos_erros_e_a_importacao_recusa() {
     ));
     let _ = std::fs::remove_dir_all(&raiz);
 }
+
+/// ⛔ Um teste nunca lê a biblioteca do DONO: o `Macros` por omissão não tem pasta (só o do processo
+/// do app, [`ph2d_app_macros::com`], resolve a do utilizador); a injectada manda.
+#[test]
+fn o_macros_por_omissao_nao_le_a_pasta_do_utilizador() {
+    let m = ph2d_app_macros::Macros::default();
+    assert_eq!(m.pasta_da_biblioteca(), None, "o Macros::default() leu o disco do dono");
+    assert_eq!(
+        ph2d_app_macros::Macros::do_utilizador().pasta_da_biblioteca(),
+        biblioteca::pasta_do_utilizador(),
+        "controlo: o do app resolve a do utilizador"
+    );
+    let mut m = m;
+    let p = pasta("injectada");
+    m.com_pasta(p.clone());
+    assert_eq!(m.pasta_da_biblioteca(), Some(p));
+}

@@ -19,6 +19,9 @@ use std::path::{Path, PathBuf};
 #[derive(Default)]
 pub(crate) struct Casa {
     pasta: Option<PathBuf>,
+    /// Sem pasta injectada, a do utilizador — só no `Macros` do app ([`Macros::do_utilizador`]): o
+    /// `Default` não tem disco, e um teste que não injecta nunca lista a biblioteca do dono.
+    do_utilizador: bool,
     lida: Option<(Biblioteca, Vec<MacroDaBibliotecaView>)>,
     aviso: Option<ErroDaMacroView>,
     /// As receitas a aplicar no próximo quadro: (bits da receita, onde nasce, sobre que objecto).
@@ -122,17 +125,36 @@ pub fn aplica_se_receita(
 }
 
 impl Macros {
+    /// O `Macros` do processo do app: a biblioteca é a pasta do utilizador, resolvida no 1.º gesto.
+    #[must_use]
+    pub fn do_utilizador() -> Self {
+        let mut m = Self::default();
+        m.biblioteca.do_utilizador = true;
+        m
+    }
+
     /// A pasta da biblioteca (os testes e a cena de smoke apontam outra); relê no próximo pedido.
     pub fn com_pasta(&mut self, p: PathBuf) {
         self.biblioteca.pasta = Some(p);
         self.biblioteca.lida = None;
     }
 
+    /// A pasta que a biblioteca lê e escreve (`None` = nenhuma: os gestos recusam, a lista é vazia).
+    #[must_use]
+    pub fn pasta_da_biblioteca(&self) -> Option<PathBuf> {
+        self.pasta().ok()
+    }
+
     fn pasta(&self) -> Result<PathBuf, ErroDaMacroView> {
         self.biblioteca
             .pasta
             .clone()
-            .or_else(bib::pasta_do_utilizador)
+            .or_else(|| {
+                self.biblioteca
+                    .do_utilizador
+                    .then(bib::pasta_do_utilizador)
+                    .flatten()
+            })
             .ok_or_else(|| erro(m::MACRO_LIB_SEM_PASTA))
     }
 

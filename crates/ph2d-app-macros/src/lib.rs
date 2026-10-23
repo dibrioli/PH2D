@@ -140,7 +140,7 @@ pub struct Macros {
 }
 
 thread_local! {
-    static MACROS: RefCell<Macros> = RefCell::new(Macros::default());
+    static MACROS: RefCell<Macros> = RefCell::new(Macros::do_utilizador());
 }
 
 /// O estado da família neste processo.

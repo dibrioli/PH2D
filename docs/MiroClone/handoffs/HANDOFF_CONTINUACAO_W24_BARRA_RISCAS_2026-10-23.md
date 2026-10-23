@@ -85,7 +85,7 @@ Instrumento de teste: `board_bar::STYLE_BAR` (`thread_local`, `cfg(test)`).
 ## 4. ABERTO (nesta ordem)
 
 1. **Smoke do dono da cena 29** (§5) — se chegar, trate-o primeiro (mecanismo, não sintoma).
-2. **ABERTO 3 da lista-mãe (elementos antigos de nascença 0) — MEDIDO, à espera do dono.** As fixtures v13–v16 são quadros
+2. **ABERTO 3 da lista-mãe (elementos antigos de nascença 0) — FECHADO pelo dono 23/10: «não existem arquivos antigos» ⇒ nada a construir, sem migração, formato fica 17.** Medição que o sustentou: As fixtures v13–v16 são quadros
    sintéticos; nada muda à vista ao abrir (nascença 0 = como tudo se desenhava antes da W23). A diferença só existe para formas
    desenhadas LONGE antes da W23. Sonda (elipse 100×60 em rascunho, traço 2, fixture v16): a zoom 0,293 a ondulação no ecrã é 1,32 px
    (velha) contra 1,70 px (se nascesse ali) e o traço 0,59 px contra 1,97 px; a zoom 0,15: 0,67 vs 1,63 px de ondulação, traço 0,30

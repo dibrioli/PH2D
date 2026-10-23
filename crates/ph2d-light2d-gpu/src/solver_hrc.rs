@@ -99,6 +99,8 @@ pub(super) struct Entradas<'a> {
 pub(super) struct Holografica {
     cena: wgpu::BindGroup,
     pipelines: Vec<wgpu::ComputePipeline>,
+    /// As constantes com que as `pipelines` nasceram (a régua de registos lê-as).
+    pub(super) constantes: [(&'static str, f64); 13],
     /// `(etapa, grupo 3, grupos de trabalho, a 1.ª fatia do uniforme)`, na ordem.
     passos: Vec<(Etapa, wgpu::BindGroup, [u32; 3], usize)>,
     /// ⭐ W5d: o uniforme de cada passo (o miolo e o entorno reescrevem-se neles) e o buffer.
@@ -574,6 +576,7 @@ impl Holografica {
         let h = Self {
             cena,
             pipelines,
+            constantes,
             passos,
             uniformes,
             uniforme,

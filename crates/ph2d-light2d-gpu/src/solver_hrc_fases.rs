@@ -214,6 +214,13 @@ impl Solver {
         }
     }
 
+    /// ⭐ W6h §13 — INSTRUMENTO (a régua de registos): as constantes de pipeline da holográfica.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn constantes_da_hrc(&self) -> Option<[(&'static str, f64); 13]> {
+        self.hrc.as_ref().map(|h| h.constantes)
+    }
+
     /// ⭐ W5q — as etapas da holográfica do último quadro submetido, na ordem de gravação.
     #[doc(hidden)]
     #[must_use]

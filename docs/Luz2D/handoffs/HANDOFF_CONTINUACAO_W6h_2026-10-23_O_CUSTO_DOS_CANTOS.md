@@ -100,3 +100,63 @@ S5 = a tabela num endereço fixo (sempre em cache). Fina, ms (`load` 7–9, a ro
 
 Logs (fora do git, `target/`): `cantos_custo_1.log` (r1), `cantos_custo_diag.log` (S1/S2), `_diag2` (+ S3), `_diag3`
 (+ S4/S5) — as tabelas acima são o que vale deles.
+
+## 6. A rodada do §5.1 (23/10): o custo da `V2` NÃO é a marcha, é o `num_corpo` — (a) morre
+
+- **A base do mesmo bit** gravada no HEAD `244c5511f7` (`target/cantos_bits/base/`, 32 casos); controlos: 2.ª corrida 0 bytes
+  diferentes, lei W6d ≠ padrão nas cenas 2, 5, 6.
+- **A régua de registos, versionada** (`9a381c7990`): `spikes/regua-registos` + `medida_luz2d_regua_registos`; as formas
+  por `spikes/regua-registos/formas_w6h.py <pasta do v4> <saida>` — a mesma pasta entra na régua do custo como
+  variantes do mesmo processo (`PH2D_CANTOS_CUSTO_MODULOS`, `Config::modulo_rc`). Uma rodada de 7 câmeras ≈ 18 s.
+- **Registos: todas as variantes da fina em 128**, pilha 0 ⇒ o custo da `V2` não é registo. O ramo da cunha no `meio`
+  põe **+101 KB** de binário (221 568 → 322 688): ~10 KB nos 3 sítios da marcha, **91 KB nos 17 de fora** (62 KB só
+  no `num_corpo`).
+- **O relógio** (`load` 3–13; controlos lei W6d ±0,9 %; `x0` = padrão), C3 sobre a lei W6d:
+
+| câmera | padrão | ramo só na marcha (`x4`) | sem ramo (`x9`) | sem o ramo no `num_corpo` (`ga`) |
+|---|---|---|---|---|
+| 5 · [−6, −1] | +5,4…7,2 % | +2,0 | +0,6…1,4 | +1,7…3,2 |
+| 5 · [6, −1] | +10,5…13,9 | +4,0 | +1,8…3,4 | +3,2…4,1 |
+| 5 · zoom 1,6 | +5,3…7,5 | −0,8 | −0,9…0,0 | −1,0…0,0 |
+| 5 · zoom 1 | +4,1…5,1 | +1,7 | +1,9…2,1 | +0,9…1,7 |
+| 6 · [0, −3] | +7,2…8,9 | +2,9 | +2,3…2,4 | +3,0…3,7 |
+| 6 · zoom 4 | +7,2…10,6 | −4,3 | −4,9…−5,3 | −3,8…−4,1 |
+| 6 · zoom 1 | +2,0…4,2 | +1,6 | +1,5…3,1 | +2,1…3,1 |
+
+  ⇒ a `V2` na MARCHA custa ~0; **todo o excesso é o ramo no `num_corpo`** (o predicado geométrico, que amostra EM CIMA da
+  borda, `|d| < 1` sempre). Por chamador (`h_*`, `load` 28–30): nenhum domina — o pé (`c3_pe.wgsl`) ~40–50 %, a
+  `na_fronteira` ~25 %, a `na_fronteira_fina` ~20 %. Pelas peças no `num_corpo` (`load` 38–44, só relativos): só a
+  leitura da tabela ~metade; o atlas e a conta a outra; a trigonometria nada.
+- **(a) a máscara de bits** (1 bit por bloco depois das entradas, no mesmo buffer; o leitor lê o bit e só então a
+  entrada; exata por construção) — construída e medida: **PIOR** que sem ela em 7/7 (+0,00…+0,04 ms), também com
+  saída única (`p3`). **A saída única** do `meio` sem máscara (`p2`) = o padrão. ⇒ o modelo do W6g §25 confirma-se no
+  `num_corpo`: o custo é a ESTRUTURA da leitura condicional, não as falhas de cache. **1.ª reconstrução sem passar**;
+  o produto reposto pelo git.
+- ⚠️ **A alocação de registos tem degraus:** o `u0` (o `ga` com o leitor da máscara) com `DISTANTES 1` vai a **195**
+  registos (o `ga` fica em 128) e o C3 dele +23 % nas três câmeras com distantes; o ramo UNIFORME no `num_corpo`
+  (`if <uniforme> { meio } else { meio_sem }`) vai a 168 e custa +15…+81 %. Toda forma nova passa pela régua com
+  `DISTANTES 0` E `1`.
+
+## ⛔ Recusas MEDIDAS (§6)
+
+| Recusa | Porquê |
+|---|---|
+| A máscara de bits antes da `cantos_tabela` | Pior em 7/7: a leitura condicional a mais custa mais do que as falhas que poupa (§6). |
+| A saída única do `meio` (um `return` em vez de quatro) | = o padrão (`p2`). |
+| O ramo uniforme `meio`/`meio_sem` no `num_corpo` no mesmo kernel | 168 registos, +15…+81 %. |
+| Curar a `V2` na marcha | `x4` ≈ `x9`: a marcha não paga. |
+
+## 7. ABERTO (por ordem — substitui o §5)
+
+1. **A cura do custo da `V2`, mesmo bit — a ÚLTIMA reconstrução antes do two-strikes** (kill-criterion do §5.1 tal e
+   qual). A única forma medida que chega ao alvo nas 7 câmeras é o `num_corpo` sem o ramo (`ga`: ≤ +4,1 %), e só é de
+   mesmo bit onde nenhuma consulta do `num_corpo` cai num bloco com cunha. Desenho: **duas pipelines da fina** — a
+   enxuta (o `num_corpo` sem o ramo; a marcha com ele) para os grupos longe de toda cunha, e a de hoje, por despacho
+   indireto, sobre a lista dos grupos perto (o molde do `c3_fina_adia`/`c3_fina_cantos`). ANTES de construir: (i) o
+   raio MÁXIMO das consultas do `num_corpo` à volta do texel da fina (pé na face, `na_fronteira*`, `c0_ao_longo_da_face`)
+   — sem um limite, não é exata; (ii) a enxuta pela régua com `DISTANTES 0/1` (o degrau do §6); (iii) quantos grupos
+   ficam «perto» na c5 [6, −1] (409 blocos com cunha), que decide se o ganho sobrevive.
+2. A borda nos níveis 11–12 a 2160p Alta: +3,62 ms (W6g §54.1).
+3. A anomalia da r5b (W6g §12); a família (b) (W5g §37–38).
+
+Logs (`target/`): `cantos_custo_clock{1..6}.log`, `regua_registos/{head,head2,b,clock*,dist*}/`.

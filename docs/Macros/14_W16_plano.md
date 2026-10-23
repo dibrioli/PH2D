@@ -1,5 +1,10 @@
 # W16 — o losango livre e as pinceladas sobrepostas (PLANO, antes do código)
 
+## Feito (22/10)
+
+Mecanismo, medições e recusas: [15_W16_pinceladas_sobrepostas.md](15_W16_pinceladas_sobrepostas.md) · handoff:
+[W16](handoffs/HANDOFF_INTEGRACAO_line_Macros_2026-10-22_W16.md).
+
 > Pedido: [PROMPT_W16](handoffs/PROMPT_W16_pinceladas_sobrepostas_2026-10-22.md) (dois pedidos do dono, 22/10:
 > «deve permitir sobreposições» · «os keys colocados em qualquer lugar da timeline»). Base: HEAD `c15bec075f`.
 > Mapa do estado por traço do `PainterTool` lido nesta sessão (explorador, 22/10) — os endereços estão no §2.

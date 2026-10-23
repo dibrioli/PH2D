@@ -21,5 +21,15 @@
    o censo de chaves i18n por `panel.macros.error.fill_left_open`, e o tecto de 700 linhas por ficheiro
    em `sobrepor_tests.rs`/`macro_steps.rs`/`caminho.rs`). Mostre a lista inteira ANTES de consertar.
 3. Conserte, comite por paths, e atualize o §4 do handoff W17 com o resultado do portão.
+3b. Provas de mutação (agente `mutacao`, 4 controlos) dos gates W17 que só se viram verdes:
+   `largado_o_losango_fica_onde_caiu_ate_a_edicao_chegar` (mutações no doc-comment),
+   `a_cena_conduz_o_ponteiro_ate_ao_ultimo_gesto_e_devolve_o`,
+   `duas_pinceladas_que_se_cruzam_ao_mesmo_tempo_nao_se_apagam` e o `ColorDropAberto` de
+   `o_fill_sem_done_nao_leva_o_toque_seguinte_e_nada_some` (tirar a recusa em `etapas_desloca.rs`).
+
+## Aberto que NÃO é deste fecho
+
+- O retângulo branco + aspeto desbotado da 2.ª captura do dono (handoff §5): não reproduzido, causa
+  desconhecida; o dono não o viu no smoke seguinte. Só se ele o trouxer de novo, com captura inteira.
 4. `bash scripts/agent-loop-profile.sh` e `rm -rf target/*/incremental`.
 5. PARE. Integrar e enviar só por ordem explícita do Enio.

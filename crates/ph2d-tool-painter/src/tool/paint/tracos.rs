@@ -314,6 +314,12 @@ impl TracoGuardado {
     pub(crate) fn aberto(&self) -> bool {
         self.p.stroke.is_some()
     }
+
+    /// O quadro já correu neste traço depois do último movimento dele.
+    #[cfg(test)]
+    pub(crate) fn quadro_corrido(&self) -> bool {
+        !self.p.moved_this_frame
+    }
 }
 
 /// O pincel que uma etapa leva para a sua faixa: o do instante GRAVADO dela.

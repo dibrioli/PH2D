@@ -28,4 +28,14 @@ impl PainterTool {
         g.0.resize(n, MORTA);
         std::mem::swap(&mut s.lanes, &mut g.0);
     }
+
+    /// O traço directo do motor da água está aberto (o gate do fecho no último pen-up).
+    #[cfg(test)]
+    pub(crate) fn wet_traco_directo_aberto(&self) -> bool {
+        self.paint
+            .wetpaint
+            .session
+            .as_ref()
+            .is_some_and(|s| s.stroke_open)
+    }
 }

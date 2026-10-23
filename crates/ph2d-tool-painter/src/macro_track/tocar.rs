@@ -331,6 +331,12 @@ impl TocadorDoPainter {
         Ok(())
     }
 
+    /// Os traços guardados abertos (os gates do quadro de cada faixa).
+    #[cfg(test)]
+    pub(crate) fn faixas_abertas(&self) -> Vec<&TracoGuardado> {
+        self.faixas.values().filter(|g| g.aberto()).collect()
+    }
+
     /// Quantos traços estão abertos, fora do tool, sem contar a faixa `menos`.
     fn abertas(&self, menos: Option<u32>) -> u32 {
         let n = self

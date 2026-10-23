@@ -43,6 +43,8 @@ mod sonda_w14_tests;
 #[cfg(test)]
 mod sobrepor_tests;
 #[cfg(test)]
+mod sobrepor_fecho_tests;
+#[cfg(test)]
 mod tests;
 
 use crate::tool::PainterTool;

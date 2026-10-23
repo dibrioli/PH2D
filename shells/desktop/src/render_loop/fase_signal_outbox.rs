@@ -60,6 +60,8 @@ impl crate::App {
             particles,
             health_bars,
             sort_scratch,
+            asset_db,
+            atlas_asset_map,
             ..
         } = FrameGfx::of(gfx);
 
@@ -184,6 +186,7 @@ impl crate::App {
             tags,
             docs: ph2d_app_components::instance_docs::OwnedDocs { vec_scene, vec_entities },
             tick: self.fixed_step.tick_count(),
+            images: ph2d_app_components::script_image::ImageLibrary::of(asset_db, atlas_asset_map),
         };
         deaths.extend(motores::correm(
             sim,

@@ -54,6 +54,7 @@ impl Cena {
                 vec_entities: &mut vec_entities,
             },
             tick: 1,
+            images: crate::script_image::ImageLibrary::none(),
         };
         frame(
             &mut self.host,

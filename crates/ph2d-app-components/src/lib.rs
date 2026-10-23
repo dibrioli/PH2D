@@ -287,6 +287,8 @@ mod asset_texture_door_census_tests;
 pub mod inspector_visibility;
 #[cfg(test)]
 mod instance_tags_tests;
+/// O nome ÚNICO de uma imagem da biblioteca — o do painel Assets e o do script.
+pub mod library_names;
 #[cfg(test)]
 mod property_coverage_tests;
 pub(crate) mod property_laws;
@@ -294,6 +296,8 @@ pub(crate) mod property_laws;
 mod property_names_tests;
 #[cfg(test)]
 mod property_refs_tests;
+/// ⭐ A imagem de uma sprite trocada por um script a correr (`sprite.image`, doc CodeEditor 08 d4).
+pub mod script_image;
 pub(crate) mod script_properties;
 #[cfg(test)]
 mod smoke_desenho_e_corpo_tests;

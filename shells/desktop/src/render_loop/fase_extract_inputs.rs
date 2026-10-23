@@ -87,6 +87,8 @@ impl crate::App {
                 painter_macros.reescreve(painter, &mut le, &mut escreve, &mut porta);
             }
         }
+        // A imagem que um script pôs (`sprite.image`) sobe antes do extract.
+        ph2d_app_components::script_image::upload(renderer, asset_db, sim);
         let gravada = ph2d_app_macros::com(|m| m.sprite_gravada());
         use crate::hero_intents::texture_edit::read_sprite_straight as reta;
         // PRECISION-READONLY: a imagem atual (o Painter ligado, senão a sprite) só se compara (W7).

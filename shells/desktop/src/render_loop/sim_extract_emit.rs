@@ -5,6 +5,7 @@
 
 use super::*;
 use bevy_ecs::world::EntityWorldMut;
+use ph2d_app_components::script_image;
 use ph2d_ecs::GlobalTransform;
 use ph2d_render::TextureAtlas;
 use ph2d_render::sprite::{region_subrect, sprite_sheet_subrect};
@@ -28,17 +29,8 @@ pub(super) fn sprite(
     sheet_preview: Option<Entity>,
 ) {
     let p = gt.translation();
-    // ADR-0070-amendment-4: pass the FULL 2x2 world basis
-    // (col0, col1) to the shader instead of decomposing it
-    // to atan2(col0) + per-column scale. The old
-    // decomposition collapsed any skew (a non-orthogonal
-    // basis) into a rotated rectangle — skew read as
-    // rotation + stretched scale. The basis carries
-    // rotation + scale + skew EXACTLY, and the shader maps
-    // the local quad through it (sheared parallelogram).
-    // `size`/`anchor` stay LOCAL (the basis applies scale),
-    // so no double-scaling. Column-major affine:
-    //   col0 = basis.xy (x axis), col1 = basis.zw (y axis).
+    // ADR-0070-amendment-4: the FULL 2x2 world basis (rotation + scale + skew, column-major:
+    // col0 = basis.xy, col1 = basis.zw); `size`/`anchor` stay LOCAL.
     let affine = gt.affine();
     let basis = [affine[0], affine[1], affine[2], affine[3]];
     // M14.5 C: branch on the sprite source. Atlas
@@ -73,8 +65,12 @@ pub(super) fn sprite(
     // other instance field (transform, size, anchor,
     // tint, z) is identical so the override paints the
     // SAME quad the source sprite would have.
+    // A imagem que um script pôs a correr (`sprite.image`): inteira, sem região nem grelha.
+    let cut = script_image::cut(sim, sim_entity, override_for_entity.is_some());
     let (atlas_uv, texture_id, premultiplied_flag) = if let Some(ov) = override_for_entity {
         ([0.0, 0.0, 1.0, 1.0], ov.texture_id, ov.premultiplied)
+    } else if let Some(s) = cut.image {
+        ([0.0, 0.0, 1.0, 1.0], s.texture_id, s.premultiplied)
     } else {
         (atlas_uv, texture_id, spr.premultiplied)
     };
@@ -86,11 +82,8 @@ pub(super) fn sprite(
     // ⚠️ O caminho do PONTEIRO faz a mesma conta
     // (`ph2d_sprite_screen::sprite_image_to_screen_affine`), e é por isso que ele
     // chama a MESMA função: pintar-se-ia num sítio e ver-se-ia noutro.
-    // A grelha (ausente = uma célula), lida uma vez para os três consumidores
-    // do quad desdobrado abaixo.
-    let sheet_grid = sim.get::<ph2d_ecs::SpriteGrid>(sim_entity).copied();
     let quad_size = override_for_entity
-        .and(sheet_grid)
+        .and(cut.sheet_grid)
         .and_then(|g| crate::render_loop::sim_extract_sheet::unfolded_quad(spr, g))
         .unwrap_or(spr.size);
     let quad_anchor = spr.resolve_anchor(pixels_per_meter);
@@ -121,13 +114,10 @@ pub(super) fn sprite(
         }
         ph2d_render::SpriteSource::CookedTexture { .. } => renderer.cooked().dims(texture_id),
     };
+    let src_dims = cut.image.map_or(src_dims, |s| Some(s.dims));
     // ADR-0164 F1 passo 6: janela e grelha são componentes; ausentes = a
     // textura inteira e uma célula, que é o que os campos v4 significavam.
-    let region = sim.get::<ph2d_ecs::SpriteRegion>(sim_entity).copied();
-    let grid = sim
-        .get::<ph2d_ecs::SpriteGrid>(sim_entity)
-        .copied()
-        .unwrap_or(ph2d_ecs::SpriteGrid::SINGLE);
+    let (region, grid) = (cut.region, cut.grid);
     let atlas_uv = region_uv(atlas_uv, region, override_for_entity, src_dims, spr, atlas);
     // Sprite-sheet sub-UV (anatomia §03 §3.4): divide the
     // (possibly region-narrowed) atlas_uv rect into an
@@ -202,7 +192,7 @@ pub(super) fn sprite(
         basis,
         sheet_preview,
         override_for_entity,
-        sheet_grid,
+        cut.sheet_grid,
         sheet_uv,
         quad_anchor,
     );

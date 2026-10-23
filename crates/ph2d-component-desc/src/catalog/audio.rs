@@ -39,7 +39,7 @@ const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
 /// custava **104 sítios em 19 ficheiros**). A secção do Inspector põe um botão de procurar ao lado
 /// do campo, que é a afordância que falta — e o campo continua a ser um caminho.
 const SOURCE_FIELDS: &[FieldDesc] = &[
-    f(0, "component.field.source_fields.0", K::Text).keyed("sound"),
+    f(0, "component.field.source_fields.0", K::Text).named("sound"),
     f(1, "component.field.source_fields.1", K::Scalar).named_as("volume", "volume_db"),
     f(2, "component.field.source_fields.2", K::Scalar).named("pitch"),
     f(3, "component.field.source_fields.3", K::Toggle).named_as("loop", "looping"),
@@ -84,7 +84,5 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         SOURCE_FIELDS,
     )
-    .coded("audio_source_2d")
-    // O ficheiro de som é uma referência a um asset: ganha nome pelo nome do alvo (d4).
-    .hiding(&[("sound", Hidden::Reference)]),
+    .coded("audio_source_2d"),
 ];

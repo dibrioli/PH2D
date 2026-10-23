@@ -285,15 +285,13 @@ pub(crate) fn build(
     // documento (ver [`TextureLibrary::entries`]).
     let live: std::collections::BTreeSet<AssetId> = loose.iter().map(|(_, _, id)| *id).collect();
 
+    let paths = crate::library_names::paths_of(db);
     for (_, entity, id) in loose {
         // ⚠️ O nome de FICHEIRO ganha ao da entidade quando ele existe — é o que o artista
-        // reconhece. O `AssetDb` continua a ser consultado; o que mudou é que ele já não decide
-        // **quem** está na lista.
-        let name = db
-            .tracked_paths()
-            .into_iter()
-            .find(|p| db.id_for_path(p) == Some(id))
-            .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+        // reconhece. A entrada guarda o nome-BASE; o único sai do `library_names` abaixo.
+        let name = paths
+            .get(&id)
+            .and_then(|p| crate::library_names::stem(p))
             .or_else(|| sim.world().get::<Name>(entity).map(|n| n.0.clone()))
             .unwrap_or_else(|| id.to_hex()[..12].to_string());
         remembered.remember(id, texture_entry(db, id, name, swatches, &mut budget));
@@ -310,8 +308,15 @@ pub(crate) fn build(
     // ⛔ E a memória é **união, nunca subtracção AUTOMÁTICA**: o que entrou fica até alguém o mandar
     // sair. ⭐ A porta de o mandar sair é o [`forget_texture`], e ela nasceu do report seguinte do
     // Enio — *«uma sprite que foi deletada do canvas não consegui deletar do painel»*.
+    // ⭐ O nome ÚNICO, o mesmo que o script escreve (`sprite.image`, doc CodeEditor 08 d4).
+    let names = crate::library_names::library(sim, db, atlas_assets, remembered);
     for entry in remembered.entries(&live) {
         let mut e = entry.clone();
+        if let AssetRef::Texture { asset } = e.key
+            && let Some(n) = names.get(&AssetId::from_digest(asset))
+        {
+            e.name.clone_from(n);
+        }
         // ⚠️ **O catálogo NÃO é lembrado com a entrada, e é de propósito:** a `TextureLibrary` é
         // memória de SESSÃO e a taxonomia é do PROJECTO. Guardá-lo no clone faria a atribuição
         // sobreviver a um `Open Project` que a não tem.
@@ -340,6 +345,11 @@ pub(crate) fn build(
 /// impede este gesto de mentir. *Esquecer é dizer «ninguém a usa», e o mundo é quem confirma.*
 pub fn forget_texture(id: AssetId) {
     LIBRARY.with(|lib| lib.borrow_mut().forget(id));
+}
+
+/// A biblioteca da sessão, emprestada (o nome das imagens para o script, [`crate::library_names`]).
+pub(crate) fn with_library<R>(f: impl FnOnce(&TextureLibrary) -> R) -> R {
+    LIBRARY.with(|lib| f(&lib.borrow()))
 }
 
 /// ⭐⭐⭐ **O que o artista mandou SAIR** — e é isto que o undo desfaz (Enio, 2026-08-30:
@@ -398,7 +408,7 @@ impl TextureLibrary {
     ///
     /// ⚠️ **Marca, não apaga** (2026-08-30): a entrada tem de sobreviver para o undo a poder
     /// devolver. Quem a esconde é o [`TextureLibrary::entries`].
-    fn forget(&mut self, id: AssetId) {
+    pub(crate) fn forget(&mut self, id: AssetId) {
         self.forgotten.insert(id);
     }
 
@@ -415,7 +425,7 @@ impl TextureLibrary {
     /// ⚠️ **A regra passa a ser a mesma que a recusa do verbo já usa**: uma imagem que alguém usa
     /// nunca está escondida — o `Remove from Library` recusa-a, e aqui ela ganha à lápide sem
     /// ninguém escrever no documento. `live` são os ids que o mundo referenciou **neste quadro**.
-    fn entries<'a>(
+    pub(crate) fn entries<'a>(
         &'a self,
         live: &'a std::collections::BTreeSet<AssetId>,
     ) -> impl Iterator<Item = &'a AssetEntry> {
@@ -423,6 +433,11 @@ impl TextureLibrary {
             .iter()
             .filter(|(id, _)| !self.forgotten.contains(id) || live.contains(id))
             .map(|(_, e)| e)
+    }
+
+    /// O artista mandou-a sair (a lápide).
+    pub(crate) fn is_forgotten(&self, id: &AssetId) -> bool {
+        self.forgotten.contains(id)
     }
 
     /// Quantas texturas a biblioteca MOSTRA — para os gates.

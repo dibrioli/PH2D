@@ -60,6 +60,8 @@ pub struct ScriptDoors<'a, 'd> {
     pub docs: crate::instance_docs::OwnedDocs<'d>,
     /// O tique do passo fixo — o `born_tick` de quem nasce.
     pub tick: u64,
+    /// Os nomes da biblioteca para `sprite.image` ([`crate::script_image`]).
+    pub images: crate::script_image::ImageLibrary<'a>,
 }
 
 impl ScriptDoors<'_, '_> {
@@ -114,6 +116,9 @@ impl SceneDoors for ScriptDoors<'_, '_> {
         entity: Entity,
         name: &str,
     ) -> Result<(serde_json::Value, ph2d_component_desc::FieldKind), String> {
+        if name == crate::script_image::NAME {
+            return crate::script_image::get(sim, &mut self.images, entity);
+        }
         crate::script_properties::get(self.registry, self.names(), sim, entity, name)
     }
 
@@ -125,6 +130,9 @@ impl SceneDoors for ScriptDoors<'_, '_> {
         value: &serde_json::Value,
         dry: bool,
     ) -> Result<(), String> {
+        if name == crate::script_image::NAME {
+            return crate::script_image::set(sim, &mut self.images, entity, value, dry);
+        }
         crate::script_properties::set(self.registry, self.names(), sim, entity, name, value, dry)
     }
 
@@ -306,6 +314,7 @@ pub fn rewind(host: &mut ScriptHost, sim: &mut SimWorld, drive: &mut PreviewDriv
         drive.release_to_authored(sim, entity, Driver::ScriptPose);
     }
     drive.fields.release(sim);
+    crate::script_image::rewind(sim);
     // Um pedido de vida que nenhum tique vivo levou não atravessa o rebobinar.
     sim.world_mut()
         .remove_resource::<ph2d_physics_ecs::PedidosDeVida>();

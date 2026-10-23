@@ -120,9 +120,10 @@ pub enum Hidden {
     Editor,
     /// Nenhum cartão do Inspector o mostra: o script alcança o que o artista vê.
     NoCard,
-    /// ⏳ Uma referência a outro objecto ou a uma imagem: ganha nome pelo NOME do alvo (fase d4, doc
-    /// CodeEditor 08 §5), nunca pelo id cru.
-    Reference,
+    /// O script alcança-o por uma porta PRÓPRIA, com outro nome, e não pela lei genérica: a imagem
+    /// da sprite é `sprite.image`, pelo nome da biblioteca, um override da corrida que o documento
+    /// nunca vê (o `World` não tem o `AssetDb`; doc CodeEditor 08 §5 d4).
+    ScriptDoor,
 }
 
 impl FieldDesc {
@@ -141,9 +142,9 @@ impl FieldDesc {
         self
     }
 
-    /// ⏳ Sem nome de código, só a chave serde: o campo tem rótulo no cartão mas a chave está em
-    /// `hiding` (uma [`Hidden::Reference`] por nome, que ganha nome no d4). Gate
-    /// `o_nome_de_codigo_e_o_rotulo`: um campo sem nome tem de ter a chave oculta.
+    /// Sem nome de código, só a chave serde: o campo tem rótulo no cartão mas a chave está em
+    /// `hiding`, com o motivo. Gate `o_nome_de_codigo_e_o_rotulo`: um campo sem nome tem de ter a
+    /// chave oculta.
     #[must_use]
     pub const fn keyed(mut self, key: &'static str) -> Self {
         self.key = key;

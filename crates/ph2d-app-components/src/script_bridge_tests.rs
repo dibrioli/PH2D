@@ -252,6 +252,7 @@ end
             vec_entities: &mut vec_entities,
         },
         tick: 5,
+        images: crate::script_image::ImageLibrary::none(),
     };
     let f = frame(
         &mut host,

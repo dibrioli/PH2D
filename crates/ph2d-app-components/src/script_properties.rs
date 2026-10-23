@@ -19,7 +19,7 @@ use serde_json::Value;
 struct ScriptFieldWrites(Vec<(Entity, FieldRef, Value, Value, bool)>);
 
 /// O erro como o console do script o mostra — a palavra do tipo pela tabela (HR-15).
-fn says(e: PropertyError) -> String {
+pub(crate) fn says(e: PropertyError) -> String {
     let PropertyError::WrongType { name, kind } = &e else {
         return e.to_string();
     };
@@ -170,14 +170,19 @@ pub(crate) fn set(
 
 /// `ph2d.properties`: os nomes de componente que o objecto tem.
 pub(crate) fn names(reg: &ComponentRegistry, sim: &SimWorld, entity: Entity) -> Vec<String> {
-    let mut out = property::names_of(reg, sim.world(), entity);
-    if sim.world().get::<Health>(entity).is_some() {
-        out.extend(
-            ph2d_script::api_table::RUNTIME_PROPERTIES
-                .iter()
-                .map(|n| (*n).to_owned()),
-        );
-    }
+    let w = sim.world();
+    let mut out = property::names_of(reg, w, entity);
+    let tem = |n: &str| match n.split('.').next() {
+        Some("health") => w.get::<Health>(entity).is_some(),
+        Some("sprite") => w.get::<ph2d_render::Sprite>(entity).is_some(),
+        _ => false,
+    };
+    out.extend(
+        ph2d_script::api_table::RUNTIME_PROPERTIES
+            .iter()
+            .filter(|n| tem(n))
+            .map(|n| (*n).to_owned()),
+    );
     out
 }
 

@@ -185,3 +185,12 @@ troca na corrida exige extrair do `commit_edited_texture`/`rebind_to_individual`
 animação. Facto lido em 22/10 no scratchpad da sessão (não versionado): o `SimWorld` não tem `AssetDb`; o
 `ScriptHost` recebe snapshots (`input_snapshot`) — o padrão para um snapshot de nomes de imagem. Depois d5 (cena
 `PH2D_CODE_SMOKE=8`), 8b, 8c, `/pd-linha-fechar` (com a prova de mutação das leis do 8d).
+
+**d4b FEITA** (22/10): zero `Hidden::Reference` no catálogo (a variante saiu). `audio_source_2d.sound` = o caminho
+como o cartão o mostra. `sprite.image` (`api_table::RUNTIME_PROPERTIES`): o nome da biblioteca
+(`ph2d-app-components/src/library_names.rs` — o ficheiro sem extensão, único com ` (2)`/` (3)` pela ordem nome →
+caminho → blake3; o MESMO para o painel Assets e o script); a troca é o `ImageOverride` da corrida
+(`script_image.rs`, não registado: fora do Ctrl+Z, do gravar e do `FieldDrive`), sobe uma vez por imagem
+(`script_image::upload`, na `fase_macros_do_painter`, antes do extract) e as texturas devolvem-se no rebobinar; o
+extract desenha a imagem inteira no `Sprite.size` autorado (`script_image::cut`). `source` fica oculta com
+`Hidden::ScriptDoor`.

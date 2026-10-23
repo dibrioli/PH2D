@@ -163,7 +163,6 @@ pub const DESCS: &[D] = &[
     // ⇒ **Declará-lo como referência seria pedir um remap que estragaria o que já funciona.**
     // *A estrutura da cópia apaga o caso especial.* (Ver `shells/desktop/src/instance_refs.rs`,
     // onde o censo confere declaração ↔ remapeador.)
-    // ⏳ `Reference`: o valor é o NOME de uma âncora do pai (a linha «Rides Parent Anchor»).
     D::authored(
         "ph2d::ecs::AnchorMount",
         "component.anchor_mount.name",
@@ -290,7 +289,7 @@ pub const DESCS: &[D] = &[
     )
     .coded("sprite")
     .hiding(&[
-        ("source", Hidden::Reference),
+        ("source", Hidden::ScriptDoor),
         ("size", Hidden::NoCard),
         ("anchor", Hidden::NoCard),
         ("version", Hidden::Editor),

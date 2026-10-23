@@ -121,7 +121,10 @@ end
         .find(|h| h.key == "type.PoseField")
         .expect("página do PoseField");
     for f in crate::io::POSE_FIELDS {
-        assert!(ajuda.more.contains(&format!("`{f}`")), "a ajuda não diz `{f}`");
+        assert!(
+            ajuda.more.contains(&format!("`{f}`")),
+            "a ajuda não diz `{f}`"
+        );
         assert!(crate::io::POSE_FIELD_UNION.contains(&format!("\"{f}\"")));
     }
 }

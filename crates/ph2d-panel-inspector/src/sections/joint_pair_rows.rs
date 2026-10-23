@@ -126,10 +126,7 @@ fn paint_body_rows(
     let sec = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
         1,
-        &[
-            tr("component.field.joint.1"),
-            tr("component.field.joint.2"),
-        ],
+        &[tr("component.field.joint.1"), tr("component.field.joint.2")],
     );
     let gap = Spacing::Xs.px();
     for (slot_label, name, id, armed) in [

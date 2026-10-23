@@ -35,7 +35,6 @@ pub struct ApiType {
     pub doc: &'static str,
 }
 
-
 /// Um gancho: função GLOBAL do script que o MOTOR chama (`ScriptModule::hook`).
 pub struct ApiHook {
     pub ident: &'static str,
@@ -366,9 +365,7 @@ pub fn luau_definitions() -> String {
     for t in API_TYPES {
         out.push_str(&format!(
             "\n--- {}\nexport type {} = {}\n",
-            t.doc,
-            t.ident,
-            t.definition
+            t.doc, t.ident, t.definition
         ));
     }
     for g in API_GLOBALS {

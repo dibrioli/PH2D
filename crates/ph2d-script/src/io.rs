@@ -143,7 +143,9 @@ macro_rules! pose_fields {
         pub const POSE_FIELD_LIST: &str = concat!($first $(, ", ", $rest)*);
     };
 }
-pose_fields!("x", "y", "rotation", "scale_x", "scale_y", "skew_x", "skew_y");
+pose_fields!(
+    "x", "y", "rotation", "scale_x", "scale_y", "skew_x", "skew_y"
+);
 
 /// O erro de um nome que não é da pose nem de uma propriedade (`op` = `ph2d.get`/`ph2d.set`).
 #[must_use]

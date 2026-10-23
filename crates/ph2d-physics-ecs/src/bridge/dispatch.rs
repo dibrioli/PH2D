@@ -135,7 +135,10 @@ impl PhysicsBridge {
         self.discard_health_events();
         // ⭐ E os de NAVEGAÇÃO (plano 30, W3), pela mesma razão.
         self.discard_nav_events();
-        if let Some(mut caixa) = sim.world_mut().get_resource_mut::<super::health::PedidosDeVida>() {
+        if let Some(mut caixa) = sim
+            .world_mut()
+            .get_resource_mut::<super::health::PedidosDeVida>()
+        {
             for (alvo, pedido) in std::mem::take(&mut caixa.0) {
                 self.pede_vida(alvo, pedido);
             }

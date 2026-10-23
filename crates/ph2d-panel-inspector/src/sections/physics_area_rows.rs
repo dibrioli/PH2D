@@ -48,12 +48,18 @@ pub(super) fn paint_area_rows(
         // they are the difference between wind (push, no resistance) and water.
         for (label, id, unit) in [
             (
-                tr_with("panel.inspector.label_x", &[("label", &tr("component.field.area_effector.0"))]),
+                tr_with(
+                    "panel.inspector.label_x",
+                    &[("label", &tr("component.field.area_effector.0"))],
+                ),
                 ids::INSP_PHYS_FORCE_X,
                 Some(ph2d_editor_core::widget::Unit::Newtons),
             ),
             (
-                tr_with("panel.inspector.label_y", &[("label", &tr("component.field.area_effector.0"))]),
+                tr_with(
+                    "panel.inspector.label_y",
+                    &[("label", &tr("component.field.area_effector.0"))],
+                ),
                 ids::INSP_PHYS_FORCE_Y,
                 Some(ph2d_editor_core::widget::Unit::Newtons),
             ),

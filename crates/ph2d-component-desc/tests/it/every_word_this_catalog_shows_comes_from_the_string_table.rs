@@ -52,7 +52,8 @@ const NOT_LANGUAGE: &[Excecao] = &[
         "catalog/image.rs",
         "borders[3]",
         "a chave serde de um ELEMENTO do array `borders` (lida por `property::slot_in`), nunca texto pintado",
-    ),    (
+    ),
+    (
         "catalog/logic.rs",
         "Area",
         "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",

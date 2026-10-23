@@ -220,7 +220,11 @@ impl Syntax {
     /// `(nome sem escapes, bytes DENTRO das aspas)`.
     #[must_use]
     pub fn property_references(&self, text: &Text) -> Vec<(String, std::ops::Range<usize>)> {
-        fn walk(n: tree_sitter::Node, text: &Text, out: &mut Vec<(String, std::ops::Range<usize>)>) {
+        fn walk(
+            n: tree_sitter::Node,
+            text: &Text,
+            out: &mut Vec<(String, std::ops::Range<usize>)>,
+        ) {
             if n.kind() == "function_call"
                 && let Some(name) = n.child_by_field_name("name")
                 && matches!(&*text.slice(name.byte_range()), "ph2d.get" | "ph2d.set")
@@ -230,7 +234,10 @@ impl Syntax {
                     .filter(|a| a.kind() == "string")
                 && let Some(content) = second.child_by_field_name("content")
             {
-                out.push((unescape(&text.slice(content.byte_range())), content.byte_range()));
+                out.push((
+                    unescape(&text.slice(content.byte_range())),
+                    content.byte_range(),
+                ));
             }
             let mut c = n.walk();
             for ch in n.named_children(&mut c) {
@@ -293,9 +300,17 @@ mod tests {
             got,
             [
                 ("Porta".into(), ObjectCall::Object, "Porta".into()),
-                ("Caixa Grande".into(), ObjectCall::FindByName, "Caixa Grande".into()),
+                (
+                    "Caixa Grande".into(),
+                    ObjectCall::FindByName,
+                    "Caixa Grande".into()
+                ),
                 ("Bala".into(), ObjectCall::Spawn, "Bala".into()),
-                ("Diz \"oi\"".into(), ObjectCall::Object, "Diz \\\"oi\\\"".into()),
+                (
+                    "Diz \"oi\"".into(),
+                    ObjectCall::Object,
+                    "Diz \\\"oi\\\"".into()
+                ),
             ]
         );
     }
@@ -305,7 +320,10 @@ mod tests {
         let src = "local x = 1\nfunction init(self)\n  x = 2\nend\nfunction update(self) end\n";
         let t = Text::new(src);
         let s = Syntax::new(&t);
-        assert_eq!(s.top_function_body(&t, "init"), Some(src.find("  x = 2").unwrap()));
+        assert_eq!(
+            s.top_function_body(&t, "init"),
+            Some(src.find("  x = 2").unwrap())
+        );
         assert_eq!(s.top_function_body(&t, "nada"), None);
         let local = Text::new("local function init(self)\nend\n");
         assert_eq!(

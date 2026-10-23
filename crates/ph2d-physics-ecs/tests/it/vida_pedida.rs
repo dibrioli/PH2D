@@ -14,7 +14,8 @@ use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_physics::world::checkpoint::STRIDE;
 use ph2d_physics_ecs::health::HealthEventKind;
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, Health, PedidoDeVida, PedidosDeVida, PhysicsBridge, RigidBody,
+    BodyKind, Collider, ColliderShape, Health, PedidoDeVida, PedidosDeVida, PhysicsBridge,
+    RigidBody,
 };
 
 fn alvo(sim: &mut SimWorld, vida: Health) -> Entity {
@@ -330,25 +331,41 @@ fn a_caixa_dos_scripts_poe_a_vida_no_numero_e_em_zero_morre() {
     sim.world_mut()
         .get_resource_or_init::<PedidosDeVida>()
         .0
-        .extend([(a, PedidoDeVida::Define(40.0)), (a, PedidoDeVida::Escudo(7.0))]);
+        .extend([
+            (a, PedidoDeVida::Define(40.0)),
+            (a, PedidoDeVida::Escudo(7.0)),
+        ]);
     ponte.dispatch(&mut sim, true, 1);
     assert_eq!(pontos(&ponte, a), 40.0);
     assert_eq!(ponte.health_of(a).map(|s| s.vida().escudo), Some(7.0));
     assert!(
-        !ponte.health_events().iter().any(|f| matches!(f.kind, HealthEventKind::Damaged { .. })),
+        !ponte
+            .health_events()
+            .iter()
+            .any(|f| matches!(f.kind, HealthEventKind::Damaged { .. })),
         "pôr a vida não é um golpe: {:?}",
         ponte.health_events()
     );
-    assert!(sim.world().get_resource::<PedidosDeVida>().is_some_and(|c| c.0.is_empty()));
+    assert!(
+        sim.world()
+            .get_resource::<PedidosDeVida>()
+            .is_some_and(|c| c.0.is_empty())
+    );
     sim.world_mut()
         .resource_mut::<PedidosDeVida>()
         .0
         .push((a, PedidoDeVida::Define(0.0)));
     ponte.dispatch(&mut sim, true, 2);
     assert_eq!(pontos(&ponte, a), 0.0);
-    assert!(ponte.health_of(a).is_some_and(|s| s.vida().morta()), "em zero morre");
     assert!(
-        ponte.health_events().iter().any(|f| f.kind == HealthEventKind::Died),
+        ponte.health_of(a).is_some_and(|s| s.vida().morta()),
+        "em zero morre"
+    );
+    assert!(
+        ponte
+            .health_events()
+            .iter()
+            .any(|f| f.kind == HealthEventKind::Died),
         "a morte é um facto (o On Death acende): {:?}",
         ponte.health_events()
     );

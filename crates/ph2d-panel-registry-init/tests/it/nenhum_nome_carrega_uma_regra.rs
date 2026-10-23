@@ -57,7 +57,11 @@ fn rotulos_do_inspector() -> Vec<(String, String, String)> {
             .split("\"panel.inspector.")
             .skip(1)
             .map(|p| (p, String::new()))
-            .chain(src.split("\"component.field.").skip(1).map(|p| (p, "component.field.".to_owned())));
+            .chain(
+                src.split("\"component.field.")
+                    .skip(1)
+                    .map(|p| (p, "component.field.".to_owned())),
+            );
         for (pedaco, prefixo) in pedacos {
             let Some(chave) = pedaco.split('"').next().map(|k| format!("{prefixo}{k}")) else {
                 continue;

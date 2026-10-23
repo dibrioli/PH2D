@@ -184,7 +184,10 @@ impl crate::App {
         let mut portas = ph2d_app_components::script_bridge::ScriptDoors {
             registry: component_registry,
             tags,
-            docs: ph2d_app_components::instance_docs::OwnedDocs { vec_scene, vec_entities },
+            docs: ph2d_app_components::instance_docs::OwnedDocs {
+                vec_scene,
+                vec_entities,
+            },
             tick: self.fixed_step.tick_count(),
             images: ph2d_app_components::script_image::ImageLibrary::of(asset_db, atlas_asset_map),
         };

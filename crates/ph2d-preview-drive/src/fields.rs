@@ -90,7 +90,14 @@ fn write(
 impl FieldDrive {
     /// Um script escreveu `key` do componente de `entry`: `before` é o que lá estava, `after` o que
     /// deixou; `born` = a escrita criou o componente.
-    pub fn driven(&mut self, entity: Entity, field: FieldRef, before: Value, after: Value, born: bool) {
+    pub fn driven(
+        &mut self,
+        entity: Entity,
+        field: FieldRef,
+        before: Value,
+        after: Value,
+        born: bool,
+    ) {
         let k = (entity.to_bits(), field.canonical_name, field.key);
         let entry = field;
         match self.memo.get_mut(&k) {

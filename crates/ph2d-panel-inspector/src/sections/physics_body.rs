@@ -155,12 +155,18 @@ pub(super) fn paint_body_face(
     // block. The overlay draws the outline here so the offset is visible.
     for (label, id, unit) in [
         (
-            tr_with("panel.inspector.label_x", &[("label", &tr("component.field.collider.6"))]),
+            tr_with(
+                "panel.inspector.label_x",
+                &[("label", &tr("component.field.collider.6"))],
+            ),
             ids::INSP_PHYS_OFFSET_X,
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
-            tr_with("panel.inspector.label_y", &[("label", &tr("component.field.collider.6"))]),
+            tr_with(
+                "panel.inspector.label_y",
+                &[("label", &tr("component.field.collider.6"))],
+            ),
             ids::INSP_PHYS_OFFSET_Y,
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
@@ -279,8 +285,14 @@ fn paint_dynamics_rows(
     y: f32,
 ) -> f32 {
     let mut yy = y;
-    let vel_x = tr_with("panel.inspector.label_x", &[("label", &tr("component.field.initial_velocity.0"))]);
-    let vel_y = tr_with("panel.inspector.label_y", &[("label", &tr("component.field.initial_velocity.0"))]);
+    let vel_x = tr_with(
+        "panel.inspector.label_x",
+        &[("label", &tr("component.field.initial_velocity.0"))],
+    );
+    let vel_y = tr_with(
+        "panel.inspector.label_y",
+        &[("label", &tr("component.field.initial_velocity.0"))],
+    );
     for (label, id, unit) in [
         (
             tr("component.field.gravity_scale.0"),

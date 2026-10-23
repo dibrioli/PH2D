@@ -5,7 +5,9 @@
 //! Só o clamp por-VALOR: o que depende do gesto (converter a forma ao trocar Ball↔Box, destacar o
 //! componente no neutro) fica no `apply_physics_edit`. Cada `sanitize` é idempotente.
 
-use super::{AreaBuoyancy, AreaDrag, AreaFalloff, AreaFormDrag, DampingOverride, MassOverride, WalkSurface};
+use super::{
+    AreaBuoyancy, AreaDrag, AreaFalloff, AreaFormDrag, DampingOverride, MassOverride, WalkSurface,
+};
 use crate::{Collider, ColliderShape, MAX_LAYERS};
 
 /// O menor raio / meia-extensão que o solver aceita.
@@ -23,7 +25,10 @@ impl Collider {
                 half_x: half_x.max(MIN_EXTENT),
                 half_y: half_y.max(MIN_EXTENT),
             },
-            ColliderShape::Capsule { half_height, radius } => ColliderShape::Capsule {
+            ColliderShape::Capsule {
+                half_height,
+                radius,
+            } => ColliderShape::Capsule {
                 half_height: half_height.max(0.0),
                 radius: radius.max(MIN_EXTENT),
             },

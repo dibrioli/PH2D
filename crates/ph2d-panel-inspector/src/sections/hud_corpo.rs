@@ -42,7 +42,15 @@ fn bloco_raiz(
 ) -> f32 {
     let mut cur_y = y;
     if i.has_canvas {
-        cur_y = super::rows::subtitulo(scene, text_system, theme, x, w, cur_y, tr("component.ui_canvas.name"));
+        cur_y = super::rows::subtitulo(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            tr("component.ui_canvas.name"),
+        );
         for n in [N::RefWidth, N::RefHeight] {
             cur_y = num_row(scene, text_system, theme, hit_index, store, x, w, cur_y, n);
         }
@@ -123,7 +131,15 @@ fn bloco_rotulo(
         );
     }
     if i.has_label {
-        cur_y = super::rows::subtitulo(scene, text_system, theme, x, w, cur_y, tr("component.ui_label.name"));
+        cur_y = super::rows::subtitulo(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            tr("component.ui_label.name"),
+        );
         cur_y = seg_row(
             scene,
             text_system,
@@ -222,7 +238,15 @@ fn bloco_botao(
 ) -> f32 {
     let mut cur_y = y;
     if i.has_button {
-        cur_y = super::rows::subtitulo(scene, text_system, theme, x, w, cur_y, tr("component.ui_button.name"));
+        cur_y = super::rows::subtitulo(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            tr("component.ui_button.name"),
+        );
         if let Some(idx) = ph2d_editor_core::hud_edits::HUD_TEXTS
             .iter()
             .position(|&t| t == T::Signal)
@@ -300,7 +324,15 @@ fn bloco_contador(
 ) -> f32 {
     let mut cur_y = y;
     if i.has_counter {
-        cur_y = super::rows::subtitulo(scene, text_system, theme, x, w, cur_y, tr("component.counter.name"));
+        cur_y = super::rows::subtitulo(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            tr("component.counter.name"),
+        );
         if let Some(idx) = ph2d_editor_core::hud_edits::HUD_TEXTS
             .iter()
             .position(|&t| t == T::CounterName)

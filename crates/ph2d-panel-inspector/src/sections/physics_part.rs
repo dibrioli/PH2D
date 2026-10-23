@@ -100,8 +100,14 @@ pub(super) fn paint_part_face(
         yy,
         info.shape_tag,
     );
-    let off_x = tr_with("panel.inspector.label_x", &[("label", &tr("component.field.collider.6"))]);
-    let off_y = tr_with("panel.inspector.label_y", &[("label", &tr("component.field.collider.6"))]);
+    let off_x = tr_with(
+        "panel.inspector.label_x",
+        &[("label", &tr("component.field.collider.6"))],
+    );
+    let off_y = tr_with(
+        "panel.inspector.label_y",
+        &[("label", &tr("component.field.collider.6"))],
+    );
     for (label, id, unit) in [
         (
             off_x.as_str(),

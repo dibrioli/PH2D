@@ -366,7 +366,8 @@ impl<'w> Lane<'w> {
         let Some(e) = self.alive(id) else {
             return Ok(());
         };
-        let v = from_lua(value).map_err(|why| mlua::Error::RuntimeError(format!("ph2d.set: {why}")))?;
+        let v =
+            from_lua(value).map_err(|why| mlua::Error::RuntimeError(format!("ph2d.set: {why}")))?;
         self.doors
             .property_set(self.sim, e, field, &v, true)
             .map_err(|why| mlua::Error::RuntimeError(format!("ph2d.set: {why}")))?;
@@ -379,7 +380,10 @@ impl<'w> Lane<'w> {
             return Vec::new();
         };
         let mut out: Vec<String> = if self.sim.world().get::<Transform>(e).is_some() {
-            crate::io::POSE_FIELDS.iter().map(|f| (*f).to_owned()).collect()
+            crate::io::POSE_FIELDS
+                .iter()
+                .map(|f| (*f).to_owned())
+                .collect()
         } else {
             Vec::new()
         };
@@ -593,5 +597,7 @@ pub(crate) fn wire(lua: &Lua) -> mlua::Result<()> {
     for f in crate::io::POSE_FIELDS {
         pose.raw_set(f, true)?;
     }
-    lua.load(LANE_LUAU).set_name("=ph2d").call::<()>((table, pose))
+    lua.load(LANE_LUAU)
+        .set_name("=ph2d")
+        .call::<()>((table, pose))
 }

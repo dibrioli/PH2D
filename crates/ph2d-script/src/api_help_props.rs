@@ -28,7 +28,10 @@ end"#,
     ApiHelp {
         key: "ph2d.damage",
         params: &[
-            ("entity", "An object with a Health component, such as `self.id`."),
+            (
+                "entity",
+                "An object with a Health component, such as `self.id`.",
+            ),
             ("amount", "How many points to take, above 0."),
         ],
         returns: "",
@@ -42,7 +45,10 @@ end"#,
     ApiHelp {
         key: "ph2d.heal",
         params: &[
-            ("entity", "An object with a Health component, such as `self.id`."),
+            (
+                "entity",
+                "An object with a Health component, such as `self.id`.",
+            ),
             ("amount", "How many points to give back, above 0."),
         ],
         returns: "",

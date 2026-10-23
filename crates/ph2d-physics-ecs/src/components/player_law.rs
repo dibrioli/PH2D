@@ -8,7 +8,11 @@ use crate::{MAX_CORNER_SAMPLES, MAX_WALL_SAMPLES, RideConfig};
 
 /// Uma fração da 3ª lei em `[0, 1]`; não-finito vira ZERO (um `NaN.clamp` é `NaN`).
 fn fraction(v: f32) -> f32 {
-    if v.is_finite() { v.clamp(0.0, 1.0) } else { 0.0 }
+    if v.is_finite() {
+        v.clamp(0.0, 1.0)
+    } else {
+        0.0
+    }
 }
 
 /// Uma contagem de raios em `[1, max]`.
@@ -67,7 +71,9 @@ impl PlatformPlayer {
         ] {
             *v = v.max(0.0);
         }
-        self.spring_strength = self.spring_strength.clamp(0.0, RideConfig::MAX_SPRING_STRENGTH);
+        self.spring_strength = self
+            .spring_strength
+            .clamp(0.0, RideConfig::MAX_SPRING_STRENGTH);
         self.spring_damping = self.spring_damping.clamp(0.0, RideConfig::MAX_DAMPING);
         self.max_slope_deg = self.max_slope_deg.clamp(0.0, 90.0);
         self.foot_spread = self.foot_spread.clamp(0.0, 1.0);

@@ -277,17 +277,11 @@ pub fn apply_physics_edit(
         if world.get::<MassOverride>(entity).is_none() {
             return;
         }
-        queue_set(
-            queue,
-            registry,
-            entity_bits,
-            MASS_OVERRIDE,
-            &{
-                let mut m = MassOverride(v);
-                m.sanitize();
-                m
-            },
-        );
+        queue_set(queue, registry, entity_bits, MASS_OVERRIDE, &{
+            let mut m = MassOverride(v);
+            m.sanitize();
+            m
+        });
         return;
     }
     if let PhysicsFieldEdit::Dominance(d) = edit {

@@ -212,7 +212,10 @@ pub(crate) fn paint_tags_section(
     } else {
         tr_with(
             "panel.inspector.tags.tags_count",
-            &[("field", &tr("component.field.tags.1")), ("n", &info.on_object.len())],
+            &[
+                ("field", &tr("component.field.tags.1")),
+                ("n", &info.on_object.len()),
+            ],
         )
     };
     let header = section_header(store, core_ids::INSP_LIVE_TAGS_SECTION, &title);

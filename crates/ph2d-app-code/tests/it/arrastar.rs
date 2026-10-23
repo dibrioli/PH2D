@@ -252,5 +252,9 @@ fn o_nome_de_propriedade_que_nenhum_componente_tem_e_um_aviso() {
         ["unknown_property_near", "unknown_property"]
     );
     let p = m.docs().problems_of(id).remove(0);
-    assert!(p.message.contains("\"health.max\""), "o «quis dizer»: {}", p.message);
+    assert!(
+        p.message.contains("\"health.max\""),
+        "o «quis dizer»: {}",
+        p.message
+    );
 }

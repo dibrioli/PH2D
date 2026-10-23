@@ -104,6 +104,15 @@ pub(crate) fn variante(c: Config, v: usize) -> Config {
 
 /// Os blocos 8×8 da captura com alguma cunha na `V2` (θ₁ < 50), o censo do `custo` da W6d.
 fn blocos_com_cunha(gpu: &ph2d_gpu::GpuContext, s: &ph2d_light2d_gpu::Solver) -> Option<usize> {
+    let (com, _) = mapa_das_cunhas(gpu, s)?;
+    Some(com.iter().filter(|&&c| c).count())
+}
+
+/// Por bloco 8×8 da captura, se tem alguma cunha, e a largura em blocos.
+fn mapa_das_cunhas(
+    gpu: &ph2d_gpu::GpuContext,
+    s: &ph2d_light2d_gpu::Solver,
+) -> Option<(Vec<bool>, u32)> {
     let (b, [lx, ly]) = s.cantos_lidos(gpu)?;
     let (bx, by) = (lx.div_ceil(8), ly.div_ceil(8));
     let mut com = vec![false; (bx * by) as usize];
@@ -115,7 +124,69 @@ fn blocos_com_cunha(gpu: &ph2d_gpu::GpuContext, s: &ph2d_light2d_gpu::Solver) ->
             }
         }
     }
-    Some(com.iter().filter(|&&c| c).count())
+    Some((com, bx))
+}
+
+/// **Os grupos da fina PERTO de uma cunha** (handoff W6h §7.1 iii): por câmera, os grupos 8×8 da fina cujo
+/// retângulo na captura, dilatado por `R` texels da FINA (as consultas do `num_corpo` à volta do texel; o limite
+/// sem as sementes sem porta do `onde_calcular` é ~16,4 — W6h §7),
+/// toca um bloco com cunha — a fração que a fina enxuta deixaria à pipeline de hoje. À mão:
+///
+/// ```text
+/// PH2D_GPU=1 PH2D_CANTOS_RAIOS=1,2,4 bash scripts/ph2d-run.sh cargo test -p ph2d-app-light2d --profile smoke \
+///     --test it medida_luz2d_cantos_perto -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "o censo dos grupos perto das cunhas: corre-se à mão (cabeçalho)"]
+fn medida_luz2d_cantos_perto() {
+    let Some(gpu) = gpu() else {
+        eprintln!("medida: sem placa");
+        return;
+    };
+    let raios: Vec<f32> = std::env::var("PH2D_CANTOS_RAIOS")
+        .unwrap_or_else(|_| "1,2,4".into())
+        .split(',')
+        .map(|r| r.trim().parse().expect("PH2D_CANTOS_RAIOS"))
+        .collect();
+    for (n, cam) in CAMERAS {
+        let mut w = bevy_ecs::world::World::new();
+        assert!(smoke::encenar(&mut w, n));
+        let cena = ph2d_light2d_ecs::coleta::cena_de_luz(&w);
+        let a = afim(cam);
+        let cfg = variante(config(&gpu, a, false), 4);
+        let mut s = solver(&gpu, a, cfg);
+        for _ in 0..3 {
+            s.quadro(&gpu, &cena);
+        }
+        let (com, bx) = mapa_das_cunhas(&gpu, &s).expect("os cantos do padrão");
+        let by = com.len() as u32 / bx;
+        let (i, f) = ph2d_app_light2d::regiao_da_janela(s.grade_da_fluencia(), a, FHD);
+        // Texels da captura por texel da fina.
+        let esc = cfg.captura as f32 / cfg.fina as f32;
+        let (gx, gy) = ((f[0] - i[0]).div_ceil(8), (f[1] - i[1]).div_ceil(8));
+        for &r in &raios {
+            let rc = r * esc;
+            let mut perto = 0;
+            for y in 0..gy {
+                for x in 0..gx {
+                    let lo = [i[0] + 8 * x, i[1] + 8 * y].map(|v| (v as f32 + 0.5) * esc - rc);
+                    let hi =
+                        [i[0] + 8 * x + 7, i[1] + 8 * y + 7].map(|v| (v as f32 + 0.5) * esc + rc);
+                    let bloco = |v: f32, m: u32| ((v.max(0.0) / 8.0) as u32).min(m - 1);
+                    let toca = (bloco(lo[1], by)..=bloco(hi[1], by)).any(|j| {
+                        (bloco(lo[0], bx)..=bloco(hi[0], bx)).any(|k| com[(j * bx + k) as usize])
+                    });
+                    perto += u32::from(toca);
+                }
+            }
+            eprintln!(
+                "PERTO · cena {n} · {} · R {r} · grupos {} · perto {perto} ({:.1} %) · captura/fina {esc}",
+                nome(cam),
+                gx * gy,
+                100.0 * f64::from(perto) / f64::from(gx * gy)
+            );
+        }
+    }
 }
 
 /// `PH2D_CANTOS_CUSTO_MODULOS=<pasta>`: cada `<pasta>/<nome>.wgsl` é mais uma variante — o PADRÃO com o

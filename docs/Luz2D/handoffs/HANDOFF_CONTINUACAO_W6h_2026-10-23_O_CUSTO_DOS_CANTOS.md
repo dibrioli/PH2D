@@ -160,3 +160,41 @@ Logs (fora do git, `target/`): `cantos_custo_1.log` (r1), `cantos_custo_diag.log
 3. A anomalia da r5b (W6g §12); a família (b) (W5g §37–38).
 
 Logs (`target/`): `cantos_custo_clock{1..6}.log`, `regua_registos/{head,head2,b,clock*,dist*}/`.
+
+## 8. As três medições do §7.1 (23/10, por ordem do dono «siga») — a obra compensa
+
+- **(i) O raio das consultas do `num_corpo`** (leitura do WGSL pelo explorador, com linhas): fora da marcha todo
+  `num_corpo`/`meio` do caminho da `c3_fina` cai a ≤ **~16,4 texels da fina** do texel calculado (o máximo:
+  `saida_na_direcao`, `c3_pe.wgsl:323`, via `normal_secante`; o pé, `na_fronteira*`, `c0_ao_longo_da_face` e o
+  `peso_de_fora` abaixo dele) — **SALVO as sementes sem porta do `onde_calcular`** (`c3_direta.wgsl:742–750`: quando
+  a janela 5×5 não tem texel de fora — interiores translúcidos, a borda da região), que podem ir à diagonal da grade.
+  ⇒ a enxuta só é exata se ADIAR esses texels para a pipeline completa (o molde da lista do `c3_fina_adia`).
+- **(ii) A enxuta** (`ga` + a saída por grupo `e1`: uma leitura uniforme por grupo antes do `fundo_do_grupo`): **128
+  registos com `DISTANTES 0` e `1`**; no relógio (`load` 12–13) `e1` = `ga` + 0,00…0,03 ms, C3 **≤ +3,5 %** nas 7.
+- **(iii) Os grupos 8×8 da fina PERTO de uma cunha** (`medida_luz2d_cantos_perto`, o retângulo do grupo na captura
+  dilatado por R contra os blocos com cunha):
+
+| câmera | R 4 | R 8 | R 16,4 |
+|---|---|---|---|
+| 5 · [−6, −1] | 0 % | 0 % | 0,1 % |
+| 5 · [6, −1] | 1,2 % | 1,7 % | 2,7 % |
+| 5 · zoom 1,6 | 2,7 % | 4,4 % | 8,4 % |
+| 5 · zoom 1 | 3,1 % | 4,9 % | 9,6 % |
+| 6 · [0, −3] | 0,0 % | 0,1 % | 0,1 % |
+| 6 · zoom 4 | 0,2 % | 0,2 % | 0,6 % |
+| 6 · zoom 1 | 0,5 % | 0,9 % | 2,1 % |
+
+  Estimativa (NÃO medida): enxuta + fração × (padrão − enxuta) ⇒ [6, −1] ~+3,6 %, as outras ≤ ~+2,6 %; o despacho a
+  mais e os texels adiados por medir.
+
+## 9. ABERTO (por ordem — substitui o §7)
+
+1. **Construir as duas pipelines da fina** (a 2.ª e ÚLTIMA reconstrução do two-strikes; kill-criterion do §5.1 tal e
+   qual, mais: a enxuta pela régua com `DISTANTES 0/1` ≤ 128 registos). Peças: (a) um passe que marca os grupos da fina
+   perto de uma cunha (o mapa dos blocos com cunha dilatado por R = 17 texels da fina, depois do `c3_cantos`) e os
+   lista para despacho indireto; (b) a `c3_fina` compilada com o `num_corpo` sem o ramo (uma constante `override`,
+   p. ex. `NUM_CORPO_SEM_CANTO`), a sair nos grupos marcados (`e1`) e a ADIAR para uma lista o texel que tome a semente
+   sem porta do `onde_calcular`; (c) a `c3_fina` de hoje sobre os grupos listados e sobre os texels adiados. Exata por
+   construção; a prova é o `medida_luz2d_cantos_bits` contra a base do §6.
+2. A borda nos níveis 11–12 a 2160p Alta: +3,62 ms (W6g §54.1).
+3. A anomalia da r5b (W6g §12); a família (b) (W5g §37–38).

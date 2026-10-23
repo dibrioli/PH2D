@@ -113,3 +113,7 @@ Binário: `target/smoke/ph2d-host-desktop` já compilado sobre `4b359d7f10` — 
 4. **Rope Length de uma Pulley** não se grava por Auto Key (só K), porque a ponte o re-deriva (2.1).
 5. A troca de tipo pela curva não passa pelo re-seed de limites quando escrita direto no componente (a cena escreve direto; o canal passa pelo funil).
 6. Os itens 2–9 e 11 do §6 do [handoff F25](HANDOFF_CONTINUACAO_line_UIUX_2026-10-21_F25_O_BLOCO_2.md) continuam (o 10 está fechado por esta onda).
+
+## 7 — Smoke do dono (22/10)
+
+**Cenas 16–26: OK** — palavras do dono: *«smoke parece ok»*. Próximo passo por ordem dele: integrar a linha ao `main` (fecho da linha + integração por agente integrador).

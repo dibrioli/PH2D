@@ -236,3 +236,41 @@ fn deslocar_para_o_sitio_dela_nao_guarda_edicao() {
     etapas::desloca(&mut tr, 1, 0).expect("de volta");
     assert_eq!(tr.edicoes, g.edicoes, "sem edição vazia");
 }
+
+/// Smoke do dono 23/10: levar um ColorDrop (a 2.ª de três etapas) para antes da 1.ª pincelada — as três
+/// etapas continuam no painel e a trilha toca até ao fim.
+#[test]
+fn levar_um_colordrop_para_tras_mantem_as_tres_etapas() {
+    let (b, _) = grava_o_traco_sob_o_fill_e_por_cima(LADO).expect("grava");
+    let g = codec::read(&b).expect("lê-se").tracks.remove(0);
+    let e = etapas::etapas(&g).expect("lê-se");
+    assert_eq!(e.len(), 3, "controlo: traço, fill, traço");
+    let r = levada(&g, 1, e[2].t1.0 + 200_000);
+    eprintln!("desloca: {:?}", r.as_ref().map(|_| ()));
+    let Ok(tr) = r else { return };
+    let v = etapas::etapas(&tr).expect("lê-se depois");
+    eprintln!(
+        "depois: {:?}",
+        v.iter().map(|x| (x.k, x.t0.0, x.t1.0)).collect::<Vec<_>>()
+    );
+    assert_eq!(v.len(), 3, "as três etapas continuam");
+    let _ = telas(&tr, None);
+}
+
+/// O caminho exacto do smoke de 23/10: o Fill levado para ANTES do 1.º traço (sem se sobrepor).
+#[test]
+fn levar_o_colordrop_para_antes_do_primeiro_traco_mantem_as_tres_etapas() {
+    let (b, _) = super::roteiro::grava_com_entrada_o_traco_o_fill_e_o_traco(LADO).expect("grava");
+    let g = codec::read(&b).expect("lê-se").tracks.remove(0);
+    let e = etapas::etapas(&g).expect("lê-se");
+    assert_eq!(e.len(), 3, "controlo: traço, fill, traço");
+    assert!(e[0].t0.0 > 600_000, "controlo: há tempo antes do 1.º traço");
+    let tr = levada(&g, 1, 100_000).expect("antes do 1.º traço não se sobrepõe");
+    let v = etapas::etapas(&tr).expect("lê-se depois");
+    eprintln!(
+        "depois: {:?}",
+        v.iter().map(|x| (x.k, x.t0.0, x.t1.0)).collect::<Vec<_>>()
+    );
+    assert_eq!(v.len(), 3, "as três etapas continuam");
+    let _ = telas(&tr, None);
+}

@@ -307,7 +307,9 @@ thread_local! {
 pub fn passo(conduz: bool) -> (u64, Vec<Gesto>, Option<u32>) {
     CAMINHO.with_borrow_mut(|c| {
         let (t0, cam) = c.get_or_insert_with(|| {
-            regista(&anuncio(conduz));
+            let a = anuncio(conduz);
+            eprintln!("[macro smoke] {a}");
+            regista(&a);
             (std::time::Instant::now(), Caminho::de(variante()))
         });
         let ms = u64::try_from(t0.elapsed().as_millis()).unwrap_or(u64::MAX);
@@ -464,7 +466,8 @@ pub fn ficheiro_do_registo() -> std::path::PathBuf {
     std::env::temp_dir().join("ph2d-macro-smoke.log")
 }
 
-/// **Uma linha do registo**: na consola e no [`ficheiro_do_registo`] (recomeçado na 1.ª linha).
+/// **Uma linha do registo**, só no [`ficheiro_do_registo`] (recomeçado na 1.ª linha): o diagnóstico
+/// de dez linhas por segundo inundava a consola do dono (23/10); na consola só o anúncio da cena.
 pub fn regista(linha: &str) {
     use std::io::Write as _;
     static ABERTO: std::sync::Once = std::sync::Once::new();
@@ -472,7 +475,6 @@ pub fn regista(linha: &str) {
     ABERTO.call_once(|| {
         let _ = std::fs::write(&caminho, "");
     });
-    eprintln!("[macro smoke] {linha}");
     if let Ok(mut f) = std::fs::OpenOptions::new().append(true).open(&caminho) {
         let _ = writeln!(f, "{linha}");
     }

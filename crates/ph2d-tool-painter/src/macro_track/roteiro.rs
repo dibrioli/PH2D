@@ -265,6 +265,30 @@ pub(crate) fn grava_o_traco_sob_o_fill_e_por_cima(lado: u32) -> Option<(Vec<u8>,
     .map(|(_, b, s)| (b, s))
 }
 
+/// O traço, o Fill e o traço do [`grava_o_traco_sob_o_fill_e_por_cima`] com um segundo parado antes do
+/// 1.º traço — o caminho do smoke do dono de 23/10 (W16: o Fill levado para antes do 1.º traço).
+#[cfg(test)]
+pub(crate) fn grava_com_entrada_o_traco_o_fill_e_o_traco(lado: u32) -> Option<(Vec<u8>, f64)> {
+    // LITERAL-COLOR-OK: a cor GRAVADA do Fill da fixtura.
+    let gota = Gota {
+        cor: [200, 60, 40],
+        onde: [0.5, 0.8],
+        limiar: Some(1.0),
+    };
+    let traco = CRUZADAS[0];
+    grava_com_gotas(
+        lado,
+        0,
+        &[traco, traco],
+        &[60],
+        &[(1, gota)],
+        Tela::Papel,
+        &[PaintMedia::Digital],
+        Relogio::Fixo,
+    )
+    .map(|(_, b, s)| (b, s))
+}
+
 /// **A caixa com um Fill** (W13, a cena do tutorial `PH2D_MACRO_SMOKE=4` com
 /// `PH2D_MACRO_CAMINHO=fill`): quatro traços que fecham um quadrado, o azul do C&F solto dentro dele, um
 /// traço por cima — numa sprite branca aberta pela porta do produto, no meio `meio`.

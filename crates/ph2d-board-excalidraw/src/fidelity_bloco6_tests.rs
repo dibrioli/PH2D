@@ -169,3 +169,51 @@ fn our_lasso_at_full_cover_is_their_contain() {
     }
     assert_eq!(seen, SAME.len() + 2);
 }
+
+/// ⭐ W24 — a divergência do laço medida elemento a elemento: nos casos de FRACÇÃO (a fracção dentro de
+/// cada um vem gravada na entrada), o «contain» deles leva só os de 100 % e o nosso `LASSO_COVER` (o
+/// Miro) leva EXACTAMENTE os de ≥ 90 % — nem um a mais, nem um a menos, na fronteira incluída (linhas,
+/// setas e traço livre pelo comprimento).
+#[test]
+fn our_lasso_takes_exactly_what_is_ninety_percent_inside_where_theirs_needs_all() {
+    // A régua NÃO lê o `LASSO_COVER`: o alvo é o 90 % do Miro (escolha do dono), escrito à parte.
+    const MIRO: f64 = 0.9;
+    let input = json("entradas/bloco6_laco.json");
+    let out = json("saidas/bloco6_laco.next.json");
+    let (mut seen, mut split) = (0, BTreeSet::new());
+    for case in input["casos"].as_array().unwrap() {
+        let Some(frac) = case["fracao_dentro"].as_object().filter(|f| !f.is_empty()) else {
+            continue;
+        };
+        let name = case["nome"].as_str().unwrap();
+        let at = |c: f64| -> BTreeSet<String> {
+            frac.iter()
+                .filter(|(_, v)| v.as_f64().unwrap() >= c - 1e-9)
+                .map(|(k, _)| k.clone())
+                .collect()
+        };
+        let r = out["resultados"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["caso"] == name && r["boxSelectionMode"] == "contain")
+            .unwrap_or_else(|| panic!("{name}: sem corrida contain"));
+        assert_eq!(
+            theirs(r),
+            at(1.0),
+            "{name}: o contain deles = só os de 100 %"
+        );
+        assert_eq!(
+            ours(case, LASSO_COVER),
+            at(MIRO),
+            "{name}: o nosso = os de ≥ 90 %"
+        );
+        if at(MIRO) != at(1.0) {
+            split.insert(name);
+        }
+        seen += 1;
+    }
+    assert_eq!(seen, 6, "os casos com a fracção gravada");
+    let want: BTreeSet<&str> = ["1_fracao", "1b_limiar", "6b_C_raso"].into();
+    assert_eq!(split, want, "os casos que separam as duas leis");
+}

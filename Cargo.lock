@@ -5772,6 +5772,7 @@ dependencies = [
  "ph2d-board-geom",
  "ph2d-board-model",
  "ph2d-board-route",
+ "ph2d-text",
  "ph2d-vector",
  "png",
  "serde_json",

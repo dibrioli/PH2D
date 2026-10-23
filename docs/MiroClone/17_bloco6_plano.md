@@ -184,30 +184,31 @@ Cada linha tem um gate de COMPORTAMENTO (o clique sintético percorre a sequênc
 ## §6 — Gates (red-first) e a fixture que contém o fenómeno
 
 > W24 (23/10): a lista do plano tinha 23 nomes, 21 nunca existiram com esse nome (auditoria do fecho de 22/10). Abaixo,
-> cada propriedade planeada com o gate REAL que a cobre (conferido por `grep` no código) ou «nenhum». O protocolo vivo
+> cada propriedade planeada com o gate REAL que a cobre (conferido por `grep` no código) ou «nenhum». W24 (fecho): as
+> seis «nenhum» e as cinco «parcial» fechadas num bloco (§0.10); a da menção era defeito e foi curada. O protocolo vivo
 > está em **11** (`ph2d-board-sync/src/session.rs`) e o formato do quadro em 17; o plano dizia 9.
 
 | bloco | propriedade planeada | gate real |
 |---|---|---|
 | B15 | colar noutro quadro nunca aponta para um estranho | `ph2d-board-edit/src/paste_elsewhere_tests.rs` `a_link_pasted_in_another_board_never_points_at_a_stranger` (+ nó e forma no mesmo ficheiro) |
-| B15 | copiar guarda setas, frames e mapa | parcial: `ph2d-editor-core/…/board_send_tests.rs` `copy_to_board_keeps_both_and_offers_no_undo_button` (não confere setas/frames/mapa) |
+| B15 | copiar guarda setas, frames e mapa | `ph2d-board-edit/src/paste_elsewhere_tests.rs` `a_copy_to_another_board_keeps_its_arrows_frames_and_map` (W24: as duas portas, `Ctrl+V` e `lift`/`land`; destino com os MESMOS números) |
 | B15 | mover = um passo em cada quadro, o aviso desfaz os dois | `board_send_tests.rs` `move_to_board_from_the_menu_lands_on_the_other_board_and_undo_puts_them_back` |
 | B15 | Ctrl+V noutra aba é o mesmo pouso | `board_send_tests.rs` `ctrl_v_in_another_tab_lands_in_the_middle_of_its_view` |
-| B15 | o menu manda pelo escolhedor de cena | parcial: `ph2d-app-board/src/send_to_board_tests.rs` `the_choice_reads_the_scene_counts_the_deleted_and_names_the_nameless` (lê a escolha, não clica) |
+| B15 | o menu manda pelo escolhedor de cena | `ph2d-editor-core/…/board_send_tests.rs` `the_menu_sends_through_the_scene_chooser_and_new_board_creates_one` (W24: o modal da cena, sem o quadro de origem, «New board» clicado — copiar e mover) |
 | B12 | cobertura exacta nos casos analíticos | `ph2d-board-geom/src/cover_tests.rs` `half_a_square_is_one_half` · `the_inscribed_square_covers_two_over_pi_of_a_circle` · `a_figure_eight_counts_both_loops` |
 | B12 | o laço leva o que está ≥ 90 % dentro | `ph2d-board-edit/src/lasso_tests.rs` `the_lasso_takes_what_is_ninety_percent_inside` |
 | B12 | rectângulo e laço perguntam a uma porta | `lasso_tests.rs` `the_lasso_and_the_marquee_ask_one_door` |
-| B12 | oráculo: contain do Excalidraw | parcial: `ph2d-board-excalidraw/src/fidelity_bloco6_tests.rs` `our_lasso_at_full_cover_is_their_contain` (só cover = 1) |
-| B13 | toda forma reconhecida pousa num elemento ou fica tinta | nenhum (só os casos de `smart_hand_tests.rs`) |
+| B12 | oráculo: contain do Excalidraw | `ph2d-board-excalidraw/src/fidelity_bloco6_tests.rs` `our_lasso_at_full_cover_is_their_contain` + `our_lasso_takes_exactly_what_is_ninety_percent_inside_where_theirs_needs_all` (W24: a divergência elemento a elemento pela fracção gravada; 6 casos, 3 separam as leis) |
+| B13 | toda forma reconhecida pousa num elemento ou fica tinta | `ph2d-board-edit/src/smart_tests.rs` `every_recognised_shape_lands_on_an_element_that_draws_it` (W24: 17 formas de todas as variantes pela porta `smart_landing`; régua Hausdorff independente ≤ 1 px) |
 | B13 | as fixtures de mão reconhecem-se como no Vetor | `ph2d-board-edit/src/smart_hand_tests.rs` `hand_strokes_recognise_on_the_board_as_in_the_vector_pencil` |
-| B13 | linha reconhecida a tocar numa forma liga-se | parcial: `smart_tests.rs` `a_line_from_a_box_to_a_box_is_a_bound_arrow` |
-| B13 | Ctrl+Z devolve o traço como foi desenhado | parcial: `smart_tests.rs` `holding_a_box_makes_a_rectangle_and_ctrl_z_gives_the_stroke_back` (só a caixa) |
+| B13 | linha reconhecida a tocar numa forma liga-se | `smart_tests.rs` `a_line_from_a_box_to_a_box_is_a_bound_arrow` + `a_line_with_one_end_on_a_box_binds_only_that_end` (W24) |
+| B13 | Ctrl+Z devolve o traço como foi desenhado | `smart_tests.rs` `ctrl_z_gives_every_family_its_stroke_back` (W24: elipse, losango, tinta limpa, recta, seta — cada ponto) |
 | B13 | o segurar do quadro é o do Vetor | `smart_tests.rs` `the_board_hold_is_the_vector_hold` |
-| B13 | sem segurar, fica tinta | nenhum (o mais perto: `a_triangle_the_board_cannot_draw_stays_a_clean_stroke`, forma não reconhecível) |
-| B13 | o quadro não tem limiares próprios (censo) | nenhum |
-| B13 | oráculo «Draw to shape» | nenhum |
-| B14 | uma menção é uma pessoa, não letras | parcial: `ph2d-editor-core/…/board_team_tests.rs` `mention_spans_cover_every_label_the_text_shows` |
-| B14 | a menção chega ao vivo e no ficheiro | nenhum (só o aviso, abaixo; sem duas réplicas nem reabrir) |
+| B13 | sem segurar, fica tinta | `fidelity_bloco6_shape_tests.rs` `the_pen_held_still_is_their_draw_to_shape_but_for_the_written_divergences` (W24: os 80 traços sem segurar = traço cru, o controlo «Draw» deles) + `smart_tests.rs` `the_board_hold_is_the_vector_hold` |
+| B13 | o quadro não tem limiares próprios (censo) | `smart_tests.rs` `the_board_has_no_recognition_thresholds_of_its_own` (W24: quem pede o quê ao `ph2d_vec_edit` em `ph2d-board-*`/`ph2d-app-board`/`hero/board*`; as constantes e os números do `smart.rs`) |
+| B13 | oráculo «Draw to shape» | `ph2d-board-excalidraw/src/fidelity_bloco6_shape_tests.rs` `the_pen_held_still_is_their_draw_to_shape_but_for_the_written_divergences` (W24: 54 iguais · 12 «nenhum» deles = tinta nossa · 14 divergências escritas) |
+| B14 | uma menção é uma pessoa, não letras | `board_team_tests.rs` `mention_spans_cover_every_label_the_text_shows` + `board_mention_tests.rs` `backspace_takes_a_mention_whole_and_typing_before_it_carries_it` (W24: era DEFEITO — o `Backspace` deixava `@Ru` sem ninguém; curado) |
+| B14 | a menção chega ao vivo e no ficheiro | `ph2d-board-sync/src/replica_tests.rs` `a_mention_arrives_live_and_stays_in_the_file` (W24: duas réplicas, gravar e reabrir, por-ler até abrir, a resposta é para a autora) |
 | B14 | a minha mensagem nunca me avisa | `ph2d-board-model/src/team_tests.rs` `my_own_reply_and_my_later_reply_are_never_for_me` |
 | B14 | o formato 15 lê-se sem menções | `team_tests.rs` `format_15_reads_with_no_mentions_and_16_keeps_them` |
 | B14 | par de protocolo antigo recusado limpo | `ph2d-board-sync/src/session_tests.rs` `the_old_hello_and_the_new_one_are_refused_across_versions` |
@@ -491,4 +492,10 @@ o nosso laço e o nosso rectângulo trazem o grupo inteiro por um membro dentro 
 da cena. A rotação cai sempre (os rectângulos rodados e a elipse a 30° saem direitos; rectângulos rodados de 25°/45° viram
 losango); triângulos viram losango, hexágono/octógono viram elipse. Controlo: «Draw» deu traço livre 80/80. ⇒ O nosso (o
 QuickShape do vetor) reconhece mais e guarda a rotação; onde o quadro não tem a forma, fica a tinta limpa em vez de sumir.
+
+**W24 — gateado** (`fidelity_bloco6_shape_tests.rs`, o gesto inteiro pelo editor a 16 ms e 600 ms parado, como a corrida
+deles): 54 iguais · 12 «nenhum» deles = tinta nossa (limpa ou crua) · 14 divergências ESCRITAS: rotação guardada (2),
+triângulo nosso (3), paralelogramos de outra inclinação, trapézio e polígonos 6/8 = tinta limpa (nenhuma forma do quadro os
+desenha igual, 7), seta de duas pontas (1) e o rectângulo 8:1 (1) — **a lei do lápis do Vetor não o reconhece** (sonda
+`recognise` crua e amostrada: `None`; o Xournal++ também não) e o quadro segue-a. Sem segurar: traço cru 80/80.
 

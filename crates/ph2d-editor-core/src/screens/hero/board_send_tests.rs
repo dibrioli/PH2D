@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::screens::hero::document_tabs::register_board;
+use crate::screens::hero::send_to_board;
 use ph2d_board_model::BoardId;
 
 impl T {
@@ -144,4 +145,40 @@ fn move_to_a_new_board_creates_it() {
     let fresh = t.hero.documents.active().unwrap();
     assert!(fresh != first && fresh != plan);
     assert_eq!((t.count(first), t.count(fresh)), (0, 2));
+}
+
+/// ⭐ W24 — o menu do quadro manda pela MESMA escolha do «Send to board» da cena: os quadros sem o de
+/// origem e o «New board», que cria um quadro e pousa lá a selecção (copiar e mover).
+#[test]
+fn the_menu_sends_through_the_scene_chooser_and_new_board_creates_one() {
+    for (item, keep) in [
+        (ids::CTX_MENU_BOARD_EL_COPY_TO, true),
+        (ids::CTX_MENU_BOARD_EL_MOVE_TO, false),
+    ] {
+        let (mut t, first, plan, shape) = two_boxes_and_a_plan();
+        t.right(shape);
+        t.shell_click_id(item, "Copy/Move to board…");
+        assert!(
+            matches!(
+                send_to_board::source(&t.hero.store),
+                Some(send_to_board::Source::Selection { keep: k, .. }) if k == keep
+            ),
+            "o modal da cena, com a selecção"
+        );
+        let (rows, _) = send_to_board::visible(&t.hero.documents, "", Some(first));
+        assert_eq!(rows, vec![plan], "sem o quadro de origem");
+        assert!(t.find(ids::CTX_SEND_BOARD_ROWS[0]).is_some());
+        assert!(t.find(ids::CTX_SEND_BOARD_ROWS[1]).is_none());
+        let before = t.hero.documents.boards().boards().len();
+        t.shell_click_id(ids::CTX_SEND_BOARD_NEW, "New board");
+        assert_eq!(t.hero.documents.boards().boards().len(), before + 1);
+        let new = t.hero.documents.active().expect("o quadro novo activo");
+        assert!(new != first && new != plan, "um quadro NOVO");
+        let left = if keep { 2 } else { 0 };
+        assert_eq!(
+            (t.count(first), t.count(plan), t.count(new)),
+            (left, 0, 2),
+            "keep {keep}"
+        );
+    }
 }

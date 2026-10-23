@@ -289,13 +289,26 @@ impl Editor {
         let Some(shape) = smart.hold.shape() else {
             return;
         };
+        let el = self.smart_landing(doc, &shape, pen, style, smart.px, (id, z.clone()));
+        crate::live(doc, el);
+    }
+
+    /// ⭐ A porta de «que elemento do quadro fica desta forma»: o objecto que a desenha igual, senão a
+    /// tinta limpa — nunca nada.
+    pub(crate) fn smart_landing(
+        &mut self,
+        doc: &BoardDoc,
+        shape: &QuickShape,
+        pen: Pen,
+        style: &Style,
+        px: f64,
+        (id, z): (ElementId, FracKey),
+    ) -> Element {
         // A tinta limpa nasce com o estilo das formas da caneta (o rascunho, a espessura e a escala de
         // nascença da ferramenta; a cor da caneta) — auditoria 21/10: com o da caneta ficava lisa.
         let clean = self.smart_style(style);
-        let el = self
-            .smart_element(doc, &shape, style, smart.px, (id, z.clone()))
-            .unwrap_or_else(|| smart_ink(&shape, pen, &clean, smart.px, (id, z.clone())));
-        crate::live(doc, el);
+        self.smart_element(doc, shape, style, px, (id, z.clone()))
+            .unwrap_or_else(|| smart_ink(shape, pen, &clean, px, (id, z)))
     }
 
     /// ⭐ O objecto do quadro `id` (em `z`) que a forma `shape` vira, com o estilo `style` da caneta (as

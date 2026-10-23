@@ -546,3 +546,6 @@ mod w23;
 
 #[path = "fidelity_bloco6_tests.rs"]
 mod bloco6;
+
+#[path = "fidelity_bloco6_shape_tests.rs"]
+mod bloco6_shape;

@@ -27,5 +27,10 @@ base64 = "0.22"
 flate2 = "1"
 png = "0.18"
 
+[dev-dependencies]
+# W24 — o «Draw to shape» contra a caneta do quadro: o gesto inteiro pelo editor (o texto não entra,
+# mas o `pointer_down` pede o sistema de letra).
+ph2d-text = { path = "../ph2d-text" }
+
 [lints]
 workspace = true

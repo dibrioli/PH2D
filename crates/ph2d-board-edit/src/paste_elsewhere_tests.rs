@@ -124,3 +124,116 @@ fn a_cloned_board_is_another_board() {
     assert_ne!(twin.origin(), a.doc.origin());
     assert_eq!(twin, a.doc, "o conteúdo é o mesmo");
 }
+
+/// ⭐ W24 — o que vai para OUTRO quadro chega inteiro ENTRE SI: a seta presa às CÓPIAS das duas caixas,
+/// a caixa dentro da cópia do frame, o filho pendurado na cópia da raiz — e nada aponta um vizinho de lá
+/// com o mesmo número. Pelas duas portas: o `Ctrl+C`/`Ctrl+V` e o «Copy to board…» (`lift`/`land`).
+#[test]
+fn a_copy_to_another_board_keeps_its_arrows_frames_and_map() {
+    use ph2d_board_model::{Anchor, Connector, Element, End, Files, Rgba, Route, Style};
+    for door in ["paste", "land"] {
+        let (mut a, root) = W::new();
+        let kid = a.child("A");
+        let f = frame(&mut a, [1_000.0, 1_000.0, 800.0, 500.0]);
+        let inner = rect(&mut a, [1_100.0, 1_100.0, 100.0, 100.0]);
+        let s1 = rect(&mut a, [3_000.0, 0.0, 100.0, 100.0]);
+        let s2 = rect(&mut a, [3_400.0, 0.0, 100.0, 100.0]);
+        let ink = Rgba([20, 20, 20, 255]);
+        let bound = |target| End::Bound {
+            target,
+            anchor: Anchor::Center,
+        };
+        let c = Connector::new(
+            bound(s1),
+            bound(s2),
+            Route::Straight,
+            Style::new(None, Some(ink), ink),
+        );
+        let wire = a.doc.mint_id();
+        let el = Element::new_connector(wire, a.doc.z_on_top(), c);
+        let _ = BoardOp::Put(el).apply(&mut a.doc);
+        assert_eq!(a.el(inner).frame, Some(f));
+        a.ed.commit_text(&mut a.doc, &mut a.h);
+        a.ed.select(&a.doc, [root, kid, f, s1, s2, wire]);
+        // O destino tem os MESMOS números (outro mapa, um frame e caixas), para que um id esquecido
+        // aponte um estranho em vez de falhar.
+        let (mut b, root_b) = W::new();
+        let _ = b.child("B");
+        let g = frame(&mut b, [9_000.0, 9_000.0, 800.0, 500.0]);
+        for x in [0.0, 300.0, 600.0] {
+            rect(&mut b, [x, 9_000.0, 100.0, 100.0]);
+        }
+        assert_eq!(
+            (root_b, g),
+            (root, f),
+            "a fixtura precisa dos MESMOS números"
+        );
+        let before: BTreeSet<ElementId> = b.doc.live().map(|e| e.id).collect();
+        let doc = if door == "paste" {
+            assert!(a.cmd(Command::Copy));
+            move_to(&mut a, &mut b);
+            assert!(a.cmd(Command::Paste));
+            &a.doc
+        } else {
+            let parcel = a.ed.lift(&a.doc, &Files::default());
+            let mut files = Files::default();
+            assert!(a.ed.land(&mut b.doc, &mut b.h, &mut files, &parcel, [0.0; 2]));
+            &b.doc
+        };
+        let new: BTreeSet<ElementId> = doc
+            .live()
+            .map(|e| e.id)
+            .filter(|id| !before.contains(id))
+            .collect();
+        assert_eq!(new.len(), 7, "{door}: as sete cópias");
+        let get = |id| doc.get(id).unwrap();
+        let only = |p: &dyn Fn(&Element) -> bool| -> Vec<ElementId> {
+            new.iter().copied().filter(|&id| p(get(id))).collect()
+        };
+        let [frame_c] = only(&|e| matches!(e.kind, ph2d_board_model::ElementKind::Frame(_)))[..]
+        else {
+            panic!("{door}: um frame");
+        };
+        let [wire_c] = only(&|e| e.connector().is_some())[..] else {
+            panic!("{door}: uma seta");
+        };
+        let roots = only(&|e| e.mind().is_some_and(|m| m.parent.is_none()));
+        let kids = only(&|e| e.mind().is_some_and(|m| m.parent.is_some()));
+        assert_eq!((roots.len(), kids.len()), (1, 1), "{door}: o mapa");
+        assert_eq!(
+            get(kids[0]).mind().unwrap().parent,
+            Some(roots[0]),
+            "{door}: o filho na cópia da raiz"
+        );
+        let boxes = only(&|e| e.shape().is_some() && e.mind().is_none());
+        let in_frame: Vec<_> = boxes
+            .iter()
+            .filter(|&&id| get(id).frame == Some(frame_c))
+            .collect();
+        assert_eq!(in_frame.len(), 1, "{door}: a caixa na cópia do frame");
+        let c = get(wire_c).connector().unwrap();
+        let ends: Vec<ElementId> = [c.start, c.end]
+            .into_iter()
+            .filter_map(|e| match e {
+                End::Bound { target, .. } => Some(target),
+                End::Free(_) => None,
+            })
+            .collect();
+        assert_eq!(ends.len(), 2, "{door}: a seta continua presa");
+        assert!(
+            ends[0] != ends[1]
+                && ends
+                    .iter()
+                    .all(|t| boxes.contains(t) && !in_frame.contains(&t)),
+            "{door}: presa às CÓPIAS das duas caixas: {ends:?} · {boxes:?}"
+        );
+        for &id in &new {
+            let e = get(id);
+            let refs = [e.frame, e.link(), e.mind().and_then(|m| m.parent)];
+            assert!(
+                refs.into_iter().flatten().all(|r| new.contains(&r)),
+                "{door}: {id:?} aponta um vizinho do destino: {refs:?}"
+            );
+        }
+    }
+}

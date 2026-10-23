@@ -11,13 +11,15 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**8 arquivos** · **5** citados pelo `CLAUDE.md` (marcados **◆**) · **1** são handoffs (registro **morto**).
+**10 arquivos** · **6** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | | Arquivo | Papel | Assunto |
 |---|---|---|---|
+| ◆ | [A_VEZ_DA_PLACA.md](A_VEZ_DA_PLACA.md) | — | A vez da placa — todo uso da placa espera a sua vez (18/10) |
 |   | [AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md](AUDITORIA_VELOCIDADE_DE_DESENVOLVIMENTO_2026-09-10.md) | auditoria | Auditoria — velocidade de desenvolvimento do PH2D (2026-09-10) |
 |   | [BTRFS_METADATA_E_SWAP.md](BTRFS_METADATA_E_SWAP.md) | — | BTRFS na workstation — metadata faminta, swap cheio e checksum corrompido *(2026-08-22)* |
 | ◆ | [FLAKES_DE_CARGA.md](FLAKES_DE_CARGA.md) | — | Flakes de carga — a família, a assinatura e os membros conhecidos |
+|   | [HANDOFF_A_VEZ_DA_PLACA_2026-10-18.md](HANDOFF_A_VEZ_DA_PLACA_2026-10-18.md) | ⚠️ handoff (morto) | Handoff — a vez da placa passa a ser de TODO uso (processo, 18/10) |
 |   | [HANDOFF_linux_bootstrap.md](HANDOFF_linux_bootstrap.md) | ⚠️ handoff (morto) | bootstrap da máquina Linux (dev rápido) |
 | ◆ | [MEDIR_VELOCIDADE.md](MEDIR_VELOCIDADE.md) | — | Medir velocidade sem esperar horas — a régua INTERCALADA |
 | ◆ | [MULTI_MACHINE_SETUP.md](MULTI_MACHINE_SETUP.md) | — | Multi-máquina — projeto idêntico em Mac · Linux · Windows |

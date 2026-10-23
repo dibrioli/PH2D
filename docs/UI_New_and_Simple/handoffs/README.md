@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**80 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **80** são handoffs (registro **morto**).
+**82 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **82** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -84,7 +84,7 @@
 | 2026-10-15 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-15_F16c_TRACEJADO.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-15_F16c_TRACEJADO.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 15/10 — F16c (tracejado em até três pares, seta por ponta) feita |
 | 2026-10-16 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-16_F17_ABAS.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-16_F17_ABAS.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 16/10 — F17 (abas Drawing/Interface no painel do vetor) feita |
 | 2026-10-17 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-17_F18_O_DESENHO_E_O_CORPO.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-17_F18_O_DESENHO_E_O_CORPO.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 17/10 — F18 (o desenho é o corpo do widget) feita |
-| 2026-10-17 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-17_F16_F17.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-17_F16_F17.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-17 — F16–F17 (barra de controle, tracejado em pares, abas Drawing… |
+| 2026-10-17 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-17_F16_F17.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-17_F16_F17.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-17 — F16–F17 (barra de controle, tracejado em pares, abas Drawing… |
 | 2026-10-18 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F19_O_PAINEL_LE_A_FORMA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F19_O_PAINEL_LE_A_FORMA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 18/10 — F19 (o painel do vetor lê a forma) feita |
 | 2026-10-18 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F20_MISTO_E_ESPESSURA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-18_F20_MISTO_E_ESPESSURA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 18/10 — F20 (seleção múltipla «misto» e espessura na unidade do document… |
 | 2026-10-19 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F21_O_MISTO_COMPLETO.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-19_F21_O_MISTO_COMPLETO.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 19/10 — F21 (o «misto» completo: seletor, forma vazia, pilha de camadas)… |
@@ -95,6 +95,8 @@
 | 2026-10-20 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24c_O_LOSANGO_EM_TODO_CAMPO.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24c_O_LOSANGO_EM_TODO_CAMPO.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 20/10 — F24c: o losango em todo campo que tem canal |
 | 2026-10-20 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24d_O_LOSANGO_SEM_COLUNA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24d_O_LOSANGO_SEM_COLUNA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 20/10 — F24d: o losango nas linhas SEM coluna de decorator |
 | 2026-10-21 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-21_F25_O_BLOCO_2.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-21_F25_O_BLOCO_2.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 21/10 — F25: o bloco 2 (a dívida do gate «todo campo editável é um canal… |
+| 2026-10-22 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-22_F26_AS_JUNTAS.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-22_F26_AS_JUNTAS.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 22/10 — F26: as juntas (todo campo da junta e da roldana grava no Auto K… |
+| 2026-10-22 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-22_F18_A_F26.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-22_F18_A_F26.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-22 — F18 a F26 (Auto Key em todo campo, canais por família, losan… |
 
 ---
 

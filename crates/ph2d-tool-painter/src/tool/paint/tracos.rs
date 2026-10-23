@@ -7,6 +7,7 @@
 //! ⛔ Um campo novo do `PaintState` tem de entrar numa das duas listas (gate
 //! `cada_campo_do_paint_state_e_do_traco_ou_partilhado`): um esquecido seria escrito por dois traços.
 
+use super::dual::DualEstado;
 use super::state::PaintState;
 use super::watercolor_solido::ManchaNaAguada;
 use super::wetpaint::faixas::LanesGuardadas;
@@ -52,6 +53,8 @@ campos_do_traco!(
     wet_stroke_dirty,
     wet_mix,
     wet_soak_pos,
+    plano_do_traco,
+    pixel_trilhos,
 );
 
 /// Os campos do `PaintState` partilhados pelos traços abertos (a tela, as sessões, o relevo, a aguada,
@@ -63,6 +66,8 @@ pub(crate) const PARTILHADO: &[&str] = &[
     "seed",
     "stroke_undo",
     "tracos_fora",
+    "dual", // a imagem é da ponta; o motor e as marcas trocam em `DualEstado::troca_o_traco`
+    "mangueira",
     "eraser",
     "paint_mode",
     "brush_by_mode",
@@ -237,6 +242,7 @@ pub(crate) struct TracoGuardado {
     deposito: Vec<ph2d_painter_brush::Dab>,
     mancha: Option<ManchaNaAguada>,
     lanes: LanesGuardadas,
+    dual: DualEstado,
 }
 
 impl PainterTool {
@@ -252,6 +258,7 @@ impl PainterTool {
             deposito: Vec::new(),
             mancha: None,
             lanes: LanesGuardadas::default(),
+            dual: DualEstado::default(),
         }
     }
 
@@ -272,6 +279,7 @@ impl PainterTool {
         std::mem::swap(&mut self.paint.wetpaint.pending_deposit, &mut g.deposito);
         std::mem::swap(&mut self.mancha_na_aguada, &mut g.mancha);
         self.wet_troca_as_lanes(&mut g.lanes);
+        self.paint.dual.troca_o_traco(&mut g.dual);
     }
 
     /// **Um toque deste pincel é uma pincelada simples** — o pen-down abre um traço do motor (o modo

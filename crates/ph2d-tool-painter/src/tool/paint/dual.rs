@@ -64,6 +64,19 @@ impl DualEstado {
         (self.imagem.clone(), self.versao)
     }
 
+    /// **O que é de UM traço** (W16 × L6): o motor, as marcas, o sorteio, a máscara e o rumo trocam com o traço
+    /// guardado ([`super::tracos`]); a imagem, a cache e a versão são da ponta e ficam.
+    pub(super) fn troca_o_traco(&mut self, o: &mut Self) {
+        swap(&mut self.motor, &mut o.motor);
+        swap(&mut self.pendentes, &mut o.pendentes);
+        swap(&mut self.tex_rng, &mut o.tex_rng);
+        swap(&mut self.no_fim, &mut o.no_fim);
+        swap(&mut self.mascara, &mut o.mascara);
+        swap(&mut self.ultimo, &mut o.ultimo);
+        swap(&mut self.rumo, &mut o.rumo);
+        swap(&mut self.curva, &mut o.curva);
+    }
+
     /// Instala a imagem da 2.ª ponta (a do pincel copiado para o tool do preview).
     pub(super) fn poe_imagem(&mut self, imagem: Option<BrushTextureImage>) {
         self.imagem = imagem;
@@ -463,5 +476,37 @@ impl PainterTool {
                 falhas.push(TEXTURA_DO_DUAL.to_owned());
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DualEstado;
+
+    /// Dois traços sobrepostos com o dual não partilham o motor nem as marcas; a imagem da ponta não viaja.
+    #[test]
+    fn o_traco_leva_o_motor_e_as_marcas_e_a_imagem_fica() {
+        let (mut a, mut b) = (DualEstado::default(), DualEstado::default());
+        a.tex_rng = 7;
+        a.no_fim = true;
+        a.rumo = [1.0, 0.0];
+        a.versao = 5;
+        b.tex_rng = 9;
+        b.curva = 0.5;
+        b.versao = 11;
+        a.troca_o_traco(&mut b);
+        assert_eq!(
+            (a.tex_rng, a.no_fim, a.rumo, a.curva),
+            (9, false, [0.0; 2], 0.5)
+        );
+        assert_eq!(
+            (b.tex_rng, b.no_fim, b.rumo, b.curva),
+            (7, true, [1.0, 0.0], 0.0)
+        );
+        assert_eq!(
+            (a.versao, b.versao),
+            (5, 11),
+            "a versão da imagem é da ponta"
+        );
     }
 }

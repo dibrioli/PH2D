@@ -28,6 +28,10 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("tex_rng", "o sorteio do grão, idem"),
     ("stroke_undo", TRACO),
     (
+        "tracos_fora",
+        "o contador do tocador da macro (traços abertos fora do tool): o preview não toca macros",
+    ),
+    (
         "eraser",
         "o preview mostra o que o pincel DEPOSITA (posto a false)",
     ),
@@ -217,6 +221,10 @@ const WET_FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("preset_pedido", UI),
     ("fita", SESSAO),
     ("ritmo", SESSAO),
+    (
+        "composta",
+        "a marca da água na tela da OBRA (a macro): o preview mostra o pincel, não a obra",
+    ),
 ];
 
 /// Os campos que entram por uma PORTA (que re-assa as LUTs): `(campo, a porta na instalação, o token da chave)`.

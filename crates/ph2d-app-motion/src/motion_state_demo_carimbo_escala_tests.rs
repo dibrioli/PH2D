@@ -361,7 +361,7 @@ fn censo_do_passe(n: &str, k: f32, dt: f64) {
         crate::motion_bridge::quadro::o_quadro(
             &mut c,
             None,
-            &mut ph,
+            &ph,
             dt,
             crate::motion_bridge::quadro::MaoDoEditor::default(),
         );
@@ -429,7 +429,7 @@ fn censo_do_passe(n: &str, k: f32, dt: f64) {
         // Grelhas da C2 (doc 120 §8.3.5) por CÉLULA verdadeira: cursores e candidatos — hoje (3×3,
         // lado `2R`), fixa 5×5 de lado `R` e ADAPTATIVA (lado `R`, quadrado `r_i + R`).
         let grelha = |lado: f32| {
-            let mut c: std::collections::HashMap<(i32, i32), u64> = Default::default();
+            let mut c: std::collections::BTreeMap<(i32, i32), u64> = Default::default();
             for &(i, _) in &pecas {
                 #[expect(clippy::cast_possible_truncation, reason = "sonda")]
                 let k = (
@@ -440,7 +440,7 @@ fn censo_do_passe(n: &str, k: f32, dt: f64) {
             }
             c
         };
-        let conta = |g: &std::collections::HashMap<(i32, i32), u64>,
+        let conta = |g: &std::collections::BTreeMap<(i32, i32), u64>,
                      lado: f32,
                      alcance: &dyn Fn(f32) -> f32| {
             let (mut cursores, mut cand) = (0u64, 0u64);

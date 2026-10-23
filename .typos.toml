@@ -5,6 +5,14 @@
 # Brazilian Portuguese, etc.).
 
 [default]
+# Ship 23/10 (CodeEditor Onda 2): o erro de grafia é a ENTRADA de um gate de «Did you mean…?» — o
+# membro `ph2d.proprety`, a chave que o luau-lsp cita (`Key 'proprety'`/`'proeprty'`, também como
+# `\u{201c}proeprty\u{201d}` no título explicado), o valor `ture` → `true`, a tecla `spcae` que o host
+# recusa. Ignora-se a palavra SÓ entre aspas/crases ou como membro de `ph2d.` — escrita solta em prosa
+# ou num nome continua acusada (isentá-la esconderia um `property`/`true`/`space` errado no repo).
+extend-ignore-re = [
+    "(?:ph2d\\.|[\"'`}])(?:proprety|proeprty|ture|spcae)\\b",
+]
 extend-ignore-identifiers-re = [
     # ─────────────────────────────────────────────────────────────────────────
     # ⚠️ **Rodada de integração de 2026-09-17 — seis linhas.** Vinte palavras de uma
@@ -405,6 +413,9 @@ extend-ignore-identifiers-re = [
     # `ground_bounce` (`let k = iz * n + ix`). O `typos` conhece o `ix` e não o `iz`, e a troca que
     # ele oferece não compila.
     "^iz$",
+    # `05a_selec_frente_…` — o id de uma captura do oráculo I13 do CodeEditor (`selec` = «selecção»),
+    # o mesmo no `corre.sh` que a tira e no `passos.txt` que ela gravou. Só o id inteiro se isenta.
+    "^[0-9]+[a-z]?_selec_",
 ]
 
 [default.extend-identifiers]
@@ -1144,5 +1155,16 @@ extend-exclude = [
     "docs/CodeEditor/ferramentas/corpus_erros/*.jsonl",
     "docs/CodeEditor/ferramentas/medicoes_onda2/I0b_bruto.json",
     "docs/CodeEditor/ferramentas/lspprobe2.py",
+    # Ship 23/10: os irmãos que a Onda 2 trouxe depois (I6–I13) — as sondas que ESCREVEM os erros
+    # (`lspprobe_i6_i11.py`, `lspprobe_i7.py`, os `corre.sh` dos oráculos que digitam `amplitud` no
+    # VS Code/Godot) e a saída BRUTA gravada deles (`Unknown global 'amplitud'`, a lista de 40 mutantes).
+    "docs/CodeEditor/ferramentas/lspprobe_i6_i11.py",
+    "docs/CodeEditor/ferramentas/lspprobe_i7.py",
+    "docs/CodeEditor/ferramentas/medicoes_onda2/I6_I11_bruto.json",
+    "docs/CodeEditor/ferramentas/medicoes_onda2/I7_bruto.json",
+    "docs/CodeEditor/ferramentas/medicoes_onda2/I8_oraculos_bruto.txt",
+    "docs/CodeEditor/ferramentas/oraculo_acabamento/corre.sh",
+    "docs/CodeEditor/ferramentas/oraculo_acabamento/saida/*.txt",
+    "docs/CodeEditor/ferramentas/oraculo_i8b/corre.sh",
     "crates/ph2d-code-lsp/tests/it/fixtures/ganchos.luau",
 ]

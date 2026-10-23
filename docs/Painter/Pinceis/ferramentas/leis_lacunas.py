@@ -73,7 +73,7 @@ def lamina(png):
         v = w[sel] if sel is not None else w[m // 10: m - m // 10]
         return float(np.median(v)) if len(v) else float('nan')
     w, th, s, pr = L['curva_s']
-    ths = (np.degrees(np.unwrap(np.radians(2 * th)) / 2) + 90) % 180 - 90
+    thetas = (np.degrees(np.unwrap(np.radians(2 * th)) / 2) + 90) % 180 - 90
     m = len(w)
     core = np.zeros(m, bool)
     core[m // 10: m - m // 10] = True
@@ -98,7 +98,7 @@ def lamina(png):
     V = L['vertical'][0]
     w90 = med('vertical')
     return {'w0': med('recto_lento'), 'w0_rapido': med('recto_rapido'), 'w90': w90, 'w90_rapido': med('vertical_rapido'),
-            'S_+40': med('curva_s', core & (ths > 30)), 'S_-40': med('curva_s', core & (ths < -30)),
+            'S_+40': med('curva_s', core & (thetas > 30)), 'S_-40': med('curva_s', core & (thetas < -30)),
             'arranque_vertical': float(np.median(V[:15]) / w90) if w90 > 0 else float('nan'),
             'fixa_eixo_longo': eixo, 'fixa_longo': float(max(La, Lb)), 'fixa_fino': float(min(La, Lb)),
             'fixa_rms': e, 'constante_rms': float(np.std(w_all[ok]))}

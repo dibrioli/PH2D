@@ -48,11 +48,11 @@ class PF(ctypes.Structure):
     _fields_ = [("x", ctypes.c_double), ("y", ctypes.c_double)]
 
 
-_hte = getattr(gui, "_ZN22QWindowSystemInterface17handleTabletEventEP7QWindowmPK15QPointingDeviceRK7QPointFS7_"
+_handle_tablet_event = getattr(gui, "_ZN22QWindowSystemInterface17handleTabletEventEP7QWindowmPK15QPointingDeviceRK7QPointFS7_"
                     "6QFlagsIN2Qt11MouseButtonEEddddddS8_INS9_16KeyboardModifierEE")
-_hte.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_void_p, ctypes.POINTER(PF), ctypes.POINTER(PF),
+_handle_tablet_event.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_void_p, ctypes.POINTER(PF), ctypes.POINTER(PF),
                  ctypes.c_int] + [ctypes.c_double] * 6 + [ctypes.c_int]
-_hte.restype = ctypes.c_bool
+_handle_tablet_event.restype = ctypes.c_bool
 _prox = getattr(gui, "_ZN22QWindowSystemInterface36handleTabletEnterLeaveProximityEventEP7QWindowmPK15QPointingDevice"
                      "bRK7QPointFS7_6QFlagsIN2Qt11MouseButtonEEdddddS8_INS9_16KeyboardModifierEE")
 _prox.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_void_p, ctypes.c_bool, ctypes.POINTER(PF),
@@ -95,7 +95,7 @@ def caneta(x, y, p, botoes, proximidade=None):
     if proximidade is not None:
         return _prox(sip.unwrapinstance(top.windowHandle()), RELOGIO[0], sip.unwrapinstance(DEV), proximidade,
                      PF(lx, ly), PF(g.x(), g.y()), 0, 0, 0, 0, 0, 0, 0)
-    return _hte(sip.unwrapinstance(top.windowHandle()), RELOGIO[0], sip.unwrapinstance(DEV), PF(lx, ly),
+    return _handle_tablet_event(sip.unwrapinstance(top.windowHandle()), RELOGIO[0], sip.unwrapinstance(DEV), PF(lx, ly),
                 PF(g.x(), g.y()), botoes, float(p), 0, 0, 0, 0, 0, 0)
 
 

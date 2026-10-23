@@ -51,8 +51,8 @@ fn sketch16(b: &mut Board) {
     let a = Element::new_connector(b.doc.mint_id(), b.doc.z_on_top(), c);
     BoardOp::Put(a).apply(&mut b.doc);
     let pts = [[0.0, 0.0, 0.5], [40.0, 10.0, 0.8], [80.0, 0.0, 0.3]];
-    let ist = style(None, Some(ink_c), Some(3.0));
-    let (ink, bx) = Ink::from_world(&pts, ist, Pen::Highlighter, true);
+    let ink_style = style(None, Some(ink_c), Some(3.0));
+    let (ink, bx) = Ink::from_world(&pts, ink_style, Pen::Highlighter, true);
     let i = Element::new_ink(b.doc.mint_id(), b.doc.z_on_top(), ink, bx);
     BoardOp::Put(i).apply(&mut b.doc);
     let fr = Frame {

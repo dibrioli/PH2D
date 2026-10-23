@@ -287,6 +287,8 @@ fn arrastos(r: &mut Vec<(u64, Gesto)>, t0: u64) {
 #[derive(Default)]
 pub struct Caminho {
     variante: Variante,
+    /// A `=6` (os gestos são da cena) com um caminho conhecido.
+    conduz: bool,
     dados: usize,
     /// Até quando (ms) há uma linha por quadro (a variante `parar`, depois do Parar).
     por_quadro_ate: Option<u64>,
@@ -310,7 +312,12 @@ pub fn passo(conduz: bool) -> (u64, Vec<Gesto>, Option<u32>) {
             let a = anuncio(conduz);
             eprintln!("[macro smoke] {a}");
             regista(&a);
-            (std::time::Instant::now(), Caminho::de(variante()))
+            let cam = if conduz && caminho_desconhecido().is_none() {
+                Caminho::a_conduzir(variante())
+            } else {
+                Caminho::de(variante())
+            };
+            (std::time::Instant::now(), cam)
         });
         let ms = u64::try_from(t0.elapsed().as_millis()).unwrap_or(u64::MAX);
         let gestos = if conduz && caminho_desconhecido().is_none() {
@@ -322,6 +329,14 @@ pub fn passo(conduz: bool) -> (u64, Vec<Gesto>, Option<u32>) {
     })
 }
 
+/// **A cena conduz o ponteiro** (W17): na `=6`, até ao último gesto do roteiro, o rato real não entra
+/// na janela — o do dono caiu na tela a meio do clique no C&F (a tela inteira preta) e a meio da 2.ª
+/// pincelada (um leque gravado até ao cursor). Depois do último gesto, o rato volta a ser do dono.
+#[must_use]
+pub fn a_cena_conduz_o_ponteiro() -> bool {
+    CAMINHO.with_borrow(|c| c.as_ref().is_some_and(|(_, cam)| cam.conduz_o_ponteiro()))
+}
+
 impl Caminho {
     /// O condutor do roteiro da variante `v`.
     #[must_use]
@@ -330,6 +345,21 @@ impl Caminho {
             variante: v,
             ..Self::default()
         }
+    }
+
+    /// O condutor da `=6` (os gestos são dele).
+    #[must_use]
+    pub fn a_conduzir(v: Variante) -> Self {
+        Self {
+            conduz: true,
+            ..Self::de(v)
+        }
+    }
+
+    /// Ainda há gestos da cena por dar (e ela conduz): o rato real fica de fora.
+    #[must_use]
+    pub fn conduz_o_ponteiro(&self) -> bool {
+        self.conduz && self.dados < roteiro(self.variante).len()
     }
 
     /// Os gestos que vencem até `ms` (por ordem, cada um uma vez).

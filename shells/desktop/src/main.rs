@@ -988,6 +988,11 @@ impl ApplicationHandler for App {
             }
             WindowEvent::ModifiersChanged(mods) => self.on_modifiers_changed(mods),
             WindowEvent::Ime(ime) => self.on_ime(ime),
+            // A cena `PH2D_MACRO_SMOKE=6` conduz o ponteiro até ao fim do caminho dela (W17).
+            WindowEvent::CursorMoved { .. }
+            | WindowEvent::MouseInput { .. }
+            | WindowEvent::Touch(_)
+                if ph2d_app_painter::macro_track::caminho::a_cena_conduz_o_ponteiro() => {}
             WindowEvent::CursorMoved { position, .. } => self.on_cursor_moved(position),
             WindowEvent::MouseWheel { delta, .. } => self.on_wheel_event(delta),
             WindowEvent::PinchGesture { delta, .. } => self.on_pinch_gesture(delta),

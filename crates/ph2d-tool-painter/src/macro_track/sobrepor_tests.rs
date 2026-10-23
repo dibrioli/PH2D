@@ -314,3 +314,54 @@ fn o_fill_sem_done_nao_leva_o_toque_seguinte_e_nada_some() {
     );
     let _ = telas(&tr, None);
 }
+
+/// Texels FORA do quadrado de meio-lado `r` em volta do centro que a `serie` pintou (≠ `ini`) e que em
+/// `fim` voltaram ao papel (= `ini`): o que uma pincelada apagou da outra.
+fn apagados_fora_do_centro(fim: &[u8], serie: &[u8], ini: &[u8], r: usize) -> (usize, usize) {
+    let (l, c) = (LADO as usize, LADO as usize / 2);
+    let mut n = (0, 0);
+    for (i, ((f, s), o)) in fim
+        .chunks(4)
+        .zip(serie.chunks(4))
+        .zip(ini.chunks(4))
+        .enumerate()
+    {
+        let (px, py) = (i % l, i / l);
+        if (px.abs_diff(c) <= r && py.abs_diff(c) <= r) || s == o {
+            continue;
+        }
+        n.1 += 1;
+        n.0 += usize::from(f == o);
+    }
+    n
+}
+
+/// ⭐ **O smoke do dono de 23/10 (W17, o retângulo branco)**: duas pinceladas sobrepostas no tempo que se
+/// CRUZAM na tela — fora do cruzamento nada do que a série pinta volta ao papel, nos quatro meios.
+#[test]
+fn duas_pinceladas_que_se_cruzam_ao_mesmo_tempo_nao_se_apagam() {
+    let cruzadas = [
+        p(VERMELHA, [0.15, 0.5], [0.85, 0.5]),
+        p(AZUL, [0.5, 0.15], [0.5, 0.85]),
+    ];
+    for meio in MEIOS {
+        let g = gravada(&cruzadas, &[meio]);
+        let (s, _) = sobreposta(&g);
+        let (serie, ini) = telas(&g, None);
+        let (fim, _) = telas(&s, None);
+        let (apagados, pintados) = apagados_fora_do_centro(&fim, &serie, &ini, 16);
+        eprintln!("{meio:?}: {apagados} de {pintados} pintados voltaram ao papel");
+        assert!(pintados > 1_000, "controlo: as duas pintam");
+        // A borda da água do Wet Paint espalha-se outra com outro relógio (13 de 5 947 medidos); um
+        // retângulo apagado são centenas.
+        let tecto = if meio == PaintMedia::WetPaint {
+            pintados / 100
+        } else {
+            0
+        };
+        assert!(
+            apagados <= tecto,
+            "{meio:?}: uma apagou a outra ({apagados})"
+        );
+    }
+}

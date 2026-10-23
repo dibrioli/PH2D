@@ -132,3 +132,20 @@ fn a_sobrepor_recua_o_losango_da_segunda_depois_de_parar_e_antes_de_tocar() {
     assert_eq!(s, d + 1, "o clique é descer e subir, sem arrasto");
     assert_eq!(r[d].0, r[s].0, "no mesmo quadro");
 }
+
+/// W17 — a `=6` conduz o ponteiro do 1.º ao último gesto do roteiro (o rato real do dono entrava no
+/// clique do C&F e na 2.ª pincelada); depois devolve-o. A `=5` nunca o toma.
+#[test]
+fn a_cena_conduz_o_ponteiro_ate_ao_ultimo_gesto_e_devolve_o() {
+    let mut c = Caminho::a_conduzir(Variante::Sobrepor);
+    assert!(c.conduz_o_ponteiro(), "antes do 1.º gesto");
+    let ultimo = roteiro(Variante::Sobrepor).last().unwrap().0;
+    let _ = c.gestos_ate(ultimo - 1);
+    assert!(c.conduz_o_ponteiro(), "a meio");
+    let _ = c.gestos_ate(ultimo);
+    assert!(!c.conduz_o_ponteiro(), "depois do último o rato é do dono");
+    assert!(
+        !Caminho::de(Variante::Sobrepor).conduz_o_ponteiro(),
+        "a =5 não conduz"
+    );
+}

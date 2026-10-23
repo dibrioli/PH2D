@@ -60,3 +60,21 @@ fotos 01–02 = as duas a crescer no MESMO quadro, cada uma na sua cor; 03 = int
 - Recontagens: nenhuma (sem schema, sem registo; uma chave i18n nova no censo `CHAVES`).
 - Suíte inteira: não corrida (cadência; corridos por nome: `macro_track` do Painter, `a_sobrepor_recua`,
   `every_*` do `ph2d-panel-macros`; `check` de `ph2d-app-macros` + `ph2d-host-desktop`). Clippy fica para o fecho.
+
+## §5 — 2.º smoke do dono (23/10, 17h27): «artefato no traço escuro … traço escuro cortado»
+
+- **O que o registo dele mostra:** a cena correu (2 etapas; o losango recuou; ▷ em laço); depois o dono pausou e
+  arrastou a cabeça de 1,31 a 2,29 s. Não pintou (`editor` constante) — mas a gravação dele tinha **35 733**
+  texels contra **22 537** nas minhas: os traços vermelhos em LEQUE da captura convergem num ponto fixo
+  (uv ≈ 0,90; 0,26) = o cursor REAL dele, cujos `CursorMoved` entraram no traço vermelho que a cena pintava
+  (a mesma família do defeito 1).
+- **Reproduzido** (sonda temporária: `Move` para esse ponto a cada 3.º gesto do 2.º traço + o arrasto dele): o
+  leque sai igual. **Não reproduzido:** o retângulo branco e o traço preto cortado — com leque e arrasto,
+  `inteira=0` e `fresca=0` em todas as linhas (o palco = o tocador = uma reprodução à parte), e a foto limpa.
+  Aberto: pedir ao dono como capturou (o aspeto desbotado da captura também não sai aqui).
+- **Cura (cena):** `caminho::a_cena_conduz_o_ponteiro()` — na `=6`, até ao último gesto do roteiro, a janela
+  ignora `CursorMoved`/`MouseInput`/`Touch` reais (`main.rs`, 3 linhas de composição); depois devolve o rato.
+  Gate `caminho_tests::a_cena_conduz_o_ponteiro_ate_ao_ultimo_gesto_e_devolve_o`.
+- **Guarda W16 nova (verde, hipótese do retângulo refutada):** `sobrepor_tests::duas_pinceladas_que_se_cruzam_
+  ao_mesmo_tempo_nao_se_apagam` — fora do cruzamento nada do que a série pinta volta ao papel: 0 em Digital,
+  Aguarela e Impasto; 13 de 5 947 no Wet Paint (borda da água, tecto 1 %).

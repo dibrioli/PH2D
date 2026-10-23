@@ -367,19 +367,19 @@ impl ProjectUndo {
         if self.undo.len() >= UNDO_CAP {
             self.undo.remove(0);
         }
-        self.undo
-            .push((pre, mark, ph2d_editor_core::documents::undo_tick(), transacao));
+        self.undo.push((
+            pre,
+            mark,
+            ph2d_editor_core::documents::undo_tick(),
+            transacao,
+        ));
         self.redo.clear();
     }
 
     /// A transação do passo que um desfazer (`redo == false`) ou um refazer aplicaria agora.
     pub(crate) fn transacao_do_topo(&self, redo: bool) -> Option<u64> {
-        if redo {
-            self.redo.last()
-        } else {
-            self.undo.last()
-        }
-        .and_then(|p| p.3)
+        let pilha = if redo { &self.redo } else { &self.undo };
+        pilha.last().and_then(|p| p.3)
     }
 
     /// A hora do degrau que o próximo desfazer leva (o que o próximo refazer leva, com `redo`).

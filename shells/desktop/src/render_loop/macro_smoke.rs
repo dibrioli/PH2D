@@ -278,26 +278,15 @@ impl crate::App {
         }
     }
 
-    /// O ponto do ecrã de `(u, v)` (fracções da imagem) na tela `bits`, pela pose de MUNDO.
-    fn ponto_da_tela(&self, bits: u64, [u, v]: [f32; 2]) -> Option<(f32, f32)> {
-        let gfx = self.gfx.as_ref()?;
-        let e = ph2d_ecs::Entity::from_bits(bits);
-        let tr = ph2d_ecs::world_transform(gfx.sim.world(), e)?;
-        let sprite = gfx.sim.world().get::<ph2d_render::Sprite>(e)?;
-        let grade = gfx.sim.world().get::<ph2d_ecs::SpriteGrid>(e).copied();
-        let lado = ph2d_app_painter::macro_track::smoke::LADO;
-        let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
-            lado,
-            lado,
-            tr,
-            sprite,
-            grade,
-            &gfx.camera,
-            gfx.scene_window(),
-        );
-        let lado = f64::from(lado);
-        let p = affine * ph2d_vector::Point::new(f64::from(u) * lado, f64::from(v) * lado);
-        #[expect(clippy::cast_possible_truncation, reason = "um ponto do ecrã")]
-        Some((p.x as f32, p.y as f32))
+    /// O ponto do ecrã de `(u, v)` na tela `bits` (a conta vive em `ph2d_app_painter`).
+    fn ponto_da_tela(&self, bits: u64, uv: [f32; 2]) -> Option<(f32, f32)> {
+        let g = self.gfx.as_ref()?;
+        ph2d_app_painter::macro_track::smoke::ponto_da_tela(
+            g.sim.world(),
+            &g.camera,
+            g.scene_window(),
+            bits,
+            uv,
+        )
     }
 }

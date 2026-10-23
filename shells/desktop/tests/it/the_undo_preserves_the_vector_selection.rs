@@ -133,12 +133,18 @@ fn the_step_carries_the_selection_and_the_restore_prefers_it() {
          ao objecto errado"
     );
 
+    // O passo nasce em `empurra` (o irmão `undo_app_macros.rs`), que o `post_frame_undo` chama.
+    let empurra = fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/undo_app_macros.rs"
+    ))
+    .expect("undo_app_macros.rs legível");
     let post = src
         .split("pub(crate) fn post_frame_undo")
         .nth(1)
         .expect("post_frame_undo existe");
     assert!(
-        post.contains("push_undo_em(base, mark,"),
+        post.contains("self.empurra(") && empurra.contains("push_undo_em(base, mark,"),
         "o passo nasce sem a selecção que lhe pertence — a fila volta a ser só estado"
     );
 }

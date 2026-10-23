@@ -36,6 +36,10 @@ mod intent_settle;
 use crate::intent_apply_path;
 use intent_loop_sync::{LengthTarget, apply_length, sync_loop};
 pub use intent_loop_sync::{sync_container_loop, sync_transport_loop};
+/// The release-time absorb of a streamed key drag — sibling module under the LOC cap.
+#[path = "intent_absorb.rs"]
+mod intent_absorb;
+use intent_absorb::absorb_where_released;
 use intent_settle::settle;
 
 /// Apply one intent to the timeline state + playhead. Document-mutating intents
@@ -563,23 +567,6 @@ pub(crate) fn edit(state: &mut TimelineState, f: impl FnOnce(&mut TimelineDoc, &
     f(&mut state.doc, &mut state.selection);
     settle(&mut state.doc);
     state.history.commit_if_changed(&state.doc);
-}
-
-/// The keys a streamed drag moved absorb the stationary keys under them where it was released.
-/// Also on a `BeginEdit` that finds a bracket never closed (pointer capture lost).
-fn absorb_where_released(state: &mut TimelineState) {
-    let moved = state.history.take_moved();
-    if moved.is_empty() {
-        return;
-    }
-    let mut sel = Selection::default();
-    for k in moved {
-        sel.add(k);
-    }
-    for_selected_tracks(&mut state.doc, &sel, |track, ids| {
-        track.absorb_under_moved(ids);
-    });
-    settle(&mut state.doc);
 }
 
 /// Frames a duplicate is pushed by when it would otherwise land on top of its

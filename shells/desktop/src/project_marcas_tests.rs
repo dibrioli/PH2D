@@ -25,31 +25,31 @@ fn as_marcas_do_artista_atravessam_o_arquivo() {
 /// campo) — não a partir do tipo vivo, senão o teste provaria o braço com a hipótese dele.
 #[test]
 fn um_v191_e_um_v192_abrem_sem_marcas() {
-  for ver in [191u32, 192] {
-    let f = bare_file(empty_state());
-    let v191 = (
-        &f.state,
-        &f.assets,
-        &f.painted,
-        &f.motion,
-        &f.timeline,
-        &f.physics,
-        &f.tokens,
-        &f.settings,
-        &f.player_tape,
-        &f.sprite_pixels,
-        &f.stable_id_counter,
-        &f.input_map,
-        &f.pattern_art,
-        &f.boards,
-        &f.scripts,
-    );
-    let path = tmp_path(&format!("marcas_v{ver}"));
-    let bytes = postcard::to_allocvec(&(ver, v191)).expect("serializa");
-    std::fs::write(&path, bytes).expect("grava");
-    let lido = headless_app().read_project_file(&path.to_string_lossy());
-    let _ = std::fs::remove_file(&path);
-    let (back, _) = lido.expect("um v191/v192 é recusado");
-    assert!(back.marcas_do_artista.is_empty());
-  }
+    for ver in [191u32, 192] {
+        let f = bare_file(empty_state());
+        let v191 = (
+            &f.state,
+            &f.assets,
+            &f.painted,
+            &f.motion,
+            &f.timeline,
+            &f.physics,
+            &f.tokens,
+            &f.settings,
+            &f.player_tape,
+            &f.sprite_pixels,
+            &f.stable_id_counter,
+            &f.input_map,
+            &f.pattern_art,
+            &f.boards,
+            &f.scripts,
+        );
+        let path = tmp_path(&format!("marcas_v{ver}"));
+        let bytes = postcard::to_allocvec(&(ver, v191)).expect("serializa");
+        std::fs::write(&path, bytes).expect("grava");
+        let lido = headless_app().read_project_file(&path.to_string_lossy());
+        let _ = std::fs::remove_file(&path);
+        let (back, _) = lido.expect("um v191/v192 é recusado");
+        assert!(back.marcas_do_artista.is_empty());
+    }
 }

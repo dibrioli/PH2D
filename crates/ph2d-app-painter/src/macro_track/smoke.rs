@@ -218,3 +218,25 @@ pub fn arm_wet(painter: &mut ph2d_tool_painter::PainterTool) {
         ),
     );
 }
+
+/// O ponto do ecrã de `(u, v)` (fracções da imagem) na tela `bits`, pela pose de MUNDO.
+#[must_use]
+pub fn ponto_da_tela(
+    world: &ph2d_ecs::World,
+    camera: &ph2d_render::Camera2d,
+    janela: ph2d_host::WindowSize,
+    bits: u64,
+    [u, v]: [f32; 2],
+) -> Option<(f32, f32)> {
+    let e = Entity::from_bits(bits);
+    let tr = ph2d_ecs::world_transform(world, e)?;
+    let sprite = world.get::<ph2d_render::Sprite>(e)?;
+    let grade = world.get::<ph2d_ecs::SpriteGrid>(e).copied();
+    let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
+        LADO, LADO, tr, sprite, grade, camera, janela,
+    );
+    let lado = f64::from(LADO);
+    let p = affine * ph2d_vector::Point::new(f64::from(u) * lado, f64::from(v) * lado);
+    #[expect(clippy::cast_possible_truncation, reason = "um ponto do ecrã")]
+    Some((p.x as f32, p.y as f32))
+}

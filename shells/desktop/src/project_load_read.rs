@@ -56,15 +56,13 @@ impl crate::App {
         let antigo = ver <= crate::project_schema::PROJECT_SCHEMA_TRACO_V22;
         let _traco_v22 = antigo.then(ph2d_vec_scene::StrokeLayoutV22::enter);
         let (mut file, migrated_counter) = match ver {
-            PROJECT_SCHEMA => {
-                match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
-                    Ok((_, f)) => (f, None),
-                    Err(e) => {
-                        eprintln!("[proj] erro ao ler {path}: {e}");
-                        return None;
-                    }
+            PROJECT_SCHEMA => match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
+                Ok((_, f)) => (f, None),
+                Err(e) => {
+                    eprintln!("[proj] erro ao ler {path}: {e}");
+                    return None;
                 }
-            }
+            },
             // ⭐ **98 → 99: o corte da `Sprite`** (ADR-0164 F1 passo 6). A forma do ficheiro é a
             // mesma, então ele lê-se com o tipo VIVO — o que muda são os bytes DENTRO do blob da
             // `Sprite`, que o parse atravessa sem olhar. Ver `crate::project_migrate_sprite`.
@@ -142,14 +140,16 @@ impl crate::App {
             // ⭐ **192 → 193: as marcas do artista** (W9 das Macros): o campo novo é o ÚLTIMO, e o `0` do
             // `Vec` vazio acrescentado lê o v192 com o tipo vivo (os anteriores levam-no também). O `191`
             // tem a mesma forma; só o SIGNIFICADO da opacidade nas poses mudou (abaixo).
-            192 | crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS => match postcard::from_bytes::<(u32, ProjectFile)>(&[&bytes[..], &[0]].concat()) {
-                Ok((_, f)) => (f, None),
-                Err(e) => {
-                    eprintln!("[proj] v{ver} ilegivel: {e}");
-                    self.toast_refused("shell.project_load.project_refused_format_191", &e);
-                    return None;
+            192 | crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS => {
+                match postcard::from_bytes::<(u32, ProjectFile)>(&[&bytes[..], &[0]].concat()) {
+                    Ok((_, f)) => (f, None),
+                    Err(e) => {
+                        eprintln!("[proj] v{ver} ilegivel: {e}");
+                        self.toast_refused("shell.project_load.project_refused_format_191", &e);
+                        return None;
+                    }
                 }
-            },
+            }
             190 | crate::project_schema::PROJECT_SCHEMA_TRACO_V22 => {
                 use ph2d_app_components::script_project::read_before_scripts;
                 match read_before_scripts(
@@ -212,23 +212,28 @@ impl crate::App {
                 return None;
             }
         };
-        // ⭐ **Até ao `191` a opacidade não era canal de estado** (F22b): cada pose gravada recebe a
-        // da forma, e o Show desses projetos continua a não a mexer.
-        if ver <= crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS {
-            let n = ph2d_app_vec::ui_state_edit::opacity_from_scene(
-                &mut file.state.ui_states,
-                &file.state.vec,
-            );
-            eprintln!("[proj] v{ver}: {n} pose(s) de estado com a opacidade da forma");
-        }
-        if antigo {
-            // As formas guardadas DENTRO de componentes (Envelope, pele) são lidas mais tarde, fora
-            // deste âmbito ⇒ regravam-se agora na forma nova.
-            let w = &mut file.state.world;
-            let n = ph2d_app_vec::envelope_live::migra_traco_v22(w)
-                + ph2d_skeleton_live::skinned_mesh::migra_traco_v22(w);
-            eprintln!("[proj] v{ver}: traço v22 lido; {n} envelope(s)/pele(s) regravado(s)");
-        }
+        migra_depois_de_ler(&mut file, ver, antigo);
         Some((file, migrated_counter))
+    }
+}
+
+/// A migração de CONTEÚDO depois de o ficheiro lido (a opacidade das poses; o traço v22).
+fn migra_depois_de_ler(file: &mut ProjectFile, ver: u32, antigo: bool) {
+    // ⭐ **Até ao `191` a opacidade não era canal de estado** (F22b): cada pose gravada recebe a
+    // da forma, e o Show desses projetos continua a não a mexer.
+    if ver <= crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS {
+        let n = ph2d_app_vec::ui_state_edit::opacity_from_scene(
+            &mut file.state.ui_states,
+            &file.state.vec,
+        );
+        eprintln!("[proj] v{ver}: {n} pose(s) de estado com a opacidade da forma");
+    }
+    if antigo {
+        // As formas guardadas DENTRO de componentes (Envelope, pele) são lidas mais tarde, fora
+        // deste âmbito ⇒ regravam-se agora na forma nova.
+        let w = &mut file.state.world;
+        let n = ph2d_app_vec::envelope_live::migra_traco_v22(w)
+            + ph2d_skeleton_live::skinned_mesh::migra_traco_v22(w);
+        eprintln!("[proj] v{ver}: traço v22 lido; {n} envelope(s)/pele(s) regravado(s)");
     }
 }

@@ -546,12 +546,12 @@ fn paint_shape_preview(
 
 /// The **Shape** ramp preview LUT (256-entry sRGB-straight RGBA, incl. the B&W filter), so the
 /// silhouette preview colourises exactly as the tool paints. Thin Shape binding over the shared
-/// [`crate::paint_ramp_widget::build_preview_lut`]; `false` (→ grayscale) when off / empty.
+/// [`crate::paint_ramp_lut::build_preview_lut`]; `false` (→ grayscale) when off / empty.
 fn shape_ramp_preview_lut(brush: &BrushSettings, out: &mut [[f32; 4]; 256]) -> bool {
     let count =
         (brush.shape_color_ramp_stop_count as usize).min(brush.shape_color_ramp_stops.len());
     let duas = brush.shape_color_ramp_bw && brush.shape_falloff_color;
-    let ok = crate::paint_ramp_widget::build_preview_lut(
+    let ok = crate::paint_ramp_lut::build_preview_lut(
         brush.shape_color_ramp_enabled,
         brush.shape_color_ramp_bw && !duas,
         brush.shape_color_ramp_mode,
@@ -566,7 +566,7 @@ fn shape_ramp_preview_lut(brush: &BrushSettings, out: &mut [[f32; 4]; 256]) -> b
     let qn =
         (brush.shape_falloff_ramp_stop_count as usize).min(brush.shape_falloff_ramp_stops.len());
     let mut queda = [[0.0f32; 4]; 256];
-    let tem_queda = crate::paint_ramp_widget::build_preview_lut(
+    let tem_queda = crate::paint_ramp_lut::build_preview_lut(
         true,
         false,
         brush.shape_falloff_ramp_mode,

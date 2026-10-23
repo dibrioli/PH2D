@@ -28,7 +28,7 @@ pub(crate) fn camadas_da_previa(
     let n = |c: u8, s: &[[f32; 6]]| (c as usize).min(s.len());
     let tex = brush.shape_texture_color
         && !inerte
-        && crate::paint_ramp_widget::build_preview_lut(
+        && crate::paint_ramp_lut::build_preview_lut(
             true,
             false,
             brush.shape_color_ramp_mode,
@@ -40,7 +40,7 @@ pub(crate) fn camadas_da_previa(
             &mut tlut,
         );
     let queda = brush.shape_falloff_color
-        && crate::paint_ramp_widget::build_preview_lut(
+        && crate::paint_ramp_lut::build_preview_lut(
             true,
             false,
             brush.shape_falloff_ramp_mode,

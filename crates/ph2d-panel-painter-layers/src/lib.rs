@@ -74,6 +74,7 @@ mod paint_mask_row;
 mod paint_pen; // o cartão Pen: a mão do pincel nos quatro meios (L2)
 mod paint_pigment; // a fileira `Pigment`: uma lei, uma porta, os três meios que a sentem
 mod paint_ramp_leitura;
+mod paint_ramp_lut;
 mod paint_ramp_widget;
 mod paint_rows;
 mod paint_rows_relief;

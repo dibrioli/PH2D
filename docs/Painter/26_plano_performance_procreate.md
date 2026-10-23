@@ -923,7 +923,7 @@ L1, e a teoria óbvia é que os 9 lookups por texel pagam por isso. Medido, mesm
 1024 → 109,99 · 2048 → 111,79 · 16384 → 110,22 ms**. O tamanho é **irrelevante** — texels vizinhos leem `t`
 vizinho, então a tabela fica quente em qualquer tamanho. `N = 16384` fica pela precisão, de graça.
 
-**Os gates da fiação** (`height_film_lut_wiring_tests.rs` + `dab::bands::lut_ab_tests`), que são
+**Os gates da fiação** (`height_film_lut_wiring_tests.rs` + `dab::lut_ab_tests`), que são
 categoria diferente dos de kernel — aqueles medem a FÓRMULA sobre geometria construída à mão, estes
 medem o PRODUTO:
 

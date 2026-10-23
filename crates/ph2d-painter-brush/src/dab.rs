@@ -633,3 +633,6 @@ mod band_count_tests;
 // A mascara do cap atravessa a divisao por linhas sem mudar um byte.
 #[cfg(test)]
 mod band_mask_tests;
+// O A/B do pigmento: a banda com a LUT e sem ela escreve os mesmos bytes.
+#[cfg(test)]
+mod lut_ab_tests;

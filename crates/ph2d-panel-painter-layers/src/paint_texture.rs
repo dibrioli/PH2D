@@ -492,10 +492,10 @@ pub(crate) fn paint_texture_preview_com(
 
 /// The **Grain** ramp preview LUT (the same bake the tool paints with, incl. the B&W filter), so the
 /// preview is faithful to every option. Thin Grain binding over the shared
-/// [`crate::paint_ramp_widget::build_preview_lut`]; returns `false` (→ grayscale) when off / empty.
+/// [`crate::paint_ramp_lut::build_preview_lut`]; returns `false` (→ grayscale) when off / empty.
 pub(crate) fn build_ramp_preview_lut(brush: &BrushSettings, out: &mut [[f32; 4]; 256]) -> bool {
     let count = (brush.texture_ramp_stop_count as usize).min(brush.texture_ramp_stops.len());
-    crate::paint_ramp_widget::build_preview_lut(
+    crate::paint_ramp_lut::build_preview_lut(
         brush.texture_ramp_enabled,
         brush.texture_ramp_bw,
         brush.texture_ramp_mode,

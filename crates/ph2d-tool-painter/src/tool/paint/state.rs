@@ -391,11 +391,9 @@ pub(crate) struct PaintState {
     pub(super) shape_ramp_dirty: bool,
     pub(super) shape_ramp_version: u64,
     pub(super) ramp_lut_owner: ramp_lut::RampLutOwner,
-    /// **A pilha corre pelo REPLAY?** Porta de bissecção (`PH2D_COMPOSITE_REPLAY=1`), um CAMPO: um gate que lê o
-    /// ambiente mede a máquina.
+    /// **A pilha corre pelo REPLAY?** Porta de bissecção (`PH2D_COMPOSITE_REPLAY=1`), um CAMPO (um gate que lê o ambiente mede a máquina).
     pub(super) pilha_por_replay: bool,
-    /// **Uma camada do Composite deposita num plano de MEDIÇÃO?** Então o trinco de alfa da camada do documento e
-    /// o RELEVO (que a camada deposita à parte, [`super::composite_relevo`]) não se aplicam ali.
+    /// **Uma camada do Composite deposita num plano de MEDIÇÃO?** Então o trinco de alfa e o RELEVO ([`super::composite_relevo`]) não se aplicam ali.
     pub(super) acumulando_no_plano: bool,
     pub(super) stroke_mask: Vec<u8>,
     /// **O plano do traço** (L8/L5/L6, só no Digital, [`super::traco_plano`]); `None` fora de um traço que o pede.

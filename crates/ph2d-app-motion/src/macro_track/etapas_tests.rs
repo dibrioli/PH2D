@@ -338,3 +338,17 @@ mod leitor {
         );
     }
 }
+
+/// W16 — **o losango largado no Motion recusa-se em voz alta**: a etapa do Motion anda com as seguintes
+/// (o quadro guarda se sujou a simulação; um gesto levado sozinho para outro quadro não o diria). A
+/// macro fica a de antes e o painel diz porquê — o «Wait» continua a empurrar as seguintes.
+#[test]
+fn largar_o_losango_de_um_gesto_do_motion_recusa_se_e_diz_porque() {
+    use ph2d_editor_core::macro_edits::CampoDaEtapa;
+    use ph2d_editor_core::macro_etapas::{EtapasDaFamilia, erros};
+    let original = gravado(CENA, &[]);
+    let mut t = original.0.tracks[0].clone();
+    let r = super::vistas::EtapasDoMotion.edita(&mut t, 15, &CampoDaEtapa::Instante(0.5));
+    assert_eq!(r.map_err(|e| e.chave), Err(erros::COM_AS_SEGUINTES));
+    assert_eq!(t, original.0.tracks[0], "a recusa não grava");
+}

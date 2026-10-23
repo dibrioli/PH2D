@@ -1,9 +1,10 @@
 //! **A linha «Macro steps»** (ADR-0186, W5d; `docs/Macros/02_plano_W5.md` §5): na vista Keys, quando
 //! o clipe activo é o de uma macro, um losango no FIM de cada etapa — o instante que o painel MACROS
 //! mostra e para onde leva a cabeça (W15, smoke do dono 22/10) — (`snap.macro_etapas`, que a
-//! shell enche pela `ph2d-app-macros`). Arrastar uma etapa re-cronometra-a e às seguintes — a
-//! pré-visualização anda com elas — e, ao largar, o painel pede `Espera(antiga + Δ)` à família pelo
-//! barramento (`EditorAction::Macro`): o arrasto é um EVENTO que a família lê, nunca uma chamada.
+//! shell enche pela `ph2d-app-macros`). Arrastar uma etapa leva-a SOZINHA para outro instante (W16, o
+//! dono: «mover key não deve empurrar outros») — pode sobrepor-se a outra ou passar-lhe à frente — e, ao
+//! largar, o painel pede `Instante(fim + Δ)` à família pelo barramento (`EditorAction::Macro`): o arrasto
+//! é um EVENTO que a família lê, nunca uma chamada.
 //! ⛔ Não é uma chave na faixa «Macro Time» (plano §2: esticaria o relógio — câmara lenta).
 
 use crate::graph::TimeView;
@@ -28,10 +29,10 @@ pub(crate) fn macro_h(snap: &TimelineViewSnapshot, tab: Tab) -> f32 {
     }
 }
 
-/// O deslocamento em px da etapa `i` durante o arrasto: a arrastada e as seguintes andam juntas.
+/// O deslocamento em px da etapa `i` durante o arrasto: só a arrastada anda.
 fn preview_dx(state: &TimelinePanelState, snap: &TimelineViewSnapshot, i: usize) -> f32 {
     match state.macro_drag {
-        Some(d) if i >= d.index => {
+        Some(d) if i == d.index => {
             let s = key_drag::drag_delta_seconds(d.start_x, d.cur_x, state.px_per_s, snap);
             #[expect(clippy::cast_possible_truncation, reason = "px de ecrã")]
             let dx = (s * state.px_per_s) as f32;
@@ -131,7 +132,7 @@ pub(crate) fn apply(
                     entity_bits: e.entity_bits,
                     trilha: e.trilha,
                     k: e.k,
-                    campo: CampoDaEtapa::Espera(e.espera_s + delta),
+                    campo: CampoDaEtapa::Instante(e.fim + delta),
                 });
             }
         }
@@ -166,10 +167,10 @@ mod tests {
         }
     }
 
-    /// A pré-visualização é a da ESCRITA: a arrastada e as seguintes andam, as anteriores não.
-    /// Mutações que sangram: `i >= d.index` → `i == d.index` · `>` .
+    /// A pré-visualização é a da ESCRITA: só a arrastada anda (W16).
+    /// Mutações que sangram: `i == d.index` → `i >= d.index` · `<=` .
     #[test]
-    fn arrastar_uma_etapa_mostra_ela_e_as_seguintes_a_andar() {
+    fn arrastar_uma_etapa_mostra_so_ela_a_andar() {
         let s = snap();
         let mut st = TimelinePanelState::default();
         st.macro_drag = Some(MacroDrag {
@@ -178,16 +179,13 @@ mod tests {
             cur_x: 100.0 + st.px_per_s as f32,
         });
         let dx: Vec<f32> = (0..3).map(|i| preview_dx(&st, &s, i)).collect();
-        assert_eq!(dx[0], 0.0);
-        assert!(
-            dx[1] > 0.0 && (dx[2] - dx[1]).abs() < f32::EPSILON,
-            "{dx:?}"
-        );
+        assert_eq!((dx[0], dx[2]), (0.0, 0.0), "as outras ficam: {dx:?}");
+        assert!(dx[1] > 0.0, "{dx:?}");
     }
 
-    /// Largar pede a espera ANTIGA + Δ (absoluta), e só largar pede.
+    /// Largar pede o instante do losango + Δ (absoluto), e só largar pede.
     #[test]
-    fn largar_pede_a_espera_antiga_mais_o_delta() {
+    fn largar_pede_o_instante_do_losango_mais_o_delta() {
         use ph2d_editor_core::interaction::{GestureMods, TimelineHitKind};
         let s = snap();
         let mut st = TimelinePanelState::default();
@@ -212,7 +210,7 @@ mod tests {
                 entity_bits: 9,
                 trilha: 0,
                 k: 2,
-                campo: CampoDaEtapa::Espera(0.75),
+                campo: CampoDaEtapa::Instante(2.5),
             })
         );
         assert_eq!(st.macro_drag, None);

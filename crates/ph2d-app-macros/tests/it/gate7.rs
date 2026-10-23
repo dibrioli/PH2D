@@ -319,7 +319,7 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
     assert_eq!(cor(2), [20, 40, 200], "a seguinte fica com a sua");
     assert_eq!(o.erro, None);
 
-    // ARRASTAR a etapa 2 na linha «Macro steps» da Timeline ⇒ ela e a 3 andam; a 1 fica.
+    // ARRASTAR a etapa 3 na linha «Macro steps» da Timeline ⇒ só ela anda (W16); a 1 e a 2 ficam.
     assert_eq!(
         b.tl.doc.active_index(),
         clip,
@@ -337,12 +337,12 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
     let mut th = MockPanelHost::with_panel::<ph2d_panel_timeline::TimelinePanel>();
     let mut ts = ph2d_panel_timeline::state::TimelinePanelState::default();
     let rects = th.paint::<ph2d_panel_timeline::TimelinePanel>(&mut ts, VIEWPORT_TIMELINE);
-    let id = ph2d_panel_timeline::ids::timeline_macro_step_id(1);
+    let id = ph2d_panel_timeline::ids::timeline_macro_step_id(2);
     let r = rects
         .iter()
         .find(|(n, _)| *n == id)
         .map(|(_, r)| *r)
-        .expect("a Timeline pinta o losango da etapa 2");
+        .expect("a Timeline pinta o losango da etapa 3");
     let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     #[expect(clippy::cast_possible_truncation, reason = "px de ecrã")]
     let meio_segundo = (0.5 * ts.px_per_s) as f32;
@@ -361,13 +361,16 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
         1,
         "o arrasto pede UMA edição ao largar: {pedidos:?}"
     );
-    // A espera pedida é a ANTIGA + Δ (a etapa 2 não tinha espera): ~0,5 s, não o Δ cru sobre outra.
+    // O instante pedido é o do losango + Δ (absoluto): ~0,5 s depois do fim da etapa 3.
     match &pedidos[0] {
         MacroRequest::Edita {
-            k: 1,
-            campo: CampoDaEtapa::Espera(s),
+            k: 2,
+            campo: CampoDaEtapa::Instante(s),
             ..
-        } => assert!((s - 0.5).abs() < 1.0 / 60.0, "a espera pedida: {s}"),
+        } => assert!(
+            (s - linha[2].fim - 0.5).abs() < 1.0 / 60.0,
+            "o instante pedido: {s}"
+        ),
         r => panic!("o arrasto pediu {r:?}"),
     }
     for r in pedidos {
@@ -376,22 +379,21 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
     b.quadro();
     let depois = b.m.etapas_na_linha(&b.sim, &b.tl.doc, &[]);
     let anda = |k: usize| depois[k].fim - linha[k].fim;
-    assert!(anda(0).abs() < 1e-9, "a etapa 1 não anda: {}", anda(0));
     assert!(
-        (anda(1) - 0.5).abs() < 1.0 / 60.0,
-        "a etapa 2 anda ~0,5 s: {}",
+        anda(0).abs() < 1e-9 && anda(1).abs() < 1e-9,
+        "a 1 e a 2 não andam: {} {}",
+        anda(0),
         anda(1)
     );
     assert!(
-        (anda(2) - anda(1)).abs() < 1e-6,
-        "a 3 anda com ela: {} × {}",
-        anda(2),
-        anda(1)
+        (anda(2) - 0.5).abs() < 1.0 / 60.0,
+        "a etapa 3 anda ~0,5 s: {}",
+        anda(2)
     );
     let d = b.tl.doc.clip_length_override(clip).unwrap();
     assert!(
-        (d - (duracao + anda(1))).abs() < 1e-6,
-        "o clipe acompanha a duração: {d}"
+        d > duracao && (d - depois[2].fim.max(duracao)).abs() < 1e-6,
+        "o clipe acompanha a última etapa no tempo: {duracao} → {d}"
     );
 
     // ⭐ O UNDO das duas pilhas. A macro é do diff do mundo: devolvê-la à de antes do arrasto (o
@@ -407,7 +409,7 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
     doc.tracks[0]
         .edicoes
         .iter_mut()
-        .for_each(|e| e.espera_us = 0);
+        .for_each(|e| e.desloca_us = 0);
     b.sim
         .world_mut()
         .get_mut::<Macro>(Entity::from_bits(b.bits))
@@ -417,7 +419,7 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
     let d = b.tl.doc.clip_length_override(clip).unwrap();
     assert!(
         (d - duracao).abs() < 1e-6,
-        "desfeita a espera, o clipe volta a {duracao}: {d}"
+        "desfeito o deslocamento, o clipe volta a {duracao}: {d}"
     );
     // O clipe é da pilha da Timeline: o Parar foi UM passo dela; desfazê-lo tira o clipe e deixa a
     // Macro (a do mundo desfaz-se pela pilha do mundo).
@@ -933,11 +935,11 @@ fn o_laco_que_toca_acompanha_cada_parar() {
     );
 }
 
-/// W15 — **um arrasto que sobrepõe duas pinceladas não apaga nada** (smoke do dono 22/10: «arrastar
+/// W15 — **uma espera que sobrepõe duas pinceladas não apaga nada** (smoke do dono 22/10: «arrastar
 /// keyframes de modo que as animações dos traços se sobreponham apaga os keyframes»). A espera que a
 /// trilha não toca gravava-se, a macro deixava de se ler e as três etapas sumiam. Agora a edição é
-/// recusada ANTES de se gravar: a macro fica a de antes e o painel diz porquê. (Tocar a sobreposição
-/// é a W16.)
+/// recusada ANTES de se gravar: a macro fica a de antes e o painel diz porquê. (O losango da Timeline
+/// já não pede espera: pede o instante, e a etapa sobrepõe-se — `gate7_largar_o_losango_…`, W16.)
 #[test]
 fn gate7_sobrepor_duas_pinceladas_nunca_apaga_as_etapas() {
     let mut b = Banca::nova();
@@ -981,4 +983,61 @@ fn gate7_sobrepor_duas_pinceladas_nunca_apaga_as_etapas() {
     );
     assert_eq!(bytes(&b), antes, "a macro é a de antes");
     assert!(o.erro.is_some(), "o painel diz que o arrasto foi recusado");
+}
+
+/// W16 — **largar o losango leva SÓ aquela etapa para o instante dele** (o dono, 22/10: «mover key não
+/// deve empurrar outros» · «permita os keys serem colocados em qualquer lugar da timeline»): sobre a
+/// pincelada anterior é aceite e as outras ficam onde estavam; para lá do fim, o clipe acompanha.
+/// Mutações que sangram: `Instante` tratado como espera (as seguintes andariam) · a recusa da W15 no
+/// caminho do losango.
+#[test]
+fn gate7_largar_o_losango_leva_so_aquela_etapa_e_sobrepoe() {
+    let mut b = Banca::nova();
+    b.pinta();
+    b.carrega(ids::MACROS_RECORD);
+    b.quadro();
+    let l = LADO as f32;
+    b.pincelada([0.1 * l, 0.2 * l], [0.9 * l, 0.25 * l]);
+    b.pincelada([0.2 * l, 0.5 * l], [0.8 * l, 0.55 * l]);
+    b.pincelada([0.1 * l, 0.8 * l], [0.9 * l, 0.75 * l]);
+    b.pinta();
+    b.carrega(ids::MACROS_STOP);
+    b.quadro();
+    b.pinta();
+    let v = ph2d_panel_macros::current_macros().objeto.unwrap();
+    let (e, dur) = (v.etapas, v.duracao_s);
+    let pede = |b: &mut Banca, k: usize, fim: f64| {
+        b.m.pede(MacroRequest::Edita {
+            entity_bits: b.bits,
+            trilha: 0,
+            k,
+            campo: CampoDaEtapa::Instante(fim),
+        });
+        b.quadro();
+        b.pinta();
+        ph2d_panel_macros::current_macros().objeto.unwrap()
+    };
+    // A 2.ª começa a meio da 1.ª: as duas pincelam ao mesmo tempo.
+    let alvo = 0.5 * (e[0].t0_s + e[0].t1_s) + (e[1].t1_s - e[1].t0_s);
+    let o = pede(&mut b, 1, alvo);
+    assert_eq!(o.erro, None, "sobrepor é aceite");
+    assert_eq!(o.etapas.len(), 3);
+    let fim = |o: &ph2d_editor_core::macro_edits::MacroObjetoView, k: usize| o.etapas[k].t1_s;
+    assert!((fim(&o, 1) - alvo).abs() < 1e-3, "o losango largado: {}", fim(&o, 1));
+    assert!(
+        (fim(&o, 0) - e[0].t1_s).abs() < 1e-6 && (fim(&o, 2) - e[2].t1_s).abs() < 1e-6,
+        "as outras ficam onde estavam"
+    );
+    let linha = b.m.etapas_na_linha(&b.sim, &b.tl.doc, &[]);
+    assert!((linha[1].fim - alvo).abs() < 1e-3, "e a linha da Timeline também");
+    assert_eq!(o.editada_desde, Some(1), "«Edited from step 2»");
+    // A 3.ª para lá do fim: o clipe estica.
+    let o = pede(&mut b, 2, dur + 1.0);
+    assert_eq!(o.erro, None);
+    assert!(
+        o.duracao_s > dur + 0.9,
+        "o clipe acompanha a última etapa no tempo: {} → {}",
+        dur,
+        o.duracao_s
+    );
 }

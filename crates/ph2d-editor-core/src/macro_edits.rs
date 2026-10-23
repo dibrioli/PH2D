@@ -162,8 +162,11 @@ pub enum CampoDaEtapa {
     Cor([u8; 3]),
     Tamanho(f32),
     Valor(f64),
-    /// A espera antes da etapa, em segundos (absoluta).
+    /// A espera antes da etapa, em segundos (absoluta): ela e as seguintes andam.
     Espera(f64),
+    /// **O instante do fim da etapa** na trilha que toca, em segundos (absoluto; o losango da linha
+    /// «Macro steps» largado, W16): a etapa anda SOZINHA até lá — as outras ficam.
+    Instante(f64),
     /// `None` = volta ao nome derivado.
     Nome(Option<String>),
     /// O texto do balão do tutorial «fazer» nesta etapa; `None` = só a frase derivada.

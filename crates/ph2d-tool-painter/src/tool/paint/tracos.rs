@@ -14,7 +14,8 @@ use crate::tool::PainterTool;
 
 macro_rules! campos_do_traco {
     ($($c:ident),* $(,)?) => {
-        /// Os campos do `PaintState` que são de UM traço aberto.
+        /// Os campos do `PaintState` que são de UM traço aberto (o censo lê-os).
+        #[cfg(test)]
         pub(crate) const DO_TRACO: &[&str] = &[$(stringify!($c)),*];
 
         fn troca_campos(a: &mut PaintState, b: &mut PaintState) {
@@ -55,6 +56,7 @@ campos_do_traco!(
 
 /// Os campos do `PaintState` partilhados pelos traços abertos (a tela, as sessões, o relevo, a aguada,
 /// as preferências).
+#[cfg(test)]
 pub(crate) const PARTILHADO: &[&str] = &[
     "hover_heading",
     "hover_pos",

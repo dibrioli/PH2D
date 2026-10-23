@@ -29,5 +29,7 @@ pub fn de_edicao_do_painter(e: &ErroDeEdicaoDoPainter) -> ErroDaMacroView {
         ErroDeEdicaoDoPainter::SemEtapa(_) => erro(SEM_ETAPA),
         ErroDeEdicaoDoPainter::NaoEPincelada(_) => erro(NAO_PINCELADA),
         ErroDeEdicaoDoPainter::Macro(m) => do_painter(m),
+        ErroDeEdicaoDoPainter::SoPinceladasSeSobrepoem(_) => erro(SO_PINCELADAS),
+        ErroDeEdicaoDoPainter::OutroMeio(_) => erro(OUTRO_MEIO),
     }
 }

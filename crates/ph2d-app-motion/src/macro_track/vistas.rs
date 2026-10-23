@@ -112,6 +112,9 @@ impl EtapasDaFamilia for EtapasDoMotion {
         let r = match *campo {
             CampoDaEtapa::Valor(v) => mo::edita_valor(track, k, v),
             CampoDaEtapa::Espera(s) => mo::espera(track, k, us(s)),
+            // Uma etapa do Motion anda com as seguintes (W16): o quadro guarda se sujou a simulação, e
+            // um gesto levado para outro quadro não o diria.
+            CampoDaEtapa::Instante(_) => return Err(e::erro(e::COM_AS_SEGUINTES)),
             CampoDaEtapa::Cor(_)
             | CampoDaEtapa::Tamanho(_)
             | CampoDaEtapa::Nome(_)

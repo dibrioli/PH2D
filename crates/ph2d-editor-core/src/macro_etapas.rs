@@ -49,6 +49,18 @@ pub fn espera_s(track: &Track, ancora: usize) -> f64 {
         .map_or(0.0, |e| e.espera_us as f64 / 1e6)
 }
 
+/// **O deslocamento que leva o fim de uma etapa de `fim_s` a `novo_s`**, somado ao que ela já tem
+/// (`desloca_us`, a edição W16 da âncora `ancora`).
+#[must_use]
+pub fn desloca_para(track: &Track, ancora: usize, fim_s: f64, novo_s: f64) -> i64 {
+    let ja = track
+        .edicoes
+        .iter()
+        .find(|e| e.ancora == ancora)
+        .map_or(0, |e| e.desloca_us);
+    ja + us(novo_s) - us(fim_s)
+}
+
 /// Segundos de uma espera, em µs.
 #[must_use]
 pub fn us(segundos: f64) -> i64 {
@@ -77,6 +89,9 @@ pub mod erros {
     pub const ESPERA: &str = "panel.macros.error.wait_longer_than_gap";
     pub const ANTES_DO_ZERO: &str = "panel.macros.error.before_start";
     pub const DESFAZER: &str = "panel.macros.error.changes_what_undo_takes_back";
+    pub const SO_PINCELADAS: &str = "panel.macros.error.only_strokes_overlap";
+    pub const OUTRO_MEIO: &str = "panel.macros.error.other_medium";
+    pub const COM_AS_SEGUINTES: &str = "panel.macros.error.moves_with_the_next";
     pub const NAO_PINCELADA: &str = "panel.macros.error.not_a_stroke";
     pub const NAO_VALOR: &str = "panel.macros.error.not_a_value";
     pub const SEM_ETAPA: &str = "panel.macros.error.no_such_step";
@@ -100,6 +115,9 @@ pub mod erros {
         ESPERA,
         ANTES_DO_ZERO,
         DESFAZER,
+        SO_PINCELADAS,
+        OUTRO_MEIO,
+        COM_AS_SEGUINTES,
         NAO_PINCELADA,
         NAO_VALOR,
         SEM_ETAPA,

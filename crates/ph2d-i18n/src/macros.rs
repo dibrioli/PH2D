@@ -66,6 +66,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.error.changes_what_undo_takes_back" => {
             "Moving this step would change which stroke a recorded Undo takes back."
         }
+        "panel.macros.error.only_strokes_overlap" => {
+            "Only two brush strokes can play at the same time."
+        }
+        "panel.macros.error.other_medium" => "That step would play in another medium.",
+        "panel.macros.error.moves_with_the_next" => {
+            "In Motion a step moves with the ones after it: change its Wait in the MACROS panel."
+        }
         "panel.macros.error.not_a_stroke" => "Only a stroke has a colour and a size.",
         "panel.macros.error.not_a_value" => "Only a parameter step has a value.",
         "panel.macros.error.no_such_step" => "That step is no longer in the recording.",

@@ -7,7 +7,7 @@ use ph2d_ecs::{Entity, Macro};
 use ph2d_editor_core::macro_edits::{
     CampoDaEtapa, ErroDaMacroView, EtapaView, FamiliaDaMacro, PropsDaEtapa, TipoDaEtapaView,
 };
-use ph2d_editor_core::macro_etapas::{EtapasDaFamilia, espera_s, segundos, us};
+use ph2d_editor_core::macro_etapas::{EtapasDaFamilia, desloca_para, espera_s, segundos, us};
 use ph2d_macro::{MacroDoc, Track};
 use ph2d_tool_painter::macro_track::etapas as pi;
 
@@ -66,6 +66,15 @@ impl EtapasDaFamilia for EtapasDoPainter {
             CampoDaEtapa::Cor(c) => pi::edita_cor(track, k, c),
             CampoDaEtapa::Tamanho(px) => pi::edita_tamanho(track, k, px),
             CampoDaEtapa::Espera(s) => pi::espera(track, k, us(s)),
+            CampoDaEtapa::Instante(s) => {
+                let e = pi::etapas(track)
+                    .map_err(|e| erros::do_painter(&e))?
+                    .into_iter()
+                    .find(|e| e.k == k)
+                    .ok_or_else(erros::sem_etapa)?;
+                let d = desloca_para(track, e.etapa.inicio, segundos(e.t1), s);
+                pi::desloca(track, k, d)
+            }
             CampoDaEtapa::Valor(_) | CampoDaEtapa::Nome(_) | CampoDaEtapa::Dica(_) => {
                 return Err(erros::sem_etapa());
             }
@@ -165,6 +174,7 @@ pub(crate) fn dica(outras: Injectadas<'_>, track: &Track, k: usize) -> Option<St
 /// Uma edição que muda o que toca (o nome que o artista escreve não muda).
 fn muda_o_toque(e: &ph2d_macro::EdicaoDeEtapa) -> bool {
     e.espera_us != 0
+        || e.desloca_us != 0
         || !e.trocas.is_empty()
         || !e.insercoes.is_empty()
         || e.sai_da_gravacao

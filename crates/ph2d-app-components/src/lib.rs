@@ -80,6 +80,8 @@ pub mod object_drag;
 // composição»*, e é o que o [`signal_actions_bridge::apply`] faz: ele pede `Som::Toca` a um fecho,
 // e quem responde é a shell, dona dos dois lados. *A aresta foi tentada e o portão apanhou-a.*
 pub mod audio_2d_smoke;
+/// A lei dos números da fonte de som — o cartão (na shell) e o script passam por ela.
+pub mod audio_inspector;
 /// ⭐⭐⭐ **A PONTE DA CÂMERA DE JOGO** (TOP-20 #7) — saiu da shell em 19/09; ver o cabeçalho.
 pub mod camera_2d;
 pub mod camera_2d_smoke;
@@ -283,6 +285,8 @@ mod asset_texture_door_census_tests;
 /// número. A §8 *Visibility* do Inspector não tocava em nada da shell (zero `crate::`): ela é
 /// código desta família, e o sítio dela é aqui.
 pub mod inspector_visibility;
+/// ⭐ A lei do valor dos cartões do núcleo e da imagem — a que o Inspector e o script partilham.
+pub mod sprite_inspector;
 #[cfg(test)]
 mod instance_tags_tests;
 #[cfg(test)]

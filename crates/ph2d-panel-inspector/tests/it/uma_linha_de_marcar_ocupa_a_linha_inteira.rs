@@ -124,8 +124,8 @@ fn o_par_cabe(ts: &mut TextSystem, linha_w: f32, a: &str, b: &str) -> bool {
 #[test]
 fn uma_linha_de_marcar_ocupa_a_linha_inteira() {
     let mut ts = TextSystem::new();
-    let flip_h = ph2d_i18n::tr("panel.inspector.sprite_sheet.flip_h");
-    let flip_v = ph2d_i18n::tr("panel.inspector.sprite_sheet.flip_v");
+    let flip_h = ph2d_i18n::tr("component.field.sprite.2");
+    let flip_v = ph2d_i18n::tr("component.field.sprite.3");
     let mut viu_empilhado = false;
     let mut viu_emparelhado = false;
 

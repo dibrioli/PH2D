@@ -184,25 +184,25 @@ fn follow_body(
 ) -> f32 {
     let linhas = [
         (
-            tr("panel.inspector.camera.damping_1_s"),
+            tr("component.field.follow_fields.1"),
             [ids::INSP_CAMERA_DAMP_X, ids::INSP_CAMERA_DAMP_Y],
             0.5, // LITERAL-PX-OK: passo em 1/s
             Some(ph2d_editor_core::widget::Unit::PerSecond),
         ),
         (
-            tr("panel.inspector.camera.dead_zone"),
+            tr("component.field.follow_fields.2"),
             [ids::INSP_CAMERA_DEAD_X, ids::INSP_CAMERA_DEAD_Y],
             0.05, // LITERAL-PX-OK: fracção da meia-janela
             None,
         ),
         (
-            tr("panel.inspector.camera.lookahead_s"),
+            tr("component.field.follow_fields.3"),
             [ids::INSP_CAMERA_LOOK_X, ids::INSP_CAMERA_LOOK_Y],
             0.05, // LITERAL-PX-OK: passo em segundos
             Some(ph2d_editor_core::widget::Unit::Seconds),
         ),
         (
-            tr("panel.inspector.camera.follow_offset_m"),
+            tr("component.field.follow_fields.4"),
             [ids::INSP_CAMERA_FOLLOW_OFF_X, ids::INSP_CAMERA_FOLLOW_OFF_Y],
             0.1, // LITERAL-PX-OK: passo em metros
             Some(ph2d_editor_core::widget::Unit::Meters),
@@ -216,10 +216,19 @@ fn follow_body(
     //    até aqui ele vinha numa declaração PRÓPRIA do chamador (`campos = 1`, só o nome dele), e a
     //    caixa do alvo arrancava a `136` enquanto as seis linhas de baixo arrancavam a `111` — duas
     //    colunas dentro de UMA secção. *Duas declarações para o mesmo corpo são duas colunas.*
-    let nomes: Vec<&str> = std::iter::once(tr("panel.inspector.camera.target_label"))
+    let nomes: Vec<&str> = std::iter::once(tr("component.field.follow_fields.0"))
         .chain(linhas.iter().map(|t| t.0))
         .collect();
     let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 2, &nomes);
+    let cur_y = super::rows::subtitulo(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        tr("component.camera_follow.name"),
+    );
     let mut cur_y = super::anim_rows::text_row(
         scene,
         text_system,
@@ -228,8 +237,8 @@ fn follow_body(
         store,
         x,
         w,
-        y,
-        tr("panel.inspector.camera.target_label"),
+        cur_y,
+        tr("component.field.follow_fields.0"),
         ids::INSP_CAMERA_TARGET,
         TextInput::new(ids::INSP_CAMERA_TARGET, "")
             .placeholder(tr("panel.inspector.camera.object_name")),
@@ -282,7 +291,15 @@ fn limits_body(
     y: f32,
     l: &InspectorCameraLimits,
 ) -> f32 {
-    let mut cur_y = y;
+    let mut cur_y = super::rows::subtitulo(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        tr("component.camera_limits.name"),
+    );
     if l.smaller_than_view {
         cur_y = super::rows::aviso(
             scene,
@@ -297,12 +314,12 @@ fn limits_body(
     }
     let linhas = [
         (
-            tr("panel.inspector.camera.min_m"),
+            tr("component.field.limits_fields.0"),
             [ids::INSP_CAMERA_MIN_X, ids::INSP_CAMERA_MIN_Y],
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
-            tr("panel.inspector.camera.max_m"),
+            tr("component.field.limits_fields.1"),
             [ids::INSP_CAMERA_MAX_X, ids::INSP_CAMERA_MAX_Y],
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),

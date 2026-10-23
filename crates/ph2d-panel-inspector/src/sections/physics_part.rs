@@ -83,7 +83,7 @@ pub(super) fn paint_part_face(
         x,
         w,
         yy,
-        tr("panel.inspector.physics.collider"),
+        tr("component.field.collider.0"),
         core_ids::INSP_LIVE_PHYSICS_GRIP,
         &ids::INSP_PHYS_SHAPE,
         &super::physics::SHAPE_LABELS.map(TextKey::tr),
@@ -100,14 +100,16 @@ pub(super) fn paint_part_face(
         yy,
         info.shape_tag,
     );
+    let off_x = tr_with("panel.inspector.label_x", &[("label", &tr("component.field.collider.6"))]);
+    let off_y = tr_with("panel.inspector.label_y", &[("label", &tr("component.field.collider.6"))]);
     for (label, id, unit) in [
         (
-            tr("panel.inspector.physics.offset_x_m"),
+            off_x.as_str(),
             ids::INSP_PHYS_OFFSET_X,
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
-            tr("panel.inspector.physics.offset_y_m"),
+            off_y.as_str(),
             ids::INSP_PHYS_OFFSET_Y,
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
@@ -115,7 +117,7 @@ pub(super) fn paint_part_face(
         // composto. O toggle Auto|Manual do W-Mass fica de fora porque o
         // `MassOverride` é do CORPO — uma peça não tem massa própria a sobrepor.
         (
-            tr("panel.inspector.physics.density"),
+            tr("component.field.collider.1"),
             ids::INSP_PHYS_DENSITY,
             None,
         ),

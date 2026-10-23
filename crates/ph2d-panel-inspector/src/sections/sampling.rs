@@ -26,10 +26,10 @@ use ph2d_i18n::tr;
 
 /// Os nomes que esta secção pinta à esquerda — a fonte da coluna dela.
 const NOMES: [&str; 4] = [
-    "panel.inspector.sampling.texture_filter",
-    "panel.inspector.sampling.texture_repeat",
-    "panel.inspector.sampling.uv_scale",
-    "panel.inspector.sampling.uv_offset",
+    "component.field.texture_filter.1",
+    "component.field.texture_repeat.1",
+    "component.field.uv_transform.1",
+    "component.field.uv_transform.2",
 ];
 /// Quantas componentes tem a linha que esta secção não quer ver quebrar.
 const CAMPOS: usize = 2;
@@ -176,7 +176,7 @@ pub(crate) fn paint_sampling_section(
         w,
         yy,
         h,
-        tr("panel.inspector.sampling.texture_filter"),
+        tr("component.field.texture_filter.1"),
         sec,
     );
     // ⚠️ **Segmentado ADAPTATIVO, como o Blend Mode da §10** — sete opções não cabem numa fila de
@@ -184,7 +184,7 @@ pub(crate) fn paint_sampling_section(
     // produziu o `.min(2)` que mentia.
     let seg = SegmentedAdaptive::new(
         core_ids::INSP_LIVE_SAMPLING_SECTION,
-        tr("panel.inspector.sampling.texture_filter"),
+        tr("component.field.texture_filter.1"),
         // ⚠️ **`zip` com o array INTEIRO e depois `filter_map`** — o par `(id, rótulo)` tem de ser
         // formado ANTES de descartar o buraco, senão o rótulo `n+1` casa com o id `n` e o segmento
         // passa a escrever o modo do vizinho (vide o doc de `FILTER_LABELS`).
@@ -220,12 +220,12 @@ pub(crate) fn paint_sampling_section(
         w,
         yy,
         h,
-        tr("panel.inspector.sampling.texture_repeat"),
+        tr("component.field.texture_repeat.1"),
         sec,
     );
     let repeat_seg = SegmentedAdaptive::new(
         core_ids::INSP_LIVE_SAMPLING_SECTION,
-        tr("panel.inspector.sampling.texture_repeat"),
+        tr("component.field.texture_repeat.1"),
         ids::INSP_SAMPLE_REPEAT
             .iter()
             .zip(REPEAT_LABELS)
@@ -260,7 +260,7 @@ pub(crate) fn paint_sampling_section(
         x,
         w,
         yy,
-        tr("panel.inspector.sampling.uv_scale"),
+        tr("component.field.uv_transform.1"),
         &[ids::INSP_SAMPLE_UV_SCALE_X, ids::INSP_SAMPLE_UV_SCALE_Y],
         0.1, // LITERAL-PX-OK: passo de scrub em UV, não em pixels
         None,
@@ -275,7 +275,7 @@ pub(crate) fn paint_sampling_section(
         x,
         w,
         yy,
-        tr("panel.inspector.sampling.uv_offset"),
+        tr("component.field.uv_transform.2"),
         &[ids::INSP_SAMPLE_UV_OFFSET_X, ids::INSP_SAMPLE_UV_OFFSET_Y],
         0.1, // LITERAL-PX-OK: passo de scrub em UV, não em pixels
         None,

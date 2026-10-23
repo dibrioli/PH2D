@@ -302,7 +302,6 @@ const O_PRECO_DA_COLUNA_UNICA: &[(&str, &str)] = &[
     ("inspector", "Panning Strength"),
     ("inspector", "Reference Height"),
     ("inspector", "Rides Parent Anchor"),
-    ("inspector", "Shape Width / Radius"),
     ("inspector", "Show Behind Parent"),
     ("inspector", "Show anchors at runtime"),
     ("inspector", "Show sheet on canvas"),

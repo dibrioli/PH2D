@@ -21,7 +21,7 @@
 //! ⚠️ **A lista está ORDENADA por `canonical_name`** — há gate (`the_catalog_is_sorted_and_unique`).
 
 use crate::{
-    ComponentCategory as C, ComponentDesc, ComponentDesc as D, FieldDesc, FieldKind as K,
+    ComponentCategory as C, ComponentDesc, ComponentDesc as D, FieldDesc, FieldKind as K, Hidden,
     ObjectKinds as O, Propagation,
 };
 
@@ -43,11 +43,11 @@ const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
 /// com bits novos, e um `Entity` gravado daria uma câmera a seguir o vazio depois do primeiro
 /// `Ctrl+Z`. É a mesma decisão do `SignalActions` e do `AnchorMount`.
 const FOLLOW_FIELDS: &[FieldDesc] = &[
-    f(0, "component.field.follow_fields.0", K::Text),
-    f(1, "component.field.follow_fields.1", K::Vec2),
-    f(2, "component.field.follow_fields.2", K::Vec2),
-    f(3, "component.field.follow_fields.3", K::Vec2),
-    f(4, "component.field.follow_fields.4", K::Vec2),
+    f(0, "component.field.follow_fields.0", K::Text).keyed("target"),
+    f(1, "component.field.follow_fields.1", K::Vec2).named("damping"),
+    f(2, "component.field.follow_fields.2", K::Vec2).named("dead_zone"),
+    f(3, "component.field.follow_fields.3", K::Vec2).named("lookahead"),
+    f(4, "component.field.follow_fields.4", K::Vec2).named("offset"),
 ];
 
 /// Os campos da câmera.
@@ -61,10 +61,11 @@ const CAMERA_FIELDS: &[FieldDesc] = &[
     f(5, "component.field.camera_fields.5", K::Scalar).named("dolly"),
 ];
 
-/// Os limites da fase — a caixa de que a JANELA não sai.
+/// Os limites da fase — a caixa de que a JANELA não sai. ⚠️ Partilhados pelo `ScrollLimits`: os
+/// nomes (`min`/`max`) e o rótulo valem para os dois cartões.
 const LIMITS_FIELDS: &[FieldDesc] = &[
-    f(0, "component.field.limits_fields.0", K::Vec2),
-    f(1, "component.field.limits_fields.1", K::Vec2),
+    f(0, "component.field.limits_fields.0", K::Vec2).named("min"),
+    f(1, "component.field.limits_fields.1", K::Vec2).named("max"),
 ];
 
 /// ⭐⭐⭐ **COMO esta câmera treme** (suplente #25) — os cinco números da lei do abanão.
@@ -72,12 +73,12 @@ const LIMITS_FIELDS: &[FieldDesc] = &[
 /// ⚠️ **«Punch» e não «Exponent»:** o artista escolhe o CARÁCTER do abanão, e a potência a que o
 /// trauma é elevado é como a lei o exprime, não como ele o pensa.
 const SHAKE_FIELDS: &[FieldDesc] = &[
-    f(0, "component.field.shake_fields.0", K::Scalar),
-    f(1, "component.field.shake_fields.1", K::Scalar),
-    f(2, "component.field.shake_fields.2", K::Scalar),
-    f(3, "component.field.shake_fields.3", K::Int),
+    f(0, "component.field.shake_fields.0", K::Scalar).named("amplitude"),
+    f(1, "component.field.shake_fields.1", K::Scalar).named_as("frequency", "frequencia"),
+    f(2, "component.field.shake_fields.2", K::Scalar).named_as("decay", "decaimento"),
+    f(3, "component.field.shake_fields.3", K::Int).named_as("punch", "expoente"),
     // ⭐ `Seed` e nao `Int`: ela nao tem valor CERTO, so tem de ser DIFERENTE.
-    f(4, "component.field.shake_fields.4", K::Seed),
+    f(4, "component.field.shake_fields.4", K::Seed).named_as("seed", "semente"),
 ];
 
 /// ⭐⭐⭐ **Uma FONTE de abanão** (suplente #25) — como a vigia e o gatilho, o componente é uma LISTA
@@ -97,12 +98,15 @@ const SHAKE_SOURCE_FIELDS: &[FieldDesc] = &[
 /// componente guarda **um** `[f32; 2]`, logo descrevê-lo como dois daria dois `field_id` ao mesmo
 /// campo e um override gravado sobre metade dele não teria onde ser aplicado. *O descritor espelha
 /// a ESTRUTURA, nunca o layout do painel* — que aqui até é mesmo uma fileira com dois números.
-const SCROLL_FIELDS: &[FieldDesc] = &[f(0, "component.field.scroll_fields.0", K::Vec2)];
+const SCROLL_FIELDS: &[FieldDesc] =
+    &[f(0, "component.field.scroll_fields.0", K::Vec2).named_as("scroll_factor", "k")];
 /// ⚠️ Em METROS e não em pixels: o `Transform` desta casa já é métrico, e a única px→m é a do
 /// projecto (`pixels_per_meter`).
-const REPEAT_FIELDS: &[FieldDesc] = &[f(0, "component.field.repeat_fields.0", K::Vec2)];
+const REPEAT_FIELDS: &[FieldDesc] =
+    &[f(0, "component.field.repeat_fields.0", K::Vec2).named_as("repeat", "tile")];
 /// ⚠️ Metros por SEGUNDO — o eixo do tempo é o playhead, e é isso que a faz sobreviver a um scrub.
-const MOTION_FIELDS: &[FieldDesc] = &[f(0, "component.field.motion_fields.0", K::Vec2)];
+const MOTION_FIELDS: &[FieldDesc] =
+    &[f(0, "component.field.motion_fields.0", K::Vec2).named_as("drift", "velocity")];
 
 /// Os descritores da família.
 pub const DESCS: &[ComponentDesc] = &[
@@ -115,14 +119,17 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Camera,
         O::ANY,
         FOLLOW_FIELDS,
-    ),
+    )
+    .coded("camera_follow")
+    .hiding(&[("target", Hidden::Reference)]),
     D::authored(
         "ph2d::ecs::CameraLimits",
         "component.camera_limits.name",
         C::Camera,
         O::ANY,
         LIMITS_FIELDS,
-    ),
+    )
+    .coded("camera_limits"),
     // ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — *como* esta câmera treme.
     //
     // ⚠️⚠️ **Entre o `CameraLimits` e a `GameCamera`, e isso NÃO é estilo — o GATE apanhou-me:** a
@@ -139,7 +146,8 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Camera,
         O::ANY,
         SHAKE_FIELDS,
-    ),
+    )
+    .coded("camera_shake"),
     D::authored(
         "ph2d::ecs::GameCamera",
         "component.game_camera.name",
@@ -159,7 +167,8 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Camera,
         O::ANY,
         SCROLL_FIELDS,
-    ),
+    )
+    .coded("parallax"),
     // ⛔⛔ **As três irmãs REQUEREM o `ScrollFactor`** (auditoria 26, §2.5): a ponte só percorre quem
     // o tem e a secção só existe com ele ⇒ anexadas sozinhas ficavam inertes, invisíveis e sem gesto
     // de remoção. O `requires` faz a paleta trazer o `Parallax` com elas.
@@ -175,7 +184,8 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         LIMITS_FIELDS,
         &["ph2d::ecs::ScrollFactor"],
-    ),
+    )
+    .coded("parallax_limits"),
     // ⭐⭐ **O MOVIMENTO PRÓPRIO** (plano 24, W4) — *nuvens que andam sozinhas*, e ele é uma
     // função PURA do playhead. ⚠️ Antes do `ScrollRepeat` porque a lista é ORDENADA por
     // `canonical_name` e há gate.
@@ -186,7 +196,8 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         MOTION_FIELDS,
         &["ph2d::ecs::ScrollFactor"],
-    ),
+    )
+    .coded("parallax_drift"),
     // ⭐⭐ **A REPETIÇÃO** (plano 24, W2) — *quanto mede um ladrilho deste fundo*. ⛔ Irmã das três
     // de cima e não um campo delas: quase todo objecto com paralaxe não repete, e um campo ali
     // seria um knob morto em todos eles. *Quatro componentes porque são quatro populações.*
@@ -197,7 +208,8 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         REPEAT_FIELDS,
         &["ph2d::ecs::ScrollFactor"],
-    ),
+    )
+    .coded("parallax_repeat"),
     // ⭐⭐⭐ **QUEM EXPLODE** (suplente #25) — e ele mora na família da CÂMERA apesar de nunca viver
     // numa: *o assunto é o abanão*, e pô-lo na família LÓGICA separaria as duas metades de uma lei
     // que só se lê inteira. ⚠️ `O::ANY` pela razão das irmãs: quem explode é tantas vezes um objecto
@@ -208,7 +220,8 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Camera,
         O::ANY,
         SHAKE_SOURCE_FIELDS,
-    ),
+    )
+    .hidden(Hidden::List),
 ];
 
 #[cfg(test)]

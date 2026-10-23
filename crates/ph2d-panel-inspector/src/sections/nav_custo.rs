@@ -56,17 +56,17 @@ pub(super) fn interruptores_do_agente(
     for caixa in [
         (
             crate::ids::INSP_NAV_ACTIVE,
-            tr("panel.inspector.nav.active"),
+            tr("component.field.nav_agent.5"),
             a.active,
         ),
         (
             crate::ids::INSP_NAV_AVOIDANCE,
-            tr("panel.inspector.nav.avoidance"),
+            tr("component.field.nav_agent.9"),
             a.avoidance,
         ),
         (
             crate::ids::INSP_NAV_AVOID_HARM,
-            tr("panel.inspector.nav.avoid_harm"),
+            tr("component.field.nav_agent.10"),
             a.avoid_harm,
         ),
     ] {
@@ -121,7 +121,7 @@ pub(crate) fn paint_nav_cost_area_section(
         w,
         y,
         core_ids::INSP_LIVE_NAV_COST_AREA_SECTION,
-        tr("panel.inspector.nav.nav_cost_area"),
+        tr("component.nav_cost_area.name"),
     ) {
         Ok(v) => v,
         Err(y) => return y,
@@ -143,8 +143,8 @@ pub(crate) fn paint_nav_cost_area_section(
         text_system,
         2,
         &[
-            tr("panel.inspector.nav.cost"),
-            tr("panel.inspector.nav.forbidden"),
+            tr("component.field.nav_cost_area.0"),
+            tr("component.field.nav_cost_area.1"),
         ],
     );
     cur_y = paint_check_row(
@@ -158,7 +158,7 @@ pub(crate) fn paint_nav_cost_area_section(
         cur_y,
         (
             crate::ids::INSP_NAV_AREA_FORBIDDEN,
-            tr("panel.inspector.nav.forbidden"),
+            tr("component.field.nav_cost_area.1"),
             c.forbidden,
         ),
         seccao,
@@ -186,7 +186,7 @@ pub(crate) fn paint_nav_cost_area_section(
             x,
             w,
             cur_y,
-            tr("panel.inspector.nav.cost"),
+            tr("component.field.nav_cost_area.0"),
             &[crate::ids::INSP_NAV_AREA_COST],
             0.05, // LITERAL-PX-OK: passo de arrasto, × chão
             None,
@@ -219,7 +219,7 @@ pub(crate) fn paint_nav_link_section(
         w,
         y,
         core_ids::INSP_LIVE_NAV_LINK_SECTION,
-        tr("panel.inspector.nav.nav_link"),
+        tr("component.nav_link.name"),
     ) {
         Ok(v) => v,
         Err(y) => return y,
@@ -233,8 +233,8 @@ pub(crate) fn paint_nav_link_section(
         2,
         &[
             tr("panel.inspector.nav.link_exit"),
-            tr("panel.inspector.nav.extra_cost"),
-            tr("panel.inspector.nav.on_cross"),
+            tr("component.field.nav_link.3"),
+            tr("component.field.nav_link.4"),
         ],
     );
     // ⚠️ **O NOME da saída, pela MESMA porta do alvo `Object`** do agente: o despacho manda o texto
@@ -257,12 +257,12 @@ pub(crate) fn paint_nav_link_section(
     for caixa in [
         (
             crate::ids::INSP_NAV_LINK_TELEPORT,
-            tr("panel.inspector.nav.teleport"),
+            tr("component.field.nav_link.2"),
             l.teleport,
         ),
         (
             crate::ids::INSP_NAV_LINK_TWO_WAY,
-            tr("panel.inspector.nav.two_way"),
+            tr("component.field.nav_link.1"),
             l.two_way,
         ),
     ] {
@@ -288,7 +288,7 @@ pub(crate) fn paint_nav_link_section(
         x,
         w,
         cur_y,
-        tr("panel.inspector.nav.extra_cost"),
+        tr("component.field.nav_link.3"),
         &[crate::ids::INSP_NAV_LINK_COST],
         0.1, // LITERAL-PX-OK: passo de arrasto em METROS de chão
         Some(Unit::Meters),
@@ -303,7 +303,7 @@ pub(crate) fn paint_nav_link_section(
         x,
         w,
         cur_y,
-        tr("panel.inspector.nav.on_cross"),
+        tr("component.field.nav_link.4"),
         crate::ids::INSP_NAV_LINK_ON_CROSSED,
         TextInput::new(crate::ids::INSP_NAV_LINK_ON_CROSSED, "")
             .placeholder(tr("panel.inspector.nav.signal_when_an_agent_crosses_u")),

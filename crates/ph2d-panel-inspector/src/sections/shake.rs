@@ -58,12 +58,12 @@ fn corpo(
         text_system,
         1,
         &[
-            tr("panel.inspector.shake.amplitude"),
-            tr("panel.inspector.shake.frequency"),
-            tr("panel.inspector.shake.decay"),
-            tr("panel.inspector.shake.seed"),
+            tr("component.field.shake_fields.0"),
+            tr("component.field.shake_fields.1"),
+            tr("component.field.shake_fields.2"),
+            tr("component.field.shake_fields.4"),
             // ⭐ A ESCOLHA também — com o nome ao lado (2026-09-23) ela entra na coluna.
-            tr("panel.inspector.shake.punch"),
+            tr("component.field.shake_fields.3"),
         ],
     );
     // ⭐⭐⭐ **Os PERFIS primeiro** — eles reescrevem os quatro números que vêm a seguir, e é isso
@@ -91,19 +91,19 @@ fn corpo(
     for (id, label, step, unidade) in [
         (
             crate::ids::INSP_SHAKE_AMPLITUDE,
-            tr("panel.inspector.shake.amplitude"),
+            tr("component.field.shake_fields.0"),
             0.01, // LITERAL-PX-OK: passo de scrub em METROS de vista, como o `lado` do seguidor
             Some(Unit::Meters),
         ),
         (
             crate::ids::INSP_SHAKE_FREQUENCIA,
-            tr("panel.inspector.shake.frequency"),
+            tr("component.field.shake_fields.1"),
             0.5, // LITERAL-PX-OK: passo de scrub em Hz
             None,
         ),
         (
             crate::ids::INSP_SHAKE_DECAIMENTO,
-            tr("panel.inspector.shake.decay"),
+            tr("component.field.shake_fields.2"),
             0.1, // LITERAL-PX-OK: passo de scrub em trauma/s
             None,
         ),
@@ -154,7 +154,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("panel.inspector.shake.punch"),
+        tr("component.field.shake_fields.3"),
         &crate::ids::INSP_SHAKE_EXPOENTE,
         &refs,
         usize::from(i.expoente.saturating_sub(ph2d_shake::EXPOENTE_MIN)),
@@ -169,7 +169,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("panel.inspector.shake.seed"),
+        tr("component.field.shake_fields.4"),
         &[crate::ids::INSP_SHAKE_SEMENTE],
         1.0,
         None,
@@ -239,7 +239,7 @@ pub(crate) fn paint_shake_section(
     let header = section_header(
         store,
         ph2d_editor_core::ids::INSP_LIVE_SHAKE_SECTION,
-        tr("panel.inspector.shake.camera_shake"),
+        tr("component.camera_shake.name"),
     );
     paint_section_header(
         &header,

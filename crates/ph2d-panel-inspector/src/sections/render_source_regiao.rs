@@ -92,8 +92,8 @@ pub(super) fn paint_region_rows(
             text_system,
             1,
             &[
-                tr("panel.inspector.render_source.region"),
-                tr("panel.inspector.render_source.filter_clip"),
+                tr("component.field.sprite_region.1"),
+                tr("component.field.sprite_region.2"),
             ],
         );
         let re_value = store
@@ -110,7 +110,7 @@ pub(super) fn paint_region_rows(
             cur_y,
             (
                 ids::INSP_REGION_ENABLED,
-                tr("panel.inspector.render_source.region"),
+                tr("component.field.sprite_region.1"),
                 matches!(re_value, CheckboxValue::Checked),
             ),
             sec,
@@ -184,7 +184,7 @@ pub(super) fn paint_region_rows(
                 cur_y,
                 (
                     ids::INSP_REGION_FILTER_CLIP,
-                    tr("panel.inspector.render_source.filter_clip"),
+                    tr("component.field.sprite_region.2"),
                     matches!(fc_value, CheckboxValue::Checked),
                 ),
                 sec,

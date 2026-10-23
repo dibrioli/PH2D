@@ -56,14 +56,22 @@ pub struct FieldDrive {
 pub struct DisplacedFields(Vec<(Key, Value, SetValueFn, ValueOfFn)>);
 
 fn read(value_of: ValueOfFn, sim: &SimWorld, entity: Entity, key: &str) -> Option<Value> {
-    value_of(sim.world(), entity).ok()??.get(key).cloned()
+    // ⚠️ Pela lei do nome (`slot_in`): um newtype (`"."`) e um elemento (`"axis[0]"`) também.
+    ph2d_ecs::scene::property::slot_in(&mut value_of(sim.world(), entity).ok()??, key).cloned()
 }
 
-fn write(value_of: ValueOfFn, set_value: SetValueFn, sim: &mut SimWorld, entity: Entity, key: &str, v: &Value) {
+fn write(
+    value_of: ValueOfFn,
+    set_value: SetValueFn,
+    sim: &mut SimWorld,
+    entity: Entity,
+    key: &str,
+    v: &Value,
+) {
     let Some(mut whole) = value_of(sim.world(), entity).ok().flatten() else {
         return;
     };
-    match whole.get_mut(key) {
+    match ph2d_ecs::scene::property::slot_in(&mut whole, key) {
         Some(slot) if *slot != *v => *slot = v.clone(),
         _ => return,
     }
@@ -116,7 +124,14 @@ impl FieldDrive {
     pub fn release(&mut self, sim: &mut SimWorld) -> usize {
         let n = self.memo.len();
         for ((bits, _, key), e) in std::mem::take(&mut self.memo) {
-            write(e.value_of, e.set_value, sim, Entity::from_bits(bits), key, &e.authored);
+            write(
+                e.value_of,
+                e.set_value,
+                sim,
+                Entity::from_bits(bits),
+                key,
+                &e.authored,
+            );
         }
         n
     }

@@ -21,16 +21,40 @@ use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segment
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
+/// Uma linha de duas bordas: os nomes delas no catálogo (`9_slice.left` · `9_slice.top`).
+fn bordas(a: &str, b: &str) -> String {
+    ph2d_i18n::tr_with(
+        "panel.inspector.slice.borders_pair",
+        &[("a", &tr(a)), ("b", &tr(b))],
+    )
+}
+
+/// A linha do tamanho: o nome do campo (`9_slice.size`) mais os eixos.
+fn tamanho() -> String {
+    ph2d_i18n::tr_with(
+        "panel.inspector.slice.size_x_y_m_0",
+        &[("size", &tr("component.field.slice_nine.7"))],
+    )
+}
+
 /// Os nomes que esta secção pinta à esquerda — a fonte da coluna dela.
-const NOMES: [&str; 6] = [
-    "panel.inspector.slice.tile_mode",
-    "panel.inspector.slice.borders_l_t_px",
-    "panel.inspector.slice.borders_r_b_px",
-    "panel.inspector.slice.size_x_y_m_0",
-    // ⭐ As linhas de MARCAR partilham a coluna — logo o nome mais largo pode ser o de uma delas.
-    "panel.inspector.slice.enable_9_slice",
-    "panel.inspector.slice.fill_center",
-];
+fn nomes() -> [String; 6] {
+    [
+        tr("component.field.slice_nine.6").to_owned(),
+        bordas(
+            "component.field.slice_nine.1",
+            "component.field.slice_nine.3",
+        ),
+        bordas(
+            "component.field.slice_nine.2",
+            "component.field.slice_nine.4",
+        ),
+        tamanho(),
+        // ⭐ As linhas de MARCAR partilham a coluna — logo o nome mais largo pode ser o de uma delas.
+        tr("component.field.slice_nine.8").to_owned(),
+        tr("component.field.slice_nine.5").to_owned(),
+    ]
+}
 /// Quantas componentes tem a linha que esta secção não quer ver quebrar.
 const CAMPOS: usize = 2;
 
@@ -41,7 +65,12 @@ const CAMPOS: usize = 2;
 /// campo **e** os das linhas cujo controlo é construído à mão (o segmentado): *uma secção em que
 /// metade das linhas mede e a outra metade não é uma secção com duas colunas.*
 fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Seccao {
-    ph2d_editor_core::property_row::Seccao::medida(text_system, CAMPOS, &NOMES.map(tr))
+    let nomes = nomes();
+    ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        CAMPOS,
+        &nomes.each_ref().map(String::as_str),
+    )
 }
 
 /// Rótulos do Tile Mode global, tags `0..=1` de `SliceTileMode`.
@@ -89,12 +118,12 @@ fn tiled_rows(
         w,
         cur_y,
         ALTURA_DE_CAMPO,
-        tr("panel.inspector.slice.tile_mode"),
+        tr("component.field.slice_nine.6"),
         sec,
     );
     let tm = SegmentedAdaptive::new(
         core_ids::INSP_LIVE_SLICE_SECTION,
-        tr("panel.inspector.slice.tile_mode"),
+        tr("component.field.slice_nine.6"),
         ids::INSP_SLICE_TILE_MODE
             .iter()
             .zip(TILE_MODE_LABELS)
@@ -172,7 +201,7 @@ pub(crate) fn paint_slice_section(
     let header = section_header(
         store,
         core_ids::INSP_LIVE_SLICE_SECTION,
-        tr("panel.inspector.slice.section_title"),
+        tr("component.slice_nine.name"),
     );
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
@@ -210,13 +239,10 @@ pub(crate) fn paint_slice_section(
     let en_rect = Rect::new(x, cur_y, w, cb_h);
     hit_index.register(ids::INSP_SLICE_ENABLE, en_rect);
     paint_checkbox(
-        &Checkbox::new(
-            ids::INSP_SLICE_ENABLE,
-            tr("panel.inspector.slice.enable_9_slice"),
-        )
-        .visual(store.checkbox_visual(ids::INSP_SLICE_ENABLE))
-        .value(en_value)
-        .seccao(seccao(text_system)),
+        &Checkbox::new(ids::INSP_SLICE_ENABLE, tr("component.field.slice_nine.8"))
+            .visual(store.checkbox_visual(ids::INSP_SLICE_ENABLE))
+            .value(en_value)
+            .seccao(seccao(text_system)),
         en_rect,
         scene,
         text_system,
@@ -241,7 +267,10 @@ pub(crate) fn paint_slice_section(
         x,
         w,
         cur_y,
-        tr("panel.inspector.slice.borders_l_t_px"),
+        &bordas(
+            "component.field.slice_nine.1",
+            "component.field.slice_nine.3",
+        ),
         &[ids::INSP_SLICE_BORDER[0], ids::INSP_SLICE_BORDER[1]],
         1.0,
         Some(ph2d_editor_core::widget::Unit::Px),
@@ -256,7 +285,10 @@ pub(crate) fn paint_slice_section(
         x,
         w,
         cur_y,
-        tr("panel.inspector.slice.borders_r_b_px"),
+        &bordas(
+            "component.field.slice_nine.2",
+            "component.field.slice_nine.4",
+        ),
         &[ids::INSP_SLICE_BORDER[2], ids::INSP_SLICE_BORDER[3]],
         1.0,
         Some(ph2d_editor_core::widget::Unit::Px),
@@ -271,7 +303,7 @@ pub(crate) fn paint_slice_section(
         x,
         w,
         cur_y,
-        tr("panel.inspector.slice.size_x_y_m_0"),
+        &tamanho(),
         &[ids::INSP_SLICE_SIZE[0], ids::INSP_SLICE_SIZE[1]],
         SIZE_STEP,
         Some(ph2d_editor_core::widget::Unit::Meters),
@@ -287,7 +319,7 @@ pub(crate) fn paint_slice_section(
     paint_checkbox(
         &Checkbox::new(
             ids::INSP_SLICE_FILL_CENTER,
-            tr("panel.inspector.slice.fill_center"),
+            tr("component.field.slice_nine.5"),
         )
         .visual(store.checkbox_visual(ids::INSP_SLICE_FILL_CENTER))
         .value(fc_value)

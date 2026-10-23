@@ -23,8 +23,8 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{
-    AUDIO_MAX_DISTANCE_M, AUDIO_MAX_POLYPHONY, AudioBus, AudioListener2D, AudioSource2D, Entity,
-    Name, SignalActions, SignalVerb, SimWorld, World,
+    AUDIO_MAX_POLYPHONY, AudioBus, AudioListener2D, AudioSource2D, Entity, Name, SignalActions,
+    SignalVerb, SimWorld, World,
 };
 use ph2d_editor_core::{AudioFieldEdit, InspectorAudioInfo, InspectorAudioSource, Toast};
 use ph2d_i18n::{tr, tr_with};
@@ -135,21 +135,15 @@ pub(super) fn apply_audio_edit(
         AudioFieldEdit::Preview | AudioFieldEdit::StopPreview | AudioFieldEdit::Browse => {
             return None;
         }
-        AudioFieldEdit::Sound(path) => src.sound = path.trim().to_string(),
-        AudioFieldEdit::VolumeDb(v) => src.volume_db = v.clamp(-80.0, 24.0), // CLAMP-OK: a faixa do campo
-        AudioFieldEdit::Pitch(v) => src.pitch = v.clamp(0.05, 8.0), // CLAMP-OK: a faixa do campo
+        AudioFieldEdit::Sound(path) => src.sound.clone_from(path),
+        AudioFieldEdit::VolumeDb(v) => src.volume_db = *v,
+        AudioFieldEdit::Pitch(v) => src.pitch = *v,
         AudioFieldEdit::Looping(on) => src.looping = *on,
         AudioFieldEdit::Autoplay(on) => src.autoplay = *on,
-        // ⚠️ **A saturação é do MOTOR** (`AUDIO_MAX_DISTANCE_M`), e mora aqui porque é aqui que o
-        // valor entra na cena. Um número acima do teto entra saturado em vez de ficar por explicar.
-        AudioFieldEdit::MaxDistance(v) => {
-            src.max_distance = v.clamp(0.0, AUDIO_MAX_DISTANCE_M); // CLAMP-OK: o teto é o do motor
-        }
-        AudioFieldEdit::Attenuation(v) => src.attenuation = v.clamp(0.0, 8.0), // CLAMP-OK: a faixa do campo
-        AudioFieldEdit::Radius(v) => {
-            src.non_spatialized_radius = v.clamp(0.0, AUDIO_MAX_DISTANCE_M); // CLAMP-OK: o teto é o do motor
-        }
-        AudioFieldEdit::Panning(v) => src.panning_strength = v.clamp(0.0, 1.0), // CLAMP-OK: fracção
+        AudioFieldEdit::MaxDistance(v) => src.max_distance = *v,
+        AudioFieldEdit::Attenuation(v) => src.attenuation = *v,
+        AudioFieldEdit::Radius(v) => src.non_spatialized_radius = *v,
+        AudioFieldEdit::Panning(v) => src.panning_strength = *v,
         AudioFieldEdit::Polyphony(n) => {
             // ⚠️ **Recusa com VOZ acima do teto**, e não em silêncio: o teto é do pool do mixer, e
             // um número que entra saturado sem dizer nada lê-se como o campo estar partido.
@@ -159,10 +153,12 @@ pub(super) fn apply_audio_edit(
                     &[("AUDIO_MAX_POLYPHONY", &AUDIO_MAX_POLYPHONY)],
                 )));
             }
-            src.max_polyphony = (*n).max(1);
+            src.max_polyphony = *n;
         }
-        AudioFieldEdit::Bus(tag) => src.bus_tag = AudioBus::from_tag(*tag).tag(),
+        AudioFieldEdit::Bus(tag) => src.bus_tag = *tag,
     }
+    // ⭐ A lei dos números é a MESMA do script (`ph2d.set`, doc CodeEditor 08 §3.5).
+    ph2d_app_components::audio_inspector::sanitize_audio_source(&mut src);
     queue_set(queue, registry, entity_bits, SOURCE, &src);
     None
 }

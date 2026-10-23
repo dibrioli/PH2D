@@ -242,6 +242,12 @@ impl PulleyWheel {
     ///
     /// A porta de carga, como o `clamped()` do joint: um raio negativo inverteria
     /// a tangente e um `NaN` envenenaria a pose E o hash C9.
+    /// A lei do valor no sítio: o [`Self::clamped`] que o cartão da roldana e o load usam — e o
+    /// `ph2d.set` de um script (doc CodeEditor 08 §3.5).
+    pub fn sanitize(&mut self) {
+        *self = self.clamped();
+    }
+
     #[must_use]
     pub fn clamped(self) -> Self {
         Self {

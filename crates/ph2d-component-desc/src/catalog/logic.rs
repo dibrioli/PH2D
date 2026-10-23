@@ -103,45 +103,52 @@ const ACTION_FIELDS: &[FieldDesc] = &[
 ///
 /// ⚠️ **UM campo, e a lista curta é a wave:** duração, repetir e *«está a correr»* são do `Timer`,
 /// que este componente EXIGE. Um `Duration` aqui seria um segundo relógio (plano 16 §1-bis).
-const SEQUENCE_FIELDS: &[FieldDesc] = &[f(1, "component.field.sequence_fields.1", K::Text)];
+const SEQUENCE_FIELDS: &[FieldDesc] =
+    &[f(1, "component.field.sequence_fields.1", K::Text).keyed("container")];
 
+/// ⚠️ `lifetime` é a chave `duration_us`: o cartão mostra segundos, o valor guardado é µs.
 const LIFETIME_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.lifetime_fields.1", K::Scalar),
-    f(2, "component.field.lifetime_fields.2", K::Text),
+    f(1, "component.field.lifetime_fields.1", K::Scalar).named_as("lifetime", "duration_us"),
+    f(2, "component.field.lifetime_fields.2", K::Text).named("on_death"),
 ];
 
 /// ADR-0186: o `Macro` descreve só o modo — o campo 1 é a gravação, que nenhum controlo edita.
-const MACRO_FIELDS: &[FieldDesc] = &[f(2, "component.field.macro_fields.2", K::Enum)];
+const MACRO_FIELDS: &[FieldDesc] =
+    &[f(2, "component.field.macro_fields.2", K::Enum).named_as("playback", "modo")];
 
 /// ⭐ Ciclo 19 do Motion (doc 128 §3.6): os campos do `Motion Input`, na ordem da struct.
 const MOTION_INPUT_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.motion_input_fields.1", K::Text),
-    f(2, "component.field.motion_input_fields.2", K::Enum),
-    f(3, "component.field.motion_input_fields.3", K::Scalar),
-    f(4, "component.field.motion_input_fields.4", K::Color),
+    f(1, "component.field.motion_input_fields.1", K::Text).named_as("input", "name"),
+    f(2, "component.field.motion_input_fields.2", K::Enum).named("source"),
+    f(3, "component.field.motion_input_fields.3", K::Scalar).named("value"),
+    f(4, "component.field.motion_input_fields.4", K::Color).named("color"),
 ];
 
 /// O campo do fora-do-ecrã: a folga, em metros, antes de a morte valer.
-const OUTSIDE_FIELDS: &[FieldDesc] = &[f(1, "component.field.outside_fields.1", K::Scalar)];
+const OUTSIDE_FIELDS: &[FieldDesc] =
+    &[f(1, "component.field.outside_fields.1", K::Scalar).named_as("off_screen_margin", "margin")];
 
 /// **Os campos da FÁBRICA** (TOP-20 #11) — *o quê · onde · quando · quanto*.
 ///
 /// ⚠️ **Não há campo de RITMO**, e é a decisão medida do plano §2.4: a cadência vem do `Timers`,
 /// que o `requires` puxa quando o artista acrescenta a fábrica. Um `rate` aqui seria um **segundo
 /// relógio** para a mesma lei.
+///
+/// ⏳ A receita (`master`) e o ONDE (`at`, que guarda a identidade da tag) são referências.
 const FACTORY_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.factory_fields.1", K::Text),
-    f(2, "component.field.factory_fields.2", K::Text),
-    f(3, "component.field.factory_fields.3", K::Enum),
-    f(4, "component.field.factory_fields.4", K::Vec2),
-    f(5, "component.field.factory_fields.5", K::Text),
-    f(6, "component.field.factory_fields.6", K::Enum),
-    f(7, "component.field.factory_fields.7", K::Int),
-    f(8, "component.field.factory_fields.8", K::Int),
-    f(9, "component.field.factory_fields.9", K::Int),
-    f(10, "component.field.factory_fields.10", K::Text),
-    f(11, "component.field.factory_fields.11", K::Text),
-    f(12, "component.field.factory_fields.12", K::Seed),
+    f(1, "component.field.factory_fields.1", K::Text).keyed("master"),
+    f(2, "component.field.factory_fields.2", K::Text).named("on_signal"),
+    f(3, "component.field.factory_fields.3", K::Enum).keyed("at"),
+    f(4, "component.field.factory_fields.4", K::Vec2).keyed("at"),
+    f(5, "component.field.factory_fields.5", K::Text).keyed("at"),
+    f(6, "component.field.factory_fields.6", K::Enum).keyed("at"),
+    f(7, "component.field.factory_fields.7", K::Int).named("burst"),
+    f(8, "component.field.factory_fields.8", K::Int).named_as("max_alive", "alive_max"),
+    f(9, "component.field.factory_fields.9", K::Int).named_as("max_total", "total_max"),
+    f(10, "component.field.factory_fields.10", K::Text).named("on_spawned"),
+    f(11, "component.field.factory_fields.11", K::Text).named("on_exhausted"),
+    f(12, "component.field.factory_fields.12", K::Seed).named("seed"),
+    f(13, "component.field.factory_fields.13", K::Toggle).named("aim_from_spawner"),
 ];
 
 /// ⭐⭐⭐ **O que o SEGUIDOR DE CAMINHO guarda** (suplente #23) — e o primeiro campo decide tudo.
@@ -152,17 +159,19 @@ const FACTORY_FIELDS: &[FieldDesc] = &[
 /// vê (medido).
 ///
 /// ⛔ **Não há campo de DURAÇÃO**, pela mesma razão do tween e da fábrica: o tempo vem do `Timers`.
+///
+/// ⚠️ `curve` e `ease` são a MESMA chave serde (`easing`, `{family, mode}`): o nome alcança o par.
 const PATH_FOLLOW_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.path_follow_fields.1", K::Text),
-    f(2, "component.field.path_follow_fields.2", K::Scalar),
-    f(3, "component.field.path_follow_fields.3", K::Enum),
-    f(4, "component.field.path_follow_fields.4", K::Enum),
-    f(5, "component.field.path_follow_fields.5", K::Enum),
-    f(6, "component.field.path_follow_fields.6", K::Enum),
-    f(7, "component.field.path_follow_fields.7", K::Scalar),
-    f(8, "component.field.path_follow_fields.8", K::Toggle),
-    f(9, "component.field.path_follow_fields.9", K::Angle),
-    f(10, "component.field.path_follow_fields.10", K::Scalar),
+    f(1, "component.field.path_follow_fields.1", K::Text).keyed("caminho"),
+    f(2, "component.field.path_follow_fields.2", K::Scalar).named_as("timer_slot", "relogio"),
+    f(3, "component.field.path_follow_fields.3", K::Enum).named_as("cycle", "ciclo"),
+    f(4, "component.field.path_follow_fields.4", K::Enum).named_as("curve", "easing"),
+    f(5, "component.field.path_follow_fields.5", K::Enum).named_as("ease", "easing"),
+    f(6, "component.field.path_follow_fields.6", K::Enum).named_as("when_done", "ao_acabar"),
+    f(7, "component.field.path_follow_fields.7", K::Scalar).named_as("start_at", "deslocamento"),
+    f(8, "component.field.path_follow_fields.8", K::Toggle).named_as("face_path", "alinha"),
+    f(9, "component.field.path_follow_fields.9", K::Angle).named_as("angle", "angulo"),
+    f(10, "component.field.path_follow_fields.10", K::Scalar).named_as("side_offset", "lado"),
 ];
 
 /// **Os campos de UM tween** (suplente #22) — como o `Timers`, o componente é uma LISTA e isto
@@ -177,17 +186,18 @@ const PATH_FOLLOW_FIELDS: &[FieldDesc] = &[
 /// campos — um escalar e um de cor — seriam duas respostas a *«de onde para onde?»*.
 const WEAPON_FIELDS: &[FieldDesc] = &[
     // ⚠️ **Vazio = nunca dispara**, a lei do consumidor de sinal desta casa.
-    f(1, "component.field.weapon_fields.1", K::Text),
-    f(2, "component.field.weapon_fields.2", K::Scalar),
+    f(1, "component.field.weapon_fields.1", K::Text).named_as("trigger", "on_signal"),
+    f(2, "component.field.weapon_fields.2", K::Scalar).named_as("cooldown", "cooldown_ms"),
     // ⭐⭐ **O NOME do contador que É o pente** — vazio = munição infinita. ⛔ A munição não é um
     // campo deste componente, e é isso que a põe no HUD (`LabelSource::Counter`) de graça.
-    f(3, "component.field.weapon_fields.3", K::Text),
-    f(4, "component.field.weapon_fields.4", K::Scalar),
-    f(5, "component.field.weapon_fields.5", K::Text),
+    f(3, "component.field.weapon_fields.3", K::Text).named_as("magazine", "ammo_counter"),
+    f(4, "component.field.weapon_fields.4", K::Scalar).named_as("reload", "reload_ms"),
+    f(5, "component.field.weapon_fields.5", K::Text).named("reload_on"),
     // ⭐ **O fio para a `Factory`**: sem ele a arma dispara e nada nasce.
-    f(6, "component.field.weapon_fields.6", K::Text),
-    f(7, "component.field.weapon_fields.7", K::Text),
-    f(8, "component.field.weapon_fields.8", K::Text),
+    f(6, "component.field.weapon_fields.6", K::Text).named("on_fire"),
+    f(7, "component.field.weapon_fields.7", K::Text).named("on_empty"),
+    f(8, "component.field.weapon_fields.8", K::Text).named("on_reloaded"),
+    f(9, "component.field.weapon_fields.9", K::Text).named_as("reserve", "reserve_counter"),
 ];
 
 /// ⭐⭐⭐ **A VIDA** (plano 28) — os vinte e seis campos do `Health`, na ordem do componente.
@@ -228,16 +238,22 @@ const HEALTH_FIELDS: &[FieldDesc] = &[
 
 /// ⭐⭐⭐ **O DANO** (plano 28) — os nove campos do `Damage`.
 const DAMAGE_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.damage_fields.1", K::Scalar),
-    f(2, "component.field.damage_fields.2", K::Text),
-    f(3, "component.field.damage_fields.3", K::Toggle),
-    f(4, "component.field.damage_fields.4", K::Toggle),
-    f(5, "component.field.damage_fields.5", K::Toggle),
-    f(6, "component.field.damage_fields.6", K::Enum),
+    f(1, "component.field.damage_fields.1", K::Scalar).named("amount"),
+    f(2, "component.field.damage_fields.2", K::Text).named("team"),
+    f(3, "component.field.damage_fields.3", K::Toggle).named("per_second"),
+    f(4, "component.field.damage_fields.4", K::Toggle).named_as("pierce_shield", "ignores_shield"),
+    f(5, "component.field.damage_fields.5", K::Toggle).named_as("pierce_armor", "ignores_armor"),
+    // ⚠️ O cartão pinta uma caixa («Vanish on Hit»); o valor é a opção (`Stay`/`Vanish`).
+    f(6, "component.field.damage_fields.6", K::Enum).named_as("vanish_on_hit", "on_hit"),
     // ⭐ O IMPACTO de quem bate (plano 28, W5): a pausa no golpe e o empurrão.
-    f(7, "component.field.damage_fields.7", K::Scalar),
-    f(8, "component.field.damage_fields.8", K::Scalar),
-    f(9, "component.field.damage_fields.9", K::Scalar),
+    f(7, "component.field.damage_fields.7", K::Scalar).named_as("hit_pause", "hitstop_s"),
+    f(8, "component.field.damage_fields.8", K::Scalar).named_as("push", "knockback"),
+    f(9, "component.field.damage_fields.9", K::Scalar).named_as("push_up", "knockback_lift"),
+    // ⭐ W6: o tipo e o dano que DURA.
+    f(10, "component.field.damage_fields.10", K::Text).named_as("type", "kind"),
+    f(11, "component.field.damage_fields.11", K::Scalar).named_as("lasting", "over_time_per_s"),
+    f(12, "component.field.damage_fields.12", K::Scalar).named_as("lasts", "over_time_s"),
+    f(13, "component.field.damage_fields.13", K::Scalar).named_as("every", "over_time_every_s"),
 ];
 
 /// ⭐⭐⭐ **A BARRA DE VIDA** (plano 28, W4) — os onze campos do `HealthBar`, na ordem da struct.
@@ -245,17 +261,18 @@ const DAMAGE_FIELDS: &[FieldDesc] = &[
 /// ⚠️ **`Target` é o NOME de outro objecto, vazio = este** — é ele que põe a vida do herói no placar
 /// sem que o placar tenha vida.
 const HEALTH_BAR_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.health_bar_fields.1", K::Text),
-    f(2, "component.field.health_bar_fields.2", K::Scalar),
-    f(3, "component.field.health_bar_fields.3", K::Scalar),
-    f(4, "component.field.health_bar_fields.4", K::Scalar),
-    f(5, "component.field.health_bar_fields.5", K::Scalar),
-    f(6, "component.field.health_bar_fields.6", K::Color),
-    f(7, "component.field.health_bar_fields.7", K::Color),
-    f(8, "component.field.health_bar_fields.8", K::Color),
-    f(9, "component.field.health_bar_fields.9", K::Scalar),
-    f(10, "component.field.health_bar_fields.10", K::Scalar),
-    f(11, "component.field.health_bar_fields.11", K::Toggle),
+    f(1, "component.field.health_bar_fields.1", K::Text).keyed("target"),
+    f(2, "component.field.health_bar_fields.2", K::Scalar).named("width"),
+    f(3, "component.field.health_bar_fields.3", K::Scalar).named("height"),
+    f(4, "component.field.health_bar_fields.4", K::Scalar).named("offset_x"),
+    f(5, "component.field.health_bar_fields.5", K::Scalar).named("offset_y"),
+    f(6, "component.field.health_bar_fields.6", K::Color).named("fill"),
+    f(7, "component.field.health_bar_fields.7", K::Color).named("trail"),
+    f(8, "component.field.health_bar_fields.8", K::Color).named("back"),
+    f(9, "component.field.health_bar_fields.9", K::Scalar).named_as("trail_delay", "trail_delay_s"),
+    f(10, "component.field.health_bar_fields.10", K::Scalar).named("trail_speed"),
+    f(11, "component.field.health_bar_fields.11", K::Toggle)
+        .named_as("hide_if_full", "hide_when_full"),
 ];
 
 const TWEEN_FIELDS: &[FieldDesc] = &[
@@ -310,7 +327,8 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         WATCH_FIELDS,
-    ),
+    )
+    .hidden(Hidden::List),
     // ⭐⭐ **A HIGIENE do ciclo de vida** (TOP-20 #12) — sem ela a fábrica e o projéctil VAZAM.
     //
     // ⚠️ **Estas duas vivem na RECEITA e correm nas CÓPIAS**: um mestre está escondido por
@@ -322,7 +340,8 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         OUTSIDE_FIELDS,
-    ),
+    )
+    .coded("destroy_outside"),
     // ⭐⭐⭐ **A FÁBRICA** (TOP-20 #11) — a categoria que quase nenhuma engine grande tem como
     // componente. `O::ANY` pela razão do relógio: quem fabrica é quase sempre um objecto VAZIO.
     //
@@ -336,14 +355,21 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         FACTORY_FIELDS,
         &["ph2d::ecs::Timers"],
-    ),
+    )
+    .coded("factory")
+    .hiding(&[
+        ("master", Hidden::Reference),
+        ("at", Hidden::Reference),
+        ("spread_deg", Hidden::NoCard),
+    ]),
     D::authored(
         "ph2d::ecs::Lifetime",
         "component.lifetime.name",
         C::Logic,
         O::ANY,
         LIFETIME_FIELDS,
-    ),
+    )
+    .coded("lifetime"),
     // ⭐ ADR-0186: a gravação de um objecto. Chega com o gesto Gravar ▸ Parar; anexá-la pela paleta
     // daria uma macro que não toca nada. Entre o `Lifetime` e o `MotionInput` (a busca binária).
     D::intrinsic(
@@ -351,7 +377,10 @@ pub const DESCS: &[ComponentDesc] = &[
         "component.macro.name",
         C::Animation,
         MACRO_FIELDS,
-    ),
+    )
+    .coded("macro")
+    // A gravação é o documento do Gravar ▸ Parar: nenhum controlo a edita.
+    .hiding(&[("doc", Hidden::Editor)]),
     // ⭐ Ciclo 19 do Motion: o objecto que PUBLICA uma entrada para o grafo (o `value.input` com o
     // mesmo nome). Entre o `Lifetime` e o `PathFollow` (a busca binária).
     D::authored(
@@ -360,7 +389,8 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         MOTION_INPUT_FIELDS,
-    ),
+    )
+    .coded("motion_input"),
     // ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — este objecto anda sobre a curva desenhada.
     //
     // ⚠️ **DEPOIS do `Lifetime` e ANTES do `SequencePlayer`:** a lista é procurada por busca
@@ -377,7 +407,9 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         PATH_FOLLOW_FIELDS,
         &["ph2d::ecs::Timers"],
-    ),
+    )
+    .coded("path_follow")
+    .hiding(&[("caminho", Hidden::Reference)]),
     // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — este objecto toca um container da timeline.
     //
     // ⭐⭐ **Ele REQUER os `Timers`**, e é o mesmo mecanismo da fábrica: o relógio de corrida JÁ
@@ -395,7 +427,9 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         SEQUENCE_FIELDS,
         &["ph2d::ecs::Timers"],
-    ),
+    )
+    .coded("sequence_player")
+    .hiding(&[("container", Hidden::Reference)]),
     // ⭐⭐⭐ **O consumidor que faltava aos sinais** — e `O::ANY` pela mesma razão do relógio: quem
     // reage a um sinal é tantas vezes um objecto VAZIO («o cérebro da cena») quanto uma sprite.
     D::authored(
@@ -404,7 +438,8 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         ACTION_FIELDS,
-    ),
+    )
+    .hidden(Hidden::List),
     // ⭐⭐⭐ **O GATILHO** (suplente #24) — a mão de quem joga, o 14.º produtor de sinal e o
     // primeiro cuja entrada não é o mundo nem o barramento.
     //
@@ -423,7 +458,8 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         TRIGGER_FIELDS,
-    ),
+    )
+    .hidden(Hidden::List),
     // ⭐⭐⭐ **O CÉREBRO AUTORÁVEL** (TOP-20 #15) — `O::ANY` pela mesma razão do relógio e da
     // tabela: quem pensa é tantas vezes um objecto VAZIO quanto uma sprite.
     //
@@ -436,7 +472,9 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         STATE_MACHINE_FIELDS,
-    ),
+    )
+    // ⚠️ O `initial` é um ÍNDICE nas listas de estados: sem elas não diz nada a um script.
+    .hidden(Hidden::List),
     // ⚠️ **`O::ANY`, e é a decisão**: um relógio serve a um sprite, a uma forma, a um objecto
     // VAZIO e a um grupo. Restringi-lo a `DRAWABLE` faria o objecto vazio — a entidade que o
     // artista usa como *«o cérebro da cena»* — não poder ter um.
@@ -446,7 +484,8 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         TIMER_FIELDS,
-    ),
+    )
+    .hidden(Hidden::List),
     // ⚠️ **DEPOIS do `Timers`, e isso NÃO é estilo:** a lista é procurada por busca binária, e fora
     // de ordem o descritor devolve `None` para um tipo que existe — *um descritor que não é
     // encontrado lê-se exactamente como um que não existe*.
@@ -464,7 +503,8 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         TWEEN_FIELDS,
         &["ph2d::ecs::Timers"],
-    ),
+    )
+    .hidden(Hidden::List),
     // ⭐⭐⭐ **A ARMA DO JOGADOR** — o RITMO, o PENTE e a recarga. `O::ANY` pela razão do `Timers`:
     // uma torreta é um objecto VAZIO com uma arma e uma fábrica.
     //
@@ -483,7 +523,8 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         WEAPON_FIELDS,
         &["ph2d::ecs::Counter"],
-    ),
+    )
+    .coded("weapon"),
     // ⭐⭐⭐ **O DANO e a VIDA** (plano 28, W3). ⚠️ **Depois da arma, e isso NÃO é estilo**: a lista é
     // procurada por busca binária e `ph2d::physics::*` ordena depois de `ph2d::ecs::*`.
     //
@@ -500,7 +541,8 @@ pub const DESCS: &[ComponentDesc] = &[
         O::ANY,
         DAMAGE_FIELDS,
         &["ph2d::physics::RigidBody"],
-    ),
+    )
+    .coded("damage"),
     D::authored_requiring(
         "ph2d::physics::Health",
         "component.health.name",
@@ -523,5 +565,7 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         HEALTH_BAR_FIELDS,
-    ),
+    )
+    .coded("health_bar")
+    .hiding(&[("target", Hidden::Reference)]),
 ];

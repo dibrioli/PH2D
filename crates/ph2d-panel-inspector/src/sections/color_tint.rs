@@ -171,13 +171,13 @@ pub(crate) fn paint_color_tint_section(
         text_system,
         1,
         &[
-            tr("panel.inspector.color_tint.tint"),
-            tr("panel.inspector.color_tint.self_tint"),
+            tr("component.field.sprite.1"),
+            tr("component.field.sprite.6"),
         ],
     );
     cur_y = paint_tint_swatch_cell(
         Rect::new(x, cur_y, w, field_h),
-        tr("panel.inspector.color_tint.tint"),
+        tr("component.field.sprite.1"),
         ids::INSP_SPRITE_TINT_SWATCH,
         tint_seed,
         sp.as_ref().is_some_and(|s| s.mixed.tint),
@@ -196,7 +196,7 @@ pub(crate) fn paint_color_tint_section(
         .unwrap_or([0xff, 0xff, 0xff, 0xff]); // LITERAL-COLOR-OK: WHITE = self_tint default
     cur_y = paint_tint_swatch_cell(
         Rect::new(x, cur_y, w, field_h),
-        tr("panel.inspector.color_tint.self_tint"),
+        tr("component.field.sprite.6"),
         ids::INSP_SPRITE_SELF_TINT_SWATCH,
         self_seed,
         sp.as_ref().is_some_and(|s| s.mixed.self_tint),
@@ -229,7 +229,7 @@ pub(crate) fn paint_color_tint_section(
         .unwrap_or((SliderState::Normal, 1.0));
     let opacity_h = paint_slider_with_chip(
         Rect::new(x, cur_y, w, field_h),
-        tr("panel.inspector.color_tint.opacity"),
+        tr("component.field.sprite.7"),
         op_value,
         ids::INSP_SPRITE_OPACITY,
         ids::INSP_SPRITE_OPACITY_CHIP,
@@ -251,7 +251,7 @@ pub(crate) fn paint_color_tint_section(
     let sec = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
         1,
-        &[tr("panel.inspector.color_tint.tint_fill")],
+        &[tr("component.field.sprite.8")],
     );
     // A caixa fica na largura do controlo; a coluna do decorator leva o losango da silhueta.
     let (check_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, cur_y, field_h);
@@ -274,7 +274,7 @@ pub(crate) fn paint_color_tint_section(
         cur_y,
         (
             ids::INSP_SPRITE_TINT_FILL,
-            tr("panel.inspector.color_tint.tint_fill"),
+            tr("component.field.sprite.8"),
             matches!(tf_value, CheckboxValue::Checked),
         ),
         sec,
@@ -314,12 +314,7 @@ fn paint_per_corner_tab(
     // ⚠️ **As quatro medem a ALTURA DE LINHA**, como a `Tint` e a `Self Tint` — a padronização que
     //    o mesmo report pediu —, e a largura sai da coluna a dividir por dois.
     let gap = ph2d_tokens::control_gap_px();
-    let sec = seccao_de_cores(
-        text_system,
-        &[tr(
-            "panel.inspector.color_tint.per_corner_tint_vertex_gradient",
-        )],
-    );
+    let sec = seccao_de_cores(text_system, &[tr("component.field.sprite_corner_tint.5")]);
     let alto = ph2d_tokens::ROW_H_PX * 2.0 + gap;
     let row = ph2d_editor_core::widget::property_row_columns_for(x, w, y, alto, sec.nome_w(), None);
     // ⭐ O nome ao CENTRO do bloco — ele descreve as DUAS filas, não a de cima.
@@ -327,7 +322,7 @@ fn paint_per_corner_tab(
     ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
-        tr("panel.inspector.color_tint.per_corner_tint_vertex_gradient"),
+        tr("component.field.sprite_corner_tint.5"),
         row.label.x,
         row.label.y + (alto - label_font) * 0.5,
         label_font,
@@ -347,12 +342,19 @@ fn paint_per_corner_tab(
     ];
     // ⚠️ **O nome acessível de cada canto** — sem ele os quatro são quadrados anónimos, e foi o
     //    censo de chaves que o apanhou quando a porta nova os engoliu.
+    //    O canto é o nome dele no catálogo (`corner_tint.top_left`).
     let a11y = [
-        tr("panel.inspector.color_tint.top_left_corner_tint"),
-        tr("panel.inspector.color_tint.top_right_corner_tint"),
-        tr("panel.inspector.color_tint.bottom_left_corner_tint"),
-        tr("panel.inspector.color_tint.bottom_right_corner_tint"),
-    ];
+        "component.field.sprite_corner_tint.1",
+        "component.field.sprite_corner_tint.2",
+        "component.field.sprite_corner_tint.3",
+        "component.field.sprite_corner_tint.4",
+    ]
+    .map(|k| {
+        ph2d_i18n::tr_with(
+            "panel.inspector.color_tint.corner_tint_of",
+            &[("corner", &tr(k))],
+        )
+    });
     // TL, TR, BL, BR — a grelha 2×2 mapeia os cantos do quad, e é por isso que ela fica grelha.
     let positions = [
         (row.control.x, row.control.y),
@@ -371,7 +373,7 @@ fn paint_per_corner_tab(
         ph2d_editor_core::widget::paint_swatch_or_mixed(
             sr,
             corner_ids[i],
-            a11y[i],
+            &a11y[i],
             rgba,
             store.picker_target() == Some(corner_ids[i]),
             scene,

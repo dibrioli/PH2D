@@ -111,43 +111,43 @@ fn corpo(
         text_system,
         1,
         &[
-            tr("panel.inspector.projectile.speed_m_s"),
-            tr("panel.inspector.projectile.acceleration"),
-            tr("panel.inspector.projectile.max_speed_0_no_cap"),
-            tr("panel.inspector.projectile.gravity_0_straight"),
-            tr("panel.inspector.projectile.max_bounces"),
-            tr("panel.inspector.projectile.bounciness_1_perfect"),
-            tr("panel.inspector.projectile.range_m_0_forever"),
-            tr("panel.inspector.projectile.homing_0_none"),
+            tr("component.field.projectile_motion.0"),
+            tr("component.field.projectile_motion.1"),
+            tr("component.field.projectile_motion.2"),
+            tr("component.field.projectile_motion.3"),
+            tr("component.field.projectile_motion.5"),
+            tr("component.field.projectile_motion.4"),
+            tr("component.field.projectile_motion.6"),
+            tr("component.field.projectile_motion.8"),
         ],
     );
     for (label, id, step, unidade) in [
         (
-            tr("panel.inspector.projectile.speed_m_s"),
+            tr("component.field.projectile_motion.0"),
             crate::ids::INSP_PJ_SPEED,
             0.5,
             Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
         ), // LITERAL-PX-OK: m/s
         (
-            tr("panel.inspector.projectile.acceleration"),
+            tr("component.field.projectile_motion.1"),
             crate::ids::INSP_PJ_ACCEL,
             0.5,
             None,
         ), // LITERAL-PX-OK: m/s²
         (
-            tr("panel.inspector.projectile.max_speed_0_no_cap"),
+            tr("component.field.projectile_motion.2"),
             crate::ids::INSP_PJ_MAX_SPEED,
             0.5,
             None,
         ), // LITERAL-PX-OK: m/s
         (
-            tr("panel.inspector.projectile.gravity_0_straight"),
+            tr("component.field.projectile_motion.3"),
             crate::ids::INSP_PJ_GRAVITY,
             0.5,
             None,
         ), // LITERAL-PX-OK: m/s²
         (
-            tr("panel.inspector.projectile.max_bounces"),
+            tr("component.field.projectile_motion.5"),
             crate::ids::INSP_PJ_MAX_BOUNCES,
             1.0,
             None,
@@ -180,7 +180,7 @@ fn corpo(
             x,
             w,
             cur_y,
-            tr("panel.inspector.projectile.bounciness_1_perfect"),
+            tr("component.field.projectile_motion.4"),
             &[crate::ids::INSP_PJ_BOUNCINESS],
             0.05, // LITERAL-PX-OK: fracção
             None,
@@ -196,7 +196,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("panel.inspector.projectile.range_m_0_forever"),
+        tr("component.field.projectile_motion.6"),
         &[crate::ids::INSP_PJ_RANGE],
         1.0, // LITERAL-PX-OK: metros
         Some(ph2d_editor_core::widget::Unit::Meters),
@@ -211,7 +211,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("panel.inspector.projectile.homing_0_none"),
+        tr("component.field.projectile_motion.8"),
         &[crate::ids::INSP_PJ_HOMING_ACCEL],
         10.0, // LITERAL-PX-OK: m/s²
         None,
@@ -261,7 +261,7 @@ fn corpo(
         cur_y,
         (
             crate::ids::INSP_PJ_FACE_VELOCITY,
-            tr("panel.inspector.projectile.face_velocity"),
+            tr("component.field.projectile_motion.7"),
             i.face_velocity,
         ),
         seccao,
@@ -285,7 +285,7 @@ pub(crate) fn paint_projectile_section(
     let header = section_header(
         store,
         ph2d_editor_core::ids::INSP_LIVE_PROJECTILE_SECTION,
-        tr("panel.inspector.projectile.projectile_motion"),
+        tr("component.projectile_motion.name"),
     );
     paint_section_header(
         &header,

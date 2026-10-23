@@ -9,10 +9,6 @@
 /// A tradução de uma chave `panel.inspector.nav.*`, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
-        "panel.inspector.nav.nav_region" => "Nav Region",
-        "panel.inspector.nav.nav_agent" => "Nav Agent",
-        "panel.inspector.nav.half_size" => "Half Size",
-        "panel.inspector.nav.blocking_layers" => "Wall Layers",
         "panel.inspector.nav.region_has_no_size" => {
             "The region has no size \u{2014} no agent can walk in it."
         }
@@ -35,15 +31,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.nav.shape_lost" => {
             "No drawn shape has that name \u{2014} write the name of a shape drawn with the pen."
         }
-        "panel.inspector.nav.radius" => "Radius",
-        "panel.inspector.nav.arrive_at" => "Arrive At",
-        "panel.inspector.nav.repath_after" => "Repath At",
-        "panel.inspector.nav.stuck_after" => "Stuck After",
-        "panel.inspector.nav.active" => "Active",
-        "panel.inspector.nav.avoidance" => "Avoid Others",
-        "panel.inspector.nav.on_arrive" => "On Arrive",
-        "panel.inspector.nav.on_no_path" => "On No Path",
-        "panel.inspector.nav.on_stuck" => "On Stuck",
         "panel.inspector.nav.signal_when_it_arrives_u" => "signal when it arrives\u{2026}",
         "panel.inspector.nav.signal_when_there_is_no_way_u" => {
             "signal when there is no way\u{2026}"
@@ -93,13 +80,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The clock is stopped \u{2014} it walks while the clock plays."
         }
         // ⭐ (W7) O que FERE, o que CUSTA e os ATALHOS.
-        "panel.inspector.nav.avoid_harm" => "Avoid Harm",
         "panel.inspector.nav.no_health_nothing_hurts_it" => {
             "No Health \u{2014} nothing hurts it, so it avoids nothing."
         }
-        "panel.inspector.nav.nav_cost_area" => "Nav Cost Area",
-        "panel.inspector.nav.cost" => "Cost",
-        "panel.inspector.nav.forbidden" => "Forbidden",
         "panel.inspector.nav.no_agent_enters" => "No agent enters.",
         "panel.inspector.nav.area_needs_a_collider" => {
             "Needs a Collider \u{2014} the area is its shape."
@@ -110,13 +93,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.nav.area_narrower_than_body" => {
             "Narrower than the body that walks it (radius {radius} m) \u{2014} it never fits inside, so nobody takes it. Make it wider."
         }
-        "panel.inspector.nav.nav_link" => "Nav Link",
         "panel.inspector.nav.link_exit" => "Exit",
         "panel.inspector.nav.exit_object_name_u" => "exit object name\u{2026}",
-        "panel.inspector.nav.teleport" => "Teleport",
-        "panel.inspector.nav.two_way" => "Both Ways",
-        "panel.inspector.nav.extra_cost" => "Extra Cost",
-        "panel.inspector.nav.on_cross" => "On Cross",
         "panel.inspector.nav.signal_when_an_agent_crosses_u" => {
             "signal when an agent crosses\u{2026}"
         }

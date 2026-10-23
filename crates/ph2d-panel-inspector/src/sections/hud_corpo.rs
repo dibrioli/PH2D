@@ -42,6 +42,7 @@ fn bloco_raiz(
 ) -> f32 {
     let mut cur_y = y;
     if i.has_canvas {
+        cur_y = super::rows::subtitulo(scene, text_system, theme, x, w, cur_y, tr("component.ui_canvas.name"));
         for n in [N::RefWidth, N::RefHeight] {
             cur_y = num_row(scene, text_system, theme, hit_index, store, x, w, cur_y, n);
         }
@@ -54,7 +55,7 @@ fn bloco_raiz(
             x,
             w,
             cur_y,
-            tr("panel.inspector.hud.fit"),
+            tr("component.field.canvas_fields.3"),
             &crate::ids::INSP_HUD_FIT,
             // ⚠️ A ORDEM é a do `ph2d_hud::Fit::ALL`, e o gate
             // `o_selector_do_fit_oferece_todos_os_modos` prende-as uma à outra: um modo novo na
@@ -122,6 +123,7 @@ fn bloco_rotulo(
         );
     }
     if i.has_label {
+        cur_y = super::rows::subtitulo(scene, text_system, theme, x, w, cur_y, tr("component.ui_label.name"));
         cur_y = seg_row(
             scene,
             text_system,
@@ -131,7 +133,7 @@ fn bloco_rotulo(
             x,
             w,
             cur_y,
-            tr("panel.inspector.hud.source"),
+            tr("component.field.label_fields.1"),
             &crate::ids::INSP_HUD_SOURCE,
             &[
                 tr("panel.inspector.hud.source_authored"),
@@ -142,9 +144,9 @@ fn bloco_rotulo(
             usize::from(i.source),
         );
         for (k, dica) in [
-            (T::SourceName, tr("panel.inspector.hud.source_name")),
-            (T::Prefix, tr("panel.inspector.hud.prefix")),
-            (T::Suffix, tr("panel.inspector.hud.suffix")),
+            (T::SourceName, tr("component.field.label_fields.2")),
+            (T::Prefix, tr("component.field.label_fields.3")),
+            (T::Suffix, tr("component.field.label_fields.4")),
         ] {
             if !i.mostra_texto(k) {
                 continue;
@@ -220,6 +222,7 @@ fn bloco_botao(
 ) -> f32 {
     let mut cur_y = y;
     if i.has_button {
+        cur_y = super::rows::subtitulo(scene, text_system, theme, x, w, cur_y, tr("component.ui_button.name"));
         if let Some(idx) = ph2d_editor_core::hud_edits::HUD_TEXTS
             .iter()
             .position(|&t| t == T::Signal)
@@ -234,7 +237,7 @@ fn bloco_botao(
                 w,
                 cur_y,
                 idx,
-                tr("panel.inspector.hud.signal"),
+                tr("component.field.button_fields.1"),
             );
         }
         cur_y = check_row(
@@ -247,7 +250,7 @@ fn bloco_botao(
             w,
             cur_y,
             crate::ids::INSP_HUD_DISABLED,
-            tr("panel.inspector.hud.disabled"),
+            tr("component.field.button_fields.2"),
             i.disabled,
         );
         // ⚠️ As DUAS razões de um botão não responder, e elas são diferentes.
@@ -297,6 +300,7 @@ fn bloco_contador(
 ) -> f32 {
     let mut cur_y = y;
     if i.has_counter {
+        cur_y = super::rows::subtitulo(scene, text_system, theme, x, w, cur_y, tr("component.counter.name"));
         if let Some(idx) = ph2d_editor_core::hud_edits::HUD_TEXTS
             .iter()
             .position(|&t| t == T::CounterName)
@@ -311,7 +315,7 @@ fn bloco_contador(
                 w,
                 cur_y,
                 idx,
-                tr("panel.inspector.hud.counter_name"),
+                tr("component.field.counter_fields.1"),
             );
         }
         cur_y = num_row(
@@ -339,7 +343,7 @@ fn bloco_contador(
             w,
             cur_y,
             crate::ids::INSP_HUD_COUNTER_KEEP,
-            tr("panel.inspector.hud.counter_keep"),
+            tr("component.field.counter_fields.3"),
             i.counter_keep,
         );
         // ⚠️ **E o que ele NÃO faz, dito onde se lê a caixa:** um rebobinar do transporte repõe-no

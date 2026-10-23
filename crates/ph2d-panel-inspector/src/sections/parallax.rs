@@ -136,15 +136,27 @@ fn corpo(
     // é adimensional e a `0,05` (um vigésimo do curso útil), o ladrilho e a cerca são METROS, e a
     // deriva é metros por SEGUNDO. *O gate do número mágico pede-o, e pintar «m» num factor seria
     // mentir sobre o que o número é.*
-    let mut linhas: Vec<(&'static str, &[ph2d_a11y::NodeId], f64, Option<Unit>)> = vec![(
-        tr("panel.inspector.parallax.scroll_factor"),
+    //
+    // ⭐ O 1.º membro é o NOME do componente dono da linha (`None` = o do cartão, o `Parallax`), que é
+    // o prefixo com que um script a lê (`parallax_repeat.repeat`).
+    #[allow(clippy::type_complexity)]
+    let mut linhas: Vec<(
+        Option<&'static str>,
+        &'static str,
+        &[ph2d_a11y::NodeId],
+        f64,
+        Option<Unit>,
+    )> = vec![(
+        None,
+        tr("component.field.scroll_fields.0"),
         &[ids::INSP_PARALLAX_K_X, ids::INSP_PARALLAX_K_Y][..],
         0.05, // LITERAL-PX-OK: fracção adimensional
         None,
     )];
     if i.repeat.is_some() {
         linhas.push((
-            tr("panel.inspector.parallax.repeat_m"),
+            Some(tr("component.scroll_repeat.name")),
+            tr("component.field.repeat_fields.0"),
             &[ids::INSP_PARALLAX_TILE_X, ids::INSP_PARALLAX_TILE_Y][..],
             0.5, // LITERAL-PX-OK: passo em metros
             Some(Unit::Meters),
@@ -152,7 +164,8 @@ fn corpo(
     }
     if i.motion.is_some() {
         linhas.push((
-            tr("panel.inspector.parallax.drift_m_s"),
+            Some(tr("component.scroll_motion.name")),
+            tr("component.field.motion_fields.0"),
             &[ids::INSP_PARALLAX_VEL_X, ids::INSP_PARALLAX_VEL_Y][..],
             0.05, // LITERAL-PX-OK: passo em m/s
             // ⚠️ A unidade existe e o doc dizia m/s — a fileira pintava sem nenhuma (auditoria 26).
@@ -161,13 +174,15 @@ fn corpo(
     }
     if i.limits.is_some() {
         linhas.push((
-            tr("panel.inspector.parallax.limit_min_m"),
+            Some(tr("component.scroll_limits.name")),
+            tr("component.field.limits_fields.0"),
             &[ids::INSP_PARALLAX_MIN_X, ids::INSP_PARALLAX_MIN_Y][..],
             0.5, // LITERAL-PX-OK: passo em metros
             Some(Unit::Meters),
         ));
         linhas.push((
-            tr("panel.inspector.parallax.limit_max_m"),
+            None,
+            tr("component.field.limits_fields.1"),
             &[ids::INSP_PARALLAX_MAX_X, ids::INSP_PARALLAX_MAX_Y][..],
             0.5, // LITERAL-PX-OK: passo em metros
             Some(Unit::Meters),
@@ -176,9 +191,12 @@ fn corpo(
     let seccao = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
         2,
-        &linhas.iter().map(|t| t.0).collect::<Vec<_>>(),
+        &linhas.iter().map(|t| t.1).collect::<Vec<_>>(),
     );
-    for (n, (label, ids2, step, unit)) in linhas.into_iter().enumerate() {
+    for (n, (dono, label, ids2, step, unit)) in linhas.into_iter().enumerate() {
+        if let Some(dono) = dono {
+            cur_y = super::rows::subtitulo(scene, text_system, theme, x, w, cur_y, dono);
+        }
         cur_y = super::rows::fields_row(
             scene,
             text_system,
@@ -230,7 +248,7 @@ pub(crate) fn paint_parallax_section(
     let header = section_header(
         store,
         ph2d_editor_core::ids::INSP_LIVE_PARALLAX_SECTION,
-        tr("panel.inspector.parallax.parallax"),
+        tr("component.scroll_factor.name"),
     );
     paint_section_header(
         &header,

@@ -86,6 +86,14 @@ pub fn build_info_emitter(
     })
 }
 
+/// ⭐ **A lei do abanão** — o painel e o script (`camera_shake.punch`) passam por aqui: o expoente
+/// fica na faixa da `ph2d-shake`.
+pub(crate) fn sanitize_camera_shake(c: &mut CameraShake) {
+    c.expoente = c
+        .expoente
+        .clamp(ph2d_shake::EXPOENTE_MIN, ph2d_shake::EXPOENTE_MAX); // CLAMP-OK: a faixa é da lei
+}
+
 /// Aplica as edições da secção **CAMERA SHAKE**. Devolve `true` se alguma coisa mudou.
 ///
 /// ⚠️ **O expoente é COAGIDO à faixa da lei aqui**, e não no painel: o painel manda o que os chips
@@ -102,9 +110,7 @@ pub fn apply_shake(sim: &mut SimWorld, edits: &[(u64, SE)]) -> bool {
             SE::Amplitude(v) => c.amplitude = *v,
             SE::Frequencia(v) => c.frequencia = *v,
             SE::Decaimento(v) => c.decaimento = *v,
-            SE::Expoente(n) => {
-                c.expoente = (*n).clamp(ph2d_shake::EXPOENTE_MIN, ph2d_shake::EXPOENTE_MAX); // CLAMP-OK: a faixa é da lei
-            }
+            SE::Expoente(n) => c.expoente = *n,
             SE::Semente(v) => c.semente = *v,
             // ⭐⭐⭐ **O PERFIL escreve QUATRO campos e larga a SEMENTE**, e a ausência é a lei (ver
             // o cabeçalho do `ph2d_shake::perfil`): ela é IDENTIDADE e não sensação, e escrevê-la
@@ -114,12 +120,10 @@ pub fn apply_shake(sim: &mut SimWorld, edits: &[(u64, SE)]) -> bool {
                 c.amplitude = n.amplitude;
                 c.frequencia = n.frequencia;
                 c.decaimento = n.decaimento;
-                // ⚠️ Pela mesma porta do braço acima: a faixa é propriedade da lei, não do painel.
-                c.expoente = n
-                    .expoente
-                    .clamp(ph2d_shake::EXPOENTE_MIN, ph2d_shake::EXPOENTE_MAX); // CLAMP-OK: a faixa é da lei
+                c.expoente = n.expoente;
             }
         }
+        sanitize_camera_shake(&mut c);
         mudou = true;
     }
     mudou

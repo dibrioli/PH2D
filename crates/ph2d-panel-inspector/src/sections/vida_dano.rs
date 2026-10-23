@@ -45,23 +45,23 @@ fn corpo_dano(
     let rotulo = if d.per_second {
         tr("panel.inspector.vida.amount_per_second")
     } else {
-        tr("panel.inspector.vida.amount")
+        tr("component.field.damage_fields.1")
     };
     let seccao = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
         1,
         &[
-            tr("panel.inspector.vida.amount"),
+            tr("component.field.damage_fields.1"),
             tr("panel.inspector.vida.amount_per_second"),
-            tr("panel.inspector.vida.hitstop"),
-            tr("panel.inspector.vida.knockback"),
-            tr("panel.inspector.vida.knockback_lift"),
-            tr("panel.inspector.vida.team"),
+            tr("component.field.damage_fields.7"),
+            tr("component.field.damage_fields.8"),
+            tr("component.field.damage_fields.9"),
+            tr("component.field.damage_fields.2"),
             // ⭐ W6 — o tipo e o dano que DURA, na MESMA coluna.
-            tr("panel.inspector.vida.damage_kind"),
-            tr("panel.inspector.vida.over_time"),
-            tr("panel.inspector.vida.over_time_s"),
-            tr("panel.inspector.vida.over_time_every"),
+            tr("component.field.damage_fields.10"),
+            tr("component.field.damage_fields.11"),
+            tr("component.field.damage_fields.12"),
+            tr("component.field.damage_fields.13"),
         ],
     );
     let v = Some(ph2d_editor_core::widget::Unit::MetersPerSecond);
@@ -78,19 +78,19 @@ fn corpo_dano(
             (rotulo, ids::INSP_DANO_AMOUNT, 1.0, None), // LITERAL-PX-OK: pontos
             // ⭐ O IMPACTO de quem bate (plano 28, W5).
             (
-                tr("panel.inspector.vida.hitstop"),
+                tr("component.field.damage_fields.7"),
                 ids::INSP_DANO_HITSTOP,
                 0.01, // LITERAL-PX-OK: segundos
                 Some(ph2d_editor_core::widget::Unit::Seconds),
             ),
             (
-                tr("panel.inspector.vida.knockback"),
+                tr("component.field.damage_fields.8"),
                 ids::INSP_DANO_KNOCKBACK,
                 0.5, // LITERAL-PX-OK: m/s
                 v,
             ),
             (
-                tr("panel.inspector.vida.knockback_lift"),
+                tr("component.field.damage_fields.9"),
                 ids::INSP_DANO_KNOCKBACK_LIFT,
                 0.5, // LITERAL-PX-OK: m/s
                 v,
@@ -107,7 +107,7 @@ fn corpo_dano(
         f64,
         Option<ph2d_editor_core::widget::Unit>,
     )> = vec![(
-        tr("panel.inspector.vida.over_time"),
+        tr("component.field.damage_fields.11"),
         ids::INSP_DANO_OT_PER_S,
         0.5, // LITERAL-PX-OK: pontos/s
         None,
@@ -115,13 +115,13 @@ fn corpo_dano(
     if d.dura() {
         dura.extend([
             (
-                tr("panel.inspector.vida.over_time_s"),
+                tr("component.field.damage_fields.12"),
                 ids::INSP_DANO_OT_S,
                 0.1, // LITERAL-PX-OK: segundos
                 s,
             ),
             (
-                tr("panel.inspector.vida.over_time_every"),
+                tr("component.field.damage_fields.13"),
                 ids::INSP_DANO_OT_EVERY,
                 0.05, // LITERAL-PX-OK: segundos
                 s,
@@ -143,22 +143,22 @@ fn corpo_dano(
     for (id, chave, ligada) in [
         (
             ids::INSP_DANO_PER_SECOND,
-            "panel.inspector.vida.per_second",
+            "component.field.damage_fields.3",
             d.per_second,
         ),
         (
             ids::INSP_DANO_IGNORES_SHIELD,
-            "panel.inspector.vida.ignores_shield",
+            "component.field.damage_fields.4",
             d.ignores_shield,
         ),
         (
             ids::INSP_DANO_IGNORES_ARMOR,
-            "panel.inspector.vida.ignores_armor",
+            "component.field.damage_fields.5",
             d.ignores_armor,
         ),
         (
             ids::INSP_DANO_VANISH,
-            "panel.inspector.vida.vanish",
+            "component.field.damage_fields.6",
             d.vanish,
         ),
     ] {
@@ -187,7 +187,7 @@ fn corpo_dano(
         x,
         w,
         cur_y,
-        tr("panel.inspector.vida.damage_kind"),
+        tr("component.field.damage_fields.10"),
         ids::INSP_DANO_KIND,
         tr("panel.inspector.vida.damage_kind_hint"),
         seccao,
@@ -201,7 +201,7 @@ fn corpo_dano(
         x,
         w,
         cur_y,
-        tr("panel.inspector.vida.team"),
+        tr("component.field.damage_fields.2"),
         ids::INSP_DANO_TEAM,
         tr("panel.inspector.vida.damage_team_hint"),
         seccao,
@@ -232,7 +232,7 @@ pub(crate) fn paint_damage_section(
         w,
         y,
         ph2d_editor_core::ids::INSP_LIVE_DAMAGE_SECTION,
-        tr("panel.inspector.vida.damage"),
+        tr("component.damage.name"),
         // ⚠️ O aviso da selecção múltipla só uma vez: se há vida por cima, ela já o disse.
         if info.health.is_some() {
             1

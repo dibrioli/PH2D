@@ -360,9 +360,9 @@ fn o_roteiro_nomeia_rotulos_que_existem() {
     let viva = ph2d_i18n::tr("panel.inspector.ray.sees_x_at_y_m");
     let prefixo = viva.split('{').next().unwrap_or_default().trim_end();
     let rotulos = [
-        ph2d_i18n::tr("panel.inspector.ray.ray_sensor"),
-        ph2d_i18n::tr("panel.inspector.ray.direction"),
-        ph2d_i18n::tr("panel.inspector.ray.reach_m"),
+        ph2d_i18n::tr("component.ray_sensor.name"),
+        ph2d_i18n::tr("component.field.ray_sensor.1"),
+        ph2d_i18n::tr("component.field.ray_sensor.2"),
         ph2d_i18n::tr("panel.inspector.ray.sees_nothing_right_now"),
         prefixo,
     ];

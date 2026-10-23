@@ -94,7 +94,7 @@ fn corpo(
         w,
         cur_y,
         crate::ids::INSP_PART_EMITTING,
-        tr("panel.inspector.particles.emitting"),
+        tr("component.field.fields.1"),
         i.emitting,
     );
     cur_y = check_row(
@@ -107,7 +107,7 @@ fn corpo(
         w,
         cur_y,
         crate::ids::INSP_PART_ONE_SHOT,
-        tr("panel.inspector.particles.one_shot"),
+        tr("component.field.fields.2"),
         i.one_shot,
     );
     for n in [
@@ -131,7 +131,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("panel.inspector.particles.emission_shape"),
+        tr("component.field.fields.10"),
         &crate::ids::INSP_PART_SHAPE,
         &[
             tr("panel.inspector.particles.point"),
@@ -144,9 +144,17 @@ fn corpo(
     // ⭐ **As duas medidas só existem fora do ponto** — num ponto elas são inertes, e um controlo
     // vivo que não muda nada é a doença que os gates de param existem para curar.
     if i.shape != 0 {
-        for n in [N::ShapeW, N::ShapeH] {
-            cur_y = num_row(scene, text_system, theme, hit_index, store, x, w, cur_y, n);
-        }
+        cur_y = vec_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            (N::ShapeW, N::ShapeH),
+        );
     }
     // ── Para onde vão ────────────────────────────────────────────────────────
     cur_y = titulo(
@@ -170,9 +178,28 @@ fn corpo(
         cur_y,
         tr("panel.inspector.particles.forces"),
     );
-    for n in [N::GravityX, N::GravityY, N::Damping] {
-        cur_y = num_row(scene, text_system, theme, hit_index, store, x, w, cur_y, n);
-    }
+    cur_y = vec_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        (N::GravityX, N::GravityY),
+    );
+    cur_y = num_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        N::Damping,
+    );
     // ── Como são ─────────────────────────────────────────────────────────────
     cur_y = titulo(
         scene,
@@ -198,12 +225,12 @@ fn corpo(
         &[
             (
                 crate::ids::INSP_PART_COLOR,
-                tr("panel.inspector.particles.color"),
+                tr("component.field.fields.21"),
                 i.color,
             ),
             (
                 crate::ids::INSP_PART_COLOR_END,
-                tr("panel.inspector.particles.color_at_death"),
+                tr("component.field.fields.22"),
                 i.color_end,
             ),
         ],
@@ -218,7 +245,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("panel.inspector.particles.simulation_space"),
+        tr("component.field.fields.23"),
         &crate::ids::INSP_PART_SPACE,
         &[
             tr("panel.inspector.particles.world"),
@@ -226,6 +253,21 @@ fn corpo(
         ],
         usize::from(i.space),
     );
+    sinais(scene, text_system, theme, hit_index, store, x, w, cur_y)
+}
+
+/// Os quatro sinais (acende · apaga · recomeça · grita ao acabar), o NOME ao lado da dica.
+#[allow(clippy::too_many_arguments)]
+fn sinais(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    mut cur_y: f32,
+) -> f32 {
     // ── Os sinais ────────────────────────────────────────────────────────────
     cur_y = titulo(
         scene,
@@ -245,10 +287,10 @@ fn corpo(
         ][k];
         // ⭐ O NOME ao lado da dica, na mesma ordem — report do dono de 2026-09-22.
         let rotulos = [
-            tr("panel.inspector.particles.on_label"),
-            tr("panel.inspector.particles.off_label"),
-            tr("panel.inspector.particles.restart_label"),
-            tr("panel.inspector.particles.done_label"),
+            tr("component.field.fields.24"),
+            tr("component.field.fields.25"),
+            tr("component.field.fields.26"),
+            tr("component.field.fields.27"),
         ];
         let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &rotulos);
         cur_y = super::anim_rows::text_row(
@@ -286,7 +328,7 @@ pub(crate) fn paint_particles_section(
     let header = section_header(
         store,
         ph2d_editor_core::ids::INSP_LIVE_PARTICLES_SECTION,
-        tr("panel.inspector.particles.particles"),
+        tr("component.particle_emitter.name"),
     );
     paint_section_header(
         &header,

@@ -10,8 +10,8 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{
-    AnimDirection, AnimationTag, Entity, SPEED_MAX_Q16, SPEED_ONE_Q16, SimWorld, SpriteAnimations,
-    SpriteAnimator, World,
+    AnimDirection, AnimationTag, Entity, SPEED_ONE_Q16, SimWorld, SpriteAnimations, SpriteAnimator,
+    World,
 };
 use ph2d_editor_core::{AnimFieldEdit, InspectorAnimInfo, InspectorAnimRow, Toast};
 use ph2d_i18n::{tr, tr_with};
@@ -262,7 +262,7 @@ pub(super) fn apply_anim_edit(
             PlayerEdit::Autoplay(on) => p.autoplay = *on,
             PlayerEdit::Speed(v) => {
                 p.speed_q16 = (v * SPEED_ONE_Q16 as f32) as i32;
-                p.speed_q16 = p.speed_q16.clamp(-SPEED_MAX_Q16, SPEED_MAX_Q16);
+                ph2d_app_components::sprite_inspector::sanitize_sprite_animator(&mut p);
             }
             PlayerEdit::DirectionOverride(tag) => {
                 p.direction_override = (*tag > 0).then(|| AnimDirection::from_tag(tag - 1));

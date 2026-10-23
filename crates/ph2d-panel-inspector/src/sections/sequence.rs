@@ -73,7 +73,7 @@ fn linha_do_selector(
     y: f32,
     info: &InspectorSequenceInfo,
 ) -> f32 {
-    let rotulo = tr("panel.inspector.sequence.cutscene");
+    let rotulo = tr("component.field.sequence_fields.1");
     let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &[rotulo]);
     let row = ph2d_editor_core::property_row::paint_label_row(
         scene,
@@ -274,7 +274,7 @@ pub(crate) fn paint_sequence_section(
     let header = section_header(
         store,
         ph2d_editor_core::ids::INSP_LIVE_SEQ_SECTION,
-        tr("panel.inspector.sequence.sequence"),
+        tr("component.sequence_player.name"),
     );
     paint_section_header(
         &header,

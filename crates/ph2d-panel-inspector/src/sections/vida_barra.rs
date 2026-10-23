@@ -67,18 +67,18 @@ fn corpo_barra(
     // ⚠️ O ALVO vem logo a seguir à frase que fala dele — é o campo que a cura de duas das três
     // queixas pede.
     let rotulos = [
-        tr("panel.inspector.vida.bar_width"),
-        tr("panel.inspector.vida.bar_height"),
-        tr("panel.inspector.vida.bar_offset_x"),
-        tr("panel.inspector.vida.bar_offset_y"),
-        tr("panel.inspector.vida.bar_trail_delay"),
-        tr("panel.inspector.vida.bar_trail_speed"),
+        tr("component.field.health_bar_fields.2"),
+        tr("component.field.health_bar_fields.3"),
+        tr("component.field.health_bar_fields.4"),
+        tr("component.field.health_bar_fields.5"),
+        tr("component.field.health_bar_fields.9"),
+        tr("component.field.health_bar_fields.10"),
         // O ALVO — o campo de texto do topo, medido na MESMA coluna.
-        tr("panel.inspector.vida.bar_target"),
+        tr("component.field.health_bar_fields.1"),
         // As três amostras de cor do fim.
-        tr("panel.inspector.vida.bar_fill"),
-        tr("panel.inspector.vida.bar_trail"),
-        tr("panel.inspector.vida.bar_back"),
+        tr("component.field.health_bar_fields.6"),
+        tr("component.field.health_bar_fields.7"),
+        tr("component.field.health_bar_fields.8"),
     ];
     let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &rotulos);
     cur_y = nome(
@@ -90,7 +90,7 @@ fn corpo_barra(
         x,
         w,
         cur_y,
-        tr("panel.inspector.vida.bar_target"),
+        tr("component.field.health_bar_fields.1"),
         ids::INSP_BARRA_TARGET,
         tr("panel.inspector.vida.bar_target_hint"),
         seccao,
@@ -122,9 +122,9 @@ fn corpo_barra(
     );
     let [fill, trail, back] = ids::INSP_BARRA_CORES;
     for (id, chave, rgba) in [
-        (fill, "panel.inspector.vida.bar_fill", b.fill),
-        (trail, "panel.inspector.vida.bar_trail", b.trail),
-        (back, "panel.inspector.vida.bar_back", b.back),
+        (fill, "component.field.health_bar_fields.6", b.fill),
+        (trail, "component.field.health_bar_fields.7", b.trail),
+        (back, "component.field.health_bar_fields.8", b.back),
     ] {
         let cell = Rect::new(x, cur_y, w, ph2d_tokens::ROW_H_PX);
         cur_y = super::color_tint::paint_tint_swatch_cell(
@@ -151,7 +151,7 @@ fn corpo_barra(
         w,
         cur_y,
         ids::INSP_BARRA_HIDE_FULL,
-        tr("panel.inspector.vida.bar_hide_when_full"),
+        tr("component.field.health_bar_fields.11"),
         b.hide_when_full,
         seccao,
     )
@@ -181,7 +181,7 @@ pub(crate) fn paint_health_bar_section(
         w,
         y,
         ph2d_editor_core::ids::INSP_LIVE_HEALTH_BAR_SECTION,
-        tr("panel.inspector.vida.health_bar"),
+        tr("component.health_bar.name"),
         // ⚠️ O aviso da selecção múltipla só uma vez: quem está por cima já o disse.
         if info.health.is_some() || info.damage.is_some() {
             1

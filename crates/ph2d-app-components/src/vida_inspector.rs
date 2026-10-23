@@ -274,25 +274,54 @@ pub(crate) fn sanitize_health(h: &mut Health) {
 /// **Uma edição do DANO.** `true` = tocou no mundo.
 fn apply_damage(d: &mut Damage, edit: &E) -> bool {
     match edit {
-        E::DamageAmount(v) => d.amount = positivo(*v),
-        E::DamageTeam(t) => d.team = t.trim().to_string(),
+        E::DamageAmount(v) => d.amount = *v,
+        E::DamageTeam(t) => d.team.clone_from(t),
         E::PerSecond(b) => d.per_second = *b,
         E::IgnoresShield(b) => d.ignores_shield = *b,
         E::IgnoresArmor(b) => d.ignores_armor = *b,
         E::Vanish(b) => d.on_hit = if *b { OnHit::Vanish } else { OnHit::Stay },
-        E::HitstopS(v) => d.hitstop_s = positivo(*v),
-        // ⚠️ **O empurrão é LIVRE**: negativo PUXA para quem bate (um íman, um gancho) — a lei do
-        // empurrão aceita o sinal, e só o não-finito cai a zero.
-        E::Knockback(v) => d.knockback = if v.is_finite() { *v } else { 0.0 },
-        E::KnockbackLift(v) => d.knockback_lift = if v.is_finite() { *v } else { 0.0 },
-        // ⭐ W6. ⚠️ O intervalo `0` é LEGÍTIMO (pulsa a cada tique — a lava), logo é `≥ 0` e não `> 0`.
-        E::DamageKind(t) => d.kind = t.trim().to_string(),
-        E::OverTimePerS(v) => d.over_time_per_s = positivo(*v),
-        E::OverTimeS(v) => d.over_time_s = positivo(*v),
-        E::OverTimeEveryS(v) => d.over_time_every_s = positivo(*v),
+        E::HitstopS(v) => d.hitstop_s = *v,
+        E::Knockback(v) => d.knockback = *v,
+        E::KnockbackLift(v) => d.knockback_lift = *v,
+        E::DamageKind(t) => d.kind.clone_from(t),
+        E::OverTimePerS(v) => d.over_time_per_s = *v,
+        E::OverTimeS(v) => d.over_time_s = *v,
+        E::OverTimeEveryS(v) => d.over_time_every_s = *v,
         _ => return false,
     }
+    sanitize_damage(d);
     true
+}
+
+/// O valor finito, ou `0` — a lei de um número LIVRE (com sinal).
+fn livre(v: f32) -> f32 {
+    if v.is_finite() { v } else { 0.0 }
+}
+
+/// Um texto sem espaços nas pontas.
+fn apara(t: &mut String) {
+    if t.trim().len() != t.len() {
+        *t = t.trim().to_string();
+    }
+}
+
+/// ⭐ **A lei do DANO** (painel e `ph2d.set(e, "damage.…")`, doc CodeEditor 08 §3.5): quantidades e
+/// tempos `≥ 0`; ⚠️ o empurrão é LIVRE — negativo PUXA para quem bate (um íman, um gancho), só o
+/// não-finito cai a zero; o intervalo `0` é LEGÍTIMO (pulsa a cada tique — a lava). Idempotente.
+pub(crate) fn sanitize_damage(d: &mut Damage) {
+    for v in [
+        &mut d.amount,
+        &mut d.hitstop_s,
+        &mut d.over_time_per_s,
+        &mut d.over_time_s,
+        &mut d.over_time_every_s,
+    ] {
+        *v = positivo(*v);
+    }
+    d.knockback = livre(d.knockback);
+    d.knockback_lift = livre(d.knockback_lift);
+    apara(&mut d.team);
+    apara(&mut d.kind);
 }
 
 /// Uma cor com os quatro canais em `0..=1` — a amostra só produz isso, e outra rota (um script, um
@@ -306,22 +335,41 @@ fn cor(c: [f32; 4]) -> [f32; 4] {
 /// ⚠️ **Os deslocamentos são LIVRES** (uma barra pode ir abaixo ou ao lado) — só o não-finito cai
 /// a zero; o tamanho, o atraso e a velocidade são `≥ 0`.
 fn apply_bar(b: &mut HealthBar, edit: &E) -> bool {
-    let livre = |v: f32| if v.is_finite() { v } else { 0.0 };
     match edit {
-        E::BarTarget(t) => b.target = t.trim().to_string(),
-        E::BarWidth(v) => b.width = positivo(*v),
-        E::BarHeight(v) => b.height = positivo(*v),
-        E::BarOffsetX(v) => b.offset_x = livre(*v),
-        E::BarOffsetY(v) => b.offset_y = livre(*v),
-        E::BarFill(c) => b.fill = cor(*c),
-        E::BarTrail(c) => b.trail = cor(*c),
-        E::BarBack(c) => b.back = cor(*c),
-        E::BarTrailDelayS(v) => b.trail_delay_s = positivo(*v),
-        E::BarTrailSpeed(v) => b.trail_speed = positivo(*v),
+        E::BarTarget(t) => b.target.clone_from(t),
+        E::BarWidth(v) => b.width = *v,
+        E::BarHeight(v) => b.height = *v,
+        E::BarOffsetX(v) => b.offset_x = *v,
+        E::BarOffsetY(v) => b.offset_y = *v,
+        E::BarFill(c) => b.fill = *c,
+        E::BarTrail(c) => b.trail = *c,
+        E::BarBack(c) => b.back = *c,
+        E::BarTrailDelayS(v) => b.trail_delay_s = *v,
+        E::BarTrailSpeed(v) => b.trail_speed = *v,
         E::BarHideWhenFull(on) => b.hide_when_full = *on,
         _ => return false,
     }
+    sanitize_health_bar(b);
     true
+}
+
+/// ⭐ **A lei da BARRA** (painel e `ph2d.set(e, "health_bar.…")`): tamanho, atraso e velocidade
+/// `≥ 0`, deslocamentos livres, cores em `0..=1`, o alvo sem espaços nas pontas. Idempotente.
+pub(crate) fn sanitize_health_bar(b: &mut HealthBar) {
+    for v in [
+        &mut b.width,
+        &mut b.height,
+        &mut b.trail_delay_s,
+        &mut b.trail_speed,
+    ] {
+        *v = positivo(*v);
+    }
+    b.offset_x = livre(b.offset_x);
+    b.offset_y = livre(b.offset_y);
+    for c in [&mut b.fill, &mut b.trail, &mut b.back] {
+        *c = cor(*c);
+    }
+    apara(&mut b.target);
 }
 
 /// **O dreno de UMA edição.** `true` = tocou no mundo.

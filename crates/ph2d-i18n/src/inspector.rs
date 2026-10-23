@@ -73,11 +73,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "+{left_out} more \u{2014} Revert on the copy puts every piece back"
         }
         "panel.inspector.joint.paste_to" => "Paste to {targets} Joints",
-        "panel.inspector.joint.min_unit" => "Min",
-        "panel.inspector.joint.max_unit" => "Max",
         "panel.inspector.joint.add_wheel" => "Add Wheel ({n} on this rope)",
-        "panel.inspector.joint.target_unit" => "Target",
-        "panel.inspector.joint.speed_unit" => "Speed",
         "panel.inspector.joint.axis_min_unit" => "  Min",
         "panel.inspector.joint.axis_max_unit" => "  Max",
         "panel.inspector.physics.bake_range" => "Bake {start}-{end}s to Timeline",
@@ -119,7 +115,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ── O que a régua lexical NÃO conta, achado pelo `censo --cegos` (2026-09-18) ──────────
         // O TÍTULO da secção do 9-slice: recusado por começar com DÍGITO (não é Capitalizado
         // nem GRITADO), logo a régua lia-o como identificador.
-        "panel.inspector.slice.section_title" => "9-Slice",
         // A direcção «ping-pong» da animação: uma sigla de duas letras ENTRE quatro irmãs que
         // já vinham da tabela.
         "panel.inspector.animation.pp" => "PP",
@@ -199,8 +194,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         //    ela já vivia no balão (`parked_this_app_has_no`, registado no `populate_anchor`).
         //    ⚠️ Isto INVERTE o que o doc do `RUNTIME_BOX_LABEL` argumentava (*«a razão vai no
         //    RÓTULO e não só na dica»*); aquele doc diz agora que a decisão foi revista.
-        "panel.inspector.anchors.show_anchors_at_runtime_no" => "Show anchors at runtime",
-        "panel.inspector.anchors.always_show_anchors" => "Always show anchors",
         "panel.inspector.anchors.anchor_name" => "anchor_name\u{2026}",
         "panel.inspector.anchors.rotation_deg" => "Rotation",
         // ⛔⛔ **As duas ENCURTARAM por ordem do dono (2026-09-19)** — o `Center` media `~190 px`
@@ -217,8 +210,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anchors.this_object_s_anchors" => "This object's anchors",
         "panel.inspector.anchors.no_anchors_on_this_sprite" => "No anchors on this sprite.",
         "panel.inspector.anchors.plus_add_anchor" => "+ Add Anchor",
-        "panel.inspector.animation.playing" => "Playing",
-        "panel.inspector.animation.autoplay" => "Autoplay",
         "panel.inspector.animation.speed_x" => "Speed (x)",
         "panel.inspector.animation.direction_override" => "Direction override",
         "panel.inspector.animation.inherit" => "Inherit",
@@ -273,16 +264,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.audio.no_audio_listener_2d_in" => {
             "No Audio Listener 2D in the scene \u{2014} sound plays with no position."
         }
-        "panel.inspector.audio.volume_db" => "Volume (dB)",
-        "panel.inspector.audio.pitch" => "Pitch",
-        "panel.inspector.audio.max_distance_m" => "Max Distance",
-        "panel.inspector.audio.attenuation" => "Attenuation",
-        "panel.inspector.audio.non_spatialized_radius_m" => "Non-Spatialized Radius",
-        "panel.inspector.audio.panning_strength" => "Panning Strength",
-        "panel.inspector.audio.max_polyphony" => "Max Polyphony",
-        "panel.inspector.audio.loop" => "Loop",
-        "panel.inspector.audio.autoplay" => "Autoplay",
-        "panel.inspector.audio.audio" => "Audio",
         "panel.inspector.audio.these_are_the_scene_s" => {
             "These are the scene's ears \u{2014} sound is heard from here."
         }
@@ -297,33 +278,19 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.camera.nothing_in_the_scene_has" => {
             "Nothing in the scene has that name \u{2014} the camera stays put."
         }
-        "panel.inspector.camera.dead_zone" => "Dead Zone",
-        "panel.inspector.camera.lookahead_s" => "Lookahead",
-        "panel.inspector.camera.follow_offset_m" => "Follow Offset",
         "panel.inspector.camera.limits_are_smaller_than_the" => {
             "Limits are smaller than the view \u{2014} the camera pins to their centre."
         }
-        "panel.inspector.camera.min_m" => "Min",
-        "panel.inspector.camera.max_m" => "Max",
         "panel.inspector.color_tint.color_and_tint" => "Color & Tint",
-        "panel.inspector.color_tint.tint" => "Tint",
-        "panel.inspector.color_tint.self_tint" => "Self Tint",
-        "panel.inspector.color_tint.opacity" => "Opacity",
-        "panel.inspector.color_tint.tint_fill" => "Tint Fill",
         // ⭐ **Encurtado por ordem do dono (2026-09-21)** — ele escreveu-o assim no desenho dele.
         // ⛔⛔ E aqui isso NÃO é cosmética: medido, o nome comprido é mais largo do que METADE do
         // painel, logo ele come a coluna do controlo e as quatro amostras do per-corner saíam a
         // `35 px`. *A explicação vive no balão do controlo; o nome vive na coluna.*
-        "panel.inspector.color_tint.per_corner_tint_vertex_gradient" => "Per-corner Tint",
         "panel.inspector.color_tint.per_corner_tint_hint" => {
             "Each corner of the quad gets its own tint; the renderer blends between them."
         }
-        "panel.inspector.color_tint.top_left_corner_tint" => "Top-left corner tint",
-        "panel.inspector.color_tint.top_right_corner_tint" => "Top-right corner tint",
-        "panel.inspector.color_tint.bottom_left_corner_tint" => "Bottom-left corner tint",
-        "panel.inspector.color_tint.bottom_right_corner_tint" => "Bottom-right corner tint",
+        "panel.inspector.color_tint.corner_tint_of" => "{corner} corner tint",
         "panel.inspector.color_tint.equalize_corners" => "Equalize Corners",
-        "panel.inspector.render_source.emissive" => "Emissive",
         "panel.inspector.identity.name" => "Name\u{2026}",
         "panel.inspector.identity.visible" => "Visible",
         "panel.inspector.instance.edit_prefab" => "Edit Prefab",
@@ -340,35 +307,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.joint.on" => "On",
         "panel.inspector.joint.paste_properties" => "Paste Properties",
         "panel.inspector.joint.travel" => "Travel",
-        "panel.inspector.joint.limits" => "Limits",
         "panel.inspector.joint.rigid" => "Rigid",
         "panel.inspector.joint.soft" => "Soft",
         "panel.inspector.joint.velocity" => "Velocity",
         "panel.inspector.joint.position" => "Position",
-        "panel.inspector.joint.physics_joint" => "Physics Joint",
-        "panel.inspector.joint.active" => "Active",
-        "panel.inspector.joint.kind" => "Kind",
         "panel.inspector.joint.copy_properties" => "Copy Properties",
         "panel.inspector.joint.delete_joint" => "Delete Joint",
-        "panel.inspector.joint.rest_length_m" => "Rest Length",
-        "panel.inspector.joint.stiffness" => "Stiffness",
-        "panel.inspector.joint.damping" => "Damping",
         "panel.inspector.joint.length_m" => "Length",
         "panel.inspector.joint.rope_length_m" => "Rope Length",
-        "panel.inspector.joint.max_length_m" => "Max Length",
-        "panel.inspector.joint.motor" => "Motor",
-        "panel.inspector.joint.mode" => "Mode",
-        "panel.inspector.joint.max_force" => "Max Force",
-        "panel.inspector.joint.breakable" => "Breakable",
-        "panel.inspector.joint.break_force_n" => "Break Force",
-        "panel.inspector.joint.break_torque_n_m" => "Break Torque",
         "panel.inspector.joint.rotation" => "Rotation",
         "panel.inspector.joint.free" => "Free",
         "panel.inspector.joint.limited" => "Limited",
         "panel.inspector.joint.locked" => "Locked",
         "panel.inspector.joint.motor_axis" => "Motor Axis",
         "panel.inspector.joint.anchor_b" => "Anchor B",
-        "panel.inspector.joint.collide" => "Collide",
         "panel.inspector.joint.object" => "Object",
         "panel.inspector.joint.world" => "World",
         "panel.inspector.joint.body_a" => "Body A",
@@ -381,7 +333,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.material.screen" => "Screen",
         "panel.inspector.material.premult" => "Premult",
         "panel.inspector.material.material_and_blend" => "Material & Blend",
-        "panel.inspector.material.blend_mode" => "Blend Mode",
         "panel.inspector.material.material_default_shader_runtime_pending" => {
             "Material: Default \u{00b7} shader runtime pending"
         }
@@ -390,18 +341,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.ordering.background" => "Background",
         "panel.inspector.ordering.midground" => "Midground",
         "panel.inspector.ordering.foreground" => "Foreground",
-        "panel.inspector.ordering.sorting_layer" => "Sorting Layer",
         "panel.inspector.ordering.center" => "Center",
         "panel.inspector.ordering.pivot" => "Pivot",
         "panel.inspector.ordering.custom" => "Custom",
-        "panel.inspector.ordering.sort_point" => "Sort Point",
-        "panel.inspector.ordering.axis_x" => "Axis X",
-        "panel.inspector.ordering.axis_y" => "Axis Y",
+        "panel.inspector.ordering.axis_x" => "{axis} X",
+        "panel.inspector.ordering.axis_y" => "{axis} Y",
         "panel.inspector.ordering.ordering" => "Ordering",
         "panel.inspector.physics.ball" => "Ball",
         "panel.inspector.physics.box" => "Box",
         "panel.inspector.physics.capsule" => "Capsule",
-        "panel.inspector.physics.physics_body" => "Physics Body",
         "panel.inspector.physics.radius_m" => "Radius",
         "panel.inspector.physics.half_height_m" => "Half Height",
         "panel.inspector.physics.half_width_m" => "Half Width",
@@ -415,13 +363,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.physics.all" => "All",
         "panel.inspector.physics.position" => "Position",
         "panel.inspector.physics.rotation" => "Rotation",
-        "panel.inspector.physics.body" => "Body",
-        "panel.inspector.physics.collider" => "Collider",
         "panel.inspector.physics.plus_1_more_shape_from" => "+ 1 more shape from a child",
-        "panel.inspector.physics.offset_x_m" => "Offset X",
-        "panel.inspector.physics.offset_y_m" => "Offset Y",
-        "panel.inspector.physics.gravity_scale" => "Gravity Scale",
-        "panel.inspector.physics.dominance" => "Dominance",
         "panel.inspector.physics.collision" => "Collision",
         "panel.inspector.physics.freeze_x" => "Freeze X",
         "panel.inspector.physics.freeze_y" => "Freeze Y",
@@ -449,7 +391,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.physics.shape_with_no_body_above" => {
             "Shape with no body above it \u{00b7} not simulated"
         }
-        "panel.inspector.physics.density" => "Density",
         "panel.inspector.physics.auto" => "Auto",
         "panel.inspector.physics.manual" => "Manual",
         "panel.inspector.physics.average" => "Average",
@@ -458,36 +399,21 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.physics.max" => "Max",
         "panel.inspector.physics.combine" => "Combine",
         "panel.inspector.physics.replace" => "Replace",
-        "panel.inspector.physics.linear_damping" => "Linear Damping",
-        "panel.inspector.physics.angular_damping" => "Angular Damping",
-        "panel.inspector.physics.damp_mode" => "Damp Mode",
-        "panel.inspector.physics.bounce" => "Bounce",
-        "panel.inspector.physics.friction" => "Friction",
-        "panel.inspector.physics.bounce_combine" => "Bounce Combine",
-        "panel.inspector.physics.friction_combine" => "Friction Combine",
         "panel.inspector.physics.mass" => "Mass",
-        "panel.inspector.physics.mass_kg" => "Mass (kg)",
         "panel.inspector.physics.solid" => "Solid",
         "panel.inspector.physics.sensor" => "Sensor",
         "panel.inspector.physics.off" => "Off",
         "panel.inspector.physics.on" => "On",
         "panel.inspector.physics.zone" => "Zone",
         "panel.inspector.physics.world" => "World",
-        "panel.inspector.physics.layer" => "Layer",
-        "panel.inspector.physics.trigger" => "Trigger",
         "panel.inspector.physics.one_way" => "One-Way",
         "panel.inspector.physics.wall_cling" => "Wall Cling",
-        "panel.inspector.physics.grip" => "Grip",
         "panel.inspector.physics.signal_on_hit" => "Signal on hit\u{2026}",
         "panel.inspector.physics.signal_on_leave" => "Signal on leave\u{2026}",
-        "panel.inspector.physics.force_x_n" => "Force X",
-        "panel.inspector.physics.force_y_n" => "Force Y",
+        // Um par (`Vec2`) pintado em duas linhas: o rótulo é o do campo no catálogo.
+        "panel.inspector.label_x" => "{label} X",
+        "panel.inspector.label_y" => "{label} Y",
         "panel.inspector.physics.force_axes" => "Force Axes",
-        "panel.inspector.physics.torque_n_m" => "Torque (N·m)",
-        "panel.inspector.physics.falloff" => "Falloff",
-        "panel.inspector.physics.drag" => "Drag",
-        "panel.inspector.physics.fluid_density" => "Fluid Density",
-        "panel.inspector.physics.shape_drag" => "Shape Drag",
         "panel.inspector.properties.variant" => "Variant",
         "panel.inspector.properties.properties" => "Properties",
         "panel.inspector.render_source.render_source" => "Render Source",
@@ -499,8 +425,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.render_source.individual" => "Individual",
         "panel.inspector.render_source.hand_packed" => "Hand-packed",
         "panel.inspector.render_source.cooked_texture" => "Cooked texture",
-        "panel.inspector.render_source.region" => "Region",
-        "panel.inspector.render_source.filter_clip" => "Filter Clip",
         "panel.inspector.render_source.format" => "Format",
         "panel.inspector.render_source.rgba16_doubles_memory_forces_individual" => {
             "RGBA16 doubles memory, forces Individual, and leaves the sheet"
@@ -518,10 +442,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.sampling.repeat" => "Repeat",
         "panel.inspector.sampling.mirror" => "Mirror",
         "panel.inspector.sampling.sampling" => "Sampling",
-        "panel.inspector.sampling.texture_filter" => "Texture Filter",
-        "panel.inspector.sampling.texture_repeat" => "Texture Repeat",
-        "panel.inspector.sampling.uv_scale" => "UV Scale",
-        "panel.inspector.sampling.uv_offset" => "UV Offset",
         "panel.inspector.slice.per_region_tiling" => "Per-region tiling",
         "panel.inspector.slice.tile_all" => "Tile all",
         "panel.inspector.slice.stretch_all" => "Stretch all",
@@ -531,18 +451,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Whole = entire tiles, so the last one meets the border. \
                           Mirror always uses whole tiles."
         }
-        "panel.inspector.slice.tile_mode" => "Tile Mode",
-        "panel.inspector.slice.enable_9_slice" => "Enable 9-slice",
-        "panel.inspector.slice.fill_center" => "Fill Center",
         "panel.inspector.sprite_sheet.sprite_sheet" => "Sprite Sheet",
-        "panel.inspector.sprite_sheet.centered" => "Centered",
-        "panel.inspector.sprite_sheet.offset_x" => "Offset X",
-        "panel.inspector.sprite_sheet.offset_y" => "Offset Y",
-        "panel.inspector.sprite_sheet.flip_h" => "Flip H",
-        "panel.inspector.sprite_sheet.flip_v" => "Flip V",
-        "panel.inspector.sprite_sheet.h_frames" => "H Frames",
-        "panel.inspector.sprite_sheet.v_frames" => "V Frames",
-        "panel.inspector.sprite_sheet.frame" => "Frame",
+        "panel.inspector.sprite_sheet.offset_x" => "{offset} X",
+        "panel.inspector.sprite_sheet.offset_y" => "{offset} Y",
         "panel.inspector.sprite_sheet.show_sheet_on_canvas" => "Show sheet on canvas",
         "panel.inspector.timers.plus_add_timer" => "+ Add Timer",
         "panel.inspector.timers.x_remove_timer" => "x Remove Timer",
@@ -568,34 +479,22 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.transform.transform" => "Transform",
         "panel.inspector.transform.rotation" => "Rotation",
         "panel.inspector.transform.skew" => "Skew X / Y",
-        "panel.inspector.visibility.visibility_layer" => "Visibility Layer",
-        "panel.inspector.visibility.clip_children" => "Clip Children",
         "panel.inspector.visibility.disabled" => "Disabled",
         "panel.inspector.visibility.clip" => "Clip",
         "panel.inspector.visibility.clip_plus_draw" => "Clip+Draw",
-        "panel.inspector.visibility.mask_interaction" => "Mask Interaction",
         "panel.inspector.visibility.none" => "None",
         "panel.inspector.visibility.inside" => "Inside",
         "panel.inspector.visibility.outside" => "Outside",
-        "panel.inspector.visibility.mask_alpha_cutoff" => "Mask Alpha Cutoff",
         "panel.inspector.visibility.mask_source_mask2d" => "Mask Source (Mask2D)",
         "panel.inspector.visibility.on_screen_enabler" => "On-Screen Enabler",
-        "panel.inspector.visibility.enabler_rect" => "Enabler Rect",
         "panel.inspector.wheel.auto" => "Auto",
         "panel.inspector.wheel.over" => "Over",
         "panel.inspector.wheel.under" => "Under",
         "panel.inspector.wheel.drum" => "Drum",
         "panel.inspector.wheel.weston" => "Weston",
-        "panel.inspector.wheel.pulley_wheel" => "Pulley Wheel",
-        "panel.inspector.wheel.radius_m" => "Radius",
-        "panel.inspector.wheel.out_radius_m" => "Out Radius",
         "panel.inspector.wheel.differential" => "Differential",
-        "panel.inspector.wheel.order" => "Order",
-        "panel.inspector.wheel.wrap" => "Wrap",
-        "panel.inspector.wheel.axle_breaks" => "Axle Breaks",
         "panel.inspector.wheel.off" => "Off",
         "panel.inspector.wheel.on" => "On",
-        "panel.inspector.wheel.break_force_n" => "Break Force",
         "panel.inspector.wheel.mounted_on" => "Mounted On",
         "panel.inspector.wheel.scenery" => "(scenery)",
         "panel.inspector.wheel.gear" => "Gear",
@@ -614,22 +513,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.animation.repeat_forever" => "Repeat",
         "panel.inspector.animation.hold" => "Hold",
         "panel.inspector.animation.repeat_delay" => "Repeat delay",
-        "panel.inspector.camera.damping_1_s" => "Damping",
         "panel.inspector.joint.swap_a_b" => "Swap A / B",
-        "panel.inspector.physics.init_vel_x_m_s" => "Init Vel X",
-        "panel.inspector.physics.init_vel_y_m_s" => "Init Vel Y",
-        "panel.inspector.physics.init_spin_deg_s" => "Init Spin",
-        "panel.inspector.physics.belt_m_s" => "Belt",
         "panel.inspector.render_source.reimport_at_current_px_m" => "Reimport at current px/m",
         "panel.inspector.slice.corners_f_fixed_on_off" => {
             "Corners F fixed (on/off). Edges + centre: S stretch, R repeat, \
                              M mirror, - blank."
         }
-        "panel.inspector.slice.borders_l_t_px" => "Borders L / T",
-        "panel.inspector.slice.borders_r_b_px" => "Borders R / B",
-        "panel.inspector.slice.size_x_y_m_0" => "Size X / Y",
+        "panel.inspector.slice.borders_pair" => "Borders {a} / {b}",
+        "panel.inspector.slice.size_x_y_m_0" => "{size} X / Y",
         "panel.inspector.slice.size_hint" => "0 = use the sprite size.",
-        "panel.inspector.wheel.motor_s" => "Motor",
         // ⭐⭐⭐ **OS NOMES das linhas de TEXTO** — report do dono, 2026-09-22: *«campos de texto
         //    difíceis de saber para que servem»*. A chave irmã sem `_label` é o EXEMPLO que a caixa
         //    mostra enquanto está VAZIA; esta é o NOME, que fica na coluna da esquerda para sempre.
@@ -639,13 +531,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.animation.name_label" => "Name",
         "panel.inspector.animation.on_finish_label" => "On Finish",
         "panel.inspector.animation.on_loop_label" => "On Loop",
-        "panel.inspector.audio.sound_label" => "Sound",
-        "panel.inspector.camera.target_label" => "Target",
         "panel.inspector.timers.name_label" => "Name",
         "panel.inspector.timers.signal_label" => "Signal",
         "panel.inspector.anchors.name_label" => "Name",
-        "panel.inspector.physics.on_hit_label" => "On Hit",
-        "panel.inspector.physics.on_leave_label" => "On Leave",
         // ph2d-migrar-texto:end
         _ => return None,
     })

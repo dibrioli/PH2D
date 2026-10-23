@@ -121,8 +121,7 @@ pub fn apply_path_follow_edit(
             // ⚠️ **O tecto é o do MODELO** — o relógio de um seguidor é o `Timers[i]`, e a lista
             // dele nunca passa do `TIMERS_MAX`. *Uma cerca só na UI é uma cerca que o próximo
             // chamador contorna.*
-            #[allow(clippy::cast_possible_truncation)]
-            let n = (*n).min((ph2d_ecs::TIMERS_MAX - 1) as u8);
+            let n = teto_do_relogio(*n);
             if pf.relogio == n {
                 return false;
             }
@@ -155,12 +154,26 @@ pub fn apply_path_follow_edit(
         // ⚠️ **A fracção satura em `0..1`** — fora dela o `rem_euclid` da lei devolveria o mesmo
         // ponto por dois valores do campo, e o artista teria duas posições do slider com a mesma
         // saída.
-        PathFollowFieldEdit::Deslocamento(v) => pf.deslocamento = v.clamp(0.0, 1.0),
+        PathFollowFieldEdit::Deslocamento(v) => pf.deslocamento = *v,
         PathFollowFieldEdit::Alinha(b) => pf.alinha = *b,
         PathFollowFieldEdit::Angulo(v) => pf.angulo = *v,
         PathFollowFieldEdit::Lado(v) => pf.lado = *v,
     }
+    sanitize_path_follow(&mut pf);
     true
+}
+
+/// O relógio dentro do tecto do MODELO (`TIMERS_MAX`).
+#[allow(clippy::cast_possible_truncation)]
+fn teto_do_relogio(n: u8) -> u8 {
+    n.min((ph2d_ecs::TIMERS_MAX - 1) as u8)
+}
+
+/// ⭐ **A lei do SEGUIDOR** (painel e `ph2d.set(e, "path_follow.…")`, doc CodeEditor 08 §3.5): o
+/// relógio no tecto do modelo e o começo em `0..=1`. Idempotente.
+pub(crate) fn sanitize_path_follow(pf: &mut PathFollow) {
+    pf.relogio = teto_do_relogio(pf.relogio);
+    pf.deslocamento = pf.deslocamento.clamp(0.0, 1.0);
 }
 
 /// **Aplica as edições que o painel emitiu neste quadro.** `true` = o documento mudou.

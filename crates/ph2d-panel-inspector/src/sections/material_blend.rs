@@ -78,7 +78,7 @@ pub(crate) fn paint_material_blend_section(
     let sec = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
         1,
-        &[tr("panel.inspector.material.blend_mode")],
+        &[tr("component.field.blend_mode.1")],
     );
     let blend_row = super::rows::property_label_row(
         scene,
@@ -88,12 +88,12 @@ pub(crate) fn paint_material_blend_section(
         w,
         yy,
         h,
-        tr("panel.inspector.material.blend_mode"),
+        tr("component.field.blend_mode.1"),
         sec,
     );
     let seg = SegmentedAdaptive::new(
         core_ids::INSP_LIVE_BLEND_SECTION,
-        tr("panel.inspector.material.blend_mode"),
+        tr("component.field.blend_mode.1"),
         ids::INSP_SAMPLE_BLEND
             .iter()
             .zip(BLEND_LABELS)

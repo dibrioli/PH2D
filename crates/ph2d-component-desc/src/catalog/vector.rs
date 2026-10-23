@@ -57,7 +57,10 @@
 //!
 //! ⚠️ **Dois helpers intrínsecos, e a diferença é load-bearing:** [`g`] é *não há neutro*
 //! (o tipo não tem `Default`); [`i`] é *há neutro e ele é o que o artista não quer*.
-use crate::{ComponentCategory as C, ComponentDesc as D};
+use crate::{ComponentCategory as C, ComponentDesc as D, Hidden};
+
+// ⚠️ Todos se editam no painel do VETOR, nenhum num cartão do Inspector (medido: zero `Vec*` em
+// `ph2d-panel-inspector`) ⇒ `Hidden::OtherEditor` nos dois helpers (doc CodeEditor 08 §3.11).
 
 /// Um `Vec*` que chega com o GESTO — **não tem `Default`**, e a lista abaixo não foi
 /// escolhida: ela é a saída do compilador ao converter os registradores para
@@ -65,7 +68,7 @@ use crate::{ComponentCategory as C, ComponentDesc as D};
 /// neutro que signifique alguma coisa — uma `VecShape` sem geometria não é uma forma vazia,
 /// não é uma forma.
 const fn g(canonical_name: &'static str, display_key: &'static str) -> D {
-    D::intrinsic(canonical_name, display_key, C::Vector, &[])
+    D::intrinsic(canonical_name, display_key, C::Vector, &[]).hidden(Hidden::OtherEditor)
 }
 
 /// ⭐ **Uma ROW ou um GESTO da secção, não um item de paleta** (varredura de 2026-09-14 — ver o
@@ -74,7 +77,7 @@ const fn g(canonical_name: &'static str, display_key: &'static str) -> D {
 /// `Default`, é o **CONTEXTO** (a escala da selecção, qual dos dois escolhidos é o guia, que o eixo
 /// de simetria se captura no nascimento do traço).
 const fn i(canonical_name: &'static str, display_key: &'static str) -> D {
-    D::intrinsic(canonical_name, display_key, C::Vector, &[])
+    D::intrinsic(canonical_name, display_key, C::Vector, &[]).hidden(Hidden::OtherEditor)
 }
 
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).

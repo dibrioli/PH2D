@@ -5,6 +5,11 @@ use super::*;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_i18n::tr;
 
+/// Uma linha do deslocamento: o nome do campo (`sprite.offset`) mais o eixo.
+fn eixo(key: &str) -> String {
+    ph2d_i18n::tr_with(key, &[("offset", &tr("component.field.sprite.10"))])
+}
+
 /// ⭐⭐⭐ **A COLUNA desta secção, medida sobre os SETE nomes de linha inteira que ela pinta.**
 ///
 /// ⛔⛔ Até 2026-09-15 ela era a **metade cega** ([`property_row_columns`] sem nome), e o
@@ -21,12 +26,12 @@ fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Secca
         text_system,
         1,
         &[
-            tr("panel.inspector.sprite_sheet.centered"),
-            tr("panel.inspector.sprite_sheet.offset_x"),
-            tr("panel.inspector.sprite_sheet.offset_y"),
-            tr("panel.inspector.sprite_sheet.h_frames"),
-            tr("panel.inspector.sprite_sheet.v_frames"),
-            tr("panel.inspector.sprite_sheet.frame"),
+            tr("component.field.sprite.9"),
+            &eixo("panel.inspector.sprite_sheet.offset_x"),
+            &eixo("panel.inspector.sprite_sheet.offset_y"),
+            tr("component.field.sprite_grid.1"),
+            tr("component.field.sprite_grid.2"),
+            tr("component.field.sprite_grid.3"),
             tr("panel.inspector.sprite_sheet.show_sheet_on_canvas"),
         ],
     )
@@ -143,7 +148,7 @@ pub(crate) fn paint_sprite_sheet_section(
         cur_y,
         (
             ids::INSP_SPRITE_CENTERED,
-            tr("panel.inspector.sprite_sheet.centered"),
+            tr("component.field.sprite.9"),
             matches!(ce_value, CheckboxValue::Checked),
         ),
         sec,
@@ -153,7 +158,7 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        tr("panel.inspector.sprite_sheet.offset_x"),
+        &eixo("panel.inspector.sprite_sheet.offset_x"),
         ids::INSP_SPRITE_OFFSET_X,
     );
     cur_y += field_h + row_gap;
@@ -162,7 +167,7 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        tr("panel.inspector.sprite_sheet.offset_y"),
+        &eixo("panel.inspector.sprite_sheet.offset_y"),
         ids::INSP_SPRITE_OFFSET_Y,
     );
     cur_y += field_h + row_gap;
@@ -183,7 +188,7 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        tr("panel.inspector.sprite_sheet.h_frames"),
+        tr("component.field.sprite_grid.1"),
         ids::INSP_SPRITE_HFRAMES,
     );
     cur_y += field_h + row_gap;
@@ -192,7 +197,7 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        tr("panel.inspector.sprite_sheet.v_frames"),
+        tr("component.field.sprite_grid.2"),
         ids::INSP_SPRITE_VFRAMES,
     );
     cur_y += field_h + row_gap;
@@ -201,7 +206,7 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        tr("panel.inspector.sprite_sheet.frame"),
+        tr("component.field.sprite_grid.3"),
         ids::INSP_SPRITE_FRAME,
     );
     cur_y += field_h + row_gap;
@@ -323,12 +328,12 @@ fn paint_flip_rows(
         &[
             (
                 ids::INSP_SPRITE_FLIP_X,
-                tr("panel.inspector.sprite_sheet.flip_h"),
+                tr("component.field.sprite.2"),
                 matches!(fx_value, CheckboxValue::Checked),
             ),
             (
                 ids::INSP_SPRITE_FLIP_Y,
-                tr("panel.inspector.sprite_sheet.flip_v"),
+                tr("component.field.sprite.3"),
                 matches!(fy_value, CheckboxValue::Checked),
             ),
         ],

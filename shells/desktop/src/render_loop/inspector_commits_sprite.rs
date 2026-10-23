@@ -5,6 +5,7 @@
 //! §11 Animation levou-o a 611 em 2026-08-23. A regra da casa é cortar para o irmão, nunca
 //! declarar exceção, e o que sai é o que não é roteamento.
 
+use ph2d_app_components::sprite_inspector::sanitize_sprite_editables;
 use ph2d_ecs::{SpriteCornerTint, SpriteGrid, SpriteRegion};
 use ph2d_editor_core::SpriteFieldEdit;
 use ph2d_i18n::tr_with;
@@ -60,8 +61,8 @@ pub(super) enum SpriteEditTarget {
     CornerTint,
 }
 
-/// Apply one [`SpriteFieldEdit`], enforcing the schema invariants the Inspector widgets can't
-/// (anatomia §1.6): `hframes`/`vframes >= 1`, `frame < hframes*vframes`, `opacity ∈ [0, 1]`.
+/// Apply one [`SpriteFieldEdit`], then the law the script shares (`sprite_inspector`, anatomia
+/// §1.6): `hframes`/`vframes >= 1`, `frame < hframes*vframes`, `opacity ∈ [0, 1]`, region w/h `>= 0`.
 /// The frame index is re-clamped whenever the grid shrinks so a stale frame can never index
 /// past the sheet. This is the single authoring write boundary for the editable sprite fields.
 ///
@@ -74,7 +75,7 @@ pub(super) fn apply_sprite_field(
     t: &mut SpriteEditables,
     edit: SpriteFieldEdit,
 ) -> SpriteEditTarget {
-    match edit {
+    let target = match edit {
         SpriteFieldEdit::FlipX(b) => {
             t.sprite.flip_x = b;
             SpriteEditTarget::Sprite
@@ -98,18 +99,15 @@ pub(super) fn apply_sprite_field(
             SpriteEditTarget::Sprite
         }
         SpriteFieldEdit::Hframes(n) => {
-            t.grid.hframes = n.max(1);
-            clamp_frame(&mut t.grid);
+            t.grid.hframes = n;
             SpriteEditTarget::Grid
         }
         SpriteFieldEdit::Vframes(n) => {
-            t.grid.vframes = n.max(1);
-            clamp_frame(&mut t.grid);
+            t.grid.vframes = n;
             SpriteEditTarget::Grid
         }
         SpriteFieldEdit::Frame(f) => {
             t.grid.frame = f;
-            clamp_frame(&mut t.grid);
             SpriteEditTarget::Grid
         }
         // ⭐ Ligar/desligar a região É anexar/retirar o componente.
@@ -127,7 +125,7 @@ pub(super) fn apply_sprite_field(
             // Schema invariant (anatomia §1.6): w/h kept `>= 0`. A negative
             // extent would invert the sampled UV; x/y may be negative (the
             // extract clamps the rect into the source).
-            region_mut(t).rect = [r[0], r[1], r[2].max(0.0), r[3].max(0.0)];
+            region_mut(t).rect = r;
             SpriteEditTarget::Region
         }
         // Per-axis: preserve the other three components (audit D-1). W/H
@@ -141,11 +139,11 @@ pub(super) fn apply_sprite_field(
             SpriteEditTarget::Region
         }
         SpriteFieldEdit::RegionW(w) => {
-            region_mut(t).rect[2] = w.max(0.0);
+            region_mut(t).rect[2] = w;
             SpriteEditTarget::Region
         }
         SpriteFieldEdit::RegionH(h) => {
-            region_mut(t).rect[3] = h.max(0.0);
+            region_mut(t).rect[3] = h;
             SpriteEditTarget::Region
         }
         SpriteFieldEdit::RegionFilterClip(b) => {
@@ -165,7 +163,7 @@ pub(super) fn apply_sprite_field(
             SpriteEditTarget::Sprite
         }
         SpriteFieldEdit::Opacity(o) => {
-            t.sprite.opacity = o.clamp(0.0, 1.0);
+            t.sprite.opacity = o;
             SpriteEditTarget::Sprite
         }
         // ⚠️ Um canto, lido e escrito **na sprite desta iteração** — é isso que faz o fan-out
@@ -181,7 +179,9 @@ pub(super) fn apply_sprite_field(
             t.corner_tint.0 = [t.corner_tint.0[0]; 4];
             SpriteEditTarget::CornerTint
         }
-    }
+    };
+    sanitize_sprite_editables(&mut t.sprite, &mut t.grid, t.region.as_mut());
+    target
 }
 
 /// A região da entidade, criando-a se faltar — ver a nota do [`apply_sprite_field`].
@@ -198,15 +198,6 @@ fn region_for(sprite: &Sprite, rect: [f32; 4]) -> SpriteRegion {
         SpriteRegion::for_atlas(rect)
     } else {
         SpriteRegion::individual(rect)
-    }
-}
-
-/// Clamp `frame` into `[0, cells - 1]`. `hframes`/`vframes` are always `>= 1` here (set via
-/// [`apply_sprite_field`]), so the grid has at least one cell.
-pub(super) fn clamp_frame(grid: &mut SpriteGrid) {
-    let cells = grid.cells().max(1);
-    if grid.frame >= cells {
-        grid.frame = cells - 1;
     }
 }
 

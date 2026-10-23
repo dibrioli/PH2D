@@ -473,13 +473,13 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
         // differ (no limits, linear motor).
         JointFieldEdit::MotorSpeed(v) => next.motor_speed = motor_in(&next, v),
         JointFieldEdit::MotorTarget(v) => next.motor_target = motor_in(&next, v),
-        JointFieldEdit::MotorMaxForce(v) => next.motor_max_force = v.max(0.0),
-        JointFieldEdit::RestLength(v) => next.rest_length = v.max(0.0),
-        JointFieldEdit::Stiffness(v) => next.stiffness = v.max(0.0),
-        JointFieldEdit::Damping(v) => next.damping = v.max(0.0),
-        // A rope of zero length is a weld nobody asked for, and rapier's own
-        // docs require the distance to be strictly positive.
-        JointFieldEdit::MaxLength(v) => next.max_length = v.max(1e-3),
+        JointFieldEdit::MotorMaxForce(v) => next.motor_max_force = v,
+        JointFieldEdit::RestLength(v) => next.rest_length = v,
+        JointFieldEdit::Stiffness(v) => next.stiffness = v,
+        JointFieldEdit::Damping(v) => next.damping = v,
+        // Os pisos (zero; `MIN_LENGTH` numa corda) são do `clamped()` na saída — a lei do valor,
+        // a mesma do `ph2d.set` de um script.
+        JointFieldEdit::MaxLength(v) => next.max_length = v,
         // Sem piso aqui: o `clamped()` na saída desta função é a porta única
         // que conhece o `MIN_RATIO`, e repeti-lo seria o segundo lugar onde a
         // razão mínima é decidida.
@@ -504,8 +504,8 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
         // throw away where the artist put it.
         JointFieldEdit::Swap => next = next.swapped(),
         JointFieldEdit::BreakEnabled(on) => next.break_enabled = on,
-        JointFieldEdit::BreakForce(v) => next.break_force = v.max(0.0),
-        JointFieldEdit::BreakTorque(v) => next.break_torque = v.max(0.0),
+        JointFieldEdit::BreakForce(v) => next.break_force = v,
+        JointFieldEdit::BreakTorque(v) => next.break_torque = v,
         // The eyedropper ARMS a pick in the action loop (it sets shell state,
         // not a component), and the pick RESOLVES in `input_dispatch` via
         // `set_joint_body`. Neither reaches this per-joint apply; listed so the
@@ -525,7 +525,8 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
         // arquivo com outra entrada, não uma segunda resposta.
         JointFieldEdit::CopyProperties | JointFieldEdit::PasteProperties => return None,
     }
-    // Through the SAME clamp the bridge uses on the way to the solver, so the
-    // Inspector cannot author a state the loader would have to repair.
-    Some(next.clamped())
+    // Through the SAME clamp the bridge uses on the way to the solver (`sanitize`), so the
+    // Inspector — and a script — cannot author a state the loader would have to repair.
+    next.sanitize();
+    Some(next)
 }

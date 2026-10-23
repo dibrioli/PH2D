@@ -86,7 +86,7 @@ fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Secca
         1,
         &[
             tr("panel.inspector.anchors.rides_parent_anchor"),
-            tr("panel.inspector.anchors.always_show_anchors"),
+            tr("component.field.anchor_visibility.1"),
             RUNTIME_BOX_LABEL.tr(),
         ],
     )
@@ -235,8 +235,7 @@ pub(crate) fn paint_mount_row(
 ///
 /// ⛔ **O campo FICA no modelo** (`ph2d_ecs::AnchorVisibility::at_runtime`): apagá-lo partiria
 /// todo ficheiro já gravado. O que sai é a **promessa**, não o dado.
-pub(crate) const RUNTIME_BOX_LABEL: TextKey =
-    TextKey::new("panel.inspector.anchors.show_anchors_at_runtime_no");
+pub(crate) const RUNTIME_BOX_LABEL: TextKey = TextKey::new("component.field.anchor_visibility.2");
 
 /// **As duas caixas de VISIBILIDADE**, do dono das âncoras (Enio, 2026-08-23). Devolve o `y`.
 ///
@@ -274,7 +273,7 @@ pub(crate) fn paint_visibility_rows(
     for (id, label, on) in [
         (
             ids::INSP_ANCHOR_VIS_EDITOR,
-            tr("panel.inspector.anchors.always_show_anchors"),
+            tr("component.field.anchor_visibility.1"),
             info.vis_in_editor,
         ),
         (

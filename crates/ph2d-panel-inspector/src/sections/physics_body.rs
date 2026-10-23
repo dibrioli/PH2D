@@ -86,7 +86,7 @@ pub(super) fn paint_body_face(
         x,
         w,
         yy,
-        tr("panel.inspector.physics.body"),
+        tr("component.field.rigid_body.0"),
         core_ids::INSP_LIVE_PHYSICS_SECTION,
         &ids::INSP_PHYS_KIND,
         &KIND_LABELS.map(TextKey::tr),
@@ -101,7 +101,7 @@ pub(super) fn paint_body_face(
         x,
         w,
         yy,
-        tr("panel.inspector.physics.collider"),
+        tr("component.field.collider.0"),
         core_ids::INSP_LIVE_PHYSICS_GRIP,
         &ids::INSP_PHYS_SHAPE,
         &SHAPE_LABELS.map(TextKey::tr),
@@ -155,12 +155,12 @@ pub(super) fn paint_body_face(
     // block. The overlay draws the outline here so the offset is visible.
     for (label, id, unit) in [
         (
-            tr("panel.inspector.physics.offset_x_m"),
+            tr_with("panel.inspector.label_x", &[("label", &tr("component.field.collider.6"))]),
             ids::INSP_PHYS_OFFSET_X,
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
-            tr("panel.inspector.physics.offset_y_m"),
+            tr_with("panel.inspector.label_y", &[("label", &tr("component.field.collider.6"))]),
             ids::INSP_PHYS_OFFSET_Y,
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
@@ -174,7 +174,7 @@ pub(super) fn paint_body_face(
             x,
             w,
             yy,
-            label,
+            &label,
             id,
             unit,
             None,
@@ -279,31 +279,33 @@ fn paint_dynamics_rows(
     y: f32,
 ) -> f32 {
     let mut yy = y;
+    let vel_x = tr_with("panel.inspector.label_x", &[("label", &tr("component.field.initial_velocity.0"))]);
+    let vel_y = tr_with("panel.inspector.label_y", &[("label", &tr("component.field.initial_velocity.0"))]);
     for (label, id, unit) in [
         (
-            tr("panel.inspector.physics.gravity_scale"),
+            tr("component.field.gravity_scale.0"),
             ids::INSP_PHYS_GRAVITY_SCALE,
             None,
         ),
         (
-            tr("panel.inspector.physics.init_vel_x_m_s"),
+            vel_x.as_str(),
             ids::INSP_PHYS_LINVEL_X,
             Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
         ),
         (
-            tr("panel.inspector.physics.init_vel_y_m_s"),
+            vel_y.as_str(),
             ids::INSP_PHYS_LINVEL_Y,
             Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
         ),
         (
-            tr("panel.inspector.physics.init_spin_deg_s"),
+            tr("component.field.initial_velocity.1"),
             ids::INSP_PHYS_ANGVEL,
             Some(ph2d_editor_core::widget::Unit::DegreesPerSecond),
         ),
         // Dominance (collision priority): a higher value bulldozes lower ones.
         // Dynamic-only like the rest — a non-dynamic body is already at the max.
         (
-            tr("panel.inspector.physics.dominance"),
+            tr("component.field.dominance.0"),
             ids::INSP_PHYS_DOMINANCE,
             None,
         ),

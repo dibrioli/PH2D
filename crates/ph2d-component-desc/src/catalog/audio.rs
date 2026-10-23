@@ -14,7 +14,7 @@
 //! ⚠️ **A lista está ORDENADA por `canonical_name`** — há gate (`the_catalog_is_sorted_and_unique`).
 
 use crate::{
-    ComponentCategory as C, ComponentDesc, ComponentDesc as D, FieldDesc, FieldKind as K,
+    ComponentCategory as C, ComponentDesc, ComponentDesc as D, FieldDesc, FieldKind as K, Hidden,
     ObjectKinds as O, Propagation,
 };
 
@@ -38,17 +38,17 @@ const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
 /// custava **104 sítios em 19 ficheiros**). A secção do Inspector põe um botão de procurar ao lado
 /// do campo, que é a afordância que falta — e o campo continua a ser um caminho.
 const SOURCE_FIELDS: &[FieldDesc] = &[
-    f(0, "component.field.source_fields.0", K::Text),
-    f(1, "component.field.source_fields.1", K::Scalar),
-    f(2, "component.field.source_fields.2", K::Scalar),
-    f(3, "component.field.source_fields.3", K::Toggle),
-    f(4, "component.field.source_fields.4", K::Toggle),
-    f(5, "component.field.source_fields.5", K::Scalar),
-    f(6, "component.field.source_fields.6", K::Scalar),
-    f(7, "component.field.source_fields.7", K::Scalar),
-    f(8, "component.field.source_fields.8", K::Scalar),
-    f(9, "component.field.source_fields.9", K::Int),
-    f(10, "component.field.source_fields.10", K::Enum),
+    f(0, "component.field.source_fields.0", K::Text).keyed("sound"),
+    f(1, "component.field.source_fields.1", K::Scalar).named_as("volume", "volume_db"),
+    f(2, "component.field.source_fields.2", K::Scalar).named("pitch"),
+    f(3, "component.field.source_fields.3", K::Toggle).named_as("loop", "looping"),
+    f(4, "component.field.source_fields.4", K::Toggle).named("autoplay"),
+    f(5, "component.field.source_fields.5", K::Scalar).named("max_distance"),
+    f(6, "component.field.source_fields.6", K::Scalar).named("attenuation"),
+    f(7, "component.field.source_fields.7", K::Scalar).named("non_spatialized_radius"),
+    f(8, "component.field.source_fields.8", K::Scalar).named("panning_strength"),
+    f(9, "component.field.source_fields.9", K::Int).named("max_polyphony"),
+    f(10, "component.field.source_fields.10", K::Enum).named_as("bus", "bus_tag"),
 ];
 
 /// Os descritores da família.
@@ -65,7 +65,8 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Audio,
         O::ANY,
         &[],
-    ),
+    )
+    .hidden(Hidden::Presence),
     // ⚠️ **`O::ANY` pela mesma razão do relógio**: uma porta que range é uma sprite, mas o som de
     // ambiente de uma sala é um objecto vazio no meio dela.
     D::authored(
@@ -74,5 +75,8 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Audio,
         O::ANY,
         SOURCE_FIELDS,
-    ),
+    )
+    .coded("audio_source_2d")
+    // O ficheiro de som é uma referência a um asset: ganha nome pelo nome do alvo (d4).
+    .hiding(&[("sound", Hidden::Reference)]),
 ];

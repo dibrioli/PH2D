@@ -9,16 +9,10 @@
 /// A tradução de uma chave `panel.inspector.vida.*`, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
-        "panel.inspector.vida.damage" => "Damage",
         // ⚠️ A regra saiu do nome para o balão (a ordem do dono de 2026-09-22, cobrada na integração).
         "panel.inspector.vida.max_hint" => "0 = none.",
-        "panel.inspector.vida.hitstop" => "Hit Pause",
-        "panel.inspector.vida.knockback" => "Push",
-        "panel.inspector.vida.knockback_lift" => "Push Up",
         // ⚠️ Os RÓTULOS dos campos de texto (integração de 2026-09-25): a linha nasceu antes da
         //    lei da UIUX de que nenhum campo vive só de dica, e a porta `text_row` passou a pedi-los.
-        "panel.inspector.vida.team" => "Team",
-        "panel.inspector.vida.bar_target" => "Target",
         "panel.inspector.vida.team_hint" => "Team \u{2014} the same team does not hurt it\u{2026}",
         "panel.inspector.vida.on_damage_hint" => "Signal when it takes damage\u{2026}",
         "panel.inspector.vida.on_heal_hint" => "Signal when it is healed\u{2026}",
@@ -40,23 +34,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.vida.editing_the_primary_selection_only" => {
             "Editing the primary selection only."
         }
-        "panel.inspector.vida.amount" => "Amount",
         "panel.inspector.vida.amount_per_second" => "Amount / s",
-        "panel.inspector.vida.per_second" => "Per Second",
-        "panel.inspector.vida.ignores_shield" => "Pierce Shield",
-        "panel.inspector.vida.ignores_armor" => "Pierce Armor",
-        "panel.inspector.vida.vanish" => "Vanish on Hit",
         "panel.inspector.vida.damage_team_hint" => {
             "Team \u{2014} it does not hurt its own team\u{2026}"
         }
         // ⭐ W6 — os TIPOS de dano e o dano que DURA.
-        "panel.inspector.vida.damage_kind" => "Type",
         "panel.inspector.vida.damage_kind_hint" => {
             "Type \u{2014} fire, ice\u{2026} empty hurts everyone the same"
         }
-        "panel.inspector.vida.over_time" => "Lasting / s",
-        "panel.inspector.vida.over_time_s" => "Lasts",
-        "panel.inspector.vida.over_time_every" => "Every",
         "panel.inspector.vida.resistances" => "Resistances",
         "panel.inspector.vida.no_resistances" => {
             "No resistances \u{b7} every type hurts it normally."
@@ -74,19 +59,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.vida.resist_repeated" => {
             "Another row above has this type \u{b7} only the first one counts."
         }
-        "panel.inspector.vida.health_bar" => "Health Bar",
-        "panel.inspector.vida.bar_width" => "Width",
-        "panel.inspector.vida.bar_height" => "Height",
-        "panel.inspector.vida.bar_offset_x" => "Offset X",
-        "panel.inspector.vida.bar_offset_y" => "Offset Y",
-        "panel.inspector.vida.bar_trail_delay" => "Trail Delay",
-        "panel.inspector.vida.bar_trail_speed" => "Trail / s",
-        "panel.inspector.vida.bar_fill" => "Fill",
-        "panel.inspector.vida.bar_trail" => "Trail",
-        "panel.inspector.vida.bar_back" => "Back",
-        // ⚠️ **`If` e não `When`**: a varredura das elisões mediu `Hide When Full` cortado no degrau
-        // estreito, e a regra da casa é *um nome perde a explicação antes de perder letras*.
-        "panel.inspector.vida.bar_hide_when_full" => "Hide If Full",
         "panel.inspector.vida.bar_target_hint" => {
             "Target \u{2014} empty shows this object\u{2019}s own health\u{2026}"
         }

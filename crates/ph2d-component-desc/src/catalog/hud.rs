@@ -36,14 +36,15 @@ const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
 /// ⚠️ **`Start` e não «Value»:** o que se grava é com que valor ele COMEÇA (e com que valor
 /// renasce ao rebobinar); o valor de agora é vivo.
 const COUNTER_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.counter_fields.1", K::Text),
-    f(2, "component.field.counter_fields.2", K::Int),
+    f(1, "component.field.counter_fields.1", K::Text).named("name"),
+    f(2, "component.field.counter_fields.2", K::Int).named("start"),
+    f(3, "component.field.counter_fields.3", K::Toggle).named("keep_on_restart"),
 ];
 
 /// O botão que publica um sinal.
 const BUTTON_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.button_fields.1", K::Text),
-    f(2, "component.field.button_fields.2", K::Toggle),
+    f(1, "component.field.button_fields.1", K::Text).named("signal"),
+    f(2, "component.field.button_fields.2", K::Toggle).named("disabled"),
 ];
 
 /// A raiz do HUD.
@@ -51,9 +52,9 @@ const BUTTON_FIELDS: &[FieldDesc] = &[
 /// ⚠️ **Não há campo para a POSE**: ela é conduzida a cada quadro (`Driver::CanvasPose`) e o que o
 /// artista autorasse ali seria apagado no primeiro quadro com câmera de jogo.
 const CANVAS_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.canvas_fields.1", K::Scalar),
-    f(2, "component.field.canvas_fields.2", K::Scalar),
-    f(3, "component.field.canvas_fields.3", K::Enum),
+    f(1, "component.field.canvas_fields.1", K::Scalar).named_as("reference_width", "ref_w"),
+    f(2, "component.field.canvas_fields.2", K::Scalar).named_as("reference_height", "ref_h"),
+    f(3, "component.field.canvas_fields.3", K::Enum).named("fit"),
 ];
 
 /// O rótulo cujo número o jogo muda.
@@ -61,10 +62,12 @@ const CANVAS_FIELDS: &[FieldDesc] = &[
 /// ⚠️ **`Source Name` é UM campo para três fontes** (o contador, o relógio ou a etiqueta): qual
 /// delas é o `Source` que diz. Três campos — um por fonte — deixariam dois sempre mortos.
 const LABEL_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.label_fields.1", K::Enum),
-    f(2, "component.field.label_fields.2", K::Text),
-    f(3, "component.field.label_fields.3", K::Text),
-    f(4, "component.field.label_fields.4", K::Text),
+    // ⚠️ `source` é o enum INTEIRO (`"Authored"` ou `{"Counter": "<nome>"}`): o «Source Name» vive
+    // dentro dele, e por isso não tem nome próprio (só a chave do irmão).
+    f(1, "component.field.label_fields.1", K::Enum).named("source"),
+    f(2, "component.field.label_fields.2", K::Text).keyed("source"),
+    f(3, "component.field.label_fields.3", K::Text).named("prefix"),
+    f(4, "component.field.label_fields.4", K::Text).named("suffix"),
 ];
 
 /// Os quatro, por ordem de `canonical_name`.
@@ -75,21 +78,24 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         COUNTER_FIELDS,
-    ),
+    )
+    .coded("counter"),
     D::authored(
         "ph2d::ecs::UiButton",
         "component.ui_button.name",
         C::Logic,
         O::ANY,
         BUTTON_FIELDS,
-    ),
+    )
+    .coded("button"),
     D::authored(
         "ph2d::ecs::UiCanvas",
         "component.ui_canvas.name",
         C::Logic,
         O::ANY,
         CANVAS_FIELDS,
-    ),
+    )
+    .coded("hud_canvas"),
     // ⚠️ **O rótulo PEDE o canvas?** Não: um `UiLabel` numa forma solta continua a derivar o texto
     // dela; o que ele perde sem uma raiz é ficar colado à vista. *Exigir o pai tornaria
     // inexprimível um número que vive no MUNDO* — a barra de vida sobre a cabeça de um inimigo.
@@ -99,5 +105,6 @@ pub const DESCS: &[ComponentDesc] = &[
         C::Logic,
         O::ANY,
         LABEL_FIELDS,
-    ),
+    )
+    .coded("label"),
 ];

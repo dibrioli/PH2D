@@ -59,7 +59,7 @@ pub(crate) fn paint_oclusor(
     let seccao = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
         1,
-        &[tr("panel.inspector.luz.opacity")],
+        &[tr("component.field.occluder_fields.0")],
     );
     cur_y = super::rows::fields_row(
         scene,
@@ -70,7 +70,7 @@ pub(crate) fn paint_oclusor(
         x,
         w,
         cur_y,
-        tr("panel.inspector.luz.opacity"),
+        tr("component.field.occluder_fields.0"),
         &[ids::INSP_LUZ_OPACIDADE],
         0.01, // LITERAL-PX-OK: passo de scrub da fração bloqueada (0..1)
         None,

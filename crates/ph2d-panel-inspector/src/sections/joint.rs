@@ -131,7 +131,7 @@ fn limits_label(kind_tag: u8) -> &'static str {
     if kind_tag == KIND_WHEEL {
         tr("panel.inspector.joint.travel")
     } else {
-        tr("panel.inspector.joint.limits")
+        tr("component.field.joint.4")
     }
 }
 
@@ -283,7 +283,7 @@ pub(crate) fn paint_joint_section(
     let header = section_header(
         store,
         core_ids::INSP_LIVE_JOINT_SECTION,
-        tr("panel.inspector.joint.physics_joint"),
+        tr("component.physics_joint.name"),
     );
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
@@ -317,7 +317,7 @@ pub(crate) fn paint_joint_section(
         x,
         w,
         yy,
-        tr("panel.inspector.joint.active"),
+        tr("component.field.joint.22"),
         ids::INSP_JOINT_ACTIVE_GROUP,
         &ids::INSP_JOINT_ACTIVE,
         &SWITCH_LABELS.map(TextKey::tr),
@@ -349,7 +349,7 @@ pub(crate) fn paint_joint_section(
         x,
         w,
         yy,
-        tr("panel.inspector.joint.kind"),
+        tr("component.field.joint.3"),
         ids::INSP_JOINT_KIND_GROUP,
         &ids::INSP_JOINT_KIND,
         &KIND_LABELS.map(TextKey::tr),

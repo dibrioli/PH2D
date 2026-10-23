@@ -15,10 +15,10 @@ use ph2d_i18n::tr;
 
 /// Os nomes que esta secção pinta à esquerda — a fonte da coluna dela.
 const NOMES: [&str; 6] = [
-    "panel.inspector.visibility.clip_children",
-    "panel.inspector.visibility.mask_interaction",
-    "panel.inspector.visibility.mask_alpha_cutoff",
-    "panel.inspector.visibility.enabler_rect",
+    "component.field.clip_children.1",
+    "component.field.mask_interaction.1",
+    "component.field.mask_interaction.2",
+    "component.field.on_screen_enabler.1",
     // ⭐ As linhas de MARCAR partilham a coluna.
     "panel.inspector.visibility.mask_source_mask2d",
     "panel.inspector.visibility.on_screen_enabler",
@@ -173,7 +173,7 @@ pub(crate) fn paint_visibility_section(
     let layer_header = section_header(
         store,
         core_ids::INSP_VIS_LAYER_HEADER,
-        tr("panel.inspector.visibility.visibility_layer"),
+        tr("component.visibility_layer.name"),
     )
     .open_t(store.section_open_live(core_ids::INSP_VIS_LAYER_HEADER));
     let layer_header_rect = Rect::new(x, yy, w, layer_header_h);
@@ -196,7 +196,7 @@ pub(crate) fn paint_visibility_section(
         Some(fold) => {
             let grid = BitmaskGrid32::new(
                 core_ids::INSP_LIVE_VISIBILITY_SECTION,
-                tr("panel.inspector.visibility.visibility_layer"),
+                tr("component.field.visibility_layer.1"),
                 ids::INSP_VIS_LAYER_BIT,
                 info.layer_mask,
             );
@@ -219,7 +219,7 @@ pub(crate) fn paint_visibility_section(
         x,
         w,
         yy,
-        tr("panel.inspector.visibility.clip_children"),
+        tr("component.field.clip_children.1"),
         ids::INSP_VIS_CLIP,
         [
             tr("panel.inspector.visibility.disabled"),
@@ -240,7 +240,7 @@ pub(crate) fn paint_visibility_section(
         x,
         w,
         yy,
-        tr("panel.inspector.visibility.mask_interaction"),
+        tr("component.field.mask_interaction.1"),
         ids::INSP_VIS_MASK,
         [
             tr("panel.inspector.visibility.none"),
@@ -262,7 +262,7 @@ pub(crate) fn paint_visibility_section(
             x,
             w,
             yy,
-            tr("panel.inspector.visibility.mask_alpha_cutoff"),
+            tr("component.field.mask_interaction.2"),
             ids::INSP_VIS_ALPHA_CUTOFF,
             sec,
         );
@@ -354,7 +354,7 @@ fn paint_enabler_rows(
             x,
             w,
             yy,
-            tr("panel.inspector.visibility.enabler_rect"),
+            tr("component.field.on_screen_enabler.1"),
             &[
                 ids::INSP_VIS_RECT_X,
                 ids::INSP_VIS_RECT_Y,

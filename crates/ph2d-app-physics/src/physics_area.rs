@@ -48,7 +48,8 @@ pub(crate) fn apply_area_edit(
         if !world.get::<Collider>(entity).is_some_and(|c| c.is_sensor) {
             return true;
         }
-        let f = AreaFormDrag(v.max(0.0));
+        let mut f = AreaFormDrag(v);
+        f.sanitize();
         if f.is_neutral() {
             queue_remove(queue, registry, entity_bits, AREA_FORM_DRAG);
         } else {
@@ -83,7 +84,8 @@ pub(crate) fn apply_area_edit(
         if !world.get::<Collider>(entity).is_some_and(|c| c.is_sensor) {
             return true;
         }
-        let f = AreaFalloff(v.clamp(0.0, 1.0));
+        let mut f = AreaFalloff(v);
+        f.sanitize();
         if f.is_neutral() {
             queue_remove(queue, registry, entity_bits, AREA_FALLOFF);
         } else {
@@ -99,7 +101,8 @@ pub(crate) fn apply_area_edit(
         if !world.get::<Collider>(entity).is_some_and(|c| c.is_sensor) {
             return true;
         }
-        let b = AreaBuoyancy(v.max(0.0));
+        let mut b = AreaBuoyancy(v);
+        b.sanitize();
         if b.is_neutral() {
             queue_remove(queue, registry, entity_bits, AREA_BUOYANCY);
         } else {
@@ -118,7 +121,8 @@ pub(crate) fn apply_area_edit(
             return true;
         }
         // A negative drag would ADD energy — the same clamp the other drag knobs take.
-        let d = AreaDrag(v.max(0.0));
+        let mut d = AreaDrag(v);
+        d.sanitize();
         if d.is_neutral() {
             queue_remove(queue, registry, entity_bits, AREA_DRAG);
         } else {

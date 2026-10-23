@@ -215,3 +215,37 @@ fn dano_sem_vida_ou_quantia_invalida_para_o_objecto() {
         assert!(msg.contains(espera), "{linha}: {msg}");
     }
 }
+
+/// ⭐ Um NEWTYPE (`order_in_layer`, a chave `"."`) e um ELEMENTO (`9_slice.top`, `"borders[1]"`)
+/// também se escrevem a correr e voltam ao do artista: o livro da corrida resolve a chave pela
+/// MESMA lei do nome (`property::slot_in`), e a lei do valor do Inspector vale para o script.
+#[test]
+fn um_newtype_e_um_elemento_tambem_voltam_ao_do_artista() {
+    let mut c = cena(
+        r#"
+function update(self)
+  ph2d.set(self.id, "order_in_layer.order_in_layer", 7)
+  ph2d.set(self.id, "9_slice.top", -4)
+  ph2d.set(self.id, "9_slice.left", 12)
+end
+"#,
+    );
+    let autorado = ph2d_ecs::SliceNine {
+        borders: [1.0, 2.0, 3.0, 4.0],
+        ..ph2d_ecs::SliceNine::INERT
+    };
+    c.sim
+        .world_mut()
+        .entity_mut(c.heroi)
+        .insert((ph2d_ecs::OrderInLayer(3), autorado));
+    let f = c.quadro(true);
+    assert!(f.failed.is_empty(), "{}", Cena::falhas(&f));
+    let w = c.sim.world();
+    assert_eq!(w.get::<ph2d_ecs::OrderInLayer>(c.heroi).unwrap().0, 7);
+    let s = w.get::<ph2d_ecs::SliceNine>(c.heroi).unwrap();
+    assert_eq!(s.borders, [12.0, 0.0, 3.0, 4.0], "a borda negativa saneia-se como no cartão");
+    rewind(&mut c.host, &mut c.sim, &mut c.drive);
+    let w = c.sim.world();
+    assert_eq!(w.get::<ph2d_ecs::OrderInLayer>(c.heroi).unwrap().0, 3);
+    assert_eq!(w.get::<ph2d_ecs::SliceNine>(c.heroi).unwrap().borders, autorado.borders);
+}

@@ -160,34 +160,34 @@ fn corpo(
         text_system,
         1,
         &[
-            tr("panel.inspector.topdown.speed_m_s"),
-            tr("panel.inspector.topdown.acceleration_0_instant"),
-            tr("panel.inspector.topdown.deceleration_0_instant"),
-            tr("panel.inspector.topdown.knockback_recovery"),
-            tr("panel.inspector.topdown.board_angle_deg"),
-            tr("panel.inspector.topdown.turn_speed_deg_s_0_instant"),
-            tr("panel.inspector.topdown.min_slide_angle_deg"),
-            tr("panel.inspector.topdown.max_slides"),
-            tr("panel.inspector.topdown.directions"),
-            tr("panel.inspector.topdown.viewpoint"),
-            tr("panel.inspector.topdown.facing"),
+            tr("component.field.top_down_player.0"),
+            tr("component.field.top_down_player.1"),
+            tr("component.field.top_down_player.2"),
+            tr("component.field.top_down_player.11"),
+            tr("component.field.top_down_player.5"),
+            tr("component.field.top_down_player.7"),
+            tr("component.field.top_down_player.8"),
+            tr("component.field.top_down_player.9"),
+            tr("component.field.top_down_player.3"),
+            tr("component.field.top_down_player.4"),
+            tr("component.field.top_down_player.6"),
         ],
     );
     for (label, id, step, unidade) in [
         (
-            tr("panel.inspector.topdown.speed_m_s"),
+            tr("component.field.top_down_player.0"),
             crate::ids::INSP_TD_SPEED,
             0.1, // LITERAL-PX-OK: passo de scrub em m/s
             Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
         ), // LITERAL-PX-OK: m/s
         (
-            tr("panel.inspector.topdown.acceleration_0_instant"),
+            tr("component.field.top_down_player.1"),
             crate::ids::INSP_TD_ACCEL,
             0.5,
             None,
         ), // LITERAL-PX-OK: m/s²
         (
-            tr("panel.inspector.topdown.deceleration_0_instant"),
+            tr("component.field.top_down_player.2"),
             crate::ids::INSP_TD_DECEL,
             0.5,
             None,
@@ -195,7 +195,7 @@ fn corpo(
         // ⭐ O EMPURRÃO (plano 28, W5): um golpe de uma `Damage` com `Push` fá-lo deslizar, e isto
         // diz quão depressa ele pára de deslizar.
         (
-            tr("panel.inspector.topdown.knockback_recovery"),
+            tr("component.field.top_down_player.11"),
             crate::ids::INSP_TD_KNOCKBACK_RECOVERY,
             0.5,
             None,
@@ -231,7 +231,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("panel.inspector.topdown.directions"),
+        tr("component.field.top_down_player.3"),
         &crate::ids::INSP_TD_DIRECTIONS,
         &rotulos,
         usize::from(i.directions.tag()),
@@ -248,7 +248,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("panel.inspector.topdown.viewpoint"),
+        tr("component.field.top_down_player.4"),
         &crate::ids::INSP_TD_VIEWPOINT,
         &rotulos,
         usize::from(i.viewpoint.tag()),
@@ -265,7 +265,7 @@ fn corpo(
             x,
             w,
             cur_y,
-            tr("panel.inspector.topdown.board_angle_deg"),
+            tr("component.field.top_down_player.5"),
             &[crate::ids::INSP_TD_VIEW_ANGLE],
             0.5, // LITERAL-PX-OK: graus
             Some(ph2d_editor_core::widget::Unit::Degrees),
@@ -283,7 +283,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("panel.inspector.topdown.facing"),
+        tr("component.field.top_down_player.6"),
         &crate::ids::INSP_TD_FACING,
         &rotulos,
         usize::from(i.facing.tag()),
@@ -300,7 +300,7 @@ fn corpo(
             x,
             w,
             cur_y,
-            tr("panel.inspector.topdown.turn_speed_deg_s_0_instant"),
+            tr("component.field.top_down_player.7"),
             &[crate::ids::INSP_TD_TURN_SPEED],
             10.0, // LITERAL-PX-OK: graus/s
             Some(ph2d_editor_core::widget::Unit::DegreesPerSecond),
@@ -342,13 +342,13 @@ fn deslize(
     let mut cur_y = y;
     for (label, id, step, unidade) in [
         (
-            tr("panel.inspector.topdown.min_slide_angle_deg"),
+            tr("component.field.top_down_player.8"),
             crate::ids::INSP_TD_MIN_SLIDE,
             1.0,
             Some(ph2d_editor_core::widget::Unit::Degrees),
         ), // LITERAL-PX-OK: graus
         (
-            tr("panel.inspector.topdown.max_slides"),
+            tr("component.field.top_down_player.9"),
             crate::ids::INSP_TD_MAX_SLIDES,
             1.0,
             None,
@@ -382,7 +382,7 @@ fn deslize(
         cur_y,
         (
             crate::ids::INSP_TD_DEFAULT_CONTROLS,
-            tr("panel.inspector.topdown.default_controls"),
+            tr("component.field.top_down_player.10"),
             i.default_controls,
         ),
         seccao,
@@ -421,7 +421,7 @@ pub(crate) fn paint_topdown_section(
     let header = section_header(
         store,
         ph2d_editor_core::ids::INSP_LIVE_TOPDOWN_SECTION,
-        tr("panel.inspector.topdown.top_down_player"),
+        tr("component.top_down_player.name"),
     );
     paint_section_header(
         &header,

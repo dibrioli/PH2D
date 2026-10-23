@@ -176,17 +176,17 @@ fn corpo(
         text_system,
         2,
         &[
-            tr("panel.inspector.weapon.cooldown_ms"),
-            tr("panel.inspector.weapon.reload_ms"),
+            tr("component.field.weapon_fields.2"),
+            tr("component.field.weapon_fields.4"),
         ],
     );
     for (label, id) in [
         (
-            tr("panel.inspector.weapon.cooldown_ms"),
+            tr("component.field.weapon_fields.2"),
             crate::ids::INSP_WEAPON_COOLDOWN,
         ),
         (
-            tr("panel.inspector.weapon.reload_ms"),
+            tr("component.field.weapon_fields.4"),
             crate::ids::INSP_WEAPON_RELOAD_MS,
         ),
     ] {
@@ -210,39 +210,39 @@ fn corpo(
     for (id, rotulo, dica) in [
         (
             crate::ids::INSP_WEAPON_ON_SIGNAL,
-            tr("panel.inspector.weapon.on_signal_label"),
+            tr("component.field.weapon_fields.1"),
             tr("panel.inspector.weapon.signal_that_pulls_the_trigger_u"),
         ),
         (
             crate::ids::INSP_WEAPON_ON_FIRE,
-            tr("panel.inspector.weapon.on_fire_label"),
+            tr("component.field.weapon_fields.6"),
             tr("panel.inspector.weapon.signal_it_publishes_on_each_shot_u"),
         ),
         (
             crate::ids::INSP_WEAPON_AMMO,
-            tr("panel.inspector.weapon.magazine_label"),
+            tr("component.field.weapon_fields.3"),
             tr("panel.inspector.weapon.counter_that_is_the_magazine_u"),
         ),
         (
             crate::ids::INSP_WEAPON_RELOAD_ON,
-            tr("panel.inspector.weapon.reload_on_label"),
+            tr("component.field.weapon_fields.5"),
             tr("panel.inspector.weapon.signal_that_reloads_it_u"),
         ),
         (
             crate::ids::INSP_WEAPON_ON_EMPTY,
-            tr("panel.inspector.weapon.on_empty_label"),
+            tr("component.field.weapon_fields.7"),
             tr("panel.inspector.weapon.signal_on_the_dry_click_u"),
         ),
         (
             crate::ids::INSP_WEAPON_ON_RELOADED,
-            tr("panel.inspector.weapon.on_reloaded_label"),
+            tr("component.field.weapon_fields.8"),
             tr("panel.inspector.weapon.signal_when_the_magazine_is_full_u"),
         ),
         // ⭐⭐ **O DEPÓSITO, colado ao pente** — eles são a mesma pergunta em dois degraus, e
         // separá-los por três sinais faria o artista ler o segundo como sendo de outro assunto.
         (
             crate::ids::INSP_WEAPON_RESERVE,
-            tr("panel.inspector.weapon.reserve_label"),
+            tr("component.field.weapon_fields.9"),
             tr("panel.inspector.weapon.counter_that_is_the_depot_u"),
         ),
     ] {
@@ -281,7 +281,7 @@ pub(crate) fn paint_weapon_section(
     let header = section_header(
         store,
         ph2d_editor_core::ids::INSP_LIVE_WEAPON_SECTION,
-        tr("panel.inspector.weapon.weapon"),
+        tr("component.weapon_fire.name"),
     );
     paint_section_header(
         &header,

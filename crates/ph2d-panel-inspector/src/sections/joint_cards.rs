@@ -42,7 +42,7 @@ pub(super) fn paint_motor_rows(
         x,
         w,
         y,
-        tr("panel.inspector.joint.motor"),
+        tr("component.field.joint.7"),
         ids::INSP_JOINT_MOTOR_GROUP,
         &ids::INSP_JOINT_MOTOR,
         &SWITCH_LABELS.map(TextKey::tr),
@@ -60,7 +60,7 @@ pub(super) fn paint_motor_rows(
         x,
         w,
         yy,
-        tr("panel.inspector.joint.mode"),
+        tr("component.field.joint.17"),
         ids::INSP_JOINT_MOTOR_MODE_GROUP,
         &ids::INSP_JOINT_MOTOR_MODE,
         &MOTOR_MODE_LABELS.map(TextKey::tr),
@@ -72,13 +72,13 @@ pub(super) fn paint_motor_rows(
     //   o dono reprovou em 2026-09-15.
     let (label, id, unidade) = if info.motor_mode_tag == MOTOR_MODE_POSITION {
         (
-            tr("panel.inspector.joint.target_unit"),
+            tr("component.field.joint.18"),
             ids::INSP_JOINT_MOTOR_TARGET,
             place_unit,
         )
     } else {
         (
-            tr("panel.inspector.joint.speed_unit"),
+            tr("component.field.joint.8"),
             ids::INSP_JOINT_MOTOR_SPEED,
             rate_unit,
         )
@@ -106,7 +106,7 @@ pub(super) fn paint_motor_rows(
         x,
         w,
         yy,
-        tr("panel.inspector.joint.max_force"),
+        tr("component.field.joint.9"),
         ids::INSP_JOINT_MOTOR_FORCE,
     )
 }
@@ -152,7 +152,7 @@ pub(super) fn paint_break_rows(
         x,
         w,
         y,
-        tr("panel.inspector.joint.breakable"),
+        tr("component.field.joint.19"),
         ids::INSP_JOINT_BREAK_GROUP,
         &ids::INSP_JOINT_BREAK,
         &SWITCH_LABELS.map(TextKey::tr),
@@ -170,7 +170,7 @@ pub(super) fn paint_break_rows(
         x,
         w,
         yy,
-        tr("panel.inspector.joint.break_force_n"),
+        tr("component.field.joint.20"),
         ids::INSP_JOINT_BREAK_FORCE,
         Some(ph2d_editor_core::widget::Unit::Newtons),
         None,
@@ -185,7 +185,7 @@ pub(super) fn paint_break_rows(
             x,
             w,
             yy,
-            tr("panel.inspector.joint.break_torque_n_m"),
+            tr("component.field.joint.21"),
             ids::INSP_JOINT_BREAK_TORQUE,
             Some(ph2d_editor_core::widget::Unit::NewtonMetres),
             None,

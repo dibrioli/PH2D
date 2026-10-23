@@ -25,8 +25,8 @@
 //! por-campo da F4 sobre elas seria um override sobre um nome que o ficheiro pode mudar amanhã.
 
 use crate::{
-    ComponentCategory as C, ComponentDesc as D, FieldDesc, FieldKind as K, ObjectKinds as O,
-    Propagation,
+    ComponentCategory as C, ComponentDesc as D, FieldDesc, FieldKind as K, Hidden,
+    ObjectKinds as O, Propagation,
 };
 
 const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
@@ -56,4 +56,8 @@ pub const DESCS: &[D] = &[D::authored(
     C::Scripting,
     O::ANY,
     SCRIPT_FIELDS,
-)];
+)
+// ⭐ Sem nome de código (doc CodeEditor 08 §3.11): `source` é o DOCUMENTO do script (o que o editor
+// de scripts edita, por id da biblioteca) e `own` são os números que o PRÓPRIO script declara e lê
+// pelo `self` — nenhum dos dois é uma propriedade que outro script afina por `ph2d.set`.
+.hidden(Hidden::Editor)];

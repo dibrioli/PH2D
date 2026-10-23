@@ -77,6 +77,15 @@ pub fn build_parallax_info(
     })
 }
 
+/// ⭐ **A lei da repetição** — o painel e o script (`parallax_repeat.repeat`) passam por aqui: um
+/// ladrilho negativo não existe, `0` é «não repete», a omissão da lei.
+///
+/// ⚠️ As irmãs (`ScrollFactor`, `ScrollMotion`, `ScrollLimits`) não têm lei além de RECUSAR o
+/// não-finito, que o dreno faz antes de escrever e que um valor de script (JSON) não exprime.
+pub(crate) fn sanitize_parallax_repeat(c: &mut ScrollRepeat) {
+    c.tile = [c.tile[0].max(0.0), c.tile[1].max(0.0)];
+}
+
 /// **O dreno.** `true` = alguma coisa mudou.
 ///
 /// ⚠️ **Um bloco sem componente é um no-op silencioso**, e não um pânico nem um `insert`: a fileira
@@ -108,8 +117,8 @@ pub fn apply_parallax_edit(world: &mut World, entity_bits: u64, edit: &ParallaxF
             let Some(mut c) = world.get_mut::<ScrollRepeat>(e) else {
                 return false;
             };
-            // Um ladrilho negativo não existe — `0` é «não repete», a omissão da lei.
-            c.tile = [t[0].max(0.0), t[1].max(0.0)];
+            c.tile = *t;
+            sanitize_parallax_repeat(&mut c);
         }
         ParallaxFieldEdit::Motion(v) => {
             if !finitos(*v) {

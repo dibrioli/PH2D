@@ -85,7 +85,7 @@ pub(crate) fn paint_physics_section(
     let header = section_header(
         store,
         core_ids::INSP_LIVE_PHYSICS_SECTION,
-        tr("panel.inspector.physics.physics_body"),
+        tr("component.rigid_body.name"),
     );
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);

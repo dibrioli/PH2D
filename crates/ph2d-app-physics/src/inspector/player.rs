@@ -248,24 +248,6 @@ fn clamp_samples(v: f32, max: usize) -> u16 {
     n as u16
 }
 
-/// **Uma FRAÇÃO da 3ª lei** — o que volta ao chão, em `[0, 1]`.
-///
-/// ⚠️ **Porta única para os três canais** (peso · tapete · empurrão): eles são a
-/// mesma grandeza medida em lugares diferentes, e três `clamp` copiados são
-/// como o quarto nasce sem um dos lados.
-///
-/// ⚠️ **Não-finito vira ZERO, e não o teto:** um `NaN` que chegasse ao
-/// componente envenenaria o impulso e, por ele, a pose que o `readback` escreve
-/// — e um `NaN.clamp(0,1)` devolve `NaN` em Rust. Zero é a resposta segura (o
-/// personagem volta a ser um fantasma), nunca a máxima.
-fn clamp_fraction(v: f32) -> f32 {
-    if v.is_finite() {
-        v.clamp(0.0, 1.0)
-    } else {
-        0.0
-    }
-}
-
 /// **Uma CONTAGEM autorada por um campo numérico** — arredonda, recusa não-finito
 /// e nunca é negativa.
 ///
@@ -451,47 +433,47 @@ pub fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: PlayerField
                 p.crouch_height = fit.min(p.float_height);
             }
         }
-        PlayerFieldEdit::FloatHeight(v) => p.float_height = v.max(0.0),
-        PlayerFieldEdit::ClingDistance(v) => p.cling_distance = v.max(0.0),
+        PlayerFieldEdit::FloatHeight(v) => p.float_height = v,
+        PlayerFieldEdit::ClingDistance(v) => p.cling_distance = v,
         // ⚠️ O teto é MEDIDO e é um fato da discretização — acima de `1/dt²` a
         // mola passa do alvo em vez de chegar nele, e o personagem afunda e
         // range. Mesmo tratamento do amortecimento, logo abaixo.
         PlayerFieldEdit::SpringStrength(v) => {
-            p.spring_strength = v.clamp(0.0, RideConfig::MAX_SPRING_STRENGTH);
+            p.spring_strength = v;
         }
         // ⚠️ O clamp honra o TETO MEDIDO da lei: acima dele o boost inverte a
         // velocidade em vez de matá-la. A porta da lei também o clampa — duas
         // camadas, e a de fora existe para o número AUTORADO nunca guardar algo
         // que o motor não vai honrar (um campo que mente sobre si mesmo).
         PlayerFieldEdit::SpringDamping(v) => {
-            p.spring_damping = v.clamp(0.0, RideConfig::MAX_DAMPING);
+            p.spring_damping = v;
         }
-        PlayerFieldEdit::Speed(v) => p.speed = v.max(0.0),
-        PlayerFieldEdit::Acceleration(v) => p.acceleration = v.max(0.0),
+        PlayerFieldEdit::Speed(v) => p.speed = v,
+        PlayerFieldEdit::Acceleration(v) => p.acceleration = v,
         // ⚠️ O piso aqui é a FRONTEIRA, e o que garante a lei é o piso do
         // consumidor (`walk::brake_scale`) — ver o gate do freio negativo.
-        PlayerFieldEdit::BrakeScale(v) => p.brake_scale = v.max(0.0),
-        PlayerFieldEdit::AirAcceleration(v) => p.air_acceleration = v.max(0.0),
-        PlayerFieldEdit::MaxSlopeDeg(v) => p.max_slope_deg = v.clamp(0.0, 90.0),
-        PlayerFieldEdit::JumpHeight(v) => p.jump_height = v.max(0.0),
+        PlayerFieldEdit::BrakeScale(v) => p.brake_scale = v,
+        PlayerFieldEdit::AirAcceleration(v) => p.air_acceleration = v,
+        PlayerFieldEdit::MaxSlopeDeg(v) => p.max_slope_deg = v,
+        PlayerFieldEdit::JumpHeight(v) => p.jump_height = v,
         // ⚠️ **Arredonda, não trunca:** a row é um campo numérico e o artista
         // que arrasta pousa em `0,999…`; truncar daria zero — a capacidade
         // desligada com o slider visivelmente em 1.
         PlayerFieldEdit::AirJumps(v) => p.air_jumps = round_count(v),
-        PlayerFieldEdit::AirJumpHeight(v) => p.air_jump_height = v.max(0.0),
+        PlayerFieldEdit::AirJumpHeight(v) => p.air_jump_height = v,
         // ⚠️ Os multiplicadores só têm PISO. Um teto aqui seria um número que
         // eu escolheria sem medir nada — o topo é onde o desenho deixa de ser
         // um pulo, e isso é decisão de LOOK; o range do slider já é a resposta
         // de UX (CLAUDE.md §0: um limite legítimo diz de que RECURSO ele é).
-        PlayerFieldEdit::TakeoffGravity(v) => p.takeoff_gravity = v.max(0.0),
-        PlayerFieldEdit::TakeoffSpeed(v) => p.takeoff_speed = v.max(0.0),
-        PlayerFieldEdit::PeakGravity(v) => p.peak_gravity = v.max(0.0),
-        PlayerFieldEdit::PeakSpeed(v) => p.peak_speed = v.max(0.0),
-        PlayerFieldEdit::FallGravity(v) => p.fall_gravity = v.max(0.0),
-        PlayerFieldEdit::CutGravity(v) => p.cut_gravity = v.max(0.0),
-        PlayerFieldEdit::CoyoteTime(v) => p.coyote_time = v.max(0.0),
-        PlayerFieldEdit::JumpBuffer(v) => p.jump_buffer = v.max(0.0),
-        PlayerFieldEdit::CornerReach(v) => p.corner_reach = v.max(0.0),
+        PlayerFieldEdit::TakeoffGravity(v) => p.takeoff_gravity = v,
+        PlayerFieldEdit::TakeoffSpeed(v) => p.takeoff_speed = v,
+        PlayerFieldEdit::PeakGravity(v) => p.peak_gravity = v,
+        PlayerFieldEdit::PeakSpeed(v) => p.peak_speed = v,
+        PlayerFieldEdit::FallGravity(v) => p.fall_gravity = v,
+        PlayerFieldEdit::CutGravity(v) => p.cut_gravity = v,
+        PlayerFieldEdit::CoyoteTime(v) => p.coyote_time = v,
+        PlayerFieldEdit::JumpBuffer(v) => p.jump_buffer = v,
+        PlayerFieldEdit::CornerReach(v) => p.corner_reach = v,
         // ⚠️ **O clamp para ÍMPAR mora na LEI** (`ph2d_platformer::odd_samples`),
         // não aqui: a ponte e o desenho perguntam à mesma porta, e um segundo
         // arredondamento no caminho de autoria faria o número guardado discordar
@@ -499,48 +481,48 @@ pub fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: PlayerField
         PlayerFieldEdit::CornerSamples(v) => {
             p.corner_samples = clamp_samples(v, ph2d_physics_ecs::MAX_CORNER_SAMPLES);
         }
-        PlayerFieldEdit::CornerLookahead(v) => p.corner_lookahead = v.max(0.0),
+        PlayerFieldEdit::CornerLookahead(v) => p.corner_lookahead = v,
         // ⚠️ A perna cai no MESMO clamp de contagem do flanco e da quina — o
         // arredondamento para ímpar mora na LEI (`odd_samples`), nunca aqui: um
         // segundo arredondamento faria o número guardado discordar do castado.
         PlayerFieldEdit::FootSamples(v) => {
             p.foot_samples = clamp_samples(v, ph2d_physics_ecs::MAX_WALL_SAMPLES);
         }
-        PlayerFieldEdit::FootSpread(v) => p.foot_spread = v.clamp(0.0, 1.0),
+        PlayerFieldEdit::FootSpread(v) => p.foot_spread = v,
         PlayerFieldEdit::WallSamples(v) => {
             p.wall_samples = clamp_samples(v, ph2d_physics_ecs::MAX_WALL_SAMPLES);
         }
-        PlayerFieldEdit::WallSpread(v) => p.wall_spread = v.clamp(0.0, 1.0),
-        PlayerFieldEdit::LiftMomentum(v) => p.lift_momentum = v.max(0.0),
+        PlayerFieldEdit::WallSpread(v) => p.wall_spread = v,
+        PlayerFieldEdit::LiftMomentum(v) => p.lift_momentum = v,
         // AS PAREDES (W13) — todos não-negativos: cada um é uma distância, uma
         // velocidade ou um tempo, e nenhum tem sentido negativo.
-        PlayerFieldEdit::WallSlideSpeed(v) => p.wall_slide_speed = v.max(0.0),
-        PlayerFieldEdit::WallJumpHeight(v) => p.wall_jump_height = v.max(0.0),
-        PlayerFieldEdit::WallJumpPush(v) => p.wall_jump_push = v.max(0.0),
-        PlayerFieldEdit::WallJumpLockout(v) => p.wall_jump_lockout = v.max(0.0),
-        PlayerFieldEdit::WallReach(v) => p.wall_reach = v.max(0.0),
-        PlayerFieldEdit::WallGrabStamina(v) => p.wall_grab_stamina = v.max(0.0),
-        PlayerFieldEdit::DashSpeed(v) => p.dash_speed = v.max(0.0),
-        PlayerFieldEdit::DashTime(v) => p.dash_time = v.max(0.0),
-        PlayerFieldEdit::DashCooldown(v) => p.dash_cooldown = v.max(0.0),
-        PlayerFieldEdit::CrouchHeight(v) => p.crouch_height = v.max(0.0),
-        PlayerFieldEdit::CrouchSpeed(v) => p.crouch_speed = v.max(0.0),
-        PlayerFieldEdit::SwimSpeed(v) => p.swim_speed = v.max(0.0),
-        PlayerFieldEdit::SwimAcceleration(v) => p.swim_acceleration = v.max(0.0),
+        PlayerFieldEdit::WallSlideSpeed(v) => p.wall_slide_speed = v,
+        PlayerFieldEdit::WallJumpHeight(v) => p.wall_jump_height = v,
+        PlayerFieldEdit::WallJumpPush(v) => p.wall_jump_push = v,
+        PlayerFieldEdit::WallJumpLockout(v) => p.wall_jump_lockout = v,
+        PlayerFieldEdit::WallReach(v) => p.wall_reach = v,
+        PlayerFieldEdit::WallGrabStamina(v) => p.wall_grab_stamina = v,
+        PlayerFieldEdit::DashSpeed(v) => p.dash_speed = v,
+        PlayerFieldEdit::DashTime(v) => p.dash_time = v,
+        PlayerFieldEdit::DashCooldown(v) => p.dash_cooldown = v,
+        PlayerFieldEdit::CrouchHeight(v) => p.crouch_height = v,
+        PlayerFieldEdit::CrouchSpeed(v) => p.crouch_speed = v,
+        PlayerFieldEdit::SwimSpeed(v) => p.swim_speed = v,
+        PlayerFieldEdit::SwimAcceleration(v) => p.swim_acceleration = v,
         // ⚠️ **Sem teto aqui, e é o §0:** o limiar conta PESOS, e o número em que
         // ele deixa de ser alcançável depende das duas densidades da CENA — não
         // há recurso a capar. Quem escolhe a faixa confortável é o slider da §14
         // (0..4, o valor medido na poça das fixtures); a caixa aceita o resto.
-        PlayerFieldEdit::SwimEnter(v) => p.swim_enter = v.max(0.0),
-        PlayerFieldEdit::LedgeGrab(v) => p.ledge_grab = v.max(0.0),
-        PlayerFieldEdit::LedgeReachY(v) => p.ledge_reach_y = v.max(0.0),
-        PlayerFieldEdit::LedgeSpan(v) => p.ledge_span = v.max(0.0),
+        PlayerFieldEdit::SwimEnter(v) => p.swim_enter = v,
+        PlayerFieldEdit::LedgeGrab(v) => p.ledge_grab = v,
+        PlayerFieldEdit::LedgeReachY(v) => p.ledge_reach_y = v,
+        PlayerFieldEdit::LedgeSpan(v) => p.ledge_span = v,
         // ⚠️ **Sem `max(0.0)`, e é o único da família assim:** um offset é uma
         // DIREÇÃO, e deslizar o sensor para BAIXO é um pedido legítimo (uma
         // arte cuja mão fica abaixo do topo do collider).
         PlayerFieldEdit::LedgeOffsetY(v) => p.ledge_offset_y = v,
-        PlayerFieldEdit::GlideFallSpeed(v) => p.glide_fall_speed = v.max(0.0),
-        PlayerFieldEdit::MaxFallSpeed(v) => p.max_fall_speed = v.max(0.0),
+        PlayerFieldEdit::GlideFallSpeed(v) => p.glide_fall_speed = v,
+        PlayerFieldEdit::MaxFallSpeed(v) => p.max_fall_speed = v,
         // ⚠️ Um tag que nenhuma variante reivindica é IGNORADO, e não dobrado
         // num plausível — a disciplina do `from_tag` (`ph2d_physics_ecs`).
         PlayerFieldEdit::PlatformLift(tag) => {
@@ -550,7 +532,7 @@ pub fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: PlayerField
         }
         PlayerFieldEdit::WalkOffLedges(v) => p.walk_off_ledges = v,
         PlayerFieldEdit::CrouchWalkOffLedges(v) => p.crouch_walk_off_ledges = v,
-        PlayerFieldEdit::LedgeSpeed(v) => p.ledge_speed = v.max(0.0),
+        PlayerFieldEdit::LedgeSpeed(v) => p.ledge_speed = v,
         // ⚠️ **Os três são FRAÇÕES, e o teto é de RECURSO** — o registro das
         // faixas já o diz (*"acima de 1 o personagem devolveria mais do que
         // recebeu"*), e o slider parava em 1; era a **escrita** que só impunha o
@@ -560,8 +542,11 @@ pub fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: PlayerField
         // ⚠️ Isto é o oposto do slider dual: ali a caixa passa da faixa de
         // propósito (o arrasto é conforto, o disfuncional começa depois). Aqui
         // não há duas grandezas — há **uma**, e ela é a física.
-        PlayerFieldEdit::ReactionSupport(v) => p.reaction_support = clamp_fraction(v),
-        PlayerFieldEdit::ReactionMovement(v) => p.reaction_movement = clamp_fraction(v),
-        PlayerFieldEdit::ReactionPush(v) => p.reaction_push = clamp_fraction(v),
+        PlayerFieldEdit::ReactionSupport(v) => p.reaction_support = v,
+        PlayerFieldEdit::ReactionMovement(v) => p.reaction_movement = v,
+        PlayerFieldEdit::ReactionPush(v) => p.reaction_push = v,
     }
+    // ⭐ Os clamps de cada braço moram na lei do TIPO (`PlatformPlayer::sanitize`), que o script
+    // também chama (doc CodeEditor 08 §3.5).
+    p.sanitize();
 }

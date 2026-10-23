@@ -32,7 +32,22 @@ fn o_nome_de_codigo_e_o_rotulo() {
         assert_eq!(d.code, snake(ph2d_i18n::tr(d.display_key)), "{}", d.canonical_name);
         let mut nomes = BTreeSet::new();
         for f in d.fields {
-            assert!(!f.name.is_empty(), "{} campo {} sem nome", d.code, f.field_id);
+            if f.name.is_empty() {
+                // ⏳ Sem nome só fica uma chave oculta (`.keyed(k)` + `hiding`), ou uma chave que um
+                // IRMÃO com nome já cobre (o «Source Name» do `UiLabel` vive dentro do enum `source`).
+                let oculta = !f.key.is_empty() && d.hidden_keys.iter().any(|(k, _)| *k == f.key);
+                let do_irmao = !f.key.is_empty()
+                    && d.fields
+                        .iter()
+                        .any(|g| !g.name.is_empty() && g.serde_key() == f.key);
+                assert!(
+                    oculta || do_irmao,
+                    "{} campo {} sem nome nem chave oculta ou nomeada por um irmão",
+                    d.code,
+                    f.field_id
+                );
+                continue;
+            }
             assert!(nomes.insert(f.name), "{}.{} repetido", d.code, f.name);
             assert_eq!(f.name, snake(ph2d_i18n::tr(f.label_key)), "{}.{}", d.code, f.name);
             vistos += 1;
@@ -58,7 +73,7 @@ fn ler_e_escrever_o_mesmo_valor_nao_muda_um_byte() {
         let e = world.spawn_empty().id();
         insert_default(&mut world, e).expect("default");
         let antes = (entry.serialize)(&world, e).expect("bytes");
-        for f in d.fields {
+        for f in d.fields.iter().filter(|f| !f.name.is_empty()) {
             let nome = format!("{}.{}", d.code, f.name);
             let v = property::get(&reg, &world, e, &nome).unwrap_or_else(|err| panic!("{nome}: {err}"));
             property::set(&reg, &mut world, e, &nome, v).unwrap_or_else(|err| panic!("{nome}: {err}"));

@@ -13,6 +13,12 @@
 use super::PhysicsJoint;
 
 impl PhysicsJoint {
+    /// A lei do valor no sítio: o mesmo [`Self::clamped`] que o cartão da §12 e a ponte usam — e
+    /// o `ph2d.set` de um script (doc CodeEditor 08 §3.5).
+    pub fn sanitize(&mut self) {
+        *self = self.clamped();
+    }
+
     pub fn clamped(mut self) -> Self {
         fn finite(v: f32, fallback: f32) -> f32 {
             if v.is_finite() { v } else { fallback }

@@ -43,7 +43,7 @@ pub(crate) fn paint_emissive_row(
         .unwrap_or((SliderState::Normal, 0.0));
     let h = paint_slider_with_chip(
         Rect::new(x, cur_y, w, ALTURA_DE_CAMPO),
-        tr("panel.inspector.render_source.emissive"),
+        tr("component.field.sprite_emissive.1"),
         value,
         ids::INSP_SPRITE_EMISSIVE,
         ids::INSP_SPRITE_EMISSIVE_CHIP,

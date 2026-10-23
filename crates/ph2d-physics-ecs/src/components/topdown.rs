@@ -136,6 +136,26 @@ impl TopDownPlayer {
         *self = Self::from_law(l);
     }
 
+    /// ⭐ **A lei dos números** — o que o painel e o script (doc CodeEditor 08 §3.5) podem lá pôr:
+    /// velocidades e rampas `≥ 0` (zero = instantâneo); a elevação do tabuleiro em `1..=89` (fora
+    /// de `(0, 90)` não descreve tabuleiro nenhum); o deslize mínimo em `0..=89`; de 1 a 8 deslizes
+    /// (com zero o corpo pára em toda parede); e os três seletores pela tradução do fio. Idempotente.
+    pub fn sanitize(&mut self) {
+        for v in [
+            &mut self.speed,
+            &mut self.acceleration,
+            &mut self.deceleration,
+            &mut self.rotation_speed_deg,
+            &mut self.knockback_recovery,
+        ] {
+            *v = v.max(0.0);
+        }
+        self.viewpoint_angle_deg = self.viewpoint_angle_deg.clamp(1.0, 89.0);
+        self.min_slide_angle_deg = self.min_slide_angle_deg.clamp(0.0, 89.0);
+        self.max_slides = self.max_slides.clamp(1, 8);
+        *self = Self::from_law(self.law());
+    }
+
     /// Os três enums, já traduzidos — atalho de leitura para o painel.
     #[must_use]
     pub fn modes(&self) -> (DirectionMode, Viewpoint, RotationMode) {

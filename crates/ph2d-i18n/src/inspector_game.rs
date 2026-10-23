@@ -18,14 +18,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.actions.that_tag_was_deleted_u_this_action_reaches_nobody" => {
             "That tag was deleted \u{b7} this action reaches nobody."
         }
-        "panel.inspector.factory.where" => "Where",
-        "panel.inspector.factory.area_m" => "Area",
-        "panel.inspector.factory.burst" => "Burst",
-        "panel.inspector.factory.max_alive_0_no_limit" => "Max Alive",
         "panel.inspector.factory.max_alive_hint" => "0 = no limit.",
-        "panel.inspector.factory.max_total_0_no_limit" => "Max Total",
         "panel.inspector.factory.max_total_hint" => "0 = no limit.",
-        "panel.inspector.factory.seed" => "Seed",
         "panel.inspector.factory.no_recipe_u_nothing_to_make_copies_of" => {
             "No recipe \u{2014} nothing to make copies of."
         }
@@ -35,43 +29,27 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.factory.the_clock_is_stopped_u_copies_are_born_while_it_plays" => {
             "The clock is stopped \u{2014} copies are born while it plays."
         }
-        "panel.inspector.factory.pick_at_random" => "Pick at random",
-        "panel.inspector.factory.aim_from_spawner" => "Aim from spawner",
         "panel.inspector.factory.alive_now" => "{n} alive now",
-        "panel.inspector.factory.lifetime_s_0_forever" => "Lifetime",
         "panel.inspector.factory.lifetime_hint" => "0 = lives forever.",
-        "panel.inspector.factory.off_screen_margin_m" => "Off-screen margin",
         "panel.inspector.factory.nothing_is_born_from_this_object_u_put_this_on_the_recipe_a_factory_makes" => {
             "Nothing is born from this object \u{2014} put this on the recipe a Factory makes."
         }
         "panel.inspector.factory.no_game_camera_u_off_screen_has_no_screen_to_measure" => {
             "No game camera \u{2014} off-screen has no screen to measure."
         }
-        "panel.inspector.factory.factory" => "Factory",
         "panel.inspector.factory.lifecycle" => "Lifecycle",
         // ⭐⭐⭐ O HUD (TOP-20 #20) — a raiz, o rótulo, o botão e o contador.
         "panel.inspector.hud.hud" => "HUD",
-        "panel.inspector.hud.reference_width" => "Reference Width",
-        "panel.inspector.hud.reference_height" => "Reference Height",
-        "panel.inspector.hud.counter_start" => "Start",
-        "panel.inspector.hud.source_name" => "Source Name",
-        "panel.inspector.hud.prefix" => "Prefix",
-        "panel.inspector.hud.suffix" => "Suffix",
-        "panel.inspector.hud.signal" => "Signal",
-        "panel.inspector.hud.counter_name" => "Counter Name",
-        "panel.inspector.hud.fit" => "Fit",
         "panel.inspector.hud.fit_keep" => "Keep",
         "panel.inspector.hud.fit_stretch" => "Stretch",
         "panel.inspector.hud.fit_expand" => "Expand",
         "panel.inspector.hud.rows_live_on_root" => {
             "Fit and canvas size live on {raiz} — pick it in the Hierarchy"
         }
-        "panel.inspector.hud.source" => "Source",
         "panel.inspector.hud.source_authored" => "Authored",
         "panel.inspector.hud.source_counter" => "Counter",
         "panel.inspector.hud.source_timer" => "Timer",
         "panel.inspector.hud.source_tag" => "Tag",
-        "panel.inspector.hud.disabled" => "Disabled",
         "panel.inspector.hud.no_game_camera" => {
             "No game camera \u{2014} the HUD stays where you put it."
         }
@@ -80,31 +58,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "That source is not in the scene \u{2014} the authored text is shown."
         }
         "panel.inspector.hud.counter_now" => "Now: {v}",
-        "panel.inspector.hud.counter_keep" => "Keep on Restart",
         "panel.inspector.hud.counter_keep_note" => {
             "Restart keeps this value \u{2014} Rewind still resets it."
         }
         "panel.inspector.hud.button_disabled" => "This button refuses the click.",
         "panel.inspector.hud.no_signal" => "No name \u{2014} this button publishes nothing.",
-        "panel.inspector.particles.amount" => "Amount",
-        "panel.inspector.particles.lifetime_s" => "Lifetime",
-        "panel.inspector.particles.lifetime_randomness" => "Lifetime Randomness",
-        "panel.inspector.particles.explosiveness" => "Explosiveness",
-        "panel.inspector.particles.preprocess_s" => "Preprocess",
-        "panel.inspector.particles.speed_scale" => "Speed Scale",
-        "panel.inspector.particles.seed" => "Seed",
-        "panel.inspector.particles.shape_width_radius_m" => "Shape Width / Radius",
-        "panel.inspector.particles.shape_height_m" => "Shape Height",
-        "panel.inspector.particles.speed_m_s" => "Speed",
-        "panel.inspector.particles.speed_randomness" => "Speed Randomness",
-        "panel.inspector.particles.direction_deg" => "Direction",
-        "panel.inspector.particles.spread_deg" => "Spread",
-        "panel.inspector.particles.gravity_x_m_s_u" => "Gravity X (m/s\u{b2})",
-        "panel.inspector.particles.gravity_y_m_s_u" => "Gravity Y (m/s\u{b2})",
-        "panel.inspector.particles.damping" => "Damping",
-        "panel.inspector.particles.size_m" => "Size",
-        "panel.inspector.particles.size_randomness" => "Size Randomness",
-        "panel.inspector.particles.size_at_death" => "Size at Death",
         "panel.inspector.particles.the_clock_is_stopped_u_particles_are_born_while_the_clock_plays" => {
             "The clock is stopped \u{2014} particles are born while the clock plays."
         }
@@ -115,9 +73,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "It starts stopped \u{2014} a signal switches it on."
         }
         "panel.inspector.particles.emission" => "Emission",
-        "panel.inspector.particles.emitting" => "Emitting",
-        "panel.inspector.particles.one_shot" => "One Shot",
-        "panel.inspector.particles.emission_shape" => "Emission Shape",
         "panel.inspector.particles.point" => "Point",
         "panel.inspector.particles.disc" => "Disc",
         "panel.inspector.particles.ring" => "Ring",
@@ -125,9 +80,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.particles.velocity" => "Velocity",
         "panel.inspector.particles.forces" => "Forces",
         "panel.inspector.particles.look" => "Look",
-        "panel.inspector.particles.color" => "Color",
-        "panel.inspector.particles.color_at_death" => "Color at Death",
-        "panel.inspector.particles.simulation_space" => "Simulation Space",
         "panel.inspector.particles.world" => "World",
         "panel.inspector.particles.local" => "Local",
         "panel.inspector.particles.signals" => "Signals",
@@ -135,7 +87,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.particles.switch_off_u" => "switch off\u{2026}",
         "panel.inspector.particles.restart_u" => "restart\u{2026}",
         "panel.inspector.particles.shout_when_done_u" => "shout when done\u{2026}",
-        "panel.inspector.particles.particles" => "Particles",
         "panel.inspector.physics.only_for_tag_u_any" => "Only for tag\u{2026}  (any)",
         "panel.inspector.physics.that_tag_was_deleted_u_this_reaches_nobody" => {
             "That tag was deleted \u{b7} this reaches nobody."
@@ -153,34 +104,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.projectile.the_clock_is_stopped_u_it_flies_while_the_clock_plays" => {
             "The clock is stopped \u{2014} it flies while the clock plays."
         }
-        "panel.inspector.projectile.speed_m_s" => "Speed",
-        "panel.inspector.projectile.acceleration" => "Acceleration",
-        "panel.inspector.projectile.max_speed_0_no_cap" => "Max Speed",
         "panel.inspector.projectile.max_speed_hint" => "0 = no cap.",
-        "panel.inspector.projectile.gravity_0_straight" => "Gravity",
         "panel.inspector.projectile.gravity_hint" => "0 = flies straight.",
-        "panel.inspector.projectile.max_bounces" => "Max Bounces",
-        "panel.inspector.projectile.bounciness_1_perfect" => "Bounciness",
         "panel.inspector.projectile.bounciness_hint" => "1 = a perfect bounce.",
-        "panel.inspector.projectile.range_m_0_forever" => "Range",
         "panel.inspector.projectile.range_hint" => "0 = flies forever.",
-        "panel.inspector.projectile.homing_0_none" => "Homing",
         "panel.inspector.projectile.homing_hint" => "0 = no homing.",
         "panel.inspector.projectile.target_object_name_u" => "target object name\u{2026}",
         "panel.inspector.projectile.no_object_in_the_scene_has_that_name" => {
             "No object in the scene has that name."
         }
-        "panel.inspector.projectile.face_velocity" => "Face Velocity",
-        "panel.inspector.projectile.projectile_motion" => "Projectile Motion",
         // ⭐⭐⭐ O RAIO (suplente #21) — o objecto que OLHA.
         // ⭐⭐⭐ A PARALAXE (plano 24) — ⚠️ os rótulos são os que o roteiro da cena `=1` nomeia,
         // e há gate derivado do próprio roteiro a exigir que cada nome entre crases exista aqui.
-        "panel.inspector.parallax.parallax" => "Parallax",
-        "panel.inspector.parallax.scroll_factor" => "Scroll Factor",
-        "panel.inspector.parallax.repeat_m" => "Repeat",
-        "panel.inspector.parallax.drift_m_s" => "Drift",
-        "panel.inspector.parallax.limit_min_m" => "Limit Min",
-        "panel.inspector.parallax.limit_max_m" => "Limit Max",
         "panel.inspector.parallax.there_is_no_game_camera" => {
             "There is no Game Camera in the scene \u{2014} no layer moves."
         }
@@ -217,15 +152,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.parallax.editing_the_primary_selection_only" => {
             "Editing the primary selection only."
         }
-        "panel.inspector.ray.ray_sensor" => "Ray Sensor",
-        "panel.inspector.ray.origin" => "Origin",
-        "panel.inspector.ray.direction" => "Direction",
         // ⚠️ **A CHAVE mantém o sufixo `_m` e o TEXTO não** — ela é um endereço, e a unidade vive
         // no CAMPO (`Unit::Meters`). O gate `no_row_label_carries_its_own_unit` apanhou a 1.ª
         // redacção («Reach (m)»): *duas superfícies a dizer a mesma unidade divergem no dia em que
         // uma delas mudar.*
-        "panel.inspector.ray.reach_m" => "Reach",
-        "panel.inspector.ray.layer" => "Layer",
         "panel.inspector.ray.signal_when_it_starts_seeing_u" => {
             "signal when it starts seeing\u{2026}"
         }
@@ -333,25 +263,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.topdown.the_clock_is_stopped_u_it_moves_while_the_clock_plays" => {
             "The clock is stopped \u{2014} it moves while the clock plays."
         }
-        "panel.inspector.topdown.speed_m_s" => "Speed",
-        "panel.inspector.topdown.acceleration_0_instant" => "Acceleration",
         "panel.inspector.topdown.acceleration_hint" => "0 = instant.",
-        "panel.inspector.topdown.deceleration_0_instant" => "Deceleration",
         "panel.inspector.topdown.deceleration_hint" => "0 = instant.",
-        "panel.inspector.topdown.knockback_recovery" => "Push Recovery",
-        "panel.inspector.topdown.board_angle_deg" => "Board Angle",
-        "panel.inspector.topdown.turn_speed_deg_s_0_instant" => "Turn Speed",
         "panel.inspector.topdown.turn_speed_hint" => "0 = instant.",
-        "panel.inspector.topdown.min_slide_angle_deg" => "Min Slide Angle",
-        "panel.inspector.topdown.max_slides" => "Max Slides",
-        "panel.inspector.topdown.directions" => "Directions",
-        "panel.inspector.topdown.viewpoint" => "Viewpoint",
-        "panel.inspector.topdown.facing" => "Facing",
-        "panel.inspector.topdown.default_controls" => "Default Controls",
         "panel.inspector.topdown.off_u_the_keys_don_t_reach_it_something_else_must_drive_it" => {
             "Off \u{2014} the keys don't reach it; something else must drive it."
         }
-        "panel.inspector.topdown.top_down_player" => "Top-Down Player",
         "panel.inspector.script.stopped_fix_and_save" => {
             "Stopped: {msg} \u{2014} fix the script and save it."
         }
@@ -364,8 +281,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.tags.create_named" => "+ Create \u{201c}{nome}\u{201d}",
         // ⭐⭐⭐ A CUTSCENE (TOP-20 #19) — o selector e as sete razões de ela não correr.
-        "panel.inspector.sequence.sequence" => "Sequence",
-        "panel.inspector.sequence.cutscene" => "Cutscene",
         "panel.inspector.sequence.no_cutscenes" => "No cutscenes yet",
         "panel.inspector.sequence.none_chosen" => "None",
         "panel.inspector.sequence.clear" => "Play nothing",
@@ -514,16 +429,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         //
         // ⚠️ **As unidades NÃO vão no texto** — elas são o chip do campo (`Unit::Meters`), e há
         // gate (`no_row_label_carries_its_own_unit`) a prová-lo.
-        "panel.inspector.shake.camera_shake" => "Camera Shake",
         // ⭐ Os PERFIS de um clique. ⚠️ Eles pintam-se ANTES dos números, porque os reescrevem.
         "panel.inspector.shake.preset" => "Preset",
-        "panel.inspector.shake.amplitude" => "Amplitude",
-        "panel.inspector.shake.frequency" => "Frequency",
-        "panel.inspector.shake.decay" => "Decay",
         // ⚠️ **«Punch» e não «Exponent»** — o artista escolhe o CARÁCTER do abanão, e a potência a
         // que o trauma é elevado é como a lei o exprime, não como ele o pensa.
-        "panel.inspector.shake.punch" => "Punch",
-        "panel.inspector.shake.seed" => "Seed",
         // ⭐ A DURAÇÃO é derivada: `decay` é o número que a lei come e não o que o artista pensa.
         "panel.inspector.shake.one_full_shake_lasts_n_s" => "One full shake lasts {s} s.",
         "panel.inspector.shake.shaking_trauma_n" => "Shaking — trauma {n}.",
@@ -560,20 +469,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         // ⭐⭐⭐ **O SEGUIDOR DE CAMINHO** (suplente #23) — o objecto que anda sobre a curva que o
         // artista desenhou.
-        "panel.inspector.path_follow.path_follow" => "Path Follow",
+        // Os rótulos dos campos são as chaves do CATÁLOGO (`component.field.path_follow_fields.*`).
         "panel.inspector.path_follow.drawn_shape_name_u" => "Drawn shape name…",
-        "panel.inspector.path_follow.timer_slot" => "Timer Slot",
-        "panel.inspector.path_follow.start_at" => "Start At",
-        // ⚠️ **A unidade NÃO vai no texto** — ela é o chip do campo (`Unit::Degrees`), e há gate
-        // (`no_row_label_carries_its_own_unit`) a prová-lo: dois sítios a dizer a mesma unidade
-        // divergem no dia em que um deles mudar.
-        "panel.inspector.path_follow.angle" => "Angle",
-        "panel.inspector.path_follow.side_offset" => "Side Offset",
-        "panel.inspector.path_follow.face_path" => "Face Path",
-        "panel.inspector.path_follow.cycle" => "Cycle",
-        "panel.inspector.path_follow.curve" => "Curve",
-        "panel.inspector.path_follow.ease" => "Ease",
-        "panel.inspector.path_follow.when_done" => "When Done",
         // ⭐ O RELÓGIO, dentro da secção — a legenda NOMEIA o timer, porque ele não é privado
         // deste seguidor.
         "panel.inspector.path_follow.clock_is_timer" => "Clock — Timer {n}, same as in Timers.",
@@ -600,12 +497,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.path_follow.it_moves_while_the_clock_plays" => {
             "It moves while the clock plays."
         }
-        // ⭐⭐⭐ A ARMA DO JOGADOR — o ritmo, o pente e a recarga.
-        "panel.inspector.weapon.weapon" => "Weapon",
-        // ⚠️ **A unidade vive no CAMPO** (`Unit::Milliseconds`), nunca no rótulo — a spec da linha
-        // de propriedade §7. A CHAVE mantém o sufixo `_ms`: ela é um endereço, não o texto.
-        "panel.inspector.weapon.cooldown_ms" => "Cooldown",
-        "panel.inspector.weapon.reload_ms" => "Reload",
+        // ⭐⭐⭐ A ARMA DO JOGADOR — os rótulos são as chaves do CATÁLOGO (`weapon_fields.*`).
         "panel.inspector.weapon.signal_that_pulls_the_trigger_u" => {
             "signal that pulls the trigger\u{2026}"
         }
@@ -652,14 +544,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.counter_watch.counter_label" => "Counter",
         "panel.inspector.counter_watch.signal_label" => "Signal",
         "panel.inspector.emitter.on_label" => "On",
-        "panel.inspector.particles.on_label" => "Switch On",
-        "panel.inspector.particles.off_label" => "Switch Off",
-        "panel.inspector.particles.restart_label" => "Restart",
-        "panel.inspector.particles.done_label" => "When Done",
-        "panel.inspector.path_follow.shape_label" => "Shape",
         "panel.inspector.projectile.homing_target_label" => "Target",
-        "panel.inspector.ray.on_enter_label" => "On Enter",
-        "panel.inspector.ray.on_exit_label" => "On Exit",
         "panel.inspector.script.source_label" => "Script",
         "panel.inspector.statemachine.name_label" => "Name",
         "panel.inspector.statemachine.on_enter_label" => "On Enter",
@@ -667,13 +552,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.statemachine.on_label" => "On",
         "panel.inspector.trigger.action_label" => "Action",
         "panel.inspector.trigger.signal_label" => "Signal",
-        "panel.inspector.weapon.on_signal_label" => "Trigger",
-        "panel.inspector.weapon.on_fire_label" => "On Fire",
-        "panel.inspector.weapon.magazine_label" => "Magazine",
-        "panel.inspector.weapon.reload_on_label" => "Reload On",
-        "panel.inspector.weapon.on_empty_label" => "On Empty",
-        "panel.inspector.weapon.on_reloaded_label" => "On Reloaded",
-        "panel.inspector.weapon.reserve_label" => "Reserve",
         "panel.inspector.weapon.the_clock_is_stopped_u_a_weapon_only_fires_during_a_run" => {
             "The clock is stopped \u{2014} a weapon only fires during a run."
         }

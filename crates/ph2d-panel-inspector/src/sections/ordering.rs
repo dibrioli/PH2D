@@ -22,27 +22,13 @@ pub(crate) const LAYER_LABELS: [TextKey; 5] = [
     TextKey::new("panel.inspector.ordering.ui"),
 ];
 
-/// ⭐ **O rótulo de um CAMPO, lido do descritor** (ADR-0166 · plano F0 — a §7 é a seção
-/// piloto).
+/// ⭐ **O rótulo de cada linha é a chave do campo no CATÁLOGO** (ADR-0166 · CodeEditor 08 d3 — a §7
+/// foi a secção-piloto): uma fonte para o texto que o artista lê e para o nome com que o script o
+/// escreve (`z_index.z_index`). Um marcador (a presença é o valor) mostra o nome do COMPONENTE.
 ///
-/// Antes desta wave o rótulo vivia como literal aqui e o nome do campo vivia no descritor:
-/// **duas fontes para a mesma string**, e elas já tinham divergido (*"Sort At Root"* ×
-/// *"Sort at Root"*; *"Y-Sort"* × *"Enabled"*). Quem manda é o produto — o descritor foi
-/// corrigido para o que o Inspector pinta —, e agora há uma fonte só.
-///
-/// ⚠️ **Faltar não é opção silenciosa:** um `field_id` sem descrição faz o painel pintar
-/// `??` em vez de uma linha muda ou de um rótulo inventado. É a lei do *zero no-op
-/// silencioso* (DIRETIVA §2) aplicada a uma string.
-fn field_label(canonical_name: &'static str, field_id: u16) -> &'static str {
-    ph2d_component_desc::desc_for(canonical_name)
-        .and_then(|d| d.field(field_id))
-        .map_or("??", |f| tr(f.label_key))
-}
-
-/// O rótulo de um **marcador de tamanho zero** — nele a presença É o valor, então a linha
-/// mostra o nome do COMPONENTE (`Show Behind Parent`), não o de um campo que não existe.
-fn marker_label(canonical_name: &'static str) -> &'static str {
-    ph2d_component_desc::desc_for(canonical_name).map_or("??", |d| tr(d.display_key))
+/// As linhas do eixo são o nome do campo («Axis», `y_sort.axis`) mais a letra.
+fn eixo(key: &str) -> String {
+    ph2d_i18n::tr_with(key, &[("axis", &tr("component.field.y_sort.2"))])
 }
 
 /// ⭐⭐⭐ **A COLUNA desta secção — DERIVADA do descritor, como os rótulos dela já eram.**
@@ -59,22 +45,26 @@ fn marker_label(canonical_name: &'static str) -> &'static str {
 /// ⛔ E ela é **derivada**, nunca escrita à mão: esta é a secção-piloto do ADR-0166, e uma segunda
 /// lista de rótulos ao lado da primeira é a que envelhece.
 fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Seccao {
+    let (ax, ay) = (
+        eixo("panel.inspector.ordering.axis_x"),
+        eixo("panel.inspector.ordering.axis_y"),
+    );
     ph2d_editor_core::property_row::Seccao::medida(
         text_system,
         1,
         &[
-            field_label("ph2d::ecs::ZIndexOverride", 1),
-            field_label("ph2d::ecs::ZAsRelative", 1),
-            marker_label("ph2d::ecs::ShowBehindParent"),
-            field_label("ph2d::ecs::OrderInLayer", 1),
-            tr("panel.inspector.ordering.sorting_layer"),
-            field_label("ph2d::ecs::YSort", 1),
-            tr("panel.inspector.ordering.sort_point"),
-            tr("panel.inspector.ordering.axis_x"),
-            tr("panel.inspector.ordering.axis_y"),
-            marker_label("ph2d::ecs::SortingGroup"),
-            field_label("ph2d::ecs::SortingGroup", 1),
-            marker_label("ph2d::ecs::TopLevel"),
+            tr("component.field.z_index.1"),
+            tr("component.field.z_as_relative.1"),
+            tr("component.show_behind_parent.name"),
+            tr("component.field.order_in_layer.1"),
+            tr("component.field.sorting_layer.1"),
+            tr("component.field.y_sort.1"),
+            tr("component.field.y_sort.3"),
+            &ax,
+            &ay,
+            tr("component.sorting_group.name"),
+            tr("component.field.sorting_group.1"),
+            tr("component.top_level.name"),
         ],
     )
 }
@@ -188,7 +178,7 @@ fn layer_row(
     ph2d_editor_core::widget::paint_property_label(
         text_system,
         scene,
-        tr("panel.inspector.ordering.sorting_layer"),
+        tr("component.field.sorting_layer.1"),
         row.label.x,
         row.label.y + (h - TypeToken::Sm.px()) * 0.5,
         TypeToken::Sm.px(),
@@ -275,7 +265,7 @@ fn ysort_point_rows(
         x,
         w,
         y,
-        tr("panel.inspector.ordering.sort_point"),
+        tr("component.field.y_sort.3"),
         &segmentos,
         sec,
     );
@@ -291,7 +281,7 @@ fn ysort_point_rows(
             w,
             cur_y,
             ids::INSP_ORDER_AXIS_X,
-            tr("panel.inspector.ordering.axis_x"),
+            &eixo("panel.inspector.ordering.axis_x"),
             sec,
         );
         cur_y = number_row(
@@ -304,7 +294,7 @@ fn ysort_point_rows(
             w,
             cur_y,
             ids::INSP_ORDER_AXIS_Y,
-            tr("panel.inspector.ordering.axis_y"),
+            &eixo("panel.inspector.ordering.axis_y"),
             sec,
         );
     }
@@ -396,25 +386,21 @@ pub(crate) fn paint_ordering_section(
     // style): a non-zero value attaches `ZIndexOverride`, `0` detaches it
     // (= default, pure DFS / hierarchy order — `0` and absent sort
     // identically). Z as Relative pairs with it.
-    yy = ni!(
-        yy,
-        ids::INSP_ORDER_Z_INDEX,
-        field_label("ph2d::ecs::ZIndexOverride", 1)
-    );
+    yy = ni!(yy, ids::INSP_ORDER_Z_INDEX, tr("component.field.z_index.1"));
     yy = cb!(
         yy,
         ids::INSP_ORDER_Z_RELATIVE,
-        field_label("ph2d::ecs::ZAsRelative", 1)
+        tr("component.field.z_as_relative.1")
     );
     yy = cb!(
         yy,
         ids::INSP_ORDER_SHOW_BEHIND,
-        marker_label("ph2d::ecs::ShowBehindParent")
+        tr("component.show_behind_parent.name")
     );
     yy = ni!(
         yy,
         ids::INSP_ORDER_ORDER_IN_LAYER,
-        field_label("ph2d::ecs::OrderInLayer", 1)
+        tr("component.field.order_in_layer.1")
     );
     yy = layer_row(
         scene,
@@ -431,7 +417,7 @@ pub(crate) fn paint_ordering_section(
     yy = cb!(
         yy,
         ids::INSP_ORDER_YSORT_ENABLED,
-        field_label("ph2d::ecs::YSort", 1)
+        tr("component.field.y_sort.1")
     );
     if live(store, ids::INSP_ORDER_YSORT_ENABLED, info.y_sort_enabled) {
         yy = ysort_point_rows(
@@ -452,19 +438,19 @@ pub(crate) fn paint_ordering_section(
     yy = cb!(
         yy,
         ids::INSP_ORDER_SORTING_GROUP,
-        marker_label("ph2d::ecs::SortingGroup")
+        tr("component.sorting_group.name")
     );
     if live(store, ids::INSP_ORDER_SORTING_GROUP, info.sorting_group) {
         yy = cb!(
             yy,
             ids::INSP_ORDER_SORT_AT_ROOT,
-            field_label("ph2d::ecs::SortingGroup", 1)
+            tr("component.field.sorting_group.1")
         );
     }
     yy = cb!(
         yy,
         ids::INSP_ORDER_TOP_LEVEL,
-        marker_label("ph2d::ecs::TopLevel")
+        tr("component.top_level.name")
     );
 
     fold.finish(

@@ -30,17 +30,17 @@ use ph2d_i18n::tr;
 /// comprimentos.
 const ROTULOS: [(TextKey, f64, Option<ph2d_editor_core::widget::Unit>); 3] = [
     (
-        TextKey::new("panel.inspector.hud.reference_width"),
+        TextKey::new("component.field.canvas_fields.1"),
         0.5, // LITERAL-PX-OK: metros
         Some(ph2d_editor_core::widget::Unit::Meters),
     ),
     (
-        TextKey::new("panel.inspector.hud.reference_height"),
+        TextKey::new("component.field.canvas_fields.2"),
         0.5, // LITERAL-PX-OK: metros
         Some(ph2d_editor_core::widget::Unit::Meters),
     ),
     (
-        TextKey::new("panel.inspector.hud.counter_start"),
+        TextKey::new("component.field.counter_fields.2"),
         1.0, // LITERAL-PX-OK: contagem (inteiro)
         None,
     ),
@@ -52,8 +52,8 @@ const ROTULOS: [(TextKey, f64, Option<ph2d_editor_core::widget::Unit>); 3] = [
 /// medida; com o nome ao lado (2026-09-23) têm de entrar.
 fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Seccao {
     let mut nomes: Vec<&str> = ROTULOS.iter().map(|(chave, _, _)| chave.tr()).collect();
-    nomes.push(tr("panel.inspector.hud.fit"));
-    nomes.push(tr("panel.inspector.hud.source"));
+    nomes.push(tr("component.field.canvas_fields.3"));
+    nomes.push(tr("component.field.label_fields.1"));
     ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &nomes)
 }
 
@@ -201,8 +201,8 @@ fn txt_row(
         text_system,
         1,
         &[
-            tr("panel.inspector.hud.signal"),
-            tr("panel.inspector.hud.counter_name"),
+            tr("component.field.button_fields.1"),
+            tr("component.field.counter_fields.1"),
             rotulo,
         ],
     );

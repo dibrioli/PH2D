@@ -77,6 +77,15 @@ impl FieldDesc {
         self
     }
 
+    /// ⏳ Sem nome de código, só a chave serde: o campo tem rótulo no cartão mas a chave está em
+    /// `hiding` (uma [`Hidden::Reference`] por nome, que ganha nome no d4). Gate
+    /// `o_nome_de_codigo_e_o_rotulo`: um campo sem nome tem de ter a chave oculta.
+    #[must_use]
+    pub const fn keyed(mut self, key: &'static str) -> Self {
+        self.key = key;
+        self
+    }
+
     /// A chave do campo no valor serde do componente.
     #[must_use]
     pub const fn serde_key(&self) -> &'static str {

@@ -180,7 +180,8 @@ fn every_inspector_key_lives_in_exactly_one_table() {
     let geral = keys::keys_declared(&repo, &geral_t, PREFIX);
     let player = keys::keys_declared(&repo, &player_t, PREFIX);
     assert!(
-        geral.len() >= 250 && player.len() >= 150,
+        // ⚠️ `100`: os 55 rótulos dos campos da §14 passaram para a chave do catálogo (d3, 22/10).
+        geral.len() >= 250 && player.len() >= 100,
         "o censo achou {} e {} chaves — uma das metades está a ser lida no sítio errado",
         geral.len(),
         player.len()

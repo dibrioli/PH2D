@@ -63,11 +63,11 @@ pub(super) fn paint_kind_params(
             let unit = limit_unit(info.kind_tag);
             for (label, id) in [
                 (
-                    tr("panel.inspector.joint.min_unit"),
+                    tr("component.field.joint.5"),
                     ids::INSP_JOINT_LIMIT_MIN,
                 ),
                 (
-                    tr("panel.inspector.joint.max_unit"),
+                    tr("component.field.joint.6"),
                     ids::INSP_JOINT_LIMIT_MAX,
                 ),
             ] {
@@ -98,7 +98,7 @@ pub(super) fn paint_kind_params(
             x,
             w,
             yy,
-            tr("panel.inspector.joint.rest_length_m"),
+            tr("component.field.joint.10"),
             ids::INSP_JOINT_REST_LENGTH,
             Some(ph2d_editor_core::widget::Unit::Meters),
             None,
@@ -116,7 +116,7 @@ pub(super) fn paint_kind_params(
             x,
             w,
             yy,
-            tr("panel.inspector.joint.weld"),
+            tr("component.field.joint.24"),
             ids::INSP_JOINT_SOFT_GROUP,
             &ids::INSP_JOINT_SOFT,
             &SOFT_LABELS.map(TextKey::tr),
@@ -130,10 +130,10 @@ pub(super) fn paint_kind_params(
     if kind_has_spring(info.kind_tag, info.soft) {
         for (label, id) in [
             (
-                tr("panel.inspector.joint.stiffness"),
+                tr("component.field.joint.11"),
                 ids::INSP_JOINT_STIFFNESS,
             ),
-            (tr("panel.inspector.joint.damping"), ids::INSP_JOINT_DAMPING),
+            (tr("component.field.joint.12"), ids::INSP_JOINT_DAMPING),
         ] {
             yy = num_row(
                 scene,
@@ -157,7 +157,7 @@ pub(super) fn paint_kind_params(
         let label = match info.kind_tag {
             KIND_ROD => tr("panel.inspector.joint.length_m"),
             KIND_PULLEY => tr("panel.inspector.joint.rope_length_m"),
-            _ => tr("panel.inspector.joint.max_length_m"),
+            _ => tr("component.field.joint.13"),
         };
         yy = num_row(
             scene,

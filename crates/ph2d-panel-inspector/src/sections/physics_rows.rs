@@ -69,11 +69,11 @@ pub(super) fn paint_damping_rows(
     let mut yy = y;
     for (label, id) in [
         (
-            tr("panel.inspector.physics.linear_damping"),
+            tr("component.field.damping_override.0"),
             ids::INSP_PHYS_LINEAR_DAMPING,
         ),
         (
-            tr("panel.inspector.physics.angular_damping"),
+            tr("component.field.damping_override.1"),
             ids::INSP_PHYS_ANGULAR_DAMPING,
         ),
     ] {
@@ -99,7 +99,7 @@ pub(super) fn paint_damping_rows(
         x,
         w,
         yy,
-        tr("panel.inspector.physics.damp_mode"),
+        tr("component.field.damping_override.2"),
         ids::INSP_LIVE_PHYSICS_DAMPMODE,
         &ids::INSP_PHYS_DAMPMODE,
         &DAMP_MODE_LABELS.map(TextKey::tr),
@@ -132,11 +132,11 @@ pub(super) fn paint_material_rows(
     let mut yy = y;
     for (label, id) in [
         (
-            tr("panel.inspector.physics.bounce"),
+            tr("component.field.collider.2"),
             ids::INSP_PHYS_RESTITUTION,
         ),
         (
-            tr("panel.inspector.physics.friction"),
+            tr("component.field.collider.3"),
             ids::INSP_PHYS_FRICTION,
         ),
     ] {
@@ -157,13 +157,13 @@ pub(super) fn paint_material_rows(
     // each, sitting right under the value it governs.
     for (label, group, ids, tag) in [
         (
-            tr("panel.inspector.physics.bounce_combine"),
+            tr("component.field.material_combine.0"),
             ids::INSP_LIVE_PHYSICS_REST_COMBINE,
             &ids::INSP_PHYS_REST_COMBINE,
             restitution_combine_tag,
         ),
         (
-            tr("panel.inspector.physics.friction_combine"),
+            tr("component.field.material_combine.1"),
             ids::INSP_LIVE_PHYSICS_FRIC_COMBINE,
             &ids::INSP_PHYS_FRIC_COMBINE,
             friction_combine_tag,
@@ -235,10 +235,10 @@ pub(super) fn paint_mass_source(
             u8::from(mass_manual),
         );
         let (label, id) = if mass_manual {
-            (tr("panel.inspector.physics.mass_kg"), ids::INSP_PHYS_MASS)
+            (tr("component.field.mass_override.0"), ids::INSP_PHYS_MASS)
         } else {
             (
-                tr("panel.inspector.physics.density"),
+                tr("component.field.collider.1"),
                 ids::INSP_PHYS_DENSITY,
             )
         };
@@ -264,7 +264,7 @@ pub(super) fn paint_mass_source(
             x,
             w,
             yy,
-            tr("panel.inspector.physics.density"),
+            tr("component.field.collider.1"),
             ids::INSP_PHYS_DENSITY,
         );
     }
@@ -349,14 +349,14 @@ pub(super) fn paint_collision_rows(
     // is a world rule and lives in the Physics panel; a body only says where it belongs.
     for (label, group, opts, labels, sel) in [
         (
-            tr("panel.inspector.physics.layer"),
+            tr("component.field.collider.4"),
             ids::INSP_LIVE_PHYSICS_LAYER,
             &ids::INSP_PHYS_LAYER[..],
             &LAYER_LABELS[..],
             layer,
         ),
         (
-            tr("panel.inspector.physics.trigger"),
+            tr("component.field.collider.5"),
             ids::INSP_LIVE_PHYSICS_SENSOR,
             &ids::INSP_PHYS_SENSOR[..],
             &SENSOR_LABELS.map(TextKey::tr),
@@ -426,12 +426,12 @@ pub(super) fn paint_collision_rows(
     );
     for (label, id, unit) in [
         (
-            tr("panel.inspector.physics.grip"),
+            tr("component.field.walk_surface.0"),
             ids::INSP_PHYS_WALK_GRIP,
             None,
         ),
         (
-            tr("panel.inspector.physics.belt_m_s"),
+            tr("component.field.walk_surface.1"),
             ids::INSP_PHYS_WALK_BELT,
             Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
         ),
@@ -472,19 +472,19 @@ pub(super) fn paint_collision_rows(
         text_system,
         1,
         &[
-            tr("panel.inspector.physics.on_hit_label"),
-            tr("panel.inspector.physics.on_leave_label"),
+            tr("component.field.signal_on_hit.0"),
+            tr("component.field.signal_on_leave.0"),
         ],
     );
     for (id, rotulo, placeholder) in [
         (
             ids::INSP_PHYS_SIGNAL,
-            tr("panel.inspector.physics.on_hit_label"),
+            tr("component.field.signal_on_hit.0"),
             tr("panel.inspector.physics.signal_on_hit"),
         ),
         (
             ids::INSP_PHYS_SIGNAL_LEAVE,
-            tr("panel.inspector.physics.on_leave_label"),
+            tr("component.field.signal_on_leave.0"),
             tr("panel.inspector.physics.signal_on_leave"),
         ),
     ] {

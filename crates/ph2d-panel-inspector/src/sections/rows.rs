@@ -395,6 +395,32 @@ pub(crate) fn aviso_em(
     y + alta.max(font) + ph2d_tokens::control_gap_px()
 }
 
+/// O NOME do componente dono das linhas que se seguem, num cartão que junta vários (HUD, paralaxe,
+/// câmera): é o prefixo com que um script as lê (`camera_follow.damping`). Não é um aviso — não
+/// entra no censo deles.
+pub(crate) fn subtitulo(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    texto: &str,
+) -> f32 {
+    let font = TypeToken::Sm.px();
+    let alta = ph2d_editor_core::paint::paint_text_block(
+        text_system,
+        scene,
+        texto,
+        x,
+        y,
+        font,
+        w,
+        resolve(ColorToken::Text2, theme),
+    );
+    y + alta.max(font) + ph2d_tokens::control_gap_px()
+}
+
 #[cfg(test)]
 mod aviso_tests {
     use super::*;

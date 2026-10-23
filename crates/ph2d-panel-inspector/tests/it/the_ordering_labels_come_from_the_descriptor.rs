@@ -109,10 +109,11 @@ fn the_painter_does_not_hardcode_the_row_labels() {
         // note que `contains('"')` sozinho não serve, porque a porta derivada também leva
         // aspas (o nome canónico é uma string). A pergunta certa é pela PORTA.
         assert!(
-            block.contains("field_label(") || block.contains("marker_label("),
-            "ordering.rs:{start_line}: linha emitida sem passar pelo descritor — o rotulo \
-             vem de `field_label` / `marker_label`, senao voltam a existir duas fontes para \
-             a mesma string (foi assim que 'Sort At Root' e 'Sort at Root' coexistiram):\n  \
+            block.contains("tr(\"component."),
+            "ordering.rs:{start_line}: linha emitida sem a chave do CATALOGO — o rotulo \
+             e' `tr(\"component.…\")` (a chave do campo ou, num marcador, a do componente), senao \
+             voltam a existir duas fontes para a mesma string (foi assim que 'Sort At Root' e \
+             'Sort at Root' coexistiram; CodeEditor 08 d3: e' tambem o nome do script):\n  \
              {block}",
         );
     }

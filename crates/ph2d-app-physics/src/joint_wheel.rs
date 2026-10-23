@@ -293,9 +293,10 @@ pub(crate) fn wheel_with_edit(
             next.mounted = false;
         }
     }
-    // A MESMA porta de carga que o load usa: raio negativo inverteria a
-    // tangente, `NaN` envenenaria a pose e o hash C9.
-    Some(next.clamped())
+    // A MESMA porta de carga que o load usa (`sanitize`, a lei do `ph2d.set` também): raio
+    // negativo inverteria a tangente, `NaN` envenenaria a pose e o hash C9.
+    next.sanitize();
+    Some(next)
 }
 
 /// **Montar o eixo desta roldana no corpo `body`** (W-Pulley W3) — a porta que o

@@ -244,6 +244,8 @@ impl SimComponent for Collider {}
 /// damping, one-way, the force zone). Re-exported so `components::GravityScale` and
 /// friends keep working: this is a LOC split, not a new address for the types.
 mod area;
+/// A lei do valor das linhas da §11 (`Collider::sanitize`, `MassOverride::sanitize`…).
+mod body_law;
 /// ⭐⭐⭐ **VIDA e DANO** (plano 28, W2) — ver o cabeçalho dele.
 mod health;
 mod health_bar;
@@ -252,6 +254,8 @@ mod nav;
 mod overrides;
 /// O componente do player de plataforma (docs dele).
 mod player;
+/// A lei do valor do player (`PlatformPlayer::sanitize`).
+mod player_law;
 /// ⭐ O PROJÉCTIL de arcade (TOP-20 #14) — a lei vive na folha [`ph2d_projectile`].
 mod projectile;
 /// ⭐⭐⭐ **O RAIO persistente e autorado** (suplente #21) — ver o cabeçalho dele, que traz a tabela

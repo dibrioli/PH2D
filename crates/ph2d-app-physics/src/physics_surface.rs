@@ -60,13 +60,14 @@ pub(super) fn apply_surface_edit(
     match edit {
         // ⚠️ A tração é um multiplicador de ORÇAMENTO: negativa ela pagaria
         // o personagem para se afastar do alvo, e o piso é o gelo perfeito.
-        PhysicsFieldEdit::WalkGrip(v) => surf.grip = v.max(0.0),
+        PhysicsFieldEdit::WalkGrip(v) => surf.grip = v,
         // ⚠️ E a correia é COM SINAL, sem piso: o sinal É a direção ao longo
         // da tangente, e clampá-lo em zero deixaria metade das esteiras
         // inexprimível.
         PhysicsFieldEdit::WalkBelt(v) => surf.belt = v,
         _ => unreachable!(),
     }
+    surf.sanitize();
     // Detach no neutro (`grip 1`, `belt 0`) — o idioma do presence-override:
     // um chão comum não carrega componente, e o arquivo fica livre do no-op.
     if surf.is_neutral() {

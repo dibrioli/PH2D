@@ -122,26 +122,22 @@ pub(crate) fn apply_topdown_edit(world: &mut World, bits: u64, edit: &TopDownFie
     };
     let mut law = c.law();
     match edit {
-        TopDownFieldEdit::Speed(v) => law.speed = v.max(0.0),
-        TopDownFieldEdit::Acceleration(v) => law.acceleration = v.max(0.0),
-        TopDownFieldEdit::Deceleration(v) => law.deceleration = v.max(0.0),
+        TopDownFieldEdit::Speed(v) => law.speed = *v,
+        TopDownFieldEdit::Acceleration(v) => law.acceleration = *v,
+        TopDownFieldEdit::Deceleration(v) => law.deceleration = *v,
         TopDownFieldEdit::Directions(d) => law.direction = dir_para_lei(*d),
         TopDownFieldEdit::Viewpoint(v) => law.viewpoint = view_para_lei(*v),
-        // ⚠️ **A cerca é a do PAINEL escrita também AQUI**: o campo é alcançável por outra rota
-        // (um script, um ficheiro), e uma elevação fora de `(0, 90)` não descreve tabuleiro nenhum.
-        TopDownFieldEdit::ViewpointAngle(v) => law.viewpoint_angle_deg = v.clamp(1.0, 89.0),
+        // ⚠️ As cercas são a lei do tipo (`TopDownPlayer::sanitize`), a mesma do script.
+        TopDownFieldEdit::ViewpointAngle(v) => law.viewpoint_angle_deg = *v,
         TopDownFieldEdit::Facing(f) => law.rotation = face_para_lei(*f),
-        TopDownFieldEdit::TurnSpeed(v) => law.rotation_speed_deg = v.max(0.0),
-        TopDownFieldEdit::MinSlideAngle(v) => law.min_slide_angle_deg = v.clamp(0.0, 89.0),
-        // ⚠️ **Pelo menos UM**: com zero deslizes o corpo pára em toda parede, e o componente
-        // deixaria de fazer a única coisa que ele existe para fazer.
-        TopDownFieldEdit::MaxSlides(n) => {
-            law.max_slides = u8::try_from((*n).clamp(1, 8)).unwrap_or(4);
-        }
+        TopDownFieldEdit::TurnSpeed(v) => law.rotation_speed_deg = *v,
+        TopDownFieldEdit::MinSlideAngle(v) => law.min_slide_angle_deg = *v,
+        TopDownFieldEdit::MaxSlides(n) => law.max_slides = u8::try_from(*n).unwrap_or(u8::MAX),
         TopDownFieldEdit::DefaultControls(b) => law.default_controls = *b,
-        TopDownFieldEdit::KnockbackRecovery(v) => law.knockback_recovery = v.max(0.0),
+        TopDownFieldEdit::KnockbackRecovery(v) => law.knockback_recovery = *v,
     }
     *c = TopDownPlayer::from_law(law);
+    c.sanitize();
     true
 }
 

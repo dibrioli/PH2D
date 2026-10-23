@@ -33,86 +33,86 @@ use ph2d_i18n::tr;
 /// sufixo que o `NumberInput` mostra E lê de volta. `None` = grandeza adimensional (uma fracção,
 /// uma contagem, um multiplicador).
 const ROTULOS: [(TextKey, f64, Option<ph2d_editor_core::widget::Unit>); 19] = [
-    (TextKey::new("panel.inspector.particles.amount"), 1.0, None), // LITERAL-PX-OK: partículas (inteiro)
+    (TextKey::new("component.field.fields.3"), 1.0, None), // LITERAL-PX-OK: partículas (inteiro)
     (
-        TextKey::new("panel.inspector.particles.lifetime_s"),
+        TextKey::new("component.field.fields.4"),
         0.1, // LITERAL-PX-OK: segundos
         Some(ph2d_editor_core::widget::Unit::Seconds),
     ), // LITERAL-PX-OK: segundos
     (
-        TextKey::new("panel.inspector.particles.lifetime_randomness"),
+        TextKey::new("component.field.fields.5"),
         0.05, // LITERAL-PX-OK: fracção 0..1
         None,
     ), // LITERAL-PX-OK: fracção 0..1
     (
-        TextKey::new("panel.inspector.particles.explosiveness"),
+        TextKey::new("component.field.fields.6"),
         0.05, // LITERAL-PX-OK: fracção 0..1
         None,
     ), // LITERAL-PX-OK: fracção 0..1
     (
-        TextKey::new("panel.inspector.particles.preprocess_s"),
+        TextKey::new("component.field.fields.7"),
         0.1, // LITERAL-PX-OK: segundos
         Some(ph2d_editor_core::widget::Unit::Seconds),
     ), // LITERAL-PX-OK: segundos
     (
-        TextKey::new("panel.inspector.particles.speed_scale"),
+        TextKey::new("component.field.fields.8"),
         0.1, // LITERAL-PX-OK: multiplicador do relógio
         None,
     ), // LITERAL-PX-OK: multiplicador do relógio
-    (TextKey::new("panel.inspector.particles.seed"), 1.0, None), // LITERAL-PX-OK: semente (inteiro)
+    (TextKey::new("component.field.fields.9"), 1.0, None), // LITERAL-PX-OK: semente (inteiro)
     (
-        TextKey::new("panel.inspector.particles.shape_width_radius_m"),
+        TextKey::new("component.field.fields.11"),
         0.1, // LITERAL-PX-OK: metros
         Some(ph2d_editor_core::widget::Unit::Meters),
     ), // LITERAL-PX-OK: metros
     (
-        TextKey::new("panel.inspector.particles.shape_height_m"),
+        TextKey::new("component.field.fields.11"),
         0.1, // LITERAL-PX-OK: metros
         Some(ph2d_editor_core::widget::Unit::Meters),
     ), // LITERAL-PX-OK: metros
     (
-        TextKey::new("panel.inspector.particles.speed_m_s"),
+        TextKey::new("component.field.fields.12"),
         0.5, // LITERAL-PX-OK: metros por segundo
         Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
     ), // LITERAL-PX-OK: metros por segundo
     (
-        TextKey::new("panel.inspector.particles.speed_randomness"),
+        TextKey::new("component.field.fields.13"),
         0.05, // LITERAL-PX-OK: fracção 0..1
         None,
     ), // LITERAL-PX-OK: fracção 0..1
     (
-        TextKey::new("panel.inspector.particles.direction_deg"),
+        TextKey::new("component.field.fields.14"),
         5.0, // LITERAL-PX-OK: graus
         Some(ph2d_editor_core::widget::Unit::Degrees),
     ), // LITERAL-PX-OK: graus
     (
-        TextKey::new("panel.inspector.particles.spread_deg"),
+        TextKey::new("component.field.fields.15"),
         5.0, // LITERAL-PX-OK: graus
         Some(ph2d_editor_core::widget::Unit::Degrees),
     ), // LITERAL-PX-OK: graus
     (
-        TextKey::new("panel.inspector.particles.gravity_x_m_s_u"),
+        TextKey::new("component.field.fields.16"),
         0.5, // LITERAL-PX-OK: metros por segundo²
         Some(ph2d_editor_core::widget::Unit::MetersPerSecondSquared),
     ), // LITERAL-PX-OK: metros por segundo²
     (
-        TextKey::new("panel.inspector.particles.gravity_y_m_s_u"),
+        TextKey::new("component.field.fields.16"),
         0.5, // LITERAL-PX-OK: metros por segundo²
         Some(ph2d_editor_core::widget::Unit::MetersPerSecondSquared),
     ), // LITERAL-PX-OK: metros por segundo²
-    (TextKey::new("panel.inspector.particles.damping"), 0.1, None), // LITERAL-PX-OK: fracção por segundo
+    (TextKey::new("component.field.fields.17"), 0.1, None), // LITERAL-PX-OK: fracção por segundo
     (
-        TextKey::new("panel.inspector.particles.size_m"),
+        TextKey::new("component.field.fields.18"),
         0.05, // LITERAL-PX-OK: metros
         Some(ph2d_editor_core::widget::Unit::Meters),
     ), // LITERAL-PX-OK: metros
     (
-        TextKey::new("panel.inspector.particles.size_randomness"),
+        TextKey::new("component.field.fields.19"),
         0.05, // LITERAL-PX-OK: fracção 0..1
         None,
     ), // LITERAL-PX-OK: fracção 0..1
     (
-        TextKey::new("panel.inspector.particles.size_at_death"),
+        TextKey::new("component.field.fields.20"),
         0.05, // LITERAL-PX-OK: fracção do tamanho ao nascer
         None,
     ), // LITERAL-PX-OK: fracção do tamanho ao nascer
@@ -151,8 +151,8 @@ fn titulo(
 /// nome ao lado (2026-09-23) elas têm de estar na medida — senão a coluna salta na linha delas.
 fn seccao(text_system: &mut TextSystem) -> ph2d_editor_core::property_row::Seccao {
     let mut nomes: Vec<&str> = ROTULOS.iter().map(|(chave, _, _)| chave.tr()).collect();
-    nomes.push(tr("panel.inspector.particles.emission_shape"));
-    nomes.push(tr("panel.inspector.particles.simulation_space"));
+    nomes.push(tr("component.field.fields.10"));
+    nomes.push(tr("component.field.fields.23"));
     ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &nomes)
 }
 
@@ -266,6 +266,43 @@ fn num_row(
         y,
         label,
         &[crate::ids::INSP_PART_NUM[i]],
+        step,
+        unidade,
+        seccao,
+    )
+}
+
+/// Uma linha de DOIS números — um `Vec2` do catálogo (a forma, a gravidade) —, com o rótulo, o
+/// passo e a unidade do primeiro (as duas linhas da tabela pintam a mesma chave do catálogo).
+#[allow(clippy::too_many_arguments)]
+fn vec_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    (a, b): (N, N),
+) -> f32 {
+    let posicao = |n: N| PARTICLES_NUMBERS.iter().position(|&m| m == n);
+    let (Some(i), Some(j)) = (posicao(a), posicao(b)) else {
+        return y;
+    };
+    let (chave, step, unidade) = ROTULOS[i];
+    let seccao = seccao(text_system);
+    super::rows::fields_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        chave.tr(),
+        &[crate::ids::INSP_PART_NUM[i], crate::ids::INSP_PART_NUM[j]],
         step,
         unidade,
         seccao,

@@ -107,7 +107,7 @@ fn override_rows(
         x,
         w,
         y,
-        tr("panel.inspector.animation.direction_override"),
+        tr("component.field.sprite_animator.4"),
         &ids::INSP_ANIM_DIR_OVERRIDE,
         &[
             tr("panel.inspector.animation.inherit"),
@@ -127,7 +127,7 @@ fn override_rows(
         x,
         w,
         cur_y,
-        tr("panel.inspector.animation.loop_override"),
+        tr("component.field.sprite_animator.5"),
         &ids::INSP_ANIM_LOOP_OVERRIDE,
         &[
             tr("panel.inspector.animation.inherit"),
@@ -173,12 +173,12 @@ fn player_block(
         &[
             (
                 ids::INSP_ANIM_PLAYING,
-                tr("panel.inspector.animation.playing"),
+                tr("component.field.sprite_animator.1"),
                 info.playing,
             ),
             (
                 ids::INSP_ANIM_AUTOPLAY,
-                tr("panel.inspector.animation.autoplay"),
+                tr("component.field.sprite_animator.2"),
                 info.autoplay,
             ),
         ],
@@ -194,7 +194,7 @@ fn player_block(
         x,
         w,
         cur_y,
-        tr("panel.inspector.animation.speed_x"),
+        tr("component.field.sprite_animator.3"),
         &[ids::INSP_ANIM_SPEED],
         0.1, // LITERAL-PX-OK: passo de scrub em MÚLTIPLOS de velocidade, não em pixels
         None,

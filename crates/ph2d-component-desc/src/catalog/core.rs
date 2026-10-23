@@ -54,8 +54,8 @@
 //!
 
 use crate::{
-    ComponentCategory as C, ComponentDesc as D, FieldDesc, FieldKind as K, ObjectKinds as O,
-    Propagation, RefKind,
+    ComponentCategory as C, ComponentDesc as D, FieldDesc, FieldKind as K, Hidden,
+    ObjectKinds as O, Propagation, RefKind, WHOLE,
 };
 
 /// Um campo simples que segue o mestre e não é referência — o caso esmagadoramente comum.
@@ -100,7 +100,13 @@ const NAME: &[FieldDesc] = &[FieldDesc {
     key: "",
 }];
 
+/// ⏳ **`Editor` provisório (CodeEditor 08 d3):** o cartão pinta «Visible» e o campo guarda `hidden` —
+/// o inverso. Um nome `visible` sobre a chave `hidden` leria ao contrário; decisão pendente.
 const VISIBILITY: &[FieldDesc] = &[f(1, "component.field.visibility.1", K::Toggle)];
+
+/// ⭐ A linha *Emissive* da §Render Source — o newtype da intensidade.
+const SPRITE_EMISSIVE: &[FieldDesc] =
+    &[f(1, "component.field.sprite_emissive.1", K::Scalar).named_as("emissive", WHOLE)];
 
 /// **`InstanceOf`** — o `StableId` do mestre de que esta raiz nasceu (F4.2).
 ///
@@ -125,25 +131,56 @@ const INSTANCE_OF: &[FieldDesc] = &[FieldDesc {
 
 // ── Ordenação: a família PILOTO da F0 (a §7 do Inspector) ──────────────────────────
 
-const SORTING_LAYER: &[FieldDesc] = &[f(1, "component.field.sorting_layer.1", K::Enum)];
-const ORDER_IN_LAYER: &[FieldDesc] = &[f(1, "component.field.order_in_layer.1", K::Int)];
-const Z_INDEX: &[FieldDesc] = &[f(1, "component.field.z_index.1", K::Int)];
-const Z_AS_RELATIVE: &[FieldDesc] = &[f(1, "component.field.z_as_relative.1", K::Toggle)];
+// ⭐ Os newtypes da §7: um campo só, o valor inteiro (`WHOLE`) — o script lê o índice da camada.
+const SORTING_LAYER: &[FieldDesc] =
+    &[f(1, "component.field.sorting_layer.1", K::Enum).named_as("sorting_layer", WHOLE)];
+const ORDER_IN_LAYER: &[FieldDesc] =
+    &[f(1, "component.field.order_in_layer.1", K::Int).named_as("order_in_layer", WHOLE)];
+const Z_INDEX: &[FieldDesc] =
+    &[f(1, "component.field.z_index.1", K::Int).named_as("z_index", WHOLE)];
+const Z_AS_RELATIVE: &[FieldDesc] =
+    &[f(1, "component.field.z_as_relative.1", K::Toggle).named_as("z_as_relative", WHOLE)];
 // ⚠️ **Os rótulos abaixo são os que o Inspector JÁ PINTA, ao byte** — não os que eu
 // escolheria. A seção §7 é o piloto da F0, e ao ligá-la ao descritor apareceu o defeito que
 // justifica a ligação: as duas fontes já discordavam (*"Sort At Root"* × *"Sort at Root"*,
 // *"Y-Sort"* × *"Enabled"*). Quem manda é o produto, então o descritor foi corrigido para
 // ele — e agora há **uma** fonte, que é o ponto.
-const SORTING_GROUP: &[FieldDesc] = &[f(1, "component.field.sorting_group.1", K::Toggle)];
+const SORTING_GROUP: &[FieldDesc] =
+    &[f(1, "component.field.sorting_group.1", K::Toggle).named("sort_at_root")];
 const Y_SORT: &[FieldDesc] = &[
-    f(1, "component.field.y_sort.1", K::Toggle),
-    f(2, "component.field.y_sort.2", K::Vec2),
-    f(3, "component.field.y_sort.3", K::Enum),
+    f(1, "component.field.y_sort.1", K::Toggle).named_as("y_sort", "enabled"),
+    f(2, "component.field.y_sort.2", K::Vec2).named("axis"),
+    f(3, "component.field.y_sort.3", K::Enum).named("sort_point"),
 ];
+// ⚠️ A §8 pinta só o MODO (a linha «Clip Children»; `Disabled` destaca o componente) — o corte
+// alfa dele não tem linha (a «Mask Alpha Cutoff» é da `MaskInteraction`).
 const CLIP_CHILDREN: &[FieldDesc] = &[
-    f(1, "component.field.clip_children.1", K::Enum),
-    f(2, "component.field.clip_children.2", K::Scalar),
+    f(1, "component.field.clip_children.1", K::Enum).named_as("clip_children", "mode"),
+    f(2, "component.field.clip_children.2", K::Scalar).keyed("alpha_cutoff"),
 ];
+
+// ── As linhas da §8 Visibility, §9 Sampling e §10 Material & Blend (CodeEditor 08 d3) ──────────
+
+const BLEND_MODE: &[FieldDesc] =
+    &[f(1, "component.field.blend_mode.1", K::Enum).named_as("blend_mode", WHOLE)];
+const MASK_INTERACTION: &[FieldDesc] = &[
+    f(1, "component.field.mask_interaction.1", K::Enum).named_as("mask_interaction", "mode"),
+    f(2, "component.field.mask_interaction.2", K::Scalar)
+        .named_as("mask_alpha_cutoff", "alpha_cutoff"),
+];
+const ON_SCREEN_ENABLER: &[FieldDesc] =
+    &[f(1, "component.field.on_screen_enabler.1", K::Vec4).named_as("enabler_rect", "rect")];
+const TEXTURE_FILTER: &[FieldDesc] =
+    &[f(1, "component.field.texture_filter.1", K::Enum).named_as("texture_filter", WHOLE)];
+const TEXTURE_REPEAT: &[FieldDesc] =
+    &[f(1, "component.field.texture_repeat.1", K::Enum).named_as("texture_repeat", WHOLE)];
+const UV_TRANSFORM: &[FieldDesc] = &[
+    f(1, "component.field.uv_transform.1", K::Vec2).named_as("uv_scale", "scale"),
+    f(2, "component.field.uv_transform.2", K::Vec2).named_as("uv_offset", "offset"),
+];
+// ⚠️ Uma máscara de bits (32 camadas); o cartão pinta-a como caixas, o script lê o inteiro.
+const VISIBILITY_LAYER: &[FieldDesc] =
+    &[f(1, "component.field.visibility_layer.1", K::Int).named_as("visibility_layer", WHOLE)];
 
 /// Um marcador de tamanho zero: a **presença** é o valor.
 const MARKER: &[FieldDesc] = &[f(1, "component.field.marker.1", K::Marker)];
@@ -174,22 +211,26 @@ pub const DESCS: &[D] = &[
         "component.blend_mode.name",
         C::Rendering,
         O::IMAGE,
-        &[],
-    ),
+        BLEND_MODE,
+    )
+    .coded("blend_mode"),
     D::authored(
         "ph2d::ecs::ClipChildren",
         "component.clip_children.name",
         C::Ordering,
         O::ANY,
         CLIP_CHILDREN,
-    ),
+    )
+    .coded("clip_children")
+    .hiding(&[("alpha_cutoff", Hidden::NoCard)]),
     // ⇒ a porta é o alternador de GRUPO da Hierarquia, em toda linha.
     D::intrinsic(
         "ph2d::ecs::GroupedChildren",
         "component.grouped_children.name",
         C::Identity,
         MARKER,
-    ),
+    )
+    .hidden(Hidden::Editor),
     // ⭐ **O ELO de uma instância ao mestre** (ADR-0164 / F4.2) — a raiz de uma instância diz
     // de que receita ela nasceu, pelo `StableId` do mestre.
     //
@@ -202,7 +243,8 @@ pub const DESCS: &[D] = &[
         "component.instance_of.name",
         C::Instancing,
         INSTANCE_OF,
-    ),
+    )
+    .hidden(Hidden::Editor),
     // ⭐⭐ **A cópia LIGADA** (Enio, 2026-08-27) — o `Alt+D` do Blender: esta peça divide a ARTE da
     // receita, então editar a tinta ou o desenho dela **sobe** e chega às irmãs, em vez de virar
     // excepção dela.
@@ -218,28 +260,33 @@ pub const DESCS: &[D] = &[
         "component.linked_art.name",
         C::Instancing,
         MARKER,
-    ),
+    )
+    .hidden(Hidden::Editor),
     // ⇒ a porta é o CADEADO da Hierarquia, em toda linha.
     D::intrinsic(
         "ph2d::ecs::Locked",
         "component.locked.name",
         C::Identity,
         MARKER,
-    ),
+    )
+    .hidden(Hidden::Editor),
+    // ⚠️ `Presence`: a §8 só o liga e desliga («Mask Source»); o corte alfa dele não tem linha.
     D::authored(
         "ph2d::ecs::Mask2D",
         "component.mask_2d.name",
         C::Rendering,
         O::IMAGE,
         &[],
-    ),
+    )
+    .hidden(Hidden::Presence),
     D::authored(
         "ph2d::ecs::MaskInteraction",
         "component.mask_interaction.name",
         C::Rendering,
         O::IMAGE,
-        &[],
-    ),
+        MASK_INTERACTION,
+    )
+    .coded("mask_interaction"),
     // ⚠️ `Name` NÃO tem `Default` (o compilador disse-o ao converter o registador), e a
     // ausência está certa: um objeto sem nome não é um objeto com nome vazio. Ele chega com
     // o gesto que cria o objeto e é **base** — a paleta oferecê-lo seria oferecer algo que
@@ -259,7 +306,8 @@ pub const DESCS: &[D] = &[
         "component.master_root.name",
         C::Instancing,
         &[],
-    ),
+    )
+    .hidden(Hidden::Editor),
     // ⭐ **O objecto Motion** (doc ObjectsAndComponents 01 §13, F5) — chega com o gesto que o cria
     // (Add ▸ Motion) e é marcador do tipo [`crate::ObjectKind::Motion`]; anexá-lo pela paleta faria
     // um gerador sem nós.
@@ -268,8 +316,12 @@ pub const DESCS: &[D] = &[
         "component.motion_generator.name",
         C::Animation,
         &[],
-    ),
-    D::intrinsic("ph2d::ecs::Name", "component.name.name", C::Identity, NAME),
+    )
+    .hidden(Hidden::Editor),
+    // ⚠️ `Editor`: o nome é a IDENTIDADE por que o script acha objectos (`ph2d.find_by_name`) e que
+    // as referências duráveis seguem — renomear a correr é outro verbo, não uma propriedade.
+    D::intrinsic("ph2d::ecs::Name", "component.name.name", C::Identity, NAME)
+        .hidden(Hidden::Editor),
     // ⭐ **As EXCEPÇÕES de uma instância** (ADR-0164 / F4.4) — o conjunto de `(peça, componente)`
     // que a cópia possui contra a receita.
     //
@@ -287,15 +339,18 @@ pub const DESCS: &[D] = &[
         "component.on_screen_enabler.name",
         C::Rendering,
         O::IMAGE,
-        &[],
-    ),
+        ON_SCREEN_ENABLER,
+    )
+    .coded("on_screen_enabler")
+    .hiding(&[("mode", Hidden::NoCard)]),
     // ⇒ a porta é §7 Ordering, pintada em TODO objecto.
     D::intrinsic(
         "ph2d::ecs::OrderInLayer",
         "component.order_in_layer.name",
         C::Ordering,
         ORDER_IN_LAYER,
-    ),
+    )
+    .coded("order_in_layer"),
     // ⚠️ Máquina: o editor mantém-no para desempatar raízes (*"não se escolhe um desempate
     // melhor, não se tem empate"*). Um artista que o pusesse à mão estaria a escrever num
     // campo que o próprio editor reescreve no quadro seguinte.
@@ -310,7 +365,8 @@ pub const DESCS: &[D] = &[
         "component.show_behind_parent.name",
         C::Ordering,
         MARKER,
-    ),
+    )
+    .hidden(Hidden::Presence),
     // ⚠️ Máquina, pela MESMA razão do `RootOrder` (o gémeo dele para raízes): a ordem entre
     // irmãos é escrita pelo GESTO de arrastar na Hierarquia, e o editor mantém-na. Um artista
     // que a pusesse à mão estaria a escrever num campo que a varredura reescreve.
@@ -325,101 +381,118 @@ pub const DESCS: &[D] = &[
         "component.sorting_group.name",
         C::Ordering,
         SORTING_GROUP,
-    ),
+    )
+    .coded("sorting_group"),
     // ⇒ a porta é §7 Ordering.
     D::intrinsic(
         "ph2d::ecs::SortingLayer",
         "component.sorting_layer.name",
         C::Ordering,
         SORTING_LAYER,
-    ),
+    )
+    .coded("sorting_layer"),
     // ⇒ a porta é a row *Emissive* do §Render Source, pintada em toda sprite (ausente **é** `EMISSIVE_OFF`).
     D::intrinsic(
         "ph2d::ecs::SpriteEmissive",
         "component.sprite_emissive.name",
         C::Rendering,
-        &[],
-    ),
+        SPRITE_EMISSIVE,
+    )
+    .coded("emissive"),
     // ⭐⭐⭐ **As TAGS** (TOP-20 #9). `C::Identity` porque dizem O QUE o objecto é (a secção nasce
     // logo abaixo da *Identity*), e `O::ANY` porque o objecto vazio que o artista usa como
     // *«o cérebro da cena»* e um grupo são tão marcáveis quanto uma sprite.
+    // ⏳ `Reference`: são identidades da árvore de tags — ganham nome pelo NOME da tag (d4).
     D::authored(
         "ph2d::ecs::Tags",
         "component.tags.name",
         C::Identity,
         O::ANY,
         TAGS,
-    ),
+    )
+    .hidden(Hidden::Reference),
     D::authored(
         "ph2d::ecs::TextureFilter",
         "component.texture_filter.name",
         C::Rendering,
         O::IMAGE,
-        &[],
-    ),
+        TEXTURE_FILTER,
+    )
+    .coded("texture_filter"),
     D::authored(
         "ph2d::ecs::TextureRepeat",
         "component.texture_repeat.name",
         C::Rendering,
         O::IMAGE,
-        &[],
-    ),
+        TEXTURE_REPEAT,
+    )
+    .coded("texture_repeat"),
     // ⇒ a porta é §7 Ordering.
     D::intrinsic(
         "ph2d::ecs::TopLevel",
         "component.top_level.name",
         C::Ordering,
         MARKER,
-    ),
+    )
+    .hidden(Hidden::Presence),
+    // ⏳ A pose não leva prefixo: o script tem `x y rotation scale_x scale_y` (doc CodeEditor 08
+    // §3.1). `Editor` provisório — o cartão mostra também o `Skew X / Y`, que o script não alcança.
     D::authored(
         "ph2d::ecs::Transform",
         "component.transform.name",
         C::Transform,
         O::ANY,
         TRANSFORM,
-    ),
+    )
+    .hidden(Hidden::Editor),
     D::authored(
         "ph2d::ecs::UvTransform",
         "component.uv_transform.name",
         C::Rendering,
         O::IMAGE,
-        &[],
-    ),
+        UV_TRANSFORM,
+    )
+    .coded("uv_transform"),
     // ⇒ a porta é o OLHO da Hierarquia, em toda linha.
     D::intrinsic(
         "ph2d::ecs::Visibility",
         "component.visibility.name",
         C::Identity,
         VISIBILITY,
-    ),
+    )
+    .hidden(Hidden::Editor),
     D::authored(
         "ph2d::ecs::VisibilityLayer",
         "component.visibility_layer.name",
         C::Rendering,
         O::IMAGE,
-        &[],
-    ),
+        VISIBILITY_LAYER,
+    )
+    .coded("visibility_layer"),
     // ⇒ a porta é §7 Ordering (tres rows: ligar · eixo · ponto).
     D::intrinsic(
         "ph2d::ecs::YSort",
         "component.y_sort.name",
         C::Ordering,
         Y_SORT,
-    ),
+    )
+    .coded("y_sort"),
     // ⇒ a porta é §7 Ordering.
     D::intrinsic(
         "ph2d::ecs::ZAsRelative",
         "component.z_as_relative.name",
         C::Ordering,
         Z_AS_RELATIVE,
-    ),
+    )
+    .coded("z_as_relative"),
     // ⇒ a porta é §7 Ordering — e o `—` dela é a AUSENCIA deste componente.
     D::intrinsic(
         "ph2d::ecs::ZIndexOverride",
         "component.z_index_override.name",
         C::Ordering,
         Z_INDEX,
-    ),
+    )
+    .coded("z_index"),
 ];
 
 #[cfg(test)]

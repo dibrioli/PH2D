@@ -128,23 +128,23 @@ fn corpo(
         text_system,
         2,
         &[
-            tr("panel.inspector.ray.origin"),
-            tr("panel.inspector.ray.direction"),
-            tr("panel.inspector.ray.reach_m"),
-            tr("panel.inspector.ray.layer"),
+            tr("component.field.ray_sensor.0"),
+            tr("component.field.ray_sensor.1"),
+            tr("component.field.ray_sensor.2"),
+            tr("component.field.ray_sensor.3"),
         ],
     );
     // ⚠️ **A origem e a direcção são UMA linha de DOIS campos cada** — elas são um ponto e um
     // vector, e parti-las em quatro linhas faria o artista procurar o par.
     for (label, ids, step, unidade) in [
         (
-            tr("panel.inspector.ray.origin"),
+            tr("component.field.ray_sensor.0"),
             [crate::ids::INSP_RAY_ORIGIN_X, crate::ids::INSP_RAY_ORIGIN_Y],
             0.1, // LITERAL-PX-OK: passo de arrasto em METROS, locais
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
-            tr("panel.inspector.ray.direction"),
+            tr("component.field.ray_sensor.1"),
             [crate::ids::INSP_RAY_DIR_X, crate::ids::INSP_RAY_DIR_Y],
             0.1, // LITERAL-PX-OK: passo de arrasto de uma DIRECÇÃO, adimensional
             None,
@@ -168,13 +168,13 @@ fn corpo(
     }
     for (label, id, step, unidade) in [
         (
-            tr("panel.inspector.ray.reach_m"),
+            tr("component.field.ray_sensor.2"),
             crate::ids::INSP_RAY_REACH,
             0.1, // LITERAL-PX-OK: passo de arrasto em METROS
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
-            tr("panel.inspector.ray.layer"),
+            tr("component.field.ray_sensor.3"),
             crate::ids::INSP_RAY_LAYER,
             1.0,
             None,
@@ -211,7 +211,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("panel.inspector.ray.on_enter_label"),
+        tr("component.field.ray_signals.0"),
         crate::ids::INSP_RAY_ON_ENTER,
         TextInput::new(crate::ids::INSP_RAY_ON_ENTER, "")
             .placeholder(tr("panel.inspector.ray.signal_when_it_starts_seeing_u")),
@@ -226,7 +226,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("panel.inspector.ray.on_exit_label"),
+        tr("component.field.ray_signals.1"),
         crate::ids::INSP_RAY_ON_EXIT,
         TextInput::new(crate::ids::INSP_RAY_ON_EXIT, "")
             .placeholder(tr("panel.inspector.ray.signal_when_it_stops_seeing_u")),
@@ -252,7 +252,7 @@ pub(crate) fn paint_ray_section(
     let header = section_header(
         store,
         ph2d_editor_core::ids::INSP_LIVE_RAY_SECTION,
-        tr("panel.inspector.ray.ray_sensor"),
+        tr("component.ray_sensor.name"),
     );
     paint_section_header(
         &header,

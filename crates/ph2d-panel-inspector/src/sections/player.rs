@@ -91,7 +91,7 @@ pub(crate) fn paint_player_section(
     let header = section_header(
         store,
         core_ids::INSP_LIVE_PLAYER_SECTION,
-        tr("panel.inspector.player.platform_player"),
+        tr("component.platform_player.name"),
     );
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
@@ -132,7 +132,7 @@ pub(crate) fn paint_player_section(
         x,
         w,
         yy,
-        tr("panel.inspector.player.body"),
+        tr("component.field.player_mode.0"),
         ids::INSP_PLAYER_MODE,
         &ids::INSP_PLAYER_MODE_IDS,
         &[
@@ -191,7 +191,7 @@ pub(crate) fn paint_player_section(
         x,
         w,
         yy,
-        tr("panel.inspector.player.platform_lift"),
+        tr("component.field.platform_player.52"),
         ids::INSP_PLAYER_LIFT_POLICY,
         &ids::INSP_PLAYER_LIFT_POLICY_IDS,
         &[
@@ -213,7 +213,7 @@ pub(crate) fn paint_player_section(
         x,
         w,
         yy,
-        tr("panel.inspector.player.walk_off_ledges"),
+        tr("component.field.platform_player.53"),
         ids::INSP_PLAYER_WALK_OFF,
         &ids::INSP_PLAYER_WALK_OFF_IDS,
         &[
@@ -234,7 +234,7 @@ pub(crate) fn paint_player_section(
             x,
             w,
             yy,
-            tr("panel.inspector.player.when_crouching"),
+            tr("component.field.platform_player.54"),
             ids::INSP_PLAYER_CROUCH_WALK_OFF,
             &ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS,
             &[

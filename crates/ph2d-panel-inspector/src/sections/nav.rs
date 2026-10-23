@@ -105,7 +105,7 @@ pub(crate) fn paint_nav_region_section(
         w,
         y,
         ph2d_editor_core::ids::INSP_LIVE_NAV_REGION_SECTION,
-        tr("panel.inspector.nav.nav_region"),
+        tr("component.nav_region.name"),
     ) {
         Ok(v) => v,
         Err(y) => return y,
@@ -126,8 +126,8 @@ pub(crate) fn paint_nav_region_section(
         text_system,
         2,
         &[
-            tr("panel.inspector.nav.half_size"),
-            tr("panel.inspector.nav.blocking_layers"),
+            tr("component.field.nav_region.0"),
+            tr("component.field.nav_region.1"),
         ],
     );
     cur_y = super::rows::fields_row(
@@ -139,7 +139,7 @@ pub(crate) fn paint_nav_region_section(
         x,
         w,
         cur_y,
-        tr("panel.inspector.nav.half_size"),
+        tr("component.field.nav_region.0"),
         &[crate::ids::INSP_NAV_HALF_W, crate::ids::INSP_NAV_HALF_H],
         0.1, // LITERAL-PX-OK: passo de arrasto em METROS
         Some(Unit::Meters),
@@ -167,7 +167,7 @@ pub(crate) fn paint_nav_region_section(
         x,
         w,
         cur_y,
-        tr("panel.inspector.nav.blocking_layers"),
+        tr("component.field.nav_region.1"),
         &segmentos,
         seccao,
     );
@@ -305,7 +305,7 @@ pub(crate) fn paint_nav_agent_section(
         w,
         y,
         ph2d_editor_core::ids::INSP_LIVE_NAV_AGENT_SECTION,
-        tr("panel.inspector.nav.nav_agent"),
+        tr("component.nav_agent.name"),
     ) {
         Ok(v) => v,
         Err(y) => return y,
@@ -320,13 +320,13 @@ pub(crate) fn paint_nav_agent_section(
             tr("panel.inspector.nav.target"),
             tr("panel.inspector.nav.target_tag"),
             tr("panel.inspector.nav.shape"),
-            tr("panel.inspector.nav.radius"),
-            tr("panel.inspector.nav.arrive_at"),
-            tr("panel.inspector.nav.repath_after"),
-            tr("panel.inspector.nav.stuck_after"),
-            tr("panel.inspector.nav.on_arrive"),
-            tr("panel.inspector.nav.on_no_path"),
-            tr("panel.inspector.nav.on_stuck"),
+            tr("component.field.nav_agent.1"),
+            tr("component.field.nav_agent.2"),
+            tr("component.field.nav_agent.3"),
+            tr("component.field.nav_agent.4"),
+            tr("component.field.nav_agent.6"),
+            tr("component.field.nav_agent.7"),
+            tr("component.field.nav_agent.8"),
         ],
     );
     cur_y = linha_do_alvo(
@@ -343,22 +343,22 @@ pub(crate) fn paint_nav_agent_section(
     );
     for (label, id, unidade) in [
         (
-            tr("panel.inspector.nav.radius"),
+            tr("component.field.nav_agent.1"),
             crate::ids::INSP_NAV_RADIUS,
             Unit::Meters,
         ),
         (
-            tr("panel.inspector.nav.arrive_at"),
+            tr("component.field.nav_agent.2"),
             crate::ids::INSP_NAV_ARRIVE,
             Unit::Meters,
         ),
         (
-            tr("panel.inspector.nav.repath_after"),
+            tr("component.field.nav_agent.3"),
             crate::ids::INSP_NAV_REPATH,
             Unit::Meters,
         ),
         (
-            tr("panel.inspector.nav.stuck_after"),
+            tr("component.field.nav_agent.4"),
             crate::ids::INSP_NAV_STUCK,
             Unit::Seconds,
         ),
@@ -553,7 +553,7 @@ fn sinais(
         x,
         w,
         y,
-        tr("panel.inspector.nav.on_arrive"),
+        tr("component.field.nav_agent.6"),
         crate::ids::INSP_NAV_ON_ARRIVED,
         TextInput::new(crate::ids::INSP_NAV_ON_ARRIVED, "")
             .placeholder(tr("panel.inspector.nav.signal_when_it_arrives_u")),
@@ -568,7 +568,7 @@ fn sinais(
         x,
         w,
         cur_y,
-        tr("panel.inspector.nav.on_no_path"),
+        tr("component.field.nav_agent.7"),
         crate::ids::INSP_NAV_ON_NO_PATH,
         TextInput::new(crate::ids::INSP_NAV_ON_NO_PATH, "")
             .placeholder(tr("panel.inspector.nav.signal_when_there_is_no_way_u")),
@@ -583,7 +583,7 @@ fn sinais(
         x,
         w,
         cur_y,
-        tr("panel.inspector.nav.on_stuck"),
+        tr("component.field.nav_agent.8"),
         crate::ids::INSP_NAV_ON_STUCK,
         TextInput::new(crate::ids::INSP_NAV_ON_STUCK, "")
             .placeholder(tr("panel.inspector.nav.signal_when_it_gets_stuck_u")),

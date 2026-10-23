@@ -65,7 +65,7 @@ fn where_row(
         x,
         w,
         y,
-        tr("panel.inspector.factory.where"),
+        tr("component.field.factory_fields.3"),
         &segmentos,
         seccao,
     )
@@ -119,7 +119,7 @@ fn onde_rows(
             x,
             w,
             cur_y,
-            tr("panel.inspector.factory.area_m"),
+            tr("component.field.factory_fields.4"),
             &[
                 crate::ids::INSP_FACTORY_AREA_W,
                 crate::ids::INSP_FACTORY_AREA_H,
@@ -139,7 +139,7 @@ fn onde_rows(
             x,
             w,
             cur_y,
-            tr("panel.factory.tag_label"),
+            tr("component.field.factory_fields.5"),
             crate::ids::INSP_FACTORY_TAG,
             TextInput::new(crate::ids::INSP_FACTORY_TAG, "")
                 .placeholder(ph2d_i18n::tr("panel.factory.tag")),
@@ -156,7 +156,7 @@ fn onde_rows(
             cur_y,
             (
                 crate::ids::INSP_FACTORY_PICK_RANDOM,
-                tr("panel.inspector.factory.pick_at_random"),
+                tr("component.field.factory_fields.6"),
                 f.pick_random,
             ),
             seccao,
@@ -191,26 +191,26 @@ fn factory_body(
         text_system,
         2,
         &[
-            tr("panel.inspector.factory.where"),
-            tr("panel.inspector.factory.area_m"),
-            tr("panel.inspector.factory.burst"),
-            tr("panel.inspector.factory.max_alive_0_no_limit"),
-            tr("panel.inspector.factory.max_total_0_no_limit"),
-            tr("panel.inspector.factory.seed"),
+            tr("component.field.factory_fields.3"),
+            tr("component.field.factory_fields.4"),
+            tr("component.field.factory_fields.7"),
+            tr("component.field.factory_fields.8"),
+            tr("component.field.factory_fields.9"),
+            tr("component.field.factory_fields.12"),
             // ⭐⭐ **As duas linhas de MARCAR entram aqui** — a lei está escrita três linhas
             //    acima (*«os nomes são os da secção INTEIRA»*) e elas faltavam, porque até
             //    2026-09-21 as duas eram montadas à mão com a coluna de omissão
             //    (`Seccao::apenas_campos(1)`). ⛔ Sem elas a coluna mede-se sem o nome mais
             //    comprido da secção, e ao passar pela porta ele saía CORTADO.
-            tr("panel.inspector.factory.pick_at_random"),
-            tr("panel.inspector.factory.aim_from_spawner"),
+            tr("component.field.factory_fields.6"),
+            tr("component.field.factory_fields.13"),
             // ⭐⭐ **E os nomes das linhas de TEXTO** (report do dono de 2026-09-22): até aqui elas
             //    pintavam-se à largura inteira e não tinham nome nenhum para medir.
-            tr("panel.factory.recipe_label"),
-            tr("panel.factory.on_signal_label"),
-            tr("panel.factory.tag_label"),
-            tr("panel.factory.on_spawned_label"),
-            tr("panel.factory.on_exhausted_label"),
+            tr("component.field.factory_fields.1"),
+            tr("component.field.factory_fields.2"),
+            tr("component.field.factory_fields.5"),
+            tr("component.field.factory_fields.10"),
+            tr("component.field.factory_fields.11"),
         ],
     );
     cur_y = factory_avisos(scene, text_system, theme, x, w, cur_y, f, clock_playing);
@@ -223,7 +223,7 @@ fn factory_body(
         x,
         w,
         cur_y,
-        tr("panel.factory.recipe_label"),
+        tr("component.field.factory_fields.1"),
         crate::ids::INSP_FACTORY_RECIPE,
         TextInput::new(crate::ids::INSP_FACTORY_RECIPE, "")
             .placeholder(ph2d_i18n::tr("panel.factory.recipe")),
@@ -238,7 +238,7 @@ fn factory_body(
         x,
         w,
         cur_y,
-        tr("panel.factory.on_signal_label"),
+        tr("component.field.factory_fields.2"),
         crate::ids::INSP_FACTORY_ON_SIGNAL,
         TextInput::new(crate::ids::INSP_FACTORY_ON_SIGNAL, "")
             .placeholder(ph2d_i18n::tr("panel.factory.on_signal")),
@@ -272,7 +272,7 @@ fn factory_body(
         cur_y,
         (
             crate::ids::INSP_FACTORY_AIM,
-            tr("panel.inspector.factory.aim_from_spawner"),
+            tr("component.field.factory_fields.13"),
             f.aim_from_spawner,
         ),
         seccao,
@@ -280,22 +280,22 @@ fn factory_body(
 
     for (label, id, step) in [
         (
-            tr("panel.inspector.factory.burst"),
+            tr("component.field.factory_fields.7"),
             crate::ids::INSP_FACTORY_BURST,
             1.0,
         ), // LITERAL-PX-OK: contagem
         (
-            tr("panel.inspector.factory.max_alive_0_no_limit"),
+            tr("component.field.factory_fields.8"),
             crate::ids::INSP_FACTORY_ALIVE_MAX,
             1.0,
         ), // LITERAL-PX-OK: contagem
         (
-            tr("panel.inspector.factory.max_total_0_no_limit"),
+            tr("component.field.factory_fields.9"),
             crate::ids::INSP_FACTORY_TOTAL_MAX,
             1.0,
         ), // LITERAL-PX-OK: contagem
         (
-            tr("panel.inspector.factory.seed"),
+            tr("component.field.factory_fields.12"),
             crate::ids::INSP_FACTORY_SEED,
             1.0,
         ), // LITERAL-PX-OK: contagem
@@ -322,12 +322,12 @@ fn factory_body(
         (
             crate::ids::INSP_FACTORY_ON_SPAWNED,
             "panel.factory.on_spawned",
-            "panel.factory.on_spawned_label",
+            "component.field.factory_fields.10",
         ),
         (
             crate::ids::INSP_FACTORY_ON_EXHAUSTED,
             "panel.factory.on_exhausted",
-            "panel.factory.on_exhausted_label",
+            "component.field.factory_fields.11",
         ),
     ] {
         let ph = ph2d_i18n::tr(chave);
@@ -435,7 +435,7 @@ pub(crate) fn paint_factory_section(
     let header = section_header(
         store,
         ph2d_editor_core::ids::INSP_LIVE_FACTORY_SECTION,
-        tr("panel.inspector.factory.factory"),
+        tr("component.factory.name"),
     );
     paint_section_header(
         &header,

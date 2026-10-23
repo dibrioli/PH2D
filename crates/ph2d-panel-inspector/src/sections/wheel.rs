@@ -52,7 +52,7 @@ pub(crate) fn paint_wheel_section(
     let header = section_header(
         store,
         core_ids::INSP_LIVE_WHEEL_SECTION,
-        tr("panel.inspector.wheel.pulley_wheel"),
+        tr("component.pulley_wheel.name"),
     );
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
@@ -85,7 +85,7 @@ pub(crate) fn paint_wheel_section(
         x,
         w,
         yy,
-        tr("panel.inspector.wheel.radius_m"),
+        tr("component.field.pulley_wheel.3"),
         ids::INSP_WHEEL_RADIUS,
         Some(ph2d_editor_core::widget::Unit::Meters),
         None,
@@ -106,7 +106,7 @@ pub(crate) fn paint_wheel_section(
         x,
         w,
         yy,
-        tr("panel.inspector.wheel.out_radius_m"),
+        tr("component.field.pulley_wheel.11"),
         ids::INSP_WHEEL_RADIUS_OUT,
         Some(ph2d_editor_core::widget::Unit::Meters),
         None,
@@ -163,7 +163,7 @@ pub(crate) fn paint_wheel_section(
         x,
         w,
         yy,
-        tr("panel.inspector.wheel.order"),
+        tr("component.field.pulley_wheel.2"),
         ids::INSP_WHEEL_ORDER,
     );
     // **Motor** — esta roldana é um TAMBOR. Graus por segundo porque a grandeza é
@@ -179,7 +179,7 @@ pub(crate) fn paint_wheel_section(
         x,
         w,
         yy,
-        tr("panel.inspector.wheel.motor_s"),
+        tr("component.field.pulley_wheel.5"),
         ids::INSP_WHEEL_MOTOR,
         Some(ph2d_editor_core::widget::Unit::DegreesPerSecond),
         None,
@@ -193,7 +193,7 @@ pub(crate) fn paint_wheel_section(
         x,
         w,
         yy,
-        tr("panel.inspector.wheel.wrap"),
+        tr("component.field.pulley_wheel.4"),
         ids::INSP_WHEEL_WRAP_GROUP,
         &ids::INSP_WHEEL_WRAP,
         &WRAP_LABELS.map(TextKey::tr),
@@ -236,7 +236,7 @@ fn paint_break_rows(
         x,
         w,
         y,
-        tr("panel.inspector.wheel.axle_breaks"),
+        tr("component.field.pulley_wheel.6"),
         ids::INSP_WHEEL_BREAK_GROUP,
         &ids::INSP_WHEEL_BREAK,
         &[
@@ -257,7 +257,7 @@ fn paint_break_rows(
         x,
         w,
         yy,
-        tr("panel.inspector.wheel.break_force_n"),
+        tr("component.field.pulley_wheel.10"),
         ids::INSP_WHEEL_BREAK_FORCE,
         Some(ph2d_editor_core::widget::Unit::Newtons),
         None,

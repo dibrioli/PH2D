@@ -162,12 +162,12 @@ fn corpo(
         text_system,
         1,
         &[
-            tr("panel.inspector.luz.type"),
-            tr("panel.inspector.luz.color"),
-            tr("panel.inspector.luz.intensity"),
-            tr("panel.inspector.luz.size"),
+            tr("component.field.luz_fields.0"),
+            tr("component.field.luz_fields.1"),
+            tr("component.field.luz_fields.2"),
+            tr("component.field.luz_fields.3"),
             tr("panel.inspector.luz.limit_range"),
-            tr("panel.inspector.luz.range"),
+            tr("component.field.luz_fields.4"),
         ],
     );
     let rotulos: Vec<&str> = TIPOS.iter().map(|k| tr(k)).collect();
@@ -180,7 +180,7 @@ fn corpo(
         x,
         w,
         y,
-        tr("panel.inspector.luz.type"),
+        tr("component.field.luz_fields.0"),
         &crate::ids::INSP_LUZ_TIPO,
         &rotulos,
         usize::from(i.tipo),
@@ -189,7 +189,7 @@ fn corpo(
     let [r, g, b] = i.cor_srgb;
     cur_y = super::color_tint::paint_tint_swatch_cell(
         Rect::new(x, cur_y, w, ph2d_tokens::ROW_H_PX),
-        tr("panel.inspector.luz.color"),
+        tr("component.field.luz_fields.1"),
         crate::ids::INSP_LUZ_COR,
         [r, g, b, u8::MAX],
         false,
@@ -209,7 +209,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("panel.inspector.luz.intensity"),
+        tr("component.field.luz_fields.2"),
         &[crate::ids::INSP_LUZ_INTENSIDADE],
         0.1, // LITERAL-PX-OK: passo de scrub da fluência (2π = branco a 1 m)
         None,
@@ -227,7 +227,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("panel.inspector.luz.size"),
+        tr("component.field.luz_fields.3"),
         &[crate::ids::INSP_LUZ_TAMANHO],
         0.01, // LITERAL-PX-OK: passo de scrub em METROS do raio da lâmpada
         Some(Unit::Meters),
@@ -262,7 +262,7 @@ fn corpo(
         x,
         w,
         cur_y,
-        tr("panel.inspector.luz.range"),
+        tr("component.field.luz_fields.4"),
         &[crate::ids::INSP_LUZ_ALCANCE],
         0.1, // LITERAL-PX-OK: passo de scrub em METROS
         Some(Unit::Meters),
@@ -287,7 +287,7 @@ pub(crate) fn paint_luz_section(
     let header = section_header(
         store,
         ph2d_editor_core::ids::INSP_LIVE_LUZ_SECTION,
-        tr("panel.inspector.luz.title"),
+        tr("component.luz.name"),
     );
     paint_section_header(
         &header,

@@ -362,11 +362,11 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
         t("component.field.camera_fields.3"),
     );
     let (secao, factor, repeat, drift, lmax) = (
-        t("panel.inspector.parallax.parallax"),
-        t("panel.inspector.parallax.scroll_factor"),
-        t("panel.inspector.parallax.repeat_m"),
-        t("panel.inspector.parallax.drift_m_s"),
-        t("panel.inspector.parallax.limit_max_m"),
+        t("component.scroll_factor.name"),
+        t("component.field.scroll_fields.0"),
+        t("component.field.repeat_fields.0"),
+        t("component.field.motion_fields.0"),
+        t("component.field.limits_fields.1"),
     );
     if nivel == 2 {
         println!(

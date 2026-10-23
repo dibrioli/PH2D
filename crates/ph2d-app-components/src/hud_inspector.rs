@@ -119,6 +119,14 @@ pub fn build_info(
     })
 }
 
+/// ⭐ **A lei da raiz do HUD** — o painel e o script (`hud_canvas.reference_width`) passam por aqui.
+/// ⚠️ O clamp é do LADO do componente e não do painel: a lei do `ph2d_hud::Canvas::new` recusa um
+/// lado `0`, e deixá-lo entrar poria o canvas a conduzir com escala infinita.
+pub(crate) fn sanitize_hud_canvas(c: &mut UiCanvas) {
+    c.ref_w = c.ref_w.max(f32::MIN_POSITIVE);
+    c.ref_h = c.ref_h.max(f32::MIN_POSITIVE);
+}
+
 /// **Uma edição do painel volta ao componente.** `true` = alguma coisa mudou.
 ///
 /// ⚠️ **Uma edição de um bloco ausente é INERTE, não um erro**: o painel só pinta o que existe,
@@ -131,15 +139,12 @@ pub fn apply(sim: &mut SimWorld, bits: u64, edit: &E) -> bool {
                 let Some(mut c) = sim.world_mut().get_mut::<UiCanvas>(e) else {
                     return false;
                 };
-                // ⚠️ **O clamp é do LADO do componente e não do painel:** a lei do
-                // `ph2d_hud::Canvas::new` recusa um lado `0`, e deixar o zero entrar aqui poria o
-                // canvas a conduzir com escala infinita até alguém reparar.
-                let v = v.max(f32::MIN_POSITIVE);
                 if *n == N::RefWidth {
-                    c.ref_w = v;
+                    c.ref_w = *v;
                 } else {
-                    c.ref_h = v;
+                    c.ref_h = *v;
                 }
+                sanitize_hud_canvas(&mut c);
                 true
             }
             N::CounterStart => {

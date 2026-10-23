@@ -32,7 +32,28 @@ const TABLE: &str = "crates/ph2d-i18n/src/component_catalog.rs";
 const KEYWORDS_TABLE: &str = "crates/ph2d-i18n/src/component_keywords.rs";
 
 /// ⭐ As excepções, **com o mecanismo**.
-const NOT_LANGUAGE: &[Excecao] = &[];
+const NOT_LANGUAGE: &[Excecao] = &[
+    (
+        "catalog/image.rs",
+        "borders[0]",
+        "a chave serde de um ELEMENTO do array `borders` (lida por `property::slot_in`), nunca texto pintado",
+    ),
+    (
+        "catalog/image.rs",
+        "borders[1]",
+        "a chave serde de um ELEMENTO do array `borders` (lida por `property::slot_in`), nunca texto pintado",
+    ),
+    (
+        "catalog/image.rs",
+        "borders[2]",
+        "a chave serde de um ELEMENTO do array `borders` (lida por `property::slot_in`), nunca texto pintado",
+    ),
+    (
+        "catalog/image.rs",
+        "borders[3]",
+        "a chave serde de um ELEMENTO do array `borders` (lida por `property::slot_in`), nunca texto pintado",
+    ),
+];
 
 #[test]
 fn every_word_this_catalog_shows_comes_from_the_string_table() {

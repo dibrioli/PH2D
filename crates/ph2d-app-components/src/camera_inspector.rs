@@ -139,6 +139,19 @@ pub(crate) fn sanitize_camera(c: &mut GameCamera) {
     };
 }
 
+/// ⭐ **A lei de quem PERSEGUE** — o painel e o script (`camera_follow.damping`) passam por aqui.
+/// ⚠️ `damping` `0` é INSTANTÂNEO e não «parado»; o teto é o do oráculo, acima do qual a
+/// interpolação sai do domínio dela.
+pub(crate) fn sanitize_camera_follow(f: &mut CameraFollow) {
+    let faixa = |v: [f32; 2], max: f32| [v[0].clamp(0.0, max), v[1].clamp(0.0, max)]; // CLAMP-OK: a faixa do campo
+    if f.target.trim().len() != f.target.len() {
+        f.target = f.target.trim().to_string();
+    }
+    f.damping = faixa(f.damping, 60.0); // 1/s
+    f.dead_zone = faixa(f.dead_zone, 1.0); // fracção da meia-janela
+    f.lookahead = faixa(f.lookahead, 5.0); // segundos
+}
+
 /// Aplica uma [`CameraFieldEdit`] que toca no DOCUMENTO.
 ///
 /// ⚠️ **`Preview` devolve sem escrever nada** — ele não é um campo, e quem o serve é o dreno. Ver o
@@ -206,21 +219,14 @@ pub fn apply_camera_edit(
                 return;
             };
             match edit {
-                CameraFieldEdit::Target(t) => f.target = t.trim().to_string(),
-                // ⚠️ **`0` é INSTANTÂNEO e não «parado»** — ver o doc da lei; o teto é o do oráculo,
-                // acima do qual a interpolação sai do domínio dela.
-                CameraFieldEdit::Damping(v) => {
-                    f.damping = [v[0].clamp(0.0, 60.0), v[1].clamp(0.0, 60.0)]; // CLAMP-OK: 1/s, a faixa do campo
-                }
-                CameraFieldEdit::DeadZone(v) => {
-                    f.dead_zone = [v[0].clamp(0.0, 1.0), v[1].clamp(0.0, 1.0)]; // CLAMP-OK: fracção da meia-janela
-                }
-                CameraFieldEdit::Lookahead(v) => {
-                    f.lookahead = [v[0].clamp(0.0, 5.0), v[1].clamp(0.0, 5.0)]; // CLAMP-OK: segundos
-                }
+                CameraFieldEdit::Target(t) => f.target.clone_from(t),
+                CameraFieldEdit::Damping(v) => f.damping = *v,
+                CameraFieldEdit::DeadZone(v) => f.dead_zone = *v,
+                CameraFieldEdit::Lookahead(v) => f.lookahead = *v,
                 CameraFieldEdit::FollowOffset(v) => f.offset = *v,
                 _ => unreachable!("o braço externo já separou as variantes"),
             }
+            sanitize_camera_follow(&mut f);
             queue_set(queue, registry, entity_bits, FOLLOW, &f);
         }
 

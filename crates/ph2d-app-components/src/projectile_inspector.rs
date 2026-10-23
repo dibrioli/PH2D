@@ -105,27 +105,45 @@ pub fn apply_projectile_edit(world: &mut World, bits: u64, edit: &ProjectileFiel
     let mut law = c.law();
     let mut alvo_novo = c.homing_target;
     match edit {
-        ProjectileFieldEdit::InitialSpeed(v) => law.initial_speed = v.max(0.0),
+        ProjectileFieldEdit::InitialSpeed(v) => law.initial_speed = *v,
         // ⚠️ **A aceleração pode ser NEGATIVA** — é o que faz uma bala travar no ar, e prendê-la em
         // `0` apagaria metade do campo.
         ProjectileFieldEdit::Acceleration(v) => law.acceleration = *v,
-        ProjectileFieldEdit::MaxSpeed(v) => law.max_speed = v.max(0.0),
-        ProjectileFieldEdit::Gravity(v) => law.gravity = v.max(0.0),
+        ProjectileFieldEdit::MaxSpeed(v) => law.max_speed = *v,
+        ProjectileFieldEdit::Gravity(v) => law.gravity = *v,
         // ⚠️ **A cerca é a do PAINEL escrita também AQUI**: o campo é alcançável por outra rota (um
         // script, um ficheiro), e acima de `1` a bala **ganharia energia** a cada parede.
-        ProjectileFieldEdit::Bounciness(v) => law.bounciness = v.clamp(0.0, 1.0),
+        ProjectileFieldEdit::Bounciness(v) => law.bounciness = *v,
         ProjectileFieldEdit::MaxBounces(n) => {
             law.max_bounces = u8::try_from((*n).min(32)).unwrap_or(0);
         }
-        ProjectileFieldEdit::Range(v) => law.range = v.max(0.0),
+        ProjectileFieldEdit::Range(v) => law.range = *v,
         ProjectileFieldEdit::FaceVelocity(b) => law.face_velocity = *b,
-        ProjectileFieldEdit::HomingAccel(v) => law.homing_accel = v.max(0.0),
+        ProjectileFieldEdit::HomingAccel(v) => law.homing_accel = *v,
         ProjectileFieldEdit::HomingTarget(_) => {
             alvo_novo = alvo.unwrap_or(0);
         }
     }
     *c = ProjectileMotion::from_law(law, alvo_novo);
+    sanitize_projectile(&mut c);
     true
+}
+
+/// ⭐ **A lei dos números do PROJÉCTIL** — o que o painel e o script (doc CodeEditor 08 §3.5) podem
+/// lá pôr: velocidades, gravidade, alcance e perseguição `≥ 0` (a aceleração tem sinal: travar),
+/// quique em `0..=1` (acima de `1` a bala ganharia energia a cada parede), no máximo 32 ressaltos.
+pub(crate) fn sanitize_projectile(c: &mut ProjectileMotion) {
+    for v in [
+        &mut c.initial_speed,
+        &mut c.max_speed,
+        &mut c.gravity,
+        &mut c.range,
+        &mut c.homing_accel,
+    ] {
+        *v = v.max(0.0);
+    }
+    c.bounciness = c.bounciness.clamp(0.0, 1.0);
+    c.max_bounces = c.max_bounces.min(32);
 }
 
 #[cfg(test)]

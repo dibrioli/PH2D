@@ -282,7 +282,11 @@ pub fn apply_physics_edit(
             registry,
             entity_bits,
             MASS_OVERRIDE,
-            &MassOverride(v.max(1e-3)),
+            &{
+                let mut m = MassOverride(v);
+                m.sanitize();
+                m
+            },
         );
         return;
     }
@@ -375,8 +379,8 @@ pub fn apply_physics_edit(
             .unwrap_or_default();
         match edit {
             // Drag coefficients are non-negative (a negative drag would ADD energy).
-            PhysicsFieldEdit::LinearDamping(v) => d.linear = v.max(0.0),
-            PhysicsFieldEdit::AngularDamping(v) => d.angular = v.max(0.0),
+            PhysicsFieldEdit::LinearDamping(v) => d.linear = v,
+            PhysicsFieldEdit::AngularDamping(v) => d.angular = v,
             PhysicsFieldEdit::DampMode(tag) => {
                 // A tag no mode claims is DROPPED, not folded onto Combine (the
                 // `BodyKind::from_tag` discipline).
@@ -391,6 +395,7 @@ pub fn apply_physics_edit(
             }
             _ => unreachable!(),
         }
+        d.sanitize();
         // Detach at neutral (zero drag AND Combine) so a body on the world default
         // carries no component — the presence-override idiom. `Replace` with zero drag
         // is NOT neutral (it forces zero damping, ignoring a world drag), so it stays.
@@ -503,10 +508,10 @@ pub fn apply_physics_edit(
             next.shape = match cur.shape {
                 ColliderShape::Capsule { half_height, .. } => ColliderShape::Capsule {
                     half_height,
-                    radius: v.max(1e-3),
+                    radius: v,
                 },
                 _ => ColliderShape::Ball {
-                    radius: v.max(1e-3),
+                    radius: v,
                 },
             };
         }
@@ -514,7 +519,7 @@ pub fn apply_physics_edit(
         PhysicsFieldEdit::CapHalfHeight(v) => {
             if let ColliderShape::Capsule { radius, .. } = cur.shape {
                 next.shape = ColliderShape::Capsule {
-                    half_height: v.max(0.0),
+                    half_height: v,
                     radius,
                 };
             }
@@ -522,7 +527,7 @@ pub fn apply_physics_edit(
         PhysicsFieldEdit::HalfX(v) => {
             if let ColliderShape::Cuboid { half_y, .. } = cur.shape {
                 next.shape = ColliderShape::Cuboid {
-                    half_x: v.max(1e-3),
+                    half_x: v,
                     half_y,
                 };
             }
@@ -531,7 +536,7 @@ pub fn apply_physics_edit(
             if let ColliderShape::Cuboid { half_x, .. } = cur.shape {
                 next.shape = ColliderShape::Cuboid {
                     half_x,
-                    half_y: v.max(1e-3),
+                    half_y: v,
                 };
             }
         }
@@ -539,14 +544,12 @@ pub fn apply_physics_edit(
         // legal). Writes the ONE axis the edit names; the other is left as it was.
         PhysicsFieldEdit::OffsetX(v) => next.offset[0] = v,
         PhysicsFieldEdit::OffsetY(v) => next.offset[1] = v,
-        PhysicsFieldEdit::Density(v) => next.density = v.max(0.0),
-        PhysicsFieldEdit::Restitution(v) => next.restitution = v.clamp(0.0, 1.0),
-        PhysicsFieldEdit::Friction(v) => next.friction = v.max(0.0),
-        // Clamped to the layers that exist: a chip cannot produce an out-of-range
-        // value today, but this is also the door a future build's project file
-        // comes through, and `groups_for` would silently fold an overflow onto
-        // the last layer.
-        PhysicsFieldEdit::Layer(n) => next.layer = n.min(ph2d_physics_ecs::MAX_LAYERS as u8 - 1),
+        PhysicsFieldEdit::Density(v) => next.density = v,
+        PhysicsFieldEdit::Restitution(v) => next.restitution = v,
+        PhysicsFieldEdit::Friction(v) => next.friction = v,
+        // Clamped (by `Collider::sanitize`, below) to the layers that exist: `groups_for`
+        // would silently fold an overflow onto the last layer.
+        PhysicsFieldEdit::Layer(n) => next.layer = n,
         PhysicsFieldEdit::Sensor(s) => next.is_sensor = s,
         PhysicsFieldEdit::Add
         | PhysicsFieldEdit::AddShape
@@ -585,6 +588,7 @@ pub fn apply_physics_edit(
             unreachable!("handled above")
         }
     }
+    next.sanitize();
     if next != cur {
         queue_set(queue, registry, entity_bits, COLLIDER, &next);
     }

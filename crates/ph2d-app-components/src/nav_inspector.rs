@@ -202,10 +202,11 @@ fn apply_custo_e_atalho(world: &mut World, e: Entity, edit: &NavFieldEdit) -> Op
             };
             match edit {
                 // ⚠️ A lei só pede `> 0` (o custo multiplica um comprimento) — o piso é o do painel.
-                NavFieldEdit::CostAreaCost(v) => c.cost = v.max(NAV_AREA_COST_MIN),
+                NavFieldEdit::CostAreaCost(v) => c.cost = *v,
                 NavFieldEdit::CostAreaForbidden(b) => c.forbidden = *b,
                 _ => return Some(false),
             }
+            sanitize_nav_cost_area(&mut c);
             Some(true)
         }
         NavFieldEdit::LinkTo(_)
@@ -224,10 +225,11 @@ fn apply_custo_e_atalho(world: &mut World, e: Entity, edit: &NavFieldEdit) -> Op
                 }
                 NavFieldEdit::LinkTwoWay(b) => l.two_way = *b,
                 NavFieldEdit::LinkTeleport(b) => l.teleport = *b,
-                NavFieldEdit::LinkCost(v) => l.cost = v.max(0.0),
+                NavFieldEdit::LinkCost(v) => l.cost = *v,
                 NavFieldEdit::LinkOnCrossed(s) => l.on_crossed.clone_from(s),
                 _ => return Some(false),
             }
+            sanitize_nav_link(&mut l);
             Some(true)
         }
         _ => None,
@@ -248,11 +250,12 @@ pub fn apply_nav_edit(world: &mut World, bits: u64, edit: &NavFieldEdit) -> bool
             match edit {
                 // ⚠️ **Meias-extensões negativas não existem** — o `rect` toma o valor absoluto, e um
                 // número negativo no painel seria um campo que mente sobre o que corre.
-                NavFieldEdit::HalfW(v) => r.half_extents[0] = v.max(0.0),
-                NavFieldEdit::HalfH(v) => r.half_extents[1] = v.max(0.0),
+                NavFieldEdit::HalfW(v) => r.half_extents[0] = *v,
+                NavFieldEdit::HalfH(v) => r.half_extents[1] = *v,
                 NavFieldEdit::ObstacleLayers(m) => r.obstacle_layers = *m,
                 _ => return false,
             }
+            sanitize_nav_region(&mut r);
             return true;
         }
         _ => {}
@@ -315,10 +318,10 @@ pub fn apply_nav_edit(world: &mut World, bits: u64, edit: &NavFieldEdit) -> bool
             }
             a.target = NavTarget::Point(p);
         }
-        NavFieldEdit::Radius(v) => a.radius = v.max(0.0),
-        NavFieldEdit::Arrive(v) => a.arrive_distance = v.max(0.0),
-        NavFieldEdit::Repath(v) => a.repath_distance = v.max(0.0),
-        NavFieldEdit::StuckAfter(v) => a.stuck_after_s = v.max(0.0),
+        NavFieldEdit::Radius(v) => a.radius = *v,
+        NavFieldEdit::Arrive(v) => a.arrive_distance = *v,
+        NavFieldEdit::Repath(v) => a.repath_distance = *v,
+        NavFieldEdit::StuckAfter(v) => a.stuck_after_s = *v,
         NavFieldEdit::Active(b) => a.active = *b,
         NavFieldEdit::Avoidance(b) => a.avoidance = *b,
         NavFieldEdit::AvoidHarm(b) => a.avoid_harm = *b,
@@ -339,7 +342,35 @@ pub fn apply_nav_edit(world: &mut World, bits: u64, edit: &NavFieldEdit) -> bool
             return false;
         }
     }
+    sanitize_nav_agent(&mut a);
     true
+}
+
+/// ⭐ **As leis da NAVEGAÇÃO** — o que o painel e o script (doc CodeEditor 08 §3.5) podem pôr:
+/// distâncias e tempos do agente `≥ 0`; meias-extensões da região `≥ 0` (o `rect` toma o valor
+/// absoluto, e um negativo seria um campo a mentir); o custo da área tem o piso do painel; o custo
+/// extra do atalho `≥ 0`. Idempotentes.
+pub(crate) fn sanitize_nav_agent(a: &mut NavAgent) {
+    for v in [
+        &mut a.radius,
+        &mut a.arrive_distance,
+        &mut a.repath_distance,
+        &mut a.stuck_after_s,
+    ] {
+        *v = v.max(0.0);
+    }
+}
+
+pub(crate) fn sanitize_nav_region(r: &mut NavRegion) {
+    r.half_extents = r.half_extents.map(|v| v.max(0.0));
+}
+
+pub(crate) fn sanitize_nav_cost_area(c: &mut NavCostArea) {
+    c.cost = c.cost.max(NAV_AREA_COST_MIN);
+}
+
+pub(crate) fn sanitize_nav_link(l: &mut NavLink) {
+    l.cost = l.cost.max(0.0);
 }
 
 /// **Aplica as edições que o painel emitiu neste quadro.** `true` = o documento mudou.

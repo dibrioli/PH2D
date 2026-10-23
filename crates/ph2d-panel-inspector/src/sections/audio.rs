@@ -106,9 +106,20 @@ fn bus_row(
     y: f32,
     labels: &[String],
     sel: u8,
+    seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
-    let rect = Rect::new(x, y, control_w, ROW_H_PX);
+    let linha = ph2d_editor_core::property_row::paint_label_row(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        ROW_H_PX,
+        tr("component.field.source_fields.10"),
+        seccao,
+    );
+    let (rect, dot) = (linha.control, linha.dot);
     hit_index.register(ids::INSP_AUDIO_BUS_PICK, rect);
     let open = matches!(
         store.get(ids::INSP_AUDIO_BUS_PICK),
@@ -144,43 +155,43 @@ fn source_body(
 ) -> f32 {
     let linhas = [
         (
-            tr("panel.inspector.audio.volume_db"),
+            tr("component.field.source_fields.1"),
             ids::INSP_AUDIO_VOLUME,
             1.0,
             None,
         ), // LITERAL-PX-OK: passo em decibéis
         (
-            tr("panel.inspector.audio.pitch"),
+            tr("component.field.source_fields.2"),
             ids::INSP_AUDIO_PITCH,
             0.05, // LITERAL-PX-OK: passo do factor de tom
             None,
         ),
         (
-            tr("panel.inspector.audio.max_distance_m"),
+            tr("component.field.source_fields.5"),
             ids::INSP_AUDIO_MAX_DIST,
             0.5,
             Some(ph2d_editor_core::widget::Unit::Meters),
         ), // LITERAL-PX-OK: passo em metros
         (
-            tr("panel.inspector.audio.attenuation"),
+            tr("component.field.source_fields.6"),
             ids::INSP_AUDIO_ATTENUATION,
             0.1, // LITERAL-PX-OK: passo do expoente
             None,
         ),
         (
-            tr("panel.inspector.audio.non_spatialized_radius_m"),
+            tr("component.field.source_fields.7"),
             ids::INSP_AUDIO_RADIUS,
             0.1, // LITERAL-PX-OK: metros
             Some(ph2d_editor_core::widget::Unit::Meters),
         ),
         (
-            tr("panel.inspector.audio.panning_strength"),
+            tr("component.field.source_fields.8"),
             ids::INSP_AUDIO_PANNING,
             0.05, // LITERAL-PX-OK: passo da fracção
             None,
         ),
         (
-            tr("panel.inspector.audio.max_polyphony"),
+            tr("component.field.source_fields.9"),
             ids::INSP_AUDIO_POLYPHONY,
             1.0,
             None,
@@ -194,8 +205,9 @@ fn source_body(
     //    ele vinha numa declaração própria do chamador, só com o nome dele, e a caixa do som
     //    arrancava `6 px` à esquerda das sete linhas de número por baixo dela. *Duas declarações
     //    para o mesmo corpo são duas colunas.*
-    let nomes: Vec<&str> = std::iter::once(tr("panel.inspector.audio.sound_label"))
+    let nomes: Vec<&str> = std::iter::once(tr("component.field.source_fields.0"))
         .chain(linhas.iter().map(|t| t.0))
+        .chain(std::iter::once(tr("component.field.source_fields.10")))
         .collect();
     let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &nomes);
     let mut cur_y = super::anim_rows::text_row(
@@ -207,7 +219,7 @@ fn source_body(
         x,
         w,
         y,
-        tr("panel.inspector.audio.sound_label"),
+        tr("component.field.source_fields.0"),
         ids::INSP_AUDIO_SOUND,
         TextInput::new(ids::INSP_AUDIO_SOUND, "")
             .placeholder(tr("panel.inspector.audio.sound_file")),
@@ -294,6 +306,7 @@ fn source_body(
         cur_y,
         &info.bus_labels,
         src.bus_tag,
+        seccao,
     );
 
     // ⭐⭐⭐ **As duas caixas partilham uma fileira SE couberem** — spec §6-quater; a tabela medida
@@ -311,12 +324,12 @@ fn source_body(
         &[
             (
                 ids::INSP_AUDIO_LOOP,
-                tr("panel.inspector.audio.loop"),
+                tr("component.field.source_fields.3"),
                 src.looping,
             ),
             (
                 ids::INSP_AUDIO_AUTOPLAY,
-                tr("panel.inspector.audio.autoplay"),
+                tr("component.field.source_fields.4"),
                 src.autoplay,
             ),
         ],
@@ -338,11 +351,13 @@ pub(crate) fn paint_audio_section(
     info: &InspectorAudioInfo,
 ) -> f32 {
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
-    let header = section_header(
-        store,
-        core_ids::INSP_LIVE_AUDIO_SECTION,
-        tr("panel.inspector.audio.audio"),
-    );
+    // O título é o do componente (doc CodeEditor 08 §3.11): a fonte manda quando há as duas.
+    let titulo = if info.source.is_some() {
+        "component.audio_source_2d.name"
+    } else {
+        "component.audio_listener_2d.name"
+    };
+    let header = section_header(store, core_ids::INSP_LIVE_AUDIO_SECTION, tr(titulo));
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
     let Some(fold) = SectionFold::begin(

@@ -18,7 +18,10 @@
 //! que se GUARDA — a fonte mais as matrizes de repouso) e o rótulo é "Skin" (diz o que a coisa
 //! É). Este catálogo é exactamente o sítio onde os dois nomes se encontram.
 
-use crate::{ComponentCategory as C, ComponentDesc as D, ObjectKinds as O};
+use crate::{ComponentCategory as C, ComponentDesc as D, Hidden, ObjectKinds as O};
+
+// ⚠️ Os oito editam-se no painel do ESQUELETO (`ph2d-panel-skeleton`), nunca num cartão do
+// Inspector ⇒ `Hidden::OtherEditor` (doc CodeEditor 08 §3.11).
 
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).
 pub const DESCS: &[D] = &[
@@ -30,7 +33,8 @@ pub const DESCS: &[D] = &[
         C::Skeleton,
         O::ANY,
         &[],
-    ),
+    )
+    .hidden(Hidden::OtherEditor),
     // ⭐ O LIMITE — `authored` porque a faixa de nascimento é a volta inteira, que não apara nada:
     // pendurá-lo pela paleta é um no-op exacto, e o artista aperta-o depois. ⚠️ É a diferença
     // com a âncora, que sem alvo seria inerte e sem caminho para o artista a completar.
@@ -40,7 +44,8 @@ pub const DESCS: &[D] = &[
         C::Skeleton,
         O::ANY,
         &[],
-    ),
+    )
+    .hidden(Hidden::OtherEditor),
     // ⭐ O REPOUSO — `intrinsic`, e a ausência do default é a LEI e não uma folga: o valor neutro de
     // uma pose é a identidade, que é o defeito medido que este componente existe para curar (ver o
     // cabeçalho de `ph2d_skeleton_ecs::bone_rest`). Ele chega com o osso, ou com *Set Rest Pose*.
@@ -49,7 +54,8 @@ pub const DESCS: &[D] = &[
         "component.bone_rest.name",
         C::Skeleton,
         &[],
-    ),
+    )
+    .hidden(Hidden::OtherEditor),
     // ⭐ A ÂNCORA — `intrinsic` pela mesma razão da pele: ela chega com o gesto (*Add IK*), que cria
     // o ALVO no mesmo passo. Pendurá-la por paleta daria uma restrição sem alvo — inerte, e sem
     // caminho pelo qual o artista a completasse.
@@ -60,7 +66,8 @@ pub const DESCS: &[D] = &[
         "component.ik_goal.name",
         C::Skeleton,
         &[],
-    ),
+    )
+    .hidden(Hidden::OtherEditor),
     // ⭐ A MARCA do alvo — `intrinsic` pela mesma razão: ela chega com o gesto, e pendurá-la à mão
     // num objecto qualquer só o esconderia do anel de objecto vazio sem lhe dar alça nenhuma.
     D::intrinsic(
@@ -68,7 +75,8 @@ pub const DESCS: &[D] = &[
         "component.ik_target.name",
         C::Skeleton,
         &[],
-    ),
+    )
+    .hidden(Hidden::OtherEditor),
     // ⭐ O OBJECTO esqueleto (A14) — `intrinsic`: ele chega pelo menu Add (com um osso) ou pela
     // migração; pendurá-lo pela paleta faria um esqueleto sem ossos.
     D::intrinsic(
@@ -76,7 +84,8 @@ pub const DESCS: &[D] = &[
         "component.skeleton.name",
         C::Skeleton,
         &[],
-    ),
+    )
+    .hidden(Hidden::OtherEditor),
     // ⭐ A PELE — `intrinsic`: ela chega com o GESTO (*Bind*) e **não tem `Default`**, porque uma
     // pele sem a fonte autorada dentro não é uma pele, é uma forma prestes a sumir.
     D::intrinsic(
@@ -84,7 +93,8 @@ pub const DESCS: &[D] = &[
         "component.skin.name",
         C::Skeleton,
         &[],
-    ),
+    )
+    .hidden(Hidden::OtherEditor),
     // ⭐ O OSSO INTELIGENTE — `authored`, e a razão MUDOU em 2026-09-08. Ele era `intrinsic` porque
     // o gesto lhe dava a acção e a paleta não tinha caminho para o artista o completar; hoje o gesto
     // **não cria nada** (ordem do dono) e as duas linhas da secção Skeleton — *Pick Object* e
@@ -96,5 +106,6 @@ pub const DESCS: &[D] = &[
         C::Skeleton,
         O::ANY,
         &[],
-    ),
+    )
+    .hidden(Hidden::OtherEditor),
 ];

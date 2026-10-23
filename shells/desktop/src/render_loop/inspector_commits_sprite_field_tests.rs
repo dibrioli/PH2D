@@ -3,8 +3,9 @@
 //! 600 LOC quando os drenos das secções e dos nomes de sinal ganharam função própria.
 
 use crate::render_loop::inspector_commits_sprite::{
-    SpriteEditTarget, SpriteEditables, apply_sprite_field, clamp_frame,
+    SpriteEditTarget, SpriteEditables, apply_sprite_field,
 };
+use ph2d_app_components::sprite_inspector::sanitize_sprite_grid as clamp_frame;
 use ph2d_ecs::{SpriteCornerTint, SpriteGrid};
 use ph2d_editor_core::SpriteFieldEdit;
 use ph2d_render::Sprite;

@@ -6,15 +6,9 @@
 /// A tradução de uma chave `panel.inspector.luz.*` / `light2d.*`, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
-        "panel.inspector.luz.title" => "Light",
-        "panel.inspector.luz.type" => "Type",
         "panel.inspector.luz.point" => "Point",
         "panel.inspector.luz.ambient" => "Ambient",
-        "panel.inspector.luz.color" => "Color",
-        "panel.inspector.luz.intensity" => "Intensity",
-        "panel.inspector.luz.size" => "Size",
         "panel.inspector.luz.limit_range" => "Limit Range",
-        "panel.inspector.luz.range" => "Range",
         "panel.inspector.luz.white_at_d_m" => "A white sprite is fully lit at {d} m.",
         "panel.inspector.luz.ambient_n_percent" => {
             "Lights every open spot at {n} % \u{2014} 100 % is the scene as it was without light."
@@ -60,7 +54,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.luz.quality_cost" => {
             "Quality: {nivel} ({modo}), {ms} ms of GPU per frame \u{2014} Settings \u{25b8} 2D Light."
         }
-        "panel.inspector.luz.opacity" => "Opacity",
         "panel.inspector.luz.x_remove_occluder" => "x Remove Light Occluder",
         "panel.inspector.luz.x_remove_unlit" => "x Remove Unlit",
         "panel.inspector.luz.unlit_explained" => {

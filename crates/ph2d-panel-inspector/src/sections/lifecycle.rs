@@ -45,8 +45,8 @@ fn lifecycle_body(
         text_system,
         1,
         &[
-            tr("panel.inspector.factory.lifetime_s_0_forever"),
-            tr("panel.inspector.factory.off_screen_margin_m"),
+            tr("component.field.lifetime_fields.1"),
+            tr("component.field.outside_fields.1"),
         ],
     );
     // ⭐⭐ **A metade honesta** — a lei é *a morte só alcança quem nasceu numa corrida*.
@@ -74,7 +74,7 @@ fn lifecycle_body(
             x,
             w,
             cur_y,
-            tr("panel.inspector.factory.lifetime_s_0_forever"),
+            tr("component.field.lifetime_fields.1"),
             &[crate::ids::INSP_LIFE_SECONDS],
             0.1, // LITERAL-PX-OK: passo em segundos
             Some(ph2d_editor_core::widget::Unit::Seconds),
@@ -89,7 +89,7 @@ fn lifecycle_body(
             x,
             w,
             cur_y,
-            ph2d_i18n::tr("panel.factory.on_death_label"),
+            ph2d_i18n::tr("component.field.lifetime_fields.2"),
             crate::ids::INSP_LIFE_ON_DEATH,
             TextInput::new(crate::ids::INSP_LIFE_ON_DEATH, "")
                 .placeholder(ph2d_i18n::tr("panel.factory.on_death")),
@@ -118,7 +118,7 @@ fn lifecycle_body(
             x,
             w,
             cur_y,
-            tr("panel.inspector.factory.off_screen_margin_m"),
+            tr("component.field.outside_fields.1"),
             &[crate::ids::INSP_LIFE_OUTSIDE_MARGIN],
             0.1, // LITERAL-PX-OK: passo em metros
             Some(ph2d_editor_core::widget::Unit::Meters),
@@ -145,10 +145,16 @@ pub(crate) fn paint_lifecycle_section(
         return y;
     };
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
+    // ⭐ O título é o do componente (o nome de código copia-o); os dois juntos são o ciclo de vida.
+    let titulo = match (l.lifetime_s.is_some(), l.outside_margin.is_some()) {
+        (true, false) => tr("component.lifetime.name"),
+        (false, true) => tr("component.destroy_outside.name"),
+        _ => tr("panel.inspector.factory.lifecycle"),
+    };
     let header = section_header(
         store,
         ph2d_editor_core::ids::INSP_LIVE_LIFECYCLE_SECTION,
-        tr("panel.inspector.factory.lifecycle"),
+        titulo,
     );
     paint_section_header(
         &header,

@@ -117,15 +117,18 @@ pub fn apply_ray_edit(world: &mut World, bits: u64, edit: &RayFieldEdit) -> bool
         RayFieldEdit::Reach(v) => r.reach = *v,
         // ⚠️ **A camada é um ÍNDICE**, e o tecto é o do mundo (`MAX_LAYERS`): um número maior não
         // tem linha na matriz, e a porta do motor leria uma coluna que não existe.
-        RayFieldEdit::Layer(v) => {
-            r.layer = u8::try_from(*v)
-                .unwrap_or(0)
-                .min(ph2d_physics_ecs::MAX_LAYERS as u8 - 1);
-        }
+        RayFieldEdit::Layer(v) => r.layer = u8::try_from(*v).unwrap_or(0),
         // Os dois nomes já saíram acima.
         RayFieldEdit::OnEnter(_) | RayFieldEdit::OnExit(_) => return false,
     }
+    sanitize_ray_sensor(&mut r);
     true
+}
+
+/// ⭐ **A lei do RAIO** (doc CodeEditor 08 §3.5): a camada é um índice da matriz do mundo, e acima
+/// do tecto (`MAX_LAYERS`) não há coluna. O resto aceita tudo (o alcance zero é um aviso do cartão).
+pub(crate) fn sanitize_ray_sensor(r: &mut ph2d_physics_ecs::RaySensor) {
+    r.layer = r.layer.min(ph2d_physics_ecs::MAX_LAYERS as u8 - 1);
 }
 
 /// **Aplica as edições que o painel emitiu neste quadro.** `true` = o documento mudou.

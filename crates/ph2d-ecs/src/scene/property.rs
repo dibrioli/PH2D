@@ -113,17 +113,31 @@ pub fn get(
     slot(&r, &mut whole).cloned()
 }
 
-/// O lugar do campo dentro do valor do componente — o valor inteiro, num newtype ([`WHOLE`]).
-fn slot<'v>(r: &Resolved<'_>, whole: &'v mut Value) -> Result<&'v mut Value, PropertyError> {
-    if r.field.serde_key() == WHOLE {
-        return Ok(whole);
+/// O lugar de uma chave dentro do valor do componente: o valor inteiro num newtype ([`WHOLE`]), um
+/// ELEMENTO de um array com `[i]` (`"axis[0]"`; `"[2]"` num newtype de array) — a linha «Axis X» do
+/// cartão é um elemento, não o par. A lei única de quem lê ou repõe um campo pela chave.
+pub fn slot_in<'v>(whole: &'v mut Value, key: &str) -> Option<&'v mut Value> {
+    if key == WHOLE {
+        return Some(whole);
     }
-    whole
-        .get_mut(r.field.serde_key())
-        .ok_or_else(|| PropertyError::UnknownField {
-            component: code_of(r).to_owned(),
-            field: r.field.name.to_owned(),
-        })
+    let Some((base, rest)) = key.split_once('[') else {
+        return whole.get_mut(key);
+    };
+    let i: usize = rest.strip_suffix(']')?.parse().ok()?;
+    let arr = if base.is_empty() {
+        whole
+    } else {
+        whole.get_mut(base)?
+    };
+    arr.get_mut(i)
+}
+
+/// O lugar do campo dentro do valor do componente ([`slot_in`]).
+fn slot<'v>(r: &Resolved<'_>, whole: &'v mut Value) -> Result<&'v mut Value, PropertyError> {
+    slot_in(whole, r.field.serde_key()).ok_or_else(|| PropertyError::UnknownField {
+        component: code_of(r).to_owned(),
+        field: r.field.name.to_owned(),
+    })
 }
 
 /// Escreve `value` em `name` no objecto; os outros campos do componente ficam.
@@ -148,7 +162,9 @@ pub fn set(
 fn normalize(kind: FieldKind, value: Value) -> Value {
     match (kind, &value) {
         (FieldKind::Int | FieldKind::Seed, Value::Number(n)) => match n.as_f64() {
-            Some(x) if x.fract() == 0.0 && x >= 0.0 && x <= u64::MAX as f64 => Value::from(x as u64),
+            Some(x) if x.fract() == 0.0 && x >= 0.0 && x <= u64::MAX as f64 => {
+                Value::from(x as u64)
+            }
             Some(x) if x.fract() == 0.0 && x >= i64::MIN as f64 => Value::from(x as i64),
             _ => value,
         },
@@ -160,7 +176,11 @@ fn code_of(r: &Resolved<'_>) -> &'static str {
     r.entry.desc.map_or("", |d| d.code)
 }
 
-fn component_value(r: &Resolved<'_>, world: &World, entity: Entity) -> Result<Value, PropertyError> {
+fn component_value(
+    r: &Resolved<'_>,
+    world: &World,
+    entity: Entity,
+) -> Result<Value, PropertyError> {
     match (r.entry.value_of)(world, entity) {
         Ok(Some(v)) => Ok(v),
         Ok(None) => Err(PropertyError::Missing {

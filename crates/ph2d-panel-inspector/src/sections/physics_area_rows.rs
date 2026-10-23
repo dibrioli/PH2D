@@ -11,6 +11,7 @@ use super::rows::{num_row, num_row_unit, seg_row};
 use super::*;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 /// Force-frame labels, indexed by `world_axes as u8`: `0` the zone's own frame (turn
 /// the sensor and the wind turns with it), `1` pinned to world axes (the zone turns,
@@ -47,12 +48,12 @@ pub(super) fn paint_area_rows(
         // they are the difference between wind (push, no resistance) and water.
         for (label, id, unit) in [
             (
-                tr("panel.inspector.physics.force_x_n"),
+                tr_with("panel.inspector.label_x", &[("label", &tr("component.field.area_effector.0"))]),
                 ids::INSP_PHYS_FORCE_X,
                 Some(ph2d_editor_core::widget::Unit::Newtons),
             ),
             (
-                tr("panel.inspector.physics.force_y_n"),
+                tr_with("panel.inspector.label_y", &[("label", &tr("component.field.area_effector.0"))]),
                 ids::INSP_PHYS_FORCE_Y,
                 Some(ph2d_editor_core::widget::Unit::Newtons),
             ),
@@ -66,7 +67,7 @@ pub(super) fn paint_area_rows(
                 x,
                 w,
                 yy,
-                label,
+                &label,
                 id,
                 unit,
                 None,
@@ -104,20 +105,20 @@ pub(super) fn paint_area_rows(
         // is just as wet). Painted below them the row would read as governing all six.
         for (label, id) in [
             (
-                tr("panel.inspector.physics.torque_n_m"),
+                tr("component.field.area_torque.0"),
                 ids::INSP_PHYS_AREA_TORQUE,
             ),
             (
-                tr("panel.inspector.physics.falloff"),
+                tr("component.field.area_falloff.0"),
                 ids::INSP_PHYS_AREA_FALLOFF,
             ),
-            (tr("panel.inspector.physics.drag"), ids::INSP_PHYS_AREA_DRAG),
+            (tr("component.field.area_drag.0"), ids::INSP_PHYS_AREA_DRAG),
             (
-                tr("panel.inspector.physics.fluid_density"),
+                tr("component.field.area_buoyancy.0"),
                 ids::INSP_PHYS_AREA_DENSITY,
             ),
             (
-                tr("panel.inspector.physics.shape_drag"),
+                tr("component.field.area_form_drag.0"),
                 ids::INSP_PHYS_AREA_FORM_DRAG,
             ),
         ] {

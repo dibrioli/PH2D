@@ -25,14 +25,34 @@ fn fontes_dos_cartoes() -> String {
     out
 }
 
+/// Componentes `Authored` SEM cartão próprio: linhas de um cartão partilhado, cujo título é o que os
+/// nomeia ao artista (a §10 *Material & Blend*, a §9 *Sampling*, a §8 *Visibility*).
+const CARTAO_PARTILHADO: &[(&str, &str)] = &[
+    ("ph2d::ecs::BlendMode", "panel.inspector.material.material_and_blend"),
+    ("ph2d::ecs::ClipChildren", "component.visibility_layer.name"),
+    ("ph2d::ecs::MaskInteraction", "component.visibility_layer.name"),
+    ("ph2d::ecs::OnScreenEnabler", "component.visibility_layer.name"),
+    ("ph2d::ecs::SpriteAnimator", "panel.inspector.animation.animation"),
+    ("ph2d::ecs::TextureFilter", "panel.inspector.sampling.sampling"),
+    ("ph2d::ecs::TextureRepeat", "panel.inspector.sampling.sampling"),
+    ("ph2d::ecs::UvTransform", "panel.inspector.sampling.sampling"),
+];
+
 #[test]
 fn o_cartao_pinta_a_chave_do_catalogo() {
     let fontes = fontes_dos_cartoes();
     let mut faltam = Vec::new();
     let mut vistos = 0;
     for d in ph2d_component_desc::all().filter(|d| !d.code.is_empty()) {
-        if !fontes.contains(&format!("\"{}\"", d.display_key)) {
-            faltam.push(format!("{} (título {})", d.code, d.display_key));
+        // Uma linha de secção (`Intrinsic`: a Gravidade, a Massa… no cartão do corpo) não tem título
+        // próprio — o cartão pinta as linhas dela, e essas conferem-se abaixo.
+        let linha = d.attach == ph2d_component_desc::Attach::Intrinsic;
+        let titulo = CARTAO_PARTILHADO
+            .iter()
+            .find(|(c, _)| *c == d.canonical_name)
+            .map_or(d.display_key, |(_, t)| *t);
+        if !linha && !fontes.contains(&format!("\"{titulo}\"")) {
+            faltam.push(format!("{} (título {titulo})", d.code));
         }
         for f in d.fields.iter().filter(|f| !f.name.is_empty()) {
             vistos += 1;
@@ -53,6 +73,15 @@ fn amostra(canonical: &str, world: &mut bevy_ecs::world::World, e: bevy_ecs::ent
     };
     match canonical {
         // Uma linha por tipo: `"ph2d::…" => pos(&|w| { w.insert(…); }),`
+        "ph2d::render::Sprite" => pos(&|w| {
+            w.insert(ph2d_render::Sprite::atlas(1, [1.0, 1.0], [1.0; 4]));
+        }),
+        "ph2d::physics::MassOverride" => pos(&|w| {
+            w.insert(ph2d_physics_ecs::MassOverride(1.0));
+        }),
+        "ph2d::physics::Dominance" => pos(&|w| {
+            w.insert(ph2d_physics_ecs::Dominance(1));
+        }),
         _ => {
             let _ = &mut pos;
             false
@@ -73,6 +102,16 @@ fn chaves(entry: &ph2d_ecs::scene::ComponentTypeEntry) -> Result<Option<BTreeSet
         Ok(Some(serde_json::Value::Object(m))) => Ok(Some(m.keys().cloned().collect())),
         Ok(Some(_)) => Ok(None),
         other => Err(format!("{other:?}")),
+    }
+}
+
+/// A chave serde de topo de uma chave de campo: o elemento `"axis[0]"` é da chave `axis`, e `"[0]"`
+/// é do valor inteiro de um newtype de array.
+fn topo(k: &str) -> &str {
+    match k.split_once('[') {
+        Some(("", _)) => WHOLE,
+        Some((base, _)) => base,
+        None => k,
     }
 }
 
@@ -102,9 +141,9 @@ fn todo_campo_de_um_cartao_tem_nome_ou_motivo() {
             .fields
             .iter()
             .filter(|f| !f.name.is_empty())
-            .map(|f| f.serde_key())
+            .map(|f| topo(f.serde_key()))
             .collect();
-        let ocultas: BTreeSet<&str> = d.hidden_keys.iter().map(|(k, _)| *k).collect();
+        let ocultas: BTreeSet<&str> = d.hidden_keys.iter().map(|(k, _)| topo(k)).collect();
         let esperadas: BTreeSet<String> = chaves.unwrap_or_else(|| BTreeSet::from([WHOLE.to_owned()]));
         for k in &esperadas {
             match (nomeadas.contains(k.as_str()), ocultas.contains(k.as_str())) {

@@ -438,11 +438,11 @@ fn o_roteiro_nomeia_o_que_o_painel_pinta() {
         "component.game_camera.name",
         "component.field.camera_fields.5",
         "component.field.camera_fields.3",
-        "panel.inspector.parallax.parallax",
-        "panel.inspector.parallax.scroll_factor",
-        "panel.inspector.parallax.repeat_m",
-        "panel.inspector.parallax.drift_m_s",
-        "panel.inspector.parallax.limit_max_m",
+        "component.scroll_factor.name",
+        "component.field.scroll_fields.0",
+        "component.field.repeat_fields.0",
+        "component.field.motion_fields.0",
+        "component.field.limits_fields.1",
     ];
     let fonte = include_str!("parallax_smoke.rs");
     let pintor = include_str!("../../ph2d-panel-inspector/src/sections/parallax.rs");

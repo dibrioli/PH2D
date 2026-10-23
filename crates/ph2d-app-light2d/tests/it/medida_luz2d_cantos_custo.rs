@@ -190,13 +190,13 @@ fn medida_luz2d_cantos_perto() {
         }
         // A marcação do W6h §10: o grupo dilatado por 17 OU o retângulo dele até cada semente do
         // preenchimento que a janela 5×5 e as 3×3 células vizinhas do `onde_calcular` podem ler.
-        let rc = 17.0 * esc;
-        let toca = |lo: [f32; 2], hi: [f32; 2]| {
+        let toca_r = |lo: [f32; 2], hi: [f32; 2], rc: f32| {
             let bloco = |v: f32, m: u32| ((v.max(0.0) / 8.0) as u32).min(m - 1);
             (bloco(lo[1] - rc, by)..=bloco(hi[1] + rc, by)).any(|j| {
                 (bloco(lo[0] - rc, bx)..=bloco(hi[0] + rc, bx)).any(|k| com[(j * bx + k) as usize])
             })
         };
+        let toca = |lo: [f32; 2], hi: [f32; 2]| toca_r(lo, hi, 17.0 * esc);
         let cel = s.config().preenchimento.expect("o preenchimento");
         let (celulas, saltos) = s.config().grade_do_preenchimento().expect("a grade");
         let nome_final = ["luz2d/tex/preenche_a", "luz2d/tex/preenche_b"][saltos.len() % 2];
@@ -211,7 +211,8 @@ fn medida_luz2d_cantos_perto() {
             let v = u32::from_le_bytes(sementes[o..o + 4].try_into().expect("u32"));
             (v != u32::MAX).then(|| [v & 0xffff, v >> 16].map(|t| (t as f32 + 0.5) * esc))
         };
-        let (mut so_grupo, mut marcados) = (0u32, 0u32);
+        let (mut so_grupo, mut marcados, mut com_disco, mut d_longe, mut exata) =
+            (0u32, 0u32, 0u32, 0u32, 0u32);
         for y in 0..gy {
             for x in 0..gx {
                 let t0 = [i[0] + 8 * x, i[1] + 8 * y];
@@ -220,6 +221,7 @@ fn medida_luz2d_cantos_perto() {
                 if toca(lo, hi) {
                     so_grupo += 1;
                     marcados += 1;
+                    exata += 1;
                     continue;
                 }
                 let c_lo = t0.map(|v| (v.saturating_sub(2) / cel).saturating_sub(1));
@@ -235,14 +237,64 @@ fn medida_luz2d_cantos_perto() {
                     })
                 });
                 marcados += u32::from(pela_semente);
+                // O disco do `pe_na_borda` (raio `d + 2h` à volta do texel; `d` ≤ a semente mais perto das
+                // 3×3 células dele): o grupo dilatado por 17 + o maior desses mínimos.
+                let mut d_max = 0f32;
+                for ty in t0[1]..t0[1] + 8 {
+                    for tx in t0[0]..t0[0] + 8 {
+                        let c = [tx / cel, ty / cel];
+                        let mut d_min = f32::INFINITY;
+                        for cy in c[1].saturating_sub(1)..=(c[1] + 1).min(celulas[1] - 1) {
+                            for cx in c[0].saturating_sub(1)..=(c[0] + 1).min(celulas[0] - 1) {
+                                if let Some(p) = semente(cx, cy) {
+                                    let q = [tx, ty].map(|v| (v as f32 + 0.5) * esc);
+                                    d_min = d_min.min((p[0] - q[0]).hypot(p[1] - q[1]) / esc);
+                                }
+                            }
+                        }
+                        if d_min.is_finite() {
+                            d_max = d_max.max(d_min);
+                        }
+                    }
+                }
+                let ex = (d_max + 1.0) * esc;
+                let disco = toca(lo.map(|v| v - ex), hi.map(|v| v + ex));
+                if pela_semente || disco {
+                    com_disco += 1;
+                }
+                // A regra EXATA do W6h §10 (a da placa): o grupo dilatado por 17 + d_max + 4 (o disco do
+                // `pe_na_borda` nas duas faces) OU o segmento até cada semente das 3×3 células de cada
+                // texel dilatado por 1 texel da fina (a bisseção do `na_fronteira` lê só à volta dele).
+                let ex = (d_max + 4.0) * esc;
+                let mut ex_marca = toca(lo.map(|v| v - ex), hi.map(|v| v + ex));
+                let c0 = t0.map(|v| (v / cel).saturating_sub(1));
+                let c1 = [0, 1].map(|k| ((t0[k] + 7) / cel + 1).min(celulas[k] - 1));
+                for cy in c0[1]..=c1[1] {
+                    for cx in c0[0]..=c1[0] {
+                        if let Some(p) = semente(cx, cy) {
+                            ex_marca |= toca_r(
+                                [lo[0].min(p[0]), lo[1].min(p[1])],
+                                [hi[0].max(p[0]), hi[1].max(p[1])],
+                                esc,
+                            );
+                        }
+                    }
+                }
+                exata += u32::from(ex_marca);
+                if d_max > 17.0 {
+                    d_longe += 1;
+                }
             }
         }
         eprintln!(
-            "MARCA · cena {n} · {} · grupos {} · R 17 {so_grupo} ({:.1} %) · + sementes {marcados} ({:.1} %) · célula {cel}",
+            "MARCA · cena {n} · {} · grupos {} · R 17 {so_grupo} ({:.1} %) · + sementes {marcados} ({:.1} %) · + disco {} ({:.1} %) · grupos com d > 17: {d_longe} · EXATA {exata} ({:.1} %) · célula {cel}",
             nome(cam),
             gx * gy,
             100.0 * f64::from(so_grupo) / f64::from(gx * gy),
-            100.0 * f64::from(marcados) / f64::from(gx * gy)
+            100.0 * f64::from(marcados) / f64::from(gx * gy),
+            com_disco + so_grupo,
+            100.0 * f64::from(com_disco + so_grupo) / f64::from(gx * gy),
+            100.0 * f64::from(exata) / f64::from(gx * gy)
         );
     }
 }

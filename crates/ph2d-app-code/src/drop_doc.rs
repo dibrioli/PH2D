@@ -4,7 +4,7 @@
 
 use crate::doc::CodeDoc;
 use ph2d_code_buffer::{Range, Selection};
-use ph2d_code_syntax::dropping::{Insertion, insertion, name_insertion};
+use ph2d_code_syntax::dropping::{Insertion, insertion, name_insertion, property_insertion};
 use ph2d_editor_core::doc_surface::{DropAt, Dropping};
 use ph2d_i18n::tr;
 use ph2d_panel_code::Hit;
@@ -29,6 +29,16 @@ impl CodeDoc {
     }
 
     /// O que a soltura em `b` escreve, pela lei do que chega.
+    /// Uma linha do Inspector com propriedade de OUTRO script não tem o que escrever aqui.
+    fn welcomes(&self, what: Dropping<'_>) -> bool {
+        match what {
+            Dropping::Property {
+                script: Some(id), ..
+            } => id == self.script.0,
+            _ => true,
+        }
+    }
+
     fn drop_insertion(&self, b: usize, at: DropAt<'_>) -> Insertion {
         let text = self.buffer.text();
         match at.what {
@@ -41,15 +51,27 @@ impl CodeDoc {
                 &self.auto.unit(),
             ),
             Dropping::Names(names) => name_insertion(text, b, names, at.mods.ctrl),
+            Dropping::Property { names, script } => property_insertion(b, names, script.is_some()),
         }
     }
 
     /// Um arrasto passa (`Some`) ou saiu (`None`). `true` = largar aqui escreve.
     pub(crate) fn drop_hover(&mut self, at: Option<DropAt<'_>>) -> bool {
-        self.dropping = at.and_then(|at| {
+        self.dropping = at.filter(|a| self.welcomes(a.what)).and_then(|at| {
             let b = self.drop_byte(at.x, at.y)?;
             let ins = self.drop_insertion(b, at);
+            let hint = |keys: &[&str]| keys.iter().map(|k| tr(k).to_owned()).collect();
             let (what, ctrl) = match at.what {
+                Dropping::Property { script, .. } => {
+                    let key = match script {
+                        Some(_) => "code.drop.property_self",
+                        None => "code.drop.property",
+                    };
+                    return Some(DropMark {
+                        at: ins.at,
+                        hint: hint(&[key]),
+                    });
+                }
                 Dropping::Names(_) => ("code.drop.names", "code.drop.ctrl_const"),
                 Dropping::Objects(_) if self.syntax.at_top_level(self.buffer.text(), b) => {
                     ("code.drop.objects", "code.drop.ctrl_init")
@@ -58,7 +80,7 @@ impl CodeDoc {
             };
             Some(DropMark {
                 at: ins.at,
-                hint: vec![tr(what).to_owned(), tr(ctrl).to_owned()],
+                hint: hint(&[what, ctrl]),
             })
         });
         self.dropping.is_some()
@@ -67,10 +89,14 @@ impl CodeDoc {
     /// Largou-se: escreve num passo de undo e põe o cursor no fim do que escreveu. `true` = escreveu.
     pub(crate) fn drop(&mut self, at: DropAt<'_>) -> bool {
         self.dropping = None;
-        let Some(b) = self.drop_byte(at.x, at.y) else {
+        let Some(b) = self
+            .drop_byte(at.x, at.y)
+            .filter(|_| self.welcomes(at.what))
+        else {
             return false;
         };
-        let (Dropping::Objects(names) | Dropping::Names(names)) = at.what;
+        let (Dropping::Objects(names) | Dropping::Names(names) | Dropping::Property { names, .. }) =
+            at.what;
         if names.is_empty() {
             return false;
         }

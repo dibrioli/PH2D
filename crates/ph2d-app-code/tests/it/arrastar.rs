@@ -342,3 +342,47 @@ fn arrastar_um_script_da_lista_para_o_texto_escreve_o_nome() {
         "arrastar não abriu o bob"
     );
 }
+
+/// ⭐ 8b (§3.10): uma linha do Inspector cai pelo NOME entre aspas (Ctrl igual, como no Godot); uma
+/// propriedade do script DESTE texto, `self.<nome>`; a de outro script não tem onde cair.
+#[test]
+fn uma_linha_do_inspector_cai_pelo_nome_e_a_do_proprio_script_por_self() {
+    let (mut m, id) = mesa();
+    let b = TEXTO.find(", \"x\"").expect("agulha");
+    let p = ponto(&mut m, id, b);
+    let nomes = ["health.max".to_owned()];
+    let linha = |script, ctrl| DropAt {
+        what: Dropping::Property {
+            names: &nomes,
+            script,
+        },
+        ..em(p, &nomes, ctrl)
+    };
+    assert!(m.docs().drop_hover(id.0, Some(linha(None, true))));
+    let (at, balao) = m.docs().drop_mark_of(id).expect("a marca");
+    assert_eq!(at, b, "no cursor, mesmo com Ctrl");
+    assert_eq!(balao.len(), 1, "{balao:?}");
+    assert!(
+        !m.docs().drop_hover(id.0, Some(linha(Some(id.0 + 1), false))),
+        "a propriedade de outro script não cai aqui"
+    );
+    assert!(m.docs().drop_mark_of(id).is_none());
+    assert!(!m.docs().drop(id.0, linha(Some(id.0 + 1), false)));
+    assert_eq!(m.docs().text_of(id).as_deref(), Some(TEXTO));
+    m.pinta(id);
+    assert!(m.docs().drop(id.0, linha(None, true)));
+    let esperado = TEXTO.replacen("set(,", "set(\"health.max\",", 1);
+    assert_eq!(m.docs().text_of(id).as_deref(), Some(esperado.as_str()));
+    m.pinta(id);
+    let p = ponto(&mut m, id, b);
+    assert!(m.docs().drop(
+        id.0,
+        DropAt {
+            x: p.0,
+            y: p.1,
+            ..linha(Some(id.0), false)
+        }
+    ));
+    let texto = m.docs().text_of(id).expect("texto");
+    assert!(texto.contains("ph2d.set(self.health.max"), "{texto}");
+}

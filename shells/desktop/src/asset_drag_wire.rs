@@ -36,6 +36,10 @@ impl crate::App {
         // precedente uma linha ao lado: o `Focused(false)` existe porque *«o `Up` de uma tecla
         // presa nunca chega quando a janela vai embora»*, e o mesmo é verdade de um botão.
         hero.store.end_asset_drag();
+        let reg = &gfx.component_registry;
+        if ph2d_app_components::property_drag::seed(hero, &gfx.sim, reg, (x, y)) {
+            return;
+        }
         let Some(id) = hero.chrome_hit(x, y) else {
             return;
         };
@@ -114,7 +118,7 @@ impl crate::App {
         let Some(hero) = gfx.hero_screen.as_mut() else {
             return false;
         };
-        let Some(drag) = hero.store.end_asset_drag() else {
+        let Some((drag, label)) = hero.store.end_named_drag() else {
             return false;
         };
         if !drag.armed {
@@ -129,7 +133,8 @@ impl crate::App {
             db: &gfx.asset_db,
             atlas: &gfx.atlas_asset_map,
         };
-        if object_drag::write_code(action, drag.payload, hero, libs, (x, y), mods) {
+        let carga = (drag.payload, label.as_deref());
+        if object_drag::write_code(action, carga, hero, libs, (x, y), mods) {
             return true;
         }
         self.perform_drop(action, drag.payload);

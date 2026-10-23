@@ -168,6 +168,9 @@ fn paint_inspector(
         body_top_y,
         area,
     } = crate::paint_body::open_body(slot, scene, text_system, theme, hit_index, store);
+    // As linhas que se arrastam para o código (8b do CodeEditor): só as visíveis no corpo.
+    let visivel = Rect::new(rect.x, content_top, rect.w, content_bottom - content_top);
+    let _linhas = ph2d_editor_core::widget::arrasto::Gravacao::nova(visivel);
     // Os snapshots e o `any_section`, numa pergunta só. Ver `paint_frame::LiveSnapshots`.
     //
     // ⚠️ **Ele NÃO é destruturado, e a diferença é o teto de LOC**: a lista de nomes era vinte e

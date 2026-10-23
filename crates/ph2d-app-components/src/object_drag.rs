@@ -74,12 +74,23 @@ pub struct Libraries<'a> {
 enum Cargo {
     Objects(Vec<String>),
     Names(Vec<String>),
+    Property(Vec<String>, Option<u64>),
 }
 
 /// ⭐ **Os nomes de uma carga**: um objecto e a selecção dele; um mestre pelo `Name` dele (o que o
-/// `ph2d.spawn` recebe); uma imagem pelo nome da biblioteca (o que o `sprite.image` recebe).
-fn cargo_of(payload: DragPayload, libs: &mut Libraries<'_>, hero: &HeroScreen) -> Option<Cargo> {
+/// `ph2d.spawn` recebe); uma imagem pelo nome da biblioteca (o que o `sprite.image` recebe); uma
+/// linha do Inspector pelo rótulo do arrasto.
+fn cargo_of(
+    payload: DragPayload,
+    label: Option<&str>,
+    libs: &mut Libraries<'_>,
+    hero: &HeroScreen,
+) -> Option<Cargo> {
     match payload {
+        DragPayload::Property { script } => Some(Cargo::Property(
+            crate::property_drag::names_of_label(label?),
+            (script != 0).then_some(script),
+        )),
         DragPayload::Object { stable_id } => Some(Cargo::Objects(dropped_names(
             libs.sim.world_mut(),
             stable_id,
@@ -101,7 +112,7 @@ fn library_name(payload: DragPayload, libs: &mut Libraries<'_>) -> Option<String
             let names = crate::library_names::session_library(libs.sim, libs.db, libs.atlas);
             names.get(&AssetId::from_digest(asset)).cloned()
         }
-        DragPayload::Object { .. } => None,
+        DragPayload::Object { .. } | DragPayload::Property { .. } => None,
     }
 }
 
@@ -120,9 +131,10 @@ pub fn hover_code(
         .asset_drag()
         .and_then(|d| d.armed.then_some(d.payload));
     let doc = over_doc && hero.documents.surface_active().is_some();
+    let label = hero.store.asset_drag_label().map(str::to_owned);
     let cargo = payload
         .filter(|_| doc)
-        .and_then(|p| cargo_of(p, &mut libs, hero));
+        .and_then(|p| cargo_of(p, label.as_deref(), &mut libs, hero));
     let Some(cargo) = cargo else {
         surface_input::drop_hover(hero, None);
         return doc.then_some(false);
@@ -137,14 +149,14 @@ pub fn hover_code(
 /// queda era esta (a shell não a passa ao `perform_drop`). O ponto é o mesmo que a aba recebe do rato.
 pub fn write_code(
     action: DropAction,
-    payload: DragPayload,
+    (payload, label): (DragPayload, Option<&str>),
     hero: &mut HeroScreen,
     mut libs: Libraries<'_>,
     at: (f32, f32),
     mods: Modifiers,
 ) -> bool {
     let cargo = (action == DropAction::WriteCode)
-        .then(|| cargo_of(payload, &mut libs, hero))
+        .then(|| cargo_of(payload, label, &mut libs, hero))
         .flatten();
     let Some(cargo) = cargo else {
         surface_input::drop_hover(hero, None);
@@ -162,6 +174,10 @@ fn drop_at(at: (f32, f32), cargo: &Cargo, mods: Modifiers) -> DropAt<'_> {
         what: match cargo {
             Cargo::Objects(n) => Dropping::Objects(n),
             Cargo::Names(n) => Dropping::Names(n),
+            Cargo::Property(names, script) => Dropping::Property {
+                names,
+                script: *script,
+            },
         },
         mods,
     }

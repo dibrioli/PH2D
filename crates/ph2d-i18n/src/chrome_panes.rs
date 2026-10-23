@@ -43,6 +43,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.interaction.prefab" => "Prefab",
         "chrome.interaction.image" => "Image",
         "chrome.interaction.object" => "Object",
+        "chrome.interaction.property" => "Property",
         "chrome.interaction.palette" => "Palette",
         "chrome.interaction.imported" => "Imported",
         "chrome.zone.edit" => "EDIT",

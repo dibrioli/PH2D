@@ -244,6 +244,29 @@ pub fn name_insertion(text: &Text, byte: usize, names: &[String], ctrl: bool) ->
     }
 }
 
+/// ⭐ **Uma linha do Inspector largada** (§3.10): os nomes entre aspas, como no Godot (Ctrl e Alt
+/// iguais) — é o que o `ph2d.get/set` recebe. `own` = a propriedade é do script deste texto, que a
+/// lê por `self.<nome>`.
+#[must_use]
+pub fn property_insertion(byte: usize, names: &[String], own: bool) -> Insertion {
+    let s = names
+        .iter()
+        .map(|n| {
+            if own {
+                format!("self.{n}")
+            } else {
+                luau_string(n)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    Insertion {
+        at: byte,
+        caret: byte + s.len(),
+        text: s,
+    }
+}
+
 /// O texto `src` depois da soltura em `byte` — a lei inteira sem aba (as cenas de smoke e os testes
 /// que correm o resultado).
 #[must_use]
@@ -501,5 +524,23 @@ mod tests {
         assert_eq!(mestre.len(), 1, "um mestre só muda o spawn");
         assert_eq!(&src[mestre[0].0.clone()], "Porta");
         assert!(mestre[0].0.start > at(src, "ph2d.spawn"));
+    }
+
+    #[test]
+    fn uma_linha_do_inspector_cai_pelo_nome_e_a_do_proprio_script_por_self() {
+        let src = "function update(self)\n  ph2d.set(self.id, , 1)\nend\n";
+        let b = at(src, ", 1)");
+        let i = property_insertion(b, &["health.max".into()], false);
+        let got = apply(src, &i);
+        assert_eq!(
+            got,
+            "function update(self)\n  ph2d.set(self.id, \"health.max\", 1)\nend\n"
+        );
+        assert!(got[..i.caret].ends_with("\"health.max\""));
+        let i = property_insertion(b, &["x".into(), "y".into()], false);
+        assert_eq!(i.text, "\"x\", \"y\"");
+        let i = property_insertion(b, &["velocidade".into()], true);
+        assert_eq!(i.text, "self.velocidade");
+        assert_eq!(i.caret, b + "self.velocidade".len());
     }
 }

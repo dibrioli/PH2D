@@ -161,6 +161,7 @@ pub use property_box::{
 //    porque é a ENTRADA da repartição de uma linha, e pô-la no `property_row` faria o `widget`
 //    depender dele (um ciclo que o gate do DAG recusa).
 /// ⭐⭐ O losango de animação na coluna do decorator (plano 34) — a shell publica, a linha lê.
+pub use property_box::arrasto;
 pub use property_box::key_mark;
 pub use property_box::{ColunaDoPainel, Seccao, colunas_da_linha};
 pub use radio_group::{

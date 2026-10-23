@@ -39,6 +39,10 @@ pub enum DragPayload {
     /// estava nela: a shell resolve a lista na queda). Item 8 do CodeEditor: largar num script
     /// escreve o código que o aponta.
     Object { stable_id: u64 },
+    /// Uma **linha do Inspector** (o 8b do CodeEditor): o nome de código vai no rótulo do arrasto
+    /// (`begin_named_drag`). `script` = o `ScriptId` da biblioteca quando a linha é uma propriedade
+    /// declarada por esse script (no texto dele vira `self.<nome>`), `0` quando é de um componente.
+    Property { script: u64 },
 }
 
 impl DragPayload {
@@ -49,6 +53,7 @@ impl DragPayload {
             DragPayload::Prefab { .. } => tr("chrome.interaction.prefab"),
             DragPayload::Image { .. } => tr("chrome.interaction.image"),
             DragPayload::Object { .. } => tr("chrome.interaction.object"),
+            DragPayload::Property { .. } => tr("chrome.interaction.property"),
         }
     }
 }

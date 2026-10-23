@@ -15,6 +15,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.drop.ctrl_init" => "Hold Ctrl: kept in self, inside init.",
         "code.drop.names" => "Drop: writes the name, in quotes, here.",
         "code.drop.ctrl_const" => "Hold Ctrl: a local constant on this line.",
+        "code.drop.property" => "Drop: writes the property name, in quotes, here.",
+        "code.drop.property_self" => "Drop: writes self.<name>, a property of this script.",
         // O script tem `--!strict` na 1.ª linha (I14).
         "code.status.strict" => "Strict types",
         // O contador de problemas (ícones e números) ao leitor de ecrã: o molde do VS Code 1.142.

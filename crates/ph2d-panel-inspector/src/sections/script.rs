@@ -129,6 +129,7 @@ fn linha(
         &p.name,
         seccao,
     );
+    ph2d_editor_core::widget::arrasto::e_propriedade_do_script();
     let row_y = row.control.y;
     let gap = Spacing::Xs.px();
     let reset_w = largura_do_botao(
@@ -338,6 +339,7 @@ pub(crate) fn paint_script_section(
     // ⭐⭐ **A coluna do nome é da SECÇÃO, e aqui os nomes são do SCRIPT DO ARTISTA** — mede-se a
     //    lista inteira uma vez; uma medida por linha seria uma coluna por linha (`line/UIUX`).
     let nomes: Vec<&str> = info.props.iter().map(|p| p.name.as_str()).collect();
+    ph2d_editor_core::widget::arrasto::script_do_cartao(&info.source);
     let seccao = if nomes.is_empty() {
         ph2d_editor_core::property_row::Seccao::apenas_campos(1)
     } else {

@@ -42,7 +42,7 @@ pub(crate) fn users_of(
 ) -> Vec<u64> {
     let mut out: Vec<(u64, u64)> = match asset {
         // Um objecto da cena não é um asset: ninguém o «usa».
-        DragPayload::Object { .. } => Vec::new(),
+        DragPayload::Object { .. } | DragPayload::Property { .. } => Vec::new(),
         DragPayload::Prefab { stable_id } => {
             let mut q = sim.world_mut().query::<(Entity, &InstanceOf)>();
             q.iter(sim.world())
@@ -121,7 +121,7 @@ pub fn drain(
     match (verb, asset) {
         // ⛔ Um objecto da cena nunca é um cartão da biblioteca (a carga dele nasce na Hierarquia):
         // nenhum verbo de cartão o recebe.
-        (_, DragPayload::Object { .. }) => false,
+        (_, DragPayload::Object { .. } | DragPayload::Property { .. }) => false,
         // ── Editar a receita ───────────────────────────────────────────────────────────────────
         //
         // ⭐⭐⭐ **Ele SELECCIONA, e mais nada** (report do Enio, 2026-09-05: *«não tem como editar
@@ -212,7 +212,9 @@ pub fn drain(
             if users.is_empty() {
                 toasts.push(Toast::info(match asset {
                     DragPayload::Prefab { .. } => tr("shell.asset_card_verbs.no_copies_of_this"),
-                    DragPayload::Image { .. } | DragPayload::Object { .. } => {
+                    DragPayload::Image { .. }
+                    | DragPayload::Object { .. }
+                    | DragPayload::Property { .. } => {
                         tr("shell.asset_card_verbs.nothing_is_using_this")
                     }
                 }));

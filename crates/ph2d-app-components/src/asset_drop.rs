@@ -130,6 +130,10 @@ impl DropAction {
             DragPayload::Object { .. } => {
                 tr("shell.asset_drop.drop_an_object_on_a_script").to_string()
             }
+            // A lei nunca a recusa (fora do texto, desiste); a frase é a do objecto.
+            DragPayload::Property { .. } => {
+                tr("shell.asset_drop.drop_an_object_on_a_script").to_string()
+            }
         }
     }
 }
@@ -155,6 +159,10 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
         // cargas da biblioteca. Antes do braço da gaveta: arrumar é de assets.
         (DragPayload::Object { .. }, DropTarget::Code { on_text: true }) => DropAction::WriteCode,
         (DragPayload::Object { .. }, _) => DropAction::Refuse,
+        // ⭐ Uma linha do Inspector (8b) só sabe ir para o texto; em qualquer outro sítio, desiste
+        // calada — como o Godot, onde soltar uma propriedade fora do script não faz nada.
+        (DragPayload::Property { .. }, DropTarget::Code { on_text: true }) => DropAction::WriteCode,
+        (DragPayload::Property { .. }, _) => DropAction::Cancel,
         // ⭐ Um mestre ou uma imagem no texto escreve o NOME (o 8b: `ph2d.spawn`, `sprite.image`);
         // fora do texto, nada.
         (_, DropTarget::Code { on_text: true }) => DropAction::WriteCode,

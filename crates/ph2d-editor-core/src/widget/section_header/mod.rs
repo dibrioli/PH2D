@@ -155,6 +155,7 @@ pub fn paint_section_header(
     //    punha um segundo cartão dentro do primeiro, que é o que tornava tudo *«mal definido»*.
     //    ⚠️ Fora de um cartão (o tema clássico, e os painéis que não abrem o livro) ela fica: ali é
     //    o único sinal de que a secção está dobrada.
+    crate::widget::property_box::arrasto::cartao(&header.label);
     if let Some(plate) =
         plate_color(header, theme).filter(|_| !crate::widget::section_cards::inside_cards())
     {

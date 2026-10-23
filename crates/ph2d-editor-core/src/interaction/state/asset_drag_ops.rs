@@ -95,8 +95,13 @@ impl WidgetStore {
     /// clique»* de *«não havia arrasto nenhum»*, e um `None` para os dois casos apagaria a
     /// diferença.
     pub fn end_asset_drag(&mut self) -> Option<InFlightDrag> {
-        self.asset_drag_label = None;
-        self.asset_drag.take()
+        self.end_named_drag().map(|(d, _)| d)
+    }
+
+    /// Termina o arrasto e devolve também o rótulo (uma linha do Inspector leva nele o nome).
+    pub fn end_named_drag(&mut self) -> Option<(InFlightDrag, Option<String>)> {
+        let label = self.asset_drag_label.take();
+        self.asset_drag.take().map(|d| (d, label))
     }
 }
 

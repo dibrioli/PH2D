@@ -48,6 +48,7 @@ pub fn paint_property_label(
     //    texto faltasse, que é exactamente ao contrário do que se quer.
     //    Ver [`crate::text_elide::balao`].
     let area = crate::zones::Rect::new(x, y, col_w, font_size);
+    super::arrasto::linha(area, text);
     let (cabe, recuo, largura) = crate::text_elide::balao::na_area(area, || {
         property_label_origin(text_system, text, x, font_size, col_w)
     });

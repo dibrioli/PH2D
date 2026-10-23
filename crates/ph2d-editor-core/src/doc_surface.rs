@@ -149,6 +149,12 @@ pub enum Dropping<'a> {
     Objects(&'a [String]),
     /// Nomes que o script recebe como TEXTO: um mestre, uma imagem da biblioteca, um script (8b).
     Names(&'a [String]),
+    /// Os nomes de código de uma linha do Inspector (8b); `script` = o `ScriptId` cujas
+    /// propriedades a linha mostra (no texto desse script, `self.<nome>`; nos outros, nada).
+    Property {
+        names: &'a [String],
+        script: Option<u64>,
+    },
 }
 
 /// Um arrasto entre painéis sobre a aba, agora: onde, o quê e os modificadores premidos.

@@ -34,22 +34,33 @@ fn fecha_o_drop(p: &Passo) -> bool {
     }
 }
 
-/// A etapa que começa no último de `eventos` é um ColorDrop: o último marco até lá é o C&F a entrar em
-/// Fill.
+/// A etapa que começa no último de `eventos` toca em Fill: o último marco até lá é o C&F a entrar em
+/// Fill, sem o passo que o fecha pelo meio (W17: o toque que desce com o modal ainda aberto também).
 pub(super) fn e_um_colordrop(eventos: &[Event]) -> bool {
     eventos
         .iter()
         .rev()
         .find_map(|e| match passo(&e.payload)? {
             Passo::ColorDropComeca(_) => Some(true),
-            Passo::Ponteiro {
-                fase: PointerPhase::Down | PointerPhase::Up,
-                ..
-            } => Some(false),
             p if fecha_o_drop(&p) => Some(false),
             _ => None,
         })
         .unwrap_or(false)
+}
+
+/// **A etapa `e` depende de um ColorDrop aberto** (W17): é um preenchimento que não fecha (sem o Done,
+/// o modal ficou aberto) ou um toque que desceu em Fill sem ter entrado nele — a entrada é de outra
+/// etapa. Nenhuma das duas anda sozinha.
+pub(super) fn depende_de_um_drop_aberto(eventos: &[Event], e: &Etapa) -> bool {
+    if !e_um_colordrop(&eventos[..=e.inicio]) {
+        return false;
+    }
+    let entra_aqui = matches!(
+        passo(&eventos[e.inicio].payload),
+        Some(Passo::ColorDropComeca(_))
+    );
+    let fecha = passo(&eventos[e.fim].payload).is_some_and(|p| fecha_o_drop(&p));
+    !(entra_aqui && fecha)
 }
 
 /// O que está aberto numa faixa enquanto se leem as etapas.
@@ -78,8 +89,9 @@ impl Aberta {
                 ..
             } => {
                 self.fecha_solto(out);
+                // A entrada em Fill é do 1.º toque: o seguinte com o modal ainda aberto é outra etapa.
                 self.toque = Some(if self.drop {
-                    self.marco.unwrap_or(i)
+                    self.marco.take().unwrap_or(i)
                 } else {
                     i
                 });
@@ -320,6 +332,9 @@ pub enum ErroDeEdicaoDoPainter {
     /// A etapa tocaria noutro meio (duas sobrepostas de meios diferentes, ou a água do Wet Paint que a
     /// tela tem no instante novo).
     OutroMeio(usize),
+    /// Um preenchimento sem Done (o modal ficou aberto) e o toque que desceu ainda em Fill dependem um
+    /// do outro (W17): nenhum dos dois anda sozinho.
+    ColorDropAberto(usize),
 }
 
 fn pincelada(

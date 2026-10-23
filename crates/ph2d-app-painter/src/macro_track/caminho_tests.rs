@@ -124,4 +124,11 @@ fn a_sobrepor_recua_o_losango_da_segunda_depois_de_parar_e_antes_de_tocar() {
     assert_eq!(desce.len(), 2);
     assert!(desce[0] < cor && cor < desce[1], "a 2.ª noutra cor");
     assert!(para < larga && larga < rw && rw < play);
+    // W17: o C&F é um clique no mesmo instante — o rato real não cabe entre o descer e o subir.
+    let (d, s) = (
+        pos(&|g| *g == Gesto::CeFDesce),
+        pos(&|g| *g == Gesto::CeFSobe),
+    );
+    assert_eq!(s, d + 1, "o clique é descer e subir, sem arrasto");
+    assert_eq!(r[d].0, r[s].0, "no mesmo quadro");
 }

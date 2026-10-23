@@ -34,7 +34,14 @@ pub(super) fn roteiro_do_cef(v: Variante) -> Vec<(u64, Gesto)> {
     } else {
         COR_DO_DROP
     };
-    let t = cef(&mut r, 3_000, &fora);
+    let t = if v == Variante::Sobrepor {
+        // Um clique: desce e sobe no MESMO quadro — nenhum movimento do rato real cabe no meio (W17: o
+        // do dono caiu na tela entre os dois e o C&F encheu-a de preto).
+        r.extend([(3_000, Gesto::CeFDesce), (3_000, Gesto::CeFSobe)]);
+        3_000
+    } else {
+        cef(&mut r, 3_000, &fora)
+    };
     r.extend([
         (t + 250, Gesto::EscolheCor(cor)),
         (t + 550, Gesto::FechaSeletor),

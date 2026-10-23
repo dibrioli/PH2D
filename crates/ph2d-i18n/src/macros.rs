@@ -70,6 +70,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Only two brush strokes can play at the same time."
         }
         "panel.macros.error.other_medium" => "That step would play in another medium.",
+        "panel.macros.error.fill_left_open" => {
+            "This fill was recorded without Done, so it and the next step stay where they are."
+        }
         "panel.macros.error.moves_with_the_next" => {
             "In Motion a step moves with the ones after it: change its Wait in the MACROS panel."
         }

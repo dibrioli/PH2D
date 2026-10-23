@@ -17,6 +17,9 @@ pub fn desloca(track: &mut Track, k: usize, us: i64) -> Result<(), ErroDeEdicaoD
         .etapas(&track.events)
         .get(k)
         .ok_or(ErroDeEdicaoDoPainter::SemEtapa(k))?;
+    if super::depende_de_um_drop_aberto(&track.events, &e) {
+        return Err(ErroDeEdicaoDoPainter::ColorDropAberto(k));
+    }
     let antes = track.edicoes.clone();
     track.edicao_mut(e.inicio).desloca_us = us;
     // Uma edição vazia não se guarda: o ficheiro sem deslocamentos continua o de antes.

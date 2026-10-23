@@ -72,7 +72,11 @@ pub(crate) fn tocadas(track: &Track, tocavel: &Track) -> Result<Vec<Tocada>, Err
         } else {
             por_faixa.remove(&faixa)
         };
-        let Some(tocada) = tocada else { break };
+        // Uma etapa viva sem toque é uma edição que a trilha que toca não exprime: erro, nunca as
+        // seguintes caladas (W17: o ▷ parava e o painel perdia a 3.ª).
+        let tocada = tocada.ok_or(ErroDaMacro::Edicao(
+            ph2d_macro::ErroDeEdicao::AncoraSemEtapa(g.inicio),
+        ))?;
         let no_toque = match tipo {
             TipoDaEtapa::Pincelada(_) | TipoDaEtapa::Preenchimento(_) => {
                 no_toque.get_mut(&faixa).and_then(VecDeque::pop_front)

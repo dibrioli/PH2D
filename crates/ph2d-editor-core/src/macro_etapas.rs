@@ -91,6 +91,7 @@ pub mod erros {
     pub const DESFAZER: &str = "panel.macros.error.changes_what_undo_takes_back";
     pub const SO_PINCELADAS: &str = "panel.macros.error.only_strokes_overlap";
     pub const OUTRO_MEIO: &str = "panel.macros.error.other_medium";
+    pub const FILL_ABERTO: &str = "panel.macros.error.fill_left_open";
     pub const COM_AS_SEGUINTES: &str = "panel.macros.error.moves_with_the_next";
     pub const NAO_PINCELADA: &str = "panel.macros.error.not_a_stroke";
     pub const NAO_VALOR: &str = "panel.macros.error.not_a_value";
@@ -117,6 +118,7 @@ pub mod erros {
         DESFAZER,
         SO_PINCELADAS,
         OUTRO_MEIO,
+        FILL_ABERTO,
         COM_AS_SEGUINTES,
         NAO_PINCELADA,
         NAO_VALOR,

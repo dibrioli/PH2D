@@ -203,6 +203,9 @@ pub(crate) struct Gota {
     pub(crate) cor: [u8; 3],
     pub(crate) onde: [f32; 2],
     pub(crate) limiar: Option<f32>,
+    /// O Done do modal fecha a gota; sem ele o modal fica aberto e o toque seguinte desce em Fill (o
+    /// smoke do dono de 23/10).
+    pub(crate) done: bool,
 }
 
 /// A caixa (W13): quatro traços pretos que fecham um quadrado, depois o azul solto lá dentro pelo C&F,
@@ -239,6 +242,7 @@ const AZUL_DA_CAIXA: Gota = Gota {
     cor: [40, 110, 210],
     onde: [0.45, 0.55],
     limiar: None,
+    done: true,
 };
 
 /// Um traço preto, o Fill que o cobre (o limiar no máximo: a tela inteira) e o MESMO traço outra vez,
@@ -250,6 +254,7 @@ pub(crate) fn grava_o_traco_sob_o_fill_e_por_cima(lado: u32) -> Option<(Vec<u8>,
         cor: [200, 60, 40],
         onde: [0.5, 0.8],
         limiar: Some(1.0),
+        done: true,
     };
     let traco = CRUZADAS[0];
     grava_com_gotas(
@@ -274,12 +279,37 @@ pub(crate) fn grava_com_entrada_o_traco_o_fill_e_o_traco(lado: u32) -> Option<(V
         cor: [200, 60, 40],
         onde: [0.5, 0.8],
         limiar: Some(1.0),
+        done: true,
     };
     let traco = CRUZADAS[0];
     grava_com_gotas(
         lado,
         0,
         &[traco, traco],
+        &[60],
+        &[(1, gota)],
+        Tela::Papel,
+        &[PaintMedia::Digital],
+        Relogio::Fixo,
+    )
+    .map(|(_, b, s)| (b, s))
+}
+
+/// O smoke do dono de 23/10 (W17): um traço, o C&F solto na tela SEM o Done do modal (o rato real caiu
+/// na tela a meio do clique; o preenchimento enche a tela branca), e o 2.º toque, que desce ainda em Fill.
+#[cfg(test)]
+pub(crate) fn grava_o_traco_o_fill_sem_done_e_o_toque(lado: u32) -> Option<(Vec<u8>, f64)> {
+    let gota = Gota {
+        cor: [0, 0, 0],
+        onde: [0.5, 0.8],
+        limiar: None,
+        done: false,
+    };
+    let traco = CRUZADAS[0];
+    grava_com_gotas(
+        lado,
+        0,
+        &[traco, CRUZADAS[1]],
         &[60],
         &[(1, gota)],
         Tela::Papel,
@@ -411,6 +441,9 @@ fn solta(
             f64::from(v),
         ));
         quadro(t)?;
+    }
+    if !g.done {
+        return Some(());
     }
     t.handle_panel_event(PanelEvent::Click(
         ph2d_editor_core::ids::PAINTER_FILL_MODAL_DONE,

@@ -274,3 +274,43 @@ fn levar_o_colordrop_para_antes_do_primeiro_traco_mantem_as_tres_etapas() {
     assert_eq!(v.len(), 3, "as três etapas continuam");
     let _ = telas(&tr, None);
 }
+
+/// ⭐ **O smoke do dono de 23/10 (W17)**: um traço, o C&F solto na tela SEM o Done (o modal fica
+/// aberto) e o 2.º toque, que desce ainda em Fill. As três etapas são três, cada uma com a sua âncora;
+/// o preenchimento aberto e o toque que depende dele não se deslocam (recusa, nunca uma 3.ª que some);
+/// o traço livre desloca-se e as três continuam a tocar.
+///
+/// Medido antes da cura: as etapas 1 e 2 tinham a MESMA âncora (a entrada em Fill) — levar a 1 levava
+/// a 2, o `tocadas` não achava a faixa da 2.ª e parava em silêncio (`steps` com duas, o ▷ sem tocar).
+#[test]
+fn o_fill_sem_done_nao_leva_o_toque_seguinte_e_nada_some() {
+    let (b, _) = super::roteiro::grava_o_traco_o_fill_sem_done_e_o_toque(LADO).expect("grava");
+    let g = codec::read(&b).expect("lê-se").tracks.remove(0);
+    let e = etapas::etapas(&g).expect("lê-se");
+    eprintln!(
+        "gravadas: {:?}",
+        e.iter()
+            .map(|x| (x.k, x.etapa.inicio, x.etapa.fim, &x.tipo))
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(e.len(), 3, "controlo: traço, fill, toque");
+    let mut ancoras: Vec<usize> = e.iter().map(|x| x.etapa.inicio).collect();
+    ancoras.dedup();
+    assert_eq!(ancoras.len(), 3, "cada etapa com a sua âncora");
+    for k in [1, 2] {
+        let r = levada(&g, k, 100_000);
+        assert!(
+            matches!(r, Err(ErroDeEdicaoDoPainter::ColorDropAberto(j)) if j == k),
+            "a etapa {k} depende do Fill aberto: recusa — {:?}",
+            r.as_ref().map(|_| ())
+        );
+    }
+    // Para trás, no segundo parado antes dele: o traço livre anda.
+    let tr = levada(&g, 0, e[0].t0.0 - 500_000).expect("o traço anda");
+    assert_eq!(
+        etapas::etapas(&tr).expect("lê-se depois").len(),
+        3,
+        "nada some"
+    );
+    let _ = telas(&tr, None);
+}

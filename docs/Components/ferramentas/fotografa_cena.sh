@@ -179,6 +179,8 @@ if awk -v alvo='cat > "$TMP/sessao.sh" <<EOF' '
 fi
 cat > "$TMP/sessao.sh" <<EOF
 #!/bin/bash
+# A sessão do dono é a de QUEM CHAMA (valores expandidos na geração): o socket dela muda de nome entre
+# arranques (23/10: wayland-1, e a virtual ficou com o wayland-0 — o «wayland-0» fixo recusava-a).
 if [ -z "\$DISPLAY" ] || [ "\$DISPLAY" = ":0" ] || [ "\$DISPLAY" = "${DISPLAY:-:0}" ] \
   || [ "\$WAYLAND_DISPLAY" = "${WAYLAND_DISPLAY:-wayland-0}" ]; then
   echo "RECUSA: isto nao e' a tela virtual (DISPLAY=\$DISPLAY WAYLAND_DISPLAY=\$WAYLAND_DISPLAY)" > "$TMP/log"

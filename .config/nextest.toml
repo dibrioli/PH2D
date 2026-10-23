@@ -97,11 +97,15 @@ priority = -100
 # 11/10 (prompt 20): o `sem_celulas_soltas` sai — as três cenas uma por thread, 19,9 → 7,7 s sozinho. Os três que
 # ficam, sozinhos a load 16–22: camadas 44,7 s · largura 24,7 s · mídias 14,8 s (já paralelos; razão no
 # HANDOFF_CONTINUACAO_..._VELOCIDADE_2 §4).
+# 23/10 (integração da missão Pincéis, a suíte inteira a load 40–46): três gates do Painter MORTOS aos 180 s —
+# sozinhos no `ci-test` (load 7–15, 2/2): `a_linha_esmaecida_e_a_que_nao_age` 43,9 · 43,0 s ·
+# `cada_interruptor_que_neutraliza_…` 71,2 · 70,8 s (já «SLOW» sozinho) · `o_preview_pinta_cada_capacidade_…` 39,0 · 39,0 s.
+# 2,5×–4,6× sob a suíte; 6 × 60 s dá ≥ 5× o mais lento sozinho.
 # 15/10 (Macros W6d, o tutorial do Painter): as 30 pinceladas em Wet Paint — `pular_a_pincelada_…` 24,0 s
 # sozinho (load 16) e MORTO aos 180 s sob a suíte (load ~200); `a_mao_torta_…` (4 meios) 10,4 s sozinho / 106 s
 # sob a mesma suíte. ~10× sob a suíte: o tecto de 6 × 60 s dá ~15× do medido sozinho. (W7: passaram ao de baixo.)
 [[profile.default.overrides]]
-filter = 'test(n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto) + test(=presets_de_fabrica::a_largura_e_a_prometida) + test(=midias_de_fabrica::cada_preset_parece_a_sua_midia) + test(=a_lei_da_tinta::o_glaze_do_pincel_escurece_o_cruzamento) + test(=a_lei_da_tinta::sem_glaze_cada_preset_de_fabrica_pinta_a_cena_de_antes)'
+filter = 'test(n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto) + test(=presets_de_fabrica::a_largura_e_a_prometida) + test(=midias_de_fabrica::cada_preset_parece_a_sua_midia) + test(=a_lei_da_tinta::o_glaze_do_pincel_escurece_o_cruzamento) + test(=a_lei_da_tinta::sem_glaze_cada_preset_de_fabrica_pinta_a_cena_de_antes) + test(=censo_dos_controlos::a_linha_esmaecida_e_a_que_nao_age) + test(=seam_estado_escondido::cada_interruptor_que_neutraliza_pinta_como_o_pincel_limpo) + test(=paridade_tests::o_preview_pinta_cada_capacidade_nova_como_a_tela)'
 slow-timeout = { period = "60s", terminate-after = 6 }
 
 # 17/10 (Macros W7, a MESMA idade da água): cada medida do tutorial do Painter em Wet Paint são 960 quadros de

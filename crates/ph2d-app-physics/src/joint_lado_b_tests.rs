@@ -224,3 +224,47 @@ fn a_faixa_do_motor_ganha_do_re_semear_da_curva() {
         }
     }
 }
+
+/// ⛔ **O «Object» recusado tem de SE VER** (smoke do dono 23/10: «o painel não aceita eu
+/// selecionar Object»): com a escolha do corpo B armada o painel mostra «Object» (e a row B ganha
+/// o conta-gotas aceso), enquanto o pino continua a segurar até o corpo ser escolhido.
+#[test]
+fn com_a_escolha_do_corpo_b_armada_o_painel_mostra_object() {
+    let (mut sim, junta, _) = cena(false, true);
+    assert!(!anchor_to_world(sim.world_mut(), junta, false));
+    let info = |sim: &mut SimWorld, armado| {
+        crate::joint::build_joint_info(sim, junta.to_bits(), armado, 0)
+            .expect("info")
+            .world_anchored
+    };
+    assert!(info(&mut sim, 0), "sem escolha armada o pino mostra World");
+    assert!(
+        !info(&mut sim, 2),
+        "com a escolha do B armada o painel mostra Object"
+    );
+    assert!(info(&mut sim, 1), "a escolha do A não mexe no lado B");
+    assert!(
+        sim.world().get::<JointWorldAnchor>(junta).is_some(),
+        "e o pino continua a segurar enquanto espera"
+    );
+}
+
+/// O conta-gotas depois de Anchor B: «Object» recusado arma o B desta junta; «World» desarma-o;
+/// a escolha armada de OUTRA junta (ou do lado A) não é tocada.
+#[test]
+fn o_conta_gotas_segue_o_clique_em_anchor_b() {
+    use crate::joint::pick_after_anchor_b as depois;
+    assert_eq!(depois(false, 7, None), Some((7, true)));
+    assert_eq!(depois(true, 7, Some((7, true))), None, "World desarma");
+    assert_eq!(
+        depois(true, 7, Some((7, false))),
+        Some((7, false)),
+        "o lado A fica"
+    );
+    assert_eq!(
+        depois(true, 7, Some((9, true))),
+        Some((9, true)),
+        "outra junta fica"
+    );
+    assert_eq!(depois(true, 7, None), None);
+}

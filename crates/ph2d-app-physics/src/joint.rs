@@ -168,9 +168,13 @@ pub fn build_joint_info(
     let world = sim.world();
     let a = name_for(world, joint.body_a, &mut q);
     let b = name_for(world, joint.body_b, &mut q);
-    let world_anchored = world
-        .get::<ph2d_physics_ecs::JointWorldAnchor>(entity)
-        .is_some();
+    // ⛔ Com a escolha do corpo B ARMADA o painel já mostra «Object» e o conta-gotas aceso (smoke
+    // do dono 23/10: «não aceita selecionar Object» — o clique armava um pick invisível, porque
+    // num pino de mundo a row B não tem conta-gotas). O marcador só sai quando o corpo é escolhido.
+    let world_anchored = pick_armed != 2
+        && world
+            .get::<ph2d_physics_ecs::JointWorldAnchor>(entity)
+            .is_some();
     // ⚠️ **Os batentes por eixo saem na unidade da ROW** — metros nos lineares,
     // GRAUS na rotação —, pela mesma porta que o `limit_min_ui` ao lado usa.
     // Guardar radianos e rotular graus é como o artista digita 90 e a peça anda
@@ -355,6 +359,22 @@ pub fn anchor_to_world(world: &mut World, e: Entity, on: bool) -> bool {
         j.anchored = false;
     }
     true
+}
+
+/// **O conta-gotas depois de um clique em Anchor B** (`took` = o que [`anchor_to_world`] devolveu):
+/// «Object» recusado arma a escolha do corpo B; «World» com ela armada nesta junta desarma-a (o
+/// painel mostrava «Object» enquanto esperava). Qualquer outra escolha armada fica.
+#[must_use]
+pub fn pick_after_anchor_b(
+    took: bool,
+    joint_bits: u64,
+    armed: Option<(u64, bool)>,
+) -> Option<(u64, bool)> {
+    match (took, armed) {
+        (false, _) => Some((joint_bits, true)),
+        (true, Some((j, true))) if j == joint_bits => None,
+        (true, outra) => outra,
+    }
 }
 
 /// **Colar as propriedades de `source` neste joint** (W-JointCopy).

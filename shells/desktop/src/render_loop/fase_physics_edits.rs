@@ -46,9 +46,10 @@ impl crate::App {
                 let _ = sim.world_mut().despawn(e);
             } else if let ph2d_editor_core::JointFieldEdit::AnchorToWorld(on) = edit {
                 let e = ph2d_ecs::Entity::from_bits(bits);
-                if !ph2d_app_physics::joint::anchor_to_world(sim.world_mut(), e, on) {
-                    self.joint_body_pick = Some((bits, true)); // «Body» sem corpo B: escolha-o
-                }
+                let took = ph2d_app_physics::joint::anchor_to_world(sim.world_mut(), e, on);
+                let armed = self.joint_body_pick;
+                self.joint_body_pick =
+                    ph2d_app_physics::joint::pick_after_anchor_b(took, bits, armed);
             } else if matches!(edit, ph2d_editor_core::JointFieldEdit::CopyProperties) {
                 // ARMA a área de transferência — estado da shell, nenhum
                 // componente muda (por isso não passa pelo funil nem pela

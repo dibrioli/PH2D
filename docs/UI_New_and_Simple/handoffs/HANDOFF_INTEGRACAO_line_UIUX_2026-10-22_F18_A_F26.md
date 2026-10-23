@@ -97,4 +97,24 @@ Achados da auditoria do fecho:
 
 ## 9 — Integração
 
-_A preencher pelo integrador (depois do `ff-only`)._
+**No main 22/10 por fast-forward** (`foundational-integrate.sh`), ponta `c6f0963ba1` sobre `6bbffdb64a`
+(Luz2D W6b–W6g). Rebase sem conflito (§1). Portão da árvore combinada: **20 596 / 20 596**, 9 759
+saltados, 876 s. Precisou de três corridas, e o main só recebeu a verde:
+
+1. **Recusa da árvore suja:** 22 `.log` não rastreados das fotos de smoke em
+   `docs/UI_New_and_Simple/vetor_nova_ui/fotos/`. Nenhum `.log` de fotos é versionado no repositório,
+   por isso foram tirados da árvore, sem commit.
+2. **Tecto de LOC somado entre linhas:** `ph2d-editor-core/src/interaction/state/mod.rs` a **702/700**,
+   porque o main e a linha acrescentaram cada um. Curado por corte de comentário histórico, sem código
+   (`c6f0963ba1`): ficou em 697.
+3. **4 TIMEOUT de placa** (`ph2d-app-components` barras do igual, `ph2d-app-flip` `pass::luz` ×2,
+   `ph2d-app-light2d` borda sem pontos pretos), em sequência (1472–1475), enquanto a `line/CodeEditor`
+   corria os mesmos testes de placa. Sozinhos passaram 4/4. A corrida seguinte, completa, foi a verde.
+
+**Para quem integrar a seguir:**
+- ⛔ **`line/Macros-Automação` também escreve `PROJECT_SCHEMA = 192`** (medido por `collision-surface.sh`
+  em 22/10). O 192 agora é desta linha (opacidade fora dos estados) ⇒ o degrau dela reconta-se para
+  **193**, com `python3 scripts/schema-recount.py`, nos três sítios.
+- `DOC_VERSION` da timeline está em **22** no main. Quem a subir parte de 22.
+- Sobreposição de ficheiros com esta linha: CodeEditor 26 · Vector 12 · Macros 11 · PainterWatercolor 8 ·
+  motion-value 0 · Velocidade 0.

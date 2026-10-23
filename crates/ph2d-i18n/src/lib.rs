@@ -53,6 +53,8 @@ mod blend_modes;
 mod board;
 /// O QUADRO — «Send to board…» da Hierarquia (W15).
 mod board_block6;
+/// O QUADRO — a cena 29 (W24): a barra de estilo foge do resto do chrome.
+mod board_w24;
 /// O QUADRO — facilitar (W7): cronómetro, votação, carimbos, agrupar.
 mod board_facilitate;
 /// O QUADRO — a fidelidade ao Excalidraw (W9): a cena 11.
@@ -576,6 +578,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| board_images::tr(k))
             .or_else(|| board_send::tr(k))
             .or_else(|| board_block6::tr(k))
+            .or_else(|| board_w24::tr(k))
             .or_else(|| chrome_rail::tr(k))
             .or_else(|| chrome_panes::tr(k))
             .or_else(|| audio_fx::tr(k))

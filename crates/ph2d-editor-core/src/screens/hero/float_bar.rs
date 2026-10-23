@@ -308,10 +308,11 @@ fn strip_layouts(room: f32, groups: &[usize], s: f32) -> Vec<Vec<Vec<usize>>> {
     out
 }
 
-/// O `x` da barra de largura `w` na faixa `(y, h)`: o vão de `area` sem `keep` (a um [`gap`] de
-/// distância) mais perto de a centrar em `cx`.
+/// O `x` da barra de largura `w` na faixa `(y, h)`: o vão de `area` sem `keep` mais perto de a
+/// centrar em `cx`. A folga é o respiro do fundo da barra ([`panel_of`]) mais um [`gap`]: a foto da
+/// cena 29 (23/10) com só o `gap` encostava os dois fundos.
 fn free_x(area: Rect, keep: &[Rect], (y, h): (f32, f32), w: f32, cx: f32) -> Option<f32> {
-    let pad = gap();
+    let pad = Spacing::Xs.px() + gap();
     let mut free = vec![(area.x, area.x + area.w)];
     for k in keep.iter().filter(|k| k.y - pad < y + h && y < k.y + k.h + pad) {
         let (a, b) = (k.x - pad, k.x + k.w + pad);

@@ -179,7 +179,8 @@ if awk -v alvo='cat > "$TMP/sessao.sh" <<EOF' '
 fi
 cat > "$TMP/sessao.sh" <<EOF
 #!/bin/bash
-if [ -z "\$DISPLAY" ] || [ "\$DISPLAY" = ":0" ] || [ "\$WAYLAND_DISPLAY" = "wayland-0" ]; then
+if [ -z "\$DISPLAY" ] || [ "\$DISPLAY" = ":0" ] || [ "\$DISPLAY" = "${DISPLAY:-:0}" ] \
+  || [ "\$WAYLAND_DISPLAY" = "${WAYLAND_DISPLAY:-wayland-0}" ]; then
   echo "RECUSA: isto nao e' a tela virtual (DISPLAY=\$DISPLAY WAYLAND_DISPLAY=\$WAYLAND_DISPLAY)" > "$TMP/log"
   exit 3
 fi

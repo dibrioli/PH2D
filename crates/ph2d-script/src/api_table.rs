@@ -85,7 +85,7 @@ pub const API_TYPES: &[ApiType] = &[
     },
     ApiType {
         ident: "PoseField",
-        definition: "\"x\" | \"y\" | \"rotation\" | \"scale_x\" | \"scale_y\"",
+        definition: crate::io::POSE_FIELD_UNION,
         doc: "The pose fields a scene script reads and writes.",
     },
     // ⚠️ `string` e não a união dos nomes: o `luau-lsp` desdobra o alias na assinatura, e centenas

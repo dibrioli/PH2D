@@ -35,7 +35,7 @@ pub const API_HELP: &[ApiHelp] = &[
             ),
             (
                 "field",
-                r#"Which part of the pose: "x" or "y" (position, relative to the parent), "rotation" (radians, counter-clockwise), "scale_x" or "scale_y" (1 = original size). Or a component property, as the Inspector names it: "health.max", "game_camera.height" (see [PropertyName])."#,
+                r#"Which part of the pose: "x" or "y" (position, relative to the parent), "rotation" (radians, counter-clockwise), "scale_x" or "scale_y" (1 = original size), "skew_x" or "skew_y" (radians, the Inspector's Skew X and Skew Y). Or a component property, as the Inspector names it: "health.max", "game_camera.height" (see [PropertyName])."#,
             ),
             (
                 "value",
@@ -60,7 +60,7 @@ end"#,
             ),
             (
                 "field",
-                r#"One of "x", "y", "rotation", "scale_x" or "scale_y", or a component property such as "health.max" (see [PropertyName])."#,
+                r#"A pose field (see [PoseField]), or a component property such as "health.max" (see [PropertyName])."#,
             ),
         ],
         returns: "The value as it was at the start of this tick — a number for the pose; for a property what its Inspector field holds — or `nil` when the id is not an object (it was removed, or never existed).",
@@ -555,7 +555,7 @@ end"#,
         key: "type.PoseField",
         params: &[],
         returns: "",
-        more: "`x` and `y` are the position relative to the parent, `rotation` is in radians counter-clockwise, and `scale_x` and `scale_y` multiply the size (1 is the original). Any other name stops the object, with [ph2d.get] and with [ph2d.set]; the editor underlines it as you type.",
+        more: "`x` and `y` are the position relative to the parent, `rotation` is in radians counter-clockwise, `scale_x` and `scale_y` multiply the size (1 is the original), and `skew_x` and `skew_y` slant the object, in radians like `rotation` (the Inspector's Skew X and Skew Y, which it shows in its own angle unit; a slant near a quarter turn stops just short of it). Any other name stops the object, with [ph2d.get] and with [ph2d.set]; the editor underlines it as you type.",
         example: r#"function update(self, dt)
   local s = ph2d.get(self.id, "scale_x") or 1
   ph2d.set(self.id, "scale_x", s + dt)

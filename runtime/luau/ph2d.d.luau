@@ -9,7 +9,7 @@
 export type Entity = number
 
 --- The pose fields a scene script reads and writes.
-export type PoseField = "x" | "y" | "rotation" | "scale_x" | "scale_y"
+export type PoseField = "x" | "y" | "rotation" | "scale_x" | "scale_y" | "skew_x" | "skew_y"
 
 --- What `ph2d.get` and `ph2d.set` reach: a pose field, or a component property `component.field`.
 export type PropertyName = PoseField | string

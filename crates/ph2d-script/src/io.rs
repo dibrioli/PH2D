@@ -131,8 +131,25 @@ impl Default for WriteQueue {
     }
 }
 
-/// **Os campos de pose que um script lê e escreve**, na ordem do `[f64; 5]` de `scene::pose_of`.
-pub const POSE_FIELDS: [&str; 5] = ["x", "y", "rotation", "scale_x", "scale_y"];
+/// A FONTE ÚNICA dos nomes da pose: a lista, a união do `ph2d.d.luau` e a frase dos erros.
+macro_rules! pose_fields {
+    ($first:literal $(, $rest:literal)*) => {
+        /// **Os campos de pose que um script lê e escreve**, na ordem de `scene::pose_of`.
+        /// Ângulos (`rotation`, `skew_x`, `skew_y`) em RADIANOS, como o `Transform` os guarda.
+        pub const POSE_FIELDS: [&str; [$first $(, $rest)*].len()] = [$first $(, $rest)*];
+        /// O tipo `PoseField` do `ph2d.d.luau`: `"x" | "y" | …`.
+        pub const POSE_FIELD_UNION: &str = concat!("\"", $first, "\"" $(, " | \"", $rest, "\"")*);
+        /// Os nomes para a frase de um erro: `x, y, …`.
+        pub const POSE_FIELD_LIST: &str = concat!($first $(, ", ", $rest)*);
+    };
+}
+pose_fields!("x", "y", "rotation", "scale_x", "scale_y", "skew_x", "skew_y");
+
+/// O erro de um nome que não é da pose nem de uma propriedade (`op` = `ph2d.get`/`ph2d.set`).
+#[must_use]
+pub fn unknown_field(op: &str, field: &str) -> String {
+    format!("{op}: unknown field '{field}' ({POSE_FIELD_LIST})")
+}
 
 /// O índice de `field` em [`POSE_FIELDS`] — a porta única do nome ao campo.
 #[must_use]

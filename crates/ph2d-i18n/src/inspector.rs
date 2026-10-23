@@ -519,7 +519,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Corners F fixed (on/off). Edges + centre: S stretch, R repeat, \
                              M mirror, - blank."
         }
-        "panel.inspector.slice.borders_pair" => "Borders {a} / {b}",
+        "panel.inspector.slice.borders_pair" => "{a} / {b}",
         "panel.inspector.slice.size_x_y_m_0" => "{size} X / Y",
         "panel.inspector.slice.size_hint" => "0 = use the sprite size.",
         // ⭐⭐⭐ **OS NOMES das linhas de TEXTO** — report do dono, 2026-09-22: *«campos de texto

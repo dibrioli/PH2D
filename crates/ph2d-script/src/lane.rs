@@ -212,9 +212,7 @@ impl<'w> Lane<'w> {
     /// `ph2d.get` — um campo da pose de QUALQUER objecto; `nil` se o id não é de um objecto com pose.
     fn pose(&self, id: f64, field: &str) -> Result<Option<f64>, String> {
         let Some(i) = pose_field(field) else {
-            return Err(format!(
-                "ph2d.get: unknown field '{field}' (x, y, rotation, scale_x, scale_y)"
-            ));
+            return Err(crate::io::unknown_field("ph2d.get", field));
         };
         let Some(t) = entity_of(id).and_then(|e| self.sim.world().get::<Transform>(e)) else {
             return Ok(None);
@@ -361,8 +359,8 @@ impl<'w> Lane<'w> {
     /// `ph2d.set` de uma propriedade: verifica JÁ (o erro aponta a linha) e pousa no fim do tique.
     fn set_property(&mut self, lua: &Lua, id: f64, field: &str, value: &Value) -> mlua::Result<()> {
         if !is_property_name(field) {
-            return Err(mlua::Error::RuntimeError(format!(
-                "ph2d.set: unknown field '{field}' (x, y, rotation, scale_x, scale_y)"
+            return Err(mlua::Error::RuntimeError(crate::io::unknown_field(
+                "ph2d.set", field,
             )));
         }
         let Some(e) = self.alive(id) else {

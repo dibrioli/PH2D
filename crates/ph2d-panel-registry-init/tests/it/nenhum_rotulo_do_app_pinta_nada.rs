@@ -634,7 +634,10 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    `"x Remove Resistance"` (o nome da família) foi medido e corta também na largura de
     //    FÁBRICA (`105 + 130 px`: «Resistance» é mais largo em píxeis que «Transition»), enquanto o
     //    curto cabe — por baixo do título `Resistances` ele não perde sentido.
-    ("inspector", 89),
+    // ⬇️ `89 → 87` em 2026-10-22 (CodeEditor 8d d3): os cartões passaram a pintar as chaves do
+    //    catálogo (linhas unidas, rótulos do cartão alinhados com os do catálogo), e o degrau mediu
+    //    87 depois de as bordas do 9-Slice passarem a «Left / Top» por baixo do título da secção.
+    ("inspector", 87),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     ("audio_mixer", 5),

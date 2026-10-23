@@ -82,3 +82,46 @@ fn trocar_de_script_a_meio_do_quadro_renasce() {
         "a espera do a foi-se com ele"
     );
 }
+
+/// O inclinar do cartão Transform (Skew X/Y) é pose do script, em RADIANOS como o `Transform` o
+/// guarda: o `set` chega ao `Transform` (com a guarda do Inspector perto do quarto de volta) e o
+/// `get` do tique seguinte devolve-o; a ajuda do `PoseField` nomeia todo campo da lista.
+#[test]
+fn o_inclinar_e_pose_do_script_em_radianos() {
+    let mut sim = SimWorld::new();
+    let e = actor(
+        sim.world_mut(),
+        1,
+        "inclina.luau",
+        r#"
+function update(self)
+  self.n = (self.n or 0) + 1
+  if self.n == 1 then
+    ph2d.set(self.id, "skew_x", 0.3)
+    ph2d.set(self.id, "skew_y", 10)
+  else
+    ph2d.set(self.id, "x", ph2d.get(self.id, "skew_x"))
+    ph2d.set(self.id, "y", ph2d.get(self.id, "skew_y"))
+  end
+end
+"#,
+    );
+    let mut host = ScriptHost::new().expect("vm");
+    let r = tick(&mut host, &mut sim);
+    assert!(r.failed.is_empty(), "{:?}", r.failed);
+    let t = pose(sim.world(), e);
+    assert_eq!(t.skew_x, 0.3, "o set chega ao Transform, em radianos");
+    assert_eq!(t.skew_y, Transform::SKEW_LIMIT, "a guarda do Inspector");
+    tick(&mut host, &mut sim);
+    let t = pose(sim.world(), e);
+    assert_eq!(t.translation.x, 0.3, "o get devolve o que o set pôs");
+    assert_eq!(t.translation.y, Transform::SKEW_LIMIT);
+    let ajuda = crate::api_help::API_HELP
+        .iter()
+        .find(|h| h.key == "type.PoseField")
+        .expect("página do PoseField");
+    for f in crate::io::POSE_FIELDS {
+        assert!(ajuda.more.contains(&format!("`{f}`")), "a ajuda não diz `{f}`");
+        assert!(crate::io::POSE_FIELD_UNION.contains(&format!("\"{f}\"")));
+    }
+}

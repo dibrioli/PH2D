@@ -241,15 +241,30 @@ fn actors(world: &mut World, dying: &BTreeSet<u64>) -> Vec<Actor> {
     out.into_iter().map(|(_, _, a)| a).collect()
 }
 
-/// A pose como o script a lê.
-pub(crate) fn pose_of(t: &Transform) -> [f64; 5] {
+/// A pose como o script a lê, na ordem de [`crate::io::POSE_FIELDS`] (ângulos em radianos).
+pub(crate) fn pose_of(t: &Transform) -> [f64; crate::io::POSE_FIELDS.len()] {
     [
         f64::from(t.translation.x),
         f64::from(t.translation.y),
         f64::from(t.rotation),
         f64::from(t.scale.x),
         f64::from(t.scale.y),
+        f64::from(t.skew_x),
+        f64::from(t.skew_y),
     ]
+}
+
+/// O campo `i` de [`crate::io::POSE_FIELDS`] dentro do `Transform`.
+fn pose_slot(t: &mut Transform, i: usize) -> &mut f32 {
+    match i {
+        0 => &mut t.translation.x,
+        1 => &mut t.translation.y,
+        2 => &mut t.rotation,
+        3 => &mut t.scale.x,
+        4 => &mut t.scale.y,
+        5 => &mut t.skew_x,
+        _ => &mut t.skew_y,
+    }
 }
 
 impl SceneScripts {
@@ -580,12 +595,7 @@ fn settle_call(
         Ok(()) => mine
             .iter()
             .find(|w| matches!(w.value, WriteValue::Pose(_)) && pose_field(&w.field).is_none())
-            .map(|w| {
-                ScriptDiagnostic::runtime(format!(
-                    "ph2d.set: unknown field '{}' (x, y, rotation, scale_x, scale_y)",
-                    w.field
-                ))
-            })
+            .map(|w| ScriptDiagnostic::runtime(crate::io::unknown_field("ph2d.set", &w.field)))
             .or_else(|| {
                 mine.iter().find_map(|w| match w.value {
                     WriteValue::Pose(v) if !v.is_finite() => Some(ScriptDiagnostic::runtime(
@@ -645,27 +655,17 @@ fn apply_writes(world: &mut World, writes: &[EntityWrite], report: &mut SceneRep
             clippy::cast_possible_truncation,
             reason = "o `Transform` da casa é f32; o número do Luau é f64"
         )]
-        let v = *value as f32;
-        let cur = match i {
-            0 => t.translation.x,
-            1 => t.translation.y,
-            2 => t.rotation,
-            3 => t.scale.x,
-            _ => t.scale.y,
-        };
-        if cur == v {
+        let mut v = *value as f32;
+        if i >= 5 {
+            v = Transform::clamp_skew(v); // a mesma guarda do Inspector: `tan()` nunca chega a ±∞
+        }
+        if pose_of(&t)[i] == f64::from(v) {
             continue;
         }
         if !report.wrote_before.iter().any(|(e, _)| *e == entity) {
             report.wrote_before.push((entity, *t));
         }
-        match i {
-            0 => t.translation.x = v,
-            1 => t.translation.y = v,
-            2 => t.rotation = v,
-            3 => t.scale.x = v,
-            _ => t.scale.y = v,
-        }
+        *pose_slot(&mut t, i) = v;
         report.wrote.push(entity);
     }
 }

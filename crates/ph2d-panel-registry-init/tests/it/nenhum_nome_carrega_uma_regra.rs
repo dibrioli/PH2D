@@ -51,8 +51,15 @@ fn rotulos_do_inspector() -> Vec<(String, String, String)> {
             .unwrap_or("?")
             .to_string();
         let mut viu = false;
-        for pedaco in src.split("\"panel.inspector.").skip(1) {
-            let Some(chave) = pedaco.split('"').next() else {
+        // ⭐ Desde o CodeEditor 8d (d3) os cartões pintam os rótulos dos campos pelas chaves do
+        //    CATÁLOGO (`component.field.*`): sem elas a varredura via só as linhas que sobraram.
+        let pedacos = src
+            .split("\"panel.inspector.")
+            .skip(1)
+            .map(|p| (p, String::new()))
+            .chain(src.split("\"component.field.").skip(1).map(|p| (p, "component.field.".to_owned())));
+        for (pedaco, prefixo) in pedacos {
+            let Some(chave) = pedaco.split('"').next().map(|k| format!("{prefixo}{k}")) else {
                 continue;
             };
             // O valor é a próxima string depois do `=>`.

@@ -7,8 +7,8 @@
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT
-export PH2D_GPU_FECHADURA="$T/placa.lock" PH2D_PRAZO=60
-unset PH2D_GPU_VEZ PH2D_NA_PORTA PH2D_GPU PH2D_GPU_ESPERA
+export PH2D_GPU_FECHADURA="$T/placa.lock" PH2D_GPU_FECHADURA_TESTES="$T/testes.lock" PH2D_PRAZO=60
+unset PH2D_GPU_VEZ PH2D_NA_PORTA PH2D_GPU PH2D_GPU_ESPERA PH2D_PLACA PH2D_VEZ_ARVORE
 run() { bash scripts/ph2d-run.sh "$@"; }
 falhas=0
 ok() { if eval "$2"; then printf '  ✓ %s\n' "$1"; else printf '  ✗ %s   (%s)\n' "$1" "$2"; falhas=$((falhas + 1)); fi; }
@@ -47,6 +47,47 @@ ok "o 2.º pedido da mesma árvore entrou depois de a outra acabar" \
 echo "— dois pedintes da mesma árvore entram juntos —"
 run bash -c "bash -c 'bash scripts/vez-da-placa.sh; sleep 2' & sleep 0.5; t=\$(date +%s.%N); bash -c 'bash scripts/vez-da-placa.sh'; echo \$t \$(date +%s.%N) > $T/dois; wait" 2>/dev/null
 ok "o 2.º pedinte não espera o 1.º (< 1 s)" "awk '{ exit !(\$2 - \$1 < 1) }' $T/dois"
+
+echo "— um pedido escrito aos pedaços não se perde —"
+# O pid, uma pausa maior que o prazo do `read` do porteiro, e o resto da linha (o `writeln!` de um
+# `File` escrevia assim; 23/10, 2 de 548 testes pendurados).
+aos_pedacos='v=$PH2D_GPU_VEZ; exec 4<>"$v/porta"; printf %s $$ >&4; sleep 0.7; printf " pedacos\n" >&4
+  for i in $(seq 1 30); do [ -e "$v/vez.$$" ] && exit 0; sleep 0.1; done; exit 1'
+run bash -c "$aos_pedacos" 2>/dev/null; rc=$?
+ok "com a placa livre (o prazo de 0,5 s)" "[ $rc = 0 ]"
+run bash -c "bash -c 'bash scripts/vez-da-placa.sh; sleep 4' & sleep 0.5; bash -c '$aos_pedacos'; r=\$?; wait; exit \$r" 2>/dev/null; rc=$?
+ok "com a árvore já na placa (o prazo de 0,2 s)" "[ $rc = 0 ]"
+
+echo "— PH2D_VEZ_ARVORE=1 volta à lei antiga (a medição A × B) —"
+PH2D_VEZ_ARVORE=1 run bash -c "bash -c 'bash scripts/vez-da-placa.sh; sleep 1'; sleep 3" 2>/dev/null &
+sleep 0.5; t0=$(agora)
+PH2D_GPU=1 run true 2>/dev/null
+ok "a árvore segura até ao fim (> 2,5 s)" "awk -v d=\$(dif $t0 \$(agora)) 'BEGIN { exit !(d > 2.5) }'"
+wait
+
+if [ "$(compgen -G '/dev/dri/renderD*' | wc -l)" -ge 2 ]; then
+  echo "— a fila de testes não espera a principal —"
+  PH2D_GPU=1 run sleep 3 2>/dev/null &
+  sleep 0.5; t0=$(agora)
+  run bash -c 'bash scripts/vez-da-placa.sh testes' 2>/dev/null
+  ok "a vez de testes entra já, com a principal ocupada (< 1,5 s)" "awk -v d=\$(dif $t0 \$(agora)) 'BEGIN { exit !(d < 1.5) }'"
+  wait
+
+  echo "— a fila de testes é exclusiva entre árvores —"
+  run bash -c "bash -c 'bash scripts/vez-da-placa.sh testes; sleep 2'" 2>/dev/null &
+  sleep 0.5; t0=$(agora)
+  run bash -c 'bash scripts/vez-da-placa.sh testes' 2>/dev/null
+  ok "a 2.ª árvore espera a 1.ª (> 1 s)" "awk -v d=\$(dif $t0 \$(agora)) 'BEGIN { exit !(d > 1) }'"
+  wait
+
+  echo "— PH2D_PLACA=principal fecha a fila de testes —"
+  PH2D_PLACA=principal run bash -c 'test ! -e "$PH2D_GPU_VEZ/porta-testes"' 2>/dev/null; rc=$?
+  ok "sem porta-testes na árvore" "[ $rc = 0 ]"
+  run bash -c 'test -p "$PH2D_GPU_VEZ/porta-testes"' 2>/dev/null; rc=$?
+  ok "e com ela, sem o interruptor" "[ $rc = 0 ]"
+else
+  echo "— (uma só placa: os casos da fila de testes não se aplicam) —"
+fi
 
 echo "— quem nunca pede não segura nada —"
 run bash -c 'sleep 3' 2>/dev/null &
@@ -96,7 +137,7 @@ PH2D_GPU=1 run bash -c "ls -l /proc/\$\$/fd | grep -c placa.lock" > "$T/fd" 2>/d
 ok "nenhum descritor do cadeado no comando" "[ \"\$(cat $T/fd)\" = 0 ]"
 
 echo "— limpo no fim —"
-ok "sem .dono depois de tudo acabar" "[ ! -e $T/placa.lock.dono ]"
+ok "sem .dono depois de tudo acabar" "[ ! -e $T/placa.lock.dono ] && [ ! -e $T/testes.lock.dono ]"
 ok "sem pastas de porteiro destas corridas" "! grep -rqs placa.lock \"\${XDG_RUNTIME_DIR:-/tmp}\"/ph2d-vez.*/porteiro 2>/dev/null"
 
 echo; [ "$falhas" = 0 ] && echo "✓ 0 falhas — o porteiro está honesto" || { echo "✗ $falhas falha(s)"; exit 1; }

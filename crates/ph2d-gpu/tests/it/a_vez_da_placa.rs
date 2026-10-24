@@ -33,7 +33,10 @@ fn todo_pedido_de_adaptador_passa_pela_vez() {
         concat!("request_", "adapter("),
         concat!("enumerate_", "adapters("),
     ];
-    let vez = concat!("vez_da_", "placa(");
+    let vezes = [
+        concat!("vez_da_", "placa("),
+        concat!("vez_da_", "placa_ou_a_de_testes("),
+    ];
     let (mut vistos, mut sem_vez, mut no_contexto) = (0, Vec::new(), false);
     for f in &ficheiros {
         let Ok(texto) = std::fs::read_to_string(f) else {
@@ -48,7 +51,7 @@ fn todo_pedido_de_adaptador_passa_pela_vez() {
                 no_contexto |= f.ends_with(Path::new("ph2d-gpu/src/context.rs"));
                 // Da `fn` que o contém até ao pedido.
                 let inicio = fonte[..i].rfind("fn ").unwrap_or(0);
-                if !fonte[inicio..i].contains(vez) {
+                if !vezes.iter().any(|v| fonte[inicio..i].contains(v)) {
                     let linha = fonte[..i].lines().count();
                     sem_vez.push(format!("{rel}:{linha}"));
                 }
@@ -70,7 +73,8 @@ fn todo_pedido_de_adaptador_passa_pela_vez() {
 
 #[cfg(target_os = "linux")]
 mod protocolo {
-    use ph2d_gpu::vez::pede_em;
+    use ph2d_gpu::vez::{escolhe, pede_em};
+    use ph2d_gpu::Placa;
     use std::io::{BufRead, BufReader};
     use std::path::{Path, PathBuf};
     use std::time::{Duration, Instant};
@@ -117,7 +121,7 @@ mod protocolo {
             std::fs::write(a_minha_vez(&d2), "").unwrap();
         });
         let t0 = Instant::now();
-        assert_eq!(pede_em(&d), Ok(()));
+        assert_eq!(pede_em(&d, Placa::Principal), Ok(()));
         assert!(
             t0.elapsed() >= Duration::from_millis(300),
             "entrou sem esperar a SUA vez"
@@ -138,7 +142,7 @@ mod protocolo {
             pedido
         });
         let t0 = Instant::now();
-        assert_eq!(pede_em(&d), Ok(()));
+        assert_eq!(pede_em(&d, Placa::Principal), Ok(()));
         assert!(
             t0.elapsed() >= Duration::from_millis(300),
             "não esperou o porteiro"
@@ -160,7 +164,7 @@ mod protocolo {
         )
         .unwrap();
         assert_eq!(
-            pede_em(&d),
+            pede_em(&d, Placa::Principal),
             Err("a placa está com outra árvore há mais de 5s".into())
         );
     }
@@ -173,7 +177,52 @@ mod protocolo {
         filho.wait().unwrap();
         let _porta = porteiro(&d, morto);
         let t0 = Instant::now();
-        assert_eq!(pede_em(&d), Ok(()));
+        assert_eq!(pede_em(&d, Placa::Principal), Ok(()));
         assert!(t0.elapsed() < Duration::from_secs(2));
+    }
+
+    /// A fila de testes tem porta, vez e porteiro próprios: a vez da principal não a atende.
+    #[test]
+    fn a_fila_de_testes_espera_a_sua_vez_e_nao_a_da_principal() {
+        let d = pasta("testes");
+        let ok = std::process::Command::new("mkfifo")
+            .arg(d.join("porta-testes"))
+            .status()
+            .unwrap();
+        assert!(ok.success());
+        std::fs::write(d.join("porteiro-testes"), format!("{}\n", std::process::id())).unwrap();
+        let porta = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(d.join("porta-testes"))
+            .unwrap();
+        std::fs::write(a_minha_vez(&d), "").unwrap();
+        let d2 = d.clone();
+        let atende = std::thread::spawn(move || {
+            let mut pedido = String::new();
+            BufReader::new(porta).read_line(&mut pedido).unwrap();
+            std::thread::sleep(Duration::from_millis(300));
+            std::fs::write(d2.join(format!("vez-testes.{}", std::process::id())), "").unwrap();
+        });
+        let t0 = Instant::now();
+        assert_eq!(pede_em(&d, Placa::Testes), Ok(()));
+        assert!(
+            t0.elapsed() >= Duration::from_millis(300),
+            "a vez da principal atendeu um pedido da fila de testes"
+        );
+        atende.join().unwrap();
+    }
+
+    /// Este binário é um teste (`deps/`) de um pacote livre: vai para a fila de testes quando a
+    /// árvore a abriu, e só então.
+    #[test]
+    fn um_teste_livre_vai_para_a_fila_de_testes_so_se_ela_existe() {
+        let medindo = std::env::var("PH2D_GPU").is_ok_and(|v| v == "1")
+            || std::env::var("PH2D_PLACA").is_ok_and(|v| v == "principal");
+        let d = pasta("escolhe");
+        assert_eq!(escolhe(&d), Placa::Principal, "sem porta-testes");
+        std::fs::write(d.join("porta-testes"), "").unwrap();
+        let esperada = if medindo { Placa::Principal } else { Placa::Testes };
+        assert_eq!(escolhe(&d), esperada);
     }
 }

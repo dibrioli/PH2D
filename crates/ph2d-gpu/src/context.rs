@@ -44,13 +44,31 @@ impl GpuContext {
         instance: wgpu::Instance,
         compatible_surface: Option<&wgpu::Surface<'_>>,
     ) -> Result<Self, GpuError> {
-        crate::vez_da_placa();
-        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
-            compatible_surface,
-            force_fallback_adapter: false,
-        }))
-        .map_err(|e| GpuError::NoAdapter(format!("{e:?}")))?;
+        let adapter = match crate::vez_da_placa_ou_a_de_testes() {
+            crate::Placa::Principal => {
+                pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::HighPerformance,
+                    compatible_surface,
+                    force_fallback_adapter: false,
+                }))
+                .map_err(|e| GpuError::NoAdapter(format!("{e:?}")))?
+            }
+            // Só Vulkan: enumerar o GL abre um contexto na placa principal (medido 23/10 no
+            // `nvidia-smi`, 2/2), e a vez dela é de outra árvore.
+            crate::Placa::Testes => {
+                pollster::block_on(instance.enumerate_adapters(wgpu::Backends::VULKAN))
+                    .into_iter()
+                    .find(|a| {
+                        a.get_info().device_type == wgpu::DeviceType::IntegratedGpu
+                            && compatible_surface.is_none_or(|s| a.is_surface_supported(s))
+                    })
+                    .ok_or_else(|| {
+                        GpuError::NoAdapter(
+                            "a vez é da fila de testes, e não há placa integrada em Vulkan".into(),
+                        )
+                    })?
+            }
+        };
 
         // Request the texture-compression families this adapter actually
         // advertises (KTX2 Fase 2 / W2.T4). wgpu only reports a feature in

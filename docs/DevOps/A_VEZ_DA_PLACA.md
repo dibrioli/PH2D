@@ -1,8 +1,9 @@
 # A vez da placa — todo uso da placa espera a sua vez (18/10)
 
 > Lei curta: **toda árvore de processos que passa pelo `scripts/ph2d-run.sh` tem um PORTEIRO**. Ele pede a
-> placa ao cadeado partilhado na **primeira** vez que alguém da árvore precisa dela e segura-a até o comando
-> acabar. Ninguém precisa de se lembrar do `PH2D_GPU=1`: o código pede a vez sozinho no ponto onde o processo
+> placa ao cadeado partilhado quando um processo da árvore precisa dela e segura-a **enquanto um processo que
+> a pediu vive** (§6, 23/10 — até então, até o comando acabar). Com uma segunda placa na máquina há **duas
+> filas**: os testes vão para a integrada, e a principal fica para as medições, as fotos e a Luz 2D (§7). Ninguém precisa de se lembrar do `PH2D_GPU=1`: o código pede a vez sozinho no ponto onde o processo
 > entra na placa. Fora da porta não há porteiro e **nada espera** — o produto, o app aberto à mão pelo dono, a CI.
 > Handoff da onda: [HANDOFF_A_VEZ_DA_PLACA_2026-10-18.md](HANDOFF_A_VEZ_DA_PLACA_2026-10-18.md).
 
@@ -28,8 +29,8 @@ valor. O dono não quer parar as outras linhas para medir: quer que esperem a ve
 | um binário cru, o kwin, o wine, o Blender, o Godot por fora da porta | **recusado** pelo guarda (R9, [`tecto-de-recursos.sh`](../../.claude/hooks/tecto-de-recursos.sh)) |
 
 **O protocolo** (uma pasta por árvore, `PH2D_GPU_VEZ`): `porta` (FIFO onde o cliente escreve «pid nome»),
-`pronto` (a vez é da árvore), `recusa` (o porteiro desistiu, com quem segura), `porteiro` (o pid dele). Dois
-clientes: [`vez.rs`](../../crates/ph2d-gpu/src/vez.rs) e [`vez-da-placa.sh`](../../scripts/vez-da-placa.sh).
+`vez.<pid>` (a vez é desse processo, até ele acabar — §6), `recusa` (o porteiro desistiu, com quem segura),
+`porteiro` (o pid dele); a fila de testes tem os mesmos com o sufixo `-testes` (§7). Dois clientes: [`vez.rs`](../../crates/ph2d-gpu/src/vez.rs) e [`vez-da-placa.sh`](../../scripts/vez-da-placa.sh).
 
 **As quatro perguntas do desenho:**
 
@@ -110,16 +111,80 @@ passa a fila. Até lá a fila é código sem defeito para curar.
 | uma fila própria (bilhetes) | o `flock` já é por ordem de chegada (§3) |
 | partilhar a placa entre árvores (cadeado partilhado) | 14/09 (TETOS §3) |
 | o app do dono a esperar a vez | prenderia as linhas pelas horas em que fica aberto (§2.2) |
-| o porteiro a vigiar o FIM do último uso (soltar quando a árvore pára de usar a placa) | cada teste seguinte da árvore voltaria a esperar uma medição inteira; o ganho só existe para suítes longas, que já são raras (1× no fecho) |
+| ~~o porteiro a vigiar o FIM do último uso (soltar quando a árvore pára de usar a placa)~~ — **REVISTA em 23/10, é a lei do §6** | era desenho, não medição: «cada teste seguinte da árvore voltaria a esperar uma medição inteira; suítes longas já são raras». **Medido 18–23/10, a premissa caiu**: ≥ 36 esperas, ≥ 2 h 45 min, e quem segurava era sobretudo o `nextest-impacted.sh` INTEIRO. O receio (o teste atrás de cada medição) desfaz-se com a fila de testes do §7: os testes livres já não esperam medição nenhuma |
 
 ## §5 — O que isto NÃO resolve
 
 - ⚠️ **Cada worktree só ganha a vez quando tiver o `main` com ela** (o `ph2d-run.sh`, o guarda e o `ph2d-gpu` são
   da árvore de cada linha). Até lá uma linha velha continua compatível — o `PH2D_GPU=1` dela tranca o MESMO
   cadeado —, mas os testes dela sem `PH2D_GPU=1` ainda entram sem pedir.
-- ⚠️ Um `kill -9` na porta deixa o comando (o scope) a correr até ao prazo, e o porteiro solta a placa em ≤ 5 s —
+- ⚠️ Um `kill -9` na porta deixa o comando (o scope) a correr até ao prazo, e o porteiro solta a placa em ≤ 0,5 s —
   como antes, quando o cadeado era do bash da porta.
 - ⚠️ O que o dono abre à mão (o app, o Chrome, o Rebelle) está fora por desenho: a medição continua a precisar do
   detector de alheios.
 - ⚠️ O guarda vê o comando escrito; um script que lance o kwin sem chamar o `vez-da-placa.sh` escapa — o
   padrão a copiar está nos dois roteiros (§2).
+
+## §6 — A vez é de quem a PEDIU, não da árvore (23/10, `line/Velocidade` W1)
+
+**A medição** (transcrições das sessões + saídas das tarefas de fundo, 18–23/10; é um piso, porque o `/tmp`
+apaga-se no arranque): **≥ 36 esperas, ≥ 2 h 45 min somadas, a maior de 25 min**. Quem segurava, pelos avisos
+«à espera da vez»: o `nextest-impacted.sh` inteiro (PainterWatercolor, MiroClone, Luz 2D, UIUX, CodeEditor),
+depois o `fotografa_cena.sh` e os oráculos do CodeEditor. A suíte segurava a placa do 1.º teste de placa ao
+FIM, também nos minutos em que só corria testes de CPU.
+
+**A lei:** o porteiro guarda os pids que lhe pediram a vez; segura enquanto um vive e larga quando o último
+acaba; o pedido seguinte volta a passar pelo `flock` (por ordem de chegada, §3). Pedintes da mesma árvore
+juntam-se à vez que ela já tem — o `nextest` continua a correr testes de placa em paralelo dentro da árvore
+(a recusa «a vez por PROCESSO» do §4 continua de pé).
+
+- **Cada pedinte espera o SEU `vez.<pid>`.** O `pronto` da árvore deixaria entrar sem a vez quem pede no
+  instante em que ela se larga — o cliente pede SEMPRE, mesmo com a árvore na placa.
+- **O `PH2D_GPU=1` não muda:** o pedinte é a própria porta (o `$PPID` do `vez-da-placa.sh`), que vive o comando
+  inteiro. O kwin das fotos idem: o pedinte é o roteiro que o lança.
+- **`PH2D_VEZ_ARVORE=1`** devolve a lei antiga (a árvore segura até ao fim), sem recompilar: é o interruptor
+  da medição A × B.
+- **Compatível entre versões:** o porteiro novo e o velho trancam o MESMO cadeado; uma worktree sem o rebase
+  continua com a lei velha só para ela.
+- ⛔ **O pedido viaja num ÚNICO `write`, e o porteiro guarda o pedaço que um prazo corte.** O `writeln!` num
+  `File` escrevia «pid», « nome», «\n» em `write`s separados; sob carga o `read -t` do porteiro vencia a meio,
+  largava o pedaço e o pedinte esperava para sempre (23/10, prova de ponta a ponta: 2 de 548 testes a 180 s;
+  existia com o prazo velho de 5 s, só mais raro). E o `read` sem `IFS=` come o espaço do começo do resto
+  («123» + «resto»). Prova: «um pedido escrito aos pedaços não se perde», vermelha sobre a W1.
+
+**Prova:** [`vez-da-placa.prova.sh`](../../scripts/vez-da-placa.prova.sh) — os casos «a vez larga-se quando o
+pedinte acaba», «quem volta a pedir espera a vez de novo» e «dois pedintes da mesma árvore entram juntos»;
+os dois primeiros VERMELHOS sobre os scripts do `main` de 23/10 (15/17), verdes com a lei nova. Cliente Rust:
+`a_vez_da_placa::protocolo::a_vez_de_outro_pid_nao_dispensa_o_pedido` (`ph2d-gpu`).
+
+## §7 — A fila de testes, na placa integrada (23/10, `line/Velocidade` W2)
+
+**A medição que a autoriza** (23/10, `main` `972f411a6f`, só a Radeon 610M do 9950X visível ao processo, um
+amostrador do `nvidia-smi` a 1 s sem nenhum processo da corrida): os testes das 20 crates que pedem adaptador,
+**5 573 de 5 580 verdes** na integrada. Os 7 vermelhos são todos da Luz 2D (mudam texels, alocam além do
+teto, perdem a lei de custo) e passam na NVIDIA — por isso a Luz 2D está **presa à principal**
+(`PRESOS_A_PRINCIPAL` em [`vez.rs`](../../crates/ph2d-gpu/src/vez.rs)); o achado foi para a linha dela. No
+tempo, a maior parte igual ou mais rápida que na NVIDIA (contra a suíte do ship a `load ~40`); a Luz 2D ~5,6×
+mais lenta.
+
+**Quem vai para a fila de testes** (`ph2d_gpu::vez::escolhe`, só no `GpuContext::new`): um binário de teste
+(em `target/*/deps/`, com o `CARGO_PKG_NAME` do cargo/nextest) de um pacote não preso, numa árvore que não
+mede (`PH2D_GPU=1`) nem a fechou (`PH2D_PLACA=principal`), e só se o porteiro dela a abriu (a máquina tem
+≥ 2 nós `/dev/dri/renderD*`). Tudo o resto fica na principal: o app, o kwin, os oráculos, todo pedido por
+fora do `GpuContext` (`vez_da_placa()` pede SEMPRE a principal).
+
+- **Só Vulkan na fila de testes.** Medido em 23/10 (sonda de fases, `nvidia-smi` a 0,25 s, 2/2 cada): com o
+  GL na lista, o processo aparece na NVIDIA ao ENUMERAR os adaptadores (o EGL abre um contexto nela);
+  enumerando só Vulkan e abrindo o device na integrada, nunca aparece. O `GpuContext` escolhe o
+  `IntegratedGpu` de `enumerate_adapters(Backends::VULKAN)`; sem ele, erro alto (nunca a principal sem a vez).
+- **Sem tranca entre filas:** quem já tem a principal fica nela (o `GpuContext` não pede a de testes), logo
+  ninguém segura a principal à espera da de testes — o ciclo de duas árvores trancadas não se fecha.
+- **De ponta a ponta** (23/10, `nextest` de `ph2d-render` + `ph2d-flip-render`, 547 testes, a principal com a
+  suíte do CodeEditor e `load ~190`): **547/547 em 2,2 s**, nenhum processo da corrida na tabela do
+  `nvidia-smi` (amostra a 0,3 s). ⚠️ O `fuser` no nó da integrada NÃO prova uso: o carregador do Vulkan abre
+  todos os nós ao enumerar, também nos processos que ficam na NVIDIA.
+- **A integrada também é exclusiva entre árvores** (o mesmo `flock`, `ph2d-gpu-testes.lock`): 14/09 foi na
+  NVIDIA, mas ninguém mediu duas árvores juntas na integrada; abrir mais vagas é medição por fazer.
+- ⚠️ **O monitor secundário (AOC) está ligado à integrada** ([memória](../../project-memory/reference_display_topology_workstation.md)):
+  com testes a correr nela, ele pode perder fluidez. Nos 22 min da corrida de 23/10 nada pendurou.
+

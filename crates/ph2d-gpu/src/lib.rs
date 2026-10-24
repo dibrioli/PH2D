@@ -30,7 +30,7 @@ pub use context::{GpuContext, GpuError};
 pub use frame::FrameTarget;
 pub use surface::{AcquireError, SurfaceContext};
 pub use transient::TransientPool;
-pub use vez::vez_da_placa;
+pub use vez::{vez_da_placa, vez_da_placa_ou_a_de_testes, Placa};
 
 /// Re-export the wgpu types that callers will need to interact with
 /// the API surface here. **Don't** re-export wgpu wholesale — that

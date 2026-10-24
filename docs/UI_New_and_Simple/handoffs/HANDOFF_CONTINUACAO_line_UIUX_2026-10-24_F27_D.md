@@ -104,7 +104,12 @@ Além disso, o smoke §4 do [handoff anterior](HANDOFF_CONTINUACAO_line_UIUX_202
   `architecture_every_editable_field_is_a_channel` 6 · `menu` 106.
 - Mutação do menu de grupo: sem `BeginEdit` ⇒ vermelho (visto, §2.1).
 - Fotos lidas: `=31` (§2.6), `PH2D_SCRIPT_SMOKE=1` (§2.3), `PH2D_AUTOKEY_SMOKE=14` com `PH2D_LANG=teste` (§2.5).
-- **Suíte do diff (`nextest-impacted`): por preencher — TODO (o Enio preenche).**
+- **Suíte do diff (`PH2D_SUITE=onda nextest-impacted`, 19 296 testes, `load` 28–48):** 2 vermelhos, nenhum desta
+  linha (o diff da onda sobre as duas crates é vazio): `ph2d-panel-painter-layers` `seam_estado_escondido::cada_interruptor_que_neutraliza_pinta_como_o_pincel_limpo`
+  TIMEOUT 360 s (a família dos TIMEOUT do Painter sob carga, 23/10) e `ph2d-tool-painter`
+  `o_custo_no_caminho_do_app::o_deposito_de_um_pincel_pesado_de_fabrica_vai_pela_rota_que_paga` (régua paralelo × série
+  de `a5ef930e34`; reprova também sozinho, a `load` 26–28 — sem núcleos livres o paralelo não ganha). Candidato à
+  [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md): confirmar a `load` < 5 antes de culpar alguém; é da linha Painter.
 
 ## 6 — ABERTO, por ordem
 

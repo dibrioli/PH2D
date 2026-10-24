@@ -114,7 +114,7 @@ pub(crate) fn step(
     }
 }
 
-fn montar(sim: &mut SimWorld) -> (u64, u64) {
+pub(crate) fn montar(sim: &mut SimWorld) -> (u64, u64) {
     let mut b = None;
     for (nome, x) in [("Box A", -3.0), ("Box B", 0.0), ("Box C", 3.0)] {
         let e = sim.world_mut().spawn((
@@ -142,7 +142,7 @@ fn montar(sim: &mut SimWorld) -> (u64, u64) {
     (c.to_bits(), b.to_bits())
 }
 
-fn seguir(sim: &mut SimWorld, c: Option<u64>, alvo: &str) {
+pub(crate) fn seguir(sim: &mut SimWorld, c: Option<u64>, alvo: &str) {
     if let Some(mut f) =
         c.and_then(|b| sim.world_mut().get_mut::<CameraFollow>(Entity::from_bits(b)))
     {

@@ -31,11 +31,13 @@ static ESPERA: AtomicU8 = AtomicU8::new(0);
 /// ao efeito) · `9..=13` = `=11..15` (o bloco 2 — `autokey_smoke_bloco2` e `autokey_smoke_juntas`)
 /// · `14..=24` = `=16..26` (uma bancada por tipo de junta — `autokey_smoke_tipos`) · [`LADO_B`] =
 /// `=27` (o lado B da junta — `autokey_smoke_lado_b`) · [`CAMERA`] = `=28` (a câmera pela família
-/// COMPONENTE — `autokey_smoke_camera`) · [`ALVO`] = `=29` (o alvo e o Visible — `autokey_smoke_alvo`).
+/// COMPONENTE — `autokey_smoke_camera`) · [`ALVO`] = `=29` (o alvo e o Visible — `autokey_smoke_alvo`)
+/// · [`TEXTO`] = `=30` (o texto do canal na dope-sheet e o olho — `autokey_smoke_texto`).
 static DESENHO: AtomicU8 = AtomicU8::new(0);
 const LADO_B: u8 = 25;
 const CAMERA: u8 = 26;
 const ALVO: u8 = 27;
+const TEXTO: u8 = 28;
 /// O estágio da cena — a do desenho avança-o daqui.
 pub(crate) fn avanca(n: u8) {
     ESTAGIO.store(n, Ordering::Relaxed);
@@ -76,6 +78,7 @@ pub fn step(
                 "27" => LADO_B,
                 "28" => CAMERA,
                 "29" => ALVO,
+                "30" => TEXTO,
                 // `=16..26`: uma bancada por tipo de junta — `autokey_smoke_tipos`.
                 x => x
                     .parse::<u8>()
@@ -88,6 +91,9 @@ pub fn step(
         }
         s => s,
     };
+    if DESENHO.load(Ordering::Relaxed) == TEXTO {
+        return crate::autokey_smoke_texto::step(nivel, sim, hero, tl, ph);
+    }
     if DESENHO.load(Ordering::Relaxed) == ALVO {
         return crate::autokey_smoke_alvo::step(nivel, sim, hero, tl, ph);
     }

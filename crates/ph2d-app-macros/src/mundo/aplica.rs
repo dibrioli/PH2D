@@ -78,7 +78,7 @@ pub fn confere(t: &Track) -> Result<(), ErroDaMacroView> {
 struct Rascunho<'a> {
     w: World,
     registo: &'a ComponentRegistry,
-    remapeia: &'a dyn Fn(&mut World, &[Entity], &BTreeMap<u64, u64>) -> usize,
+    remapeia: &'a crate::aplicar::Remapeia,
     mapa: BTreeMap<u64, u64>,
 }
 
@@ -125,8 +125,8 @@ pub(crate) fn aplica(
     portas: &mut Portas<'_>,
     nascidos: &mut Vec<u64>,
 ) -> Result<(), ErroDaMacroView> {
-    for k in 0..doc.tracks.len() {
-        if fams[k] != FamiliaDaMacro::Mundo {
+    for (k, &fam) in fams.iter().enumerate() {
+        if fam != FamiliaDaMacro::Mundo {
             continue;
         }
         let lida = Lida::de(&doc.tracks[k]).map_err(|_| ilegivel())?;

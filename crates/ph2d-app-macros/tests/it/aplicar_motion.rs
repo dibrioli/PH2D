@@ -16,7 +16,10 @@ use ph2d_timeline::{TimelineIntent, TimelineState};
 /// O Motion de brinquedo: regista cada `(dono, vida)` e devolve a trilha a apontar o dono; e cada
 /// continuação (`(dono, vida, a cadeia que recebeu: (alvo como veio, alvo aplicado))`).
 #[derive(Default)]
-struct MotionQueRegista(Vec<(u64, u64)>, Vec<(u64, u64, Vec<(u64, u64)>)>);
+struct MotionQueRegista(Vec<(u64, u64)>, Vec<Continuada>);
+
+/// Uma continuação recebida: o dono, a vida e a cadeia.
+type Continuada = (u64, u64, Vec<(u64, u64)>);
 
 impl ph2d_macro::Gravadora for MotionQueRegista {
     fn abre(

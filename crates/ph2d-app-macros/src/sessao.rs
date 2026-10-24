@@ -404,13 +404,10 @@ impl Sessao {
         let Some(g) = gravadora(f, FamiliaDaMacro::Painter) else {
             return;
         };
-        match (destino, self.painter.viva()) {
-            (Passos::Grava, Some(a)) => {
-                for c in g.passos() {
-                    let _ = self.rec.push(a.id, agora_us, c);
-                }
+        if let (Passos::Grava, Some(a)) = (destino, self.painter.viva()) {
+            for c in g.passos() {
+                let _ = self.rec.push(a.id, agora_us, c);
             }
-            _ => {}
         }
     }
 

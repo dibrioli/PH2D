@@ -66,8 +66,11 @@ pub struct Portas<'a> {
     pub recurso: &'a dyn Fn(&[u8; 32]) -> Option<Vec<u8>>,
     /// O remapeador das referências entre objectos (`StableId` antigo → novo) da composição — a tabela
     /// da casa (`ph2d_app_components::instance_refs::remap_object_refs`); devolve quantos mudou.
-    pub remapeia: &'a dyn Fn(&mut ph2d_ecs::World, &[Entity], &BTreeMap<u64, u64>) -> usize,
+    pub remapeia: &'a Remapeia,
 }
+
+/// O remapeador das referências entre objectos: o mundo, as entidades e o mapa de `StableId`.
+pub type Remapeia = dyn Fn(&mut ph2d_ecs::World, &[Entity], &BTreeMap<u64, u64>) -> usize;
 
 /// **A família de uma trilha**, pela chave: o Painter e o mundo são desta crate, as outras chegam pela
 /// composição (`outras`). Uma chave que ninguém conhece recusa-se pelo nome — nunca se toca como outra.
@@ -480,8 +483,7 @@ fn novo(
             nascidos.push(raiz);
             let pai = Entity::from_bits(raiz);
             let vida = sid_de(sim, raiz);
-            for k in 0..doc.tracks.len() {
-                let fam = fams[k];
+            for (k, &fam) in fams.iter().enumerate() {
                 if fam == Mundo {
                     continue;
                 }
@@ -597,8 +599,8 @@ fn por_cima(
         }
         if fam == FamiliaDaMacro::Motion {
             let vida = sid_de(sim, raiz);
-            for k in 0..doc.tracks.len() {
-                if fams[k] != FamiliaDaMacro::Motion {
+            for (k, &fam_k) in fams.iter().enumerate() {
+                if fam_k != FamiliaDaMacro::Motion {
                     continue;
                 }
                 let mut n = if doc.tracks[k].continua.is_some() {

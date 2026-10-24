@@ -295,7 +295,7 @@ fn sem_a_pose_da_corrida(
                     .filter(|(tipo, b)| !e_o_fim(id.0, *tipo, b))
                     .cloned()
                     .collect();
-                (pai.is_some() || !cs.is_empty()).then(|| LinhaMudada::Muda {
+                (pai.is_some() || !cs.is_empty()).then_some(LinhaMudada::Muda {
                     id: *id,
                     pai: *pai,
                     componentes: cs,

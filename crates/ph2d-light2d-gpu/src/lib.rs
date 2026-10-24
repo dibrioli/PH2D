@@ -12,6 +12,7 @@
 //! O `Emissor::Ponto` (sem área) NÃO entra na C0 — é o caminho analítico C3 (W5) — e sai no
 //! [`RelatorioC0`], como toda forma que não acende nenhum texel.
 
+mod arredondamento;
 mod captura;
 mod captura_sprite;
 mod config;
@@ -29,6 +30,7 @@ mod solver_sprite;
 mod sonda_memoria;
 mod tempos;
 
+pub use arredondamento::o_pack_da_placa_trunca;
 pub use captura::{ForaDaC0, Motivo, Quem, RelatorioC0, o_que_fica_fora};
 pub use captura_sprite::{Amostragem, CapturaDeSprites, SpriteNaC0};
 pub use config::{

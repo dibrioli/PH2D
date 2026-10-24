@@ -232,7 +232,8 @@ pub struct Config {
     /// `false` = lê sempre (o mesmo bit, mais lento nos níveis de cima).
     pub hrc_salta_o_t_nulo: bool,
     /// ⭐ bug 7 (W6i) — os T e os R guardam-se em f16 ARREDONDADOS AO MAIS PRÓXIMO em toda placa (o
-    /// `pack2x16float` da RADV trunca); `false` = o arredondamento da placa (o mesmo bit onde ela já arredonda).
+    /// `pack2x16float` da RADV trunca); `false` = o arredondamento da placa. O solver só a liga onde a placa trunca
+    /// ([`crate::o_pack_da_placa_trunca`]): onde já arredonda é o mesmo bit, e o `Solver::config` diz `false`.
     pub hrc_meio_float_mais_proximo: bool,
     /// ⭐ W5c — a CASCATA HOLOGRÁFICA (HRC, a do produto em todo nível) no lugar das cascatas de Sannikov: a mesma
     /// c0, outra conta (`c2_hrc.wgsl`). `None` = as cascatas.

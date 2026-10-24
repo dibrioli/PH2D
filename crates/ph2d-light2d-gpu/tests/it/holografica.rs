@@ -668,6 +668,11 @@ fn o_f16_da_holografica_e_o_mais_proximo_em_toda_placa() {
         arredonda || trunca,
         "o pack2x16float desta placa não é nem o mais próximo nem para zero: {a:?}"
     );
+    assert_eq!(
+        ph2d_light2d_gpu::o_pack_da_placa_trunca(&gpu),
+        trunca,
+        "a prova do produto (4 amostras) e a régua (65 536) discordam de como a placa arredonda"
+    );
     let cena = sala();
     let serie = Rebote::resolver(
         &cena,
@@ -684,6 +689,12 @@ fn o_f16_da_holografica_e_o_mais_proximo_em_toda_placa() {
                 ..com(Config::padrao(grade(lado, texel)), Some(HOLOGRAFICA_PADRAO))
             };
             let mut s = Solver::novo(&gpu, cfg).expect("solver");
+            // Só a placa que trunca paga a correção (+6–13 % do `c2` na RTX, medido).
+            assert_eq!(
+                s.config().hrc_meio_float_mais_proximo,
+                cura && trunca,
+                "{degrau}: a correção ligada onde não devia (ou desligada onde devia)"
+            );
             for _ in 0..60 {
                 s.quadro(&gpu, &cena);
             }

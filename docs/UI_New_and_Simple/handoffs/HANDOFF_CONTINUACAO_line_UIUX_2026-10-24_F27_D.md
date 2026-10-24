@@ -113,8 +113,8 @@ Além disso, o smoke §4 do [handoff anterior](HANDOFF_CONTINUACAO_line_UIUX_202
 
 ## 6 — ABERTO, por ordem
 
-1. **Smoke do dono `=31`** (§4).
-2. Dívidas declaradas que ficam — cada uma é desenho próprio, **só se o Enio pedir**: fonte do rótulo do HUD
+1. ~~Smoke do dono `=31`~~ — **OK do Enio em 24/10.**
+2. Dívidas declaradas que ficam — cada uma é desenho próprio; **o Enio pediu-as em 24/10** (onda F27 E): fonte do rótulo do HUD
    (`LabelSource` com dados); o ficheiro do script (`ScriptSource`); `script.rs` em `DIVIDA_FICHEIRO` (props dinâmicas).
 3. A camada de ordenação anima mas nenhuma cena a mostra (projeto novo tem só a camada Default) — candidata a cena.
 4. **FORA** (o mesmo de sempre): itens de LISTA, `ph2d-panel-painter-layers`, gravidade, física a meio, IkBendSide, Rope Length, áudio do mixer.

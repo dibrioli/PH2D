@@ -341,8 +341,7 @@ impl crate::App {
                 }
                 None => (state, None),
             };
-            self.apply_project_with(&aplica, Some(&mark));
-            ph2d_app_macros::com(|m| m.mundo_mudou(&aplica.world, &aplica.world));
+            self.aplica_e_conta_as_macros(&aplica, &mark);
             if base.is_some() {
                 self.undo_baseline = base;
             }

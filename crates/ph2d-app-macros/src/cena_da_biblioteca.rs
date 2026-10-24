@@ -426,11 +426,8 @@ pub fn faz(
     let ppm = hero.project.pixels_per_meter;
     match p {
         Passo::Diz(k) => {
-            let (f, n) = CENA.with(|c| {
-                let c = c.borrow();
-                let e = &c.as_ref()?.estado;
-                Some((frase(k, e), e.nivel))
-            })?;
+            let n = CENA.with(|c| c.borrow().as_ref().map(|c| c.estado.nivel))?;
+            let f = CENA.with(|c| c.borrow().as_ref().map(|c| frase(k, &c.estado)))?;
             eprintln!("[macro smoke ={n}] {f}");
             // O painel MACROS à vista: a gravação, a biblioteca e a frase de cada gesto dela.
             ph2d_editor_core::panel::PanelHostInternal::set_panel_visible(hero, "macros", true);

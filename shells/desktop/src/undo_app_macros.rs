@@ -19,6 +19,16 @@ impl crate::App {
         })
     }
 
+    /// Um desfazer/refazer repõe `aplica`; a gravação do mundo de uma macro vê a mudança (W19).
+    pub(super) fn aplica_e_conta_as_macros(
+        &mut self,
+        aplica: &super::ProjectState,
+        mark: &super::SelectionMark,
+    ) {
+        self.apply_project_with(aplica, Some(mark));
+        ph2d_app_macros::com(|m| m.mundo_mudou(&aplica.world, &aplica.world));
+    }
+
     /// O baseline vira um passo (com a transação de uma reescrita que aterrou) e `atual` o baseline novo.
     pub(super) fn empurra(&mut self, atual: super::ProjectState) {
         if let Some(base) = self.undo_baseline.replace(atual) {

@@ -117,6 +117,8 @@ override PARES_SOBE_HRC: u32 = 4u;
 override JUNTOS_HRC: bool = false;
 // ⭐ §52 (handoff W6g) — `Config::hrc_salta_o_t_nulo` ([`r_de_cima_se`]).
 override T_NULO_HRC: bool = true;
+// ⭐ bug 7 (W6i) — `Config::hrc_meio_float_mais_proximo` ([`meio_float`]).
+override MAIS_PROXIMO_HRC: bool = true;
 const LADO_DO_VAZIO: u32 = 8u;
 
 struct Par {
@@ -124,8 +126,24 @@ struct Par {
     t: f32,
 }
 
+// ⭐ bug 7 — f32 → f16 ao MAIS PRÓXIMO (empate ao par) em toda placa: o WGSL deixa o arredondamento do
+// `pack2x16float` à placa (a RADV trunca, a NVIDIA arredonda — medido, `bug7_por_placa`). A placa dá o mais
+// próximo ou o de baixo; o de cima é p + 1 (o mesmo sinal, a magnitude acima). As duas distâncias são exatas
+// em f32 (x está entre os dois, que diferem por menos de ×2).
+fn meio_float(x: f32) -> u32 {
+    let p = pack2x16float(vec2<f32>(x, 0.0)) & 0xffffu;
+    if !MAIS_PROXIMO_HRC || (p & 0x7fffu) >= 0x7bffu {
+        return p;
+    }
+    let q = p + 1u;
+    let dp = abs(x - unpack2x16float(p).x);
+    let dq = abs(unpack2x16float(q).x - x);
+    return select(p, q, dq < dp || (dq == dp && (q & 1u) == 0u));
+}
+
 fn empacotar(p: Par) -> vec2<u32> {
-    return vec2<u32>(pack2x16float(p.r.xy), pack2x16float(vec2<f32>(p.r.z, p.t)));
+    return vec2<u32>(meio_float(p.r.x) | (meio_float(p.r.y) << 16u),
+        meio_float(p.r.z) | (meio_float(p.t) << 16u));
 }
 
 fn desempacotar(e: vec2<u32>) -> Par {

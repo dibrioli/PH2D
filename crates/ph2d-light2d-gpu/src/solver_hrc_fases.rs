@@ -217,7 +217,7 @@ impl Solver {
     /// ⭐ W6h §13 — INSTRUMENTO (a régua de registos): as constantes de pipeline da holográfica.
     #[doc(hidden)]
     #[must_use]
-    pub fn constantes_da_hrc(&self) -> Option<[(&'static str, f64); 13]> {
+    pub fn constantes_da_hrc(&self) -> Option<[(&'static str, f64); 14]> {
         self.hrc.as_ref().map(|h| h.constantes)
     }
 

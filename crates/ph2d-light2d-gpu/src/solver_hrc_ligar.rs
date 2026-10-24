@@ -70,7 +70,7 @@ pub(super) fn dobrar(g: u64) -> [u32; 3] {
 }
 
 /// As constantes de pipeline da holográfica (os `override` do `c2_hrc.wgsl`).
-pub(super) fn constantes(e: &Entradas<'_>, cones: u32, pares: u32) -> [(&'static str, f64); 13] {
+pub(super) fn constantes(e: &Entradas<'_>, cones: u32, pares: u32) -> [(&'static str, f64); 14] {
     let b = |x: bool| f64::from(u8::from(x));
     [
         ("PASSO_HRC", f64::from(e.escolhas.passo)),
@@ -86,5 +86,6 @@ pub(super) fn constantes(e: &Entradas<'_>, cones: u32, pares: u32) -> [(&'static
         ("PARES_SOBE_HRC", f64::from(pares)),
         ("JUNTOS_HRC", b(e.cfg.hrc_juntos())),
         ("T_NULO_HRC", b(e.cfg.hrc_salta_o_t_nulo)),
+        ("MAIS_PROXIMO_HRC", b(e.cfg.hrc_meio_float_mais_proximo)),
     ]
 }

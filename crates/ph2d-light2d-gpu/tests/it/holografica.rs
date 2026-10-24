@@ -651,3 +651,80 @@ fn os_niveis_em_textura_dao_o_mesmo_bit() {
         }
     }
 }
+
+/// ⭐⭐ bug 7 (W6i) — **os T e os R guardam-se em f16 ao MAIS PRÓXIMO em toda placa**
+/// (`Config::hrc_meio_float_mais_proximo`). A lei depende de como a placa arredonda (o dono, 24/10: «o mesmo
+/// bit» é por placa), e o teste mede-o antes e diz qual aplicou: onde o `pack2x16float` já arredonda (NVIDIA) a
+/// cura NÃO muda um bit; onde trunca (RADV) muda, e o viés do rebote (a truncagem só desce) sobe em todo ponto de todo degrau.
+#[test]
+fn o_f16_da_holografica_e_o_mais_proximo_em_toda_placa() {
+    use crate::g9_rebote::{luz_na_placa, pontos, sala};
+    use ph2d_light2d_ref::{OpcoesDoRebote, Rebote};
+    let Some(gpu) = gpu() else { return };
+    let a = crate::bug7_por_placa::arredondamentos(&gpu);
+    let arredonda = a[0] == [32_768, 0, 0];
+    let trunca = a[0] == [0, 32_768, 0];
+    assert!(
+        arredonda || trunca,
+        "o pack2x16float desta placa não é nem o mais próximo nem para zero: {a:?}"
+    );
+    let cena = sala();
+    let serie = Rebote::resolver(
+        &cena,
+        OpcoesDoRebote {
+            passo_m: 0.01,
+            rebotes: 300,
+        },
+    );
+    for (degrau, lado, texel) in DEGRAUS {
+        let luz = |cura: bool| {
+            let cfg = Config {
+                rebote: true,
+                hrc_meio_float_mais_proximo: cura,
+                ..com(Config::padrao(grade(lado, texel)), Some(HOLOGRAFICA_PADRAO))
+            };
+            let mut s = Solver::novo(&gpu, cfg).expect("solver");
+            for _ in 0..60 {
+                s.quadro(&gpu, &cena);
+            }
+            (ler_fluencia(&gpu, &s), s.grade_da_fluencia())
+        };
+        let ((com_cura, g), (sem, _)) = (luz(true), luz(false));
+        let diferentes = com_cura.iter().zip(&sem).filter(|(x, y)| x != y).count();
+        let vies = |flu: &[[f32; 3]]| {
+            pontos()
+                .iter()
+                .map(|&p| {
+                    let (l, r) = (luz_na_placa(flu, &g, p), serie.luz_em(p));
+                    (0..3).map(|c| l[c] / r[c] - 1.0).sum::<f64>() / 3.0
+                })
+                .collect::<Vec<_>>()
+        };
+        let (vc, vs) = (vies(&com_cura), vies(&sem));
+        eprintln!(
+            "{degrau} · {} · {diferentes} texels diferentes · viés com a cura {vc:+.4?} · sem {vs:+.4?}",
+            if arredonda {
+                "a placa arredonda"
+            } else {
+                "a placa trunca"
+            }
+        );
+        if arredonda {
+            assert_eq!(
+                diferentes, 0,
+                "{degrau}: onde a placa já arredonda a cura mudou {diferentes} texels"
+            );
+        } else {
+            assert!(
+                diferentes > 0,
+                "controlo — {degrau}: numa placa que trunca a cura não mudou nada"
+            );
+            for (k, (c, s)) in vc.iter().zip(&vs).enumerate() {
+                assert!(
+                    c > s,
+                    "{degrau} ponto {k}: o viés não subiu ({c:+.4} × {s:+.4})"
+                );
+            }
+        }
+    }
+}

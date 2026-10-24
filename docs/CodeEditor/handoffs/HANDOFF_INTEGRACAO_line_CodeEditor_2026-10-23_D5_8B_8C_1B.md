@@ -102,7 +102,10 @@ Nenhum: a superfície de colisão diz «intocado» e o grep do diff não acha `N
 
 Cena 9, o passo novo ③. As cenas 8 e 9 já estão aprovadas.
 
-1. `cd /home/enio/Documentos/Projetos/PH2D && PH2D_CODE_SMOKE=9 cargo run -p ph2d-host-desktop --profile smoke`
+1. Depois de integrado: `cd /home/enio/Documentos/Projetos/PH2D && PH2D_CODE_SMOKE=9 cargo run -p ph2d-host-desktop --profile smoke`.
+   **Antes** de integrar, a pasta principal NÃO tem a cena 9 (`CENAS = 7` no main: o app abre vazio — mordeu o dono
+   em 24/10); o binário pronto é o da linha:
+   `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor && PH2D_CODE_SMOKE=9 ./target/smoke/ph2d-host-desktop`
 2. Faça o ① e o ② como no script, com Ctrl+S. Depois segure **Alt** e arraste **«Door»** da Hierarquia para a linha vazia logo abaixo do comentário ③.
 3. **Sem apertar Ctrl+S**, a aba continua com ●. Em cerca de 1,5 s aparece no cartão **Script** do Inspector a linha **«door  Door»**. Agora Ctrl+S, e na aba **Cena** a porta sobe e desce.
 4. **Deu errado se** o campo «door» só aparece depois do Ctrl+S, ou se o cartão Script fica sem «giro».

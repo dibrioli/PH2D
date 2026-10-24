@@ -241,3 +241,14 @@
     placas; controlo (um V-ciclo a menos) 155 496 e 43 913 texels (a vista vazia não tem miolo: 0). Ligada em toda
     placa; `PH2D_LIGHT2D_SALTA_FORA=0` volta a gravar. Portão `o_custo_do_miolo::saltar_o_fora_do_miolo_nao_muda_um_bit`
     (0 texels em toda placa — a conta é a mesma).
+  - *Gate alargado (`c9b0c63964`)* `saltar_o_fora_nao_muda_um_bit_com_a_cena_a_mexer`: 8 quadros (disco opaco em
+    passo fracionário que some e volta, translúcido 0,45 que entra e sai, corpo 0,8, lâmpada a andar, `regiao_fina`
+    a mudar), dois Solvers `salta` true × false, fluência bit a bit em CADA quadro, 4 configs (fábrica · base fora
+    do grupo · base fora + bloco 1 = `PH2D_LIGHT2D_CORTES=0` · base no grupo + bloco 1): 0 texels por quadro nas duas
+    placas; controlo (um V-ciclo a menos) 864 093 RTX / 864 154 Radeon. Mutação (NVIDIA) 4/4 morrem: M1 relaxa salta
+    o anel 157 707 · M2 desce salta os de dentro 157 704 · M3 padrão desligado (assert) · M4 salto no nível 0 617 654.
+  - ⚠️ *Fragilidade:* «ninguém o lê» vale porque toda leitura filtra por `k`; um leitor novo do `a(l)` (bilinear
+    por `textureSample`, visualização da pirâmide) veria lixo e o portão só olha a FLUÊNCIA.
+- **Robustez (fecho, `883324c3ac`):** `o_pack_da_placa_trunca` deixou de dar pânico — falha da medição (placa perdida,
+  leitura recusada) responde «trunca» (paga a correção, o mesmo bit onde a placa arredonda) num âmbito de erro
+  próprio, que não se lê como recusa da montagem; `paga_o_mais_proximo` saiu do `solver.rs` (701 → 699).

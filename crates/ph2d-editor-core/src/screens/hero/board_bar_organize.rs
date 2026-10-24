@@ -9,14 +9,12 @@
 use super::look::stroke;
 use super::{Item, Selected};
 use crate::icons::IconId;
-use crate::paint::{
-    fill_rounded_rect, paint_icon as icon, paint_text_centered, rect_for_label, resolve,
-};
+use crate::paint::{fill_rounded_rect, paint_icon as icon, resolve};
 use crate::zones::Rect;
 use ph2d_board_edit::{Align, Axis, Command, Editor, Order, Tool};
 use ph2d_board_model::{BoardDoc, Dash, History};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Theme};
 use ph2d_vector::{BezPath, Color, VectorScene};
 
 /// Um controlo de organizar.
@@ -337,7 +335,7 @@ pub(super) fn paint_icon(
 }
 
 /// ⭐ **O aviso de uma recusa**, no topo do quadro e fora de `keep` (o lugar do outro aviso,
-/// [`super::super::board_alert::banner_rect`]), enquanto é fresco (a duração de um toast).
+/// [`super::super::board_alert::banner`]), enquanto é fresco (a duração de um toast).
 pub(super) fn paint_notice(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -345,18 +343,16 @@ pub(super) fn paint_notice(
     (area, keep): (Rect, &[Rect]),
     key: &'static str,
 ) -> Rect {
+    use super::super::board_alert::{banner, paint_lines};
     let text = ph2d_i18n::tr(key);
-    let font = TypeToken::Sm.px();
-    let w = rect_for_label(text_system.prefix_width(text, font));
-    let r = super::super::board_alert::banner_rect(area, keep, w);
+    let (r, split) = banner(text_system, (area, keep), text, 0.0);
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
-    paint_text_centered(
+    paint_lines(
         text_system,
         scene,
-        text,
+        (text, split),
         r,
-        font,
         resolve(ColorToken::Text1, theme),
     );
     r

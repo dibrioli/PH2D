@@ -277,9 +277,50 @@ fn the_top_notice_is_never_under_the_chrome() {
             }
         }
     }
-    eprintln!("sem lugar livre (o aviso tapa, por cima): {no_room:?}");
     assert!(seen > 0, "nenhum aviso pintado");
     assert!(bad.is_empty(), "{}", bad.join("\n"));
+    // Sem lugar para uma linha, a frase parte-se em duas antes de tapar (W26).
+    assert!(
+        no_room.is_empty(),
+        "o aviso tapa sem lugar livre: {no_room:?}"
+    );
+}
+
+/// W26 — sem lugar para uma linha (a janela estreita com os painéis da direita), a frase da recusa sai em
+/// DUAS linhas que cabem inteiras na faixa (nenhuma com reticências) e voltam a ser a frase; com lugar,
+/// numa linha só.
+#[test]
+fn a_notice_without_room_breaks_in_two_lines_that_fit() {
+    use crate::paint::label_budget;
+    use crate::screens::hero::board_alert::{BANNER, split_in_two};
+    let key = "board.images.unreadable";
+    let text = ph2d_i18n::tr(key);
+    let one_h = ph2d_tokens::Spacing::Xl2.px();
+    for (w, right, two) in [
+        (1366.0, false, false),
+        (800.0, true, true),
+        (600.0, true, true),
+    ] {
+        let mut t = T::new();
+        t.vp_w = w;
+        t.paint();
+        if right {
+            open_right_panels(&mut t);
+        }
+        t.hero.documents.live.notice = Some((key, std::time::Instant::now()));
+        t.paint();
+        let r = BANNER.with(std::cell::Cell::get).expect("aviso pintado");
+        assert_eq!(r.h > one_h, two, "{w}: duas linhas = {two}, faixa {r:?}");
+        if two {
+            let font = ph2d_tokens::TypeToken::Sm.px();
+            let (i, widest) = split_in_two(&mut t.ts, text, font).expect("a frase tem espaços");
+            assert!(
+                widest <= label_budget(r.w),
+                "{w}: a linha de {widest} px não cabe em {r:?}"
+            );
+            assert_eq!(format!("{} {}", &text[..i], &text[i + 1..]), text);
+        }
+    }
 }
 
 /// Um lugar `w×h` do quadro, à folga `Spacing::Lg` de todo o clicável e de `extra` — procurado à força,

@@ -16,7 +16,7 @@ o dock do Inspector arrastado para 230…280 px. [`main_x_linha_por_largura.png`
 faixa de larguras ela prefere manter o controlo inteiro e corta o nome, em vez de EMPILHAR. Report com foto:
 [`report_do_dono.png`](report_do_dono.png).
 
-## Curado em 24/10 (`f721e44c6e`)
+## Curado em 24/10 (`a119438382`)
 
 O mecanismo NÃO era a linha nem a secção: era a coluna do PAINEL (`ColunaDoPainel`). Ela é uma só por painel e o
 tecto dela era o `min` dos tectos de todas as linhas — a secção de nomes curtos (`Game Camera`, `Camera Limits`)
@@ -27,3 +27,6 @@ E a `Game Camera` media só os nomes dos campos — `Seccao::com_o_nome` soma o 
 Régua: `ph2d-panel-inspector/tests/it/a_faixa_media_do_dock_nao_corta_nomes.rs` — ⛔ pelo `paint_with_layout` cada
 secção responde sozinha e a régua passava VERDE sobre o defeito; pela pintura do registo (a da coluna do painel),
 dock 230..=320 de 1 em 1 px: **55 larguras com nomes cortados → 0**.
+
+No app real (`ab.sh` com o binário da linha, arrasto a `x` = 1330 · 1345 · 1360, dock ≈ 270 · 255 · 240):
+[`depois_da_cura.png`](depois_da_cura.png) — nomes inteiros, os pares empilham.

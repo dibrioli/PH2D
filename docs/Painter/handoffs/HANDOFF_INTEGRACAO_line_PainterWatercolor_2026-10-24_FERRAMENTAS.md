@@ -62,8 +62,7 @@ Nenhum era `main` verde a tornar-se vermelho por flake; todos reproduzem sozinho
 | 7 | `architecture_toda_flake_de_carga…` | os dois `macro_estado_inicial` na faixa isolada sem linha própria na tabela | saem da isolada (ficam na pesada, como no main) |
 | 8 | `instructional_docs_only_cite_paths…` | o CLAUDE.md citava `project-memory/feedback_full_suite…md`, que está **por rastrear** no checkout principal | o link sai (a regra fica no texto). ⚠️ o ficheiro de memória continua por rastrear |
 | 9 | `duas_pinceladas_que_se_cruzam…` (Macros W17) | **bisect**: nasce no commit «a Aquarela nasce com os números do painel do dono». 3 de 5 454 texels da Aquarela a 1–2 níveis do papel (a cauda do aro), tecto 0 | a folga da água (1 %) que o Wet já tinha passa à Aquarela; um retângulo apagado são centenas |
-| 10 | `a_cena_4_conduzida_passo_a_passo` (CodeEditor) | espera de 30 s pela lista do `luau-lsp` sob `load 119`; zero linhas de `code-scenes` no diff; sozinho 1,0 s, 12/12 em paralelo; com 120 laços de CPU (`load 13 → 38`) 6–16 s, 4/4 | **promovido a flake de carga** (tabela + faixa isolada, as duas escritas) |
-| 11 | `a_cena_3_conduzida_passo_a_passo` (CodeEditor) | a irmã da cena 4, na 2.ª corrida do ship (a cena 4 passou nela): a mesma espera de 30 s pelo `luau-lsp` sob a suíte; sozinha 0,5 s | flake de carga, as duas escritas (tabela + faixa isolada) |
+| 10–11 | `a_cena_3/4/5_conduzida_passo_a_passo` (CodeEditor) | espera de 30 s pela lista do `luau-lsp`. **Não é carga**: reproduz em calma (`load` 1–6) no próprio `main` `5af68b7cbe` (3 corridas em 4 da crate; 12 cópias da cena 4 em paralelo passam) — a resposta perde-se e a seguinte passa em 0,3 s. Zero diff em `code-scenes`/`ph2d-code-lsp` | `retries = 3` só nas três (a tabela de flakes diz a verdade). **DEFEITO ABERTO do CodeEditor** — §5 |
 | 12 | TIMEOUT `censo_dos_controlos::a_linha_esmaecida_e_a_que_nao_age` e `seam_estado_escondido::cada_interruptor_…` | faixa pesada de 6 × 60 s: sozinhos 51,1 · 70,3 s; sob a suíte 327,0 · 357,4 s (passaram a 91–99 % do prazo) e na corrida seguinte 360 s (mortos) = 5,1–6,4× | a faixa pesada passa a **10 × 60 s** (8,5× o mais lento sozinho). É o sintoma do §5 (a população de cenas), não o fim dele |
 
 Vermelhos que já vinham do `main` (ship.sh, linhas de outras): `typos` (`Mch` em `autokey_smoke_componentes.rs`, UIUX F27) e
@@ -77,6 +76,7 @@ da spike, que é workspace própria).
   `cada_preset_parece_a_sua_midia` **26,8 → 51,9 → 36,9 s**; `seam_estado_escondido` 70,3 s (nasceu a 71). O resto é
   **população** (fábrica 18 → 29 presets do Wet, 23 → 36 cenas; o Blender Soft é ⅓ da largura): por preset está abaixo
   do de 18/10. O chão só desce com **um passo de água mais rápido** (trabalho de motor) ou **menos cenas** (decisão de produto).
+- ⛔ **Defeito do CodeEditor, já no main:** as cenas 3/4/5 do editor conduzido perdem a resposta de completação do `luau-lsp` (30 s e vermelho; a corrida seguinte passa em 0,3 s) mesmo em calma. Não é desta linha (reproduzido em `5af68b7cbe`). O `retries = 3` só tapa o `main`; a causa (corrida entre o pedido e o servidor pronto?) é da linha CodeEditor.
 - Macros × tinta por assar: a gravação da família «mundo» lê a sprite (sem a tinta do Painter ainda não assada). Aplicar já
   vai pelo documento do Painter. Se o dono pintar e gravar o mundo sem sair da sprite, a imagem embutida é a de antes.
 - Vindos de FERRAMENTAS_2 §4: (a) **produto** — a Borracha na Aquarela apaga igual ao Digital: tirar do menu, ou construir

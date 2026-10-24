@@ -5,6 +5,8 @@
 //! [`registry::ComponentRegistry`].
 
 pub mod commands;
+/// ⭐ A diferença por LINHA entre duas fotografias (a família «mundo» das macros, W19).
+pub mod diff;
 /// ⭐ A captura INCREMENTAL do desfazer (ADR-0164 §2.7 / plano F2) — módulo irmão do `save`,
 /// não uma segunda porta: ele reaproveita as linhas que o `world_to_snapshot` produziria.
 pub mod incremental;
@@ -28,6 +30,7 @@ pub use registry::{
     ComponentRegistry, ComponentTypeEntry, ComponentTypeId, RegistryError, register_ecs_components,
     stable_type_id,
 };
+pub use diff::{LinhaMudada, linhas_que_mudam};
 pub use save::{EntitySnapshotRow, SaveError, WorldSnapshot, snapshot_to_world, world_to_snapshot};
 pub use save_v1::{
     EntitySnapshotRowV1, WorldSnapshotV1, migrate_v1_to_v2, next_free_after_migration,

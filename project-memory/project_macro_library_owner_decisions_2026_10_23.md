@@ -18,6 +18,10 @@ Dono, 23/10 (pedido: «criação, salvamento, exportação, importação de macr
    independente. A família «mundo» (collider, física) = **W19**; na W18 a porta declara-se recusada.
 8. O **Motion também**, igual ao Painter.
 
+W19 (24/10), o dono delegou («tome as melhores decisões sem olhar custos e siga»), decidido pela linha:
+9. Ao aplicar, a física da macro cai sobre o **chão do projecto de destino** e sobre o que veio dentro dela.
+10. As **teclas do jogador** durante «Simular» entram na macro (o troço da fita), para ela ser independente.
+
 **Why:** até 23/10 a macro só vivia como componente dentro do projeto (sem ficheiro, sem biblioteca).
 **How to apply:** prompt `docs/Macros/handoffs/PROMPT_W18_biblioteca_de_macros_2026-10-23.md` na
 `line/Macros-Automação`; plano + ADR antes de código. Relacionado: [[project_code_editor_owner_decisions_2026_10_15]].

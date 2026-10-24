@@ -75,8 +75,10 @@ collider, simular) toca de novo onde for aplicado.
   verdade: a reprodução recozida tem de dar o mesmo bit (determinismo, ADR-0131 D7); se não der, a macro **diz**
   que a física deste projecto deu outro resultado (a cena de destino tem outros obstáculos) — nunca corrige.
 - ⛔ Recusa: gravar poses por quadro (o pedido; e seria «assar» — ADR-0131 D11 é opt-in do artista).
-- ⛔ Recusa: um corpo com `PlayerSignals` a receber entrada durante a gravação: a fita do jogador é do projecto
-  (`tape`), não da macro. Recusa nomeada (`…refusal.player_input`) até haver decisão do dono.
+- **A entrada do jogador vai junto** (decisão 10, 24/10): o troço da fita (`tape`) dos tiques do `Simula`, para os
+  corpos da sub-árvore, entra no evento; a reprodução dirige o rapier privado com ela (o mesmo laço de replay da
+  ponte). A macro é independente da fita do projecto.
+- **Obstáculos** (decisão 9, 24/10): o rapier privado recebe os corpos `Static` da cena de DESTINO (e os da macro).
 
 ### 2.4 «Como toca?» — escrita conduzida pela porta do preview (escolha a MEDIR, §3)
 - O documento tem o **FIM** (como no Painter e no Motion desde a W18): aplicar «Novo» faz nascer todos os objectos
@@ -203,4 +205,4 @@ mensagem ao dono ser escrita, e a cena é fotografada (`import -window`, nunca `
 | comparar o `ProjectState` inteiro para achar o passo | diz «mudou», não «o quê» |
 | `field_id` por campo dentro do componente | não existe para os 91 tipos (medido em `ph2d-ecs/src/instantiate.rs`); blob inteiro |
 | um 2.º remapeador de referências para a macro | o censo `RefKind::Object` já liga cada campo ao seu; duas portas divergem |
-| a fita de entrada do jogador na macro | é do projecto; recusa nomeada até decisão do dono |
+| reproduzir o `Simula` lendo a fita do PROJECTO | a macro aplicada noutro projecto não a tem — o troço vai dentro do evento (decisão 10) |

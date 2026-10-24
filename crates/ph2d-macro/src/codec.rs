@@ -17,6 +17,7 @@
 //!            — troca/insercao: 1 evento (varint) · 2 carga (bytes)
 //! Track    : … · 8 nasce (1.3, `exige` "objeto"): 1 inicio_us (varint) · 2 nome (utf8)
 //!            · 3 local (7 × f32le) · 4 pai+1 (varint; ausente = o objecto Macro)
+//! Track    : family "mundo" (1.4, `exige` "mundo"): a carga é da família ([`FAMILIA_MUNDO`])
 //! MacroDoc : 4, 5, … no topo são do FICHEIRO ([`crate::ficheiro`]): o componente nunca as escreve, e
 //!            [`read_com_extras`] devolve-as a quem as conhece
 //! ```
@@ -33,9 +34,9 @@ use crate::rec::{Cursor, Record, put_field, varint_bytes};
 
 pub const MAGIC: &[u8; 9] = b"PH2DMACRO";
 pub const MAJOR: u16 = 1;
-pub const MINOR: u16 = 3;
+pub const MINOR: u16 = 4;
 /// O que este leitor sabe aplicar (`exige`).
-pub const SABE: &[&str] = &[EXIGE_ETAPAS, EXIGE_DESLOCA, EXIGE_OBJETO];
+pub const SABE: &[&str] = &[EXIGE_ETAPAS, EXIGE_DESLOCA, EXIGE_OBJETO, EXIGE_MUNDO];
 /// As edições das etapas (1.1).
 pub const EXIGE_ETAPAS: &str = "etapas";
 /// A etapa que anda sozinha no tempo (`EdicaoDeEtapa::desloca_us`, 1.2): um leitor sem ela tocá-la-ia
@@ -44,6 +45,11 @@ pub const EXIGE_DESLOCA: &str = "etapa.desloca";
 /// O objecto da trilha nasce dentro do objecto Macro ([`crate::Nascimento`], 1.3): um leitor sem ela
 /// tocaria a pintura no objecto que tem a `Macro`, calado.
 pub const EXIGE_OBJETO: &str = "objeto";
+/// A família «mundo» (1.4, W19: componentes, objectos e «Simular» dentro do objecto Macro): um leitor
+/// sem ela tocaria a pintura e calaria o collider e a queda.
+pub const EXIGE_MUNDO: &str = "mundo";
+/// A chave da família «mundo» ([`crate::Track::family`]) — a do núcleo, porque é ela que decide o `exige`.
+pub const FAMILIA_MUNDO: &str = "mundo";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CodecError {
@@ -102,8 +108,11 @@ pub fn write_com_extras(doc: &MacroDoc, extras: &[(u32, &[u8])]) -> Vec<u8> {
         .iter()
         .any(|t| t.edicoes.iter().any(|e| e.desloca_us != 0));
     let objeto = doc.tracks.iter().any(|t| t.nasce.is_some());
-    let minor: u16 = if objeto {
+    let mundo = doc.tracks.iter().any(|t| t.family == FAMILIA_MUNDO);
+    let minor: u16 = if mundo {
         MINOR
+    } else if objeto {
+        3
     } else if desloca {
         2
     } else {
@@ -128,6 +137,9 @@ pub fn write_com_extras(doc: &MacroDoc, extras: &[(u32, &[u8])]) -> Vec<u8> {
     }
     if objeto {
         put_field(&mut rec, 3, EXIGE_OBJETO.as_bytes());
+    }
+    if mundo {
+        put_field(&mut rec, 3, EXIGE_MUNDO.as_bytes());
     }
     for (tag, b) in extras {
         put_field(&mut rec, *tag, b);

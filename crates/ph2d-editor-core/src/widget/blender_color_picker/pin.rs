@@ -1,27 +1,28 @@
 //! O pino do cabeçalho do seletor (à esquerda do `×`): fixado = o glifo aceso (`Accent`) e um
-//! Down fora deixa de o fechar ([`crate::interaction::WidgetStore::picker_pinned`]).
+//! Down fora deixa de o fechar (`WidgetStore::picker_pinned`).
+//!
+//! ⚠️ Não importa `crate::interaction`: o registo no `HitIndex` fica em quem chama (`paint.rs`, que já
+//! tem o `use`) — a aresta `widget → interaction` só encolhe (`architecture_the_foundation_modules_form_a_dag`).
 
 use crate::icons::IconId;
-use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{paint_icon, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
-/// Pinta e regista o pino em `slot` — o rect que se pinta é o que se clica. `id == 0` = sem pino.
+/// Pinta o pino em `slot`; devolve se o pintou (`id == 0` = sem pino) — quem chama regista o MESMO rect.
 pub(super) fn paint_pin(
     scene: &mut VectorScene,
     theme: Theme,
-    store: &WidgetStore,
-    hit_index: &mut HitIndex,
+    fixado: bool,
     id: NodeId,
     slot: Rect,
-) {
+) -> bool {
     if id.0 == 0 {
-        return;
+        return false;
     }
-    let cor = if store.picker_pinned() {
+    let cor = if fixado {
         ColorToken::Accent
     } else {
         ColorToken::Text3
@@ -33,5 +34,5 @@ pub(super) fn paint_pin(
         resolve(cor, theme),
         StrokeToken::Default.px(),
     );
-    hit_index.register(id, slot);
+    true
 }

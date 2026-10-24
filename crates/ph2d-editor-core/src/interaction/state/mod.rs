@@ -437,12 +437,8 @@ pub struct WidgetStore {
     /// without this snapshot the inspector loses the request
     /// before it can read it.
     pub(super) last_context_menu: Option<ContextMenuRequest>,
-    /// Currently-active color picker target. `Some(id)` means the
-    /// floating BlenderColorPicker is open and editing the color
-    /// stored at `widget_colors[id]`. `None` hides the picker. Set
-    /// by clicks on color targets (section color circles, color
-    /// swatches, …) and cleared by any click outside the picker
-    /// and outside another color target.
+    /// The open BlenderColorPicker's target (edits `widget_colors[id]`); `None` hides it. Set by a click on a
+    /// color target, cleared by a click outside the picker and outside another target.
     pub(super) picker_target: Option<NodeId>,
     /// O pino do seletor ([`picker_pin_ops`]): fixado = um Down fora não o fecha.
     pub(super) picker_pinned: bool,

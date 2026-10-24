@@ -2143,7 +2143,11 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    «Jitter» (Stroke, com as linhas antigas do cartão). O Texture e o Stroke continuam a nascer abertos.
     // ⬇️ `1 554 → 1 545` em 2026-10-22 (navegador de presets, dono): o Paint Mode subiu para o cartão do topo,
     //    acima do Preset — a fileira é a mesma, o que sai é a junta do cartão em que ela vivia no Digital.
-    ("painter_layers", 1545.0),
+    // ⬆️ `1 545 → 1 570` em 2026-10-24 (integração da PainterWatercolor), e NÃO é uma secção a nascer aberta: é a
+    //    fileira **Flow** à vista abaixo da Strength (ordem do dono 24/10, «Flow à vista»), `ROW_H_PX (25)` exactos.
+    //    MEDIDO pela porta deste gate com `le_o_flow()` forçado a falso: volta a `1 545`. ⚠️ Recolher o Brush
+    //    esconderia o controlo que o dono pediu.
+    ("painter_layers", 1570.0),
     // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):

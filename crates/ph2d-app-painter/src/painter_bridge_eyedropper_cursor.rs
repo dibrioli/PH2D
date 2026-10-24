@@ -147,7 +147,10 @@ pub(crate) fn desenha(
     let (escuro, claro) = (token(ColorToken::Bg0), token(ColorToken::Text1));
     let px = |v: f32| f64::from(v * escala);
     let (fio, borda) = (px(StrokeToken::Thin.px()), px(StrokeToken::Heavy.px()));
-    let raio = px(ph2d_tokens::Radius::Sm.px());
+    let raio = px(ph2d_editor_core::paint::frame_radius(
+        hero.theme,
+        ph2d_tokens::Radius::Sm.px(),
+    ));
     let caixa = RoundedRect::from_rect(p.caixa, raio);
     let meio = p.caixa.center().y;
     let [r, g, b, _] = p.nova;

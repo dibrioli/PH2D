@@ -156,7 +156,7 @@ fn usar_como_pincel_ou_papel_le_o_documento_vivo() {
 }
 
 /// Todo leitor de pixels de sprite da shell, com o veredito. Um leitor novo reprova até entrar aqui.
-const LEITORES: [(&str, &str); 23] = [
+const LEITORES: [(&str, &str); 24] = [
     ("image_export.rs", "lê: a tinta (escolhe)"),
     (
         "sheet_bake.rs",
@@ -227,6 +227,10 @@ const LEITORES: [(&str, &str); 23] = [
     (
         "render_loop/fase_extract_inputs.rs",
         "macros: leem o Painter ligado (`o_painter`)",
+    ),
+    (
+        "render_loop/fase_macros.rs",
+        "macros: aplicar lê o documento do Painter antes da sprite (`documento_da_imagem`); a gravação do «mundo» lê a sprite ao fechar",
     ),
 ];
 

@@ -39,8 +39,10 @@ ph2d-panel-macros = { path = "../ph2d-panel-macros" }
 ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
 # A4 (W9): o relógio do clipe que o Parar tem de re-armar.
 ph2d-core = { path = "../ph2d-core" }
-# A sonda da cena 7: o encaixe vivo do Painter (a lei do «por cima») e a `Sprite` do alvo.
-ph2d-app-painter = { path = "../ph2d-app-painter" }
+# O clipe que vive com o objecto Macro (o undo global tira-o): `aplicar_motion`.
+ph2d-timeline-persist = { path = "../ph2d-timeline-persist" }
+# A sonda da cena 7: o encaixe vivo (a lei do «por cima», na folha das duas famílias) e a `Sprite`.
+ph2d-sprite-screen = { path = "../ph2d-sprite-screen" }
 ph2d-render = { path = "../ph2d-render" }
 
 [lints]

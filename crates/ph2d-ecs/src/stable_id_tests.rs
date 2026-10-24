@@ -241,3 +241,32 @@ fn an_id_resolves_back_to_its_entity() {
         "'nenhum' nunca resolve para uma entidade",
     );
 }
+
+/// **Os bits atravessam o respawn pela identidade**: o que voltou diz os bits novos, o que não voltou
+/// espera pelo refazer, e o `StableId` vazio não conta.
+#[test]
+fn os_bits_atravessam_o_respawn_pela_identidade() {
+    let mut antes = World::new();
+    let a = antes.spawn(StableId(11)).id().to_bits();
+    let b = antes.spawn(StableId(22)).id().to_bits();
+    let vazio = antes.spawn(StableId::NONE).id().to_bits();
+    let mut r = ReataPorIdentidade::default();
+    r.antes(&antes, [a, b, vazio]);
+
+    let mut depois = World::new();
+    for _ in 0..5 {
+        depois.spawn_empty();
+    }
+    let a2 = depois.spawn(StableId(11)).id().to_bits();
+    depois.spawn(StableId::NONE);
+    assert_ne!(a, a2, "controlo: o respawn mudou os bits");
+    assert_eq!(r.depois(&depois), [(a, a2)].into(), "só quem voltou");
+
+    let b2 = depois.spawn(StableId(22)).id().to_bits();
+    assert_eq!(
+        r.depois(&depois),
+        [(b, b2)].into(),
+        "o que esperava volta no refazer"
+    );
+    assert!(r.depois(&depois).is_empty(), "e sai da espera");
+}

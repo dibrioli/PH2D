@@ -254,13 +254,15 @@ fn a_cena_7_percorre_o_caminho_inteiro() {
         .world()
         .get::<Transform>(Entity::from_bits(por_cima))
         .copied();
-    let enc = ph2d_app_painter::macro_track::encaixe_vivo::do_mundo(
+    // A lei do encaixe vivo que o Painter toca (a folha das duas famílias).
+    let enc = ph2d_sprite_screen::gravacao_no_alvo::gravacao_no_alvo(
         b.sim.world(),
         Entity::from_bits(por_cima),
         Entity::from_bits(maior),
         MAIOR,
         gravado,
     )
+    .map(|afim| ph2d_tool_painter::macro_track::encaixe::Encaixe { afim })
     .expect("o encaixe");
     let dez = composto(fim::documento_no_fim(&t, Some(enc)).expect("toca"));
     let t10 = traco(&dez);

@@ -292,6 +292,48 @@ pub fn entity_with_stable_id(world: &World, id: StableId) -> Option<Entity> {
         .map(|(e, _)| e)
 }
 
+/// **Os bits que atravessam um respawn** (o restauro do undo dá bits novos ao mundo inteiro): quem
+/// guarda algo por bits fora do mundo (os documentos do Painter) lê em [`Self::antes`] a identidade de
+/// cada um, e [`Self::depois`] diz `bits de antes → bits de agora`. Quem não voltou fica à espera (o
+/// refazer devolve-o com outros bits). O `StableId` vazio não conta.
+#[derive(Clone, Debug, Default)]
+pub struct ReataPorIdentidade {
+    /// Identidade → os bits sob que estava guardado.
+    quem: std::collections::BTreeMap<u64, u64>,
+}
+
+impl ReataPorIdentidade {
+    /// Antes do restauro: a identidade de cada um dos `bits` vivos.
+    pub fn antes(&mut self, world: &World, bits: impl IntoIterator<Item = u64>) {
+        for b in bits {
+            let sid = Entity::try_from_bits(b).and_then(|e| world.get::<StableId>(e));
+            if let Some(s) = sid.filter(|s| !s.is_none()) {
+                self.quem.insert(s.0, b);
+            }
+        }
+    }
+
+    /// Depois do restauro: `de → para` de cada identidade que voltou com bits diferentes.
+    #[must_use]
+    pub fn depois(&mut self, world: &World) -> std::collections::BTreeMap<u64, u64> {
+        let agora: std::collections::BTreeMap<u64, u64> = world
+            .try_query::<(Entity, &StableId)>()
+            .map(|mut q| q.iter(world).map(|(e, s)| (s.0, e.to_bits())).collect())
+            .unwrap_or_default();
+        let mut de_para = std::collections::BTreeMap::new();
+        self.quem.retain(|sid, de| match agora.get(sid) {
+            Some(&para) => {
+                if para != *de {
+                    de_para.insert(*de, para);
+                }
+                false
+            }
+            None => true,
+        });
+        de_para
+    }
+}
+
 #[cfg(test)]
 #[path = "stable_id_tests.rs"]
 mod tests;

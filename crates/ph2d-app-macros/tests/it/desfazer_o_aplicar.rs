@@ -1,12 +1,12 @@
 //! **Desfazer e refazer o aplicar devolve a pintura** (W18): o restauro do undo respawna o mundo do
 //! instantâneo (`ProjectState::restore` da shell: tira tudo o que tem `Transform`, `snapshot_to_world`)
 //! e a imagem volta com bits novos — o documento do Painter passa a eles pela identidade estável
-//! ([`Reata`], a porta que a shell chama à volta do restauro). Sem ele a imagem mostraria só o atlas.
+//! ([`ReataPorIdentidade`] e `PainterTool::reata_documentos`, as duas portas que o `Reata` da família
+//! Painter junta à volta do restauro da shell). Sem elas a imagem mostraria só o atlas.
 
 use crate::aplicar::{banca, grava, pasta};
-use ph2d_app_painter::documentos_no_projecto::Reata;
 use ph2d_ecs::scene::{ComponentRegistry, WorldSnapshot, incremental, snapshot_to_world};
-use ph2d_ecs::{ChildOf, Entity, Macro, Name, SimWorld, Transform, With};
+use ph2d_ecs::{ChildOf, Entity, Macro, Name, ReataPorIdentidade, SimWorld, Transform, With};
 use ph2d_editor_core::macro_edits::{MacroRequest, OndeAplicar};
 use ph2d_tool_painter::PainterTool;
 use std::collections::BTreeMap;
@@ -23,10 +23,10 @@ fn restaura(
     s: &WorldSnapshot,
     sim: &mut SimWorld,
     p: &mut PainterTool,
-    r: &mut Reata,
+    r: &mut ReataPorIdentidade,
     reg: &ComponentRegistry,
 ) {
-    r.antes(sim, p);
+    r.antes(sim.world(), p.document_entities());
     let w = sim.world_mut();
     let todas: Vec<Entity> = w
         .query_filtered::<Entity, With<Transform>>()
@@ -36,7 +36,7 @@ fn restaura(
         let _ = w.despawn(e);
     }
     snapshot_to_world(w, s, reg).expect("restaura");
-    r.depois(sim, p);
+    p.reata_documentos(&r.depois(sim.world()));
 }
 
 /// Os píxeis do documento que o Painter guarda sob `bits` (ligado ou guardado), sem o ligar.
@@ -91,7 +91,7 @@ fn desfazer_e_refazer_o_aplicar_devolve_a_pintura() {
     // Depois do último quadro (a água do Wet Paint anda a cada um).
     let da_solta = pixeis(&b.painter, solta).expect("pintada");
 
-    let mut r = Reata::default();
+    let mut r = ReataPorIdentidade::default();
     restaura(&pre, &mut b.sim, &mut b.painter, &mut r, &reg);
     let w = b.sim.world_mut();
     let com_gravacao = w

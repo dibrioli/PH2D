@@ -1,23 +1,21 @@
-//! W18 (`docs/Macros/16_W18_plano.md` §2.7): uma macro do Motion GRAVADA aplicada pela porta da
-//! família MACROS (`ph2d_app_macros::aplicar::aplica`) — novo e por cima — com o `MotionState` real;
-//! e o aplicar inteiro é UM passo: o undo global (o mundo reposto pelo snapshot) tira o objecto Macro,
-//! o clipe e os nós; o refazer devolve os três.
+//! W18 (`docs/Macros/16_W18_plano.md` §2.7): uma macro do Motion GRAVADA aplicada pela porta que a
+//! família MACROS chama (`TranspoeDaFamilia::aplica`) — novo e por cima — com o `MotionState` real; o
+//! passo fica preso à vida do objecto Macro: o undo global (o mundo reposto pelo snapshot) tira-o com
+//! os nós, o refazer devolve-os. O mundo que o aplicar faz nascer e o clipe são da MACROS
+//! (`ph2d-app-macros/tests/it/aplicar_motion.rs`).
 
 use super::roteiro::CENA;
 use super::smoke::grava_gestos;
 use super::transpor::{fim, tests::canon};
 use crate::motion_objeto::{undo_e_do_global, upkeep};
 use crate::motion_state::MotionState;
-use ph2d_app_macros::aplicar::{self, Imagem, Portas};
-use ph2d_app_macros::{Cena, Familias};
 use ph2d_ecs::scene::{ComponentRegistry, WorldSnapshot, register_ecs_components};
 use ph2d_ecs::{ChildOf, Entity, Macro, MotionGenerator, Name, SimWorld, StableId, Transform};
-use ph2d_editor_core::macro_edits::OndeAplicar;
+use ph2d_editor_core::macro_tutorial::TranspoeDaFamilia;
 use ph2d_macro::ficheiro::Ficheiro;
 use ph2d_macro::{MacroDoc, MacroTime, Nascimento, RefRect, Track};
 use ph2d_motion_doc::MotionDoc;
 use ph2d_nodegraph::graph::Edge;
-use ph2d_timeline::{TimelineIntent, TimelineState};
 
 /// O objecto que gravou.
 const DONO: u64 = 7;
@@ -53,21 +51,9 @@ fn com_ficha() -> Ficheiro {
     ficheiro(t)
 }
 
-fn raiz(sim: &mut SimWorld, nome: &str) -> u64 {
-    let b = sim
-        .world_mut()
-        .spawn((Name::new(nome), Transform::IDENTITY))
-        .id()
-        .to_bits();
-    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    b
-}
-
 struct Palco {
     sim: SimWorld,
     motion: MotionState,
-    tl: TimelineState,
-    intents: Vec<TimelineIntent>,
     reg: ComponentRegistry,
 }
 
@@ -81,48 +67,35 @@ impl Palco {
         let mut p = Self {
             sim: SimWorld::new(),
             motion,
-            tl: TimelineState::default(),
-            intents: Vec::new(),
             reg,
         };
         p.quadro();
         p
     }
 
-    /// A manutenção por quadro das duas famílias que guardam documento fora do undo global.
+    /// A manutenção por quadro do Motion (o documento vive fora do undo global).
     fn quadro(&mut self) {
         upkeep(&mut self.motion, self.sim.world_mut(), None, false);
-        ph2d_timeline_persist::upkeep(&mut self.tl, self.sim.world_mut());
     }
 
-    fn aplica(&mut self, fi: &Ficheiro, onde: OndeAplicar) -> u64 {
-        let mut nasce = |_: &mut SimWorld, _: Imagem| Err(String::new());
-        let mut pixeis = |_: &SimWorld, _: u64| None;
-        let e_imagem = |_: &SimWorld, _: u64| false;
-        let mut portas = Portas {
-            raiz: &raiz,
-            imagem: &mut nasce,
-            pixeis: &mut pixeis,
-            e_imagem: &e_imagem,
-            centro: [0.0, 0.0],
-        };
-        let mut f = Familias {
-            painter: None,
-            painter_activo: false,
-            motion: &mut self.motion,
-            motion_em_edicao: None,
-            motion_na_mao: false,
-            etapas: &[],
-            escolhido: None,
-            portas: None,
-        };
-        let mut c = Cena {
-            sim: &mut self.sim,
-            timeline: &mut self.tl,
-            intents: &mut self.intents,
-            partidas: None,
-        };
-        let r = aplicar::aplica(fi, onde, &mut f, &mut c, &mut portas).expect("aplica");
+    /// O objecto `e` acabado de nascer, com identidade.
+    fn com_id(&mut self, e: Entity) -> u64 {
+        ph2d_ecs::assign_missing_stable_ids(self.sim.world_mut());
+        e.to_bits()
+    }
+
+    /// O objecto Macro que um aplicar faz nascer (a vida do passo).
+    fn objecto_macro(&mut self) -> u64 {
+        let w = self.sim.world_mut();
+        let e = w.spawn((Name::new("Ondas"), Transform::IDENTITY, Macro::default()));
+        let e = e.id();
+        self.com_id(e)
+    }
+
+    /// A porta da MACROS: a trilha no objecto `dono`, presa à vida de `vida`; devolve a trilha a instalar.
+    fn aplica(&mut self, t: &Track, dono: u64, vida: u64) -> Track {
+        let (d, v) = (self.sid(dono), self.sid(vida));
+        let r = TranspoeDaFamilia::aplica(&mut self.motion, t, d, v).expect("aplica");
         self.quadro();
         r
     }
@@ -169,32 +142,11 @@ impl Palco {
             .expect("tem identidade")
             .0
     }
-
-    fn trilha(&self, bits: u64) -> Track {
-        let m = self
-            .sim
-            .world()
-            .get::<Macro>(Entity::from_bits(bits))
-            .expect("tem a Macro");
-        ph2d_macro::codec::read(&m.doc)
-            .expect("lê")
-            .tracks
-            .remove(0)
-    }
-
-    fn clipes(&self) -> usize {
-        self.tl
-            .doc
-            .clips()
-            .iter()
-            .filter(|c| c.owner.is_some())
-            .count()
-    }
 }
 
-/// ⭐ Novo: nasce o objecto Macro com o objecto Motion dentro, o documento vivo ganha os nós da
-/// gravação no `StableId` dele, e a trilha instalada aponta-o. Depois o aplicar inteiro desfaz-se num
-/// Ctrl+Z (o mundo, o clipe e os nós) e refaz-se num Ctrl+Y.
+/// ⭐ Novo: o objecto Motion nasce dentro do objecto Macro (o mundo da MACROS), o documento vivo ganha
+/// os nós da gravação no `StableId` dele, e a trilha devolvida aponta-o. Depois o aplicar desfaz-se num
+/// Ctrl+Z (o mundo e os nós) e refaz-se num Ctrl+Y.
 #[test]
 fn aplicar_novo_um_motion_gravado_e_desfaze_lo_num_passo() {
     let mut p = Palco::novo();
@@ -204,37 +156,23 @@ fn aplicar_novo_um_motion_gravado_e_desfaze_lo_num_passo() {
     let doc_antes = p.motion.doc.clone();
     let mundo_antes = p.foto();
 
-    let r = p.aplica(&fi, OndeAplicar::Novo { em: None });
-    let w = p.sim.world();
-    let filhos: Vec<Entity> = w
-        .iter_entities()
-        .filter(|e| e.get::<ChildOf>().map(ChildOf::parent) == Some(Entity::from_bits(r)))
-        .map(|e| e.id())
-        .collect();
-    assert_eq!(
-        filhos.len(),
-        1,
-        "o objecto Motion nasceu dentro do objecto Macro"
-    );
-    let filho = filhos[0];
-    assert!(w.get::<MotionGenerator>(filho).is_some());
-    assert_eq!(w.get::<Name>(filho).map(|n| n.0.as_str()), Some("Ondas"));
-    let sid = p.sid(filho.to_bits());
+    let r = p.objecto_macro();
+    let filho = p.sim.world_mut().spawn((
+        Name::new("Ondas"),
+        Transform::IDENTITY,
+        MotionGenerator,
+        ChildOf(Entity::from_bits(r)),
+    ));
+    let filho = filho.id();
+    let filho = p.com_id(filho);
+    let t = p.aplica(&fi.doc.tracks[0], filho, r);
+    let sid = p.sid(filho);
     assert_eq!(
         canon(&p.motion.doc, sid),
         gravado,
         "o grafo do fim da gravação, do dono novo"
     );
-    assert_eq!(
-        p.trilha(r).target,
-        sid,
-        "a trilha instalada aponta o objecto novo"
-    );
-    assert_eq!(p.clipes(), 1, "o clipe da macro");
-    assert!(
-        !p.tl.history.can_undo(),
-        "o clipe não é um passo próprio da Timeline"
-    );
+    assert_eq!(t.target, sid, "a trilha a instalar aponta o objecto novo");
     let doc_depois = p.motion.doc.clone();
     let mundo_depois = p.foto();
     assert!(
@@ -244,7 +182,6 @@ fn aplicar_novo_um_motion_gravado_e_desfaze_lo_num_passo() {
 
     p.repoe(&mundo_antes);
     assert_eq!(p.motion.doc, doc_antes, "um Ctrl+Z tira os nós");
-    assert_eq!(p.clipes(), 0, "e o clipe");
     assert!(
         undo_e_do_global(&p.motion, true),
         "o Ctrl+Y também é do global"
@@ -252,7 +189,6 @@ fn aplicar_novo_um_motion_gravado_e_desfaze_lo_num_passo() {
 
     p.repoe(&mundo_depois);
     assert_eq!(p.motion.doc, doc_depois, "um Ctrl+Y devolve os nós");
-    assert_eq!(p.clipes(), 1, "e o clipe");
     let filho = p.bits_de(sid).expect("o objecto Motion voltou");
     assert_eq!(canon(&p.motion.doc, p.sid(filho)), gravado);
 }
@@ -265,10 +201,9 @@ fn aplicar_por_cima_um_motion_gravado_e_desfaze_lo_num_passo() {
     let alvo = p
         .sim
         .world_mut()
-        .spawn((Name::new("Campo"), Transform::IDENTITY, MotionGenerator))
-        .id()
-        .to_bits();
-    ph2d_ecs::assign_missing_stable_ids(p.sim.world_mut());
+        .spawn((Name::new("Campo"), Transform::IDENTITY, MotionGenerator));
+    let alvo = alvo.id();
+    let alvo = p.com_id(alvo);
     let t_sid = p.sid(alvo);
     let (a, b) = {
         let d = &mut p.motion.doc;
@@ -291,9 +226,9 @@ fn aplicar_por_cima_um_motion_gravado_e_desfaze_lo_num_passo() {
     let deles: MotionDoc = doc_antes.clone();
     let mundo_antes = p.foto();
 
-    let r = p.aplica(&ficheiro(gravada()), OndeAplicar::PorCima { alvo });
-    assert_ne!(r, alvo, "o objecto Macro é próprio");
-    assert_eq!(p.trilha(r).target, t_sid, "a trilha toca no alvo");
+    let r = p.objecto_macro();
+    let t = p.aplica(&ficheiro(gravada()).doc.tracks[0], alvo, r);
+    assert_eq!(t.target, t_sid, "a trilha toca no alvo");
     let nos = p.motion.doc.nodes_of(t_sid);
     assert_eq!(nos.len(), 5, "{nos:?}");
     assert_eq!(&nos[..2], &[a, b], "os de antes ficam com os seus ids");
@@ -318,8 +253,6 @@ fn aplicar_por_cima_um_motion_gravado_e_desfaze_lo_num_passo() {
         p.motion.doc, doc_antes,
         "um Ctrl+Z devolve ao alvo só os seus nós"
     );
-    assert_eq!(p.clipes(), 0);
     p.repoe(&mundo_depois);
     assert_eq!(p.motion.doc, doc_depois, "um Ctrl+Y os cinco");
-    assert_eq!(p.clipes(), 1);
 }

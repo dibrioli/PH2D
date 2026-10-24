@@ -73,14 +73,11 @@ pub fn devolve(
 }
 
 /// **Os documentos atravessam o restauro do undo** — que respawna o mundo inteiro com bits novos. Pela
-/// identidade estável ([`ph2d_ecs::StableId`]): [`Self::antes`] lê quem cada documento é, [`Self::depois`]
-/// passa-o aos bits novos da mesma identidade. O documento de uma imagem que o passo tirou fica à
-/// espera dela aqui (o refazer devolve-a com outros bits).
+/// identidade estável ([`ph2d_ecs::ReataPorIdentidade`]): [`Self::antes`] lê quem cada documento é,
+/// [`Self::depois`] passa-o aos bits novos da mesma identidade. O documento de uma imagem que o passo
+/// tirou fica à espera dela aqui (o refazer devolve-a com outros bits).
 #[derive(Default)]
-pub struct Reata {
-    /// Identidade → os bits sob que o Painter guarda o documento.
-    quem: BTreeMap<u64, u64>,
-}
+pub struct Reata(ph2d_ecs::ReataPorIdentidade);
 
 impl Reata {
     /// `restaura` (o restauro do mundo) entre [`Self::antes`] e [`Self::depois`], com o Painter de `tools`.
@@ -103,33 +100,11 @@ impl Reata {
 
     /// Antes do restauro: a identidade de cada documento cuja imagem está viva.
     pub fn antes(&mut self, sim: &SimWorld, painter: &PainterTool) {
-        let w = sim.world();
-        for bits in painter.document_entities() {
-            let sid = Entity::try_from_bits(bits).and_then(|e| w.get::<ph2d_ecs::StableId>(e));
-            if let Some(s) = sid {
-                self.quem.insert(s.0, bits);
-            }
-        }
+        self.0.antes(sim.world(), painter.document_entities());
     }
 
     /// Depois do restauro: cada documento passa aos bits que a identidade dele tem agora.
-    pub fn depois(&mut self, sim: &mut SimWorld, painter: &mut PainterTool) {
-        let w = sim.world_mut();
-        let agora: BTreeMap<u64, u64> = w
-            .query::<(Entity, &ph2d_ecs::StableId)>()
-            .iter(w)
-            .map(|(e, s)| (s.0, e.to_bits()))
-            .collect();
-        let mut de_para = BTreeMap::new();
-        self.quem.retain(|sid, de| match agora.get(sid) {
-            Some(&para) => {
-                if para != *de {
-                    de_para.insert(*de, para);
-                }
-                false
-            }
-            None => true,
-        });
-        painter.reata_documentos(&de_para);
+    pub fn depois(&mut self, sim: &SimWorld, painter: &mut PainterTool) {
+        painter.reata_documentos(&self.0.depois(sim.world()));
     }
 }

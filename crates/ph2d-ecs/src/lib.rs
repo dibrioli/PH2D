@@ -258,7 +258,7 @@ pub use sprite_region::SpriteRegion;
 pub use sprite_sheet_frame::SpriteSheetFrame;
 pub use sprite_sheet_ref::SpriteSheetRef;
 pub use stable_id::{
-    StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id,
+    ReataPorIdentidade, StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id,
     entity_with_stable_id, stable_id_for_name, stable_id_named, stable_id_of,
 };
 pub use subtree_copies::{CopyReader, SubtreeCopies, announce_copy, take_copies};

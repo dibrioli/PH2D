@@ -138,9 +138,6 @@ path = "../ph2d-panel-motion-graph"
 optional = true
 
 [dev-dependencies]
-# W18: aplicar uma macro do Motion pela porta da família MACROS, e o clipe que vive com o dono.
-ph2d-app-macros = { path = "../ph2d-app-macros" }
-ph2d-timeline-persist = { path = "../ph2d-timeline-persist" }
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
 # ⚠️ HOWTO §1.3 — invisíveis dentro da shell, onde já eram dependência do binário.

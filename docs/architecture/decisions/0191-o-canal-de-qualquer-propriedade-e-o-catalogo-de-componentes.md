@@ -88,3 +88,6 @@ Desenho e medições: [F27_F_plano.md](../../UI_New_and_Simple/F27_F_plano.md).
 - Um canal, um losango: o ficheiro do script leva-o no seletor.
 - O corte de script recomeça o script (lei do Godot; os valores próprios ficam).
 - Sem formato novo (`TimelineDoc` v23).
+- **Uma propriedade, um canal** (F27 F (d)): uma faixa do catálogo que uma família à mão já é (OBJETO, FISICA, JUNTA, ou um
+  `PropKind`) é CEDIDA — tabela `ph2d_ecs::canal_componente_donos::DONOS` (81 faixas); o catálogo não a publica nem a resolve,
+  e o rótulo dele aponta o dono. Sem migração: a duplicação (78fd037958) nunca chegou ao main.

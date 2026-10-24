@@ -105,7 +105,11 @@ fn toda_escolha_do_catalogo_tem_chave_por_opcao() {
             }
         }
     }
-    assert!(n >= 133, "o censo do F27 F contou 133 opções; agora {n}");
+    // 133 no F27 F; a (d) cedeu 27 às famílias à mão (física 13, junta 14), que dizem a palavra delas.
+    assert!(
+        n >= 106,
+        "o censo do F27 F (d) contou 106 opções de canal; agora {n}"
+    );
 }
 
 /// Um código sem variante (`""` na lista: a pele `0` do widget) fica NÚMERO, nunca palavra vazia.

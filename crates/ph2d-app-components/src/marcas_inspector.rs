@@ -23,7 +23,7 @@ use ph2d_ecs::canal_objeto as o;
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::widget::key_mark::{self, KeyMark};
 use ph2d_panel_inspector::ids as insp;
-use ph2d_timeline::{Forca, Instante, PropKind, TimelineDoc, TimelineIntent};
+use ph2d_timeline::{AnimTarget, Forca, Instante, PropKind, TimelineDoc, TimelineIntent};
 
 const POSICAO: &[PropKind] = &[
     PropKind::TranslationX,
@@ -248,6 +248,7 @@ fn mascara() -> &'static [(NodeId, Box<[PropKind]>)] {
 
 /// ⭐ **O grupo de um rótulo do catálogo** (F27 B2): a linha pintada com o `label_key` de um campo
 /// mostra o canal dele — `ph2d_ecs::canal_componente::chaves_do_rotulo`, uma vez por rótulo.
+/// Uma faixa com dono mostra o canal do DONO (a família à mão, ou o `PropKind` de sempre).
 fn do_rotulo(rotulo: &str) -> &'static [PropKind] {
     static D: std::sync::OnceLock<BTreeMap<&'static str, Box<[PropKind]>>> =
         std::sync::OnceLock::new();
@@ -256,7 +257,15 @@ fn do_rotulo(rotulo: &str) -> &'static [PropKind] {
             .flat_map(|d| d.fields.iter().map(|f| f.label_key))
             .map(|r| {
                 let ks = ph2d_ecs::canal_componente::chaves_do_rotulo(r);
-                (r, ks.iter().map(|&k| PropKind::Field(k)).collect())
+                let props = ph2d_ecs::canal_componente::props_do_rotulo(r).iter();
+                let props = props.filter_map(|&p| PropKind::from_target(AnimTarget::new(p)));
+                (
+                    r,
+                    ks.iter()
+                        .map(|&k| PropKind::Field(k))
+                        .chain(props)
+                        .collect(),
+                )
             })
             .filter(|(_, g): &(_, Box<[PropKind]>)| !g.is_empty())
             .collect()

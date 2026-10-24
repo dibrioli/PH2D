@@ -56,6 +56,49 @@ estado depende só do corte, não do caminho até ele. Recusadas: guardar a mem�
 reproduz) e passar a memória entre scripts (imprevisível). Já tinha gate: `ph2d-script` `trocar_de_ficheiro_renasce` e
 `trocar_de_script_a_meio_do_quadro_renasce`. **Zero código no `ph2d-script`** (sem colisão com a `line/CodeEditor`).
 
+## (d) Uma propriedade, um canal
+
+Defeito medido no `=33`: a silhueta do Red gravava DUAS faixas — `canal.objeto.silhueta` (OBJETO) e `component.field.sprite.8`
+(o catálogo inteiro, 78fd037958, só nesta linha: nenhum documento gravado a migrar). «8 faixas (tem de ser 7)».
+
+**Desenho.** `ph2d_ecs::canal_componente_donos::DONOS` — `(canonical_name, field_id, faixa) → Dono` (`Canal(FieldKey)` de uma família
+à mão, ou `Prop(id do AnimTarget)` de um `PropKind` de sempre: o `ph2d-ecs` não conhece a `ph2d-timeline`). Uma faixa com dono:
+`chaves_de`/`todas` não a geram, `resolver`/`info` dão `None` (o funil do catálogo não a publica nem a escreve), e
+`chaves_do_rotulo`/`props_do_rotulo` dão o DONO — o losango pintado pelo rótulo do catálogo é o mesmo grupo que a tabela por id
+(`marcas_inspector::do_rotulo`). Faixa sem dono (o `flip_x` da sprite, …) fica do catálogo.
+
+### Censo (cada par lido nos DOIS leitores)
+
+| Família | Pares (catálogo ↔ dono) | Campos | Faixas |
+|---|---|---:|---:|
+| OBJETO (`canais_objeto::ler`) | `sprite.1` r/g/b ↔ TINTA 20–22 · `sprite.1` a ↔ `PropKind::Opacity` (`tint[3]`) · `sprite.6` ↔ AUTO_TINTA 30–33 · `sprite.7` ↔ OPACIDADE · `sprite.8` ↔ SILHUETA · `sprite_emissive.1` ↔ EMISSAO · `sprite_corner_tint.1–4` ↔ CANTOS 40–43, `j` = canto | 9 | 27 (26 + 1 `PropKind`) |
+| FISICA (`InspectorPhysicsInfo`, `inspector/body.rs`) | `rigid_body.0` ↔ TIPO · `collider.1/2/3/4/5` ↔ DENSIDADE/RESTITUICAO/ATRITO/CAMADA/SENSOR · `collider.6` x/y ↔ DESLOC_X/Y · `damping_override.0/1/2` ↔ AMORT_* · `dominance.0` · `gravity_scale.0` · `initial_velocity.0` x/y ↔ VEL_X/Y · `.1` ↔ VEL_ANGULAR · `mass_override.0` ↔ MASSA · `material_combine.0/1` ↔ COMBINA_* · `walk_surface.0/1` ↔ ADERENCIA/ESTEIRA · `area_effector.0` x/y ↔ FORCA_X/Y · `area_drag/buoyancy/form_drag/torque/falloff.0` ↔ ZONA_* | 25 | 28 |
+| JUNTA (`canais_junta::ler`/`ler_roda`) | `joint.3/4/5/6/7/9/11/12/17/19/20/21/22/23/24` ↔ TIPO/LIMITES_LIGADOS/LIMITE_MIN/MAX/MOTOR_LIGADO/MOTOR_FORCA/RIGIDEZ/AMORTECIMENTO/MOTOR_MODO/QUEBRA_*/ATIVA/COLIDE_PAR/SOLDA_MOLE · `joint.8/10/13/18` ↔ `PropKind::JointMotorSpeed/RestLength/MaxLength/MotorTarget` (`apply_prop::JointField::of`) · `pulley_wheel.2/3/4/5/6/10/11` ↔ RODA_ORDEM/RAIO/LADO/MOTOR/QUEBRA_LIGADA/QUEBRA_FORCA/RAIO_SAIDA | 26 | 26 (22 + 4 `PropKind`) |
+| FLIP · VETOR | nenhum: as camadas do Flip e o documento vetorial não são componentes do catálogo com campo-canal (os do Vetor são `intrinsic` sem campos) | 0 | 0 |
+| **Total** | | **60** | **81** |
+
+Opções de canal do catálogo: 133 → 106 (as 27 da física e da junta dizem a palavra pela família).
+
+### Gates (cada um visto vermelho por mutação, e reposto)
+
+| Gate | Mutação | |
+|---|---|---|
+| `ph2d-ecs` `todo_dono_aponta_um_campo_real_e_um_canal_compativel` (espécie: contínuo ↔ real/cor, `Int` ↔ `Numero`, caixa ↔ `Ligado`/2 opções, escolhas ↔ o MESMO nº de opções; sem faixa nem dono repetido; 81) | `material_combine.1` → `CCD` | ✗ |
+| `ph2d-ecs` `uma_faixa_com_dono_nao_e_canal_do_catalogo` | `resolver` sem `cedidas` | ✗ |
+| `ph2d-app-components` `escrever_pelo_objeto_muda_o_que_o_catalogo_le` (26) | `sprite.6` r↔g trocados | ✗ |
+| `ph2d-app-components` `o_catalogo_nao_publica_o_que_o_objeto_ja_e` (a sprite fica com 7 faixas de catálogo) | `chaves_de` e `resolver` sem dono | ✗ |
+| `ph2d-app-physics` `escrever_pela_fisica_muda_o_que_o_catalogo_le` (28, pelos dois funis da §11) | `collider.2`↔`.3` | ✗ |
+| `ph2d-app-physics` `escrever_pela_junta_muda_o_que_o_catalogo_le` (22) | `joint.5`↔`.6` | ✗ |
+| `ph2d-app-physics` `os_quatro_numeros_da_junta_sao_os_prop_kind` (declarativo do lado `PropKind`: `read_prop_kind` é `pub(crate)`) | `joint.8`↔`.18` | ✗ |
+
+### ⛔ Recusas
+
+| Proposta | Recusa |
+|---|---|
+| Apagar o campo do catálogo (ou tirar-lhe o `.named`) | o nome de código é dos scripts (`ph2d.get/set`) e do cartão; o defeito é o CANAL, não o campo |
+| Migrar as chaves OBJETO/FISICA/JUNTA para o catálogo | renumeraria canais gravados no `main` (append-only); o catálogo é o que nasceu depois |
+| Esconder a faixa só no funil do catálogo | `resolver`/`info`/`todas` continuariam a dizer «canal», e o losango pelo rótulo apontaria outro grupo |
+
 ## Smoke
 
 `PH2D_AUTOKEY_SMOKE=33`: a `=32` mais o modo de mistura do Blue (catálogo, Mix → Multiply) e a silhueta do Red (objecto,

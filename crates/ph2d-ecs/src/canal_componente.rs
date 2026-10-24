@@ -16,6 +16,7 @@ use serde_json::Value;
 
 use crate::canal::familia::COMPONENTE;
 use crate::canal::{CampoInfo, Especie, FieldKey, TextosDosCanais};
+pub use crate::canal_componente_donos::{DONOS, Dono, dono, ler_pelo_catalogo};
 use crate::scene::property_ref::{enter_option, same_option, shares_payload};
 use crate::scene::registry::stable_type_id;
 
@@ -93,6 +94,9 @@ struct Tabela {
     grupos: BTreeMap<(u32, u16), u16>,
     por_rotulo: BTreeMap<&'static str, (&'static ComponentDesc, &'static FieldDesc)>,
     chaves_do_rotulo: BTreeMap<&'static str, Box<[FieldKey]>>,
+    props_do_rotulo: BTreeMap<&'static str, Box<[u64]>>,
+    /// As faixas `(id32, field_id, faixa)` que uma família à mão já é (`canal_componente_donos`).
+    cedidas: std::collections::BTreeSet<(u32, u16, u16)>,
 }
 
 fn tabela() -> &'static Tabela {
@@ -103,6 +107,10 @@ fn tabela() -> &'static Tabela {
         let mut grupos = BTreeMap::new();
         let mut por_rotulo = BTreeMap::new();
         let mut chaves_do_rotulo: BTreeMap<&'static str, Vec<FieldKey>> = BTreeMap::new();
+        let mut props_do_rotulo: BTreeMap<&'static str, Vec<u64>> = BTreeMap::new();
+        let cedidas: std::collections::BTreeSet<(u32, u16, u16)> = (DONOS.iter())
+            .map(|&(c, f, x, _)| (id32(c), f, x))
+            .collect();
         for d in ph2d_component_desc::all() {
             let id = id32(d.canonical_name);
             por_id.insert(id, d);
@@ -113,10 +121,21 @@ fn tabela() -> &'static Tabela {
                 }
             }
             for f in d.fields.iter().filter(|f| faixas(f) > 0) {
-                let n = u16::try_from(grupos.len()).unwrap_or(u16::MAX);
-                grupos.entry((id, f.field_id)).or_insert(n);
-                let ks = (0..faixas(f)).filter_map(|x| chave(d.canonical_name, f.field_id, x));
-                chaves_do_rotulo.entry(f.label_key).or_default().extend(ks);
+                // ⭐ Uma faixa com dono: o rótulo aponta o canal do dono, e o catálogo não a tem.
+                for x in 0..faixas(f) {
+                    let ks = chaves_do_rotulo.entry(f.label_key).or_default();
+                    match dono(d.canonical_name, f.field_id, x) {
+                        Some(Dono::Canal(k)) => ks.push(k),
+                        Some(Dono::Prop(p)) => {
+                            props_do_rotulo.entry(f.label_key).or_default().push(p)
+                        }
+                        None => ks.extend(chave(d.canonical_name, f.field_id, x)),
+                    }
+                }
+                if (0..faixas(f)).any(|x| !cedidas.contains(&(id, f.field_id, x))) {
+                    let n = u16::try_from(grupos.len()).unwrap_or(u16::MAX);
+                    grupos.entry((id, f.field_id)).or_insert(n);
+                }
             }
         }
         Tabela {
@@ -125,8 +144,13 @@ fn tabela() -> &'static Tabela {
             grupos,
             por_rotulo,
             chaves_do_rotulo: (chaves_do_rotulo.into_iter())
+                .filter(|(_, k)| !k.is_empty())
                 .map(|(r, k)| (r, k.into_boxed_slice()))
                 .collect(),
+            props_do_rotulo: (props_do_rotulo.into_iter())
+                .map(|(r, k)| (r, k.into_boxed_slice()))
+                .collect(),
+            cedidas,
         }
     })
 }
@@ -141,7 +165,8 @@ pub fn resolver(k: FieldKey) -> Option<(&'static ComponentDesc, &'static FieldDe
     let d = *tabela().por_id.get(&id)?;
     let f = d.fields.iter().find(|f| f.field_id == k.campo >> 2)?;
     let faixa = k.campo & (FAIXAS - 1);
-    (faixa < faixas(f)).then_some((d, f, faixa))
+    (faixa < faixas(f) && !tabela().cedidas.contains(&(id, f.field_id, faixa)))
+        .then_some((d, f, faixa))
 }
 
 /// ⭐ **O campo que um rótulo do catálogo nomeia** (F27 B2: o Inspector pinta cada campo com o
@@ -153,16 +178,32 @@ pub fn campo_do_rotulo(rotulo: &str) -> Option<(&'static ComponentDesc, &'static
 }
 
 /// As chaves (todas as faixas) dos campos que `rotulo` nomeia — de cada componente que o partilha:
-/// o objecto só publica o que tem, e o clique só grava o publicado. Vazio = não é canal.
+/// o objecto só publica o que tem, e o clique só grava o publicado. Uma faixa com dono dá a chave do
+/// DONO (`canal_componente_donos`); o `PropKind` dono está em [`props_do_rotulo`].
 #[must_use]
 pub fn chaves_do_rotulo(rotulo: &str) -> &'static [FieldKey] {
     tabela().chaves_do_rotulo.get(rotulo).map_or(&[], |k| &**k)
 }
 
-/// Todas as chaves de um componente do catálogo, campo a campo e faixa a faixa.
+/// Os `PropKind` (pelo id do `AnimTarget`) donos de faixas do campo que `rotulo` nomeia.
+#[must_use]
+pub fn props_do_rotulo(rotulo: &str) -> &'static [u64] {
+    tabela().props_do_rotulo.get(rotulo).map_or(&[], |k| &**k)
+}
+
+/// O rótulo nomeia algum canal (do catálogo, de uma família à mão, ou um `PropKind`).
+#[must_use]
+pub fn rotulo_e_canal(rotulo: &str) -> bool {
+    !chaves_do_rotulo(rotulo).is_empty() || !props_do_rotulo(rotulo).is_empty()
+}
+
+/// Todas as chaves de um componente do catálogo, campo a campo e faixa a faixa — sem as faixas
+/// que têm dono.
 pub fn chaves_de(d: &'static ComponentDesc) -> impl Iterator<Item = FieldKey> {
     d.fields.iter().flat_map(move |f| {
-        (0..faixas(f)).filter_map(move |faixa| chave(d.canonical_name, f.field_id, faixa))
+        (0..faixas(f))
+            .filter(move |&x| dono(d.canonical_name, f.field_id, x).is_none())
+            .filter_map(move |faixa| chave(d.canonical_name, f.field_id, faixa))
     })
 }
 

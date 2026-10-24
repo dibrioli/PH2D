@@ -57,6 +57,11 @@ fn toda_chave_resolve_para_o_seu_campo() {
             let mut do_campo = BTreeSet::new();
             for faixa in 0..faixas(f) {
                 let k = chave(d.canonical_name, f.field_id, faixa).expect("cabe");
+                // Uma faixa com dono é canal da família à mão (`canal_componente_donos`).
+                if dono(d.canonical_name, f.field_id, faixa).is_some() {
+                    assert!(resolver(k).is_none(), "{k:?}: cedida e ainda resolve");
+                    continue;
+                }
                 let (d2, f2, faixa2) = resolver(k).expect("resolve");
                 assert_eq!(
                     (d2.canonical_name, f2.field_id, faixa2),
@@ -73,7 +78,7 @@ fn toda_chave_resolve_para_o_seu_campo() {
                 do_campo.insert(k.grupo());
                 canais += 1;
             }
-            if faixas(f) > 0 {
+            if !do_campo.is_empty() {
                 assert_eq!(
                     do_campo.len(),
                     1,
@@ -193,10 +198,13 @@ fn cada_rotulo_nomeia_um_conceito_so() {
     }
     for (r, &(_, fx, quantos)) in &vistos {
         let ks = chaves_do_rotulo(r);
-        assert_eq!(ks.len(), usize::from(fx) * quantos, "{r}");
+        let props = super::props_do_rotulo(r);
+        assert_eq!(ks.len() + props.len(), usize::from(fx) * quantos, "{r}");
+        // Uma chave de outra família é a do DONO da faixa.
         assert!(
             ks.iter()
-                .all(|&k| resolver(k).is_some_and(|(_, g, _)| g.label_key == *r))
+                .all(|&k| k.familia != crate::canal::familia::COMPONENTE
+                    || resolver(k).is_some_and(|(_, g, _)| g.label_key == *r))
         );
     }
     let partilhados: Vec<_> = (vistos.iter())

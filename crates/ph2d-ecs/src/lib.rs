@@ -90,6 +90,7 @@ pub use particle_emitter::{EmissionShape, ParticleEmitter, ParticleSpace};
 /// ⭐⭐⭐ **O canal de qualquer propriedade** (plano 35) — o endereço e os dois quadros de dados.
 pub mod canal;
 pub mod canal_componente;
+pub mod canal_componente_donos;
 pub mod canal_fisica;
 pub mod canal_flip;
 pub mod canal_junta;

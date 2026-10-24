@@ -247,3 +247,7 @@ pub fn aplicar(sim: &mut SimWorld, drive: &mut PreviewDrive) -> bool {
 #[cfg(test)]
 #[path = "canais_objeto_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "canais_objeto_donos_tests.rs"]
+mod donos;

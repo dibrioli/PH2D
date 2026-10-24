@@ -163,10 +163,8 @@ fn o_alvo_da_camera_anima_por_nome() {
 fn toda_opcao_do_catalogo_diz_uma_palavra_da_tabela() {
     let mut crus = Vec::new();
     let mut n = 0;
-    for k in ph2d_ecs::canal_componente::todas() {
-        let Some((_, f, _)) = ph2d_ecs::canal_componente::resolver(k) else {
-            continue;
-        };
+    // Todo campo, canal do catálogo ou cedido a uma família à mão (F27 F (d)): o cartão pinta-a.
+    for f in ph2d_component_desc::all().flat_map(|d| d.fields) {
         if let ph2d_component_desc::View::Options(o) = f.view {
             for x in o {
                 n += 1;

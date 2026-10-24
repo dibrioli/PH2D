@@ -1545,7 +1545,7 @@ const TEXTKEY_DO_CATALOGO: &str = "TextKey::new(\"component.field.";
 
 /// Um rótulo do catálogo que é canal (tem chaves).
 fn rotulo_e_canal(r: &str) -> bool {
-    !ph2d_ecs::canal_componente::chaves_do_rotulo(r).is_empty()
+    ph2d_ecs::canal_componente::rotulo_e_canal(r)
 }
 
 /// Os rótulos do catálogo tipados (`TextKey::new("component.field.…")`) de um texto.

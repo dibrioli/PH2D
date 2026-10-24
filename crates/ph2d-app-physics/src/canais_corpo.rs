@@ -382,3 +382,7 @@ fn ordenar(it: impl Iterator<Item = (u64, FieldKey, f32)>) -> Vec<(u64, FieldKey
 #[cfg(test)]
 #[path = "canais_corpo_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "canais_donos_tests.rs"]
+mod donos;

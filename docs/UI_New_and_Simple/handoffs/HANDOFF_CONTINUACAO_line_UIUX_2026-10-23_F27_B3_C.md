@@ -97,6 +97,8 @@ Box A (q0) / Box C (q12) com Auto Key, pára no q6 com a câmera escolhida, Auto
 
 Os passos 3 e 5 são exactamente o que a foto não cobriu.
 
+✅ **Smoke do dono OK em 24/10** (`=30`, os cinco passos; o triângulo do gráfico é pequeno — achou-o).
+
 ## 5 — Verificação (fecho de onda)
 
 - `cargo fmt --all`; clippy `-D warnings` verde em ph2d-ecs, ph2d-timeline, ph2d-panel-timeline, ph2d-editor-core,

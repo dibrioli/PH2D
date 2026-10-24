@@ -258,9 +258,10 @@ impl Tradutor<'_> {
     }
 }
 
-/// **O passo que a corrida deixa ao parar** (a pose do solver vira documento, lei do
-/// `ph2d-preview-drive`) não é autoria: o `Transform` de um corpo da corrida cuja pose nova é a do fim
-/// dela sai do passo; os outros componentes e objectos ficam.
+/// **Os passos que a corrida deixa ao parar** (a pose do solver vira documento, lei do
+/// `ph2d-preview-drive`; a captura do undo pode vir um tique atrasada e acertar no passo seguinte) não
+/// são autoria: o `Transform` de um corpo da última corrida igual a uma pose que ela percorreu sai do
+/// passo; os outros componentes e objectos ficam.
 fn sem_a_pose_da_corrida(
     d: &[LinhaMudada],
     c: Option<&Corrida>,
@@ -270,9 +271,6 @@ fn sem_a_pose_da_corrida(
         return d.to_vec();
     };
     let e_o_fim = |sid: u64, tipo: u64, b: &Option<Vec<u8>>| {
-        let Some(pose) = c.poses.iter().find(|p| p.0 == sid).map(|p| p.1) else {
-            return false;
-        };
         let transform = registo
             .get_by_id(tipo)
             .is_some_and(|e| e.canonical_name == palco::TRANSFORM);
@@ -281,8 +279,8 @@ fn sem_a_pose_da_corrida(
             .and_then(|b| postcard::from_bytes::<ph2d_ecs::Transform>(b).ok());
         transform
             && t.is_some_and(|t| {
-                [t.translation.x, t.translation.y, t.rotation].map(f32::to_bits)
-                    == pose.map(f32::to_bits)
+                let bits = [t.translation.x, t.translation.y, t.rotation].map(f32::to_bits);
+                c.percorridas.contains(&(sid, bits))
             })
     };
     d.iter()
@@ -348,7 +346,7 @@ pub fn fecha<'a>(
     for (us, cru) in &g.passos {
         let ev = match cru {
             Cru::Passo(d) => {
-                let d = sem_a_pose_da_corrida(d, corrida.take(), registo);
+                let d = sem_a_pose_da_corrida(d, corrida, registo);
                 let mudancas: Vec<_> = d.iter().filter_map(|l| t.mudanca(l)).collect();
                 if mudancas.is_empty() {
                     continue; // os objectos novos vão com o passo seguinte

@@ -344,12 +344,27 @@ fn pose(sim: &mut SimWorld, img: u64, y: f32) {
     );
 }
 
-/// A corrida colapsa num passo do undo ao parar (a pose do solver vira documento, lei do
-/// `ph2d-preview-drive`): esse `Transform` é da corrida, não autoria — sai do passo; o resto fica.
+fn nomes_do_passo(e: Option<&Evento>) -> Vec<String> {
+    let Some(Evento::Passo { mudancas, .. }) = e else {
+        panic!("um passo: {e:?}");
+    };
+    mudancas
+        .iter()
+        .flat_map(|m| match m {
+            Mudanca::Muda { componentes, .. } => componentes.iter().map(|c| c.0.clone()).collect(),
+            _ => vec![],
+        })
+        .collect()
+}
+
+/// A corrida colapsa em passos do undo ao parar (a pose do solver vira documento, lei do
+/// `ph2d-preview-drive`; a captura do undo pode vir um tique ATRASADA e acertar no passo seguinte):
+/// um `Transform` de um corpo da corrida igual a uma pose que ela percorreu é da corrida, não autoria —
+/// sai do passo; o resto fica. Outra pose é autoria.
 #[test]
 fn o_pause_nao_grava_a_pose_do_solver_como_autoria() {
     let reg = registo();
-    for (y_do_passo, fica) in [(-6.0, false), (-2.5, true)] {
+    for (y_do_passo, fica) in [(-6.0, false), (-3.0, false), (-2.5, true)] {
         let (mut sim, img) = mundo();
         let antes = foto(&mut sim, &reg);
         poe_o_collider(&mut sim, img);
@@ -357,14 +372,16 @@ fn o_pause_nao_grava_a_pose_do_solver_como_autoria() {
         let mut g = Gravacao::new(DONO);
         g.mudou(&antes, &com_corpo, 1_000);
         let fita = ph2d_physics_ecs::TapeWire::default();
-        g.correu(
-            (0, 6),
-            vec![(IMAGEM, [0.0, -6.0, 0.0])],
-            &fita,
-            [0; 32],
-            2_000,
-        );
-        g.quadro();
+        for (k, y) in [(0u64, -3.0f32), (3, -6.0)] {
+            g.correu(
+                (k, k + 3),
+                vec![(IMAGEM, [0.0, y, 0.0])],
+                &fita,
+                [0; 32],
+                2_000 + k,
+            );
+            g.quadro();
+        }
         g.quadro();
         pose(&mut sim, img, y_do_passo);
         sim.world_mut()
@@ -372,25 +389,29 @@ fn o_pause_nao_grava_a_pose_do_solver_como_autoria() {
             .insert(Name::new("Player 2"));
         let parado = foto(&mut sim, &reg);
         g.mudou(&com_corpo, &parado, 3_000);
+        // A captura que acerta um passo depois: a pose do fim, com outro nome.
+        pose(&mut sim, img, -6.0);
+        sim.world_mut()
+            .entity_mut(Entity::from_bits(img))
+            .insert(Name::new("Player 3"));
+        let acerto = foto(&mut sim, &reg);
+        g.mudou(&parado, &acerto, 4_000);
         let f = fecha_com(g, &MacroDoc::new(RefRect { w: 1.0, h: 1.0 }), &reg).expect("gravou");
         let ps = passos(&f);
-        let Some(Evento::Passo { mudancas, .. }) = ps.get(2) else {
-            panic!("o passo depois da corrida: {ps:?}");
-        };
-        let nomes: Vec<&str> = mudancas
-            .iter()
-            .flat_map(|m| match m {
-                Mudanca::Muda { componentes, .. } => {
-                    componentes.iter().map(|c| c.0.as_str()).collect()
-                }
-                _ => vec![],
-            })
-            .collect();
-        assert!(nomes.contains(&"ph2d::ecs::Name"), "o nome fica: {nomes:?}");
+        let t = "ph2d::ecs::Transform".to_owned();
+        let (um, dois) = (nomes_do_passo(ps.get(2)), nomes_do_passo(ps.get(3)));
+        assert!(
+            um.contains(&"ph2d::ecs::Name".to_owned()),
+            "o nome fica: {um:?}"
+        );
         assert_eq!(
-            nomes.contains(&"ph2d::ecs::Transform"),
+            um.contains(&t),
             fica,
-            "a pose do fim da corrida sai; outra pose é autoria ({y_do_passo}): {nomes:?}"
+            "uma pose da corrida sai; outra pose é autoria ({y_do_passo}): {um:?}"
+        );
+        assert!(
+            !dois.contains(&t),
+            "o acerto atrasado da pose do fim sai: {dois:?}"
         );
     }
 }

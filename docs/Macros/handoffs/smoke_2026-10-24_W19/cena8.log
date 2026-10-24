@@ -3,18 +3,18 @@ audio: Default Audio Device @ 48000 Hz, 2 ch, F32
 PH2D desktop shell starting (close window or Cmd+Q to exit)…
 [ph2d-gpu] surface present mode: Fifo
 [   269ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
-[   274ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
-[   274ms] M7: ScriptHost initialized (placeholder script loaded)
+[   275ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   275ms] M7: ScriptHost initialized (placeholder script loaded)
 [ph2d] theme = dark
-[   286ms] M11: VelloPass initialized (1024×768 intermediate)
-[   289ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
-[   302ms] PR 8: tool registry built (14 manifests, installed in editor)
-[   325ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
-[   328ms] lifecycle: Foreground
-[   328ms] resize: 1024x768 @ 1.00x scale
+[   283ms] M11: VelloPass initialized (1024×768 intermediate)
+[   286ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   299ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   323ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   327ms] lifecycle: Foreground
+[   327ms] resize: 1024x768 @ 1.00x scale
 [macro smoke =8] the app does the whole path by itself (~60 s); the macros folder is /tmp/ph2d-macro-smoke-8/biblioteca
 [ph2d-gpu] surface present mode → Immediate
-[   336ms] resize: 1930x1012 @ 1.00x scale
+[   333ms] resize: 1930x1012 @ 1.00x scale
 warn: dropped 0.183s of sim time (max_substeps cap)
 [ph2d-gpu] surface present mode → Fifo
 [macro smoke =8] 1 of 11 — The dark bar is the Floor: a Static body with a Collider, outside any macro. Add ▸ Macro: an empty Macro object appears (the ring is its handle).

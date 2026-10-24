@@ -514,6 +514,7 @@ pub fn faz(
                 F::Add
             };
             // O cartão Physics do Inspector à vista (o botão que este passo carrega).
+            ph2d_editor_core::panel::PanelHostInternal::set_panel_visible(hero, "macros", false);
             ph2d_editor_core::panel::PanelHostInternal::set_panel_visible(hero, "inspector", true);
             hero.bus.push(EditorAction::InspectorPhysicsEdit {
                 entity_bits: bits,

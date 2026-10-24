@@ -5,7 +5,7 @@
 
 use super::formato::Simula;
 use ph2d_ecs::scene::{EntitySnapshotRow, LinhaMudada, WorldSnapshot, linhas_que_mudam};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 /// As linhas de uma sub-árvore, pelo `StableId`.
@@ -63,6 +63,8 @@ pub struct Corrida {
     pub poses: Vec<(u64, [f32; 3])>,
     /// A impressão dos obstáculos ([`super::palco_fisica::impressao`]).
     pub obstaculos: [u8; 32],
+    /// Toda pose (bits) que cada corpo percorreu: a captura do undo pode apanhar uma delas ao parar.
+    pub percorridas: BTreeSet<(u64, [u32; 3])>,
 }
 
 /// O que se gravou, cru.
@@ -138,8 +140,10 @@ impl Gravacao {
         let mut fita = fita.clone();
         let fim = usize::try_from((ate + 1).saturating_sub(fita.first)).unwrap_or(usize::MAX);
         fita.frames.truncate(fim);
+        let percorridas = poses.iter().map(|(s, p)| (*s, p.map(f32::to_bits)));
         match &mut self.corrida {
             Some((_, c)) if de == c.ate => {
+                c.percorridas.extend(percorridas);
                 (c.ate, c.poses, c.fita, c.obstaculos) = (ate, poses, fita, obstaculos);
             }
             _ => {
@@ -148,6 +152,7 @@ impl Gravacao {
                     de,
                     ate,
                     fita,
+                    percorridas: percorridas.collect(),
                     poses,
                     obstaculos,
                 };

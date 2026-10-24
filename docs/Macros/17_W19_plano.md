@@ -214,18 +214,22 @@ mensagem ao dono ser escrita, e a cena é fotografada (`import -window`, nunca `
 
 | Número | Valor |
 |---|---|
-| trilha mundo | 2 eventos: o passo do collider em `9,48 s`, um `Simula` em `12,98 s`, tiques `0..150` |
+| trilha mundo | 2 eventos: o passo do collider em `9,48 s`, UM `Simula` em `13,00 s`, tiques `0..100` (a sonda corre 2 tiques em cada 3 quadros de render); o passo que o Pause deixa sai inteiro |
 | 1.º chão (centro `−2,50 m`, topo `−2,38 m`) | a gravação assenta em `y = −1,7400 m` (topo + meio lado `0,64`) |
 | 2.º chão (centro `−4,00 m`, topo `−3,88 m`) | a reprodução do aplicado assenta em `y = −3,2400 m` |
 | texels pintados no aplicado | `4 871` de `16 384` (128²) |
 | o palco na cena da gravação × a conferência | o bit (`[1,6432526e−4, −1,7400224, 1,4798611e−7]`), com e sem retoma — na 1.ª corrida (antes da cura do palco de 24/10) `x`/rotação vinham com o SINAL trocado |
 
-**No app (fotos `handoffs/smoke_2026-10-24_W19/`):** passos 1–6 ensinam o que acontecem (o boneco cai e assenta no
-chão). O passo 11 NÃO: (a) o `Simula` grava-se em dezenas de pedaços de `0,03 s` — um quadro sem tique fecha a
-corrida (`Gravacao::quadro`); (b) o Pause regista um passo «Transform changed» com a pose do solver, e a reprodução
-acaba nessa pose; (c) sair do modo Paint a gravar grava `deactivate`/`forget_pending_layer` e o aplicar recusa a
-macro (a cena muda de modo só depois do Parar); (d) o aviso «Simulate landed somewhere else» acende no projecto
-de destino, onde cair noutro sítio é o esperado.
+**No app (fotos `handoffs/smoke_2026-10-24_W19/`, depois das curas de 24/10):** os 11 passos ensinam o que
+acontece — o painel lista 6 etapas (3 pinceladas, «Canvas appears», «RigidBody, Collider added», «Simulate · 2.48 s»),
+sem recusas nem «Transform changed»; no projecto limpo o boneco nasce, pinta-se e assenta no chão NOVO (`−400 px`).
+A 1.ª corrida da cena (antes das curas) achou quatro defeitos, curados com gates: (a) o `Simula` partia-se num quadro
+de render sem tique — `tres_quadros_de_render_por_tique_dao_um_simula`; (b) o Pause deixava a pose do solver como
+autoria (a captura do undo chega a vir um tique atrasada: tira-se toda pose que a corrida PERCORREU) —
+`o_pause_nao_grava_a_pose_do_solver_como_autoria`, e o FIM no destino recoze-se lá —
+`aplicado_noutro_chao_o_fim_e_o_chao_novo` (`y = −3,2400 m`); (c) sair do Paint recusava a macro —
+`sair_do_paint_e_voltar_a_gravar_nao_recusa`; (d) a conferência acendia noutro chão (`Simula.obstaculos`, blake3) —
+`a_conferencia_so_se_faz_sobre_o_mesmo_chao`.
 
 ## 8. A ordem do trabalho
 

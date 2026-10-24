@@ -300,3 +300,72 @@ Logs (`target/`): `cantos_custo_clock{1..6}.log`, `regua_registos/{head,head2,b,
 2. A borda nos níveis 11–12 a 2160p Alta: +3,62 ms (W6g §54.1).
 3. A anomalia da r5b (W6g §12) — agora com a mesma família de (1a): a latência de um despacho pequeno da fina pesada; a
    família (b) (W5g §37–38).
+
+> **O item 1 do §12 FECHOU por ordem do dono (opção c: o custo de hoje fica).**
+
+## 13. A borda nos níveis de cima (§12.2) — bissectada; a leitura SEM desvio (−3,0 ms a 2160p Alta, o mesmo bit)
+
+Régua VERSIONADA `medida_luz2d_borda_topo` (`2d1a819ea5`, `72476f0a40`): cena 5, `[-4.2, -1.8]` h 3,8, a fina que
+cabe (k 1 a 2160p, grade 4992×2944), a vista do produto `P` (céu · borda · borda de controlo) e UMA forma do
+`de_fora` por processo (`PH2D_BORDA_TOPO_FORMAS`; a 2160p Alta só cabem duas vistas de ~4,1 GB), 9 rodadas, o
+mínimo; depois as fases por nível; `PH2D_BORDA_TOPO_REGISTOS` escreve os módulos para `spikes/regua-registos`
+(o instrumento `Solver::constantes_da_hrc`). Logs em `target/borda_topo/`.
+
+**(a) A medição de hoje** (`load` 15–45): a borda +4,2…+5,1 ms de `c2` sobre o céu (A×A ≤ ±0,8); n 11 + 12 =
++3,51 ms (era +3,62), dos quais a CONTA do `de_fora` ~2,84 e a leitura ~0,66.
+
+**(b) ⚠️ A vista `P` da régua tem REGIME:** a soma (`hrc_soma` n 0) 12,3–13,3 ms contra 5,5–5,6 da `identidade`
+(o MESMO módulo por `modulo_rc`, 27 registos nas duas), e as subidas −0,3 ms por nível; não é a ordem de nascimento
+(vista antes/depois do entorno, renascida), nem a troca céu ↔ borda (`PH2D_BORDA_TOPO_SEM_CEU=1`). A descida de `P`
+cai também, em 2 de ~10 processos, a 3,2 ms por nível (contra 2,2). ⇒ forma × forma (a `identidade` como controlo),
+nunca forma × `P`. Se a app real cai neste regime NÃO foi medido (o W6g §51 sugere que não).
+
+**(c) A bisseção (registos da `hrc_desce`, o resto igual):**
+
+| forma | registos | descida n 0 | n 11 | n 12 |
+|---|---|---|---|---|
+| produto / identidade | 46 | 2,24–2,38 | 3,83–3,89 | 2,62–2,64 |
+| `fora_base` por um escalar | 46 | 2,24 | 3,78 | 2,56 |
+| sem a escrita do arquivo / e só-leitura | 43 / 43 | — | — | — |
+| sem ler o arquivo | 40 | 1,93 | 3,47 | 2,39 |
+| só o ponto `b` / até à coluna | 38 / 38 | 1,96 | 2,09 / 2,27 | 1,19 / 1,35 |
+| **a leitura sem desvio** | **38** | **1,93** | **3,55–3,57** | **2,48–2,49** |
+
+A leitura do arquivo DENTRO do `if` levava a descida a 46 registos e custava ~0,25–0,3 ms em TODO nível, céu incluído
+(a mesma pipeline). Ler sempre (`select(0u, i, ok)`) e escolher depois (`select(ceu, lido, ok)`) é o mesmo valor.
+
+**(d) A cura (`6a93d54d04`, `c2_hrc.wgsl`):** `c2` mínimo, forma × forma (2160p Alta, 2 × 2 processos alternados;
+os outros tetos no mesmo processo, `load` 165–254):
+
+| teto | sem desvio (o produto) | com desvio (antes) | |
+|---|---|---|---|
+| 2160p Alta | 46,24 · 46,30 | 49,41 · 49,14 | −3,0 ms (−6,1 %) |
+| 1080p Alta | 10,345 | 11,024 | −6,2 % |
+| 1440p Média | 4,193 | 4,436 | −5,5 % |
+| 2160p Baixa | 5,296 | 5,593 | −5,3 % |
+| 1080p Baixa | 1,373 | 1,394 | −1,5 % |
+
+**Gate:** `a_leitura_da_borda_sem_desvio_nao_muda_um_bit` (ficheiro próprio; as 4 vistas do portão do T nulo + 2160p
+Alta, o produto × a leitura de antes por `modulo_rc`): 0 texels nas 5. Mutação (`PH2D_SEM_DESVIO_MUTA`): M1 sem o
+`select` do céu 164 931 texels · M2 só a 1.ª sonda 1 690 432; controlo a corrida verde. Também: `medida_luz2d_cantos_bits`
+32 casos 0 bytes contra a base; `a_luz_de_fora_nao_atravessa` 8/8. ⚠️ Provado só na NVIDIA (bug 7).
+
+## ⛔ Recusas MEDIDAS (§13)
+
+| Recusa | Porquê |
+|---|---|
+| O índice `fora_base[m/4][m%4]` por um escalar do uniforme | 46 registos e a mesma descida: não é o índice dinâmico. |
+| Declarar o arquivo só-leitura / tirar a escrita (o módulo por papel) | 43 registos; a leitura sem desvio sozinha dá 38 com a escrita. |
+| Comparar uma forma com a vista `P` da régua (soma, subidas) | `P` tem regime: a `identidade` com o mesmo módulo dá a soma em 5,5 contra 12,6 ms. |
+| Contar bits entre `P` e uma forma depois de quadros diferentes | O estado acumulado difere: a `identidade` dá os mesmos 409 891 texels que qualquer forma. |
+
+## 14. ABERTO (por ordem — substitui o §12)
+
+1. **O bug 7 (`BUGS_luz2d.md`): 7 testes reprovam na Radeon integrada** — o mesmo bit por dispositivo (T nulo, um
+   cone), o enchimento do `hrc_r0` (524 288 contra 3 072), precisão/lei de custo da holográfica e do miolo; a cura do
+   §13 também se prova lá. A reprodução sem a NVIDIA está no bug.
+2. A conta do `de_fora` em n 11–12 a 2160p Alta: ~2,8 ms, sem ideia de mesmo bit (tabela recusada W6g §43 c; laço
+   único W6g §53).
+3. O regime da soma da vista `P` (§13 b): medir se a app real (o `LuzDoQuadro`, com o renascimento) cai nele.
+4. A anomalia da r5b (W6g §12); a família (b) (W5g §37–38).
+5. A suíte no fecho da linha (não corre desde o W6g §56).

@@ -1,5 +1,7 @@
 # W19 — a família «mundo»: tudo pode ser macro (PLANO, antes do código)
 
+> **Estado: FEITO — [handoff W19](handoffs/HANDOFF_INTEGRACAO_line_Macros_2026-10-24_W19.md).**
+
 > Pedido: [PROMPT_W19](handoffs/PROMPT_W19_familia_mundo_2026-10-24.md). Base: `b48f8b9512` (main de 24/10) + W17/W18
 > por integrar (HEAD `f54401e632`). Mapas lidos nesta sessão (3 exploradores, 24/10): o `WorldSnapshot`/undo, a
 > física (ponte, toggle, bake), a sessão/portas/tocadores das macros e o `ph2d-preview-drive`.

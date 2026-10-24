@@ -13,9 +13,9 @@
 
 #[path = "tracks_label.rs"]
 mod label;
-pub(crate) use label::{prop_label, track_label_snap};
 #[cfg(test)]
 pub(crate) use label::track_label;
+pub(crate) use label::{prop_label, track_label_snap};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind, TrackMenuKind};

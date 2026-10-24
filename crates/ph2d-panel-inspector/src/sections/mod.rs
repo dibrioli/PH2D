@@ -133,6 +133,7 @@ mod sampling;
 /// ⭐⭐⭐ A secção SCRIPT (TOP-20 #16) — ver o cabeçalho.
 pub(crate) mod script;
 mod script_avisos;
+mod script_controlo;
 pub(crate) mod script_seletor;
 /// ⭐⭐⭐ A secção SEQUENCE (TOP-20 #19) — a cutscene de um objecto. Ver o cabeçalho.
 pub(crate) mod sequence;

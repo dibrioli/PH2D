@@ -732,7 +732,7 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "sections/script.rs::controlo",
+        "sections/script_controlo.rs::controlo",
         Canal,
         &["regista_canal"],
         "as propriedades que o SCRIPT declara: o instantâneo traz a chave (família SCRIPT, pelo NOME), a `linha` regista-a e o controlo pinta a coluna (F27 E)",

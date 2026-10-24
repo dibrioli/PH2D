@@ -1,0 +1,586 @@
+INSTRUMENTO do item 1 da W6i (RECUSADO, nada no produto): `git apply` na raiz; a régua é
+`medida_luz2d_desce_um` (relógio) e `medida_luz2d_desce_um_bits` (bit), mais `mod medida_luz2d_desce_um;`
+no `tests/it/main.rs`. Logs: `target/item1/`.
+
+diff --git a/crates/ph2d-light2d-gpu/src/solver_hrc.rs b/crates/ph2d-light2d-gpu/src/solver_hrc.rs
+index 07e385f7fe..0fd37b6f37 100644
+--- a/crates/ph2d-light2d-gpu/src/solver_hrc.rs
++++ b/crates/ph2d-light2d-gpu/src/solver_hrc.rs
+@@ -121,6 +121,8 @@ pub(super) struct Holografica {
+     fases: Option<fases::FasesHrc>,
+     /// ⭐ W5x — os buffers grandes (T, R, acumulado) com o rótulo: a régua do regime da `c2` mede cada um.
+     pub(super) grandes: Vec<(&'static str, wgpu::Buffer)>,
++    /// INSTRUMENTO (item 1, W6i): os jogos de pipelines das variantes ([`fases::Variantes`]).
++    diag: fases::Variantes,
+ }
+ 
+ impl Holografica {
+@@ -590,6 +592,7 @@ impl Holografica {
+             janelas: [[0; 4]; 4],
+             bases: [[0; hrc::NIVEIS_MAX]; 4],
+             fases: None,
++            diag: fases::Variantes::novo(&pl, e.modulo, e.cfg.hrc_juntos()),
+             grandes: if e.cfg.hrc_guarda_os_grandes {
+                 hrc::NOMES_T[..n_t]
+                     .iter()
+@@ -621,11 +624,11 @@ impl Holografica {
+     /// a máscara do vazio só na 1.ª — a cobertura não muda entre os rebotes).
+     pub(super) fn gravar(&self, p: &mut wgpu::ComputePass<'_>, k: u32) {
+         p.set_bind_group(0, &self.cena, &[]);
+-        for (etapa, grupo, [x, y, z], _) in &self.passos {
++        for (etapa, grupo, [x, y, z], fatia) in &self.passos {
+             if k > 0 && matches!(etapa, Etapa::Ladrilhos) {
+                 continue;
+             }
+-            p.set_pipeline(&self.pipelines[*etapa as usize]);
++            p.set_pipeline(self.pipeline_do_passo(*etapa, *fatia));
+             p.set_bind_group(2, &self.g2, &[]);
+             p.set_bind_group(3, grupo, &[]);
+             p.dispatch_workgroups(*x, *y, *z);
+diff --git a/crates/ph2d-light2d-gpu/src/solver_hrc_fases.rs b/crates/ph2d-light2d-gpu/src/solver_hrc_fases.rs
+index 7a0db8d315..ac9c152e1d 100644
+--- a/crates/ph2d-light2d-gpu/src/solver_hrc_fases.rs
++++ b/crates/ph2d-light2d-gpu/src/solver_hrc_fases.rs
+@@ -19,7 +19,49 @@ pub(super) struct FasesHrc {
+ /// (etapa, nível, ms de placa somados nos quadrantes e nas gravações, despachos).
+ pub type FaseHrc = (&'static str, u32, f64, usize);
+ 
++/// INSTRUMENTO (item 1, W6i) — jogos de pipelines no MESMO solver, trocados a cada quadro: cada variante é
++/// `(as ENTRADAS + o hrc_desce_um, os níveis da descida pelo hrc_desce_um)`.
++pub(super) struct Variantes {
++    layout: wgpu::PipelineLayout,
++    modulo: wgpu::ShaderModule,
++    juntos: bool,
++    jogos: Vec<(Vec<wgpu::ComputePipeline>, u32)>,
++    ativa: Option<usize>,
++}
++
++impl Variantes {
++    pub(super) fn novo(layout: &wgpu::PipelineLayout, modulo: &wgpu::ShaderModule, juntos: bool) -> Self {
++        Self {
++            layout: layout.clone(),
++            modulo: modulo.clone(),
++            juntos,
++            jogos: Vec::new(),
++            ativa: None,
++        }
++    }
++}
++
+ impl Holografica {
++    /// A pipeline do passo `(etapa, fatia)`: a do produto, ou a da variante ativa.
++    pub(super) fn pipeline_do_passo(&self, etapa: Etapa, fatia: usize) -> &wgpu::ComputePipeline {
++        let Some((jogo, um)) = self.diag.ativa.map(|v| &self.diag.jogos[v]) else {
++            return &self.pipelines[etapa as usize];
++        };
++        if matches!(etapa, Etapa::Desce) && (um >> self.nivel_do_passo(fatia)) & 1 == 1 {
++            return &jogo[ENTRADAS.len()];
++        }
++        &jogo[etapa as usize]
++    }
++
++    /// O nível do passo cuja 1.ª fatia do uniforme é `fatia` (junto: o de um quadrante presente).
++    fn nivel_do_passo(&self, fatia: usize) -> u32 {
++        let membros = if self.diag.juntos { 4 } else { 1 };
++        self.uniformes[fatia..fatia + membros]
++            .iter()
++            .find(|u| !self.diag.juntos || u.grupos[0] * u.grupos[1] * u.grupos[2] > 0)
++            .map_or(0, |u| u.nivel)
++    }
++
+     /// ⭐ §46.2 — INSTRUMENTO: os níveis `n` da descida com o bit `n` de `um` fazem um cone por fio.
+     fn diag_cones_um(
+         &mut self,
+@@ -97,7 +139,7 @@ impl Holografica {
+             return false;
+         };
+         let base = 2 * k * self.passos.len() as u32;
+-        for (i, (etapa, grupo, [x, y, z], _)) in self.passos.iter().enumerate() {
++        for (i, (etapa, grupo, [x, y, z], fatia)) in self.passos.iter().enumerate() {
+             let par = base + 2 * i as u32;
+             // ⭐ W5s: a máscara só na 1.ª gravação (um passe vazio escreve os carimbos dela).
+             let vazio = k > 0 && matches!(etapa, Etapa::Ladrilhos);
+@@ -113,7 +155,7 @@ impl Holografica {
+                 continue;
+             }
+             p.set_bind_group(0, &self.cena, &[]);
+-            p.set_pipeline(&self.pipelines[*etapa as usize]);
++            p.set_pipeline(self.pipeline_do_passo(*etapa, *fatia));
+             p.set_bind_group(2, &self.g2, &[]);
+             p.set_bind_group(3, grupo, &[]);
+             p.dispatch_workgroups(*x, *y, *z);
+@@ -167,6 +209,53 @@ impl Holografica {
+ }
+ 
+ impl Solver {
++    /// INSTRUMENTO (item 1, W6i) — cria um jogo de pipelines por `(desdobrado, um)`: `desdobrado` liga o
++    /// `FORA_DESDOBRADO_HRC`; os níveis com o bit em `um` descem pelo `hrc_desce_um`. `(false, 0)` é a pipeline
++    /// GÉMEA do produto (o controlo A × A). Devolve quantos há.
++    #[doc(hidden)]
++    pub fn diag_variantes_da_hrc(&mut self, gpu: &GpuContext, specs: &[(bool, u32)]) -> usize {
++        let Some(h) = &mut self.hrc else {
++            return 0;
++        };
++        for &(desdobrado, um) in specs {
++            let mut constantes = h.constantes.to_vec();
++            constantes.push(("FORA_DESDOBRADO_HRC", f64::from(u8::from(desdobrado))));
++            let jogo = ENTRADAS
++                .iter()
++                .chain(&["hrc_desce_um"])
++                .map(|entrada| {
++                    gpu.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
++                        label: Some(entrada),
++                        layout: Some(&h.diag.layout),
++                        module: &h.diag.modulo,
++                        entry_point: Some(entrada),
++                        compilation_options: wgpu::PipelineCompilationOptions {
++                            constants: &constantes,
++                            zero_initialize_workgroup_memory: true,
++                        },
++                        cache: None,
++                    })
++                })
++                .collect();
++            h.diag.jogos.push((jogo, um));
++        }
++        h.diag.jogos.len()
++    }
++
++    /// INSTRUMENTO (item 1, W6i) — a variante `v` (do [`Self::diag_variantes_da_hrc`]) daqui em diante; `None` =
++    /// o produto. Reescreve SEMPRE os uniformes da descida (também para o produto: a mesma troca a cada quadro).
++    #[doc(hidden)]
++    pub fn diag_variante_da_hrc(&mut self, gpu: &GpuContext, v: Option<usize>) {
++        let um = match (&self.hrc, v) {
++            (Some(h), Some(v)) => h.diag.jogos[v].1,
++            _ => 0,
++        };
++        self.diag_cones_um(gpu, hrc::DESCIDA_UM_CONE | um);
++        if let Some(h) = &mut self.hrc {
++            h.diag.ativa = v;
++        }
++    }
++
+     /// ⭐ W5q — INSTRUMENTO: daqui em diante cada despacho da holográfica grava no seu passe, com
+     /// carimbos próprios (a `c2` dos [`TemposMs`] fica 0; a fronteira de passe soma um pouco).
+     /// `false` sem a holográfica ou sem `TIMESTAMP_QUERY`.
+diff --git a/crates/ph2d-light2d-gpu/src/wgsl/c2_hrc.wgsl b/crates/ph2d-light2d-gpu/src/wgsl/c2_hrc.wgsl
+index 1949ff49e2..00c70b80a2 100644
+--- a/crates/ph2d-light2d-gpu/src/wgsl/c2_hrc.wgsl
++++ b/crates/ph2d-light2d-gpu/src/wgsl/c2_hrc.wgsl
+@@ -119,6 +119,8 @@ override JUNTOS_HRC: bool = false;
+ override T_NULO_HRC: bool = true;
+ // ⭐ bug 7 (W6i) — `Config::hrc_meio_float_mais_proximo` ([`meio_float`]).
+ override MAIS_PROXIMO_HRC: bool = true;
++// INSTRUMENTO (item 1, W6i) — as duas sondas do arquivo no [`de_fora`] sem o laço.
++override FORA_DESDOBRADO_HRC: bool = false;
+ const LADO_DO_VAZIO: u32 = 8u;
+ 
+ struct Par {
+@@ -362,6 +364,11 @@ fn de_fora(xi: u32, v: i32, j: u32, n: u32) -> vec3<f32> {
+     let vf = ce.y - recuo * passo.y - 0.5;
+     let v0 = floor(vf);
+     let fr = vf - v0;
++    if FORA_DESDOBRADO_HRC {
++        var soma = (1.0 - fr) * sonda_do_arquivo(v0, xe.y, m, coluna, pai, ceu);
++        soma += fr * sonda_do_arquivo(v0 + 1.0, xe.y, m, coluna, pai, ceu);
++        return soma * arco(n, j);
++    }
+     var soma = vec3<f32>(0.0);
+     // ⭐ W6h §13: a leitura SEM desvio (lê sempre, a base do nível fora da janela, e escolhe depois) — o mesmo
+     // valor; a leitura dentro do `if` levava a descida de 38 a 46 registos e custava ~0,3 ms em todo nível.
+@@ -379,6 +386,17 @@ fn de_fora(xi: u32, v: i32, j: u32, n: u32) -> vec3<f32> {
+     return soma * arco(n, j);
+ }
+ 
++// A sonda `s` do arquivo (a leitura sem desvio do [`de_fora`]), ou o céu fora da janela.
++fn sonda_do_arquivo(s: f32, y: f32, m: u32, coluna: f32, pai: u32, ceu: vec3<f32>) -> vec3<f32> {
++    var i = FORA_DA_JANELA;
++    if s >= 0.0 && s < y {
++        i = indice_na_janela(m, u32(coluna), u32(s), pai);
++    }
++    let ok = i != FORA_DA_JANELA;
++    let lido = desempacotar(arquivo_dos_r[hrcs[iq()].fora_base[m >> 2u][m & 3u] + select(0u, i, ok)]).r;
++    return select(ceu, lido, ok);
++}
++
+ const FORA_DA_JANELA: u32 = 0xffffffffu;
+ 
+ // O R (nível `m`, sonda `(k, v)`, cone `c`) na janela do arquivo (a partir da base do nível), ou
+@@ -655,6 +673,27 @@ fn hrc_desce(
+     escrever_e_arquivar_r(e, d.y, d.z, d.x, empacotar(Par(soma_da_descida(d.x, d.y, d.z), 0.0)));
+ }
+ 
++// ⭐ item 1 (W6i) — a descida com UM cone por fio sem o `if` de uniforme dos cones (só em 3D por colunas): o cone
++// `m` = `gid.z`, a MESMA conta do [`descer_cones`] (as duas metades, o salto do T nulo).
++@compute @workgroup_size(64)
++fn hrc_desce_um(
++    @builtin(global_invocation_id) gid0: vec3<u32>,
++    @builtin(num_workgroups) nw: vec3<u32>,
++    @builtin(workgroup_id) wg: vec3<u32>,
++    @builtin(local_invocation_id) li: vec3<u32>,
++) {
++    let gid = id_do_fio(gid0, wg, li, nw);
++    let xi = gid.y;
++    let v = gid.x;
++    let m = gid.z;
++    if v < hrcs[iq()].eixo.y && !fora_do_arquivo(xi, v) {
++        var soma = vec3<f32>(0.0);
++        soma += metade_da_descida(xi, v, m, 2u * m, t_da_aresta(xi, v, m));
++        soma += metade_da_descida(xi, v, m + 1u, 2u * m + 1u, t_da_aresta(xi, v, m + 1u));
++        escrever_e_arquivar_r(indice_r(hrcs[iq()].nx, hrcs[iq()].nivel, xi, v, m), xi, v, m, empacotar(Par(soma, 0.0)));
++    }
++}
++
+ fn escrever_e_arquivar_r(i: u32, xi: u32, v: u32, c: u32, e: vec2<u32>) {
+     escrever_r(i, e);
+     arquivar(xi, v, c, e);
+diff --git a/crates/ph2d-app-light2d/tests/it/medida_luz2d_desce_um.rs b/crates/ph2d-app-light2d/tests/it/medida_luz2d_desce_um.rs
+new file mode 100644
+index 0000000000..9aa9fd2e56
+--- /dev/null
++++ b/crates/ph2d-app-light2d/tests/it/medida_luz2d_desce_um.rs
+@@ -0,0 +1,344 @@
++//! **A descida por UM cone sem o `if` de uniforme e o `de_fora` desdobrado** (item 1 da W6i: a conta do `de_fora`
++//! nos níveis 11–12 a 2160p Alta, handoff W6h §13–§14.2). À mão:
++//!
++//! ```text
++//! PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-app-light2d --profile smoke --test it \
++//!     medida_luz2d_desce_um -- --ignored --nocapture --test-threads=1
++//! ```
++//!
++//! `medida_luz2d_desce_um` (o relógio): cena 5, `[-4.2, -1.8]` h 3,8, a vista do app com o entorno e a borda; as
++//! [`VARIANTES`] são jogos de pipelines no MESMO solver (`Solver::diag_variantes_da_hrc`), trocados A CADA QUADRO
++//! na vista e no entorno, a ordem a rodar por ciclo; o mínimo e a mediana da diferença PAREADA contra o produto
++//! do mesmo ciclo; `A′` é a pipeline gémea (o controlo). Depois (nunca antes) as fases da descida por nível.
++//! `PH2D_DESCE_UM_TETOS=3840x2160:high,1920x1080:low` (omissão: os 9); `PH2D_DESCE_UM_REGISTOS=<pasta>` escreve
++//! os módulos para `spikes/regua-registos`.
++//!
++//! `medida_luz2d_desce_um_bits`: o produto × cada variante, solvers novos, 30 quadros, pela lei do mesmo bit por
++//! placa; as vistas do portão do T nulo + 2160p Alta (`PH2D_DESCE_UM_TODAS=1`: os 9 tetos × 2 câmeras).
++
++use ph2d_app_light2d::qualidade::degrau_do;
++use ph2d_app_light2d::teto::{Tetos, fina_que_cabe};
++use ph2d_app_light2d::{config_da_vista, config_do_entorno, grade_do_quadro, regiao_da_janela};
++use ph2d_editor_core::luz_edits::NivelDaLuz;
++use ph2d_gpu::GpuContext;
++use ph2d_light2d_gpu::Solver;
++use ph2d_render::Camera2d;
++
++use crate::comum::fluencia_lida;
++use crate::medida_luz2d_w4b::loadavg;
++use crate::medida_luz2d_w5o::{mediana, minimo};
++use crate::medida_luz2d_w5v::cena_do_smoke;
++
++const fn niveis(de: u32, ate: u32) -> u32 {
++    (u32::MAX >> (31 - ate)) & !((1u32 << de) - 1)
++}
++
++/// `(nome, desdobrado, os níveis pelo hrc_desce_um)`; o produto é a variante `None`, à parte.
++pub(crate) const VARIANTES: [(&str, bool, u32); 7] = [
++    ("A′", false, 0),
++    ("Fa", true, 0),
++    ("Fc todos", false, u32::MAX),
++    ("Fc 9–12", false, niveis(9, 12)),
++    ("Fc 10–12", false, niveis(10, 12)),
++    ("Fc 11–12", false, niveis(11, 12)),
++    ("Fa+Fc 9–12", true, niveis(9, 12)),
++];
++
++const AQUECE: usize = 4;
++const CICLOS: usize = 40;
++const CICLOS_FASES: usize = 4;
++
++fn nivel_de(s: &str) -> NivelDaLuz {
++    match s {
++        "low" => NivelDaLuz::Baixa,
++        "medium" => NivelDaLuz::Media,
++        _ => NivelDaLuz::Alta,
++    }
++}
++
++fn tetos() -> Vec<((u32, u32), NivelDaLuz)> {
++    let todos = "1920x1080:low,1920x1080:medium,1920x1080:high,2560x1440:low,2560x1440:medium,\
++                 2560x1440:high,3840x2160:low,3840x2160:medium,3840x2160:high";
++    std::env::var("PH2D_DESCE_UM_TETOS")
++        .unwrap_or_else(|_| todos.into())
++        .split(',')
++        .map(|t| {
++            let (r, n) = t.trim().split_once(':').expect("<l>x<a>:<nível>");
++            let (l, a) = r.split_once('x').expect("<l>x<a>");
++            (
++                (l.parse().expect("largura"), a.parse().expect("altura")),
++                nivel_de(n),
++            )
++        })
++        .collect()
++}
++
++fn specs() -> Vec<(bool, u32)> {
++    VARIANTES.iter().map(|v| (v.1, v.2)).collect()
++}
++
++/// A vista e o entorno na ordem do app (a vista renasce com o entorno vivo), com a borda e as variantes.
++fn montar(
++    gpu: &GpuContext,
++    centro: [f32; 2],
++    alvo: (u32, u32),
++    nivel: NivelDaLuz,
++    lado: u32,
++) -> (Solver, Solver, u32) {
++    let a = Camera2d::new(centro, 3.8)
++        .world_to_screen_affine(ph2d_host::WindowSize::new(alvo.0, alvo.1));
++    let tetos = Tetos {
++        lado,
++        recusou: None,
++    };
++    let k = fina_que_cabe(a, alvo, degrau_do(nivel), tetos).expect("nada cabe na placa");
++    let dg = degrau_do(nivel).com_fina_engrossada(k);
++    let g = grade_do_quadro(a, alvo, dg).expect("a grade");
++    let cv = config_da_vista(&gpu.device, g, a, dg);
++    let s = Solver::novo(gpu, cv.clone()).expect("solver da vista");
++    let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, alvo);
++    let mut e = Solver::novo(gpu, config_do_entorno(&gpu.device, a, alvo, dg).expect("o entorno"))
++        .expect("solver do entorno");
++    e.regiao_fina([0; 2], [0; 2]);
++    assert!(e.mascarar_miolo(
++        gpu,
++        Some([
++            g.origem_m[0],
++            g.origem_m[1],
++            g.origem_m[0] + f64::from(g.largura) * g.texel_m,
++            g.origem_m[1] + f64::from(g.altura) * g.texel_m,
++        ])
++    ));
++    drop(s);
++    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
++    let mut s = Solver::novo(gpu, cv).expect("solver da vista");
++    s.regiao_fina(i, f);
++    assert!(s.somar_entorno(gpu, Some(&e)));
++    let sp = specs();
++    assert_eq!(s.diag_variantes_da_hrc(gpu, &sp), sp.len(), "a vista sem a holográfica");
++    assert_eq!(e.diag_variantes_da_hrc(gpu, &sp), sp.len(), "o entorno sem a holográfica");
++    (s, e, k)
++}
++
++fn nome(v: Option<usize>) -> &'static str {
++    v.map_or("A", |v| VARIANTES[v].0)
++}
++
++#[test]
++#[ignore = "medição de placa: a descida por um cone e o de_fora desdobrado (item 1, W6i)"]
++fn medida_luz2d_desce_um() {
++    let Some(gpu) = crate::comum::gpu() else {
++        return;
++    };
++    let info = gpu.adapter.get_info();
++    eprintln!("P placa {:?} · driver {:?} {:?}", info.name, info.driver, info.driver_info);
++    let cena = cena_do_smoke(5);
++    let sem_ceu = ph2d_light2d_ecs::CenaDeLuz {
++        ceu: [0.0; 3],
++        ..cena.clone()
++    };
++    let lado = gpu.device.limits().max_texture_dimension_2d;
++    let vars: Vec<Option<usize>> = std::iter::once(None)
++        .chain((0..VARIANTES.len()).map(Some))
++        .collect();
++    let nv = vars.len();
++    for (alvo, nivel) in tetos() {
++        let (mut s, mut e, k) = montar(&gpu, [-4.2, -1.8], alvo, nivel, lado);
++        let g = s.config().grade;
++        let rotulo = format!("{}×{} {nivel:?} k {k}", alvo.0, alvo.1);
++        eprintln!(
++            "O {rotulo} · grade {}×{} · entorno {}×{} · load {}",
++            g.largura,
++            g.altura,
++            e.config().grade.largura,
++            e.config().grade.altura,
++            loadavg().trim()
++        );
++        if let Ok(pasta) = std::env::var("PH2D_DESCE_UM_REGISTOS") {
++            registos(&pasta, &s);
++        }
++        let quadro = |s: &mut Solver, e: &mut Solver, v: Option<usize>| {
++            e.diag_variante_da_hrc(&gpu, v);
++            s.diag_variante_da_hrc(&gpu, v);
++            e.quadro(&gpu, &sem_ceu);
++            s.quadro(&gpu, &cena);
++            (
++                s.tempos(&gpu).map_or(0.0, |t| t.c2_total()),
++                e.tempos(&gpu).map_or(0.0, |t| t.c2_total()),
++            )
++        };
++        let mut vista = vec![Vec::new(); nv];
++        let mut ent = vec![Vec::new(); nv];
++        for c in 0..AQUECE + CICLOS {
++            for i in 0..nv {
++                let iv = (i + c) % nv;
++                let (tv, te) = quadro(&mut s, &mut e, vars[iv]);
++                if c >= AQUECE {
++                    vista[iv].push(tv);
++                    ent[iv].push(te);
++                }
++            }
++        }
++        let par = |t: &[Vec<f64>], iv: usize| {
++            let d: Vec<f64> = t[iv].iter().zip(&t[0]).map(|(x, a)| x - a).collect();
++            mediana(&d)
++        };
++        for (iv, v) in vars.iter().enumerate() {
++            eprintln!(
++                "C {rotulo} · {:<11} · vista c2 mín {:.3} med {:.3} · − A mín {:+.3} par {:+.3} ({:+.2} %) · entorno mín \
++                 {:.3} − A {:+.3} par {:+.3}",
++                nome(*v),
++                minimo(&vista[iv]),
++                mediana(&vista[iv]),
++                minimo(&vista[iv]) - minimo(&vista[0]),
++                par(&vista, iv),
++                100.0 * par(&vista, iv) / minimo(&vista[0]),
++                minimo(&ent[iv]),
++                minimo(&ent[iv]) - minimo(&ent[0]),
++                par(&ent, iv),
++            );
++        }
++        eprintln!("R {rotulo} · load {}", loadavg().trim());
++
++        // As fases por nível (o modo de fases acrescenta fronteira de passe; a `c2` acima é a que decide).
++        assert!(s.medir_fases_da_hrc(&gpu));
++        let mut fases: Vec<Vec<(&'static str, u32, Vec<f64>)>> = vec![Vec::new(); nv];
++        for c in 0..1 + CICLOS_FASES {
++            for i in 0..nv {
++                let iv = (i + c) % nv;
++                quadro(&mut s, &mut e, vars[iv]);
++                if c == 0 {
++                    continue;
++                }
++                for (etapa, n, ms, _) in s.fases_da_hrc(&gpu).expect("fases") {
++                    match fases[iv].iter_mut().find(|o| o.0 == etapa && o.1 == n) {
++                        Some(o) => o.2.push(ms),
++                        None => fases[iv].push((etapa, n, vec![ms])),
++                    }
++                }
++            }
++        }
++        let ler = |iv: usize, n: u32| {
++            fases[iv]
++                .iter()
++                .find(|o| o.0 == "hrc_desce" && o.1 == n)
++                .map_or(0.0, |o| minimo(&o.2))
++        };
++        let nomes: Vec<&str> = vars.iter().map(|v| nome(*v)).collect();
++        eprintln!("F {rotulo} · desce por nível · {}", nomes.join(" · "));
++        let mut ns: Vec<u32> = fases[0]
++            .iter()
++            .filter(|o| o.0 == "hrc_desce")
++            .map(|o| o.1)
++            .collect();
++        ns.sort_unstable();
++        for n in ns {
++            let l: Vec<String> = (0..nv).map(|iv| format!("{:.3}", ler(iv, n))).collect();
++            eprintln!("F {rotulo} · desce n {n:>2} · {}", l.join(" · "));
++        }
++        drop((s, e));
++        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
++    }
++}
++
++/// O produto × cada variante, solvers novos (o estado acumulado é o mesmo só com a mesma história).
++#[test]
++#[ignore = "medição de placa: o bit das variantes do item 1 (W6i)"]
++fn medida_luz2d_desce_um_bits() {
++    let Some(gpu) = crate::comum::gpu() else {
++        return;
++    };
++    let info = gpu.adapter.get_info();
++    eprintln!("P placa {:?} · driver {:?} {:?}", info.name, info.driver, info.driver_info);
++    let cena = cena_do_smoke(5);
++    let mut casos = vec![
++        (NivelDaLuz::Baixa, [-4.2, -1.8], (1920, 1080)),
++        (NivelDaLuz::Alta, [-4.2, -1.8], (1920, 1080)),
++        (NivelDaLuz::Media, [-3.2, -1.8], (2560, 1440)),
++        (NivelDaLuz::Baixa, [-3.2, -1.8], (3840, 2160)),
++        (NivelDaLuz::Alta, [-4.2, -1.8], (3840, 2160)),
++    ];
++    if std::env::var("PH2D_DESCE_UM_TODAS").as_deref() == Ok("1") {
++        casos.clear();
++        for centro in [[-4.2, -1.8], [-3.2, -1.8]] {
++            for (alvo, nivel) in tetos() {
++                casos.push((nivel, centro, alvo));
++            }
++        }
++    }
++    let reescreve = info.driver.to_lowercase().contains("radv") || info.name.contains("RADV");
++    for (nivel, centro, alvo) in casos {
++        let luz = |v: Option<usize>| {
++            let (mut s, mut e, _) = montar(&gpu, centro, alvo, nivel, 8192);
++            e.diag_variante_da_hrc(&gpu, v);
++            s.diag_variante_da_hrc(&gpu, v);
++            for _ in 0..30 {
++                e.quadro(&gpu, &cena);
++                assert!(s.somar_entorno(&gpu, Some(&e)));
++                s.quadro(&gpu, &cena);
++            }
++            let f = fluencia_lida(&gpu, &s).v;
++            drop((s, e));
++            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
++            f
++        };
++        let produto = luz(None);
++        let acesos = produto.iter().filter(|v| v.iter().any(|c| *c > 0.0)).count();
++        assert!(acesos > 0, "a vista às escuras não prova nada");
++        for iv in 0..VARIANTES.len() {
++            let b = luz(Some(iv));
++            let (dif, pior) = diferencas(&produto, &b);
++            let passa = if reescreve { pior <= 1 } else { dif == 0 };
++            eprintln!(
++                "B {alvo:?} {nivel:?} {centro:?} ({acesos} acesos) · {:<11} · {dif} texels, o pior {pior} ULP · {}",
++                VARIANTES[iv].0,
++                if passa { "PASSA" } else { "REPROVA" }
++            );
++        }
++    }
++}
++
++/// `(texels diferentes, o pior em ULP do f16)` — a contagem do `mesmo_bit_por_placa`, sem reprovar.
++fn diferencas(a: &[[f32; 3]], b: &[[f32; 3]]) -> (usize, u16) {
++    let ulps = |x: f32, y: f32| {
++        half::f16::from_f32(x)
++            .to_bits()
++            .abs_diff(half::f16::from_f32(y).to_bits())
++    };
++    let (mut d, mut pior) = (0, 0);
++    for (x, y) in a.iter().zip(b) {
++        if x != y {
++            d += 1;
++            pior = pior.max((0..3).map(|c| ulps(x[c], y[c])).max().unwrap_or(0));
++        }
++    }
++    (d, pior)
++}
++
++/// Para `spikes/regua-registos <pasta>`: o módulo do produto e, por entrada da descida, as constantes da vista
++/// (o `FORA_DESDOBRADO_HRC` 0 e 1; `DISTANTES` 0 e 1).
++fn registos(pasta: &str, vista: &Solver) {
++    let pasta = std::path::PathBuf::from(pasta);
++    std::fs::create_dir_all(&pasta).expect("a pasta");
++    let c = vista.config();
++    let constantes = vista.constantes_da_hrc().expect("a holográfica");
++    let fonte =
++        ph2d_light2d_gpu::fonte_do_rc(c.aritmetica, c.armazenamento, c.hrc_niveis_em_textura());
++    std::fs::write(pasta.join("produto.wgsl"), fonte).expect("o módulo");
++    for entrada in ["hrc_desce", "hrc_desce_um", "hrc_soma"] {
++        for fa in [0, 1] {
++            for d in [0, 1] {
++                let mut l = vec!["modulo produto.wgsl".to_string(), format!("entrada {entrada}")];
++                l.extend(constantes.iter().map(|(k, x)| format!("{k} {x}")));
++                l.push(format!("FORA_DESDOBRADO_HRC {fa}"));
++                l.push(format!("DISTANTES {d}"));
++                std::fs::write(
++                    pasta.join(format!("{entrada}_fa{fa}_d{d}.txt")),
++                    l.join("\n") + "\n",
++                )
++                .expect("as constantes");
++            }
++        }
++    }
++    eprintln!("REGUA · {}", pasta.display());
++}

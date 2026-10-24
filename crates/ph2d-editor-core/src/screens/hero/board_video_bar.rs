@@ -248,8 +248,12 @@ pub fn install_rect(area: Rect, video: Rect, text_w: f32, keep: &[Rect]) -> Opti
 }
 
 /// O chrome do quadro já pintado que a barra e a frase de um vídeo não tapam: os painéis e as gavetas
-/// (`fit::painted`) e a barra curta.
+/// (`fit::painted`) e a barra curta. Nenhum na apresentação: a sala tapa o quadro e o chrome dele (W25,
+/// auditoria — a barra fugia de gavetas que não se viam).
 fn chrome(hero: &HeroScreen, area: Rect) -> Vec<Rect> {
+    if hero.documents.live.team.show.is_some() {
+        return Vec::new();
+    }
     let tools = super::board_bar::toolbar_rects(area);
     super::board_nav::fit::painted(&hero.documents.live.nav)
         .into_iter()

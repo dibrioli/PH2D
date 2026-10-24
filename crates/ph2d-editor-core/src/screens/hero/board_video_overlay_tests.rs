@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::screens::hero::board_nav::{self, NavButton};
+use crate::screens::hero::board_video_bar::layout;
 
 const CTLS: [Ctl; 9] = [
     Ctl::Play,
@@ -86,4 +87,38 @@ fn the_video_bar_is_never_under_the_chrome() {
     }
     assert!(seen > 0, "a barra do vídeo nunca apareceu");
     assert!(bad.is_empty(), "{}", bad.join("\n"));
+}
+
+/// A barra nunca fica à frente do vídeo: por baixo, por cima se em baixo não couber, e nenhuma se não
+/// couber em lado nenhum.
+#[test]
+fn the_bar_goes_under_or_over_the_video_never_on_it() {
+    use crate::zones::Rect;
+    let area = Rect::new(0.0, 0.0, 1000.0, 600.0);
+    let time = 80.0;
+    let under = layout(
+        area,
+        Rect::new(100.0, 100.0, 560.0, 315.0),
+        (time, false),
+        &[],
+    )
+    .unwrap();
+    assert!(under.ctls.iter().all(|(_, r)| r.y >= 415.0));
+    let over = layout(
+        area,
+        Rect::new(100.0, 250.0, 560.0, 340.0),
+        (time, false),
+        &[],
+    )
+    .unwrap();
+    assert!(over.ctls.iter().all(|(_, r)| r.y + r.h <= 250.0));
+    assert!(
+        layout(
+            area,
+            Rect::new(0.0, 10.0, 1000.0, 580.0),
+            (time, false),
+            &[]
+        )
+        .is_none()
+    );
 }

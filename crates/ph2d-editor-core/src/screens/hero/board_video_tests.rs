@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::screens::hero::board_video;
-use crate::screens::hero::board_video_bar::{self, Ctl, layout};
+use crate::screens::hero::board_video_bar::{self, Ctl};
 use ph2d_board_model::ElementId;
 use ph2d_board_render::{PlayerInput, PlayerStatus, VideoCommand};
 
@@ -620,40 +620,6 @@ fn the_arrows_walk_the_watched_videos_and_reset_brings_the_original_back() {
             "{c:?} depois de limpar"
         );
     }
-}
-
-/// A barra nunca fica à frente do vídeo: por baixo, por cima se em baixo não couber, e nenhuma se não
-/// couber em lado nenhum.
-#[test]
-fn the_bar_goes_under_or_over_the_video_never_on_it() {
-    use crate::zones::Rect;
-    let area = Rect::new(0.0, 0.0, 1000.0, 600.0);
-    let time = 80.0;
-    let under = layout(
-        area,
-        Rect::new(100.0, 100.0, 560.0, 315.0),
-        (time, false),
-        &[],
-    )
-    .unwrap();
-    assert!(under.ctls.iter().all(|(_, r)| r.y >= 415.0));
-    let over = layout(
-        area,
-        Rect::new(100.0, 250.0, 560.0, 340.0),
-        (time, false),
-        &[],
-    )
-    .unwrap();
-    assert!(over.ctls.iter().all(|(_, r)| r.y + r.h <= 250.0));
-    assert!(
-        layout(
-            area,
-            Rect::new(0.0, 10.0, 1000.0, 580.0),
-            (time, false),
-            &[]
-        )
-        .is_none()
-    );
 }
 
 #[path = "board_video_click_tests.rs"]

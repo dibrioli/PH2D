@@ -568,5 +568,72 @@ fn a_video_on_a_slide_plays_in_the_presentation_with_our_controls() {
     );
 }
 
+/// ⭐ W25 (auditoria) — na apresentação a barra do vídeo fica rente por baixo dele e centrada: o chrome do
+/// quadro pintado por BAIXO da sala (as gavetas, os painéis, a barra curta) não se vê e não a empurra.
+#[test]
+fn in_the_presentation_the_video_bar_ignores_the_hidden_board_chrome() {
+    use crate::screens::hero::board_video;
+    use crate::screens::hero::board_video_bar::{self, Ctl};
+    let mut t = T::new();
+    t.hero.motion.set_reduced_motion(true);
+    let _slide = t.frame_at([0.0, 0.0, 1600.0, 900.0], "One");
+    let at = t.screen([800.0, 450.0]);
+    let at = Some([f64::from(at.0), f64::from(at.1)]);
+    let link = "https://www.youtube.com/watch?v=aqz-KE-bpKQ";
+    assert!(board_video::insert_link(&mut t.hero, link, at));
+    t.paint();
+    let vid = t
+        .hero
+        .documents
+        .active_board()
+        .unwrap()
+        .doc
+        .live()
+        .find(|e| e.embed().is_some())
+        .unwrap()
+        .id;
+    t.shell_click_id(button_node(NavButton::Present), "Present");
+    t.shell_click_id(board_video_bar::show_node(vid), "o vídeo");
+    t.hero.documents.videos_mut().status = Some(ph2d_board_render::PlayerStatus {
+        time: 3.0,
+        duration: 60.0,
+        playing: true,
+        volume: 100,
+        muted: false,
+        starting: false,
+    });
+    // Por baixo da sala: a gaveta das formas aberta e um flutuante largo na faixa do vídeo.
+    t.hero.documents.live.shapes_open = true;
+    t.paint();
+    let pl = t.hero.documents.videos_mut().on_screen[&vid];
+    let el = t
+        .hero
+        .documents
+        .active_board()
+        .unwrap()
+        .doc
+        .get(vid)
+        .cloned()
+        .unwrap();
+    let bottom = (pl.to_screen * ph2d_vector::Point::new(el.w / 2.0, el.h)).y as f32;
+    let cx = (pl.to_screen * ph2d_vector::Point::new(el.w / 2.0, 0.0)).x as f32;
+    let ctls = [Ctl::Play, Ctl::Outside].map(|c| {
+        t.hero
+            .hit_index
+            .rect_for(board_video_bar::node(c))
+            .expect("a barra")
+    });
+    let mid = (ctls[0].x + ctls[1].x + ctls[1].w) / 2.0;
+    assert!(
+        ctls[0].y >= bottom,
+        "a barra subiu: {:?}, vídeo até {bottom}",
+        ctls[0]
+    );
+    assert!(
+        (mid - cx).abs() <= 1.0,
+        "a barra saiu do centro do vídeo: {mid} × {cx}"
+    );
+}
+
 #[path = "board_mention_tests.rs"]
 mod mention;

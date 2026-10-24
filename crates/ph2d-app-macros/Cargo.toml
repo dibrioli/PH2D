@@ -23,6 +23,8 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-tool-painter = { path = "../ph2d-tool-painter" }
 # Exportar…/Importar… (W18): o diálogo nativo, só pela porta `ph2d_app_host::modal`.
 rfd = "0.17"
+# O seletor de cor do pincel (a cena `PH2D_MACRO_SMOKE=7`).
+ph2d-tokens = { path = "../ph2d-tokens" }
 
 [features]
 # ⚠️ HOWTO §2.5 — do tamanho do que ATRAVESSA: `aplicar::sem_placa` (o gate da shell que grava e abre).
@@ -37,8 +39,9 @@ ph2d-panel-macros = { path = "../ph2d-panel-macros" }
 ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
 # A4 (W9): o relógio do clipe que o Parar tem de re-armar.
 ph2d-core = { path = "../ph2d-core" }
-# Desfazer o aplicar: a porta dos documentos do Painter à volta do restauro (`Reata`).
+# A sonda da cena 7: o encaixe vivo do Painter (a lei do «por cima») e a `Sprite` do alvo.
 ph2d-app-painter = { path = "../ph2d-app-painter" }
+ph2d-render = { path = "../ph2d-render" }
 
 [lints]
 workspace = true

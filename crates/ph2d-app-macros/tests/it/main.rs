@@ -1,5 +1,6 @@
 mod aplicar;
 mod biblioteca;
+mod cena_da_biblioteca;
 mod cenas_do_smoke;
 mod desfazer_o_aplicar;
 mod gate7;

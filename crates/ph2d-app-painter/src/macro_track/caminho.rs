@@ -232,7 +232,7 @@ pub fn roteiro(v: Variante) -> Vec<(u64, Gesto)> {
 }
 
 use cef::roteiro_do_cef;
-pub use cef::{COR_DO_DROP, COR_NOVA, SOBREPOR_S};
+pub use cef::{COR_DO_DROP, COR_NOVA, SOBREPOR_S, no_seletor};
 
 #[path = "caminho_cef.rs"]
 mod cef;

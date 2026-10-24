@@ -35,6 +35,11 @@ const FORA: &[Isento] = &[
         "o REGISTO das cenas `PH2D_MACRO_SMOKE=5|6` (`regista`: a consola e `$TMPDIR/ph2d-macro-smoke.log`) \
          — as linhas de diagnóstico por quadro e o anúncio da cena, lidos por quem caça o defeito, nunca ecrã",
     ),
+    (
+        "macro_track/caminho_cef.rs",
+        "o filho `#[path]` do `caminho.rs`: o que falhou num gesto do C&F da cena `=6` vai ao MESMO \
+         registo (`regista`), nunca ao ecrã",
+    ),
 ];
 
 /// Os literais-identificadores desta crate, com o mecanismo.

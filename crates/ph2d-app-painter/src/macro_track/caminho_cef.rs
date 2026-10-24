@@ -76,3 +76,29 @@ pub(super) fn roteiro_do_cef(v: Variante) -> Vec<(u64, Gesto)> {
     r.extend([(para + 500, Gesto::Rewind), (para + 1_000, Gesto::Play)]);
     r
 }
+
+/// **Os gestos do seletor e do modal** pelas portas do `HeroScreen`: o valor do seletor que o C&F abriu,
+/// o fecho dele, o Done do «Fill adjust». `Some` = o que falhou; os outros gestos passam calados.
+pub fn no_seletor(g: Gesto, hero: &mut ph2d_editor_core::HeroScreen) -> Option<String> {
+    use ph2d_editor_core::ids;
+    match g {
+        Gesto::EscolheCor([r, gr, b]) => {
+            if hero.store.picker_target() != Some(ids::PAINTER_COLOR_THUMB) {
+                return Some("the colour picker is not open".to_owned());
+            }
+            let cor = ph2d_tokens::ColorValue::from_rgba8(r, gr, b, 0xFF);
+            hero.store.set_blender_value(ids::INSP_BLENDER_PICKER, cor);
+            None
+        }
+        Gesto::FechaSeletor => {
+            hero.store.set_picker_target(None);
+            None
+        }
+        Gesto::FillPronto => {
+            let ev =
+                ph2d_editor_core::interaction::WidgetEvent::Click(ids::PAINTER_FILL_MODAL_DONE);
+            (!hero.apply_event(ev)).then(|| "the «Fill adjust» modal is not open".to_owned())
+        }
+        _ => None,
+    }
+}

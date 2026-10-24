@@ -177,6 +177,11 @@ impl Macros {
         self.biblioteca.lida.as_ref().expect("acabou de ler")
     }
 
+    /// Os nomes da biblioteca, pela ordem da lista do painel.
+    pub fn nomes_da_biblioteca(&mut self) -> Vec<String> {
+        self.lida().1.iter().map(|v| v.nome.clone()).collect()
+    }
+
     /// A frase do último gesto da biblioteca.
     #[must_use]
     pub fn aviso(&self) -> Option<&ErroDaMacroView> {

@@ -170,6 +170,16 @@ novo — a imagem nasce e as pinceladas tocam; (10) uma imagem maior e Aplicar �
 rodado — as pinceladas entram nela no tamanho gravado, rodadas. Os números (tamanhos, texels pintados em cada
 aplicação, a posição do traço no alvo) entram aqui pela sonda headless ANTES do texto do smoke.
 
+**Medido (23/10, sonda `a_cena_7_percorre_o_caminho_inteiro`, o MESMO roteiro e os mesmos pedidos da cena,
+`ph2d_app_macros::cena_da_biblioteca`; Digital, 100 px/m):** biblioteca `["Macro 2", "Macro"]` (a guardada e a
+importada) e `exportada.ph2dmacro` escrito; (9) a imagem nasce `256×256` dentro do objecto Macro, **5 918** texels
+pintados, eixo principal `0,01°`, comprimento ao longo dele `168,0 px`, cores no meio de cada pincelada
+`[210,40,40]` e `[30,70,210]` (as pedidas); (10) sobre a imagem `512×256`, o objecto Macro em `(3,34 m, 0)` rodado
+`30°`: **5 892** texels, eixo `−29,8°` (y para baixo = `+30°` no mundo), comprimento `168,6 px` (o tamanho gravado),
+caixa `x 66..252, y 49..207` (o meio à esquerda do centro: o gizmo andou −96 px). No app (fotos em
+`handoffs/smoke_2026-10-23_W18/`) a cena corre em ~53 s e a biblioteca de teste fica em
+`$TMPDIR/ph2d-macro-smoke-7/` (nunca a do dono, salvo `PH2D_MACROS_DIR`).
+
 ## 7. Ordem de execução (série só onde um passo muda o seguinte)
 
 1. Núcleo: `Track::{inicio, objeto}`, `ficheiro`, gates de formato. (Base de tudo.)

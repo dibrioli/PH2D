@@ -106,14 +106,30 @@ fn timed<T>(f: impl FnOnce() -> T) -> T {
     out
 }
 
+thread_local! {
+    /// A resposta que uma cena de smoke deu ao PRÓXIMO diálogo de um ficheiro ([`responde_o_proximo`]).
+    static RESPOSTA: std::cell::RefCell<Option<PathBuf>> = const { std::cell::RefCell::new(None) };
+}
+
+/// **Uma cena de smoke responde ao próximo diálogo** (o clique no diálogo nativo não chega à tela
+/// virtual): o [`save_file`] / [`pick_file`] seguinte devolve `p` sem abrir janela; o resto do gesto
+/// corre como o do artista.
+pub fn responde_o_proximo(p: PathBuf) {
+    RESPOSTA.with(|r| *r.borrow_mut() = Some(p));
+}
+
+fn respondida() -> Option<PathBuf> {
+    RESPOSTA.with(|r| r.borrow_mut().take())
+}
+
 /// A porta de **gravar**: abre o diálogo e declara o tempo em que ele congelou o loop.
 pub fn save_file(dialog: rfd::FileDialog) -> Option<PathBuf> {
-    timed(|| dialog.save_file())
+    respondida().or_else(|| timed(|| dialog.save_file()))
 }
 
 /// A porta de **abrir**, pela mesma razão.
 pub fn pick_file(dialog: rfd::FileDialog) -> Option<PathBuf> {
-    timed(|| dialog.pick_file())
+    respondida().or_else(|| timed(|| dialog.pick_file()))
 }
 
 /// A porta de **abrir VÁRIOS**, pela mesma razão.

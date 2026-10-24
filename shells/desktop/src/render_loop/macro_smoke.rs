@@ -1,7 +1,9 @@
 //! `PH2D_MACRO_SMOKE` — as cenas de [`ph2d_app_macros::CENAS_DO_SMOKE`]. A família monta o objecto e
 //! grava a macro; aqui monta-se o clipe (`add_macro_clip`, o laço `[0, D]`, o Autoplay) e a cena corre.
 
+use super::super::fase_macros::atlas_da_cena;
 use ph2d_app_painter::macro_track::encaixe_vivo::MontaTela;
+use ph2d_editor_core::action_bus::{EditorAction::Hierarchy, HierRequest::Delete};
 use ph2d_editor_core::macro_edits::MacroRequest;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_timeline::TimelineIntent;
@@ -20,8 +22,10 @@ impl crate::App {
         let Ok(nivel) = std::env::var("PH2D_MACRO_SMOKE") else {
             return;
         };
-        if matches!(nivel.as_str(), "5" | "6") {
-            self.caminho_do_dono(nivel == "6");
+        match nivel.as_str() {
+            "5" | "6" => self.caminho_do_dono(nivel == "6"),
+            "7" => return self.cena_da_biblioteca(),
+            _ => {}
         }
         if self.gfx.as_ref().is_none_or(|g| g.hero_screen.is_none())
             || FEITO.swap(true, std::sync::atomic::Ordering::Relaxed)
@@ -83,6 +87,55 @@ impl crate::App {
             hero.set_panel_visible("macros", true);
         }
     }
+    /// `PH2D_MACRO_SMOKE=7` — a biblioteca, o caminho inteiro ([`ph2d_app_macros::cena_da_biblioteca`]):
+    /// a família faz cada passo pelas portas do `HeroScreen`; aqui o ponteiro, o `Delete` e a imagem maior.
+    fn cena_da_biblioteca(&mut self) {
+        use ph2d_app_macros::cena_da_biblioteca::{self as cena, Passo};
+        if self.gfx.as_ref().is_none_or(|g| g.hero_screen.is_none()) {
+            return;
+        }
+        for p in cena::vencidos().1 {
+            let Some(g) = self.gfx.as_mut() else { return };
+            let (sim, toasts) = (&g.sim, &mut g.toasts);
+            let Some(p) = g
+                .hero_screen
+                .as_mut()
+                .and_then(|h| cena::faz(p, h, sim, toasts))
+            else {
+                continue;
+            };
+            let sel = g.hero_screen.as_ref().and_then(|h| h.gizmo.selection);
+            let quem = match p {
+                Passo::Apaga => cena::gravado(),
+                Passo::ImagemMaior => {
+                    cena::nasce_a_maior(&mut g.sim, |s, i, n| atlas_da_cena!(g).nasce(s, i, n))
+                }
+                _ => None,
+            };
+            let row = quem.and_then(|b| g.hero_live.as_ref()?.bridge.node_for(b));
+            if let Some(h) = g.hero_screen.as_mut().filter(|_| quem.is_some()) {
+                h.gizmo.replace_selection(quem);
+                (row.filter(|_| p == Passo::Apaga))
+                    .map(|row| h.bus.push(Hierarchy(Delete { row })));
+            }
+            let Some((px, py)) = sel
+                .zip(p.uv())
+                .and_then(|(b, uv)| self.ponto_da_tela(b, uv))
+            else {
+                if p == Passo::Sobe {
+                    self.painter_canvas_up();
+                }
+                continue;
+            };
+            self.last_pointer = (px, py);
+            if matches!(p, Passo::Desce(_)) {
+                self.painter_canvas_down(px, py, 1.0);
+            } else {
+                self.painter_canvas_move(px, py, 1.0);
+            }
+        }
+    }
+
     /// `PH2D_MACRO_SMOKE=6` — **o caminho do dono** ([`ph2d_app_painter::macro_track::caminho`]): os
     /// gestos pelas portas de sempre (o painel MACROS, o ponteiro da tela, o transporte da Keys) e a
     /// linha de diagnóstico a cada décimo de segundo. Na `=5` (`conduz = false`) só o registo: o dono
@@ -227,25 +280,9 @@ impl crate::App {
                 self.fill_drag_up();
                 None
             }
-            Gesto::EscolheCor([r, gr, b]) => {
-                let store = &mut self.gfx.as_mut()?.hero_screen.as_mut()?.store;
-                if store.picker_target() != Some(ids::PAINTER_COLOR_THUMB) {
-                    return Some("the colour picker is not open".to_owned());
-                }
-                let cor = ph2d_tokens::ColorValue::from_rgba8(r, gr, b, 0xFF);
-                store.set_blender_value(ids::INSP_BLENDER_PICKER, cor);
-                None
-            }
-            Gesto::FechaSeletor => {
-                let store = &mut self.gfx.as_mut()?.hero_screen.as_mut()?.store;
-                store.set_picker_target(None);
-                None
-            }
-            Gesto::FillPronto => {
+            g @ (Gesto::EscolheCor(_) | Gesto::FechaSeletor | Gesto::FillPronto) => {
                 let hero = self.gfx.as_mut()?.hero_screen.as_mut()?;
-                let ev =
-                    ph2d_editor_core::interaction::WidgetEvent::Click(ids::PAINTER_FILL_MODAL_DONE);
-                (!hero.apply_event(ev)).then(|| "the «Fill adjust» modal is not open".to_owned())
+                ph2d_app_painter::macro_track::caminho::no_seletor(g, hero)
             }
             _ => None,
         }

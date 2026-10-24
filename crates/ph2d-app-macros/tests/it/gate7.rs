@@ -138,6 +138,13 @@ impl Banca {
         self.m.quadro(&mut f, &mut c, self.agora);
     }
 
+    /// Quadros até o relógio da banca chegar a `ms`.
+    pub(crate) fn ate_ms(&mut self, ms: u64) {
+        while self.agora < ms * 1000 {
+            self.quadro();
+        }
+    }
+
     /// A shell publica o instantâneo e o painel pinta; os gestos que a pintura levanta vão à família.
     pub(crate) fn pinta(&mut self) {
         let info = self.info(self.escolhido.or(Some(self.bits)));
@@ -206,7 +213,7 @@ impl Banca {
         self.drena();
     }
 
-    fn ponteiro(&mut self, pos: [f32; 2], phase: PointerPhase) {
+    pub(crate) fn ponteiro(&mut self, pos: [f32; 2], phase: PointerPhase) {
         self.painter.on_canvas_pointer(CanvasPointer {
             pos,
             pressure: 1.0,

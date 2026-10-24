@@ -212,7 +212,7 @@ impl Clipe {
         match self
             .palcos
             .lidos
-            .get_mut(&self.e.to_bits())
+            .get_mut(&(self.e.to_bits(), 0))
             .map(|l| &mut l.palco)
         {
             Some(Ok(Some(p))) => p,
@@ -221,7 +221,12 @@ impl Clipe {
     }
 
     fn o_fim_chegou(&self) -> bool {
-        match self.palcos.lidos.get(&self.e.to_bits()).map(|l| &l.palco) {
+        match self
+            .palcos
+            .lidos
+            .get(&(self.e.to_bits(), 0))
+            .map(|l| &l.palco)
+        {
             Some(Ok(Some(p))) => p.fim.acabou(),
             _ => false,
         }

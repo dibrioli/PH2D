@@ -128,7 +128,7 @@ impl PalcosDoPainter {
             let Ok(Some(p)) = &mut l.palco else {
                 continue;
             };
-            let (Some(sprite), Some(chave)) = (p.sprite, p.chave) else {
+            let (true, Some(sprite), Some(chave)) = (p.mostra, p.sprite, p.chave) else {
                 continue;
             };
             if Some(sprite) == ligada {

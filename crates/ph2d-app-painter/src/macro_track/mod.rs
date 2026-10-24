@@ -15,6 +15,7 @@
 
 use ph2d_ecs::{Entity, Macro, MacroTempo, StableId, World};
 use ph2d_editor_core::toast::{Toast, ToastQueue};
+use ph2d_macro::MacroTime;
 use ph2d_tool_painter::PainterTool;
 use ph2d_tool_painter::macro_track::em_cena::MacroEmCena;
 use ph2d_tool_painter::macro_track::marca::{self as marca_do_artista, MarcaDoArtista};
@@ -29,8 +30,12 @@ mod cauda;
 pub mod encaixe_vivo;
 mod fim;
 mod marcas;
+mod mistura;
+use mistura::{mistura_na_caixa, premultiplica_na_caixa, recorta};
 mod reescrita;
+mod trilhas;
 pub use reescrita::{EscreveSprite, LeSprite};
+use trilhas::{ChaveDoPalco, trilha_do_painter};
 #[cfg(test)]
 #[path = "palcos_arrasto_tests.rs"]
 mod palcos_arrasto_tests;
@@ -40,6 +45,9 @@ mod palcos_custo_tests;
 #[cfg(test)]
 #[path = "palcos_tests.rs"]
 mod palcos_tests;
+#[cfg(test)]
+#[path = "palcos_trilhas_tests.rs"]
+mod palcos_trilhas_tests;
 /// `PH2D_MACRO_SMOKE=1|4|5` — as cenas do Splash (tocar, o tutorial, a imagem do artista).
 pub mod smoke;
 
@@ -154,6 +162,8 @@ struct PalcoDaPintura {
     /// O tamanho da tela na ranhura (uma subida parcial só cabe na mesma).
     tamanho: Option<(u32, u32)>,
     toca: bool,
+    /// O que a sprite mostra, entre os palcos do mesmo dono sobre ela ([`trilhas::escolhe_os_mostrados`]).
+    mostra: bool,
     fim: fim::FimDaGravacao,
     /// O fim que a imagem ainda tem, depois de uma edição de etapa (W8 item 2b).
     por_reescrever: Option<reescrita::PorReescrever>,
@@ -188,10 +198,10 @@ impl Lido {
     }
 }
 
-/// Os palcos das macros do Painter, por entidade (bits).
+/// Os palcos das macros do Painter, por entidade (bits) e trilha do Painter dela.
 #[derive(Default)]
 pub struct PalcosDoPainter {
-    lidos: BTreeMap<u64, Lido>,
+    lidos: BTreeMap<ChaveDoPalco, Lido>,
     /// Ranhuras de palcos que morreram ou renasceram, a devolver no próximo [`Self::sobe`].
     soltas: Vec<u32>,
     /// O que sobe à ranhura (reusado entre quadros).
@@ -209,22 +219,16 @@ pub struct PalcosDoPainter {
     calcula_o_fim: Option<fim::Calculo>,
 }
 
-/// A trilha do Painter de um `Macro.doc` (com as edições das etapas).
-fn trilha_do_painter(bytes: &[u8]) -> Option<ph2d_macro::Track> {
-    let doc = ph2d_macro::codec::read(bytes).ok()?;
-    let familia = ph2d_tool_painter::macro_track::FAMILIA;
-    doc.tracks.into_iter().find(|t| t.family == familia)
-}
-
-fn palco_de(m: &Macro) -> Result<Option<PalcoDaPintura>, ErroDaMacro> {
+fn palco_de(m: &Macro, k: usize) -> Result<Option<PalcoDaPintura>, ErroDaMacro> {
     // No tutorial «fazer» a sprite mostra o que o aluno pinta.
     if m.doc.is_empty() || m.modo == ph2d_ecs::ModoDaMacro::Fazer {
         return Ok(None);
     }
-    let Some(em_cena) = MacroEmCena::de(&m.doc)? else {
+    let razao = ph2d_tool_painter::macro_track::instantaneos::razao();
+    let Some(em_cena) = MacroEmCena::da_trilha(&m.doc, k, razao)? else {
         return Ok(None);
     };
-    let Some(trilha) = trilha_do_painter(&m.doc) else {
+    let Some(trilha) = trilha_do_painter(&m.doc, k) else {
         return Ok(None);
     };
     let epoca = marca_do_artista::epoca_da_gravacao(&trilha);
@@ -235,6 +239,7 @@ fn palco_de(m: &Macro) -> Result<Option<PalcoDaPintura>, ErroDaMacro> {
         ranhura: None,
         tamanho: None,
         toca: false,
+        mostra: true,
         fim: fim::FimDaGravacao::de(trilha),
         por_reescrever: None,
         epoca,
@@ -252,7 +257,7 @@ fn palco_de(m: &Macro) -> Result<Option<PalcoDaPintura>, ErroDaMacro> {
 /// O palco de um `Macro` que mudou: o que já tocava REEDITA-SE (recomeça do instantâneo mais tardio que
 /// a trilha nova ainda tem, `MacroEmCena::reedita`); o resto nasce do zero. A ranhura de um palco que se
 /// vai fica a devolver.
-fn relido(velho: Option<Lido>, m: &Macro, tique: u32, soltas: &mut Vec<u32>) -> Lido {
+fn relido(velho: Option<Lido>, m: &Macro, k: usize, tique: u32, soltas: &mut Vec<u32>) -> Lido {
     if let Some(Lido {
         palco: Ok(Some(mut p)),
         ..
@@ -263,7 +268,7 @@ fn relido(velho: Option<Lido>, m: &Macro, tique: u32, soltas: &mut Vec<u32>) -> 
         } else {
             p.em_cena.reedita(&m.doc).map(|ainda| ainda.then_some(()))
         };
-        if let Some(trilha) = trilha_do_painter(&m.doc)
+        if let Some(trilha) = trilha_do_painter(&m.doc, k)
             && fim::versao_da_trilha(&trilha) != p.fim.versao
         {
             let mesma_gravacao = fim::versao_crua(&trilha) == p.fim.crua;
@@ -294,74 +299,7 @@ fn relido(velho: Option<Lido>, m: &Macro, tique: u32, soltas: &mut Vec<u32>) -> 
     soltas.extend(velho.and_then(|l| l.ranhura()));
     Lido {
         tique,
-        palco: palco_de(m),
-    }
-}
-
-/// Acrescenta a `out` o retângulo `(x, y, w, h)` de uma tela RGBA de largura `largura`, linha a linha.
-fn recorta(rgba: &[u8], largura: u32, (x, y, w, h): (u32, u32, u32, u32), out: &mut Vec<u8>) {
-    let (x, w) = (x as usize, w as usize);
-    let linhas = rgba.chunks_exact(largura as usize * 4).skip(y as usize);
-    for linha in linhas.take(h as usize) {
-        out.extend_from_slice(&linha[x * 4..(x + w) * 4]);
-    }
-}
-
-/// Copia o retângulo `c` de `rgba` (straight) para `espelho`, premultiplicado; as duas de largura `largura`.
-fn premultiplica_na_caixa(espelho: &mut [u8], rgba: &[u8], largura: u32, c: Caixa) {
-    let (lw, x, w) = (largura as usize, c.0 as usize, c.2 as usize);
-    for j in c.1 as usize..(c.1 + c.3) as usize {
-        let a = (j * lw + x) * 4;
-        let linha = &mut espelho[a..a + w * 4];
-        linha.copy_from_slice(&rgba[a..a + w * 4]);
-        ph2d_render::premul::premultiply_rgba8(linha);
-    }
-}
-
-/// **A lei da mistura** (W10, `docs/Macros/08_plano_W10_cobertura.md`): em `out` (o retângulo `c` do
-/// palco, premultiplicado), cada texel que o artista tocou com a cobertura `k` sobre o que estava por
-/// baixo `B` passa a `atual + (1 − k)·(palco − B)` — a tinta dele por cima do clipe naquele instante
-/// (`k` cheia é a imagem `atual`, premultiplicada, de largura `largura`).
-fn mistura_na_caixa(out: &mut [u8], marca: &MarcaDoArtista, atual: &[u8], largura: u32, c: Caixa) {
-    use marca_do_artista::LADO;
-    let (cx, cy, cw, ch) = c;
-    let (lw, w) = (largura as usize, cw as usize);
-    for ly in cy / LADO..(cy + ch).div_ceil(LADO) {
-        for lx in cx / LADO..(cx + cw).div_ceil(LADO) {
-            let Some(l) = marca.ladrilho(lx, ly) else {
-                continue;
-            };
-            let (x0, x1) = ((lx * LADO).max(cx), ((lx + 1) * LADO).min(cx + cw));
-            for y in (ly * LADO).max(cy)..((ly + 1) * LADO).min(cy + ch) {
-                for x in x0..x1 {
-                    let k = l.c(((y % LADO) * LADO + x % LADO) as usize);
-                    if k == 0 {
-                        continue;
-                    }
-                    let o = (((y - cy) as usize) * w + (x - cx) as usize) * 4;
-                    let a = ((y as usize) * lw + x as usize) * 4;
-                    let (o, a) = (&mut out[o..o + 4], &atual[a..a + 4]);
-                    if k == marca_do_artista::CHEIA {
-                        o.copy_from_slice(a);
-                        continue;
-                    }
-                    let b = l.b(((y % LADO) * LADO + x % LADO) as usize);
-                    // O `B` premultiplicado (o arredondamento de `premultiply_rgba8`) e `(1 − k)` em 16
-                    // bits: `· resta >> 16` em vez de `/ CHEIA` erra menos de 0,004 nível.
-                    let alfa = u32::from(b[3]);
-                    let resta = i32::from(marca_do_artista::CHEIA - k);
-                    for (n, (o, &a)) in o.iter_mut().zip(a).enumerate() {
-                        let bp = if n == 3 || alfa == 255 {
-                            u32::from(b[n])
-                        } else {
-                            (u32::from(b[n]) * alfa + 127) / 255
-                        };
-                        let d = (resta * (i32::from(*o) - bp as i32) + 32_768) >> 16;
-                        *o = (i32::from(a) + d).clamp(0, 255) as u8;
-                    }
-                }
-            }
-        }
+        palco: palco_de(m, k),
     }
 }
 
@@ -457,18 +395,65 @@ fn atual_e_marca<R: ?Sized>(
         .then_some((atual, marca))
 }
 
+/// Um palco segue o quadro: a sprite e a marca dele, o encaixe vivo e o relógio da macro.
+fn segue_o_palco(p: &mut PalcoDaPintura, world: &World, e: Entity, segundos: Option<f64>) {
+    let acordou = segundos.is_some() && !p.toca;
+    p.toca = segundos.is_some();
+    // A sprite resolve-se mesmo parado: a reescrita de uma etapa editada é fora do Play.
+    let alvo = p.em_cena.alvo();
+    let sprite = if alvo == 0 {
+        Some(e)
+    } else {
+        ph2d_ecs::entity_with_stable_id(world, StableId(alvo))
+    }
+    .map(Entity::to_bits);
+    // A sprite lê-se de novo quando o palco acorda ou os píxeis dela mudam.
+    let pixeis = sprite.map(Entity::from_bits).map(|s| {
+        (
+            world.get::<ph2d_render::Sprite>(s).map(|x| x.source),
+            world.get::<ph2d_ecs::SpritePixels>(s).copied(),
+        )
+    });
+    if acordou || sprite != p.sprite || pixeis != p.pixeis_da_sprite {
+        p.atual = None;
+    }
+    p.sprite = sprite;
+    p.pixeis_da_sprite = pixeis;
+    // A marca é da sprite e da gravação: o `StableId` dela (o do próprio objecto, sem alvo).
+    let sid = if alvo == 0 {
+        world.get::<StableId>(e).map(|s| s.0)
+    } else {
+        Some(alvo)
+    };
+    p.chave = sid.or(sprite).map(|s| (s, p.epoca));
+    // Por cima (W18): o gizmo do objecto Macro diz, a cada quadro, onde a gravação cai no alvo.
+    if let (Some(g), Some(s)) = (p.em_cena.tamanho_gravado(), sprite) {
+        let tela = p.em_cena.tocador().tool().source_size();
+        let e = encaixe_vivo::do_mundo(world, e, Entity::from_bits(s), tela, g);
+        p.em_cena.poe_encaixe(e);
+    }
+    let Some(s) = segundos else {
+        return;
+    };
+    // Um passo que falha pára a macro nele e fica em `MacroEmCena::erro`: a sprite continua a
+    // mostrar o que a macro pintou até lá.
+    let _ = p.em_cena.segue(s);
+}
+
 impl PalcosDoPainter {
     /// **O erro da macro do objecto `bits`** — a gravação que não se lê, ou o passo em que o palco
     /// parou (o painel MACROS di-lo ao artista, W5d).
     #[must_use]
     pub fn erro_de(&self, bits: u64) -> Option<&ErroDaMacro> {
-        match &self.lidos.get(&bits)?.palco {
-            Err(e) => Some(e),
-            Ok(p) => {
-                let p = p.as_ref()?;
-                p.em_cena.erro().or_else(|| p.fim.erro())
-            }
-        }
+        self.lidos
+            .range((bits, 0)..=(bits, usize::MAX))
+            .find_map(|(_, l)| match &l.palco {
+                Err(e) => Some(e),
+                Ok(p) => {
+                    let p = p.as_ref()?;
+                    p.em_cena.erro().or_else(|| p.fim.erro())
+                }
+            })
     }
 
     /// **De onde conferir a trilha `track` da macro do objecto `bits`** — o instantâneo do palco dele
@@ -479,10 +464,13 @@ impl PalcosDoPainter {
         bits: u64,
         track: &ph2d_macro::Track,
     ) -> Option<ph2d_tool_painter::macro_track::etapas::Partida> {
-        match &self.lidos.get(&bits)?.palco {
-            Ok(Some(p)) => p.em_cena.partida(track),
-            _ => None,
-        }
+        // A partida só vale sobre a mesma inicial e o mesmo alvo: o palco da própria trilha.
+        self.lidos
+            .range((bits, 0)..=(bits, usize::MAX))
+            .find_map(|(_, l)| match &l.palco {
+                Ok(Some(p)) => p.em_cena.partida(track),
+                _ => None,
+            })
     }
 
     /// **Por quadro**, depois de a Timeline escrever o `MacroTempo` e antes do extract: (re)cria o
@@ -494,7 +482,7 @@ impl PalcosDoPainter {
             .map(|(e, _, t)| (e, t.map(|t| t.segundos)))
             .collect();
         let soltas = &mut self.soltas;
-        self.lidos.retain(|bits, l| {
+        self.lidos.retain(|(bits, _), l| {
             let vivo = vistos.iter().any(|(e, _)| e.to_bits() == *bits);
             if !vivo {
                 soltas.extend(l.ranhura());
@@ -506,62 +494,34 @@ impl PalcosDoPainter {
                 .entity(e)
                 .get_change_ticks::<Macro>()
                 .map_or(0, |t| t.changed.get());
-            let fresco = self
-                .lidos
-                .get(&e.to_bits())
-                .is_none_or(|l| l.tique != tique);
+            let bits = e.to_bits();
+            let fresco = self.lidos.get(&(bits, 0)).is_none_or(|l| l.tique != tique);
             if fresco && let Some(m) = world.get::<Macro>(e) {
-                let velho = self.lidos.remove(&e.to_bits());
-                let lido = relido(velho, m, tique, &mut self.soltas);
-                self.lidos.insert(e.to_bits(), lido);
+                // Uma trilha do Painter, um palco; a 1.ª existe sempre (diz o erro de um doc que não se lê).
+                let n = trilhas::do_painter(&m.doc).len().max(1);
+                let sobram: Vec<ChaveDoPalco> = trilhas::do_dono(&mut self.lidos, bits)
+                    .map(|(c, _)| *c)
+                    .filter(|c| c.1 >= n)
+                    .collect();
+                for c in sobram {
+                    self.soltas
+                        .extend(self.lidos.remove(&c).and_then(|l| l.ranhura()));
+                }
+                for k in 0..n {
+                    let velho = self.lidos.remove(&(bits, k));
+                    let lido = relido(velho, m, k, tique, &mut self.soltas);
+                    self.lidos.insert((bits, k), lido);
+                }
             }
-            let Some(Lido {
-                palco: Ok(Some(p)), ..
-            }) = self.lidos.get_mut(&e.to_bits())
-            else {
-                continue;
-            };
-            let acordou = segundos.is_some() && !p.toca;
-            p.toca = segundos.is_some();
-            // A sprite resolve-se mesmo parado: a reescrita de uma etapa editada é fora do Play.
-            let alvo = p.em_cena.alvo();
-            let sprite = if alvo == 0 {
-                Some(e)
-            } else {
-                ph2d_ecs::entity_with_stable_id(world, StableId(alvo))
+            for (_, l) in trilhas::do_dono(&mut self.lidos, bits) {
+                let Ok(Some(p)) = &mut l.palco else {
+                    continue;
+                };
+                segue_o_palco(p, world, e, segundos);
             }
-            .map(Entity::to_bits);
-            // A sprite lê-se de novo quando o palco acorda ou os píxeis dela mudam.
-            let pixeis = sprite.map(Entity::from_bits).map(|s| {
-                (
-                    world.get::<ph2d_render::Sprite>(s).map(|x| x.source),
-                    world.get::<ph2d_ecs::SpritePixels>(s).copied(),
-                )
-            });
-            if acordou || sprite != p.sprite || pixeis != p.pixeis_da_sprite {
-                p.atual = None;
+            if let Some(s) = segundos {
+                trilhas::escolhe_os_mostrados(&mut self.lidos, bits, MacroTime::from_secs_f64(s));
             }
-            p.sprite = sprite;
-            p.pixeis_da_sprite = pixeis;
-            // A marca é da sprite e da gravação: o `StableId` dela (o do próprio objecto, sem alvo).
-            let sid = if alvo == 0 {
-                world.get::<StableId>(e).map(|s| s.0)
-            } else {
-                Some(alvo)
-            };
-            p.chave = sid.or(sprite).map(|s| (s, p.epoca));
-            // Por cima (W18): o gizmo do objecto Macro diz, a cada quadro, onde a gravação cai no alvo.
-            if let (Some(g), Some(s)) = (p.em_cena.tamanho_gravado(), sprite) {
-                let tela = p.em_cena.tocador().tool().source_size();
-                let e = encaixe_vivo::do_mundo(world, e, Entity::from_bits(s), tela, g);
-                p.em_cena.poe_encaixe(e);
-            }
-            let Some(s) = segundos else {
-                continue;
-            };
-            // Um passo que falha pára a macro nele e fica em `MacroEmCena::erro`: a sprite continua a
-            // mostrar o que a macro pintou até lá.
-            let _ = p.em_cena.segue(s);
         }
         // Uma mudança depois desta leitura leva um tique NOVO (a shell não corre um `Schedule`).
         world.increment_change_tick();
@@ -667,7 +627,7 @@ impl PalcosDoPainter {
                     )));
                 }
             }
-            if let (Some(entity_bits), Some(texture_id)) = (p.sprite, p.ranhura)
+            if let (true, Some(entity_bits), Some(texture_id)) = (p.mostra, p.sprite, p.ranhura)
                 && Some(entity_bits) != cede
             {
                 trocas.push(TrocaDaSprite {

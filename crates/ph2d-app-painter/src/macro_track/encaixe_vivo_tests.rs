@@ -84,7 +84,7 @@ fn perto(e: Encaixe, esperado: [f64; 6]) {
 }
 
 fn do_palco(p: &PalcosDoPainter, objeto: Entity) -> Option<Encaixe> {
-    match p.lidos.get(&objeto.to_bits()) {
+    match p.lidos.get(&(objeto.to_bits(), 0)) {
         Some(Lido {
             palco: Ok(Some(x)), ..
         }) => x.em_cena.encaixe(),

@@ -10,7 +10,7 @@
 //!
 //! [`MotionFiltro::liga_em_camada`]: crate::motion_filter::MotionFiltro::liga_em_camada
 
-use super::em_cena::MacroEmCena;
+use super::em_cena::{MacroEmCena, instante};
 use super::tocar::{ErroDaMacro, Modo};
 use crate::motion_leaf_images::Art;
 use crate::motion_mundo::MundoDaCena;
@@ -37,10 +37,10 @@ struct Lido {
     palco: Result<Option<PalcoEmCena>, ErroDaMacro>,
 }
 
-/// Os palcos das macros, por entidade (bits) — vive no `MotionShellState`.
+/// Os palcos das macros, por entidade (bits) e trilha do Motion dela — vive no `MotionShellState`.
 #[derive(Default)]
 pub struct PalcosDasMacros {
-    lidos: BTreeMap<u64, Lido>,
+    lidos: BTreeMap<(u64, usize), Lido>,
 }
 
 /// Como o palco toca; `None` = não há palco (no tutorial «fazer» o objecto mostra o que o aluno fez).
@@ -52,15 +52,28 @@ fn modo(m: ModoDaMacro) -> Option<Modo> {
     }
 }
 
-fn palco_de(m: &Macro) -> Result<Option<PalcoEmCena>, ErroDaMacro> {
+/// Quantas trilhas do Motion o doc tem (um doc que não se lê dá um palco: o do erro).
+fn trilhas_do_motion(bytes: &[u8]) -> usize {
+    ph2d_macro::codec::read(bytes).map_or(1, |d| {
+        d.tracks
+            .iter()
+            .filter(|t| t.family == super::FAMILIA)
+            .count()
+            .max(1)
+    })
+}
+
+fn palco_de(m: &Macro, k: usize) -> Result<Option<PalcoEmCena>, ErroDaMacro> {
     let Some(modo) = modo(m.modo).filter(|_| !m.doc.is_empty()) else {
         return Ok(None);
     };
-    Ok(MacroEmCena::de(&m.doc, modo)?.map(|em_cena| PalcoEmCena {
-        em_cena,
-        placa: PlacaDeFormas::default(),
-        toca: false,
-    }))
+    Ok(
+        MacroEmCena::da_trilha(&m.doc, k, modo)?.map(|em_cena| PalcoEmCena {
+            em_cena,
+            placa: PlacaDeFormas::default(),
+            toca: false,
+        }),
+    )
 }
 
 impl PalcosDasMacros {
@@ -68,10 +81,12 @@ impl PalcosDasMacros {
     /// parou (o painel MACROS di-lo ao artista, W5d).
     #[must_use]
     pub fn erro_de(&self, bits: u64) -> Option<&ErroDaMacro> {
-        match &self.lidos.get(&bits)?.palco {
-            Err(e) => Some(e),
-            Ok(p) => p.as_ref()?.em_cena.erro(),
-        }
+        self.lidos
+            .range((bits, 0)..=(bits, usize::MAX))
+            .find_map(|(_, l)| match &l.palco {
+                Err(e) => Some(e),
+                Ok(p) => p.as_ref()?.em_cena.erro(),
+            })
     }
 
     /// **Por quadro**, depois de `publica_o_mundo` e antes do `dispatch` do editor: (re)cria o palco
@@ -89,39 +104,60 @@ impl PalcosDasMacros {
             .map(|(e, _, t)| (e, t.map(|t| t.segundos)))
             .collect();
         let vivos: BTreeSet<u64> = vistos.iter().map(|(e, _)| e.to_bits()).collect();
-        self.lidos.retain(|bits, _| vivos.contains(bits));
+        self.lidos.retain(|(bits, _), _| vivos.contains(bits));
         let mut tocados = BTreeSet::new();
         for (e, segundos) in vistos {
             let tique = world
                 .entity(e)
                 .get_change_ticks::<Macro>()
                 .map_or(0, |t| t.changed.get());
-            let fresco = self
-                .lidos
-                .get(&e.to_bits())
-                .is_none_or(|l| l.tique != tique);
+            let bits = e.to_bits();
+            let fresco = self.lidos.get(&(bits, 0)).is_none_or(|l| l.tique != tique);
             if fresco && let Some(m) = world.get::<Macro>(e) {
-                let palco = palco_de(m);
-                self.lidos.insert(e.to_bits(), Lido { tique, palco });
+                self.lidos.retain(|c, _| c.0 != bits);
+                for k in 0..trilhas_do_motion(&m.doc) {
+                    let palco = palco_de(m, k);
+                    self.lidos.insert((bits, k), Lido { tique, palco });
+                }
             }
-            let Some(Lido {
-                palco: Ok(Some(p)), ..
-            }) = self.lidos.get_mut(&e.to_bits())
-            else {
-                continue;
-            };
-            p.toca = segundos.is_some();
-            if let Some(s) = segundos {
-                // Um passo que falha pára a macro nele e fica em `MacroEmCena::erro`: o palco
-                // continua a mostrar o que tocou até lá.
-                let _ = p.em_cena.segue(s, mundo, gpu);
-                tocados.insert(p.em_cena.dono());
+            let mostrados = segundos.map(|s| self.mostrados(bits, instante(s)));
+            for (&(_, k), l) in self.lidos.range_mut((bits, 0)..=(bits, usize::MAX)) {
+                let Ok(Some(p)) = &mut l.palco else {
+                    continue;
+                };
+                p.toca = mostrados.as_ref().is_some_and(|m| m.contains(&k));
+                if let (true, Some(s)) = (p.toca, segundos) {
+                    // Um passo que falha pára a macro nele e fica em `MacroEmCena::erro`: o palco
+                    // continua a mostrar o que tocou até lá.
+                    let _ = p.em_cena.segue(s, mundo, gpu);
+                    tocados.insert(p.em_cena.dono());
+                }
             }
         }
         // Uma mudança depois desta leitura leva um tique NOVO (a shell não corre um `Schedule` por
         // quadro, e sem isto dois quadros podiam partilhar o tique).
         world.increment_change_tick();
         tocados
+    }
+
+    /// **Quem toca** entre os palcos de `bits` em `t`: cada um sobre o seu objecto; dois sobre o MESMO
+    /// objecto (o artista voltou a ele) = o de início mais tardio que já começou, senão o 1.º.
+    fn mostrados(&self, bits: u64, t: ph2d_macro::MacroTime) -> BTreeSet<usize> {
+        let mut melhor: BTreeMap<u64, (usize, bool, ph2d_macro::MacroTime)> = BTreeMap::new();
+        for (&(_, k), l) in self.lidos.range((bits, 0)..=(bits, usize::MAX)) {
+            let Ok(Some(p)) = &l.palco else {
+                continue;
+            };
+            let inicio = p.em_cena.inicio();
+            let comecou = inicio <= t;
+            let entra = melhor
+                .get(&p.em_cena.dono())
+                .is_none_or(|&(_, c, i)| comecou && (!c || inicio >= i));
+            if entra {
+                melhor.insert(p.em_cena.dono(), (k, comecou, inicio));
+            }
+        }
+        melhor.into_values().map(|m| m.0).collect()
     }
 
     fn a_tocar(&mut self) -> impl Iterator<Item = &mut PalcoEmCena> {
@@ -276,12 +312,26 @@ impl PalcosDasMacros {
 impl PalcosDasMacros {
     /// Até onde o palco da entidade `bits` tocou (tocando ou em cache).
     pub(crate) fn tempo(&self, bits: u64) -> Option<ph2d_macro::MacroTime> {
-        let l = self.lidos.get(&bits)?;
+        let l = self.lidos.get(&(bits, 0))?;
         Some(l.palco.as_ref().ok()?.as_ref()?.em_cena.tempo())
     }
 
+    /// O dono e o tempo de cada palco que toca neste quadro.
+    pub(crate) fn tocando(&self) -> Vec<(u64, ph2d_macro::MacroTime)> {
+        self.lidos
+            .values()
+            .filter_map(|l| l.palco.as_ref().ok().and_then(Option::as_ref))
+            .filter(|p| p.toca)
+            .map(|p| (p.em_cena.dono(), p.em_cena.tempo()))
+            .collect()
+    }
+
     pub(crate) fn quantos(&self) -> usize {
-        self.lidos.len()
+        self.lidos
+            .keys()
+            .map(|c| c.0)
+            .collect::<BTreeSet<_>>()
+            .len()
     }
 }
 

@@ -238,7 +238,7 @@ fn o_palco_que_muda_reedita_na_mesma_ranhura_e_o_que_morre_a_devolve() {
     let Some(Lido {
         palco: Ok(Some(palco)),
         ..
-    }) = p.lidos.get(&dono.to_bits())
+    }) = p.lidos.get(&(dono.to_bits(), 0))
     else {
         panic!("o palco continua");
     };

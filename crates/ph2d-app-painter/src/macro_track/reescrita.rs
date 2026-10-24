@@ -71,7 +71,7 @@ impl PalcosDoPainter {
         self.lidos
             .iter()
             .filter(|(_, l)| matches!(&l.palco, Ok(Some(p)) if p.por_reescrever.is_some()))
-            .map(|(&bits, _)| bits)
+            .map(|(&(bits, _), _)| bits)
     }
 
     /// Uma reescrita espera ([`Self::a_reescrever_em`]).

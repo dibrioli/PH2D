@@ -34,9 +34,21 @@ impl MacroEmCena {
     /// # Errors
     /// [`ErroDaMacro::Ficheiro`] (o `doc` não se lê) e [`ErroDaMacro::Inicial`].
     pub fn de(bytes: &[u8], modo: Modo) -> Result<Option<Self>, ErroDaMacro> {
+        Self::da_trilha(bytes, 0, modo)
+    }
+
+    /// Como [`Self::de`], com a `indice`-ésima trilha do Motion do doc (W19: vários Motion no mesmo
+    /// objecto Macro, cada um no seu palco). `Ok(None)` = não há.
+    ///
+    /// # Errors
+    /// Os do [`Self::de`].
+    pub fn da_trilha(bytes: &[u8], indice: usize, modo: Modo) -> Result<Option<Self>, ErroDaMacro> {
         let mut doc = ph2d_macro::codec::read(bytes).map_err(ErroDaMacro::Ficheiro)?;
-        // Uma gravação abre UMA trilha do Motion (a do objecto em edição, `gravacao_abre`).
         doc.tracks.retain(|t| t.family == FAMILIA);
+        if doc.tracks.len() <= indice {
+            return Ok(None);
+        }
+        doc.tracks.swap(0, indice);
         doc.tracks.truncate(1);
         if let Some(t) = doc.tracks.first_mut() {
             *t = t
@@ -116,6 +128,17 @@ impl MacroEmCena {
     #[must_use]
     pub fn dono(&self) -> u64 {
         self.doc.tracks[0].target
+    }
+
+    /// Quando a trilha começa no relógio da macro: o nascimento do objecto, senão o 1.º passo.
+    #[must_use]
+    pub fn inicio(&self) -> MacroTime {
+        let t = &self.doc.tracks[0];
+        t.nasce
+            .as_ref()
+            .map(|n| n.inicio)
+            .or_else(|| t.events.first().map(|e| e.t))
+            .unwrap_or(MacroTime(0))
     }
 
     /// O tempo até onde a macro já tocou.

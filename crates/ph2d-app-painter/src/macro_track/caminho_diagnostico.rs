@@ -65,7 +65,7 @@ impl PalcosDoPainter {
                 t.imagem_aplicada_na_caixa((0, 0, w, h))
             })
             .map_or_else(|| "-".to_owned(), |i| pintados(&i).to_string());
-        let Some(l) = self.lidos.get(&bits) else {
+        let Some(l) = self.lidos.get(&(bits, 0)) else {
             return format!("palco=nenhum editor={editor}");
         };
         let p = match &l.palco {

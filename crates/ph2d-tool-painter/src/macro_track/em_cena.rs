@@ -32,6 +32,8 @@ pub struct MacroEmCena {
     recomecou_de: Option<usize>,
     /// Onde a pintura cai por cima ([`Self::poe_encaixe`]).
     encaixe: Option<Encaixe>,
+    /// Qual das trilhas do Painter do `Macro.doc` toca aqui (W19: várias imagens no mesmo objecto).
+    indice: usize,
 }
 
 fn tocador_de(doc: &MacroDoc, encaixe: Option<Encaixe>) -> Result<TocadorDoPainter, ErroDaMacro> {
@@ -42,14 +44,15 @@ fn tocador_de(doc: &MacroDoc, encaixe: Option<Encaixe>) -> Result<TocadorDoPaint
     Ok(toc)
 }
 
-/// A trilha do Painter de um `Macro.doc`, já a que toca. `Ok(None)` = sem trilha do Painter.
-fn le(bytes: &[u8]) -> Result<Option<MacroDoc>, ErroDaMacro> {
+/// A `indice`-ésima trilha do Painter de um `Macro.doc`, já a que toca. `Ok(None)` = não há.
+fn le(bytes: &[u8], indice: usize) -> Result<Option<MacroDoc>, ErroDaMacro> {
     let mut doc = ph2d_macro::codec::read(bytes).map_err(ErroDaMacro::Ficheiro)?;
     doc.tracks.retain(|t| t.family == FAMILIA);
-    doc.tracks.truncate(1);
-    if doc.tracks.is_empty() {
+    if doc.tracks.len() <= indice {
         return Ok(None);
     }
+    doc.tracks.swap(0, indice);
+    doc.tracks.truncate(1);
     doc.tracks[0] = doc.tracks[0]
         .tocavel(&LeitorDoPainter)
         .map_err(ErroDaMacro::Edicao)?;
@@ -84,7 +87,19 @@ impl MacroEmCena {
     /// # Errors
     /// Os do [`Self::de`].
     pub fn no_razao(bytes: &[u8], razao: Arc<Razao>) -> Result<Option<Self>, ErroDaMacro> {
-        let Some(doc) = le(bytes)? else {
+        Self::da_trilha(bytes, 0, razao)
+    }
+
+    /// Como [`Self::no_razao`], com a `indice`-ésima trilha do Painter do doc. `Ok(None)` = não há.
+    ///
+    /// # Errors
+    /// Os do [`Self::de`].
+    pub fn da_trilha(
+        bytes: &[u8],
+        indice: usize,
+        razao: Arc<Razao>,
+    ) -> Result<Option<Self>, ErroDaMacro> {
+        let Some(doc) = le(bytes, indice)? else {
             return Ok(None);
         };
         let tocador = tocador_de(&doc, None)?;
@@ -98,6 +113,7 @@ impl MacroEmCena {
             fotos: Instantaneos::em(razao),
             recomecou_de: None,
             encaixe: None,
+            indice,
         }))
     }
 
@@ -181,7 +197,7 @@ impl MacroEmCena {
     /// # Errors
     /// Os do [`Self::de`] (este palco deixa de valer: quem chama larga-o).
     pub fn reedita(&mut self, bytes: &[u8]) -> Result<bool, ErroDaMacro> {
-        let Some(doc) = le(bytes)? else {
+        let Some(doc) = le(bytes, self.indice)? else {
             return Ok(false);
         };
         let tr = &doc.tracks[0];
@@ -281,6 +297,17 @@ impl MacroEmCena {
     #[must_use]
     pub fn tocador(&self) -> &TocadorDoPainter {
         &self.tocador
+    }
+
+    /// Quando a trilha começa no relógio da macro: o nascimento do objecto, senão o 1.º passo.
+    #[must_use]
+    pub fn inicio(&self) -> MacroTime {
+        let t = &self.doc.tracks[0];
+        t.nasce
+            .as_ref()
+            .map(|n| n.inicio)
+            .or_else(|| t.events.first().map(|e| e.t))
+            .unwrap_or(MacroTime(0))
     }
 
     /// A sprite que a macro pinta (o `target` da trilha, `StableId`; `0` = a do próprio `Macro`).

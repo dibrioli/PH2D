@@ -96,7 +96,7 @@ fn arrasta(meio: PaintMedia) -> (Vec<(usize, f64, usize, usize)>, usize) {
         }
         antes = t;
     }
-    let p = palcos.lidos[&e.to_bits()]
+    let p = palcos.lidos[&(e.to_bits(), 0)]
         .palco
         .as_ref()
         .ok()

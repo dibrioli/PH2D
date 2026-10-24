@@ -110,6 +110,7 @@ kinds! {
     UnknownMasterNear => "unknown_master_near",
     UnknownProperty => "unknown_property",
     UnknownPropertyNear => "unknown_property_near",
+    ObjectAtTop => "object_at_top",
 }
 
 impl Kind {
@@ -127,6 +128,7 @@ impl Kind {
                 | Kind::UnknownMasterNear
                 | Kind::UnknownProperty
                 | Kind::UnknownPropertyNear
+                | Kind::ObjectAtTop
         )
     }
 }
@@ -188,6 +190,12 @@ impl Explained {
             Some(near) => Self::new(Kind::UnknownPropertyNear, &[("name", name), ("near", near)]),
             None => Self::new(Kind::UnknownProperty, &[("name", name)]),
         }
+    }
+
+    /// O aviso nosso do `ph2d.object` que corre no topo fora de uma `ph2d.property` (doc CodeEditor 10).
+    #[must_use]
+    pub fn object_at_top() -> Self {
+        Self::new(Kind::ObjectAtTop, &[])
     }
 
     /// O título, uma linha.

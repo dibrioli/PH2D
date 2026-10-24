@@ -269,6 +269,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.explain.unknown_property_near.why" => {
             "A property is the card's title and the field's label as the Inspector shows them, in snake_case and joined by a dot. The closest name is \"{near}\"."
         }
+        // ── As nossas (o objecto no topo, doc CodeEditor 10) ──
+        "code.explain.object_at_top" => "ph2d.object here runs before the scene exists",
+        "code.explain.object_at_top.why" => {
+            "The top of the script runs before the scene starts, so here ph2d.object gives no object and the line that uses it stops the script. At the top it only works as the value of a property, like ph2d.property(\"door\", ph2d.object(\"Door\")) — then use self.door. Otherwise move the line into init."
+        }
         _ => return None,
     })
 }

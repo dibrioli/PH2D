@@ -215,6 +215,50 @@ impl Syntax {
         out
     }
 
+    /// ⭐ **Os `ph2d.object(…)` que correm no topo sem ser o valor de uma `ph2d.property`** (doc
+    /// CodeEditor 10): os bytes da chamada inteira, pela ordem do texto. No topo a cena ainda não existe,
+    /// e só o 2.º argumento de `ph2d.property` (entre parênteses ou não) faz dele um objecto a declarar
+    /// — o `GET_NODE_DEFAULT_WITHOUT_ONREADY` do Godot, sem o ponto cego dele (lista, `.name`).
+    #[must_use]
+    pub fn stray_top_objects(&self, text: &Text) -> Vec<std::ops::Range<usize>> {
+        fn declared(call: tree_sitter::Node, text: &Text) -> bool {
+            let mut v = call;
+            while let Some(p) = v
+                .parent()
+                .filter(|p| p.kind() == "parenthesized_expression")
+            {
+                v = p;
+            }
+            v.parent()
+                .filter(|a| a.kind() == "arguments" && a.named_child(1) == Some(v))
+                .and_then(|a| a.parent())
+                .and_then(|c| c.child_by_field_name("name"))
+                .is_some_and(|n| text.slice(n.byte_range()) == "ph2d.property")
+        }
+        fn walk<'a>(n: tree_sitter::Node<'a>, text: &Text, out: &mut Vec<tree_sitter::Node<'a>>) {
+            if matches!(n.kind(), "function_declaration" | "function_definition") {
+                return;
+            }
+            if n.kind() == "function_call"
+                && let Some(name) = n.child_by_field_name("name")
+                && text.slice(name.byte_range()) == "ph2d.object"
+            {
+                out.push(n);
+            }
+            let mut c = n.walk();
+            for ch in n.named_children(&mut c) {
+                walk(ch, text, out);
+            }
+        }
+        let mut calls = Vec::new();
+        walk(self.tree().root_node(), text, &mut calls);
+        calls
+            .into_iter()
+            .filter(|c| !declared(*c, text))
+            .map(|c| c.byte_range())
+            .collect()
+    }
+
     /// ⭐ **Os nomes de propriedade escritos no script** (doc CodeEditor 08 §3.4): o 2.º argumento
     /// LITERAL de `ph2d.get`/`ph2d.set` (a pose ou `"health.max"`), pela ordem do texto —
     /// `(nome sem escapes, bytes DENTRO das aspas)`.
@@ -326,6 +370,30 @@ mod tests {
                     "Diz \\\"oi\\\"".into()
                 ),
             ]
+        );
+    }
+
+    /// Os casos do oráculo `ferramentas/oraculo_objeto_no_topo` (Godot 4.7.2), no idioma do PH2D.
+    #[test]
+    fn o_objecto_no_topo_fora_da_propriedade_e_so_ele() {
+        let src = "local a = ph2d.object(\"A\")\nlocal b = (ph2d.object(\"B\"))\nlocal c = { ph2d.object(\"C\") }\nlocal d = ph2d.object(\"D\").name\nph2d.property(\"e\", ph2d.object(\"E\"))\nph2d.property(\"f\", (ph2d.object(\"F\")))\nph2d.property(ph2d.object(\"G\"), 1)\nfunction init(self)\n  self.h = ph2d.object(\"H\")\nend\nlocal f = function() return ph2d.object(\"I\") end\nif true then ph2d.object(\"J\") end\n";
+        let t = Text::new(src);
+        let got: Vec<String> = Syntax::new(&t)
+            .stray_top_objects(&t)
+            .into_iter()
+            .map(|r| t.slice(r))
+            .collect();
+        assert_eq!(
+            got,
+            [
+                "ph2d.object(\"A\")",
+                "ph2d.object(\"B\")",
+                "ph2d.object(\"C\")",
+                "ph2d.object(\"D\")",
+                "ph2d.object(\"G\")",
+                "ph2d.object(\"J\")",
+            ],
+            "o valor da propriedade (com parênteses ou não) e o corpo das funções não contam"
         );
     }
 

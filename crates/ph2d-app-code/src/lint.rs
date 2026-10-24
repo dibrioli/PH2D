@@ -216,6 +216,7 @@ impl CodeDoc {
         self.lint.list = self.field_lints();
         self.lint.objects = self.object_lints();
         self.lint.objects.extend(self.property_lints());
+        self.lint.objects.extend(self.top_object_lints());
         self.lint.generation += 1;
     }
 
@@ -267,6 +268,19 @@ impl CodeDoc {
                     bytes,
                     explained: Explained::unknown_property(&name, single(&near)),
                 }
+            })
+            .collect()
+    }
+
+    /// Os `ph2d.object` que correm no topo fora de uma `ph2d.property` (doc CodeEditor 10) — não
+    /// precisa da cena: no topo nenhum objecto existe ainda.
+    fn top_object_lints(&self) -> Vec<ObjectLint> {
+        self.syntax
+            .stray_top_objects(self.buffer.text())
+            .into_iter()
+            .map(|bytes| ObjectLint {
+                bytes,
+                explained: Explained::object_at_top(),
             })
             .collect()
     }

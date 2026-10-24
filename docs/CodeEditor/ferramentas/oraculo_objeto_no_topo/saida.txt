@@ -1,0 +1,125 @@
+# Oráculo: Godot 4.7.2.stable.arch_linux.ed1daf0bf · godot --headless --check-only --script <caso>
+# Gerado por corre.sh em 2026-10-24. Um bloco por caso: o texto do caso, depois o que o Godot disse.
+
+== 01_var_get_node.gd
+   | extends Node
+   | 
+   | var porta = get_node("Porta")
+   | 
+   | func _process(_d: float) -> void:
+   | 	porta.position.x += 1
+SCRIPT ERROR: Parse Error: The default value uses "get_node()" which won't return nodes in the scene tree before "_ready()" is called. Use the "@onready" annotation to solve this. (Warning treated as error.)
+          at: GDScript::reload (res://01_var_get_node.gd:3)
+ERROR: Failed to load script "res://01_var_get_node.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+   exit=1
+
+== 02_var_cifrao.gd
+   | extends Node
+   | 
+   | var porta = $Porta
+   | 
+   | func _process(_d: float) -> void:
+   | 	porta.position.x += 1
+SCRIPT ERROR: Parse Error: The default value uses "$" which won't return nodes in the scene tree before "_ready()" is called. Use the "@onready" annotation to solve this. (Warning treated as error.)
+          at: GDScript::reload (res://02_var_cifrao.gd:3)
+ERROR: Failed to load script "res://02_var_cifrao.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+   exit=1
+
+== 03_var_unico.gd
+   | extends Node
+   | 
+   | var porta = %Porta
+   | 
+   | func _process(_d: float) -> void:
+   | 	porta.position.x += 1
+SCRIPT ERROR: Parse Error: The default value uses "%" which won't return nodes in the scene tree before "_ready()" is called. Use the "@onready" annotation to solve this. (Warning treated as error.)
+          at: GDScript::reload (res://03_var_unico.gd:3)
+ERROR: Failed to load script "res://03_var_unico.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+   exit=1
+
+== 04_onready.gd
+   | extends Node
+   | 
+   | @onready var porta = $Porta
+   | 
+   | func _process(_d: float) -> void:
+   | 	porta.position.x += 1
+   exit=0
+
+== 05_export_sem_default.gd
+   | extends Node
+   | 
+   | @export var porta: Node
+   | 
+   | func _process(_d: float) -> void:
+   | 	porta.position.x += 1
+   exit=0
+
+== 06_export_cifrao.gd
+   | extends Node
+   | 
+   | @export var porta: Node = $Porta
+   | 
+   | func _process(_d: float) -> void:
+   | 	porta.position.x += 1
+SCRIPT ERROR: Parse Error: The default value uses "$" which won't return nodes in the scene tree before "_ready()" is called. Use the "@onready" annotation to solve this. (Warning treated as error.)
+          at: GDScript::reload (res://06_export_cifrao.gd:3)
+ERROR: Failed to load script "res://06_export_cifrao.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+   exit=1
+
+== 07_export_onready.gd
+   | extends Node
+   | 
+   | @export @onready var porta: Node = $Porta
+   | 
+   | func _process(_d: float) -> void:
+   | 	porta.position.x += 1
+SCRIPT ERROR: Parse Error: "@onready" will set the default value after "@export" takes effect and will override it. (Warning treated as error.)
+          at: GDScript::reload (res://07_export_onready.gd:3)
+ERROR: Failed to load script "res://07_export_onready.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+   exit=1
+
+== 08_var_get_node_entre_parenteses.gd
+   | extends Node
+   | 
+   | var porta = (get_node("Porta"))
+   | 
+   | func _process(_d: float) -> void:
+   | 	porta.position.x += 1
+SCRIPT ERROR: Parse Error: The default value uses "get_node()" which won't return nodes in the scene tree before "_ready()" is called. Use the "@onready" annotation to solve this. (Warning treated as error.)
+          at: GDScript::reload (res://08_var_get_node_entre_parenteses.gd:3)
+ERROR: Failed to load script "res://08_var_get_node_entre_parenteses.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+   exit=1
+
+== 09_var_lista.gd
+   | extends Node
+   | 
+   | var portas = [$Porta, $Janela]
+   | 
+   | func _process(_d: float) -> void:
+   | 	portas[0].position.x += 1
+   exit=0
+
+== 10_dentro_da_funcao.gd
+   | extends Node
+   | 
+   | var porta
+   | 
+   | func _ready() -> void:
+   | 	porta = $Porta
+   exit=0
+
+== 11_var_get_node_e_campo.gd
+   | extends Node
+   | 
+   | var porta = get_node("Porta").name
+   | 
+   | func _process(_d: float) -> void:
+   | 	print(porta)
+   exit=0

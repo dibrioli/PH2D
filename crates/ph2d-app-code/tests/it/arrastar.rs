@@ -296,6 +296,26 @@ fn o_nome_de_propriedade_que_nenhum_componente_tem_e_um_aviso() {
     );
 }
 
+/// ⭐ Doc CodeEditor 10: um `ph2d.object` no topo fora de uma `ph2d.property` é um aviso sobre a chamada
+/// inteira, mesmo sem cena; o valor da propriedade e o do `init` não.
+#[test]
+fn o_objecto_no_topo_fora_da_propriedade_e_um_aviso() {
+    let src = "local porta = ph2d.object(\"Porta\")\nph2d.property(\"door\", ph2d.object(\"Porta\"))\nfunction init(self)\n  self.p = ph2d.object(\"Porta\")\nend\n";
+    let (mut m, ids) = Mesa::new(&[("a.luau", src)]);
+    let id = ids[0];
+    objecto(&mut m, "Porta");
+    m.pede(id);
+    quadro_em(&mut m, T0);
+    assert_eq!(tipos(&mut m, id), ["object_at_top"]);
+    let p = m.docs().problems_of(id).remove(0);
+    assert_eq!(p.line, 0);
+    assert_eq!(
+        p.culprit.map(|r| &src[r]),
+        Some("ph2d.object(\"Porta\")"),
+        "o sublinhado é a chamada"
+    );
+}
+
 /// ⭐ 8b (§3.9): um NOME (um mestre, uma imagem, um script) cai como texto entre aspas; com o Ctrl, uma
 /// constante no início da linha — e o balão di-lo.
 #[test]

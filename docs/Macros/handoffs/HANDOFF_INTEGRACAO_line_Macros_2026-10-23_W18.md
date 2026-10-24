@@ -129,7 +129,6 @@ do Painter (`toda_porta_do_painter_tem_decisao`) se alguém acrescentar uma port
 ## §5 — Smoke para o Enio (cena 7, ~1 min, sozinha)
 
 1. No terminal: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Macros-Automação && PH2D_MACRO_SMOKE=7 cargo run --profile smoke -p ph2d-host-desktop`
-   (confirme o nome do binário com o integrador se o `cargo run` pedir `--bin`).
 2. Não mexa no rato: a cena conduz sozinha e escreve no ecrã o que cada passo é. Passos que vai ver: **+ ▸ Macro** na
    Hierarchy → **Gravar** → uma imagem nova dentro do objecto Macro → duas pinceladas (vermelha, azul) → **Parar** →
    **Guardar na biblioteca** → **Exportar…** → apagar o objecto → **Importar…** → **Aplicar ▸ Criar novo** (a imagem

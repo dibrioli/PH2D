@@ -1,0 +1,50 @@
+diff --git a/crates/ph2d-light2d-gpu/src/solver_c3_fina_cantos.rs b/crates/ph2d-light2d-gpu/src/solver_c3_fina_cantos.rs
+index 7a04ec082a..49a07fe34e 100644
+--- a/crates/ph2d-light2d-gpu/src/solver_c3_fina_cantos.rs
++++ b/crates/ph2d-light2d-gpu/src/solver_c3_fina_cantos.rs
+@@ -23,6 +23,8 @@ pub(super) struct FinaCantos {
+     grupos: [wgpu::BindGroup; 3],
+     cantos: Par,
+     junta: wgpu::ComputePipeline,
++    /// ITEM 3a (diagnóstico, fora do produto): quantas vezes o passe dos cantos corre.
++    vezes: u32,
+ }
+ 
+ /// O grupo 2 da fina: o layout, as ligações e o layout montado.
+@@ -167,6 +169,19 @@ impl FinaCantos {
+             grupos: [a.1, b.1, c.1],
+             cantos,
+             junta,
++            vezes: {
++                // `PH2D_ITEM3_CANTOS=0,1,2,…`: a k-ésima `FinaCantos` do processo leva o k-ésimo (em ciclo).
++                static K: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
++                let lista: Vec<u32> = std::env::var("PH2D_ITEM3_CANTOS")
++                    .unwrap_or_else(|_| "1".into())
++                    .split(',')
++                    .map(|v| v.trim().parse().expect("PH2D_ITEM3_CANTOS"))
++                    .collect();
++                let k = K.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
++                let v = lista[k % lista.len()];
++                eprintln!("[item3] FinaCantos #{k}: o passe dos cantos {v}×");
++                v
++            },
+         };
+         (principal, fc)
+     }
+@@ -189,10 +204,15 @@ impl FinaCantos {
+         distantes: bool,
+         grupo_fina: &wgpu::BindGroup,
+     ) {
++        if self.vezes == 0 {
++            return;
++        }
+         p.set_pipeline(self.cantos.de(distantes));
+         p.set_bind_group(2, &self.entradas, &[]);
+         p.set_bind_group(3, &self.grupos[1], &[]);
+-        p.dispatch_workgroups_indirect(&self.lista, 0);
++        for _ in 0..self.vezes {
++            p.dispatch_workgroups_indirect(&self.lista, 0);
++        }
+         p.set_pipeline(&self.junta);
+         p.set_bind_group(2, grupo_fina, &[]);
+         p.set_bind_group(3, &self.grupos[2], &[]);

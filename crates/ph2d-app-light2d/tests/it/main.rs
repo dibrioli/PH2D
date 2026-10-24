@@ -50,6 +50,7 @@ mod medida_luz2d_w5v;
 mod medida_luz2d_w6d;
 mod medida_luz2d_w6f;
 mod medida_luz2d_miolo_por_placa;
+mod medida_luz2d_cantos_aquecidos;
 mod o_aviso_dos_cantos_chega_ao_inspector;
 mod o_campo_da_borda;
 mod o_gizmo_da_luz;

@@ -345,15 +345,17 @@ fn de_fora(xi: u32, v: i32, j: u32, n: u32) -> vec3<f32> {
     let v0 = floor(vf);
     let fr = vf - v0;
     var soma = vec3<f32>(0.0);
+    // ⭐ W6h §13: a leitura SEM desvio (lê sempre, a base do nível fora da janela, e escolhe depois) — o mesmo
+    // valor; a leitura dentro do `if` levava a descida de 38 a 46 registos e custava ~0,3 ms em todo nível.
     for (var k = 0; k < 2; k++) {
         let s = v0 + f32(k);
-        var r = ceu;
+        var i = FORA_DA_JANELA;
         if s >= 0.0 && s < xe.y {
-            let i = indice_na_janela(m, u32(coluna), u32(s), pai);
-            if i != FORA_DA_JANELA {
-                r = desempacotar(arquivo_dos_r[hrcs[iq()].fora_base[m / 4u][m % 4u] + i]).r;
-            }
+            i = indice_na_janela(m, u32(coluna), u32(s), pai);
         }
+        let ok = i != FORA_DA_JANELA;
+        let lido = desempacotar(arquivo_dos_r[hrcs[iq()].fora_base[m / 4u][m % 4u] + select(0u, i, ok)]).r;
+        let r = select(ceu, lido, ok);
         soma += select(1.0 - fr, fr, k == 1) * r;
     }
     return soma * arco(n, j);

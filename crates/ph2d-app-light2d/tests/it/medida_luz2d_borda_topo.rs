@@ -22,6 +22,7 @@ use ph2d_light2d_ecs::CenaDeLuz;
 use ph2d_light2d_gpu::{Config, Solver};
 use ph2d_render::Camera2d;
 
+use crate::a_leitura_da_borda_sem_desvio::{COM_DESVIO, SEM_DESVIO};
 use crate::medida_luz2d_w4b::loadavg;
 use crate::medida_luz2d_w5o::{mediana, minimo};
 use crate::medida_luz2d_w5v::{App, cena_do_smoke};
@@ -32,12 +33,12 @@ const QUADROS: usize = 6;
 const RODADAS_FASES: usize = 4;
 
 /// A leitura do arquivo no `de_fora`; o índice continua vivo (o `select` sobre ele).
-const LEITURA: &str = "r = desempacotar(arquivo_dos_r[hrcs[iq()].fora_base[m / 4u][m % 4u] + i]).r;";
+const LEITURA: &str = "let lido = desempacotar(arquivo_dos_r[hrcs[iq()].fora_base[m / 4u][m % 4u] + select(0u, i, ok)]).r;";
 /// O fim do `de_fora` (a soma das duas sondas do arquivo).
 const FIM: &str = "    return soma * arco(n, j);\n}";
 
 /// As formas de diagnóstico do `de_fora` (`PH2D_BORDA_TOPO_FORMAS=a,b`): cada uma devolve outra luz.
-const FORMAS: [(&str, &str); 6] = [
+const FORMAS: [(&str, &str); 7] = [
     // O controlo do regime: o módulo do produto, por `modulo_rc`, na 2.ª vista.
     ("identidade", ""),
     // F1: só o ponto `b` na borda; o resto do `de_fora` sai do módulo.
@@ -48,6 +49,8 @@ const FORMAS: [(&str, &str); 6] = [
     ("sem_ler", ""),
     // O índice do arquivo por um escalar do uniforme (a luz errada; mede só a forma).
     ("base_escalar", "hrcs[iq()].fora_base[m / 4u][m % 4u]"),
+    // A leitura de antes do W6h §13 (dentro do `if`): 46 registos na descida contra 38.
+    ("com_desvio", ""),
     // F4: a soma (o `r0_na_sonda`) sem o `de_fora`; a descida igual ao produto.
     ("soma_sem_fora", ""),
 ];
@@ -86,12 +89,20 @@ fn forma(nome: &str, c: Config) -> Config {
         ),
         "sem_ler" => {
             assert_eq!(s.matches(LEITURA).count(), 1, "a agulha da leitura");
-            s = s.replacen(LEITURA, "r = select(ceu, 0.5 * ceu, i == 7u);", 1);
+            s = s.replacen(LEITURA, "let lido = select(ceu, 0.5 * ceu, i == 7u);", 1);
         }
         "base_escalar" => {
             let de = FORMAS[4].1;
             assert_eq!(s.matches(de).count(), 1, "a agulha da base");
             s = s.replacen(de, "hrcs[iq()].fora_base[0][0]", 1);
+        }
+        "com_desvio" => {
+            assert_eq!(
+                s.matches(SEM_DESVIO).count(),
+                1,
+                "a agulha da leitura sem desvio"
+            );
+            s = s.replacen(SEM_DESVIO, COM_DESVIO, 1);
         }
         "soma_sem_fora" => {
             let de = "    return de_fora(u, i32(v), 0u, 0u);\n}";
@@ -169,7 +180,10 @@ fn medida_luz2d_borda_topo() {
         vista.regiao_fina(i, f);
         App { vista, entorno }
     };
-    let entorno = app.entorno.as_ref().expect("o entorno (com o arquivo da borda)");
+    let entorno = app
+        .entorno
+        .as_ref()
+        .expect("o entorno (com o arquivo da borda)");
     assert!(
         entorno.config().arquivo_da_borda.is_some(),
         "o entorno sem o arquivo: não há borda"
@@ -196,8 +210,11 @@ fn medida_luz2d_borda_topo() {
         })
         .collect();
     // As variantes: (nome, o solver — `None` = a vista do produto —, a borda ligada).
-    let mut vars: Vec<(&'static str, Option<usize>, bool)> =
-        vec![("céu", None, false), ("borda", None, true), ("controlo", None, true)];
+    let mut vars: Vec<(&'static str, Option<usize>, bool)> = vec![
+        ("céu", None, false),
+        ("borda", None, true),
+        ("controlo", None, true),
+    ];
     vars.extend(formas.iter().enumerate().map(|(k, n)| (*n, Some(k), true)));
     // `PH2D_BORDA_TOPO_SEM_CEU=1`: a vista do produto nunca troca de estado (o controlo da troca, §13).
     if std::env::var("PH2D_BORDA_TOPO_SEM_CEU").as_deref() == Ok("1") {
@@ -258,6 +275,23 @@ fn medida_luz2d_borda_topo() {
             mediana(&c2[iv]),
             min[iv] - min[0],
             min[iv] - min[1]
+        );
+    }
+
+    // O bit: um quadro de cada (a vista do produto com a borda), a fluência byte a byte contra a do produto.
+    quadro(&mut app, &mut solvers, ("borda", None, true));
+    let base = crate::comum::ler(&gpu, app.vista.fluencia(), 8);
+    for (k, n) in formas.iter().enumerate() {
+        quadro(&mut app, &mut solvers, (n, Some(k), true));
+        let b = crate::comum::ler(&gpu, solvers[k].fluencia(), 8);
+        let difs = base
+            .chunks(8)
+            .zip(b.chunks(8))
+            .filter(|(x, y)| x != y)
+            .count();
+        eprintln!(
+            "B {rotulo} · {n} · texels diferentes do produto: {difs} de {}",
+            base.len() / 8
         );
     }
 
@@ -324,21 +358,30 @@ fn registos(pasta: &str, vista: &Solver, formas: &[&'static str]) {
     std::fs::create_dir_all(&pasta).expect("a pasta");
     let c = vista.config();
     let constantes = vista.constantes_da_hrc().expect("a holográfica");
-    let produto = ph2d_light2d_gpu::fonte_do_rc(c.aritmetica, c.armazenamento, c.hrc_niveis_em_textura());
+    let produto =
+        ph2d_light2d_gpu::fonte_do_rc(c.aritmetica, c.armazenamento, c.hrc_niveis_em_textura());
     let mut modulos = vec![("produto", produto.to_string())];
-    modulos.extend(
-        formas
-            .iter()
-            .map(|n| (*n, forma(n, c.clone()).modulo_rc.expect("a forma").to_string())),
-    );
+    modulos.extend(formas.iter().map(|n| {
+        (
+            *n,
+            forma(n, c.clone()).modulo_rc.expect("a forma").to_string(),
+        )
+    }));
     for (nome, fonte) in modulos {
         std::fs::write(pasta.join(format!("{nome}.wgsl")), fonte).expect("o módulo");
         for entrada in ["hrc_desce", "hrc_soma"] {
             let mut l = vec![format!("modulo {nome}.wgsl"), format!("entrada {entrada}")];
             l.extend(constantes.iter().map(|(k, x)| format!("{k} {x}")));
-            std::fs::write(pasta.join(format!("{nome}_{entrada}.txt")), l.join("\n") + "\n")
-                .expect("as constantes");
+            std::fs::write(
+                pasta.join(format!("{nome}_{entrada}.txt")),
+                l.join("\n") + "\n",
+            )
+            .expect("as constantes");
         }
     }
-    eprintln!("REGUA · {} · {} constantes", pasta.display(), constantes.len());
+    eprintln!(
+        "REGUA · {} · {} constantes",
+        pasta.display(),
+        constantes.len()
+    );
 }

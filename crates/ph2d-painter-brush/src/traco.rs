@@ -15,7 +15,7 @@
 //! O traço pinta num PLANO transparente só dele (todas as rotas de carimbo, em `Mix`), e cada lote compõe o
 //! plano sobre a base congelada no pen-down — com o MODO do pincel, uma vez, como uma camada. O tecto é um
 //! `min` no alfa do plano; as orlas pesam-se por `e ∈ [0, 1]`, a orla do traço sobre a máscara VISÍVEL
-//! (`traco_orla` no tool: a distância exacta ao contorno `v = ½·max v`, `e = 1 − smoothstep(0, W, d)`; `1` na
+//! (`traco_orla` no tool: a distância exacta ao contorno `v = ½` do nível de uma passagem, `e = 1 − smoothstep(0, W, d)`; `1` na
 //! franja de fora, `0` no fundo). A molhada é o *edge darkening* de Curtis (1997) sobre a máscara inteira: o
 //! fundo clareia até `1 − molhada`; a queimada escurece em Linear Burn com o peso `queimada · e · v`
 //! (bug #58, `docs/Painter/BUGS_painter_fechados_41_a_46.md`).

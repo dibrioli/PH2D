@@ -5,8 +5,9 @@
 //!
 //! 1. **Uma máscara, a VISÍVEL:** `v = min(alfa do plano, tecto)` — o que o artista vê, a união do traço inteiro.
 //!    Nunca o alfa cru: a acumulação por baixo do tecto é invisível e não pode desenhar fronteiras.
-//! 2. **A fronteira é do TRAÇO:** o nível `τ = ½·max(v)` (o máximo corrente do traço, congelado no pen-up) — com
-//!    Strength 0,3 a fronteira existe; um nível fixo não a via.
+//! 2. **A fronteira é do TRAÇO, e de UMA passagem:** o nível `τ = ½·max(v)`, o máximo corrente até o traço percorrer
+//!    um diâmetro de dab e daí FIXO (`PlanoDoTraco::fronteira`) — com Strength 0,3 a fronteira existe (um nível fixo
+//!    não a via), e a sobreposição do traço consigo nunca a sobe: a borda do que já está pintado não anda.
 //! 3. **A distância é EXACTA e isotrópica:** a distância euclidiana de cada texel de dentro (`v > τ`) aos segmentos
 //!    do contorno `v = τ` (marching squares sobre `v` interpolado nas arestas — sub-píxel, exacto numa borda recta a
 //!    qualquer ângulo), presa a `W` (o Edge width). Sem núcleos quadrados.

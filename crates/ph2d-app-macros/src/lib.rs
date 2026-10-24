@@ -8,6 +8,8 @@
 pub mod aplicar;
 pub mod biblioteca;
 pub mod cena_da_biblioteca;
+/// `PH2D_MACRO_SMOKE=8`: o player pintado, o collider e «Simular», gravados e aplicados (W19).
+pub mod cena_do_mundo;
 mod conferencia;
 /// A família «mundo» (W19): componentes, objectos e «Simular» dentro do objecto Macro.
 pub mod mundo;
@@ -86,9 +88,10 @@ pub use gestos::{aplica_se_receita, e_receita, guarda_como_asset};
 /// As cenas de `PH2D_MACRO_SMOKE`: `=1` o Splash (Painter), `=2` o Motion nó a nó, `=3` o tutorial
 /// «fazer» do Motion, `=4` o do Painter, `=5` a imagem é do artista (W7 item 1), `=6` o caminho do dono
 /// na `=5`, feito pelo app sozinho (Gravar, 2 pinceladas, Parar, ⏮, ▷), `=7` a biblioteca do princípio ao
-/// fim, feita pelo app sozinho ([`cena_da_biblioteca`]). Cada uma monta-se na família que grava; o clipe
+/// fim, feita pelo app sozinho ([`cena_da_biblioteca`]), `=8` o player pintado que ganha um collider e cai
+/// ([`cena_do_mundo`]). Cada uma monta-se na família que grava; o clipe
 /// que conduz `=1`, `=2`, `=5` e `=6` monta-o a composição (`render_loop/macro_smoke.rs`).
-pub const CENAS_DO_SMOKE: u32 = 7;
+pub const CENAS_DO_SMOKE: u32 = 8;
 
 /// **A cena abre PARADA?** — `=5` (`docs/Macros/04_plano_W7.md` item 1): o clipe sem Autoplay, a cena
 /// sem correr e a imagem em modo Paint, porque o 1.º passo do smoke é o artista pintar; `=6` é a mesma
@@ -103,7 +106,8 @@ pub fn cena_desconhecida<T>(nivel: &str) -> Option<T> {
     eprintln!(
         "[macro smoke] PH2D_MACRO_SMOKE={nivel}: the scenes are 1 (Splash), 2 (Motion node by node), \
          3 (the 'do it' tutorial), 4 (the painting tutorial), 5 (paint, then play: your paint stays), 6 (the app records, paints, rewinds and plays by itself) and \
-         7 (the macro library, start to end, by itself: record, save, export, import, apply new and over)"
+         7 (the macro library, start to end, by itself: record, save, export, import, apply new and over) and \
+         8 (paint a player, add a collider, simulate: recorded, saved and applied in a clean project)"
     );
     None
 }

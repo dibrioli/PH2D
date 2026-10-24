@@ -12,15 +12,18 @@ const COMPOSICAO: &str = concat!(
 #[test]
 fn cada_cena_declarada_tem_um_braco_na_composicao_e_a_seguinte_nao() {
     let src = std::fs::read_to_string(COMPOSICAO).expect("a composição das cenas das Macros");
+    // Um braço `"n" =>` ou uma alternativa `"n" | …` (a `=7` e a `=8` partilham o condutor).
+    let serve =
+        |n: u32| src.contains(&format!("\"{n}\" =>")) || src.contains(&format!("\"{n}\" |"));
     for n in 1..=CENAS_DO_SMOKE {
         assert!(
-            src.contains(&format!("\"{n}\" =>")),
+            serve(n),
             "PH2D_MACRO_SMOKE={n} é declarada pela família e a composição não a serve"
         );
     }
     let seguinte = CENAS_DO_SMOKE + 1;
     assert!(
-        !src.contains(&format!("\"{seguinte}\" =>")),
+        !serve(seguinte),
         "a composição serve PH2D_MACRO_SMOKE={seguinte} e a família declara só {CENAS_DO_SMOKE}"
     );
     assert_eq!(FAMILY.routers[0].max_level, CENAS_DO_SMOKE);

@@ -152,6 +152,11 @@ impl Banca {
         self.m.quadro(&mut f, &mut c, self.agora);
     }
 
+    /// O relógio da banca (ms).
+    pub(crate) fn agora_ms(&self) -> u64 {
+        self.agora / 1000
+    }
+
     /// Quadros até o relógio da banca chegar a `ms`.
     pub(crate) fn ate_ms(&mut self, ms: u64) {
         while self.agora < ms * 1000 {

@@ -210,6 +210,23 @@ cai — sobre o chão DESTE projecto. `CENAS_DO_SMOKE` 7 → 8.
 Os números (altura onde assenta, tiques, texels) saem da sonda `a_cena_8_percorre_o_caminho_inteiro` **antes** de a
 mensagem ao dono ser escrita, e a cena é fotografada (`import -window`, nunca `spectacle`) antes de ir a ele.
 
+**Medido (24/10, sonda `a_cena_8_percorre_o_caminho_inteiro`, banca sem placa, `ppm` 100, chão 900×24 px):**
+
+| Número | Valor |
+|---|---|
+| trilha mundo | 2 eventos: o passo do collider em `9,48 s`, um `Simula` em `12,98 s`, tiques `0..150` |
+| 1.º chão (centro `−2,50 m`, topo `−2,38 m`) | a gravação assenta em `y = −1,7400 m` (topo + meio lado `0,64`) |
+| 2.º chão (centro `−4,00 m`, topo `−3,88 m`) | a reprodução do aplicado assenta em `y = −3,2400 m` |
+| texels pintados no aplicado | `4 871` de `16 384` (128²) |
+| o palco na cena da gravação × a conferência | o bit (`[1,6432526e−4, −1,7400224, 1,4798611e−7]`), com e sem retoma — na 1.ª corrida (antes da cura do palco de 24/10) `x`/rotação vinham com o SINAL trocado |
+
+**No app (fotos `handoffs/smoke_2026-10-24_W19/`):** passos 1–6 ensinam o que acontecem (o boneco cai e assenta no
+chão). O passo 11 NÃO: (a) o `Simula` grava-se em dezenas de pedaços de `0,03 s` — um quadro sem tique fecha a
+corrida (`Gravacao::quadro`); (b) o Pause regista um passo «Transform changed» com a pose do solver, e a reprodução
+acaba nessa pose; (c) sair do modo Paint a gravar grava `deactivate`/`forget_pending_layer` e o aplicar recusa a
+macro (a cena muda de modo só depois do Parar); (d) o aviso «Simulate landed somewhere else» acende no projecto
+de destino, onde cair noutro sítio é o esperado.
+
 ## 8. A ordem do trabalho
 
 1. Medição §3 (sonda) → a tabela entra no §3 → decide A (esperado) ou volta ao plano.

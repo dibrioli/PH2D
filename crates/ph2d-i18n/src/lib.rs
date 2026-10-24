@@ -139,6 +139,8 @@ mod macros;
 mod macros_biblioteca;
 /// As etapas da família «mundo» das macros (W19): componentes, objectos, «Simular».
 mod macros_mundo;
+/// A cena `PH2D_MACRO_SMOKE=8` (W19): o player, o collider e «Simular».
+mod macros_smoke8;
 /// Os nomes dos nós — a 3.ª fatia da fronteira dos motores.
 mod node_catalog;
 /// ⭐⭐ **Os nomes das SECÇÕES** do painel de params de um nó — 38 palavras sobre 229 sítios.
@@ -538,6 +540,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| macros::tr(k))
             .or_else(|| macros_biblioteca::tr(k))
             .or_else(|| macros_mundo::tr(k))
+            .or_else(|| macros_smoke8::tr(k))
             .or_else(|| factory::tr(k))
             .or_else(|| topdown::tr(k))
             .or_else(|| component_catalog::tr(k))

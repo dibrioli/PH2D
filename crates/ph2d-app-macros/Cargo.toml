@@ -31,6 +31,8 @@ postcard = { version = "1", features = ["alloc"] }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 # A reprodução do mundo conduz `S(t)` pelo ledger do preview (os blobs): vê-se, não entra no undo.
 ph2d-preview-drive = { path = "../ph2d-preview-drive" }
+# A cena `=8`: o interruptor *Physics* da barra de transporte, pelo id do clique.
+ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
 # O passo fixo da física: a duração de «Simular» nas etapas do mundo.
 ph2d-core = { path = "../ph2d-core" }
 # O recurso embutido (a imagem importada) viaja em PNG.
@@ -52,7 +54,6 @@ ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-anim = { path = "../ph2d-anim" }
 ph2d-panel-macros = { path = "../ph2d-panel-macros" }
-ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
 # O clipe que vive com o objecto Macro (o undo global tira-o): `aplicar_motion`.
 ph2d-timeline-persist = { path = "../ph2d-timeline-persist" }
 

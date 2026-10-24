@@ -10,6 +10,8 @@
 //!
 //! O [`roteiro`] e os [`pedido`]/[`pose`] são os mesmos na shell e na sonda sem placa
 //! (`tests/it/cena_da_biblioteca.rs`, o gate `a_cena_7_percorre_o_caminho_inteiro`).
+//!
+//! A cena `=8` (W19, [`crate::cena_do_mundo`]) corre neste mesmo condutor, com o roteiro dela.
 
 use crate::Macros;
 use ph2d_ecs::{Entity, SimWorld, Transform};
@@ -40,6 +42,8 @@ pub enum Qual {
     Maior,
     /// O objecto escolhido (o objecto Macro que o aplicar fez nascer).
     Escolhido,
+    /// O chão da cena `=8` (fora do objecto Macro).
+    Chao,
 }
 
 /// Um passo da cena.
@@ -88,9 +92,21 @@ pub enum Passo {
     Rebobina,
     /// *Enquadrar tudo*.
     Enquadra,
+    /// O chão `n` da cena `=8` nasce (uma imagem cinzenta comprida) pela porta do aplicar.
+    Chao(u8),
+    /// *Add Physics Body* no Inspector de `qual` (o collider à medida da imagem).
+    Corpo(Qual),
+    /// O tipo do corpo do chão: *Static* (o chip do Inspector).
+    Estatico,
+    /// O interruptor *Physics* da barra de transporte, armado.
+    Fisica,
+    /// O Pause do transporte.
+    Pausa,
+    /// O chão escolhido e o `Delete` da Hierarchy.
+    ApagaChao,
 }
 
-const PASSO_MS: u64 = 16;
+pub(crate) const PASSO_MS: u64 = 16;
 
 fn pincelada(r: &mut Vec<(u64, Passo)>, t0: u64, v: f32) {
     let n = 900 / PASSO_MS;
@@ -169,9 +185,23 @@ pub fn roteiro() -> Vec<(u64, Passo)> {
     r
 }
 
+/// O roteiro da cena `nivel` (`7` ou `8`).
+#[must_use]
+pub fn roteiro_de(nivel: u8) -> Vec<(u64, Passo)> {
+    if nivel == 8 {
+        crate::cena_do_mundo::roteiro()
+    } else {
+        roteiro()
+    }
+}
+
 /// O estado da cena: as pastas, o objecto Macro gravado, a imagem maior.
 #[derive(Default)]
 pub struct Estado {
+    /// A cena (`7` ou `8`): as frases e o roteiro.
+    pub nivel: u8,
+    /// O chão da cena `=8` que existe agora.
+    pub chao: Option<u64>,
     pub biblioteca: PathBuf,
     pub exportada: PathBuf,
     /// O objecto Macro do passo 1 (escolhido ao Gravar).
@@ -220,7 +250,11 @@ pub fn pedido(p: Passo, m: &mut Macros, e: &mut Estado) -> Option<MacroRequest> 
             MacroRequest::Importa
         }
         Passo::AplicaNovo | Passo::AplicaPorCima => MacroRequest::Aplica {
-            nome: e.importada.clone()?,
+            // A `=8` não importa: aplica a guardada.
+            nome: e
+                .importada
+                .clone()
+                .or_else(|| m.nomes_da_biblioteca().into_iter().next())?,
             onde: if p == Passo::AplicaNovo {
                 OndeAplicar::Novo { em: None }
             } else {
@@ -244,6 +278,9 @@ pub fn pose(atual: Transform, graus: f32, px: [f32; 2], ppm: f32) -> Transform {
 /// A frase do passo `k` no ecrã.
 #[must_use]
 pub fn frase(k: u8, e: &Estado) -> String {
+    if e.nivel == 8 {
+        return crate::cena_do_mundo::frase(k);
+    }
     match k {
         0 => ph2d_i18n::tr("app.macros.smoke7.done").to_owned(),
         5 => ph2d_i18n::tr_with(
@@ -276,20 +313,23 @@ pub fn vencidos() -> (u64, Vec<Passo>) {
     CENA.with(|c| {
         let mut c = c.borrow_mut();
         let c = c.get_or_insert_with(|| {
-            let mut estado = Estado::em(&std::env::temp_dir().join("ph2d-macro-smoke-7"));
+            let nivel = u8::from(std::env::var("PH2D_MACRO_SMOKE").is_ok_and(|n| n == "8")) + 7;
+            let raiz = std::env::temp_dir().join(format!("ph2d-macro-smoke-{nivel}"));
+            let mut estado = Estado::em(&raiz);
+            estado.nivel = nivel;
             if let Some(p) = std::env::var_os("PH2D_MACROS_DIR") {
                 estado.biblioteca = PathBuf::from(p);
             }
             crate::com(|m| m.com_pasta(estado.biblioteca.clone()));
             eprintln!(
-                "[macro smoke =7] the app does the whole library path by itself (~55 s); the macros \
+                "[macro smoke ={nivel}] the app does the whole path by itself (~60 s); the macros \
                  folder is {}",
                 estado.biblioteca.display()
             );
             Condutor {
                 inicio: std::time::Instant::now(),
                 dados: 0,
-                roteiro: roteiro(),
+                roteiro: roteiro_de(nivel),
                 estado,
             }
         });
@@ -318,35 +358,59 @@ impl Passo {
     }
 }
 
-/// **A imagem maior** (branca, [`MAIOR`]) pela porta de produto do aplicar (`nasce`: o atlas e o
-/// `AssetDb`); devolve os bits e guarda-os para o «por cima».
+/// **A imagem maior** (branca, [`MAIOR`]) ou **o chão** da `=8` ([`Passo::Chao`]) pela porta de produto
+/// do aplicar (`nasce`: o atlas e o `AssetDb`); devolve os bits e guarda-os.
 pub fn nasce_a_maior(
+    p: Passo,
     sim: &mut SimWorld,
     nasce: impl FnOnce(&mut SimWorld, (u32, u32, Vec<u8>), &str) -> Result<u64, String>,
 ) -> Option<u64> {
-    let (w, h) = MAIOR;
-    let px = vec![255; usize::try_from(w * h * 4).ok()?];
-    let nome = ph2d_i18n::tr("app.macros.smoke7.bigger_image");
-    let b = nasce(sim, (w, h, px), nome)
-        .map_err(|e| eprintln!("[macro smoke =7] the bigger image was not born: {e}"))
+    let chao = matches!(p, Passo::Chao(_));
+    let (img, nome) = if chao {
+        (
+            crate::cena_do_mundo::chao_px()?,
+            ph2d_i18n::tr("app.macros.smoke8.floor"),
+        )
+    } else {
+        let (w, h) = MAIOR;
+        let px = vec![255; usize::try_from(w * h * 4).ok()?];
+        ((w, h, px), ph2d_i18n::tr("app.macros.smoke7.bigger_image"))
+    };
+    let b = nasce(sim, img, nome)
+        .map_err(|e| eprintln!("[macro smoke] {nome} was not born: {e}"))
         .ok()?;
-    nasceu_a_maior(b);
+    CENA.with(|c| {
+        if let Some(c) = c.borrow_mut().as_mut() {
+            *if chao {
+                &mut c.estado.chao
+            } else {
+                &mut c.estado.maior
+            } = Some(b);
+        }
+    });
     Some(b)
 }
 
-/// A imagem maior nasceu.
-pub fn nasceu_a_maior(bits: u64) {
+/// Quem o `Delete` de `p` tira: o objecto Macro gravado ([`Passo::Apaga`]) ou o chão.
+#[must_use]
+pub fn a_apagar(p: Passo) -> Option<u64> {
     CENA.with(|c| {
-        if let Some(c) = c.borrow_mut().as_mut() {
-            c.estado.maior = Some(bits);
+        let c = c.borrow();
+        let e = &c.as_ref()?.estado;
+        match p {
+            Passo::Apaga => e.gravado,
+            Passo::ApagaChao => e.chao,
+            _ => None,
         }
-    });
+    })
 }
 
-/// O objecto Macro gravado (o que o `Delete` do passo 7 tira).
-#[must_use]
-pub fn gravado() -> Option<u64> {
-    CENA.with(|c| c.borrow().as_ref().and_then(|c| c.estado.gravado))
+impl Passo {
+    /// O passo é um `Delete` da Hierarchy.
+    #[must_use]
+    pub fn apaga(self) -> bool {
+        matches!(self, Self::Apaga | Self::ApagaChao)
+    }
 }
 
 /// **O passo pelas portas que o `HeroScreen` tem** (o menu, o modal, o modo, o seletor, o painel, o
@@ -362,8 +426,12 @@ pub fn faz(
     let ppm = hero.project.pixels_per_meter;
     match p {
         Passo::Diz(k) => {
-            let f = CENA.with(|c| c.borrow().as_ref().map(|c| frase(k, &c.estado)))?;
-            eprintln!("[macro smoke =7] {f}");
+            let (f, n) = CENA.with(|c| {
+                let c = c.borrow();
+                let e = &c.as_ref()?.estado;
+                Some((frase(k, e), e.nivel))
+            })?;
+            eprintln!("[macro smoke ={n}] {f}");
             // O painel MACROS à vista: a gravação, a biblioteca e a frase de cada gesto dela.
             ph2d_editor_core::panel::PanelHostInternal::set_panel_visible(hero, "macros", true);
             toasts.push(ph2d_editor_core::toast::Toast::info(f).ttl_seconds(6.0));
@@ -373,7 +441,7 @@ pub fn faz(
             let ev =
                 ph2d_editor_core::interaction::WidgetEvent::Click(crate::object_add::MACRO.id());
             if !hero.apply_event(ev) {
-                eprintln!("[macro smoke =7] the Add menu is not open");
+                eprintln!("[macro smoke] the Add menu is not open");
             }
         }
         Passo::NovaImagem(lado) => {
@@ -411,8 +479,8 @@ pub fn faz(
         }
         Passo::Pose { qual, graus, px } => {
             let bits = match qual {
-                Qual::Maior => CENA.with(|c| c.borrow().as_ref().and_then(|c| c.estado.maior)),
                 Qual::Escolhido => hero.gizmo.selection,
+                q => o_chao_ou_a_maior(q),
             }?;
             let atual = sim
                 .world()
@@ -428,12 +496,50 @@ pub fn faz(
             };
             hero.bus.push(EditorAction::InspectorTransformEdit(info));
         }
+        Passo::Corpo(_) | Passo::Estatico => {
+            let qual = if let Passo::Corpo(q) = p {
+                q
+            } else {
+                Qual::Chao
+            };
+            let bits = match qual {
+                Qual::Escolhido => hero.gizmo.selection,
+                q => o_chao_ou_a_maior(q),
+            }?;
+            use ph2d_editor_core::PhysicsFieldEdit as F;
+            // O chip *Static* é o 2.º do Inspector (`BodyKind::Static.tag()`).
+            let edit = if p == Passo::Estatico {
+                F::Kind(1)
+            } else {
+                F::Add
+            };
+            // O cartão Physics do Inspector à vista (o botão que este passo carrega).
+            ph2d_editor_core::panel::PanelHostInternal::set_panel_visible(hero, "inspector", true);
+            hero.bus.push(EditorAction::InspectorPhysicsEdit {
+                entity_bits: bits,
+                edit,
+            });
+        }
+        // O interruptor da barra de transporte: o `PanelEvent` que o clique levanta.
+        Passo::Fisica => hero.bus.push(EditorAction::TimelinePanelEvent(
+            ph2d_editor_core::tool::PanelEvent::Toggle(
+                ph2d_panel_timeline::ids::TIMELINE_PHYSICS,
+                true,
+            ),
+        )),
+        Passo::Pausa => hero.bus.push(EditorAction::Transport(TransportCmd::Pause)),
         Passo::Toca => hero.bus.push(EditorAction::Transport(TransportCmd::Play)),
         Passo::Rebobina => hero.bus.push(EditorAction::Transport(TransportCmd::Reset)),
         Passo::Enquadra => hero.bus.push(EditorAction::SetViewFocus {
             kind: ph2d_editor_core::ViewFocusKind::All,
         }),
-        Passo::Desce(_) | Passo::Move(_) | Passo::Sobe | Passo::Apaga | Passo::ImagemMaior => {
+        Passo::Desce(_)
+        | Passo::Move(_)
+        | Passo::Sobe
+        | Passo::Apaga
+        | Passo::ApagaChao
+        | Passo::ImagemMaior
+        | Passo::Chao(_) => {
             return Some(p);
         }
         _ => {
@@ -447,9 +553,18 @@ pub fn faz(
             });
             match r {
                 Some(r) => crate::com(|m| m.pede(r)),
-                None => eprintln!("[macro smoke =7] {p:?}: nothing to ask the Macros panel"),
+                None => eprintln!("[macro smoke] {p:?}: nothing to ask the Macros panel"),
             }
         }
     }
     None
+}
+
+/// A imagem maior ou o chão (o que a cena guardou).
+fn o_chao_ou_a_maior(q: Qual) -> Option<u64> {
+    CENA.with(|c| {
+        let c = c.borrow();
+        let e = &c.as_ref()?.estado;
+        if q == Qual::Chao { e.chao } else { e.maior }
+    })
 }

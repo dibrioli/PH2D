@@ -2,6 +2,7 @@ mod aplicar;
 mod aplicar_motion;
 mod biblioteca;
 mod cena_da_biblioteca;
+mod cena_do_mundo;
 mod cenas_do_smoke;
 mod desfazer_o_aplicar;
 mod etapas_mundo;

@@ -170,6 +170,7 @@ fn a_cena_7_percorre_o_caminho_inteiro() {
                 let bits = match qual {
                     Qual::Maior => e.maior,
                     Qual::Escolhido => b.escolhido,
+                    Qual::Chao => e.chao,
                 }
                 .expect("quem a pose muda");
                 let w = b.sim.world_mut();

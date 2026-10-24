@@ -24,7 +24,7 @@ impl crate::App {
         };
         match nivel.as_str() {
             "5" | "6" => self.caminho_do_dono(nivel == "6"),
-            "7" => return self.cena_da_biblioteca(),
+            "7" | "8" => return self.cena_da_biblioteca(),
             _ => {}
         }
         if self.gfx.as_ref().is_none_or(|g| g.hero_screen.is_none())
@@ -87,35 +87,35 @@ impl crate::App {
             hero.set_panel_visible("macros", true);
         }
     }
-    /// `PH2D_MACRO_SMOKE=7` — a biblioteca, o caminho inteiro ([`ph2d_app_macros::cena_da_biblioteca`]):
-    /// a família faz cada passo pelas portas do `HeroScreen`; aqui o ponteiro, o `Delete` e a imagem maior.
+    /// `PH2D_MACRO_SMOKE=7|8` ([`ph2d_app_macros::cena_da_biblioteca`]): a família faz cada passo pelas
+    /// portas do `HeroScreen`; aqui o ponteiro, o `Delete` e as imagens que nascem (a maior, o chão).
     fn cena_da_biblioteca(&mut self) {
         use ph2d_app_macros::cena_da_biblioteca::{self as cena, Passo};
         if self.gfx.as_ref().is_none_or(|g| g.hero_screen.is_none()) {
             return;
         }
         for p in cena::vencidos().1 {
+            self.any_input_this_frame = true; // cada passo é um gesto: o undo regista-o
             let Some(g) = self.gfx.as_mut() else { return };
-            let (sim, toasts) = (&g.sim, &mut g.toasts);
             let Some(p) = g
                 .hero_screen
                 .as_mut()
-                .and_then(|h| cena::faz(p, h, sim, toasts))
+                .and_then(|h| cena::faz(p, h, &g.sim, &mut g.toasts))
             else {
                 continue;
             };
             let sel = g.hero_screen.as_ref().and_then(|h| h.gizmo.selection);
             let quem = match p {
-                Passo::Apaga => cena::gravado(),
-                Passo::ImagemMaior => {
-                    cena::nasce_a_maior(&mut g.sim, |s, i, n| atlas_da_cena!(g).nasce(s, i, n))
+                Passo::Apaga | Passo::ApagaChao => cena::a_apagar(p),
+                Passo::ImagemMaior | Passo::Chao(_) => {
+                    cena::nasce_a_maior(p, &mut g.sim, |s, i, n| atlas_da_cena!(g).nasce(s, i, n))
                 }
                 _ => None,
             };
             let row = quem.and_then(|b| g.hero_live.as_ref()?.bridge.node_for(b));
             if let Some(h) = g.hero_screen.as_mut().filter(|_| quem.is_some()) {
                 h.gizmo.replace_selection(quem);
-                if let Some(row) = row.filter(|_| p == Passo::Apaga) {
+                if let Some(row) = row.filter(|_| p.apaga()) {
                     h.bus.push(Hierarchy(Delete { row }));
                 }
             }

@@ -146,6 +146,10 @@ pub const PORTAS: &[Porta] = &[
         "a marca do artista: quem mostra a macro em cena dá-a ao Painter; não muda a obra (W9)",
     ),
     r("install_document", OUTRO_DOCUMENTO),
+    a(
+        "reata_documentos",
+        "o restauro do undo dá bits novos à MESMA imagem: troca a chave dos documentos, não muda a obra (W18)",
+    ),
     r("baked_document_pixels", OUTRO_DOCUMENTO),
     r("open_layer_of", OUTRO_DOCUMENTO),
     r("forget_pending_layer", OUTRO_DOCUMENTO),

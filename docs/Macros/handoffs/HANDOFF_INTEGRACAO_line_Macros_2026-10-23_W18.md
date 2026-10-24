@@ -140,3 +140,7 @@ do Painter (`toda_porta_do_painter_tem_decisao`) se alguém acrescentar uma port
    cannot be read.» (era o defeito do objecto vazio, curado); as pinceladas esticadas à imagem maior; ou Ctrl+Z após
    aplicar deixar a imagem sem pintura.
 5. A biblioteca de teste fica em `$TMPDIR/ph2d-macro-smoke-7/` (a sua nunca é tocada, salvo `PH2D_MACROS_DIR`).
+
+## §6 — Smoke do dono
+
+- **24/10: APROVADO** (cena `=7`). Próxima onda: [PROMPT_W19](PROMPT_W19_familia_mundo_2026-10-24.md) — a família «mundo».

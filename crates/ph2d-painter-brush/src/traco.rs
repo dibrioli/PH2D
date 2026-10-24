@@ -16,10 +16,10 @@
 //! plano sobre a base congelada no pen-down — com o MODO do pincel, uma vez, como uma camada. O tecto é um
 //! `min` no alfa do plano; as orlas pesam-se por `e ∈ [0, 1]`, a orla do traço sobre a máscara VISÍVEL
 //! (`traco_orla` no tool: a distância exacta ao contorno `v = ½` do nível de uma passagem, `e = 1 − smoothstep(0, W, d)`; `1` na
-//! franja de fora, `0` no fundo). A molhada é o *Wet Edges* do Procreate (*«soften and blur the edges»*): a
-//! silhueta do traço BORRADA na faixa da orla (o borrão gaussiano da máscara visível, `σ = molhada · W / 3`, que
-//! sangra para o papel), misturado por `e` — o miolo fica intacto; a queimada escurece em Linear Burn com o peso
-//! `queimada · e · v` (bug #58, `docs/Painter/BUGS_painter_fechados_41_a_46.md`).
+//! franja de fora, `0` no fundo). A molhada é o *Wet Edges* do Procreate MEDIDO (bug #58, 5.ª volta): o miolo
+//! nivela-se num PATAMAR (`PATAMAR_MOLHADO` do nível de uma passagem) — as sobreposições e o grão do miolo somem,
+//! a silhueta (o contorno `τ`) não mexe, nenhuma orla; a queimada escurece em Linear Burn com o peso
+//! `queimada · e · v` (`docs/Painter/BUGS_painter_fechados_41_a_46.md`).
 //!
 //! ⚠️ **O neutro não arma o plano** ([`TracoComposto::is_active`]): o carimbo de sempre, ao bit.
 
@@ -30,6 +30,12 @@ use crate::blend_vazio::blend_over_pigment_modo;
 pub const LARGURA_MAX_PX: f32 = 48.0;
 /// A largura de fábrica da orla (px) — o Spread de fábrica da Watercolor.
 pub const LARGURA_DE_FABRICA_PX: f32 = 7.0;
+/// O patamar do miolo com Wet 1, em fracção do nível de uma passagem: medido no Procreate (Intense Glaze, Flow
+/// Max, `procreate_ref/ebb_0162` × `ebb_0164`), a cobertura do miolo cai para `0,92` da do Wet 0.
+pub const PATAMAR_MOLHADO: f32 = 0.92;
+/// A fracção do grão do miolo que fica com Wet 1: no mesmo par o desvio-padrão do miolo cai de 16–20 para 4–9
+/// (`÷3`).
+pub const GRAO_MOLHADO: f32 = 1.0 / 3.0;
 
 /// O traço como uma camada: o tecto e as orlas. Tudo a zero = desligado.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -37,8 +43,8 @@ pub struct TracoComposto {
     /// O **tecto** de opacidade do traço, `0..1` (`0` = sem tecto): a tinta do traço nunca passa dele, nem
     /// onde o traço se cruza (o *uniform glaze*).
     pub tecto: f32,
-    /// A **orla molhada**, `0..1` (*Wet edges* do Procreate): a borda do traço suavizada e borrada para fora — o
-    /// raio do borrão cresce com ela; o miolo não muda.
+    /// A **orla molhada**, `0..1` (*Wet edges* do Procreate): o miolo do traço nivela-se no patamar (as
+    /// sobreposições e o grão somem); a silhueta fica.
     pub molhada: f32,
     /// A **orla queimada**, `0..1`: a orla escurece em Linear Burn sobre o que está por baixo (*Burnt edges*).
     pub queimada: f32,
@@ -83,7 +89,7 @@ impl TracoComposto {
     /// ⭐ **A composição de um texel**: o plano `plano` (RGBA reto, o traço em Normal sobre o transparente)
     /// sobre a base `base`, no `modo` do pincel (`vazio` = a fórmula geral do W3C; `pigmento` = a mistura do
     /// pincel, `BrushSpec::pigmento` — a do carimbo de sempre; um `f32` é o K–M), com o termo da orla `aro`
-    /// (`0..1`: `1` orla cheia, `0` fundo do traço ou sem orla). Sem o borrão a molhada não age
+    /// (`0..1`: `1` orla cheia, `0` fundo do traço ou sem orla). Sem o nível a molhada não age
     /// ([`Self::compoe_molhado`]).
     #[must_use]
     #[inline]
@@ -96,12 +102,14 @@ impl TracoComposto {
         plano: [f32; 4],
         aro: f32,
     ) -> [f32; 4] {
-        self.compoe_molhado(modo, vazio, pigmento, base, plano, (aro, None))
+        self.compoe_molhado(modo, vazio, pigmento, base, plano, (aro, 0.0))
     }
 
-    /// ⭐ [`Self::compoe`] com a **orla molhada**: `(aro, borrao)` — `borrao` é a máscara visível do plano BORRADA no texel (RGBA
-    /// pré-multiplicado, `σ = molhada · W / 3`); o plano visível mistura-se com ela pelo peso `e` (`1` na franja e
-    /// fora da tinta, onde o borrão sangra para o papel; `0` no fundo — o miolo intacto).
+    /// ⭐ [`Self::compoe`] com a **orla molhada**: `(aro, nivel)` — `nivel` é o nível `L` de UMA passagem da máscara
+    /// visível (a fronteira `τ = L/2`). A cobertura visível `v` vai para o patamar `P = PATAMAR_MOLHADO · L` (com
+    /// `GRAO_MOLHADO` do vale do grão) com o peso `molhada · smoothstep(τ, ¾L, v)`: no contorno `τ` o peso é `0` (a
+    /// silhueta não mexe), a sobreposição vai ao patamar, o grão do miolo cai a ⅓, a tinta ténue abaixo de `τ`
+    /// guarda-o. Nada nasce onde `v = 0`.
     #[must_use]
     #[inline]
     pub fn compoe_molhado(
@@ -111,7 +119,7 @@ impl TracoComposto {
         pigmento: impl Into<crate::blend::Pigmento>,
         base: [f32; 4],
         plano: [f32; 4],
-        (aro, borrao): (f32, Option<[f32; 4]>),
+        (aro, nivel): (f32, f32),
     ) -> [f32; 4] {
         let mut a = plano[3].clamp(0.0, 1.0);
         if self.tecto > 0.0 {
@@ -119,18 +127,15 @@ impl TracoComposto {
         }
         // A máscara visível: a orla lê-a e a queimada pesa-se por ela (nunca o alfa cru por baixo do tecto).
         let v = a;
-        let e = aro.clamp(0.0, 1.0);
-        let mut cor = [plano[0], plano[1], plano[2]];
-        if let Some(b) = borrao.filter(|_| self.molhada > 0.0) {
-            let k = if v > 0.0 { e } else { 1.0 };
-            a = (1.0 - k) * v + k * b[3].clamp(0.0, 1.0);
-            if a > 0.0 {
-                cor = [0, 1, 2].map(|c| ((1.0 - k) * v * cor[c] + k * b[c]) / a);
-            }
-        }
         if a <= 0.0 {
             return base;
         }
+        let m = self.molhada.clamp(0.0, 1.0);
+        if m > 0.0 && nivel > 0.0 {
+            a = molhado(v, nivel, m);
+        }
+        let e = aro.clamp(0.0, 1.0);
+        let cor = [plano[0], plano[1], plano[2]];
         let mut out = blend_over_pigment_modo(modo, base, cor, a, pigmento, vazio);
         let q = self.queimada.clamp(0.0, 1.0);
         if q > 0.0 && e > 0.0 {
@@ -138,6 +143,20 @@ impl TracoComposto {
         }
         out
     }
+}
+
+/// ⭐ **A lei da molhada** sobre a cobertura visível `v`, com o nível de uma passagem `nivel` e a força `m`.
+#[must_use]
+#[inline]
+pub fn molhado(v: f32, nivel: f32, m: f32) -> f32 {
+    let tau = 0.5 * nivel;
+    // O peso sobe de `τ` a `¾L`: com `L` o grão de ±10 % caía só `÷2` (medido no gate (b)); a `¾L` cai `÷3`.
+    let s = ((v - tau) / (0.25 * nivel)).clamp(0.0, 1.0);
+    let k = s * s * (3.0 - 2.0 * s);
+    // O alvo: o patamar com `GRAO_MOLHADO` do vale do grão abaixo do nível; acima dele (a sobreposição) o patamar.
+    let vale = 1.0 - (v / nivel).min(1.0);
+    let alvo = PATAMAR_MOLHADO * nivel * (1.0 - GRAO_MOLHADO * vale);
+    v + m * k * (alvo - v)
 }
 
 impl Default for TracoComposto {
@@ -168,31 +187,36 @@ mod tests {
         assert!((o[3] - 0.4).abs() < 1e-6);
     }
 
-    /// ⭐ A orla molhada (*Wet edges* do Procreate): o fundo (`aro 0`) não muda; a orla (`aro 1`) é o borrão; fora
-    /// da tinta o borrão sangra para o papel; sem borrão a molhada não age.
+    /// ⭐ A orla molhada: o contorno `τ` não mexe, o miolo e a sobreposição vão ao patamar, `v = 0` fica base, sem
+    /// nível a molhada não age.
     #[test]
-    fn a_orla_molhada_borra_a_borda_e_guarda_o_miolo() {
+    fn a_molhada_nivela_o_miolo_e_guarda_o_contorno() {
         let t = TracoComposto {
-            molhada: 0.6,
+            molhada: 1.0,
             ..TracoComposto::NEUTRO
         };
-        let p = [0.1, 0.2, 0.9, 0.8];
-        let b = Some([0.05, 0.1, 0.45, 0.5]);
-        let c = |p: [f32; 4], aro, b| {
-            t.compoe_molhado(BrushBlend::Mix, false, 0.0, [0.0; 4], p, (aro, b))
+        let c = |a: f32, nivel| {
+            t.compoe_molhado(
+                BrushBlend::Mix,
+                false,
+                0.0,
+                [0.0; 4],
+                [0.1, 0.2, 0.9, a],
+                (0.0, nivel),
+            )[3]
         };
-        assert!((c(p, 0.0, b)[3] - 0.8).abs() < 1e-6, "o miolo mudou");
-        let orla = c(p, 1.0, b);
-        assert!((orla[3] - 0.5).abs() < 1e-6, "{orla:?}");
-        assert!((orla[2] - 0.9).abs() < 1e-5, "a cor do borrão: {orla:?}");
-        let fora = c([0.0; 4], 0.0, b);
+        assert!((c(0.3, 0.6) - 0.3).abs() < 1e-6, "o contorno mexeu");
         assert!(
-            (fora[3] - 0.5).abs() < 1e-6,
-            "o borrão não sangrou: {fora:?}"
+            (c(0.6, 0.6) - 0.552).abs() < 1e-5,
+            "o miolo: {}",
+            c(0.6, 0.6)
         );
         assert!(
-            (c(p, 1.0, None)[3] - 0.8).abs() < 1e-6,
-            "sem borrão a molhada agiu"
+            (c(0.9, 0.6) - 0.552).abs() < 1e-5,
+            "a sobreposição: {}",
+            c(0.9, 0.6)
         );
+        assert!(c(0.0, 0.6) == 0.0);
+        assert!((c(0.9, 0.0) - 0.9).abs() < 1e-6, "sem nível a molhada agiu");
     }
 }

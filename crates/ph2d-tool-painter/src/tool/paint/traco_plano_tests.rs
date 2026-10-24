@@ -183,11 +183,11 @@ fn perfil(traco_c: TracoComposto, fundo: [u8; 4]) -> (PainterTool, Vec<f32>) {
     (t, p)
 }
 
-/// ⭐ **L8 — a orla molhada borra a borda e guarda o miolo** (*Wet Edges* do Procreate, bug #58 4.ª volta; até
-/// ali este gate exigia o miolo a `1 − molhada` — o Wet Edges do Photoshop, que o dono recusou no smoke 24/10): o
-/// miolo é o do traço sem orla, a rampa da borda alarga e a tinta sangra para fora da silhueta seca.
+/// ⭐ **L8 — a orla molhada nivela o miolo e guarda a silhueta** (*Wet Edges* do Procreate medido, bug #58 5.ª
+/// volta; a 3.ª exigia o miolo a `1 − molhada` e a 4.ª a borda borrada — ambas recusadas pelo dono 24/10): o miolo
+/// vai a `1 − 0,7 · 0,08` do seco, nada nasce onde o seco não pinta.
 #[test]
-fn a_orla_molhada_borra_a_borda_e_guarda_o_miolo() {
+fn a_orla_molhada_nivela_o_miolo_e_guarda_a_silhueta() {
     let (_, sem) = perfil(TracoComposto::NEUTRO, [0; 4]);
     let (_, com) = perfil(
         TracoComposto {
@@ -198,19 +198,13 @@ fn a_orla_molhada_borra_a_borda_e_guarda_o_miolo() {
     );
     let (miolo_sem, miolo) = (sem[50], com[50]);
     assert!(miolo_sem > 0.95, "o miolo sem orla é opaco: {miolo_sem}");
+    let alvo = miolo_sem * (1.0 - 0.7 * (1.0 - ph2d_painter_brush::traco::PATAMAR_MOLHADO));
     assert!(
-        (miolo - miolo_sem).abs() <= 1.0 / 255.0,
-        "o miolo molhado mudou: {miolo} (seco {miolo_sem})"
-    );
-    let rampa = |p: &[f32]| p.iter().filter(|&&a| a > 0.05 && a < 0.95).count();
-    assert!(
-        rampa(&com) > rampa(&sem),
-        "a borda não suavizou: {} × {} texels na rampa",
-        rampa(&com),
-        rampa(&sem)
+        (miolo - alvo).abs() <= 2.0 / 255.0,
+        "o miolo molhado é {miolo}, o patamar {alvo} (seco {miolo_sem})"
     );
     let sangra = (0..100).filter(|&y| sem[y] == 0.0 && com[y] > 0.0).count();
-    assert!(sangra > 0, "a tinta molhada não sangrou para o papel");
+    assert_eq!(sangra, 0, "a tinta molhada saiu da silhueta seca");
 }
 
 /// ⭐ **L8 — a orla queimada escurece a borda sobre a tinta** (*Burnt edges*, Linear Burn): sobre um cinza

@@ -143,13 +143,14 @@ pub(super) fn distancias(v: &[f32], tau: f32, alcance: i32) -> Vec<f32> {
 /// A cor que o texel `i` tem com o termo da orla `e`.
 fn com_e(t: &PainterTool, tr: &Traco, i: usize, e: f32) -> [f32; 3] {
     let b = &t.paint.brush;
-    let o = b.traco.compoe(
+    // A molhada lê o nível de uma passagem (`2τ`, 5.ª volta).
+    let o = b.traco.compoe_molhado(
         b.blend,
         b.blend_sobre_vazio,
         b.pigmento(),
         tr.base[i],
         tr.plano[i],
-        e,
+        (e, 2.0 * tr.tau),
     );
     [o[0] * 255.0, o[1] * 255.0, o[2] * 255.0]
 }

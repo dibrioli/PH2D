@@ -146,7 +146,6 @@ pub mod mao; // a MÃO do pincel (pressão, inclinação) nos quatro meios, por 
 pub mod marca; // as linhas da MARCA (o jitter da L4) no cartão Jitter, nos quatro meios
 mod pixel_route; // a ponta de PÍXEL (L18): o trilho ancorado e o carimbo binário, só no Digital
 pub mod ponta; // as linhas da PONTA (L9 o grão · L18 o píxel · L19 as imagens) nas secções Brush/Grain/Shape
-mod traco_borrao; // o BORRÃO da orla molhada (o Wet Edges do Procreate): gaussiano separável da máscara visível
 mod traco_orla; // a ORLA do traço (L8): a distância exacta ao contorno visível, sem janela que mude um bit
 mod traco_plano; // o PLANO do traço: o tecto, as orlas (L8) e a cauda re-pintada (L5), só no Digital
 mod traco_settings; // as portas do painel do traço (L8) e do modo sobre o vazio (L7)
@@ -261,7 +260,7 @@ mod traco_orla_bordas_tests;
 /// A lei da orla do traço (bug #58, 2.ª volta): máscara visível, fronteira do traço, distância exacta.
 #[cfg(test)]
 mod traco_orla_lei_tests;
-/// A orla molhada (bug #58, 4.ª volta): o miolo intacto, a borda suavizada (o Wet Edges do Procreate).
+/// A orla molhada (bug #58, 5.ª volta): a silhueta fica, o miolo nivela-se no patamar (o Wet Edges do Procreate).
 #[cfg(test)]
 mod traco_orla_molhada_tests;
 /// O traço que volta por cima de si (bug #58, 3.ª volta): o gate (f) da lei da orla.

@@ -358,7 +358,7 @@ impl Macros {
                     return;
                 };
                 match s.para(f, c, agora_us) {
-                    Ok((_, recusados)) => self.aviso_do_mundo = mundo::aviso(&recusados),
+                    Ok((_, avisos)) => self.aviso_do_mundo = mundo::aviso(&avisos),
                     Err(k) => self.recusa = Some(k),
                 }
             }

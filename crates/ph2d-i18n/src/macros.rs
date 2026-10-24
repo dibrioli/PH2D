@@ -60,6 +60,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.refusal.world_not_recorded" => {
             "Recorded, but these stay out of the Macro (they point to things outside it): {detail}"
         }
+        "panel.macros.refusal.world_deleted_objects" => {
+            "Recorded, but these were deleted while recording, so the Macro does not show them: {detail}"
+        }
+        "panel.macros.refusal.world_two_notices" => "{detail}",
         "panel.macros.refusal.nothing_to_record" => {
             "Nothing to record here: paint in Wet Paint, or edit a Motion object."
         }

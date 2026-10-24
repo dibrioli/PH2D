@@ -50,6 +50,8 @@ pub enum ErroAoTranspor {
     Tocar(ErroDaMacro),
     /// A reprodução mudou um nó que o documento vivo já tinha.
     TocouOsNosDeAntes,
+    /// A continuação não começa onde a trilha que ela continua acabou no destino.
+    Continuacao,
 }
 
 type E = ErroAoTranspor;
@@ -57,6 +59,10 @@ type E = ErroAoTranspor;
 #[path = "transpor_mapa.rs"]
 mod mapa;
 use mapa::Mapa;
+
+#[path = "transpor_continua.rs"]
+mod continuacao;
+pub use continuacao::continua;
 
 /// **A trilha a exportar**: a mesma, com o inicial reduzido aos nós de `track.target` (importados para
 /// um documento vazio, sob o mesmo dono).
@@ -290,6 +296,24 @@ impl ph2d_editor_core::macro_tutorial::TranspoeDaFamilia for crate::motion_state
         vida: u64,
     ) -> Result<Track, ph2d_editor_core::macro_edits::ErroDaMacroView> {
         let (t, doc) = aplica(track, &self.doc, dono).map_err(|e| erro_view(&e))?;
+        if doc != self.doc {
+            let pre = std::mem::replace(&mut self.doc, doc);
+            self.objeto
+                .atados
+                .ata(&mut self.history, vida, pre, &self.doc);
+            self.pump.mark_dirty();
+        }
+        Ok(t)
+    }
+
+    fn continua(
+        &mut self,
+        track: &Track,
+        anteriores: &[(&Track, &Track)],
+        dono: u64,
+        vida: u64,
+    ) -> Result<Track, ph2d_editor_core::macro_edits::ErroDaMacroView> {
+        let (t, doc) = continua(track, anteriores, &self.doc, dono).map_err(|e| erro_view(&e))?;
         if doc != self.doc {
             let pre = std::mem::replace(&mut self.doc, doc);
             self.objeto

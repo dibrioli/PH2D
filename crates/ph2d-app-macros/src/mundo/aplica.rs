@@ -10,7 +10,7 @@
 //!   reprodução escreve esses blobs), com cada `Objeto.original` já no `StableId` novo.
 
 use super::estado::{Lida, ObjetoEm};
-use super::formato::{Evento, Linha, Mudanca, Objeto, Quem};
+use super::formato::{Evento, Linha, Mudanca, Objeto, Quem, Recurso};
 use crate::aplicar::{Imagem, Portas};
 use ph2d_ecs::scene::ComponentRegistry;
 use ph2d_ecs::{ChildOf, Entity, SimWorld, StableId, Transform, World};
@@ -148,10 +148,11 @@ fn sid(w: &World, e: Entity) -> u64 {
     w.get::<StableId>(e).map_or(0, |s| s.0)
 }
 
-/// A imagem que um objecto do mundo é (os píxeis do recurso embutido), se é uma.
+/// A imagem que um objecto do mundo é (os píxeis do recurso embutido), se é uma. A porta de produto
+/// faz nascer alfa RECTO (o atlas): um recurso pré-multiplicado volta a recto antes de nascer.
 fn imagem_de(
     o: &ObjetoEm,
-    recursos: &BTreeMap<[u8; 32], &[u8]>,
+    recursos: &BTreeMap<[u8; 32], &Recurso>,
 ) -> Result<Option<Imagem>, ErroDaMacroView> {
     let (Some(px), true) = (
         o.componentes.get(super::PIXEIS),
@@ -167,10 +168,11 @@ fn imagem_de(
         .unwrap_or_default();
     let falta = || erro_com(m::MACRO_APLICAR_NAO_NASCE, nome.clone());
     let id = postcard::from_bytes::<ph2d_ecs::SpritePixels>(px).map_err(|_| falta())?;
-    let (rgba, w, h) = recursos
-        .get(id.0.as_bytes())
-        .and_then(|b| de_png(b))
-        .ok_or_else(falta)?;
+    let r = recursos.get(id.0.as_bytes()).ok_or_else(falta)?;
+    let (mut rgba, w, h) = de_png(&r.bytes).ok_or_else(falta)?;
+    if r.premultiplicado {
+        ph2d_render::unpremultiply_rgba8(&mut rgba);
+    }
     Ok(Some(Imagem { w, h, rgba, nome }))
 }
 
@@ -218,10 +220,7 @@ fn nasce(
     r: &mut Rascunho<'_>,
 ) -> Result<u64, ErroDaMacroView> {
     let fim = lida.no_fim();
-    let recursos: BTreeMap<[u8; 32], &[u8]> = lida
-        .recursos()
-        .map(|x| (x.id, x.bytes.as_slice()))
-        .collect();
+    let recursos: BTreeMap<[u8; 32], &Recurso> = lida.recursos().map(|x| (x.id, x)).collect();
     let raiz = Entity::from_bits(d.raiz);
     let (mut ents, mut imagens) = (BTreeMap::new(), BTreeSet::new());
     // Os objectos que outra família faz nascer (com ou sem linhas na trilha).
@@ -264,9 +263,11 @@ fn nasce(
         }
     }
     ph2d_ecs::assign_missing_stable_ids(w);
+    // Um objecto que não chega vivo ao fim não nasceu aqui: `0` (nenhum) — nunca o `StableId` da
+    // gravação, que no destino pode ser de um objecto alheio.
     r.mapa = lida
         .objetos()
-        .filter_map(|o| ents.get(&o.id).map(|e| (o.original, sid(w, *e))))
+        .map(|o| (o.original, ents.get(&o.id).map_or(0, |e| sid(w, *e))))
         .collect();
     for (id, o) in &fim {
         let Some(&e) = ents.get(id) else {
@@ -302,11 +303,7 @@ fn transpoe(t: &Track, lida: Lida, r: &mut Rascunho<'_>) -> Result<Track, ErroDa
         mut eventos,
     } = lida;
     let mapa = r.mapa.clone();
-    let novo = |o: &mut Objeto| {
-        if let Some(n) = mapa.get(&o.original) {
-            o.original = *n;
-        }
-    };
+    let novo = |o: &mut Objeto| o.original = mapa.get(&o.original).copied().unwrap_or(0);
     inicial.objetos.iter_mut().for_each(novo);
     for l in &mut inicial.linhas {
         r.linha(l)?;

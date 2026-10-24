@@ -25,12 +25,59 @@ use std::collections::{BTreeMap, BTreeSet};
 /// O nome canónico do componente dos píxeis de uma imagem importada (o recurso que se embute).
 const PIXEIS: &str = "ph2d::ecs::SpritePixels";
 
+/// **Os píxeis em alfa pré-multiplicado** do mundo (pelo id de conteúdo): as sprites com
+/// `SpritePixels` e `Sprite::premultiplied` — a única cópia viva da bandeira (o `AssetDb` não a tem).
+#[must_use]
+pub fn premultiplicados(sim: &mut ph2d_ecs::SimWorld) -> BTreeSet<[u8; 32]> {
+    let w = sim.world_mut();
+    let mut q = w.query::<(&ph2d_ecs::SpritePixels, &ph2d_render::Sprite)>();
+    q.iter(w)
+        .filter(|(_, s)| s.premultiplied)
+        .map(|(p, _)| *p.0.as_bytes())
+        .collect()
+}
+
+/// O nome canónico do `Name`.
+const NOME: &str = "ph2d::ecs::Name";
+
+/// O que o painel diz ao Parar.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Avisos {
+    /// Os componentes que não se gravaram (pelo nome canónico).
+    pub recusados: BTreeSet<String>,
+    /// Os objectos que nasceram ou estavam na macro e foram apagados a gravar (o `Name` que tinham):
+    /// no fim não existem, a reprodução não tem onde os mostrar.
+    pub apagados: Vec<String>,
+}
+
 /// A trilha do mundo, pronta a abrir: o inicial e os passos com o instante do chamador.
 pub struct Fecho {
     pub inicial: Vec<u8>,
     pub eventos: Vec<(u64, Vec<u8>)>,
-    /// Os componentes que não se gravaram (pelo nome canónico), para o painel dizer quais.
-    pub recusados: BTreeSet<String>,
+    pub avisos: Avisos,
+}
+
+/// Os objectos desta família que não estão vivos no fim, pelo nome (`#id` sem `Name`).
+fn apagados(inicial: &Inicial, eventos: &[(u64, Evento)]) -> Vec<String> {
+    let lida = estado::Lida {
+        inicial: inicial.clone(),
+        eventos: eventos
+            .iter()
+            .map(|(us, e)| (ph2d_macro::MacroTime(*us), e.clone()))
+            .collect(),
+    };
+    lida.no_fim()
+        .into_iter()
+        .filter(|(_, o)| o.quem == Quem::Mundo && !o.vivo)
+        .map(|(id, o)| {
+            o.componentes
+                .get(NOME)
+                .and_then(|b| postcard::from_bytes::<ph2d_ecs::Name>(b).ok())
+                .map(|n| n.0)
+                .filter(|n| !n.is_empty())
+                .unwrap_or_else(|| format!("#{id}"))
+        })
+        .collect()
 }
 
 /// De quem é cada objecto que outra família faz nascer: o `StableId` → (índice da trilha, família).
@@ -65,6 +112,7 @@ struct Tradutor<'a> {
     recursos_vistos: BTreeSet<[u8; 32]>,
     recursos: Vec<Recurso>,
     recurso: &'a dyn Fn(&[u8; 32]) -> Option<Vec<u8>>,
+    premultiplicado: &'a dyn Fn(&[u8; 32]) -> bool,
     recusados: BTreeSet<String>,
 }
 
@@ -132,7 +180,11 @@ impl Tradutor<'_> {
         match (self.recurso)(&id) {
             Some(bytes) => {
                 self.recursos_vistos.insert(id);
-                self.recursos.push(Recurso { id, bytes });
+                self.recursos.push(Recurso {
+                    id,
+                    bytes,
+                    premultiplicado: (self.premultiplicado)(&id),
+                });
                 true
             }
             None => {
@@ -194,7 +246,8 @@ impl Tradutor<'_> {
 }
 
 /// **Ao Parar**: a gravação `g` passa a trilha, com as outras trilhas de `doc` já abertas (elas dizem
-/// quem faz nascer cada objecto). `None` = nada do mundo mudou.
+/// quem faz nascer cada objecto). `recurso` dá os bytes de um asset; `premultiplicado`, se a sprite que
+/// os mostra os tem em alfa pré-multiplicado. `None` = nada do mundo mudou.
 #[must_use]
 pub fn fecha(
     g: Gravacao,
@@ -202,6 +255,7 @@ pub fn fecha(
     familia: &dyn Fn(&Track) -> Option<FamiliaDaMacro>,
     registo: &ComponentRegistry,
     recurso: &dyn Fn(&[u8; 32]) -> Option<Vec<u8>>,
+    premultiplicado: &dyn Fn(&[u8; 32]) -> bool,
 ) -> Option<Fecho> {
     let g = g.acaba();
     if g.passos.is_empty() {
@@ -216,6 +270,7 @@ pub fn fecha(
         recursos_vistos: BTreeSet::new(),
         recursos: Vec::new(),
         recurso,
+        premultiplicado,
         recusados: BTreeSet::new(),
     };
     t.local(g.dono);
@@ -245,30 +300,46 @@ pub fn fecha(
                 Evento::Simula(c.simula(&|s| locais.get(&s).copied()))
             }
         };
-        eventos.push((*us, ev.escreve()));
+        eventos.push((*us, ev));
     }
     if eventos.is_empty() && inicial.linhas.iter().all(|l| l.componentes.is_empty()) {
         return None;
     }
     Some(Fecho {
+        avisos: Avisos {
+            recusados: t.recusados,
+            apagados: apagados(&inicial, &eventos),
+        },
         inicial: inicial.escreve(),
-        eventos,
-        recusados: t.recusados,
+        eventos: eventos.into_iter().map(|(us, e)| (us, e.escreve())).collect(),
     })
 }
 
-/// **O aviso do que não se gravou**: a chave e os nomes curtos (`Collider`, não o caminho canónico).
+/// **O aviso do Parar**: os componentes que não se gravaram (nomes curtos: `Collider`, não o caminho
+/// canónico) e os objectos apagados a gravar — cada lista com a sua frase; as duas, uma após a outra.
 #[must_use]
-pub fn aviso(recusados: &BTreeSet<String>) -> Option<ph2d_editor_core::macro_edits::ErroDaMacroView> {
-    if recusados.is_empty() {
-        return None;
-    }
-    let nomes: Vec<&str> = recusados
+pub fn aviso(a: &Avisos) -> Option<ph2d_editor_core::macro_edits::ErroDaMacroView> {
+    use ph2d_editor_core::macro_edits as m;
+    use ph2d_editor_core::macro_etapas::erros::erro_com;
+    let nomes: Vec<&str> = a
+        .recusados
         .iter()
         .map(|n| n.rsplit("::").next().unwrap_or(n))
         .collect();
-    Some(ph2d_editor_core::macro_etapas::erros::erro_com(
-        ph2d_editor_core::macro_edits::MACRO_MUNDO_NAO_GRAVOU,
-        nomes.join(", "),
-    ))
+    let recusados = (!nomes.is_empty()).then(|| erro_com(m::MACRO_MUNDO_NAO_GRAVOU, nomes.join(", ")));
+    let apagados =
+        (!a.apagados.is_empty()).then(|| erro_com(m::MACRO_MUNDO_APAGADOS, a.apagados.join(", ")));
+    match (recusados, apagados) {
+        (Some(r), Some(p)) => {
+            let frase = |e: &m::ErroDaMacroView| {
+                let d = e.detalhe.clone().unwrap_or_default();
+                ph2d_i18n::tr_with(e.chave, &[("detail", &d)])
+            };
+            Some(erro_com(
+                m::MACRO_MUNDO_DOIS_AVISOS,
+                format!("{} {}", frase(&r), frase(&p)),
+            ))
+        }
+        (r, p) => r.or(p),
+    }
 }

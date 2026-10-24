@@ -17,6 +17,7 @@ use ph2d_macro::ficheiro::Ficheiro;
 use ph2d_macro::{Event, MacroDoc, MacroTime, RefRect, Track};
 use ph2d_physics_ecs::{Collider, PhysicsJoint, RigidBody};
 use ph2d_tool_painter::macro_track::fim;
+use std::collections::BTreeMap;
 
 const RIGIDO: &str = "ph2d::physics::RigidBody";
 const COLISOR: &str = "ph2d::physics::Collider";
@@ -351,4 +352,219 @@ fn exportar_confere_a_trilha_do_mundo() {
     );
     let r = b.m.exporta_para("Ma", &fora.join("ma"), &semm, &[]);
     assert_eq!(r.map_err(|e| e.chave), Err(m::MACRO_LIB_ILEGIVEL));
+}
+
+/// ⭐ Plano §2.4: um objecto que nasce e é apagado a gravar não existe no FIM — não nasce no destino, e
+/// o `original` dele na trilha instalada é `0` (nenhum), nunca o `StableId` da gravação (aqui `10`, o da
+/// imagem da banca: o palco encontrá-la-ia). A referência que lhe apontava também fica em `0`.
+#[test]
+fn o_apagado_na_gravacao_nao_nasce_nem_aponta_um_alheio() {
+    let lib = pasta("mundo-apagado");
+    let (mut b, _) = banca(32, 32, &lib);
+    let reg = crate::portas_de_teste::registo();
+    let (morto, vivo, junta) = (10, 21, 22);
+    let inicial = Inicial {
+        objetos: vec![Objeto {
+            id: 0,
+            original: 900,
+            quem: Quem::Macro,
+        }],
+        ..Inicial::default()
+    };
+    let obj = |id, original| Objeto {
+        id,
+        original,
+        quem: Quem::Mundo,
+    };
+    let corpo = |id: u32| Linha {
+        id,
+        pai: None,
+        componentes: vec![blob(&reg, RIGIDO, RigidBody::default())],
+    };
+    let nasce = Evento::Passo {
+        novos: vec![obj(1, morto), obj(2, vivo), obj(3, junta)],
+        mudancas: vec![
+            Mudanca::Nasce(corpo(1)),
+            Mudanca::Nasce(corpo(2)),
+            Mudanca::Nasce(Linha {
+                id: 3,
+                pai: Some(2),
+                componentes: vec![blob(
+                    &reg,
+                    JUNTA,
+                    PhysicsJoint {
+                        body_a: morto,
+                        body_b: vivo,
+                        ..PhysicsJoint::default()
+                    },
+                )],
+            }),
+        ],
+        recursos: Vec::new(),
+    };
+    let apaga = Evento::Passo {
+        novos: Vec::new(),
+        mudancas: vec![Mudanca::Morre(1)],
+        recursos: Vec::new(),
+    };
+    let f = ficheiro(
+        vec![trilha_do_mundo(
+            &inicial,
+            &[(500_000, nasce), (900_000, apaga)],
+        )],
+        "Apagado",
+    );
+    let novos = aplica(&mut b, &lib, &f, OndeAplicar::Novo { em: None });
+    assert_eq!(aviso(&b), m::MACRO_APLICADA, "{:?}", b.m.aviso());
+    let raiz = Entity::from_bits(novos[0]);
+    let dentro = filhos(&mut b, raiz);
+    assert_eq!(dentro.len(), 1, "só o vivo nasce");
+    let s_vivo = sid(&b, dentro[0]);
+    let d = doc_de(&b, novos[0]);
+    let lida = Lida::de(&d.tracks[0]).expect("lê");
+    let o: BTreeMap<u32, u64> = lida.objetos().map(|o| (o.id, o.original)).collect();
+    assert_eq!(o[&1], 0, "o apagado não tem objecto no destino");
+    assert_eq!(o[&2], s_vivo, "controlo: o vivo é o nascido");
+    let j = filhos(&mut b, dentro[0]);
+    let jv = *b.sim.world().get::<PhysicsJoint>(j[0]).expect("a junta");
+    assert_eq!(
+        (jv.body_a, jv.body_b),
+        (0, s_vivo),
+        "a junta já não aponta o 10 da cena"
+    );
+    let fim = lida.no_fim();
+    let gravada: PhysicsJoint = postcard::from_bytes(&fim[&3].componentes[JUNTA]).expect("junta");
+    assert_eq!(
+        (gravada.body_a, gravada.body_b),
+        (0, s_vivo),
+        "nem na trilha"
+    );
+}
+
+/// ⭐ Por cima com uma continuação do Painter: a 1.ª trilha pinta em cima (y = 10), a continuação em
+/// baixo (y = 50). A continuação começa onde a 1.ª acaba SOBRE O ALVO — o fim dela tem as duas
+/// pinceladas; antes começava da imagem do alvo e a de cima perdia-se.
+#[test]
+fn por_cima_a_continuacao_continua_as_pinceladas() {
+    let lib = pasta("mundo-por-cima-continua");
+    let (mut b, dono) = banca(64, 64, &lib);
+    grava(&mut b, [10.0, 10.0], [54.0, 10.0]);
+    let primeira = doc_de(&b, dono).tracks[0].clone();
+    let (mut b1, dono1) = banca(64, 64, &lib);
+    grava(&mut b1, [10.0, 50.0], [54.0, 50.0]);
+    let mut volta = doc_de(&b1, dono1).tracks[0].clone();
+    (volta.nasce, volta.continua) = (None, Some(0));
+    let f = ficheiro(vec![primeira, volta], "VoltaPorCima");
+    let (mut b2, _) = banca(64, 64, &lib);
+    let alvo = b2.bits;
+    let novos = aplica(&mut b2, &lib, &f, OndeAplicar::PorCima { alvo });
+    assert_eq!(aviso(&b2), m::MACRO_APLICADA, "{:?}", b2.m.aviso());
+    let d = doc_de(&b2, novos[0]);
+    let s = sid(&b2, Entity::from_bits(alvo));
+    assert_eq!((d.tracks[0].target, d.tracks[1].target), (s, s));
+    let a_primeira = composto(fim::documento_no_fim(&d.tracks[0], None).expect("toca"));
+    assert_ne!(
+        px(&a_primeira, 30, 10),
+        [255; 4],
+        "controlo: a 1.ª pinta em cima"
+    );
+    let fim_da_volta = composto(fim::documento_no_fim(&d.tracks[1], None).expect("toca"));
+    assert_ne!(px(&fim_da_volta, 30, 50), [255; 4], "a pincelada da volta");
+    assert_eq!(
+        px(&fim_da_volta, 30, 10),
+        px(&a_primeira, 30, 10),
+        "a volta continua as pinceladas da 1.ª"
+    );
+}
+
+/// ⭐ Ida e volta de uma imagem embutida semi-transparente: o recurso (PNG) faz nascer pela porta de
+/// produto os MESMOS píxeis, ao bit — e um recurso pré-multiplicado (uma textura editada) nasce em alfa
+/// recto (o atlas é recto): `rgb·255/a`, não os bytes escuros tomados por rectos.
+#[test]
+fn a_imagem_embutida_volta_igual_ao_bit() {
+    let lib = pasta("mundo-recurso");
+    let (mut b, _) = banca(32, 32, &lib);
+    let reg = crate::portas_de_teste::registo();
+    let recto: Vec<u8> = vec![
+        200, 100, 50, 128, 10, 20, 30, 255, 255, 255, 255, 0, 90, 180, 240, 7,
+    ];
+    let mut pre = recto.clone();
+    ph2d_render::premultiply_rgba8(&mut pre);
+    let png = ph2d_app_macros::mundo::aplica::png(2, 2, &recto).expect("png");
+    let png_pre = ph2d_app_macros::mundo::aplica::png(2, 2, &pre).expect("png");
+    let imagem = |id: u32, ativo: [u8; 32], nome: &str| Linha {
+        id,
+        pai: None,
+        componentes: vec![
+            Componente {
+                nome: "ph2d::ecs::Name".into(),
+                bytes: postcard::to_allocvec(&Name::new(nome)).unwrap(),
+            },
+            Componente {
+                nome: "ph2d::ecs::SpritePixels".into(),
+                bytes: postcard::to_allocvec(&ativo).unwrap(),
+            },
+            blob(
+                &reg,
+                "ph2d::render::Sprite",
+                ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+            ),
+        ],
+    };
+    let (ida, ida_pre) = ([1u8; 32], [2u8; 32]);
+    let inicial = Inicial {
+        objetos: vec![
+            Objeto {
+                id: 0,
+                original: 900,
+                quem: Quem::Macro,
+            },
+            Objeto {
+                id: 1,
+                original: 31,
+                quem: Quem::Mundo,
+            },
+            Objeto {
+                id: 2,
+                original: 32,
+                quem: Quem::Mundo,
+            },
+        ],
+        linhas: vec![imagem(1, ida, "Recta"), imagem(2, ida_pre, "Pre")],
+        recursos: vec![
+            ph2d_app_macros::mundo::formato::Recurso {
+                id: ida,
+                bytes: png,
+                premultiplicado: false,
+            },
+            ph2d_app_macros::mundo::formato::Recurso {
+                id: ida_pre,
+                bytes: png_pre,
+                premultiplicado: true,
+            },
+        ],
+    };
+    let f = ficheiro(vec![trilha_do_mundo(&inicial, &[])], "Recurso");
+    let novos = aplica(&mut b, &lib, &f, OndeAplicar::Novo { em: None });
+    assert_eq!(aviso(&b), m::MACRO_APLICADA, "{:?}", b.m.aviso());
+    let dentro = filhos(&mut b, Entity::from_bits(novos[0]));
+    assert_eq!(dentro.len(), 2);
+    let pelo_nome = |b: &Banca, n: &str| {
+        let e = dentro
+            .iter()
+            .find(|e| {
+                b.sim
+                    .world()
+                    .get::<Name>(**e)
+                    .is_some_and(|x| x.0.starts_with(n))
+            })
+            .expect("nasceu");
+        b.imagens.borrow()[&e.to_bits()].clone()
+    };
+    assert_eq!(pelo_nome(&b, "Recta"), (recto.clone(), 2, 2), "ao bit");
+    let mut de_volta = pre.clone();
+    ph2d_render::unpremultiply_rgba8(&mut de_volta);
+    let nascida = pelo_nome(&b, "Pre");
+    assert_eq!(nascida, (de_volta, 2, 2), "a pré-multiplicada nasce recta");
+    assert_ne!(nascida.0, pre, "controlo: não os bytes pré-multiplicados");
 }

@@ -5,7 +5,7 @@
 //! (`ph2d-app-macros/tests/it/aplicar_motion.rs`).
 
 use super::roteiro::CENA;
-use super::smoke::grava_gestos;
+use super::smoke::{grava_desde, grava_gestos};
 use super::transpor::{fim, tests::canon};
 use crate::motion_objeto::{undo_e_do_global, upkeep};
 use crate::motion_state::MotionState;
@@ -255,4 +255,95 @@ fn aplicar_por_cima_um_motion_gravado_e_desfaze_lo_num_passo() {
     );
     p.repoe(&mundo_depois);
     assert_eq!(p.motion.doc, doc_depois, "um Ctrl+Y os cinco");
+}
+
+/// ⭐ W19 (`Track::continua`): o artista voltou ao objecto Motion — a continuação grava-se desde o grafo
+/// de 3 nós e junta a grelha. Aplicada pela porta da continuação, os 3 nós que a 1.ª trilha pôs ficam
+/// (com os seus ids) e só a grelha nasce: 4 nós, não 3 + 4. A trilha instalada toca desde o vivo.
+#[test]
+fn a_continuacao_do_motion_nao_duplica_os_nos() {
+    let mut p = Palco::novo();
+    let primeira = gravada();
+    let bytes = grava_desde(DONO, &CENA[..9], 6, None).expect("grava").0;
+    let mut volta = ph2d_macro::codec::read(&bytes)
+        .expect("lê")
+        .tracks
+        .remove(0);
+    volta.continua = Some(0);
+    let esperado = canon(&fim(&volta).expect("toca"), DONO);
+    assert_eq!(esperado.0.len(), 4, "a fixtura acaba com 4 nós");
+    let r = p.objecto_macro();
+    let filho = p.sim.world_mut().spawn((
+        Name::new("Ondas"),
+        Transform::IDENTITY,
+        MotionGenerator,
+        ChildOf(Entity::from_bits(r)),
+    ));
+    let filho = filho.id();
+    let filho = p.com_id(filho);
+    let t0 = p.aplica(&primeira, filho, r);
+    let (d, v) = (p.sid(filho), p.sid(r));
+    let antes: Vec<_> = p.motion.doc.nodes_of(d);
+    // Controlo: a porta de aplicar (o caminho de antes) juntá-los-ia de novo.
+    let (_, dobrado) = super::transpor::aplica(&volta, &p.motion.doc, d).expect("aplica");
+    assert_eq!(dobrado.nodes_of(d).len(), 7, "controlo: 3 + 4");
+    let t1 = TranspoeDaFamilia::continua(&mut p.motion, &volta, &[(&primeira, &t0)], d, v)
+        .expect("continua");
+    p.quadro();
+    let nos = p.motion.doc.nodes_of(d);
+    assert_eq!(nos.len(), 4, "{nos:?}");
+    assert_eq!(
+        &nos[..3],
+        antes.as_slice(),
+        "os da 1.ª ficam com os seus ids"
+    );
+    assert_eq!(
+        canon(&p.motion.doc, d),
+        esperado,
+        "o grafo do fim da continuação"
+    );
+    assert_eq!((t1.target, t1.continua), (d, Some(0)));
+    assert_eq!(
+        canon(&fim(&t1).expect("toca"), d),
+        esperado,
+        "a trilha instalada toca até ao mesmo fim"
+    );
+}
+
+/// Por cima de um objecto Motion com 2 nós: a continuação reconhece só os da cadeia (os dele ficam):
+/// 2 + 4, não 2 + 3 + 4.
+#[test]
+fn por_cima_a_continuacao_do_motion_deixa_os_nos_do_alvo() {
+    let mut p = Palco::novo();
+    let alvo = p
+        .sim
+        .world_mut()
+        .spawn((Name::new("Campo"), Transform::IDENTITY, MotionGenerator));
+    let alvo = alvo.id();
+    let alvo = p.com_id(alvo);
+    let t_sid = p.sid(alvo);
+    let deles = {
+        let d = &mut p.motion.doc;
+        let a = d.graph.add_node("field.box");
+        let b = d.graph.add_node("force.wind");
+        d.set_owner(a, t_sid);
+        d.set_owner(b, t_sid);
+        [a, b]
+    };
+    p.quadro();
+    let primeira = gravada();
+    let bytes = grava_desde(DONO, &CENA[..9], 6, None).expect("grava").0;
+    let mut volta = ph2d_macro::codec::read(&bytes)
+        .expect("lê")
+        .tracks
+        .remove(0);
+    volta.continua = Some(0);
+    let r = p.objecto_macro();
+    let t0 = p.aplica(&primeira, alvo, r);
+    let v = p.sid(r);
+    TranspoeDaFamilia::continua(&mut p.motion, &volta, &[(&primeira, &t0)], t_sid, v)
+        .expect("continua");
+    let nos = p.motion.doc.nodes_of(t_sid);
+    assert_eq!(nos.len(), 6, "{nos:?}");
+    assert_eq!(&nos[..2], &deles, "os do alvo ficam");
 }

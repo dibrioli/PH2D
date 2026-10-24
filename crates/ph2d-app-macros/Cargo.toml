@@ -35,6 +35,10 @@ ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 ph2d-core = { path = "../ph2d-core" }
 # O recurso embutido (a imagem importada) viaja em PNG.
 image = { version = "0.25", default-features = false, features = ["png"] }
+# O encaixe vivo (a lei do «por cima», na folha das duas famílias): onde a continuação do Painter começa;
+# e a `Sprite` (o registo do render no aplicar sem placa).
+ph2d-sprite-screen = { path = "../ph2d-sprite-screen" }
+ph2d-render = { path = "../ph2d-render" }
 
 [features]
 # ⚠️ HOWTO §2.5 — do tamanho do que ATRAVESSA: `aplicar::sem_placa` (o gate da shell que grava e abre).
@@ -49,9 +53,6 @@ ph2d-panel-macros = { path = "../ph2d-panel-macros" }
 ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
 # O clipe que vive com o objecto Macro (o undo global tira-o): `aplicar_motion`.
 ph2d-timeline-persist = { path = "../ph2d-timeline-persist" }
-# A sonda da cena 7: o encaixe vivo (a lei do «por cima», na folha das duas famílias) e a `Sprite`.
-ph2d-sprite-screen = { path = "../ph2d-sprite-screen" }
-ph2d-render = { path = "../ph2d-render" }
 
 [lints]
 workspace = true

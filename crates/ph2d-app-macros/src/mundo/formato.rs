@@ -53,6 +53,9 @@ pub struct Linha {
 pub struct Recurso {
     pub id: [u8; 32],
     pub bytes: Vec<u8>,
+    /// Os bytes são alfa PRÉ-MULTIPLICADO (uma textura editada, `Sprite::premultiplied`): o `AssetDb`
+    /// não o sabe, a sprite que os mostra sabe-o, e o `Sprite` gravado não o leva (`serde(skip)`).
+    pub premultiplicado: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -140,6 +140,23 @@ pub trait TranspoeDaFamilia {
             crate::macro_edits::MACRO_NAO_TRANSPOE,
         ))
     }
+    /// Aplica a CONTINUAÇÃO `track` (`Track::continua`) ao `dono`, onde a cadeia `anteriores` — (como
+    /// veio, a que [`Self::aplica`]/esta devolveu), pela ordem, a 1.ª é a que ela continua — já pôs os
+    /// nós: só os ids dos passos se reescrevem, nada se junta de novo.
+    ///
+    /// # Errors
+    /// O porquê — o documento vivo fica intacto.
+    fn continua(
+        &mut self,
+        _track: &Track,
+        _anteriores: &[(&Track, &Track)],
+        _dono: u64,
+        _vida: u64,
+    ) -> Result<Track, ErroDaMacroView> {
+        Err(crate::macro_etapas::erros::erro(
+            crate::macro_edits::MACRO_NAO_TRANSPOE,
+        ))
+    }
 }
 
 /// A gravadora de uma família que também ensina — o que a composição passa à família MACROS.

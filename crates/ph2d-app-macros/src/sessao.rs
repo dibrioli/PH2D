@@ -13,7 +13,7 @@ use crate::{Cena, Familias};
 use ph2d_ecs::{Entity, SimWorld, StableId};
 use ph2d_editor_core::macro_edits::{self as m, FamiliaDaMacro};
 use ph2d_macro::{Gravadora, MacroRecorder, MacroTime, Nascimento, RefRect, TrackId};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 /// O que o Gravar arma.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -480,7 +480,7 @@ impl Sessao {
         f: &mut Familias<'_>,
         c: &mut Cena<'_>,
         agora_us: u64,
-    ) -> Result<(usize, BTreeSet<String>), &'static str> {
+    ) -> Result<(usize, crate::mundo::Avisos), &'static str> {
         for (fam, a) in [
             (FamiliaDaMacro::Painter, self.painter.viva()),
             (FamiliaDaMacro::Motion, self.motion.viva()),
@@ -492,7 +492,7 @@ impl Sessao {
                 let _ = self.rec.push(a.id, agora_us, p);
             }
         }
-        let recusados = self.fecha_o_mundo(f);
+        let avisos = self.fecha_o_mundo(f, c.sim);
         let doc = self.rec.finish();
         if doc.tracks.is_empty() {
             return Err(m::MACRO_RECUSA_NADA_GRAVADO);
@@ -506,23 +506,26 @@ impl Sessao {
         } else {
             ph2d_ecs::ModoDaMacro::Explicativo
         };
-        crate::instala::instala(c, f.etapas, self.dono, &doc, modo).map(|k| (k, recusados))
+        crate::instala::instala(c, f.etapas, self.dono, &doc, modo).map(|k| (k, avisos))
     }
 
     /// A trilha do mundo entra na gravação (depois das outras: elas dizem quem faz nascer cada
-    /// objecto); devolve os componentes que não se gravaram.
-    fn fecha_o_mundo(&mut self, f: &Familias<'_>) -> BTreeSet<String> {
+    /// objecto); devolve o que o painel avisa.
+    fn fecha_o_mundo(&mut self, f: &Familias<'_>, sim: &mut SimWorld) -> crate::mundo::Avisos {
         let Some(g) = self.mundo.take() else {
-            return BTreeSet::new();
+            return crate::mundo::Avisos::default();
         };
         let Some(p) = f.portas.as_ref() else {
             debug_assert!(g.passos.is_empty(), "o mundo gravou sem a composição para o fechar");
-            return BTreeSet::new();
+            return crate::mundo::Avisos::default();
         };
         let dono = g.dono;
         let familia = |t: &ph2d_macro::Track| crate::aplicar::familia(t, f.etapas).ok();
-        let Some(fe) = crate::mundo::fecha(g, self.rec.doc(), &familia, p.registo, p.recurso) else {
-            return BTreeSet::new();
+        let premul = crate::mundo::premultiplicados(sim);
+        let premul = |id: &[u8; 32]| premul.contains(id);
+        let Some(fe) = crate::mundo::fecha(g, self.rec.doc(), &familia, p.registo, p.recurso, &premul)
+        else {
+            return crate::mundo::Avisos::default();
         };
         let id = self
             .rec
@@ -530,6 +533,6 @@ impl Sessao {
         for (us, e) in fe.eventos {
             let _ = self.rec.push(id, us, e);
         }
-        fe.recusados
+        fe.avisos
     }
 }

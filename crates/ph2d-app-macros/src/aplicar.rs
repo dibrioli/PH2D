@@ -24,6 +24,10 @@ use ph2d_tool_painter::macro_track::{self as pm, fim, inicial};
 use ph2d_tool_painter::{PaintedDocument, PainterTool};
 use std::collections::BTreeMap;
 
+#[path = "aplicar_continua.rs"]
+mod continua;
+use continua::{continuacao_do_motion, rebaseia_o_painter};
+
 /// Insere componentes no objecto `bits` (se ele existe).
 macro_rules! poe {
     ($sim:expr, $bits:expr, $c:expr) => {
@@ -334,6 +338,8 @@ pub fn sem_placa(
     let mut registo = ph2d_ecs::scene::ComponentRegistry::new();
     ph2d_ecs::scene::register_ecs_components(&mut registo);
     ph2d_physics_ecs::register_physics_components(&mut registo);
+    // A `Sprite` de uma imagem importada que a macro faz nascer.
+    ph2d_render::register_render_components(&mut registo);
     let remapeia = |w: &mut ph2d_ecs::World, es: &[Entity], m: &BTreeMap<u64, u64>| {
         ph2d_ecs::remap_instance_of(w, es, m)
             + ph2d_physics_ecs::remap_joint_refs(w, es, m)
@@ -485,7 +491,12 @@ fn novo(
                         .ok()
                         .and_then(|o| objs.get(&o).copied())
                         .ok_or_else(|| erro_com(m::MACRO_APLICAR_NAO_NASCE, format!("#{o}")))?;
-                    doc.tracks[k] = muda_o_alvo(&doc.tracks[k], fam, sid_de(sim, b), vida, f)?;
+                    let sid = sid_de(sim, b);
+                    doc.tracks[k] = if fam == Motion {
+                        continuacao_do_motion(&fi.doc, &doc, k, sid, vida, f)?
+                    } else {
+                        muda_o_alvo(&doc.tracks[k], fam, sid, vida, f)?
+                    };
                     objs.insert(k, b);
                     continue;
                 }
@@ -568,36 +579,36 @@ fn por_cima(
     .map_err(erro)?;
     let sid = sid_de(sim, alvo);
     let mut doc = fi.doc.clone();
-    if fam == FamiliaDaMacro::Painter {
-        let base = documento_da_imagem(f.painter.as_deref(), portas, sim, alvo)
-            .ok_or_else(|| erro(m::MACRO_APLICAR_INCOMPATIVEL))?;
-        for (t, x) in doc.tracks.iter_mut().zip(fams) {
-            if *x != FamiliaDaMacro::Painter {
-                continue;
-            }
-            t.initial = inicial::sobre_documento(&t.initial, &base).map_err(|e| {
-                nao_toca(&crate::erros::do_painter(&pm::tocar::ErroDaMacro::Inicial(
-                    e,
-                )))
-            })?;
-            t.target = sid;
-            t.nasce = None;
-        }
-    }
+    let base = if fam == FamiliaDaMacro::Painter {
+        Some(
+            documento_da_imagem(f.painter.as_deref(), portas, sim, alvo)
+                .ok_or_else(|| erro(m::MACRO_APLICAR_INCOMPATIVEL))?,
+        )
+    } else {
+        None
+    };
     // A pose do alvo no mundo: o gizmo do objecto Macro começa por cima dele.
     let pose = ph2d_ecs::world_transform(sim.world(), Entity::from_bits(alvo)).unwrap_or_default();
     let raiz = nasce_a_raiz(sim, portas, &fi.nome, pose);
     let mut nascidos = vec![raiz];
     let r = (|| {
+        if let Some(base) = &base {
+            rebaseia_o_painter(&mut doc, fams, base, sid, sim, (raiz, alvo))?;
+        }
         if fam == FamiliaDaMacro::Motion {
             let vida = sid_de(sim, raiz);
-            for (t, x) in doc.tracks.iter_mut().zip(fams) {
-                if *x == FamiliaDaMacro::Motion {
-                    let mut n = f.motion.aplica(t, sid, vida)?;
-                    n.nasce = None;
-                    n.continua = t.continua;
-                    *t = n;
+            for k in 0..doc.tracks.len() {
+                if fams[k] != FamiliaDaMacro::Motion {
+                    continue;
                 }
+                let mut n = if doc.tracks[k].continua.is_some() {
+                    continuacao_do_motion(&fi.doc, &doc, k, sid, vida, f)?
+                } else {
+                    f.motion.aplica(&doc.tracks[k], sid, vida)?
+                };
+                n.nasce = None;
+                n.continua = doc.tracks[k].continua;
+                doc.tracks[k] = n;
             }
         }
         // Todas as trilhas das outras famílias vão para o alvo.

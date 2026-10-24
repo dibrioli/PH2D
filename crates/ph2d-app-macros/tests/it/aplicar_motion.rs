@@ -13,9 +13,10 @@ use ph2d_macro::ficheiro::Ficheiro;
 use ph2d_macro::{Event, MacroDoc, MacroTime, Nascimento, RefRect, Track};
 use ph2d_timeline::{TimelineIntent, TimelineState};
 
-/// O Motion de brinquedo: regista cada `(dono, vida)` e devolve a trilha a apontar o dono.
+/// O Motion de brinquedo: regista cada `(dono, vida)` e devolve a trilha a apontar o dono; e cada
+/// continuação (`(dono, vida, a cadeia que recebeu: (alvo como veio, alvo aplicado))`).
 #[derive(Default)]
-struct MotionQueRegista(Vec<(u64, u64)>);
+struct MotionQueRegista(Vec<(u64, u64)>, Vec<(u64, u64, Vec<(u64, u64)>)>);
 
 impl ph2d_macro::Gravadora for MotionQueRegista {
     fn abre(
@@ -40,6 +41,24 @@ impl ph2d_editor_core::macro_tutorial::TranspoeDaFamilia for MotionQueRegista {
         let mut n = t.clone();
         n.target = dono;
         n.initial = vec![0xA7];
+        Ok(n)
+    }
+
+    fn continua(
+        &mut self,
+        t: &Track,
+        anteriores: &[(&Track, &Track)],
+        dono: u64,
+        vida: u64,
+    ) -> Result<Track, ErroDaMacroView> {
+        let cadeia = anteriores
+            .iter()
+            .map(|(a, b)| (a.target, b.target))
+            .collect();
+        self.1.push((dono, vida, cadeia));
+        let mut n = t.clone();
+        n.target = dono;
+        n.initial = vec![0xC0];
         Ok(n)
     }
 }
@@ -277,4 +296,65 @@ fn aplicar_por_cima_um_motion_da_o_alvo_como_dono() {
     assert_eq!(e.chave, m::MACRO_APLICAR_INCOMPATIVEL);
     assert_eq!(p.sim.world().iter_entities().count(), n, "nada nasceu");
     assert_eq!(p.motion.0.len(), 1, "a porta do Motion não foi chamada");
+}
+
+/// ⭐ W19: uma continuação do Motion (`continua: Some(0)`) não passa outra vez pela porta de aplicar
+/// (que juntaria os nós de novo): vai à porta da continuação com o mesmo dono e a cadeia — a 1.ª
+/// trilha como veio e como ficou. Novo e por cima.
+#[test]
+fn a_continuacao_do_motion_vai_a_porta_da_continuacao() {
+    let mut fi = trilha(true);
+    let mut volta = fi.doc.tracks[0].clone();
+    (volta.nasce, volta.continua) = (None, Some(0));
+    fi.doc.tracks.push(volta);
+    let mut p = Palco::default();
+    let r = p
+        .aplica(&fi, OndeAplicar::Novo { em: None })
+        .expect("aplica");
+    let filho = p
+        .sim
+        .world()
+        .iter_entities()
+        .find(|e| e.get::<ChildOf>().map(ChildOf::parent) == Some(Entity::from_bits(r)))
+        .map(|e| e.id().to_bits())
+        .expect("o objecto Motion");
+    let (dono, vida) = (p.sid(filho), p.sid(r));
+    assert_eq!(p.motion.0, [(dono, vida)], "aplicar só a 1.ª");
+    assert_eq!(
+        p.motion.1,
+        [(dono, vida, vec![(3, dono)])],
+        "a continuação, com a cadeia"
+    );
+    let d = ph2d_macro::codec::read(
+        &p.sim
+            .world()
+            .get::<Macro>(Entity::from_bits(r))
+            .expect("a Macro")
+            .doc,
+    )
+    .expect("lê");
+    assert_eq!(
+        (
+            d.tracks[1].target,
+            d.tracks[1].initial.as_slice(),
+            d.tracks[1].continua
+        ),
+        (dono, [0xC0].as_slice(), Some(0)),
+        "a trilha da continuação é a que a porta devolveu"
+    );
+
+    let mut q = Palco::default();
+    let alvo = q
+        .sim
+        .world_mut()
+        .spawn((Name::new("Campo"), Transform::IDENTITY, MotionGenerator))
+        .id()
+        .to_bits();
+    ph2d_ecs::assign_missing_stable_ids(q.sim.world_mut());
+    let r = q
+        .aplica(&fi, OndeAplicar::PorCima { alvo })
+        .expect("aplica");
+    let (dono, vida) = (q.sid(alvo), q.sid(r));
+    assert_eq!(q.motion.0, [(dono, vida)]);
+    assert_eq!(q.motion.1, [(dono, vida, vec![(3, dono)])]);
 }

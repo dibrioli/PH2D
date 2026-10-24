@@ -308,6 +308,10 @@ pub const MACRO_RECUSA_FORA_DO_OBJETO: &str = "panel.macros.refusal.outside_the_
 pub const MACRO_RECUSA_FUNDO_DEMAIS: &str = "panel.macros.refusal.too_deep";
 /// Parar: a família «mundo» não gravou estes componentes (o detalhe nomeia-os) — W19.
 pub const MACRO_MUNDO_NAO_GRAVOU: &str = "panel.macros.refusal.world_not_recorded";
+/// Parar: objectos apagados a gravar não aparecem na macro (o detalhe nomeia-os) — W19.
+pub const MACRO_MUNDO_APAGADOS: &str = "panel.macros.refusal.world_deleted_objects";
+/// Parar: os dois avisos do mundo, um após o outro (o detalhe são as duas frases já traduzidas).
+pub const MACRO_MUNDO_DOIS_AVISOS: &str = "panel.macros.refusal.world_two_notices";
 /// Uma trilha de uma família que este PH2D não conhece (o detalhe é a chave dela) — W19.
 pub const MACRO_FAMILIA_DESCONHECIDA: &str = "panel.macros.error.unknown_family";
 /// Aplicar: a trilha do mundo põe um componente que este PH2D não regista (o detalhe é o nome) — W19.

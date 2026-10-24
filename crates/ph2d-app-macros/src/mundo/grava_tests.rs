@@ -81,7 +81,7 @@ fn familia(t: &Track) -> Option<FamiliaDaMacro> {
 }
 
 fn fecha_com(g: Gravacao, doc: &MacroDoc, reg: &ComponentRegistry) -> Option<super::super::Fecho> {
-    super::super::fecha(g, doc, &familia, reg, &|_| None)
+    super::super::fecha(g, doc, &familia, reg, &|_| None, &|_| false)
 }
 
 fn passos(f: &super::super::Fecho) -> Vec<Evento> {
@@ -160,7 +160,7 @@ fn o_que_o_painter_grava_nao_se_grava_duas_vezes() {
     let i = Inicial::le(&f.inicial).expect("lê");
     let o = i.objetos.iter().find(|o| o.original == IMAGEM).expect("a imagem");
     assert_eq!(o.quem, Quem::Trilha(0), "quem faz nascer a imagem é a trilha 0");
-    assert!(f.recusados.is_empty());
+    assert!(f.avisos.recusados.is_empty());
 }
 
 #[test]
@@ -176,9 +176,49 @@ fn um_componente_recusado_diz_se_pelo_nome() {
     g.mudou(&antes, &depois, 1_000);
     let f = fecha_com(g, &MacroDoc::new(RefRect { w: 1.0, h: 1.0 }), &reg);
     let f = f.expect("o inicial grava");
-    assert!(f.recusados.contains("ph2d::ecs::Tags"), "{:?}", f.recusados);
-    let aviso = super::super::aviso(&f.recusados).expect("o painel di-lo");
+    assert!(f.avisos.recusados.contains("ph2d::ecs::Tags"), "{:?}", f.avisos);
+    let aviso = super::super::aviso(&f.avisos).expect("o painel di-lo");
     assert_eq!(aviso.detalhe.as_deref(), Some("Tags"));
+}
+
+/// ⭐ Gate 15 (plano §2.4): um objecto que nasce e é apagado a gravar — e um que já lá estava e se
+/// apaga — não existem no fim: o aviso NOMEIA-OS (o `Name`), cada lista com a sua frase; um objecto
+/// vivo no fim não entra.
+#[test]
+fn nasce_e_apagado_na_gravacao_diz_se() {
+    use ph2d_editor_core::macro_edits as m;
+    let reg = registo();
+    let (mut sim, img) = mundo();
+    let dono = ph2d_ecs::entity_with_stable_id(sim.world(), StableId(DONO)).expect("o dono");
+    let antes = foto(&mut sim, &reg);
+    let caixa = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("Caixa"), StableId(30), ChildOf(dono)))
+        .id();
+    let meio = foto(&mut sim, &reg);
+    sim.world_mut().despawn(caixa);
+    sim.world_mut().despawn(Entity::from_bits(img));
+    let depois = foto(&mut sim, &reg);
+    let mut g = Gravacao::new(DONO);
+    g.mudou(&antes, &meio, 1_000);
+    g.mudou(&meio, &depois, 2_000);
+    let f = fecha_com(g, &MacroDoc::new(RefRect { w: 1.0, h: 1.0 }), &reg).expect("gravou");
+    let mut nomes = f.avisos.apagados.clone();
+    nomes.sort_unstable();
+    assert_eq!(nomes, ["Caixa", "Player"], "{:?}", f.avisos);
+    assert!(f.avisos.recusados.is_empty());
+    let a = super::super::aviso(&f.avisos).expect("o painel di-lo");
+    assert_eq!(a.chave, m::MACRO_MUNDO_APAGADOS);
+    assert!(a.detalhe.as_deref().is_some_and(|d| d.contains("Caixa") && d.contains("Player")));
+    // As duas listas: uma frase após a outra, nenhuma perdida.
+    let mut ambos = f.avisos.clone();
+    ambos.recusados.insert("ph2d::ecs::Tags".into());
+    let a = super::super::aviso(&ambos).expect("as duas");
+    assert_eq!(a.chave, m::MACRO_MUNDO_DOIS_AVISOS);
+    let d = a.detalhe.expect("as duas frases");
+    assert!(d.contains("Tags") && d.contains("Caixa"), "{d}");
+    // Controlo: nada apagado ⇒ nenhum aviso.
+    assert_eq!(super::super::aviso(&super::super::Avisos::default()), None);
 }
 
 #[test]

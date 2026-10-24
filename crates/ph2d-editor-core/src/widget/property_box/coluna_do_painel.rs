@@ -137,9 +137,9 @@ impl ColunaDoPainel {
     }
 }
 
-/// A lei de uma secção partida em `(prefere, tecto do controlo)` — ver
+/// A lei de uma secção partida nas perguntas que o painel lê separadas — ver
 /// [`super::row::limites_da_seccao`].
-pub(super) type Limites = fn(f32, f32, Option<f32>, Option<f32>) -> (f32, f32);
+pub(super) type Limites = fn(f32, f32, Option<f32>, Option<f32>) -> super::row::Limite;
 
 /// A coluna de uma linha — a da secção fora de um painel; dentro de um, a que põe o VALOR no
 /// `x` do painel.
@@ -150,8 +150,8 @@ pub(super) fn no_painel(
     control_need: Option<f32>,
     limites: Limites,
 ) -> f32 {
-    let (prefere, tecto) = limites(x, w, desired, control_need);
-    let propria = prefere.min(tecto);
+    let lim = limites(x, w, desired, control_need);
+    let propria = lim.prefere.min(lim.tecto);
     PINTANDO.with(|p| {
         let mut p = p.borrow_mut();
         let Some(q) = p.as_mut() else {
@@ -181,9 +181,11 @@ pub(super) fn no_painel(
         if !q.pedidos.contains(&este) {
             q.pedidos.push(este);
         }
-        let valor = coluna_do_painel(&q.pedidos, bx, br - bx, limites);
-        // ⚠️ `valor − recuo ≤ tecto` por construção (o painel respeita o tecto de TODA linha); o
-        //    `min` só guarda contra o arredondamento do recuo a meio píxel.
+        let (valor, piso) = coluna_do_painel(&q.pedidos, bx, br - bx, limites);
+        // ⚠️ `valor − recuo ≤ tecto` por construção, salvo quando o PISO de outra secção recusou a
+        //    cedência desta linha: aí o tecto é o DURO (o campo mínimo) e ela reflui (§6-bis) em
+        //    vez de cortar o nome da outra. O `min` guarda o arredondamento do recuo a meio píxel.
+        let tecto = lim.tecto.max(piso - recuo).min(lim.duro);
         crate::math::safe_clamp(valor - recuo, 0.0, tecto)
     })
 }
@@ -191,7 +193,15 @@ pub(super) fn no_painel(
 /// ⭐⭐⭐ **O `x` do valor no painel, relativo à base: a coluna que o NOME MAIS LARGO pede, sem
 /// apertar o CONTROLO de nenhuma linha de LARGURA INTEIRA abaixo do que ele declara.**
 ///
-/// `min( max(recuo + prefere), min(tecto das linhas sem recuo) )`.
+/// `max( min( max(recuo + prefere), min(tecto das linhas sem recuo) ), max(recuo + piso) )`.
+///
+/// ⛔⛔ **Report do dono 24/10, com foto: o PISO.** Com a câmera seleccionada e o dock a
+/// `≈ 240–270 px`, o `Transform` e o `Camera Follow` punham o nome elidido («Posit…», «Da…») ao lado
+/// de dois campos. A secção deles tinha RECUSADO ceder (o nome não caberia — §6-ter, a linha
+/// empilha), mas a secção vizinha de nomes curtos cedia por si e o `min` dos tectos impunha a
+/// cedência dela ao painel inteiro. ⇒ a recusa de uma secção é um PISO da coluna do painel: as
+/// linhas que cediam passam a refluir, como a própria secção faria
+/// (`docs/CodeEditor/ferramentas/faixa_dos_rotulos_espremidos/`).
 ///
 /// ⛔⛔ **A 1.ª redacção era o `min` das colunas de cada secção, e a régua das elisões reprovou-a no
 /// degrau estreito com `211` nomes cortados no Inspector contra `79`** — a coluna do rótulo caía a
@@ -208,17 +218,19 @@ pub(super) fn no_painel(
 /// cartão alinha-se com ela sempre que o campo dele ainda tenha os `72 px` que o dono mandou
 /// ([`crate::widget::NUMBER_INPUT_MIN_W_PX`]); quando não tem, ELE recua o recuo dele — e só no fim
 /// estreito do curso do dock (a `300 px` o tecto do cartão está `63 px` acima da coluna).
-fn coluna_do_painel(pedidos: &[Pedido], bx: f32, largura: f32, limites: Limites) -> f32 {
+fn coluna_do_painel(pedidos: &[Pedido], bx: f32, largura: f32, limites: Limites) -> (f32, f32) {
     let mut nome = 0.0_f32;
     let mut controlo = f32::INFINITY;
+    let mut piso = 0.0_f32;
     for d in pedidos {
-        let (p, t) = limites(bx + d.recuo, largura - 2.0 * d.recuo, d.nome, d.precisa);
-        nome = nome.max(d.recuo + p);
+        let lim = limites(bx + d.recuo, largura - 2.0 * d.recuo, d.nome, d.precisa);
+        nome = nome.max(d.recuo + lim.prefere);
+        piso = piso.max(d.recuo + lim.piso);
         if d.recuo == 0.0 {
-            controlo = controlo.min(t);
+            controlo = controlo.min(lim.tecto);
         }
     }
-    nome.min(controlo)
+    (nome.min(controlo).max(piso), piso)
 }
 
 /// ⭐ **A base do quadro a partir da primeira linha dele.**

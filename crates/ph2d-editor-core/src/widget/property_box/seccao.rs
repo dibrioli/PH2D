@@ -110,6 +110,23 @@ impl Seccao {
         }
     }
 
+    /// ⭐ **A mesma secção, sem esquecer o nome DESTA linha** — a porta da linha chama-a com o nome
+    /// que vai pintar.
+    ///
+    /// ⛔ Report do dono 24/10: a `Game Camera` media só os nomes dos campos e esquecia os das
+    /// marcas (`Look Through`) que partilham a coluna — cedia por um nome que não era o maior, e a
+    /// marca saía cortada. Uma secção que enumera os nomes todos não muda (o `max`); uma que se
+    /// esqueceu de um deixa de o cortar. `apenas_campos` continua sem nomes.
+    #[must_use]
+    pub fn com_o_nome(self, text_system: &mut TextSystem, nome: &str) -> Self {
+        Self {
+            campos: self.campos,
+            nome_w: self
+                .nome_w
+                .map(|w| w.max(text_system.prefix_width(nome, TypeToken::Sm.px()))),
+        }
+    }
+
     /// Quantas componentes tem **a linha que a secção não quer ver quebrar**.
     #[must_use]
     pub const fn campos(self) -> usize {

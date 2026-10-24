@@ -58,7 +58,7 @@ pub fn paint_label_row(
     label: &str,
     seccao: Seccao,
 ) -> PropertyRow {
-    let row = colunas_da_linha(x, w, y, h, seccao);
+    let row = colunas_da_linha(x, w, y, h, seccao.com_o_nome(text_system, label));
     let label_font = TypeToken::Sm.px();
     crate::widget::paint_property_label(
         text_system,
@@ -100,7 +100,9 @@ fn row_and_layout(
     // ⛔⛔ **O nome vem da SECÇÃO, nunca desta linha** — ver [`Seccao`], com a foto e a tabela.
     //    Uma linha que tem MAIS componentes do que a secção declarou continua a ser servida por
     //    elas (o `max`), mas a COLUNA não muda: ela é da secção.
-    let seccao = seccao.com_pelo_menos(n_campos);
+    let seccao = seccao
+        .com_pelo_menos(n_campos)
+        .com_o_nome(text_system, label);
     let row = colunas_da_linha(x, w, y, ROW_H_PX, seccao);
     crate::widget::paint_property_label(
         text_system,
@@ -491,7 +493,7 @@ pub fn paint_check_row<'a>(
         } else {
             crate::widget::CheckboxValue::Unchecked
         })
-        .seccao(seccao);
+        .seccao(seccao.com_o_nome(text_system, label.texto));
     crate::widget::paint_checkbox(&cb, rect, scene, text_system, theme);
     let dot = crate::widget::decorator_rect(rect);
     if let Some(alvo) =

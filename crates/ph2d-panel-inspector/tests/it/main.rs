@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod a_caixa_do_contador_esta_viva;
+mod a_faixa_media_do_dock_nao_corta_nomes;
 mod a_field_is_never_narrower_than_its_owner_declared;
 mod a_lista_de_resistencias_esta_viva;
 mod a_lista_de_tags_cabe_no_popover;

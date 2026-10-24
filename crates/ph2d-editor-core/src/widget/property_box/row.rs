@@ -235,7 +235,20 @@ pub fn property_label_col_w_for(
     super::coluna_do_painel::no_painel(x, w, desired, control_need, limites_da_seccao)
 }
 
-/// ⭐ **A lei de UMA secção, partida nas DUAS perguntas que ela junta** — `(prefere, tecto)`.
+/// ⭐ **A lei de UMA secção, partida nas perguntas que o painel lê separadas** — ver [`Limite`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) struct Limite {
+    /// A coluna que o NOME pede (a metade, ou o empréstimo de um nome mais largo).
+    pub prefere: f32,
+    /// A coluna mais larga com que o CONTROLO desta linha ainda cabe (a cedência, se resolve).
+    pub tecto: f32,
+    /// ⭐ O que a secção RECUSA perder: o nome dela quando recusou ceder (§6-ter); senão `0`.
+    pub piso: f32,
+    /// O tecto do campo mínimo, sem cedência nenhuma.
+    pub duro: f32,
+}
+
+/// ⭐ **A lei de UMA secção, partida nas perguntas que ela junta** — ver [`Limite`].
 ///
 /// - `prefere`: a coluna que o NOME pede — a metade, ou o empréstimo de um nome mais largo, sem
 ///   passar do tecto do campo mínimo.
@@ -251,7 +264,7 @@ pub(super) fn limites_da_seccao(
     w: f32,
     desired: Option<f32>,
     control_need: Option<f32>,
-) -> (f32, f32) {
+) -> Limite {
     // ⚠️ O vertical entra a zero **e é deitado fora**: o único uso que a [`form_row_columns`] lhe dá
     // é montar o rect do ponto, e aqui só queremos a largura utilizável (que já desconta a coluna
     // de animação, ou não desconta nada na aparência clássica — a guarda mora lá, uma vez).
@@ -294,7 +307,18 @@ pub(super) fn limites_da_seccao(
     // e a linha continua quebrada. Aí não se cede nada e a coluna fica onde o dono a pôs.
     let prefere = base.min(tecto).max(0.0);
     let tecto_do_controlo = if cede >= quer { cede.min(tecto) } else { tecto };
-    (prefere, tecto_do_controlo.max(0.0))
+    // ⭐ A RECUSA viaja para o painel: sem ela, a cedência de uma secção vizinha cortaria o nome
+    //    que esta secção se recusou a cortar (report do dono 24/10, `coluna_do_painel`).
+    let piso = match (desired, control_need) {
+        (Some(d), Some(_)) if cede < quer => d.min(tecto),
+        _ => 0.0,
+    };
+    Limite {
+        prefere,
+        tecto: tecto_do_controlo.max(0.0),
+        piso: piso.max(0.0),
+        duro: tecto,
+    }
 }
 
 /// ⭐⭐⭐ **A porta de uma linha de propriedade** — ver [`PropertyRow`].

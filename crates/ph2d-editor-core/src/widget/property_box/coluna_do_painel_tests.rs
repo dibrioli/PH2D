@@ -115,12 +115,16 @@ fn o_nome_mais_largo_manda_ate_ao_tecto_do_controlo() {
         linha(0.0, 300.0, Some(40.0), Some(90.0)),
     ];
     let esperado = {
-        let lim: Vec<(f32, f32)> = linhas
+        let lim: Vec<_> = linhas
             .iter()
             .map(|l| limites_da_seccao(l.x, l.w, l.nome, l.precisa))
             .collect();
-        let nome = lim.iter().map(|l| l.0).fold(0.0, f32::max);
-        let controlo = lim.iter().map(|l| l.1).fold(f32::INFINITY, f32::min);
+        assert!(
+            lim.iter().all(|l| l.piso == 0.0),
+            "a fixtura não tem recusa"
+        );
+        let nome = lim.iter().map(|l| l.prefere).fold(0.0, f32::max);
+        let controlo = lim.iter().map(|l| l.tecto).fold(f32::INFINITY, f32::min);
         nome.min(controlo)
     };
     let dentro = convergido(&mut ColunaDoPainel::default(), &linhas);
@@ -334,5 +338,33 @@ fn fechar_uma_seccao_nao_mexe_a_coluna() {
     assert!(
         (aberto[0] - sozinha(curta)).abs() > 1.0,
         "a fixtura não contém o empréstimo"
+    );
+}
+
+/// ⭐⭐⭐ **A RECUSA de uma secção é um PISO do painel** — report do dono 24/10.
+///
+/// A `220` (o dock a `≈ 255`): a secção de nome largo e dois campos RECUSA ceder (o nome não
+/// caberia), a de nomes curtos cede por si. ⛔ Antes, o `min` dos tectos impunha a cedência da
+/// segunda à primeira e o nome dela saía cortado a `50 px`.
+#[test]
+fn a_recusa_de_uma_seccao_e_um_piso_do_painel() {
+    let dois = 2.0 * crate::widget::NUMBER_INPUT_MIN_W_PX + ph2d_tokens::control_gap_px();
+    let recusa = linha(0.0, 220.0, Some(76.7), Some(dois));
+    let cede = linha(0.0, 220.0, Some(41.8), Some(dois));
+    // O controlo: cada uma sozinha diz o que a fixtura afirma.
+    assert!(limites_da_seccao(0.0, 220.0, recusa.nome, recusa.precisa).piso > 0.0);
+    assert_eq!(
+        limites_da_seccao(0.0, 220.0, cede.nome, cede.precisa).piso,
+        0.0
+    );
+    assert!(
+        sozinha(cede) < 76.7,
+        "a fixtura não cede abaixo do nome largo"
+    );
+    let dentro = convergido(&mut ColunaDoPainel::default(), &[recusa, cede]);
+    assert!(todos_iguais(&dentro), "o painel não alinhou: {dentro:?}");
+    assert!(
+        dentro[0] >= 76.7 - 1e-3,
+        "o nome que recusou ceder foi cortado: {dentro:?}"
     );
 }

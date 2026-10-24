@@ -63,6 +63,8 @@ Nenhum era `main` verde a tornar-se vermelho por flake; todos reproduzem sozinho
 | 8 | `instructional_docs_only_cite_paths…` | o CLAUDE.md citava `project-memory/feedback_full_suite…md`, que está **por rastrear** no checkout principal | o link sai (a regra fica no texto). ⚠️ o ficheiro de memória continua por rastrear |
 | 9 | `duas_pinceladas_que_se_cruzam…` (Macros W17) | **bisect**: nasce no commit «a Aquarela nasce com os números do painel do dono». 3 de 5 454 texels da Aquarela a 1–2 níveis do papel (a cauda do aro), tecto 0 | a folga da água (1 %) que o Wet já tinha passa à Aquarela; um retângulo apagado são centenas |
 | 10 | `a_cena_4_conduzida_passo_a_passo` (CodeEditor) | espera de 30 s pela lista do `luau-lsp` sob `load 119`; zero linhas de `code-scenes` no diff; sozinho 1,0 s, 12/12 em paralelo; com 120 laços de CPU (`load 13 → 38`) 6–16 s, 4/4 | **promovido a flake de carga** (tabela + faixa isolada, as duas escritas) |
+| 11 | `a_cena_3_conduzida_passo_a_passo` (CodeEditor) | a irmã da cena 4, na 2.ª corrida do ship (a cena 4 passou nela): a mesma espera de 30 s pelo `luau-lsp` sob a suíte; sozinha 0,5 s | flake de carga, as duas escritas (tabela + faixa isolada) |
+| 12 | TIMEOUT `censo_dos_controlos::a_linha_esmaecida_e_a_que_nao_age` e `seam_estado_escondido::cada_interruptor_…` | faixa pesada de 6 × 60 s: sozinhos 51,1 · 70,3 s; sob a suíte 327,0 · 357,4 s (passaram a 91–99 % do prazo) e na corrida seguinte 360 s (mortos) = 5,1–6,4× | a faixa pesada passa a **10 × 60 s** (8,5× o mais lento sozinho). É o sintoma do §5 (a população de cenas), não o fim dele |
 
 Vermelhos que já vinham do `main` (ship.sh, linhas de outras): `typos` (`Mch` em `autokey_smoke_componentes.rs`, UIUX F27) e
 `cargo-machete` (`hashbrown` sem uso em `spikes/regua-registos`, Luz 2D) — curados aqui (comentário; dependência e o `Cargo.lock`
@@ -91,4 +93,6 @@ da spike, que é workspace própria).
 - Censos da árvore combinada: 120/121 antes das curas (`the_shell_only_shrinks`, §4 nº 1), verdes depois.
 - `ship.sh` sobre o tip (`PH2D_SUITE=fecho`, `NO_FAIL_FAST=1`), 1.ª corrida: fmt ✓ · clippy `-D warnings --all-targets` ✓ ·
   deny ✓ · audit ✓ · nextest **28 699** testes, 28 690 verdes, 9 vermelhos (§4); curados os 9 + typos + machete.
-- Re-corrida depois das curas: ver o resultado na resposta do integrador (linha final do `main`).
+- 2.ª corrida (as curas 1–10): fmt ✓ · clippy ✓ · deny ✓ · audit ✓ · machete ✓ · typos ✓ · índices ✓ · nextest **28 699**, 28 696 verdes,
+  1 FAIL (cena 3, nº 11) e 2 TIMEOUT (nº 12). Curados 11 e 12 (só `.config/nextest.toml` e `FLAKES_DE_CARGA.md`); a pesagem final
+  é a do `foundational-integrate.sh` (gate da árvore combinada, `PH2D_SUITE=fecho`), cujo resultado está no commit que entra no main.

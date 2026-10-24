@@ -1,5 +1,5 @@
-//! **O Flow pelo ponteiro** (dono 24/10): a linha Flow logo abaixo da Strength, só no Digital e só no Pincel; o
-//! arrasto do slider chega ao `BrushSettings::flow` do tool.
+//! **O Flow pelo ponteiro** (dono 24/10): a linha Flow logo abaixo da Strength, onde a ferramenta e o meio o lêem
+//! (`BrushSettings::le_o_flow`); o arrasto do slider chega ao `BrushSettings::flow` do tool.
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
@@ -33,9 +33,10 @@ fn com(mode: &str, media: PaintMedia) -> PainterTool {
     t
 }
 
-/// ⭐ Presença E ausência: o par é o que prova a guarda.
+/// ⭐ Presença E ausência: o par é o que prova a guarda. A tabela medida (meio × ferramenta, Flow 1 → 0,05) é a de
+/// `o_flow_a_vista_e_o_flow_que_age`; aqui, pela porta do painel, o lugar e um representante de cada lado.
 #[test]
-fn o_flow_pinta_so_no_pincel_digital() {
+fn o_flow_pinta_onde_a_ferramenta_e_o_meio_o_leem() {
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
     let mut st = PainterLayersPanelState;
     let r = pintado(&com("brush", PaintMedia::Digital), &mut host, &mut st);
@@ -43,24 +44,22 @@ fn o_flow_pinta_so_no_pincel_digital() {
     let forca =
         rect_of(&r, ids::PAINTER_BRUSH_STRENGTH_SLIDER).expect("Strength no Pincel Digital");
     assert!(flow.y > forca.y, "o Flow vem logo depois da Strength");
-    for mode in ["eraser", "blur", "smear", "clone"] {
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
-        let r = pintado(&com(mode, PaintMedia::Digital), &mut host, &mut st);
-        assert!(
-            rect_of(&r, ids::PAINTER_BRUSH_FLOW_SLIDER).is_none(),
-            "{mode}: o Flow não se pinta fora do Pincel"
-        );
-    }
-    for media in [
-        PaintMedia::Watercolor,
-        PaintMedia::Impasto,
-        PaintMedia::WetPaint,
+    for (mode, media, a_vista) in [
+        ("eraser", PaintMedia::Digital, true),
+        ("mask", PaintMedia::Digital, true),
+        ("brush", PaintMedia::Impasto, true),
+        ("blur", PaintMedia::Digital, false),
+        ("smear", PaintMedia::Digital, false),
+        ("clone", PaintMedia::Digital, false),
+        ("brush", PaintMedia::Watercolor, false),
+        ("brush", PaintMedia::WetPaint, false),
     ] {
         let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
-        let r = pintado(&com("brush", media), &mut host, &mut st);
-        assert!(
-            rect_of(&r, ids::PAINTER_BRUSH_FLOW_SLIDER).is_none(),
-            "{media:?}: o Flow só no Digital"
+        let r = pintado(&com(mode, media), &mut host, &mut st);
+        assert_eq!(
+            rect_of(&r, ids::PAINTER_BRUSH_FLOW_SLIDER).is_some(),
+            a_vista,
+            "{mode}/{media:?}: o Flow à vista tem de ser {a_vista}"
         );
     }
 }

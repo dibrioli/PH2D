@@ -218,3 +218,55 @@ fn fixado_um_clique_fora_nao_fecha_e_desafixado_fecha() {
     assert_eq!(hero.store.picker_target(), None, "o × não fecha o fixado");
     assert!(!hero.store.picker_pinned(), "o × não desafixou");
 }
+
+/// ⭐ **Todo fecho desafixa** (auditoria 24/10): o pino vale para ESTA abertura. Fechado por outra porta que não o
+/// «×» (a amostra clicada outra vez, um painel que fecha, o Inspector que troca de entidade — todas chamam
+/// `set_picker_target(None)`), a abertura seguinte nasce solta e um clique fora volta a fechá-la. Vermelho antes:
+/// só o «×» desafixava.
+#[test]
+fn fechado_por_qualquer_porta_reabre_solto() {
+    let fora = (JANELA.w * 0.25, JANELA.h * 0.5);
+    let mut hero = aberto();
+    hero.store.set_picker_pinned(true);
+    hero.store.set_picker_target(None);
+    assert!(!hero.store.picker_pinned(), "fechou e ficou fixado");
+    hero.store.set_picker_target(Some(NodeId(0x0C0_1014)));
+    assert!(!hero.store.picker_pinned(), "reabriu fixado");
+    pinta(&mut hero);
+    clica(&mut hero, fora.0, fora.1);
+    assert_eq!(
+        hero.store.picker_target(),
+        None,
+        "reaberto, o clique fora não fecha"
+    );
+}
+
+/// A porta é ÚNICA: só `set_picker_target` escreve o alvo — senão um fecho podia saltá-la e o pino ficar.
+#[test]
+fn so_a_porta_escreve_o_alvo_do_seletor() {
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/src");
+    // Partida em dois, para este ficheiro não se contar a si próprio.
+    let agulha = [".picker_target", " = "].concat();
+    let mut escritas = Vec::new();
+    let mut pilha = vec![std::path::PathBuf::from(dir)];
+    while let Some(p) = pilha.pop() {
+        for e in std::fs::read_dir(&p).expect("src legível").flatten() {
+            let f = e.path();
+            if f.is_dir() {
+                pilha.push(f);
+            } else if f.extension().is_some_and(|x| x == "rs") {
+                let txt = std::fs::read_to_string(&f).expect("rs legível");
+                let n = txt.matches(agulha.as_str()).count();
+                if n > 0 {
+                    escritas.push((f.display().to_string(), n));
+                }
+            }
+        }
+    }
+    assert_eq!(
+        escritas.len(),
+        1,
+        "escritas do alvo fora da porta: {escritas:?}"
+    );
+    assert!(escritas[0].0.ends_with("chrome_ops.rs") && escritas[0].1 == 1);
+}

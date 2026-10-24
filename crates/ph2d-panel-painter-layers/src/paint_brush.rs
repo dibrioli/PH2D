@@ -245,24 +245,21 @@ fn paint_top_basics(
             ph2d_tool_painter::ids::PAINTER_BRUSH_STRENGTH_CHIP,
             brush.strength,
         );
-        // Flow — a taxa por dab; a Strength acima é o tecto do traço (dono 24/10, a lei do Photoshop/Krita).
-        // Só no Digital e no Pincel.
-        if ph2d_tool_painter::PaintMedia::from_u8(brush.media)
-            == ph2d_tool_painter::PaintMedia::Digital
-            && brush.ferramenta() == ph2d_tool_painter::FerramentaDoPincel::Pincel
-        {
-            y = paint_slider_chip_row(
-                ctx,
-                theme,
-                x,
-                content_w,
-                y,
-                tr("panel.painter_layers.brush.flow"),
-                ph2d_tool_painter::ids::PAINTER_BRUSH_FLOW_SLIDER,
-                ph2d_tool_painter::ids::PAINTER_BRUSH_FLOW_CHIP,
-                brush.flow,
-            );
-        }
+    }
+    // Flow — a taxa por dab; a Strength acima é o tecto do traço (dono 24/10, a lei do Photoshop/Krita). À vista
+    // onde a ferramenta e o meio o lêem (o Composite e a Borracha do Wet Paint também, sem a Strength).
+    if brush.le_o_flow() {
+        y = paint_slider_chip_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            tr("panel.painter_layers.brush.flow"),
+            ph2d_tool_painter::ids::PAINTER_BRUSH_FLOW_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_FLOW_CHIP,
+            brush.flow,
+        );
     }
 
     // 4b. Clone card (Set Source + Aligned) — Clone mode only.

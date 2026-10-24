@@ -73,6 +73,7 @@ fn ids_da(l: LinhaDaFerramenta) -> &'static [NodeId] {
             PAINTER_TAPER_END,
         ],
         LinhaDaFerramenta::Continuo => &[PAINTER_BRUSH_CONTINUOUS_SPACING],
+        LinhaDaFerramenta::Flow => &[PAINTER_BRUSH_FLOW_SLIDER],
         // A Cor abre o seletor (o gesto não a muda — ver `a_cor_escondida_nao_muda_a_ferramenta`); o Composite só
         // existe com o modo Paint (`composite_active`), e a troca de ferramenta desarma-o por construção.
         LinhaDaFerramenta::Cor | LinhaDaFerramenta::Composite => &[],

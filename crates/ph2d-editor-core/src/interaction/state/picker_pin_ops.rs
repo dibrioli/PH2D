@@ -1,7 +1,8 @@
 //! ⭐ **O PINO e a POSIÇÃO do seletor de cor** (ordem do dono, 24/10).
 //!
 //! - **O pino** — fixado, um Down fora do seletor deixa de o fechar; outro dono que o abra só lhe
-//!   muda o alvo (o seletor é UM, partilhado por `picker_target`). O `×` fecha e desafixa.
+//!   muda o alvo (o seletor é UM, partilhado por `picker_target`). Todo FECHO desafixa — o `×`, a
+//!   amostra clicada outra vez, o painel que fecha —, na porta única (`set_picker_target(None)`).
 //! - **A posição** — o desvio arrastado (`blender_picker_offset` do seletor, relativo ao encaixe
 //!   AO LADO do Inspector, `color_picker_demo::picker_anchor_beside`) grava-se em
 //!   `~/.ph2d/sections.txt` pela porta de [`super::section_prefs_ops::section_prefs_text`]: o

@@ -605,6 +605,8 @@ impl WidgetStore {
             // Dismissing the picker drops its transient dropdown popover so it
             // doesn't linger (or flash) the next time the picker is summoned.
             self.palette_dropdown_open = None;
+            // O pino vale para ESTA abertura: todo fecho desafixa (`picker_pin_ops`).
+            self.picker_pinned = false;
         }
     }
 

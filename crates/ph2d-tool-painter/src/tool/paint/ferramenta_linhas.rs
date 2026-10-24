@@ -54,6 +54,10 @@ pub enum LinhaDaFerramenta {
     /// reta (Square tip), o Tooth e o Texture on Paint do papel. A borracha da água levanta tinta viva e não pousa nada
     /// (censo 24/10, riscas secas e molhadas: `|Δ| = 0`).
     DepositoMolhado,
+    /// O Flow (a taxa por dab): as ferramentas que movem tinta que já lá está (Blur, Smear/Faca, Clone) e a cura não
+    /// o lêem; a Borracha, a Máscara e a Escultura sim (medido 24/10, `o_flow_a_vista_e_o_flow_que_age`). O meio
+    /// também decide: [`BrushSettings::le_o_flow`].
+    Flow,
 }
 
 use FerramentaDoPincel as F;
@@ -61,6 +65,9 @@ use LinhaDaFerramenta as L;
 
 /// Sem cor: as ferramentas que não depositam pigmento.
 const SEM_COR: [L; 4] = [L::Blend, L::Cor, L::Randomize, L::Composite];
+
+/// A cura: sem cor e sem Flow.
+const CURA: [L; 5] = [L::Blend, L::Cor, L::Randomize, L::Composite, L::Flow];
 
 /// ⭐ A tabela.
 pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 9] = [
@@ -90,6 +97,7 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 9] = [
             L::TracoComoCamada,
             L::Continuo,
             L::Preview,
+            L::Flow,
         ],
     ),
     (
@@ -104,6 +112,7 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 9] = [
             L::TracoComoCamada,
             L::Continuo,
             L::Preview,
+            L::Flow,
         ],
     ),
     (
@@ -119,6 +128,7 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 9] = [
             L::TracoComoCamada,
             L::Continuo,
             L::Preview,
+            L::Flow,
         ],
     ),
     (
@@ -133,7 +143,7 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 9] = [
             L::Preview,
         ],
     ),
-    (F::Cura, &SEM_COR),
+    (F::Cura, &CURA),
     (F::Escultura, &SEM_COR),
     // Dono 24/10: «sem preview no painel» — a amostra vive ao lado do cursor.
     (F::ContaGotas, &[L::Preview]),
@@ -171,5 +181,15 @@ impl BrushSettings {
         !NAO_LE
             .iter()
             .any(|(g, nao)| *g == f && nao.contains(&linha))
+    }
+
+    /// **O Flow à vista?** A ferramenta lê-o ([`LinhaDaFerramenta::Flow`]) e o meio do traço também: a aguada
+    /// (`watercolor_active`) e o pincel do Wet Paint (o que pousa por volumes, [`LinhaDaFerramenta::DepositoMolhado`])
+    /// não o lêem; a Borracha nesses meios lê (medido 24/10, `o_flow_a_vista_e_o_flow_que_age`).
+    #[must_use]
+    pub fn le_o_flow(&self) -> bool {
+        self.le(L::Flow)
+            && !self.watercolor_active
+            && !(self.wetpaint && self.le(L::DepositoMolhado))
     }
 }

@@ -283,10 +283,9 @@ pub(super) fn apply_blender_hit(
             Some(parent)
         }
         BlenderHitKind::Close => {
-            // "×" → dismiss the floating picker (mirrors a click outside it). Fechar desafixa:
-            // o pino vale para esta abertura, a próxima volta a fechar-se ao clicar fora.
+            // "×" → dismiss the floating picker (mirrors a click outside it). Fechar desafixa, na
+            // porta (`set_picker_target(None)`): o pino vale para esta abertura.
             store.set_picker_target(None);
-            store.set_picker_pinned(false);
             None
         }
         BlenderHitKind::Pin => {

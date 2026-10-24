@@ -154,7 +154,12 @@ com a cura ligada e desligada — o ganho é só de velocidade, sobretudo na pla
    cura ligada.
 5. Cena das formas do Motion: `PH2D_MOTION_OBJETO_SMOKE=1 PH2D_LIGHT2D_SMOKE=8` com o mesmo comando.
 
-<!-- BUILD2 -->
+O binário de smoke fica compilado na worktree (`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`;
+a 1.ª corrida 1 min 23 s, a 2.ª, zero `Compiling`):
+
+```
+    Finished `smoke` profile [optimized] target(s) in 0.69s
+```
 
 ## 9. ABERTO (substitui W6h §14 e W6i §2)
 

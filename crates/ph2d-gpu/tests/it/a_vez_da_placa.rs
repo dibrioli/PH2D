@@ -73,8 +73,8 @@ fn todo_pedido_de_adaptador_passa_pela_vez() {
 
 #[cfg(target_os = "linux")]
 mod protocolo {
-    use ph2d_gpu::vez::{escolhe, pede_em};
     use ph2d_gpu::Placa;
+    use ph2d_gpu::vez::{escolhe, pede_em};
     use std::io::{BufRead, BufReader};
     use std::path::{Path, PathBuf};
     use std::time::{Duration, Instant};
@@ -190,7 +190,11 @@ mod protocolo {
             .status()
             .unwrap();
         assert!(ok.success());
-        std::fs::write(d.join("porteiro-testes"), format!("{}\n", std::process::id())).unwrap();
+        std::fs::write(
+            d.join("porteiro-testes"),
+            format!("{}\n", std::process::id()),
+        )
+        .unwrap();
         let porta = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
@@ -222,7 +226,11 @@ mod protocolo {
         let d = pasta("escolhe");
         assert_eq!(escolhe(&d), Placa::Principal, "sem porta-testes");
         std::fs::write(d.join("porta-testes"), "").unwrap();
-        let esperada = if medindo { Placa::Principal } else { Placa::Testes };
+        let esperada = if medindo {
+            Placa::Principal
+        } else {
+            Placa::Testes
+        };
         assert_eq!(escolhe(&d), esperada);
     }
 }

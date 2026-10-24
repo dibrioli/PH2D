@@ -9,7 +9,10 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 fn fase(nome: &str) {
-    let t = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
+    let t = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs_f64();
     println!("FASE {nome} {t:.2}");
     std::thread::sleep(Duration::from_secs(3));
 }

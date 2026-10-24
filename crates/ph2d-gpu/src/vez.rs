@@ -99,8 +99,8 @@ fn pede_uma_vez(placa: Placa) {
 /// a recusou (`PH2D_PLACA=principal`), e só se o porteiro dela abriu a `porta-testes`.
 pub fn escolhe(dir: &Path) -> Placa {
     let var = |k: &str| std::env::var(k).unwrap_or_default();
-    let teste = std::env::current_exe()
-        .is_ok_and(|e| e.parent().is_some_and(|p| p.ends_with("deps")));
+    let teste =
+        std::env::current_exe().is_ok_and(|e| e.parent().is_some_and(|p| p.ends_with("deps")));
     let pacote = var("CARGO_PKG_NAME");
     let livre = teste
         && !pacote.is_empty()

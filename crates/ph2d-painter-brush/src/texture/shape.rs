@@ -402,9 +402,12 @@ fn shape_value(
 /// bilinear; a malformed buffer reads `0.0` (an inert silhouette, so the dab paints nothing).
 /// The **straight-RGB** sibling of [`sample_shape_unit`]: at the dab-relative unit coord `(u, v)`, map
 /// through the SAME footprint / Size / rotation / Offset frame as the silhouette, then read the layer's
-/// own per-pixel colour from `rgb`. Outside the `[-1, 1]²` tip → `[0, 0, 0]` (the caller weights it by
-/// the silhouette alpha, which is also `0` there). Only meaningful for an `Image` Shape (a captured
-/// layer); a procedural Shape has no per-pixel colour, so it returns the fallback `[0, 0, 0]`.
+/// own per-pixel colour from `rgb`. ⚠️ Just outside the `[-1, 1]²` tip it reads the tip's BORDER colour:
+/// the silhouette is read by the pixel's AREA ([`sample_shape_silhouette_unit_px`], 23/10), so a pixel whose
+/// centre is outside still has alpha from its in-tip sub-samples — `[0, 0, 0]` there painted a grey seam
+/// (`solid_carimbos::todo_type_pinta_na_cor_da_ponta`, 893 px at 25/50 % black). With the Flow (point alpha)
+/// outside stays `[0, 0, 0]`. Only meaningful for an `Image` Shape (a captured layer); a procedural Shape
+/// has no per-pixel colour, so it returns the fallback `[0, 0, 0]`.
 /// Deterministic (HR-5: `+ − × ÷` + the shared bilinear).
 #[must_use]
 pub fn sample_shape_rgb_unit(
@@ -424,10 +427,10 @@ pub fn sample_shape_rgb_unit(
         (rel[0] * b.u[0] + rel[1] * b.u[1]) * sx + s.offset[0],
         (rel[0] * b.v[0] + rel[1] * b.v[1]) * sy + s.offset[1],
     ];
-    if tex[0].abs() > 1.0 || tex[1].abs() > 1.0 {
+    if s.flow && (tex[0].abs() > 1.0 || tex[1].abs() > 1.0) {
         return [0.0; 3];
     }
-    sample_image_clamped_rgb(rgb, tex[0], tex[1])
+    sample_image_clamped_rgb(rgb, tex[0].clamp(-1.0, 1.0), tex[1].clamp(-1.0, 1.0))
 }
 
 /// Bilinear sample of `img`'s straight RGB, **clamped** to the image edges (centre-coord), for footprint

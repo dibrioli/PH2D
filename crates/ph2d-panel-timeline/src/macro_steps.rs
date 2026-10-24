@@ -100,7 +100,9 @@ pub(crate) fn paint(
     }
 }
 
-/// Onde a etapa `e` caiu, enquanto a linha ainda não traz a edição dela.
+/// Onde a etapa `e` caiu, enquanto a linha ainda não traz a edição dela. O filtro `e.fim == l.antes`
+/// é 2.ª guarda: o `paint` envelhece a largada ANTES de a ler, com o mesmo snapshot, e nenhum quadro
+/// a lê entre a chegada e a limpeza — fica para a função valer sozinha, sem teste que a veja.
 fn largada_de(state: &TimelinePanelState, e: &ph2d_timeline::EtapaDaMacroView) -> Option<f64> {
     state
         .macro_largada
@@ -293,7 +295,8 @@ mod tests {
 
     /// W17 (smoke do dono 23/10): largado, o losango fica onde caiu até a linha trazer a edição (chega
     /// dois quadros depois) — nunca volta ao sítio antigo pelo meio; recusada, volta ao fim da espera.
-    /// Mutações que sangram: `largada_de` sempre `None` · o `e.fim == l.antes` tirado · a espera a `1`.
+    /// Mutações que sangram: `largada_de` sempre `None` · a espera a `1`. (Tirar o `e.fim == l.antes`
+/// sobrevive: o envelhecer limpa a largada antes de qualquer leitura — ver `largada_de`.)
     #[test]
     fn largado_o_losango_fica_onde_caiu_ate_a_edicao_chegar() {
         use ph2d_editor_core::interaction::{GestureMods, TimelineHitKind};

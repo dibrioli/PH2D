@@ -11,7 +11,14 @@
 
 - Worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor` · branch `line/CodeEditor`.
 - HEAD: o último commit deste handoff (`git log -1`).
-- **Rebaseada de novo em 24/10 (tarde) sobre `b3d38f53c1`** (o `main` com o Quadro W24–W26): 1 conflito,
+- **Rebaseada em 24/10 (noite) sobre `3b95432e7c`** (177 commits do `main`, F27 incluído): 2 conflitos à mão —
+  `script.rs` do Inspector (o F27 moveu o `controlo` para `script_controlo.rs`; o braço `Object` do 8c foi reaplicado
+  lá) e `CLAUDE.md` §5.1 (Macros do `main` + a entrada desta linha). 3 `Solved` do Mergiraf revistos por
+  `range-diff` (`asset_drag_wire.rs`, `parallax.rs`, `hud_corpo.rs`: só o `tr` → `TextKey` do F27). **Conflito de
+  SENTIDO** que nenhum texto acusou: o Auto Key do F27 (`canais_script.rs`, `tipo_de`) não conhecia o
+  `ScriptValue::Object` do 8c — um objecto é gravado como o NOME (canal `Text`), e ao voltar continua `Object`.
+  As curas entraram no commit do 8c (`--fixup` + autosquash), para cada commit compilar.
+- Antes: rebaseada em 24/10 (tarde) sobre `b3d38f53c1` (o `main` com o Quadro W24–W26): 1 conflito,
   `docs/Components/ferramentas/fotografa_cena.sh` — o `main` trouxe a MESMA cura do `WAYLAND_DISPLAY` por outra
   linha; ficou a versão do `main` (o ficheiro é partilhado, assim não diverge). Depois: o 12, a cena 8 do 11 e o fecho.
 - Antes: rebaseada em 24/10 sobre `b48f8b9512` (o `main` com os 6 commits de velocidade W1–W4; rebase limpo, zero `Solved`).
@@ -44,6 +51,7 @@ Tectos de LOC nos ficheiros tocados: nenhum passa
 | **12** | **Os sub-blocos dos cartões compostos são GRUPOS dobráveis** (câmera · paralaxe · HUD, 9 grupos): chevron + negrito, clique abre/fecha, a dobra sobrevive à troca de objecto. Oráculo Godot. **E o clique no «Cull Mask» estava MORTO** (RED medido pelo despacho; o id não estava marcado) — curado. Commits `c6ac97c24d` `7704e2abd8` | [12](../12_cartoes_compostos.md) §4 |
 | **grade** | **A grade de 32 camadas mostra os números** (report do dono 24/10, foto sem um único número): `BitmaskGrid32` passa a ladrilhos 8×4 com o número DENTRO, aceso/apagado — oráculo Godot `EditorPropertyLayers` corrido. Vale para «Cull Mask» e «Visibility Layer». Gate de varredura 196–600 px; 2 mutações → vermelho; clippy `editor-core` 0, fmt 0. Commit `3f2186c77d` | [oráculo](../ferramentas/oraculo_grade_de_camadas/README.md) |
 | **11 smoke** | A cena 8 renomeia a porta («Door Open», console) e a câmera acha-a pelo nome novo — renomear partido = câmera parada. Commit `054970888e` | [11](../11_script_renomeia_objeto.md) §3 |
+| **faixa** | **Numa largura média do dock o Inspector não corta nomes para uma secção vizinha caber** (report do dono 24/10). Mecanismo: a coluna do nome é UMA por painel e o tecto dela era o `min` dos tectos; a secção de nomes curtos (Game Camera/Camera Limits) cedia e impunha a cedência ao Transform e ao Camera Follow, que tinham RECUSADO (§6-ter). Cura na lei (`editor-core`): o `Limite` leva o `piso` (o nome de quem recusou) e o painel não desce abaixo dele — quem cedia reflui; `Seccao::com_o_nome` nas portas da linha (a Game Camera esquecia o «Look Through»). Régua no produto (pintura do registo, dock 230..=320, 1 px): **55 larguras com cortes → 0**; 3 mutações → vermelho. Commit `f721e44c6e` | [faixa](../ferramentas/faixa_dos_rotulos_espremidos/README.md) |
 | ferramenta | `scripts/cargo-test-narrow.sh`: um alvo que não compila sai com 2 (antes saía «0 falharam · 0 passaram» com 1); um filtro que não casa nenhum teste sai com 4; um binário que morre sai com 1, com aviso | §6 |
 
 ## 4. Fora da família (foundational / partilhado) — todo ADITIVO
@@ -105,6 +113,7 @@ Nenhum: a superfície de colisão diz «intocado» e o grep do diff não acha `N
 | `file_loc_caps` · `the_shell_only_shrinks` · `arch_safe_clamp_only` | verdes (na suíte e de novo depois do fmt) |
 | **Reabertura do 10 (24/10), só sobre `4afc3fd320..a3e44525db`** | clippy `-D warnings` nas 4 crates tocadas (`ph2d-code-syntax`, `-code-explain`, `app-code`, `i18n`) `--all-targets`: **0**. `nextest-impacted.sh BASE=4afc3fd320` (fecho): **16 651/16 655**, 4 TIMEOUT de pintura com load 75–180 (`painter-layers` ×3, `tool-painter` ×1), **os 4 verdes sozinhos** (load 15–40). `cargo fmt --all --check`: os 5 ficheiros do 10 limpos; 6 diffs em `crates/ph2d-gpu`, vindos do `main` (`9e7a70cd61`, velocidade W2) — dívida do `main`, não desta linha. Testes por nome: os 2 novos verdes, o de ponta a ponta **RED medido** sem a ligação; censo do `ph2d-code-explain` (`classe`, 3) verde |
 | **Reabertura do 12 + cena 8 (24/10 tarde), sobre `330c77ab78..7704e2abd8`** | `cargo fmt --all --check`: 1 diff da linha (ordem do `pub use` do grupo) curado em `208f2ecc1a`, depois **0** (os 6 do `ph2d-gpu` já não aparecem). clippy `--all-targets -D warnings` nas 7 crates tocadas (`editor-core`, `panel-inspector`, `app-components`, `script`, `ecs`, `i18n`, `component-desc`): **0**. `nextest-impacted.sh BASE=330c77ab78` (fecho), 1.ª: 3 vermelhos DA LINHA (a11y do `grupo.rs`, `insp_camera_cull_0` montada à mão, HUD a `142` contra `111` pelo recuo do grupo) — curados em `7704e2abd8` (o recuo saiu, recusa medida no doc 12); 2.ª: **19 302/19 302 corridos, 19 298 verdes, 2 FAIL + 2 TIMEOUT, todos de pintura** (`tool-painter` mask ×2 por relógio, `presets_de_fabrica`, `painter-layers seam_estado_escondido`), sem diff nessas crates, **os 4 verdes sozinhos ×2**. Gates novos: `os_grupos_dos_cartoes_compostos_dobram` (3) e a extensão de `code_smoke_props::tests`, ambos com **mutação → vermelho** |
+| **Fecho de 24/10 (noite), sobre o rebase em `3b95432e7c` + a faixa** | clippy `--workspace --all-targets -D warnings`: 1 import morto da régua nova, curado, depois **0**. `check-standalone-optional` · `check-workflow-packages`: verdes. `nextest-impacted.sh` (fecho, `BASE` = merge-base): **19 641 corridos, 19 632 verdes, 9 FAIL**, todos curados e re-corridos por nome: (1–4) o **piso** da faixa empilhava linhas à largura de OMISSÃO (Inspector armado a abrir `1002` px contra `831`, cortes de valor a `66 px`, caixas de texto) — um nome de `133,8` acima da metade (`126`) recusava; ⇒ o piso só protege o nome que cabe na METADE (o que empresta é o preço aceite em 23/09); e o «Simulation Space» saiu da dívida (deixou de cortar). (5) censo dos losangos: o `rows::grupo` do 12 tinha o MESMO nome que o `tween_editor::grupo` do F27 (linha com losango) ⇒ renomeado `grupo_dobravel`. (6) `rows.rs` 614 > 600 ⇒ o grupo saiu para `grupo_dobravel.rs`. (7) a shell +13 sobre o tecto ⇒ o largar no campo de objecto resolve-se em `object_drag::write_code`/`into_script_row` (crate). (8) o manual da linha (spec 03) citava o `cell_checkbox` que a grade tirou ⇒ linha nova `tile_rect`/`todo_numero_cabe_inteiro_no_seu_ladrilho`, e as duas leis da faixa entram na tabela. (9) `a_cena_3_conduzida_passo_a_passo` com load 40: **sozinha verde** (load 0,6) — família do `FLAKES_DE_CARGA.md`, já com faixa no `main` |
 | `cfg(target_os` novo | nenhum ⇒ não houve cruzamento para macOS |
 | `Cargo.toml` tocado | nenhum ⇒ `machete` sem objecto |
 | Auditoria, 2 lentes (correção · costura/portões) | **Costura**: nada. **Correção**: 4 pontos baixos. Curados (`1090d128a1`): `state_set` no topo do rascunho escrevia o `StateTable` real (asserção vermelha sem a cura, medida) e dois casos do `cargo-test-narrow.sh` (`--color`/`-p` perdiam o valor; um binário que morria era lido como «não compilou»). **Aceite:** uma aba recarregada por fora com texto já partido mantém a última lista boa do texto anterior — a lei do Godot (§2.3 do doc 09) |
@@ -167,6 +176,15 @@ Fotos: `docs/CodeEditor/ferramentas/oraculo_cartao_composto/ph2d_depois_*.png`.
 
 Fotos: `docs/CodeEditor/ferramentas/conduz_propriedades/foto_05_camera_perto.png` e `foto_07_console_door_open.png`.
 
+### 9.4 Nomes inteiros com o Inspector meio estreito (24/10) — **por conduzir** (binário da linha)
+
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor && PH2D_GAME_CAMERA_SMOKE=1 ./target/smoke/ph2d-host-desktop`
+2. Na Hierarquia clique em **Camera**; no Inspector abra **Game Camera**. Arraste devagar a borda esquerda do
+   Inspector, do largo até ao mais estreito.
+3. Os nomes («Position X / Y», «Damping», «Look Through»…) ficam **sempre inteiros**; numa largura média as duas
+   caixas de um par passam a ficar uma por baixo da outra.
+4. Deu errado se em alguma largura aparecer «Pos…», «Da…» ou «Look T…».
+
 ## 10. ABERTO
 
 - ~~Um `ph2d.object("X")` no topo, fora de `ph2d.property`~~ — **feito em 24/10** ([10](../10_objeto_no_topo.md)), smoke do dono OK.
@@ -174,9 +192,8 @@ Fotos: `docs/CodeEditor/ferramentas/conduz_propriedades/foto_05_camera_perto.png
   passo numa cena do CodeEditor que renomeia e acha pelo nome novo); (b) «Texture & Atlas» → **feito**; (c) o
   padrão-ouro → **feito** ([12](../12_cartoes_compostos.md)), e o «Cull Mask» estava mesmo morto — curado.
   Fecho reaberto e verde (§7). **Por conduzir pelo dono: §9.2 e §9.3.**
-- **Report do dono 24/10, por fazer (próxima janela):** numa faixa MÉDIA do dock do Inspector (≈ 240–270 px) as
-  linhas de dois campos ficam lado a lado e o NOME é elidido, em vez de empilhar. **Medido: o `main` faz igual** —
-  não é desta linha. Prova e A/B: [`faixa_dos_rotulos_espremidos/`](../ferramentas/faixa_dos_rotulos_espremidos/README.md).
+- ~~Nomes elididos numa faixa média do dock~~ — **curado em 24/10** (linha «faixa» do §3). **Smoke do dono por
+  conduzir:** §9.4.
 - ~~Os números da grade do «Cull Mask» elididos~~ — **curado em 24/10** pelo report do dono (linha «grade» do §3).
 - A suíte não voltou a correr inteira depois do `3f2186c77d` (só por nome: `bitmask_grid32`,
   `a_linha_de_marcar`, `the_camera_section`, `visibility`, `os_grupos_`, `every_`, `showcase`, `hr12`,

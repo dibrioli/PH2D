@@ -68,6 +68,9 @@ pub(crate) mod counter_watch;
 /// tecto de LOC.
 mod emissive_row;
 pub(crate) mod factory;
+/// ⚠️ `pub(crate)` só para a régua do card (`card_pitch`), que o `lib.rs`
+/// re-exporta para o gate de GEOMETRIA da §14.
+pub(crate) mod grupo_dobravel;
 /// ⭐⭐⭐ A secção PARTICLES (TOP-20 #18) — ver o cabeçalho.
 /// ⭐⭐⭐ **O HUD** (TOP-20 #20).
 pub(crate) mod hud;
@@ -126,8 +129,6 @@ mod render_source;
 /// O par `Format` — irmão do `render_source` pelo cap de LOC.
 mod render_source_precision;
 mod render_source_regiao;
-/// ⚠️ `pub(crate)` só para a régua do card (`card_pitch`), que o `lib.rs`
-/// re-exporta para o gate de GEOMETRIA da §14.
 pub(crate) mod rows;
 mod sampling;
 /// ⭐⭐⭐ A secção SCRIPT (TOP-20 #16) — ver o cabeçalho.

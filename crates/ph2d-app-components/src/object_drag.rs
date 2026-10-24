@@ -68,6 +68,12 @@ pub fn into_script_slot(sim: &mut SimWorld, entity_bits: u64, prop: &str, stable
     crate::script_inspector::apply(sim, entity_bits, &edit)
 }
 
+/// O mesmo, pela LINHA do cartão Script que o Inspector pintou (o largar na shell).
+pub fn into_script_row(sim: &mut SimWorld, entity_bits: u64, row: u16, stable_id: u64) -> bool {
+    ph2d_panel_inspector::script_prop_name(entity_bits, row)
+        .is_some_and(|prop| into_script_slot(sim, entity_bits, &prop, stable_id))
+}
+
 fn selection(hero: &HeroScreen) -> Vec<u64> {
     hero.gizmo
         .selection
@@ -169,6 +175,17 @@ pub fn write_code(
     at: (f32, f32),
     mods: Modifiers,
 ) -> bool {
+    // Um objecto largado no campo de objecto do cartão Script (8c) também se resolve aqui.
+    if let DropAction::SetScriptObject {
+        entity_bits,
+        row,
+        stable_id,
+    } = action
+    {
+        surface_input::drop_hover(hero, None);
+        into_script_row(libs.sim, entity_bits, row, stable_id);
+        return true;
+    }
     let cargo = (action == DropAction::WriteCode)
         .then(|| cargo_of(payload, label, &mut libs, hero))
         .flatten();

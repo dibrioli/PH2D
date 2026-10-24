@@ -43,7 +43,7 @@ fn bloco_raiz(
 ) -> f32 {
     let mut cur_y = y;
     if i.has_canvas {
-        let g = super::rows::grupo(
+        let g = super::rows::grupo_dobravel(
             scene,
             text_system,
             theme,
@@ -140,7 +140,7 @@ fn bloco_rotulo(
         );
     }
     if i.has_label {
-        let g = super::rows::grupo(
+        let g = super::rows::grupo_dobravel(
             scene,
             text_system,
             theme,
@@ -259,7 +259,7 @@ fn bloco_botao(
 ) -> f32 {
     let mut cur_y = y;
     if i.has_button {
-        let g = super::rows::grupo(
+        let g = super::rows::grupo_dobravel(
             scene,
             text_system,
             theme,
@@ -353,7 +353,7 @@ fn bloco_contador(
 ) -> f32 {
     let mut cur_y = y;
     if i.has_counter {
-        let g = super::rows::grupo(
+        let g = super::rows::grupo_dobravel(
             scene,
             text_system,
             theme,

@@ -305,7 +305,6 @@ const O_PRECO_DA_COLUNA_UNICA: &[(&str, &str)] = &[
     ("inspector", "Show Behind Parent"),
     ("inspector", "Show anchors at runtime"),
     ("inspector", "Show sheet on canvas"),
-    ("inspector", "Simulation Space"),
     ("inspector", "Size Randomness"),
     ("inspector", "Speed Randomness"),
     ("inspector", "Swim Line (weights)"),

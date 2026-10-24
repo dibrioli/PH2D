@@ -223,7 +223,7 @@ fn follow_body(
         .chain(linhas.iter().map(|t| t.0.tr()))
         .collect();
     let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 2, &nomes);
-    let g = super::rows::grupo(
+    let g = super::rows::grupo_dobravel(
         scene,
         text_system,
         theme,
@@ -302,7 +302,7 @@ fn limits_body(
     y: f32,
     l: &InspectorCameraLimits,
 ) -> f32 {
-    let g = super::rows::grupo(
+    let g = super::rows::grupo_dobravel(
         scene,
         text_system,
         theme,

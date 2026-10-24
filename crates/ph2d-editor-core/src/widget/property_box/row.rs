@@ -309,8 +309,12 @@ pub(super) fn limites_da_seccao(
     let tecto_do_controlo = if cede >= quer { cede.min(tecto) } else { tecto };
     // ⭐ A RECUSA viaja para o painel: sem ela, a cedência de uma secção vizinha cortaria o nome
     //    que esta secção se recusou a cortar (report do dono 24/10, `coluna_do_painel`).
+    // ⚠️ Só o nome que cabe na METADE — a coluna que o dono pôs. Um nome que EMPRESTA além dela é o
+    //    preço aceite em 23/09 (cortado com balão). Medido no Inspector armado à largura de omissão:
+    //    um nome de `133,8` (metade `126`) como piso punha o painel a `1002` px contra `831`, e
+    //    capado à metade ainda a `979` — a coluna ali vive ABAIXO da metade, pela cedência de 15/09.
     let piso = match (desired, control_need) {
-        (Some(d), Some(_)) if cede < quer => d.min(tecto),
+        (Some(d), Some(_)) if cede < quer && d <= metade => d.min(tecto),
         _ => 0.0,
     };
     Limite {

@@ -17,6 +17,7 @@
 use ph2d_app_components::asset_drop::{DropAction, DropOver, DropTarget};
 use ph2d_app_components::object_drag;
 use ph2d_editor_core::interaction::drag_payload::{DragPayload, DragVerdict};
+use ph2d_panel_inspector::script_object_slot_pick;
 
 impl crate::App {
     /// **`Down`** — se o botão caiu num cartão do navegador, semeia o arrasto.
@@ -36,8 +37,8 @@ impl crate::App {
         // precedente uma linha ao lado: o `Focused(false)` existe porque *«o `Up` de uma tecla
         // presa nunca chega quando a janela vai embora»*, e o mesmo é verdade de um botão.
         hero.store.end_asset_drag();
-        let reg = &gfx.component_registry;
-        if ph2d_app_components::property_drag::seed(hero, &gfx.sim, reg, (x, y)) {
+        if ph2d_app_components::property_drag::seed(hero, &gfx.sim, &gfx.component_registry, (x, y))
+        {
             return;
         }
         let Some(id) = hero.chrome_hit(x, y) else {
@@ -156,9 +157,7 @@ impl crate::App {
         // ⚠️ Resolvidos ANTES de pegar o `gfx` mutável — são leituras, e adiá-las para dentro do
         // bloco mutável seria pedir dois empréstimos do mesmo `self`.
         let inspector_slot = self.inspector_slot_under(x, y);
-        let script_slot = self
-            .chrome_id_under(x, y)
-            .and_then(ph2d_panel_inspector::script_object_slot_pick);
+        let campo = self.chrome_id_under(x, y).and_then(script_object_slot_pick);
         let catalog_row = self.catalog_row_under(x, y);
         let mods = Self::convert_modifiers(self.modifiers);
         let (on_canvas, world, code, home) = {
@@ -185,7 +184,7 @@ impl crate::App {
         };
         Some(if let Some(entity_bits) = inspector_slot {
             DropTarget::InspectorTexture { entity_bits }
-        } else if let Some((entity_bits, row)) = script_slot {
+        } else if let Some((entity_bits, row)) = campo {
             DropTarget::ScriptObject { entity_bits, row }
         } else if let Some(catalog) = catalog_row {
             DropTarget::CatalogRow { catalog }
@@ -275,17 +274,7 @@ impl crate::App {
             } => {
                 self.drop_place_prefab(stable_id, world, over);
             }
-            DropAction::SetScriptObject {
-                entity_bits,
-                row,
-                stable_id,
-            } => {
-                if let Some(gfx) = self.gfx.as_mut()
-                    && let Some(prop) = ph2d_panel_inspector::script_prop_name(entity_bits, row)
-                {
-                    object_drag::into_script_slot(&mut gfx.sim, entity_bits, &prop, stable_id);
-                }
-            }
+            DropAction::SetScriptObject { .. } => {} // `object_drag::write_code` já o fez
             DropAction::RetextureSprite { entity_bits, asset } => {
                 self.drop_retexture(entity_bits, asset);
             }

@@ -21,7 +21,6 @@ impl crate::App {
             atlas_asset_map,
             ..
         } = FrameGfx::of(gfx);
-        // A cena 8 do editor de scripts: as imagens da porta (no-op sem ela).
         ph2d_app_components::code_smoke_props::sobe_as_portas(
             sim,
             renderer,

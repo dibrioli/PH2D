@@ -533,10 +533,12 @@ ali eles cortam — que é a troca que o dono escolheu em 2026-05-24.
 | §6-bis | a caixa sozinha cobre exactamente o que o par cobre | `property_row_columns` | `the_lone_field_of_a_row_spans_what_the_pair_spans` |
 | §6-bis | dispor N campos numa linha tem UM chamador em todo o painel | `property_fields_layout` | `only_one_door_lays_out_a_row_of_fields` |
 | §6-ter | uma linha nunca quebra enquanto a coluna do nome tem folga | `property_label_col_w_for` | `a_row_never_wraps_while_the_name_column_has_slack` |
+| §6-ter | a recusa de ceder de uma secção é um PISO da coluna do painel (report do dono 24/10) | `limites_da_seccao` | `a_recusa_de_uma_seccao_e_um_piso_do_painel` |
+| §6-ter | numa largura média do dock nenhum nome da cena da câmera corta | `com_o_nome` | `nenhum_nome_da_cena_da_camera_corta_entre_230_e_320` |
 | §6-quater | quem emparelha duas propriedades pergunta antes se o nome cabe | `property_row_fits` | `a_paired_row_breaks_before_its_name_disappears` |
 | §6-quinquies | uma linha de marcar ocupa a linha inteira quando o par não cabe | `paint_check_rows` | `uma_linha_de_marcar_ocupa_a_linha_inteira` |
 | §6-quinquies | a altura de uma linha de marcar é a de toda linha de propriedade | `paint_check_row` | `a_altura_de_uma_linha_de_marcar_e_a_do_app` |
-| §6-quinquies | uma célula de mapa de bits não é uma linha de formulário | `cell_checkbox` | `uma_celula_nao_e_uma_linha_de_formulario` |
+| §6-quinquies | um número da grade de camadas cabe inteiro no seu ladrilho (oráculo Godot, 24/10) | `tile_rect` | `todo_numero_cabe_inteiro_no_seu_ladrilho` |
 | §6-quinquies | uma marca nunca pinta a cor da caixa em que assenta | `on_field_fill` | `a_marca_nunca_e_a_cor_da_caixa_em_que_assenta` |
 | §6-quinquies | e o pintor da linha de marcar usa essa porta | `paint_boolean_mark` | `e_o_pintor_da_linha_de_marcar_usa_essa_porta` |
 | §6-bis | nenhuma linha do Inspector põe o nome por cima do controlo | `fields_row` | `no_row_paints_its_name_above_its_control` |

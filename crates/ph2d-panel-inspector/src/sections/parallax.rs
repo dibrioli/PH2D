@@ -210,7 +210,7 @@ fn corpo(
             if let Some(g) = aberto.take() {
                 cur_y = g.fecha(store, scene, hit_index, cur_y);
             }
-            let g = super::rows::grupo(
+            let g = super::rows::grupo_dobravel(
                 scene,
                 text_system,
                 theme,

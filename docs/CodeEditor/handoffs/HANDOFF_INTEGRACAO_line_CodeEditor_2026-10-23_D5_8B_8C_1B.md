@@ -42,6 +42,7 @@ Tectos de LOC nos ficheiros tocados: nenhum passa
 | **11** | **Um script renomeia um objecto a correr** — `ph2d.set/get(e, "name")`, override da corrida `ph2d_ecs::RunName` (`name_in_run`); o `Name` (identidade) intocado; rebobinar devolve; a Hierarquia mostra o documento. RED medido. Commit `1e24ce32e7`. **Smoke por conduzir** | [11](../11_script_renomeia_objeto.md) |
 | **cartão** | «Render Source» → **«Texture & Atlas»** (só o texto `panel.inspector.render_source.render_source`; o script continua `sprite.*`). Foto `ferramentas/foto_cartao_texture_atlas.png`. Commit `a9ea3bd349` | — |
 | **12** | **Os sub-blocos dos cartões compostos são GRUPOS dobráveis** (câmera · paralaxe · HUD, 9 grupos): chevron + negrito, clique abre/fecha, a dobra sobrevive à troca de objecto. Oráculo Godot. **E o clique no «Cull Mask» estava MORTO** (RED medido pelo despacho; o id não estava marcado) — curado. Commits `c6ac97c24d` `7704e2abd8` | [12](../12_cartoes_compostos.md) §4 |
+| **grade** | **A grade de 32 camadas mostra os números** (report do dono 24/10, foto sem um único número): `BitmaskGrid32` passa a ladrilhos 8×4 com o número DENTRO, aceso/apagado — oráculo Godot `EditorPropertyLayers` corrido. Vale para «Cull Mask» e «Visibility Layer». Gate de varredura 196–600 px; 2 mutações → vermelho; clippy `editor-core` 0, fmt 0. Commit `3f2186c77d` | [oráculo](../ferramentas/oraculo_grade_de_camadas/README.md) |
 | **11 smoke** | A cena 8 renomeia a porta («Door Open», console) e a câmera acha-a pelo nome novo — renomear partido = câmera parada. Commit `054970888e` | [11](../11_script_renomeia_objeto.md) §3 |
 | ferramenta | `scripts/cargo-test-narrow.sh`: um alvo que não compila sai com 2 (antes saía «0 falharam · 0 passaram» com 1); um filtro que não casa nenhum teste sai com 4; um binário que morre sai com 1, com aviso | §6 |
 
@@ -150,7 +151,8 @@ Fotos da corrida conduzida (binário da linha, `a3e44525db`): `docs/CodeEditor/f
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor && PH2D_GAME_CAMERA_SMOKE=1 ./target/smoke/ph2d-host-desktop`
 2. Na Hierarquia clique **Camera**; no Inspector clique **Game Camera**. Clique **Camera Follow** (a setinha).
-3. «Camera Follow» fecha (Target, Damping… somem) e reabre no 2.º clique; **Cull Mask** abre a grade.
+3. «Camera Follow» fecha (Target, Damping… somem) e reabre no 2.º clique; **Cull Mask** abre a grade: 32
+   ladrilhos azuis com o número dentro (1 a 32, nenhum «…»); clicar num apaga-o (fica escuro).
    A paralaxe: `PH2D_PARALLAX_SMOKE=1`, objecto **Arvores**, cartão **Parallax**, grupo **Parallax Repeat**.
 4. **Deu errado se** o clique não fecha o grupo, ou se o «Cull Mask» não abre.
 
@@ -172,7 +174,10 @@ Fotos: `docs/CodeEditor/ferramentas/conduz_propriedades/foto_05_camera_perto.png
   passo numa cena do CodeEditor que renomeia e acha pelo nome novo); (b) «Texture & Atlas» → **feito**; (c) o
   padrão-ouro → **feito** ([12](../12_cartoes_compostos.md)), e o «Cull Mask» estava mesmo morto — curado.
   Fecho reaberto e verde (§7). **Por conduzir pelo dono: §9.2 e §9.3.**
-- Visto de passagem, fora da linha: na grade do «Cull Mask» (e da irmã, «Visibility Layer»), os números de dois
-  dígitos saem elididos «…» (foto `ph2d_depois_camera_dobra_e_mascara.png`).
+- ~~Os números da grade do «Cull Mask» elididos~~ — **curado em 24/10** pelo report do dono (linha «grade» do §3).
+- Os 3 testes da suíte não voltaram a correr inteiros depois do `3f2186c77d` (só por nome: `bitmask_grid32`,
+  `a_linha_de_marcar`, `the_camera_section`, `visibility`, `os_grupos_`, `every_`, `showcase`, `hr12`,
+  `literal`, `nenhum_nome_por_cima`, `quantas_entradas`, `onde_comeca_o_valor` — todos verdes). O integrador corre a
+  suíte inteira antes de integrar (memória `feedback_full_suite_only_before_integration`).
 - ~~Aba recarregada por fora com texto partido~~ — **decisão do dono 24/10: fica assim** (a última lista boa, a lei
   do Godot). Não «cure».

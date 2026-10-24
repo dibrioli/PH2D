@@ -174,6 +174,9 @@ Fotos: `docs/CodeEditor/ferramentas/conduz_propriedades/foto_05_camera_perto.png
   passo numa cena do CodeEditor que renomeia e acha pelo nome novo); (b) «Texture & Atlas» → **feito**; (c) o
   padrão-ouro → **feito** ([12](../12_cartoes_compostos.md)), e o «Cull Mask» estava mesmo morto — curado.
   Fecho reaberto e verde (§7). **Por conduzir pelo dono: §9.2 e §9.3.**
+- **Report do dono 24/10, por fazer (próxima janela):** numa faixa MÉDIA do dock do Inspector (≈ 240–270 px) as
+  linhas de dois campos ficam lado a lado e o NOME é elidido, em vez de empilhar. **Medido: o `main` faz igual** —
+  não é desta linha. Prova e A/B: [`faixa_dos_rotulos_espremidos/`](../ferramentas/faixa_dos_rotulos_espremidos/README.md).
 - ~~Os números da grade do «Cull Mask» elididos~~ — **curado em 24/10** pelo report do dono (linha «grade» do §3).
 - A suíte não voltou a correr inteira depois do `3f2186c77d` (só por nome: `bitmask_grid32`,
   `a_linha_de_marcar`, `the_camera_section`, `visibility`, `os_grupos_`, `every_`, `showcase`, `hr12`,

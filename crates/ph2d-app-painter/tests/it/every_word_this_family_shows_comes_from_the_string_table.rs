@@ -40,6 +40,11 @@ const FORA: &[Isento] = &[
         "o filho `#[path]` do `caminho.rs`: o que falhou num gesto do C&F da cena `=6` vai ao MESMO \
          registo (`regista`), nunca ao ecrã",
     ),
+    (
+        "macro_track/caminho_diagnostico.rs",
+        "o filho `#[path]` do `caminho.rs`: a linha de diagnóstico por quadro das cenas `=5|6` \
+         (`PalcosDoPainter::diagnostico`), escrita no MESMO registo, nunca ecrã",
+    ),
 ];
 
 /// Os literais-identificadores desta crate, com o mecanismo.

@@ -51,6 +51,9 @@ pub struct Track {
     /// **O objecto da trilha nasce DENTRO do objecto Macro** (W18, `docs/Macros/16_W18_plano.md` §2.4).
     /// `None` = o alvo é o próprio objecto que tem a `Macro` (as gravações de antes da W18).
     pub nasce: Option<Nascimento>,
+    /// **Esta trilha continua o objecto da trilha `k`** (W19: o artista voltou a uma imagem já gravada):
+    /// não faz nascer nada, e o alvo é o dela. Exclusivo com [`Self::nasce`].
+    pub continua: Option<u32>,
 }
 
 /// **A ficha de nascimento** do objecto de uma trilha. O tamanho e o conteúdo inicial NÃO estão aqui:

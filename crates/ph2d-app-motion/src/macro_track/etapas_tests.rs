@@ -212,6 +212,7 @@ mod leitor {
             events,
             edicoes: vec![],
             nasce: None,
+            continua: None,
         }
     }
 

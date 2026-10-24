@@ -72,6 +72,7 @@ fn confere(track: &Track, k: usize) -> Result<(), ErroDeEdicaoDoPainter> {
     let gravado = super::etapas(&Track {
         edicoes: Vec::new(),
         nasce: None,
+        continua: None,
         ..track.clone()
     })
     .map_err(m)?

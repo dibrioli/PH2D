@@ -17,6 +17,8 @@
 //!            — troca/insercao: 1 evento (varint) · 2 carga (bytes)
 //! Track    : … · 8 nasce (1.3, `exige` "objeto"): 1 inicio_us (varint) · 2 nome (utf8)
 //!            · 3 local (7 × f32le) · 4 pai+1 (varint; ausente = o objecto Macro)
+//! Track    : … · 9 continua (1.4, `exige` "objeto.continua"): o índice da trilha cujo objecto esta
+//!            continua — não nasce nada; o alvo é o dela
 //! Track    : family "mundo" (1.4, `exige` "mundo"): a carga é da família ([`FAMILIA_MUNDO`])
 //! MacroDoc : 4, 5, … no topo são do FICHEIRO ([`crate::ficheiro`]): o componente nunca as escreve, e
 //!            [`read_com_extras`] devolve-as a quem as conhece
@@ -36,7 +38,13 @@ pub const MAGIC: &[u8; 9] = b"PH2DMACRO";
 pub const MAJOR: u16 = 1;
 pub const MINOR: u16 = 4;
 /// O que este leitor sabe aplicar (`exige`).
-pub const SABE: &[&str] = &[EXIGE_ETAPAS, EXIGE_DESLOCA, EXIGE_OBJETO, EXIGE_MUNDO];
+pub const SABE: &[&str] = &[
+    EXIGE_ETAPAS,
+    EXIGE_DESLOCA,
+    EXIGE_OBJETO,
+    EXIGE_MUNDO,
+    EXIGE_CONTINUA,
+];
 /// As edições das etapas (1.1).
 pub const EXIGE_ETAPAS: &str = "etapas";
 /// A etapa que anda sozinha no tempo (`EdicaoDeEtapa::desloca_us`, 1.2): um leitor sem ela tocá-la-ia
@@ -50,6 +58,9 @@ pub const EXIGE_OBJETO: &str = "objeto";
 pub const EXIGE_MUNDO: &str = "mundo";
 /// A chave da família «mundo» ([`crate::Track::family`]) — a do núcleo, porque é ela que decide o `exige`.
 pub const FAMILIA_MUNDO: &str = "mundo";
+/// A trilha CONTINUA o objecto de outra ([`crate::Track::continua`], 1.4): um leitor sem ela faria
+/// nascer a mesma imagem duas vezes, ou tocá-la-ia no objecto Macro.
+pub const EXIGE_CONTINUA: &str = "objeto.continua";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CodecError {
@@ -108,8 +119,9 @@ pub fn write_com_extras(doc: &MacroDoc, extras: &[(u32, &[u8])]) -> Vec<u8> {
         .iter()
         .any(|t| t.edicoes.iter().any(|e| e.desloca_us != 0));
     let objeto = doc.tracks.iter().any(|t| t.nasce.is_some());
+    let continua = doc.tracks.iter().any(|t| t.continua.is_some());
     let mundo = doc.tracks.iter().any(|t| t.family == FAMILIA_MUNDO);
-    let minor: u16 = if mundo {
+    let minor: u16 = if mundo || continua {
         MINOR
     } else if objeto {
         3
@@ -141,6 +153,9 @@ pub fn write_com_extras(doc: &MacroDoc, extras: &[(u32, &[u8])]) -> Vec<u8> {
     if mundo {
         put_field(&mut rec, 3, EXIGE_MUNDO.as_bytes());
     }
+    if continua {
+        put_field(&mut rec, 3, EXIGE_CONTINUA.as_bytes());
+    }
     for (tag, b) in extras {
         put_field(&mut rec, *tag, b);
     }
@@ -166,6 +181,9 @@ fn write_track(tr: &Track) -> Vec<u8> {
     }
     if let Some(n) = &tr.nasce {
         put_field(&mut rec, 8, &write_nasce(n));
+    }
+    if let Some(k) = tr.continua {
+        put_field(&mut rec, 9, &varint_bytes(u64::from(k)));
     }
     rec.push(0);
     rec
@@ -336,6 +354,7 @@ fn read_track(bytes: &[u8]) -> Result<Track, CodecError> {
     let mut events = Vec::new();
     let mut edicoes = Vec::new();
     let mut nasce = None;
+    let mut continua = None;
     for (tag, body) in Cursor(bytes).record()? {
         match tag {
             1 => {
@@ -350,6 +369,10 @@ fn read_track(bytes: &[u8]) -> Result<Track, CodecError> {
             4 => events.push(read_event(body)?),
             5 => edicoes.push(read_edicao(body)?),
             8 => nasce = Some(read_nasce(body)?),
+            9 => {
+                let k = Cursor(body).varint()?;
+                continua = Some(u32::try_from(k).map_err(|_| CodecError::BadVarint)?);
+            }
             _ => {}
         }
     }
@@ -363,6 +386,7 @@ fn read_track(bytes: &[u8]) -> Result<Track, CodecError> {
         events,
         edicoes,
         nasce,
+        continua,
     })
 }
 

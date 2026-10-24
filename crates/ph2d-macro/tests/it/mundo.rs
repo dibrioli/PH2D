@@ -14,6 +14,7 @@ fn trilha(family: &str) -> Track {
         }],
         edicoes: vec![],
         nasce: None,
+        continua: None,
     }
 }
 
@@ -60,4 +61,20 @@ fn sem_trilha_mundo_nao_sobe_o_minor() {
     let bytes = codec::write(&doc);
     assert_eq!(minor(&bytes), 0);
     assert!(!exige_mundo(&bytes));
+}
+
+#[test]
+fn a_trilha_que_continua_outra_vai_e_volta_e_exige_se() {
+    let mut volta = trilha("painter");
+    volta.target = 9;
+    volta.continua = Some(0);
+    let doc = MacroDoc {
+        reference: RefRect { w: 1.0, h: 1.0 },
+        tracks: vec![trilha("painter"), volta],
+    };
+    let bytes = codec::write(&doc);
+    assert_eq!(minor(&bytes), 4);
+    let nome = codec::EXIGE_CONTINUA.as_bytes();
+    assert!(bytes.windows(nome.len()).any(|w| w == nome));
+    assert_eq!(codec::read(&bytes).expect("lê"), doc);
 }

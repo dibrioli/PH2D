@@ -15,6 +15,7 @@ fn trilha(nasce: Option<Nascimento>) -> Track {
         }],
         edicoes: vec![],
         nasce,
+        continua: None,
     }
 }
 

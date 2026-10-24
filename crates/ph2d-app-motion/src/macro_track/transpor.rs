@@ -174,6 +174,7 @@ fn transpoe(track: &Track, ini: &Inicial, destino: &MotionDoc, novo: u64) -> Res
         events,
         edicoes,
         nasce: track.nasce.clone(),
+        continua: track.continua,
     })
 }
 

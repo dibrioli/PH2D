@@ -48,6 +48,7 @@ impl MacroRecorder {
             events: Vec::new(),
             edicoes: Vec::new(),
             nasce: None,
+            continua: None,
         });
         TrackId(self.doc.tracks.len() - 1)
     }

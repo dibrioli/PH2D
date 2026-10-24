@@ -22,6 +22,7 @@ fn expected() -> MacroDoc {
             }],
             edicoes: vec![],
             nasce: None,
+            continua: None,
         }],
     }
 }
@@ -166,6 +167,7 @@ fn a_rich_document_round_trips_to_the_byte() {
                     .collect(),
                 edicoes: vec![],
                 nasce: None,
+                continua: None,
             },
             Track {
                 family: "motion".into(),
@@ -174,6 +176,7 @@ fn a_rich_document_round_trips_to_the_byte() {
                 events: vec![],
                 edicoes: vec![],
                 nasce: None,
+                continua: None,
             },
         ],
     };

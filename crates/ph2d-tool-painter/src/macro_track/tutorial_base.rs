@@ -23,6 +23,7 @@ fn sem_a_pincelada(track: &Track, k: usize) -> Result<Track, ErroDaMacro> {
         events: track.events.clone(),
         edicoes: track.edicoes.clone(),
         nasce: track.nasce.clone(),
+        continua: track.continua,
     };
     let gravadas = LeitorDoPainter.etapas(&track.events);
     let e = gravadas[k];

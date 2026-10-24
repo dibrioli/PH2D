@@ -11,7 +11,10 @@
 
 - Worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor` · branch `line/CodeEditor`.
 - HEAD: o último commit deste handoff (`git log -1`).
-- Rebaseada em 24/10 sobre `b48f8b9512` (o `main` com os 6 commits de velocidade W1–W4; rebase limpo, zero `Solved`).
+- **Rebaseada de novo em 24/10 (tarde) sobre `b3d38f53c1`** (o `main` com o Quadro W24–W26): 1 conflito,
+  `docs/Components/ferramentas/fotografa_cena.sh` — o `main` trouxe a MESMA cura do `WAYLAND_DISPLAY` por outra
+  linha; ficou a versão do `main` (o ficheiro é partilhado, assim não diverge). Depois: o 12, a cena 8 do 11 e o fecho.
+- Antes: rebaseada em 24/10 sobre `b48f8b9512` (o `main` com os 6 commits de velocidade W1–W4; rebase limpo, zero `Solved`).
 - 25 commits, todos só desta linha: `git cherry main HEAD` dá só `+`. O último de código é `a3e44525db` (o 10).
 
 ## 2. Superfície de colisão (`scripts/collision-surface.sh`, 23/10 — REFERÊNCIA, não evidência)
@@ -38,6 +41,8 @@ Tectos de LOC nos ficheiros tocados: nenhum passa
 | **10** | **Um `ph2d.object` no topo fora de `ph2d.property` é um aviso** (classe `object_at_top`; pausa da escrita, lista de problemas, sublinhado da chamada). Oráculo Godot 4.7.2 corrido (`GET_NODE_DEFAULT_WITHOUT_ONREADY`), sem o ponto cego dele | [10](../10_objeto_no_topo.md) |
 | **11** | **Um script renomeia um objecto a correr** — `ph2d.set/get(e, "name")`, override da corrida `ph2d_ecs::RunName` (`name_in_run`); o `Name` (identidade) intocado; rebobinar devolve; a Hierarquia mostra o documento. RED medido. Commit `1e24ce32e7`. **Smoke por conduzir** | [11](../11_script_renomeia_objeto.md) |
 | **cartão** | «Render Source» → **«Texture & Atlas»** (só o texto `panel.inspector.render_source.render_source`; o script continua `sprite.*`). Foto `ferramentas/foto_cartao_texture_atlas.png`. Commit `a9ea3bd349` | — |
+| **12** | **Os sub-blocos dos cartões compostos são GRUPOS dobráveis** (câmera · paralaxe · HUD, 9 grupos): chevron + negrito, clique abre/fecha, a dobra sobrevive à troca de objecto. Oráculo Godot. **E o clique no «Cull Mask» estava MORTO** (RED medido pelo despacho; o id não estava marcado) — curado. Commits `c6ac97c24d` `7704e2abd8` | [12](../12_cartoes_compostos.md) §4 |
+| **11 smoke** | A cena 8 renomeia a porta («Door Open», console) e a câmera acha-a pelo nome novo — renomear partido = câmera parada. Commit `054970888e` | [11](../11_script_renomeia_objeto.md) §3 |
 | ferramenta | `scripts/cargo-test-narrow.sh`: um alvo que não compila sai com 2 (antes saía «0 falharam · 0 passaram» com 1); um filtro que não casa nenhum teste sai com 4; um binário que morre sai com 1, com aviso | §6 |
 
 ## 4. Fora da família (foundational / partilhado) — todo ADITIVO
@@ -63,7 +68,14 @@ Tectos de LOC nos ficheiros tocados: nenhum passa
   - `asset_drag_wire.rs`: o arrasto de propriedade e o slot de objecto.
   - `components_scenes.rs`: a física da cena 8.
   - `render_loop/fase_sprite_inspector_smokes.rs`: as portas da cena 8.
-- **`hr12_widgets_a11y.rs`**: `property_box/arrasto.rs` entra no `A11Y_OPT_OUT`, porque grava áreas e não pinta.
+- **`hr12_widgets_a11y.rs`**: `property_box/arrasto.rs` entra no `A11Y_OPT_OUT`, porque grava áreas e não pinta;
+  (o 12) `section_header/grupo.rs` também — pinta um `SectionHeader`, cujo nó a11y é o do `mod.rs`.
+- **O 12 no `ph2d-editor-core`** (público novo, aditivo): `widget::{paint_group_header, group_header_h}`
+  (`widget/section_header/grupo.rs`). No Inspector: `sections/rows.rs::{Grupo, grupo}` (o `subtitulo` SAIU),
+  9 ids `*_GROUP` + marca `mark_collapsible_section` em `populate_{camera,parallax,hud}.rs` (e a do
+  `INSP_CAMERA_CULL_HEADER`).
+- **`ph2d-panel-registry-init/tests/it/nenhum_nome_por_cima_do_controlo.rs`**: `insp_camera_cull_0` entra no
+  `FORA` (irmã da grade das camadas — o censo só a viu quando o clique deixou de estar morto).
 - **`scripts/cargo-test-narrow.sh`** e a linha dele no `CLAUDE.md` §2: o exit `4` é novo.
 - **`docs/Components/ferramentas/fotografa_cena.sh`**: compara o `WAYLAND_DISPLAY` de fora (d5).
 
@@ -91,6 +103,7 @@ Nenhum: a superfície de colisão diz «intocado» e o grep do diff não acha `N
 | `censos-da-arvore-combinada.sh` | 121/121, com os 12 censos corridos |
 | `file_loc_caps` · `the_shell_only_shrinks` · `arch_safe_clamp_only` | verdes (na suíte e de novo depois do fmt) |
 | **Reabertura do 10 (24/10), só sobre `4afc3fd320..a3e44525db`** | clippy `-D warnings` nas 4 crates tocadas (`ph2d-code-syntax`, `-code-explain`, `app-code`, `i18n`) `--all-targets`: **0**. `nextest-impacted.sh BASE=4afc3fd320` (fecho): **16 651/16 655**, 4 TIMEOUT de pintura com load 75–180 (`painter-layers` ×3, `tool-painter` ×1), **os 4 verdes sozinhos** (load 15–40). `cargo fmt --all --check`: os 5 ficheiros do 10 limpos; 6 diffs em `crates/ph2d-gpu`, vindos do `main` (`9e7a70cd61`, velocidade W2) — dívida do `main`, não desta linha. Testes por nome: os 2 novos verdes, o de ponta a ponta **RED medido** sem a ligação; censo do `ph2d-code-explain` (`classe`, 3) verde |
+| **Reabertura do 12 + cena 8 (24/10 tarde), sobre `330c77ab78..7704e2abd8`** | `cargo fmt --all --check`: 1 diff da linha (ordem do `pub use` do grupo) curado em `208f2ecc1a`, depois **0** (os 6 do `ph2d-gpu` já não aparecem). clippy `--all-targets -D warnings` nas 7 crates tocadas (`editor-core`, `panel-inspector`, `app-components`, `script`, `ecs`, `i18n`, `component-desc`): **0**. `nextest-impacted.sh BASE=330c77ab78` (fecho), 1.ª: 3 vermelhos DA LINHA (a11y do `grupo.rs`, `insp_camera_cull_0` montada à mão, HUD a `142` contra `111` pelo recuo do grupo) — curados em `7704e2abd8` (o recuo saiu, recusa medida no doc 12); 2.ª: **19 302/19 302 corridos, 19 298 verdes, 2 FAIL + 2 TIMEOUT, todos de pintura** (`tool-painter` mask ×2 por relógio, `presets_de_fabrica`, `painter-layers seam_estado_escondido`), sem diff nessas crates, **os 4 verdes sozinhos ×2**. Gates novos: `os_grupos_dos_cartoes_compostos_dobram` (3) e a extensão de `code_smoke_props::tests`, ambos com **mutação → vermelho** |
 | `cfg(target_os` novo | nenhum ⇒ não houve cruzamento para macOS |
 | `Cargo.toml` tocado | nenhum ⇒ `machete` sem objecto |
 | Auditoria, 2 lentes (correção · costura/portões) | **Costura**: nada. **Correção**: 4 pontos baixos. Curados (`1090d128a1`): `state_set` no topo do rascunho escrevia o `StateTable` real (asserção vermelha sem a cura, medida) e dois casos do `cargo-test-narrow.sh` (`--color`/`-p` perdiam o valor; um binário que morria era lido como «não compilou»). **Aceite:** uma aba recarregada por fora com texto já partido mantém a última lista boa do texto anterior — a lei do Godot (§2.3 do doc 09) |
@@ -104,7 +117,7 @@ Nenhum: a superfície de colisão diz «intocado» e o grep do diff não acha `N
     Finished `smoke` profile [optimized] target(s) in 0.24s
 ```
 
-(Refeito em 24/10 sobre `a3e44525db`, o 10.)
+(Refeito em 24/10 sobre `a3e44525db`, o 10, e de novo sobre `7704e2abd8`: `Finished … in 0.23s`.)
 
 ## 9. Smoke para o DONO — **OK em 24/10** (cena 9 com o passo ③ sem salvar, binário da linha)
 
@@ -133,16 +146,33 @@ Fotos da corrida conduzida: `docs/CodeEditor/ferramentas/conduz_inspector/foto_0
 
 Fotos da corrida conduzida (binário da linha, `a3e44525db`): `docs/CodeEditor/ferramentas/conduz_objeto_no_topo/foto_01_sublinhado.png`, `foto_02_lista_de_problemas.png`, `foto_03_desfeito.png`.
 
+### 9.2 Os grupos dos cartões (o 12, 24/10) — **por conduzir** (binário da linha)
+
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor && PH2D_GAME_CAMERA_SMOKE=1 ./target/smoke/ph2d-host-desktop`
+2. Na Hierarquia clique **Camera**; no Inspector clique **Game Camera**. Clique **Camera Follow** (a setinha).
+3. «Camera Follow» fecha (Target, Damping… somem) e reabre no 2.º clique; **Cull Mask** abre a grade.
+   A paralaxe: `PH2D_PARALLAX_SMOKE=1`, objecto **Arvores**, cartão **Parallax**, grupo **Parallax Repeat**.
+4. **Deu errado se** o clique não fecha o grupo, ou se o «Cull Mask» não abre.
+
+Fotos: `docs/CodeEditor/ferramentas/oraculo_cartao_composto/ph2d_depois_*.png`.
+
+### 9.3 Renomear a correr (o 11, 24/10) — **por conduzir** (binário da linha)
+
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor && PH2D_CODE_SMOKE=8 ./target/smoke/ph2d-host-desktop`
+2. Deixe a cena correr ~10 s; depois **Hero** → cartão **Script** → **Edit script** → **Console** (em baixo).
+3. A câmera aproxima-se da porta; o console diz **«A porta chama-se agora: Door Open»**; a Hierarquia continua «Door».
+4. **Deu errado se** a câmera não se aproxima, ou se o console não tem a frase.
+
+Fotos: `docs/CodeEditor/ferramentas/conduz_propriedades/foto_05_camera_perto.png` e `foto_07_console_door_open.png`.
+
 ## 10. ABERTO
 
 - ~~Um `ph2d.object("X")` no topo, fora de `ph2d.property`~~ — **feito em 24/10** ([10](../10_objeto_no_topo.md)), smoke do dono OK.
 - **As 3 perguntas de 22/10, respondidas pelo dono em 24/10:** (a) sim → **11, feito** (smoke por conduzir: um
   passo numa cena do CodeEditor que renomeia e acha pelo nome novo); (b) «Texture & Atlas» → **feito**; (c) o
-  padrão-ouro → **por fazer, desenho e receita em [12](../12_cartoes_compostos.md)** (oráculo Godot corrido:
-  grupos dobráveis, negrito, conteúdo recuado). Suspeita a medir no mesmo bloco: o clique no «Cull Mask» da
-  câmera pode estar morto (12 §2).
-- **Depois do 12:** reabrir o fecho sobre `ac40d22ad3..HEAD` (clippy das crates tocadas, `nextest-impacted`
-  com `BASE=ac40d22ad3`, fmt) e refazer o binário do smoke 2×.
-- Fora da linha: `cargo fmt --all --check` acusa 6 diffs em `crates/ph2d-gpu`, vindos do `main` (`9e7a70cd61`).
+  padrão-ouro → **feito** ([12](../12_cartoes_compostos.md)), e o «Cull Mask» estava mesmo morto — curado.
+  Fecho reaberto e verde (§7). **Por conduzir pelo dono: §9.2 e §9.3.**
+- Visto de passagem, fora da linha: na grade do «Cull Mask» (e da irmã, «Visibility Layer»), os números de dois
+  dígitos saem elididos «…» (foto `ph2d_depois_camera_dobra_e_mascara.png`).
 - ~~Aba recarregada por fora com texto partido~~ — **decisão do dono 24/10: fica assim** (a última lista boa, a lei
   do Godot). Não «cure».

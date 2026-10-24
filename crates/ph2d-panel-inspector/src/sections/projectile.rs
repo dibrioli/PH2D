@@ -20,8 +20,8 @@
 use super::*;
 use ph2d_editor_core::projectile_edits::InspectorProjectileInfo;
 use ph2d_editor_core::widget::SectionFold;
-use ph2d_i18n::tr;
 use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 /// **Os AVISOS** — a metade que responde a *«pus o componente e ele não faz nada»*.
 ///

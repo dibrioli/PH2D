@@ -24,8 +24,8 @@ use ph2d_editor_core::topdown_edits::{
     InspectorFacing, InspectorMoveDirections, InspectorTopDownInfo, InspectorViewpoint,
 };
 use ph2d_editor_core::widget::SectionFold;
-use ph2d_i18n::tr;
 use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 /// Um segmentado. ⚠️ **A selecção vem do SNAPSHOT, nunca do store** — ler o store faria o primeiro
 /// clique depois de trocar de objecto mandar o valor do objecto anterior.

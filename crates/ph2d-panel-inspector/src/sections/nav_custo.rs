@@ -18,8 +18,8 @@ use ph2d_editor_core::nav_edits::{
 };
 use ph2d_editor_core::property_row::{Seccao, paint_check_row};
 use ph2d_editor_core::widget::Unit;
-use ph2d_i18n::tr;
 use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 #[must_use]
 const fn chave_da_area(q: CostAreaQueixa) -> &'static str {

@@ -19,8 +19,8 @@ use ph2d_editor_core::nav_edits::{
 };
 use ph2d_editor_core::property_row::{Seccao, paint_choice_row};
 use ph2d_editor_core::widget::{SectionFold, Unit};
-use ph2d_i18n::{tr, tr_with};
 use ph2d_i18n::TextKey;
+use ph2d_i18n::{tr, tr_with};
 
 /// **A CHAVE e a COR de cada queixa do agente** — a porta entre o enum da lei e a língua.
 ///

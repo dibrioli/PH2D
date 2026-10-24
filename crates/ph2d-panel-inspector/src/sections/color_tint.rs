@@ -3,9 +3,9 @@
 
 use super::*;
 use ph2d_editor_core::widget::SectionFold;
-use ph2d_i18n::tr;
-use ph2d_i18n::TextKey;
 use ph2d_editor_core::widget::key_mark::Rotulo;
+use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 /// Paint one labeled tint swatch (label left, swatch right) inside
 /// `cell`. The swatch fill reads `widget_color(swatch_id)` (kept in

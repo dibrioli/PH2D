@@ -118,7 +118,10 @@ pub(super) fn paint_area_rows(
                 TextKey::new("component.field.area_falloff.0"),
                 ids::INSP_PHYS_AREA_FALLOFF,
             ),
-            (TextKey::new("component.field.area_drag.0"), ids::INSP_PHYS_AREA_DRAG),
+            (
+                TextKey::new("component.field.area_drag.0"),
+                ids::INSP_PHYS_AREA_DRAG,
+            ),
             (
                 TextKey::new("component.field.area_buoyancy.0"),
                 ids::INSP_PHYS_AREA_DENSITY,

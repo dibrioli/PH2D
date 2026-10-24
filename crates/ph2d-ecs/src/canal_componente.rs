@@ -105,7 +105,7 @@ fn tabela() -> &'static Tabela {
                 let ks = (0..faixas(f)).filter_map(|x| chave(d.canonical_name, f.field_id, x));
                 chaves_do_rotulo
                     .entry(f.label_key)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .extend(ks);
             }
         }

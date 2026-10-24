@@ -31,11 +31,11 @@ use ph2d_editor_core::screens::hero::{
     InspectorCameraFollow, InspectorCameraInfo, InspectorCameraLimits, InspectorGameCamera,
 };
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::{BitmaskGrid32, paint_bitmask_grid32};
-use ph2d_i18n::tr;
 use ph2d_i18n::TextKey;
-use ph2d_editor_core::widget::key_mark::Rotulo;
+use ph2d_i18n::tr;
 
 // ⭐ **A caixa de marcar desta secção MUDOU-SE para a porta** (2026-09-15) — este ficheiro tinha a
 //    quarta cópia do mesmo `register` + `checkbox_visual` + `bool → CheckboxValue`, e a lei *«o

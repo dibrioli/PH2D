@@ -143,9 +143,10 @@ pub(crate) fn montar(sim: &mut SimWorld) -> (u64, u64) {
 }
 
 pub(crate) fn seguir(sim: &mut SimWorld, c: Option<u64>, alvo: &str) {
-    if let Some(mut f) =
-        c.and_then(|b| sim.world_mut().get_mut::<CameraFollow>(Entity::from_bits(b)))
-    {
+    if let Some(mut f) = c.and_then(|b| {
+        sim.world_mut()
+            .get_mut::<CameraFollow>(Entity::from_bits(b))
+    }) {
         alvo.clone_into(&mut f.target);
     }
 }
@@ -168,7 +169,12 @@ fn estado(sim: &SimWorld) -> Option<(String, bool)> {
 fn medir(sim: &SimWorld) -> String {
     estado(sim).map_or_else(
         || "sem objectos".to_owned(),
-        |(a, h)| format!("a câmera segue «{a}» · Box B {}", if h { "escondida" } else { "visível" }),
+        |(a, h)| {
+            format!(
+                "a câmera segue «{a}» · Box B {}",
+                if h { "escondida" } else { "visível" }
+            )
+        },
     )
 }
 
@@ -178,6 +184,10 @@ fn veredito(sim: &SimWorld, onde: &str, alvo: &str, escondida: bool) -> String {
         "[autokey-smoke] {onde}: {} — tem de seguir «{alvo}» com a Box B {}: {}",
         medir(sim),
         if escondida { "escondida" } else { "visível" },
-        if ok { "OK" } else { "PARADA — a curva não conduz o campo" }
+        if ok {
+            "OK"
+        } else {
+            "PARADA — a curva não conduz o campo"
+        }
     )
 }

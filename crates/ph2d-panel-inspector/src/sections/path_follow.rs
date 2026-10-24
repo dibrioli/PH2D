@@ -30,8 +30,8 @@ use super::tween_editor::grupo;
 use super::*;
 use ph2d_editor_core::path_follow_edits::{InspectorPathFollowInfo, PathFollowQueixa};
 use ph2d_editor_core::widget::SectionFold;
-use ph2d_i18n::{tr, tr_with};
 use ph2d_i18n::TextKey;
+use ph2d_i18n::{tr, tr_with};
 
 /// A chave da frase de cada queixa. ⚠️ Um `match` e não uma tabela indexada: a posição de uma
 /// variante não é a tag de nada aqui, e uma tabela criaria essa dependência do nada.

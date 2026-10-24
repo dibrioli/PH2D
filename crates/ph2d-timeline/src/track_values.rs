@@ -119,7 +119,7 @@ fn indice(v: f32) -> Option<u32> {
         clippy::cast_sign_loss,
         reason = "positivo e preso a 2^24 pela tabela"
     )]
-    (k >= 1.0).then(|| k as u32)
+    (k >= 1.0).then_some(k as u32)
 }
 
 #[cfg(test)]

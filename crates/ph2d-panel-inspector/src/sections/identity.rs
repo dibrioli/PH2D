@@ -2,8 +2,8 @@
 //! architecture_panel_loc_cap). Logic verbatim; behavior unchanged.
 
 use super::*;
-use ph2d_i18n::tr;
 use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_entity_name_row(

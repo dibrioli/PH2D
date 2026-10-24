@@ -150,13 +150,13 @@ pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};
 // chamar o MESMO pintor, senão o estudo diverge do que shipa.
 // ⚠️ A `surface_rect` sai daqui porque **quem regista o alvo de arrasto vive noutra crate** (a
 // bancada): sem ela, cada sítio re-deriva «onde é que o preenchimento acaba» e a deriva volta.
+pub use property_box::decorator_rect;
 pub use property_box::{
     DECORATOR_W, FORM_ROWS_SHOW_DECORATOR, PropertyBox, PropertyBoxState, PropertyRow,
     form_row_columns, label_column, paint_decorator_dot, paint_property_box, paint_property_label,
     property_fields_layout, property_label_col_w, property_label_col_w_for, property_label_origin,
     property_row_columns, property_row_columns_for, surface_rect, value_column,
 };
-pub use property_box::decorator_rect;
 // ⭐⭐ **A DECLARAÇÃO de uma secção** — ver `property_box::seccao`. Ela vive do lado do `widget`
 //    porque é a ENTRADA da repartição de uma linha, e pô-la no `property_row` faria o `widget`
 //    depender dele (um ciclo que o gate do DAG recusa).

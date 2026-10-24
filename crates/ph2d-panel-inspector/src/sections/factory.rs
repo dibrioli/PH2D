@@ -30,8 +30,8 @@ use ph2d_editor_core::screens::hero::{
     InspectorFactory, InspectorFactoryInfo, InspectorSpawnWhere,
 };
 use ph2d_editor_core::widget::SectionFold;
-use ph2d_i18n::{tr, tr_with};
 use ph2d_i18n::TextKey;
+use ph2d_i18n::{tr, tr_with};
 
 /// O segmentado do ONDE — **pela porta da ESCOLHA**, com o nome ao LADO.
 ///

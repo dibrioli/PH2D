@@ -30,10 +30,10 @@
 use super::rows::{num_row_unit, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
-use ph2d_i18n::tr;
-use ph2d_i18n::tr_with;
 use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
+use ph2d_i18n::tr_with;
 
 /// Pinta a face de peça e devolve o `y` final da seção.
 #[allow(clippy::too_many_arguments)]

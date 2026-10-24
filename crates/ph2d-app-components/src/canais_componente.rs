@@ -5,11 +5,11 @@
 //! do ledger), passa pela lei do componente (`property_laws::sanitize`) e declara a escrita ao
 //! `FieldDrive` — o que a curva escreve vê-se, não se guarda, como o que um script escreve.
 
+use ph2d_component_desc::FieldKind;
 use ph2d_ecs::canal::familia::COMPONENTE;
 use ph2d_ecs::canal_componente as cc;
 use ph2d_ecs::scene::property::slot_in;
 use ph2d_ecs::scene::registry::{ComponentRegistry, ComponentTypeEntry};
-use ph2d_component_desc::FieldKind;
 use ph2d_ecs::{CanaisEscritos, CanaisLidos, Entity, FieldKey, SimWorld, TextosDosCanais, World};
 use ph2d_preview_drive::{FieldRef, PreviewDrive};
 use serde_json::Value;

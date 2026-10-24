@@ -21,8 +21,8 @@ use super::tween_editor::grupo;
 use super::*;
 use ph2d_editor_core::shake_edits::InspectorShakeInfo;
 use ph2d_editor_core::widget::{SectionFold, Unit};
-use ph2d_i18n::{tr, tr_with};
 use ph2d_i18n::TextKey;
+use ph2d_i18n::{tr, tr_with};
 
 /// Os rótulos dos chips dos PERFIS. ⭐ **O motor publica a CHAVE e quem pinta é que a resolve** —
 /// a lei da fronteira dos motores; um motor que devolvesse a palavra seria uma 2.ª tabela de texto.

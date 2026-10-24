@@ -21,8 +21,8 @@ use crate::interaction::{HitIndex, WidgetStore};
 //    depender dele: um CICLO, que o `architecture_the_foundation_modules_form_a_dag` recusa. *A
 //    declaração de uma linha pertence a quem sabe repartir a linha.*
 use crate::paint::resolve;
-use crate::widget::showcase::read_number_input;
 use crate::widget::key_mark::Rotulo;
+use crate::widget::showcase::read_number_input;
 use crate::widget::{NumberInput, PropertyRow, Unit, paint_number_input_with_buffer};
 pub use crate::widget::{Seccao, colunas_da_linha};
 
@@ -379,7 +379,9 @@ pub fn paint_field_row_value<'a>(
         text_system,
         theme,
     );
-    if let Some(alvo) = crate::widget::key_mark::paint_decorator_campo(scene, theme, row.dot, &[id], label) {
+    if let Some(alvo) =
+        crate::widget::key_mark::paint_decorator_campo(scene, theme, row.dot, &[id], label)
+    {
         hit_index.register(alvo, row.dot);
     }
     (y + ph2d_tokens::row_pitch_px() * linhas as f32, rect)
@@ -420,7 +422,8 @@ pub fn paint_text_row<'a>(
     // ⚠️ A geometria e o nome saem da MESMA `row_and_layout` das irmãs — não há aqui uma segunda
     //    conta de onde a coluna do nome acaba.
     let label = label.into();
-    let (row, _, _, cw) = row_and_layout(text_system, scene, theme, x, w, y, label.texto, 1, seccao);
+    let (row, _, _, cw) =
+        row_and_layout(text_system, scene, theme, x, w, y, label.texto, 1, seccao);
     let rect = Rect::new(row.control.x, row.control.y, cw, ROW_H_PX);
     hit_index.register(id, rect);
     // ⚠️ **O alvo do clique é a CAIXA e não a linha** — é o que as linhas de número já fazem, e
@@ -445,7 +448,9 @@ pub fn paint_text_row<'a>(
         text_system,
         theme,
     );
-    if let Some(alvo) = crate::widget::key_mark::paint_decorator_campo(scene, theme, row.dot, &[id], label) {
+    if let Some(alvo) =
+        crate::widget::key_mark::paint_decorator_campo(scene, theme, row.dot, &[id], label)
+    {
         hit_index.register(alvo, row.dot);
     }
     y + ph2d_tokens::row_pitch_px()
@@ -489,7 +494,8 @@ pub fn paint_check_row<'a>(
         .seccao(seccao);
     crate::widget::paint_checkbox(&cb, rect, scene, text_system, theme);
     let dot = crate::widget::decorator_rect(rect);
-    if let Some(alvo) = crate::widget::key_mark::paint_decorator_campo(scene, theme, dot, &[id], label)
+    if let Some(alvo) =
+        crate::widget::key_mark::paint_decorator_campo(scene, theme, dot, &[id], label)
     {
         hit_index.register(alvo, dot);
     }
@@ -536,8 +542,10 @@ pub fn paint_check_rows<'a, L: Into<Rotulo<'a>> + Copy>(
     caixas: &[(NodeId, L, bool)],
     seccao: Seccao,
 ) -> f32 {
-    let caixas: Vec<(NodeId, Rotulo<'a>, bool)> =
-        caixas.iter().map(|&(id, l, on)| (id, l.into(), on)).collect();
+    let caixas: Vec<(NodeId, Rotulo<'a>, bool)> = caixas
+        .iter()
+        .map(|&(id, l, on)| (id, l.into(), on))
+        .collect();
     let gap = ph2d_tokens::Spacing::Sm.px();
     let meia = ((w - gap) * 0.5).max(1.0);
     let fonte = TypeToken::Sm.px();
@@ -554,7 +562,8 @@ pub fn paint_check_rows<'a, L: Into<Rotulo<'a>> + Copy>(
         });
         match par {
             Some(quer) if property_row_fits(meia, quer) => {
-                let sec = Seccao::medida(text_system, 1, &[caixas[i].1.texto, caixas[i + 1].1.texto]);
+                let sec =
+                    Seccao::medida(text_system, 1, &[caixas[i].1.texto, caixas[i + 1].1.texto]);
                 paint_check_row(
                     scene,
                     text_system,
@@ -645,7 +654,9 @@ pub fn paint_color_row<'a>(
     let aberto = store.picker_target() == Some(id);
     crate::widget::paint_swatch_or_mixed(rect, id, label.texto, rgba, aberto, scene, theme);
     hit_index.register(id, rect);
-    if let Some(alvo) = crate::widget::key_mark::paint_decorator_campo(scene, theme, row.dot, &[id], label) {
+    if let Some(alvo) =
+        crate::widget::key_mark::paint_decorator_campo(scene, theme, row.dot, &[id], label)
+    {
         hit_index.register(alvo, row.dot);
     }
     y + ph2d_tokens::row_pitch_px()

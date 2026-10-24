@@ -5,8 +5,8 @@
 
 use super::*;
 use ph2d_editor_core::widget::SectionFold;
-use ph2d_i18n::tr;
 use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 /// O cabeçalho com a dobra. `Err(y)` = o cartão está dobrado; `y` é o de baixo do cabeçalho.
 fn cabecalho(

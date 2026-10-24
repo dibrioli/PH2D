@@ -24,9 +24,9 @@
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorAnimInfo;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
-use ph2d_i18n::TextKey;
 
 /// Espessura da barra de frames.
 ///

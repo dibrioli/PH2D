@@ -19,8 +19,8 @@
 use super::*;
 use ph2d_editor_core::screens::hero::{InspectorFactoryInfo, InspectorLifecycle};
 use ph2d_editor_core::widget::SectionFold;
-use ph2d_i18n::tr;
 use ph2d_i18n::TextKey;
+use ph2d_i18n::tr;
 
 /// O corpo do CICLO DE VIDA.
 #[allow(clippy::too_many_arguments)]

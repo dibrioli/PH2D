@@ -63,8 +63,14 @@ pub(super) fn paint_kind_params(
         if info.limits_enabled {
             let unit = limit_unit(info.kind_tag);
             for (label, id) in [
-                (TextKey::new("component.field.joint.5"), ids::INSP_JOINT_LIMIT_MIN),
-                (TextKey::new("component.field.joint.6"), ids::INSP_JOINT_LIMIT_MAX),
+                (
+                    TextKey::new("component.field.joint.5"),
+                    ids::INSP_JOINT_LIMIT_MIN,
+                ),
+                (
+                    TextKey::new("component.field.joint.6"),
+                    ids::INSP_JOINT_LIMIT_MAX,
+                ),
             ] {
                 yy = num_row_unit(
                     scene,
@@ -124,8 +130,14 @@ pub(super) fn paint_kind_params(
     // re-semeia a ESCALA deles.
     if kind_has_spring(info.kind_tag, info.soft) {
         for (label, id) in [
-            (TextKey::new("component.field.joint.11"), ids::INSP_JOINT_STIFFNESS),
-            (TextKey::new("component.field.joint.12"), ids::INSP_JOINT_DAMPING),
+            (
+                TextKey::new("component.field.joint.11"),
+                ids::INSP_JOINT_STIFFNESS,
+            ),
+            (
+                TextKey::new("component.field.joint.12"),
+                ids::INSP_JOINT_DAMPING,
+            ),
         ] {
             yy = num_row(
                 scene,

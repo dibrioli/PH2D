@@ -2774,7 +2774,8 @@ fn a_coluna_de_um_bloco_de_cores_sai_de_todos_os_nomes() {
     );
 
     let fonte = include_str!("../../../ph2d-panel-inspector/src/sections/color_tint.rs");
-    let agulha = "let rotulos: Vec<&str> = cores.iter().map(|(_, l, _)| *l).collect();";
+    // F27 B2: o rótulo é tipado (`Rotulo`), e o bloco recolhe o TEXTO de cada um, sem filtro.
+    let agulha = ".map(|(_, l, _)| Into::<Rotulo<'a>>::into(*l).texto)\n        .collect();";
     assert_eq!(
         fonte.matches(agulha).count(),
         1,

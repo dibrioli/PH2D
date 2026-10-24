@@ -118,7 +118,9 @@ fn decorador(
     rotulo: crate::widget::key_mark::Rotulo<'_>,
 ) {
     let ids: Vec<NodeId> = segmentos.iter().map(|&(_, _, id)| id).collect();
-    if let Some(alvo) = crate::widget::key_mark::paint_decorator_campo(scene, theme, dot, &ids, rotulo) {
+    if let Some(alvo) =
+        crate::widget::key_mark::paint_decorator_campo(scene, theme, dot, &ids, rotulo)
+    {
         hit_index.register(alvo, dot);
     }
 }

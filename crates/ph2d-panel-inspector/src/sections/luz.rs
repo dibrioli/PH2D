@@ -9,8 +9,8 @@ use super::tween_editor::grupo;
 use super::*;
 use ph2d_editor_core::luz_edits::{AvisoDaLuz, InspectorLuzInfo, TIPOS};
 use ph2d_editor_core::widget::{SectionFold, Unit};
-use ph2d_i18n::{tr, tr_with};
 use ph2d_i18n::TextKey;
+use ph2d_i18n::{tr, tr_with};
 
 /// A frase de um aviso, e a cor dele.
 fn frase(a: AvisoDaLuz) -> (String, ColorToken) {

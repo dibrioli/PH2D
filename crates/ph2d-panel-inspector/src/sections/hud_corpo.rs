@@ -161,7 +161,10 @@ fn bloco_rotulo(
             usize::from(i.source),
         );
         for (k, dica) in [
-            (T::SourceName, TextKey::new("component.field.label_fields.2")),
+            (
+                T::SourceName,
+                TextKey::new("component.field.label_fields.2"),
+            ),
             (T::Prefix, TextKey::new("component.field.label_fields.3")),
             (T::Suffix, TextKey::new("component.field.label_fields.4")),
         ] {

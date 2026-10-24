@@ -131,8 +131,14 @@ pub(super) fn paint_material_rows(
 ) -> f32 {
     let mut yy = y;
     for (label, id) in [
-        (TextKey::new("component.field.collider.2"), ids::INSP_PHYS_RESTITUTION),
-        (TextKey::new("component.field.collider.3"), ids::INSP_PHYS_FRICTION),
+        (
+            TextKey::new("component.field.collider.2"),
+            ids::INSP_PHYS_RESTITUTION,
+        ),
+        (
+            TextKey::new("component.field.collider.3"),
+            ids::INSP_PHYS_FRICTION,
+        ),
     ] {
         yy = num_row(
             scene,
@@ -229,9 +235,15 @@ pub(super) fn paint_mass_source(
             u8::from(mass_manual),
         );
         let (label, id) = if mass_manual {
-            (TextKey::new("component.field.mass_override.0"), ids::INSP_PHYS_MASS)
+            (
+                TextKey::new("component.field.mass_override.0"),
+                ids::INSP_PHYS_MASS,
+            )
         } else {
-            (TextKey::new("component.field.collider.1"), ids::INSP_PHYS_DENSITY)
+            (
+                TextKey::new("component.field.collider.1"),
+                ids::INSP_PHYS_DENSITY,
+            )
         };
         yy = num_row(
             scene,

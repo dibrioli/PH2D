@@ -134,7 +134,10 @@ fn o_alvo_da_camera_anima_por_nome() {
         .spawn((GameCamera::default(), ph2d_ecs::CameraFollow::default()))
         .id();
     let alvo = chave("ph2d::ecs::CameraFollow", 0, 0).expect("cabe");
-    assert!(campos(&reg, sim.world(), e).contains(&alvo), "o alvo não é canal");
+    assert!(
+        campos(&reg, sim.world(), e).contains(&alvo),
+        "o alvo não é canal"
+    );
     assert!(alvo.info().is_some_and(|i| i.texto && i.discreto));
     let mut t = TextosDosCanais::default();
     let heroi = t.indice(Some("Heroi"));
@@ -146,5 +149,10 @@ fn o_alvo_da_camera_anima_por_nome() {
     let segue = sim.world().get::<ph2d_ecs::CameraFollow>(e).expect("segue");
     assert_eq!(segue.target, "Heroi");
     publicar(&mut sim, &reg, &[e.to_bits()]);
-    assert_eq!(sim.world().resource::<CanaisLidos>().valor(e.to_bits(), alvo), Some(heroi));
+    assert_eq!(
+        sim.world()
+            .resource::<CanaisLidos>()
+            .valor(e.to_bits(), alvo),
+        Some(heroi)
+    );
 }

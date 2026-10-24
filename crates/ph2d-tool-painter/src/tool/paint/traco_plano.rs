@@ -42,16 +42,8 @@ pub(crate) struct PlanoDoTraco {
     pub(super) mascara: Option<Arc<Vec<u8>>>,
     /// O traço de uma FERRAMENTA com o dual ([`super::dual_ferramenta`]): `None` = o plano do pincel.
     pub(super) ferramenta: Option<Box<super::dual_ferramenta::Ferramenta>>,
-    /// O nível de UMA passagem da máscara visível (a fronteira da orla é `½` dele): o máximo corrente até o traço
-    /// percorrer um diâmetro, e daí FIXO — a sobreposição do traço consigo nunca o sobe.
-    max_visivel: f32,
-    /// A fronteira ficou fixa ([`Self::max_visivel`] não sobe mais).
-    nivel_fixo: bool,
-    /// O comprimento (px) do caminho dos centros dos dabs até agora, e o último centro.
-    percurso: f32,
-    ultimo_centro: Option<[f32; 2]>,
-    /// O maior diâmetro de dab até agora (px).
-    diametro: f32,
+    /// O nível de UMA passagem da máscara visível (a fronteira da orla é `½` dele).
+    passagem: super::uma_passagem::UmaPassagem,
     /// A caixa de tudo o que o traço já compôs: quando o máximo sobe, a orla recompõe-se nela inteira.
     caixa: Option<Region>,
 }
@@ -60,18 +52,7 @@ impl PlanoDoTraco {
     /// O nível `τ` da fronteira da orla agora.
     #[must_use]
     pub(super) fn fronteira(&self) -> f32 {
-        0.5 * self.max_visivel
-    }
-
-    /// Soma ao percurso os centros de `dabs` e guarda o maior diâmetro.
-    fn percorre(&mut self, dabs: &[Dab]) {
-        for d in dabs {
-            if let Some(u) = self.ultimo_centro {
-                self.percurso += (d.center[0] - u[0]).hypot(d.center[1] - u[1]);
-            }
-            self.ultimo_centro = Some(d.center);
-            self.diametro = self.diametro.max(2.0 * d.radius_px);
-        }
+        0.5 * self.passagem.nivel()
     }
 
     /// A sessão de uma FERRAMENTA com o dual sobre a `tela` de agora: a base e a tela livre nascem dela.
@@ -82,11 +63,7 @@ impl PlanoDoTraco {
             lotes: Vec::new(),
             mascara: None,
             ferramenta: Some(Box::default()),
-            max_visivel: 0.0,
-            nivel_fixo: false,
-            percurso: 0.0,
-            ultimo_centro: None,
-            diametro: 0.0,
+            passagem: super::uma_passagem::UmaPassagem::default(),
             caixa: None,
         }
     }
@@ -176,7 +153,7 @@ impl PainterTool {
                 });
             }
             self.carimba_no_plano(&mut s, dabs);
-            s.percorre(dabs);
+            s.passagem.percorre(dabs);
         }
         let Some(r) = une(r, r_dual) else {
             self.paint.plano_do_traco = Some(s);
@@ -184,8 +161,7 @@ impl PainterTool {
         };
         let r = self.alarga(r, self.margem_da_orla());
         self.compoe_o_plano(&mut s, r);
-        // Um diâmetro percorrido: o eixo já recebeu a passagem inteira, e o nível dela é o da fronteira.
-        s.nivel_fixo |= s.diametro > 0.0 && s.percurso >= s.diametro;
+        s.passagem.fixa_se_percorreu();
         self.paint.plano_do_traco = Some(s);
     }
 
@@ -200,11 +176,7 @@ impl PainterTool {
                 lotes: Vec::new(),
                 mascara: None,
                 ferramenta: None,
-                max_visivel: 0.0,
-                nivel_fixo: false,
-                percurso: 0.0,
-                ultimo_centro: None,
-                diametro: 0.0,
+                passagem: super::uma_passagem::UmaPassagem::default(),
                 caixa: None,
             },
         }
@@ -288,15 +260,14 @@ impl PainterTool {
                 }
             };
             s.caixa = une(s.caixa, Some(r));
-            if !s.nivel_fixo {
-                let mut max = s.max_visivel;
+            if s.passagem.aberto() {
+                let mut max = 0.0f32;
                 for y in r.y as usize..(r.y + r.h) as usize {
                     for x in r.x as usize..(r.x + r.w) as usize {
                         max = max.max(visivel((y * w + x) * 4));
                     }
                 }
-                if max > s.max_visivel {
-                    s.max_visivel = max;
+                if s.passagem.observa(max) {
                     r = s.caixa.unwrap_or(r);
                 }
             }

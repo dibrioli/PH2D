@@ -117,6 +117,7 @@ impl Default for PaintState {
             dabs: Vec::new(),
             solid_path: Vec::new(),
             solid_fill_owed: false,
+            solid_passagem: super::uma_passagem::UmaPassagem::default(),
             pending_threads: Vec::new(),
             seed: 0,
             tex_rng: 0,

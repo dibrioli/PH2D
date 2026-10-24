@@ -53,6 +53,7 @@ impl PainterTool {
         // …e a mancha devida do gesto anterior morre com ele: um `owed` sobrevivente faria o
         // primeiro `park_stroke` deste traço preencher um caminho que já não existe.
         self.paint.solid_fill_owed = false;
+        self.paint.solid_passagem = super::uma_passagem::UmaPassagem::default();
         // **O passo de undo começa AQUI** (doc 28 §5.26): a cadeia é reconciliada e o journal passa a
         // descrever este traço em vez do intervalo desde o último commit.
         // Pinceladas sobrepostas (W16): o grupo inteiro é UM passo, aberto no primeiro pen-down.

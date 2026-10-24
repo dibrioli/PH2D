@@ -30,6 +30,7 @@ campos_do_traco!(
     dabs,
     solid_path,
     solid_fill_owed,
+    solid_passagem,
     pending_threads,
     tex_rng,
     brush,

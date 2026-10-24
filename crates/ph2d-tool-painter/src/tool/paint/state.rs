@@ -39,6 +39,7 @@ pub(crate) struct PaintState {
     /// de suceder os FIOS (senão o restore do evento seguinte os apaga). Um booleano é o que torna
     /// as duas metades a mesma transação sem enumerar os sítios do ciclo.
     pub(super) solid_fill_owed: bool,
+    pub(super) solid_passagem: super::uma_passagem::UmaPassagem<u8>,
     /// Buffer reusado dos fios que o Sketchy costurou desde o último depósito (plano 38 W3). Ele é
     /// só a ALOCAÇÃO: o motor é o dono da memória do traço, e [`ph2d_painter_brush::Stroke::take_threads`]
     /// esvazia isto antes de encher.

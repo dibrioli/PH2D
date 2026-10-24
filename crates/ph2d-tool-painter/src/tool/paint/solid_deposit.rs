@@ -312,18 +312,22 @@ impl PainterTool {
             return;
         }
         let pixels = self.save_region(&rect);
-        // A mancha sobe o tecto do traço (`stroke_mask`) para a corda não pintar por cima dela; o
-        // tecto volta ao do traço sozinho no fim — a mancha é provisória até o pen-up.
+        // A corda ANTES da mancha, que lê a cobertura dela (`stroke_mask`): `max(traço + corda,
+        // mancha)` — por cima, com o Flow como taxa, a corda somava-se à mancha. O tecto volta ao do
+        // traço no fim (provisório até o pen-up).
         let largura = self.source_size.0 as usize;
         let texels = largura * self.source_size.1 as usize;
         let tecto = Recorte::de(&self.paint.stroke_mask, Some(rect), largura, texels);
         if carimbos.is_empty() {
+            if !chord.is_empty() {
+                self.stamp_corda_em_rascunho(chord, chord_rect, false);
+            }
             self.stamp_solid(loops, rect);
         } else {
-            self.stamp_corda_em_rascunho(&carimbos, carimbos_rect);
-        }
-        if !chord.is_empty() {
-            self.stamp_corda_em_rascunho(chord, chord_rect);
+            self.stamp_corda_em_rascunho(&carimbos, carimbos_rect, true);
+            if !chord.is_empty() {
+                self.stamp_corda_em_rascunho(chord, chord_rect, true);
+            }
         }
         tecto.repoe(&mut self.paint.stroke_mask, largura);
         self.paint.drag_preview = Some(super::DragPreview { rect, pixels });
@@ -361,7 +365,8 @@ impl PainterTool {
     /// ([`Self::tiled_chord_region`], a mesma região que o `save` da tela usa), e o corpo não é
     /// depositado ([`super::relief_state::ReliefState::corpo_suspenso`]): a corda FINAL assenta-o
     /// uma vez, no pen-up ([`Self::assenta_o_corpo_da_corda`]).
-    fn stamp_corda_em_rascunho(&mut self, chord: &[Dab], regiao: Option<Region>) {
+    /// `repoe = false`: a cobertura dela fica no `stroke_mask` para a mancha (quem chama repõe).
+    fn stamp_corda_em_rascunho(&mut self, chord: &[Dab], regiao: Option<Region>, repoe: bool) {
         let largura = self.source_size.0 as usize;
         let texels = largura * self.source_size.1 as usize;
         let rng = self.paint.tex_rng;
@@ -378,7 +383,9 @@ impl PainterTool {
         self.stamp_dabs_dispatch(chord);
         self.paint.relief.corpo_suspenso = false;
         self.paint.tex_rng = rng;
-        mascara.repoe(&mut self.paint.stroke_mask, largura);
+        if repoe {
+            mascara.repoe(&mut self.paint.stroke_mask, largura);
+        }
         if tinha_camadas {
             for (c, r) in self.paint.per_layer_stroke.cov.iter_mut().zip(camadas) {
                 r.repoe(c, largura);
@@ -445,6 +452,7 @@ impl PainterTool {
         // borda este pincel tem"*, divergindo do falloff no dia em que alguém afinasse um dos dois.
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let strength = (self.paint.brush.strength.clamp(0.0, 1.0) * 255.0 + 0.5) as u32;
+        let passagem = self.passagem_do_solid();
         // ⚠️ A janela DECLARADA é o retângulo que este preenchimento escreve — é ela que faz o commit
         // de undo usar a janela em vez de varrer os planos (doc 28 §5.17), e é por isso que a porta
         // de fork a recebe em vez de a redescobrir.
@@ -476,25 +484,19 @@ impl PainterTool {
         // custa mais que o passe, como o limiar em BYTES do `plane_copy` e o `WET_PAR_MIN` da secagem.
         let par = (x1 - x0) * (y1 - y0) >= SOLID_PAR_MIN;
         // ⭐ **O TECTO DO TRAÇO** (smoke do dono 2026-10-06: *«a cor central do solid não respeita o
-        // strength do pincel e fica mais escura»*). Com o cap de Accumulate armado o traço é
-        // `antes·(1 − m) + cor·m`, e a mancha composta POR CIMA dele somava-se (Strength 0,4: o
-        // gesto chegava a `0,5–0,64` junto ao traço). Ela obedece ao mesmo tecto: o alvo de um texel
-        // é `cobertura × o tecto que o traço atingiu`, e ela só leva `m` até ele — o gesto inteiro é
-        // `max(traço, mancha)`, nunca a soma.
+        // strength do pincel e fica mais escura»*, BUGS #40). A mancha obedece ao tecto do traço: o
+        // alvo de um texel é `cobertura × o nível de UMA passagem do traço` ([`super::uma_passagem`]: os cantos acumulam
+        // acima dele), e ela só leva `m` até ele. Sem nível medido (re-carimbo): o máximo na região.
         let n = w * h;
         let mascara = (self.paint.stroke_mask.len() == n).then(|| {
-            let tecto = (y0..y1)
-                .flat_map(|y| {
-                    self.paint.stroke_mask[y * w + x0..y * w + x1]
-                        .iter()
-                        .copied()
-                })
-                .max()
-                .unwrap_or(0);
+            let tecto = passagem.unwrap_or_else(|| {
+                let linhas = self.paint.stroke_mask[y0 * w..y1 * w].chunks(w);
+                u32::from(linhas.flat_map(|l| &l[x0..x1]).copied().max().unwrap_or(0))
+            });
             (tecto, &mut self.paint.stroke_mask[y0 * w..y1 * w])
         });
         let (tecto, mask) = match mascara {
-            Some((t, m)) if t > 0 => (Some(u32::from(t)), Some(m)),
+            Some((t, m)) if t > 0 => (Some(t), Some(m)),
             _ => (None, None),
         };
         blend_solid_rows(

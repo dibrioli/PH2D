@@ -75,8 +75,27 @@ fn diag_o_solid_no_digital_e_no_impasto() {
     }
 }
 
+/// Os cantos do laço quadrado: a última aresta pára 4 px antes do começo (a corda do Solid fecha-o).
+const CANTOS: [[f32; 2]; 5] = [
+    [24.0, 24.0],
+    [104.0, 24.0],
+    [104.0, 104.0],
+    [24.0, 104.0],
+    [24.0, 28.0],
+];
+
 /// O laço com a pressão `p` constante e os ajustes `f` aplicados ao pincel.
 pub(super) fn laco_com(meio: PaintMedia, p: f32, f: &dyn Fn(&mut PainterTool)) -> PainterTool {
+    laco_pelos(meio, p, f, &CANTOS)
+}
+
+/// O traço pela poligonal `cantos`, 10 eventos por aresta.
+fn laco_pelos(
+    meio: PaintMedia,
+    p: f32,
+    f: &dyn Fn(&mut PainterTool),
+    cantos: &[[f32; 2]],
+) -> PainterTool {
     use ph2d_editor_core::tool::CanvasPointer;
     let ptr = |pos: [f32; 2], phase| CanvasPointer {
         pos,
@@ -88,13 +107,6 @@ pub(super) fn laco_com(meio: PaintMedia, p: f32, f: &dyn Fn(&mut PainterTool)) -
     t.set_brush_color_srgb8([220, 40, 40]);
     t.paint.brush.style_solid = true;
     f(&mut t);
-    let cantos = [
-        [24.0f32, 24.0],
-        [104.0, 24.0],
-        [104.0, 104.0],
-        [24.0, 104.0],
-        [24.0, 28.0],
-    ];
     t.on_canvas_pointer(ptr(cantos[0], PointerPhase::Down));
     for w in cantos.windows(2) {
         for k in 1..=10 {
@@ -110,7 +122,7 @@ pub(super) fn laco_com(meio: PaintMedia, p: f32, f: &dyn Fn(&mut PainterTool)) -
             t.paint_tick(1.0 / 60.0);
         }
     }
-    t.on_canvas_pointer(ptr(cantos[4], PointerPhase::Up));
+    t.on_canvas_pointer(ptr(cantos[cantos.len() - 1], PointerPhase::Up));
     t
 }
 
@@ -178,22 +190,31 @@ pub(super) fn mais_opaco(t: &PainterTool) -> u8 {
     t.canvas_rgba.chunks(4).map(|p| p[1]).min().expect("tela")
 }
 
-/// ⭐ **NENHUM TEXEL DO GESTO COM SOLID PASSA DO TECTO DO TRAÇO** (smoke do dono 2026-10-06: *«a
-/// cor central do solid não respeita o strength do pincel e fica mais escura»*) — no Digital e no
-/// Impasto, com Strength e Flow baixos: o texel mais opaco do gesto com Solid é o do traço SEM Solid
-/// (a mancha leva cada texel só até o tecto, nunca compõe por cima), e o miolo da mancha tem a
-/// opacidade do traço. Vermelho antes: a mancha a `0,4` por cima de um traço a `0,163`.
+/// ⭐ **A MANCHA NUNCA COMPÕE POR CIMA DO TRAÇO, E O MIOLO TEM A OPACIDADE DE UMA PASSAGEM** (smoke do dono
+/// 2026-10-06: *«a cor central do solid não respeita o strength do pincel e fica mais escura»*) — no Digital e no
+/// Impasto, com Strength e Flow baixos. Desde que o Flow é a TAXA até o tecto da Strength (Accumulate off, 24/10)
+/// o traço sozinho já não é plano: os cantos acumulam acima da passagem única. Por isso: (1) o miolo da mancha tem a
+/// opacidade do CENTRO do traço (uma passagem), e (2) fora da corda que fecha o laço cada texel do gesto é
+/// `max(traço, mancha)` — nunca mais opaco que o traço sozinho E que o miolo, ao mesmo tempo. Vermelho antes: a
+/// mancha a `0,4` por cima de um traço a `0,163` (#40); com a lei do Flow, a mancha ao máximo do traço (Strength
+/// 1 · Flow 0,3: miolo `1,0` contra o traço `0,81`) e a corda somada à mancha (Strength 0,4 · Flow 0,3: `0,39`).
 #[test]
 fn a_mancha_obedece_ao_tecto_do_traco() {
     type Ajuste = (&'static str, fn(&mut PainterTool));
-    let casos: [Ajuste; 3] = [
+    let casos: [Ajuste; 5] = [
         ("Strength 0,4", |t| t.paint.brush.strength = 0.4),
         ("Strength 0,7", |t| t.paint.brush.strength = 0.7),
         ("Strength 0,4 + Flow 0,3", |t| {
             t.paint.brush.strength = 0.4;
             t.paint.brush.flow = 0.3;
         }),
+        ("Strength 1 + Flow 0,3", |t| t.paint.brush.flow = 0.3),
+        ("Strength 0,4 + Flow 1", |t| {
+            t.paint.brush.strength = 0.4;
+            t.paint.brush.flow = 1.0;
+        }),
     ];
+    let g = |t: &PainterTool, x: usize, y: usize| t.canvas_rgba[(y * 128 + x) * 4 + 1];
     for meio in [PaintMedia::Digital, PaintMedia::Impasto] {
         for (nome, f) in casos {
             let com = laco_com(meio, 1.0, &f);
@@ -201,25 +222,60 @@ fn a_mancha_obedece_ao_tecto_do_traco() {
                 f(t);
                 t.paint.brush.style_solid = false;
             });
-            let (g_com, g_sem) = (mais_opaco(&com), mais_opaco(&sem));
-            // ⚠️ `2` níveis e não `1`, MEDIDO (BUGS #41, `diag_o_tecto_da_mancha_por_strength`): com a
-            // Strength aplicada uma vez o tecto subiu de `0,163` para `0,4`, e no texel onde os dabs da
-            // CORDA se empilham sobre o começo do laço (22, 26 — fora da mancha) o arredondamento da
-            // mistura com a cor vermelha soma `+2` (Digital 0,4 · Impasto 0,7). Ablação: com tinta
-            // PRETA o Digital passa `0` em toda Strength (`diag_onde_a_mancha_passa_do_tecto`
-            // acha o texel). Não é a mancha a compor por cima: essa passava dezenas de níveis (o #40).
+            // (1) O centro do traço, longe dos cantos: uma passagem.
+            let (miolo, centro) = (g(&com, 64, 64), g(&sem, 64, 24));
             assert!(
-                g_com + 2 >= g_sem,
-                "{meio:?} {nome}: o gesto com Solid passou do tecto do traço (G {g_com} contra {g_sem})"
-            );
-            let miolo = com.canvas_rgba[(64 * 128 + 64) * 4 + 1];
-            assert!(
-                miolo.abs_diff(g_sem) <= 2,
-                "{meio:?} {nome}: o miolo da mancha (G {miolo}) não tem a opacidade do traço (G {g_sem})"
+                miolo.abs_diff(centro) <= 2,
+                "{meio:?} {nome}: o miolo da mancha (G {miolo}) não tem a opacidade do centro do traço (G {centro})"
             );
             assert!(
                 miolo < 250,
                 "controlo: {meio:?} {nome}: a mancha pintou o miolo"
+            );
+            // (2) `max`, nunca a soma — fora da corda (de (24, 28) a (24, 24), raio 6: ela é traço que o gesto
+            // sem Solid não tem; o gate abaixo mede-a). Tolerância `3`, MEDIDA: o traço e o complemento da mancha
+            // são dois `over` em 8 bits sobre o mesmo texel (Strength 0,4 · Flow 1: `166` contra `169`, já no HEAD
+            // de antes da lei do Flow; depois, todo excesso é `3` e nenhum maior).
+            for y in 0..128usize {
+                for x in 0..128usize {
+                    let dy = y.saturating_sub(28).max(24usize.saturating_sub(y));
+                    if x.abs_diff(24).pow(2) + dy.pow(2) <= 9 * 9 {
+                        continue;
+                    }
+                    let (c, s) = (g(&com, x, y), g(&sem, x, y));
+                    assert!(
+                        u16::from(c) + 3 >= u16::from(s.min(miolo)),
+                        "{meio:?} {nome}: em ({x}, {y}) o gesto com Solid (G {c}) passou do traço (G {s}) e do miolo (G {miolo}) — a mancha somou-se"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// ⭐ **A CORDA QUE FECHA A FORMA TEM A OPACIDADE DO TRAÇO** — num «U» a corda (de (104, 24) de volta a (24, 24))
+/// é uma aresta inteira sem traço por baixo: no meio dela o gesto tem a opacidade do centro de uma perna, não a da
+/// corda SOMADA à mancha. Com o Flow como taxa (Accumulate off) a corda carimbada por cima da mancha subia o texel
+/// do nível dela para o tecto da Strength; a corda vai ANTES da mancha (`stamp_solid_loops_with_chord`).
+#[test]
+fn a_corda_tem_a_opacidade_do_traco() {
+    const U: [[f32; 2]; 4] = [[24.0, 24.0], [24.0, 104.0], [104.0, 104.0], [104.0, 24.0]];
+    let g = |t: &PainterTool, x: usize, y: usize| t.canvas_rgba[(y * 128 + x) * 4 + 1];
+    for meio in [PaintMedia::Digital, PaintMedia::Impasto] {
+        for (s, fl) in [(0.4f32, 0.3f32), (1.0, 0.3), (0.4, 1.0)] {
+            let f = |t: &mut PainterTool| {
+                t.paint.brush.strength = s;
+                t.paint.brush.flow = fl;
+            };
+            let t = laco_pelos(meio, 1.0, &f, &U);
+            let (corda, perna) = (g(&t, 64, 24), g(&t, 24, 64));
+            assert!(
+                perna < 250,
+                "controlo: {meio:?} S {s} F {fl}: a perna pintou"
+            );
+            assert!(
+                corda.abs_diff(perna) <= 3,
+                "{meio:?} Strength {s} · Flow {fl}: o meio da corda (G {corda}) contra o centro da perna (G {perna})"
             );
         }
     }

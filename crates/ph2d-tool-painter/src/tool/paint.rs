@@ -149,6 +149,7 @@ pub mod ponta; // as linhas da PONTA (L9 o grão · L18 o píxel · L19 as image
 mod traco_orla; // a ORLA do traço (L8): a distância exacta ao contorno visível, sem janela que mude um bit
 mod traco_plano; // o PLANO do traço: o tecto, as orlas (L8) e a cauda re-pintada (L5), só no Digital
 mod traco_settings; // as portas do painel do traço (L8) e do modo sobre o vazio (L7)
+mod uma_passagem; // o nível de UMA passagem do traço: a fronteira da orla e o alvo da mancha do Solid
 mod wetpaint_commit;
 pub mod wetpaint_preset; // o preset do Wet Painter: aplicar / capturar / miniatura (W1, NewFeaturesWetPaint/02 §5) // as configurações que o estado inicial de uma macro leva (crate::macro_track)
 pub(crate) use macro_estado::ErroDoEstado;

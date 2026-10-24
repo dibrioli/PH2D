@@ -121,6 +121,7 @@ impl PainterTool {
             // deste quadro é o polígono da tinta deste quadro.
             self.note_ink_path(dabs);
             self.stamp_dabs_dispatch(dabs);
+            self.observa_a_passagem_do_solid(dabs);
             // ⚠️ **A MANCHA É A ÚLTIMA ESCRITA DO EVENTO, e por isso ela NÃO corre aqui** (auditoria
             // do Enio, 2026-08-15). O instantâneo da transação tem de conter toda a tinta CUMULATIVA
             // do evento e nenhuma transitória — e os FIOS (Sketchy / Wire) são cumulativos e caem
@@ -295,6 +296,8 @@ impl PainterTool {
     pub(super) fn stroke_cover_wanted(&self, brush: &BrushSpec) -> bool {
         !brush.accumulate
             && (brush.strength < 1.0
+                // O Flow é a taxa até o tecto (`cover_add`): à Strength 1 o texel pára no peso do dab como a 0,99.
+                || brush.flow < 1.0
                 // Film AA (BUGS #16): a fractional rim texel must CAP at its area fraction — the old
                 // premise ("the cap is observable only under Strength < 1") is false once a texel's
                 // target alpha is fractional at full strength, because overlapping dabs would build

@@ -20,6 +20,7 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("dabs", TRACO),
     ("solid_path", TRACO),
     ("solid_fill_owed", TRACO),
+    ("solid_passagem", TRACO),
     ("pending_threads", TRACO),
     (
         "seed",

@@ -98,6 +98,10 @@ pub struct ToolBars {
     /// por cima da arte e por baixo das réguas e gizmos (F17: a vista de interface do vetor). Vem
     /// com as barras porque só vale com a ferramenta do módulo na mão. `None` = palco limpo.
     pub stage_tint: Option<ColorToken>,
+    /// ⭐ Estas barras são as do PINTOR, que o chrome deriva da lista do trilho em todo quadro
+    /// ([`crate::screens::hero::painter_column`]), e não as de um módulo. Um módulo que larga a mão só
+    /// limpa as SUAS: sem esta marca, o vetor inactivo apagaria a coluna do pintor em todo quadro.
+    pub painter_rail: bool,
 }
 
 impl ToolBars {

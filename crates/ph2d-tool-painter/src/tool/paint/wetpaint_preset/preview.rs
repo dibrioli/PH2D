@@ -90,6 +90,8 @@ pub struct CenaDoPreview {
     /// A ferramenta molhada do pincel (J4 `mistura`): só a MINIATURA a usa — uma ferramenta que não pinta mostra-se a
     /// mexer numa faixa de tinta ([`pintar_miniatura`]); o preview vivo pinta sempre o pincel.
     ferramenta: super::super::wetpaint_settings::WetTool,
+    /// A ferramenta do trilho que MEXE na tinta (dono 23/10): o preview vivo cruza-a com a tinta de referência.
+    modificador: Option<super::preview_modificador::Modificador>,
     /// O que o pincel leva fora do `BrushSpec` e dos knobs (22/10: as Grain Colors, a ponta de N imagens, o
     /// dual de imagem e o Composite não chegavam ao preview).
     fora: ForaDoSpec,
@@ -145,6 +147,7 @@ pub struct ChaveDoPreview {
     largura: Option<u64>,
     /// A Shape Color: ligada, B&W e a versão da rampa (cada setter da secção e das camadas a sobe).
     shape_color: (bool, bool, u64),
+    modificador: Option<super::preview_modificador::Modificador>,
     fora: ChaveForaDoSpec,
 }
 
@@ -177,6 +180,7 @@ impl PainterTool {
             largura: w.largura.clone(),
             shape_color: self.shape_color_estado(),
             ferramenta: w.tool,
+            modificador: super::preview_modificador::Modificador::de(self),
             fora: self.fora_do_spec(),
         }
     }
@@ -229,6 +233,7 @@ impl PainterTool {
                 self.paint.shape_color_ramp_bw,
                 self.paint.shape_ramp_version,
             ),
+            modificador: super::preview_modificador::Modificador::de(self),
             fora: ChaveForaDoSpec {
                 rampa_do_grao: (
                     self.paint.texture_ramp.clone(),
@@ -299,7 +304,9 @@ impl PainterTool {
         w.largura.clone_from(&c.largura);
         self.set_shape_color_estado(&c.shape_color);
         self.instalar_fora_do_spec(&c.fora);
-        self.paint.eraser = false;
+        // A borracha só no preview VIVO, a cruzar a tinta de referência; a miniatura mostra o que o pincel deposita.
+        self.paint.eraser =
+            exata && c.modificador == Some(super::preview_modificador::Modificador::Borracha);
         self.invalidate_composite();
     }
 
@@ -479,10 +486,62 @@ pub fn pintar_preview(
     let mut t = PainterTool::default();
     let fundo = if cena.papel.is_some() { 0u8 } else { 255 };
     t.set_source(vec![fundo; (lw * lh * 4) as usize], lw, lh);
-    t.set_paint_media(cena.meio);
     t.set_wet_relogio_fixo(true);
+    let Some(m) = cena.modificador else {
+        t.set_paint_media(cena.meio);
+        t.instalar_cena(cena, true);
+        return gesto_do_preview(&mut t, lw, lh, Trajeto::S, deve_parar, emite);
+    };
+    // ⭐ A ferramenta que mexe na tinta: a faixa vertical de referência primeiro, e ela por cima, na
+    // horizontal — o meio, o modo (pela porta do trilho) e depois o pincel dela, como na tela.
+    super::preview_modificador::pinta_a_referencia(&mut t, lw, lh);
+    t.set_paint_media(cena.meio);
+    t.set_paint_tool_mode(m.fio());
     t.instalar_cena(cena, true);
-    gesto_do_preview(&mut t, lw, lh, deve_parar, emite)
+    if m == super::preview_modificador::Modificador::Clone {
+        let (x0, _, cy, _) = trajeto(&t, lw, lh, Trajeto::Horizontal);
+        super::preview_modificador::fonte_do_clone(&mut t, [x0, cy], lw);
+    }
+    // O que a borracha apaga fica transparente; sem papel do documento por baixo, o painel mostrá-lo-ia ESCURO (um
+    // traço preto). Compõe-se sobre o branco da tela, como a obra sobre a folha.
+    if cena.papel.is_some() {
+        return gesto_do_preview(&mut t, lw, lh, Trajeto::Horizontal, deve_parar, emite);
+    }
+    gesto_do_preview(
+        &mut t,
+        lw,
+        lh,
+        Trajeto::Horizontal,
+        deve_parar,
+        &mut |px, w, h| {
+            emite(&super::preview_modificador::sobre_o_branco(px), w, h);
+        },
+    )
+}
+
+/// O caminho do gesto: o S do pincel, ou a recta horizontal da ferramenta que cruza a tinta de referência.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Trajeto {
+    S,
+    Horizontal,
+}
+
+/// `(x0, x1, cy, amplitude)` do gesto em `t`, na tela `lw × lh`.
+fn trajeto(t: &PainterTool, lw: u32, lh: u32, tr: Trajeto) -> (f32, f32, f32, f32) {
+    let d = (t.paint.brush.radius_px * 2.0).max(1.0);
+    let (l, a) = (lw as f32, lh as f32);
+    let margem = d.max(24.0).min(l * 0.25);
+    match tr {
+        // O S no terço de cima: por baixo cabem ~2,9 diâmetros de fios (medido na tela 1:1, Tilt no máximo,
+        // água 1: Wet Round 0,7–0,8 d, Wet Wash 2,4–2,8 d — `medida_preview::sonda_a_tela_escorre`).
+        Trajeto::S => (
+            margem,
+            l - margem,
+            a * 0.22,
+            (0.75 * d).clamp(16.0, 0.1 * a),
+        ),
+        Trajeto::Horizontal => (margem, l - margem, a * 0.5, 0.0),
+    }
 }
 
 /// A tela do preview exato para um pincel de raio `raio_px`: `10 ×` o diâmetro, 2:1.
@@ -499,16 +558,11 @@ pub(super) fn gesto_do_preview(
     t: &mut PainterTool,
     lw: u32,
     lh: u32,
+    tr: Trajeto,
     deve_parar: &dyn Fn() -> bool,
     emite: &mut dyn FnMut(&[u8], u32, u32),
 ) -> bool {
-    let d = (t.paint.brush.radius_px * 2.0).max(1.0);
-    let (l, a) = (lw as f32, lh as f32);
-    let margem = d.max(24.0).min(l * 0.25);
-    // O S no terço de cima: por baixo cabem ~2,9 diâmetros de fios (medido na tela 1:1, Tilt no máximo,
-    // água 1: Wet Round 0,7–0,8 d, Wet Wash 2,4–2,8 d — `medida_preview::sonda_a_tela_escorre`).
-    let (x0, x1, cy) = (margem, l - margem, a * 0.22);
-    let amp = (0.75 * d).clamp(16.0, 0.1 * a);
+    let (x0, x1, cy, amp) = trajeto(t, lw, lh, tr);
     let n = ((x1 - x0) / PASSO_PX).ceil() as u32;
     let cada = n.div_ceil(QUADROS_DO_TRACO).max(1);
     let em = |f: f32| {
@@ -557,7 +611,7 @@ pub(super) fn gesto_do_preview(
 
 /// Reduz `px` (`w×h`) a `ow×oh` pela MÉDIA da área de cada pixel de saída (o painel mostra a obra
 /// inteira; o vizinho mais próximo perderia os fios finos).
-fn reduz(px: &[u8], w: u32, h: u32, ow: u32, oh: u32) -> Vec<u8> {
+pub(super) fn reduz(px: &[u8], w: u32, h: u32, ow: u32, oh: u32) -> Vec<u8> {
     let (w, h, ow, oh) = (w as usize, h as usize, ow as usize, oh as usize);
     let mut out = vec![0u8; ow * oh * 4];
     for oy in 0..oh {

@@ -248,3 +248,44 @@ fn foto_do_same_as_paper() {
         .unwrap();
     }
 }
+
+/// **O painel e o preview de cada ferramenta do trilho** (dono 23/10): o que o painel mostra com a ferramenta na
+/// mão e, nas que mexem na tinta, a faixa de referência cruzada por ela. `PH2D_FOTO_DIR=<pasta>
+/// cargo test -p ph2d-app-painter --features panel-painter-layers foto_das_ferramentas -- --ignored`.
+#[test]
+#[ignore = "foto do painel por ferramenta — PH2D_FOTO_DIR=<pasta> e --ignored"]
+fn foto_das_ferramentas() {
+    let Ok(dir) = std::env::var("PH2D_FOTO_DIR") else {
+        return;
+    };
+    let sufixo = std::env::var("PH2D_FOTO_SUFIXO").unwrap_or_else(|_| "depois".into());
+    let gpu = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None)
+        .expect("a foto precisa da placa");
+    std::fs::create_dir_all(&dir).unwrap();
+    for modo in ["brush", "eraser", "blur", "smear", "clone", "mask"] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
+        t.set_paint_media(PaintMedia::Digital);
+        t.set_paint_tool_mode(modo);
+        t.set_brush_size_px(16.0);
+        t.set_brush_color_srgb8([30, 60, 220]);
+        let mut ultimo = None;
+        assert!(pintar_preview(
+            &t.wet_preview_cena(),
+            &|| false,
+            &mut |px, w, h| ultimo = Some((Arc::new(px.to_vec()), w, h))
+        ));
+        set_current_wet_preview(ultimo);
+        let h = 1600;
+        let px = foto_de_altura(&gpu, &t, 0.0, false, h);
+        set_current_wet_preview(None);
+        image::save_buffer(
+            format!("{dir}/ferramenta_{modo}_{sufixo}.png"),
+            &px,
+            W,
+            h,
+            image::ExtendedColorType::Rgba8,
+        )
+        .unwrap();
+    }
+}

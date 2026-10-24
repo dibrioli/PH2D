@@ -69,6 +69,7 @@ pub(crate) fn declara_aparencia(
     brush: BrushSettings,
 ) {
     use crate::paint_brush_top::paint_randomize_section;
+    use ph2d_tool_painter::LinhaDaFerramenta;
     use ph2d_tool_painter::ids as pids;
 
     // ── **Paint Mode** — the paint's MEDIUM, and then that medium's own section and no other.
@@ -133,7 +134,7 @@ pub(crate) fn declara_aparencia(
     plano.seccao(
         pids::PAINTER_BRUSH_RANDOMIZE_SECTION,
         move |ctx, theme, y| {
-            if !brush.paints_no_color() && !brush.eraser && !brush.is_mask {
+            if brush.le(LinhaDaFerramenta::Randomize) {
                 paint_randomize_section(ctx, theme, x, content_w, y, brush)
             } else {
                 y
@@ -220,7 +221,7 @@ pub(crate) fn declara_aparencia(
     plano.seccao(
         pids::PAINTER_BRUSH_SYMMETRY_SECTION,
         move |ctx, theme, y| {
-            if fora && !brush.is_clone {
+            if fora && brush.le(LinhaDaFerramenta::Simetria) {
                 crate::paint_symmetry::paint_symmetry_section(ctx, theme, x, content_w, y, brush)
             } else {
                 y

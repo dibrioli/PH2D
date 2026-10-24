@@ -217,7 +217,9 @@ fn paint_fim_do_traco(
     };
     use ph2d_tool_painter::{MAX_FALL_OFF_DIAMETERS, PaintMedia};
     let t = brush.taper;
-    let digital = PaintMedia::from_u8(brush.media) == PaintMedia::Digital;
+    // A cauda é re-pintada pelo plano do traço: só no Digital e só na ferramenta que o tem.
+    let digital = PaintMedia::from_u8(brush.media) == PaintMedia::Digital
+        && brush.le(ph2d_tool_painter::LinhaDaFerramenta::TracoComoCamada);
     let linhas = [
         (
             "panel.painter_layers.taper.end",

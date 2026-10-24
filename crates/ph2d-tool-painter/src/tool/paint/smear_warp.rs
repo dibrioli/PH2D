@@ -113,8 +113,8 @@ impl PainterTool {
         // a pilha acumula as outras camadas com a MESMA imagem.
         let shape_image = self.paint.shape_image.clone();
         let grain_image = self.paint.texture_image.clone();
-        let shape_ramp_lut = (self.paint.shape_color_ramp_enabled
-            && self.paint.shape_color_ramp_bw)
+        let shape_ramp_lut = self
+            .shape_tom_ativo()
             .then_some(self.paint.shape_ramp_lut.clone());
         let shape_active = base.shape_silhouette_active(shape_image.is_some());
         let grain_active = base.texture.is_active();
@@ -339,8 +339,13 @@ impl TrabalhoDoCampo {
                 outro => outro,
             };
             if let Some((prev, _)) = fonte {
+                // A mão DESTE dab (`BrushSpec::at_dab`): a dureza da pressão e da velocidade e o grão que a caneta
+                // deitada alisa — como no pincel, na borracha, no Blur e no Clone. Sem mão, o pincel ao bit.
+                let mao = spec_base.at_dab(d);
                 let spec = BrushSpec {
                     radius_px: d.radius_px,
+                    hardness: mao.hardness,
+                    grain_depth: mao.grain_depth,
                     ..spec_base
                 };
                 let fp = spec.dab_footprint_of(d);

@@ -9,7 +9,8 @@
 //!
 //! ⚠️ Arma onde o plano arma (o Digital, um traço livre que pinta: [`PainterTool::plano_recusado`]) e no **Wet Paint**
 //! que pinta: lá a máscara é do traço e recorta a SILHUETA de cada dab que pousa pigmento (e o relevo que ele penteia)
-//! — [`RecorteNoWet`], na `wetpaint/dab_route`. A aguada e o Impasto não (`DualForaDoDigital`).
+//! — [`RecorteNoWet`], na `wetpaint/dab_route`. A aguada e o Impasto não (`DualForaDoDigital`). No Digital arma
+//! também na borracha, no Blur, no Smear e no Clone ([`super::dual_ferramenta`]).
 
 use std::mem::swap;
 use std::sync::Arc;
@@ -246,6 +247,7 @@ impl PainterTool {
             return (!pousa).then_some(super::traco_plano::SemPlano::ForaDoTraco);
         }
         self.plano_recusado()
+            .filter(|_| !self.ferramenta_com_dual())
     }
 
     /// O recorte do lote do Wet que pousa pigmento (`pousa`): as marcas pendentes vão para a máscara do traço (nasce
@@ -338,6 +340,8 @@ impl PainterTool {
         // ponta lê a seguir volta intacto (as rotas limpam-no).
         let modo = std::mem::replace(&mut p.paint_mode, super::PaintMode::Paint);
         let composto = std::mem::replace(&mut p.composite_enabled, false);
+        // A máscara PINTA-SE, também com a borracha em mão (`super::dual_ferramenta`).
+        let borracha = std::mem::replace(&mut p.eraser, false);
         let grupos = std::mem::take(&mut p.dab_groups);
         p.brush = d.pincel(&pincel);
         p.acumulando_no_plano = true;
@@ -357,6 +361,7 @@ impl PainterTool {
         p.brush = pincel;
         p.paint_mode = modo;
         p.composite_enabled = composto;
+        p.eraser = borracha;
         p.dab_groups = grupos;
         (
             p.acumulando_no_plano,

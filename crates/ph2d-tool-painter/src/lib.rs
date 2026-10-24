@@ -145,6 +145,7 @@ pub use ph2d_painter_brush::{
     // O traço como uma camada (L8): o painel lê o tecto e as orlas do instantâneo.
     traco::{LARGURA_MAX_PX as TRACO_LARGURA_MAX_PX, TracoComposto},
 };
+pub use tool::paint::ferramenta_linhas::{FerramentaDoPincel, LinhaDaFerramenta, NAO_LE};
 pub use tool::paint::mao::{LINHAS_DA_MAO, LinhaDaMao, MAO_DE_FABRICA, N_LINHAS_DA_MAO};
 pub use tool::paint::marca::{
     CartaoDaMarca, LINHAS_DA_MARCA, LinhaDaMarca, MARCA_DE_FABRICA, N_LINHAS_DA_MARCA,
@@ -158,6 +159,7 @@ pub use tool::paint::wetpaint_preset::{
     OPACIDADE_DE_FABRICA, PedidoPreset, campos_do_meio, meio_do_preset, miniatura_do_preset,
     motor_do_meio, nome_do_meio, pintar_preview,
 };
+pub use tool::paint::wetpaint_preset::{COR_DA_REFERENCIA, Modificador, faixa_da_referencia};
 pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,

@@ -11,12 +11,14 @@ mod as_seccoes_arrastam_e_tem_tema; // o tema e o arrasto das secções do corpo
 mod auditoria_l2_continuous; // AUDITORIA lente 2 (15/10): o Continuous pelo ponteiro — sonda, não portão
 mod cada_nome_deste_painel_cabe_na_coluna_da_seccao;
 mod censo_dos_controlos; // cada controlo pintado, em cada meio, muda o traço (ou diz porquê)
+mod censo_ferramenta_x_linha; // a ferramenta do trilho × cada linha do painel (23/10)
 mod curve_handle_menu_e2e;
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod falloff_drain_repro;
 mod falloff_handle_menu_e2e;
 mod macro_estado_inicial; // o estado inicial de uma macro leva cada controlo do Wet Paint
 mod o_censo_so_encolhe; // o que muda o ajuste e não a tinta: esmaecido ou com motivo na lista
+mod o_painel_mostra_o_que_a_ferramenta_le; // a ferramenta na mão × o painel: os dois lados (23/10)
 mod seam;
 mod seam_accumulate_por_meio; // o Accumulate e o Space Attenuation só onde o meio os oferece
 mod seam_color_inativo; // Bug #51: o Color inativo em Per-Layer Color (12/10)

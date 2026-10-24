@@ -20,6 +20,7 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
+use ph2d_tool_painter::LinhaDaFerramenta;
 use ph2d_tool_painter::ids::{
     painter_brush_blend_option_id, painter_brush_falloff_option_id, painter_brush_preset_option_id,
 };
@@ -160,13 +161,14 @@ fn paint_top_basics(
 
     // 1. Blend · 2. Color — hidden in Smear/Blur/Clone (process pixels) AND Mask (paints a grayscale
     //    value from the ramp/luma, no colour).
-    if !brush.paints_no_color() && !brush.is_mask {
+    // Cada linha pela tabela da ferramenta (`ph2d_tool_painter::NAO_LE`).
+    if brush.le(LinhaDaFerramenta::Cor) {
         // #4 (doc 13): the Blend dropdown is INERT in Watercolor mode — the optical wash deposits
         // source-over + its own Beer–Lambert optics, never `BrushBlend` (the layer's own Blend still
         // applies). Hide the dead control there rather than leave it clickable-but-dead (UI honesty;
         // mirrors the Composite card, which also hides in watercolor). KEEP Color — the wash's pigment
         // IS the brush colour. Not painted ⇒ not hit-indexed ⇒ inert; the `populate` register stays.
-        if !brush.watercolor {
+        if !brush.watercolor && brush.le(LinhaDaFerramenta::Blend) {
             let (ny, blend_open) = crate::paint_brush_rows::paint_dropdown_row(
                 ctx,
                 theme,
@@ -268,15 +270,7 @@ fn paint_top_basics(
     //     the card would be painted-but-inert there too. It also has a second-order bite — see
     //     `BrushSettings::paints_no_color`, which the Composite checkbox used to be able to switch OFF,
     //     bringing Blend / Colour / Accumulate / Randomize back into a mode that writes no pigment at all.
-    if !brush.is_smear
-        && !brush.is_blur
-        && !brush.is_clone
-        && !brush.eraser
-        && !brush.is_mask
-        && !brush.is_inpaint
-        && !brush.is_sculpt
-        && !brush.watercolor
-    {
+    if brush.le(LinhaDaFerramenta::Composite) && !brush.watercolor {
         y = crate::paint_composite::paint_composite_card(ctx, theme, x, content_w, y, brush);
     }
 

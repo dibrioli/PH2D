@@ -235,6 +235,10 @@ impl PainterTool {
         if self.traco_no_plano() {
             return self.lote_no_plano(dabs, mask_gate, sel_gate);
         }
+        // A borracha, o Blur, o Smear e o Clone com a 2.ª ponta (L6, `super::dual_ferramenta`).
+        if self.dual_na_ferramenta() {
+            return self.lote_da_ferramenta(dabs, mask_gate, sel_gate);
+        }
         if (mask_gate || sel_gate)
             && let Some(region) = self.dab_batch_region(dabs)
         {
@@ -257,12 +261,19 @@ impl PainterTool {
 
     /// As marcas da 2.ª ponta (L6) que nenhum lote levou — o fim do traço, antes da cauda e do fecho.
     pub(super) fn descarrega_o_dual(&mut self) {
-        if self.dual_pendente() && self.traco_no_plano() {
+        let (plano, ferramenta) = (self.traco_no_plano(), self.dual_na_ferramenta());
+        if self.dual_pendente() && (plano || ferramenta) {
             let (mask_gate, sel_gate) = (
                 self.mask_protection_active(),
                 self.selection_restricts_paint(),
             );
-            self.como_fim_do_dual(|t| t.lote_no_plano(&[], mask_gate, sel_gate));
+            self.como_fim_do_dual(|t| {
+                if plano {
+                    t.lote_no_plano(&[], mask_gate, sel_gate);
+                } else {
+                    t.lote_da_ferramenta(&[], mask_gate, sel_gate);
+                }
+            });
         }
     }
 
@@ -309,6 +320,15 @@ impl PainterTool {
         if self.composite_active() {
             self.stamp_dabs_composite(dabs);
             return;
+        }
+        // A ponta de PÍXEL (L18) no Blur, no Smear e no Clone: a pegada binária na grelha (`pixel_route`).
+        if self.pixel_vivo(&self.paint.brush)
+            && matches!(
+                self.paint.paint_mode,
+                PaintMode::Blur | PaintMode::Smear | PaintMode::Clone
+            )
+        {
+            return self.ferramenta_de_pixel(dabs);
         }
         if self.paint.paint_mode.smears() {
             let (w, h) = self.source_size;

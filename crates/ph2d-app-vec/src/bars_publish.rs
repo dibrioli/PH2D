@@ -90,7 +90,8 @@ pub fn publish(
     px_to_world: f64,
 ) {
     if !vector_active {
-        if hero.store.tool_bars().is_some() {
+        // Só as SUAS: a coluna do pintor é do chrome e ele a limpa (`painter_column::publish`).
+        if hero.store.tool_bars().is_some_and(|b| !b.painter_rail) {
             hero.store.set_tool_bars(None);
             hero.store.set_area_commands(Vec::new(), Vec::new());
         }
@@ -106,4 +107,37 @@ pub fn publish(
     // F16: o vetor já não publica pulldowns de área — a ② é a barra de controle dele (o encaixe
     // voltou ao painel; os verbos do caminho estão na ④).
     hero.store.set_area_commands(Vec::new(), Vec::new());
+}
+
+#[cfg(test)]
+mod tests {
+    use ph2d_editor_core::interaction::ToolBars;
+    use ph2d_editor_core::screens::hero::HeroScreen;
+    use ph2d_vec_scene::{VecScene, VecXforms};
+
+    /// O vetor inactivo limpa as SUAS barras e deixa a coluna do pintor (que o chrome publica) em paz.
+    #[test]
+    fn the_idle_vector_clears_its_bars_and_never_the_painters_column() {
+        let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
+        let (scene, pen, xf) = (
+            VecScene::default(),
+            ph2d_vec_edit::PenTool::new(),
+            VecXforms::default(),
+        );
+        hero.store.set_tool_bars(Some(ToolBars {
+            painter_rail: true,
+            ..ToolBars::default()
+        }));
+        super::publish(&mut hero, &scene, &pen, &xf, false, false, 1.0);
+        assert!(
+            hero.store.tool_bars().is_some(),
+            "o vetor inactivo apagou a coluna do pintor"
+        );
+        hero.store.set_tool_bars(Some(ToolBars::default()));
+        super::publish(&mut hero, &scene, &pen, &xf, false, false, 1.0);
+        assert!(
+            hero.store.tool_bars().is_none(),
+            "controlo: o vetor inactivo deixou as suas barras"
+        );
+    }
 }

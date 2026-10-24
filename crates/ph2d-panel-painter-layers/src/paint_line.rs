@@ -86,8 +86,10 @@ pub(crate) fn paint_line_card(
     //    anterior contava cada barra como `vão + ROW_H` enquanto o pintor avançava `row_pitch`, e o
     //    chip do tipo como `ROW_H` enquanto ele avançava `row_pitch` — duas aritméticas da mesma
     //    pergunta, que só concordavam enquanto os dois vãos fossem iguais.
+    // O «Solid» só na ferramenta que deposita (`ph2d_tool_painter::NAO_LE`).
+    let solido = brush.le(ph2d_tool_painter::LinhaDaFerramenta::Solido);
     let card_h = pad
-        + 2.0 * ph2d_tokens::row_pitch_px()
+        + (1.0 + f32::from(u8::from(solido))) * ph2d_tokens::row_pitch_px()
         + if linhas_do_tipo > 0.0 {
             gap + linhas_do_tipo
         } else {
@@ -121,24 +123,26 @@ pub(crate) fn paint_line_card(
 
     // ⚠️ A coluna do nome é a da secção *Line* (spec §6-quinquies) — as três caixas deste cartão
     // (`Solid`, `Magnetify`, `Connection line`) caem todas no mesmo `x`.
-    let seccao =
-        crate::seccoes::seccao_da_chave(ctx.text_system, "panel.painter_layers.line.solid");
-    let cb = Checkbox::new(
-        ph2d_tool_painter::ids::PAINTER_LINE_SOLID,
-        tr("panel.painter_layers.line.solid"),
-    )
-    .value(if brush.style_solid {
-        CheckboxValue::Checked
-    } else {
-        CheckboxValue::Unchecked
-    })
-    .seccao(seccao);
-    let cb_rect = Rect::new(ix, iy, iw, ROW_H_PX);
-    paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
-    ctx.host
-        .hit_index_mut()
-        .register(ph2d_tool_painter::ids::PAINTER_LINE_SOLID, cb_rect);
-    iy += ph2d_tokens::row_pitch_px();
+    if solido {
+        let seccao =
+            crate::seccoes::seccao_da_chave(ctx.text_system, "panel.painter_layers.line.solid");
+        let cb = Checkbox::new(
+            ph2d_tool_painter::ids::PAINTER_LINE_SOLID,
+            tr("panel.painter_layers.line.solid"),
+        )
+        .value(if brush.style_solid {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        })
+        .seccao(seccao);
+        let cb_rect = Rect::new(ix, iy, iw, ROW_H_PX);
+        paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
+        ctx.host
+            .hit_index_mut()
+            .register(ph2d_tool_painter::ids::PAINTER_LINE_SOLID, cb_rect);
+        iy += ph2d_tokens::row_pitch_px();
+    }
 
     let (ny, open) = crate::paint_brush_rows::paint_dropdown_row(
         ctx,

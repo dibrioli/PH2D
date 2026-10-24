@@ -221,7 +221,9 @@ pub fn bar_rail(
     // ⚠️ A FACE de cada um é uma leitura (*qual é a vista agora*, *qual é o verbo do gizmo*), e é
     // por isso que ela vem do store em vez de ser o rótulo: um chip que diz sempre a mesma coisa
     // não distingue os estados que abre.
-    if module.is_none() && !store.area_menus().is_empty() {
+    // A coluna do PINTOR não é um módulo com barra de controle (F16): o seletor de modo continua na fila — é por
+    // ele que se sai do modo Paint (`painter_column`).
+    if module.is_none_or(|b| b.painter_rail) && !store.area_menus().is_empty() {
         entries.push(crate::widget::ToolRailEntry::Divider);
         for (slot, menu) in store.area_menus().iter().enumerate() {
             entries.push(

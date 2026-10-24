@@ -177,8 +177,8 @@ impl PainterTool {
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         // Shape **tone** ramp applies when its B&W filter is on (the Grain owns colour); see
         // `stamp_dabs_ramped` (Enio 2026-06-26).
-        let shape_ramp_lut = (self.paint.shape_color_ramp_enabled
-            && self.paint.shape_color_ramp_bw)
+        let shape_ramp_lut = self
+            .shape_tom_ativo()
             .then_some(self.paint.shape_ramp_lut.as_slice());
         let Some(cache) = self.paint.canvas_tex_cache.as_mut() else {
             self.undo.marca.devolve_o_plano(plano, None);
@@ -275,8 +275,8 @@ impl PainterTool {
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         // Shape **tone** ramp applies when its B&W filter is on (the Grain owns colour); see
         // `stamp_dabs_ramped` (Enio 2026-06-26).
-        let shape_ramp_lut = (self.paint.shape_color_ramp_enabled
-            && self.paint.shape_color_ramp_bw)
+        let shape_ramp_lut = self
+            .shape_tom_ativo()
             .then_some(self.paint.shape_ramp_lut.as_slice());
         let shape_active = brush.shape_silhouette_active(shape_image.is_some());
         // A dab's wrapped Tiling copies must share ONE random frame (see `tiling::DabRng`).
@@ -481,7 +481,9 @@ impl PainterTool {
             image_version: self.versao_da_imagem_do_grain(),
             shape: brush.shape,
             shape_image_version: self.paint.shape_image_version,
-            shape_ramp_version: self.paint.shape_ramp_version,
+            // O tom liga e desliga com a ferramenta (a borracha, o Smear): a máscara assada é outra.
+            shape_ramp_version: self.paint.shape_ramp_version
+                ^ (u64::from(self.shape_tom_ativo()) << 63),
             grain_depth: brush.grain_depth,
             granulation: brush.effective_granulation(),
             dab_flatten: brush.dab_flatten,

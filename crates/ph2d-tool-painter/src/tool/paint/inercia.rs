@@ -57,7 +57,7 @@ pub enum Dependente {
     // A profundidade do grão por dab (L9): o mínimo e o controlo só leem o que o jitter faz variar.
     ProfundidadeSemJitter,
     // O dual brush (L6) recorta o traço composto como CAMADA (`traco_plano`, o Digital) ou o pigmento que pousa (o
-    // Wet): a aguada e o Impasto não; e só num traço livre que pinta.
+    // Wet): a aguada e o Impasto não; e só num traço livre que pinta, apaga, borra, esfrega ou clona (`dual_ferramenta`).
     DualForaDoDigital,
     DualForaDoTraco,
     // O atraso da velocidade (J4) só filtra a velocidade que uma lei da velocidade lê.

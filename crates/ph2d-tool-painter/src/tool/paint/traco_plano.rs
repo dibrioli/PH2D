@@ -33,13 +33,28 @@ const LINHAS_POR_TAREFA: usize = 16;
 #[derive(Clone, Debug)]
 pub(crate) struct PlanoDoTraco {
     /// A tela no 1.º lote do traço (o pré-traço).
-    base: Arc<Vec<u8>>,
-    /// O traço em Normal sobre o transparente (RGBA reto).
-    plano: Arc<Vec<u8>>,
+    pub(super) base: Arc<Vec<u8>>,
+    /// O traço em Normal sobre o transparente (RGBA reto); numa ferramenta, a tela LIVRE.
+    pub(super) plano: Arc<Vec<u8>>,
     /// Os LOTES carimbados (só com a cauda armada), cada um com o sorteio com que pintou.
     lotes: Vec<Lote>,
     /// A MÁSCARA da 2.ª ponta do dual brush (L6, [`super::dual`]): o alfa é a união das marcas dela.
-    mascara: Option<Arc<Vec<u8>>>,
+    pub(super) mascara: Option<Arc<Vec<u8>>>,
+    /// O traço de uma FERRAMENTA com o dual ([`super::dual_ferramenta`]): `None` = o plano do pincel.
+    pub(super) ferramenta: Option<Box<super::dual_ferramenta::Ferramenta>>,
+}
+
+impl PlanoDoTraco {
+    /// A sessão de uma FERRAMENTA com o dual sobre a `tela` de agora: a base e a tela livre nascem dela.
+    pub(super) fn da_ferramenta(tela: &Arc<Vec<u8>>) -> Self {
+        Self {
+            base: Arc::clone(tela),
+            plano: Arc::clone(tela),
+            lotes: Vec::new(),
+            mascara: None,
+            ferramenta: Some(Box::default()),
+        }
+    }
 }
 
 /// Porque o plano não arma (o que a linha do painel diz ao esmaecer).
@@ -140,12 +155,13 @@ impl PainterTool {
     fn abre_o_plano(&mut self) -> PlanoDoTraco {
         let n4 = self.canvas_rgba.len();
         match self.paint.plano_do_traco.take() {
-            Some(s) if s.plano.len() == n4 && s.base.len() == n4 => s,
+            Some(s) if s.plano.len() == n4 && s.base.len() == n4 && s.ferramenta.is_none() => s,
             _ => PlanoDoTraco {
                 base: Arc::clone(&self.canvas_rgba),
                 plano: Arc::new(vec![0u8; n4]),
                 lotes: Vec::new(),
                 mascara: None,
+                ferramenta: None,
             },
         }
     }
@@ -173,7 +189,7 @@ impl PainterTool {
     }
 
     /// `r` alargada `m` px, presa à tela.
-    fn alarga(&self, r: Region, m: u32) -> Region {
+    pub(super) fn alarga(&self, r: Region, m: u32) -> Region {
         let (w, h) = self.source_size;
         let x0 = r.x.saturating_sub(m);
         let y0 = r.y.saturating_sub(m);
@@ -294,7 +310,8 @@ impl PainterTool {
         let Some(mut s) = self.paint.plano_do_traco.take() else {
             return;
         };
-        if !self.paint.brush.taper.end_active() {
+        // A cauda é do pincel que pinta no plano; a ferramenta com o dual não a re-pinta.
+        if !self.paint.brush.taper.end_active() || s.ferramenta.is_some() {
             return;
         }
         let Some(cauda) = self.planeia_a_cauda(&s) else {
@@ -471,7 +488,7 @@ struct Cauda {
 }
 
 /// A união de duas janelas que podem faltar.
-fn une(a: Option<Region>, b: Option<Region>) -> Option<Region> {
+pub(super) fn une(a: Option<Region>, b: Option<Region>) -> Option<Region> {
     match (a, b) {
         (Some(a), Some(b)) => Some(union_region(a, b)),
         (a, b) => a.or(b),

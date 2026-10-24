@@ -478,6 +478,15 @@ pub fn rail_entries(store: &WidgetStore, painter_active: bool) -> Vec<ToolRailEn
     // certo fica cheio.*
     let mut rail_entries: Vec<ToolRailEntry> = tool_section(store, painter_active);
     rail_entries.push(ToolRailEntry::Divider);
+    rail_entries.extend(view_entries(store));
+    rail_entries
+}
+
+/// O que a fila tem e NÃO é ferramenta — o espaço, a vista, desfazer/refazer. Com as ferramentas do
+/// pintor na coluna (`painter_column`), é isto que fica na fila de cima.
+#[must_use]
+pub fn view_entries(store: &WidgetStore) -> Vec<ToolRailEntry> {
+    let mut rail_entries: Vec<ToolRailEntry> = Vec::new();
     // Face label reflects the live store state: SPACE toggles
     // Global ↔ Local on click; VIEW cycles Selected → Camera → All.
     let space_face = if store.tool_space_local() {

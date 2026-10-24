@@ -25,6 +25,7 @@ mod medida_preview;
 mod meios;
 mod miniatura;
 mod preview;
+mod preview_modificador;
 #[cfg(test)]
 mod shape_color_tests;
 #[cfg(test)]
@@ -35,6 +36,7 @@ pub use miniatura::{DIAMETRO_DA_MINIATURA, miniatura_do_preset};
 pub use preview::{
     ALTURA_DO_PREVIEW, CenaDoPreview, ChaveDoPreview, LARGURA_DO_PREVIEW, pintar_preview,
 };
+pub use preview_modificador::{COR_DA_REFERENCIA, Modificador, faixa as faixa_da_referencia};
 
 /// O meio-alvo de todo preset desta família (o `media` do JSON).
 pub const MEIO_DO_PRESET: &str = "WetPaint";

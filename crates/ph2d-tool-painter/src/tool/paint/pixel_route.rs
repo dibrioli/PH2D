@@ -148,6 +148,37 @@ impl PainterTool {
         self.paint.pixel_trilhos.zera();
     }
 
+    /// ⭐ **A ponta de píxel no Blur, no Smear e no Clone**: o trilho ancorado e a pegada BINÁRIA — o disco duro do
+    /// diâmetro de píxel no centro do píxel (a pegada de [`pixel::cobre`]), sem a Shape nem o Grain, que a ponta de
+    /// píxel não carimba.
+    pub(super) fn ferramenta_de_pixel(&mut self, dabs: &[Dab]) {
+        let ancorados = if self.paint.pixel_trilhos.ja_ancorado {
+            dabs.to_vec()
+        } else {
+            self.pixel_trilho(dabs, false)
+        };
+        let ancorados: Vec<Dab> = ancorados
+            .into_iter()
+            .map(|d| Dab {
+                radius_px: pixel::diametro(d.radius_px) as f32 * 0.5,
+                ..d
+            })
+            .collect();
+        let pincel = self.paint.brush;
+        let b = &mut self.paint.brush;
+        b.hardness = 1.0;
+        b.borda_px = 0.0;
+        b.shape.kind = ph2d_painter_brush::TextureKind::None;
+        b.texture.kind = ph2d_painter_brush::TextureKind::None;
+        let (w, h) = self.source_size;
+        match self.paint.paint_mode {
+            super::PaintMode::Blur => self.stamp_dabs_blur(&ancorados, w, h),
+            super::PaintMode::Clone => self.stamp_dabs_clone(&ancorados, w, h),
+            _ => self.stamp_dabs_smear(&ancorados, w, h),
+        }
+        self.paint.brush = pincel;
+    }
+
     /// ⭐ **O carimbo de píxel** de um lote já ancorado: binário, a cobertura toda do dab por píxel.
     pub(super) fn stamp_dabs_pixel(&mut self, dabs: &[Dab], brush: &BrushSpec, alpha_locked: bool) {
         let (w, h) = self.source_size;
@@ -181,9 +212,9 @@ impl PainterTool {
         }
         // A rampa de cor da Shape pela QUEDA («Falloff Color»): a cor de cada píxel no perfil dele, o alfa binário.
         // A Texture Color e a rampa do Grain leem a textura, que a ponta de píxel não carimba (esmaecem).
-        let p = &self.paint;
-        let rampa_viva =
-            p.shape_color_ramp_enabled && !p.shape_color_ramp_bw && p.shape_camadas.alguma(false);
+        let rampa_viva = self.paint.shape_color_ramp_enabled
+            && !self.shape_tom_ativo()
+            && self.paint.shape_camadas.alguma(false);
         if rampa_viva {
             self.ensure_ramp_lut(super::ramp_lut::RampLutOwner::Shape);
         }

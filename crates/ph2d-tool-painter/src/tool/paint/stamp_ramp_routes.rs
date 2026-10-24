@@ -126,8 +126,8 @@ impl PainterTool {
         // Shape **tone** ramp applies when the Shape ramp's B&W filter is on (then the Grain / brush
         // owns colour and the Shape remaps the silhouette tone); off ⇒ the Shape ramp is the colour
         // owner, so no tone remap (Enio 2026-06-26).
-        let shape_ramp_lut = (self.paint.shape_color_ramp_enabled
-            && self.paint.shape_color_ramp_bw)
+        let shape_ramp_lut = self
+            .shape_tom_ativo()
             .then_some(self.paint.shape_ramp_lut.as_slice());
         // [`Self::rampa_de_cor`], field by field: the canvas is borrowed mutably below.
         let rampa = ph2d_painter_brush::RampPaint {

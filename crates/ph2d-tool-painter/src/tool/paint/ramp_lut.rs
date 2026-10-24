@@ -63,7 +63,7 @@ impl PainterTool {
     /// not a colour owner. `grain_active` is `brush.texture.is_active()`.
     pub(super) fn color_ramp_owner(&self, grain_active: bool) -> RampLutOwner {
         if self.paint.shape_color_ramp_enabled
-            && !self.paint.shape_color_ramp_bw
+            && !self.shape_tom_ativo()
             && self.paint.shape_camadas.alguma(self.shape_tem_textura())
         {
             RampLutOwner::Shape
@@ -169,16 +169,26 @@ impl PainterTool {
     /// The Shape **tone** LUT slice when the Shape ramp acts as a coverage tone: B&W on, OR a no-colour
     /// mode (Smear/Blur/Clone force B&W). Then it remaps the silhouette coverage. Caller `ensure_shape_ramp_lut`s first.
     pub(super) fn shape_tone_lut_slice(&self) -> Option<&[f32]> {
-        (self.paint.shape_color_ramp_enabled
-            && (self.paint.shape_color_ramp_bw || self.no_color_mode()))
-        .then_some(self.paint.shape_ramp_lut.as_slice())
+        self.shape_tom_ativo()
+            .then_some(self.paint.shape_ramp_lut.as_slice())
+    }
+
+    /// ⭐ **A rampa da Shape é TOM** (remapeia a cobertura) — a porta única de toda rota (a borracha e o Smear
+    /// incluídos) e do dono da cor ([`Self::color_ramp_owner`]); o painel tranca o B&W pela mesma lista.
+    pub(super) fn shape_tom_ativo(&self) -> bool {
+        self.paint.shape_color_ramp_enabled
+            && (self.paint.shape_color_ramp_bw || self.no_color_mode())
     }
 
     /// Whether the active operation paints NO colour (Smear / Blur / Clone). In these modes the Shape &
     /// Grain Colour Ramps are forced to their B&W **tone** role — grayscale coverage curves — since there
     /// is no colour to lay down (the panel shows the ramps with B&W checked + locked).
     pub(super) fn no_color_mode(&self) -> bool {
-        self.is_smear_mode() || self.is_blur_mode() || self.is_clone_mode()
+        self.is_smear_mode()
+            || self.is_blur_mode()
+            || self.is_clone_mode()
+            // A borracha não pousa cor: a rampa da Shape é o tom da cobertura que ela apaga.
+            || (matches!(self.paint.paint_mode, super::PaintMode::Paint) && self.stroke_erases())
     }
 
     /// The **Grain** tone LUT (256 grayscale) when the Grain ramp acts as a coverage tone — enabled + a

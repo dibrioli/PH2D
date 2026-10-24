@@ -21,8 +21,13 @@ pub(crate) fn paint_rendering(
     brush: &BrushSettings,
 ) -> f32 {
     // O modo sobre o vazio vive onde o Blend vive (`paint_top_basics`); o plano do traço, só no Digital.
-    let vazio = !brush.paints_no_color() && !brush.is_mask && !brush.watercolor;
-    let plano = PaintMedia::from_u8(brush.media) == PaintMedia::Digital;
+    // O modo sobre o vazio é o do Blend: quem não lê o Blend (a borracha, `NAO_LE`) não o lê.
+    let vazio = !brush.paints_no_color()
+        && !brush.is_mask
+        && !brush.watercolor
+        && brush.le(ph2d_tool_painter::LinhaDaFerramenta::Blend);
+    let plano = PaintMedia::from_u8(brush.media) == PaintMedia::Digital
+        && brush.le(ph2d_tool_painter::LinhaDaFerramenta::TracoComoCamada);
     if !vazio && !plano {
         return y;
     }

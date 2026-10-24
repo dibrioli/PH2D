@@ -51,6 +51,7 @@ pub(crate) mod text_style_rows;
 pub mod theme_menu;
 pub use panel_ids::{PANEL_MOTION_GRAPH, PANEL_PHYSICS, PANEL_TIMELINE};
 pub mod left_rail;
+pub mod painter_column;
 pub mod pre_populate;
 pub mod pre_populate_blender;
 pub mod selection;

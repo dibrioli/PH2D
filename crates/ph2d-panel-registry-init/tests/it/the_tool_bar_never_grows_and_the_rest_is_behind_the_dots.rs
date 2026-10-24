@@ -158,16 +158,17 @@ fn nothing_is_dropped_between_the_bar_and_the_dots() {
     }
 }
 
+/// A largura em que a fila de repouso com as ferramentas de imagem transborda.
+const LARGURA_ESTREITA: f32 = 640.0;
+
 /// ⭐⭐⭐ **Carregar no `⋯` abre o resto, e carregar num deles serve o verbo e FECHA.**
 #[test]
 fn the_dots_open_the_rest_and_a_pick_closes_them() {
-    // O iPad mini com o pincel: é onde o transbordo de facto acontece.
-    let (mut h, vp) = hero(1133.0, 744.0);
-    // ⚠️ **O Painter em mãos é a condição do transbordo** — e ele lê-se do `image_edit`, que é o
-    // que a shell espelha (`rail_shows_painter_tools`). Sem isto o gate mede a fila de repouso, que
-    // cabe em toda parte.
+    // ⚠️ **Um alvo onde a fila transborda de facto.** Até 23/10 era o iPad mini com o Painter na mão (as onze
+    // ferramentas dele iam na fila); desde que elas moram na coluna (`painter_column`) a fila dele cabe ali,
+    // e o transbordo pede uma janela estreita com as ferramentas de imagem ligadas.
+    let (mut h, vp) = hero(LARGURA_ESTREITA, 744.0);
     h.image_edit.mode_on = true;
-    h.image_edit.active_tool_id = Some("painter");
     paint(&mut h, vp);
     let dots = h
         .hit_index

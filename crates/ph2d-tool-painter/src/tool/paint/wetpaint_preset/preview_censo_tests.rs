@@ -33,11 +33,11 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ),
     (
         "eraser",
-        "o preview mostra o que o pincel DEPOSITA (posto a false)",
+        "levado como o MODIFICADOR (a borracha cruza a tinta de referência, `preview_modificador`)",
     ),
     (
         "paint_mode",
-        "o preview pinta o PINCEL do modo (como a ferramenta molhada)",
+        "levado como o MODIFICADOR (Blur, Smear, Faca, Clone cruzam a tinta de referência)",
     ),
     ("brush_by_mode", "os pincéis dos OUTROS modos"),
     ("link_shared_settings", UI),

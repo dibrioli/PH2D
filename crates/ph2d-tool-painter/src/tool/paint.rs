@@ -30,6 +30,7 @@ mod curve_offset; // perpendicular offset (parallel curve) + CAD-grade reconstru
 mod curve_refit; // Simplify/Merge quality funnel: corner-split + piecewise Schneider least-squares refit
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
 mod curve_trim; // self-intersection trim of the offset spine (open + closed); split from `curve_offset`
+pub(crate) mod ferramenta_linhas; // o que cada ferramenta do trilho nunca lê (23/10)
 mod line_settings;
 mod ribbon_diag; // `PH2D_RIBBON_DIAG=1`: quem pinta o que num traco, impresso no pen-up
 mod solid_carimbos;
@@ -138,6 +139,7 @@ mod wet_editable;
 mod wetpaint; // Wet Paint (PaintMode::WetPaint): the fluid-engine session — ADR-0134; see its module doc
 pub(crate) use wetpaint::fita; // a fita do worker que a trilha da macro (`crate::macro_track`) grava e toca
 mod dual; // o DUAL BRUSH (L6): a 2.ª ponta, o motor dela e a máscara do traço que recorta a 1.ª
+mod dual_ferramenta; // …e nas ferramentas do Digital: a borracha, o Blur, o Smear e o Clone
 mod macro_estado;
 mod mangueira; // a ponta de N IMAGENS (L19): as imagens além da Shape e o carimbo em corridas
 pub mod mao; // a MÃO do pincel (pressão, inclinação) nos quatro meios, por uma lei só (L2, Pinceis/03 §4)
@@ -225,6 +227,9 @@ mod crossing_probe;
 /// acima abriu ao refutar a união.
 #[cfg(test)]
 mod crossing_scale_probe;
+/// **L6 nas ferramentas** — a borracha, o Blur, o Smear e o Clone com a 2.ª ponta.
+#[cfg(test)]
+mod dual_ferramenta_tests;
 /// **L7** — o efeito do pincel compõe no seu modo (W3C em sRGB), contra a fórmula e as fotos do Rebelle.
 #[cfg(test)]
 mod efeito_modos_tests;

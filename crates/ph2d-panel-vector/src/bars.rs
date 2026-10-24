@@ -412,6 +412,7 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
         // O 2.º indicador da vista de interface (NN/g): o 1.º é o interruptor aceso.
         stage_tint: (crate::state::aba() == crate::state::Aba::Interface)
             .then_some(ph2d_tokens::ColorToken::StageTintUi),
+        painter_rail: false,
     }
 }
 

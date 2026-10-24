@@ -140,6 +140,8 @@ pub fn paint_hero_screen(
     crate::paint::set_radius_scale(hero.store.radius_scale());
     // As abas de FAMÍLIA (o editor de scripts): a que pediu foco fica activa e os controlos existem.
     super::document_tabs::follow_surfaces(hero);
+    // As ferramentas do pintor na coluna — antes de qualquer leitor das barras (a fila, a coluna).
+    super::painter_column::publish(hero);
     // Same pattern for the text-rendering strategy — read by
     // `paint_text*` via the `paint::text_rendering()` thread-local.
     crate::paint::set_text_rendering(hero.text_rendering);

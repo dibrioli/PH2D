@@ -93,6 +93,10 @@ pub(crate) fn paint_shape_per_layer_color(
         );
     }
     let single = count == 1;
+    // A cor por camada é cor: a ferramenta que não deposita não a lê (`ph2d_tool_painter::NAO_LE`).
+    if !brush.le(ph2d_tool_painter::LinhaDaFerramenta::CorPorCamada) {
+        return y;
+    }
     y = paint_checkbox_row(
         ctx,
         theme,

@@ -18,6 +18,7 @@ mod falloff_drain_repro;
 mod falloff_handle_menu_e2e;
 mod macro_estado_inicial; // o estado inicial de uma macro leva cada controlo do Wet Paint
 mod o_censo_so_encolhe; // o que muda o ajuste e não a tinta: esmaecido ou com motivo na lista
+mod o_painel_de_cada_meio_da_ferramenta; // o meio é da ferramenta na mão: só as linhas dela (24/10)
 mod o_painel_mostra_o_que_a_ferramenta_le; // a ferramenta na mão × o painel: os dois lados (23/10)
 mod seam;
 mod seam_accumulate_por_meio; // o Accumulate e o Space Attenuation só onde o meio os oferece
@@ -28,6 +29,7 @@ mod seam_curve_drag_ownership;
 mod seam_deform;
 mod seam_dock_modes;
 mod seam_estado_escondido; // o interruptor que neutraliza: a tinta depois dele é a do pincel limpo (22/10)
+mod seam_flow; // o Flow (a taxa) abaixo da Strength (o tecto), só no Pincel Digital (24/10)
 mod seam_grid_stamp;
 mod seam_impasto_rig;
 mod seam_impasto_tool;

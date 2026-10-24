@@ -269,8 +269,9 @@ fn a_preview_so_aparece_onde_a_ferramenta_a_le() {
                     "fixada={fixada} {modo}: pino {pino}, preview {preview:?} (esperado {mostra})"
                 ));
             }
-            // Sem preview, a primeira linha cai no mesmo sítio fixada ou não (a faixa não deixa vão).
-            let y = rect_of(&rects, ids::PAINTER_BRUSH_MEDIA).y;
+            // Sem preview, a primeira linha cai no mesmo sítio fixada ou não (a faixa não deixa vão). O Sync e
+            // não o Paint Mode: este some numa ferramenta de um meio só (Blur, Smear, Clone, Máscara).
+            let y = rect_of(&rects, ids::PAINTER_BRUSH_SYNC).y;
             if !mostra && fixada {
                 let sem = desafixada[modo];
                 if (y - sem).abs() > 0.5 {

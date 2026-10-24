@@ -202,16 +202,47 @@ impl PaintMedia {
     }
 }
 
+/// Os meios do Pincel: os quatro.
+const TODOS: [PaintMedia; 4] = [
+    PaintMedia::Digital,
+    PaintMedia::Watercolor,
+    PaintMedia::Impasto,
+    PaintMedia::WetPaint,
+];
+
 impl crate::tool::PainterTool {
+    /// ⭐ **Os meios da ferramenta na mão** (dono 24/10, o padrão do Procreate): Blur, Smear, Clone e Máscara só
+    /// no Digital (o menu Paint Mode sai); a Borracha no Digital, na Watercolor e no Wet Paint (o Impasto fica
+    /// de fora); o Pincel e as do Impasto nos quatro.
+    #[must_use]
+    pub fn meios_da_ferramenta(&self) -> &'static [PaintMedia] {
+        match self.paint.paint_mode {
+            PaintMode::Smear | PaintMode::Blur | PaintMode::Clone | PaintMode::Mask => {
+                &[PaintMedia::Digital]
+            }
+            PaintMode::Paint | PaintMode::WetPaint if self.paint.eraser => &[
+                PaintMedia::Digital,
+                PaintMedia::Watercolor,
+                PaintMedia::WetPaint,
+            ],
+            _ => &TODOS,
+        }
+    }
+
     /// The medium the brush is in **right now** — read off the three flags, never stored.
     ///
     /// The precedence only matters for a state the door below cannot produce (two flags at once); it
     /// mirrors the behavioural precedence, so the answer always names the medium that is actually
     /// painting: the wet arm reroutes the `"brush"` wire outright, and the wash's render path
     /// short-circuits the impasto (`impasto_section_applies` already asks `!watercolor_render_active`).
+    ///
+    /// **O meio é o da FERRAMENTA na mão** ([`Self::meios_da_ferramenta`], dono 24/10): o Blur com a água
+    /// armada é Digital — o motor já o era (o fluido só toma o `WetPaint`), o painel é que mostrava o Wet.
     #[must_use]
     pub fn paint_media(&self) -> PaintMedia {
-        if self.paint.wetpaint.armed {
+        if self.meios_da_ferramenta() == [PaintMedia::Digital] {
+            PaintMedia::Digital
+        } else if self.paint.wetpaint.armed {
             PaintMedia::WetPaint
         } else if self.paint.brush.watercolor {
             PaintMedia::Watercolor
@@ -246,6 +277,10 @@ impl crate::tool::PainterTool {
     /// by design (`armed` lives in `WetPaintState`, not in a slot). Take the tool FIRST, then arm the
     /// medium on the slot the artist actually lands in.
     pub fn set_paint_media(&mut self, media: PaintMedia) {
+        // Um meio que a ferramenta não tem não muda nada (o menu nem o oferece).
+        if !self.meios_da_ferramenta().contains(&media) {
+            return;
+        }
         if media != PaintMedia::WetPaint {
             self.set_wetpaint_armed(false);
         }
@@ -256,7 +291,7 @@ impl crate::tool::PainterTool {
             self.set_brush_impasto(false);
         }
         if media != PaintMedia::Digital && !media.works_in(self.paint.paint_mode) {
-            self.set_paint_tool_mode("brush");
+            self.set_paint_tool_mode(if self.paint.eraser { "eraser" } else { "brush" });
         }
         match media {
             PaintMedia::Digital => {}
@@ -322,5 +357,8 @@ impl crate::tool::PainterTool {
     }
 }
 
+#[cfg(test)]
+#[path = "media/ferramenta_tests.rs"]
+mod ferramenta_tests;
 #[cfg(test)]
 mod tests;

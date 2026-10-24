@@ -20,6 +20,8 @@ pub enum FerramentaDoPincel {
     Cura,
     /// O Sculpt do Impasto: mexe no relevo, nunca na cor.
     Escultura,
+    /// O conta-gotas: lê a cor da tela; o pincel por baixo é o do Pincel.
+    ContaGotas,
 }
 
 /// Uma linha (ou um bloco) do painel do pincel que depende da ferramenta.
@@ -44,6 +46,14 @@ pub enum LinhaDaFerramenta {
     /// O preview vivo do pincel (e o pino dele): sai das ferramentas que só se vêem sobre tinta que já lá
     /// está (dono 24/10: *«vamos retirar o preview para Mask, Blur e Smear»*, e depois o Clone).
     Preview,
+    /// A aguada (o meio Watercolor): a secção Watercolor, o «Automatic» da Shape e o «Same as Paper» do Grain.
+    /// Quem a lê é a rota óptica (`watercolor_render_active`), que a Borracha não toma: na Watercolor ela apaga
+    /// byte a byte como no Digital (medido 24/10, `borracha_por_meio_tests`).
+    Aguada,
+    /// O que o pincel do Wet Paint POUSA e como: os volumes Water e Opacity, Pigment, Pickup, o pó do pincel, a ponta
+    /// reta (Square tip), o Tooth e o Texture on Paint do papel. A borracha da água levanta tinta viva e não pousa nada
+    /// (censo 24/10, riscas secas e molhadas: `|Δ| = 0`).
+    DepositoMolhado,
 }
 
 use FerramentaDoPincel as F;
@@ -53,7 +63,7 @@ use LinhaDaFerramenta as L;
 const SEM_COR: [L; 4] = [L::Blend, L::Cor, L::Randomize, L::Composite];
 
 /// ⭐ A tabela.
-pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 8] = [
+pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 9] = [
     (F::Pincel, &[]),
     (
         F::Borracha,
@@ -64,6 +74,8 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 8] = [
             L::Composite,
             L::Solido,
             L::TracoComoCamada,
+            L::Aguada,
+            L::DepositoMolhado,
         ],
     ),
     (
@@ -123,6 +135,8 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 8] = [
     ),
     (F::Cura, &SEM_COR),
     (F::Escultura, &SEM_COR),
+    // Dono 24/10: «sem preview no painel» — a amostra vive ao lado do cursor.
+    (F::ContaGotas, &[L::Preview]),
 ];
 
 impl BrushSettings {
@@ -143,6 +157,8 @@ impl BrushSettings {
             F::Smear
         } else if self.eraser {
             F::Borracha
+        } else if self.is_eyedropper {
+            F::ContaGotas
         } else {
             F::Pincel
         }

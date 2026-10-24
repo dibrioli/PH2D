@@ -107,6 +107,11 @@ pub struct Parametros {
     /// categoria dele no navegador de quem o importa. Só no exportado: na biblioteca é o caminho que a diz.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub library_folder: Option<String>,
+    /// **A ferramenta do trilho a que o preset pertence** (dono 24/10, o padrão do Procreate: cada ferramenta
+    /// tem a sua biblioteca): `"Eraser"`, `"Blur"`, `"Smear"`, `"Clone"`. `None` = o Pincel (todo preset de
+    /// antes dele). O formato não sobe de versão.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ferramenta: Option<String>,
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
 }
@@ -131,6 +136,7 @@ impl Parametros {
             shape_color: None,
             grain_color: None,
             library_folder: None,
+            ferramenta: None,
             extra: BTreeMap::new(),
         }
     }

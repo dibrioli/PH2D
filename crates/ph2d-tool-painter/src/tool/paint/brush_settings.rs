@@ -50,6 +50,8 @@ pub struct BrushSettings {
     pub size_norm: f32,
     /// Overall opacity, `0..1` (UI "Strength").
     pub strength: f32,
+    /// **Flow** (`0..1`, a taxa por dab): com Accumulate off o traço acumula até a Strength (o tecto).
+    pub flow: f32,
     /// Distance-falloff preset ([`ph2d_painter_brush::Falloff::to_u8`]) — the dab profile (replaces Hardness); [`ph2d_painter_brush::Falloff::Custom`] (`9`) reads [`Self::falloff_points`].
     pub falloff: u8,
     /// The `Custom` falloff curve's control points (id + `[distance, strength]` + handle), first [`Self::falloff_len`] valid, ascending by distance; panel plots + drags by stable id.
@@ -71,6 +73,8 @@ pub struct BrushSettings {
     pub is_blur: bool,
     pub is_clone: bool,
     pub is_mask: bool,
+    /// O conta-gotas armado (`paint.eyedropper_armed`): o Pincel fica por baixo, mas o painel não mostra o preview.
+    pub is_eyedropper: bool,
     /// **Inpaint** heal mode — shows the Inpaint card (Patch Size / Quality / Search) + hides colour/Strength.
     pub is_inpaint: bool,
     /// **Selection** mode — the panel shows ONLY the selection section (ADR-0103): mode (`0` Automatic /
@@ -438,33 +442,26 @@ pub struct BrushSettings {
     /// Per-dab randomize: Randomize-Color enable + HSV amounts + Jitter Scale/Rotate/Spacing (`0..1`).
     pub color_jitter_enabled: bool,
     pub color_jitter: [f32; 3],
-    /// Randomize Color **when** ([`ph2d_painter_brush::ColorJitterScope::to_u8`]): `0` every dab, `1`
-    /// every stroke.
+    /// Randomize Color **when** ([`ph2d_painter_brush::ColorJitterScope::to_u8`]): `0` every dab, `1` every stroke.
     pub color_jitter_scope: u8,
     pub jitter_scale: f32,
     pub jitter_rotate: f32,
     pub jitter_spacing: f32,
-    /// **Count** — quantas marcas cada ponto do caminho deixa (`1` = o traço de sempre). É o único
-    /// número do *spray*; o alcance dele é o Jitter → Position, o tamanho é o Scale e o ângulo é o
-    /// Rotation, que são as três rows imediatamente abaixo desta.
+    /// **Count** — marcas por ponto do caminho (`1` = o traço de sempre); o resto do spray é o Jitter.
     pub spray_count: u32,
 
-    /// The **Paint Mode** (the MEDIUM, [`super::PaintMedia::to_u8`]): derived from the three master flags
-    /// below, never stored beside them (2026-07-22: one place for the fact). The panel paints its section.
+    /// The **Paint Mode** (the MEDIUM, [`super::PaintMedia::to_u8`]): derived, never stored (one place).
     pub media: u8,
+    /// Os meios da ferramenta na mão, um bit por [`super::PaintMedia::to_u8`] (`meios_da_ferramenta`).
+    pub meios: u8,
 
-    /// **A fileira `Pigment` é oferecida AGORA?** ([`super::PaintMedia::offers_pigment_mixing_in`]: o MEIO ∧ o
-    /// GESTO ∧ não-borracha) — um campo porque precisa do `PaintMode`, que o snapshot não carrega.
+    /// A fileira `Pigment` é oferecida AGORA? ([`super::PaintMedia::offers_pigment_mixing_in`]).
     pub pigment_offered: bool,
 
     // ── Wet Paint section (the fluid engine, ADR-0134) ──
-    /// The Wet Paint **Enable** checkbox — the ARMED state (`WetPaintState::armed`, not a
-    /// `BrushSpec` field: one fact, mode-independent, survives slot switches). While armed, the
-    /// Brush IS the fluid and "brush" always returns to Wet Paint.
+    /// O meio da FERRAMENTA na mão é o Wet Paint (`paint_media() == WetPaint`, não o braço global).
     pub wetpaint: bool,
-    /// The full authored knob table (doc 22 — sliders + every registry knob;
-    /// the basic section's curated rows and the Tuning panel's table are two
-    /// views of this one value).
+    /// The full authored knob table (doc 22): the curated rows and the Tuning table read this one value.
     pub wet_knobs: crate::WetKnobs,
     /// The Wet Paint's own **Opacity** volume (`0..1`): the deposited colour goes to the paper white by it.
     pub wet_opacidade: f32,

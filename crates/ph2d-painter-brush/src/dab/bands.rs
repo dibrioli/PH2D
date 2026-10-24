@@ -308,6 +308,9 @@ pub(super) struct DabCtx<'a> {
     pub(super) inv_radius: f32,
     pub(super) radius: f32,
     pub(super) coverage: f32,
+    /// Sob o tecto do traço (Accumulate off): o tecto (`coverage` sem o Flow) e a taxa por dab (o Flow).
+    pub(super) tecto: f32,
+    pub(super) flow: f32,
     pub(super) preserve_alpha: bool,
     pub(super) x0: i64,
     pub(super) x1: i64,
@@ -524,7 +527,8 @@ pub(super) fn stamp_band(
                             m,
                             w,
                             g,
-                            ctx.coverage,
+                            ctx.tecto,
+                            ctx.flow,
                             ctx.film_aa.is_some() || orla_area,
                         ) else {
                             continue; // this dab adds nothing here

@@ -91,6 +91,9 @@ mod watercolor_solido_tests;
 #[path = "measure_penup_cost.rs"]
 mod measure_penup_cost; // o que custa FECHAR um traço — a irmã do `measure_pendown_cost`
 
+#[path = "borracha_por_meio_tests.rs"]
+mod borracha_por_meio_tests; // a Borracha em cada meio: apaga de outra maneira, e o apagado fica
+
 #[path = "diag_pigmento_por_meio.rs"]
 mod diag_pigmento_por_meio; // em que MEIOS a lei do pigmento chega ao barro (a fronteira da oferta)
 

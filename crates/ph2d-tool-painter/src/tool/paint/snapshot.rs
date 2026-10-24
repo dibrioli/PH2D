@@ -166,6 +166,7 @@ impl PainterTool {
             size_max_px: self.raio_maximo(),
             size_norm: size_px_to_norm(b.radius_px),
             strength: b.strength,
+            flow: b.flow,
             falloff: b.falloff.to_u8(),
             falloff_points,
             falloff_len: b.custom_falloff.len() as u8,
@@ -178,6 +179,7 @@ impl PainterTool {
             is_blur: self.is_blur_mode(),
             is_clone: self.is_clone_mode(),
             is_mask: self.is_mask_mode(),
+            is_eyedropper: self.paint.eyedropper_armed,
             is_inpaint: self.is_inpaint_mode(),
             is_selection: self.is_selection_mode(),
             selection_mode: self.selection_mode(),
@@ -401,10 +403,15 @@ impl PainterTool {
             jitter_spacing: b.jitter_spacing,
             spray_count: b.spray_count,
             media: self.paint_media().to_u8(),
+            meios: self
+                .meios_da_ferramenta()
+                .iter()
+                .fold(0, |a, m| a | 1 << m.to_u8()),
             pigment_offered: self
                 .paint_media()
                 .offers_pigment_mixing_in(self.paint.paint_mode, self.paint.eraser),
-            wetpaint: self.paint.wetpaint.armed,
+            // O meio da ferramenta na mão (o Blur com a água armada não mostra o Wet — dono 24/10).
+            wetpaint: self.paint_media() == super::PaintMedia::WetPaint,
             wet_knobs: self.paint.wetpaint.knobs,
             wet_opacidade: self.paint.wetpaint.opacidade,
             mao: self.mao(),

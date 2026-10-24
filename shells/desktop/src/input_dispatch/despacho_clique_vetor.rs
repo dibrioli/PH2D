@@ -151,7 +151,7 @@ impl crate::App {
                 && on_canvas
                 && let Some(gfx) = self.gfx.as_mut()
                 && let Some(hero) = gfx.hero_screen.as_mut()
-                && hero.store.picker_target().is_some()
+                && hero.store.picker_dismissable()
             {
                 hero.store.set_picker_target(None);
             }

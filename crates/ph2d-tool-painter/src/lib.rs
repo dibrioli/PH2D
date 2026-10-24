@@ -156,9 +156,10 @@ pub use tool::paint::ponta::{
 pub use tool::paint::wetpaint_preset::COR_DO_FUNDO_DA_BORRACHA;
 pub use tool::paint::wetpaint_preset::{
     ALTURA_DO_PREVIEW, CAMPOS_DO_PINCEL, CAMPOS_FORA, CenaDoPreview, ChaveDoPreview,
-    DIAMETRO_DA_MINIATURA, LARGURA_DO_PREVIEW, MEIO_DO_PRESET, MOTOR_DOS_PRESETS, MeioDesconhecido,
-    OPACIDADE_DE_FABRICA, PedidoPreset, campos_do_meio, meio_do_preset, miniatura_do_preset,
-    motor_do_meio, nome_do_meio, pintar_preview,
+    DIAMETRO_DA_MINIATURA, Gaveta, LARGURA_DO_PREVIEW, MEIO_DO_PRESET, MOTOR_DOS_PRESETS,
+    MeioDesconhecido, OPACIDADE_DE_FABRICA, PedidoPreset, campos_do_meio, ferramenta_do_preset,
+    meio_do_preset, miniatura_do_preset, motor_do_meio, nome_da_ferramenta, nome_do_meio,
+    pintar_preview,
 };
 pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,

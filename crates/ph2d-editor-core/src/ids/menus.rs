@@ -327,6 +327,8 @@ pub const BLENDER_PALETTE_DROPDOWN: NodeId = hash_node_id("blender_palette_dropd
 pub const BLENDER_RENAME_PALETTE: NodeId = hash_node_id("blender_rename_palette");
 // Close (×) button at the top-right of the floating picker — dismisses it.
 pub const BLENDER_CLOSE: NodeId = hash_node_id("blender_close");
+// Pin button left of the ×: pinned = a click outside no longer dismisses the picker.
+pub const BLENDER_PIN: NodeId = hash_node_id("blender_pin");
 
 /// Hierarchy panel container — wheel-scroll key.
 pub const HIER_PANEL: NodeId = hash_node_id("hier_panel");

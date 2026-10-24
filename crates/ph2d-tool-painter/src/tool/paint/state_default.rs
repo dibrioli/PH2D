@@ -8,7 +8,7 @@ impl PaintState {
     /// **O pincel com que cada MODO nasce** — o arranque e a régua de todo Reset de secção
     /// ([`crate::tool::PainterTool::spec_de_fabrica`]). Uma porta só: um Reset que lesse o
     /// `BrushSpec::default()` devolvia o pincel de NENHUM modo (o censo dos controlos, doc 45 §2.1).
-    pub(super) fn pinceis_de_fabrica() -> [BrushSpec; PAINT_MODE_COUNT] {
+    pub(super) fn pinceis_de_fabrica() -> [BrushSpec; SLOT_COUNT] {
         // Moderate black brush (10 px); the brush-settings UI drives size/colour later.
         let base = BrushSpec {
             radius_px: 10.0,
@@ -34,7 +34,7 @@ impl PaintState {
             },
             ..base
         };
-        let mut brush_by_mode = [base; PAINT_MODE_COUNT];
+        let mut brush_by_mode = [base; SLOT_COUNT];
         // ⚠️ **Plow is where the two smears part company** (Enio, 2026-07-19). While the knife WAS the
         // Smear, `impasto_plow` was made to default to 1.0 — *"a faca leva a massa"* (2026-07-18), and
         // the measurement behind it stands. Split apart, that rationale belongs to the **Knife**, and the
@@ -63,6 +63,12 @@ impl PaintState {
         };
         brush_by_mode[PaintMode::WetPaint.slot()] = wet;
         brush_by_mode[PaintMode::Paint.slot()] = aquarela_de_fabrica(base);
+        // A Borracha: a ponta dura do Procreate/Krita (apaga a fundo numa passada; a pressão mexe no
+        // tamanho — a mão de fábrica, `Dynamics::default`). Os números da Aquarela, inertes fora dela.
+        brush_by_mode[ERASER_SLOT] = BrushSpec {
+            hardness: 0.9, // LITERAL-OK: a borracha dura de fábrica (a «Hard Eraser», L-9)
+            ..aquarela_de_fabrica(base)
+        };
         brush_by_mode
     }
 }
@@ -104,6 +110,7 @@ impl Default for PaintState {
             link_shared_settings: false,
             line_show_dimensions: true, // Line CAD dimensions on by default
             dynamics: Dynamics::default(),
+            dynamics_by_slot: [Dynamics::default(); SLOT_COUNT],
             stroke: None,
             hover_heading: [0.0, 0.0],
             hover_pos: None,

@@ -24,7 +24,8 @@ pub(super) fn draw_brush_ring(
     cursor: (f32, f32),
 ) {
     // Selection mode has its own crosshair cursor (drawn by the selection overlay), not the brush ring.
-    if painter.is_selection_mode() {
+    // …e o conta-gotas armado tem a mira e a caixa das cores (`painter_bridge_eyedropper_cursor`).
+    if painter.is_selection_mode() || painter.eyedropper_armed() {
         return;
     }
     // ── Brush cursor ring (UI hint) ──────────────────────────────────
@@ -211,10 +212,13 @@ pub(super) fn anel_do_liquify(
 #[path = "anel_do_liquify_tests.rs"]
 mod liquify_tests;
 
-/// O traço do anel: cinza-claro, `1,5` px de ecrã (a cor fica inline, como a do rubber-band).
+/// A cor do anel: cinza-claro (inline, como a do rubber-band).
+pub(crate) const COR_DO_ANEL: [f32; 4] = [0.78, 0.78, 0.78, 0.85]; // LITERAL-COLOR-OK: overlay cursor
+
+/// O traço do anel: [`COR_DO_ANEL`], `1,5` px de ecrã.
 fn stroke_ring(vector_scene: &mut VectorScene, path: &ph2d_vector::BezPath) {
     use ph2d_vector::{Affine, Brush, Color, Stroke};
-    let color = Color::new([0.78, 0.78, 0.78, 0.85]); // LITERAL-COLOR-OK: overlay cursor
+    let color = Color::new(COR_DO_ANEL);
     vector_scene.inner_mut().stroke(
         &Stroke::new(1.5),
         Affine::IDENTITY,
@@ -294,7 +298,7 @@ fn draw_grid_cell(
         }
     }
     path.close_path();
-    let color = Color::new([0.78, 0.78, 0.78, 0.85]); // LITERAL-COLOR-OK: overlay cursor
+    let color = Color::new(COR_DO_ANEL);
     vector_scene.inner_mut().stroke(
         &Stroke::new(1.5),
         Affine::IDENTITY,

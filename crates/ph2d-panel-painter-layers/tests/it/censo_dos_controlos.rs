@@ -432,6 +432,11 @@ pub(crate) struct Bancada {
 }
 
 impl Bancada {
+    /// Os ids que o painel pintou (vivos) no último quadro.
+    pub(crate) fn ids(&self) -> Vec<NodeId> {
+        self.rects.iter().map(|(i, _)| *i).collect()
+    }
+
     pub(crate) fn nova(media: PaintMedia, armar: &[Gesto]) -> Self {
         let tool = ferramenta(media);
         let (host, st, rects) = pinta(&tool);

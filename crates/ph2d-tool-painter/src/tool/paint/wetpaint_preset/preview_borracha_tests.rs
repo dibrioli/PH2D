@@ -72,7 +72,10 @@ fn a_borracha_apaga_o_s_do_pincel_na_tela_cheia() {
             "a margem ({x},{y}) não é a cor cheia"
         );
     }
-    let pincel = ultimo_quadro(&na_mao(PaintMedia::Digital, "brush"));
+    // O Pincel com a PONTA da Borracha (ela tem o seu slot desde 24/10): a sobreposição mede o caminho do S.
+    let mut p = na_mao(PaintMedia::Digital, "brush");
+    p.paint.brush.hardness = na_mao(PaintMedia::Digital, "eraser").paint.brush.hardness;
+    let pincel = ultimo_quadro(&p);
     let apagado = longe_de(&borracha, COR_DO_FUNDO_DA_BORRACHA);
     let pintado = longe_de(&pincel, [255, 255, 255]);
     let branco = borracha

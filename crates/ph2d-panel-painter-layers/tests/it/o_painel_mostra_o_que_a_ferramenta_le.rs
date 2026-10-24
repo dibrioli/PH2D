@@ -13,7 +13,7 @@ use super::censo_dos_controlos::{
 use super::censo_ferramenta_x_linha::bancada_com;
 use ph2d_a11y::NodeId;
 use ph2d_tool_painter::ids::*;
-use ph2d_tool_painter::{FerramentaDoPincel, LinhaDaFerramenta, NAO_LE};
+use ph2d_tool_painter::{FerramentaDoPincel, LinhaDaFerramenta, NAO_LE, PaintMedia};
 use std::collections::BTreeMap;
 
 /// O piso de |Δ| de um canal para o PINCEL «agir»: abaixo dele a mudança é arredondamento de uma troca de rota
@@ -78,8 +78,31 @@ fn ids_da(l: LinhaDaFerramenta) -> &'static [NodeId] {
         LinhaDaFerramenta::Cor | LinhaDaFerramenta::Composite => &[],
         // O preview não muda o traço: o gate dele é `a_preview_so_aparece_onde_a_ferramenta_a_le`.
         LinhaDaFerramenta::Preview => &[],
+        LinhaDaFerramenta::Aguada => &AGUADA,
+        LinhaDaFerramenta::DepositoMolhado => &DEPOSITO_MOLHADO,
     }
 }
+
+/// Os ids da aguada: a secção Watercolor (cabeça e linhas), o «Automatic» da Shape e o «Same as Paper» do Grain.
+const AGUADA: [NodeId; 6] = [
+    PAINTER_WATERCOLOR_SECTION,
+    PAINTER_WATERCOLOR_FILL,
+    PAINTER_WATERCOLOR_EDGE,
+    PAINTER_WATERCOLOR_DRY_NOW,
+    PAINTER_SHAPE_WATERCOLOR_AUTO,
+    PAINTER_WATERCOLOR_GRAN_SAME,
+];
+
+/// Os ids do que o pincel do Wet Paint pousa.
+const DEPOSITO_MOLHADO: [NodeId; 7] = [
+    PAINTER_BRUSH_DAB_QUINA,
+    PAINTER_WETPAINT_PAPER_VISUAL,
+    PAINTER_WETPAINT_WATER,
+    PAINTER_WETPAINT_VOL_OPACITY,
+    PAINTER_WETPAINT_PIGMENT,
+    PAINTER_WETPAINT_PICKUP,
+    PAINTER_WETPAINT_DUST,
+];
 
 #[test]
 fn cada_linha_visivel_age_na_ferramenta_ou_diz_porque_nao() {
@@ -247,4 +270,104 @@ fn a_cor_escondida_nao_muda_a_ferramenta() {
             "{modo}: a cor escondida mudou a ferramenta"
         );
     }
+}
+
+/// `(controlo, motivo)`: à vista da Borracha num meio dela, inerte nas riscas secas E molhadas, e com razão.
+const INERTES_DO_MEIO: [(NodeId, &str); 4] = [
+    (PAINTER_WETPAINT_SECTION, "a cabeça da secção dobra-a"),
+    (
+        PAINTER_WETPAINT_RESET,
+        "repõe os knobs, que a bancada deixa no de fábrica",
+    ),
+    (
+        PAINTER_WETPAINT_TUNING,
+        "abre o painel lateral dos knobs do motor",
+    ),
+    (
+        PAINTER_WETPAINT_TOOL_IDS[1],
+        "o Erase do rádio é a própria Borracha (já escolhido)",
+    ),
+];
+
+/// A Borracha no `meio`, sobre as riscas secas ou (`molhado`) re-pintadas no Wet Paint.
+fn bancada_do_meio(meio: PaintMedia, molhado: bool) -> Bancada {
+    let mut b = bancada_com("eraser", &ARMAR, &Gesto::Nenhum);
+    b.tool.set_paint_media(meio);
+    b.no_modo("eraser");
+    assert_eq!(
+        b.tool.paint_media(),
+        meio,
+        "a Borracha não ficou em {meio:?}"
+    );
+    if molhado {
+        super::censo_ferramenta_x_linha::molha(&mut b, "eraser");
+    }
+    b
+}
+
+fn ensaio_do_meio(meio: PaintMedia, molhado: bool, g: &Gesto) -> Vec<u8> {
+    let mut b = bancada_do_meio(meio, molhado);
+    b.aplica(g, &mut super::censo_dos_controlos::Entrega::default());
+    risca(&mut b.tool)
+}
+
+/// ⭐ **A Borracha em cada meio dela só vê o que esse meio lhe muda** (24/10): cada linha que o meio ACRESCENTA ao
+/// painel da Borracha (o que ela não vê no Digital) muda o apagado — nas riscas secas ou nas molhadas — ou diz porque
+/// não; e as linhas que a tabela lhe esconde (a aguada, o depósito molhado) não estão pintadas. Vermelho antes: na
+/// Watercolor a secção inteira (Body, Edge, Dry…) à vista e inerte; no Wet Paint o Water, a Opacity, o Pigment, o
+/// Pickup e o Brush dust.
+#[test]
+fn a_borracha_em_cada_meio_so_ve_o_que_o_meio_lhe_muda() {
+    let nomes = nomes();
+    let digital = bancada_do_meio(PaintMedia::Digital, false).ids();
+    let mut falhas = Vec::new();
+    let mut medidas = 0;
+    for (meio, estados) in [
+        (PaintMedia::Watercolor, &[false][..]),
+        (PaintMedia::WetPaint, &[false, true][..]),
+    ] {
+        let b = bancada_do_meio(meio, false);
+        let ids = b.ids();
+        for l in [
+            LinhaDaFerramenta::Aguada,
+            LinhaDaFerramenta::DepositoMolhado,
+        ] {
+            for id in ids_da(l) {
+                if ids.contains(id) {
+                    falhas.push(format!(
+                        "{meio:?}: «{}» está escondida e pintada",
+                        nome(&nomes, *id)
+                    ));
+                }
+            }
+        }
+        let gs: Vec<Gesto> = gestos_da(b)
+            .into_iter()
+            .filter(|g| chave(g).is_some_and(|i| !digital.contains(&i)))
+            .collect();
+        let mut age: BTreeMap<NodeId, bool> = BTreeMap::new();
+        for &molhado in estados {
+            let base = ensaio_do_meio(meio, molhado, &Gesto::Nenhum);
+            let r = em_paralelo(&gs, |g| {
+                diferenca(&base, &ensaio_do_meio(meio, molhado, g)).0 > 0
+            });
+            for (g, a) in gs.iter().zip(r) {
+                *age.entry(chave(g).unwrap_or(NodeId(0))).or_default() |= a;
+                medidas += 1;
+            }
+        }
+        for (id, a) in age {
+            if !a && !INERTES_DO_MEIO.iter().any(|(i, _)| *i == id) {
+                falhas.push(format!(
+                    "{meio:?}: «{}» à vista da Borracha e inerte",
+                    nome(&nomes, id)
+                ));
+            }
+        }
+    }
+    assert!(
+        medidas >= 20,
+        "controlo: só {medidas} gestos do meio medidos"
+    );
+    assert!(falhas.is_empty(), "{falhas:#?}");
 }

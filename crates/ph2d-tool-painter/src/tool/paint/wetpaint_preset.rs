@@ -19,11 +19,13 @@ use std::collections::BTreeMap;
 /// `pigmentPerDab` de cada preset, dono 10/10: «o correto para clarear não seria usar pigment?»).
 pub const OPACIDADE_DE_FABRICA: f32 = 1.0;
 
+mod ferramentas;
 pub(in crate::tool::paint) mod json;
 #[cfg(test)]
 mod medida_preview;
 mod meios;
 mod miniatura;
+mod pedido;
 mod preview;
 mod preview_borracha;
 #[cfg(test)]
@@ -31,8 +33,10 @@ mod shape_color_tests;
 #[cfg(test)]
 mod tests;
 
+pub use ferramentas::{Gaveta, ferramenta_do_preset, nome_da_ferramenta};
 pub use meios::{MeioDesconhecido, campos_do_meio, meio_do_preset, motor_do_meio, nome_do_meio};
 pub use miniatura::{DIAMETRO_DA_MINIATURA, miniatura_do_preset};
+pub use pedido::PedidoPreset;
 pub use preview::{
     ALTURA_DO_PREVIEW, CenaDoPreview, ChaveDoPreview, LARGURA_DO_PREVIEW, pintar_preview,
 };
@@ -235,34 +239,6 @@ const FERRAMENTAS: [WetTool; 6] = [
     WetTool::Dry,
     WetTool::Blow,
 ];
-
-/// O que o bloco de presets do painel pediu e só a ponte da app pode fazer (disco, biblioteca, a
-/// política dos volumes). O tool regista; `ph2d-app-painter/src/painter_bridge_presets.rs` executa.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum PedidoPreset {
-    /// Escolher o preset neste caminho da biblioteca.
-    Escolher(String),
-    AlternarFavorito,
-    GuardarComoNovo,
-    GuardarComoPadrao,
-    Repor,
-    /// A política dos volumes, pelo índice em `Politica::TODAS`.
-    Politica(u8),
-    /// Ficheiros de preset para a pasta do artista (a ponte abre o seletor).
-    Importar,
-    /// O preset activo num ficheiro portátil (a ponte abre o seletor).
-    Exportar,
-    /// Apagar o preset activo — só o do artista; o painel já confirmou.
-    Apagar,
-    /// A ordem do navegador volta à por omissão.
-    ReporPosicoes,
-    /// `arrastado` passa para antes (ou `depois`) de `alvo` no navegador.
-    Mover {
-        arrastado: String,
-        alvo: String,
-        depois: bool,
-    },
-}
 
 impl PainterTool {
     /// Os controlos do bloco de presets: os botões e as escolhas viram um [`PedidoPreset`]; os volumes
@@ -470,7 +446,10 @@ impl PainterTool {
             );
         }
 
-        if let Some(m) = prm.paint_mode.as_deref() {
+        // A ferramenta do fluido é do Pincel; a Borracha já está na mão (`pegar_a_ferramenta_do_preset`).
+        if let Some(m) = prm.paint_mode.as_deref()
+            && ferramenta_do_preset(prm) == crate::FerramentaDoPincel::Pincel
+        {
             self.wet_preset_aplicar_modo(m);
         }
         // O Tilt do pincel (W1e, F4); um preset de antes dele (`None`) não mexe na tela.
@@ -601,7 +580,9 @@ impl PainterTool {
         p.volumes.size_px = v.size_px;
         p.volumes.opacity = v.opacity;
         p.volumes.water = v.water;
-        p.paint_mode = Some(self.wet_preset_modo());
+        let ferramenta = self.ferramenta_dos_presets().and_then(nome_da_ferramenta);
+        p.paint_mode = ferramenta.is_none().then(|| self.wet_preset_modo());
+        p.ferramenta = ferramenta.map(str::to_owned);
         let w = &self.paint.wetpaint;
         p.tilt = Some(ph2d_brush_presets::Tilt {
             on: w.tilt_on,

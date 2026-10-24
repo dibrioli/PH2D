@@ -34,8 +34,7 @@ pub mod context_menu_overlay;
 /// ⭐⭐⭐ **O interruptor de uma coluna** — fechar e reabrir como uma involução, e não como duas
 /// perguntas a factos diferentes.
 pub mod dock_columns;
-/// ⭐⭐ **O fantasma do arrasto** — o primeiro deste editor a seguir o cursor (plano
-/// `docs/Components/07`, B4).
+/// ⭐⭐ **O fantasma do arrasto** — o primeiro a seguir o cursor (`docs/Components/07`, B4).
 pub mod dock_reopen;
 pub mod file_menu;
 pub mod fixture;

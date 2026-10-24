@@ -206,6 +206,16 @@ pub fn draw_overlays(
         cursor,
         fill_drag_armed,
     );
+    // O cursor do conta-gotas — por cima de tudo, como o do balde (e na mesma fatia do relógio).
+    crate::painter_bridge_eyedropper_cursor::draw_eyedropper_cursor(
+        painter,
+        hero,
+        sim,
+        camera,
+        window_size,
+        vector_scene,
+        cursor,
+    );
     mark(&mut perf[12], &mut t);
 }
 

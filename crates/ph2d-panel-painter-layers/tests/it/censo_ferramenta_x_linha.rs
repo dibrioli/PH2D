@@ -43,7 +43,40 @@ fn armar() -> Vec<Gesto> {
 }
 
 pub(crate) fn bancada(modo: &str) -> Bancada {
-    bancada_com(modo, &armar(), &Gesto::Nenhum)
+    let mut b = bancada_com(modo, &armar(), &Gesto::Nenhum);
+    // `CENSO_MEIO=watercolor|wetpaint|impasto` (24/10): o meio DA FERRAMENTA (a Borracha tem três), posto depois dela.
+    let meio = match std::env::var("CENSO_MEIO").as_deref() {
+        Ok("watercolor") => Some(PaintMedia::Watercolor),
+        Ok("wetpaint") => Some(PaintMedia::WetPaint),
+        Ok("impasto") => Some(PaintMedia::Impasto),
+        _ => None,
+    };
+    if let Some(m) = meio {
+        b.tool.set_paint_media(m);
+        b.no_modo(modo);
+        assert_eq!(
+            b.tool.paint_media(),
+            m,
+            "{modo}: a ferramenta não tem o meio {m:?}"
+        );
+    }
+    // `CENSO_MOLHADO=1`: as riscas re-pintadas MOLHADAS (o Pincel no Wet Paint) — a borracha da água só levanta
+    // tinta viva (o «Wet canvas» molha o papel, não a tinta seca: a borracha lá não apaga nada, medido 24/10).
+    if std::env::var("CENSO_MOLHADO").is_ok_and(|v| v == "1") {
+        molha(&mut b, modo);
+    }
+    b
+}
+
+/// As riscas outra vez, com o Pincel no Wet Paint (a sessão viva), e a ferramenta de volta.
+pub(crate) fn molha(b: &mut Bancada, modo: &str) {
+    b.no_modo("brush");
+    riscas(b);
+    b.no_modo(modo);
+    assert!(
+        b.tool.wet_pigmento().is_some(),
+        "as riscas não ficaram molhadas"
+    );
 }
 
 /// A bancada de `modo`: as pré-condições, as riscas, `no_pincel` aplicado com o PINCEL na mão (com o Sync, ele

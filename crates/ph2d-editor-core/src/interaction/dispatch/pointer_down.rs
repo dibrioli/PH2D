@@ -260,6 +260,7 @@ pub(super) fn dispatch_down<'frame>(
             Some(ContextMenuKind::RenamePaletteDialog)
         );
         if !inside_outer
+            && !store.picker_pinned()
             && !inside_sub
             && !is_color_target
             && !eyedropper_armed

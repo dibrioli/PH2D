@@ -214,6 +214,9 @@ pub struct ReceitaMeio {
     /// `shape_2`…, `texture`) e a função que desenha a imagem — NOSSA, procedural — já no formato do ficheiro
     /// (`ph2d_brush_presets::escrever_textura`). Vazio = nenhuma (o de sempre).
     pub texturas: &'static [TexturaDeReceita],
+    /// A ferramenta do trilho cuja biblioteca o preset é (`Parametros::ferramenta`: «Eraser», «Blur», «Smear»,
+    /// «Clone»); `None` = o Pincel. O preset nasce do slot dela (o pincel e a mão de fábrica da ferramenta).
+    pub ferramenta: Option<&'static str>,
 }
 
 impl ReceitaMeio {
@@ -236,6 +239,7 @@ impl ReceitaMeio {
             opacity: None,
             nasce_de: None,
             texturas: &[],
+            ferramenta: None,
         }
     }
 

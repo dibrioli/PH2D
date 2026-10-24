@@ -127,7 +127,7 @@ mod watercolor_smudge;
 /// O `Style: Solid` na aguada: a região cercada é mais um carimbo, provisória até o pen-up.
 pub(crate) mod watercolor_solido;
 pub(crate) mod watercolor_vidro; // a transparência POR CANAL da aguada sobre o papel de cor (doc 48)
-pub(crate) use paint_mode::{PAINT_MODE_COUNT, PaintMode};
+pub(crate) use paint_mode::{ERASER_SLOT, PaintMode, SLOT_COUNT, slot_da_ferramenta};
 mod lifecycle; // transient-edit reset run at each document (re)bind — abandons pending Fill/stroke/etc.
 /// Drawing symmetry (mirror / radial) — engine glue, canvas-centre resolution + on-canvas pick modes.
 mod symmetry;
@@ -236,6 +236,9 @@ mod efeito_modos_tests;
 /// **L7** — o modo do pincel sobre o VAZIO (a fórmula geral do W3C), no Digital e no Wet.
 #[cfg(test)]
 mod efeito_vazio_tests;
+/// A Strength é o tecto, o Flow é a taxa (Accumulate off), pelo rato.
+#[cfg(test)]
+mod flow_tecto_tests;
 /// **Grid Stamp** — o que o carimbo de fato PINTA (o irmão do módulo acima, que mede os controles).
 #[cfg(test)]
 mod grid_stamp_paint_tests;

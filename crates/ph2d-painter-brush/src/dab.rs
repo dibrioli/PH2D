@@ -483,9 +483,12 @@ fn stamp_dab_inner(
     }
     // Per-dab opacity = the dab's coverage (which already carries the Strength, ONCE —
     // `stroke/dab_build.rs`) × the brush's Flow (per-dab build-up). With `mask` set this is the
-    // per-stroke CAP (Accumulate off); without it the dab just builds up (Accumulate on). BUGS #41:
+    // per-stroke CAP (Accumulate off) — o tecto é a cobertura SEM o Flow e o Flow é a taxa por dab
+    // ([`crate::stroke_cover::cover_add`]); without it the dab just builds up (Accumulate on). BUGS #41:
     // multiplying `spec.strength` here as well made the opacity Strength².
-    let coverage = coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0);
+    let tecto = coverage.clamp(0.0, 1.0);
+    let flow = spec.flow.clamp(0.0, 1.0);
+    let coverage = tecto * flow;
     if coverage <= 0.0 || width == 0 || height == 0 {
         return None;
     }
@@ -569,6 +572,8 @@ fn stamp_dab_inner(
         inv_radius: 1.0 / radius,
         radius,
         coverage,
+        tecto,
+        flow,
         preserve_alpha,
         x0,
         x1,

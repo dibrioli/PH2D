@@ -40,7 +40,7 @@ impl App {
             .gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .is_some_and(|h| h.store.picker_target().is_some() || h.store.context_menu().is_some());
+            .is_some_and(|h| h.store.picker_dismissable() || h.store.context_menu().is_some());
         if overlay_open {
             return false;
         }

@@ -237,7 +237,7 @@ impl crate::App {
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
             .map(|h| {
-                if h.store.eyedropper_pending().is_some() {
+                if h.store.eyedropper_pending().is_some() || ph2d_app_painter::mira_na_tela() {
                     CursorIcon::Crosshair
                 } else if self.over_motion_split_divider(h) {
                     if h.view.center_split.is_vertical() {

@@ -79,7 +79,7 @@ pub(crate) fn paint_texture_section(
     }
     // Watercolor mode: the Grain slot IS the granulation map — show the "Same as Paper" toggle + the
     // granulation Amount at the top (the Paper substrate has its own section above). Brush only.
-    if brush.watercolor && !compact {
+    if brush.watercolor && brush.le(ph2d_tool_painter::LinhaDaFerramenta::Aguada) && !compact {
         y = crate::paint_watercolor_paper::paint_grain_watercolor_extras(
             ctx, theme, x, content_w, y, brush,
         );

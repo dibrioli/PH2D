@@ -319,8 +319,12 @@ impl PainterTool {
         }
         self.paint.wetpaint.armed = on;
         match self.paint.paint_mode {
-            PaintMode::Paint if on && !self.paint.eraser => self.set_paint_tool_mode("brush"),
-            PaintMode::WetPaint if !on => self.set_paint_tool_mode("brush"),
+            // A Borracha entra e sai da água como Borracha (dono 24/10: ela tem o Wet Paint como meio).
+            PaintMode::Paint | PaintMode::WetPaint
+                if on == (self.paint.paint_mode == PaintMode::Paint) =>
+            {
+                self.set_paint_tool_mode(if self.paint.eraser { "eraser" } else { "brush" });
+            }
             _ => {}
         }
     }

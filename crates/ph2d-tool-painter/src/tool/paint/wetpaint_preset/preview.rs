@@ -10,6 +10,7 @@
 //! A miniatura dos ficheiros ([`super::miniatura_do_preset`]) é o último quadro deste pintor, com a
 //! obra neutra (tela branca, sem papel).
 
+use super::super::PaintMode;
 use super::super::brush_settings::BrushTextureImage;
 use super::super::composite::{CompositeLayer, N_CAMADAS};
 use super::super::mangueira::Mangueira;
@@ -92,6 +93,8 @@ pub struct CenaDoPreview {
     ferramenta: super::super::wetpaint_settings::WetTool,
     /// A borracha do trilho na mão (dono 24/10): o preview vivo apaga o S numa tela cheia.
     borracha: bool,
+    /// O modo do trilho (24/10): só a MINIATURA o usa — o Blur, o Smear e o Clone mostram-se a mexer na faixa.
+    modo: super::super::PaintMode,
     /// O que o pincel leva fora do `BrushSpec` e dos knobs (22/10: as Grain Colors, a ponta de N imagens, o
     /// dual de imagem e o Composite não chegavam ao preview).
     fora: ForaDoSpec,
@@ -181,6 +184,7 @@ impl PainterTool {
             shape_color: self.shape_color_estado(),
             ferramenta: w.tool,
             borracha: super::preview_borracha::e_a_borracha(self),
+            modo: self.paint.paint_mode,
             fora: self.fora_do_spec(),
         }
     }
@@ -368,6 +372,16 @@ pub(super) fn pintar_miniatura(
     if e_ferramenta(cena) {
         faixa_da_ferramenta(&mut t, cena, x0, x1, cy);
     }
+    if let Some(fio) = fio_do_trilho(cena) {
+        // A faixa pintou-se com o Pincel; o S é a ferramenta, com o pincel do preset (trocar de modo troca o slot).
+        t.set_paint_tool_mode(fio);
+        t.instalar_cena(cena, false);
+        if cena.modo == PaintMode::Clone {
+            // A fonte 1,5 amplitude ACIMA do início do S (fora do rasto, que o Clone não relê): a orla de cima da
+            // faixa desce para baixo dela.
+            t.set_clone_source([x0, cy - 1.5 * AMPLITUDE]);
+        }
+    }
     let n = ((x1 - x0) / PASSO_PX).ceil() as u32;
     let cada = n.div_ceil(QUADROS_DO_TRACO).max(1);
     let em = |f: f32| {
@@ -415,6 +429,18 @@ fn e_ferramenta(cena: &CenaDoPreview) -> bool {
     use ph2d_painter_brush::BrushBlend;
     !matches!(cena.brush.blend, BrushBlend::Mix | BrushBlend::Multiply)
         || (cena.meio == PaintMedia::WetPaint && cena.ferramenta != WetTool::Paint)
+        || fio_do_trilho(cena).is_some()
+}
+
+/// O fio do Blur, do Smear ou do Clone do trilho (24/10: a biblioteca de cada ferramenta) — a miniatura do preset
+/// deles passa a ferramenta sobre a faixa; `None` nos outros modos (a miniatura de sempre, ao byte).
+fn fio_do_trilho(cena: &CenaDoPreview) -> Option<&'static str> {
+    match cena.modo {
+        PaintMode::Blur => Some("blur"),
+        PaintMode::Smear => Some("smear"),
+        PaintMode::Clone => Some("clone"),
+        _ => None,
+    }
 }
 
 /// A faixa VERMELHA sobre a qual a miniatura de uma ferramenta mostra o que ela faz: o mesmo pincel a PINTAR (o Mix,
@@ -450,6 +476,12 @@ fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f
     t.paint.brush.blend = ph2d_painter_brush::BrushBlend::Mix;
     t.paint.wetpaint.tool = WetTool::Paint;
     t.paint.brush.radius_px = AMPLITUDE;
+    // Sob o Blur, o Smear e o Clone a faixa é mais fina e de orla VIVA (o S cruza as duas orlas a meio da subida, onde
+    // eles mexem); o pincel volta inteiro com a cena.
+    if fio_do_trilho(cena).is_some() {
+        t.paint.brush.hardness = 1.0;
+        t.paint.brush.radius_px = 0.5 * AMPLITUDE;
+    }
     t.set_brush_color_srgb8(VERMELHO);
     let n = ((x1 - x0) / PASSO_PX).ceil() as u32;
     t.on_canvas_pointer(ponto([x0, cy], 1.0, PointerPhase::Down));

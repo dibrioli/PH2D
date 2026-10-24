@@ -17,14 +17,16 @@ impl PainterTool {
     /// Swap the active brush settings to `new_mode`'s slot (the independent-tools model). No-op when the
     /// settings are LINKED (all modes share the live `brush`) or the mode is unchanged. Saves the current
     /// mode's live edits back to its slot first, then loads the target mode's saved settings.
-    pub(crate) fn switch_brush_slot(&mut self, new_mode: super::PaintMode) {
-        if self.paint.link_shared_settings || new_mode == self.paint.paint_mode {
+    pub(crate) fn switch_brush_slot(&mut self, new_mode: super::PaintMode, new_eraser: bool) {
+        let old = self.slot_atual();
+        let new = super::slot_da_ferramenta(new_mode, new_eraser);
+        if self.paint.link_shared_settings || new == old {
             return;
         }
-        let old = self.paint.paint_mode.slot();
-        let new = new_mode.slot();
         self.paint.brush_by_mode[old] = self.paint.brush; // save this tool's edits
         self.paint.brush = self.paint.brush_by_mode[new]; // restore the target tool's settings
+        self.paint.dynamics_by_slot[old] = self.paint.dynamics; // …e a mão dela
+        self.paint.dynamics = self.paint.dynamics_by_slot[new];
         // Falloff provenance for the freshly loaded brush: any value the arming TABLE can install
         // (factory Smooth + Smoother/Sphere/Pow4) is presumed armable, so re-entering a mode keeps
         // its verbs re-armable; anything else in a slot is presumed the artist's. The ambiguity —
@@ -37,6 +39,11 @@ impl PainterTool {
                 | ph2d_painter_brush::Falloff::Sphere
                 | ph2d_painter_brush::Falloff::Pow4
         );
+    }
+
+    /// O slot da ferramenta na mão ([`super::slot_da_ferramenta`]).
+    pub(crate) fn slot_atual(&self) -> usize {
+        super::slot_da_ferramenta(self.paint.paint_mode, self.paint.eraser)
     }
 
     /// Whether brush settings are currently linked across tools (the "Sync with other tools" checkbox).
@@ -55,6 +62,8 @@ impl PainterTool {
             // Unlinking: every mode keeps what's currently on screen (all were showing `brush`).
             let current = self.paint.brush;
             self.paint.brush_by_mode.fill(current);
+            let mao = self.paint.dynamics;
+            self.paint.dynamics_by_slot.fill(mao);
         }
         // Linking needs no seeding: while linked, a mode switch keeps the live `brush`, so every tool
         // immediately shows this (the checked) panel's settings.

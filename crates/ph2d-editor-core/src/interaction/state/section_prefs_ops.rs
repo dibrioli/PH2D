@@ -118,6 +118,11 @@ impl WidgetStore {
         self.section_prefs.dirty = false;
     }
 
+    /// Marca uma mudança gravável vinda de fora das secções (a posição do seletor de cor).
+    pub(super) fn mark_section_prefs_dirty(&mut self) {
+        self.section_prefs.dirty = true;
+    }
+
     /// `true` uma vez por mudança gravável — quem pergunta é a persistência da shell.
     pub fn take_section_prefs_dirty(&mut self) -> bool {
         std::mem::take(&mut self.section_prefs.dirty)
@@ -241,6 +246,7 @@ pub fn section_prefs_text(store: &WidgetStore) -> String {
         let _ = writeln!(s, "epoch.{}={e}", id.0);
     }
     tema_custom::escreve(store, &mut s);
+    super::picker_pin_ops::escreve_posicao(store, &mut s);
     s
 }
 
@@ -270,7 +276,7 @@ pub fn restore_section_prefs_text(store: &mut WidgetStore, text: &str) {
             && let (Ok(id), Ok(e)) = (id.parse(), v.trim().parse())
         {
             epochs.insert(NodeId(id), e);
-        } else {
+        } else if !super::picker_pin_ops::le_posicao(store, k, v) {
             custom.linha(k, v);
         }
     }

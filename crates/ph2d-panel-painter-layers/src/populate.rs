@@ -79,6 +79,7 @@ fn register_brush_inputs(store: &mut WidgetStore) {
     let brush_sliders = [
         ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_SLIDER,
         ph2d_tool_painter::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_FLOW_SLIDER,
         // Randomize Color amounts (painted only when the subsection is enabled).
         ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
         ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_SAT,

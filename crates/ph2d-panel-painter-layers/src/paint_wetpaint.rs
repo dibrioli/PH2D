@@ -162,7 +162,17 @@ pub(crate) fn paint_wetpaint_section(
                 2,
             ),
         ];
+        // A borracha da água não pousa: o Pigment, o Pickup e o pó do pincel saem (`DepositoMolhado`).
+        let pousa = brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
+        let do_deposito = [
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_PIGMENT,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_DUST,
+        ];
         for (label, id, value, min, max, step, decimals) in rows {
+            if !pousa && do_deposito.contains(&id) {
+                continue;
+            }
             y = card_row(
                 ctx, theme, x, content_w, y, label, id, value, min, max, step, decimals,
             );
@@ -177,6 +187,9 @@ pub(crate) fn paint_wetpaint_section(
             "panel.painter_layers.wetpaint.dust",
         ];
         for (label, (id, v, min, max, step)) in nomes.into_iter().zip(k.knobs_no_cartao()) {
+            if !pousa && do_deposito.contains(&id) {
+                continue;
+            }
             let decimais = ph2d_tool_painter::Escala {
                 min: min as f32,
                 max: max as f32,

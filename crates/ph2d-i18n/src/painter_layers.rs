@@ -1,25 +1,19 @@
 //! **AS STRINGS DO PAINEL PAINTER** — o irmão de tabela do [`super`] para `panel.painter_layers.*`.
 //!
-//! ⚠️ **Um corte por ASSUNTO, como o `vector.rs` e o `chrome.rs`** — e pela mesma
-//! razão de isolamento (`CLAUDE.md` §0.2): enquanto todas as chaves moram num `match` só, duas linhas
-//! paralelas que acrescentem uma chave cada colidem no mesmo punhado de linhas.
+//! ⚠️ **Um corte por ASSUNTO, como o `vector.rs` e o `chrome.rs`**: num `match` só, duas linhas
+//! paralelas que acrescentem uma chave cada colidem no mesmo punhado de linhas (`CLAUDE.md` §0.2).
 //!
 //! # De onde isto veio
 //!
-//! Migrado em 2026-09-13 por `scripts/migrar-texto-pintado.py` a partir da régua lexical da
-//! `ph2d-label-census`: o painel escrevia **376** textos no fonte e tinha **zero** chaves (o censo
-//! anterior contava 166, porque só seguia o texto até um pintor). As chaves são
-//! `<secção que o artista vê>.<nome>` (o mapa está em
-//! `docs/UI_New_and_Simple/ferramentas/seccoes_painter_layers.tsv`), e o mesmo texto na mesma
-//! secção é UMA chave.
+//! Migrado em 2026-09-13 por `scripts/migrar-texto-pintado.py` (régua da `ph2d-label-census`). Chave =
+//! `<secção>.<nome>` (`docs/UI_New_and_Simple/ferramentas/seccoes_painter_layers.tsv`), uma por texto.
 //!
 //! ⚠️ **Os braços entre os marcadores `ph2d-migrar-texto` são regenerados pelo script** — uma chave
 //! nova escreve-se à mão FORA deles, ou volta a passar pelo plano. O gate
 //! `every_painter_key_exists_on_both_sides` (na crate do painel) acusa uma chave usada e não
 //! declarada, e uma declarada que ninguém usa.
 //!
-//! ⚠️ **`Option` e não `&str`:** devolver a chave crua aqui seria uma SEGUNDA resposta a *«o que
-//! fazer com uma chave desconhecida?»* — o `leak_key` do pai responde isso, uma vez.
+//! ⚠️ **`Option` e não `&str`:** a chave desconhecida responde-a o `leak_key` do pai, uma vez.
 
 /// A tradução de uma chave `panel.painter_layers.*`, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
@@ -114,13 +108,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.detail_above_minimum" => {
             "Acts when Detail is above its minimum"
         }
-        // ⭐⭐ **O NOME DO PAINEL** (2026-09-17) — o `Panel::TITLE` é um `TextKey`, e esta chave é o
-        //    que a ABA do encaixe lê. ⚠️ O painel chama-se *"Painter"* e a crate `painter_layers`:
-        //    a chave segue o **id do painel**, que é o que a aba e o registo conhecem; o TEXTO é
-        //    que é autorado, e é a palavra que o artista lê no menu *Window*.
+        // ⭐⭐ O NOME DO PAINEL (o `Panel::TITLE`, a aba do encaixe): a chave segue o id do painel, o
+        //    texto é o que o artista lê no menu *Window*.
         "panel.painter_layers.title" => "Painter",
-        // ⚠️ À MÃO, fora dos marcadores (o `aplicar` só reescreve o que está entre eles): os títulos
-        //    GRITADOS dos cards, que a 1.ª redacção da régua lexical não via (2026-09-13).
+        // ⚠️ À MÃO, fora dos marcadores: os títulos GRITADOS dos cards (a régua lexical não os via).
         "panel.painter_layers.deform.card_mode" => "MODE",
         "panel.painter_layers.impasto.card_tool" => "TOOL",
         "panel.painter_layers.selection.card_operation" => "OPERATION",
@@ -130,10 +121,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Convert / merge / simplify selection curve"
         }
         "panel.painter_layers.selection.card_expand_contract" => "EXPAND / CONTRACT",
-        // ⚠️ À MÃO (2026-09-16): o que as camadas de AJUSTE pintam. Estes nomes vinham da crate de
-        //    efeitos em inglês abreviado (`Shad Amt`, `Preserve Lum.`) — abreviados para caber numa
-        //    coluna de 44 px — e a régua lexical não os via, porque o literal mora noutra crate. O
-        //    mapa rótulo-da-crate → chave é o `adjust_nomes` do painel.
+        // ⚠️ À MÃO: o que as camadas de AJUSTE pintam (o literal mora na crate de efeitos; o mapa
+        //    rótulo → chave é o `adjust_nomes` do painel).
         "panel.painter_layers.adjust.hue" => "Hue",
         "panel.painter_layers.adjust.saturation" => "Saturation",
         "panel.painter_layers.adjust.brightness" => "Brightness",
@@ -184,8 +173,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.adjust.magenta" => "Magenta",
         "panel.painter_layers.adjust.yellow" => "Yellow",
         "panel.painter_layers.adjust.black" => "Black",
-        // ⚠️ «Keep» e não «Preserve»: `Preserve Luminosity` mede 117 px e corta já a 245 (a coluna
-        //    tem 103); este mede 95 e só corta no mínimo do dock, como o abreviado de antes.
+        // ⚠️ «Keep» e não «Preserve»: 95 px contra 117, cabe na coluna de 103.
         "panel.painter_layers.adjust.preserve_luminosity" => "Keep Luminosity",
         "panel.painter_layers.adjust.monochrome" => "Monochrome",
         "panel.painter_layers.adjust.tint" => "Tint",
@@ -248,8 +236,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.brush.blend" => "Blend",
         "panel.painter_layers.brush.size" => "Size",
         "panel.painter_layers.brush.strength" => "Strength",
+        "panel.painter_layers.brush.flow" => "Flow",
         "panel.painter_layers.brush.accumulate" => "Accumulate",
         "panel.painter_layers.brush.glaze" => "Glaze",
+        "panel.painter_layers.brush.glaze_hint" => "Ceiling of the whole stroke · 1 = opaque",
         "panel.painter_layers.brush.wet_edges" => "Wet edges",
         "panel.painter_layers.brush.burnt_edges" => "Burnt edges",
         "panel.painter_layers.brush.edge_width" => "Edge width",

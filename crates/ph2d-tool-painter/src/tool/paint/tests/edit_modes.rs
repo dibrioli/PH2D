@@ -772,3 +772,72 @@ fn eyedropper_samples_the_pixel_into_the_brush_colour() {
         "sampled the white canvas pixel into the brush colour"
     );
 }
+
+/// ⭐ **A amostra do cursor é a cor que o clique apanha** — o mesmo pixel, em vários pontos, sobre uma
+/// composição em cache DIFERENTE da tela de trabalho (a pilha com camadas) e sem ela (pilha trivial).
+#[test]
+fn the_eyedropper_hover_sample_is_what_the_pick_sets() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let n = 16_usize;
+    let mut t = white_canvas(n as u32, 3.0);
+    // Uma composição de cache que a tela não tem: cada pixel com a sua cor.
+    let composto: Vec<u8> = (0..n * n)
+        .flat_map(|i| {
+            [
+                (i * 7 % 256) as u8,
+                (i * 13 % 256) as u8,
+                (i * 29 % 256) as u8,
+                255,
+            ]
+        })
+        .collect();
+    for com_camadas in [true, false] {
+        t.composited = com_camadas.then(|| std::sync::Arc::new(composto.clone()));
+        for pos in [
+            [0.0, 0.0],
+            [3.6, 9.2],
+            [15.9, 15.9],
+            [-4.0, 7.0],
+            [40.0, 2.5],
+        ] {
+            let amostra = t.eyedropper_amostra(pos).expect("há tela");
+            let (x, y) = (
+                (pos[0].max(0.0) as usize).min(n - 1),
+                (pos[1].max(0.0) as usize).min(n - 1),
+            );
+            let i = (y * n + x) * 4;
+            let esperado = if com_camadas {
+                &composto[i..i + 4]
+            } else {
+                &t.canvas_rgba[i..i + 4]
+            };
+            assert_eq!(
+                &amostra[..],
+                esperado,
+                "a amostra lê o pixel que se VÊ em {pos:?}"
+            );
+            t.handle_panel_event(PanelEvent::SelectOption(
+                core_ids::PAINTER_PAINT_MODE,
+                "eyedropper".to_string(),
+            ));
+            assert!(t.on_canvas_pointer(cp(pos, PointerPhase::Down)));
+            assert_eq!(
+                t.brush_settings().color,
+                [amostra[0], amostra[1], amostra[2]].map(|c| f32::from(c) / 255.0),
+                "o clique em {pos:?} apanha a cor que o cursor mostrava (camadas: {com_camadas})"
+            );
+        }
+    }
+    // ⏱ O custo de uma amostra por movimento (a régua do relatório): um índice num buffer.
+    let t0 = std::time::Instant::now();
+    let mut soma = 0_u32;
+    for k in 0..1_000_000_u32 {
+        let p = (k % 256) as f32 * 0.06;
+        soma += u32::from(t.eyedropper_amostra([p, p]).map_or(0, |a| a[0]));
+    }
+    eprintln!(
+        "eyedropper_amostra: {:.1} ns/chamada (soma {soma})",
+        t0.elapsed().as_nanos() as f64 / 1e6
+    );
+}

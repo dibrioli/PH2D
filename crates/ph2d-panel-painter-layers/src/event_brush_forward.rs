@@ -10,6 +10,7 @@ use ph2d_a11y::NodeId;
 pub(crate) fn is_forwardable_brush_slider(id: NodeId) -> bool {
     id == ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_SLIDER
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_STRENGTH_SLIDER
+        || id == ph2d_tool_painter::ids::PAINTER_BRUSH_FLOW_SLIDER
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_JITTER

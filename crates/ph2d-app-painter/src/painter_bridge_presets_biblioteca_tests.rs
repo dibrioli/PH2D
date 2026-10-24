@@ -61,11 +61,11 @@ fn a_ordem_nao_muda_sozinha() {
     assert_eq!(depois[i - 1], WASH, "e nasce logo depois do de onde veio");
 }
 
-/// A parte do `drive` que reage a uma troca de meio pelo chip (sem a célula da thread).
+/// A parte do `drive` que reage a uma troca de gaveta (ferramenta × meio) (sem a célula da thread).
 fn drive_em(p: &mut Presets, t: &mut PainterTool, toasts: &mut ToastQueue) {
-    if t.paint_media() != p.meio {
+    if t.gaveta_de_presets() != p.gaveta {
         p.abrir_meio(t, toasts);
-        p.meio = t.paint_media();
+        p.gaveta = t.gaveta_de_presets();
         p.publicar();
     }
 }

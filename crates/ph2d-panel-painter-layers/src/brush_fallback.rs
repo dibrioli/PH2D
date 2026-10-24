@@ -52,6 +52,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     size_max_px: ph2d_tool_painter::BRUSH_SIZE_MAX_PX,
     size_norm: 0.217, // LITERAL-PX-OK: defensive pre-publish fallback default
     strength: 1.0,
+    flow: 1.0,
     falloff: 0,
     // Default Custom curve = linear ramp (0,1)→(1,0); only read when falloff == Custom.
     falloff_points: [
@@ -83,6 +84,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     is_blur: false,
     is_clone: false,
     is_mask: false,
+    is_eyedropper: false,
     is_inpaint: false,
     is_selection: false,
     selection_mode: 0,
@@ -281,6 +283,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     //    fileira piscar no 1.º quadro de toda sessão, que é um defeito visível a trocar por nada.
     pigment_offered: true,
     wetpaint: false,
+    meios: 0b1111,
     wet_knobs: ph2d_tool_painter::WetKnobs::DEFAULT,
     wet_opacidade: ph2d_tool_painter::OPACIDADE_DE_FABRICA,
     mao: ph2d_tool_painter::MAO_DE_FABRICA,

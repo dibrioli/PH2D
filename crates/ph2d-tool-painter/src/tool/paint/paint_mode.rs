@@ -70,6 +70,21 @@ pub(crate) enum PaintMode {
 /// [`PaintMode::slot`]). Keep in lock-step with the enum.
 pub(crate) const PAINT_MODE_COUNT: usize = 12;
 
+/// O slot da **Borracha** (dono 24/10): o seu pincel e a sua mão, a seguir aos doze modos — ela pinta no
+/// modo do Pincel (`Paint`, ou `WetPaint` dentro da água) e herdava o slot dele.
+pub(crate) const ERASER_SLOT: usize = PAINT_MODE_COUNT;
+/// Os slots de pincel: um por modo + o da Borracha.
+pub(crate) const SLOT_COUNT: usize = PAINT_MODE_COUNT + 1;
+
+/// O slot da ferramenta `(modo, borracha)`: a Borracha tem o seu nos dois modos onde ela é uma flag.
+pub(crate) fn slot_da_ferramenta(mode: PaintMode, eraser: bool) -> usize {
+    if eraser && matches!(mode, PaintMode::Paint | PaintMode::WetPaint) {
+        ERASER_SLOT
+    } else {
+        mode.slot()
+    }
+}
+
 impl PaintMode {
     /// **Este modo DEPOSITA a cor de um dab?** — a pergunta que decide quem pode ver um controlo
     /// sobre *como essa cor encontra a tinta que já lá está*.

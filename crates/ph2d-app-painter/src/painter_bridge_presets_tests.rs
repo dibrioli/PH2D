@@ -33,6 +33,17 @@ pub(super) fn sem_erros(toasts: &ToastQueue) {
     assert!(erros.is_empty(), "{erros:?}");
 }
 
+/// Os presets da biblioteca que são do Pincel (as ferramentas têm a sua gaveta desde 24/10).
+fn do_pincel(b: &ph2d_brush_presets::Biblioteca) -> usize {
+    b.entradas
+        .iter()
+        .filter(|e| {
+            ph2d_tool_painter::ferramenta_do_preset(&e.preset.parametros)
+                == ph2d_tool_painter::FerramentaDoPincel::Pincel
+        })
+        .count()
+}
+
 /// Um knob do pincel pela chave do registo (a mesma que o preset grava).
 fn knob(t: &PainterTool, chave: &str) -> f64 {
     let base = Parametros::novo(MEIO_DO_PRESET, "", "");
@@ -46,8 +57,8 @@ fn escolher_poe_o_preset_no_pincel_e_lembra_o_ativo() {
     let fabrica = ph2d_brush_presets::Biblioteca::carregar(&pasta_de_fabrica(), None);
     assert_eq!(
         p.vista.entradas.len(),
-        fabrica.entradas.len(),
-        "a fábrica inteira no navegador"
+        do_pincel(&fabrica),
+        "a fábrica inteira do Pincel no navegador"
     );
     assert_eq!(p.vista.ativo, None);
     p.atender(&mut t, PedidoPreset::Escolher(WASH.into()), &mut toasts);
@@ -270,7 +281,7 @@ fn o_navegador_abre_em_qualquer_meio_e_escolher_troca_o_meio() {
     let (mut p, mut t, mut toasts, _) = com_exemplos("quatro", PaintMedia::Digital);
     sem_erros(&toasts);
     let fabrica = ph2d_brush_presets::Biblioteca::carregar(&pasta_de_fabrica(), None);
-    assert_eq!(p.vista.entradas.len(), fabrica.entradas.len() + 3);
+    assert_eq!(p.vista.entradas.len(), do_pincel(&fabrica) + 3);
     // O «meio de agora primeiro» saiu a 23/10 (era ele que trocava a ordem ao escolher um pincel de outro
     // meio — `a_ordem_nao_muda_sozinha`): a ordem é a da biblioteca, e o Digital vem antes do Wet Painter.
     let i = p
@@ -365,4 +376,67 @@ fn escolher_um_preset_de_outro_modo_troca_o_modo_a_partir_de_cada_modo() {
             assert_eq!(p.vista.ativo.as_deref(), Some(*rel), "{de:?} → {para:?}");
         }
     }
+}
+
+/// ⭐ **Cada ferramenta vê a SUA biblioteca** (dono 24/10, o Procreate): a Borracha as três borrachas, o Blur/Smear/Clone
+/// o seu Basic, o Pincel nenhum deles; escolher na Borracha deixa-a na mão, e o activo é de cada gaveta.
+#[test]
+fn o_navegador_mostra_so_os_presets_da_ferramenta_na_mao() {
+    let (mut p, mut t, mut toasts, _) = abre("gavetas");
+    let nomes = |p: &Presets| -> Vec<String> {
+        let mut v: Vec<String> = p.vista.entradas.iter().map(|e| e.nome.clone()).collect();
+        v.sort();
+        v
+    };
+    let ve = |p: &mut Presets, t: &mut PainterTool, fio: &str| {
+        t.set_paint_tool_mode(fio);
+        p.gaveta = t.gaveta_de_presets();
+        p.publicar();
+    };
+    ve(&mut p, &mut t, "eraser");
+    assert_eq!(
+        nomes(&p),
+        ["Hard Eraser", "Kneaded Eraser", "Texture Eraser"]
+    );
+    for (fio, nome) in [
+        ("blur", "Blur Basic"),
+        ("smear", "Smear Basic"),
+        ("clone", "Clone Basic"),
+    ] {
+        ve(&mut p, &mut t, fio);
+        assert_eq!(nomes(&p), [nome], "{fio}");
+    }
+    ve(&mut p, &mut t, "brush");
+    let pincel = nomes(&p);
+    assert!(
+        pincel.len() > 30,
+        "o Pincel tem a fábrica dele: {}",
+        pincel.len()
+    );
+    for n in [
+        "Hard Eraser",
+        "Kneaded Eraser",
+        "Blur Basic",
+        "Smear Basic",
+        "Clone Basic",
+    ] {
+        assert!(!pincel.iter().any(|x| x == n), "o Pincel mostra {n}");
+    }
+    let wet = p.vista.ativo.clone();
+    // Escolher na Borracha: ela fica na mão, o activo dela muda e o do Pincel não.
+    ve(&mut p, &mut t, "eraser");
+    let rel = p
+        .vista
+        .entradas
+        .iter()
+        .find(|e| e.nome == "Hard Eraser")
+        .unwrap()
+        .relativo
+        .clone();
+    p.atender(&mut t, PedidoPreset::Escolher(rel.clone()), &mut toasts);
+    sem_erros(&toasts);
+    assert!(t.brush_settings().eraser, "a Borracha continua na mão");
+    assert_eq!(p.vista.ativo.as_deref(), Some(rel.as_str()));
+    ve(&mut p, &mut t, "brush");
+    assert_eq!(p.vista.ativo, wet, "o activo do Pincel é o dele");
 }

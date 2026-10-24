@@ -29,6 +29,7 @@ pub(crate) fn populate_blender_picker(store: &mut WidgetStore) {
         ids::INSP_BLENDER_PICKER,
         crate::widget::default_palette().swatches.clone(),
     );
+    store.set_tooltip(ids::BLENDER_PIN, tr("chrome.color.pin"));
     for (id, kind) in [
         (ids::BLENDER_ADD_SWATCH, BlenderHitKind::AddSwatch),
         (ids::BLENDER_IMPORT_PALETTE, BlenderHitKind::ImportPalette),
@@ -41,6 +42,7 @@ pub(crate) fn populate_blender_picker(store: &mut WidgetStore) {
         (ids::BLENDER_RENAME_PALETTE, BlenderHitKind::RenamePalette),
         (ids::BLENDER_DELETE_PALETTE, BlenderHitKind::DeletePalette),
         (ids::BLENDER_CLOSE, BlenderHitKind::Close),
+        (ids::BLENDER_PIN, BlenderHitKind::Pin),
         (ids::BLENDER_EYEDROPPER, BlenderHitKind::Eyedropper),
         (ids::BLENDER_DRAG_HANDLE, BlenderHitKind::DragHandle),
         (ids::BLENDER_WHEEL, BlenderHitKind::Wheel),

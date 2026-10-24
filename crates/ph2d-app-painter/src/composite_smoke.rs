@@ -104,6 +104,13 @@ pub fn arm_hero(hero: &mut ph2d_editor_core::HeroScreen, bits: u64) {
             ph2d_editor_core::object_mode::ObjectMode::Paint,
         ),
     ));
+    // A foto do seletor (24/10): `PH2D_COMPOSITE_PICKER=1` abre-o FIXADO, ao lado do Inspector. O
+    // alvo é o próprio seletor — nenhum painel o fecha por ser «dele».
+    if std::env::var_os("PH2D_COMPOSITE_PICKER").is_some() {
+        let picker = ph2d_editor_core::ids::INSP_BLENDER_PICKER;
+        hero.store.set_picker_target(Some(picker));
+        hero.store.set_picker_pinned(true);
+    }
 }
 
 /// Montar a tela quando `PH2D_COMPOSITE_SMOKE=1`, UMA vez, devolvendo os bits da entidade para

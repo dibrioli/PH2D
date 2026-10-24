@@ -84,7 +84,8 @@ pub(crate) fn paint_brush_body(
     // está por baixo — escondido em Inpaint, como sempre), o **Preset** e "Sync with other tools". Off
     // (default) = this tool keeps its own settings; on = all paint tools share them.
     plano.bloco(move |ctx, theme, y| {
-        let y = if brush.is_inpaint {
+        // …e numa ferramenta de UM meio só (Blur, Smear, Clone, Máscara: o motor fixa o Digital — dono 24/10).
+        let y = if brush.is_inpaint || brush.meios.count_ones() <= 1 {
             y
         } else {
             crate::paint_brush_sections::paint_media_row(ctx, theme, x, content_w, y, brush)
@@ -244,6 +245,24 @@ fn paint_top_basics(
             ph2d_tool_painter::ids::PAINTER_BRUSH_STRENGTH_CHIP,
             brush.strength,
         );
+        // Flow — a taxa por dab; a Strength acima é o tecto do traço (dono 24/10, a lei do Photoshop/Krita).
+        // Só no Digital e no Pincel.
+        if ph2d_tool_painter::PaintMedia::from_u8(brush.media)
+            == ph2d_tool_painter::PaintMedia::Digital
+            && brush.ferramenta() == ph2d_tool_painter::FerramentaDoPincel::Pincel
+        {
+            y = paint_slider_chip_row(
+                ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                tr("panel.painter_layers.brush.flow"),
+                ph2d_tool_painter::ids::PAINTER_BRUSH_FLOW_SLIDER,
+                ph2d_tool_painter::ids::PAINTER_BRUSH_FLOW_CHIP,
+                brush.flow,
+            );
+        }
     }
 
     // 4b. Clone card (Set Source + Aligned) — Clone mode only.

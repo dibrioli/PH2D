@@ -185,7 +185,7 @@ pub(crate) fn paint_paper_section(
         // ⚠️ O Wet Paint SEM Kind pinta no papel de FÁBRICA do painel (o Cold que o Relief arma, W1e F2):
         // o Tooth morde-o e a Texture on Paint imprime-o — os dois vivem aqui, nunca escondidos nem fora
         // da secção.
-        if brush.wetpaint {
+        if brush.wetpaint && brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado) {
             let sec = seccao_do_papel(ctx);
             y = paint_tooth_row(ctx, theme, x, content_w, y, brush, sec);
             y = paint_texture_on_paint_row(ctx, theme, x, content_w, y, brush);
@@ -254,7 +254,7 @@ pub(crate) fn paint_paper_section(
         sec,
     );
     y = paint_tooth_row(ctx, theme, x, content_w, y, brush, sec);
-    if brush.wetpaint {
+    if brush.wetpaint && brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado) {
         y = paint_texture_on_paint_row(ctx, theme, x, content_w, y, brush);
     }
     // ── Per-pattern params (Contrast / Brightness / kind knobs) ──

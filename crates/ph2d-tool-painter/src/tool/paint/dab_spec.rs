@@ -65,6 +65,12 @@ impl PainterTool {
         // MOMENTO em que um dab pousa muda a tinta — medido, 3 093 px num pincel guardado.
         if matches!(self.paint.paint_mode, super::PaintMode::WetPaint) {
             brush.impasto_push = 0.0;
+            // A mesma lei para o Follow SEM LADO (`Dependente::FollowSemNada`, a linha esmaecida): nada roda,
+            // mas o Rake/Flow armava o aquecimento — medido 24/10, 1 273 px na Borracha de ponta redonda.
+            if self.inercias().inerte(super::Dependente::FollowSemNada) {
+                brush.shape.rake = false;
+                brush.shape.flow = false;
+            }
             // O Wet Paint não lê a Strength (a Opacity dele é o pigmento): o carimbo só a usava para
             // recuperar a pressão (`cobertura ÷ strength`), e essa divisão não volta exata — com o carimbo
             // da W2 o último bit mudava 1 px entre o pincel e o mesmo pincel guardado (que não leva a

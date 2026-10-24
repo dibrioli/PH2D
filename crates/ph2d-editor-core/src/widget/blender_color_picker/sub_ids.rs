@@ -63,6 +63,8 @@ pub struct BlenderSubIds {
     pub harmony_swatches: [NodeId; 4],
     /// "Add harmony to palette" button id.
     pub harmony_add: NodeId,
+    /// Pin button id (left of the ×) — pinned = no light-dismiss.
+    pub pin: NodeId,
 }
 
 impl BlenderSubIds {
@@ -96,6 +98,7 @@ impl BlenderSubIds {
             harmony_schemes: [NodeId(0); 7],
             harmony_swatches: [NodeId(0); 4],
             harmony_add: NodeId(0),
+            pin: NodeId(0),
         }
     }
 }

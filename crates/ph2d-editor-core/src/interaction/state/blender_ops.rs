@@ -277,6 +277,11 @@ impl WidgetStore {
     }
 
     pub fn end_blender_drag(&mut self) {
+        // O seletor largado num sítio novo é uma posição que se GRAVA (`picker_pin_ops`).
+        if matches!(self.blender_drag_anchor, Some((p, ..)) if p == crate::ids::INSP_BLENDER_PICKER)
+        {
+            self.mark_section_prefs_dirty();
+        }
         self.blender_drag_anchor = None;
     }
 

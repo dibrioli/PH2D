@@ -71,6 +71,9 @@ pub mod painter_bridge_curve_overlay;
 /// O `OnScreenEnabler` a decidir alguma coisa: *«só corre/aparece quando está no ecrã»*.
 /// The Deform Transform gizmo (whole-region bounding box), split from `painter_bridge_overlays` (Wave 2).
 pub mod painter_bridge_deform_gizmo;
+/// O cursor do conta-gotas: a mira e a caixa das duas cores (a nova e a do pincel).
+pub mod painter_bridge_eyedropper_cursor;
+pub use painter_bridge_eyedropper_cursor::mira_na_tela;
 /// The Fill (Bucket) ColorDrop cursor swatch overlay, split from `painter_bridge_overlays` for the
 /// HR-18 file-LOC cap.
 pub mod painter_bridge_fill_overlay;

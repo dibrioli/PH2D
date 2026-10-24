@@ -26,8 +26,8 @@ use ph2d_editor_core::toast::{Toast, ToastQueue};
 use ph2d_i18n::{idioma, tr, tr_with};
 use ph2d_panel_painter_layers::{VistaPreset, VistaPresets, set_current_wet_presets};
 use ph2d_tool_painter::{
-    MeioDesconhecido, PaintMedia, PainterTool, PedidoPreset, miniatura_do_preset, motor_do_meio,
-    nome_do_meio,
+    Gaveta, MeioDesconhecido, PaintMedia, PainterTool, PedidoPreset, ferramenta_do_preset,
+    miniatura_do_preset, motor_do_meio, nome_do_meio,
 };
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
@@ -54,12 +54,12 @@ struct Presets {
     utilizador: Option<PathBuf>,
     bib: Biblioteca,
     estado: EstadoDoUtilizador,
-    /// O preset que está NO PINCEL de cada meio (aplicado por esta ponte), pelo fio do meio.
+    /// O preset que está NO PINCEL de cada gaveta (ferramenta × meio, aplicado por esta ponte), pela chave dela.
     aplicado: BTreeMap<u8, String>,
-    /// Os meios que já abriram nesta sessão — o lembrado de cada um aplica-se uma vez.
+    /// As gavetas que já abriram nesta sessão — o lembrado de cada uma aplica-se uma vez.
     abertos: BTreeSet<u8>,
-    /// O meio que a vista publicada mostra.
-    meio: PaintMedia,
+    /// A gaveta que a vista publicada mostra (`None` = a ferramenta não tem presets).
+    gaveta: Option<Gaveta>,
     vista: Arc<VistaPresets>,
     seletor: Seletor,
 }
@@ -98,7 +98,7 @@ impl Presets {
             estado,
             aplicado: BTreeMap::new(),
             abertos: BTreeSet::new(),
-            meio: painter.paint_media(),
+            gaveta: painter.gaveta_de_presets(),
             vista: Arc::default(),
             seletor: Seletor::default(),
         };
@@ -108,22 +108,35 @@ impl Presets {
         p
     }
 
-    /// O 1.º quadro do meio de agora nesta sessão: o pincel abre com o preset que o artista tinha NELE.
+    /// O 1.º quadro da gaveta de agora nesta sessão: o pincel abre com o preset que o artista tinha NELA.
     fn abrir_meio(&mut self, painter: &mut PainterTool, toasts: &mut ToastQueue) {
-        let m = painter.paint_media();
-        if !self.abertos.insert(m.to_u8()) {
+        let Some(g) = painter.gaveta_de_presets() else {
+            return;
+        };
+        if !self.abertos.insert(g.chave()) {
             return;
         }
-        let nome = nome_do_meio(m);
-        let lembrado = self.estado.ativo_por_meio.get(nome).cloned().or_else(|| {
-            // Um `estado.json` de antes da L1 só tem o activo de todos (era sempre do Wet Paint).
-            self.estado.ativo.clone().filter(|r| {
-                self.bib
-                    .procurar(r)
-                    .is_some_and(|e| e.preset.parametros.media == nome)
-            })
-        });
-        if let Some(rel) = lembrado.filter(|r| self.bib.procurar(r).is_some()) {
+        let nome = nome_do_meio(g.meio);
+        let lembrado = self
+            .estado
+            .ativo_por_meio
+            .get(&g.nome())
+            .cloned()
+            .or_else(|| {
+                // Um `estado.json` de antes da L1 só tem o activo de todos (era sempre do Wet Paint).
+                self.estado.ativo.clone().filter(|r| {
+                    self.bib.procurar(r).is_some_and(|e| {
+                        e.preset.parametros.media == nome
+                            && ferramenta_do_preset(&e.preset.parametros) == g.ferramenta
+                    })
+                })
+            });
+        // Só um preset DESTA ferramenta (um lembrado de antes das gavetas pode ser a borracha antiga no Pincel).
+        if let Some(rel) = lembrado.filter(|r| {
+            self.bib
+                .procurar(r)
+                .is_some_and(|e| ferramenta_do_preset(&e.preset.parametros) == g.ferramenta)
+        }) {
             self.aplicar(painter, &rel, toasts);
         }
     }
@@ -157,9 +170,20 @@ impl Presets {
         }
     }
 
-    /// O preset no pincel do meio de agora do `painter`.
+    /// O preset no pincel da gaveta de agora do `painter`.
     fn ativo(&self, painter: &PainterTool) -> Option<String> {
-        self.aplicado.get(&painter.paint_media().to_u8()).cloned()
+        self.aplicado
+            .get(&painter.gaveta_de_presets()?.chave())
+            .cloned()
+    }
+
+    /// O preset `rel` passa a ser o da gaveta de agora (e o lembrado dela).
+    fn usar(&mut self, painter: &PainterTool, rel: &str) {
+        if let Some(g) = painter.gaveta_de_presets() {
+            self.aplicado.insert(g.chave(), rel.to_owned());
+            self.abertos.insert(g.chave());
+            self.estado.usar_no_meio(&g.nome(), rel);
+        }
     }
 
     /// Aplica o preset `rel` ao pincel (no meio DELE) e, por cima, o que a política lembrou dele. Um meio
@@ -198,10 +222,7 @@ impl Presets {
                 painter.preset_aplicar_modo(m);
             }
         }
-        let m = painter.paint_media();
-        self.aplicado.insert(m.to_u8(), rel.to_owned());
-        self.abertos.insert(m.to_u8());
-        self.estado.usar_no_meio(nome_do_meio(m), rel);
+        self.usar(painter, rel);
     }
 
     /// Antes de deixar o preset aplicado: guarda o que a política manda.
@@ -302,8 +323,7 @@ impl Presets {
                 if self.guardar(painter, &base, &rel, toasts) {
                     self.recarregar(toasts);
                     self.lembrar_o_que_se_deixa(painter);
-                    self.aplicado.insert(m.to_u8(), rel.clone());
-                    self.estado.usar_no_meio(nome_do_meio(m), &rel);
+                    self.usar(painter, &rel);
                 }
             }
             PedidoPreset::GuardarComoPadrao => {
@@ -356,15 +376,18 @@ impl Presets {
             } => self.mover(&arrastado, &alvo, depois),
         }
         self.gravar_estado(toasts);
-        self.meio = painter.paint_media();
+        self.gaveta = painter.gaveta_de_presets();
         self.publicar();
     }
 
-    /// A vista do navegador, pela ordem de [`Self::ordem_do_navegador`]; o activo é o do meio de agora.
+    /// A vista do navegador, pela ordem de [`Self::ordem_do_navegador`], só com os presets da FERRAMENTA de agora
+    /// (dono 24/10); o activo é o da gaveta de agora.
     fn publicar(&mut self) {
+        let ferramenta = self.gaveta.map(|g| g.ferramenta);
         let entradas = self
             .ordem_do_navegador()
             .into_iter()
+            .filter(|e| Some(ferramenta_do_preset(&e.preset.parametros)) == ferramenta)
             .map(|e| VistaPreset {
                 relativo: e.relativo.clone(),
                 nome: e.partes()[3].to_owned(),
@@ -380,7 +403,9 @@ impl Presets {
             .unwrap_or(0) as u8;
         self.vista = Arc::new(VistaPresets {
             entradas,
-            ativo: self.aplicado.get(&self.meio.to_u8()).cloned(),
+            ativo: self
+                .gaveta
+                .and_then(|g| self.aplicado.get(&g.chave()).cloned()),
             politica,
             ilegiveis: self.bib.erros.len(),
             ordem_manual: !self.estado.ordem.is_empty(),
@@ -397,9 +422,9 @@ pub(crate) fn drive(painter: &mut PainterTool, toasts: &mut ToastQueue) {
         if let Some(pedido) = painter.take_wet_preset_request() {
             p.atender(painter, pedido, toasts);
         }
-        if painter.paint_media() != p.meio {
+        if painter.gaveta_de_presets() != p.gaveta {
             p.abrir_meio(painter, toasts);
-            p.meio = painter.paint_media();
+            p.gaveta = painter.gaveta_de_presets();
             p.gravar_estado(toasts);
             p.publicar();
         }

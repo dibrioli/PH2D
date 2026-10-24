@@ -171,6 +171,7 @@ pub const INTERNAS: &[&str] = &[
     "set_brush_shape_param_norm",
     "set_brush_shape_size",
     "set_brush_shape_size_norm",
+    "set_brush_flow",
     "set_brush_size_norm",
     "set_brush_spacing",
     "set_brush_spray_count_norm",

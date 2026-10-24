@@ -118,6 +118,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.sample.listitem_sample" => "ListItem sample",
         "chrome.sample.removable_tag" => "Removable Tag",
         "chrome.color.palette" => "Palette",
+        "chrome.color.pin" => "Keep the color picker open",
         "chrome.prefab.no_copies_yet" => "no copies yet",
         "chrome.prefab.n1_copy_follows" => "1 copy follows",
         "chrome.topbar.name.theme_ph2d" => "Theme (PH2D)",

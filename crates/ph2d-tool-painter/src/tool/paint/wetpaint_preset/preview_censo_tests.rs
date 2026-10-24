@@ -37,9 +37,13 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ),
     (
         "paint_mode",
-        "levado como `borracha` (só o modo Paint com a borracha); as outras ferramentas não têm preview (`LinhaDaFerramenta::Preview`)",
+        "levado como `borracha` (só o modo Paint com a borracha); as outras ferramentas não têm preview (`LinhaDaFerramenta::Preview`) — a cena leva-o como `modo` só para a MINIATURA (o Blur, o Smear e o Clone sobre a faixa)",
     ),
     ("brush_by_mode", "os pincéis dos OUTROS modos"),
+    (
+        "dynamics_by_slot",
+        "as mãos dos OUTROS slots (a viva é `dynamics`)",
+    ),
     ("link_shared_settings", UI),
     ("line_show_dimensions", UI),
     ("mask_brush", OUTRA),

@@ -33,9 +33,11 @@ pub fn current_picker_rect(layout: &HeroLayout, store: &WidgetStore) -> Option<R
     {
         return None;
     }
+    // ⭐ O desvio arrastado é relativo ao encaixe AO LADO do Inspector (dono 24/10: abria por
+    //    cima dele) — numa janela redimensionada o seletor acompanha a coluna.
     let (dx, dy) = store.blender_picker_offset(ids::INSP_BLENDER_PICKER);
-    let base_x = layout.canvas.x + layout.canvas.w - PICKER_W - Spacing::Lg.px();
-    let base_y = layout.canvas.y + layout.canvas.h - PICKER_H - Spacing::Lg.px();
+    let (base_x, base_y) =
+        picker_anchor_beside(layout.canvas, layout.inspector, PICKER_W, PICKER_H);
     let min_x = layout.canvas.x + Spacing::Md.px();
     let max_x = layout.canvas.x + layout.canvas.w - PICKER_W - Spacing::Md.px();
     // Drag handle (top of panel) must stay inside the canvas; the
@@ -49,6 +51,25 @@ pub fn current_picker_rect(layout: &HeroLayout, store: &WidgetStore) -> Option<R
         PICKER_W,
         PICKER_H,
     ))
+}
+
+/// ⭐⭐ **Onde o seletor nasce: AO LADO do Inspector, nunca por cima** — o canto de cima do rect
+/// `(w, h)`, encostado à coluna pelo lado de dentro da janela (coluna à direita ⇒ à esquerda
+/// dela; coluna à esquerda, sob espelho ⇒ à direita), alinhado ao topo dela e preso à janela.
+#[must_use]
+pub fn picker_anchor_beside(window: Rect, inspector: Rect, w: f32, h: f32) -> (f32, f32) {
+    let gap = Spacing::Md.px();
+    let coluna_a_direita = inspector.x + inspector.w * 0.5 >= window.x + window.w * 0.5; // LITERAL-PX-OK: o meio, não um token
+    let x = if coluna_a_direita {
+        inspector.x - gap - w
+    } else {
+        inspector.x + inspector.w + gap
+    };
+    let y = inspector.y + gap;
+    (
+        crate::math::safe_clamp(x, window.x + gap, window.x + window.w - w - gap),
+        crate::math::safe_clamp(y, window.y, window.y + window.h - h),
+    )
 }
 
 pub fn paint_blender_picker_demo(
@@ -104,6 +125,7 @@ pub fn paint_blender_picker_demo(
         eyedropper: ids::BLENDER_EYEDROPPER,
         drag_handle: ids::BLENDER_DRAG_HANDLE,
         close: ids::BLENDER_CLOSE,
+        pin: ids::BLENDER_PIN,
         swatches: [
             ids::BLENDER_SWATCH_0,
             ids::BLENDER_SWATCH_1,
@@ -148,3 +170,7 @@ pub fn paint_blender_picker_demo(
         theme,
     );
 }
+
+#[cfg(test)]
+#[path = "color_picker_demo_tests.rs"]
+mod tests;

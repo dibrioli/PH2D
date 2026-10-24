@@ -57,7 +57,9 @@ impl PainterTool {
             // the water must survive its eraser (Rebelle's semantics). The
             // same-mode transition skips every teardown below (`old != new`
             // guards), so the session lives on.
-            "eraser" if self.paint.paint_mode == PaintMode::WetPaint => PaintMode::WetPaint,
+            // Pelo ARME (dono 24/10), não pelo modo de agora: vinda do Blur com a água armada, a Borracha
+            // apagava no Digital com o Wet Paint no menu. Armado ⇔ dentro da água (toda porta do WetPaint arma).
+            "eraser" if self.paint.wetpaint.armed => PaintMode::WetPaint,
             // With the Wet Paint checkbox ARMED, "brush" IS the fluid — this
             // is what makes the arm survive tool round-trips (eraser /
             // selection / smear and back), the Watercolor/Impasto pattern
@@ -71,7 +73,13 @@ impl PainterTool {
         // Independent-tools model: load the target mode's OWN brush settings (Smear/Blur/Clone slots seed
         // Spacing 5% for dense dabs — see `state_default`). No-op when settings are linked. Must run while
         // `paint_mode` still holds the OLD mode, so the current tool's edits save to the right slot.
-        self.switch_brush_slot(new_mode);
+        // A Borracha tem o seu slot (dono 24/10): a flag dela decide-se ANTES da troca (o `match` do fim).
+        let new_eraser = match mode {
+            "smear" | "blur" | "clone" | "sculpt" => self.paint.eraser,
+            "eraser" => true,
+            _ => false,
+        };
+        self.switch_brush_slot(new_mode, new_eraser);
         // Leaving Deform bakes any live Transform float (committing it as one undo entry) and ends the
         // Reshape session (drops the `pre`/displacement) so a later mode's edits aren't re-warped from a
         // stale baseline; the Reshape pixels are already committed per-stroke.

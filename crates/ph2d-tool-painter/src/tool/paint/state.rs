@@ -55,12 +55,11 @@ pub(crate) struct PaintState {
     pub(super) eraser: bool,
     /// Which operation the pointer performs (Brush=Paint / Smear); driven by the left-rail tool selection.
     pub(super) paint_mode: PaintMode,
-    /// Per-mode saved brush settings — the "independent tools" model (the default): each
-    /// [`PaintMode`] keeps its OWN [`BrushSpec`] (indexed by [`PaintMode::slot`]), swapped into
-    /// `brush` on a mode change so one tool's panel never bleeds into another. Ignored while
-    /// `link_shared_settings` is on; the active mode's slot is stale while active (edits go to
-    /// `brush`, written back on the next switch). See [`tool_link`].
-    pub(super) brush_by_mode: [BrushSpec; PAINT_MODE_COUNT],
+    /// Per-slot saved brush ([`PaintMode::slot`], swapped into `brush` on a mode change; the live slot
+    /// is stale; ignored while `link_shared_settings`). See [`tool_link`].
+    pub(super) brush_by_mode: [BrushSpec; SLOT_COUNT],
+    /// A MÃO de cada slot, trocada com o `brush_by_mode` (`dynamics` é a do slot vivo).
+    pub(super) dynamics_by_slot: [Dynamics; SLOT_COUNT],
     /// "Sync with other tools": when `true`, every paint tool SHARES the live `brush` (a mode change no
     /// longer swaps slots), so a change in one panel shows in all. Default `false` = each tool independent.
     pub(super) link_shared_settings: bool,

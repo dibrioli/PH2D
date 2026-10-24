@@ -99,6 +99,10 @@ fn paint_volumes(
         SIZE_STEP,
         0,
     );
+    // A borracha da água não pousa água nem tinta: o Water e a Opacity não são dela.
+    if !brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado) {
+        return y;
+    }
     y = volume_row(
         ctx,
         theme,

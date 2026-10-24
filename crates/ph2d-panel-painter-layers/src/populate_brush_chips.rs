@@ -28,6 +28,11 @@ pub(crate) fn register_brush_slider_chips(store: &mut WidgetStore) {
             STEP,
         ),
         (
+            ph2d_tool_painter::ids::PAINTER_BRUSH_FLOW_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_FLOW_CHIP,
+            STEP,
+        ),
+        (
             ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
             ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_HUE_CHIP,
             STEP,

@@ -40,10 +40,12 @@ pub(crate) fn paint_media_row(
     ny
 }
 
-/// The four media as `Dropdown` options (value = the [`PaintMedia`] wire `u8`, label = its name).
-/// Built from the enum itself, so a fifth medium cannot be added without appearing here.
+/// The media the tool in hand accepts as `Dropdown` options (value = the [`PaintMedia`] wire `u8`, label =
+/// its name). Built from the enum itself, so a fifth medium cannot be added without appearing here.
 pub(crate) fn media_options() -> Vec<DropdownOption<u8>> {
+    let meios = crate::state::current_brush().map_or(u8::MAX, |b| b.meios);
     (0..PaintMedia::COUNT)
+        .filter(|i| meios & (1 << i) != 0)
         .map(|i| {
             DropdownOption::new(
                 ph2d_tool_painter::ids::painter_brush_media_option_id(i),
@@ -94,7 +96,8 @@ pub(crate) fn declara_aparencia(
     //    untouched. ──
     let meio = move |m: PaintMedia| !brush.is_inpaint && PaintMedia::from_u8(brush.media) == m;
     plano.fixa(pids::PAINTER_WATERCOLOR_SECTION, move |ctx, theme, y| {
-        if !meio(PaintMedia::Watercolor) {
+        // A Borracha na Watercolor apaga como no Digital: a aguada não é dela (`LinhaDaFerramenta::Aguada`).
+        if !meio(PaintMedia::Watercolor) || !brush.le(LinhaDaFerramenta::Aguada) {
             return y;
         }
         crate::paint_watercolor::paint_watercolor_section(ctx, theme, x, content_w, y, brush)

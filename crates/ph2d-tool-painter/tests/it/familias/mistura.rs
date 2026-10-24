@@ -60,10 +60,13 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("pressureOpacityCurve", 1.0),
         ],
         opacity: Some(0.26),
+        ferramenta: Some("Eraser"),
         ..ReceitaMeio::digital("Eraser", "Soft", "Kneaded Eraser")
     },
     // L-9 — a borracha dura do Rebelle «Eraser/Default/Square Hard»: tira TUDO, ponta quadrada, orla de ~2 px (a do
     // Rebelle: largura 39 px a 40, orla 2; a dureza 1 dava 40 · 0 — o corte binário; a 0,9 com a orla de 1 px, 40 · 2).
+    // A mão do Procreate/Krita (dono 24/10: «a dura apaga a fundo e a pressão mexe no TAMANHO»): a pressão→opacidade
+    // pedia 2–4 passadas com a caneta a 0,24–0,86; a pressão→tamanho é a de fábrica (0,9 = o raio de 10 % a 100 %).
     ReceitaMeio {
         pincel: &[
             ("hardness", "0.9"),
@@ -72,15 +75,48 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("continuous_spacing", "true"),
             ("blend", "\"EraseAlpha\""),
         ],
-        mao: &[
-            ("pressureSize", 0.0),
-            ("pressureOpacity", 1.0),
-            ("pressureOpacityCurve", 1.0),
-        ],
+        mao: &[("pressureSize", 0.9), ("pressureOpacity", 0.0)],
         opacity: Some(1.0),
+        ferramenta: Some("Eraser"),
         ..ReceitaMeio::digital("Eraser", "Hard", "Hard Eraser")
     },
+    // A borracha de TEXTURA (dono 24/10): apaga pelo grão — o miolo e a orla em manchas de ruído; a pressão no tamanho.
+    // A Strength 0,9: uma passada tira 139 ± 39 do alfa (a 1 o grão não morde: 255 ± 0 — `sonda_ferramentas_de_fabrica`).
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "0.6"),
+            ("texture", GRAO_DA_BORRACHA),
+            ("blend", "\"EraseAlpha\""),
+        ],
+        mao: &[("pressureSize", 0.9), ("pressureOpacity", 0.0)],
+        opacity: Some(0.9),
+        ferramenta: Some("Eraser"),
+        ..ReceitaMeio::digital("Eraser", "Texture", "Texture Eraser")
+    },
+    // Os básicos do Blur, do Smear e do Clone (dono 24/10): o pincel de fábrica do slot de cada um (Spacing 0,05 —
+    // estas ferramentas não leem o Continuous, `NAO_LE`), a borda macia; a pressão no tamanho.
+    ReceitaMeio {
+        pincel: &[("hardness", "0.0")],
+        opacity: Some(1.0),
+        ferramenta: Some("Blur"),
+        ..ReceitaMeio::digital("Basic", "Blur", "Blur Basic")
+    },
+    ReceitaMeio {
+        pincel: &[("hardness", "0.0")],
+        opacity: Some(0.8),
+        ferramenta: Some("Smear"),
+        ..ReceitaMeio::digital("Basic", "Smear", "Smear Basic")
+    },
+    ReceitaMeio {
+        pincel: &[("hardness", "0.5")],
+        opacity: Some(1.0),
+        ferramenta: Some("Clone"),
+        ..ReceitaMeio::digital("Basic", "Clone", "Clone Basic")
+    },
 ];
+
+/// O grão da Texture Eraser: o ruído do papel em manchas de ~16 px (Noise `Tiled`).
+const GRAO_DA_BORRACHA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [64.0, 64.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// Reprovados nesta onda (o exame: `docs/Painter/Pinceis/exames/mistura.md`) — fora da fábrica, a receita e o portão
 /// ficam para quando o motor/oráculo que lhes falta chegar.
@@ -472,4 +508,109 @@ fn o_portao_da_mistura_sangra_com_cada_mutacao() {
         sobreviveu.is_empty(),
         "mutações que o portão NÃO apanha: {sobreviveu:?}"
     );
+}
+
+/// A tela 256 × 128 cheia de vermelho opaco com o preset `p` aplicado pela porta do navegador, o pincel a 40 px.
+fn borracha_na_tela(p: &ph2d_brush_presets::Preset) -> ph2d_tool_painter::PainterTool {
+    use ph2d_editor_core::tool::RasterEditTool;
+    let mut t = ph2d_tool_painter::PainterTool::default();
+    t.set_source([191u8, 0, 18, 255].repeat(256 * 128), 256, 128);
+    assert_eq!(t.preset_aplicar(p), Ok(Vec::new()));
+    t.set_brush_size_px(20.0);
+    t
+}
+
+/// ⭐ **A borracha dura de fábrica apaga numa passada com a caneta** (dono 24/10, a lei do Procreate/Krita: «a dura apaga
+/// a fundo e a pressão mexe no TAMANHO»): aplicada, põe a Borracha na mão; UMA passada à pressão 0,24 · 0,5 · 0,86 · 1
+/// (a mão do dono e o rato) deixa o alfa 0 no centro, e a largura apagada CRESCE com a pressão. Com a pressão→opacidade
+/// de antes a caneta pedia 2–4 passadas.
+#[test]
+fn a_borracha_dura_de_fabrica_apaga_numa_passada_com_a_caneta() {
+    use ph2d_editor_core::tool::RasterEditTool;
+    let p = preset_da_receita("Hard Eraser");
+    let mut larguras = Vec::new();
+    let mut falhas = Vec::new();
+    for pressao in [0.24f32, 0.5, 0.86, 1.0] {
+        let mut t = borracha_na_tela(&p);
+        assert_eq!(
+            t.ferramenta_dos_presets(),
+            Some(ph2d_tool_painter::FerramentaDoPincel::Borracha),
+            "a Hard Eraser não pôs a Borracha na mão"
+        );
+        crate::sonda_gestos::gesto(&mut t, &[[30.0, 64.0], [226.0, 64.0]], 3.0, |_| pressao);
+        let (px, w, _) = t.run_full();
+        let alfa = |y: usize| px[(y * w as usize + 128) * 4 + 3];
+        let largura = (0..128).filter(|&y| alfa(y) < 128).count();
+        if alfa(64) != 0 {
+            falhas.push(format!(
+                "pressão {pressao}: o centro ficou com alfa {} numa passada",
+                alfa(64)
+            ));
+        }
+        println!(
+            "[borracha dura] pressão {pressao}: centro {} · largura {largura} px",
+            alfa(64)
+        );
+        larguras.push(largura);
+    }
+    if !larguras.windows(2).all(|l| l[0] < l[1]) {
+        falhas.push(format!("a largura não cresce com a pressão: {larguras:?}"));
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// ⭐ **Cada ferramenta tem a SUA biblioteca de fábrica** (dono 24/10, o padrão do Procreate): os presets de fábrica
+/// cuja ferramenta é a Borracha, o Blur, o Smear ou o Clone são EXACTAMENTE os da lista, e cada um, aplicado, põe essa
+/// ferramenta na mão com o meio Digital.
+#[test]
+fn cada_ferramenta_tem_os_seus_presets_de_fabrica() {
+    use ph2d_tool_painter::{
+        FerramentaDoPincel as F, PaintMedia, PainterTool, ferramenta_do_preset,
+    };
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let b = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
+    let esperado: [(F, &[&str]); 4] = [
+        (
+            F::Borracha,
+            &["Hard Eraser", "Kneaded Eraser", "Texture Eraser"],
+        ),
+        (F::Blur, &["Blur Basic"]),
+        (F::Smear, &["Smear Basic"]),
+        (F::Clone, &["Clone Basic"]),
+    ];
+    for (f, nomes) in esperado {
+        let mut achados: Vec<&str> = b
+            .entradas
+            .iter()
+            .filter(|e| ferramenta_do_preset(&e.preset.parametros) == f)
+            .map(|e| e.preset.parametros.name.as_str())
+            .collect();
+        achados.sort_unstable();
+        assert_eq!(achados, nomes, "a biblioteca de fábrica de {f:?}");
+        for e in b
+            .entradas
+            .iter()
+            .filter(|e| ferramenta_do_preset(&e.preset.parametros) == f)
+        {
+            let mut t = PainterTool::default();
+            assert_eq!(
+                t.preset_aplicar(&e.preset),
+                Ok(Vec::new()),
+                "{}",
+                e.relativo
+            );
+            assert_eq!(
+                t.ferramenta_dos_presets(),
+                Some(f),
+                "{}: a ferramenta na mão",
+                e.relativo
+            );
+            assert_eq!(
+                t.paint_media(),
+                PaintMedia::Digital,
+                "{}: o meio",
+                e.relativo
+            );
+        }
+    }
 }

@@ -84,23 +84,21 @@ fn the_painter_opens_on_the_plain_digital_brush() {
 /// **Mutation that must bleed:** move the `set_paint_tool_mode("brush")` step back below the `match`.
 #[test]
 fn picking_a_medium_while_holding_a_rail_tool_arms_it() {
-    for start in ["smear", "blur", "clone"] {
-        for m in [
-            PaintMedia::Watercolor,
-            PaintMedia::Impasto,
-            PaintMedia::WetPaint,
-        ] {
-            let mut t = PainterTool::default();
-            t.set_paint_tool_mode(start);
-            t.set_paint_media(m);
-            assert_eq!(
-                t.paint_media(),
-                m,
-                "from the rail {start}, picking {m:?} left the medium at {:?} — the flag went to a \
-                 slot the tool then switched away from",
-                t.paint_media()
-            );
-        }
+    // Desde 24/10 (dono) o Smear/Blur/Clone são SÓ Digital: o menu não oferece outro meio e a porta recusa-o
+    // (`ferramenta_tests`). A lição do 22/07 vive na Borracha, a ferramenta do trilho com meios: o meio arma-se
+    // no slot DELA, e ela continua na mão.
+    for m in [PaintMedia::Watercolor, PaintMedia::WetPaint] {
+        let mut t = PainterTool::default();
+        t.set_paint_tool_mode("eraser");
+        t.set_paint_media(m);
+        assert_eq!(
+            t.paint_media(),
+            m,
+            "from the rail eraser, picking {m:?} left the medium at {:?} — the flag went to a \
+             slot the tool then switched away from",
+            t.paint_media()
+        );
+        assert!(t.paint.eraser, "{m:?}: the eraser left the hand");
     }
 }
 
@@ -122,14 +120,10 @@ fn picking_digital_leaves_a_rail_tool_where_it_is() {
         PaintMode::Smear,
         "picking Digital took the artist out of the Smear — the rail tools are digital already"
     );
-    // …and the opposite half: picking a real medium from the Smear DOES take the brush, or the
-    // dropdown would name a medium whose section is not even painted.
+    // …and a real medium is not the Smear's (24/10: only Digital) — the door refuses it, the tool stays.
     t.set_paint_media(PaintMedia::Impasto);
-    assert_eq!(
-        t.paint.paint_mode,
-        PaintMode::Paint,
-        "picking Impasto from the Smear left a medium selected that cannot act in the mode in hand"
-    );
+    assert_eq!(t.paint.paint_mode, PaintMode::Smear);
+    assert_eq!(t.paint_media(), PaintMedia::Digital);
 }
 
 /// **A mode that a medium owns cannot outlive it** — the model half of Enio's 2026-07-22 report.

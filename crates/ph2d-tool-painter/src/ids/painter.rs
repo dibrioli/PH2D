@@ -82,6 +82,9 @@ pub const PAINTER_BRUSH_SIZE_SLIDER: NodeId = hash_node_id("painter_brush.size_s
 /// Brush "Strength" slider (`0..1`, overall opacity). `SetValue` → `set_brush_strength`.
 pub const PAINTER_BRUSH_STRENGTH_SLIDER: NodeId = hash_node_id("painter_brush.strength_slider");
 
+/// Brush "Flow" slider (`0..1`, a taxa por dab; a Strength é o tecto). `SetValue` → `set_brush_flow`.
+pub const PAINTER_BRUSH_FLOW_SLIDER: NodeId = hash_node_id("painter_brush.flow_slider");
+
 /// Brush "Falloff" dropdown chip — the dab distance-falloff preset (Blender's
 /// "Falloff Curve Preset"). Mirror of the per-row blend chip but with a fixed id.
 pub const PAINTER_BRUSH_FALLOFF: NodeId = hash_node_id("painter_brush.falloff");

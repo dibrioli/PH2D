@@ -224,6 +224,7 @@ pub fn dispatch(
     let elapsed_ms =
         |m: Option<std::time::Instant>| m.map_or(0.0, |t| t.elapsed().as_secs_f64() as f32 * 1e3);
     let m_preview = perf_t0.map(|_| std::time::Instant::now());
+    crate::painter_bridge_eyedropper_cursor::esquece_a_mira(); // só a desenha quem a redesenhar
     if let Some(tool) = tools.active_mut()
         && let Some(painter) = tool
             .as_any_mut()

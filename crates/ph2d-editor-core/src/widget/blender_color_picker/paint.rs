@@ -208,10 +208,15 @@ pub fn paint_blender_color_picker_with_store(
     let drag_h = 14.0_f32;
     let top_gap = Spacing::Xs.px();
     let close_sz = drag_h;
+    let pin_slot = if ids.pin.0 != 0 {
+        close_sz + top_gap
+    } else {
+        0.0
+    };
     let drag_rect = Rect::new(
         rect.x + pad,
         y,
-        (inner_w - close_sz - top_gap).max(0.0),
+        (inner_w - close_sz - top_gap - pin_slot).max(0.0),
         drag_h,
     );
     fill_rounded_rect(
@@ -241,6 +246,8 @@ pub fn paint_blender_color_picker_with_store(
     if ids.close.0 != 0 {
         hit_index.register(ids.close, close_rect);
     }
+    let pin_rect = Rect::new(close_rect.x - top_gap - close_sz, y, close_sz, drag_h);
+    super::pin::paint_pin(scene, theme, store, hit_index, ids.pin, pin_rect);
     y += drag_h + row_gap();
 
     // Web-standard SV rectangle (replaces the HSV disc). Full

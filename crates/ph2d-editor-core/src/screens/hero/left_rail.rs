@@ -467,23 +467,16 @@ pub fn rail_entries(store: &WidgetStore, painter_active: bool) -> Vec<ToolRailEn
     // (`00_DECISOES_DO_ENIO.md` D3: *«~19 ferramentas · 2 layout → menu Ver»*), e desde a barra de
     // menus eles estão lá, com os MESMOS ids e o mesmo `chrome::rail_panels` a despachá-los.
     //
-    // ⚠️ **E foi a fila horizontal que forçou a conta:** em modo Painter a lista pedia **779 px**
-    // e a área do alvo de referência dá **746** com as duas colunas abertas ⇒ o último verbo
-    // (Shapes) ficava **cortado E inalcançável**, em silêncio, porque a faixa blinda o hit. Sem
-    // eles a fila usa **678 px, com 68 de folga** — e ⚠️ **a 1.ª redacção desta nota dizia
-    // "699 px, com 47"**, que é o que dá se se tirarem os dois chips e se **esquecer o divisor
-    // que ia com eles**. O número certo é o que o gate IMPRIME
-    // (`the_row_fits_the_narrowest_area_of_the_reference_target`, `--nocapture`), não o que se
-    // faz de cabeça ao lado de um gate que o mede. *Um verbo no sítio errado só custa quando o sítio
-    // certo fica cheio.*
+    // ⚠️ Com eles a fila do Painter pedia 779 px numa área de 746 (o último verbo cortado e
+    // inalcançável). O número certo é o que o gate IMPRIME
+    // (`the_row_fits_the_narrowest_area_of_the_reference_target`, `--nocapture`).
     let mut rail_entries: Vec<ToolRailEntry> = tool_section(store, painter_active);
     rail_entries.push(ToolRailEntry::Divider);
     rail_entries.extend(view_entries(store));
     rail_entries
 }
 
-/// O que a fila tem e NÃO é ferramenta — o espaço, a vista, desfazer/refazer. Com as ferramentas do
-/// pintor na coluna (`painter_column`), é isto que fica na fila de cima.
+/// O que a fila tem e NÃO é ferramenta (espaço, vista, undo/redo) — o que fica com o `painter_column`.
 #[must_use]
 pub fn view_entries(store: &WidgetStore) -> Vec<ToolRailEntry> {
     let mut rail_entries: Vec<ToolRailEntry> = Vec::new();

@@ -71,6 +71,7 @@ pub(crate) const PARTILHADO: &[&str] = &[
     "eraser",
     "paint_mode",
     "brush_by_mode",
+    "dynamics_by_slot",
     "link_shared_settings",
     "line_show_dimensions",
     "mask_brush",

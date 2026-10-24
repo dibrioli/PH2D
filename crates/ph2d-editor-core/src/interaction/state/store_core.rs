@@ -90,6 +90,7 @@ impl WidgetStore {
             notes_per_panel: BTreeMap::new(),
             last_context_menu: None,
             picker_target: None,
+            picker_pinned: false,
             widget_colors: BTreeMap::new(),
             scrollbar_drag: None,
             body_scroll_drag: None,

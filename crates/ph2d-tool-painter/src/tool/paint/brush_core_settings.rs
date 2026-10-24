@@ -102,6 +102,11 @@ impl PainterTool {
         self.paint.brush.strength = t.clamp(0.0, 1.0);
     }
 
+    /// Set the brush Flow (`0..1`, a taxa por dab; com Accumulate off o traço acumula até a Strength).
+    pub fn set_brush_flow(&mut self, t: f32) {
+        self.paint.brush.flow = t.clamp(0.0, 1.0);
+    }
+
     /// Toggle eraser mode (overrides the blend with Erase Alpha while on).
     pub fn toggle_brush_eraser(&mut self) {
         crate::macro_track::porta!(self, |_| crate::macro_track::Passo::Borracha, {

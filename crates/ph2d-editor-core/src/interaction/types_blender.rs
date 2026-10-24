@@ -65,6 +65,9 @@ pub enum BlenderHitKind {
     /// "×" close button at the top-right of the floating picker — clears the picker
     /// target (`WidgetStore::set_picker_target(None)`), dismissing the popover.
     Close,
+    /// Pin button left of the "×" — toggles `WidgetStore::picker_pinned` (pinned = a Down
+    /// outside no longer dismisses the picker).
+    Pin,
     /// "Import" palette button — clicking flags a host file-dialog request
     /// (`WidgetStore::set_palette_io_pending`) to load a `.gpl`/`.hex`/`.ase`/
     /// `.aco` as a NEW named palette.

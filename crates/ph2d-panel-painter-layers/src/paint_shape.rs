@@ -70,7 +70,7 @@ pub(crate) fn paint_shape_section(
     //    feather silhouette — the section's items don't apply, so they HIDE behind the checked box.
     //    Unchecking opens them AND routes them into the watercolor coverage stamp (the tool also
     //    auto-selects the "Watercolor" falloff preset so the transition is visually continuous). ──
-    if brush.watercolor {
+    if brush.watercolor && brush.le(ph2d_tool_painter::LinhaDaFerramenta::Aguada) {
         y = paint_checkbox_row(
             ctx,
             theme,
@@ -136,7 +136,7 @@ pub(crate) fn paint_shape_section(
     }
     // ── A ponta RETA (prompt 44): a quina da mesma pegada, logo abaixo do gizmo que a desenha. Só no Wet
     //    Paint (a ordem de 07/10: só ele evolui; o device do Digital não a carimba). ──
-    if brush.wetpaint {
+    if brush.wetpaint && brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado) {
         let sec = seccao_da_forma(ctx);
         y = crate::number_field::paint_num_row(
             ctx,

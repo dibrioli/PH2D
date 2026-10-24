@@ -22,7 +22,8 @@ use ph2d_brush_presets::{
 };
 use ph2d_tool_painter::{
     LINHAS_DA_MAO, MEIO_DO_PRESET, MOTOR_DOS_PRESETS, PaintMedia, PainterTool, WetKnobs,
-    campos_do_meio, meio_do_preset, miniatura_do_preset, motor_do_meio, nome_do_meio,
+    campos_do_meio, meio_do_preset, miniatura_do_preset, motor_do_meio, nome_da_ferramenta,
+    nome_do_meio,
 };
 use ph2d_wet_paint::tuning::Knob;
 use serde_json::Value;
@@ -196,9 +197,28 @@ pub(super) fn parametros_do_meio(r: &ReceitaMeio) -> (Parametros, BTreeMap<Strin
         None => {
             let mut t = PainterTool::default();
             t.set_paint_media(m);
+            // Um preset de ferramenta nasce do slot DELA (o pincel e a mão de fábrica da Borracha, do Blur…).
+            if let Some(f) = r.ferramenta {
+                t.set_paint_tool_mode(&f.to_lowercase());
+                assert_eq!(
+                    t.ferramenta_dos_presets().and_then(nome_da_ferramenta),
+                    Some(f),
+                    "{}: a ferramenta {f} não se pega pelo trilho",
+                    r.nome
+                );
+            }
             t.preset_capturar(&Parametros::novo(nome_do_meio(m), r.grupo, r.nome))
         }
     };
+    assert!(
+        r.ferramenta.is_none() || r.modo.is_none(),
+        "{}: um preset de ferramenta não fixa o modo (a ferramenta É o modo)",
+        r.nome
+    );
+    p.ferramenta = r.ferramenta.map(str::to_owned);
+    if r.ferramenta.is_some() {
+        p.paint_mode = None;
+    }
     (p.name, p.group) = (r.nome.to_owned(), r.grupo.to_owned());
     let campos = campos_do_meio(m);
     for (campo, json) in r.pincel {
@@ -297,6 +317,12 @@ pub(super) fn confere_receita_do_meio(r: &ReceitaMeio, p: &Preset) {
         t.paint_media(),
         r.meio,
         "{}: o preset arma outro meio",
+        r.nome
+    );
+    assert_eq!(
+        t.ferramenta_dos_presets().and_then(nome_da_ferramenta),
+        r.ferramenta,
+        "{}: o preset põe outra ferramenta na mão",
         r.nome
     );
     let (lido, _) = t.preset_capturar(&p.parametros);

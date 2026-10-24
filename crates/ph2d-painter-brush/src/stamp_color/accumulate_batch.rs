@@ -120,8 +120,7 @@ pub fn accumulate_color_stamps_fused_batch(
         .map(|b| ((b.x1 - b.x0) * (b.y1 - b.y0)) as usize)
         .sum();
     let rows = gy1 - gy0;
-    // A porta ÚNICA (`crate::dab::band_count`): *"vale dividir, e em quantas?"* — uma pergunta, uma
-    // resposta. Este sítio guardava a sua própria cópia da regra, com o mesmo cliff.
+    // A porta ÚNICA (`crate::dab::band_count`): *"vale dividir, e em quantas?"*.
     let threads = crate::dab::band_count(area, rows, crate::dab::PARALLEL_MIN_AREA);
     // Small batches: the per-dab serial kernel (identical bytes by construction).
     if threads <= 1 {
@@ -155,8 +154,7 @@ pub fn accumulate_color_stamps_fused_batch(
         return None; // a mixed-size batch would index `stamps[i].data` with stamps[0]'s stride
     }
     let boxes = &boxes;
-    // Per-band touched flags (one per dab), OR-merged after the join so the returned union rect is
-    // exactly the per-dab loop's (a dab whose stamp contributed nothing returns no rect).
+    // Per-band touched flags (one per dab), OR-merged after the join: the per-dab loop's union rect.
     let touched_by_band: Vec<Vec<bool>> = std::thread::scope(|scope| {
         let handles: Vec<_> = bands
             .into_iter()

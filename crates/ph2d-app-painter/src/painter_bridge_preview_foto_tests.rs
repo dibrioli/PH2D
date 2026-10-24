@@ -262,30 +262,39 @@ fn foto_das_ferramentas() {
     let gpu = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None)
         .expect("a foto precisa da placa");
     std::fs::create_dir_all(&dir).unwrap();
-    for modo in ["brush", "eraser", "blur", "smear", "clone", "mask"] {
-        let mut t = PainterTool::default();
-        t.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
-        t.set_paint_media(PaintMedia::Digital);
-        t.set_paint_tool_mode(modo);
-        t.set_brush_size_px(16.0);
-        t.set_brush_color_srgb8([30, 60, 220]);
-        let mut ultimo = None;
-        assert!(pintar_preview(
-            &t.wet_preview_cena(),
-            &|| false,
-            &mut |px, w, h| ultimo = Some((Arc::new(px.to_vec()), w, h))
-        ));
-        set_current_wet_preview(ultimo);
-        let h = 1600;
-        let px = foto_de_altura(&gpu, &t, 0.0, false, h);
-        set_current_wet_preview(None);
-        image::save_buffer(
-            format!("{dir}/ferramenta_{modo}_{sufixo}.png"),
-            &px,
-            W,
-            h,
-            image::ExtendedColorType::Rgba8,
-        )
-        .unwrap();
+    let meios = [
+        ("digital", PaintMedia::Digital),
+        ("watercolor", PaintMedia::Watercolor),
+        ("impasto", PaintMedia::Impasto),
+        ("wetpaint", PaintMedia::WetPaint),
+    ];
+    for (meio, media) in meios {
+        for modo in ["brush", "eraser", "blur", "smear", "clone", "mask"] {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
+            // O caminho do artista: o meio escolhido com o Pincel, depois a ferramenta no trilho.
+            t.set_paint_media(media);
+            t.set_paint_tool_mode(modo);
+            t.set_brush_size_px(16.0);
+            t.set_brush_color_srgb8([30, 60, 220]);
+            let mut ultimo = None;
+            assert!(pintar_preview(
+                &t.wet_preview_cena(),
+                &|| false,
+                &mut |px, w, h| ultimo = Some((Arc::new(px.to_vec()), w, h))
+            ));
+            set_current_wet_preview(ultimo);
+            let h = 1600;
+            let px = foto_de_altura(&gpu, &t, 0.0, false, h);
+            set_current_wet_preview(None);
+            image::save_buffer(
+                format!("{dir}/ferramenta_{meio}_{modo}_{sufixo}.png"),
+                &px,
+                W,
+                h,
+                image::ExtendedColorType::Rgba8,
+            )
+            .unwrap();
+        }
     }
 }

@@ -20,6 +20,8 @@ pub const PAINTER_BRUSH_SIZE_CHIP: NodeId = hash_node_id("painter_brush.size_chi
 
 pub const PAINTER_BRUSH_STRENGTH_CHIP: NodeId = hash_node_id("painter_brush.strength_chip");
 
+pub const PAINTER_BRUSH_FLOW_CHIP: NodeId = hash_node_id("painter_brush.flow_chip");
+
 pub const PAINTER_BRUSH_COLOR_JITTER_HUE_CHIP: NodeId =
     hash_node_id("painter_brush.color_jitter_hue_chip");
 

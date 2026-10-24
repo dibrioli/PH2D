@@ -18,7 +18,7 @@ impl PainterTool {
     /// saem daqui com o valor de AGORA, e um Reset que copie a fábrica nunca troca o meio.
     pub(super) fn spec_de_fabrica(&self) -> BrushSpec {
         let b = &self.paint.brush;
-        let mut s = PaintState::pinceis_de_fabrica()[self.paint.paint_mode.slot()];
+        let mut s = PaintState::pinceis_de_fabrica()[self.slot_atual()];
         s.watercolor = b.watercolor;
         s.impasto = b.impasto;
         if b.impasto {

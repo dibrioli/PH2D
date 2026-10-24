@@ -354,7 +354,11 @@ fn sonda_opacidade_passadas_por_pressao() {
 fn sonda_opacidade_com_o_rato_por_pincel() {
     use super::PaintMedia;
     let bib = presets();
-    println!("presets: {}  erros: {}", bib.entradas.len(), bib.erros.len());
+    println!(
+        "presets: {}  erros: {}",
+        bib.entradas.len(),
+        bib.erros.len()
+    );
     let fatores: Vec<Mexe> = vec![
         ("flow1", |t| t.paint.brush.flow = 1.0),
         ("accON", |t| t.paint.brush.accumulate = true),
@@ -527,5 +531,128 @@ fn sonda_opacidade_com_o_rato_por_pincel() {
             t.paint.brush.spacing
         ));
         println!("{s}");
+    }
+}
+
+/// Um traço recto de `a` a `b` (passo 3 px) à pressão `p`.
+fn recta(t: &mut PainterTool, a: [f32; 2], b: [f32; 2], p: f32) {
+    let ev = |pos, phase| CanvasPointer {
+        pos,
+        pressure: p,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    let n = ((b[0] - a[0]).hypot(b[1] - a[1]) / 3.0).ceil().max(1.0) as u32;
+    t.on_canvas_pointer(ev(a, PointerPhase::Down));
+    for k in 1..=n {
+        let f = k as f32 / n as f32;
+        let pos = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+        t.on_canvas_pointer(ev(pos, PointerPhase::Move));
+    }
+    t.on_canvas_pointer(ev(b, PointerPhase::Up));
+}
+
+/// Os presets de fábrica de cada ferramenta (24/10), aplicados pela porta do navegador (a ferramenta vem na mão),
+/// a 40 px: o que UMA passada faz com o rato (1) e com a mão do dono (0,24 · 0,5 · 0,86).
+#[test]
+#[ignore = "sonda à mão"]
+fn sonda_ferramentas_de_fabrica() {
+    let bib = presets();
+    let monta = |nome: &str, fundo: &dyn Fn(usize, usize) -> [u8; 4]| {
+        let mut t = PainterTool::default();
+        let px: Vec<u8> = (0..H)
+            .flat_map(|y| (0..W).flat_map(move |x| fundo(x, y)))
+            .collect();
+        t.set_source(px, W as u32, H as u32);
+        let p = &bib
+            .entradas
+            .iter()
+            .find(|e| e.preset.parametros.name == nome)
+            .unwrap_or_else(|| panic!("preset {nome}"))
+            .preset;
+        assert!(t.preset_aplicar(p).expect("meio").is_empty());
+        t.set_brush_size_px(DIAM * 0.5);
+        t
+    };
+    let px = |t: &PainterTool, x: usize, y: usize| {
+        let i = (y * W + x) * 4;
+        [
+            t.canvas_rgba[i],
+            t.canvas_rgba[i + 1],
+            t.canvas_rgba[i + 2],
+            t.canvas_rgba[i + 3],
+        ]
+    };
+    let cheio = |_: usize, _: usize| [200u8, 50, 50, 255];
+    for nome in ["Hard Eraser", "Kneaded Eraser", "Texture Eraser"] {
+        let mut linha = format!("{nome:<15}");
+        for p in [1.0f32, 0.24, 0.5, 0.86] {
+            let mut t = monta(nome, &cheio);
+            passada(&mut t, p);
+            let apagado = |x, y| 255 - px(&t, x, y)[3];
+            let largura = (0..H).filter(|&y| apagado(PX, y) >= 128).count();
+            let v: Vec<f64> = (60..196)
+                .flat_map(|x| (Y as usize - 6..Y as usize + 6).map(move |y| (x, y)))
+                .map(|(x, y)| f64::from(apagado(x, y)))
+                .collect();
+            let m = v.iter().sum::<f64>() / v.len() as f64;
+            let dp = (v.iter().map(|a| (a - m).powi(2)).sum::<f64>() / v.len() as f64).sqrt();
+            linha.push_str(&format!(
+                " | p {p:.2}: centro {:3} largura {largura:2} miolo {m:5.1}±{dp:4.1}",
+                apagado(PX, Y as usize)
+            ));
+        }
+        println!("{linha}");
+    }
+    // Blur e Smear: a metade de cima vermelha, a de baixo branca (a orla em y = Y).
+    let metade = |_: usize, y: usize| {
+        if y < Y as usize {
+            [200u8, 50, 50, 255]
+        } else {
+            [255; 4]
+        }
+    };
+    let verde_lim = |g: u8| f64::from(255 - g) / 205.0;
+    for p in [1.0f32, 0.5] {
+        let mut t = monta("Blur Basic", &metade);
+        passada(&mut t, p);
+        let orla = (Y as usize - 30..Y as usize + 30)
+            .filter(|&y| (0.1..0.9).contains(&verde_lim(px(&t, PX, y)[1])))
+            .count();
+        let mut t = monta("Smear Basic", &metade);
+        recta(&mut t, [PX as f32, Y - 30.0], [PX as f32, Y + 50.0], p);
+        let arrasto: f64 = (Y as usize + 1..H)
+            .map(|y| verde_lim(px(&t, PX, y)[1]))
+            .sum();
+        let alcance = (Y as usize + 1..H)
+            .filter(|&y| verde_lim(px(&t, PX, y)[1]) > 0.1)
+            .count();
+        println!(
+            "p {p:.2}: Blur Basic orla 10–90 % {orla} px (antes 0) · Smear Basic vermelho arrastado {arrasto:.1} px, alcance {alcance} px"
+        );
+    }
+    // Clone: uma barra vermelha em x 40..80; a fonte no meio dela, o traço de 150 a 226 copia-a para 150..190.
+    let barra = |x: usize, _: usize| {
+        if (40..80).contains(&x) {
+            [200u8, 50, 50, 255]
+        } else {
+            [255; 4]
+        }
+    };
+    for p in [1.0f32, 0.5] {
+        let mut t = monta("Clone Basic", &barra);
+        t.set_clone_source([60.0, Y]);
+        recta(&mut t, [150.0, Y], [226.0, Y], p);
+        let y = Y as usize;
+        let iguais = (150..226)
+            .filter(|&x| {
+                let (a, b) = (px(&t, x, y), barra(x - 90, y));
+                (0..3).all(|k| a[k].abs_diff(b[k]) <= 8)
+            })
+            .count();
+        let vermelhos = (150..226).filter(|&x| px(&t, x, y)[1] < 128).count();
+        println!(
+            "p {p:.2}: Clone Basic {iguais}/76 px iguais à fonte (x − 90), {vermelhos} px vermelhos (a barra tem 40)"
+        );
     }
 }

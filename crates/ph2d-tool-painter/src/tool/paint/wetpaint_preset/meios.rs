@@ -116,6 +116,7 @@ impl PainterTool {
                     .collect()
             },
             {
+                self.pegar_a_ferramenta_do_preset(&p.parametros);
                 if m == PaintMedia::WetPaint {
                     self.wet_preset_aplicar_corpo(p)
                 } else {
@@ -146,8 +147,10 @@ impl PainterTool {
         }
         let prm = &p.parametros;
         let mut falhas = Vec::new();
-        // O modo ANTES do pincel: cada modo tem o seu slot de pincel (`brush_by_mode`).
+        // O modo ANTES do pincel: cada modo tem o seu slot de pincel (`brush_by_mode`). O de uma ferramenta do
+        // trilho já está na mão (`pegar_a_ferramenta_do_preset`) — o «Paint» das borrachas antigas tirava-a.
         if let Some(modo) = prm.paint_mode.as_deref()
+            && super::ferramenta_do_preset(prm) == crate::FerramentaDoPincel::Pincel
             && !self.meio_aplicar_modo(m, modo)
         {
             falhas.push(format!("paint_mode:{modo}"));
@@ -323,7 +326,11 @@ impl PainterTool {
         let v = self.preset_volumes();
         p.volumes.size_px = v.size_px;
         p.volumes.opacity = v.opacity;
-        p.paint_mode = self.meio_modo(m);
+        let ferramenta = self
+            .ferramenta_dos_presets()
+            .and_then(super::nome_da_ferramenta);
+        p.paint_mode = self.meio_modo(m).filter(|_| ferramenta.is_none());
+        p.ferramenta = ferramenta.map(str::to_owned);
         p.shape_color = self.shape_color_estado().para_json_se_mexida();
         p.grain_color = self.grain_color_para_json();
         (p, self.texturas_do_pincel())

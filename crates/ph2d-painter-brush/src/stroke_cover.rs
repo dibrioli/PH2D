@@ -6,8 +6,9 @@
 //!
 //! ## The law (and why it is the ONLY one)
 //!
-//! Each dab moves the texel a *fraction* of the way to a ceiling (`m += w·(cap − m)`), so the dab profile
-//! acts as a **RATE**: over `n` overlapping dabs the texel reaches `cap·(1 − Π(1 − w_k))`. That is the
+//! Each dab moves the texel a *fraction* of the way to a ceiling (`m += w·flow·(cap − m)`), so the dab
+//! profile × Flow acts as a **RATE** and Strength is the **ceiling**: over `n` overlapping dabs the texel
+//! reaches `cap·(1 − Π(1 − w_k·flow))`. That is the
 //! *"paint over it again to deepen it"* pigment wants, and it is the law GIMP ships for its
 //! non-incremental paint core (`gimp_gegl_combine_mask_weird`'s non-stipple branch:
 //! `if (opacity > dest) dest += (opacity − dest) * mask * opacity`).
@@ -31,28 +32,36 @@
 //! never from the live drawable) — and we get it without keeping a copy of the canvas.
 
 /// How much of the stroke's paint this dab adds at one texel, given the texel's coverage so far `m`, the
-/// dab's silhouette weight `w`, its Grain weight `g`, the dab's opacity `coverage` (stroke coverage ×
-/// Flow × Strength) and whether the film's screen-space AA is live. `None` = this dab adds nothing here
-/// (the caller skips the texel).
+/// dab's silhouette weight `w`, its Grain weight `g`, the stroke's CEILING `tecto` (stroke coverage ×
+/// Strength — SEM o Flow), the per-dab RATE `flow` and whether the film's screen-space AA is live.
+/// `None` = this dab adds nothing here (the caller skips the texel).
 ///
-/// Moved here from `bands.rs` unchanged — including both branches and the `1e-4` guards — so there is one
-/// copy of the rule; the gate next door compares it term by term against the expressions that shipped.
+/// ⭐ **Strength é o tecto, Flow é a taxa** (ordem do Enio 24/10, a lei do Photoshop/Krita): o Flow
+/// multiplica o passo de cada dab e o texel ACUMULA até `g·tecto` — antes o Flow entrava no tecto e um
+/// pincel de Flow `0,03` nunca passava de `3 %`. Com `flow = 1` é ao bit a aritmética que shipou.
 #[must_use]
-pub(crate) fn cover_add(m: f32, w: f32, g: f32, coverage: f32, film_aa: bool) -> Option<f32> {
+pub(crate) fn cover_add(
+    m: f32,
+    w: f32,
+    g: f32,
+    tecto: f32,
+    flow: f32,
+    film_aa: bool,
+) -> Option<f32> {
     if film_aa {
         // The film's AA rim caps the texel at its fractional AREA while the per-dab opacity still
         // builds WITHIN it (BUGS #16).
-        let cap = (w * coverage).min(1.0);
+        let cap = (w * tecto).min(1.0);
         if m >= cap {
             return None; // the film's area is fully laid here
         }
-        Some((w * g * coverage) * (1.0 - m / cap.max(1e-4)))
+        Some((w * g * tecto) * flow * (1.0 - m / cap.max(1e-4)))
     } else {
-        let cap = (g * coverage).min(1.0);
+        let cap = (g * tecto).min(1.0);
         if m >= cap {
             return None; // already at this texel's weighted cap
         }
-        Some(w * (cap - m))
+        Some(w * flow * (cap - m))
     }
 }
 

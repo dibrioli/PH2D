@@ -36,6 +36,7 @@ mod notes_ops;
 pub use notes_ops::NoteDrag;
 mod number_scrub;
 mod panel_ops;
+mod picker_pin_ops;
 mod scroll_state;
 mod section_prefs_ops;
 pub use section_prefs_ops::{
@@ -443,6 +444,8 @@ pub struct WidgetStore {
     /// swatches, …) and cleared by any click outside the picker
     /// and outside another color target.
     pub(super) picker_target: Option<NodeId>,
+    /// O pino do seletor ([`picker_pin_ops`]): fixado = um Down fora não o fecha.
+    pub(super) picker_pinned: bool,
     /// Per-widget current color. Keyed by the target widget's id
     /// (section color circles, color swatches). The picker writes
     /// here on every frame while editing; painters read here to

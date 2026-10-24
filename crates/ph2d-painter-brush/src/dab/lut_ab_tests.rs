@@ -38,6 +38,8 @@ fn stamp_once(spec: &BrushSpec, with_lut: bool) -> Vec<u8> {
         inv_radius: 1.0 / RADIUS,
         radius: RADIUS,
         coverage: 1.0,
+        tecto: 1.0,
+        flow: 1.0,
         preserve_alpha: false,
         x0: 0,
         x1: i64::from(SIDE),

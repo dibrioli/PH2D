@@ -124,7 +124,7 @@ fn indice(v: f32) -> Option<u64> {
         clippy::cast_sign_loss,
         reason = "arredondado, positivo e preso a 2^24"
     )]
-    (k.is_finite() && k >= 0.0 && k < 16_777_216.0).then_some(k as u64)
+    (0.0..16_777_216.0).contains(&k).then_some(k as u64)
 }
 
 #[cfg(test)]

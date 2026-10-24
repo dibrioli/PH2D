@@ -411,7 +411,7 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
             Especie::Ligado,
         ),
         // As frações e a caixa-base: números em degrau.
-        ANCORAS_EXISTE..=ANCORA_ULTIMA => d(
+        ANCORA_MIN_X..=ANCORA_ULTIMA => d(
             "canal.vetor.ancoras",
             ANCORAS_EXISTE,
             false,

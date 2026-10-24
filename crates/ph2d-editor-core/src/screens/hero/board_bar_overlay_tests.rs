@@ -15,26 +15,56 @@ fn open_right_panels(t: &mut T) {
 }
 
 /// O chrome aberto de cada caso: a direita, ou uma gaveta da barra curta.
-const CHROME: [&str; 3] = ["direita", "formas", "modelos"];
+const CHROME: [&str; 2] = ["direita", "formas"];
 
 fn open_chrome(t: &mut T, which: &str) {
     match which {
         "direita" => open_right_panels(t),
-        "formas" if !t.hero.documents.live.shapes_open => t.click_bar(Item::MoreShapes),
-        "modelos" => t.click_bar(super::super::super::mind::TEMPLATES),
+        "formas" if !t.hero.documents.live.shapes_open => {
+            tap(t, Item::MoreShapes);
+        }
+        "modelos" => {
+            tap(t, super::super::super::mind::TEMPLATES);
+        }
         _ => {}
     }
 }
 
+/// Down + Up pelo despacho real no centro do rectângulo que o pintor registou para `item`; `false` se não
+/// está pintado ou outro o tapa (o `T::click_bar` acha-o varrendo o ecrã de 2 em 2 px — ~350 mil consultas
+/// por clique, o que punha este ficheiro a 9 min).
+fn tap(t: &mut T, item: Item) -> bool {
+    let id = node(item);
+    let Some(r) = t.hero.hit_index.rect_for(id) else {
+        return false;
+    };
+    let (x, y) = (r.x + r.w / 2.0, r.y + r.h / 2.0);
+    if t.hero.hit_index.hit(x, y) != Some(id) {
+        return false;
+    }
+    let arena = bumpalo::Bump::new();
+    let mut ev = t
+        .hero
+        .handle_pointer(ptr(PointerKind::Down, x, y), &arena)
+        .to_vec();
+    ev.extend_from_slice(t.hero.handle_pointer(ptr(PointerKind::Up, x, y), &arena));
+    for e in ev {
+        t.hero.apply_event(e);
+    }
+    t.paint();
+    true
+}
+
 /// Os encontros de cada rectângulo de `mine` (no ecrã) com o resto do que o clique alcança, mais `extra`.
 fn meetings(t: &T, mine: &[(String, Rect)], own: &[NodeId], extra: &[Rect]) -> Vec<String> {
+    let table = items();
     let others: Vec<(String, Rect)> = t
         .hero
         .hit_index
         .iter_registrations()
         .filter(|(id, _)| !own.contains(id))
         .map(|(id, r)| {
-            let named = items().into_iter().find(|it| node(*it) == id);
+            let named = table.iter().find(|it| node(**it) == id);
             (
                 named.map_or_else(|| format!("{id:?}"), |it| format!("{it:?}")),
                 r,
@@ -116,75 +146,72 @@ fn menu_of(kind: &str) -> (Item, Vec<Item>) {
     }
 }
 
-/// ⭐ (b) Os menus da barra de estilo — o «Forma», as pontas, os carimbos — abertos com uma gaveta ou os
-/// painéis da direita abertos, em cada sítio do quadro: nenhum botão do menu cai sobre outro clicável
-/// (as gavetas, os painéis, a barra curta, as outras linhas da própria barra de estilo).
-#[test]
-fn no_menu_of_the_style_bar_covers_the_chrome() {
-    let mut bad = Vec::new();
-    let mut seen = std::collections::BTreeMap::new();
-    for kind in ["forma", "seta", "nota"] {
-        let (opener, menu) = menu_of(kind);
-        let own: Vec<NodeId> = menu.iter().map(|it| node(*it)).collect();
-        for w in [1366.0, 1024.0, 800.0] {
-            for which in CHROME {
-                for (fx, fy) in [
-                    (0.2, 0.15),
-                    (0.2, 0.6),
-                    (0.35, 0.8),
-                    (0.55, 0.12),
-                    (0.6, 0.7),
-                    (0.75, 0.3),
-                    (0.8, 0.82),
-                    (0.88, 0.5),
-                ] {
-                    let mut t = T::new();
-                    t.vp_w = w;
-                    t.paint();
-                    if which == "direita" {
-                        open_chrome(&mut t, which);
-                    }
-                    let (x, y) = t.at(fx, fy);
-                    if !make(&mut t, kind, (x, y), (x + 120.0, y + 50.0)) {
-                        continue;
-                    }
-                    if which != "direita" {
-                        open_chrome(&mut t, which);
-                    }
-                    if t.find(node(opener)).is_none() {
-                        continue;
-                    }
-                    t.click_bar(opener);
-                    let mine: Vec<(String, Rect)> = menu
-                        .iter()
-                        .filter_map(|it| {
-                            t.hero
-                                .hit_index
-                                .rect_for(node(*it))
-                                .map(|r| (format!("{it:?}"), r))
-                        })
-                        .collect();
-                    if mine.is_empty() {
-                        continue;
-                    }
-                    *seen.entry((kind, which)).or_insert(0) += 1;
-                    bad.extend(
-                        meetings(&t, &mine, &own, &minimap(&t, which))
-                            .into_iter()
-                            .map(|m| format!("{w} {kind} {which} {fx},{fy}: {m}")),
-                    );
+/// ⭐ (b) O menu `kind` da barra de estilo — o «Forma», as pontas, os carimbos — aberto com uma gaveta ou os
+/// painéis da direita abertos, em sítios do quadro de cada canto: nenhum botão do menu cai sobre outro
+/// clicável (as gavetas, os painéis, a barra curta, as outras linhas da própria barra de estilo). A grelha é
+/// a que apanhou as mutações (prova W25: o menu ancorado ao botão, e sem o chrome) — cada caso custa ~10
+/// pinturas em debug, e 216 casos levavam 9 min.
+fn no_menu_covers_the_chrome(kind: &str) {
+    let (opener, menu) = menu_of(kind);
+    let own: Vec<NodeId> = menu.iter().map(|it| node(*it)).collect();
+    let (mut bad, mut seen) = (Vec::new(), 0);
+    for w in [1366.0, 800.0] {
+        for which in CHROME {
+            for (fx, fy) in [(0.2, 0.15), (0.6, 0.7), (0.8, 0.82), (0.88, 0.5)] {
+                let mut t = T::new();
+                t.vp_w = w;
+                t.paint();
+                if which == "direita" {
+                    open_chrome(&mut t, which);
                 }
+                let (x, y) = t.at(fx, fy);
+                if !make(&mut t, kind, (x, y), (x + 120.0, y + 50.0)) {
+                    continue;
+                }
+                if which != "direita" {
+                    open_chrome(&mut t, which);
+                }
+                if !tap(&mut t, opener) {
+                    continue;
+                }
+                let mine: Vec<(String, Rect)> = menu
+                    .iter()
+                    .filter_map(|it| {
+                        t.hero
+                            .hit_index
+                            .rect_for(node(*it))
+                            .map(|r| (format!("{it:?}"), r))
+                    })
+                    .collect();
+                if mine.is_empty() {
+                    continue;
+                }
+                seen += 1;
+                bad.extend(
+                    meetings(&t, &mine, &own, &minimap(&t, which))
+                        .into_iter()
+                        .map(|m| format!("{w} {kind} {which} {fx},{fy}: {m}")),
+                );
             }
         }
     }
-    eprintln!("menus abertos por caso: {seen:?}");
-    for kind in ["forma", "seta", "nota"] {
-        assert!(
-            seen.keys().any(|(k, _)| *k == kind),
-            "o menu de {kind} nunca abriu: {seen:?}"
-        );
-    }
+    assert!(seen >= 4, "o menu de {kind} abriu só {seen} vezes");
     assert!(bad.is_empty(), "{}", bad.join("\n"));
+}
+
+#[test]
+fn the_reshape_menu_never_covers_the_chrome() {
+    no_menu_covers_the_chrome("forma");
+}
+
+#[test]
+fn the_heads_menu_never_covers_the_chrome() {
+    no_menu_covers_the_chrome("seta");
+}
+
+#[test]
+fn the_stamps_menu_never_covers_the_chrome() {
+    no_menu_covers_the_chrome("nota");
 }
 
 /// ⭐ (a) O aviso do topo (o com botão, W23 B15, e o da recusa) com cada gaveta ou os painéis da direita
@@ -195,7 +222,7 @@ fn no_menu_of_the_style_bar_covers_the_chrome() {
 fn the_top_notice_is_never_under_the_chrome() {
     let (mut bad, mut no_room) = (Vec::new(), Vec::new());
     let mut seen = 0;
-    for w in [1366.0, 1024.0, 800.0, 600.0] {
+    for w in [1366.0, 800.0, 600.0] {
         for which in ["nada", "direita", "formas", "modelos", "notas", "caneta"] {
             for alert in [true, false] {
                 let mut t = T::new();
@@ -203,9 +230,14 @@ fn the_top_notice_is_never_under_the_chrome() {
                 t.paint();
                 match which {
                     "notas" => {
-                        t.click_bar(Item::Tool(ph2d_board_edit::Tool::Shape(ShapeType::Sticky)))
+                        tap(
+                            &mut t,
+                            Item::Tool(ph2d_board_edit::Tool::Shape(ShapeType::Sticky)),
+                        );
                     }
-                    "caneta" => t.click_bar(super::super::super::pen::PEN_TOOL),
+                    "caneta" => {
+                        tap(&mut t, super::super::super::pen::PEN_TOOL);
+                    }
                     _ => open_chrome(&mut t, which),
                 }
                 let live = &mut t.hero.documents.live;

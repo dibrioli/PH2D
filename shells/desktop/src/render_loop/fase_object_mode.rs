@@ -34,6 +34,7 @@ impl crate::App {
         let (tl, ph) = (&mut self.timeline, &mut self.playhead);
         if let Some(l) =
             ph2d_app_vec::autokey_smoke::step(&mut self.vec, vec_scene, sim, hero, tl, ph)
+                .or_else(|| ph2d_app_components::autokey_smoke_componentes::step(sim, hero, tl, ph))
         {
             eprintln!("{l}");
         }

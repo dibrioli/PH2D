@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**86 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **86** são handoffs (registro **morto**).
+**87 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **87** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -101,6 +101,7 @@
 | 2026-10-23 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_B2_TODO_CAMPO.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_B2_TODO_CAMPO.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 23/10 — F27 B2: todo campo do Inspector é um canal |
 | 2026-10-23 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_B3_C.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_B3_C.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 23/10 — F27: fecho da B2, B3, Bloco C |
 | 2026-10-23 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_BLOCO_A.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_BLOCO_A.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 23/10 — F27 Bloco A: o lado B da junta e o motor com faixa |
+| 2026-10-24 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_D.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_D.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 24/10 — F27 Bloco D: menu da linha de GRUPO, ADR-0191, dívidas do catálo… |
 
 ---
 

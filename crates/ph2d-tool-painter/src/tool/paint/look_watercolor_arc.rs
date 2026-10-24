@@ -30,14 +30,14 @@ use super::measure_watercolor_water_edge::wash_over_dry;
 const SIDE: usize = 256;
 
 /// Uma tela RGB de 8 bits. Nao ha alfa de proposito: o que se julga aqui e o que a tela MOSTRA.
-struct Canvas {
-    w: usize,
-    h: usize,
-    px: Vec<[u8; 3]>,
+pub(crate) struct Canvas {
+    pub(crate) w: usize,
+    pub(crate) h: usize,
+    pub(crate) px: Vec<[u8; 3]>,
 }
 
 impl Canvas {
-    fn new(w: usize, h: usize) -> Self {
+    pub(crate) fn new(w: usize, h: usize) -> Self {
         Self {
             w,
             h,
@@ -45,7 +45,7 @@ impl Canvas {
         }
     }
 
-    fn set(&mut self, x: usize, y: usize, c: [u8; 3]) {
+    pub(crate) fn set(&mut self, x: usize, y: usize, c: [u8; 3]) {
         if x < self.w && y < self.h {
             self.px[y * self.w + x] = c;
         }
@@ -103,7 +103,7 @@ fn chunk(out: &mut Vec<u8>, kind: &[u8; 4], body: &[u8]) {
     out.extend_from_slice(&crc32(&full).to_be_bytes());
 }
 
-fn write_png(path: &std::path::Path, c: &Canvas) -> std::io::Result<()> {
+pub(crate) fn write_png(path: &std::path::Path, c: &Canvas) -> std::io::Result<()> {
     let mut raw = Vec::with_capacity(c.h * (1 + c.w * 3));
     for y in 0..c.h {
         raw.push(0); // filtro None

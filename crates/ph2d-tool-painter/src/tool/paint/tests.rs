@@ -151,7 +151,7 @@ mod diag_ordem_entre_carimbos; // o pincel de cima coberto pelo de baixo do lote
 mod diag_wet_pilha_fios_solido;
 
 #[path = "look_watercolor_arc.rs"]
-mod look_watercolor_arc; // o arco palido na concavidade: o oraculo e o RENDER, nao um escalar
+pub(crate) mod look_watercolor_arc; // o arco palido na concavidade: o oraculo e o RENDER, nao um escalar
 #[path = "measure_impasto_cost.rs"]
 mod measure_impasto_cost; // o que o CORPO da tinta custa (plano 26 §9); irmão do input_cost
 #[path = "measure_input_cost.rs"]

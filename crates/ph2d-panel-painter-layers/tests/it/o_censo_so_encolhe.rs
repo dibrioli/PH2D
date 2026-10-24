@@ -164,7 +164,13 @@ fn o_censo_dos_controlos_so_encolhe() {
     ];
     let falhas: Vec<Vec<String>> = em_paralelo(&meios, |&media| {
         let bancada = Bancada::nova(media, &[]);
-        let esmaecida = |id: NodeId| bancada.host.store().tooltip_for(id).is_some();
+        let esmaecida = |id: NodeId| {
+            bancada
+                .host
+                .store()
+                .tooltip_for(id)
+                .is_some_and(ph2d_panel_painter_layers::e_dica_de_inercia)
+        };
         let (base, _) = ensaio(media, &[], &Gesto::Nenhum);
         let oferta = gestos(media, &[]);
         let medidas = em_paralelo(&oferta, |g| {

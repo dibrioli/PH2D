@@ -2,7 +2,7 @@
 //! com tecto, orla ou cauda pinta num plano TRANSPARENTE só dele — todas as rotas de carimbo, em `Mix`, com o
 //! tecto do Accumulate e tudo o resto como sempre — e cada lote compõe o plano sobre a base congelada no
 //! pen-down, com o modo do pincel, UMA vez (`ph2d_painter_brush::traco::TracoComposto::compoe`). As orlas são
-//! o aro da aguada sobre a cobertura do plano ([`super::watercolor_rim::aro_da_cobertura`], a mesma porta).
+//! a orla sobre a cobertura do plano ([`super::watercolor_rim::orla_da_cobertura`], os campos da aguada).
 //!
 //! **A cauda** (L5): ao levantar, a janela do fim limpa-se no plano e voltam a carimbar-se os LOTES que lhe
 //! tocam, inteiros, pela porta do despacho (as corridas da ponta de N imagens) e com o sorteio e o estado do
@@ -204,7 +204,7 @@ impl PainterTool {
     }
 
     /// ⭐ **A composição** de `r`: `base ⊕ plano` no modo do pincel, com o tecto e as orlas.
-    fn compoe_o_plano(&mut self, s: &PlanoDoTraco, r: Region) {
+    pub(super) fn compoe_o_plano(&mut self, s: &PlanoDoTraco, r: Region) {
         if r.w == 0 || r.h == 0 {
             return;
         }
@@ -225,7 +225,7 @@ impl PainterTool {
             }
             (
                 jan,
-                super::watercolor_rim::aro_da_cobertura(&cov, jw, jh, core),
+                super::watercolor_rim::orla_da_cobertura(&cov, jw, jh, core),
             )
         });
         let trinco = self

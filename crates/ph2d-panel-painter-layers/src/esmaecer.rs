@@ -42,7 +42,7 @@ fn dica(ids: &[NodeId]) -> Option<&'static str> {
 
 /// Uma dica que ESTE módulo escreveu — a única que ele pode apagar (outras linhas têm dicas próprias,
 /// registadas no `populate`).
-fn e_dica_de_inercia(texto: &str) -> bool {
+pub fn e_dica_de_inercia(texto: &str) -> bool {
     ph2d_tool_painter::Dependente::TODOS
         .iter()
         .map(|d| d.dica())

@@ -252,6 +252,9 @@ mod shape_relief_tests;
 mod smear_curva_tests;
 #[cfg(test)]
 mod sonda_opacidade_tests;
+/// As orlas do traço sem rectângulos nem serrilha (smoke do dono 24/10).
+#[cfg(test)]
+mod traco_orla_bordas_tests;
 /// **L8 + L5** — o tecto por traço, as orlas, a cauda e o fall-off (o plano do traço).
 #[cfg(test)]
 mod traco_plano_tests;

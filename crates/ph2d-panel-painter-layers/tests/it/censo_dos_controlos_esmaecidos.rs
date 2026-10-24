@@ -64,7 +64,13 @@ fn a_linha_esmaecida_e_a_que_nao_age() {
         else {
             return Vec::new();
         };
-        let esmaecida = |id: NodeId| bancada.host.store().tooltip_for(id).is_some();
+        let esmaecida = |id: NodeId| {
+            bancada
+                .host
+                .store()
+                .tooltip_for(id)
+                .is_some_and(ph2d_panel_painter_layers::e_dica_de_inercia)
+        };
         let (base, _) = ensaio(media, armar, &Gesto::Nenhum);
         let mut out = Vec::new();
         let mut vistos: Vec<NodeId> = Vec::new();

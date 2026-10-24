@@ -6,10 +6,8 @@
 
 use crate::card::card_row;
 use ph2d_editor_core::math::safe_clamp;
-use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, ROW_H_PX, TypeToken};
 use ph2d_tool_painter::ids::{PAINTER_BRUSH_RENDERING_SECTION, PAINTER_TRACO_FIELDS};
 use ph2d_tool_painter::{BrushSettings, PaintMedia, TRACO_LARGURA_MAX_PX};
 
@@ -127,20 +125,16 @@ fn paint_traco(
             passo,
             if i == 3 { 1 } else { 2 },
         );
-        // O Glaze explicado onde vive: o tecto do traço INTEIRO (a Strength e o Flow pintam por baixo dele).
+        // O Glaze explicado ao PASSAR o rato (dono 24/10: «só no hover, não no painel»): o tecto do traço INTEIRO.
+        // Depois da linha: a dica de inércia (`esmaecer`), quando a há, manda — e ao sair leva só a dela.
         if i == 0 {
-            let font = TypeToken::Sm.px();
-            paint_text(
-                ctx.text_system,
-                ctx.scene,
-                tr("panel.painter_layers.brush.glaze_hint"),
-                x,
-                y + (ROW_H_PX - font) * 0.5,
-                font,
-                w,
-                resolve(ColorToken::Text2, theme),
-            );
-            y += ROW_H_PX;
+            let store = ctx.host.store_mut();
+            if store.tooltip_for(PAINTER_TRACO_FIELDS[0]).is_none() {
+                store.set_tooltip(
+                    PAINTER_TRACO_FIELDS[0],
+                    tr("panel.painter_layers.brush.glaze_hint"),
+                );
+            }
         }
     }
     y

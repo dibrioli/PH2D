@@ -115,3 +115,36 @@ fn digitar_uma_linha_do_traco_muda_o_pincel() {
     );
     assert!(s.blend_sobre_vazio);
 }
+
+/// ⭐ **A dica do Glaze só ao passar o rato** (dono 24/10: *«a explicação do Glaze deve ficar apenas no hover e
+/// não no painel»*): entre o Glaze e o Wet edges não há linha de texto (o passo é o mesmo que entre o Wet e o
+/// Burnt), e o id do Glaze publica a dica.
+#[test]
+fn a_dica_do_glaze_e_so_ao_passar_o_rato() {
+    let mut t = PainterTool::default();
+    t.set_paint_media(PaintMedia::Digital);
+    let (host, _st, rects) = painted(&t);
+    let y = |id: NodeId| {
+        rects
+            .iter()
+            .find(|(w, r)| *w == id && r.h > 0.0)
+            .map(|(_, r)| r.y)
+            .expect("linha pintada")
+    };
+    let (glaze, wet, burnt) = (
+        y(PAINTER_TRACO_FIELDS[0]),
+        y(PAINTER_TRACO_FIELDS[1]),
+        y(PAINTER_TRACO_FIELDS[2]),
+    );
+    assert!(
+        ((wet - glaze) - (burnt - wet)).abs() < 0.5,
+        "há uma linha entre o Glaze e o Wet edges: passos {} e {}",
+        wet - glaze,
+        burnt - wet
+    );
+    assert_eq!(
+        host.store().tooltip_for(PAINTER_TRACO_FIELDS[0]),
+        Some(ph2d_i18n::tr("panel.painter_layers.brush.glaze_hint")),
+        "o Glaze não publica a dica ao passar o rato"
+    );
+}

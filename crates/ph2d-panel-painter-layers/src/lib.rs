@@ -39,6 +39,8 @@ mod brush_fallback;
 /// texto e uma varredura de ecrã. *Um painel cujas fileiras dependem de uma escolha tem de ser
 /// armado, como o Inspector já é.*
 pub use crate::brush_fallback::FALLBACK_BRUSH;
+/// Se uma dica é a de uma linha ESMAECIDA (os censos distinguem-na das dicas de ajuda, a do Glaze).
+pub use crate::esmaecer::e_dica_de_inercia;
 mod card; // the titled row-box shared by the brush panel technique sections
 mod composite_picker;
 mod dropdown_popover;

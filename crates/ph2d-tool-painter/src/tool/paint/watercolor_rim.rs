@@ -321,24 +321,24 @@ pub(super) fn straight_edge_cap(sd: f32, r: usize) -> f32 {
     ((sd + r + 0.5) / (2.0 * r + 1.0)).clamp(0.0, 1.0)
 }
 
-/// ⭐ **O ARO de uma cobertura qualquer** (L8, `ph2d_painter_brush::traco`): por texel `cw − inner`, com
-/// `cw = smoothstep(SS0, SS1, cov)` e `inner = min(borrão, teto do flanco reto)` — os campos saem da MESMA
-/// porta [`rim_fields`] que o composite da aguada chama, e a conta por texel é a dele sem a deformação (o
-/// `warp` é da aguada: aqui a amostra é o próprio texel). Positivo logo dentro da fronteira, negativo na franja.
-pub(super) fn aro_da_cobertura(cov: &[f32], rw: usize, rh: usize, core_r: usize) -> Vec<f32> {
+/// ⭐ **A ORLA do traço** (L8, `ph2d_painter_brush::traco`): por texel `1 − inner`, com `inner = min(borrão,
+/// teto do flanco reto)` — os campos saem da MESMA porta [`rim_fields`] que o composite da aguada chama. `≥ ½` é
+/// orla cheia (a fronteira e tudo o que fica FORA dela), `0` é o miolo.
+///
+/// ⚠️ **Não é o aro da aguada (`cw − inner`)** (smoke do dono 24/10, `docs/Painter/BUGS_painter.md`): no traço o
+/// alfa do plano já É a silhueta, e o `cw = smoothstep(cov)` dava aro NEGATIVO na franja de fora — a orla molhada
+/// comia o antialias (1 753 texels no Glaze Round com Flow 1, 6 719 no pincel por omissão: a borda serrilhada) e
+/// a queimada parava num degrau. E o aro mudava com a JANELA do lote: numa janela sem fronteira a régua do teto
+/// cala-se ([`signed_distance`] → `None`) e a franja fraca passava de `cw − 0` a `cw − borrão` — os rectângulos
+/// (Glaze Round de fábrica: até 16/255 contra a mesma tela composta numa passagem). Com `1 − inner` os dois lados
+/// do `None` dão orla cheia (sem fronteira na janela, `inner < ½`), e o lote dá o que a passagem única dá.
+pub(super) fn orla_da_cobertura(cov: &[f32], rw: usize, rh: usize, core_r: usize) -> Vec<f32> {
     let com_aro = ph2d_painter_brush::BrushSpec {
         edge_gain: 1.0, // a régua do teto só nasce para quem tem aro (`field_for`)
         ..Default::default()
     };
     let rim = rim_fields(cov, rw, rh, core_r, &[], &com_aro);
     let blur = super::watercolor_rewet_px::blur_of(&rim.blurs, core_r);
-    let ss = |c: f32| {
-        super::watercolor_field::smoothstep(
-            super::watercolor_render::SS0,
-            super::watercolor_render::SS1,
-            c,
-        )
-    };
     (0..rw * rh)
         .map(|i| {
             let inner = blur[i].min(1.0);
@@ -346,7 +346,7 @@ pub(super) fn aro_da_cobertura(cov: &[f32], rw: usize, rh: usize, core_r: usize)
                 .sd
                 .as_ref()
                 .map_or(inner, |sd| inner.min(straight_edge_cap(sd[i], core_r)));
-            ss(cov[i]) - inner
+            1.0 - inner
         })
         .collect()
 }

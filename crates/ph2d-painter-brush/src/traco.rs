@@ -14,9 +14,10 @@
 //!
 //! O traço pinta num PLANO transparente só dele (todas as rotas de carimbo, em `Mix`), e cada lote compõe o
 //! plano sobre a base congelada no pen-down — com o MODO do pincel, uma vez, como uma camada. O tecto é um
-//! `min` no alfa do plano; as orlas são uma passagem sobre a cobertura do plano: o ARO da Watercolor
-//! (`cw − inner`, a MESMA conta, `watercolor_rim::aro_da_cobertura` no tool) — positivo logo dentro da
-//! fronteira, negativo na franja de fora, zero no miolo.
+//! `min` no alfa do plano; as orlas são uma passagem sobre a cobertura do plano: `1 − inner` com os campos do
+//! aro da Watercolor (`watercolor_rim::orla_da_cobertura` no tool) — `≥ ½` na fronteira e na franja de fora
+//! (orla cheia: o antialias do plano fica), `0` no miolo. ⚠️ Não `cw − inner`: o aro negativo da franja comia o
+//! antialias e mudava com a janela do lote (os rectângulos, smoke 24/10, `docs/Painter/BUGS_painter.md`).
 //!
 //! ⚠️ **O neutro não arma o plano** ([`TracoComposto::is_active`]): o carimbo de sempre, ao bit.
 
@@ -81,8 +82,8 @@ impl TracoComposto {
 
     /// ⭐ **A composição de um texel**: o plano `plano` (RGBA reto, o traço em Normal sobre o transparente)
     /// sobre a base `base`, no `modo` do pincel (`vazio` = a fórmula geral do W3C; `pigmento` = a mistura do
-    /// pincel, `BrushSpec::pigmento` — a do carimbo de sempre; um `f32` é o K–M), com o `aro` da cobertura do plano
-    /// (`0` sem orla).
+    /// pincel, `BrushSpec::pigmento` — a do carimbo de sempre; um `f32` é o K–M), com a orla `aro` da cobertura do plano
+    /// (`0..1`: `≥ ½` orla cheia, `0` miolo ou sem orla).
     #[must_use]
     #[inline]
     pub fn compoe(

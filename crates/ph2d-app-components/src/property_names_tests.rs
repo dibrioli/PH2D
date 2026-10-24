@@ -288,10 +288,30 @@ fn o_nome_da_fonte_do_rotulo_vale_para_toda_variante() {
     assert_eq!(get(&world, "label.source_name"), json!("pts"));
     property::set(&reg, &mut world, e, "label.source", json!("tag"), nada()).unwrap();
     assert_eq!(get(&world, "label.source"), json!("tag"));
-    assert_eq!(get(&world, "label.source_name"), json!("pts"), "o nome atravessa a troca");
-    property::set(&reg, &mut world, e, "label.source_name", json!("Enemy"), nada()).unwrap();
+    assert_eq!(
+        get(&world, "label.source_name"),
+        json!("pts"),
+        "o nome atravessa a troca"
+    );
+    property::set(
+        &reg,
+        &mut world,
+        e,
+        "label.source_name",
+        json!("Enemy"),
+        nada(),
+    )
+    .unwrap();
     let ficou = &world.get::<UiLabel>(e).unwrap().source;
     assert_eq!(*ficou, LabelSource::TagCount("Enemy".into()));
-    property::set(&reg, &mut world, e, "label.source", json!("authored"), nada()).unwrap();
+    property::set(
+        &reg,
+        &mut world,
+        e,
+        "label.source",
+        json!("authored"),
+        nada(),
+    )
+    .unwrap();
     assert_eq!(get(&world, "label.source_name"), json!(null));
 }

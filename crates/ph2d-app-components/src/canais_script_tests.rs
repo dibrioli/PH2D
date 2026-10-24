@@ -69,7 +69,6 @@ fn a_curva_escreve_um_valor_proprio_na_faixa_dela() {
     let own = &sim.world().get::<LuauScript>(e).unwrap().own;
     assert_eq!(own.get("cor"), Some(&V::Color([1.0, 0.5, 0.0, 1.0])));
     assert_eq!(own.get("speed"), Some(&V::Number(3.0)), "o resto fica");
-    let mut textos = textos;
     publicar(&mut sim, &[e.to_bits()], &mut textos);
     assert_eq!(
         lido(&sim, e, verde),

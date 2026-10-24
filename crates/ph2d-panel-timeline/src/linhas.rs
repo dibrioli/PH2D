@@ -23,7 +23,7 @@ use crate::graph::TimeView;
 use crate::state::TimelinePanelState;
 use crate::summary::columns_of;
 use crate::tab::Tab;
-use crate::tracks::{DIAMOND_H, KEY_HIT_HW, TWIRL_W, paint_diamond, paint_twirl, track_label};
+use crate::tracks::{DIAMOND_H, KEY_HIT_HW, TWIRL_W, paint_diamond, paint_twirl};
 use crate::{geom, ids};
 
 /// O endereço DURÁVEL de um grupo de canais: de que objecto, e o [`ph2d_ecs::FieldKey::grupo`].

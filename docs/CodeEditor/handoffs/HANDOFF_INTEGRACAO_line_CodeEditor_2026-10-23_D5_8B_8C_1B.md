@@ -1,6 +1,6 @@
 # HANDOFF DE INTEGRAÇÃO — line/CodeEditor: d5, 8b, 8c e 1b (23/10/2026)
 
-> Leitor: o agente integrador. **Não integrado, não enviado.** Antecessor integrado:
+> Leitor: o agente integrador. **Integrado no `main` em 24/10 (noite) por fast-forward, por ordem do dono** (o `main` não andou desde o rebase sobre `3b95432e7c`; a suíte do fecho correu sobre a árvore que entra, §7). Antecessor integrado:
 > [Onda 2 até ao 8d](HANDOFF_INTEGRACAO_line_CodeEditor_2026-10-22_ONDA2_ATE_8D.md). Continuações desta rodada:
 > [d5 e 8b-assets](HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-23_D5_E_8B_ASSETS.md) ·
 > [8b-2, 8c, cena 9](HANDOFF_CONTINUACAO_line_CodeEditor_2026-10-23_8B_8C_CENA9.md). Planos:

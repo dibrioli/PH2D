@@ -96,6 +96,27 @@ pub enum TipoDaEtapaView {
     Direta,
     /// Uma porta que a macro não reproduz: o porquê (chave do i18n ou nome da porta).
     Recusada(String),
+    /// **O mundo** (W19): componentes postos, mudados e tirados num objecto, pelos nomes curtos;
+    /// `objeto` = o `Name` dele (`None` = sem nome); `outros` = os outros objectos do mesmo passo.
+    Componentes {
+        objeto: Option<String>,
+        postos: Vec<String>,
+        mudados: Vec<String>,
+        tirados: Vec<String>,
+        outros: usize,
+    },
+    /// Um objecto nasce dentro do objecto Macro.
+    Nasce {
+        objeto: Option<String>,
+        outros: usize,
+    },
+    /// Um objecto é apagado.
+    Apagado {
+        objeto: Option<String>,
+        outros: usize,
+    },
+    /// «Simular»: a física correu `segundos` (os tiques do passo fixo).
+    Simula { segundos: f64 },
 }
 
 /// As propriedades editáveis de uma etapa, além da espera e do nome.

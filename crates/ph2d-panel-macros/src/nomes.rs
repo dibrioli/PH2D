@@ -72,7 +72,67 @@ pub fn nome(e: &EtapaView) -> String {
             let porque = tr_se_ha(porque).map_or_else(|| porque.clone(), str::to_owned);
             tr_with("panel.macros.step.refused", &[("why", &porque)])
         }
+        T::Componentes {
+            objeto,
+            postos,
+            mudados,
+            tirados,
+            outros,
+        } => {
+            let mut partes: Vec<String> = [
+                ("panel.macros.step.world.added", postos),
+                ("panel.macros.step.world.changed", mudados),
+                ("panel.macros.step.world.removed", tirados),
+            ]
+            .into_iter()
+            .filter(|(_, v)| !v.is_empty())
+            .map(|(k, v)| tr_with(k, &[("names", &v.join(", "))]))
+            .collect();
+            if partes.is_empty() {
+                partes.push(tr("panel.macros.step.world.parent").to_owned());
+            }
+            let o = objeto_ou_sem_nome(objeto.as_deref());
+            mais(
+                tr_with(
+                    "panel.macros.step.world.on",
+                    &[("what", &partes.join(", ")), ("object", &o)],
+                ),
+                *outros,
+            )
+        }
+        T::Nasce { objeto, outros } => mais(
+            tr_with(
+                "panel.macros.step.world.appears",
+                &[("object", &objeto_ou_sem_nome(objeto.as_deref()))],
+            ),
+            *outros,
+        ),
+        T::Apagado { objeto, outros } => mais(
+            tr_with(
+                "panel.macros.step.world.deleted",
+                &[("object", &objeto_ou_sem_nome(objeto.as_deref()))],
+            ),
+            *outros,
+        ),
+        T::Simula { segundos: s } => {
+            tr_with("panel.macros.step.world.simulate", &[("seconds", &segundos(*s))])
+        }
     }
+}
+
+fn objeto_ou_sem_nome(o: Option<&str>) -> String {
+    o.map_or_else(
+        || tr("panel.macros.step.world.unnamed").to_owned(),
+        str::to_owned,
+    )
+}
+
+/// «… (+n more)» quando o passo mexeu em mais objectos.
+fn mais(frase: String, n: usize) -> String {
+    if n == 0 {
+        return frase;
+    }
+    tr_with("panel.macros.step.world.more", &[("what", &frase), ("n", &n)])
 }
 
 /// O nome da família na frase «Record captures {family}».

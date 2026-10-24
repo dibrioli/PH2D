@@ -5,7 +5,10 @@
 use ph2d_label_census::gate::{self, Excecao};
 
 const PREFIX: &str = "panel.macros.";
-const TABLES: &[&str] = &["crates/ph2d-i18n/src/macros.rs"];
+const TABLES: &[&str] = &[
+    "crates/ph2d-i18n/src/macros.rs",
+    "crates/ph2d-i18n/src/macros_mundo.rs",
+];
 
 /// ⭐ As excepções, **com o mecanismo** — nunca uma lista aberta.
 const NOT_LANGUAGE: &[Excecao] = &[];

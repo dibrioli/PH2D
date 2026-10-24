@@ -28,6 +28,13 @@ pub trait EtapasDaFamilia {
         k: usize,
         campo: &CampoDaEtapa,
     ) -> Result<(), ErroDaMacroView>;
+    /// A etapa `k` pode apagar-se? A família cujas etapas dependem das anteriores diz porquê não.
+    ///
+    /// # Errors
+    /// O porquê, para o painel o dizer.
+    fn pode_apagar(&self, _track: &Track, _k: usize) -> Result<(), ErroDaMacroView> {
+        Ok(())
+    }
 }
 
 /// Um instante da macro, em segundos.
@@ -101,6 +108,10 @@ pub mod erros {
     pub const DOCUMENTO: &str = "panel.macros.error.document";
     pub const SEM_GRAFO: &str = "panel.macros.error.no_graph";
     pub const OUTRO_TAMANHO: &str = "panel.macros.error.other_size";
+    /// O mundo (W19): apagar ou trocar uma etapa quebraria as seguintes (elas partem do que ela fez).
+    pub const MUNDO_FIXO: &str = "panel.macros.error.world_step_is_fixed";
+    /// O mundo: uma etapa não passa à frente de outra (a seguinte parte do que a anterior fez).
+    pub const MUNDO_ORDEM: &str = "panel.macros.error.world_step_keeps_its_order";
 
     /// Todas as chaves (o censo da tabela as confere).
     pub const CHAVES: &[&str] = &[
@@ -128,6 +139,8 @@ pub mod erros {
         DOCUMENTO,
         SEM_GRAFO,
         OUTRO_TAMANHO,
+        MUNDO_FIXO,
+        MUNDO_ORDEM,
     ];
 
     /// O erro sem detalhe.

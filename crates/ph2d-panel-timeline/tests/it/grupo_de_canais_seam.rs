@@ -154,7 +154,6 @@ fn o_triangulo_do_grupo_mostra_os_membros() {
 #[test]
 fn o_botao_direito_na_etiqueta_do_grupo_abre_o_menu_de_grupo() {
     use ph2d_editor_core::interaction::ContextMenuKind;
-    use ph2d_editor_core::panel::PanelHostInternal;
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
     set_current_timeline(Some(snap()));
@@ -249,7 +248,6 @@ fn delete_track_no_grupo_apaga_todos_os_membros_num_passo_de_undo() {
 #[test]
 fn a_extrapolacao_do_grupo_vale_para_todos_os_membros() {
     use ph2d_editor_core::interaction::ContextMenuKind;
-    use ph2d_editor_core::panel::PanelHostInternal;
     use ph2d_timeline::{Extrap, ExtrapSide};
     let _ = drain_intents();
     set_current_timeline(Some(snap()));

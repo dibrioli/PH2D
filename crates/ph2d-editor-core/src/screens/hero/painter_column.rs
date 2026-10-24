@@ -14,7 +14,9 @@ use crate::interaction::{BarButton, BarFace, BarFamily, ToolBars, WidgetStore};
 use crate::widget::{ButtonState, ToolRailEntry};
 use ph2d_a11y::NodeId;
 
-/// Os grupos da coluna, por ofício: pôr tinta · mexer na tinta que lá está · máscara, cura e formas.
+/// Os grupos da coluna, por ofício: pôr tinta · mexer na tinta que lá está · máscara, seleção, cura e formas.
+/// ⚠️ A Máscara e a Seleção são DOIS botões (dono 24/10: *«temos espaço para ambos»*) — o grupo com flyout do
+/// trilho (`PAINTER_RAIL_MASK_GROUP`) só existe na fila antiga.
 const GRUPOS: [&[NodeId]; 3] = [
     &[
         ids::PAINTER_RAIL_BRUSH,
@@ -30,7 +32,8 @@ const GRUPOS: [&[NodeId]; 3] = [
         ids::PAINTER_RAIL_TRANSFORM,
     ],
     &[
-        ids::PAINTER_RAIL_MASK_GROUP,
+        ids::PAINTER_RAIL_MASK,
+        ids::PAINTER_RAIL_SELECTION,
         ids::PAINTER_RAIL_INPAINT,
         ids::PAINTER_RAIL_SHAPES,
     ],
@@ -95,12 +98,36 @@ fn flyout(store: &WidgetStore, itens: &[RailTool], family: BarFamily) -> Vec<Bar
         .collect()
 }
 
+/// A Máscara e a Seleção, cada uma no seu botão: acesa a que o sub-rádio do grupo tem (a Máscara por omissão)
+/// quando o grupo é a ferramenta na mão. O clique segue pelo despacho do sub-botão (`rail_painter_tools`).
+fn mascara_e_selecao(store: &WidgetStore) -> Vec<BarButton> {
+    let grupo = matches!(
+        store.button_state(ids::PAINTER_RAIL_MASK_GROUP),
+        Some(ButtonState::Pressed)
+    );
+    let premido = |id| matches!(store.button_state(id), Some(ButtonState::Pressed));
+    let ativo = PAINTER_MASK_SUBS
+        .iter()
+        .map(|t| t.0)
+        .find(|id| premido(*id))
+        .unwrap_or(ids::PAINTER_RAIL_MASK);
+    let mut b = flyout(store, &PAINTER_MASK_SUBS, familia(2));
+    for x in &mut b {
+        x.on = grupo && x.id == ativo;
+    }
+    b
+}
+
 /// ⭐ **As barras do pintor neste quadro** — a coluna (pela lista do trilho), o flyout aberto e a fila.
 #[must_use]
 pub fn painter_tool_bars(store: &WidgetStore) -> ToolBars {
     let mut column: Vec<Vec<BarButton>> = vec![Vec::new(); GRUPOS.len()];
     for e in tool_section(store, true) {
         let Some(id) = e.node_id() else { continue };
+        if id == ids::PAINTER_RAIL_MASK_GROUP {
+            column[2].extend(mascara_e_selecao(store));
+            continue;
+        }
         let Some(g) = GRUPOS.iter().position(|ids| ids.contains(&id)) else {
             continue;
         };
@@ -112,11 +139,6 @@ pub fn painter_tool_bars(store: &WidgetStore) -> ToolBars {
         Some((
             ids::PAINTER_RAIL_SHAPES,
             flyout(store, &PAINTER_SHAPES, familia(2)),
-        ))
-    } else if store.painter_mask_flyout_open() {
-        Some((
-            ids::PAINTER_RAIL_MASK_GROUP,
-            flyout(store, &PAINTER_MASK_SUBS, familia(2)),
         ))
     } else {
         None

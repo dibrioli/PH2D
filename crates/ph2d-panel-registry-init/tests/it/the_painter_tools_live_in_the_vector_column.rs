@@ -2,7 +2,8 @@
 //! esquerda, com a mesma decoração do módulo vector»*). Com o pintor na mão: as doze ferramentas do trilho
 //! estão na coluna publicada e em nenhum chip da fila de cima; cada uma é pintada e registada pela MESMA
 //! porta do vetor (`float_bar::tool_bars::placed`, que o pintor das barras lê); um ponteiro real em cada
-//! uma troca a ferramenta; o flyout do grupo abre na coluna; e largar o pintor limpa a coluna.
+//! uma troca a ferramenta e acende só a ela (a Máscara e a Seleção são dois botões); o flyout das formas abre na
+//! coluna; e largar o pintor limpa a coluna.
 
 use bumpalo::Bump;
 use ph2d_editor_core::action_bus::EditorAction;
@@ -46,6 +47,16 @@ fn clica(hero: &mut HeroScreen, r: Rect) -> Vec<WidgetEvent> {
     ev
 }
 
+/// As ferramentas da coluna: as do trilho, com a Máscara e a Seleção em dois botões no lugar do grupo delas (dono
+/// 24/10: «temos espaço para ambos»).
+fn na_coluna_esperada() -> Vec<NodeId> {
+    ids::PAINTER_RAIL_TOOL_IDS
+        .into_iter()
+        .filter(|i| *i != ids::PAINTER_RAIL_MASK_GROUP)
+        .chain(ids::PAINTER_RAIL_MASK_SUB_IDS)
+        .collect()
+}
+
 fn pintor() -> (HeroScreen, ph2d_text::TextSystem) {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut hero = HeroScreen::new(NodeId(1));
@@ -80,7 +91,7 @@ fn the_painter_tools_are_the_column_and_not_the_row() {
         .expect("o pintor publicou a coluna");
     assert!(bars.painter_rail);
     let na_coluna: Vec<NodeId> = bars.column.iter().flatten().map(|b| b.id).collect();
-    for id in ids::PAINTER_RAIL_TOOL_IDS {
+    for id in na_coluna_esperada() {
         assert!(
             na_coluna.contains(&id),
             "{id:?}: a ferramenta não está na coluna"
@@ -88,12 +99,15 @@ fn the_painter_tools_are_the_column_and_not_the_row() {
     }
     assert_eq!(
         na_coluna.len(),
-        ids::PAINTER_RAIL_TOOL_IDS.len(),
+        na_coluna_esperada().len(),
         "a coluna tem intrusos"
     );
     let fila = tool_bar::bar_rail(&hero.store, &mut ts, true, true);
     let na_fila: Vec<NodeId> = fila.entries.iter().filter_map(|e| e.node_id()).collect();
-    for id in ids::PAINTER_RAIL_TOOL_IDS {
+    for id in ids::PAINTER_RAIL_TOOL_IDS
+        .into_iter()
+        .chain(ids::PAINTER_RAIL_MASK_SUB_IDS)
+    {
         assert!(
             !na_fila.contains(&id),
             "{id:?}: a ferramenta continua na fila de cima"
@@ -132,7 +146,7 @@ fn the_painter_column_is_painted_by_the_vector_door() {
     let (hero, _) = pintor();
     let bars = hero.store.tool_bars().cloned().expect("publicada");
     let postos = placed(&bars, hero.last_content, false, false);
-    assert_eq!(postos.len(), ids::PAINTER_RAIL_TOOL_IDS.len());
+    assert_eq!(postos.len(), na_coluna_esperada().len());
     for (b, r) in postos {
         assert_eq!(
             hero.hit_index.rect_for(b.id),
@@ -162,7 +176,7 @@ fn every_painter_column_button_answers_a_real_pointer() {
             hero.apply_event(e);
         }
         pinta(&mut hero, &mut ts);
-        if b.id == ids::PAINTER_RAIL_SHAPES || b.id == ids::PAINTER_RAIL_MASK_GROUP {
+        if b.id == ids::PAINTER_RAIL_SHAPES {
             let aberto = hero.store.tool_bars().and_then(|t| t.flyout.clone());
             assert_eq!(
                 aberto.map(|(a, _)| a),
@@ -209,7 +223,7 @@ fn every_painter_column_button_answers_a_real_pointer() {
     }
     assert_eq!(
         medidos,
-        ids::PAINTER_RAIL_TOOL_IDS.len(),
+        na_coluna_esperada().len(),
         "controlo: botões medidos"
     );
 }

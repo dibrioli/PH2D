@@ -15,6 +15,12 @@
 
 Ferramenta: `docs/Components/ferramentas/fotografa_cena.sh` — o guarda passa a comparar com o `DISPLAY`/`WAYLAND_DISPLAY` de quem chama (a constante `wayland-0` recusava a sessão virtual quando a do dono era `wayland-1`).
 
+- **24/10 (dono, depois do smoke):** a Máscara e a Seleção são DOIS botões na coluna (`painter_column::mascara_e_selecao`;
+  o grupo com flyout `PAINTER_RAIL_MASK_GROUP` só fica na fila antiga). Acesa a do sub-rádio quando o grupo está na
+  mão; o clique segue pelo despacho do sub-botão. Gate `the_painter_tools_live_in_the_vector_column` (a coluna
+  esperada = trilho − grupo + Máscara + Seleção; cada uma troca a ferramenta e acende só ela); mutação (o grupo de volta)
+  sangra 3/4.
+
 ## §2 — Portões (por nome; regra do dono 23/10: sem suíte completa)
 
 - `ph2d-panel-registry-init` `the_painter_tools_live_in_the_vector_column` (4): coluna-não-fila + seletor de modo fica · mesma porta de registo (`placed` rects) · ponteiro real em cada botão acende-o e troca a ferramenta / abre o flyout · item do flyout e sair limpam.
@@ -33,6 +39,12 @@ Ferramenta: `docs/Components/ferramentas/fotografa_cena.sh` — o guarda passa a
 - Tabela: M9 Solid fora da Eraser sangra · M10 Continuous sem guarda sangra · M11 eraser→Pincel sangra · M12 Composite sem guarda SOBREVIVEU ⇒ verificação «pintado» para o Composite ⇒ sangra.
 
 ## §4 — Aberto
+
+- ⛔ **FILA ANTES DA INTEGRAÇÃO (recado do dono, 24/10):** três testes da fábrica de pincéis ficaram ~10× mais lentos
+  desde a missão dos pincéis (19–22/10). Passam, mas estão perto do prazo e estouram com a máquina cheia; o tempo é
+  igual nas duas placas (não é desta onda). O conserto é desta linha e vai à frente da integração: identificar os
+  três (os mais lentos de `ph2d-tool-painter`/`ph2d-brush-presets` sobre os pincéis de fábrica), medir antes/depois e
+  levá-los ao tempo de antes da missão.
 
 - **Velocidade do Dual nas ferramentas NÃO medida** (cópia da tela + máscara por traço; 2.º carimbo fora do Multiply).
 - Ponta de píxel com flatten/tilt no Blur/Clone cai em bilinear (não é binária exacta; pontas redondas exactas).

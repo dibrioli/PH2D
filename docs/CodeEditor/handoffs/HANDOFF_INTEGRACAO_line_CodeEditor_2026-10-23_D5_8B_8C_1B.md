@@ -98,7 +98,7 @@ Nenhum: a superfície de colisão diz «intocado» e o grep do diff não acha `N
     Finished `smoke` profile [optimized] target(s) in 0.42s
 ```
 
-## 9. Smoke para o DONO (depois de integrado)
+## 9. Smoke para o DONO — **OK em 24/10** (cena 9 com o passo ③ sem salvar, binário da linha)
 
 Cena 9, o passo novo ③. As cenas 8 e 9 já estão aprovadas.
 

@@ -5,9 +5,14 @@
 //! assa-a primeiro (`assa_antes_de_escrever`), e a ferramenta de imagem que entra no lugar do Painter
 //! lê a sprite depois do assar adiado (`fase_painter_persist` antes das pontes).
 //!
-//! As portas precisam de uma GPU (`read_sprite_source` faz `readback`), então a costura de cada verbo
-//! é ESTRUTURAL — o comportamento das duas decisões está em `painter_bridge_por_assar_tests`. O
-//! censo no fim obriga todo leitor NOVO de pixels de sprite a entrar nesta tabela com um veredito.
+//! O comportamento das duas decisões (a tinta a quem lê, o assar a quem escreve) está em
+//! `painter_bridge_por_assar_tests`, e o do pivô ao conteúdo também: a caixa opaca saiu da shell para a porta
+//! (`PorAssar::centro_do_conteudo`). Nos outros verbos só-leitura a costura fica ESTRUTURAL, e o porquê é o
+//! mesmo: entre a porta (`PorAssar::ou`) e a saída só há código da SHELL sobre o `SimWorld` e o `SpriteRenderer`
+//! (o `readback` da GPU no `read_sprite_source`; a reamostragem e a montagem da folha no `read_pieces`, a grelha e
+//! o warp da fusão, a pose do quadro no `posed_sprite`, a fonte do ficheiro no `escolhe`) — um gate de
+//! comportamento lá pagaria linhas à catraca da shell, e movê-los é partir as famílias da folha, da fusão e do
+//! quadro. O censo no fim obriga todo leitor NOVO de pixels de sprite a entrar nesta tabela com um veredito.
 
 use std::path::{Path, PathBuf};
 
@@ -86,7 +91,11 @@ fn merge_leva_a_tinta_das_fontes() {
 
 #[test]
 fn o_pivo_ao_conteudo_ve_a_tinta() {
-    tem("input_dispatch/gizmo_drag.rs", "por.ou(drag.entity_bits");
+    // O comportamento: `painter_bridge_por_assar_tests::o_pivo_ao_conteudo_encaixa_na_tinta_por_assar`.
+    tem(
+        "input_dispatch/gizmo_drag.rs",
+        "por.centro_do_conteudo(drag.entity_bits",
+    );
 }
 
 #[test]

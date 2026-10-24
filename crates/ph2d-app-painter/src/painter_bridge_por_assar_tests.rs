@@ -12,8 +12,13 @@ const E: u64 = 7;
 
 /// Tela branca, Digital, um traço amarelo; outro ainda NO AR. Nada assado.
 fn pintado() -> PainterTool {
+    pintado_sobre(255)
+}
+
+/// O mesmo sobre uma tela de bytes `fundo` (`0` = transparente).
+fn pintado_sobre(fundo: u8) -> PainterTool {
     let mut t = PainterTool::default();
-    t.bind_document(E, vec![255; (L * L * 4) as usize], L, L);
+    t.bind_document(E, vec![fundo; (L * L * 4) as usize], L, L);
     t.set_paint_media(PaintMedia::Digital);
     t.set_brush_color_srgb8([230, 190, 40]); // LITERAL-COLOR-OK: a cor do artista, não da UI
     for (y, levanta) in [(32.0, true), (16.0, false)] {
@@ -99,5 +104,38 @@ fn quem_escreve_a_sprite_pintada_assa_a_antes() {
         a_assar_antes(&PainterTool::default(), |_| true),
         None,
         "sem documento"
+    );
+}
+
+/// ⭐ **O pivô ao conteúdo vê a tinta por assar** (o verbo do gizmo, `compute_pivot_content_center`): numa sprite
+/// TRANSPARENTE em que o Painter pintou sem assar, a caixa opaca é a dos traços — a textura de antes não tem
+/// conteúdo nenhum. Vermelho se a porta ler a sprite em vez de perguntar ao Painter.
+#[test]
+fn o_pivo_ao_conteudo_encaixa_na_tinta_por_assar() {
+    let vazia = || {
+        Some(SpriteImage::from_bytes(
+            L,
+            L,
+            vec![0; (L * L * 4) as usize],
+            AlphaMode::Straight,
+        ))
+    };
+    let mut t = pintado_sobre(0);
+    assert_eq!(
+        PorAssar::default().centro_do_conteudo(E, vazia),
+        None,
+        "controlo: a sprite de antes não tem conteúdo"
+    );
+    let [u, v] = por_assar_do(&t)
+        .centro_do_conteudo(E, vazia)
+        .expect("a tinta é conteúdo");
+    // Os traços vão de x 8 a 56 (centro 32 = u 0) e ficam na metade de CIMA (y 16 e 32 de 64).
+    assert!(u.abs() < 0.05, "u = {u}");
+    assert!((-0.25..0.0).contains(&v), "v = {v}");
+    t.mark_baked();
+    assert_eq!(
+        por_assar_do(&t).centro_do_conteudo(E, vazia),
+        None,
+        "assado: a sprite é a verdade"
     );
 }

@@ -212,7 +212,7 @@ impl App {
         // o `read_sprite_source` devolve não custam precisão nenhuma a ninguém.
         // A tinta por assar de uma sprite a ser pintada também é conteúdo (#53).
         let por = ph2d_app_painter::painter_bridge_queries::por_assar(&mut gfx.tools);
-        let img = por.ou(drag.entity_bits, || {
+        let [u, v] = por.centro_do_conteudo(drag.entity_bits, || {
             crate::hero_intents::texture_edit::read_sprite_source(
                 entity,
                 &gfx.sim,
@@ -222,34 +222,6 @@ impl App {
             )
             .map(|s| s.image)
         })?;
-        let (w, h) = (img.width, img.height);
-        if w == 0 || h == 0 {
-            return None;
-        }
-        let px = &img.pixels;
-        let (mut min_x, mut min_y, mut max_x, mut max_y) = (w, h, 0u32, 0u32);
-        let mut any = false;
-        for y in 0..h {
-            for x in 0..w {
-                let a = px[((y * w + x) * 4 + 3) as usize];
-                if a > 0 {
-                    any = true;
-                    min_x = min_x.min(x);
-                    max_x = max_x.max(x);
-                    min_y = min_y.min(y);
-                    max_y = max_y.max(y);
-                }
-            }
-        }
-        if !any {
-            return None;
-        }
-        // Pixel-center of the opaque bbox → normalized [0,1] → local quad
-        // offset (world-scaled) → world (rotate about the quad center).
-        let cx = (min_x as f32 + max_x as f32 + 1.0) * 0.5;
-        let cy = (min_y as f32 + max_y as f32 + 1.0) * 0.5;
-        let u = cx / w as f32 - 0.5;
-        let v = cy / h as f32 - 0.5;
         let mundo = ph2d_editor_core::compose_snapshot(drag.parent_world, drag.start_transform);
         let scale = mundo.scale;
         let local_x = u * size[0] * scale[0];

@@ -53,6 +53,30 @@ impl PorAssar {
             _ => le_a_sprite(),
         }
     }
+
+    /// O centro da caixa OPACA da sprite `entity` (alfa > 0), normalizado à imagem: `[u, v]` em `-0.5..0.5`,
+    /// `v` para baixo (as linhas da imagem). A tinta por assar é conteúdo (#53) — o pivô ao conteúdo. `None`:
+    /// sem pixels ou toda transparente.
+    #[expect(clippy::cast_precision_loss, reason = "coordenadas de imagem < 2^24")]
+    pub fn centro_do_conteudo(
+        &self,
+        entity: u64,
+        le_a_sprite: impl FnOnce() -> Option<ph2d_render::SpriteImage>,
+    ) -> Option<[f32; 2]> {
+        let img = self.ou(entity, le_a_sprite)?;
+        let w = img.width as usize;
+        let (mut x0, mut y0, mut x1, mut y1) = (usize::MAX, usize::MAX, 0, 0);
+        for (i, px) in img.pixels.as_chunks::<4>().0.iter().enumerate() {
+            if px[3] > 0 {
+                let (x, y) = (i % w, i / w);
+                (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x), y1.max(y));
+            }
+        }
+        (x0 != usize::MAX).then(|| {
+            let c = |a: usize, b: usize, n: u32| (a + b + 1) as f32 * 0.5 / n as f32 - 0.5;
+            [c(x0, x1, img.width), c(y0, y1, img.height)]
+        })
+    }
 }
 
 /// [`PorAssar`] do Painter do registo (activo ou não).

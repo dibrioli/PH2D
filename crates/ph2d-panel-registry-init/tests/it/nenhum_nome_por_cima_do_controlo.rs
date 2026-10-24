@@ -155,6 +155,12 @@ const FORA: &[(&str, &str, &str)] = &[
          desliga sozinha, e o nome dela (`Layers`) já vive na coluna",
     ),
     (
+        "inspector",
+        "insp_camera_cull_0",
+        "a irmã da de cima na câmera (o `Cull Mask`): a mesma grelha de 32 bits, o nome é o \
+         cabeçalho dobrável dela — o censo só a viu quando o clique nele deixou de estar morto",
+    ),
+    (
         "painter_layers",
         "painter_sidebar.toggle_dock",
         "as ABAS do painel (Brush · Layers): uma navegação entre vistas, pedida assim pelo dono \

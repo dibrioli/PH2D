@@ -49,8 +49,8 @@ abrem e fecham, o conteúdo recuado, a dobra lembrada ao trocar de objecto e vol
 
 - **A porta:** `ph2d_editor_core::widget::{paint_group_header, group_header_h}`
   (`widget/section_header/grupo.rs`) — chevron + `SemiBold` `Sm` `Text1`, altura `Sm + Spacing::Sm` (abaixo da
-  linha), sem placa nem pega. No Inspector, `sections/rows.rs::grupo` → `Grupo { x, w, y }` (já recuados de
-  `list_indent_px()`), `aberto()`, `fecha()` sobre o `SectionFold` de sempre. O `subtitulo` saiu (9 chamadores
+  linha), sem placa nem pega. No Inspector, `sections/rows.rs::grupo` → `Grupo { x, w, y }`, `aberto()`,
+  `fecha()` sobre o `SectionFold` de sempre. O `subtitulo` saiu (9 chamadores
   → `grupo`).
 - **Nove grupos, ids novos:** `INSP_CAMERA_{FOLLOW,LIMITS}_GROUP`, `INSP_PARALLAX_{REPEAT,MOTION,LIMITS}_GROUP`,
   `INSP_HUD_{CANVAS,LABEL,BUTTON,COUNTER}_GROUP`, marcados `mark_collapsible_section` no `populate_*` do
@@ -65,8 +65,8 @@ abrem e fecham, o conteúdo recuado, a dobra lembrada ao trocar de objecto e vol
 - **Fotos** (binário da linha): [`ph2d_depois_camera.png`](ferramentas/oraculo_cartao_composto/ph2d_depois_camera.png)
   · [dobra e máscara](ferramentas/oraculo_cartao_composto/ph2d_depois_camera_dobra_e_mascara.png) ·
   [paralaxe](ferramentas/oraculo_cartao_composto/ph2d_depois_paralaxe.png).
-- ⚠️ Os rótulos são alinhados à DIREITA na nossa coluna, logo o recuo não se vê no rótulo (no Godot vê-se, os
-  dele são à esquerda): vê-se no cabeçalho do grupo encostado à borda e nos valores que continuam alinhados com
-  os do corpo principal.
+- ⛔ **Recusa MEDIDA — o recuo do conteúdo do Godot não entra:** os nossos rótulos são à DIREITA (no Godot à
+  esquerda), o recuo não se via no rótulo e só deslocava o VALOR para fora da coluna única do tronco — o gate
+  `onde_comeca_o_valor` reprovou o HUD a `142` contra `111`. O grupo lê-se pelo cabeçalho (chevron, negrito).
 - Visto de passagem, fora do 12: na grade do «Cull Mask» aberta, os números de dois dígitos (10, 12…) saem
   elididos «…».

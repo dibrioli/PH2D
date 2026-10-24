@@ -430,7 +430,7 @@ pub(crate) fn aviso_em(
 /// do componente dono das linhas, que é o prefixo com que um script as lê
 /// (`camera_follow.damping`). Lei e oráculo: `docs/CodeEditor/12_cartoes_compostos.md`.
 ///
-/// O chamador pinta o corpo em `x`/`w` (já recuados) a partir de `y`, só se [`Grupo::aberto`], e
+/// O chamador pinta o corpo em `x`/`w` a partir de `y`, só se [`Grupo::aberto`], e
 /// devolve o `y` final pelo [`Grupo::fecha`]. ⚠️ O id tem de estar marcado
 /// `mark_collapsible_section` no `populate` — senão o clique no cabeçalho morre.
 pub(crate) struct Grupo {
@@ -480,13 +480,14 @@ pub(crate) fn grupo(
     paint_group_header(&header, rect, scene, text_system, theme);
     hit_index.register(id, rect);
     let body_top = y + rect.h + ph2d_tokens::control_gap_px();
-    let recuo = ph2d_tokens::list_indent_px();
+    // ⛔ Sem recuo do corpo (o Godot recua): os nossos rótulos são à DIREITA, o recuo não se via
+    // e só tirava o valor da coluna única do tronco (`onde_comeca_o_valor`, o HUD a 142 contra 111).
     Grupo {
         fold: ph2d_editor_core::widget::SectionFold::begin(
             store, id, x, w, body_top, scene, hit_index,
         ),
-        x: x + recuo,
-        w: (w - recuo).max(0.0),
+        x,
+        w,
         y: body_top,
     }
 }

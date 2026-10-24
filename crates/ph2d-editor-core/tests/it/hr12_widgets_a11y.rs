@@ -40,6 +40,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
     (
+        "section_header/grupo.rs",
+        "o cabecalho de GRUPO (CodeEditor 12) e' um `SectionHeader` e so' o pinta noutra escala; o no' a11y e' o `SectionHeader::build_a11y` (`section_header/mod.rs`).",
+    ),
+    (
         "property_box/arrasto.rs",
         "a gravacao das areas dos rotulos (CodeEditor 8b) para o arrasto achar a linha sob o rato; nao pinta nem emite no' — a a11y da linha e' a do `property_box` (`mod.rs`), que ela so' observa.",
     ),

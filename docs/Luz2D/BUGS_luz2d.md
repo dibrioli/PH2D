@@ -133,7 +133,7 @@
   em METROS e só a Baixa a 8× era grossa demais; o entorno da Baixa passa a 4× (Média e Alta 8×): a cena 5 −4,0…−4,7 % →
   −1,2…−1,4 %, o emissor encostado à borda +11 % → ±1,6 %, por +0,48 ms a 1080p. Gates 0,025 e 0,03, mutação M8.
 
-## 7. «Numa placa integrada, 7 testes da Luz 2D reprovam» (23/10, achado da `line/Velocidade`) — ABERTO
+## 7. «Numa placa integrada, 7 testes da Luz 2D reprovam» (23/10, achado da `line/Velocidade`) — FECHADO (24/10, W6i)
 
 - **O achado:** o `main` em `972f411a6f` (sem a W6h) só na Radeon 610M do 9950X (RADV / radeonsi; o `nvidia-smi`
   sem nenhum processo da corrida): 5 573 / 5 580 verdes, os 7 vermelhos todos da Luz 2D, os mesmos 7 verdes na
@@ -177,3 +177,33 @@
      corridas; controlo 1,20–1,62, `load` 27–140: a régua tem ruído, mas a razão não desce em nenhuma); a base corta
      os despachos 605 → 247 e o tempo não se move ⇒ na integrada o miolo é TRABALHO, não despachos (a lei W5o é da
      NVIDIA, 0,72 contra 1,07 ms).
+- **A cura (W6i, commits `2e7bfd84b9` · `a047753a1b` · `c46ae5b4ff`).** Os 7 passam na Radeon (RADV) e continuam a
+  passar na RTX 5060 Ti; bateria de 23 testes verde nas duas placas (holográfica inteira, G5, custo do miolo, os 5
+  «mesmo bit» entre formas, a vista renasce, instrumentos `bug7_*`).
+  1. *Mesmo bit (família 1).* Decisão do dono 24/10 («A»): a lei é por placa. `comum::mesmo_bit_por_placa` (crate
+     `ph2d-app-light2d`, testes) exige 0 texels, salvo numa placa cujo compilador provadamente reescreve a conta
+     (RADV: as diferenças morrem com `ACO_DEBUG=noopt`), onde exige ≤ 1 ULP do f16; aplicada aos 5 testes entre
+     formas (borda sem desvio, recorte, quadrantes juntos, um cone, T nulo). Radeon: até 88 texels a 1 ULP; NVIDIA:
+     0 em todos. A «vista renasce» (o mesmo programa duas vezes) continua 0 em toda placa.
+  2. *G5 (família 2).* O teto 3 072 só onde a placa arranja em linha (`arranjo_linear`: textura 8192×8 `Rg32Uint`
+     sozinha — NVIDIA 525 024 B, RADV 1 052 432). Lei nova em toda placa: a sobra varia menos que
+     max(1 024 B, 1/8 da variação do declarado) (`FRACAO_DA_VARIACAO`); o controlo (pirâmides sem a cauda dos
+     mips) reprova nas duas placas.
+  3. *Holográfica (família 3).* `Config::hrc_meio_float_mais_proximo` / `override MAIS_PROXIMO_HRC` / `meio_float`
+     em `c2_hrc.wgsl`: f16 ao mais próximo (empate ao par), comparando o resultado do pack com o vizinho de cima.
+     Ligada só onde a placa trunca: `ph2d_light2d_gpu::o_pack_da_placa_trunca` (`src/arredondamento.rs`) mede uma
+     vez por adaptador; o `Solver` desliga-a na config efetiva onde a placa já arredonda (o mesmo bit). Viés do G9
+     na Radeon: Alto −1,42 → −0,89 % (NVIDIA −0,87 %). Custo do c2 (mínimo de 9, intercalado, com controlo): sempre
+     ligada custava +6–13 % na RTX (recusado, critério 2 %); com a prova por placa, RTX razão 0,996–1,001, Radeon
+     +9–10 %. Portão `holografica::o_f16_da_holografica_e_o_mais_proximo_em_toda_placa`; prova de mutação 4/4
+     sangram (nunca liga → Radeon; liga sempre → NVIDIA; prova invertida → NVIDIA; shader sem correção → Radeon,
+     o controlo).
+  4. *Custo do miolo (família 4).* `custo_de_despachos_ms` mede na própria corrida o que custam os despachos que a
+     base corta; a lei ≤ 0,8 só onde valem ≥ 20 % do miolo (RTX 27–29 %, razão 0,708; Radeon 2 %: o teste diz «não
+     se aplica»); `a_base_do_miolo_corta_os_despachos` continua em toda placa.
+  5. *Reprodução.* O wrapper da Radeon (`VK_DRIVER_FILES`/`VK_ICD_FILENAMES=radeon_icd.json`,
+     `__EGL_VENDOR_LIBRARY_FILENAMES=50_mesa.json`, `__GLX_VENDOR_LIBRARY_NAME=mesa` + `PH2D_GPU_VEZ` numa pasta
+     falsa com `porta` FIFO, `porteiro` vivo e `pronto`), corrido DENTRO de `bash scripts/ph2d-run.sh` (o porteiro
+     real nunca é pedido). ⚠️ Scripts soltos em `target/` e no scratchpad desapareceram duas vezes durante a W6i —
+     guarde-os fora de `target/`.
+  6. *Consequência:* a Luz 2D pode correr na fila da placa onboard.

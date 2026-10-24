@@ -100,14 +100,18 @@ impl Corpo<'_> {
         if info.biblioteca.is_empty() {
             return self.bloco(tr("panel.macros.lib.empty"), ColorToken::Text3, y);
         }
-        for m in &info.biblioteca {
+        // Os itens de uma coisa só: o vão de LISTA entre eles; os verbos são controlos, a seguir.
+        for (i, m) in info.biblioteca.iter().enumerate() {
+            if i > 0 {
+                y += ph2d_tokens::list_row_gap_px();
+            }
             let esta = escolhida == Some(m.nome.as_str());
             y = self.entrada(m, esta, esta && st.lib_renomeando, y);
         }
         if escolhida.is_none() {
             return y;
         }
-        y += Spacing::Sm.px();
+        y += ph2d_tokens::control_gap_px();
         y = self.verbo(
             info,
             escolhida,

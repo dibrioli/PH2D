@@ -137,3 +137,42 @@ fn o_objeto_macro_vazio_nao_se_le_como_estragado() {
         .expect("o objecto Macro escolhido");
     assert_eq!((o.etapas.len(), o.erro), (0, None));
 }
+
+/// W19 (`docs/Macros/17_W19_plano.md` §2.6): «a macro pode conter qualquer coisa» — várias imagens no
+/// mesmo objecto Macro, e voltar a uma já gravada CONTINUA-A (não nasce outra vez).
+#[test]
+fn duas_imagens_no_objeto_macro_gravam_duas_trilhas_e_voltar_continua() {
+    const OUTRA: u64 = 11;
+    let mut b = Banca::nova();
+    let dono = monta(&mut b, true);
+    let outra = {
+        let w = b.sim.world_mut();
+        let p = Entity::from_bits(dono);
+        w.spawn((Transform::IDENTITY, Name::new("Tela 2"), StableId(OUTRA), ChildOf(p)))
+            .id()
+            .to_bits()
+    };
+    let lado = 128u32;
+    let branca = || vec![255u8; (lado * lado * 4) as usize];
+    b.m.pede(MacroRequest::Grava);
+    b.quadro();
+    b.pincelada([20.0, 30.0], [100.0, 30.0]);
+    b.painter.bind_document(outra, branca(), lado, lado);
+    b.quadro();
+    b.pincelada([20.0, 60.0], [100.0, 60.0]);
+    let primeira = b.bits;
+    b.painter.bind_document(primeira, branca(), lado, lado);
+    b.quadro();
+    b.pincelada([20.0, 90.0], [100.0, 90.0]);
+    b.m.pede(MacroRequest::Para);
+    b.quadro();
+    let doc = doc_de(&b, dono).expect("o objecto Macro ficou com a gravação");
+    let alvos: Vec<_> = doc.tracks.iter().map(|t| t.target).collect();
+    assert_eq!(alvos, [IMAGEM, OUTRA, IMAGEM], "uma trilha por imagem, e a volta");
+    assert!(doc.tracks[0].nasce.is_some() && doc.tracks[1].nasce.is_some());
+    let volta = &doc.tracks[2];
+    assert_eq!(volta.continua, Some(0), "a volta continua a 1.ª trilha");
+    assert!(volta.nasce.is_none(), "a imagem não nasce duas vezes");
+    assert!(doc.tracks.iter().all(|t| !t.events.is_empty()));
+    assert_eq!(ph2d_panel_macros::current_macros().recusa, None);
+}

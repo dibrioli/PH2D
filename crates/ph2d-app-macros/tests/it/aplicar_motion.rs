@@ -62,6 +62,7 @@ fn trilha(nasce: bool) -> Ficheiro {
             local: [1.0, 2.0, 0.0, 1.0, 1.0, 0.0, 0.0],
             pai: None,
         }),
+        continua: None,
     });
     Ficheiro {
         doc,

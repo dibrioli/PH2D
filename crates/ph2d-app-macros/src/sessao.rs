@@ -5,6 +5,9 @@
 //! e abre a trilha de uma família quando ela começa a trabalhar num objecto DENTRO dele (a imagem que o
 //! Painter pinta, o Motion em edição), com a ficha de nascimento desse objecto; e **a família** (antes
 //! da W18) — a sprite que o Painter pinta, ou o Motion em edição, é o próprio dono.
+//!
+//! W19: a família que passa a outro objecto dentro do objecto Macro fecha a trilha dele e abre a do
+//! novo; voltar a um objecto já gravado abre uma trilha que o CONTINUA (`Track::continua`).
 
 use crate::{Cena, Familias};
 use ph2d_ecs::{Entity, SimWorld, StableId};
@@ -21,6 +24,16 @@ pub enum Armacao {
     Familia(FamiliaDaMacro),
 }
 
+/// Como uma trilha abre.
+enum Abre {
+    /// Sobre o próprio dono (a sprite com `Macro`, ou a família armada sobre o seu objecto).
+    Dono,
+    /// O objecto nasce dentro do objecto Macro.
+    Nasce(Nascimento),
+    /// O artista voltou a um objecto que a trilha `TrackId` já gravou.
+    Continua(TrackId),
+}
+
 /// O que fazer com os passos de uma família neste quadro.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Passos {
@@ -28,8 +41,6 @@ enum Passos {
     Grava,
     /// Nada aberto: ficam na família.
     Espera,
-    /// Foram feitos noutro objecto: deitam-se fora (a recusa diz porquê).
-    Deita,
 }
 
 /// Uma trilha aberta: o objecto que ela grava (bits) e o id no gravador.
@@ -39,15 +50,32 @@ struct Aberta {
     id: TrackId,
 }
 
+/// As trilhas de UMA família nesta gravação (W19: várias imagens e vários Motion por objecto Macro). A
+/// gravadora da família grava uma de cada vez: a `viva`.
+#[derive(Default)]
+struct Trilhas {
+    abertas: Vec<Aberta>,
+    viva: Option<usize>,
+}
+
+impl Trilhas {
+    fn viva(&self) -> Option<Aberta> {
+        self.viva.map(|i| self.abertas[i])
+    }
+
+    /// A 1.ª trilha que gravou `alvo`: a que uma volta a ele continua.
+    fn primeira_de(&self, alvo: u64) -> Option<TrackId> {
+        self.abertas.iter().find(|a| a.alvo == alvo).map(|a| a.id)
+    }
+}
+
 pub struct Sessao {
     rec: MacroRecorder,
     /// Os bits do objecto que fica com a `Macro`.
     dono: u64,
     armacao: Armacao,
-    /// Uma trilha por família (W18: uma imagem e um Motion por objecto Macro — o palco toca a 1.ª trilha
-    /// de cada família).
-    painter: Option<Aberta>,
-    motion: Option<Aberta>,
+    painter: Trilhas,
+    motion: Trilhas,
     /// A recusa do quadro (a família trabalha num objecto que esta gravação não pode levar).
     recusa: Option<&'static str>,
     /// Os objectos que nasceram DENTRO do objecto Macro a gravar, e quando (µs do chamador).
@@ -132,8 +160,8 @@ impl Sessao {
             rec: MacroRecorder::new(RefRect { w: 1.0, h: 1.0 }, agora_us),
             dono: 0,
             armacao: a,
-            painter: None,
-            motion: None,
+            painter: Trilhas::default(),
+            motion: Trilhas::default(),
             recusa: None,
             nascidos: BTreeMap::new(),
             armada_us: agora_us,
@@ -155,20 +183,27 @@ impl Sessao {
                     }
                 };
                 s.dono = dono;
-                s.abre_trilha(fam, alvo, f, sim, None)?;
+                s.abre_trilha(fam, alvo, f, sim, Abre::Dono)?;
             }
         }
         Ok(s)
     }
 
-    /// Abre a trilha de `fam` sobre `alvo`; `ficha` = o objecto nasce dentro do objecto Macro.
+    fn trilhas(&mut self, fam: FamiliaDaMacro) -> &mut Trilhas {
+        match fam {
+            FamiliaDaMacro::Painter => &mut self.painter,
+            FamiliaDaMacro::Motion => &mut self.motion,
+        }
+    }
+
+    /// Abre a trilha de `fam` sobre `alvo` (ver [`Abre`]).
     fn abre_trilha(
         &mut self,
         fam: FamiliaDaMacro,
         alvo: u64,
         f: &mut Familias<'_>,
         sim: &SimWorld,
-        ficha: Option<Nascimento>,
+        como: Abre,
     ) -> Result<(), &'static str> {
         let g = gravadora(f, fam).ok_or(m::MACRO_RECUSA_SEM_FAMILIA)?;
         let id = g.abre(&mut self.rec)?;
@@ -186,29 +221,44 @@ impl Sessao {
             };
             self.rec.doc_mut().reference = r;
         }
-        if let Some(n) = ficha {
-            let sid = sim
-                .world()
-                .get::<StableId>(Entity::from_bits(alvo))
-                .map_or(0, |s| s.0);
-            let t = &mut self.rec.doc_mut().tracks[id.0];
-            t.target = sid;
-            t.nasce = Some(n);
+        let sid = sim
+            .world()
+            .get::<StableId>(Entity::from_bits(alvo))
+            .map_or(0, |s| s.0);
+        let t = &mut self.rec.doc_mut().tracks[id.0];
+        match como {
+            Abre::Dono => {}
+            Abre::Nasce(n) => (t.target, t.nasce) = (sid, Some(n)),
+            Abre::Continua(k) => {
+                let k = u32::try_from(k.0).expect("as trilhas de uma macro cabem num u32");
+                (t.target, t.continua) = (sid, Some(k));
+            }
         }
-        let aberta = Some(Aberta { alvo, id });
-        match fam {
-            FamiliaDaMacro::Painter => self.painter = aberta,
-            FamiliaDaMacro::Motion => self.motion = aberta,
-        }
+        let tr = self.trilhas(fam);
+        tr.abertas.push(Aberta { alvo, id });
+        tr.viva = Some(tr.abertas.len() - 1);
         Ok(())
+    }
+
+    /// **A família deixou o objecto que gravava** (o artista passou a outra imagem): a gravadora pára e
+    /// os últimos passos ficam nessa trilha.
+    fn fecha_a_viva(&mut self, fam: FamiliaDaMacro, f: &mut Familias<'_>, agora_us: u64) {
+        let Some(a) = self.trilhas(fam).viva.take().map(|i| self.trilhas(fam).abertas[i]) else {
+            return;
+        };
+        if let Some(g) = gravadora(f, fam) {
+            for p in g.para() {
+                let _ = self.rec.push(a.id, agora_us, p);
+            }
+        }
     }
 
     /// A família com que o painel diz «a gravar»: a da trilha aberta (o Painter primeiro).
     #[must_use]
     pub fn familia(&self) -> Option<FamiliaDaMacro> {
-        if self.painter.is_some() {
+        if !self.painter.abertas.is_empty() {
             Some(FamiliaDaMacro::Painter)
-        } else if self.motion.is_some() {
+        } else if !self.motion.abertas.is_empty() {
             Some(FamiliaDaMacro::Motion)
         } else {
             match self.armacao {
@@ -233,8 +283,8 @@ impl Sessao {
     #[must_use]
     pub fn grava(&self, fam: FamiliaDaMacro) -> bool {
         match fam {
-            FamiliaDaMacro::Painter => self.painter.is_some(),
-            FamiliaDaMacro::Motion => self.motion.is_some(),
+            FamiliaDaMacro::Painter => !self.painter.abertas.is_empty(),
+            FamiliaDaMacro::Motion => !self.motion.abertas.is_empty(),
         }
     }
 
@@ -268,11 +318,9 @@ impl Sessao {
         alvo: Option<u64>,
         f: &mut Familias<'_>,
         sim: &SimWorld,
+        agora_us: u64,
     ) -> Passos {
-        let aberta = match fam {
-            FamiliaDaMacro::Painter => self.painter,
-            FamiliaDaMacro::Motion => self.motion,
-        };
+        let aberta = self.trilhas(fam).viva();
         let Armacao::Objeto(dono) = self.armacao else {
             return if aberta.is_some() {
                 Passos::Grava
@@ -283,10 +331,7 @@ impl Sessao {
         match (aberta, alvo) {
             (Some(_), None) => return Passos::Grava,
             (Some(a), Some(x)) if a.alvo == x => return Passos::Grava,
-            (Some(_), Some(_)) => {
-                self.recusa = Some(m::MACRO_RECUSA_UM_DE_CADA);
-                return Passos::Deita;
-            }
+            (Some(_), Some(_)) => self.fecha_a_viva(fam, f, agora_us),
             (None, None) => return Passos::Espera,
             (None, Some(_)) => {}
         }
@@ -296,12 +341,14 @@ impl Sessao {
             return Passos::Espera;
         }
         // O próprio objecto Macro (uma sprite com `Macro`): a trilha dele, sem ficha.
-        let r = if alvo == dono {
-            self.abre_trilha(fam, alvo, f, sim, None)
+        let r = if let Some(k) = self.trilhas(fam).primeira_de(alvo) {
+            self.abre_trilha(fam, alvo, f, sim, Abre::Continua(k))
+        } else if alvo == dono {
+            self.abre_trilha(fam, alvo, f, sim, Abre::Dono)
         } else {
             let inicio = self.nascidos.get(&alvo).copied().unwrap_or(0);
             ficha(sim, alvo, dono, inicio)
-                .and_then(|n| self.abre_trilha(fam, alvo, f, sim, Some(n)))
+                .and_then(|n| self.abre_trilha(fam, alvo, f, sim, Abre::Nasce(n)))
         };
         self.recusa = r.err();
         if self.recusa.is_none() {
@@ -319,32 +366,31 @@ impl Sessao {
             .and_then(|id| ph2d_ecs::entity_of_stable_id(sim.world_mut(), StableId(id)))
             .map(Entity::to_bits);
         if matches!(self.armacao, Armacao::Objeto(_)) {
-            let _ = self.segue_o_alvo(FamiliaDaMacro::Motion, motion, f, sim);
+            let _ = self.segue_o_alvo(FamiliaDaMacro::Motion, motion, f, sim, agora_us);
         }
         let alvo = f
             .painter
             .as_deref()
             .filter(|_| f.painter_activo)
             .and_then(ph2d_tool_painter::PainterTool::bound_document);
-        let destino = self.segue_o_alvo(FamiliaDaMacro::Painter, alvo, f, sim);
+        let destino = self.segue_o_alvo(FamiliaDaMacro::Painter, alvo, f, sim, agora_us);
         // A gravadora do Painter chega sempre (o Parar alcança-a depois de trocar de ferramenta).
         let Some(g) = gravadora(f, FamiliaDaMacro::Painter) else {
             return;
         };
-        match (destino, self.painter) {
+        match (destino, self.painter.viva()) {
             (Passos::Grava, Some(a)) => {
                 for c in g.passos() {
                     let _ = self.rec.push(a.id, agora_us, c);
                 }
             }
-            (Passos::Deita, _) => drop(g.passos()),
             _ => {}
         }
     }
 
     /// **Os passos do Motion** neste quadro, depois de ele correr, no instante `agora_us`.
     pub fn passos_do_motion(&mut self, g: &mut dyn Gravadora, agora_us: u64) {
-        if let Some(a) = self.motion {
+        if let Some(a) = self.motion.viva() {
             for c in g.passos() {
                 let _ = self.rec.push(a.id, agora_us, c);
             }
@@ -360,7 +406,7 @@ impl Sessao {
     /// A imagem que o Painter grava (o palco dela cede ao traço vivo do editor).
     #[must_use]
     pub fn sprite_gravada(&self) -> Option<u64> {
-        self.painter.map(|a| a.alvo)
+        self.painter.viva().map(|a| a.alvo)
     }
 
     /// **Parar**: os últimos passos, e o objecto fica com a `Macro` e o clipe.
@@ -374,8 +420,8 @@ impl Sessao {
         agora_us: u64,
     ) -> Result<usize, &'static str> {
         for (fam, a) in [
-            (FamiliaDaMacro::Painter, self.painter),
-            (FamiliaDaMacro::Motion, self.motion),
+            (FamiliaDaMacro::Painter, self.painter.viva()),
+            (FamiliaDaMacro::Motion, self.motion.viva()),
         ] {
             let (Some(a), Some(g)) = (a, gravadora(f, fam)) else {
                 continue;

@@ -283,8 +283,6 @@ pub const MACRO_RECUSA_SEM_FAMILIA: &str = "panel.macros.refusal.nothing_to_reco
 pub const MACRO_RECUSA_FORA_DO_OBJETO: &str = "panel.macros.refusal.outside_the_macro";
 /// Gravar no objecto Macro: a imagem (ou o Motion) está dentro de outro objecto dentro dele.
 pub const MACRO_RECUSA_FUNDO_DEMAIS: &str = "panel.macros.refusal.too_deep";
-/// Gravar no objecto Macro: esta gravação já leva uma imagem (ou um Motion) — uma de cada família.
-pub const MACRO_RECUSA_UM_DE_CADA: &str = "panel.macros.refusal.one_per_family";
 /// Parar sem que nada tenha sido gravado.
 pub const MACRO_RECUSA_NADA_GRAVADO: &str = "panel.macros.refusal.nothing_recorded";
 

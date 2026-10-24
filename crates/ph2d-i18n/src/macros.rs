@@ -49,9 +49,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.refusal.too_deep" => {
             "Put this right inside the Macro (not inside another object in it) to record it."
         }
-        "panel.macros.refusal.one_per_family" => {
-            "This recording already has one image and one Motion \u{2014} stop and record another Macro for this one."
-        }
         "panel.macros.refusal.nothing_recorded" => "Nothing was recorded.",
         "panel.macros.refusal.nothing_to_record" => {
             "Nothing to record here: paint in Wet Paint, or edit a Motion object."

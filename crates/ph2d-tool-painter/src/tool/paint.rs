@@ -266,6 +266,9 @@ mod traco_orla_molhada_tests;
 /// O traço que volta por cima de si (bug #58, 3.ª volta): o gate (f) da lei da orla.
 #[cfg(test)]
 mod traco_orla_volta_tests;
+/// O nível de uma passagem não depende de onde o grão cai (bug #58, 6.ª volta).
+#[cfg(test)]
+mod traco_passagem_tests;
 /// **L8 + L5** — o tecto por traço, as orlas, a cauda e o fall-off (o plano do traço).
 #[cfg(test)]
 mod traco_plano_tests;

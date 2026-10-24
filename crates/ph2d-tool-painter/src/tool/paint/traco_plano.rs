@@ -261,12 +261,17 @@ impl PainterTool {
             };
             s.caixa = une(s.caixa, Some(r));
             if s.passagem.aberto() {
-                let mut max = 0.0f32;
-                for y in r.y as usize..(r.y + r.h) as usize {
-                    for x in r.x as usize..(r.x + r.w) as usize {
-                        max = max.max(visivel((y * w + x) * 4));
-                    }
-                }
+                let max = self
+                    .nivel_no_grao_medio(&mut s.passagem, |i| visivel(i * 4))
+                    .unwrap_or_else(|| {
+                        let mut max = 0.0f32;
+                        for y in r.y as usize..(r.y + r.h) as usize {
+                            for x in r.x as usize..(r.x + r.w) as usize {
+                                max = max.max(visivel((y * w + x) * 4));
+                            }
+                        }
+                        max
+                    });
                 if s.passagem.observa(max) {
                     r = s.caixa.unwrap_or(r);
                 }

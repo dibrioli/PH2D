@@ -110,35 +110,60 @@ struct SpriteSource {
 /// sprite. A precisão que se perca perde-se no ficheiro (e é dita ao artista), nunca na cena.
 fn source_for(
     entity: Entity,
+    por_assar: Option<(Vec<u8>, u32, u32)>,
     sim: &SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
 ) -> Option<SpriteSource> {
-    let src = crate::hero_intents::texture_edit::read_sprite_source(
-        entity,
-        sim,
-        renderer,
-        asset_db,
-        atlas_asset_map,
-    )?;
+    escolhe(por_assar, || {
+        crate::hero_intents::texture_edit::read_sprite_source(
+            entity,
+            sim,
+            renderer,
+            asset_db,
+            atlas_asset_map,
+        )
+        .map(sprite_source)
+    })
+}
+
+/// ⚠️ A tinta que o Painter ainda não assou é a imagem; a textura da sprite é a de ANTES dela
+/// (Enio 24/10: o gato exportado saiu branco). `docs/Painter/BUGS_painter_fechados_41_a_46.md` #53.
+fn escolhe(
+    por_assar: Option<(Vec<u8>, u32, u32)>,
+    le_a_sprite: impl FnOnce() -> Option<SpriteSource>,
+) -> Option<SpriteSource> {
+    match por_assar {
+        Some(px) => Some(source_from_straight(px)),
+        None => le_a_sprite(),
+    }
+}
+
+fn sprite_source(src: crate::hero_intents::texture_edit::SourceRead) -> SpriteSource {
     // ⚠️ **Alfa RETO.** Um ficheiro não amostra nada, e todo programa que o abrir assume reto —
     // gravar pré-multiplicado daria a imagem escura no Aseprite, que é o defeito que o
     // `sheet_export` já pagou uma vez.
     let straight = src.image.into_straight();
-    let (w, h) = (straight.width, straight.height);
+    let mut out = source_from_straight((straight.pixels, straight.width, straight.height));
+    out.halves = src.pixels_16;
+    out
+}
+
+/// RGBA8 straight → a fonte de 8 bits (sem os 16).
+fn source_from_straight((pixels, w, h): (Vec<u8>, u32, u32)) -> SpriteSource {
     let flat = ImageBuffer {
         width: w,
         height: h,
-        pixels: bytemuck::allocation::cast_vec(straight.pixels),
+        pixels: bytemuck::allocation::cast_vec(pixels),
         color_profile: ph2d_imageio::ColorProfile::Srgb,
     };
-    Some(SpriteSource {
+    SpriteSource {
         flat,
-        halves: src.pixels_16,
+        halves: None,
         width: w,
         height: h,
-    })
+    }
 }
 
 /// Constrói a oferta de alta precisão a partir dos meios-floats.
@@ -175,6 +200,7 @@ fn hdr_offer(halves: &[u16], width: u32, height: u32) -> DecodedImage {
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn export_to(
     entity: Entity,
+    por_assar: Option<(Vec<u8>, u32, u32)>,
     path: &Path,
     sim: &SimWorld,
     renderer: &mut SpriteRenderer,
@@ -196,9 +222,20 @@ pub(crate) fn export_to(
             )],
         ));
     };
-    let Some(src) = source_for(entity, sim, renderer, asset_db, atlas_asset_map) else {
+    let Some(src) = source_for(entity, por_assar, sim, renderer, asset_db, atlas_asset_map) else {
         return Err(tr("shell.image_export.this_sprite_s_pixels").to_string());
     };
+    write_source(src, format, path, exporters, toasts)
+}
+
+/// Codifica `src` em `format` e grava em `path` — a metade de [`export_to`] depois de ter os pixels.
+fn write_source(
+    src: SpriteSource,
+    format: ExportFormat,
+    path: &Path,
+    exporters: &ExporterRegistry,
+    toasts: &mut ToastQueue,
+) -> Result<usize, String> {
     let opts = ExportOpts {
         format,
         ..Default::default()
@@ -260,6 +297,7 @@ pub(crate) fn suggested_name(sim: &SimWorld, entity: Entity) -> String {
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn export_with_dialog(
     entity: Entity,
+    por_assar: Option<(Vec<u8>, u32, u32)>,
     sim: &SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
@@ -275,6 +313,7 @@ pub(crate) fn export_with_dialog(
     let picked = dialog.save_file()?;
     match export_to(
         entity,
+        por_assar,
         &picked,
         sim,
         renderer,
@@ -301,6 +340,10 @@ pub(crate) fn export_with_dialog(
         }
     }
 }
+
+#[cfg(test)]
+#[path = "image_export_painted_tests.rs"]
+mod painted_tests;
 
 #[cfg(test)]
 mod tests {

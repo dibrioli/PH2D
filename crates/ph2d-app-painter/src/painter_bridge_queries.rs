@@ -15,6 +15,25 @@ pub fn o_painter(tools: &mut ToolRegistry) -> Option<&mut ph2d_tool_painter::Pai
         .downcast_mut()
 }
 
+/// **A imagem que um verbo SÓ-LEITURA deve levar da sprite `entity`** (RGBA8 straight) enquanto o
+/// Painter a pinta sem a ter assado: a tinta vive no tool e a textura da sprite ainda é a de antes
+/// (Enio 24/10: o «Export Image…» de um gato pintado saiu BRANCO; `BUGS_painter_fechados_41_a_46.md` #53). `None` = a sprite é a verdade
+/// (outro documento, ou nada por assar — o leitor dela guarda os 16 bits).
+pub fn imagem_por_assar(tools: &mut ToolRegistry, entity: u64) -> Option<(Vec<u8>, u32, u32)> {
+    imagem_por_assar_do(o_painter(tools)?, entity)
+}
+
+/// [`imagem_por_assar`] sobre o tool já na mão.
+#[must_use]
+pub fn imagem_por_assar_do(
+    p: &ph2d_tool_painter::PainterTool,
+    entity: u64,
+) -> Option<(Vec<u8>, u32, u32)> {
+    (p.bound_document() == Some(entity) && p.has_unbaked_edits())
+        .then(|| p.imagem_aplicada())
+        .flatten()
+}
+
 /// Apply a Painter layers drag-reparent (W3 T3.8) emitted by the dispatch on Up
 /// of an active layer-row drag. The active `PainterTool` reverses
 /// `NodeId`→`LayerId` and applies `move_into_group` / reorder. Mirror of

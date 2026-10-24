@@ -33,6 +33,7 @@ impl crate::App {
             next_sheet_id,
             atlas_asset_map,
             imageio_exporters,
+            tools,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -169,6 +170,7 @@ impl crate::App {
         {
             crate::image_export::export_with_dialog(
                 ph2d_ecs::Entity::from_bits(bits),
+                ph2d_app_painter::painter_bridge_queries::imagem_por_assar(tools, bits),
                 sim,
                 renderer,
                 asset_db,

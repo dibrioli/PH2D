@@ -24,7 +24,7 @@ pincel de pintura aparecem e não são usadas em outras tools. Vamos corrigir is
 Blur, Eraser e Smear podem funcionar muito bem (e provavelmente já funcionam) com seções como Grain. Mantenha
 e se necessário aprimore isso.»
 
-As três tarefas são da MESMA família (qual ferramenta está na mão → o que a UI mostra e o que o motor lê):
+As quatro tarefas são da MESMA família (qual ferramenta está na mão → o que a UI mostra e o que o motor lê):
 um plano, um lote de portões (CLAUDE.md §0.10).
 
 1. BARRA LATERAL ESQUERDA. As ferramentas do Painter saem da barra superior e vão para uma barra vertical à
@@ -53,8 +53,19 @@ um plano, um lote de portões (CLAUDE.md §0.10).
    Krita/Procreate) ou esmaeça com o porquê — decida pela qualidade, diga porquê. A tarefa 2 decide a
    visibilidade por esta medição, não por suposição.
 
+4. O PREVIEW DAS FERRAMENTAS QUE MODIFICAM (dono 23/10: «O preview dessas outras tools que não são o pincel
+   poderia ser aprimorado. Por exemplo: um traço de pintura na vertical e o traço da tool modificadora na
+   horizontal.»). Para Eraser, Blur, Smear (e toda ferramenta que age sobre tinta que já está lá — confirme a
+   lista no código): o preview vivo pinta PRIMEIRO um traço de tinta VERTICAL (cor e pincel fixos de
+   referência, iguais em todas as ferramentas, para comparar) e por cima o traço da ferramenta na HORIZONTAL,
+   cruzando-o — assim se vê o que ela faz à tinta. Pelo MESMO caminho que a tela (a lei do preview desta linha:
+   `o_preview_pinta_cada_capacidade_nova_como_a_tela`), nunca uma simulação à parte. O preview do pincel de
+   pintar fica como está. Gate: para cada ferramenta modificadora, o cruzamento muda os píxeis da faixa
+   vertical (a ferramenta agiu) e fora do cruzamento a faixa fica igual à de referência; mexer numa linha do
+   inspector dessa ferramenta muda o preview (liga à tarefa 2). Fotos do preview de cada uma, olhadas.
+
 Portões red-first + prova de mutação para cada lei (a barra é a mesma porta do Vector; o inspector mostra o
-que a ferramenta lê; Grain age no Blur/Eraser/Smear). Fotos antes/depois pelo teste, olhadas.
+que a ferramenta lê; Grain age no Blur/Eraser/Smear; o preview modificador cruza a tinta de referência). Fotos antes/depois pelo teste, olhadas.
 Fecho: handoff da linha (técnico) + resposta ao Enio curta, sem jargão, smoke em passos numerados com o cd
 (o binário: `bash scripts/ph2d-run.sh cargo build --profile smoke -p ph2d-host-desktop`).
 ```

@@ -261,3 +261,24 @@ fn o_info_le_o_id_da_chave_sem_hash() {
                 .grupo
     }));
 }
+
+/// A camada de ordenação (`View::Named(Layer)`) guarda o ID inteiro da camada: é canal discreto, por
+/// degraus, lido e escrito como o inteiro que já é. Um `Named` de hash de nome continua fora.
+/// (Mutação: tirar `Layer` do braço de `faixas` ⇒ 0 faixas.)
+#[test]
+fn a_camada_de_ordenacao_anima_pelo_id() {
+    let (_, f) = campo_do_rotulo("component.field.sorting_layer.1").expect("no catálogo");
+    assert_eq!(faixas(f), 1);
+    let k = chaves_do_rotulo("component.field.sorting_layer.1")[0];
+    assert!(info(k).is_some_and(|i| i.discreto && !i.texto));
+    let mut v = serde_json::json!(2);
+    assert_eq!(ler_valor(f, 0, &v), Some(2.0));
+    assert!(escrever_valor(f, 0, &mut v, 0.6));
+    assert_eq!(v, serde_json::json!(1));
+
+    let hash = campo(
+        FieldKind::Int,
+        View::Named(ph2d_component_desc::Target::NameHash),
+    );
+    assert_eq!(faixas(&hash), 0);
+}

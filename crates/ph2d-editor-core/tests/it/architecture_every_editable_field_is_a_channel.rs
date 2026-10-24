@@ -157,8 +157,8 @@ const POR_ID: &[(&str, Classe, &str)] = &[
     ),
     (
         "INSP_PLAYER_EMIT",
-        Divida,
-        "o conjunto de sinais que o jogador emite não está no catálogo",
+        NaoAnimavel,
+        "a caixa diz se o marcador `PlayerSignals` EXISTE: estrutura, não valor (a lei do Mask2D)",
     ),
     (
         "VECTOR_PENCIL_",
@@ -303,16 +303,16 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     (
         "ph2d-panel-inspector",
         "sections/ordering.rs::layer_row",
-        Divida,
-        &[],
-        "a camada de ordenação é um Enum de NOME (`View::Named(Layer)`): por desenhar como canal de texto",
+        Canal,
+        &["component.field.sorting_layer.1"],
+        "a camada de ordenação guarda o ID inteiro (`View::Named(Layer)`): canal por degraus (F27 D)",
     ),
     (
         "ph2d-panel-inspector",
         "sections/script_seletor.rs::seletor",
         Divida,
         &[],
-        "o ficheiro do script não tem chave serde no catálogo (`script_fields.1` sem `named`)",
+        "o ficheiro é `LuauScript::source` (`ScriptSource`: referência ao documento por id, `Hidden::Editor`), não um nome: o corte de script é desenho próprio",
     ),
     (
         "ph2d-panel-inspector",
@@ -735,7 +735,7 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
         "sections/hud_corpo.rs::bloco_rotulo",
         Divida,
         &[],
-        "a fonte do rótulo é um Enum SEM opções no catálogo: o canal não sabe os valores (dar-lhe `options!`)",
+        "a fonte do rótulo é `LabelSource`, cujas variantes CARREGAM o nome (`Counter(String)`…): o `options!` só exprime variantes sem dados",
     ),
     (
         "ph2d-panel-inspector",

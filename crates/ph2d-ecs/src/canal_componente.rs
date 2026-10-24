@@ -11,7 +11,7 @@
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
-use ph2d_component_desc::{ComponentDesc, FieldDesc, FieldKind, View};
+use ph2d_component_desc::{ComponentDesc, FieldDesc, FieldKind, Target, View};
 use serde_json::Value;
 
 use crate::canal::familia::COMPONENTE;
@@ -48,14 +48,15 @@ pub fn faixas(f: &FieldDesc) -> u16 {
         return 0;
     }
     // ⭐ Um `Named` de texto é o NOME do objecto (a referência durável): anima por degraus — o
-    // corte da câmera para outro alvo. Um `Named` de outra forma não tem valor que a curva leia.
+    // corte da câmera para outro alvo. A camada de ordenação guarda o ID inteiro dela: degraus
+    // também. Um `Named` de outra forma (hash de nome, tag) não tem valor que a curva leia.
     if matches!(f.view, View::Not) && f.kind != FieldKind::Toggle
-        || matches!(f.view, View::Named(_)) && f.kind != FieldKind::Text
+        || matches!(f.view, View::Named(t) if t != Target::Layer) && f.kind != FieldKind::Text
     {
         return 0;
     }
     match (f.kind, f.view) {
-        (FieldKind::Enum, View::Options(_)) | (FieldKind::Enum, View::Toggle(..)) => 1,
+        (FieldKind::Enum, View::Options(_) | View::Toggle(..) | View::Named(Target::Layer)) => 1,
         (
             FieldKind::Enum
             | FieldKind::Curve
@@ -103,10 +104,7 @@ fn tabela() -> &'static Tabela {
                 let n = u16::try_from(grupos.len()).unwrap_or(u16::MAX);
                 grupos.entry((id, f.field_id)).or_insert(n);
                 let ks = (0..faixas(f)).filter_map(|x| chave(d.canonical_name, f.field_id, x));
-                chaves_do_rotulo
-                    .entry(f.label_key)
-                    .or_default()
-                    .extend(ks);
+                chaves_do_rotulo.entry(f.label_key).or_default().extend(ks);
             }
         }
         Tabela {

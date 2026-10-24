@@ -146,6 +146,7 @@ pub mod mao; // a MÃO do pincel (pressão, inclinação) nos quatro meios, por 
 pub mod marca; // as linhas da MARCA (o jitter da L4) no cartão Jitter, nos quatro meios
 mod pixel_route; // a ponta de PÍXEL (L18): o trilho ancorado e o carimbo binário, só no Digital
 pub mod ponta; // as linhas da PONTA (L9 o grão · L18 o píxel · L19 as imagens) nas secções Brush/Grain/Shape
+mod traco_orla; // a ORLA do traço (L8): a distância exacta ao contorno visível, sem janela que mude um bit
 mod traco_plano; // o PLANO do traço: o tecto, as orlas (L8) e a cauda re-pintada (L5), só no Digital
 mod traco_settings; // as portas do painel do traço (L8) e do modo sobre o vazio (L7)
 mod wetpaint_commit;
@@ -255,6 +256,9 @@ mod sonda_opacidade_tests;
 /// As orlas do traço sem rectângulos nem serrilha (smoke do dono 24/10).
 #[cfg(test)]
 mod traco_orla_bordas_tests;
+/// A lei da orla do traço (bug #58, 2.ª volta): máscara visível, fronteira do traço, distância exacta.
+#[cfg(test)]
+mod traco_orla_lei_tests;
 /// **L8 + L5** — o tecto por traço, as orlas, a cauda e o fall-off (o plano do traço).
 #[cfg(test)]
 mod traco_plano_tests;

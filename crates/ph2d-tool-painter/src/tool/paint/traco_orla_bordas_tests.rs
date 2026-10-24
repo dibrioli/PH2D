@@ -6,11 +6,11 @@
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
 
-const W: usize = 320;
-const H: usize = 240;
+pub(super) const W: usize = 320;
+pub(super) const H: usize = 240;
 
 /// O fundo do smoke: azul-esverdeado opaco com uma grelha escura de 2 px a cada 40.
-fn fundo() -> Vec<u8> {
+pub(super) fn fundo() -> Vec<u8> {
     let mut px = Vec::with_capacity(W * H * 4);
     for y in 0..H {
         for x in 0..W {
@@ -26,7 +26,7 @@ fn fundo() -> Vec<u8> {
 }
 
 /// O pincel Digital por omissão, 40 px, vermelho, Strength 0,6 (Accumulate off), com `f` por cima.
-fn padrao(f: impl FnOnce(&mut PainterTool)) -> PainterTool {
+pub(super) fn padrao(f: impl FnOnce(&mut PainterTool)) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(fundo(), W as u32, H as u32);
     t.set_paint_media(crate::PaintMedia::Digital);
@@ -38,7 +38,7 @@ fn padrao(f: impl FnOnce(&mut PainterTool)) -> PainterTool {
 }
 
 /// O Glaze Round de fábrica, 40 px, vermelho, com `f` por cima.
-fn glaze_round(f: impl FnOnce(&mut PainterTool)) -> PainterTool {
+pub(super) fn glaze_round(f: impl FnOnce(&mut PainterTool)) -> PainterTool {
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let bib = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
     let p = &bib
@@ -105,7 +105,7 @@ fn vivo_e_referencia(t: &mut PainterTool) -> (Vec<u8>, Vec<u8>) {
     pinta_aberto(t);
     let vivo = t.canvas_rgba.to_vec();
     // Sem plano (o neutro) a referência é o próprio vivo.
-    let Some(s) = t.paint.plano_do_traco.clone() else {
+    let Some(mut s) = t.paint.plano_do_traco.clone() else {
         t.on_canvas_pointer(cp(*caminho_z().last().unwrap(), PointerPhase::Up));
         return (vivo.clone(), vivo);
     };
@@ -115,7 +115,7 @@ fn vivo_e_referencia(t: &mut PainterTool) -> (Vec<u8>, Vec<u8>) {
         w: W as u32,
         h: H as u32,
     };
-    t.compoe_o_plano(&s, tudo);
+    t.compoe_o_plano(&mut s, tudo);
     let referencia = t.canvas_rgba.to_vec();
     t.on_canvas_pointer(cp(*caminho_z().last().unwrap(), PointerPhase::Up));
     (vivo, referencia)

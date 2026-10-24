@@ -2,7 +2,7 @@
 //! com tecto, orla ou cauda pinta num plano TRANSPARENTE só dele — todas as rotas de carimbo, em `Mix`, com o
 //! tecto do Accumulate e tudo o resto como sempre — e cada lote compõe o plano sobre a base congelada no
 //! pen-down, com o modo do pincel, UMA vez (`ph2d_painter_brush::traco::TracoComposto::compoe`). As orlas são
-//! a orla sobre a cobertura do plano ([`super::watercolor_rim::orla_da_cobertura`], os campos da aguada).
+//! a orla do traço sobre a máscara VISÍVEL ([`super::traco_orla`]: a distância exacta ao contorno `v = ½·max v`).
 //!
 //! **A cauda** (L5): ao levantar, a janela do fim limpa-se no plano e voltam a carimbar-se os LOTES que lhe
 //! tocam, inteiros, pela porta do despacho (as corridas da ponta de N imagens) e com o sorteio e o estado do
@@ -42,6 +42,10 @@ pub(crate) struct PlanoDoTraco {
     pub(super) mascara: Option<Arc<Vec<u8>>>,
     /// O traço de uma FERRAMENTA com o dual ([`super::dual_ferramenta`]): `None` = o plano do pincel.
     pub(super) ferramenta: Option<Box<super::dual_ferramenta::Ferramenta>>,
+    /// O máximo corrente da máscara visível (a fronteira da orla é `½` dele; congela no pen-up).
+    max_visivel: f32,
+    /// A caixa de tudo o que o traço já compôs: quando o máximo sobe, a orla recompõe-se nela inteira.
+    caixa: Option<Region>,
 }
 
 impl PlanoDoTraco {
@@ -53,6 +57,8 @@ impl PlanoDoTraco {
             lotes: Vec::new(),
             mascara: None,
             ferramenta: Some(Box::default()),
+            max_visivel: 0.0,
+            caixa: None,
         }
     }
 }
@@ -102,11 +108,11 @@ impl PainterTool {
         self.pede_o_plano() && self.plano_recusado().is_none()
     }
 
-    /// O alcance (px) que a orla acrescenta à volta do que mudou: o raio do borrão e um texel.
+    /// O alcance (px) que a orla acrescenta à volta do que mudou: a largura `W` e a célula do contorno.
     fn margem_da_orla(&self) -> u32 {
         let t = &self.paint.brush.traco;
         if t.tem_orla() {
-            t.core_r(self.raio_do_pincel()) as u32 + 1
+            t.largura_px().ceil() as u32 + 2
         } else {
             0
         }
@@ -147,7 +153,7 @@ impl PainterTool {
             return;
         };
         let r = self.alarga(r, self.margem_da_orla());
-        self.compoe_o_plano(&s, r);
+        self.compoe_o_plano(&mut s, r);
         self.paint.plano_do_traco = Some(s);
     }
 
@@ -162,6 +168,8 @@ impl PainterTool {
                 lotes: Vec::new(),
                 mascara: None,
                 ferramenta: None,
+                max_visivel: 0.0,
+                caixa: None,
             },
         }
     }
@@ -203,48 +211,85 @@ impl PainterTool {
         }
     }
 
-    /// ⭐ **A composição** de `r`: `base ⊕ plano` no modo do pincel, com o tecto e as orlas.
-    pub(super) fn compoe_o_plano(&mut self, s: &PlanoDoTraco, r: Region) {
+    /// ⭐ **A composição** de `r`: `base ⊕ plano` no modo do pincel, com o tecto e as orlas. Se a máscara visível
+    /// sobe acima do máximo do traço, a fronteira da orla muda e a composição alarga-se a tudo o que o traço já
+    /// compôs — o vivo é a passagem única.
+    pub(super) fn compoe_o_plano(&mut self, s: &mut PlanoDoTraco, r: Region) {
         if r.w == 0 || r.h == 0 {
             return;
         }
         let brush = self.paint.brush;
         let t = brush.traco;
         let w = self.source_size.0 as usize;
-        // O aro lê a cobertura numa janela com contexto (o borrão e a régua do teto), e escreve-se só em `r`.
-        let aro = t.tem_orla().then(|| {
-            let core = t.core_r(brush.radius_px);
-            let jan = self.alarga(r, 3 * core as u32 + 4);
-            let (jw, jh) = (jan.w as usize, jan.h as usize);
-            let mut cov = vec![0.0f32; jw * jh];
-            for y in 0..jh {
-                for x in 0..jw {
-                    let i = ((jan.y as usize + y) * w + jan.x as usize + x) * 4 + 3;
-                    cov[y * jw + x] = f32::from(s.plano[i]) / 255.0;
-                }
-            }
-            (
-                jan,
-                super::watercolor_rim::orla_da_cobertura(&cov, jw, jh, core),
-            )
-        });
         let trinco = self
             .layers
             .active()
             .and_then(|id| self.layers.get(id))
             .is_some_and(|l| l.alpha_locked);
+        let dec = |v: u8| f32::from(v) / 255.0;
+        // A 2.ª ponta (L6): o modo e a máscara resolvidos UMA vez por lote, não por texel.
+        let dual = brush.dual.map(|d| d.modo).zip(s.mascara.as_deref());
+        // O alfa do plano como a composição o vê: o trinco de alfa e o recorte da 2.ª ponta.
+        let alfa = |i: usize| {
+            let mut a = dec(s.plano[i + 3]);
+            if trinco {
+                a *= dec(s.base[i + 3]);
+            }
+            if let Some((modo, m)) = dual {
+                a = modo.recorta(a, dec(m[i + 3]));
+            }
+            a
+        };
+        let mut r = r;
+        let aro = if t.tem_orla() {
+            // A máscara VISÍVEL (o tecto aplicado), a da composição.
+            let visivel = |i: usize| {
+                let a = alfa(i).clamp(0.0, 1.0);
+                if t.tecto > 0.0 {
+                    a.min(t.tecto.clamp(0.0, 1.0))
+                } else {
+                    a
+                }
+            };
+            let mut max = s.max_visivel;
+            for y in r.y as usize..(r.y + r.h) as usize {
+                for x in r.x as usize..(r.x + r.w) as usize {
+                    max = max.max(visivel((y * w + x) * 4));
+                }
+            }
+            s.caixa = une(s.caixa, Some(r));
+            if max > s.max_visivel {
+                s.max_visivel = max;
+                r = s.caixa.unwrap_or(r);
+            }
+            let largura = t.largura_px();
+            let jan = self.alarga(r, super::traco_orla::alcance_da_janela(largura));
+            let (jw, jh) = (jan.w as usize, jan.h as usize);
+            let mut v = vec![0.0f32; jw * jh];
+            for y in 0..jh {
+                for x in 0..jw {
+                    v[y * jw + x] = visivel(((jan.y as usize + y) * w + jan.x as usize + x) * 4);
+                }
+            }
+            Some(super::traco_orla::orla_do_traco(
+                &v,
+                jan,
+                r,
+                0.5 * s.max_visivel,
+                largura,
+            ))
+        } else {
+            None
+        };
         let buf = super::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
             Some(r),
         );
-        let dec = |v: u8| f32::from(v) / 255.0;
         let enc = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
         // O modo, a fórmula geral (L7) e a mistura do pincel (K–M ou espectral): o carimbo de sempre, composto UMA vez.
         let (vazio, pigmento) = (brush.blend_sobre_vazio, brush.pigmento());
-        // A 2.ª ponta (L6): o modo e a máscara resolvidos UMA vez por lote, não por texel.
-        let dual = brush.dual.map(|d| d.modo).zip(s.mascara.as_deref());
         // ADR-0173: por LINHA e em paralelo — cada texel é função pura da base, do plano e do aro dele.
         let linhas = &mut buf[r.y as usize * w * 4..(r.y + r.h) as usize * w * 4];
         let linha_composta = |(dy, linha): (usize, &mut [u8])| {
@@ -260,18 +305,13 @@ impl PainterTool {
                 }
                 let base = [0, 1, 2, 3].map(|k| dec(s.base[i + k]));
                 let mut p = [0, 1, 2, 3].map(|k| dec(s.plano[i + k]));
-                if trinco {
-                    p[3] *= base[3];
+                p[3] = alfa(i);
+                if dual.is_some() && sem_aro && p[3] <= 0.0 {
+                    linha[x * 4..x * 4 + 4].copy_from_slice(&s.base[i..i + 4]);
+                    continue;
                 }
-                if let Some((modo, m)) = dual {
-                    p[3] = modo.recorta(p[3], dec(m[i + 3]));
-                    if sem_aro && p[3] <= 0.0 {
-                        linha[x * 4..x * 4 + 4].copy_from_slice(&s.base[i..i + 4]);
-                        continue;
-                    }
-                }
-                let a = aro.as_ref().map_or(0.0, |(jan, v)| {
-                    v[(y - jan.y as usize) * jan.w as usize + (x - jan.x as usize)]
+                let a = aro.as_ref().map_or(0.0, |e| {
+                    e[(y - r.y as usize) * r.w as usize + (x - r.x as usize)]
                 });
                 let mut out = t.compoe(brush.blend, vazio, pigmento, base, p, a);
                 if trinco {
@@ -320,7 +360,7 @@ impl PainterTool {
         let r = self.alarga(cauda.tocados, self.margem_da_orla());
         let mut corpo = move |t: &mut Self| {
             t.repinta_a_cauda(&mut s, &cauda);
-            t.compoe_o_plano(&s, r);
+            t.compoe_o_plano(&mut s, r);
         };
         let (mask, sel) = (
             self.mask_protection_active(),

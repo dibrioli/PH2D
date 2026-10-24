@@ -14,10 +14,11 @@
 //!
 //! O traço pinta num PLANO transparente só dele (todas as rotas de carimbo, em `Mix`), e cada lote compõe o
 //! plano sobre a base congelada no pen-down — com o MODO do pincel, uma vez, como uma camada. O tecto é um
-//! `min` no alfa do plano; as orlas são uma passagem sobre a cobertura do plano: `1 − inner` com os campos do
-//! aro da Watercolor (`watercolor_rim::orla_da_cobertura` no tool) — `≥ ½` na fronteira e na franja de fora
-//! (orla cheia: o antialias do plano fica), `0` no miolo. ⚠️ Não `cw − inner`: o aro negativo da franja comia o
-//! antialias e mudava com a janela do lote (os rectângulos, smoke 24/10, `docs/Painter/BUGS_painter.md`).
+//! `min` no alfa do plano; as orlas pesam-se por `e ∈ [0, 1]`, a orla do traço sobre a máscara VISÍVEL
+//! (`traco_orla` no tool: a distância exacta ao contorno `v = ½·max v`, `e = 1 − smoothstep(0, W, d)`; `1` na
+//! franja de fora, `0` no fundo). A molhada é o *edge darkening* de Curtis (1997) sobre a máscara inteira: o
+//! fundo clareia até `1 − molhada`; a queimada escurece em Linear Burn com o peso `queimada · e · v`
+//! (bug #58, `docs/Painter/BUGS_painter_fechados_41_a_46.md`).
 //!
 //! ⚠️ **O neutro não arma o plano** ([`TracoComposto::is_active`]): o carimbo de sempre, ao bit.
 
@@ -40,7 +41,7 @@ pub struct TracoComposto {
     pub molhada: f32,
     /// A **orla queimada**, `0..1`: a orla escurece em Linear Burn sobre o que está por baixo (*Burnt edges*).
     pub queimada: f32,
-    /// A **largura** da orla em px, `1..`[`LARGURA_MAX_PX`] (o raio do borrão da Watercolor).
+    /// A **largura** `W` da orla em px, `1..`[`LARGURA_MAX_PX`]: a distância ao contorno visível a que `e` chega a 0.
     pub largura: f32,
     /// ⭐ **O tecto POR DAB** (J3, `docs/Painter/Pinceis/exames/basicos.md` 2.ª onda): cada texel do traço pára na
     /// opacidade do dab que o cobre — a da mão (pressão, inclinação, velocidade) —, e os dabs não somam além dela:
@@ -72,18 +73,16 @@ impl TracoComposto {
         self.molhada > 0.0 || self.queimada > 0.0
     }
 
-    /// O raio do borrão do aro para um pincel de raio `radius_px` — a regra da Watercolor:
-    /// `min(spread, raio/2)`, pelo menos 1.
+    /// A largura `W` da orla em px, presa à faixa.
     #[must_use]
-    pub fn core_r(&self, radius_px: f32) -> usize {
-        let spread = self.largura.clamp(1.0, LARGURA_MAX_PX).round() as usize;
-        spread.min(((radius_px * 0.5).round() as usize).max(1))
+    pub fn largura_px(&self) -> f32 {
+        self.largura.clamp(1.0, LARGURA_MAX_PX)
     }
 
     /// ⭐ **A composição de um texel**: o plano `plano` (RGBA reto, o traço em Normal sobre o transparente)
     /// sobre a base `base`, no `modo` do pincel (`vazio` = a fórmula geral do W3C; `pigmento` = a mistura do
-    /// pincel, `BrushSpec::pigmento` — a do carimbo de sempre; um `f32` é o K–M), com a orla `aro` da cobertura do plano
-    /// (`0..1`: `≥ ½` orla cheia, `0` miolo ou sem orla).
+    /// pincel, `BrushSpec::pigmento` — a do carimbo de sempre; um `f32` é o K–M), com o termo da orla `aro`
+    /// (`0..1`: `1` orla cheia, `0` fundo do traço ou sem orla).
     #[must_use]
     #[inline]
     pub fn compoe(
@@ -102,16 +101,18 @@ impl TracoComposto {
         if self.tecto > 0.0 {
             a = a.min(self.tecto.clamp(0.0, 1.0));
         }
+        // A máscara visível: a orla lê-a e a queimada pesa-se por ela (nunca o alfa cru por baixo do tecto).
+        let v = a;
+        let e = aro.clamp(0.0, 1.0);
         let m = self.molhada.clamp(0.0, 1.0);
         if m > 0.0 {
-            a *= (1.0 - m + m * 2.0 * aro).clamp(0.0, 1.0);
+            a *= 1.0 - m * (1.0 - e);
         }
         let cor = [plano[0], plano[1], plano[2]];
         let mut out = blend_over_pigment_modo(modo, base, cor, a, pigmento, vazio);
         let q = self.queimada.clamp(0.0, 1.0);
-        if q > 0.0 && aro > 0.0 {
-            let aq = q * (2.0 * aro).min(1.0) * plano[3].clamp(0.0, 1.0);
-            out = blend_over(BrushBlend::LinearBurn, out, cor, aq);
+        if q > 0.0 && e > 0.0 {
+            out = blend_over(BrushBlend::LinearBurn, out, cor, q * e * v);
         }
         out
     }
@@ -145,7 +146,7 @@ mod tests {
         assert!((o[3] - 0.4).abs() < 1e-6);
     }
 
-    /// A orla molhada: o miolo (`aro 0`) clareia, a orla (`aro 0,5`) guarda o alfa do traço.
+    /// A orla molhada: o fundo (`aro 0`) clareia, a orla (`aro 1`) guarda o alfa do traço.
     #[test]
     fn a_orla_molhada_guarda_a_borda_e_clareia_o_miolo() {
         let t = TracoComposto {
@@ -154,7 +155,7 @@ mod tests {
         };
         let p = [0.1, 0.2, 0.9, 0.8];
         let miolo = t.compoe(BrushBlend::Mix, false, 0.0, [0.0; 4], p, 0.0)[3];
-        let orla = t.compoe(BrushBlend::Mix, false, 0.0, [0.0; 4], p, 0.5)[3];
+        let orla = t.compoe(BrushBlend::Mix, false, 0.0, [0.0; 4], p, 1.0)[3];
         assert!((miolo - 0.8 * 0.4).abs() < 1e-6, "{miolo}");
         assert!((orla - 0.8).abs() < 1e-6, "{orla}");
     }

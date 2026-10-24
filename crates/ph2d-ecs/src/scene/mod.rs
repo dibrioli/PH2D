@@ -26,11 +26,11 @@ pub mod spawn;
 pub use commands::{
     ApplyError, EditorCommand, EditorCommandQueue, EditorQueueFull, apply_editor_commands,
 };
+pub use diff::{LinhaMudada, linhas_que_mudam};
 pub use registry::{
     ComponentRegistry, ComponentTypeEntry, ComponentTypeId, RegistryError, register_ecs_components,
     stable_type_id,
 };
-pub use diff::{LinhaMudada, linhas_que_mudam};
 pub use save::{EntitySnapshotRow, SaveError, WorldSnapshot, snapshot_to_world, world_to_snapshot};
 pub use save_v1::{
     EntitySnapshotRowV1, WorldSnapshotV1, migrate_v1_to_v2, next_free_after_migration,

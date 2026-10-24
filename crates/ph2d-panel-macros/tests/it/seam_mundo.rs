@@ -40,7 +40,10 @@ fn a_etapa_simular_do_mundo_pinta_se_e_nao_oferece_apagar() {
     p.pinta();
     let _ = p.carrega(ids::row_id(1, 0));
     p.pinta();
-    assert!(p.rect(ids::MACROS_WAIT).is_some(), "a espera de uma etapa do mundo serve");
+    assert!(
+        p.rect(ids::MACROS_WAIT).is_some(),
+        "a espera de uma etapa do mundo serve"
+    );
     assert!(
         p.rect(ids::MACROS_DELETE).is_none(),
         "o Apagar de uma etapa do mundo pintou-se: a app recusá-lo-ia"

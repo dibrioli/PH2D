@@ -35,7 +35,10 @@ fn um_leitor_1_3_recusa_o_mundo_em_voz_alta() {
     };
     let bytes = codec::write(&doc);
     assert_eq!(minor(&bytes), 4);
-    assert!(exige_mundo(&bytes), "sem o `exige` um leitor 1.3 saltava a trilha calado");
+    assert!(
+        exige_mundo(&bytes),
+        "sem o `exige` um leitor 1.3 saltava a trilha calado"
+    );
     assert_eq!(codec::read(&bytes).expect("este leitor sabe"), doc);
     // O leitor 1.3: o mesmo campo com um nome que ele não sabe.
     let antigo: Vec<u8> = {

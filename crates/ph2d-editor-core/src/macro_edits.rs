@@ -118,7 +118,9 @@ pub enum TipoDaEtapaView {
         outros: usize,
     },
     /// «Simular»: a física correu `segundos` (os tiques do passo fixo).
-    Simula { segundos: f64 },
+    Simula {
+        segundos: f64,
+    },
 }
 
 /// As propriedades editáveis de uma etapa, além da espera e do nome.

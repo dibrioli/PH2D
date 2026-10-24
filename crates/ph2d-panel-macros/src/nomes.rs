@@ -114,9 +114,10 @@ pub fn nome(e: &EtapaView) -> String {
             ),
             *outros,
         ),
-        T::Simula { segundos: s } => {
-            tr_with("panel.macros.step.world.simulate", &[("seconds", &segundos(*s))])
-        }
+        T::Simula { segundos: s } => tr_with(
+            "panel.macros.step.world.simulate",
+            &[("seconds", &segundos(*s))],
+        ),
     }
 }
 
@@ -132,7 +133,10 @@ fn mais(frase: String, n: usize) -> String {
     if n == 0 {
         return frase;
     }
-    tr_with("panel.macros.step.world.more", &[("what", &frase), ("n", &n)])
+    tr_with(
+        "panel.macros.step.world.more",
+        &[("what", &frase), ("n", &n)],
+    )
 }
 
 /// O nome da família na frase «Record captures {family}».

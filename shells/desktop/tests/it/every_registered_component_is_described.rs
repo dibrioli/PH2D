@@ -193,7 +193,10 @@ fn todo_componente_registado_tem_porta_no_mundo() {
         .map(|(n, _)| *n)
         .filter(|n| reg.get_by_name(n).is_none())
         .collect();
-    assert!(orfas.is_empty(), "portas de componentes que já não existem: {orfas:?}");
+    assert!(
+        orfas.is_empty(),
+        "portas de componentes que já não existem: {orfas:?}"
+    );
     let mut nomes: Vec<&str> = PORTAS.iter().map(|(n, _)| *n).collect();
     nomes.dedup();
     assert_eq!(nomes.len(), PORTAS.len(), "um nome com duas decisões");

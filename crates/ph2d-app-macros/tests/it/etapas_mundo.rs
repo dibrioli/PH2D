@@ -3,7 +3,9 @@
 //! apagar uma delas recusa-se pelo nome.
 
 use ph2d_app_macros::Cena;
-use ph2d_app_macros::mundo::formato::{Componente, Evento, Inicial, Linha, Mudanca, Objeto, Quem, Simula};
+use ph2d_app_macros::mundo::formato::{
+    Componente, Evento, Inicial, Linha, Mudanca, Objeto, Quem, Simula,
+};
 use ph2d_ecs::{Macro, ModoDaMacro, SimWorld, StableId};
 use ph2d_editor_core::macro_edits::{CampoDaEtapa, TipoDaEtapaView};
 use ph2d_editor_core::macro_etapas::EtapasDaFamilia;
@@ -23,12 +25,28 @@ fn nome(n: &str) -> Componente {
 fn doc() -> Vec<u8> {
     let inicial = Inicial {
         objetos: vec![
-            Objeto { id: 0, original: DONO, quem: Quem::Macro },
-            Objeto { id: 1, original: 11, quem: Quem::Mundo },
+            Objeto {
+                id: 0,
+                original: DONO,
+                quem: Quem::Macro,
+            },
+            Objeto {
+                id: 1,
+                original: 11,
+                quem: Quem::Mundo,
+            },
         ],
         linhas: vec![
-            Linha { id: 0, pai: None, componentes: vec![] },
-            Linha { id: 1, pai: None, componentes: vec![nome("Player")] },
+            Linha {
+                id: 0,
+                pai: None,
+                componentes: vec![],
+            },
+            Linha {
+                id: 1,
+                pai: None,
+                componentes: vec![nome("Player")],
+            },
         ],
         recursos: vec![],
     };
@@ -75,10 +93,17 @@ fn as_etapas_do_mundo_dizem_o_que_mudou() {
     );
     assert_eq!(v.etapas[1].tipo, TipoDaEtapaView::Simula { segundos: 2.0 });
     assert_eq!((v.etapas[1].t0_s, v.etapas[1].t1_s), (2.0, 4.0));
-    let textos: Vec<String> = v.etapas.iter().map(ph2d_panel_macros::nomes::nome).collect();
+    let textos: Vec<String> = v
+        .etapas
+        .iter()
+        .map(ph2d_panel_macros::nomes::nome)
+        .collect();
     assert_eq!(
         textos,
-        ["Collider, RigidBody added \u{b7} Player", "Simulate \u{b7} 2.00 s"]
+        [
+            "Collider, RigidBody added \u{b7} Player",
+            "Simulate \u{b7} 2.00 s"
+        ]
     );
 }
 

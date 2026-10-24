@@ -148,9 +148,14 @@ fn duas_imagens_no_objeto_macro_gravam_duas_trilhas_e_voltar_continua() {
     let outra = {
         let w = b.sim.world_mut();
         let p = Entity::from_bits(dono);
-        w.spawn((Transform::IDENTITY, Name::new("Tela 2"), StableId(OUTRA), ChildOf(p)))
-            .id()
-            .to_bits()
+        w.spawn((
+            Transform::IDENTITY,
+            Name::new("Tela 2"),
+            StableId(OUTRA),
+            ChildOf(p),
+        ))
+        .id()
+        .to_bits()
     };
     let lado = 128u32;
     let branca = || vec![255u8; (lado * lado * 4) as usize];
@@ -168,7 +173,11 @@ fn duas_imagens_no_objeto_macro_gravam_duas_trilhas_e_voltar_continua() {
     b.quadro();
     let doc = doc_de(&b, dono).expect("o objecto Macro ficou com a gravação");
     let alvos: Vec<_> = doc.tracks.iter().map(|t| t.target).collect();
-    assert_eq!(alvos, [IMAGEM, OUTRA, IMAGEM], "uma trilha por imagem, e a volta");
+    assert_eq!(
+        alvos,
+        [IMAGEM, OUTRA, IMAGEM],
+        "uma trilha por imagem, e a volta"
+    );
     assert!(doc.tracks[0].nasce.is_some() && doc.tracks[1].nasce.is_some());
     let volta = &doc.tracks[2];
     assert_eq!(volta.continua, Some(0), "a volta continua a 1.ª trilha");

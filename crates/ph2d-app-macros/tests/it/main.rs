@@ -1,5 +1,6 @@
 mod aplicar;
 mod aplicar_motion;
+mod aplicar_mundo;
 mod biblioteca;
 mod cena_da_biblioteca;
 mod cena_do_mundo;
@@ -10,6 +11,5 @@ mod gate7;
 mod gravar_de_novo;
 mod objeto_macro;
 mod portas_de_teste;
-mod aplicar_mundo;
 mod tutorial;
 mod tutorial_painter;

@@ -11,16 +11,15 @@
 //! recusa-se pelo nome ([`ErroAoTranspor`]) — nunca se larga um passo em silêncio. Os grupos e as
 //! molduras que já existiam ao armar não viajam (são da vista, a lei do `import_owner`).
 
+use super::FAMILIA;
 use super::etapas::LeitorDoMotion;
 use super::inicial::{self, ErroDoInicial, Inicial};
-use super::passo::{Alvo, Escrita, Intencao, IntencaoDeParam, Nomeado, Passo};
 use super::tocar::{ErroDaMacro, Modo, TocadorDoMotion};
-use super::{Destino, FAMILIA, documento_de};
 use ph2d_macro::{CodecError, LeitorDaFamilia, Track};
-use ph2d_motion_doc::subgraph::{self, Subgraph};
-use ph2d_motion_doc::{Backdrop, MotionDoc};
-use ph2d_nodegraph::graph::{Edge, NodeId};
-use std::collections::{BTreeMap, BTreeSet};
+use ph2d_motion_doc::MotionDoc;
+use ph2d_motion_doc::subgraph;
+use ph2d_nodegraph::graph::NodeId;
+use std::collections::BTreeSet;
 
 /// Porque a trilha não se transpõe.
 #[derive(Clone, Debug, PartialEq, Eq)]

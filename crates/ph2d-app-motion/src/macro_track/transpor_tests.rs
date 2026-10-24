@@ -3,9 +3,12 @@
 //! projecto (outros ids) e, por cima, junta-os aos que ele já tinha.
 
 use super::*;
+use crate::macro_track::Destino;
+use crate::macro_track::passo::{Alvo, Escrita, Intencao, IntencaoDeParam, Passo};
 use crate::macro_track::roteiro::CENA;
 use crate::macro_track::smoke::{grava_gestos, grava_sobre};
 use ph2d_macro::Event;
+use ph2d_nodegraph::graph::Edge;
 
 /// O objecto que gravou.
 const DONO: u64 = 7;

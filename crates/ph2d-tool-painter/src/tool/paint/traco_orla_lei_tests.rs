@@ -37,7 +37,7 @@ pub(super) fn caminho(nos: &[[f32; 2]]) -> Vec<[f32; 2]> {
 }
 
 /// O Z que se cruza (volta em diagonal por cima de si).
-fn z() -> Vec<[f32; 2]> {
+pub(super) fn z() -> Vec<[f32; 2]> {
     caminho(&[
         [40.0, 40.0],
         [280.0, 40.0],
@@ -85,7 +85,7 @@ pub(super) struct Traco {
     pub(super) tau: f32,
 }
 
-fn traco(t: &mut PainterTool, pts: &[[f32; 2]]) -> Traco {
+pub(super) fn traco(t: &mut PainterTool, pts: &[[f32; 2]]) -> Traco {
     pinta(t, pts, |_| 4);
     let tela = t.canvas_rgba.to_vec();
     let s = t
@@ -114,7 +114,7 @@ fn traco(t: &mut PainterTool, pts: &[[f32; 2]]) -> Traco {
 
 /// ⭐ **O oráculo**: por texel de dentro, a distância (centro a centro) ao texel de fora mais próximo, por força
 /// bruta num raio `alcance`; `INFINITY` além dele, `0` fora.
-fn distancias(v: &[f32], tau: f32, alcance: i32) -> Vec<f32> {
+pub(super) fn distancias(v: &[f32], tau: f32, alcance: i32) -> Vec<f32> {
     let (w, h) = (W as i32, H as i32);
     (0..w * h)
         .map(|i| {
@@ -257,29 +257,33 @@ fn o_fundo_do_traco_nao_tem_orla() {
 
 /// ⭐ **(b) A orla existe em toda a borda visível**, com qualquer Strength (Accumulate desligado) e com Flow baixo:
 /// cada texel de dentro encostado a um de fora (`D ≤ 1`) mostra `e ≥ perfil(1) − 0,1`.
+///
+/// O `e` mede-se pela QUEIMADA: desde a 4.ª volta a molhada é o borrão da borda (`traco_orla_molhada_tests`), e a cor
+/// de `e = 0` e de `e = 1` sem o borrão é a mesma — com ela o oráculo `e_medido` não vê nada (este gate e o (e)
+/// passavam vazios).
 #[test]
 fn a_orla_existe_em_toda_a_borda_visivel() {
     let casos: [(&str, Monta); 5] = [
         ("Strength 0,3", || {
             padrao(|t| {
                 t.set_brush_strength(0.3);
-                t.set_traco_molhada(0.8);
+                t.set_traco_queimada(0.8);
             })
         }),
-        ("Strength 0,6", || padrao(|t| t.set_traco_molhada(0.8))),
+        ("Strength 0,6", || padrao(|t| t.set_traco_queimada(0.8))),
         ("Strength 1", || {
             padrao(|t| {
                 t.set_brush_strength(1.0);
-                t.set_traco_molhada(0.8);
+                t.set_traco_queimada(0.8);
             })
         }),
         ("Flow 0,3", || {
             padrao(|t| {
                 t.set_brush_flow(0.3);
-                t.set_traco_molhada(0.8);
+                t.set_traco_queimada(0.8);
             })
         }),
-        ("Glaze Round", || glaze_round(|t| t.set_traco_molhada(0.8))),
+        ("Glaze Round", || glaze_round(|t| t.set_traco_queimada(0.8))),
     ];
     for (nome, mk) in casos {
         let mut t = mk();
@@ -314,7 +318,7 @@ fn o_perfil_e_monotono_e_tem_a_largura() {
             t.set_brush_size_px(90.0);
             t.set_brush_strength(1.0);
             t.paint.brush.hardness = 0.6;
-            t.set_traco_molhada(0.8);
+            t.set_traco_queimada(0.8);
             t.set_traco_largura(largura);
         });
         let pts = caminho(&[[20.0, 120.0], [300.0, 120.0]]);
@@ -324,12 +328,12 @@ fn o_perfil_e_monotono_e_tem_a_largura() {
         let col: Vec<f32> = (0..H).map(|y| tr.v[y * W + x]).collect();
         let y0 = (1..H).find(|&y| col[y] > tau).expect("o recto");
         let yc = (y0 - 1) as f32 + (tau - col[y0 - 1]) / (col[y0] - col[y0 - 1]);
-        let mut antes = 1.0f32;
-        let mut pior = 0.0f32;
+        let (mut antes, mut pior, mut vistos) = (1.0f32, 0.0f32, 0);
         for y in y0..120 {
             let Some(e) = e_medido(&t, &tr, y * W + x) else {
                 continue;
             };
+            vistos += 1;
             let esperado = super::traco_orla::perfil(y as f32 - yc, largura);
             pior = pior.max((e - esperado).abs());
             assert!(
@@ -341,6 +345,10 @@ fn o_perfil_e_monotono_e_tem_a_largura() {
                 assert!(e.abs() <= 0.02, "W {largura}: orla além de W em y {y}: {e}");
             }
         }
+        assert!(
+            vistos >= 10,
+            "W {largura}: o perfil não se vê ({vistos} texels)"
+        );
         assert!(
             pior <= 0.05,
             "W {largura}: o perfil foge do analítico em {pior}"

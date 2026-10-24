@@ -16,9 +16,10 @@
 //! plano sobre a base congelada no pen-down — com o MODO do pincel, uma vez, como uma camada. O tecto é um
 //! `min` no alfa do plano; as orlas pesam-se por `e ∈ [0, 1]`, a orla do traço sobre a máscara VISÍVEL
 //! (`traco_orla` no tool: a distância exacta ao contorno `v = ½` do nível de uma passagem, `e = 1 − smoothstep(0, W, d)`; `1` na
-//! franja de fora, `0` no fundo). A molhada é o *edge darkening* de Curtis (1997) sobre a máscara inteira: o
-//! fundo clareia até `1 − molhada`; a queimada escurece em Linear Burn com o peso `queimada · e · v`
-//! (bug #58, `docs/Painter/BUGS_painter_fechados_41_a_46.md`).
+//! franja de fora, `0` no fundo). A molhada é o *Wet Edges* do Procreate (*«soften and blur the edges»*): a
+//! silhueta do traço BORRADA na faixa da orla (o borrão gaussiano da máscara visível, `σ = molhada · W / 3`, que
+//! sangra para o papel), misturado por `e` — o miolo fica intacto; a queimada escurece em Linear Burn com o peso
+//! `queimada · e · v` (bug #58, `docs/Painter/BUGS_painter_fechados_41_a_46.md`).
 //!
 //! ⚠️ **O neutro não arma o plano** ([`TracoComposto::is_active`]): o carimbo de sempre, ao bit.
 
@@ -36,8 +37,8 @@ pub struct TracoComposto {
     /// O **tecto** de opacidade do traço, `0..1` (`0` = sem tecto): a tinta do traço nunca passa dele, nem
     /// onde o traço se cruza (o *uniform glaze*).
     pub tecto: f32,
-    /// A **orla molhada**, `0..1`: o miolo clareia até `1 − molhada` da opacidade do traço e a orla guarda-a
-    /// (*Wet edges*).
+    /// A **orla molhada**, `0..1` (*Wet edges* do Procreate): a borda do traço suavizada e borrada para fora — o
+    /// raio do borrão cresce com ela; o miolo não muda.
     pub molhada: f32,
     /// A **orla queimada**, `0..1`: a orla escurece em Linear Burn sobre o que está por baixo (*Burnt edges*).
     pub queimada: f32,
@@ -82,7 +83,8 @@ impl TracoComposto {
     /// ⭐ **A composição de um texel**: o plano `plano` (RGBA reto, o traço em Normal sobre o transparente)
     /// sobre a base `base`, no `modo` do pincel (`vazio` = a fórmula geral do W3C; `pigmento` = a mistura do
     /// pincel, `BrushSpec::pigmento` — a do carimbo de sempre; um `f32` é o K–M), com o termo da orla `aro`
-    /// (`0..1`: `1` orla cheia, `0` fundo do traço ou sem orla).
+    /// (`0..1`: `1` orla cheia, `0` fundo do traço ou sem orla). Sem o borrão a molhada não age
+    /// ([`Self::compoe_molhado`]).
     #[must_use]
     #[inline]
     pub fn compoe(
@@ -94,21 +96,41 @@ impl TracoComposto {
         plano: [f32; 4],
         aro: f32,
     ) -> [f32; 4] {
+        self.compoe_molhado(modo, vazio, pigmento, base, plano, (aro, None))
+    }
+
+    /// ⭐ [`Self::compoe`] com a **orla molhada**: `(aro, borrao)` — `borrao` é a máscara visível do plano BORRADA no texel (RGBA
+    /// pré-multiplicado, `σ = molhada · W / 3`); o plano visível mistura-se com ela pelo peso `e` (`1` na franja e
+    /// fora da tinta, onde o borrão sangra para o papel; `0` no fundo — o miolo intacto).
+    #[must_use]
+    #[inline]
+    pub fn compoe_molhado(
+        &self,
+        modo: BrushBlend,
+        vazio: bool,
+        pigmento: impl Into<crate::blend::Pigmento>,
+        base: [f32; 4],
+        plano: [f32; 4],
+        (aro, borrao): (f32, Option<[f32; 4]>),
+    ) -> [f32; 4] {
         let mut a = plano[3].clamp(0.0, 1.0);
-        if a <= 0.0 {
-            return base;
-        }
         if self.tecto > 0.0 {
             a = a.min(self.tecto.clamp(0.0, 1.0));
         }
         // A máscara visível: a orla lê-a e a queimada pesa-se por ela (nunca o alfa cru por baixo do tecto).
         let v = a;
         let e = aro.clamp(0.0, 1.0);
-        let m = self.molhada.clamp(0.0, 1.0);
-        if m > 0.0 {
-            a *= 1.0 - m * (1.0 - e);
+        let mut cor = [plano[0], plano[1], plano[2]];
+        if let Some(b) = borrao.filter(|_| self.molhada > 0.0) {
+            let k = if v > 0.0 { e } else { 1.0 };
+            a = (1.0 - k) * v + k * b[3].clamp(0.0, 1.0);
+            if a > 0.0 {
+                cor = [0, 1, 2].map(|c| ((1.0 - k) * v * cor[c] + k * b[c]) / a);
+            }
         }
-        let cor = [plano[0], plano[1], plano[2]];
+        if a <= 0.0 {
+            return base;
+        }
         let mut out = blend_over_pigment_modo(modo, base, cor, a, pigmento, vazio);
         let q = self.queimada.clamp(0.0, 1.0);
         if q > 0.0 && e > 0.0 {
@@ -146,17 +168,31 @@ mod tests {
         assert!((o[3] - 0.4).abs() < 1e-6);
     }
 
-    /// A orla molhada: o fundo (`aro 0`) clareia, a orla (`aro 1`) guarda o alfa do traço.
+    /// ⭐ A orla molhada (*Wet edges* do Procreate): o fundo (`aro 0`) não muda; a orla (`aro 1`) é o borrão; fora
+    /// da tinta o borrão sangra para o papel; sem borrão a molhada não age.
     #[test]
-    fn a_orla_molhada_guarda_a_borda_e_clareia_o_miolo() {
+    fn a_orla_molhada_borra_a_borda_e_guarda_o_miolo() {
         let t = TracoComposto {
             molhada: 0.6,
             ..TracoComposto::NEUTRO
         };
         let p = [0.1, 0.2, 0.9, 0.8];
-        let miolo = t.compoe(BrushBlend::Mix, false, 0.0, [0.0; 4], p, 0.0)[3];
-        let orla = t.compoe(BrushBlend::Mix, false, 0.0, [0.0; 4], p, 1.0)[3];
-        assert!((miolo - 0.8 * 0.4).abs() < 1e-6, "{miolo}");
-        assert!((orla - 0.8).abs() < 1e-6, "{orla}");
+        let b = Some([0.05, 0.1, 0.45, 0.5]);
+        let c = |p: [f32; 4], aro, b| {
+            t.compoe_molhado(BrushBlend::Mix, false, 0.0, [0.0; 4], p, (aro, b))
+        };
+        assert!((c(p, 0.0, b)[3] - 0.8).abs() < 1e-6, "o miolo mudou");
+        let orla = c(p, 1.0, b);
+        assert!((orla[3] - 0.5).abs() < 1e-6, "{orla:?}");
+        assert!((orla[2] - 0.9).abs() < 1e-5, "a cor do borrão: {orla:?}");
+        let fora = c([0.0; 4], 0.0, b);
+        assert!(
+            (fora[3] - 0.5).abs() < 1e-6,
+            "o borrão não sangrou: {fora:?}"
+        );
+        assert!(
+            (c(p, 1.0, None)[3] - 0.8).abs() < 1e-6,
+            "sem borrão a molhada agiu"
+        );
     }
 }

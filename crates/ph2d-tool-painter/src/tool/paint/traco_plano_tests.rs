@@ -183,10 +183,11 @@ fn perfil(traco_c: TracoComposto, fundo: [u8; 4]) -> (PainterTool, Vec<f32>) {
     (t, p)
 }
 
-/// ⭐ **L8 — a orla molhada escurece a borda e clareia o miolo** (*Wet edges*; o aro da Watercolor): o miolo
-/// cai para `1 − molhada` da opacidade do traço e a orla fica perto dela; sem orla o miolo é o máximo.
+/// ⭐ **L8 — a orla molhada borra a borda e guarda o miolo** (*Wet Edges* do Procreate, bug #58 4.ª volta; até
+/// ali este gate exigia o miolo a `1 − molhada` — o Wet Edges do Photoshop, que o dono recusou no smoke 24/10): o
+/// miolo é o do traço sem orla, a rampa da borda alarga e a tinta sangra para fora da silhueta seca.
 #[test]
-fn a_orla_molhada_guarda_a_borda_e_clareia_o_miolo() {
+fn a_orla_molhada_borra_a_borda_e_guarda_o_miolo() {
     let (_, sem) = perfil(TracoComposto::NEUTRO, [0; 4]);
     let (_, com) = perfil(
         TracoComposto {
@@ -196,16 +197,20 @@ fn a_orla_molhada_guarda_a_borda_e_clareia_o_miolo() {
         [0; 4],
     );
     let (miolo_sem, miolo) = (sem[50], com[50]);
-    let orla = com.iter().copied().fold(0.0f32, f32::max);
     assert!(miolo_sem > 0.95, "o miolo sem orla é opaco: {miolo_sem}");
     assert!(
-        (miolo - 0.3).abs() < 0.05,
-        "o miolo molhado é 1 − 0,7 da opacidade: {miolo}"
+        (miolo - miolo_sem).abs() <= 1.0 / 255.0,
+        "o miolo molhado mudou: {miolo} (seco {miolo_sem})"
     );
+    let rampa = |p: &[f32]| p.iter().filter(|&&a| a > 0.05 && a < 0.95).count();
     assert!(
-        orla > 0.8,
-        "a orla guarda a opacidade do traço: {orla} (miolo {miolo})"
+        rampa(&com) > rampa(&sem),
+        "a borda não suavizou: {} × {} texels na rampa",
+        rampa(&com),
+        rampa(&sem)
     );
+    let sangra = (0..100).filter(|&y| sem[y] == 0.0 && com[y] > 0.0).count();
+    assert!(sangra > 0, "a tinta molhada não sangrou para o papel");
 }
 
 /// ⭐ **L8 — a orla queimada escurece a borda sobre a tinta** (*Burnt edges*, Linear Burn): sobre um cinza

@@ -114,11 +114,13 @@ impl PainterTool {
         self.pede_o_plano() && self.plano_recusado().is_none()
     }
 
-    /// O alcance (px) que a orla acrescenta à volta do que mudou: a largura `W` e a célula do contorno.
+    /// O alcance (px) que a orla acrescenta à volta do que mudou: a largura `W` (ou o borrão da molhada, se maior)
+    /// e a célula do contorno.
     fn margem_da_orla(&self) -> u32 {
         let t = &self.paint.brush.traco;
         if t.tem_orla() {
-            t.largura_px().ceil() as u32 + 2
+            let borrao = super::traco_borrao::raio(t.molhada, t.largura_px());
+            (t.largura_px().ceil() as u32).max(borrao) + 2
         } else {
             0
         }
@@ -272,21 +274,33 @@ impl PainterTool {
                 }
             }
             let largura = t.largura_px();
-            let jan = self.alarga(r, super::traco_orla::alcance_da_janela(largura));
+            let folga = super::traco_orla::alcance_da_janela(largura)
+                .max(super::traco_borrao::raio(t.molhada, largura) + 1);
+            let jan = self.alarga(r, folga);
             let (jw, jh) = (jan.w as usize, jan.h as usize);
             let mut v = vec![0.0f32; jw * jh];
+            // A molhada borra o plano visível PRÉ-MULTIPLICADO (`traco_borrao`).
+            let mut pre = vec![[0.0f32; 4]; if t.molhada > 0.0 { jw * jh } else { 0 }];
             for y in 0..jh {
                 for x in 0..jw {
-                    v[y * jw + x] = visivel(((jan.y as usize + y) * w + jan.x as usize + x) * 4);
+                    let i = ((jan.y as usize + y) * w + jan.x as usize + x) * 4;
+                    let a = visivel(i);
+                    v[y * jw + x] = a;
+                    if let Some(p) = pre.get_mut(y * jw + x) {
+                        *p = [
+                            dec(s.plano[i]) * a,
+                            dec(s.plano[i + 1]) * a,
+                            dec(s.plano[i + 2]) * a,
+                            a,
+                        ];
+                    }
                 }
             }
-            Some(super::traco_orla::orla_do_traco(
-                &v,
-                jan,
-                r,
-                s.fronteira(),
-                largura,
-            ))
+            let e = super::traco_orla::orla_do_traco(&v, jan, r, s.fronteira(), largura);
+            let sigma = super::traco_borrao::sigma(t.molhada, largura);
+            let b = (!pre.is_empty())
+                .then(|| super::traco_borrao::borrao_da_orla(&pre, jan, r, sigma, &e));
+            Some((e, b))
         } else {
             None
         };
@@ -319,10 +333,11 @@ impl PainterTool {
                     linha[x * 4..x * 4 + 4].copy_from_slice(&s.base[i..i + 4]);
                     continue;
                 }
-                let a = aro.as_ref().map_or(0.0, |e| {
-                    e[(y - r.y as usize) * r.w as usize + (x - r.x as usize)]
-                });
-                let mut out = t.compoe(brush.blend, vazio, pigmento, base, p, a);
+                let j = (y - r.y as usize) * r.w as usize + (x - r.x as usize);
+                let orla = aro
+                    .as_ref()
+                    .map_or((0.0, None), |(e, b)| (e[j], b.as_ref().map(|b| b[j])));
+                let mut out = t.compoe_molhado(brush.blend, vazio, pigmento, base, p, orla);
                 if trinco {
                     out[3] = base[3];
                 }

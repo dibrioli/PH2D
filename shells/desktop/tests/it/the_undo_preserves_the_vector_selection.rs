@@ -107,8 +107,20 @@ fn the_step_carries_the_selection_and_the_restore_prefers_it() {
         "o `apply_undo` deixou de ler a selecção de AGORA — sem ela o lado que vai para a outra \
          fila fica sem mão, e refazer devolve a peça sem gizmo"
     );
+    // A chamada pode ir pelo irmão `aplica_e_conta_as_macros` (W19, tecto do HR-18); a marca segue.
+    let macros_src = fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/undo_app_macros.rs"
+    ))
+    .expect("undo_app_macros.rs legível");
+    let pela_macro = apply_undo.contains("aplica_e_conta_as_macros(&aplica, &mark)")
+        && macros_src
+            .split("fn aplica_e_conta_as_macros")
+            .nth(1)
+            .and_then(|c| c.split("\n    pub(").next())
+            .is_some_and(|c| c.contains("apply_project_with(aplica, Some(mark))"));
     assert!(
-        apply_undo.contains("Some(&mark)"),
+        apply_undo.contains("Some(&mark)") || pela_macro,
         "o `apply_undo` restaura sem passar a marca do passo — volta ao transporte, e refazer uma \
          criação devolve o objecto e não devolve a selecção"
     );

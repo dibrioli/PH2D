@@ -118,7 +118,7 @@ Cena 9, o passo novo ③. As cenas 8 e 9 já estão aprovadas.
 
 Fotos da corrida conduzida: `docs/CodeEditor/ferramentas/conduz_inspector/foto_09_campo_door_sem_salvar.png` e as vizinhas.
 
-### 9.1 O aviso do objeto no topo (o 10, 24/10) — por fazer pelo dono
+### 9.1 O aviso do objeto no topo (o 10, 24/10) — **OK em 24/10** (binário da linha)
 
 1. O mesmo comando da cena 9 (antes de integrar, o binário da linha):
    `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-CodeEditor && PH2D_CODE_SMOKE=9 ./target/smoke/ph2d-host-desktop`
@@ -133,6 +133,12 @@ Fotos da corrida conduzida (binário da linha, `a3e44525db`): `docs/CodeEditor/f
 
 ## 10. ABERTO
 
-- ~~Um `ph2d.object("X")` no topo, fora de `ph2d.property`~~ — **feito em 24/10** ([10](../10_objeto_no_topo.md)).
+- ~~Um `ph2d.object("X")` no topo, fora de `ph2d.property`~~ — **feito em 24/10** ([10](../10_objeto_no_topo.md)), smoke do dono OK.
+- **Perguntas de produto ao dono, sem resposta desde 22/10** ([08](../08_scripts_tocam_propriedades.md) §«Perguntas»;
+  caíram dos dois handoffs de continuação e voltam aqui): (a) um script pode renomear um objecto durante o jogo
+  (`Name` hoje é só do editor)? (b) o cartão «Render Source» × o nome `sprite` que o script usa — o cartão passa a
+  chamar-se «Sprite», e mostra qual imagem da biblioteca usa? (c) subtítulos por componente nos cartões compostos
+  (Câmera, Paralaxe, HUD)? Nenhuma bloqueia a integração.
+- Fora da linha: `cargo fmt --all --check` acusa 6 diffs em `crates/ph2d-gpu`, vindos do `main` (`9e7a70cd61`).
 - ~~Aba recarregada por fora com texto partido~~ — **decisão do dono 24/10: fica assim** (a última lista boa, a lei
   do Godot). Não «cure».

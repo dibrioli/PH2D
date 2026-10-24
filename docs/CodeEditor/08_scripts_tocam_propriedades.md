@@ -160,7 +160,7 @@ Série: d1 → d2 (o d2 usa o d1); d3 e d4 depois do d2, em paralelo; d5 no fim.
   são do editor e cobrem a pose também.
 - Testes (todos verdes, por nome): `script_properties` (7), `property_names` (4), `vida_pedida` (6),
   `arrastar::o_nome_de_propriedade…`, `ph2d-script` inteiro, `ph2d-app-code` inteiro, `controlo_de_cegueira`, `ph2d-i18n`.
-  Mutação: por fazer (fecho).
+  Mutação: feita no fecho de 23/10 (ver o fim deste doc).
 
 **d3 FEITA** (22/10, `1af469bdff` lei+piloto · `3cb9cfb865` catálogo · `73539a3a32` vistas/linhas/nome curto ·
 `3620da4c20` skew na pose · `9b3dabfbca` vistas aplicadas): 156/156 componentes com secção possível têm `code` ou
@@ -170,7 +170,7 @@ radianos**; `row_of` (uma linha no neutro lê-se, escrever cria-a, parar tira-a 
 (`gravity_scale`); `skew_x`/`skew_y` na pose. Portões: `o_cartao_pinta_a_chave_do_catalogo`,
 `todo_campo_de_um_cartao_tem_nome_ou_motivo`, `todo_componente_com_nome_tem_a_sua_lei`,
 `toda_vista_vai_e_volta_pelo_valor_do_cartao`, `uma_linha_no_neutro_nasce_ao_escrever_e_sai_ao_rebobinar`.
-Mutação: por fazer (fecho).
+Mutação: feita no fecho de 23/10 (ver o fim deste doc).
 
 **Perguntas de produto ao dono (22/10):** renomear um objecto pelo script durante o jogo (`Name` está `Editor`)?
 o cartão «Render Source» × o componente «Sprite» (o nome é `sprite`; o portão tem a excepção)? os subtítulos por
@@ -211,4 +211,6 @@ deste plano era palpite). As barras «Life Max»/«Life» são sprites que o scr
 real, ponte do jogo, rebobinar); corrida conduzida com 6 fotos em `ferramentas/conduz_propriedades/` (1.ª corrida:
 a porta nascia fora da vista e o herói sumia atrás dela — refeita com a câmera mais alta e a porta por baixo).
 **Smoke do dono da cena 8: OK (23/10).**
-**Falta:** 8b, 8c e a mutação das leis do 8d.
+**8b, 8c e a mutação das leis do 8d/8b/8c FEITOS** (23/10: 79 mutações, 53 sangraram, sobreviventes com asserção
+em `1ed7ceba82`, 2 equivalentes) — [handoff D5_8B_8C_1B](handoffs/HANDOFF_INTEGRACAO_line_CodeEditor_2026-10-23_D5_8B_8C_1B.md) §3.
+As três perguntas de produto acima continuam sem resposta do dono (24/10) — §10 desse handoff.

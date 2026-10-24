@@ -260,6 +260,9 @@ mod traco_orla_bordas_tests;
 /// A lei da orla do traço (bug #58, 2.ª volta): máscara visível, fronteira do traço, distância exacta.
 #[cfg(test)]
 mod traco_orla_lei_tests;
+/// O traço que volta por cima de si (bug #58, 3.ª volta): o gate (f) da lei da orla.
+#[cfg(test)]
+mod traco_orla_volta_tests;
 /// **L8 + L5** — o tecto por traço, as orlas, a cauda e o fall-off (o plano do traço).
 #[cfg(test)]
 mod traco_plano_tests;

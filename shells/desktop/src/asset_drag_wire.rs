@@ -156,7 +156,9 @@ impl crate::App {
         // ⚠️ Resolvidos ANTES de pegar o `gfx` mutável — são leituras, e adiá-las para dentro do
         // bloco mutável seria pedir dois empréstimos do mesmo `self`.
         let inspector_slot = self.inspector_slot_under(x, y);
-        let script_slot = self.chrome_id_under(x, y).and_then(ph2d_panel_inspector::script_object_slot_pick);
+        let script_slot = self
+            .chrome_id_under(x, y)
+            .and_then(ph2d_panel_inspector::script_object_slot_pick);
         let catalog_row = self.catalog_row_under(x, y);
         let mods = Self::convert_modifiers(self.modifiers);
         let (on_canvas, world, code, home) = {

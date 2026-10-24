@@ -608,7 +608,10 @@ mod tests {
         assert!(Syntax::new(&Text::new(&got)).errors().is_empty());
         let topo = object_property_insertion(&t, &s, at(src, "= 2"), &nomes[1..]);
         assert_eq!(topo.at, 0, "no topo, o início da linha da soltura");
-        assert_eq!(topo.text, "ph2d.property(\"porta\", ph2d.object(\"Porta\"))\n");
+        assert_eq!(
+            topo.text,
+            "ph2d.property(\"porta\", ph2d.object(\"Porta\"))\n"
+        );
     }
 
     #[test]
@@ -619,7 +622,11 @@ mod tests {
         let nomes = ["Porta".to_owned()];
         let b = at(src, "a = 1");
         let i = object_property_insertion(&t, &s, b, &nomes);
-        assert_eq!(i.at, at(src, "  a = 1"), "o início da linha da soltura, não o da instrução");
+        assert_eq!(
+            i.at,
+            at(src, "  a = 1"),
+            "o início da linha da soltura, não o da instrução"
+        );
     }
 
     #[test]
@@ -628,7 +635,15 @@ mod tests {
         let t = Text::new(src);
         let s = Syntax::new(&t);
         let fim = at(src, "}\n") + 1;
-        assert_eq!(s.top_statement_line(&t, fim - 1), 0, "dentro: a linha da instrução");
-        assert_eq!(s.top_statement_line(&t, fim), at(src, "}"), "no fim exacto: a linha dele");
+        assert_eq!(
+            s.top_statement_line(&t, fim - 1),
+            0,
+            "dentro: a linha da instrução"
+        );
+        assert_eq!(
+            s.top_statement_line(&t, fim),
+            at(src, "}"),
+            "no fim exacto: a linha dele"
+        );
     }
 }

@@ -449,7 +449,10 @@ pub fn script_object_slot_pick(id: ph2d_a11y::NodeId) -> Option<(u64, u16)> {
         p.value,
         ph2d_editor_core::script_edits::InspectorScriptValue::Object(_)
     );
-    Some((info.entity_bits, u16::try_from(i).ok()?)).filter(|_| objecto)
+    if !objecto {
+        return None;
+    }
+    Some((info.entity_bits, u16::try_from(i).ok()?))
 }
 
 /// O nome da propriedade na linha `row` do cartão Script do objecto `entity_bits`.

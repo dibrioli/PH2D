@@ -250,7 +250,7 @@ fn foto_do_same_as_paper() {
 }
 
 /// **O painel e o preview de cada ferramenta do trilho** (dono 23/10): o que o painel mostra com a ferramenta na
-/// mão e, nas que mexem na tinta, a faixa de referência cruzada por ela. `PH2D_FOTO_DIR=<pasta>
+/// mão; o preview só no Pincel e na Borracha (a tela cheia com o S apagado, dono 24/10). `PH2D_FOTO_DIR=<pasta>
 /// cargo test -p ph2d-app-painter --features panel-painter-layers foto_das_ferramentas -- --ignored`.
 #[test]
 #[ignore = "foto do painel por ferramenta — PH2D_FOTO_DIR=<pasta> e --ignored"]

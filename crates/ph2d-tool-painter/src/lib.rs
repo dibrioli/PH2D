@@ -153,13 +153,13 @@ pub use tool::paint::marca::{
 pub use tool::paint::ponta::{
     CartaoDaPonta, LINHAS_DA_PONTA, LinhaDaPonta, N_LINHAS_DA_PONTA, PONTA_DE_FABRICA,
 };
+pub use tool::paint::wetpaint_preset::COR_DO_FUNDO_DA_BORRACHA;
 pub use tool::paint::wetpaint_preset::{
     ALTURA_DO_PREVIEW, CAMPOS_DO_PINCEL, CAMPOS_FORA, CenaDoPreview, ChaveDoPreview,
     DIAMETRO_DA_MINIATURA, LARGURA_DO_PREVIEW, MEIO_DO_PRESET, MOTOR_DOS_PRESETS, MeioDesconhecido,
     OPACIDADE_DE_FABRICA, PedidoPreset, campos_do_meio, meio_do_preset, miniatura_do_preset,
     motor_do_meio, nome_do_meio, pintar_preview,
 };
-pub use tool::paint::wetpaint_preset::{COR_DA_REFERENCIA, Modificador, faixa_da_referencia};
 pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,

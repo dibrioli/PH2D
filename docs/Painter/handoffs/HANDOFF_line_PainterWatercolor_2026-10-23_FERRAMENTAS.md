@@ -20,6 +20,17 @@ Ferramenta: `docs/Components/ferramentas/fotografa_cena.sh` — o guarda passa a
   mão; o clique segue pelo despacho do sub-botão. Gate `the_painter_tools_live_in_the_vector_column` (a coluna
   esperada = trilho − grupo + Máscara + Seleção; cada uma troca a ferramenta e acende só ela); mutação (o grupo de volta)
   sangra 3/4.
+- **24/10 (dono): o preview só no Pincel e na Borracha.** `LinhaDaFerramenta::Preview` (não lida por Blur, Smear/Faca,
+  Clone, Máscara): o painel não pinta a preview nem o pino nem o vão (`preview_pino::pinta`, as duas portas), a ponte não
+  pede cena e despublica o quadro (`PreviewVivo::esquece`, sem piscar o velho ao voltar). A Borracha: tela cheia de
+  `COR_DO_FUNDO_DA_BORRACHA` e o S do Pincel apagado (`preview_borracha.rs`, ex-`preview_modificador`; `Modificador`,
+  a faixa, o Clone e `Trajeto` saíram — a cena leva `borracha: bool`). Gates: `a_borracha_apaga_o_s_do_pincel_na_tela_cheia`
+  (margens = cor cheia; 3 140 apagados, 2 342 brancos; sobreposição com o S do Pincel 0,990 — vermelho no caminho
+  antigo), `mexer_na_forca_da_borracha_muda_o_preview_dela`, `so_a_borracha_e_a_borracha`, `o_pincel_continua_no_branco`;
+  painel `seam_pino_da_preview::a_preview_so_aparece_onde_a_ferramenta_a_le` (mutação «mostra sempre» sangra 12 linhas);
+  ponte `uma_ferramenta_sem_preview_nao_pede_nem_publica` (mutação sem a guarda sangra). Fotos `ferramenta_*_depois.png`
+  refeitas e olhadas. Aberto: a borracha do Wet Paint fica no modo WetPaint (`e_a_borracha` = Paint + eraser), logo o
+  preview dela continua o S do pincel molhado, como antes.
 
 ## §2 — Portões (por nome; regra do dono 23/10: sem suíte completa)
 

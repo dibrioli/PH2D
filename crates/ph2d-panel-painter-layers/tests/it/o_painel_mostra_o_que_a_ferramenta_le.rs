@@ -76,6 +76,8 @@ fn ids_da(l: LinhaDaFerramenta) -> &'static [NodeId] {
         // A Cor abre o seletor (o gesto não a muda — ver `a_cor_escondida_nao_muda_a_ferramenta`); o Composite só
         // existe com o modo Paint (`composite_active`), e a troca de ferramenta desarma-o por construção.
         LinhaDaFerramenta::Cor | LinhaDaFerramenta::Composite => &[],
+        // O preview não muda o traço: o gate dele é `a_preview_so_aparece_onde_a_ferramenta_a_le`.
+        LinhaDaFerramenta::Preview => &[],
     }
 }
 

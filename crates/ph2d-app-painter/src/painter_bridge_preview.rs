@@ -13,8 +13,8 @@
 
 use ph2d_panel_painter_layers::set_current_wet_preview;
 use ph2d_tool_painter::{
-    ALTURA_DO_PREVIEW, CenaDoPreview, ChaveDoPreview, LARGURA_DO_PREVIEW, PainterTool,
-    pintar_preview,
+    ALTURA_DO_PREVIEW, CenaDoPreview, ChaveDoPreview, LARGURA_DO_PREVIEW, LinhaDaFerramenta,
+    PainterTool, pintar_preview,
 };
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -83,6 +83,18 @@ impl Apresentacao {
         if geracao == self.geracao {
             self.quadros.push(quadro);
         }
+    }
+
+    /// A ferramenta deixou de mostrar o preview: a geração em curso morre e nada fica para mostrar (ao
+    /// voltar, nunca pisca um quadro velho).
+    pub(crate) fn esquece(&mut self) -> u64 {
+        self.geracao += 1;
+        self.ultima_mudanca = None;
+        self.modo = Modo::Animar { inicio: None };
+        self.quadros.clear();
+        self.completo = false;
+        self.mostrado = None;
+        self.geracao
     }
 
     /// A thread acabou a geração `geracao`.
@@ -186,6 +198,11 @@ impl PreviewVivo {
     }
 
     fn quadro(&mut self, painter: &PainterTool, agora: Instant) {
+        // Uma ferramenta sem preview (o Blur, o Smear, o Clone, a Máscara): nenhum trabalho, nada publicado.
+        if !painter.brush_settings().le(LinhaDaFerramenta::Preview) {
+            self.esquece();
+            return;
+        }
         let chave = painter.wet_preview_chave();
         if self.chave.as_ref() != Some(&chave) {
             self.chave = Some(chave);
@@ -213,6 +230,21 @@ impl PreviewVivo {
                     .map(|px| (px, LARGURA_DO_PREVIEW, ALTURA_DO_PREVIEW)),
             );
             self.publicado = q;
+        }
+    }
+
+    fn esquece(&mut self) {
+        if self.chave.is_none() && self.publicado.is_none() {
+            return;
+        }
+        self.chave = None;
+        let g = self.apresentacao.esquece();
+        self.viva.store(g, Ordering::Relaxed);
+        let (m, _) = &*self.pedido;
+        *m.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = None;
+        while self.recebe.try_recv().is_ok() {}
+        if self.publicado.take().is_some() {
+            set_current_wet_preview(None);
         }
     }
 }

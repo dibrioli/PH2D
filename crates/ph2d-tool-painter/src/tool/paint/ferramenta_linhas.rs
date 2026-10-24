@@ -41,6 +41,9 @@ pub enum LinhaDaFerramenta {
     TracoComoCamada,
     /// O Continuous Spacing (a cápsula entre dabs, que só as rotas do carimbo lêem).
     Continuo,
+    /// O preview vivo do pincel (e o pino dele): sai das ferramentas que só se vêem sobre tinta que já lá
+    /// está (dono 24/10: *«vamos retirar o preview para Mask, Blur e Smear»*, e depois o Clone).
+    Preview,
 }
 
 use FerramentaDoPincel as F;
@@ -74,6 +77,7 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 8] = [
             L::CorPorCamada,
             L::TracoComoCamada,
             L::Continuo,
+            L::Preview,
         ],
     ),
     (
@@ -87,6 +91,7 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 8] = [
             L::CorPorCamada,
             L::TracoComoCamada,
             L::Continuo,
+            L::Preview,
         ],
     ),
     (
@@ -101,6 +106,7 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 8] = [
             L::CorPorCamada,
             L::TracoComoCamada,
             L::Continuo,
+            L::Preview,
         ],
     ),
     (
@@ -112,6 +118,7 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 8] = [
             L::Composite,
             L::Solido,
             L::TracoComoCamada,
+            L::Preview,
         ],
     ),
     (F::Cura, &SEM_COR),

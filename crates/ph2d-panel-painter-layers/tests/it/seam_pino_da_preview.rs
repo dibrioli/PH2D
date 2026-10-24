@@ -232,3 +232,61 @@ fn o_pino_e_um_botao_de_alternar() {
         assert_eq!(b.host.store().tooltip_for(PINO), Some(ph2d_i18n::tr(dica)));
     }
 }
+
+/// ⭐ (v) **A preview só aparece onde a ferramenta a lê** (dono 24/10: o Blur, o Smear, o Clone e a Máscara não a
+/// têm; `LinhaDaFerramenta::Preview`). Escolhida pelo trilho (o `PAINTER_PAINT_MODE`), com um quadro publicado: no
+/// Pincel e na Borracha a preview e o pino pintam-se (o controlo), nas outras nem a preview nem o pino — desafixada
+/// e fixada — e a área rolável começa onde começaria sem preview (sem vão).
+#[test]
+fn a_preview_so_aparece_onde_a_ferramenta_a_le() {
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut b = Banca::nova();
+    let mut falhas = Vec::new();
+    let mut desafixada = std::collections::BTreeMap::<&str, f32>::new();
+    for fixada in [false, true] {
+        if fixada {
+            fixa(&mut b);
+        }
+        for (modo, mostra) in [
+            ("brush", true),
+            ("eraser", true),
+            ("clone", false),
+            ("blur", false),
+            ("smear", false),
+            ("mask", false),
+        ] {
+            b.tool.handle_panel_event(PanelEvent::SelectOption(
+                ph2d_editor_core::ids::PAINTER_PAINT_MODE,
+                modo.to_owned(),
+            ));
+            let rects = b.rola(0.0);
+            let pino = rects
+                .iter()
+                .any(|(w, r)| *w == PINO && r.w > 0.0 && r.h > 0.0);
+            let preview = rect_da_preview();
+            if pino != mostra || preview.is_some() != mostra {
+                falhas.push(format!(
+                    "fixada={fixada} {modo}: pino {pino}, preview {preview:?} (esperado {mostra})"
+                ));
+            }
+            // Sem preview, a primeira linha cai no mesmo sítio fixada ou não (a faixa não deixa vão).
+            let y = rect_of(&rects, ids::PAINTER_BRUSH_MEDIA).y;
+            if !mostra && fixada {
+                let sem = desafixada[modo];
+                if (y - sem).abs() > 0.5 {
+                    falhas.push(format!(
+                        "{modo}: a faixa fixada deixou um vão ({sem} → {y})"
+                    ));
+                }
+            }
+            if !fixada {
+                desafixada.insert(modo, y);
+            }
+        }
+        b.tool.handle_panel_event(PanelEvent::SelectOption(
+            ph2d_editor_core::ids::PAINTER_PAINT_MODE,
+            "brush".to_owned(),
+        ));
+    }
+    assert!(falhas.is_empty(), "{falhas:#?}");
+}

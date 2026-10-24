@@ -60,8 +60,14 @@ pub(crate) fn ha_preview() -> bool {
     st::current_wet_preview().is_some_and(|(_, w, _)| w > 0)
 }
 
+/// A ferramenta na mão mostra a preview? (dono 24/10: o Blur, o Smear, o Clone e a Máscara não a têm.)
+fn a_ferramenta_a_mostra() -> bool {
+    crate::state::current_brush()
+        .is_none_or(|b| b.le(ph2d_tool_painter::LinhaDaFerramenta::Preview))
+}
+
 /// Pinta a preview de `x` a `x + w` a partir de `y`, com o pino por cima; devolve o `y` de baixo da
-/// imagem (`None` sem quadro publicado).
+/// imagem (`None` sem quadro publicado, ou numa ferramenta que não a mostra — nem o pino, nem o vão).
 pub(crate) fn pinta(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -69,6 +75,9 @@ pub(crate) fn pinta(
     w: f32,
     y: f32,
 ) -> Option<f32> {
+    if !a_ferramenta_a_mostra() {
+        return None;
+    }
     let (px, pw, ph) = st::current_wet_preview().filter(|(_, pw, _)| *pw > 0)?;
     let alto = w * ph as f32 / pw as f32;
     ctx.scene.draw_image_rgba(

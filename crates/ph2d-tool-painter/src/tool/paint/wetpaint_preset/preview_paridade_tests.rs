@@ -172,7 +172,6 @@ fn da_tela(meio: PaintMedia, arma: Arma) -> Vec<u8> {
         &mut t,
         lw,
         lh,
-        super::Trajeto::S,
         &|| false,
         &mut |px, _, _| {
             ultimo = px.to_vec();

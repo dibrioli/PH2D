@@ -33,11 +33,11 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ),
     (
         "eraser",
-        "levado como o MODIFICADOR (a borracha cruza a tinta de referência, `preview_modificador`)",
+        "levado como `borracha` (o preview apaga o S numa tela cheia, `preview_borracha`)",
     ),
     (
         "paint_mode",
-        "levado como o MODIFICADOR (Blur, Smear, Faca, Clone cruzam a tinta de referência)",
+        "levado como `borracha` (só o modo Paint com a borracha); as outras ferramentas não têm preview (`LinhaDaFerramenta::Preview`)",
     ),
     ("brush_by_mode", "os pincéis dos OUTROS modos"),
     ("link_shared_settings", UI),

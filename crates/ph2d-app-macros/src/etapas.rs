@@ -113,6 +113,11 @@ pub struct Vistas {
 /// outras continuam à vista.
 #[must_use]
 pub fn vistas(bytes: &[u8], outras: Injectadas<'_>) -> Vistas {
+    // O objecto Macro que o Add fez nascer ainda não gravou nada: zero etapas, nada ilegível
+    // (como o cartão do Inspector, `MacroGravacao::Vazia`).
+    if bytes.is_empty() {
+        return Vistas::default();
+    }
     let doc: MacroDoc = match ph2d_macro::codec::read(bytes) {
         Ok(d) => d,
         Err(e) => {

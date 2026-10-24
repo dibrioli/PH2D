@@ -112,3 +112,19 @@ fn o_que_nasce_a_gravar_fica_dentro_do_objeto_macro_e_a_ficha_diz_quando() {
         n.inicio.0
     );
 }
+
+/// O objecto Macro que o Add acaba de fazer nascer não gravou nada: o painel mostra zero etapas e nenhum
+/// erro (a cena `=7` fotografou «This recording cannot be read.» a vermelho no passo 1).
+#[test]
+fn o_objeto_macro_vazio_nao_se_le_como_estragado() {
+    let mut b = Banca::nova();
+    let bits = b
+        .sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Macro"), Macro::default()))
+        .id()
+        .to_bits();
+    b.escolhido = Some(bits);
+    let o = b.info(Some(bits)).objeto.expect("o objecto Macro escolhido");
+    assert_eq!((o.etapas.len(), o.erro), (0, None));
+}

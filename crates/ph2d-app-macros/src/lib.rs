@@ -9,9 +9,13 @@ pub mod aplicar;
 pub mod biblioteca;
 pub mod cena_da_biblioteca;
 mod conferencia;
+/// A família «mundo» (W19): componentes, objectos e «Simular» dentro do objecto Macro.
+pub mod mundo;
 pub mod erros;
 pub mod espera;
 pub mod etapas;
+/// As etapas da família «mundo» (W19) pela porta comum.
+pub mod etapas_mundo;
 mod gestos;
 pub mod instala;
 pub mod object_add;
@@ -129,6 +133,8 @@ pub struct Macros {
     pedidos: Vec<MacroRequest>,
     /// A última recusa (armar, parar): fica até ao próximo Gravar.
     recusa: Option<&'static str>,
+    /// O que a família «mundo» não gravou no último Parar, pelo nome (W19).
+    aviso_do_mundo: Option<ErroDaMacroView>,
     /// A última edição recusada, pelo objecto.
     erro_de_edicao: Option<(u64, ErroDaMacroView)>,
     conferencias: conferencia::Conferencias,
@@ -214,6 +220,36 @@ impl Macros {
         let agora = self.agora_us;
         if let Some(s) = self.sessao.as_mut() {
             s.passos_do_motion(motion, agora);
+        }
+    }
+
+    /// **O mundo passou de `antes` a `depois`** (W19, a família «mundo»): a shell chama-o a cada passo do
+    /// undo e depois de cada desfazer/refazer — é o mesmo grão do Ctrl+Z do artista.
+    pub fn mundo_mudou(
+        &mut self,
+        antes: &ph2d_ecs::scene::WorldSnapshot,
+        depois: &ph2d_ecs::scene::WorldSnapshot,
+    ) {
+        let agora = self.agora_us;
+        if let Some(s) = self.sessao.as_mut() {
+            s.mundo_mudou(antes, depois, agora);
+        }
+    }
+
+    /// **A ponte da física correu de `de` a `ate`** neste quadro (W19): «Simular» a gravar. `None` = o
+    /// Physics desarmado (a ponte SEGURA o mundo e o contador anda sem simular nada).
+    pub fn fisica_correu(
+        &mut self,
+        sim: &mut SimWorld,
+        corrida: Option<(u64, u64)>,
+        fita: &ph2d_physics_ecs::InputTape,
+    ) {
+        let agora = self.agora_us;
+        if let Some((de, ate)) = corrida
+            && ate > de
+            && let Some(s) = self.sessao.as_mut()
+        {
+            s.fisica_correu(sim, de, ate, &fita.to_wire(), agora);
         }
     }
 
@@ -312,6 +348,7 @@ impl Macros {
                     Ok(s) => {
                         self.sessao = Some(s);
                         self.recusa = None;
+                        self.aviso_do_mundo = None;
                     }
                     Err(k) => self.recusa = Some(k),
                 }
@@ -320,8 +357,9 @@ impl Macros {
                 let Some(s) = self.sessao.take() else {
                     return;
                 };
-                if let Err(k) = s.para(f, c, agora_us) {
-                    self.recusa = Some(k);
+                match s.para(f, c, agora_us) {
+                    Ok((_, recusados)) => self.aviso_do_mundo = mundo::aviso(&recusados),
+                    Err(k) => self.recusa = Some(k),
                 }
             }
             MacroRequest::VaiPara { t_s, .. } => {

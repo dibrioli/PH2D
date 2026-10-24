@@ -169,3 +169,32 @@ fn the_registry_and_the_lookup_agree() {
         );
     }
 }
+
+/// **A família «mundo» das macros decide CADA componente registado** (W19,
+/// `docs/Macros/17_W19_plano.md` §2.5) — gravado, de outra família, dado ao aplicar, ou recusado
+/// em voz alta. Um registo novo sem decisão seria omitido calado numa macro (a dor do Illustrator).
+/// E a tabela não nomeia quem já não está registado (dois lados, como o resto deste ficheiro).
+#[test]
+fn todo_componente_registado_tem_porta_no_mundo() {
+    use ph2d_app_macros::mundo::portas::{PORTAS, porta};
+    let reg = full_registry();
+    let sem: Vec<&str> = reg
+        .iter()
+        .map(|e| e.canonical_name)
+        .filter(|n| porta(n).is_none())
+        .collect();
+    assert!(
+        sem.is_empty(),
+        "{} componente(s) sem decisão em `ph2d_app_macros::mundo::portas::PORTAS`: {sem:?}",
+        sem.len()
+    );
+    let orfas: Vec<&str> = PORTAS
+        .iter()
+        .map(|(n, _)| *n)
+        .filter(|n| reg.get_by_name(n).is_none())
+        .collect();
+    assert!(orfas.is_empty(), "portas de componentes que já não existem: {orfas:?}");
+    let mut nomes: Vec<&str> = PORTAS.iter().map(|(n, _)| *n).collect();
+    nomes.dedup();
+    assert_eq!(nomes.len(), PORTAS.len(), "um nome com duas decisões");
+}

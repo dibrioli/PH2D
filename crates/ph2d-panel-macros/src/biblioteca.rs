@@ -39,6 +39,7 @@ pub(crate) fn detalhe(m: &MacroDaBibliotecaView) -> String {
         let n = match f {
             FamiliaDaMacro::Painter => tr("panel.macros.lib.family.painter"),
             FamiliaDaMacro::Motion => tr("panel.macros.lib.family.motion"),
+            FamiliaDaMacro::Mundo => tr("panel.macros.lib.family.world"),
         };
         if !fams.contains(&n) {
             fams.push(n);

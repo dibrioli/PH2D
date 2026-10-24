@@ -44,9 +44,12 @@ impl crate::App {
             tools,
             asset_db,
             atlas_asset_map: atlas,
+            component_registry: reg,
+            physics,
             ..
         } = FrameGfx::of(gfx);
         painter_macros.segue(sim.world_mut());
+        ph2d_app_macros::mundo::palco::segue(sim, reg, physics.settings(), &mut self.preview_drive);
         // W14: no fim de um clipe a água continua ao relógio do quadro.
         painter_macros.dt_do_quadro(dt * 1000.0);
         // W8 item 2b: a etapa editada reescreve a imagem; a transação vai com o passo global.
@@ -93,11 +96,7 @@ impl crate::App {
         use crate::hero_intents::texture_edit::read_sprite_straight as reta;
         // PRECISION-READONLY: a imagem atual (o Painter ligado, senão a sprite) só se compara (W7).
         let mut le = |b, r: &mut _| reta(ph2d_ecs::Entity::from_bits(b), sim, r, asset_db, atlas);
-        let painter = ph2d_app_painter::painter_bridge_queries::o_painter(tools).map(|t| &*t);
-        let atuais = ph2d_app_painter::macro_track::Atuais {
-            painter,
-            le_sprite: Some(&mut le),
-        };
+        let atuais = ph2d_app_painter::macro_track::Atuais::de(tools, &mut le);
         let palcos = painter_macros.sobe(renderer, toasts, gravada, atuais);
         palcos
             .into_iter()

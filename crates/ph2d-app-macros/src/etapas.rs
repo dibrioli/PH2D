@@ -88,8 +88,12 @@ pub(crate) fn da_trilha<'a>(
     outras: Injectadas<'a>,
     track: &Track,
 ) -> Option<&'a dyn EtapasDaFamilia> {
-    std::iter::once(&EtapasDoPainter as &dyn EtapasDaFamilia)
-        .chain(outras.iter().copied())
+    [
+        &EtapasDoPainter as &dyn EtapasDaFamilia,
+        &crate::etapas_mundo::EtapasDoMundo,
+    ]
+    .into_iter()
+    .chain(outras.iter().copied())
         .find(|f| f.chave() == track.family)
 }
 
@@ -281,8 +285,9 @@ pub fn apaga(
     };
     let mut doc = ph2d_macro::codec::read(&m.doc).map_err(|x| erros::do_ficheiro(&x))?;
     let track = doc.tracks.get_mut(trilha).ok_or_else(erros::sem_etapa)?;
-    let l = leitor(outras, track).ok_or_else(erros::sem_etapa)?;
-    if !track.apaga_etapa(l, k) {
+    let f = da_trilha(outras, track).ok_or_else(erros::sem_etapa)?;
+    f.pode_apagar(track, k)?;
+    if !track.apaga_etapa(f.leitor(), k) {
         return Err(erros::sem_etapa());
     }
     escreve(c, bits, &doc);

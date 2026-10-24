@@ -13,7 +13,7 @@ use crate::{Cena, Familias};
 use ph2d_ecs::{Entity, SimWorld, StableId};
 use ph2d_editor_core::macro_edits::{self as m, FamiliaDaMacro};
 use ph2d_macro::{Gravadora, MacroRecorder, MacroTime, Nascimento, RefRect, TrackId};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// O que o Gravar arma.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -81,12 +81,16 @@ pub struct Sessao {
     /// Os objectos que nasceram DENTRO do objecto Macro a gravar, e quando (µs do chamador).
     nascidos: BTreeMap<u64, u64>,
     armada_us: u64,
+    /// A família «mundo» (W19): só a gravar um objecto Macro.
+    mundo: Option<crate::mundo::grava::Gravacao>,
 }
 
 fn gravadora<'a>(f: &'a mut Familias<'_>, fam: FamiliaDaMacro) -> Option<&'a mut dyn Gravadora> {
     match fam {
         FamiliaDaMacro::Painter => f.painter.as_deref_mut().map(|p| p as &mut dyn Gravadora),
         FamiliaDaMacro::Motion => Some(&mut *f.motion),
+        // O mundo grava-o a própria sessão ([`crate::mundo::grava`]), sem gravadora.
+        FamiliaDaMacro::Mundo => None,
     }
 }
 
@@ -165,9 +169,14 @@ impl Sessao {
             recusa: None,
             nascidos: BTreeMap::new(),
             armada_us: agora_us,
+            mundo: None,
         };
         match a {
-            Armacao::Objeto(bits) => s.dono = bits,
+            Armacao::Objeto(bits) => {
+                s.dono = bits;
+                let sid = sim.world().get::<StableId>(Entity::from_bits(bits));
+                s.mundo = sid.map(|x| crate::mundo::grava::Gravacao::new(x.0));
+            }
             Armacao::Familia(fam) => {
                 let (dono, alvo) = match fam {
                     FamiliaDaMacro::Painter => {
@@ -181,6 +190,7 @@ impl Sessao {
                             .ok_or(m::MACRO_RECUSA_SEM_FAMILIA)?;
                         (e.to_bits(), e.to_bits())
                     }
+                    FamiliaDaMacro::Mundo => return Err(m::MACRO_RECUSA_SEM_FAMILIA),
                 };
                 s.dono = dono;
                 s.abre_trilha(fam, alvo, f, sim, Abre::Dono)?;
@@ -189,10 +199,12 @@ impl Sessao {
         Ok(s)
     }
 
+    /// As trilhas de uma família com gravadora (o mundo não tem: chama-se só com Painter e Motion).
     fn trilhas(&mut self, fam: FamiliaDaMacro) -> &mut Trilhas {
+        debug_assert_ne!(fam, FamiliaDaMacro::Mundo, "o mundo não abre trilhas por alvo");
         match fam {
             FamiliaDaMacro::Painter => &mut self.painter,
-            FamiliaDaMacro::Motion => &mut self.motion,
+            FamiliaDaMacro::Motion | FamiliaDaMacro::Mundo => &mut self.motion,
         }
     }
 
@@ -285,6 +297,7 @@ impl Sessao {
         match fam {
             FamiliaDaMacro::Painter => !self.painter.abertas.is_empty(),
             FamiliaDaMacro::Motion => !self.motion.abertas.is_empty(),
+            FamiliaDaMacro::Mundo => self.mundo.as_ref().is_some_and(|g| !g.passos.is_empty()),
         }
     }
 
@@ -361,6 +374,10 @@ impl Sessao {
     /// **O quadro**, depois de o Painter consumir a entrada: as trilhas que abrem (o Painter e o Motion,
     /// cujos passos vêm em [`Self::passos_do_motion`]) e os passos do Painter, no instante `agora_us`.
     pub fn quadro(&mut self, f: &mut Familias<'_>, sim: &mut SimWorld, agora_us: u64) {
+        // Uma corrida da física que não andou desde o quadro anterior acabou.
+        if let Some(g) = self.mundo.as_mut() {
+            g.quadro();
+        }
         let motion = f
             .motion_em_edicao
             .and_then(|id| ph2d_ecs::entity_of_stable_id(sim.world_mut(), StableId(id)))
@@ -388,6 +405,50 @@ impl Sessao {
         }
     }
 
+    /// **O mundo passou de `antes` a `depois`** (um passo do undo, ou um desfazer): a família «mundo».
+    pub fn mundo_mudou(
+        &mut self,
+        antes: &ph2d_ecs::scene::WorldSnapshot,
+        depois: &ph2d_ecs::scene::WorldSnapshot,
+        agora_us: u64,
+    ) {
+        if let Some(g) = self.mundo.as_mut() {
+            g.mudou(antes, depois, agora_us);
+        }
+    }
+
+    /// **A ponte da física correu de `de` a `ate`** neste quadro (Physics armado e o relógio a andar):
+    /// os corpos da sub-árvore e a `fita` do projecto entram na corrida.
+    pub fn fisica_correu(
+        &mut self,
+        sim: &mut SimWorld,
+        de: u64,
+        ate: u64,
+        fita: &ph2d_physics_ecs::TapeWire,
+        agora_us: u64,
+    ) {
+        let Some(g) = self.mundo.as_mut() else {
+            return;
+        };
+        let dono = self.dono;
+        let mut q = sim.world_mut().query::<(
+            Entity,
+            &StableId,
+            &ph2d_ecs::Transform,
+            &ph2d_physics_ecs::RigidBody,
+        )>();
+        let corpos: Vec<(u64, u64, [f32; 3])> = q
+            .iter(sim.world())
+            .map(|(e, s, t, _)| (e.to_bits(), s.0, [t.translation.x, t.translation.y, t.rotation]))
+            .collect();
+        let poses = corpos
+            .into_iter()
+            .filter(|(b, ..)| dentro_de(sim, *b, dono))
+            .map(|(_, s, p)| (s, p))
+            .collect();
+        g.correu(de, ate, poses, fita, agora_us);
+    }
+
     /// **Os passos do Motion** neste quadro, depois de ele correr, no instante `agora_us`.
     pub fn passos_do_motion(&mut self, g: &mut dyn Gravadora, agora_us: u64) {
         if let Some(a) = self.motion.viva() {
@@ -409,7 +470,8 @@ impl Sessao {
         self.painter.viva().map(|a| a.alvo)
     }
 
-    /// **Parar**: os últimos passos, e o objecto fica com a `Macro` e o clipe.
+    /// **Parar**: os últimos passos, e o objecto fica com a `Macro` e o clipe. Devolve também os
+    /// componentes que a família «mundo» não gravou (o painel nomeia-os).
     ///
     /// # Errors
     /// A chave da frase (nada gravado; o clipe não coube na animação).
@@ -418,7 +480,7 @@ impl Sessao {
         f: &mut Familias<'_>,
         c: &mut Cena<'_>,
         agora_us: u64,
-    ) -> Result<usize, &'static str> {
+    ) -> Result<(usize, BTreeSet<String>), &'static str> {
         for (fam, a) in [
             (FamiliaDaMacro::Painter, self.painter.viva()),
             (FamiliaDaMacro::Motion, self.motion.viva()),
@@ -430,6 +492,7 @@ impl Sessao {
                 let _ = self.rec.push(a.id, agora_us, p);
             }
         }
+        let recusados = self.fecha_o_mundo(f);
         let doc = self.rec.finish();
         if doc.tracks.is_empty() {
             return Err(m::MACRO_RECUSA_NADA_GRAVADO);
@@ -443,6 +506,30 @@ impl Sessao {
         } else {
             ph2d_ecs::ModoDaMacro::Explicativo
         };
-        crate::instala::instala(c, f.etapas, self.dono, &doc, modo)
+        crate::instala::instala(c, f.etapas, self.dono, &doc, modo).map(|k| (k, recusados))
+    }
+
+    /// A trilha do mundo entra na gravação (depois das outras: elas dizem quem faz nascer cada
+    /// objecto); devolve os componentes que não se gravaram.
+    fn fecha_o_mundo(&mut self, f: &Familias<'_>) -> BTreeSet<String> {
+        let Some(g) = self.mundo.take() else {
+            return BTreeSet::new();
+        };
+        let Some(p) = f.portas.as_ref() else {
+            debug_assert!(g.passos.is_empty(), "o mundo gravou sem a composição para o fechar");
+            return BTreeSet::new();
+        };
+        let dono = g.dono;
+        let familia = |t: &ph2d_macro::Track| crate::aplicar::familia(t, f.etapas).ok();
+        let Some(fe) = crate::mundo::fecha(g, self.rec.doc(), &familia, p.registo, p.recurso) else {
+            return BTreeSet::new();
+        };
+        let id = self
+            .rec
+            .open_track(crate::mundo::formato::FAMILIA, dono, fe.inicial);
+        for (us, e) in fe.eventos {
+            let _ = self.rec.push(id, us, e);
+        }
+        fe.recusados
     }
 }

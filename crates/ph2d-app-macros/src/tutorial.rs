@@ -378,6 +378,8 @@ impl Tutorial {
                 FamiliaDaMacro::Painter => {
                     self.etapas_do_painter(f, alvo(sim, bits, track), track, versao(h, tr))?
                 }
+                // O «fazer» ensina o que o aluno faz à mão (Painter, Motion); o mundo toca como no Fiel.
+                FamiliaDaMacro::Mundo => continue,
             };
             out.extend(es.into_iter().map(|(preparo, e, dica)| Etapa {
                 trilha: tr,
@@ -460,6 +462,7 @@ impl Tutorial {
                         }
                         self.dica_do_motion.as_ref().and_then(|(_, d)| d.clone())
                     }
+                    FamiliaDaMacro::Mundo => None,
                 };
             }
             None => b.passo = b.total,
@@ -498,6 +501,7 @@ impl Tutorial {
                         .ok_or_else(crate::erros::sem_etapa)?;
                     pt::mostra(t, track, e.e.k).map_err(|e| crate::erros::do_painter(&e))
                 }
+                FamiliaDaMacro::Mundo => Ok(()),
             }
         })();
         self.erro = r.err().map(|e| (bits, e));
@@ -526,7 +530,7 @@ impl Tutorial {
                             .ok_or_else(crate::erros::sem_etapa)?;
                         pt::recomeca(t, track).map_err(|e| crate::erros::do_painter(&e))?;
                     }
-                    None => {}
+                    Some(FamiliaDaMacro::Mundo) | None => {}
                 }
             }
             Ok(())

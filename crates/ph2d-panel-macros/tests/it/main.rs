@@ -2,3 +2,4 @@
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod seam_biblioteca;
 mod seam_macros;
+mod seam_mundo;

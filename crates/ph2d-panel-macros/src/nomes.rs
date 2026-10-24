@@ -141,6 +141,7 @@ pub fn familia(f: FamiliaDaMacro) -> &'static str {
     match f {
         FamiliaDaMacro::Painter => tr("panel.macros.family.painter"),
         FamiliaDaMacro::Motion => tr("panel.macros.family.motion"),
+        FamiliaDaMacro::Mundo => tr("panel.macros.family.world"),
     }
 }
 

@@ -22,6 +22,8 @@ impl crate::App {
     /// O baseline vira um passo (com a transação de uma reescrita que aterrou) e `atual` o baseline novo.
     pub(super) fn empurra(&mut self, atual: super::ProjectState) {
         if let Some(base) = self.undo_baseline.replace(atual) {
+            let agora = self.undo_baseline.as_ref().map(|a| &a.world);
+            ph2d_app_macros::com(|m| agora.map(|a| m.mundo_mudou(&base.world, a)));
             // ⚠️ **A marca que vai com o passo é a do BASELINE**, não a de agora — ela descreve o
             // estado que está a ser empurrado. E a de agora passa a ser a do baseline novo, pela
             // mesma mecânica do próprio `undo_baseline`.

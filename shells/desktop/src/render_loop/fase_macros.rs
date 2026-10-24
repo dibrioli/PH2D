@@ -90,10 +90,10 @@ impl crate::App {
         let hero = gfx.hero_screen.as_ref();
         // O erro da reprodução em cena: só a shell alcança os palcos.
         let erro = escolhido.and_then(|b| {
-            gfx.painter_macros
-                .erro_de(b)
-                .map(erros::do_painter)
-                .or_else(|| self.motion_shell.palcos.erro_de(b).map(do_motion))
+            let mundo = || ph2d_app_macros::mundo::palco::erro_de(b);
+            let motion = || self.motion_shell.palcos.erro_de(b).map(do_motion);
+            let pintor = gfx.painter_macros.erro_de(b).map(erros::do_painter);
+            pintor.or_else(motion).or_else(mundo)
         });
         // O cartão MACRO do Inspector: o componente (`build_info`) e as etapas da família.
         #[cfg(feature = "panel-inspector")]

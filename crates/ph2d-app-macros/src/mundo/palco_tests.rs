@@ -222,10 +222,7 @@ impl Cena {
                 );
             }
         }
-        let cx = Contexto {
-            registo: &self.reg,
-            definicoes: PhysicsSettings::default(),
-        };
+        let cx = Contexto::novo(&self.reg, PhysicsSettings::default());
         self.palcos.segue(&mut self.sim, &cx, &mut self.drive);
         self.drive.settle();
     }
@@ -345,10 +342,7 @@ fn a_tocar_nada_entra_no_undo_nem_no_save() {
 
 impl Cena {
     fn quadro_sem_tempo(&mut self) {
-        let cx = Contexto {
-            registo: &self.reg,
-            definicoes: PhysicsSettings::default(),
-        };
+        let cx = Contexto::novo(&self.reg, PhysicsSettings::default());
         self.palcos.segue(&mut self.sim, &cx, &mut self.drive);
         self.drive.settle();
     }
@@ -390,5 +384,73 @@ fn o_scrub_para_tras_recoze_e_da_o_mesmo() {
     assert_ne!(meio, a, "controlo: a meio o corpo está noutro sítio");
     c.quadro(um, None);
     assert_eq!(c.pose(), a);
-    assert_eq!(c.palcos.recozido(c.dono, 0).map(|r| r.do_zero), Some(2));
+    let r = c.palcos.recozido(c.dono, 0).expect("palco");
+    assert_eq!(
+        (r.do_zero, r.retomas),
+        (1, 1),
+        "o scrub para trás retoma de um ponto"
+    );
+}
+
+impl Cena {
+    fn com_doc(doc: Vec<u8>) -> Self {
+        let mut c = Self::nova();
+        c.sim.world_mut().entity_mut(c.dono).insert(Macro {
+            doc,
+            ..Macro::default()
+        });
+        c
+    }
+}
+
+#[test]
+fn a_queda_que_deu_outro_resultado_diz_se() {
+    let viu = o_que_o_artista_viu();
+    let mut certo = Cena::nova();
+    certo.quadro(no_tique(TIQUES), None);
+    assert_eq!(
+        certo.palcos.erro_de(certo.dono.to_bits()),
+        None,
+        "controlo: o bit confere"
+    );
+    let mut adulterada = viu;
+    adulterada[1] += 0.01;
+    let mut c = Cena::com_doc(doc(adulterada));
+    c.quadro(no_tique(TIQUES / 2), None);
+    assert_eq!(
+        c.palcos.erro_de(c.dono.to_bits()),
+        None,
+        "a meio ainda não se confere"
+    );
+    c.quadro(no_tique(TIQUES), None);
+    let e = c
+        .palcos
+        .erro_de(c.dono.to_bits())
+        .expect("a conferência diz-se");
+    assert_eq!(e.chave, ph2d_editor_core::macro_etapas::erros::MUNDO_DIFERE);
+    let d = e.detalhe.expect("o objecto e a diferença");
+    assert!(d.contains("0.0100 m"), "{d}");
+    // E continua dito com o clipe a voltar atrás.
+    c.quadro(no_tique(10), None);
+    assert!(c.palcos.erro_de(c.dono.to_bits()).is_some());
+}
+
+#[test]
+fn esperar_numa_etapa_do_mundo_atrasa_a_queda() {
+    use ph2d_editor_core::macro_edits::CampoDaEtapa;
+    use ph2d_editor_core::macro_etapas::EtapasDaFamilia;
+    let viu = o_que_o_artista_viu();
+    let mut d = ph2d_macro::codec::read(&doc(viu)).expect("doc");
+    crate::etapas_mundo::EtapasDoMundo
+        .edita(&mut d.tracks[0], 1, &CampoDaEtapa::Espera(1.0))
+        .expect("a espera cabe");
+    let mut c = Cena::com_doc(ph2d_macro::codec::write(&d));
+    let mut sem = Cena::nova();
+    let inicio = c.pose();
+    c.quadro(no_tique(TIQUES / 2), None);
+    sem.quadro(no_tique(TIQUES / 2), None);
+    assert_ne!(sem.pose(), inicio, "controlo: sem a espera já está a cair");
+    assert_eq!(c.pose(), inicio, "com 1 s de espera ainda não caiu");
+    c.quadro(no_tique(TIQUES) + 1_000_000, None);
+    assert_eq!(c.pose(), bits(viu), "a queda acontece inteira, 1 s depois");
 }

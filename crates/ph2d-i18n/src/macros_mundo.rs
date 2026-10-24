@@ -20,6 +20,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.error.world_step_keeps_its_order" => {
             "This step cannot pass another one: the steps after it build on what it does."
         }
+        "panel.macros.error.world_physics_differs" => {
+            "Simulate landed somewhere else than in the recording: {detail}."
+        }
         _ => return None,
     })
 }

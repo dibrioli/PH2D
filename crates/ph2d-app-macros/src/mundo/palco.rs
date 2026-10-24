@@ -12,6 +12,7 @@ use super::formato::{Evento, Mudanca, Quem, RAIZ};
 use super::palco_fisica::Recozido;
 use ph2d_ecs::scene::ComponentRegistry;
 use ph2d_ecs::{Entity, Macro, MacroTempo, SimWorld, StableId, Visibility};
+use ph2d_editor_core::macro_edits::ErroDaMacroView;
 use ph2d_macro::MacroTime;
 use ph2d_physics_ecs::{BodyKind, PhysicsSettings, RigidBody};
 use ph2d_preview_drive::{BlobRef, PreviewDrive};
@@ -31,6 +32,8 @@ pub(super) struct Trilha {
     poses: BTreeMap<u32, Vec<MacroTime>>,
     /// O rapier privado do `Simula` em curso.
     pub recozido: Option<Recozido>,
+    /// A conferência de cada `Simula` (pelo índice) que já chegou ao `ate`: `Some` = deu outro bit.
+    pub conferidos: BTreeMap<usize, Option<ErroDaMacroView>>,
 }
 
 impl Trilha {
@@ -72,6 +75,7 @@ impl Trilha {
             nomes,
             poses,
             recozido: None,
+            conferidos: BTreeMap::new(),
         }
     }
 
@@ -115,11 +119,13 @@ pub fn segue(
     definicoes: PhysicsSettings,
     drive: &mut PreviewDrive,
 ) {
-    let cx = Contexto {
-        registo,
-        definicoes,
-    };
-    com(|p| p.segue(sim, &cx, drive));
+    com(|p| p.segue(sim, &Contexto::novo(registo, definicoes), drive));
+}
+
+/// **O erro da reprodução do mundo** do objecto Macro `bits` (a shell junta-o aos das outras famílias).
+#[must_use]
+pub fn erro_de(bits: u64) -> Option<ErroDaMacroView> {
+    com(|p| p.erro_de(bits))
 }
 
 fn le_as_trilhas(doc: &[u8]) -> BTreeMap<u32, Trilha> {
@@ -130,7 +136,11 @@ fn le_as_trilhas(doc: &[u8]) -> BTreeMap<u32, Trilha> {
         .iter()
         .enumerate()
         .filter(|(_, t)| t.family == super::formato::FAMILIA)
-        .filter_map(|(k, t)| Some((u32::try_from(k).ok()?, Trilha::de(Lida::de(t).ok()?))))
+        // As edições de tempo das etapas (espera, deslocação) ouvem-se: toca a trilha efectiva.
+        .filter_map(|(k, t)| {
+            let t = t.tocavel(&crate::etapas_mundo::LeitorDoMundo).ok()?;
+            Some((u32::try_from(k).ok()?, Trilha::de(Lida::de(&t).ok()?)))
+        })
         .collect()
 }
 
@@ -154,6 +164,20 @@ fn escondido(o: Option<&ObjetoEm>) -> Vec<u8> {
 pub struct Contexto<'a> {
     pub registo: &'a ComponentRegistry,
     pub definicoes: PhysicsSettings,
+    /// Um ponto de retoma do rapier privado a cada tantos tiques; `None` = recozer do zero (a
+    /// variante C da sonda).
+    pub retoma: Option<u64>,
+}
+
+impl<'a> Contexto<'a> {
+    #[must_use]
+    pub fn novo(registo: &'a ComponentRegistry, definicoes: PhysicsSettings) -> Self {
+        Self {
+            registo,
+            definicoes,
+            retoma: Some(super::palco_fisica::RETOMA),
+        }
+    }
 }
 
 impl PalcosDoMundo {
@@ -197,6 +221,17 @@ impl PalcosDoMundo {
             }
         }
         drive.blobs.devolve_os_largados(sim);
+    }
+
+    /// A 1.ª conferência que falhou nas trilhas do objecto Macro `bits`.
+    #[must_use]
+    pub fn erro_de(&self, bits: u64) -> Option<ErroDaMacroView> {
+        self.donos
+            .get(&bits)?
+            .trilhas
+            .values()
+            .flat_map(|t| t.conferidos.values())
+            .find_map(Clone::clone)
     }
 
     /// O palco da trilha `k` de `dono` (para os gates).
@@ -277,6 +312,10 @@ fn conduz(
 #[cfg(test)]
 #[path = "palco_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "palco_pilha_tests.rs"]
+mod pilha;
 
 #[cfg(test)]
 #[path = "palco_sonda.rs"]

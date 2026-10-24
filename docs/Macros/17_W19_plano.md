@@ -132,6 +132,28 @@ Sonda `mede_o_palco_do_mundo` (`--profile smoke`, as variantes no MESMO processo
 **Kill-criterion (escrito antes):** se A > 1 ms/quadro a 100 objectos, ou C' > 4 ms num scrub a 10 s com 100 corpos,
 a reprodução não é esta forma — volta ao plano. A tabela com os números entra aqui antes do código do palco.
 
+**Medido (24/10).** 1.ª rodada (carga 150–245, tecto da linha): C a 600 tiques com 100 corpos = **58,9 ms** ⇒
+REPROVOU o critério (o palco recozia do zero a cada scrub para trás). 2.ª rodada, com C' (`loadavg` 4,45 → 6,23;
+`--profile smoke`; 5 blocos rodados; mínimo; o «pior scrub» cai em `ponto + passo − 1`, 8 scrubs descendentes
+depois de tocar até 3 600):
+
+| Variante | 1 | 10 | 100 corpos/objectos |
+|---|---|---|---|
+| A — conduzir `S(t)` parado | 0,002 ms | 0,012 ms | **0,110 ms** |
+| A — conduzir com troca (põe/tira a cada quadro) | 0,003 | 0,014 | 0,126 |
+| A — quadro a andar 1 tique (ponte guardada) | 0,005 | 0,025 | 0,227 |
+| B — palco renderizado | — | — | **recusada por LEI**, não por número: segunda fonte do que se pinta (§2.4 e ⛔ abaixo) |
+| C — do zero, k = 60 / 600 / 3 600 | 0,48 / 2,45 / 7,91 | 0,74 / 5,70 / 19,9 | 3,64 / **40,2** / 157,6 ms |
+| C' — pontos a cada **60**, pior scrub perto de 0 / 600 / 3 000 | 0,073 / 0,073 / 0,073 | 0,195 / 0,195 / 0,193 | **1,75 / 1,76 / 1,74 ms** |
+| C' — pontos a cada 10, idem | 0,053 / 0,016 / 0,016 | 0,107 / 0,050 / 0,050 | 0,60 / 0,45 / 0,46 ms |
+
+Memória dos pontos de uma corrida de 3 600 tiques com 100 corpos: passo 60 = 60 pontos, **8,0 MB**; passo 10 = 360
+pontos, 48,2 MB (1,34 kB por corpo e ponto). **Escolha: C' a cada 60** (`palco_fisica::RETOMA`), 1,75 ms ≤ 4 ms no
+pior scrub, a 1/6 da RAM do passo 10 — que se aproxima do tecto `TECTO_DOS_PONTOS` (64 MiB) já a 100 corpos × 60 s,
+e acima dele o anel larga os pontos mais antigos e esse scrub volta a replayar do repouso (157 ms). A porta é do
+anel da ponte (`PhysicsBridge::set_checkpoint_policy`, append-only); prova de bit:
+`retomar_de_um_ponto_da_o_mesmo_bit_que_do_zero` e `o_scrub_para_tras_recoze_e_da_o_mesmo`.
+
 ## 4. Onde encosta em contrato (§6) e schema
 
 - `git grep 'ph2d_macro\|ph2d_physics_ecs\|preview_drive'` em `crates/ph2d-nodegraph`, `crates/ph2d-tool-registry`,

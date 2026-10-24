@@ -47,4 +47,13 @@ impl PhysicsBridge {
         settings.apply_to(&mut self.world);
         self.ring.clear();
     }
+
+    /// **Os pontos de retoma** de um mundo privado (o «Simular» de uma macro): um checkpoint a cada
+    /// `stride` tiques, até `budget_bytes`. O documento fica no [`ph2d_physics`] por omissão
+    /// (`checkpoint_stride`). Limpa o anel: os pontos guardados seguiam outra política.
+    pub fn set_checkpoint_policy(&mut self, stride: u64, budget_bytes: usize) {
+        self.ring.set_policy(stride, budget_bytes);
+        self.ring.clear();
+        self.clear_state_ring();
+    }
 }

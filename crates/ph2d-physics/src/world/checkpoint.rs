@@ -186,6 +186,8 @@ pub struct PhysicsCheckpointRing {
     /// the per-frame budget question costs nothing.
     bytes: usize,
     budget_bytes: usize,
+    /// Um ponto a cada `stride` tiques ([`STRIDE`] por omissão; [`Self::set_policy`]).
+    stride: u64,
 }
 
 /// Record one checkpoint every this many ticks. See the type docs — this is
@@ -214,7 +216,16 @@ impl PhysicsCheckpointRing {
             recent: VecDeque::new(),
             bytes: 0,
             budget_bytes: DEFAULT_BUDGET_BYTES,
+            stride: STRIDE,
         }
+    }
+
+    /// **Outro passo e outro tecto** para um mundo que não é o do documento (o rapier privado do
+    /// «Simular» de uma macro, `ph2d-app-macros::mundo::palco_fisica`): a janela inteira de uma
+    /// corrida curta cabe, e o scrub para trás replaya no máximo `stride − 1` passos. `stride ≥ 1`.
+    pub fn set_policy(&mut self, stride: u64, budget_bytes: usize) {
+        self.stride = stride.max(1);
+        self.budget_bytes = budget_bytes;
     }
 
     /// Whether a checkpoint at `tick` is worth taking: on the stride, and
@@ -223,7 +234,7 @@ impl PhysicsCheckpointRing {
     #[must_use]
     pub fn should_record(&self, tick: u64) -> bool {
         tick > 0
-            && tick.is_multiple_of(STRIDE)
+            && tick.is_multiple_of(self.stride)
             && self.recent.back().is_none_or(|(bt, _)| tick > *bt)
     }
 

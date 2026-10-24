@@ -112,6 +112,8 @@ pub mod erros {
     pub const MUNDO_FIXO: &str = "panel.macros.error.world_step_is_fixed";
     /// O mundo: uma etapa não passa à frente de outra (a seguinte parte do que a anterior fez).
     pub const MUNDO_ORDEM: &str = "panel.macros.error.world_step_keeps_its_order";
+    /// O mundo: o «Simular» recozido não deu o bit que o artista viu (o objecto e a diferença).
+    pub const MUNDO_DIFERE: &str = "panel.macros.error.world_physics_differs";
 
     /// Todas as chaves (o censo da tabela as confere).
     pub const CHAVES: &[&str] = &[
@@ -141,6 +143,7 @@ pub mod erros {
         OUTRO_TAMANHO,
         MUNDO_FIXO,
         MUNDO_ORDEM,
+        MUNDO_DIFERE,
     ];
 
     /// O erro sem detalhe.

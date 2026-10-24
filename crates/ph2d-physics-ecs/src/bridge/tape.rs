@@ -267,7 +267,8 @@ impl PhysicsBridge {
         );
         // A janela do ring é limitada; a nossa segue a dele pela borda de baixo
         // para não crescer sem teto num run longo.
-        while self.state_ring.len() > STATE_RING_CAP {
+        // Nunca menos que o anel do solver: um âncora sem a memória do mesmo tique semeia outra corrida.
+        while self.state_ring.len() > STATE_RING_CAP.max(self.ring.len()) {
             let Some(&oldest) = self.state_ring.keys().next() else {
                 break;
             };

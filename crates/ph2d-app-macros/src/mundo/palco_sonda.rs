@@ -117,6 +117,7 @@ struct Cena {
     dono: Entity,
     drive: PreviewDrive,
     palcos: PalcosDoMundo,
+    retoma: Option<u64>,
 }
 
 impl Cena {
@@ -167,6 +168,7 @@ impl Cena {
             dono,
             drive: PreviewDrive::default(),
             palcos: PalcosDoMundo::default(),
+            retoma: Some(super::super::palco_fisica::RETOMA),
         }
     }
 
@@ -179,8 +181,8 @@ impl Cena {
                 segundos: us as f64 / 1e6,
             });
         let cx = Contexto {
-            registo: &self.reg,
-            definicoes: PhysicsSettings::default(),
+            retoma: self.retoma,
+            ..Contexto::novo(&self.reg, PhysicsSettings::default())
         };
         self.palcos.segue(&mut self.sim, &cx, &mut self.drive);
         let vivo = self.drive.substitute(&mut self.sim);
@@ -205,8 +207,11 @@ enum Variante {
     Conduz(usize),
     /// Conduzir com `t` a saltar entre antes e depois do passo do corpo (põe e tira a cada quadro).
     Troca(usize),
-    /// Recozer o `Simula` do zero até `k` tiques.
+    /// Recozer o `Simula` do zero até `k` tiques (a montagem incluída: o scrub para trás sem pontos).
     DoZero(usize, u32),
+    /// C': depois de tocar até `ATE`, scrubs para trás que caem no PIOR sítio (`ponto + passo − 1`)
+    /// perto de `alvo`; com pontos a cada `passo` tiques.
+    Retoma(usize, u64, u64),
     /// Com a ponte guardada no tique 600: um quadro que anda 1 tique.
     Guardada(usize),
 }
@@ -232,6 +237,18 @@ fn corre(v: Variante) -> f64 {
             c.quadro(1_500_000);
             ms(|| c.quadro(no_tique(k)))
         }
+        Variante::Retoma(n, passo, alvo) => {
+            let mut c = Cena::nova(n);
+            c.retoma = Some(passo);
+            c.quadro(1_500_000);
+            c.quadro(no_tique(ATE));
+            (0..8u64)
+                .map(|j| {
+                    let k = (alvo / passo + 8 - j) * passo - 1;
+                    ms(|| c.quadro(no_tique(u32::try_from(k).expect("cabe"))))
+                })
+                .fold(f64::MAX, f64::min)
+        }
         Variante::Guardada(n) => {
             let mut c = Cena::nova(n);
             c.quadro(no_tique(600));
@@ -253,6 +270,11 @@ fn mede_o_palco_do_mundo() {
         for k in [60, 600, ATE] {
             vs.push(Variante::DoZero(n, k));
         }
+        for passo in [10, 60] {
+            for alvo in [0, 600, 3_000] {
+                vs.push(Variante::Retoma(n, passo, alvo));
+            }
+        }
     }
     let mut minimo = vec![f64::MAX; vs.len()];
     for bloco in 0..5 {
@@ -264,4 +286,14 @@ fn mede_o_palco_do_mundo() {
     for (v, m) in vs.iter().zip(&minimo) {
         println!("{v:?}\t{m:.3} ms");
     }
+    for (n, passo) in [(100, 10), (100, 60)] {
+        let mut c = Cena::nova(n);
+        c.retoma = Some(passo);
+        c.quadro(1_500_000);
+        c.quadro(no_tique(ATE));
+        let r = c.palcos.recozido(c.dono, 0).map(|r| r.pontos());
+        println!("pontos {n} corpos, passo {passo}: {r:?} (n.º, bytes)");
+    }
+    let la = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    println!("loadavg {la}");
 }

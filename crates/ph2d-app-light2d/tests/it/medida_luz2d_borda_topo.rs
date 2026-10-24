@@ -58,7 +58,7 @@ const FORMAS: [(&str, &str); 7] = [
 /// Como a vista do app acima de 3 GiB (`quadro_renasce`, as páginas novas): nasce, solta-se e renasce nos
 /// blocos largados — o regime rápido do driver, o mesmo para o produto e cada forma.
 fn renascido(gpu: &ph2d_gpu::GpuContext, c: Config, nome: &str) -> Solver {
-    let s = Solver::novo(gpu, c.clone()).unwrap_or_else(|e| panic!("{nome}: {e:?}"));
+    let s = Solver::novo(gpu, c).unwrap_or_else(|e| panic!("{nome}: {e:?}"));
     drop(s);
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
     Solver::novo(gpu, c).unwrap_or_else(|e| panic!("{nome}: {e:?}"))
@@ -156,7 +156,7 @@ fn medida_luz2d_borda_topo() {
         // A ordem do app: a vista nasce, o entorno monta-se, e a vista renasce com ele vivo (com a vista a renascer
         // ANTES do entorno, o acumulado dela ficava no regime lento: a soma 12,6 contra 5,6 ms, §13).
         let cv = config_da_vista(&gpu.device, g, a, dg);
-        let mut vista = Solver::novo(&gpu, cv.clone()).expect("solver da vista");
+        let mut vista = Solver::novo(&gpu, cv).expect("solver da vista");
         let (i, f) = regiao_da_janela(vista.grade_da_fluencia(), a, alvo);
         vista.regiao_fina(i, f);
         let mut entorno = config_do_entorno(&gpu.device, a, alvo, dg)
@@ -202,7 +202,7 @@ fn medida_luz2d_borda_topo() {
     let mut solvers: Vec<Solver> = formas
         .iter()
         .map(|nome| {
-            let mut s = renascido(&gpu, forma(nome, app.vista.config().clone()), nome);
+            let mut s = renascido(&gpu, forma(nome, *app.vista.config()), nome);
             let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, alvo);
             s.regiao_fina(i, f);
             assert!(s.somar_entorno(&gpu, Some(entorno)));
@@ -361,12 +361,11 @@ fn registos(pasta: &str, vista: &Solver, formas: &[&'static str]) {
     let produto =
         ph2d_light2d_gpu::fonte_do_rc(c.aritmetica, c.armazenamento, c.hrc_niveis_em_textura());
     let mut modulos = vec![("produto", produto.to_string())];
-    modulos.extend(formas.iter().map(|n| {
-        (
-            *n,
-            forma(n, c.clone()).modulo_rc.expect("a forma").to_string(),
-        )
-    }));
+    modulos.extend(
+        formas
+            .iter()
+            .map(|n| (*n, forma(n, *c).modulo_rc.expect("a forma").to_string())),
+    );
     for (nome, fonte) in modulos {
         std::fs::write(pasta.join(format!("{nome}.wgsl")), fonte).expect("o módulo");
         for entrada in ["hrc_desce", "hrc_soma"] {

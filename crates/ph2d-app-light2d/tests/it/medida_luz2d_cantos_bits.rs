@@ -1,5 +1,5 @@
-//! **A prova de mesmo bit das curas do custo dos cantos** (handoff W6g §21–§27: os 32 casos do `diag_r.py`,
-//! que viviam fora do git): a fluência em bruto das cenas 1–8 × miolo com/sem × {lei W6d, padrão}, na vista
+//! **A prova de mesmo bit das curas do custo dos cantos** (handoff W6g §21–§27: os 32 casos do script de
+//! diagnóstico, que vivia fora do git): a fluência em bruto das cenas 1–8 × miolo com/sem × {lei W6d, padrão}, na vista
 //! de fábrica, sem rebote, 3 quadros. Grava `<PH2D_CANTOS_BITS>/<caso>.bin`; com `PH2D_CANTOS_BITS_BASE`
 //! compara cada caso com o da base e conta os bytes diferentes. À mão:
 //!

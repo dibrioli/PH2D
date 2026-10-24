@@ -323,7 +323,7 @@ fn saltar_o_fora_do_miolo_nao_muda_um_bit() {
         }
         crate::comum::ler_fluencia(&gpu, &s)
     };
-    assert!(MIOLO_PADRAO.salta_o_fora, "o miolo de fábrica salta o fora");
+    const { assert!(MIOLO_PADRAO.salta_o_fora, "o miolo de fábrica salta o fora") };
     let (produto, antes, controlo) = (
         fluencia(true, false),
         fluencia(false, false),
@@ -362,7 +362,7 @@ fn cena_a_mexer(k: usize) -> CenaDeLuz {
             1.0,
         ));
     }
-    if k % 2 == 0 {
+    if k.is_multiple_of(2) {
         oclusores.push(oclusor(
             regular([c[0] + 1.1, c[1] - 0.5], 0.45, 4, 0.3 + 0.1 * t),
             0.45,

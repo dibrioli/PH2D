@@ -89,7 +89,7 @@ fn identidade(
         modulo_rc: Some(Box::leak(m.into_boxed_str())),
         ..c
     };
-    drop(Solver::novo(gpu, c.clone()).expect("identidade"));
+    drop(Solver::novo(gpu, c).expect("identidade"));
     espera(gpu);
     let mut s = Solver::novo(gpu, c).expect("identidade");
     let (i, f) = regiao_da_janela(s.grade_da_fluencia(), a, alvo);
@@ -205,7 +205,7 @@ fn controlo(
 ) {
     let g = grade_do_quadro(a, alvo, dg).expect("a grade");
     let cv = config_da_vista(&gpu.device, g, a, dg);
-    let vista = Solver::novo(gpu, cv.clone()).expect("solver da vista");
+    let vista = Solver::novo(gpu, cv).expect("solver da vista");
     let mut entorno = entorno_de(gpu, a, alvo, dg, vista.config());
     let (i, f) = regiao_da_janela(vista.grade_da_fluencia(), a, alvo);
     drop(vista);
@@ -228,7 +228,7 @@ fn controlo(
         loadavg().trim()
     );
     resumo(rotulo, "P sozinha", &so);
-    let mut id = identidade(gpu, p.config().clone(), a, alvo, &entorno);
+    let mut id = identidade(gpu, *p.config(), a, alvo, &entorno);
     eprintln!(
         "O {rotulo} · controlo · grade {}×{} · vram {} · load {}",
         p.config().grade.largura,
@@ -313,7 +313,7 @@ fn app(
         resumo(rotulo, &format!("app {vida} sozinha"), &v);
     }
     // A `identidade` nascida com a app viva (como na régua com `P` viva), com o entorno próprio.
-    let cfg = l.solver().expect("a vista").config().clone();
+    let cfg = *l.solver().expect("a vista").config();
     let mut entorno = entorno_de(gpu, a, alvo, dg, &cfg);
     let mut id = identidade(gpu, cfg, a, alvo, &entorno);
     eprintln!("O {rotulo} · app + identidade · vram {}", vram());

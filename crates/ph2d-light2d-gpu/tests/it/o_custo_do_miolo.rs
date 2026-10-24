@@ -73,6 +73,104 @@ fn solver(gpu: &ph2d_gpu::GpuContext, base: bool, so_a_c0: bool, bloco: u32) -> 
     s
 }
 
+/// Os despachos que o miolo grava por quadro.
+fn despachos_do_miolo(gpu: &ph2d_gpu::GpuContext, c: &CenaDeLuz, base: bool, bloco: u32) -> usize {
+    let mut s = solver(gpu, base, false, bloco);
+    assert!(s.medir_fases_do_miolo(gpu));
+    s.quadro(gpu, c);
+    let f = s.fases_do_miolo(gpu).expect("fases");
+    f.iter().map(|(_, _, n)| n).sum()
+}
+
+/// ⭐ bug 7 (W6i) — o que custam `n[k]` despachos DEPENDENTES (cada um lê e escreve o mesmo buffer, como as
+/// relaxações do miolo) numa passagem, nesta placa: o MÍNIMO de 7 rodadas intercaladas, em ms.
+fn custo_de_despachos_ms(gpu: &ph2d_gpu::GpuContext, n: [usize; 2]) -> [f64; 2] {
+    let d = &gpu.device;
+    let m = d.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("custo de um despacho"),
+        source: wgpu::ShaderSource::Wgsl(
+            "@group(0) @binding(0) var<storage, read_write> b: array<u32>;
+             @compute @workgroup_size(64) fn main() { b[0] += 1u; }"
+                .into(),
+        ),
+    });
+    let pipe = d.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        label: None,
+        layout: None,
+        module: &m,
+        entry_point: Some("main"),
+        compilation_options: Default::default(),
+        cache: None,
+    });
+    let buf = d.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size: 256,
+        usage: wgpu::BufferUsages::STORAGE,
+        mapped_at_creation: false,
+    });
+    let bg = d.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: None,
+        layout: &pipe.get_bind_group_layout(0),
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: buf.as_entire_binding(),
+        }],
+    });
+    let qs = d.create_query_set(&wgpu::QuerySetDescriptor {
+        label: None,
+        ty: wgpu::QueryType::Timestamp,
+        count: 2,
+    });
+    let resolve = d.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size: 16,
+        usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
+        mapped_at_creation: false,
+    });
+    let leitura = d.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size: 16,
+        usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    let periodo = f64::from(gpu.queue.get_timestamp_period());
+    let medir = |quantos: usize| {
+        let mut enc = d.create_command_encoder(&Default::default());
+        {
+            let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: None,
+                timestamp_writes: Some(wgpu::ComputePassTimestampWrites {
+                    query_set: &qs,
+                    beginning_of_pass_write_index: Some(0),
+                    end_of_pass_write_index: Some(1),
+                }),
+            });
+            p.set_pipeline(&pipe);
+            p.set_bind_group(0, &bg, &[]);
+            for _ in 0..quantos {
+                p.dispatch_workgroups(1, 1, 1);
+            }
+        }
+        enc.resolve_query_set(&qs, 0..2, &resolve, 0);
+        enc.copy_buffer_to_buffer(&resolve, 0, &leitura, 0, 16);
+        gpu.queue.submit([enc.finish()]);
+        let f = leitura.slice(..);
+        f.map_async(wgpu::MapMode::Read, |r| r.expect("map"));
+        d.poll(wgpu::PollType::wait_indefinitely()).expect("poll");
+        let t: [u64; 2] = bytemuck::pod_read_unaligned(&f.get_mapped_range());
+        leitura.unmap();
+        t[1].saturating_sub(t[0]) as f64 * periodo * 1e-6
+    };
+    let mut minimo = [f64::INFINITY; 2];
+    for rodada in 0..7 {
+        for o in 0..2 {
+            let k = (o + rodada) % 2;
+            minimo[k] = minimo[k].min(medir(n[k]));
+        }
+    }
+    minimo
+}
+
 fn tem_relogio(gpu: &ph2d_gpu::GpuContext) -> bool {
     gpu.device
         .features()
@@ -90,13 +188,7 @@ fn a_base_do_miolo_corta_os_despachos() {
         return;
     }
     let c = cena();
-    let despachos = |base: bool, bloco: u32| {
-        let mut s = solver(&gpu, base, false, bloco);
-        assert!(s.medir_fases_do_miolo(&gpu));
-        s.quadro(&gpu, &c);
-        let f = s.fases_do_miolo(&gpu).expect("fases");
-        f.iter().map(|(_, _, n)| n).sum::<usize>()
-    };
+    let despachos = |base: bool, bloco: u32| despachos_do_miolo(&gpu, &c, base, bloco);
     let (com, sem) = (despachos(true, 1), despachos(false, 1));
     let bloco = despachos(true, MIOLO_PADRAO.bloco);
     eprintln!(
@@ -174,10 +266,30 @@ fn o_custo_do_miolo_desce_com_a_base() {
         controlo > TETO_RAZAO,
         "controlo: o custo antigo contra si mesmo dá {controlo:.3} — a régua não separa"
     );
-    assert!(
-        razao <= TETO_RAZAO,
-        "o miolo com a base custa {razao:.3} do de sem ela (teto {TETO_RAZAO})"
+    // ⭐ bug 7 (W6i) — a lei da base é a de uma placa LIMITADA POR DESPACHOS (a RTX: ~1,2 µs cada); numa que
+    // não é (a Radeon integrada: o miolo ~11 ms de trabalho), cortar despachos não desce o custo. A placa diz
+    // qual é: o custo dos despachos que a base corta, medido aqui, contra o miolo sem ela.
+    let (com_n, sem_n) = (
+        despachos_do_miolo(&gpu, &c, true, 1),
+        despachos_do_miolo(&gpu, &c, false, 1),
     );
+    let [t_sem, t_com] = custo_de_despachos_ms(&gpu, [sem_n, com_n]);
+    let poupanca = (t_sem - t_com) / minimo[1];
+    eprintln!(
+        "os despachos: {sem_n} custam {t_sem:.3} ms · {com_n} custam {t_com:.3} ms — a base poupa {:.0} % do miolo sem ela",
+        100.0 * poupanca
+    );
+    if poupanca >= 1.0 - TETO_RAZAO {
+        assert!(
+            razao <= TETO_RAZAO,
+            "o miolo com a base custa {razao:.3} do de sem ela (teto {TETO_RAZAO})"
+        );
+    } else {
+        eprintln!(
+            "a placa não é limitada por despachos: a lei da base (≤ {TETO_RAZAO}) não se aplica nela; os despachos \
+             continuam no teto (`a_base_do_miolo_corta_os_despachos`)"
+        );
+    }
     assert!(
         entorno <= TETO_ENTORNO,
         "o entorno com `so_a_c0` ainda paga {entorno:.3} da grade fina e do miolo (teto {TETO_ENTORNO})"

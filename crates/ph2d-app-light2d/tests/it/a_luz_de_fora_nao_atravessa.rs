@@ -16,7 +16,7 @@ use ph2d_light2d_ecs::{CenaDeLuz, Emissor, Oclusor};
 use ph2d_light2d_gpu::{Grade, Solver};
 use ph2d_render::Camera2d;
 
-use crate::comum::{fluencia_lida, gpu, renderer};
+use crate::comum::{fluencia_lida, gpu, mesmo_bit_por_placa, renderer};
 
 const FHD: (u32, u32) = (1920, 1080);
 /// Atrás de um opaco, com a luz de fora a 0,12–0,14 sem ele: o teto (1,5 % dela). Medido 0,0000.
@@ -376,14 +376,11 @@ fn o_recorte_do_arquivo_nao_muda_um_bit() {
             fluencia_lida(&gpu, &s).v
         };
         let (com, sem) = (luz(true), luz(false));
-        let diferentes = com.iter().zip(&sem).filter(|(a, b)| a != b).count();
-        eprintln!(
-            "{centro:?} {nivel:?}: {diferentes} de {} texels diferentes",
-            com.len()
-        );
-        assert!(
-            com.len() == sem.len() && diferentes == 0,
-            "{centro:?} {nivel:?}: o recorte mudou {diferentes} texels"
+        mesmo_bit_por_placa(
+            &gpu,
+            &com,
+            &sem,
+            &format!("{centro:?} {nivel:?}: o recorte"),
         );
     }
 }
@@ -459,19 +456,16 @@ fn os_quadrantes_juntos_nao_mudam_um_bit() {
             fluencia_lida(&gpu, &s).v
         };
         let (com, sem) = (luz(true), luz(false));
-        let diferentes = com.iter().zip(&sem).filter(|(a, b)| a != b).count();
         let acesos = sem.iter().filter(|v| v.iter().any(|c| *c > 0.0)).count();
-        eprintln!(
-            "{centro:?} {alvo:?}: {diferentes} de {} texels diferentes ({acesos} acesos)",
-            com.len()
-        );
         assert!(
             acesos > 0,
             "{centro:?} {alvo:?}: a vista às escuras não prova nada"
         );
-        assert!(
-            com.len() == sem.len() && diferentes == 0,
-            "{centro:?} {alvo:?}: juntar os quadrantes mudou {diferentes} texels"
+        mesmo_bit_por_placa(
+            &gpu,
+            &com,
+            &sem,
+            &format!("{centro:?} {alvo:?} ({acesos} acesos): juntar os quadrantes"),
         );
     }
 }
@@ -544,14 +538,11 @@ fn o_nivel_0_por_um_cone_nao_muda_um_bit() {
         );
         for (nome, um) in [("todos pelos cones", 0), ("todos por um cone", u32::MAX)] {
             let outra = luz(Some(um));
-            let diferentes = produto.iter().zip(&outra).filter(|(x, y)| x != y).count();
-            eprintln!(
-                "{nivel:?} {centro:?} {alvo:?} × {nome}: {diferentes} de {} texels diferentes ({acesos} acesos)",
-                produto.len()
-            );
-            assert!(
-                produto.len() == outra.len() && diferentes == 0,
-                "{nivel:?} {centro:?} {alvo:?}: o produto × {nome} mudou {diferentes} texels"
+            mesmo_bit_por_placa(
+                &gpu,
+                &produto,
+                &outra,
+                &format!("{nivel:?} {centro:?} {alvo:?} ({acesos} acesos): o produto × {nome}"),
             );
         }
     }
@@ -629,14 +620,11 @@ fn a_descida_sem_o_t_nulo_nao_muda_um_bit() {
             acesos > 0,
             "{nivel:?} {centro:?} {alvo:?}: a vista às escuras não prova nada"
         );
-        let diferentes = com.iter().zip(&sem).filter(|(x, y)| x != y).count();
-        eprintln!(
-            "{nivel:?} {centro:?} {alvo:?}: {diferentes} de {} texels diferentes ({acesos} acesos)",
-            com.len()
-        );
-        assert!(
-            com.len() == sem.len() && diferentes == 0,
-            "{nivel:?} {centro:?} {alvo:?}: saltar o T nulo mudou {diferentes} texels"
+        mesmo_bit_por_placa(
+            &gpu,
+            &com,
+            &sem,
+            &format!("{nivel:?} {centro:?} {alvo:?} ({acesos} acesos): saltar o T nulo"),
         );
     }
 }

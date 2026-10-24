@@ -9,10 +9,16 @@
 //! `emissao` +736 B) e o alinhamento do sítio onde o `gpu-allocator` (lista livre) põe o recurso — o
 //! relatório soma ao tamanho o salto até o deslocamento alinhado, que depende do que foi alocado
 //! antes (MEDIDO, W5n: o mesmo `luz2d/buf/miolo` de 4 096 B pedidos ocupou 4 112 num degrau e 4 128
-//! noutro). Por isso a lei é: o enchimento de cada recurso fica abaixo de [`TETO_ENCHIMENTO`] em toda
-//! grade e varia entre elas menos que [`VARIA_ENCHIMENTO`] (os tamanhos variam ×4 a ×16). Um tamanho
-//! declarado errado escala com a grade; o controlo (as pirâmides declaradas sem a cauda dos mips)
-//! tem de reprovar.
+//! noutro). Por isso a lei é: o enchimento de cada recurso varia entre as grades menos que
+//! [`VARIA_ENCHIMENTO`] e menos que [`FRACAO_DA_VARIACAO`] do que o declarado varia (os tamanhos variam ×4 a
+//! ×16); e, numa placa de arranjo LINEAR, fica abaixo de [`TETO_ENCHIMENTO`] em toda grade. Um tamanho
+//! declarado errado escala com a grade; o controlo (as pirâmides declaradas sem a cauda dos mips) tem de
+//! reprovar em toda placa.
+//!
+//! ⭐ bug 7 (W6i) — a RADV arranja as texturas em ladrilhos: +65 536 B na `cantos`, +43 776 nas pirâmides do
+//! miolo, a `hrc_r0` (8192 × 8 `Rg32Uint`) em 1 MiB — constantes entre as grades, salvo a `borda` (+32 768 a
+//! +57 344: 6,25 % do que o declarado varia; a cauda esquecida dá ~33 %). O teto é o da NVIDIA; a placa diz
+//! qual é a dela pela [`arranjo_linear`].
 
 use std::collections::BTreeMap;
 
@@ -57,13 +63,51 @@ const TETO_ENCHIMENTO: i64 = 3072;
 /// A variação do enchimento de um recurso entre as grades — MEDIDO: 16 B (o `luz2d/buf/miolo`, o
 /// alinhamento do sítio); o salto de alinhamento é menor que 1 KiB.
 const VARIA_ENCHIMENTO: i64 = 1024;
+/// O enchimento não escala com a grade: a sua variação entre as grades fica abaixo desta fração da variação do
+/// declarado — MEDIDO na RADV (bug 7): a `borda` 6,25 %; a cauda dos mips esquecida (o controlo) ~33 %.
+const FRACAO_DA_VARIACAO: f64 = 0.125;
 
-/// O enchimento de cada recurso nas grades viola a lei? (`Some(a frase)`)
-fn fora_da_lei(enchimento: &BTreeMap<String, Vec<i64>>) -> Option<String> {
-    enchimento.iter().find_map(|(nome, e)| {
-        let (lo, hi) = (e.iter().min()?, e.iter().max()?);
-        (*hi >= TETO_ENCHIMENTO || hi - lo >= VARIA_ENCHIMENTO)
-            .then(|| format!("«{nome}»: {e:?} (teto {TETO_ENCHIMENTO}, varia {VARIA_ENCHIMENTO})"))
+/// (o enchimento, o declarado) de um recurso numa grade.
+type Amostras = BTreeMap<String, Vec<(i64, u64)>>;
+
+/// A placa arranja as texturas em LINHA (o teto vale)? Uma textura do tamanho da `hrc_r0` (8192 × 8
+/// `Rg32Uint`, 524 288 B), sozinha: a NVIDIA dá-lhe o que ela pede, a RADV o dobro (medido, bug 7).
+fn arranjo_linear(gpu: &ph2d_gpu::GpuContext) -> bool {
+    let antes = alocacoes(gpu).expect("relatório");
+    let _t = gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("g5/prova do arranjo"),
+        size: wgpu::Extent3d {
+            width: 8192,
+            height: 8,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rg32Uint,
+        usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    });
+    let n = novas(&antes, &alocacoes(gpu).expect("relatório"));
+    let (_, bytes) = n["g5/prova do arranjo"];
+    eprintln!("G5 prova do arranjo: 524288 pedidos, {bytes} alocados");
+    (bytes as i64) - 524_288 < TETO_ENCHIMENTO
+}
+
+/// O enchimento de cada recurso nas grades viola a lei? (`Some(a frase)`); `linear` = o teto vale.
+fn fora_da_lei(amostras: &Amostras, linear: bool) -> Option<String> {
+    amostras.iter().find_map(|(nome, a)| {
+        let e = a.iter().map(|x| x.0);
+        let d = a.iter().map(|x| x.1);
+        let (lo, hi) = (e.clone().min()?, e.max()?);
+        let varia_d = d.clone().max()? - d.min()?;
+        let escala = hi - lo >= VARIA_ENCHIMENTO.max((FRACAO_DA_VARIACAO * varia_d as f64) as i64);
+        (escala || (linear && hi >= TETO_ENCHIMENTO)).then(|| {
+            format!(
+                "«{nome}»: {a:?} (teto {}, varia {VARIA_ENCHIMENTO} ou {FRACAO_DA_VARIACAO} do declarado)",
+                if linear { TETO_ENCHIMENTO.to_string() } else { "—".into() }
+            )
+        })
     })
 }
 
@@ -83,9 +127,10 @@ fn g5_o_que_a_placa_alocou_e_o_que_a_pass_list_declara() {
         eprintln!("G5: o backend não dá relatório do alocador — saltado");
         return;
     }
-    let mut enchimento: BTreeMap<String, Vec<i64>> = BTreeMap::new();
+    let linear = arranjo_linear(&gpu);
+    let mut enchimento = Amostras::new();
     // O controlo: as texturas com mips declaradas só com o nível 0.
-    let mut sem_a_cauda: BTreeMap<String, Vec<i64>> = BTreeMap::new();
+    let mut sem_a_cauda = Amostras::new();
     // Cada degrau, e o Baixo com a grade FINA da luz direta (W4b: a fluência fina e a visibilidade).
     let configs = DEGRAUS
         .into_iter()
@@ -140,12 +185,12 @@ fn g5_o_que_a_placa_alocou_e_o_que_a_pass_list_declara() {
             enchimento
                 .entry(nome.clone())
                 .or_default()
-                .push(bytes as i64 - d as i64);
+                .push((bytes as i64 - d as i64, d));
             if let Some(&d0) = nivel0.get(nome) {
                 sem_a_cauda
                     .entry(nome.clone())
                     .or_default()
-                    .push(bytes as i64 - d0 as i64);
+                    .push((bytes as i64 - d0 as i64, d0));
             }
         }
         for nome in decl.keys() {
@@ -182,13 +227,20 @@ fn g5_o_que_a_placa_alocou_e_o_que_a_pass_list_declara() {
             "G5 geometria: {geo:?}"
         );
     }
-    let controlo = fora_da_lei(&sem_a_cauda);
-    eprintln!("G5 controlo (as pirâmides sem a cauda dos mips): {controlo:?}");
+    let controlo = fora_da_lei(&sem_a_cauda, linear);
+    eprintln!(
+        "G5 · arranjo {} · controlo (as pirâmides sem a cauda dos mips): {controlo:?}",
+        if linear {
+            "linear (o teto vale)"
+        } else {
+            "em ladrilhos (o teto não vale)"
+        }
+    );
     assert!(
         controlo.is_some(),
         "controlo: a declaração sem a cauda dos mips passa na lei ({sem_a_cauda:?}) — a régua não a vê"
     );
-    if let Some(f) = fora_da_lei(&enchimento) {
+    if let Some(f) = fora_da_lei(&enchimento, linear) {
         panic!("G5: o enchimento escala com a grade ou passa do teto: {f}");
     }
 }

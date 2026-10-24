@@ -15,7 +15,7 @@ use ph2d_light2d_ecs::coleta::cena_de_luz;
 use ph2d_light2d_gpu::{Config, Solver};
 use ph2d_render::Camera2d;
 
-use crate::comum::{fluencia_lida, gpu};
+use crate::comum::{fluencia_lida, gpu, mesmo_bit_por_placa};
 
 /// A leitura do produto e a de antes (W6g §32).
 pub(crate) const SEM_DESVIO: &str = "        var i = FORA_DA_JANELA;
@@ -110,14 +110,13 @@ fn a_leitura_da_borda_sem_desvio_nao_muda_um_bit() {
             acesos > 0,
             "{nivel:?} {centro:?} {alvo:?}: a vista às escuras não prova nada"
         );
-        let diferentes = agora.iter().zip(&antes).filter(|(x, y)| x != y).count();
-        eprintln!(
-            "{nivel:?} {centro:?} {alvo:?} (k {k}): {diferentes} de {} texels diferentes ({acesos} acesos)",
-            agora.len()
-        );
-        assert!(
-            agora.len() == antes.len() && diferentes == 0,
-            "{nivel:?} {centro:?} {alvo:?}: a leitura sem desvio mudou {diferentes} texels"
+        mesmo_bit_por_placa(
+            &gpu,
+            &agora,
+            &antes,
+            &format!(
+                "{nivel:?} {centro:?} {alvo:?} (k {k}, {acesos} acesos): a leitura sem desvio"
+            ),
         );
     }
 }

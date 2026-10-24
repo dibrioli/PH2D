@@ -319,3 +319,51 @@ fn amostra(f: &[[f32; 3]], g: ph2d_light2d_gpu::Grade, p: [f64; 2], c: usize) ->
     let b = em(i0, j0 + 1.0) * (1.0 - fx) + em(i0 + 1.0, j0 + 1.0) * fx;
     a * (1.0 - fy) + b * fy
 }
+
+/// ⭐ bug 7 (W6i) — a lei do «não muda um bit» entre duas FORMAS da mesma conta, por placa (o dono, 24/10): 0
+/// texels onde o compilador da placa não reescreve a conta; numa placa cujo compilador PROVADAMENTE a reescreve
+/// (as diferenças morrem com o otimizador desligado — a RADV com `ACO_DEBUG=noopt`, `docs/Luz2D/BUGS_luz2d.md`
+/// bug 7) só 1 ULP do f16 da fluência. Imprime a contagem e a lei aplicada; reprova fora dela.
+pub fn mesmo_bit_por_placa(gpu: &GpuContext, a: &[[f32; 3]], b: &[[f32; 3]], onde: &str) {
+    assert_eq!(
+        a.len(),
+        b.len(),
+        "{onde}: as duas fluências têm tamanhos diferentes"
+    );
+    let ulps = |x: f32, y: f32| {
+        let (p, q) = (
+            half::f16::from_f32(x).to_bits(),
+            half::f16::from_f32(y).to_bits(),
+        );
+        p.abs_diff(q)
+    };
+    let (mut diferentes, mut pior) = (0usize, 0u16);
+    for (x, y) in a.iter().zip(b) {
+        if x != y {
+            diferentes += 1;
+            pior = pior.max((0..3).map(|c| ulps(x[c], y[c])).max().unwrap_or(0));
+        }
+    }
+    let i = gpu.adapter.get_info();
+    let reescreve = i.driver.to_lowercase().contains("radv") || i.name.contains("RADV");
+    eprintln!(
+        "{onde}: {diferentes} de {} texels diferentes, o pior {pior} ULP do f16 · a lei {}",
+        a.len(),
+        if reescreve {
+            "da placa que reescreve a conta (≤ 1 ULP)"
+        } else {
+            "do mesmo bit (0 texels)"
+        }
+    );
+    if reescreve {
+        assert!(
+            pior <= 1,
+            "{onde}: {diferentes} texels, o pior a {pior} ULP do f16 (a lei: ≤ 1)"
+        );
+    } else {
+        assert_eq!(
+            diferentes, 0,
+            "{onde}: {diferentes} texels diferentes (o pior a {pior} ULP do f16)"
+        );
+    }
+}

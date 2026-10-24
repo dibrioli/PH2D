@@ -28,6 +28,9 @@ pub enum TrackMenuKind {
     /// própria em vez de herdar a do `Plain` (uma linha morta em toda row de Time
     /// Remap é a doença que a forma "uma tabela por menu" existe pra impedir).
     TimeRemap,
+    /// A linha de GRUPO (o losango único de x/y de um campo): *Delete Track* e as duas
+    /// cascatas, aplicados a TODOS os membros. O mesmo menu do `Plain`.
+    Group,
 }
 
 // ── Context-menu vocabulary (moved from `types.rs` under the LOC cap) ─────────
@@ -293,12 +296,20 @@ pub enum ContextMenuKind {
     TimelineTrackTimeRemap {
         target: u64,
     },
+    /// O menu da linha de **GRUPO** do dope-sheet — a tabela do `TimelineTrack`, mas cada
+    /// ação vale para todos os membros. `target` é o `AnimTarget` cru de um membro
+    /// qualquer; o painel resolve o grupo a partir dele.
+    TimelineTrackGroup {
+        target: u64,
+    },
     /// The extrapolation-mode submenu (plan §6), opened by a track menu's Pre/Post
     /// cascade. `target` is the raw `AnimTarget`; `side` is `0` = Pre, `1` = Post.
     /// The panel resolves it and raises `SetTrackExtrap`.
     TimelineExtrap {
         target: u64,
         side: u8,
+        /// `true` = aberto do menu de GRUPO: o modo vale para todos os membros.
+        grupo: bool,
     },
     /// Right-clicked a stack lane's LABEL (`ids::TIMELINE_LANE_MENU`): how the
     /// lane enters the blend, and whether it stays at all.
@@ -454,7 +465,12 @@ impl ContextMenuKind {
         Self::TimelineTrackAxis { target: 0 },
         Self::TimelineTrackPath { target: 0 },
         Self::TimelineTrackTimeRemap { target: 0 },
-        Self::TimelineExtrap { target: 0, side: 0 },
+        Self::TimelineTrackGroup { target: 0 },
+        Self::TimelineExtrap {
+            target: 0,
+            side: 0,
+            grupo: false,
+        },
         Self::TimelineLane { lane: 0 },
         Self::TimelineStrip { lane: 0, strip: 0 },
         Self::TimelineMarker { index: 0 },

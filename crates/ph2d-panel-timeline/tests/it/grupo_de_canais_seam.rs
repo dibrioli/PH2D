@@ -10,7 +10,9 @@ use ph2d_ecs::canal_vetor as v;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_timeline::TimelinePanel;
-use ph2d_panel_timeline::ids::{timeline_group_key_id, timeline_group_twirl_id, timeline_twirl_id};
+use ph2d_panel_timeline::ids::{
+    timeline_group_key_id, timeline_group_row_id, timeline_group_twirl_id, timeline_twirl_id,
+};
 use ph2d_panel_timeline::state::{TimelinePanelState, drain_intents, set_current_timeline};
 use ph2d_timeline::{
     AnimTarget, Interp, KeyId, KeyView, PropKind, TimelineIntent, TimelineViewSnapshot, TrackView,
@@ -143,6 +145,152 @@ fn o_triangulo_do_grupo_mostra_os_membros() {
     assert!(
         rect_of(&regs, timeline_twirl_id(2)).is_some(),
         "aberto, o R ganha a sua linha (e o seu ▶ do editor de curva)"
+    );
+    set_current_timeline(None);
+}
+
+/// O botão direito na ETIQUETA do grupo fechado abre o menu de GRUPO, com o handle do grupo. (Mutação:
+/// não registar a etiqueta em `paint_grupo` ⇒ o `expect` dispara; `menu: Plain` ⇒ outro menu.)
+#[test]
+fn o_botao_direito_na_etiqueta_do_grupo_abre_o_menu_de_grupo() {
+    use ph2d_editor_core::interaction::ContextMenuKind;
+    use ph2d_editor_core::panel::PanelHostInternal;
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    set_current_timeline(Some(snap()));
+    let regs = host.paint::<TimelinePanel>(&mut state, VIEWPORT);
+    let r =
+        rect_of(&regs, timeline_group_row_id(2)).expect("a etiqueta do grupo não está registada");
+    let ev = |kind, t| PointerEvent {
+        x: r.x + r.w * 0.5,
+        y: r.y + r.h * 0.5,
+        pressure: 1.0,
+        kind,
+        source: PointerSource::Mouse,
+        button: PointerButton::Secondary,
+        timestamp_ns: t,
+    };
+    let _ = host.dispatch_pointer_event(ev(PointerKind::Down, 0));
+    let _ = host.dispatch_pointer_event(ev(PointerKind::Up, 1));
+    assert_eq!(
+        host.store().context_menu().map(|m| m.kind),
+        Some(ContextMenuKind::TimelineTrackGroup { target: 2 }),
+    );
+    set_current_timeline(None);
+}
+
+fn clicar_no_menu(
+    host: &mut MockPanelHost,
+    state: &mut TimelinePanelState,
+    kind: ph2d_editor_core::interaction::ContextMenuKind,
+    id: ph2d_a11y::NodeId,
+) {
+    use ph2d_editor_core::interaction::{ContextMenuRequest, WidgetEvent};
+    use ph2d_editor_core::panel::PanelHostInternal;
+    host.store_mut().open_context_menu(ContextMenuRequest {
+        x: 0.0,
+        y: 0.0,
+        kind,
+    });
+    host.store_mut().close_context_menu(); // o Down antes do Click parqueia-o
+    let _ = host.apply_panel_event::<TimelinePanel>(state, WidgetEvent::Click(id));
+}
+
+/// *Delete Track* no menu de grupo desliga TODOS os membros (a rotação fica) e um só Ctrl+Z devolve-os
+/// todos. (Mutação: sem o par `BeginEdit`/`EndEdit` ⇒ o Undo devolve só o último.)
+#[test]
+fn delete_track_no_grupo_apaga_todos_os_membros_num_passo_de_undo() {
+    use ph2d_editor_core::interaction::ContextMenuKind;
+    use ph2d_timeline::{TimelineState, apply_intent};
+    let _ = drain_intents();
+    let cor = |c| {
+        PropKind::Field(FieldKey::new(
+            VETOR,
+            v::TINTA_PREENCH + v::OFF_SOLIDA + c,
+            0,
+            0,
+        ))
+    };
+    let mut st = TimelineState::new();
+    let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    let props = [PropKind::Rotation, cor(0), cor(1), cor(2), cor(3)];
+    for prop in props {
+        apply_intent(&mut st, &mut ph, TimelineIntent::Bind { entity: 9, prop });
+    }
+    let ligadas = |st: &TimelineState| props.map(|p| st.doc.binding_for(9, p).is_some());
+    let handle = st.doc.binding_for(9, cor(1)).unwrap().target.get();
+    let mut s = TimelineViewSnapshot::default();
+    s.rebuild(&mut st, &ph, false);
+    set_current_timeline(Some(s));
+
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    clicar_no_menu(
+        &mut host,
+        &mut state,
+        ContextMenuKind::TimelineTrackGroup { target: handle },
+        ph2d_editor_core::ids::CTX_MENU_TL_DELETE_TRACK,
+    );
+    for i in drain_intents() {
+        apply_intent(&mut st, &mut ph, i);
+    }
+    assert_eq!(
+        ligadas(&st),
+        [true, false, false, false, false],
+        "a cor inteira sai; a rotação fica"
+    );
+    apply_intent(&mut st, &mut ph, TimelineIntent::Undo);
+    assert_eq!(ligadas(&st), [true; 5], "um Ctrl+Z devolve os quatro");
+    set_current_timeline(None);
+}
+
+/// A cascata de extrapolação do menu de grupo leva o grupo até à folha, e a folha muda os 4 membros
+/// (e não a rotação) num passo. (Mutação: `grupo: false` em `open_extrap` ⇒ um só `SetTrackExtrap`.)
+#[test]
+fn a_extrapolacao_do_grupo_vale_para_todos_os_membros() {
+    use ph2d_editor_core::interaction::ContextMenuKind;
+    use ph2d_editor_core::panel::PanelHostInternal;
+    use ph2d_timeline::{Extrap, ExtrapSide};
+    let _ = drain_intents();
+    set_current_timeline(Some(snap()));
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    clicar_no_menu(
+        &mut host,
+        &mut state,
+        ContextMenuKind::TimelineTrackGroup { target: 3 },
+        ph2d_editor_core::ids::CTX_MENU_TL_EXTRAP_POST,
+    );
+    let sub = host.store().context_menu().map(|m| m.kind);
+    assert_eq!(
+        sub,
+        Some(ContextMenuKind::TimelineExtrap {
+            target: 3,
+            side: ph2d_panel_timeline::ids::TL_EXTRAP_SIDE_POST,
+            grupo: true,
+        }),
+    );
+    clicar_no_menu(
+        &mut host,
+        &mut state,
+        sub.unwrap(),
+        ph2d_editor_core::ids::CTX_MENU_TL_EXTRAP_LOOP,
+    );
+    let set = |t| TimelineIntent::SetTrackExtrap {
+        target: AnimTarget::new(t),
+        side: ExtrapSide::Post,
+        mode: Extrap::Loop,
+    };
+    assert_eq!(
+        drain_intents(),
+        vec![
+            TimelineIntent::BeginEdit,
+            set(2),
+            set(3),
+            set(4),
+            set(5),
+            TimelineIntent::EndEdit
+        ],
     );
     set_current_timeline(None);
 }

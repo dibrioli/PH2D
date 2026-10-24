@@ -102,7 +102,9 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [crate::ids::MenuRow] {
         ContextMenuKind::TimelineSegment { scope } => scope.menu_table(),
         ContextMenuKind::TimelineSegmentEase { .. } => &ids::TIMELINE_EASE_MENU,
         // Timeline track row (label column): whole-track actions.
-        ContextMenuKind::TimelineTrack { .. } => &ids::TIMELINE_TRACK_MENU,
+        ContextMenuKind::TimelineTrack { .. } | ContextMenuKind::TimelineTrackGroup { .. } => {
+            &ids::TIMELINE_TRACK_MENU
+        }
         ContextMenuKind::TimelineTrackAxis { .. } => &ids::TIMELINE_AXIS_TRACK_MENU,
         ContextMenuKind::TimelineTrackPath { .. } => &ids::TIMELINE_PATH_TRACK_MENU,
         ContextMenuKind::TimelineTrackTimeRemap { .. } => &ids::TIMELINE_TIMEREMAP_TRACK_MENU,

@@ -17,3 +17,10 @@ pub fn timeline_group_key_id(group: u64, t_bits: u64) -> NodeId {
 pub fn timeline_group_twirl_id(group: u64) -> NodeId {
     dynamic_id("timeline.group_twirl", &[group])
 }
+
+/// A channel-group row's LABEL — the right-click surface of the group menu. Its own
+/// ladder: `timeline_row_id(group)` is the first member's row, painted when the group is open.
+#[must_use]
+pub fn timeline_group_row_id(group: u64) -> NodeId {
+    dynamic_id("timeline.group_row", &[group])
+}

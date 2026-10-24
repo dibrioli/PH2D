@@ -134,6 +134,7 @@ pub(super) fn handle_down_menus(
                         TrackMenuKind::TimeRemap => {
                             ContextMenuKind::TimelineTrackTimeRemap { target }
                         }
+                        TrackMenuKind::Group => ContextMenuKind::TimelineTrackGroup { target },
                     }),
                     // A strip — the body and both trim edges open the same menu, because
                     // they are all the same strip and a right-click is not a drag. Its two

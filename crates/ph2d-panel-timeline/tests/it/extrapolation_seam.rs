@@ -61,6 +61,7 @@ fn a_post_cascade_opens_the_submenu_then_loop_sets_the_post_extrapolation() {
         Some(ContextMenuKind::TimelineExtrap {
             target,
             side: ph2d_panel_timeline::ids::TL_EXTRAP_SIDE_POST,
+            grupo: false,
         }),
         "the cascade must open the extrapolation submenu for the Post side"
     );
@@ -133,6 +134,7 @@ fn every_extrap_mode_row_is_handled_by_the_panel() {
             kind: ContextMenuKind::TimelineExtrap {
                 target,
                 side: ph2d_panel_timeline::ids::TL_EXTRAP_SIDE_POST,
+                grupo: false,
             },
         });
         host.store_mut().close_context_menu();

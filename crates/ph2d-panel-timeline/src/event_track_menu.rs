@@ -58,11 +58,13 @@ fn target_of(
 /// if the row still exists in the snapshot. The extrapolation rows carry the raw
 /// target through to `SetTrackExtrap`, which speaks `AnimTarget` directly (unlike
 /// Delete Track, which resolves to `(entity, prop)` for `Unbind`).
-fn raw_track_target(host: &dyn PanelHostInternal) -> Option<u64> {
-    let target = match parked(host)?.kind {
+/// `bool` = the menu was a GROUP row's: the cascade then speaks for every member.
+fn raw_track_target(host: &dyn PanelHostInternal) -> Option<(u64, bool)> {
+    let (target, grupo) = match parked(host)?.kind {
         ContextMenuKind::TimelineTrack { target }
         | ContextMenuKind::TimelineTrackAxis { target }
-        | ContextMenuKind::TimelineTrackPath { target } => target,
+        | ContextMenuKind::TimelineTrackPath { target } => (target, false),
+        ContextMenuKind::TimelineTrackGroup { target } => (target, true),
         // Time Remap deliberately excluded: its menu has no extrapolation cascade,
         // so this is never reached from there — but pinning it keeps the exclusion
         // honest if a future edit adds the cascade to that table by mistake.
@@ -72,7 +74,37 @@ fn raw_track_target(host: &dyn PanelHostInternal) -> Option<u64> {
         .tracks
         .iter()
         .any(|t| t.target.get() == target)
-        .then_some(target)
+        .then_some((target, grupo))
+}
+
+/// Os membros do grupo de que `handle` (o `AnimTarget` cru de um membro) faz parte, lidos
+/// do instantâneo AGORA — todos, abertos ou não. Vazio se o grupo sumiu desde que o menu abriu.
+fn membros(handle: u64) -> Vec<(AnimTarget, u64, ph2d_timeline::PropKind)> {
+    let snap = crate::state::current_snapshot();
+    let Some(chave) = crate::linhas::GrupoChave::do_handle(&snap, handle) else {
+        return Vec::new();
+    };
+    snap.tracks
+        .iter()
+        .filter(|t| crate::linhas::GrupoChave::de(t) == Some(chave))
+        .map(|t| (t.target, t.entity, t.prop))
+        .collect()
+}
+
+/// Uma ação por membro, num só passo de undo (o par `BeginEdit`/`EndEdit` do arrasto).
+fn por_membro(
+    handle: u64,
+    mut f: impl FnMut(AnimTarget, u64, ph2d_timeline::PropKind) -> TimelineIntent,
+) {
+    let ms = membros(handle);
+    if ms.is_empty() {
+        return;
+    }
+    crate::state::push_intent(TimelineIntent::BeginEdit);
+    for (target, entity, prop) in ms {
+        crate::state::push_intent(f(target, entity, prop));
+    }
+    crate::state::push_intent(TimelineIntent::EndEdit);
 }
 
 /// **Auto-Orient** (ADR-0141 §6) — só existe no menu de uma track de TRAJETÓRIA.
@@ -85,7 +117,14 @@ pub(crate) fn auto_orient(host: &mut dyn PanelHostInternal) -> EventOutcome {
 
 /// **Delete Track** — binding + keys num passo de undo.
 pub(crate) fn delete_track(host: &mut dyn PanelHostInternal) -> EventOutcome {
-    if let Some((entity, prop)) = target_of(host, false) {
+    if let Some(ContextMenuKind::TimelineTrackGroup { target }) = parked(host).map(|r| r.kind) {
+        por_membro(target, |_, entity, prop| TimelineIntent::Unbind {
+            entity,
+            prop,
+        });
+        host.store_mut().close_context_menu();
+        host.store_mut().consume_last_context_menu();
+    } else if let Some((entity, prop)) = target_of(host, false) {
         crate::state::push_intent(TimelineIntent::Unbind { entity, prop });
         host.store_mut().close_context_menu();
         // Gasta: um Click perdido neste id depois não pode apagar outra vez.
@@ -111,13 +150,14 @@ pub(crate) fn convert(host: &mut dyn PanelHostInternal, to_path: bool) -> EventO
 /// replace-the-parent cascade the segment ease menu uses; the parent is already
 /// closed (the Down parked it), so the submenu opens at its position.
 fn open_extrap(host: &mut dyn PanelHostInternal, side_wire: u8) -> EventOutcome {
-    if let (Some(target), Some(req)) = (raw_track_target(host), parked(host)) {
+    if let (Some((target, grupo)), Some(req)) = (raw_track_target(host), parked(host)) {
         host.store_mut().open_context_menu(ContextMenuRequest {
             x: req.x,
             y: req.y,
             kind: ContextMenuKind::TimelineExtrap {
                 target,
                 side: side_wire,
+                grupo,
             },
         });
     }
@@ -128,17 +168,30 @@ fn open_extrap(host: &mut dyn PanelHostInternal, side_wire: u8) -> EventOutcome 
 /// and raise `SetTrackExtrap`. One undo step; a key edit (never a strip intent),
 /// so the fade surface is untouched.
 fn set_extrap(host: &mut dyn PanelHostInternal, mode: Extrap) -> EventOutcome {
-    if let Some(ContextMenuKind::TimelineExtrap { target, side }) = parked(host).map(|r| r.kind) {
+    if let Some(ContextMenuKind::TimelineExtrap {
+        target,
+        side,
+        grupo,
+    }) = parked(host).map(|r| r.kind)
+    {
         let side = if side == ids::TL_EXTRAP_SIDE_PRE {
             ExtrapSide::Pre
         } else {
             ExtrapSide::Post
         };
-        crate::state::push_intent(TimelineIntent::SetTrackExtrap {
-            target: AnimTarget::new(target),
-            side,
-            mode,
-        });
+        if grupo {
+            por_membro(target, |target, _, _| TimelineIntent::SetTrackExtrap {
+                target,
+                side,
+                mode,
+            });
+        } else {
+            crate::state::push_intent(TimelineIntent::SetTrackExtrap {
+                target: AnimTarget::new(target),
+                side,
+                mode,
+            });
+        }
         host.store_mut().close_context_menu();
         host.store_mut().consume_last_context_menu();
     }

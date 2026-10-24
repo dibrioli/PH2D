@@ -12,7 +12,7 @@
 
 use std::collections::BTreeMap;
 
-use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
+use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind, TrackMenuKind};
 use ph2d_editor_core::paint::{paint_text_elided, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
@@ -234,6 +234,22 @@ pub(crate) fn paint_grupo(
         ids::timeline_group_twirl_id(handle),
         TimelineHitKind::GroupTwirl { group: handle },
     );
+    // A etiqueta é a superfície do botão direito: o menu de GRUPO (Delete Track e a
+    // extrapolação, para todos os membros).
+    let row_id = ids::timeline_group_row_id(handle);
+    let row_hit = Rect::new(x + TWIRL_W, y, (geo.label_w - TWIRL_W).max(0.0), ROW_H_PX);
+    ctx.host.store_mut().register(
+        row_id,
+        InteractiveState::TimelineSurface {
+            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
+            kind: TimelineHitKind::Row {
+                target: handle,
+                menu: TrackMenuKind::Group,
+            },
+            canvas: row_hit,
+        },
+    );
+    ctx.host.hit_index_mut().register(row_id, row_hit);
     let rep = &snap.tracks[g.membros[0]];
     let font = TypeToken::Sm.px();
     paint_text_elided(

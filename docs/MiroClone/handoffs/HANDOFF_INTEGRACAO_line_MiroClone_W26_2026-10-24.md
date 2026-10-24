@@ -58,5 +58,5 @@ A suíte inteira (`nextest-impacted`) fica para antes da integração (dono, 23/
 
 ## 7 — ABERTO depois da linha
 
-1. Smoke do dono do §6.
+1. ~~Smoke do dono do §6~~ — ✅ **APROVADO pelo dono em 24/10** («smoke OK»). Ordem seguinte do dono: integrar ao `main`.
 2. `a_cena_3_conduzida_passo_a_passo` (`shells/code-scenes`): é da linha do CodeEditor (W25 §7.3), não desta.

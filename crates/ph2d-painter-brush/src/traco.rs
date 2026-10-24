@@ -16,9 +16,10 @@
 //! plano sobre a base congelada no pen-down — com o MODO do pincel, uma vez, como uma camada. O tecto é um
 //! `min` no alfa do plano; as orlas pesam-se por `e ∈ [0, 1]`, a orla do traço sobre a máscara VISÍVEL
 //! (`traco_orla` no tool: a distância exacta ao contorno `v = ½` do nível de uma passagem, `e = 1 − smoothstep(0, W, d)`; `1` na
-//! franja de fora, `0` no fundo). A molhada é o *Wet Edges* do Procreate MEDIDO (bug #58, 5.ª volta): o miolo
-//! nivela-se num PATAMAR (`PATAMAR_MOLHADO` do nível de uma passagem) — as sobreposições e o grão do miolo somem,
-//! a silhueta (o contorno `τ`) não mexe, nenhuma orla; a queimada escurece em Linear Burn com o peso
+//! franja de fora, `0` no fundo). A molhada é o ARO DA AGUADA (bug #58, 7.ª volta: o Watercolor é o oráculo): o
+//! tool calcula por texel a densidade do aro da lei da aguada (`ΔD ≥ 0`, `traco_aguada` no tool, em unidades do
+//! corpo × a densidade de UMA passagem) e ela SOMA-SE à do texel — `1 − (1 − v)·e^(−ΔD)`, Beer–Lambert sobre o alfa,
+//! como a aguada soma `edge` a `cw · fill`; o miolo (`ΔD = 0`) é o traço seco ao bit, a silhueta não mexe. A queimada escurece em Linear Burn com o peso
 //! `queimada · e · v` (`docs/Painter/BUGS_painter_fechados_41_a_46.md`).
 //!
 //! ⚠️ **O neutro não arma o plano** ([`TracoComposto::is_active`]): o carimbo de sempre, ao bit.
@@ -30,12 +31,6 @@ use crate::blend_vazio::blend_over_pigment_modo;
 pub const LARGURA_MAX_PX: f32 = 48.0;
 /// A largura de fábrica da orla (px) — o Spread de fábrica da Watercolor.
 pub const LARGURA_DE_FABRICA_PX: f32 = 7.0;
-/// O patamar do miolo com Wet 1, em fracção do nível de uma passagem: medido no Procreate (Intense Glaze, Flow
-/// Max, `procreate_ref/ebb_0162` × `ebb_0164`), a cobertura do miolo cai para `0,92` da do Wet 0.
-pub const PATAMAR_MOLHADO: f32 = 0.92;
-/// A fracção do grão do miolo que fica com Wet 1: no mesmo par o desvio-padrão do miolo cai de 16–20 para 4–9
-/// (`÷3`).
-pub const GRAO_MOLHADO: f32 = 1.0 / 3.0;
 
 /// O traço como uma camada: o tecto e as orlas. Tudo a zero = desligado.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -43,8 +38,8 @@ pub struct TracoComposto {
     /// O **tecto** de opacidade do traço, `0..1` (`0` = sem tecto): a tinta do traço nunca passa dele, nem
     /// onde o traço se cruza (o *uniform glaze*).
     pub tecto: f32,
-    /// A **orla molhada**, `0..1` (*Wet edges* do Procreate): o miolo do traço nivela-se no patamar (as
-    /// sobreposições e o grão somem); a silhueta fica.
+    /// A **orla molhada**, `0..1` (*Wet edges*): o aro da aguada — o Edge Darkening do Watercolor `0..8` — por
+    /// dentro da silhueta; o miolo e a silhueta ficam.
     pub molhada: f32,
     /// A **orla queimada**, `0..1`: a orla escurece em Linear Burn sobre o que está por baixo (*Burnt edges*).
     pub queimada: f32,
@@ -89,8 +84,7 @@ impl TracoComposto {
     /// ⭐ **A composição de um texel**: o plano `plano` (RGBA reto, o traço em Normal sobre o transparente)
     /// sobre a base `base`, no `modo` do pincel (`vazio` = a fórmula geral do W3C; `pigmento` = a mistura do
     /// pincel, `BrushSpec::pigmento` — a do carimbo de sempre; um `f32` é o K–M), com o termo da orla `aro`
-    /// (`0..1`: `1` orla cheia, `0` fundo do traço ou sem orla). Sem o nível a molhada não age
-    /// ([`Self::compoe_molhado`]).
+    /// (`0..1`: `1` orla cheia, `0` fundo do traço ou sem orla). Sem aro da aguada ([`Self::compoe_molhado`]).
     #[must_use]
     #[inline]
     pub fn compoe(
@@ -105,11 +99,9 @@ impl TracoComposto {
         self.compoe_molhado(modo, vazio, pigmento, base, plano, (aro, 0.0))
     }
 
-    /// ⭐ [`Self::compoe`] com a **orla molhada**: `(aro, nivel)` — `nivel` é o nível `L` de UMA passagem da máscara
-    /// visível (a fronteira `τ = L/2`). A cobertura visível `v` vai para o patamar `P = PATAMAR_MOLHADO · L` (com
-    /// `GRAO_MOLHADO` do vale do grão) com o peso `molhada · smoothstep(τ, ¾L, v)`: no contorno `τ` o peso é `0` (a
-    /// silhueta não mexe), a sobreposição vai ao patamar, o grão do miolo cai a ⅓, a tinta ténue abaixo de `τ`
-    /// guarda-o. Nada nasce onde `v = 0`.
+    /// ⭐ [`Self::compoe`] com a **orla molhada**: `(aro, aguada)` — `aguada` é a densidade óptica `ΔD ≥ 0` do aro
+    /// da aguada no texel (já com a força da molhada): a cobertura visível `v` vai a [`orla_da_aguada`]. `ΔD = 0` (o
+    /// miolo, ou sem molhada) é o traço seco ao bit. Nada nasce onde `v = 0`.
     #[must_use]
     #[inline]
     pub fn compoe_molhado(
@@ -119,7 +111,7 @@ impl TracoComposto {
         pigmento: impl Into<crate::blend::Pigmento>,
         base: [f32; 4],
         plano: [f32; 4],
-        (aro, nivel): (f32, f32),
+        (aro, aguada): (f32, f32),
     ) -> [f32; 4] {
         let mut a = plano[3].clamp(0.0, 1.0);
         if self.tecto > 0.0 {
@@ -130,9 +122,8 @@ impl TracoComposto {
         if a <= 0.0 {
             return base;
         }
-        let m = self.molhada.clamp(0.0, 1.0);
-        if m > 0.0 && nivel > 0.0 {
-            a = molhado(v, nivel, m);
+        if aguada > 0.0 {
+            a = orla_da_aguada(v, aguada);
         }
         let e = aro.clamp(0.0, 1.0);
         let cor = [plano[0], plano[1], plano[2]];
@@ -145,18 +136,20 @@ impl TracoComposto {
     }
 }
 
-/// ⭐ **A lei da molhada** sobre a cobertura visível `v`, com o nível de uma passagem `nivel` e a força `m`.
+/// ⭐ **O aro da aguada sobre a cobertura** `v`: a densidade `ΔD ≥ 0` soma-se à do texel, `−ln(1 − v)` —
+/// `1 − (1 − v)·e^(−ΔD)`. Opaco fica opaco.
 #[must_use]
 #[inline]
-pub fn molhado(v: f32, nivel: f32, m: f32) -> f32 {
-    let tau = 0.5 * nivel;
-    // O peso sobe de `τ` a `¾L`: com `L` o grão de ±10 % caía só `÷2` (medido no gate (b)); a `¾L` cai `÷3`.
-    let s = ((v - tau) / (0.25 * nivel)).clamp(0.0, 1.0);
-    let k = s * s * (3.0 - 2.0 * s);
-    // O alvo: o patamar com `GRAO_MOLHADO` do vale do grão abaixo do nível; acima dele (a sobreposição) o patamar.
-    let vale = 1.0 - (v / nivel).min(1.0);
-    let alvo = PATAMAR_MOLHADO * nivel * (1.0 - GRAO_MOLHADO * vale);
-    v + m * k * (alvo - v)
+pub fn orla_da_aguada(v: f32, delta: f32) -> f32 {
+    1.0 - (1.0 - v.clamp(0.0, 1.0)) * (-delta.max(0.0)).exp()
+}
+
+/// A densidade óptica `−ln(1 − L)` de UMA passagem de nível `L` (a unidade do aro da aguada no Digital), presa ao
+/// que um `u8` distingue do opaco.
+#[must_use]
+#[inline]
+pub fn densidade_de_uma_passagem(nivel: f32) -> f32 {
+    -(1.0 - nivel.clamp(0.0, 1.0 - 1.0 / 255.0)).ln()
 }
 
 impl Default for TracoComposto {
@@ -187,36 +180,29 @@ mod tests {
         assert!((o[3] - 0.4).abs() < 1e-6);
     }
 
-    /// ⭐ A orla molhada: o contorno `τ` não mexe, o miolo e a sobreposição vão ao patamar, `v = 0` fica base, sem
-    /// nível a molhada não age.
+    /// ⭐ A orla molhada: sem aro (`ΔD = 0`) o texel é o seco ao bit; com aro a densidade soma-se (Beer–Lambert,
+    /// `1 − (1 − v)·e^(−ΔD)`), opaco fica opaco, `v = 0` fica base.
     #[test]
-    fn a_molhada_nivela_o_miolo_e_guarda_o_contorno() {
+    fn a_molhada_e_o_aro_da_aguada_sobre_a_cobertura() {
         let t = TracoComposto {
             molhada: 1.0,
             ..TracoComposto::NEUTRO
         };
-        let c = |a: f32, nivel| {
+        let c = |a: f32, k| {
             t.compoe_molhado(
                 BrushBlend::Mix,
                 false,
                 0.0,
                 [0.0; 4],
                 [0.1, 0.2, 0.9, a],
-                (0.0, nivel),
+                (0.0, k),
             )[3]
         };
-        assert!((c(0.3, 0.6) - 0.3).abs() < 1e-6, "o contorno mexeu");
-        assert!(
-            (c(0.6, 0.6) - 0.552).abs() < 1e-5,
-            "o miolo: {}",
-            c(0.6, 0.6)
-        );
-        assert!(
-            (c(0.9, 0.6) - 0.552).abs() < 1e-5,
-            "a sobreposição: {}",
-            c(0.9, 0.6)
-        );
-        assert!(c(0.0, 0.6) == 0.0);
-        assert!((c(0.9, 0.0) - 0.9).abs() < 1e-6, "sem nível a molhada agiu");
+        assert!(c(0.6, 0.0).to_bits() == c(0.6, -1.0).to_bits());
+        assert!((c(0.6, 0.0) - 0.6).abs() < 1e-6, "o miolo mexeu");
+        let um = densidade_de_uma_passagem(0.6);
+        assert!((c(0.6, um) - 0.84).abs() < 1e-5, "o aro: {}", c(0.6, um));
+        assert!((c(1.0, 3.0) - 1.0).abs() < 1e-6, "opaco");
+        assert!(c(0.0, 3.0) == 0.0);
     }
 }

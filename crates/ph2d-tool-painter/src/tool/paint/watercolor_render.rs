@@ -454,7 +454,7 @@ impl PainterTool {
                     // EDGE-3 (Curtis §4.3.3, conservação): rim = unsharp ASSINADO — o lobo
                     // negativo (franja, `inner > cw`) EMPALIDECE (o pigmento da borda MIGROU do
                     // interior; era clampado ≥0 = wash uniforme com contorno). Doc 12 §W-C.
-                    let mut edge = (gain_px * (cw - inner)).min(1.0);
+                    let mut edge = watercolor_rim::densidade_do_aro(gain_px, cw, inner);
                     // Paper tooth + Granulation source + paper-depth component — resolved per OWNER
                     // (#13): the cached value when single-substrate (byte-identical), else recomputed
                     // from the owner's paper. See [`SubstrateSession::at`].

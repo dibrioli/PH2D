@@ -73,13 +73,17 @@ impl PaintState {
     }
 }
 
+/// O Body (`fill`) da Aquarela de fábrica — a densidade do corpo contra a qual o aro da aguada se mede, também no
+/// Wet do Digital ([`super::traco_aguada`]).
+pub(super) const CORPO_DA_AGUADA: f32 = 0.25;
+
 /// **A Aquarela com que o pincel nasce** — os números do dono (foto do painel, 23/10): o slot onde a
 /// Aquarela trabalha (`PaintMedia::works_in`) leva-os, e o Reset da secção volta a eles
 /// ([`crate::tool::PainterTool::spec_de_fabrica`]). Inertes fora da Aquarela (o portão `watercolor`).
 /// Drying Time `10 s` e Preview `0,3` são da tela e já são os de fábrica.
 fn aquarela_de_fabrica(base: BrushSpec) -> BrushSpec {
     BrushSpec {
-        fill: 0.25,
+        fill: CORPO_DA_AGUADA,
         depth: 2.0,
         opacity: 0.4,
         edge_gain: 0.2,

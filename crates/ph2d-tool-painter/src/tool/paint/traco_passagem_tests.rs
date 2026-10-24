@@ -1,6 +1,7 @@
 //! ⭐ **O nível de uma passagem não depende de onde o grão cai** (bug #58, 6.ª volta): com um grão grosso preso à
-//! tela, o mesmo traço com o começo num PICO e num VALE do grão dá o mesmo nível `L` (±2 %), e o miolo do Wet fica a
-//! `0,92 ± 0,03` do seco nos dois. A sonda ao lado mede os candidatos (o máximo do 1.º diâmetro, um percentil num
+//! tela, o mesmo traço com o começo num PICO e num VALE do grão dá o mesmo nível `L` (±2 %), e o miolo do Wet é o do
+//! seco nos dois (7.ª volta: o Wet é o aro da aguada, o miolo não mexe; a 5.ª/6.ª exigiam o patamar `0,92` do
+//! Procreate, que saiu). A sonda ao lado mede os candidatos (o máximo do 1.º diâmetro, um percentil num
 //! troço mais longo, o nível sem grão, o nível no grão médio) sobre os pincéis do dono.
 //!
 //! Tudo na tela TRANSPARENTE: o alfa da tela é a cobertura composta.
@@ -9,7 +10,6 @@ use super::traco_orla_bordas_tests::{H, W};
 use super::traco_orla_lei_tests::{caminho, cp, pinta};
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase, RasterEditTool};
-use ph2d_painter_brush::traco::molhado;
 
 type Cfg = dyn Fn(&mut PainterTool);
 
@@ -76,18 +76,6 @@ struct Medida {
     faixa: Vec<usize>,
     /// O Wet 1 do motor sobre o seco, na faixa.
     razao: f32,
-}
-
-impl Medida {
-    /// A razão Wet 1 / seco na faixa com o nível `l` (a lei por texel sobre o seco: na tela transparente é o alfa).
-    fn razao_com(&self, l: f32) -> f32 {
-        let (mut a, mut b) = (0.0, 0.0);
-        for &i in &self.faixa {
-            a += molhado(self.seco[i], l, 1.0);
-            b += self.seco[i];
-        }
-        a / b
-    }
 }
 
 fn mede(
@@ -213,7 +201,7 @@ fn pico_e_vale(tipo: u8, tam: f32, fundo: f32, diametro: f32) -> (f32, f32, Medi
 }
 
 /// ⭐ **O gate**: Clouds Tiled (Size 0,1, Depth 0,35) sob um pincel de 12 px — o grão de baixa frequência que o
-/// 1.º diâmetro lê como pico ou vale —, o começo no pico e no vale: `L` a ±2 % e o miolo do Wet 1 a `0,92 ± 0,03`.
+/// 1.º diâmetro lê como pico ou vale —, o começo no pico e no vale: `L` a ±2 % e o miolo do Wet 1 o do seco (±1 %).
 #[test]
 fn o_nivel_de_uma_passagem_nao_depende_de_onde_o_grao_cai() {
     let (gp, gv, a, b) = pico_e_vale(6, 0.1, 0.35, 12.0);
@@ -233,7 +221,7 @@ fn o_nivel_de_uma_passagem_nao_depende_de_onde_o_grao_cai() {
     );
     for (nome, m) in [("pico", &a), ("vale", &b)] {
         assert!(
-            (m.razao - 0.92).abs() <= 0.03,
+            (m.razao - 1.0).abs() <= 0.01,
             "{nome}: o miolo do Wet é {} do seco",
             m.razao
         );
@@ -254,15 +242,8 @@ fn sonda_pico_e_vale() {
         for fundo in [0.35f32, 0.7] {
             let (gp, gv, a, b) = pico_e_vale(tipo, tam, fundo, d);
             eprintln!(
-                "tipo {tipo} Size {tam} ⌀ {d} Depth {fundo}: grão {gp:.3}/{gv:.3} · L {:.3}/{:.3} · velho {:.3}/{:.3} · Wet/seco {:.3}/{:.3} · velho Wet/seco {:.3}/{:.3}",
-                a.l,
-                b.l,
-                a.velho,
-                b.velho,
-                a.razao,
-                b.razao,
-                a.razao_com(a.velho),
-                b.razao_com(b.velho)
+                "tipo {tipo} Size {tam} ⌀ {d} Depth {fundo}: grão {gp:.3}/{gv:.3} · L {:.3}/{:.3} · velho {:.3}/{:.3} · Wet/seco {:.3}/{:.3}",
+                a.l, b.l, a.velho, b.velho, a.razao, b.razao
             );
         }
     }
@@ -343,15 +324,8 @@ fn sonda_nivel_contra_o_grao() {
             };
             let media = m.faixa.iter().map(|&i| m.seco[i]).sum::<f32>() / m.faixa.len() as f32;
             eprintln!(
-                "{nome} @({x0},{y}) miolo {media:.3} | velho L {:.3} {:.3} | p90 L {:.3} {:.3} | sem grão L {livre:.3} {:.3} | novo L {:.3} {:.3} (motor {:.3})",
-                m.velho,
-                m.razao_com(m.velho),
-                m.p90,
-                m.razao_com(m.p90),
-                m.razao_com(livre),
-                m.l,
-                m.razao_com(m.l),
-                m.razao
+                "{nome} @({x0},{y}) miolo {media:.3} | velho L {:.3} | p90 L {:.3} | sem grão L {livre:.3} | novo L {:.3} (Wet/seco {:.3})",
+                m.velho, m.p90, m.l, m.razao
             );
         }
     }

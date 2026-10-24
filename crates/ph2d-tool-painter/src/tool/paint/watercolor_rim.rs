@@ -93,13 +93,7 @@ pub(super) fn rim_fields(
     let hard: Vec<f32> = cov
         .par_iter()
         .with_min_len(MIN_TEXELS)
-        .map(|&c| {
-            super::watercolor_field::smoothstep(
-                super::watercolor_render::SS0,
-                super::watercolor_render::SS1,
-                c,
-            )
-        })
+        .map(|&c| endurece(c))
         .collect();
     let blurs = super::watercolor_rewet_px::inner_blur_set(&hard, rw, rh, table, core_r);
     let sd = field_for(&hard, cov, rw, rh, core_r, table, brush);
@@ -242,7 +236,8 @@ const FLAT: f32 = 1.0e-4;
 
 /// O valor de cobertura que o endurecimento leva a `0,5` — a MESMA fronteira que a EDT semeia.
 /// `smoothstep(SS0, SS1, cov) = 0.5` ⟺ `cov = (SS0 + SS1)/2`.
-const COV_HALF: f32 = (super::watercolor_render::SS0 + super::watercolor_render::SS1) * 0.5;
+pub(super) const COV_HALF: f32 =
+    (super::watercolor_render::SS0 + super::watercolor_render::SS1) * 0.5;
 
 /// **A PROFUNDIDADE QUE A COBERTURA IMPLICA** — a régua que a geométrica não sabe dar numa quina
 /// côncava (doc 36 §9–§10).
@@ -303,6 +298,31 @@ fn coverage_distance_at(cov: &[f32], rw: usize, rh: usize, i: usize) -> f32 {
     } else {
         f32::INFINITY
     }
+}
+
+/// ⭐ **O endurecimento** da cobertura: a silhueta `cw` da lei do aro (`smoothstep(SS0, SS1, cov)`, meia-altura em
+/// [`COV_HALF`]). Uma lei, duas portas: a aguada e o Wet do Digital ([`super::traco_aguada`]).
+#[inline]
+pub(super) fn endurece(cov: f32) -> f32 {
+    super::watercolor_field::smoothstep(
+        super::watercolor_render::SS0,
+        super::watercolor_render::SS1,
+        cov,
+    )
+}
+
+/// ⭐ **O raio do borrão do aro** (`core_r`): o Spread, preso a metade do raio do pincel — um borrão mais largo lia a
+/// poça inteira como aro. As duas portas pela mesma conta.
+#[inline]
+pub(super) fn raio_do_aro(spread: usize, raio_px: f32) -> usize {
+    spread.min(((raio_px * 0.5).round() as usize).max(1))
+}
+
+/// ⭐ **A densidade do aro** (Curtis §4.3.3, o unsharp ASSINADO): `ganho · (cw − inner)`, presa a `1` — positiva no
+/// aro, negativa na franja (o lobo pálido). Somada à densidade do corpo `cw · fill`. As duas portas pela mesma conta.
+#[inline]
+pub(super) fn densidade_do_aro(ganho: f32, cw: f32, inner: f32) -> f32 {
+    (ganho * (cw - inner)).min(1.0)
 }
 
 /// **O TETO** — o `inner` que um flanco RETO daria a esta distância, para o raio de borrão `r`.

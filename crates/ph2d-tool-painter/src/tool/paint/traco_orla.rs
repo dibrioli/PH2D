@@ -107,50 +107,80 @@ fn dist2_ao_segmento(a: [f32; 2], b: [f32; 2]) -> f32 {
     p[0] * p[0] + p[1] * p[1]
 }
 
-/// ⭐ **A orla em `r`**: `e` por texel de `r` (linha a linha, `r.w × r.h`), a partir da máscara visível `v` na janela
-/// `jan` (`jan.w × jan.h`, em coordenadas da tela), que contém `r` com a folga [`alcance_da_janela`] (presa à tela).
-/// `tau` é o nível da fronteira e `w` a largura (px, `≥ 1`).
-#[must_use]
-pub(super) fn orla_do_traco(v: &[f32], jan: Region, r: Region, tau: f32, w: f32) -> Vec<f32> {
-    let (jw, jh) = (jan.w as usize, jan.h as usize);
-    debug_assert_eq!(v.len(), jw * jh);
-    let (cw, ch) = (jw.saturating_sub(1), jh.saturating_sub(1));
-    // As células em baldes de lado `b` (≥ W + 2): um segmento a menos de `W` de um texel cai no balde dele ou num
-    // vizinho.
-    let alcance = w.ceil() as i32 + 1;
-    let lado = (alcance + 1) as usize;
-    let (nbx, nby) = (cw.div_ceil(lado).max(1), ch.div_ceil(lado).max(1));
-    let mut por_balde: Vec<Vec<Seg>> = vec![Vec::new(); nbx * nby];
-    for cy in 0..ch {
-        for cx in 0..cw {
-            let i = cy * jw + cx;
-            let c = [v[i], v[i + 1], v[i + jw + 1], v[i + jw]];
-            segmentos_da_celula(c, tau, |a, b| {
-                por_balde[(cy / lado) * nbx + cx / lado].push(Seg {
-                    cx: (jan.x as usize + cx) as i32,
-                    cy: (jan.y as usize + cy) as i32,
-                    a,
-                    b,
+/// Os segmentos do contorno `v = τ` de uma janela, em baldes: a distância exacta de um texel ao contorno.
+struct Contorno<'a> {
+    v: &'a [f32],
+    jan: Region,
+    tau: f32,
+    alcance: i32,
+    lado: usize,
+    cw: usize,
+    ch: usize,
+    nbx: usize,
+    nby: usize,
+    por_balde: Vec<Vec<Seg>>,
+}
+
+impl<'a> Contorno<'a> {
+    /// O contorno de `v` (`jan.w × jan.h`) ao nível `tau`, para distâncias até `w` px.
+    fn new(v: &'a [f32], jan: Region, tau: f32, w: f32) -> Self {
+        let (jw, jh) = (jan.w as usize, jan.h as usize);
+        debug_assert_eq!(v.len(), jw * jh);
+        let (cw, ch) = (jw.saturating_sub(1), jh.saturating_sub(1));
+        // As células em baldes de lado `b` (≥ W + 2): um segmento a menos de `W` de um texel cai no balde dele ou
+        // num vizinho.
+        let alcance = w.ceil() as i32 + 1;
+        let lado = (alcance + 1) as usize;
+        let (nbx, nby) = (cw.div_ceil(lado).max(1), ch.div_ceil(lado).max(1));
+        let mut por_balde: Vec<Vec<Seg>> = vec![Vec::new(); nbx * nby];
+        for cy in 0..ch {
+            for cx in 0..cw {
+                let i = cy * jw + cx;
+                let c = [v[i], v[i + 1], v[i + jw + 1], v[i + jw]];
+                segmentos_da_celula(c, tau, |a, b| {
+                    por_balde[(cy / lado) * nbx + cx / lado].push(Seg {
+                        cx: (jan.x as usize + cx) as i32,
+                        cy: (jan.y as usize + cy) as i32,
+                        a,
+                        b,
+                    });
                 });
-            });
+            }
+        }
+        Self {
+            v,
+            jan,
+            tau,
+            alcance,
+            lado,
+            cw,
+            ch,
+            nbx,
+            nby,
+            por_balde,
         }
     }
-    let w2 = w * w;
-    let texel = |x: usize, y: usize| -> f32 {
-        let vi = v[(y - jan.y as usize) * jw + (x - jan.x as usize)];
-        if vi <= tau {
-            return if vi > 0.0 { 1.0 } else { 0.0 };
-        }
+
+    /// `v` no texel `(x, y)` da tela.
+    fn v(&self, x: usize, y: usize) -> f32 {
+        self.v[(y - self.jan.y as usize) * self.jan.w as usize + (x - self.jan.x as usize)]
+    }
+
+    /// O quadrado da distância do texel `(x, y)` da tela ao contorno, preso a `teto2`.
+    fn d2(&self, x: usize, y: usize, teto2: f32) -> f32 {
         let (px, py) = (x as i32, y as i32);
-        let (lx, ly) = (px - jan.x as i32, py - jan.y as i32);
+        let (lx, ly) = (px - self.jan.x as i32, py - self.jan.y as i32);
+        let (alcance, lado) = (self.alcance, self.lado);
         let bx0 = ((lx - alcance).max(0) as usize) / lado;
-        let bx1 = (((lx + alcance).max(0) as usize).min(cw.saturating_sub(1)) / lado).min(nbx - 1);
+        let bx1 = (((lx + alcance).max(0) as usize).min(self.cw.saturating_sub(1)) / lado)
+            .min(self.nbx - 1);
         let by0 = ((ly - alcance).max(0) as usize) / lado;
-        let by1 = (((ly + alcance).max(0) as usize).min(ch.saturating_sub(1)) / lado).min(nby - 1);
-        let mut melhor = w2;
+        let by1 = (((ly + alcance).max(0) as usize).min(self.ch.saturating_sub(1)) / lado)
+            .min(self.nby - 1);
+        let mut melhor = teto2;
         for by in by0..=by1 {
             for bx in bx0..=bx1 {
-                for s in &por_balde[by * nbx + bx] {
+                for s in &self.por_balde[by * self.nbx + bx] {
                     let (ox, oy) = ((s.cx - px) as f32, (s.cy - py) as f32);
                     let d2 =
                         dist2_ao_segmento([ox + s.a[0], oy + s.a[1]], [ox + s.b[0], oy + s.b[1]]);
@@ -158,8 +188,12 @@ pub(super) fn orla_do_traco(v: &[f32], jan: Region, r: Region, tau: f32, w: f32)
                 }
             }
         }
-        perfil(melhor.sqrt(), w)
-    };
+        melhor
+    }
+}
+
+/// `f(x, y)` por texel de `r` (linha a linha, `r.w × r.h`), no pool acima de [`EM_PARALELO_DESDE`].
+fn por_texel(r: Region, f: impl Fn(usize, usize) -> f32 + Sync) -> Vec<f32> {
     let (rw, rh) = (r.w as usize, r.h as usize);
     let mut e = vec![0.0f32; rw * rh];
     if rw == 0 {
@@ -167,7 +201,7 @@ pub(super) fn orla_do_traco(v: &[f32], jan: Region, r: Region, tau: f32, w: f32)
     }
     let linha = |(dy, l): (usize, &mut [f32])| {
         for (dx, o) in l.iter_mut().enumerate() {
-            *o = texel(r.x as usize + dx, r.y as usize + dy);
+            *o = f(r.x as usize + dx, r.y as usize + dy);
         }
     };
     if rw * rh < EM_PARALELO_DESDE {
@@ -176,6 +210,46 @@ pub(super) fn orla_do_traco(v: &[f32], jan: Region, r: Region, tau: f32, w: f32)
         e.par_chunks_mut(rw).enumerate().for_each(linha);
     }
     e
+}
+
+/// ⭐ **A orla em `r`**: `e` por texel de `r` (linha a linha, `r.w × r.h`), a partir da máscara visível `v` na janela
+/// `jan` (`jan.w × jan.h`, em coordenadas da tela), que contém `r` com a folga [`alcance_da_janela`] (presa à tela).
+/// `tau` é o nível da fronteira e `w` a largura (px, `≥ 1`).
+#[must_use]
+pub(super) fn orla_do_traco(v: &[f32], jan: Region, r: Region, tau: f32, w: f32) -> Vec<f32> {
+    let c = Contorno::new(v, jan, tau, w);
+    let w2 = w * w;
+    por_texel(r, |x, y| {
+        let vi = c.v(x, y);
+        if vi <= tau {
+            return if vi > 0.0 { 1.0 } else { 0.0 };
+        }
+        perfil(c.d2(x, y, w2).sqrt(), w)
+    })
+}
+
+/// ⭐ **A distância ASSINADA ao contorno** `v = τ` por texel de `r` (positiva dentro, `v > τ`; negativa na franja,
+/// `0 < v ≤ τ`), presa a `±alcance`; `−alcance` onde não há tinta. A régua do teto do aro da aguada
+/// ([`super::watercolor_rim::straight_edge_cap`]) no Wet do Digital ([`super::traco_aguada`]). A janela com a folga
+/// [`alcance_da_janela`]`(alcance)` dá o que a tela inteira dá.
+#[must_use]
+pub(super) fn distancia_assinada(
+    v: &[f32],
+    jan: Region,
+    r: Region,
+    tau: f32,
+    alcance: f32,
+) -> Vec<f32> {
+    let c = Contorno::new(v, jan, tau, alcance);
+    let a2 = alcance * alcance;
+    por_texel(r, |x, y| {
+        let vi = c.v(x, y);
+        if vi <= 0.0 {
+            return -alcance;
+        }
+        let d = c.d2(x, y, a2).sqrt();
+        if vi > c.tau { d } else { -d }
+    })
 }
 
 #[cfg(test)]

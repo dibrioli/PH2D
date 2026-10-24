@@ -183,11 +183,12 @@ fn perfil(traco_c: TracoComposto, fundo: [u8; 4]) -> (PainterTool, Vec<f32>) {
     (t, p)
 }
 
-/// ⭐ **L8 — a orla molhada nivela o miolo e guarda a silhueta** (*Wet Edges* do Procreate medido, bug #58 5.ª
-/// volta; a 3.ª exigia o miolo a `1 − molhada` e a 4.ª a borda borrada — ambas recusadas pelo dono 24/10): o miolo
-/// vai a `1 − 0,7 · 0,08` do seco, nada nasce onde o seco não pinta.
+/// ⭐ **L8 — a orla molhada é o aro da aguada** (bug #58, 7.ª volta; a 5.ª exigia o patamar do Procreate, recusado
+/// pelo dono 24/10 — *«não estou certo se ficou bom»*): num traço OPACO o miolo é o seco, a borda nunca fica mais
+/// clara que a seca, nada nasce onde o seco não pinta (o aro de Beer–Lambert não se vê no opaco: mede-se no translúcido,
+/// `traco_orla_aguada_tests`).
 #[test]
-fn a_orla_molhada_nivela_o_miolo_e_guarda_a_silhueta() {
+fn a_orla_molhada_e_o_aro_da_aguada() {
     let (_, sem) = perfil(TracoComposto::NEUTRO, [0; 4]);
     let (_, com) = perfil(
         TracoComposto {
@@ -196,13 +197,15 @@ fn a_orla_molhada_nivela_o_miolo_e_guarda_a_silhueta() {
         },
         [0; 4],
     );
-    let (miolo_sem, miolo) = (sem[50], com[50]);
-    assert!(miolo_sem > 0.95, "o miolo sem orla é opaco: {miolo_sem}");
-    let alvo = miolo_sem * (1.0 - 0.7 * (1.0 - ph2d_painter_brush::traco::PATAMAR_MOLHADO));
+    assert!(sem[50] > 0.95, "o miolo sem orla é opaco: {}", sem[50]);
     assert!(
-        (miolo - alvo).abs() <= 2.0 / 255.0,
-        "o miolo molhado é {miolo}, o patamar {alvo} (seco {miolo_sem})"
+        (com[50] - sem[50]).abs() <= 0.5 / 255.0,
+        "o miolo mexeu: {} → {}",
+        sem[50],
+        com[50]
     );
+    let claro = (0..100).filter(|&y| com[y] + 0.5 / 255.0 < sem[y]).count();
+    assert_eq!(claro, 0, "a orla molhada clareou {claro} texels");
     let sangra = (0..100).filter(|&y| sem[y] == 0.0 && com[y] > 0.0).count();
     assert_eq!(sangra, 0, "a tinta molhada saiu da silhueta seca");
 }

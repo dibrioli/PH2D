@@ -23,6 +23,9 @@ pub enum UsoDaCamada {
     Fluxo,
 }
 
+/// O topo do Edge Darkening da aguada — e o Wet `1` do Digital ([`super::traco_aguada`]).
+pub(super) const GANHO_DA_ORLA_MAX: f32 = 8.0;
+
 impl UsoDaCamada {
     /// A chave do aviso de sucesso.
     #[must_use]
@@ -251,9 +254,9 @@ impl PainterTool {
         }
     }
 
-    /// Set the **Edge** darkening gain (the wet-edge "fringe"), clamped to `0..=8`.
+    /// Set the **Edge** darkening gain (the wet-edge "fringe"), clamped to `0..=`[`GANHO_DA_ORLA_MAX`].
     pub fn set_brush_edge_gain(&mut self, v: f32) {
-        self.paint.brush.edge_gain = v.clamp(0.0, 8.0);
+        self.paint.brush.edge_gain = v.clamp(0.0, GANHO_DA_ORLA_MAX);
     }
 
     /// Set the **Spread** (edge-darkening blur radius in canvas px), clamped to `1..=48`.

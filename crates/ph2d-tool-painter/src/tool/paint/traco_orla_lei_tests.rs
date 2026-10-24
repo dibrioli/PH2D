@@ -143,14 +143,14 @@ pub(super) fn distancias(v: &[f32], tau: f32, alcance: i32) -> Vec<f32> {
 /// A cor que o texel `i` tem com o termo da orla `e`.
 fn com_e(t: &PainterTool, tr: &Traco, i: usize, e: f32) -> [f32; 3] {
     let b = &t.paint.brush;
-    // A molhada lê o nível de uma passagem (`2τ`, 5.ª volta).
+    // Sem o aro da aguada (7.ª volta: o tool calcula-o; os gates da queimada leem-no a `0` fora dele).
     let o = b.traco.compoe_molhado(
         b.blend,
         b.blend_sobre_vazio,
         b.pigmento(),
         tr.base[i],
         tr.plano[i],
-        (e, 2.0 * tr.tau),
+        (e, 0.0),
     );
     [o[0] * 255.0, o[1] * 255.0, o[2] * 255.0]
 }
@@ -226,8 +226,17 @@ fn o_fundo_do_traco_nao_tem_orla() {
         let mut t = mk();
         let largura = t.paint.brush.traco.largura;
         let tr = traco(&mut t, &pts());
-        let d = distancias(&tr.v, tr.tau, largura.ceil() as i32 + 3);
-        let fundo_lim = largura + std::f32::consts::SQRT_2 + 0.01;
+        // O alcance da orla: `W` na queimada; na molhada (o aro da aguada, 7.ª volta) a silhueta endurecida até
+        // `r` mais o borrão QUADRADO da aguada (`r·√2` na diagonal; `r` = o raio do aro, `traco_aguada`).
+        let r =
+            super::watercolor_rim::raio_do_aro(largura.round() as usize, t.paint.brush.radius_px);
+        let alcance = if t.paint.brush.traco.molhada > 0.0 {
+            largura.max((1.0 + std::f32::consts::SQRT_2) * r as f32)
+        } else {
+            largura
+        };
+        let d = distancias(&tr.v, tr.tau, alcance.ceil() as i32 + 3);
+        let fundo_lim = alcance + std::f32::consts::SQRT_2 + 0.01;
         let (mut fundos, mut erradas, mut pior) = (0, 0, 0.0f32);
         let tecto = t.paint.brush.traco.tecto;
         let liso = fundo();

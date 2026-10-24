@@ -276,21 +276,16 @@ impl PainterTool {
                     r = s.caixa.unwrap_or(r);
                 }
             }
-            // A molhada é por texel (o patamar do nível de uma passagem); só a queimada lê a orla `e`.
+            // A queimada lê a orla `e`; a molhada, o aro da aguada ([`super::traco_aguada`]).
             let e = (t.queimada > 0.0).then(|| {
                 let largura = t.largura_px();
-                let jan = self.alarga(r, super::traco_orla::alcance_da_janela(largura));
-                let (jw, jh) = (jan.w as usize, jan.h as usize);
-                let mut v = vec![0.0f32; jw * jh];
-                for y in 0..jh {
-                    for x in 0..jw {
-                        v[y * jw + x] =
-                            visivel(((jan.y as usize + y) * w + jan.x as usize + x) * 4);
-                    }
-                }
+                let folga = super::traco_orla::alcance_da_janela(largura);
+                let (jan, v) = self.janela_visivel(r, folga, visivel);
                 super::traco_orla::orla_do_traco(&v, jan, r, s.fronteira(), largura)
             });
-            Some((e, s.passagem.nivel()))
+            let k =
+                (t.molhada > 0.0).then(|| self.aro_da_aguada(r, s.fronteira(), t.molhada, visivel));
+            Some((e, k))
         } else {
             None
         };
@@ -324,8 +319,9 @@ impl PainterTool {
                     continue;
                 }
                 let j = (y - r.y as usize) * r.w as usize + (x - r.x as usize);
-                let orla = aro.as_ref().map_or((0.0, 0.0), |(e, nivel)| {
-                    (e.as_ref().map_or(0.0, |e| e[j]), *nivel)
+                let orla = aro.as_ref().map_or((0.0, 0.0), |(e, k)| {
+                    let em = |c: &Option<Vec<f32>>| c.as_ref().map_or(0.0, |c| c[j]);
+                    (em(e), em(k))
                 });
                 let mut out = t.compoe_molhado(brush.blend, vazio, pigmento, base, p, orla);
                 if trinco {

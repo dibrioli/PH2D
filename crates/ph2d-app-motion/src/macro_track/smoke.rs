@@ -36,7 +36,14 @@ pub fn grava_o_tutorial(dono: u64) -> Option<(Vec<u8>, f64)> {
 
 /// Os `gestos` gravados como a cena, com `mais[i]` quadros a mais antes do gesto `i`.
 pub(crate) fn grava_gestos(dono: u64, gestos: &[Gesto], mais: &[u32]) -> Option<(Vec<u8>, f64)> {
-    grava(ph2d_motion_doc::MotionDoc::new(), dono, gestos, mais, 0, None)
+    grava(
+        ph2d_motion_doc::MotionDoc::new(),
+        dono,
+        gestos,
+        mais,
+        0,
+        None,
+    )
 }
 
 /// Onde nasce um nó novo, pelo tipo.
@@ -51,7 +58,14 @@ pub(crate) fn grava_desde(
     arma: usize,
     lugar: Option<Lugar>,
 ) -> Option<(Vec<u8>, f64)> {
-    grava(ph2d_motion_doc::MotionDoc::new(), dono, gestos, &[], arma, lugar)
+    grava(
+        ph2d_motion_doc::MotionDoc::new(),
+        dono,
+        gestos,
+        &[],
+        arma,
+        lugar,
+    )
 }
 
 /// [`grava_desde`] sobre `doc0` (um projecto que já tem nós de outros objectos).

@@ -113,7 +113,11 @@ impl Biblioteca {
     #[must_use]
     pub fn nome_livre(&self, base: &str) -> String {
         let base = limpa(base);
-        let base = if base.is_empty() { "Macro".to_owned() } else { base };
+        let base = if base.is_empty() {
+            "Macro".to_owned()
+        } else {
+            base
+        };
         if self.procura(&base).is_none() {
             return base;
         }

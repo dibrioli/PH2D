@@ -115,8 +115,9 @@ impl crate::App {
             let row = quem.and_then(|b| g.hero_live.as_ref()?.bridge.node_for(b));
             if let Some(h) = g.hero_screen.as_mut().filter(|_| quem.is_some()) {
                 h.gizmo.replace_selection(quem);
-                (row.filter(|_| p == Passo::Apaga))
-                    .map(|row| h.bus.push(Hierarchy(Delete { row })));
+                if let Some(row) = row.filter(|_| p == Passo::Apaga) {
+                    h.bus.push(Hierarchy(Delete { row }));
+                }
             }
             let Some((px, py)) = sel
                 .zip(p.uv())

@@ -29,7 +29,13 @@ pub struct Atados(Vec<Atado>);
 impl Atados {
     /// O documento passou de `antes` a `doc` por um aplicar do objecto Macro `vida`: um passo da fila,
     /// preso à vida dele. Os passos seguintes do MESMO aplicar fundem-se no primeiro.
-    pub fn ata(&mut self, history: &mut MotionHistory, vida: u64, antes: MotionDoc, doc: &MotionDoc) {
+    pub fn ata(
+        &mut self,
+        history: &mut MotionHistory,
+        vida: u64,
+        antes: MotionDoc,
+        doc: &MotionDoc,
+    ) {
         if let Some(a) = self.0.last_mut()
             && a.vida == vida
             && a.vivo
@@ -68,14 +74,23 @@ impl Atados {
             .map(|s| s.0)
             .collect();
         let mut mudou = false;
-        for a in self.0.iter_mut().rev().filter(|a| a.vivo && !vivas.contains(&a.vida)) {
+        for a in self
+            .0
+            .iter_mut()
+            .rev()
+            .filter(|a| a.vivo && !vivas.contains(&a.vida))
+        {
             a.vivo = false;
             if *doc == a.depois && history.top() == Some(&a.antes) {
                 *doc = history.undo(doc).unwrap_or_else(|| a.antes.clone());
                 mudou = true;
             }
         }
-        for a in self.0.iter_mut().filter(|a| !a.vivo && vivas.contains(&a.vida)) {
+        for a in self
+            .0
+            .iter_mut()
+            .filter(|a| !a.vivo && vivas.contains(&a.vida))
+        {
             a.vivo = true;
             if *doc == a.antes && history.top_redo() == Some(&a.depois) {
                 *doc = history.redo(doc).unwrap_or_else(|| a.depois.clone());

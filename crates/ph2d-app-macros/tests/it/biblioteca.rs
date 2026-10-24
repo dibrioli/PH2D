@@ -27,7 +27,10 @@ fn macro_(modo: u8) -> Ficheiro {
 #[test]
 fn a_biblioteca_guarda_lista_renomeia_apaga() {
     let raiz = pasta("crud");
-    assert!(Biblioteca::carregar(&raiz).entradas.is_empty(), "pasta ausente = vazia");
+    assert!(
+        Biblioteca::carregar(&raiz).entradas.is_empty(),
+        "pasta ausente = vazia"
+    );
     biblioteca::grava(&raiz, "Céu", &macro_(2)).expect("grava");
     assert_eq!(
         biblioteca::grava(&raiz, "Céu", &macro_(0)),
@@ -42,10 +45,16 @@ fn a_biblioteca_guarda_lista_renomeia_apaga() {
     biblioteca::renomeia(&raiz, "Céu", "Mar/azul").expect("renomeia");
     let b = Biblioteca::carregar(&raiz);
     assert_eq!(
-        b.entradas.iter().map(|e| e.nome.as_str()).collect::<Vec<_>>(),
+        b.entradas
+            .iter()
+            .map(|e| e.nome.as_str())
+            .collect::<Vec<_>>(),
         ["Mar_azul"]
     );
-    assert_eq!(b.entradas[0].ficheiro.nome, "Mar_azul", "o nome de dentro acompanha");
+    assert_eq!(
+        b.entradas[0].ficheiro.nome, "Mar_azul",
+        "o nome de dentro acompanha"
+    );
 
     biblioteca::apaga(&raiz, "Mar_azul").expect("apaga");
     biblioteca::apaga(&raiz, "Mar_azul").expect("apagar o ausente não é erro");
@@ -61,12 +70,18 @@ fn exportar_e_importar_noutra_biblioteca_da_a_mesma_macro() {
     let original = Biblioteca::carregar(&a).entradas.remove(0).ficheiro;
     let fora = a.join("enviada");
     let escrito = biblioteca::exporta(&fora, &original).expect("exporta");
-    assert!(escrito.to_str().unwrap().ends_with(EXTENSAO), "a extensão acrescenta-se");
+    assert!(
+        escrito.to_str().unwrap().ends_with(EXTENSAO),
+        "a extensão acrescenta-se"
+    );
 
     biblioteca::grava(&b, "Tutorial", &macro_(0)).expect("já há uma com o nome");
     let nome = biblioteca::importa(&b, &escrito).expect("importa");
     assert_eq!(nome, "Tutorial 2", "o nome livre na biblioteca de destino");
-    let lida = Biblioteca::carregar(&b).procura(&nome).cloned().expect("está");
+    let lida = Biblioteca::carregar(&b)
+        .procura(&nome)
+        .cloned()
+        .expect("está");
     assert_eq!((lida.ficheiro.doc, lida.ficheiro.modo), (original.doc, 2));
     let _ = std::fs::remove_dir_all(&a);
     let _ = std::fs::remove_dir_all(&b);
@@ -94,7 +109,11 @@ fn um_ficheiro_estragado_fica_nos_erros_e_a_importacao_recusa() {
 #[test]
 fn o_macros_por_omissao_nao_le_a_pasta_do_utilizador() {
     let m = ph2d_app_macros::Macros::default();
-    assert_eq!(m.pasta_da_biblioteca(), None, "o Macros::default() leu o disco do dono");
+    assert_eq!(
+        m.pasta_da_biblioteca(),
+        None,
+        "o Macros::default() leu o disco do dono"
+    );
     assert_eq!(
         ph2d_app_macros::Macros::do_utilizador().pasta_da_biblioteca(),
         biblioteca::pasta_do_utilizador(),

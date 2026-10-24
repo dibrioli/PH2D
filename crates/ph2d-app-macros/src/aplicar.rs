@@ -41,6 +41,9 @@ pub struct Imagem {
     pub nome: String,
 }
 
+/// Píxeis RGBA directos e o tamanho.
+pub type Rgba = (Vec<u8>, u32, u32);
+
 /// **O que só a composição alcança** (o renderizador, o `AssetDb`, a câmara, o nascimento do Add).
 pub struct Portas<'a> {
     /// O vazio do Add (nome único, `StableId`, `Transform`); devolve os bits.
@@ -48,7 +51,7 @@ pub struct Portas<'a> {
     /// Uma imagem nova pela porta de produto (atlas + `AssetDb`: sobrevive ao gravar); devolve os bits.
     pub imagem: &'a mut dyn FnMut(&mut SimWorld, Imagem) -> Result<u64, String>,
     /// Os píxeis (RGBA directo) de uma imagem de que o Painter ainda não tem documento.
-    pub pixeis: &'a mut dyn FnMut(&SimWorld, u64) -> Option<(Vec<u8>, u32, u32)>,
+    pub pixeis: &'a mut dyn FnMut(&SimWorld, u64) -> Option<Rgba>,
     /// O objecto mostra píxeis (uma imagem): a pergunta barata do painel, a cada quadro.
     pub e_imagem: &'a dyn Fn(&SimWorld, u64) -> bool,
     /// O centro da vista, no mundo (onde «Novo» nasce sem ponto).

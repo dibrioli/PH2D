@@ -23,8 +23,8 @@ pub fn add(
         return None;
     }
     let bits = spawn_root(sim, entry.key.tr());
-    let ent = ph2d_ecs::Entity::try_from_bits(bits)
-        .and_then(|e| sim.world_mut().get_entity_mut(e).ok());
+    let ent =
+        ph2d_ecs::Entity::try_from_bits(bits).and_then(|e| sim.world_mut().get_entity_mut(e).ok());
     let Some(mut ent) = ent else {
         return Some(Err(ph2d_i18n::tr("object_add.not_born")));
     };

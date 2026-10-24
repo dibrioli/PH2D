@@ -60,7 +60,10 @@ fn empurra(t: &mut Track, p: &Passo) {
 fn com_documento() -> Track {
     let mut t = gravada();
     let d = fim(&t).expect("toca");
-    assert!(!d.nodes_of(OUTRO).is_empty(), "o documento leva o outro objecto");
+    assert!(
+        !d.nodes_of(OUTRO).is_empty(),
+        "o documento leva o outro objecto"
+    );
     empurra(
         &mut t,
         &Passo::Documento {
@@ -126,7 +129,11 @@ fn ini_de(t: &Track) -> MotionDoc {
 fn o_motion_exportado_leva_so_o_grafo_do_dono() {
     let t = com_documento();
     let antes = ini_de(&t);
-    assert_eq!(antes.nodes_of(OUTRO).len(), 2, "a fixtura tem o outro objecto");
+    assert_eq!(
+        antes.nodes_of(OUTRO).len(),
+        2,
+        "a fixtura tem o outro objecto"
+    );
     assert_eq!(antes.nodes_of(DONO).len(), 5);
 
     let x = so_do_dono(&t).expect("exporta");
@@ -139,7 +146,11 @@ fn o_motion_exportado_leva_so_o_grafo_do_dono() {
         "só os nós do dono: {:?}",
         ini.graph.nodes()
     );
-    assert_eq!(canon(&ini, DONO), canon(&antes, DONO), "o grafo inicial do dono");
+    assert_eq!(
+        canon(&ini, DONO),
+        canon(&antes, DONO),
+        "o grafo inicial do dono"
+    );
     let Ok(Passo::Documento { texto, .. }) =
         Passo::descodifica(&x.events.last().expect("passo").payload)
     else {
@@ -238,17 +249,29 @@ fn aplicar_novo_faz_nascer_os_nos_no_dono_novo() {
     assert_eq!(x.target, NOVO);
     let ini = ini_de(&x);
     assert_eq!(ini.nodes_of(5), deles, "o inicial é o projecto vivo");
-    assert_eq!(ini.nodes_of(NOVO).len(), 5, "mais os nós da macro, do dono novo");
+    assert_eq!(
+        ini.nodes_of(NOVO).len(),
+        5,
+        "mais os nós da macro, do dono novo"
+    );
     assert!(ini.nodes_of(DONO).is_empty() && ini.nodes_of(OUTRO).is_empty());
 
     let gravado = canon(&fim(&t).expect("toca"), DONO);
-    assert_eq!(canon(&fim_doc, NOVO), gravado, "o grafo da gravação, nos ids novos");
+    assert_eq!(
+        canon(&fim_doc, NOVO),
+        gravado,
+        "o grafo da gravação, nos ids novos"
+    );
     assert_eq!(fim_doc.nodes_of(5), deles, "o resto do projecto fica");
     assert_eq!(
         fim_doc.graph.node_param_overrides(deles[0]),
         vivo.graph.node_param_overrides(deles[0])
     );
-    assert_eq!(fim(&x).expect("toca a instalada"), fim_doc, "o fim é o da trilha instalada");
+    assert_eq!(
+        fim(&x).expect("toca a instalada"),
+        fim_doc,
+        "o fim é o da trilha instalada"
+    );
 }
 
 /// ⭐ Por cima de um objecto que já tem 2 nós, uma macro de 3: ficam 5, e os 2 de antes intactos.
@@ -285,7 +308,10 @@ fn o_motion_por_cima_junta_os_nos() {
         .iter()
         .map(|n| fim_doc.graph.node(*n).expect("nó").type_name.as_str())
         .collect();
-    assert_eq!(tipos, ["source.shape", "motion.duplicator", "motion.output"]);
+    assert_eq!(
+        tipos,
+        ["source.shape", "motion.duplicator", "motion.output"]
+    );
     let gravado = canon(&fim(&m).expect("toca"), DONO);
     assert_eq!(
         gravado.1.len(),

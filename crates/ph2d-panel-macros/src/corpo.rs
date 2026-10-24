@@ -111,7 +111,12 @@ impl Corpo<'_> {
         paint_button(&b, rect, self.scene, self.text_system, self.theme);
         self.hit_index.register(id, rect);
         let y = y + ROW_H_PX + ph2d_tokens::control_gap_px();
-        let frase = match (&info.objeto_macro, info.armado, info.gravando, info.pode_gravar) {
+        let frase = match (
+            &info.objeto_macro,
+            info.armado,
+            info.gravando,
+            info.pode_gravar,
+        ) {
             (Some(n), true, _, _) => tr_with("panel.macros.recording_into", &[("name", n)]),
             (Some(n), false, _, _) => tr_with("panel.macros.ready_into", &[("name", n)]),
             (None, _, Some(f), _) => {

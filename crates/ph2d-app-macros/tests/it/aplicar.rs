@@ -31,9 +31,9 @@ pub(crate) fn pasta(nome: &str) -> PathBuf {
 }
 
 /// Uma banca cuja imagem tem `w×h` (branca) e vive dentro de um objecto Macro; devolve o objecto.
-pub(crate) fn banca(w: u32, h: u32, lib: &PathBuf) -> (Banca, u64) {
+pub(crate) fn banca(w: u32, h: u32, lib: &std::path::Path) -> (Banca, u64) {
     let mut b = Banca::nova();
-    b.m.com_pasta(lib.clone());
+    b.m.com_pasta(lib.to_path_buf());
     let wd = b.sim.world_mut();
     let dono = wd
         .spawn((

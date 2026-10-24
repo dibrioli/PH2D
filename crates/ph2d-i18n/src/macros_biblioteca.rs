@@ -51,7 +51,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.macros.smoke7.step.5" => {
             "5 of 10 \u{2014} Save to library: the macro joins your list (a test folder: {detail})."
         }
-        "app.macros.smoke7.step.6" => "6 of 10 \u{2014} Export\u{2026}: the macro is written to a file: {detail}",
+        "app.macros.smoke7.step.6" => {
+            "6 of 10 \u{2014} Export\u{2026}: the macro is written to a file: {detail}"
+        }
         "app.macros.smoke7.step.7" => {
             "7 of 10 \u{2014} The Macro object and its image are deleted: the scene is empty again."
         }

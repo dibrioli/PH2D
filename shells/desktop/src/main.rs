@@ -988,7 +988,6 @@ impl ApplicationHandler for App {
             }
             WindowEvent::ModifiersChanged(mods) => self.on_modifiers_changed(mods),
             WindowEvent::Ime(ime) => self.on_ime(ime),
-            // A cena `PH2D_MACRO_SMOKE=6` conduz o ponteiro até ao fim do caminho dela (W17).
             WindowEvent::CursorMoved { .. }
             | WindowEvent::MouseInput { .. }
             | WindowEvent::Touch(_)

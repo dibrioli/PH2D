@@ -44,12 +44,12 @@ pub mod canvas_map;
 // prosa que cita o ficheiro, e a Fase A da `line/app-physics` pagou 76 citações numa
 // varredura só. Aqui dentro tudo é a família; o prefixo é só história que não custa nada.
 // ─────────────────────────────────────────────────────────────────────────
+/// Os documentos do Painter no ficheiro de projecto (a metade sem placa da porta da shell).
+pub mod documentos_no_projecto;
 /// ⭐⭐ Image ▸ Paint — o modo que esta família declara (spec/06 F2).
 pub mod image_edit_mode;
 /// As macros do Painter em cena (ADR-0186, W4 item 5.5 D).
 pub mod macro_track;
-/// Os documentos do Painter no ficheiro de projecto (a metade sem placa da porta da shell).
-pub mod documentos_no_projecto;
 pub mod paint_mode;
 /// `PH2D_PAINT_PERF` aggregation (one summary line per window, not per frame).
 ///

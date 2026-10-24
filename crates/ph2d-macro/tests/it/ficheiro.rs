@@ -122,6 +122,9 @@ fn uma_ficha_com_o_local_cortado_recusa_se() {
     bytes[i + 1] = 27;
     assert!(matches!(
         codec::read(&bytes),
-        Err(CodecError::BadFieldLength { .. } | CodecError::Truncated | CodecError::BadVarint | CodecError::BadUtf8)
+        Err(CodecError::BadFieldLength { .. }
+            | CodecError::Truncated
+            | CodecError::BadVarint
+            | CodecError::BadUtf8)
     ));
 }

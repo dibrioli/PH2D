@@ -37,7 +37,10 @@ fn etapa(k: usize, props: PropsDaEtapa) -> EtapaView {
     }
 }
 
-pub(crate) fn info(pode: Option<FamiliaDaMacro>, gravando: Option<FamiliaDaMacro>) -> MacroPanelInfo {
+pub(crate) fn info(
+    pode: Option<FamiliaDaMacro>,
+    gravando: Option<FamiliaDaMacro>,
+) -> MacroPanelInfo {
     MacroPanelInfo {
         gravando,
         pode_gravar: pode,

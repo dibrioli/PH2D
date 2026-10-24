@@ -176,11 +176,19 @@ impl Palco {
             .world()
             .get::<Macro>(Entity::from_bits(bits))
             .expect("tem a Macro");
-        ph2d_macro::codec::read(&m.doc).expect("lê").tracks.remove(0)
+        ph2d_macro::codec::read(&m.doc)
+            .expect("lê")
+            .tracks
+            .remove(0)
     }
 
     fn clipes(&self) -> usize {
-        self.tl.doc.clips().iter().filter(|c| c.owner.is_some()).count()
+        self.tl
+            .doc
+            .clips()
+            .iter()
+            .filter(|c| c.owner.is_some())
+            .count()
     }
 }
 
@@ -203,15 +211,30 @@ fn aplicar_novo_um_motion_gravado_e_desfaze_lo_num_passo() {
         .filter(|e| e.get::<ChildOf>().map(ChildOf::parent) == Some(Entity::from_bits(r)))
         .map(|e| e.id())
         .collect();
-    assert_eq!(filhos.len(), 1, "o objecto Motion nasceu dentro do objecto Macro");
+    assert_eq!(
+        filhos.len(),
+        1,
+        "o objecto Motion nasceu dentro do objecto Macro"
+    );
     let filho = filhos[0];
     assert!(w.get::<MotionGenerator>(filho).is_some());
     assert_eq!(w.get::<Name>(filho).map(|n| n.0.as_str()), Some("Ondas"));
     let sid = p.sid(filho.to_bits());
-    assert_eq!(canon(&p.motion.doc, sid), gravado, "o grafo do fim da gravação, do dono novo");
-    assert_eq!(p.trilha(r).target, sid, "a trilha instalada aponta o objecto novo");
+    assert_eq!(
+        canon(&p.motion.doc, sid),
+        gravado,
+        "o grafo do fim da gravação, do dono novo"
+    );
+    assert_eq!(
+        p.trilha(r).target,
+        sid,
+        "a trilha instalada aponta o objecto novo"
+    );
     assert_eq!(p.clipes(), 1, "o clipe da macro");
-    assert!(!p.tl.history.can_undo(), "o clipe não é um passo próprio da Timeline");
+    assert!(
+        !p.tl.history.can_undo(),
+        "o clipe não é um passo próprio da Timeline"
+    );
     let doc_depois = p.motion.doc.clone();
     let mundo_depois = p.foto();
     assert!(
@@ -222,7 +245,10 @@ fn aplicar_novo_um_motion_gravado_e_desfaze_lo_num_passo() {
     p.repoe(&mundo_antes);
     assert_eq!(p.motion.doc, doc_antes, "um Ctrl+Z tira os nós");
     assert_eq!(p.clipes(), 0, "e o clipe");
-    assert!(undo_e_do_global(&p.motion, true), "o Ctrl+Y também é do global");
+    assert!(
+        undo_e_do_global(&p.motion, true),
+        "o Ctrl+Y também é do global"
+    );
 
     p.repoe(&mundo_depois);
     assert_eq!(p.motion.doc, doc_depois, "um Ctrl+Y devolve os nós");
@@ -280,12 +306,18 @@ fn aplicar_por_cima_um_motion_gravado_e_desfaze_lo_num_passo() {
         .iter()
         .map(|n| p.motion.doc.graph.node(*n).expect("nó").type_name.as_str())
         .collect();
-    assert_eq!(tipos, ["source.shape", "motion.duplicator", "motion.output"]);
+    assert_eq!(
+        tipos,
+        ["source.shape", "motion.duplicator", "motion.output"]
+    );
     let doc_depois = p.motion.doc.clone();
     let mundo_depois = p.foto();
 
     p.repoe(&mundo_antes);
-    assert_eq!(p.motion.doc, doc_antes, "um Ctrl+Z devolve ao alvo só os seus nós");
+    assert_eq!(
+        p.motion.doc, doc_antes,
+        "um Ctrl+Z devolve ao alvo só os seus nós"
+    );
     assert_eq!(p.clipes(), 0);
     p.repoe(&mundo_depois);
     assert_eq!(p.motion.doc, doc_depois, "um Ctrl+Y os cinco");

@@ -176,7 +176,10 @@ impl Sessao {
             && let Some(p) = f.painter.as_deref()
         {
             let (w, h) = p.source_size();
-            #[expect(clippy::cast_precision_loss, reason = "o lado de uma tela cabe num f32")]
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "o lado de uma tela cabe num f32"
+            )]
             let r = RefRect {
                 w: w as f32,
                 h: h as f32,

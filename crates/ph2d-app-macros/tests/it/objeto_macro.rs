@@ -52,12 +52,18 @@ fn gravar_dentro_do_objeto_macro_da_a_macro_ao_objeto_e_a_ficha_a_imagem() {
     let t = &doc.tracks[0];
     assert_eq!(t.family, ph2d_tool_painter::macro_track::FAMILIA);
     assert_eq!(t.target, IMAGEM, "a trilha aponta a imagem pelo StableId");
-    let n = t.nasce.as_ref().expect("a imagem nasce dentro do objecto Macro");
+    let n = t
+        .nasce
+        .as_ref()
+        .expect("a imagem nasce dentro do objecto Macro");
     assert_eq!(n.nome, "Tela");
     assert_eq!(n.inicio.0, 0, "ela já existia ao Gravar");
     assert_eq!(n.local, [0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0]);
     assert!(!t.events.is_empty());
-    assert!(doc_de(&b, b.bits).is_none(), "a imagem não ficou com Macro própria");
+    assert!(
+        doc_de(&b, b.bits).is_none(),
+        "a imagem não ficou com Macro própria"
+    );
 }
 
 #[test]
@@ -125,6 +131,9 @@ fn o_objeto_macro_vazio_nao_se_le_como_estragado() {
         .id()
         .to_bits();
     b.escolhido = Some(bits);
-    let o = b.info(Some(bits)).objeto.expect("o objecto Macro escolhido");
+    let o = b
+        .info(Some(bits))
+        .objeto
+        .expect("o objecto Macro escolhido");
     assert_eq!((o.etapas.len(), o.erro), (0, None));
 }

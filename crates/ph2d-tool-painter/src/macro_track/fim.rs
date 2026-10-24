@@ -9,6 +9,9 @@ use crate::PaintedDocument;
 use ph2d_macro::Track;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+/// Uma imagem RGBA8 e o tamanho dela.
+type Imagem = (Vec<u8>, u32, u32);
+
 /// O tocador de `track` no fim, com o encaixe `encaixe`, e a imagem dele no estado inicial (vazia sem
 /// tela). `Ok(None)` = `parar`.
 ///
@@ -18,7 +21,7 @@ pub(crate) fn tocador_no_fim(
     track: &Track,
     encaixe: Option<Encaixe>,
     parar: &AtomicBool,
-) -> Result<Option<(TocadorDoPainter, (Vec<u8>, u32, u32))>, ErroDaMacro> {
+) -> Result<Option<(TocadorDoPainter, Imagem)>, ErroDaMacro> {
     let tocavel = track
         .tocavel(&LeitorDoPainter)
         .map_err(ErroDaMacro::Edicao)?;

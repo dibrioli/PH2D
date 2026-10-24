@@ -575,7 +575,7 @@ mod pattern_art;
 /// **Os QUADROS no arquivo** (MiroClone, v185) — filho pela mesma razão: as fixtures são as portas.
 #[path = "project_boards_tests.rs"]
 mod boards;
-/// **A imagem de uma macro aplicada volta do ficheiro** (W18) — filho (`#[path]`).
+// A imagem de uma macro aplicada volta do ficheiro (W18).
 #[path = "project_macro_aplicada_tests.rs"]
 mod macro_aplicada;
 

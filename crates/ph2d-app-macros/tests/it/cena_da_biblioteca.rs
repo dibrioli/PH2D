@@ -26,7 +26,9 @@ struct Traco {
 
 fn traco((px, w, _): &(Vec<u8>, u32, u32)) -> Traco {
     let pontos: Vec<(f64, f64)> = px
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .enumerate()
         .filter(|(_, c)| c[..3].iter().any(|&v| v < 240))
         .map(|(i, _)| {

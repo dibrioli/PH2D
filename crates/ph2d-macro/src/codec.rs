@@ -85,10 +85,16 @@ pub fn write(doc: &MacroDoc) -> Vec<u8> {
     write_com_extras(doc, &[])
 }
 
+/// Os campos de topo que o documento não conhece: `(etiqueta, bytes)`, pela ordem do ficheiro.
+pub type Extras = Vec<(u32, Vec<u8>)>;
+
 /// [`write`] com campos de topo de quem embrulha o documento (o ficheiro): etiquetas ≥ 4.
 #[must_use]
 pub fn write_com_extras(doc: &MacroDoc, extras: &[(u32, &[u8])]) -> Vec<u8> {
-    debug_assert!(extras.iter().all(|(t, _)| *t >= 4), "1..=3 são do documento");
+    debug_assert!(
+        extras.iter().all(|(t, _)| *t >= 4),
+        "1..=3 são do documento"
+    );
     let mut out = Vec::with_capacity(64);
     let editado = doc.tracks.iter().any(|t| !t.edicoes.is_empty());
     let desloca = doc
@@ -189,8 +195,8 @@ fn read_nasce(bytes: &[u8]) -> Result<Nascimento, CodecError> {
                         tag,
                     });
                 }
-                for (i, c) in body.chunks_exact(4).enumerate() {
-                    n.local[i] = f32::from_le_bytes([c[0], c[1], c[2], c[3]]);
+                for (i, c) in body.as_chunks::<4>().0.iter().enumerate() {
+                    n.local[i] = f32::from_le_bytes(*c);
                 }
             }
             4 => {
@@ -254,7 +260,7 @@ pub fn read(bytes: &[u8]) -> Result<MacroDoc, CodecError> {
 
 /// [`read`], devolvendo também os campos de topo que o documento não conhece (etiqueta ≥ 4), pela
 /// ordem do ficheiro.
-pub fn read_com_extras(bytes: &[u8]) -> Result<(MacroDoc, Vec<(u32, Vec<u8>)>), CodecError> {
+pub fn read_com_extras(bytes: &[u8]) -> Result<(MacroDoc, Extras), CodecError> {
     let rest = bytes.strip_prefix(MAGIC).ok_or(CodecError::NotAMacro)?;
     if rest.len() < 4 {
         return Err(CodecError::Truncated);

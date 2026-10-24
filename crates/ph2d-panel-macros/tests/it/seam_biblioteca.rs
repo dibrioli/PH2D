@@ -108,7 +108,10 @@ fn os_verbos_da_escolhida_chegam_ao_barramento() {
             nome: "Arvore".into(),
         },
     );
-    assert!(p.st.lib_escolhida.is_none(), "a apagada deixa de estar escolhida");
+    assert!(
+        p.st.lib_escolhida.is_none(),
+        "a apagada deixa de estar escolhida"
+    );
 }
 
 /// Sem alvo compatível o «Aplicar por cima» não se pinta (a frase diz porquê) — nem com o nome

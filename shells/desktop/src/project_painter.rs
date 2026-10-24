@@ -51,7 +51,8 @@ impl crate::App {
         let Some(p) = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools) else {
             return;
         };
-        let baked = documentos_no_projecto::devolve(&mut gfx.sim, p, &mut gfx.next_painted_doc, docs);
+        let baked =
+            documentos_no_projecto::devolve(&mut gfx.sim, p, &mut gfx.next_painted_doc, docs);
         // Sobe cada composite para uma textura individual NOVA e re-aponta o sprite: o `texture_id`
         // do save morreu com o processo que o criou.
         for (bits, mut px, w, h) in baked {

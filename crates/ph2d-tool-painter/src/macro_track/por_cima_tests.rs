@@ -129,7 +129,8 @@ fn por_cima_pinta_no_tamanho_original_onde_o_gizmo_esta() {
     let (palco, pw, ph) = palco_no_fim(&doc, trilha, Some(e));
     assert_eq!(caixa(&palco, pw, ph), (x0 + 32, y0, x1 + 32, y1), "o palco");
     // Sem encaixe: a identidade em px, encostada ao canto.
-    let (sem, w, h) = imagem(documento_no_fim(&por_cima(&track, &branco(ALVO)), None).expect("fim"));
+    let (sem, w, h) =
+        imagem(documento_no_fim(&por_cima(&track, &branco(ALVO)), None).expect("fim"));
     assert_eq!(caixa(&sem, w, h), (x0, y0, x1, y1), "sem encaixe");
 }
 
@@ -143,7 +144,10 @@ fn por_cima_com_rotacao_e_escala() {
         .expect("não parou");
     let (x0, _, x1, _) = caixa(&g.fim, g.w, g.h);
     let grossura = (0..g.h).filter(|&y| pintado(&g.fim, g.w, 32, y)).count();
-    assert!(grossura >= 4, "controlo: o traço gravado tem espessura ({grossura})");
+    assert!(
+        grossura >= 4,
+        "controlo: o traço gravado tem espessura ({grossura})"
+    );
     // x' = −2·y + 128 · y' = 2·x: (32, 32) → (64, 64).
     let e = Encaixe {
         afim: [0.0, -2.0, 128.0, 2.0, 0.0, 0.0],
@@ -163,7 +167,10 @@ fn por_cima_com_rotacao_e_escala() {
         comprido.abs_diff(2 * gravado) <= 6,
         "o comprimento não dobrou na vertical: {comprido} contra {gravado} gravados"
     );
-    assert!((cx1 - cx0 + 1) as usize == grossa, "o traço não ficou vertical");
+    assert!(
+        (cx1 - cx0 + 1) as usize == grossa,
+        "o traço não ficou vertical"
+    );
     assert!((cx0 + cx1).abs_diff(128) <= 2, "o traço não caiu em x = 64");
 }
 
@@ -182,7 +189,10 @@ fn sem_tamanho_gravado_a_trilha_toca_como_antes() {
     let sem = imagem(documento_no_fim(&track, None).expect("fim")).0;
     let com = imagem(documento_no_fim(&track, Some(translacao(32.0, 5.0))).expect("fim")).0;
     assert!(sem == fim, "sem encaixe, o fim mudou");
-    assert!(com == fim, "um encaixe mudou uma trilha sem tamanho gravado");
+    assert!(
+        com == fim,
+        "um encaixe mudou uma trilha sem tamanho gravado"
+    );
 }
 
 /// **O documento do fim é o que o palco mostra no fim** (aplicar «novo»: o editor fica com a pintura
@@ -201,7 +211,10 @@ fn documento_no_fim_e_o_fim_do_palco() {
     }
     let tela = palco.tocador().tool().imagem_aplicada().expect("tela").0;
     let fim = imagem(documento_no_fim(&track, None).expect("fim")).0;
-    assert!(fim == tela, "o documento do fim não é o fim do palco ({q} quadros de cauda)");
+    assert!(
+        fim == tela,
+        "o documento do fim não é o fim do palco ({q} quadros de cauda)"
+    );
 }
 
 /// **Mover o objecto Macro muda onde a reprodução seguinte pinta** (decisão do dono 6): o encaixe lê-se

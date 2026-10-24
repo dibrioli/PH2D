@@ -36,6 +36,8 @@ Tectos de LOC nos ficheiros tocados: nenhum passa
 | mutação | 79 mutações nas leis do 8d/8b/8c: 53 sangraram, os sobreviventes ganharam asserção (`1ed7ceba82`) e 2 são equivalentes | idem §2 |
 | **1b** | **A propriedade aparece no cartão Script SEM salvar** (o `@export` do Godot, oráculo corrido 2×). Com o texto salvo partido, o cartão mostra a versão que corre, onde antes ficava vazio | [09](../09_propriedade_sem_salvar.md) |
 | **10** | **Um `ph2d.object` no topo fora de `ph2d.property` é um aviso** (classe `object_at_top`; pausa da escrita, lista de problemas, sublinhado da chamada). Oráculo Godot 4.7.2 corrido (`GET_NODE_DEFAULT_WITHOUT_ONREADY`), sem o ponto cego dele | [10](../10_objeto_no_topo.md) |
+| **11** | **Um script renomeia um objecto a correr** — `ph2d.set/get(e, "name")`, override da corrida `ph2d_ecs::RunName` (`name_in_run`); o `Name` (identidade) intocado; rebobinar devolve; a Hierarquia mostra o documento. RED medido. Commit `1e24ce32e7`. **Smoke por conduzir** | [11](../11_script_renomeia_objeto.md) |
+| **cartão** | «Render Source» → **«Texture & Atlas»** (só o texto `panel.inspector.render_source.render_source`; o script continua `sprite.*`). Foto `ferramentas/foto_cartao_texture_atlas.png`. Commit `a9ea3bd349` | — |
 | ferramenta | `scripts/cargo-test-narrow.sh`: um alvo que não compila sai com 2 (antes saía «0 falharam · 0 passaram» com 1); um filtro que não casa nenhum teste sai com 4; um binário que morre sai com 1, com aviso | §6 |
 
 ## 4. Fora da família (foundational / partilhado) — todo ADITIVO
@@ -134,11 +136,13 @@ Fotos da corrida conduzida (binário da linha, `a3e44525db`): `docs/CodeEditor/f
 ## 10. ABERTO
 
 - ~~Um `ph2d.object("X")` no topo, fora de `ph2d.property`~~ — **feito em 24/10** ([10](../10_objeto_no_topo.md)), smoke do dono OK.
-- **Perguntas de produto ao dono, sem resposta desde 22/10** ([08](../08_scripts_tocam_propriedades.md) §«Perguntas»;
-  caíram dos dois handoffs de continuação e voltam aqui): (a) um script pode renomear um objecto durante o jogo
-  (`Name` hoje é só do editor)? (b) o cartão «Render Source» × o nome `sprite` que o script usa — o cartão passa a
-  chamar-se «Sprite», e mostra qual imagem da biblioteca usa? (c) subtítulos por componente nos cartões compostos
-  (Câmera, Paralaxe, HUD)? Nenhuma bloqueia a integração.
+- **As 3 perguntas de 22/10, respondidas pelo dono em 24/10:** (a) sim → **11, feito** (smoke por conduzir: um
+  passo numa cena do CodeEditor que renomeia e acha pelo nome novo); (b) «Texture & Atlas» → **feito**; (c) o
+  padrão-ouro → **por fazer, desenho e receita em [12](../12_cartoes_compostos.md)** (oráculo Godot corrido:
+  grupos dobráveis, negrito, conteúdo recuado). Suspeita a medir no mesmo bloco: o clique no «Cull Mask» da
+  câmera pode estar morto (12 §2).
+- **Depois do 12:** reabrir o fecho sobre `ac40d22ad3..HEAD` (clippy das crates tocadas, `nextest-impacted`
+  com `BASE=ac40d22ad3`, fmt) e refazer o binário do smoke 2×.
 - Fora da linha: `cargo fmt --all --check` acusa 6 diffs em `crates/ph2d-gpu`, vindos do `main` (`9e7a70cd61`).
 - ~~Aba recarregada por fora com texto partido~~ — **decisão do dono 24/10: fica assim** (a última lista boa, a lei
   do Godot). Não «cure».

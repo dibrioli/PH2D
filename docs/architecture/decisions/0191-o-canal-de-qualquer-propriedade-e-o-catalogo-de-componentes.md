@@ -63,3 +63,15 @@ sem tocar nos ids.
 - **Dívida declarada:** itens de LISTA (Timers, Tweens, StateMachine, CounterWatch, SignalActions, VecAnchors,
   ShakeEmitter, resistências) — a chave endereça campos, não «o item n»; o endereço por item é desenho próprio.
 - O `field_id` é append-only também por isto: renumerar um campo muda a chave gravada das animações dele.
+
+## Adendo F27 E (2026-10-24)
+
+Desenho e medições: [F27_E_plano.md](../../UI_New_and_Simple/F27_E_plano.md).
+
+- Família de canais `SCRIPT = 7`, por NOME da prop (`i:j` = índice na `TextosDosCanais`; `campo = tipo << 2 | faixa`).
+- Forma de chave nova `top:*` = o payload da variante em que o enum está (`any_variant`, partilhado por script, ledger e canal).
+- `Target::Script` (`ph2d-component-desc`): o ficheiro do script é um canal discreto pelo `ScriptId`.
+- Opções de enum com dados comparam-se POR VARIANTE (`same_option`): cura de NavAgent «Target» e Factory «Where», que liam `None` com payload ≠ molde.
+- `TimelineDoc` v22 → v23 (mesmos bytes; a `retabela` remapeia as chaves SCRIPT).
+- **Dívida declarada:** as três dívidas do catálogo (fonte do rótulo do HUD, ficheiro do script, props do script) estão FECHADAS;
+  ficam os itens de LISTA.

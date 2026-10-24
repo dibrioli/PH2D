@@ -144,9 +144,7 @@ pub(crate) fn compose_sheet(
         renderer,
         asset_db,
         atlas_asset_map,
-        sheet,
-        &cfg,
-        sheet_half,
+        &Folha(sheet, cfg, sheet_half),
         por,
     );
     if baked.is_empty() {
@@ -272,15 +270,15 @@ fn sixteen_bit_pieces(sim: &SimWorld, renderer: &SpriteRenderer, sheet: Entity) 
         .unwrap_or(0)
 }
 
-#[allow(clippy::too_many_arguments)]
+/// A folha que se lê, já validada pelo [`compose_sheet`]: a entidade, a grelha e a meia-extensão local.
+struct Folha(Entity, SpriteSheetFrame, [f32; 2]);
+
 fn read_pieces(
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, ph2d_asset::AssetId>,
-    sheet: Entity,
-    cfg: &SpriteSheetFrame,
-    sheet_half: [f32; 2],
+    &Folha(sheet, cfg, sheet_half): &Folha,
     por: &ph2d_app_painter::painter_bridge_queries::PorAssar,
 ) -> Vec<Baked> {
     let children: Vec<Entity> = sim

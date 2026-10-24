@@ -46,12 +46,58 @@ fn rest(doc: &TimelineDoc, k: FieldKey) -> Option<f32> {
         .and_then(|b| b.rest)
 }
 
+/// ⭐ A v22 abre na v23 sem perda (os mesmos bytes, re-carimbados), com o texto de cada chave.
+#[test]
+fn o_doc_v22_migra_para_v23() {
+    const V22_BIN: &[u8] = include_bytes!("../fixtures/timeline_doc_v22.bin");
+    const V22_JSON: &str = include_str!("../fixtures/timeline_doc_v22.json");
+    let doc = TimelineDoc::from_bytes(V22_BIN).expect("o v22 tem de abrir");
+    assert_eq!(doc.version, DOC_VERSION);
+    assert_eq!(doc.textos(), ["Inter"]);
+    let sem = |mut j: serde_json::Value| {
+        j.as_object_mut().unwrap().remove("version");
+        j
+    };
+    let antes: serde_json::Value = serde_json::from_str(V22_JSON).unwrap();
+    assert_eq!(sem(serde_json::to_value(&doc).unwrap()), sem(antes));
+}
+
+/// ⭐⭐ **O NOME de uma propriedade de script viaja com a chave** (v23): gravar compacta a tabela e
+/// remapeia a chave; reabrir interna o nome na sessão — a chave volta a nomear «speed», não o
+/// índice que tinha. (Mutação: tirar o laço dos nomes da `retabela` ⇒ a chave nomeia outro texto.)
+#[test]
+fn o_nome_da_propriedade_de_script_viaja_com_a_chave() {
+    use ph2d_ecs::canal_script::{self as cs, Tipo};
+    let mut sessao = TextosDosCanais::default();
+    for lixo in ["a", "b", "c"] {
+        sessao.indice(Some(lixo));
+    }
+    let k = cs::chave("speed", Tipo::Number, 0, &mut sessao).unwrap();
+    let (mut doc, e) = (TimelineDoc::new(), 7);
+    doc.insert_key(e, PropKind::Field(k), s(0.0), f(2.5), Interp::Linear);
+    let bytes = doc.to_bytes_com_textos(&sessao).expect("grava");
+    let mut lido = TimelineDoc::from_bytes(&bytes).unwrap();
+    assert_eq!(
+        lido.textos(),
+        ["speed"],
+        "só o nome usado vai para o ficheiro"
+    );
+    let mut outra = TextosDosCanais::default();
+    outra.indice(Some("x"));
+    assert!(lido.adota_textos(&mut outra));
+    let PropKind::Field(kk) = lido.bindings()[0].prop else {
+        panic!("um campo")
+    };
+    assert_eq!(cs::nome(kk, &outra), Some("speed"));
+    assert_eq!(cs::tipo(kk), Some((Tipo::Number, 0)));
+}
+
 /// ⭐ A v21 abre na v22 sem perda: tabela vazia, todo o resto campo a campo.
 #[test]
 fn o_doc_v21_migra_para_v22() {
     const V21_BIN: &[u8] = include_bytes!("../fixtures/timeline_doc_v21.bin");
     const V21_JSON: &str = include_str!("../fixtures/timeline_doc_v21.json");
-    assert_eq!(DOC_VERSION, 22);
+    assert_eq!(DOC_VERSION, 23);
     let doc = TimelineDoc::from_bytes(V21_BIN).expect("o v21 tem de abrir");
     assert_eq!(doc.version, DOC_VERSION);
     assert!(doc.textos().is_empty(), "nenhuma build v21 publicava texto");

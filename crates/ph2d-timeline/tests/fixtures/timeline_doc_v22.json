@@ -1,0 +1,129 @@
+{
+  "version": 22,
+  "fps_display": 24.0,
+  "clips": [
+    {
+      "name": "Main",
+      "clip": {
+        "tracks": [
+          [
+            0,
+            {
+              "keys": [
+                {
+                  "t": {
+                    "num": 0,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 1.0
+                  },
+                  "interp": "Hold"
+                }
+              ],
+              "default": {
+                "Float": 1.0
+              },
+              "roving": [
+                false
+              ],
+              "pre": "Hold",
+              "post": "Hold"
+            }
+          ],
+          [
+            1,
+            {
+              "keys": [
+                {
+                  "t": {
+                    "num": 0,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 7.0
+                  },
+                  "interp": "Linear"
+                },
+                {
+                  "t": {
+                    "num": 1000000,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 3.0
+                  },
+                  "interp": "Linear"
+                }
+              ],
+              "default": {
+                "Float": 7.0
+              },
+              "roving": [
+                false,
+                false
+              ],
+              "pre": "Hold",
+              "post": "Hold"
+            }
+          ]
+        ],
+        "duration": {
+          "num": 0,
+          "den": 1000000
+        }
+      },
+      "loop_range": null,
+      "loop_ping_pong": false,
+      "keys_loop_range": null,
+      "keys_loop_ping_pong": false,
+      "length_override": null,
+      "expr": {},
+      "paths": {},
+      "owner": null,
+      "autoplay": false
+    }
+  ],
+  "active_clip": 0,
+  "bindings": [
+    {
+      "target": 0,
+      "prop": {
+        "Field": {
+          "familia": 1,
+          "campo": 198,
+          "i": 0,
+          "j": 0
+        }
+      },
+      "wire_id": 0,
+      "rest": null,
+      "auto_orient": false,
+      "expr": null
+    },
+    {
+      "target": 1,
+      "prop": {
+        "Field": {
+          "familia": 1,
+          "campo": 22,
+          "i": 0,
+          "j": 0
+        }
+      },
+      "wire_id": 0,
+      "rest": null,
+      "auto_orient": false,
+      "expr": null
+    }
+  ],
+  "markers": [],
+  "next_target": 2,
+  "next_strip": 0,
+  "stack": [],
+  "containers": [],
+  "scene_length": null,
+  "textos": [
+    "Inter"
+  ]
+}

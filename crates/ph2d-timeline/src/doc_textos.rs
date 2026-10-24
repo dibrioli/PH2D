@@ -18,7 +18,7 @@
 //! Um valor de texto mora em três sítios: as chaves de cada clip, o `default` da trilha (o
 //! `insert_key` copia-lhe a 1.ª chave) e o `rest` do binding (a base do fade).
 
-use ph2d_ecs::TextosDosCanais;
+use ph2d_ecs::{TextosDosCanais, canal_script};
 
 use super::*;
 
@@ -67,7 +67,7 @@ impl TimelineDoc {
 
     fn bytes_compactados(&self, sessao: &TextosDosCanais) -> Result<(Vec<u8>, usize), String> {
         let ser = |d: &TimelineDoc| postcard::to_allocvec(d).map_err(|e| e.to_string());
-        if self.textos.is_empty() && !self.bindings.iter().any(|b| b.prop.is_text()) {
+        if self.textos.is_empty() && !self.usa_textos() {
             return Ok((ser(self)?, 0));
         }
         let proprio;
@@ -87,7 +87,7 @@ impl TimelineDoc {
     /// Um documento acabado de ler: a tabela passa a ser exactamente a dos textos que as chaves
     /// usam, e um índice que ela não tem vira «nenhum» — nunca o texto de outra tabela.
     pub(super) fn normaliza_textos(&mut self) {
-        if self.textos.is_empty() && !self.bindings.iter().any(|b| b.prop.is_text()) {
+        if self.textos.is_empty() && !self.usa_textos() {
             return;
         }
         let de = TextosDosCanais::de(std::mem::take(&mut self.textos));
@@ -96,9 +96,16 @@ impl TimelineDoc {
         self.textos = tabela.textos().to_vec();
     }
 
+    /// Alguma chave indexa a tabela: um valor de texto, ou o NOME de uma propriedade de script
+    /// (v23, `ph2d_ecs::canal_script`).
+    fn usa_textos(&self) -> bool {
+        (self.bindings.iter()).any(|b| b.prop.is_text() || nome_de_script(b.prop).is_some())
+    }
+
     /// Reescreve cada valor de texto `v` como `para.indice(de.texto(v))`, numa ordem fixa (chaves
-    /// por clip, o `default` da trilha, depois o `rest`) — a mesma ordem dá a mesma tabela. Devolve
-    /// quantos valores não-nulos `de` não nomeava (esses viram «nenhum»).
+    /// por clip, o `default` da trilha, o `rest`, depois o NOME de cada propriedade de script) — a
+    /// mesma ordem dá a mesma tabela. Devolve quantos valores não-nulos `de` não nomeava (esses
+    /// viram «nenhum»; um nome que ela não tem deixa a chave como está).
     fn retabela(&mut self, de: &TextosDosCanais, para: &mut TextosDosCanais) -> usize {
         let mut perdidos = 0;
         let mut mapa = |v: f32| {
@@ -133,6 +140,26 @@ impl TimelineDoc {
         for b in self.bindings.iter_mut().filter(|b| b.prop.is_text()) {
             b.rest = b.rest.map(&mut mapa);
         }
+        // ⚠️ Só a CHAVE muda: as trilhas indexam-se pelo `target`, que fica.
+        for b in &mut self.bindings {
+            let Some(k) = nome_de_script(b.prop) else {
+                continue;
+            };
+            match de.texto(canal_script::valor_do_nome(k)) {
+                Some(nome) => {
+                    b.prop = PropKind::Field(canal_script::com_nome(k, para.indice(Some(nome))));
+                }
+                None => perdidos += 1,
+            }
+        }
         perdidos
+    }
+}
+
+/// A chave de uma propriedade de script, cujo NOME é um índice da tabela.
+fn nome_de_script(p: PropKind) -> Option<ph2d_ecs::FieldKey> {
+    match p {
+        PropKind::Field(k) if k.familia == ph2d_ecs::canal::familia::SCRIPT => Some(k),
+        _ => None,
     }
 }

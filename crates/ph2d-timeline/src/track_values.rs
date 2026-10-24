@@ -125,3 +125,15 @@ fn indice(v: f32) -> Option<u32> {
 #[cfg(test)]
 #[path = "track_values_tests.rs"]
 mod tests;
+
+impl crate::TimelineViewSnapshot {
+    /// O nome que a row de `prop` mostra no lugar do rótulo da família (uma propriedade que o
+    /// script declara chama-se como o script a chamou); `None` = o rótulo de sempre.
+    #[must_use]
+    pub fn channel_name(&self, prop: crate::PropKind) -> Option<&str> {
+        match prop {
+            crate::PropKind::Field(k) => self.channel_names.get(&k).map(String::as_str),
+            _ => None,
+        }
+    }
+}

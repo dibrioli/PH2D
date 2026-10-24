@@ -13,7 +13,7 @@
 
 #[path = "tracks_label.rs"]
 mod label;
-pub(crate) use label::{prop_label, track_label};
+pub(crate) use label::{prop_label, track_label, track_label_snap};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind, TrackMenuKind};
@@ -273,7 +273,7 @@ pub(crate) fn paint_rows(
         ctx.host.hit_index_mut().register(row_id, row_hit);
         let text = match grupo {
             Some(gr) => crate::linhas::rotulo_membro(snap, gr, i),
-            None => track_label(snap.object_name(track.entity), track.entity, track.prop),
+            None => track_label_snap(snap, track.entity, track.prop),
         };
         let color = if track.missing {
             ColorToken::TimelineMissing

@@ -16,6 +16,7 @@ use serde_json::Value;
 
 use crate::canal::familia::COMPONENTE;
 use crate::canal::{CampoInfo, FieldKey, TextosDosCanais};
+use crate::scene::property_ref::{enter_option, same_option, shares_payload};
 use crate::scene::registry::stable_type_id;
 
 /// Quantas faixas cabem nos 2 bits baixos do `campo`.
@@ -48,15 +49,20 @@ pub fn faixas(f: &FieldDesc) -> u16 {
         return 0;
     }
     // ⭐ Um `Named` de texto é o NOME do objecto (a referência durável): anima por degraus — o
-    // corte da câmera para outro alvo. A camada de ordenação guarda o ID inteiro dela: degraus
-    // também. Um `Named` de outra forma (hash de nome, tag) não tem valor que a curva leia.
+    // corte da câmera para outro alvo. A camada de ordenação e o script guardam o ID inteiro
+    // (durável, nunca reusado): degraus também. Um `Named` de outra forma (hash de nome, tag) não
+    // tem valor que a curva leia.
     if matches!(f.view, View::Not) && f.kind != FieldKind::Toggle
-        || matches!(f.view, View::Named(t) if t != Target::Layer) && f.kind != FieldKind::Text
+        || matches!(f.view, View::Named(t) if !matches!(t, Target::Layer | Target::Script))
+            && f.kind != FieldKind::Text
     {
         return 0;
     }
     match (f.kind, f.view) {
-        (FieldKind::Enum, View::Options(_) | View::Toggle(..) | View::Named(Target::Layer)) => 1,
+        (
+            FieldKind::Enum,
+            View::Options(_) | View::Toggle(..) | View::Named(Target::Layer | Target::Script),
+        ) => 1,
         (
             FieldKind::Enum
             | FieldKind::Curve
@@ -82,6 +88,8 @@ pub fn faixas(f: &FieldDesc) -> u16 {
 
 struct Tabela {
     por_id: BTreeMap<u32, &'static ComponentDesc>,
+    /// Os rótulos dos enums cujo conteúdo é partilhado pelas variantes (`shares_payload`).
+    partilham: std::collections::BTreeSet<&'static str>,
     grupos: BTreeMap<(u32, u16), u16>,
     por_rotulo: BTreeMap<&'static str, (&'static ComponentDesc, &'static FieldDesc)>,
     chaves_do_rotulo: BTreeMap<&'static str, Box<[FieldKey]>>,
@@ -91,6 +99,7 @@ fn tabela() -> &'static Tabela {
     static T: OnceLock<Tabela> = OnceLock::new();
     T.get_or_init(|| {
         let mut por_id = BTreeMap::new();
+        let mut partilham = std::collections::BTreeSet::new();
         let mut grupos = BTreeMap::new();
         let mut por_rotulo = BTreeMap::new();
         let mut chaves_do_rotulo: BTreeMap<&'static str, Vec<FieldKey>> = BTreeMap::new();
@@ -99,6 +108,9 @@ fn tabela() -> &'static Tabela {
             por_id.insert(id, d);
             for f in d.fields {
                 por_rotulo.entry(f.label_key).or_insert((d, f));
+                if shares_payload(d, f) {
+                    partilham.insert(f.label_key);
+                }
             }
             for f in d.fields.iter().filter(|f| faixas(f) > 0) {
                 let n = u16::try_from(grupos.len()).unwrap_or(u16::MAX);
@@ -109,6 +121,7 @@ fn tabela() -> &'static Tabela {
         }
         Tabela {
             por_id,
+            partilham,
             grupos,
             por_rotulo,
             chaves_do_rotulo: (chaves_do_rotulo.into_iter())
@@ -252,8 +265,11 @@ pub fn escrever_texto(f: &FieldDesc, v: &mut Value, x: f32, textos: &TextosDosCa
 /// texto lê-se por [`ler_texto`], que precisa da tabela).
 #[must_use]
 pub fn ler_valor(f: &FieldDesc, faixa: u16, v: &Value) -> Option<f32> {
+    if f.view == View::Named(Target::Script) {
+        return script_de(v);
+    }
     if let Some(e) = escolhas(f) {
-        let i = e.iter().position(|o| o == v)?;
+        let i = e.iter().position(|o| same_option(o, v))?;
         #[expect(clippy::cast_precision_loss, reason = "uma lista de opções")]
         return Some(i as f32);
     }
@@ -283,6 +299,9 @@ pub fn escrever_valor(f: &FieldDesc, faixa: u16, v: &mut Value, x: f32) -> bool 
     } else {
         x
     };
+    if f.view == View::Named(Target::Script) {
+        return script_para(v, x);
+    }
     let Some(e) = escolhas(f) else {
         return lugar(f, faixa, v).is_some_and(|slot| numero(slot, x));
     };
@@ -292,13 +311,50 @@ pub fn escrever_valor(f: &FieldDesc, faixa: u16, v: &mut Value, x: f32) -> bool 
         reason = "arredondado e preso à lista"
     )]
     let i = (x.round().max(0.0) as usize).min(e.len().saturating_sub(1));
-    match e.into_iter().nth(i) {
+    let partilhado = tabela().partilham.contains(f.label_key);
+    match e
+        .into_iter()
+        .nth(i)
+        .map(|molde| enter_option(molde, v, partilhado))
+    {
         Some(novo) if *v != novo => {
             *v = novo;
             true
         }
         _ => false,
     }
+}
+
+/// O `ScriptSource` como o canal o guarda: `0` = sem script, `k` = o script `k` da biblioteca; um
+/// caminho por importar não é um valor que a curva leia.
+fn script_de(v: &Value) -> Option<f32> {
+    match v {
+        Value::String(s) if s == "None" => Some(0.0),
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "um id da biblioteca, exacto até 2^24"
+        )]
+        Value::Object(o) => o.get("Library")?.as_u64().map(|k| k as f32),
+        _ => None,
+    }
+}
+
+/// Escreve o script `x` (`0` = nenhum). ⚠️ Que a biblioteca o TEM é do funil, que a vê.
+fn script_para(v: &mut Value, x: f32) -> bool {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "arredondado e positivo"
+    )]
+    let novo = match x.round() {
+        k if k < 0.5 => Value::String("None".to_owned()),
+        k => serde_json::json!({ "Library": k as u64 }),
+    };
+    if *v == novo {
+        return false;
+    }
+    *v = novo;
+    true
 }
 
 /// Um número na forma que o lugar já tem (booleano, inteiro, real).

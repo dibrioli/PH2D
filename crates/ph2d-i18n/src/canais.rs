@@ -15,6 +15,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "canal.objeto.silhueta" => "Tint Fill",
         // A camada do Flip (`ph2d_ecs::canal_flip`).
         "canal.flip.visivel" => "Layer Visible",
+        "canal.script.propriedade" => "Script Property",
         "canal.flip.opacidade" => "Layer Opacity",
         "canal.flip.mistura" => "Layer Blend",
         "canal.flip.profundidade" => "Layer Depth",

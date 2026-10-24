@@ -43,6 +43,8 @@ pub fn name_of(world: &World, names: RefNames<'_>, target: Target, v: &Value) ->
                 .and_then(|i| u8::try_from(i).ok())
                 .and_then(|i| layers(world).name(crate::LayerId(i)).map(str::to_owned)),
         ),
+        // O script não o alcança (`Hidden::Editor`): o nome do documento é da biblioteca.
+        Target::Script => Value::Null,
         Target::TagSet => Value::Array(
             v.as_array()
                 .into_iter()
@@ -122,7 +124,9 @@ pub fn id_of(
             Some((id, _)) => Value::from(id.0),
             None => return Err(absent(wanted)),
         },
-        Target::Name | Target::NameHash | Target::TagSet => return Err(absent(wanted)),
+        Target::Name | Target::NameHash | Target::TagSet | Target::Script => {
+            return Err(absent(wanted));
+        }
     })
 }
 
@@ -140,6 +144,59 @@ fn object_hashed(world: &World, id: u64) -> Option<String> {
     q.iter(world)
         .find(|n| stable_name_id(n.as_str()) == id)
         .map(|n| n.as_str().to_owned())
+}
+
+/// O sufixo de [`any_variant`]: o conteúdo de QUALQUER variante.
+pub const ANY: &str = ":*";
+
+/// `"source:*"` → `"source"`: o campo é o conteúdo da variante em que o enum estiver, qualquer que
+/// seja (o «Source Name» do `UiLabel`, um nome para três fontes); a unitária não o tem.
+#[must_use]
+pub fn any_variant(key: &str) -> Option<&str> {
+    key.strip_suffix(ANY)
+}
+
+/// ⭐ **A opção `j` é o valor `v`**: igual, ou — num enum com dados — a mesma variante. A lei
+/// única do script e do canal.
+#[must_use]
+pub fn same_option(j: &Value, v: &Value) -> bool {
+    j == v || (j.is_object() && variant_name(j).is_some() && variant_name(j) == variant_name(v))
+}
+
+/// `true` = o enum de `f` tem um irmão [`any_variant`]: o conteúdo é UM campo para todas as
+/// variantes, e trocar de variante conserva-o.
+#[must_use]
+pub fn shares_payload(
+    d: &ph2d_component_desc::ComponentDesc,
+    f: &ph2d_component_desc::FieldDesc,
+) -> bool {
+    let top = f.serde_key();
+    d.fields
+        .iter()
+        .any(|g| any_variant(g.serde_key()) == Some(top))
+}
+
+/// O valor ao passar `antes` à opção `molde`: a variante que já lá está guarda o seu conteúdo;
+/// outra entra pelo molde — com o conteúdo de `antes` se ele é partilhado ([`shares_payload`]) e
+/// os dois têm dados.
+#[must_use]
+pub fn enter_option(molde: Value, antes: &Value, partilhado: bool) -> Value {
+    if same_option(&molde, antes) {
+        return antes.clone();
+    }
+    let conteudo = match antes {
+        Value::Object(o) if partilhado && o.len() == 1 => o.values().next(),
+        _ => None,
+    };
+    match (molde, conteudo) {
+        (Value::Object(mut m), Some(c)) if m.len() == 1 => {
+            if let Some(slot) = m.values_mut().next() {
+                *slot = c.clone();
+            }
+            Value::Object(m)
+        }
+        (m, _) => m,
+    }
 }
 
 /// `"target:{\"Named\":0}/x"` → (`"target"`, o molde, `"x"`); `None` = uma chave sem variante.

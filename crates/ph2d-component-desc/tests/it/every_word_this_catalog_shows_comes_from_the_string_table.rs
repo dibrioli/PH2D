@@ -49,6 +49,26 @@ const NOT_LANGUAGE: &[Excecao] = &[
         "a chave serde de um ELEMENTO do array `borders` (lida por `property::slot_in`), nunca texto pintado",
     ),
     (
+        "catalog/hud.rs",
+        "Counter",
+        "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",
+    ),
+    (
+        "catalog/hud.rs",
+        "TimerLeft",
+        "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",
+    ),
+    (
+        "catalog/hud.rs",
+        "TagCount",
+        "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",
+    ),
+    (
+        "catalog/hud.rs",
+        "source:*",
+        "a chave serde do CONTEÚDO de qualquer variante (`property_ref::any_variant`), nunca texto pintado",
+    ),
+    (
         "catalog/image.rs",
         "borders[3]",
         "a chave serde de um ELEMENTO do array `borders` (lida por `property::slot_in`), nunca texto pintado",

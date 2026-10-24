@@ -803,6 +803,7 @@ fn arma_o_top20() {
                 min: Some(0.0),
                 max: Some(10.0),
                 step: Some(0.1),
+                canais: Vec::new(),
             },
             InspectorScriptProp {
                 name: "greeting".to_string(),
@@ -812,6 +813,7 @@ fn arma_o_top20() {
                 min: None,
                 max: None,
                 step: None,
+                canais: Vec::new(),
             },
             InspectorScriptProp {
                 name: "chatty".to_string(),
@@ -821,6 +823,7 @@ fn arma_o_top20() {
                 min: None,
                 max: None,
                 step: None,
+                canais: Vec::new(),
             },
         ],
         orphans: vec![InspectorScriptOrphan {

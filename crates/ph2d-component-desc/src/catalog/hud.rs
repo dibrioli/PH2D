@@ -69,10 +69,17 @@ const CANVAS_FIELDS: &[FieldDesc] = &[
 /// ⚠️ **`Source Name` é UM campo para três fontes** (o contador, o relógio ou a etiqueta): qual
 /// delas é o `Source` que diz. Três campos — um por fonte — deixariam dois sempre mortos.
 const LABEL_FIELDS: &[FieldDesc] = &[
-    // ⚠️ `source` é o enum INTEIRO (`"Authored"` ou `{"Counter": "<nome>"}`): o «Source Name» vive
-    // dentro dele, e por isso não tem nome próprio (só a chave do irmão).
-    f(1, "component.field.label_fields.1", K::Enum).named("source"),
-    f(2, "component.field.label_fields.2", K::Text).keyed("source"),
+    // ⚠️ `source` é o enum INTEIRO (`"Authored"` ou `{"Counter": "<nome>"}`); o «Source Name» é o
+    // conteúdo da variante em que ele estiver (`source:*`) — e trocar de fonte CONSERVA-o (F27 E).
+    f(1, "component.field.label_fields.1", K::Enum)
+        .named("source")
+        .viewed(crate::options![
+            "authored" => Authored,
+            "counter" => {"Counter": ""},
+            "timer" => {"TimerLeft": ""},
+            "tag" => {"TagCount": ""},
+        ]),
+    f(2, "component.field.label_fields.2", K::Text).named_as("source_name", "source:*"),
     f(3, "component.field.label_fields.3", K::Text).named("prefix"),
     f(4, "component.field.label_fields.4", K::Text).named("suffix"),
 ];

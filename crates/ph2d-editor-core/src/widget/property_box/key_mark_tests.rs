@@ -72,8 +72,8 @@ fn o_ponto_de_um_campo_com_canal_e_clicavel() {
 fn a_linha_pintada_regista_o_rotulo_do_catalogo() {
     use ph2d_i18n::TextKey;
     const CAMPOS: &[TextKey] = &[
-        TextKey::new("component.field.a.0"),
-        TextKey::new("component.field.b.1"),
+        TextKey::new("component.field.label_fields.3"),
+        TextKey::new("component.field.label_fields.4"),
     ];
     crate::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
     set_key_marks(BTreeMap::new());
@@ -95,7 +95,10 @@ fn a_linha_pintada_regista_o_rotulo_do_catalogo() {
     assert_eq!(rotulo_de(X), Some("component.field.camera_fields.0"));
     assert_eq!(
         (rotulo_de(z), rotulo_de(w)),
-        (Some("component.field.a.0"), Some("component.field.b.1"))
+        (
+            Some("component.field.label_fields.3"),
+            Some("component.field.label_fields.4")
+        )
     );
     assert_eq!(
         rotulo_de(Y),

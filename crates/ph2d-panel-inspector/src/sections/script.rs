@@ -22,6 +22,7 @@ use ph2d_editor_core::script_edits::{
     InspectorScriptInfo, InspectorScriptProp, InspectorScriptStatus, InspectorScriptValue,
     PorqueOrfao,
 };
+use ph2d_editor_core::widget::key_mark;
 use ph2d_editor_core::widget::{
     ColorSwatch, Dropdown, DropdownOption, SectionFold, SwatchSize, paint_color_swatch,
     paint_dropdown_chip,
@@ -102,6 +103,20 @@ fn botao(
     );
 }
 
+/// Os campos que a linha `i` pinta, pelo tipo (a posição são duas caixas e um losango).
+fn campos_da_linha(i: usize, p: &InspectorScriptProp) -> Vec<NodeId> {
+    match &p.value {
+        InspectorScriptValue::Number(_) => vec![ids::INSP_SCRIPT_NUM[i]],
+        InspectorScriptValue::Bool(_) => vec![ids::INSP_SCRIPT_BOOL[i]],
+        InspectorScriptValue::Text(_) if !p.options.is_empty() => vec![ids::INSP_SCRIPT_ENUM[i]],
+        InspectorScriptValue::Text(_) => vec![ids::INSP_SCRIPT_TEXT[i]],
+        InspectorScriptValue::Vec2(_) => {
+            vec![ids::INSP_SCRIPT_VEC2_X[i], ids::INSP_SCRIPT_VEC2_Y[i]]
+        }
+        InspectorScriptValue::Color(_) => vec![ids::INSP_SCRIPT_COLOR[i]],
+    }
+}
+
 /// **Uma linha de propriedade** — o nome à esquerda, o controlo e o `Reset` à direita.
 #[allow(clippy::too_many_arguments)]
 fn linha(
@@ -147,6 +162,10 @@ fn linha(
     // ⚠️ **A CAIXA não leva o ponto daqui**: o `paint_checkbox` reserva e desenha a coluna dele
     //    sozinho, e a 1.ª redacção mostrava DOIS pontos na linha de um `boolean`.
     let caixa = matches!(p.value, InspectorScriptValue::Bool(_));
+    // ⭐ O canal da linha vem no instantâneo (F27 E, `ph2d_ecs::canal_script`): os campos dela
+    // registam-se sob o grupo do nome, e a coluna — a da caixa, ou a de baixo — mostra-o.
+    let campos = campos_da_linha(i, p);
+    key_mark::regista_canal(&campos, &p.canais);
     let (control_w, dot) = if caixa {
         (row.control.w + row.dot.w, None)
     } else {
@@ -191,6 +210,7 @@ fn linha(
         i,
         p,
         (x, seccao),
+        (dot, &campos),
     );
     if p.own {
         let rect = if reset_desce {
@@ -218,9 +238,6 @@ fn linha(
             ids::INSP_SCRIPT_RESET[i],
             tr("panel.inspector.script.reset"),
         );
-    }
-    if let Some(dot) = dot {
-        ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
     }
     // ⚠️ A altura conta a fileira que o refluxo de facto produziu — ver o bloco do `reset_desce`.
     let alturas = if reset_desce {
@@ -279,7 +296,11 @@ pub(crate) fn paint_script_section(
         x,
         w,
         cur_y,
-        tr("panel.inspector.script.source_label"),
+        // O mesmo campo que o seletor: o canal do ficheiro, pelo rótulo do catálogo (F27 E).
+        key_mark::Rotulo::de_campo(
+            tr("panel.inspector.script.source_label"),
+            TextKey::new("component.field.script_fields.1"),
+        ),
         ids::INSP_SCRIPT_SOURCE,
         TextInput::new(ids::INSP_SCRIPT_SOURCE, "")
             .placeholder(tr("panel.inspector.script.script_name_u")),
@@ -443,9 +464,16 @@ fn controlo(
     i: usize,
     p: &InspectorScriptProp,
     linha: (f32, ph2d_editor_core::property_row::Seccao),
+    (dot, campos): (Option<Rect>, &[NodeId]),
 ) {
     let ctrl_w = ctrl.w;
     let row_y = ctrl.y;
+    // A coluna do losango (o canal registado pela `linha`): a da caixa é a da fileira inteira.
+    if let Some(dot) = dot
+        && let Some(alvo) = key_mark::paint_decorator_for(scene, theme, dot, campos)
+    {
+        hit_index.register(alvo, dot);
+    }
     match &p.value {
         InspectorScriptValue::Number(_) => {
             let id = ids::INSP_SCRIPT_NUM[i];
@@ -475,8 +503,11 @@ fn controlo(
             // A caixa recebe a fileira INTEIRA com a secção das vizinhas: só assim a coluna do
             // valor dela é a delas (dentro do `ctrl` ela partia-o outra vez em nome + valor).
             let (x, seccao) = linha;
+            let fileira = Rect::new(x, row_y, ctrl.x + ctrl_w - x, ctrl.h);
+            super::rows::coluna_da_caixa(scene, theme, hit_index, fileira, id, "");
             paint_checkbox(
                 &Checkbox::new(id, "")
+                    .coluna_de_fora()
                     .visual(store.checkbox_visual(id))
                     .value(value)
                     .seccao(seccao),

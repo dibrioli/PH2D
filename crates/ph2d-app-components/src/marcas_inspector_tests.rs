@@ -152,7 +152,7 @@ const fn jun(c: u16) -> FieldKey {
 /// e da junta o motor (interruptor, modo, força, eixo), a quebra, os limites, a mola e os eixos.
 #[test]
 fn cada_campo_novo_mostra_o_seu_grupo() {
-    let grupo = |id| match canal_do_campo(id) {
+    let grupo = |id| match &*canal_do_campo(id) {
         [PropKind::Field(k), ..] => k.grupo(),
         _ => None,
     };
@@ -278,7 +278,7 @@ fn a_fisica_do_corpo_tem_um_losango_por_linha() {
         );
     }
     for id in insp::INSP_PHYS_LAYER {
-        assert_eq!(canal_do_campo(id), &[fis(fs::CAMADA)]);
+        assert_eq!(&*canal_do_campo(id), &[fis(fs::CAMADA)]);
     }
     assert_eq!(
         canal_do_campo(insp::INSP_PHYS_HALF_Y),

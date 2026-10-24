@@ -296,6 +296,9 @@ pub struct TimelineViewSnapshot {
     /// não da curva. Terceiro campo com a forma de [`Self::object_names`]: a shell preenche-o
     /// depois da [`Self::rebuild`], porque só ela sabe o que uma propriedade vale.
     pub values: crate::TrackValues,
+    /// O nome de cada propriedade de SCRIPT das rows (`canal_script`), da tabela da sessão — a
+    /// shell preenche-o como o [`Self::object_names`]; lê-se por [`Self::channel_name`].
+    pub channel_names: std::collections::BTreeMap<ph2d_ecs::FieldKey, String>,
     /// The rigid simulation is armed on the transport (ADR-0131).
     pub simulate_physics: bool,
     /// O onion da timeline (ADR-0142): o painel lê ISTO para pintar os controles no estado

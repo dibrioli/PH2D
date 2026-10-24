@@ -181,6 +181,9 @@ pub fn get_stored<'r>(
 
 /// `false` = o campo é de uma variante e o enum está noutra.
 fn in_variant(r: &Resolved<'_>, whole: &mut Value) -> bool {
+    if let Some(top) = property_ref::any_variant(r.field.serde_key()) {
+        return slot_in(whole, top).is_some_and(|v| v.is_object());
+    }
     let Some((top, molde, _)) = property_ref::variant(r.field.serde_key()) else {
         return true;
     };
@@ -229,17 +232,24 @@ fn seen(view: View, v: Value) -> Value {
     }
 }
 
-/// A opção `j` é o valor `v`: igual, ou — num enum com dados — a mesma variante.
-fn same_option(j: &Value, v: &Value) -> bool {
-    j == v
-        || (j.is_object()
-            && property_ref::variant_name(j).is_some()
-            && property_ref::variant_name(j) == property_ref::variant_name(v))
+use property_ref::same_option;
+
+/// O conteúdo do enum de `r` é partilhado pelas variantes ([`property_ref::shares_payload`]).
+fn partilhado(r: &Resolved<'_>) -> bool {
+    r.entry
+        .desc
+        .is_some_and(|d| property_ref::shares_payload(d, r.field))
 }
 
 /// O valor que o script deu, como o componente o guarda; `stored` é o que lá está (um inteiro
 /// guardado continua inteiro).
-fn stored_from(view: View, v: Value, stored: &Value, name: &str) -> Result<Value, PropertyError> {
+fn stored_from(
+    view: View,
+    v: Value,
+    stored: &Value,
+    name: &str,
+    partilhado: bool,
+) -> Result<Value, PropertyError> {
     let num = |v: &Value| v.as_f64();
     let inteiro = |x: f64| {
         if stored.is_i64() || stored.is_u64() {
@@ -253,7 +263,7 @@ fn stored_from(view: View, v: Value, stored: &Value, name: &str) -> Result<Value
         (View::Percent, v) if num(&v).is_some() => Value::from(num(&v).unwrap_or(0.0) / 100.0),
         (View::Degrees | View::Srgb, Value::Array(a)) => Value::Array(
             a.into_iter()
-                .map(|x| stored_from(view, x, &Value::Null, name))
+                .map(|x| stored_from(view, x, &Value::Null, name, false))
                 .collect::<Result<_, _>>()?,
         ),
         (View::Degrees, v) if num(&v).is_some() => Value::from(num(&v).unwrap_or(0.0).to_degrees()),
@@ -263,9 +273,7 @@ fn stored_from(view: View, v: Value, stored: &Value, name: &str) -> Result<Value
         (View::Toggle(t, f), Value::Bool(b)) => json(if b { t } else { f }),
         (View::Options(opts), v) => {
             match v.as_str().and_then(|s| opts.iter().find(|(n, _)| *n == s)) {
-                // A variante que já lá está guarda o seu conteúdo; outra entra pelo molde.
-                Some((_, j)) if same_option(&json(j), stored) => stored.clone(),
-                Some((_, j)) => json(j),
+                Some((_, j)) => property_ref::enter_option(json(j), stored, partilhado),
                 None => {
                     return Err(PropertyError::NoSuchOption {
                         name: name.to_owned(),
@@ -314,6 +322,12 @@ fn json(s: &str) -> Value {
 pub fn slot_in<'v>(whole: &'v mut Value, key: &str) -> Option<&'v mut Value> {
     if key == WHOLE {
         return Some(whole);
+    }
+    if let Some(top) = property_ref::any_variant(key) {
+        return match slot_in(whole, top)? {
+            Value::Object(o) if o.len() == 1 => o.values_mut().next(),
+            _ => None,
+        };
     }
     if let Some((top, molde, rest)) = property_ref::variant(key) {
         let enum_ = slot_in(whole, top)?;
@@ -388,7 +402,10 @@ pub fn set(
     enter_variant(&r, &mut whole);
     let s = slot(&r, &mut whole)?;
     *s = fit(
-        normalize(r.field.kind, stored_from(r.field.view, value, s, name)?),
+        normalize(
+            r.field.kind,
+            stored_from(r.field.view, value, s, name, partilhado(&r))?,
+        ),
         s,
     );
     let wrong = || PropertyError::WrongType {
@@ -490,7 +507,10 @@ pub fn check(
     enter_variant(&r, &mut whole);
     if let Ok(s) = slot(&r, &mut whole) {
         *s = fit(
-            normalize(r.field.kind, stored_from(r.field.view, value, s, name)?),
+            normalize(
+                r.field.kind,
+                stored_from(r.field.view, value, s, name, partilhado(&r))?,
+            ),
             s,
         );
     }

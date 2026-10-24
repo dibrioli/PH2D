@@ -74,6 +74,7 @@ impl FieldKey {
             familia::FLIP => crate::canal_flip::membro(self.campo),
             familia::FISICA => crate::canal_fisica::membro(self.campo),
             familia::COMPONENTE => crate::canal_componente::membro(self),
+            familia::SCRIPT => crate::canal_script::membro(self),
             _ => None,
         }
     }
@@ -136,6 +137,13 @@ impl TextosDosCanais {
         v
     }
 
+    /// O índice de `s` se a tabela já o tem — a leitura sem acrescentar (o instantâneo do painel).
+    #[must_use]
+    pub fn procura(&self, s: &str) -> Option<f32> {
+        #[expect(clippy::cast_precision_loss, reason = "preso a 2^24, exacto em f32")]
+        self.por_texto.get(s).map(|&k| (k + 1) as f32)
+    }
+
     /// O texto que o valor `v` de um canal nomeia (`None` = nenhum, ou um índice que esta tabela
     /// não tem).
     #[must_use]
@@ -175,6 +183,9 @@ pub mod familia {
     /// QUALQUER campo do catálogo (`ph2d-component-desc`), pelo id estável do componente e o
     /// `field_id` — `crate::canal_componente`.
     pub const COMPONENTE: u16 = 6;
+    /// Uma propriedade que o SCRIPT declara, pelo NOME (`i:j` = o índice dele nos textos) —
+    /// `crate::canal_script`.
+    pub const SCRIPT: u16 = 7;
 }
 
 /// ⭐ **A porta única de «o que é este campo»** — `None` = endereço que nenhuma família declara (um
@@ -188,6 +199,7 @@ pub fn info(k: FieldKey) -> Option<CampoInfo> {
         familia::FLIP => crate::canal_flip::info(k.campo),
         familia::FISICA => crate::canal_fisica::info(k.campo),
         familia::COMPONENTE => crate::canal_componente::info(k),
+        familia::SCRIPT => crate::canal_script::info(k),
         _ => None,
     }
 }

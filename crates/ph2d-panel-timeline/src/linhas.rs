@@ -255,7 +255,7 @@ pub(crate) fn paint_grupo(
     paint_text_elided(
         ctx.text_system,
         ctx.scene,
-        &track_label(snap.object_name(rep.entity), rep.entity, rep.prop),
+        &crate::tracks::track_label_snap(snap, rep.entity, rep.prop),
         x + TWIRL_W,
         y + (ROW_H_PX - font) * 0.5,
         font,

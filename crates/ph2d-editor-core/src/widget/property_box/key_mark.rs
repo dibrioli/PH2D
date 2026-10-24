@@ -45,6 +45,7 @@ thread_local! {
     static ALVOS: RefCell<Vec<(NodeId, Vec<NodeId>)>> = const { RefCell::new(Vec::new()) };
     static PEDIDO: RefCell<Option<KeyMarkClick>> = const { RefCell::new(None) };
     static ROTULOS: RefCell<BTreeMap<NodeId, &'static str>> = const { RefCell::new(BTreeMap::new()) };
+    static CANAIS: RefCell<BTreeMap<NodeId, Vec<ChaveDeCanal>>> = const { RefCell::new(BTreeMap::new()) };
 }
 
 /// O prefixo das chaves de rótulo do catálogo (`ph2d-component-desc`): cada uma nomeia UM campo.
@@ -168,6 +169,29 @@ pub fn rotulo_de(id: NodeId) -> Option<&'static str> {
     ROTULOS.with(|m| m.borrow().get(&id).copied())
 }
 
+/// A chave de um canal (`ph2d_ecs::FieldKey`: família, campo, `i`, `j`) sem a crate dela — esta é
+/// folha de UI.
+pub type ChaveDeCanal = [u16; 4];
+
+/// ⭐ **Os campos cujo canal a PINTURA conhece** (as propriedades que o script declara: dinâmicas,
+/// fora do catálogo — o instantâneo traz a chave): regista-os sob o grupo `canal` até ao próximo
+/// [`set_key_marks`]. Quem pinta a coluna é a porta de sempre.
+pub fn regista_canal(fields: &[NodeId], canal: &[ChaveDeCanal]) {
+    if canal.is_empty() {
+        return;
+    }
+    CANAIS.with(|m| {
+        let mut m = m.borrow_mut();
+        m.extend(fields.iter().map(|&f| (f, canal.to_vec())));
+    });
+}
+
+/// Os campos registados por [`regista_canal`] desde o último [`set_key_marks`].
+#[must_use]
+pub fn canais_registados() -> Vec<(NodeId, Vec<ChaveDeCanal>)> {
+    CANAIS.with(|m| m.borrow().iter().map(|(&f, k)| (f, k.clone())).collect())
+}
+
 /// O sal do id do losango: um campo `f` regista o seu losango como `f ^ SAL` no índice de alvos.
 const SAL: u64 = 0x6c6f_7361_6e67_6f00; // "losango"
 
@@ -185,6 +209,7 @@ pub fn set_key_marks(marks: BTreeMap<NodeId, KeyMark>) {
     MARCAS.with(|m| *m.borrow_mut() = marks);
     ALVOS.with(|a| a.borrow_mut().clear());
     ROTULOS.with(|r| r.borrow_mut().clear());
+    CANAIS.with(|r| r.borrow_mut().clear());
 }
 
 /// O losango de uma linha com estes campos: o estado mais forte entre eles (`Mudado` > `Chave` >

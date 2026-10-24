@@ -44,7 +44,10 @@ const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
 
 /// Os dois campos do `LuauScript`.
 const SCRIPT_FIELDS: &[FieldDesc] = &[
-    f(1, "component.field.script_fields.1", K::Text),
+    // O DOCUMENTO pelo `ScriptId` da biblioteca (monotónico, nunca reusado): o canal corta de script.
+    f(1, "component.field.script_fields.1", K::Enum)
+        .keyed("source")
+        .viewed(crate::View::Named(crate::Target::Script)),
     // ⚠️ Um MAPA nome → valor. `Text` é o controlo mais honesto que esta enumeração tem para ele:
     // o painel não o edita como um campo só, edita-o linha a linha a partir das declarações.
     f(2, "component.field.script_fields.2", K::Text),

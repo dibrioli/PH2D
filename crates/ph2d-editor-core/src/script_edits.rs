@@ -25,6 +25,8 @@
 //! A ordem das linhas é a das declarações, e um ficheiro gravado a meio de uma edição pode trocá-la.
 //! Um índice mudaria de propriedade debaixo da mão do artista; o nome é o contrato.
 
+pub use crate::widget::key_mark::ChaveDeCanal;
+
 /// Um valor, como o painel o edita. Espelho do `ph2d_script::ScriptValue` (esta crate não depende
 /// da VM).
 #[derive(Clone, Debug, PartialEq)]
@@ -62,6 +64,9 @@ pub struct InspectorScriptProp {
     pub max: Option<f64>,
     /// O passo de arrasto.
     pub step: Option<f64>,
+    /// ⭐ As chaves do canal da linha, todas as faixas (`ph2d_ecs::canal_script`) — vazia enquanto
+    /// o nome não está na tabela da sessão (o funil interna-o no quadro em que publica).
+    pub canais: Vec<ChaveDeCanal>,
 }
 
 /// Um valor próprio sem onde ser aplicado (a divergência D2/D3 do oráculo).

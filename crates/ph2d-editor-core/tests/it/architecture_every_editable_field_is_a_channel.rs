@@ -309,13 +309,6 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "sections/script_seletor.rs::seletor",
-        Divida,
-        &[],
-        "o ficheiro é `LuauScript::source` (`ScriptSource`: referência ao documento por id, `Hidden::Editor`), não um nome: o corte de script é desenho próprio",
-    ),
-    (
-        "ph2d-panel-inspector",
         "sections/sprite_sheet.rs::paint_sprite_sheet_section",
         Canal,
         &["component.field.sprite_grid.1", "component.field.sprite.10"],
@@ -733,9 +726,16 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     (
         "ph2d-panel-inspector",
         "sections/hud_corpo.rs::bloco_rotulo",
-        Divida,
-        &[],
-        "a fonte do rótulo é `LabelSource`, cujas variantes CARREGAM o nome (`Counter(String)`…): o `options!` só exprime variantes sem dados",
+        Canal,
+        &["component.field.label_fields.2"],
+        "o «Source Name» é o conteúdo da variante (`source:*`), canal de texto; o rótulo vem da tabela do bloco (F27 E)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/script.rs::controlo",
+        Canal,
+        &["regista_canal"],
+        "as propriedades que o SCRIPT declara: o instantâneo traz a chave (família SCRIPT, pelo NOME), a `linha` regista-a e o controlo pinta a coluna (F27 E)",
     ),
     (
         "ph2d-panel-inspector",
@@ -1239,11 +1239,7 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
 ];
 
 /// Ficheiros inteiros em dívida — famílias sem vocabulário ainda.
-const DIVIDA_FICHEIRO: &[(&str, &str, &str)] = &[(
-    "ph2d-panel-inspector",
-    "sections/script.rs",
-    "as propriedades que o SCRIPT declara (dinâmicas, fora do catálogo) e o ficheiro que corre",
-)];
+const DIVIDA_FICHEIRO: &[(&str, &str, &str)] = &[];
 
 /// As crates que pintam campos fora do [`ESCOPO`] (plano 35 §10, bloco 2).
 const DIVIDA_CRATE: &[(&str, Classe, &str)] = &[

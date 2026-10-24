@@ -57,6 +57,8 @@ pub(super) fn publica(
         mapa,
         motion,
     } = *s;
+    // O que cada script declara, para o canal das propriedades dele (F27 E).
+    ph2d_app_components::canais_script::publicar_declaracoes(sim, script);
     // ⚠️ **A pergunta é «há CÂMERA DE JOGO na cena?»**, e não «a pré-visualização está ligada»: o
     // canvas cola-se à vista dela em qualquer dos casos, e é a AUSÊNCIA da câmera que deixa o HUD
     // onde o artista o pôs. ⭐ Ela mora AQUI e não na fase-mãe porque é uma pergunta ao MUNDO —

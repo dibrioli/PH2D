@@ -94,6 +94,7 @@ pub mod canal_fisica;
 pub mod canal_flip;
 pub mod canal_junta;
 pub mod canal_objeto;
+pub mod canal_script;
 pub mod canal_vetor;
 pub mod clip_playback;
 pub use canal::{

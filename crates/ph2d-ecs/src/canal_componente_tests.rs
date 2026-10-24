@@ -282,3 +282,67 @@ fn a_camada_de_ordenacao_anima_pelo_id() {
     );
     assert_eq!(faixas(&hash), 0);
 }
+
+/// ⛔ **Um enum com dados lê-se pela VARIANTE** (F27 E): o «Target» do NavAgent em `{"Named": 17}`
+/// lia `None` (a opção é o molde `{"Named": 0}`), e escrever a mesma variante gravava o molde por
+/// cima do alvo. (Mutação: `o == v` no `ler_valor` ⇒ `None`.)
+#[test]
+fn o_enum_com_dados_le_a_variante_e_guarda_o_conteudo() {
+    let (_, f) = campo_do_rotulo("component.field.nav_agent.0").expect("no catálogo");
+    let mut v = serde_json::json!({ "Named": 17 });
+    assert_eq!(ler_valor(f, 0, &v), Some(1.0));
+    assert!(
+        !escrever_valor(f, 0, &mut v, 1.0),
+        "a mesma variante não muda"
+    );
+    assert_eq!(v, serde_json::json!({ "Named": 17 }));
+    assert!(escrever_valor(f, 0, &mut v, 2.0));
+    assert_eq!(
+        v,
+        serde_json::json!({ "Point": [0.0, 0.0] }),
+        "sem conteúdo partilhado, outra variante entra pelo molde"
+    );
+}
+
+/// ⭐ **A fonte do rótulo do HUD**: «Source» anima a variante e CONSERVA o nome (o `source:*` irmão
+/// diz que ele é um para as três — a lei do cartão, `hud_inspector::fonte_do_indice`); «Source
+/// Name» é o conteúdo da variante, canal de texto. (Mutação: `partilhado = false` ⇒ o nome some.)
+#[test]
+fn a_fonte_do_rotulo_troca_e_conserva_o_nome() {
+    let (_, fonte) = campo_do_rotulo("component.field.label_fields.1").expect("no catálogo");
+    let (_, nome) = campo_do_rotulo("component.field.label_fields.2").expect("no catálogo");
+    assert_eq!((faixas(fonte), faixas(nome)), (1, 1));
+    let k = chaves_do_rotulo("component.field.label_fields.2")[0];
+    assert!(info(k).is_some_and(|i| i.discreto && i.texto));
+    let mut v = serde_json::json!({ "Counter": "pts" });
+    assert_eq!(ler_valor(fonte, 0, &v), Some(1.0));
+    assert!(escrever_valor(fonte, 0, &mut v, 2.0));
+    assert_eq!(v, serde_json::json!({ "TimerLeft": "pts" }));
+    assert!(escrever_valor(fonte, 0, &mut v, 0.0));
+    assert_eq!(v, serde_json::json!("Authored"));
+    assert!(escrever_valor(fonte, 0, &mut v, 3.0));
+    assert_eq!(
+        v,
+        serde_json::json!({ "TagCount": "" }),
+        "a autorada não tem nome"
+    );
+}
+
+/// ⭐ **O ficheiro do script corta pelo id** da biblioteca: `0` = nenhum, `k` = `Library(k)`; um
+/// caminho por importar não é valor. (Mutação: tirar `Script` de `faixas` ⇒ 0 faixas.)
+#[test]
+fn o_script_corta_pelo_id() {
+    let (_, f) = campo_do_rotulo("component.field.script_fields.1").expect("no catálogo");
+    assert_eq!(faixas(f), 1);
+    let k = chaves_do_rotulo("component.field.script_fields.1")[0];
+    assert!(info(k).is_some_and(|i| i.discreto && !i.texto));
+    let mut v = serde_json::json!("None");
+    assert_eq!(ler_valor(f, 0, &v), Some(0.0));
+    assert!(escrever_valor(f, 0, &mut v, 3.0));
+    assert_eq!(v, serde_json::json!({ "Library": 3 }));
+    assert_eq!(ler_valor(f, 0, &v), Some(3.0));
+    assert!(escrever_valor(f, 0, &mut v, 0.2));
+    assert_eq!(v, serde_json::json!("None"));
+    let caminho = serde_json::json!({ "Unimported": "old.luau" });
+    assert_eq!(ler_valor(f, 0, &caminho), None);
+}

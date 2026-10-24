@@ -127,12 +127,18 @@ mod clip_paths;
 /// porquê e as duas portas em `doc_textos.rs`). Migra (`doc_v21.rs`, provada contra
 /// `tests/fixtures/timeline_doc_v21.bin`): tabela vazia — nenhuma build v21 publicava texto.
 ///
+/// v23: **o NOME de uma propriedade de script na chave** (`ph2d_ecs::canal_script`: `i:j` = o índice
+/// do nome na tabela dos textos), remapeada com ela ao gravar e ao abrir. Os bytes são os da v22;
+/// o bump existe porque uma build v22 compactaria a tabela sem remapear estas chaves (o nome de
+/// cada uma passaria a ser outro, calado). A v22 lê-se pela forma actual (provada contra
+/// `tests/fixtures/timeline_doc_v22.bin`): quem apender um campo congela-a num `doc_v22.rs`.
+///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
 /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
 /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
 /// [ADR-0144]: ../../../docs/architecture/decisions/0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md
 /// [ADR-0151]: ../../../docs/architecture/decisions/0151-timeline-expressions-are-per-clip-so-a-strip-windows-them.md
-pub const DOC_VERSION: u32 = 22;
+pub const DOC_VERSION: u32 = 23;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -423,6 +429,10 @@ impl TimelineDoc {
             Ok((v19::VERSION, _)) => v19::migrate(bytes)?,
             Ok((v20::VERSION, _)) => v20::migrate(bytes)?,
             Ok((v21::VERSION, _)) => v21::migrate(bytes)?,
+            Ok((22, _)) => TimelineDoc {
+                version: DOC_VERSION,
+                ..postcard::from_bytes(bytes).map_err(|e| e.to_string())?
+            },
             _ => postcard::from_bytes(bytes).map_err(|e| e.to_string())?,
         };
         doc.normaliza_textos();

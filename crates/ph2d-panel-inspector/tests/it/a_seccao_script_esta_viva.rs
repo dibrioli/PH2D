@@ -46,6 +46,7 @@ fn prop(name: &str, value: V, own: bool) -> InspectorScriptProp {
         min: Some(0.0),
         max: Some(10.0),
         step: Some(0.1),
+        canais: Vec::new(),
     }
 }
 
@@ -251,6 +252,7 @@ fn info_com_enum() -> InspectorScriptInfo {
         min: None,
         max: None,
         step: None,
+        canais: Vec::new(),
     }];
     i.orphans.clear();
     i

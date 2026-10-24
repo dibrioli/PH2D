@@ -7,6 +7,7 @@
 //! ⭐ **A resposta a «que valor este objecto usa?» é uma só** — a `ph2d_script::resolve`, com as
 //! declarações que a VM colheu. O painel recebe-a pronta e pinta.
 
+use ph2d_ecs::canal_script as cs;
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_editor_core::script_edits::{
     InspectorScriptError, InspectorScriptInfo, InspectorScriptOrphan, InspectorScriptProp,
@@ -17,6 +18,17 @@ use ph2d_script::{
     LuauScript, Origin, OrphanWhy, ProjectScripts, ScriptDiagnostic, ScriptEditRequests,
     ScriptHost, ScriptInfo, ScriptSource, ScriptValue,
 };
+
+/// O tipo do canal de um valor de script (`ph2d_ecs::canal_script`).
+pub(crate) fn tipo_de(v: &ScriptValue) -> cs::Tipo {
+    match v {
+        ScriptValue::Number(_) => cs::Tipo::Number,
+        ScriptValue::Bool(_) => cs::Tipo::Bool,
+        ScriptValue::Text(_) => cs::Tipo::Text,
+        ScriptValue::Vec2(_) => cs::Tipo::Vec2,
+        ScriptValue::Color(_) => cs::Tipo::Color,
+    }
+}
 
 /// Tradução do valor para o vocabulário do painel.
 fn para_painel(v: &ScriptValue) -> InspectorScriptValue {
@@ -90,6 +102,7 @@ pub fn build_info(
     };
     let decls = known.and_then(ScriptInfo::decls);
     let r = resolve(decls, &cfg.own);
+    let textos = sim.world().get_resource::<ph2d_ecs::TextosDosCanais>();
     let props = r
         .values
         .iter()
@@ -121,6 +134,12 @@ pub fn build_info(
                 min: p.hint.min,
                 max: p.hint.max,
                 step: Some(passo(default, p.hint.step)),
+                canais: (textos.and_then(|t| cs::chave_lida(&p.name, tipo_de(&p.value), t)))
+                    .map(cs::grupo)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|k| [k.familia, k.campo, k.i, k.j])
+                    .collect(),
             }
         })
         .collect();

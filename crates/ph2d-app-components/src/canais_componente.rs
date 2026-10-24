@@ -5,7 +5,7 @@
 //! do ledger), passa pela lei do componente (`property_laws::sanitize`) e declara a escrita ao
 //! `FieldDrive` — o que a curva escreve vê-se, não se guarda, como o que um script escreve.
 
-use ph2d_component_desc::FieldKind;
+use ph2d_component_desc::{FieldKind, Target, View};
 use ph2d_ecs::canal::familia::COMPONENTE;
 use ph2d_ecs::canal_componente as cc;
 use ph2d_ecs::scene::property::slot_in;
@@ -79,6 +79,9 @@ pub fn escrever(
     textos: &TextosDosCanais,
 ) -> Option<Escrita> {
     let (entry, f, faixa) = alvo(reg, k)?;
+    if f.view == View::Named(Target::Script) && !script_existe(w, x) {
+        return None;
+    }
     let mut inteiro = (entry.value_of)(w, e).ok()??;
     let guardado = |v: &mut Value| slot_in(v, f.stored_key()).cloned();
     let antes = guardado(&mut inteiro)?;
@@ -117,6 +120,7 @@ pub fn publicar(sim: &mut SimWorld, reg: &ComponentRegistry, entidades: &[u64]) 
             Some((b, v))
         })
         .collect();
+    crate::canais_script::publicar(sim, entidades, &mut textos);
     sim.world_mut().insert_resource(textos);
     let mut lidos = sim
         .world_mut()
@@ -165,6 +169,8 @@ pub fn aplicar(sim: &mut SimWorld, reg: &ComponentRegistry, drive: &mut PreviewD
             ecos.push((b, k, x, ficou));
         }
     }
+    // As propriedades que o script declara: a mesma tabela, o mesmo quadro.
+    mudou |= crate::canais_script::aplicar(sim, reg, drive, &textos);
     sim.world_mut().insert_resource(textos);
     let mut lidos = sim
         .world_mut()
@@ -173,6 +179,20 @@ pub fn aplicar(sim: &mut SimWorld, reg: &ComponentRegistry, drive: &mut PreviewD
         lidos.eco(b, k, x, f);
     }
     mudou
+}
+
+/// O script `x` existe na biblioteca do projeto (`0` = nenhum, que existe sempre) — a curva não
+/// aponta um objecto para um script que o projeto não tem.
+fn script_existe(w: &World, x: f32) -> bool {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "arredondado e positivo"
+    )]
+    let k = x.round().max(0.0) as u64;
+    k == 0
+        || w.get_resource::<ph2d_script::ProjectScripts>()
+            .is_some_and(|l| l.get(ph2d_script::ScriptId(k)).is_some())
 }
 
 /// A tabela dos textos da sessão, fora do mundo enquanto o funil o lê e escreve (volta no fim).

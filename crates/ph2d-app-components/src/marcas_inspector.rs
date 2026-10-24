@@ -12,6 +12,7 @@
 //! de um objecto livre são `TranslationX/Y`: o clique grava a do modo em que o objecto está, nunca
 //! as duas.
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use ph2d_ecs::FieldKey;
@@ -264,23 +265,34 @@ fn do_rotulo(rotulo: &str) -> &'static [PropKind] {
     .map_or(&[], |g| g)
 }
 
-/// Os campos do quadro: as tabelas e os pintados com um rótulo do catálogo.
-fn todos() -> impl Iterator<Item = (NodeId, &'static [PropKind])> {
+/// Os campos do quadro: as tabelas, os pintados com um rótulo do catálogo, e os que a pintura
+/// registou com a chave (as propriedades que o script declara, `key_mark::regista_canal`).
+fn todos() -> impl Iterator<Item = (NodeId, Cow<'static, [PropKind]>)> {
     CAMPOS
         .iter()
-        .map(|&(c, g)| (c, g))
-        .chain(mascara().iter().map(|(c, g)| (*c, &**g)))
+        .map(|&(c, g)| (c, Cow::Borrowed(g)))
+        .chain(mascara().iter().map(|(c, g)| (*c, Cow::Borrowed(&**g))))
         .chain(
             (key_mark::rotulos_pintados().into_iter())
-                .map(|(c, r)| (c, do_rotulo(r)))
+                .map(|(c, r)| (c, Cow::Borrowed(do_rotulo(r))))
                 .filter(|(_, g)| !g.is_empty()),
         )
+        .chain((key_mark::canais_registados().into_iter()).map(|(c, ks)| {
+            (
+                c,
+                ks.into_iter()
+                    .map(|[f, k, i, j]| PropKind::Field(FieldKey::new(f, k, i, j)))
+                    .collect(),
+            )
+        }))
 }
 
 /// O grupo que o campo `id` do Inspector mostra (vazio = sem canal).
 #[must_use]
-pub fn canal_do_campo(id: NodeId) -> &'static [PropKind] {
-    todos().find(|(c, _)| *c == id).map_or(&[], |(_, g)| g)
+pub fn canal_do_campo(id: NodeId) -> Cow<'static, [PropKind]> {
+    todos()
+        .find(|(c, _)| *c == id)
+        .map_or(Cow::Borrowed(&[]), |(_, g)| g)
 }
 
 fn marca(f: Forca) -> KeyMark {
@@ -305,12 +317,17 @@ pub fn marcas(
         return out;
     }
     // Um grupo é perguntado uma vez: os cantos, os interruptores e os eixos repetem-no.
-    let mut por_grupo: BTreeMap<&[PropKind], KeyMark> = BTreeMap::new();
+    let mut por_grupo: BTreeMap<Cow<'static, [PropKind]>, KeyMark> = BTreeMap::new();
     let lig = ph2d_timeline::Ligacoes::de(doc, entidades, inst);
     for (id, reps) in todos() {
-        let m = *por_grupo
-            .entry(reps)
-            .or_insert_with(|| marca(lig.estado(reps, &valor).0));
+        let m = match por_grupo.get(&reps) {
+            Some(&m) => m,
+            None => {
+                let m = marca(lig.estado(&reps, &valor).0);
+                por_grupo.insert(reps, m);
+                m
+            }
+        };
         out.insert(id, m);
     }
     out
@@ -339,11 +356,11 @@ pub fn clique(
         return Vec::new();
     };
     if reps.iter().any(|r| matches!(r, PropKind::Field(_))) {
-        return ph2d_timeline::clique_no_grupo(doc, reps, entidades, inst, lidos, valor, autorar);
+        return ph2d_timeline::clique_no_grupo(doc, &reps, entidades, inst, lidos, valor, autorar);
     }
     let apagar = ph2d_timeline::clique_no_grupo(
         doc,
-        reps,
+        &reps,
         entidades,
         inst,
         |_| Vec::new(),

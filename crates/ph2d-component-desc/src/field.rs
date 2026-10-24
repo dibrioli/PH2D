@@ -87,6 +87,8 @@ pub enum Target {
     TagSet,
     /// Uma camada de ordenação do projecto (`SortingLayers`), pelo nome; guardada pelo índice.
     Layer,
+    /// Um script da biblioteca do projecto (`ScriptSource`: `"None"` ou `{"Library": id}`).
+    Script,
 }
 
 /// ⭐ **Uma [`View::Options`]**: `options!["full" => Full, "none" => Nothing, "inherit" => null]`. O

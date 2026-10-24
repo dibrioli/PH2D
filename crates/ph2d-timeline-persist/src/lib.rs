@@ -405,8 +405,20 @@ pub fn publish_object_names(view: &mut ph2d_timeline::TimelineViewSnapshot, worl
     let ph2d_timeline::TimelineViewSnapshot {
         tracks,
         object_names,
+        channel_names,
         ..
     } = view;
+    // O nome de cada propriedade de script vem da tabela que a chave indexa (F27 E).
+    channel_names.clear();
+    if let Some(textos) = world.get_resource::<ph2d_ecs::TextosDosCanais>() {
+        for t in tracks.iter() {
+            if let ph2d_timeline::PropKind::Field(k) = t.prop
+                && let Some(n) = ph2d_ecs::canal_script::nome(k, textos)
+            {
+                channel_names.insert(k, n.to_owned());
+            }
+        }
+    }
     // Poda primeiro: um objeto que saiu das tracks (deletado, ou a track foi removida) não
     // pode continuar nomeando bits que o bevy já reciclou para OUTRO objeto.
     object_names.retain(|bits, _| tracks.iter().any(|t| t.entity == *bits));

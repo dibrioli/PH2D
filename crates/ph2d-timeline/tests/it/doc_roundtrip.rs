@@ -155,8 +155,10 @@ fn schema_version_is_nineteen() {
     //      contra a fixtura em `canal_field.rs`).
     // v22 = a tabela dos TEXTOS (`TimelineDoc.textos`, apendada): o ficheiro leva os textos que as
     //      chaves de texto indexam (`doc_v21.rs`, provado contra a fixtura em `canal_textos.rs`).
-    assert_eq!(DOC_VERSION, 22);
-    assert_eq!(TimelineDoc::new().version, 22);
+    // v23 = o NOME de uma propriedade de script na chave (`canal_script`), remapeado com a tabela:
+    //      os bytes da v22, re-carimbados (provado contra a fixtura em `canal_textos.rs`).
+    assert_eq!(DOC_VERSION, 23);
+    assert_eq!(TimelineDoc::new().version, 23);
 }
 
 /// **Both loops survive the trip, and independently.** A clip whose Arrange loop and

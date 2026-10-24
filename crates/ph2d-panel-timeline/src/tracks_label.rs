@@ -62,6 +62,23 @@ pub(crate) fn track_label(name: Option<&str>, entity: u64, prop: PropKind) -> St
         },
         _ => prop_label(prop).to_owned(),
     };
+    compoe(name, entity, rotulo)
+}
+
+/// [`track_label`] lido do instantâneo: o nome do objecto, e o da propriedade quando a row tem um
+/// (`TimelineViewSnapshot::channel_name` — a que o script declara).
+pub(crate) fn track_label_snap(
+    snap: &ph2d_timeline::TimelineViewSnapshot,
+    entity: u64,
+    prop: PropKind,
+) -> String {
+    match snap.channel_name(prop) {
+        Some(n) => compoe(snap.object_name(entity), entity, n.to_owned()),
+        None => track_label(snap.object_name(entity), entity, prop),
+    }
+}
+
+fn compoe(name: Option<&str>, entity: u64, rotulo: String) -> String {
     match name {
         Some(n) => format!("{n} · {rotulo}"),
         // O fallback é o rótulo que o dope-sheet sempre teve. Ele NÃO é sinal de erro:

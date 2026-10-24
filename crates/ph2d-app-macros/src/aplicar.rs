@@ -192,6 +192,22 @@ fn desfaz(sim: &mut SimWorld, nascidos: &[u64]) {
     }
 }
 
+/// **As imagens que as trilhas do Painter do objecto Macro `raiz` pintam** (bits). O documento do
+/// Painter é de 8 bits: a composição avisa a precisão de cada uma que seja de 16.
+#[must_use]
+pub fn imagens_que_pinta(sim: &SimWorld, raiz: u64) -> Vec<u64> {
+    let Ok(fi) = ficheiro_de(sim, raiz) else {
+        return Vec::new();
+    };
+    fi.doc
+        .tracks
+        .iter()
+        .filter(|t| familia(t) == FamiliaDaMacro::Painter)
+        .filter_map(|t| ph2d_ecs::entity_with_stable_id(sim.world(), StableId(t.target)))
+        .map(Entity::to_bits)
+        .collect()
+}
+
 /// **O alvo recebe esta macro por cima?** — `Ok(família)`, ou a chave do porquê não.
 ///
 /// # Errors

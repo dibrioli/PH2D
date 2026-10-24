@@ -2,7 +2,7 @@
 //! de etapas, os passos que as famílias gravaram neste quadro e o instantâneo do painel. A lei vive
 //! na `ph2d-app-macros`.
 
-use ph2d_app_macros::aplicar::Imagem;
+use ph2d_app_macros::aplicar::{self, Imagem};
 use ph2d_app_macros::{Cena, Familias, erros, etapas::Injectadas};
 use ph2d_app_motion::macro_track::vistas::{EtapasDoMotion, do_motion};
 
@@ -69,7 +69,21 @@ impl crate::App {
         let agora = ph2d_app_macros::relogio_us();
         ph2d_app_macros::com(|m| m.quadro(&mut f, &mut c, agora));
         // O objecto Macro que um aplicar fez nascer fica escolhido (como o Add).
-        if let Some(b) = ph2d_app_macros::com(ph2d_app_macros::Macros::toma_o_aplicado)
+        let aplicado = ph2d_app_macros::com(ph2d_app_macros::Macros::toma_o_aplicado);
+        // O leitor acima dá 8 bits, e o documento do Painter é de 8 (não há porta de 16): a imagem de
+        // 16 bits que a macro pinta passa a mostrar-se a 8 — o aviso diz porquê.
+        for i in aplicado.map_or_else(Vec::new, |b| aplicar::imagens_que_pinta(c.sim, b)) {
+            let because = ph2d_i18n::tr(ph2d_editor_core::macro_edits::MACRO_APLICAR_OITO_BITS);
+            let (e, r) = (ph2d_ecs::Entity::from_bits(i), atlas.borrow());
+            crate::hero_intents::texture_edit::warn_precision_loss(
+                e,
+                c.sim,
+                r.renderer,
+                &mut gfx.toasts,
+                because,
+            );
+        }
+        if let Some(b) = aplicado
             && let Some(h) = gfx.hero_screen.as_mut()
         {
             h.gizmo.replace_selection(Some(b));

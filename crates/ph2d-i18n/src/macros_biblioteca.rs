@@ -34,6 +34,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "app.macros.apply.no_target" => "The object to apply over no longer exists.",
         "app.macros.apply.not_born" => "The macro could not create its object: {detail}",
+        "app.macros.apply.eight_bit_copy" => {
+            "the macro paints over an 8-bit copy of this 16-bit image (the Painter works in 8 bits)"
+        }
         "app.macros.asset.saved" => "\u{201c}{detail}\u{201d} is now an asset of this project.",
         // A cena `PH2D_MACRO_SMOKE=7`: o que cada passo É, no ecrã.
         "app.macros.smoke7.step.1" => {

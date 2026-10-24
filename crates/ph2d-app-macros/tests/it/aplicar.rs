@@ -4,7 +4,7 @@
 //! a receita dos assets aplica-se pela mesma porta.
 
 use crate::gate7::Banca;
-use ph2d_app_macros::biblioteca;
+use ph2d_app_macros::{aplicar, biblioteca};
 use ph2d_ecs::{ChildOf, Entity, Macro, MasterRoot, Name, StableId, Transform};
 use ph2d_editor_core::macro_edits::{self as m, MacroRequest, OndeAplicar};
 use ph2d_macro::ficheiro::{EXTENSAO, Ficheiro};
@@ -183,6 +183,8 @@ fn guardar_exportar_importar_e_aplicar_novo_faz_nascer_a_imagem_do_tamanho_grava
         .0;
     assert_eq!(d.tracks[0].target, sid);
     assert!(ph2d_app_macros::instala::clipe_de(&b2.tl.doc, novos[0]).is_some());
+    // O aviso de precisão da composição pergunta por esta imagem (a nascida é de 8 bits, não avisa).
+    assert_eq!(aplicar::imagens_que_pinta(&b2.sim, novos[0]), [filho]);
 }
 
 #[test]
@@ -211,6 +213,11 @@ fn aplicar_por_cima_toca_na_imagem_de_baixo() {
     assert_ne!(raiz, alvo, "o objecto Macro é próprio");
     let t = &doc_de(&b2, raiz).tracks[0];
     assert_eq!(t.target, IMAGEM, "a trilha toca no alvo");
+    assert_eq!(
+        aplicar::imagens_que_pinta(&b2.sim, raiz),
+        [alvo],
+        "o aviso de precisão da composição pergunta pelo alvo (de 16 bits, pinta-se a 8)"
+    );
     assert!(t.nasce.is_none());
     assert_eq!(
         inicial::tamanho_gravado(&t.initial),

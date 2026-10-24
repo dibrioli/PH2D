@@ -328,5 +328,7 @@ pub const MACRO_POR_CIMA_ESCOLHA: &str = "panel.macros.lib.apply_over_needs_targ
 pub const MACRO_APLICAR_SEM_ALVO: &str = "app.macros.apply.no_target";
 /// O objecto que a macro cria não nasceu (`{detail}`).
 pub const MACRO_APLICAR_NAO_NASCE: &str = "app.macros.apply.not_born";
+/// Por cima de uma imagem de 16 bits: o porquê do aviso de precisão (o documento do Painter é de 8).
+pub const MACRO_APLICAR_OITO_BITS: &str = "app.macros.apply.eight_bit_copy";
 /// Guardou a receita nos assets do projecto (`{detail}` = o nome).
 pub const MACRO_ASSET_GUARDADO: &str = "app.macros.asset.saved";

@@ -1,6 +1,7 @@
 //! Os gates do solver de luz na GPU (plano `docs/Luz2D/01_plano.md` §5). Um binário por crate.
 //! Os de placa saltam (com aviso) numa máquina sem GPU; correm com `PH2D_GPU=1`.
 
+mod bug7_por_placa;
 mod c0_o_que_fica_fora;
 mod c3_grade_fina;
 mod cenas;

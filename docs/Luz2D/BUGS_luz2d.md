@@ -154,3 +154,26 @@
   RAPHAEL_MENDOCINO` e `radeonsi`). Material bruto copiado para `target/radeon_achado/` (nextest e os dois junit).
 - **Consequência:** a Luz 2D fica presa à NVIDIA na fila da placa até isto fechar; quando passar na Radeon, o
   handoff di-lo. ⚠️ Toda cura «de mesmo bit» desta linha (a da borda do W6h §13 incluída) prova-se também na Radeon.
+- **Os mecanismos MEDIDOS (23/10, W6i, `ac7366c6a0` + os instrumentos `bug7_*`, `--ignored`; saídas em
+  `target/radeon_w6i/`).** Reproduzidos os 7 na Radeon (só RADV e radeonsi visíveis; zero processos desta árvore no
+  `nvidia-smi`); a cura da borda (W6h §13, `a_leitura_da_borda_sem_desvio_nao_muda_um_bit`) PASSA lá, 5/5 vistas.
+  1. *O mesmo bit:* o produto contra ele mesmo dá 0 texels nas duas placas (determinista); as 19 e 495 diferenças
+     são TODAS de 1 ULP do f16; com `ACO_DEBUG=noopt` (o otimizador do compilador da AMD desligado, o mesmo binário)
+     caem a **0 e 0**. ⇒ é a reescrita da conta pelo compilador (contração/reassociação), que o WGSL permite; a
+     NVIDIA dá 0 por acaso do compilador dela, não por lei.
+  2. *A memória:* com a holográfica em textura, os `luz2d/buf/hrc_*` são TEXTURAS `Rg32Uint` (o rótulo é o dos
+     buffers que substituem); o `hrc_r0` é 8192 × 8 = 524 288 B e a RADV dá-lhe 1 MiB (a altura de 8 sobe a 16 no
+     ladrilho dela); as T de 16 linhas cabem exatas. E não é só ele: na Radeon quase TODA textura passa o teto de
+     3 072 (`cantos`/`vertices` +65 536, `miolo_*` +43 776, `emissao` +65 296, constantes entre as grades; `borda`
+     +32 768 a +57 344 varia) — o `hrc_r0` é só o 1.º por ordem alfabética. Um buffer de 512 KiB sozinho sai exato
+     nas duas placas (o relatório soma o vão de alinhamento ao tamanho da peça: `aligned_size = padding + size` no
+     `gpu-allocator`). ⇒ a RÉGUA (o teto é o da NVIDIA) e não o produto a reservar 170×; o `hrc_r0` desperdiça
+     512 KiB na AMD (forma da textura).
+  3. *A holográfica:* `pack2x16float` arredonda PARA ZERO na RADV (32 768/32 768 a ¾ de ULP) e para o MAIS PRÓXIMO
+     na NVIDIA (32 768/32 768); a escrita numa textura `Rgba16Float` é para zero nas DUAS. Os T e R da holográfica
+     guardam-se por `pack2x16float` ⇒ na Radeon cada nível trunca para baixo: o G9 sai TODO negativo, −1,2 a −1,6 %
+     no Alto e no Médio contra −0,6 a −1,0 % na NVIDIA (o viés extra, do mesmo sinal, é o arredondamento).
+  4. *O custo do miolo:* na Radeon `c3_miolo` ~10,7 ms com a base contra ~10,9–11,0 sem ela (razão 0,97–1,02 em 3
+     corridas; controlo 1,20–1,62, `load` 27–140: a régua tem ruído, mas a razão não desce em nenhuma); a base corta
+     os despachos 605 → 247 e o tempo não se move ⇒ na integrada o miolo é TRABALHO, não despachos (a lei W5o é da
+     NVIDIA, 0,72 contra 1,07 ms).

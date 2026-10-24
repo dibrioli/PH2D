@@ -14,6 +14,7 @@ mod a_opacidade_do_oclusor;
 mod a_vista_renasce_com_os_mesmos_bits;
 mod as_formas_do_motion;
 mod as_formas_redondas;
+mod bug7_o_mesmo_bit_por_placa;
 mod captura_do_vetor;
 mod captura_dos_outros;
 mod captura_por_texel;

@@ -181,7 +181,17 @@ fn linha(
     .max(0.0);
     let reset_w = reset_w.min(control_w);
     let ctrl = Rect::new(row.control.x, row_y, ctrl_w, ALTURA_DE_CAMPO);
-    controlo(scene, text_system, theme, hit_index, store, ctrl, i, p);
+    controlo(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        ctrl,
+        i,
+        p,
+        (x, seccao),
+    );
     if p.own {
         let rect = if reset_desce {
             Rect::new(
@@ -432,6 +442,7 @@ fn controlo(
     ctrl: Rect,
     i: usize,
     p: &InspectorScriptProp,
+    linha: (f32, ph2d_editor_core::property_row::Seccao),
 ) {
     let ctrl_w = ctrl.w;
     let row_y = ctrl.y;
@@ -461,11 +472,15 @@ fn controlo(
             let (_, value) = store
                 .checkbox(id)
                 .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
+            // A caixa recebe a fileira INTEIRA com a secção das vizinhas: só assim a coluna do
+            // valor dela é a delas (dentro do `ctrl` ela partia-o outra vez em nome + valor).
+            let (x, seccao) = linha;
             paint_checkbox(
                 &Checkbox::new(id, "")
                     .visual(store.checkbox_visual(id))
-                    .value(value),
-                ctrl,
+                    .value(value)
+                    .seccao(seccao),
+                Rect::new(x, row_y, ctrl.x + ctrl_w - x, ctrl.h),
                 scene,
                 text_system,
                 theme,

@@ -13,7 +13,7 @@
 //! ⚠️ O alfa do `tint` é o `PropKind::Opacity` de sempre (`Sprite::tint[3]`): o grupo do tint tem
 //! só o RGB, e quem pinta a swatch junta-lhe a `Opacity` (`marcas_inspector`).
 
-use crate::canal::CampoInfo;
+use crate::canal::{CampoInfo, Especie};
 
 /// `Transform::skew_x` / `skew_y` (radianos) — um grupo: a linha do Inspector é uma.
 pub const SKEW_X: u16 = 1;
@@ -43,10 +43,9 @@ pub const N_CANTOS: u16 = 4;
 const fn c(rotulo: &'static str, grupo: u16) -> CampoInfo {
     CampoInfo {
         rotulo,
-        discreto: false,
+        especie: Especie::Continuo,
         grupo,
         por_i: false,
-        texto: false,
     }
 }
 
@@ -61,7 +60,7 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         AUTO_TINTA..AUTO_TINTA_FIM => c("canal.objeto.auto_tinta", AUTO_TINTA),
         CANTOS..CANTOS_FIM => c("canal.objeto.cantos", CANTOS),
         SILHUETA => CampoInfo {
-            discreto: true,
+            especie: Especie::Ligado,
             ..c("canal.objeto.silhueta", campo)
         },
         _ => return None,

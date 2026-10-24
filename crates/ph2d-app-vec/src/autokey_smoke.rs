@@ -34,14 +34,15 @@ static ESPERA: AtomicU8 = AtomicU8::new(0);
 /// COMPONENTE — `autokey_smoke_camera`) · [`ALVO`] = `=29` (o alvo e o Visible — `autokey_smoke_alvo`)
 /// · [`TEXTO`] = `=30` (o texto do canal na dope-sheet e o olho — `autokey_smoke_texto`) · [`GRUPO`] =
 /// `=31` (o menu da linha de grupo — `autokey_smoke_grupo`) · [`COMPONENTES`] = `=32` (a camada, a
-/// fonte do HUD e o script — `ph2d_app_components::autokey_smoke_componentes`).
+/// fonte do HUD e o script) e `=33` (as palavras das escolhas) — `ph2d_app_components::autokey_smoke_componentes`.
 static DESENHO: AtomicU8 = AtomicU8::new(0);
 const LADO_B: u8 = 25;
 const CAMERA: u8 = 26;
 const ALVO: u8 = 27;
 const TEXTO: u8 = 28;
 const GRUPO: u8 = 29;
-/// `=32`: a cena mora em `ph2d_app_components::autokey_smoke_componentes`; aqui só se reserva o número.
+/// `=32` e `=33`: a cena mora em `ph2d_app_components::autokey_smoke_componentes`; aqui só se
+/// reservam os números.
 const COMPONENTES: u8 = 30;
 /// O estágio da cena — a do desenho avança-o daqui.
 pub(crate) fn avanca(n: u8) {
@@ -85,7 +86,7 @@ pub fn step(
                 "29" => ALVO,
                 "30" => TEXTO,
                 "31" => GRUPO,
-                "32" => COMPONENTES,
+                "32" | "33" => COMPONENTES,
                 // `=16..26`: uma bancada por tipo de junta — `autokey_smoke_tipos`.
                 x => x
                     .parse::<u8>()

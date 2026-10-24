@@ -31,7 +31,7 @@ fn o_vocabulario_do_objeto_nao_renumera() {
 #[test]
 fn cada_campo_do_objeto_diz_o_que_e() {
     let skew = k(SKEW_X, 0).info().expect("skew");
-    assert!(!skew.discreto && !skew.por_i);
+    assert!(!skew.discreto() && !skew.por_i);
     assert!(
         k(SKEW_X, 0).mesmo_grupo(k(SKEW_Y, 0)),
         "X e Y são uma linha"
@@ -52,7 +52,7 @@ fn cada_campo_do_objeto_diz_o_que_e() {
             );
         }
     }
-    assert!(k(SILHUETA, 0).info().is_some_and(|i| i.discreto));
+    assert!(k(SILHUETA, 0).info().is_some_and(|i| i.discreto()));
     assert!(!k(EMISSAO, 0).mesmo_grupo(k(OPACIDADE, 0)));
     assert!(!k(TINTA, 0).mesmo_grupo(k(AUTO_TINTA, 0)));
     assert_eq!(k(TINTA + 1, 0).membro(), Some("canal.m.g"));

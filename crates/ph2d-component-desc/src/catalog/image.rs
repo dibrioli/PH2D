@@ -111,7 +111,7 @@ const SLICE_NINE: &[FieldDesc] = &[
     f(5, "component.field.slice_nine.5", K::Toggle).named("fill_center"),
     f(6, "component.field.slice_nine.6", K::Enum)
         .named("tile_mode")
-        .viewed(crate::options!["continuous" => Continuous, "whole" => Whole]),
+        .viewed(crate::options!["continuous" => Continuous @ "panel.inspector.slice.continuous", "whole" => Whole @ "panel.inspector.slice.whole"]),
     f(7, "component.field.slice_nine.7", K::Vec2).named("size"),
     // A caixa liga `Sliced`: o script lê o booleano da caixa.
     f(8, "component.field.slice_nine.8", K::Enum)
@@ -134,15 +134,15 @@ const SPRITE_ANIMATOR: &[FieldDesc] = &[
     f(4, "component.field.sprite_animator.4", K::Enum)
         .named("direction_override")
         .viewed(crate::options![
-            "inherit" => null,
-            "fwd" => Forward,
-            "rev" => Reverse,
-            "pp" => PingPong,
-            "pp_rev" => PingPongReverse,
+            "inherit" => null @ "panel.inspector.animation.inherit",
+            "fwd" => Forward @ "panel.inspector.animation.fwd",
+            "rev" => Reverse @ "panel.inspector.animation.rev",
+            "pp" => PingPong @ "panel.inspector.animation.pp",
+            "pp_rev" => PingPongReverse @ "panel.inspector.animation.pp_rev",
         ]),
     f(5, "component.field.sprite_animator.5", K::Enum)
         .named("loop_override")
-        .viewed(crate::options!["inherit" => null, "on" => true, "off" => false]),
+        .viewed(crate::options!["inherit" => null @ "panel.inspector.animation.inherit", "on" => true @ "panel.inspector.animation.on", "off" => false @ "panel.inspector.animation.off"]),
 ];
 
 /// As duas caixas da §12 que mostram as âncoras.

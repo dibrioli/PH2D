@@ -1,6 +1,6 @@
 //! Gates do [`super::TrackValues`] — o número que a dope-sheet mostra ao lado do nome.
 
-use super::TrackValues;
+use super::{Palavra, TrackValues};
 use crate::{Extrap, PropKind, TrackView};
 use ph2d_anim::AnimTarget;
 
@@ -67,11 +67,10 @@ fn a_row_that_left_takes_its_number_with_it() {
     assert_eq!(v.get(1), None, "a track saiu e o numero dela ficou");
 }
 
-/// **UMA ROW DE TEXTO LEVA OS SEUS TEXTOS** — o valor de agora e o de cada chave; uma row de número
-/// não leva nenhum, e o índice `0` («nenhum») não nomeia texto.
+/// **UMA ROW DISCRETA LEVA AS SUAS PALAVRAS** — o valor de agora e o de cada chave; uma row de
+/// número não leva nenhuma, e o texto `0` («nenhum») não nomeia nada.
 ///
-/// ⚠️ Mutação que tem de sangrar: não filtrar por `is_text` (a opacidade `1.0` publicaria o 1.º
-/// texto da tabela e o painel escreveria um nome ao lado de um número).
+/// ⚠️ Mutação que tem de sangrar: não levar as palavras das CHAVES (só a do valor de agora).
 #[test]
 fn a_text_row_carries_its_texts_and_a_number_row_none() {
     use ph2d_ecs::canal::familia;
@@ -79,6 +78,8 @@ fn a_text_row_carries_its_texts_and_a_number_row_none() {
     let conteudo = FieldKey::new(familia::VETOR, canal_vetor::TEXTO_CONTEUDO, 0, 0);
     let mut tabela = TextosDosCanais::default();
     let (a, b) = (tabela.indice(Some("Box A")), tabela.indice(Some("Box C")));
+    let mut mundo = bevy_ecs::world::World::new();
+    mundo.insert_resource(tabela);
     let mut texto = row(1, 7, PropKind::Field(conteudo));
     texto.keys.push(crate::KeyView {
         id: crate::KeyId::new(1),
@@ -90,16 +91,44 @@ fn a_text_row_carries_its_texts_and_a_number_row_none() {
     });
     let tracks = [texto, row(2, 7, PropKind::Opacity)];
     let mut v = TrackValues::default();
-    v.publish_com_textos(&tracks, Some(&tabela), |_, p| {
+    v.publish_com_mundo(&tracks, Some(&mundo), |_, p| {
         Some(if p == PropKind::Opacity { 1.0 } else { a })
     });
+    let artista = |s: &str| Some(Palavra::DoArtista(s.to_owned()));
     assert_eq!(
-        v.get(1).and_then(|x| v.texto(x)),
-        Some("Box A"),
+        v.get(1).and_then(|x| v.palavra(1, x)).cloned(),
+        artista("Box A"),
         "o valor de agora"
     );
-    assert_eq!(v.texto(b), Some("Box C"), "o valor da chave");
-    assert_eq!(v.texto(0.0), None, "o 0 é «nenhum»");
-    v.publish_com_textos(&tracks[1..], Some(&tabela), |_, _| Some(1.0));
-    assert_eq!(v.texto(1.0), None, "uma row de número não publica texto");
+    assert_eq!(
+        v.palavra(1, b).cloned(),
+        artista("Box C"),
+        "o valor da chave"
+    );
+    assert_eq!(v.palavra(1, 0.0), None, "o 0 é «nenhum»");
+    assert_eq!(
+        v.palavra(2, 1.0),
+        None,
+        "uma row de número não publica palavra"
+    );
+}
+
+/// ⭐ **A escolha publica a chave do rótulo da OPÇÃO** (F27 F) — a mesma palavra que o cartão do
+/// HUD pinta (`Tag`), nunca o índice `3`.
+#[test]
+fn uma_escolha_publica_o_rotulo_da_opcao() {
+    let fonte = ph2d_ecs::canal_componente::chaves_do_rotulo("component.field.label_fields.1")[0];
+    let tracks = [row(1, 7, PropKind::Field(fonte))];
+    let mut v = TrackValues::default();
+    v.publish_com_mundo(&tracks, Some(&bevy_ecs::world::World::new()), |_, _| {
+        Some(3.0)
+    });
+    let Some(Palavra::Chave(c)) = v.palavra(1, 3.0) else {
+        panic!("a escolha não publicou palavra");
+    };
+    assert_eq!(
+        ph2d_i18n::tr(c),
+        ph2d_i18n::tr("panel.inspector.hud.source_tag")
+    );
+    assert_eq!(ph2d_i18n::tr(c), "Tag");
 }

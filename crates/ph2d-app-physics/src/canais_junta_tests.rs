@@ -24,7 +24,7 @@ fn cada_campo_le_o_que_escreveu() {
     let todos = campos();
     assert_eq!(todos.len(), 16 + 9);
     for kk in todos {
-        let discreto = kk.info().is_some_and(|i| i.discreto);
+        let discreto = kk.info().is_some_and(|i| i.discreto());
         let alvo = if discreto { 1.0 } else { 0.75 };
         let pj = escrever(base, kk, alvo);
         let lido = ler(&pj, kk).expect("campo publicado");

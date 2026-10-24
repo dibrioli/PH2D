@@ -33,7 +33,7 @@ const fn f(field_id: u16, label_key: &'static str, kind: K) -> FieldDesc {
 const LUZ_FIELDS: &[FieldDesc] = &[
     f(0, "component.field.luz_fields.0", K::Enum)
         .named_as("type", "tipo")
-        .viewed(crate::options!["point" => Ponto, "ambient" => Ambiente]),
+        .viewed(crate::options!["point" => Ponto @ "panel.inspector.luz.point", "ambient" => Ambiente @ "panel.inspector.luz.ambient"]),
     f(1, "component.field.luz_fields.1", K::Color)
         .named_as("color", "cor")
         .viewed(View::Srgb),

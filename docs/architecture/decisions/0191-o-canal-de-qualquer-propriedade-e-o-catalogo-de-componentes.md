@@ -75,3 +75,16 @@ Desenho e medições: [F27_E_plano.md](../../UI_New_and_Simple/F27_E_plano.md).
 - `TimelineDoc` v22 → v23 (mesmos bytes; a `retabela` remapeia as chaves SCRIPT).
 - **Dívida declarada:** as três dívidas do catálogo (fonte do rótulo do HUD, ficheiro do script, props do script) estão FECHADAS;
   ficam os itens de LISTA.
+
+## Adendo F27 F (2026-10-24)
+
+Desenho e medições: [F27_F_plano.md](../../UI_New_and_Simple/F27_F_plano.md).
+
+- `CampoInfo.especie: Especie` (Continuo · Numero · Ligado · Opcoes · PorIrmao · Catalogo · Camada · Script · Texto) substitui
+  `discreto`/`texto`; todo discreto de família declara a espécie (o helper exige-a).
+- Porta única da palavra de um valor discreto: `ph2d_ecs::canal_palavra::palavra` (chave `ph2d-i18n` ou nome do artista);
+  a coluna do valor e o gráfico da timeline leem-na pelo `TrackValues`.
+- Cada opção do catálogo declara a chave do rótulo do cartão (`options!["x" => X @ "panel…"]`, `Opcao { nome, valor, rotulo }`).
+- Um canal, um losango: o ficheiro do script leva-o no seletor.
+- O corte de script recomeça o script (lei do Godot; os valores próprios ficam).
+- Sem formato novo (`TimelineDoc` v23).

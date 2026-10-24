@@ -120,9 +120,9 @@ const LIFETIME_FIELDS: &[FieldDesc] = &[
 const MACRO_FIELDS: &[FieldDesc] = &[f(2, "component.field.macro_fields.2", K::Enum)
     .named_as("playback", "modo")
     .viewed(crate::options![
-        "faithful" => Fiel,
-        "explanatory" => Explicativo,
-        "do_it" => Fazer,
+        "faithful" => Fiel @ "panel.inspector.macro.mode.0",
+        "explanatory" => Explicativo @ "panel.inspector.macro.mode.1",
+        "do_it" => Fazer @ "panel.inspector.macro.mode.2",
     ])];
 
 /// ⭐ Ciclo 19 do Motion (doc 128 §3.6): os campos do `Motion Input`, na ordem da struct.
@@ -131,10 +131,10 @@ const MOTION_INPUT_FIELDS: &[FieldDesc] = &[
     f(2, "component.field.motion_input_fields.2", K::Enum)
         .named("source")
         .viewed(crate::options![
-            "value" => Value,
-            "color" => Color,
-            "health" => Health,
-            "damage" => Damage,
+            "value" => Value @ "panel.inspector.motion_input.source.0",
+            "color" => Color @ "panel.inspector.motion_input.source.1",
+            "health" => Health @ "panel.inspector.motion_input.source.2",
+            "damage" => Damage @ "panel.inspector.motion_input.source.3",
         ]),
     f(3, "component.field.motion_input_fields.3", K::Scalar).named("value"),
     f(4, "component.field.motion_input_fields.4", K::Color).named("color"),
@@ -160,9 +160,9 @@ const FACTORY_FIELDS: &[FieldDesc] = &[
     f(3, "component.field.factory_fields.3", K::Enum)
         .named_as("where", "at")
         .viewed(crate::options![
-            "here" => Here,
-            "area" => {"Area": {"w": 4.0, "h": 1.0}},
-            "at_tag" => {"Tagged": {"tag": 0, "pick": "Cycle"}},
+            "here" => Here @ "panel.factory.here",
+            "area" => {"Area": {"w": 4.0, "h": 1.0}} @ "panel.factory.area",
+            "at_tag" => {"Tagged": {"tag": 0, "pick": "Cycle"}} @ "panel.factory.at_tag",
         ]),
     f(4, "component.field.factory_fields.4", K::Vec2)
         .named_as("area", r#"at:{"Area":{"w":4.0,"h":1.0}}"#)
@@ -202,32 +202,32 @@ const PATH_FOLLOW_FIELDS: &[FieldDesc] = &[
     f(2, "component.field.path_follow_fields.2", K::Scalar).named_as("timer_slot", "relogio"),
     f(3, "component.field.path_follow_fields.3", K::Enum)
         .named_as("cycle", "ciclo")
-        .viewed(crate::options!["restart" => Reinicia, "ping_pong" => PingPong]),
+        .viewed(crate::options!["restart" => Reinicia @ "tween.ciclo.reinicia", "ping_pong" => PingPong @ "tween.ciclo.ping_pong"]),
     f(4, "component.field.path_follow_fields.4", K::Enum)
         .named_as("curve", "easing/family")
         .viewed(crate::options![
-            "linear" => Linear,
-            "quad" => Quad,
-            "cubic" => Cubic,
-            "quart" => Quart,
-            "quint" => Quint,
-            "back" => Back,
-            "bounce" => Bounce,
-            "sine" => Sine,
-            "expo" => Expo,
-            "circ" => Circ,
-            "elastic" => Elastic,
+            "linear" => Linear @ "anim.easing.family.linear",
+            "quad" => Quad @ "anim.easing.family.quad",
+            "cubic" => Cubic @ "anim.easing.family.cubic",
+            "quart" => Quart @ "anim.easing.family.quart",
+            "quint" => Quint @ "anim.easing.family.quint",
+            "back" => Back @ "anim.easing.family.back",
+            "bounce" => Bounce @ "anim.easing.family.bounce",
+            "sine" => Sine @ "anim.easing.family.sine",
+            "expo" => Expo @ "anim.easing.family.expo",
+            "circ" => Circ @ "anim.easing.family.circ",
+            "elastic" => Elastic @ "anim.easing.family.elastic",
         ]),
     f(5, "component.field.path_follow_fields.5", K::Enum)
         .named_as("ease", "easing/mode")
         .viewed(crate::options![
-            "in" => In,
-            "out" => Out,
-            "in_out" => InOut,
+            "in" => In @ "anim.easing.mode.in",
+            "out" => Out @ "anim.easing.mode.out",
+            "in_out" => InOut @ "anim.easing.mode.in_out",
         ]),
     f(6, "component.field.path_follow_fields.6", K::Enum)
         .named_as("when_done", "ao_acabar")
-        .viewed(crate::options!["hold" => Hold, "rewind" => Rewind]),
+        .viewed(crate::options!["hold" => Hold @ "tween.ao_acabar.hold", "rewind" => Rewind @ "tween.ao_acabar.rewind"]),
     f(7, "component.field.path_follow_fields.7", K::Scalar).named_as("start_at", "deslocamento"),
     f(8, "component.field.path_follow_fields.8", K::Toggle).named_as("face_path", "alinha"),
     f(9, "component.field.path_follow_fields.9", K::Angle)

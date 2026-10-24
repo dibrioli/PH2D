@@ -15,7 +15,7 @@ use ph2d_component_desc::{ComponentDesc, FieldDesc, FieldKind, Target, View};
 use serde_json::Value;
 
 use crate::canal::familia::COMPONENTE;
-use crate::canal::{CampoInfo, FieldKey, TextosDosCanais};
+use crate::canal::{CampoInfo, Especie, FieldKey, TextosDosCanais};
 use crate::scene::property_ref::{enter_option, same_option, shares_payload};
 use crate::scene::registry::stable_type_id;
 
@@ -166,6 +166,11 @@ pub fn chaves_de(d: &'static ComponentDesc) -> impl Iterator<Item = FieldKey> {
     })
 }
 
+/// Todas as chaves do catálogo inteiro.
+pub fn todas() -> impl Iterator<Item = FieldKey> {
+    ph2d_component_desc::all().flat_map(chaves_de)
+}
+
 #[must_use]
 pub fn info(k: FieldKey) -> Option<CampoInfo> {
     let (_, f, _) = resolver(k)?;
@@ -174,17 +179,18 @@ pub fn info(k: FieldKey) -> Option<CampoInfo> {
     let id = u32::from(k.i) << 16 | u32::from(k.j);
     Some(CampoInfo {
         rotulo: f.label_key,
-        discreto: matches!(
-            f.kind,
-            FieldKind::Int
-                | FieldKind::Seed
-                | FieldKind::Toggle
-                | FieldKind::Enum
-                | FieldKind::Text
-        ),
+        especie: match (f.kind, f.view) {
+            (FieldKind::Int | FieldKind::Enum, View::Options(_)) => Especie::Catalogo,
+            (FieldKind::Int | FieldKind::Seed, _) => Especie::Numero,
+            (FieldKind::Toggle, _) => Especie::Ligado,
+            (FieldKind::Text, _) => Especie::Texto,
+            (FieldKind::Enum, View::Named(Target::Layer)) => Especie::Camada,
+            (FieldKind::Enum, View::Named(Target::Script)) => Especie::Script,
+            (FieldKind::Enum, _) => Especie::Catalogo,
+            _ => Especie::Continuo,
+        },
         grupo: *tabela().grupos.get(&(id, f.field_id))?,
         por_i: false,
-        texto: f.kind == FieldKind::Text,
     })
 }
 
@@ -201,6 +207,21 @@ pub fn membro(k: FieldKey) -> Option<&'static str> {
     }
 }
 
+/// ⭐ **A chave `ph2d-i18n` do rótulo da opção `i`** de um campo de escolhas — a que o `options!`
+/// declara, a mesma que o cartão pinta; um `View::Toggle` (a caixa do cartão) diz ligado/desligado.
+#[must_use]
+pub fn chave_da_opcao(k: FieldKey, i: u64) -> Option<&'static str> {
+    let (_, f, _) = resolver(k)?;
+    match f.view {
+        View::Options(o) => o.get(usize::try_from(i).ok()?).map(|o| o.rotulo),
+        View::Toggle(..) => Some(match i {
+            0 => crate::canal_palavra::DESLIGADO,
+            _ => crate::canal_palavra::LIGADO,
+        }),
+        _ => None,
+    }
+}
+
 /// O identificador guardado de uma opção (`options!` escreve-o como código: `Full`, `0`, `null`).
 fn opcao(s: &str) -> Value {
     serde_json::from_str(s).unwrap_or_else(|_| Value::String(s.to_owned()))
@@ -208,7 +229,7 @@ fn opcao(s: &str) -> Value {
 
 fn escolhas(f: &FieldDesc) -> Option<Vec<Value>> {
     match f.view {
-        View::Options(o) => Some(o.iter().map(|(_, v)| opcao(v)).collect()),
+        View::Options(o) => Some(o.iter().map(|x| opcao(x.valor)).collect()),
         View::Toggle(off, on) => Some(vec![opcao(off), opcao(on)]),
         _ => None,
     }

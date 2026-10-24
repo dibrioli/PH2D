@@ -8,6 +8,7 @@
 use std::collections::BTreeMap;
 
 use ph2d_ecs::canal::familia::SCRIPT;
+use ph2d_ecs::canal_palavra::NomesDosScripts;
 use ph2d_ecs::canal_script as cs;
 use ph2d_ecs::scene::property::slot_in;
 use ph2d_ecs::scene::registry::ComponentRegistry;
@@ -34,6 +35,15 @@ pub fn publicar_declaracoes(sim: &mut SimWorld, host: Option<&ScriptHost>) {
     );
     if sim.world().get_resource::<Declaracoes>() != Some(&novas) {
         sim.world_mut().insert_resource(novas);
+    }
+    // O nome de cada script, para a palavra do canal do ficheiro (F27 F).
+    let nomes = NomesDosScripts(
+        (sim.world().get_resource::<ProjectScripts>().into_iter())
+            .flat_map(|l| l.iter().map(|(id, d)| (id.0, d.name.clone())))
+            .collect(),
+    );
+    if sim.world().get_resource::<NomesDosScripts>() != Some(&nomes) {
+        sim.world_mut().insert_resource(nomes);
     }
 }
 

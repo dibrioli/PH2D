@@ -12,7 +12,7 @@
 //! presença); um enum é a `tag`. A §13 (a roldana) mora aqui: uma Pulley é um tipo de junta.
 //! Cada linha do painel é um grupo (um losango por linha).
 
-use crate::canal::CampoInfo;
+use crate::canal::{CampoInfo, Especie};
 
 /// `motor_enabled`.
 pub const MOTOR_LIGADO: u16 = 1;
@@ -99,21 +99,34 @@ const EIXO_ROTULOS: [[&str; 3]; 3] = [
 ];
 
 const fn c(rotulo: &'static str, grupo: u16) -> CampoInfo {
+    d(rotulo, grupo, Especie::Continuo)
+}
+
+/// Um discreto declara a sua espécie: a palavra que a timeline mostra (F27 F).
+const fn d(rotulo: &'static str, grupo: u16, especie: Especie) -> CampoInfo {
     CampoInfo {
         rotulo,
-        discreto: false,
+        especie,
         grupo,
         por_i: false,
-        texto: false,
     }
 }
 
-const fn d(rotulo: &'static str, grupo: u16) -> CampoInfo {
-    CampoInfo {
-        discreto: true,
-        ..c(rotulo, grupo)
-    }
+const fn op(chaves: &'static [&'static str]) -> Especie {
+    Especie::Opcoes(chaves)
 }
+
+const TIPOS: &[&str] = &[
+    "panel.inspector.joint.pin",
+    "panel.inspector.joint.spring",
+    "panel.inspector.joint.rope",
+    "panel.inspector.joint.weld",
+    "panel.inspector.joint.slider",
+    "panel.inspector.joint.rod",
+    "panel.inspector.joint.wheel",
+    "panel.inspector.joint.pulley",
+    "panel.inspector.joint.custom",
+];
 
 /// O que o campo `campo` da junta é.
 #[must_use]
@@ -121,36 +134,82 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
     if let Some((a, base)) = eixo_de(campo) {
         let rotulo = EIXO_ROTULOS[a as usize][(base - EIXO_MODO) as usize];
         return Some(if base == EIXO_MODO {
-            d(rotulo, campo)
+            d(
+                rotulo,
+                campo,
+                op(&[
+                    "panel.inspector.joint.free",
+                    "panel.inspector.joint.limited",
+                    "panel.inspector.joint.locked",
+                ]),
+            )
         } else {
             c(rotulo, campo)
         });
     }
     Some(match campo {
-        MOTOR_LIGADO => d("canal.junta.motor_ligado", campo),
-        MOTOR_MODO => d("canal.junta.motor_modo", campo),
+        MOTOR_LIGADO => d("canal.junta.motor_ligado", campo, Especie::Ligado),
+        MOTOR_MODO => d(
+            "canal.junta.motor_modo",
+            campo,
+            op(&[
+                "panel.inspector.joint.velocity",
+                "panel.inspector.joint.position",
+            ]),
+        ),
         MOTOR_FORCA => c("canal.junta.motor_forca", campo),
-        MOTOR_EIXO => d("canal.junta.motor_eixo", campo),
-        QUEBRA_LIGADA => d("canal.junta.quebra_ligada", campo),
+        MOTOR_EIXO => d(
+            "canal.junta.motor_eixo",
+            campo,
+            op(&[
+                "panel.inspector.joint.axis_x",
+                "panel.inspector.joint.axis_y",
+                "panel.inspector.joint.rotation",
+            ]),
+        ),
+        QUEBRA_LIGADA => d("canal.junta.quebra_ligada", campo, Especie::Ligado),
         QUEBRA_FORCA => c("canal.junta.quebra_forca", campo),
         QUEBRA_TORQUE => c("canal.junta.quebra_torque", campo),
-        LIMITES_LIGADOS => d("canal.junta.limites_ligados", campo),
+        LIMITES_LIGADOS => d("canal.junta.limites_ligados", campo, Especie::Ligado),
         LIMITE_MIN => c("canal.junta.limite_min", campo),
         LIMITE_MAX => c("canal.junta.limite_max", campo),
-        SOLDA_MOLE => d("canal.junta.solda_mole", campo),
+        SOLDA_MOLE => d(
+            "canal.junta.solda_mole",
+            campo,
+            op(&["panel.inspector.joint.rigid", "panel.inspector.joint.soft"]),
+        ),
         RIGIDEZ => c("canal.junta.rigidez", campo),
         AMORTECIMENTO => c("canal.junta.amortecimento", campo),
-        TIPO => d("canal.junta.tipo", campo),
-        ATIVA => d("canal.junta.ativa", campo),
-        COLIDE_PAR => d("canal.junta.colide_par", campo),
-        PONTA_NO_MUNDO => d("canal.junta.ponta_no_mundo", campo),
+        TIPO => d("canal.junta.tipo", campo, op(TIPOS)),
+        ATIVA => d("canal.junta.ativa", campo, Especie::Ligado),
+        COLIDE_PAR => d("canal.junta.colide_par", campo, Especie::Ligado),
+        PONTA_NO_MUNDO => d(
+            "canal.junta.ponta_no_mundo",
+            campo,
+            op(&[
+                "panel.inspector.joint.object",
+                "panel.inspector.joint.world",
+            ]),
+        ),
         RODA_RAIO => c("canal.junta.roda_raio", campo),
         RODA_RAIO_SAIDA => c("canal.junta.roda_raio_saida", campo),
-        RODA_WESTON => d("canal.junta.roda_weston", campo),
-        RODA_ORDEM => d("canal.junta.roda_ordem", campo),
-        RODA_LADO => d("canal.junta.roda_lado", campo),
+        RODA_WESTON => d(
+            "canal.junta.roda_weston",
+            campo,
+            op(&["panel.inspector.wheel.drum", "panel.inspector.wheel.weston"]),
+        ),
+        RODA_ORDEM => d("canal.junta.roda_ordem", campo, Especie::Numero),
+        RODA_LADO => d(
+            "canal.junta.roda_lado",
+            campo,
+            op(&[
+                "panel.inspector.wheel.auto",
+                "panel.inspector.wheel.over",
+                "panel.inspector.wheel.under",
+            ]),
+        ),
         RODA_MOTOR => c("canal.junta.roda_motor", campo),
-        RODA_QUEBRA_LIGADA => d("canal.junta.roda_quebra_ligada", campo),
+        RODA_QUEBRA_LIGADA => d("canal.junta.roda_quebra_ligada", campo, Especie::Ligado),
         RODA_QUEBRA_FORCA => c("canal.junta.roda_quebra_forca", campo),
         _ => return None,
     })

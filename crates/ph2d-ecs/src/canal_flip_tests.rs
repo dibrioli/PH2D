@@ -24,13 +24,13 @@ fn o_vocabulario_do_flip_nao_renumera() {
 #[test]
 fn cada_campo_da_camada_diz_o_que_e() {
     for d in [VISIVEL, MISTURA] {
-        assert!(k(d, 0).info().is_some_and(|i| i.discreto), "campo {d}");
+        assert!(k(d, 0).info().is_some_and(|i| i.discreto()), "campo {d}");
     }
     for c in [OPACIDADE, PROFUNDIDADE] {
-        assert!(k(c, 0).info().is_some_and(|i| !i.discreto), "campo {c}");
+        assert!(k(c, 0).info().is_some_and(|i| !i.discreto()), "campo {c}");
     }
     for campo in CAMPOS {
-        assert!(k(campo, 0).info().is_some_and(|i| i.por_i && !i.texto));
+        assert!(k(campo, 0).info().is_some_and(|i| i.por_i && !i.texto()));
     }
     assert!(k(OPACIDADE, 3).mesmo_grupo(k(OPACIDADE, 3)));
     assert!(

@@ -229,7 +229,8 @@ fn toda_vista_vai_e_volta_pelo_valor_do_cartao() {
             let valores: Vec<serde_json::Value> = match f.view {
                 View::Options(opts) => opts
                     .iter()
-                    .map(|(n, _)| {
+                    .map(|o| {
+                        let n = o.nome;
                         let snake = n
                             .chars()
                             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');

@@ -85,16 +85,58 @@ impl FieldKey {
 pub struct CampoInfo {
     /// Chave `ph2d-i18n` do rótulo do GRUPO (o que o artista lê na linha do dope-sheet).
     pub rotulo: &'static str,
-    /// `true` ⇒ a chave é sempre `Hold` e o escritor arredonda ao índice válido.
-    pub discreto: bool,
+    /// O que o valor É — e daí se é discreto, se é texto, e a palavra que a timeline mostra.
+    pub especie: Especie,
     /// Os membros do mesmo grupo gravam-se juntos, no mesmo instante.
     pub grupo: u16,
     /// `true` ⇒ o grupo parte-se por `i` (cada entrada da pilha tem a sua tinta); `false` ⇒ todo `i`
     /// é o mesmo grupo (a forma inteira são todos os contornos).
     pub por_i: bool,
+}
+
+impl CampoInfo {
+    /// `true` ⇒ a chave é sempre `Hold` e o escritor arredonda ao índice válido.
+    #[must_use]
+    pub const fn discreto(&self) -> bool {
+        !matches!(self.especie, Especie::Continuo)
+    }
+
     /// `true` ⇒ o valor é um índice em [`TextosDosCanais`] (sempre discreto): quem grava o
     /// documento da timeline guarda a tabela com as chaves e compacta-a pelos índices usados.
-    pub texto: bool,
+    #[must_use]
+    pub const fn texto(&self) -> bool {
+        matches!(self.especie, Especie::Texto)
+    }
+}
+
+/// ⭐ **A espécie do valor de um canal** — o que um `f32` quer dizer. Um discreto que não declara a
+/// espécie não compila: a coluna do valor da timeline e o gráfico escrevem a PALAVRA de uma escolha
+/// ([`crate::canal_palavra::palavra`]), nunca o índice.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Especie {
+    /// Interpola-se.
+    Continuo,
+    /// Discreto, e o número é a resposta (passos, colunas, semente).
+    Numero,
+    /// `0` desligado · `1` ligado.
+    Ligado,
+    /// O índice escolhe uma variante; cada uma tem a chave `ph2d-i18n` do rótulo que o painel mostra
+    /// (`""` = um código sem variante: fica o número).
+    Opcoes(&'static [&'static str]),
+    /// A lista depende do valor do campo IRMÃO (`irmao`, o mesmo `i:j` da mesma entidade): o modo
+    /// de um filtro é um de outra lista conforme o tipo dele.
+    PorIrmao {
+        irmao: u16,
+        listas: &'static [(u16, &'static [&'static str])],
+    },
+    /// As opções de um campo do catálogo (`View::Options`/`View::Toggle`): a chave deriva do campo.
+    Catalogo,
+    /// Uma camada de ordenação, pelo `LayerId`: o nome é do artista.
+    Camada,
+    /// Um script da biblioteca, pelo `ScriptId` (`0` = nenhum): o nome é do artista.
+    Script,
+    /// Um índice em [`TextosDosCanais`].
+    Texto,
 }
 
 /// ⭐ **Os TEXTOS que um canal discreto nomeia** (a família da fonte, o conteúdo de um texto) — o

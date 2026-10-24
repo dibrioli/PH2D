@@ -40,15 +40,15 @@ const fn r(field_id: u16, label_key: &'static str) -> FieldDesc {
 /// guardam a unidade do TIPO (radianos numa dobradiça, metros num trilho) — o cartão pinta graus.
 /// Sem descritor (ocultos em `hiding`): `local_a/b` (14, 15), `anchored` (16) e `custom` (25).
 pub(super) const JOINT_KINDS: View = crate::options![
-    "pin" => Pin,
-    "spring" => Spring,
-    "rope" => Rope,
-    "weld" => Weld,
-    "slider" => Slider,
-    "rod" => Rod,
-    "wheel" => Wheel,
-    "pulley" => Pulley,
-    "custom" => Custom,
+    "pin" => Pin @ "panel.inspector.joint.pin",
+    "spring" => Spring @ "panel.inspector.joint.spring",
+    "rope" => Rope @ "panel.inspector.joint.rope",
+    "weld" => Weld @ "panel.inspector.joint.weld",
+    "slider" => Slider @ "panel.inspector.joint.slider",
+    "rod" => Rod @ "panel.inspector.joint.rod",
+    "wheel" => Wheel @ "panel.inspector.joint.wheel",
+    "pulley" => Pulley @ "panel.inspector.joint.pulley",
+    "custom" => Custom @ "panel.inspector.joint.custom",
 ];
 pub(super) const JOINT: &[FieldDesc] = &[
     r(1, "component.field.joint.1")
@@ -72,7 +72,7 @@ pub(super) const JOINT: &[FieldDesc] = &[
     f(13, "component.field.joint.13", K::Scalar).named("max_length"),
     f(17, "component.field.joint.17", K::Enum)
         .named_as("mode", "motor_mode")
-        .viewed(crate::options!["velocity" => Velocity, "position" => Position]),
+        .viewed(crate::options!["velocity" => Velocity @ "panel.inspector.joint.velocity", "position" => Position @ "panel.inspector.joint.position"]),
     f(18, "component.field.joint.18", K::Scalar).named_as("target", "motor_target"),
     f(19, "component.field.joint.19", K::Toggle).named_as("breakable", "break_enabled"),
     f(20, "component.field.joint.20", K::Scalar).named("break_force"),
@@ -157,9 +157,9 @@ pub(super) const PLATFORM_PLAYER: &[FieldDesc] = &[
     f(52, "component.field.platform_player.52", K::Enum)
         .named("platform_lift")
         .viewed(crate::options![
-            "full" => Full,
-            "up_only" => UpOnly,
-            "none" => Nothing,
+            "full" => Full @ "panel.inspector.player.full",
+            "up_only" => UpOnly @ "panel.inspector.player.up_only",
+            "none" => Nothing @ "panel.inspector.player.none",
         ]),
     f(53, "component.field.platform_player.53", K::Toggle).named("walk_off_ledges"),
     f(54, "component.field.platform_player.54", K::Toggle)
@@ -170,9 +170,9 @@ pub(super) const PLATFORM_PLAYER: &[FieldDesc] = &[
 pub(super) const PLAYER_MODE: &[FieldDesc] = &[f(0, "component.field.player_mode.0", K::Enum)
     .named_as("body", WHOLE)
     .viewed(crate::options![
-        "dynamic" => Dynamic,
-        "kinematic" => Kinematic,
-        "pure" => Pure,
+        "dynamic" => Dynamic @ "panel.inspector.player.dynamic",
+        "kinematic" => Kinematic @ "panel.inspector.player.kinematic",
+        "pure" => Pure @ "panel.inspector.player.pure",
     ])];
 
 /// **`PulleyWheel`** — a CORDA a que ela pertence (`rope`) e o CORPO em que é montada
@@ -190,9 +190,9 @@ pub(super) const PULLEY_WHEEL: &[FieldDesc] = &[
     f(4, "component.field.pulley_wheel.4", K::Enum)
         .named("wrap")
         .viewed(crate::options![
-            "auto" => Auto,
-            "over" => Over,
-            "under" => Under,
+            "auto" => Auto @ "panel.inspector.wheel.auto",
+            "over" => Over @ "panel.inspector.wheel.over",
+            "under" => Under @ "panel.inspector.wheel.under",
         ]),
     f(5, "component.field.pulley_wheel.5", K::Scalar).named_as("motor", "motor_speed"),
     f(6, "component.field.pulley_wheel.6", K::Toggle).named_as("axle_breaks", "break_enabled"),
@@ -209,9 +209,9 @@ pub(super) const PULLEY_WHEEL: &[FieldDesc] = &[
 pub(super) const RIGID_BODY: &[FieldDesc] = &[f(0, "component.field.rigid_body.0", K::Enum)
     .named_as("body", "kind")
     .viewed(crate::options![
-        "dynamic" => Dynamic,
-        "static" => Static,
-        "kinematic" => Kinematic,
+        "dynamic" => Dynamic @ "panel.inspector.physics.dynamic",
+        "static" => Static @ "panel.inspector.physics.static",
+        "kinematic" => Kinematic @ "panel.inspector.physics.kinematic",
     ])];
 /// ⚠️ `shape` é um enum COM DADOS (`{Ball = {radius = 0.5}}`): o script lê e escreve a tabela
 /// inteira — os tamanhos não são chaves de topo, e o cartão pinta-os por baixo da forma escolhida.
@@ -236,10 +236,10 @@ pub(super) const DOMINANCE: &[FieldDesc] =
 pub(super) const MASS_OVERRIDE: &[FieldDesc] =
     &[f(0, "component.field.mass_override.0", K::Scalar).named_as("mass", WHOLE)];
 pub(super) const COMBINE_RULES: View = crate::options![
-    "average" => Average,
-    "min" => Min,
-    "multiply" => Multiply,
-    "max" => Max,
+    "average" => Average @ "panel.inspector.physics.average",
+    "min" => Min @ "panel.inspector.physics.min",
+    "multiply" => Multiply @ "panel.inspector.physics.multiply",
+    "max" => Max @ "panel.inspector.physics.max",
 ];
 pub(super) const MATERIAL_COMBINE: &[FieldDesc] = &[
     f(0, "component.field.material_combine.0", K::Enum)
@@ -254,7 +254,7 @@ pub(super) const DAMPING_OVERRIDE: &[FieldDesc] = &[
     f(1, "component.field.damping_override.1", K::Scalar).named_as("angular_damping", "angular"),
     f(2, "component.field.damping_override.2", K::Enum)
         .named_as("damp_mode", "mode")
-        .viewed(crate::options!["combine" => Combine, "replace" => Replace]),
+        .viewed(crate::options!["combine" => Combine @ "panel.inspector.physics.combine", "replace" => Replace @ "panel.inspector.physics.replace"]),
 ];
 pub(super) const WALK_SURFACE: &[FieldDesc] = &[
     f(0, "component.field.walk_surface.0", K::Scalar).named("grip"),
@@ -283,11 +283,11 @@ pub(super) const NAV_AGENT: &[FieldDesc] = &[
     f(0, "component.field.nav_agent.0", K::Enum)
         .named("target")
         .viewed(crate::options![
-            "none" => None,
-            "object" => {"Named": 0},
-            "point" => {"Point": [0.0, 0.0]},
-            "tag" => {"NearestTagged": 0},
-            "patrol" => {"Patrol": 0},
+            "none" => None @ "panel.inspector.nav.target_none",
+            "object" => {"Named": 0} @ "panel.inspector.nav.target_object",
+            "point" => {"Point": [0.0, 0.0]} @ "panel.inspector.nav.target_point",
+            "tag" => {"NearestTagged": 0} @ "panel.inspector.nav.target_tag",
+            "patrol" => {"Patrol": 0} @ "panel.inspector.nav.target_patrol",
         ]),
     f(1, "component.field.nav_agent.1", K::Scalar).named("radius"),
     f(2, "component.field.nav_agent.2", K::Scalar).named_as("arrive_at", "arrive_distance"),
@@ -367,22 +367,22 @@ pub(super) const TOP_DOWN_PLAYER: &[FieldDesc] = &[
     f(3, "component.field.top_down_player.3", K::Int)
         .named_as("directions", "direction_mode")
         .viewed(
-            crate::options!["free" => 0, "8_dir" => 1, "4_dir" => 2, "x_only" => 3, "y_only" => 4],
+            crate::options!["free" => 0 @ "panel.topdown.free", "8_dir" => 1 @ "panel.topdown.8_dir", "4_dir" => 2 @ "panel.topdown.4_dir", "x_only" => 3 @ "panel.topdown.x_only", "y_only" => 4 @ "panel.topdown.y_only"],
         ),
     f(4, "component.field.top_down_player.4", K::Int)
         .named("viewpoint")
         .viewed(crate::options![
-            "top_down" => 0,
-            "iso_2_1" => 1,
-            "iso_30" => 2,
-            "custom" => 3,
+            "top_down" => 0 @ "panel.topdown.top_down",
+            "iso_2_1" => 1 @ "panel.topdown.iso_2_1",
+            "iso_30" => 2 @ "panel.topdown.iso_30",
+            "custom" => 3 @ "panel.topdown.custom",
         ]),
     f(5, "component.field.top_down_player.5", K::Angle)
         .named_as("board_angle", "viewpoint_angle_deg")
         .viewed(View::Degrees),
     f(6, "component.field.top_down_player.6", K::Int)
         .named_as("facing", "rotation_mode")
-        .viewed(crate::options!["don_t_turn" => 0, "face_move" => 1, "face_4" => 2, "face_8" => 3]),
+        .viewed(crate::options!["don_t_turn" => 0 @ "panel.topdown.don_t_turn", "face_move" => 1 @ "panel.topdown.face_move", "face_4" => 2 @ "panel.topdown.face_4", "face_8" => 3 @ "panel.topdown.face_8"]),
     f(7, "component.field.top_down_player.7", K::Scalar)
         .named_as("turn_speed", "rotation_speed_deg")
         .viewed(View::Degrees),

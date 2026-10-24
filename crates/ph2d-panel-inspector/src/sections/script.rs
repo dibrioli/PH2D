@@ -279,11 +279,9 @@ pub(crate) fn paint_script_section(
         x,
         w,
         cur_y,
-        // O mesmo campo que o seletor: o canal do ficheiro, pelo rótulo do catálogo (F27 E).
-        key_mark::Rotulo::de_campo(
-            tr("panel.inspector.script.source_label"),
-            TextKey::new("component.field.script_fields.1"),
-        ),
+        // ⛔ O canal do ficheiro é o do SELETOR (o `ScriptId`): um canal, um losango (F27 F). O
+        // caminho por importar não é valor de canal; a coluna fica reservada e vazia.
+        key_mark::Rotulo::vista(TextKey::new("panel.inspector.script.source_label")),
         ids::INSP_SCRIPT_SOURCE,
         TextInput::new(ids::INSP_SCRIPT_SOURCE, "")
             .placeholder(tr("panel.inspector.script.script_name_u")),

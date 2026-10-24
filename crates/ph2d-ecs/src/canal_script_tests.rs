@@ -37,9 +37,9 @@ fn o_tipo_diz_as_faixas_e_o_info() {
     );
     assert_eq!(chave("tint", Tipo::Color, 4, &mut textos), None);
     let txt = chave("modo", Tipo::Text, 0, &mut textos).expect("faixa 0");
-    assert!(info(txt).is_some_and(|i| i.texto && i.discreto));
+    assert!(info(txt).is_some_and(|i| i.texto() && i.discreto()));
     let b = chave("on", Tipo::Bool, 0, &mut textos).expect("faixa 0");
-    assert!(info(b).is_some_and(|i| i.discreto && !i.texto));
+    assert!(info(b).is_some_and(|i| i.discreto() && !i.texto()));
     assert!(!b.mesmo_grupo(txt));
     let outra = com_nome(b, valor_do_nome(txt));
     assert_eq!(

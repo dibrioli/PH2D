@@ -26,7 +26,7 @@ fn cada_campo_le_o_que_escreveu() {
         "skew, emissão/opacidade/silhueta, cores"
     );
     for kk in todos {
-        let alvo = if kk.info().is_some_and(|i| i.discreto) {
+        let alvo = if kk.info().is_some_and(|i| i.discreto()) {
             1.0
         } else if kk.campo == o::EMISSAO {
             4.0

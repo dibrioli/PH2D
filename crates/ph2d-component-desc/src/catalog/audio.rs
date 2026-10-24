@@ -52,10 +52,10 @@ const SOURCE_FIELDS: &[FieldDesc] = &[
     f(10, "component.field.source_fields.10", K::Enum)
         .named_as("bus", "bus_tag")
         .viewed(crate::options![
-            "sfx" => 0,
-            "music" => 1,
-            "voice" => 2,
-            "master" => 3,
+            "sfx" => 0 @ "ecs.audio_bus.sfx",
+            "music" => 1 @ "ecs.audio_bus.music",
+            "voice" => 2 @ "ecs.audio_bus.voice",
+            "master" => 3 @ "ecs.audio_bus.master",
         ]),
 ];
 

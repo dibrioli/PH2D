@@ -101,3 +101,37 @@ fn the_number_reaches_the_glyphs() {
          tinta, e o painel continua parado enquanto a animacao corre"
     );
 }
+
+/// ⭐ **A coluna do valor escreve a PALAVRA de uma escolha** (F27 F) — «Score · Source Tag», nunca
+/// «3.00»; a camada pelo nome; no idioma de teste a palavra muda (veio da tabela).
+///
+/// Mutação que deve sangrar: `Some(p) => dita(p)` → `Some(_) => text(v)`.
+#[test]
+fn a_coluna_do_valor_escreve_a_palavra_da_escolha() {
+    use ph2d_timeline::{AnimTarget, Extrap, PropKind, TrackValues, TrackView};
+    let row = |prop| TrackView {
+        target: AnimTarget::new(11),
+        prop,
+        entity: 7,
+        missing: false,
+        keys: Vec::new(),
+        buffer_ghost: None,
+        pre: Extrap::default(),
+        post: Extrap::default(),
+        expr: None,
+    };
+    let canal = |r| PropKind::Field(ph2d_ecs::canal_componente::chaves_do_rotulo(r)[0]);
+    let mundo = ph2d_ecs::World::new();
+    let diz = |prop, v| {
+        let t = [row(prop)];
+        let mut values = TrackValues::default();
+        values.publish_com_mundo(&t, Some(&mundo), |_, _| Some(v));
+        crate::tracks_value::valor_da_row(&values, &t[0], v)
+    };
+    assert_eq!(diz(canal("component.field.label_fields.1"), 3.0), "Tag");
+    assert_eq!(
+        diz(canal("component.field.sorting_layer.1"), 3.0),
+        "Foreground"
+    );
+    assert_eq!(diz(PropKind::Opacity, 0.5), crate::tracks_value::text(0.5));
+}

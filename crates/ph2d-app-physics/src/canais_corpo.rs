@@ -292,7 +292,7 @@ pub fn aplicar(
     };
     // As escolhas antes dos números: a forma decide que medidas existem, o tipo e o sensor
     // decidem que campos a §11 aceita, a fonte da massa decide se a massa é lida.
-    escritas.sort_by_key(|&(e, kk, _)| (e, kk.info().is_none_or(|i| !i.discreto), kk));
+    escritas.sort_by_key(|&(e, kk, _)| (e, kk.info().is_none_or(|i| !i.discreto()), kk));
     let mut mudou = false;
     let mut ecos = Vec::with_capacity(escritas.len());
     for (e, kk, v) in escritas {
@@ -375,7 +375,7 @@ impl ConducaoFisica {
 
 fn ordenar(it: impl Iterator<Item = (u64, FieldKey, f32)>) -> Vec<(u64, FieldKey, f32)> {
     let mut v: Vec<_> = it.collect();
-    v.sort_by_key(|&(e, kk, _)| (e, kk.info().is_none_or(|i| !i.discreto), kk));
+    v.sort_by_key(|&(e, kk, _)| (e, kk.info().is_none_or(|i| !i.discreto()), kk));
     v
 }
 

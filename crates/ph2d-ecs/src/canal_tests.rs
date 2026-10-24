@@ -127,12 +127,12 @@ fn todo_campo_da_tinta_tem_informacao() {
     }
     let tipo = info(k(v::TINTA_PREENCH + v::OFF_TIPO, 0, 0)).unwrap();
     assert!(
-        tipo.discreto,
+        tipo.discreto(),
         "trocar sólido por gradiente não se interpola"
     );
     let r = info(k(v::TINTA_PREENCH + v::OFF_SOLIDA, 0, 0)).unwrap();
     assert!(
-        !r.discreto,
+        !r.discreto(),
         "a cor passa aos poucos (lei do AE/Rive, Godot medido)"
     );
 }
@@ -232,6 +232,6 @@ fn o_texto_e_um_indice_estavel() {
     assert_eq!(t.texto(9.0), None);
     let gravada = TextosDosCanais::de(t.textos().to_vec());
     assert_eq!(gravada.texto(a), Some("Inter"));
-    assert!(info(k(v::TEXTO_FAMILIA, 0, 0)).is_some_and(|c| c.texto && c.discreto));
-    assert!(info(k(v::TEXTO_TAMANHO, 0, 0)).is_some_and(|c| !c.texto));
+    assert!(info(k(v::TEXTO_FAMILIA, 0, 0)).is_some_and(|c| c.texto() && c.discreto()));
+    assert!(info(k(v::TEXTO_TAMANHO, 0, 0)).is_some_and(|c| !c.texto()));
 }

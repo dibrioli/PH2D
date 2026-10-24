@@ -7,7 +7,7 @@
 //! propriedade que saiu do script. Desenho e recusas: `docs/UI_New_and_Simple/F27_E_plano.md`.
 
 use crate::canal::familia::SCRIPT;
-use crate::canal::{CampoInfo, FieldKey, TextosDosCanais};
+use crate::canal::{CampoInfo, Especie, FieldKey, TextosDosCanais};
 
 /// O tipo de uma propriedade de script — o espelho do `ph2d_script::ScriptValue`. ⛔ Números
 /// DECLARADOS (gravados na chave): só APPEND.
@@ -129,10 +129,13 @@ pub fn info(k: FieldKey) -> Option<CampoInfo> {
     let (t, _) = tipo(k)?;
     Some(CampoInfo {
         rotulo: "canal.script.propriedade",
-        discreto: matches!(t, Tipo::Bool | Tipo::Text),
+        especie: match t {
+            Tipo::Bool => Especie::Ligado,
+            Tipo::Text => Especie::Texto,
+            _ => Especie::Continuo,
+        },
         grupo: k.j,
         por_i: true,
-        texto: t == Tipo::Text,
     })
 }
 

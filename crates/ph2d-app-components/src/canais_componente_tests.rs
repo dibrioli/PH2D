@@ -138,7 +138,7 @@ fn o_alvo_da_camera_anima_por_nome() {
         campos(&reg, sim.world(), e).contains(&alvo),
         "o alvo não é canal"
     );
-    assert!(alvo.info().is_some_and(|i| i.texto && i.discreto));
+    assert!(alvo.info().is_some_and(|i| i.texto() && i.discreto()));
     let mut t = TextosDosCanais::default();
     let heroi = t.indice(Some("Heroi"));
     sim.world_mut().insert_resource(t);
@@ -155,4 +155,27 @@ fn o_alvo_da_camera_anima_por_nome() {
             .valor(e.to_bits(), alvo),
         Some(heroi)
     );
+}
+
+/// ⭐⭐ **Toda opção do catálogo diz uma palavra da tabela** — a chave que o `options!` declara existe
+/// (uma chave do cartão renomeada cairia CRUA na coluna do valor, `panel.inspector…`).
+#[test]
+fn toda_opcao_do_catalogo_diz_uma_palavra_da_tabela() {
+    let mut crus = Vec::new();
+    let mut n = 0;
+    for k in ph2d_ecs::canal_componente::todas() {
+        let Some((_, f, _)) = ph2d_ecs::canal_componente::resolver(k) else {
+            continue;
+        };
+        if let ph2d_component_desc::View::Options(o) = f.view {
+            for x in o {
+                n += 1;
+                if ph2d_i18n::tr(x.rotulo) == x.rotulo {
+                    crus.push((f.label_key, x.nome, x.rotulo));
+                }
+            }
+        }
+    }
+    assert!(n >= 133, "o censo do F27 F contou 133 opções; agora {n}");
+    assert!(crus.is_empty(), "opções sem palavra: {crus:?}");
 }

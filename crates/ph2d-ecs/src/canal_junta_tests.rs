@@ -63,10 +63,10 @@ fn cada_campo_da_junta_diz_o_que_e() {
         RODA_LADO,
         RODA_QUEBRA_LIGADA,
     ] {
-        assert!(k(d, 0).info().is_some_and(|i| i.discreto), "campo {d}");
+        assert!(k(d, 0).info().is_some_and(|i| i.discreto()), "campo {d}");
     }
     for c in [RODA_RAIO, RODA_RAIO_SAIDA, RODA_MOTOR, RODA_QUEBRA_FORCA] {
-        assert!(k(c, 0).info().is_some_and(|i| !i.discreto), "campo {c}");
+        assert!(k(c, 0).info().is_some_and(|i| !i.discreto()), "campo {c}");
     }
     for c in [
         MOTOR_FORCA,
@@ -77,7 +77,7 @@ fn cada_campo_da_junta_diz_o_que_e() {
         RIGIDEZ,
         AMORTECIMENTO,
     ] {
-        assert!(k(c, 0).info().is_some_and(|i| !i.discreto), "campo {c}");
+        assert!(k(c, 0).info().is_some_and(|i| !i.discreto()), "campo {c}");
     }
     assert!(
         !k(LIMITE_MIN, 0).mesmo_grupo(k(LIMITE_MAX, 0)),
@@ -89,7 +89,7 @@ fn cada_campo_da_junta_diz_o_que_e() {
             let campo = do_eixo(base, a);
             assert_eq!(eixo_de(campo), Some((a, base)));
             let i = k(campo, 0).info().expect("campo de eixo");
-            assert_eq!(i.discreto, base == EIXO_MODO);
+            assert_eq!(i.discreto(), base == EIXO_MODO);
         }
     }
     assert!(

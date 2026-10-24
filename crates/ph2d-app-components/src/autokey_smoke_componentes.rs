@@ -12,13 +12,19 @@
 //!
 //! ⚠️ Os canais por DEGRAUS (camada, fonte, ficheiro) seguram o valor do 12 até ao 24; só o `speed`
 //! interpola (`3,5` no 18). O dispatcher `ph2d_app_vec::autokey_smoke` reserva o `"32"` para aqui.
+//!
+//! **`=33` (F27 F)** — a mesma cena, mais duas escolhas: o modo de mistura do Blue (catálogo,
+//! Mix → Multiply) e a silhueta do Red (objecto, Off → On). No 18 mede a PALAVRA que cada canal
+//! discreto mostra na coluna do valor (`ph2d_ecs::canal_palavra`), traduzida (`PH2D_LANG=teste`).
 
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
 use ph2d_core::{Playhead, Vec2};
 use ph2d_ecs::sorting::{LayerId, OrderInLayer, SortingLayer, SortingLayers};
-use ph2d_ecs::{Counter, Entity, LabelSource, Name, SimWorld, Transform, UiLabel};
+use ph2d_ecs::{
+    BlendMode, CanaisLidos, Counter, Entity, LabelSource, Name, SimWorld, Transform, UiLabel,
+};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
@@ -27,6 +33,8 @@ use ph2d_timeline::{PropKind, TimelineState};
 
 /// O número da cena no `PH2D_AUTOKEY_SMOKE`.
 pub const CENA: &str = "32";
+/// A cena das palavras (F27 F): a `=32` com o modo de mistura e a silhueta.
+pub const CENA_PALAVRAS: &str = "33";
 /// O nome do script A.
 pub const SPIN_NAME: &str = "spin.luau";
 /// O nome do script B (o `bob.luau` do smoke dos scripts).
@@ -65,6 +73,7 @@ const Y: f32 = 0.5;
 const FUNDO_H: f32 = ph2d_editor_core::screens::layout::TIMELINE_DOCK_H + 110.0; // LITERAL-PX-OK: duas linhas da dope-sheet e a barra de estado
 
 static ESTAGIO: AtomicU8 = AtomicU8::new(0);
+static PALAVRAS: AtomicBool = AtomicBool::new(false);
 static CENA_MONTADA: Mutex<Option<Montada>> = Mutex::new(None);
 
 /// Quem a cena montou.
@@ -89,7 +98,9 @@ pub fn step(
 ) -> Option<String> {
     let s = match ESTAGIO.load(Ordering::Relaxed) {
         0 => {
-            let armada = std::env::var("PH2D_AUTOKEY_SMOKE").is_ok_and(|v| v == CENA);
+            let n = std::env::var("PH2D_AUTOKEY_SMOKE").unwrap_or_default();
+            PALAVRAS.store(n == CENA_PALAVRAS, Ordering::Relaxed);
+            let armada = n == CENA || n == CENA_PALAVRAS;
             ESTAGIO.store(if armada { 1 } else { u8::MAX }, Ordering::Relaxed);
             if !armada {
                 return None;
@@ -111,6 +122,9 @@ pub fn step(
         hero.gizmo.replace_selection(Some(m.spinner));
         hero.gizmo.add_to_selection(m.red);
         hero.gizmo.add_to_selection(m.score);
+        if palavras() {
+            hero.gizmo.add_to_selection(m.blue);
+        }
         hero.set_panel_visible("timeline", true);
         hero.store.set_dock_bottom_h(FUNDO_H);
         hero.set_panel_visible("inspector", true);
@@ -122,7 +136,11 @@ pub fn step(
         ] {
             hero.store.set_collapsed(id, false);
         }
-        return Some(format!("[autokey-smoke] =32 montada · {}", medir(sim, &m)));
+        return Some(format!(
+            "[autokey-smoke] ={} montada · {}",
+            cena(),
+            medir(sim, &m)
+        ));
     }
     let m = CENA_MONTADA.lock().ok().and_then(|c| *c)?;
     match s {
@@ -162,6 +180,7 @@ pub fn step(
             None
         }
         52 => Some(veredito(sim, tl, &m)),
+        54 if palavras() => Some(palavras_lidas(sim, &m)),
         90 => Some(format!("[autokey-smoke] fim · {}", medir(sim, &m))),
         _ => None,
     }
@@ -196,6 +215,9 @@ fn montar(sim: &mut SimWorld) -> Montada {
         .insert((SortingLayer(default), OrderInLayer(0)));
     let blue = corpo(sim, "Blue", -2.0, Y - 0.5, BLUE_RGBA);
     sim.world_mut().entity_mut(blue).insert(OrderInLayer(1));
+    if palavras() {
+        sim.world_mut().entity_mut(blue).insert(BlendMode::Mix);
+    }
 
     let score = corpo(sim, "Score", 1.5, Y, SCORE_RGBA);
     sim.world_mut().entity_mut(score).insert((
@@ -235,6 +257,17 @@ fn mexer(sim: &mut SimWorld, m: &Montada, ida: bool) {
     let layer = if ida { m.front } else { m.default };
     w.entity_mut(Entity::from_bits(m.red))
         .insert(SortingLayer(layer));
+    if palavras() {
+        let mistura = if ida {
+            BlendMode::Multiply
+        } else {
+            BlendMode::Mix
+        };
+        w.entity_mut(Entity::from_bits(m.blue)).insert(mistura);
+        if let Some(mut sp) = w.get_mut::<Sprite>(Entity::from_bits(m.red)) {
+            sp.tint_fill = ida;
+        }
+    }
     if let Some(mut l) = w.get_mut::<UiLabel>(Entity::from_bits(m.score)) {
         l.source = if ida {
             LabelSource::TagCount(TAG.to_owned())
@@ -341,7 +374,7 @@ fn veredito(sim: &SimWorld, tl: &TimelineState, m: &Montada) -> String {
         ),
         format!(
             "[autokey-smoke] {faixas} faixas (tem de ser {})",
-            FAIXAS_ESPERADAS
+            FAIXAS_ESPERADAS + if palavras() { FAIXAS_PALAVRAS } else { 0 }
         ),
     ]
     .join("\n")
@@ -349,6 +382,58 @@ fn veredito(sim: &SimWorld, tl: &TimelineState, m: &Montada) -> String {
 
 /// Red camada 1 · Score fonte 1 + nome 1 · Spinner ficheiro 1 + speed 1.
 const FAIXAS_ESPERADAS: usize = 5;
+/// `=33`: a mistura do Blue e a silhueta do Red.
+const FAIXAS_PALAVRAS: usize = 2;
+
+fn palavras() -> bool {
+    PALAVRAS.load(Ordering::Relaxed)
+}
+
+fn cena() -> &'static str {
+    if palavras() { CENA_PALAVRAS } else { CENA }
+}
+
+/// ⭐ `=33`: a PALAVRA de cada canal discreto da cena, pela porta da coluna do valor — o rótulo da
+/// opção, o nome da camada e do script, ligado/desligado; nenhum número.
+fn palavras_lidas(sim: &SimWorld, m: &Montada) -> String {
+    let w = sim.world();
+    let Some(lidos) = w.get_resource::<CanaisLidos>() else {
+        return "[autokey-smoke] palavras: FAIL — sem CanaisLidos".to_owned();
+    };
+    let mut linhas = Vec::new();
+    let mut numeros = 0;
+    for (n, b) in [
+        ("Red", m.red),
+        ("Blue", m.blue),
+        ("Score", m.score),
+        ("Spinner", m.spinner),
+    ] {
+        for (k, v) in lidos.campos(b) {
+            // Um número que é a resposta (`Order in Layer`) não entra: a régua mede as ESCOLHAS.
+            if !PropKind::Field(k).nomeia() {
+                continue;
+            }
+            let rotulo = ph2d_i18n::tr(k.info().map_or("", |i| i.rotulo));
+            match ph2d_ecs::canal_palavra::palavra(w, b, k, v) {
+                Some(ph2d_ecs::canal_palavra::Palavra::Chave(c)) => {
+                    linhas.push(format!("{n} · {rotulo} = {}", ph2d_i18n::tr(&c)));
+                }
+                Some(ph2d_ecs::canal_palavra::Palavra::DoArtista(s)) => {
+                    linhas.push(format!("{n} · {rotulo} = {s}"));
+                }
+                None => {
+                    numeros += 1;
+                    linhas.push(format!("{n} · {rotulo} = {v} (NÚMERO)"));
+                }
+            }
+        }
+    }
+    format!(
+        "[autokey-smoke] palavras q18: {} · {}",
+        linhas.join(" · "),
+        ok(numeros == 0, "um canal de escolha caiu no número")
+    )
+}
 
 fn medir(sim: &SimWorld, m: &Montada) -> String {
     let w = sim.world();

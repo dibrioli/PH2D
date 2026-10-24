@@ -152,7 +152,7 @@ fn a_forma_do_valor_ida_e_volta() {
 
     let opc = campo(
         FieldKind::Enum,
-        View::Options(&[("full", "Full"), ("none", "Nothing"), ("inherit", "null")]),
+        ph2d_component_desc::options!["full" => Full @ "x.full", "none" => Nothing @ "x.none", "inherit" => null @ "x.inherit"],
     );
     let mut e = serde_json::json!("Nothing");
     assert_eq!(ler_valor(&opc, 0, &e), Some(1.0));
@@ -270,7 +270,7 @@ fn a_camada_de_ordenacao_anima_pelo_id() {
     let (_, f) = campo_do_rotulo("component.field.sorting_layer.1").expect("no catálogo");
     assert_eq!(faixas(f), 1);
     let k = chaves_do_rotulo("component.field.sorting_layer.1")[0];
-    assert!(info(k).is_some_and(|i| i.discreto && !i.texto));
+    assert!(info(k).is_some_and(|i| i.discreto() && !i.texto()));
     let mut v = serde_json::json!(2);
     assert_eq!(ler_valor(f, 0, &v), Some(2.0));
     assert!(escrever_valor(f, 0, &mut v, 0.6));
@@ -313,7 +313,7 @@ fn a_fonte_do_rotulo_troca_e_conserva_o_nome() {
     let (_, nome) = campo_do_rotulo("component.field.label_fields.2").expect("no catálogo");
     assert_eq!((faixas(fonte), faixas(nome)), (1, 1));
     let k = chaves_do_rotulo("component.field.label_fields.2")[0];
-    assert!(info(k).is_some_and(|i| i.discreto && i.texto));
+    assert!(info(k).is_some_and(|i| i.discreto() && i.texto()));
     let mut v = serde_json::json!({ "Counter": "pts" });
     assert_eq!(ler_valor(fonte, 0, &v), Some(1.0));
     assert!(escrever_valor(fonte, 0, &mut v, 2.0));
@@ -335,7 +335,7 @@ fn o_script_corta_pelo_id() {
     let (_, f) = campo_do_rotulo("component.field.script_fields.1").expect("no catálogo");
     assert_eq!(faixas(f), 1);
     let k = chaves_do_rotulo("component.field.script_fields.1")[0];
-    assert!(info(k).is_some_and(|i| i.discreto && !i.texto));
+    assert!(info(k).is_some_and(|i| i.discreto() && !i.texto()));
     let mut v = serde_json::json!("None");
     assert_eq!(ler_valor(f, 0, &v), Some(0.0));
     assert!(escrever_valor(f, 0, &mut v, 3.0));

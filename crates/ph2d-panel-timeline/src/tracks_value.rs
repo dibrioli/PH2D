@@ -55,6 +55,28 @@ pub(crate) fn fits(name_w: f32) -> bool {
 /// A banda de baixo (`< 100`) fica com as MESMAS duas casas do editor de gráfico, que é onde a
 /// esmagadora maioria destes canais vive (opacidade `0..1`, escala à volta de `1`, radianos até
 /// `±3,14`).
+/// ⭐ **O texto da coluna do valor**: um canal discreto vale um índice, e escreve-se a PALAVRA que ele
+/// nomeia, nunca o índice (o texto «nenhum» fica vazio); o resto é o número (F27 F).
+pub(crate) fn valor_da_row(
+    values: &ph2d_timeline::TrackValues,
+    track: &TrackView,
+    v: f32,
+) -> String {
+    match values.palavra(track.target.get(), v) {
+        Some(p) => dita(p).to_owned(),
+        None if track.prop.is_text() => String::new(),
+        None => text(v),
+    }
+}
+
+/// O que uma palavra diz no ecrã: a chave pela tabela de strings, o nome do artista como está.
+pub(crate) fn dita(p: &ph2d_timeline::Palavra) -> &str {
+    match p {
+        ph2d_timeline::Palavra::Chave(c) => ph2d_i18n::tr(c),
+        ph2d_timeline::Palavra::DoArtista(s) => s,
+    }
+}
+
 pub(crate) fn text(v: f32) -> String {
     /// Acima desta DÉCADA a 2.ª casa decimal deixa de caber nos 6 caracteres.
     const TWO_DECIMALS_UP_TO: f32 = 100.0; // LITERAL-PX-OK: decade, not a screen measure
@@ -112,12 +134,7 @@ pub(crate) fn paint_name_and_value(
     let Some(v) = snap.values.get(track.target.get()).filter(|_| mostra) else {
         return;
     };
-    // Um canal de TEXTO vale um índice: escreve-se o texto que ele nomeia, nunca o índice.
-    let valor = if track.prop.is_text() {
-        snap.values.texto(v).unwrap_or_default().to_owned()
-    } else {
-        text(v)
-    };
+    let valor = valor_da_row(&snap.values, track, v);
     let font = TypeToken::Xs.px();
     paint_text_elided(
         ctx.text_system,

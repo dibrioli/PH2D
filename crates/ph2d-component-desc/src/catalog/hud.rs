@@ -58,9 +58,9 @@ const CANVAS_FIELDS: &[FieldDesc] = &[
     f(3, "component.field.canvas_fields.3", K::Enum)
         .named("fit")
         .viewed(crate::options![
-            "keep" => Keep,
-            "stretch" => Stretch,
-            "expand" => Expand,
+            "keep" => Keep @ "panel.inspector.hud.fit_keep",
+            "stretch" => Stretch @ "panel.inspector.hud.fit_stretch",
+            "expand" => Expand @ "panel.inspector.hud.fit_expand",
         ]),
 ];
 
@@ -74,10 +74,10 @@ const LABEL_FIELDS: &[FieldDesc] = &[
     f(1, "component.field.label_fields.1", K::Enum)
         .named("source")
         .viewed(crate::options![
-            "authored" => Authored,
-            "counter" => {"Counter": ""},
-            "timer" => {"TimerLeft": ""},
-            "tag" => {"TagCount": ""},
+            "authored" => Authored @ "panel.inspector.hud.source_authored",
+            "counter" => {"Counter": ""} @ "panel.inspector.hud.source_counter",
+            "timer" => {"TimerLeft": ""} @ "panel.inspector.hud.source_timer",
+            "tag" => {"TagCount": ""} @ "panel.inspector.hud.source_tag",
         ]),
     f(2, "component.field.label_fields.2", K::Text).named_as("source_name", "source:*"),
     f(3, "component.field.label_fields.3", K::Text).named("prefix"),

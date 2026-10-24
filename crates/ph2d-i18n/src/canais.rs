@@ -16,6 +16,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // A camada do Flip (`ph2d_ecs::canal_flip`).
         "canal.flip.visivel" => "Layer Visible",
         "canal.script.propriedade" => "Script Property",
+        // A palavra de um valor discreto (`ph2d_ecs::canal_palavra`).
+        "canal.valor.ligado" => "On",
+        "canal.valor.desligado" => "Off",
+        "canal.valor.nenhum" => "None",
         "canal.flip.opacidade" => "Layer Opacity",
         "canal.flip.mistura" => "Layer Blend",
         "canal.flip.profundidade" => "Layer Depth",

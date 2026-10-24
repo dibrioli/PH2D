@@ -310,14 +310,22 @@ impl PropKind {
     /// `true` ⇒ o canal é um índice que não se interpola nem se mistura (ADR-0115 R7).
     #[must_use]
     pub fn is_discrete(self) -> bool {
-        matches!(self, PropKind::Field(k) if k.info().is_some_and(|i| i.discreto))
+        matches!(self, PropKind::Field(k) if k.info().is_some_and(|i| i.discreto()))
     }
 
     /// `true` ⇒ o valor é um índice em `ph2d_ecs::TextosDosCanais` — o documento grava a tabela com
     /// as chaves e a compacta ([`crate::TimelineDoc::to_bytes_com_textos`]).
     #[must_use]
     pub fn is_text(self) -> bool {
-        matches!(self, PropKind::Field(k) if k.info().is_some_and(|i| i.texto))
+        matches!(self, PropKind::Field(k) if k.info().is_some_and(|i| i.texto()))
+    }
+
+    /// `true` ⇒ o valor diz uma PALAVRA (uma escolha, ligado/desligado, uma camada, um script, um
+    /// texto) e não uma grandeza: o gráfico não escreve a escala ([`crate::TrackValues::palavra`]).
+    #[must_use]
+    pub fn nomeia(self) -> bool {
+        use ph2d_ecs::Especie as E;
+        matches!(self, PropKind::Field(k) if k.info().is_some_and(|i| !matches!(i.especie, E::Continuo | E::Numero)))
     }
 
     /// Recover a kind from its opaque target id, if it names a known property.

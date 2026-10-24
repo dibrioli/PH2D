@@ -14,7 +14,11 @@
 //! - **Efeito** (`i` = entrada; `j` = parâmetro, na ordem de `PathEffect::params`).
 //! - **Forma paramétrica** e **texto** vivem no `VecShape` da entidade; `j` = valor / eixo.
 
-use crate::canal::CampoInfo;
+use crate::canal::{CampoInfo, Especie};
+use crate::canal_palavra::MISTURAS;
+
+#[path = "canal_vetor_escolhas.rs"]
+mod e;
 
 /// Forma: vértice (`i` contorno, `j` vértice).
 pub const ANCORA_X: u16 = 1;
@@ -137,7 +141,7 @@ pub const OFFSET_DISTANCIA: u16 = 210;
 pub const OFFSET_JUNCAO: u16 = 211;
 pub const OFFSET_LADO: u16 = 212;
 
-/// Os FILTROS da forma (`VecFilter::ops`, `i` = filtro): o olho é um grupo, o resto do filtro
+/// Os e::FILTROS da forma (`VecFilter::ops`, `i` = filtro): o olho é um grupo, o resto do filtro
 /// outro (como o efeito). As cores são `[f32; 4]` como o `FxOp` as guarda; a rampa: paragem `j`
 /// = posição, r, g, b, a (`FILTRO_PARAGEM + 0..5`).
 pub const FILTRO_TIPO: u16 = 220;
@@ -238,34 +242,26 @@ pub const WIDGET_PELE: u16 = 350;
 pub const WIDGET_ICONE: u16 = 351;
 
 const fn c(rotulo: &'static str, grupo: u16, por_i: bool) -> CampoInfo {
-    CampoInfo {
-        rotulo,
-        discreto: false,
-        grupo,
-        por_i,
-        texto: false,
-    }
+    d(rotulo, grupo, por_i, Especie::Continuo)
 }
 
-const fn d(rotulo: &'static str, grupo: u16, por_i: bool) -> CampoInfo {
+/// Um discreto declara a sua espécie: a palavra que a timeline mostra (F27 F).
+const fn d(rotulo: &'static str, grupo: u16, por_i: bool, especie: Especie) -> CampoInfo {
     CampoInfo {
         rotulo,
-        discreto: true,
+        especie,
         grupo,
         por_i,
-        texto: false,
     }
 }
 
 /// Um texto: discreto, e o valor é um índice em `canal::TextosDosCanais`.
 const fn t(rotulo: &'static str, grupo: u16) -> CampoInfo {
-    CampoInfo {
-        rotulo,
-        discreto: true,
-        grupo,
-        por_i: false,
-        texto: true,
-    }
+    d(rotulo, grupo, false, Especie::Texto)
+}
+
+const fn op(chaves: &'static [&'static str]) -> Especie {
+    Especie::Opcoes(chaves)
 }
 
 /// O que o campo `campo` do vetor é. A tinta resolve-se pelo deslocamento dentro do bloco.
@@ -274,8 +270,9 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
     const FORMA: &str = "canal.vetor.forma";
     Some(match campo {
         ANCORA_X..=CANTO => c(FORMA, ANCORA_X, false),
-        TIPO_VERTICE | FECHADO => d(FORMA, ANCORA_X, false),
-        REGRA => d("canal.vetor.regra", REGRA, false),
+        TIPO_VERTICE => d(FORMA, ANCORA_X, false, op(e::TIPO_VERTICE)),
+        FECHADO => d(FORMA, ANCORA_X, false, Especie::Ligado),
+        REGRA => d("canal.vetor.regra", REGRA, false, op(e::REGRA)),
         TINTA_PREENCH..TINTA_TRACO => tinta(
             campo - TINTA_PREENCH,
             "canal.vetor.preenchimento",
@@ -285,28 +282,43 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
             tinta(campo - TINTA_TRACO, "canal.vetor.traco_cor", TINTA_TRACO)?
         }
         TRACO_LARGURA => c("canal.vetor.traco_largura", campo, true),
-        TRACO_PONTA => d("canal.vetor.traco_ponta", campo, true),
-        TRACO_JUNCAO => d("canal.vetor.traco_juncao", campo, true),
-        TRACO_ALINHAMENTO => d("canal.vetor.traco_alinhamento", campo, true),
-        TRACO_TRACEJADO => d("canal.vetor.tracejado", TRACO_TRACEJADO, true),
+        TRACO_PONTA => d("canal.vetor.traco_ponta", campo, true, op(e::TRACO_PONTA)),
+        TRACO_JUNCAO => d("canal.vetor.traco_juncao", campo, true, op(e::JUNCAO_TRACO)),
+        TRACO_ALINHAMENTO => d(
+            "canal.vetor.traco_alinhamento",
+            campo,
+            true,
+            op(e::TRACO_ALINHAMENTO),
+        ),
+        TRACO_TRACEJADO => d(
+            "canal.vetor.tracejado",
+            TRACO_TRACEJADO,
+            true,
+            Especie::Ligado,
+        ),
         TRACO_TRACO | TRACO_VAO => c("canal.vetor.tracejado", TRACO_TRACEJADO, true),
-        TRACO_MARCA_INICIO => d("canal.vetor.marca_inicio", campo, true),
-        TRACO_MARCA_FIM => d("canal.vetor.marca_fim", campo, true),
+        TRACO_MARCA_INICIO => d("canal.vetor.marca_inicio", campo, true, op(e::PONTAS)),
+        TRACO_MARCA_FIM => d("canal.vetor.marca_fim", campo, true, op(e::PONTAS)),
         TRACO_ESCALA_INICIO => c("canal.vetor.escala_inicio", campo, true),
         TRACO_ESCALA_FIM => c("canal.vetor.escala_fim", campo, true),
         TRACO_MARCA_REDONDA => c("canal.vetor.marca_redonda", campo, true),
         PINCEL_ESPACO..PINCEL_ESPELHO => c("canal.vetor.traco_cor", TINTA_TRACO, true),
-        PINCEL_ESPELHO => d("canal.vetor.traco_cor", TINTA_TRACO, true),
-        MISTURA => d("canal.vetor.mistura", campo, false),
-        PILHA_LIGADA => d("canal.vetor.pilha_ligada", campo, true),
+        PINCEL_ESPELHO => d("canal.vetor.traco_cor", TINTA_TRACO, true, Especie::Ligado),
+        MISTURA => d("canal.vetor.mistura", campo, false, op(MISTURAS)),
+        PILHA_LIGADA => d("canal.vetor.pilha_ligada", campo, true, Especie::Ligado),
         PILHA_OPACIDADE => c("canal.vetor.pilha_opacidade", campo, true),
-        PILHA_MISTURA => d("canal.vetor.pilha_mistura", campo, true),
+        PILHA_MISTURA => d("canal.vetor.pilha_mistura", campo, true, op(MISTURAS)),
         PILHA_DESLOCA_X | PILHA_DESLOCA_Y => {
             c("canal.vetor.pilha_deslocamento", PILHA_DESLOCA_X, true)
         }
         PILHA_DILATA => c("canal.vetor.pilha_dilatacao", campo, true),
-        PILHA_DILATA_JUNCAO => d("canal.vetor.pilha_dilatacao_juncao", campo, true),
-        EFEITO_LIGADO => d("canal.vetor.efeito_ligado", campo, true),
+        PILHA_DILATA_JUNCAO => d(
+            "canal.vetor.pilha_dilatacao_juncao",
+            campo,
+            true,
+            op(e::PILHA_DILATA_JUNCAO),
+        ),
+        EFEITO_LIGADO => d("canal.vetor.efeito_ligado", campo, true, Especie::Ligado),
         EFEITO_PARAM => c("canal.vetor.efeito", campo, true),
         PARAM_LARGURA | PARAM_ALTURA => c("canal.vetor.tamanho", PARAM_LARGURA, false),
         PARAM_VALOR => c("canal.vetor.forma_param", PARAM_VALOR, false),
@@ -314,60 +326,160 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         TEXTO_PESO => c("canal.vetor.texto_peso", campo, false),
         TEXTO_ENTRELINHA => c("canal.vetor.texto_entrelinha", campo, false),
         TEXTO_TRACKING => c("canal.vetor.texto_tracking", campo, false),
-        TEXTO_ALINHAMENTO => d("canal.vetor.texto_alinhamento", campo, false),
+        TEXTO_ALINHAMENTO => d(
+            "canal.vetor.texto_alinhamento",
+            campo,
+            false,
+            op(e::TEXTO_ALINHAMENTO),
+        ),
         TEXTO_QUEBRA => c("canal.vetor.texto_quebra", campo, false),
         TEXTO_EIXO => c("canal.vetor.texto_eixo", campo, false),
-        TEXTO_QUEBRA_FIXA => d("canal.vetor.texto_quebra", TEXTO_QUEBRA, false),
+        TEXTO_QUEBRA_FIXA => d(
+            "canal.vetor.texto_quebra",
+            TEXTO_QUEBRA,
+            false,
+            op(e::TEXTO_QUEBRA_FIXA),
+        ),
         TEXTO_FAMILIA => t("canal.vetor.texto_familia", campo),
         TEXTO_CONTEUDO => t("canal.vetor.texto_conteudo", campo),
-        FILTRO_LIGADO => d("canal.vetor.filtro_ligado", campo, true),
-        FILTRO_TIPO | FILTRO_MODO | FILTRO_MISTURA | FILTRO_DETALHE | FILTRO_SEMENTE
-        | FILTRO_N_PARAGENS => d("canal.vetor.filtro", FILTRO_TIPO, true),
+        FILTRO_LIGADO => d("canal.vetor.filtro_ligado", campo, true, Especie::Ligado),
+        FILTRO_TIPO => d("canal.vetor.filtro", FILTRO_TIPO, true, op(e::FILTROS)),
+        FILTRO_MODO => d(
+            "canal.vetor.filtro",
+            FILTRO_TIPO,
+            true,
+            Especie::PorIrmao {
+                irmao: FILTRO_TIPO,
+                listas: e::MODOS_DO_FILTRO,
+            },
+        ),
+        FILTRO_MISTURA => d(
+            "canal.vetor.filtro",
+            FILTRO_TIPO,
+            true,
+            op(MISTURAS.split_at(20).0),
+        ),
+        FILTRO_DETALHE | FILTRO_SEMENTE | FILTRO_N_PARAGENS => {
+            d("canal.vetor.filtro", FILTRO_TIPO, true, Especie::Numero)
+        }
         FILTRO_RAIO..=FILTRO_ULTIMO => c("canal.vetor.filtro", FILTRO_TIPO, true),
-        PERFIL_EXISTE | PERFIL_N => d("canal.vetor.perfil", PERFIL_EXISTE, false),
+        PERFIL_EXISTE => d("canal.vetor.perfil", PERFIL_EXISTE, false, Especie::Ligado),
+        PERFIL_N => d("canal.vetor.perfil", PERFIL_EXISTE, false, Especie::Numero),
         PERFIL_POS | PERFIL_MULT => c("canal.vetor.perfil", PERFIL_EXISTE, false),
         PADRAO_CAMINHO_INICIO => c("canal.vetor.padrao_caminho_inicio", campo, false),
         PADRAO_CAMINHO_FIM => c("canal.vetor.padrao_caminho_fim", campo, false),
         PADRAO_CAMINHO_ESPACO => c("canal.vetor.padrao_caminho_espaco", campo, false),
         PADRAO_CAMINHO_DESLOCA => c("canal.vetor.padrao_caminho_desloca", campo, false),
-        PADRAO_CAMINHO_ESPELHO => d("canal.vetor.padrao_caminho_espelho", campo, false),
+        PADRAO_CAMINHO_ESPELHO => d(
+            "canal.vetor.padrao_caminho_espelho",
+            campo,
+            false,
+            op(e::PADRAO_CAMINHO_ESPELHO),
+        ),
         PADRAO_CAMINHO_ROTACAO => c("canal.vetor.padrao_caminho_rotacao", campo, false),
         TEXTO_CAMINHO_INICIO => c("canal.vetor.texto_caminho_inicio", campo, false),
-        TEXTO_CAMINHO_ESPELHO => d("canal.vetor.texto_caminho_espelho", campo, false),
-        BLEND_PASSOS => d("canal.vetor.blend_passos", campo, false),
-        ENVELOPE_TIPO | ENVELOPE_WARP | ENVELOPE_N_PINOS => {
-            d("canal.vetor.envelope", ENVELOPE_CANTO_X, false)
-        }
+        TEXTO_CAMINHO_ESPELHO => d(
+            "canal.vetor.texto_caminho_espelho",
+            campo,
+            false,
+            op(e::TEXTO_CAMINHO_ESPELHO),
+        ),
+        BLEND_PASSOS => d("canal.vetor.blend_passos", campo, false, Especie::Numero),
+        ENVELOPE_TIPO => d(
+            "canal.vetor.envelope",
+            ENVELOPE_CANTO_X,
+            false,
+            op(e::ENVELOPE_TIPO),
+        ),
+        ENVELOPE_WARP => d(
+            "canal.vetor.envelope",
+            ENVELOPE_CANTO_X,
+            false,
+            op(e::WARPS),
+        ),
+        ENVELOPE_N_PINOS => d(
+            "canal.vetor.envelope",
+            ENVELOPE_CANTO_X,
+            false,
+            Especie::Numero,
+        ),
         ENVELOPE_CANTO_X..=ENVELOPE_CURVA => c("canal.vetor.envelope", ENVELOPE_CANTO_X, false),
-        ANCORAS_EXISTE..=ANCORA_ULTIMA => d("canal.vetor.ancoras", ANCORAS_EXISTE, false),
-        MOLDURA_RECORTA => d("canal.vetor.moldura_recorta", campo, false),
-        LAYOUT_DIR => d("canal.vetor.layout_dir", campo, false),
+        ANCORAS_EXISTE => d(
+            "canal.vetor.ancoras",
+            ANCORAS_EXISTE,
+            false,
+            Especie::Ligado,
+        ),
+        // As frações e a caixa-base: números em degrau.
+        ANCORAS_EXISTE..=ANCORA_ULTIMA => d(
+            "canal.vetor.ancoras",
+            ANCORAS_EXISTE,
+            false,
+            Especie::Numero,
+        ),
+        MOLDURA_RECORTA => d("canal.vetor.moldura_recorta", campo, false, Especie::Ligado),
+        LAYOUT_DIR => d("canal.vetor.layout_dir", campo, false, op(e::LAYOUT_DIR)),
         LAYOUT_VAO_X | LAYOUT_VAO_Y => c("canal.vetor.layout_vao", LAYOUT_VAO_X, false),
         LAYOUT_MARGEM..LAYOUT_ALINHA => c("canal.vetor.layout_margem", LAYOUT_MARGEM, false),
-        LAYOUT_ALINHA => d("canal.vetor.layout_alinha", campo, false),
-        LAYOUT_DISTRIBUI => d("canal.vetor.layout_distribui", campo, false),
-        LAYOUT_COLUNAS => d("canal.vetor.layout_colunas", campo, false),
+        LAYOUT_ALINHA => d(
+            "canal.vetor.layout_alinha",
+            campo,
+            false,
+            op(e::LAYOUT_ALINHA),
+        ),
+        LAYOUT_DISTRIBUI => d(
+            "canal.vetor.layout_distribui",
+            campo,
+            false,
+            op(e::LAYOUT_DISTRIBUI),
+        ),
+        LAYOUT_COLUNAS => d("canal.vetor.layout_colunas", campo, false, Especie::Numero),
         LAYOUT_CRESCE => c("canal.vetor.layout_cresce", campo, false),
         LAYOUT_ENCOLHE => c("canal.vetor.layout_encolhe", campo, false),
-        LAYOUT_TEM_BASE => d("canal.vetor.layout_base", LAYOUT_BASE, false),
+        LAYOUT_TEM_BASE => d(
+            "canal.vetor.layout_base",
+            LAYOUT_BASE,
+            false,
+            Especie::Ligado,
+        ),
         LAYOUT_BASE => c("canal.vetor.layout_base", campo, false),
-        LAYOUT_TAMANHO => d("canal.vetor.layout_tamanho", campo, false),
-        LAYOUT_TEM_MIN => d("canal.vetor.layout_min", LAYOUT_MIN, false),
+        LAYOUT_TAMANHO => d(
+            "canal.vetor.layout_tamanho",
+            campo,
+            false,
+            op(e::LAYOUT_TAMANHO),
+        ),
+        LAYOUT_TEM_MIN => d("canal.vetor.layout_min", LAYOUT_MIN, false, Especie::Ligado),
         LAYOUT_MIN => c("canal.vetor.layout_min", campo, false),
-        LAYOUT_TEM_MAX => d("canal.vetor.layout_max", LAYOUT_MAX, false),
+        LAYOUT_TEM_MAX => d("canal.vetor.layout_max", LAYOUT_MAX, false, Especie::Ligado),
         LAYOUT_MAX => c("canal.vetor.layout_max", campo, false),
-        LAYOUT_ABSOLUTO => d("canal.vetor.layout_absoluto", campo, false),
-        WIDGET_PELE => d("canal.vetor.widget_pele", campo, false),
+        LAYOUT_ABSOLUTO => d("canal.vetor.layout_absoluto", campo, false, Especie::Ligado),
+        WIDGET_PELE => d("canal.vetor.widget_pele", campo, false, op(e::PELES)),
         WIDGET_ICONE => t("canal.vetor.widget_icone", campo),
-        CONTORNO_PASSOS => d("canal.vetor.contorno_passos", campo, false),
+        CONTORNO_PASSOS => d("canal.vetor.contorno_passos", campo, false, Especie::Numero),
         CONTORNO_DISTANCIA => c("canal.vetor.contorno_distancia", campo, false),
         CONTORNO_ACEL => c("canal.vetor.contorno_acel", campo, false),
-        CONTORNO_JUNCAO => d("canal.vetor.contorno_juncao", campo, false),
-        CONTORNO_LADO => d("canal.vetor.contorno_lado", campo, false),
+        CONTORNO_JUNCAO => d(
+            "canal.vetor.contorno_juncao",
+            campo,
+            false,
+            op(e::CONTORNO_JUNCAO),
+        ),
+        CONTORNO_LADO => d(
+            "canal.vetor.contorno_lado",
+            campo,
+            false,
+            op(e::CONTORNO_LADO),
+        ),
         CONTORNO_COR..=CONTORNO_COR_A => c("canal.vetor.contorno_cor", CONTORNO_COR, false),
         OFFSET_DISTANCIA => c("canal.vetor.offset_distancia", campo, false),
-        OFFSET_JUNCAO => d("canal.vetor.offset_juncao", campo, false),
-        OFFSET_LADO => d("canal.vetor.offset_lado", campo, false),
+        OFFSET_JUNCAO => d(
+            "canal.vetor.offset_juncao",
+            campo,
+            false,
+            op(e::OFFSET_JUNCAO),
+        ),
+        OFFSET_LADO => d("canal.vetor.offset_lado", campo, false, op(e::OFFSET_LADO)),
         _ => return None,
     })
 }
@@ -536,11 +648,18 @@ fn membro_tinta(off: u16) -> Option<&'static str> {
     }
 }
 
-/// Um campo dentro de um bloco de tinta: a tinta inteira é um grupo (por `i`).
 fn tinta(off: u16, rotulo: &'static str, grupo: u16) -> Option<CampoInfo> {
     match off {
-        OFF_EXISTE | OFF_TIPO | OFF_N_PARAGENS | OFF_N_PONTOS => Some(d(rotulo, grupo, true)),
-        o if (OFF_PADRAO_MODOS..=OFF_PADRAO_DESFASE).contains(&o) => Some(d(rotulo, grupo, true)),
+        OFF_EXISTE => Some(d(rotulo, grupo, true, Especie::Ligado)),
+        OFF_TIPO if grupo == TINTA_PREENCH => {
+            Some(d(rotulo, grupo, true, op(e::TIPOS_DO_PREENCHIMENTO)))
+        }
+        OFF_TIPO => Some(d(rotulo, grupo, true, op(e::TIPOS_DO_TRACO))),
+        OFF_N_PARAGENS | OFF_N_PONTOS | OFF_PADRAO_DESFASE => {
+            Some(d(rotulo, grupo, true, Especie::Numero))
+        }
+        OFF_PADRAO_MODOS => Some(d(rotulo, grupo, true, op(e::MOSAICOS))),
+        o if o == OFF_PADRAO_MODOS + 1 => Some(d(rotulo, grupo, true, op(e::REPETICOES))),
         o if o < TINTA_LARGURA => Some(c(rotulo, grupo, true)),
         _ => None,
     }

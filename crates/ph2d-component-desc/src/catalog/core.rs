@@ -159,9 +159,9 @@ const Y_SORT: &[FieldDesc] = &[
     f(3, "component.field.y_sort.3", K::Enum)
         .named("sort_point")
         .viewed(crate::options![
-            "center" => Center,
-            "pivot" => Pivot,
-            "custom" => Custom,
+            "center" => Center @ "panel.inspector.ordering.center",
+            "pivot" => Pivot @ "panel.inspector.ordering.pivot",
+            "custom" => Custom @ "panel.inspector.ordering.custom",
         ]),
 ];
 // ⚠️ A §8 pinta só o MODO (a linha «Clip Children»; `Disabled` destaca o componente) — o corte
@@ -170,9 +170,9 @@ const CLIP_CHILDREN: &[FieldDesc] = &[
     f(1, "component.field.clip_children.1", K::Enum)
         .named_as("clip_children", "mode")
         .viewed(crate::options![
-            "disabled" => Disabled,
-            "clip" => ClipOnly,
-            "clip_draw" => ClipAndDraw,
+            "disabled" => Disabled @ "panel.inspector.visibility.disabled",
+            "clip" => ClipOnly @ "panel.inspector.visibility.clip",
+            "clip_draw" => ClipAndDraw @ "panel.inspector.visibility.clip_plus_draw",
         ]),
     f(2, "component.field.clip_children.2", K::Scalar).keyed("alpha_cutoff"),
 ];
@@ -182,20 +182,20 @@ const CLIP_CHILDREN: &[FieldDesc] = &[
 const BLEND_MODE: &[FieldDesc] = &[f(1, "component.field.blend_mode.1", K::Enum)
     .named_as("blend_mode", WHOLE)
     .viewed(crate::options![
-        "mix" => Mix,
-        "add" => Add,
-        "subtract" => Subtract,
-        "multiply" => Multiply,
-        "screen" => Screen,
-        "premult" => PremultAlpha,
+        "mix" => Mix @ "panel.inspector.material.mix",
+        "add" => Add @ "panel.inspector.material.add",
+        "subtract" => Subtract @ "panel.inspector.material.subtract",
+        "multiply" => Multiply @ "panel.inspector.material.multiply",
+        "screen" => Screen @ "panel.inspector.material.screen",
+        "premult" => PremultAlpha @ "panel.inspector.material.premult",
     ])];
 const MASK_INTERACTION: &[FieldDesc] = &[
     f(1, "component.field.mask_interaction.1", K::Enum)
         .named_as("mask_interaction", "mode")
         .viewed(crate::options![
-            "none" => None,
-            "inside" => VisibleInside,
-            "outside" => VisibleOutside,
+            "none" => None @ "panel.inspector.visibility.none",
+            "inside" => VisibleInside @ "panel.inspector.visibility.inside",
+            "outside" => VisibleOutside @ "panel.inspector.visibility.outside",
         ]),
     f(2, "component.field.mask_interaction.2", K::Scalar)
         .named_as("mask_alpha_cutoff", "alpha_cutoff"),
@@ -205,20 +205,20 @@ const ON_SCREEN_ENABLER: &[FieldDesc] =
 const TEXTURE_FILTER: &[FieldDesc] = &[f(1, "component.field.texture_filter.1", K::Enum)
     .named_as("texture_filter", WHOLE)
     .viewed(crate::options![
-        "inherit" => 0,
-        "nearest" => 1,
-        "linear" => 2,
-        "near_mip" => 3,
-        "lin_mip" => 4,
-        "lin_aniso" => 6,
+        "inherit" => 0 @ "panel.inspector.sampling.inherit",
+        "nearest" => 1 @ "panel.inspector.sampling.nearest",
+        "linear" => 2 @ "panel.inspector.sampling.linear",
+        "near_mip" => 3 @ "panel.inspector.sampling.near_plus_mip",
+        "lin_mip" => 4 @ "panel.inspector.sampling.lin_plus_mip",
+        "lin_aniso" => 6 @ "panel.inspector.sampling.lin_plus_aniso",
     ])];
 const TEXTURE_REPEAT: &[FieldDesc] = &[f(1, "component.field.texture_repeat.1", K::Enum)
     .named_as("texture_repeat", WHOLE)
     .viewed(crate::options![
-        "inherit" => Inherit,
-        "clamp" => Disabled,
-        "repeat" => Enabled,
-        "mirror" => Mirror,
+        "inherit" => Inherit @ "panel.inspector.sampling.inherit",
+        "clamp" => Disabled @ "panel.inspector.sampling.clamp",
+        "repeat" => Enabled @ "panel.inspector.sampling.repeat",
+        "mirror" => Mirror @ "panel.inspector.sampling.mirror",
     ])];
 const UV_TRANSFORM: &[FieldDesc] = &[
     f(1, "component.field.uv_transform.1", K::Vec2).named_as("uv_scale", "scale"),

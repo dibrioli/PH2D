@@ -40,10 +40,10 @@ const FIELDS: &[FieldDesc] = &[
     f(10, "component.field.fields.10", K::Enum)
         .named_as("emission_shape", "shape")
         .viewed(crate::options![
-            "point" => Point,
-            "disc" => Disc,
-            "ring" => Ring,
-            "rect" => Rect,
+            "point" => Point @ "panel.inspector.particles.point",
+            "disc" => Disc @ "panel.inspector.particles.disc",
+            "ring" => Ring @ "panel.inspector.particles.ring",
+            "rect" => Rect @ "panel.inspector.particles.rect",
         ]),
     f(11, "component.field.fields.11", K::Vec2).named("shape_size"),
     f(12, "component.field.fields.12", K::Scalar).named("speed"),
@@ -63,7 +63,7 @@ const FIELDS: &[FieldDesc] = &[
     f(22, "component.field.fields.22", K::Color).named_as("color_at_death", "color_end"),
     f(23, "component.field.fields.23", K::Enum)
         .named_as("simulation_space", "space")
-        .viewed(crate::options!["world" => World, "local" => Local]),
+        .viewed(crate::options!["world" => World @ "panel.inspector.particles.world", "local" => Local @ "panel.inspector.particles.local"]),
     f(24, "component.field.fields.24", K::Text).named_as("switch_on", "start_on"),
     f(25, "component.field.fields.25", K::Text).named_as("switch_off", "stop_on"),
     f(26, "component.field.fields.26", K::Text).named_as("restart", "restart_on"),

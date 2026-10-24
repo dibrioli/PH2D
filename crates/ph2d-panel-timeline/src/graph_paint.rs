@@ -94,7 +94,7 @@ pub(crate) fn paint_track(
         (rect, band_rect),
         label_w,
         &band,
-        track.prop.is_text(),
+        track.prop.nomeia(),
     );
     if track.keys.is_empty() {
         return;
@@ -194,8 +194,8 @@ fn drawn_extent_of(band_rect: &Rect, view: TimeView, track: &TrackView) -> Optio
 
 /// The inset background + border, and the fitted range's min/max labels in the
 /// label column (P6: no ambiguous spec — the vertical scale is always readable).
-/// `texto` ⇒ a escala não se escreve: o eixo de um canal de texto são índices da tabela, não uma
-/// grandeza (o texto vai junto de cada chave).
+/// `texto` ⇒ a escala não se escreve: o eixo de um canal que nomeia são índices, não uma grandeza
+/// (a palavra vai junto de cada chave).
 fn paint_frame(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -279,7 +279,7 @@ fn paint_curve(
 /// Registered BEFORE the handles so that where the two overlap the handle — the
 /// smaller, more precise target, and the one that only appears on a selected
 /// segment — wins the hit (`HitIndex::hit` walks its rects in reverse).
-/// Numa row de texto cada chave escreve o seu texto à direita, até à chave seguinte (o `Hold` segura-o
+/// Numa row que nomeia cada chave escreve a sua palavra à direita, até à chave seguinte (o `Hold` segura-o
 /// até lá).
 fn paint_anchors(
     ctx: &mut PaintCtx,
@@ -290,7 +290,6 @@ fn paint_anchors(
     (track, values): (&TrackView, &TrackValues),
 ) {
     let target = track.target.get();
-    let texto = track.prop.is_text();
     for (n, k) in track.keys.iter().enumerate() {
         let (x, y) = (view.x(k.t_seconds), band.y(f64::from(k.value)));
         if x < band.rect.x || x > band.rect.x + band.rect.w {
@@ -305,7 +304,10 @@ fn paint_anchors(
         };
         let r = if k.roving { ROVE_ANCHOR_R } else { ANCHOR_R };
         fill_circle(ctx.scene, x, y, r, resolve(tok, theme));
-        if let Some(s) = values.texto(k.value).filter(|_| texto) {
+        if let Some(s) = values
+            .palavra(target, k.value)
+            .map(crate::tracks_value::dita)
+        {
             let fim = track
                 .keys
                 .get(n + 1)

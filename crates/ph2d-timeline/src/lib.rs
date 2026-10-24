@@ -140,7 +140,7 @@ pub use stack::{
     mark_index,
 };
 pub use stack_edit::MAX_LANES;
-pub use track_values::TrackValues;
+pub use track_values::{Palavra, TrackValues};
 // The anim vocab the public snapshot/doc API names, re-exported so consumers of
 // `KeyView`/`TrackView`/`SelectedKey` don't need a direct `ph2d-anim` dep.
 pub use ph2d_anim::{

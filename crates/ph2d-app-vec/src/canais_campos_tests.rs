@@ -62,7 +62,7 @@ fn escrever_o_que_se_leu_e_identidade_em_todo_campo() {
 fn todo_campo_continuo_vai_e_volta() {
     let original = forma();
     for kk in campos(&original, None) {
-        if kk.info().is_none_or(|i| i.discreto) {
+        if kk.info().is_none_or(|i| i.discreto()) {
             continue;
         }
         let mut p = original.clone();

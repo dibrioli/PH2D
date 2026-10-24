@@ -69,7 +69,7 @@ fn cada_campo_mostrado_le_o_que_escreveu() {
     for campo in mostrados {
         let (mut sim, e) = corpo();
         let antes = valor(&sim, e, campo);
-        let discreto = k(campo).info().is_some_and(|i| i.discreto);
+        let discreto = k(campo).info().is_some_and(|i| i.discreto());
         let alvo = match (discreto, antes == 1.0) {
             (true, true) => 0.0,
             (true, false) => 1.0,

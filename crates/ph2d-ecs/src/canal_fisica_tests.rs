@@ -87,11 +87,14 @@ fn cada_campo_do_corpo_diz_o_que_e() {
         SEM_PAREDE,
         FORCA_NO_MUNDO,
     ] {
-        assert!(k(discreto).info().is_some_and(|i| i.discreto), "{discreto}");
+        assert!(
+            k(discreto).info().is_some_and(|i| i.discreto()),
+            "{discreto}"
+        );
     }
     for continuo in [RAIO, DENSIDADE, ESCALA_GRAVIDADE, VEL_ANGULAR, ZONA_QUEDA] {
         assert!(
-            k(continuo).info().is_some_and(|i| !i.discreto),
+            k(continuo).info().is_some_and(|i| !i.discreto()),
             "{continuo}"
         );
     }

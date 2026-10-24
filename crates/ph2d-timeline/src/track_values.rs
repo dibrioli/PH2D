@@ -26,7 +26,8 @@
 
 use std::collections::BTreeMap;
 
-use ph2d_ecs::TextosDosCanais;
+use bevy_ecs::world::World;
+pub use ph2d_ecs::canal_palavra::Palavra;
 
 use crate::{PropKind, TrackView};
 
@@ -37,13 +38,13 @@ use crate::{PropKind, TrackView};
 /// Vazio é o normal: um documento sem tracks, ou um em que nenhuma delas nomeia um escalar do
 /// mundo, publica nada e a dope-sheet desenha exactamente como sempre desenhou.
 ///
-/// Um canal de TEXTO (`PropKind::is_text`) vale um índice em `ph2d_ecs::TextosDosCanais`: a
-/// publicação leva também o texto de cada índice que as rows de texto mostram (o valor de agora e o
-/// de cada chave), para o painel escrever «Box A» e nunca «3.00».
+/// Um canal DISCRETO ([`ph2d_ecs::CampoInfo::discreto`]) — uma escolha, uma camada, um script, um
+/// texto — leva também a PALAVRA de cada valor que a row mostra (o de agora e o de cada chave); o
+/// painel traduz a chave e escreve «Tag», «Front», «bob.luau», nunca «3.00» (F27 F).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct TrackValues {
     valores: BTreeMap<u64, f32>,
-    textos: BTreeMap<u32, String>,
+    palavras: BTreeMap<(u64, u32), Palavra>,
 }
 
 impl TrackValues {
@@ -59,13 +60,11 @@ impl TrackValues {
         self.valores.get(&target).copied()
     }
 
-    /// O texto que o valor `v` de um canal de texto nomeia, se a publicação o trouxe (`None` = o
-    /// índice `0`, «nenhum», ou um canal que não é de texto).
+    /// ⭐ **A palavra que o valor `v` da row `target` mostra**, se a publicação a trouxe (`None` = o
+    /// número é a resposta, ou um texto «nenhum»).
     #[must_use]
-    pub fn texto(&self, v: f32) -> Option<&str> {
-        indice(v)
-            .and_then(|k| self.textos.get(&k))
-            .map(String::as_str)
+    pub fn palavra(&self, target: u64, v: f32) -> Option<&Palavra> {
+        self.palavras.get(&(target, v.round().to_bits()))
     }
 
     /// **Re-publica os valores das rows que este snapshot tem** — limpa e preenche numa passagem.
@@ -81,45 +80,38 @@ impl TrackValues {
         tracks: &[TrackView],
         sample: impl FnMut(u64, PropKind) -> Option<f32>,
     ) {
-        self.publish_com_textos(tracks, None, sample);
+        self.publish_com_mundo(tracks, None, sample);
     }
 
-    /// [`Self::publish`] com a tabela dos textos da sessão: cada row de texto leva o texto do seu
-    /// valor e o de cada chave (o escopo continua a ser as ROWS).
-    pub fn publish_com_textos(
+    /// [`Self::publish`] com o mundo: cada row discreta leva a palavra do seu valor e a de cada
+    /// chave, pela porta [`ph2d_ecs::canal_palavra::palavra`] (o escopo continua a ser as ROWS).
+    pub fn publish_com_mundo(
         &mut self,
         tracks: &[TrackView],
-        tabela: Option<&TextosDosCanais>,
+        mundo: Option<&World>,
         mut sample: impl FnMut(u64, PropKind) -> Option<f32>,
     ) {
         self.valores.clear();
-        self.textos.clear();
+        self.palavras.clear();
         for t in tracks {
             let agora = sample(t.entity, t.prop);
             if let Some(v) = agora {
                 self.valores.insert(t.target.get(), v);
             }
-            let Some(tabela) = tabela.filter(|_| t.prop.is_text()) else {
+            let (Some(mundo), PropKind::Field(k)) = (mundo, t.prop) else {
                 continue;
             };
             for v in agora.into_iter().chain(t.keys.iter().map(|k| k.value)) {
-                if let (Some(k), Some(s)) = (indice(v), tabela.texto(v)) {
-                    self.textos.entry(k).or_insert_with(|| s.to_owned());
+                let chave = (t.target.get(), v.round().to_bits());
+                if self.palavras.contains_key(&chave) {
+                    continue;
+                }
+                if let Some(p) = ph2d_ecs::canal_palavra::palavra(mundo, t.entity, k, v) {
+                    self.palavras.insert(chave, p);
                 }
             }
         }
     }
-}
-
-/// O índice que um valor de texto guarda (`None` = `0`, «nenhum»), arredondado como a tabela lê.
-fn indice(v: f32) -> Option<u32> {
-    let k = v.round();
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "positivo e preso a 2^24 pela tabela"
-    )]
-    (k >= 1.0).then_some(k as u32)
 }
 
 #[cfg(test)]

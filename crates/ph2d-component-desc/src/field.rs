@@ -54,10 +54,8 @@ pub enum View {
     Not,
     /// Uma caixa no cartão sobre um enum: `(valor de true, valor de false)`, como em [`Self::Options`].
     Toggle(&'static str, &'static str),
-    /// Uma escolha: `(nome no script, valor guardado)` — o nome é o `snake` do rótulo da opção no
-    /// cartão; o valor é json (`0`, `null`, `true`) ou, se não o for, o NOME serde de uma variante
-    /// unitária (`Full`). Escreve-se com [`crate::options!`].
-    Options(&'static [(&'static str, &'static str)]),
+    /// Uma escolha — escreve-se com [`crate::options!`].
+    Options(&'static [Opcao]),
     /// Pode ser infinito (sem limite): `math.huge` no script, `null` no valor serde.
     Unbounded,
     /// Guardado em fracção (0–1); o cartão e o script em percentagem (0–100).
@@ -69,6 +67,19 @@ pub enum View {
     Named(Target),
     /// Um par guardado como `{a, b}` (`SpawnAt::Area {w, h}`); o script vê `vec2(a, b)`.
     Pair(&'static str, &'static str),
+}
+
+/// **Uma opção de uma [`View::Options`].**
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Opcao {
+    /// O nome no script: o `snake` do rótulo da opção no cartão.
+    pub nome: &'static str,
+    /// O valor guardado: json (`0`, `null`, `true`) ou, se não o for, o NOME serde de uma variante
+    /// unitária (`Full`).
+    pub valor: &'static str,
+    /// A chave `ph2d-i18n` do rótulo que o cartão do Inspector pinta — a mesma palavra que a
+    /// timeline escreve para esta escolha (F27 F).
+    pub rotulo: &'static str,
 }
 
 /// **A que identidade um [`View::Named`] dá nome.**
@@ -91,13 +102,18 @@ pub enum Target {
     Script,
 }
 
-/// ⭐ **Uma [`View::Options`]**: `options!["full" => Full, "none" => Nothing, "inherit" => null]`. O
-/// valor guardado escreve-se como IDENTIFICADOR (a variante serde, o `0`, o `null`): é código, nunca
-/// texto pintado — o censo do HR-15 não o confunde com língua. [`View::Toggle`] usa `stringify!`.
+/// ⭐ **Uma [`View::Options`]**: `options!["full" => Full @ "panel.x.full", "inherit" => null @ "panel.x.inherit"]`.
+/// O valor guardado escreve-se como IDENTIFICADOR (a variante serde, o `0`, o `null`): é código, nunca
+/// texto pintado — o censo do HR-15 não o confunde com língua. Depois do `@`, a chave do rótulo do
+/// cartão. [`View::Toggle`] usa `stringify!`.
 #[macro_export]
 macro_rules! options {
-    ($($nome:literal => $v:tt),* $(,)?) => {
-        $crate::View::Options(&[$(($nome, stringify!($v))),*])
+    ($($nome:literal => $v:tt @ $rotulo:literal),* $(,)?) => {
+        $crate::View::Options(&[$($crate::Opcao {
+            nome: $nome,
+            valor: stringify!($v),
+            rotulo: $rotulo,
+        }),*])
     };
 }
 

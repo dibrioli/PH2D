@@ -15,7 +15,7 @@
 //! ⛔ Fora (plano 35 §8): Add/Remove/peça (estrutura), Bake e o que ele grava (comando), juntar e
 //! o rig (estrutura), os sinais e o filtro por tag (fiação por nome/identidade).
 
-use crate::canal::CampoInfo;
+use crate::canal::{CampoInfo, Especie};
 
 /// `RigidBody::kind` (Dynamic 0 · Static 1 · Kinematic 2).
 pub const TIPO: u16 = 1;
@@ -121,41 +121,90 @@ pub const CAMPOS: [u16; 41] = [
 ];
 
 const fn c(rotulo: &'static str, grupo: u16) -> CampoInfo {
+    d(rotulo, grupo, Especie::Continuo)
+}
+
+/// Um discreto declara a sua espécie: a palavra que a timeline mostra (F27 F).
+const fn d(rotulo: &'static str, grupo: u16, especie: Especie) -> CampoInfo {
     CampoInfo {
         rotulo,
-        discreto: false,
+        especie,
         grupo,
         por_i: false,
-        texto: false,
     }
 }
 
-const fn d(rotulo: &'static str, grupo: u16) -> CampoInfo {
-    CampoInfo {
-        discreto: true,
-        ..c(rotulo, grupo)
-    }
+const fn op(chaves: &'static [&'static str]) -> Especie {
+    Especie::Opcoes(chaves)
 }
+
+const TRAVA: &[&str] = &[
+    "panel.inspector.physics.free",
+    "panel.inspector.physics.locked",
+];
+const COMBINA: &[&str] = &[
+    "panel.inspector.physics.average",
+    "panel.inspector.physics.min",
+    "panel.inspector.physics.multiply",
+    "panel.inspector.physics.max",
+];
 
 /// O que o campo `campo` do corpo é.
 #[must_use]
 pub fn info(campo: u16) -> Option<CampoInfo> {
     Some(match campo {
-        TIPO => d("canal.fisica.tipo", campo),
-        CCD => d("canal.fisica.ccd", campo),
-        TRAVA_ROTACAO => d("canal.fisica.trava_rotacao", campo),
-        TRAVA_X => d("canal.fisica.trava_x", campo),
-        TRAVA_Y => d("canal.fisica.trava_y", campo),
+        TIPO => d(
+            "canal.fisica.tipo",
+            campo,
+            op(&[
+                "panel.inspector.physics.dynamic",
+                "panel.inspector.physics.static",
+                "panel.inspector.physics.kinematic",
+            ]),
+        ),
+        CCD => d(
+            "canal.fisica.ccd",
+            campo,
+            op(&[
+                "panel.inspector.physics.discrete",
+                "panel.inspector.physics.continuous",
+            ]),
+        ),
+        TRAVA_ROTACAO => d("canal.fisica.trava_rotacao", campo, op(TRAVA)),
+        TRAVA_X => d("canal.fisica.trava_x", campo, op(TRAVA)),
+        TRAVA_Y => d("canal.fisica.trava_y", campo, op(TRAVA)),
         ESCALA_GRAVIDADE => c("canal.fisica.escala_gravidade", campo),
-        DOMINANCIA => d("canal.fisica.dominancia", campo),
+        DOMINANCIA => d("canal.fisica.dominancia", campo, Especie::Numero),
         VEL_X | VEL_Y => c("canal.fisica.velocidade", VEL_X),
         VEL_ANGULAR => c("canal.fisica.vel_angular", campo),
         AMORT_LINEAR => c("canal.fisica.amort_linear", campo),
         AMORT_ANGULAR => c("canal.fisica.amort_angular", campo),
-        AMORT_MODO => d("canal.fisica.amort_modo", campo),
-        MASSA_MANUAL => d("canal.fisica.massa_manual", campo),
+        AMORT_MODO => d(
+            "canal.fisica.amort_modo",
+            campo,
+            op(&[
+                "panel.inspector.physics.combine",
+                "panel.inspector.physics.replace",
+            ]),
+        ),
+        MASSA_MANUAL => d(
+            "canal.fisica.massa_manual",
+            campo,
+            op(&[
+                "panel.inspector.physics.auto",
+                "panel.inspector.physics.manual",
+            ]),
+        ),
         MASSA => c("canal.fisica.massa", campo),
-        FORMA => d("canal.fisica.forma", campo),
+        FORMA => d(
+            "canal.fisica.forma",
+            campo,
+            op(&[
+                "panel.inspector.physics.ball",
+                "panel.inspector.physics.box",
+                "panel.inspector.physics.capsule",
+            ]),
+        ),
         RAIO => c("canal.fisica.raio", campo),
         MEIO_X | MEIO_Y => c("canal.fisica.caixa", MEIO_X),
         CAPSULA => c("canal.fisica.capsula", campo),
@@ -163,16 +212,34 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         DENSIDADE => c("canal.fisica.densidade", campo),
         RESTITUICAO => c("canal.fisica.restituicao", campo),
         ATRITO => c("canal.fisica.atrito", campo),
-        COMBINA_RESTITUICAO => d("canal.fisica.combina_restituicao", campo),
-        COMBINA_ATRITO => d("canal.fisica.combina_atrito", campo),
-        CAMADA => d("canal.fisica.camada", campo),
-        SENSOR => d("canal.fisica.sensor", campo),
-        UMA_VIA => d("canal.fisica.uma_via", campo),
-        SEM_PAREDE => d("canal.fisica.sem_parede", campo),
+        COMBINA_RESTITUICAO => d("canal.fisica.combina_restituicao", campo, op(COMBINA)),
+        COMBINA_ATRITO => d("canal.fisica.combina_atrito", campo, op(COMBINA)),
+        CAMADA => d("canal.fisica.camada", campo, Especie::Numero),
+        SENSOR => d(
+            "canal.fisica.sensor",
+            campo,
+            op(&[
+                "panel.inspector.physics.solid",
+                "panel.inspector.physics.sensor",
+            ]),
+        ),
+        UMA_VIA => d("canal.fisica.uma_via", campo, Especie::Ligado),
+        SEM_PAREDE => d(
+            "canal.fisica.sem_parede",
+            campo,
+            op(&["panel.inspector.physics.on", "panel.inspector.physics.off"]),
+        ),
         ADERENCIA => c("canal.fisica.aderencia", campo),
         ESTEIRA => c("canal.fisica.esteira", campo),
         FORCA_X | FORCA_Y => c("canal.fisica.forca", FORCA_X),
-        FORCA_NO_MUNDO => d("canal.fisica.forca_no_mundo", campo),
+        FORCA_NO_MUNDO => d(
+            "canal.fisica.forca_no_mundo",
+            campo,
+            op(&[
+                "panel.inspector.physics.zone",
+                "panel.inspector.physics.world",
+            ]),
+        ),
         ZONA_ARRASTO => c("canal.fisica.zona_arrasto", campo),
         ZONA_DENSIDADE => c("canal.fisica.zona_densidade", campo),
         ZONA_ARRASTO_FORMA => c("canal.fisica.zona_arrasto_forma", campo),

@@ -402,7 +402,7 @@ pub(crate) fn publish_track_values<'a>(
 ) {
     let src = src.into();
     let ph2d_timeline::TimelineViewSnapshot { tracks, values, .. } = view;
-    values.publish_com_textos(tracks, src.world.get_resource(), |entity, prop| {
+    values.publish_com_mundo(tracks, Some(src.world), |entity, prop| {
         match sample_prop_value(src, entity, prop) {
             Some(ph2d_anim::AnimValue::Float(v)) => Some(v),
             // Um canal sem escalar de mundo (`TimeRemap`, `Position`) ou um objecto que morreu:

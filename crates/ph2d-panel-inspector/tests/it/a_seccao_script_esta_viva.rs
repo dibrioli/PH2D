@@ -593,3 +593,26 @@ fn o_seletor_lista_os_scripts_do_projeto_e_a_escolha_aponta_o_nome() {
     assert!(rect_de(&rects, chip).is_none(), "apagado = fora do indice");
     set_current_inspector_script(None);
 }
+
+/// ⭐ **Um canal, um losango** (F27 F): o ficheiro do script é UM canal (`script_fields.1`, pelo
+/// `ScriptId`) e é o seletor que o escolhe; o campo de texto do caminho guarda a coluna vazia.
+///
+/// **Mutação que deve sangrar:** voltar o campo de texto a `Rotulo::de_campo(…, script_fields.1)`.
+#[test]
+fn o_ficheiro_do_script_tem_um_losango_so_no_seletor() {
+    use ph2d_editor_core::widget::key_mark;
+    let (mut h, mut st) = host(Some(info()));
+    key_mark::set_key_marks(std::collections::BTreeMap::new());
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let campos: Vec<_> = key_mark::rotulos_pintados()
+        .into_iter()
+        .filter(|(_, k)| *k == "component.field.script_fields.1")
+        .map(|(id, _)| id)
+        .collect();
+    assert_eq!(
+        campos,
+        vec![ids::INSP_SCRIPT_PICK],
+        "dois losangos para o mesmo canal"
+    );
+    set_current_inspector_script(None);
+}

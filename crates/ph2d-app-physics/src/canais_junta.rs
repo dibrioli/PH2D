@@ -357,7 +357,7 @@ pub fn aplicar(sim: &mut SimWorld, drive: &mut PreviewDrive, doc: &TimelineDoc) 
     // O TIPO primeiro e as escolhas antes dos números: trocar o tipo, o eixo do motor ou o modo de
     // um eixo muda o que os números significam (o funil re-semeia limites e motor).
     escritas.sort_by_key(|&(e, kk, _)| {
-        let numero = kk.info().is_none_or(|i| !i.discreto);
+        let numero = kk.info().is_none_or(|i| !i.discreto());
         (e, kk.campo != j::TIPO, numero, kk)
     });
     let mut mudou = false;

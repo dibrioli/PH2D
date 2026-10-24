@@ -222,8 +222,8 @@ fn seen(view: View, v: Value) -> Value {
         (View::Toggle(t, _), v) => Value::Bool(json(t) == v),
         (View::Options(opts), v) => opts
             .iter()
-            .find(|(_, j)| same_option(&json(j), &v))
-            .map_or(v, |(n, _)| Value::String((*n).to_owned())),
+            .find(|o| same_option(&json(o.valor), &v))
+            .map_or(v, |o| Value::String(o.nome.to_owned())),
         (View::Pair(a, b), Value::Object(o)) => Value::Array(vec![
             o.get(a).cloned().unwrap_or(Value::Null),
             o.get(b).cloned().unwrap_or(Value::Null),
@@ -272,14 +272,14 @@ fn stored_from(
         (View::Not, Value::Bool(b)) => Value::Bool(!b),
         (View::Toggle(t, f), Value::Bool(b)) => json(if b { t } else { f }),
         (View::Options(opts), v) => {
-            match v.as_str().and_then(|s| opts.iter().find(|(n, _)| *n == s)) {
-                Some((_, j)) => property_ref::enter_option(json(j), stored, partilhado),
+            match v.as_str().and_then(|s| opts.iter().find(|o| o.nome == s)) {
+                Some(o) => property_ref::enter_option(json(o.valor), stored, partilhado),
                 None => {
                     return Err(PropertyError::NoSuchOption {
                         name: name.to_owned(),
                         options: opts
                             .iter()
-                            .map(|(n, _)| format!("\"{n}\""))
+                            .map(|o| format!("\"{}\"", o.nome))
                             .collect::<Vec<_>>()
                             .join(", "),
                     });

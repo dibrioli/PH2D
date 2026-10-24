@@ -141,6 +141,11 @@ const LINHAS: &[(&str, &str)] = &[
 /// A classe de uma chamada por um dos seus ids — exacto, ou PREFIXO quando acaba em `_`.
 const POR_ID: &[(&str, Classe, &str)] = &[
     (
+        "INSP_SCRIPT_SOURCE",
+        Canal,
+        "o mesmo canal que o seletor `INSP_SCRIPT_PICK` (o `ScriptId`), que leva o losango: um canal, um losango; o caminho por importar não é valor de canal (F27 F)",
+    ),
+    (
         "INSP_VIS_ON_SCREEN",
         NaoAnimavel,
         "a caixa diz se o componente EXISTE (acrescentar/tirar é estrutura); o rectângulo dele tem canal",

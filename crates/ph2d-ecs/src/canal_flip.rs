@@ -14,7 +14,7 @@
 //! ⛔ Fora (plano 35 §8): o cadeado (trava de EDIÇÃO), o nome (identidade), a ordem (estrutura) e
 //! os traços (a lei do Grease Pencil, `ph2d-flip/src/autokey.rs`).
 
-use crate::canal::CampoInfo;
+use crate::canal::{CampoInfo, Especie};
 
 /// `FlipLayer::visible` (0/1).
 pub const VISIVEL: u16 = 1;
@@ -28,13 +28,12 @@ pub const PROFUNDIDADE: u16 = 4;
 /// Os campos de uma camada, na ordem do painel.
 pub const CAMPOS: [u16; 4] = [VISIVEL, MISTURA, OPACIDADE, PROFUNDIDADE];
 
-const fn c(rotulo: &'static str, grupo: u16, discreto: bool) -> CampoInfo {
+const fn c(rotulo: &'static str, grupo: u16, especie: Especie) -> CampoInfo {
     CampoInfo {
         rotulo,
-        discreto,
+        especie,
         grupo,
         por_i: true,
-        texto: false,
     }
 }
 
@@ -42,10 +41,14 @@ const fn c(rotulo: &'static str, grupo: u16, discreto: bool) -> CampoInfo {
 #[must_use]
 pub fn info(campo: u16) -> Option<CampoInfo> {
     Some(match campo {
-        VISIVEL => c("canal.flip.visivel", campo, true),
-        OPACIDADE => c("canal.flip.opacidade", campo, false),
-        MISTURA => c("canal.flip.mistura", campo, true),
-        PROFUNDIDADE => c("canal.flip.profundidade", campo, false),
+        VISIVEL => c("canal.flip.visivel", campo, Especie::Ligado),
+        OPACIDADE => c("canal.flip.opacidade", campo, Especie::Continuo),
+        MISTURA => c(
+            "canal.flip.mistura",
+            campo,
+            Especie::Opcoes(crate::canal_palavra::MISTURAS),
+        ),
+        PROFUNDIDADE => c("canal.flip.profundidade", campo, Especie::Continuo),
         _ => return None,
     })
 }

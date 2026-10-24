@@ -24,6 +24,23 @@ pub struct Miolo {
     /// ⭐ W5q — até `bloco` relaxações por despacho (4 ou 2, o bloco 16×16 com a borda na memória de
     /// grupo, a mesma conta ao bit); ≤ 1 = uma por despacho (a W5o).
     pub bloco: u32,
+    /// ⭐ Item 4 (24/10) — os passes dos níveis ≥ 1 não gravam o texel fora dos opacos (o `override
+    /// SALTA_FORA` do `c3_miolo.wgsl`; ninguém o lê: o mesmo bit). MEDIDO (`medida_luz2d_miolo_formas`,
+    /// mín de 9 intercaladas, 3 cenas, 0 texels diferentes nas duas placas): `c3_miolo` ×0,92–0,93 na RTX
+    /// 5060 Ti, ×0,42–0,59 na Radeon 610M (lá o miolo é a ESCRITA na memória partilhada); `docs/Luz2D/BUGS_luz2d.md` bug 7.
+    pub salta_o_fora: bool,
+}
+
+impl Miolo {
+    /// ⭐ Item 4 — as constantes de pipeline do `c3_miolo.wgsl` com esta escolha.
+    #[must_use]
+    pub(crate) fn opcoes(&self) -> wgpu::PipelineCompilationOptions<'static> {
+        const SALTA: &[(&str, f64)] = &[("SALTA_FORA", 1.0)];
+        wgpu::PipelineCompilationOptions {
+            constants: if self.salta_o_fora { SALTA } else { &[] },
+            ..Default::default()
+        }
+    }
 }
 
 /// ⭐ W5h — a escolha do dono (11/10: a difusão inteira, até ao centro); as relaxações MEDIDAS na
@@ -37,6 +54,7 @@ pub const MIOLO_PADRAO: Miolo = Miolo {
     suaviza: 2,
     base_no_grupo: true,
     bloco: 4,
+    salta_o_fora: true,
 };
 
 /// ⭐ W6f — o texel do canto pelas faces ([`Config::canto`]; o `onde_calcular` do `c3_direta.wgsl`).

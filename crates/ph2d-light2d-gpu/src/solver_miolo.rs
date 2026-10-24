@@ -230,7 +230,7 @@ impl DoMiolo {
                 layout: Some(pl),
                 module: modulo,
                 entry_point: Some(entrada),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                compilation_options: miolo.opcoes(),
                 cache: None,
             })
         };

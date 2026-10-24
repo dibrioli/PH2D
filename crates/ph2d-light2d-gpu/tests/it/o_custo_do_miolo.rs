@@ -295,3 +295,44 @@ fn o_custo_do_miolo_desce_com_a_base() {
         "o entorno com `so_a_c0` ainda paga {entorno:.3} da grade fina e do miolo (teto {TETO_ENTORNO})"
     );
 }
+
+/// ⭐⭐ **GATE (item 4, 24/10) — saltar o fora não muda um bit**: o miolo de fábrica (`Miolo::salta_o_fora`:
+/// os passes dos níveis ≥ 1 não gravam os texels fora dos opacos) contra o de antes (gravam), a fluência
+/// inteira depois de 4 quadros: 0 texels diferentes em TODA placa (a conta é a mesma; só a escrita morta
+/// sai). Controlo: um V-ciclo a menos muda a fluência (a régua vê o miolo). O custo: `medida_luz2d_miolo_formas`
+/// (crate `ph2d-app-light2d`; RTX ×0,92–0,93, Radeon 610M ×0,42–0,59).
+#[test]
+fn saltar_o_fora_do_miolo_nao_muda_um_bit() {
+    let Some(gpu) = gpu() else { return };
+    let c = cena();
+    let fluencia = |salta: bool, menos_um: bool| {
+        let cfg = *solver(&gpu, true, false, MIOLO_PADRAO.bloco).config();
+        let m = cfg.miolo.expect("o miolo");
+        let cfg = Config {
+            miolo: Some(Miolo {
+                salta_o_fora: salta,
+                ciclos: m.ciclos - u32::from(menos_um),
+                ..m
+            }),
+            ..cfg
+        };
+        let mut s = Solver::novo(&gpu, cfg).expect("solver");
+        s.regiao_fina([LARGURA / 4, ALTURA / 4], [LARGURA * 3 / 4, ALTURA * 3 / 4]);
+        for _ in 0..4 {
+            s.quadro(&gpu, &c);
+        }
+        crate::comum::ler_fluencia(&gpu, &s)
+    };
+    assert!(MIOLO_PADRAO.salta_o_fora, "o miolo de fábrica salta o fora");
+    let (produto, antes, controlo) = (fluencia(true, false), fluencia(false, false), fluencia(false, true));
+    let dif = |a: &[[f32; 3]], b: &[[f32; 3]]| {
+        a.iter()
+            .zip(b)
+            .filter(|(x, y)| x.map(f32::to_bits) != y.map(f32::to_bits))
+            .count()
+    };
+    let (d, dc) = (dif(&produto, &antes), dif(&controlo, &antes));
+    eprintln!("saltar o fora: {d} texels diferentes de {} · controlo (um ciclo a menos) {dc}", antes.len());
+    assert!(dc > 0, "controlo: um V-ciclo a menos não mudou a fluência — a régua não vê o miolo");
+    assert_eq!(d, 0, "saltar o fora do miolo mudou {d} texels da fluência");
+}

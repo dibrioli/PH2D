@@ -12,7 +12,8 @@ fn ligado(k: &str) -> bool {
 
 /// ⭐ W5c: o rebote em todo nível (sem nenhum corpo que reflita, os passes dele saltam);
 /// ⭐ W5h — o miolo dos opacos: `PH2D_LIGHT2D_MIOLO=0` volta ao exterior mais próximo (comparar);
-/// `PH2D_LIGHT2D_SUAVIDADE` (0–1) e `PH2D_LIGHT2D_PENETRACAO` (metros) até o controlo por objeto.
+/// `PH2D_LIGHT2D_SUAVIDADE` (0–1) e `PH2D_LIGHT2D_PENETRACAO` (metros) até o controlo por objeto;
+/// ⭐ item 4 (24/10): `PH2D_LIGHT2D_SALTA_FORA=0` volta a gravar os texels de fora (o mesmo bit; comparar).
 fn miolo_do_ambiente() -> Option<ph2d_light2d_gpu::Miolo> {
     if std::env::var("PH2D_LIGHT2D_MIOLO").is_ok_and(|v| v.trim() == "0") {
         return None;
@@ -29,6 +30,7 @@ fn miolo_do_ambiente() -> Option<ph2d_light2d_gpu::Miolo> {
             .filter(|p| *p > 0.0)
             .unwrap_or(padrao.penetracao_m),
         base_no_grupo: cortes_ligados(),
+        salta_o_fora: padrao.salta_o_fora && ligado("PH2D_LIGHT2D_SALTA_FORA"),
         ..padrao
     })
 }

@@ -207,3 +207,37 @@
      real nunca é pedido). ⚠️ Scripts soltos em `target/` e no scratchpad desapareceram duas vezes durante a W6i —
      guarde-os fora de `target/`.
   6. *Consequência:* a Luz 2D pode correr na fila da placa onboard.
+- **O miolo na integrada (item 4, 24/10; réguas `medida_luz2d_miolo_por_placa` e `medida_luz2d_miolo_formas`,
+  `--ignored`; corridas `docs/Luz2D/ferramentas/item4_formas.sh`).** As 8 fases do instrumento W5o, mínimo de 9
+  intercaladas, ms (Radeon 610M RADV · RTX 5060 Ti), a cena do bug 7 (`o_custo_do_miolo`) | a vista vazia Low 1080p:
+
+  | fase (despachos) | Radeon bug 7 | RTX bug 7 | Radeon vazia | RTX vazia |
+  |---|---|---|---|---|
+  | classifica+puxa (10) | 1,398 | 0,076 | 1,156 | 0,064 |
+  | cascata: mais grosso (1, a base) | 0,086 | 0,063 | 0,036 | 0,030 |
+  | cascata: desce (58) | **3,415** | 0,267 | **3,124** | 0,240 |
+  | ciclo: defeito+restringe (21) | 1,508 | 0,092 | 1,096 | 0,077 |
+  | ciclo: mais grosso (3, a base) | 0,071 | 0,061 | 0,063 | 0,055 |
+  | ciclo: sobe (57) | 1,834 | 0,177 | 1,657 | 0,161 |
+  | ciclo: soma (6, todos no nível 1) | **2,336** | 0,081 | **2,194** | 0,078 |
+  | final (1) | 0,480 | 0,023 | 0,359 | 0,013 |
+  | `c3_miolo` inteiro | 11,28 | 0,82 | 12,12 | 0,71 |
+
+  ⇒ na Radeon o tempo segue o TAMANHO do nível, não os despachos: a base (um grupo só, níveis minúsculos) custa o
+  mesmo nas duas placas (×1,1–1,4), e os 6 despachos da soma (nível 1 = 1280×768 inteiro) custam 0,39 ms cada
+  (×29 a RTX). ~40 MB por despacho do nível 1 em 0,39 ms ≈ 100 GB/s: a largura da memória partilhada; na RTX os
+  16 MB de cada textura cabem nos 32 MB da L2. E o nível acima da fina resolve-se INTEIRO (W5n), quase todo fora
+  dos opacos (o disco do bug 7 é ~4 % do nível 1; a vista vazia, 0 %).
+  - *Forma recusada — o ladrilho* (`docs/Luz2D/ferramentas/item4_recusado/c3_miolo_ladrilho.wgsl`: as vizinhas das
+    relaxações e das bilineares lidas uma vez por grupo na memória dele, ~9 → ~3 leituras por texel, 0 texels
+    diferentes): RTX ×1,53–1,68, Radeon ×1,47–2,40. A hipótese (limitada pelas leituras de textura) errada: a cache
+    já as reaproveita; o que pesa é a DRAM.
+  - *Forma que entra — saltar o fora* (`Miolo::salta_o_fora`, `override SALTA_FORA` do `c3_miolo.wgsl`): os passes
+    dos níveis ≥ 1 não gravam o texel com `k.a < 0` (fora dos opacos: toda leitura da solução, do defeito e do
+    erro pergunta antes ao conhecido; o anel `k.a > 0` continua a gravar o seu 0). `c3_miolo`, mínimo de 9, antes
+    → depois: RTX bug 7 0,824 → 0,767 (×0,93) · vazia 0,700 → 0,644 (×0,92) · cena 5 Low 0,776 → 0,717 (×0,92), A × A
+    1,000; Radeon 11,28 → 6,22 (×0,55) · 9,91 → 5,81 (×0,59) · 13,14 → 5,46 (×0,42), A × A 0,79–1,46 (`load` 30–47:
+    a forma fica abaixo do mínimo das duas cópias do antes nas três). Bits: 0 texels diferentes nas 3 cenas e nas duas
+    placas; controlo (um V-ciclo a menos) 155 496 e 43 913 texels (a vista vazia não tem miolo: 0). Ligada em toda
+    placa; `PH2D_LIGHT2D_SALTA_FORA=0` volta a gravar. Portão `o_custo_do_miolo::saltar_o_fora_do_miolo_nao_muda_um_bit`
+    (0 texels em toda placa — a conta é a mesma).

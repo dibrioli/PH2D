@@ -55,6 +55,11 @@ struct Nivel {
 
 const AUSENTE: f32 = -1.0;
 
+// ⭐ Item 4 (24/10) — `true` = os passes dos níveis ≥ 1 não gravam o texel FORA dos opacos (`k.a < 0`):
+// ninguém o lê (toda leitura da solução, do defeito e do erro pergunta antes ao conhecido se a vizinha
+// conta), e a escrita de 16 B por texel era o grosso do tráfego de memória numa placa integrada.
+override SALTA_FORA: bool = false;
+
 fn na_regiao(t: vec2<i32>) -> bool {
     return all(t >= vec2<i32>(nv.inicio)) && all(t < vec2<i32>(nv.fim));
 }
@@ -179,7 +184,9 @@ fn miolo_relaxa(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let k = textureLoad(conhecido, t, 0);
     if k.a < 0.0 {
-        textureStore(saida, t, vec4<f32>(0.0));
+        if !SALTA_FORA {
+            textureStore(saida, t, vec4<f32>(0.0));
+        }
         return;
     }
     textureStore(saida, t, vec4<f32>(relaxado(t, k), 1.0));
@@ -193,6 +200,9 @@ fn miolo_inicia(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let k = textureLoad(conhecido, t, 0);
+    if SALTA_FORA && k.a < 0.0 {
+        return;
+    }
     textureStore(saida, t, vec4<f32>(select(k.rgb, vec3<f32>(0.0), k.a < 0.0), 1.0));
 }
 
@@ -228,7 +238,9 @@ fn miolo_desce(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let k = textureLoad(conhecido, t, 0);
     if k.a < 0.0 {
-        textureStore(saida, t, vec4<f32>(0.0));
+        if !SALTA_FORA {
+            textureStore(saida, t, vec4<f32>(0.0));
+        }
         return;
     }
     let g = grosso_em(t);
@@ -305,7 +317,9 @@ fn miolo_defeito(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let k = textureLoad(conhecido, t, 0);
     if k.a < 0.0 {
-        textureStore(saida, t, vec4<f32>(0.0));
+        if !SALTA_FORA {
+            textureStore(saida, t, vec4<f32>(0.0));
+        }
         return;
     }
     let d = relaxado(t, k) - textureLoad(entrada, t, 0).rgb;
@@ -322,7 +336,9 @@ fn miolo_restringe(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let k = textureLoad(conhecido, t, 0);
     if k.a != 0.0 {
-        textureStore(saida, t, vec4<f32>(0.0));
+        if !(SALTA_FORA && k.a < 0.0) {
+            textureStore(saida, t, vec4<f32>(0.0));
+        }
         return;
     }
     let n = vec2<i32>(textureDimensions(entrada));
@@ -348,6 +364,9 @@ fn miolo_erro_inicia(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let k = textureLoad(conhecido, t, 0);
+    if SALTA_FORA && k.a < 0.0 {
+        return;
+    }
     var e = vec3<f32>(0.0);
     if k.a == 0.0 {
         e = textureLoad(entrada, t, 0).rgb;
@@ -364,7 +383,9 @@ fn miolo_erro_relaxa(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let k = textureLoad(conhecido, t, 0);
     if k.a != 0.0 {
-        textureStore(saida, t, vec4<f32>(0.0));
+        if !(SALTA_FORA && k.a < 0.0) {
+            textureStore(saida, t, vec4<f32>(0.0));
+        }
         return;
     }
     var soma = vec3<f32>(0.0);
@@ -389,6 +410,9 @@ fn miolo_erro_sobe(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let k = textureLoad(conhecido, t, 0);
+    if SALTA_FORA && k.a < 0.0 {
+        return;
+    }
     var e = vec3<f32>(0.0);
     if k.a == 0.0 {
         let g = grosso_em(t);
@@ -407,7 +431,9 @@ fn miolo_soma(@builtin(global_invocation_id) gid: vec3<u32>) {
     let k = textureLoad(conhecido, t, 0);
     let u = textureLoad(transmitida, t, 0).rgb;
     if k.a < 0.0 {
-        textureStore(saida, t, vec4<f32>(0.0));
+        if !SALTA_FORA {
+            textureStore(saida, t, vec4<f32>(0.0));
+        }
         return;
     }
     var e = vec3<f32>(0.0);
@@ -503,6 +529,9 @@ fn bloco(wg: vec2<u32>, lid: u32, n_k: u32, erro: bool) {
         let k = textureLoad(conhecido, g, 0);
         // O alfa da saída do passe por texel: 0 onde ele grava zero.
         let zero = (erro && k.a != 0.0) || (!erro && k.a < 0.0);
+        if SALTA_FORA && k.a < 0.0 {
+            continue;
+        }
         let v = bloco_ler(fim, u32(l.y * lado + l.x));
         textureStore(saida, g, select(vec4<f32>(v, 1.0), vec4<f32>(0.0), zero));
     }

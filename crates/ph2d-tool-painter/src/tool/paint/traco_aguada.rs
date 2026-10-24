@@ -61,7 +61,7 @@ impl PainterTool {
             return vec![0.0; n];
         }
         let t = self.paint.brush.traco;
-        let raio = raio_do_aro(t.largura_px().round() as usize, self.paint.brush.radius_px);
+        let raio = raio_do_aro(t.largura_px().round() as usize, self.raio_do_pincel());
         let alcance = raio as f32 + 1.0;
         // A folga: o borrão lê `cw` até `raio` px à volta de `r`, e `cw` lê a distância exacta até `alcance`.
         let (jan, v) = self.janela_visivel(

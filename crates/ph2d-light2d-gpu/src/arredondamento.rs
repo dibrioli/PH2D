@@ -12,10 +12,15 @@ use ph2d_gpu::GpuContext;
 /// para-zero desce.
 const EXPOENTES: [i32; 4] = [-4, 0, 4, 8];
 
-/// O `pack2x16float` desta placa trunca (para zero)? Medido uma vez por adaptador no processo.
-///
-/// # Panics
-/// Se a leitura de volta da placa falha.
+/// A `Config` efetiva do Solver: o pedido da correção só vale onde a placa trunca; onde já arredonda, a
+/// correção é o mesmo bit e não se paga.
+pub(crate) fn paga_o_mais_proximo(pedido: &crate::Config, gpu: &GpuContext) -> bool {
+    pedido.hrc_meio_float_mais_proximo && o_pack_da_placa_trunca(gpu)
+}
+
+/// O `pack2x16float` desta placa trunca (para zero)? Medido uma vez por adaptador no processo. Se a
+/// medição falha (placa perdida, leitura recusada), responde `true`: a correção é o mesmo bit onde a placa
+/// arredonda, só custa — e a montagem segue para recusar ela própria, com o aviso, em vez de um pânico.
 #[must_use]
 pub fn o_pack_da_placa_trunca(gpu: &GpuContext) -> bool {
     static MEDIDO: Mutex<BTreeMap<String, bool>> = Mutex::new(BTreeMap::new());
@@ -25,10 +30,16 @@ pub fn o_pack_da_placa_trunca(gpu: &GpuContext) -> bool {
         i.name, i.driver, i.driver_info, i.backend
     );
     let mut m = MEDIDO.lock().unwrap_or_else(PoisonError::into_inner);
-    *m.entry(chave).or_insert_with(|| medir(gpu))
+    *m.entry(chave).or_insert_with(|| {
+        // O âmbito próprio: um erro da medição não se lê como recusa da montagem que a chamou.
+        let validacao = gpu.device.push_error_scope(wgpu::ErrorFilter::Validation);
+        let medido = medir(gpu);
+        let invalido = pollster::block_on(validacao.pop()).is_some();
+        medido.filter(|_| !invalido).unwrap_or(true)
+    })
 }
 
-fn medir(gpu: &GpuContext) -> bool {
+fn medir(gpu: &GpuContext) -> Option<bool> {
     use wgpu::util::DeviceExt;
     let d = &gpu.device;
     let x: Vec<f32> = EXPOENTES
@@ -96,14 +107,19 @@ fn medir(gpu: &GpuContext) -> bool {
     enc.copy_buffer_to_buffer(&bp, 0, &leitura, 0, bytes);
     gpu.queue.submit([enc.finish()]);
     let f = leitura.slice(..);
-    f.map_async(wgpu::MapMode::Read, |r| {
-        r.expect("o arredondamento da placa: map")
+    let (tx, rx) = std::sync::mpsc::channel();
+    f.map_async(wgpu::MapMode::Read, move |r| {
+        let _ = tx.send(r.is_ok());
     });
-    d.poll(wgpu::PollType::wait_indefinitely())
-        .expect("o arredondamento da placa: poll");
+    d.poll(wgpu::PollType::wait_indefinitely()).ok()?;
+    if rx.try_recv() != Ok(true) {
+        return None;
+    }
     let p: Vec<u32> = bytemuck::cast_slice(&f.get_mapped_range()).to_vec();
-    EXPOENTES
-        .iter()
-        .zip(&p)
-        .any(|(&k, &b)| b == ((15 + k) as u32) << 10)
+    Some(
+        EXPOENTES
+            .iter()
+            .zip(&p)
+            .any(|(&k, &b)| b == ((15 + k) as u32) << 10),
+    )
 }

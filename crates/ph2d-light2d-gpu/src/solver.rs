@@ -255,9 +255,7 @@ impl Solver {
         }
         let cfg = Config {
             grade: pedido.grade_efetiva(),
-            // ⭐ bug 7: onde o `pack2x16float` já arredonda, a correção é o mesmo bit e não se paga.
-            hrc_meio_float_mais_proximo: pedido.hrc_meio_float_mais_proximo
-                && crate::o_pack_da_placa_trunca(gpu),
+            hrc_meio_float_mais_proximo: crate::arredondamento::paga_o_mais_proximo(&pedido, gpu),
             ..pedido
         };
         cfg.cabe_na_placa(device.limits().max_texture_dimension_2d)?;

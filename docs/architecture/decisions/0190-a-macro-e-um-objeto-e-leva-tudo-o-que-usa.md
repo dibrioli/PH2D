@@ -7,8 +7,8 @@
 - **Amparo:** [plano W18](../../Macros/16_W18_plano.md) · [ADR-0186](0186-a-macro-grava-comandos-resolvidos-no-relogio-da-macro.md)
   (o formato e as famílias) · ADR-0164 (a receita: `MasterRoot`).
 
-> ⚠️ **Número PROVISÓRIO** (§5.0): contado em 23/10 contra o máximo do `main` e de todas as worktrees (`0189`).
-> Quem integrar reconta-o.
+> Número recontado na integração (24/10): máximo do `main` = `0189`; a `line/UIUX` já usa `0191` contando
+> com este. Fica `0190`.
 
 ## Contexto
 

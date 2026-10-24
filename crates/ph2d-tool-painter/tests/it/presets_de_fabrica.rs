@@ -16,7 +16,9 @@ use super::receitas_de_fabrica::{
     DIREITA, PRESETS_DE_FABRICA, Receita, ReceitaMeio, SPACING_DA_FABRICA, base_da_ferramenta,
     grao, modo_da_ferramenta, receitas, receitas_dos_meios,
 };
-use super::sonda_gestos::{fnv1a, largura_que_se_ve, traco_recto_alto};
+use super::sonda_gestos::{
+    Relogio, fnv1a, largura_que_se_ve, passa_o_tempo, traco_recto_alto, traco_recto_alto_com,
+};
 use ph2d_brush_presets::{
     Biblioteca, Origem, Parametros, Preset, caminho_relativo, escrever, gravar, ler,
 };
@@ -392,27 +394,45 @@ fn direito(p: &Preset) -> Preset {
 
 /// A largura que o pincel `p` deixa a `raio`: `crua` = o raio chega ao MOTOR sem a promessa.
 pub(super) fn largura_de(p: &Preset, raio: f32, crua: bool) -> f32 {
+    largura_de_com(p, raio, crua, Relogio::PorQuadro)
+}
+
+/// [`largura_de`] pelo relógio `r` da água.
+fn largura_de_com(p: &Preset, raio: f32, crua: bool, r: Relogio) -> f32 {
+    let (px, w, h, regua) = imagem_da_largura(p, raio, crua, r);
+    regua(&px, w, h)
+}
+
+/// A imagem que [`largura_de`] mede, e a régua com que a mede.
+type Regua = fn(&[u8], u32, u32) -> f32;
+fn imagem_da_largura(p: &Preset, raio: f32, crua: bool, r: Relogio) -> (Vec<u8>, u32, u32, Regua) {
     if let Some(modo) = p.parametros.paint_mode.as_deref().filter(|m| *m != "Paint") {
-        return largura_da_ferramenta(p, modo, raio, crua);
+        let (px, w, h) = imagem_da_ferramenta(p, modo, raio, crua, r);
+        return (px, w, h, super::sonda_gestos::largura_mediana);
     }
     let escala = if crua { (raio / 500.0).max(1.0) } else { 1.0 };
-    let (px, w, h) = traco_recto_alto(raio / escala, raio, QUADROS_DA_LEI, |t| {
+    let (px, w, h) = traco_recto_alto_com(raio / escala, raio, QUADROS_DA_LEI, r, |t| {
         t.set_wet_relogio_fixo(true);
         assert!(t.wet_preset_aplicar(&direito(p)).is_empty());
         if crua {
             t.set_wet_largura_crua(escala);
         }
     });
-    largura_que_se_ve(&px, w, h)
+    (px, w, h, largura_que_se_ve)
 }
 
-/// **A largura de uma FERRAMENTA** (J4 `mistura`; uma ferramenta não pinta — no papel branco mede 0): a do que ela
+/// **A imagem da largura de uma FERRAMENTA** (J4 `mistura`; uma ferramenta não pinta — no papel branco mede 0): a do que ela
 /// MUDA na tinta de [`base_da_ferramenta`]. A base é uma faixa cuja orla de BAIXO corre sobre a linha do traço (a
 /// faixa cobre `[cy − 3r, cy]`, larga o bastante para a pegada caber nela): a ferramenta arrasta, dilui, seca ou tira
 /// essa orla na largura da pegada. A largura é a de [`largura_que_se_ve`] sobre a DIFERENÇA da tela com e sem o traço
 /// da ferramenta (a mesma água, os mesmos quadros) — por coluna, as linhas que mudam ≥ ½ do máximo da coluna.
-fn largura_da_ferramenta(p: &Preset, modo: &str, raio: f32, crua: bool) -> f32 {
-    use ph2d_editor_core::Tool;
+fn imagem_da_ferramenta(
+    p: &Preset,
+    modo: &str,
+    raio: f32,
+    crua: bool,
+    r: Relogio,
+) -> (Vec<u8>, u32, u32) {
     use ph2d_editor_core::tool::RasterEditTool;
     let base = super::midias_de_fabrica::de_fabrica(base_da_ferramenta(modo));
     let escala = if crua { (raio / 500.0).max(1.0) } else { 1.0 };
@@ -450,9 +470,7 @@ fn largura_da_ferramenta(p: &Preset, modo: &str, raio: f32, crua: bool) -> f32 {
             t.set_brush_size_px(raio / escala);
             super::sonda_gestos::gesto(&mut t, &[[100.0, cy], [900.0, cy]], 3.0, |_| 1.0);
         }
-        for _ in 0..QUADROS_DA_LEI {
-            t.on_tick(1000.0 / 60.0);
-        }
+        passa_o_tempo(&mut t, QUADROS_DA_LEI, r);
         t.run_full().0
     };
     let (com, sem) = (pinta(true), pinta(false));
@@ -468,7 +486,7 @@ fn largura_da_ferramenta(p: &Preset, modo: &str, raio: f32, crua: bool) -> f32 {
         .collect();
     // A meia altura (a mediana de [`largura_mediana`]): o efeito de um misturador cai devagar da pegada para fora, e a
     // ¼ do máximo a franja dele dobrava a largura num degrau (Blender Soft: 36 px no raio 38,5 → 75 no 42,8).
-    super::sonda_gestos::largura_mediana(&diferenca, w, h)
+    (diferenca, w, h)
 }
 
 /// O raio do motor de `raio` pela tabela de largura de um preset — a conta de `LeiDaLargura::raio_do_motor`
@@ -928,7 +946,7 @@ fn larguras_da_promessa(p: &Preset, crua: bool) -> Vec<f32> {
     std::thread::scope(|s| {
         let h: Vec<_> = RAIOS_DA_PROMESSA
             .iter()
-            .map(|&r| s.spawn(move || largura_de(p, r, crua)))
+            .map(|&r| s.spawn(move || largura_de_com(p, r, crua, Relogio::DeUmaVez)))
             .collect();
         h.into_iter().map(|h| h.join().unwrap()).collect()
     })
@@ -1029,6 +1047,133 @@ fn a_lei_de_omissao_e_a_do_wet_round() {
         t.wet_largura_tabela(),
         "a LARGURA_DO_WET_ROUND do motor não é a do ficheiro: regere-a (o gerador imprime-a)"
     );
+}
+
+/// **Sonda do relógio** ([`Relogio::DeUmaVez`], 24/10): cada cena dos dois portões da fábrica — a da largura (cada preset
+/// do Wet a cada raio da promessa, e o controlo cru do Wet Round) e a cena seca das mídias (cada preset do Wet à largura
+/// da sua foto, ou 20, e o Wet Round a cada largura de foto) — pintada com um tique por quadro e com o mesmo tempo num
+/// tique só: as telas têm de ser iguais ao byte. É ela que deixa os portões passarem o tempo de uma vez.
+#[test]
+#[ignore = "sonda: prova o relógio DeUmaVez dos portões da fábrica (custa ~2× os dois portões)"]
+fn o_tempo_de_uma_vez_e_o_por_quadro() {
+    use super::midias_de_fabrica::{de_fabrica, imagem_seca, raio_da_midia};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    enum Cena {
+        Largura(usize, f32, bool),
+        Seca(usize, f32),
+        SecaDoRound(f32),
+    }
+    let presets: Vec<(String, Preset)> = ficheiros_do_wet()
+        .into_iter()
+        .map(|(rel, b)| (rel, ler(&b).unwrap()))
+        .collect();
+    let round = de_fabrica("Wet Round");
+    let i_round = presets
+        .iter()
+        .position(|(rel, _)| rel.ends_with("Wet Round.ph2d-brush.png"))
+        .expect("o Wet Round de fábrica");
+    let mut cenas = Vec::new();
+    let mut raios_das_fotos = Vec::new();
+    for (i, (_, p)) in presets.iter().enumerate() {
+        cenas.extend(
+            RAIOS_DA_PROMESSA
+                .iter()
+                .map(|&r| Cena::Largura(i, r, false)),
+        );
+        let foto = raio_da_midia(&p.parametros.name);
+        raios_das_fotos.extend(foto);
+        cenas.push(Cena::Seca(i, foto.unwrap_or(20.0)));
+    }
+    cenas.extend(
+        RAIOS_DA_PROMESSA
+            .iter()
+            .map(|&r| Cena::Largura(i_round, r, true)),
+    );
+    raios_das_fotos.sort_by(f32::total_cmp);
+    raios_das_fotos.dedup();
+    cenas.extend(raios_das_fotos.into_iter().map(Cena::SecaDoRound));
+    let proxima = AtomicUsize::new(0);
+    let resultados: Vec<(String, usize)> = std::thread::scope(|s| {
+        let h: Vec<_> = (0..8)
+            .map(|_| {
+                s.spawn(|| {
+                    let mut feitas = Vec::new();
+                    while let Some(c) = cenas.get(proxima.fetch_add(1, Ordering::Relaxed)) {
+                        let (nome, a, b) = match *c {
+                            Cena::Largura(i, r, crua) => {
+                                let (rel, p) = &presets[i];
+                                let f = |rl| imagem_da_largura(p, r, crua, rl).0;
+                                (
+                                    format!("largura {rel} raio {r} crua {crua}"),
+                                    f(Relogio::PorQuadro),
+                                    f(Relogio::DeUmaVez),
+                                )
+                            }
+                            Cena::Seca(i, r) => {
+                                let (rel, p) = &presets[i];
+                                let f = |rl| imagem_seca(p, r, 0, rl).0;
+                                (
+                                    format!("seca {rel} raio {r}"),
+                                    f(Relogio::PorQuadro),
+                                    f(Relogio::DeUmaVez),
+                                )
+                            }
+                            Cena::SecaDoRound(r) => {
+                                let f = |rl| imagem_seca(&round, r, 0, rl).0;
+                                (
+                                    format!("seca do controlo Wet Round raio {r}"),
+                                    f(Relogio::PorQuadro),
+                                    f(Relogio::DeUmaVez),
+                                )
+                            }
+                        };
+                        let n = a.iter().zip(&b).filter(|(x, y)| x != y).count()
+                            + a.len().abs_diff(b.len());
+                        println!("[relogio] {nome}: {n} bytes diferem");
+                        feitas.push((nome, n));
+                    }
+                    feitas
+                })
+            })
+            .collect();
+        h.into_iter().flat_map(|h| h.join().unwrap()).collect()
+    });
+    assert_eq!(resultados.len(), cenas.len());
+    let diferem: Vec<_> = resultados.iter().filter(|(_, n)| *n > 0).collect();
+    assert!(
+        diferem.is_empty(),
+        "o tempo de uma vez pinta outra tela: {diferem:#?}"
+    );
+}
+
+/// **Sonda do custo da largura** — o CPU do processo (todas as threads, `/proc/self/stat`) que cada preset do Wet custa
+/// ao [`a_largura_e_a_prometida`], um preset de cada vez (os raios em paralelo), e por raio no `PH2D_SONDA_PRESET`.
+#[test]
+#[ignore = "sonda: o custo da largura por preset"]
+fn sonda_custo_da_largura() {
+    fn cpu_s() -> f64 {
+        let st = std::fs::read_to_string("/proc/self/stat").unwrap();
+        let f: Vec<&str> = st.rsplit_once(')').unwrap().1.split_whitespace().collect();
+        (f[11].parse::<f64>().unwrap() + f[12].parse::<f64>().unwrap()) / 100.0
+    }
+    let alvo = std::env::var("PH2D_SONDA_PRESET").ok();
+    for (rel, b) in ficheiros_do_wet() {
+        let p = ler(&b).unwrap();
+        if alvo.as_deref().is_some_and(|a| a != p.parametros.name) {
+            continue;
+        }
+        if alvo.is_some() {
+            for &r in &RAIOS_DA_PROMESSA {
+                let c0 = cpu_s();
+                let _ = largura_de_com(&p, r, false, Relogio::DeUmaVez);
+                println!("[custo-largura] {rel} raio {r}: {:.1} s CPU", cpu_s() - c0);
+            }
+        } else {
+            let c0 = cpu_s();
+            let _ = larguras_da_promessa(&p, false);
+            println!("[custo-largura] {rel}: {:.1} s CPU", cpu_s() - c0);
+        }
+    }
 }
 
 /// **Sonda de custo da miniatura** — o número que decide onde o preview vivo corre (no quadro ou numa

@@ -111,6 +111,10 @@ priority = -100
 # sob a mesma suíte. ~10× sob a suíte: o tecto de 6 × 60 s dá ~15× do medido sozinho. (W7: passaram ao de baixo.)
 # 24/10 (fecho MiroClone W25, a suíte a load 220 → 13): `macro_estado_inicial::cada_controlo_mexido_…` e
 # `…::o_estado_inicial_leva_cada_controlo_…` MORTOS aos 180 s — sozinhos 82 · 81 s com a compilação (load 12–33), 0 linhas no diff.
+# 24/10 (line/PainterWatercolor): os dois portões da fábrica passam o tempo de UMA vez (`sonda_gestos::Relogio`, ao
+# byte nas 283 cenas) — sozinhos no `ci-test` na fatia de 16 núcleos, mínimo de 3 intercalado (load 10–20): largura
+# 135,2 → 101,0 s (18/10, antes da missão: 63,8) · mídias 51,9 → 36,9 s (26,8). O resto é a fábrica que cresceu
+# (18 → 29 presets do Wet, 23 → 36 cenas; só o Blender Soft é ⅓ do CPU da largura); por preset, abaixo do de 18/10.
 [[profile.default.overrides]]
 filter = 'test(n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto) + test(=presets_de_fabrica::a_largura_e_a_prometida) + test(=midias_de_fabrica::cada_preset_parece_a_sua_midia) + test(=a_lei_da_tinta::o_glaze_do_pincel_escurece_o_cruzamento) + test(=a_lei_da_tinta::sem_glaze_cada_preset_de_fabrica_pinta_a_cena_de_antes) + test(=censo_dos_controlos::a_linha_esmaecida_e_a_que_nao_age) + test(=seam_estado_escondido::cada_interruptor_que_neutraliza_pinta_como_o_pincel_limpo) + test(=tool::paint::wetpaint_preset::preview::paridade_tests::o_preview_pinta_cada_capacidade_nova_como_a_tela) + test(=o_pigmento_por_comprimento::a_tinta_nao_muda_com_o_spacing) + test(=macro_estado_inicial::cada_controlo_mexido_a_gravar_reproduz_se) + test(=macro_estado_inicial::o_estado_inicial_leva_cada_controlo_de_cada_meio) + test(=tool::paint::tests::watercolor_secagem_por_poca::a_separacao_das_pocas_e_exacta_na_fronteira)'
 slow-timeout = { period = "60s", terminate-after = 6 }

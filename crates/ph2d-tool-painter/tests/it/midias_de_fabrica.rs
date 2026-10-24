@@ -11,7 +11,7 @@
 //! borda/miolo 0,031) — a borda do Liner (1,05 contra 1,00) não distingue e não conta.
 
 use super::regua_midia::{Medida, RECTO, mede};
-use super::sonda_gestos::{pinta_cena_ate, tela};
+use super::sonda_gestos::{Relogio, pinta_cena_com, tela};
 use ph2d_brush_presets::{Biblioteca, Preset};
 use std::path::PathBuf;
 
@@ -275,6 +275,16 @@ fn sonda_as_pontas_por_tiragem() {
     }
 }
 
+/// A tela da cena seca de `p` a `raio`, com a semente dos traços e o relógio `r` da água.
+pub(super) fn imagem_seca(p: &Preset, raio: f32, semente: u64, r: Relogio) -> (Vec<u8>, u32, u32) {
+    let mut t = tela();
+    t.set_semente_dos_tracos(semente);
+    t.set_wet_relogio_fixo(true);
+    assert!(t.wet_preset_aplicar(p).is_empty());
+    t.set_brush_size_px(raio);
+    pinta_cena_com(&mut t, QUADROS_SECOS, r)
+}
+
 /// [`cena_seca`] numa tiragem só: os traços a partir da semente `semente` (`0` = a do produto).
 fn cena_seca_semente(
     p: &Preset,
@@ -282,12 +292,7 @@ fn cena_seca_semente(
     ficheiros: &[String],
     semente: u64,
 ) -> (Medida, FamiliaC) {
-    let mut t = tela();
-    t.set_semente_dos_tracos(semente);
-    t.set_wet_relogio_fixo(true);
-    assert!(t.wet_preset_aplicar(p).is_empty());
-    t.set_brush_size_px(raio);
-    let (px, w, h) = pinta_cena_ate(&mut t, QUADROS_SECOS);
+    let (px, w, h) = imagem_seca(p, raio, semente, Relogio::DeUmaVez);
     if let Ok(dir) = std::env::var("PH2D_SONDA_OUT") {
         let mut f = format!("P6\n{w} {h}\n255\n").into_bytes();
         px.as_chunks::<4>()
@@ -305,6 +310,61 @@ fn cena_seca_semente(
 /// `n` do lado do Rebelle `r` do ponto médio entre ele e o controlo `c`.
 fn no_vale(n: f64, r: f64, c: f64) -> bool {
     (n - r).abs() < 0.5 * (c - r).abs()
+}
+
+/// **Sonda do custo das mídias** — o CPU do processo (todas as threads) de cada cena de [`cada_preset_parece_a_sua_midia`],
+/// uma de cada vez: as mídias e o controlo (o Wet Round) a cada largura de foto.
+#[test]
+#[ignore = "sonda: o custo de cada cena das mídias"]
+fn sonda_custo_das_midias() {
+    fn cpu_s() -> f64 {
+        let st = std::fs::read_to_string("/proc/self/stat").unwrap();
+        let f: Vec<&str> = st.rsplit_once(')').unwrap().1.split_whitespace().collect();
+        (f[11].parse::<f64>().unwrap() + f[12].parse::<f64>().unwrap()) / 100.0
+    }
+    let round = de_fabrica("Wet Round");
+    let mut raios: Vec<f32> = MIDIAS.iter().map(|m| m.raio).collect();
+    raios.sort_by(f32::total_cmp);
+    raios.dedup();
+    let cenas = MIDIAS
+        .iter()
+        .map(|m| (m.preset.to_owned(), de_fabrica(m.preset), m.raio))
+        .chain(
+            raios
+                .iter()
+                .map(|&r| ("controlo Wet Round".to_owned(), round.clone(), r)),
+        );
+    // O CPU de cada 120 quadros da cena seca do Wet Round a 20 (a água a correr e a secar).
+    {
+        let mut t = tela();
+        t.set_wet_relogio_fixo(true);
+        assert!(t.wet_preset_aplicar(&round).is_empty());
+        t.set_brush_size_px(20.0);
+        let c0 = cpu_s();
+        super::sonda_gestos::gestos_da_cena(&mut t);
+        let mut linha = vec![format!("gestos {:.1}", cpu_s() - c0)];
+        for _ in 0..QUADROS_SECOS / 120 {
+            let c = cpu_s();
+            super::sonda_gestos::passa_o_tempo(&mut t, 120, Relogio::DeUmaVez);
+            linha.push(format!("{:.1}", cpu_s() - c));
+        }
+        let c = cpu_s();
+        let _ = ph2d_editor_core::tool::RasterEditTool::run_full(&mut t);
+        linha.push(format!("run_full {:.1}", cpu_s() - c));
+        println!(
+            "[custo-midia] Wet Round 20, CPU por 120 quadros: {}",
+            linha.join(" · ")
+        );
+    }
+    for (nome, p, r) in cenas {
+        let (c0, t0) = (cpu_s(), std::time::Instant::now());
+        let _ = imagem_seca(&p, r, 0, Relogio::DeUmaVez);
+        println!(
+            "[custo-midia] {nome} raio {r}: {:.1} s CPU, {:.1} s parede",
+            cpu_s() - c0,
+            t0.elapsed().as_secs_f64()
+        );
+    }
 }
 
 #[test]

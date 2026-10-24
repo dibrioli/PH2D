@@ -82,8 +82,45 @@ pub fn pinta_cena(t: &mut PainterTool) -> (Vec<u8>, u32, u32) {
     pinta_cena_ate(t, 480)
 }
 
+/// Como passam os `quadros` de 60 Hz depois dos gestos.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Relogio {
+    /// Um tique por quadro: a tela recompõe-se a cada passo da água, como no ecrã.
+    PorQuadro,
+    /// O MESMO tempo num tique só: com o relógio fixo do Wet (`set_wet_relogio_fixo`) a água dá os mesmos
+    /// passos e a tela compõe-se UMA vez, no fim — a composição por passo era ~¼ do CPU dos portões da
+    /// fábrica (24/10). A sonda `o_tempo_de_uma_vez_e_o_por_quadro` prova-o ao byte nas 283 cenas deles.
+    DeUmaVez,
+}
+
+/// `quadros` de 60 Hz pelo relógio `r`.
+pub fn passa_o_tempo(t: &mut PainterTool, quadros: u32, r: Relogio) {
+    match r {
+        Relogio::PorQuadro => {
+            for _ in 0..quadros {
+                t.on_tick(1000.0 / 60.0);
+            }
+        }
+        Relogio::DeUmaVez if quadros > 0 => t.on_tick(quadros as f32 * (1000.0 / 60.0)),
+        Relogio::DeUmaVez => {}
+    }
+}
+
 /// [`pinta_cena`] com `quadros` de 60 Hz depois dos gestos (480 = os 8 s da cena).
 pub fn pinta_cena_ate(t: &mut PainterTool, quadros: u32) -> (Vec<u8>, u32, u32) {
+    pinta_cena_com(t, quadros, Relogio::PorQuadro)
+}
+
+/// [`pinta_cena_ate`] pelo relógio `r`.
+pub fn pinta_cena_com(t: &mut PainterTool, quadros: u32, r: Relogio) -> (Vec<u8>, u32, u32) {
+    gestos_da_cena(t);
+    // O tempo passa (a água corre e seca; nos outros meios é inócuo).
+    passa_o_tempo(t, quadros, r);
+    t.run_full()
+}
+
+/// Os gestos da cena, sem o tempo depois deles.
+pub fn gestos_da_cena(t: &mut PainterTool) {
     t.set_brush_color_srgb8(AZUL);
     let cheio = |_: f32| 1.0f32;
     // Linha 1 — recto a passo de rato · curva em S.
@@ -99,11 +136,6 @@ pub fn pinta_cena_ate(t: &mut PainterTool, quadros: u32) -> (Vec<u8>, u32, u32) 
     t.set_brush_color_srgb8(VERMELHO);
     gesto(t, &[[300.0, 400.0], [300.0, 560.0]], 3.0, cheio);
     gesto(t, &[[700.0, 480.0], [960.0, 480.0]], 3.0, cheio);
-    // O tempo passa (a água corre e seca; nos outros meios é inócuo).
-    for _ in 0..quadros {
-        t.on_tick(1000.0 / 60.0);
-    }
-    t.run_full()
 }
 
 /// Os rectos INCLINADOS da escada (prompt 50): 8° e 25°, a pressão 1 e passo de rato — os mesmos de
@@ -152,6 +184,17 @@ pub fn traco_recto_alto(
     ticks: u32,
     prepara: impl FnOnce(&mut PainterTool),
 ) -> (Vec<u8>, u32, u32) {
+    traco_recto_alto_com(size, alto, ticks, Relogio::PorQuadro, prepara)
+}
+
+/// [`traco_recto_alto`] pelo relógio `r`.
+pub fn traco_recto_alto_com(
+    size: f32,
+    alto: f32,
+    ticks: u32,
+    r: Relogio,
+    prepara: impl FnOnce(&mut PainterTool),
+) -> (Vec<u8>, u32, u32) {
     let h = ((alto * 6.0) as u32 + 80).max(120);
     let cy = h as f32 * 0.5;
     let mut t = PainterTool::default();
@@ -160,9 +203,7 @@ pub fn traco_recto_alto(
     t.set_brush_size_px(size);
     t.set_brush_color_srgb8(AZUL);
     gesto(&mut t, &[[100.0, cy], [900.0, cy]], 3.0, |_| 1.0);
-    for _ in 0..ticks {
-        t.on_tick(1000.0 / 60.0);
-    }
+    passa_o_tempo(&mut t, ticks, r);
     t.run_full()
 }
 

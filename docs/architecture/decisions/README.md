@@ -204,10 +204,11 @@
 | [0188](0188-o-editor-de-scripts-mora-no-ph2d-e-o-script-mora-no-projeto.md) | Accepted — o PRODUTO é decisão do DONO (15/10: script *«dentro»* do projeto | O editor de scripts mora no PH2D, e o script mora no projeto |
 | [0189](0189-a-caneta-chega-pelo-tablet-v2-ao-lado-do-winit.md) | Accepted — o produto (a caneta conduz a UI inteira, a pressão chega a todos os meios… | A caneta chega pelo `zwp_tablet_v2` ao lado do winit, numa crate nossa |
 | [0190](0190-a-macro-e-um-objeto-e-leva-tudo-o-que-usa.md) | Accepted — o PRODUTO é do DONO (23/10, decisões 1–8 em `docs/Macros/16_W18_plano.… | A macro é um OBJECTO e leva tudo o que usa |
+| [0191](0191-o-canal-de-qualquer-propriedade-e-o-catalogo-de-componentes.md) | Accepted — o produto («o Auto Key grava ABSOLUTAMENTE TUDO», 19/10) é ordem do DONO; … | O canal de qualquer propriedade é o catálogo de componentes, e a linha liga-se a ele pelo RÓTULO |
 
 ---
 
-**195 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**196 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

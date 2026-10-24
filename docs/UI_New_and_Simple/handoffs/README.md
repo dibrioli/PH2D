@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**87 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **87** são handoffs (registro **morto**).
+**90 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **90** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -96,12 +96,15 @@
 | 2026-10-20 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24d_O_LOSANGO_SEM_COLUNA.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-20_F24d_O_LOSANGO_SEM_COLUNA.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 20/10 — F24d: o losango nas linhas SEM coluna de decorator |
 | 2026-10-21 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-21_F25_O_BLOCO_2.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-21_F25_O_BLOCO_2.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 21/10 — F25: o bloco 2 (a dívida do gate «todo campo editável é um canal… |
 | 2026-10-22 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-22_F26_AS_JUNTAS.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-22_F26_AS_JUNTAS.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 22/10 — F26: as juntas (todo campo da junta e da roldana grava no Auto K… |
-| 2026-10-22 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-22_F18_A_F26.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-22_F18_A_F26.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-22 — F18 a F26 (Auto Key em todo campo, canais por família, losan… |
+| 2026-10-22 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-22_F18_A_F26.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-22_F18_A_F26.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-22 — F18 a F26 (Auto Key em todo campo, canais por família, losan… |
 | 2026-10-23 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_B1_COMPONENTE.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_B1_COMPONENTE.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 23/10 — F27 B1: a família COMPONENTE e a Câmera de ponta a ponta |
 | 2026-10-23 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_B2_TODO_CAMPO.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_B2_TODO_CAMPO.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 23/10 — F27 B2: todo campo do Inspector é um canal |
 | 2026-10-23 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_B3_C.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_B3_C.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 23/10 — F27: fecho da B2, B3, Bloco C |
 | 2026-10-23 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_BLOCO_A.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-23_F27_BLOCO_A.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 23/10 — F27 Bloco A: o lado B da junta e o motor com faixa |
 | 2026-10-24 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_D.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_D.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 24/10 — F27 Bloco D: menu da linha de GRUPO, ADR-0191, dívidas do catálo… |
+| 2026-10-24 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_E.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_E.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 24/10 — F27 Bloco E: fonte do HUD, ficheiro do script e props do script … |
+| 2026-10-24 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_F.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_F.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 24/10 — F27 Bloco F: a palavra de uma escolha, um losango por canal, uma… |
+| 2026-10-24 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-24_F27.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-24_F27.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-24 — F27 (todo campo do Inspector é um canal; a palavra de uma es… |
 
 ---
 

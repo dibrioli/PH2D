@@ -324,7 +324,11 @@ fn saltar_o_fora_do_miolo_nao_muda_um_bit() {
         crate::comum::ler_fluencia(&gpu, &s)
     };
     assert!(MIOLO_PADRAO.salta_o_fora, "o miolo de fábrica salta o fora");
-    let (produto, antes, controlo) = (fluencia(true, false), fluencia(false, false), fluencia(false, true));
+    let (produto, antes, controlo) = (
+        fluencia(true, false),
+        fluencia(false, false),
+        fluencia(false, true),
+    );
     let dif = |a: &[[f32; 3]], b: &[[f32; 3]]| {
         a.iter()
             .zip(b)
@@ -332,8 +336,14 @@ fn saltar_o_fora_do_miolo_nao_muda_um_bit() {
             .count()
     };
     let (d, dc) = (dif(&produto, &antes), dif(&controlo, &antes));
-    eprintln!("saltar o fora: {d} texels diferentes de {} · controlo (um ciclo a menos) {dc}", antes.len());
-    assert!(dc > 0, "controlo: um V-ciclo a menos não mudou a fluência — a régua não vê o miolo");
+    eprintln!(
+        "saltar o fora: {d} texels diferentes de {} · controlo (um ciclo a menos) {dc}",
+        antes.len()
+    );
+    assert!(
+        dc > 0,
+        "controlo: um V-ciclo a menos não mudou a fluência — a régua não vê o miolo"
+    );
     assert_eq!(d, 0, "saltar o fora do miolo mudou {d} texels da fluência");
 }
 
@@ -353,7 +363,10 @@ fn cena_a_mexer(k: usize) -> CenaDeLuz {
         ));
     }
     if k % 2 == 0 {
-        oclusores.push(oclusor(regular([c[0] + 1.1, c[1] - 0.5], 0.45, 4, 0.3 + 0.1 * t), 0.45));
+        oclusores.push(oclusor(
+            regular([c[0] + 1.1, c[1] - 0.5], 0.45, 4, 0.3 + 0.1 * t),
+            0.45,
+        ));
     }
     if k >= 2 {
         oclusores.push(oclusor(
@@ -379,8 +392,14 @@ fn regiao_a_mexer(k: usize) -> ([u32; 2], [u32; 2]) {
     let d = 37 * k as u32;
     match k % 3 {
         0 => ([LARGURA / 4, ALTURA / 4], [LARGURA * 3 / 4, ALTURA * 3 / 4]),
-        1 => ([LARGURA / 5 + d, ALTURA / 6], [LARGURA * 3 / 5 + d, ALTURA * 2 / 3 + d / 2]),
-        _ => ([LARGURA / 3 - d / 2, ALTURA / 3], [LARGURA * 5 / 6, ALTURA * 5 / 6]),
+        1 => (
+            [LARGURA / 5 + d, ALTURA / 6],
+            [LARGURA * 3 / 5 + d, ALTURA * 2 / 3 + d / 2],
+        ),
+        _ => (
+            [LARGURA / 3 - d / 2, ALTURA / 3],
+            [LARGURA * 5 / 6, ALTURA * 5 / 6],
+        ),
     }
 }
 
@@ -429,7 +448,10 @@ fn saltar_o_fora_nao_muda_um_bit_com_a_cena_a_mexer() {
     let mut controlo_total = 0;
     let mut reprovados = Vec::new();
     for (rotulo, base, bloco) in configs {
-        let mut s = [novo(base, bloco, true, false), novo(base, bloco, false, false)];
+        let mut s = [
+            novo(base, bloco, true, false),
+            novo(base, bloco, false, false),
+        ];
         let mut ctl = (rotulo == "fábrica").then(|| novo(base, bloco, false, true));
         let mut por_quadro = Vec::with_capacity(QUADROS);
         for k in 0..QUADROS {
@@ -461,7 +483,9 @@ fn saltar_o_fora_nao_muda_um_bit_com_a_cena_a_mexer() {
         reprovados.is_empty(),
         "saltar o fora mudou texels da fluência: {reprovados:?}"
     );
-    eprintln!("controlo (um V-ciclo a menos, fábrica, soma dos {QUADROS} quadros): {controlo_total}");
+    eprintln!(
+        "controlo (um V-ciclo a menos, fábrica, soma dos {QUADROS} quadros): {controlo_total}"
+    );
     assert!(
         controlo_total > 0,
         "controlo: um V-ciclo a menos não mudou a fluência — a régua não vê o miolo"

@@ -65,7 +65,11 @@ fn medida_luz2d_cantos_aquecidos() {
                     },
                     ..base
                 };
-                assert_eq!(cfg.adia_o_canto(), proprio, "o passe próprio não liga nesta vista");
+                assert_eq!(
+                    cfg.adia_o_canto(),
+                    proprio,
+                    "o passe próprio não liga nesta vista"
+                );
                 solver(&gpu, a, cfg)
             })
             .collect();

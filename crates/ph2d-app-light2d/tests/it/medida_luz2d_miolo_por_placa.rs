@@ -19,11 +19,17 @@ const QUADROS: usize = 3;
 
 /// A cena e o solver do portão `o_custo_do_miolo` (crate `ph2d-light2d-gpu`), com a base e o bloco de
 /// fábrica.
-pub(crate) fn caso_do_bug7(gpu: &ph2d_gpu::GpuContext, com: &dyn Fn(Config) -> Config) -> (Solver, CenaDeLuz) {
+pub(crate) fn caso_do_bug7(
+    gpu: &ph2d_gpu::GpuContext,
+    com: &dyn Fn(Config) -> Config,
+) -> (Solver, CenaDeLuz) {
     const L: u32 = 2560;
     const A: u32 = 1536;
     const T: f64 = 0.004;
-    let c = [(f64::from(L) * 0.5 * T) as f32, (f64::from(A) * 0.5 * T) as f32];
+    let c = [
+        (f64::from(L) * 0.5 * T) as f32,
+        (f64::from(A) * 0.5 * T) as f32,
+    ];
     let vertices = (0..96)
         .map(|k| {
             let a = 0.1 + std::f32::consts::TAU * k as f32 / 96.0;
@@ -62,12 +68,18 @@ pub(crate) fn caso_do_bug7(gpu: &ph2d_gpu::GpuContext, com: &dyn Fn(Config) -> C
 }
 
 /// A vista vazia Low a 1080p da W5o (a do portão `a_nitidez_da_luz`), sem o entorno.
-pub(crate) fn caso_vazio_low(gpu: &ph2d_gpu::GpuContext, com: &dyn Fn(Config) -> Config) -> (Solver, CenaDeLuz) {
+pub(crate) fn caso_vazio_low(
+    gpu: &ph2d_gpu::GpuContext,
+    com: &dyn Fn(Config) -> Config,
+) -> (Solver, CenaDeLuz) {
     caso_da_vista(gpu, com, None)
 }
 
 /// A vista Low a 1080p com a cena `n` do smoke (os corpos: o miolo com conteúdo).
-pub(crate) fn caso_cena5_low(gpu: &ph2d_gpu::GpuContext, com: &dyn Fn(Config) -> Config) -> (Solver, CenaDeLuz) {
+pub(crate) fn caso_cena5_low(
+    gpu: &ph2d_gpu::GpuContext,
+    com: &dyn Fn(Config) -> Config,
+) -> (Solver, CenaDeLuz) {
     caso_da_vista(gpu, com, Some(5))
 }
 
@@ -80,14 +92,24 @@ fn caso_da_vista(
     match n {
         Some(n) => assert!(ph2d_app_light2d::smoke::encenar(&mut w, n)),
         None => {
-            w.spawn((ph2d_light2d_ecs::Luz::default(), ph2d_ecs::Transform::IDENTITY));
+            w.spawn((
+                ph2d_light2d_ecs::Luz::default(),
+                ph2d_ecs::Transform::IDENTITY,
+            ));
         }
     }
     let cena = ph2d_light2d_ecs::coleta::cena_de_luz(&w);
     let a = fabrica(FHD);
     let produto = config_do_produto(a, FHD, degrau_do(NivelDaLuz::Baixa)).expect("grade");
     let aritmetica = Config::padrao_para(&gpu.device, produto.grade).aritmetica;
-    let mut v = Solver::novo(gpu, com(Config { aritmetica, ..produto })).expect("solver da vista");
+    let mut v = Solver::novo(
+        gpu,
+        com(Config {
+            aritmetica,
+            ..produto
+        }),
+    )
+    .expect("solver da vista");
     let (i, f) = regiao_da_janela(v.grade_da_fluencia(), a, FHD);
     v.regiao_fina(i, f);
     (v, cena)
@@ -99,7 +121,11 @@ fn medida_luz2d_miolo_por_placa() {
     let Some(gpu) = crate::comum::gpu() else {
         return;
     };
-    if !gpu.device.features().contains(wgpu::Features::TIMESTAMP_QUERY) {
+    if !gpu
+        .device
+        .features()
+        .contains(wgpu::Features::TIMESTAMP_QUERY)
+    {
         eprintln!("medida: sem TIMESTAMP_QUERY");
         return;
     }
@@ -113,7 +139,10 @@ fn medida_luz2d_miolo_por_placa() {
     );
     let id = |c: Config| c;
     for (rotulo, faz) in [
-        ("bug 7 (o_custo_do_miolo)", caso_do_bug7 as fn(&_, &dyn Fn(Config) -> Config) -> _),
+        (
+            "bug 7 (o_custo_do_miolo)",
+            caso_do_bug7 as fn(&_, &dyn Fn(Config) -> Config) -> _,
+        ),
         ("vazia Low 1080p (W5o)", caso_vazio_low),
     ] {
         let (mut total, cena) = faz(&gpu, &id);
@@ -157,10 +186,16 @@ fn medida_luz2d_miolo_por_placa() {
             total.config().niveis_do_miolo()
         );
         for (n, ms, d) in &min_fases {
-            eprintln!("  {n:<26} {ms:>8.3} ms  {:>5.1} %  {d:>4} despachos", 100.0 * ms / soma);
+            eprintln!(
+                "  {n:<26} {ms:>8.3} ms  {:>5.1} %  {d:>4} despachos",
+                100.0 * ms / soma
+            );
         }
     }
-    eprintln!("# load depois {}", crate::medida_luz2d_w4b::loadavg().trim());
+    eprintln!(
+        "# load depois {}",
+        crate::medida_luz2d_w4b::loadavg().trim()
+    );
 }
 
 type Caso = fn(&ph2d_gpu::GpuContext, &dyn Fn(Config) -> Config) -> (Solver, CenaDeLuz);
@@ -231,25 +266,42 @@ fn medida_luz2d_miolo_formas() {
         let n = FORMAS.len() - 1;
         eprintln!("\n## {rotulo} · c3_miolo (mín {RODADAS}) ms");
         for (k, (nome, _, _)) in FORMAS.iter().enumerate() {
-            eprintln!("  {nome:<28} {:>8.3}  razão {:.3}", minimo[k], minimo[k] / minimo[0]);
+            eprintln!(
+                "  {nome:<28} {:>8.3}  razão {:.3}",
+                minimo[k],
+                minimo[k] / minimo[0]
+            );
         }
         let fl: Vec<_> = s
             .iter()
             .map(|(x, _)| crate::comum::fluencia_lida(&gpu, x).v)
             .collect();
         for k in 1..FORMAS.len() - 1 {
-            bits.push((format!("{rotulo} · {} × antes", FORMAS[k].0), fl[0].clone(), fl[k].clone()));
+            bits.push((
+                format!("{rotulo} · {} × antes", FORMAS[k].0),
+                fl[0].clone(),
+                fl[k].clone(),
+            ));
         }
         let vistos = fl[0].iter().zip(&fl[n]).filter(|(x, y)| x != y).count();
-        eprintln!("CONTROLO · {rotulo} · {}: {vistos} texels diferentes do antes", FORMAS[n].0);
+        eprintln!(
+            "CONTROLO · {rotulo} · {}: {vistos} texels diferentes do antes",
+            FORMAS[n].0
+        );
         controlos += usize::from(vistos > 0);
     }
     for (onde, a, b) in &bits {
         let d = a.iter().zip(b).filter(|(x, y)| x != y).count();
         eprintln!("BITS · {onde}: {d} texels diferentes de {}", a.len());
     }
-    eprintln!("# load depois {}", crate::medida_luz2d_w4b::loadavg().trim());
-    assert!(controlos > 0, "o controlo (um ciclo a menos) não mudou a fluência em caso nenhum: a régua dos bits é cega");
+    eprintln!(
+        "# load depois {}",
+        crate::medida_luz2d_w4b::loadavg().trim()
+    );
+    assert!(
+        controlos > 0,
+        "o controlo (um ciclo a menos) não mudou a fluência em caso nenhum: a régua dos bits é cega"
+    );
     for (onde, a, b) in &bits {
         crate::comum::mesmo_bit_por_placa(&gpu, a, b, onde);
     }

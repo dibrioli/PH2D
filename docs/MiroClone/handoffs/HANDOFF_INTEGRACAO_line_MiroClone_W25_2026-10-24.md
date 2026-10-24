@@ -91,6 +91,6 @@ rectângulo registado (o `T::click_bar` varre o ecrã de 2 em 2 px).
 ## 7 — ABERTO depois da linha
 
 1. ~~Smoke do dono do §6~~ — ✅ **APROVADO pelo dono em 24/10** («smoke OK»).
-2. O aviso do topo numa janela onde nenhum lugar o leva (800 px com os painéis da direita abertos, a frase da recusa de 344 px) fica no topo por cima do painel:
+2. ✅ **Fechado na [W26](HANDOFF_INTEGRACAO_line_MiroClone_W26_2026-10-24.md)** (duas linhas). Era: o aviso do topo numa janela onde nenhum lugar o leva (800 px com os painéis da direita abertos, a frase da recusa de 344 px) fica no topo por cima do painel:
    a cura completa é partir a frase em duas linhas (não há ajudante de quebra de linha no `ph2d-editor-core`) — não pedido.
 3. `a_cena_3_conduzida_passo_a_passo` (`shells/code-scenes`): a espera interna de 30 s do passo 3 não chega sob a suíte — para a linha do CodeEditor, se repetir.

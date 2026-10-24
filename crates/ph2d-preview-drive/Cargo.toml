@@ -29,5 +29,9 @@ serde_json = "1"
 [features]
 test-support = []
 
+# O gate dos blobs (`blobs_tests`): o blob postcard de um componente, escrito à mão.
+[dev-dependencies]
+postcard = { version = "1", features = ["alloc"] }
+
 [lints]
 workspace = true

@@ -264,12 +264,15 @@ pub struct PreviewDrive {
     memo: BTreeMap<(u64, Driver), Entry>,
     /// ⭐ Os campos nomeados que um script escreve a correr ([`fields`]).
     pub fields: FieldDrive,
+    /// ⭐ Os componentes inteiros que a reprodução de uma macro do mundo põe e tira ([`blobs`]).
+    pub blobs: BlobDrive,
 }
 
 /// O vivo que a [`PreviewDrive::substitute`] deslocou: o do memo e o dos campos.
 pub struct Displaced {
     drivers: Vec<((u64, Driver), Driven)>,
     fields: fields::DisplacedFields,
+    blobs: blobs::DisplacedBlobs,
 }
 
 impl PreviewDrive {
@@ -397,6 +400,7 @@ impl PreviewDrive {
     /// nenhum; quando ele larga, a captura seguinte vê o valor vivo, difere do baseline (que é o
     /// pré-corrida) e regista um — *«desfaz a corrida»*.
     pub fn settle(&mut self) {
+        self.blobs.settle();
         self.memo.retain(|_, e| e.seen);
         for e in self.memo.values_mut() {
             e.seen = false;
@@ -456,18 +460,20 @@ impl PreviewDrive {
         live
     }
 
-    /// **A captura inteira**: o memo e os campos ([`Self::substitute_authored`] +
-    /// [`FieldDrive::substitute`]).
+    /// **A captura inteira**: o memo, os campos e os blobs ([`Self::substitute_authored`] +
+    /// [`FieldDrive::substitute`] + [`BlobDrive::substitute`]).
     #[must_use]
     pub fn substitute(&self, sim: &mut SimWorld) -> Displaced {
         Displaced {
             drivers: self.substitute_authored(sim),
             fields: self.fields.substitute(sim),
+            blobs: self.blobs.substitute(sim),
         }
     }
 
     /// Devolve ao mundo o que a [`Self::substitute`] deslocou.
     pub fn restore(sim: &mut SimWorld, live: &Displaced) {
+        BlobDrive::restore(sim, &live.blobs);
         FieldDrive::restore(sim, &live.fields);
         Self::restore_live(sim, &live.drivers);
     }
@@ -494,6 +500,9 @@ mod facto;
 /// ⭐ Os campos escritos por script — irmão por LOC e por chave (doc CodeEditor 08 §3.6).
 pub mod fields;
 pub use fields::{FieldDrive, FieldRef};
+/// ⭐ Os componentes inteiros conduzidos — irmão por LOC e por chave (macros W19 §2.4).
+pub mod blobs;
+pub use blobs::{BlobDrive, BlobRef};
 
 // ⚠️ **Os gates desta lei NÃO vivem aqui, e a ausência é a decisão** (HOWTO §1.2): cada um deles
 // passa pela `ProjectState::capture` e pelo `tick_sprite_animations` da shell — eles medem *a

@@ -76,6 +76,7 @@ mod autokey_smoke_bloco2;
 mod autokey_smoke_camera;
 mod autokey_smoke_campos;
 mod autokey_smoke_desenho;
+mod autokey_smoke_grupo;
 mod autokey_smoke_juntas;
 mod autokey_smoke_lado_b;
 mod autokey_smoke_texto;

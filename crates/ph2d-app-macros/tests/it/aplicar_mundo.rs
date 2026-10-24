@@ -568,3 +568,123 @@ fn a_imagem_embutida_volta_igual_ao_bit() {
     assert_eq!(nascida, (de_volta, 2, 2), "a pré-multiplicada nasce recta");
     assert_ne!(nascida.0, pre, "controlo: não os bytes pré-multiplicados");
 }
+
+/// A fotografia do undo global (o `world_to_snapshot`).
+fn foto(sim: &mut ph2d_ecs::SimWorld, reg: &ComponentRegistry) -> ph2d_ecs::scene::WorldSnapshot {
+    let mut st = ph2d_ecs::TransformPropagationState::new(sim.world_mut());
+    let mut wl = ph2d_ecs::WorklistBuf::new();
+    let mut out = ph2d_ecs::scene::WorldSnapshot::new();
+    ph2d_ecs::scene::world_to_snapshot(sim.world_mut(), &mut st, &mut wl, reg, &mut out)
+        .expect("foto");
+    out
+}
+
+/// ⭐ Uma imagem importada de 8 bits é uma célula do ATLAS (sem `SpritePixels`): gravada só com a
+/// `Sprite`, noutro projecto apontaria a célula de outra imagem, calada. Ao Parar os píxeis dela
+/// embutem-se; aplicada noutro projecto, nasce pela porta de produto com os MESMOS píxeis, ao bit. Se a
+/// leitura falha, a `Sprite` fica de fora e o aviso nomeia-a (nunca a célula crua).
+#[test]
+fn a_imagem_importada_do_atlas_volta_igual_noutro_projecto() {
+    use ph2d_app_macros::mundo::{self, Leitores, grava::Gravacao};
+    let reg = crate::portas_de_teste::registo();
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let t0 = ph2d_ecs::Transform::IDENTITY;
+    let raiz = sim
+        .world_mut()
+        .spawn((
+            t0,
+            Name::new("Macro"),
+            ph2d_ecs::Macro::default(),
+            StableId(900),
+        ))
+        .id();
+    let antes = foto(&mut sim, &reg);
+    let celula = ph2d_render::Sprite::atlas(3, [1.0, 1.0], [1.0; 4]);
+    sim.world_mut().spawn((
+        t0,
+        Name::new("Importada"),
+        StableId(901),
+        ChildOf(raiz),
+        celula,
+    ));
+    let depois = foto(&mut sim, &reg);
+    let rgba: Vec<u8> = vec![
+        200, 100, 50, 128, 10, 20, 30, 255, 255, 255, 255, 0, 90, 180, 240, 7,
+    ];
+    let vazio = MacroDoc::new(RefRect { w: 1.0, h: 1.0 });
+    let fecha = |sprite: &mut dyn FnMut(u64) -> Option<Option<aplicar::Rgba>>| {
+        let mut g = Gravacao::new(900);
+        g.mudou(&antes, &depois, 1_000);
+        let l = Leitores {
+            recurso: &|_| None,
+            premultiplicado: &|_| false,
+            sprite,
+        };
+        mundo::fecha(g, &vazio, &|_| None, &reg, l).expect("gravou")
+    };
+    let fe = fecha(&mut |s| (s == 901).then(|| Some((rgba.clone(), 2, 2))));
+    assert!(fe.avisos.recusados.is_empty(), "{:?}", fe.avisos);
+    let t = Track {
+        family: FAMILIA.into(),
+        target: 900,
+        initial: fe.inicial,
+        events: fe
+            .eventos
+            .into_iter()
+            .map(|(us, payload)| Event {
+                t: MacroTime(us),
+                payload,
+            })
+            .collect(),
+        edicoes: Vec::new(),
+        nasce: None,
+        continua: None,
+    };
+    let lib = pasta("mundo-atlas");
+    let (mut b, _) = banca(32, 32, &lib);
+    let novos = aplica(
+        &mut b,
+        &lib,
+        &ficheiro(vec![t], "Atlas"),
+        OndeAplicar::Novo { em: None },
+    );
+    assert_eq!(aviso(&b), m::MACRO_APLICADA, "{:?}", b.m.aviso());
+    let dentro = filhos(&mut b, Entity::from_bits(novos[0]));
+    assert_eq!(dentro.len(), 1);
+    let nascida = b.imagens.borrow().get(&dentro[0].to_bits()).cloned();
+    assert_eq!(
+        nascida,
+        Some((rgba, 2, 2)),
+        "a imagem nasce dos píxeis dela, ao bit"
+    );
+
+    // A leitura falha: a `Sprite` sai da gravação e o aviso nomeia-a.
+    let fe = fecha(&mut |_| Some(None));
+    let a = mundo::aviso(&fe.avisos).expect("o painel di-lo");
+    assert!(
+        a.detalhe.as_deref().is_some_and(|d| d.contains("Sprite")),
+        "{a:?}"
+    );
+    let t = Track {
+        family: FAMILIA.into(),
+        target: 900,
+        initial: fe.inicial,
+        events: fe
+            .eventos
+            .into_iter()
+            .map(|(us, payload)| Event {
+                t: MacroTime(us),
+                payload,
+            })
+            .collect(),
+        edicoes: Vec::new(),
+        nasce: None,
+        continua: None,
+    };
+    let fim = Lida::de(&t).expect("lê").no_fim();
+    assert!(
+        fim.values()
+            .all(|o| !o.componentes.contains_key("ph2d::render::Sprite")),
+        "nunca a célula crua"
+    );
+}

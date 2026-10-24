@@ -81,7 +81,12 @@ fn familia(t: &Track) -> Option<FamiliaDaMacro> {
 }
 
 fn fecha_com(g: Gravacao, doc: &MacroDoc, reg: &ComponentRegistry) -> Option<super::super::Fecho> {
-    super::super::fecha(g, doc, &familia, reg, &|_| None, &|_| false)
+    let l = super::super::Leitores {
+        recurso: &|_| None,
+        premultiplicado: &|_| false,
+        sprite: &mut |_| None,
+    };
+    super::super::fecha(g, doc, &familia, reg, l)
 }
 
 fn passos(f: &super::super::Fecho) -> Vec<Evento> {

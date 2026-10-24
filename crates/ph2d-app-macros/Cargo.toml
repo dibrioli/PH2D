@@ -39,6 +39,8 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 # e a `Sprite` (o registo do render no aplicar sem placa).
 ph2d-sprite-screen = { path = "../ph2d-sprite-screen" }
 ph2d-render = { path = "../ph2d-render" }
+# O id de conteúdo dos píxeis de uma sprite do atlas que a família «mundo» embute.
+ph2d-asset-id = { path = "../ph2d-asset-id" }
 
 [features]
 # ⚠️ HOWTO §2.5 — do tamanho do que ATRAVESSA: `aplicar::sem_placa` (o gate da shell que grava e abre).

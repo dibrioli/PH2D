@@ -511,20 +511,31 @@ impl Sessao {
 
     /// A trilha do mundo entra na gravação (depois das outras: elas dizem quem faz nascer cada
     /// objecto); devolve o que o painel avisa.
-    fn fecha_o_mundo(&mut self, f: &Familias<'_>, sim: &mut SimWorld) -> crate::mundo::Avisos {
+    fn fecha_o_mundo(&mut self, f: &mut Familias<'_>, sim: &mut SimWorld) -> crate::mundo::Avisos {
         let Some(g) = self.mundo.take() else {
             return crate::mundo::Avisos::default();
         };
-        let Some(p) = f.portas.as_ref() else {
+        let etapas = f.etapas;
+        let Some(p) = f.portas.as_mut() else {
             debug_assert!(g.passos.is_empty(), "o mundo gravou sem a composição para o fechar");
             return crate::mundo::Avisos::default();
         };
         let dono = g.dono;
-        let familia = |t: &ph2d_macro::Track| crate::aplicar::familia(t, f.etapas).ok();
+        let familia = |t: &ph2d_macro::Track| crate::aplicar::familia(t, etapas).ok();
         let premul = crate::mundo::premultiplicados(sim);
         let premul = |id: &[u8; 32]| premul.contains(id);
-        let Some(fe) = crate::mundo::fecha(g, self.rec.doc(), &familia, p.registo, p.recurso, &premul)
-        else {
+        let sim = &*sim;
+        let pixeis = &mut p.pixeis;
+        let mut sprite = |s: u64| {
+            let e = ph2d_ecs::entity_with_stable_id(sim.world(), StableId(s))?;
+            Some(pixeis(sim, e.to_bits()))
+        };
+        let l = crate::mundo::Leitores {
+            recurso: p.recurso,
+            premultiplicado: &premul,
+            sprite: &mut sprite,
+        };
+        let Some(fe) = crate::mundo::fecha(g, self.rec.doc(), &familia, p.registo, l) else {
             return crate::mundo::Avisos::default();
         };
         let id = self

@@ -13,6 +13,10 @@ pub mod grava;
 pub mod palco;
 pub mod palco_fisica;
 pub mod portas;
+/// A sprite que não traz os seus píxeis (uma célula do atlas) grava-se com eles embutidos.
+mod embute;
+
+pub use embute::Leitores;
 
 use formato::{Componente, Evento, Inicial, Linha, Mudanca, Objeto, Quem, Recurso};
 use grava::{Cru, Gravacao};
@@ -111,8 +115,11 @@ struct Tradutor<'a> {
     novos: Vec<Objeto>,
     recursos_vistos: BTreeSet<[u8; 32]>,
     recursos: Vec<Recurso>,
-    recurso: &'a dyn Fn(&[u8; 32]) -> Option<Vec<u8>>,
-    premultiplicado: &'a dyn Fn(&[u8; 32]) -> bool,
+    l: Leitores<'a>,
+    /// Os objectos (`StableId`) cujos píxeis já são um `SpritePixels` gravado.
+    com_pixeis: BTreeSet<u64>,
+    /// O id embutido dos píxeis da sprite de cada objecto (`None` = não se leram).
+    sprites: BTreeMap<u64, Option<[u8; 32]>>,
     recusados: BTreeSet<String>,
 }
 
@@ -177,13 +184,13 @@ impl Tradutor<'_> {
         if self.recursos_vistos.contains(&id) {
             return true;
         }
-        match (self.recurso)(&id) {
+        match (self.l.recurso)(&id) {
             Some(bytes) => {
                 self.recursos_vistos.insert(id);
                 self.recursos.push(Recurso {
                     id,
                     bytes,
-                    premultiplicado: (self.premultiplicado)(&id),
+                    premultiplicado: (self.l.premultiplicado)(&id),
                 });
                 true
             }
@@ -208,6 +215,7 @@ impl Tradutor<'_> {
                 });
             }
         }
+        self.sprite_da_linha(r.id.0, &mut componentes);
         Linha {
             id,
             pai,
@@ -235,6 +243,7 @@ impl Tradutor<'_> {
                         cs.push((nome.to_owned(), b.clone()));
                     }
                 }
+                self.sprite_da_mudanca(id.0, &mut cs);
                 (pai.is_some() || !cs.is_empty()).then_some(Mudanca::Muda {
                     id: i,
                     pai,
@@ -246,16 +255,14 @@ impl Tradutor<'_> {
 }
 
 /// **Ao Parar**: a gravação `g` passa a trilha, com as outras trilhas de `doc` já abertas (elas dizem
-/// quem faz nascer cada objecto). `recurso` dá os bytes de um asset; `premultiplicado`, se a sprite que
-/// os mostra os tem em alfa pré-multiplicado. `None` = nada do mundo mudou.
+/// quem faz nascer cada objecto), com os [`Leitores`] da composição. `None` = nada do mundo mudou.
 #[must_use]
-pub fn fecha(
+pub fn fecha<'a>(
     g: Gravacao,
     doc: &MacroDoc,
     familia: &dyn Fn(&Track) -> Option<FamiliaDaMacro>,
-    registo: &ComponentRegistry,
-    recurso: &dyn Fn(&[u8; 32]) -> Option<Vec<u8>>,
-    premultiplicado: &dyn Fn(&[u8; 32]) -> bool,
+    registo: &'a ComponentRegistry,
+    l: Leitores<'a>,
 ) -> Option<Fecho> {
     let g = g.acaba();
     if g.passos.is_empty() {
@@ -269,8 +276,9 @@ pub fn fecha(
         novos: Vec::new(),
         recursos_vistos: BTreeSet::new(),
         recursos: Vec::new(),
-        recurso,
-        premultiplicado,
+        l,
+        com_pixeis: BTreeSet::new(),
+        sprites: BTreeMap::new(),
         recusados: BTreeSet::new(),
     };
     t.local(g.dono);

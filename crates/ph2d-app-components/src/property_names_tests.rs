@@ -268,3 +268,30 @@ fn toda_vista_vai_e_volta_pelo_valor_do_cartao() {
     }
     assert!(vistas >= 100, "{vistas}");
 }
+
+/// ⭐ **O «Source Name» do rótulo é o conteúdo de QUALQUER variante** (`source:*`, F27 E): o script
+/// lê-o e escreve-o em `Counter` como em `TagCount`, trocar de fonte conserva-o, e na autorada não
+/// há nome. (Mutação: tirar o `any_variant` do `slot_in` ⇒ o `get` falha.)
+#[test]
+fn o_nome_da_fonte_do_rotulo_vale_para_toda_variante() {
+    use ph2d_ecs::{LabelSource, UiLabel};
+    use serde_json::json;
+    let reg = registo();
+    let mut world = bevy_ecs::world::World::new();
+    let rotulo = UiLabel {
+        source: LabelSource::Counter("pts".into()),
+        ..UiLabel::default()
+    };
+    let e = world.spawn(rotulo).id();
+    let nada = ph2d_ecs::scene::property_ref::RefNames::default;
+    let get = |w: &bevy_ecs::world::World, n: &str| property::get(&reg, w, e, n, nada()).unwrap();
+    assert_eq!(get(&world, "label.source_name"), json!("pts"));
+    property::set(&reg, &mut world, e, "label.source", json!("tag"), nada()).unwrap();
+    assert_eq!(get(&world, "label.source"), json!("tag"));
+    assert_eq!(get(&world, "label.source_name"), json!("pts"), "o nome atravessa a troca");
+    property::set(&reg, &mut world, e, "label.source_name", json!("Enemy"), nada()).unwrap();
+    let ficou = &world.get::<UiLabel>(e).unwrap().source;
+    assert_eq!(*ficou, LabelSource::TagCount("Enemy".into()));
+    property::set(&reg, &mut world, e, "label.source", json!("authored"), nada()).unwrap();
+    assert_eq!(get(&world, "label.source_name"), json!(null));
+}

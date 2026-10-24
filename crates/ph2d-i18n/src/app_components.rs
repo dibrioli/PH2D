@@ -113,6 +113,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.components.script_property.takes_nothing" => "'{name}' is a marker and takes no value",
         // `ph2d.set(e, "sprite.image", "x")` com um nome que a biblioteca não tem (doc CodeEditor 08 d4).
         "app.components.script_property.no_image_named" => "no image named '{name}' in the library",
+        "app.components.script_property.empty_name" => "an object's name can't be empty",
         "app.components.script_bridge.the_copy_would_land_inside_its_own_master" => {
             "the copy would land inside its own master"
         }

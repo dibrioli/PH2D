@@ -175,6 +175,7 @@ pub(crate) fn names(reg: &ComponentRegistry, sim: &SimWorld, entity: Entity) -> 
     let tem = |n: &str| match n.split('.').next() {
         Some("health") => w.get::<Health>(entity).is_some(),
         Some("sprite") => w.get::<ph2d_render::Sprite>(entity).is_some(),
+        Some(crate::script_name::NAME) => true,
         _ => false,
     };
     out.extend(

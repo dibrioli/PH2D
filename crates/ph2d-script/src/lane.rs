@@ -234,8 +234,8 @@ impl<'w> Lane<'w> {
                 if is_recipe(world, e) {
                     continue;
                 }
-                if let Some(n) = world.get::<Name>(e) {
-                    map.entry(n.as_str().to_owned()).or_insert(e);
+                if let Some(n) = ph2d_ecs::name_in_run(world, e) {
+                    map.entry(n.to_owned()).or_insert(e);
                 }
             }
             self.names = Some(map);

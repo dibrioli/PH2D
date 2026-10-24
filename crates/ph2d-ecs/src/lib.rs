@@ -213,7 +213,7 @@ pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
 pub use master::{
     MasterEditing, MasterPiece, MasterRoot, assign_master_pieces, is_master_piece, master_root_of,
 };
-pub use name::{Name, stable_name_id};
+pub use name::{Name, RunName, name_in_run, stable_name_id};
 pub use named_anchor::{
     ANCHOR_NAME_MAX_BYTES, ANCHORS_MAX, AnchorData, AnchorKind, AnchorNameError, DICT_MAX_DEPTH,
     DICT_MAX_KEYS, NamedAnchor, NamedAnchorList, SortedSmallVec, validate_anchor_name,

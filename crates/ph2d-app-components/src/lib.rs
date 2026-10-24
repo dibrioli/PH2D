@@ -304,6 +304,8 @@ mod property_names_tests;
 mod property_refs_tests;
 /// ⭐ A imagem de uma sprite trocada por um script a correr (`sprite.image`, doc CodeEditor 08 d4).
 pub mod script_image;
+/// ⭐ O nome de um objecto trocado por um script a correr (`name`, doc CodeEditor 11).
+pub mod script_name;
 pub(crate) mod script_properties;
 #[cfg(test)]
 mod smoke_desenho_e_corpo_tests;

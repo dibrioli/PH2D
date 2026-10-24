@@ -119,6 +119,9 @@ impl SceneDoors for ScriptDoors<'_, '_> {
         if name == crate::script_image::NAME {
             return crate::script_image::get(sim, &mut self.images, entity);
         }
+        if name == crate::script_name::NAME {
+            return Ok(crate::script_name::get(sim, entity));
+        }
         crate::script_properties::get(self.registry, self.names(), sim, entity, name)
     }
 
@@ -132,6 +135,9 @@ impl SceneDoors for ScriptDoors<'_, '_> {
     ) -> Result<(), String> {
         if name == crate::script_image::NAME {
             return crate::script_image::set(sim, &mut self.images, entity, value, dry);
+        }
+        if name == crate::script_name::NAME {
+            return crate::script_name::set(sim, entity, value, dry);
         }
         crate::script_properties::set(self.registry, self.names(), sim, entity, name, value, dry)
     }
@@ -315,6 +321,7 @@ pub fn rewind(host: &mut ScriptHost, sim: &mut SimWorld, drive: &mut PreviewDriv
     }
     drive.fields.release(sim);
     crate::script_image::rewind(sim);
+    crate::script_name::rewind(sim);
     // Um pedido de vida que nenhum tique vivo levou não atravessa o rebobinar.
     sim.world_mut()
         .remove_resource::<ph2d_physics_ecs::PedidosDeVida>();

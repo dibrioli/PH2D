@@ -137,6 +137,21 @@ impl AsRef<str> for Name {
 
 impl SimComponent for Name {}
 
+/// ⭐ **O nome que um script deu a um objecto a correr** (`ph2d.set(e, "name", "…")`, doc CodeEditor 11).
+/// Um override da CORRIDA, nunca o documento: não é registado nem serializado, o rebobinar tira-o, e o
+/// [`Name`] (a identidade — [`stable_name_id`], as ligações da timeline, as juntas) fica intocado.
+#[derive(Component, Clone, Debug, PartialEq, Eq)]
+pub struct RunName(pub String);
+
+/// O nome por que o jogo acha o objecto agora: o [`RunName`] se um script o deu, senão o [`Name`].
+#[must_use]
+pub fn name_in_run(world: &bevy_ecs::world::World, e: bevy_ecs::entity::Entity) -> Option<&str> {
+    world
+        .get::<RunName>(e)
+        .map(|n| n.0.as_str())
+        .or_else(|| world.get::<Name>(e).map(Name::as_str))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

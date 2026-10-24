@@ -332,8 +332,10 @@ pub const API: &[ApiEntry] = &[
 
 /// ⭐ **Os valores da CORRIDA que não são campo do componente** — a vida e o escudo de agora («Now»,
 /// «Shield now»; escrevem-se directo, sem golpe, decisão do dono nº 9) e a imagem da sprite pelo
-/// nome da biblioteca (um override da corrida, doc CodeEditor 08 d4).
-pub const RUNTIME_PROPERTIES: &[&str] = &["health.now", "health.shield_now", "sprite.image"];
+/// nome da biblioteca (um override da corrida, doc CodeEditor 08 d4) e o nome do objecto (outro, doc
+/// CodeEditor 11).
+pub const RUNTIME_PROPERTIES: &[&str] =
+    &["health.now", "health.shield_now", "sprite.image", "name"];
 
 /// Todos os `componente.campo` que um script alcança, pela ordem do catálogo.
 #[must_use]

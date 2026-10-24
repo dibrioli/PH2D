@@ -368,8 +368,8 @@ pub const DESCS: &[D] = &[
         &[],
     )
     .hidden(Hidden::Editor),
-    // ⚠️ `Editor`: o nome é a IDENTIDADE por que o script acha objectos (`ph2d.find_by_name`) e que
-    // as referências duráveis seguem — renomear a correr é outro verbo, não uma propriedade.
+    // ⚠️ `Editor`: o nome é a IDENTIDADE que as referências duráveis seguem. O script renomeia a
+    // correr pela propriedade da corrida `name` (`RunName`, doc CodeEditor 11), nunca por este campo.
     D::intrinsic("ph2d::ecs::Name", "component.name.name", C::Identity, NAME)
         .hidden(Hidden::Editor),
     // ⭐ **As EXCEPÇÕES de uma instância** (ADR-0164 / F4.4) — o conjunto de `(peça, componente)`

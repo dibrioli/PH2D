@@ -2,7 +2,8 @@
 //! `docs/CodeEditor/08_scripts_tocam_propriedades.md` §5 d5): os scripts tocam as propriedades do
 //! Inspector PELO NOME. O herói azul corre o `aventura.luau` e anda sozinho para a direita: os espinhos
 //! tiram-lhe vida (`ph2d.damage`), a moeda sobe o `health.max` e cura, a porta troca de imagem ao
-//! chegar (`sprite.image`, `door_closed` → `door_open`) e a câmera aproxima (`game_camera.height`). As
+//! chegar (`sprite.image`, `door_closed` → `door_open`) e passa a chamar-se `Door Open` (o 11,
+//! `ph2d.set(e, "name", …)`), e a câmera, que a procura por ESSE nome, aproxima (`game_camera.height`). As
 //! duas barras por cima dele são sprites que o script estica pelo que LÊ (`health.max`, `health.now`).
 //! Rebobinar devolve tudo: a porta fechada, o máximo 100, a câmera de longe.
 //!
@@ -70,18 +71,24 @@ function update(self, dt)
     ph2d.set(self.coin, "visibility.visible", false)
   end
 
-  -- ③ A porta troca de imagem quando o herói chega (o nome é o da imagem no painel Assets).
+  -- ③ A porta troca de imagem quando o herói chega (o nome é o da imagem no painel Assets)
+  --   e o script dá-lhe um NOME NOVO: "Door Open".
   if not self.aberta and x >= porta_x - 1.5 then
     self.aberta = true
     ph2d.set(self.door, "sprite.image", "door_open")
+    ph2d.set(self.door, "name", "Door Open")
+    print("A porta chama-se agora: Door Open")
   end
 
-  -- ④ Com a porta aberta, o herói entra e a câmera aproxima até 5 metros de altura.
-  if self.aberta then
+  -- ④ A câmera procura a porta PELO NOME NOVO; quando a acha, aproxima até 5 metros de altura.
+  --   (A Hierarquia continua a dizer "Door": ela mostra o projecto, não o jogo a correr.)
+  local aberta = ph2d.find_by_name("Door Open")
+  if aberta then
     local altura = ph2d.get(self.camera, "game_camera.height")
     ph2d.set(self.camera, "game_camera.height", math.max(5, altura - 4 * dt))
     local cx = ph2d.get(self.camera, "x")
-    ph2d.set(self.camera, "x", cx + (porta_x - cx) * math.min(1, 2 * dt))
+    local ax = ph2d.get(aberta, "x")
+    ph2d.set(self.camera, "x", cx + (ax - cx) * math.min(1, 2 * dt))
   end
 
   local alvo = if self.aberta then porta_x else porta_x - 1.5
@@ -278,8 +285,8 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>) -> Option<u64> {
     *cx.camera_preview = true;
     println!(
         "[code-smoke] =8 propriedades pelo nome: o herói azul corre o aventura.luau e anda para a \
-         direita — os espinhos tiram vida, a moeda sobe o máximo, a porta troca de imagem e a câmera \
-         aproxima. Rebobinar devolve tudo."
+         direita — os espinhos tiram vida, a moeda sobe o máximo, a porta troca de imagem e passa a \
+         chamar-se Door Open, e a câmera, que a procura por esse nome, aproxima. Rebobinar devolve tudo."
     );
     pecas.first().map(|e| e.to_bits())
 }

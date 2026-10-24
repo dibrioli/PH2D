@@ -37,5 +37,5 @@ W=$(xdotool search --onlyvisible --name . 2>/dev/null | head -1)
 xdotool windowfocus --sync "$W"; xdotool key shift+F5; sleep 1.5
 import -window root "$AQUI/foto_06_rebobinado.png" 2>/dev/null
 { echo "# cena 8 conduzida — $(date -u +%Y-%m-%dT%H:%MZ) — loadavg: $(cat /proc/loadavg) · HEAD $(git -C "$RAIZ" rev-parse --short HEAD)"
-  grep -E 'code-smoke|height|script|error|panick' "$T/app.log" | head -40; } >"$AQUI/saida.txt"
+  grep -E 'code-smoke|height|script|error|panick|Door Open' "$T/app.log" | head -40; } >"$AQUI/saida.txt"
 cat "$AQUI/saida.txt"

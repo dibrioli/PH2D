@@ -26,3 +26,14 @@
 - `ph2d-app-components` `script_name::tests` (2): renomear, achar pelo nome novo e não pelo velho, documento
   intocado, fora do livro e do registo, rebobinar; voltar ao nome do artista; `""` e `3` com o porquê.
 - **RED medido:** com a procura a ler só o `Name`, o 1.º teste reprova («achado pelo nome novo»).
+
+## 3. Smoke (24/10)
+
+- **Cena 8** (`PH2D_CODE_SMOKE=8`) ganhou o passo: ao abrir, o `aventura.luau` faz
+  `ph2d.set(self.door, "name", "Door Open")` e escreve-o no console; a câmera procura a porta por
+  `ph2d.find_by_name("Door Open")` e só aproxima quando a acha — renomear partido = câmera parada (falha visível).
+  A Hierarquia continua «Door» (a lei do §1).
+- Gate: `code_smoke_props::tests::a_porta_abre_pelo_nome_…` (nome da corrida «Door Open», documento «Door»,
+  câmera a 5 m, rebobinar devolve «Door»). Mutação «renomear para outro nome» → vermelho.
+- Fotos: [`conduz_propriedades/`](ferramentas/conduz_propriedades/) (01–06 refeitas;
+  `foto_07_console_door_open.png` = o console com a frase).

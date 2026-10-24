@@ -114,6 +114,15 @@ impl Corrida {
             .get::<ImageOverride>(self.pecas[3])
             .is_some()
     }
+    /// O nome por que o jogo acha a porta agora, e o do documento.
+    fn nomes_da_porta(&self) -> (String, String) {
+        let w = self.sim.world();
+        let e = self.pecas[3];
+        (
+            ph2d_ecs::name_in_run(w, e).expect("nome").to_owned(),
+            w.get::<Name>(e).expect("nome").as_str().to_owned(),
+        )
+    }
     fn moeda_visivel(&self) -> bool {
         self.sim
             .world()
@@ -161,7 +170,17 @@ fn a_porta_abre_pelo_nome_o_maximo_sobe_a_camera_aproxima_e_rebobinar_devolve() 
 
     c.corre(6.0);
     assert!(c.aberta(), "a porta trocou de imagem pelo nome");
-    assert_eq!(c.altura(), 5.0, "a câmera aproximou até 5 m");
+    // ⭐ O 11: a câmera só aproxima se ACHAR a porta pelo nome novo — e o documento fica «Door».
+    assert_eq!(
+        c.nomes_da_porta(),
+        ("Door Open".to_owned(), "Door".to_owned()),
+        "o script renomeou a porta na corrida, e só na corrida"
+    );
+    assert_eq!(
+        c.altura(),
+        5.0,
+        "a câmera achou a porta pelo nome novo e aproximou até 5 m"
+    );
     assert_eq!(c.x(0), AT[3][0], "o herói entrou na porta e parou");
 
     rewind(&mut c.host, &mut c.sim, &mut c.drive);
@@ -172,4 +191,9 @@ fn a_porta_abre_pelo_nome_o_maximo_sobe_a_camera_aproxima_e_rebobinar_devolve() 
     );
     assert!(c.moeda_visivel());
     assert_eq!(c.x(4), AT[4][0], "a câmera volta ao lugar");
+    assert_eq!(
+        c.nomes_da_porta().0,
+        "Door",
+        "rebobinar devolve o nome do artista"
+    );
 }

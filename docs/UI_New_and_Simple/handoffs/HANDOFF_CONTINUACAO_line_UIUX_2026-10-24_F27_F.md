@@ -98,7 +98,10 @@ Extra opcional: o mesmo com `PH2D_LANG=teste` antes do `./target…`: as palavra
   `a_coluna_do_valor`/`tracks_value` · `ph2d-editor-core` `architecture_every_editable_field_is_a_channel` (6) ·
   `ph2d-panel-inspector` `a_seccao_script` (16) · `ph2d-i18n` gates de língua · `ph2d-component-desc` (20) · `ph2d-script` `props::` (23).
 - `cargo fmt` limpo; clippy `-D warnings` verde nas 11 crates tocadas após `526e1526bd`.
-- **Suíte impactada:** a correr no fecho da onda — resultado no relatório ao dono.
+- **Suíte impactada** (`PH2D_SUITE=onda`, 1 428 s): 19 950 corridos · 19 948 verdes · 2 vermelhos de CARGA, nenhum desta onda:
+  `ph2d-panel-painter-layers` `seam_estado_escondido::cada_interruptor_que_neutraliza_pinta_como_o_pincel_limpo` (TIMEOUT 360 s, o
+  conhecido) e `ph2d-host-code-scenes` `a_cena_3_conduzida_passo_a_passo` (a lista do `luau-lsp` não chegou no passo 3; `loadavg`
+  15 min = 126) — sozinho por nome: verde (`loadavg` 27).
 - **Mutação:** 8/8 da palavra/losango sangram (M3 precisou do teste novo `um_codigo_sem_variante_fica_numero`) + 7/7 dos DONOS
   (tabela no plano, §(d)).
 

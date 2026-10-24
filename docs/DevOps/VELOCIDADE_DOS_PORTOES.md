@@ -128,6 +128,32 @@ Controlos: `--auto-teste` (a cada corrida: o diff do Quadro selecciona os VIGIAS
 279/102; todo vigia mora num binário de teste) e `--confere` (antes de correr, a `cargo nextest list -E` do mesmo
 filtro: cada filtro de vigia casa ≥ 1 teste — 271/271 na workspace inteira, 89/89 no diff do Quadro).
 
+### 2.6 A rodada A × B (W4, 23/10) — o tempo de uma suíte
+
+O diff do Quadro `d10a4ee617` (`ph2d-app-board`), a mesma compilação `ci-test`, 4 variantes por env (sem
+recompilar), 3 rondas em ordem RODADA, cada corrida por `ph2d-run.sh` (`cargo nextest run --no-fail-fast`, o
+filtro do `impacto-preciso.py` + as cinco redes fixas). Tempo = o `Summary` do nextest; «placa» = segundos em que
+ESTA árvore era a dona da fechadura (amostra de 1 s do `.dono`). Load a 13–310 (outras linhas a correr suítes).
+
+| variante | testes | mín. | mediana | timeouts (por corrida) | placa principal segurada |
+|---|---|---|---|---|---|
+| **antes** (`PH2D_IMPACTO=pacote PH2D_PLACA=principal PH2D_VEZ_ARVORE=1`) | 12 463 | **880,6 s** | 1 160,4 s | 1 · 23 · 77 | 759 s · (à espera) · 877 s |
+| só `PH2D_IMPACTO=pacote` | 12 463 | 1 012,9 s | 1 060,4 s | 1 · 5 · 8 | **0 s** (fila de testes: 12–20 s) |
+| só `PH2D_PLACA=principal` | 2 419 | 8,3 s | 10,2 s | 0 | 0 s |
+| **depois** (nenhum) | 2 419 | **8,3 s** | 12,1 s | 0 | 0 s |
+
+- **O ganho no relógio é o SELETOR (W3): ~106×** (880,6 → 8,3 s pelo mínimo; mínimo e mediana não se cruzam).
+- **As filas (W1+W2) não mudam o relógio de QUEM corre; mudam o de quem ESPERA.** Com a fila de testes, a principal
+  fica livre a corrida inteira (0 s contra ~13–15 min por corrida das 12 463); e a variante «antes» é a única
+  que esperou pela placa de outra árvore e a única com timeouts de placa (`ph2d-render` 106, `ph2d-app-motion` 20,
+  `ph2d-app-flip` 8, todos à espera da vez). Neste diff a seleção nova não tem teste de placa, logo
+  `so_principal` × `depois` é o mesmo número (8,3 s): a separação das filas mede-se pela placa segurada.
+- Os vermelhos que não são de placa são todos da família de carga ([FLAKES_DE_CARGA.md](FLAKES_DE_CARGA.md)): razões de
+  custo da `ph2d-tool-painter`/`ph2d-physics-ecs` e timeouts da `ph2d-tool-painter` a load ~265, todos de pacotes
+  que só a regra de 13/10 punha num diff do Quadro.
+- A seleção inteira, os 89 vigias incluídos, corre em 8–13 s: mover os vigias globais para uma crate própria (§3)
+  **não reabre**.
+
 ## 3. ⛔ Recusas MEDIDAS
 
 | proposta | por que não |
@@ -137,5 +163,5 @@ filtro: cada filtro de vigia casa ≥ 1 teste — 271/271 na workspace inteira, 
 | cache do gabarito em DISCO entre corridas | um gabarito velho depois de mudar a lei é um oráculo que mente; a chave teria de incluir o código |
 | gabarito por multigrelha | muda o bit; só com prova de veredito por veredito |
 | `__GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1` | o cache cresceria sem tecto; o tecto grande com a limpeza do driver basta |
-| mover os vigias globais para uma crate própria (W3, opção 2) | **adiada, não recusada**: com o filtro por ficheiro (§2.5) o custo deles já é o deles, não o do pacote; mover ~100 gates de 25 crates é código movido entre crates (HOWTO §2: gates partem em espécies mudas) e muda nomes que o `nextest-impacted.sh` e os docs citam. Reabre se a W4 medir que os vigias globais pesam no relógio |
+| mover os vigias globais para uma crate própria (W3, opção 2) | **adiada, não recusada**: com o filtro por ficheiro (§2.5) o custo deles já é o deles, não o do pacote; mover ~100 gates de 25 crates é código movido entre crates (HOWTO §2: gates partem em espécies mudas) e muda nomes que o `nextest-impacted.sh` e os docs citam. Reabre se os vigias globais pesarem no relógio — a W4 (§2.6) mediu a seleção inteira, vigias incluídos, em 8–13 s: não reabre |
 | comparar com o `junit.xml` do ship de 12/10 | os gates de placa ali (6 s para o `o_oclusor_fino`) correram com o cache do driver ainda a acertar; sozinho em 13/10, cheio, 643 s — régua de placa sem o estado do cache não é base |

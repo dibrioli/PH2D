@@ -247,6 +247,8 @@ mod shape_relief_tests;
 /// **O esfregão numa CURVA** — o tecto do transporte, e a prova de que a RECTA não mexeu.
 #[cfg(test)]
 mod smear_curva_tests;
+#[cfg(test)]
+mod sonda_opacidade_tests;
 /// **L8 + L5** — o tecto por traço, as orlas, a cauda e o fall-off (o plano do traço).
 #[cfg(test)]
 mod traco_plano_tests;

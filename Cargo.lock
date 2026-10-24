@@ -5261,6 +5261,7 @@ dependencies = [
 name = "ph2d-app-macros"
 version = "0.0.0"
 dependencies = [
+ "image",
  "ph2d-a11y",
  "ph2d-anim",
  "ph2d-app-host",
@@ -5271,6 +5272,8 @@ dependencies = [
  "ph2d-macro",
  "ph2d-panel-macros",
  "ph2d-panel-timeline",
+ "ph2d-physics-ecs",
+ "ph2d-preview-drive",
  "ph2d-render",
  "ph2d-sprite-screen",
  "ph2d-timeline",
@@ -5278,7 +5281,9 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-tool-painter",
  "ph2d-ui-testkit",
+ "postcard",
  "rfd",
+ "serde",
 ]
 
 [[package]]
@@ -9071,6 +9076,7 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-physics-ecs",
  "ph2d-render",
+ "postcard",
  "serde_json",
 ]
 

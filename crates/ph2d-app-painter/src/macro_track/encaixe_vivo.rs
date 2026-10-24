@@ -101,6 +101,18 @@ impl AtlasDaCena<'_> {
             self.atlas,
         )
     }
+
+    /// **Os bytes de um recurso** pelo id de conteúdo: a imagem do `AssetDb` em PNG (o que a família
+    /// «mundo» da MACROS embute e volta a fazer nascer, `ph2d_app_macros::mundo::aplica`).
+    #[must_use]
+    pub fn recurso(&self, id: &[u8; 32]) -> Option<Vec<u8>> {
+        let a = self.asset_db.get(&ph2d_asset::AssetId::from_digest(*id))?;
+        let (w, h, px) = a.image_rgba8()?;
+        let img = image::RgbaImage::from_raw(w, h, px.into_owned())?;
+        let mut out = std::io::Cursor::new(Vec::new());
+        img.write_to(&mut out, image::ImageFormat::Png).ok()?;
+        Some(out.into_inner())
+    }
 }
 
 /// O objecto mostra píxeis (tem `Sprite`): pode receber uma macro do Painter por cima.

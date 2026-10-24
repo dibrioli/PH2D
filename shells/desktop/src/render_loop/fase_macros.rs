@@ -30,19 +30,16 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let pintor = ph2d_editor_core::ToolId::new("painter");
-        let painter_activo = gfx.tools.active().is_some_and(|t| t.id() == pintor);
-        let motion_na_mao = gfx
-            .tools
-            .active()
-            .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("motion"));
+        let activa = |n: &str| gfx.tools.active().is_some_and(|t| t.id().0 == n);
+        let (painter_activo, motion_na_mao) = (activa("painter"), activa("motion"));
         let escolhido = gfx.hero_screen.as_ref().and_then(|h| h.gizmo.selection);
         let painter = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools);
-        // W18: o que só a composição alcança para APLICAR uma macro (o atlas, o leitor de píxeis).
+        // W18–W19: o que só a composição alcança para APLICAR (o atlas, os píxeis, o `AssetDb`).
         let atlas = std::cell::RefCell::new(atlas_da_cena!(gfx));
         let mut imagem =
             |s: &mut _, i: Imagem| atlas.borrow_mut().nasce(s, (i.w, i.h, i.rgba), &i.nome);
         let mut pixeis = |s: &_, b| atlas.borrow_mut().pixeis(s, b);
+        let recurso = |id: &[u8; 32]| atlas.borrow().recurso(id);
         let mut f = Familias {
             portas: Some(ph2d_app_macros::aplicar::Portas {
                 raiz: &ph2d_app_components::object_add::spawn_empty_root,
@@ -50,6 +47,9 @@ impl crate::App {
                 pixeis: &mut pixeis,
                 e_imagem: &ph2d_app_painter::macro_track::encaixe_vivo::e_imagem,
                 centro: gfx.camera.center,
+                registo: &gfx.component_registry,
+                recurso: &recurso,
+                remapeia: &ph2d_app_components::instance_refs::remap_object_refs,
             }),
             escolhido,
             painter,
@@ -68,10 +68,9 @@ impl crate::App {
         };
         let agora = ph2d_app_macros::relogio_us();
         ph2d_app_macros::com(|m| m.quadro(&mut f, &mut c, agora));
-        // O objecto Macro que um aplicar fez nascer fica escolhido (como o Add).
+        // O objecto Macro nascido fica escolhido (como o Add); a imagem de 16 bits que ele pinta passa
+        // a 8 (o documento do Painter é de 8) — o aviso diz porquê.
         let aplicado = ph2d_app_macros::com(ph2d_app_macros::Macros::toma_o_aplicado);
-        // O leitor acima dá 8 bits, e o documento do Painter é de 8 (não há porta de 16): a imagem de
-        // 16 bits que a macro pinta passa a mostrar-se a 8 — o aviso diz porquê.
         for i in aplicado.map_or_else(Vec::new, |b| aplicar::imagens_que_pinta(c.sim, b)) {
             let because = ph2d_i18n::tr(ph2d_editor_core::macro_edits::MACRO_APLICAR_OITO_BITS);
             let (e, r) = (ph2d_ecs::Entity::from_bits(i), atlas.borrow());

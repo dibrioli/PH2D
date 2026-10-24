@@ -59,6 +59,11 @@ pub(crate) struct Banca {
     /// As imagens que a porta de produto da composição fez nascer (W18), pelos bits: os píxeis.
     pub(crate) imagens:
         std::cell::RefCell<std::collections::BTreeMap<u64, ph2d_app_macros::aplicar::Rgba>>,
+    /// As famílias que a composição injecta (por omissão nenhuma: o Motion de brinquedo não tem etapas).
+    pub(crate) etapas: ph2d_app_macros::etapas::Injectadas<'static>,
+    pub(crate) registo: ph2d_ecs::scene::ComponentRegistry,
+    /// Os recursos do `AssetDb` da banca, pelo id de conteúdo.
+    pub(crate) recursos: std::collections::BTreeMap<[u8; 32], Vec<u8>>,
 }
 
 /// O vazio do Add, como a shell o faz nascer (nome, `Transform`, `StableId`).
@@ -98,6 +103,9 @@ impl Banca {
             rects: Vec::new(),
             activo: true,
             imagens: std::cell::RefCell::default(),
+            etapas: &[],
+            registo: crate::portas_de_teste::registo(),
+            recursos: std::collections::BTreeMap::new(),
         }
     }
 
@@ -114,6 +122,8 @@ impl Banca {
         };
         let mut pixeis = |_: &SimWorld, b: u64| imagens.borrow().get(&b).cloned();
         let e_imagem = |_: &SimWorld, b: u64| imagens.borrow().contains_key(&b);
+        let recursos = &self.recursos;
+        let recurso = |id: &[u8; 32]| recursos.get(id).cloned();
         let mut f = Familias {
             portas: Some(ph2d_app_macros::aplicar::Portas {
                 raiz: &raiz,
@@ -121,6 +131,9 @@ impl Banca {
                 pixeis: &mut pixeis,
                 e_imagem: &e_imagem,
                 centro: [0.0, 0.0],
+                registo: &self.registo,
+                recurso: &recurso,
+                remapeia: &crate::portas_de_teste::remapeia,
             }),
             escolhido: self.escolhido,
             painter: Some(&mut self.painter),
@@ -128,7 +141,7 @@ impl Banca {
             motion: &mut self.motion,
             motion_em_edicao: self.motion_em_edicao,
             motion_na_mao: false,
-            etapas: &[],
+            etapas: self.etapas,
         };
         let mut c = Cena {
             sim: &mut self.sim,
@@ -172,6 +185,9 @@ impl Banca {
                 pixeis: &mut sem,
                 e_imagem: &e_imagem,
                 centro: [0.0, 0.0],
+                registo: &self.registo,
+                recurso: &crate::portas_de_teste::sem_recurso,
+                remapeia: &crate::portas_de_teste::remapeia,
             }),
             escolhido: self.escolhido,
             painter: Some(&mut self.painter),
@@ -179,7 +195,7 @@ impl Banca {
             motion: &mut self.motion,
             motion_em_edicao: self.motion_em_edicao,
             motion_na_mao: false,
-            etapas: &[],
+            etapas: self.etapas,
         };
         self.m.info(&f, &self.sim, escolhido, None)
     }

@@ -44,7 +44,7 @@ pub(crate) const REMAPPERS: &[(&str, Remap)] = &[
 ///
 /// ⚠️ Referência cujo alvo está **fora** do mapa fica como está — é o que mantém uma instância
 /// pendurada no gancho do cenário de que o mestre pendia.
-pub(crate) fn remap_object_refs(
+pub fn remap_object_refs(
     world: &mut World,
     entities: &[Entity],
     by_id: &BTreeMap<u64, u64>,

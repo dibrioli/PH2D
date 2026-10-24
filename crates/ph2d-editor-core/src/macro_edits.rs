@@ -65,6 +65,8 @@ pub struct InspectorMacroInfo {
 pub enum FamiliaDaMacro {
     Painter,
     Motion,
+    /// Os componentes, os objectos e «Simular» dentro do objecto Macro (W19).
+    Mundo,
 }
 
 /// O que uma etapa fez — o painel dá-lhe o nome pelo i18n (os tipos de nó e os params chegam pelo
@@ -304,6 +306,12 @@ pub const MACRO_RECUSA_SEM_FAMILIA: &str = "panel.macros.refusal.nothing_to_reco
 pub const MACRO_RECUSA_FORA_DO_OBJETO: &str = "panel.macros.refusal.outside_the_macro";
 /// Gravar no objecto Macro: a imagem (ou o Motion) está dentro de outro objecto dentro dele.
 pub const MACRO_RECUSA_FUNDO_DEMAIS: &str = "panel.macros.refusal.too_deep";
+/// Parar: a família «mundo» não gravou estes componentes (o detalhe nomeia-os) — W19.
+pub const MACRO_MUNDO_NAO_GRAVOU: &str = "panel.macros.refusal.world_not_recorded";
+/// Uma trilha de uma família que este PH2D não conhece (o detalhe é a chave dela) — W19.
+pub const MACRO_FAMILIA_DESCONHECIDA: &str = "panel.macros.error.unknown_family";
+/// Aplicar: a trilha do mundo põe um componente que este PH2D não regista (o detalhe é o nome) — W19.
+pub const MACRO_MUNDO_COMPONENTE_DESCONHECIDO: &str = "panel.macros.error.unknown_component";
 /// Parar sem que nada tenha sido gravado.
 pub const MACRO_RECUSA_NADA_GRAVADO: &str = "panel.macros.refusal.nothing_recorded";
 
@@ -347,6 +355,9 @@ pub const MACRO_POR_CIMA_ESCOLHA: &str = "panel.macros.lib.apply_over_needs_targ
 pub const MACRO_APLICAR_SEM_ALVO: &str = "app.macros.apply.no_target";
 /// O objecto que a macro cria não nasceu (`{detail}`).
 pub const MACRO_APLICAR_NAO_NASCE: &str = "app.macros.apply.not_born";
+/// Uma gravação sem fichas (antes da W18) com mais de uma trilha da mesma família: não diz qual é o
+/// objecto Macro.
+pub const MACRO_APLICAR_SEM_FICHAS_VARIAS: &str = "app.macros.apply.many_without_card";
 /// Por cima de uma imagem de 16 bits: o porquê do aviso de precisão (o documento do Painter é de 8).
 pub const MACRO_APLICAR_OITO_BITS: &str = "app.macros.apply.eight_bit_copy";
 /// Guardou a receita nos assets do projecto (`{detail}` = o nome).

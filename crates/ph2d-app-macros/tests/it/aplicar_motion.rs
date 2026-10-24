@@ -100,6 +100,9 @@ impl Palco {
             pixeis: &mut pixeis,
             e_imagem: &e_imagem,
             centro: [0.0, 0.0],
+            registo: &crate::portas_de_teste::registo(),
+            recurso: &crate::portas_de_teste::sem_recurso,
+            remapeia: &crate::portas_de_teste::remapeia,
         };
         let mut f = Familias {
             painter: None,
@@ -107,7 +110,7 @@ impl Palco {
             motion: &mut self.motion,
             motion_em_edicao: None,
             motion_na_mao: false,
-            etapas: &[],
+            etapas: crate::portas_de_teste::COM_MOTION,
             escolhido: None,
             portas: None,
         };

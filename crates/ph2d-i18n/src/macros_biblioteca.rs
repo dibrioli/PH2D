@@ -34,6 +34,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "app.macros.apply.no_target" => "The object to apply over no longer exists.",
         "app.macros.apply.not_born" => "The macro could not create its object: {detail}",
+        "app.macros.apply.many_without_card" => {
+            "This old macro has more than one part of the same kind and does not say which object each one is \u{2014} it was not applied."
+        }
         "app.macros.apply.eight_bit_copy" => {
             "the macro paints over an 8-bit copy of this 16-bit image (the Painter works in 8 bits)"
         }

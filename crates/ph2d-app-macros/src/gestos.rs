@@ -7,8 +7,7 @@ use crate::biblioteca::{self as bib, Biblioteca};
 use crate::{Cena, Familias, Macros};
 use ph2d_ecs::{Entity, Macro, MasterRoot, Name, SimWorld, Transform};
 use ph2d_editor_core::macro_edits::{
-    self as m, ErroDaMacroView, FamiliaDaMacro, MacroDaBibliotecaView, MacroPanelInfo,
-    MacroRequest, OndeAplicar,
+    self as m, ErroDaMacroView, MacroDaBibliotecaView, MacroPanelInfo, MacroRequest, OndeAplicar,
 };
 use ph2d_editor_core::macro_etapas::erros::{erro, erro_com};
 use ph2d_editor_core::macro_tutorial::TranspoeDaFamilia;
@@ -45,7 +44,7 @@ fn vista(f: &Ficheiro, nome: &str) -> MacroDaBibliotecaView {
         .doc
         .tracks
         .iter()
-        .find(|t| aplicar::familia(t) == FamiliaDaMacro::Painter);
+        .find(|t| t.family == ph2d_tool_painter::macro_track::FAMILIA);
     let tela = painter.and_then(|t| {
         ph2d_tool_painter::macro_track::inicial::tamanho_gravado(&t.initial).or_else(|| {
             ph2d_tool_painter::macro_track::inicial::tool_no_inicial(&t.initial)
@@ -64,7 +63,8 @@ fn vista(f: &Ficheiro, nome: &str) -> MacroDaBibliotecaView {
     let duracao_s = fim as f64 / 1e6;
     MacroDaBibliotecaView {
         nome: nome.to_owned(),
-        familias: f.doc.tracks.iter().map(aplicar::familia).collect(),
+        // As famílias pedem as da composição: o instantâneo do painel preenche-as.
+        familias: Vec::new(),
         duracao_s,
         tela,
     }
@@ -206,9 +206,10 @@ impl Macros {
         nome: &str,
         destino: &Path,
         motion: &dyn TranspoeDaFamilia,
+        outras: crate::etapas::Injectadas<'_>,
     ) -> Result<PathBuf, ErroDaMacroView> {
         let f = self.ficheiro_da_biblioteca(nome)?;
-        let f = aplicar::para_exportar(&f, motion)?;
+        let f = aplicar::para_exportar(&f, motion, outras)?;
         bib::exporta(destino, &f).map_err(|e| do_disco(&e))
     }
 
@@ -252,7 +253,8 @@ impl Macros {
             let r = aplicar::ficheiro_de(c.sim, bits).and_then(|fi| {
                 let por_cima = sobre.filter(|&alvo| {
                     f.portas.as_ref().is_some_and(|p| {
-                        aplicar::compativel(c.sim, p.e_imagem, f.painter.as_deref(), &fi.doc, alvo)
+                        let painter = f.painter.as_deref();
+                        aplicar::compativel(c.sim, p.e_imagem, painter, &fi.doc, alvo, f.etapas)
                             .is_ok()
                     })
                 });
@@ -317,7 +319,7 @@ impl Macros {
                 let Some(destino) = ph2d_app_host::modal::save_file(dialogo) else {
                     return;
                 };
-                self.exporta_para(&nome, &destino, &*f.motion)
+                self.exporta_para(&nome, &destino, &*f.motion, f.etapas)
                     .map(|p| feito(m::MACRO_LIB_EXPORTADA, p.display().to_string()))
             }
             MacroRequest::Importa => {
@@ -354,7 +356,14 @@ impl Macros {
         macro_do_escolhido: Option<u64>,
     ) -> MacroPanelInfo {
         let (b, v) = self.lida();
-        let (biblioteca, biblioteca_ilegiveis) = (v.clone(), b.erros.len());
+        let mut biblioteca = v.clone();
+        for (vi, e) in biblioteca.iter_mut().zip(&b.entradas) {
+            let fams = e.ficheiro.doc.tracks.iter();
+            vi.familias = fams
+                .filter_map(|t| aplicar::familia(t, f.etapas).ok())
+                .collect();
+        }
+        let biblioteca_ilegiveis = b.erros.len();
         let pode_guardar = macro_do_escolhido.is_some_and(|x| {
             sim.world()
                 .get::<Macro>(Entity::from_bits(x))
@@ -389,7 +398,11 @@ impl Macros {
             } else {
                 m::MACRO_POR_CIMA_ESCOLHA
             }),
-            aviso: self.biblioteca.aviso.clone(),
+            aviso: self
+                .biblioteca
+                .aviso
+                .clone()
+                .or_else(|| self.aviso_do_mundo.clone()),
             ..MacroPanelInfo::default()
         }
     }

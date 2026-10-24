@@ -10,6 +10,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.stop" => "\u{25a0} Stop",
         "panel.macros.family.painter" => "the Painter",
         "panel.macros.family.motion" => "the Motion graph",
+        "panel.macros.family.world" => "the objects and their physics",
         "panel.macros.ready" => "Record captures {family}.",
         "panel.macros.recording" => "Recording {family} \u{2014} Stop keeps it on the object.",
         "panel.macros.empty" => {
@@ -50,6 +51,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Put this right inside the Macro (not inside another object in it) to record it."
         }
         "panel.macros.refusal.nothing_recorded" => "Nothing was recorded.",
+        "panel.macros.error.unknown_family" => {
+            "This Macro has a part this version of PH2D does not know ({detail}) \u{2014} it was not applied."
+        }
+        "panel.macros.error.unknown_component" => {
+            "This Macro adds something this version of PH2D does not know ({detail}) \u{2014} it was not applied."
+        }
+        "panel.macros.refusal.world_not_recorded" => {
+            "Recorded, but these stay out of the Macro (they point to things outside it): {detail}"
+        }
         "panel.macros.refusal.nothing_to_record" => {
             "Nothing to record here: paint in Wet Paint, or edit a Motion object."
         }
@@ -115,6 +125,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.lib.detail_canvas" => "{families} \u{b7} {seconds} s \u{b7} {w}\u{d7}{h}",
         "panel.macros.lib.family.painter" => "Painting",
         "panel.macros.lib.family.motion" => "Motion",
+        "panel.macros.lib.family.world" => "Objects",
         // O balão do tutorial «fazer» (W6).
         "panel.macros.tutorial.step" => "Step {n} of {total}",
         "panel.macros.tutorial.before" => "Before you start",

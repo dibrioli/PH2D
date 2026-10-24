@@ -17,7 +17,7 @@ const IMAGEM: u64 = 10;
 const OBJETO: u64 = 20;
 
 /// Sem Motion: a porta de transpor recusa (nenhuma trilha dele aqui).
-struct SemMotion;
+pub(crate) struct SemMotion;
 impl ph2d_editor_core::macro_tutorial::TranspoeDaFamilia for SemMotion {}
 
 pub(crate) fn pasta(nome: &str) -> PathBuf {
@@ -67,23 +67,23 @@ pub(crate) fn grava(b: &mut Banca, de: [f32; 2], para: [f32; 2]) {
     b.quadro();
 }
 
-fn aviso(b: &Banca) -> &'static str {
+pub(crate) fn aviso(b: &Banca) -> &'static str {
     b.m.aviso().map(|a| a.chave).unwrap_or("nenhum")
 }
 
 /// Os píxeis de `doc` pelo caminho do load de um projecto.
-fn composto(doc: ph2d_tool_painter::PaintedDocument) -> (Vec<u8>, u32, u32) {
+pub(crate) fn composto(doc: ph2d_tool_painter::PaintedDocument) -> (Vec<u8>, u32, u32) {
     let mut t = PainterTool::default();
     t.install_document(1, doc);
     t.baked_document_pixels(1).expect("compõe")
 }
 
-fn px(img: &(Vec<u8>, u32, u32), x: u32, y: u32) -> [u8; 4] {
+pub(crate) fn px(img: &(Vec<u8>, u32, u32), x: u32, y: u32) -> [u8; 4] {
     let i = ((y * img.1 + x) * 4) as usize;
     img.0[i..i + 4].try_into().unwrap()
 }
 
-fn macros(b: &mut Banca) -> Vec<u64> {
+pub(crate) fn macros(b: &mut Banca) -> Vec<u64> {
     let w = b.sim.world_mut();
     let mut q = w.query::<(Entity, &Macro)>();
     q.iter(w)
@@ -92,7 +92,7 @@ fn macros(b: &mut Banca) -> Vec<u64> {
         .collect()
 }
 
-fn doc_de(b: &Banca, bits: u64) -> MacroDoc {
+pub(crate) fn doc_de(b: &Banca, bits: u64) -> MacroDoc {
     let m = b.sim.world().get::<Macro>(Entity::from_bits(bits)).unwrap();
     ph2d_macro::codec::read(&m.doc).unwrap()
 }
@@ -107,7 +107,7 @@ fn guardar_exportar_importar_e_aplicar_novo_faz_nascer_a_imagem_do_tamanho_grava
     assert_eq!(aviso(&b), m::MACRO_LIB_GUARDADA);
     let fora = pasta("novo-fora").join("enviada");
     let escrito =
-        b.m.exporta_para("Splash", &fora, &SemMotion)
+        b.m.exporta_para("Splash", &fora, &SemMotion, &[])
             .expect("exporta");
     assert!(escrito.to_string_lossy().ends_with(EXTENSAO));
 
@@ -265,7 +265,7 @@ fn um_ficheiro_que_nao_toca_ate_ao_fim_nao_se_exporta() {
     };
     biblioteca::grava(&lib, "Partida", &f).expect("grava");
     let destino = pasta("estragado-fora").join(format!("x{EXTENSAO}"));
-    let r = b.m.exporta_para("Partida", &destino, &SemMotion);
+    let r = b.m.exporta_para("Partida", &destino, &SemMotion, &[]);
     assert_eq!(r.map_err(|e| e.chave), Err(m::MACRO_LIB_NAO_TOCA));
     assert!(!destino.exists(), "nada se escreveu");
 }
@@ -274,6 +274,7 @@ fn um_ficheiro_que_nao_toca_ate_ao_fim_nao_se_exporta() {
 fn por_cima_misto_recusa() {
     let lib = pasta("misto");
     let (mut b, dono) = banca(64, 64, &lib);
+    b.etapas = crate::portas_de_teste::COM_MOTION;
     grava(&mut b, [10.0, 30.0], [54.0, 30.0]);
     let mut doc = doc_de(&b, dono);
     let mut motion = doc.tracks[0].clone();

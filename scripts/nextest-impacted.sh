@@ -124,6 +124,8 @@ fi
 # de teste um mudado entra, mais os leitores de fonte alheia. O `rdeps()` do nextest segue as
 # dev-arestas em CADEIA e punha a Luz 2D na placa — o caminho crítico do portão — em toda mudança
 # de UI (docs/DevOps/VELOCIDADE_DOS_PORTOES.md). `PH2D_IMPACTO=rdeps` volta ao antigo, para comparar.
+# ⭐ (23/10, §2.5) O leitor de fonte alheia entra pelo FICHEIRO (o módulo dele no binário de teste), não
+# pelo pacote inteiro. `PH2D_IMPACTO=pacote` volta à regra de 13/10 — a régua da medição, sem recompilar.
 # ⛔ A auto-verificação corre ANTES, a cada fecho: um seletor que mudou de sentido falha alto aqui,
 # nunca como um portão verde que não correu o que devia.
 if [ "${PH2D_IMPACTO:-preciso}" = "rdeps" ]; then
@@ -224,6 +226,15 @@ case "${PH2D_SUITE:-}" in
         fi
         echo "[nextest-impacted] cadência: $_feitos commits desde a última suíte verde (≥ $_cada) — corre." ;;
 esac
+# ⛔ CONTROLO: cada filtro de vigia (um ficheiro, não um pacote) casa ≥ 1 teste na lista REAL. Um filtro
+# que casa zero — o módulo mudou de nome, o `mod` saiu — é um portão verde que não correu. A lista usa o
+# mesmo perfil, logo a compilação é a mesma que a corrida a seguir reaproveita.
+if [ "${PH2D_IMPACTO:-preciso}" = "preciso" ]; then
+    # shellcheck disable=SC2086
+    cargo nextest list -E "$EXPR" --cargo-profile ci-test --message-format json \
+        | python3 "$_seletor" --confere - $CHANGED \
+        || { echo "[nextest-impacted] ✗ um filtro de vigia casa ZERO testes (ou a lista falhou)" >&2; exit 2; }
+fi
 cargo nextest run "${FAIL_MODE[@]}" -E "$EXPR" --cargo-profile ci-test "$@"
 _saida=$?
 if [ "$_saida" = 0 ] && [ -n "$_arvore" ]; then

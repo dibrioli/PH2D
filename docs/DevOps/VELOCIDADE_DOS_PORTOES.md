@@ -83,6 +83,51 @@ mesmos argumentos e as mesmas `PH2D_*` já passou ⇒ não corre de novo. O fech
 
 ### 2.4 O `main` só recebe verde (DIRETRIZ §1.5.3, `/pd-integracao` 5, `/pd-linha-fechar` 2)
 
+### 2.5 O leitor de fonte alheia entra pelo FICHEIRO, não pelo pacote (W3, 23/10)
+Em §2.2 bastava UM ficheiro de teste que lesse `crates/` para o pacote INTEIRO entrar em qualquer diff de código:
+19 pacotes, metade dos testes da workspace (a `ph2d-tool-painter` inteira por causa de `tests/it/macro_portas.rs`).
+Agora o `scripts/impacto-preciso.py` selecciona, de cada vigia, só o módulo dele no binário de teste —
+`(binary_id(=P::it) & test(/^(?:a|b::c)::/))`, o caminho derivado dos `mod`/`#[path]` a partir do `src_path` de cada
+alvo do `cargo metadata`, nunca do nome do ficheiro. O pacote só entra INTEIRO pelo grafo (§2.2).
+
+- **Global** = sai da pasta do pacote para o GRUPO (`crates/`, `shells/`, `tools/`) sem nomear um filho, ou escreve
+  `"crates"`/`crates/{x}`. Seguido pelo léxico (comentários fora; `expect("crates/")` é mensagem, não caminho) e
+  pelas cadeias `parent()`/`join("..")` a partir do `CARGO_MANIFEST_DIR`, com `let` e `fn` de um nome.
+  ⚠️ A varredura pode estar NOUTRO ficheiro (`ph2d_app_sync::scan_app_crates(&root.join("crates"))`): por isso
+  não se exige `read_dir` no vigia — a heurística de 13/10 exigia, e perdia estes.
+- **Com alvos** = nomeia `crates/<pacote>/…` (ou `include_str!` de fonte alheia — 177 ficheiros, cegos até aqui):
+  o mesmo filtro, só quando um alvo mudou.
+- Vigia SEM `#[test]` (um ajudante) ⇒ o binário inteiro dele; fora de qualquer binário de teste ⇒ o pacote inteiro
+  (o lado seguro, com AVISO).
+
+Censo (23/10): **279** ficheiros vigia, **102** globais (em 25 pacotes, nenhum deles inteiro). Contra a regra de
+13/10: **26 falsos globais** corrigidos (21 viraram «com alvos», 5 não leem fonte alheia nenhuma, p. ex.
+`ph2d-app-painter/tests/the_watercolor_line_carries_its_divisor.rs` → só `ph2d-tool-painter`), e **15 globais
+verdadeiros que ela não via** (mais 6 ferramentas `tools/*-sync`, binários sem teste: nada a correr) (os `staleness.rs` dos `*-registry-init`, `hr15_no_hardcoded_ui_strings`,
+`censo_wgsl_partilhado`). ⚠️ O `ph2d-render/tests/it/the_pass_aa_is_never_chosen_by_a_text_preference.rs`,
+apontado como falso global, É global: `workspace_sources` faz `read_dir` de `crates/` e `shells/`.
+
+Contagem de testes que CORREM (sem `#[ignore]`; a lista `cargo nextest list` de 23/10 tem 28 396), as cinco redes
+fixas do `nextest-impacted.sh` incluídas nos dois lados — **contagem, não tempo** (o tempo é a rodada da W4):
+
+| diff real | pacotes mudados | hoje (`PH2D_IMPACTO=pacote`): testes · pacotes | novo: testes · pacotes inteiros + ficheiros vigia | saem | entram |
+|---|---|---|---|---|---|
+| Quadro `d10a4ee617` | app-board | 12 461 · 21 | **2 417** · 3 + 89 | 10 050 | 6 |
+| Quadro + i18n `24ef558201` | app-board, i18n | 18 732 · 91 | 16 549 · 85 + 12 | 2 193 | 10 |
+| Luz 2D `7c2d77061d` | app-light2d, light2d-gpu | 12 522 · 22 | **4 363** · 6 + 87 | 8 163 | 4 |
+| Motion `c40898a961` | app-motion | 12 370 · 20 | **3 917** · 3 + 88 | 8 459 | 6 |
+| shell + Painter `a301704a66` | app-painter, host-desktop | 14 545 · 24 | **2 580** · 3 + 114 | 11 982 | 17 |
+
+Prova de cobertura: todo teste que SAI é de pacote fora do grafo E não mora num vigia accionado (0 excepções nos
+cinco); os únicos que saem de ficheiros que a regra de 13/10 chamava globais são os 26 falsos globais acima. Os
+que ENTRAM são vigias que ela não via (`include_str!` da shell em `ph2d-app-code`/`ph2d-skeleton-live`, os
+`staleness.rs`).
+
+Controlos: `--auto-teste` (a cada corrida: o diff do Quadro selecciona os VIGIAS da `ph2d-editor-core` e o
+`macro_portas.rs`, nunca o pacote `ph2d-tool-painter`; um diff na pintura selecciona-a inteira; o censo com piso
+279/102; todo vigia mora num binário de teste) e `--confere` (antes de correr, a `cargo nextest list -E` do mesmo
+filtro: cada filtro de vigia casa ≥ 1 teste — 271/271 na workspace inteira, 89/89 no diff do Quadro).
+
 ## 3. ⛔ Recusas MEDIDAS
 
 | proposta | por que não |
@@ -92,4 +137,5 @@ mesmos argumentos e as mesmas `PH2D_*` já passou ⇒ não corre de novo. O fech
 | cache do gabarito em DISCO entre corridas | um gabarito velho depois de mudar a lei é um oráculo que mente; a chave teria de incluir o código |
 | gabarito por multigrelha | muda o bit; só com prova de veredito por veredito |
 | `__GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1` | o cache cresceria sem tecto; o tecto grande com a limpeza do driver basta |
+| mover os vigias globais para uma crate própria (W3, opção 2) | **adiada, não recusada**: com o filtro por ficheiro (§2.5) o custo deles já é o deles, não o do pacote; mover ~100 gates de 25 crates é código movido entre crates (HOWTO §2: gates partem em espécies mudas) e muda nomes que o `nextest-impacted.sh` e os docs citam. Reabre se a W4 medir que os vigias globais pesam no relógio |
 | comparar com o `junit.xml` do ship de 12/10 | os gates de placa ali (6 s para o `o_oclusor_fino`) correram com o cache do driver ainda a acertar; sozinho em 13/10, cheio, 643 s — régua de placa sem o estado do cache não é base |

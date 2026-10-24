@@ -7,7 +7,8 @@
 
 ## §0 — Superfície de colisão e base
 
-- Base: `972f411a6f` (main de 23/10). HEAD de código: `434f76db45`; o commit deste handoff vem por cima.
+- Base: `972f411a6f` (main de 23/10). HEAD de código: `434f76db45` + `0033539aa6`·`8e1fabdf3d` (só comentário, §3b #1b).
+  Handoff: `27278fa03a` (1.ª escrita); o fecho do §3/§3b vem no commit por cima.
   Intervalo: `git log --oneline 972f411a6f..HEAD` (≈ 33 commits, W17 + W18).
 - Toca **fundacional**: `ph2d-ecs` (`ReataPorIdentidade`, `654dad577f`), `ph2d-macro` (formato, MINOR 3),
   `ph2d-editor-core` (`TranspoeDaFamilia`, `MacroRequest`, `MACRO_*`), `ph2d-i18n` (`macros.rs`,
@@ -69,10 +70,34 @@ W17 (fecho): os 2 defeitos do relato do dono e o 3.º smoke estão no [handoff W
     Ambiente); escada de camadas (dev família→família) → `654dad577f`; `every_stack_of_rows_asks_the_rhythm` →
     `03c7c20976`; `every_pixel_consumer_declares_what_it_costs` → `992a4b0d08`.
   - Os 31 timeouts = **flakes de carga** (loadavg 145–305, ver [FLAKES_DE_CARGA](../../DevOps/FLAKES_DE_CARGA.md)); todos
-    passaram sozinhos. Lista por crate: _a preencher pelo coordenador se quiser o rol exacto_.
+    passaram sozinhos (loadavg 19–305). Por crate: `ph2d-app-components` 1 · Flip 2 · `ph2d-panel-painter-layers` 4 ·
+    `ph2d-tool-painter` 8 · Luz 2D 16.
 - Tectos de LOC: `transpor.rs` 719→305, `caminho.rs` 707→516 (cura por corte, nenhuma isenção). Shell +43 vs teto 189 041.
-- **Provas de mutação: ver §3b (a preencher).**
-- **Suíte final após `654dad577f` (toca `ph2d-ecs`): a preencher.**
+- **Provas de mutação: ver §3b.**
+- **Suíte final após `654dad577f` (toca `ph2d-ecs`)** (`BASE=654dad577f~1`, loadavg ~145–210): **19 945** corridos /
+  **19 938** passaram / **1** falhou / **6** timeouts — **todos flakes de carga, verdes sozinhos** (loadavg 26–44):
+  `ph2d-host-code-scenes a_cena_3_conduzida_passo_a_passo` (`Wait(ListHas("set"))` não chegou em 30 s; sozinho 15 s ✓);
+  timeouts `ph2d-app-components` 1, Flip 2, Luz 2D 2, `ph2d-panel-painter-layers` 1 (os mesmos da lista acima).
+  Depois: `cargo fmt --all --check` ✓ · clippy `--all-targets -D warnings` (`ph2d-ecs`, `ph2d-sprite-screen`,
+  `ph2d-app-macros`, `ph2d-app-motion`, `ph2d-app-painter`, `ph2d-panel-macros`, `ph2d-panel-timeline`,
+  `ph2d-host-desktop`) ✓.
+
+## §3b — Provas de mutação
+
+| # | Onda | Mutação | Resultado |
+|---|---|---|---|
+| 1 | W17 | `largada_de` → sempre `None` | SANGRA |
+| 1b | W17 | tirar `.filter(\|l\| e.fim == l.antes)` de `largada_de` | SOBREVIVE — **2.ª guarda, sem quadro que a veja**: o `paint` chama `envelhece_a_largada` (via `interact::process`) ANTES de ler, com o MESMO snapshot, e ele limpa a largada no quadro em que a edição chega. Filtro mantido (a função vale sozinha); o comentário do teste deixou de afirmar que esta mutação sangra (`0033539aa6`) |
+| 2a / 2b | W17 | `conduz_o_ponteiro` (as duas) | SANGRAM |
+| 3 | W17 | `troca_campos` | SANGRA |
+| 3b | W17 | tirar `stroke_mask` de `campos_do_traco!` | SANGRA — `cada_campo_do_paint_state_e_do_traco_ou_partilhado` vermelho (`tracos_tests.rs:26`, `t ^ p`); reposto, verde |
+| 4 | W17 | `ColorDropAberto` removido | SANGRA |
+| 5 | W18 | `exige "objeto"` | SANGRA |
+| 6a / 6b | W18 | `no_cru` / `e_do_dono` | SANGRAM (cada uma vista por UM teste só) |
+| 7 | W18 | exportar salta o «tocar até ao fim» | SANGRA |
+| 8a / 8b / 8c | W18 | encaixe: escala do pincel, matriz transposta | SANGRAM |
+| 9 | W18 | `dentro_de` | SANGRA |
+| 10 | W18 | `escreve_atomico` (escrita directa) | SOBREVIVE por desenho — só um crash a meio da escrita o mostra |
 
 ## §4 — ABERTO / para o integrador
 

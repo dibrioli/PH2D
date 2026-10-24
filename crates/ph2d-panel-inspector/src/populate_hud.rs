@@ -10,6 +10,15 @@ use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, TextInputState};
 use super::populate::register_button_ids;
 
 pub(crate) fn populate_hud(store: &mut WidgetStore) {
+    // Os grupos dobráveis do cartão (doc CodeEditor 12) — abertos por omissão.
+    for id in [
+        crate::ids::INSP_HUD_CANVAS_GROUP,
+        crate::ids::INSP_HUD_LABEL_GROUP,
+        crate::ids::INSP_HUD_BUTTON_GROUP,
+        crate::ids::INSP_HUD_COUNTER_GROUP,
+    ] {
+        store.mark_collapsible_section(id);
+    }
     register_button_ids(store, &crate::ids::INSP_HUD_FIT);
     register_button_ids(store, &crate::ids::INSP_HUD_SOURCE);
     store.register(

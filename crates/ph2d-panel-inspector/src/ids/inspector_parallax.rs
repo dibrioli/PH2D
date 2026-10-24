@@ -35,3 +35,10 @@ pub const INSP_PARALLAX_MIN_Y: NodeId = hash_node_id("insp_parallax_min_y");
 pub const INSP_PARALLAX_MAX_X: NodeId = hash_node_id("insp_parallax_max_x");
 /// …e o eixo Y.
 pub const INSP_PARALLAX_MAX_Y: NodeId = hash_node_id("insp_parallax_max_y");
+
+/// Os GRUPOS dobráveis do cartão (doc CodeEditor 12): `Parallax Repeat`, a deriva e a borda.
+pub const INSP_PARALLAX_REPEAT_GROUP: NodeId = hash_node_id("insp_parallax_repeat_group");
+/// …o da deriva.
+pub const INSP_PARALLAX_MOTION_GROUP: NodeId = hash_node_id("insp_parallax_motion_group");
+/// …o da borda.
+pub const INSP_PARALLAX_LIMITS_GROUP: NodeId = hash_node_id("insp_parallax_limits_group");

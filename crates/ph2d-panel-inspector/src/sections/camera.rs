@@ -223,15 +223,23 @@ fn follow_body(
         .chain(linhas.iter().map(|t| t.0.tr()))
         .collect();
     let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 2, &nomes);
-    let cur_y = super::rows::subtitulo(
+    let g = super::rows::grupo(
         scene,
         text_system,
         theme,
+        hit_index,
+        store,
         x,
         w,
         y,
+        ids::INSP_CAMERA_FOLLOW_GROUP,
         tr("component.camera_follow.name"),
     );
+    if !g.aberto() {
+        return g.fecha(store, scene, hit_index, y);
+    }
+    let (x, w) = (g.x, g.w);
+    let cur_y = g.y;
     let mut cur_y = super::anim_rows::text_row(
         scene,
         text_system,
@@ -278,7 +286,7 @@ fn follow_body(
             seccao,
         );
     }
-    cur_y
+    g.fecha(store, scene, hit_index, cur_y)
 }
 
 /// O corpo da CERCA. Devolve o `y` seguinte.
@@ -294,15 +302,23 @@ fn limits_body(
     y: f32,
     l: &InspectorCameraLimits,
 ) -> f32 {
-    let mut cur_y = super::rows::subtitulo(
+    let g = super::rows::grupo(
         scene,
         text_system,
         theme,
+        hit_index,
+        store,
         x,
         w,
         y,
+        ids::INSP_CAMERA_LIMITS_GROUP,
         tr("component.camera_limits.name"),
     );
+    if !g.aberto() {
+        return g.fecha(store, scene, hit_index, y);
+    }
+    let (x, w) = (g.x, g.w);
+    let mut cur_y = g.y;
     if l.smaller_than_view {
         cur_y = super::rows::aviso(
             scene,
@@ -352,7 +368,7 @@ fn limits_body(
             seccao,
         );
     }
-    cur_y
+    g.fecha(store, scene, hit_index, cur_y)
 }
 
 /// A máscara de camadas — a mesma grade `4×8` da visibilidade, com ids PRÓPRIOS.

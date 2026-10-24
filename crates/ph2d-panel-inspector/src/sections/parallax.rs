@@ -141,7 +141,7 @@ fn corpo(
     // o prefixo com que um script a lê (`parallax_repeat.repeat`).
     #[allow(clippy::type_complexity)]
     let mut linhas: Vec<(
-        Option<&'static str>,
+        Option<(NodeId, &'static str)>,
         TextKey,
         &[ph2d_a11y::NodeId],
         f64,
@@ -155,7 +155,10 @@ fn corpo(
     )];
     if i.repeat.is_some() {
         linhas.push((
-            Some(tr("component.scroll_repeat.name")),
+            Some((
+                ids::INSP_PARALLAX_REPEAT_GROUP,
+                tr("component.scroll_repeat.name"),
+            )),
             TextKey::new("component.field.repeat_fields.0"),
             &[ids::INSP_PARALLAX_TILE_X, ids::INSP_PARALLAX_TILE_Y][..],
             0.5, // LITERAL-PX-OK: passo em metros
@@ -164,7 +167,10 @@ fn corpo(
     }
     if i.motion.is_some() {
         linhas.push((
-            Some(tr("component.scroll_motion.name")),
+            Some((
+                ids::INSP_PARALLAX_MOTION_GROUP,
+                tr("component.scroll_motion.name"),
+            )),
             TextKey::new("component.field.motion_fields.0"),
             &[ids::INSP_PARALLAX_VEL_X, ids::INSP_PARALLAX_VEL_Y][..],
             0.05, // LITERAL-PX-OK: passo em m/s
@@ -174,7 +180,10 @@ fn corpo(
     }
     if i.limits.is_some() {
         linhas.push((
-            Some(tr("component.scroll_limits.name")),
+            Some((
+                ids::INSP_PARALLAX_LIMITS_GROUP,
+                tr("component.scroll_limits.name"),
+            )),
             TextKey::new("component.field.limits_fields.0"),
             &[ids::INSP_PARALLAX_MIN_X, ids::INSP_PARALLAX_MIN_Y][..],
             0.5, // LITERAL-PX-OK: passo em metros
@@ -193,9 +202,31 @@ fn corpo(
         2,
         &linhas.iter().map(|t| t.1.tr()).collect::<Vec<_>>(),
     );
+    // ⭐ Cada componente extra é um GRUPO dobrável (doc CodeEditor 12); o factor fica sem cabeçalho.
+    let mut aberto: Option<super::rows::Grupo> = None;
+    let (mut gx, mut gw) = (x, w);
     for (n, (dono, label, ids2, step, unit)) in linhas.into_iter().enumerate() {
-        if let Some(dono) = dono {
-            cur_y = super::rows::subtitulo(scene, text_system, theme, x, w, cur_y, dono);
+        if let Some((gid, nome)) = dono {
+            if let Some(g) = aberto.take() {
+                cur_y = g.fecha(store, scene, hit_index, cur_y);
+            }
+            let g = super::rows::grupo(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                cur_y,
+                gid,
+                nome,
+            );
+            (gx, gw, cur_y) = (g.x, g.w, g.y);
+            aberto = Some(g);
+        }
+        if aberto.as_ref().is_some_and(|g| !g.aberto()) {
+            continue;
         }
         cur_y = super::rows::fields_row(
             scene,
@@ -203,8 +234,8 @@ fn corpo(
             theme,
             hit_index,
             store,
-            x,
-            w,
+            gx,
+            gw,
             cur_y,
             label,
             ids2,
@@ -227,6 +258,9 @@ fn corpo(
                 );
             }
         }
+    }
+    if let Some(g) = aberto.take() {
+        cur_y = g.fecha(store, scene, hit_index, cur_y);
     }
     cur_y
 }

@@ -58,3 +58,13 @@ pub const INSP_HUD_DISABLED: NodeId = hash_node_id("insp_hud_disabled");
 
 /// A caixa **Keep on restart** do contador — *«outra vida, mesma pontuação»*.
 pub const INSP_HUD_COUNTER_KEEP: NodeId = hash_node_id("insp_hud_counter_keep");
+
+/// Os GRUPOS dobráveis do cartão (doc CodeEditor 12), um por componente: canvas, rótulo, botão,
+/// contador.
+pub const INSP_HUD_CANVAS_GROUP: NodeId = hash_node_id("insp_hud_canvas_group");
+/// …o do rótulo.
+pub const INSP_HUD_LABEL_GROUP: NodeId = hash_node_id("insp_hud_label_group");
+/// …o do botão.
+pub const INSP_HUD_BUTTON_GROUP: NodeId = hash_node_id("insp_hud_button_group");
+/// …o do contador.
+pub const INSP_HUD_COUNTER_GROUP: NodeId = hash_node_id("insp_hud_counter_group");

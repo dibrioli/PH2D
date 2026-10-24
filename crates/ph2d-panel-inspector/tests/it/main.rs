@@ -57,6 +57,7 @@ mod o_segmentado_do_fit_tem_um_id_por_modo;
 mod o_tutorial_da_navegacao_nomeia_rotulos_que_existem;
 mod o_tutorial_da_vida_nomeia_rotulos_que_existem;
 mod o_tutorial_nomeia_rotulos_que_existem;
+mod os_grupos_dos_cartoes_compostos_dobram;
 mod seam;
 mod seam_anim;
 mod seam_apply_ladder;

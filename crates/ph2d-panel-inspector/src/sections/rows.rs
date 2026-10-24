@@ -426,30 +426,69 @@ pub(crate) fn aviso_em(
     y + alta.max(font) + ph2d_tokens::control_gap_px()
 }
 
-/// O NOME do componente dono das linhas que se seguem, num cartão que junta vários (HUD, paralaxe,
-/// câmera): é o prefixo com que um script as lê (`camera_follow.damping`). Não é um aviso — não
-/// entra no censo deles.
-pub(crate) fn subtitulo(
+/// ⭐ **Um GRUPO dobrável de um cartão composto** (HUD, paralaxe, câmera): o cabeçalho tem o NOME
+/// do componente dono das linhas, que é o prefixo com que um script as lê
+/// (`camera_follow.damping`). Lei e oráculo: `docs/CodeEditor/12_cartoes_compostos.md`.
+///
+/// O chamador pinta o corpo em `x`/`w` (já recuados) a partir de `y`, só se [`Grupo::aberto`], e
+/// devolve o `y` final pelo [`Grupo::fecha`]. ⚠️ O id tem de estar marcado
+/// `mark_collapsible_section` no `populate` — senão o clique no cabeçalho morre.
+pub(crate) struct Grupo {
+    fold: Option<ph2d_editor_core::widget::SectionFold>,
+    pub(crate) x: f32,
+    pub(crate) w: f32,
+    pub(crate) y: f32,
+}
+
+impl Grupo {
+    pub(crate) fn aberto(&self) -> bool {
+        self.fold.is_some()
+    }
+
+    pub(crate) fn fecha(
+        self,
+        store: &WidgetStore,
+        scene: &mut VectorScene,
+        hit_index: &mut HitIndex,
+        cur_y: f32,
+    ) -> f32 {
+        match self.fold {
+            Some(fold) => fold.finish(store, scene, hit_index, cur_y),
+            None => self.y,
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn grupo(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
     x: f32,
     w: f32,
     y: f32,
+    id: NodeId,
     texto: &str,
-) -> f32 {
-    let font = TypeToken::Sm.px();
-    let alta = ph2d_editor_core::paint::paint_text_block(
-        text_system,
-        scene,
-        texto,
-        x,
-        y,
-        font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    y + alta.max(font) + ph2d_tokens::control_gap_px()
+) -> Grupo {
+    use ph2d_editor_core::widget::{SectionHeader, group_header_h, paint_group_header};
+    let header = SectionHeader::new(id, texto)
+        .collapsible(!store.is_collapsed(id))
+        .open_t(store.section_open_live(id));
+    let rect = Rect::new(x, y, w, group_header_h());
+    paint_group_header(&header, rect, scene, text_system, theme);
+    hit_index.register(id, rect);
+    let body_top = y + rect.h + ph2d_tokens::control_gap_px();
+    let recuo = ph2d_tokens::list_indent_px();
+    Grupo {
+        fold: ph2d_editor_core::widget::SectionFold::begin(
+            store, id, x, w, body_top, scene, hit_index,
+        ),
+        x: x + recuo,
+        w: (w - recuo).max(0.0),
+        y: body_top,
+    }
 }
 
 #[cfg(test)]

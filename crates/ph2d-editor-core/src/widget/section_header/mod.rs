@@ -15,6 +15,7 @@
 pub mod body;
 mod fold;
 pub mod grip;
+pub mod grupo;
 use fold::{paint_chevron, plate_color};
 
 use crate::paint::{fill_rounded_rect, paint_text_centered, paint_text_title, resolve};

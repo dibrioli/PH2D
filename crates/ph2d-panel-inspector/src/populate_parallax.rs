@@ -59,4 +59,12 @@ pub(crate) fn populate_parallax(store: &mut WidgetStore) {
         );
         store.set_number_range(id, lo, hi, step);
     }
+    // Os grupos dobráveis do cartão (doc CodeEditor 12) — abertos por omissão.
+    for id in [
+        crate::ids::INSP_PARALLAX_REPEAT_GROUP,
+        crate::ids::INSP_PARALLAX_MOTION_GROUP,
+        crate::ids::INSP_PARALLAX_LIMITS_GROUP,
+    ] {
+        store.mark_collapsible_section(id);
+    }
 }

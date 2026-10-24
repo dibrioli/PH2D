@@ -130,3 +130,8 @@ pub const INSP_CAMERA_CULL_BIT: [NodeId; 32] = [
 
 /// O cabeçalho da sub-secção da máscara — ela nasce RECOLHIDA, como a irmã da visibilidade.
 pub const INSP_CAMERA_CULL_HEADER: NodeId = hash_node_id("insp_camera_cull_header");
+
+/// Os GRUPOS dobráveis do cartão (doc CodeEditor 12): o `Camera Follow` e o `Camera Limits`.
+pub const INSP_CAMERA_FOLLOW_GROUP: NodeId = hash_node_id("insp_camera_follow_group");
+/// …o da cerca.
+pub const INSP_CAMERA_LIMITS_GROUP: NodeId = hash_node_id("insp_camera_limits_group");

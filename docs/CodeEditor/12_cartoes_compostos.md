@@ -1,7 +1,7 @@
 # 12 — Os sub-blocos dos cartões compostos viram GRUPOS dobráveis (plano, 24/10/2026)
 
-> Decisão do dono 24/10, pergunta (c) de 22/10: «busque o padrão-ouro do mercado». **Por fazer** — este doc é
-> o desenho e a receita; a implementação é a próxima janela.
+> Decisão do dono 24/10, pergunta (c) de 22/10: «busque o padrão-ouro do mercado». **Feito em 24/10** (§4);
+> smoke do dono por conduzir.
 
 ## 1. O oráculo (Godot 4.7.2, MIT — corrido)
 
@@ -44,3 +44,29 @@ lembrada como a dos cartões. O nome do grupo continua a ser o do componente —
 `PH2D_GAME_CAMERA_SMOKE=1` (Camera → Game Camera) e `PH2D_PARALLAX_SMOKE=1` (Arvores → Parallax): os grupos
 abrem e fecham, o conteúdo recuado, a dobra lembrada ao trocar de objecto e voltar. Fotografar com
 `ferramentas/olha_cena.sh` antes de mandar.
+
+## 4. O que entrou (24/10)
+
+- **A porta:** `ph2d_editor_core::widget::{paint_group_header, group_header_h}`
+  (`widget/section_header/grupo.rs`) — chevron + `SemiBold` `Sm` `Text1`, altura `Sm + Spacing::Sm` (abaixo da
+  linha), sem placa nem pega. No Inspector, `sections/rows.rs::grupo` → `Grupo { x, w, y }` (já recuados de
+  `list_indent_px()`), `aberto()`, `fecha()` sobre o `SectionFold` de sempre. O `subtitulo` saiu (9 chamadores
+  → `grupo`).
+- **Nove grupos, ids novos:** `INSP_CAMERA_{FOLLOW,LIMITS}_GROUP`, `INSP_PARALLAX_{REPEAT,MOTION,LIMITS}_GROUP`,
+  `INSP_HUD_{CANVAS,LABEL,BUTTON,COUNTER}_GROUP`, marcados `mark_collapsible_section` no `populate_*` do
+  componente; abertos por omissão. A dobra é por id no `WidgetStore` (sobrevive à troca de objecto, como a dos
+  cartões).
+- **O «Cull Mask» estava MORTO — medido e curado no mesmo bloco:** RED pelo despacho do produto (o clique não
+  mudava `is_collapsed`), o id não estava marcado; agora está (`populate_camera.rs`). Varrido o Inspector: era
+  o único cabeçalho pintado sem marca.
+- **Gate:** `tests/it/os_grupos_dos_cartoes_compostos_dobram.rs` (3 testes: câmera + máscara, paralaxe, HUD) —
+  clique pelo despacho → fecha, as linhas saem do índice de acerto, a dobra sobrevive à troca de objecto, outro
+  clique reabre. Mutação «tirar a marca do `FOLLOW_GROUP`» → vermelho.
+- **Fotos** (binário da linha): [`ph2d_depois_camera.png`](ferramentas/oraculo_cartao_composto/ph2d_depois_camera.png)
+  · [dobra e máscara](ferramentas/oraculo_cartao_composto/ph2d_depois_camera_dobra_e_mascara.png) ·
+  [paralaxe](ferramentas/oraculo_cartao_composto/ph2d_depois_paralaxe.png).
+- ⚠️ Os rótulos são alinhados à DIREITA na nossa coluna, logo o recuo não se vê no rótulo (no Godot vê-se, os
+  dele são à esquerda): vê-se no cabeçalho do grupo encostado à borda e nos valores que continuam alinhados com
+  os do corpo principal.
+- Visto de passagem, fora do 12: na grade do «Cull Mask» aberta, os números de dois dígitos (10, 12…) saem
+  elididos «…».

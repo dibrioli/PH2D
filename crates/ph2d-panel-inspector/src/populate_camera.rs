@@ -114,4 +114,14 @@ pub(crate) fn populate_camera(store: &mut WidgetStore) {
     // já fazem por interacção. Reproduzido pela porta do produto em 2026-09-21:
     // `true` → clique → `false` → `populate` → **`true`**.
     store.set_collapsed_if_unchosen(ids::INSP_CAMERA_CULL_HEADER, true);
+    // ⛔ Sem a marca o clique no cabeçalho MORRE (`apply_click` só dobra o que está marcado) — a
+    // máscara viveu assim até 24/10, o gate dela abria-a à mão. Os grupos (doc CodeEditor 12)
+    // nascem abertos.
+    for id in [
+        ids::INSP_CAMERA_CULL_HEADER,
+        ids::INSP_CAMERA_FOLLOW_GROUP,
+        ids::INSP_CAMERA_LIMITS_GROUP,
+    ] {
+        store.mark_collapsible_section(id);
+    }
 }

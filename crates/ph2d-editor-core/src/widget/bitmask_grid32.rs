@@ -1,5 +1,7 @@
-//! [`BitmaskGrid32`] — a 32-bit mask rendered as a 4-column × 8-row
-//! grid of [`Checkbox`](super::checkbox) cells, bit `n` labeled `n+1`.
+//! [`BitmaskGrid32`] — a 32-bit mask rendered as an 8-column × 4-row grid of TILES, bit `n` labeled
+//! `n+1` INSIDE its tile (lit = set). The law is Godot's `EditorPropertyLayers`, run as an oracle
+//! (`docs/CodeEditor/ferramentas/oraculo_grade_de_camadas/`): the number lives in the cell, so no
+//! panel width can elide it.
 //!
 //! Sprite Inspector v2 W6 (spec §15.7, T6.4). Extracted from the inline
 //! grid in the §8 Visibility section so it can be reused by both
@@ -7,15 +9,15 @@
 //! owns geometry (`cell_rects`) + paint + a11y; the consuming section
 //! registers each bit's hit rect and toggles the mask on click.
 
-use super::checkbox::{Checkbox, CheckboxValue, paint_checkbox};
+use crate::paint::{fill_rounded_rect, paint_text_centered_com_orcamento, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::Theme;
+use ph2d_tokens::{ColorToken, Radius, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-/// Columns in the bitmask grid.
-pub const BITMASK_COLS: usize = 4;
+/// Columns in the bitmask grid — eight, so a cell of a 220 px dock (~25 px) still holds «32» whole.
+pub const BITMASK_COLS: usize = 8;
 /// Rows in the bitmask grid (`32 / BITMASK_COLS`).
 pub const BITMASK_ROWS: usize = 32 / BITMASK_COLS;
 
@@ -91,22 +93,38 @@ impl BitmaskGrid32 {
     }
 }
 
-/// ⭐⭐⭐ **A CAIXA DE UMA CÉLULA — e é aqui que se decide que ela NÃO é uma linha de formulário.**
-///
-/// ⛔ A decisão vive numa **função** e não dentro do laço do pintor, pela mesma razão que o
-/// `sheet_grid_overlay::gizmo_box` do Inspector: no fio ela não é alcançável de um teste, e a
-/// mutação que a apaga compila e passa a suíte inteira.
-pub(crate) fn cell_checkbox(grid: &BitmaskGrid32, bit: usize, checked: bool) -> Checkbox {
-    Checkbox::new(grid.bit_ids[bit], format!("{}", bit + 1))
-        .fora_do_formulario()
-        .value(if checked {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        })
+/// ⭐ **O LADRILHO de um bit dentro da célula**: a célula menos o vão que separa os ladrilhos.
+#[must_use]
+pub fn tile_rect(cell: Rect) -> Rect {
+    let vao = ph2d_tokens::control_gap_px() * 0.5;
+    Rect::new(
+        cell.x + vao,
+        cell.y + vao,
+        (cell.w - 2.0 * vao).max(0.0),
+        (cell.h - 2.0 * vao).max(0.0),
+    )
 }
 
-/// Paint the 32 checkbox cells. The caller is responsible for
+/// Quanto do ladrilho o número pode ocupar: a largura dele menos um `Xs` (o texto é CENTRADO, sobra
+/// meio `Xs` de cada lado). ⛔ Não o `label_budget` de um rótulo: ele tira `Md` de cada lado e, num
+/// ladrilho de ~30 px, elidia «20», «23», «24» para «…» (foto do 24/10).
+#[must_use]
+pub fn tile_budget(tile: Rect) -> f32 {
+    (tile.w - ph2d_tokens::Spacing::Xs.px()).max(0.0)
+}
+
+/// As tintas de um ladrilho: `(fundo, número)`. Ligado = o acento; desligado = escuro com o número
+/// apagado; a grelha inteira desactivada = tudo apagado.
+#[must_use]
+pub fn tile_tokens(enabled: bool, set: bool) -> (ColorToken, ColorToken) {
+    match (enabled, set) {
+        (false, _) => (ColorToken::Bg2, ColorToken::TextDisabled),
+        (true, true) => (ColorToken::Accent, ColorToken::AccentFg),
+        (true, false) => (ColorToken::Bg3, ColorToken::Text3),
+    }
+}
+
+/// Paint the 32 tiles. The caller is responsible for
 /// registering each cell's hit rect (via [`BitmaskGrid32::cell_rect`])
 /// so clicks toggle the bit.
 #[allow(clippy::too_many_arguments)]
@@ -123,31 +141,21 @@ pub fn paint_bitmask_grid32(
     // ⭐ **As 32 células são UM controlo** (uma máscara), e era esta grelha que sozinha punha
     //    `32` comandos na dívida do Inspector — ver [`crate::widget::composto`].
     crate::widget::composto::grupo(grid.bit_ids);
+    let fonte = TypeToken::Sm.px();
+    let raio = crate::paint::frame_radius(theme, Radius::Xs.px());
     for bit in 0..32usize {
-        let rect = BitmaskGrid32::cell_rect(origin_x, origin_y, w, cell_h, bit);
-        let checked = grid.enabled && grid.is_set(bit);
-        // ⛔⛔⛔ **UMA CÉLULA DESTA GRELHA NÃO É UMA LINHA DE PROPRIEDADE** — e desde que a marca
-        // ganhou CAIXA (2026-09-15, spec §6-quinquies) tratá-la como tal APAGA os 32 números.
-        //
-        // Medido em 2026-09-15, com a `Seccao` de omissão («sou uma linha de formulário»):
-        //
-        // | painel | célula (`linha / 4`) | coluna do NOME | a caixa |
-        // |---|---|---|---|
-        // | `220` | `43,00` | **`0,00`** ⛔ | `21,00` |
-        // | `273,3` | `56,32` | **`0,00`** ⛔ | `34,32` |
-        // | `304` | `64,00` | **`0,00`** ⛔ | `42,00` |
-        //
-        // ⇒ *nenhum dos 32 números era pintado*, e a caixa ficava abaixo dos `52,9 px` que a marca
-        // mais a palavra *On* pedem — a `Cull Mask` da câmera e a `Layer` da visibilidade ficavam
-        // 32 caixas iguais e mudas. A causa é a mesma do par emparelhado: **o piso do campo
-        // ([`super::NUMBER_INPUT_MIN_W_PX`] = `72`) não cabe num quarto de linha**, e quem paga é
-        // o nome.
-        //
-        // ⚠️ **A cura não é encolher a caixa: é dizer o que esta coisa é.** Uma célula de grelha
-        // não tem coluna de nome porque não tem secção — o número É a etiqueta dela, ao lado da
-        // marca, como num mapa de bits.
-        let cb = cell_checkbox(grid, bit, checked);
-        paint_checkbox(&cb, rect, scene, text_system, theme);
+        let tile = tile_rect(BitmaskGrid32::cell_rect(origin_x, origin_y, w, cell_h, bit));
+        let (fundo, tinta) = tile_tokens(grid.enabled, grid.is_set(bit));
+        fill_rounded_rect(scene, tile, raio, resolve(fundo, theme));
+        paint_text_centered_com_orcamento(
+            text_system,
+            scene,
+            &(bit + 1).to_string(),
+            tile,
+            tile_budget(tile),
+            fonte,
+            resolve(tinta, theme),
+        );
     }
 }
 
@@ -163,35 +171,51 @@ mod tests {
         BitmaskGrid32::new(NodeId(1), "Visibility Layer", ids(), 0b1011)
     }
 
-    /// ⭐⭐⭐ **UMA CÉLULA DESTA GRELHA NÃO É UMA LINHA DE FORMULÁRIO — e isto é uma REGRESSÃO
-    /// medida, não uma preferência.**
+    /// ⭐⭐ **Todo número cabe INTEIRO no seu ladrilho, em toda largura de painel** — o report do dono
+    /// de 24/10 (a grade do «Cull Mask» sem um único número) e a foto do dia seguinte, em que o
+    /// orçamento de RÓTULO ainda elidia «20», «23», «24» num ladrilho de ~30 px. A varredura é da
+    /// linha útil de um dock de 196 px até 600 px, em passos de ¼ px: um defeito de fronteira não se
+    /// apanha amostrando seis larguras.
     ///
-    /// Com a `Seccao` de omissão, uma célula de `43`–`64 px` recebe coluna de nome **`0,00`** em
-    /// todo o curso do dock: os 32 números deixam de ser pintados. A tabela e o mecanismo estão no
-    /// corpo da [`paint_bitmask_grid32`].
-    ///
-    /// **Mutação que deve sangrar:** tirar o `.fora_do_formulario()` da [`cell_checkbox`].
+    /// **Mutações que devem sangrar:** `tile_budget` = `label_budget(tile.w)` · `BITMASK_COLS = 16`.
     #[test]
-    fn uma_celula_nao_e_uma_linha_de_formulario() {
-        let g = fixture();
-        for bit in [0usize, 11, 31] {
-            let cb = cell_checkbox(&g, bit, g.is_set(bit));
-            assert!(
-                cb.seccao.is_none(),
-                "a celula do bit {bit} declarou-se linha de formulario — os 32 numeros somem"
-            );
+    fn todo_numero_cabe_inteiro_no_seu_ladrilho() {
+        let mut ts = TextSystem::without_system_fonts();
+        let fonte = TypeToken::Sm.px();
+        let mut linha = 196.0_f32; // LITERAL-PX-OK: a linha útil do dock mais estreito (220 px)
+        while linha <= 600.0 {
+            let tile = tile_rect(Rect::new(
+                0.0,
+                0.0,
+                linha / BITMASK_COLS as f32,
+                ph2d_tokens::ROW_H_PX,
+            ));
+            for n in 1..=32 {
+                let texto = n.to_string();
+                let mostrado = crate::text_elide::fit(&mut ts, &texto, fonte, tile_budget(tile));
+                let largura = ts.prefix_width(&texto, fonte);
+                assert!(
+                    mostrado == texto && largura <= tile.w,
+                    "linha {linha}: o bit {n} sai «{mostrado}» ({largura:.1} px) num ladrilho de \
+                     {:.1} px",
+                    tile.w
+                );
+            }
+            linha += 0.25;
         }
     }
 
-    // ⭐⭐ **O CONTROLO da isenção acima vive em `tests/it/`**, e não aqui: ele chama a
-    //    `property_row`, e o `architecture_the_foundation_modules_form_a_dag` conta um
-    //    `#[cfg(test)]` como aresta a sério (*«os testes contam»*, está escrito lá).
-    //    ⇒ `a_linha_de_marcar_poe_o_nome_na_coluna_do_nome::e_a_razao_e_que_num_quarto_de_linha_nao_sobra_coluna`.
+    /// Ligado e desligado NUNCA têm o mesmo fundo — a única pista de estado que o ladrilho tem.
+    #[test]
+    fn ligado_e_desligado_lem_se_diferentes() {
+        assert_ne!(tile_tokens(true, true).0, tile_tokens(true, false).0);
+        assert_ne!(tile_tokens(true, true).1, tile_tokens(true, false).1);
+    }
 
     #[test]
-    fn dimensions_are_4x8() {
-        assert_eq!(BITMASK_COLS, 4);
-        assert_eq!(BITMASK_ROWS, 8);
+    fn dimensions_are_8x4() {
+        assert_eq!(BITMASK_COLS, 8);
+        assert_eq!(BITMASK_ROWS, 4);
         assert_eq!(BITMASK_COLS * BITMASK_ROWS, 32);
     }
 
@@ -207,21 +231,21 @@ mod tests {
 
     #[test]
     fn cell_rect_grid_layout() {
-        // bit 0 → (col 0, row 0); bit 4 → (col 0, row 1); bit 5 → (col 1, row 1).
+        // bit 0 → (col 0, row 0); bit 8 → (col 0, row 1); bit 9 → (col 1, row 1).
         let r0 = BitmaskGrid32::cell_rect(0.0, 0.0, 400.0, 24.0, 0);
-        let r4 = BitmaskGrid32::cell_rect(0.0, 0.0, 400.0, 24.0, 4);
-        let r5 = BitmaskGrid32::cell_rect(0.0, 0.0, 400.0, 24.0, 5);
+        let r8 = BitmaskGrid32::cell_rect(0.0, 0.0, 400.0, 24.0, 8);
+        let r9 = BitmaskGrid32::cell_rect(0.0, 0.0, 400.0, 24.0, 9);
         assert_eq!(r0.x, 0.0);
         assert_eq!(r0.y, 0.0);
-        assert_eq!(r4.x, 0.0);
-        assert_eq!(r4.y, 24.0);
-        assert_eq!(r5.x, 100.0);
-        assert_eq!(r5.y, 24.0);
+        assert_eq!(r8.x, 0.0);
+        assert_eq!(r8.y, 24.0);
+        assert_eq!(r9.x, 50.0);
+        assert_eq!(r9.y, 24.0);
     }
 
     #[test]
-    fn grid_height_is_eight_rows() {
-        assert_eq!(BitmaskGrid32::grid_height(24.0), 24.0 * 8.0);
+    fn grid_height_is_four_rows() {
+        assert_eq!(BitmaskGrid32::grid_height(24.0), 24.0 * 4.0);
     }
 
     #[test]

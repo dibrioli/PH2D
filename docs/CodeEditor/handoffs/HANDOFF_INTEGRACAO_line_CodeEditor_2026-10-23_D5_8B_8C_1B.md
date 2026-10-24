@@ -115,4 +115,5 @@ Fotos da corrida conduzida: `docs/CodeEditor/ferramentas/conduz_inspector/foto_0
 ## 10. ABERTO
 
 - Um `ph2d.object("X")` no topo, fora de `ph2d.property`, devolve a tabela-marca em silêncio e só falha ao ser usado. É candidato a lint no editor.
-- Uma aba recarregada por fora com texto partido mostra a última lista boa do texto anterior (§7, a lei do Godot). Se o dono preferir a lista da cena, a cura é esquecer o rascunho no `follow_library`.
+- ~~Aba recarregada por fora com texto partido~~ — **decisão do dono 24/10: fica assim** (a última lista boa, a lei
+  do Godot). Não «cure».

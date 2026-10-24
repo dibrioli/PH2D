@@ -128,6 +128,20 @@ impl<R: ?Sized> Default for Atuais<'_, R> {
     }
 }
 
+impl<'a, R: ?Sized> Atuais<'a, R> {
+    /// O Painter do registo (se lá estiver) e o leitor da sprite — a composição da shell.
+    #[expect(clippy::type_complexity, reason = "o fecho da shell")]
+    pub fn de(
+        tools: &'a mut ph2d_editor_core::ToolRegistry,
+        le: &'a mut dyn FnMut(u64, &mut R) -> Option<(Vec<u8>, u32, u32)>,
+    ) -> Self {
+        Self {
+            painter: crate::painter_bridge_queries::o_painter(tools).map(|t| &*t),
+            le_sprite: Some(le),
+        }
+    }
+}
+
 /// De onde a imagem atual de um palco foi lida.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Fonte {

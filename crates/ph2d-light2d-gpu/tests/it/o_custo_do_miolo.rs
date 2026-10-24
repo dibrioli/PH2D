@@ -336,3 +336,134 @@ fn saltar_o_fora_do_miolo_nao_muda_um_bit() {
     assert!(dc > 0, "controlo: um V-ciclo a menos não mudou a fluência — a régua não vê o miolo");
     assert_eq!(d, 0, "saltar o fora do miolo mudou {d} texels da fluência");
 }
+
+/// O quadro `k` da cena a mexer: o disco opaco anda (passo fracionário de texel) e some no quadro 3; um
+/// quadrado translúcido (`opacidade` 0,45) e um corpo de opacidade 0,8 entram e saem; a lâmpada anda.
+fn cena_a_mexer(k: usize) -> CenaDeLuz {
+    let c = [
+        (f64::from(LARGURA) * 0.5 * TEXEL_M) as f32,
+        (f64::from(ALTURA) * 0.5 * TEXEL_M) as f32,
+    ];
+    let t = k as f32;
+    let mut oclusores = Vec::new();
+    if k != 3 {
+        oclusores.push(oclusor(
+            regular([c[0] - 0.6 + 0.2371 * t, c[1] + 0.05 * t], 0.7, 96, 0.1),
+            1.0,
+        ));
+    }
+    if k % 2 == 0 {
+        oclusores.push(oclusor(regular([c[0] + 1.1, c[1] - 0.5], 0.45, 4, 0.3 + 0.1 * t), 0.45));
+    }
+    if k >= 2 {
+        oclusores.push(oclusor(
+            regular([c[0] + 0.3 - 0.113 * t, c[1] + 0.9], 0.35, 7, 0.0),
+            0.8,
+        ));
+    }
+    CenaDeLuz {
+        emissores: vec![disco(
+            [c[0] - 1.6 + 0.031 * t, c[1] + 0.4],
+            0.15,
+            [1.0; 3],
+            f32::INFINITY,
+        )],
+        oclusores,
+        luzes: 1,
+        ..Default::default()
+    }
+}
+
+/// A região fina do quadro `k`: muda a cada quadro (a da janela que anda e muda de tamanho).
+fn regiao_a_mexer(k: usize) -> ([u32; 2], [u32; 2]) {
+    let d = 37 * k as u32;
+    match k % 3 {
+        0 => ([LARGURA / 4, ALTURA / 4], [LARGURA * 3 / 4, ALTURA * 3 / 4]),
+        1 => ([LARGURA / 5 + d, ALTURA / 6], [LARGURA * 3 / 5 + d, ALTURA * 2 / 3 + d / 2]),
+        _ => ([LARGURA / 3 - d / 2, ALTURA / 3], [LARGURA * 5 / 6, ALTURA * 5 / 6]),
+    }
+}
+
+/// ⭐⭐ **GATE (item 4) — saltar o fora não muda um bit com a cena a MEXER**: o texel saltado guarda o
+/// valor antigo, e o caso que o salto torna diferente é o texel que passa de dentro a fora a dentro.
+/// Oito quadros de [`cena_a_mexer`] e [`regiao_a_mexer`] (oclusor que anda, some e volta; translúcido;
+/// três corpos; a região fina a mudar), dois Solvers lado a lado (`salta_o_fora` true × false), a
+/// fluência bit a bit em CADA quadro, em quatro configs: a de fábrica, a base fora do grupo com e sem
+/// bloco (os `miolo_inicia`/`miolo_erro_inicia` despachados) e a base no grupo sem bloco. Controlo: um
+/// V-ciclo a menos, a mesma sequência, muda a fluência.
+#[test]
+fn saltar_o_fora_nao_muda_um_bit_com_a_cena_a_mexer() {
+    let Some(gpu) = gpu() else { return };
+    let info = gpu.adapter.get_info();
+    eprintln!("adaptador: {} ({:?})", info.name, info.backend);
+    const QUADROS: usize = 8;
+    let novo = |base: bool, bloco: u32, salta: bool, menos_um: bool| {
+        let cfg = *solver(&gpu, base, false, bloco).config();
+        let m = cfg.miolo.expect("o miolo");
+        Solver::novo(
+            &gpu,
+            Config {
+                miolo: Some(Miolo {
+                    salta_o_fora: salta,
+                    ciclos: m.ciclos - u32::from(menos_um),
+                    ..m
+                }),
+                ..cfg
+            },
+        )
+        .expect("solver")
+    };
+    let dif = |a: &[[f32; 3]], b: &[[f32; 3]]| {
+        a.iter()
+            .zip(b)
+            .filter(|(x, y)| x.map(f32::to_bits) != y.map(f32::to_bits))
+            .count()
+    };
+    // (rótulo, base_no_grupo, bloco)
+    let configs = [
+        ("fábrica", true, MIOLO_PADRAO.bloco),
+        ("base fora, bloco de fábrica", false, MIOLO_PADRAO.bloco),
+        ("base fora, bloco 1 (CORTES=0)", false, 1),
+        ("base no grupo, bloco 1", true, 1),
+    ];
+    let mut controlo_total = 0;
+    let mut reprovados = Vec::new();
+    for (rotulo, base, bloco) in configs {
+        let mut s = [novo(base, bloco, true, false), novo(base, bloco, false, false)];
+        let mut ctl = (rotulo == "fábrica").then(|| novo(base, bloco, false, true));
+        let mut por_quadro = Vec::with_capacity(QUADROS);
+        for k in 0..QUADROS {
+            let (c, (i, f)) = (cena_a_mexer(k), regiao_a_mexer(k));
+            for x in s.iter_mut().chain(ctl.as_mut()) {
+                x.regiao_fina(i, f);
+                x.quadro(&gpu, &c);
+            }
+            let (produto, antes) = (
+                crate::comum::ler_fluencia(&gpu, &s[0]),
+                crate::comum::ler_fluencia(&gpu, &s[1]),
+            );
+            if let Some(x) = &ctl {
+                controlo_total += dif(&crate::comum::ler_fluencia(&gpu, x), &antes);
+            }
+            let d = dif(&produto, &antes);
+            por_quadro.push(d);
+        }
+        eprintln!("[{rotulo}] texels diferentes por quadro: {por_quadro:?}");
+        reprovados.extend(
+            por_quadro
+                .iter()
+                .enumerate()
+                .filter(|(_, d)| **d > 0)
+                .map(|(k, d)| format!("[{rotulo}] quadro {k}: {d}")),
+        );
+    }
+    assert!(
+        reprovados.is_empty(),
+        "saltar o fora mudou texels da fluência: {reprovados:?}"
+    );
+    eprintln!("controlo (um V-ciclo a menos, fábrica, soma dos {QUADROS} quadros): {controlo_total}");
+    assert!(
+        controlo_total > 0,
+        "controlo: um V-ciclo a menos não mudou a fluência — a régua não vê o miolo"
+    );
+}

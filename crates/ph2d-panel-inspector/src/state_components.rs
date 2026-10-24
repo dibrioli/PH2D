@@ -438,6 +438,29 @@ pub(crate) fn current_inspector_script() -> Option<InspectorScriptInfo> {
     CURRENT_INSPECTOR_SCRIPT.with(|c| c.borrow().clone())
 }
 
+/// ⭐ **O campo de uma propriedade de OBJECTO do script** sob o rato (8c do CodeEditor): o objecto
+/// do cartão e a linha — um objecto da Hierarquia largado ali passa a ser o valor.
+#[must_use]
+pub fn script_object_slot_pick(id: ph2d_a11y::NodeId) -> Option<(u64, u16)> {
+    let i = crate::ids::INSP_SCRIPT_TEXT.iter().position(|&x| x == id)?;
+    let info = current_inspector_script()?;
+    let p = info.props.get(i)?;
+    let objecto = matches!(
+        p.value,
+        ph2d_editor_core::script_edits::InspectorScriptValue::Object(_)
+    );
+    Some((info.entity_bits, u16::try_from(i).ok()?)).filter(|_| objecto)
+}
+
+/// O nome da propriedade na linha `row` do cartão Script do objecto `entity_bits`.
+#[must_use]
+pub fn script_prop_name(entity_bits: u64, row: u16) -> Option<String> {
+    let info = current_inspector_script()?;
+    (info.entity_bits == entity_bits)
+        .then(|| info.props.get(usize::from(row)).map(|p| p.name.clone()))
+        .flatten()
+}
+
 pub fn set_current_inspector_camera(info: Option<InspectorCameraInfo>) {
     CURRENT_INSPECTOR_CAMERA.with(|c| *c.borrow_mut() = info);
 }

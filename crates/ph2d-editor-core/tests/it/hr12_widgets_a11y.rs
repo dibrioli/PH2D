@@ -40,6 +40,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
     (
+        "property_box/arrasto.rs",
+        "a gravacao das areas dos rotulos (CodeEditor 8b) para o arrasto achar a linha sob o rato; nao pinta nem emite no' — a a11y da linha e' a do `property_box` (`mod.rs`), que ela so' observa.",
+    ),
+    (
         "showcase/notes_text.rs",
         "a lei da QUEBRA de linha e os pintores de TEXTO de uma nota (recebem valores, nao o store); o no' de cada caixa e' registado pelo `paint_one_note`, no irmao `notes.rs`.",
     ),

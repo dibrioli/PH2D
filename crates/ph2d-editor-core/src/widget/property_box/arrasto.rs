@@ -144,7 +144,10 @@ mod tests {
         linha(Rect::new(-20.0, 10.0, 60.0, 14.0), "CentroDentro");
         // Canto (90, 40) dentro, centro (140, 47) fora.
         linha(Rect::new(90.0, 40.0, 100.0, 14.0), "CantoDentro");
-        assert_eq!(sob(10.0, 17.0).expect("centro dentro").texto, "CentroDentro");
+        assert_eq!(
+            sob(10.0, 17.0).expect("centro dentro").texto,
+            "CentroDentro"
+        );
         assert_eq!(sob(95.0, 45.0), None, "só o canto está no clip: não grava");
     }
 

@@ -213,6 +213,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.script.script" => "Script",
         "panel.inspector.script.script_name_u" => "script name\u{2026}",
         "panel.inspector.script.object_drop" => "drop an object\u{2026}",
+        "panel.inspector.script.object_value" => "object(\u{201c}{name}\u{201d})",
         "panel.inspector.script.choose_a_project_script_u" => "Choose a project script\u{2026}",
         "panel.inspector.script.no_scripts_in_the_project" => "No scripts in this project yet",
         "panel.inspector.script.browse" => "Browse",

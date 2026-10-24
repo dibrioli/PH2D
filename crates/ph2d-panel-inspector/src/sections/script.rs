@@ -53,7 +53,9 @@ fn legivel(v: &InspectorScriptValue) -> String {
         InspectorScriptValue::Color([r, g, b, a]) => {
             format!("color({}, {}, {}, {})", n(*r), n(*g), n(*b), n(*a))
         }
-        InspectorScriptValue::Object(o) => format!("object(\u{201c}{o}\u{201d})"),
+        InspectorScriptValue::Object(o) => {
+            ph2d_i18n::tr_with("panel.inspector.script.object_value", &[("name", o)])
+        }
     }
 }
 

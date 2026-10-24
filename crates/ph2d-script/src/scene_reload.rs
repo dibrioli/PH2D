@@ -118,6 +118,16 @@ impl SceneScripts {
             .is_some_and(|s| matches!(s.info, ScriptInfo::Broken(_)) && s.module.is_some())
     }
 
+    /// ⭐ As declarações da versão que os objectos CORREM — a do texto actual, ou a anterior boa
+    /// quando o actual foi recusado (o Inspector do Godot mostra a última válida, oráculo 1b).
+    #[must_use]
+    pub fn decls_in_use(&self, id: ScriptId) -> Option<&[crate::props::PropDecl]> {
+        self.slots
+            .get(&id)
+            .and_then(|s| s.module.as_ref())
+            .map(|m| m.decls.as_slice())
+    }
+
     /// Recarrega `id` no próximo `sync` mesmo com o texto igual (o editor que grava sem mudar
     /// nada ainda mostra o selo). Sem efeito num script que nenhum objecto aponta.
     pub fn request_reload(&mut self, id: ScriptId) {

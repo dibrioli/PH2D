@@ -41,8 +41,12 @@ impl CodeDocs {
                 } else {
                     IDLE_NS
                 };
-                // A 1.ª vez (aba aberta agora) colhe já; uma revisão nova espera a pausa.
-                let due = d.draft.harvested.is_none() || now >= since.saturating_add(idle);
+                // A 1.ª vez (aba aberta agora) e o texto SALVO (o Ctrl+S, o renomear que grava)
+                // colhem já: senão a lista velha da aba taparia a da cena recarregada. Uma revisão
+                // por salvar espera a pausa.
+                let due = d.draft.harvested.is_none()
+                    || !d.buffer.is_dirty()
+                    || now >= since.saturating_add(idle);
                 if d.draft.harvested == Some(rev) || !due {
                     continue;
                 }
@@ -143,6 +147,15 @@ mod tests {
             nomes(&w, id),
             Some(vec!["vida".into(), "escudo".into()]),
             "curado: 0,5 s, a pausa de quem tinha erro à vista"
+        );
+
+        escreve(&mut docs, "ph2d.property(\"altura\", 1)\n");
+        docs.docs[0].buffer.mark_saved();
+        em(&mut docs, &mut w, 9 * S);
+        assert_eq!(
+            nomes(&w, id),
+            Some(vec!["altura".into()]),
+            "salvo: colhe no mesmo quadro (a cena recarrega já)"
         );
 
         docs.docs.clear();

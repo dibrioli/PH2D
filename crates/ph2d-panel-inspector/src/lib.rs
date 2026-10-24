@@ -277,10 +277,8 @@ pub use state::{
     set_current_inspector_tags, set_current_inspector_transform, set_current_inspector_visibility,
     set_current_inspector_visibility_section, set_current_inspector_wheel, set_current_tag_tree,
 };
-pub use state::{
-    probe_current_instance, probe_current_properties, script_object_slot_pick, script_prop_name,
-    texture_slot_pick,
-};
+pub use state::{probe_current_instance, probe_current_properties, texture_slot_pick};
+pub use state_components::{script_object_slot_pick, script_prop_name};
 /// ⭐ As portas dos instantâneos das secções da fila do TOP-20 — ver o cabeçalho do módulo irmão.
 pub use state_components::{
     set_current_inspector_action, set_current_inspector_action_trigger,

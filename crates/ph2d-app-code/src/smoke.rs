@@ -47,7 +47,8 @@ mod tests {
         assert_eq!(armed_level_in(com("6")), Some(6));
         assert_eq!(armed_level_in(com("7")), Some(7));
         assert_eq!(armed_level_in(com("8")), Some(8));
-        assert_eq!(armed_level_in(com("9")), None);
+        assert_eq!(armed_level_in(com("9")), Some(9));
+        assert_eq!(armed_level_in(com("10")), None);
         assert_eq!(armed_level_in(com("x")), None);
         assert_eq!(armed_level_in(|_| None), None);
     }

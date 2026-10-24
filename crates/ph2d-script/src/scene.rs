@@ -316,16 +316,6 @@ impl SceneScripts {
         self.slots.get(&id).map(|s| &s.info)
     }
 
-    /// ⭐ As declarações da versão que os objectos CORREM — a do texto actual, ou a anterior boa
-    /// quando o actual foi recusado (o Inspector do Godot mostra a última válida, oráculo 1b).
-    #[must_use]
-    pub fn decls_in_use(&self, id: ScriptId) -> Option<&[PropDecl]> {
-        self.slots
-            .get(&id)
-            .and_then(|s| s.module.as_ref())
-            .map(|m| m.decls.as_slice())
-    }
-
     /// Porque o objecto parou de correr o script, se parou.
     #[must_use]
     pub fn failure(&self, entity: Entity) -> Option<&ScriptDiagnostic> {

@@ -286,7 +286,7 @@ fn mexer(sim: &mut SimWorld, m: &Montada, ida: bool) {
     }
 }
 
-/// «Nome N×Mch» por grupo de canais, como a dope-sheet os junta.
+/// «Nome N×canais» por grupo de canais, como a dope-sheet os junta.
 fn trilhas(tl: &TimelineState, bits: u64) -> String {
     let mut por: std::collections::BTreeMap<String, (usize, usize)> = Default::default();
     for b in tl.doc.bindings().iter().filter(|b| b.entity == bits) {

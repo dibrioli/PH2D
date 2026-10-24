@@ -352,9 +352,10 @@ fn duas_pinceladas_que_se_cruzam_ao_mesmo_tempo_nao_se_apagam() {
         let (apagados, pintados) = apagados_fora_do_centro(&fim, &serie, &ini, 16);
         eprintln!("{meio:?}: {apagados} de {pintados} pintados voltaram ao papel");
         assert!(pintados > 1_000, "controlo: as duas pintam");
-        // A borda da água do Wet Paint espalha-se outra com outro relógio (13 de 5 947 medidos); um
-        // retângulo apagado são centenas.
-        let tecto = if meio == PaintMedia::WetPaint {
+        // A borda da água espalha-se outra com outro relógio: Wet Paint 13 de 5 947 medidos; Aquarela 3 de
+        // 5 454 (24/10, com os números do painel do dono) — texels a 1–2 níveis do papel (254/253), a cauda
+        // do aro, que arredonda para o papel num percurso e não no outro. Um retângulo apagado são centenas.
+        let tecto = if matches!(meio, PaintMedia::WetPaint | PaintMedia::Watercolor) {
             pintados / 100
         } else {
             0

@@ -53,7 +53,8 @@ impl crate::App {
         // ⭐ **O IMPACTO ouve os golpes deste dispatch** (plano 28, W5): a pausa pedida e os números
         // que nascem. Depois do dispatch, que é quem os produz.
         health_bars.impacto.ouve(sim, physics.health_events());
-        let corrida = simulate_physics.then(|| (de, physics.last_stepped()));
+        let corrida =
+            (simulate_physics && self.playhead.is_playing()).then(|| (de, physics.last_stepped()));
         ph2d_app_macros::com(|m| m.fisica_correu(sim, corrida, &self.player_tape));
         // ⭐⭐ **Os projécteis cujo voo ACABOU** (TOP-20 #14) — o readout que o Inspector lê para
         // dizer *«o voo acabou»*. ⚠️ **Reescrito**, nunca acumulado.

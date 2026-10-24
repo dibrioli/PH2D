@@ -139,6 +139,7 @@ pub(crate) fn aplica(
         let raiz = nasce(&lida, d, sim, portas, nascidos, &mut r)?;
         let mut t = transpoe(&doc.tracks[k], lida, &mut r)?;
         t.target = raiz;
+        super::palco_fisica::fim_no_destino(&t, sim, portas.registo, Entity::from_bits(d.raiz));
         doc.tracks[k] = t;
     }
     Ok(())

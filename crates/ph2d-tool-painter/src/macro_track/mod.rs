@@ -79,6 +79,8 @@ pub struct Gravacao {
     fita: FitaPartilhada,
     /// O quadro de referência (o tamanho da tela ao armar).
     pub(crate) referencia: (f64, f64),
+    /// O documento ligado ao armar (o que se grava).
+    doc: Option<u64>,
 }
 
 impl PainterTool {
@@ -109,6 +111,7 @@ impl PainterTool {
             fundo: 0,
             fita: f,
             referencia: (f64::from(w), f64::from(h)),
+            doc: self.bound_document(),
         }));
         Ok((estado, (w, h)))
     }
@@ -177,6 +180,20 @@ impl PainterTool {
     pub(crate) fn macro_sai(&mut self) {
         if let Some(g) = self.macro_gravacao.as_mut() {
             g.fundo = g.fundo.saturating_sub(1);
+        }
+    }
+
+    /// A gravar, `entity` é o documento que se grava.
+    pub(crate) fn macro_e_o_documento(&self, entity: u64) -> bool {
+        self.macro_gravacao
+            .as_ref()
+            .is_some_and(|g| g.doc == Some(entity))
+    }
+
+    /// Abre um fundo sem passo: o que se chama por dentro não grava (fecha-se com [`Self::macro_sai`]).
+    pub(crate) fn macro_entra_calado(&mut self) {
+        if let Some(g) = self.macro_gravacao.as_mut() {
+            g.fundo += 1;
         }
     }
 

@@ -88,7 +88,10 @@ fn lida() -> Lida {
 fn o_mundo_da_macro_em_cada_instante() {
     let l = lida();
     let antes = l.em(MacroTime(99));
-    assert!(!antes[&1].componentes.contains_key("Collider"), "o collider ainda não foi posto");
+    assert!(
+        !antes[&1].componentes.contains_key("Collider"),
+        "o collider ainda não foi posto"
+    );
     assert!(!antes.contains_key(&2), "o 2 ainda não nasceu");
     let posto = l.em(MacroTime(100));
     assert_eq!(posto[&1].componentes["Collider"], [7]);

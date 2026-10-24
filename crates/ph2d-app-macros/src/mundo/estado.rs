@@ -74,8 +74,10 @@ impl Lida {
     /// **O mundo da macro em `t`** (os passos com instante ≤ `t`; `MacroTime(u64::MAX)` = o fim).
     #[must_use]
     pub fn em(&self, t: MacroTime) -> BTreeMap<u32, ObjetoEm> {
-        let quem: BTreeMap<u32, (Quem, u64)> =
-            self.objetos().map(|o| (o.id, (o.quem, o.original))).collect();
+        let quem: BTreeMap<u32, (Quem, u64)> = self
+            .objetos()
+            .map(|o| (o.id, (o.quem, o.original)))
+            .collect();
         let mut m: BTreeMap<u32, ObjetoEm> = BTreeMap::new();
         let novo = |id: u32| {
             let (q, original) = quem.get(&id).copied().unwrap_or((Quem::Mundo, 0));

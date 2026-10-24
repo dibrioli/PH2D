@@ -306,3 +306,23 @@ fn a_porta_chamada_por_dentro_de_outra_nao_grava() {
         "a porta de fora gravou e as de dentro também: {passos:?}"
     );
 }
+
+/// ⭐ **Trocar de modo não é autoria** (W19 §7 (c)): a gravar, sair do Paint (`deactivate`, o pedido
+/// largado) e voltar à MESMA imagem não deixa recusa — o tocador chega ao fim.
+#[test]
+fn sair_do_paint_e_voltar_a_gravar_nao_recusa() {
+    use ph2d_editor_core::tool::RasterEditTool;
+    use ph2d_tool_painter::macro_track::tocar::TocadorDoPainter;
+    let mut t = ph2d_tool_painter::PainterTool::default();
+    t.bind_document(5, vec![255u8; 16 * 16 * 4], 16, 16);
+    t.set_paint_media(ph2d_tool_painter::PaintMedia::WetPaint);
+    let (inicial, _) = t.macro_grava().expect("arma");
+    t.deactivate();
+    t.forget_pending_layer();
+    t.bind_document(5, vec![255u8; 16 * 16 * 4], 16, 16);
+    let cargas = t.macro_para();
+    let mut toc =
+        TocadorDoPainter::novo(&inicial, cargas.iter().map(Vec::as_slice)).expect("inicial");
+    let erro = cargas.iter().find_map(|c| toc.aplica(c).err());
+    assert_eq!(erro, None, "sair do Paint e voltar recusou a macro");
+}

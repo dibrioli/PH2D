@@ -11,8 +11,6 @@ pub mod cena_da_biblioteca;
 /// `PH2D_MACRO_SMOKE=8`: o player pintado, o collider e «Simular», gravados e aplicados (W19).
 pub mod cena_do_mundo;
 mod conferencia;
-/// A família «mundo» (W19): componentes, objectos e «Simular» dentro do objecto Macro.
-pub mod mundo;
 pub mod erros;
 pub mod espera;
 pub mod etapas;
@@ -20,6 +18,8 @@ pub mod etapas;
 pub mod etapas_mundo;
 mod gestos;
 pub mod instala;
+/// A família «mundo» (W19): componentes, objectos e «Simular» dentro do objecto Macro.
+pub mod mundo;
 pub mod object_add;
 pub mod sessao;
 mod tutorial;
@@ -241,7 +241,8 @@ impl Macros {
     }
 
     /// **A ponte da física correu de `de` a `ate`** neste quadro (W19): «Simular» a gravar. `None` = o
-    /// Physics desarmado (a ponte SEGURA o mundo e o contador anda sem simular nada).
+    /// Physics desarmado ou o relógio parado (a corrida acaba); `ate == de` = a andar, sem tique neste
+    /// quadro de render (a corrida continua).
     pub fn fisica_correu(
         &mut self,
         sim: &mut SimWorld,
@@ -250,7 +251,7 @@ impl Macros {
     ) {
         let agora = self.agora_us;
         if let Some((de, ate)) = corrida
-            && ate > de
+            && ate >= de
             && let Some(s) = self.sessao.as_mut()
         {
             s.fisica_correu(sim, de, ate, &fita.to_wire(), agora);

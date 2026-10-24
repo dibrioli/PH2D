@@ -201,7 +201,11 @@ impl Sessao {
 
     /// As trilhas de uma família com gravadora (o mundo não tem: chama-se só com Painter e Motion).
     fn trilhas(&mut self, fam: FamiliaDaMacro) -> &mut Trilhas {
-        debug_assert_ne!(fam, FamiliaDaMacro::Mundo, "o mundo não abre trilhas por alvo");
+        debug_assert_ne!(
+            fam,
+            FamiliaDaMacro::Mundo,
+            "o mundo não abre trilhas por alvo"
+        );
         match fam {
             FamiliaDaMacro::Painter => &mut self.painter,
             FamiliaDaMacro::Motion | FamiliaDaMacro::Mundo => &mut self.motion,
@@ -255,7 +259,12 @@ impl Sessao {
     /// **A família deixou o objecto que gravava** (o artista passou a outra imagem): a gravadora pára e
     /// os últimos passos ficam nessa trilha.
     fn fecha_a_viva(&mut self, fam: FamiliaDaMacro, f: &mut Familias<'_>, agora_us: u64) {
-        let Some(a) = self.trilhas(fam).viva.take().map(|i| self.trilhas(fam).abertas[i]) else {
+        let Some(a) = self
+            .trilhas(fam)
+            .viva
+            .take()
+            .map(|i| self.trilhas(fam).abertas[i])
+        else {
             return;
         };
         if let Some(g) = gravadora(f, fam) {
@@ -439,14 +448,25 @@ impl Sessao {
         )>();
         let corpos: Vec<(u64, u64, [f32; 3])> = q
             .iter(sim.world())
-            .map(|(e, s, t, _)| (e.to_bits(), s.0, [t.translation.x, t.translation.y, t.rotation]))
+            .map(|(e, s, t, _)| {
+                (
+                    e.to_bits(),
+                    s.0,
+                    [t.translation.x, t.translation.y, t.rotation],
+                )
+            })
             .collect();
-        let poses = corpos
+        let poses: Vec<_> = corpos
             .into_iter()
             .filter(|(b, ..)| dentro_de(sim, *b, dono))
             .map(|(_, s, p)| (s, p))
             .collect();
-        g.correu(de, ate, poses, fita, agora_us);
+        let obstaculos = if poses.is_empty() {
+            [0; 32]
+        } else {
+            crate::mundo::palco_fisica::impressao(sim.world(), Entity::from_bits(dono))
+        };
+        g.correu((de, ate), poses, fita, obstaculos, agora_us);
     }
 
     /// **Os passos do Motion** neste quadro, depois de ele correr, no instante `agora_us`.
@@ -517,7 +537,10 @@ impl Sessao {
         };
         let etapas = f.etapas;
         let Some(p) = f.portas.as_mut() else {
-            debug_assert!(g.passos.is_empty(), "o mundo gravou sem a composição para o fechar");
+            debug_assert!(
+                g.passos.is_empty(),
+                "o mundo gravou sem a composição para o fechar"
+            );
             return crate::mundo::Avisos::default();
         };
         let dono = g.dono;

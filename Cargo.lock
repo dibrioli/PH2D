@@ -5261,10 +5261,12 @@ dependencies = [
 name = "ph2d-app-macros"
 version = "0.0.0"
 dependencies = [
+ "blake3",
  "image",
  "ph2d-a11y",
  "ph2d-anim",
  "ph2d-app-host",
+ "ph2d-asset-id",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",

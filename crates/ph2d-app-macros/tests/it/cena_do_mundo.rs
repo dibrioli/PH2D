@@ -48,8 +48,9 @@ fn sprite(b: &mut Banca, bits: u64, (w, h): (u32, u32)) {
         .insert(s);
 }
 
-/// O *Add Physics Body* (`ph2d_app_physics::physics_apply`): corpo dinâmico e a caixa da `Sprite`.
-fn corpo(b: &mut Banca, bits: u64) {
+/// O *Add Physics Body* (`ph2d_app_physics::physics_apply`): corpo dinâmico e a caixa da `Sprite`;
+/// devolve a fotografia de depois (o baseline do undo).
+fn corpo(b: &mut Banca, bits: u64) -> WorldSnapshot {
     let antes = foto(b);
     let e = Entity::from_bits(bits);
     let s = *b.sim.world().get::<ph2d_render::Sprite>(e).expect("Sprite");
@@ -67,6 +68,7 @@ fn corpo(b: &mut Banca, bits: u64) {
     ));
     let depois = foto(b);
     b.m.mundo_mudou(&antes, &depois);
+    depois
 }
 
 fn apaga(b: &mut Banca, bits: u64) {
@@ -169,8 +171,30 @@ fn topo(k: usize) -> f32 {
 }
 
 #[test]
-#[expect(clippy::too_many_lines, reason = "o caminho inteiro, por ordem")]
 fn a_cena_8_percorre_o_caminho_inteiro() {
+    let _ = percorre();
+}
+
+/// (b) O FIM no destino é o da reprodução no destino: ao acabar o clipe o boneco fica no chão NOVO.
+#[test]
+fn aplicado_noutro_chao_o_fim_e_o_chao_novo() {
+    let y = percorre();
+    let alvo = topo(1) + meio();
+    assert!(
+        (y - alvo).abs() < 0.05,
+        "o FIM no documento: y = {y} (o chão novo pede {alvo})"
+    );
+}
+
+fn meio() -> f32 {
+    #[expect(clippy::cast_precision_loss, reason = "lado pequeno")]
+    let m = LADO as f32 / PPM / 2.0;
+    m
+}
+
+/// O caminho inteiro; devolve a altura do FIM no documento do aplicado (antes de tocar).
+#[expect(clippy::too_many_lines, reason = "o caminho inteiro, por ordem")]
+fn percorre() -> f32 {
     let mut b = Banca::nova();
     b.painter.set_paint_media(PaintMedia::Digital);
     let mut e = Estado::em(
@@ -183,14 +207,20 @@ fn a_cena_8_percorre_o_caminho_inteiro() {
     let (mut ultimo, mut novo, mut chaos) = ([0.0; 2], None, 0usize);
     let (mut caiu_na_gravacao, mut bit_na_cena) = (None, None);
     let (mut palcos, mut drive) = (PalcosDoMundo::default(), PreviewDrive::default());
-    let mut alturas = Vec::new();
+    let (mut alturas, mut base, mut quadro) = (Vec::new(), None, 0u32);
+    let mut fim_no_documento = None;
     for (ms, p) in roteiro() {
         // Os quadros até ao passo: a ponte (Physics + Play) e o palco do aplicado.
         while b.agora_ms() < ms {
+            // O render a mais que a física: 2 tiques em cada 3 quadros (o 3.º sem tique, `ate == de`).
+            quadro += 1;
             if fisica && a_tocar && novo.is_none() {
                 let de = ponte.last_stepped();
-                ponte.dispatch(&mut b.sim, true, de + 1);
-                b.m.fisica_correu(&mut b.sim, Some((de, de + 1)), &fita);
+                let ate = de + u64::from(quadro % 3 != 0);
+                if ate > de {
+                    ponte.dispatch(&mut b.sim, true, ate);
+                }
+                b.m.fisica_correu(&mut b.sim, Some((de, ate)), &fita);
             }
             if let Some(n) = novo.filter(|_| a_tocar) {
                 #[expect(clippy::cast_precision_loss, reason = "ms da cena")]
@@ -241,7 +271,7 @@ fn a_cena_8_percorre_o_caminho_inteiro() {
             Passo::Sobe => b.ponteiro(ultimo, PointerPhase::Up),
             Passo::Corpo(q) => {
                 let bits = if q == Qual::Chao { e.chao } else { b.escolhido };
-                corpo(&mut b, bits.expect("quem ganha o corpo"));
+                base = Some(corpo(&mut b, bits.expect("quem ganha o corpo")));
             }
             Passo::Estatico => {
                 let c = e.chao.expect("o chão");
@@ -264,7 +294,15 @@ fn a_cena_8_percorre_o_caminho_inteiro() {
                 a_tocar = true;
                 desde = ms;
             }
-            Passo::Pausa | Passo::Rebobina => a_tocar = false,
+            Passo::Pausa => {
+                // O passo do undo que a corrida deixa ao parar: a pose do solver vira documento.
+                a_tocar = false;
+                if let Some(antes) = base.take() {
+                    let agora = foto(&mut b);
+                    b.m.mundo_mudou(&antes, &agora);
+                }
+            }
+            Passo::Rebobina => a_tocar = false,
             Passo::Apaga => {
                 let g = e.gravado.expect("o objecto gravado");
                 // Antes de apagar: o palco toca o gravado no fim, sobre o chão em que caiu.
@@ -299,6 +337,9 @@ fn a_cena_8_percorre_o_caminho_inteiro() {
                 );
                 if let Some(a) = b.m.toma_o_aplicado() {
                     novo = Some(a);
+                    let img = filho(&b, a);
+                    let w = ph2d_ecs::world_transform(b.sim.world(), Entity::from_bits(img));
+                    fim_no_documento = w.map(|t| t.translation.y);
                 }
             }
         }
@@ -335,17 +376,14 @@ fn a_cena_8_percorre_o_caminho_inteiro() {
     assert_eq!(simulas.len(), 1, "uma corrida da física");
     let (ts, s) = &simulas[0];
     assert!(*ts > t_colisor[0], "simula depois do collider");
-    assert!(s.ate - s.de > 100, "≥ 100 tiques: {}..{}", s.de, s.ate);
+    // 2,5 s com 2 tiques em cada 3 quadros: 100 tiques, num Simula só.
+    assert_eq!((s.de, s.ate), (0, 100), "um Simula de 100 tiques");
     let conf = s.conferencia.first().expect("a conferência do corpo").1;
 
     // (6) No 1.º chão: a gravação caiu e assentou; o palco dá o bit da conferência.
     let caiu = caiu_na_gravacao.expect("caiu");
     let bit = bit_na_cena.expect("tocou");
-    let meio = {
-        #[expect(clippy::cast_precision_loss, reason = "lado pequeno")]
-        let m = LADO as f32 / PPM / 2.0;
-        m
-    };
+    let meio = meio();
     println!(
         "(6) 1.º chão: topo {:.3} m · a gravação assentou em y = {:.4} · conferência {conf:?} · \
          o palco {bit:?}",
@@ -377,10 +415,13 @@ fn a_cena_8_percorre_o_caminho_inteiro() {
         "assenta no 2.º chão: {fim}"
     );
     assert!(texels > 600, "o boneco: {texels}");
+
     // Por último, para os números acima saírem sempre: a reprodução na cena da gravação é o bit.
     assert_eq!(
         bit.map(f32::to_bits),
         conf.map(f32::to_bits),
         "o palco recozido não dá o bit da conferência: {bit:?} contra {conf:?}"
     );
+    println!("(11) o FIM no documento do aplicado: y = {fim_no_documento:?}");
+    fim_no_documento.expect("o aplicado tem pose")
 }

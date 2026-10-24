@@ -560,7 +560,7 @@ fn gate7_parar_depois_de_trocar_de_ferramenta_fecha_a_gravacao_do_painter() {
 }
 
 /// ⭐ **A conferência adiada corre, e só no quadro a seguir ao gesto** (sobrevivente M6/M8 da prova
-/// W5d). A gravação passa por uma porta recusada (religar a tela a meio); uma edição de VALOR pede a
+/// W5d). A gravação passa por uma porta recusada (ligar outra imagem a meio); uma edição de VALOR pede a
 /// conferência, que toca a trilha e pára na recusa — o erro chega ao painel no quadro SEGUINTE.
 #[test]
 fn gate7_a_edicao_de_valor_e_conferida_no_quadro_seguinte() {
@@ -571,6 +571,9 @@ fn gate7_a_edicao_de_valor_e_conferida_no_quadro_seguinte() {
     let l = LADO as f32;
     b.pincelada([0.1 * l, 0.3 * l], [0.9 * l, 0.3 * l]);
     let n = usize::try_from(LADO).unwrap();
+    b.painter
+        .bind_document(b.bits ^ 0xF00D, vec![255u8; n * n * 4], LADO, LADO);
+    // A porta recusada é ligar OUTRA imagem (voltar à que se grava não é: W19 §7 (c)).
     b.painter
         .bind_document(b.bits, vec![255u8; n * n * 4], LADO, LADO);
     b.quadro();
@@ -819,6 +822,9 @@ fn gate7_a_conferencia_corre_fora_do_quadro_e_a_decisao_e_dos_bytes() {
     let l = LADO as f32;
     b.pincelada([0.1 * l, 0.3 * l], [0.9 * l, 0.3 * l]);
     let n = usize::try_from(LADO).unwrap();
+    b.painter
+        .bind_document(b.bits ^ 0xF00D, vec![255u8; n * n * 4], LADO, LADO);
+    // A porta recusada é ligar OUTRA imagem (voltar à que se grava não é: W19 §7 (c)).
     b.painter
         .bind_document(b.bits, vec![255u8; n * n * 4], LADO, LADO);
     b.quadro();

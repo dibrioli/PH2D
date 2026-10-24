@@ -174,7 +174,39 @@ fn local_de(r: &Recozido, id: u32, pai_do_dono: Transform) -> Option<Transform> 
     }
 }
 
-/// **A conferência** no `ate`: a pose recozida de cada corpo contra a que o artista viu, bit a bit.
+/// **A impressão dos obstáculos** de `dono`: os corpos `Static` de fora dele (o `RigidBody`, o
+/// `Collider` e a pose de mundo), por ordem dos próprios bytes — a mesma cena dá a mesma; outro chão,
+/// outra. O `StableId` não entra: a cena de destino pode ter o mesmo chão com outra identidade.
+#[must_use]
+pub fn impressao(w: &ph2d_ecs::World, dono: Entity) -> [u8; 32] {
+    let mut linhas: Vec<Vec<u8>> = w
+        .iter_entities()
+        .filter(|e| {
+            e.get::<RigidBody>()
+                .is_some_and(|c| c.kind == BodyKind::Static)
+        })
+        .filter(|e| !dentro_de(w, e.id(), dono))
+        .map(|e| {
+            let mut b = postcard::to_allocvec(&e.get::<RigidBody>()).unwrap_or_default();
+            let c = e.get::<ph2d_physics_ecs::Collider>();
+            b.extend(postcard::to_allocvec(&c).unwrap_or_default());
+            b.extend(
+                postcard::to_allocvec(&ph2d_ecs::world_transform(w, e.id())).unwrap_or_default(),
+            );
+            b
+        })
+        .collect();
+    linhas.sort();
+    let mut h = blake3::Hasher::new();
+    for l in &linhas {
+        h.update(&(l.len() as u64).to_le_bytes());
+        h.update(l);
+    }
+    *h.finalize().as_bytes()
+}
+
+/// **A conferência** no `ate`: a pose recozida de cada corpo contra a que o artista viu, bit a bit —
+/// só sobre os obstáculos com que correu ([`Simula::obstaculos`]); noutra cena cair noutro sítio é a lei.
 fn confere(
     r: &Recozido,
     s: &Simula,
@@ -182,6 +214,10 @@ fn confere(
     vivo: &SimWorld,
     entidade: &dyn Fn(u32) -> Option<Entity>,
 ) -> Option<ErroDaMacroView> {
+    let dono = entidade(RAIZ)?;
+    if impressao(vivo.world(), dono) != s.obstaculos {
+        return None;
+    }
     s.conferencia.iter().find_map(|&(id, viu)| {
         let t = local_de(r, id, pai_do_dono)?;
         let deu = [t.translation.x, t.translation.y, t.rotation];
@@ -286,4 +322,46 @@ pub(super) fn poses(
         }
     }
     out
+}
+
+/// **O FIM no destino** (o aplicar): cada corpo que acaba num `Simula` fica no documento com a pose que
+/// a MESMA reprodução dá nos obstáculos DESTE mundo — ao acabar o clipe, nada salta. Um passo posterior
+/// que reescreve a pose ganha (já está no FIM).
+pub(crate) fn fim_no_destino(
+    t: &ph2d_macro::Track,
+    sim: &mut SimWorld,
+    registo: &ph2d_ecs::scene::ComponentRegistry,
+    dono: Entity,
+) {
+    let Ok(lida) = super::estado::Lida::de(t) else {
+        return;
+    };
+    if lida.simulas().next().is_none() {
+        return;
+    }
+    let quem: BTreeMap<u32, (Quem, u64)> = lida
+        .objetos()
+        .map(|o| (o.id, (o.quem, o.original)))
+        .collect();
+    let sids: BTreeMap<u64, Entity> = sim
+        .world_mut()
+        .query::<(Entity, &StableId)>()
+        .iter(sim.world())
+        .map(|(e, s)| (s.0, e))
+        .collect();
+    let entidade = |id: u32| match quem.get(&id) {
+        _ if id == RAIZ => Some(dono),
+        Some((Quem::Macro, _)) => Some(dono),
+        Some((_, sid)) => sids.get(sid).copied(),
+        None => None,
+    };
+    let definicoes = super::palco::com(|p| p.definicoes).unwrap_or_default();
+    let cx = Contexto::novo(registo, definicoes);
+    let mut tr = Trilha::de(lida);
+    let poses = poses(&mut tr, sim, &cx, dono, MacroTime(u64::MAX), &entidade);
+    for (id, b) in poses {
+        if let (Some(e), Ok(pose)) = (entidade(id), postcard::from_bytes::<Transform>(&b)) {
+            sim.world_mut().entity_mut(e).insert(pose);
+        }
+    }
 }

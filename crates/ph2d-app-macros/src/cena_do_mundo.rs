@@ -116,6 +116,8 @@ pub fn roteiro() -> Vec<(u64, Passo)> {
     r.extend([(12_700, P::Cor(CORES[2])), (13_200, P::FechaCor)]);
     traco(&mut r, 13_400, 700, &BRACOS);
     r.extend([
+        // O modo Object a gravar (o caminho normal): o Inspector com o cartão Physics.
+        (14_500, P::Objeto),
         (15_500, P::Diz(5)),
         (16_500, P::Corpo(Qual::Escolhido)),
         (18_500, P::Diz(6)),
@@ -124,8 +126,6 @@ pub fn roteiro() -> Vec<(u64, Passo)> {
         (22_500, P::Pausa),
         (23_500, P::Diz(7)),
         (24_500, P::Para),
-        // Fora da gravação: sair do modo Paint a gravar grava recusas do Painter (o aplicar recusa).
-        (25_000, P::Objeto),
         (26_500, P::Diz(8)),
         (27_500, P::Guarda),
         (30_000, P::Diz(9)),

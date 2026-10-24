@@ -61,6 +61,8 @@ pub struct Corrida {
     pub fita: ph2d_physics_ecs::TapeWire,
     /// `(StableId, [x, y, rotação])` no último tique.
     pub poses: Vec<(u64, [f32; 3])>,
+    /// A impressão dos obstáculos ([`super::palco_fisica::impressao`]).
+    pub obstaculos: [u8; 32],
 }
 
 /// O que se gravou, cru.
@@ -113,17 +115,23 @@ impl Gravacao {
         }
     }
 
-    /// **A ponte correu de `de` a `ate`** neste quadro, com a sub-árvore em `poses` (os corpos dela) e a
-    /// `fita` do projecto. Sem corpos na sub-árvore não é uma corrida desta macro.
+    /// **A ponte correu de `de` a `ate`** neste quadro, com a sub-árvore em `poses` (os corpos dela), a
+    /// `fita` do projecto e a impressão dos `obstaculos`. Sem corpos na sub-árvore não é uma corrida
+    /// desta macro. `ate == de` = o relógio anda e este quadro de render não teve tique: a corrida
+    /// aberta continua (acaba quando o relógio pára, não num quadro sem tique).
     pub fn correu(
         &mut self,
-        de: u64,
-        ate: u64,
+        (de, ate): (u64, u64),
         poses: Vec<(u64, [f32; 3])>,
         fita: &ph2d_physics_ecs::TapeWire,
+        obstaculos: [u8; 32],
         agora_us: u64,
     ) {
-        if poses.is_empty() || ate <= de {
+        if poses.is_empty() {
+            return;
+        }
+        if ate <= de {
+            self.andou |= self.corrida.is_some();
             return;
         }
         self.andou = true;
@@ -132,7 +140,7 @@ impl Gravacao {
         fita.frames.truncate(fim);
         match &mut self.corrida {
             Some((_, c)) if de == c.ate => {
-                (c.ate, c.poses, c.fita) = (ate, poses, fita);
+                (c.ate, c.poses, c.fita, c.obstaculos) = (ate, poses, fita, obstaculos);
             }
             _ => {
                 self.fecha_a_corrida();
@@ -141,6 +149,7 @@ impl Gravacao {
                     ate,
                     fita,
                     poses,
+                    obstaculos,
                 };
                 self.corrida = Some((agora_us, c));
             }
@@ -183,6 +192,7 @@ impl Corrida {
                 .iter()
                 .filter_map(|(s, p)| local(*s).map(|i| (i, *p)))
                 .collect(),
+            obstaculos: self.obstaculos,
         }
     }
 }

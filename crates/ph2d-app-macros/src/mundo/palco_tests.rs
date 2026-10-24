@@ -153,6 +153,10 @@ fn doc(conferencia: [f32; 3]) -> Vec<u8> {
         ate: TIQUES,
         fita: InputTape::new().to_wire(),
         conferencia: vec![(1, conferencia)],
+        obstaculos: {
+            let (s, dono, _) = mundo(None);
+            super::super::palco_fisica::impressao(s.world(), dono)
+        },
     });
     let track = Track {
         family: super::super::formato::FAMILIA.into(),
@@ -453,4 +457,31 @@ fn esperar_numa_etapa_do_mundo_atrasa_a_queda() {
     assert_eq!(c.pose(), inicio, "com 1 s de espera ainda não caiu");
     c.quadro(no_tique(TIQUES) + 1_000_000, None);
     assert_eq!(c.pose(), bits(viu), "a queda acontece inteira, 1 s depois");
+}
+
+/// (d) A conferência só se compara sobre os obstáculos com que a corrida correu: no mesmo chão a
+/// adulterada diz-se (o teste acima); noutro chão (o projecto de destino) cair noutro sítio é a lei.
+#[test]
+fn a_conferencia_so_se_faz_sobre_o_mesmo_chao() {
+    let mut adulterada = o_que_o_artista_viu();
+    adulterada[1] += 0.01;
+    let mut c = Cena::com_doc(doc(adulterada));
+    let chao = {
+        let w = c.sim.world_mut();
+        let mut q = w.query::<(Entity, &StableId)>();
+        q.iter(w)
+            .find(|(_, s)| s.0 == CHAO)
+            .map(|(e, _)| e)
+            .expect("o chão")
+    };
+    c.sim
+        .world_mut()
+        .entity_mut(chao)
+        .insert(Transform::from_translation(Vec2::new(0.0, -1.5)));
+    c.quadro(no_tique(TIQUES), None);
+    assert_eq!(
+        c.palcos.erro_de(c.dono.to_bits()),
+        None,
+        "outro chão: a conferência não acende"
+    );
 }

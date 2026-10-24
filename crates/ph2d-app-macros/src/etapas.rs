@@ -94,7 +94,7 @@ pub(crate) fn da_trilha<'a>(
     ]
     .into_iter()
     .chain(outras.iter().copied())
-        .find(|f| f.chave() == track.family)
+    .find(|f| f.chave() == track.family)
 }
 
 pub(crate) fn leitor(

@@ -49,6 +49,7 @@ fn doc() -> Vec<u8> {
         ate: 120,
         fita: ph2d_physics_ecs::TapeWire::default(),
         conferencia: vec![],
+        obstaculos: [0; 32],
     });
     let mut rec = MacroRecorder::new(RefRect { w: 1.0, h: 1.0 }, 0);
     let t = rec.open_track(ph2d_macro::codec::FAMILIA_MUNDO, DONO, inicial.escreve());

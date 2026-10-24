@@ -152,6 +152,10 @@ fn doc(n: usize, ate: u32, conferencia: &[[u32; 3]]) -> Vec<u8> {
             .enumerate()
             .map(|(i, p)| (local(n, i), p.map(f32::from_bits)))
             .collect(),
+        obstaculos: {
+            let (s, dono, _) = mundo(n, None);
+            super::super::palco_fisica::impressao(s.world(), dono)
+        },
     });
     let passo = Evento::Passo {
         novos: vec![],

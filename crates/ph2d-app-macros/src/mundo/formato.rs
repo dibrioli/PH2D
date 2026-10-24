@@ -83,6 +83,9 @@ pub struct Simula {
     pub fita: ph2d_physics_ecs::TapeWire,
     /// `(id local, [x, y, rotação])` no último tique.
     pub conferencia: Vec<(u32, [f32; 3])>,
+    /// A impressão dos obstáculos com que correu ([`super::palco_fisica::impressao`]): a conferência
+    /// só se compara sobre a mesma.
+    pub obstaculos: [u8; 32],
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

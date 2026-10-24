@@ -37,7 +37,7 @@ pub(super) struct Trilha {
 }
 
 impl Trilha {
-    fn de(lida: Lida) -> Self {
+    pub(super) fn de(lida: Lida) -> Self {
         let mut nomes: BTreeMap<u32, BTreeSet<String>> = BTreeMap::new();
         let mut poses: BTreeMap<u32, Vec<MacroTime>> = BTreeMap::new();
         for l in &lida.inicial.linhas {
@@ -101,6 +101,8 @@ struct DoDono {
 #[derive(Default)]
 pub struct PalcosDoMundo {
     donos: BTreeMap<u64, DoDono>,
+    /// As definições da física do projecto no último quadro (o aplicar recoze com elas).
+    pub definicoes: Option<PhysicsSettings>,
 }
 
 thread_local! {
@@ -184,6 +186,7 @@ impl PalcosDoMundo {
     /// **Por quadro**, depois de a Timeline escrever o `MacroTempo` e antes do extract: cada objecto
     /// Macro que toca mostra `S(t)`; os que pararam devolvem o documento.
     pub fn segue(&mut self, sim: &mut SimWorld, cx: &Contexto<'_>, drive: &mut PreviewDrive) {
+        self.definicoes = Some(cx.definicoes);
         drive.blobs.ronda();
         let mut q = sim
             .world_mut()

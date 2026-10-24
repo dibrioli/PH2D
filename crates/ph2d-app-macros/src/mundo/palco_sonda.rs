@@ -80,6 +80,7 @@ fn doc(n: usize) -> Vec<u8> {
         ate: ATE,
         fita: InputTape::new().to_wire(),
         conferencia: vec![],
+        obstaculos: [0; 32],
     });
     ph2d_macro::codec::write(&MacroDoc {
         reference: RefRect { w: 1.0, h: 1.0 },

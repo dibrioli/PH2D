@@ -61,7 +61,6 @@ impl PainterTool {
 
     /// ⭐ **Larga o pedido** — o Paint que o fez saiu antes de o documento ligar (`paint_mode::leave`).
     pub fn forget_pending_layer(&mut self) {
-        self.macro_recusa("forget_pending_layer");
         self.pending_layer = None;
     }
 }

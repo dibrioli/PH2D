@@ -87,8 +87,7 @@ impl crate::App {
             hero.set_panel_visible("macros", true);
         }
     }
-    /// `PH2D_MACRO_SMOKE=7|8` ([`ph2d_app_macros::cena_da_biblioteca`]): a família faz cada passo pelas
-    /// portas do `HeroScreen`; aqui o ponteiro, o `Delete` e as imagens que nascem (a maior, o chão).
+    /// `PH2D_MACRO_SMOKE=7|8` ([`ph2d_app_macros::cena_da_biblioteca`]): o ponteiro, o `Delete`, as imagens.
     fn cena_da_biblioteca(&mut self) {
         use ph2d_app_macros::cena_da_biblioteca::{self as cena, Passo};
         if self.gfx.as_ref().is_none_or(|g| g.hero_screen.is_none()) {

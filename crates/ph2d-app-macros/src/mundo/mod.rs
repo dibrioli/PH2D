@@ -6,6 +6,8 @@
 //! - [`formato`]: os bytes da trilha.
 
 pub mod aplica;
+/// A sprite que não traz os seus píxeis (uma célula do atlas) grava-se com eles embutidos.
+mod embute;
 pub mod estado;
 pub mod formato;
 pub mod grava;
@@ -13,13 +15,11 @@ pub mod grava;
 pub mod palco;
 pub mod palco_fisica;
 pub mod portas;
-/// A sprite que não traz os seus píxeis (uma célula do atlas) grava-se com eles embutidos.
-mod embute;
 
 pub use embute::Leitores;
 
 use formato::{Componente, Evento, Inicial, Linha, Mudanca, Objeto, Quem, Recurso};
-use grava::{Cru, Gravacao};
+use grava::{Corrida, Cru, Gravacao};
 use ph2d_ecs::scene::{ComponentRegistry, EntitySnapshotRow, LinhaMudada};
 use ph2d_editor_core::macro_edits::FamiliaDaMacro;
 use ph2d_macro::{MacroDoc, Track};
@@ -85,7 +85,11 @@ fn apagados(inicial: &Inicial, eventos: &[(u64, Evento)]) -> Vec<String> {
 }
 
 /// De quem é cada objecto que outra família faz nascer: o `StableId` → (índice da trilha, família).
-fn donos(doc: &MacroDoc, dono: u64, familia: &dyn Fn(&Track) -> Option<FamiliaDaMacro>) -> BTreeMap<u64, (Quem, Option<FamiliaDaMacro>)> {
+fn donos(
+    doc: &MacroDoc,
+    dono: u64,
+    familia: &dyn Fn(&Track) -> Option<FamiliaDaMacro>,
+) -> BTreeMap<u64, (Quem, Option<FamiliaDaMacro>)> {
     let mut m = BTreeMap::new();
     m.insert(dono, (Quem::Macro, None));
     for (k, t) in doc.tracks.iter().enumerate() {
@@ -254,6 +258,56 @@ impl Tradutor<'_> {
     }
 }
 
+/// **O passo que a corrida deixa ao parar** (a pose do solver vira documento, lei do
+/// `ph2d-preview-drive`) não é autoria: o `Transform` de um corpo da corrida cuja pose nova é a do fim
+/// dela sai do passo; os outros componentes e objectos ficam.
+fn sem_a_pose_da_corrida(
+    d: &[LinhaMudada],
+    c: Option<&Corrida>,
+    registo: &ComponentRegistry,
+) -> Vec<LinhaMudada> {
+    let Some(c) = c else {
+        return d.to_vec();
+    };
+    let e_o_fim = |sid: u64, tipo: u64, b: &Option<Vec<u8>>| {
+        let Some(pose) = c.poses.iter().find(|p| p.0 == sid).map(|p| p.1) else {
+            return false;
+        };
+        let transform = registo
+            .get_by_id(tipo)
+            .is_some_and(|e| e.canonical_name == palco::TRANSFORM);
+        let t = b
+            .as_deref()
+            .and_then(|b| postcard::from_bytes::<ph2d_ecs::Transform>(b).ok());
+        transform
+            && t.is_some_and(|t| {
+                [t.translation.x, t.translation.y, t.rotation].map(f32::to_bits)
+                    == pose.map(f32::to_bits)
+            })
+    };
+    d.iter()
+        .filter_map(|l| match l {
+            LinhaMudada::Muda {
+                id,
+                pai,
+                componentes,
+            } => {
+                let cs: Vec<_> = componentes
+                    .iter()
+                    .filter(|(tipo, b)| !e_o_fim(id.0, *tipo, b))
+                    .cloned()
+                    .collect();
+                (pai.is_some() || !cs.is_empty()).then(|| LinhaMudada::Muda {
+                    id: *id,
+                    pai: *pai,
+                    componentes: cs,
+                })
+            }
+            outra => Some(outra.clone()),
+        })
+        .collect()
+}
+
 /// **Ao Parar**: a gravação `g` passa a trilha, com as outras trilhas de `doc` já abertas (elas dizem
 /// quem faz nascer cada objecto), com os [`Leitores`] da composição. `None` = nada do mundo mudou.
 #[must_use]
@@ -290,9 +344,11 @@ pub fn fecha<'a>(
     inicial.objetos = std::mem::take(&mut t.novos);
     inicial.recursos = std::mem::take(&mut t.recursos);
     let mut eventos = Vec::new();
+    let mut corrida: Option<&Corrida> = None;
     for (us, cru) in &g.passos {
         let ev = match cru {
             Cru::Passo(d) => {
+                let d = sem_a_pose_da_corrida(d, corrida.take(), registo);
                 let mudancas: Vec<_> = d.iter().filter_map(|l| t.mudanca(l)).collect();
                 if mudancas.is_empty() {
                     continue; // os objectos novos vão com o passo seguinte
@@ -304,6 +360,7 @@ pub fn fecha<'a>(
                 }
             }
             Cru::Corrida(c) => {
+                corrida = Some(c);
                 let locais = t.locais.clone();
                 Evento::Simula(c.simula(&|s| locais.get(&s).copied()))
             }
@@ -319,7 +376,10 @@ pub fn fecha<'a>(
             apagados: apagados(&inicial, &eventos),
         },
         inicial: inicial.escreve(),
-        eventos: eventos.into_iter().map(|(us, e)| (us, e.escreve())).collect(),
+        eventos: eventos
+            .into_iter()
+            .map(|(us, e)| (us, e.escreve()))
+            .collect(),
     })
 }
 
@@ -334,7 +394,8 @@ pub fn aviso(a: &Avisos) -> Option<ph2d_editor_core::macro_edits::ErroDaMacroVie
         .iter()
         .map(|n| n.rsplit("::").next().unwrap_or(n))
         .collect();
-    let recusados = (!nomes.is_empty()).then(|| erro_com(m::MACRO_MUNDO_NAO_GRAVOU, nomes.join(", ")));
+    let recusados =
+        (!nomes.is_empty()).then(|| erro_com(m::MACRO_MUNDO_NAO_GRAVOU, nomes.join(", ")));
     let apagados =
         (!a.apagados.is_empty()).then(|| erro_com(m::MACRO_MUNDO_APAGADOS, a.apagados.join(", ")));
     match (recusados, apagados) {

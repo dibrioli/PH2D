@@ -55,6 +55,7 @@ const FORMA_OU_SELECAO: &str =
 const CAMADAS_COMO_PINCEL: &str =
     "lê as camadas como textura do pincel ou do papel: a macro não as guarda";
 const ACESSOR: &str = "acessor do contrato: não muda nada";
+const TROCA_DE_MODO: &str = "sair do Paint (outro modo, outra ferramenta) larga a tela, não muda a obra; voltar à MESMA imagem também não (W19)";
 const ETAPA_EDITADA: &str =
     "a edição de uma etapa chega à imagem: obra da própria macro, nunca um passo de outra";
 const IMAGENS_DA_PONTA: &str = "a silhueta cinzenta da ponta (L19) é a porta do PRESET (que a macro grava inteiro); o artista acrescenta pelo RGBA";
@@ -80,7 +81,7 @@ pub const PORTAS: &[Porta] = &[
     r("set_brush_dual_image", IMAGENS_DA_PONTA),
     g("take_brush_dual_image_request"),
     g("take_brush_shape_hose_request"),
-    r("deactivate", OUTRO_DOCUMENTO),
+    a("deactivate", TROCA_DE_MODO),
     a("as_any_mut", ACESSOR),
     a("as_raster_edit_mut", ACESSOR),
     a("as_canvas_paint_mut", ACESSOR),
@@ -152,7 +153,7 @@ pub const PORTAS: &[Porta] = &[
     ),
     r("baked_document_pixels", OUTRO_DOCUMENTO),
     r("open_layer_of", OUTRO_DOCUMENTO),
-    r("forget_pending_layer", OUTRO_DOCUMENTO),
+    a("forget_pending_layer", TROCA_DE_MODO),
     r("set_layer_name", CAMADAS_DE_FORA),
     r("handle_layer_reparent", CAMADAS_DE_FORA),
     r("add_raster_layer_with_pixels", CAMADAS_DE_FORA),

@@ -128,7 +128,6 @@ impl RasterEditTool for PainterTool {
     }
 
     fn deactivate(&mut self) {
-        self.macro_recusa("deactivate");
         self.deactivate_corpo();
     }
 }

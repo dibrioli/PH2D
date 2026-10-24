@@ -116,7 +116,19 @@ impl PainterTool {
         width: u32,
         height: u32,
     ) {
-        self.macro_recusa("bind_document");
+        // Voltar à MESMA imagem que se grava (sair do Paint e voltar) não é outro documento: nada
+        // grava, nem o que ela chama por dentro (`set_source`).
+        if self.macro_e_o_documento(entity) {
+            self.macro_entra_calado();
+            self.bind_document_corpo(entity, rgba, width, height);
+            self.macro_sai();
+        } else {
+            self.macro_recusa("bind_document");
+            self.bind_document_corpo(entity, rgba, width, height);
+        }
+    }
+
+    fn bind_document_corpo(&mut self, entity: u64, rgba: Vec<u8>, width: u32, height: u32) {
         // ⚠️ **A torn-down canvas is not a document.** `RasterEditTool::deactivate` empties the pixels
         // but leaves `bound_doc` and the layer stack standing, so every "am I already bound?" answer
         // below would be a stale YES — and both of them refuse to re-seed. Enio, 2026-07-22: *"o app sai

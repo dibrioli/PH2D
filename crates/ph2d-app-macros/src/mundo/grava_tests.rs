@@ -49,7 +49,11 @@ fn mundo() -> (SimWorld, u64) {
             ChildOf(d),
         ))
         .id();
-    w.spawn((ph2d_ecs::Transform::IDENTITY, Name::new("Chão"), StableId(FORA)));
+    w.spawn((
+        ph2d_ecs::Transform::IDENTITY,
+        Name::new("Chão"),
+        StableId(FORA),
+    ));
     (sim, i.to_bits())
 }
 
@@ -112,24 +116,39 @@ fn o_collider_posto_a_gravar_entra_na_macro() {
     poe_o_collider(&mut sim, img);
     // Mexer FORA do objecto Macro não é desta gravação.
     let fora = ph2d_ecs::entity_with_stable_id(sim.world(), StableId(FORA)).expect("fora");
-    sim.world_mut().entity_mut(fora).insert(RigidBody::default());
+    sim.world_mut()
+        .entity_mut(fora)
+        .insert(RigidBody::default());
     let depois = foto(&mut sim, &reg);
     let mut g = Gravacao::new(DONO);
     g.mudou(&antes, &depois, 1_000);
     assert_eq!(g.passos.len(), 1, "um passo do undo = um passo da macro");
     let f = fecha_com(g, &MacroDoc::new(RefRect { w: 1.0, h: 1.0 }), &reg).expect("gravou");
-    let Evento::Passo { mudancas, novos, .. } = &passos(&f)[0] else {
+    let Evento::Passo {
+        mudancas, novos, ..
+    } = &passos(&f)[0]
+    else {
         panic!("um passo");
     };
-    let Mudanca::Muda { id, componentes, .. } = &mudancas[0] else {
+    let Mudanca::Muda {
+        id, componentes, ..
+    } = &mudancas[0]
+    else {
         panic!("muda: {mudancas:?}");
     };
     let mut nomes: Vec<&str> = componentes.iter().map(|c| c.0.as_str()).collect();
     nomes.sort_unstable();
-    assert_eq!(nomes, ["ph2d::physics::Collider", "ph2d::physics::RigidBody"]);
+    assert_eq!(
+        nomes,
+        ["ph2d::physics::Collider", "ph2d::physics::RigidBody"]
+    );
     assert!(componentes.iter().all(|c| c.1.is_some()));
     let i = Inicial::le(&f.inicial).expect("lê");
-    let o = i.objetos.iter().find(|o| o.id == *id).expect("o objecto do passo");
+    let o = i
+        .objetos
+        .iter()
+        .find(|o| o.id == *id)
+        .expect("o objecto do passo");
     assert_eq!((o.original, o.quem), (IMAGEM, Quem::Mundo));
     assert!(novos.is_empty(), "a imagem já estava no inicial");
     assert_eq!(mudancas.len(), 1, "o chão de fora não entrou");
@@ -163,8 +182,16 @@ fn o_que_o_painter_grava_nao_se_grava_duas_vezes() {
     );
     assert!(componentes.iter().any(|c| c.0 == "ph2d::physics::Collider"));
     let i = Inicial::le(&f.inicial).expect("lê");
-    let o = i.objetos.iter().find(|o| o.original == IMAGEM).expect("a imagem");
-    assert_eq!(o.quem, Quem::Trilha(0), "quem faz nascer a imagem é a trilha 0");
+    let o = i
+        .objetos
+        .iter()
+        .find(|o| o.original == IMAGEM)
+        .expect("a imagem");
+    assert_eq!(
+        o.quem,
+        Quem::Trilha(0),
+        "quem faz nascer a imagem é a trilha 0"
+    );
     assert!(f.avisos.recusados.is_empty());
 }
 
@@ -181,7 +208,11 @@ fn um_componente_recusado_diz_se_pelo_nome() {
     g.mudou(&antes, &depois, 1_000);
     let f = fecha_com(g, &MacroDoc::new(RefRect { w: 1.0, h: 1.0 }), &reg);
     let f = f.expect("o inicial grava");
-    assert!(f.avisos.recusados.contains("ph2d::ecs::Tags"), "{:?}", f.avisos);
+    assert!(
+        f.avisos.recusados.contains("ph2d::ecs::Tags"),
+        "{:?}",
+        f.avisos
+    );
     let aviso = super::super::aviso(&f.avisos).expect("o painel di-lo");
     assert_eq!(aviso.detalhe.as_deref(), Some("Tags"));
 }
@@ -198,7 +229,12 @@ fn nasce_e_apagado_na_gravacao_diz_se() {
     let antes = foto(&mut sim, &reg);
     let caixa = sim
         .world_mut()
-        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("Caixa"), StableId(30), ChildOf(dono)))
+        .spawn((
+            ph2d_ecs::Transform::IDENTITY,
+            Name::new("Caixa"),
+            StableId(30),
+            ChildOf(dono),
+        ))
         .id();
     let meio = foto(&mut sim, &reg);
     sim.world_mut().despawn(caixa);
@@ -214,7 +250,11 @@ fn nasce_e_apagado_na_gravacao_diz_se() {
     assert!(f.avisos.recusados.is_empty());
     let a = super::super::aviso(&f.avisos).expect("o painel di-lo");
     assert_eq!(a.chave, m::MACRO_MUNDO_APAGADOS);
-    assert!(a.detalhe.as_deref().is_some_and(|d| d.contains("Caixa") && d.contains("Player")));
+    assert!(
+        a.detalhe
+            .as_deref()
+            .is_some_and(|d| d.contains("Caixa") && d.contains("Player"))
+    );
     // As duas listas: uma frase após a outra, nenhuma perdida.
     let mut ambos = f.avisos.clone();
     ambos.recusados.insert("ph2d::ecs::Tags".into());
@@ -239,7 +279,13 @@ fn simular_grava_um_passo_e_nenhuma_pose() {
     // Três quadros de corrida contígua (0→2→4→6), depois um quadro parado.
     for (k, de) in [0u64, 2, 4].into_iter().enumerate() {
         let y = -(de as f32);
-        g.correu(de, de + 2, vec![(IMAGEM, [0.0, y, 0.0])], &fita, 2_000 + k as u64);
+        g.correu(
+            (de, de + 2),
+            vec![(IMAGEM, [0.0, y, 0.0])],
+            &fita,
+            [0; 32],
+            2_000 + k as u64,
+        );
         g.quadro();
     }
     g.quadro();
@@ -250,6 +296,101 @@ fn simular_grava_um_passo_e_nenhuma_pose() {
         panic!("a corrida");
     };
     assert_eq!((s.de, s.ate), (0, 6));
-    assert_eq!(s.conferencia.len(), 1, "uma pose por corpo, a do fim — nenhuma por tique");
+    assert_eq!(
+        s.conferencia.len(),
+        1,
+        "uma pose por corpo, a do fim — nenhuma por tique"
+    );
     assert_eq!(s.conferencia[0].1, [0.0, -4.0, 0.0]);
+}
+
+/// O render corre a mais que a física: 3 quadros por tique (2 sem tique, `ate == de`) com o relógio a
+/// andar são UMA corrida; ela acaba quando o relógio pára (`None`, o quadro sem chamada).
+#[test]
+fn tres_quadros_de_render_por_tique_dao_um_simula() {
+    let reg = registo();
+    let (mut sim, img) = mundo();
+    let antes = foto(&mut sim, &reg);
+    poe_o_collider(&mut sim, img);
+    let depois = foto(&mut sim, &reg);
+    let mut g = Gravacao::new(DONO);
+    g.mudou(&antes, &depois, 1_000);
+    let fita = ph2d_physics_ecs::TapeWire::default();
+    for k in 0..6u64 {
+        let p = vec![(IMAGEM, [0.0, -(k as f32), 0.0])];
+        g.correu((k, k + 1), p.clone(), &fita, [0; 32], 2_000 + 3 * k);
+        g.quadro();
+        for q in 1..3 {
+            g.correu((k + 1, k + 1), p.clone(), &fita, [0; 32], 2_000 + 3 * k + q);
+            g.quadro();
+        }
+    }
+    g.quadro();
+    let f = fecha_com(g, &MacroDoc::new(RefRect { w: 1.0, h: 1.0 }), &reg).expect("gravou");
+    let ps = passos(&f);
+    let simulas: Vec<_> = ps
+        .iter()
+        .filter_map(|e| match e {
+            Evento::Simula(s) => Some((s.de, s.ate)),
+            Evento::Passo { .. } => None,
+        })
+        .collect();
+    assert_eq!(simulas, [(0, 6)], "UM Simula: {ps:?}");
+}
+
+fn pose(sim: &mut SimWorld, img: u64, y: f32) {
+    sim.world_mut().entity_mut(Entity::from_bits(img)).insert(
+        ph2d_ecs::Transform::from_translation(ph2d_core::Vec2::new(0.0, y)),
+    );
+}
+
+/// A corrida colapsa num passo do undo ao parar (a pose do solver vira documento, lei do
+/// `ph2d-preview-drive`): esse `Transform` é da corrida, não autoria — sai do passo; o resto fica.
+#[test]
+fn o_pause_nao_grava_a_pose_do_solver_como_autoria() {
+    let reg = registo();
+    for (y_do_passo, fica) in [(-6.0, false), (-2.5, true)] {
+        let (mut sim, img) = mundo();
+        let antes = foto(&mut sim, &reg);
+        poe_o_collider(&mut sim, img);
+        let com_corpo = foto(&mut sim, &reg);
+        let mut g = Gravacao::new(DONO);
+        g.mudou(&antes, &com_corpo, 1_000);
+        let fita = ph2d_physics_ecs::TapeWire::default();
+        g.correu(
+            (0, 6),
+            vec![(IMAGEM, [0.0, -6.0, 0.0])],
+            &fita,
+            [0; 32],
+            2_000,
+        );
+        g.quadro();
+        g.quadro();
+        pose(&mut sim, img, y_do_passo);
+        sim.world_mut()
+            .entity_mut(Entity::from_bits(img))
+            .insert(Name::new("Player 2"));
+        let parado = foto(&mut sim, &reg);
+        g.mudou(&com_corpo, &parado, 3_000);
+        let f = fecha_com(g, &MacroDoc::new(RefRect { w: 1.0, h: 1.0 }), &reg).expect("gravou");
+        let ps = passos(&f);
+        let Some(Evento::Passo { mudancas, .. }) = ps.get(2) else {
+            panic!("o passo depois da corrida: {ps:?}");
+        };
+        let nomes: Vec<&str> = mudancas
+            .iter()
+            .flat_map(|m| match m {
+                Mudanca::Muda { componentes, .. } => {
+                    componentes.iter().map(|c| c.0.as_str()).collect()
+                }
+                _ => vec![],
+            })
+            .collect();
+        assert!(nomes.contains(&"ph2d::ecs::Name"), "o nome fica: {nomes:?}");
+        assert_eq!(
+            nomes.contains(&"ph2d::ecs::Transform"),
+            fica,
+            "a pose do fim da corrida sai; outra pose é autoria ({y_do_passo}): {nomes:?}"
+        );
+    }
 }

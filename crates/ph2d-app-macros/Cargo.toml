@@ -35,6 +35,8 @@ ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
 # O passo fixo da física: a duração de «Simular» nas etapas do mundo.
 ph2d-core = { path = "../ph2d-core" }
+# A impressão dos obstáculos de um «Simular» (a conferência só se compara sobre os mesmos).
+blake3 = "1"
 # O recurso embutido (a imagem importada) viaja em PNG.
 image = { version = "0.25", default-features = false, features = ["png"] }
 # O encaixe vivo (a lei do «por cima», na folha das duas famílias): onde a continuação do Painter começa;

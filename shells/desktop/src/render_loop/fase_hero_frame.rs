@@ -53,6 +53,7 @@ impl crate::App {
         });
         self.fase_object_mode(take(&mut pd.object_mode_request));
         self.fase_image_tools_mode_and_pills();
+        self.fase_painter_persist()?;
         let image_apply = self.fase_image_tool_bridges(window_size)?;
         let painter_apply_committed = self.fase_painter_dispatch(window_size, viewport)?;
         self.fase_macros();

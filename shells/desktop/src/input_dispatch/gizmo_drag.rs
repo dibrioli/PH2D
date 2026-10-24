@@ -210,18 +210,23 @@ impl App {
         // PRECISION-READONLY: MEDIÇÃO pura — só o canal alfa entra, e só para achar a caixa
         // opaca a que a âncora encaixa. Nenhum pixel volta para a sprite, por isso os 8 bits que
         // o `read_sprite_source` devolve não custam precisão nenhuma a ninguém.
-        let src = crate::hero_intents::texture_edit::read_sprite_source(
-            entity,
-            &gfx.sim,
-            &mut gfx.renderer,
-            &gfx.asset_db,
-            &gfx.atlas_asset_map,
-        )?;
-        let (w, h) = (src.image.width, src.image.height);
+        // A tinta por assar de uma sprite a ser pintada também é conteúdo (#53).
+        let por = ph2d_app_painter::painter_bridge_queries::por_assar(&mut gfx.tools);
+        let img = por.ou(drag.entity_bits, || {
+            crate::hero_intents::texture_edit::read_sprite_source(
+                entity,
+                &gfx.sim,
+                &mut gfx.renderer,
+                &gfx.asset_db,
+                &gfx.atlas_asset_map,
+            )
+            .map(|s| s.image)
+        })?;
+        let (w, h) = (img.width, img.height);
         if w == 0 || h == 0 {
             return None;
         }
-        let px = &src.image.pixels;
+        let px = &img.pixels;
         let (mut min_x, mut min_y, mut max_x, mut max_y) = (w, h, 0u32, 0u32);
         let mut any = false;
         for y in 0..h {

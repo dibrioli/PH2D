@@ -42,13 +42,8 @@ impl crate::App {
             merge_sprites_row,
             merge_to_layers_row,
         } = intents;
-        // Merge Sprites (Enio 2026-05-27, Hierarchy right-click).
-        // Drains BEFORE `image_edit::dispatch` so a same-frame
-        // image-edit on one of the originals (extremely unlikely
-        // path but documented) doesn't race with the despawn. The
-        // multi-selection comes from `hero.gizmo` — primary first,
-        // extras after. Right-clicked row resolves to the "primary
-        // anchor" the merged sprite parents under.
+        // Merge Sprites (Enio 2026-05-27): antes do `image_edit::dispatch` (não corre com o despawn); a
+        // seleção do `hero.gizmo`, a linha clicada é a âncora sob a qual a fusão nasce.
         // ⚠️ As DUAS entradas do menu caem aqui: «Merge Sprites» e «Merge to Layers». A
         // geometria é a mesma e o modo é a única diferença — ver a chamada abaixo.
         // ⭐⭐⭐ **AGRUPAR / DESAGRUPAR** (Enio, 2026-08-30) — o alcance de um verbo que já
@@ -120,6 +115,7 @@ impl crate::App {
                     renderer,
                     asset_db,
                     atlas_asset_map,
+                    &ph2d_app_painter::painter_bridge_queries::por_assar(tools),
                     toasts,
                 ) {
                     self.title_dirty = true;

@@ -20,6 +20,18 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        // Assar a folha reata as peças a ela: a tinta por assar de uma peça entra antes (#53).
+        if let Some(folha) = intents
+            .bake_sheet_row
+            .and_then(|r| gfx.hero_live.as_ref()?.bridge.entity_for(r))
+        {
+            crate::hero_intents::assa_antes_de_escrever(gfx, |s, e| {
+                let pai = s
+                    .world()
+                    .get::<ph2d_ecs::ChildOf>(ph2d_ecs::Entity::from_bits(e));
+                pai.is_some_and(|c| c.parent().to_bits() == folha)
+            });
+        }
         let FrameGfx {
             renderer,
             sim,
@@ -155,6 +167,7 @@ impl crate::App {
                 atlas_asset_map,
                 next_sheet_id,
                 bits,
+                &ph2d_app_painter::painter_bridge_queries::por_assar(tools),
                 toasts,
             )
         {

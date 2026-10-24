@@ -4,40 +4,22 @@
 use super::*;
 
 impl crate::App {
-    /// Ver o cabeçalho do módulo.
-    pub(super) fn fase_painter_dispatch(
-        &mut self,
-        window_size: ph2d_host::WindowSize,
-        viewport: EditorRect,
-    ) -> Option<bool> {
-        // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
-        let gfx = self.gfx.as_mut()?;
+    /// O assar do Painter que nada pode perder — ao sair da sprite ou do Painter —, ANTES das pontes
+    /// das ferramentas de imagem: a que entra no lugar dele lê a sprite JÁ com a tinta (#53).
+    pub(super) fn fase_painter_persist(&mut self) -> Option<()> {
         let FrameGfx {
             renderer,
             sim,
-            present,
-            camera,
             asset_db,
-            theme,
             toasts,
             tools,
-            vector_scene,
-            text_system,
             hero_screen,
             atlas_asset_map,
             ..
-        } = FrameGfx::of(gfx);
-        // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
+        } = FrameGfx::of(self.gfx.as_mut()?);
         let hero = hero_screen.as_mut()?;
-        let paint_ctx = PaintCtx {
-            theme: *theme,
-            viewport,
-            text: text_system,
-        };
-        // ── Persist painter work BEFORE the bridge rebinds / right after a deferred deactivation
-        // (Enio 2026-06-24: paint must survive deselect / object-switch / closing painter mode).
-        // Done HERE (not in the bridge) because the bake needs `&mut sim` and must run before the
-        // bridge's source-push replaces the working canvas. ──
+        // ── Persist painter work (Enio 2026-06-24: paint survives deselect / object-switch / closing
+        // the Painter) — needs `&mut sim`, and runs before any source-push replaces a canvas. ──
         {
             let painter_id = ph2d_editor_core::ToolId::new("painter");
             let painter_active = tools.active().map(|t| t.id()) == Some(painter_id.clone());
@@ -90,6 +72,39 @@ impl crate::App {
                 self.last_painter_pushed_entity = None;
             }
         }
+        Some(())
+    }
+
+    /// Ver o cabeçalho do módulo.
+    pub(super) fn fase_painter_dispatch(
+        &mut self,
+        window_size: ph2d_host::WindowSize,
+        viewport: EditorRect,
+    ) -> Option<bool> {
+        // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
+        let gfx = self.gfx.as_mut()?;
+        let FrameGfx {
+            renderer,
+            sim,
+            present,
+            camera,
+            asset_db,
+            theme,
+            toasts,
+            tools,
+            vector_scene,
+            text_system,
+            hero_screen,
+            atlas_asset_map,
+            ..
+        } = FrameGfx::of(gfx);
+        // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
+        let hero = hero_screen.as_mut()?;
+        let paint_ctx = PaintCtx {
+            theme: *theme,
+            viewport,
+            text: text_system,
+        };
         // Painter panel ⟷ tool bridge (W1 T1.5) — source push +
         // current_preview drain + pending_commit capture; on-canvas
         // overlay paints the canvas RGBA over the sprite footprint.

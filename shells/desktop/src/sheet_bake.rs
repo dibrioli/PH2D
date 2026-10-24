@@ -87,6 +87,7 @@ pub(crate) fn compose_sheet(
     atlas_asset_map: &BTreeMap<u32, ph2d_asset::AssetId>,
     next_sheet_id: &mut u32,
     sheet_bits: u64,
+    por: &ph2d_app_painter::painter_bridge_queries::PorAssar,
     toasts: &mut ToastQueue,
 ) -> Option<(AuthoredSheet, Vec<(Entity, String)>)> {
     let sheet = Entity::from_bits(sheet_bits);
@@ -146,6 +147,7 @@ pub(crate) fn compose_sheet(
         sheet,
         &cfg,
         sheet_half,
+        por,
     );
     if baked.is_empty() {
         toasts.push(Toast::warning(tr("shell.sheet_bake.bake_sheet_this_sheet")));
@@ -207,6 +209,7 @@ pub(crate) fn bake(
         atlas_asset_map,
         next_sheet_id,
         sheet_bits,
+        &ph2d_app_painter::painter_bridge_queries::PorAssar::default(),
         toasts,
     )?;
     let sheet_id = authored.id;
@@ -269,6 +272,7 @@ fn sixteen_bit_pieces(sim: &SimWorld, renderer: &SpriteRenderer, sheet: Entity) 
         .unwrap_or(0)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn read_pieces(
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
@@ -277,6 +281,7 @@ fn read_pieces(
     sheet: Entity,
     cfg: &SpriteSheetFrame,
     sheet_half: [f32; 2],
+    por: &ph2d_app_painter::painter_bridge_queries::PorAssar,
 ) -> Vec<Baked> {
     let children: Vec<Entity> = sim
         .world()
@@ -294,28 +299,17 @@ fn read_pieces(
         let Some(bx) = ph2d_sheet_bounds::piece_box_of(sim, child) else {
             continue;
         };
-        let Some(src) =
+        // A tinta por assar de uma peça a ser pintada é a imagem dela (#53).
+        let Some(image) = por.ou(child.to_bits(), || {
             texture_edit::read_sprite_source(child, sim, renderer, asset_db, atlas_asset_map)
-        else {
+                .map(|s| s.image)
+        }) else {
             continue;
         };
-        // ⚠️ **A FOLHA É PRÉ-MULTIPLICADA, e é esta decisão que devolve a borda ao artista.**
-        //
-        // A 1ª versão convertia tudo para alfa reto (*"uma folha é um PNG"*), e o Enio viu a borda
-        // transparente mudar ao assar. A medição diz porquê — e não é nenhuma das duas coisas que
-        // eu supus antes: o ida-e-volta pré→reto→pré é **idêntico texel a texel** (768 casos, zero
-        // alterados). O que não é idêntico é o que acontece ENTRE os texeis: a amostragem bilinear
-        // interpola os bytes ARMAZENADOS antes de o shader lhes tocar, e interpolar alfa reto
-        // mistura a cor dos texeis transparentes na do vizinho opaco. Medido no meio do gradiente
-        // de uma borda: **50 de 255**, ~20%. É a franja que ele fotografou.
-        //
-        // ⚠️ E fecha a parte que eu não tinha explicado: depois de um Undo o sprite PERDE a
-        // bandeira `premultiplied` (ela é `#[serde(skip)]`), então ele já estava a ser desenhado
-        // pelo caminho reto **antes** de assar — assar deixava de mudar seja o que for, e o
-        // problema *"não aparecia"*.
-        //
-        // Pré-multiplicado é também o que o `mipgen.wgsl` exige, pelo próprio cabeçalho dele.
-        let (sw, sh) = (src.image.width, src.image.height);
+        // ⚠️ **A FOLHA É PRÉ-MULTIPLICADA**: o bilinear interpola os bytes ARMAZENADOS, e em alfa reto a
+        // cor dos texeis transparentes entra no vizinho opaco (medido: 50/255 na borda; o ida-e-volta
+        // pré→reto→pré é idêntico). É também o que o `mipgen.wgsl` exige.
+        let (sw, sh) = (image.width, image.height);
         // Quantos pixels da folha esta peça ocupa — a caixa dela, à densidade da folha.
         let want_w = (cfg.pixels_for(bx.half[0] * 2.0)).max(1);
         let want_h = (cfg.pixels_for(bx.half[1] * 2.0)).max(1);
@@ -333,23 +327,17 @@ fn read_pieces(
         // projeto. A rotação **não** entra aqui — ela já está na caixa (`piece_box`), e passá-la
         // de novo rodaria os pixels uma segunda vez.
         let (pixels, out_w, out_h) = if needs_resample {
-            let straight = src.image.into_straight();
+            let straight = image.into_straight();
             let r = ph2d_tool_rasterize::rasterize(&straight.pixels, sw, sh, sx, sy, 0.0);
             let mut px = r.pixels;
             ph2d_render::premultiply_rgba8(&mut px);
             (px, r.width, r.height)
         } else {
-            let pre = src.image.into_premultiplied();
+            let pre = image.into_premultiplied();
             (pre.pixels, pre.width, pre.height)
         };
-        // **A SONDA** (`PH2D_SHEET_BAKE_LOG=1`) — o que o bake FAZ a cada peça, em uma linha.
-        //
-        // ⚠️ Ela existe porque eu errei a causa duas vezes a raciocinar sobre este caminho (o
-        // resample sem necessidade: refutado por medição; o recuo de meio texel: corrigido e o
-        // sintoma ficou). *A terceira suposição vale menos que a primeira medição.* O que ela
-        // imprime é exatamente o conjunto de factos de que a explicação precisa: o tamanho de
-        // ORIGEM, o tamanho ALVO, se houve reamostragem, e as duas bandeiras que decidem como os
-        // bytes são interpretados.
+        // **A SONDA** (`PH2D_SHEET_BAKE_LOG=1`): origem, alvo, reamostragem e as bandeiras de alfa de
+        // cada peça — nasceu de duas causas erradas a raciocinar sobre este caminho.
         if std::env::var_os("PH2D_SHEET_BAKE_LOG").is_some() {
             let pre = sim
                 .world()

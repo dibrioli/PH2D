@@ -69,6 +69,19 @@ pub(crate) fn auto_commit_painter(
     }
 }
 
+/// Antes de um verbo que ESCREVE a sprite: assa nela a tinta por assar do Painter (`BUGS_painter_fechados_41_a_46.md` #53).
+pub(crate) fn assa_antes_de_escrever(g: &mut crate::AppGfx, alvo: impl Fn(&SimWorld, u64) -> bool) {
+    let Some(p) = ph2d_app_painter::painter_bridge_queries::o_painter(&mut g.tools) else {
+        return;
+    };
+    let Some(e) = ph2d_app_painter::painter_bridge_queries::a_assar_antes(p, |e| alvo(&g.sim, e))
+    else {
+        return;
+    };
+    let (sim, r, db, at) = (&mut g.sim, &mut g.renderer, &g.asset_db, &g.atlas_asset_map);
+    auto_commit_painter(e, sim, r, db, at, p, &mut g.toasts);
+}
+
 /// Drain a `pending_painter` Tool Action: pull the painted canvas at the
 /// sprite's full resolution and swap to a fresh Individual texture with
 /// the same dimensions (alpha + colour mutation). Caller gates on

@@ -32,6 +32,15 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        // Os verbos instantâneos ESCREVEM a sprite: a tinta por assar entra nela antes (#53).
+        let i = &intents;
+        let l = [
+            &i.trim_entities,
+            &i.make_square_entities,
+            &i.real_size_entities,
+            &i.rasterize_entities,
+        ];
+        crate::hero_intents::assa_antes_de_escrever(gfx, |_, e| l.iter().any(|l| l.contains(&e)));
         let FrameGfx {
             renderer,
             sim,

@@ -146,6 +146,9 @@ pub mod wetpaint_smoke;
 
 #[cfg(test)]
 mod family_tests;
+/// A tinta por assar diante dos verbos da shell sobre sprites (`BUGS_painter_fechados_41_a_46.md` #53).
+#[cfg(test)]
+mod painter_bridge_por_assar_tests;
 /// ⭐ **Veio da shell na integração de 2026-09-16** — a catraca `the_shell_only_shrinks`
 /// ficou vermelha por ACUMULAÇÃO das seis linhas da rodada, e a cura dela é MOVER, nunca
 /// subir o número. Este ficheiro não tocava em nada da shell (zero `crate::`): ele é

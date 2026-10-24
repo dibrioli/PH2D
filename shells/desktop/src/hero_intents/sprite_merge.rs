@@ -107,6 +107,7 @@ pub(crate) fn drain_merge_sprites(
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
+    por: &ph2d_app_painter::painter_bridge_queries::PorAssar,
     toasts: &mut ToastQueue,
 ) -> bool {
     if entity_bits_list.len() < 2 {
@@ -120,7 +121,7 @@ pub(crate) fn drain_merge_sprites(
     let (ordered_bits, total_requested) =
         order_selection(entity_bits_list, primary_bits, sim, renderer, toasts);
 
-    let srcs = read_sources(ordered_bits, sim, renderer, asset_db, atlas_asset_map);
+    let srcs = read_sources(ordered_bits, sim, renderer, asset_db, atlas_asset_map, por);
 
     if srcs.len() < 2 {
         toasts.push(Toast::error(tr("shell.sprite_merge.merge_sprites_could")));
@@ -343,14 +344,17 @@ fn read_sources(
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
+    por: &ph2d_app_painter::painter_bridge_queries::PorAssar,
 ) -> Vec<SrcRecord> {
     // Step 1 — read each source + snapshot its transform.
     let mut srcs: Vec<SrcRecord> = Vec::with_capacity(ordered_bits.len());
     for &bits in &ordered_bits {
         let entity = Entity::from_bits(bits);
-        let Some(read) =
+        // A fusão DESPAWNA as fontes: a tinta por assar de uma delas lê-se, e morre com ela (#53).
+        let Some(image) = por.ou(bits, || {
             texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
-        else {
+                .map(|s| s.image)
+        }) else {
             // Skip — non-sprite entity OR atlas miss / readback fail.
             // Audit A1 + B-H1: the entity is also EXCLUDED from the
             // despawn pass below, so a partial read never destroys
@@ -358,19 +362,9 @@ fn read_sources(
             // the merged output.
             continue;
         };
-        // Compositing in PREMULTIPLIED space — both for the sampler
-        // (avoids the dark-fringe straight-bilinear produces at
-        // partial-alpha edges: a half-pixel between opaque red and
-        // transparent reads as `R/2, A/2` which composes to
-        // half-brightness; premul makes it `R/2, A/2` which composes
-        // to full-brightness, half-coverage — the GPU's behaviour for
-        // bake-time `Rgba8UnormSrgb` textures) AND for the accumulator
-        // (premul "over" is `dst = src + dst*(1-src.a)` with no
-        // divide). Atlas sprites are stored straight on disk → premul
-        // at read time; Individual-source sprites are already premul
-        // after BG-Removal / Trim / etc. bakes → `into_premultiplied`
-        // no-ops them.
-        let premul = read.image.into_premultiplied();
+        // Compõe em PRÉ-MULTIPLICADO (o amostrador sem franja escura na borda; o `over` sem divisão);
+        // `into_premultiplied` é no-op numa fonte que já o é.
+        let premul = image.into_premultiplied();
         let world = sim.world();
         let Some(tr) = world.get::<Transform>(entity) else {
             continue;

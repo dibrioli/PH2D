@@ -34,6 +34,54 @@ pub fn imagem_por_assar_do(
         .flatten()
 }
 
+/// **A tinta por assar do Painter e a sprite dela, lidas UMA vez por gesto** — o que um verbo
+/// SÓ-LEITURA sobre sprites (exportar a folha, enviar ao quadro, fundir, o pivô ao conteúdo) leva no
+/// lugar da textura da sprite pintada (`BUGS_painter_fechados_41_a_46.md` #53). Vazio = toda sprite é
+/// a verdade.
+#[derive(Default)]
+pub struct PorAssar(Option<(u64, ph2d_render::SpriteImage)>);
+
+impl PorAssar {
+    /// A imagem da sprite `entity`: a tinta por assar, se é dela; senão `le_a_sprite()`.
+    pub fn ou(
+        &self,
+        entity: u64,
+        le_a_sprite: impl FnOnce() -> Option<ph2d_render::SpriteImage>,
+    ) -> Option<ph2d_render::SpriteImage> {
+        match &self.0 {
+            Some((e, img)) if *e == entity => Some(img.clone()),
+            _ => le_a_sprite(),
+        }
+    }
+}
+
+/// [`PorAssar`] do Painter do registo (activo ou não).
+pub fn por_assar(tools: &mut ToolRegistry) -> PorAssar {
+    o_painter(tools).map_or_else(PorAssar::default, |p| por_assar_do(p))
+}
+
+/// [`PorAssar`] sobre o tool já na mão.
+#[must_use]
+pub fn por_assar_do(p: &ph2d_tool_painter::PainterTool) -> PorAssar {
+    PorAssar(p.bound_document().and_then(|e| {
+        let (px, w, h) = imagem_por_assar_do(p, e)?;
+        let img = ph2d_render::SpriteImage::from_bytes(w, h, px, ph2d_render::AlphaMode::Straight);
+        Some((e, img))
+    }))
+}
+
+/// **A sprite cuja tinta por assar um verbo que a ESCREVE tem de assar ANTES** (#53): o Painter
+/// pinta-a, há edições por assar e `alvo` a escolhe. Ler a tinta não basta a quem escreve: a textura
+/// nova seria reescrita pelo assar seguinte (ou a tinta perdida no re-bind).
+#[must_use]
+pub fn a_assar_antes(
+    p: &ph2d_tool_painter::PainterTool,
+    alvo: impl Fn(u64) -> bool,
+) -> Option<u64> {
+    p.bound_document()
+        .filter(|&e| p.has_unbaked_edits() && alvo(e))
+}
+
 /// Apply a Painter layers drag-reparent (W3 T3.8) emitted by the dispatch on Up
 /// of an active layer-row drag. The active `PainterTool` reverses
 /// `NodeId`→`LayerId` and applies `move_into_group` / reorder. Mirror of

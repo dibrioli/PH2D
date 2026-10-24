@@ -51,18 +51,23 @@ impl crate::App {
         // W16 — a linha clicada DENTRO da selecção leva a selecção inteira (a ordem dela).
         let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
         let ppm = hero.project.pixels_per_meter;
+        let por = ph2d_app_painter::painter_bridge_queries::por_assar(&mut gfx.tools);
         let items = gather(world, clicked.to_bits(), &selected, kind, |e, k, name| {
             match k {
                 ObjectKind::Image => {
                     // PRECISION-READONLY: LÊ os pixels e manda uma CÓPIA ao quadro (8 bits, o formato
-                    // das imagens do quadro); a sprite da cena nunca é escrita de volta.
-                    let src = crate::hero_intents::texture_edit::read_sprite_source(
-                        e,
-                        &gfx.sim,
-                        &mut gfx.renderer,
-                        &gfx.asset_db,
-                        &gfx.atlas_asset_map,
-                    );
+                    // das imagens do quadro); a sprite da cena nunca é escrita de volta. A tinta por
+                    // assar de uma sprite a ser pintada é a imagem dela (#53).
+                    let src = por.ou(e.to_bits(), || {
+                        crate::hero_intents::texture_edit::read_sprite_source(
+                            e,
+                            &gfx.sim,
+                            &mut gfx.renderer,
+                            &gfx.asset_db,
+                            &gfx.atlas_asset_map,
+                        )
+                        .map(|s| s.image)
+                    });
                     let size = world
                         .get::<ph2d_render::Sprite>(e)
                         .map(|s| (s.size, [s.flip_x, s.flip_y]));
@@ -70,7 +75,7 @@ impl crate::App {
                         .map(|t| ph2d_ecs::GlobalTransform::from_transform(t).affine());
                     match (src, size, m) {
                         (Some(src), Some((size, flip)), Some(m)) => {
-                            let img = src.image.into_straight();
+                            let img = src.into_straight();
                             let lin = [m[0], m[1], m[2], m[3]].map(f64::from);
                             let size = size.map(f64::from);
                             let px = Content::rgba([img.width, img.height], img.pixels);

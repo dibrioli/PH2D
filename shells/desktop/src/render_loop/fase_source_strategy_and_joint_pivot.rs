@@ -22,6 +22,12 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        // Ir para o atlas ESCREVE os pixels numa célula: a tinta por assar entra antes (#53).
+        if let Some((b, ph2d_editor_core::RequestedSpriteStrategy::Atlas)) =
+            intents.sprite_source_change
+        {
+            crate::hero_intents::assa_antes_de_escrever(gfx, |_, e| e == b);
+        }
         let FrameGfx {
             renderer,
             sim,

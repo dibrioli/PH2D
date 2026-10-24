@@ -3,3 +3,4 @@
 
 mod a_sprite_verb_asks_the_painter_first;
 mod every_word_this_family_shows_comes_from_the_string_table;
+mod measure_painter_bridge_phases;

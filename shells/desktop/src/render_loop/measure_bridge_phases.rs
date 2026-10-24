@@ -1,7 +1,7 @@
 //! MEASUREMENT scaffold (not a gate): where the PANEL and CHROME phases of `painter_bridge::dispatch`
 //! actually spend a frame, at three canvas sizes.
 //!
-//! Why this exists and the `tests/measure_painter_bridge_phases.rs` sibling was not enough: that one
+//! Why this exists and the `crates/ph2d-app-painter/tests/it/measure_painter_bridge_phases.rs` sibling was not enough: that one
 //! timed the TOOL-SIDE getters (`painter.selection()`, `painter.brush_settings()`, …) and every one of
 //! them measured **0.0000 ms** at 4096². That is a real negative result — the accessors are innocent —
 //! but it leaves the 3,8 ms `panel` + 3,7 ms `chrome` unexplained, because the getters are only half of

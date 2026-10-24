@@ -3,7 +3,7 @@
 //! Painter is active, on a document with one layer, no selection and no open shape — the case Enio
 //! measured at 4096² (`dispatch p50 7.6 ms` = `panel 3.8` + `chrome 3.7`).
 //!
-//! Run: `cargo test -p ph2d-host-desktop --release --test measure_painter_bridge_phases -- --ignored --nocapture`
+//! Run: `cargo test -p ph2d-app-painter --profile smoke --test it measure_painter_bridge_phases -- --ignored --nocapture`
 
 use ph2d_editor_core::tool::RasterEditTool;
 use ph2d_tool_painter::PainterTool;

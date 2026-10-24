@@ -63,7 +63,6 @@ mod i18n_view;
 mod input_text;
 mod joint_anchor_gizmo;
 mod joint_draw_gesture;
-mod measure_painter_bridge_phases;
 mod motion_gpu_kernel_budgets;
 mod moving_a_piece_of_a_copy_goes_through_the_recipe_door;
 mod no_open_panel_leaves_its_column_blank;

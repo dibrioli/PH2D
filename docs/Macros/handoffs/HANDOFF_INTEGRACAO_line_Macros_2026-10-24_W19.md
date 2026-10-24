@@ -153,4 +153,6 @@ de porta (a cura é uma entrada em `mundo::portas::PORTAS`); o censo das portas 
 
 ## §6 — Smoke do dono
 
-- **Por fazer** (cena `=8`).
+- **24/10, cena `=8`: o dono viu-a e mandou INTEGRAR**, com um defeito anotado para depois: *«a simulação faz o
+  objeto piscar»* (por reproduzir e medir na onda seguinte — suspeitos: o `Visibility` conduzido pelo palco do mundo
+  e a troca `Kinematic`/pose por blob a cada quadro contra a ponte global; NÃO consertar na integração).

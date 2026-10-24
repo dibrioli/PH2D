@@ -29,8 +29,9 @@ fn fontes_dos_cartoes() -> String {
     out
 }
 
-/// ⏳ O único cartão cujo título não é o nome do componente: «Render Source» × «Sprite» (o script diz
-/// `sprite.*`). Decisão do dono: renomear um ou o outro.
+/// O único cartão cujo título não é o nome do componente: «Texture & Atlas» × «Sprite». Decisão do dono
+/// 24/10: o cartão é a estratégia de textura e de átlas, não a sprite — o título di-lo, e o script continua
+/// `sprite.*` (a cor, a opacidade, o espelho e a imagem, pintados noutras secções).
 const SPRITE: (&str, &str) = (
     "ph2d::render::Sprite",
     "panel.inspector.render_source.render_source",

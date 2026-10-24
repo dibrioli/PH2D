@@ -411,7 +411,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.physics.force_axes" => "Force Axes",
         "panel.inspector.properties.variant" => "Variant",
         "panel.inspector.properties.properties" => "Properties",
-        "panel.inspector.render_source.render_source" => "Render Source",
+        "panel.inspector.render_source.render_source" => "Texture & Atlas",
         "panel.inspector.render_source.strategy" => "Strategy",
         "panel.inspector.render_source.from_the_asset_pipeline_read" => {
             "From the asset pipeline \u{00b7} read-only"

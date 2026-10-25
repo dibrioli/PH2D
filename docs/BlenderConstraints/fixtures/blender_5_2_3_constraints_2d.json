@@ -1,0 +1,203 @@
+{
+ "_cabecalho": {
+  "oraculo": "Blender 5.2.3 LTS",
+  "licenca": "GPL — corrido por script, fonte não lido (CLAUDE.md §0.9)",
+  "script": "docs/BlenderConstraints/ferramentas/oraculo_blender.py",
+  "convencao": "plano XY; rot_deg = ângulo do eixo +X mundial do objecto, graus"
+ },
+ "mistura_rotacao_copy_rotation": {
+  "0.0": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": 169.999993,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "0.25": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": 174.999999,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "0.5": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": -179.999995,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "0.75": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": -174.99999,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "1.0": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": -169.999984,
+   "sx": 1.0,
+   "sy": 1.0
+  }
+ },
+ "child_of": {
+  "sem_inverse": {
+   "antes": {
+    "x": 2.0,
+    "y": 1.0,
+    "rot_deg": 30.0,
+    "sx": 1.0,
+    "sy": 1.0
+   },
+   "ao_ligar": {
+    "x": 2.0,
+    "y": 1.0,
+    "rot_deg": 30.000001,
+    "sx": 1.0,
+    "sy": 1.0
+   },
+   "alvo_movido": {
+    "x": 2.320803,
+    "y": -0.292584,
+    "rot_deg": 40.000004,
+    "sx": 1.0,
+    "sy": 1.0
+   }
+  },
+  "set_inverse": {
+   "antes": {
+    "x": 2.0,
+    "y": 1.0,
+    "rot_deg": 30.0,
+    "sx": 1.0,
+    "sy": 1.0
+   },
+   "ao_ligar": {
+    "x": 2.0,
+    "y": 1.0,
+    "rot_deg": 30.000001,
+    "sx": 1.0,
+    "sy": 1.0
+   },
+   "alvo_movido": {
+    "x": 2.320803,
+    "y": -0.292584,
+    "rot_deg": 40.000004,
+    "sx": 1.0,
+    "sy": 1.0
+   }
+  }
+ },
+ "apontar_3_tipos": {
+  "DAMPED_TRACK": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": 53.130092,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "TRACK_TO": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": 53.130102,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "LOCKED_TRACK": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": 53.130101,
+   "sx": 1.0,
+   "sy": 1.0
+  }
+ },
+ "limit_rotation_z_-45_45": {
+  "30.0": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": 30.0,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "60.0": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": 45.000005,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "120.0": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": 44.999998,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "170.0": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": 45.000005,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "-170.0": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": -45.000005,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "-100.0": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": -44.999995,
+   "sx": 1.0,
+   "sy": 1.0
+  }
+ },
+ "limit_distance_inside_2": {
+  "x": 2.0,
+  "y": 0.0,
+  "rot_deg": 0.0,
+  "sx": 1.0,
+  "sy": 1.0
+ },
+ "ordem_da_pilha": {
+  "COPY_LOCATION > LIMIT_LOCATION": {
+   "x": 3.0,
+   "y": 1.0,
+   "rot_deg": 0.0,
+   "sx": 1.0,
+   "sy": 1.0
+  },
+  "LIMIT_LOCATION > COPY_LOCATION": {
+   "x": 8.0,
+   "y": 1.0,
+   "rot_deg": 0.0,
+   "sx": 1.0,
+   "sy": 1.0
+  }
+ },
+ "ik_com_copy_rotation_abaixo": {
+  "b1": {
+   "x": 0.0,
+   "y": 0.0,
+   "rot_deg": -94.539753,
+   "sx": 1.0,
+   "sy": 1.0,
+   "cauda_x": 0.996863,
+   "cauda_y": -0.079151
+  },
+  "b2": {
+   "x": 0.996863,
+   "y": -0.079151,
+   "rot_deg": -11.720458,
+   "sx": 1.0,
+   "sy": 1.0,
+   "cauda_x": 1.2,
+   "cauda_y": 0.9
+  }
+ }
+}

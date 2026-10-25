@@ -10,6 +10,7 @@
 pub mod brush;
 pub mod codec;
 pub mod color;
+pub mod convert;
 mod compose;
 pub mod fill;
 mod history;

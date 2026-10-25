@@ -1,4 +1,5 @@
 mod codec;
+mod color_laws;
 mod color_parity;
 mod draw_laws;
 mod draw_parity;

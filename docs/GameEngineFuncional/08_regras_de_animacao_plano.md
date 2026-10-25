@@ -74,3 +74,5 @@ Antecessor: [`07_animacao_num_cartao_plano.md`](07_animacao_num_cartao_plano.md)
 ## Fora desta onda
 
 «Abaixar» com corpo baixo (peça à parte) · condições compostas (E/OU) — o script cobre · transições com mistura.
+
+**Feito (25/10):** lista de regras no cartão Animation (`AnimRules`, `AnimWhen`, avaliação em `personagem.rs`), Frames/s com tempos próprios e teclado no palco; ver [handoff](handoffs/HANDOFF_CONTINUACAO_2026-10-25_08_REGRAS.md); smoke do dono por fazer.

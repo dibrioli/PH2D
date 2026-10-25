@@ -50,6 +50,7 @@
 use ph2d_ecs::{Entity, Name, StableId, TextosDosCanais, World};
 
 mod animation;
+mod migra_vetor;
 pub use animation::{copy_animations, follow_selection, publish_animation_header};
 use ph2d_timeline::{
     TimelineState, WireId, refresh_and_heal_bindings, resolve_entities, stamp_wire_ids,
@@ -202,6 +203,9 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
             },
         );
     }
+    // ⭐ F31 §A: depois da cura (a entidade de cada binding é a deste quadro), a chave posicional
+    // do Vetor passa ao id da entrada.
+    migra_vetor::migra_chaves_do_vetor(&mut timeline.doc, &*world);
     // ⭐ Quem AINDA depende de um clip pelo nome — hoje, os ossos inteligentes. A varredura corre
     // sobre o mundo que já está na mão; o nome resolve-se no `purge`, depois da purga dos donos.
     let ossos: Vec<(Entity, String)> = world
@@ -433,6 +437,8 @@ pub fn publish_object_names(view: &mut ph2d_timeline::TimelineViewSnapshot, worl
             }
         }
     }
+    // Uma entrada da pilha / filtro do Vetor (F31 §A) diz a POSIÇÃO como antes do id («Fill 2»).
+    migra_vetor::publica_nomes(tracks, channel_names, world);
     // Poda primeiro: um objeto que saiu das tracks (deletado, ou a track foi removida) não
     // pode continuar nomeando bits que o bevy já reciclou para OUTRO objeto.
     object_names.retain(|bits, _| tracks.iter().any(|t| t.entity == *bits));
@@ -575,3 +581,8 @@ mod clip_names_tests;
 #[cfg(test)]
 #[path = "timeline_textos_tests.rs"]
 mod textos_tests;
+
+/// ⚠️ Irmão de [`tests`] pelo mesmo teto — a chave do Vetor por id (F31 §A).
+#[cfg(test)]
+#[path = "timeline_vetor_ids_tests.rs"]
+mod vetor_ids_tests;

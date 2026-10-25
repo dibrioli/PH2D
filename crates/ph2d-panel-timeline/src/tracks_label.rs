@@ -57,7 +57,8 @@ pub(crate) fn prop_label(p: PropKind) -> &'static str {
 pub(crate) fn track_label(name: Option<&str>, entity: u64, prop: PropKind) -> String {
     let rotulo = match prop {
         PropKind::Field(k) => match k.grupo() {
-            Some((_, _, i)) if i > 0 => format!("{} {i}", prop_label(prop)),
+            // Com `item` o sub é o id, nunca um número de linha (o nome vem de `channel_names`).
+            Some((_, _, i)) if i > 0 && k.item.is_none() => format!("{} {i}", prop_label(prop)),
             _ => prop_label(prop).to_owned(),
         },
         _ => prop_label(prop).to_owned(),

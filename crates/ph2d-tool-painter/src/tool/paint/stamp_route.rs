@@ -304,7 +304,7 @@ impl PainterTool {
                 // the rim right back to a hard edge (measured: 0.64 -> 0.94).
                 || brush.film_aa_wanted(brush.shape.is_active())
                 // O tecto POR DAB (J3): a opacidade da mão é o tecto de cada texel também à Strength 1.
-                || brush.traco.tecto_por_dab
+                || brush.tecto_por_dab
                 // …e a orla em PÍXEIS (J3): o texel da orla pára na sua ÁREA, como o da Smooth Edges acima.
                 || (brush.borda_px > 0.0 && brush.leis_do_digital()))
     }

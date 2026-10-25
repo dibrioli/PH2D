@@ -47,10 +47,9 @@ pub enum Dependente {
     MarcaSemSpray,
     OpacidadeNaAguada,
     CorDaMaoSemLeitor,
-    // O fim do traço (L5) e o traço como uma camada (L8), no Digital (`traco_plano`); o modo sobre o vazio (L7).
+    // O fim do traço (L5), re-pintado no plano do traço (`traco_plano`, o Digital); o modo sobre o vazio (L7).
     PontaDaCaudaSemCauda,
     PatamarSemFallOff,
-    LarguraSemOrla,
     VazioSemModoDeCor,
     PlanoForaDoTraco,
     FallOffDaAgua,
@@ -65,7 +64,7 @@ pub enum Dependente {
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 42] = [
+    pub const TODOS: [Dependente; 41] = [
         Dependente::ForaDaPontaDePixel,
         Dependente::TaperTip,
         Dependente::TaperOpacity,
@@ -100,7 +99,6 @@ impl Dependente {
         Dependente::CorDaMaoSemLeitor,
         Dependente::PontaDaCaudaSemCauda,
         Dependente::PatamarSemFallOff,
-        Dependente::LarguraSemOrla,
         Dependente::VazioSemModoDeCor,
         Dependente::PlanoForaDoTraco,
         Dependente::FallOffDaAgua,
@@ -181,16 +179,8 @@ impl Dependente {
                 ids::PAINTER_TAPER_FALL_OFF_START,
             ],
             Dependente::PatamarSemFallOff => &[ids::PAINTER_TAPER_FALL_OFF_START],
-            Dependente::LarguraSemOrla => &[ids::PAINTER_TRACO_FIELDS[3]],
-            Dependente::VazioSemModoDeCor => &[ids::PAINTER_TRACO_FIELDS[4]],
-            Dependente::PlanoForaDoTraco => &[
-                ids::PAINTER_TRACO_FIELDS[0],
-                ids::PAINTER_TRACO_FIELDS[1],
-                ids::PAINTER_TRACO_FIELDS[2],
-                ids::PAINTER_TRACO_FIELDS[3],
-                ids::PAINTER_TAPER_END,
-                ids::PAINTER_TAPER_TIP_END,
-            ],
+            Dependente::VazioSemModoDeCor => &[ids::PAINTER_BRUSH_BLEND_ON_EMPTY],
+            Dependente::PlanoForaDoTraco => &[ids::PAINTER_TAPER_END, ids::PAINTER_TAPER_TIP_END],
             // A cor pela mão e a secundária (L11): a cor do dab — que a rampa e a Texture Color substituem.
             Dependente::CorDaMaoSemLeitor => &[
                 ids::PAINTER_MARCA_FIELDS[8],
@@ -256,7 +246,6 @@ impl Dependente {
             Dependente::CorDaMaoSemLeitor => "panel.painter_layers.inerte.color_owned_by_ramp",
             Dependente::PontaDaCaudaSemCauda => "panel.painter_layers.inerte.taper_end_length",
             Dependente::PatamarSemFallOff => "panel.painter_layers.inerte.fall_off_length",
-            Dependente::LarguraSemOrla => "panel.painter_layers.inerte.edges_above_zero",
             Dependente::VazioSemModoDeCor => "panel.painter_layers.inerte.color_blend_mode",
             Dependente::PlanoForaDoTraco => "panel.painter_layers.inerte.freehand_paint_stroke",
             Dependente::FallOffDaAgua => "panel.painter_layers.inerte.wet_paint_tool",
@@ -604,7 +593,7 @@ impl PainterTool {
             // A aguada não lê a cobertura do dab (`WASH_DEPOSIT_PEAK`, a mesma razão do cartão Pen).
             (Dependente::OpacidadeNaAguada, aquarela),
             // O fim do traço (L5): a ponta da cauda sem cauda (ou sem o plano que a re-pinta), o patamar sem a
-            // carga que acaba; o plano (L8): a largura sem orla; e o modo sobre o vazio sem um modo de cor (L7).
+            // carga que acaba; e o modo sobre o vazio sem um modo de cor (L7).
             (
                 Dependente::PontaDaCaudaSemCauda,
                 !b.taper.end_active() || self.plano_recusado().is_some(),
@@ -615,10 +604,6 @@ impl PainterTool {
             (
                 Dependente::FallOffDaAgua,
                 agua && (self.paint.eraser || self.paint.wetpaint.tool != super::WetTool::Paint),
-            ),
-            (
-                Dependente::LarguraSemOrla,
-                !b.traco.tem_orla() || self.plano_recusado().is_some(),
             ),
             (Dependente::VazioSemModoDeCor, !b.blend.e_de_cor()),
             (

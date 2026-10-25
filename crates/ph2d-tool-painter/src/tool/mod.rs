@@ -455,7 +455,7 @@ pub use paint::{
     MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, MIN_ELEV_DEG, N_COMPOSITE_ERASE_SCOPES,
     N_COMPOSITE_LAYERS, N_COMPOSITE_OPS, PANEL_RAMP_STOPS, PolygonOverlay, SelectionGizmoView,
     StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo, UsoDaCamada,
-    WetKnobs, WetTool, brush_falloff_weight_at, render_classic_flow_preview,
+    WetKnobs, WetTool, brush_dab_weight_at, brush_falloff_weight_at, render_classic_flow_preview,
 };
 pub use paint::{DICA_DO_PARAMETRO, Dependente, Inercias, Natureza};
 mod layer_edit;

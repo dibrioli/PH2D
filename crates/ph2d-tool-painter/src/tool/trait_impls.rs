@@ -201,6 +201,8 @@ impl PainterTool {
                     self.set_brush_strength(v as f32);
                 } else if id == crate::ids::PAINTER_BRUSH_FLOW_SLIDER {
                     self.set_brush_flow(v as f32);
+                } else if id == crate::ids::PAINTER_BRUSH_HARDNESS {
+                    self.set_brush_hardness(v as f32);
                 } else if id == crate::ids::PAINTER_BRUSH_SPACING {
                     self.set_brush_spacing(v as f32);
                 } else if id == crate::ids::PAINTER_BRUSH_OFFSET {

@@ -602,6 +602,7 @@ pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
         // O passo pela pressão (J4) só ligado: idem.
         .filter(|&&c| !(c == "passo_pela_pressao" && !b.passo_pela_pressao))
         .filter(|&&c| !(c == "parado_s" && b.parado_s <= 0.0))
+        .filter(|&&c| !(c == "tecto_por_dab" && !b.tecto_por_dab))
         // As cordas sorteadas do Wire (J4 efeitos) só ligadas: idem.
         .filter(|&&c| !(c == "wire_sorteio" && !b.wire_sorteio))
         .filter(|&&c| !(c == "wire_cordas" && b.wire_cordas == 0))
@@ -621,6 +622,14 @@ pub(crate) fn pincel_de_json(
     let mut b = base;
     for &c in campos {
         escrever_campo(&mut b, c, m.get(c));
+    }
+    // O legado de antes da secção Rendering sair (24/10): o tecto por dab morava em `traco`; o tecto do traço e as
+    // orlas dele já não existem e ignoram-se.
+    if campos.contains(&"tecto_por_dab")
+        && !m.contains_key("tecto_por_dab")
+        && let Some(t) = m.get("traco").and_then(|t| t.get("tecto_por_dab"))
+    {
+        b.tecto_por_dab = t.as_bool().unwrap_or(false);
     }
     // O pincel que sai respeita o seu tecto (o Size do artista não passa dele, J3 decisão 8).
     if let Some(d) = b.size_max_px {

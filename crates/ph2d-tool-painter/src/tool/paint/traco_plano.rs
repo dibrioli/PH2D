@@ -1,8 +1,10 @@
 //! **O PLANO DO TRAÇO** (L8 + a cauda da L5, `docs/Painter/Pinceis/03_MOTORES.md` §4): no Digital, um traço
-//! com tecto, orla ou cauda pinta num plano TRANSPARENTE só dele — todas as rotas de carimbo, em `Mix`, com o
-//! tecto do Accumulate e tudo o resto como sempre — e cada lote compõe o plano sobre a base congelada no
-//! pen-down, com o modo do pincel, UMA vez (`ph2d_painter_brush::traco::TracoComposto::compoe`). As orlas são
-//! a orla do traço sobre a máscara VISÍVEL ([`super::traco_orla`]: a distância exacta ao contorno `v = ½` do nível de UMA passagem).
+//! num MODO DE COR ou com a MISTURA DE PIGMENTO, com a cauda ou com o dual pinta num plano TRANSPARENTE só dele — todas as rotas de carimbo, em
+//! `Mix`, com o tecto do Accumulate e tudo o resto como sempre — e cada lote compõe o plano sobre a base congelada no
+//! pen-down, com o modo do pincel, UMA vez: o traço é uma camada, e num Multiply/Burn/Dodge (ou no pigmento do
+//! Ballpoint) não escurece (nem clareia) a si mesmo onde se cruza. Sem botão: a secção Rendering (o tecto, as orlas) saiu (dono 24/10,
+//! `docs/Painter/handoffs/HANDOFF_line_PainterWatercolor_2026-10-24_RENDER.md`); num traço `Mix` o plano seria
+//! a mesma tinta (source-over é associativo), e não arma.
 //!
 //! **A cauda** (L5): ao levantar, a janela do fim limpa-se no plano e voltam a carimbar-se os LOTES que lhe
 //! tocam, inteiros, pela porta do despacho (as corridas da ponta de N imagens) e com o sorteio e o estado do
@@ -16,6 +18,7 @@
 
 use super::{PaintMode, Region, union_region};
 use crate::tool::PainterTool;
+use ph2d_painter_brush::blend_vazio::blend_over_pigment_modo;
 use ph2d_painter_brush::{BrushBlend, Dab};
 use rayon::prelude::*;
 use std::sync::Arc;
@@ -42,19 +45,9 @@ pub(crate) struct PlanoDoTraco {
     pub(super) mascara: Option<Arc<Vec<u8>>>,
     /// O traço de uma FERRAMENTA com o dual ([`super::dual_ferramenta`]): `None` = o plano do pincel.
     pub(super) ferramenta: Option<Box<super::dual_ferramenta::Ferramenta>>,
-    /// O nível de UMA passagem da máscara visível (a fronteira da orla é `½` dele).
-    passagem: super::uma_passagem::UmaPassagem,
-    /// A caixa de tudo o que o traço já compôs: quando o máximo sobe, a orla recompõe-se nela inteira.
-    caixa: Option<Region>,
 }
 
 impl PlanoDoTraco {
-    /// O nível `τ` da fronteira da orla agora.
-    #[must_use]
-    pub(super) fn fronteira(&self) -> f32 {
-        0.5 * self.passagem.nivel()
-    }
-
     /// A sessão de uma FERRAMENTA com o dual sobre a `tela` de agora: a base e a tela livre nascem dela.
     pub(super) fn da_ferramenta(tela: &Arc<Vec<u8>>) -> Self {
         Self {
@@ -63,8 +56,6 @@ impl PlanoDoTraco {
             lotes: Vec::new(),
             mascara: None,
             ferramenta: Some(Box::default()),
-            passagem: super::uma_passagem::UmaPassagem::default(),
-            caixa: None,
         }
     }
 }
@@ -80,10 +71,11 @@ pub(crate) enum SemPlano {
 }
 
 impl PainterTool {
-    /// Se o pincel pede o plano (o tecto, uma orla ou a cauda).
+    /// Se o pincel pede o plano: uma composição que não é o source-over (um modo de cor, a mistura de pigmento — o
+    /// traço como uma camada), a cauda ou o dual.
     fn pede_o_plano(&self) -> bool {
         let b = &self.paint.brush;
-        b.traco.is_active() || b.taper.end_active() || b.dual.is_some()
+        b.blend.e_de_cor() || b.pigmento().mix > 0.0 || b.taper.end_active() || b.dual.is_some()
     }
 
     /// ⭐ **A porta**: porque é que o plano NÃO arma agora (`None` = arma, se o pincel o pede).
@@ -114,20 +106,9 @@ impl PainterTool {
         self.pede_o_plano() && self.plano_recusado().is_none()
     }
 
-    /// O alcance (px) que a orla acrescenta à volta do que mudou: a largura `W` e a célula do contorno.
-    fn margem_da_orla(&self) -> u32 {
-        let t = &self.paint.brush.traco;
-        if t.tem_orla() {
-            t.largura_px().ceil() as u32 + 2
-        } else {
-            0
-        }
-    }
-
-    /// A janela de um lote no plano: a dos dabs mais a orla (o gate projecta-a inteira).
+    /// A janela de um lote no plano: a dos dabs e a da 2.ª ponta (o gate projecta-a inteira).
     pub(super) fn regiao_do_lote_no_plano(&mut self, dabs: &[Dab]) -> Option<Region> {
         une(self.dab_batch_region(dabs), self.regiao_do_dual())
-            .map(|r| self.alarga(r, self.margem_da_orla()))
     }
 
     /// ⭐ **Um lote no plano**: carimba-o no plano (todas as rotas, em `Mix`), guarda os dabs para a cauda e
@@ -153,15 +134,10 @@ impl PainterTool {
                 });
             }
             self.carimba_no_plano(&mut s, dabs);
-            s.passagem.percorre(dabs);
         }
-        let Some(r) = une(r, r_dual) else {
-            self.paint.plano_do_traco = Some(s);
-            return;
-        };
-        let r = self.alarga(r, self.margem_da_orla());
-        self.compoe_o_plano(&mut s, r);
-        s.passagem.fixa_se_percorreu();
+        if let Some(r) = une(r, r_dual) {
+            self.compoe_o_plano(&s, r);
+        }
         self.paint.plano_do_traco = Some(s);
     }
 
@@ -176,8 +152,6 @@ impl PainterTool {
                 lotes: Vec::new(),
                 mascara: None,
                 ferramenta: None,
-                passagem: super::uma_passagem::UmaPassagem::default(),
-                caixa: None,
             },
         }
     }
@@ -204,30 +178,13 @@ impl PainterTool {
         super::plane_fork::swap_canvas_plane(&mut self.canvas_rgba, &mut s.plano, ws);
     }
 
-    /// `r` alargada `m` px, presa à tela.
-    pub(super) fn alarga(&self, r: Region, m: u32) -> Region {
-        let (w, h) = self.source_size;
-        let x0 = r.x.saturating_sub(m);
-        let y0 = r.y.saturating_sub(m);
-        let x1 = (r.x + r.w + m).min(w);
-        let y1 = (r.y + r.h + m).min(h);
-        Region {
-            x: x0,
-            y: y0,
-            w: x1.saturating_sub(x0),
-            h: y1.saturating_sub(y0),
-        }
-    }
-
-    /// ⭐ **A composição** de `r`: `base ⊕ plano` no modo do pincel, com o tecto e as orlas. Enquanto a fronteira
-    /// não está fixa (o 1.º diâmetro), se a máscara visível sobe acima do máximo do traço a fronteira muda e a
-    /// composição alarga-se a tudo o que o traço já compôs — o vivo é a passagem única.
-    pub(super) fn compoe_o_plano(&mut self, s: &mut PlanoDoTraco, r: Region) {
+    /// ⭐ **A composição** de `r`: `base ⊕ plano` no modo do pincel, UMA vez — o carimbo de sempre sobre o traço
+    /// inteiro como uma camada.
+    pub(super) fn compoe_o_plano(&mut self, s: &PlanoDoTraco, r: Region) {
         if r.w == 0 || r.h == 0 {
             return;
         }
         let brush = self.paint.brush;
-        let t = brush.traco;
         let w = self.source_size.0 as usize;
         let trinco = self
             .layers
@@ -248,47 +205,6 @@ impl PainterTool {
             }
             a
         };
-        let mut r = r;
-        let aro = if t.tem_orla() {
-            // A máscara VISÍVEL (o tecto aplicado), a da composição.
-            let visivel = |i: usize| {
-                let a = alfa(i).clamp(0.0, 1.0);
-                if t.tecto > 0.0 {
-                    a.min(t.tecto.clamp(0.0, 1.0))
-                } else {
-                    a
-                }
-            };
-            s.caixa = une(s.caixa, Some(r));
-            if s.passagem.aberto() {
-                let max = self
-                    .nivel_no_grao_medio(&mut s.passagem, |i| visivel(i * 4))
-                    .unwrap_or_else(|| {
-                        let mut max = 0.0f32;
-                        for y in r.y as usize..(r.y + r.h) as usize {
-                            for x in r.x as usize..(r.x + r.w) as usize {
-                                max = max.max(visivel((y * w + x) * 4));
-                            }
-                        }
-                        max
-                    });
-                if s.passagem.observa(max) {
-                    r = s.caixa.unwrap_or(r);
-                }
-            }
-            // A queimada lê a orla `e`; a molhada, o aro da aguada ([`super::traco_aguada`]).
-            let e = (t.queimada > 0.0).then(|| {
-                let largura = t.largura_px();
-                let folga = super::traco_orla::alcance_da_janela(largura);
-                let (jan, v) = self.janela_visivel(r, folga, visivel);
-                super::traco_orla::orla_do_traco(&v, jan, r, s.fronteira(), largura)
-            });
-            let k =
-                (t.molhada > 0.0).then(|| self.aro_da_aguada(r, s.fronteira(), t.molhada, visivel));
-            Some((e, k))
-        } else {
-            None
-        };
         let buf = super::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
@@ -298,32 +214,21 @@ impl PainterTool {
         let enc = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
         // O modo, a fórmula geral (L7) e a mistura do pincel (K–M ou espectral): o carimbo de sempre, composto UMA vez.
         let (vazio, pigmento) = (brush.blend_sobre_vazio, brush.pigmento());
-        // ADR-0173: por LINHA e em paralelo — cada texel é função pura da base, do plano e do aro dele.
+        // ADR-0173: por LINHA e em paralelo — cada texel é função pura da base e do plano.
         let linhas = &mut buf[r.y as usize * w * 4..(r.y + r.h) as usize * w * 4];
         let linha_composta = |(dy, linha): (usize, &mut [u8])| {
             let y = r.y as usize + dy;
             for x in r.x as usize..(r.x + r.w) as usize {
                 let i = (y * w + x) * 4;
-                // Sem tinta do traço (o plano vazio, ou a 2.ª ponta que o recorta a nada) e sem orla que a
-                // alcance, o texel é a base: a composição devolve-a ao bit (`compoe` com `a = 0`).
-                let sem_aro = aro.is_none();
-                if sem_aro && s.plano[i + 3] == 0 {
+                // Sem tinta do traço (o plano vazio, ou a 2.ª ponta que o recorta a nada) o texel é a base, ao bit.
+                let a = alfa(i).clamp(0.0, 1.0);
+                if a <= 0.0 {
                     linha[x * 4..x * 4 + 4].copy_from_slice(&s.base[i..i + 4]);
                     continue;
                 }
                 let base = [0, 1, 2, 3].map(|k| dec(s.base[i + k]));
-                let mut p = [0, 1, 2, 3].map(|k| dec(s.plano[i + k]));
-                p[3] = alfa(i);
-                if dual.is_some() && sem_aro && p[3] <= 0.0 {
-                    linha[x * 4..x * 4 + 4].copy_from_slice(&s.base[i..i + 4]);
-                    continue;
-                }
-                let j = (y - r.y as usize) * r.w as usize + (x - r.x as usize);
-                let orla = aro.as_ref().map_or((0.0, 0.0), |(e, k)| {
-                    let em = |c: &Option<Vec<f32>>| c.as_ref().map_or(0.0, |c| c[j]);
-                    (em(e), em(k))
-                });
-                let mut out = t.compoe_molhado(brush.blend, vazio, pigmento, base, p, orla);
+                let cor = [0, 1, 2].map(|k| dec(s.plano[i + k]));
+                let mut out = blend_over_pigment_modo(brush.blend, base, cor, a, pigmento, vazio);
                 if trinco {
                     out[3] = base[3];
                 }
@@ -367,10 +272,10 @@ impl PainterTool {
         let Some(cauda) = self.planeia_a_cauda(&s) else {
             return;
         };
-        let r = self.alarga(cauda.tocados, self.margem_da_orla());
+        let r = cauda.tocados;
         let mut corpo = move |t: &mut Self| {
             t.repinta_a_cauda(&mut s, &cauda);
-            t.compoe_o_plano(&mut s, r);
+            t.compoe_o_plano(&s, r);
         };
         let (mask, sel) = (
             self.mask_protection_active(),

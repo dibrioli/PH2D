@@ -51,10 +51,13 @@ mod regua_escada;
 mod regua_midia;
 mod sonda_custo_no_app;
 mod sonda_etapas;
+mod sonda_cartao_pen; // auditoria do cartão Pen (24/10)
+mod sonda_falloff_do_traco; // o falloff do traço × o de um dab, e o Accumulate do Glaze Round (24/10)
 mod sonda_gestos;
 mod sonda_largura;
 mod sonda_macro_custo;
 mod sonda_midias;
+mod sonda_secao_render; // a secção Rendering do Digital, antes e depois da retirada (24/10)
 mod sonda_spacing_continuo;
 mod sonda_tilt_do_preset;
 mod sonda_traco_rapido;

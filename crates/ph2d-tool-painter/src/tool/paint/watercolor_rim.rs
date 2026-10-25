@@ -301,7 +301,7 @@ fn coverage_distance_at(cov: &[f32], rw: usize, rh: usize, i: usize) -> f32 {
 }
 
 /// ⭐ **O endurecimento** da cobertura: a silhueta `cw` da lei do aro (`smoothstep(SS0, SS1, cov)`, meia-altura em
-/// [`COV_HALF`]). Uma lei, duas portas: a aguada e o Wet do Digital ([`super::traco_aguada`]).
+/// [`COV_HALF`]).
 #[inline]
 pub(super) fn endurece(cov: f32) -> f32 {
     super::watercolor_field::smoothstep(

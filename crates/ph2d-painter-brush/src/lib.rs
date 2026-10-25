@@ -161,8 +161,6 @@ pub mod texture;
 pub(crate) mod tip;
 #[cfg(test)]
 mod tip_kernel_tests;
-/// O traço como uma CAMADA — o tecto por traço e as orlas (L8).
-pub mod traco;
 
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
 pub use blend_vazio::{blend_over_modo, blend_over_pigment_modo, blend_over_w3c};
@@ -230,4 +228,3 @@ pub use texture::{
     compose_shape_silhouette_kind, param_escala, param_inerte, param_specs, render_shape_preview,
     render_stencil_preview, stencil_frame,
 };
-pub use traco::TracoComposto;

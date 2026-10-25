@@ -1,6 +1,5 @@
-//! ⭐ **As linhas do traço como camada e do fim do traço viajam na macro** (L5 · L7 · L8, ADR-0186): o tecto
-//! (Glaze), as orlas molhada/queimada e a largura, o «On empty», a cauda (`end`, `tip_end`) e o fall-off são
-//! portas INTERNAS (`macro_track/portas_internas.rs`) — o painel chega-lhes pelo `handle_panel_event`, que
+//! ⭐ **As linhas do modo sobre o vazio e do fim do traço viajam na macro** (L5 · L7, ADR-0186): o «On empty»,
+//! a cauda (`end`, `tip_end`) e o fall-off são portas INTERNAS (`macro_track/portas_internas.rs`) — o painel chega-lhes pelo `handle_panel_event`, que
 //! grava. Este gate prova a decisão pelos dois lados: postas ANTES de armar, viajam no estado inicial (o
 //! preset); postas A GRAVAR, viajam como passos. Nos dois casos o tool que toca acaba com o MESMO pincel e a
 //! MESMA tela ao byte. Controlo: sem as linhas a tela é outra (o caso mede-as).
@@ -28,19 +27,15 @@ fn quadro(t: &mut PainterTool, g: Option<&mut Gravador>) {
     }
 }
 
-/// As nove linhas, pela porta do painel (a do produto), cada uma fora do seu neutro.
+/// As cinco linhas, pela porta do painel (a do produto), cada uma fora do seu neutro.
 fn linhas(t: &mut PainterTool, mut g: Option<&mut Gravador>) {
-    let mut evs: Vec<PanelEvent> = ids::PAINTER_TRACO_FIELDS
-        .into_iter()
-        .zip([0.3, 0.5, 0.4, 6.0, 1.0])
-        .map(|(id, v)| PanelEvent::SetValue(id, v))
-        .collect();
-    evs.extend([
+    let evs = [
+        PanelEvent::SetValue(ids::PAINTER_BRUSH_BLEND_ON_EMPTY, 1.0),
         PanelEvent::SetValue(ids::PAINTER_TAPER_END, 2.0),
         PanelEvent::SetValue(ids::PAINTER_TAPER_TIP_END, 0.2),
         PanelEvent::SetValue(ids::PAINTER_TAPER_FALL_OFF, 6.0),
         PanelEvent::SetValue(ids::PAINTER_TAPER_FALL_OFF_START, 2.0),
-    ]);
+    ];
     for ev in evs {
         t.handle_panel_event(ev);
         quadro(t, g.as_deref_mut());
@@ -71,18 +66,11 @@ enum Quando {
 }
 
 /// Devolve `(pincel e tela do tool que gravou, pincel e tela do tool que tocou)`.
-type Lado = (
-    (
-        ph2d_painter_brush::taper::Taper,
-        ph2d_painter_brush::TracoComposto,
-        bool,
-    ),
-    Vec<u8>,
-);
+type Lado = ((ph2d_painter_brush::taper::Taper, bool), Vec<u8>);
 
 fn lado(t: &mut PainterTool) -> Lado {
     let s = t.brush_settings();
-    ((s.taper, s.traco, s.blend_sobre_vazio), t.run_full().0)
+    ((s.taper, s.blend_sobre_vazio), t.run_full().0)
 }
 
 fn grava_e_toca(quando: Quando) -> (Lado, Lado) {
@@ -94,7 +82,7 @@ fn grava_e_toca(quando: Quando) -> (Lado, Lado) {
     if quando == Quando::AGravar {
         linhas(&mut t, Some(&mut g));
     }
-    // Dois traços que se cruzam: o tecto e as orlas mordem no cruzamento; a cauda e o fall-off no fim.
+    // Dois traços que se cruzam: a cauda e o fall-off mordem no fim.
     traco(&mut t, Some(&mut g), [10.0, 40.0], [150.0, 120.0]);
     traco(&mut t, Some(&mut g), [10.0, 120.0], [150.0, 40.0]);
     let doc = g.para(&mut t);
@@ -108,7 +96,7 @@ fn as_linhas_do_traco_viajam_na_macro() {
     for quando in [Quando::AntesDeArmar, Quando::AGravar] {
         let ((pa, ta), (pb, tb)) = grava_e_toca(quando);
         assert!(
-            pa.2 && pa.1.tecto < 1.0 && pa.0.fall_off > 0.0,
+            pa.1 && pa.0.fall_off > 0.0,
             "{quando:?}: as linhas não chegaram ao pincel"
         );
         assert_eq!(pa, pb, "{quando:?}: o tool que toca acaba com outro pincel");

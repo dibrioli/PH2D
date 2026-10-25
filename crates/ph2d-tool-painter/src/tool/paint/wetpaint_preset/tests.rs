@@ -231,13 +231,7 @@ fn pincel_mexido() -> BrushSpec {
         impasto: d.impasto,
         // ── os de fora que o Wet Paint não deve ler: mexidos ──
         pixel: ph2d_painter_brush::PixelTip::Perfect,
-        traco: ph2d_painter_brush::TracoComposto {
-            tecto: 0.5,
-            molhada: 0.3,
-            queimada: 0.2,
-            largura: 9.0,
-            tecto_por_dab: true,
-        },
+        tecto_por_dab: true,
         borda_px: 1.5,
         sub_passo_fino: true,
         passo_pela_pressao: true,

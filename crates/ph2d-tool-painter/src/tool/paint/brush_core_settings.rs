@@ -102,6 +102,11 @@ impl PainterTool {
         self.paint.brush.strength = t.clamp(0.0, 1.0);
     }
 
+    /// A dureza (`0..1`): a curva do Falloff corre só no `1 − dureza` de fora do raio.
+    pub fn set_brush_hardness(&mut self, t: f32) {
+        self.paint.brush.hardness = t.clamp(0.0, 1.0);
+    }
+
     /// Set the brush Flow (`0..1`, a taxa por dab; com Accumulate off o traço acumula até a Strength).
     pub fn set_brush_flow(&mut self, t: f32) {
         self.paint.brush.flow = t.clamp(0.0, 1.0);

@@ -12,7 +12,7 @@ use super::super::mao::{self, LINHAS_DA_MAO};
 use super::super::{PaintMedia, PaintMode};
 use super::{
     AQUARELA, CAMPOS_DO_PINCEL, CAMPOS_FORA, DA_OBRA, DIGITAL, DO_MEIO, DO_SCULPT, DOS_KNOBS,
-    IMPASTO, MOTOR_DOS_PRESETS, PLANO, POR_DAB, VOLUME, curto, json,
+    IMPASTO, MOTOR_DOS_PRESETS, POR_DAB, VOLUME, curto, json,
 };
 use crate::PainterTool;
 use ph2d_brush_presets::{Parametros, Preset, SCHEMA, Volumes};
@@ -59,10 +59,10 @@ pub fn campos_do_meio(m: PaintMedia) -> Vec<&'static str> {
     }
     let fora: &[&str] = match m {
         PaintMedia::Watercolor => &[
-            VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, IMPASTO, DIGITAL, PLANO,
+            VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, IMPASTO, DIGITAL,
         ],
         PaintMedia::Impasto => &[
-            VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, AQUARELA, DIGITAL, PLANO,
+            VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, AQUARELA, DIGITAL,
         ],
         _ => &[
             VOLUME, DA_OBRA, DO_MEIO, DO_SCULPT, POR_DAB, DOS_KNOBS, AQUARELA, IMPASTO,

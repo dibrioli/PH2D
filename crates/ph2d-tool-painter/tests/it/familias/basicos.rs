@@ -77,26 +77,20 @@ pub const MEIOS: &[ReceitaMeio] = &[
         opacity: Some(1.0),
         ..ReceitaMeio::digital("Basic", "Pixel", "Pixel 1px")
     },
-    // A-6 — a velatura (MyPaint `detail_brush_large_glazing`): dabs duros quase transparentes que se SOMAM (o perfil
-    // macio é a corda do disco), a tinta sobe devagar onde o traço se cruza e pára num TECTO (L8); entre traços
-    // acumula. Tamanho = o do MyPaint à pressão cheia (14 px).
+    // A-6 — a velatura (MyPaint `detail_brush_large_glazing`): dabs duros quase transparentes (Flow 0,05, a taxa; o perfil
+    // macio é a corda do disco), a tinta sobe devagar onde o traço se cruza e pára no TECTO do traço, que é a Strength
+    // 0,65 com o Accumulate desligado — era o Glaze 0,37 da secção Rendering (retirada 24/10); medido contra a foto
+    // (`cada_basico_se_reconhece_pela_foto`, 5 variantes): opacidade 0,239 (foto 0,231), tecto 1,77 (1,85). Entre
+    // traços acumula. Tamanho = o do MyPaint à pressão cheia (14 px).
     ReceitaMeio {
-        pincel: &[
-            ("hardness", "0.8"),
-            ("accumulate", "true"),
-            ("flow", "0.03"),
-            (
-                "traco",
-                r#"{"largura": 7.0, "molhada": 0.0, "queimada": 0.0, "tecto": 0.37}"#,
-            ),
-        ],
+        pincel: &[("hardness", "0.8"), ("flow", "0.05")],
         mao: &[
             ("pressureSize", 0.7),
             ("pressureOpacity", 1.0),
             ("pressureOpacityCurve", 1.3),
         ],
         size_px: Some(14.0),
-        opacity: Some(1.0),
+        opacity: Some(0.65),
         ..ReceitaMeio::digital("Basic", "Glaze", "Glaze Round")
     },
 ];
@@ -412,7 +406,7 @@ fn pico(v: &[f64]) -> f64 {
     v.iter().copied().fold(0.0, f64::max)
 }
 
-/// ⭐ **O tecto POR DAB** (J3 2.ª onda, A-3; `TracoComposto::tecto_por_dab`): com a opacidade pela pressão e o
+/// ⭐ **O tecto POR DAB** (J3 2.ª onda, A-3; `BrushSpec::tecto_por_dab`): com a opacidade pela pressão e o
 /// Accumulate desligado, cada texel pára na opacidade do dab que o cobre — a lei do Krita (`Basic-5 Size Opacity`:
 /// a rampa 0→1 sobe com a pressão, sem somar). Um recto de 40 px a pressão constante 0,4 (a curva 1): o pico é a
 /// opacidade de UM dab (0,4); sem o tecto os dabs somam-se até ~1 (a Strength 1 não tinha tecto).
@@ -428,10 +422,7 @@ fn o_tecto_por_dab_para_na_opacidade_da_mao() {
     let mede = |tecto: bool| {
         let c = sonda(
             // Sem a orla em píxeis do Hard Round: ela também arma o tecto do traço (a área da orla).
-            &[
-                ("traco", json!({"tecto_por_dab": tecto})),
-                ("borda_px", json!(0.0)),
-            ],
+            &[("tecto_por_dab", json!(tecto)), ("borda_px", json!(0.0))],
             &mao,
             &[recto(40.0, 320.0, 0.4)],
         );

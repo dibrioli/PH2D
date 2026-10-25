@@ -97,7 +97,6 @@ mod paint_taper;
 mod paint_texture;
 mod paint_texture_ramp;
 mod paint_texture_tiling; // the Grain's Offset / Size / Depth rows
-mod paint_traco; // as linhas do TRAÇO no cartão Brush: o modo sobre o vazio (L7), o Glaze e as orlas (L8)
 mod paint_watercolor;
 mod paint_watercolor_flow;
 mod paint_watercolor_paper;

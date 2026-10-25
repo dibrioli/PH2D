@@ -142,8 +142,6 @@ pub use ph2d_painter_brush::{
     // The Taper (Procreate Touch Taper): the panel draws its preview with the ENGINE's own width
     // law, so the picture and the paint cannot drift -- see `ph2d_painter_brush::taper`.
     taper::{MAX_FALL_OFF_DIAMETERS, MAX_TAPER_DIAMETERS, Taper},
-    // O traço como uma camada (L8): o painel lê o tecto e as orlas do instantâneo.
-    traco::{LARGURA_MAX_PX as TRACO_LARGURA_MAX_PX, TracoComposto},
 };
 pub use tool::paint::ferramenta_linhas::{FerramentaDoPincel, LinhaDaFerramenta, NAO_LE};
 pub use tool::paint::mao::{LINHAS_DA_MAO, LinhaDaMao, MAO_DE_FABRICA, N_LINHAS_DA_MAO};
@@ -170,7 +168,7 @@ pub use tool::{
     MAX_COMPOSITE_LAYER_SIZE, MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, MIN_ELEV_DEG,
     N_COMPOSITE_ERASE_SCOPES, N_COMPOSITE_LAYERS, N_COMPOSITE_OPS, PANEL_RAMP_STOPS, PaintMedia,
     PainterTool, PolygonOverlay, SelectionGizmoView, StencilOverlay, StencilPreview, StrokeOpBadge,
-    TangentHandles, TransformGizmo, UsoDaCamada, WetKnobs, WetTool, brush_falloff_weight_at,
+    TangentHandles, TransformGizmo, UsoDaCamada, WetKnobs, WetTool, brush_dab_weight_at, brush_falloff_weight_at,
     render_classic_flow_preview, set_pending_select_mods,
 };
 pub use tool::{DICA_DO_PARAMETRO, Dependente, Inercias, Natureza};

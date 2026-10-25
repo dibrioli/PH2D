@@ -82,15 +82,6 @@ pub const EM_ESTUDO_WET: &[Receita] = &[
     },
 ];
 
-/// O traço como UMA camada que multiplica (L8): um traço não escurece a si mesmo (a espiral, o cruzamento consigo), dois
-/// sim — o marcador do Rebelle (o «sobre»: azul sobre azul escurece, sobre o vermelho multiplica).
-const CAMADA_DO_MARCADOR: &str =
-    r#"{"largura": 7.0, "molhada": 0.0, "queimada": 0.0, "tecto": 0.99}"#;
-
-/// A camada do Liner com o tecto POR DAB (`TracoComposto::tecto_por_dab`): a tinta do traço pára na opacidade da mão.
-const CAMADA_DO_LINER: &str =
-    r#"{"largura": 7.0, "molhada": 0.0, "queimada": 0.0, "tecto": 0.99, "tecto_por_dab": true}"#;
-
 pub const MEIOS: &[ReceitaMeio] = &[
     // E-2 — o marcador de BISEL de borda firme (Rebelle `Marker/Liner`): a ponta fixa na tela (L3: eixo longo deitado — o
     // ajuste dá 4°, a régua prefere 0° —, L 0,94·D × T 0,37·D: achatado 0,55 com a borda macia, que alarga o lado fino; a
@@ -109,7 +100,9 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("dab_quina", "0.7"),
             ("blend", r#""Multiply""#),
             ("continuous_spacing", "true"),
-            ("traco", CAMADA_DO_LINER),
+            // O Multiply compõe o traço como UMA camada (o plano do traço): não escurece a si mesmo, dois traços sim —
+            // o marcador do Rebelle. O tecto POR DAB: a tinta do traço pára na opacidade da mão.
+            ("tecto_por_dab", "true"),
         ],
         mao: &[
             ("pressureSize", 0.4),
@@ -142,7 +135,6 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ),
             ("blend", r#""Multiply""#),
             ("continuous_spacing", "true"),
-            ("traco", CAMADA_DO_MARCADOR),
         ],
         mao: &[
             ("pressureSize", 0.0),
@@ -168,10 +160,6 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("flow", "0.2"),
             ("continuous_spacing", "false"),
             ("spacing", "0.04"),
-            (
-                "traco",
-                r#"{"largura": 7.0, "molhada": 0.0, "queimada": 0.0, "tecto": 0.9}"#,
-            ),
             ("size_max_px", "110"),
         ],
         mao: &[
@@ -179,7 +167,8 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("pressureOpacity", 1.0),
             ("pressureOpacityCurve", 2.0),
         ],
-        opacity: Some(1.0),
+        // O tecto do traço (era o Glaze 0,9 da secção Rendering, retirada 24/10): a Strength com o Accumulate desligado.
+        opacity: Some(0.9),
         ..ReceitaMeio::digital("Marker", "Marker", "Dry Marker")
     },
     // D-2 — o brush lettering (Procreate Script, doc.): a ponta ELÍPTICA fixa com o eixo longo ao longo da diagonal

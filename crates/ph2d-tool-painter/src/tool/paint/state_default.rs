@@ -73,8 +73,7 @@ impl PaintState {
     }
 }
 
-/// O Body (`fill`) da Aquarela de fábrica — a densidade do corpo contra a qual o aro da aguada se mede, também no
-/// Wet do Digital ([`super::traco_aguada`]).
+/// O Body (`fill`) da Aquarela de fábrica — a densidade do corpo contra a qual o aro da aguada se mede.
 pub(super) const CORPO_DA_AGUADA: f32 = 0.25;
 
 /// **A Aquarela com que o pincel nasce** — os números do dono (foto do painel, 23/10): o slot onde a

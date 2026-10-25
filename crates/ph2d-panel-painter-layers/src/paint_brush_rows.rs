@@ -304,3 +304,29 @@ pub(crate) fn paint_dropdown_chip_activo(
     }
     activo && open
 }
+
+/// O modo sobre o VAZIO (L7), logo abaixo do Blend: `0` o de sempre · `1` um modo de cor pousa a cor na camada
+/// transparente (a fórmula geral do W3C). Devolve o `y` seguinte.
+pub(crate) fn paint_blend_on_empty_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    brush: &ph2d_tool_painter::BrushSettings,
+) -> f32 {
+    crate::card::card_row(
+        ctx,
+        theme,
+        x,
+        w,
+        y,
+        "panel.painter_layers.brush.blend_on_empty",
+        ph2d_tool_painter::ids::PAINTER_BRUSH_BLEND_ON_EMPTY,
+        if brush.blend_sobre_vazio { 1.0 } else { 0.0 },
+        0.0,
+        1.0,
+        1.0,
+        0,
+    )
+}

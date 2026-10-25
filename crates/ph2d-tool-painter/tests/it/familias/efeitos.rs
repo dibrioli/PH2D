@@ -35,7 +35,7 @@ const SKETCHY_WEB: ReceitaMeio = ReceitaMeio {
 /// Os EFEITOS do Rebelle (`Marker/Effect`; 06 §2 e §10.3, L7): um modo de mistura W3C em sRGB codificado a um α fixo por
 /// PASSAGEM. O perfil do traço dele é o de um CONE somado ao longo do traço (a queda Linear: a ½ 0,57 · a 0,9 do raio
 /// 0,07 do pico, o que o Rebelle mede; o Smooth dava 0,45 · 0,01 e a orla cortada a ±7 px que três revisores viram),
-/// não o planalto de um tecto: dabs de fluxo baixo que SOMAM (Accumulate) num PLANO do traço (o tecto 1 — nos 8 bits da
+/// não o planalto de um tecto: dabs de fluxo baixo que SOMAM (Accumulate) num PLANO do traço (o modo de cor arma-o — nos 8 bits da
 /// tela os incrementos de < ½ nível por dab perdiam-se: o G do Color ficava 0, o R do Dodge 191). Medido a 40 px
 /// (`exames/efeitos_foto.py`, o pico do véu e a largura a 50/25/10/4 %): Burn 0,095 · 18/28/34/36 contra o Rebelle
 /// 0,091 · 20/25/30/36. No papel vazio pousa em Normal com o mesmo α (`blend_sobre_vazio`, L7-vazio; a bancada com
@@ -54,7 +54,6 @@ macro_rules! efeito {
                 ("accumulate", "true"),
                 ("flow", $fluxo),
                 ("spacing", "0.1"),
-                ("traco", r#"{"largura": 7.0, "molhada": 0.0, "queimada": 0.0, "tecto": 1.0}"#),
                 ("blend_sobre_vazio", "true"),
                 // Sem o estabilizador do Soft Round: ele atrasava o traço 3–4 px (o início e o fim depois dos do
                 // Rebelle, que três revisores viram).

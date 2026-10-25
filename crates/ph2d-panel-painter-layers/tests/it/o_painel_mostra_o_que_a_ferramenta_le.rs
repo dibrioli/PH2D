@@ -66,12 +66,7 @@ fn ids_da(l: LinhaDaFerramenta) -> &'static [NodeId] {
         LinhaDaFerramenta::Simetria => &[PAINTER_BRUSH_SYMMETRY_USE],
         LinhaDaFerramenta::Solido => &[PAINTER_LINE_SOLID],
         LinhaDaFerramenta::CorPorCamada => &[PAINTER_SHAPE_PER_LAYER_COLOR],
-        LinhaDaFerramenta::TracoComoCamada => &[
-            PAINTER_TRACO_FIELDS[0],
-            PAINTER_TRACO_FIELDS[1],
-            PAINTER_TRACO_FIELDS[2],
-            PAINTER_TAPER_END,
-        ],
+        LinhaDaFerramenta::TracoComoCamada => &[PAINTER_TAPER_END],
         LinhaDaFerramenta::Continuo => &[PAINTER_BRUSH_CONTINUOUS_SPACING],
         LinhaDaFerramenta::Flow => &[PAINTER_BRUSH_FLOW_SLIDER],
         // A Cor abre o seletor (o gesto não a muda — ver `a_cor_escondida_nao_muda_a_ferramenta`); o Composite só

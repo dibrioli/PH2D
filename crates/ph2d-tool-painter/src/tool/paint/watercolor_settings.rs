@@ -23,7 +23,7 @@ pub enum UsoDaCamada {
     Fluxo,
 }
 
-/// O topo do Edge Darkening da aguada — e o Wet `1` do Digital ([`super::traco_aguada`]).
+/// O topo do Edge Darkening da aguada.
 pub(super) const GANHO_DA_ORLA_MAX: f32 = 8.0;
 
 impl UsoDaCamada {

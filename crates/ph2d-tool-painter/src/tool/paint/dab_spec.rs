@@ -50,7 +50,7 @@ impl PainterTool {
         // As leis só do Digital (J3, `docs/Painter/Pinceis/exames/basicos.md` 2.ª onda) saem NEUTRAS nos outros
         // meios: um preset do Digital aplicado antes não as leva à aguada, ao relevo nem ao fluido.
         if self.paint_media() != crate::PaintMedia::Digital {
-            brush.traco.tecto_por_dab = false;
+            brush.tecto_por_dab = false;
             brush.borda_px = 0.0;
             brush.sub_passo_fino = false;
             brush.passo_pela_pressao = false;

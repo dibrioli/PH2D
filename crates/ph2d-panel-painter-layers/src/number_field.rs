@@ -58,7 +58,8 @@ pub(crate) fn is_param_field(id: NodeId) -> bool {
         // Só as da cor pela mão: as do cartão Jitter são barras (`jitter_linhas::encaminha_marca`).
         || (ph2d_tool_painter::ids::PAINTER_MARCA_FIELDS.contains(&id)
             && crate::paint_stroke::jitter_linhas::barra_da_marca(id).is_none())
-        || ph2d_tool_painter::ids::PAINTER_TRACO_FIELDS.contains(&id)
+        || id == ph2d_tool_painter::ids::PAINTER_BRUSH_BLEND_ON_EMPTY
+        || id == ph2d_tool_painter::ids::PAINTER_BRUSH_HARDNESS
         || ph2d_tool_painter::ids::PAINTER_PONTA_FIELDS
             .iter()
             .position(|f| *f == id)

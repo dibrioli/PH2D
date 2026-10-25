@@ -52,8 +52,13 @@ pub struct BrushSettings {
     pub strength: f32,
     /// **Flow** (`0..1`, a taxa por dab): com Accumulate off o traço acumula até a Strength (o tecto).
     pub flow: f32,
-    /// Distance-falloff preset ([`ph2d_painter_brush::Falloff::to_u8`]) — the dab profile (replaces Hardness); [`ph2d_painter_brush::Falloff::Custom`] (`9`) reads [`Self::falloff_points`].
+    /// Distance-falloff preset ([`ph2d_painter_brush::Falloff::to_u8`]) — the dab profile; [`ph2d_painter_brush::Falloff::Custom`] (`9`) reads [`Self::falloff_points`].
     pub falloff: u8,
+    /// A **Hardness** do pincel (`0..1`, a linha do painel): a curva do Falloff corre só no `1 − dureza` de fora.
+    pub hardness: f32,
+    /// A dureza que o dab USA (`BrushSpec::dureza_do_dab`: a Hardness, presa pela orla em píxeis ao raio de agora) —
+    /// a que o preview da silhueta aplica.
+    pub dureza_do_dab: f32,
     /// The `Custom` falloff curve's control points (id + `[distance, strength]` + handle), first [`Self::falloff_len`] valid, ascending by distance; panel plots + drags by stable id.
     pub falloff_points: [FalloffPoint; MAX_FALLOFF_POINTS],
     /// Count of valid entries in [`Self::falloff_points`] (`2..=MAX_FALLOFF_POINTS`).
@@ -386,8 +391,7 @@ pub struct BrushSettings {
     pub shape_layer_opacity: [f32; MAX_SHAPE_LAYERS],
     /// The **Taper** (Procreate *Touch Taper*; a cauda e o fall-off da L5), inteiro: o painel desenha a silhueta.
     pub taper: ph2d_painter_brush::taper::Taper,
-    /// O traço como uma camada (L8) e o modo sobre o vazio (L7) — `traco_settings`.
-    pub traco: ph2d_painter_brush::TracoComposto,
+    /// O modo sobre o vazio (L7) — `blend_vazio_settings`.
     pub blend_sobre_vazio: bool,
     /// **Dab Flatten** (`0..1`; `0` = round) — the Shape gizmo squishes the dab footprint into an ellipse.
     pub dab_flatten: f32,

@@ -66,7 +66,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Acts with a Tail length on a freehand stroke"
         }
         "panel.painter_layers.inerte.fall_off_length" => "Acts with a Fall-off length",
-        "panel.painter_layers.inerte.edges_above_zero" => "Acts with Wet or Burnt edges",
         "panel.painter_layers.inerte.color_blend_mode" => {
             "Acts with a colour Blend (Multiply, Color, Hue…)"
         }
@@ -238,11 +237,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.brush.strength" => "Strength",
         "panel.painter_layers.brush.flow" => "Flow",
         "panel.painter_layers.brush.accumulate" => "Accumulate",
-        "panel.painter_layers.brush.glaze" => "Glaze",
-        "panel.painter_layers.brush.glaze_hint" => "Ceiling of the whole stroke · 1 = opaque",
-        "panel.painter_layers.brush.wet_edges" => "Wet edges",
-        "panel.painter_layers.brush.burnt_edges" => "Burnt edges",
-        "panel.painter_layers.brush.edge_width" => "Edge width",
         "panel.painter_layers.brush.blend_on_empty" => "On empty",
         "panel.painter_layers.brush.color" => "Color",
         // O pincel de PARTIDA de cada meio (Digital Basic / Watercolor Basic): desde a L1 o «Preset» é o
@@ -460,6 +454,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.shape.shape" => "Shape",
         "panel.painter_layers.shape.automatic" => "Automatic",
         "panel.painter_layers.shape.falloff" => "Falloff",
+        "panel.painter_layers.shape.hardness" => "Hardness",
         "panel.painter_layers.shape.texture" => "Texture",
         "panel.painter_layers.shape.relief" => "Relief",
         "panel.painter_layers.shape.shine" => "Shine",
@@ -581,7 +576,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.taper.fall_off_start" => "Full for",
         "panel.painter_layers.grain.grain" => "Grain",
         "panel.painter_layers.grain.behavior" => "Grain Behavior",
-        "panel.painter_layers.brush.rendering" => "Rendering",
         "panel.painter_layers.grain.mapping" => "Mapping",
         "panel.painter_layers.grain.rake" => "Rake",
         "panel.painter_layers.grain.angle" => "Angle",

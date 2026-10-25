@@ -54,6 +54,8 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     strength: 1.0,
     flow: 1.0,
     falloff: 0,
+    hardness: 0.0,
+    dureza_do_dab: 0.0,
     // Default Custom curve = linear ramp (0,1)→(1,0); only read when falloff == Custom.
     falloff_points: [
         FalloffPoint {
@@ -224,7 +226,6 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     dab_rotor: [1.0, 0.0],
     // Off: the neutral taper, shared as a const with the engine so the fallback cannot drift.
     taper: ph2d_tool_painter::Taper::NEUTRAL,
-    traco: ph2d_tool_painter::TracoComposto::NEUTRO,
     blend_sobre_vazio: false,
     grain_depth: 1.0,
     // Shape section (mirrors BrushSpec::default — kind None, no Shape image, silhouette = falloff).

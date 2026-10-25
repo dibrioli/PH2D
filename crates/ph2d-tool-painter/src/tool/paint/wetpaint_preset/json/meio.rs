@@ -55,21 +55,7 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
         "sub_passo_fino" => json!(b.sub_passo_fino),
         "passo_pela_pressao" => json!(b.passo_pela_pressao),
         "parado_s" => num(b.parado_s),
-        "traco" => {
-            let mut v = json!({
-                "tecto": num(b.traco.tecto),
-                "molhada": num(b.traco.molhada),
-                "queimada": num(b.traco.queimada),
-                "largura": num(b.traco.largura),
-            });
-            // O tecto por dab (J3) só gravado LIGADO: o preset sem ele é o de antes, ao byte.
-            if b.traco.tecto_por_dab
-                && let Some(o) = v.as_object_mut()
-            {
-                o.insert("tecto_por_dab".to_owned(), json!(true));
-            }
-            v
-        }
+        "tecto_por_dab" => json!(b.tecto_por_dab),
         // O dual brush (L6): gravado só ARMADO (`pincel_para_json`).
         "dual" => b.dual.map_or(Value::Null, |d| {
             json!({
@@ -162,18 +148,9 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "sub_passo_fino" => b.sub_passo_fino = booleano(v, false),
         "passo_pela_pressao" => b.passo_pela_pressao = booleano(v, false),
         "parado_s" => b.parado_s = f(v, 0.0).max(0.0),
-        // O plano do traço (L8): sub-chave ausente = a de fábrica.
-        "traco" if v.is_some() => {
-            let n = ph2d_painter_brush::TracoComposto::NEUTRO;
-            let c = |k: &str| v.and_then(|v| v.get(k));
-            b.traco = ph2d_painter_brush::TracoComposto {
-                tecto: f(c("tecto"), n.tecto),
-                molhada: f(c("molhada"), n.molhada),
-                queimada: f(c("queimada"), n.queimada),
-                largura: f(c("largura"), n.largura),
-                tecto_por_dab: booleano(c("tecto_por_dab"), n.tecto_por_dab),
-            };
-        }
+        // O tecto por dab (J3) só se grava ligado (`pincel_para_json`); o legado `traco.tecto_por_dab`, em
+        // `pincel_de_json`.
+        "tecto_por_dab" => b.tecto_por_dab = booleano(v, false),
         // Campo ausente = o pincel de `b` (a lei do módulo); campo PRESENTE com uma sub-chave ausente (gravado
         // antes dela, a `opacity` da L2) = a de fábrica dessa sub-chave, nunca a de agora.
         "pen_tilt" if v.is_some() => {
@@ -211,7 +188,7 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
                 }
             });
         }
-        "pen_tilt" | "traco" => {}
+        "pen_tilt" => {}
         outro => unreachable!("campo do pincel sem conversão: {outro}"),
     }
 }

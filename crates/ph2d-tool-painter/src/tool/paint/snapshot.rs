@@ -83,6 +83,18 @@ pub fn brush_falloff_weight_at(s: &BrushSettings, t: f32) -> f32 {
     }
 }
 
+/// ⭐ **O peso do DAB** a `t` — a curva do Falloff empurrada para a borda pela dureza do dab, a MESMA conta de
+/// `BrushSpec::falloff_weight`: o preview da silhueta mostra o que a tela pinta (o editor da curva lê
+/// [`brush_falloff_weight_at`], a curva sozinha).
+#[must_use]
+pub fn brush_dab_weight_at(s: &BrushSettings, t: f32) -> f32 {
+    let h = s.dureza_do_dab.clamp(0.0, 1.0);
+    if h >= 1.0 {
+        return if t < 1.0 { 1.0 } else { 0.0 };
+    }
+    brush_falloff_weight_at(s, ((t - h) / (1.0 - h)).clamp(0.0, 1.0))
+}
+
 impl PainterTool {
     /// Snapshot the active brush for the panel's Brush section.
     #[must_use]
@@ -168,6 +180,8 @@ impl PainterTool {
             strength: b.strength,
             flow: b.flow,
             falloff: b.falloff.to_u8(),
+            hardness: b.hardness,
+            dureza_do_dab: b.dureza_do_dab(),
             falloff_points,
             falloff_len: b.custom_falloff.len() as u8,
             color: b.color,
@@ -359,7 +373,6 @@ impl PainterTool {
             shape_layer_blend,
             shape_layer_opacity,
             taper: b.taper,
-            traco: b.traco,
             blend_sobre_vazio: b.blend_sobre_vazio,
             dab_flatten: b.dab_flatten,
             dab_angle_deg: b.dab_angle_deg,

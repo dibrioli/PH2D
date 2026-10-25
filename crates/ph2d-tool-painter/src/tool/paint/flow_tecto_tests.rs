@@ -39,7 +39,7 @@ fn tela() -> PainterTool {
 }
 
 #[test]
-fn o_glaze_round_com_flow_e_glaze_no_maximo_pinta_opaco_com_o_rato() {
+fn o_glaze_round_com_flow_e_strength_no_maximo_pinta_opaco_com_o_rato() {
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let bib = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
     let p = &bib
@@ -56,7 +56,7 @@ fn o_glaze_round_com_flow_e_glaze_no_maximo_pinta_opaco_com_o_rato() {
         t.set_brush_strength(1.0);
         t
     };
-    // O CONTROLO — o que o dono viu: de fábrica (Flow 0,03 · Glaze 0,37) a Strength 1 ainda é transparente.
+    // O CONTROLO — o que o dono viu: de fábrica (Flow 0,03) a Strength 1 numa passada ainda é transparente.
     let mut f = monta();
     passada(&mut f);
     let de_fabrica = centro(&f);
@@ -66,7 +66,6 @@ fn o_glaze_round_com_flow_e_glaze_no_maximo_pinta_opaco_com_o_rato() {
     );
     let mut t = monta();
     t.set_brush_flow(1.0);
-    t.paint.brush.traco.tecto = 1.0;
     assert!(
         (t.brush_settings().flow - 1.0).abs() < 1e-6,
         "o painel lê o Flow que o tool tem"
@@ -75,7 +74,7 @@ fn o_glaze_round_com_flow_e_glaze_no_maximo_pinta_opaco_com_o_rato() {
     let c = centro(&t);
     assert!(
         c >= 250,
-        "Strength 1 · Flow 1 · Glaze 1 com o rato = opaco no centro, got {c}/255"
+        "Strength 1 · Flow 1 com o rato = opaco no centro, got {c}/255"
     );
 }
 

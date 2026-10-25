@@ -138,6 +138,7 @@ mod tiling;
 mod wet_editable;
 mod wetpaint; // Wet Paint (PaintMode::WetPaint): the fluid-engine session — ADR-0134; see its module doc
 pub(crate) use wetpaint::fita; // a fita do worker que a trilha da macro (`crate::macro_track`) grava e toca
+mod blend_vazio_settings; // a porta do painel do modo sobre o vazio (L7)
 mod dual; // o DUAL BRUSH (L6): a 2.ª ponta, o motor dela e a máscara do traço que recorta a 1.ª
 mod dual_ferramenta; // …e nas ferramentas do Digital: a borracha, o Blur, o Smear e o Clone
 mod macro_estado;
@@ -146,11 +147,8 @@ pub mod mao; // a MÃO do pincel (pressão, inclinação) nos quatro meios, por 
 pub mod marca; // as linhas da MARCA (o jitter da L4) no cartão Jitter, nos quatro meios
 mod pixel_route; // a ponta de PÍXEL (L18): o trilho ancorado e o carimbo binário, só no Digital
 pub mod ponta; // as linhas da PONTA (L9 o grão · L18 o píxel · L19 as imagens) nas secções Brush/Grain/Shape
-mod traco_aguada; // o Wet do Digital: a segunda porta do aro da aguada (bug #58, 7.ª volta)
-mod traco_orla; // a ORLA do traço (L8): a distância exacta ao contorno visível, sem janela que mude um bit
-mod traco_plano; // o PLANO do traço: o tecto, as orlas (L8) e a cauda re-pintada (L5), só no Digital
-mod traco_settings; // as portas do painel do traço (L8) e do modo sobre o vazio (L7)
-mod uma_passagem; // o nível de UMA passagem do traço: a fronteira da orla e o alvo da mancha do Solid
+mod traco_plano; // o PLANO do traço: o traço num modo de cor como uma camada, o dual e a cauda (L5), só no Digital
+mod uma_passagem; // o nível de UMA passagem do traço: o alvo da mancha do Solid
 mod wetpaint_commit;
 pub mod wetpaint_preset; // o preset do Wet Painter: aplicar / capturar / miniatura (W1, NewFeaturesWetPaint/02 §5) // as configurações que o estado inicial de uma macro leva (crate::macro_track)
 pub(crate) use macro_estado::ErroDoEstado;
@@ -253,27 +251,10 @@ mod shape_relief_tests;
 /// **O esfregão numa CURVA** — o tecto do transporte, e a prova de que a RECTA não mexeu.
 #[cfg(test)]
 mod smear_curva_tests;
+/// A Hardness à vista e o preview da silhueta que pinta o peso do dab (24/10).
 #[cfg(test)]
-mod sonda_opacidade_tests;
-/// O Wet do Digital é a orla da aguada (bug #58, 7.ª volta): o oráculo é o meio Watercolor.
-#[cfg(test)]
-mod traco_orla_aguada_tests;
-/// As orlas do traço sem rectângulos nem serrilha (smoke do dono 24/10).
-#[cfg(test)]
-mod traco_orla_bordas_tests;
-/// A lei da orla do traço (bug #58, 2.ª volta): máscara visível, fronteira do traço, distância exacta.
-#[cfg(test)]
-mod traco_orla_lei_tests;
-/// O Wet não mexe na silhueta (bug #58, 5.ª volta; a lei é o aro da aguada desde a 7.ª, `traco_orla_aguada_tests`).
-#[cfg(test)]
-mod traco_orla_molhada_tests;
-/// O traço que volta por cima de si (bug #58, 3.ª volta): o gate (f) da lei da orla.
-#[cfg(test)]
-mod traco_orla_volta_tests;
-/// O nível de uma passagem não depende de onde o grão cai (bug #58, 6.ª volta).
-#[cfg(test)]
-mod traco_passagem_tests;
-/// **L8 + L5** — o tecto por traço, as orlas, a cauda e o fall-off (o plano do traço).
+mod dureza_tests;
+/// **L8 + L5** — o traço num modo de cor como uma camada, a cauda e o fall-off (o plano do traço).
 #[cfg(test)]
 mod traco_plano_tests;
 pub(crate) use composite::{CompositeLayer, CompositeOp};
@@ -370,7 +351,7 @@ pub use composite::N_CAMADAS as N_COMPOSITE_LAYERS;
 pub use composite::N_ESCOPOS_DA_BORRACHA as N_COMPOSITE_ERASE_SCOPES;
 pub use composite::N_OPERACOES as N_COMPOSITE_OPS;
 pub use shape_layers::MAX_SHAPE_LAYERS;
-pub use snapshot::brush_falloff_weight_at;
+pub use snapshot::{brush_dab_weight_at, brush_falloff_weight_at};
 
 use stamp_preview::DragPreview;
 

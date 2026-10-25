@@ -7,9 +7,9 @@ use crate::{PixelToolsPanel, PixelToolsPanelState, ids, seam};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, paint_text_block, resolve};
+use ph2d_editor_core::paint::{paint_text, paint_text_block, resolve, stroke_rect};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
-use ph2d_editor_core::pixel_panel::{PixelBrushShape, PixelPanelInfo, PixelTool};
+use ph2d_editor_core::pixel_panel::{PixelBrushShape, PixelInk, PixelPanelInfo, PixelTool};
 use ph2d_editor_core::property_row;
 use ph2d_editor_core::widget::Seccao;
 use ph2d_editor_core::widget::panel_chrome::{
@@ -21,9 +21,9 @@ use ph2d_editor_core::widget::{
     paint_color_swatch,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_i18n::tr;
+use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 pub(crate) fn paint(_st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
@@ -55,10 +55,14 @@ pub(crate) fn paint(_st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     let n = with_current(|i| if i.editing { i.palette.len() } else { 0 });
     seam::register_palette(ctx.host.store_mut(), n);
     // Os campos mostram o MODELO (o instantâneo); a edição em curso de um campo com foco fica.
-    let opcoes = with_current(|i| i.options);
+    let (opcoes, cores) = with_current(|i| (i.options, i.palette.len()));
     let store = ctx.host.store_mut();
-    for (id, _) in ids::NUMBERS {
-        let v = seam::numero(&opcoes, id);
+    #[expect(clippy::cast_precision_loss, reason = "uma paleta, ≤ 256")]
+    let tamanho = (ids::PALETTE_SIZE, cores as f64);
+    let numeros = ids::NUMBERS
+        .iter()
+        .map(|(id, _)| (*id, seam::numero(&opcoes, *id)));
+    for (id, v) in numeros.chain([tamanho]) {
         if store.number_value(id) != Some(v) {
             store.set_number_value(id, v);
         }
@@ -122,7 +126,9 @@ impl Corpo<'_> {
         let gap = ph2d_tokens::control_gap_px();
         let y = self.opcoes(info, y) + gap;
         let y = self.cores(info, y) + gap;
-        self.paleta(info, y)
+        let y = self.paleta(info, y) + gap;
+        let y = self.acoes_da_paleta(info, y) + gap;
+        self.sprite(y)
     }
 
     /// ⭐ **As opções da ferramenta na mão** (a barra de contexto do Aseprite): o pincel, o canto do
@@ -201,6 +207,17 @@ impl Corpo<'_> {
                 ),
             ];
             y = self.escolha(tr("panel.pixel.sample"), &amostra, sec, y);
+        }
+        // A borracha pinta sempre com a Simple: a tinta é das outras.
+        if t.paints() && t != PixelTool::Eraser {
+            let tintas: Vec<(&str, bool, NodeId)> = ids::INKS
+                .iter()
+                .map(|&(k, id)| (tr(k.label_key()), k == o.ink, id))
+                .collect();
+            y = self.escolha(tr("panel.pixel.ink"), &tintas, sec, y);
+            if o.ink == PixelInk::Shading && info.selected.len() < 2 {
+                y = self.bloco(tr("panel.pixel.ink.shading_hint"), ColorToken::Text3, y);
+            }
         }
         if t.paints() {
             y = self.linha(tr("panel.pixel.symmetry"), ColorToken::Text3, y);
@@ -340,11 +357,117 @@ impl Corpo<'_> {
                 self.scene,
                 self.theme,
             );
+            // A selecção (a rampa do Shading) leva o anel do acento.
+            if info.selected.contains(&i) {
+                let anel = resolve(ColorToken::Accent, self.theme);
+                stroke_rect(self.scene, r, StrokeToken::Thick.px(), anel);
+            }
             self.hit_index
                 .register_with_secondary(id, r, ids::palette_bg_id(i));
             bottom = r.y + r.h;
         }
         bottom
+    }
+
+    /// ⭐ **O menu ≡ da paleta do Aseprite**: a selecção e a cor dela (*Edit color* abre o seletor
+    /// partilhado), o tamanho, mover, ordenar, seleccionar as usadas, nova do sprite, ler/gravar e
+    /// a de omissão.
+    fn acoes_da_paleta(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
+        let sec = Seccao::medida(
+            self.text_system,
+            1,
+            &[tr("panel.pixel.palette_size"), tr("panel.pixel.sort")],
+        );
+        let n = info.selected.len().to_string();
+        let mut y = self.linha(
+            &tr_with("panel.pixel.selected", &[("n", &n)]),
+            ColorToken::Text3,
+            y,
+        );
+        if let Some(c) = info.anchor.and_then(|i| info.palette.get(i)) {
+            let side = ROW_H_PX;
+            let r = Rect::new(self.x, y, side, side);
+            let sw = ColorSwatch::new(ids::PIXEL_PAL_EDIT, "", *c);
+            paint_color_swatch(&sw, r, self.scene, self.theme);
+            self.hit_index.register(ids::PIXEL_PAL_EDIT, r);
+            let tx = self.x + side + Spacing::Sm.px();
+            let texto = tr_with("panel.pixel.edit_color", &[("hex", &hex(*c))]);
+            paint_text(
+                self.text_system,
+                self.scene,
+                &texto,
+                tx,
+                y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
+                TypeToken::Sm.px(),
+                (self.x + self.w - tx).max(1.0),
+                resolve(ColorToken::Text2, self.theme),
+            );
+            y += side + ph2d_tokens::control_gap_px();
+        }
+        y = self.campo(tr("panel.pixel.palette_size"), ids::PALETTE_SIZE, sec, y);
+        let [
+            esq,
+            dir,
+            asc,
+            desc,
+            usadas,
+            do_sprite,
+            ler,
+            gravar,
+            omissao,
+            _,
+        ] = ids::ACTIONS;
+        y = self.botoes(&[esq, dir], y);
+        let chaves: Vec<(&str, bool, NodeId)> = ids::SORT_KEYS
+            .iter()
+            .map(|&(k, id)| (tr(k.label_key()), k == info.sort_key, id))
+            .collect();
+        y = self.escolha(tr("panel.pixel.sort"), &chaves, sec, y);
+        y = self.botoes(&[asc, desc], y);
+        y = self.botoes(&[usadas, do_sprite], y);
+        y = self.botoes(&[ler, gravar], y);
+        self.botoes(&[omissao], y)
+    }
+
+    /// O sprite: o *Color Mode…* e o *Replace Color* (frente → fundo, com tolerância).
+    fn sprite(&mut self, y: f32) -> f32 {
+        let sec = Seccao::medida(self.text_system, 1, &[tr("panel.pixel.replace_tolerance")]);
+        let mut y = self.linha(tr("panel.pixel.sprite"), ColorToken::Text3, y);
+        let r = Rect::new(self.x, y, self.w, ROW_H_PX);
+        let b = Button::new(ids::COLOR_MODE, tr("panel.pixel.color_mode"))
+            .visual(self.store.button_visual(ids::COLOR_MODE));
+        paint_button(&b, r, self.scene, self.text_system, self.theme);
+        self.hit_index.register(ids::COLOR_MODE, r);
+        y += ROW_H_PX + ph2d_tokens::control_gap_px();
+        y = self.linha(tr("panel.pixel.replace"), ColorToken::Text3, y);
+        y = self.campo(
+            tr("panel.pixel.replace_tolerance"),
+            ids::REPLACE_TOLERANCE,
+            sec,
+            y,
+        );
+        let [.., trocar] = ids::ACTIONS;
+        self.botoes(&[trocar], y)
+    }
+
+    /// Uma fila de botões de largura igual (os da tabela [`ids::ACTIONS`]).
+    fn botoes(
+        &mut self,
+        fila: &[(NodeId, ph2d_editor_core::pixel_panel::PixelRequest, &str)],
+        y: f32,
+    ) -> f32 {
+        let gap = Spacing::Xs.px();
+        #[expect(clippy::cast_precision_loss, reason = "≤ 2 botões")]
+        let n = fila.len() as f32;
+        let bw = ((self.w - gap * (n - 1.0)) / n).max(1.0);
+        for (i, (id, _, key)) in fila.iter().enumerate() {
+            #[expect(clippy::cast_precision_loss, reason = "≤ 2 botões")]
+            let r = Rect::new(self.x + i as f32 * (bw + gap), y, bw, ROW_H_PX);
+            let b = Button::new(*id, tr(key)).visual(self.store.button_visual(*id));
+            paint_button(&b, r, self.scene, self.text_system, self.theme);
+            self.hit_index.register(*id, r);
+        }
+        y + ROW_H_PX + ph2d_tokens::control_gap_px()
     }
 
     fn linha(&mut self, texto: &str, cor: ColorToken, y: f32) -> f32 {

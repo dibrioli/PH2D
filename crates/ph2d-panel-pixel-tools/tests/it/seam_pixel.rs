@@ -4,7 +4,7 @@
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::pixel_panel::{PixelPanelInfo, PixelRequest, PixelTool};
+use ph2d_editor_core::pixel_panel::{PixelPanelInfo, PixelRequest, PixelSelect, PixelTool};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_pixel_tools::{PixelToolsPanel, PixelToolsPanelState, ids, set_current_pixel};
 use ph2d_ui_testkit::MockPanelHost;
@@ -31,6 +31,7 @@ fn info(editing: bool) -> PixelPanelInfo {
         bg: [0, 0, 0, 255],
         palette: paleta(),
         options: Default::default(),
+        ..Default::default()
     }
 }
 
@@ -140,7 +141,13 @@ fn a_coluna_tem_todas_as_ferramentas_em_tres_grupos_e_as_duas_cores() {
 fn o_clique_esquerdo_na_paleta_e_a_frente_e_o_direito_o_fundo() {
     let pal = paleta();
     let mut p = Palco::novo(info(true));
-    so(&p.carrega(ids::palette_id(5)), PixelRequest::Fg(pal[5]));
+    so(
+        &p.carrega(ids::palette_id(5)),
+        PixelRequest::Swatch {
+            index: 5,
+            how: PixelSelect::Only,
+        },
+    );
     let mut p = Palco::novo(info(true));
     so(
         &p.carrega_direito(ids::palette_id(9)),

@@ -5,7 +5,9 @@
 //! ⚠️ APPEND-ONLY: um id é o hash de uma STRING.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::pixel_panel::{PixelBrushShape, PixelTool};
+use ph2d_editor_core::pixel_panel::{
+    PixelBrushShape, PixelInk, PixelRequest, PixelSortKey, PixelTool,
+};
 use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 
 /// O `×` do cabeçalho.
@@ -77,7 +79,7 @@ pub const SAMPLE_LAYER: NodeId = hash_node_id("pixel.opt.sample_layer");
 pub const SAMPLE_VISIBLE: NodeId = hash_node_id("pixel.opt.sample_visible");
 
 /// Os campos numéricos: id, faixa `(min, max, passo)`.
-pub const NUMBERS: [(NodeId, (f64, f64, f64)); 6] = [
+pub const NUMBERS: [(NodeId, (f64, f64, f64)); 7] = [
     (
         SIZE,
         (
@@ -91,6 +93,7 @@ pub const NUMBERS: [(NodeId, (f64, f64, f64)); 6] = [
     (TOLERANCE, (0.0, 255.0, 1.0)),
     (SPRAY_WIDTH, (1.0, 64.0, 1.0)),
     (SPRAY_SPEED, (1.0, 128.0, 1.0)),
+    (REPLACE_TOLERANCE, (0.0, 255.0, 1.0)),
 ];
 
 /// As caixas de marcar.
@@ -119,3 +122,99 @@ pub fn palette_id(i: usize) -> NodeId {
 pub fn palette_bg_id(i: usize) -> NodeId {
     hash_node_id_runtime(&format!("pixel.palette_bg.{i}"))
 }
+
+/// As tintas, na ordem do Aseprite (pintar, registar e despachar leem a MESMA tabela).
+pub const INKS: [(PixelInk, NodeId); 5] = [
+    (PixelInk::Simple, hash_node_id("pixel.opt.ink.simple")),
+    (
+        PixelInk::AlphaCompositing,
+        hash_node_id("pixel.opt.ink.alpha"),
+    ),
+    (PixelInk::CopyAlphaColor, hash_node_id("pixel.opt.ink.copy")),
+    (PixelInk::LockAlpha, hash_node_id("pixel.opt.ink.lock")),
+    (PixelInk::Shading, hash_node_id("pixel.opt.ink.shading")),
+];
+
+/// Os critérios do Sort.
+pub const SORT_KEYS: [(PixelSortKey, NodeId); 8] = [
+    (PixelSortKey::Hue, hash_node_id("pixel.sort.hue")),
+    (
+        PixelSortKey::Saturation,
+        hash_node_id("pixel.sort.saturation"),
+    ),
+    (
+        PixelSortKey::Brightness,
+        hash_node_id("pixel.sort.brightness"),
+    ),
+    (
+        PixelSortKey::Luminance,
+        hash_node_id("pixel.sort.luminance"),
+    ),
+    (PixelSortKey::Red, hash_node_id("pixel.sort.red")),
+    (PixelSortKey::Green, hash_node_id("pixel.sort.green")),
+    (PixelSortKey::Blue, hash_node_id("pixel.sort.blue")),
+    (PixelSortKey::Alpha, hash_node_id("pixel.sort.alpha")),
+];
+
+/// O campo *Palette Size* (o valor é o tamanho da paleta do sprite, nunca uma opção).
+pub const PALETTE_SIZE: NodeId = hash_node_id("pixel.palette.size");
+/// A tolerância do *Replace Color* (um campo das opções).
+pub const REPLACE_TOLERANCE: NodeId = hash_node_id("pixel.opt.replace_tolerance");
+/// A amostra do *Edit color* (o chrome conhece-a: a família lê o seletor por ela).
+pub use ph2d_editor_core::ids::PIXEL_PAL_EDIT;
+/// Abre o diálogo *Color Mode* sobre o sprite em edição.
+pub const COLOR_MODE: NodeId = hash_node_id("pixel.color_mode.open");
+
+/// Os botões das acções da paleta e da cor: o id, o pedido que fazem e o rótulo.
+pub const ACTIONS: [(NodeId, PixelRequest, &str); 10] = [
+    (
+        hash_node_id("pixel.palette.move_left"),
+        PixelRequest::MoveSelection(-1),
+        "panel.pixel.move_left",
+    ),
+    (
+        hash_node_id("pixel.palette.move_right"),
+        PixelRequest::MoveSelection(1),
+        "panel.pixel.move_right",
+    ),
+    (
+        hash_node_id("pixel.palette.sort_ascending"),
+        PixelRequest::Sort { descending: false },
+        "panel.pixel.sort.ascending",
+    ),
+    (
+        hash_node_id("pixel.palette.sort_descending"),
+        PixelRequest::Sort { descending: true },
+        "panel.pixel.sort.descending",
+    ),
+    (
+        hash_node_id("pixel.palette.select_used"),
+        PixelRequest::SelectUsed,
+        "panel.pixel.select_used",
+    ),
+    (
+        hash_node_id("pixel.palette.from_sprite"),
+        PixelRequest::PaletteFromSprite,
+        "panel.pixel.from_sprite",
+    ),
+    (
+        hash_node_id("pixel.palette.load"),
+        PixelRequest::LoadPalette,
+        "panel.pixel.load",
+    ),
+    (
+        hash_node_id("pixel.palette.save"),
+        PixelRequest::SavePalette,
+        "panel.pixel.save",
+    ),
+    (
+        hash_node_id("pixel.palette.default"),
+        PixelRequest::DefaultPalette,
+        "panel.pixel.default_palette",
+    ),
+    (
+        hash_node_id("pixel.replace.apply"),
+        PixelRequest::ReplaceColor,
+        "panel.pixel.replace_apply",
+    ),
+];

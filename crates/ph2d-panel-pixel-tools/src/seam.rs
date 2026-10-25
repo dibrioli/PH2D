@@ -9,7 +9,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
-use ph2d_editor_core::pixel_panel::{PixelOptions, PixelRequest};
+use ph2d_editor_core::pixel_panel::{PixelOptions, PixelRequest, PixelSelect};
 use ph2d_editor_core::widget::{ButtonState, CheckboxState, CheckboxValue, TextInputState};
 use ph2d_i18n::{tr, tr_with};
 
@@ -34,7 +34,11 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     store.register_picker_swatch(ids::PIXEL_BG);
     // As opções: segmentos são botões, caixas são caixas, números são campos com faixa.
     let segmentos = ids::SHAPES.iter().map(|(_, id)| *id).chain(ids::SEGMENTS);
-    for id in segmentos {
+    let inks = ids::INKS.iter().map(|(_, id)| *id);
+    let sorts = ids::SORT_KEYS.iter().map(|(_, id)| *id);
+    let acoes = ids::ACTIONS.iter().map(|(id, ..)| *id);
+    let mais = inks.chain(sorts).chain(acoes).chain([ids::COLOR_MODE]);
+    for id in segmentos.chain(mais) {
         let state = ButtonState::Normal;
         store.register(id, InteractiveState::Button { state });
     }
@@ -59,7 +63,26 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         );
         store.set_number_range(id, min, max, step);
     }
+    let n = MAX_COLORS;
+    store.register(
+        ids::PALETTE_SIZE,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: n,
+            buffer: n.to_string(),
+            caret: 0,
+            last_committed: n,
+            selection_anchor: None,
+        },
+    );
+    store.set_number_range(ids::PALETTE_SIZE, 1.0, n, 1.0);
+    // O *Edit color*: um Down abre o seletor partilhado (a família lê-o de volta).
+    store.register_picker_swatch(ids::PIXEL_PAL_EDIT);
+    store.register(ids::PIXEL_PAL_EDIT, InteractiveState::Plain);
 }
+
+/// O maior tamanho de paleta (um índice é um byte).
+const MAX_COLORS: f64 = ph2d_editor_core::pixel_panel::PIXEL_MAX_COLORS as f64;
 
 /// O valor do campo `id` nas opções.
 pub(crate) fn numero(o: &PixelOptions, id: NodeId) -> f64 {
@@ -69,6 +92,7 @@ pub(crate) fn numero(o: &PixelOptions, id: NodeId) -> f64 {
         ids::CORNER => f64::from(o.corner_radius),
         ids::TOLERANCE => f64::from(o.tolerance),
         ids::SPRAY_WIDTH => f64::from(o.spray_width),
+        ids::REPLACE_TOLERANCE => f64::from(o.replace_tolerance),
         _ => f64::from(o.spray_speed),
     }
 }
@@ -98,6 +122,7 @@ fn com_numero(mut o: PixelOptions, id: NodeId, v: f64) -> PixelOptions {
         ids::TOLERANCE => o.tolerance = u8::try_from(u).unwrap_or(u8::MAX),
         ids::SPRAY_WIDTH => o.spray_width = u,
         ids::SPRAY_SPEED => o.spray_speed = u,
+        ids::REPLACE_TOLERANCE => o.replace_tolerance = u8::try_from(u).unwrap_or(u8::MAX),
         _ => {}
     }
     o
@@ -124,6 +149,10 @@ fn com_segmento(mut o: PixelOptions, id: NodeId) -> Option<PixelOptions> {
         o.shape = *shape;
         return Some(o);
     }
+    if let Some((ink, _)) = ids::INKS.iter().find(|(_, s)| *s == id) {
+        o.ink = *ink;
+        return Some(o);
+    }
     match id {
         ids::CONNECT_4 => o.eight = false,
         ids::CONNECT_8 => o.eight = true,
@@ -142,7 +171,7 @@ pub(crate) fn register_palette(store: &mut WidgetStore, n: usize) {
 }
 
 /// O pedido de um clique, se o id é deste painel e há sprite em edição.
-fn pedido(id: ph2d_a11y::NodeId) -> Option<PixelRequest> {
+fn pedido(id: ph2d_a11y::NodeId, how: PixelSelect) -> Option<PixelRequest> {
     with_current(|info| {
         if !info.editing {
             return None;
@@ -156,9 +185,15 @@ fn pedido(id: ph2d_a11y::NodeId) -> Option<PixelRequest> {
         if let Some(o) = com_segmento(info.options, id) {
             return Some(PixelRequest::Options(o));
         }
+        if let Some((k, _)) = ids::SORT_KEYS.iter().find(|(_, b)| *b == id) {
+            return Some(PixelRequest::SortKey(*k));
+        }
+        if let Some((_, r, _)) = ids::ACTIONS.iter().find(|(b, ..)| *b == id) {
+            return Some(*r);
+        }
         info.palette.iter().enumerate().find_map(|(i, c)| {
             if ids::palette_id(i) == id {
-                Some(PixelRequest::Fg(*c))
+                Some(PixelRequest::Swatch { index: i, how })
             } else if ids::palette_bg_id(i) == id {
                 Some(PixelRequest::Bg(*c))
             } else {
@@ -194,13 +229,42 @@ pub(crate) fn apply_event(
             });
             return empurra(host, pedido);
         }
+        WidgetEvent::ValueChanged(id) if id == ids::PALETTE_SIZE => {
+            let v = host.store().number_value(id);
+            let pedido = with_current(|info| {
+                let v = v.filter(|v| v.is_finite())?;
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "presa a 1..=256 antes da conversão"
+                )]
+                let n = v.round().clamp(1.0, MAX_COLORS) as u16;
+                info.editing.then_some(PixelRequest::PaletteSize(n))
+            });
+            return empurra(host, pedido);
+        }
         _ => return EventOutcome::Ignored,
     };
     if id == ids::PIXEL_CLOSE {
         host.set_panel_visible(crate::PixelToolsPanel::ID, false);
         return EventOutcome::Consumed;
     }
-    empurra(host, pedido(id))
+    if id == ids::COLOR_MODE {
+        let Some(mode) = with_current(|i| i.editing.then_some(i.mode)) else {
+            return EventOutcome::Ignored;
+        };
+        host.store_mut().open_color_mode_dialog(mode);
+        return EventOutcome::Consumed;
+    }
+    // `Shift` = da âncora até aqui, `Ctrl` = liga/desliga (a paleta do Aseprite).
+    let how = if host.store().shift_held() {
+        PixelSelect::Range
+    } else if host.store().cmd_held() {
+        PixelSelect::Toggle
+    } else {
+        PixelSelect::Only
+    };
+    empurra(host, pedido(id, how))
 }
 
 fn empurra(host: &mut dyn PanelHostInternal, pedido: Option<PixelRequest>) -> EventOutcome {

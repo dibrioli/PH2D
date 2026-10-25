@@ -122,4 +122,103 @@ impl PhysicsWorld {
         }
         handle
     }
+
+    /// **Reafina um corpo VIVO no lugar** — gémeo de [`PhysicsWorld::retune_joint`]: a curva muda
+    /// o atrito, a densidade, a forma… a meio da simulação e o corpo obedece sem ser recriado (os
+    /// contactos e a velocidade ficam; o ring de checkpoints vale). O colisor sai do MESMO
+    /// [`collider_build::build_collider`] que o `spawn_body` usa, e copia-se dele.
+    ///
+    /// A pose (`x`/`y`/`rotation`) e a velocidade INICIAL (`linvel`/`angvel`) são da criação e não
+    /// se tocam. ⚠️ O desmonte do `desc` é exaustivo: um campo novo no [`BodyDesc`] é erro de
+    /// compilação aqui até alguém decidir o que ele faz a um corpo vivo.
+    ///
+    /// Devolve `false` quando o handle não nomeia um corpo vivo com colisor (o chamador recria).
+    pub fn retune_body(&mut self, handle: RigidBodyHandle, desc: &BodyDesc) -> bool {
+        let BodyDesc {
+            body_type,
+            x: _,
+            y: _,
+            rotation: _,
+            density,
+            shape: _,
+            restitution: _,
+            friction: _,
+            layer,
+            is_sensor: _,
+            gravity_scale,
+            linvel: _,
+            angvel: _,
+            ccd,
+            lock_rotation,
+            offset: _,
+            lock_x,
+            lock_y,
+            mass_override,
+            dominance,
+            material: _,
+            damping,
+            one_way: _,
+            effector: _,
+        } = *desc;
+        let Some(&collider_handle) = self.bodies.get(handle).and_then(|b| b.colliders().first())
+        else {
+            return false;
+        };
+        if let Some(b) = self.bodies.get_mut(handle) {
+            b.set_body_type(body_type, true);
+            b.set_gravity_scale(gravity_scale, true);
+            b.set_dominance_group(dominance);
+            b.enable_ccd(ccd);
+            let mut axes = LockedAxes::empty();
+            if lock_rotation {
+                axes |= LockedAxes::ROTATION_LOCKED;
+            }
+            if lock_x {
+                axes |= LockedAxes::TRANSLATION_LOCKED_X;
+            }
+            if lock_y {
+                axes |= LockedAxes::TRANSLATION_LOCKED_Y;
+            }
+            b.set_locked_axes(axes, true);
+            // Um eixo congelado não carrega velocidade — a lei do `spawn_body`, a meio do voo.
+            let v = b.linvel();
+            b.set_linvel(
+                Vector::new(if lock_x { 0.0 } else { v.x }, if lock_y { 0.0 } else { v.y }),
+                true,
+            );
+            if lock_rotation {
+                b.set_angvel(0.0, true);
+            }
+        }
+        self.stamp_defaults(handle);
+        if let Some(d) = damping {
+            self.apply_damping_override(handle, d);
+        }
+        let fresh = collider_build::build_collider(desc);
+        if let Some(c) = self.colliders.get_mut(collider_handle) {
+            c.set_shape(fresh.shared_shape().clone());
+            match mass_override {
+                Some(m) => c.set_mass(m),
+                None => c.set_density(density),
+            }
+            c.set_restitution(fresh.restitution());
+            c.set_friction(fresh.friction());
+            c.set_restitution_combine_rule(fresh.restitution_combine_rule());
+            c.set_friction_combine_rule(fresh.friction_combine_rule());
+            c.set_sensor(fresh.is_sensor());
+            c.set_active_collision_types(fresh.active_collision_types());
+            // Sem pai, a posição do construtor É a relativa ao pai (`insert_with_parent` adopta-a).
+            c.set_position_wrt_parent(*fresh.position());
+            c.user_data = fresh.user_data;
+            c.set_active_hooks(fresh.active_hooks());
+        }
+        self.stamp_layer(collider_handle, layer as usize);
+        self.effectors.retain(|(h, _, _)| *h != handle);
+        if let Some(effect) = effector::zone_effect(desc) {
+            self.effectors.push((handle, effect, desc.shape));
+            self.effectors
+                .sort_unstable_by_key(|(h, _, _)| h.into_raw_parts());
+        }
+        true
+    }
 }

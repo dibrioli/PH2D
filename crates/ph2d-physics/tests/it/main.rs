@@ -12,6 +12,7 @@ mod air_drag;
 mod area_falloff;
 mod area_frame;
 mod body_defaults;
+mod body_retune;
 mod buoyancy;
 mod buoyed_query;
 mod capsule;

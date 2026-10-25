@@ -62,6 +62,7 @@ impl PhysicsBridge {
             readback_order: Vec::new(),
             to_spawn: Vec::new(),
             to_remove: Vec::new(),
+            to_retune: Vec::new(),
             to_settle: Vec::new(),
             settings: PhysicsSettings::default(),
             ring: PhysicsCheckpointRing::new(),

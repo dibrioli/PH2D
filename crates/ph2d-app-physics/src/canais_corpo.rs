@@ -11,8 +11,8 @@
 //!
 //! ⚠️ **Runtime-truth (ADR-0131 D2)**: daí ao rapier o caminho é o da edição do painel — o
 //! `reconcile_structure` da ponte re-descreve um corpo cujo `BodyDesc` mudou **em repouso**
-//! (antes do 1.º passo, depois de rebobinar). Com a simulação a correr, a curva escreve o
-//! componente e o corpo vivo não muda, exactamente como uma edição no painel nesse instante.
+//! (antes do 1.º passo, depois de rebobinar) e, com a simulação a correr, REAFINA-o no lugar
+//! (`PhysicsWorld::retune_body`, F30 §C): a curva muda o material do corpo vivo, como a da junta.
 //!
 //! ⭐ **A escrita da curva é pré-visualização**: o valor AUTORADO de cada campo que a curva move
 //! fica em [`ConducaoFisica`] (a irmã da `ConducaoVetor`), e a fotografia do undo e do save vê-o.

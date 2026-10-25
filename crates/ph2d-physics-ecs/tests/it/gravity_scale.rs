@@ -78,3 +78,48 @@ fn a_gravity_scale_component_is_folded_into_the_sim() {
          component (y={weightless_y}, spawn was {spawn_y})"
     );
 }
+
+/// ⭐ **A curva muda a gravidade A MEIO da queda** (F30 §C; o dono, 19/10: o Auto Key grava
+/// tudo — e o que se grava tem de mandar no corpo VIVO). A ponte só re-descrevia o corpo em
+/// repouso: a meio do play a escala nova ficava no componente e o corpo continuava a acelerar.
+/// Reafinado no lugar, a velocidade que ele trazia FICA (não é recriado) e deixa de crescer.
+#[test]
+fn a_escala_de_gravidade_muda_o_corpo_a_meio_da_queda() {
+    let mut sim = SimWorld::new();
+    let bola = sim
+        .world_mut()
+        .spawn((
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.25 },
+                density: 1.0,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 50.0)),
+        ))
+        .id();
+    let y = |sim: &SimWorld| sim.world().get::<Transform>(bola).unwrap().translation.y;
+    let mut bridge = PhysicsBridge::new();
+    for tick in 1..=30u64 {
+        bridge.dispatch(&mut sim, true, tick);
+    }
+    sim.world_mut().entity_mut(bola).insert(GravityScale(0.0));
+    let mut passos = Vec::new();
+    let mut antes = y(&sim);
+    for tick in 31..=60u64 {
+        bridge.dispatch(&mut sim, true, tick);
+        passos.push(antes - y(&sim));
+        antes = y(&sim);
+    }
+    let (primeiro, ultimo) = (passos[1], passos[passos.len() - 1]);
+    assert!(
+        primeiro > 0.05,
+        "o corpo foi recriado parado — a velocidade da queda perdeu-se ({primeiro} m/passo)"
+    );
+    assert!(
+        (ultimo - primeiro).abs() < 0.02 * primeiro,
+        "a escala 0 a meio da queda não chegou ao corpo vivo: o passo foi de {primeiro} a {ultimo} m"
+    );
+}

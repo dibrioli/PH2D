@@ -18,6 +18,7 @@ impl PhysicsBridge {
         self.seen.clear();
         self.to_spawn.clear();
         self.to_remove.clear();
+        self.to_retune.clear();
 
         let world = sim.world();
         // Take the cached query out so the loop body can push into the
@@ -170,10 +171,34 @@ impl PhysicsBridge {
                     self.to_spawn.push((e, desc, rb.kind));
                     self.to_remove.push(e);
                 }
+                // A meio da simulação a pose é do solver; o MATERIAL é da curva (F30 §C):
+                // reafina-se no lugar, como a junta.
+                Some(b) if !at_rest && sem_pose(b.rest) != sem_pose(desc) => {
+                    self.to_retune.push((e, desc));
+                }
                 Some(_) => {}
             }
         }
         self.query = Some(q);
+
+        for i in 0..self.to_retune.len() {
+            let (e, desc) = self.to_retune[i];
+            let Some(b) = self.bodies.get_mut(&e) else {
+                continue;
+            };
+            // O memo só anda quando a escrita pegou (a lei do `retune_joint`); a pose de repouso
+            // fica a de repouso.
+            if self.world.retune_body(b.handle, &desc) {
+                b.rest = BodyDesc {
+                    x: b.rest.x,
+                    y: b.rest.y,
+                    rotation: b.rest.rotation,
+                    linvel: b.rest.linvel,
+                    angvel: b.rest.angvel,
+                    ..desc
+                };
+            }
+        }
 
         // Stale bodies: entity no longer carries the components. O(N²) is
         // fine at W1 body counts and allocates nothing; only fires on
@@ -219,5 +244,17 @@ impl PhysicsBridge {
             );
         }
         self.to_spawn.clear();
+    }
+}
+
+/// O que um corpo É para o solver, sem a pose e a velocidade INICIAL (que são da criação).
+fn sem_pose(d: BodyDesc) -> BodyDesc {
+    BodyDesc {
+        x: 0.0,
+        y: 0.0,
+        rotation: 0.0,
+        linvel: [0.0; 2],
+        angvel: 0.0,
+        ..d
     }
 }

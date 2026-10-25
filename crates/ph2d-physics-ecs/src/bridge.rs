@@ -374,6 +374,9 @@ pub struct PhysicsBridge {
     to_spawn: Vec<(Entity, BodyDesc, BodyKind)>,
     /// Entities whose body must be removed this frame (component gone).
     to_remove: Vec<Entity>,
+    /// Corpos cujo material mudou a meio da simulação (a curva, o Inspector): reafinados no lugar
+    /// (`retune_body`), sem limpar o ring — o gémeo de `joints_to_retune`. Scratch: limpo por reconcile.
+    to_retune: Vec<(Entity, BodyDesc)>,
     /// The bodies a settle pass is about to walk. Collected first because
     /// `follow_authored_pose` borrows the `chain` scratch mutably while
     /// `self.bodies` is being iterated; retained for the same zero-alloc reason

@@ -557,11 +557,6 @@ pub(crate) use ph2d_app_vec::vec_frame_edit;
 pub(crate) use ph2d_system_fonts::library as vec_font;
 mod vec_frame_resize;
 pub(crate) use ph2d_app_vec::frame_spans as vec_frame_spans;
-pub(crate) use ph2d_vec_text::glyph as vec_glyph;
-// ⚠️ O alias `vec_glyph_build` SAIU em 2026-09-12: o `motion_text_gen` era o último
-// consumidor dele na shell e mudou-se para `ph2d-app-motion`, onde escreve
-// `ph2d_vec_text::glyph_build` directamente. *Um alias existe pelos chamadores; quando
-// o último sai, ele é ruído — e o compilador disse-o.*
 /// A porta única de "onde está o caminho-guia, e como se percorre por arco?" (texto E pattern).
 pub(crate) use ph2d_app_vec::guide as vec_guide;
 /// A CÓPIA segue a âncora do mestre — o corolário da âncora viva, do lado do componente.
@@ -578,6 +573,7 @@ pub(crate) use ph2d_app_vec::resize_box_edit as vec_resize_box_edit;
 pub(crate) use ph2d_app_vec::shape_live as vec_shape_live;
 pub(crate) use ph2d_app_vec::shape_params as vec_shape_params;
 pub(crate) use ph2d_app_vec::vec_selection;
+pub(crate) use ph2d_vec_text::glyph as vec_glyph;
 mod vec_snap;
 /// Os alvos de snap vindos do RASTER (irmão de `vec_snap`, teto de LOC).
 mod vec_snap_sprites;
@@ -898,12 +894,14 @@ impl App {
         // O ponteiro de uma aba muda sem o rato mexer (o Ctrl, uma resposta do assistente).
         self.update_eyedropper_cursor();
         self.flip_edit_refresh();
+        // Depois do frame, com `self` livre do render loop: o undo do quadro por diff de estado
+        // ([`crate::undo_app`]). ⭐ O SYNC das instâncias (ADR-0164) vem ANTES da captura (senão a
+        // escrita do sync vira um passo de undo que ninguém deu).
         self.sync_instances();
         // ⭐⭐⭐ A SAÍDA da sessão de receita, ANTES do `post_frame_undo`: um cancelamento é uma
         // mudança do documento como outra qualquer ([`ph2d_app_components::prefab_stage`]).
         self.serve_prefab_exit();
-        // ⭐ F31: o id de cada entrada da pilha nasce ANTES da captura, todo quadro ⇒ no mesmo passo
-        // de undo da entrada (a `fase_autokey` não corre em todo quadro).
+        // ⭐ F31: o id de cada entrada da pilha nasce antes da captura, todo quadro (no passo dela).
         if let Some(g) = self.gfx.as_mut() {
             ph2d_app_vec::ids_da_pilha::passe(&mut g.sim, &mut g.vec_scene);
         }

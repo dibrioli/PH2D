@@ -148,7 +148,18 @@ fn nenhum_alvo_precisa_de_tabela_para_morrer() {
             "«{nome}» ganhou um `Destroy` — a morte deixou de ser da vida"
         );
         assert_eq!(nome, ALVOS[ROXO].0, "só o roxo tem tabela: {nome}");
-        assert_eq!(t, &tabela_do_roxo(), "a tabela do roxo mudou");
+        // O `item` nasce no passe da identidade (`assign_missing_stable_ids`, F30 §A1) que a
+        // montagem corre; a tabela do molde sai com `NONE` ⇒ compara-se a tabela sem o id.
+        let mut sem_id = t.clone();
+        sem_id
+            .0
+            .iter_mut()
+            .for_each(|l| l.item = ph2d_ecs::ItemId::NONE);
+        assert!(
+            t.0.iter().all(|l| !l.item.is_none()),
+            "a montagem não deu id às linhas do roxo: {t:?}"
+        );
+        assert_eq!(sem_id, tabela_do_roxo(), "a tabela do roxo mudou");
     }
     assert!(
         alvos.iter().any(|(_, t)| t.is_some()),

@@ -148,6 +148,7 @@ pub mod fx_bridge;
 pub mod fx_bridge_dispatch;
 pub mod fx_dump;
 pub mod fx_live;
+pub mod fx_live_comandos;
 pub mod fx_live_hit;
 pub mod fx_live_memo;
 pub mod fx_live_resolve;

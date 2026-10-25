@@ -68,23 +68,7 @@ impl crate::App {
             | crate::project_schema::PROJECT_SCHEMA_SEM_MEMORIA_DO_USO
             | crate::project_schema::PROJECT_SCHEMA_SEM_TILED_DRAW
             | crate::project_schema::PROJECT_SCHEMA_SEM_ANIMACOES_DO_PERSONAGEM => {
-                // ⭐ do `204` (a `mesa` já lá está) para cima os bytes são os do tipo vivo; do `198` ao `203`
-                // falta-lhes a `mesa` (um `0`); abaixo falta-lhes também o `jogo` (outro). Os itens (F30 §A1,
-                // `205`) migram em `migra_depois_de_ler`: a forma do ficheiro é a mesma.
-                let falta: &[u8] = if ver > crate::project_schema::PROJECT_SCHEMA_SEM_MESA {
-                    &[]
-                } else if ver >= crate::project_schema::PROJECT_SCHEMA_SEM_CONSTRAINTS {
-                    &[0]
-                } else {
-                    &[0, 0]
-                };
-                match postcard::from_bytes::<(u32, ProjectFile)>(&[&bytes[..], falta].concat()) {
-                    Ok((_, f)) => (f, None),
-                    Err(e) => {
-                        eprintln!("[proj] erro ao ler {path}: {e}");
-                        return None;
-                    }
-                }
+                (le_com_o_tipo_vivo(&[&bytes[..], falta].concat(), path)?, None)
             }
             // ⛔ Um v97 e um v98 são RECUSADOS (sem tipo congelado não há forma honesta de os ler): o
             // porquê, verbatim, em `docs/archive/project-schema/bracos_97_e_98_recusados.md`.
@@ -211,6 +195,27 @@ impl crate::App {
         };
         migra_depois_de_ler(&mut file, ver, fio);
         Some((file, migrated_counter))
+    }
+}
+
+/// Os bytes lidos com o tipo VIVO (`None` = ilegível, dito no terminal).
+fn le_com_o_tipo_vivo(bytes: &[u8], path: &str) -> Option<ProjectFile> {
+    // ⭐ do `204` (a `mesa` já lá está) para cima os bytes são os do tipo vivo; do `198` ao `203`
+    // falta-lhes a `mesa` (um `0`); abaixo falta-lhes também o `jogo` (outro). Os itens (F30 §A1,
+    // `205`) migram em `migra_depois_de_ler`: a forma do ficheiro é a mesma.
+    let falta: &[u8] = if ver > crate::project_schema::PROJECT_SCHEMA_SEM_MESA {
+        &[]
+    } else if ver >= crate::project_schema::PROJECT_SCHEMA_SEM_CONSTRAINTS {
+        &[0]
+    } else {
+        &[0, 0]
+    };
+    match postcard::from_bytes::<(u32, ProjectFile)>(bytes) {
+        Ok((_, f)) => Some(f),
+        Err(e) => {
+            eprintln!("[proj] erro ao ler {path}: {e}");
+            None
+        }
     }
 }
 

@@ -1,5 +1,12 @@
 //! **Fase do quadro: OS OVERLAYS VECTORIAIS** — as formas vivas do Motion, o overlay do blend, o pick de
 //! caminho, o PLANO de overlay do quadro, o contorno de proveniência, a peça do Trim e a face do balde (OBRA 2 da `line/render-loop`, 2026-09-12).
+//!
+//! ⛔ **AS SETAS DO MORPH NÃO SE DESENHAM** (Enio, 2026-08-25: *"as setas são virtuais e ninguém
+//! jamais vê"*). A W3a pintava-as depois do overlay do blend, em âmbar, entre as formas que
+//! ligavam. Elas deixaram de existir como desenho porque deixaram de ser AUTORADAS: o conjunto é o
+//! grafo COMPLETO, gerado por um botão — desenhar `n(n-1)` setas entre formas que já estão
+//! escondidas é ruído sobre uma resposta que ninguém precisa de ler no canvas. A lista da seção
+//! *Morph States* é a superfície, e é lá que a condição se escolhe.
 
 use super::*;
 
@@ -139,9 +146,6 @@ impl crate::App {
         // do `dispatch` (que já pôs as fontes no z da cena, embaixo); o overlay reestabelece a
         // pilha do blend por cima. O interleaving fino contra o resto da cena é da Fase C.
         ph2d_vec_render::draw_blend_overlay(&self.vec.blend_overlay, cam_affine, vector_scene);
-        // ⛔ **AS SETAS DO MORPH NÃO SE DESENHAM** (Enio, 2026-08-25: *"as setas são virtuais e
-        // ninguém jamais vê"*): o conjunto é o grafo COMPLETO, gerado por um botão; a lista da
-        // seção *Morph States* é a superfície, e é lá que a condição se escolhe.
         // **Pick Shapes** (ADR-0128 C2b): realça as formas escolhidas e costura a ORDEM de
         // clique numa polilinha (a prévia do spine). Fora do modo Pick, a lista não vale —
         // limpa, para não vazar escolhas velhas para o próximo blend.

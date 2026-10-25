@@ -20,8 +20,8 @@ use std::cell::Cell;
 thread_local! {
     /// O menu da rotação aberto neste quadro (o chip e a opção de agora), pintado por cima do corpo.
     static PENDING_ROTATION_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
-    /// O menu do Reset aberto neste quadro (o cabeçalho do cartão, a largura dele).
-    static PENDING_RESET_DD: Cell<Option<Rect>> = const { Cell::new(None) };
+    /// O menu do Reset aberto neste quadro (o cabeçalho do cartão, a largura dele) e se o preset traz mão.
+    static PENDING_RESET_DD: Cell<Option<(Rect, bool)>> = const { Cell::new(None) };
 }
 
 /// O nome de cada opção do menu da rotação (`DabRotation`, pelo índice do knob).
@@ -104,7 +104,8 @@ pub(crate) fn paint_pen_section(
         ctx.host.store().get(ids::PAINTER_PEN_RESET),
         Some(InteractiveState::Dropdown { open: true, .. })
     ) {
-        PENDING_RESET_DD.with(|c| c.set(Some(Rect::new(x, y0, content_w, y - y0))));
+        let r = Rect::new(x, y0, content_w, y - y0);
+        PENDING_RESET_DD.with(|c| c.set(Some((r, brush.mao_do_preset))));
     }
     let Some(fold) = fold else {
         return y;
@@ -169,8 +170,7 @@ fn paint_rotation_row(
 
 /// As opções do menu do Reset: o neutro da app e o preset do pincel — apagada (visível, não alcançável) quando o
 /// preset activo não traz mão, com o porquê no próprio texto.
-fn opcoes_do_reset() -> Vec<DropdownOption<u8>> {
-    let tem_preset = crate::state_wet_presets::current_mao_do_preset();
+fn opcoes_do_reset(tem_preset: bool) -> Vec<DropdownOption<u8>> {
     let preset = if tem_preset {
         "panel.painter_pen.reset_preset"
     } else {
@@ -199,13 +199,13 @@ pub(crate) fn decode_reset_option(id: ph2d_a11y::NodeId) -> Option<u8> {
 /// Os menus do cartão (a rotação, o Reset), se abertos — pintados por cima do corpo, depois do clip (como os
 /// outros).
 pub(crate) fn paint_pen_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
-    if let Some(r) = PENDING_RESET_DD.with(Cell::take) {
+    if let Some((r, tem_preset)) = PENDING_RESET_DD.with(Cell::take) {
         // Um menu de acções: nenhuma opção é a «de agora».
         crate::dropdown_popover::paint_dropdown_popover(
             ctx,
             theme,
             ids::PAINTER_PEN_RESET,
-            opcoes_do_reset(),
+            opcoes_do_reset(tem_preset),
             r,
             u8::MAX,
         );

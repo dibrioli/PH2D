@@ -442,6 +442,7 @@ impl PainterTool {
             wet_knobs: self.paint.wetpaint.knobs,
             wet_opacidade: self.paint.wetpaint.opacidade,
             mao: self.mao(),
+            mao_do_preset: self.mao_do_preset_disponivel(),
             marca: self.marca(),
             marca_secundaria: self.paint.brush.cor_mao.secondary,
             ponta: self.ponta(),

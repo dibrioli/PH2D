@@ -12,8 +12,8 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brush};
-use ph2d_panel_painter_layers::{PainterLayersPanel, set_current_mao_do_preset};
-use ph2d_tool_painter::{LINHAS_DA_MAO, MAO_DE_FABRICA, PaintMedia, PainterTool, ids};
+use ph2d_panel_painter_layers::PainterLayersPanel;
+use ph2d_tool_painter::{BrushSettings, LINHAS_DA_MAO, MAO_DE_FABRICA, PaintMedia, PainterTool, ids};
 use ph2d_ui_testkit::MockPanelHost;
 
 fn viewport() -> Rect {
@@ -212,11 +212,15 @@ fn o_reset_para_o_preset_despacha_a_sua_opcao() {
     let preset = ids::painter_pen_reset_option_id(ids::PAINTER_PEN_RESET_PRESET);
     let abre = |disponivel: bool| {
         let t = no_meio(PaintMedia::Digital);
-        set_current_mao_do_preset(disponivel);
         let (mut host, mut st, rects) = novo(&t);
         let r = rect_of(&rects, ids::PAINTER_PEN_RESET).expect("o Reset do cartão");
         clica(&mut host, &mut st, &mut PainterTool::default(), r);
-        let rects = painted(&t, &mut host, &mut st);
+        // A disponibilidade viaja no instantâneo do tool (`BrushSettings::mao_do_preset`), sem canal à parte.
+        set_current_brush(Some(BrushSettings {
+            mao_do_preset: disponivel,
+            ..t.brush_settings()
+        }));
+        let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
         (host, st, rects)
     };
     let (_, _, rects) = abre(false);
@@ -255,7 +259,6 @@ fn o_reset_para_o_preset_despacha_a_sua_opcao() {
     );
     let rects = painted(&no_meio(PaintMedia::Digital), &mut host, &mut st);
     assert!(rect_of(&rects, preset).is_none(), "o menu fechou");
-    set_current_mao_do_preset(false);
 }
 
 /// O custo de pintar o painel com o cartão Pen ABERTO × fechado, no Digital (o MÍNIMO de 20 pinturas, ms).

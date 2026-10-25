@@ -24,9 +24,7 @@ use ph2d_brush_presets::{
 };
 use ph2d_editor_core::toast::{Toast, ToastQueue};
 use ph2d_i18n::{idioma, tr, tr_with};
-use ph2d_panel_painter_layers::{
-    VistaPreset, VistaPresets, set_current_mao_do_preset, set_current_wet_presets,
-};
+use ph2d_panel_painter_layers::{VistaPreset, VistaPresets, set_current_wet_presets};
 use ph2d_tool_painter::{
     Gaveta, MeioDesconhecido, PaintMedia, PainterTool, PedidoPreset, ferramenta_do_preset,
     miniatura_do_preset, motor_do_meio, nome_do_meio,
@@ -437,7 +435,6 @@ pub(crate) fn drive(painter: &mut PainterTool, toasts: &mut ToastQueue) {
             p.lembrar_a_mao_do_ativo(painter);
         }
         set_current_wet_presets(Some(p.vista.clone()));
-        set_current_mao_do_preset(painter.mao_do_preset_disponivel());
     });
 }
 

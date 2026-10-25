@@ -230,6 +230,7 @@ fn o_reset_da_mao_tem_duas_portas() {
         };
         assert!(t.preset_aplicar(&preset).is_ok());
         assert!(t.mao_do_preset_disponivel(), "{m:?}: aplicar lembra a mão");
+        assert!(t.brush_settings().mao_do_preset, "{m:?}: o painel lê-a no instantâneo");
         mexe(&mut t);
         t.route_mao_event(&opcao(PAINTER_PEN_RESET_PRESET));
         let mao = t.mao();
@@ -250,6 +251,7 @@ fn o_reset_da_mao_tem_duas_portas() {
         // Outra gaveta (outro meio): o preset não é o do pincel na mão.
         t.set_paint_media(PaintMedia::Impasto);
         assert!(!t.mao_do_preset_disponivel(), "{m:?}: noutra gaveta");
+        assert!(!t.brush_settings().mao_do_preset, "{m:?}: noutra gaveta, no instantâneo");
         // E a ponte que diz «nenhum activo» apaga-a.
         t.set_paint_media(m);
         assert!(t.mao_do_preset_disponivel(), "{m:?}: de volta à gaveta");

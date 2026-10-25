@@ -85,7 +85,9 @@ fn the_19_mode_stripes_are_pairwise_different_on_screen() {
 #[test]
 fn every_thing_in_the_bottom_band_changes_what_is_seen_when_clicked() {
     let mut p = Palco::novo();
-    // a opacidade: 128 mostra metade; 255 mostra o branco inteiro
+    // a foto de 25/10: pintar a banda de cima cortava a Background — a de baixo tem de ser branca
+    assert_eq!(p.janela(Rect::new(0, 95, 1, 1)), vec![255, 255, 255, 255], "o fundo branco em baixo");
+    // a opacidade: 128 mostra metade; 255 mostra o azul inteiro
     let meio = p.janela(OPACITY_BOX);
     let info = p.pede(PixelRequest::LayerOpacity(255));
     assert_eq!(info.active_layer, Some(p.id("Opacity 50%")), "a activa é a do quadrado");

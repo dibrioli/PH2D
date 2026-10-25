@@ -5,7 +5,8 @@
 //!   baixo, com um cinza a meio) em cada uma, cada faixa na sua camada e com o seu modo, na ordem do
 //!   menu do Aseprite: a diferença entre os modos lê-se lado a lado (o teste prova que as 19 faixas
 //!   compostas são duas a duas diferentes);
-//! - em baixo, da esquerda para a direita: um quadrado branco a **50 %** de opacidade, uma estrela
+//! - em baixo, sobre o branco da Background, da esquerda para a direita: um quadrado azul-escuro a
+//!   **50 %** de opacidade, uma estrela
 //!   numa camada **escondida** (o olho acende-a), uma camada **trancada** (pintar nela recusa e diz
 //!   porquê), uma **referência** (vê-se; o Flatten deixa-a de fora) e um **grupo** aberto com duas
 //!   formas (o olho do grupo apaga as duas).
@@ -61,7 +62,9 @@ fn put(s: &mut Sprite, key: u32, app: &mut PixelApp, layer: LayerId, r: Rect, f:
         }
     }
     let frame = s.frames()[0].id;
-    app.commit(key, Op::Patch(Patch { layer, frame, bbox: Some(r), rect: r, pixels })).ok()?;
+    // a caixa do cel cresce: pintar a banda de cima NÃO corta o resto da Background
+    let bbox = s.cel((layer, frame)).map_or(r, |c| c.bbox.union(r));
+    app.commit(key, Op::Patch(Patch { layer, frame, bbox: Some(bbox), rect: r, pixels })).ok()?;
     *s = app.docs.get(&key)?.sprite.clone();
     Some(())
 }
@@ -144,7 +147,8 @@ pub(crate) fn stage(
     edita(app, key, grupo, |l| l.kind = LayerKind::Group { collapsed: true })?;
     // a banda de baixo
     let opa = nova(app, key, grupo, "Opacity 50%", false)?;
-    put(&mut s, key, app, opa, OPACITY_BOX, |_, _| [255, 255, 255, 255])?;
+    // azul-escuro a 50 % sobre o branco: a metade lê-se (um branco sobre branco não mostrava nada)
+    put(&mut s, key, app, opa, OPACITY_BOX, |_, _| [20, 40, 160, 255])?;
     edita(app, key, opa, |l| l.opacity = 128)?;
     let esc = nova(app, key, opa, "Hidden star", false)?;
     put(&mut s, key, app, esc, HIDDEN_STAR, |x, y| estrela(HIDDEN_STAR, x, y))?;

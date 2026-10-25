@@ -13,7 +13,7 @@ não andou: `git log HEAD..main` = 0). HEAD = o commit deste handoff, árvore li
 `4d7de856f7` (8 sobreviventes ganham gate) · `60ac936003` (fmt/clippy, fecho de onda). Binário
 `target/smoke/ph2d-host-desktop` a reconferir antes do smoke (`--profile smoke`).
 
-## Smoke do dono (cena 1) — AINDA POR FAZER
+## Smoke do dono (cena 1) — **OK** (25/10)
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-BlenderConstraints && PH2D_CONSTRAINT_SMOKE=1 ./target/smoke/ph2d-host-desktop`
 2. A cena abre parada no quadro 0 com a Espada escolhida, o cartão Constraints aberto (Child Of → Mão,
@@ -59,7 +59,7 @@ A–R da lista do W1c + as novas. 1.ª ronda: 8 sobreviveram, e cada uma ganhou 
 
 ## Falta / aberto
 
-1. O smoke do dono desta onda (acima).
+1. ~~O smoke do dono desta onda~~ — **OK** (25/10). A W1 está fechada.
 2. Feedback do Bake ao artista: a física mostra toast, aqui nenhum; o Bake não pede confirmação.
 3. O desvio do Child Of não é animável: pegar de novo mais tarde re-acerta o offset e muda o 1.º trecho (o Blender
    tem o mesmo; solução seria um item por pega).

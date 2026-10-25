@@ -175,8 +175,12 @@ pub(crate) fn paint_list(
         );
         hit_index.register(play_id, play);
         paint_button(
+            // O ▶ é o ÍCONE (uma caixa de linha não tem respiro para o glifo de texto: o censo das
+            // elisões media «nada pintado»); o rótulo fica como nome acessível.
             &Button::new(play_id, tr("panel.inspector.anim_card.play"))
-                .kind(ButtonKind::Default)
+                .kind(ButtonKind::IconOnly {
+                    icon: ph2d_editor_core::icons::IconId::Play,
+                })
                 .visual(store.button_visual(play_id)),
             play,
             scene,
@@ -216,8 +220,10 @@ pub(crate) fn button_row(
     ph2d_editor_core::property_row::abaixo_do_botao(r)
 }
 
-/// Uma frase de ajuda em `Text3` (ou `Danger`). Devolve o `y` seguinte.
+/// Uma frase de ajuda em `Text3`, QUEBRADA em tantas linhas quantas pede (nunca elidida). Devolve o
+/// `y` seguinte.
 #[allow(clippy::too_many_arguments)]
+#[track_caller]
 fn hint(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -228,18 +234,7 @@ fn hint(
     text: &str,
     color: ColorToken,
 ) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        text,
-        x,
-        y,
-        font,
-        w,
-        resolve(color, theme),
-    );
-    y + font + ph2d_tokens::control_gap_px()
+    super::rows::aviso(scene, text_system, theme, x, w, y, text, color)
 }
 
 /// **«Who Picks»** e o que cada escolha mostra. Devolve o `y` seguinte.

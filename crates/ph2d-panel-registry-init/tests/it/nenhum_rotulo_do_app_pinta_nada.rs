@@ -304,7 +304,6 @@ const O_PRECO_DA_COLUNA_UNICA: &[(&str, &str)] = &[
     ("inspector", "Rides Parent Anchor"),
     ("inspector", "Show Behind Parent"),
     ("inspector", "Show anchors at runtime"),
-    ("inspector", "Show sheet on canvas"),
     ("inspector", "Size Randomness"),
     ("inspector", "Speed Randomness"),
     ("inspector", "Swim Line (weights)"),
@@ -636,7 +635,9 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬇️ `89 → 87` em 2026-10-22 (CodeEditor 8d d3): os cartões passaram a pintar as chaves do
     //    catálogo (linhas unidas, rótulos do cartão alinhados com os do catálogo), e o degrau mediu
     //    87 depois de as bordas do 9-Slice passarem a «Left / Top» por baixo do título da secção.
-    ("inspector", 87),
+    // ⬇️ `87 → 86` em 2026-10-25 (GameEngineFuncional 07): «Show sheet on canvas» virou «Show
+    //    Sheet» (o «onde» foi para o balão) — cortava no cartão Animation da foto do dono.
+    ("inspector", 86),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     ("audio_mixer", 5),
@@ -722,7 +723,8 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬆️ `79 → 81` em 2026-09-23, os mesmos dois VALORES da irmã acima (`83 → 85`).
     // ⬆️ `81 → 83` na integração de 2026-09-25, pelos mesmos dois rótulos do contador — ver a irmã acima.
     // ⬆️ `83 → 85` em 2026-09-29, pelo mesmo par da tabela de resistências — ver a irmã acima.
-    ("inspector", 85),
+    // ⬇️ `85 → 84` em 2026-10-25, o «Show Sheet» da irmã acima (`87 → 86`).
+    ("inspector", 84),
     ("audio_mixer", 5),
     ("hierarchy", 5),
     // ⬇️ `5 → 2` em 2026-09-23: o *Reset* de cada linha virou ÍCONE (era um botão de texto de

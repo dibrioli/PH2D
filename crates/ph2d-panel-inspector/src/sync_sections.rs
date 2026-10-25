@@ -48,6 +48,13 @@ pub(crate) fn sync_new_sections(
         // ⚠️ **A mesma ARESTA da §12**, e pelo mesmo defeito medido: os campos do editor
         // semeiam-se quando a ENTIDADE **ou** a linha aberta muda, nunca por quadro. Reescrever
         // sempre desfaria o número que o artista acabou de digitar antes de o commit chegar.
+        let shown = Some((an.entity_bits, an.current.clone()));
+        if inspector_state.last_anim_current != shown {
+            if let Some(i) = an.current_index() {
+                inspector_state.anim_selected = i;
+            }
+            inspector_state.last_anim_current = shown;
+        }
         let row = if an.rows.is_empty() {
             0
         } else {

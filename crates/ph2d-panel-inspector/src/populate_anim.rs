@@ -126,6 +126,11 @@ fn populate_anim_card(store: &mut WidgetStore) {
         crate::ids::INSP_ANIM_OPEN_EDITOR,
         tr("panel.inspector.anim_card.open_editor_tip"),
     );
+    // «Show Sheet» é curto (cabe na coluna única do painel); o «onde» mora no balão.
+    store.set_tooltip(
+        crate::ids::INSP_SHEET_PREVIEW,
+        tr("panel.inspector.sprite_sheet.show_sheet_tip"),
+    );
     store.set_tooltip(
         crate::ids::INSP_ANIM_RUN_FROM,
         tr("panel.inspector.anim_card.run_from_tip"),

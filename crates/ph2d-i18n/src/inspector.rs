@@ -443,7 +443,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.sprite_sheet.offset_x" => "{offset} X",
         "panel.inspector.sprite_sheet.offset_y" => "{offset} Y",
-        "panel.inspector.sprite_sheet.show_sheet_on_canvas" => "Show sheet on canvas",
+        "panel.inspector.sprite_sheet.show_sheet_on_canvas" => "Show Sheet",
+        "panel.inspector.sprite_sheet.show_sheet_tip" => {
+            "Show the whole sheet on the canvas, around the sprite."
+        }
         "panel.inspector.timers.plus_add_timer" => "+ Add Timer",
         "panel.inspector.timers.x_remove_timer" => "x Remove Timer",
         "panel.inspector.timers.timer_name" => "timer_name\u{2026}",

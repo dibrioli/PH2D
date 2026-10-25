@@ -58,12 +58,12 @@ pub struct InspectorState {
     /// da shell chegar. A cura tem de ser uma ARESTA — mudou de linha, semeia uma vez — e é isso
     /// que este campo é.
     pub last_anchor_row: Option<usize>,
-    /// §11 — qual animação da lista está aberta no editor. **Estado do painel**, saturado
-    /// contra o tamanho da biblioteca a cada pintura.
+    /// §11 — a animação aberta no cartão. **Estado do painel**, saturado contra a biblioteca.
     pub anim_selected: usize,
-    /// Irmão do [`Self::last_anchor_row`], e pela MESMA razão medida: os campos do editor
-    /// semeiam-se numa ARESTA (entidade ou linha), nunca por quadro.
+    /// Irmão do [`Self::last_anchor_row`]: os campos semeiam-se numa ARESTA (entidade ou linha).
     pub last_anim_row: Option<usize>,
+    /// §11 — a (entidade, animação no ecrã) da última pintura: quando muda, a aberta vai para ela.
+    pub last_anim_current: Option<(u64, String)>,
     /// TIMERS — qual timer da lista está aberto no editor. **Estado do painel**, saturado contra
     /// o tamanho da lista a cada pintura.
     ///

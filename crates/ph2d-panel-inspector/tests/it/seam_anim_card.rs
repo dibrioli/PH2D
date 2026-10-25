@@ -8,9 +8,11 @@
 
 use crate::seam_anim::{anim, clear, click, click_fresh, commit, host_with};
 use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::screens::hero::InspectorTransformInfo;
 use ph2d_editor_core::screens::hero::{
     AnimCharacterInfo, AnimChooser, AnimFieldEdit, InspectorAnimInfo,
 };
+use ph2d_editor_core::screens::layout::ChromeBands;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::ids;
 use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_current_inspector_anim};
@@ -296,4 +298,95 @@ fn nao_ha_seccao_sprite_sheet_e_a_grelha_tem_um_so_lugar() {
         assert!(rects.iter().any(|(n, _)| *n == ids::INSP_SPRITE_CENTERED));
         assert!(rects.iter().any(|(n, _)| *n == ids::INSP_SPRITE_FLIP_X));
     }
+}
+
+/// ⭐ Report do dono (foto 01): «Show sheet on…» e a frase de «Who Picks» («The character picks by
+/// what he does: stand…») saíam cortados. No modo «The Character», com grelha, à largura do dock da
+/// foto: o nome cabe na coluna e a frase QUEBRA em várias linhas — nenhuma das duas se elide.
+#[test]
+fn o_cartao_nao_corta_o_nome_da_grelha_nem_a_frase_de_quem_escolhe() {
+    // O dock de fábrica e o da foto (a janela de 1600 com o Inspector estreitado).
+    for w in [ph2d_tokens::INSPECTOR_W_PX, 290.0, 270.0] {
+        // LITERAL-PX-OK: larguras do dock
+        card_fits_at(w);
+    }
+}
+
+fn card_fits_at(w: f32) {
+    let mut info = with_character(anim(false, false));
+    info.card.hframes = 4;
+    info.card.vframes = 2;
+    // ⚠️ Pela pintura do REGISTO e com o Transform ao lado: a coluna dos nomes é UMA por painel
+    // (`ColunaDoPainel`), e quem a prende são as fileiras de dois campos das outras secções — o
+    // cartão sozinho teria a coluna toda para si e não cortaria nada.
+    let (mut host, mut st) = host_with(info);
+    ph2d_panel_inspector::set_current_inspector_transform(Some(InspectorTransformInfo {
+        entity_bits: 0xABCD_1234,
+        translation: [2000.0, 800.0],
+        rotation_rad: 0.0,
+        scale: [1.0, 1.0],
+        skew_rad: [0.0, 0.0],
+    }));
+    let mut painel = ph2d_editor_core::panel::ErasedPanel::new::<InspectorPanel>();
+    let bandas = ChromeBands {
+        right_dock_w: w,
+        ..ChromeBands::DEFAULT
+    };
+    let wide = Rect {
+        w: 1600.0, // LITERAL-PX-OK: a janela do teste
+        ..VIEWPORT
+    };
+    let medidos = host.medindo_a_pintura_do_registo_com_bandas(&mut painel, wide, bandas);
+    let dock = Rect { w, ..VIEWPORT };
+    let rects = host.paint::<InspectorPanel>(&mut st, dock);
+    ph2d_panel_inspector::set_current_inspector_transform(None);
+    clear();
+    let label = ph2d_i18n::tr("panel.inspector.sprite_sheet.show_sheet_on_canvas");
+    let seen: Vec<_> = medidos.iter().filter(|m| m.texto == label).collect();
+    assert!(
+        !seen.is_empty(),
+        "«{label}» não foi pintado — o gate não mediria nada"
+    );
+    assert!(
+        seen.iter().all(|m| m.coube()),
+        "«{label}» saiu cortado a {w} px: {:?}",
+        seen.iter()
+            .map(|m| (&m.pintado, m.largura))
+            .collect::<Vec<_>>()
+    );
+    let hint = ph2d_i18n::tr("panel.inspector.anim_card.character_hint");
+    assert!(
+        !medidos.iter().any(|m| m.texto == hint && !m.coube()),
+        "«{hint}» saiu elidido numa linha"
+    );
+    // A frase mora entre «Who Picks» e o 1.º menu de estado, e ocupa as linhas que pede.
+    let at = |id| {
+        rects
+            .iter()
+            .find(|(n, _)| *n == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("{id:?} não foi pintado"))
+    };
+    let chooser = at(ids::INSP_ANIM_CHOOSER[2]);
+    let first_state = at(ids::INSP_ANIM_STATE_PICK[0]);
+    let font = ph2d_tokens::TypeToken::Sm.px();
+    assert!(
+        first_state.y - (chooser.y + chooser.h) >= 2.0 * font, // LITERAL-PX-OK: duas linhas
+        "a frase tinha de quebrar em mais de uma linha a {} px",
+        dock.w
+    );
+}
+
+/// ⭐ Report do dono: o editor escolhia outra animação (ou criava uma pelo «+») e o cartão continuava
+/// a realçar «idle». Quando a animação no ecrã muda, a linha aberta do cartão vai para ela.
+#[test]
+fn a_linha_aberta_do_cartao_segue_a_animacao_no_ecra() {
+    let (mut host, mut st) = host_with(anim(false, false));
+    assert_eq!(st.anim_selected, 0, "a fixtura abre em «walk»");
+    let mut moved = anim(false, false);
+    moved.current = "attack".into();
+    set_current_inspector_anim(Some(moved));
+    let _ = host.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    clear();
+    assert_eq!(st.anim_selected, 1, "o editor pôs «attack» no ecrã");
 }

@@ -102,12 +102,15 @@ pub fn step(
             PALAVRAS.store(n == CENA_PALAVRAS, Ordering::Relaxed);
             let armada = n == CENA || n == CENA_PALAVRAS;
             ESTAGIO.store(if armada { 1 } else { u8::MAX }, Ordering::Relaxed);
+            if n == crate::autokey_smoke_cena::CENA {
+                return crate::autokey_smoke_cena::step(sim, hero, tl, ph);
+            }
             if !armada {
                 return None;
             }
             1
         }
-        u8::MAX => return None,
+        u8::MAX => return crate::autokey_smoke_cena::step(sim, hero, tl, ph),
         s => s,
     };
     if s < u8::MAX - 1 {

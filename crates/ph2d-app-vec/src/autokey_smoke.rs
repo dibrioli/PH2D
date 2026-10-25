@@ -87,7 +87,8 @@ pub fn step(
                 "29" => ALVO,
                 "30" => TEXTO,
                 "31" => GRUPO,
-                "32" | "33" => COMPONENTES,
+                // `=35` (F30): a Cena e os itens das listas — `ph2d_app_components::autokey_smoke_cena`.
+                "32" | "33" | "35" => COMPONENTES,
                 "34" => VOCABULARIO,
                 // `=16..26`: uma bancada por tipo de junta — `autokey_smoke_tipos`.
                 x => x

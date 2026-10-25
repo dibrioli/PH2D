@@ -85,6 +85,7 @@ pub mod property_drag;
 pub mod audio_2d_smoke;
 /// A lei dos números da fonte de som — o cartão (na shell) e o script passam por ela.
 pub mod audio_inspector;
+mod autokey_smoke_cena;
 pub mod autokey_smoke_componentes;
 /// ⭐⭐⭐ **A PONTE DA CÂMERA DE JOGO** (TOP-20 #7) — saiu da shell em 19/09; ver o cabeçalho.
 pub mod camera_2d;

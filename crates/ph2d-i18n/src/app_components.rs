@@ -120,6 +120,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.components.script_project.script_file_s_not_found_the_script_card_names_them" => {
             "{n} script file(s) not found \u{2014} the Script card names them"
         }
+        // F30 — a cena `PH2D_AUTOKEY_SMOKE=35`.
+        "app.components.autokey_smoke_cena.ground" => "Ground",
+        "app.components.autokey_smoke_cena.ball" => "Ball",
+        "app.components.autokey_smoke_cena.clock" => "Clock",
+        "app.components.autokey_smoke_cena.timer_short" => "Short",
+        "app.components.autokey_smoke_cena.timer_long" => "Long",
         _ => return None,
     })
 }

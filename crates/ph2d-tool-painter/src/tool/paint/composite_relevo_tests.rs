@@ -136,8 +136,14 @@ fn so_relevo_com_o_composite_ligado_no_impasto_nao_pinta_cor() {
         t
     };
     let branca = vec![255u8; (S * S * 4) as usize];
-    let mut pilha = no_impasto(&[CompositeOp::Brush, CompositeOp::Brush], Some(DrawTo::Depth));
-    assert!(!pilha.composite_active(), "o Composite armou fora do Digital");
+    let mut pilha = no_impasto(
+        &[CompositeOp::Brush, CompositeOp::Brush],
+        Some(DrawTo::Depth),
+    );
+    assert!(
+        !pilha.composite_active(),
+        "o Composite armou fora do Digital"
+    );
     horizontal(&mut pilha);
     assert!(
         *pilha.canvas_rgba == branca,
@@ -145,7 +151,10 @@ fn so_relevo_com_o_composite_ligado_no_impasto_nao_pinta_cor() {
     );
     let mut avulso = no_impasto(&[], Some(DrawTo::Depth));
     horizontal(&mut avulso);
-    assert!(soma(&corpo(&avulso)) > CORPO_DA_FIXTURA, "a fixtura deposita corpo");
+    assert!(
+        soma(&corpo(&avulso)) > CORPO_DA_FIXTURA,
+        "a fixtura deposita corpo"
+    );
     igual(&corpo(&pilha), &corpo(&avulso), "e o corpo é o do avulso");
     // Controlo: com cor e corpo o mesmo pincel pinta — senão a primeira metade não distingue nada.
     let mut com_cor = no_impasto(&[CompositeOp::Brush, CompositeOp::Brush], None);

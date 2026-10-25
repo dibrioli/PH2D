@@ -123,3 +123,46 @@ fn a_escala_de_gravidade_muda_o_corpo_a_meio_da_queda() {
         "a escala 0 a meio da queda não chegou ao corpo vivo: o passo foi de {primeiro} a {ultimo} m"
     );
 }
+
+/// A curva vai a 0 e VOLTA ao valor de repouso a meio da queda: o corpo volta a cair. O memo da
+/// ponte (`BodyRef::rest`) anda com cada reafinação — parado no valor velho, a volta ao repouso
+/// pareceria «nada mudou» e o corpo ficava preso no 0 (F30 §C, a mutação C6).
+#[test]
+fn a_gravidade_que_volta_ao_repouso_volta_ao_corpo() {
+    let mut sim = SimWorld::new();
+    let bola = sim
+        .world_mut()
+        .spawn((
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.25 },
+                density: 1.0,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 50.0)),
+        ))
+        .id();
+    let y = |sim: &SimWorld| sim.world().get::<Transform>(bola).unwrap().translation.y;
+    let mut bridge = PhysicsBridge::new();
+    for tick in 1..=20u64 {
+        bridge.dispatch(&mut sim, true, tick);
+    }
+    sim.world_mut().entity_mut(bola).insert(GravityScale(0.0));
+    for tick in 21..=30u64 {
+        bridge.dispatch(&mut sim, true, tick);
+    }
+    sim.world_mut().entity_mut(bola).remove::<GravityScale>();
+    let mut passos = Vec::new();
+    let mut antes = y(&sim);
+    for tick in 31..=50u64 {
+        bridge.dispatch(&mut sim, true, tick);
+        passos.push(antes - y(&sim));
+        antes = y(&sim);
+    }
+    assert!(
+        passos[passos.len() - 1] > passos[1] * 1.2,
+        "a gravidade voltou ao repouso e o corpo continua sem peso: {passos:?}"
+    );
+}

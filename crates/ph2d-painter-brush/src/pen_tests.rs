@@ -275,9 +275,11 @@ fn the_side_of_the_tip_smooths_the_grain_only_when_dragged_lengthwise() {
         ..Tilt::default()
     };
     let ao_longo = t.effect([55.0 / 90.0, 0.0], [1.0, 0.0]).unwrap();
-    let de_lado = t.effect([0.0, 55.0 / 90.0], [1.0, 0.0]).unwrap();
     assert!((ao_longo.smooth - 0.4).abs() < 1e-6);
-    assert!(de_lado.smooth.abs() < 1e-6);
+    assert!(
+        t.effect([0.0, 55.0 / 90.0], [1.0, 0.0]).is_none(),
+        "de lado não alisa: a pegada é a neutra, nenhuma"
+    );
     assert!(t.effect([0.0, 0.0], [1.0, 0.0]).is_none(), "de pé: nenhum");
 }
 
@@ -482,6 +484,45 @@ fn pen_tilt_rotation_turns_the_dab_to_the_azimuth() {
     .last()
     .unwrap();
     assert_eq!(d.rotation, [1.0, 0.0]);
+}
+
+/// Defeito 5 do Pen: o Tilt smooth ligado com a caneta deitada que não o lê (de lado ao traço, ou abaixo do
+/// Start) não muda um dab — nenhuma pegada neutra vai à rota deitada.
+#[test]
+fn tilt_smooth_zero_nao_muda_o_dab() {
+    let antes = traco(BrushSpec::default(), Dynamics::default(), None, rampa);
+    let alisa = BrushSpec {
+        pen_tilt: Tilt {
+            start_deg: 30.0,
+            full_deg: 40.0,
+            smooth: 0.8,
+            ..Tilt::default()
+        },
+        ..BrushSpec::default()
+    };
+    for caneta in [[0.0, 55.0 / 90.0], [0.2, 0.0]] {
+        let d = traco(alisa, Dynamics::default(), Some(caneta), rampa);
+        assert_eq!(antes, d, "caneta {caneta:?}");
+    }
+    // O CONTROLO: ao comprido e deitada, o alisado chega ao dab.
+    let d = traco(alisa, Dynamics::default(), Some([55.0 / 90.0, 0.0]), rampa);
+    assert!(d.iter().any(|d| d.tilt.is_some_and(|t| t.smooth > 0.0)));
+}
+
+/// A Rotation «Pen tilt» sozinha (sem esticar nem alisar) ainda chega ao dab: a pegada não é neutra.
+#[test]
+fn a_rotacao_pela_caneta_muda_o_dab() {
+    let antes = traco(BrushSpec::default(), Dynamics::default(), None, rampa);
+    let roda = BrushSpec {
+        pen_tilt: Tilt {
+            rotation: DabRotation::PenTilt,
+            ..Tilt::default()
+        },
+        ..BrushSpec::default()
+    };
+    let d = traco(roda, Dynamics::default(), Some([0.0, 0.5]), rampa);
+    assert_ne!(antes, d);
+    assert!(d.iter().all(|d| d.tilt.is_some()));
 }
 
 /// O ATRASO da inclinação (o Rebelle: ~170 px): de pé e depois deitado a meio do traço, a ponta cresce aos poucos

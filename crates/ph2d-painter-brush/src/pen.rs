@@ -230,17 +230,18 @@ impl Tilt {
         // Ao comprido (`cos² = 1`) o lado do grafite alisa; de lado (`0`) o grão fica (o Rebelle: 8,5 → 5,5 %
         // ao longo, 8,6 através).
         let ao_comprido = (azimuth[0] * heading[0] + azimuth[1] * heading[1]).powi(2);
-        Some(DabTilt {
+        let d = DabTilt {
             azimuth,
             length: 1.0 + (self.length - 1.0) * t,
             width: 1.0 + (self.width - 1.0) * t,
             smooth: (self.smooth.clamp(0.0, 1.0) * t * ao_comprido).clamp(0.0, 1.0),
-            round: 1.0,
-            espelho: false,
-            grao: 1.0,
-            imagem: 0,
-            dureza: 0.0,
-        })
+            ..DabTilt::NEUTRA
+        };
+        // Uma pegada NEUTRA não vai à rota deitada: lá o dab arredonda diferente (defeito 5 do Pen).
+        if !d.stretches() && d.smooth <= 0.0 && self.rotation != DabRotation::PenTilt {
+            return None;
+        }
+        Some(d)
     }
 }
 

@@ -317,6 +317,9 @@ pub enum AnimFieldEdit {
     /// Parar e mostrar o PASSO `n` da animação que toca (a barra e a faixa de quadros numa lista, onde a
     /// mesma célula pode aparecer duas vezes e `SetFrame(célula)` seria ambíguo).
     SetStep(u32),
+    /// «Editar animações…»: abrir o editor de animações desta sprite numa aba. Não mexe na cena — quem o
+    /// trata é a shell, que abre a aba (`ph2d-app-sprite-anim`).
+    OpenEditor,
     /// A grelha da folha, colunas × linhas (a proposta confirmada, ou o campo do cartão).
     Grid(u32, u32),
 }

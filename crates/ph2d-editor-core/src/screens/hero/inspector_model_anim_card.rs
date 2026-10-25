@@ -68,11 +68,37 @@ impl AnimCycleMode {
 }
 
 /// Os pixels da folha da sprite (RGBA reto), para miniaturas e para a grelha do editor.
-#[derive(Clone, Debug, PartialEq)]
+///
+/// ⚠️ Leva o [`ph2d_vector::StableImage`] já feito: o Vello guarda a imagem pelo id do blob, e um
+/// `draw_image_rgba` por quadro voltaria a subi-la à placa em cada pintura.
+#[derive(Clone)]
 pub struct SheetImage {
     pub rgba: Arc<Vec<u8>>,
     pub w: u32,
     pub h: u32,
+    pub image: ph2d_vector::StableImage,
+}
+
+impl SheetImage {
+    /// `None` se `rgba` não tem `w × h × 4` bytes.
+    #[must_use]
+    pub fn new(rgba: Arc<Vec<u8>>, w: u32, h: u32) -> Option<Self> {
+        let image = ph2d_vector::StableImage::from_rgba(rgba.clone(), w, h)?;
+        Some(Self { rgba, w, h, image })
+    }
+}
+
+impl PartialEq for SheetImage {
+    /// A MESMA folha (o mesmo blob), não pixels iguais: comparar 4,7 MB por quadro seria o custo todo.
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.rgba, &other.rgba) && self.w == other.w && self.h == other.h
+    }
+}
+
+impl std::fmt::Debug for SheetImage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SheetImage({}×{})", self.w, self.h)
+    }
 }
 
 /// O que o modo «O personagem» mostra: o nome da animação de cada estado (Parado · Correr · Saltar ·

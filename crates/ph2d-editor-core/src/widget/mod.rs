@@ -52,6 +52,7 @@ mod section_header;
 pub mod section_plan;
 mod segmented_adaptive;
 mod segmented_layout;
+pub mod sheet_cell;
 pub mod showcase;
 mod skin;
 mod slider;

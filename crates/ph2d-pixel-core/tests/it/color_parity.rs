@@ -36,7 +36,12 @@ fn move_and_invert_permutation_match_the_mvp() {
         let p = move_permutation(n(&c["size"]), n(&c["from"]), n(&c["to"]));
         let want: Vec<usize> = c["perm"].as_array().expect("perm").iter().map(n).collect();
         assert_eq!(p, want, "{c}");
-        let inv: Vec<usize> = c["inverse"].as_array().expect("inv").iter().map(n).collect();
+        let inv: Vec<usize> = c["inverse"]
+            .as_array()
+            .expect("inv")
+            .iter()
+            .map(n)
+            .collect();
         assert_eq!(invert_permutation(&p), inv, "{c}");
         assert_eq!(invert_permutation(&inv), p, "inverter 2× é a identidade");
     }
@@ -46,7 +51,12 @@ fn move_and_invert_permutation_match_the_mvp() {
 fn duplicates_point_to_the_first_and_skip_the_transparent() {
     let f = fx();
     for c in list(&f["palette"], "duplicates", 5) {
-        let colors: Vec<[u8; 4]> = c["colors"].as_array().expect("c").iter().map(rgba).collect();
+        let colors: Vec<[u8; 4]> = c["colors"]
+            .as_array()
+            .expect("c")
+            .iter()
+            .map(rgba)
+            .collect();
         let got = find_duplicates(&colors, Some(n(&c["transparent"])));
         let want: Vec<(usize, usize)> = c["dup"]
             .as_array()
@@ -98,7 +108,11 @@ fn remap_keeps_the_composed_image_byte_identical_and_undo_restores_the_indices()
     let before = rgba_of(&s, frame);
     let perm = move_permutation(s.palette().len(), 2, 11);
     let inv = apply(&mut s, Op::Remap { perm: perm.clone() }).expect("remap");
-    assert_eq!(rgba_of(&s, frame), before, "o remap tem de deixar a imagem byte-igual");
+    assert_eq!(
+        rgba_of(&s, frame),
+        before,
+        "o remap tem de deixar a imagem byte-igual"
+    );
     assert_ne!(
         s.read_rect((layer, frame), Rect::new(0, 0, 8, 8)),
         pixels,
@@ -119,8 +133,8 @@ fn rgba_of(s: &Sprite, frame: FrameId) -> Vec<u8> {
 #[test]
 fn to_gray_matches_the_aseprite_trial_for_luminance_hsv_and_hsl() {
     use ph2d_pixel_core::color::ToGray;
-    let f: Value =
-        serde_json::from_str(include_str!("../fixtures/oracle_trial_color_mode.json")).expect("json");
+    let f: Value = serde_json::from_str(include_str!("../fixtures/oracle_trial_color_mode.json"))
+        .expect("json");
     let input = list(&f["input"], "rgb", 216);
     for (key, method) in [
         ("luminance", ToGray::Luminance),

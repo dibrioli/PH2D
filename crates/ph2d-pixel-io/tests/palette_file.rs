@@ -5,7 +5,12 @@ use ph2d_pixel_io::palette_file::{PaletteError, PaletteFormat, read, read_as, wr
 use serde_json::Value;
 
 fn colors() -> Vec<[u8; 4]> {
-    vec![[0, 0, 0, 255], [255, 128, 7, 255], [10, 20, 30, 255], [255, 255, 255, 255]]
+    vec![
+        [0, 0, 0, 255],
+        [255, 128, 7, 255],
+        [10, 20, 30, 255],
+        [255, 255, 255, 255],
+    ]
 }
 
 #[test]
@@ -19,7 +24,11 @@ fn every_writable_format_round_trips_the_colors() {
         }
     }
     let riff = write(PaletteFormat::RiffPal, "x", &colors(), None);
-    assert_eq!(read(&riff, None).expect("riff").colors, colors(), "RIFF pelo cabeçalho");
+    assert_eq!(
+        read(&riff, None).expect("riff").colors,
+        colors(),
+        "RIFF pelo cabeçalho"
+    );
 }
 
 #[test]
@@ -73,7 +82,13 @@ fn readers_match_the_mvp_on_gpl_lospec_and_hex() {
             .iter()
             .map(|v| {
                 let a = v.as_array().expect("rgb");
-                [0, 1, 2].map(|i| a[i].as_u64().expect("u") as u8).into_iter().chain([255]).collect::<Vec<_>>().try_into().expect("4")
+                [0, 1, 2]
+                    .map(|i| a[i].as_u64().expect("u") as u8)
+                    .into_iter()
+                    .chain([255])
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .expect("4")
             })
             .collect();
         let got = read(text.as_bytes(), None).expect(text);

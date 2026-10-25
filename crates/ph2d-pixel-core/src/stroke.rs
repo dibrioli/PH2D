@@ -222,7 +222,14 @@ impl Stroke {
 
     fn ink_value(&self, sprite: &Sprite, x: i32, y: i32) -> u32 {
         let dest = sprite.value_at((self.layer, self.frame), x, y);
-        ink::apply(sprite, self.paint.ink, self.value, dest, &self.ramp, self.dir)
+        ink::apply(
+            sprite,
+            self.paint.ink,
+            self.value,
+            dest,
+            &self.ramp,
+            self.dir,
+        )
     }
 
     /// As células tocadas, em ordem.

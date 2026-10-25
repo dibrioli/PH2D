@@ -10,6 +10,7 @@ use ph2d_pixel_core::palette::{MAX_COLORS, parse_hex};
 /// Uma paleta lida de um ficheiro.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PaletteFile {
+    /// O nome que o ficheiro declara; vazio quando não tem (o rótulo é da tela).
     pub name: String,
     pub colors: Vec<[u8; 4]>,
     /// O índice transparente que o ficheiro declara (`.act` com cauda).
@@ -146,7 +147,7 @@ fn read_gpl(text: &str) -> Result<PaletteFile, PaletteError> {
     if !(head.len() >= 12 && head[..12].eq_ignore_ascii_case("GIMP Palette")) {
         return Err(PaletteError::NotThisFormat(PaletteFormat::Gpl));
     }
-    let mut out = file("GIMP", Vec::new());
+    let mut out = file("", Vec::new());
     let mut rgba = false;
     for line in lines {
         let t = line.trim();
@@ -184,7 +185,7 @@ fn read_jasc(text: &str) -> Result<PaletteFile, PaletteError> {
         .take(count)
         .map(|v| [v[0], v[1], v[2], 255])
         .collect();
-    Ok(file("JASC", colors))
+    Ok(file("", colors))
 }
 
 fn read_riff(b: &[u8]) -> Result<PaletteFile, PaletteError> {
@@ -203,11 +204,13 @@ fn read_riff(b: &[u8]) -> Result<PaletteFile, PaletteError> {
                 *body.get(3).ok_or(bad.clone())?,
             ]));
             let colors = body[4..]
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .take(n)
                 .map(|e| [e[0], e[1], e[2], 255])
                 .collect();
-            return Ok(file("RIFF", colors));
+            return Ok(file("", colors));
         }
         at += 8 + size + (size & 1);
     }
@@ -222,7 +225,7 @@ fn read_hex(text: &str) -> Result<PaletteFile, PaletteError> {
         .filter(|t| t.starts_with('#') || t.len() == 6)
         .filter_map(parse_hex)
         .collect();
-    Ok(file("Hex", colors))
+    Ok(file("", colors))
 }
 
 fn read_act(b: &[u8]) -> Result<PaletteFile, PaletteError> {
@@ -236,12 +239,14 @@ fn read_act(b: &[u8]) -> Result<PaletteFile, PaletteError> {
         transparent = u8::try_from(t).ok().filter(|&t| usize::from(t) < n);
     }
     let colors = b[..768]
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .take(n)
         .map(|c| [c[0], c[1], c[2], 255])
         .collect();
     Ok(PaletteFile {
-        name: "ACT".to_owned(),
+        name: String::new(),
         colors,
         transparent,
     })
@@ -259,13 +264,18 @@ fn read_lospec(text: &str) -> Result<PaletteFile, PaletteError> {
             serde_json::Value::String(s) => parse_hex(s),
             serde_json::Value::Array(a) if a.len() >= 3 => {
                 let ch = |i: usize| a[i].as_u64().map(|x| x.min(255) as u8);
-                Some([ch(0).unwrap_or(0), ch(1).unwrap_or(0), ch(2).unwrap_or(0), 255])
+                Some([
+                    ch(0).unwrap_or(0),
+                    ch(1).unwrap_or(0),
+                    ch(2).unwrap_or(0),
+                    255,
+                ])
             }
             _ => None,
         };
         colors.push(rgb.ok_or_else(|| PaletteError::BadColor(c.to_string()))?);
     }
-    let name = v["name"].as_str().unwrap_or("Lospec");
+    let name = v["name"].as_str().unwrap_or_default();
     Ok(file(name, colors))
 }
 

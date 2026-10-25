@@ -78,22 +78,38 @@ fn palette_colors_survive_rgb_to_indexed_to_rgb_and_an_outsider_does_not() {
 fn the_transparent_index_is_reserved_except_on_the_background_layer() {
     let black = [0, 0, 0, 255];
     let mut s = sprite(ColorMode::Rgba, Background::Transparent, 2, 1);
-    paint(&mut s, Rect::new(0, 0, 2, 1), [black, [9, 9, 9, 0]].concat());
+    paint(
+        &mut s,
+        Rect::new(0, 0, 2, 1),
+        [black, [9, 9, 9, 0]].concat(),
+    );
     let w = convert(&s, ColorMode::Indexed, Convert::default()).expect("muda");
     let data = &w.cels.values().next().expect("cel").data;
     assert_eq!(data[1], s.transparent_index(), "alfa 0 = transparente");
-    assert_ne!(data[0], s.transparent_index(), "o preto opaco não é o transparente");
+    assert_ne!(
+        data[0],
+        s.transparent_index(),
+        "o preto opaco não é o transparente"
+    );
     let mut b = sprite(ColorMode::Rgba, Background::Black, 1, 1);
     paint(&mut b, Rect::new(0, 0, 1, 1), black.to_vec());
     let w = convert(&b, ColorMode::Indexed, Convert::default()).expect("muda");
-    assert_eq!(w.cels.values().next().expect("cel").data, vec![0], "Background: o 0 é o preto");
+    assert_eq!(
+        w.cels.values().next().expect("cel").data,
+        vec![0],
+        "Background: o 0 é o preto"
+    );
 }
 
 #[test]
 fn rgb_to_gray_uses_the_chosen_method_and_keeps_alpha() {
     let mut s = sprite(ColorMode::Rgba, Background::Transparent, 1, 1);
     paint(&mut s, Rect::new(0, 0, 1, 1), vec![0, 0, 255, 77]);
-    for (m, g) in [(ToGray::Luminance, 18), (ToGray::Hsv, 255), (ToGray::Hsl, 127)] {
+    for (m, g) in [
+        (ToGray::Luminance, 18),
+        (ToGray::Hsv, 255),
+        (ToGray::Hsl, 127),
+    ] {
         let w = convert(
             &s,
             ColorMode::Gray,
@@ -103,9 +119,16 @@ fn rgb_to_gray_uses_the_chosen_method_and_keeps_alpha() {
             },
         )
         .expect("muda");
-        assert_eq!(w.cels.values().next().expect("cel").data, vec![g, 77], "{m:?}");
+        assert_eq!(
+            w.cels.values().next().expect("cel").data,
+            vec![g, 77],
+            "{m:?}"
+        );
     }
-    assert!(convert(&s, ColorMode::Rgba, Convert::default()).is_none(), "já é RGB");
+    assert!(
+        convert(&s, ColorMode::Rgba, Convert::default()).is_none(),
+        "já é RGB"
+    );
 }
 
 /// O dither ordenado é ancorado na TELA: dois cels com caixas diferentes dão o mesmo padrão nas
@@ -118,9 +141,23 @@ fn ordered_dither_is_anchored_to_the_canvas_and_mixes_a_midtone() {
         let mut s = sprite(ColorMode::Rgba, Background::Transparent, 16, 16);
         paint(&mut s, Rect::new(x0, 0, 8, 8), [mid; 64].concat());
         let bw = vec![[0, 0, 0, 0], [0, 0, 0, 255], [255, 255, 255, 255]];
-        apply(&mut s, Op::Palette { colors: bw, transparent: 0 }).expect("pal");
-        let w = convert(&s, ColorMode::Indexed, Convert { dither, ..Convert::default() })
-            .expect("muda");
+        apply(
+            &mut s,
+            Op::Palette {
+                colors: bw,
+                transparent: 0,
+            },
+        )
+        .expect("pal");
+        let w = convert(
+            &s,
+            ColorMode::Indexed,
+            Convert {
+                dither,
+                ..Convert::default()
+            },
+        )
+        .expect("muda");
         let cel = w.cels.values().next().expect("cel").clone();
         (cel.bbox, cel.data)
     };
@@ -129,11 +166,17 @@ fn ordered_dither_is_anchored_to_the_canvas_and_mixes_a_midtone() {
         let (_, c) = run(b.side() as i32, Dither::Ordered(b));
         assert_eq!(a, c, "{b:?}: deslocar o cel um período não muda o padrão");
         let distinct: std::collections::BTreeSet<u8> = a.iter().copied().collect();
-        assert!(distinct.len() >= 2, "{b:?}: um meio-tom tem de misturar cores");
+        assert!(
+            distinct.len() >= 2,
+            "{b:?}: um meio-tom tem de misturar cores"
+        );
     }
     let (_, plain) = run(0, Dither::None);
     assert_eq!(
-        plain.iter().collect::<std::collections::BTreeSet<_>>().len(),
+        plain
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
         1,
         "controlo: sem dither é uma cor só"
     );
@@ -162,7 +205,15 @@ fn floyd_steinberg_preserves_the_average_tone() {
         },
     )
     .expect("muda");
-    let white = w.cels.values().next().expect("cel").data.iter().filter(|&&v| v == 1).count();
+    let white = w
+        .cels
+        .values()
+        .next()
+        .expect("cel")
+        .data
+        .iter()
+        .filter(|&&v| v == 1)
+        .count();
     assert!((230..=284).contains(&white), "~25 % de 1024: {white}");
 }
 
@@ -185,11 +236,17 @@ fn inks_follow_the_aseprite_rules() {
     // Alpha Compositing: a transparente não faz nada.
     assert_eq!(ink(&s, Ink::AlphaCompositing, clear, green, none, 1), green);
     // Copy Alpha+Color: substitui até o alfa.
-    assert_eq!(ink(&s, Ink::CopyAlphaColor, half_blue, green, none, 1), half_blue);
+    assert_eq!(
+        ink(&s, Ink::CopyAlphaColor, half_blue, green, none, 1),
+        half_blue
+    );
     // Lock Alpha: não pinta onde não há tinta; guarda o alfa de destino.
     assert_eq!(ink(&s, Ink::LockAlpha, red, clear, none, 1), clear);
     let ghost = v([0, 255, 0, 90]);
-    assert_eq!(ink(&s, Ink::LockAlpha, red, ghost, none, 1).to_le_bytes()[3], 90);
+    assert_eq!(
+        ink(&s, Ink::LockAlpha, red, ghost, none, 1).to_le_bytes()[3],
+        90
+    );
     // Shading: um degrau, parado nas pontas, intocado fora da rampa.
     let ramp = [10, 20, 30];
     assert_eq!(shade(&ramp, 20, 1), 30);
@@ -227,7 +284,10 @@ fn palette_op_rejects_a_bad_palette_and_sort_is_a_stable_permutation() {
         .iter()
         .map(|&i| ph2d_pixel_core::color::luma(colors[i]))
         .collect();
-    assert!(l.windows(2).all(|w| w[0] <= w[1]), "sobe em luminância: {l:?}");
+    assert!(
+        l.windows(2).all(|w| w[0] <= w[1]),
+        "sobe em luminância: {l:?}"
+    );
 }
 
 #[test]
@@ -237,6 +297,9 @@ fn whole_op_rejects_a_cel_of_the_wrong_size() {
     let mut w: Whole = convert(&s, ColorMode::Indexed, Convert::default()).expect("muda");
     let key = *w.cels.keys().next().expect("cel");
     w.cels.get_mut(&key).expect("cel").data.push(0);
-    assert_eq!(apply(&mut s, Op::Whole(Box::new(w))), Err(OpError::BadCel(key)));
+    assert_eq!(
+        apply(&mut s, Op::Whole(Box::new(w))),
+        Err(OpError::BadCel(key))
+    );
     assert_eq!(s.mode(), ColorMode::Rgba, "recusado sem mudar nada");
 }

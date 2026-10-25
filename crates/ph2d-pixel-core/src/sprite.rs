@@ -324,9 +324,7 @@ impl Sprite {
     pub fn value_of_rgba(&self, c: [u8; 4]) -> u32 {
         match self.mode {
             ColorMode::Rgba => u32::from_le_bytes(c),
-            ColorMode::Gray => {
-                u32::from(crate::color::luma(c)) | (u32::from(c[3]) << 8)
-            }
+            ColorMode::Gray => u32::from(crate::color::luma(c)) | (u32::from(c[3]) << 8),
             ColorMode::Indexed => {
                 if c[3] == 0 {
                     return u32::from(self.transparent);

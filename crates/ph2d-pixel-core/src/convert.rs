@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 
 use crate::color::ToGray;
 use crate::op::Whole;
-use crate::sprite::{Cel, CelKey, ColorMode, Sprite};
+use crate::sprite::{Cel, ColorMode, Sprite};
 
 /// A matriz de Bayer de um dither ordenado.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -99,7 +99,13 @@ pub fn convert(sprite: &Sprite, mode: ColorMode, opt: Convert) -> Option<Whole> 
                 to_indexed(&mut m, &rgba, cel, opt.dither)
             }
         };
-        cels.insert(key, Cel { bbox: cel.bbox, data });
+        cels.insert(
+            key,
+            Cel {
+                bbox: cel.bbox,
+                data,
+            },
+        );
     }
     Some(Whole {
         mode,
@@ -273,9 +279,7 @@ impl<'a> Mapper<'a> {
         let ab = Self::dist(pa, pb).max(1) as u64;
         // Projecção de c−a sobre b−a, em fracção de |b−a|², × n².
         let dot: i64 = (0..3)
-            .map(|k| {
-                (i64::from(c[k]) - i64::from(pa[k])) * (i64::from(pb[k]) - i64::from(pa[k]))
-            })
+            .map(|k| (i64::from(c[k]) - i64::from(pa[k])) * (i64::from(pb[k]) - i64::from(pa[k])))
             .sum();
         let n2 = (m.side() * m.side()) as u64;
         let frac = (dot.max(0) as u64 * n2 / ab).min(n2);

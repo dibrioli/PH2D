@@ -50,6 +50,13 @@ pub fn frame(app: &mut PixelApp, world: &ph2d_ecs::World, hero: &mut HeroScreen)
         bg,
     );
     let editing = crate::mode::editing(world, hero);
+    let selecionado = hero.gizmo.mode.active().is_none()
+        && hero
+            .gizmo
+            .selection
+            .is_some_and(|b| crate::input::key_of(world, b).is_some());
+    hero.store
+        .set_family_owns_canvas(editing.is_some() || selecionado);
     if editing.is_some() != app.painel_em_edicao {
         app.painel_em_edicao = editing.is_some();
         hero.panel_visibility.insert(PANEL_ID, app.painel_em_edicao);

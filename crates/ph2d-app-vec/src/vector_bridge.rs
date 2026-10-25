@@ -185,9 +185,11 @@ pub fn dispatch(
     // onde ele já existe.
     texpat_tiles: &ph2d_vec_render::PatternTiles,
 ) -> VectorDrawConfig {
-    let vector_active = tools
-        .active()
-        .is_some_and(|t| t.id() == ToolId::new("vector"));
+    // Com um Pixel Sprite activo o canvas é dele (ADR-0192): o vetor larga as barras e o painel.
+    let vector_active = !hero.store.family_owns_canvas()
+        && tools
+            .active()
+            .is_some_and(|t| t.id() == ToolId::new("vector"));
 
     // ── 1. Panel visibility (mirror of the Padding dock takeover) ─────────
     hero.panel_visibility.insert("vector", vector_active);

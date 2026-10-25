@@ -173,7 +173,7 @@ módulo ou elas são a coluna do pintor (`tool_bar.rs`, `module.is_none_or(paint
 2. **`ToolBars.pixel_rail`** + `ToolBars::is_family_column()` (editor-core): a fila guarda o seletor;
    `bars_publish` do vetor só limpa barras que não são de família; o rodapé (`module_hint`) fala também
    com `pixel_rail`.
-3. **O vetor larga a mão** — `fase_vector_scale`: `vector_active = !pixel.drawing() && tool == vector`.
+3. **O vetor larga a mão** — `WidgetStore::family_owns_canvas` (posto por `panel::frame` com o sprite em Draw OU seleccionado em Object), lido pelos DOIS sítios que decidem `vector_active`: `fase_vector_scale` e `ph2d_app_vec::vector_bridge::dispatch` (este também abre o painel Vector). ⚠️ 2.ª volta do smoke do dono: só o primeiro estava curado e, com o layout *Vector* gravado em `~/.ph2d/layout.txt`, a ponte do vetor continuava a publicar as barras e a abrir o painel — a foto de fábrica (HOME isolado) não o via. Foto com o HOME do dono: `smoke_P0b2_2026-10-25.png`. ⛔ Lição: fotografar também com `HOME=/home/enio` (cópia do `layout.txt` antes).
 4. **A coluna** — `ph2d_panel_pixel_tools::column::{column, hint}` (ids do painel, o clique segue pelo
    `seam` dele, também com o painel fechado); `ph2d_app_pixel::panel::publish_bars` publica/limpa;
    a shell compõe em `fase_pixel_panel`. Ícones: `VectorPencil`, `Erase`, `Eyedropper`, `Pan`.

@@ -178,13 +178,6 @@ impl PixelApp {
         done
     }
 
-    /// Há um Pixel Sprite em Draw neste quadro (o vetor larga a mão: as barras e o canvas são do
-    /// Pixel).
-    #[must_use]
-    pub fn drawing(&self) -> bool {
-        self.painel_em_edicao
-    }
-
     /// O degrau de zoom do sprite em Draw, em píxeis de ecrã por célula.
     #[must_use]
     pub fn zoom(&self) -> Option<u32> {

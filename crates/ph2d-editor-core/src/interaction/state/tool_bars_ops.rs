@@ -10,6 +10,19 @@ impl WidgetStore {
         self.tool_bars.bars = bars;
     }
 
+    /// ⭐ O objecto activo é de uma família que não usa a ferramenta da mão (o Pixel Sprite,
+    /// ADR-0192) — em TODO quadro, antes de o vetor decidir se está activo. Sem isto, com o vetor na
+    /// mão (o layout *Vector*), as barras e o painel dele cobriam o sprite em Draw.
+    pub fn set_family_owns_canvas(&mut self, owns: bool) {
+        self.tool_bars.family_owns_canvas = owns;
+    }
+
+    /// Ver [`Self::set_family_owns_canvas`].
+    #[must_use]
+    pub fn family_owns_canvas(&self) -> bool {
+        self.tool_bars.family_owns_canvas
+    }
+
     /// As barras publicadas neste quadro.
     #[must_use]
     pub fn tool_bars(&self) -> Option<&ToolBars> {

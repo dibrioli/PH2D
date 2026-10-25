@@ -11,6 +11,8 @@ impl crate::App {
         // sub-rectângulo e a projecção MUDA (ver [`crate::scene_mapping`]). Fora do split é a
         // janela inteira, bit a bit.
         let janela_da_cena = gfx.scene_window();
+        // Com um Pixel Sprite activo as barras e o canvas são do Pixel (ADR-0192).
+        let pixel = (gfx.hero_screen.as_ref()).is_some_and(|h| h.store.family_owns_canvas());
         let FrameGfx { camera, tools, .. } = FrameGfx::of(gfx);
         // ADR-0108 cutover: the Vector drawing tool. `AppGfx.vec_scene` is
         // document artwork — render it into the shared Vello scene EVERY
@@ -18,8 +20,7 @@ impl crate::App {
         // `vector_bridge` reflects the active tool's Style into the shell
         // Pen + recolours the selection; the edit gizmos draw ONLY while the
         // Vector tool is active (mirror of how the pen input is gated).
-        // Com um Pixel Sprite em Draw as barras e o canvas são do Pixel (ADR-0192).
-        let vector_active = !self.pixel.drawing()
+        let vector_active = !pixel
             && tools
                 .active()
                 .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector"));

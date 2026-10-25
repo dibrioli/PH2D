@@ -70,7 +70,8 @@ projecto, como se desfaz, como se desenha, e por onde a entrada chega.
    `(PixelSprite, Draw)`, como o Flip; nasceu Edit). Em Draw as ferramentas e as duas amostras de cor
    moram na **coluna da esquerda**, a mesma porta das barras do vetor e do pintor (`ToolBars`, marca
    `pixel_rail`: a fila de cima guarda o seletor de modo e o vetor inactivo não as apaga); o vetor
-   larga a mão enquanto há Pixel Sprite em Draw (`PixelApp::drawing`). O painel PIXEL da direita fica
+   larga a mão enquanto o objecto activo é um Pixel Sprite, em Draw ou seleccionado em Object
+   (`WidgetStore::family_owns_canvas`, lido nos dois sítios que decidem se o vetor está activo). O painel PIXEL da direita fica
    com as cores e a paleta. As amostras abrem o seletor de cor partilhado e a família lê-o de volta.
 
 ## Alternativas recusadas

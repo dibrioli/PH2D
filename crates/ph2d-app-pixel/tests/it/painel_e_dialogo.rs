@@ -174,6 +174,12 @@ fn o_seletor_oferece_object_e_draw_e_a_coluna_em_draw_e_a_do_pixel() {
     };
     app.frame(&mut sim, &mut cam, window, 100.0, Some(bits), spawn_root);
     let _ = panel::frame(&mut app, sim.world(), &mut hero);
+    // ⭐ Report do dono 25/10 (2.ª volta): com o layout *Vector* gravado o vetor estava na mão e
+    // cobria o sprite em Draw — o sinal diz-lhe que largue.
+    assert!(
+        hero.store.family_owns_canvas(),
+        "em Draw o canvas é do Pixel"
+    );
     let botao = BarButton {
         id: ph2d_editor_core::NodeId(7),
         face: BarFace::Icon(ph2d_editor_core::icons::IconId::Erase),
@@ -200,10 +206,21 @@ fn o_seletor_oferece_object_e_draw_e_a_coluna_em_draw_e_a_do_pixel() {
     );
 
     let _ = hero.gizmo.mode.leave();
+    hero.gizmo.selection = Some(bits);
     let _ = panel::frame(&mut app, sim.world(), &mut hero);
     panel::publish_bars(&app, &mut hero, Vec::new(), String::new());
     assert!(
         hero.store.tool_bars().is_none(),
         "sair do Draw deixou a coluna"
+    );
+    assert!(
+        hero.store.family_owns_canvas(),
+        "seleccionado em Object o vetor também larga (o seletor Object · Draw fica à vista)"
+    );
+    hero.gizmo.selection = None;
+    let _ = panel::frame(&mut app, sim.world(), &mut hero);
+    assert!(
+        !hero.store.family_owns_canvas(),
+        "sem sprite activo o vetor volta"
     );
 }

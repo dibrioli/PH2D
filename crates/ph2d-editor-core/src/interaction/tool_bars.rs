@@ -156,4 +156,7 @@ pub struct ToolBarsSlot {
     /// F16: onde cada chip da fila ② caiu no último quadro — a âncora de um popover que o MÓDULO
     /// pinta por baixo do chip (o painel pinta antes da fila, logo lê o quadro anterior).
     pub(crate) row_slots: Vec<(NodeId, crate::zones::Rect)>,
+    /// O objecto activo é de uma FAMÍLIA que não usa a ferramenta da mão (o Pixel Sprite,
+    /// ADR-0192): o vetor larga as barras e o painel mesmo com a ferramenta dele na mão.
+    pub(crate) family_owns_canvas: bool,
 }

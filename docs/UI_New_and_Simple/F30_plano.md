@@ -38,7 +38,15 @@ maior e o único com formato novo em muitos sítios.
 
 Lei: **o endereço de uma chave é a identidade do item, nunca a posição** (o Flip já o faz). Desenho:
 
-1. **`ItemId(u32)` em cada item** (`#[serde(default)]`, `0` = por atribuir), tirado do **`StableIdCounter`** do projeto — o
+⚠️ Medido (25/10): os componentes gravam-se em **postcard posicional** pelo registo (`scene/registry.rs:65,92,226`) ⇒ um
+campo novo no item é **formato**: `PROJECT_SCHEMA` sobe e cada um dos 8 componentes ganha migração (precedente:
+`script_project.rs:98-110`). A pilha do Vetor é `PaintEntry`/`FxEntry` em `ph2d-vec-scene` (`VEC_SCENE_SCHEMA_VERSION = 23`,
+`schema.rs:90`). A cópia de objecto (`deep_copy_subtree`, `instantiate.rs:231-285`) copia componentes por bytes: os ids de
+item viajam com a cópia ⇒ o passe de atribuição tem de REFAZER os ids de item repetidos dentro do projecto (o primeiro na
+ordem de `StableId` do dono fica). Criação de itens: o Inspector de cada componente (`vida_inspector.rs:206`, `event_*`),
+`anchor_mount.rs:270,366,397`, a migração `signal_actions_v1.rs:54`.
+
+1. **`ItemId(u32)` em cada item** (`0` = por atribuir), tirado do **`StableIdCounter`** do projeto — o
    contador que já é persistido, monotónico por construção e FORA do undo (`stable_id.rs:102-150`): um id nunca se reusa,
    logo uma chave órfã nunca «acorda» noutro item. Redo devolve o item com o MESMO id (o undo guarda o estado).
 2. **Atribuição** num passe idempotente gémeo de `assign_missing_stable_ids`, que **reconcilia o contador contra os ids de
@@ -68,12 +76,22 @@ Gates (vermelhos por mutação antes):
 
 ### B — a CENA é alvo da timeline (gravidade e mundo da física, mesa de som)
 
-1. **Alvo de cena**: o binding com `wire_id = SCENE_WIRE` (sentinela reservada, como `SCENE = 0` do dono de clip) e
-   entidade-sentinela nos `CanaisLidos/Escritos`; a dope-sheet mostra-os sob a raiz Cena (que já existe no outliner).
-2. **Família `MUNDO = 9`**: os campos de `PhysicsSettings` (gravidade X/Y, ar, amortecimento, substeps, iterações, sono) e a
-   matriz de camadas (discretos). `set_settings` limpa o anel de checkpoints (`settings.rs:38-50`) — **medir** se a curva
-   escrevendo por quadro destrói o scrub; se sim, a escrita da curva é um caminho próprio que não limpa (o valor é função
-   do quadro, o replay reproduz-se).
+Medido (25/10): todo `AnimTarget` vem de `bind(entity, prop)` (`doc.rs:499`); o binding resolve `wire_id → entity` pelo
+`StableId` (`persist.rs:45-134`, órfão = `entity 0, missing`), e só uma purga o apaga. A vista da Cena mostra os bindings
+cujas faixas estão em clips de dono `None` (`animation_view.rs:162-177`). A população do Auto Key é selecção + mãos
+(`autokey_amostra.rs:60-72`); a chave cai no clip activo (`doc.rs:462-467`).
+
+1. **A entidade CENA**: uma entidade ECS com `StableId::CENA` (reservado, fora da faixa do contador) e o marcador `Cena`,
+   SEM `Transform` — por isso nunca entra no save nem na hierarquia (a DFS do snapshot parte das raízes com `Transform`) —
+   garantida por um passe idempotente a cada quadro (o undo/load que reconstrói o mundo apaga-a; o passe repõe-na). O
+   binding dela tem `wire_id` normal: resolução, cura e persistência são as que existem. A população do Auto Key inclui-a
+   sempre (poucos campos). A chave de um campo da Cena cai num clip da Cena (dono `None`) — o caminho a medir no
+   `autokey_campos`/`upsert_key`.
+2. **Família `MUNDO = 9`** sobre a entidade CENA: os campos de `PhysicsSettings` (`settings.rs:~175`: gravidade X/Y,
+   substeps, iterações, contact_hz, amortecimento linear/angular, sono, ar; a matriz de camadas é discreta). ⛔ `set_settings`
+   limpa o ring de checkpoints (`bridge/settings.rs:38-50`): a escrita da CURVA é um caminho próprio, só quando o valor
+   muda, que reafina o mundo sem limpar (gémeo do `retune_body`). O valor AUTORADO (o que o save e o undo vêem) fica à
+   parte, como a `ConducaoFisica` dos corpos: a curva é pré-visualização.
 3. **Mesa de som vira documento**: `MixerDoc` (os ~50 campos de `snapshot.rs`) no `.ph2dproj` pelo caminho do `physics`
    (`project_save.rs:88`, `project_load.rs:173`, `project_migrate.rs`), fora do `ProjectState` como ele; o painel lê/escreve
    o documento; família `MESA = 10`. ⚠️ **muda o produto**: a mesa passa a ser guardada com o projeto (hoje volta ao
@@ -82,17 +100,23 @@ Gates (vermelhos por mutação antes):
 
 ### C — o corpo vivo obedece à curva a meio da simulação
 
-Gémeo de `retune_joint`: `bodies.rs` deixa de exigir repouso para os campos com setter vivo no rapier (densidade, atrito,
-restituição, escala de gravidade, amortecimento, sensor, CCD, camadas, tipo) e aplica-os NO LUGAR, sem limpar o anel; a forma
-(`set_shape`) idem. Gates: `a_curva_muda_o_atrito_a_meio_da_queda`, e o `scrubbing_backwards_reproduces_the_tick_exactly`
-com uma curva a mudar a densidade (o replay reproduz-se porque o valor é função do quadro).
+✅ **Feito** (`419e93f20e`): `PhysicsWorld::retune_body` (o colisor copiado do MESMO `build_collider`; desmonte exaustivo do
+`BodyDesc` = campo novo é erro de compilação) e o braço `!at_rest` da ponte. Achado pelo gate: travar um eixo a meio deixava
+a velocidade nele — a lei do `spawn_body` vale também no retune. Gates: `reafinar_um_corpo_vivo_e_o_mesmo_que_cria_lo`
+(19 campos, cada um VISÍVEL na cena — a CCD num tiro de 600 m/s, a camada contra uma matriz que a separa),
+`a_escala_de_gravidade_muda_o_corpo_a_meio_da_queda`.
+
+⚠️ **Aberto, comum a juntas e corpos:** o scrub reconcilia UMA vez no alvo e re-simula do checkpoint sem reler a curva por
+passo — um material animado entre o checkpoint e o alvo re-simula com o valor do alvo (até `STRIDE` passos).
 
 ### D — o chip e o valor derivado
 
-- **IkBendSide** entra em `AUTOKEYED` e o chip ganha losango; a faixa passa a três escolhas (`< -0.5` Cw · `> 0.5` Ccw ·
-  resto Keep) — as chaves antigas (±1) mantêm o sentido.
-- **Rope Length**: a mão e a ponte distinguem-se na FONTE: a edição da caixa marca o campo como «da mão» neste quadro
-  (`maos_do_quadro`, que o amostrador já une), e a exclusão da polia passa a valer só quando não há mão.
+✅ **Feito** (`2f1442d401`):
+- **IkBendSide** entra em `AUTOKEYED`. ⛔ `Keep`/`Mixed` continuam fora do canal — recusa MEDIDA no doc do `PropKind`
+  (animá-los seria gravar a AUSÊNCIA de uma escolha). O painel do esqueleto não tem losango em campo NENHUM (0 PORTAS no
+  gate): o losango do chip é dessa dívida, não desta.
+- **Rope Length**: a ponte anota o `L0` que semeia da rota (`ComprimentoDaRota`, `joints.rs:~645`, o ÚNICO sítio que escreve
+  `max_length` da rota) e o amostrador só o ignora enquanto a corda tem esse valor — o que a mão digita depois grava-se.
 
 ## Smoke
 

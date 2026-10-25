@@ -193,7 +193,7 @@ pub fn assign_missing_item_ids(world: &mut World) -> bool {
         let mut esta = false;
         for id in ids.iter_mut() {
             if id.is_none() || !vistos.1.insert(id.0) {
-                *id = contador.take_item();
+                *id = contador.aloca_item();
                 vistos.1.insert(id.0);
                 esta = true;
             }

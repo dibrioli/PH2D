@@ -166,8 +166,10 @@ impl StableIdCounter {
         StableId(id)
     }
 
-    /// O próximo id para um ITEM de lista ([`crate::item_id`]): o mesmo contador, que nunca desce.
-    pub(crate) fn take_item(&mut self) -> crate::ItemId {
+    /// ⭐ **A porta única que aloca o id de um ITEM de lista** ([`crate::item_id`]): o mesmo
+    /// contador, que nunca desce. Quem aloca fora do mundo (a `VecScene`) reconcilia antes com
+    /// [`Self::reconcile_at_least`] contra o máximo dos ids que vê.
+    pub fn aloca_item(&mut self) -> crate::ItemId {
         let id = self.take().0;
         crate::ItemId(u32::try_from(id).expect("o contador passou os 32 bits de um id de item"))
     }

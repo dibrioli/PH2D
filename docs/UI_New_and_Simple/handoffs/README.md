@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**90 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **90** são handoffs (registro **morto**).
+**93 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **93** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -104,7 +104,10 @@
 | 2026-10-24 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_D.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_D.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 24/10 — F27 Bloco D: menu da linha de GRUPO, ADR-0191, dívidas do catálo… |
 | 2026-10-24 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_E.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_E.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 24/10 — F27 Bloco E: fonte do HUD, ficheiro do script e props do script … |
 | 2026-10-24 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_F.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F27_F.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 24/10 — F27 Bloco F: a palavra de uma escolha, um losango por canal, uma… |
+| 2026-10-24 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F28.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F28.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 24/10 — F28: um valor discreto fora do vocabulário do campo |
 | 2026-10-24 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-24_F27.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-24_F27.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-24 — F27 (todo campo do Inspector é um canal; a palavra de uma es… |
+| 2026-10-25 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F29.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F29.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 25/10 — F29: o composto do balde tem um z só, a booleana veste a cor, o … |
+| 2026-10-25 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F30.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-25_F30.md) | ⚠️ handoff (morto) | HANDOFF DE CONTINUAÇÃO — `line/UIUX`, 25/10 — F30: a lista FORA do Auto Key — itens com identidade, a Cena e a… |
 
 ---
 

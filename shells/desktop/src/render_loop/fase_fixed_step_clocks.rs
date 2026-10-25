@@ -25,6 +25,8 @@ pub(super) struct FrameClocks {
     /// moribundo continua visível a toda consulta até ao fim do quadro, e é isso que torna a
     /// travessia do quadro segura sem uma regra escrita em lado nenhum.
     pub(super) deaths: Vec<ph2d_ecs::Death>,
+    /// O tempo de parede do quadro DEPOIS da pausa no golpe — o `dt` do `process` dos scripts.
+    pub(super) wall_dt: f64,
 }
 
 impl crate::App {
@@ -178,6 +180,7 @@ impl crate::App {
             anim_signals,
             timer_signals,
             deaths,
+            wall_dt,
         })
     }
 }

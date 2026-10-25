@@ -40,6 +40,7 @@ impl crate::App {
             anim_signals,
             timer_signals,
             deaths,
+            wall_dt: quadro_dt,
         } = self.fase_fixed_step_clocks(wall_dt)?;
         self.fase_scene_audio();
         // ⭐ **O rectângulo da câmera do JOGO atravessa a fronteira** (TOP-20 #12): quem o conhece é
@@ -78,6 +79,7 @@ impl crate::App {
             deaths,
             camera_rect,
             report.ticks,
+            quadro_dt,
         );
         self.fase_open_recipe();
         // ⭐⭐⭐ **OS MOTORES DE POSE DO ESQUELETO ANTES DO EXTRACT, e a ordem é load-bearing** (report

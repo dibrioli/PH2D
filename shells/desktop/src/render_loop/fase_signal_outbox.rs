@@ -42,6 +42,7 @@ impl crate::App {
         mut deaths: Vec<ph2d_ecs::Death>,
         camera_rect: Option<([f32; 2], [f32; 2])>,
         ticks: u32,
+        quadro_dt: f64,
     ) {
         let accoes = self.accoes_do_quadro();
         let vec_entities = &mut self.vec.entities;
@@ -179,7 +180,8 @@ impl crate::App {
             self.playhead.is_playing(),
             ticks,
             self.fixed_step.fixed_dt(),
-        );
+        )
+        .com_quadro(quadro_dt);
         let r = &mut self.signal_readers;
         let mut portas = ph2d_app_components::script_bridge::ScriptDoors {
             registry: component_registry,

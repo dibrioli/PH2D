@@ -128,6 +128,7 @@ pub fn frame(
         layers,
         active_layer,
         has_clip: app.clip.is_some(),
+        has_selection: doc.is_some_and(|d| d.selected_all),
     }
 }
 

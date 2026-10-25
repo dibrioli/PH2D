@@ -267,7 +267,7 @@ pub fn blend_option_id(i: usize) -> NodeId {
 }
 
 /// Os botões do menu Layer: o id, a acção e o rótulo, nas filas em que se pintam.
-pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 14] = [
+pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 16] = [
     (hash_node_id("pixel.layer.new"), PixelLayerAction::NewLayer, "panel.pixel.layer.new"),
     (hash_node_id("pixel.layer.new_group"), PixelLayerAction::NewGroup, "panel.pixel.layer.new_group"),
     (hash_node_id("pixel.layer.duplicate"), PixelLayerAction::Duplicate, "panel.pixel.layer.duplicate"),
@@ -282,4 +282,6 @@ pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 14] = [
     (hash_node_id("pixel.layer.copy"), PixelLayerAction::Copy, "panel.pixel.layer.copy"),
     (hash_node_id("pixel.layer.paste"), PixelLayerAction::PasteAsLayer, "panel.pixel.layer.paste"),
     (hash_node_id("pixel.layer.paste_reference"), PixelLayerAction::PasteAsReference, "panel.pixel.layer.paste_reference"),
+    (hash_node_id("pixel.layer.select_all"), PixelLayerAction::SelectAll, "panel.pixel.layer.select_all"),
+    (hash_node_id("pixel.layer.deselect"), PixelLayerAction::Deselect, "panel.pixel.layer.deselect"),
 ];

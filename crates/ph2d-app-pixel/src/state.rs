@@ -25,6 +25,8 @@ pub struct Doc {
     pub axis2: Option<(i32, i32)>,
     /// O último ponto do último traço livre (o `Shift`+clique do Aseprite traça a reta dali).
     pub(crate) last_point: Option<(i32, i32)>,
+    /// *Select ▸ All*: o sprite inteiro está seleccionado (a selecção mínima até a P6).
+    pub selected_all: bool,
 }
 
 impl Doc {
@@ -41,6 +43,7 @@ impl Doc {
             fresh: true,
             axis2: None,
             last_point: None,
+            selected_all: false,
         }
     }
 }

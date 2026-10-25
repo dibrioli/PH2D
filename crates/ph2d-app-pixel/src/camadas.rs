@@ -154,6 +154,18 @@ impl PixelApp {
                     .then(|| layers::edit(s, LayerId(*id), |l| name.clone_into(&mut l.name)))
                     .flatten()
             }
+            PixelRequest::LayerAction(PixelLayerAction::SelectAll | PixelLayerAction::Deselect) => {
+                doc.selected_all = matches!(r, PixelRequest::LayerAction(PixelLayerAction::SelectAll));
+                None
+            }
+            PixelRequest::LayerAction(
+                a @ (PixelLayerAction::ViaCopy | PixelLayerAction::ViaCut | PixelLayerAction::Copy),
+            ) if !doc.selected_all => {
+                let _ = a;
+                self.avisos
+                    .push((true, ph2d_i18n::tr("pixel.layer.refuse.selection").to_owned()));
+                None
+            }
             PixelRequest::LayerAction(a) => {
                 let (op, nova) = acao(s, *a, active, frame, &mut self.clip);
                 novo_activo = nova;
@@ -274,6 +286,7 @@ fn acao(
             });
             (op, flat)
         }
+        PixelLayerAction::SelectAll | PixelLayerAction::Deselect => (None, None),
         PixelLayerAction::ViaCopy | PixelLayerAction::ViaCut => {
             let cut = a == PixelLayerAction::ViaCut;
             par(layers::via(s, active, frame, s.bounds(), cut))

@@ -378,6 +378,8 @@ pub struct PixelPanelInfo {
     pub active_layer: Option<u32>,
     /// Há uma imagem copiada (o *Paste as New Layer* acende).
     pub has_clip: bool,
+    /// Há selecção (o *Copy* e o *Layer via Copy/Cut* acendem).
+    pub has_selection: bool,
 }
 
 /// Uma linha da lista de camadas.
@@ -501,6 +503,10 @@ pub enum PixelLayerAction {
     Copy,
     PasteAsLayer,
     PasteAsReference,
+    /// *Select ▸ All* / *Deselect* — a selecção mínima até a P6 trazer o laço e o retângulo (o
+    /// Aseprite só copia e faz *via Copy/Cut* com selecção).
+    SelectAll,
+    Deselect,
 }
 
 /// Um gesto do painel PIXEL (`EditorAction::Pixel`).

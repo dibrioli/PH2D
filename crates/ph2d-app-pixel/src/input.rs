@@ -8,6 +8,7 @@ use ph2d_pixel_core::{Paint, Sample, Stroke, pick};
 use ph2d_pixel_render::{cell_at, image_to_world, px_per_cell};
 use ph2d_render::Camera2d;
 use ph2d_vector::{Affine, Point};
+use ph2d_editor_core::pixel_panel::{PixelLayerAction, PixelRequest};
 use winit::keyboard::KeyCode;
 
 use crate::gesture::{Kind, Mods};
@@ -533,6 +534,11 @@ pub fn space(
 
 /// As teclas do modo Draw (só ao premir; a shell já descartou o caso de um campo de texto com o
 /// foco). `None` = não é desta família.
+fn camada(app: &mut PixelApp, a: PixelLayerAction) -> KeyAnswer {
+    app.pede(PixelRequest::LayerAction(a));
+    KeyAnswer::Quiet
+}
+
 pub fn key(
     app: &mut PixelApp,
     world: &ph2d_ecs::World,
@@ -603,6 +609,21 @@ pub fn key(
                 })
                 .to_owned(),
             )
+        }
+        // O menu Layer/Select/Edit do Aseprite: Shift+N, Ctrl+J, Ctrl+Shift+J, Shift+X, Ctrl+A,
+        // Ctrl+D, Ctrl+C (o Alt+Shift+N do grupo não chega aqui: a shell não passa o Alt).
+        (KeyCode::KeyN, false, true) => camada(app, PixelLayerAction::NewLayer),
+        (KeyCode::KeyJ, true, false) => camada(app, PixelLayerAction::ViaCopy),
+        (KeyCode::KeyJ, true, true) => camada(app, PixelLayerAction::ViaCut),
+        (KeyCode::KeyA, true, false) => camada(app, PixelLayerAction::SelectAll),
+        (KeyCode::KeyD, true, false) => camada(app, PixelLayerAction::Deselect),
+        (KeyCode::KeyC, true, false) => camada(app, PixelLayerAction::Copy),
+        (KeyCode::KeyX, false, true) => {
+            let id = app.docs.get(&key).map(|d| d.layer.0);
+            if let Some(id) = id {
+                app.pede(PixelRequest::LayerVisible(id));
+            }
+            KeyAnswer::Quiet
         }
         (KeyCode::KeyZ, true, false) => {
             if app.stroking() || app.undo(key) {

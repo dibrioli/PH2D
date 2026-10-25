@@ -204,3 +204,26 @@ fn um_blob_ja_na_forma_nova_passa_intacto() {
     assert_eq!(migra_v194(&mut snap), MigracaoV194::default());
     assert_eq!(snap.entities[0].components[0].data, bytes);
 }
+
+/// ⚠️ A lista de UM item na forma nova é a v194 com o `item` por CAUDA (o id vai no fim do item):
+/// lida sem exigir o último byte passaria por legada e perderia o id. Os dois caminhos reais: a
+/// acção que a migração `v128` reescreve (id `0`) e um timer já com id.
+#[test]
+fn um_item_na_forma_nova_nao_se_le_como_v194_com_cauda() {
+    let acao = crate::SignalActions(vec![crate::SignalAction {
+        on: "a".into(),
+        target: "x".into(),
+        ..Default::default()
+    }]);
+    let b = postcard::to_allocvec(&acao).expect("grava");
+    let v194: Result<(crate::item_id_v194::SignalActionsV194, &[u8]), _> =
+        postcard::take_from_bytes(&b);
+    assert!(v194.is_ok_and(|(_, resto)| !resto.is_empty()), "o fixture tem a forma do furo");
+    let pa = Passe::de::<crate::SignalActions, crate::item_id_v194::SignalActionsV194>("a");
+    assert_eq!((pa.legado)(&b), Legado::JaNovo);
+    let mut t = timer("a");
+    t.item = ItemId(7);
+    let b = postcard::to_allocvec(&Timers(vec![t])).expect("grava");
+    let pt = Passe::de::<Timers, crate::item_id_v194::TimersV194>("t");
+    assert_eq!((pt.legado)(&b), Legado::JaNovo);
+}

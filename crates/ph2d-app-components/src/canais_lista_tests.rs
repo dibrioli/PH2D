@@ -198,3 +198,27 @@ fn a_posicao_do_item_acompanha_a_lista() {
     assert_eq!(pos.0.get(&(e.to_bits(), ids[2].0)), Some(&2));
     assert_eq!(pos.0.get(&(e.to_bits(), ids[0].0)), None, "o apagado sai");
 }
+
+/// ⭐⭐ **O eco acha o item pelo id, não pela posição** — com ids ≠ posições (um apagado, a ordem
+/// invertida), a curva escreve um valor que a gravação arredonda e o publicado é o que ela mandou.
+#[test]
+fn o_eco_acha_o_item_pelo_id_depois_de_apagar_e_reordenar() {
+    let reg = registo();
+    let (mut sim, e, ids) = cena();
+    {
+        let mut t = sim.world_mut().get_mut::<Timers>(e).expect("timers");
+        t.0.remove(0);
+        t.0.reverse();
+    }
+    for (id, x) in [(ids[2], 6_000_000.5_f32), (ids[1], 8_000_000.5)] {
+        assert!(curva(&mut sim, &reg, e, duracao(id), x));
+        publicar(
+            &mut sim,
+            &reg,
+            &[e.to_bits()],
+            &mut TextosDosCanais::default(),
+        );
+        let lidos = sim.world().resource::<CanaisLidos>();
+        assert_eq!(lidos.valor(e.to_bits(), duracao(id)), Some(x), "{id:?}");
+    }
+}

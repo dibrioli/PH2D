@@ -11,6 +11,8 @@ fn a_chave_leva_o_item_e_o_grupo_parte_se_por_ele() {
     let b = chave(codigo::TIMERS, 2, 0, ItemId(4)).expect("cabe");
     assert_ne!(a.grupo(), b.grupo(), "dois timers são dois grupos");
     assert!(!a.mesmo_grupo(b));
+    let c = chave(codigo::TIMERS, 2, 0, ItemId(5)).expect("cabe");
+    assert_ne!(b.grupo(), c.grupo(), "a metade baixa do id também parte o grupo");
     let x = chave(codigo::ANCORAS, 2, 0, ItemId(9)).expect("cabe");
     let y = chave(codigo::ANCORAS, 2, 1, ItemId(9)).expect("cabe");
     assert!(x.mesmo_grupo(y), "x e y da mesma âncora gravam-se juntos");

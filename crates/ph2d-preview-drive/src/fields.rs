@@ -50,6 +50,8 @@ struct FieldEntry {
     set_value: SetValueFn,
     /// O script criou o componente: o autorado é a AUSÊNCIA.
     born: Option<(RemoveFn, Option<InsertDefaultFn>)>,
+    /// Um SCRIPT escreveu-o (o rebobinar devolve-o); só a curva ⇒ fica com ela.
+    do_script: bool,
 }
 
 /// `(bits da entidade, nome canónico, chave serde)`.
@@ -98,6 +100,32 @@ impl FieldDrive {
         after: Value,
         born: bool,
     ) {
+        self.escrito(entity, field, before, after, born, true);
+    }
+
+    /// ⭐ **Uma CURVA da timeline escreveu `key`** (os funis COMPONENTE, SCRIPT e LISTA): a mesma
+    /// lei da captura, mas o rebobinar dos scripts ([`Self::release`]) não a devolve — parado no
+    /// início, quem manda é a curva (smoke do dono 25/10, F30 §A1: o autorado reposto por cima
+    /// dela era gravado pelo Auto Key na 1.ª chave).
+    pub fn conduzido_pela_curva(
+        &mut self,
+        entity: Entity,
+        field: FieldRef,
+        before: Value,
+        after: Value,
+    ) {
+        self.escrito(entity, field, before, after, false, false);
+    }
+
+    fn escrito(
+        &mut self,
+        entity: Entity,
+        field: FieldRef,
+        before: Value,
+        after: Value,
+        born: bool,
+        do_script: bool,
+    ) {
         let k = (entity.to_bits(), field.canonical_name, field.key);
         let entry = field;
         match self.memo.get_mut(&k) {
@@ -110,6 +138,7 @@ impl FieldDrive {
                         value_of: entry.value_of,
                         set_value: entry.set_value,
                         born: born.then_some((entry.remove, entry.insert_default)),
+                        do_script,
                     },
                 );
             }
@@ -118,6 +147,7 @@ impl FieldDrive {
                     e.authored = before;
                 }
                 e.last_written = after;
+                e.do_script |= do_script;
             }
         }
     }
@@ -137,10 +167,15 @@ impl FieldDrive {
         });
     }
 
-    /// Rebobinar: todo campo volta ao autorado e o ledger esvazia. Devolve quantos.
+    /// Rebobinar: todo campo que um SCRIPT escreveu volta ao autorado e sai do ledger; o que só a
+    /// curva conduz fica (ver [`Self::conduzido_pela_curva`]). Devolve quantos.
     pub fn release(&mut self, sim: &mut SimWorld) -> usize {
-        let n = self.memo.len();
-        for ((bits, _, key), e) in std::mem::take(&mut self.memo) {
+        let (soltos, ficam) = std::mem::take(&mut self.memo)
+            .into_iter()
+            .partition::<BTreeMap<_, _>, _>(|(_, e)| e.do_script);
+        self.memo = ficam;
+        let n = soltos.len();
+        for ((bits, _, key), e) in soltos {
             if let Some((remove, _)) = e.born {
                 remove(sim.world_mut(), Entity::from_bits(bits));
                 continue;

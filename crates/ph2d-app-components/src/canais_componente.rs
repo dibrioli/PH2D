@@ -162,7 +162,7 @@ pub fn aplicar(sim: &mut SimWorld, reg: &ComponentRegistry, drive: &mut PreviewD
             if !ph2d_ecs::is_transient(sim.world(), e) {
                 drive
                     .fields
-                    .driven(e, esc.campo, esc.antes, esc.depois, false);
+                    .conduzido_pela_curva(e, esc.campo, esc.antes, esc.depois);
             }
             mudou = true;
         }

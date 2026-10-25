@@ -13,12 +13,18 @@ use crate::autokey::{AutokeyPlan, curve_seen_b, key_value_b};
 use crate::doc::TimelineDoc;
 use crate::prop::PropKind;
 
-/// A identidade do grupo de um campo: a família, o grupo, e o `i` quando o grupo se parte por ele.
-/// Um campo que nenhuma família declara é um grupo de um só.
-fn grupo(k: FieldKey) -> (u16, u16, u16, u16) {
-    match k.info() {
-        Some(i) => (k.familia, i.grupo, if i.por_i { k.i } else { 0 }, u16::MAX),
-        None => (k.familia, k.campo, k.i, k.j),
+/// A identidade do grupo de um campo — a porta única [`FieldKey::grupo`] (na LISTA o `i:j` inteiro:
+/// ler só o `i` juntava todos os timers num grupo). Um campo que nenhuma família declara é um
+/// grupo de um só.
+fn grupo(k: FieldKey) -> (u16, u16, u32, bool) {
+    match k.grupo() {
+        Some((f, g, sub)) => (f, g, sub, false),
+        None => (
+            k.familia,
+            k.campo,
+            u32::from(k.i) << 16 | u32::from(k.j),
+            true,
+        ),
     }
 }
 

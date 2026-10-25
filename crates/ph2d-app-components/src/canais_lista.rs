@@ -201,7 +201,7 @@ pub fn aplicar(
         };
         if let Some((campo, antes, depois)) = escrever(reg, sim.world_mut(), e, k, x, textos) {
             if !ph2d_ecs::is_transient(sim.world(), e) {
-                drive.fields.driven(e, campo, antes, depois, false);
+                drive.fields.conduzido_pela_curva(e, campo, antes, depois);
             }
             mudou = true;
         }

@@ -208,3 +208,29 @@ fn a_chave_da_cena_cai_num_clip_da_cena() {
     assert_eq!(chaves(&obj), [k(v::TRACO_LARGURA, 0, 0)].into());
     assert_eq!(obj.scene_refused, None);
 }
+
+/// ⭐⭐ **Mexer a duração de UM timer grava só esse timer** (smoke do dono 25/10, F30 §A1): o grupo
+/// de um item é o `i:j` inteiro (`FieldKey::grupo`), e os ids pequenos têm todos `i = 0` — um
+/// grupo lido só pelo `i` gravava o vizinho também.
+#[test]
+fn editar_um_timer_nao_grava_a_chave_do_vizinho() {
+    // A duração (`campo` 1032 = TIMERS, field 2, faixa 0) dos timers com ids 4 e 5.
+    let d = |j| FieldKey::new(familia::LISTA, 1032, 0, j);
+    assert!(
+        d(4).info().is_some(),
+        "a chave tem de ser de uma lista conhecida"
+    );
+    let antes = vec![(d(4), 1.0e6), (d(5), 3.0e6)];
+    let mut l = antes.clone();
+    mudar(&mut l, d(5), 2.0e6);
+    let plan = autokey_campos(
+        &TimelineDoc::new(),
+        E,
+        0.0,
+        &l,
+        &base_de(&antes),
+        true,
+        false,
+    );
+    assert_eq!(chaves(&plan), BTreeSet::from([d(5)]));
+}

@@ -177,3 +177,34 @@ fn toda_opcao_do_catalogo_diz_uma_palavra_da_tabela() {
     assert!(n >= 133, "o censo do F27 F contou 133 opções; agora {n}");
     assert!(crus.is_empty(), "opções sem palavra: {crus:?}");
 }
+
+/// ⭐⭐ **O rebobinar dos scripts não devolve o que a CURVA conduz** (a família do smoke do dono
+/// 25/10, F30 §A1): a curva escreve a altura da câmera, a mão mexe-a, a curva volta a escrevê-la — e
+/// o rebobinar (parado no início, todo quadro) deixa o valor da curva.
+#[test]
+fn o_rebobinar_dos_scripts_nao_devolve_o_campo_que_a_curva_conduz() {
+    let reg = registo();
+    let (mut sim, e) = cena();
+    let mut drive = PreviewDrive::default();
+    let curva = |sim: &mut SimWorld, drive: &mut PreviewDrive, x: f32| {
+        sim.world_mut()
+            .get_resource_or_insert_with(CanaisEscritos::default)
+            .escrever(e.to_bits(), k(0, 0), x);
+        aplicar(sim, &reg, drive);
+        drive.fields.observe(sim);
+    };
+    curva(&mut sim, &mut drive, 12.0);
+    sim.world_mut()
+        .get_mut::<GameCamera>(e)
+        .expect("câmera")
+        .height_world = 20.0;
+    drive.fields.observe(&sim);
+    curva(&mut sim, &mut drive, 15.0);
+    drive.fields.release(&mut sim);
+    let h = sim
+        .world()
+        .get::<GameCamera>(e)
+        .expect("câmera")
+        .height_world;
+    assert!((h - 15.0).abs() < 1e-4, "{h}");
+}

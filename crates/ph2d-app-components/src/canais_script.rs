@@ -201,7 +201,7 @@ pub fn aplicar(
             {
                 drive
                     .fields
-                    .driven(e, FieldRef::of(entry, "own"), antes, depois, false);
+                    .conduzido_pela_curva(e, FieldRef::of(entry, "own"), antes, depois);
             }
             mudou = true;
         }

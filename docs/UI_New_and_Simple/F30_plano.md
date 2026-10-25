@@ -119,6 +119,32 @@ e o tween 1 perde o relógio. Dois defeitos da mesma família, ambos nos LEITORE
 | `canal_componente::escolhas` lê `View::Toggle(t, f)` como `(off, on)` — a palavra de um canal de caixa sobre enum sai trocada (não é desta onda; mudar troca o sentido de chaves gravadas) | `canal_componente.rs:269` × `property.rs:222` |
 | o nome da linha é por `FieldKey` (sem a entidade): duas cópias com o mesmo id e posições diferentes partilham-no | `ph2d-timeline-persist/src/lib.rs:426` |
 
+### A1 — report do smoke (25/10): o Long congela depois de apagar o Short
+
+Medido na cena 35 com o gesto scriptado (sonda temporária, app real em `kwin --virtual`): Long 2 s @0 → 6 s @2 pelo
+Inspector com Auto Key; `seek(1.0)` conduz (6→4 s); **`seek(0.0)` parado: 2 quadros depois a chave de 0 s vira 6 s** — a
+curva fica plana («valor fixo»). Apagar o Short não é a causa: é o gesto que pôs a mão no `Timers` antes de voltar ao início.
+
+- **Mecanismo:** os funis da curva (COMPONENTE `canais_componente.rs:165`, SCRIPT `canais_script.rs:204`, LISTA
+  `canais_lista.rs:204`) declaravam a escrita no `FieldDrive` dos SCRIPTS (`ph2d-preview-drive/src/fields.rs`). O rebobinar
+  dos scripts (`script_bridge::rewind` → `fields.release`) corre em TODO quadro parado no início
+  (`fase_fabrica_e_morte.rs:73`) e repunha o AUTORADO (o que a mão deixou — a lista no instante do apagar, ou o 6 s de t=2)
+  por cima da curva, entre o apply e o Auto Key; o Auto Key via mundo ≠ curva e gravava-o na chave de t=0. O próprio
+  cabeçalho da fase o proíbe («devolver as conduções nesse caminho faria um arrasto da régua até ao zero saltar»).
+- **O Ctrl+Z do apagar é o MESMO mecanismo:** a fotografia é o autorado (`substitute`); o undo devolve o Short com o MESMO
+  `ItemId` e o passe não re-atribui nada (`assign_missing_item_ids` = `false`), mas o rebobinar repunha no Long o valor da
+  fotografia e o Auto Key gravava-o.
+- **Cura:** `FieldDrive::conduzido_pela_curva` (`fields.rs`) — a mesma lei da captura, mas o `release` só devolve o que um
+  script escreveu (`do_script`); os três funis usam-na. App real depois: a chave de 0 s fica 2 s, a curva conduz.
+- **2.º defeito achado na medição:** mexer a duração do Long gravava também a do Short — `autokey_campos::grupo` lia só o
+  `i` (ids pequenos ⇒ `i = 0` em todos os itens). Passou à porta única `FieldKey::grupo` (o `i:j` inteiro).
+- Gates (vermelho antes, verde depois, mutação inversa vermelha): `apagar_o_primeiro_timer_nao_congela_a_curva_do_segundo`,
+  `reordenar_os_timers_nao_congela_a_curva`, `desfazer_o_apagar_de_um_timer_devolve_o_mesmo_item_e_a_curva`,
+  `o_rebobinar_dos_scripts_nao_devolve_o_campo_que_a_curva_conduz` (COMPONENTE), `editar_um_timer_nao_grava_a_chave_do_vizinho`.
+- ⚠️ Aberto (leitor, `line/GameEngineFuncional`): o `TimerRuntime` reconcilia por COMPRIMENTO (`timer.rs:277`) — depois do
+  apagar o Long corre com o relógio do Short, e depois do undo o Long renasce no slot 1. Não mexe na duração (não é o
+  congelar); fica na tabela de cima.
+
 ### A2 — ⛔ a pilha do Vetor: o desenho do item 7 NÃO CABE na chave (medido 25/10, parado)
 
 > **Decisão técnica (coordenador, 25/10; delegada pelo dono):** opção **(c)** — a `FieldKey` ganha um 5.º campo, o

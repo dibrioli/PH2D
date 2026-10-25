@@ -222,3 +222,116 @@ fn o_eco_acha_o_item_pelo_id_depois_de_apagar_e_reordenar() {
         assert_eq!(lidos.valor(e.to_bits(), duracao(id)), Some(x), "{id:?}");
     }
 }
+
+/// Um quadro da curva com o ledger da sessão (o `PreviewDrive` vive entre quadros) e o «outra mão»
+/// do ledger, como o quadro dos scripts o corre.
+fn quadro(
+    sim: &mut SimWorld,
+    reg: &ComponentRegistry,
+    drive: &mut PreviewDrive,
+    k: FieldKey,
+    x: f32,
+) {
+    let b = sim_bits(sim);
+    sim.world_mut()
+        .get_resource_or_insert_with(CanaisEscritos::default)
+        .escrever(b, k, x);
+    aplicar(sim, reg, drive, &mut TextosDosCanais::default());
+    drive.fields.observe(sim);
+}
+
+/// A entidade com `Timers` da cena (uma só).
+fn sim_bits(sim: &mut SimWorld) -> u64 {
+    let w = sim.world_mut();
+    let mut q = w.query::<(Entity, &Timers)>();
+    q.iter(w).next().expect("timers").0.to_bits()
+}
+
+/// O REBOBINAR dos scripts (`script_bridge::rewind`, que corre em TODO quadro parado no início):
+/// a metade que toca no ledger dos campos.
+fn rebobinar(sim: &mut SimWorld, drive: &mut PreviewDrive) {
+    drive.fields.release(sim);
+}
+
+/// ⭐⭐⭐ **Apagar o 1.º timer não congela a curva do 2.º** (smoke do dono 25/10, cena 35): a mão
+/// apaga o Short, a curva continua a conduzir o Long, e o rebobinar (parado no início) não repõe o
+/// valor de quando a mão mexeu — senão o Auto Key gravava esse valor por cima da 1.ª chave.
+#[test]
+fn apagar_o_primeiro_timer_nao_congela_a_curva_do_segundo() {
+    let reg = registo();
+    let (mut sim, e, ids) = cena();
+    let mut drive = PreviewDrive::default();
+    quadro(&mut sim, &reg, &mut drive, duracao(ids[1]), 2_000_000.0);
+    sim.world_mut()
+        .get_mut::<Timers>(e)
+        .expect("timers")
+        .0
+        .remove(0);
+    drive.fields.observe(&sim);
+    quadro(&mut sim, &reg, &mut drive, duracao(ids[1]), 5_000_000.0);
+    rebobinar(&mut sim, &mut drive);
+    assert_eq!(
+        duracoes(&sim, e),
+        vec![("b".into(), 5_000_000), ("c".into(), 3_000_000)],
+        "o rebobinar dos scripts devolveu o que a CURVA conduz"
+    );
+}
+
+/// ⭐⭐ **Reordenar à mão não congela a curva** — o mesmo ledger, a outra metade da família.
+#[test]
+fn reordenar_os_timers_nao_congela_a_curva() {
+    let reg = registo();
+    let (mut sim, e, ids) = cena();
+    let mut drive = PreviewDrive::default();
+    quadro(&mut sim, &reg, &mut drive, duracao(ids[0]), 4_000_000.0);
+    sim.world_mut()
+        .get_mut::<Timers>(e)
+        .expect("timers")
+        .0
+        .reverse();
+    drive.fields.observe(&sim);
+    quadro(&mut sim, &reg, &mut drive, duracao(ids[0]), 6_000_000.0);
+    rebobinar(&mut sim, &mut drive);
+    assert_eq!(duracoes(&sim, e)[2], ("a".into(), 6_000_000));
+}
+
+/// ⭐⭐⭐ **Desfazer o apagar devolve o MESMO item e a curva** (smoke do dono 25/10): o Ctrl+Z repõe
+/// a fotografia (o autorado, `PreviewDrive::substitute`), o passe dos itens não re-atribui nada, e
+/// a curva volta a conduzir o Long — o rebobinar não lhe repõe o valor da fotografia.
+#[test]
+fn desfazer_o_apagar_de_um_timer_devolve_o_mesmo_item_e_a_curva() {
+    let reg = registo();
+    let (mut sim, e, ids) = cena();
+    let mut drive = PreviewDrive::default();
+    quadro(&mut sim, &reg, &mut drive, duracao(ids[1]), 2_500_000.0);
+    // A fotografia do passo (o `capture_project`): o autorado, e o vivo de volta.
+    let vivo = drive.substitute(&mut sim);
+    let foto = sim.world().get::<Timers>(e).expect("timers").clone();
+    PreviewDrive::restore(&mut sim, &vivo);
+    sim.world_mut()
+        .get_mut::<Timers>(e)
+        .expect("timers")
+        .0
+        .remove(0);
+    drive.fields.observe(&sim);
+    quadro(&mut sim, &reg, &mut drive, duracao(ids[1]), 3_500_000.0);
+    // O Ctrl+Z: o mundo volta à fotografia.
+    sim.world_mut().entity_mut(e).insert(foto);
+    drive.fields.observe(&sim);
+    assert!(
+        !ph2d_ecs::item_id::assign_missing_item_ids(sim.world_mut()),
+        "nada a re-atribuir"
+    );
+    quadro(&mut sim, &reg, &mut drive, duracao(ids[1]), 4_000_000.0);
+    rebobinar(&mut sim, &mut drive);
+    let t = sim.world().get::<Timers>(e).expect("timers");
+    assert_eq!(t.0.iter().map(|x| x.item).collect::<Vec<_>>(), ids.to_vec());
+    assert_eq!(
+        duracoes(&sim, e),
+        vec![
+            ("a".into(), 1_000_000),
+            ("b".into(), 4_000_000),
+            ("c".into(), 3_000_000)
+        ]
+    );
+}

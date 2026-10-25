@@ -119,3 +119,16 @@ Para o dono (nomes em inglês, como na tela):
 - `AnimFieldEdit::Autoplay` ficou sem gesto no painel (o `Chooser` escreve o autoplay).
 - Da linha: R1 vista dupla ao vivo · View ▸ Focus mode morto · sem `ph2d.disconnect` · resto da arte (plano 06) ·
   fecho da linha (DIRETRIZ §1.5.9) e a bateria do integrador.
+
+## Rodada 2 — report do dono (25/10)
+
+Pedido: pausa no cartão; faixa do editor maior que as células e retorno visual do arrasto; arrumação do
+«More». Commits: `010be94189` (editor: miniatura = 1,25 × a célula pintada, limitada a metade da altura
+partilhada; `drop_gap(x)` é a lei única do marcador e da largada; fantasma + origem escurecida; gates
+`a_miniatura_da_faixa_e_maior_que_a_celula_da_folha`, `o_marcador_pintado_e_onde_a_largada_poe_o_quadro`,
+`o_fantasma_segue_a_mao_e_some_ao_largar`), `cf51799653` (cartão: ⏸ na linha que toca; grupos
+Reprodução sempre visível · a animação escolhida (From/To só sem lista; Frames/s; Repeat/Once/Ping-pong)
+· Advanced fechado; 7 seams novos, 30 no total), e o «tempo próprio» = valor ≠ `frame_ms` (gate
+`um_tempo_igual_ao_ritmo_nao_e_tempo_proprio`) + `smoke_hover` nomeado no censo de NodeId. Fotos
+`fotos/20_*`, `fotos/21_*` (scratchpad, não versionadas). Aberto: a faixa não rola sozinha ao arrastar
+junto à borda (só a roda); o fantasma usa o encolher/opacidade partilhados do app.

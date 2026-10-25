@@ -183,7 +183,10 @@ impl PhysicsWorld {
             // Um eixo congelado não carrega velocidade — a lei do `spawn_body`, a meio do voo.
             let v = b.linvel();
             b.set_linvel(
-                Vector::new(if lock_x { 0.0 } else { v.x }, if lock_y { 0.0 } else { v.y }),
+                Vector::new(
+                    if lock_x { 0.0 } else { v.x },
+                    if lock_y { 0.0 } else { v.y },
+                ),
                 true,
             );
             if lock_rotation {

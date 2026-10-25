@@ -32,17 +32,19 @@ fn toda_lista_do_catalogo_tem_codigo() {
     }
 }
 
+type LinhaFixa<'a> = (u16, &'a str, &'a str, Vec<(u16, &'a str)>);
+
 /// ⭐⭐ **O vocabulário das listas não renumera** — cada número está gravado nas chaves de animação.
 #[test]
 fn o_vocabulario_das_listas_nao_renumera() {
-    let agora: Vec<(u16, &str, &str, Vec<(u16, &str)>)> = todas()
+    let agora: Vec<LinhaFixa<'_>> = todas()
         .iter()
         .map(|l| {
             let campos = l.campos.iter().map(|f| (f.field_id, f.key)).collect();
             (l.codigo, l.componente, l.caminho, campos)
         })
         .collect();
-    let fixo: Vec<(u16, &str, &str, Vec<(u16, &str)>)> = vec![
+    let fixo: Vec<LinhaFixa<'_>> = vec![
         (
             1,
             "ph2d::ecs::Timers",

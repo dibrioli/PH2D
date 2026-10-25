@@ -51,13 +51,16 @@ pub fn campos(
     campos_e_posicoes(reg, w, e, textos).0
 }
 
+/// Os campos lidos e as posições dos itens de uma entidade.
+type CamposEPosicoes = (Vec<(FieldKey, f32)>, Vec<(u32, u16)>);
+
 /// [`campos`] e a posição (1, 2, …) de cada item na lista dele — só para o nome da linha.
 fn campos_e_posicoes(
     reg: &ComponentRegistry,
     w: &World,
     e: Entity,
     textos: &mut TextosDosCanais,
-) -> (Vec<(FieldKey, f32)>, Vec<(u32, u16)>) {
+) -> CamposEPosicoes {
     let mut out = Vec::new();
     let mut posicoes = Vec::new();
     for l in lista::todas() {
@@ -114,7 +117,7 @@ pub fn publicar(
     entidades: &[u64],
     textos: &mut TextosDosCanais,
 ) {
-    let lotes: Vec<(u64, (Vec<(FieldKey, f32)>, Vec<(u32, u16)>))> = entidades
+    let lotes: Vec<(u64, CamposEPosicoes)> = entidades
         .iter()
         .filter_map(|&b| {
             let e = Entity::try_from_bits(b)?;

@@ -340,7 +340,10 @@ pub fn aplicar_canais(
     registry: &ph2d_ecs::scene::ComponentRegistry,
     ponte: &mut ph2d_physics_ecs::PhysicsBridge,
     estado: &mut physics_state::PhysicsState,
-    (drive, doc): (&mut ph2d_preview_drive::PreviewDrive, &ph2d_timeline::TimelineDoc),
+    (drive, doc): (
+        &mut ph2d_preview_drive::PreviewDrive,
+        &ph2d_timeline::TimelineDoc,
+    ),
 ) {
     canais_junta::aplicar(sim, drive, doc);
     canais_corpo::aplicar(sim, registry, &mut estado.conducao);

@@ -119,25 +119,122 @@ fn reafinar_um_corpo_vivo_e_o_mesmo_que_cria_lo() {
     let regra = CoefficientCombineRule::Max;
     // (nome, quem: 0 = bola, 1 = zona, o desc novo)
     let casos: Vec<(&str, usize, BodyDesc)> = vec![
-        ("body_type", 0, BodyDesc { body_type: RigidBodyType::KinematicVelocityBased, ..bola() }),
-        ("density", 0, BodyDesc { density: 7.0, ..bola() }),
-        ("shape", 0, BodyDesc { shape: ShapeDesc::Cuboid { half_x: 0.4, half_y: 0.2 }, ..bola() }),
-        ("restitution", 0, BodyDesc { restitution: 0.9, ..bola() }),
-        ("friction", 0, BodyDesc { friction: 0.0, ..bola() }),
+        (
+            "body_type",
+            0,
+            BodyDesc {
+                body_type: RigidBodyType::KinematicVelocityBased,
+                ..bola()
+            },
+        ),
+        (
+            "density",
+            0,
+            BodyDesc {
+                density: 7.0,
+                ..bola()
+            },
+        ),
+        (
+            "shape",
+            0,
+            BodyDesc {
+                shape: ShapeDesc::Cuboid {
+                    half_x: 0.4,
+                    half_y: 0.2,
+                },
+                ..bola()
+            },
+        ),
+        (
+            "restitution",
+            0,
+            BodyDesc {
+                restitution: 0.9,
+                ..bola()
+            },
+        ),
+        (
+            "friction",
+            0,
+            BodyDesc {
+                friction: 0.0,
+                ..bola()
+            },
+        ),
         ("layer", 0, BodyDesc { layer: 3, ..bola() }),
-        ("is_sensor", 0, BodyDesc { is_sensor: true, ..bola() }),
-        ("gravity_scale", 0, BodyDesc { gravity_scale: -0.5, ..bola() }),
-        ("lock_rotation", 0, BodyDesc { lock_rotation: true, ..bola() }),
-        ("offset", 0, BodyDesc { offset: [0.3, -0.1], ..bola() }),
-        ("lock_x", 0, BodyDesc { lock_x: true, ..bola() }),
-        ("lock_y", 0, BodyDesc { lock_y: true, ..bola() }),
-        ("mass_override", 0, BodyDesc { mass_override: Some(9.0), ..bola() }),
-        ("dominance", 0, BodyDesc { dominance: 5, ..bola() }),
+        (
+            "is_sensor",
+            0,
+            BodyDesc {
+                is_sensor: true,
+                ..bola()
+            },
+        ),
+        (
+            "gravity_scale",
+            0,
+            BodyDesc {
+                gravity_scale: -0.5,
+                ..bola()
+            },
+        ),
+        (
+            "lock_rotation",
+            0,
+            BodyDesc {
+                lock_rotation: true,
+                ..bola()
+            },
+        ),
+        (
+            "offset",
+            0,
+            BodyDesc {
+                offset: [0.3, -0.1],
+                ..bola()
+            },
+        ),
+        (
+            "lock_x",
+            0,
+            BodyDesc {
+                lock_x: true,
+                ..bola()
+            },
+        ),
+        (
+            "lock_y",
+            0,
+            BodyDesc {
+                lock_y: true,
+                ..bola()
+            },
+        ),
+        (
+            "mass_override",
+            0,
+            BodyDesc {
+                mass_override: Some(9.0),
+                ..bola()
+            },
+        ),
+        (
+            "dominance",
+            0,
+            BodyDesc {
+                dominance: 5,
+                ..bola()
+            },
+        ),
         (
             "material",
             0,
             BodyDesc {
-                material: ph2d_physics::CombineRules { restitution: regra, friction: regra },
+                material: ph2d_physics::CombineRules {
+                    restitution: regra,
+                    friction: regra,
+                },
                 restitution: 0.4,
                 ..bola()
             },
@@ -146,11 +243,22 @@ fn reafinar_um_corpo_vivo_e_o_mesmo_que_cria_lo() {
             "damping",
             0,
             BodyDesc {
-                damping: Some(DampingDesc { linear: 2.0, angular: 3.0, replace: true }),
+                damping: Some(DampingDesc {
+                    linear: 2.0,
+                    angular: 3.0,
+                    replace: true,
+                }),
                 ..bola()
             },
         ),
-        ("one_way", 0, BodyDesc { one_way: true, ..bola() }),
+        (
+            "one_way",
+            0,
+            BodyDesc {
+                one_way: true,
+                ..bola()
+            },
+        ),
         (
             "effector",
             1,
@@ -191,13 +299,22 @@ fn reafinar_um_corpo_vivo_e_o_mesmo_que_cria_lo() {
         let (mut criado, hc) = mundo(b_d, z_d);
         let (b_d, z_d) = par(quem, antigo);
         let (mut reafinado, hr) = mundo(b_d, z_d);
-        assert!(reafinado.retune_body(hr[quem], &novo), "{nome}: o handle não pegou");
+        assert!(
+            reafinado.retune_body(hr[quem], &novo),
+            "{nome}: o handle não pegou"
+        );
         let (a, b) = (poses(&mut criado, hc), poses(&mut reafinado, hr));
-        assert_eq!(a, b, "{nome}: o corpo reafinado não é o corpo criado com o mesmo desc");
+        assert_eq!(
+            a, b,
+            "{nome}: o corpo reafinado não é o corpo criado com o mesmo desc"
+        );
         let (mut velho, hv) = mundo(b_d, z_d);
         if poses(&mut velho, hv) == a {
             mudos.push(nome);
         }
     }
-    assert!(mudos.is_empty(), "a mudança não se vê nesta cena — as linhas não provam nada: {mudos:?}");
+    assert!(
+        mudos.is_empty(),
+        "a mudança não se vê nesta cena — as linhas não provam nada: {mudos:?}"
+    );
 }

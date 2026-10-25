@@ -50,12 +50,15 @@ macro_rules! com_itens {
     };
 }
 
+/// Os itens de cada entidade.
+type ItensPorEntidade = Vec<(Entity, Vec<ItemId>)>;
+
 /// O passe de UM componente com itens.
 #[derive(Clone, Copy)]
 pub struct Passe {
     /// O nome canónico do componente no registo.
     pub canonical: &'static str,
-    ler: fn(&mut World) -> Vec<(Entity, Vec<ItemId>)>,
+    ler: fn(&mut World) -> ItensPorEntidade,
     escrever: fn(&mut World, Entity, &[ItemId]),
     /// Os bytes v194 (sem `item`) na forma de agora.
     legado: fn(&[u8]) -> Legado,
@@ -99,7 +102,7 @@ pub enum Legado {
 /// de uma forma passaria por outra).
 fn inteiro<X: DeserializeOwned>(b: &[u8]) -> Option<X> {
     match postcard::take_from_bytes::<X>(b) {
-        Ok((x, resto)) if resto.is_empty() => Some(x),
+        Ok((x, [])) => Some(x),
         _ => None,
     }
 }

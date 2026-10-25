@@ -36,7 +36,7 @@ fn pinta(
     let tem = e.draw_data.contains(&tinta_do_fio(theme));
     let f: Vec<f32> = e.path_data.iter().map(|&b| f32::from_bits(b)).collect();
     let mut caixa = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
-    for p in f.chunks_exact(2) {
+    for p in f.as_chunks::<2>().0 {
         caixa = [
             caixa[0].min(p[0]),
             caixa[1].min(p[1]),

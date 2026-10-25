@@ -218,7 +218,10 @@ fn um_item_na_forma_nova_nao_se_le_como_v194_com_cauda() {
     let b = postcard::to_allocvec(&acao).expect("grava");
     let v194: Result<(crate::item_id_v194::SignalActionsV194, &[u8]), _> =
         postcard::take_from_bytes(&b);
-    assert!(v194.is_ok_and(|(_, resto)| !resto.is_empty()), "o fixture tem a forma do furo");
+    assert!(
+        v194.is_ok_and(|(_, resto)| !resto.is_empty()),
+        "o fixture tem a forma do furo"
+    );
     let pa = Passe::de::<crate::SignalActions, crate::item_id_v194::SignalActionsV194>("a");
     assert_eq!((pa.legado)(&b), Legado::JaNovo);
     let mut t = timer("a");

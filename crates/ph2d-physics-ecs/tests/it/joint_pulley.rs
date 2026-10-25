@@ -187,7 +187,10 @@ fn a_ponte_anota_o_comprimento_que_semeou_da_rota() {
         .world()
         .get_resource::<ph2d_physics_ecs::ComprimentoDaRota>()
         .expect("a ponte semeou e não anotou");
-    assert!(rota.veio_da_rota(e.to_bits(), l0), "anotou {rota:?}, a corda tem {l0}");
+    assert!(
+        rota.veio_da_rota(e.to_bits(), l0),
+        "anotou {rota:?}, a corda tem {l0}"
+    );
 }
 
 /// **O RAIO acrescenta ARCO à corda** — o pedido (3) do artista, no número que a

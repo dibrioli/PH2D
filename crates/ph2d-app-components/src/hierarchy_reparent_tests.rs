@@ -4,8 +4,10 @@ use super::{Desfecho, Queda, quem_viaja, reparentar};
 use ph2d_ecs::{ChildOf, Entity, Name, RootOrder, SimWorld, Transform};
 
 fn raiz(sim: &mut SimWorld, nome: &str, ordem: u32, x: f32) -> Entity {
-    let mut t = Transform::default();
-    t.translation = ph2d_core::Vec2::new(x, 0.0);
+    let t = Transform {
+        translation: ph2d_core::Vec2::new(x, 0.0),
+        ..Default::default()
+    };
     sim.world_mut()
         .spawn((t, Name::new(nome), RootOrder(ordem)))
         .id()

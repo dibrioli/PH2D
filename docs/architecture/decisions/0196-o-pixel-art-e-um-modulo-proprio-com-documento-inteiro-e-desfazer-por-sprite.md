@@ -38,8 +38,8 @@ projecto, como se desfaz, como se desenha, e por onde a entrada chega.
    (`Stroke`, linha canonicalizada desde o último ponto) e vira **um** `Patch` — um gesto = um passo.
 4. **O desfazer é POR SPRITE, fora da fila do `ProjectState`.** Cada documento tem `History` (pilhas
    de inversos, tecto **em bytes**: 64 MiB por sprite, o do MVP — o recurso é a RAM; uma contagem é
-   multiplicador, ADR-0117). Em Pixel Sprite ▸ Edit o `Ctrl+Z`/`Ctrl+Shift+Z`/`Ctrl+Y` vão a ele; fora
-   do Edit, à fila do mundo (criar, mover, apagar o objecto). O documento não entra no `ProjectState`:
+   multiplicador, ADR-0117). Em Pixel Sprite ▸ Draw o `Ctrl+Z`/`Ctrl+Shift+Z`/`Ctrl+Y` vão a ele; fora
+   do Draw, à fila do mundo (criar, mover, apagar o objecto). O documento não entra no `ProjectState`:
    o diff por quadro compararia o blob inteiro a cada quadro com entrada (256 KiB por cel RGBA 256²) e
    um traço contínuo pagaria isso a cada amostra.
 5. **O objecto é um marcador; o documento é um blob.** `ph2d_ecs::PixelSprite(u32)` (registado ⇒ viaja
@@ -55,13 +55,23 @@ projecto, como se desfaz, como se desenha, e por onde a entrada chega.
    teclado (depois do quadro, salvo campo de texto com foco) a `ph2d_app_pixel::input`, que decide e
    devolve «consumido». Não há porta genérica de ponteiro para modos na casa (o Painter usa downcast
    sobre o `CanvasPaintTool`, congelado); criá-la é outra decisão.
-7. **Zoom inteiro.** Em Edit uma célula ocupa um número inteiro de píxeis de ecrã: a roda anda pela
+7. **Zoom inteiro.** Em Draw uma célula ocupa um número inteiro de píxeis de ecrã: a roda anda pela
    escada `1…96` px/célula à volta do cursor, e depois de cada zoom/pan a câmera desloca-se para a
-   aresta da célula (0,0) cair num píxel inteiro. Entrar em Edit num sprite novo enquadra-o (o maior
-   degrau que cabe em 60 % da janela).
+   aresta da célula (0,0) cair num píxel inteiro. Entrar em Draw num sprite novo enquadra-o (o maior
+   degrau que cabe em 60 % da janela). A roda do RATO anda um degrau por linha; a do TRACKPAD
+   (`PixelDelta`, o gesto aos bocados) soma os píxeis e anda um degrau quando eles dão o factor dele
+   pela lei da roda do viewport (`Camera2d::wheel_px_for`) — o gesto aproxima como fora do Draw.
+   O degrau lê-se no rodapé, nunca num aviso por degrau.
 8. **Desenho na P0: a cena de sobreposição do viewport**, por cima dos sprites do mundo, numa imagem
    composta na CPU com `StableImage` (o atlas do Vello reusa-a até ao próximo traço). O clique e a caixa
    do gizmo de objecto perguntam à mesma geometria que a tinta usou (`draw::pick_at`/`half_extents`).
+
+9. **Emenda 25/10 (report do smoke do dono).** O modo chama-se **Draw** (o par D6 é
+   `(PixelSprite, Draw)`, como o Flip; nasceu Edit). Em Draw as ferramentas e as duas amostras de cor
+   moram na **coluna da esquerda**, a mesma porta das barras do vetor e do pintor (`ToolBars`, marca
+   `pixel_rail`: a fila de cima guarda o seletor de modo e o vetor inactivo não as apaga); o vetor
+   larga a mão enquanto há Pixel Sprite em Draw (`PixelApp::drawing`). O painel PIXEL da direita fica
+   com as cores e a paleta. As amostras abrem o seletor de cor partilhado e a família lê-o de volta.
 
 ## Alternativas recusadas
 
@@ -75,7 +85,7 @@ projecto, como se desfaz, como se desenha, e por onde a entrada chega.
 
 ## Consequências
 
-- O `Ctrl+Z` muda de dono com o modo: em Edit é do sprite. É o idioma do Aseprite (desfazer por
+- O `Ctrl+Z` muda de dono com o modo: em Draw é do sprite. É o idioma do Aseprite (desfazer por
   documento) e do Motion/Timeline da casa (filas próprias).
 - **Abertos, por onda (plano §5):** a ordem de desenho do mundo (luz, camadas, câmera do jogo), o
   clique por pixel opaco e a ligação às tags/slices/normal map são a P14; a composição na GPU (cel →

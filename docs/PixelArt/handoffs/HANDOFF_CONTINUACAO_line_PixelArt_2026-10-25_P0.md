@@ -157,3 +157,48 @@ Foto: [`smoke_P0_2026-10-25.png`](smoke_P0_2026-10-25.png). Três defeitos, nas 
    degrau (o zoom lê-se no rodapé, onde a casa já mostra `100%`); e conferir porque a foto chega a
    4000–4800 % (a roda do trackpad manda muitos `PixelDelta` por gesto: um degrau por evento é demais —
    acumular o delta até um entalhe, como o pan do quadro faz).
+
+## 10. Onda P0b (25/10) — os três defeitos da §9, curados (à espera do smoke do dono)
+
+Foto da cena 1 depois da cura: [`smoke_P0b_2026-10-25.png`](smoke_P0b_2026-10-25.png) — «Draw Mode» na
+fila de cima, a coluna da esquerda com Pencil/Eraser/Eyedropper/Hand + frente/fundo + trocar, o painel
+direito só com cores e paleta, o rodapé `Pencil (B): … · Zoom 1600 %`, nenhum aviso.
+
+**Causa comum dos defeitos 1 e 2 (medida no código):** com o Pixel Sprite em Edit a ferramenta activa
+do registo continuava a ser `vector`, logo o vetor publicava as SUAS `ToolBars` (coluna ① e barra de
+controle ②, F16) — e a fila só mostra os pulldowns da área (o seletor de modo) quando não há barras de
+módulo ou elas são a coluna do pintor (`tool_bar.rs`, `module.is_none_or(painter_rail)`). Um só bloco:
+
+1. **Modo Draw** — `mode.rs` declara `(PixelSprite, Draw)`; D6 actualizado (`every_object_mode_has_a_composed_family`).
+2. **`ToolBars.pixel_rail`** + `ToolBars::is_family_column()` (editor-core): a fila guarda o seletor;
+   `bars_publish` do vetor só limpa barras que não são de família; o rodapé (`module_hint`) fala também
+   com `pixel_rail`.
+3. **O vetor larga a mão** — `fase_vector_scale`: `vector_active = !pixel.drawing() && tool == vector`.
+4. **A coluna** — `ph2d_panel_pixel_tools::column::{column, hint}` (ids do painel, o clique segue pelo
+   `seam` dele, também com o painel fechado); `ph2d_app_pixel::panel::publish_bars` publica/limpa;
+   a shell compõe em `fase_pixel_panel`. Ícones: `VectorPencil`, `Erase`, `Eyedropper`, `Pan`.
+   As ferramentas SAÍRAM do painel direito.
+5. **Amostras** — `PIXEL_FG`/`PIXEL_BG` mudaram-se para `ph2d_editor_core::ids` (o painel reexporta);
+   `register_picker_swatch` ⇒ um Down abre o seletor partilhado; `panel::sync_swatch` lê de volta
+   (o que o seletor escreveu por cima da cor semeada no quadro anterior é escolha do artista). Fecha o
+   aberto «clicar nas amostras não abre seletor».
+6. **Zoom** — sem toast. `input::Roda` acumula: `Lines` = um degrau por linha (rato, Aseprite);
+   `Pixels` = um degrau quando os píxeis somados dão o factor dele por `Camera2d::wheel_px_for`
+   (o trackpad aproxima como o viewport); inverter o sentido ou bater no fim da escada esquece o resto.
+   `PixelApp::zoom` (lido em `frame`) vai para o `readout` do rodapé.
+
+**Provas (por nome, verdes):** `a_trackpad_gesture_zooms_like_the_viewport_and_not_one_step_per_event`
+(30 bocados de 10 px: o degrau final ≤ zoom do viewport e o seguinte passaria — o defeito dava 30
+degraus), `a_lone_trackpad_event_keeps_its_remainder_and_a_reversal_forgets_it`,
+`the_wheel_never_pushes_a_toast_and_the_footer_reads_the_level`, `the_wheel_walks_the_integer_ladder_around_the_cursor`,
+`o_seletor_oferece_object_e_draw_e_a_coluna_em_draw_e_a_do_pixel`,
+`every_tool_and_swatch_of_the_pixel_column_answers_a_real_pointer` (ponteiro real sobre a coluna
+pintada, painel fechado; o seletor pintado na fila), `a_coluna_do_pixel_guarda_o_seletor_de_modo_na_fila`
+(com controlo: barras de módulo não o mostram), `the_idle_vector_clears_its_bars_and_never_the_painters_column`
+(agora também a do Pixel), `a_coluna_tem_as_quatro_ferramentas_e_as_duas_cores`,
+`cada_ferramenta_da_coluna_chega_ao_barramento`, `every_object_mode_has_a_composed_family`,
+`architecture_no_authoring_tool_shares_the_canvas`, `the_shell_only_shrinks`, os 26 `pixel` da shell.
+`cargo fmt --check` limpo. Clippy fica para o fecho da linha (regra do dono).
+
+**Aberto desta onda:** o trackpad real só o dono prova (a tela virtual não tem gesto); mutação das leis
+novas (`Roda`, `is_family_column`) no fecho da linha, com as do núcleo da §6.

@@ -225,6 +225,7 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
         groups,
         // O `Ctrl+K` não tem caixa nenhuma — ver `PaletteModel::toggle`.
         toggle: None,
+        tips: Vec::new(),
     }
 }
 

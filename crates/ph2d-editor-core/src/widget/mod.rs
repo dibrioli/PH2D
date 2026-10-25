@@ -25,6 +25,7 @@ mod color_swatch;
 mod combobox;
 pub mod command_palette;
 pub mod composto;
+pub mod illustration;
 mod context_menu;
 mod divider;
 mod drag_ghost;

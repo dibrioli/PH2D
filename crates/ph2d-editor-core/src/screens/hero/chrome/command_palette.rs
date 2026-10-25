@@ -101,6 +101,7 @@ mod tests {
         PaletteModel {
             title: "Add Node".into(),
             toggle: None,
+            tips: Vec::new(),
             groups: vec![PaletteGroup {
                 title: "Source".into(),
                 color: ColorToken::NodeCatSource,

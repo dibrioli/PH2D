@@ -8,7 +8,10 @@
 //! junta as que estão compiladas: um tipo cuja crate saiu do build não deixa um item morto.
 //! O pick volta como a [`AddEntry`], e quem a sabe criar é a família dona — com os recursos dela.
 
-use crate::widget::command_palette::{PaletteGroup, PaletteItem, PaletteModel, PaletteSub};
+use crate::widget::command_palette::{
+    PaletteGroup, PaletteItem, PaletteModel, PaletteSub, PaletteTip,
+};
+use crate::widget::illustration::Mark;
 use ph2d_a11y::NodeId;
 use ph2d_i18n::TextKey;
 use ph2d_tokens::ColorToken;
@@ -49,13 +52,25 @@ impl AddGroup {
     }
 }
 
-/// **Uma entrada do menu**: o rótulo (que é também a IDENTIDADE) e o grupo.
+/// ⭐ **A dica ILUSTRADA de uma entrada** (GameEngineFuncional N1, decisão 1 do dono no plano 03): a
+/// explicação completa e o desenho do que o objecto É — nunca o nome da Godot.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct AddTip {
+    /// A chave i18n da explicação (várias linhas).
+    pub body: TextKey,
+    /// O desenho ([`crate::widget::illustration`]).
+    pub picture: &'static [Mark],
+}
+
+/// **Uma entrada do menu**: o rótulo (que é também a IDENTIDADE), o grupo e, se tiver, a dica.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct AddEntry {
     /// A chave i18n do rótulo. O id do item é o hash dela — sobrevive a inserções no meio.
     pub key: TextKey,
     /// Onde o modal a mostra.
     pub group: AddGroup,
+    /// A dica ilustrada ao passar o rato (`None` = nenhuma).
+    pub tip: Option<AddTip>,
 }
 
 impl AddEntry {
@@ -65,6 +80,19 @@ impl AddEntry {
         Self {
             key: TextKey::new(key),
             group,
+            tip: None,
+        }
+    }
+
+    /// A mesma entrada, com a dica ilustrada: a explicação pela chave `body_key` e o desenho.
+    #[must_use]
+    pub const fn with_tip(self, body_key: &'static str, picture: &'static [Mark]) -> Self {
+        Self {
+            tip: Some(AddTip {
+                body: TextKey::new(body_key),
+                picture,
+            }),
+            ..self
         }
     }
 
@@ -131,10 +159,25 @@ pub fn build(
             })
         })
         .collect();
+    // ⭐ A dica de toda entrada que a tem — também das que não podem nascer agora: o artista lê o que
+    //    o tipo é antes de saber porque não pode.
+    let tips = families
+        .iter()
+        .flat_map(|f| f.iter())
+        .filter_map(|e| {
+            e.tip.map(|t| PaletteTip {
+                id: e.id(),
+                title: e.key.tr().to_string(),
+                body: t.body.tr().to_string(),
+                picture: t.picture,
+            })
+        })
+        .collect();
     PaletteModel {
         title: ph2d_i18n::tr("object_add.title").to_string(),
         groups,
         toggle: None,
+        tips,
     }
 }
 

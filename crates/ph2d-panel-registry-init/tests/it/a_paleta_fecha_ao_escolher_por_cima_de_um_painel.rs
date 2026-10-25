@@ -29,6 +29,7 @@ fn paleta_sobre_a_fisica() -> (PaletteModel, ph2d_editor_core::NodeId) {
     let modelo = PaletteModel {
         title: rotulo.clone(),
         toggle: None,
+        tips: Vec::new(),
         groups: vec![PaletteGroup {
             title: rotulo.clone(),
             color: ph2d_tokens::ColorToken::NodeCatSource,

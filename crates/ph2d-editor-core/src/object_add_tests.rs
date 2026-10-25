@@ -82,3 +82,30 @@ fn a_blocked_entry_shows_after_the_ready_ones_with_its_reason() {
     assert!(subs[1].items[0].label.ends_with(reason));
     assert!(subs[1].items[0].label.starts_with(A[0].key.tr()));
 }
+
+const PICTURE: &[crate::widget::illustration::Mark] = &[crate::widget::illustration::Mark::Disc {
+    c: [0.5, 0.5],
+    r: 0.2,
+    fill: ph2d_tokens::ColorToken::Accent,
+}];
+
+/// ⭐ **A dica de uma entrada chega ao modelo, pela id do item** (GameEngineFuncional N1): o título é o
+/// rótulo, o texto é a chave da explicação traduzida, o desenho é o da entrada — e uma entrada sem dica
+/// não deixa nenhuma.
+///
+/// (Mutação: o `build` a deixar `tips` vazio ⇒ RED.)
+#[test]
+fn an_entry_with_a_tip_puts_it_in_the_model() {
+    const WITH: AddEntry = AddEntry::new("object_add.game.camera", AddGroup::Game)
+        .with_tip("object_add.title", PICTURE);
+    let fams: &[&[AddEntry]] = &[CORE, &[WITH]];
+    let model = build(fams, &|_| None);
+    assert_eq!(model.tips.len(), 1, "só a entrada com dica deixa dica");
+    let tip = &model.tips[0];
+    assert_eq!(tip.id, WITH.id());
+    assert_eq!(tip.title, WITH.key.tr());
+    assert_eq!(tip.body, ph2d_i18n::tr("object_add.title"));
+    assert_eq!(tip.picture, PICTURE);
+    assert_ne!(WITH, B[0], "a dica faz parte da entrada");
+    assert_eq!(WITH.id(), B[0].id(), "mas não da identidade do item");
+}

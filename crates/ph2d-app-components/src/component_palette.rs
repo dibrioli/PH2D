@@ -243,6 +243,7 @@ pub(crate) fn build(
             label: ph2d_i18n::tr("app.components.component_palette.show_all").to_string(),
             on: show_all,
         }),
+        tips: Vec::new(),
     }
 }
 

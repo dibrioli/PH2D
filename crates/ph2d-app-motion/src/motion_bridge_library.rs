@@ -197,6 +197,7 @@ pub(super) fn build_palette_model(
         groups,
         // A biblioteca de nós não tem caixa nenhuma — ver `PaletteModel::toggle`.
         toggle: None,
+        tips: Vec::new(),
     }
 }
 

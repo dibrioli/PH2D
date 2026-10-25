@@ -65,6 +65,7 @@ fn only(model: &PaletteModel, groups: Vec<PaletteGroup>) -> PaletteModel {
         title: model.title.clone(),
         groups,
         toggle: model.toggle.clone(),
+        tips: model.tips.clone(),
     }
 }
 
@@ -218,6 +219,7 @@ mod tests {
                 vec![item("Save Script", 1), item("Find…", 2)],
             )],
             toggle: None,
+            tips: Vec::new(),
         };
         let scopes = PaletteScopes {
             symbols: Some(group(

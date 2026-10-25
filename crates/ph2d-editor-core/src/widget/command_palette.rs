@@ -47,6 +47,9 @@ use scroll::{Metrics, metrics, paint_scroll_hint};
 mod header;
 pub use header::{CMD_PALETTE_SHOW_ALL, PaletteToggle};
 
+/// **A dica ilustrada** do item sob o rato (GameEngineFuncional N1) — a 5.ª responsabilidade.
+mod tip;
+
 /// The close-X in the header.
 pub const CMD_PALETTE_CLOSE: NodeId = hash_node_id("command_palette.close");
 /// The full-viewport scrim barrier — a click here (outside the card) closes the palette.
@@ -117,6 +120,23 @@ pub struct PaletteModel {
     /// isso que se quer — um campo novo que se preenchesse sozinho seria a feature a desaparecer
     /// em silêncio no consumidor que ninguém reviu.
     pub toggle: Option<PaletteToggle>,
+    /// ⭐ **As dicas ilustradas** dos itens que as têm (GameEngineFuncional N1), pela id do item. Ver
+    /// [`PaletteTip`]; vazio = nenhum item explica nada ao passar o rato.
+    pub tips: Vec<PaletteTip>,
+}
+
+/// ⭐ **A dica ILUSTRADA de um item** (as do Fusion 360): o nome simples, um desenho e a explicação
+/// completa — pintada por cima do item sob o rato ([`tip`]). Só pinta; não regista alvo nenhum.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PaletteTip {
+    /// O item a que pertence.
+    pub id: NodeId,
+    /// O título (o rótulo do item, já traduzido).
+    pub title: String,
+    /// A explicação completa, em várias linhas.
+    pub body: String,
+    /// O desenho ([`crate::widget::illustration`]).
+    pub picture: &'static [crate::widget::illustration::Mark],
 }
 
 impl PaletteModel {
@@ -189,6 +209,8 @@ fn filter_model(model: &PaletteModel, query: &str) -> PaletteModel {
         // ⚠️ A caixa ATRAVESSA o filtro: ela é da banda, não do conteúdo — filtrar por texto não a
         // pode desligar, senão escrever no campo de busca apagava o controlo que a mostra.
         toggle: model.toggle.clone(),
+        // A dica procura-se pela id: as dos itens filtrados ficam e não pintam.
+        tips: model.tips.clone(),
     }
 }
 
@@ -343,6 +365,9 @@ pub fn paint(
     if !no_match {
         paint_scroll_hint(scene, theme, body, content_h, view_h, scroll);
     }
+
+    // ⭐ A dica do item sob o rato, por cima de tudo o que a paleta pinta — e sem alvo.
+    let _ = tip::paint_tip(scene, ts, theme, hit_index, model, store.hot_id(), viewport);
 
     // Close-X last (wins its rect inside the card).
     hit_index.register(CMD_PALETTE_CLOSE, close_rect);

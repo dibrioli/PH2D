@@ -64,6 +64,24 @@ impl SimWorld {
         let mut q = self.inner.query_filtered::<Entity, Without<IsResource>>();
         q.iter(&self.inner).count()
     }
+
+    /// Quantos componentes as entidades **do jogo** carregam (o cabeçalho da Hierarquia).
+    ///
+    /// ⚠️ Sem as entidades-recurso, pela mesma razão do [`Self::entity_count`]: no `bevy_ecs` 0.19
+    /// cada recurso é uma entidade com DOIS componentes (o valor e a `IsResource`), e a conta crua
+    /// subia `+2` da primeira vez que um painel tocava num recurso novo (o editor de animações
+    /// abria e o «161 components» virava «163» sem nada ter mudado na cena).
+    #[must_use]
+    pub fn component_count(&self) -> u32 {
+        let marker = self.inner.components().component_id::<IsResource>();
+        self.inner
+            .archetypes()
+            .iter()
+            .filter(|a| marker.is_none_or(|m| !a.contains(m)))
+            .fold(0u32, |n, a| {
+                n.saturating_add(a.len().saturating_mul(a.components().len() as u32))
+            })
+    }
 }
 
 impl Default for SimWorld {

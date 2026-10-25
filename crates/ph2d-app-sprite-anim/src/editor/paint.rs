@@ -1,7 +1,7 @@
 //! **A pintura de uma aba do editor de animações** — lê a [`super::doc::Layout`] que o documento
 //! acabou de calcular; nada aqui decide (os gestos estão no `doc`).
 
-use super::doc::{AnimDoc, Field, format_fps};
+use super::doc::{AnimDoc, Field};
 use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rect,
 };
@@ -95,7 +95,7 @@ pub fn paint_doc(
     text: &mut TextSystem,
     theme: Theme,
 ) {
-    let l = doc.lay_out(area).clone();
+    let l = doc.lay_out(area, text).clone();
     fill_rounded_rect(scene, area, 0.0, resolve(ColorToken::PanelBg, theme));
     let font = TypeToken::Sm.px();
     let info = doc.snap.info.clone();
@@ -107,16 +107,7 @@ pub fn paint_doc(
         tr("anim_editor.play")
     };
     button(scene, text, theme, l.play, play, doc.playing());
-    let fps = info
-        .as_ref()
-        .and_then(|i| i.rows.get(doc.selected))
-        .map(|r| {
-            tr_with(
-                "anim_editor.fps",
-                &[("fps", &format_fps(ph2d_ecs::fps_of_ms(r.frame_ms)))],
-            )
-        })
-        .unwrap_or_default();
+    let fps = doc.fps_label();
     field(scene, text, theme, l.fps, &fps, editing(doc, &Field::Fps));
     let mode = doc.mode();
     for (i, (r, key)) in l
@@ -138,7 +129,7 @@ pub fn paint_doc(
             mode == Some(AnimCycleMode::ALL[i]),
         );
     }
-    let cols = tr_with("anim_editor.cols", &[("n", &doc.snap.hframes)]);
+    let cols = doc.cols_label();
     field(
         scene,
         text,
@@ -147,7 +138,7 @@ pub fn paint_doc(
         &cols,
         editing(doc, &Field::Cols),
     );
-    let rows = tr_with("anim_editor.rows", &[("n", &doc.snap.vframes)]);
+    let rows = doc.rows_label();
     field(
         scene,
         text,
@@ -405,7 +396,7 @@ fn paint_strip(
                 resolve(ColorToken::Text2, theme),
             );
         }
-        let shown = tr_with("anim_editor.ms", &[("ms", &doc.frame_ms_at(i))]);
+        let shown = doc.ms_label(i);
         field(
             scene,
             text,

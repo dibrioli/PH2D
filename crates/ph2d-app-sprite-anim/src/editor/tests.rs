@@ -449,3 +449,187 @@ fn largar_uma_folha_abre_o_editor_com_a_proposta_e_uma_imagem_so_nao() {
         "tamanho errado"
     );
 }
+
+impl Mesa {
+    /// Pinta a aba em `area` com o censo das elisões armado; devolve o que saiu CORTADO.
+    fn paint_in(&mut self, area: Rect) -> Vec<String> {
+        let mut scene = VectorScene::new();
+        let e = self.e;
+        let mut ts = std::mem::replace(&mut self.ts, TextSystem::without_system_fonts());
+        let ((), medidos) = ph2d_editor_core::text_elide::elisao::medindo(|| {
+            self.docs()
+                .paint(e, area, &mut scene, &mut ts, &Theme::default());
+        });
+        self.ts = ts;
+        medidos
+            .into_iter()
+            .filter(|m| !m.coube())
+            .map(|m| m.texto)
+            .collect()
+    }
+
+    /// Quantos componentes o herói (a única entidade do jogo desta mesa) carrega.
+    fn hero_components(&self) -> u32 {
+        let w = self.sim.world();
+        w.entity(Entity::from_bits(self.e))
+            .archetype()
+            .components()
+            .len() as u32
+    }
+}
+
+/// Os seis controlos da barra de cima.
+fn bar(l: &doc::Layout) -> [Rect; 7] {
+    [
+        l.play, l.fps, l.modes[0], l.modes[1], l.modes[2], l.cols, l.rows,
+    ]
+}
+
+/// ⭐ Report do dono (foto 03): depois do «6 fps», Repeat · Once · Ping-pong e as colunas/linhas
+/// saíam «…». Cada controlo mede o seu texto; numa aba estreita a barra QUEBRA em vez de cortar.
+#[test]
+fn a_barra_de_cima_mede_o_texto_e_quebra_na_largura() {
+    for w in [1200.0, 420.0, 240.0] {
+        // LITERAL-PX-OK: a janela do teste
+        let mut m = Mesa::new();
+        let area = Rect::new(0.0, 0.0, w, AREA.h);
+        let cut = m.paint_in(area);
+        let d = m.doc();
+        let labels = [
+            d.fps_label(),
+            "Repeat".into(),
+            "Once".into(),
+            "Ping-pong".into(),
+            d.cols_label(),
+            d.rows_label(),
+        ];
+        for t in &labels {
+            assert!(!cut.contains(t), "«{t}» saiu cortado a {w} px: {cut:?}");
+        }
+        if w > 300.0 {
+            assert!(cut.is_empty(), "nada da aba se corta a {w} px: {cut:?}");
+        }
+        let rects = bar(&d.layout);
+        for (i, r) in rects.iter().enumerate() {
+            assert!(
+                r.x >= area.x && r.x + r.w <= area.x + area.w,
+                "{i} fora da aba a {w}"
+            );
+            for o in &rects[i + 1..] {
+                let apart =
+                    r.x + r.w <= o.x || o.x + o.w <= r.x || r.y + r.h <= o.y || o.y + o.h <= r.y;
+                assert!(apart, "{r:?} pisa {o:?} a {w} px");
+            }
+        }
+        if w < 300.0 {
+            assert!(
+                d.layout.rows.y > d.layout.play.y,
+                "a {w} px a barra tinha de quebrar"
+            );
+        }
+    }
+}
+
+/// ⭐ Report do dono (foto 03): a faixa de quadros ficava debaixo da pílula de estado (EDIT · fps…)
+/// e os tempos liam «10:…». A faixa inteira fica acima da pílula, e cada «N ms» cabe.
+#[test]
+fn a_faixa_fica_acima_da_pilula_e_os_tempos_cabem() {
+    let mut m = Mesa::new();
+    let cut = m.paint_in(AREA);
+    let d = m.doc();
+    let s = d.layout.strip;
+    let pill_top = AREA.y + AREA.h - ph2d_tokens::HUD_BOTTOM_PAD_PX - ph2d_tokens::HUD_H_PX;
+    assert!(
+        s.y + s.h <= pill_top,
+        "a faixa acaba em {} e a pílula começa em {pill_top}",
+        s.y + s.h
+    );
+    assert_eq!(d.layout.frames.len(), 6, "a idle tem seis quadros");
+    for (i, f) in d.layout.frames.iter().enumerate() {
+        assert!(
+            f.1.y + f.1.h <= s.y + s.h,
+            "o tempo do quadro {i} sai da faixa"
+        );
+        let ms = d.ms_label(i);
+        assert!(!cut.contains(&ms), "«{ms}» saiu cortado: {cut:?}");
+    }
+}
+
+/// ⭐ Report do dono: depois do «+ Add» do editor o cartão continuava a realçar «idle». O «+» escolhe
+/// a nova E põe-na no ecrã (o nome é o `next_free_name` da biblioteca antes do Add).
+#[test]
+fn o_mais_escolhe_a_nova_e_poe_na_no_ecra() {
+    let mut m = Mesa::new();
+    let add = centre(m.doc().layout.add);
+    m.click(add);
+    m.frame();
+    let current = m
+        .sim
+        .world()
+        .get::<SpriteAnimator>(Entity::from_bits(m.e))
+        .map(|p| p.current.clone());
+    assert_eq!(
+        current.as_deref(),
+        Some("anim_0"),
+        "a nova tem de ficar no ecrã"
+    );
+    let d = m.doc();
+    assert_eq!(d.selected, 2);
+    assert_eq!(
+        d.snap.info.as_ref().map(|i| i.current.as_str()),
+        Some("anim_0")
+    );
+}
+
+/// E o contrário: quem põe outra no ecrã fora do editor (o cartão) muda a aberta do editor.
+#[test]
+fn outra_no_ecra_muda_a_aberta_do_editor() {
+    let mut m = Mesa::new();
+    assert_eq!(m.doc().selected, 0);
+    let e = Entity::from_bits(m.e);
+    m.sim
+        .world_mut()
+        .get_mut::<SpriteAnimator>(e)
+        .expect("o tocador")
+        .current = "run".into();
+    m.frame();
+    assert_eq!(m.doc().selected, 1);
+}
+
+/// ⭐ Report do dono: o «N components» da Hierarquia subia `+2` a cada gesto no editor (161 → 163 ao
+/// abrir, → 165 depois do «+ Add» e de três cliques). Medido aqui, passo a passo, com a conta antiga
+/// (Σ arquétipos, recursos incluídos) ao lado: abrir `6 → 12` (o `AnimEditorRequests` e a
+/// `SheetCache` são entidades-recurso de dois componentes cada, mais o interno do bevy), o 1.º
+/// clique numa célula `+2` (a `SpriteAnimFrames` e a `SpriteAnimCursor` aparecem UMA vez no herói), e
+/// mais nada. A cura: o cabeçalho conta só as entidades do jogo.
+#[test]
+fn o_cabecalho_da_hierarquia_conta_so_o_jogo_e_nao_cresce_com_os_gestos() {
+    let mut m = Mesa::new();
+    assert_eq!(m.sim.component_count(), m.hero_components(), "ao abrir");
+    assert_eq!(m.hero_components(), 6);
+    let add = centre(m.doc().layout.add);
+    m.click(add);
+    m.frame();
+    assert_eq!(m.sim.component_count(), 6, "o «+» não junta componentes");
+    let mut after_first = None;
+    for c in [3u32, 4, 5, 9, 10] {
+        let at = m.cell(c);
+        m.click(at);
+        m.frame();
+        assert_eq!(m.sim.component_count(), m.hero_components(), "célula {c}");
+        after_first.get_or_insert(m.sim.component_count());
+        assert_eq!(
+            Some(m.sim.component_count()),
+            after_first,
+            "célula {c}: cresceu"
+        );
+    }
+    assert_eq!(
+        after_first,
+        Some(8),
+        "a lista de quadros e o cursor, uma vez"
+    );
+    m.click(add);
+    m.frame();
+    assert_eq!(m.sim.component_count(), 8, "o 2.º «+» não junta nada");
+}

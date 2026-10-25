@@ -5,6 +5,7 @@
 //! do cartão chega como `AnimFieldEdit::OpenEditor`, que a shell entrega a [`request_open`].
 
 pub mod doc;
+pub mod layout;
 pub mod paint;
 
 use std::collections::BTreeMap;
@@ -149,12 +150,7 @@ impl DocumentSurface for AnimDocs {
             return false;
         }
         let n = d.layout.frames.len() as f32;
-        let thumb = d
-            .layout
-            .frames
-            .first()
-            .map_or(0.0, |f| f.0.w + ph2d_tokens::control_gap_px());
-        let max = (n * thumb - s.w).max(0.0);
+        let max = (n * d.layout.strip_pitch() - s.w).max(0.0);
         d.strip_scroll = (d.strip_scroll - dy).clamp(0.0, max);
         true
     }
@@ -284,7 +280,19 @@ pub fn frame(
     look.extend(selection);
     crate::sheet::refresh(sim.world_mut(), &look, db, atlas);
     for d in &mut docs.docs {
-        for edit in std::mem::take(&mut d.pending) {
+        let mut edits: Vec<AnimFieldEdit> = std::mem::take(&mut d.pending);
+        edits.reverse();
+        while let Some(edit) = edits.pop() {
+            // O «+» escolhe a nova E põe-na no ecrã: o cartão e o editor mostram a mesma. O nome é o
+            // que a biblioteca dá ANTES de a receber; o SetCurrent vai depois de o Add pegar.
+            let added = (edit == AnimFieldEdit::Add).then(|| {
+                sim.world()
+                    .get::<ph2d_ecs::SpriteAnimations>(Entity::from_bits(d.entity))
+                    .map_or_else(
+                        || ph2d_ecs::SpriteAnimations::new().next_free_name(),
+                        ph2d_ecs::SpriteAnimations::next_free_name,
+                    )
+            });
             let queue = EditorCommandQueue::new();
             if let Some(t) =
                 crate::inspector::apply_anim_edit(sim, d.entity, &edit, &queue, registry)
@@ -297,7 +305,9 @@ pub fn frame(
                     "anim_editor.commit_failed",
                     &[("e", &format!("{e:?}"))],
                 )));
+                continue;
             }
+            edits.extend(added.map(AnimFieldEdit::SetCurrent));
         }
         d.set_snapshot(snapshot(sim, d.entity));
     }

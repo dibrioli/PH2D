@@ -86,22 +86,8 @@ pub(super) fn publish(
         input_events,
         paint_stamps,
     };
-    // Hierarchy counts use PresentWorld's archetype components
-    // (Transform + Sprite + Visibility + ChildOf + Children).
-    // It's a proxy — exactly the components the editor's
-    // snapshot pipeline observes per entity. Multiplying by
-    // entity count is a rough estimate; counting via archetype
-    // walk is cheap enough at editor scales.
-    let component_count = {
-        let world = sim.world();
-        let mut total = 0u32;
-        for archetype in world.archetypes().iter() {
-            let len = archetype.len();
-            let comps = archetype.components().len() as u32;
-            total = total.saturating_add(len.saturating_mul(comps));
-        }
-        total
-    };
+    // O cabeçalho da Hierarquia: os componentes das entidades do jogo (sem as entidades-recurso).
+    let component_count = sim.component_count();
     #[cfg(feature = "panel-hierarchy")]
     ph2d_panel_hierarchy::set_live_component_count(component_count);
 }

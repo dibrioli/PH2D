@@ -8,15 +8,10 @@
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{AnimCycleMode, AnimFieldEdit, InspectorAnimInfo, SheetImage, row_cells};
 use ph2d_sprite_sheet::GridGuess;
-use ph2d_tokens::{ROW_H_PX, Spacing};
+use ph2d_tokens::ROW_H_PX;
 
-/// A lista de animações à esquerda, como fração da largura.
-const LIST_FRAC: f32 = 0.22; // LITERAL-PX-OK: fração de layout
-/// Larguras dos controlos da barra de cima, em alturas de linha.
-const FIELD_ROWS: f32 = 3.0; // LITERAL-PX-OK: múltiplo do token de linha
-const MODE_ROWS: f32 = 4.0; // LITERAL-PX-OK: múltiplo do token de linha
-/// A faixa de quadros: miniatura de duas linhas mais a linha do tempo.
-const THUMB_ROWS: f32 = 2.0; // LITERAL-PX-OK: múltiplo do token de linha
+pub use super::layout::Layout;
+
 /// Um arrasto na faixa só conta depois deste caminho (um clique trémulo não reordena).
 const DRAG_SLOP_ROWS: f32 = 0.25; // LITERAL-PX-OK: fração do token de linha
 
@@ -55,51 +50,6 @@ enum Drag {
         moved: bool,
         to: usize,
     },
-}
-
-/// A disposição de um quadro pintado.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Layout {
-    pub area: Rect,
-    pub play: Rect,
-    pub fps: Rect,
-    pub modes: [Rect; 3],
-    pub cols: Rect,
-    pub rows: Rect,
-    /// A faixa «Parece 8 × 4 — Usar»: (texto, botão).
-    pub banner: Option<(Rect, Rect)>,
-    pub list: Rect,
-    pub list_rows: Vec<Rect>,
-    pub add: Rect,
-    pub remove: Rect,
-    /// A folha encaixada (a imagem inteira), dentro da área do meio.
-    pub sheet: Rect,
-    pub strip: Rect,
-    /// Por quadro da faixa: (miniatura, tempo, ×).
-    pub frames: Vec<(Rect, Rect, Rect)>,
-}
-
-impl Default for Layout {
-    /// Nada pintado ainda: tudo vazio, nenhum clique acerta.
-    fn default() -> Self {
-        let z = Rect::new(0.0, 0.0, 0.0, 0.0);
-        Self {
-            area: z,
-            play: z,
-            fps: z,
-            modes: [z; 3],
-            cols: z,
-            rows: z,
-            banner: None,
-            list: z,
-            list_rows: Vec::new(),
-            add: z,
-            remove: z,
-            sheet: z,
-            strip: z,
-            frames: Vec::new(),
-        }
-    }
 }
 
 fn hit(r: Rect, x: f32, y: f32) -> bool {
@@ -146,6 +96,12 @@ impl AnimDoc {
                 self.select_last = false;
             } else if !self.seeded {
                 self.selected = info.current_index().unwrap_or(0);
+            } else if self.snap.info.as_ref().map(|i| &i.current) != Some(&info.current)
+                && let Some(i) = info.current_index()
+            {
+                // Quem pôs outra no ecrã (o cartão) mudou também a aberta: os dois mostram a mesma.
+                self.selected = i;
+                self.frame_selected = None;
             }
             self.seeded = true;
             self.selected = self.selected.min(info.rows.len().saturating_sub(1));
@@ -255,89 +211,6 @@ impl AnimDoc {
             .then_some(g)
     }
 
-    // ── A disposição ───────────────────────────────────────────────────────────────────────────
-
-    /// Calcula a disposição para `area` (e guarda-a: o rato lê a do último quadro pintado).
-    pub fn lay_out(&mut self, area: Rect) -> &Layout {
-        let pad = Spacing::Md.px();
-        let gap = ph2d_tokens::control_gap_px();
-        let row = ROW_H_PX;
-        let mut l = Layout {
-            area,
-            ..Layout::default()
-        };
-        let mut y = area.y + pad;
-        let mut x = area.x + pad;
-        l.play = Rect::new(x, y, row, row);
-        x += row + gap;
-        l.fps = Rect::new(x, y, row * FIELD_ROWS, row);
-        x += row * FIELD_ROWS + gap;
-        let mode_w = row * MODE_ROWS / 3.0; // LITERAL-PX-OK: três segmentos iguais
-        for (i, m) in l.modes.iter_mut().enumerate() {
-            *m = Rect::new(x + i as f32 * mode_w, y, mode_w, row);
-        }
-        x += row * MODE_ROWS + gap;
-        l.cols = Rect::new(x, y, row * FIELD_ROWS / 2.0, row); // LITERAL-PX-OK: meio campo
-        x += row * FIELD_ROWS / 2.0 + gap; // LITERAL-PX-OK: meio campo
-        l.rows = Rect::new(x, y, row * FIELD_ROWS / 2.0, row); // LITERAL-PX-OK: meio campo
-        y += row + gap;
-        if self.proposal().is_some() {
-            let use_w = row * FIELD_ROWS;
-            let text = Rect::new(
-                area.x + pad,
-                y,
-                (area.w - 2.0 * pad - use_w - gap).max(0.0),
-                row,
-            );
-            l.banner = Some((text, Rect::new(text.x + text.w + gap, y, use_w, row)));
-            y += row + gap;
-        }
-        let bottom = area.y + area.h - pad;
-        let strip_h = row * (THUMB_ROWS + 1.0);
-        l.strip = Rect::new(area.x + pad, bottom - strip_h, area.w - 2.0 * pad, strip_h);
-        let mid_bottom = l.strip.y - gap;
-        let list_w = (area.w * LIST_FRAC).max(row * FIELD_ROWS);
-        l.list = Rect::new(area.x + pad, y, list_w, (mid_bottom - y).max(0.0));
-        let n = self.snap.info.as_ref().map_or(0, |i| i.rows.len());
-        l.list_rows = (0..n)
-            .map(|i| Rect::new(l.list.x, l.list.y + i as f32 * row, l.list.w, row))
-            .collect();
-        let buttons_y = (l.list.y + n as f32 * row + gap).min(mid_bottom - row);
-        let half = (l.list.w - gap) / 2.0; // LITERAL-PX-OK: dois botões iguais
-        l.add = Rect::new(l.list.x, buttons_y, half, row);
-        l.remove = Rect::new(l.list.x + half + gap, buttons_y, half, row);
-        let mid = Rect::new(
-            l.list.x + l.list.w + pad,
-            y,
-            (area.x + area.w - pad - (l.list.x + l.list.w + pad)).max(0.0),
-            (mid_bottom - y).max(0.0),
-        );
-        l.sheet = match &self.snap.sheet {
-            Some(s) if s.w > 0 && s.h > 0 && mid.w > 0.0 && mid.h > 0.0 => {
-                let k = (mid.w / s.w as f32).min(mid.h / s.h as f32);
-                let (w, h) = (s.w as f32 * k, s.h as f32 * k);
-                Rect::new(mid.x + (mid.w - w) / 2.0, mid.y + (mid.h - h) / 2.0, w, h)
-            }
-            _ => mid,
-        };
-        let thumb = row * THUMB_ROWS;
-        let frames = self.shown_frames();
-        l.frames = (0..frames.len())
-            .map(|i| {
-                let fx = l.strip.x + i as f32 * (thumb + gap) - self.strip_scroll;
-                let t = Rect::new(fx, l.strip.y, thumb, thumb);
-                let close_side = row / 2.0; // LITERAL-PX-OK: meia linha
-                (
-                    t,
-                    Rect::new(fx, l.strip.y + thumb, thumb, row),
-                    Rect::new(fx + thumb - close_side, l.strip.y, close_side, close_side),
-                )
-            })
-            .collect();
-        self.layout = l;
-        &self.layout
-    }
-
     /// A célula da folha sob `(x, y)`.
     #[must_use]
     pub fn cell_at(&self, x: f32, y: f32) -> Option<u32> {
@@ -368,8 +241,11 @@ impl AnimDoc {
     /// Para onde um quadro largado em `x` vai na faixa.
     fn strip_slot(&self, x: f32) -> usize {
         let n = self.authored_frames().len();
-        let thumb = ROW_H_PX * THUMB_ROWS + ph2d_tokens::control_gap_px();
-        let i = ((x - self.layout.strip.x + self.strip_scroll) / thumb).floor();
+        let pitch = self.layout.strip_pitch();
+        if pitch <= 0.0 {
+            return 0;
+        }
+        let i = ((x - self.layout.strip.x + self.strip_scroll) / pitch).floor();
         (i.max(0.0) as usize).min(n.saturating_sub(1))
     }
 
@@ -494,12 +370,13 @@ impl AnimDoc {
                 to: i,
             };
         } else if let Some(cell) = self.cell_at(x, y)
-            && self.row().is_some() {
-                self.drag = Drag::Cells {
-                    base: self.click_base(),
-                    added: vec![cell],
-                };
-            }
+            && self.row().is_some()
+        {
+            self.drag = Drag::Cells {
+                base: self.click_base(),
+                added: vec![cell],
+            };
+        }
         true
     }
 

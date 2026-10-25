@@ -10,13 +10,12 @@
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Resource;
-use ph2d_anim::RationalTime;
 use ph2d_ecs::canal_constraint::chave;
 use ph2d_ecs::{SimWorld, Transform};
 use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
-use ph2d_timeline::{
-    AnimValue, Instante, Interp, PropKind, TimelineDoc, TimelineIntent, TimelineState,
-};
+use ph2d_timeline::{Instante, Interp, PropKind, TimelineDoc};
+
+use crate::chaves::Escrita;
 
 /// Um item que passou de inerte a activo ou o contrário, à espera das chaves do quadro.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -35,7 +34,8 @@ pub struct Pega {
 #[derive(Resource, Clone, Debug, Default, PartialEq)]
 pub struct Pegas(pub Vec<Pega>);
 
-const POSE: [PropKind; 5] = [
+/// Os cinco canais da pose, na ordem do `Transform`.
+pub(crate) const POSE: [PropKind; 5] = [
     PropKind::TranslationX,
     PropKind::TranslationY,
     PropKind::Rotation,
@@ -43,7 +43,8 @@ const POSE: [PropKind; 5] = [
     PropKind::ScaleY,
 ];
 
-fn da_pose(t: &Transform, p: PropKind) -> f32 {
+/// O valor de `p` na pose `t`.
+pub(crate) fn da_pose(t: &Transform, p: PropKind) -> f32 {
     match p {
         PropKind::TranslationX => t.translation.x,
         PropKind::TranslationY => t.translation.y,
@@ -53,73 +54,60 @@ fn da_pose(t: &Transform, p: PropKind) -> f32 {
     }
 }
 
-/// A chave de `p` no instante `t` (relógio da vista): o tempo e o valor pelas portas do Auto Key
-/// (`remapped_time`/`key_home`, `key_value_in_active_clip`). `None` = o clip recusa.
-fn chave_em(
-    doc: &TimelineDoc,
-    e: u64,
-    p: PropKind,
-    t: f64,
-    solo: bool,
-    valor: f32,
-    interp: Interp,
-) -> Option<TimelineIntent> {
-    let fonte = ph2d_timeline::remapped_time(doc, e, t);
-    let casa = if solo {
-        fonte
-    } else {
-        ph2d_timeline::key_home(doc, e, t).ok()?
-    };
-    let value = if solo {
-        valor
-    } else {
-        ph2d_timeline::key_value_in_active_clip(doc, e, p, valor, fonte).ok()?
-    };
-    Some(TimelineIntent::AddKey {
-        entity: e,
-        prop: p,
-        t: ph2d_timeline::snap_time(RationalTime::from_seconds(casa), doc.fps_display, true),
-        value: AnimValue::Float(value),
-        interp,
-    })
-}
-
 /// O que a cena mostrava em `t`: a curva, se há; senão `sem_curva`.
 fn visto(doc: &TimelineDoc, e: u64, p: PropKind, t: f64, solo: bool, sem_curva: f32) -> f32 {
     let fonte = ph2d_timeline::remapped_time(doc, e, t);
     ph2d_timeline::curve_seen(doc, e, p, fonte, solo).unwrap_or(sem_curva)
 }
 
-/// ⭐ **As chaves dos gestos do quadro.** Drena sempre [`Pegas`]; só devolve chaves com o Auto Key
-/// armado (`painel` da timeline aberto e a flag, como o `autokey_pass`). `interp` = a da chave nova
-/// da casa (a de f); a de f−1 é um degrau ([`Interp::Hold`]). Chamar no mesmo quadro do commit do
-/// cartão, antes de a pilha voltar a correr: o `preview` ainda sabe a pose autorada de quem a pilha
-/// conduzia, e o `Transform` vivo é a pose que se vê.
+/// ⭐ **As chaves dos gestos do quadro.** Drena sempre [`Pegas`]; só as devolve `armado` (o Auto
+/// Key). `interp` = a da chave nova da casa (a de f); a de f−1 é um degrau ([`Interp::Hold`]). Ler
+/// ANTES de o Auto Key gravar f (senão f−1 lê a chave nova — medido no app) e antes de a pilha voltar
+/// a correr: o `preview` ainda sabe a pose autorada de quem a pilha conduzia, e o `Transform` vivo é
+/// a pose que se vê.
 #[must_use]
 pub fn compensar(
-    tl: &TimelineState,
-    painel: bool,
+    doc: &TimelineDoc,
     sim: &mut SimWorld,
     preview: &PreviewDrive,
     inst: Instante,
+    armado: bool,
     interp: Interp,
-) -> Vec<TimelineIntent> {
+) -> Vec<Escrita> {
     let pegas = sim
         .world_mut()
         .remove_resource::<Pegas>()
         .unwrap_or_default();
-    let doc = &tl.doc;
-    if !(painel && tl.flags.auto_key) || !(doc.fps_display > 0.0) {
+    if !armado || !(doc.fps_display > 0.0) {
         return Vec::new();
     }
     let (f, solo) = (inst.t_cut, inst.solo);
     let antes = f - 1.0 / doc.fps_display;
     let mut out = Vec::new();
+    let mut par = |e, p, v_antes, v| {
+        out.push(Escrita::Chave {
+            e,
+            p,
+            t: antes,
+            v: v_antes,
+            interp: Interp::Hold,
+        });
+        out.push(Escrita::Chave {
+            e,
+            p,
+            t: f,
+            v,
+            interp,
+        });
+    };
     for g in pegas.0 {
         let p = PropKind::Field(chave(g.campo, g.item));
-        let v = visto(doc, g.dono, p, antes, solo, g.antes);
-        out.extend(chave_em(doc, g.dono, p, antes, solo, v, Interp::Hold));
-        out.extend(chave_em(doc, g.dono, p, f, solo, g.depois, interp));
+        par(
+            g.dono,
+            p,
+            visto(doc, g.dono, p, antes, solo, g.antes),
+            g.depois,
+        );
         if !g.larga_pose {
             continue;
         }
@@ -134,16 +122,7 @@ pub fn compensar(
         };
         for p in POSE {
             let v = visto(doc, g.dono, p, antes, solo, da_pose(&autorada, p));
-            out.extend(chave_em(doc, g.dono, p, antes, solo, v, Interp::Hold));
-            out.extend(chave_em(
-                doc,
-                g.dono,
-                p,
-                f,
-                solo,
-                da_pose(&vista, p),
-                interp,
-            ));
+            par(g.dono, p, v, da_pose(&vista, p));
         }
     }
     out

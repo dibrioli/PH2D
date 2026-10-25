@@ -144,4 +144,7 @@ pub enum ConstraintFieldEdit {
     Campo(u32, u16, f32),
     /// Zera o desvio: o dono cola-se ao alvo.
     ZerarDesvio(u32),
+    /// Coze a pilha INTEIRA do dono no intervalo do transporte (o loop armado, senão a timeline): a
+    /// pose vira chaves e a força de todo item fica 0 lá dentro.
+    Cozer,
 }

@@ -214,7 +214,7 @@ pub const QUADRO_LARGA: i64 = 48;
 pub const ESPADA_NO_CHAO: [f32; 2] = [-1.0, -1.25];
 
 /// Cena 1 — **Mão e espada.** A espada tem um Child Of na mão a força 0; abre escolhida. A curva da
-/// mão é da timeline: a cena conduzida ([`crate::cena_pega`]) grava-a.
+/// mão é da timeline: a cena conduzida ([`crate::smoke_pega`]) grava-a.
 fn mao_e_espada(world: &mut World) -> Entity {
     let _ = peca(
         world,

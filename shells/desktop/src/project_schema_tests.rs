@@ -325,7 +325,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `+1`, espelhos `0`); `196`…`193` lêem-se com o tipo vivo. A tripla NÃO vê este degrau.
         // ⚠️ **`198` em 2026-10-27** (`line/GameEngineFuncional`, plano 17) — o FORMATO DO JOGO: `jogo: Vec<u8>`
         // no fim do `ProjectFile`, ZERO componentes registados. A tripla NÃO vê este degrau.
-        (198, 13, 23),
+        // ⚠️ **`199` em 2026-10-25** (`line/BlenderConstraints`, W1) — a pilha de CONSTRAINTS:
+        // `Constraints` REGISTADO, o `198` lê-se com o tipo vivo. A tripla NÃO vê este degrau.
+        (199, 13, 23),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -77,6 +77,8 @@ pub(crate) fn apply_constraint_event(
                 E::EscolherAlvo(r)
             } else if let Some(r) = item(&info, &ids::INSP_CONSTRAINT_ZERAR, id) {
                 E::ZerarDesvio(r)
+            } else if id == ids::INSP_CONSTRAINT_BAKE && !info.rows.is_empty() {
+                E::Cozer
             } else if let Some(e) = opcao(&info, id) {
                 e
             } else {

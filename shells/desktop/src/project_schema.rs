@@ -533,7 +533,15 @@
 /// `project_jogo_tests`. Registos de componentes: `0`.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 198;
+///
+/// # `198 → 199` — **a pilha de CONSTRAINTS** (`line/BlenderConstraints`, W1, ADR-0192, 2026-10-25)
+///
+/// `Constraints` REGISTADO (`ph2d-constraints-ecs`, ECS e espelhos `0`): um binário v198 descartaria a
+/// pilha. A forma do `ProjectFile` não muda: o `198` lê-se com o tipo vivo. A tripla NÃO vê este degrau.
+pub(crate) const PROJECT_SCHEMA: u32 = 199;
+
+/// O último degrau sem a pilha de constraints (a mesma forma de ficheiro).
+pub(crate) const PROJECT_SCHEMA_SEM_CONSTRAINTS: u32 = 198;
 
 /// O último degrau sem o formato do jogo — o campo `jogo` falta no fim.
 pub(crate) const PROJECT_SCHEMA_SEM_FORMATO_DO_JOGO: u32 = 197;

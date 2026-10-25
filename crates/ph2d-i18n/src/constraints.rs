@@ -14,6 +14,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.constraint.limit_rotation" => "Limit Rotation",
         "panel.inspector.constraint.limit_distance" => "Limit Distance",
         "panel.inspector.constraint.add" => "Add Constraint",
+        "panel.inspector.constraint.bake" => "Bake",
         "panel.inspector.constraint.target" => "Target",
         "panel.inspector.constraint.no_target" => "None",
         "panel.inspector.constraint.pick" => "Pick",

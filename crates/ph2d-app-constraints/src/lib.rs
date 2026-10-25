@@ -3,14 +3,16 @@
 //! [`docs/BlenderConstraints/01_plano.md`](https://github.com/dibrioli/PH2D/blob/main/docs/BlenderConstraints/01_plano.md)
 //! §2.1). A shell chama [`quadro`] uma vez por quadro, entre o apply da timeline e o esqueleto.
 
+pub mod bake;
 pub mod campos;
 pub mod canais;
-pub mod cena_pega;
+pub mod chaves;
 pub mod compensa;
 pub mod gizmo;
 pub mod inspector;
 pub mod marcas;
 pub mod smoke;
+pub mod smoke_pega;
 
 use bevy_ecs::prelude::Resource;
 use ph2d_ecs::SimWorld;

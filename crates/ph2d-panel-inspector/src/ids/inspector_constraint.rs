@@ -11,6 +11,9 @@ use ph2d_tool_registry::hash_node_id;
 /// O botão «Add Constraint» — abre e fecha a lista dos tipos.
 pub const INSP_CONSTRAINT_ADD: NodeId = hash_node_id("insp_constraint_add");
 
+/// O botão «Bake» — coze a pilha inteira do objecto no intervalo do transporte.
+pub const INSP_CONSTRAINT_BAKE: NodeId = hash_node_id("insp_constraint_bake");
+
 /// Os botões dos tipos na lista do «Add Constraint» — a posição é o índice em `TIPOS`.
 pub const INSP_CONSTRAINT_TIPO: [NodeId; TIPOS.len()] = [
     hash_node_id("insp_constraint_tipo_0"),

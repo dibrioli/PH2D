@@ -60,13 +60,13 @@ impl crate::App {
                 .author_cut(solo, self.timeline.container_open, t_raw),
             solo,
         };
-        // Pegar/largar no cartão das constraints: as chaves de f−1 e f (`compensa`), lida a curva
-        // ANTES de o Auto Key gravar f — senão f−1 lê a chave nova.
-        let painel = hero.is_panel_visible("timeline");
-        let (pd, ak) = (&self.preview_drive, timeline_bridge::default_interp());
-        let novas =
-            ph2d_app_constraints::compensa::compensar(&self.timeline, painel, sim, pd, inst, ak);
-        self.timeline_intents.extend(novas);
+        // As chaves do cartão das constraints (pegar/largar, Bake) — ANTES do Auto Key (`chaves`).
+        let (pd, ph) = (&self.preview_drive, &self.playhead);
+        let (painel, ak) = (
+            hero.is_panel_visible("timeline"),
+            timeline_bridge::default_interp(),
+        );
+        ph2d_app_constraints::chaves::do_quadro(&mut self.timeline, sim, pd, ph, inst, painel, ak);
         autokey_pass::run(
             &mut self.timeline,
             autokey_clock,

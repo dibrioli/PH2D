@@ -330,3 +330,24 @@ fn os_numeros_obedecem_a_px_metros_e_graus_radianos_do_projecto() {
         "{e:?}"
     );
 }
+
+/// ⭐ «Bake» pede `Cozer` (a pilha inteira do objecto); sem itens o botão não existe — cozer uma pilha
+/// vazia seria um controlo morto.
+#[test]
+fn o_bake_pede_cozer_e_so_existe_com_itens() {
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_constraints(Some(pilha()));
+    pinta(&mut host, &mut state);
+    assert_eq!(
+        clica_em(&mut host, &mut state, ids::INSP_CONSTRAINT_BAKE),
+        vec![E::Cozer]
+    );
+    let mut vazia = pilha();
+    vazia.rows.clear();
+    set_current_inspector_constraints(Some(vazia));
+    let rects = pinta(&mut host, &mut state);
+    set_current_inspector_constraints(None);
+    assert!(rect_de(&rects, ids::INSP_CONSTRAINT_BAKE).is_none());
+    assert!(rect_de(&rects, ids::INSP_CONSTRAINT_ADD).is_some());
+}

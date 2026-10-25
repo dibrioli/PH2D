@@ -142,6 +142,13 @@ pub fn apply_all(sim: &mut SimWorld, edits: &[(u64, E)]) -> bool {
 
 fn aplicar(sim: &mut SimWorld, e: Entity, edit: E) -> bool {
     let bits = e.to_bits();
+    if edit == E::Cozer {
+        sim.world_mut()
+            .get_resource_or_insert_with(crate::bake::Cozer::default)
+            .0
+            .push(bits);
+        return false;
+    }
     if let E::EscolherAlvo(id) = edit {
         let ja = sim.world().get_resource::<AlvoArmado>().and_then(|a| a.0);
         armar(sim, (ja != Some((bits, id))).then_some((bits, id)));
@@ -208,7 +215,8 @@ fn aplicar(sim: &mut SimWorld, e: Entity, edit: E) -> bool {
         | E::EscolherAlvo(_)
         | E::Adicionar(_)
         | E::Campo(..)
-        | E::ZerarDesvio(_) => return false,
+        | E::ZerarDesvio(_)
+        | E::Cozer => return false,
     }
     true
 }

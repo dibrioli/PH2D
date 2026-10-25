@@ -362,7 +362,8 @@ fn item(
     cur_y + ph2d_tokens::control_gap_px()
 }
 
-/// O «Add Constraint» e, aberta, a lista dos tipos. Cheio, a frase do tecto em vez do botão.
+/// O «Bake» (com itens) e o «Add Constraint» e, aberta, a lista dos tipos. Cheio, a frase do tecto
+/// em vez do «Add».
 #[allow(clippy::too_many_arguments)]
 fn acrescentar(
     scene: &mut VectorScene,
@@ -374,6 +375,22 @@ fn acrescentar(
     i: &InspectorConstraintsInfo,
     aberta: bool,
 ) -> f32 {
+    let mut y = y;
+    if !i.rows.is_empty() {
+        let id = ids::INSP_CONSTRAINT_BAKE;
+        let rotulo = tr("panel.inspector.constraint.bake");
+        let caixa = caixa_do_botao(text_system, x, w, y, rotulo);
+        hit_index.register(id, caixa);
+        let botao = Button::new(id, rotulo).kind(ButtonKind::Default);
+        paint_button(
+            &botao.visual(store.button_visual(id)),
+            caixa,
+            scene,
+            text_system,
+            theme,
+        );
+        y = abaixo_do_botao(caixa);
+    }
     if i.rows.len() >= ids::INSP_CONSTRAINT_FORCA.len() {
         return super::rows::aviso(
             scene,

@@ -34,6 +34,8 @@ mod apply_prop;
 mod apply_views;
 pub mod autokey;
 mod autokey_campos;
+mod bake_range;
+pub use bake_range::{DEFAULT_BAKE_SECONDS, bake_range};
 pub use autokey_campos::autokey_campos;
 pub mod binding;
 mod channel_group;

@@ -27,6 +27,21 @@ impl Driven {
         }
     }
 
+    /// A pose que o facto guarda, quando o motor escreve o `Transform`.
+    #[must_use]
+    pub fn pose(self) -> Option<Transform> {
+        match self {
+            Self::SolverPose(t)
+            | Self::StagePose(t)
+            | Self::ScriptPose(t)
+            | Self::CanvasPose(t)
+            | Self::ParallaxPose(t)
+            | Self::TweenPose(t)
+            | Self::ConstraintPose(t) => Some(t),
+            _ => None,
+        }
+    }
+
     /// Lê do mundo o facto que `driver` conduz em `entity`. `None` = a entidade não o tem (foi
     /// despawnada por um restore, ou nunca teve o componente).
     #[must_use]

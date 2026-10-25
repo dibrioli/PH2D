@@ -290,6 +290,10 @@ impl PreviewDrive {
     /// uma condução que já acabou, e é a `settle` que precisa de a ver morrer.
     pub fn driven(&mut self, entity: Entity, before: Driven, after: Driven) {
         let key = (entity.to_bits(), after.driver());
+        let camada = self
+            .memo
+            .get(&key)
+            .is_some_and(|e| self.por_cima_de(key, e.last_written, before));
         match self.memo.get_mut(&key) {
             None => {
                 self.memo.insert(
@@ -306,7 +310,7 @@ impl PreviewDrive {
                 // que ele deixou ⇒ alguém autorou por cima, e o documento passa a ser essa mão.
                 // Sem esta linha, editar a pose de um corpo a meio de uma corrida (ou o `frame`
                 // por um caminho que não pause) ficaria para sempre por baixo do memo do início.
-                if e.last_written != before {
+                if e.last_written != before && !camada {
                     e.authored = before;
                 }
                 e.last_written = after;
@@ -339,6 +343,46 @@ impl PreviewDrive {
     ///
     /// ⛔ **Ela NUNCA cria uma entrada.** Sem entrada não há condução a manter: o motor está a
     /// escrever exactamente o que o documento já diz, e não há nada para devolver.
+    // ⚠️ As duas travessias por entidade partem de `Driver::SpriteAnim`, a PRIMEIRA variante (a
+    // ordem do enum é a do `BTreeMap`): um motor novo vai ao fim do enum.
+
+    /// Outro motor da mesma entidade, POSTO POR CIMA deste (o autorado dele é o que este escreveu),
+    /// é quem escreveu `before`: não é uma mão a autorar, é a camada de cima do mesmo quadro.
+    fn por_cima_de(&self, key: (u64, Driver), meu: Driven, before: Driven) -> bool {
+        let (Some(meu), Some(visto)) = (meu.pose(), before.pose()) else {
+            return false;
+        };
+        self.memo
+            .range((key.0, Driver::SpriteAnim)..)
+            .take_while(|(k, _)| k.0 == key.0)
+            .any(|(k, o)| {
+                *k != key && o.last_written.pose() == Some(visto) && o.authored.pose() == Some(meu)
+            })
+    }
+
+    /// Quantas camadas da mesma entidade estão por baixo desta (o autorado de cada uma é o que a de
+    /// baixo escreveu).
+    fn altura(&self, key: (u64, Driver)) -> usize {
+        let mut h = 0;
+        let mut cur = key;
+        while h < self.memo.len() {
+            let Some(autorado) = self.memo.get(&cur).and_then(|e| e.authored.pose()) else {
+                break;
+            };
+            let Some((k, _)) = self
+                .memo
+                .range((key.0, Driver::SpriteAnim)..)
+                .take_while(|(k, _)| k.0 == key.0)
+                .find(|(k, o)| **k != cur && o.last_written.pose() == Some(autorado))
+            else {
+                break;
+            };
+            h += 1;
+            cur = *k;
+        }
+        h
+    }
+
     pub fn still_driving(&mut self, entity: Entity, driver: Driver) -> bool {
         match self.memo.get_mut(&(entity.to_bits(), driver)) {
             Some(e) => {
@@ -455,13 +499,19 @@ impl PreviewDrive {
             return Vec::new(); // o caso normal: nem uma varredura
         }
         let mut live = Vec::with_capacity(self.memo.len());
-        for (&(bits, driver), entry) in &self.memo {
-            let entity = Entity::from_bits(bits);
-            let Some(now) = Driven::read(driver, sim, entity) else {
+        for &(bits, driver) in self.memo.keys() {
+            let Some(now) = Driven::read(driver, sim, Entity::from_bits(bits)) else {
                 continue; // a entidade morreu debaixo do memo; a `settle` limpa-o a seguir
             };
             live.push(((bits, driver), now));
-            entry.authored.write(sim, entity);
+        }
+        // Duas camadas na mesma entidade: a de cima primeiro, e a de baixo (o autorado) fica.
+        let mut ordem: Vec<(u64, Driver)> = live.iter().map(|(k, _)| *k).collect();
+        ordem.sort_by_key(|k| (k.0, std::cmp::Reverse(self.altura(*k))));
+        for (bits, driver) in ordem {
+            self.memo[&(bits, driver)]
+                .authored
+                .write(sim, Entity::from_bits(bits));
         }
         live
     }
@@ -509,6 +559,10 @@ pub use fields::{FieldDrive, FieldRef};
 /// ⭐ Os componentes inteiros conduzidos — irmão por LOC e por chave (macros W19 §2.4).
 pub mod blobs;
 pub use blobs::{BlobDrive, BlobRef};
+
+#[cfg(test)]
+#[path = "camadas_tests.rs"]
+mod camadas_tests;
 
 // ⚠️ **Os gates desta lei NÃO vivem aqui, e a ausência é a decisão** (HOWTO §1.2): cada um deles
 // passa pela `ProjectState::capture` e pelo `tick_sprite_animations` da shell — eles medem *a

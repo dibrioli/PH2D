@@ -497,10 +497,24 @@ pub fn advance(
     cells: u32,
     dt_ticks: u64,
 ) -> AnimOutcome {
-    let mut out = AnimOutcome::default();
     let Some((lo, hi)) = tag.resolve(cells) else {
-        return out;
+        return AnimOutcome::default();
     };
+    advance_span(animator, tag, frame, lo, hi, dt_ticks)
+}
+
+/// [`advance`] sobre um curso `lo..=hi` já resolvido. A lista de quadros
+/// ([`crate::SpriteAnimFrames`]) chama-a com o PASSO (`0..n`) no lugar da célula: o `per_frame_ms`
+/// indexa-se por `frame - lo`, que nos dois casos é o passo.
+pub(crate) fn advance_span(
+    animator: &mut SpriteAnimator,
+    tag: &AnimationTag,
+    frame: &mut u32,
+    lo: u32,
+    hi: u32,
+    dt_ticks: u64,
+) -> AnimOutcome {
+    let mut out = AnimOutcome::default();
     // Um `frame` fora do intervalo é o estado normal ao trocar de tag: entra pela ponta certa.
     if *frame < lo || *frame > hi {
         *frame = if animator.pingpong_reverse { hi } else { lo };

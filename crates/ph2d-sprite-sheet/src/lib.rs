@@ -47,10 +47,13 @@ pub mod aseprite;
 pub mod codec;
 /// Compor a folha em retângulos DADOS — a metade que o bake precisa. Irmão do [`pack`].
 pub mod compose;
+/// Propor colunas × linhas de uma folha pela transparência entre figuras (plano GameEngineFuncional 07).
+pub mod grid_guess;
 pub mod pack;
 pub use aseprite::to_aseprite_json;
 pub use codec::{SheetDocError, decode, encode};
 pub use compose::compose;
+pub use grid_guess::{GridGuess, guess_grid};
 pub use pack::{Layout, LayoutItem, PackError, PackInput, PackOptions, layout, pack};
 
 use ph2d_asset::AssetId;

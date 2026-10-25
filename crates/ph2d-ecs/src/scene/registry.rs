@@ -553,6 +553,10 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // isso que faz o replay reproduzir a mesma animacao -- a razao de ele ser SimComponent.
     reg.register_default::<crate::SpriteAnimations>("ph2d::ecs::SpriteAnimations");
     reg.register_default::<crate::SpriteAnimator>("ph2d::ecs::SpriteAnimator");
+    // A LISTA de quadros (a ordem clicada no editor de animações) e o passo dela no ecrã. Irmãos, e não
+    // campos, pelo postcard posicional: ficheiro antigo não tem o blob e toca o intervalo de sempre.
+    reg.register_default::<crate::SpriteAnimFrames>("ph2d::ecs::SpriteAnimFrames");
+    reg.register_default::<crate::SpriteAnimCursor>("ph2d::ecs::SpriteAnimCursor");
     // ⭐⭐⭐ O TIMER (TOP-20 #2, 2026-09-08) -- os timers nomeados de uma entidade. Sem o registro,
     // o artista autora uma duracao, um nome de sinal e o autostart, grava o projeto, reabre, e o
     // objecto volta MUDO: nada some da tela, nada da erro, e o jogo simplesmente deixa de

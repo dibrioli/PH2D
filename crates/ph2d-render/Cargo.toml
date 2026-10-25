@@ -80,6 +80,9 @@ postcard = { version = "=1.1.3", features = ["alloc"] }
 rect_packer = "0.2"
 
 [dev-dependencies]
+# A grelha proposta da folha do herói (plano GameEngineFuncional 07): o gate mede a lei CANÓNICA
+# (`guess_grid`) sobre os píxeis de fábrica. Sem ciclo: ph2d-sprite-sheet não depende do render.
+ph2d-sprite-sheet = { path = "../ph2d-sprite-sheet" }
 # O gate do enquadramento (`camera_frame_tests.rs`, F8) LÊ as fixtures dos oráculos (tldraw e
 # Excalidraw, JSON em `docs/UI_New_and_Simple/vetor_nova_ui/oraculo_enquadrar/`). Já no lockfile.
 serde_json = "1"

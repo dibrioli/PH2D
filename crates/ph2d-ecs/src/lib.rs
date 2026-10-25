@@ -126,6 +126,7 @@ pub mod sort_key;
 pub mod sorting;
 /// **§11 Animation** — tags sobre a grelha que a sprite já tem, e o tocador. Módulo irmão.
 pub mod sprite_anim;
+pub mod sprite_anim_frames;
 /// **ADR-0164 F1 passo 6 / ADR-0166** — os três grupos que saíram do `Sprite`, cada um um
 /// componente que pode estar AUSENTE (é isso que os deixa fora do Inspector até o artista os
 /// pedir). Módulos irmãos, append-only.
@@ -254,6 +255,10 @@ pub use sprite_anim::{
     ANIM_NAME_MAX_BYTES, ANIM_TAGS_MAX, AnimDirection, AnimOutcome, AnimTagError, AnimationTag,
     AnimatorState, FRAME_MS_MAX, FRAME_MS_MIN, SPEED_MAX_Q16, SPEED_ONE_Q16, SpriteAnimations,
     SpriteAnimator, advance, animator_state, entry_frame, validate_tag_name,
+};
+pub use sprite_anim_frames::{
+    ANIM_FRAMES_MAX, SpriteAnimCursor, SpriteAnimFrames, TagFrames, advance_frames, fps_of_ms,
+    ms_of_fps, rename_tag, tag_cells,
 };
 pub use sprite_corner_tint::{BOTTOM_LEFT, BOTTOM_RIGHT, SpriteCornerTint, TOP_LEFT, TOP_RIGHT};
 pub use sprite_grid::SpriteGrid;

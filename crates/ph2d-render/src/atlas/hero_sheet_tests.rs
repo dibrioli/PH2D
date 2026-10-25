@@ -175,3 +175,19 @@ fn grava_a_folha_para_olhar() {
         std::fs::write(path, bytes).expect("grava");
     }
 }
+
+/// ⭐ Largar a folha do herói propõe 8 × 4 (plano GameEngineFuncional 07): as células estão juntas, e
+/// a proposta sai só da transparência à volta de cada pose.
+#[test]
+fn a_folha_do_heroi_propoe_a_sua_grelha() {
+    let (px, w) = sheet();
+    let alpha: Vec<u8> = px.iter().map(|p| p.a()).collect();
+    let h = (alpha.len() / w) as u32;
+    assert_eq!(
+        ph2d_sprite_sheet::guess_grid(&alpha, w as u32, h),
+        Some(ph2d_sprite_sheet::GridGuess {
+            cols: HERO_SHEET_COLS,
+            rows: HERO_SHEET_ROWS,
+        })
+    );
+}

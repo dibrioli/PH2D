@@ -53,3 +53,40 @@ nenhum liga estado do personagem → animação sozinho** (o nosso diferencial).
 
 Largar/escolher o herói · «Editar animações…» · criar uma animação clicando células · pô-la em «Correr» ·
 Play. Fotografar antes de mandar.
+
+## Medido (25/10, antes de desenhar)
+
+- **Os três nascem à mão, em três sítios:** «Sprite Sheet» = `ph2d-panel-inspector/src/sections/sprite_sheet.rs:46`
+  (chamado de `paint_frame_shared.rs:237`); «Animation» (§11) = `sections/anim.rs:329` + `anim_rows.rs`
+  (snapshot `shells/desktop/src/render_loop/inspector_anim.rs:123`, aplicação `:195`); «Auto Animate» =
+  `sections/player_anim.rs:65` dentro do Platform Player (snapshot e aplicação em
+  `ph2d-app-physics/src/inspector/player_anim.rs`). Nenhum é cartão genérico do catálogo.
+- **Não existe editor de animação** (nem grelha clicável, nem faixa de quadros, nem detecção de calhas).
+  Área própria = `DocumentSurface` (`ph2d-editor-core/src/doc_surface.rs`), o padrão do CodeEditor
+  (`init.rs:373`). Menu com lista viva = o `Dropdown` da Sequence (`event_sequence.rs`, `popovers.rs`).
+- ⛔ **Premissa derrubada — «o dado não muda»:** uma `AnimationTag` é um INTERVALO contínuo (`from..=to`) e o
+  tocador anda célula a célula (`sprite_anim.rs::advance`, um só chamador: `sprite_anim_tick.rs`). Clicar
+  células por ordem e arrastar para reordenar exige uma LISTA de quadros. O blob é postcard POSICIONAL ⇒ um
+  campo novo na tag subiria o `PROJECT_SCHEMA` e recusaria todo projeto gravado. ⇒ componente IRMÃO
+  (o precedente `VecPatternRotation`/`VecMorphMachine`): ausente = intervalo de sempre, ficheiro antigo
+  abre bit a bit igual.
+- ⛔ **Premissa derrubada — «a folha do herói tem calhas»:** as células da fábrica estão JUNTAS
+  (`fabrica.rs:120`). A detecção usa colunas/linhas transparentes ENTRE as figuras (o boneco ocupa o meio da
+  célula), não calhas desenhadas.
+
+## Desenho técnico
+
+1. **Dados (`ph2d-ecs`):** `SpriteAnimFrames` (por tag, pelo NOME: a lista de células na ordem tocada) e
+   `SpriteAnimCursor` (o PASSO da lista que está a tocar — uma lista pode repetir células, então o passo não se
+   deriva da célula). O motor passa a andar em PASSOS (`0..n`); um intervalo é a lista `lo..=hi` e o passo é
+   `frame - lo` — comportamento idêntico, guardado pelos testes de `sprite_anim_tests.rs`. `per_frame_ms`
+   já era indexado pelo passo.
+2. **«Quem escolhe» sem dado novo:** Eu = `SpriteAnimator.autoplay` ligado (toca a escolhida ao começar) ·
+   Script = autoplay desligado (o script escolhe) · O personagem = `CharacterAnimations` anexado (só se há
+   Platform Player). Ficheiros antigos caem num dos três sem migração.
+3. **Modo do ciclo:** Repete = `repeat None` + `Forward` · Uma vez = `repeat Some(1)` + `Forward` ·
+   Vai-e-volta = `PingPong` (uma só edição, um só passo de undo). Quadros/s = `1000 / frame_ms` (apresentação).
+4. **Renomear acompanha:** o renomear de uma tag reescreve o tocador, a lista de quadros e os quatro estados
+   do personagem no MESMO passo.
+5. **Detecção de grelha:** função pura sobre RGBA (`ph2d-sprite-sheet`): perfis de ocupação por coluna/linha,
+   o maior divisor cujas fronteiras caem todas em transparência e que não parte figura nenhuma. Gate: herói = 8×4.

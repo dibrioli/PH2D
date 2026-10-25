@@ -71,6 +71,8 @@ mod inspector_joint;
 pub use inspector_joint::*;
 mod inspector_player;
 pub use inspector_player::*;
+mod inspector_player_anim;
+pub use inspector_player_anim::*;
 mod inspector_sampling;
 pub use inspector_sampling::*;
 mod inspector_slice;

@@ -153,6 +153,7 @@ pub const PORTAS: &[(&str, Porta)] = &[
     ("ph2d::physics::AreaFormDrag", Gravado),
     ("ph2d::physics::AreaTorque", Gravado),
     ("ph2d::physics::Ccd", Gravado),
+    ("ph2d::physics::CharacterAnimations", Gravado),
     ("ph2d::physics::Collider", Gravado),
     ("ph2d::physics::Damage", Gravado),
     ("ph2d::physics::DampingOverride", Gravado),

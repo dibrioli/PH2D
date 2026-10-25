@@ -166,6 +166,11 @@ const POR_ID: &[(&str, Classe, &str)] = &[
         "a caixa diz se o marcador `PlayerSignals` EXISTE: estrutura, não valor (a lei do Mask2D)",
     ),
     (
+        "INSP_PLAYER_ANIM",
+        NaoAnimavel,
+        "o interruptor diz se o `CharacterAnimations` EXISTE: estrutura, não valor (a lei do Mask2D)",
+    ),
+    (
         "VECTOR_PENCIL_",
         NaoAnimavel,
         "ajuste da ferramenta Lápis (§8)",
@@ -474,6 +479,18 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
             "component.field.path_follow_fields.10",
         ],
         "o rótulo do catálogo vem da tabela da secção (F27 B2)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/player_anim.rs::state_row",
+        Canal,
+        &[
+            "component.field.character_animations.0",
+            "component.field.character_animations.1",
+            "component.field.character_animations.2",
+            "component.field.character_animations.3",
+        ],
+        "o rótulo do catálogo chega por argumento (os quatro estados do `CharacterAnimations`)",
     ),
     (
         "ph2d-panel-inspector",

@@ -48,6 +48,7 @@ pub(crate) fn player() -> InspectorPlayerInfo {
         // abrir a cena. Uma fixture que já emitisse deixaria o gate do opt-in
         // verde pelo motivo errado.
         emits_signals: false,
+        anim: None,
         live: None,
         reaction_is_live: true,
         push_is_live: true,

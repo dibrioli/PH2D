@@ -24,7 +24,7 @@ use std::fs;
 /// rows de ZONA (*o que esta ÁREA faz a outros corpos*) do resto (*o que ESTE corpo é*),
 /// e o gate nasceu VERMELHO nomeando os seis componentes de área — o corte moveu os
 /// escritores para fora da lista. Foi a falha ALTA que a lista existe para produzir.
-const WRITERS: [&str; 14] = [
+const WRITERS: [&str; 15] = [
     "../../crates/ph2d-app-physics/src/physics_apply.rs",
     "../../crates/ph2d-app-physics/src/physics_area.rs",
     // ⚠️ **O nono chegou pelo mesmo caminho do quarto** (W-Surface): o cap de
@@ -55,6 +55,8 @@ const WRITERS: [&str; 14] = [
     // rodava em toda cena de smoke (que constrói com código) e era inalcançável
     // no produto.
     "../../crates/ph2d-app-physics/src/inspector/player.rs",
+    // O bloco *Animations* da §14 (GameEngineFuncional N1) escreve o `CharacterAnimations`.
+    "../../crates/ph2d-app-physics/src/inspector/player_anim.rs",
     // ⚠️⚠️ **O décimo é o PRIMEIRO componente de física autorado a partir da SHELL**, e não da
     // família (TOP-20 #13, o `TopDownPlayer`). A razão é o dono do vocabulário: o mover de vista de
     // cima é do módulo COMPONENTES (a fila do TOP-20), e a secção dele do Inspector segue o molde

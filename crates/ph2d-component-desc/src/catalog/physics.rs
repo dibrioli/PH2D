@@ -193,6 +193,15 @@ pub const DESCS: &[D] = &[
     .coded("torque_zone")
     .row_of("ph2d::physics::Collider"),
     i("ph2d::physics::Ccd", "component.ccd.name").hidden(H::Presence),
+    // ⭐ **As animações por estado** (GameEngineFuncional N1) — o bloco *Animations* da §14: o
+    // interruptor dela anexa-o, nasce com o *Character* do menu Add, e a paleta não o oferece.
+    il(
+        "ph2d::physics::CharacterAnimations",
+        "component.character_animations.name",
+        CHARACTER_ANIMATIONS,
+    )
+    .coded("character_animations")
+    .row_of("ph2d::physics::PlatformPlayer"),
     // ⭐⭐ **A forma do corpo — e ela CHEGA COM ELE** (ordem do dono, 2026-09-14). Todas as opções
     // dela (forma, meias-extensões, offset, densidade, quique, atrito, camada, Solid|Sensor) são
     // rows da §11, que nasce com o `Physics Body`. A outra vida dela — *esta forma é mais uma peça

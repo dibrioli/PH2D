@@ -210,8 +210,8 @@ thread_local! {
 
     /// §14 Platform Player (W5). `Cell` e não `RefCell`: o info é `Copy` — ele
     /// carrega só números, nunca um nome.
-    pub(crate) static CURRENT_INSPECTOR_PLAYER: std::cell::Cell<Option<InspectorPlayerInfo>> =
-        const { std::cell::Cell::new(None) };
+    pub(crate) static CURRENT_INSPECTOR_PLAYER: std::cell::RefCell<Option<InspectorPlayerInfo>> =
+        const { std::cell::RefCell::new(None) };
 
     /// W3 §7: live ordering/sorting snapshot for the Ordering section.
     pub(crate) static CURRENT_INSPECTOR_ORDERING:
@@ -459,11 +459,11 @@ pub(crate) fn current_inspector_wheel() -> Option<InspectorWheelInfo> {
 }
 
 pub fn set_current_inspector_player(info: Option<InspectorPlayerInfo>) {
-    CURRENT_INSPECTOR_PLAYER.with(|c| c.set(info));
+    CURRENT_INSPECTOR_PLAYER.with(|c| *c.borrow_mut() = info);
 }
 
 pub(crate) fn current_inspector_player() -> Option<InspectorPlayerInfo> {
-    CURRENT_INSPECTOR_PLAYER.with(std::cell::Cell::get)
+    CURRENT_INSPECTOR_PLAYER.with(|c| c.borrow().clone())
 }
 
 pub fn set_current_inspector_physics(info: Option<InspectorPhysicsInfo>) {

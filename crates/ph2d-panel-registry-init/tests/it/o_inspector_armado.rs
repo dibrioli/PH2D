@@ -563,6 +563,7 @@ fn arma_a_fisica() {
             velocity: [1.0, 0.0],
         }),
         emits_signals: true,
+        anim: None,
     }));
 }
 

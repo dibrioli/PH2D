@@ -167,6 +167,16 @@ pub(super) const PLATFORM_PLAYER: &[FieldDesc] = &[
 ];
 
 /// **`PlayerMode`** — a linha «Body» da §14 (Dynamic · Kinematic · Pure): o valor inteiro.
+/// **`CharacterAnimations`** — que animação toca em cada estado do personagem (GameEngineFuncional N1).
+pub(super) const CHARACTER_ANIMATIONS: &[FieldDesc] = &[
+    f(0, "component.field.character_animations.0", K::Text).named("idle"),
+    f(1, "component.field.character_animations.1", K::Text).named("run"),
+    f(2, "component.field.character_animations.2", K::Text).named("jump"),
+    f(3, "component.field.character_animations.3", K::Text).named("fall"),
+    f(4, "component.field.character_animations.4", K::Scalar).named("run_from"),
+    f(5, "component.field.character_animations.5", K::Toggle).named("flip"),
+];
+
 pub(super) const PLAYER_MODE: &[FieldDesc] = &[f(0, "component.field.player_mode.0", K::Enum)
     .named_as("body", WHOLE)
     .viewed(crate::options![

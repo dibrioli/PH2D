@@ -14,7 +14,7 @@
 /// ⚠️ **E `None` para o que não é Dynamic**, por FÍSICA e não por gosto: a mola
 /// é um impulso, e um impulso não move massa infinita. Oferecer o botão num
 /// corpo Static seria oferecer um gesto que a ponte recusa em silêncio.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct InspectorPlayerInfo {
     pub entity_bits: u64,
     /// Esta entidade carrega `PlatformPlayer` agora?
@@ -251,6 +251,24 @@ pub struct InspectorPlayerInfo {
     /// cairia sobre waves que nada têm com esta. É o mesmo opt-in autorado do
     /// `SignalOnHit`.
     pub emits_signals: bool,
+
+    /// **As animações por estado** (`CharacterAnimations`, GameEngineFuncional N1) — `None` = o
+    /// player não as tem, e o bloco reduz-se ao interruptor que as liga.
+    pub anim: Option<InspectorCharacterAnimInfo>,
+}
+
+/// O que o bloco *Animations* da §14 mostra: o nome de cada estado e se ele existe.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InspectorCharacterAnimInfo {
+    /// Os nomes autorados, na ordem `idle · run · jump · fall` (o índice de [`PlayerFieldEdit::AnimNext`]).
+    pub names: [String; 4],
+    /// Cada nome está na lista de animações do objecto (ou do 1.º filho com animador)?
+    pub known: [bool; 4],
+    /// O objecto tem animações a escolher? Sem elas não há para onde trocar.
+    pub has_tags: bool,
+    /// m/s, relativos ao chão.
+    pub run_from: f32,
+    pub flip: bool,
 }
 
 /// **O readout VIVO de um player** — o que a lei publicou no último tique.
@@ -332,6 +350,17 @@ pub enum PlayerFieldEdit {
     /// **Troca o modo** (W-KinMove) — escreve o `PlayerMode` E o `RigidBody.kind`
     /// por UMA porta; ver `ids::INSP_PLAYER_MODE`.
     Mode(u8),
+
+    /// **Liga ou desliga as animações por estado** — anexa o `CharacterAnimations` de partida ou
+    /// remove-o (nunca um componente presente a dizer «desligado»).
+    AnimateByState(bool),
+    /// **O estado `i` (`idle · run · jump · fall`) passa à animação SEGUINTE da lista** do objecto —
+    /// o nome lê-se do mundo no braço que o honra, então a edição não carrega texto.
+    AnimNext(u8),
+    /// A partir de que velocidade andar é correr, m/s.
+    AnimRunFrom(f32),
+    /// Espelhar quando olha para a esquerda.
+    AnimFlip(bool),
 
     FloatHeight(f32),
     ClingDistance(f32),

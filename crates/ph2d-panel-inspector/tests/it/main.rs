@@ -70,6 +70,7 @@ mod seam_orphan_list;
 mod seam_path_follow;
 mod seam_physics;
 mod seam_player;
+mod seam_player_anim;
 mod seam_precision;
 mod seam_properties;
 mod seam_render_source;

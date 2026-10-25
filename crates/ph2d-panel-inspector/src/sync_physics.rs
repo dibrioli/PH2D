@@ -254,4 +254,8 @@ pub(crate) fn sync_player_fields(host: &mut dyn PanelHostInternal) {
     ] {
         host.store_mut().set_number_value(id, f64::from(v));
     }
+    if let Some(anim) = &info.anim {
+        host.store_mut()
+            .set_number_value(crate::ids::INSP_PLAYER_ANIM_RUN_FROM, f64::from(anim.run_from));
+    }
 }

@@ -111,6 +111,10 @@ pub(crate) const LEIS: &[(&str, Lei)] = &[
         Some(|w, e| em(w, e, ph2d_physics_ecs::PlatformPlayer::sanitize)),
     ),
     ("ph2d::physics::PlayerMode", None),
+    (
+        "ph2d::physics::CharacterAnimations",
+        Some(|w, e| em(w, e, sanitize_character_animations)),
+    ),
     // As linhas da §11 (o cartão do corpo): a lei mora com o tipo (`components/body_law.rs`).
     ("ph2d::physics::RigidBody", None),
     (
@@ -225,5 +229,20 @@ pub(crate) const LEIS: &[(&str, Lei)] = &[
 pub(crate) fn sanitize(canonical: &str, world: &mut World, entity: Entity) {
     if let Some((_, Some(lei))) = LEIS.iter().find(|(n, _)| *n == canonical) {
         lei(world, entity);
+    }
+}
+
+/// **A lei do `CharacterAnimations`** (GameEngineFuncional N1): o piso do limiar e o teto de bytes de
+/// cada nome — o campo é alcançável por um script e por um ficheiro, não só pelo cartão.
+pub(crate) fn sanitize_character_animations(a: &mut ph2d_physics_ecs::CharacterAnimations) {
+    a.run_from = if a.run_from.is_finite() { a.run_from.max(0.0) } else { 0.0 };
+    for s in [&mut a.idle, &mut a.run, &mut a.jump, &mut a.fall] {
+        if s.len() > ph2d_ecs::ANIM_NAME_MAX_BYTES {
+            let mut cut = ph2d_ecs::ANIM_NAME_MAX_BYTES;
+            while !s.is_char_boundary(cut) {
+                cut -= 1;
+            }
+            s.truncate(cut);
+        }
     }
 }

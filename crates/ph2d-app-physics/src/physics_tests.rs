@@ -36,6 +36,34 @@ pub(super) fn registry() -> ComponentRegistry {
     reg
 }
 
+/// **A bola que cai** do transporte (os gates do `dispatch` aqui e o do `ProjectState` na shell).
+pub const DT: f64 = 1.0 / 60.0;
+/// Two seconds of playback. Long enough that a fall is unmistakable and that a
+/// clock-bookkeeping bug would owe a visible pile of ticks.
+pub const FRAMES: u64 = 120;
+
+pub fn falling_scene() -> (SimWorld, Entity) {
+    let mut sim = SimWorld::new();
+    let ball = sim
+        .world_mut()
+        .spawn((
+            ph2d_physics_ecs::RigidBody {
+                kind: ph2d_physics_ecs::BodyKind::Dynamic,
+            },
+            ph2d_physics_ecs::Collider {
+                shape: ph2d_physics_ecs::ColliderShape::Ball { radius: 0.3 },
+                ..ph2d_physics_ecs::Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 4.0)),
+        ))
+        .id();
+    (sim, ball)
+}
+
+pub fn height(sim: &SimWorld, e: Entity) -> f32 {
+    sim.world().get::<Transform>(e).unwrap().translation.y
+}
+
 /// A sprite 2 m wide and 1 m tall, sitting in the air — deliberately NOT
 /// square, so a collider that ignores the art's bounds is visible in the
 /// numbers rather than hidden behind a lucky default.

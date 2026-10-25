@@ -80,8 +80,9 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 # arnês do §11 que se mudou para cá.
 #
 # ⛔ **Ela tem o TAMANHO do que ATRAVESSA, e nada mais:** o piloto abriu 16 itens
-# de uma vez e o compilador acusou — `1 de 16` era lido de fora. Aqui são **dois**
-# (`physics_tests::{apply, sprite_scene}`), contados nos chamadores.
+# de uma vez e o compilador acusou — `1 de 16` era lido de fora. Aqui são **seis**
+# (`physics_tests::{apply, sprite_scene}` e, desde 2026-10-25, a bola que cai do gate do
+# `ProjectState`: `{DT, FRAMES, falling_scene, height}`), contados nos chamadores.
 #
 # ⚠️ Ligada pela shell nas **dev-dependencies**: no `cargo build` do produto ela
 # fica desligada, e no `cargo test` fica ligada.

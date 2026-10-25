@@ -8,3 +8,7 @@
 /// mudança de nome que esta fase fez por colisão de PASTA e não de ficheiro:
 /// aqui já existia um módulo `bridge`, que é esta pasta.
 pub mod dispatch;
+
+/// Os gates do toggle de Physics do transporte, na porta que o quadro corre.
+#[cfg(test)]
+mod dispatch_tests;

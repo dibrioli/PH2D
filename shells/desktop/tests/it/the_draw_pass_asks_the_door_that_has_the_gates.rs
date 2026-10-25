@@ -76,7 +76,12 @@ fn the_sprite_extract_routes_every_skip_through_the_named_door() {
 /// família de defeito que esta wave curou.
 #[test]
 fn the_animation_tick_asks_whether_processing_is_paused() {
-    let s = src("render_loop/sprite_anim_tick.rs");
+    // O tique mudou-se da shell para a crate da família (GameEngineFuncional plano 07).
+    let s = fs::read_to_string(format!(
+        "{}/../../crates/ph2d-app-sprite-anim/src/tick.rs",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .expect("o tique da animação vive em ph2d-app-sprite-anim");
     assert!(
         s.contains("on_screen_gate::processing_paused("),
         "o tique da animacao deixou de perguntar pelo `OnScreenEnabler`: os modos `InheritPause` e \

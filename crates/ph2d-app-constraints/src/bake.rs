@@ -160,7 +160,7 @@ pub fn bake(
     let Some(itens) = sim.world().get::<Constraints>(e).map(|c| c.items.clone()) else {
         return Vec::new();
     };
-    if !(fps > 0.0) || !(t1 >= t0) {
+    if fps.is_nan() || fps <= 0.0 || t0.is_nan() || t1.is_nan() || t1 < t0 {
         return Vec::new();
     }
     #[expect(clippy::cast_possible_truncation, reason = "quadros de uma timeline")]

@@ -78,7 +78,7 @@ pub fn compensar(
         .world_mut()
         .remove_resource::<Pegas>()
         .unwrap_or_default();
-    if !armado || !(doc.fps_display > 0.0) {
+    if !armado || doc.fps_display.is_nan() || doc.fps_display <= 0.0 {
         return Vec::new();
     }
     let (f, solo) = (inst.t_cut, inst.solo);

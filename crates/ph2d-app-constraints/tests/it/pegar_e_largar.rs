@@ -134,6 +134,7 @@ fn picking_and_dropping_with_auto_key_never_jumps_and_keeps_the_past() {
     assert_eq!(c.chaves_da_forca(), 4, "f−1 e f ao pegar e ao largar");
     // A chave de f−1 é um DEGRAU: a meio de 23 e 24 a espada ainda está no chão.
     let meio = (QUADRO_PEGA as f64 - 0.5) / c.tl.doc.fps_display;
+    c.em_t(meio); // o canal da força chega um quadro depois de um salto de tempo
     assert!(
         longe(xy(&c.em_t(meio)), pega) < 1e-6,
         "a força já sobe antes do 24"

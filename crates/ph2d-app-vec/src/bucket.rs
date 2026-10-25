@@ -388,15 +388,27 @@ pub fn upkeep(
         .collect();
     let donos = crate::bucket_claim::donos(&rede, &faces, &tags, &receitas);
     let minhas = crate::bucket_claim::por_preenchimento(&faces, &donos, fills.len());
+    // ⛔ **Sem face E com uma borda que já não existe, a tinta é ÓRFÃ e sai** (report do dono 24/10:
+    // apagar a forma pintada deixava a tinta congelada, derivada e por isso inapagável). Uma borda
+    // que só mudou de forma continua a congelar (ela pode voltar); uma borda apagada não volta — o
+    // undo devolve a forma e a tinta juntas.
+    let mut orfaos: Vec<u64> = Vec::new();
     let novos: Vec<(u64, Forma)> = fills
         .iter()
         .enumerate()
-        .filter_map(|(k, (id, _, _))| {
+        .filter_map(|(k, (id, _, f))| {
             let meus = &minhas[k];
             let xfp = ph2d_vec_scene::xform_of(&xf, *id);
-            Some((*id, geometria_local(&rede, &faces, meus, &xfp)?))
+            let forma = geometria_local(&rede, &faces, meus, &xfp);
+            if forma.is_none() && f.ancoras.iter().any(|a| scene.path(a.path).is_none()) {
+                orfaos.push(*id);
+            }
+            Some((*id, forma?))
         })
         .collect();
+    for id in orfaos {
+        scene.remove_path(id);
+    }
     {
         for (id, (primeiro, subs)) in novos {
             if let Some(p) = scene.path_mut(id) {

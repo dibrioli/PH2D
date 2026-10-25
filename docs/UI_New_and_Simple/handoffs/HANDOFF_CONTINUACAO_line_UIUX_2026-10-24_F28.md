@@ -111,3 +111,22 @@ Dica: se a palavra aparecer cortada, alargue a coluna esquerda da linha do tempo
    `ph2d-panel-painter-layers`, gravidade do mundo, física a meio, IkBendSide, Rope Length, áudio do mixer.
 5. Próxima cena: `PH2D_AUTOKEY_SMOKE=35`.
 6. **NÃO integrar nem fazer push sem ordem do Enio.** Na integração reconta-se só o número da cena.
+
+## 7 — Report do dono depois do smoke (25/10): a tinta do balde órfã
+
+*«Se uso o balde de tinta para colocar cor numa forma, depois deleto a forma, fica um path no canvas que não aceita ser
+deletado.»* Smoke `=34`: **OK** (dono, 25/10).
+
+- **Mecanismo:** o balde insere um `VecPath` novo com `VecBucketFill` (sementes + âncoras de arco nas formas-fronteira,
+  sem dono), publicado como DERIVADO (`entities.rs` `view_state`) e por isso fora do `is_pickable`. Apagar a forma não
+  tem cascata (`remove_path`, `vec_delete_selected`); o `bucket::upkeep` não reencontra face e CONGELA a tinta (lei de
+  2026-09-02, para bordas que mudam de forma) — congelada e inseleccionável para sempre.
+- **Cura:** `bucket::upkeep` apaga a tinta que não ganha face E tem uma âncora num caminho que já não existe. A borda que só
+  mudou de forma continua a congelar; o undo devolve forma e tinta juntas (instantâneo da cena). Serve o Delete do canvas e
+  o da Hierarquia (o `sync` despawna a entidade a seguir).
+- **Gate:** `bucket_tests::apagar_a_forma_pintada_leva_a_tinta_do_balde` (com dois controlos: borda inteira fica; borda
+  aberta congela). Mutação (`remove_path` dos órfãos → no-op): **vermelho**; restaurado: verde. `bucket` 24/24 verdes,
+  clippy `ph2d-app-vec` verde.
+- **Smoke do dono:** (1) `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-UIUX && cargo run -p ph2d-host-desktop --profile smoke`
+  (2) desenhe um quadrado no Vetor, pegue o balde e clique dentro dele (3) seleccione o quadrado e apague-o (Delete): a cor
+  some junto (4) errado: fica uma mancha de cor que não se seleciona. Ctrl+Z traz o quadrado e a cor juntos.

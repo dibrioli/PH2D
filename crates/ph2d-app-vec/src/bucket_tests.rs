@@ -374,3 +374,62 @@ fn the_bucket_erases_its_own_paint_and_only_strips_the_shapes() {
     );
     assert!(!sobrevivente.verts.is_empty(), "e com a geometria intacta");
 }
+
+/// ⭐⭐⭐ **APAGAR A FORMA PINTADA LEVA A TINTA DO BALDE** (report do dono, 24/10): a tinta ficava
+/// congelada no canvas e, por ser derivada, ninguém a conseguia seleccionar nem apagar.
+///
+/// ⛔ Os dois controlos guardam a lei antiga: com a borda inteira a tinta fica; com a borda ABERTA
+/// (sem face, mas a borda existe) ela congela, porque pode voltar.
+///
+/// Mutação que deve sangrar: tirar o `scene.remove_path` dos órfãos no `upkeep`.
+#[test]
+fn apagar_a_forma_pintada_leva_a_tinta_do_balde() {
+    use ph2d_ecs::{FillAnchor, Name, SimWorld, Transform, VecBucketFill, VecPathRef};
+    let quadrado = || VecPath {
+        verts: vec![v(0.0, 0.0), v(10.0, 0.0), v(10.0, 10.0), v(0.0, 10.0)],
+        closed: true,
+        ..VecPath::default()
+    };
+    let cena = |borda: Option<bool>| {
+        let mut scene = VecScene::new();
+        let parede = scene.push_path(quadrado());
+        let tinta = scene.push_path(VecPath {
+            fill: Some(ph2d_vec_scene::Paint::solid(ph2d_vec_scene::Rgba8::new(
+                200, 30, 30, 255,
+            ))),
+            ..quadrado()
+        });
+        let mut sim = SimWorld::default();
+        let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
+        for id in [parede, tinta] {
+            let mut e =
+                sim.world_mut()
+                    .spawn((Transform::IDENTITY, Name::new("P"), VecPathRef(id)));
+            if id == tinta {
+                let ancora = FillAnchor {
+                    path: parede,
+                    contorno: 0,
+                    frac: 0.1,
+                    frente: true,
+                };
+                e.insert(VecBucketFill::new([5.0, 5.0], vec![ancora]));
+            }
+            map.insert(id, e.id().to_bits());
+        }
+        match borda {
+            None => {
+                scene.remove_path(parede);
+            }
+            Some(fechada) => scene.path_mut(parede).unwrap().closed = fechada,
+        }
+        let (mut cache, mut face) = (None, None);
+        upkeep(&sim, &mut scene, &map, false, &mut cache, &mut face);
+        scene.path(tinta).is_some()
+    };
+    assert!(!cena(None), "a forma saiu e a tinta dela ficou no canvas");
+    assert!(cena(Some(true)), "com a borda inteira a tinta tem de ficar");
+    assert!(
+        cena(Some(false)),
+        "a borda aberta ainda existe: a tinta congela, não sai"
+    );
+}

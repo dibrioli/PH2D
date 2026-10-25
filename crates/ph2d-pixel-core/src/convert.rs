@@ -37,11 +37,12 @@ impl Bayer {
     #[must_use]
     pub fn at(self, x: i32, y: i32) -> u32 {
         let n = self.side() as i32;
+        // O Aseprite lê a matriz TRANSPOSTA (`M[x][y]`; medido).
         let (i, j) = (x.rem_euclid(n) as usize, y.rem_euclid(n) as usize);
         match self {
-            Bayer::M2 => BAYER2[j * 2 + i],
-            Bayer::M4 => BAYER4[j * 4 + i],
-            Bayer::M8 => BAYER8[j * 8 + i],
+            Bayer::M2 => BAYER2[i * 2 + j],
+            Bayer::M4 => BAYER4[i * 4 + j],
+            Bayer::M8 => BAYER8[i * 8 + j],
         }
     }
 }
@@ -140,41 +141,47 @@ fn to_indexed(m: &mut Mapper, rgba: &[[u8; 4]], cel: &Cel, dither: Dither) -> Ve
     }
 }
 
-/// Erro de Floyd–Steinberg em inteiros (×16), propagado só a células opacas.
+/// Floyd–Steinberg do Aseprite (medido: 5 064 de 5 064 células iguais, `oracle_trial_dither.json`):
+/// SERPENTINA (linhas pares →, ímpares ←), `v = clamp(c + erro)`, a mais próxima `p`, e cada
+/// vizinho recebe `trunc((v − p)·peso / 16)` — 7 à frente, 3/5/1 na linha de baixo, espelhados
+/// nas linhas ímpares. O alfa 0 não recebe nem dá erro.
 fn floyd(m: &mut Mapper, rgba: &[[u8; 4]], w: usize) -> Vec<u8> {
+    let h = rgba.len() / w.max(1);
     let mut err = vec![[0i32; 3]; rgba.len()];
     let mut out = vec![0u8; rgba.len()];
-    for i in 0..rgba.len() {
-        let c = rgba[i];
-        if c[3] == 0 {
-            out[i] = m.index(c);
-            continue;
-        }
-        let mut want = c;
-        for k in 0..3 {
-            want[k] = (i32::from(c[k]) + err[i][k].div_euclid(16)).clamp(0, 255) as u8;
-        }
-        let idx = m.index(want);
-        out[i] = idx;
-        let got = m.palette[usize::from(idx)];
-        let e: [i32; 3] = std::array::from_fn(|k| i32::from(want[k]) - i32::from(got[k]));
-        let (x, last_row) = (i % w, i + w >= rgba.len());
-        let mut push = |j: usize, f: i32| {
+    for y in 0..h {
+        let fwd = y % 2 == 0;
+        for step in 0..w {
+            let x = if fwd { step } else { w - 1 - step };
+            let i = y * w + x;
+            let c = rgba[i];
+            if c[3] == 0 {
+                out[i] = m.index(c);
+                continue;
+            }
+            let mut v = c;
             for k in 0..3 {
-                err[j][k] += e[k] * f;
+                v[k] = (i32::from(c[k]) + err[i][k]).clamp(0, 255) as u8;
             }
-        };
-        if x + 1 < w {
-            push(i + 1, 7);
-        }
-        if !last_row {
-            if x > 0 {
-                push(i + w - 1, 3);
-            }
-            push(i + w, 5);
-            if x + 1 < w {
-                push(i + w + 1, 1);
-            }
+            let idx = m.index(v);
+            out[i] = idx;
+            let p = m.palette[usize::from(idx)];
+            let e: [i32; 3] = std::array::from_fn(|k| i32::from(v[k]) - i32::from(p[k]));
+            let dir: isize = if fwd { 1 } else { -1 };
+            let mut push = |dx: isize, dy: usize, f: i32| {
+                let nx = x as isize + dx;
+                if nx < 0 || nx >= w as isize || y + dy >= h {
+                    return;
+                }
+                let j = (y + dy) * w + nx as usize;
+                for k in 0..3 {
+                    err[j][k] += e[k] * f / 16;
+                }
+            };
+            push(dir, 0, 7);
+            push(-dir, 1, 3);
+            push(0, 1, 5);
+            push(dir, 1, 1);
         }
     }
     out
@@ -250,39 +257,71 @@ impl<'a> Mapper<'a> {
         i
     }
 
-    /// Ordenado: `c + (limiar/n² − ½)·S` por canal, `S = 255 / (cores − 1)` (o passo médio da
-    /// paleta), e a mais próxima.
-    fn ordered(&mut self, c: [u8; 4], b: Bayer, x: i32, y: i32) -> u8 {
+    /// O par do Aseprite (medido: toda célula dithered cai num dos dois): `a` = a mais próxima de
+    /// `c`, `b` = a mais próxima do ESPELHO `2c − a` (a cor do outro lado do erro).
+    fn pair(&mut self, c: [u8; 4]) -> (u8, u8) {
+        let a = self.index(c);
+        let pa = self.palette[usize::from(a)];
+        let mut m = c;
+        for k in 0..3 {
+            m[k] = (2 * i32::from(c[k]) - i32::from(pa[k])).clamp(0, 255) as u8;
+        }
+        (a, self.index(m))
+    }
+
+    /// Ordenado (aproximação MEDIDA: 92,5 / 86,6 / 84,2 % das células do Trial em 2/4/8;
+    /// `oracle_trial_dither.json`):
+    /// `b` nas células de limiar `t` com `t + 1,5 < n²·s`, `s` = a fracção de luminância de `a`
+    /// a `b` que `c` andou.
+    fn ordered(&mut self, c: [u8; 4], m: Bayer, x: i32, y: i32) -> u8 {
         if c[3] == 0 {
             return self.index(c);
         }
-        let n2 = (b.side() * b.side()) as i32;
-        let steps = (self.candidates.len() as i32 - 1).max(1);
-        // (2t + 1 − n²) / (2n²) · 255 / steps, em inteiros.
-        let t = b.at(x, y) as i32;
-        let off = ((2 * t + 1 - n2) * 255).div_euclid(2 * n2 * steps);
-        let mut d = c;
-        for k in 0..3 {
-            d[k] = (i32::from(c[k]) + off).clamp(0, 255) as u8;
+        let (a, b) = self.pair(c);
+        if a == b {
+            return a;
         }
-        self.index(d)
+        let l = |p: [u8; 4]| {
+            0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2])
+        };
+        let (la, lb) = (
+            l(self.palette[usize::from(a)]),
+            l(self.palette[usize::from(b)]),
+        );
+        if (lb - la).abs() < f64::EPSILON {
+            return a;
+        }
+        let s = ((l(c) - la) / (lb - la)).clamp(0.0, 1.0);
+        let n2 = (m.side() * m.side()) as f64;
+        if f64::from(m.at(x, y)) + 1.5 < n2 * s {
+            b
+        } else {
+            a
+        }
     }
 
-    /// «Old»: entre a mais próxima `a` e a segunda `b`, a matriz escolhe `b` na fração do caminho
-    /// que `c` andou de `a` para `b`.
+    /// «Old» (aproximação MEDIDA: 92,3 / 93,3 % em 4/8): `b` quando `t / n² < |c − a| / |b − a|`.
     fn old(&mut self, c: [u8; 4], m: Bayer, x: i32, y: i32) -> u8 {
         if c[3] == 0 {
             return self.index(c);
         }
-        let (a, b) = self.two_nearest(c);
+        if m == Bayer::M2 {
+            // Na 2×2 o «Old» segue a regra da luminância do ordenado (medido: 95,7 % contra 79,0 %).
+            return self.ordered(c, m, x, y);
+        }
+        let (a, b) = self.pair(c);
+        if a == b {
+            return a;
+        }
         let (pa, pb) = (self.palette[usize::from(a)], self.palette[usize::from(b)]);
-        let ab = Self::dist(pa, pb).max(1) as u64;
-        // Projecção de c−a sobre b−a, em fracção de |b−a|², × n².
-        let dot: i64 = (0..3)
-            .map(|k| (i64::from(c[k]) - i64::from(pa[k])) * (i64::from(pb[k]) - i64::from(pa[k])))
-            .sum();
-        let n2 = (m.side() * m.side()) as u64;
-        let frac = (dot.max(0) as u64 * n2 / ab).min(n2);
-        if u64::from(m.at(x, y)) < frac { b } else { a }
+        let d = |p: [u8; 4], q: [u8; 4]| {
+            f64::from(Self::dist([p[0], p[1], p[2], 0], [q[0], q[1], q[2], 0])).sqrt()
+        };
+        let n2 = (m.side() * m.side()) as f64;
+        if f64::from(m.at(x, y)) / n2 < d(c, pa) / d(pb, pa) {
+            b
+        } else {
+            a
+        }
     }
 }

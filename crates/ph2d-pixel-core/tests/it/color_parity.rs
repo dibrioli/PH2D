@@ -147,3 +147,102 @@ fn to_gray_matches_the_aseprite_trial_for_luminance_hsv_and_hsl() {
         }
     }
 }
+
+/// RGB → Indexed contra o Aseprite Trial OBSERVADO (`oracle_trial_dither.json`, mapeamento
+/// Octree + critério RGB = a cor mais próxima exata). Sem dither e Floyd–Steinberg: TODAS as
+/// células; ordenado e «old»: o piso medido do modelo (a lei exata do Aseprite não se ajustou).
+#[test]
+fn rgb_to_indexed_matches_the_aseprite_trial() {
+    use ph2d_pixel_core::convert::{Bayer, Convert, Dither, convert};
+    let f: Value =
+        serde_json::from_str(include_str!("../fixtures/oracle_trial_dither.json")).expect("json");
+    let mut per: std::collections::BTreeMap<String, (usize, usize)> = Default::default();
+    for c in list(&f, "cases", 60) {
+        if c["mapping"] != "default_octree" || c["best_fit"] != "rgb" {
+            continue;
+        }
+        let img = &f["inputs"][c["image"].as_str().expect("img")];
+        let (w, h) = (n(&img["w"]) as u32, n(&img["h"]) as u32);
+        let pal: Vec<[u8; 4]> = list(&f["palettes"], c["palette"].as_str().expect("p"), 2)
+            .iter()
+            .map(rgba)
+            .collect();
+        let mut s = Sprite::new(NewSprite {
+            width: w,
+            height: h,
+            mode: ColorMode::Rgba,
+            background: Background::Black,
+        })
+        .expect("sprite");
+        let (layer, frame) = (s.layers()[0].id, s.frames()[0].id);
+        let px: Vec<u8> = list(img, "rgb", 1).iter().flat_map(rgba).collect();
+        let r = Rect::new(0, 0, w, h);
+        apply(
+            &mut s,
+            Op::Patch(Patch {
+                layer,
+                frame,
+                bbox: Some(r),
+                rect: r,
+                pixels: px,
+            }),
+        )
+        .expect("patch");
+        apply(
+            &mut s,
+            Op::Palette {
+                colors: pal,
+                transparent: 0,
+            },
+        )
+        .expect("pal");
+        let d = c["dither"].as_str().expect("d");
+        let dither = match d {
+            "none" => Dither::None,
+            "floyd" => Dither::FloydSteinberg,
+            "ordered2" => Dither::Ordered(Bayer::M2),
+            "ordered4" => Dither::Ordered(Bayer::M4),
+            "ordered8" => Dither::Ordered(Bayer::M8),
+            "old2" => Dither::Old(Bayer::M2),
+            "old4" => Dither::Old(Bayer::M4),
+            "old8" => Dither::Old(Bayer::M8),
+            other => panic!("dither {other}"),
+        };
+        let wh = convert(
+            &s,
+            ColorMode::Indexed,
+            Convert {
+                dither,
+                ..Convert::default()
+            },
+        )
+        .expect("muda");
+        let got = &wh.cels.values().next().expect("cel").data;
+        let want: Vec<u8> = list(c, "indices", 1).iter().map(|v| n(v) as u8).collect();
+        let e = per.entry(d.to_owned()).or_default();
+        e.0 += got.iter().zip(&want).filter(|(a, b)| a == b).count();
+        e.1 += want.len();
+    }
+    let floor = |d: &str| match d {
+        "none" | "floyd" => 1.0,
+        "ordered2" => 0.925,
+        "ordered4" => 0.866,
+        "ordered8" => 0.841,
+        "old2" => 0.957,
+        "old4" => 0.923,
+        _ => 0.932,
+    };
+    let rate = |(ok, all): &(usize, usize)| *ok as f64 / *all as f64;
+    for (d, v) in &per {
+        eprintln!("{d}: {}/{} = {:.1} %", v.0, v.1, 100.0 * rate(v));
+    }
+    for (d, v) in &per {
+        assert!(
+            rate(v) >= floor(d),
+            "{d}: {:.3} abaixo do piso {}",
+            rate(v),
+            floor(d)
+        );
+    }
+    assert_eq!(per.len(), 8, "os 8 dithers do diálogo");
+}

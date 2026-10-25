@@ -90,3 +90,5 @@ Play. Fotografar antes de mandar.
    do personagem no MESMO passo.
 5. **Detecção de grelha:** função pura sobre RGBA (`ph2d-sprite-sheet`): perfis de ocupação por coluna/linha,
    o maior divisor cujas fronteiras caem todas em transparência e que não parte figura nenhuma. Gate: herói = 8×4.
+
+**Feito (25/10):** a onda inteira está na linha — ver [`HANDOFF_CONTINUACAO_2026-10-25_07_ANIMACAO.md`](handoffs/HANDOFF_CONTINUACAO_2026-10-25_07_ANIMACAO.md); smoke do dono por fazer.

@@ -5,40 +5,9 @@ use std::collections::BTreeMap;
 use ph2d_pixel_core::{FrameId, History, LayerId, NewSprite, Op, OpError, Sprite, Stroke};
 use ph2d_pixel_render::SpriteImage;
 
-/// A ferramenta na mão (Aseprite: `B`, `E`, `I`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Tool {
-    #[default]
-    Pencil,
-    Eraser,
-    Eyedropper,
-    /// A mão: arrastar move a vista (`Espaço` segurado faz o mesmo com qualquer ferramenta).
-    Hand,
-}
-
-impl Tool {
-    /// A chave i18n do nome.
-    #[must_use]
-    pub const fn label_key(self) -> &'static str {
-        match self {
-            Tool::Pencil => "pixel.tool.pencil",
-            Tool::Eraser => "pixel.tool.eraser",
-            Tool::Eyedropper => "pixel.tool.eyedropper",
-            Tool::Hand => "pixel.tool.hand",
-        }
-    }
-
-    /// O atalho por omissão (o do Aseprite).
-    #[must_use]
-    pub const fn shortcut(self) -> &'static str {
-        match self {
-            Tool::Pencil => "B",
-            Tool::Eraser => "E",
-            Tool::Eyedropper => "I",
-            Tool::Hand => "H",
-        }
-    }
-}
+/// A ferramenta na mão (Aseprite: `B`, `E`, `I`, `H`). O dono é o vocabulário do chrome (o painel
+/// PIXEL mostra-a sem ver a família); aqui é o mesmo tipo.
+pub use ph2d_editor_core::pixel_panel::PixelTool as Tool;
 
 /// Um documento de pixels e o que é dele: o desfazer, a camada/frame em edição e a imagem.
 pub struct Doc {
@@ -99,6 +68,10 @@ pub struct PixelApp {
     pub(crate) was_editing: Option<u64>,
     /// A cena de smoke armada por `PH2D_PIXEL_SMOKE`, encenada no primeiro quadro.
     pub(crate) smoke: Option<u32>,
+    /// Os pedidos do painel PIXEL deste quadro, aplicados no [`crate::panel::frame`].
+    pub(crate) pedidos: Vec<ph2d_editor_core::pixel_panel::PixelRequest>,
+    /// Havia sprite em Edit no quadro anterior (o painel abre/fecha no FLANCO).
+    pub(crate) painel_em_edicao: bool,
 }
 
 impl Default for PixelApp {
@@ -117,6 +90,8 @@ impl Default for PixelApp {
             wants_edit: None,
             was_editing: None,
             smoke: None,
+            pedidos: Vec::new(),
+            painel_em_edicao: false,
         }
     }
 }

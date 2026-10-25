@@ -270,6 +270,8 @@ mod fase_legacy_chrome;
 mod fase_live_offset_and_width;
 /// Fase do quadro: as macros (Gravar ▸ Parar, as etapas, o painel MACROS).
 mod fase_macros;
+/// Fase do quadro: o painel PIXEL (pedidos, abrir no Edit, instantâneo).
+mod fase_pixel_panel;
 /// Fase do quadro: o Motion: publicar, despachar e os sinais.
 mod fase_motion_bridge;
 /// Fase do quadro: os gizmos do Motion que leem o cozido (o colisor e o warp).

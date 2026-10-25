@@ -34,6 +34,9 @@ pub struct HitIndex {
     /// ⭐ **Os painéis cuja porta pinta notas NESTE quadro** — o botão direito só oferece «Create
     /// Note» onde ela vai aparecer. Ver [`HitIndex::mark_note_host`].
     anfitrioes: SmallVec<[NodeId; 16]>,
+    /// O botão direito de um widget com GÉMEO é um clique no gémeo. Ver
+    /// [`HitIndex::register_with_secondary`].
+    gemeos: SmallVec<[(NodeId, NodeId); 32]>,
 }
 
 impl HitIndex {
@@ -48,6 +51,7 @@ impl HitIndex {
         self.seccoes.clear();
         self.notas.clear();
         self.anfitrioes.clear();
+        self.gemeos.clear();
         // ⚠️ **Um recorte por fechar não pode atravessar o quadro.** Se um pintor entrar em
         // pânico ou sair por um caminho que salta o `pop_clip`, o quadro SEGUINTE herdaria a
         // janela e o painel inteiro ficaria mudo sob o rato — um defeito que se cura sozinho
@@ -100,6 +104,24 @@ impl HitIndex {
         };
         self.rects.push((section, visible));
         self.seccoes.push((section, None, visible));
+    }
+
+    /// Regista `id` como [`Self::register`] e declara que o BOTÃO DIREITO sobre ele é um `Click` em
+    /// `secondary` (a paleta do Pixel Art: esquerdo = cor de frente, direito = de fundo). Sem gémeo o
+    /// botão direito segue o caminho de sempre (os menus de contexto).
+    pub fn register_with_secondary(&mut self, id: NodeId, rect: Rect, secondary: NodeId) {
+        self.register(id, rect);
+        self.gemeos.push((id, secondary));
+    }
+
+    /// O gémeo do botão direito de `id`, registado neste quadro.
+    #[must_use]
+    pub fn secondary_of(&self, id: NodeId) -> Option<NodeId> {
+        self.gemeos
+            .iter()
+            .rev()
+            .find(|(i, _)| *i == id)
+            .map(|(_, s)| *s)
     }
 
     /// Declara que a porta de `panel` pinta as notas dele neste quadro.

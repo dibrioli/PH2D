@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-panel-pixel-tools"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O painel PIXEL (ADR-0192): ferramentas, cores e a paleta do sprite em edição. Não vê a família
+# (`ph2d-app-pixel`): o instantâneo e os pedidos são o vocabulário `ph2d_editor_core::pixel_panel`.
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y        = { path = "../ph2d-a11y" }
+ph2d-tokens      = { path = "../ph2d-tokens" }
+ph2d-i18n        = { path = "../ph2d-i18n" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-text        = { path = "../ph2d-text" }
+ph2d-vector      = { path = "../ph2d-vector" }
+
+[dev-dependencies]
+ph2d-label-census = { path = "../ph2d-label-census" }
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

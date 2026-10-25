@@ -272,6 +272,22 @@ pub(super) fn handle_down_menus(
     false
 }
 
+/// **O botão direito sobre um widget com GÉMEO** ([`HitIndex::register_with_secondary`]) é um
+/// clique no gémeo, já no Down — antes dos menus de contexto, que de outro modo abririam o menu de
+/// notas do painel por cima da escolha.
+///
+/// [`HitIndex::register_with_secondary`]: crate::interaction::HitIndex::register_with_secondary
+pub(super) fn secondary_twin(
+    hit_index: &crate::interaction::HitIndex,
+    hit: Option<(ph2d_a11y::NodeId, Rect)>,
+    event: PointerEvent,
+) -> Option<ph2d_a11y::NodeId> {
+    if event.button != ph2d_host::PointerButton::Secondary {
+        return None;
+    }
+    hit.and_then(|(id, _)| hit_index.secondary_of(id))
+}
+
 /// **Este clique ainda pertence ao menu que está aberto?**
 ///
 /// Um clique primário fora de um menu fecha-o, antes do caminho normal de foco/clique. Mas quatro

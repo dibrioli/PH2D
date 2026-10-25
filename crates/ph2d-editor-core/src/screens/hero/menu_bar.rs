@@ -228,7 +228,7 @@ impl ModuleTruth {
 
 /// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
 /// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
-pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 22] = [
+pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 23] = [
     (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
     (ids::TOPBAR_PHYSICS, ModuleTruth::Panel("physics")),
     // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09). ⚠️ O literal é o `Panel::ID` da
@@ -240,6 +240,8 @@ pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 22] = [
     (ids::TOPBAR_TAGS, ModuleTruth::Panel("tags")),
     // O literal é o `Panel::ID` da `ph2d-panel-macros` (W5d).
     (ids::TOPBAR_MACROS, ModuleTruth::Panel("macros")),
+    // O literal é o `Panel::ID` da `ph2d-panel-pixel-tools` (ADR-0192).
+    (ids::TOPBAR_PIXEL, ModuleTruth::Panel("pixel")),
     (ids::TOPBAR_AUDIO_MIXER, ModuleTruth::Panel("audio_mixer")),
     (ids::TOPBAR_AUDIO_EDITOR, ModuleTruth::Panel("audio_editor")),
     (ids::TOPBAR_TOKENS, ModuleTruth::Panel("tokens")),

@@ -72,6 +72,14 @@ pub const TABELA: &[Armacao] = &[
         arma: |_| arma_as_macros(),
         desarma: desarma_as_macros,
     },
+    // O painel PIXEL (ADR-0192) com um sprite em Edit: as quatro ferramentas, as duas cores, o
+    // Trocar e a paleta.
+    #[cfg(feature = "panel-pixel-tools")]
+    Armacao {
+        painel: "pixel",
+        arma: |_| arma_o_pixel(),
+        desarma: desarma_o_pixel,
+    },
     // ⛔⛔ **O painel de params do Motion SAIU do app** (`line/motion-value`, ordem do dono de
     //    2026-09-17: os params vivem NO CARTÃO). A armação dele vivia aqui e mediu as `828`
     //    entradas do catálogo de params por largura — ⚠️ e essa medição **perdeu a superfície**,
@@ -264,4 +272,30 @@ fn arma_as_macros() {
 #[cfg(feature = "panel-macros")]
 fn desarma_as_macros() {
     ph2d_panel_macros::set_current_macros(ph2d_editor_core::macro_edits::MacroPanelInfo::default());
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// O PIXEL
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// Um Pixel Sprite em Edit, com o lápis na mão e uma paleta de 32 cores.
+#[cfg(feature = "panel-pixel-tools")]
+fn arma_o_pixel() {
+    use ph2d_editor_core::pixel_panel::{PixelPanelInfo, PixelTool};
+    ph2d_panel_pixel_tools::set_current_pixel(PixelPanelInfo {
+        editing: true,
+        tool: PixelTool::Pencil,
+        fg: [255, 255, 255, 255],
+        bg: [0, 0, 0, 128],
+        palette: (0..32u8)
+            .map(|i| [i * 7, 255 - i * 5, i * 3, 255])
+            .collect(),
+    });
+}
+
+#[cfg(feature = "panel-pixel-tools")]
+fn desarma_o_pixel() {
+    ph2d_panel_pixel_tools::set_current_pixel(
+        ph2d_editor_core::pixel_panel::PixelPanelInfo::default(),
+    );
 }

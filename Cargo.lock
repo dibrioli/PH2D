@@ -7227,6 +7227,7 @@ dependencies = [
  "ph2d-panel-padding",
  "ph2d-panel-painter-layers",
  "ph2d-panel-physics",
+ "ph2d-panel-pixel-tools",
  "ph2d-panel-registry-init",
  "ph2d-panel-skeleton",
  "ph2d-panel-sync",
@@ -9617,6 +9618,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-pixel-tools"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-label-census",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-ui-testkit",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-panel-registry-init"
 version = "0.0.0"
 dependencies = [
@@ -9644,6 +9660,7 @@ dependencies = [
  "ph2d-panel-padding",
  "ph2d-panel-painter-layers",
  "ph2d-panel-physics",
+ "ph2d-panel-pixel-tools",
  "ph2d-panel-registry-init",
  "ph2d-panel-skeleton",
  "ph2d-panel-sync",

@@ -57,6 +57,7 @@ impl crate::App {
         let image_apply = self.fase_image_tool_bridges(window_size)?;
         let painter_apply_committed = self.fase_painter_dispatch(window_size, viewport)?;
         self.fase_macros();
+        self.fase_pixel_panel();
         let (vector_active, vec_px_to_world) = self.fase_vector_scale()?;
         let view = HeroView {
             window_size,

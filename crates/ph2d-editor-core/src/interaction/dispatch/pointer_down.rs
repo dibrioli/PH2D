@@ -205,6 +205,10 @@ pub(super) fn dispatch_down<'frame>(
 
     // Right-click context menus + TopBar/chip popovers. On a handled event the
     // original arm returned immediately — preserve that here.
+    if let Some(t) = super::pointer_down_menus::secondary_twin(hit_index, hit, event) {
+        events.push(WidgetEvent::Click(t));
+        return;
+    }
     if super::pointer_down_menus::handle_down_menus(store, hit_index, hit, event) {
         return;
     }

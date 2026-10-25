@@ -19,6 +19,8 @@ pub(super) fn default_panel_visibility() -> std::collections::BTreeMap<&'static 
     map.insert("tags", false);
     // O painel MACROS (W5d) nasce FECHADO: a porta é o *Window → Macros*.
     map.insert("macros", false);
+    // O painel PIXEL (ADR-0192) nasce FECHADO: abre ao entrar em Pixel Sprite ▸ Edit.
+    map.insert("pixel", false);
     map
 }
 
@@ -49,6 +51,7 @@ pub(super) fn canonical_panel_id(id: &str) -> Option<&'static str> {
         // nome é conhecido.
         "tags" => Some("tags"),
         "macros" => Some("macros"),
+        "pixel" => Some("pixel"),
         _ => None,
     }
 }

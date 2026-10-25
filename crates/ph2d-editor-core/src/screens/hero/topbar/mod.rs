@@ -44,6 +44,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_TAGS,
         // As MACROS (W5d): a mesma razão das TAGS — sem pill, a porta é o menu *Window*.
         ids::TOPBAR_MACROS,
+        ids::TOPBAR_PIXEL,
         ids::TOPBAR_TOKENS,
         ids::TOPBAR_AUTHORED,
         ids::TOPBAR_WIDGET_GALLERY,

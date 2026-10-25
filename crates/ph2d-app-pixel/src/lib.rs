@@ -15,6 +15,7 @@ mod frame;
 pub mod input;
 pub mod mode;
 pub mod object_add;
+pub mod panel;
 pub mod persist;
 pub mod smoke;
 mod state;

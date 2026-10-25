@@ -69,6 +69,7 @@ mod object_mode_menu;
 mod onion_modal;
 mod palette_rename;
 mod physics_toggle;
+mod pixel_toggle;
 mod prefab_bar;
 mod radius;
 mod rail_painter_tools;
@@ -171,6 +172,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || tokens_toggle::apply(hero, event)
         || authored_toggle::apply(hero, event)
         || macros_toggle::apply(hero, event)
+        || pixel_toggle::apply(hero, event)
         || io_menu::apply(hero, event)
         || settings_ppm::apply(hero, event)
         || settings_unit::apply(hero, event)

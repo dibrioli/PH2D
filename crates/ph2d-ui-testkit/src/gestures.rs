@@ -36,6 +36,16 @@ impl MockPanelHost {
     ///
     /// A widget is not done when it paints. It is done when a test CLICKS it.
     pub fn click_at(&mut self, x: f32, y: f32) -> Vec<WidgetEvent> {
+        self.click_with(x, y, PointerButton::Primary)
+    }
+
+    /// **O clique do BOTÃO DIREITO** em `(x, y)`, pelo mesmo despacho — o que um widget com gémeo
+    /// (`HitIndex::register_with_secondary`) ou um menu de contexto recebe.
+    pub fn right_click_at(&mut self, x: f32, y: f32) -> Vec<WidgetEvent> {
+        self.click_with(x, y, PointerButton::Secondary)
+    }
+
+    fn click_with(&mut self, x: f32, y: f32, button: PointerButton) -> Vec<WidgetEvent> {
         let mut out = Vec::new();
         for kind in [PointerKind::Down, PointerKind::Up] {
             // Space the clicks a full second apart: inside the double-click window the
@@ -49,7 +59,7 @@ impl MockPanelHost {
                 pressure: 1.0,
                 kind,
                 source: PointerSource::Mouse,
-                button: PointerButton::Primary,
+                button,
                 timestamp_ns: self.clock_ns,
             };
             out.extend_from_slice(dispatch_pointer(

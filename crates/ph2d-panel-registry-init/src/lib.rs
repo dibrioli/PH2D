@@ -80,6 +80,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     >());
     #[cfg(feature = "panel-physics")]
     reg.push(ErasedPanel::new::<ph2d_panel_physics::PhysicsPanel>());
+    #[cfg(feature = "panel-pixel-tools")]
+    reg.push(ErasedPanel::new::<ph2d_panel_pixel_tools::PixelToolsPanel>());
     #[cfg(feature = "panel-skeleton")]
     reg.push(ErasedPanel::new::<ph2d_panel_skeleton::SkeletonPanel>());
     #[cfg(feature = "panel-tags")]
@@ -154,6 +156,11 @@ mod tests {
         }
         // O painel MACROS (ADR-0186, W5d).
         #[cfg(feature = "panel-macros")]
+        {
+            n += 1;
+        }
+        // O painel PIXEL (ADR-0192).
+        #[cfg(feature = "panel-pixel-tools")]
         {
             n += 1;
         }

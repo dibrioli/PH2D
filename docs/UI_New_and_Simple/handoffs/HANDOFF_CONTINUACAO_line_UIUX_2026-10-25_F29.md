@@ -3,7 +3,8 @@
 - Branch `line/UIUX`, worktree `Worktrees/line-UIUX`. Base: `main` `c3662cd8e4`. A linha tem os 5 commits da F28 + os da F29, **NÃO integrados**.
   Anterior: [F28](HANDOFF_CONTINUACAO_line_UIUX_2026-10-24_F28.md) (§8 = os três reports que abriram esta onda).
 - Mecanismo medido de cada item, recusas e cura: [`../F29_plano.md`](../F29_plano.md). **Não está copiado aqui.**
-- Estado: construído, gates vistos vermelhos por mutação; **smoke do dono (§4) por fazer**. Próxima LLM: janela nova.
+- Estado: construído, gates vistos vermelhos por mutação; **smoke do dono (§4) OK (25/10)**. Próxima LLM: janela nova, de volta
+  ao plano do Auto Key (§6.1).
 
 ## 1 — Commits (`git log --oneline c3662cd8e4..HEAD`, só a F29)
 
@@ -126,7 +127,11 @@ meio-disco vermelho; quadrado azul com lâmina tracejada e barra flutuante com f
 
 ## 6 — ABERTO, por ordem
 
-1. Smoke do dono `=38` e o teste manual do Corte (§4; o clique real nunca foi conduzido).
+1. ✅ Smoke do dono `=38` e o Corte à mão: **OK** (dono, 25/10: *«Smoke OK. Vamos voltar ao plano antes dos consertos
+   realizados»*). ⇒ a próxima onda (F30) volta ao plano do **Auto Key grava tudo**: a lista FORA da F27 F §6.2 / F28 §6.4
+   (Timers, Tweens, StateMachine, CounterWatch, SignalActions, VecAnchors, ShakeEmitter, resistências,
+   `ph2d-panel-painter-layers`, gravidade do mundo, física a meio, IkBendSide, Rope Length, áudio do mixer) e os achados
+   não curados do censo da palavra (F27 F §6.3).
 2. A suíte inteira antes da integração (do integrador).
 3. O `CLAUDE.md` §5 diz `PH2D_OBJECT_MODE_SMOKE=1|2|4|6..37`: passa a `..38` no fecho da linha/integração (conta-se no roteador).
 4. A semente (`VecBucketFill.seed`) é guardada em MUNDO e fica velha quando o composto se move; só entra quando nenhuma âncora

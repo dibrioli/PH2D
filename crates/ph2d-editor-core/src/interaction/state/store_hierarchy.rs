@@ -497,4 +497,21 @@ impl WidgetStore {
     pub(crate) fn clear_number_input_mixed(&mut self, id: NodeId) {
         self.mixed_numbers.remove(&id);
     }
+
+    /// **O valor deste campo é HERDADO** (de outro sítio — ex.: o ritmo da animação no «This
+    /// frame»): os pintores apagam o texto em repouso, e o campo continua focável e editável —
+    /// digitar dá-lhe valor próprio. Quem publica o valor publica a marca, todo o quadro.
+    pub fn set_number_input_inherited(&mut self, id: NodeId, inherited: bool) {
+        if inherited {
+            self.inherited_numbers.insert(id);
+        } else {
+            self.inherited_numbers.remove(&id);
+        }
+    }
+
+    /// Ver [`Self::set_number_input_inherited`].
+    #[must_use]
+    pub fn number_input_inherited(&self, id: NodeId) -> bool {
+        self.inherited_numbers.contains(&id)
+    }
 }

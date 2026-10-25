@@ -206,7 +206,8 @@ fn paint_fields_row_inner(
         let input = NumberInput::new(id, "", value)
             .step(step)
             .visual((state, store.hover_live(id)))
-            .suffix(unit.map(Unit::suffix));
+            .suffix(unit.map(Unit::suffix))
+            .dimmed(store.number_input_inherited(id));
         paint_number_input_with_buffer(
             &input,
             Some(buffer),

@@ -115,6 +115,7 @@ impl WidgetStore {
             multiline_text_ids: std::collections::BTreeSet::new(),
             cancel_on_escape_ids: std::collections::BTreeSet::new(),
             mixed_numbers: std::collections::BTreeSet::new(),
+            inherited_numbers: std::collections::BTreeSet::new(),
             number_input_drag: None,
             number_stepper_hold: None,
             shift_held: false,
@@ -469,6 +470,7 @@ impl WidgetStore {
     /// Idempotente, e no-op para um id que nunca foi registado.
     pub fn unregister(&mut self, id: NodeId) {
         self.mixed_numbers.remove(&id);
+        self.inherited_numbers.remove(&id);
         if self.states.remove(&id).is_some() {
             self.focus_order.retain(|&f| f != id);
         }

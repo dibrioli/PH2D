@@ -585,9 +585,10 @@ pub struct WidgetStore {
     /// (a rename, a search). A widget's behaviour belongs to the widget — never a second id
     /// list inside `dispatch_key`.
     pub(super) cancel_on_escape_ids: std::collections::BTreeSet<NodeId>,
-    /// BulkSelect: os `NumberInput` cuja seleção difere (o «misto», em branco sem foco); tabela ao
-    /// lado e não campo da variante, que tem 120+ sítios de construção.
+    /// BulkSelect: os `NumberInput` mistos (em branco sem foco); tabela, a variante tem 120+ sítios.
     pub(super) mixed_numbers: std::collections::BTreeSet<NodeId>,
+    /// Os `NumberInput` cujo valor é HERDADO (apagados, editáveis): `number_input_inherited`.
+    pub(super) inherited_numbers: std::collections::BTreeSet<NodeId>,
     /// M14.A polish: in-progress drag on a NumberInput body. Captured
     /// on Down inside the box (NOT inside the up/down arrow), held
     /// across Move events to convert cursor delta → value delta

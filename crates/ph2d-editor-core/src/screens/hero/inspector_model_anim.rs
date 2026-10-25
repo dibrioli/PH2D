@@ -261,6 +261,20 @@ impl InspectorAnimInfo {
         Some(self.rows.get(self.current_index()?)?.frame_ms)
     }
 
+    /// **O que o «This frame» mostra: `(ms, próprio?)`** — o tempo da célula quando ela tem um
+    /// PRÓPRIO (`> 0` e diferente do ritmo), senão o ritmo da animação (o campo fica apagado).
+    /// `None` = não há célula a que a duração se refira.
+    #[must_use]
+    pub fn this_frame_shown_ms(&self) -> Option<(u32, bool)> {
+        let ms = self.this_frame_ms()?;
+        let rhythm = self.current_frame_ms()?;
+        Some(if ms > 0 && ms != rhythm {
+            (ms, true)
+        } else {
+            (rhythm, false)
+        })
+    }
+
     /// **QUEM o campo de duração edita: `(linha, célula)`** — e as duas saem da mesma lei.
     ///
     /// ⚠️ **A linha é a da animação que a BARRA mostra (`current`), e não a que a lista tem

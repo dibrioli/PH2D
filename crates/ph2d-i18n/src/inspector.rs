@@ -219,7 +219,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.animation.on" => "On",
         "panel.inspector.animation.off" => "Off",
         "panel.inspector.animation.this_frame_ms_0_use" => "This frame",
-        "panel.inspector.animation.this_frame_hint" => "0 = use the Frame value.",
+        "panel.inspector.animation.this_frame_hint" => {
+            "Dimmed = this frame uses the animation's speed. Type a value to give it its own time."
+        }
         "panel.inspector.animation.repeat_hint" => "0 = repeat forever.",
         "panel.inspector.animation.this_sprite_has_no_animation" => {
             "This sprite has no animation with that name, or the grid shrank under it."

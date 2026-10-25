@@ -41,6 +41,9 @@ pub struct NumberInput {
     /// ⚠️ **Cor de rótulo, não de valor** (`Text2`): ela diz o que o número SIGNIFICA e não é parte
     /// dele. Um `1.20 m` todo na mesma cor lê-se como um só campo de texto.
     pub suffix: Option<&'static str>,
+    /// **Valor HERDADO** (ver [`crate::interaction::WidgetStore::number_input_inherited`]): o
+    /// texto pinta-se apagado em repouso, e o campo continua editável.
+    pub dimmed: bool,
 }
 
 impl NumberInput {
@@ -55,7 +58,21 @@ impl NumberInput {
             state: TextInputState::Normal,
             hover_t: crate::motion::SETTLED,
             suffix: None,
+            dimmed: false,
         }
+    }
+
+    /// Ver [`NumberInput::dimmed`].
+    #[must_use]
+    pub fn dimmed(mut self, dimmed: bool) -> Self {
+        self.dimmed = dimmed;
+        self
+    }
+
+    /// O texto pinta-se como o de um campo desligado — desligado, ou herdado e em repouso.
+    fn text_dimmed(&self) -> bool {
+        self.state == TextInputState::Disabled
+            || (self.dimmed && self.state != TextInputState::Focused)
     }
 
     /// **A unidade colada ao número** — ver [`NumberInput::suffix`].
@@ -305,7 +322,7 @@ pub fn paint_number_input_with_buffer(
         numero_que_cabe(text_system, value_text, font_size, inner_w)
     };
     let value_text: &str = &value_text;
-    let label_color = if input.state == TextInputState::Disabled {
+    let label_color = if input.text_dimmed() {
         ColorToken::TextDisabled
     } else {
         ColorToken::Text1
@@ -398,7 +415,7 @@ pub fn paint_number_input_with_buffer(
                 font_size,
                 suffix_w,
                 resolve(
-                    if input.state == TextInputState::Disabled {
+                    if input.text_dimmed() {
                         ColorToken::TextDisabled
                     } else {
                         ColorToken::Text2

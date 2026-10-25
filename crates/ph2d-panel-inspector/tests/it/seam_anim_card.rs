@@ -374,11 +374,15 @@ fn o_ciclo_segmentado_escreve_o_modo() {
 }
 
 /// ⛔ «per-frame timing (imported)» mentia sobre tempos dados no editor: a frase diz só o facto, e só
-/// quando ele é verdade; e «This frame» só aparece quando o quadro no ecrã tem tempo próprio.
+/// quando ele é verdade; e «This frame» está SEMPRE pintado (apagado sem tempo próprio — ver
+/// `seam_anim_this_frame`).
 #[test]
 fn o_tempo_proprio_diz_se_so_quando_existe() {
     let plain = painted(anim(false, false));
-    assert!(!has(&plain, ids::INSP_ANIM_FRAME_MS_THIS));
+    assert!(
+        has(&plain, ids::INSP_ANIM_FRAME_MS_THIS),
+        "a linha não some"
+    );
     let mut own = anim(false, false);
     own.rows[0].per_frame_ms = vec![0, 250, 0, 0];
     assert!(

@@ -300,12 +300,10 @@ fn player_block(
         None,
         sec,
     );
-    // A duração DESTE quadro (spec §8.12) — só quando ele a tem (o editor é onde se dá tempo a um
-    // quadro); colada à barra, que é o selector do quadro.
-    if info
-        .this_frame_ms()
-        .is_some_and(|ms| ms > 0 && Some(ms) != info.current_frame_ms())
-    {
+    // A duração DESTE quadro (spec §8.12), colada à barra, que é o selector do quadro. ⚠️ Sempre
+    // pintada enquanto há célula: sem tempo próprio fica APAGADA com o ritmo (o sync marca-a), e
+    // digitar dá-lhe o seu — sumir fazia a coluna saltar (report do dono, 25/10).
+    if info.this_frame_shown_ms().is_some() {
         cur_y = super::rows::fields_row(
             scene,
             text_system,

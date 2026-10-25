@@ -9933,6 +9933,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-pixel-core"
+version = "0.0.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "ph2d-platformer"
 version = "0.0.0"
 dependencies = [

@@ -143,6 +143,13 @@ impl PixelApp {
         let PhysicalKey::Code(code) = key else {
             return false;
         };
+        if diag() {
+            eprintln!(
+                "[pixel-diag] tecla {code:?} premida={pressed} ctrl={ctrl} shift={shift} draw={} gesto={}",
+                v.editing.is_some(),
+                self.stroking()
+            );
+        }
         if code == KeyCode::Space {
             return input::space(self, v.world, v.editing, pressed);
         }
@@ -189,6 +196,13 @@ impl PixelApp {
         );
         crate::draw::draw(self, world, camera, window, ppm, editing, hero.theme, scene);
     }
+}
+
+/// `PH2D_PIXEL_DIAG=1`: cada tecla que chega à família vai para o stderr (report do dono 25/10: o
+/// `Esc` não cancelava o polígono na máquina dele e cancelava pelo `key_input` inteiro aqui).
+fn diag() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("PH2D_PIXEL_DIAG").is_some())
 }
 
 /// O diálogo *New Sprite* está aberto — MODAL: toda tecla vai só para ele.

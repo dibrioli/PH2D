@@ -14,7 +14,10 @@ fn a_chave_leva_o_item_e_o_grupo_parte_se_por_ele() {
     let x = chave(codigo::ANCORAS, 2, 0, ItemId(9)).expect("cabe");
     let y = chave(codigo::ANCORAS, 2, 1, ItemId(9)).expect("cabe");
     assert!(x.mesmo_grupo(y), "x e y da mesma âncora gravam-se juntos");
-    assert_eq!(a.info().expect("info").rotulo, "component.field.timer_fields.2");
+    assert_eq!(
+        a.info().expect("info").rotulo,
+        "component.field.timer_fields.2"
+    );
 }
 
 /// Toda chave de todo item resolve (o catálogo e a família dizem o mesmo).

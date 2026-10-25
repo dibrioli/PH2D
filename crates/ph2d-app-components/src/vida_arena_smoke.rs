@@ -244,12 +244,14 @@ fn receita_da_salamandra(world: &mut World) -> Entity {
                 on_death: VENCEU.to_owned(),
                 numbers: true,
                 resistances: vec![
-                    Resistance { item: Default::default(),
+                    Resistance {
+                        item: Default::default(),
                         kind: FOGO.to_owned(),
                         rate: 0.0,
                         absorbs: false,
                     },
-                    Resistance { item: Default::default(),
+                    Resistance {
+                        item: Default::default(),
                         kind: GELO.to_owned(),
                         rate: 2.0,
                         absorbs: false,
@@ -443,7 +445,8 @@ fn relogio(world: &mut World, nome: &str, sinal: &str, cada_us: u64, repete: boo
 /// apagava a morte antes de ela se ver.
 #[must_use]
 pub fn tabela_do_heroi() -> SignalActions {
-    let linha = |on: &str, verb, arg: &str| SignalAction { item: Default::default(),
+    let linha = |on: &str, verb, arg: &str| SignalAction {
+        item: Default::default(),
         on: on.to_owned(),
         target: String::new(),
         verb,
@@ -597,12 +600,14 @@ pub fn cena_quatro(world: &mut World) -> Entity {
                 ..TopDownLaw::default()
             }),
             SignalOnAction(vec![
-                ActionTriggerRow { item: Default::default(),
+                ActionTriggerRow {
+                    item: Default::default(),
                     action: ACCAO_FOGO.to_owned(),
                     edge: ActionEdge::Press,
                     signal: SINAL_FOGO.to_owned(),
                 },
-                ActionTriggerRow { item: Default::default(),
+                ActionTriggerRow {
+                    item: Default::default(),
                     action: ACCAO_GELO.to_owned(),
                     edge: ActionEdge::Press,
                     signal: SINAL_GELO.to_owned(),
@@ -616,7 +621,8 @@ pub fn cena_quatro(world: &mut World) -> Entity {
                 invincible_s: INVENCIVEL,
                 blink_s: 0.08,
                 numbers: true,
-                resistances: vec![Resistance { item: Default::default(),
+                resistances: vec![Resistance {
+                    item: Default::default(),
                     kind: CURA_TIPO.to_owned(),
                     rate: 1.0,
                     absorbs: true,
@@ -624,7 +630,8 @@ pub fn cena_quatro(world: &mut World) -> Entity {
                 ..Health::default()
             },
             tabela_do_heroi(),
-            Timers(vec![Timer { item: Default::default(),
+            Timers(vec![Timer {
+                item: Default::default(),
                 name: RELOGIO_RECOMECO.to_owned(),
                 duration_us: RECOMECO_US,
                 signal: RECOMECAR.to_owned(),

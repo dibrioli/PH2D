@@ -280,6 +280,18 @@ fn editor(
             tr("panel.inspector.timers.signal_label"),
         ],
     );
+    // ⭐ Cada linha é um canal do timer (F30 §A1), pela identidade dele.
+    super::canal_item::regista(
+        ph2d_component_desc::lista::codigo::TIMERS,
+        row.item,
+        &[
+            (1, &[ids::INSP_TIMER_NAME]),
+            (2, &[ids::INSP_TIMER_DURATION]),
+            (3, &[ids::INSP_TIMER_REPEAT]),
+            (4, &[ids::INSP_TIMER_AUTOSTART]),
+            (5, &[ids::INSP_TIMER_SIGNAL]),
+        ],
+    );
     let mut cur_y = super::anim_rows::text_row(
         scene,
         text_system,

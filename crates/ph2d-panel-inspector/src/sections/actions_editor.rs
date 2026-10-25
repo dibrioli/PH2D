@@ -46,6 +46,30 @@ pub(super) fn editor(
     labels: &[String],
 ) -> f32 {
     let seccao = seccao_da_acao(text_system);
+    // ⭐ Cada linha é um canal da acção (F30 §A1), pela identidade dela. ⛔ A TAG do alvo é
+    // fiação por identidade (plano 35 §8): o modo do alvo tem canal, a tag não.
+    super::canal_item::regista(
+        ph2d_component_desc::lista::codigo::ACOES,
+        row.item,
+        &[
+            (1, &[ids::INSP_ACTION_ON]),
+            (2, &[ids::INSP_ACTION_TARGET]),
+            (3, &[ids::INSP_ACTION_VERB_PICK]),
+            (4, &[ids::INSP_ACTION_ARG, ids::INSP_ACTION_CLIP_PICK]),
+            (
+                5,
+                &[
+                    ids::INSP_ACTION_BY_NAME,
+                    ids::INSP_ACTION_BY_TAG,
+                    ids::INSP_ACTION_BY_OTHER,
+                ],
+            ),
+            (
+                6,
+                &[ids::INSP_ACTION_FROM_ANYONE, ids::INSP_ACTION_FROM_MYSELF],
+            ),
+        ],
+    );
     let mut cur_y = super::anim_rows::text_row(
         scene,
         text_system,
@@ -226,7 +250,15 @@ fn clip_row(
     if open {
         crate::state_popovers::set_pending_action_clip_dd(Some((linha, rect)));
     }
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+    // O clip (o argumento do verbo) é canal da acção (F30 §A1).
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_for(
+        scene,
+        theme,
+        dot,
+        &[ids::INSP_ACTION_CLIP_PICK],
+    ) {
+        hit_index.register(alvo, dot);
+    }
     let cur_y = y + ph2d_tokens::row_pitch_px();
     let aviso = if vazia {
         tr("panel.inspector.actions.target_has_no_animation").to_string()

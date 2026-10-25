@@ -25,6 +25,7 @@ const VIEWPORT: Rect = Rect {
 
 fn row(name: &str, bounds: Option<[f32; 4]>, center: Option<[f32; 4]>) -> InspectorAnchorRow {
     InspectorAnchorRow {
+        item: Default::default(),
         name: name.into(),
         pos: [1.0, 2.0],
         rot_deg: 0.0,

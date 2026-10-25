@@ -70,6 +70,7 @@ pub fn build_info_emitter(
     let rows =
         em.0.iter()
             .map(|f| InspectorEmitterRow {
+                item: f.item.0,
                 on: f.on.clone(),
                 de: f.de.tag(),
                 forca: f.forca,

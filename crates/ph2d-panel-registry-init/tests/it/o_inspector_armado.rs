@@ -245,6 +245,7 @@ pub fn arma_tudo() {
         entity_bits: BITS,
         rows: vec![
             InspectorAnchorRow {
+                item: 110,
                 name: "hand_right".to_string(),
                 pos: [0.3, 0.1],
                 rot_deg: 12.0,
@@ -253,6 +254,7 @@ pub fn arma_tudo() {
                 riders: 1,
             },
             InspectorAnchorRow {
+                item: Default::default(),
                 name: "muzzle".to_string(),
                 pos: [0.5, 0.0],
                 rot_deg: 0.0,
@@ -590,6 +592,7 @@ fn arma_o_top20() {
     insp::set_current_inspector_timer(Some(InspectorTimerInfo {
         entity_bits: BITS,
         rows: vec![InspectorTimerRow {
+            item: 101,
             name: "respawn".to_string(),
             duration_s: 2.5,
             repeat: true,
@@ -602,6 +605,7 @@ fn arma_o_top20() {
     insp::set_current_inspector_action(Some(InspectorActionInfo {
         entity_bits: BITS,
         rows: vec![InspectorActionRow {
+            item: 106,
             on: "hit".to_string(),
             target: "Door".to_string(),
             verb_tag: 1,
@@ -756,12 +760,14 @@ fn arma_o_top20() {
         entity_bits: BITS,
         states: vec![
             InspectorStateRow {
+                item: 103,
                 name: "Closed".to_string(),
                 on_enter: "door_closed".to_string(),
                 on_exit: "door_opening".to_string(),
                 has_exit: true,
             },
             InspectorStateRow {
+                item: Default::default(),
                 name: "Open".to_string(),
                 on_enter: "door_open".to_string(),
                 on_exit: String::new(),
@@ -769,6 +775,7 @@ fn arma_o_top20() {
             },
         ],
         transitions: vec![InspectorTransitionRow {
+            item: 104,
             from: 0,
             on: "toggle".to_string(),
             to: 1,
@@ -868,6 +875,7 @@ fn arma_o_top20() {
     insp::set_current_inspector_action_trigger(Some(InspectorActionTriggerInfo {
         entity_bits: BITS,
         rows: vec![InspectorTriggerRow {
+            item: 107,
             action: "jump".to_string(),
             edge: 0,
             signal: "jumped".to_string(),
@@ -879,6 +887,7 @@ fn arma_o_top20() {
     insp::set_current_inspector_counter_watch(Some(InspectorCounterWatchInfo {
         entity_bits: BITS,
         rows: vec![InspectorWatchRow {
+            item: 105,
             counter: "Score".to_string(),
             compare: 1,
             value: 100,
@@ -894,6 +903,7 @@ fn arma_o_top20() {
     insp::set_current_inspector_emitter(Some(InspectorEmitterInfo {
         entity_bits: BITS,
         rows: vec![InspectorEmitterRow {
+            item: 108,
             on: "explosion".to_string(),
             de: 1,
             forca: 0.8,
@@ -1016,6 +1026,7 @@ fn arma_o_top20() {
         nome_existe: true,
         nome_tem_forma: true,
         relogio: 0,
+        relogio_item: 101,
         relogios: 2,
         duracao_us: Some(2_000_000),
         repeat: true,
@@ -1080,6 +1091,8 @@ fn arma_o_top20() {
     insp::set_current_inspector_tween(Some(InspectorTweenInfo {
         entity_bits: BITS,
         rows: vec![InspectorTweenRow {
+            item: 102,
+            relogio_item: 101,
             canal: 1,
             de: [0.0, 0.0, 0.0, 1.0],
             para: [1.0, 0.0, 0.0, 1.0],
@@ -1151,12 +1164,14 @@ fn arma_o_top20() {
             // uma REPETIDA (a lista pinta-a em WARN).
             resistances: vec![
                 InspectorResistanceRow {
+                    item: 109,
                     kind: "fire".to_string(),
                     rate: 1.0,
                     absorbs: true,
                     repetida: false,
                 },
                 InspectorResistanceRow {
+                    item: Default::default(),
                     kind: "fire".to_string(),
                     rate: 2.0,
                     absorbs: false,

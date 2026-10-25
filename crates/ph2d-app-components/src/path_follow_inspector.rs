@@ -28,16 +28,17 @@ pub fn build_path_follow_info(
     // ⚠️ **As três colunas do relógio são COPIADAS aqui**, e não lidas por referência mais abaixo: a
     // busca por nome pede `&mut World` (ver o `resolve`), e um empréstimo imutável vivo ao lado
     // dela não compila. *O compilador impõe a ordem que a leitura já queria.*
-    let (duracao_us, repeat, autostart, n_relogios) =
+    let (duracao_us, repeat, autostart, n_relogios, relogio_item) =
         world
             .get::<Timers>(e)
-            .map_or((None, false, false, 0), |ts| {
+            .map_or((None, false, false, 0, 0), |ts| {
                 let t = ts.0.get(i);
                 (
                     t.map(|t| t.duration_us),
                     t.is_some_and(|t| t.repeat),
                     t.is_some_and(|t| t.autostart),
                     ts.0.len(),
+                    t.map_or(0, |t| t.item.0),
                 )
             });
     // ⚠️ **A busca por NOME é `&mut World`** — o `stable_id_for_name` regista o componente de
@@ -49,6 +50,7 @@ pub fn build_path_follow_info(
         nome_existe,
         nome_tem_forma,
         relogio: pf.relogio,
+        relogio_item,
         relogios: n_relogios,
         duracao_us,
         repeat,

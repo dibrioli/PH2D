@@ -40,7 +40,8 @@ const ACTION_BUS_KINDS: &str = include_str!("../../../ph2d-editor-core/src/actio
 
 /// Uma linha de tabela que reage a `on` com `verb`, apontada a si própria.
 fn linha(on: &str, verb: SignalVerb) -> SignalAction {
-    SignalAction { item: Default::default(),
+    SignalAction {
+        item: Default::default(),
         on: on.to_owned(),
         target: String::new(),
         verb,

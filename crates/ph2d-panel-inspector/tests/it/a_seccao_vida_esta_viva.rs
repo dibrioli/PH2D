@@ -62,12 +62,14 @@ pub(crate) fn vida() -> InspectorHealthInfo {
         // ⭐ W6 — duas resistências, com a ABERTA (a 0) fora do neutro: imune ao fogo.
         resistances: vec![
             InspectorResistanceRow {
+                item: Default::default(),
                 kind: "fogo".into(),
                 rate: 0.0,
                 absorbs: false,
                 repetida: false,
             },
             InspectorResistanceRow {
+                item: Default::default(),
                 kind: "gelo".into(),
                 rate: 2.0,
                 absorbs: false,

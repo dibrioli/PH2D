@@ -168,6 +168,7 @@ fn publish_the_whole_sprite_scene() {
     set_current_inspector_anchor(Some(InspectorAnchorInfo {
         entity_bits: ENTITY,
         rows: vec![InspectorAnchorRow {
+            item: Default::default(),
             name: "muzzle".into(),
             pos: [28.0, -4.0],
             rot_deg: 12.0,

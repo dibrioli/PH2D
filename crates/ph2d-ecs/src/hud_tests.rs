@@ -176,7 +176,8 @@ fn um_contador_que_nao_existe_devolve_nada_e_nao_zero() {
 #[test]
 fn o_relogio_mostra_o_menor_que_falta() {
     let mut w = mundo();
-    let timer = |us: u64| Timer { item: Default::default(),
+    let timer = |us: u64| Timer {
+        item: Default::default(),
         name: "ronda".into(),
         duration_us: us,
         repeat: false,
@@ -276,7 +277,8 @@ fn o_sinal_chega_ao_contador_pelo_nome_e_so_com_identidade() {
     use crate::{SignalAction, SignalActions, SignalFrom, SignalTarget, SignalVerb};
 
     fn placar(w: &mut World, com_pose: bool) -> usize {
-        let tabela = SignalActions(vec![SignalAction { item: Default::default(),
+        let tabela = SignalActions(vec![SignalAction {
+            item: Default::default(),
             on: "tick".into(),
             target: "Placar".into(),
             verb: SignalVerb::AddToCounter,

@@ -179,7 +179,8 @@ fn editing_one_field_leaves_the_others_alone() {
     let reg = registry();
     let e = objecto(
         &mut sim,
-        vec![SignalAction { item: Default::default(),
+        vec![SignalAction {
+            item: Default::default(),
             on: "botao".into(),
             target: "Parede".into(),
             verb: SignalVerb::Hide,

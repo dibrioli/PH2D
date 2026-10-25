@@ -55,7 +55,8 @@ pub fn migrate_v1_blob(bytes: &[u8]) -> Option<Vec<u8>> {
         antigo
             .0
             .into_iter()
-            .map(|a| SignalAction { item: Default::default(),
+            .map(|a| SignalAction {
+                item: Default::default(),
                 on: a.on,
                 target: a.target,
                 verb: a.verb,

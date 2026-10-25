@@ -41,6 +41,7 @@ fn tocar(opcoes: Option<Vec<String>>) -> InspectorActionInfo {
     InspectorActionInfo {
         entity_bits: 0xABCD_1234,
         rows: vec![InspectorActionRow {
+            item: Default::default(),
             on: "abre".into(),
             target: String::new(),
             verb_tag: TAG_PLAY_CLIP,

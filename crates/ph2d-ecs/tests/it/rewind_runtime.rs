@@ -8,7 +8,8 @@ use ph2d_ecs::{LifetimeRuntime, Timer, TimerRuntime, Timers, World};
 
 fn cena(autostart: bool) -> (World, ph2d_ecs::Entity) {
     let mut w = World::new();
-    let t = Timers(vec![Timer { item: Default::default(),
+    let t = Timers(vec![Timer {
+        item: Default::default(),
         name: "recarga".into(),
         duration_us: 1_000_000,
         repeat: false,
@@ -33,7 +34,8 @@ fn um_timer_corrido_volta_ao_principio_ao_rebobinar() {
     let (mut w, e) = cena(true);
     // Uma corrida: ele dispara e, sendo *one-shot*, PÁRA.
     let mut rt = w.get_mut::<TimerRuntime>(e).expect("o relogio");
-    let cfg = Timer { item: Default::default(),
+    let cfg = Timer {
+        item: Default::default(),
         name: "recarga".into(),
         duration_us: 1_000_000,
         repeat: false,
@@ -353,7 +355,8 @@ fn a_conta_da_porta_nao_inclui_quem_atravessou() {
 fn rebobinar_parado_nao_faz_o_cerebro_reanunciar_a_cada_quadro() {
     use ph2d_ecs::rewind_runtime::{Renascimento, rewind_runtime_state};
     use ph2d_ecs::{MachineState, StateMachine, StateMachineRuntime};
-    let estado = |n: &str| MachineState { item: Default::default(),
+    let estado = |n: &str| MachineState {
+        item: Default::default(),
         name: n.into(),
         on_enter: String::new(),
         on_exit: String::new(),

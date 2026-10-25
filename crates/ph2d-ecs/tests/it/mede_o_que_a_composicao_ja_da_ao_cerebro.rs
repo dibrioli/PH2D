@@ -32,7 +32,8 @@ fn cena(linhas: Vec<SignalAction>) -> (World, TagTree) {
 }
 
 fn linha(on: &str, target: &str, verb: SignalVerb) -> SignalAction {
-    SignalAction { item: Default::default(),
+    SignalAction {
+        item: Default::default(),
         on: on.to_string(),
         target: target.to_string(),
         verb,

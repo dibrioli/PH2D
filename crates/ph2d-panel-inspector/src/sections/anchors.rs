@@ -175,6 +175,19 @@ fn anchor_editor(
     row: &ph2d_editor_core::screens::hero::InspectorAnchorRow,
 ) -> f32 {
     let mut cur_y = y;
+    // ⭐ Cada linha é um canal da âncora (F30 §A1), pela identidade dela. As caixas de marcar a
+    // área e o miolo são a FORMA da âncora (Socket/Slice/9-Slice), não um valor: sem canal.
+    super::canal_item::regista(
+        ph2d_component_desc::lista::codigo::ANCORAS,
+        row.item,
+        &[
+            (1, &[ids::INSP_ANCHOR_NAME]),
+            (2, &ids::INSP_ANCHOR_POS),
+            (3, &[ids::INSP_ANCHOR_ROT]),
+            (4, &ids::INSP_ANCHOR_BOUNDS),
+            (5, &ids::INSP_ANCHOR_CENTER),
+        ],
+    );
 
     // ⭐⭐ **A coluna é da SECÇÃO, medida uma vez** — ver
     //    [`ph2d_editor_core::property_row::Seccao`]. ⚠️ As quatro entram, mesmo as duas que só

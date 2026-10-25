@@ -173,7 +173,8 @@ fn cena_um(world: &mut World) -> u64 {
         // ⚠️ **Com CORPO**: a mensagem da cena diz *«o relógio ao lado»*, e um relógio invisível
         // faz dessa frase uma mentira — mais a lei do #15, que o pick só devolve quem tem sprite.
         Sprite::atlas(WHITE_TILE_KEY, [0.5, 0.5], RELOGIO_RGBA),
-        Timers(vec![Timer { item: Default::default(),
+        Timers(vec![Timer {
+            item: Default::default(),
             name: "Boom".to_string(),
             duration_us: 2_000_000,
             repeat: true,

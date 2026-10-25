@@ -63,6 +63,16 @@ pub(super) fn setas(
         !info.transitions.is_empty(),
     );
     if let Some(t) = info.transitions.get(selected) {
+        // ⭐ Cada linha é um canal da seta (F30 §A1), pela identidade dela.
+        super::canal_item::regista(
+            ph2d_component_desc::lista::codigo::SETAS,
+            t.item,
+            &[
+                (4, &[crate::ids::INSP_SM_TRANS_FROM]),
+                (5, &[crate::ids::INSP_SM_TRANS_ON]),
+                (6, &[crate::ids::INSP_SM_TRANS_TO]),
+            ],
+        );
         // ⭐⭐ **A coluna do nome é da SECÇÃO** (`line/UIUX`, 2026-09-15): esta secção nasceu
         //    contra a porta antiga (`anchors::field_row`, o nome POR CIMA do campo) e passa à
         //    única que existe. ⚠️ Os nomes são os da secção INTEIRA, inclusive os das linhas que

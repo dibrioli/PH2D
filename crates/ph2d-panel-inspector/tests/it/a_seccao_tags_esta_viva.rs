@@ -336,6 +336,7 @@ fn accao(target_tag: Option<u64>, path: &str) -> InspectorActionInfo {
     InspectorActionInfo {
         entity_bits: ENTITY,
         rows: vec![InspectorActionRow {
+            item: Default::default(),
             on: "alarme".into(),
             target: "Parede".into(),
             verb_tag: 0,

@@ -63,6 +63,7 @@ fn actions() -> InspectorActionInfo {
     InspectorActionInfo {
         entity_bits: 0xABCD_1234,
         rows: vec![InspectorActionRow {
+            item: Default::default(),
             on: "abre".into(),
             target: "Porta".into(),
             // `Hide`, para o alvo do clique (`Show`) ser outro.

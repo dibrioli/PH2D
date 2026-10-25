@@ -4,7 +4,8 @@
 use super::*;
 
 fn estado(nome: &str, entra: &str, sai: &str) -> MachineState {
-    MachineState { item: Default::default(),
+    MachineState {
+        item: Default::default(),
         name: nome.into(),
         on_enter: entra.into(),
         on_exit: sai.into(),
@@ -12,7 +13,8 @@ fn estado(nome: &str, entra: &str, sai: &str) -> MachineState {
 }
 
 fn seta(from: u8, on: &str, to: u8) -> Transition {
-    Transition { item: Default::default(),
+    Transition {
+        item: Default::default(),
         from,
         on: on.into(),
         to,

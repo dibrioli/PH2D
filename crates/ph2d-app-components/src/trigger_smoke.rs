@@ -152,7 +152,8 @@ fn receita(world: &mut World, nome: &str, cor: [f32; 4]) -> Entity {
 /// de MUNDO da FÁBRICA (`aim_from_spawner`), logo ela tem de viver em quem aponta.
 fn arma(world: &mut World, e: Entity, mestre: Entity, mira: bool) {
     world.entity_mut(e).insert((
-        SignalOnAction(vec![ActionTriggerRow { item: Default::default(),
+        SignalOnAction(vec![ActionTriggerRow {
+            item: Default::default(),
             action: ACCAO.to_owned(),
             edge: ActionEdge::Press,
             signal: SINAL.to_owned(),

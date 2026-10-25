@@ -6,6 +6,7 @@ use super::*;
 
 fn fonte(on: &str, dentro: f32, fora: f32) -> InspectorEmitterRow {
     InspectorEmitterRow {
+        item: Default::default(),
         on: on.to_owned(),
         de: 0,
         forca: 0.6,

@@ -8,6 +8,7 @@
 
 mod a_column_gives_back_exactly_what_it_took;
 mod a_docked_panel_never_reaches_the_drawing_area;
+mod a_fileira_de_cada_item_tem_canal;
 mod a_marca_tem_a_altura_da_linha;
 mod a_ordem_das_seccoes_e_a_da_paleta;
 mod a_paleta_fecha_ao_escolher_por_cima_de_um_painel;

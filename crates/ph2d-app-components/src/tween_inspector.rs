@@ -40,6 +40,8 @@ pub fn build_tween_info(
             .iter()
             .enumerate()
             .map(|(i, t)| InspectorTweenRow {
+                item: t.item.0,
+                relogio_item: relogios.and_then(|r| r.0.get(i)).map_or(0, |r| r.item.0),
                 canal: t.canal.tag(),
                 de: t.de,
                 para: t.para,

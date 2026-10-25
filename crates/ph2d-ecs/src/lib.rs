@@ -241,6 +241,7 @@ pub use named_anchor::{
 };
 pub use painted_doc::PaintedDoc;
 pub use path_follow::{PathFollow, Percurso};
+pub use ph2d_item_id::ItemId;
 pub use present::{PresentComponent, PresentWorld};
 pub use root_order::{RootOrder, assign_missing_root_order};
 pub use sampling::{
@@ -286,7 +287,6 @@ pub use sprite_pixels::SpritePixels;
 pub use sprite_region::SpriteRegion;
 pub use sprite_sheet_frame::SpriteSheetFrame;
 pub use sprite_sheet_ref::SpriteSheetRef;
-pub use ph2d_item_id::ItemId;
 pub use stable_id::{
     ReataPorIdentidade, StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id,
     entity_with_stable_id, stable_id_for_name, stable_id_named, stable_id_of,

@@ -67,6 +67,7 @@ pub(crate) mod anim_rules;
 pub(crate) mod audio;
 pub(crate) mod camera;
 pub(crate) mod camera_format;
+mod canal_item;
 mod color_tint;
 /// O cartão CONSTRAINTS — a pilha do objecto.
 pub(crate) mod constraint;

@@ -38,6 +38,8 @@ pub struct InspectorAnchorRow {
     /// âncora não via ninguém. Sem isto, saber se `hand_r` está em uso obriga a selecionar cada
     /// filho um a um — e apagar uma âncora em uso não avisa de nada.
     pub riders: usize,
+    /// O `ItemId` do item (F30 §A1): a chave de animação dos campos da fileira (`0` = por atribuir).
+    pub item: u32,
 }
 
 impl InspectorAnchorRow {
@@ -184,6 +186,7 @@ mod tests {
 
     fn row(bounds: Option<[f32; 4]>, center: Option<[f32; 4]>) -> InspectorAnchorRow {
         InspectorAnchorRow {
+            item: Default::default(),
             name: "a".into(),
             pos: [0.0, 0.0],
             rot_deg: 0.0,

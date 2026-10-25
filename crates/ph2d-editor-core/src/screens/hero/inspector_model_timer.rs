@@ -30,6 +30,8 @@ pub struct InspectorTimerRow {
     pub signal: String,
     /// O editor anuncia cada disparo («Signal: …»)? Desligado = o relógio conduz o jogo em silêncio.
     pub notice: bool,
+    /// O `ItemId` do item (F30 §A1): a chave de animação dos campos da fileira (`0` = por atribuir).
+    pub item: u32,
 }
 
 impl InspectorTimerRow {

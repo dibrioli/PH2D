@@ -123,6 +123,8 @@ pub struct InspectorActionRow {
     /// APAGADA** — ver [`Self::target_tag_missing`]. O painel não conhece a árvore, e sem este
     /// campo ele só teria um número para desenhar.
     pub target_tag_path: String,
+    /// O `ItemId` do item (F30 §A1): a chave de animação dos campos da fileira (`0` = por atribuir).
+    pub item: u32,
 }
 
 impl InspectorActionRow {

@@ -50,6 +50,7 @@ pub fn build_timer_info(
         .iter()
         .enumerate()
         .map(|(i, t)| InspectorTimerRow {
+            item: t.item.0,
             name: t.name.clone(),
             #[allow(clippy::cast_precision_loss)]
             duration_s: t.duration_us as f32 / US_PER_S,

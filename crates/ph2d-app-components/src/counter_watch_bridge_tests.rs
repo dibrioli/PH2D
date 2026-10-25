@@ -8,7 +8,8 @@ use ph2d_ecs::{
 use super::frame;
 
 fn regra(counter: &str, compare: Compare, value: i64, signal: &str) -> CounterWatchRow {
-    CounterWatchRow { item: Default::default(),
+    CounterWatchRow {
+        item: Default::default(),
         counter: counter.into(),
         compare,
         value,

@@ -383,6 +383,16 @@ fn estados(
         !info.states.is_empty(),
     );
     if let Some(r) = info.states.get(selected) {
+        // ⭐ Cada linha é um canal do estado (F30 §A1), pela identidade dele.
+        super::canal_item::regista(
+            ph2d_component_desc::lista::codigo::ESTADOS,
+            r.item,
+            &[
+                (1, &[crate::ids::INSP_SM_STATE_NAME]),
+                (2, &[crate::ids::INSP_SM_STATE_ON_ENTER]),
+                (3, &[crate::ids::INSP_SM_STATE_ON_EXIT]),
+            ],
+        );
         // ⚠️⚠️ **Os três `placeholder` são LITERAIS e não um laço sobre um array**, e a diferença
         // não é estilo: a 1.ª redacção passava-os por variável, e o censo do HR-15 contou **1** de
         // **4** — *passar a string por um argumento faz a contagem cair sem tirar o literal do

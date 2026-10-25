@@ -45,6 +45,7 @@ pub fn build_action_info(
         .0
         .iter()
         .map(|a| InspectorActionRow {
+            item: a.item.0,
             on: a.on.clone(),
             target: a.target.clone(),
             verb_tag: a.verb.tag(),

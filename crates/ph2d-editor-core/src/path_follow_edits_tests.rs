@@ -12,6 +12,7 @@ fn pronto() -> InspectorPathFollowInfo {
         caminho: "Trilho".into(),
         nome_existe: true,
         nome_tem_forma: true,
+        relogio_item: 0,
         relogios: 1,
         duracao_us: Some(1_000_000),
         ..InspectorPathFollowInfo::default()

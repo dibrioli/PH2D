@@ -116,7 +116,8 @@ const CAIXA_RGBA: [f32; 4] = [0.80, 0.80, 0.84, 1.0];
 
 /// Uma linha de tabela que age sobre **este** objecto.
 fn linha(on: &str, verb: SignalVerb) -> SignalAction {
-    SignalAction { item: Default::default(),
+    SignalAction {
+        item: Default::default(),
         on: on.to_owned(),
         target: String::new(),
         verb,

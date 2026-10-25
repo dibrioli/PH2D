@@ -157,7 +157,8 @@ fn o_inimigo_evita_a_lava_sozinho_e_os_quatro_controlos_atravessam() {
     );
     // CONTROLO 2: imune ao fogo (a resistência `0` — a dobra da casa: `Fogo` = `fogo`).
     let imune = Health {
-        resistances: vec![Resistance { item: Default::default(),
+        resistances: vec![Resistance {
+            item: Default::default(),
             kind: "Fogo".to_owned(),
             rate: 0.0,
             absorbs: false,
@@ -176,7 +177,8 @@ fn o_inimigo_evita_a_lava_sozinho_e_os_quatro_controlos_atravessam() {
     assert!(pisou(&caminho, LAVA_C, LAVA_H), "sem vida devia atravessar");
     // CONTROLO 4: o fogo CURA-o (a resistência que absorve) — não é uma zona que magoa.
     let cura = Health {
-        resistances: vec![Resistance { item: Default::default(),
+        resistances: vec![Resistance {
+            item: Default::default(),
             kind: "fogo".to_owned(),
             rate: 1.0,
             absorbs: true,

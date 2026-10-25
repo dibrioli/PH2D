@@ -118,7 +118,8 @@ fn mede_o_que_a_composicao_ja_da_a_arma() {
         just_pressed: false,
         just_released: false,
     };
-    let linha = ActionTriggerRow { item: Default::default(),
+    let linha = ActionTriggerRow {
+        item: Default::default(),
         action: "fire".to_owned(),
         edge: ActionEdge::Hold,
         signal: "fire".to_owned(),
@@ -153,7 +154,8 @@ fn mede_o_que_a_composicao_ja_da_a_arma() {
             Name::new("Heroi"),
             StableId(1),
             Transform::default(),
-            Timers(vec![Timer { item: Default::default(),
+            Timers(vec![Timer {
+                item: Default::default(),
                 name: "cadence".to_owned(),
                 duration_us: CADENCIA_US,
                 repeat: true,

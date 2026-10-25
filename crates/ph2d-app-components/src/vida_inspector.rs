@@ -32,6 +32,7 @@ fn resistance_rows(rs: &[Resistance]) -> Vec<InspectorResistanceRow> {
                 vistas.push(c);
             }
             InspectorResistanceRow {
+                item: r.item.0,
                 kind: r.kind.clone(),
                 rate: r.rate,
                 absorbs: r.absorbs,

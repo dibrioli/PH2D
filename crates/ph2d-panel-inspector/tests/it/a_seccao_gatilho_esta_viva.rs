@@ -49,6 +49,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 
 fn linha(action: &str, no_mapa: NoMapa) -> InspectorTriggerRow {
     InspectorTriggerRow {
+        item: Default::default(),
         action: action.into(),
         edge: 0,
         signal: "shoot".into(),
@@ -250,6 +251,7 @@ fn o_aviso_da_accao_sem_tecla_chega_a_pixel() {
         set_current_inspector_action_trigger(Some(InspectorActionTriggerInfo {
             entity_bits: BITS,
             rows: vec![InspectorTriggerRow {
+                item: Default::default(),
                 action: "grab".into(),
                 edge: 0,
                 signal: "shoot".into(),

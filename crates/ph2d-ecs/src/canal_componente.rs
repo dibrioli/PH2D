@@ -247,7 +247,9 @@ pub fn chave_da_opcao(k: FieldKey, i: u64) -> Option<&'static str> {
     let f = campo_de(k)?;
     match f.view {
         // `""` = a opção não tem palavra (a comparação da vigia): fica o número.
-        View::Options(o) => (o.get(usize::try_from(i).ok()?).map(|o| o.rotulo)).filter(|r| !r.is_empty()),
+        View::Options(o) => {
+            (o.get(usize::try_from(i).ok()?).map(|o| o.rotulo)).filter(|r| !r.is_empty())
+        }
         View::Toggle(..) => Some(match i {
             0 => crate::canal_palavra::DESLIGADO,
             _ => crate::canal_palavra::LIGADO,

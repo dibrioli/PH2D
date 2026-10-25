@@ -55,6 +55,7 @@ pub fn build_info(
         .0
         .iter()
         .map(|r| InspectorTriggerRow {
+            item: r.item.0,
             action: r.action.clone(),
             edge: u8_de_edge(r.edge),
             signal: r.signal.clone(),

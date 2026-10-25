@@ -346,6 +346,53 @@ fn curva_e_ease(
     y
 }
 
+/// ⭐ Cada linha é um canal do tween (F30 §A1), e as do relógio são do TIMER dele — pela
+/// identidade de cada um, nunca pelo índice.
+fn regista_canais(row: &InspectorTweenRow) {
+    use crate::ids as i;
+    use ph2d_component_desc::lista::codigo;
+    super::canal_item::regista(
+        codigo::TWEENS,
+        row.item,
+        &[
+            (1, &i::INSP_TWEEN_CANAL),
+            (
+                2,
+                &[
+                    i::INSP_TWEEN_DE[0],
+                    i::INSP_TWEEN_DE[1],
+                    i::INSP_TWEEN_DE[2],
+                    i::INSP_TWEEN_DE[3],
+                    i::INSP_TWEEN_COR_DE,
+                ],
+            ),
+            (
+                3,
+                &[
+                    i::INSP_TWEEN_PARA[0],
+                    i::INSP_TWEEN_PARA[1],
+                    i::INSP_TWEEN_PARA[2],
+                    i::INSP_TWEEN_PARA[3],
+                    i::INSP_TWEEN_COR_PARA,
+                ],
+            ),
+            (4, &i::INSP_TWEEN_FAMILIA),
+            (5, &i::INSP_TWEEN_MODO),
+            (6, &i::INSP_TWEEN_AO_ACABAR),
+            (7, &i::INSP_TWEEN_CICLO),
+        ],
+    );
+    super::canal_item::regista(
+        codigo::TIMERS,
+        row.relogio_item,
+        &[
+            (2, &[i::INSP_TWEEN_DURACAO]),
+            (3, &[i::INSP_TWEEN_REPEAT]),
+            (4, &[i::INSP_TWEEN_AUTOSTART]),
+        ],
+    );
+}
+
 /// O editor do tween aberto. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn editor(
@@ -364,6 +411,7 @@ pub(super) fn editor(
     // ⭐ A coluna da secção, UMA vez — ver [`seccao_do_tween`].
     let sec_escolhas = seccao_do_tween(text_system, 1);
     let mut cur_y = y;
+    regista_canais(row);
     // ⚠️ **A QUEIXA primeiro** — quem não vê nada mexer não quer afinar uma curva.
     //
     // ⚠️ **O `n` vai SEMPRE**, e o [`ph2d_i18n::tr_with`] ignora o que a frase não pede: as quatro

@@ -166,12 +166,14 @@ fn cena_um(world: &mut World) -> Entity {
             Name::new("Bomba"),
             Sprite::atlas(WHITE_TILE_KEY, [1.2, 1.2], BOMBA_RGBA),
             Transform::from_translation(Vec2::ZERO),
-            SignalOnAction(vec![ActionTriggerRow { item: Default::default(),
+            SignalOnAction(vec![ActionTriggerRow {
+                item: Default::default(),
                 action: ACCAO.to_owned(),
                 edge: ActionEdge::Press,
                 signal: SINAL.to_owned(),
             }]),
-            ShakeEmitter(vec![ShakeSource { item: Default::default(),
+            ShakeEmitter(vec![ShakeSource {
+                item: Default::default(),
                 on: SINAL.to_owned(),
                 de: SignalFrom::Myself,
                 // ⚠️ **Força `1,0` e não a de fábrica:** esta cena existe para o abanão ser VISTO,

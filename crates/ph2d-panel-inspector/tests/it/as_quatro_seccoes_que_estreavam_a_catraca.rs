@@ -132,12 +132,14 @@ fn as_quatro_seccoes_que_estreavam_a_catraca_chegam_a_pixel() {
         entity_bits: ENTITY,
         states: vec![
             InspectorStateRow {
+                item: Default::default(),
                 name: "Fechada".into(),
                 on_enter: "fecha".into(),
                 on_exit: String::new(),
                 has_exit: false,
             },
             InspectorStateRow {
+                item: Default::default(),
                 name: "Aberta".into(),
                 on_enter: "abre".into(),
                 on_exit: String::new(),
@@ -145,6 +147,7 @@ fn as_quatro_seccoes_que_estreavam_a_catraca_chegam_a_pixel() {
             },
         ],
         transitions: vec![InspectorTransitionRow {
+            item: Default::default(),
             from: 0,
             on: "toque".into(),
             to: 1,

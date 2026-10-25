@@ -25,7 +25,12 @@ const DE_QUEM: View = crate::options![
 
 const TIMER: &[FieldDesc] = &[
     f(1, "component.field.timer_fields.1", K::Text, "name"),
-    f(2, "component.field.timer_fields.2", K::Scalar, "duration_us"),
+    f(
+        2,
+        "component.field.timer_fields.2",
+        K::Scalar,
+        "duration_us",
+    ),
     f(3, "component.field.timer_fields.3", K::Toggle, "repeat"),
     f(4, "component.field.timer_fields.4", K::Toggle, "autostart"),
     f(5, "component.field.timer_fields.5", K::Text, "signal"),
@@ -44,7 +49,13 @@ const TWEEN: &[FieldDesc] = &[
     ]),
     f(2, "component.field.tween_fields.2", K::Vec4, "de"),
     f(3, "component.field.tween_fields.3", K::Vec4, "para"),
-    f(4, "component.field.tween_fields.4", K::Enum, "easing/family").viewed(crate::options![
+    f(
+        4,
+        "component.field.tween_fields.4",
+        K::Enum,
+        "easing/family",
+    )
+    .viewed(crate::options![
         "linear" => Linear @ "anim.easing.family.linear",
         "quad" => Quad @ "anim.easing.family.quad",
         "cubic" => Cubic @ "anim.easing.family.cubic",
@@ -74,8 +85,18 @@ const TWEEN: &[FieldDesc] = &[
 
 const ESTADO: &[FieldDesc] = &[
     f(1, "component.field.state_machine_fields.1", K::Text, "name"),
-    f(2, "component.field.state_machine_fields.2", K::Text, "on_enter"),
-    f(3, "component.field.state_machine_fields.3", K::Text, "on_exit"),
+    f(
+        2,
+        "component.field.state_machine_fields.2",
+        K::Text,
+        "on_enter",
+    ),
+    f(
+        3,
+        "component.field.state_machine_fields.3",
+        K::Text,
+        "on_exit",
+    ),
 ];
 
 /// ⚠️ `from`/`to` são ÍNDICES de estado: discretos (`Int`), nunca interpolados.
@@ -96,8 +117,13 @@ const VIGIA: &[FieldDesc] = &[
     f(3, "component.field.watch_fields.3", K::Int, "value"),
     f(4, "component.field.watch_fields.4", K::Text, "signal"),
     f(5, "component.field.watch_fields.5", K::Toggle, "once"),
-    f(6, "panel.inspector.counter_watch.only_this_object", K::Enum, "scope")
-        .viewed(View::Toggle(stringify!(Own), stringify!(World))),
+    f(
+        6,
+        "panel.inspector.counter_watch.only_this_object",
+        K::Enum,
+        "scope",
+    )
+    .viewed(View::Toggle(stringify!(Own), stringify!(World))),
 ];
 
 /// ⚠️ A TAG do alvo (`target_by: Tagged(id)`) é uma referência: o canal escolhe o modo e guarda a tag.
@@ -143,25 +169,65 @@ const GATILHO: &[FieldDesc] = &[
 const FONTE_DE_ABANAO: &[FieldDesc] = &[
     f(0, "component.field.shake_source_fields.0", K::Text, "on"),
     f(1, "component.field.shake_source_fields.1", K::Enum, "de").viewed(DE_QUEM),
-    f(2, "component.field.shake_source_fields.2", K::Scalar, "forca"),
-    f(3, "component.field.shake_source_fields.3", K::Scalar, "dentro"),
-    f(4, "component.field.shake_source_fields.4", K::Scalar, "fora"),
+    f(
+        2,
+        "component.field.shake_source_fields.2",
+        K::Scalar,
+        "forca",
+    ),
+    f(
+        3,
+        "component.field.shake_source_fields.3",
+        K::Scalar,
+        "dentro",
+    ),
+    f(
+        4,
+        "component.field.shake_source_fields.4",
+        K::Scalar,
+        "fora",
+    ),
 ];
 
 const RESISTENCIA: &[FieldDesc] = &[
     f(1, "panel.inspector.vida.resist_kind", K::Text, "kind"),
     f(2, "panel.inspector.vida.resist_rate", K::Scalar, "rate"),
-    f(3, "panel.inspector.vida.resist_absorbs", K::Toggle, "absorbs"),
+    f(
+        3,
+        "panel.inspector.vida.resist_absorbs",
+        K::Toggle,
+        "absorbs",
+    ),
 ];
 
 /// ⚠️ A caixa e o miolo só são canal quando a âncora os TEM (`null` não publica): pôr e tirar é a
 /// forma da âncora, não um valor.
 const ANCORA: &[FieldDesc] = &[
     f(1, "panel.inspector.anchors.name_label", K::Text, "name"),
-    f(2, "panel.inspector.anchors.position_x_y_px", K::Vec2, "transform/translation"),
-    f(3, "panel.inspector.anchors.rotation_deg", K::Angle, "transform/rotation"),
-    f(4, "panel.inspector.anchors.bounds_x_y_w_h", K::Vec4, "bounds"),
-    f(5, "panel.inspector.anchors.center_x_y_w_h", K::Vec4, "center"),
+    f(
+        2,
+        "panel.inspector.anchors.position_x_y_px",
+        K::Vec2,
+        "transform/translation",
+    ),
+    f(
+        3,
+        "panel.inspector.anchors.rotation_deg",
+        K::Angle,
+        "transform/rotation",
+    ),
+    f(
+        4,
+        "panel.inspector.anchors.bounds_x_y_w_h",
+        K::Vec4,
+        "bounds",
+    ),
+    f(
+        5,
+        "panel.inspector.anchors.center_x_y_w_h",
+        K::Vec4,
+        "center",
+    ),
 ];
 
 const fn l(
@@ -188,7 +254,12 @@ pub const LISTAS: &[ListaDesc] = &[
     l(c::ACOES, "ph2d::ecs::SignalActions", WHOLE, ACAO),
     l(c::GATILHOS, "ph2d::ecs::SignalOnAction", WHOLE, GATILHO),
     l(c::ABANAO, "ph2d::ecs::ShakeEmitter", WHOLE, FONTE_DE_ABANAO),
-    l(c::RESISTENCIAS, "ph2d::physics::Health", "resistances", RESISTENCIA),
+    l(
+        c::RESISTENCIAS,
+        "ph2d::physics::Health",
+        "resistances",
+        RESISTENCIA,
+    ),
     l(c::ANCORAS, "ph2d::ecs::NamedAnchorList", WHOLE, ANCORA),
 ];
 

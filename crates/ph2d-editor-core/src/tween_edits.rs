@@ -39,6 +39,10 @@ pub struct InspectorTweenRow {
     pub repeat: bool,
     /// O `autostart` do relógio deste índice — ver [`Self::repeat`].
     pub autostart: bool,
+    /// O `ItemId` do item (F30 §A1): a chave de animação dos campos da fileira (`0` = por atribuir).
+    pub item: u32,
+    /// O `ItemId` do timer que é o relógio deste tween (`0` = sem relógio).
+    pub relogio_item: u32,
 }
 
 /// O que o Inspector mostra da secção TWEEN.
@@ -155,6 +159,8 @@ mod tests {
 
     fn linha() -> InspectorTweenRow {
         InspectorTweenRow {
+            item: Default::default(),
+            relogio_item: Default::default(),
             canal: ph2d_tween::Canal::Opacity.tag(),
             de: [1.0, 0.0, 0.0, 0.0],
             para: [0.0, 0.0, 0.0, 0.0],

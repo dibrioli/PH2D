@@ -258,7 +258,15 @@ fn verb_row(
     if open {
         crate::state_popovers::set_pending_action_dd(Some((sel, rect)));
     }
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
+    // O verbo é canal da acção (F30 §A1): o losango pela porta de todos.
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_for(
+        scene,
+        theme,
+        dot,
+        &[ids::INSP_ACTION_VERB_PICK],
+    ) {
+        hit_index.register(alvo, dot);
+    }
     y + ph2d_tokens::row_pitch_px()
 }
 

@@ -237,6 +237,18 @@ fn editor(
             tr("panel.inspector.emitter.from"),
         ],
     );
+    // ⭐ Cada linha é um canal da fonte (F30 §A1), pela identidade dela.
+    super::canal_item::regista(
+        ph2d_component_desc::lista::codigo::ABANAO,
+        row.item,
+        &[
+            (0, &[ids::INSP_EMITTER_ON]),
+            (1, &crate::ids::INSP_EMITTER_DE),
+            (2, &[crate::ids::INSP_EMITTER_FORCA]),
+            (3, &[crate::ids::INSP_EMITTER_DENTRO]),
+            (4, &[crate::ids::INSP_EMITTER_FORA]),
+        ],
+    );
     let mut cur_y = super::anim_rows::text_row(
         scene,
         text_system,

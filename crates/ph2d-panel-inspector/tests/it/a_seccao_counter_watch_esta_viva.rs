@@ -49,6 +49,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 
 fn linha(counter: &str, compare: u8, existe: bool) -> InspectorWatchRow {
     InspectorWatchRow {
+        item: Default::default(),
         counter: counter.into(),
         compare,
         value: 0,

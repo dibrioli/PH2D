@@ -16,7 +16,8 @@ fn registry() -> ComponentRegistry {
 }
 
 fn um(name: &str, duration_us: u64, signal: &str) -> Timer {
-    Timer { item: Default::default(),
+    Timer {
+        item: Default::default(),
         name: name.into(),
         duration_us,
         repeat: true,

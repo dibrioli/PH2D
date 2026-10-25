@@ -224,7 +224,10 @@ fn migra_depois_de_ler(file: &mut ProjectFile, ver: u32, fio: Option<u32>) {
     }
     if ver <= crate::project_schema::PROJECT_SCHEMA_ITENS_SEM_ID {
         let m = ph2d_ecs::item_id::migra_v194(&mut file.state.world);
-        eprintln!("[proj] v{ver}: {} lista(s) de itens migrada(s), {} ilegivel(eis)", m.migrados, m.ilegiveis);
+        eprintln!(
+            "[proj] v{ver}: {} lista(s) de itens migrada(s), {} ilegivel(eis)",
+            m.migrados, m.ilegiveis
+        );
     }
     if let Some(fio) = fio {
         // As formas guardadas DENTRO de componentes (Envelope, pele) são lidas mais tarde, fora

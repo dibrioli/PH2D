@@ -23,6 +23,7 @@ const VIEWPORT: Rect = Rect {
 
 fn linha(kind: &str, rate: f32) -> InspectorResistanceRow {
     InspectorResistanceRow {
+        item: Default::default(),
         kind: kind.into(),
         rate,
         absorbs: false,

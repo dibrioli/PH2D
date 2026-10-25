@@ -144,7 +144,8 @@ pub fn prende_os_cantos(world: &mut World, contagem: Entity, pontos: Entity) {
 /// dele nesta crate divergiria da primeira na primeira edição.
 #[must_use]
 pub fn accao(sinal: &str, placar: &str, quanto: &str) -> ph2d_ecs::SignalAction {
-    ph2d_ecs::SignalAction { item: Default::default(),
+    ph2d_ecs::SignalAction {
+        item: Default::default(),
         on: sinal.to_owned(),
         target: placar.to_owned(),
         verb: ph2d_ecs::SignalVerb::AddToCounter,
@@ -157,7 +158,8 @@ pub fn accao(sinal: &str, placar: &str, quanto: &str) -> ph2d_ecs::SignalAction 
 /// **Um relógio que publica `sinal` ao fechar**, e que nasce a correr.
 #[must_use]
 pub fn relogio(sinal: &str, us: u64, repeat: bool) -> ph2d_ecs::Timer {
-    ph2d_ecs::Timer { item: Default::default(),
+    ph2d_ecs::Timer {
+        item: Default::default(),
         name: sinal.to_owned(),
         duration_us: us,
         repeat,

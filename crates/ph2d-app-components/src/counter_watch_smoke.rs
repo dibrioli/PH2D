@@ -66,7 +66,8 @@ pub const CONTROLO_LUZ: &str = "Vida do controlo ";
 
 /// Uma regra *«quando as vidas do herói chegarem a `limiar`, diz `sinal`»*.
 fn regra(limiar: i64, sinal: &str) -> CounterWatchRow {
-    CounterWatchRow { item: Default::default(),
+    CounterWatchRow {
+        item: Default::default(),
         counter: HEROI.into(),
         compare: Compare::AtMost,
         value: limiar,
@@ -87,7 +88,8 @@ fn apaga(alvo: &str, sinal: &str) -> SignalAction {
 }
 
 fn relogio(sinal: &str) -> Timers {
-    Timers(vec![Timer { item: Default::default(),
+    Timers(vec![Timer {
+        item: Default::default(),
         name: "golpe".into(),
         duration_us: GOLPE_US,
         repeat: true,

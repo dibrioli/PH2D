@@ -129,7 +129,8 @@ fn corpo_da_porta(x: f32) -> (Sprite, Transform) {
 
 /// As duas linhas que uma porta tem para CADA estado: mostra a placa dele, esconde as outras duas.
 fn acende(alvo: &str, sinal: &str, apaga: [&str; 2]) -> Vec<SignalAction> {
-    let mut v = vec![SignalAction { item: Default::default(),
+    let mut v = vec![SignalAction {
+        item: Default::default(),
         on: sinal.to_string(),
         target: alvo.to_string(),
         verb: SignalVerb::Show,
@@ -138,7 +139,8 @@ fn acende(alvo: &str, sinal: &str, apaga: [&str; 2]) -> Vec<SignalAction> {
         from: ph2d_ecs::SignalFrom::default(),
     }];
     for outro in apaga {
-        v.push(SignalAction { item: Default::default(),
+        v.push(SignalAction {
+            item: Default::default(),
             on: sinal.to_string(),
             target: outro.to_string(),
             verb: SignalVerb::Hide,
@@ -167,7 +169,8 @@ fn cena_um(world: &mut World) {
     // fábrica também faz — *um componente novo apoia-se nos que já existem*.
     world.spawn((
         Name::new("Button"),
-        Timers(vec![Timer { item: Default::default(),
+        Timers(vec![Timer {
+            item: Default::default(),
             name: "tick".into(),
             duration_us: 2_000_000,
             repeat: true,
@@ -198,17 +201,20 @@ fn cena_um(world: &mut World) {
         Name::new("Door"),
         StateMachine {
             states: vec![
-                MachineState { item: Default::default(),
+                MachineState {
+                    item: Default::default(),
                     name: "Closed".into(),
                     on_enter: "door_closed".into(),
                     on_exit: String::new(),
                 },
-                MachineState { item: Default::default(),
+                MachineState {
+                    item: Default::default(),
                     name: "Opening".into(),
                     on_enter: "door_opening".into(),
                     on_exit: String::new(),
                 },
-                MachineState { item: Default::default(),
+                MachineState {
+                    item: Default::default(),
                     name: "Open".into(),
                     on_enter: "door_open".into(),
                     on_exit: String::new(),
@@ -218,17 +224,20 @@ fn cena_um(world: &mut World) {
             // toque: um sinal é **gasto** por quem o ouve, logo o estado de chegada não o ouve
             // outra vez no mesmo tique (a lei que um gate vermelho impôs a esta wave).
             transitions: vec![
-                StateTransition { item: Default::default(),
+                StateTransition {
+                    item: Default::default(),
                     from: 0,
                     on: "botao".into(),
                     to: 1,
                 },
-                StateTransition { item: Default::default(),
+                StateTransition {
+                    item: Default::default(),
                     from: 1,
                     on: "botao".into(),
                     to: 2,
                 },
-                StateTransition { item: Default::default(),
+                StateTransition {
+                    item: Default::default(),
                     from: 2,
                     on: "botao".into(),
                     to: 0,

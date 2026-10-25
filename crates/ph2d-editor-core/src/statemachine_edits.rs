@@ -35,6 +35,8 @@ pub struct InspectorStateRow {
     pub on_exit: String,
     /// ⚠️ **Alguma seta SAI daqui?** — `false` é um beco, e o painel di-lo.
     pub has_exit: bool,
+    /// O `ItemId` do item (F30 §A1): a chave de animação dos campos da fileira (`0` = por atribuir).
+    pub item: u32,
 }
 
 /// Uma linha da lista de TRANSIÇÕES.
@@ -44,6 +46,8 @@ pub struct InspectorTransitionRow {
     /// O nome do sinal. **Vazio = nunca dispara**, e o painel di-lo.
     pub on: String,
     pub to: u8,
+    /// O `ItemId` do item (F30 §A1): a chave de animação dos campos da fileira (`0` = por atribuir).
+    pub item: u32,
 }
 
 /// Snapshot da secção STATE MACHINE da entidade selecionada.

@@ -45,6 +45,8 @@ pub struct InspectorTriggerRow {
     /// como *«não premida»*, e sem a cerca do motor um `Release` sobre ela dispararia em TODO
     /// quadro. A lei cala-o; esta coluna **explica** o silêncio.
     pub no_mapa: NoMapa,
+    /// O `ItemId` do item (F30 §A1): a chave de animação dos campos da fileira (`0` = por atribuir).
+    pub item: u32,
 }
 
 /// ⭐⭐⭐ **O que o Input Map sabe de uma acção — TRÊS estados, e não dois** (2026-09-18).

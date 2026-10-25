@@ -139,7 +139,9 @@ static DE_FORA: Mutex<Vec<Passe>> = Mutex::new(Vec::new());
 
 /// Regista o passe de um componente de outra crate (idempotente, pelo nome canónico).
 pub fn regista(p: Passe) {
-    let mut v = DE_FORA.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut v = DE_FORA
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     if !v.iter().any(|x| x.canonical == p.canonical) {
         v.push(p);
     }
@@ -149,7 +151,9 @@ pub fn regista(p: Passe) {
 #[must_use]
 pub fn passes() -> Vec<Passe> {
     let mut v = desta_crate().to_vec();
-    let fora = DE_FORA.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let fora = DE_FORA
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     for p in fora.iter() {
         if !v.iter().any(|x| x.canonical == p.canonical) {
             v.push(*p);

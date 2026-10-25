@@ -38,12 +38,19 @@ fn curva(sim: &mut SimWorld, reg: &ComponentRegistry, e: Entity, k: FieldKey, x:
     sim.world_mut()
         .get_resource_or_insert_with(CanaisEscritos::default)
         .escrever(e.to_bits(), k, x);
-    aplicar(sim, reg, &mut PreviewDrive::default(), &mut TextosDosCanais::default())
+    aplicar(
+        sim,
+        reg,
+        &mut PreviewDrive::default(),
+        &mut TextosDosCanais::default(),
+    )
 }
 
 fn duracoes(sim: &SimWorld, e: Entity) -> Vec<(String, u64)> {
     let t = sim.world().get::<Timers>(e).expect("timers");
-    t.0.iter().map(|t| (t.name.clone(), t.duration_us)).collect()
+    t.0.iter()
+        .map(|t| (t.name.clone(), t.duration_us))
+        .collect()
 }
 
 /// ⭐⭐⭐ **A curva conduz a duração de um timer** — e o eco publica o que ficou.
@@ -54,7 +61,12 @@ fn a_curva_conduz_a_duracao_de_um_timer() {
     assert!(curva(&mut sim, &reg, e, duracao(ids[1]), 5_000_000.0));
     assert_eq!(duracoes(&sim, e)[1], ("b".into(), 5_000_000));
     assert_eq!(duracoes(&sim, e)[0].1, 1_000_000, "o vizinho não mexe");
-    publicar(&mut sim, &reg, &[e.to_bits()], &mut TextosDosCanais::default());
+    publicar(
+        &mut sim,
+        &reg,
+        &[e.to_bits()],
+        &mut TextosDosCanais::default(),
+    );
     let lidos = sim.world().resource::<CanaisLidos>();
     assert_eq!(lidos.valor(e.to_bits(), duracao(ids[1])), Some(5_000_000.0));
 }
@@ -65,13 +77,20 @@ fn a_curva_conduz_a_duracao_de_um_timer() {
 fn apagar_um_item_do_meio_nao_muda_a_chave_do_vizinho() {
     let reg = registo();
     let (mut sim, e, ids) = cena();
-    sim.world_mut().get_mut::<Timers>(e).expect("timers").0.remove(1);
+    sim.world_mut()
+        .get_mut::<Timers>(e)
+        .expect("timers")
+        .0
+        .remove(1);
     assert!(curva(&mut sim, &reg, e, duracao(ids[2]), 9_000_000.0));
     assert_eq!(
         duracoes(&sim, e),
         vec![("a".into(), 1_000_000), ("c".into(), 9_000_000)]
     );
-    assert!(!curva(&mut sim, &reg, e, duracao(ids[1]), 7_000_000.0), "órfã");
+    assert!(
+        !curva(&mut sim, &reg, e, duracao(ids[1]), 7_000_000.0),
+        "órfã"
+    );
     assert_eq!(duracoes(&sim, e)[1].1, 9_000_000);
 }
 
@@ -80,9 +99,17 @@ fn apagar_um_item_do_meio_nao_muda_a_chave_do_vizinho() {
 fn reordenar_os_itens_nao_muda_as_chaves() {
     let reg = registo();
     let (mut sim, e, ids) = cena();
-    sim.world_mut().get_mut::<Timers>(e).expect("timers").0.reverse();
+    sim.world_mut()
+        .get_mut::<Timers>(e)
+        .expect("timers")
+        .0
+        .reverse();
     assert!(curva(&mut sim, &reg, e, duracao(ids[0]), 4_000_000.0));
-    assert_eq!(duracoes(&sim, e)[2], ("a".into(), 4_000_000), "`a` está no fim agora");
+    assert_eq!(
+        duracoes(&sim, e)[2],
+        ("a".into(), 4_000_000),
+        "`a` está no fim agora"
+    );
     let mut t = TextosDosCanais::default();
     let pub_ = campos(&reg, sim.world(), e, &mut t);
     assert!(pub_.contains(&(duracao(ids[2]), 3_000_000.0)), "{pub_:?}");
@@ -105,7 +132,8 @@ fn toda_lista_do_catalogo_publica_os_campos_dos_itens() {
     let reg = registo();
     let mut sim = SimWorld::new();
     let mut anc = ph2d_ecs::NamedAnchorList::default();
-    anc.insert(ph2d_ecs::NamedAnchor::socket("boca")).expect("cabe");
+    anc.insert(ph2d_ecs::NamedAnchor::socket("boca"))
+        .expect("cabe");
     let e = sim
         .world_mut()
         .spawn((
@@ -124,10 +152,12 @@ fn toda_lista_do_catalogo_publica_os_campos_dos_itens() {
             anc,
         ))
         .id();
-    sim.world_mut().entity_mut(e).insert(ph2d_physics_ecs::Health {
-        resistances: vec![ph2d_physics_ecs::Resistance::default()],
-        ..ph2d_physics_ecs::Health::default()
-    });
+    sim.world_mut()
+        .entity_mut(e)
+        .insert(ph2d_physics_ecs::Health {
+            resistances: vec![ph2d_physics_ecs::Resistance::default()],
+            ..ph2d_physics_ecs::Health::default()
+        });
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     let mut t = TextosDosCanais::default();
     let pub_ = campos(&reg, sim.world(), e, &mut t);

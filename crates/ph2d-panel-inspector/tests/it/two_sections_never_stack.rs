@@ -68,6 +68,7 @@ fn timers() -> InspectorTimerInfo {
     InspectorTimerInfo {
         entity_bits: 0xABCD_1234,
         rows: vec![InspectorTimerRow {
+            item: Default::default(),
             name: "gatilho".into(),
             duration_s: 3.0,
             repeat: false,
@@ -84,6 +85,7 @@ fn actions() -> InspectorActionInfo {
         entity_bits: 0xABCD_1234,
         rows: vec![
             InspectorActionRow {
+                item: Default::default(),
                 on: "abre".into(),
                 target: "Porta".into(),
                 verb_tag: 3,
@@ -98,6 +100,7 @@ fn actions() -> InspectorActionInfo {
                 target_tag_path: String::new(),
             },
             InspectorActionRow {
+                item: Default::default(),
                 on: "abre".into(),
                 target: "Motor".into(),
                 verb_tag: 0,

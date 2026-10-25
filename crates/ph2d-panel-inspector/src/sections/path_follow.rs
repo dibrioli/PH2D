@@ -100,6 +100,16 @@ fn relogio(
         ColorToken::Text3,
     );
     let sec = seccao_do_percurso(text_system);
+    // ⭐ As linhas do relógio são canais do TIMER dele (F30 §A1), pela identidade.
+    super::canal_item::regista(
+        ph2d_component_desc::lista::codigo::TIMERS,
+        i.relogio_item,
+        &[
+            (2, &[crate::ids::INSP_PF_DURACAO]),
+            (3, &[crate::ids::INSP_PF_REPEAT]),
+            (4, &[crate::ids::INSP_PF_AUTOSTART]),
+        ],
+    );
     cur_y = super::rows::fields_row(
         scene,
         text_system,

@@ -74,6 +74,7 @@ fn the_panel_reads_the_same_shape_the_engine_does() {
         );
 
         let row = ph2d_editor_core::InspectorAnchorRow {
+            item: Default::default(),
             name: "x".into(),
             pos: [0.0, 0.0],
             rot_deg: 0.0,

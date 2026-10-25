@@ -68,6 +68,7 @@ pub(super) fn build_anchor_info(
         .map(|l| {
             l.iter()
                 .map(|a| InspectorAnchorRow {
+                    item: a.item.0,
                     riders: mounted.iter().filter(|n| **n == a.name).count(),
                     name: a.name.clone(),
                     pos: [

@@ -138,7 +138,8 @@ fn uma_accao_sem_tecla_existe_e_fica_calada_na_mesma() {
 fn mundo(edge: ph2d_ecs::ActionEdge, accao: &str) -> ph2d_ecs::SimWorld {
     let mut sim = ph2d_ecs::SimWorld::new();
     sim.world_mut()
-        .spawn(ph2d_ecs::SignalOnAction(vec![ph2d_ecs::ActionTriggerRow { item: Default::default(),
+        .spawn(ph2d_ecs::SignalOnAction(vec![ph2d_ecs::ActionTriggerRow {
+            item: Default::default(),
             action: accao.to_owned(),
             edge,
             signal: "tiro".to_owned(),

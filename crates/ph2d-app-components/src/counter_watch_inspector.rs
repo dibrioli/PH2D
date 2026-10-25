@@ -56,6 +56,7 @@ pub fn build_info(
             // regra julga a vida de um inimigo, e o artista vê dois números para um facto.
             let valor_vivo = counter::soma(world, &r.counter, r.scope.ambito(e));
             InspectorWatchRow {
+                item: r.item.0,
                 counter: r.counter.clone(),
                 compare: u8_de_compare(r.compare),
                 value: r.value,

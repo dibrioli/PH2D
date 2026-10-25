@@ -21,8 +21,11 @@ fn ids(w: &World, e: Entity) -> Vec<u32> {
 }
 
 fn com_timers(w: &mut World, nomes: &[&str]) -> Entity {
-    w.spawn((Transform::IDENTITY, Timers(nomes.iter().map(|n| timer(n)).collect())))
-        .id()
+    w.spawn((
+        Transform::IDENTITY,
+        Timers(nomes.iter().map(|n| timer(n)).collect()),
+    ))
+    .id()
 }
 
 /// ⭐ Todo item recebe um id ≠ 0, na ordem da lista, e o passe é idempotente.
@@ -33,8 +36,14 @@ fn todo_item_recebe_um_id_e_o_passe_e_idempotente() {
     assert!(assign_missing_stable_ids(&mut w));
     let v = ids(&w, e);
     assert!(v.iter().all(|&i| i != 0), "{v:?}");
-    assert!(v.windows(2).all(|p| p[0] < p[1]), "na ordem da lista: {v:?}");
-    assert!(!assign_missing_item_ids(&mut w), "a 2.ª corrida não muda nada");
+    assert!(
+        v.windows(2).all(|p| p[0] < p[1]),
+        "na ordem da lista: {v:?}"
+    );
+    assert!(
+        !assign_missing_item_ids(&mut w),
+        "a 2.ª corrida não muda nada"
+    );
     assert_eq!(ids(&w, e), v);
 }
 
@@ -55,7 +64,10 @@ fn um_id_de_item_nunca_se_reusa() {
     assign_missing_stable_ids(&mut w);
     let depois = ids(&w, e);
     assert_eq!(depois[0], antes[0], "o que ficou guarda o id");
-    assert_ne!(depois[1], apagado, "o id do apagado não renasce: {antes:?} → {depois:?}");
+    assert_ne!(
+        depois[1], apagado,
+        "o id do apagado não renasce: {antes:?} → {depois:?}"
+    );
     assert!(depois[1] > apagado);
 }
 
@@ -125,12 +137,21 @@ fn um_projecto_antigo_abre_com_ids_nos_itens() {
         version: crate::scene::WorldSnapshot::VERSION,
         entities: vec![std::sync::Arc::new(crate::scene::EntitySnapshotRow {
             id: crate::StableId(7),
-            components: vec![ph2d_asset::ComponentBlob { type_id: tid, data: bytes }],
+            components: vec![ph2d_asset::ComponentBlob {
+                type_id: tid,
+                data: bytes,
+            }],
             parent: None,
         })],
     };
     let m = migra_v194(&mut snap);
-    assert_eq!(m, MigracaoV194 { migrados: 1, ilegiveis: 0 });
+    assert_eq!(
+        m,
+        MigracaoV194 {
+            migrados: 1,
+            ilegiveis: 0
+        }
+    );
     let t: Timers = postcard::from_bytes(&snap.entities[0].components[0].data).expect("lê");
     assert_eq!(t.0[1].duration_us, 2_000_000);
     assert_eq!(t.0[1].signal, "s");
@@ -157,8 +178,16 @@ fn os_passes_desta_crate_sao_componentes_registados() {
 #[test]
 fn um_blob_ja_na_forma_nova_passa_intacto() {
     let acoes = crate::SignalActions(vec![
-        crate::SignalAction { on: "a".into(), target: "x".into(), ..Default::default() },
-        crate::SignalAction { on: "b".into(), target: "y".into(), ..Default::default() },
+        crate::SignalAction {
+            on: "a".into(),
+            target: "x".into(),
+            ..Default::default()
+        },
+        crate::SignalAction {
+            on: "b".into(),
+            target: "y".into(),
+            ..Default::default()
+        },
     ]);
     let bytes = postcard::to_allocvec(&acoes).expect("grava");
     let mut snap = crate::scene::WorldSnapshot {

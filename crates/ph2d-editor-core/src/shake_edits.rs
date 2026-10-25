@@ -107,6 +107,8 @@ pub struct InspectorEmitterRow {
     pub dentro: f32,
     /// O raio externo, em metros.
     pub fora: f32,
+    /// O `ItemId` do item (F30 §A1): a chave de animação dos campos da fileira (`0` = por atribuir).
+    pub item: u32,
 }
 
 impl InspectorEmitterRow {

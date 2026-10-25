@@ -49,7 +49,7 @@ pub(crate) fn sync(
     let focus = host.store().focus_id();
     let drag = host.store().number_input_drag().map(|d| d.id);
     // ⛔ **A caixa `Only once` NÃO entra aqui** — ela é pintada a partir do snapshot
-    //    (`paint_check_rows(.., row.once)`) e o `event` decide a partir do snapshot também.
+    //    (o `paint_check_rows` com o `row.once`) e o `event` decide a partir do snapshot também.
     //    Semeá-la seria a SEGUNDA resposta à mesma pergunta, que é o defeito oposto a este.
     if focus != Some(crate::ids::INSP_WATCH_VALUE) && drag != Some(crate::ids::INSP_WATCH_VALUE) {
         #[expect(

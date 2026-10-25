@@ -12,21 +12,31 @@ fn um_projecto_v194_abre_com_os_itens_na_forma_nova() {
         ("b".into(), 3_000_000, true, false, "s".into()),
     ];
     let mut f = bare_file(empty_state());
-    f.state.world.entities.push(std::sync::Arc::new(ph2d_ecs::scene::EntitySnapshotRow {
-        id: ph2d_ecs::StableId(5),
-        components: vec![ph2d_asset::ComponentBlob {
-            type_id: ph2d_ecs::scene::registry::stable_type_id("ph2d::ecs::Timers"),
-            data: postcard::to_allocvec(&v194).expect("grava"),
-        }],
-        parent: None,
-    }));
+    f.state
+        .world
+        .entities
+        .push(std::sync::Arc::new(ph2d_ecs::scene::EntitySnapshotRow {
+            id: ph2d_ecs::StableId(5),
+            components: vec![ph2d_asset::ComponentBlob {
+                type_id: ph2d_ecs::scene::registry::stable_type_id("ph2d::ecs::Timers"),
+                data: postcard::to_allocvec(&v194).expect("grava"),
+            }],
+            parent: None,
+        }));
     let path = tmp_path("itens_v194");
-    std::fs::write(&path, postcard::to_allocvec(&(194u32, &f)).expect("serializa")).expect("grava");
+    std::fs::write(
+        &path,
+        postcard::to_allocvec(&(194u32, &f)).expect("serializa"),
+    )
+    .expect("grava");
     let lido = headless_app().read_project_file(&path.to_string_lossy());
     let _ = std::fs::remove_file(&path);
     let (back, _) = lido.expect("um v194 é aceite");
     let t: ph2d_ecs::Timers =
         postcard::from_bytes(&back.state.world.entities[0].components[0].data).expect("forma nova");
     assert_eq!(t.0[1].duration_us, 3_000_000);
-    assert!(t.0.iter().all(|x| x.item.is_none()), "o passe é que dá os ids");
+    assert!(
+        t.0.iter().all(|x| x.item.is_none()),
+        "o passe é que dá os ids"
+    );
 }

@@ -284,7 +284,15 @@ fn linha_da_comparacao(
     if aberto {
         crate::state_popovers::set_pending_watch_dd(Some((row.compare, linha.control)));
     }
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, linha.dot);
+    // A comparação é canal da regra (F30 §A1): o losango pela porta de todos.
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_for(
+        scene,
+        theme,
+        linha.dot,
+        &[crate::ids::INSP_WATCH_CMP_PICK],
+    ) {
+        hit_index.register(alvo, linha.dot);
+    }
     y + ph2d_tokens::row_pitch_px()
 }
 
@@ -310,6 +318,19 @@ fn editor(
             tr("panel.inspector.counter_watch.value"),
             tr("panel.inspector.counter_watch.counter_label"),
             tr("panel.inspector.counter_watch.signal_label"),
+        ],
+    );
+    // ⭐ Cada linha é um canal da regra (F30 §A1), pela identidade dela.
+    super::canal_item::regista(
+        ph2d_component_desc::lista::codigo::VIGIA,
+        row.item,
+        &[
+            (1, &[ids::INSP_WATCH_COUNTER]),
+            (2, &[ids::INSP_WATCH_CMP_PICK]),
+            (3, &[ids::INSP_WATCH_VALUE]),
+            (4, &[ids::INSP_WATCH_SIGNAL]),
+            (5, &[ids::INSP_WATCH_ONCE]),
+            (6, &[ids::INSP_WATCH_SCOPE]),
         ],
     );
     let mut cur_y = super::anim_rows::text_row(

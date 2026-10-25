@@ -48,6 +48,7 @@ pub(crate) fn info() -> InspectorPathFollowInfo {
         nome_existe: true,
         nome_tem_forma: true,
         relogio: SLOT,
+        relogio_item: 0,
         relogios: 4,
         duracao_us: Some(400_000),
         repeat: false,

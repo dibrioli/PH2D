@@ -7,29 +7,34 @@ fn cena() -> (SimWorld, u64) {
     let mut sim = SimWorld::new();
     let m = StateMachine {
         states: vec![
-            MachineState { item: Default::default(),
+            MachineState {
+                item: Default::default(),
                 name: "Fechada".into(),
                 on_enter: "porta_fechada".into(),
                 on_exit: String::new(),
             },
-            MachineState { item: Default::default(),
+            MachineState {
+                item: Default::default(),
                 name: "A abrir".into(),
                 on_enter: "porta_a_abrir".into(),
                 on_exit: String::new(),
             },
-            MachineState { item: Default::default(),
+            MachineState {
+                item: Default::default(),
                 name: "Aberta".into(),
                 on_enter: "porta_aberta".into(),
                 on_exit: String::new(),
             },
         ],
         transitions: vec![
-            StateTransition { item: Default::default(),
+            StateTransition {
+                item: Default::default(),
                 from: 0,
                 on: "botao".into(),
                 to: 1,
             },
-            StateTransition { item: Default::default(),
+            StateTransition {
+                item: Default::default(),
                 from: 1,
                 on: "fim".into(),
                 to: 2,

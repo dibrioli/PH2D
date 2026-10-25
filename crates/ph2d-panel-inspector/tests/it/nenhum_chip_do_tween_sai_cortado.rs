@@ -100,6 +100,8 @@ fn seccao_pintada() -> Vec<(ph2d_a11y::NodeId, ph2d_editor_core::zones::Rect)> {
     set_current_inspector_tween(Some(InspectorTweenInfo {
         entity_bits: 0x7CEE_00C1,
         rows: vec![InspectorTweenRow {
+            item: Default::default(),
+            relogio_item: Default::default(),
             canal: ph2d_tween::Canal::Opacity.tag(),
             de: [1.0, 0.0, 0.0, 0.0],
             para: [0.0, 0.0, 0.0, 0.0],

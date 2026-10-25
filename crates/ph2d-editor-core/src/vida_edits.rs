@@ -43,6 +43,8 @@ pub struct InspectorResistanceRow {
     /// ⚠️ **Outra linha ACIMA tem o mesmo tipo** (pela dobra da casa) — a lei lê só a primeira, e
     /// esta é uma linha que o artista escreve e que não faz nada. A lista pinta-a em WARN.
     pub repetida: bool,
+    /// O `ItemId` do item (F30 §A1): a chave de animação dos campos da fileira (`0` = por atribuir).
+    pub item: u32,
 }
 
 /// A metade VIDA do instantâneo — os vinte e sete campos do `Health`.

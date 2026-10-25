@@ -30,7 +30,8 @@ use ph2d_tags::TagTree;
 
 /// Uma linha de tabela — o mesmo molde da sonda do cérebro.
 fn linha(on: &str, target: &str, verb: SignalVerb) -> SignalAction {
-    SignalAction { item: Default::default(),
+    SignalAction {
+        item: Default::default(),
         on: on.to_string(),
         target: target.to_string(),
         verb,

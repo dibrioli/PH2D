@@ -62,6 +62,8 @@ pub struct InspectorWatchRow {
     pub counter_existe: bool,
     /// ⭐ **Quanto vale esse contador AGORA** — leitura, nunca edição. `None` quando ele não existe.
     pub valor_vivo: Option<i64>,
+    /// O `ItemId` do item (F30 §A1): a chave de animação dos campos da fileira (`0` = por atribuir).
+    pub item: u32,
 }
 
 /// O que a secção precisa de saber para se pintar.

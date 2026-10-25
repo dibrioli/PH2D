@@ -164,7 +164,8 @@ fn receita_do_alvo(world: &mut World, a: Alvo) -> Entity {
                 resistances: a
                     .resistencias
                     .iter()
-                    .map(|&(kind, rate, absorbs)| Resistance { item: Default::default(),
+                    .map(|&(kind, rate, absorbs)| Resistance {
+                        item: Default::default(),
                         kind: kind.to_owned(),
                         rate,
                         absorbs,
@@ -297,12 +298,14 @@ pub fn cena_tres(world: &mut World) -> Entity {
                 ..TopDownLaw::default()
             }),
             SignalOnAction(vec![
-                ActionTriggerRow { item: Default::default(),
+                ActionTriggerRow {
+                    item: Default::default(),
                     action: ACCAO_FOGO.to_owned(),
                     edge: ActionEdge::Press,
                     signal: SINAL_FOGO.to_owned(),
                 },
-                ActionTriggerRow { item: Default::default(),
+                ActionTriggerRow {
+                    item: Default::default(),
                     action: ACCAO_GELO.to_owned(),
                     edge: ActionEdge::Press,
                     signal: SINAL_GELO.to_owned(),

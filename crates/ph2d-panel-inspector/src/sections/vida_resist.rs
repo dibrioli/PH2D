@@ -129,6 +129,16 @@ pub(super) fn corpo_resistencias(
     let Some(r) = aberta.and_then(|k| h.resistances.get(k)) else {
         return cur_y;
     };
+    // ⭐ Cada linha é um canal da resistência (F30 §A1), pela identidade dela.
+    super::canal_item::regista(
+        ph2d_component_desc::lista::codigo::RESISTENCIAS,
+        r.item,
+        &[
+            (1, &[ids::INSP_VIDA_RESIST_KIND]),
+            (2, &[ids::INSP_VIDA_RESIST_RATE]),
+            (3, &[ids::INSP_VIDA_RESIST_ABSORBS]),
+        ],
+    );
     cur_y = super::vida::nome(
         scene,
         text_system,

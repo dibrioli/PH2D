@@ -42,6 +42,8 @@ const VIEWPORT: Rect = Rect {
 /// premissa que vale a pena estar escrita.
 fn linha() -> InspectorTweenRow {
     InspectorTweenRow {
+        item: Default::default(),
+        relogio_item: Default::default(),
         canal: ph2d_tween::Canal::Opacity.tag(),
         de: [1.0, 0.0, 0.0, 0.0],
         para: [0.0, 0.0, 0.0, 0.0],

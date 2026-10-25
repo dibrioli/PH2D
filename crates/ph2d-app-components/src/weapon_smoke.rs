@@ -164,7 +164,8 @@ fn receita(world: &mut World, nome: &str, cor: [f32; 4]) -> Entity {
 /// cadência só se vê a SEGURAR. *Com `Press`, as três dariam um tiro por toque e a arma não teria
 /// o que demonstrar.*
 fn gatilho() -> SignalOnAction {
-    SignalOnAction(vec![ActionTriggerRow { item: Default::default(),
+    SignalOnAction(vec![ActionTriggerRow {
+        item: Default::default(),
         action: ACCAO.to_owned(),
         edge: ActionEdge::Hold,
         signal: GATILHO.to_owned(),

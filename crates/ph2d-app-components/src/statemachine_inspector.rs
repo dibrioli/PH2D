@@ -34,6 +34,7 @@ pub fn build_statemachine_info(
         .iter()
         .enumerate()
         .map(|(i, s)| InspectorStateRow {
+            item: s.item.0,
             name: s.name.clone(),
             on_enter: s.on_enter.clone(),
             on_exit: s.on_exit.clone(),
@@ -49,6 +50,7 @@ pub fn build_statemachine_info(
         .transitions
         .iter()
         .map(|t| InspectorTransitionRow {
+            item: t.item.0,
             from: t.from,
             on: t.on.clone(),
             to: t.to,
@@ -78,7 +80,8 @@ pub fn apply_statemachine_edit(world: &mut World, bits: u64, edit: &E) -> bool {
                 return false;
             }
             let n = m.states.len();
-            m.states.push(MachineState { item: Default::default(),
+            m.states.push(MachineState {
+                item: Default::default(),
                 // ⚠️ **Um nome de partida e não vazio**: um estado sem nome lê-se como partido, e a
                 // lista teria N linhas indistinguíveis.
                 name: format!("State {n}"),
@@ -123,7 +126,8 @@ pub fn apply_statemachine_edit(world: &mut World, bits: u64, edit: &E) -> bool {
             // `0 → 0` seria uma auto-transição, que a lei recusa — ela leria-se como um controlo
             // partido no instante em que nasce.
             let ultimo = u8::try_from(m.states.len().saturating_sub(1)).unwrap_or(0);
-            m.transitions.push(StateTransition { item: Default::default(),
+            m.transitions.push(StateTransition {
+                item: Default::default(),
                 from: 0,
                 on: String::new(),
                 to: ultimo,

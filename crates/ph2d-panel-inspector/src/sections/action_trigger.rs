@@ -276,7 +276,15 @@ fn linha_da_aresta(
     if aberto {
         crate::state_popovers::set_pending_trigger_dd(Some((row.edge, linha.control)));
     }
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, linha.dot);
+    // A aresta é canal do gatilho (F30 §A1): o losango pela porta de todos.
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_for(
+        scene,
+        theme,
+        linha.dot,
+        &[crate::ids::INSP_TRIGGER_EDGE_PICK],
+    ) {
+        hit_index.register(alvo, linha.dot);
+    }
     y + ph2d_tokens::row_pitch_px()
 }
 
@@ -302,6 +310,16 @@ fn editor(
         &[
             tr("panel.inspector.trigger.action_label"),
             tr("panel.inspector.trigger.signal_label"),
+        ],
+    );
+    // ⭐ Cada linha é um canal do gatilho (F30 §A1), pela identidade dele.
+    super::canal_item::regista(
+        ph2d_component_desc::lista::codigo::GATILHOS,
+        row.item,
+        &[
+            (1, &[ids::INSP_TRIGGER_ACTION]),
+            (2, &[ids::INSP_TRIGGER_EDGE_PICK]),
+            (3, &[ids::INSP_TRIGGER_SIGNAL]),
         ],
     );
     let mut cur_y = super::anim_rows::text_row(

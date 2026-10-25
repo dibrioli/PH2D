@@ -52,6 +52,7 @@ pub(crate) fn info_camera() -> InspectorShakeInfo {
 /// (`get(0)` e `first()` são a mesma coisa), a lição que esta linha pagou três vezes no #22.
 pub(crate) fn info_emissor() -> InspectorEmitterInfo {
     let f = |on: &str| InspectorEmitterRow {
+        item: Default::default(),
         on: on.into(),
         de: 0,
         forca: 0.6,

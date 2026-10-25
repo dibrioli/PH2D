@@ -44,7 +44,8 @@ use ph2d_render::Sprite;
 
 /// Um relógio nomeado que publica `signal`.
 fn relogio(name: &str, secs: u64, repeat: bool, autostart: bool, signal: &str) -> Timers {
-    Timers(vec![Timer { item: Default::default(),
+    Timers(vec![Timer {
+        item: Default::default(),
         name: name.to_string(),
         duration_us: secs * 1_000_000,
         repeat,
@@ -54,7 +55,8 @@ fn relogio(name: &str, secs: u64, repeat: bool, autostart: bool, signal: &str) -
 }
 
 fn linha(on: &str, target: &str, verb: SignalVerb, arg: &str) -> SignalAction {
-    SignalAction { item: Default::default(),
+    SignalAction {
+        item: Default::default(),
         on: on.into(),
         target: target.into(),
         verb,

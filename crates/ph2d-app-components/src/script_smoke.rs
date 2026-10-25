@@ -178,7 +178,8 @@ fn cena_um(world: &mut World, script: ScriptId) -> u64 {
     let e = boneco(world, "Bob (fast)", 2, rapido);
     // ⭐ **A tabela de acções mora no MESMO boneco** — o script grita, a tabela age. Nenhum dos dois
     // sabe do outro: o sinal é o contrato.
-    world.entity_mut(e).insert(SignalActions(vec![SignalAction { item: Default::default(),
+    world.entity_mut(e).insert(SignalActions(vec![SignalAction {
+        item: Default::default(),
         on: "top".into(),
         target: "Lamp".into(),
         verb: SignalVerb::ToggleVisibility,

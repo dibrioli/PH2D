@@ -34,6 +34,8 @@ pub struct InspectorPathFollowInfo {
     pub nome_tem_forma: bool,
     /// O índice do relógio que o faz andar.
     pub relogio: u8,
+    /// O `ItemId` do timer desse índice (F30 §A1): a chave das linhas do relógio (`0` = nenhum).
+    pub relogio_item: u32,
     /// Quantos relógios a entidade tem — o aviso do índice sem timer sai daqui.
     pub relogios: usize,
     /// ⭐ **A DURAÇÃO do relógio desse índice, em µs** — `None` quando não há relógio nenhum.

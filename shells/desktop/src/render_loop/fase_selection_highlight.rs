@@ -93,31 +93,12 @@ impl crate::App {
             // **§12 Sockets / Named Anchors** (spec Sprite 07 §7.6) — os marcadores só
             // aparecem com a seção EXPANDIDA, senão todo sprite com âncoras ficaria coberto
             // de cruzes. Sem eles a §12 é um formulário que não mexe em nada na tela.
-            // **O gizmo dos deformadores de quadrilátero** — o contorno, os braços e
-            // as alças. Lê o retrato publicado no prólogo (a tool e a selecção já
-            // foram decididas lá), então aqui não há regra nenhuma, só tinta.
-            //
-            // ⛔⛔⛔ **ELE JÁ ESTEVE ~2 000 LINHAS ABAIXO, E O GIZMO SUMIU DO ECRÃ.**
-            // (report do Enio, 2026-09-08: *«nessa última rodada vc sumiu com o gizmo do
-            // Bezier Warp»*.) A mudança tinha sido feita para o pôr por cima do documento
-            // vectorial e das formas vivas do Motion, que codificam na MESMA cena depois
-            // daqui — mas essa ordem foi **inferida de números de linha e nunca medida**, e
-            // a que se pagou foi real.
-            //
-            // ⚠️ **O mecanismo do desaparecimento NÃO está nomeado**, e as quatro hipóteses
-            // óbvias foram descartadas com medição: o sítio novo corre (contagem de chavetas
-            // que ignora strings e comentários: só `impl` → `fn` → `if let Some(hero)`), a
-            // cena não é reposta nem trocada entre os dois pontos, o `camera` e o `surface`
-            // não são sombreados, e o retrato é publicado **uma vez só** (não é um `take`).
-            // ⇒ *uma mudança de sítio sem uma medição do que o sítio garante é um palpite*,
-            // e quem a repetir começa por instrumentar o quadro, não por mover a linha.
-            // ⛔⛔ **OS GIZMOS DE NÓ MUDARAM-SE PARA A `fase_vector_overlays`** (doc 109 §6, report
-            // do dono 2026-09-13: *«o collider deve aparecer na frente da shape (z-index maior)»*).
-            // Esta fase corre ANTES da que codifica a arte das formas do Motion, e no Vello quem
-            // pinta primeiro fica por BAIXO: o gizmo desenhado aqui ficava atrás dos quadrados que
-            // ele manipula. ⚠️ A nota de 2026-09-08 do `warp_overlay` dizia *«o gizmo ESTÁ por
-            // cima»* e foi medida agora como falsa — a cura de então (o casing) tratou o sintoma.
-            // O gate `the_collider_outline_is_painted_after_the_shape_art` prende a ordem.
+            // **O gizmo dos deformadores de quadrilátero** — lê o retrato publicado no prólogo; aqui
+            // só tinta. ⛔ Já esteve ~2 000 linhas abaixo e SUMIU do ecrã (report 2026-09-08, causa
+            // nunca nomeada: mover sem medir o que o sítio garante é palpite — instrumente o quadro).
+            // ⛔⛔ Os gizmos de NÓ vivem na `fase_vector_overlays` (doc 109 §6): esta fase corre ANTES
+            // da arte das formas do Motion, e no Vello quem pinta primeiro fica por BAIXO. O gate
+            // `the_collider_outline_is_painted_after_the_shape_art` prende a ordem.
             anchor_overlay::draw_anchor_marks(
                 !hero
                     .store

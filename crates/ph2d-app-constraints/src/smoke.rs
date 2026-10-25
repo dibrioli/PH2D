@@ -6,6 +6,7 @@
 //! | 3 | **Ponteiros** — os dois autorados a 170°: o de cima tem limite −45°…45° e pára na borda MAIS PERTO (45°); o de baixo copia a rotação da GUIA (−170°) a 50 % e fica a 180° (o arco curto, não 0°) |
 
 use bevy_ecs::entity::Entity;
+use bevy_ecs::prelude::Resource;
 use bevy_ecs::world::World;
 use ph2d_constraints::{Canais, CopyTransform, Distance, DistanceMode, Kind, Limit, LookAt, Space};
 use ph2d_constraints_ecs::Constraints;
@@ -30,14 +31,25 @@ pub fn nivel_armado() -> Option<u32> {
         .and_then(|v| v.trim().parse::<u32>().ok())
 }
 
+/// O objecto com que a cena abre ESCOLHIDO (o cartão e o gizmo dele à vista); a shell consome-o
+/// uma vez ([`escolhido`]).
+#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Escolher(pub u64);
+
 /// Povoa `world` com a cena `nivel`. Devolve se havia cena para esse nível.
 pub fn encenar(world: &mut World, nivel: u32) -> bool {
-    match nivel {
+    let sujeito = match nivel {
         2 => olho(world),
         3 => ponteiros(world),
         _ => return false,
-    }
+    };
+    world.insert_resource(Escolher(sujeito.to_bits()));
     true
+}
+
+/// O objecto que a cena pediu escolhido — uma vez só.
+pub fn escolhido(world: &mut World) -> Option<u64> {
+    world.remove_resource::<Escolher>().map(|e| e.0)
 }
 
 fn peca(
@@ -76,8 +88,8 @@ fn pilha(world: &mut World, dono: Entity, itens: &[(Kind, Option<Entity>, f64)])
     world.entity_mut(dono).insert(c);
 }
 
-/// Cena 2 — **Olho.**
-fn olho(world: &mut World) {
+/// Cena 2 — **Olho.** Abre com a pupila escolhida.
+fn olho(world: &mut World) -> Entity {
     let d = 2.0 * RAIO_DO_OLHO;
     let olho = peca(
         world,
@@ -134,10 +146,11 @@ fn olho(world: &mut World) {
         seta,
         &[(Kind::LookAt(LookAt::default()), Some(bola), 1.0)],
     );
+    pupila
 }
 
-/// Cena 3 — **Ponteiros.**
-fn ponteiros(world: &mut World) {
+/// Cena 3 — **Ponteiros.** Abre com o ponteiro do limite escolhido.
+fn ponteiros(world: &mut World) -> Entity {
     let lado = [2.0, 0.2];
     let limitado = peca(
         world,
@@ -178,4 +191,5 @@ fn ponteiros(world: &mut World) {
         ..CopyTransform::default()
     });
     pilha(world, meio, &[(copia, Some(guia), 0.5)]);
+    limitado
 }

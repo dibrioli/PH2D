@@ -33,16 +33,15 @@ impl crate::App {
             self.vec.textpath_handle_drag = false;
             return true;
         }
-        // ⭐⭐⭐ **O Up que fecha o arrasto de uma ALÇA DE OSSO.**
-        //
-        // ⚠️ Ela CONSOME o gesto: sem isto, soltar depois de girar um osso cai na cadeia de baixo e
-        // a forma sob o cursor é seleccionada.
-        //
-        // ⛔⛔ **Ele vivia DENTRO do bloco `vector_tool_active() && modo != Select`** e a alça passou
-        // a poder ser agarrada em todo modo (auditoria de 2026-09-08) ⇒ no modo **Select** o slot
-        // era armado e **nunca** libertado: o osso seguia o rato para sempre, sem botão nenhum
-        // apertado. *Um slot de arrasto tem de ser largado onde quer que possa ser agarrado* — e é
-        // por isso que ele passou para esta família, que é a dos irmãos independentes de modo.
+        // O Up que fecha o arrasto de uma ALÇA DE OSSO ou de uma pega do gizmo das constraints, e o
+        // CONSOME (senão a forma sob o cursor seria seleccionada). Vive fora do bloco de modo: um
+        // slot de arrasto larga-se onde quer que possa ser agarrado (auditoria 2026-09-08).
+        if mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Up
+            && self.constraint_gizmo(ph2d_app_constraints::gizmo::Gesto::Largar, (evt.x, evt.y))
+        {
+            return true;
+        }
         if self.skeleton.bone_pose.is_some()
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Up
@@ -95,6 +94,14 @@ impl crate::App {
             && self.over_canvas_or_gizmo(evt.x, evt.y)
         {
             self.joint_body_pick_click(evt.x, evt.y);
+            return true;
+        }
+        // A pega do gizmo das constraints (arco, raio) ganha ao gizmo do objecto.
+        if mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && self.constraint_gizmo(ph2d_app_constraints::gizmo::Gesto::Premir, (evt.x, evt.y))
+        {
             return true;
         }
         // **O eyedropper de MONTAGEM da roldana** (§13, W-Pulley W3) — a mesma

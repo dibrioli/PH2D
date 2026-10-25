@@ -30,6 +30,7 @@ impl crate::App {
             vec_scene,
             hero_screen,
             motion,
+            sim,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -192,26 +193,26 @@ impl crate::App {
         // ⚠️ **FORA do `overlay.edit`, e é a metade do desenho:** aquele portão só abre no
         // modo Node, e é justamente no modo **Select** — onde o artista escolhe qual das cinco
         // formas de uma booleana quer — que a pergunta *"qual delas é esta?"* se faz.
-        //
-        // ⚠️ E **não** quando ela já está selecionada: o gizmo já a nomeia, e um segundo
-        // realce por cima do primeiro diz duas vezes a mesma coisa com tintas diferentes.
-        //
-        // ⚠️ **SEM portão de modo** (Enio, 2026-08-23: *"pode estender isso para todos os
-        // objetos mesmo fora do modo vector?"*): o realce segue o CLIQUE, e o clique pega
-        // objecto em qualquer modo. Um portão de modo aqui faria a pergunta *"qual destes é
-        // este?"* só ter resposta onde ela já era mais fácil.
+        // ⚠️ Não sobre a já seleccionada (o gizmo já a nomeia) e SEM portão de modo (Enio,
+        // 2026-08-23): o realce segue o CLIQUE, e o clique pega objecto em qualquer modo.
         if let Some(bits) = self.hovered_object
             && !self.hover_outline.is_empty()
             && !hero.gizmo.iter_selected().any(|s| s == bits)
         {
             ph2d_vec_render::draw_hover_outline(&self.hover_outline, cam_affine, vector_scene);
         }
-        // ⭐⭐⭐ **OS TRÊS REALCES QUE RESPONDEM *«o que este clique faria?»*** — fase FILHA, e a
-        // prosa dela já os declarava como um assunto só (*«ao lado dos dois realces acima e pela
-        // mesma razão»*). ⚠️ **Ela é uma `fase_` e é chamada por `self.`, e as duas coisas são
-        // obrigatórias:** o texto emendado do quadro (`frame_text`) só colhe `fn fase_*` e só
-        // emenda em `self.fase_…(` — com outro nome ou outro receptor, este bloco DESAPARECE do
-        // oráculo de toda lei de ordem da shell, em silêncio, e a ordem de z é o contrato aqui.
+        // O gizmo das CONSTRAINTS (alvos, arcos, raios) por cima das formas: as pegas são do dedo.
+        ph2d_app_constraints::gizmo::desenhar(
+            sim.world(),
+            hero.gizmo.selection,
+            hero.theme,
+            camera,
+            janela_da_cena,
+            vector_scene,
+        );
+        // ⭐⭐⭐ Os três realces de *«o que este clique faria?»*. ⚠️ É uma `fase_` chamada por `self.`:
+        // o `frame_text` só colhe `fn fase_*` e só emenda em `self.fase_…(` — com outro nome ou
+        // receptor ela some, em silêncio, do oráculo das leis de ordem (a ordem de z é o contrato).
         self.fase_vector_click_previews(cam_affine);
         Some((overlay, vec_xf, cam_affine))
     }

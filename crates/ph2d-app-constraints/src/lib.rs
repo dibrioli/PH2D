@@ -5,6 +5,7 @@
 
 pub mod campos;
 pub mod canais;
+pub mod gizmo;
 pub mod inspector;
 pub mod marcas;
 pub mod smoke;

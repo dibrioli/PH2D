@@ -22,11 +22,9 @@ impl crate::App {
         {
             return true;
         }
-        // ⭐⭐⭐ **POSAR um osso** (estudo 42 item 5): a mesma disciplina de early-return dos irmãos,
-        // e no-op sem osso agarrado.
-        // ⭐ O pincel de peso ANTES da pose: os dois são gestos do modo Osso e só um pode estar
-        // vivo (o press arma um OU o outro), mas a ordem torna a exclusão visível.
-        if self.vec_peso_move() {
+        // POSAR um osso, o pincel de peso antes (só um está vivo) e a pega das constraints.
+        let gizmo = ph2d_app_constraints::gizmo::Gesto::Mover;
+        if self.constraint_gizmo(gizmo, self.last_pointer) || self.vec_peso_move() {
             return true;
         }
         if self.vec_bone_pose_move() {

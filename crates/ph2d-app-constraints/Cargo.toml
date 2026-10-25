@@ -23,6 +23,10 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
 ph2d-timeline = { path = "../ph2d-timeline" }
 ph2d-preview-drive = { path = "../ph2d-preview-drive" }
+# O gizmo do palco: a câmera e a janela da cena, os tokens e a cena vectorial do overlay.
+ph2d-host = { path = "../ph2d-host" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-vector = { path = "../ph2d-vector" }
 # As cenas de smoke: sprites de quadrado e de disco.
 ph2d-render = { path = "../ph2d-render" }
 bevy_ecs = "0.19"

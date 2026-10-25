@@ -82,49 +82,35 @@ impl App {
     }
 
     /// **O diálogo New Sprite é MODAL pela mesma lei** (ADR-0192): aberto, toda tecla vai SÓ para
-    /// ele — os algarismos para o campo, Enter = OK, Esc = Cancel (a lei é do
-    /// `ph2d_editor_core::interaction::dispatch_key`) — e nenhum atalho por baixo a vê (o `B` do
-    /// lápis, o `X` do trocar). `true` ⇒ o `key_input` devolve JÁ.
+    /// ele (algarismos, Enter = OK, Esc = Cancel) e nenhum atalho por baixo a vê.
     pub(crate) fn new_sprite_dialog_keys(
         &mut self,
-        physical_key: PhysicalKey,
+        key: PhysicalKey,
         state: ElementState,
         kind: ph2d_host::KeyKind,
         text: Option<&str>,
     ) -> bool {
-        let open = self
-            .gfx
-            .as_ref()
-            .and_then(|g| g.hero_screen.as_ref())
-            .and_then(|h| h.store.context_menu())
-            .is_some_and(|r| {
-                matches!(
-                    r.kind,
-                    ph2d_editor_core::interaction::ContextMenuKind::NewSpriteDialog
-                )
-            });
-        if !open {
+        let hero = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref());
+        if !hero.is_some_and(|h| ph2d_app_pixel::compose::dialog_open(&h.store)) {
             return false;
         }
         if state == ElementState::Pressed {
-            if let PhysicalKey::Code(code) = physical_key
+            let modifiers = Self::convert_modifiers(self.modifiers);
+            if let PhysicalKey::Code(code) = key
                 && let Some(keycode) = crate::keymap::winit_to_editor_keycode(code)
             {
-                crate::forwarding::forward_key_to_hero(
-                    self.gfx.as_mut(),
-                    ph2d_host::KeyEvent {
-                        keycode,
-                        modifiers: Self::convert_modifiers(self.modifiers),
-                        kind,
-                        timestamp_ns: Self::timestamp_ns(),
-                    },
-                );
+                let (timestamp_ns, gfx) = (Self::timestamp_ns(), self.gfx.as_mut());
+                let e = ph2d_host::KeyEvent {
+                    keycode,
+                    modifiers,
+                    kind,
+                    timestamp_ns,
+                };
+                crate::forwarding::forward_key_to_hero(gfx, e);
             }
             let cmd = self.modifiers.super_key() || self.modifiers.control_key();
-            for ch in text.unwrap_or_default().chars() {
-                if !ch.is_control() && !(cmd && ch.is_ascii_alphabetic()) {
-                    crate::forwarding::forward_text_to_hero(self.gfx.as_mut(), ch);
-                }
+            for ch in ph2d_app_pixel::compose::dialog_text(text, cmd) {
+                crate::forwarding::forward_text_to_hero(self.gfx.as_mut(), ch);
             }
         }
         true

@@ -61,7 +61,6 @@ pub(crate) mod posse_do_jogo; // de quem e o teclado e o rato com a cena a corre
 
 // Os ramos e os irmãos do despacho: cada `despacho_*.rs` diz no próprio `//!` o que guarda.
 mod despacho_clique_flip;
-mod despacho_pixel;
 mod despacho_clique_gizmo;
 mod despacho_clique_hud;
 mod despacho_clique_largar;
@@ -80,6 +79,7 @@ mod despacho_metodos_modos_e_alcas;
 mod despacho_metodos_picks_e_arrastos;
 mod despacho_mover;
 mod despacho_peso_do_osso;
+mod despacho_pixel;
 mod despacho_vetor_alinhar_e_forma;
 mod despacho_vetor_gradiente;
 mod despacho_vetor_ops;

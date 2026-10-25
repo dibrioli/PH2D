@@ -26,14 +26,9 @@ impl crate::App {
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };
-        self.pixel.frame(
-            sim,
-            camera,
-            crate::scene_mapping::janela(hero.view.center_split, surface.size()),
-            hero.project.pixels_per_meter,
-            ph2d_app_pixel::mode::editing(sim.world(), hero),
-            ph2d_app_components::object_add::spawn_empty_root,
-        );
+        let window = crate::scene_mapping::janela(hero.view.center_split, surface.size());
+        let spawn = ph2d_app_components::object_add::spawn_empty_root;
+        self.pixel.frame_of(sim, camera, window, hero, spawn);
         // ⭐ A raiz de ossos sem esqueleto ganha um (A14): projectos antigos, cenas, o 1.º *Create*.
         if !ph2d_app_skeleton::loose::adopt_loose_roots(sim, &mut self.timeline).is_empty() {
             self.title_dirty = true;

@@ -1,0 +1,215 @@
+//! **A porta da shell** (catraca `the_shell_only_shrinks`): o ponteiro, a roda e o teclado chegam
+//! como os eventos crus da janela, com a [`View`] do quadro, e a família decide aqui. A shell fica
+//! com uma chamada por evento.
+
+use ph2d_editor_core::ToastQueue;
+use ph2d_editor_core::interaction::{ContextMenuKind, WidgetStore};
+use ph2d_editor_core::screens::hero::HeroScreen;
+use ph2d_host::{PointerButton, PointerKind, WindowSize};
+use ph2d_render::Camera2d;
+use winit::event::MouseScrollDelta;
+use winit::keyboard::{KeyCode, PhysicalKey};
+
+use crate::PixelApp;
+use crate::input::{self, Button, Canvas, KeyAnswer, Press};
+
+/// O viewport deste quadro, como a shell o tem: a câmera e os avisos emprestados.
+pub struct View<'a> {
+    pub world: &'a ph2d_ecs::World,
+    pub camera: &'a mut Camera2d,
+    pub toasts: &'a mut ToastQueue,
+    pub window: WindowSize,
+    pub ppm: f32,
+    /// O objecto em Pixel Sprite ▸ Edit, se há.
+    pub editing: Option<u64>,
+}
+
+impl<'a> View<'a> {
+    /// A vista lida do `hero` (régua do projecto, objecto em Edit) e da janela da CENA.
+    #[must_use]
+    pub fn of(
+        world: &'a ph2d_ecs::World,
+        hero: &HeroScreen,
+        camera: &'a mut Camera2d,
+        toasts: &'a mut ToastQueue,
+        window: WindowSize,
+    ) -> Self {
+        let editing = crate::mode::editing(world, hero);
+        let ppm = hero.project.pixels_per_meter;
+        Self {
+            world,
+            camera,
+            toasts,
+            window,
+            ppm,
+            editing,
+        }
+    }
+
+    fn canvas(&self) -> Canvas<'_> {
+        Canvas {
+            world: self.world,
+            camera: self.camera,
+            window: self.window,
+            ppm: self.ppm,
+            editing: self.editing,
+        }
+    }
+}
+
+/// O que um premir/largar fez — a shell só guarda a âncora do pan.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Pointer {
+    NotMine,
+    Done,
+    /// A mão: a shell ancora o pan da câmera no ponteiro.
+    PanStart,
+    /// Largou a mão (a câmera já realinhou as células): a shell larga a âncora.
+    PanEnd,
+}
+
+impl PixelApp {
+    /// Premir/largar. `free` = o ponteiro está no canvas e nenhum menu estava aberto ao premir.
+    pub fn pointer(
+        &mut self,
+        v: &mut View<'_>,
+        kind: PointerKind,
+        button: PointerButton,
+        p: (f32, f32),
+        alt: bool,
+        free: bool,
+    ) -> Pointer {
+        if kind == PointerKind::Up {
+            if input::release_pan(self, v.world, v.camera, v.window, v.ppm, v.editing) {
+                return Pointer::PanEnd;
+            }
+            return if input::release(self) {
+                Pointer::Done
+            } else {
+                Pointer::NotMine
+            };
+        }
+        let button = match button {
+            PointerButton::Primary => Button::Primary,
+            PointerButton::Secondary => Button::Secondary,
+            _ => return Pointer::NotMine,
+        };
+        if kind != PointerKind::Down || !free {
+            return Pointer::NotMine;
+        }
+        match input::press(self, &v.canvas(), p, button, alt) {
+            Press::Pan => Pointer::PanStart,
+            Press::Done => Pointer::Done,
+            Press::NotMine => Pointer::NotMine,
+        }
+    }
+
+    /// Mover: o traço em curso continua (consumido); sem traço, só a célula sob o cursor.
+    pub fn pointer_moved(&mut self, v: &View<'_>, p: (f32, f32)) -> bool {
+        input::moved(self, &v.canvas(), p)
+    }
+
+    /// A roda sobre o canvas (`on_canvas`) em Edit: zoom inteiro, com o aviso do degrau.
+    pub fn wheel_event(
+        &mut self,
+        v: &mut View<'_>,
+        delta: MouseScrollDelta,
+        p: (f32, f32),
+        on_canvas: bool,
+    ) -> bool {
+        let dy = match delta {
+            MouseScrollDelta::LineDelta(_, y) => y,
+            MouseScrollDelta::PixelDelta(d) => d.y as f32,
+        };
+        if dy == 0.0 || !on_canvas {
+            return false;
+        }
+        let w = (v.window, v.ppm, v.editing);
+        let Some(level) = input::wheel(self, v.world, v.camera, w.0, w.1, w.2, p, dy > 0.0) else {
+            return false;
+        };
+        let n = level.to_string();
+        v.toasts
+            .push(ph2d_editor_core::Toast::info(ph2d_i18n::tr_with(
+                "pixel.zoom",
+                &[("n", &n)],
+            )));
+        true
+    }
+
+    /// As teclas do Edit (B, E, I, H, X, Espaço, Ctrl+Z…). A shell já descartou o campo de texto
+    /// com o foco. `true` = consumida.
+    pub fn keyboard(
+        &mut self,
+        v: &mut View<'_>,
+        key: PhysicalKey,
+        pressed: bool,
+        ctrl: bool,
+        shift: bool,
+    ) -> bool {
+        let PhysicalKey::Code(code) = key else {
+            return false;
+        };
+        if code == KeyCode::Space {
+            return input::space(self, v.world, v.editing, pressed);
+        }
+        if !pressed {
+            return false;
+        }
+        let Some(answer) = input::key(self, v.world, v.editing, code, ctrl, shift) else {
+            return false;
+        };
+        if let KeyAnswer::Toast(t) = answer {
+            v.toasts.push(ph2d_editor_core::Toast::info(t));
+        }
+        true
+    }
+}
+
+impl PixelApp {
+    /// O [`PixelApp::frame`] com a régua e o Edit lidos do `hero`.
+    pub fn frame_of(
+        &mut self,
+        sim: &mut ph2d_ecs::SimWorld,
+        camera: &mut Camera2d,
+        window: WindowSize,
+        hero: &HeroScreen,
+        spawn_root: impl FnOnce(&mut ph2d_ecs::SimWorld, &str) -> u64,
+    ) {
+        let editing = crate::mode::editing(sim.world(), hero);
+        let ppm = hero.project.pixels_per_meter;
+        self.frame(sim, camera, window, ppm, editing, spawn_root);
+    }
+
+    /// O [`crate::draw::draw`] com a régua, o Edit e o tema lidos do `hero`.
+    pub fn draw_of(
+        &mut self,
+        world: &ph2d_ecs::World,
+        camera: &Camera2d,
+        window: WindowSize,
+        hero: &HeroScreen,
+        scene: &mut ph2d_vector::VectorScene,
+    ) {
+        let (ppm, editing) = (
+            hero.project.pixels_per_meter,
+            crate::mode::editing(world, hero),
+        );
+        crate::draw::draw(self, world, camera, window, ppm, editing, hero.theme, scene);
+    }
+}
+
+/// O diálogo *New Sprite* está aberto — MODAL: toda tecla vai só para ele.
+#[must_use]
+pub fn dialog_open(store: &WidgetStore) -> bool {
+    store
+        .context_menu()
+        .is_some_and(|r| matches!(r.kind, ContextMenuKind::NewSpriteDialog))
+}
+
+/// Os caracteres do texto digitado que vão para o campo do diálogo (sem controlo, sem os atalhos
+/// `Cmd`/`Ctrl` + letra).
+pub fn dialog_text(text: Option<&str>, cmd: bool) -> impl Iterator<Item = char> + '_ {
+    text.unwrap_or_default()
+        .chars()
+        .filter(move |ch| !ch.is_control() && !(cmd && ch.is_ascii_alphabetic()))
+}

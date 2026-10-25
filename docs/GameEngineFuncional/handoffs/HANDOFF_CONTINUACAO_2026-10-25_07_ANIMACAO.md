@@ -132,3 +132,26 @@ Reprodução sempre visível · a animação escolhida (From/To só sem lista; F
 `um_tempo_igual_ao_ritmo_nao_e_tempo_proprio`) + `smoke_hover` nomeado no censo de NodeId. Fotos
 `fotos/20_*`, `fotos/21_*` (scratchpad, não versionadas). Aberto: a faixa não rola sozinha ao arrastar
 junto à borda (só a roda); o fantasma usa o encolher/opacidade partilhados do app.
+
+## Rodada 3 — report do dono (25/10)
+
+`10fe2efbaa`: um clique real treme 1–2 px entre premir e soltar e o despacho lia-o como arrasto de selecção de
+texto (selecção encolhia; «7» sobre «250» dava 7250) — a cura é no despacho partilhado: premir num campo
+numérico ou mantém a selecção do clique ou, passado o limiar, arrasta o valor; nunca selecciona texto por
+arrasto (gate `a_trembling_click_still_selects_the_whole_number`). `713de64ba8`: «This frame» pinta-se SEMPRE
+com animação a tocar; sem tempo próprio mostra o ritmo esbatido e continua editável (seam
+`seam_anim_this_frame.rs`, sem salto de layout). Aberto: o 2.º clique num campo já em edição põe o cursor
+(digitar insere) — comportamento antigo.
+
+## PRÓXIMO — plano 08: a LISTA DE REGRAS (decisão do dono 25/10)
+
+Os 4 estados fixos de «The Character» + o resto por script dividem o mesmo conceito. Aprovado: no cartão
+Animation, uma lista de regras «Quando ___ → toca ___» (os dois lados em MENUS); escolher «The Character»
+pré-preenche as 4 de hoje (parado→idle, a correr→run, a subir→jump, a cair→fall); «+ Regra» para o resto; a de
+cima ganha, arrastar reordena; o script continua para o difícil. Condições da 1.ª versão: estados do personagem,
+teclas (ex. ↓ premida), mensagens/sinais de outros objectos (ex. «levou dano»). «Abaixar» com corpo baixo é peça
+à parte. Referência de memória: Construct 3 / GDevelop (regras com condições do comportamento). MEÇA primeiro:
+o `CharacterAnimations` (ph2d-physics-ecs) e quem o lê (a ponte do jogo em ph2d-app-game `personagem.rs`), o
+mapa de teclas (input_map), os sinais (`ph2d-runtime`) — e como um ficheiro antigo com `CharacterAnimations`
+abre como as 4 regras (sem degrau de schema, se possível: componente irmão). Escrever
+`docs/GameEngineFuncional/08_regras_de_animacao_plano.md` antes de codar.

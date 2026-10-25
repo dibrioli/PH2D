@@ -97,3 +97,27 @@ fn a_borracha_mostra_os_seus_tres_meios_e_nunca_a_cor() {
         assert_eq!(b.meios & (1 << PaintMedia::Impasto.to_u8()), 0);
     }
 }
+
+/// ⭐ **O Composite Brush é só do Digital** (dono 25/10): o cartão aparecia no Wet Paint e no Impasto (só a aguada o
+/// escondia). Com o checkbox LIGADO (o preset antigo que o traz), o Pincel em cada meio: o cartão só no Digital, e a
+/// Strength escondida pelo Composite só lá — nos outros meios ele não manda nada.
+#[test]
+fn o_composite_brush_so_aparece_no_digital() {
+    for meio in MEIOS {
+        let mut b = bancada(meio, "brush", None);
+        b.tool.toggle_composite();
+        b.no_modo("brush");
+        assert!(b.tool.composite_enabled(), "{meio:?}: o checkbox ligado");
+        let ids = b.ids();
+        assert_eq!(
+            ids.contains(&PAINTER_BRUSH_COMPOSITE_ENABLE),
+            meio == PaintMedia::Digital,
+            "{meio:?}: o cartão do Composite"
+        );
+        assert_eq!(
+            b.tool.brush_settings().composite_on(),
+            meio == PaintMedia::Digital,
+            "{meio:?}: o Composite manda no pincel"
+        );
+    }
+}

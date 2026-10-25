@@ -238,8 +238,7 @@ fn paint_top_basics(
     // Ali a Strength é o que sempre foi, e escondê-la seria o controle **FALTANDO**. É o mesmo
     // predicado que o motor usa para desviar para a lavagem (`watercolor_render_active`), de propósito:
     // o painel e o depósito têm de responder *"esta pincelada lava?"* com a mesma função.
-    if !brush.composite_enabled && !brush.is_inpaint && !brush.wetpaint && !brush.watercolor_active
-    {
+    if !brush.composite_on() && !brush.is_inpaint && !brush.wetpaint && !brush.watercolor_active {
         y = paint_slider_chip_row(
             ctx,
             theme,
@@ -286,13 +285,13 @@ fn paint_top_basics(
     // 4c. Composite Brush card (checkbox + the 3-layer Brush/Smear/Blur stack when on) — the plain Brush
     //     tool only (Smear/Blur/Clone/Mask are single-op rail tools; Eraser bypasses composite too — it's
     //     the Erase-Alpha override; `composite_active()` requires the plain Brush + `!eraser`).
-    //     HIDDEN in watercolor mode too (Enio 2026-07-07): the optical render-path short-circuits
-    //     before the composite routing, so the card would be painted-but-inert (dead UI).
+    //     ONLY in Digital (dono 25/10, `PaintMedia::offers_composite`): the other media have their own
+    //     deposit, and the tool ignores the flag there too.
     //     …and HIDDEN in Sculpt for the same reason: `composite_active()` requires `PaintMode::Paint`, so
     //     the card would be painted-but-inert there too. It also has a second-order bite — see
     //     `BrushSettings::paints_no_color`, which the Composite checkbox used to be able to switch OFF,
     //     bringing Blend / Colour / Accumulate / Randomize back into a mode that writes no pigment at all.
-    if brush.le(LinhaDaFerramenta::Composite) && !brush.watercolor {
+    if brush.le(LinhaDaFerramenta::Composite) && brush.composite_offered() {
         y = crate::paint_composite::paint_composite_card(ctx, theme, x, content_w, y, brush);
     }
 

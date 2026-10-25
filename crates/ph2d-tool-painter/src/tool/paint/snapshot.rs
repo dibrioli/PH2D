@@ -63,6 +63,19 @@ impl BrushSettings {
             && !self.solid_owns_the_gesture
     }
 
+    /// **O Composite Brush manda neste pincel?** — ligado E num meio que o oferece
+    /// ([`super::PaintMedia::offers_composite`]); fora do Digital o checkbox de um preset antigo não conta.
+    #[must_use]
+    pub fn composite_on(&self) -> bool {
+        self.composite_enabled && self.composite_offered()
+    }
+
+    /// **O meio OFERECE o Composite Brush?** Só o Digital ([`super::PaintMedia::offers_composite`]).
+    #[must_use]
+    pub fn composite_offered(&self) -> bool {
+        super::PaintMedia::from_u8(self.media).offers_composite()
+    }
+
     /// **O meio OFERECE o Tooth do papel?** — a aguada e a água mordem o papel por ele, e o Digital
     /// faz a tinta entrar no dente (`PainterTool::papel_como_grain`); o Impasto não o lê.
     #[must_use]

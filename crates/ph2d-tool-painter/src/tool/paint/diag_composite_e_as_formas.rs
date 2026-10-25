@@ -602,3 +602,23 @@ fn diag_a_primeira_figura_muda_quando_nasce_a_segunda() {
         );
     }
 }
+
+/// ⭐ **O traço fora do Digital ignora o Composite** (dono 25/10): com o checkbox ligado (um preset antigo), só o
+/// Digital desvia para a pilha; a aguada, o relevo e o fluido pintam pelo seu depósito.
+#[test]
+fn o_composite_so_manda_no_digital() {
+    for meio in [
+        PaintMedia::Digital,
+        PaintMedia::Watercolor,
+        PaintMedia::Impasto,
+        PaintMedia::WetPaint,
+    ] {
+        let mut t = cena(true, &[]);
+        t.set_paint_media(meio);
+        assert_eq!(
+            t.composite_active(),
+            meio == PaintMedia::Digital,
+            "{meio:?}"
+        );
+    }
+}

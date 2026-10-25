@@ -262,6 +262,7 @@ impl PainterTool {
     /// the plain Brush (not a Smear/Blur/Eraser rail tool — composite is a Brush-tool upgrade).
     pub(crate) fn composite_active(&self) -> bool {
         self.paint.composite_enabled
+            && self.paint_media().offers_composite()
             && matches!(self.paint.paint_mode, PaintMode::Paint)
             && !self.paint.eraser
     }

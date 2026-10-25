@@ -129,6 +129,14 @@ impl PaintMedia {
         }
     }
 
+    /// **O meio oferece o Composite Brush?** Só o Digital (dono 25/10): a pilha de carimbos é dele; a aguada,
+    /// o relevo e o fluido têm o seu depósito. A porta única do cartão do painel e do traço
+    /// ([`super::PainterTool::composite_active`]).
+    #[must_use]
+    pub fn offers_composite(self) -> bool {
+        self == PaintMedia::Digital
+    }
+
     /// **A fileira `Pigment` é oferecida AGORA?** — o medium *e* o gesto na mão, numa resposta só.
     ///
     /// ⛔⛔ **A metade do MEIO não chega, e o report do dono de 2026-09-20 (*«confira se funciona

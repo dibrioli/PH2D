@@ -676,7 +676,6 @@ fn the_section_reset_restores_the_whole_section() {
 /// = ∞ (a rota de antes) e o de fábrica, quadro a quadro pelo relógio fixo, dá o mesmo pigmento ao byte.
 #[test]
 fn a_rota_medida_nao_muda_o_wet_com_bloom_e_pickup() {
-    use ph2d_editor_core::tool::RasterEditTool;
     use ph2d_wet_paint::par::PISO_NS_AGUA;
     use std::sync::atomic::Ordering;
     let cena = |piso: u64| -> Vec<Vec<u8>> {

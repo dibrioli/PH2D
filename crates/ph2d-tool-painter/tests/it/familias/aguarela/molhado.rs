@@ -1,4 +1,5 @@
-//! **Molhado × molhado** (J5, a FILA 1; `docs/Painter/Pinceis/exames/aguarela.md` «Motor J5»): a sonda da cena `sobre`.
+//! **Molhado × molhado** (J5, a FILA 1; `docs/Painter/Pinceis/exames/aguarela.md` «Motor J5»): a sonda da cena `sobre`
+//! e o tubo da cena `largoazul` (oráculo da janela 9).
 
 use crate::exame_bancada::{Fonte, Pincel, bateria, pinceis, pinta_cena};
 
@@ -9,24 +10,8 @@ pub(super) fn foto(
     cena: &str,
     foto: usize,
 ) -> (Vec<u8>, usize) {
-    let p = pinceis(nome).remove(0);
-    let Fonte::Preset { preset, relativo } = p.fonte else {
-        unreachable!()
-    };
-    let mut pr = preset;
-    for (k, v) in engine {
-        pr.parametros.engine.insert(k.clone(), *v);
-    }
-    let p = Pincel {
-        nome: p.nome,
-        fonte: Fonte::Preset {
-            preset: pr,
-            relativo,
-        },
-    };
+    let p = pincel(nome, engine);
     let bat = bateria();
-    let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
-    let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
     let c = bat["cenas"]
         .as_array()
         .unwrap()
@@ -34,8 +19,16 @@ pub(super) fn foto(
         .find(|c| c["nome"] == cena)
         .unwrap()
         .clone();
+    foto_da_cena(p, &c, foto)
+}
+
+/// A cena `c` (JSON da bateria) pintada por `p`, na tela e no papel da bateria.
+fn foto_da_cena(p: Pincel, c: &serde_json::Value, foto: usize) -> (Vec<u8>, usize) {
+    let bat = bateria();
+    let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
+    let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
     (
-        pinta_cena(&p, None, &c, tela, papel, foto).1,
+        pinta_cena(&p, None, c, tela, papel, foto).1,
         tela[0] as usize,
     )
 }
@@ -172,5 +165,114 @@ fn o_azul_abre_uma_mancha_redonda_no_vermelho_molhado() {
     assert!(
         el < 1.15,
         "a mancha tem as duas tintas somadas: escuro {el:.2} (Rebelle 1,06)"
+    );
+}
+
+/// O preset `nome` com o mapa `engine` sobreposto.
+fn pincel(nome: &str, engine: &[(String, f64)]) -> Pincel {
+    let p = pinceis(nome).remove(0);
+    let Fonte::Preset { preset, relativo } = p.fonte else {
+        unreachable!()
+    };
+    let mut pr = preset;
+    for (k, v) in engine {
+        pr.parametros.engine.insert(k.clone(), *v);
+    }
+    Pincel {
+        nome: p.nome,
+        fonte: Fonte::Preset {
+            preset: pr,
+            relativo,
+        },
+    }
+}
+
+/// A cena `largoazul` do oráculo da janela 9 (`docs/Painter/smoke_2026-10-24/oraculo_janela9/README.md`): uma faixa
+/// vermelha MOLHADA de 84 px (dois traços de 60) e o azul de 40 que COMEÇA dentro dela e corre ao longo até passar o
+/// fim; e um azul igual no papel (y 520), a régua da largura.
+fn cena_largoazul() -> serde_json::Value {
+    let traco = |nome: &str, size: u32, de: [f64; 2], ate: [f64; 2]| {
+        let n = ((ate[0] - de[0]).abs() / 3.0).ceil() as usize;
+        let pts: Vec<[f64; 3]> = (0..=n)
+            .map(|k| {
+                let a = k as f64 / n as f64;
+                [
+                    de[0] + (ate[0] - de[0]) * a,
+                    de[1] + (ate[1] - de[1]) * a,
+                    1.0,
+                ]
+            })
+            .collect();
+        serde_json::json!({"op": "traco", "nome": nome, "size_px": size, "passo": 3.0, "pts": pts})
+    };
+    serde_json::json!({"nome": "largoazul", "ops": [
+        {"op": "pincel", "quem": "base"},
+        {"op": "cor", "rgb": [191, 0, 18]},
+        traco("faixa_cima", 60, [300.0, 305.0], [700.0, 305.0]),
+        traco("faixa_baixo", 60, [300.0, 335.0], [700.0, 335.0]),
+        {"op": "pincel", "quem": "preset"},
+        {"op": "cor", "rgb": [23, 101, 179]},
+        traco("dentro", 40, [433.0, 325.0], [850.0, 325.0]),
+        traco("papel", 40, [300.0, 520.0], [850.0, 520.0]),
+        {"op": "simula", "quadros": 240},
+        {"op": "foto", "nome": "A"},
+    ]})
+}
+
+/// A largura do azul na coluna `x`, nas linhas `ys` (a régua do oráculo: `B − R > −30` e fora do branco).
+fn largura_azul(px: &[u8], w: usize, x: usize, ys: std::ops::Range<usize>) -> usize {
+    ys.filter(|&y| {
+        let i = (y * w + x) * 4;
+        let (r, g, b) = (i32::from(px[i]), i32::from(px[i + 1]), i32::from(px[i + 2]));
+        b - r > -30 && r + g + b < 3 * 235
+    })
+    .count()
+}
+
+/// ⭐ **O tubo** (oráculo da janela 9, smoke 25/10 dos retângulos brancos): o azul que COMEÇA dentro da faixa vermelha
+/// molhada e corre ao longo dela alarga POR TODO O CAMINHO, de largura constante — o Rebelle `Liner` 1,47–1,53 × a
+/// largura no papel, de x ≈ 435 a 700 —, e não num disco a meio da faixa com arestas retas. A régua: a largura em cada
+/// coluna de x 450 a 690 ÷ a do mesmo azul no papel; o salto entre colunas vizinhas (o degrau do disco era uma aresta).
+/// CONTROLO: sem a lei, a largura do papel.
+#[test]
+fn o_azul_que_corre_dentro_do_vermelho_molhado_alarga_como_um_tubo() {
+    let mede = |engine: &[(String, f64)]| {
+        let (px, w) = foto_da_cena(pincel("Wet Liner", engine), &cena_largoazul(), 0);
+        let papel = (590..610)
+            .map(|x| largura_azul(&px, w, x, 470..570))
+            .sum::<usize>() as f64
+            / 20.0;
+        let ls: Vec<f64> = (450..=690)
+            .map(|x| largura_azul(&px, w, x, 250..400) as f64)
+            .collect();
+        let media = ls.iter().sum::<f64>() / ls.len() as f64 / papel;
+        let (lo, hi) = ls
+            .iter()
+            .fold((f64::MAX, f64::MIN), |(a, b), &v| (a.min(v), b.max(v)));
+        let salto = ls
+            .windows(2)
+            .map(|p| (p[1] - p[0]).abs())
+            .fold(0.0, f64::max);
+        (media, (hi - lo) / papel, salto, papel)
+    };
+    let [(media, faixa, salto, papel), (sem, ..)] = std::thread::scope(|s| {
+        let a = s.spawn(|| mede(&[]));
+        let b = s.spawn(|| mede(&[("wetOpen".to_owned(), 0.0)]));
+        [a.join().unwrap(), b.join().unwrap()]
+    });
+    println!(
+        "[tubo] Wet Liner: {media:.2} × o papel ({papel:.0} px), faixa {faixa:.2}, maior salto {salto:.0} px · sem a lei {sem:.2} (Rebelle 1,47–1,53)"
+    );
+    assert!(
+        sem < 1.15,
+        "CONTROLO: sem a lei o azul já alarga ({sem:.2})"
+    );
+    assert!(
+        (1.3..1.7).contains(&media),
+        "o azul dentro do vermelho molhado não alarga como o Rebelle: {media:.2} × (1,47–1,53)"
+    );
+    assert!(
+        faixa < 0.25 && salto <= 4.0,
+        "a largura não é constante pelo caminho: faixa {faixa:.2} × o papel, salto {salto:.0} px (o degrau do disco)"
     );
 }

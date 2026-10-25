@@ -21,7 +21,7 @@ mod deposit; // o que um dab POUSA — a lei da célula e o caminho por linhas (
 mod filme; // o filme do traço (Knob::StrokeFilm): o máximo por célula, nunca a soma
 mod janela;
 mod medida; // as portas de MEDIÇÃO da janela (só os gates as leem)
-mod molhado; // molhado × molhado (Knob::WetOpen): a mancha redonda do cruzamento
+mod molhado; // molhado × molhado (Knob::WetOpen): o tubo por onde o traço passa sobre a outra tinta molhada
 mod transfer; // the window-landing half of §10 (LOC-cap split) // a janela cresce NO LUGAR para caber cada dab (smoke do dono 16/10)
 use crate::grid::Grid;
 use crate::jsmath::js_round;
@@ -136,7 +136,7 @@ pub struct Trail {
     por_assentar_pendente: bool,
     /// O máximo por célula do traço vivo ([`Knob::StrokeFilm`]); vazio sem a lei.
     filme: filme::Filme,
-    /// As manchas do cruzamento molhado ([`Knob::WetOpen`]); vazio sem a lei.
+    /// O caminho e o levantado do molhado × molhado ([`Knob::WetOpen`]); vazio sem a lei.
     molhado: molhado::Molhado,
 }
 

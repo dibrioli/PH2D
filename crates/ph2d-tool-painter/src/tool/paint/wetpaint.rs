@@ -641,6 +641,9 @@ mod sonda_shape_casa; // W0 do plano 27: a tinta de cada tipo do Shape e as leis
 mod sonda_shape_color; // prompt 41: a régua, os números das leis e a prancha da Shape Color
 
 #[cfg(test)]
+mod molhado_tests; // molhado × molhado (Wet bloom): o sujo do levantar e as sondas dos retângulos e do FPS
+
+#[cfg(test)]
 mod tests; // the W1/W2 gates — child file (workspace file-LOC cap)
 
 #[cfg(test)]

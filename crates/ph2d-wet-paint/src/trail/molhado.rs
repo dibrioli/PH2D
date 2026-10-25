@@ -1,84 +1,89 @@
-//! ⭐ **Molhado × molhado** ([`Knob::WetOpen`], J5 — `docs/Painter/Pinceis/exames/aguarela.md` «Motor J5»): a tinta
-//! que entra na molhada de OUTRA tinta abre nela uma mancha REDONDA e empurra a de baixo para os lados.
+//! ⭐ **Molhado × molhado** ([`Knob::WetOpen`], J5): por onde o traço passa sobre a tinta MOLHADA de outra cor, ele
+//! ALARGA — um tubo de meia-largura `r · (1 + WetOpen)`, cada lado só onde aquele lado está molhado, de borda macia — e
+//! a tinta de baixo é levantada dentro dele ([`Knob::WetOpenPush`]), sem ser empurrada para a borda da faixa.
 //!
-//! Medido no Rebelle (cena `sobre`, foto A, a régua da mancha): o azul de 40 px que atravessa a faixa vermelha molhada de 60 abre
-//! uma mancha de 54–60 px no meio da faixa (Liner 1,42 × a largura no papel, Mop 1,44, Wash 1,17, Gouache Round 1,25),
-//! mais estreita junto às bordas da faixa (redonda), e tão escura como o azul no papel (1,06) — o vermelho saiu dela.
-//! O nosso: um quadrado da largura do traço e 1,27 × mais escuro (as duas tintas somadas na célula).
+//! Medido no Rebelle `Liner` (oráculo da janela 9, `docs/Painter/smoke_2026-10-24/oraculo_janela9/README.md`): o traço
+//! que corre DENTRO da faixa vermelha molhada alarga 1,47–1,53 × ao longo de todo o caminho, de largura constante e
+//! borda macia (8–10 px num tubo de 56); só o lado molhado abre; a borda da faixa não se move; a mancha «redonda» da
+//! cena `sobre` (1,45) é este mesmo tubo recortado pela faixa que o traço atravessa. ⛔ Recusa MEDIDA (smoke 25/10):
+//! um disco a meio da faixa à 1.ª entrada dava retângulos claros de aresta reta quando o traço corria dentro da tinta,
+//! e o empurrão dele custava 212 ms num só dab (raio 162 células: `O(raio³)`).
 //!
 //! A lei, em dois tempos:
-//! 1. **o cruzamento** — a cada dab a sonda olha `r + 2` à frente da pegada (onde o traço ainda não pousou nada); a
-//!    primeira vez que ela cai na tinta molhada de outra cor, mede pela linha do traço a faixa que ele vai atravessar
-//!    (`[ta, tb]`) e guarda a mancha: o disco centrado no meio dela, de raio `min(meia faixa, r · (1 + WetOpen))`; e
-//!    EMPURRA logo, pela normal do traço, a fracção [`Knob::WetOpenPush`] da tinta de baixo de dentro do disco para a
-//!    tinta molhada logo fora dele (a orla do cruzamento);
-//! 2. **a mancha** — cada janela que pousa dentro da faixa estica o seu pigmento (e a água) pela normal até à meia-largura
-//!    do disco naquela linha: a massa é a mesma, espalhada (a mancha é do azul, mais clara que a soma).
+//! 1. **a sonda** (cada dab): pela normal do caminho, cada lado abre de `r` até onde a tinta molhada de outra cor
+//!    acaba, no máximo `r · (1 + WetOpen)`; a abertura anda pelo caminho no máximo `1/SUAVE_RAIOS` por raio;
+//! 2. **o esticão** (cada janela): cada célula do traço vai, pela direcção da célula ao caminho, de `s` a
+//!    `s · (1 + abertura)` (a massa é a mesma, espalhada), repartida em [`PASSOS`] destinos de ±[`BORDA`] (a borda macia);
+//!    e a outra tinta debaixo do tubo perde a fracção `WetOpenPush` — uma vez por traço ([`Molhado::levantado`]).
 //!
-//! `WetOpen = 0` = nada disto corre (o campo fica vazio): o cruzamento de sempre, ao bit.
+//! `WetOpen = 0` = nada disto corre: o cruzamento de sempre, ao bit. Sem tinta molhada de outra cor, nada abre: ao bit.
 
-use super::Trail;
+use super::{TouchedRect, Trail};
 use crate::grid::Grid;
 use crate::sim::Params;
 use crate::tuning::Knob;
 
 /// A água mínima de uma célula «molhada» (a de [`crate::tools`]).
 const MOLHADA: f32 = 0.01;
-/// Quanto a sonda anda pela linha do traço a medir a faixa, em raios do dab.
-const ALCANCE_RAIOS: f64 = 8.0;
-/// A orla que recebe a tinta empurrada: até esta fracção do raio fora do disco, um píxel de cada vez, com pesos que descem.
-const ORLA_RAIO: f64 = 2.0;
-/// O empurrão desce do centro a zero em `BORDA_FIM` da meia-largura, `1 − (|s| ÷ BORDA_FIM·meia)²` (a borda esbatida
-/// da mancha: o azul esticado chega lá ralo, e o vermelho tirado por inteiro deixava um aro claro).
-const BORDA_FIM: f64 = 0.8;
-/// A mancha esbate: cada célula da pegada reparte-se por [`ESBATE_PASSOS`] destinos pela normal, de onde estava até
-/// `meia + ESBATE_ALEM · (meia − r)` (contínuo onde o disco encontra a pegada; o degradê da borda do Rebelle).
-const ESBATE_ALEM: f64 = 1.0;
-const ESBATE_PASSOS: usize = 8;
-/// O alcance do triângulo de pesos ÷ o do esticão (a média fica a meio dele, como com pesos iguais).
-const ESBATE_CAUDA: f64 = 1.5;
-/// … e a cauda nunca passa `ESBATE_TECTO × meia` (⛔ medido: sem tecto, numa faixa muito mais alta que o dab — o Mop — o
-/// alcance `r + 3 (meia − r)` fazia da mancha um olho de 95 px contra os 59 do Rebelle).
-const ESBATE_TECTO: f64 = 1.3;
+/// A borda macia: cada célula reparte-se de `s'·(1 − BORDA)` a `s'·(1 + BORDA)` (Rebelle: 8–10 px num tubo de 56).
+const BORDA: f64 = 0.16;
+/// Os destinos de cada célula, com pesos em triângulo.
+const PASSOS: usize = 5;
+/// A abertura anda até ao alvo em `SUAVE_RAIOS` raios de caminho (⛔ medido: com 1 raio, o Liner que atravessa a
+/// faixa de 52 px do `sobre` não chegava a abrir — 1,27 × contra 1,45 do Rebelle, que abre inteiro dentro dela).
+const SUAVE_RAIOS: f64 = 0.3;
+/// Os pontos do caminho guardados (a janela usa os seus dabs + 1; ela junta no máximo 5).
+const PONTOS: usize = 16;
 
-/// Uma mancha do traço vivo: o eixo (origem e direcção), o centro `tm` no eixo, o raio e o raio do dab.
+/// Um dab do caminho: o centro, a tangente, o raio e a abertura de cada lado (fracção de `r`; `[+n, −n]`).
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct Mancha {
-    ox: f64,
-    oy: f64,
+struct Ponto {
+    x: f64,
+    y: f64,
     tx: f64,
     ty: f64,
-    tm: f64,
-    raio: f64,
     r: f64,
+    abre: [f64; 2],
 }
 
-impl Mancha {
-    /// `(t, s)` do ponto no eixo da mancha (ao longo, pela normal).
-    fn coords(&self, x: f64, y: f64) -> (f64, f64) {
-        let (ax, ay) = (x - self.ox, y - self.oy);
-        (ax * self.tx + ay * self.ty, -ax * self.ty + ay * self.tx)
-    }
-
-    /// A meia-largura do disco à altura `t` do eixo (`None` fora dele).
-    fn meia(&self, t: f64) -> Option<f64> {
-        let d = t - self.tm;
-        let q = self.raio * self.raio - d * d;
-        (q > 0.0).then(|| q.sqrt())
-    }
-}
-
-/// As manchas do traço vivo e o dab anterior (a direcção). Vazio sem a lei.
+/// O caminho do traço vivo, o que cada célula já perdeu e os buffers do esticão. Vazio sem a lei.
 #[derive(Clone, Default)]
 pub(crate) struct Molhado {
-    manchas: Vec<Mancha>,
-    anterior: Option<[f64; 2]>,
+    pontos: Vec<Ponto>,
+    /// O 1.º dab, à espera da tangente que só o 2.º dá.
+    pendente: Option<(f64, f64, f64)>,
+    /// O 1.º ponto do traço ainda está em `pontos` (a tampa redonda de entrada).
+    inicio: bool,
+    /// Por célula do grid, a fracção da outra tinta já levantada neste traço (o levantar não se compõe dab a dab);
+    /// nasce no 1.º levantar e só o retângulo tocado se zera (⛔ medido: num `HashMap`, 15,5 ms por janela na tela 3×).
+    levantado: Vec<f32>,
+    /// O stride do grid de `levantado` e o retângulo que este traço tocou nele.
+    stride: usize,
+    tocado: Option<TouchedRect>,
+    pig: Vec<f32>,
+    agua: Vec<f32>,
+    cor: Vec<[f64; 3]>,
 }
 
 impl Molhado {
     pub(crate) fn limpa(&mut self) {
-        self.manchas.clear();
-        self.anterior = None;
+        self.pontos.clear();
+        self.pendente = None;
+        self.inicio = false;
+        if let Some(r) = self.tocado.take() {
+            for y in r.y0..=r.y1 {
+                let b = y as usize * self.stride;
+                self.levantado[b + r.x0 as usize..=b + r.x1 as usize].fill(0.0);
+            }
+        }
+    }
+
+    fn empurra_ponto(&mut self, p: Ponto) {
+        if self.pontos.len() == PONTOS {
+            self.pontos.remove(0);
+            self.inicio = false;
+        }
+        self.pontos.push(p);
     }
 }
 
@@ -97,69 +102,207 @@ fn celula(g: &Grid, x: f64, y: f64) -> Option<usize> {
         .then(|| cx as usize + cy as usize * g.s)
 }
 
+/// A abertura de um lado (`lado` = ±1 pela normal): de `r + 1` para fora enquanto a tinta é molhada e de outra cor, até
+/// `r · (1 + abre)`; fracção de `r`.
+fn sonda_lado(
+    g: &Grid,
+    pt: (f64, f64),
+    t: (f64, f64),
+    r: f64,
+    abre: f64,
+    cor: [f64; 3],
+    lado: f64,
+) -> f64 {
+    let (nx, ny) = (-t.1 * lado, t.0 * lado);
+    let fim = r * (1.0 + abre);
+    let mut d = r + 1.0;
+    let mut alcance = r;
+    while d <= fim && outra(g, pt.0 + d * nx, pt.1 + d * ny, cor) {
+        alcance = d;
+        d += 1.0;
+    }
+    ((alcance - r) / r).clamp(0.0, abre)
+}
+
+/// O ponto do caminho mais perto de `(x, y)`: a distância `s`, a direcção unitária do caminho à célula, o raio e a
+/// abertura do lado em que ela está. `raio_atras`/`raio_frente`: o extremo continua em RAIO (a janela continua o
+/// traço); sem ele a ponta é redonda (a direcção é radial).
+fn mais_perto(
+    pts: &[Ponto],
+    raio_atras: bool,
+    raio_frente: bool,
+    x: f64,
+    y: f64,
+) -> (f64, f64, f64, f64, f64) {
+    let mut melhor = (f64::MAX, 0.0, 0.0, 0.0, 0.0);
+    let n = pts.len();
+    let segs = n.saturating_sub(1).max(1);
+    for k in 0..segs {
+        let (a, b) = (pts[k], pts[(k + 1).min(n - 1)]);
+        let (ex, ey) = (b.x - a.x, b.y - a.y);
+        let l2 = ex * ex + ey * ey;
+        let mut u = if l2 > 1e-12 {
+            ((x - a.x) * ex + (y - a.y) * ey) / l2
+        } else {
+            0.0
+        };
+        let primeiro = k == 0;
+        let ultimo = k + 1 == segs;
+        if u < 0.0 && !(primeiro && raio_atras) {
+            u = 0.0;
+        }
+        if u > 1.0 && !(ultimo && raio_frente) {
+            u = 1.0;
+        }
+        // Raio além do último ponto / antes do 1.º (sem tampa): a perpendicular à tangente do extremo.
+        let (cx, cy, tx, ty) = if l2 <= 1e-12 {
+            (a.x, a.y, a.tx, a.ty)
+        } else {
+            let uu = u.clamp(0.0, 1.0);
+            let (tx, ty) = (a.tx + (b.tx - a.tx) * uu, a.ty + (b.ty - a.ty) * uu);
+            (a.x + ex * u, a.y + ey * u, tx, ty)
+        };
+        let (vx, vy) = (x - cx, y - cy);
+        let s = vx.hypot(vy);
+        if s < melhor.0 {
+            let uu = u.clamp(0.0, 1.0);
+            let lado = usize::from(-vx * ty + vy * tx < 0.0);
+            let abre = a.abre[lado] + (b.abre[lado] - a.abre[lado]) * uu;
+            let r = a.r + (b.r - a.r) * uu;
+            let (dx, dy) = if s > 1e-9 {
+                (vx / s, vy / s)
+            } else {
+                (0.0, 0.0)
+            };
+            melhor = (s, dx, dy, r, abre);
+        }
+    }
+    melhor
+}
+
 impl Trail {
     /// O tempo 1 (ver o módulo), a cada dab de tinta, ANTES de ele acumular.
-    pub(super) fn molhado_dab(&mut self, g: &mut Grid, p: &Params, x: f64, y: f64, r: f64) {
+    pub(super) fn molhado_dab(&mut self, g: &Grid, p: &Params, x: f64, y: f64, r: f64) {
         let abre = p.k(Knob::WetOpen);
         if abre <= 0.0 || r <= 0.0 {
             return;
         }
-        let Some([px, py]) = self.molhado.anterior.replace([x, y]) else {
-            return;
-        };
-        let passo = (x - px).hypot(y - py);
-        if passo < 1e-6 {
-            return;
-        }
-        let (tx, ty) = ((x - px) / passo, (y - py) / passo);
         let cor = [self.base_r, self.base_g, self.base_b];
-        let frente = r + 2.0;
-        let (sx, sy) = (x + frente * tx, y + frente * ty);
-        if self.molhado.manchas.last().is_some_and(|m| {
-            let (t, s) = m.coords(sx, sy);
-            s.abs() <= m.r && t <= m.tm + m.raio
-        }) || !outra(g, sx, sy, cor)
-        {
-            return;
-        }
-        // A faixa pela linha do traço: para trás só até à pegada (atrás dela o traço já pousou), para a frente até ao fim.
-        let mut ta = frente;
-        while ta > r && outra(g, x + (ta - 1.0) * tx, y + (ta - 1.0) * ty, cor) {
-            ta -= 1.0;
-        }
-        let mut tb = frente;
-        while tb < frente + ALCANCE_RAIOS * r
-            && outra(g, x + (tb + 1.0) * tx, y + (tb + 1.0) * ty, cor)
-        {
-            tb += 1.0;
-        }
-        let raio = (0.5 * (tb - ta + 1.0)).min(r * (1.0 + abre));
-        if raio <= r {
-            return;
-        }
-        let m = Mancha {
-            ox: x,
-            oy: y,
-            tx,
-            ty,
-            tm: 0.5 * (ta + tb),
-            raio,
-            r,
+        let anterior = self.molhado.pontos.last().copied();
+        let (de, t) = match (anterior, self.molhado.pendente) {
+            (Some(a), _) => {
+                let passo = (x - a.x).hypot(y - a.y);
+                let t = if passo < 1e-6 {
+                    (a.tx, a.ty)
+                } else {
+                    ((x - a.x) / passo, (y - a.y) / passo)
+                };
+                (Some((a, passo)), t)
+            }
+            (None, Some((px, py, pr))) => {
+                let passo = (x - px).hypot(y - py);
+                if passo < 1e-6 {
+                    return;
+                }
+                let t = ((x - px) / passo, (y - py) / passo);
+                let lados = [1.0, -1.0].map(|l| sonda_lado(g, (px, py), t, pr, abre, cor, l));
+                self.molhado.pendente = None;
+                let primeiro = Ponto {
+                    x: px,
+                    y: py,
+                    tx: t.0,
+                    ty: t.1,
+                    r: pr,
+                    abre: lados,
+                };
+                self.molhado.empurra_ponto(primeiro);
+                self.molhado.inicio = true;
+                (Some((primeiro, passo)), t)
+            }
+            (None, None) => {
+                self.molhado.pendente = Some((x, y, r));
+                return;
+            }
         };
-        empurra(g, p, &m, cor, p.k(Knob::WetOpenPush));
-        self.molhado.manchas.push(m);
+        let mut lados = [1.0, -1.0].map(|l| sonda_lado(g, (x, y), t, r, abre, cor, l));
+        if let Some((a, passo)) = de {
+            let k = (passo / (SUAVE_RAIOS * r)).min(1.0);
+            for (v, antes) in lados.iter_mut().zip(a.abre) {
+                *v = antes + (*v - antes) * k;
+            }
+        }
+        self.molhado.empurra_ponto(Ponto {
+            x,
+            y,
+            tx: t.0,
+            ty: t.1,
+            r,
+            abre: lados,
+        });
     }
 
-    /// O tempo 2 (ver o módulo): a janela que pousa estica-se pela normal até ao disco de cada mancha.
-    pub(super) fn molhado_estica(&mut self) {
-        if self.molhado.manchas.is_empty() || self.lx1 < self.lx0 || self.tinta_na_janela {
-            return;
+    /// O tempo 2 (ver o módulo): a janela estica-se pelo tubo e levanta a outra tinta debaixo dele.
+    pub(super) fn molhado_estica(
+        &mut self,
+        g: &mut Grid,
+        p: &Params,
+        mode: Option<crate::par::Rows>,
+    ) -> Option<TouchedRect> {
+        let abre = p.k(Knob::WetOpen);
+        if abre <= 0.0 || self.lx1 < self.lx0 || self.tinta_na_janela {
+            return None;
         }
-        let (n, size, half) = (self.pig.len(), self.size, self.half);
-        let mut pig = vec![0.0f32; n];
-        let mut agua = vec![0.0f32; n];
-        let mut cor = vec![[0.0f64; 3]; n];
-        let mut ext = (self.lx0, self.ly0, self.lx1, self.ly1);
+        let m = self.molhado.pontos.len().min(self.dab_count as usize + 1);
+        if m == 0 {
+            return None;
+        }
+        let primeiro = self.molhado.pontos.len() - m;
+        let tampa = self.molhado.inicio && primeiro == 0;
+        let (size, half) = (self.size, self.half);
+        let (ox, oy) = (
+            f64::from(self.anchor_x - half),
+            f64::from(self.anchor_y - half),
+        );
+        // O caminho em coordenadas locais da janela.
+        let pts: Vec<Ponto> = self.molhado.pontos[primeiro..]
+            .iter()
+            .map(|q| Ponto {
+                x: q.x - ox,
+                y: q.y - oy,
+                ..*q
+            })
+            .collect();
+        if pts.iter().all(|q| q.abre == [0.0, 0.0]) {
+            return None;
+        }
+        // A caixa de saída: a de entrada + o alcance do tubo em volta do caminho.
+        let alcance = pts
+            .iter()
+            .map(|q| q.r * (1.0 + q.abre[0].max(q.abre[1])) * (1.0 + BORDA) + 2.0)
+            .fold(0.0f64, f64::max);
+        let (mut bx0, mut by0, mut bx1, mut by1) = (self.lx0, self.ly0, self.lx1, self.ly1);
+        for q in &pts {
+            bx0 = bx0.min((q.x - alcance).floor() as i32);
+            by0 = by0.min((q.y - alcance).floor() as i32);
+            bx1 = bx1.max((q.x + alcance).ceil() as i32);
+            by1 = by1.max((q.y + alcance).ceil() as i32);
+        }
+        let (bx0, by0) = (bx0.max(0), by0.max(0));
+        let (bx1, by1) = (bx1.min(size - 1), by1.min(size - 1));
+        let bw = (bx1 - bx0 + 1) as usize;
+        let n = bw * (by1 - by0 + 1) as usize;
+        let mut pig = std::mem::take(&mut self.molhado.pig);
+        let mut agua = std::mem::take(&mut self.molhado.agua);
+        let mut cor = std::mem::take(&mut self.molhado.cor);
+        pig.clear();
+        pig.resize(n, 0.0);
+        agua.clear();
+        agua.resize(n, 0.0);
+        cor.clear();
+        cor.resize(n, [0.0; 3]);
+        let tri = |j: usize| (j + 1).min(PASSOS - j) as f64;
+        let total: f64 = (0..PASSOS).map(tri).sum();
+        let mut ext = (0i32, 0i32, -1i32, -1i32);
         for ly in self.ly0..=self.ly1 {
             for lx in self.lx0..=self.lx1 {
                 let l = (lx + ly * size) as usize;
@@ -168,39 +311,9 @@ impl Trail {
                     continue;
                 }
                 let tip = [self.tip_r[l], self.tip_g[l], self.tip_b[l]].map(f64::from);
-                let x = f64::from(self.anchor_x + lx - half);
-                let y = f64::from(self.anchor_y + ly - half);
-                // Os destinos: na primeira mancha que contém a célula, a normal esticada de 1 até ao disco (esbatido).
-                let mancha = self.molhado.manchas.iter().find_map(|m| {
-                    let (t, s) = m.coords(x, y);
-                    let meia = m.meia(t)?;
-                    (s.abs() <= m.r && meia > m.r).then_some((
-                        m,
-                        s,
-                        ((meia - m.r) * (1.0 + ESBATE_ALEM) / m.r)
-                            .min((ESBATE_TECTO * meia / m.r - 1.0) / ESBATE_CAUDA),
-                    ))
-                });
-                // Pesos que descem (o triângulo) até `ESBATE_CAUDA` do esticão: a cauda vai a zero, sem degrau na borda.
-                let total = (ESBATE_PASSOS * (ESBATE_PASSOS + 1) / 2) as f64;
-                let destinos: Vec<(f64, f64, f64)> = match mancha {
-                    Some((m, s, k)) => (0..ESBATE_PASSOS)
-                        .map(|j| {
-                            let d = s * k * ESBATE_CAUDA * (j as f64 + 0.5) / ESBATE_PASSOS as f64;
-                            (
-                                x - d * m.ty,
-                                y + d * m.tx,
-                                (ESBATE_PASSOS - j) as f64 / total,
-                            )
-                        })
-                        .collect(),
-                    None => vec![(x, y, 1.0)],
-                };
-                for (dx, dy, parte) in destinos {
-                    let (fx, fy) = (
-                        dx - f64::from(self.anchor_x - half),
-                        dy - f64::from(self.anchor_y - half),
-                    );
+                let (x, y) = (f64::from(lx), f64::from(ly));
+                let (s, dx, dy, _, o) = mais_perto(&pts, !tampa, true, x, y);
+                let mut pousa = |fx: f64, fy: f64, parte: f64| {
                     let (x0, y0) = (fx.floor(), fy.floor());
                     let (ax, ay) = (fx - x0, fy - y0);
                     for (qx, qy, peso) in [
@@ -210,10 +323,10 @@ impl Trail {
                         (x0 + 1.0, y0 + 1.0, parte * ax * ay),
                     ] {
                         let (qx, qy) = (qx as i32, qy as i32);
-                        if peso <= 0.0 || !(0..size).contains(&qx) || !(0..size).contains(&qy) {
+                        if peso <= 0.0 || qx < bx0 || qx > bx1 || qy < by0 || qy > by1 {
                             continue;
                         }
-                        let q = (qx + qy * size) as usize;
+                        let q = (qx - bx0) as usize + (qy - by0) as usize * bw;
                         let dv = f64::from(v) * peso;
                         let antes = f64::from(pig[q]);
                         if dv > 0.0 {
@@ -228,100 +341,148 @@ impl Trail {
                         agua[q] = (f64::from(agua[q]) + f64::from(a) * peso) as f32;
                         super::touch_ext(&mut ext, qx, qy);
                     }
+                };
+                if o <= 0.0 || s <= 1e-9 {
+                    pousa(x, y, 1.0);
+                    continue;
+                }
+                let alvo = s * (1.0 + o);
+                for j in 0..PASSOS {
+                    let c = (j as f64 + 0.5) / PASSOS as f64 * 2.0 - 1.0;
+                    let peso = tri(j) / total;
+                    let d = alvo * (1.0 + BORDA * c) - s;
+                    pousa(x + d * dx, y + d * dy, peso);
                 }
             }
+        }
+        for ly in self.ly0..=self.ly1 {
+            let b = (ly * size) as usize;
+            self.pig[b + self.lx0 as usize..=b + self.lx1 as usize].fill(0.0);
+            self.water[b + self.lx0 as usize..=b + self.lx1 as usize].fill(0.0);
         }
         (self.lx0, self.ly0, self.lx1, self.ly1) = ext;
         for ly in self.ly0..=self.ly1 {
             for lx in self.lx0..=self.lx1 {
                 let l = (lx + ly * size) as usize;
-                self.pig[l] = pig[l];
-                self.water[l] = agua[l];
-                if pig[l] > 0.0 {
-                    [self.tip_r[l], self.tip_g[l], self.tip_b[l]] = cor[l].map(|c| c as f32);
+                let q = (lx - bx0) as usize + (ly - by0) as usize * bw;
+                self.pig[l] = pig[q];
+                self.water[l] = agua[q];
+                if pig[q] > 0.0 {
+                    [self.tip_r[l], self.tip_g[l], self.tip_b[l]] = cor[q].map(|c| c as f32);
                 }
             }
         }
+        (self.molhado.pig, self.molhado.agua, self.molhado.cor) = (pig, agua, cor);
+        self.molhado_levanta(g, p, m, mode)
     }
-}
 
-/// O EMPURRÃO (tempo 1): a fracção `forca × outra_tinta` da tinta molhada de dentro do disco sai pela normal do traço
-/// para a tinta molhada da orla logo fora dele ([`ORLA_RAIO`]); o que não tem célula molhada para onde ir fica.
-fn empurra(g: &mut Grid, p: &Params, m: &Mancha, cor: [f64; 3], forca: f64) {
-    if forca <= 0.0 {
-        return;
-    }
-    // Um destino por píxel da orla (sem anéis), com pesos que descem (o triângulo), somando 1.
-    let passos = (ORLA_RAIO * m.raio).ceil().max(1.0) as usize;
-    let largura = passos as f64;
-    let total = (passos * (passos + 1) / 2) as f64;
-    let orla: Vec<(f64, f64)> = (0..passos)
-        .map(|k| (1.0 + k as f64, (passos - k) as f64 / total))
-        .collect();
-    let alcance = m.raio + largura + 2.0;
-    let (cx, cy) = (m.ox + m.tm * m.tx, m.oy + m.tm * m.ty);
-    let mut levar: Vec<(usize, f64, [f32; 3])> = Vec::new();
-    let (y0, y1) = ((cy - alcance).floor() as i64, (cy + alcance).ceil() as i64);
-    let (x0, x1) = ((cx - alcance).floor() as i64, (cx + alcance).ceil() as i64);
-    for yy in y0..=y1 {
-        for xx in x0..=x1 {
-            let (x, y) = (xx as f64, yy as f64);
-            let Some(i) = celula(g, x, y) else { continue };
-            let (t, s) = m.coords(x, y);
-            let Some(meia) = m.meia(t) else { continue };
-            if s.abs() >= meia || g.film[i] <= MOLHADA || g.susp[i] <= 0.0 {
-                continue;
-            }
-            let o = crate::colorops::outra_tinta(g.susp_rgb[i].map(f64::from), cor);
-            if o <= 0.0 {
-                continue;
-            }
-            // A borda da mancha esbate ([`BORDA_FIM`]).
-            let q = (1.0 - (s / (BORDA_FIM * meia)).powi(2)).max(0.0);
-            let massa = f64::from(g.susp[i]) * (forca * o * q).min(1.0);
-            let sinal = if s >= 0.0 { 1.0 } else { -1.0 };
-            let mut levou = 0.0;
-            for &(d, peso) in &orla {
-                let off = sinal * (meia + d) - s;
-                let (fx, fy) = (x - off * m.ty, y + off * m.tx);
-                let (bx, by) = (fx.floor(), fy.floor());
-                let (ax, ay) = (fx - bx, fy - by);
-                for (qx, qy, b) in [
-                    (bx, by, (1.0 - ax) * (1.0 - ay)),
-                    (bx + 1.0, by, ax * (1.0 - ay)),
-                    (bx, by + 1.0, (1.0 - ax) * ay),
-                    (bx + 1.0, by + 1.0, ax * ay),
-                ] {
-                    if let Some(j) =
-                        celula(g, qx, qy).filter(|&j| b > 0.0 && j != i && g.film[j] > MOLHADA)
-                    {
-                        levar.push((j, massa * peso * b, g.susp_rgb[i]));
-                        levou += massa * peso * b;
-                    }
-                }
-            }
-            g.susp[i] = (f64::from(g.susp[i]) - levou).max(0.0) as f32;
+    /// A outra tinta molhada debaixo do tubo perde a fracção `WetOpenPush × outra_tinta` (a borda macia como a do
+    /// esticão), no máximo uma vez por traço em cada célula. A distância mede-se a TODO o caminho guardado, de pontas
+    /// redondas (⛔ medido: pelos raios da janela o levantar passava do início do traço e cortava a direito na borda
+    /// da caixa; só onde o pigmento pousou, a borda do levantar era a do pigmento — dura).
+    fn molhado_levanta(
+        &mut self,
+        g: &mut Grid,
+        p: &Params,
+        m: usize,
+        mode: Option<crate::par::Rows>,
+    ) -> Option<TouchedRect> {
+        let forca = p.k(Knob::WetOpenPush);
+        if forca <= 0.0 {
+            return None;
         }
-    }
-    let mut out = [0.0f64; 3];
-    for (j, dm, c) in levar {
-        let antes = f64::from(g.susp[j]);
-        if antes > 0.0 {
-            let tc = g.susp_rgb[j];
-            p.mix.mix(
-                f64::from(tc[0]),
-                f64::from(tc[1]),
-                f64::from(tc[2]),
-                f64::from(c[0]),
-                f64::from(c[1]),
-                f64::from(c[2]),
-                dm / (antes + dm),
-                &mut out,
+        // Os dabs desta janela e o anterior: a célula mais perto de um segmento mais velho já foi levantada pela janela
+        // dele (o levantado é o MÁXIMO), e medir contra todo o caminho custava 15 segmentos por célula.
+        let todos = &self.molhado.pontos;
+        let pts = &todos[todos.len() - (m + 1).min(todos.len())..];
+        // A caixa da cápsula dos dabs desta janela, em células do grid (não a da janela: a ponta redonda passa dela).
+        let (mut x0, mut y0, mut x1, mut y1) = (f64::MAX, f64::MAX, f64::MIN, f64::MIN);
+        for q in &pts[pts.len() - m..] {
+            let a = q.r * (1.0 + q.abre[0].max(q.abre[1])) * (1.0 + BORDA) + 1.0;
+            (x0, y0, x1, y1) = (
+                x0.min(q.x - a),
+                y0.min(q.y - a),
+                x1.max(q.x + a),
+                y1.max(q.y + a),
             );
-            g.susp_rgb[j] = out.map(|v| v as f32);
-        } else {
-            g.susp_rgb[j] = c;
         }
-        g.susp[j] = (antes + dm) as f32;
+        let (cx0, cx1) = (
+            x0.floor().max(2.0) as usize,
+            x1.ceil().min(g.w as f64 - 2.0) as usize,
+        );
+        let (cy0, cy1) = (
+            y0.floor().max(2.0) as usize,
+            y1.ceil().min(g.h as f64 - 2.0) as usize,
+        );
+        if cx1 < cx0 || cy1 < cy0 {
+            return None;
+        }
+        if self.molhado.levantado.len() != g.film.len() {
+            self.molhado.levantado = vec![0.0; g.film.len()];
+            self.molhado.tocado = None;
+        }
+        self.molhado.stride = g.s;
+        let cor = [self.base_r, self.base_g, self.base_b];
+        let st = g.s;
+        let (film, susp_rgb) = (&g.film, &g.susp_rgb);
+        // O retângulo tocado: mínimos e máximos (a ordem das linhas não muda a resposta); cada célula é só da sua linha.
+        use std::sync::atomic::{AtomicI32, Ordering::Relaxed};
+        let caixa = [i32::MAX, i32::MAX, i32::MIN, i32::MIN].map(AtomicI32::new);
+        let linhas = cy0 * st..(cy1 + 1) * st;
+        // A rota: a do transfer quando forçada (os gates de identidade), senão o piso do depósito (célula de ~10 ns).
+        let modo = mode.unwrap_or_else(|| {
+            crate::par::Rows::pick(cy1 - cy0 + 1, cx1 - cx0 + 1, crate::par::MIN_CELLS_DEPOSIT)
+        });
+        crate::par::walk_rows2(
+            modo,
+            &mut g.susp[linhas.clone()],
+            &mut self.molhado.levantado[linhas],
+            st,
+            |k, susp, lev| {
+                let cy = cy0 + k;
+                let (mut lo, mut hi) = (i32::MAX, i32::MIN);
+                for cx in cx0..=cx1 {
+                    let i = cx + cy * st;
+                    if film[i] <= MOLHADA || susp[cx] <= 0.0 {
+                        continue;
+                    }
+                    // O máximo que esta célula pode perder (cobertura 1) já foi levantado: a distância ao caminho — a
+                    // conta cara — fica por fazer (o mesmo resultado: `f ≤ forca × outra`).
+                    let outra = crate::colorops::outra_tinta(susp_rgb[i].map(f64::from), cor);
+                    let ja = lev[cx];
+                    if (forca * outra) as f32 <= ja || ja >= 1.0 {
+                        continue;
+                    }
+                    let (s, _, _, r, o) = mais_perto(pts, false, false, cx as f64, cy as f64);
+                    let raio = r * (1.0 + o);
+                    let (a, b) = (raio * (1.0 - BORDA), raio * (1.0 + BORDA));
+                    let cobre = if s <= a {
+                        1.0
+                    } else if s >= b {
+                        continue;
+                    } else {
+                        let u = (b - s) / (b - a);
+                        u * u * (3.0 - 2.0 * u)
+                    };
+                    let f = forca * cobre * outra;
+                    if f as f32 <= ja {
+                        continue;
+                    }
+                    susp[cx] = (f64::from(susp[cx]) * (1.0 - f) / (1.0 - f64::from(ja))) as f32;
+                    lev[cx] = f as f32;
+                    (lo, hi) = (lo.min(cx as i32), hi.max(cx as i32));
+                }
+                if lo <= hi {
+                    caixa[0].fetch_min(lo, Relaxed);
+                    caixa[1].fetch_min(cy as i32, Relaxed);
+                    caixa[2].fetch_max(hi, Relaxed);
+                    caixa[3].fetch_max(cy as i32, Relaxed);
+                }
+            },
+        );
+        let [x0, y0, x1, y1] = caixa.map(AtomicI32::into_inner);
+        let tocou = (x0 <= x1).then_some(TouchedRect { x0, y0, x1, y1 });
+        self.molhado.tocado = TouchedRect::union(self.molhado.tocado, tocou);
+        tocou
     }
 }

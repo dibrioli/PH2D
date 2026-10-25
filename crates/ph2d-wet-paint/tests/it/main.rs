@@ -36,6 +36,7 @@ mod measure_pente_rows;
 mod measure_stage_cost;
 mod measure_transfer_candidates;
 mod measure_transport_range;
+mod molhado_rows;
 mod paper_rows;
 mod parallel_rows;
 mod perf;

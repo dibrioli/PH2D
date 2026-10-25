@@ -61,11 +61,12 @@ impl Trail {
         let mut out = [0.0f64; 3];
         let mix = p.mix;
         self.tip_rows(g, p, mode);
-        // Molhado × molhado ([`Knob::WetOpen`]): a janela estica-se na mancha do cruzamento (sem manchas, nada).
-        self.molhado_estica();
+        // Molhado × molhado ([`Knob::WetOpen`]): a janela estica-se no tubo (sem tinta molhada de outra cor, nada); o
+        // levantar escreve FORA da pegada, e o sujo declara-o.
+        let levantou = self.molhado_estica(g, p, mode);
         if self.lx1 < self.lx0 {
             self.roll_window();
-            return None;
+            return levantou;
         }
         let s = g.s;
         let w = g.w as i32;
@@ -341,15 +342,18 @@ impl Trail {
         }
         self.roll_window();
         if rx1 < rx0 {
-            return None;
+            return levantou;
         }
         g.expand_bbox(rx0 - 1, ry0 - 1, rx1 + 1, ry1 + 1);
-        Some(TouchedRect {
-            x0: rx0,
-            y0: ry0,
-            x1: rx1,
-            y1: ry1,
-        })
+        TouchedRect::union(
+            Some(TouchedRect {
+                x0: rx0,
+                y0: ry0,
+                x1: rx1,
+                y1: ry1,
+            }),
+            levantou,
+        )
     }
 
     /// Blend transfer (SPEC §11 "blend"): window averages over mask-active

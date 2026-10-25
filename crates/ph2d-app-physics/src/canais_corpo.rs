@@ -17,9 +17,8 @@
 //! ⭐ **A escrita da curva é pré-visualização**: o valor AUTORADO de cada campo que a curva move
 //! fica em [`ConducaoFisica`] (a irmã da `ConducaoVetor`), e a fotografia do undo e do save vê-o.
 
-use std::collections::{BTreeMap, BTreeSet};
-
 use ph2d_ecs::canal::familia::FISICA;
+use ph2d_ecs::canal_conducao::ConducaoDosCanais;
 use ph2d_ecs::canal_fisica as f;
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue, apply_editor_commands};
 use ph2d_ecs::{CanaisEscritos, CanaisLidos, FieldKey, SimWorld};
@@ -300,10 +299,7 @@ pub fn aplicar(
             continue;
         }
         if let Some((antes, ficou)) = escrever(sim, registry, e, kk.campo, v) {
-            if antes != ficou {
-                conducao.conduziu(e, kk, antes);
-                mudou = true;
-            }
+            mudou |= conducao.escreveu(e, kk, antes, ficou);
             ecos.push((e, kk, v, ficou));
         }
     }
@@ -317,33 +313,25 @@ pub fn aplicar(
 }
 
 /// **A condução dos corpos pela curva** — guarda o valor AUTORADO de cada campo que a curva está a
-/// mover, para que o undo e o save o fotografem em vez do instante da reprodução. A semântica é a
-/// da `ConducaoVetor`: só se declara o que MUDOU neste quadro; [`Self::settle`] esquece quem não
-/// foi declarado.
+/// mover, para que o undo e o save o fotografem em vez do instante da reprodução. O livro e a lei
+/// de esquecer são os de [`ConducaoDosCanais`].
 #[derive(Debug, Default, Clone, PartialEq)]
-pub struct ConducaoFisica {
-    autorado: BTreeMap<(u64, FieldKey), f32>,
-    neste_quadro: BTreeSet<(u64, FieldKey)>,
+pub struct ConducaoFisica(ConducaoDosCanais);
+
+impl std::ops::Deref for ConducaoFisica {
+    type Target = ConducaoDosCanais;
+    fn deref(&self) -> &ConducaoDosCanais {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ConducaoFisica {
+    fn deref_mut(&mut self) -> &mut ConducaoDosCanais {
+        &mut self.0
+    }
 }
 
 impl ConducaoFisica {
-    /// A curva moveu `(e, kk)`; `antes` era o valor do documento (o primeiro de uma corrida fica).
-    pub fn conduziu(&mut self, e: u64, kk: FieldKey, antes: f32) {
-        self.autorado.entry((e, kk)).or_insert(antes);
-        self.neste_quadro.insert((e, kk));
-    }
-
-    /// Esquece quem não foi conduzido neste quadro (chamado onde o `PreviewDrive::settle` é).
-    pub fn settle(&mut self) {
-        let neste = std::mem::take(&mut self.neste_quadro);
-        self.autorado.retain(|k, _| neste.contains(k));
-    }
-
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.autorado.is_empty()
-    }
-
     /// Repõe o AUTORADO para a fotografia; devolve o vivo para [`Self::repor`]. As escolhas antes
     /// dos números, como no [`aplicar`].
     pub fn substituir(
@@ -351,8 +339,8 @@ impl ConducaoFisica {
         sim: &mut SimWorld,
         registry: &ComponentRegistry,
     ) -> Vec<(u64, FieldKey, f32)> {
-        let mut vivo = Vec::with_capacity(self.autorado.len());
-        for (e, kk, v) in ordenar(self.autorado.iter().map(|(&(e, kk), &v)| (e, kk, v))) {
+        let mut vivo = Vec::with_capacity(self.len());
+        for (e, kk, v) in ordenar(self.autorado()) {
             if let Some((antes, _)) = escrever(sim, registry, e, kk.campo, v) {
                 vivo.push((e, kk, antes));
             }

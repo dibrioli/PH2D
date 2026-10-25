@@ -9,6 +9,7 @@ use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, GravityScale, InitialVelocity, LockRotation, PhysicsBridge,
     RigidBody,
 };
+use std::collections::BTreeSet;
 
 /// Um corpo dinâmico com a caixa da sprite (a face inteira da §11).
 fn corpo() -> (SimWorld, Entity) {
@@ -192,9 +193,40 @@ fn a_curva_chega_ao_corpo_e_nao_a_fotografia() {
         BodyKind::Kinematic,
         "e o vivo volta"
     );
+    // Parada a timeline, a curva já não muda nada: o valor dela passa a ser documento.
+    conducao.a_tocar(false);
     conducao.settle();
     conducao.settle();
     assert!(conducao.is_empty());
+}
+
+/// ⭐⭐ **A tocar, um quadro em que o relógio repete o instante não vira documento** (a irmã do
+/// gate de `ph2d_app_vec::canais`): a curva escreve o mesmo valor, continua a conduzir.
+#[test]
+fn a_tocar_um_quadro_sem_avanco_nao_vira_documento() {
+    let reg = registry();
+    let (mut sim, e) = corpo();
+    let b = e.to_bits();
+    let mut conducao = ConducaoFisica::default();
+    conducao.a_tocar(true);
+    for _ in 0..2 {
+        sim.world_mut()
+            .get_resource_or_insert_with(CanaisEscritos::default)
+            .escrever(b, k(f::TIPO), 2.0);
+        aplicar(&mut sim, &reg, &mut conducao);
+        conducao.settle();
+    }
+    let vivo = conducao.substituir(&mut sim, &reg);
+    assert_eq!(
+        sim.world().get::<RigidBody>(e).unwrap().kind,
+        BodyKind::Dynamic,
+        "a tocar, a fotografia vê o autorado"
+    );
+    conducao.repor(&mut sim, &reg, vivo);
+    assert_eq!(
+        sim.world().get::<RigidBody>(e).unwrap().kind,
+        BodyKind::Kinematic
+    );
 }
 
 /// ⭐⭐⭐ **E chega ao SOLVER** pelo caminho da edição: em repouso, a curva põe a escala de

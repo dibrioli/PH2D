@@ -99,6 +99,7 @@ pub mod canal_chave_v23;
 pub mod canal_componente;
 pub mod canal_componente_donos;
 pub mod canal_constraint;
+pub mod canal_conducao;
 pub mod canal_fisica;
 pub mod canal_flip;
 pub mod canal_junta;

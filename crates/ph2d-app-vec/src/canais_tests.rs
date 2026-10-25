@@ -3,6 +3,7 @@ use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::canal_vetor as c;
 use ph2d_timeline::{PropKind, TimelineDoc, apply_from_doc, autokey_campos};
 use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec, VecPath, VecVertex};
+use std::collections::BTreeMap;
 
 fn k(campo: u16, i: u16, j: u16) -> FieldKey {
     FieldKey::new(VETOR, campo, i, j)
@@ -102,7 +103,9 @@ fn a_mao_no_traco_vira_chave_do_traco() {
 }
 
 /// ⭐ **Undo e save fotografam o AUTORADO enquanto a curva move o desenho** (a lei do
-/// `ph2d_preview_drive`); parado, o valor da curva vira documento.
+/// `ph2d_preview_drive`); com a timeline PARADA, o mesmo instante duas vezes não muda nada e o valor
+/// da curva vira documento. (Parado = a timeline não toca, não «o relógio não avançou»: a tocar, o
+/// mesmo instante repetido é o gate de baixo.)
 #[test]
 fn a_fotografia_ve_o_autorado_e_parado_a_curva_vira_documento() {
     let (mut sim, mut scene, e, mut doc) = cena();
@@ -124,9 +127,34 @@ fn a_fotografia_ve_o_autorado_e_parado_a_curva_vira_documento() {
     );
 
     cond.settle();
+    cond.a_tocar(false); // a timeline PAROU (pausa ou scrub parado)
     quadro(&mut sim, &mut scene, &mut doc, &mut cond, e, 0.5); // o mesmo instante: nada muda
     cond.settle();
-    assert!(cond.is_empty(), "parado, a curva já é documento");
+    assert!(cond.is_empty(), "parada a timeline, a curva já é documento");
+}
+
+/// ⭐⭐ **A tocar, um quadro em que o relógio repete o instante não vira documento** (auditoria F31,
+/// medido no app: f=38 e f=39 com t=0,533 ⇒ 120 passos de undo em ~7 s e o Ctrl+Z devolvia a pose
+/// da reprodução). A curva continua a conduzir o campo; só não o mudou.
+#[test]
+fn a_tocar_um_quadro_sem_avanco_nao_vira_documento() {
+    let (mut sim, mut scene, e, mut doc) = cena();
+    let mut cond = ConducaoVetor::default();
+    cond.a_tocar(true);
+    for _ in 0..2 {
+        quadro(&mut sim, &mut scene, &mut doc, &mut cond, e, 0.5);
+        cond.settle();
+    }
+    let vivo = cond.substituir(&mut sim, &mut scene);
+    let p = &scene.paths()[0];
+    assert_eq!(
+        p.fill,
+        Some(Paint::Solid(Rgba8::new(255, 0, 0, 255))),
+        "a tocar, a fotografia vê o autorado"
+    );
+    assert_eq!(p.stroke.as_ref().unwrap().width, 4.0);
+    cond.repor(&mut sim, &mut scene, vivo);
+    assert_eq!(scene.paths()[0].stroke.as_ref().unwrap().width, 8.0);
 }
 
 /// ⭐ Os efeitos VIVOS da entidade (Contour, Offset) publicam-se e a curva conduz-nos — o encaminho

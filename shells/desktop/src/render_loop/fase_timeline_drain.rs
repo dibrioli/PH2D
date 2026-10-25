@@ -89,6 +89,18 @@ impl crate::App {
         let r = ph2d_app_constraints::relogio::Relogio::da_vista(&self.timeline, relogios);
         // O «Valor» lê a fonte como a curva a deixou e escreve antes dos drenos (06_W5 §3.1).
         ph2d_app_constraints::valor::valores(sim, Some(r));
+        // A tocar, o campo que a curva escreveu continua conduzido mesmo sem mudar de valor (o
+        // relógio repete o instante): `ph2d_ecs::canal_conducao`. Lido DEPOIS do dreno das intents.
+        let tocando = vista
+            .pick(
+                &self.playhead,
+                &self.clip_playhead,
+                &self.container_playhead,
+            )
+            .is_playing();
+        self.vec.conducao.a_tocar(tocando);
+        self.flip_state.conducao.a_tocar(tocando);
+        self.physics.conducao.a_tocar(tocando);
         // ⭐ Os campos de família que a curva mandou (plano 35): o vetor drena-os para o documento.
         let feito = ph2d_app_vec::canais::aplicar(sim, vec_scene, &mut self.vec.conducao);
         for (id, e) in feito.textos {

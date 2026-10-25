@@ -2,12 +2,12 @@
 //! [`crate::canais_campos`]: [`publicar`] o que o documento vale em `CanaisLidos`, [`aplicar`] o que
 //! a curva mandou em `CanaisEscritos` (com o eco da quantização), e a [`ConducaoVetor`]: a lei do
 //! `ph2d_preview_drive` para o documento vetorial — **o que a curva escreve a tocar é
-//! pré-visualização**, o undo e o save fotografam o AUTORADO; parado, a curva vira documento. A família `CAD` (a
-//! medida animada, W4.5) drena-se aqui também: o documento é o mesmo ([`ph2d_vec_entities::medida`]).
-
-use std::collections::{BTreeMap, BTreeSet};
+//! pré-visualização**, o undo e o save fotografam o AUTORADO; parada a timeline, a curva vira
+//! documento. A família `CAD` (a medida animada, W4.5) drena-se aqui também: o documento é o mesmo
+//! ([`ph2d_vec_entities::medida`]).
 
 use ph2d_ecs::canal::familia::{CAD, VETOR};
+use ph2d_ecs::canal_conducao::ConducaoDosCanais;
 use ph2d_ecs::{
     CanaisEscritos, CanaisLidos, Entity, FieldKey, SimWorld, TextosDosCanais, VecPathRef, VecShape,
 };
@@ -202,10 +202,7 @@ fn aplicar_vetor(
             escrever_campo(sim, e, p.as_deref_mut(), shape.as_mut(), kk, v, &mut t);
             let ficou = ler_campo(sim, e, p.as_deref(), shape.as_ref(), kk, &mut t);
             if let (Some(a), Some(f)) = (antes, ficou) {
-                if a != f {
-                    conducao.conduziu(e, kk, a);
-                    feito.mudou = true;
-                }
+                feito.mudou |= conducao.escreveu(e, kk, a, f);
                 ecos.push((e, kk, v, f));
             }
         }
@@ -233,13 +230,11 @@ fn aplicar_vetor(
 /// documento: guarda o valor AUTORADO de cada campo que a curva está a mover, para que o undo e o
 /// save o fotografem em vez do instante da reprodução.
 ///
-/// ⚠️ A semântica é a do ledger irmão: só se declara o que MUDOU neste quadro; [`Self::settle`]
-/// esquece quem não foi declarado — parado num quadro, a curva já não muda nada e o valor dela
-/// passa a ser documento (a lei do `Transform` animado).
+/// O livro e a lei de esquecer (a tocar × parado) são os de [`ConducaoDosCanais`], partilhados
+/// com o Flip e a física.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ConducaoVetor {
-    autorado: BTreeMap<(u64, FieldKey), f32>,
-    neste_quadro: BTreeSet<(u64, FieldKey)>,
+    campos: ConducaoDosCanais,
     /// O desenho que a medida animada está a mover.
     cad: ConducaoCad,
 }
@@ -251,23 +246,30 @@ pub struct Vivo {
     cad: CadVivo,
 }
 
-impl ConducaoVetor {
-    /// A curva moveu `(e, kk)`; `antes` era o valor do documento (o primeiro de uma corrida fica).
-    pub fn conduziu(&mut self, e: u64, kk: FieldKey, antes: f32) {
-        self.autorado.entry((e, kk)).or_insert(antes);
-        self.neste_quadro.insert((e, kk));
+impl std::ops::Deref for ConducaoVetor {
+    type Target = ConducaoDosCanais;
+    fn deref(&self) -> &ConducaoDosCanais {
+        &self.campos
     }
+}
 
-    /// Esquece quem não foi conduzido neste quadro (chamado onde o `PreviewDrive::settle` é).
+impl std::ops::DerefMut for ConducaoVetor {
+    fn deref_mut(&mut self) -> &mut ConducaoDosCanais {
+        &mut self.campos
+    }
+}
+
+impl ConducaoVetor {
+    /// Esquece quem não foi conduzido neste quadro (chamado onde o `PreviewDrive::settle` é): os campos e
+    /// o desenho da medida animada.
     pub fn settle(&mut self) {
-        let neste = std::mem::take(&mut self.neste_quadro);
-        self.autorado.retain(|k, _| neste.contains(k));
+        self.campos.settle();
         self.cad.settle();
     }
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.autorado.is_empty() && self.cad.is_empty()
+        self.campos.is_empty() && self.cad.is_empty()
     }
 
     /// Repõe o AUTORADO no documento para a fotografia (o desenho da medida animada primeiro, os campos por cima);
@@ -275,11 +277,7 @@ impl ConducaoVetor {
     pub fn substituir(&self, sim: &mut SimWorld, scene: &mut VecScene) -> Vivo {
         let cad = self.cad.substituir(scene);
         let campos = self.valores(sim, scene);
-        self.escrever_todos(
-            sim,
-            scene,
-            self.autorado.iter().map(|(&(e, kk), &v)| (e, kk, v)),
-        );
+        self.escrever_todos(sim, scene, self.autorado());
         Vivo { campos, cad }
     }
 
@@ -292,9 +290,8 @@ impl ConducaoVetor {
     fn valores(&self, sim: &mut SimWorld, scene: &VecScene) -> Vec<(u64, FieldKey, f32)> {
         let mut t = tirar_textos(sim);
         let out = self
-            .autorado
-            .keys()
-            .filter_map(|&(e, kk)| {
+            .campos()
+            .filter_map(|(e, kk)| {
                 let (id, shape) = caminho(sim, e).map_or((None, None), |(id, sh)| (Some(id), sh));
                 let p = id.and_then(|id| scene.path(id));
                 Some((e, kk, ler_campo(sim, e, p, shape.as_ref(), kk, &mut t)?))

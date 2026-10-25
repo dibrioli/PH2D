@@ -123,10 +123,36 @@ fn a_curva_chega_a_camada_e_nao_a_fotografia() {
     assert_eq!(camada(&doc, oid, b).opacity, 0.25, "e o vivo volta");
     assert!(!camada(&doc, oid, a).visible);
 
-    // Parado, a curva já não muda nada: o valor dela passa a ser documento.
+    // Parada a timeline, a curva já não muda nada: o valor dela passa a ser documento.
+    conducao.a_tocar(false);
     conducao.settle();
     conducao.settle();
     assert!(conducao.is_empty());
+}
+
+/// ⭐⭐ **A tocar, um quadro em que o relógio repete o instante não vira documento** (a irmã do
+/// gate de `ph2d_app_vec::canais`): a curva escreve o mesmo valor, continua a conduzir.
+#[test]
+fn a_tocar_um_quadro_sem_avanco_nao_vira_documento() {
+    let (mut sim, mut doc, e, oid, _, b) = cena();
+    let op = chave(f::OPACIDADE, b).unwrap();
+    let mut conducao = ConducaoFlip::default();
+    conducao.a_tocar(true);
+    for _ in 0..2 {
+        sim.world_mut()
+            .get_resource_or_insert_with(CanaisEscritos::default)
+            .escrever(e, op, 0.25);
+        aplicar(&mut sim, &mut doc, &mut conducao);
+        conducao.settle();
+    }
+    let vivo = conducao.substituir(&sim, &mut doc);
+    assert_eq!(
+        camada(&doc, oid, b).opacity,
+        1.0,
+        "a tocar, a fotografia vê o autorado"
+    );
+    conducao.repor(&sim, &mut doc, vivo);
+    assert_eq!(camada(&doc, oid, b).opacity, 0.25);
 }
 
 /// A camada apagada deixa de publicar; uma entidade sem objecto Flip não publica nada.

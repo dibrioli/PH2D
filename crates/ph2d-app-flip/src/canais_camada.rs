@@ -10,9 +10,8 @@
 //! diff, o save grava-o), então o valor AUTORADO de cada campo que a curva move fica em
 //! [`ConducaoFlip`] — a irmã da `ph2d_app_vec::canais::ConducaoVetor` — e a fotografia vê-o.
 
-use std::collections::{BTreeMap, BTreeSet};
-
 use ph2d_ecs::canal::familia::FLIP;
+use ph2d_ecs::canal_conducao::ConducaoDosCanais;
 use ph2d_ecs::canal_flip as f;
 use ph2d_ecs::{CanaisEscritos, CanaisLidos, Entity, FieldKey, FlipObjectRef, SimWorld};
 use ph2d_editor_core::tool::PanelEvent;
@@ -150,10 +149,7 @@ pub fn aplicar(sim: &mut SimWorld, doc: &mut FlipDoc, conducao: &mut ConducaoFli
             continue;
         };
         if let Some((antes, ficou)) = escrever(doc, oid, kk, v) {
-            if antes != ficou {
-                conducao.conduziu(e, kk, antes);
-                mudou = true;
-            }
+            mudou |= conducao.escreveu(e, kk, antes, ficou);
             ecos.push((e, kk, v, ficou));
         }
     }
@@ -168,36 +164,28 @@ pub fn aplicar(sim: &mut SimWorld, doc: &mut FlipDoc, conducao: &mut ConducaoFli
 
 /// **A condução das camadas Flip pela curva** — o `PreviewDrive` deste documento: guarda o valor
 /// AUTORADO de cada campo que a curva está a mover, para que o undo e o save o fotografem em vez
-/// do instante da reprodução. A semântica é a da `ConducaoVetor`: só se declara o que MUDOU neste
-/// quadro; [`Self::settle`] esquece quem não foi declarado.
+/// do instante da reprodução. O livro e a lei de esquecer são os de [`ConducaoDosCanais`].
 #[derive(Debug, Default, Clone, PartialEq)]
-pub struct ConducaoFlip {
-    autorado: BTreeMap<(u64, FieldKey), f32>,
-    neste_quadro: BTreeSet<(u64, FieldKey)>,
+pub struct ConducaoFlip(ConducaoDosCanais);
+
+impl std::ops::Deref for ConducaoFlip {
+    type Target = ConducaoDosCanais;
+    fn deref(&self) -> &ConducaoDosCanais {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ConducaoFlip {
+    fn deref_mut(&mut self) -> &mut ConducaoDosCanais {
+        &mut self.0
+    }
 }
 
 impl ConducaoFlip {
-    /// A curva moveu `(e, kk)`; `antes` era o valor do documento (o primeiro de uma corrida fica).
-    pub fn conduziu(&mut self, e: u64, kk: FieldKey, antes: f32) {
-        self.autorado.entry((e, kk)).or_insert(antes);
-        self.neste_quadro.insert((e, kk));
-    }
-
-    /// Esquece quem não foi conduzido neste quadro (chamado onde o `PreviewDrive::settle` é).
-    pub fn settle(&mut self) {
-        let neste = std::mem::take(&mut self.neste_quadro);
-        self.autorado.retain(|k, _| neste.contains(k));
-    }
-
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.autorado.is_empty()
-    }
-
     /// Repõe o AUTORADO no documento para a fotografia; devolve o vivo para [`Self::repor`].
     pub fn substituir(&self, sim: &SimWorld, doc: &mut FlipDoc) -> Vec<(u64, FieldKey, f32)> {
-        let mut vivo = Vec::with_capacity(self.autorado.len());
-        for (&(e, kk), &v) in &self.autorado {
+        let mut vivo = Vec::with_capacity(self.len());
+        for (e, kk, v) in self.autorado() {
             let Some(oid) = objeto_de(sim, e) else {
                 continue;
             };

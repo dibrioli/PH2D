@@ -44,8 +44,28 @@ impl PhysicsBridge {
             return;
         }
         self.settings = settings;
+        self.vivo = settings;
         settings.apply_to(&mut self.world);
         self.ring.clear();
+    }
+
+    /// O que o mundo corre agora — o autorado, ou o que a curva da Cena pôs por cima (F30 §B).
+    pub fn settings_vivos(&self) -> PhysicsSettings {
+        self.vivo
+    }
+
+    /// ⭐ **A curva da Cena muda o mundo VIVO** (F30 §B) — o gémeo do `retune_body`: só quando o
+    /// valor muda, e ⛔ SEM limpar o anel (uma curva é função do tempo: o checkpoint de antes
+    /// continua a ser deste documento). O autorado ([`Self::settings`], o que o save grava e o
+    /// painel edita) não muda. Devolve `true` se o mundo mudou.
+    pub fn conduzir_settings(&mut self, s: PhysicsSettings) -> bool {
+        let s = s.clamped();
+        if s == self.vivo {
+            return false;
+        }
+        self.vivo = s;
+        s.apply_to(&mut self.world);
+        true
     }
 
     /// **Os pontos de retoma** de um mundo privado (o «Simular» de uma macro): um checkpoint a cada

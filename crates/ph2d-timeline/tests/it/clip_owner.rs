@@ -246,3 +246,51 @@ fn o_dope_sheet_lista_o_que_a_animacao_em_vista_anima() {
         "e a Cena não lista o que só o Herói anima"
     );
 }
+
+/// ⭐ F30 §B: a gravidade (família MUNDO, sobre a entidade da Cena) chaveada num clip da Cena
+/// aparece no dope-sheet da vista da Cena (selecção vazia) e não na de um objecto com Animação.
+#[test]
+fn a_dope_sheet_da_cena_mostra_as_faixas_do_mundo() {
+    use ph2d_ecs::canal::{FieldKey, familia};
+    use ph2d_timeline::{TimelineState, TimelineViewSnapshot, animation_view};
+    let (cena, heroi) = (3, 7);
+    let g = PropKind::Field(FieldKey::new(
+        familia::MUNDO,
+        ph2d_ecs::canal_mundo::GRAVIDADE_Y,
+        0,
+        0,
+    ));
+    let mut st = TimelineState::default();
+    st.doc
+        .upsert_key(cena, g, s(0.0), AnimValue::Float(-9.81), Interp::Linear);
+    let andar = st.doc.add_clip_for("andar".into(), heroi).unwrap();
+    st.doc.set_active(andar);
+    st.doc.insert_key(
+        heroi,
+        PropKind::Rotation,
+        s(0.0),
+        AnimValue::Float(0.0),
+        Interp::Linear,
+    );
+    let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    let linhas = |st: &mut TimelineState| {
+        let mut snap = TimelineViewSnapshot::default();
+        snap.rebuild(st, &ph2d_core::Playhead::new(1.0 / 60.0), false);
+        snap.tracks
+            .iter()
+            .map(|t| (t.entity, t.prop))
+            .collect::<Vec<_>>()
+    };
+    animation_view::follow(&mut st, &mut ph, None, &[]);
+    assert_eq!(
+        linhas(&mut st),
+        [(cena, g)],
+        "a vista da Cena mostra o mundo"
+    );
+    animation_view::follow(&mut st, &mut ph, Some(heroi), &[]);
+    assert_eq!(
+        linhas(&mut st),
+        [(heroi, PropKind::Rotation)],
+        "e a do Herói não"
+    );
+}

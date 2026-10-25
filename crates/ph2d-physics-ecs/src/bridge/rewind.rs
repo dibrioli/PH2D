@@ -231,7 +231,7 @@ impl PhysicsBridge {
         let mut arena = Vec::new();
         self.world.swap_pulleys(&mut table, &mut arena);
         self.world = PhysicsWorld::new();
-        self.settings.apply_to(&mut self.world);
+        self.vivo.apply_to(&mut self.world);
         // BTreeMap → entity order, so the fresh handles are assigned in the
         // same deterministic order as the original spawn (HR-5).
         //

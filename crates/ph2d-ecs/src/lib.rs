@@ -103,6 +103,10 @@ pub mod canal_objeto;
 pub mod canal_palavra;
 pub mod canal_script;
 pub mod canal_vetor;
+pub mod canal_mundo;
+/// ⭐ A Cena como alvo da timeline (F30 §B).
+pub mod cena;
+pub use cena::{Cena, bits_da_cena, entidade_da_cena, garante_cena};
 pub mod clip_playback;
 pub use canal::{
     AlvosDasFamilias, CampoInfo, CanaisEscritos, CanaisLidos, Especie, FieldKey, LeitoresDosCanais,

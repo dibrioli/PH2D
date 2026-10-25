@@ -132,6 +132,9 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
     // física chama isto em vez de contar com outro sistema. Idempotente e sem alocação quando
     // não há nada a atribuir (`collect` de um iterador vazio não toca no heap).
     ph2d_ecs::assign_missing_stable_ids(world);
+    // ⭐ A Cena (F30 §B) antes da cura: um mundo reconstruído (o load) perdeu-a, e a binding da
+    // gravidade sem ela seria PURGADA abaixo. Idempotente.
+    ph2d_ecs::garante_cena(world);
     // ⭐ Antes da cura: o dono que o undo global devolveu traz os clipes de volta (o cemitério), e a
     // cura deste mesmo quadro recola-lhes as bindings.
     ressuscita(timeline, world);

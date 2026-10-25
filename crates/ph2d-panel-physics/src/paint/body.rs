@@ -65,14 +65,14 @@ pub(super) fn table_section(
                     theme,
                     crate::ids::PHYSICS_SLEEP_SPIN,
                     tr("panel.physics.sleep_enabled"),
-                    snapshot.settings.sleep_enabled(),
+                    snapshot.vivo.sleep_enabled(),
                     (x, w, inner),
                     // A coluna das linhas de número desta secção — o *Enabled* alinha com elas.
                     ph2d_editor_core::widget::Seccao::apenas_campos(1),
                 );
             }
             for row in section.rows {
-                let value = (row.get)(&snapshot.settings);
+                let value = (row.get)(&snapshot.vivo);
                 let used = super::paint_row(ctx, theme, row, value, x, w, inner);
                 inner += used + row_gap;
             }

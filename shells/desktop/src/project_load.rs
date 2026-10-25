@@ -172,6 +172,7 @@ impl crate::App {
             // ANTERIOR — em silêncio.
             gfx.physics.set_settings(file.physics);
         }
+        self.physics.mundo = Default::default(); // o load não é a mão (F30 §B)
         // **A TABELA DE COR do documento anterior morre aqui, e a do arquivo entra** (W6) —
         // detalhe e razão no irmão `project_tokens`.
         // O número de descartes é DITO pelo próprio `install` (uma voz); aqui ele não é decisão.

@@ -79,18 +79,6 @@ pub(crate) fn populacao(
             fora.push(e);
         }
     }
+    fora.extend(ph2d_ecs::bits_da_cena(sim.world())); // ⭐ e a CENA, sempre (F30 §B)
     fora
-}
-
-/// ⭐ **Os campos de família que `entity` publicou neste quadro** (`ph2d_ecs::CanaisLidos`) — o que
-/// o autokey compara com a curva, ao lado da pose.
-#[must_use]
-pub(crate) fn campos_lidos(
-    sim: &ph2d_ecs::SimWorld,
-    entity: u64,
-) -> Vec<(ph2d_ecs::FieldKey, f32)> {
-    sim.world()
-        .get_resource::<ph2d_ecs::CanaisLidos>()
-        .map(|l| l.campos(entity).collect())
-        .unwrap_or_default()
 }

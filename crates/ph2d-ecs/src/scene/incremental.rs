@@ -321,8 +321,12 @@ pub fn capture_incremental(
     // sozinho deixa as duas iguais (a morta não casa e não conta em nenhuma das duas); um spawn
     // **com** um despawn no mesmo quadro também difere. *Uma igualdade de contagens é a prova de
     // que não há linha nova — não uma heurística.*
+    // ⛔ A Cena (F30 §B) tem id e não é documento: o save não a alcança, e o restauro não a limpa.
     let live_count = {
-        let mut q = world.query_filtered::<Entity, bevy_ecs::prelude::With<StableId>>();
+        let mut q = world.query_filtered::<Entity, (
+            bevy_ecs::prelude::With<StableId>,
+            bevy_ecs::prelude::Without<crate::Cena>,
+        )>();
         q.iter(world).count()
     };
     if live_count != matched {
@@ -338,7 +342,8 @@ pub fn capture_incremental(
         // *Perguntar pela GERAÇÃO cobre os dois casos com uma condição: o que nunca existiu e o
         // que renasceu noutros bits.*
         let stale: Vec<(Entity, StableId)> = {
-            let mut q = world.query::<(Entity, &StableId)>();
+            let mut q = world
+                .query_filtered::<(Entity, &StableId), bevy_ecs::prelude::Without<crate::Cena>>();
             q.iter(world)
                 .filter(|(_, s)| rows.get(s).is_none_or(|c| c.seen != generation))
                 .map(|(e, s)| (e, *s))

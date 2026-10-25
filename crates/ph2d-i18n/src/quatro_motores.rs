@@ -120,6 +120,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "timeline.key.bone_handles_from_chain" => {
             "Can't key the bend: this bone's handles come from the chain \u{2014} set Curve Handles to Manual"
         }
+        // F30 §B: um campo do MUNDO (a gravidade) é da Cena, e a Timeline mostra a animação de um objecto.
+        "timeline.key.scene_not_in_view" => {
+            "Can't key the world: it belongs to the Scene's animation \u{2014} show the Scene in the Timeline"
+        }
         // A recusa de um clip NOVO (onda 4, item 4): o `+` cheio dizia nada.
         "timeline.clip.animation_full" => {
             "Can't add a clip: this animation already has {max} \u{2014} delete one, or animate another object"

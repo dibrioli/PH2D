@@ -45,7 +45,8 @@ pub(crate) use autokey_state::AutokeyState;
 #[path = "autokey_amostra.rs"]
 mod autokey_amostra;
 use autokey_amostra::sample_pose;
-pub(crate) use autokey_amostra::{campos_lidos, populacao};
+pub(crate) use autokey_amostra::populacao;
+pub(crate) use ph2d_ecs::canal::campos_lidos;
 
 use super::timeline_bridge::default_interp;
 use ph2d_timeline::record_fit::{REC_SIMPLIFY_REL, REC_SMOOTH_PASSES, RecSpan, simplify_recorded};
@@ -278,7 +279,7 @@ fn diff_each_sample(
             // são disjuntos na prática — em modo Path os eixos de translação nem entram no
             // laço escalar, então `refused` descreveria OUTRO canal —, e quando coexistem o
             // motivo estrutural (o clip não toca aqui) é o mais informativo dos dois.
-            refused_now = refused_now.or(plan.path_refused);
+            refused_now = refused_now.or(plan.path_refused).or(plan.scene_refused);
             if let Some(t_e) = t_e {
                 // The motion-path anchor (Path mode), authored at the same home time
                 // as the scalar keys. During a paused drag `t_e` is fixed, so

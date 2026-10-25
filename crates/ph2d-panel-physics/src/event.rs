@@ -144,8 +144,8 @@ pub(crate) fn apply_event(
         // ⭐ Caixa de marcar desde 2026-09-24: o despacho vira-a e emite `Toggled`. O valor NOVO
         //    sai do MODELO (`!on`), nunca do store — a lei da `paint_check_row`.
         WidgetEvent::Toggled(id) if id == crate::ids::PHYSICS_SLEEP_SPIN => {
-            let settings = state::current().settings;
-            let on = settings.sleep_enabled();
+            let snap = state::current();
+            let (settings, on) = (snap.settings, snap.vivo.sleep_enabled());
             state::push_intent(PhysicsIntent::SetSettings(settings.with_sleep_enabled(!on)));
             true
         }

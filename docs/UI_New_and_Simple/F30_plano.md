@@ -98,6 +98,42 @@ cujas faixas estão em clips de dono `None` (`animation_view.rs:162-177`). A pop
    padrão em cada sessão) — é o que a lei pede; dito ao dono no smoke.
 4. O gate tira `ph2d-panel-physics` e `ph2d-panel-audio-mixer` de `NaoAnimavel`.
 
+✅ **§B1 feito** (a Cena + o MUNDO; a mesa §B2 fica). Medido e decidido:
+- **A Cena** (`ph2d-ecs/src/cena.rs`): `Cena` + `StableId::CENA = u64::MAX >> 1` (`stable_id.rs`, `reservado()`); a
+  reconciliação do contador ignora a faixa reservada e o `take` recusa-a (`o_contador_nunca_alcanca_o_id_da_cena`).
+  ⚠️ **Facto que o plano não tinha:** «sem `Transform` ⇒ fora do save» vale para o `world_to_snapshot`, mas a captura
+  INCREMENTAL do undo (`scene/incremental.rs:~320-345`) leva TODA entidade com `StableId` — a Cena entraria no passo de
+  undo e o restauro (`undo.rs:218`, que só limpa `With<Transform>`) duplicá-la-ia a cada Ctrl+Z. Cura: `Without<Cena>` nas
+  duas consultas dela (o único caso especial; gate `a_cena_nao_vai_para_o_ficheiro`, os dois caminhos). O restauro do
+  undo NÃO a apaga (medido: só despawna `With<Transform>`); o load sim.
+- **O passe** `garante_cena` corre no `ph2d_timeline_persist::upkeep` (depois do `assign_missing_stable_ids`, antes da
+  cura): é a função de identidade que a shell chama a cada quadro (`timeline_bridge::run`), e pô-la ali torna IMPOSSÍVEL a
+  purga apagar a binding da gravidade num quadro em que a Cena ainda não voltou. Resolução/cura/persistência sem caso
+  especial (`a_binding_da_cena_atravessa_o_ficheiro_e_recola`: `wire_id == StableId::CENA`, recola num mundo novo).
+- **Família `MUNDO = 9`** (`8` fica para a `LISTA` da §A): `canal_mundo.rs`, 11 campos (gravidade X/Y num grupo,
+  sub-passos e iterações `Numero`, contacto, amortecimentos, ar, sono velocidade/demora, «Bodies Sleep» `Ligado`).
+  Matches tocados: `canal.rs` `info` e `FieldKey::membro` (os dois únicos `match familia`), + `FieldKey::da_cena`.
+  ⛔ A matriz de camadas fica fora (36 células sem controlo de campo; `NaoAnimavel` implícito — o gate não a vê).
+- **O autorado** é `PhysicsBridge::settings` (o que `project_save.rs:91` grava e o painel edita); a curva vai para um
+  `vivo` novo da ponte por `conduzir_settings` (só quando muda, ⛔ sem limpar o anel; `rebuild`/`rewind` nascem do
+  `vivo`). Gates: `a_curva_muda_a_gravidade_do_mundo_sem_limpar_o_scrub` (controlo: `set_settings` limpa),
+  `o_save_grava_o_autorado_com_uma_curva_activa`. O painel PINTA o `vivo` e escreve sobre o autorado.
+- ⚠️ **A ordem do quadro decide o eco:** o painel aplica `SetSettings` DEPOIS do Auto Key (`fase_tool_mirrors`, após
+  `fase_hero_commits`) e o dreno da curva corre ANTES dele no quadro seguinte — um eco ingénuo (`eco(curva, autorado)`)
+  esconderia a mão para sempre. Cura: `ConducaoMundo` lembra o autorado do quadro anterior; o quadro em que ele mudou a
+  MÃO ganha à curva (no mundo e em `CanaisLidos`) e o Auto Key grava-a (`a_mao_ganha_a_curva_no_quadro_em_que_muda`).
+  Sem escrita da curva, o mundo corre o autorado.
+- **A chave da Cena** cai no clip ACTIVO (`doc.rs:556`); o clip activo é da animação em vista (`animation_view.rs`):
+  com um objecto COM Animação seleccionado, cairia no clip dele. Cura: `autokey_campos` recusa um campo `da_cena()` fora de
+  um clip da Cena (`KeyRefusal::SceneNotInView`, toast «show the Scene in the Timeline»; `AutokeyPlan::scene_refused`);
+  o losango do painel não grava ali (`o_clique_da_cena_nao_grava_no_clip_de_um_objecto`). Selecção sem Animação ⇒ a vista
+  é a Cena ⇒ grava. A dope-sheet da Cena mostra as faixas (`a_dope_sheet_da_cena_mostra_as_faixas_do_mundo`), rotuladas
+  «Scene» (`tracks_label.rs`).
+- **Gate:** `ph2d-panel-physics` sai de `DIVIDA_CRATE` para o `ESCOPO`; tabela `ph2d-app-physics/src/marcas_mundo.rs`;
+  `paint.rs::paint_row` = Canal; `paint_irow`, `seg_row` (ferramentas) e `PHYSICS_SHOW_COLLIDERS` (debug) = `NaoAnimavel`.
+- O load repõe o `ConducaoMundo` (`project_load.rs`): o autorado do ficheiro não é a mão.
+- ⚠️ **Aberto:** o scrub re-simula do checkpoint com o `vivo` do alvo, sem reler a curva por passo (a mesma nota da §C).
+
 ### C — o corpo vivo obedece à curva a meio da simulação
 
 ✅ **Feito** (`419e93f20e`): `PhysicsWorld::retune_body` (o colisor copiado do MESMO `build_collider`; desmonte exaustivo do

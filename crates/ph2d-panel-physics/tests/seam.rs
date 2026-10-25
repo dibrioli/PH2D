@@ -67,6 +67,7 @@ fn arrange_run(
 ) -> (MockPanelHost, PhysicsPanelState) {
     set_current_physics(Some(PhysicsSnapshot {
         settings,
+        vivo: settings,
         pixels_per_meter: 100.0,
         show_colliders: true,
         body_count: 3,

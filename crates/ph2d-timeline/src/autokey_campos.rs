@@ -57,8 +57,15 @@ pub fn autokey_campos(
     if mexidos.is_empty() {
         return plan;
     }
+    // ⭐ A chave da CENA mora num clip da Cena (F30 §B): com a animação de um objecto em vista,
+    // recusa — nunca no clip do objecto.
+    let cena_em_vista = doc.clip_belongs_to(doc.active_index(), crate::doc::SCENE);
     for &(k, v) in lidos {
         if !mexidos.contains(&grupo(k)) {
+            continue;
+        }
+        if k.da_cena() && !cena_em_vista {
+            plan.scene_refused = Some(crate::KeyRefusal::SceneNotInView);
             continue;
         }
         let p = PropKind::Field(k);

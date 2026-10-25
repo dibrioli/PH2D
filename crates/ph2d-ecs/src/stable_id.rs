@@ -93,9 +93,19 @@ impl StableId {
     /// O primeiro id que a alocação pode entregar.
     pub const FIRST: u64 = 1;
 
+    /// ⭐ **A CENA** ([`crate::cena`], F30 §B) — reservado, fora da faixa do contador: ele nunca o
+    /// entrega ([`StableIdCounter`]) e a reconciliação contra o mundo não o conta.
+    pub const CENA: StableId = StableId(u64::MAX >> 1);
+
     #[must_use]
     pub const fn is_none(self) -> bool {
         self.0 == 0
+    }
+
+    /// `true` ⇒ um id que o contador nunca entrega ([`Self::CENA`]).
+    #[must_use]
+    pub const fn reservado(self) -> bool {
+        self.0 >= Self::CENA.0
     }
 }
 
@@ -148,6 +158,10 @@ impl StableIdCounter {
 
     fn take(&mut self) -> StableId {
         let id = self.0;
+        assert!(
+            !StableId(id).reservado(),
+            "o contador alcançou a faixa reservada (a Cena)"
+        );
         self.0 = self.0.saturating_add(1);
         StableId(id)
     }
@@ -170,6 +184,7 @@ pub fn assign_missing_stable_ids(world: &mut World) -> bool {
     let highest = world
         .query::<&StableId>()
         .iter(world)
+        .filter(|s| !s.reservado())
         .map(|s| s.0)
         .max()
         .unwrap_or(0);

@@ -263,6 +263,10 @@ pub struct AutokeyPlan {
     /// strip), enquanto isto é uma recusa de ESCOPO com um motivo já sabido. Dobrar os
     /// dois faria o toast dizer *"uma lane acima sobrepõe"* sobre uma trajetória.
     pub path_refused: Option<KeyRefusal>,
+    /// ⭐ **Um campo da CENA foi querido e o clip activo é de um objecto** (F30 §B,
+    /// [`KeyRefusal::SceneNotInView`]): a recusa de ESCOPO irmã da de cima, pela mesma razão de
+    /// não ir para `refused`.
+    pub scene_refused: Option<KeyRefusal>,
 }
 
 impl AutokeyPlan {
@@ -273,6 +277,7 @@ impl AutokeyPlan {
             && self.refused.is_empty()
             && self.path_key.is_none()
             && self.path_refused.is_none()
+            && self.scene_refused.is_none()
     }
 }
 

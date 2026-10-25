@@ -170,3 +170,41 @@ fn sem_curva_e_sem_criar_nao_ha_diferenca() {
         .is_empty()
     );
 }
+
+/// ⭐ F30 §B: a gravidade é da CENA — com um clip da Cena activo a chave nasce; com o clip de um
+/// objecto activo ela é RECUSADA (com o motivo), nunca gravada no clip do objecto.
+#[test]
+fn a_chave_da_cena_cai_num_clip_da_cena() {
+    use ph2d_ecs::canal_mundo as m;
+    const CENA: u64 = 3;
+    let g = |c| FieldKey::new(familia::MUNDO, c, 0, 0);
+    let antes = vec![(g(m::GRAVIDADE_X), 0.0), (g(m::GRAVIDADE_Y), -9.81)];
+    let mut l = antes.clone();
+    mudar(&mut l, g(m::GRAVIDADE_Y), 9.81);
+    let mut doc = TimelineDoc::new();
+    assert!(doc.clip_belongs_to(doc.active_index(), crate::doc::SCENE));
+    let na_cena = autokey_campos(&doc, CENA, 0.0, &l, &base_de(&antes), true, false);
+    assert_eq!(
+        chaves(&na_cena),
+        [g(m::GRAVIDADE_X), g(m::GRAVIDADE_Y)].into()
+    );
+    assert_eq!(na_cena.scene_refused, None);
+    // A animação de um objecto em vista: o clip activo é dele.
+    let i = doc
+        .add_clip_for("Heroi".into(), E)
+        .expect("clip do objecto");
+    doc.set_active(i);
+    let no_objecto = autokey_campos(&doc, CENA, 0.0, &l, &base_de(&antes), true, false);
+    assert!(no_objecto.keys.is_empty(), "nada no clip do objecto");
+    assert_eq!(
+        no_objecto.scene_refused,
+        Some(crate::KeyRefusal::SceneNotInView)
+    );
+    // O campo de um objecto continua a gravar no clip dele.
+    let mut o = campos();
+    let base = base_de(&o);
+    mudar(&mut o, k(v::TRACO_LARGURA, 0, 0), 8.0);
+    let obj = autokey_campos(&doc, E, 0.0, &o, &base, true, false);
+    assert_eq!(chaves(&obj), [k(v::TRACO_LARGURA, 0, 0)].into());
+    assert_eq!(obj.scene_refused, None);
+}

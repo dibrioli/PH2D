@@ -62,7 +62,13 @@ pub(crate) fn track_label(name: Option<&str>, entity: u64, prop: PropKind) -> St
         },
         _ => prop_label(prop).to_owned(),
     };
-    compoe(name, entity, rotulo)
+    // A Cena (F30 §B) não tem `Name`: o dono do canal do mundo diz-se «Scene».
+    let cena = matches!(prop, PropKind::Field(k) if k.da_cena());
+    compoe(
+        name.or(cena.then(|| ph2d_i18n::tr("canal.mundo.cena"))),
+        entity,
+        rotulo,
+    )
 }
 
 /// [`track_label`] lido do instantâneo: o nome do objecto, e o da propriedade quando a row tem um

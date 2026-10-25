@@ -388,6 +388,9 @@ pub struct PhysicsBridge {
     /// backwards. (This field used to be gravity alone, which is exactly that
     /// bug scoped to nine other knobs.)
     settings: PhysicsSettings,
+    /// O que o mundo CORRE: o autorado, ou a curva da Cena por cima dele (F30 §B,
+    /// [`Self::conduzir_settings`]). Os mundos novos (rebuild, rewind) nascem com este.
+    vivo: PhysicsSettings,
     /// Sparse cache of past states, so scrubbing backwards replays at most
     /// `STRIDE` steps instead of `target` of them (W1.5). Purely an
     /// accelerator: on a miss the rest-pose rebuild below runs, which is the

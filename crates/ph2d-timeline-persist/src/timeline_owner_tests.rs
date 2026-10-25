@@ -294,3 +294,43 @@ fn as_fontes_do_arrange_levam_o_nome_do_dono() {
         .collect();
     assert_eq!(nomes, [(SCENE, ""), (h, "Herói")]);
 }
+
+/// ⭐ F30 §B: a gravidade animada na CENA atravessa o ficheiro e recola num mundo que nasceu sem a
+/// Cena — o `upkeep` repõe-na antes da cura, e a binding não é purgada. Sem caso especial: o
+/// `wire_id` é o `StableId::CENA`.
+#[test]
+fn a_binding_da_cena_atravessa_o_ficheiro_e_recola() {
+    use ph2d_ecs::canal::{FieldKey, familia};
+    let g = ph2d_timeline::PropKind::Field(FieldKey::new(familia::MUNDO, 2, 0, 0));
+    let mut sim = SimWorld::new();
+    let mut timeline = TimelineState::new();
+    upkeep(&mut timeline, sim.world_mut());
+    let cena = ph2d_ecs::entidade_da_cena(sim.world())
+        .expect("o upkeep cria-a")
+        .to_bits();
+    timeline.doc.upsert_key(
+        cena,
+        g,
+        ph2d_anim::RationalTime::from_seconds(0.0),
+        ph2d_anim::AnimValue::Float(3.0),
+        ph2d_anim::Interp::Linear,
+    );
+    let bytes = serialize(&mut timeline, sim.world_mut()).unwrap();
+    assert_eq!(
+        timeline.doc.bindings()[0].wire_id.0,
+        StableId::CENA.0,
+        "o wire_id é a identidade reservada"
+    );
+
+    let mut sim2 = SimWorld::new();
+    for _ in 0..3 {
+        sim2.world_mut().spawn(());
+    }
+    let mut loaded = install_from_project(&bytes).unwrap();
+    assert!(!upkeep(&mut loaded, sim2.world_mut()), "curar não é reset");
+    let cena2 = ph2d_ecs::entidade_da_cena(sim2.world())
+        .expect("reposta")
+        .to_bits();
+    let b = &loaded.doc.bindings()[0];
+    assert_eq!((b.entity, b.missing, b.prop), (cena2, false, g));
+}

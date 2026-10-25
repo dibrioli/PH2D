@@ -119,6 +119,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "canal.fisica.zona_queda" => "Zone Falloff",
         "canal.fisica.x" => "X",
         "canal.fisica.y" => "Y",
+        // O mundo da física sobre a Cena (`ph2d_ecs::canal_mundo`, F30 §B).
+        "canal.mundo.gravidade" => "World Gravity",
+        "canal.mundo.subpassos" => "World Substeps",
+        "canal.mundo.iteracoes" => "Solver Iterations",
+        "canal.mundo.contacto_hz" => "Contact Frequency",
+        "canal.mundo.amort_linear" => "World Linear Damping",
+        "canal.mundo.amort_angular" => "World Angular Damping",
+        "canal.mundo.ar" => "World Air Drag",
+        "canal.mundo.sono_velocidade" => "Sleep Speed",
+        "canal.mundo.sono_demora" => "Sleep Delay",
+        "canal.mundo.adormece" => "Bodies Sleep",
+        "canal.mundo.cena" => "Scene",
         // A junta de física (`ph2d_ecs::canal_junta`).
         "canal.junta.motor_ligado" => "Motor On",
         "canal.junta.motor_modo" => "Motor Mode",

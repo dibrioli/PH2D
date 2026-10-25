@@ -43,8 +43,11 @@ thread_local! {
 /// What the panel needs to know about the world this frame.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PhysicsSnapshot {
-    /// The world's authored settings — what every row reads.
+    /// The world's authored settings — what every edit writes over.
     pub settings: PhysicsSettings,
+    /// ⭐ O que o mundo CORRE (F30 §B): o autorado, ou a curva da Cena por cima — o que as linhas
+    /// MOSTRAM; a edição escreve-se sobre o autorado ([`Self::settings`]).
+    pub vivo: PhysicsSettings,
     /// `ProjectSettings::pixels_per_meter`, shown as a readout.
     ///
     /// ⚠️ **Displayed, never owned** (ADR-0131 D4): the world scale is a
@@ -88,6 +91,7 @@ impl Default for PhysicsSnapshot {
     fn default() -> Self {
         Self {
             settings: PhysicsSettings::default(),
+            vivo: PhysicsSettings::default(),
             // Read from the setting's OWNER, not transcribed: this is the
             // scale a project has before anyone changes it, and a literal here
             // would be a second copy of it free to drift.

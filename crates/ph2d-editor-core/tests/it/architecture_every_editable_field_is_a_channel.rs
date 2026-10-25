@@ -92,6 +92,8 @@ const ESCOPO: &[(&str, Option<&[&str]>)] = &[
     // ⭐ F27 B2: o Inspector INTEIRO — o canal sai do rótulo do catálogo que a linha pinta.
     ("ph2d-panel-inspector", None),
     ("ph2d-panel-flip", None),
+    // ⭐ F30 §B: o MUNDO da física é canal da Cena (`ph2d_app_physics::marcas_mundo`).
+    ("ph2d-panel-physics", None),
 ];
 
 /// As tabelas de canais (caminhos a partir de `crates/`).
@@ -101,6 +103,7 @@ const TABELAS: &[&str] = &[
     "ph2d-app-components/src/marcas_inspector.rs",
     "ph2d-app-flip/src/marcas_camada.rs",
     "ph2d-app-constraints/src/marcas.rs",
+    "ph2d-app-physics/src/marcas_mundo.rs",
 ];
 
 /// Os helpers de LINHA de cada painel: recebem o id do chamador e repassam-no a uma porta — a
@@ -138,6 +141,7 @@ const LINHAS: &[(&str, &str)] = &[
     ("ph2d-panel-inspector", "coluna_da_caixa"),
     ("ph2d-panel-flip", "slider_row"),
     ("ph2d-panel-flip", "slider_row_linked"),
+    ("ph2d-panel-physics", "check"),
 ];
 
 /// A classe de uma chamada por um dos seus ids — exacto, ou PREFIXO quando acaba em `_`.
@@ -163,10 +167,15 @@ const POR_ID: &[(&str, Classe, &str)] = &[
         "o seletor «Use» diz que componentes EXISTEM (animações, `TiledDraw`, repeat): acrescentar/tirar é estrutura, não um valor no tempo (plano GEF 15)",
     ),
     (
-        "INSP_SCRIPT_SOURCE",
-        Canal,
-        "o mesmo canal que o seletor `INSP_SCRIPT_PICK` (o `ScriptId`), que leva o losango: um canal, um losango; o caminho por importar não é valor de canal (F27 F)",
+        "PHYSICS_SHOW_COLLIDERS",
+        NaoAnimavel,
+        "o desenho dos colisores é debug da vista (§8)",
     ),
+    (
+    "INSP_SCRIPT_SOURCE",
+    Canal,
+    "o mesmo canal que o seletor `INSP_SCRIPT_PICK` (o `ScriptId`), que leva o losango: um canal, um losango; o caminho por importar não é valor de canal (F27 F)",
+),
     (
         "INSP_VIS_ON_SCREEN",
         NaoAnimavel,
@@ -1282,6 +1291,38 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
         "o tamanho do pincel ou da borracha (o id pelo modo): ajuste da ferramenta (§8)",
     ),
     (
+        "ph2d-panel-physics",
+        "paint.rs::paint_row",
+        Canal,
+        &[
+            "PHYSICS_GRAVITY_X",
+            "PHYSICS_GRAVITY_Y",
+            "PHYSICS_SUBSTEPS",
+            "PHYSICS_ITERATIONS",
+            "PHYSICS_CONTACT_HZ",
+            "PHYSICS_AIR_DRAG",
+            "PHYSICS_LINEAR_DAMPING",
+            "PHYSICS_ANGULAR_DAMPING",
+            "PHYSICS_SLEEP_SPEED",
+            "PHYSICS_SLEEP_DELAY",
+        ],
+        "as linhas da tabela `rows::SECTIONS` — o mundo da física sobre a Cena (canal MUNDO, F30 §B)",
+    ),
+    (
+        "ph2d-panel-physics",
+        "paint.rs::paint_irow",
+        NaoAnimavel,
+        &[],
+        "a ferramenta de INTERACÇÃO (a mão no jogo a correr): da ferramenta, não da cena (§8)",
+    ),
+    (
+        "ph2d-panel-physics",
+        "paint/interact.rs::seg_row",
+        NaoAnimavel,
+        &[],
+        "os rádios das ferramentas de interacção e de junta: da ferramenta, não da cena (§8)",
+    ),
+    (
         "ph2d-panel-flip",
         "paint_eye",
         Canal,
@@ -1325,14 +1366,6 @@ const DIVIDA_CRATE: &[(&str, Classe, &str)] = &[
         "ph2d-panel-painter-layers",
         Divida,
         "as camadas e ajustes do Painter (§A.7)",
-    ),
-    (
-        "ph2d-panel-physics",
-        NaoAnimavel,
-        "o MUNDO da simulação (afinação do solver, gravidade e arrasto por omissão, matriz de \
-         camadas), as ferramentas de interacção e de junta e o debug: configuração e ferramenta, \
-         não objecto; o que um corpo faz no tempo (a escala de gravidade incluída) é a §11 do \
-         Inspector, canal FISICA",
     ),
     (
         "ph2d-panel-bgremoval",

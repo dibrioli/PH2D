@@ -63,6 +63,13 @@ impl FieldKey {
         }
     }
 
+    /// `true` ⇒ o campo é da CENA (`crate::cena`), não de um objecto: a chave dele mora num clip
+    /// da Cena.
+    #[must_use]
+    pub const fn da_cena(self) -> bool {
+        self.familia == familia::MUNDO
+    }
+
     /// Chave `ph2d-i18n` do nome deste campo DENTRO do grupo («Point X», «R», «Dash») — a linha do
     /// membro quando o artista abre o grupo. `None` = endereço que nenhuma família declara.
     #[must_use]
@@ -77,6 +84,7 @@ impl FieldKey {
             familia::SCRIPT => crate::canal_script::membro(self),
             familia::CONSTRAINT => crate::canal_constraint::membro(self.campo),
             familia::CAD => crate::canal_cad::membro(self.campo),
+            familia::MUNDO => crate::canal_mundo::membro(self.campo),
             _ => None,
         }
     }
@@ -234,6 +242,10 @@ pub mod familia {
     pub const CONSTRAINT: u16 = 8;
     /// Uma regra de desenho técnico do vetor (`VecScene.regras`, `i:j` = o `RegraId`) — `crate::canal_cad`.
     pub const CAD: u16 = 9;
+    // `10` é da `LISTA` (F30 §A, o item de uma lista com identidade); `8` e `9` são do main
+    // (CONSTRAINT, CAD) — a linha UIUX renumerou-se na integração de 29/10.
+    /// O MUNDO da física (`PhysicsSettings`) sobre a entidade da Cena — `crate::canal_mundo`.
+    pub const MUNDO: u16 = 11;
 }
 
 /// ⭐ **A porta única de «o que é este campo»** — `None` = endereço que nenhuma família declara (um
@@ -250,6 +262,7 @@ pub fn info(k: FieldKey) -> Option<CampoInfo> {
         familia::SCRIPT => crate::canal_script::info(k),
         familia::CONSTRAINT => crate::canal_constraint::info(k.campo),
         familia::CAD => crate::canal_cad::info(k.campo),
+        familia::MUNDO => crate::canal_mundo::info(k.campo),
         _ => None,
     }
 }
@@ -357,6 +370,16 @@ impl CanaisLidos {
     pub fn is_empty(&self) -> bool {
         self.valores.is_empty()
     }
+}
+
+/// ⭐ **Os campos de família que `entidade` publicou neste quadro** ([`CanaisLidos`]) — o que o
+/// Auto Key compara com a curva, ao lado da pose.
+#[must_use]
+pub fn campos_lidos(sim: &crate::SimWorld, entidade: u64) -> Vec<(FieldKey, f32)> {
+    sim.world()
+        .get_resource::<CanaisLidos>()
+        .map(|l| l.campos(entidade).collect())
+        .unwrap_or_default()
 }
 
 /// **O que a curva manda escrever neste quadro** — publicado pelo apply da timeline, drenado pela

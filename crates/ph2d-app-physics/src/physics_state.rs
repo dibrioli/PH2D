@@ -108,4 +108,6 @@ pub struct PhysicsState {
     /// ⭐ O que a curva move nos corpos é pré-visualização (plano 35 §A.5): o autorado de cada
     /// campo conduzido, que o undo e o save fotografam (`canais_corpo::ConducaoFisica`).
     pub conducao: crate::canais_corpo::ConducaoFisica,
+    /// O autorado do mundo visto no quadro anterior (`canais_mundo`, F30 §B): a mão ganha à curva.
+    pub mundo: crate::canais_mundo::ConducaoMundo,
 }

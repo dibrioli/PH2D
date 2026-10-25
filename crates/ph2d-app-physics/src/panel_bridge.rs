@@ -56,6 +56,7 @@ pub fn dispatch(
     // ── 1. Publish. Every row reads this; the panel keeps no copy. ──
     ph2d_panel_physics::set_current_physics(Some(PhysicsSnapshot {
         settings: physics.settings(),
+        vivo: physics.settings_vivos(),
         // Displayed, never owned (ADR-0131 D4): the world scale is a PROJECT
         // setting, edited in Settings → Pixels per Meter.
         pixels_per_meter: hero.project.pixels_per_meter,

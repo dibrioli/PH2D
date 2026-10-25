@@ -285,7 +285,6 @@ fn the_population_is_the_selection_plus_the_hand_without_repeats() {
         super::populacao(&hero, &Default::default(), &sim, &drive).is_empty(),
         "sem mao nem seleccao a porta nao olha para ninguem"
     );
-
     // ⛔⛔ **PRÉ-VISUALIZAÇÃO NÃO É AUTORIA** (auditoria de 2026-09-08, e até 2026-09-14 esta lei
     // vivia SEM gate): um osso que um MOTOR conduz — o osso inteligente, a âncora de IK — escreve
     // pose **entre** o apply e este passe, e cunhar a partir dela faria uma chave da saída do
@@ -306,6 +305,12 @@ fn the_population_is_the_selection_plus_the_hand_without_repeats() {
         vec![ponta.to_bits()],
         "um osso sob conducao de um MOTOR nao pode entrar na populacao, nem pela mao"
     );
+    // ⭐ F30 §B: a CENA entra sempre, no fim.
+    let cena = ph2d_ecs::garante_cena(sim.world_mut()).to_bits();
+    let mut hero = ph2d_editor_core::HeroScreen::new(ph2d_editor_core::NodeId(1));
+    hero.gizmo.selection = Some(outro.to_bits());
+    let p = super::populacao(&hero, &Default::default(), &sim, &drive);
+    assert_eq!(p, [outro.to_bits(), cena], "a seleccao a frente");
 }
 
 /// ⚠️ **O caso REAL do artista: um rig NOVO, sem curva nenhuma.** Os gates acima partem de ossos já

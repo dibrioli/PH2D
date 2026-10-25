@@ -65,6 +65,7 @@ impl PhysicsBridge {
             to_retune: Vec::new(),
             to_settle: Vec::new(),
             settings: PhysicsSettings::default(),
+            vivo: PhysicsSettings::default(),
             ring: PhysicsCheckpointRing::new(),
             steps_taken: 0,
             triggers: BTreeMap::new(),
@@ -110,7 +111,7 @@ impl PhysicsBridge {
         self.world = PhysicsWorld::new();
         // A fresh world starts from the ENGINE defaults, not this document's
         // settings — re-push them or a project load quietly reverts every knob.
-        self.settings.apply_to(&mut self.world);
+        self.vivo.apply_to(&mut self.world);
         self.bodies.clear();
         self.joints.clear();
         self.last_stepped = 0;

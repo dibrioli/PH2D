@@ -2,6 +2,7 @@
 //! Transform/opacidade da UI no quadro (gizmo, Inspector, reset da Hierarquia) (OBRA 2 da `line/render-loop`, 2026-09-12).
 
 use super::*;
+use ph2d_app_physics::marcas_mundo;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -17,6 +18,7 @@ impl crate::App {
             vec_scene,
             flip,
             component_registry,
+            physics,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -50,8 +52,7 @@ impl crate::App {
         ph2d_app_vec::canais::publicar(sim, vec_scene, &self.vec.conducao, &publicar);
         ph2d_app_components::canais_objeto::publicar(sim, &publicar);
         ph2d_app_components::canais_componente::publicar(sim, component_registry, &publicar);
-        ph2d_app_physics::canais_junta::publicar(sim, &publicar);
-        ph2d_app_physics::canais_corpo::publicar(sim, &publicar);
+        ph2d_app_physics::publicar_canais(sim, physics, &publicar);
         ph2d_app_flip::canais_camada::publicar(sim, flip, &publicar);
         ph2d_app_constraints::canais::publicar(sim, &publicar);
         let sel: Vec<u64> = hero.gizmo.iter_selected().collect();
@@ -121,6 +122,9 @@ impl crate::App {
                     tl, &c.fields, e, obj, inst, lidos, valor, k,
                 );
             }
+            if intents.is_empty() {
+                intents = marcas_mundo::clique(tl, &c.fields, sim.world(), inst, lidos, valor, k);
+            }
             self.timeline_intents.extend(intents);
         }
         let mut marcas = ph2d_app_vec::marcas::marcas(tl, ctx, &sel, inst, valor);
@@ -135,6 +139,7 @@ impl crate::App {
         marcas.extend(ph2d_app_constraints::marcas::marcas(
             tl, sim, &sel, inst, valor,
         ));
+        marcas.extend(marcas_mundo::marcas(tl, sim.world(), inst, valor));
         ph2d_editor_core::widget::key_mark::set_key_marks(marcas);
     }
 }

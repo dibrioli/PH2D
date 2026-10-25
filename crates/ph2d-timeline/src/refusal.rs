@@ -53,6 +53,9 @@ pub enum KeyRefusal {
     /// ditou, e faria o modo `Auto` impossível de desligar (o `Authored` deixaria de devolver o que
     /// lá estava). A cura é dizer ao artista **o que trocar**: as alças para *Manual*.
     BoneHandlesFromChain,
+    /// ⭐ **Um campo da CENA** (o mundo da física, F30 §B) e a Timeline mostra a animação de um
+    /// OBJECTO: a chave da Cena mora num clip da Cena, nunca no clip do objecto em vista.
+    SceneNotInView,
 }
 
 /// Why a container could not be placed inside another (ADR-0133 §4).
@@ -104,6 +107,7 @@ impl KeyRefusal {
             Self::ExpressionDriven => "timeline.key.expression_driven",
             Self::PathNeedsKeysTab => "timeline.key.path_needs_keys_tab",
             Self::BoneHandlesFromChain => "timeline.key.bone_handles_from_chain",
+            Self::SceneNotInView => "timeline.key.scene_not_in_view",
         }
     }
 }

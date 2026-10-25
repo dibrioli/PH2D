@@ -318,6 +318,34 @@ pub mod panel_bridge;
 pub mod canais_corpo;
 /// ⭐⭐ A família JUNTA nos canais: os campos do `PhysicsJoint` sem `PropKind` (plano 35 §3.0).
 pub mod canais_junta;
+/// ⭐⭐ A família MUNDO nos canais: a gravidade e o solver sobre a Cena (F30 §B).
+pub mod canais_mundo;
+/// O losango das linhas do painel Physics (F30 §B).
+pub mod marcas_mundo;
+
+/// ⭐ As três famílias da física nos canais (JUNTA, FISICA, MUNDO): o que vale agora…
+pub fn publicar_canais(
+    sim: &mut ph2d_ecs::SimWorld,
+    ponte: &ph2d_physics_ecs::PhysicsBridge,
+    entidades: &[u64],
+) {
+    canais_junta::publicar(sim, entidades);
+    canais_corpo::publicar(sim, entidades);
+    canais_mundo::publicar(sim, ponte);
+}
+
+/// …e o que a curva mandou neste quadro.
+pub fn aplicar_canais(
+    sim: &mut ph2d_ecs::SimWorld,
+    registry: &ph2d_ecs::scene::ComponentRegistry,
+    ponte: &mut ph2d_physics_ecs::PhysicsBridge,
+    estado: &mut physics_state::PhysicsState,
+    (drive, doc): (&mut ph2d_preview_drive::PreviewDrive, &ph2d_timeline::TimelineDoc),
+) {
+    canais_junta::aplicar(sim, drive, doc);
+    canais_corpo::aplicar(sim, registry, &mut estado.conducao);
+    canais_mundo::aplicar(sim, ponte, &mut estado.mundo);
+}
 pub mod joint;
 pub mod joint_anchor_drag;
 pub mod joint_create;

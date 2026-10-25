@@ -130,3 +130,26 @@ deletado.»* Smoke `=34`: **OK** (dono, 25/10).
 - **Smoke do dono:** (1) `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-UIUX && cargo run -p ph2d-host-desktop --profile smoke`
   (2) desenhe um quadrado no Vetor, pegue o balde e clique dentro dele (3) seleccione o quadrado e apague-o (Delete): a cor
   some junto (4) errado: fica uma mancha de cor que não se seleciona. Ctrl+Z traz o quadrado e a cor juntos.
+
+## 8 — Smoke do balde órfão OK (dono, 25/10) e os três reports seguintes — a PRÓXIMA onda (F29)
+
+Verbatim do dono (25/10), com as fotos em [`img_F28_bucket_weld/`](img_F28_bucket_weld/):
+
+1. *«um objeto construído com weld e Bucket ao sobrepor outro objeto vetor acaba interagindo com o objeto (veja as fotos).
+   Ou seja, o objeto composto não se comporta como um único objeto com um z index fixo.»* — foto 1: o composto sozinho
+   (linhas soldadas + três tintas do balde: verde, amarelo, ciano) ao lado de um quadrado verde arredondado; fotos 2 e 3:
+   o composto arrastado sobre o quadrado — partes da tinta do composto somem/ficam por baixo do quadrado e outras por cima
+   (setas verdes), e na foto 3 o quadrado corta a tinta amarela. Hipótese a MEDIR (não confirmada): as tintas do balde
+   são caminhos soltos mandados «para o FUNDO» da cena (`bucket::arm_new_fills`, `bucket.rs:300-318`) e não filhos do
+   composto, logo o z delas é o da cena e não o do objecto; e/ou a rede do balde (`bucket::upkeep`, `contornos_mundo`)
+   enxerga as bordas de OUTROS objectos (o quadrado) como paredes e re-coze as faces cortadas por ele.
+2. *«ao usar o balde, os preenchimentos criados devem nascer como filhos do path base.»* — mesma família do 1: a tinta
+   nasce como filha do caminho-fronteira (z relativo ao pai, move/apaga com ele). Re-medir a cura da §7 (órfã) à luz
+   disto: com tinta filha, apagar o pai leva-a por cascata.
+3. *«Operação booleana onde um objeto é transparente fica com preenchimento bugado até o usuário mudar o fill.»* — sem
+   foto; reproduzir: dois objectos, um com fill transparente (alfa 0 ou sem fill), aplicar uma booleana (Unite/Subtract/
+   Intersect…), ver o fill do resultado; mudar o fill «conserta». Suspeita a medir: o resultado herda um fill/paint stack
+   de forma inconsistente, ou um cache de render (pintura/tesselação) não invalida até o fill mudar.
+
+Regras da onda: resolver 1+2 num bloco só (CLAUDE.md §0.10); gate visto vermelho antes de cada cura; cena de smoke
+fotografada (próximo número: `PH2D_AUTOKEY_SMOKE=35` ou uma cena do Vetor — conte no roteador); não integrar sem ordem.

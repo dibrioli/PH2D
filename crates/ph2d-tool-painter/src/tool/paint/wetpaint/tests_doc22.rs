@@ -670,3 +670,43 @@ fn the_section_reset_restores_the_whole_section() {
     assert!(!w.tuning_open);
     let _ = KNOB_COUNT; // vocabulary anchor
 }
+
+/// **A rota MEDIDA da água não muda o Wet com Wet bloom e Tip pickup no máximo** (smoke do dono 25/10: manchas
+/// retangulares no começo da água): a mesma cena — um traço vermelho e um escuro por cima — com `PISO_NS_AGUA`
+/// = ∞ (a rota de antes) e o de fábrica, quadro a quadro pelo relógio fixo, dá o mesmo pigmento ao byte.
+#[test]
+fn a_rota_medida_nao_muda_o_wet_com_bloom_e_pickup() {
+    use ph2d_editor_core::tool::RasterEditTool;
+    use ph2d_wet_paint::par::PISO_NS_AGUA;
+    use std::sync::atomic::Ordering;
+    let cena = |piso: u64| -> Vec<Vec<u8>> {
+        PISO_NS_AGUA.store(piso, Ordering::Relaxed);
+        let mut t = wet_tool_fixture();
+        t.set_wet_relogio_fixo(true);
+        set(&mut t, crate::ids::PAINTER_WETPAINT_WET_BLOOM, 1.0);
+        set(&mut t, crate::ids::PAINTER_WETPAINT_TIP_PICKUP, 1.0);
+        stroke(&mut t, 50.0);
+        t.paint.brush.color = [0.15, 0.12, 0.1];
+        stroke(&mut t, 64.0);
+        (0..90)
+            .map(|_| {
+                t.on_tick(1000.0 / 60.0);
+                t.wet_pigmento().expect("a sessão").to_vec()
+            })
+            .collect()
+    };
+    let fabrica = PISO_NS_AGUA.load(Ordering::Relaxed);
+    let antes = cena(u64::MAX);
+    // `0` = o resto de cada caminhar SEMPRE no pool: a cena é pequena, e com o piso de fábrica ela podia nunca o usar.
+    let agora = [cena(fabrica), cena(0)];
+    PISO_NS_AGUA.store(fabrica, Ordering::Relaxed);
+    assert!(
+        antes.first() != antes.last(),
+        "a água não andou — a cena não exercita nada"
+    );
+    for rota in &agora {
+        for (q, (a, b)) in antes.iter().zip(rota).enumerate() {
+            assert!(a == b, "quadro {q}: a rota medida mudou o pigmento");
+        }
+    }
+}

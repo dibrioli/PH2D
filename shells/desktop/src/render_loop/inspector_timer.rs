@@ -1,5 +1,5 @@
 //! ⭐⭐⭐ **A secção TIMERS** (TOP-20 #2, W3) — o snapshot que a secção lê e o commit que ela
-//! escreve. Irmão do [`super::inspector_anim`], pela mesma razão dele.
+//! escreve. Irmão do [`ph2d_app_sprite_anim::inspector`], pela mesma razão dele.
 //!
 //! # ⚠️ A conversão da DURAÇÃO mora aqui, nas duas pontas
 //!

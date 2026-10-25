@@ -47,7 +47,7 @@ pub(crate) fn anchors(world: &World, bits: u64) -> bool {
 }
 
 pub(crate) fn anim(world: &World, bits: u64) -> bool {
-    super::inspector_anim::build_anim_info(world, bits, 1).is_some()
+    ph2d_app_sprite_anim::inspector::build_anim_info(world, bits, 1).is_some()
 }
 
 pub(crate) fn physics(world: &World, bits: u64) -> bool {

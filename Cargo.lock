@@ -5525,6 +5525,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-sprite-anim"
+version = "0.0.0"
+dependencies = [
+ "ph2d-app-components",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-entity-visibility",
+ "ph2d-i18n",
+ "ph2d-inspector-ordering",
+ "ph2d-preview-drive",
+ "ph2d-render",
+]
+
+[[package]]
 name = "ph2d-app-sync"
 version = "0.0.0"
 
@@ -6501,6 +6515,7 @@ dependencies = [
  "ph2d-app-painter",
  "ph2d-app-physics",
  "ph2d-app-skeleton",
+ "ph2d-app-sprite-anim",
  "ph2d-app-vec",
  "ph2d-aseprite",
  "ph2d-asset",

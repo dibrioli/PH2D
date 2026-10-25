@@ -26,17 +26,17 @@ use ph2d_ecs::{SimWorld, SpriteAnimations, SpriteAnimator};
 /// ⚠️ Um tipo do SHELL e não do `ph2d-ecs`: a lei pura não conhece o `ph2d-runtime`, e não pode —
 /// ela é o que o replay reproduz, e o outbox é o que o app faz com isso. O tique devolve fatos; o
 /// chamador é que os transforma em eventos.
-pub(crate) struct AnimSignal {
-    pub(crate) entity: ph2d_ecs::Entity,
+pub struct AnimSignal {
+    pub entity: ph2d_ecs::Entity,
     /// O nome AUTORADO na tag. Vazio nunca chega aqui — uma animação calada não produz sinal.
-    pub(crate) name: String,
+    pub name: String,
     /// Quantos ciclos fecharam neste tique (≥ 1).
-    pub(crate) cycles: u32,
+    pub cycles: u32,
 }
 
 /// Quantos microssegundos vale um passo fixo — a MESMA conversão do tique do `Timer`, que a
 /// guarda (o porquê do `round` está lá).
-pub(crate) use ph2d_app_components::timer_tick::step_ticks;
+pub use ph2d_app_components::timer_tick::step_ticks;
 
 /// Avança toda sprite animada em `ticks` passos fixos.
 ///
@@ -53,7 +53,7 @@ pub(crate) use ph2d_app_components::timer_tick::step_ticks;
 /// relógio e o `Sprite::frame` — é **pré-visualização**, nunca autoria: declará-lo aqui é o que
 /// impede que cada clique dado enquanto a animação toca empilhe um passo de Ctrl+Z vazio
 /// ([`crate::preview_drive`], e a auditoria 21 §4).
-pub(crate) fn tick_sprite_animations(
+pub fn tick_sprite_animations(
     sim: &mut SimWorld,
     ticks: u32,
     fixed_dt: f64,
@@ -114,8 +114,7 @@ pub(crate) fn tick_sprite_animations(
         //
         // ⚠️ Isto **não** liga o transporte: o `playing` fica como estava, e ao sair da ferramenta
         // a sprite volta a obedecer-lhe. O que corre aqui é a pré-visualização.
-        let painted =
-            crate::render_loop::sim_extract_sheet::is_tool_previewed(tool_preview_bits, entity);
+        let painted = is_tool_previewed(tool_preview_bits, entity);
         // ⚠️ **A pausa do enabler vem ANTES da pré-visualização**, e é deliberado: uma sprite que
         // saiu do rect que ela própria declara não corre — nem sequer para a célula que a
         // ferramenta mostra ao lado —, senão o «só corre quando está no ecrã» teria uma excepção
@@ -216,7 +215,7 @@ pub(crate) fn tick_sprite_animations(
 /// ⚠️ Ele **não** pode viver no tique: «começar a tocar» é uma aresta, e o tique só vê estados —
 /// para a detetar ali seria preciso um bit a mais que diz «já comecei», e um bit desses fica
 /// dessincronizado no primeiro `Ctrl+Z`.
-pub(crate) fn start_autoplay_animations(sim: &mut SimWorld) {
+pub fn start_autoplay_animations(sim: &mut SimWorld) {
     let world = sim.world_mut();
     let mut q = world.query::<(&mut SpriteAnimator, &SpriteAnimations)>();
     for (mut animator, tags) in q.iter_mut(world) {
@@ -230,5 +229,13 @@ pub(crate) fn start_autoplay_animations(sim: &mut SimWorld) {
 }
 
 #[cfg(test)]
-#[path = "sprite_anim_signal_tests.rs"]
+#[path = "tick_signal_tests.rs"]
 mod signal_tests;
+
+/// A entidade está a ser pintada por uma ferramenta (o preview toca a animação sem a gravar).
+fn is_tool_previewed(tool_preview_bits: &[Option<u64>], entity: ph2d_ecs::Entity) -> bool {
+    tool_preview_bits
+        .iter()
+        .flatten()
+        .any(|b| *b == entity.to_bits())
+}

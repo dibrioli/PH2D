@@ -120,7 +120,7 @@ fn cells_of(world: &World, entity: Entity) -> u32 {
 /// **nenhum pintor o lia**. O que a seleção múltipla precisa de dizer não é *«elas discordam»* e
 /// sim *«isto pega só na ativa»*, que é sempre verdade aqui e se responde com o `selected_count`.
 /// *Um facto caro que ninguém lê é pior que um facto ausente: ele parece cobertura.*
-pub(super) fn build_anim_info(
+pub fn build_anim_info(
     world: &World,
     entity_bits: u64,
     selected_count: usize,
@@ -192,7 +192,7 @@ pub(super) fn build_anim_info(
 }
 
 /// Aplica uma [`AnimFieldEdit`]. Devolve um aviso quando a edição foi **recusada**.
-pub(super) fn apply_anim_edit(
+pub fn apply_anim_edit(
     sim: &SimWorld,
     entity_bits: u64,
     edit: &AnimFieldEdit,
@@ -468,7 +468,7 @@ fn describe(e: ph2d_ecs::AnimTagError) -> String {
 }
 
 #[cfg(test)]
-#[path = "inspector_anim_tests.rs"]
+#[path = "inspector_tests.rs"]
 mod tests;
 
 /// **O nome de um sinal, como ele fica guardado.** Aparado e capado no mesmo teto do nome de uma

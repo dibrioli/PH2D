@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-app-sprite-anim"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A família da ANIMAÇÃO DE SPRITE (GameEngineFuncional plano 07): o tique que toca as animações, o
+# snapshot e as edições do cartão «Animation» do Inspector e o editor de animações. Saiu da shell
+# (`render_loop/inspector_anim.rs` + `sprite_anim_tick.rs`), que só pode encolher.
+[dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-render = { path = "../ph2d-render" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-inspector-ordering = { path = "../ph2d-inspector-ordering" }
+ph2d-app-components = { path = "../ph2d-app-components" }
+ph2d-preview-drive = { path = "../ph2d-preview-drive" }
+ph2d-entity-visibility = { path = "../ph2d-entity-visibility" }
+
+[dev-dependencies]
+ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support"] }
+
+[lints]
+workspace = true

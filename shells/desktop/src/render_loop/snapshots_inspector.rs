@@ -295,7 +295,7 @@ fn late(
 ) -> LateSections {
     let sel = inspector_selection;
     let inspector_anim = hero.gizmo.selection.and_then(|b| {
-        crate::render_loop::inspector_anim::build_anim_info(sim.world(), b, selected_count)
+        ph2d_app_sprite_anim::inspector::build_anim_info(sim.world(), b, selected_count)
     });
     // ⭐ A secção TIMERS — `None` para quem não tem o componente (ADR-0166).
     let inspector_timer = hero.gizmo.selection.and_then(|b| {

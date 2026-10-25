@@ -334,7 +334,7 @@ fn drain_section_edits(
     // §11 Animation (spec Sprite 08). ⚠️ Recusa com aviso, como a §12 — um nome repetido tem de
     // dizer porquê, senão o artista escreve e vê a lista não mudar.
     for (entity_bits, edit) in anim_edits {
-        if let Some(t) = super::inspector_anim::apply_anim_edit(
+        if let Some(t) = ph2d_app_sprite_anim::inspector::apply_anim_edit(
             sim,
             *entity_bits,
             edit,

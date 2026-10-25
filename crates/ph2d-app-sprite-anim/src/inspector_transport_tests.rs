@@ -125,7 +125,7 @@ fn turning_playing_back_on_replays_an_animation_that_had_finished() {
 
     // Corre ate' ela se parar sozinha, na ULTIMA celula.
     for _ in 0..40 {
-        crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+        crate::tick::tick_sprite_animations(
             &mut sim,
             1,
             0.016,
@@ -144,7 +144,7 @@ fn turning_playing_back_on_replays_an_animation_that_had_finished() {
         4,
         "ligar de novo devolve a imagem ao inicio"
     );
-    crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+    crate::tick::tick_sprite_animations(
         &mut sim,
         1,
         0.016,
@@ -217,7 +217,7 @@ fn choosing_another_animation_resumes_one_that_had_run_itself_out_but_not_a_paus
     );
     edit(&mut sim, e, &reg, AnimFieldEdit::Playing(true));
     for _ in 0..40 {
-        crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+        crate::tick::tick_sprite_animations(
             &mut sim,
             1,
             0.016,
@@ -235,7 +235,7 @@ fn choosing_another_animation_resumes_one_that_had_run_itself_out_but_not_a_paus
     );
     let start = info(&sim, e).frame;
     for _ in 0..3 {
-        crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+        crate::tick::tick_sprite_animations(
             &mut sim,
             1,
             0.016,
@@ -305,7 +305,7 @@ fn dragging_the_frame_bar_sets_the_cell_pauses_and_stays_inside_the_range() {
 
     // ⚠️ E o relogio tem de deixar a celula quieta. Sem a pausa, isto anda.
     for _ in 0..20 {
-        crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+        crate::tick::tick_sprite_animations(
             &mut sim,
             1,
             0.016,
@@ -361,7 +361,7 @@ fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
     // 1. Sem ferramenta a pintar, uma cena pausada não anda.
     let before = info(&sim, e).frame;
     for _ in 0..20 {
-        crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+        crate::tick::tick_sprite_animations(
             &mut sim,
             1,
             0.016,
@@ -384,7 +384,7 @@ fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
     let painted = [Some(e.to_bits())];
     let mut seen = std::collections::BTreeSet::new();
     for _ in 0..20 {
-        crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+        crate::tick::tick_sprite_animations(
             &mut sim,
             1,
             0.016,
@@ -411,7 +411,7 @@ fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
     let other = [Some(e.to_bits() ^ 0xFFFF)];
     let held = info(&sim, e).frame;
     for _ in 0..20 {
-        crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+        crate::tick::tick_sprite_animations(
             &mut sim,
             1,
             0.016,
@@ -546,7 +546,7 @@ fn writing_a_frames_duration_pauses_like_dragging_the_bar_does() {
     edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent("walk".into()));
     edit(&mut sim, e, &reg, AnimFieldEdit::Playing(true));
     // Deixa o relógio andar um pouco, para o acumulador ter conteúdo.
-    crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+    crate::tick::tick_sprite_animations(
         &mut sim,
         2,
         0.016,

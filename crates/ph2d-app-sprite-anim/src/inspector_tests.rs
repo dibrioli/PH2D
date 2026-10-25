@@ -1,4 +1,4 @@
-//! **Os gates da costura da §11** — irmão de [`crate::render_loop::inspector_anim`] por CAP de LOC.
+//! **Os gates da costura da §11** — irmão de [`crate::inspector`] por CAP de LOC.
 //!
 //! ⚠️ **Só a shell vê as duas metades**: o painel é chrome e não depende do motor, e a lei da
 //! animação vive no `ph2d-ecs`. É aqui que se prova que o snapshot diz o que a cena tem e que o
@@ -300,7 +300,7 @@ fn the_tick_writes_the_frame_and_only_when_it_changes() {
 
     // 60 Hz: seis tiques ≈ 100 ms ⇒ um frame.
     let dt = 1.0 / 60.0;
-    crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+    crate::tick::tick_sprite_animations(
         &mut sim,
         6,
         dt,
@@ -308,7 +308,7 @@ fn the_tick_writes_the_frame_and_only_when_it_changes() {
         &mut ph2d_preview_drive::PreviewDrive::default(),
     );
     assert_eq!(info(&sim, e).frame, 1);
-    crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+    crate::tick::tick_sprite_animations(
         &mut sim,
         6,
         dt,
@@ -319,7 +319,7 @@ fn the_tick_writes_the_frame_and_only_when_it_changes() {
 
     // Pausado: o frame fica.
     edit(&mut sim, e, &reg, AnimFieldEdit::Playing(false));
-    crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+    crate::tick::tick_sprite_animations(
         &mut sim,
         600,
         dt,
@@ -342,7 +342,7 @@ fn autoplay_starts_only_at_load_time() {
     edit(&mut sim, e, &reg, AnimFieldEdit::Autoplay(true));
     assert!(!info(&sim, e).playing, "marcar a caixa NAO comeca a tocar");
 
-    crate::render_loop::sprite_anim_tick::start_autoplay_animations(&mut sim);
+    crate::tick::start_autoplay_animations(&mut sim);
     assert!(info(&sim, e).playing, "o load tem de comecar");
 }
 
@@ -352,15 +352,9 @@ fn autoplay_starts_only_at_load_time() {
 /// Invisível num quadro, e uma animação longa dessincronizaria de um relógio que não trunca.
 #[test]
 fn the_fixed_step_conversion_rounds_instead_of_truncating() {
-    assert_eq!(
-        crate::render_loop::sprite_anim_tick::step_ticks(1.0 / 60.0),
-        16_667
-    );
-    assert_eq!(
-        crate::render_loop::sprite_anim_tick::step_ticks(1.0 / 120.0),
-        8_333
-    );
-    assert_eq!(crate::render_loop::sprite_anim_tick::step_ticks(0.0), 0);
+    assert_eq!(crate::tick::step_ticks(1.0 / 60.0), 16_667);
+    assert_eq!(crate::tick::step_ticks(1.0 / 120.0), 8_333);
+    assert_eq!(crate::tick::step_ticks(0.0), 0);
 }
 
 /// **Recuperar um engasgo numa chamada dá o MESMO que recuperar passo a passo.**
@@ -431,7 +425,7 @@ fn catching_up_in_one_call_is_the_same_as_catching_up_step_by_step() {
 /// seção separa com dois rótulos.
 ///
 /// As ferramentas (`registry`, `sprite`, `edit`, `info`) vêm do pai por `use super::*`.
-#[path = "inspector_anim_transport_tests.rs"]
+#[path = "inspector_transport_tests.rs"]
 mod transport;
 
 /// **O MOTOR e o PAINEL dão a mesma resposta a «esta reprodução está pendurada?»**

@@ -104,7 +104,7 @@ const DIVIDA: &[(&str, Onde, &str)] = &[
     (
         "ph2d::ecs::SpriteAnimations",
         Onde::NoCartao(i::INSP_LIVE_ANIM_SECTION),
-        "a lista de animações do cartão Animation (shell inspector_anim.rs)",
+        "a lista de animações do cartão Animation (ph2d-app-sprite-anim inspector.rs)",
     ),
     (
         "ph2d::ecs::TextureRepeat",

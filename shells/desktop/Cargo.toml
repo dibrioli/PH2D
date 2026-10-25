@@ -52,6 +52,8 @@ ph2d-app-physics = { path = "../../crates/ph2d-app-physics" }
 # prefab que se abre, e os quatro componentes do TOP-20. Dep directa e
 # não-opcional: o `render_loop` chama-lhe os passes pelo nome, em ordem.
 ph2d-app-components = { path = "../../crates/ph2d-app-components" }
+# A animação de sprite (tique, cartão Animation, editor) — GameEngineFuncional plano 07.
+ph2d-app-sprite-anim = { path = "../../crates/ph2d-app-sprite-anim" }
 # As MACROS (ADR-0186, W5d): Gravar ▸ Parar, as etapas e as edições delas.
 ph2d-app-macros = { path = "../../crates/ph2d-app-macros" }
 # ⭐ A família do QUADRO (MiroClone): a cena de smoke que o arranque encena pelo nome.

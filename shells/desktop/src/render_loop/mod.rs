@@ -106,7 +106,6 @@ use ph2d_app_components::signal_actions_bridge as signal_actions;
 mod empty_object_overlay;
 /// **§12 Sockets / Named Anchors** (ADR-0072) — snapshot e commit.
 mod inspector_anchor;
-mod inspector_anim;
 /// ⭐⭐⭐ A secção AUDIO do Inspector (TOP-20 #4, W3) — o snapshot e o commit.
 mod inspector_audio;
 /// **O commit da §2 Sprite** — irmão do `inspector_commits` por CAP de LOC.
@@ -151,13 +150,13 @@ mod present_bands;
 mod present_frost;
 /// ⭐⭐ Os passes de LUZ do quadro (a sprite emissiva e o glow do Motion).
 mod present_fx;
-/// ⚠️ `pub(crate)`: os gates do `preview_drive` correm o tique de fora do `render_loop` —
-/// é ele o motor que declara a §11 como pré-visualização, e um gate que o encenasse à mão mediria
-/// a encenação.
-pub(crate) mod sprite_anim_tick;
 /// ⭐⭐⭐ **A ponte do `Timer`** (TOP-20 #2) — mora em [`ph2d_app_components::timer_tick`] desde
 /// 2026-10-25; o nome fica ligado aqui para as fases do quadro.
 use ph2d_app_components::timer_tick;
+/// ⚠️ `pub(crate)`: os gates do `preview_drive` correm o tique de fora do `render_loop` —
+/// é ele o motor que declara a §11 como pré-visualização, e um gate que o encenasse à mão mediria
+/// a encenação.
+pub(crate) use ph2d_app_sprite_anim::tick as sprite_anim_tick;
 
 /// ⭐⭐⭐ **A corrente inteira da VIGIA DO CONTADOR**, sem janela — ver o cabeçalho do irmão.
 /// ⚠️ Ele mora aqui porque o `signal_actions` é privado a este módulo.

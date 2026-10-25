@@ -8,11 +8,16 @@
 //!
 //! O ângulo é do `ph2d-skeleton` ([`blend_angle`], [`clamp_to_limit`]): uma lei, um dono.
 
+mod caminho;
 mod kind;
+mod ossos;
 
 pub use kind::{
     Canais, ChildOf, CopyTransform, Distance, DistanceMode, Faixa, Kind, Limit, LookAt, Mix, Space,
 };
+pub use caminho::{FollowPath, PathBy};
+pub use ossos::{Ik, StretchTo, Volume, bend_in_world, solve_chain, stretch_factor};
+pub use ph2d_skeleton::BendSide;
 use ph2d_affine::Xform;
 pub use ph2d_skeleton::{blend_angle, clamp_to_limit, wrap_pi};
 use serde::{Deserialize, Serialize};
@@ -141,6 +146,8 @@ pub enum Inerte {
     SemAlvo,
     /// O pai (ou o pai do alvo) colapsou numa escala 0: não há espaço local.
     EspacoColapsado,
+    /// O tipo escreve uma corrente de ossos, não só o dono: avalia-o a fase.
+    Corrente,
 }
 
 /// Aplica UMA constraint com força `influence`: `Ok(pose)` ou `Err` com o motivo de não fazer nada.
@@ -148,6 +155,19 @@ pub enum Inerte {
 /// # Errors
 /// [`Inerte`] quando falta o alvo de um tipo que o pede, ou o espaço local não existe.
 pub fn apply(kind: &Kind, ctx: &Ctx, influence: f64) -> Result<Pose2, Inerte> {
-    let alvo = kind.resolve(ctx)?;
+    apply_with(kind, ctx, None, influence)
+}
+
+/// [`apply`] com o caminho do Follow Path.
+///
+/// # Errors
+/// Os de [`Kind::resolve_with`].
+pub fn apply_with(
+    kind: &Kind,
+    ctx: &Ctx,
+    path: Option<&[[f64; 2]]>,
+    influence: f64,
+) -> Result<Pose2, Inerte> {
+    let alvo = kind.resolve_with(ctx, path)?;
     Ok(blend(ctx.owner, alvo, influence))
 }

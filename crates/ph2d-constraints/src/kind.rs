@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Ctx, Inerte, Pose2, clamp_to_limit, wrap_pi};
+use crate::{Ctx, FollowPath, Ik, Inerte, Pose2, StretchTo, clamp_to_limit, wrap_pi};
 
 /// Em que referencial se lêem e escrevem os canais.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -160,6 +160,9 @@ pub enum Kind {
     LookAt(LookAt),
     Limit(Limit),
     Distance(Distance),
+    Ik(Ik),
+    StretchTo(StretchTo),
+    FollowPath(FollowPath),
 }
 
 impl Kind {
@@ -173,7 +176,10 @@ impl Kind {
     /// Copy e Look At apontam logo ao alvo, como no Blender — o «manter desvio» é um gesto.
     #[must_use]
     pub fn keeps_current_on_create(&self) -> bool {
-        matches!(self, Self::ChildOf(_) | Self::Distance(_))
+        matches!(
+            self,
+            Self::ChildOf(_) | Self::Distance(_) | Self::StretchTo(_)
+        )
     }
 
     /// ⭐ **A porta única de «o offset»:** acerta o desvio para que `resolve(ctx) == ctx.owner`.
@@ -207,7 +213,11 @@ impl Kind {
                 let t = ctx.target.ok_or(Inerte::SemAlvo)?;
                 d.distance = (ctx.owner.x - t.x).hypot(ctx.owner.y - t.y);
             }
-            Self::Limit(_) => {}
+            Self::StretchTo(st) => {
+                let t = ctx.target.ok_or(Inerte::SemAlvo)?;
+                st.rest = (ctx.owner.x - t.x).hypot(ctx.owner.y - t.y);
+            }
+            Self::Limit(_) | Self::Ik(_) | Self::FollowPath(_) => {}
         }
         Ok(())
     }
@@ -217,7 +227,19 @@ impl Kind {
     /// # Errors
     /// [`Inerte`] se falta o alvo ou o espaço colapsou.
     pub fn resolve(&self, ctx: &Ctx) -> Result<Pose2, Inerte> {
+        self.resolve_with(ctx, None)
+    }
+
+    /// [`Self::resolve`] com o caminho do Follow Path (poligonal em mundo).
+    ///
+    /// # Errors
+    /// [`Inerte`] se falta o alvo ou o espaço colapsou; [`Inerte::Corrente`] para a IK, que escreve a
+    /// corrente inteira e é avaliada pela fase (`ph2d-constraints-ecs`).
+    pub fn resolve_with(&self, ctx: &Ctx, path: Option<&[[f64; 2]]>) -> Result<Pose2, Inerte> {
         match self {
+            Self::Ik(_) => Err(Inerte::Corrente),
+            Self::StretchTo(st) => st.resolve(ctx),
+            Self::FollowPath(f) => f.resolve(ctx.owner, path),
             Self::ChildOf(c) => {
                 let t = ctx.target.ok_or(Inerte::SemAlvo)?;
                 Ok(c.canais.pick(c.offset.under(t), ctx.owner))

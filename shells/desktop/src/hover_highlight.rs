@@ -146,6 +146,7 @@ pub(crate) fn pick_objects_at(
     // que ADIA o ancestral. Um clique sobre a arte pega a arte; um clique no anel onde não há arte
     // pega o grupo; e o segundo clique no mesmo sítio cicla para ele. *O contêiner não rouba o
     // clique dos filhos.*
+    hits.extend(ph2d_app_pixel::draw::pick_at(pointer));
     hits.extend(crate::group_gizmo_view::pick_empty_at_world(
         w.sim,
         world,

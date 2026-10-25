@@ -15,6 +15,50 @@ use crate::PixelApp;
 use crate::input::to_screen;
 use crate::mode::sprites;
 
+/// Um Pixel Sprite como o último quadro o desenhou: o clique e a caixa do gizmo perguntam AQUI, à
+/// mesma geometria que a tinta usou (nunca uma segunda conta).
+#[derive(Debug, Clone, Copy)]
+struct Drawn {
+    bits: u64,
+    to_screen: ph2d_vector::Affine,
+    size: (u32, u32),
+}
+
+thread_local! {
+    static DRAWN: std::cell::RefCell<Vec<Drawn>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Os Pixel Sprites sob o ponto de ecrã `p` (dentro do canvas), do de cima para o de baixo.
+#[must_use]
+pub fn pick_at(p: (f32, f32)) -> Vec<u64> {
+    DRAWN.with(|d| {
+        d.borrow()
+            .iter()
+            .rev()
+            .filter(|s| {
+                ph2d_pixel_render::cell_at(s.to_screen, (f64::from(p.0), f64::from(p.1)))
+                    .is_some_and(|(x, y)| {
+                        x >= 0 && y >= 0 && (x as u32) < s.size.0 && (y as u32) < s.size.1
+                    })
+            })
+            .map(|s| s.bits)
+            .collect()
+    })
+}
+
+/// A meia-extensão no espaço LOCAL do objecto (metros, antes da escala) do Pixel Sprite `bits` —
+/// a caixa do gizmo de objecto. `None` = não foi desenhado no último quadro.
+#[must_use]
+pub fn half_extents(bits: u64, ppm: f32) -> Option<[f32; 2]> {
+    let ppm = ppm.max(f32::MIN_POSITIVE);
+    DRAWN.with(|d| {
+        d.borrow()
+            .iter()
+            .find(|s| s.bits == bits)
+            .map(|s| [s.size.0 as f32 * 0.5 / ppm, s.size.1 as f32 * 0.5 / ppm])
+    })
+}
+
 /// Espessura das linhas do modo Edit, em píxeis de ECRÃ (saem com `Affine::IDENTITY`).
 const LINE_PX: f64 = 1.0; // LITERAL-PX-OK: chrome de sobreposição, espessura de ecrã
 /// Abaixo disto a grelha de pixels vira um borrão cinzento (uma linha por célula de 1–3 px).
@@ -32,6 +76,7 @@ pub fn draw(
     theme: Theme,
     scene: &mut VectorScene,
 ) {
+    let mut drawn = Vec::new();
     for (bits, key) in sprites(world) {
         let Some(entity) = ph2d_ecs::Entity::try_from_bits(bits) else {
             continue;
@@ -58,6 +103,11 @@ pub fn draw(
             doc.view.draw_checker_under(scene, w, h, m);
         }
         doc.view.draw(scene, m);
+        drawn.push(Drawn {
+            bits,
+            to_screen: m,
+            size: (w, h),
+        });
         if !edit {
             continue;
         }
@@ -79,4 +129,5 @@ pub fn draw(
             draw_cell_cursor(scene, cell, m, resolve(ColorToken::Text1, theme), LINE_PX);
         }
     }
+    DRAWN.with(|d| *d.borrow_mut() = drawn);
 }

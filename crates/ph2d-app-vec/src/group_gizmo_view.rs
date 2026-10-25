@@ -112,6 +112,8 @@ pub fn is_empty_object(sim: &SimWorld, e: Entity) -> bool {
         && w.get::<ph2d_ecs::VecPathRef>(e).is_none()
         && w.get::<ph2d_ecs::FlipObjectRef>(e).is_none()
         && w.get::<ph2d_ecs::VecEnvelope>(e).is_none()
+        // O Pixel Sprite (ADR-0192) desenha os seus pixels: o clique e a caixa são os do canvas dele.
+        && w.get::<ph2d_ecs::PixelSprite>(e).is_none()
         && !ph2d_entity_visibility::off_canvas::is_unedited_recipe(w, e)
         && !publishes_its_own_handles(sim, e)
 }

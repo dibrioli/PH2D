@@ -412,6 +412,17 @@ fn publish_gizmo(
             }
             // ADR-0129 Fatia 3: o contentor de um Envelope tem a caixa-união dos filhos (a porta acima
             // gateia o Envelope: no Node aparece a gaiola).
+            if let Some(half) = ph2d_app_pixel::draw::half_extents(bits, gizmo_ppm) {
+                return Some(ph2d_app_vec::vec_gizmo_view::gizmo_view_from(
+                    [0.0, 0.0],
+                    half,
+                    ph2d_vec_entities::transform::world_transform(sim, sim_entity),
+                    camera,
+                    window_size,
+                    last_pointer,
+                    pivot_tool_active,
+                ));
+            }
             let union = ph2d_app_vec::vec_gizmo_view::container_view(
                 sim,
                 vec_scene,

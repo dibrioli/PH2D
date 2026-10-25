@@ -83,6 +83,11 @@ impl crate::App {
         }
     }
 
+    /// O documento do artista enquanto o jogo corre (o que o save grava), ou `None` fora do Play.
+    pub(crate) fn documento_do_jogo(&self) -> Option<super::ProjectState> {
+        self.jogo.foto().map(|f| f.estado.clone())
+    }
+
     /// Um Ctrl+Z com o jogo a correr: recusado, e dito. `true` = recusou.
     pub(super) fn jogo_recusa_o_undo(&mut self) -> bool {
         if !self.jogo.a_correr() {

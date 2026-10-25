@@ -17,6 +17,26 @@ pub(super) fn frame_layout(
     viewport: Rect,
     text_system: &mut ph2d_text::TextSystem,
 ) -> HeroLayout {
+    if hero.view.palco_do_jogo {
+        // O palco do jogo: o canvas é a janela inteira — as bandas a zero e nenhuma coluna.
+        return HeroLayout::for_viewport_bands(
+            viewport,
+            false,
+            crate::screens::layout::ChromeBands {
+                rail_w: 0.0,
+                top_bar_h: 0.0,
+                left_dock_w: 0.0,
+                right_dock_w: 0.0,
+                tool_bar_h: 0.0,
+                bottom_dock_h: 0.0,
+            },
+            crate::screens::layout::CenterSplit::None,
+            crate::screens::layout::DockSides {
+                left: false,
+                right: false,
+            },
+        );
+    }
     // Rail width follows the user's Themes-menu rail-button-size
     // preset (Small / Medium / Large; default Small). Switching size
     // shifts Inspector/Hierarchy x-positions accordingly.

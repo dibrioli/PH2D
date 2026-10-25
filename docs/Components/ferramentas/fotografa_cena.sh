@@ -47,6 +47,8 @@ ESPERA="${5:-9}"
 # 1.a e' <saida.png>, as seguintes <saida>_02.png, … — dois instantes de uma cena que corre sem
 # que o arranque (que varia com a carga) mude a distancia entre eles.
 RAJADA="${FOTO_RAJADA:-1}"
+# FOTO_JANELA_A_CADA=1: cada foto da rajada reescolhe a janela (a ÚLTIMA do app) — para um app que
+# abre uma 2.ª janela a meio (a janela do jogo, GameEngineFuncional R0c).
 INTERVALO="${FOTO_INTERVALO:-1}"
 RAIZ="$(cd "$(dirname "$0")/../../.." && pwd)"
 # ⭐ A foto toca na PLACA (o kwin --virtual e o app): ela entra na porta sozinha e pede a VEZ antes do
@@ -227,6 +229,7 @@ if ! aceso "$SAIDA"; then
 fi
 for i in \$(seq 2 $RAJADA); do
   sleep $INTERVALO
+  [ "${FOTO_JANELA_A_CADA:-0}" = 1 ] && WIN=\$(janela)
   import -display "\$DISPLAY" -window "\$WIN" "${SAIDA%.png}_\$(printf %02d \$i).png" >> "$TMP/log" 2>&1
 done
 kill -9 \$APP 2>/dev/null

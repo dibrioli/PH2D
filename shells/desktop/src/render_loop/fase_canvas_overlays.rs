@@ -6,6 +6,9 @@ use super::*;
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_canvas_overlays(&mut self, window_size: ph2d_host::WindowSize) {
+        if self.no_palco() {
+            return;
+        }
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;

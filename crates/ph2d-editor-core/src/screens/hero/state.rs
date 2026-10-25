@@ -113,6 +113,9 @@ pub struct ViewState {
     pub jogo_com_o_teclado: bool,
     /// Onde o Play mostra o jogo (menu *Run*).
     pub game_stage: crate::game_stage::GameStage,
+    /// O PALCO do jogo (ecrã cheio ou janela): o canvas ocupa tudo e o editor não se pinta.
+    /// A shell liga-o enquanto o jogo corre.
+    pub palco_do_jogo: bool,
 }
 
 impl Default for ViewState {
@@ -127,6 +130,7 @@ impl Default for ViewState {
             luz2d: crate::luz_edits::PreferenciaDaLuz::default(),
             jogo_com_o_teclado: false,
             game_stage: crate::game_stage::GameStage::default(),
+            palco_do_jogo: false,
         }
     }
 }

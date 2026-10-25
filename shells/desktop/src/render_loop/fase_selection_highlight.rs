@@ -11,6 +11,9 @@ impl crate::App {
         flip_style: Option<ph2d_tool_flip::FlipStyleSnapshot>,
         viewport: EditorRect,
     ) {
+        if self.no_palco() {
+            return;
+        }
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;

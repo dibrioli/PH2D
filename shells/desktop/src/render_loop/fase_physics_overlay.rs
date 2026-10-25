@@ -10,6 +10,9 @@ impl crate::App {
     /// tamanho em alcance seria a porta por onde o defeito voltava — *a régua que compila é a que
     /// está à mão*.
     pub(super) fn fase_physics_overlay(&mut self, viewport: EditorRect) {
+        if self.no_palco() {
+            return;
+        }
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;

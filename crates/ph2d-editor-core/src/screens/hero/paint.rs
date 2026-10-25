@@ -201,6 +201,13 @@ pub fn paint_hero_screen(
     // panels, topbar) paint their own backdrops — verified in the
     // M14.5 audit. Fixture mode keeps the canvas tint so mockup
     // screenshots stay theme-correct.
+    // ⭐ O PALCO DO JOGO (GameEngineFuncional R0b): só o mundo — nem chrome, nem auxiliares do
+    // editor; e sem pintor não há alvo de clique no `hit_index`.
+    if hero.view.palco_do_jogo {
+        hero.last_canvas = layout.draw_area;
+        hero.store.end_scroll_frame();
+        return;
+    }
     if hero.grid.view.is_none() {
         paint_canvas_bg(&layout, scene, hero.theme);
     }

@@ -12,11 +12,11 @@ use std::sync::Arc;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 
-/// A vista do editor antes do palco — o que a saída repõe.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// A vista do editor antes do palco — o que a saída repõe (a câmara do jogo escreve na do editor).
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct VistaAntes {
-    zen: bool,
-    camara: bool,
+    camara_do_jogo: bool,
+    camara: ph2d_render::Camera2d,
     pub(crate) stage: GameStage,
 }
 
@@ -34,26 +34,36 @@ impl crate::App {
     /// A entrada no palco escolhido no menu *Run*. `None` = no editor: nada muda.
     pub(crate) fn palco_entra(&mut self) -> Option<VistaAntes> {
         let gfx = self.gfx.as_mut()?;
-        let stage = gfx.hero_screen.as_ref()?.view.game_stage;
+        let hero = gfx.hero_screen.as_mut()?;
+        let stage = hero.view.game_stage;
         if stage == GameStage::Editor {
             return None;
         }
+        hero.view.palco_do_jogo = true;
         let antes = VistaAntes {
-            zen: gfx.zen.active,
-            camara: self.game_camera_preview,
+            camara_do_jogo: self.game_camera_preview,
+            camara: gfx.camera,
             stage,
         };
-        gfx.zen.active = true;
         self.game_camera_preview = true;
         Some(antes)
+    }
+
+    /// O palco está aberto? Então os auxiliares do editor (física, selecção, gizmos) não se desenham.
+    pub(crate) fn no_palco(&self) -> bool {
+        let hero = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref());
+        hero.is_some_and(|h| h.view.palco_do_jogo)
     }
 
     /// A saída: a vista do editor volta como estava. A janela fecha em [`Self::palco_janela`].
     pub(crate) fn palco_sai(&mut self, antes: VistaAntes) {
         if let Some(gfx) = self.gfx.as_mut() {
-            gfx.zen.active = antes.zen;
+            gfx.camera = antes.camara;
+            if let Some(hero) = gfx.hero_screen.as_mut() {
+                hero.view.palco_do_jogo = false;
+            }
         }
-        self.game_camera_preview = antes.camara;
+        self.game_camera_preview = antes.camara_do_jogo;
     }
 
     /// Depois de cada quadro, com o event loop na mão: abre a janela que o palco pede e fecha-a quando

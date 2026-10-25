@@ -33,6 +33,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.fg" => "Foreground color",
         "panel.pixel.bg" => "Background color",
         "pixel.hint.pencil" => "{tool}: drag to draw · right button draws the background color",
+        "pixel.hint.shading" => {
+            "{tool}, Shading: left button = next selected color · right button = previous one"
+        }
         "pixel.hint.eraser" => {
             "{tool}: drag to erase · right button turns the foreground color into the background"
         }

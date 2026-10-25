@@ -7,7 +7,7 @@
 use crate::ids;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{BarButton, BarFace, BarFamily};
-use ph2d_editor_core::pixel_panel::{PixelPanelInfo, PixelTool};
+use ph2d_editor_core::pixel_panel::{PixelInk, PixelPanelInfo, PixelTool};
 use ph2d_i18n::{tr, tr_with};
 
 /// O ícone de cada ferramenta.
@@ -96,7 +96,12 @@ pub fn column(info: &PixelPanelInfo) -> Vec<Vec<BarButton>> {
 /// ⑤ A dica do rodapé: a ferramenta na mão, o que o arrasto faz.
 #[must_use]
 pub fn hint(info: &PixelPanelInfo) -> String {
+    // Com o Shading o botão direito ESCURECE (não pinta a cor de fundo): a dica diz o que o gesto faz.
+    let shading = info.options.ink == PixelInk::Shading
+        && info.tool.paints()
+        && info.tool != PixelTool::Eraser;
     let key = match info.tool {
+        _ if shading => "pixel.hint.shading",
         PixelTool::Pencil => "pixel.hint.pencil",
         PixelTool::Spray => "pixel.hint.spray",
         PixelTool::Eraser => "pixel.hint.eraser",

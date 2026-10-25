@@ -177,3 +177,30 @@ fn edit_color_abre_o_seletor_partilhado() {
         "sem amostra clicada não há o que editar"
     );
 }
+
+/// Com o Shading o botão direito anda para trás na rampa — a dica do rodapé não pode dizer «pinta a
+/// cor de fundo» (a cena 3 abre assim). Controlo: com Simple a dica do lápis é a de sempre.
+#[test]
+fn the_hint_tells_what_the_shading_ink_does_with_each_button() {
+    use ph2d_editor_core::pixel_panel::PixelInk;
+    use ph2d_panel_pixel_tools::column::hint;
+    let mut info = PixelPanelInfo {
+        tool: PixelTool::Pencil,
+        ..PixelPanelInfo::default()
+    };
+    let simple = hint(&info);
+    info.options.ink = PixelInk::Shading;
+    let shading = hint(&info);
+    assert_ne!(simple, shading);
+    assert_eq!(
+        shading,
+        ph2d_i18n::tr_with("pixel.hint.shading", &[("tool", &shading_tool(&simple))])
+    );
+    info.tool = PixelTool::Eraser;
+    assert_ne!(hint(&info), shading, "a borracha é sempre Simple");
+}
+
+/// O nome da ferramenta, como a dica do lápis o escreve antes dos dois pontos.
+fn shading_tool(pencil_hint: &str) -> String {
+    pencil_hint.split(':').next().expect("nome").to_owned()
+}

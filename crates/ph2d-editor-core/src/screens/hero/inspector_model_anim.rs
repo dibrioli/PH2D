@@ -64,6 +64,18 @@ impl InspectorAnimRow {
     }
 
     /// Quantas células esta animação percorre, dentro da grelha de hoje.
+    /// **Esta animação toca na grelha de hoje?** Uma lista de quadros só toca se TODAS as células
+    /// cabem (a lei de `ph2d_ecs::tag_cells`: aparar tocaria outra animação); um intervalo, se o
+    /// início cabe.
+    #[must_use]
+    pub fn plays_on(&self, cells: u32) -> bool {
+        if self.frames.is_empty() {
+            self.fits(cells)
+        } else {
+            cells > 0 && self.frames.iter().all(|&c| c < cells)
+        }
+    }
+
     pub fn span(&self, cells: u32) -> u32 {
         if !self.fits(cells) {
             return 0;
@@ -127,7 +139,7 @@ impl InspectorAnimInfo {
         }
         match self.current_index() {
             None => true,
-            Some(i) => !self.rows[i].fits(self.cells),
+            Some(i) => !self.rows[i].plays_on(self.cells),
         }
     }
 
@@ -160,13 +172,53 @@ impl InspectorAnimInfo {
     #[must_use]
     pub fn scrub_cell(&self, v: f32) -> Option<u32> {
         let row = self.rows.get(self.current_index()?)?;
-        let span = row.span(self.cells);
-        if span == 0 {
-            return None;
-        }
+        let seq = self.playing_cells(row)?;
+        Some(seq[self.scrub_step(v, seq.len())])
+    }
+
+    /// O passo (`0..n`) que a posição `v` da barra escolhe — a inversa de [`Self::scrub_position`].
+    fn scrub_step(&self, v: f32, n: usize) -> usize {
         #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
-        let step = (v.clamp(0.0, 1.0) * (span - 1) as f32).round() as u32;
-        Some(row.from.min(row.to) + step)
+        let step = (v.clamp(0.0, 1.0) * n.saturating_sub(1) as f32).round() as usize;
+        step
+    }
+
+    /// **A edição que o arrasto da barra emite.** Num intervalo é a célula (`SetFrame`); numa lista de
+    /// quadros é o PASSO (`SetStep`) — a mesma célula pode estar na lista duas vezes, e `SetFrame` não
+    /// saberia qual das duas.
+    #[must_use]
+    pub fn scrub_edit(&self, v: f32) -> Option<AnimFieldEdit> {
+        let row = self.rows.get(self.current_index()?)?;
+        let seq = self.playing_cells(row)?;
+        let step = self.scrub_step(v, seq.len());
+        Some(if row.frames.is_empty() {
+            AnimFieldEdit::SetFrame(seq[step])
+        } else {
+            AnimFieldEdit::SetStep(u32::try_from(step).ok()?)
+        })
+    }
+
+    /// As células que `row` toca hoje, ou `None` se não toca (fora da grelha). Ver [`InspectorAnimRow::plays_on`].
+    fn playing_cells(&self, row: &InspectorAnimRow) -> Option<Vec<u32>> {
+        row.plays_on(self.cells)
+            .then(|| super::row_cells(row, self.cells))
+            .filter(|s| !s.is_empty())
+    }
+
+    /// O passo da animação a tocar que está no ecrã: numa lista, o cursor (`card.step`) se ele aponta
+    /// para a célula visível; num intervalo, `frame - from`. `None` fora da animação.
+    fn current_step(&self, row: &InspectorAnimRow) -> Option<usize> {
+        let seq = self.playing_cells(row)?;
+        if row.frames.is_empty() {
+            let lo = row.from.min(row.to);
+            return (self.frame >= lo && ((self.frame - lo) as usize) < seq.len())
+                .then(|| (self.frame - lo) as usize);
+        }
+        let step = self.card.step as usize;
+        if seq.get(step) == Some(&self.frame) {
+            return Some(step);
+        }
+        seq.iter().position(|&c| c == self.frame)
     }
 
     /// **Onde, no vetor de ritmo, mora a célula que a barra está a mostrar.**
@@ -180,11 +232,7 @@ impl InspectorAnimInfo {
     #[must_use]
     pub fn this_frame_index(&self) -> Option<usize> {
         let row = self.rows.get(self.current_index()?)?;
-        let (lo, hi) = (
-            row.from.min(row.to),
-            row.from.max(row.to).min(self.cells.checked_sub(1)?),
-        );
-        (self.frame >= lo && self.frame <= hi).then(|| (self.frame - lo) as usize)
+        self.current_step(row)
     }
 
     /// **Quanto dura a célula que a barra mostra**, em ms. `0` = herda o `frame_ms` da animação.
@@ -222,15 +270,17 @@ impl InspectorAnimInfo {
     /// `None` quando não há animação a tocar, ou quando ela não cabe — não há barra que mostrar.
     pub fn progress(&self) -> Option<(u32, u32)> {
         let row = self.rows.get(self.current_index()?)?;
-        let span = row.span(self.cells);
-        if span == 0 {
-            return None;
-        }
-        let lo = row.from.min(row.to);
-        // ⚠️ O frame pode estar FORA do intervalo (a grelha mudou, ou a animação acabou de ser
-        // escolhida e ainda não correu um tique). Saturar é honesto: a barra mostra o princípio.
-        let step = self.frame.saturating_sub(lo).min(span - 1);
-        Some((step, span))
+        let n = u32::try_from(self.playing_cells(row)?.len()).ok()?;
+        // ⚠️ O frame pode estar FORA da animação (a grelha mudou, ou ela acabou de ser escolhida e
+        // ainda não correu um tique). Saturar é honesto: a barra mostra o princípio (ou o fim).
+        let step = match self.current_step(row) {
+            Some(s) => u32::try_from(s).ok()?,
+            None if row.frames.is_empty() => {
+                self.frame.saturating_sub(row.from.min(row.to)).min(n - 1)
+            }
+            None => 0,
+        };
+        Some((step, n))
     }
 }
 
@@ -506,6 +556,32 @@ mod tests {
 
     /// **Um vetor só de zeros NÃO é ritmo próprio** — senão o aviso *«this animation has per-frame
     /// timing»* ficaria colado à animação depois de o artista limpar tudo.
+    /// ⭐ Uma LISTA de quadros (plano GameEngineFuncional 07): a barra conta passos da lista, o arrasto
+    /// emite `SetStep` (a mesma célula pode repetir-se) e a duração aponta para o passo.
+    #[test]
+    fn a_frame_list_is_walked_by_step_not_by_cell() {
+        let mut i = info(8, "walk");
+        i.rows[1].frames = vec![6, 2, 6, 7];
+        i.frame = 6;
+        i.card.step = 2;
+        assert_eq!(i.progress(), Some((2, 4)), "o SEGUNDO 6, pelo cursor");
+        assert_eq!(i.this_frame_index(), Some(2));
+        assert_eq!(i.scrub_position(), Some(2.0 / 3.0));
+        assert_eq!(i.scrub_edit(1.0), Some(AnimFieldEdit::SetStep(3)));
+        assert_eq!(i.scrub_cell(1.0 / 3.0), Some(2));
+        i.card.step = 9; // um cursor velho: a célula visível decide
+        assert_eq!(i.this_frame_index(), Some(0));
+        i.rows[1].frames = vec![6, 9];
+        assert!(i.current_dangling(), "uma célula fora da grelha cala a lista inteira");
+        assert_eq!(i.progress(), None);
+    }
+
+    #[test]
+    fn a_range_still_scrubs_by_cell() {
+        let i = info(8, "walk");
+        assert_eq!(i.scrub_edit(1.0), Some(AnimFieldEdit::SetFrame(5)));
+    }
+
     #[test]
     fn a_vector_of_zeros_is_not_per_frame_timing() {
         let mut r = row("walk", 0, 3);

@@ -128,7 +128,9 @@ mod tests {
         //   128 §3.6), registado no ECS. Quem integrar conta o DELTA, nunca o literal.
         // ⚠️ **2026-10-13: `108` -> `109`, delta +1** -- o `Macro` (ADR-0186), registado no ECS.
         //   Quem integrar conta o DELTA, nunca o literal.
-        assert_eq!(reg.len(), 109);
+        // ⚠️ **2026-10-25: `109` -> `111`, delta +2** -- `SpriteAnimFrames` + `SpriteAnimCursor` (a lista de
+        //   quadros, line/GameEngineFuncional plano 07). Quem integrar conta o DELTA, nunca o literal.
+        assert_eq!(reg.len(), 111);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

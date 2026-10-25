@@ -63,9 +63,19 @@ fn rewind_to_start(
     let Some(mut grid) = world.get::<ph2d_ecs::SpriteGrid>(entity).copied() else {
         return;
     };
-    let Some(frame) = ph2d_ecs::entry_frame(player, tag, cells_of(world, entity)) else {
+    let list = world
+        .get::<ph2d_ecs::SpriteAnimFrames>(entity)
+        .and_then(|f| f.get(&tag.name));
+    let Some((frame, step)) = ph2d_ecs::entry_cell(player, tag, list, cells_of(world, entity))
+    else {
         return;
     };
+    if let Some(c) = world.get::<ph2d_ecs::SpriteAnimCursor>(entity)
+        && c.step != step
+    {
+        let c = ph2d_ecs::SpriteAnimCursor { step };
+        queue_set(queue, registry, entity_bits, crate::card::CURSOR, &c);
+    }
     if grid.frame == frame {
         return;
     }
@@ -161,6 +171,7 @@ pub fn build_anim_info(
                     signal_on_finish: t.signal_on_finish.clone(),
                     signal_on_loop: t.signal_on_loop.clone(),
                     per_frame_ms: t.per_frame_ms.clone(),
+                    frames: crate::card::row_frames(world, entity, &t.name),
                 })
                 .collect()
         })
@@ -188,6 +199,7 @@ pub fn build_anim_info(
             .get::<ph2d_ecs::SpriteGrid>(entity)
             .map_or(0, |g| g.frame),
         selected_count,
+        card: crate::card::build_card_info(world, entity),
     })
 }
 
@@ -201,6 +213,11 @@ pub fn apply_anim_edit(
 ) -> Option<Toast> {
     let entity = Entity::from_bits(entity_bits);
     let world = sim.world();
+
+    // ── O CARTÃO e o EDITOR (plano GameEngineFuncional 07) ──
+    if crate::card::apply_card_edit(world, entity_bits, edit, queue, registry).is_some() {
+        return None;
+    }
 
     // ── O TOCADOR ────────────────────────────────────────────────────────────────────────────
     //
@@ -334,6 +351,7 @@ pub fn apply_anim_edit(
         AnimFieldEdit::Remove(i) => {
             let name = lib.iter().nth(usize::from(*i)).map(|t| t.name.clone())?;
             lib.remove(&name);
+            crate::card::follow_remove(world, entity_bits, &name, queue, registry);
         }
         AnimFieldEdit::Rename(i, new_name) => {
             let idx = usize::from(*i);
@@ -354,20 +372,29 @@ pub fn apply_anim_edit(
                     &[("new_name", &new_name)],
                 )));
             }
-            let old = lib.0.get(idx).map(|t| t.name.clone());
-            if let Some(t) = lib.0.get_mut(idx) {
-                t.name = new_name.clone();
+            // ⚠️ **Renomear leva junto tudo o que aponta pelo nome** — o tocador, a lista de quadros
+            // e os estados do personagem. Sem isto o `current` (ou o «Correr») apontaria para uma
+            // animação que já não existe, e a sprite pararia sem o artista ligar as duas coisas.
+            // Uma porta só: `ph2d_ecs::rename_tag` (biblioteca + lista + tocador).
+            let old = lib.0.get(idx).map(|t| t.name.clone())?;
+            let mut frames = world.get::<ph2d_ecs::SpriteAnimFrames>(entity).cloned();
+            let mut player = world.get::<SpriteAnimator>(entity).cloned();
+            let (frames_before, player_before) = (frames.clone(), player.clone());
+            ph2d_ecs::rename_tag(&mut lib, frames.as_mut(), player.as_mut(), &old, new_name);
+            if let Some(f) = frames.filter(|f| Some(f) != frames_before.as_ref()) {
+                queue_set(queue, registry, entity_bits, crate::card::FRAMES, &f);
             }
-            // ⚠️ **Renomear a animação que TOCA leva o tocador junto.** Sem isto, mudar o nome
-            // deixaria o `current` a apontar para uma animação que já não existe — o artista
-            // corrigiria uma letra e veria a sprite parar, sem ligar as duas coisas.
-            if let Some(old) = old
-                && let Some(mut p) = world.get::<SpriteAnimator>(entity).cloned()
-                && p.current == old
-            {
-                p.current = new_name.clone();
+            if let Some(p) = player.filter(|p| Some(p) != player_before.as_ref()) {
                 queue_set(queue, registry, entity_bits, ANIMATOR, &p);
             }
+            crate::card::follow_character_rename(
+                world,
+                entity_bits,
+                &old,
+                new_name,
+                queue,
+                registry,
+            );
         }
         other => {
             let idx = match other {

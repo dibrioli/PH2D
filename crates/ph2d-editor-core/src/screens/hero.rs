@@ -78,6 +78,7 @@ mod inspector_model;
 mod inspector_model_action;
 mod inspector_model_anchor;
 mod inspector_model_anim;
+mod inspector_model_anim_card;
 mod inspector_model_audio;
 mod inspector_model_camera;
 /// ⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.
@@ -143,6 +144,7 @@ pub use inspector_model::*;
 pub use inspector_model_action::*;
 pub use inspector_model_anchor::*;
 pub use inspector_model_anim::*;
+pub use inspector_model_anim_card::*;
 pub use inspector_model_audio::*;
 pub use inspector_model_camera::*;
 pub use inspector_model_instance::*;

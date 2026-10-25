@@ -133,6 +133,27 @@ pub fn advance_frames(
     }
 }
 
+/// **A célula (e o passo) por onde um ciclo começa** — o [`crate::entry_frame`] de uma tag que pode ter
+/// lista: o primeiro quadro, ou o último se a direção começa ao contrário.
+#[must_use]
+pub fn entry_cell(
+    animator: &SpriteAnimator,
+    tag: &AnimationTag,
+    list: Option<&[u32]>,
+    cells: u32,
+) -> Option<(u32, u32)> {
+    let seq = tag_cells(tag, list, cells)?;
+    let step = if animator.direction(tag).starts_reversed() {
+        seq.len() - 1
+    } else {
+        0
+    };
+    match list.filter(|l| !l.is_empty()) {
+        Some(_) => Some((seq[step], step as u32)),
+        None => crate::entry_frame(animator, tag, cells).map(|f| (f, step as u32)),
+    }
+}
+
 /// Quadros por segundo de um `frame_ms` (apresentação; o dado é o ms).
 #[must_use]
 pub fn fps_of_ms(ms: u32) -> f32 {

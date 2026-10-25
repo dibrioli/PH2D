@@ -1,0 +1,151 @@
+//! **O cartão «Animation» e o editor de animações** — o que os dois leem e escrevem
+//! ([plano 07](../../../../../docs/GameEngineFuncional/07_animacao_num_cartao_plano.md)).
+//!
+//! Irmão de [`super::inspector_model_anim`] (a §11 de sempre): estes tipos são as perguntas NOVAS —
+//! quem escolhe a animação, o modo do ciclo, a lista de quadros e a imagem da folha para as miniaturas.
+
+use std::sync::Arc;
+
+/// **Quem escolhe a animação que toca.** Derivado, nunca guardado: `Character` = o objecto tem
+/// `CharacterAnimations`; senão `Me` = o tocador arranca sozinho (autoplay) e `Script` = não arranca.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum AnimChooser {
+    #[default]
+    Me,
+    Script,
+    Character,
+}
+
+impl AnimChooser {
+    pub const ALL: [Self; 3] = [Self::Me, Self::Script, Self::Character];
+
+    #[must_use]
+    pub fn tag(self) -> u8 {
+        self as u8
+    }
+
+    #[must_use]
+    pub fn from_tag(tag: u8) -> Self {
+        Self::ALL.get(usize::from(tag)).copied().unwrap_or_default()
+    }
+}
+
+/// **O modo do ciclo** como o artista o diz. Os dados por baixo são `repeat` + `direction` da tag.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum AnimCycleMode {
+    #[default]
+    Repeat,
+    Once,
+    PingPong,
+}
+
+impl AnimCycleMode {
+    pub const ALL: [Self; 3] = [Self::Repeat, Self::Once, Self::PingPong];
+
+    #[must_use]
+    pub fn tag(self) -> u8 {
+        self as u8
+    }
+
+    #[must_use]
+    pub fn from_tag(tag: u8) -> Self {
+        Self::ALL.get(usize::from(tag)).copied().unwrap_or_default()
+    }
+
+    /// O modo que uma tag mostra: `direction_tag` é o de `AnimDirection::ALL` (2 e 3 = vai-e-volta) e
+    /// `repeat` é `0` = para sempre. ⚠️ Uma tag de `Reverse` mostra-se Repete: o editor não oferece o
+    /// sentido inverso (a ordem dos quadros já o diz), e o dado fica como estava até alguém mexer.
+    #[must_use]
+    pub fn of_row(direction_tag: u8, repeat: u32) -> Self {
+        if direction_tag >= 2 {
+            Self::PingPong
+        } else if repeat == 1 {
+            Self::Once
+        } else {
+            Self::Repeat
+        }
+    }
+}
+
+/// Os pixels da folha da sprite (RGBA reto), para miniaturas e para a grelha do editor.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SheetImage {
+    pub rgba: Arc<Vec<u8>>,
+    pub w: u32,
+    pub h: u32,
+}
+
+/// O que o modo «O personagem» mostra: o nome da animação de cada estado (Parado · Correr · Saltar ·
+/// Cair), o limiar de correr (m/s) e o espelho ao andar para trás.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AnimCharacterInfo {
+    pub names: [String; 4],
+    pub run_from: f32,
+    pub flip: bool,
+}
+
+/// **Tudo o que o cartão e o editor leem e a §11 de sempre não tinha.**
+#[derive(Clone, Debug, PartialEq)]
+pub struct AnimCardInfo {
+    pub chooser: AnimChooser,
+    /// O objecto tem Platform Player? Sem ele «O personagem» não se oferece (não há estados).
+    pub has_character_body: bool,
+    pub character: Option<AnimCharacterInfo>,
+    pub hframes: u32,
+    pub vframes: u32,
+    /// O passo da lista de quadros que está no ecrã (`SpriteAnimCursor`); num intervalo, `frame - from`.
+    pub step: u32,
+    /// A folha, quando a sprite tem pixels em memória.
+    pub sheet: Option<SheetImage>,
+}
+
+impl Default for AnimCardInfo {
+    /// Uma sprite de UMA célula, escolhida por mim, sem personagem nem pixels.
+    fn default() -> Self {
+        Self {
+            chooser: AnimChooser::Me,
+            has_character_body: false,
+            character: None,
+            hframes: 1,
+            vframes: 1,
+            step: 0,
+            sheet: None,
+        }
+    }
+}
+
+/// As células que a linha `row` toca, na ordem: a lista, ou o intervalo `from..=to` cortado na grelha.
+#[must_use]
+pub fn row_cells(row: &super::InspectorAnimRow, cells: u32) -> Vec<u32> {
+    if !row.frames.is_empty() {
+        return row.frames.clone();
+    }
+    let span = row.span(cells);
+    let lo = row.from.min(row.to);
+    (lo..lo + span).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn os_tags_dos_dois_seletores_vao_e_voltam() {
+        for c in AnimChooser::ALL {
+            assert_eq!(AnimChooser::from_tag(c.tag()), c);
+        }
+        for m in AnimCycleMode::ALL {
+            assert_eq!(AnimCycleMode::from_tag(m.tag()), m);
+        }
+        assert_eq!(AnimChooser::from_tag(9), AnimChooser::Me);
+    }
+
+    #[test]
+    fn o_modo_le_se_da_direcao_e_do_repeat() {
+        assert_eq!(AnimCycleMode::of_row(0, 0), AnimCycleMode::Repeat);
+        assert_eq!(AnimCycleMode::of_row(0, 1), AnimCycleMode::Once);
+        assert_eq!(AnimCycleMode::of_row(0, 3), AnimCycleMode::Repeat);
+        assert_eq!(AnimCycleMode::of_row(2, 1), AnimCycleMode::PingPong);
+        assert_eq!(AnimCycleMode::of_row(3, 0), AnimCycleMode::PingPong);
+    }
+}

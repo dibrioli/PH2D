@@ -100,8 +100,10 @@ pub fn tick_sprite_animations(
         &mut SpriteAnimator,
         &SpriteAnimations,
         &mut ph2d_ecs::SpriteGrid,
+        Option<&ph2d_ecs::SpriteAnimFrames>,
+        Option<&mut ph2d_ecs::SpriteAnimCursor>,
     )>();
-    for (entity, mut animator, tags, mut grid) in q.iter_mut(world) {
+    for (entity, mut animator, tags, mut grid, lists, cursor) in q.iter_mut(world) {
         // ⚠️ **UMA FOLHA EM PINTURA TOCA, mesmo com o transporte parado** (Enio, 2026-08-23:
         // *«o preview não está animado»*).
         //
@@ -157,7 +159,23 @@ pub fn tick_sprite_animations(
             repeat_count: animator.repeat_count,
             frame,
         };
-        let outcome = ph2d_ecs::advance(&mut run, tag, &mut frame, cells, dt * u64::from(ticks));
+        // ⭐ A lista de quadros (plano GameEngineFuncional 07): sem ela, o intervalo de sempre.
+        let list = lists.and_then(|l| l.get(&tag.name));
+        let mut step = cursor.as_ref().map_or(0, |c| c.step);
+        let outcome = ph2d_ecs::advance_frames(
+            &mut run,
+            tag,
+            list,
+            &mut frame,
+            &mut step,
+            cells,
+            dt * u64::from(ticks),
+        );
+        if let Some(mut c) = cursor
+            && c.step != step
+        {
+            c.step = step;
+        }
         if preview_only {
             animator.elapsed_ticks = run.elapsed_ticks;
             animator.pingpong_reverse = run.pingpong_reverse;

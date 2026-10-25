@@ -42,6 +42,8 @@ pub struct InspectorAnimRow {
     /// para cada quadro, crie»*), e um campo que EDITA precisa de ler o valor. O predicado passou a
     /// ser derivado ([`Self::has_per_frame_timing`]) — *uma fonte, e a pergunta calcula-se dela*.
     pub per_frame_ms: Vec<u32>,
+    /// A lista de quadros (`SpriteAnimFrames`), na ordem tocada. Vazia = o intervalo `from..=to`.
+    pub frames: Vec<u32>,
 }
 
 impl InspectorAnimRow {
@@ -101,6 +103,8 @@ pub struct InspectorAnimInfo {
     /// isso este número é o que a seção usa para o **dizer**. Sem ele, marcar cinco goblins e
     /// renomear uma animação muda **um** e cala-se — o artista descobre semanas depois.
     pub selected_count: usize,
+    /// O cartão «Animation» e o editor (plano GameEngineFuncional 07).
+    pub card: super::AnimCardInfo,
 }
 
 impl InspectorAnimInfo {
@@ -296,6 +300,25 @@ pub enum AnimFieldEdit {
     /// escreve o `Sprite::frame`, o dedo e o relógio disputam o mesmo campo e a imagem pisca entre
     /// os dois. *Quem pega no volante conduz.*
     SetFrame(u32),
+
+    // ── O cartão «Animation» e o editor (plano GameEngineFuncional 07) ──────────────────────────
+    /// A lista de quadros da animação `row`, na ordem tocada. Vazia = volta ao intervalo.
+    Frames(u8, Vec<u32>),
+    /// O modo do ciclo (`AnimCycleMode::tag`) — `repeat` e `direction` num só passo de undo.
+    CycleMode(u8, u8),
+    /// Quem escolhe a animação (`AnimChooser::tag`).
+    Chooser(u8),
+    /// A animação do estado `0..4` (Parado · Correr · Saltar · Cair) no modo «O personagem».
+    CharacterState(u8, String),
+    /// A partir de que velocidade (m/s) o personagem corre.
+    CharacterRunFrom(f32),
+    /// Virar a imagem ao andar para trás.
+    CharacterFlip(bool),
+    /// Parar e mostrar o PASSO `n` da animação que toca (a barra e a faixa de quadros numa lista, onde a
+    /// mesma célula pode aparecer duas vezes e `SetFrame(célula)` seria ambíguo).
+    SetStep(u32),
+    /// A grelha da folha, colunas × linhas (a proposta confirmada, ou o campo do cartão).
+    Grid(u32, u32),
 }
 
 #[cfg(test)]
@@ -315,6 +338,7 @@ mod tests {
             signal_on_finish: String::new(),
             signal_on_loop: String::new(),
             per_frame_ms: Vec::new(),
+            frames: Vec::new(),
         }
     }
 
@@ -332,6 +356,7 @@ mod tests {
             loop_override_tag: 0,
             frame: 0,
             selected_count: 1,
+            card: crate::AnimCardInfo::default(),
         }
     }
 

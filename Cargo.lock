@@ -5534,6 +5534,7 @@ dependencies = [
  "ph2d-entity-visibility",
  "ph2d-i18n",
  "ph2d-inspector-ordering",
+ "ph2d-physics-ecs",
  "ph2d-preview-drive",
  "ph2d-render",
 ]

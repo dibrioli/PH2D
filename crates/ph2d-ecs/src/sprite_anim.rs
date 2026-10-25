@@ -139,7 +139,7 @@ impl AnimDirection {
     // pelo `tag()` que o snapshot leva. *Um espelho declarado é uma cópia com um nome bonito.*
 
     /// Começa a andar para trás? (`Reverse` e `PingPongReverse`.)
-    fn starts_reversed(self) -> bool {
+    pub(crate) fn starts_reversed(self) -> bool {
         matches!(self, Self::Reverse | Self::PingPongReverse)
     }
 

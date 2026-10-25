@@ -21,6 +21,8 @@ ph2d-inspector-ordering = { path = "../ph2d-inspector-ordering" }
 ph2d-app-components = { path = "../ph2d-app-components" }
 ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 ph2d-entity-visibility = { path = "../ph2d-entity-visibility" }
+# Os estados do personagem (`CharacterAnimations`) no modo «O personagem» do cartão.
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 
 [dev-dependencies]
 ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support"] }

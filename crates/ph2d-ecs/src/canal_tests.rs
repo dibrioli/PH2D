@@ -114,12 +114,17 @@ fn o_vocabulario_do_vetor_nao_renumera() {
     const { assert!(v::TINTA_TRACO + v::TINTA_LARGURA <= v::TRACO_LARGURA) };
 }
 
-/// Todo campo declarado tem um rótulo e um grupo; nenhum buraco no meio de um bloco de tinta.
+/// Todo campo declarado tem um rótulo e um grupo; nenhum buraco no bloco do PREENCHIMENTO. O traço só
+/// declara o que algum traço tem (F28; o conjunto exacto é o gate `o_traco_so_declara_o_que_tem` do
+/// `ph2d-app-vec`, que o lê).
 #[test]
 fn todo_campo_da_tinta_tem_informacao() {
     for base in [v::TINTA_PREENCH, v::TINTA_TRACO] {
         for off in 0..v::TINTA_LARGURA {
-            let info = info(k(base + off, 0, 0)).expect("campo de tinta sem informação");
+            let Some(info) = info(k(base + off, 0, 0)) else {
+                assert_eq!(base, v::TINTA_TRACO, "buraco no preenchimento: {off}");
+                continue;
+            };
             assert_eq!(info.grupo, base, "a tinta inteira é UM grupo");
             assert!(info.por_i, "cada entrada da pilha tem a sua tinta");
         }

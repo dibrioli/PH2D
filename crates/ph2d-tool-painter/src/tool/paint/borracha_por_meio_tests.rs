@@ -324,3 +324,51 @@ fn a_borracha_do_wet_obedece_ao_flow() {
         "a Strength está escondida no Wet: não pode agir"
     );
 }
+
+/// ⭐ **A Borracha do Wet não entra na abertura do Continuous** (25/10): a lei (`stroke/abertura.rs`: sob Flow < 1 o
+/// 1.º dab vai na 1.ª cápsula) é do Digital, e a Borracha do Wet guarda o seu Flow (a taxa do Erase). O traço dela a
+/// Flow 0,3 tem os mesmos dabs que a Flow 1 — onde nenhuma abertura arma.
+#[test]
+fn a_borracha_do_wet_nao_entra_na_abertura_do_digital() {
+    use ph2d_painter_brush::{Dynamics, Stroke, StrokePoint};
+    let mut t = tela_de_aguada();
+    t.paint.brush.watercolor = false;
+    t.paint.brush_by_mode.fill(t.paint.brush);
+    borracha_em(&mut t, PaintMedia::WetPaint);
+    t.paint.brush.continuous_spacing = true;
+    t.paint.brush.spacing = 0.8;
+    t.set_brush_flow(0.3);
+    let spec = t.authored_spec();
+    assert!(
+        spec.lays_capsules() && !spec.accumulate && spec.flow < 1.0,
+        "fixtura: a Borracha do Wet não traça em cápsulas a Flow < 1"
+    );
+    assert!(
+        !spec.leis_do_digital(),
+        "a Borracha do Wet entra nas leis do Digital"
+    );
+    let dabs = |s| {
+        let mut st = Stroke::new(s, Dynamics::default(), 7);
+        let mut out = Vec::new();
+        let p = |x: f32| StrokePoint {
+            pos: [x, 64.0],
+            pressure: 1.0,
+        };
+        st.begin(p(20.0), &mut out);
+        let mut x = 20.0;
+        while x < 108.0 {
+            x += 2.0;
+            st.extend(p(x), &mut out);
+        }
+        st.finish(&mut out);
+        out.iter()
+            .map(|d| (d.center, d.step, d.ante.map(|a| a.fecho)))
+            .collect::<Vec<_>>()
+    };
+    let sem_abertura = BrushSpec { flow: 1.0, ..spec };
+    assert_eq!(
+        dabs(spec),
+        dabs(sem_abertura),
+        "o traço da Borracha do Wet a Flow 0,3 não é o da Flow 1: a abertura do Digital armou"
+    );
+}

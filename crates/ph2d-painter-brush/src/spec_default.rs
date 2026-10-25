@@ -48,6 +48,7 @@ impl Default for BrushSpec {
             sub_passo_fino: false,
             passo_pela_pressao: false,
             parado_s: 0.0,
+            fora_do_digital: false,
             accumulate: false,
             tecto_por_dab: false,
             wash: false,

@@ -565,10 +565,11 @@ impl BrushSpec {
     }
 
     /// As leis só do Digital (J3: [`Self::borda_px`], [`Self::sub_passo_fino`]) valem neste pincel? Não na aguada
-    /// nem no relevo, que leem o pincel do artista cru (os flags do meio são da porta do meio).
+    /// nem no relevo, que leem o pincel do artista cru (os flags do meio são da porta do meio), nem no Wet Paint
+    /// ([`Self::fora_do_digital`]).
     #[must_use]
     pub fn leis_do_digital(&self) -> bool {
-        !self.watercolor && !self.impasto
+        !self.watercolor && !self.impasto && !self.fora_do_digital
     }
 
     /// ⭐ **O sub-passo da cápsula** deste pincel a raio `raio`: [`crate::capsula::sub_passo_px`], ou o FINO

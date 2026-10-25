@@ -143,6 +143,9 @@ pub struct BrushSpec {
     /// caneta parada (nenhum dab do caminho desde o tique anterior), pousa uma nuvem no cursor a cada `parado_s` —
     /// o Texture Spray do Krita parado cobre 0,24 → 1,00 a 10 → 200 eventos; o Space de sempre não pousa nada.
     pub parado_s: f32,
+    /// O traço corre noutro meio que não o Digital (o Wet Paint, que o spec não vê pelos seus flags): as leis só do
+    /// Digital ([`Self::leis_do_digital`]) não valem. Põe-no a porta do meio (`authored_spec`); `false` = o de sempre.
+    pub fora_do_digital: bool,
     /// **Accumulate** (Blender `BRUSH_ACCUMULATE`, bit 13, default OFF): when OFF, a single stroke is
     /// capped at [`Self::strength`] — overlapping dabs (incl. passing the brush back over itself) do
     /// NOT build past Strength (a per-stroke coverage mask, the classic "alpha mask"). When ON, every

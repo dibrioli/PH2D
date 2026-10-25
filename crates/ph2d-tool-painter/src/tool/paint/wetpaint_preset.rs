@@ -133,7 +133,7 @@ const DOS_KNOBS: &str = "a caneta deitada: no Wet Paint são os knobs do pincel 
 const NAO_LIDO: &str = "o Wet Paint não o lê (deposita pela lei do fluido)";
 
 /// Os campos do `BrushSpec` que o preset NÃO leva, e porquê.
-pub const CAMPOS_FORA: [(&str, &str); 77] = [
+pub const CAMPOS_FORA: [(&str, &str); 78] = [
     ("radius_px", VOLUME),
     ("strength", VOLUME),
     ("color", DA_OBRA),
@@ -170,6 +170,7 @@ pub const CAMPOS_FORA: [(&str, &str); 77] = [
     ("pen_tilt", DOS_KNOBS),
     ("watercolor", DO_MEIO),
     ("impasto", DO_MEIO),
+    ("fora_do_digital", DO_MEIO),
     ("edge_gain", AQUARELA),
     ("edge_spread", AQUARELA),
     ("smooth_edges", AQUARELA),

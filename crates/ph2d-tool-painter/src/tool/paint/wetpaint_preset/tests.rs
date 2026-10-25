@@ -229,6 +229,7 @@ fn pincel_mexido() -> BrushSpec {
         pen_tilt: d.pen_tilt,
         watercolor: d.watercolor,
         impasto: d.impasto,
+        fora_do_digital: d.fora_do_digital,
         // ── os de fora que o Wet Paint não deve ler: mexidos ──
         pixel: ph2d_painter_brush::PixelTip::Perfect,
         tecto_por_dab: true,
@@ -531,6 +532,7 @@ fn o_pincel_inteiro_vai_e_volta_pelo_json_da_macro() {
     };
     b.watercolor = !d.watercolor;
     b.impasto = !d.impasto;
+    b.fora_do_digital = !d.fora_do_digital;
 
     let campos = campos_da_macro();
     let fabrica = json::pincel_para_json(&d, &campos);

@@ -50,6 +50,9 @@ impl PainterTool {
         // As leis só do Digital (J3, `docs/Painter/Pinceis/exames/basicos.md` 2.ª onda) saem NEUTRAS nos outros
         // meios: um preset do Digital aplicado antes não as leva à aguada, ao relevo nem ao fluido.
         if self.paint_media() != crate::PaintMedia::Digital {
+            // A porta ÚNICA das leis do Digital que leem campos de todos os meios (a abertura do Continuous lê o
+            // Flow, que a Borracha do Wet guarda como a taxa do Erase): o spec passa a saber o meio.
+            brush.fora_do_digital = true;
             brush.tecto_por_dab = false;
             brush.wash = false;
             brush.borda_px = 0.0;
@@ -77,12 +80,6 @@ impl PainterTool {
             // da W2 o último bit mudava 1 px entre o pincel e o mesmo pincel guardado (que não leva a
             // Strength). A 1, a cobertura É a pressão; nada muda para quem já pintava a 1.
             brush.strength = 1.0;
-            // O pincel do Wet não lê o Flow (o preset declara-o `NAO_LIDO`), mas o motor de traço lê-o para a
-            // abertura do Continuous (`stroke/abertura.rs`, lei do Digital): com Flow < 1 o 1.º dab ia na 1.ª
-            // cápsula — medido 25/10, 11 px num pincel guardado. A Borracha do Wet lê-o (a taxa do Erase).
-            if !self.paint.eraser {
-                brush.flow = 1.0;
-            }
             // A LARGURA PROMETIDA (W2): o traço nasce com o raio do MOTOR cuja largura medida é o
             // número do painel — e o espaçamento dos carimbos é o desse raio, como em qualquer pincel
             // daquele tamanho (a tabela do preset mede-se assim). O anel continua no raio pedido.

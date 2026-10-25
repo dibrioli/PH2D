@@ -68,6 +68,7 @@ pub(crate) fn bare_file(state: ProjectState) -> ProjectFile {
         jogo: Vec::new(),
         mesa: Vec::new(),
         kanbans: Vec::new(),
+        pixel_sprites: Vec::new(),
     }
 }
 

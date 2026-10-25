@@ -816,6 +816,7 @@ impl App {
             painter_redo_requested: false,
             // ADR-0114 W2: estado de desenho do Flip (publicado pelo flip_bridge).
             flip_state: Default::default(),
+            pixel: ph2d_app_pixel::PixelApp::with_armed_smoke(),
             ui_state_live: false,
             ui_cooked: crate::render_loop::ui_state_bridge::Cooked::default(),
             ui_preview: crate::render_loop::ui_preview::UiPreview::default(),

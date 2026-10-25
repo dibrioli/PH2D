@@ -85,7 +85,6 @@ pub struct PixelApp {
     pub(crate) gesture: Option<Gesture>,
     pub(crate) hover: Option<(u64, (i32, i32))>,
     pub(crate) next_stamp: u64,
-    pub(crate) authored: bool,
     /// O objecto que nasceu e pede o modo Edit (uma vez).
     pub(crate) wants_edit: Option<u64>,
     /// O objecto em Edit no quadro anterior (para enquadrar à entrada).
@@ -105,7 +104,6 @@ impl Default for PixelApp {
             gesture: None,
             hover: None,
             next_stamp: 1,
-            authored: false,
             wants_edit: None,
             was_editing: None,
             smoke: None,
@@ -156,7 +154,6 @@ impl PixelApp {
         };
         doc.history.commit(&mut doc.sprite, op)?;
         doc.stamp = stamp;
-        self.authored = true;
         Ok(())
     }
 
@@ -182,14 +179,8 @@ impl PixelApp {
         };
         if done {
             doc.stamp = stamp;
-            self.authored = true;
         }
         done
-    }
-
-    /// Houve mudança de autoria desde a última pergunta (o título do projecto passa a «por gravar»).
-    pub fn take_authored(&mut self) -> bool {
-        std::mem::take(&mut self.authored)
     }
 
     /// Há um traço em curso.

@@ -61,6 +61,7 @@ pub(crate) mod posse_do_jogo; // de quem e o teclado e o rato com a cena a corre
 
 // Os ramos e os irmãos do despacho: cada `despacho_*.rs` diz no próprio `//!` o que guarda.
 mod despacho_clique_flip;
+mod despacho_pixel;
 mod despacho_clique_gizmo;
 mod despacho_clique_hud;
 mod despacho_clique_largar;
@@ -174,6 +175,9 @@ impl App {
                 self.last_pointer.1,
             )
         {
+            return;
+        }
+        if self.ramo_pixel_mover() {
             return;
         }
         if self.ramo_mover_arrastos_de_topo() {
@@ -466,6 +470,9 @@ impl App {
         // interactive widget hit (`hit_index` covers pills / menus / panel
         // controls; `panel_at` covers panel bodies incl. the vector panel).
         let on_canvas = self.pointer_on_canvas(evt.x, evt.y);
+        if self.ramo_pixel(kind, mapped_button, on_canvas, menu_open_before) {
+            return;
+        }
         if self.ramo_preview_e_fechos(kind, mapped_button, evt, menu_open_before) {
             return;
         }

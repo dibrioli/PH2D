@@ -27,12 +27,24 @@ pub fn to_bytes(app: &PixelApp, world: &ph2d_ecs::World) -> Vec<u8> {
     write_library(&lib)
 }
 
-/// Repõe os documentos lidos de um projecto (o desfazer de cada um recomeça vazio).
-pub fn load(app: &mut PixelApp, bytes: &[u8]) -> Result<(), CodecError> {
-    let lib = read_library(bytes)?;
-    let mut docs = BTreeMap::new();
-    for (k, sprite) in lib {
+/// Os documentos lidos, ainda por instalar — ler e instalar são dois passos para o load recusar o
+/// projecto inteiro ANTES de tocar em qualquer coisa.
+pub struct Loaded(BTreeMap<u32, ph2d_pixel_core::Sprite>);
+
+/// Lê o blob de um projecto. Vazio = nenhum Pixel Sprite.
+pub fn read(bytes: &[u8]) -> Result<Loaded, CodecError> {
+    let mut out = BTreeMap::new();
+    for (k, sprite) in read_library(bytes)? {
         let key = u32::try_from(k).map_err(|_| CodecError::Invalid("entry.key"))?;
+        out.insert(key, sprite);
+    }
+    Ok(Loaded(out))
+}
+
+/// Instala os documentos lidos (o desfazer de cada um recomeça vazio).
+pub fn install(app: &mut PixelApp, loaded: Loaded) {
+    let mut docs = BTreeMap::new();
+    for (key, sprite) in loaded.0 {
         let stamp = app.stamp();
         let mut doc = Doc::new(sprite, stamp);
         doc.fresh = false;
@@ -41,5 +53,4 @@ pub fn load(app: &mut PixelApp, bytes: &[u8]) -> Result<(), CodecError> {
     app.docs = docs;
     app.gesture = None;
     app.hover = None;
-    Ok(())
 }

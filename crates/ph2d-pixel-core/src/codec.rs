@@ -35,6 +35,21 @@ pub enum CodecError {
     Invalid(&'static str),
 }
 
+impl std::fmt::Display for CodecError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CodecError::BadMagic => write!(f, "not a PH2DPIXEL blob"),
+            CodecError::MajorMismatch { found } => {
+                write!(f, "format {found}.x, this build reads {MAJOR}.x")
+            }
+            CodecError::Truncated => write!(f, "truncated"),
+            CodecError::Invalid(what) => write!(f, "invalid {what}"),
+        }
+    }
+}
+
+impl std::error::Error for CodecError {}
+
 /// Grava um conjunto de sprites por chave (a do objecto que o possui).
 #[must_use]
 pub fn write_library(sprites: &BTreeMap<u64, Sprite>) -> Vec<u8> {

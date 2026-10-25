@@ -24,18 +24,20 @@ impl<'a> Family<'a> {
     }
 }
 
-/// Os objectos Pixel Sprite do mundo: `(bits, chave do documento)`, por ordem de bits.
+/// Os objectos Pixel Sprite do mundo: `(bits, chave do documento)`, do mais VELHO para o mais novo
+/// (`StableId` crescente; sem ele, os bits) — numa cópia, o original vem primeiro.
 #[must_use]
 pub fn sprites(world: &ph2d_ecs::World) -> Vec<(u64, u32)> {
-    let mut v: Vec<(u64, u32)> = world
+    let mut v: Vec<(u64, u64, u32)> = world
         .iter_entities()
         .filter_map(|e| {
+            let age = e.get::<ph2d_ecs::StableId>().map_or(u64::MAX, |s| s.0);
             e.get::<ph2d_ecs::PixelSprite>()
-                .map(|p| (e.id().to_bits(), p.0))
+                .map(|p| (age, e.id().to_bits(), p.0))
         })
         .collect();
     v.sort_unstable();
-    v
+    v.into_iter().map(|(_, bits, key)| (bits, key)).collect()
 }
 
 impl ModeFamily for Family<'_> {
@@ -68,4 +70,15 @@ impl ModeFamily for Family<'_> {
     fn heir(&mut self, _: ObjectMode, _: u64, _: &mut ToolRegistry) -> Option<u64> {
         None
     }
+}
+
+/// O objecto em Pixel Sprite ▸ Edit neste quadro, se há.
+#[must_use]
+pub fn editing(
+    world: &ph2d_ecs::World,
+    hero: &ph2d_editor_core::screens::hero::HeroScreen,
+) -> Option<u64> {
+    let a = hero.gizmo.mode.active()?;
+    (a.mode == ObjectMode::Edit && crate::input::key_of(world, a.entity).is_some())
+        .then_some(a.entity)
 }

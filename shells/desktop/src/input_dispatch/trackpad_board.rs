@@ -12,6 +12,9 @@ impl App {
     pub(crate) fn on_wheel_event(&mut self, delta: MouseScrollDelta) {
         use ph2d_editor_core::screens::hero::board_view::{BoardScroll, scroll};
         let (x, y) = self.last_pointer;
+        if self.roda_pixel(delta) {
+            return;
+        }
         if let MouseScrollDelta::PixelDelta(p) = delta
             && !(self.modifiers.control_key() || self.modifiers.super_key())
             && !self.command_palette_wheel(p.y as f32)

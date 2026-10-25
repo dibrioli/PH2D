@@ -544,7 +544,20 @@
 /// `kanbans: Vec<u8>` no FIM do `ProjectFile` (formato em `ph2d_app_kanban::project`); do `204` ao `207`
 /// lê-se com um `0`, os anteriores com mais (ver `falta_no_fim`). Gate: `project_marcas_tests`. Registos de
 /// componentes: `0`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 208;
+///
+/// # `208 → 209` — **os Pixel Sprites** (`line/PixelArt`, P0, ADR-0196, 2026-10-25; reposto sobre o `208` do main)
+///
+/// Campo novo no FIM do `ProjectFile`: `pixel_sprites: Vec<u8>` (depois de `kanbans`) — os documentos de
+/// pixels dos objectos Pixel Sprite, blob `PH2DPIXEL` com versão PRÓPRIA (`ph2d_pixel_core::codec`). ⭐ **COM
+/// leitura dos anteriores:** o `falta_no_fim` acrescenta o `0` do `Vec` vazio a todo degrau `<= 208` (um
+/// projecto antigo abre sem Pixel Sprites), e os braços `192`/`191` e `190`/`189` levam cinco. Gate:
+/// `project_pixel_tests`. Registos de componentes: ecs `+1` (`PixelSprite`), espelhos `+1`.
+///
+/// ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 209;
+
+/// O último degrau sem os Pixel Sprites — a mesma forma do actual, sem o `Vec` final.
+pub(crate) const PROJECT_SCHEMA_SEM_PIXEL: u32 = 208;
 
 /// O último degrau sem os Kanbans — a mesma forma do actual, sem o `Vec` final (`kanbans`).
 pub(crate) const PROJECT_SCHEMA_SEM_KANBANS: u32 = 207;

@@ -127,6 +127,9 @@ impl App {
         if self.board_owns_the_keyboard(physical_key, state, text.as_deref()) {
             return;
         }
+        if self.pixel_owns_the_keyboard(physical_key, state) {
+            return;
+        }
 
         // O PEEK do Flip (Shift & Trace fatia 2): F1/F2/F3 são o flip de papel —
         // SEGURAR mostra só o desenho vizinho (anterior/atual/seguinte) sem mover o

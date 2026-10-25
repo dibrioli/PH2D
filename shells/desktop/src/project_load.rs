@@ -99,6 +99,15 @@ impl crate::App {
         else {
             return;
         };
+        // **E OS PIXEL SPRITES, pela mesma lei** (ADR-0196).
+        let pixel_sprites = match ph2d_app_pixel::persist::read(&file.pixel_sprites) {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("[proj] pixel sprites ilegiveis — load RECUSADO: {e}");
+                self.toast_refused("pixel.load_failed", &e);
+                return;
+            }
+        };
         // ---- Daqui pra baixo o arquivo foi ACEITO. ----
         //
         let abertos =
@@ -122,6 +131,7 @@ impl crate::App {
             pattern_art,
             timeline,
         );
+        ph2d_app_pixel::persist::install(&mut self.pixel, pixel_sprites);
         // Os quadros do ficheiro tomam as abas (e a área volta à cena).
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             ph2d_editor_core::screens::hero::document_tabs::load(hero, boards);

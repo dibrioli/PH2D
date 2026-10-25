@@ -99,6 +99,17 @@ impl crate::App {
             // ⛔⛔ Os gizmos de NÓ vivem na `fase_vector_overlays` (doc 109 §6): esta fase corre ANTES
             // da arte das formas do Motion, e no Vello quem pinta primeiro fica por BAIXO. O gate
             // `the_collider_outline_is_painted_after_the_shape_art` prende a ordem.
+            // ⭐ Os Pixel Sprites (ADR-0192) — antes das marcas, para elas ficarem por cima.
+            ph2d_app_pixel::draw::draw(
+                &mut self.pixel,
+                sim.world(),
+                camera,
+                crate::scene_mapping::janela(hero.view.center_split, surface.size()),
+                hero.project.pixels_per_meter,
+                ph2d_app_pixel::mode::editing(sim.world(), hero),
+                hero.theme,
+                vector_scene,
+            );
             anchor_overlay::draw_anchor_marks(
                 !hero
                     .store

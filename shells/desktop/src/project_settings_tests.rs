@@ -105,7 +105,8 @@ fn the_project_scale_and_unit_survive_the_project_file() {
     let file = ProjectFile {
         settings: crate::project_settings::collect(authored),
         jogo: crate::project_settings::collect_jogo(authored),
-        ..bare_file(empty_state())
+        ..bare_file(empty_state()),
+        pixel_sprites: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
     std::fs::write(&path, bytes).expect("grava");

@@ -19,6 +19,7 @@ pub(crate) const FAMILIES: &[&[AddEntry]] = &[
     ph2d_app_components::object_add::ENTRIES,
     ph2d_app_light2d::object_add::ENTRIES,
     ph2d_app_macros::object_add::ENTRIES,
+    ph2d_app_pixel::object_add::ENTRIES,
 ];
 
 /// O que o pick deu: um objecto já na cena, ou nada ainda (a imagem abre o diálogo de tamanho; o
@@ -109,6 +110,13 @@ impl crate::App {
         } else if let Some(r) = ph2d_app_macros::object_add::add(
             entry,
             sim,
+            ph2d_app_components::object_add::spawn_empty_root,
+        ) {
+            r.map(Born::Entity).map_err(String::from)
+        } else if let Some(r) = ph2d_app_pixel::object_add::add(
+            entry,
+            sim,
+            &mut self.pixel,
             ph2d_app_components::object_add::spawn_empty_root,
         ) {
             r.map(Born::Entity).map_err(String::from)

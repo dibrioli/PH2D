@@ -190,8 +190,14 @@ pub(crate) struct ProjectFile {
     /// fábrica). Fora do `ProjectState`: a mesa nunca teve undo.
     pub(crate) mesa: Vec<u8>,
     /// **Os KANBANS** (v208, ADR-0195; `ph2d_app_kanban::project`), fora do `ProjectState` (desfazer
-    /// próprio). ⚠️ **O último campo** — os braços `189`..`207` do load acrescentam o `0` deste `Vec`.
+    /// próprio). Os braços `189`..`207` do load acrescentam o `0` deste `Vec`.
     pub(crate) kanbans: Vec<u8>,
+    /// **Os PIXEL SPRITES** (v209, ADR-0196) — os documentos de pixels dos objectos Pixel Sprite
+    /// (`ph2d_app_pixel::persist`, formato `PH2DPIXEL` com versão PRÓPRIA), chaveados pelo
+    /// `PixelSprite(u32)` de cada objecto. Fora do `ProjectState`: cada sprite tem desfazer próprio.
+    /// ⚠️ **O último campo** — o `falta_no_fim` e os braços `189`..`192` do load leem-no acrescentando o
+    /// `0` deste `Vec` vazio.
+    pub(crate) pixel_sprites: Vec<u8>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que

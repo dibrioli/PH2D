@@ -12,7 +12,9 @@ impl crate::App {
             return;
         };
         let FrameGfx {
+            surface,
             sim,
+            camera,
             tools,
             toasts,
             hero_screen,
@@ -24,6 +26,14 @@ impl crate::App {
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };
+        self.pixel.frame(
+            sim,
+            camera,
+            crate::scene_mapping::janela(hero.view.center_split, surface.size()),
+            hero.project.pixels_per_meter,
+            ph2d_app_pixel::mode::editing(sim.world(), hero),
+            ph2d_app_components::object_add::spawn_empty_root,
+        );
         // ⭐ A raiz de ossos sem esqueleto ganha um (A14): projectos antigos, cenas, o 1.º *Create*.
         if !ph2d_app_skeleton::loose::adopt_loose_roots(sim, &mut self.timeline).is_empty() {
             self.title_dirty = true;
@@ -54,6 +64,7 @@ impl crate::App {
         let world = sim.world();
         let mut image_edit = ph2d_app_painter::image_edit_mode::Family::new(world);
         let mut motion_edit = ph2d_app_motion::motion_objeto::modo::Family::new(motion);
+        let mut pixel = ph2d_app_pixel::mode::Family::new(&mut self.pixel, world);
         let families: &mut [&mut dyn ModeFamily] = &mut [
             &mut paint,
             &mut flip,
@@ -61,6 +72,7 @@ impl crate::App {
             &mut skeleton,
             &mut image_edit,
             &mut motion_edit,
+            &mut pixel,
         ];
         if ph2d_app_components::object_mode::drive(world, families, tools, hero, toasts, request) {
             self.title_dirty = true;

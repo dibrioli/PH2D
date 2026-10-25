@@ -28,7 +28,7 @@ fn shell(rel: &str) -> std::path::PathBuf {
 /// do Model deixam o quadro.
 ///
 /// ⚠️ **2026-10-05: `3` -> `4`, delta +1** — o esqueleto é um objecto (A14, `line/Vector`).
-const FAMILIAS: [(&str, &str); 5] = [
+const FAMILIAS: [(&str, &str); 6] = [
     ("ph2d_app_painter::paint_mode::Family", "&mut paint"),
     ("ph2d_app_flip::flip_mode::Family::new", "&mut flip"),
     ("ph2d_app_vec::vector_mode::Family::new", "&mut vector"),
@@ -40,6 +40,7 @@ const FAMILIAS: [(&str, &str); 5] = [
         "ph2d_app_motion::motion_objeto::modo::Family::new",
         "&mut motion_edit",
     ),
+    ("ph2d_app_pixel::mode::Family::new", "&mut pixel"),
 ];
 
 /// ⭐⭐ GATE — cada família é construída E entra na lista do quadro.
@@ -82,11 +83,14 @@ fn the_composed_families_declare_every_creation_mode() {
     let mut skel_state = ph2d_app_skeleton::state::SkeletonState::default();
     let skeleton =
         ph2d_app_skeleton::skeleton_mode::Family::new(&mut skel_state, sim.world(), None);
+    let mut pixel_app = ph2d_app_pixel::PixelApp::default();
+    let pixel = ph2d_app_pixel::mode::Family::new(&mut pixel_app, sim.world());
     let pairs: Vec<_> = [
         paint.modes(),
         flip.modes(),
         vector.modes(),
         skeleton.modes(),
+        pixel.modes(),
     ]
     .concat();
     // ⭐ A tabela D6 (spec/06 §3.4) INTEIRA: o Edit do vetor some sem nenhum modo morrer (o Flip
@@ -103,6 +107,8 @@ fn the_composed_families_declare_every_creation_mode() {
         // ⚠️ 2026-10-05: `4` -> `6` pares, delta +2 — o esqueleto (A14): Edit e Pose.
         (K::Skeleton, ObjectMode::Edit),
         (K::Skeleton, ObjectMode::Pose),
+        // ⚠️ 2026-10-25: `6` -> `7` pares, delta +1 — o Pixel Sprite (ADR-0192): Edit.
+        (K::PixelSprite, ObjectMode::Edit),
     ];
     for p in d6 {
         assert!(

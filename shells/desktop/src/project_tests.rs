@@ -406,7 +406,8 @@ fn project_file_round_trips_through_postcard() {
         input_map: super::input_map_tests::authored_input_map(),
         // NÃO-vazio pela razão do `input_map` acima: dois quadros com nome.
         boards: two_boards().to_bytes().unwrap(),
-        ..bare_file(state.clone())
+        ..bare_file(state.clone()),
+        pixel_sprites: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
@@ -565,6 +566,10 @@ mod scripts;
 /// **As MARCAS DO ARTISTA no arquivo** (Macros W9, v192) — filho pela mesma razão.
 #[path = "project_marcas_tests.rs"]
 mod marcas;
+
+/// **Os PIXEL SPRITES no arquivo** (ADR-0192, v194) — filho pela mesma razão.
+#[path = "project_pixel_tests.rs"]
+mod pixel;
 
 /// **O que um load faz com a CORRIDA GRAVADA** (W17) — FILHO e não irmão porque as fixtures desta suíte
 /// (`headless_app`, `write_project`, `tmp_path`, `empty_state`) são as portas dele: copiá-las seria um

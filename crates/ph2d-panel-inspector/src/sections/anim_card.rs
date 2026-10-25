@@ -174,7 +174,7 @@ pub(crate) fn paint_list(
         );
         cur_y += ROW_H + ph2d_tokens::list_row_gap_px();
     }
-    cur_y + Spacing::Sm.px()
+    cur_y + ph2d_tokens::control_gap_px()
 }
 
 /// Um botão de linha inteira (o padrão `caixa_do_botao`). Devolve o `y` seguinte.

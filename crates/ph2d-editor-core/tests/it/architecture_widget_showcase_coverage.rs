@@ -41,6 +41,10 @@ const WIDGET_OPT_OUT: &[(&str, &str)] = &[
         "not a widget: it is the ALTERNATING TONE a list paints BEHIND its rows (the Blender Outliner law the owner pointed at, 2026-09-06) — it registers nothing, has no state and paints no control; a gallery section for it would show a rectangle 5/255 away from the one behind it, and the rows it stripes (`list_item`, the Hierarchy, the Inspector lists) are already shown. The law is proved by `widget::list_rows::tests` (which measures the SCENE) and by `ph2d-panel-hierarchy/tests/it/the_rows_of_the_list_touch.rs` (which measures the PRODUCT)",
     ),
     (
+        "sheet_cell",
+        "precisa de PIXELS: pinta uma celula de uma folha (`SheetImage`) encaixada numa caixa (GameEngineFuncional 07), e a galeria nao tem folha de exemplo — uma seccao dela pintaria uma caixa vazia. Os consumidores que a mostram sao o cartao Animation do Inspector (miniatura e pre-visualizacao) e o editor de animacoes (`ph2d-app-sprite-anim`), ambos sobre a folha real da sprite.",
+    ),
+    (
         "section_plan",
         "not a widget: it is the LAW that paints a panel's sections as a LIST (the artist's order, the theme of each section, the drop marker, the ghost — 2026-09-30) — it paints no control of its own; the gallery is itself one of its consumers (every gallery section has the grip and the theme menu), and the law is proved by the seam gates `as_seccoes_arrastam_e_tem_tema` in each panel crate, which drive the real pointer",
     ),

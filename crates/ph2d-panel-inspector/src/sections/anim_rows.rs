@@ -260,7 +260,7 @@ fn range_and_timing_rows(
         );
     }
     // O vão entre grupos: «Who Picks» começa outro assunto.
-    cur_y + Spacing::Sm.px()
+    cur_y + ph2d_tokens::control_gap_px()
 }
 
 // ⚠️ **O passo é em MILISSEGUNDOS ou em CÉLULAS, nunca em pixels** — daí o marcador.

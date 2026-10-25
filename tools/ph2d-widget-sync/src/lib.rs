@@ -31,12 +31,18 @@ pub const MOD_END: &str = "// <ph2d-widget-sync:end>";
 const PUB_MODULE_OVERRIDE: &[&str] = &[
     "command_palette",
     "composto",
+    "illustration",
     "panel_chrome",
     "scroll_area",
     "section_cards",
     "section_plan",
+    "sheet_cell",
     "showcase",
 ];
+// `illustration` e `sheet_cell` (GameEngineFuncional 07–08, 2026-10-25) pelo criterio do
+// `command_palette`: os chamadores de fora alcancam sub-caminhos (`illustration::Mark`,
+// `sheet_cell::paint_sheet_cell`) — `ph2d-app-game`, `ph2d-app-components`, o Inspector e o editor
+// de animacoes.
 // `section_plan` entra aqui (2026-09-30) porque a lei das secções como lista — ordem, tema, pega,
 // fantasma — e lida de FORA por cada painel com secções, e a galeria (que e `widget`) tambem a usa;
 // `widget` nao pode ler `panel` (DAG), logo ela mora aqui e o `panel` re-exporta-a.

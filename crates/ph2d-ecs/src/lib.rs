@@ -127,6 +127,8 @@ pub mod sorting;
 /// **§11 Animation** — tags sobre a grelha que a sprite já tem, e o tocador. Módulo irmão.
 pub mod sprite_anim;
 pub mod sprite_anim_frames;
+/// O tempo de uma `AnimationTag` (ritmo, tempos próprios por passo) — `impl` irmão.
+mod sprite_anim_timing;
 /// **ADR-0164 F1 passo 6 / ADR-0166** — os três grupos que saíram do `Sprite`, cada um um
 /// componente que pode estar AUSENTE (é isso que os deixa fora do Inspector até o artista os
 /// pedir). Módulos irmãos, append-only.

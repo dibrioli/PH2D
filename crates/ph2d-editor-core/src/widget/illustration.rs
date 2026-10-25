@@ -159,5 +159,5 @@ fn paint_arrow_head(
 }
 
 #[cfg(test)]
-#[path = "illustration_tests.rs"]
+#[path = "illustration/tests.rs"]
 mod tests;

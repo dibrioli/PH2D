@@ -113,5 +113,5 @@ fn game_stage_of(id: ph2d_a11y::NodeId) -> Option<crate::game_stage::GameStage> 
 }
 
 #[cfg(test)]
-#[path = "menu_bar_run_tests.rs"]
+#[path = "../menu_bar_run_tests.rs"]
 mod run_tests;

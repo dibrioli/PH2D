@@ -118,6 +118,27 @@ passo — um material animado entre o checkpoint e o alvo re-simula com o valor 
 - **Rope Length**: a ponte anota o `L0` que semeia da rota (`ComprimentoDaRota`, `joints.rs:~645`, o ÚNICO sítio que escreve
   `max_length` da rota) e o amostrador só o ignora enquanto a corda tem esse valor — o que a mão digita depois grava-se.
 
+### E — report do dono (25/10): o caminho em construção é INVISÍVEL quando o estilo é transparente
+
+*«As ferramentas vetoriais não desenham uma linha virtual. Se o stroke e o fill estiverem transparentes, nada pode ser
+visto enquanto se desenha. Ex.: com o width do stroke em 0, a Pen mostra apenas handles.»*
+
+**Medido:** o path em construção é um path normal da cena, pintado só com o estilo real (`ph2d-vec-edit/src/pencil.rs:9-11`,
+`pen_support.rs:14-17`); as alças/nós vêm de `ph2d-vec-render/src/overlays.rs:57` com cores FIXAS (`:151-155`); o único
+contorno independente do estilo é o do hover (`hover_outline.rs:18-23`, 1,5 px, cor fixa — ⛔ HR-15) e só com o cursor
+em cima; uma forma seleccionada mostra só nós; não há vista Outline.
+
+**Os grandes apps (o idioma):** o guia do gesto é um desenho DA FERRAMENTA, separado do estilo do objecto — o Inkscape
+pinta uma linha-guia própria enquanto se desenha (o traço real só no fim); o Figma pinta o contorno na cor de selecção e
+uma linha azul da última âncora até ao cursor; o Illustrator mostra o path seleccionado na cor da camada (e o Lápis com
+Stroke «None» ficar invisível é reportado pelos utilizadores como defeito).
+
+**Cura (um bloco):** o **fio do caminho** — 1 px de ecrã, cor do token de selecção do tema — pintado (1) sobre o path em
+construção de TODA ferramenta de desenho vetorial (Pen, Pencil, Shape, Connect, Curvature…), (2) sobre as formas
+seleccionadas, (3) a linha da última âncora ao cursor no Pen; e as cores fixas do `hover_outline`/`overlays` passam a
+tokens. Gates: `um_caminho_sem_traco_nem_preenchimento_ve_se_enquanto_se_desenha` (pixels do overlay ≠ fundo com width 0
+e alpha 0), `a_forma_seleccionada_mostra_o_fio`, e o censo de cor crua no overlay vetorial.
+
 ## Smoke
 
 `PH2D_AUTOKEY_SMOKE=35` (a 34 é da F28; conta-se no despachante): um objecto com dois Timers e uma forma vetorial com três

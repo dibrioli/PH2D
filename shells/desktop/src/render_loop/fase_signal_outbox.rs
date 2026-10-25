@@ -41,8 +41,7 @@ impl crate::App {
         // e elas juntam-se às dos relógios ANTES de o dreno correr.
         mut deaths: Vec<ph2d_ecs::Death>,
         camera_rect: Option<([f32; 2], [f32; 2])>,
-        ticks: u32,
-        quadro_dt: f64,
+        relogio: ph2d_app_components::motores::Relogio,
     ) {
         let accoes = self.accoes_do_quadro();
         let vec_entities = &mut self.vec.entities;
@@ -176,12 +175,6 @@ impl crate::App {
         // de contador; o corpo mora na família. ⚠️ **A ORDEM é esta e é o que o texto emendado do
         // quadro mede:** os três falam ANTES de a tabela de acções ler.
         use ph2d_app_components::motores;
-        let relogio = motores::Relogio::do_quadro(
-            self.playhead.is_playing(),
-            ticks,
-            self.fixed_step.fixed_dt(),
-        )
-        .com_quadro(quadro_dt);
         let r = &mut self.signal_readers;
         let mut portas = ph2d_app_components::script_bridge::ScriptDoors {
             registry: component_registry,

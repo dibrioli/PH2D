@@ -282,29 +282,6 @@ impl crate::App {
         }
     }
 
-    /// **A ordem das raízes AGORA**, em `(StableId, RootOrder)` — o dedo do diagnóstico da ordem.
-    ///
-    /// ⚠️ `RootOrder` ausente sai como `None`, e isso é informação: uma cena onde ninguém arrastou
-    /// nada tem as três raízes sem ele, e é o arrasto que as numera.
-    pub(crate) fn root_order_digest(&mut self) -> Vec<(u64, Option<u32>)> {
-        let Some(gfx) = self.gfx.as_mut() else {
-            return Vec::new();
-        };
-        let mut q = gfx
-            .sim
-            .world_mut()
-            .query_filtered::<(
-                &ph2d_ecs::StableId,
-                Option<&ph2d_ecs::RootOrder>,
-            ), ph2d_ecs::Without<ph2d_ecs::ChildOf>>();
-        let mut v: Vec<(u64, Option<u32>)> = q
-            .iter(gfx.sim.world())
-            .map(|(s, r)| (s.0, r.map(|r| r.0)))
-            .collect();
-        v.sort_unstable();
-        v
-    }
-
     /// Desfaz (ou refaz) um passo da fila global: empurra o estado atual pro outro
     /// lado e aplica o restaurado.
     pub(crate) fn apply_undo(&mut self, redo: bool) {
@@ -482,7 +459,7 @@ impl crate::App {
         // AUSÊNCIA de eventos é o último.** *Um diagnóstico que nomeia a causa errada entre duas
         // simultâneas é pior do que não nomear nenhuma.*
         // O que o jogo muda não é do artista: a saída da corrida repõe a fotografia (`undo::jogo`).
-        let motivo = if self.jogo.a_correr() {
+        let motivo = if self.undo.jogo.a_correr() {
             Some(tr("shell.undo_app.o_jogo_esta_a_correr"))
         } else if self.held_button.is_some() {
             Some(tr("shell.undo_app.botao_do_rato_em_baixo"))

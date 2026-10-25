@@ -32,7 +32,7 @@ impl crate::App {
         );
         self.jogo_quadro(self.timeline.runtime);
         if let Some(gfx) = self.gfx.as_mut() {
-            ph2d_app_game::marca_a_copia(gfx.sim.world_mut(), self.jogo.foto().is_some());
+            ph2d_app_game::marca_a_copia(gfx.sim.world_mut(), self.undo.jogo.foto().is_some());
         }
         let fase_fixed_step_clocks::FrameClocks {
             report,
@@ -78,8 +78,13 @@ impl crate::App {
             timer_signals,
             deaths,
             camera_rect,
-            report.ticks,
-            quadro_dt,
+            // O relógio dos motores: os tiques deste quadro e o tempo de parede dele (o `process`).
+            ph2d_app_components::motores::Relogio::do_quadro(
+                self.playhead.is_playing(),
+                report.ticks,
+                self.fixed_step.fixed_dt(),
+            )
+            .com_quadro(quadro_dt),
         );
         self.fase_open_recipe();
         // ⭐⭐⭐ **OS MOTORES DE POSE DO ESQUELETO ANTES DO EXTRACT, e a ordem é load-bearing** (report

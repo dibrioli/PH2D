@@ -33,7 +33,7 @@ fn log_on() -> bool {
 impl crate::App {
     /// As bordas da corrida deste quadro. `corre` = a cena está a correr depois do dreno dela.
     pub(crate) fn jogo_quadro(&mut self, corre: bool) {
-        match self.jogo.quadro(corre) {
+        match self.undo.jogo.quadro(corre) {
             Passo::Fotografa => self.jogo_entra(),
             Passo::Repoe(foto) => self.jogo_sai(foto),
             Passo::Nada => {}
@@ -55,7 +55,7 @@ impl crate::App {
         }
         let marca = self.field_selection_mark();
         let vista = self.palco_entra();
-        self.jogo.guarda(FotoDoJogo {
+        self.undo.jogo.guarda(FotoDoJogo {
             estado,
             marca,
             vista,
@@ -73,24 +73,25 @@ impl crate::App {
             println!(
                 "[jogo] Stop: documento {} · igual ao do Play: {}",
                 agora.map_or("?".into(), |d| format!("{d:016x}")),
-                if agora == Some(antes) { "SIM" } else { "NÃO" }
+                agora == Some(antes)
             );
         }
         if let Some(gfx) = self.gfx.as_mut() {
-            gfx.toasts.push(ph2d_editor_core::toast::Toast::info(ph2d_i18n::tr(
-                "shell.undo_jogo.scene_restored",
-            )));
+            gfx.toasts
+                .push(ph2d_editor_core::toast::Toast::info(ph2d_i18n::tr(
+                    "shell.undo_jogo.scene_restored",
+                )));
         }
     }
 
     /// O documento do artista enquanto o jogo corre (o que o save grava), ou `None` fora do Play.
     pub(crate) fn documento_do_jogo(&self) -> Option<super::ProjectState> {
-        self.jogo.foto().map(|f| f.estado.clone())
+        self.undo.jogo.foto().map(|f| f.estado.clone())
     }
 
     /// Um Ctrl+Z com o jogo a correr: recusado, e dito. `true` = recusou.
     pub(super) fn jogo_recusa_o_undo(&mut self) -> bool {
-        if !self.jogo.a_correr() {
+        if !self.undo.jogo.a_correr() {
             return false;
         }
         if let Some(gfx) = self.gfx.as_mut() {

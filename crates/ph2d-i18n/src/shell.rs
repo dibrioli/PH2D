@@ -411,7 +411,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.undo_jogo.stop_to_undo" => "Stop the game to undo",
         "shell.janela_do_jogo.title" => "PH2D \u{b7} Game",
         "shell.janela_do_jogo.no_window" => "The game window could not open \u{b7} playing here",
-        "shell.undo_jogo.scene_restored" => "Game stopped \u{b7} the scene is back as it was before Play",
+        "shell.undo_jogo.scene_restored" => {
+            "Game stopped \u{b7} the scene is back as it was before Play"
+        }
         "shell.undo_app.transicao_de_estado_de" => "transicao de estado de UI ao vivo",
         "shell.undo_app.colorize_a_recalcular" => "colorize a recalcular",
         "shell.undo_app.botao_do_rato_em_baixo" => "botao do rato em baixo",

@@ -2,6 +2,29 @@
 //! passo que o baseline vira. Irmão de [`super::app`] por RESPONSABILIDADE (o tecto de 600 do HR-18).
 
 impl crate::App {
+    /// **A ordem das raízes AGORA**, em `(StableId, RootOrder)` — o dedo do diagnóstico da ordem.
+    ///
+    /// ⚠️ `RootOrder` ausente sai como `None`, e isso é informação: uma cena onde ninguém arrastou
+    /// nada tem as três raízes sem ele, e é o arrasto que as numera.
+    pub(crate) fn root_order_digest(&mut self) -> Vec<(u64, Option<u32>)> {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return Vec::new();
+        };
+        let mut q = gfx
+            .sim
+            .world_mut()
+            .query_filtered::<(
+                &ph2d_ecs::StableId,
+                Option<&ph2d_ecs::RootOrder>,
+            ), ph2d_ecs::Without<ph2d_ecs::ChildOf>>();
+        let mut v: Vec<(u64, Option<u32>)> = q
+            .iter(gfx.sim.world())
+            .map(|(s, r)| (s.0, r.map(|r| r.0)))
+            .collect();
+        v.sort_unstable();
+        v
+    }
+
     /// A reescrita de uma etapa editada de uma macro escreveu (W8): o passo global regista-se já com a
     /// transação dela.
     pub(super) fn reescrita_aterrou(&self) -> bool {

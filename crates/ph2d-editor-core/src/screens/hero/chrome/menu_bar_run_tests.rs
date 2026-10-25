@@ -20,19 +20,31 @@ fn cada_linha_do_run_escolhe_o_palco_e_joga() {
         } else {
             GameStage::Window
         };
-        assert!(super::super::dispatch_all(&mut hero, WidgetEvent::Click(id)));
+        assert!(super::super::dispatch_all(
+            &mut hero,
+            WidgetEvent::Click(id)
+        ));
         assert_eq!(hero.view.game_stage, stage, "{id:?} não escolheu o palco");
         let got: Vec<EditorAction> = hero.bus.drain().collect();
         assert!(
-            matches!(got.as_slice(), [EditorAction::Transport(TransportCmd::Play)]),
+            matches!(
+                got.as_slice(),
+                [EditorAction::Transport(TransportCmd::Play)]
+            ),
             "{id:?} não levantou o Play: {got:?}"
         );
         // A marca do menu diz a escolha.
-        assert_eq!(super::super::super::menu_bar::module_is_on(&hero, id), Some(true));
+        assert_eq!(
+            super::super::super::menu_bar::module_is_on(&hero, id),
+            Some(true)
+        );
     }
 }
 
 #[test]
 fn o_jogo_abre_numa_janela_por_omissao() {
-    assert_eq!(HeroScreen::new(NodeId(1)).view.game_stage, GameStage::Window);
+    assert_eq!(
+        HeroScreen::new(NodeId(1)).view.game_stage,
+        GameStage::Window
+    );
 }

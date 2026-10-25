@@ -403,7 +403,11 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
                 || *id == ids::MENUBAR_VIEW_COLUMN_LEFT
                 || *id == ids::MENUBAR_VIEW_COLUMN_RIGHT
                 // ⭐ D10 F5 (08/10): a fila ② embaixo — em cima/embaixo é um estado.
-                || *id == ids::MENUBAR_VIEW_TOOL_ROW_BOTTOM;
+                || *id == ids::MENUBAR_VIEW_TOOL_ROW_BOTTOM
+                // ⭐ Onde jogar (GameEngineFuncional R0): a marca é a escolha actual.
+                || *id == ids::MENUBAR_RUN_WINDOW
+                || *id == ids::MENUBAR_RUN_FULLSCREEN
+                || *id == ids::MENUBAR_RUN_EDITOR;
             assert_eq!(
                 menu_bar::row_is_marked_by_button_state(*id),
                 is_toggle,
@@ -427,11 +431,12 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
 /// As linhas de alternância que **não** vivem no menu *Window*: os dois painéis laterais
 /// (*Hierarchy*, *Inspector*), a régua, — desde 2026-09-19 — as duas COLUNAS, e — desde 2026-10-07
 /// (D10) até 2026-10-15 (o dono tirou o desligar) — a barra de ações da seleção, e — desde
-/// 2026-10-08 (D10 F5) — a fila ② embaixo.
+/// 2026-10-08 (D10 F5) — a fila ② embaixo, e — desde 2026-10-25 (GameEngineFuncional R0) — as três
+/// linhas do *Run* que escolhem onde jogar.
 ///
 /// ⚠️ Escritas como CONTAGEM porque a lista delas está no `is_toggle` acima — se lá aparecer mais
 /// uma, este número tem de subir no mesmo commit, e o gate diz qual é a diferença.
-const OUTSIDE_WINDOW_TOGGLES: usize = 6;
+const OUTSIDE_WINDOW_TOGGLES: usize = 9;
 
 /// **E a régua PUBLICA o estado dela**, porque quem pinta a marca não alcança o `HeroScreen`.
 #[test]

@@ -232,7 +232,7 @@ impl crate::App {
         // porque ele também se compara com os ids que o mundo de facto tem.
         let stable_id_seed = migrated_counter.unwrap_or(file.stable_id_counter);
         self.materialize_assets(&file.assets);
-        self.jogo.esquece();
+        self.undo.jogo.esquece();
         self.apply_project(&file.state);
         // ⚠️ **A semente do contador entra AQUI, logo depois de o mundo existir** (ADR-0164
         // F1). Antes do `apply_project` não haveria mundo onde a pôr; muito depois, uma

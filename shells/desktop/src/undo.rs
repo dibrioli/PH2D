@@ -359,6 +359,10 @@ pub(crate) struct ProjectUndo {
     redo: Vec<Degrau>,
     /// A edição de etapa de uma macro que espera a conta dela (W14): fora do baseline e dos passos.
     pub(crate) espera: ph2d_app_macros::espera::EdicaoQueEspera,
+    /// O Play sobre uma cópia ([`jogo`]): o documento, a selecção e a vista de antes da corrida.
+    pub(crate) jogo: ph2d_app_game::Sessao<FotoDoJogo>,
+    /// O editor guardado enquanto o app vive na janela do jogo (`crate::janela_do_jogo`).
+    pub(crate) janela_do_jogo: Option<crate::janela_do_jogo::JanelaDoJogo>,
 }
 
 impl ProjectUndo {

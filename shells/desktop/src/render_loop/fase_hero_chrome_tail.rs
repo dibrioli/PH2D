@@ -12,6 +12,8 @@ use super::*;
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_hero_chrome_tail(&mut self, viewport: EditorRect) {
+        // No palco do jogo os avisos esperam pelo editor (`janela_do_jogo`).
+        let palco = self.no_palco();
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -50,7 +52,9 @@ impl crate::App {
             // The job bars share the toasts' column and stack UNDER them by the ROWS the toasts
             // took (a long toast spans several) — one door paints both, so neither the shell nor
             // either painter has an opinion about where row N is.
-            ph2d_editor_core::toast::paint_top_column(toasts, jobs, cena, &mut paint_ctx);
+            if !palco {
+                ph2d_editor_core::toast::paint_top_column(toasts, jobs, cena, &mut paint_ctx);
+            }
         });
         // Drain frame-local arena AFTER the dispatch + paint pass
         // so any events emitted earlier this frame are still alive

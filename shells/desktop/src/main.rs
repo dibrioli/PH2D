@@ -230,7 +230,6 @@ mod image_import;
 mod import_router;
 mod init;
 mod input_dispatch;
-mod janela_do_jogo;
 mod input_drop;
 mod input_handlers;
 mod input_log;
@@ -240,6 +239,7 @@ mod input_map_drag;
 #[path = "inspector_presence_tests.rs"]
 mod inspector_presence_tests;
 mod integration;
+mod janela_do_jogo;
 mod keymap;
 /// A cena de smoke do Knot (o entrelace celta over/under) — irmão de `build_smoke`.
 mod knot_smoke;
@@ -727,8 +727,6 @@ impl App {
             prefab_editing: None,
             prefab_cancel: None,
             prefab_cancel_pending: false,
-            jogo: ph2d_app_game::Sessao::default(),
-            janela_do_jogo: None,
             pending_ui_sound: None,
             hover_outline: Vec::new(),
             dragging: None,
@@ -898,40 +896,7 @@ impl App {
         self.run_render_frame();
         // O ponteiro de uma aba muda sem o rato mexer (o Ctrl, uma resposta do assistente).
         self.update_eyedropper_cursor();
-        // **A SELEÇÃO** (`flip_select`, W6): no modo Edit ela é o alvo dos ajustes do
-        // painel. Só a MUDANÇA de estilo age.
-        // ⭐ W2/L5 2.ª volta: as duas pedem o DOCUMENTO e o relógio, nunca a `App`.
-        {
-            let playhead = self.playhead;
-            if let Some(gfx) = self.gfx.as_mut()
-                && ph2d_app_flip::select::flip_edit_style_refresh(
-                    &mut self.flip_state,
-                    &mut gfx.flip,
-                    &playhead,
-                )
-            {
-                self.title_dirty = true;
-            }
-        }
-        // **O DOMÍNIO da seleção** (W8): a troca Stroke↔Point converte a seleção no
-        // documento (broadcast/promoção) — uma vez, quando o toggle muda.
-        {
-            let playhead = self.playhead;
-            if let Some(gfx) = self.gfx.as_mut()
-                && ph2d_app_flip::select_points::flip_edit_domain_refresh(
-                    &mut self.flip_state,
-                    &mut gfx.flip,
-                    &playhead,
-                )
-            {
-                self.title_dirty = true;
-            }
-        }
-        // Depois do frame (estado já reconciliado pelo `sync`, `self` livre do borrow
-        // do render loop): drena um Ctrl+Z/Y pendente e registra a ação do frame na
-        // fila de undo global, por diff de estado (ver `undo::post_frame_undo`).
-        // ⭐ O SYNC das instâncias (ADR-0164): DEPOIS do quadro e ANTES da captura (senão a escrita
-        // do sync vira um passo de undo que ninguém deu). Ver o doc da função.
+        self.flip_edit_refresh();
         self.sync_instances();
         // ⭐⭐⭐ A SAÍDA da sessão de receita, ANTES do `post_frame_undo`: um cancelamento é uma
         // mudança do documento como outra qualquer ([`ph2d_app_components::prefab_stage`]).
@@ -969,18 +934,13 @@ impl ApplicationHandler for App {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
-        // Só a janela onde o app vive conduz; a outra (o editor parado atrás da janela do jogo) só
-        // sabe fechar — e fechar pára o jogo (`janela_do_jogo`).
-        if self.window.as_ref().is_some_and(|w| w.id() != id) {
-            if matches!(event, WindowEvent::CloseRequested) {
-                self.jogo_para();
-            }
+        if self.da_outra_janela(id, &event) {
             return;
         }
         // A pure dispatch table (PR 9b): one arm here + one `input_dispatch::App::on_<arm>` method
         // there — `docs/Migracao/2026-05-convention-by-discovery.md`.
         match event {
-            WindowEvent::CloseRequested if self.janela_do_jogo.is_some() => self.jogo_para(),
+            WindowEvent::CloseRequested if self.undo.janela_do_jogo.is_some() => self.jogo_para(),
             WindowEvent::CloseRequested => self.on_close_request(event_loop),
             WindowEvent::Resized(size) => self.on_resized(size),
             WindowEvent::HoveredFile(path) => self.on_hovered_file(path),

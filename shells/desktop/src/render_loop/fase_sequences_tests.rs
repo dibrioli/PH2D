@@ -353,7 +353,9 @@ fn o_play_de_cima_chega_a_timeline_antes_do_relogio_da_vista() {
     // passo fixo — a fotografia do Play é do documento, não do 1.º quadro do jogo — e, por isso,
     // antes do dreno da timeline que escolhe o relógio da vista.
     let sim = std::fs::read_to_string(raiz.join("fase_frame_open.rs")).unwrap();
-    let take = sim.find("take_runtime(").expect("a simulação passa a corrida");
+    let take = sim
+        .find("take_runtime(")
+        .expect("a simulação passa a corrida");
     let jogo = sim.find("self.jogo_quadro(").expect("e as bordas do jogo");
     let motores = sim
         .find("self.fase_fixed_step_clocks(")

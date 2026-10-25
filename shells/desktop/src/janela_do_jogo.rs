@@ -69,8 +69,9 @@ impl crate::App {
     /// Depois de cada quadro, com o event loop na mão: abre a janela que o palco pede e fecha-a quando
     /// o jogo pára.
     pub(crate) fn palco_janela(&mut self, event_loop: &ActiveEventLoop) {
-        let quer = self.jogo.foto().and_then(|f| f.vista).map(|v| v.stage) == Some(GameStage::Window);
-        match (quer, self.janela_do_jogo.is_some()) {
+        let quer =
+            self.undo.jogo.foto().and_then(|f| f.vista).map(|v| v.stage) == Some(GameStage::Window);
+        match (quer, self.undo.janela_do_jogo.is_some()) {
             (true, false) => self.abre_a_janela_do_jogo(event_loop),
             (false, true) => self.fecha_a_janela_do_jogo(),
             _ => {}
@@ -123,6 +124,22 @@ impl crate::App {
         }
     }
 
+    /// Só a janela onde o app vive conduz; a outra (o editor parado atrás da janela do jogo) só sabe
+    /// fechar — e fechar pára o jogo. `true` = o evento era da outra janela.
+    pub(crate) fn da_outra_janela(
+        &mut self,
+        id: winit::window::WindowId,
+        event: &winit::event::WindowEvent,
+    ) -> bool {
+        if self.window.as_ref().is_none_or(|w| w.id() == id) {
+            return false;
+        }
+        if matches!(event, winit::event::WindowEvent::CloseRequested) {
+            self.jogo_para();
+        }
+        true
+    }
+
     /// O Stop por fora do transporte (fechar a janela do jogo): a MESMA porta do botão.
     pub(crate) fn jogo_para(&mut self) {
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
@@ -139,16 +156,21 @@ impl crate::App {
             .with_title(ph2d_i18n::tr("shell.janela_do_jogo.title"))
             .with_inner_size(TAMANHO);
         let gpu = gfx.surface.gpu().clone();
-        let aberta = event_loop.create_window(attrs).ok().map(Arc::new).and_then(|w| {
-            let raw = gpu.instance.create_surface(w.clone()).ok()?;
-            let host = crate::winit_host::WinitHost::new(w.clone());
-            let surface = ph2d_gpu::SurfaceContext::new(gpu, raw, host.window_size()).ok()?;
-            Some((w, host, surface))
-        });
+        let aberta = event_loop
+            .create_window(attrs)
+            .ok()
+            .map(Arc::new)
+            .and_then(|w| {
+                let raw = gpu.instance.create_surface(w.clone()).ok()?;
+                let host = crate::winit_host::WinitHost::new(w.clone());
+                let surface = ph2d_gpu::SurfaceContext::new(gpu, raw, host.window_size()).ok()?;
+                Some((w, host, surface))
+            });
         let Some((window, host, surface)) = aberta else {
-            gfx.toasts.push(ph2d_editor_core::toast::Toast::info(ph2d_i18n::tr(
-                "shell.janela_do_jogo.no_window",
-            )));
+            gfx.toasts
+                .push(ph2d_editor_core::toast::Toast::info(ph2d_i18n::tr(
+                    "shell.janela_do_jogo.no_window",
+                )));
             return;
         };
         window.set_ime_allowed(true);
@@ -158,7 +180,7 @@ impl crate::App {
         else {
             return;
         };
-        self.janela_do_jogo = Some(JanelaDoJogo {
+        self.undo.janela_do_jogo = Some(JanelaDoJogo {
             editor_window,
             editor_host,
             editor_surface,
@@ -169,7 +191,7 @@ impl crate::App {
     }
 
     fn fecha_a_janela_do_jogo(&mut self) {
-        let Some(j) = self.janela_do_jogo.take() else {
+        let Some(j) = self.undo.janela_do_jogo.take() else {
             return;
         };
         // A surface do jogo cai ANTES da janela dela.

@@ -42,6 +42,7 @@ pub mod documents;
 pub mod editor_highlight;
 pub mod floating_panel;
 pub mod frame_label;
+pub mod game_stage;
 pub mod gizmo;
 pub mod grid;
 pub mod grid_snap;
@@ -88,7 +89,6 @@ pub mod ruler;
 pub mod screens;
 pub mod tether;
 pub mod text_elide;
-pub mod game_stage;
 pub mod toast;
 /// A lei de LEITURA de um aviso: quebra, linhas da coluna, tempo de vida (doc 132 §5).
 pub mod toast_reading;

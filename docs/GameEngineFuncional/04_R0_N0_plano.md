@@ -60,3 +60,20 @@ script ou Stop). **Sinais por objecto:** o sinal leva quem o emitiu; `on_signal(
 | Correr o jogo num 2.º `SimWorld` | todos os sistemas (física, scripts, desenho, partículas) leem O mundo; duplicá-los é reescrever o quadro — a fotografia pela porta do undo dá o mesmo contrato (o documento não muda) |
 | Repor só o estado vivo (o Reset de hoje) | não desfaz o que o script criou, apagou ou renomeou — é o defeito medido |
 | Fotografar no fim do quadro (como o `prefab_cancel`) | o 1.º quadro do jogo já correu `init`/`update` e a fotografia sairia suja |
+
+## Medido no fecho
+
+- Hash do documento `c768d248a6970738` antes do Play e depois do Stop: igual nas 3 variantes
+  (`PH2D_GAME_SMOKE_DRIVE=window|fullscreen|editor`), 4 rodadas.
+- Ecrã antes × depois do Stop: 0,45 % de pixéis diferentes (só os avisos). Hierarquia 14 → 12 → 14.
+- Shell: main no tecto (189 041), linha a +466; depois de descer a ponte do Timer e os gates do menu de
+  presets: 188 838; `main.rs` 1061 → 1034.
+
+### ⛔ Recusas MEDIDAS (novas)
+
+| Recusado | Porquê |
+|---|---|
+| Zen para o palco do jogo | só fala com o layout antigo; View ▸ Focus mode na UI nova não esconde nada (controlo provavelmente morto, por verificar) |
+| 2.º `SimWorld` | ver a tabela acima |
+| Repor só o estado vivo · fotografar no fim do quadro | ver a tabela acima |
+| Desenhar o mundo 2× por quadro já | a codificação do mundo está fundida com o despacho da UI em `fase_hero_frame` — é o R1 |

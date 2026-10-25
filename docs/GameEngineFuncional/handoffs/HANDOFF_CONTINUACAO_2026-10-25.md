@@ -8,6 +8,7 @@
 
 | Onda | Commits | O quê |
 |---|---|---|
+| R0 + N0 | `9d515913ad`..`2d8cdb59b9` | feito depois deste handoff: ver [`HANDOFF_CONTINUACAO_2026-10-25_R0_N0.md`](HANDOFF_CONTINUACAO_2026-10-25_R0_N0.md) |
 | W1 | `e0334a4b88` `3b8c54fa2d` | Image Paint→Draw, Vector Edit→Draw (`ObjectMode::Paint` saiu); escolher outro objecto num modo volta a Object (cadeado revogado: `object_mode::switches`, `ModeState::ask_release`, `mode_drive::chosen`/`lasso_chosen`); num modo, o clique pega só o de cima (`picks_only_the_top`); o Inspector vem à frente na troca do activo (`reveal_inspector`); `CanvasOwner::Mode(kind, mode)` / `ModeRequest::Open(kind, mode)`. Doc: [`01_W1`](../01_W1_modos_selecao_inspector.md) |
 | W1b | `67a58458c3` | o clique curto da Shape/Frame/Pencil escolhe o objecto de cima de outro tipo |
 | W1c | `6f6db7ca00` | TODAS as ferramentas do vetor: press sobre outro objecto fica seguro (`ph2d_app_vec::short_click`, `VecState::held_press`); arrastar >4 px devolve-o à ferramenta (`ramo_vetor_premido_cadeia`); excepções: conta-gotas, caneta a meio, texto em edição |

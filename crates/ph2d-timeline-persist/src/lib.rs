@@ -153,7 +153,11 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
                 !Entity::try_from_bits(o.entity).is_some_and(|e| world.get_entity(e).is_ok());
         }
     }
-    let any_missing = timeline.doc.bindings().iter().any(|b| b.missing)
+    let any_missing = timeline
+        .doc
+        .bindings()
+        .iter()
+        .any(|b| b.missing && !b.item_missing)
         || timeline
             .doc
             .clips()
@@ -285,7 +289,7 @@ fn dead_wire_ids(
     let ids: std::collections::BTreeSet<u64> = doc
         .bindings()
         .iter()
-        .filter(|b| b.missing && by_wire.get(&b.wire_id.0) != Some(&None))
+        .filter(|b| b.missing && !b.item_missing && by_wire.get(&b.wire_id.0) != Some(&None))
         .map(|b| b.wire_id.0)
         .chain(
             doc.clips()
@@ -312,7 +316,7 @@ fn purge_the_dead(
         .doc
         .bindings()
         .iter()
-        .filter(|b| b.missing && by_wire.get(&b.wire_id.0) != Some(&None))
+        .filter(|b| b.missing && !b.item_missing && by_wire.get(&b.wire_id.0) != Some(&None))
         .map(|b| b.target)
         .collect();
     // O mesmo critério para o DONO de um clip: a animação de um objecto morto sai com ele.
@@ -586,3 +590,8 @@ mod textos_tests;
 #[cfg(test)]
 #[path = "timeline_vetor_ids_tests.rs"]
 mod vetor_ids_tests;
+
+/// ⚠️ Irmão de [`tests`] pelo mesmo teto — a camada apagada leva a linha (decisão do dono 25/10).
+#[cfg(test)]
+#[path = "timeline_item_apagado_tests.rs"]
+mod item_apagado_tests;

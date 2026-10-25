@@ -129,8 +129,10 @@ pub fn publicar(
         .world_mut()
         .get_resource_or_insert_with(cl::PosicoesDosItens::default);
     pos.0.retain(|(b, _), _| !entidades.contains(b));
+    pos.1.retain(|b| !entidades.contains(b));
     for (b, (_, ps)) in &lotes {
         pos.0.extend(ps.iter().map(|&(id, n)| ((*b, id), n)));
+        pos.1.insert(*b);
     }
     let mut lidos = sim
         .world_mut()

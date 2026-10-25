@@ -83,9 +83,14 @@ pub fn membro(k: FieldKey) -> Option<&'static str> {
 }
 
 /// A posição (1, 2, …) de cada item publicado, por `(entidade, ItemId)` — só para o NOME da linha
-/// do dope-sheet («Duration 2»); ⛔ nunca é identidade. O funil publica-a com os valores.
+/// do dope-sheet («Duration 2»); ⛔ nunca é identidade. O funil publica-a com os valores. O 2.º campo
+/// são as entidades publicadas: só sobre elas a falta de um item quer dizer «apagado»
+/// ([`crate::canal_item_vivo`]).
 #[derive(bevy_ecs::resource::Resource, Debug, Default, Clone, PartialEq, Eq)]
-pub struct PosicoesDosItens(pub BTreeMap<(u64, u32), u16>);
+pub struct PosicoesDosItens(
+    pub BTreeMap<(u64, u32), u16>,
+    pub std::collections::BTreeSet<u64>,
+);
 
 #[cfg(test)]
 #[path = "canal_lista_tests.rs"]

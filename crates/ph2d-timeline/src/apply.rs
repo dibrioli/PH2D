@@ -276,7 +276,13 @@ pub(crate) fn refresh_liveness_and_rest(world: &mut World, doc: &mut TimelineDoc
         // already documented to write.)
         let entity = Entity::try_from_bits(entity_bits);
         let alive = entity.is_some_and(|e| world.get_entity(e).is_ok());
+        // A camada apagada segue a lei do objecto apagado (dono 25/10): escondida, guardada.
+        let item_missing = alive
+            && matches!(prop, PropKind::Field(k)
+                if !ph2d_ecs::canal_item_vivo::item_vivo(world, entity_bits, k));
+        let alive = alive && !item_missing;
         doc.bindings_mut()[i].missing = !alive;
+        doc.bindings_mut()[i].item_missing = item_missing;
         if let Some(entity) = entity.filter(|_| alive)
             && doc.bindings()[i].rest.is_none()
             && prop != PropKind::TimeRemap

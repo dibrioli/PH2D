@@ -113,7 +113,8 @@ pub fn refresh_and_heal_bindings(
             if !w.is_null() {
                 b.wire_id = w;
             }
-        } else if !b.wire_id.is_null()
+        } else if !b.item_missing
+            && !b.wire_id.is_null()
             && let Some(entity) = entity_of(b.wire_id)
         {
             b.entity = entity;

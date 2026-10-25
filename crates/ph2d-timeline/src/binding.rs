@@ -55,6 +55,11 @@ pub struct TargetBinding {
     /// silent no-op — P6).
     #[serde(skip)]
     pub missing: bool,
+    /// `missing` porque o ITEM da chave saiu (a tinta, o filtro, o item de lista) com o objecto
+    /// vivo — a cura pela identidade não o recola nem a purga o leva: volta quando o item volta
+    /// ([`ph2d_ecs::canal_item_vivo`]).
+    #[serde(skip)]
+    pub item_missing: bool,
     /// The value this property held when it was **first animated** — the pose the
     /// object was in before the timeline took it over.
     ///
@@ -151,6 +156,7 @@ impl TargetBinding {
             wire_id: WireId::NULL,
             entity,
             missing: false,
+            item_missing: false,
             rest: None,         // captured on the first live apply (see the field)
             auto_orient: false, // opt-in: girar sem pedido reescreve a pose autorada
             expr: None,         // driven by keyframes until a formula is authored (v15)

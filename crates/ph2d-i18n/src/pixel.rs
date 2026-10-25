@@ -8,6 +8,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.tool.pencil" => "Pencil",
         "pixel.tool.eraser" => "Eraser",
         "pixel.tool.eyedropper" => "Eyedropper",
+        "pixel.tool.hand" => "Hand",
         "pixel.tool_switched" => "{tool} ({key})",
         "pixel.zoom" => "Zoom {n}00 %",
         "pixel.grid_on" => "Pixel grid on",

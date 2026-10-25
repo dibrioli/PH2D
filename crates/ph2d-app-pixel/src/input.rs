@@ -24,6 +24,17 @@ pub struct Canvas<'a> {
     pub editing: Option<u64>,
 }
 
+/// O que um premir fez.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Press {
+    /// Não é da família (fora de Edit).
+    NotMine,
+    /// Consumido: pintou, apagou ou leu uma cor.
+    Done,
+    /// A mão: a shell ancora o pan da câmera neste ponto.
+    Pan,
+}
+
 /// O botão do ponteiro.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Button {
@@ -72,25 +83,36 @@ fn cell(app: &PixelApp, c: &Canvas<'_>, bits: u64, key: u32, p: (f32, f32)) -> O
 /// objectos): com o lápis pinta a cor de frente (esquerdo) ou de fundo (direito); a borracha apaga
 /// (direito: troca a cor de frente pela de fundo); o conta-gotas (ou `Alt`) lê a cor para a frente
 /// (esquerdo) ou o fundo (direito).
-pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, alt: bool) -> bool {
+pub fn press(
+    app: &mut PixelApp,
+    c: &Canvas<'_>,
+    p: (f32, f32),
+    button: Button,
+    alt: bool,
+) -> Press {
     let Some(bits) = c.editing else {
-        return false;
+        return Press::NotMine;
     };
     let Some(key) = key_of(c.world, bits) else {
-        return false;
+        return Press::NotMine;
     };
+    if app.space || app.tool == Tool::Hand {
+        app.panning = true;
+        return Press::Pan;
+    }
     let Some((x, y)) = cell(app, c, bits, key, p) else {
-        return true;
+        return Press::Done;
     };
     let tool = if alt { Tool::Eyedropper } else { app.tool };
     let (fg, bg) = (app.fg, app.bg);
     let stamp = app.stamp();
     let Some(doc) = app.docs.get_mut(&key) else {
-        return false;
+        return Press::NotMine;
     };
     let s = &doc.sprite;
     let (layer, frame) = (doc.layer, doc.frame);
     let stroke = match (tool, button) {
+        (Tool::Hand, _) => return Press::Pan,
         (Tool::Eyedropper, _) => {
             if let Some(v) = pick(s, frame, x, y, Sample::AllLayers) {
                 let rgba = s.rgba_of_value(v);
@@ -99,7 +121,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
                     Button::Secondary => app.bg = rgba,
                 }
             }
-            return true;
+            return Press::Done;
         }
         (Tool::Pencil, Button::Primary) => {
             Stroke::begin(s, layer, frame, s.value_of_rgba(fg), x, y)
@@ -126,7 +148,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         key,
         stroke,
     });
-    true
+    Press::Done
 }
 
 /// O que a borracha deixa: transparente; na camada Background, a cor de fundo (Aseprite).
@@ -157,6 +179,27 @@ pub fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32)) -> bool {
     };
     g.stroke.to(&doc.sprite, x, y);
     doc.stamp = stamp;
+    true
+}
+
+/// Largar a mão: a câmera realinha as arestas das células a píxeis inteiros. `false` = não havia
+/// arrasto da mão.
+pub fn release_pan(
+    app: &mut PixelApp,
+    world: &ph2d_ecs::World,
+    camera: &mut Camera2d,
+    window: WindowSize,
+    ppm: f32,
+    editing: Option<u64>,
+) -> bool {
+    if !std::mem::take(&mut app.panning) {
+        return false;
+    }
+    if let Some(bits) = editing
+        && let Some(doc) = key_of(world, bits).and_then(|k| app.docs.get(&k))
+    {
+        snap(world, bits, doc, camera, window, ppm);
+    }
     true
 }
 
@@ -254,6 +297,21 @@ pub enum KeyAnswer {
     Toast(String),
 }
 
+/// `Espaço` segurado/solto em Edit — a mão temporária. `true` = consumido.
+pub fn space(
+    app: &mut PixelApp,
+    world: &ph2d_ecs::World,
+    editing: Option<u64>,
+    held: bool,
+) -> bool {
+    if editing.and_then(|b| key_of(world, b)).is_none() {
+        app.space = false;
+        return false;
+    }
+    app.space = held;
+    true
+}
+
 /// As teclas do modo Edit (só ao premir; a shell já descartou o caso de um campo de texto com o
 /// foco). `None` = não é desta família.
 pub fn key(
@@ -280,6 +338,7 @@ pub fn key(
         (KeyCode::KeyB, false, false) => tool(app, Tool::Pencil),
         (KeyCode::KeyE, false, false) => tool(app, Tool::Eraser),
         (KeyCode::KeyI, false, false) => tool(app, Tool::Eyedropper),
+        (KeyCode::KeyH, false, false) => tool(app, Tool::Hand),
         (KeyCode::KeyX, false, false) => {
             std::mem::swap(&mut app.fg, &mut app.bg);
             KeyAnswer::Quiet

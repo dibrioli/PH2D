@@ -37,6 +37,8 @@ impl PixelApp {
         if editing.is_none() {
             self.gesture = None;
             self.hover = None;
+            self.space = false;
+            self.panning = false;
         }
         if editing != self.was_editing
             && let Some(bits) = editing

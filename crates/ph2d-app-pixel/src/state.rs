@@ -12,6 +12,8 @@ pub enum Tool {
     Pencil,
     Eraser,
     Eyedropper,
+    /// A mão: arrastar move a vista (`Espaço` segurado faz o mesmo com qualquer ferramenta).
+    Hand,
 }
 
 impl Tool {
@@ -22,6 +24,7 @@ impl Tool {
             Tool::Pencil => "pixel.tool.pencil",
             Tool::Eraser => "pixel.tool.eraser",
             Tool::Eyedropper => "pixel.tool.eyedropper",
+            Tool::Hand => "pixel.tool.hand",
         }
     }
 
@@ -32,6 +35,7 @@ impl Tool {
             Tool::Pencil => "B",
             Tool::Eraser => "E",
             Tool::Eyedropper => "I",
+            Tool::Hand => "H",
         }
     }
 }
@@ -83,6 +87,10 @@ pub struct PixelApp {
     /// A grelha de pixels (View ▸ Show ▸ Pixel Grid; desligada por omissão, como no Aseprite).
     pub grid: bool,
     pub(crate) gesture: Option<Gesture>,
+    /// `Espaço` segurado em Edit (a mão temporária do Aseprite).
+    pub(crate) space: bool,
+    /// Um arrasto da mão em curso (a shell move a câmera; ao largar, as células realinham).
+    pub(crate) panning: bool,
     pub(crate) hover: Option<(u64, (i32, i32))>,
     pub(crate) next_stamp: u64,
     /// O objecto que nasceu e pede o modo Edit (uma vez).
@@ -102,6 +110,8 @@ impl Default for PixelApp {
             bg: [0, 0, 0, 255],
             grid: false,
             gesture: None,
+            space: false,
+            panning: false,
             hover: None,
             next_stamp: 1,
             wants_edit: None,

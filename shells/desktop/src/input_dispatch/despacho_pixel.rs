@@ -2,7 +2,7 @@
 //! família `ph2d-app-pixel`, que decide. `true` = consumido.
 
 use super::*;
-use winit::keyboard::PhysicalKey;
+use winit::keyboard::{KeyCode, PhysicalKey};
 
 impl crate::App {
     fn pixel_canvas<R>(
@@ -30,8 +30,12 @@ impl crate::App {
         on_canvas: bool,
         menu_open_before: bool,
     ) -> bool {
-        use ph2d_app_pixel::input::{Button, press, release};
+        use ph2d_app_pixel::input::{Button, Press, press, release};
         if kind == PointerKind::Up {
+            if self.pixel_pan_released() {
+                self.pan_anchor = None;
+                return true;
+            }
             return release(&mut self.pixel);
         }
         let button = match button {
@@ -43,8 +47,33 @@ impl crate::App {
             return false;
         }
         let (p, alt) = (self.last_pointer, self.modifiers.alt_key());
-        self.pixel_canvas(|app, c| press(app, c, p, button, alt))
-            .unwrap_or(false)
+        match self.pixel_canvas(|app, c| press(app, c, p, button, alt)) {
+            Some(Press::Pan) => {
+                self.pan_anchor = Some(p);
+                true
+            }
+            Some(Press::Done) => true,
+            Some(Press::NotMine) | None => false,
+        }
+    }
+
+    /// Largou a mão: a câmera realinha as células.
+    fn pixel_pan_released(&mut self) -> bool {
+        let Some(g) = self.gfx.as_mut() else {
+            return false;
+        };
+        let Some(hero) = g.hero_screen.as_ref() else {
+            return false;
+        };
+        let world = g.sim.world();
+        ph2d_app_pixel::input::release_pan(
+            &mut self.pixel,
+            world,
+            &mut g.camera,
+            crate::scene_mapping::janela(hero.view.center_split, g.surface.size()),
+            hero.project.pixels_per_meter,
+            ph2d_app_pixel::mode::editing(world, hero),
+        )
     }
 
     /// Mover: o traço em curso continua (consumido); sem traço, só a célula sob o cursor.
@@ -91,12 +120,27 @@ impl crate::App {
         true
     }
 
-    /// As teclas do Edit (B, E, I, X, Ctrl+Z…), salvo com um campo de texto a escrever.
+    /// As teclas do Edit (B, E, I, H, X, Espaço, Ctrl+Z…), salvo com um campo de texto a escrever.
     pub(crate) fn pixel_owns_the_keyboard(&mut self, key: PhysicalKey, state: ElementState) -> bool {
         let PhysicalKey::Code(code) = key else {
             return false;
         };
-        if state != ElementState::Pressed || self.surface_owns_the_keyboard() {
+        if self.surface_owns_the_keyboard() {
+            return false;
+        }
+        if code == KeyCode::Space {
+            let held = state == ElementState::Pressed;
+            let Some(g) = self.gfx.as_ref() else {
+                return false;
+            };
+            let Some(hero) = g.hero_screen.as_ref() else {
+                return false;
+            };
+            let world = g.sim.world();
+            let editing = ph2d_app_pixel::mode::editing(world, hero);
+            return ph2d_app_pixel::input::space(&mut self.pixel, world, editing, held);
+        }
+        if state != ElementState::Pressed {
             return false;
         }
         let (ctrl, shift) = (

@@ -1,7 +1,7 @@
 //! **O modo Edit pelo caminho real**: o objecto nasce pelo Add, o ponteiro entra pelas mesmas
 //! funções que a shell chama, e o efeito lê-se no documento, no desfazer e no blob.
 
-use ph2d_app_pixel::input::{self, Button, Canvas, KeyAnswer};
+use ph2d_app_pixel::input::{self, Button, Canvas, KeyAnswer, Press};
 use ph2d_app_pixel::{PixelApp, Tool, mode, object_add, persist};
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor_core::ToolRegistry;
@@ -83,8 +83,9 @@ fn drag(
     b: Button,
 ) {
     let p0 = at(app, sim, cam, bits, cells[0].0, cells[0].1);
-    assert!(
+    assert_eq!(
         input::press(app, &canvas(sim, cam, bits), p0, b, false),
+        Press::Done,
         "o premir não foi do sprite"
     );
     for &(x, y) in &cells[1..] {
@@ -232,13 +233,16 @@ fn b_e_i_pick_the_tool_and_the_eraser_and_eyedropper_do_their_job() {
     assert_eq!(app.tool, Tool::Eyedropper);
     app.fg = [1, 2, 3, 255];
     let p = at(&app, &sim, &cam, bits, 6, 3);
-    assert!(input::press(
-        &mut app,
-        &canvas(&sim, &cam, bits),
-        p,
-        Button::Primary,
-        false
-    ));
+    assert_eq!(
+        Press::Done,
+        input::press(
+            &mut app,
+            &canvas(&sim, &cam, bits),
+            p,
+            Button::Primary,
+            false
+        )
+    );
     assert_eq!(
         app.fg,
         [0x5b, 0x6e, 0xe1, 0xff],
@@ -262,13 +266,16 @@ fn alt_held_turns_the_pencil_into_the_eyedropper_without_painting() {
     drag(&mut app, &sim, &cam, bits, &[(8, 8)], Button::Primary);
     app.fg = [0, 0, 0, 255];
     let p = at(&app, &sim, &cam, bits, 8, 8);
-    assert!(input::press(
-        &mut app,
-        &canvas(&sim, &cam, bits),
-        p,
-        Button::Primary,
-        true
-    ));
+    assert_eq!(
+        Press::Done,
+        input::press(
+            &mut app,
+            &canvas(&sim, &cam, bits),
+            p,
+            Button::Primary,
+            true
+        )
+    );
     assert!(!app.stroking(), "Alt não começa um traço");
     assert_eq!(app.fg, [0x99, 0xe5, 0x50, 0xff]);
 }
@@ -279,7 +286,10 @@ fn outside_edit_the_pointer_and_the_keys_are_not_the_familys() {
     let p = at(&app, &sim, &cam, bits, 4, 4);
     let mut c = canvas(&sim, &cam, bits);
     c.editing = None;
-    assert!(!input::press(&mut app, &c, p, Button::Primary, false));
+    assert_eq!(
+        Press::NotMine,
+        input::press(&mut app, &c, p, Button::Primary, false)
+    );
     assert_eq!(
         input::key(&mut app, sim.world(), None, KeyCode::KeyB, false, false),
         None
@@ -407,5 +417,68 @@ fn smoke_1_stages_a_face_in_four_undo_steps_and_asks_for_edit() {
     assert!(
         !ph2d_app_pixel::smoke::stage(&mut app, &mut sim, 2, spawn_root),
         "nível sem cena"
+    );
+}
+
+#[test]
+fn space_or_h_turn_the_drag_into_a_pan_that_lands_cells_on_whole_pixels() {
+    let (mut app, sim, mut cam, bits) = born();
+    assert!(input::space(&mut app, sim.world(), Some(bits), true));
+    let p = at(&app, &sim, &cam, bits, 4, 4);
+    assert_eq!(
+        input::press(
+            &mut app,
+            &canvas(&sim, &cam, bits),
+            p,
+            Button::Primary,
+            false
+        ),
+        Press::Pan
+    );
+    assert!(!app.stroking(), "a mão não pinta");
+    // A shell arrasta a câmera por meio píxel de ecrã…
+    cam.center[0] += 0.37 * cam.height_world / WINDOW.height as f32;
+    assert!(input::release_pan(
+        &mut app,
+        sim.world(),
+        &mut cam,
+        WINDOW,
+        PPM,
+        Some(bits)
+    ));
+    let key = input::key_of(sim.world(), bits).expect("marcador");
+    let m = input::to_screen(
+        sim.world(),
+        bits,
+        app.doc(key).expect("doc"),
+        &cam,
+        WINDOW,
+        PPM,
+    )
+    .expect("afim");
+    let p0 = m * Point::new(0.0, 0.0);
+    assert!(
+        (p0.x - p0.x.round()).abs() < 1e-2,
+        "{p0:?}: largar a mão realinha"
+    );
+    assert!(input::space(&mut app, sim.world(), Some(bits), false));
+    input::key(
+        &mut app,
+        sim.world(),
+        Some(bits),
+        KeyCode::KeyH,
+        false,
+        false,
+    );
+    assert_eq!(app.tool, Tool::Hand);
+    assert_eq!(
+        input::press(
+            &mut app,
+            &canvas(&sim, &cam, bits),
+            p,
+            Button::Primary,
+            false
+        ),
+        Press::Pan
     );
 }

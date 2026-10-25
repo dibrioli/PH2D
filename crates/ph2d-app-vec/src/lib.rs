@@ -73,6 +73,7 @@ pub mod align_live;
 pub mod autokey_smoke;
 mod autokey_smoke_alvo;
 mod autokey_smoke_bloco2;
+mod autokey_smoke_camadas;
 mod autokey_smoke_camera;
 mod autokey_smoke_campos;
 mod autokey_smoke_desenho;

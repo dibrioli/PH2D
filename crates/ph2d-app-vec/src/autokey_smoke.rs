@@ -34,7 +34,8 @@ static ESPERA: AtomicU8 = AtomicU8::new(0);
 /// COMPONENTE — `autokey_smoke_camera`) · [`ALVO`] = `=29` (o alvo e o Visible — `autokey_smoke_alvo`)
 /// · [`TEXTO`] = `=30` (o texto do canal na dope-sheet e o olho — `autokey_smoke_texto`) · [`GRUPO`] =
 /// `=31` (o menu da linha de grupo — `autokey_smoke_grupo`) · [`COMPONENTES`] = `=32` (a camada, a
-/// fonte do HUD e o script) e `=33` (as palavras das escolhas) — `ph2d_app_components::autokey_smoke_componentes`.
+/// fonte do HUD e o script) e `=33` (as palavras das escolhas) — `ph2d_app_components::autokey_smoke_componentes`
+/// · [`VOCABULARIO`] = `=34` · [`CAMADAS`] = `=36`.
 static DESENHO: AtomicU8 = AtomicU8::new(0);
 const LADO_B: u8 = 25;
 const CAMERA: u8 = 26;
@@ -45,6 +46,8 @@ const GRUPO: u8 = 29;
 /// reservam os números.
 const COMPONENTES: u8 = 30;
 const VOCABULARIO: u8 = 31;
+/// `=36` (F31): cada camada leva a sua animação — `autokey_smoke_camadas`.
+const CAMADAS: u8 = 32;
 /// O estágio da cena — a do desenho avança-o daqui.
 pub(crate) fn avanca(n: u8) {
     ESTAGIO.store(n, Ordering::Relaxed);
@@ -90,6 +93,7 @@ pub fn step(
                 // `=35` (F30): a Cena e os itens das listas — `ph2d_app_components::autokey_smoke_cena`.
                 "32" | "33" | "35" => COMPONENTES,
                 "34" => VOCABULARIO,
+                "36" => CAMADAS,
                 // `=16..26`: uma bancada por tipo de junta — `autokey_smoke_tipos`.
                 x => x
                     .parse::<u8>()
@@ -104,6 +108,9 @@ pub fn step(
     };
     if DESENHO.load(Ordering::Relaxed) == COMPONENTES {
         return None;
+    }
+    if DESENHO.load(Ordering::Relaxed) == CAMADAS {
+        return crate::autokey_smoke_camadas::step(nivel, vec, scene, sim, hero, tl, ph);
     }
     if DESENHO.load(Ordering::Relaxed) == VOCABULARIO {
         return crate::autokey_smoke_vocabulario::step(nivel, vec, scene, hero, tl, ph);

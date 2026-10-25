@@ -25,7 +25,7 @@ use ph2d_vec_scene::VecPathId;
 /// Põe (ou tira) o [`VecFilter`] das entidades de `ids`. Devolve **quantas mudaram**.
 ///
 /// ⚠️ **Uma pilha VAZIA é a ausência do componente, não um componente vazio** — é o que o
-/// `want.filter(|f| !f.ops.is_empty())` compra, e é load-bearing: o passe de FX varre por
+/// `want.filter(|f| !f.is_empty())` compra, e é load-bearing: o passe de FX varre por
 /// `VecFilter` presente, então um componente com zero ops faria a forma pagar o isolamento em
 /// textura para não aplicar operação nenhuma.
 ///
@@ -38,7 +38,7 @@ pub fn set_filter(
     ids: &[VecPathId],
     want: Option<VecFilter>,
 ) -> usize {
-    let want = want.filter(|f| !f.ops.is_empty());
+    let want = want.filter(|f| !f.is_empty());
     let mut n = 0;
     for id in ids {
         let Some(&bits) = map.get(id) else { continue };

@@ -135,7 +135,7 @@ fn arm(app: &mut crate::App) {
     let map = &app.vec.entities;
     let sim = &mut app.gfx.as_mut().expect("gfx").sim;
     for (i, ops) in stacks {
-        crate::fx_live::set_filter(sim, map, &[ids[i]], Some(VecFilter { ops }));
+        crate::fx_live::set_filter(sim, map, &[ids[i]], Some(VecFilter::from_ops(ops)));
     }
     eprintln!(
         "[smoke] A TURBULÊNCIA (plano 24 W6b) — o feTurbulence + feDisplacementMap do SVG num\n\

@@ -107,9 +107,7 @@ pub(crate) fn step(
                 sim,
                 &vec.entities,
                 &[estrela],
-                Some(VecFilter {
-                    ops: vec![sombra(0)],
-                }),
+                Some(VecFilter::from_ops(vec![sombra(0)])),
             );
             crate::profile_live::arm(sim, &vec.entities, &[estrela], &perfil(0));
             let te = Entity::from_bits(tb);
@@ -283,7 +281,7 @@ fn sombra(n: usize) -> FxOp {
 
 fn sombra_em(sim: &mut SimWorld, e: Entity, n: usize) -> Option<()> {
     let mut f = sim.world_mut().get_mut::<VecFilter>(e)?;
-    let op = f.ops.first_mut()?;
+    let op = f.ops_mut().first_mut()?;
     op.radius = RAIO[n];
     op.color = SOMBRA[n];
     Some(())
@@ -313,7 +311,7 @@ fn medir(sim: &SimWorld, eb: u64, tb: u64) -> String {
     let (e, t) = (Entity::from_bits(eb), Entity::from_bits(tb));
     let fx = w
         .get::<VecFilter>(e)
-        .and_then(|f| f.ops.first().copied())
+        .and_then(|f| f.ops().first().copied())
         .map_or_else(
             || "sem filtro".to_owned(),
             |o| format!("sombra raio {:.3} cor {:.2?}", o.radius, o.color),

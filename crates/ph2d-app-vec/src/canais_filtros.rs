@@ -1,12 +1,13 @@
 //! **Os FILTROS da forma nos canais** (`VecFilter::ops`, `canal_vetor::FILTRO_*`) — o leitor e o
-//! escritor puros da pilha de FX raster. `i` = o degrau; o olho (`FILTRO_LIGADO`) é um grupo, o
-//! resto do degrau outro. Cada degrau publica só os campos que o TIPO dele usa (a tabela
+//! escritor puros da pilha de FX raster. A chave de um degrau é o ID dele (`FieldKey::do_item`, F31
+//! §B2), nunca a posição: apagar ou mover um filtro não passa as animações ao vizinho. O olho
+//! (`FILTRO_LIGADO`) é um grupo, o resto do degrau outro. Cada degrau publica só os campos que o TIPO dele usa (a tabela
 //! `FxKindSpec`, a mesma que decide as linhas do painel): um knob morto não vira canal.
 //! Criar, remover e reordenar degraus é estrutura (plano 35 §8), não canal.
 
 use ph2d_ecs::canal::familia::VETOR;
 use ph2d_ecs::canal_vetor as c;
-use ph2d_ecs::{FieldKey, FxOp, VecFilter};
+use ph2d_ecs::{FieldKey, FxOp, ItemId, VecFilter};
 
 const FIM: u16 = c::FILTRO_PARAGEM + 5;
 
@@ -14,6 +15,21 @@ const FIM: u16 = c::FILTRO_PARAGEM + 5;
 #[must_use]
 pub fn e_de_filtro(kk: FieldKey) -> bool {
     kk.familia == VETOR && (c::FILTRO_TIPO..FIM).contains(&kk.campo)
+}
+
+/// Os ids dos degraus, na ordem da pilha (o espelho `IdsDoVetor.filtros` publica-os).
+#[must_use]
+pub fn ids(f: &VecFilter) -> &[ItemId] {
+    f.ids()
+}
+
+/// ⭐ **A porta única id → posição**: a chave tem de levar o item (`i` 0); a posicional (item
+/// `NONE`, a v23 por migrar) não endereça degrau nenhum.
+fn degrau(f: &VecFilter, kk: FieldKey) -> Option<usize> {
+    if kk.i != 0 {
+        return None;
+    }
+    f.posicao(kk.item)
 }
 
 fn n16(n: usize) -> u16 {
@@ -67,20 +83,24 @@ fn usa(op: &FxOp) -> Vec<u16> {
     out
 }
 
-/// Os campos que a pilha tem agora.
+/// Os campos que a pilha tem agora — um degrau com id por atribuir não tem canal.
 #[must_use]
 pub fn campos(f: &VecFilter) -> Vec<FieldKey> {
     let mut out = Vec::new();
-    for (i, op) in f.ops.iter().enumerate() {
-        let i = n16(i);
+    for (op, &id) in f.ops().iter().zip(f.ids()) {
+        if id.is_none() {
+            continue;
+        }
         out.extend(
             usa(op)
                 .into_iter()
-                .map(|campo| FieldKey::new(VETOR, campo, i, 0)),
+                .map(|campo| FieldKey::do_item(VETOR, campo, id, 0)),
         );
         if FxOp::spec(op.kind).takes_ramp {
             for j in 0..n16(paragens(op)) {
-                out.extend((c::FILTRO_PARAGEM..FIM).map(|campo| FieldKey::new(VETOR, campo, i, j)));
+                out.extend(
+                    (c::FILTRO_PARAGEM..FIM).map(|campo| FieldKey::do_item(VETOR, campo, id, j)),
+                );
             }
         }
     }
@@ -97,7 +117,7 @@ pub fn ler(f: &VecFilter, kk: FieldKey) -> Option<f32> {
     if !e_de_filtro(kk) {
         return None;
     }
-    let op = f.ops.get(usize::from(kk.i))?;
+    let op = f.ops().get(degrau(f, kk)?)?;
     let j = usize::from(kk.j);
     if (c::FILTRO_PARAGEM..FIM).contains(&kk.campo) {
         if j >= paragens(op) {
@@ -154,7 +174,10 @@ pub fn escrever(f: &mut VecFilter, kk: FieldKey, v: f32) {
     if !e_de_filtro(kk) {
         return;
     }
-    let Some(op) = f.ops.get_mut(usize::from(kk.i)) else {
+    let Some(k) = degrau(f, kk) else {
+        return;
+    };
+    let Some(op) = f.ops_mut().get_mut(k) else {
         return;
     };
     let j = usize::from(kk.j);

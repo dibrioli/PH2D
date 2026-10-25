@@ -36,7 +36,7 @@ impl crate::App {
                 );
             }
             crate::fx_live::edit(sim, &self.vec.entities, &sel, |f| {
-                if let Some(op) = f.ops.get_mut(row)
+                if let Some(op) = f.ops_mut().get_mut(row)
                     && usize::from(idx) < usize::from(op.stop_count)
                     && let Some(slot) = op.stop_pos.get_mut(usize::from(idx))
                 {
@@ -47,8 +47,8 @@ impl crate::App {
                 } else if diag {
                     eprintln!(
                         "[ramp] RECUSADO: ops={} stop_count={:?}",
-                        f.ops.len(),
-                        f.ops.get(row).map(|o| o.stop_count)
+                        f.len(),
+                        f.ops().get(row).map(|o| o.stop_count)
                     );
                 }
             });
@@ -62,7 +62,7 @@ impl crate::App {
                         let one = std::slice::from_ref(id);
                         match crate::fx_live::spec_of(sim, &self.vec.entities, *id) {
                             Some(mut f) if f.has_room() => {
-                                f.ops.push(ph2d_ecs::FxOp::new(kind));
+                                f.push(ph2d_ecs::FxOp::new(kind));
                                 crate::fx_live::set_filter(sim, &self.vec.entities, one, Some(f));
                             }
                             Some(_) => {}
@@ -79,9 +79,7 @@ impl crate::App {
                 }
                 FilterHit::Remove(row) => {
                     crate::fx_live::edit(sim, &self.vec.entities, &sel, |f| {
-                        if row < f.ops.len() {
-                            f.ops.remove(row);
-                        }
+                        f.remove(row);
                     });
                 }
                 FilterHit::Up(row) => {
@@ -96,7 +94,7 @@ impl crate::App {
                 }
                 FilterHit::Hide(row) => {
                     crate::fx_live::edit(sim, &self.vec.entities, &sel, |f| {
-                        if let Some(op) = f.ops.get_mut(row) {
+                        if let Some(op) = f.ops_mut().get_mut(row) {
                             op.enabled = !op.enabled;
                         }
                     });
@@ -106,7 +104,7 @@ impl crate::App {
                 // recusa mora onde o valor é escrito).
                 FilterHit::Mode(row, mode) => {
                     crate::fx_live::edit(sim, &self.vec.entities, &sel, |f| {
-                        if let Some(op) = f.ops.get_mut(row)
+                        if let Some(op) = f.ops_mut().get_mut(row)
                             && (mode as usize) < ph2d_ecs::FxOp::spec(op.kind).modes.len()
                         {
                             op.mode = mode;
@@ -121,7 +119,7 @@ impl crate::App {
                 // de instalar um número órfão.)
                 FilterHit::Blend(row, blend) => {
                     crate::fx_live::edit(sim, &self.vec.entities, &sel, |f| {
-                        if let Some(op) = f.ops.get_mut(row)
+                        if let Some(op) = f.ops_mut().get_mut(row)
                             && op.takes_blend()
                             && blend < ph2d_ecs::FxOp::BLEND_KINDS
                         {
@@ -135,7 +133,7 @@ impl crate::App {
                 // ali (não muda o desenho), `−` tira o SELECIONADO com piso em dois.
                 FilterHit::StopAdd(row) => {
                     crate::fx_live::edit(sim, &self.vec.entities, &sel, |f| {
-                        if let Some(op) = f.ops.get_mut(row) {
+                        if let Some(op) = f.ops_mut().get_mut(row) {
                             crate::fx_live::add_stop(op);
                         }
                     });
@@ -143,7 +141,7 @@ impl crate::App {
                 FilterHit::StopRemove(row) => {
                     let sel_stop = usize::from(ph2d_panel_vector::selected_stop(row));
                     crate::fx_live::edit(sim, &self.vec.entities, &sel, |f| {
-                        if let Some(op) = f.ops.get_mut(row) {
+                        if let Some(op) = f.ops_mut().get_mut(row) {
                             crate::fx_live::remove_stop(op, sel_stop);
                         }
                     });

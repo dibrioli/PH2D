@@ -176,7 +176,7 @@ fn arm(app: &mut crate::App) {
     let sim = &mut app.gfx.as_mut().expect("gfx").sim;
     // O arm passa pela porta única `set_filter` (a mesma que o bridge do painel usa).
     for (i, ops) in stacks {
-        crate::fx_live::set_filter(sim, map, &[ids[i]], Some(VecFilter { ops }));
+        crate::fx_live::set_filter(sim, map, &[ids[i]], Some(VecFilter::from_ops(ops)));
     }
     eprintln!(
         "[smoke] A PILHA DE FX RASTER — 100% na GPU (plano 24, W3+W4). Dezasseis estrelas:\n\

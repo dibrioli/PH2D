@@ -120,7 +120,7 @@ pub fn build(
             &mut *sim,
             &*map,
             &[filtered],
-            Some(VecFilter { ops: vec![glow()] }),
+            Some(VecFilter::from_ops(vec![glow()])),
         );
         assert_eq!(armed, 1, "[vec-fade-smoke] o filtro nao pendurou");
         (map[&plain], map[&filtered])

@@ -162,7 +162,7 @@ fn um_projecto_antigo_abre_com_ids_nos_itens() {
     assert!(v[0] != 0 && v[0] < v[1], "na ordem da lista: {v:?}");
 }
 
-/// O registo conhece os oito componentes do `ph2d-ecs` com itens, e cada um está no registo de
+/// O registo conhece os nove componentes do `ph2d-ecs` com itens, e cada um está no registo de
 /// componentes (senão a migração não o acha).
 #[test]
 fn os_passes_desta_crate_sao_componentes_registados() {
@@ -229,4 +229,88 @@ fn um_item_na_forma_nova_nao_se_le_como_v194_com_cauda() {
     let b = postcard::to_allocvec(&Timers(vec![t])).expect("grava");
     let pt = Passe::de::<Timers, crate::item_id_v194::TimersV194>("t");
     assert_eq!((pt.legado)(&b), Legado::JaNovo);
+}
+
+fn filtro(kinds: &[u8]) -> crate::VecFilter {
+    crate::VecFilter::from_ops(kinds.iter().map(|k| crate::FxOp::new(*k)).collect())
+}
+
+fn ids_do_filtro(w: &World, e: Entity) -> Vec<u32> {
+    (w.get::<crate::VecFilter>(e).expect("filtro").ids().iter())
+        .map(|i| i.0)
+        .collect()
+}
+
+/// ⭐⭐ **Um id repetido no mesmo filtro é refeito** (F31 §B2): fica o primeiro na ordem da pilha,
+/// o segundo recebe um novo; outra entidade pode ter o mesmo id (a cópia leva os ids).
+#[test]
+fn um_id_repetido_no_mesmo_filtro_e_refeito() {
+    use crate::FxOp;
+    let mut w = World::new();
+    let mut f = filtro(&[FxOp::BLUR, FxOp::GLOW, FxOp::DROP_SHADOW]);
+    f.com_ids(&[ItemId(40), ItemId(40), ItemId::NONE]);
+    let e = w.spawn((Transform::IDENTITY, f.clone())).id();
+    let copia = w.spawn((Transform::IDENTITY, f)).id();
+    assert!(assign_missing_item_ids(&mut w));
+    let v = ids_do_filtro(&w, e);
+    assert_eq!(v[0], 40, "fica o primeiro");
+    assert!(
+        v[1] != 40 && v[1] != 0 && v[2] != 0 && v[1] != v[2],
+        "{v:?}"
+    );
+    assert_eq!(
+        ids_do_filtro(&w, copia)[0],
+        40,
+        "outra entidade guarda o seu"
+    );
+    assert!(!assign_missing_item_ids(&mut w), "idempotente");
+}
+
+/// ⭐⭐ **O contador reconcilia com os ids dos filtros**: um contador atrasado (um ficheiro antigo)
+/// nunca entrega um id que um filtro já tem.
+#[test]
+fn o_contador_reconcilia_com_os_ids_dos_filtros() {
+    use crate::FxOp;
+    let mut w = World::new();
+    w.insert_resource(StableIdCounter::new(5));
+    let mut f = filtro(&[FxOp::BLUR, FxOp::GLOW]);
+    f.com_ids(&[ItemId(900), ItemId::NONE]);
+    let e = w.spawn((Transform::IDENTITY, f)).id();
+    assign_missing_item_ids(&mut w);
+    let v = ids_do_filtro(&w, e);
+    assert!(v[1] > 900, "o novo passa o maior vivo: {v:?}");
+    assert!(w.resource::<StableIdCounter>().next_free() > u64::from(v[1]));
+}
+
+/// O degrau `195 → 196`: um `VecFilter` gravado sem ids passa à forma com ids `NONE`, e só para
+/// ficheiros até ao 195 (um 196 lê-se com o tipo vivo).
+#[test]
+fn o_vec_filter_195_migra_para_a_forma_com_ids() {
+    use crate::FxOp;
+    let ops = vec![FxOp::new(FxOp::BLUR), FxOp::new(FxOp::GLOW)];
+    let v195 = postcard::to_allocvec(&(&ops,)).expect("grava");
+    let snap = |data: Vec<u8>| crate::scene::WorldSnapshot {
+        version: crate::scene::WorldSnapshot::VERSION,
+        entities: vec![std::sync::Arc::new(crate::scene::EntitySnapshotRow {
+            id: crate::StableId(9),
+            components: vec![ph2d_asset::ComponentBlob {
+                type_id: stable_type_id("ph2d::ecs::VecFilter"),
+                data,
+            }],
+            parent: None,
+        })],
+    };
+    let mut s = snap(v195.clone());
+    assert_eq!(migra(&mut s, 206).migrados, 0, "o 206 não migra");
+    assert_eq!(migra(&mut s, 205).migrados, 1);
+    let f: crate::VecFilter =
+        postcard::from_bytes(&s.entities[0].components[0].data).expect("forma nova");
+    assert_eq!(f.ops(), ops.as_slice());
+    assert!(f.ids().iter().all(|i| i.is_none()));
+    let mut s = snap(v195);
+    assert_eq!(
+        migra(&mut s, 120).migrados,
+        1,
+        "e um ficheiro mais antigo também"
+    );
 }

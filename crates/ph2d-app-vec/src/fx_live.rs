@@ -502,7 +502,7 @@ pub fn edit(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], f: impl F
         };
         f(&mut cur);
         if let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
-            if cur.ops.is_empty() {
+            if cur.is_empty() {
                 em.remove::<VecFilter>();
             } else {
                 em.insert(cur);

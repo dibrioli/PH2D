@@ -340,6 +340,7 @@ mod vec_contour;
 mod vec_cut_path;
 mod vec_driven_style;
 mod vec_filter;
+mod vec_filter_v195;
 mod vec_frame;
 mod vec_layout;
 mod vec_offset;

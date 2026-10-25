@@ -54,7 +54,7 @@ impl crate::App {
         );
         ph2d_panel_vector::set_current_filters(
             filt.map(|f| {
-                f.ops
+                f.ops()
                     .iter()
                     .map(|op| ph2d_panel_vector::FilterRowView {
                         kind: op.kind,

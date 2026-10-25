@@ -41,12 +41,12 @@ fn the_filter_survives_a_capture_and_an_install() {
 
     let (mut sim, mut scene, map, host) = scene_with_one_shape();
     let he = Entity::from_bits(map[&host]);
-    sim.world_mut().entity_mut(he).insert(VecFilter {
-        ops: vec![FxOp {
+    sim.world_mut()
+        .entity_mut(he)
+        .insert(VecFilter::from_ops(vec![FxOp {
             radius: 12.0,
             ..FxOp::new(FxOp::BLUR)
-        }],
-    });
+        }]));
 
     let pose = capture(&sim, &scene, &map, host);
     assert_eq!(
@@ -64,7 +64,7 @@ fn the_filter_survives_a_capture_and_an_install() {
         .get::<VecFilter>(he)
         .expect("a instalacao nao devolveu a pilha ao mundo");
     assert!(
-        (back.ops[0].radius - 12.0).abs() < 1e-4,
+        (back.ops()[0].radius - 12.0).abs() < 1e-4,
         "o raio nao voltou"
     );
 }

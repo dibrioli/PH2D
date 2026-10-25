@@ -13,20 +13,53 @@
 use bevy_ecs::component::Component;
 use serde::{Deserialize, Serialize};
 
-use crate::SimComponent;
+use crate::{ItemId, SimComponent};
 pub use ph2d_fx_op::{FxKindSpec, FxOp};
 
 /// **A pilha de FX raster de uma forma.** A entidade que a carrega também tem um
 /// [`crate::VecPathRef`]: o `VecPath` dela continua a curva AUTORADA (o modo Node a edita); o
 /// resultado filtrado é DESENHO, que a shell produz por frame e injeta no z da fonte.
+///
+/// ⭐ Cada degrau tem um [`ItemId`] (F31 §B2): a chave de animação de um filtro é o id, não a
+/// posição. `ops` e `ids` são privados e só mudam de comprimento JUNTOS — não há como divergirem.
 #[derive(Component, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(from = "Gravado")]
 pub struct VecFilter {
     /// Os degraus, **na ordem em que se aplicam** (o primeiro recebe a forma nua). A ordem é a
     /// feature: `Shadow → Blur` e `Blur → Shadow` desenham coisas diferentes.
-    pub ops: Vec<FxOp>,
+    ops: Vec<FxOp>,
+    /// O id de cada degrau (`NONE` até ao passe [`crate::item_id::assign_missing_item_ids`]).
+    ids: Vec<ItemId>,
+}
+
+/// A forma no fio; o comprimento dos ids acerta-se ao dos degraus ao ler (bytes à mão).
+#[derive(Deserialize)]
+struct Gravado {
+    ops: Vec<FxOp>,
+    #[serde(default)]
+    ids: Vec<ItemId>,
+}
+
+impl From<Gravado> for VecFilter {
+    fn from(g: Gravado) -> Self {
+        let mut ids = g.ids;
+        ids.resize(g.ops.len(), ItemId::NONE);
+        Self { ops: g.ops, ids }
+    }
 }
 
 impl SimComponent for VecFilter {}
+
+impl crate::item_id::ComItens for VecFilter {
+    fn ids(&self) -> Vec<ItemId> {
+        self.ids.clone()
+    }
+    fn com_ids(&mut self, ids: &[ItemId]) {
+        for (x, id) in self.ids.iter_mut().zip(ids) {
+            *x = *id;
+        }
+    }
+}
 
 impl VecFilter {
     /// O teto de degraus numa pilha.
@@ -43,7 +76,84 @@ impl VecFilter {
     /// Uma pilha com um degrau — o que o 1º "Add" produz.
     #[must_use]
     pub fn single(op: FxOp) -> Self {
-        Self { ops: vec![op] }
+        Self::from_ops(vec![op])
+    }
+
+    /// Uma pilha com estes degraus, ids por atribuir.
+    #[must_use]
+    pub fn from_ops(ops: Vec<FxOp>) -> Self {
+        let ids = vec![ItemId::NONE; ops.len()];
+        Self { ops, ids }
+    }
+
+    /// Os degraus, na ordem em que se aplicam.
+    #[must_use]
+    pub fn ops(&self) -> &[FxOp] {
+        &self.ops
+    }
+
+    /// Os valores dos degraus (a estrutura só muda pelos métodos abaixo).
+    pub fn ops_mut(&mut self) -> &mut [FxOp] {
+        &mut self.ops
+    }
+
+    /// O id de cada degrau, na ordem de [`Self::ops`].
+    #[must_use]
+    pub fn ids(&self) -> &[ItemId] {
+        &self.ids
+    }
+
+    /// A posição do degrau com o id `id` (`NONE` nunca casa).
+    #[must_use]
+    pub fn posicao(&self, id: ItemId) -> Option<usize> {
+        if id.is_none() {
+            return None;
+        }
+        self.ids.iter().position(|x| *x == id)
+    }
+
+    /// Acrescenta um degrau no fim (id por atribuir).
+    pub fn push(&mut self, op: FxOp) {
+        self.ops.push(op);
+        self.ids.push(ItemId::NONE);
+    }
+
+    /// Insere um degrau em `at` (id por atribuir). Pânico se `at > len`, como o `Vec`.
+    pub fn insert(&mut self, at: usize, op: FxOp) {
+        self.ops.insert(at, op);
+        self.ids.insert(at, ItemId::NONE);
+    }
+
+    /// Tira o degrau `row` (com o id dele). `None` fora da faixa.
+    pub fn remove(&mut self, row: usize) -> Option<FxOp> {
+        if row >= self.ops.len() {
+            return None;
+        }
+        self.ids.remove(row);
+        Some(self.ops.remove(row))
+    }
+
+    /// Põe os valores de `ops` POR POSIÇÃO (a pose de um estado de UI): a posição que fica guarda
+    /// o id; a que sobra sai com o dele; a que entra nasce por atribuir. Sem mudança, nada se escreve.
+    pub fn troca_ops(&mut self, ops: &[FxOp]) {
+        if self.ops.as_slice() == ops {
+            return;
+        }
+        self.ops.clear();
+        self.ops.extend_from_slice(ops);
+        self.ids.resize(ops.len(), ItemId::NONE);
+    }
+
+    /// Quantos degraus.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.ops.len()
+    }
+
+    /// Sem degraus?
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.ops.is_empty()
     }
 
     /// A pilha desenha alguma coisa? Vazia (ou toda desligada) = a forma sai nua, e a shell não
@@ -65,6 +175,7 @@ impl VecFilter {
             return false;
         }
         self.ops.swap(row - 1, row);
+        self.ids.swap(row - 1, row);
         true
     }
 
@@ -74,6 +185,7 @@ impl VecFilter {
             return false;
         }
         self.ops.swap(row, row + 1);
+        self.ids.swap(row, row + 1);
         true
     }
 }
@@ -83,9 +195,7 @@ mod tests {
     use super::*;
 
     fn stack(kinds: &[u8]) -> VecFilter {
-        VecFilter {
-            ops: kinds.iter().map(|k| FxOp::new(*k)).collect(),
-        }
+        VecFilter::from_ops(kinds.iter().map(|k| FxOp::new(*k)).collect())
     }
 
     /// **Reordenar troca DOIS vizinhos, e as pontas são no-ops** — subir na primeira linha e descer
@@ -96,12 +206,12 @@ mod tests {
         let mut f = stack(&[FxOp::BLUR, FxOp::GLOW, FxOp::DROP_SHADOW]);
         assert!(f.move_down(0));
         assert_eq!(
-            f.ops.iter().map(|o| o.kind).collect::<Vec<_>>(),
+            f.ops().iter().map(|o| o.kind).collect::<Vec<_>>(),
             vec![FxOp::GLOW, FxOp::BLUR, FxOp::DROP_SHADOW]
         );
         assert!(f.move_up(2));
         assert_eq!(
-            f.ops.iter().map(|o| o.kind).collect::<Vec<_>>(),
+            f.ops().iter().map(|o| o.kind).collect::<Vec<_>>(),
             vec![FxOp::GLOW, FxOp::DROP_SHADOW, FxOp::BLUR]
         );
         let before = f.clone();
@@ -118,10 +228,27 @@ mod tests {
         assert!(!VecFilter::default().is_active(), "vazia não desenha nada");
         let mut f = stack(&[FxOp::BLUR, FxOp::GLOW]);
         assert!(f.is_active());
-        f.ops[0].enabled = false;
+        f.ops_mut()[0].enabled = false;
         assert!(f.is_active(), "um degrau ligado basta");
-        f.ops[1].enabled = false;
+        f.ops_mut()[1].enabled = false;
         assert!(!f.is_active(), "toda desligada é o mesmo que vazia");
+    }
+
+    /// A pose de um estado de UI põe os valores POR POSIÇÃO: quem fica guarda o id (a chave de
+    /// animação não muda a cada Show), o que sobra sai, o que entra espera o passe.
+    #[test]
+    fn a_pose_troca_os_valores_e_guarda_os_ids_por_posicao() {
+        use crate::item_id::ComItens;
+        let mut f = stack(&[FxOp::BLUR, FxOp::GLOW]);
+        f.com_ids(&[ItemId(3), ItemId(4)]);
+        let mut pose = f.ops().to_vec();
+        pose[1].radius = 9.0;
+        pose.push(FxOp::new(FxOp::BEVEL));
+        f.troca_ops(&pose);
+        assert_eq!(f.ops(), pose.as_slice());
+        assert_eq!(f.ids(), &[ItemId(3), ItemId(4), ItemId::NONE]);
+        f.troca_ops(&pose[..1]);
+        assert_eq!(f.ids(), &[ItemId(3)]);
     }
 
     /// O teto é respondido pela pilha, não contado no chamador.
@@ -129,8 +256,8 @@ mod tests {
     fn the_ceiling_is_the_stacks_own_answer() {
         let mut f = VecFilter::default();
         while f.has_room() {
-            f.ops.push(FxOp::new(FxOp::BLUR));
+            f.push(FxOp::new(FxOp::BLUR));
         }
-        assert_eq!(f.ops.len(), VecFilter::MAX_OPS);
+        assert_eq!(f.len(), VecFilter::MAX_OPS);
     }
 }

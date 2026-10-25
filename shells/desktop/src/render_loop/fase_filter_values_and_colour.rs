@@ -45,7 +45,9 @@ impl crate::App {
                     | FilterHit::Bright(r) => r,
                     _ => return,
                 };
-                let Some(op) = f.ops.get_mut(row) else { return };
+                let Some(op) = f.ops_mut().get_mut(row) else {
+                    return;
+                };
                 match hit {
                     FilterHit::Radius(_) => op.radius = x,
                     FilterHit::OffX(_) => op.offset[0] = x,
@@ -93,7 +95,7 @@ impl crate::App {
             // do slot num braço inalcançável e passou verde. Lá ela é observável.
             let sel_stop = usize::from(ph2d_panel_vector::selected_stop(row));
             crate::fx_live::edit(sim, &self.vec.entities, &sel, |f| {
-                if let Some(op) = f.ops.get_mut(row) {
+                if let Some(op) = f.ops_mut().get_mut(row) {
                     crate::fx_live::apply_picked_colour(op, slot, sel_stop, col);
                 }
             });

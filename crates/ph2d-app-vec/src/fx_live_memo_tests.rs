@@ -48,9 +48,7 @@ fn fixture() -> (VecScene, SimWorld, VecEntityMap, VecXforms, VecPathId) {
         &mut sim,
         &map,
         &[id],
-        Some(VecFilter {
-            ops: vec![FxOp::new(FxOp::BEVEL)],
-        }),
+        Some(VecFilter::from_ops(vec![FxOp::new(FxOp::BEVEL)])),
     );
     (scene, sim, map, VecXforms::new(), id)
 }

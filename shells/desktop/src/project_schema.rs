@@ -578,10 +578,24 @@
 /// da lista. Gate: `project_itens_tests`. Registos de componentes: `0`.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 205;
+///
+/// # `205 → 206` — **o filtro da forma tem identidade** (`line/UIUX`, F31 §B2, 2026-10-25)
+///
+/// `VecFilter` ganha `ids: Vec<ItemId>` no fim (um por degrau): a chave de animação de um filtro é
+/// o id, não a posição (`docs/UI_New_and_Simple/F31_plano.md` §1 B.2). ⭐ **COM migração:** a forma
+/// do ficheiro não muda (o `205` lê-se com o tipo vivo); todo ficheiro `<= 205` passa o blob do
+/// `VecFilter` pela forma congelada (`ph2d_ecs::vec_filter_v195`, via `ph2d_ecs::item_id::migra`),
+/// e o passe dá ids na ordem da pilha. Gate: `project_itens_tests`. Registos de componentes: `0`.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 206;
 
 /// O último degrau em que os itens das listas não tinham `item` (F30 §A1).
 pub(crate) const PROJECT_SCHEMA_ITENS_SEM_ID: u32 = 204;
+
+/// O último degrau em que os degraus do `VecFilter` não tinham id (F31 §B2); os itens das listas
+/// da F30 §A1 já o tinham desde o `205` (`ph2d_ecs::item_id::Passe::ate` diz qual).
+pub(crate) const PROJECT_SCHEMA_FILTROS_SEM_ID: u32 = 205;
 
 /// O último degrau sem a mesa de som — a mesma forma do actual, sem o `Vec` final.
 pub(crate) const PROJECT_SCHEMA_SEM_MESA: u32 = 203;

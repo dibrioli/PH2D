@@ -19,7 +19,7 @@ pub fn resolve_ops(filter: &VecFilter, camera: Affine) -> Vec<FxOpGpu> {
     let [a, b, c, d, _, _] = camera.as_coeffs();
     // A conta é a porta ÚNICA do `ph2d-render` — o Motion (`fx.filter`) chama a mesma.
     filter
-        .ops
+        .ops()
         .iter()
         .filter(|o| o.is_active())
         .map(|o| FxOpGpu::resolve(o, [a, b, c, d]))

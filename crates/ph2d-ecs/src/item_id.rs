@@ -60,19 +60,31 @@ pub struct Passe {
     pub canonical: &'static str,
     ler: fn(&mut World) -> ItensPorEntidade,
     escrever: fn(&mut World, Entity, &[ItemId]),
-    /// Os bytes v194 (sem `item`) na forma de agora.
+    /// Os bytes da forma sem ids, na forma de agora.
     legado: fn(&[u8]) -> Legado,
+    /// O último `PROJECT_SCHEMA` gravado na forma sem ids.
+    pub ate: u32,
 }
 
 impl Passe {
-    /// O passe de `T`, com `L` = a forma gravada até ao `PROJECT_SCHEMA` 194.
+    /// O passe de `T`, com `L` = a forma gravada até ao `PROJECT_SCHEMA` 204 (o degrau dos itens da UIUX, F30 §A1).
     #[must_use]
     pub fn de<T: ComItens, L: DeserializeOwned + Into<T>>(canonical: &'static str) -> Self {
+        Self::de_ate::<T, L>(canonical, 204)
+    }
+
+    /// O passe de `T`, com `L` = a forma gravada até ao `PROJECT_SCHEMA` `ate`.
+    #[must_use]
+    pub fn de_ate<T: ComItens, L: DeserializeOwned + Into<T>>(
+        canonical: &'static str,
+        ate: u32,
+    ) -> Self {
         Self {
             canonical,
             ler: ler::<T>,
             escrever: escrever::<T>,
             legado: legado::<T, L>,
+            ate,
         }
     }
 }
@@ -132,11 +144,15 @@ pub fn desta_crate() -> [Passe; DESTA_CRATE] {
         Passe::de::<crate::SignalOnAction, v::SignalOnActionV194>("ph2d::ecs::SignalOnAction"),
         Passe::de::<crate::ShakeEmitter, v::ShakeEmitterV194>("ph2d::ecs::ShakeEmitter"),
         Passe::de::<crate::NamedAnchorList, v::NamedAnchorListV194>("ph2d::ecs::NamedAnchorList"),
+        Passe::de_ate::<crate::VecFilter, crate::vec_filter_v195::VecFilterV195>(
+            "ph2d::ecs::VecFilter",
+            205,
+        ),
     ]
 }
 
 /// Quantos componentes do `ph2d-ecs` têm itens.
-pub const DESTA_CRATE: usize = 8;
+pub const DESTA_CRATE: usize = 9;
 
 static DE_FORA: Mutex<Vec<Passe>> = Mutex::new(Vec::new());
 
@@ -214,10 +230,18 @@ pub struct MigracaoV194 {
     pub ilegiveis: usize,
 }
 
-/// ⭐ **O degrau `194 → 195`**: os blobs dos componentes com itens passam à forma com `item`
+/// ⭐ **O degrau `204 → 205`**: os blobs dos componentes com itens passam à forma com `item`
 /// (`0`); o passe dá-lhes ids na ordem da lista no primeiro quadro (ou no `stable_id_for_name`).
 pub fn migra_v194(world: &mut crate::scene::WorldSnapshot) -> MigracaoV194 {
+    migra(world, 204)
+}
+
+/// ⭐ **Os degraus dos itens para um ficheiro `ver`**: cada componente cuja forma sem ids vai até
+/// `ver` ou além (`ver <= Passe::ate`) passa os blobs à forma com ids (`NONE`) — o `204 → 205`
+/// das listas da F30 e o `205 → 206` do `VecFilter` (F31 §B2).
+pub fn migra(world: &mut crate::scene::WorldSnapshot, ver: u32) -> MigracaoV194 {
     let passes: Vec<(u64, Passe)> = (passes().into_iter())
+        .filter(|p| ver <= p.ate)
         .map(|p| (stable_type_id(p.canonical), p))
         .collect();
     let mut m = MigracaoV194::default();

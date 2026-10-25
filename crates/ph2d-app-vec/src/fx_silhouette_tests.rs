@@ -43,9 +43,9 @@ fn arm_filter(sim: &mut SimWorld, map: &VecEntityMap, id: VecPathId) {
         sim,
         map,
         &[id],
-        Some(ph2d_ecs::VecFilter {
-            ops: vec![ph2d_ecs::FxOp::new(ph2d_ecs::FxOp::BEVEL)],
-        }),
+        Some(ph2d_ecs::VecFilter::from_ops(vec![ph2d_ecs::FxOp::new(
+            ph2d_ecs::FxOp::BEVEL,
+        )])),
     );
 }
 

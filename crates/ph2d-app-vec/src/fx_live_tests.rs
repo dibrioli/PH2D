@@ -241,11 +241,9 @@ fn removing_stops_stops_at_two() {
 /// voltar a desenhar-se a si mesma: o produtor não cria imagem nenhuma.
 #[test]
 fn a_disabled_op_never_reaches_the_pass() {
-    let mut f = VecFilter {
-        ops: vec![op(FxOp::BLUR, 0.2), op(FxOp::GLOW, 0.3)],
-    };
+    let mut f = VecFilter::from_ops(vec![op(FxOp::BLUR, 0.2), op(FxOp::GLOW, 0.3)]);
     assert_eq!(resolve_ops(&f, Affine::IDENTITY).len(), 2);
-    f.ops[0].enabled = false;
+    f.ops_mut()[0].enabled = false;
     let ops = resolve_ops(&f, Affine::IDENTITY);
     assert_eq!(ops.len(), 1, "o degrau desligado tem de ser saltado");
     assert_eq!(
@@ -253,7 +251,7 @@ fn a_disabled_op_never_reaches_the_pass() {
         FxOp::GLOW,
         "e o que sobra é o que ficou LIGADO"
     );
-    f.ops[1].enabled = false;
+    f.ops_mut()[1].enabled = false;
     assert!(
         resolve_ops(&f, Affine::IDENTITY).is_empty() && !f.is_active(),
         "pilha toda desligada resolve para VAZIO — a forma sai nua"
@@ -265,9 +263,7 @@ fn a_disabled_op_never_reaches_the_pass() {
 /// nível de zoom.
 #[test]
 fn the_world_radius_becomes_pixels_through_the_camera() {
-    let f = VecFilter {
-        ops: vec![op(FxOp::BLUR, 0.5)],
-    };
+    let f = VecFilter::from_ops(vec![op(FxOp::BLUR, 0.5)]);
     let one = resolve_ops(&f, Affine::IDENTITY)[0].sigma_px;
     let two = resolve_ops(&f, Affine::scale(2.0))[0].sigma_px;
     assert!(
@@ -285,12 +281,10 @@ fn the_world_radius_becomes_pixels_through_the_camera() {
 /// arredondava ao pixel inteiro e a luz do bevel saltava ao dar zoom-out).
 #[test]
 fn the_shadow_offset_crosses_the_camera_at_subpixel_precision() {
-    let f = VecFilter {
-        ops: vec![FxOp {
-            offset: [0.1, -0.25],
-            ..op(FxOp::DROP_SHADOW, 0.05)
-        }],
-    };
+    let f = VecFilter::from_ops(vec![FxOp {
+        offset: [0.1, -0.25],
+        ..op(FxOp::DROP_SHADOW, 0.05)
+    }]);
     let at10 = resolve_ops(&f, Affine::scale(10.0))[0].offset_px;
     assert!(
         (at10[0] - 1.0).abs() < 1e-5 && (at10[1] + 2.5).abs() < 1e-5,
@@ -442,7 +436,7 @@ fn the_law_reaches_the_pass_only_for_a_kind_that_takes_one() {
     for kind in 0..FxOp::KINDS as u8 {
         let mut o = op(kind, 0.2);
         o.blend = 6;
-        let f = VecFilter { ops: vec![o] };
+        let f = VecFilter::from_ops(vec![o]);
         let got = crate::fx_live::resolve_ops(&f, Affine::IDENTITY);
         assert_eq!(got.len(), 1, "{}", FxOp::kind_name(kind));
         let want = if FxOp::spec(kind).takes_blend { 6 } else { 0 };
@@ -493,7 +487,7 @@ fn the_noise_knobs_reach_the_pass_and_the_detail_arrives_clamped() {
     o.seed = 42;
     for (given, want) in [(0u8, 1u8), (1, 1), (3, 3), (200, FxOp::MAX_DETAIL)] {
         o.detail = given;
-        let got = crate::fx_live::resolve_ops(&VecFilter { ops: vec![o] }, Affine::IDENTITY);
+        let got = crate::fx_live::resolve_ops(&VecFilter::from_ops(vec![o]), Affine::IDENTITY);
         assert_eq!(
             got[0].detail, want,
             "detalhe {given} chegou ao passe como {}",
@@ -546,7 +540,7 @@ fn the_grow_crosses_the_camera_with_its_sign() {
     let mut o = op(FxOp::MORPHOLOGY, 0.0);
     for world in [-0.5_f32, -0.06, 0.0, 0.06, 0.5] {
         o.grow = world;
-        let got = crate::fx_live::resolve_ops(&VecFilter { ops: vec![o] }, Affine::scale(3.0));
+        let got = crate::fx_live::resolve_ops(&VecFilter::from_ops(vec![o]), Affine::scale(3.0));
         let want = world * 3.0;
         assert!(
             (got[0].grow_px - want).abs() < 1e-4,
@@ -570,7 +564,8 @@ fn the_adjust_knobs_cross_the_camera_unscaled() {
         o.sat = s;
         o.bright = b;
         for zoom in [1.0_f64, 3.0, 0.25] {
-            let got = crate::fx_live::resolve_ops(&VecFilter { ops: vec![o] }, Affine::scale(zoom));
+            let got =
+                crate::fx_live::resolve_ops(&VecFilter::from_ops(vec![o]), Affine::scale(zoom));
             assert!(
                 (got[0].hue - h).abs() < 1e-6
                     && (got[0].sat - s).abs() < 1e-6

@@ -175,6 +175,16 @@ impl PainterTool {
         rgba
     }
 
+    /// **A tinta por assar da sprite `entity`** (RGBA8 straight): o que um leitor da sprite leva no lugar
+    /// da textura de ANTES enquanto o Painter a pinta sem a ter assado (`BUGS_painter_fechados_41_a_46.md`
+    /// #53). `None` = a sprite é a verdade (outro documento, ou nada por assar).
+    #[must_use]
+    pub fn imagem_por_assar(&self, entity: u64) -> Option<(Vec<u8>, u32, u32)> {
+        (self.bound_document() == Some(entity) && self.has_unbaked_edits())
+            .then(|| self.imagem_aplicada())
+            .flatten()
+    }
+
     /// **A imagem que o Apply escreveria agora na sprite** (RGBA8 straight), sem mexer na pintura nem
     /// na pré-visualização do editor — o [`RasterEditTool::run_full`] que não consome a tela. Inclui o
     /// traço em voo. `None` = sem documento.

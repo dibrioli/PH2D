@@ -211,6 +211,7 @@ impl Tradutor<'_> {
         let mut componentes = Vec::new();
         for c in &r.components {
             if let Some(nome) = self.grava(r.id.0, c.type_id)
+                && !self.pixeis_velhos(r.id.0, nome)
                 && self.bytes(nome, &c.data)
             {
                 componentes.push(Componente {
@@ -240,7 +241,10 @@ impl Tradutor<'_> {
                 let pai = pai.map(|p| self.pai(p));
                 let mut cs = Vec::new();
                 for (tipo, b) in componentes {
-                    let Some(nome) = self.grava(id.0, *tipo) else {
+                    let Some(nome) = self
+                        .grava(id.0, *tipo)
+                        .filter(|n| !self.pixeis_velhos(id.0, n))
+                    else {
                         continue;
                     };
                     if b.as_deref().is_none_or(|b| self.bytes(nome, b)) {

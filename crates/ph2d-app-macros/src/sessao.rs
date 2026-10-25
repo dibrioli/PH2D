@@ -545,6 +545,11 @@ impl Sessao {
         let premul = crate::mundo::premultiplicados(sim);
         let premul = |id: &[u8; 32]| premul.contains(id);
         let sim = &*sim;
+        let por_assar = f.painter.as_deref().and_then(|t| {
+            let b = t.bound_document()?;
+            let sid = sim.world().get::<StableId>(Entity::from_bits(b))?.0;
+            Some((sid, t.imagem_por_assar(b)?))
+        });
         let pixeis = &mut p.pixeis;
         let mut sprite = |s: u64| {
             let e = ph2d_ecs::entity_with_stable_id(sim.world(), StableId(s))?;
@@ -554,6 +559,7 @@ impl Sessao {
             recurso: p.recurso,
             premultiplicado: &premul,
             sprite: &mut sprite,
+            por_assar,
         };
         let Some(fe) = crate::mundo::fecha(g, self.rec.doc(), &familia, p.registo, l) else {
             return crate::mundo::Avisos::default();

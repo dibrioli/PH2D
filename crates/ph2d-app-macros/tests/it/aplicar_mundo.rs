@@ -619,6 +619,7 @@ fn a_imagem_importada_do_atlas_volta_igual_noutro_projecto() {
             recurso: &|_| None,
             premultiplicado: &|_| false,
             sprite,
+            por_assar: None,
         };
         mundo::fecha(g, &vazio, &|_| None, &reg, l).expect("gravou")
     };

@@ -89,6 +89,7 @@ fn fecha_com(g: Gravacao, doc: &MacroDoc, reg: &ComponentRegistry) -> Option<sup
         recurso: &|_| None,
         premultiplicado: &|_| false,
         sprite: &mut |_| None,
+        por_assar: None,
     };
     super::super::fecha(g, doc, &familia, reg, l)
 }

@@ -23,15 +23,13 @@ pub fn imagem_por_assar(tools: &mut ToolRegistry, entity: u64) -> Option<(Vec<u8
     imagem_por_assar_do(o_painter(tools)?, entity)
 }
 
-/// [`imagem_por_assar`] sobre o tool já na mão.
+/// [`imagem_por_assar`] sobre o tool já na mão (a lei: `PainterTool::imagem_por_assar`).
 #[must_use]
 pub fn imagem_por_assar_do(
     p: &ph2d_tool_painter::PainterTool,
     entity: u64,
 ) -> Option<(Vec<u8>, u32, u32)> {
-    (p.bound_document() == Some(entity) && p.has_unbaked_edits())
-        .then(|| p.imagem_aplicada())
-        .flatten()
+    p.imagem_por_assar(entity)
 }
 
 /// **A tinta por assar do Painter e a sprite dela, lidas UMA vez por gesto** — o que um verbo

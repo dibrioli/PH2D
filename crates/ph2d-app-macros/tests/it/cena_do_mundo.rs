@@ -425,3 +425,111 @@ fn percorre() -> f32 {
     println!("(11) o FIM no documento do aplicado: y = {fim_no_documento:?}");
     fim_no_documento.expect("o aplicado tem pose")
 }
+
+/// #53 na gravação do «mundo»: o boneco pintado e ainda por assar (a textura da sprite é a de ANTES,
+/// branca) embute-se com a TINTA — a mesma porta dos verbos só-leitura (`PainterTool::imagem_por_assar`).
+/// Com o Painter na mão a trilha dele leva o documento vivo; noutra ferramenta (a tinta continua por
+/// assar até ao `fase_painter_persist`) é o recurso do mundo que a leva.
+#[test]
+fn a_macro_mundo_leva_a_tinta_por_assar() {
+    assert!(
+        grava_o_boneco_por_assar(true, false),
+        "Painter na mão: a trilha dele"
+    );
+    assert!(
+        !grava_o_boneco_por_assar(false, false),
+        "noutra ferramenta: o mundo"
+    );
+    // Com um `SpritePixels` de ANTES (a imagem importada, ainda branca no `AssetDb`).
+    assert!(
+        !grava_o_boneco_por_assar(false, true),
+        "o carimbo velho não ganha"
+    );
+}
+
+/// Grava o boneco pintado por assar; devolve se os píxeis foram com a trilha do Painter.
+fn grava_o_boneco_por_assar(painter_na_mao: bool, carimbada: bool) -> bool {
+    use ph2d_editor_core::macro_edits::MacroRequest;
+    let mut b = Banca::nova();
+    b.painter.set_paint_media(PaintMedia::Digital);
+    let dono =
+        ph2d_app_macros::object_add::add(ph2d_app_macros::object_add::MACRO, &mut b.sim, raiz)
+            .expect("é da família")
+            .expect("nasce");
+    let img = raiz(&mut b.sim, "Player");
+    b.sim
+        .world_mut()
+        .entity_mut(Entity::from_bits(img))
+        .insert(ChildOf(Entity::from_bits(dono)));
+    sprite(&mut b, img, (LADO, LADO));
+    let n = usize::try_from(LADO * LADO * 4).unwrap();
+    b.imagens
+        .borrow_mut()
+        .insert(img, (vec![255; n], LADO, LADO));
+    if carimbada {
+        let id = [9u8; 32];
+        let branca = ph2d_app_macros::mundo::aplica::png(LADO, LADO, &vec![255; n]).expect("png");
+        b.recursos.insert(id, branca);
+        let px: ph2d_ecs::SpritePixels = postcard::from_bytes(&id).expect("um AssetId");
+        b.sim
+            .world_mut()
+            .entity_mut(Entity::from_bits(img))
+            .insert(px);
+    }
+    b.painter.bind_document(img, vec![255; n], LADO, LADO);
+    b.bits = img;
+    b.escolhido = Some(img);
+    b.painter.set_brush_color_srgb8([200, 20, 20]);
+    b.pincelada([20.0, 64.0], [108.0, 64.0]);
+    let tinta = b
+        .painter
+        .imagem_por_assar(img)
+        .expect("a tinta está por assar");
+
+    b.escolhido = Some(dono);
+    b.activo = painter_na_mao;
+    b.m.pede(MacroRequest::Grava);
+    b.quadro();
+    let _ = corpo(&mut b, img);
+    b.quadro();
+    b.m.pede(MacroRequest::Para);
+    b.quadro();
+
+    let m = b
+        .sim
+        .world()
+        .get::<Macro>(Entity::from_bits(dono))
+        .expect("Macro");
+    let d = ph2d_macro::codec::read(&m.doc).expect("lê");
+    let fams: Vec<_> = d.tracks.iter().map(|t| t.family.as_str()).collect();
+    let pintada = ph2d_app_macros::mundo::aplica::png(tinta.1, tinta.2, &tinta.0).expect("png");
+    let recursos = trilha_do_mundo(&b, dono).inicial.recursos;
+    let com_tinta = recursos.iter().filter(|r| r.bytes == pintada).count();
+    // Quem leva os píxeis: a trilha do Painter (o documento vivo) ou o recurso do mundo.
+    let do_painter = d
+        .tracks
+        .iter()
+        .find(|t| t.family == ph2d_tool_painter::macro_track::FAMILIA)
+        .map(|t| {
+            let doc = ph2d_tool_painter::macro_track::fim::documento_no_fim(t, None).expect("toca");
+            let mut p = PainterTool::default();
+            p.install_document(1, doc);
+            p.baked_document_pixels(1).expect("compõe")
+        });
+    println!(
+        "trilhas {fams:?} · recursos do mundo {} (com a tinta {com_tinta}) · Painter ao bit {:?}",
+        recursos.len(),
+        do_painter.as_ref().map(|p| p.0 == tinta.0)
+    );
+    if let Some(p) = &do_painter {
+        assert_eq!(*p, tinta, "a trilha do Painter leva a tinta por assar");
+        assert!(recursos.is_empty(), "os píxeis são da trilha do Painter");
+    } else {
+        assert_eq!(
+            (recursos.len(), com_tinta),
+            (1, 1),
+            "o boneco embute-se com a tinta, não branco"
+        );
+    }
+    do_painter.is_some()
+}

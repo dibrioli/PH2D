@@ -19,6 +19,9 @@ pub struct Leitores<'a> {
     /// Os píxeis (alfa recto) da sprite do objecto `StableId`: `None` = o objecto já não existe;
     /// `Some(None)` = existe e não se leram.
     pub sprite: &'a mut dyn FnMut(u64) -> Option<Option<Rgba>>,
+    /// A sprite (`StableId`) que o Painter pinta sem a ter assado, com a tinta
+    /// (`PainterTool::imagem_por_assar`, #53): é ela que se embute, nunca o `SpritePixels` de antes.
+    pub por_assar: Option<(u64, Rgba)>,
 }
 
 /// O id que o `AssetDb` cunha para estes píxeis (`insert_image_rgba8`: lados + bytes).
@@ -40,7 +43,11 @@ impl Tradutor<'_> {
         if let Some(x) = self.sprites.get(&sid) {
             return *x;
         }
-        let png = match (self.l.sprite)(sid) {
+        let lida = match &self.l.por_assar {
+            Some((s, px)) if *s == sid => Some(Some(px.clone())),
+            _ => (self.l.sprite)(sid),
+        };
+        let png = match lida {
             // Um objecto que já não existe não se mostra no fim (o aviso nomeia-o como apagado).
             None => return None,
             Some(Some((rgba, w, h))) => {
@@ -66,6 +73,13 @@ impl Tradutor<'_> {
         };
         self.sprites.insert(sid, id);
         id
+    }
+
+    /// O `SpritePixels` de `sid` aponta a imagem de ANTES da tinta por assar: sai, e a sprite embute-se.
+    pub(super) fn pixeis_velhos(&self, sid: u64, nome: &str) -> bool {
+        nome == PIXEIS
+            && self.do_mundo(sid)
+            && self.l.por_assar.as_ref().is_some_and(|(s, _)| *s == sid)
     }
 
     fn componente(id: [u8; 32]) -> Componente {

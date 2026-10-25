@@ -55,7 +55,7 @@ pub(crate) struct Banca {
     pub(crate) bits: u64,
     rects: Vec<(NodeId, Rect)>,
     /// O Painter é a ferramenta activa.
-    activo: bool,
+    pub(crate) activo: bool,
     /// As imagens que a porta de produto da composição fez nascer (W18), pelos bits: os píxeis.
     pub(crate) imagens:
         std::cell::RefCell<std::collections::BTreeMap<u64, ph2d_app_macros::aplicar::Rgba>>,

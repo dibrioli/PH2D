@@ -597,6 +597,8 @@ mod lei_b_tests; // plano 27 W3: o padrão do Shape multiplica DEPOIS do portão
 #[cfg(test)]
 mod medida_undo; // o Ctrl+Z com as opções da W1g (dono 10/10)
 #[cfg(test)]
+mod dry_brush_tests; // o Dry brush só age com o portão seco aberto (a cobertura que cai)
+#[cfg(test)]
 mod mistura_camadas_tests; // N camadas de amarelo sobre azul seco convergem sem preto (prompt 15)
 #[cfg(test)]
 mod mistura_tests; // a barra do Rebelle para a mistura (W1e, F6)

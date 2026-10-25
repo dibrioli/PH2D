@@ -260,9 +260,8 @@ impl WetKnobs {
 /// Os knobs do motor que saíram do Tuning para o cartão: Leveling · Level Clamp · Capillary · Brake (dono 13/10) e
 /// o Brush dust (dono 19/10) — o id do cartão e o knob. Os cinco de baixo (dono 25/10: os que mais decidem o pincel e
 /// o preset; o Pigment diffusion pedido no smoke) saíram também do Tuning: o que está no cartão não se repete lá
-/// (R3). ⛔ O `ExtDryBrush` ficou
-/// de fora: o `dry_gate` do dab é 0 em todo traço do produto (medido 25/10, os 29 presets de fábrica a pressão 1 e
-/// 0,3) — no cartão seria um controlo morto.
+/// (R3). O `ExtDryBrush` ficou de fora: o `dry_gate` é 0 nos 29 presets de fábrica (medido 25/10); só a cobertura
+/// que cai (a velocidade → opacidade) o abre (`o_extdrybrush_so_mexe_com_dry_gate_positivo`).
 const KNOBS_NO_CARTAO: [(ph2d_a11y::NodeId, Knob); 10] = [
     (crate::ids::PAINTER_WETPAINT_LEVELING, Knob::Leveling),
     (crate::ids::PAINTER_WETPAINT_LEVEL_CLAMP, Knob::LevelClamp),

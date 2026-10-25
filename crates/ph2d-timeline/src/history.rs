@@ -9,6 +9,7 @@
 
 use crate::doc::TimelineDoc;
 use crate::state::SelectedKey;
+use ph2d_board_model::undo_tick;
 
 /// Maximum number of undo steps kept (older steps drop off the bottom).
 pub const HISTORY_CAP: usize = 128;
@@ -16,8 +17,9 @@ pub const HISTORY_CAP: usize = 128;
 /// Bounded undo/redo stack of document snapshots.
 #[derive(Debug, Default, Clone)]
 pub struct TimelineHistory {
-    undo: Vec<TimelineDoc>,
-    redo: Vec<TimelineDoc>,
+    /// Cada passo leva a hora do relógio único das pilhas (`undo_tick`): o Ctrl+Z vai à fila mais nova.
+    undo: Vec<(u64, TimelineDoc)>,
+    redo: Vec<(u64, TimelineDoc)>,
     pending: Option<TimelineDoc>,
     /// Keys moved inside the open gesture ([`Self::note_moved`]).
     moved: Vec<SelectedKey>,
@@ -82,7 +84,7 @@ impl TimelineHistory {
         if self.undo.len() >= HISTORY_CAP {
             self.undo.remove(0);
         }
-        self.undo.push(pre);
+        self.undo.push((undo_tick(), pre));
         self.redo.clear();
     }
 
@@ -90,6 +92,14 @@ impl TimelineHistory {
     #[must_use]
     pub fn can_undo(&self) -> bool {
         !self.undo.is_empty()
+    }
+
+    /// O passo que o próximo desfazer (`redo = false`) ou refazer tiraria é mais NOVO que `outro`
+    /// (a hora do topo da outra fila)? O Ctrl+Z desfaz o passo mais recente entre as filas.
+    #[must_use]
+    pub fn mais_novo_que(&self, redo: bool, outro: Option<u64>) -> bool {
+        let lado = if redo { &self.redo } else { &self.undo };
+        lado.last().is_some_and(|s| Some(s.0) > outro)
     }
 
     /// Whether a redo step is available.
@@ -105,6 +115,7 @@ impl TimelineHistory {
         self.undo
             .iter_mut()
             .chain(self.redo.iter_mut())
+            .map(|s| &mut s.1)
             .chain(self.pending.iter_mut())
     }
 
@@ -112,26 +123,26 @@ impl TimelineHistory {
     /// undo global (ele devolve o objecto, e a cova devolve os clipes) — a fila não o consome.
     #[must_use]
     pub fn top_is_buried(&self) -> bool {
-        self.undo.last().is_some_and(|t| self.graveyard.holds(t))
+        self.undo.last().is_some_and(|t| self.graveyard.holds(&t.1))
     }
 
     /// Tira o passo do topo se ele for `pre` — o cemitério a desfazer a purga sozinho, quando o undo
     /// global devolveu o dono. Não vai para o redo: o redo global volta a apagar, e a purga a enterrar.
     pub fn take_top_if(&mut self, pre: &TimelineDoc) -> Option<TimelineDoc> {
-        (self.undo.last() == Some(pre)).then(|| self.undo.pop())?
+        (self.undo.last().map(|s| &s.1) == Some(pre)).then(|| self.undo.pop().map(|s| s.1))?
     }
 
     /// Undo: return the previous doc; push `current` onto redo.
     pub fn undo(&mut self, current: &TimelineDoc) -> Option<TimelineDoc> {
-        let prev = self.undo.pop()?;
-        self.redo.push(current.clone());
+        let (_, prev) = self.undo.pop()?;
+        self.redo.push((undo_tick(), current.clone()));
         Some(prev)
     }
 
     /// Redo: return the next doc; push `current` back onto undo.
     pub fn redo(&mut self, current: &TimelineDoc) -> Option<TimelineDoc> {
-        let next = self.redo.pop()?;
-        self.undo.push(current.clone());
+        let (_, next) = self.redo.pop()?;
+        self.undo.push((undo_tick(), current.clone()));
         Some(next)
     }
 }
@@ -188,5 +199,34 @@ mod tests {
         assert!(h.can_redo());
         let fwd = h.redo(&back).expect("redo");
         assert_eq!(fwd, edited);
+    }
+
+    /// Auditoria F31: o Ctrl+Z desfaz o passo MAIS NOVO entre a timeline e a fila global.
+    #[test]
+    fn ctrl_z_desfaz_o_passo_mais_novo_entre_timeline_e_global() {
+        let doc = TimelineDoc::new();
+        let mut h = TimelineHistory::new();
+        h.push(doc.clone());
+        let global_depois = undo_tick();
+        assert!(
+            !h.mais_novo_que(false, Some(global_depois)),
+            "o global é mais novo"
+        );
+        assert!(
+            h.mais_novo_que(false, None),
+            "sem passo global, é da timeline"
+        );
+        let global_antes = global_depois;
+        h.push(doc.clone());
+        assert!(
+            h.mais_novo_que(false, Some(global_antes)),
+            "a timeline é mais nova"
+        );
+        let _ = h.undo(&doc);
+        assert!(
+            h.mais_novo_que(true, Some(global_antes)),
+            "refazer o mais novo"
+        );
+        assert!(!h.mais_novo_que(true, Some(undo_tick())));
     }
 }

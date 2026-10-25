@@ -54,6 +54,9 @@ pub struct UndoLinks {
     pub top: [Option<UndoLink>; 2],
     /// Quem recusou o último desfazer ligado (a família mostra a razão).
     pub refused: Option<Refusal>,
+    /// Cena de smoke → shell: ela mexeu no documento sem entrada; a base do undo re-tira-se no
+    /// próximo quadro QUIETO, sem passo (senão o 1.º gesto do dono desfaz a cena inteira).
+    pub rearmar: bool,
 }
 
 impl UndoLinks {
@@ -110,6 +113,12 @@ impl UndoLinks {
         self.alive.extend(alive);
     }
 
+    /// A shell: (re)tira-se a base do undo agora, sem passo? `sem_base` = ainda não há nenhuma;
+    /// `quieto` = sem entrada nem gesto neste quadro (o pedido espera por um quieto).
+    pub fn tira_a_base(&mut self, sem_base: bool, quieto: bool) -> bool {
+        sem_base || (quieto && std::mem::take(&mut self.rearmar))
+    }
+
     /// O elo está vivo do lado global (ou ainda à espera de nascer lá)?
     #[must_use]
     pub fn is_alive(&self, link: UndoLink) -> bool {
@@ -142,5 +151,18 @@ mod tests {
         assert_eq!(l.take_ask(), Some(Err(Refusal::GlobalAhead)));
         assert_eq!(l.refused, Some(Refusal::GlobalAhead));
         assert_eq!(l.take_ask(), None);
+    }
+
+    /// Auditoria F31: a cena de smoke monta o documento sem entrada; a base re-tira-se no próximo
+    /// quadro quieto e uma vez só (senão o 1.º gesto do dono desfaz a cena inteira).
+    #[test]
+    fn a_cena_de_smoke_rearma_a_base_do_undo_no_quadro_quieto() {
+        let mut l = UndoLinks::default();
+        assert!(l.tira_a_base(true, false), "sem base, tira-se sempre");
+        assert!(!l.tira_a_base(false, true), "sem pedido, a base fica");
+        l.rearmar = true;
+        assert!(!l.tira_a_base(false, false), "com entrada, espera");
+        assert!(l.tira_a_base(false, true), "quieto, re-tira");
+        assert!(!l.tira_a_base(false, true), "uma vez só");
     }
 }

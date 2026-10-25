@@ -42,6 +42,13 @@ impl crate::App {
         })
     }
 
+    /// (Re)tira-se a base do undo agora? A porta é `UndoLinks::tira_a_base` (auditoria F31).
+    pub(super) fn tira_a_base(&mut self, quieto: bool) -> bool {
+        let sem_base = self.undo_baseline.is_none();
+        self.undo_links()
+            .map_or(sem_base, |l| l.tira_a_base(sem_base, quieto))
+    }
+
     /// Um desfazer/refazer repõe `aplica`; a gravação do mundo de uma macro vê a mudança (W19).
     pub(super) fn aplica_e_conta_as_macros(
         &mut self,

@@ -38,6 +38,12 @@ impl App {
             let redo = matches!(code, KeyCode::KeyY)
                 || (matches!(code, KeyCode::KeyZ) && self.modifiers.shift_key());
             let undo = matches!(code, KeyCode::KeyZ) && !self.modifiers.shift_key();
+            // A timeline só fica com o acorde se o passo dela é o MAIS NOVO (auditoria F31).
+            let h = &self.timeline.history;
+            let (undo, redo) = (
+                undo && h.mais_novo_que(false, self.undo.top_at(false)),
+                redo && h.mais_novo_que(true, self.undo.top_at(true)),
+            );
             if redo && self.timeline.history.can_redo() {
                 self.timeline_intents
                     .push(ph2d_timeline::TimelineIntent::Redo);

@@ -421,9 +421,9 @@ impl crate::App {
             }
             return;
         }
-        // Estabelece o baseline no PRIMEIRO frame (gfx pronto), antes de qualquer
-        // ação. Sem isto a primeira ação não teria pré-estado e não seria desfazível.
-        if self.undo_baseline.is_none() {
+        // O baseline no PRIMEIRO frame (gfx pronto), e de novo quando uma cena de smoke montou
+        // sem entrada (`UndoLinks::tira_a_base`) — senão o 1.º gesto desfaria a cena.
+        if self.tira_a_base(!had_input) {
             self.settle_tree_before_capture();
             self.undo_baseline = self.capture_project();
             return;

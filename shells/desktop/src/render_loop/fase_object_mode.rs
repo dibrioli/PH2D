@@ -38,6 +38,7 @@ impl crate::App {
                 .or_else(|| ph2d_app_constraints::smoke::passo(sim, hero, tl, ph))
         {
             eprintln!("{l}");
+            hero.undo_links.rearmar = true; // a cena mexeu sem entrada: base nova (auditoria F31)
         }
         ph2d_app_flip::flip_mode::smoke_step(&self.flip_state, hero);
         // ⭐ **As famílias que declaram modos**, compiladas.

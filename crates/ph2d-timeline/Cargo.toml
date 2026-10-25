@@ -57,6 +57,8 @@ ph2d-anim = { path = "../ph2d-anim" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 # The engine Playhead: transport intents drive it, and the view snapshot reads it.
 ph2d-core = { path = "../ph2d-core" }
+# O relógio único das pilhas de desfazer (`undo_tick`): o Ctrl+Z compara a hora do topo de cada fila.
+ph2d-board-model = { path = "../ph2d-board-model" }
 # Comprimento de arco de uma cubica e a INVERSA dele: em modo Path (ADR-0141) a
 # track escalar mede "quanto do caminho", e a amostragem inverte esse numero em
 # `t`. Crate-folha ZERO-dep, partilhada com a pilha de efeitos do Vector -- duas

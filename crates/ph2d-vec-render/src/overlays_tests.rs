@@ -34,6 +34,7 @@ fn picked_drawn(
         selected_verts,
         &VecXforms::new(),
         Affine::IDENTITY,
+        ph2d_tokens::Theme::default(),
         &mut target,
     );
     PICKED_DRAWN.with(|c| c.get())
@@ -106,6 +107,7 @@ fn a_derived_shape_draws_no_nodes() {
             &[(id, 0)],
             &ph2d_vec_scene::VecXforms::new(),
             ph2d_vector::Affine::IDENTITY,
+            ph2d_tokens::Theme::default(),
             &mut alvo,
         );
         PICKED_DRAWN.with(std::cell::Cell::get)

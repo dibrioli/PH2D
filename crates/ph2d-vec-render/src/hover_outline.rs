@@ -11,16 +11,16 @@
 //! ⚠️ **É um CONTORNO, nunca um preenchimento.** A forma apontada continua a mostrar a própria
 //! tinta — tapá-la responderia *"o que está aqui"* apagando a resposta.
 
+use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vec_scene::VecPath;
 use ph2d_vector::{Affine, Brush, Color, Stroke, VectorScene};
 
 /// A espessura do contorno, em px de TELA.
 const OUTLINE_PX: f64 = 1.5;
 
-/// A tinta do contorno. ⚠️ **Não passa por token de propósito**: os overlays desta crate desenham
-/// em tinta própria (o marquee, o laço, a gaiola), porque a crate não alcança o tema — e um
-/// segundo caminho de tema só para esta linha seria a porta que diverge das outras três.
-const OUTLINE: Color = Color::from_rgba8(120, 200, 255, 170);
+/// A tinta do contorno: a do fio do caminho ([`super::path_wire`]) — apontar e seleccionar nomeiam
+/// a mesma coisa; a espessura é que os distingue. (F30 §E: era um RGBA fixo, HR-15.)
+const OUTLINE: ColorToken = super::WIRE_TOKEN;
 
 /// **Desenha o contorno de `world`** — caminhos já em coordenadas de MUNDO — através de `camera`.
 ///
@@ -29,25 +29,41 @@ const OUTLINE: Color = Color::from_rgba8(120, 200, 255, 170);
 /// é a entrada do mapa vivo (o offset/pattern dela); para um operando ABSORVIDO por uma booleana
 /// viva o mapa vivo está **vazio**, e o contorno certo é a pegada PRÓPRIA dela — que é exactamente
 /// a forma que a linha da Hierarquia nomeia.
-pub fn draw_hover_outline(world: &[VecPath], camera: Affine, target: &mut VectorScene) {
-    stroke_all(world, camera, target, OUTLINE, OUTLINE_PX);
+pub fn draw_hover_outline(
+    world: &[VecPath],
+    camera: Affine,
+    theme: Theme,
+    target: &mut VectorScene,
+) {
+    stroke_all(
+        world,
+        camera,
+        target,
+        super::token_ink(OUTLINE, theme),
+        OUTLINE_PX,
+    );
 }
 
 /// A espessura do realce do **Trim**, em px de TELA. Mais grossa que o contorno de proveniência de
 /// propósito: aquele responde *"o que é isto"*, este responde *"isto vai SUMIR"*.
 const TRIM_PX: f64 = 3.0;
 
-/// A tinta do pedaço que o Trim vai apagar. ⚠️ **Vermelha, como no Fusion** — e a mesma nota do
-/// [`OUTLINE`] vale: os overlays desta crate desenham em tinta própria porque não alcançam o tema.
-const TRIM: Color = Color::from_rgba8(255, 82, 82, 220);
+/// A tinta do pedaço que o Trim vai apagar. ⚠️ **Vermelha, como no Fusion** — o `danger` do tema.
+const TRIM: ColorToken = ColorToken::Danger;
 
 /// ⭐⭐⭐ **Desenha o PEDAÇO que o Trim vai apagar** (plano 38), já em coordenadas de MUNDO.
 ///
 /// ⚠️ **A geometria vem da MESMA porta que o corte usa** (`trim_tool::piece_geometry`, o
 /// complemento exacto do `sever`) — construí-la aqui por outra conta acenderia uma coisa e apagaria
 /// outra, que é o pior defeito possível numa ferramenta destrutiva.
-pub fn draw_trim_piece(world: &[VecPath], camera: Affine, target: &mut VectorScene) {
-    stroke_all(world, camera, target, TRIM, TRIM_PX);
+pub fn draw_trim_piece(world: &[VecPath], camera: Affine, theme: Theme, target: &mut VectorScene) {
+    stroke_all(
+        world,
+        camera,
+        target,
+        super::token_ink(TRIM, theme),
+        TRIM_PX,
+    );
 }
 
 /// A espessura do contorno da face que o Balde vai preencher, em px de TELA.
@@ -95,16 +111,11 @@ pub fn draw_bucket_face(world: &VecPath, tinta: [u8; 4], camera: Affine, target:
 /// O traçado partilhado dos dois realces — px de TELA sob `Affine::IDENTITY` (a lei do cabeçalho).
 fn stroke_all(world: &[VecPath], camera: Affine, target: &mut VectorScene, tinta: Color, px: f64) {
     for path in world {
-        let screen = camera * super::build::build_bezpath(path);
-        if screen.elements().is_empty() {
-            continue;
-        }
-        target.inner_mut().stroke(
-            &Stroke::new(px),
-            Affine::IDENTITY,
-            &Brush::Solid(tinta),
-            None,
-            &screen,
+        super::stroke_screen(
+            &(camera * super::build::build_bezpath(path)),
+            tinta,
+            px,
+            target,
         );
     }
 }
@@ -139,7 +150,12 @@ mod tests {
     #[test]
     fn an_empty_path_draws_nothing() {
         let mut scene = VectorScene::new();
-        draw_hover_outline(&[VecPath::default()], Affine::IDENTITY, &mut scene);
+        draw_hover_outline(
+            &[VecPath::default()],
+            Affine::IDENTITY,
+            Theme::default(),
+            &mut scene,
+        );
         // O oráculo é o próprio `build_bezpath`: sem vértices ele não emite elementos.
         assert!(
             super::super::build::build_bezpath(&VecPath::default())

@@ -29,13 +29,13 @@ pub(super) fn of(scene: Option<&str>) -> Scene {
         .and_then(|s| s.parse::<u8>().ok().filter(|n| n.to_string() == s))
         .unwrap_or(0);
     Scene {
-        want: if matches!(n, 6 | 7 | 9..=38) { 1 } else { 9 },
+        want: if matches!(n, 6 | 7 | 9..=39) { 1 } else { 9 },
         weld: n == 7,
-        bars: matches!(n, 9..=38),
+        bars: matches!(n, 9..=39),
         reach: n == 10,
         nav: n == 11,
         frame: n == 14,
-        handles: if (15..=38).contains(&n) { n - 14 } else { 0 },
+        handles: if (15..=39).contains(&n) { n - 14 } else { 0 },
         quick: match n {
             12 => 1,
             13 => 2,
@@ -75,6 +75,7 @@ pub(super) fn handles_first(handles: u8) -> Option<u8> {
         19 | 20 => crate::vector_mode_cor::FIRST,
         22 => crate::vector_mode_olho::FIRST,
         24 => crate::vector_mode_composto::FIRST,
+        25 => crate::vector_mode_fio::FIRST,
         _ => 70,
     })
 }

@@ -196,7 +196,8 @@ impl crate::App {
             && !self.hover_outline.is_empty()
             && !hero.gizmo.iter_selected().any(|s| s == bits)
         {
-            ph2d_vec_render::draw_hover_outline(&self.hover_outline, cam_affine, vector_scene);
+            let o = &self.hover_outline;
+            ph2d_vec_render::draw_hover_outline(o, cam_affine, hero.theme, vector_scene);
         }
         // O gizmo das CONSTRAINTS (alvos, arcos, raios) por cima das formas: as pegas são do dedo.
         ph2d_app_constraints::gizmo::desenhar(

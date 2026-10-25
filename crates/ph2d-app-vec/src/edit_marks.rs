@@ -3,6 +3,7 @@
 
 use crate::state::VecState;
 use ph2d_tokens::Theme;
+use ph2d_tool_vector::DrawMode;
 use ph2d_vec_scene::{VecPathId, VecScene, VecViewState, VecXforms};
 use ph2d_vector::{Affine, VectorScene};
 
@@ -46,3 +47,54 @@ pub fn draw(
     let (nodes, grabbed) = vec.pencil.shape_edit_nodes();
     ph2d_vec_render::draw_shape_nodes(&nodes, grabbed, cam_affine, theme, target);
 }
+
+/// **Os caminhos que mostram o FIO** (F30 §E): o que um gesto está a construir — Caneta (e a lâmina
+/// do Corte), Lápis/QuickShape, Shape/Frame, Conector — e a seleção de objeto, sem repetidos.
+#[must_use]
+pub fn wire_ids(vec: &VecState) -> Vec<VecPathId> {
+    let mut ids: Vec<VecPathId> = [
+        vec.pen.active_path(),
+        vec.pencil.active_path(),
+        vec.shape.active_path(),
+        vec.connect.as_ref().map(|c| c.path),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    for &id in vec.pen.selected_paths() {
+        if !ids.contains(&id) {
+            ids.push(id);
+        }
+    }
+    ids
+}
+
+/// ⭐ **O fio do caminho** (report do dono, 25/10: *«com o width do stroke em 0, a Pen mostra apenas
+/// handles»*) — por baixo dos nós; e, com a Caneta a meio de um caminho e a mão solta, o segmento
+/// da última âncora até `cursor_world` (o *rubber band* do Figma).
+#[allow(clippy::too_many_arguments)]
+pub fn draw_wires(
+    vec: &VecState,
+    vec_scene: &VecScene,
+    vec_view: &VecViewState,
+    vec_xf: &VecXforms,
+    cam_affine: Affine,
+    cursor_world: Option<[f64; 2]>,
+    theme: Theme,
+    target: &mut VectorScene,
+) {
+    let ids = wire_ids(vec);
+    ph2d_vec_render::draw_path_wires(vec_scene, vec_view, vec_xf, &ids, cam_affine, theme, target);
+    if let (Some(id), Some(c)) = (vec.pen.active_path(), cursor_world)
+        && !vec.pen.is_dragging()
+        && matches!(vec.draw_config.mode, DrawMode::Pen | DrawMode::Cut)
+    {
+        ph2d_vec_render::draw_pen_reach(
+            vec_scene, vec_view, vec_xf, id, c, cam_affine, theme, target,
+        );
+    }
+}
+
+#[cfg(test)]
+#[path = "edit_marks_tests.rs"]
+mod tests;

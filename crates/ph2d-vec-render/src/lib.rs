@@ -62,6 +62,10 @@ mod cut_line;
 /// está a delimitar, em px de tela, e que some ao soltar.
 mod hover_outline;
 mod marquee;
+mod path_wire;
+pub use path_wire::{
+    WIRE_PX, WIRE_TOKEN, draw_path_wires, draw_pen_reach, stroke_screen, token_ink,
+};
 mod standalone;
 mod stroke_uniform;
 pub use cut_line::draw_cut_line;
@@ -662,3 +666,7 @@ mod standalone_tests;
 #[cfg(test)]
 #[path = "isolation_tests.rs"]
 mod isolation_tests;
+
+/// O censo de cor crua nos overlays (HR-15, F30 §E).
+#[cfg(test)]
+mod cor_crua_tests;

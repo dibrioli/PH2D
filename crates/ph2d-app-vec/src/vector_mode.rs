@@ -380,6 +380,7 @@ impl ModeFamily for Family<'_> {
 /// `=37` (F22b): a 25 com o Hover regravado laranja a 30 % — a opacidade anima (`vector_mode_opaco`).
 /// `=38` (F29): o composto do balde sobre um quadrado, a booleana com transparente e a ④ do Corte
 /// (`vector_mode_composto`).
+/// `=39` (F30 §E): a Caneta a meio de um caminho de largura 0 — só o fio (`vector_mode_fio`).
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,

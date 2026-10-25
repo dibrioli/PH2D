@@ -51,8 +51,9 @@ thread_local! {
 
 /// Desenha os **gizmos de edição** por cima da cena (screen-space, tamanho
 /// constante em px): quadradinho em cada âncora; e — só no path `selected` — as
-/// linhas âncora→handle + bolinhas nos handles dos vértices suaves. Cores
-/// hardcoded de scaffold (Fase 1); migram p/ tokens no chrome do cutover (Fase R).
+/// linhas âncora→handle + bolinhas nos handles dos vértices suaves. Tintas do tema
+/// (F30 §E; eram RGBA fixos de scaffold): alça e nó escolhido no `accent` (o do gizmo),
+/// a alça-fantasma no `accent-soft`, o nó da seleção de objeto no `warn`, o resto no `text-1`.
 #[allow(clippy::too_many_arguments)]
 pub fn draw_overlays(
     scene: &VecScene,
@@ -62,8 +63,12 @@ pub fn draw_overlays(
     selected_verts: &[(VecPathId, usize)],
     xforms: &VecXforms,
     camera: Affine,
+    theme: ph2d_tokens::Theme,
     target: &mut VectorScene,
 ) {
+    use ph2d_tokens::ColorToken as T;
+    let ink = |t: T| crate::token_ink(t, theme);
+    let (accent, soft) = (ink(T::Accent), ink(T::AccentSoft));
     for path in scene.paths() {
         if view.is_hidden(path.id) {
             continue; // um path escondido não mostra âncoras
@@ -101,11 +106,11 @@ pub fn draw_overlays(
                     line.line_to(hp);
                     // Ghost stubs are dimmer + hollow so the user reads them as
                     // "suggested, not yet affecting the curve".
-                    let line_a = if is_ghost { 120 } else { 200 };
+                    let line_ink = if is_ghost { soft } else { accent };
                     target.inner_mut().stroke(
                         &Stroke::new(1.0),
                         Affine::IDENTITY,
-                        &Brush::Solid(Color::from_rgba8(120, 190, 230, line_a)),
+                        &Brush::Solid(line_ink),
                         None,
                         &line,
                     );
@@ -113,7 +118,7 @@ pub fn draw_overlays(
                         target.inner_mut().stroke(
                             &Stroke::new(1.2),
                             Affine::IDENTITY,
-                            &Brush::Solid(Color::from_rgba8(120, 190, 230, 220)),
+                            &Brush::Solid(accent),
                             None,
                             &Circle::new(hp, 3.5),
                         );
@@ -121,7 +126,7 @@ pub fn draw_overlays(
                         target.inner_mut().fill(
                             Fill::NonZero,
                             Affine::IDENTITY,
-                            &Brush::Solid(Color::from_rgba8(120, 190, 230, 255)),
+                            &Brush::Solid(accent),
                             None,
                             &Circle::new(hp, 3.5),
                         );
@@ -148,11 +153,11 @@ pub fn draw_overlays(
             }
             let s = if picked { 4.5 } else { 3.5 };
             let col = if picked {
-                Color::from_rgba8(90, 200, 235, 255) // ciano = vértice selecionado (grupo)
+                accent
             } else if in_set {
-                Color::from_rgba8(250, 180, 90, 255) // laranja = path na seleção de objeto
+                ink(T::Warn)
             } else {
-                Color::from_rgba8(230, 230, 235, 220)
+                ink(T::Text1)
             };
             target.fill_rect(Rect::new(a.x - s, a.y - s, a.x + s, a.y + s), col);
         }

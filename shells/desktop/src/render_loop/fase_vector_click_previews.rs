@@ -1,16 +1,8 @@
 //! **Fase do quadro: OS TRÊS REALCES DE UM CLIQUE DA CANETA** — o pedaço que o Trim vai apagar, a
 //! face que o Balde vai preencher e o ponto que a caneta ia inserir.
 //!
-//! ⚠️ Ela saiu da [`super::fase_vector_overlays`] na integração de 2026-09-20, por tecto de LOC
-//! (`214` contra `200`) e **por responsabilidade** — a prosa dos três blocos já os declarava um
-//! assunto só: *«ao lado dos dois realces acima e pela mesma razão: ele responde a «o que este
-//! clique faria?»»*.
-//!
-//! ⭐⭐ **Ela RE-DERIVA o `gfx`, e é isso que a torna possível:** a mãe tem `self.gfx` emprestado
-//! até à última leitura do `vector_scene`, e um `self.fase_…(` com esse empréstimo vivo não
-//! compila. Chamada DEPOIS dele, o empréstimo já morreu (NLL) e a fase-filha pode pedir o `self`
-//! inteiro. ⚠️ A ordem no quadro fica **idêntica**: o texto emendado põe este corpo no sítio da
-//! chamada.
+//! Filha da [`super::fase_vector_overlays`] (2026-09-20): RE-DERIVA o `gfx` (a mãe já largou o
+//! empréstimo), e o texto emendado do quadro põe este corpo no sítio da chamada.
 
 use super::*;
 
@@ -21,21 +13,19 @@ impl crate::App {
         cam_affine: ph2d_vector::Affine,
     ) -> Option<()> {
         let gfx = self.gfx.as_mut()?;
-        let FrameGfx { vector_scene, .. } = FrameGfx::of(gfx);
-        // ⭐⭐⭐ **O REALCE DO TRIM** (plano 38): o pedaço que o clique vai apagar, a vermelho,
-        // como no Fusion. ⚠️ **A geometria vem da MESMA porta que o corte** — ela é calculada
-        // no dreno do ponteiro e guardada, então o que acende neste quadro é literalmente o que
-        // o `trim::apply` vai comer. Uma segunda conta aqui seria a divergência mais cara
-        // que uma ferramenta destrutiva pode ter.
+        let FrameGfx {
+            vector_scene,
+            hero_screen,
+            ..
+        } = FrameGfx::of(gfx);
+        let theme = hero_screen.as_ref()?.theme;
+        // ⭐⭐⭐ **O REALCE DO TRIM** (plano 38): a geometria é a MESMA que o `trim::apply` vai
+        // comer (calculada no dreno do ponteiro) — nunca uma segunda conta aqui.
         if !self.vec.trim_piece.is_empty() {
-            ph2d_vec_render::draw_trim_piece(&self.vec.trim_piece, cam_affine, vector_scene);
+            ph2d_vec_render::draw_trim_piece(&self.vec.trim_piece, cam_affine, theme, vector_scene);
         }
-        // ⭐⭐⭐ **A FACE que o Balde vai preencher** (plano 40), na TINTA que ele vai depositar.
-        // ⚠️ A geometria vem da MESMA porta que o preenchimento usa; e a tinta é a corrente,
-        // não uma cor neutra — um realce noutra cor prometeria uma coisa e entregaria outra.
-        // ⚠️ A tinta é lida do CAMPO (`vec_pen`), e não pelo `bucket_paint()`: um método em
-        // `&self` pede o objecto INTEIRO emprestado, e aqui há um empréstimo mútuo vivo. Os
-        // campos são disjuntos; a lei do `alpha == 0` é a mesma dos dois lados.
+        // ⭐⭐⭐ **A FACE que o Balde vai preencher** (plano 40), pela MESMA porta do preenchimento
+        // e na tinta corrente — lida do CAMPO: o `bucket_paint()` pediria o `self` inteiro.
         let tinta_balde = self.vec.pen.style().fill;
         if let Some(face) = self.vec.bucket_face.as_ref()
             && tinta_balde.a != 0

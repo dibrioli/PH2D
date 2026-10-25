@@ -13,6 +13,7 @@ impl crate::App {
         cam_affine: ph2d_vector::Affine,
         overlay: ph2d_app_vec::overlay::VecOverlayPlan,
     ) -> Option<(ph2d_vec_scene::VecXforms, ph2d_vector::Affine)> {
+        let cursor = self.vec_world_at(self.last_pointer);
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let gfx = self.gfx.as_mut()?;
         let FrameGfx {
@@ -25,14 +26,21 @@ impl crate::App {
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
         let hero = hero_screen.as_mut()?;
+        // ⭐ F30 §E: o FIO do caminho (em construção e seleccionado), por baixo dos nós.
+        ph2d_app_vec::edit_marks::draw_wires(
+            &self.vec,
+            vec_scene,
+            &vec_view,
+            &vec_xf,
+            cam_affine,
+            cursor,
+            hero.theme,
+            vector_scene,
+        );
         if overlay.edit {
-            // ⚠️ A gaiola do Envelope SUBSTITUI a edição de nós. Quando a seleção é um envelope,
-            // a forma sob a gaiola é DERIVADA (os nós dela são a SAÍDA do warp, não estado
-            // editável), então NÃO se desenham as alças de nó dela — elas confundem (não se
-            // pode arrastá-las) e expõem o handle longo que o refit deixa numa quina CÔNCAVA
-            // (o "traço à deriva" que o Enio reportou numa estrela sob envelope, 2026-07-24).
-            // Você edita a GAIOLA (desenhada abaixo). É o idioma do Illustrator/Affinity: com um
-            // envelope ativo, os nós do objeto somem.
+            // ⚠️ A gaiola do Envelope SUBSTITUI a edição de nós: a forma sob ela é DERIVADA (a
+            // SAÍDA do warp), e as alças dela não se arrastam (Enio, 2026-07-24). Idioma do
+            // Illustrator/Affinity: com um envelope ativo, os nós do objeto somem.
             let envelope_selected = hero
                 .gizmo
                 .selection
@@ -48,6 +56,7 @@ impl crate::App {
                     self.vec.pen.selected_verts(),
                     &vec_xf,
                     cam_affine,
+                    hero.theme,
                     vector_scene,
                 );
                 // ⭐⭐⭐ O anel do nó SOLDADO (plano 39) e os nós do Edit Shape (F7e).

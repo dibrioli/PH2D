@@ -139,6 +139,32 @@ seleccionadas, (3) a linha da última âncora ao cursor no Pen; e as cores fixas
 tokens. Gates: `um_caminho_sem_traco_nem_preenchimento_ve_se_enquanto_se_desenha` (pixels do overlay ≠ fundo com width 0
 e alpha 0), `a_forma_seleccionada_mostra_o_fio`, e o censo de cor crua no overlay vetorial.
 
+**Feito (25/10).** Medido antes de construir:
+- **Ferramentas com path em construção** (o `DrawMode`, `ph2d-tool-vector/src/params_mode.rs:14`, tem 17 modos; não há
+  ferramenta «Curvature» — só o parâmetro de forma `shapes.rs:489`): Caneta e a lâmina do Corte (`PenTool::active_path`,
+  `ph2d-vec-edit/src/lib.rs:209`; o caminho cresce sempre pela cauda, `pen_press.rs:76`), Lápis/QuickShape
+  (`pencil.rs:124`), Shape/Frame (`shape.rs:143`) e Conector (`ConnectorDrag::path`, `ph2d-app-vec/src/connector_drag.rs:19`).
+  Todos põem o path NA cena no press — o fio pinta-o pela mesma projecção das âncoras (`overlay_transform`).
+- **O *rubber band* da Caneta NÃO existia** (o único «rubber band» do repo é a caixa de seleção da shell,
+  `app_state.rs:864`). Agora: da última âncora (com a alça de saída) até ao cursor, só com a mão solta e no modo Pen/Cut.
+- **O token:** `accent` (o das alças do gizmo, `ph2d-editor-core/src/gizmo/paint.rs:248`), e não a `selection`: esta é o
+  acento a 27,5 % sobre a base do chrome (`ph2d-tokens/src/derive.rs:541`), um tinto de linha de lista que a 1 px some.
+- **Seleção ↔ fio:** `pen.selected_paths()` é o espelho do gizmo (`selection_sync.rs`), então o fio da forma
+  seleccionada vale em todos os modos (no Select também, como no Figma); fora do `overlay.edit`, por baixo dos nós.
+
+Construído: a porta `ph2d-vec-render/src/path_wire.rs` (`stroke_screen` — também a do hover e do Trim —,
+`draw_path_wires`, `draw_pen_reach`, `token_ink`); quem escolhe os caminhos é `ph2d-app-vec/src/edit_marks.rs`
+(`wire_ids`, `draw_wires`), chamado uma vez em `fase_vector_edit_overlay`. O hover passou a `accent`, o Trim a `danger`,
+os nós/alças do `overlays.rs` a `accent`/`accent-soft`/`warn`/`text-1`. A shell ficou com **−3** linhas (cortei prosa
+histórica nas duas fases tocadas: a catraca `the_shell_only_shrinks` estava no tecto exacto, 189 041).
+Cena de smoke `PH2D_OBJECT_MODE_SMOKE=39` (`vector_mode_fio.rs`).
+
+**Gates:** os dois nomeados (`edit_marks_tests.rs`; o oráculo é o buffer do Vello — a tinta do `accent`, que não é
+transparente nem a do `canvas`, e a caixa dos pontos em px de ecrã cobre o caminho; controlo: sem gesto nem seleção, nada)
+e `o_overlay_vetorial_nao_tem_cor_crua` (`ph2d-vec-render/src/cor_crua_tests.rs`, catraca exacta por ficheiro).
+**Dívida contada que fica** (outros overlays com RGBA fixo, cada um com cor semântica própria a decidir):
+`connector.rs` 5 · `marquee.rs` 4 · `cut_line.rs` 2 · `gradient.rs` 2 · `guides.rs` 2 · `symmetry_overlay.rs` 1.
+
 ## Smoke
 
 `PH2D_AUTOKEY_SMOKE=35` (a 34 é da F28; conta-se no despachante): um objecto com dois Timers e uma forma vetorial com três

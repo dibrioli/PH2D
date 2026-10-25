@@ -38,6 +38,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "36"
             | "37"
             | "38"
+            | "39"
     ) {
         1
     } else {
@@ -74,6 +75,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "36"
             | "37"
             | "38"
+            | "39"
     );
     let handles = match s {
         "15" => 1,
@@ -100,6 +102,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
         "36" => 22,
         "37" => 23,
         "38" => 24,
+        "39" => 25,
         _ => 0,
     };
     let quick = match s {

@@ -445,11 +445,14 @@ pub enum ObjectKind {
     /// ⭐ Um gerador do Motion Nodes (`ph2d::ecs::MotionGenerator`): os nós são dele, os moldes são
     /// os filhos (doc ObjectsAndComponents 01 §13, F5).
     Motion,
+    /// ⭐ Um sprite de pixel art (`ph2d::ecs::PixelSprite`, ADR-0192): o documento de pixels vive na
+    /// família `ph2d-app-pixel`, o objecto só o liga.
+    PixelSprite,
 }
 
 impl ObjectKind {
     /// Todos, em ordem — a fonte da iteração (⛔ nunca escreva a lista uma segunda vez).
-    pub const ALL: [ObjectKind; 7] = [
+    pub const ALL: [ObjectKind; 8] = [
         ObjectKind::Empty,
         ObjectKind::Image,
         ObjectKind::Vector,
@@ -457,6 +460,7 @@ impl ObjectKind {
         ObjectKind::Painted,
         ObjectKind::Skeleton,
         ObjectKind::Motion,
+        ObjectKind::PixelSprite,
     ];
 
     /// O rótulo que o artista lê no filtro da paleta. Inglês (HR-15).
@@ -470,6 +474,7 @@ impl ObjectKind {
             ObjectKind::Painted => "component.object_kind.painted",
             ObjectKind::Skeleton => "component.object_kind.skeleton",
             ObjectKind::Motion => "component.object_kind.motion",
+            ObjectKind::PixelSprite => "component.object_kind.pixel_sprite",
         }
     }
 
@@ -488,6 +493,7 @@ impl ObjectKind {
             ObjectKind::Painted => Some("ph2d::ecs::PaintedDoc"),
             ObjectKind::Skeleton => Some("ph2d::skeleton::Skeleton"),
             ObjectKind::Motion => Some("ph2d::ecs::MotionGenerator"),
+            ObjectKind::PixelSprite => Some("ph2d::ecs::PixelSprite"),
         }
     }
 
@@ -522,7 +528,8 @@ impl ObjectKinds {
         ObjectKinds::ANY.0
             & !ObjectKind::Empty.bit()
             & !ObjectKind::Skeleton.bit()
-            & !ObjectKind::Motion.bit(),
+            & !ObjectKind::Motion.bit()
+            & !ObjectKind::PixelSprite.bit(),
     );
 
     /// Constrói a partir de uma lista.

@@ -12,6 +12,9 @@ pub struct Stroke {
     pub layer: LayerId,
     pub frame: FrameId,
     value: u32,
+    /// `Some(v)`: só as células que valem `v` no documento mudam (a borracha com o botão direito do
+    /// Aseprite troca a cor da frente pela de fundo).
+    only: Option<u32>,
     cells: BTreeMap<(i32, i32), u32>,
     last: (i32, i32),
 }
@@ -27,10 +30,37 @@ impl Stroke {
         x: i32,
         y: i32,
     ) -> Self {
+        Self::start(sprite, layer, frame, value, None, x, y)
+    }
+
+    /// Como [`Self::begin`], mas só troca as células que valem `from`.
+    #[must_use]
+    pub fn begin_replacing(
+        sprite: &Sprite,
+        layer: LayerId,
+        frame: FrameId,
+        from: u32,
+        to: u32,
+        x: i32,
+        y: i32,
+    ) -> Self {
+        Self::start(sprite, layer, frame, to, Some(from), x, y)
+    }
+
+    fn start(
+        sprite: &Sprite,
+        layer: LayerId,
+        frame: FrameId,
+        value: u32,
+        only: Option<u32>,
+        x: i32,
+        y: i32,
+    ) -> Self {
         let mut s = Self {
             layer,
             frame,
             value,
+            only,
             cells: BTreeMap::new(),
             last: (x, y),
         };
@@ -50,9 +80,15 @@ impl Stroke {
     }
 
     fn put(&mut self, sprite: &Sprite, x: i32, y: i32) {
-        if sprite.bounds().contains(x, y) {
-            self.cells.insert((x, y), self.value);
+        if !sprite.bounds().contains(x, y) {
+            return;
         }
+        if let Some(from) = self.only
+            && sprite.value_at((self.layer, self.frame), x, y) != from
+        {
+            return;
+        }
+        self.cells.insert((x, y), self.value);
     }
 
     /// O valor que o traço põe em `(x, y)`, se a tocou.

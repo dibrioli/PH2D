@@ -160,6 +160,9 @@ fn every_marker_derives_its_kind() {
             ObjectKind::Motion => {
                 e.insert(ph2d_ecs::MotionGenerator);
             }
+            ObjectKind::PixelSprite => {
+                e.insert(ph2d_ecs::PixelSprite(1));
+            }
         }
         let e = e.id();
         assert_eq!(kind_of(sim.world(), e), kind, "{kind:?}");

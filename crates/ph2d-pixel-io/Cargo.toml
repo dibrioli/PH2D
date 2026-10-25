@@ -1,0 +1,18 @@
+[package]
+name = "ph2d-pixel-io"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Entrada e saída do Pixel Art (ADR-0192): `.ase` ler/escrever, folha + JSON, GIF/APNG/PNG, paletas.
+# Nasce vazia na P0 (o documento grava-se pelo `ph2d-pixel-core::codec`); a P9 enche-a.
+[dependencies]
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+
+[lints]
+workspace = true

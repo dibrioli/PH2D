@@ -33,6 +33,7 @@ pub fn kind_of(
         ObjectKind::Painted => world.get::<ph2d_ecs::PaintedDoc>(entity).is_some(),
         ObjectKind::Skeleton => world.get::<ph2d_skeleton_ecs::Skeleton>(entity).is_some(),
         ObjectKind::Motion => world.get::<ph2d_ecs::MotionGenerator>(entity).is_some(),
+        ObjectKind::PixelSprite => world.get::<ph2d_ecs::PixelSprite>(entity).is_some(),
     };
     ObjectKind::ALL
         .into_iter()

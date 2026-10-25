@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-pixel-render"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A vista do Pixel Art (ADR-0192): o sprite composto com amostragem nearest, o xadrez, a grelha de
+# pixels e o mapa ecrã↔célula. Sem ECS e sem câmera: o afim `pixel → ecrã` chega de quem chama.
+[dependencies]
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+ph2d-vector = { path = "../ph2d-vector" }
+
+[lints]
+workspace = true

@@ -139,6 +139,8 @@ mod inspector_player;
 mod inspector_vida;
 /// ⭐ As palavras da LUZ 2D (W4) — a secção do Inspector e os avisos da luz do quadro.
 mod luz2d;
+/// O PIXEL ART (ADR-0192): o menu Add, as ferramentas e os avisos da família.
+mod pixel;
 /// As MACROS (ADR-0186, W5d): o painel e o nome do clipe.
 mod macros;
 /// A biblioteca de macros (W18): guardar, exportar, importar, aplicar.
@@ -571,6 +573,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| inspector_nav::tr(k))
             .or_else(|| luz2d::tr(k))
             .or_else(|| constraints::tr(k))
+            .or_else(|| pixel::tr(k))
             .or_else(|| inspector_motion_input::tr(k))
             .or_else(|| inspector_macro::tr(k))
             .or_else(|| inspector_player::tr(k))

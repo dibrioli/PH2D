@@ -144,11 +144,13 @@ impl FxCtx {
 /// O "ligado" é propriedade da ENTRADA, não do efeito: desarmar não pode custar os parâmetros.
 /// Zerar a amplitude para "desligar" um Zig Zag e depois querer o valor de volta é a definição
 /// de uma feature que obriga o artista a lembrar-se de números.
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct FxEntry {
     pub effect: PathEffect,
     /// Desligado = a pilha o SALTA, como se fosse neutro — mas os parâmetros ficam.
     pub enabled: bool,
+    /// O endereço DURÁVEL (F31), como o [`crate::PaintEntry::id`]; nasce `NONE`.
+    pub id: ph2d_item_id::ItemId,
 }
 
 impl FxEntry {
@@ -158,6 +160,7 @@ impl FxEntry {
         Self {
             effect,
             enabled: true,
+            id: ph2d_item_id::ItemId::NONE,
         }
     }
 

@@ -94,7 +94,7 @@ pub enum PaintKind {
 /// [`crate::effect::FxEntry`] o tem: *desarmar não pode custar os parâmetros* — pôr o alfa a zero
 /// para esconder uma camada e depois querer a cor de volta é a definição de uma feature que obriga
 /// o artista a lembrar-se de números.
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct PaintEntry {
     pub kind: PaintKind,
     /// Desligada = a pilha SALTA-a, e os parâmetros ficam.
@@ -170,6 +170,9 @@ pub struct PaintEntry {
     /// O default é **Round**, que é o que o `VecContour` já escolheu com o motivo escrito: *é a
     /// quina que faz um contorno parecer um contorno*.
     pub dilate_join: u8,
+    /// O endereço DURÁVEL da entrada (F31): a chave do Auto Key aponta-o, não a posição. Nasce
+    /// `NONE`; o passe do `ph2d-app-vec` (`ids_da_pilha`) atribui-o. Lê-se por `pilha_wire`.
+    pub id: ph2d_item_id::ItemId,
 }
 
 impl PaintEntry {
@@ -184,6 +187,7 @@ impl PaintEntry {
             offset: [0.0, 0.0],
             dilate: 0.0,
             dilate_join: JOIN_ROUND,
+            id: ph2d_item_id::ItemId::NONE,
         }
     }
 

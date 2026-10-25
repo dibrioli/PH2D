@@ -54,6 +54,9 @@ impl crate::App {
         // resto do ficheiro, o tipo do braço. Ver `ph2d_vec_scene::stroke_wire`.
         let fio = crate::project_schema::fio_do_projeto(ver);
         let _fio = fio.map(ph2d_vec_scene::WireLayout::enter);
+        // ⭐ **Até ao `205` as entradas da pilha do Vetor não tinham id** (F31 §B1, `VEC_SCENE` v25).
+        let sem_ids = ver <= crate::project_schema::PROJECT_SCHEMA_FILTROS_SEM_ID;
+        let _pilha_v23 = sem_ids.then(ph2d_vec_scene::PilhaLayoutV23::enter);
         let (mut file, migrated_counter) = match ver {
             // ⭐ **193 → … → 197: as animações do personagem, o `TiledDraw`, a memória do uso da imagem, o
             // `ImageRegion`** — um componente novo cada, a mesma forma; falta-lhes o `jogo` (198): o `0` do `Vec` vazio.
@@ -237,5 +240,11 @@ fn migra_depois_de_ler(file: &mut ProjectFile, ver: u32, fio: Option<u32>) {
         let n = ph2d_app_vec::envelope_live::migra_fio(w, fio)
             + ph2d_skeleton_live::skinned_mesh::migra_fio(w, fio);
         eprintln!("[proj] v{ver}: vetor v{fio} lido; {n} envelope(s)/pele(s) regravado(s)");
+    } else if ver <= crate::project_schema::PROJECT_SCHEMA_FILTROS_SEM_ID {
+        // Idem para a pilha sem ids (o `migra_fio` já a lê para os `<= 199`).
+        let w = &mut file.state.world;
+        let n = ph2d_app_vec::envelope_live::migra_pilha_v23(w)
+            + ph2d_skeleton_live::skinned_mesh::migra_pilha_v23(w);
+        eprintln!("[proj] v{ver}: pilha v23 lida; {n} envelope(s)/pele(s) regravado(s)");
     }
 }

@@ -10484,6 +10484,7 @@ dependencies = [
  "ph2d-arclen",
  "ph2d-asset-id",
  "ph2d-blend-mode",
+ "ph2d-item-id",
  "ph2d-stroke-width",
  "ph2d-symmetry",
  "ph2d-vec-pattern",

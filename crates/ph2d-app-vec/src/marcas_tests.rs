@@ -8,7 +8,33 @@ const SEM: Contexto = Contexto {
     aberta: None,
     camadas: 0,
     regra: None,
+    ids: None,
 };
+
+/// Os ids da forma mostrada (F31): tintas 101, 102 · efeitos 201..=204 · filtros 301..=303.
+static IDS: std::sync::LazyLock<IdsDaForma> = std::sync::LazyLock::new(|| {
+    let ids = |r: std::ops::RangeInclusive<u32>| r.map(ph2d_ecs::ItemId).collect();
+    IdsDaForma {
+        tintas: ids(101..=102),
+        efeitos: ids(201..=204),
+        filtros: ids(301..=303),
+    }
+});
+
+/// O painel com a forma de [`IDS`] mostrada.
+fn com(aberta: Option<usize>, camadas: usize) -> Contexto<'static> {
+    Contexto {
+        aberta,
+        camadas,
+        regra: None,
+        ids: Some(&IDS),
+    }
+}
+
+/// A chave durável do item `id`.
+fn fid(c: u16, id: u32, j: u16) -> PropKind {
+    PropKind::Field(FieldKey::do_item(VETOR, c, ph2d_ecs::ItemId(id), j))
+}
 const R: u16 = v::TINTA_PREENCH + v::OFF_SOLIDA;
 const SOLO: Instante = Instante {
     t_cut: 0.0,
@@ -144,27 +170,23 @@ fn clicar_fora_de_uma_chave_grava_o_grupo_inteiro() {
 /// mostra a tinta dela (preenchimento OU traço), e o Contour tem canal próprio.
 #[test]
 fn o_campo_da_camada_aberta_mostra_a_entrada_aberta() {
-    let op = |i| PropKind::Field(FieldKey::new(VETOR, v::PILHA_OPACIDADE, i, 0));
-    let aberta = |k| Contexto {
-        aberta: Some(k),
-        camadas: 2,
-        regra: None,
-    };
+    let op = |id| fid(v::PILHA_OPACIDADE, id, 0);
+    let aberta = |k| com(Some(k), 2);
     assert_eq!(
         canal_do_campo(painel::VECTOR_PAINT_OPACITY, aberta(0)),
-        vec![op(1)]
+        vec![op(101)]
     );
     assert_eq!(
         canal_do_campo(painel::VECTOR_PAINT_OPACITY, aberta(1)),
-        vec![op(2)]
+        vec![op(102)]
     );
     assert!(canal_do_campo(painel::VECTOR_PAINT_OPACITY, SEM).is_empty());
     let sw = canal_do_campo(painel::vector_paint_swatch_id(1), aberta(0));
     assert_eq!(
         sw,
         vec![
-            PropKind::Field(FieldKey::new(VETOR, v::TINTA_PREENCH + v::OFF_SOLIDA, 2, 0)),
-            PropKind::Field(FieldKey::new(VETOR, v::TINTA_TRACO + v::OFF_SOLIDA, 2, 0)),
+            fid(v::TINTA_PREENCH + v::OFF_SOLIDA, 102, 0),
+            fid(v::TINTA_TRACO + v::OFF_SOLIDA, 102, 0),
         ]
     );
     assert!(canal_do_campo(painel::vector_paint_swatch_id(2), aberta(0)).is_empty());
@@ -180,7 +202,7 @@ fn o_campo_da_camada_aberta_mostra_a_entrada_aberta() {
 fn o_losango_da_camada_aberta_segue_a_entrada() {
     let mut d = TimelineDoc::new();
     d.fps_display = 24.0;
-    let op2 = PropKind::Field(FieldKey::new(VETOR, v::PILHA_OPACIDADE, 2, 0));
+    let op2 = fid(v::PILHA_OPACIDADE, 102, 0);
     d.insert_key(
         E,
         op2,
@@ -188,11 +210,7 @@ fn o_losango_da_camada_aberta_segue_a_entrada() {
         AnimValue::Float(100.0),
         Interp::Linear,
     );
-    let ctx = |k| Contexto {
-        aberta: Some(k),
-        camadas: 2,
-        regra: None,
-    };
+    let ctx = |k| com(Some(k), 2);
     let m = marcas(&d, ctx(1), &[E], em(0.0), na_curva);
     assert_eq!(m[&painel::VECTOR_PAINT_OPACITY], KeyMark::Chave);
     let m = marcas(&d, ctx(0), &[E], em(0.0), na_curva);
@@ -209,11 +227,7 @@ fn fij(c: u16, i: u16, j: u16) -> PropKind {
 /// tinta da barra, o olho da entrada `k`.
 #[test]
 fn os_campos_sem_coluna_mostram_o_canal_deles() {
-    let ctx = Contexto {
-        aberta: Some(1),
-        camadas: 2,
-        regra: None,
-    };
+    let ctx = com(Some(1), 2);
     assert_eq!(
         canal_do_campo(painel::VECTOR_OBJ_BLEND, SEM),
         vec![f(v::MISTURA)]
@@ -234,11 +248,11 @@ fn os_campos_sem_coluna_mostram_o_canal_deles() {
     );
     assert_eq!(
         canal_do_campo(painel::VECTOR_PAINT_BLEND, ctx),
-        vec![fij(v::PILHA_MISTURA, 2, 0)]
+        vec![fid(v::PILHA_MISTURA, 102, 0)]
     );
     assert_eq!(
         canal_do_campo(painel::vector_paint_eye_id(1), ctx),
-        vec![fij(v::PILHA_LIGADA, 2, 0)]
+        vec![fid(v::PILHA_LIGADA, 102, 0)]
     );
     assert!(canal_do_campo(painel::vector_paint_eye_id(2), ctx).is_empty());
 }
@@ -250,7 +264,7 @@ fn os_campos_sem_coluna_mostram_o_canal_deles() {
 #[test]
 fn os_ids_derivados_voltam_ao_canal_deles() {
     use painel::TexPatKnob as K;
-    let c = |id| canal_do_campo(id, SEM);
+    let c = |id| canal_do_campo(id, com(None, 0));
     assert_eq!(c(painel::texpat_id(0, K::Width)), vec![f(R)]);
     assert_eq!(
         c(painel::texpat_id(1, K::AngleNum)),
@@ -265,16 +279,16 @@ fn os_ids_derivados_voltam_ao_canal_deles() {
     }
     // O desfasamento (bloco 2): membro da tinta, como o tamanho.
     assert_eq!(c(painel::texpat_id(0, K::OffsetNum)), vec![f(R)]);
-    let p = fij(v::EFEITO_PARAM, 2, 3);
+    let p = fid(v::EFEITO_PARAM, 203, 3);
     assert_eq!(c(ferramenta::vector_fx_param_id(2, 3)), vec![p]);
     assert_eq!(c(ferramenta::vector_fx_param_num_id(2, 3)), vec![p]);
     assert_eq!(
         c(ferramenta::vector_fx_toggle_id(1, 0)),
-        vec![fij(v::EFEITO_PARAM, 1, 0)]
+        vec![fid(v::EFEITO_PARAM, 202, 0)]
     );
     assert_eq!(
         c(ferramenta::vector_fx_hide_id(3)),
-        vec![fij(v::EFEITO_LIGADO, 3, 0)]
+        vec![fid(v::EFEITO_LIGADO, 204, 0)]
     );
     let campo = fij(v::PARAM_VALOR, 0, 4);
     assert_eq!(c(ferramenta::vector_shape_field_id(4)), vec![campo]);
@@ -289,12 +303,12 @@ fn a_chave_de_um_efeito_acende_os_parametros_dele() {
     d.fps_display = 24.0;
     d.insert_key(
         E,
-        fij(v::EFEITO_PARAM, 1, 2),
+        fid(v::EFEITO_PARAM, 202, 2),
         RationalTime::from_seconds(0.0),
         AnimValue::Float(100.0),
         Interp::Linear,
     );
-    let m = marcas(&d, SEM, &[E], em(0.0), na_curva);
+    let m = marcas(&d, com(None, 0), &[E], em(0.0), na_curva);
     assert_eq!(m[&ferramenta::vector_fx_param_id(1, 0)], KeyMark::Chave);
     assert_eq!(m[&ferramenta::vector_fx_toggle_id(1, 5)], KeyMark::Chave);
     assert_eq!(m[&ferramenta::vector_fx_param_id(0, 2)], KeyMark::Livre);
@@ -308,7 +322,7 @@ fn a_chave_de_um_efeito_acende_os_parametros_dele() {
 /// os filtros (o olho um grupo, o resto do degrau outro, por degrau).
 #[test]
 fn os_campos_do_bloco_2_voltam_ao_grupo_deles() {
-    let c = |id| canal_do_campo(id, SEM);
+    let c = |id| canal_do_campo(id, com(None, 0));
     let grupo = |id| {
         let g = c(id);
         assert_eq!(g.len(), 1, "{id:?}: {g:?}");
@@ -373,10 +387,10 @@ fn os_campos_do_bloco_2_voltam_ao_grupo_deles() {
     );
     assert_eq!(
         c(painel::filter_hide_id(2)),
-        vec![fij(v::FILTRO_LIGADO, 2, 0)]
+        vec![fid(v::FILTRO_LIGADO, 303, 0)]
     );
     let degrau = c(painel::filter_radius_id(2));
-    assert_eq!(degrau, vec![fij(v::FILTRO_TIPO, 2, 0)]);
+    assert_eq!(degrau, vec![fid(v::FILTRO_TIPO, 303, 0)]);
     for id in [
         painel::filter_mode_id(2, 1),
         painel::filter_color_b_id(2),
@@ -396,4 +410,46 @@ fn os_campos_do_bloco_2_voltam_ao_grupo_deles() {
     ] {
         assert!(c(id).is_empty(), "{id:?} não é campo");
     }
+}
+
+/// ⭐ F31: o losango da entrada aberta é o do ID dela — apagada a de baixo, a entrada que sobe para
+/// a posição 0 mostra o canal DELA, não o da apagada. Mutação que sangra: `Contexto` de volta à
+/// posição (o `duravel` devolver a chave posicional).
+#[test]
+fn o_losango_da_entrada_aberta_e_o_do_id() {
+    let mut d = TimelineDoc::new();
+    d.fps_display = 24.0;
+    d.insert_key(
+        E,
+        fid(v::PILHA_OPACIDADE, 102, 0),
+        RationalTime::from_seconds(0.0),
+        AnimValue::Float(100.0),
+        Interp::Linear,
+    );
+    let antes = com(Some(1), 2);
+    let m = marcas(&d, antes, &[E], em(0.0), na_curva);
+    assert_eq!(m[&painel::VECTOR_PAINT_OPACITY], KeyMark::Chave);
+    // A 101 apagou-se: a 102 é a entrada 0 e continua a acender.
+    let depois = IdsDaForma {
+        tintas: vec![ph2d_ecs::ItemId(102)],
+        ..IDS.clone()
+    };
+    let ctx = Contexto {
+        aberta: Some(0),
+        camadas: 1,
+        regra: None,
+        ids: Some(&depois),
+    };
+    let m = marcas(&d, ctx, &[E], em(0.0), na_curva);
+    assert_eq!(m[&painel::VECTOR_PAINT_OPACITY], KeyMark::Chave);
+    assert_eq!(
+        canal_do_campo(painel::vector_paint_eye_id(0), ctx),
+        vec![fid(v::PILHA_LIGADA, 102, 0)]
+    );
+    // Sem ids (forma por atribuir) a linha da pilha não tem canal; a base continua.
+    assert!(canal_do_campo(painel::VECTOR_PAINT_OPACITY, Contexto { ids: None, ..ctx }).is_empty());
+    assert_eq!(
+        canal_do_campo(painel::VECTOR_OBJ_BLEND, SEM),
+        vec![f(v::MISTURA)]
+    );
 }

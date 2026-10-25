@@ -91,8 +91,15 @@
 /// (W4.2, `line/BlenderConstraints`) — o endereço estável de um vértice para as regras de CAD e o Copy
 /// Point. Lê o v23 e o v22 ([`crate::with_wire_layout`]): um path antigo abre numerado `1..=n` pela
 /// ordem `verts` → `subpaths` (gate `vec_v23_fixture`, sobre bytes gravados pelo código v23).
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 24;
+/// v25: cada [`crate::PaintEntry`] e [`crate::FxEntry`] ganha o `id` (`ItemId`, `line/UIUX`, F31 §B.1)
+/// — o endereço durável da chave do Auto Key. ⚠️ **Os dois `v24` nasceram em linhas paralelas** (vértice
+/// com id; entrada da pilha com id): a integração de 29/10 deu o `24` à do vértice (já no `main`) e o
+/// `25` à da pilha. A v23 e a v24 lêem-se pelo âmbito [`crate::with_pilha_layout_v23`] (ids `NONE`,
+/// atribuídos no 1.º quadro) — o nome é o da linha; vale para todo fio ANTERIOR à pilha com id.
+/// Gate `a_vec_scene_v23_le_com_ids_por_atribuir`.
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 25;
 
 /// Os degraus anteriores que ainda se leem ([`crate::VecScene::from_bytes`]).
 pub(crate) const VEC_SCENE_SCHEMA_V22: u32 = 22;
 pub(crate) const VEC_SCENE_SCHEMA_V23: u32 = 23;
+pub(crate) const VEC_SCENE_SCHEMA_V24: u32 = 24;

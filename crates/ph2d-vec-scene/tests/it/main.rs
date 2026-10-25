@@ -18,6 +18,7 @@ mod measure_node_reach;
 mod measure_scene_clone;
 mod measure_trim_on_shapes;
 mod node_reach;
+mod pilha_v23_fixture;
 mod stroke_v22_fixture;
 mod vec_v23_fixture;
 mod vertex_ids_through_edits;

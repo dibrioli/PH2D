@@ -587,7 +587,11 @@
 /// `VecFilter` pela forma congelada (`ph2d_ecs::vec_filter_v195`, via `ph2d_ecs::item_id::migra`),
 /// e o passe dá ids na ordem da pilha. Gate: `project_itens_tests`. Registos de componentes: `0`.
 ///
-/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+/// No MESMO degrau (F31 §B1): cada `PaintEntry`/`FxEntry` da `VecScene` ganha `id: ItemId` no fim
+/// (`VEC_SCENE_SCHEMA_VERSION` `24 → 25` — o `24` é o id por vértice do `199 → 200`) — a tripla VÊ-o. Todo
+/// ficheiro `<= 205` lê-se dentro do âmbito `ph2d_vec_scene::PilhaLayoutV23` (ids `NONE`, atribuídos pelo
+/// `ids_da_pilha` no 1.º quadro); as formas dentro do Envelope e da pele regravam-se no load. Gate:
+/// `o_projeto_195_le_a_pilha_do_vetor_sem_ids`.
 pub(crate) const PROJECT_SCHEMA: u32 = 206;
 
 /// O último degrau em que os itens das listas não tinham `item` (F30 §A1).

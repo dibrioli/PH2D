@@ -10,9 +10,10 @@
 
 use std::collections::BTreeMap;
 
-use ph2d_ecs::FieldKey;
 use ph2d_ecs::canal::familia::VETOR;
 use ph2d_ecs::canal_vetor as v;
+use ph2d_ecs::canal_vetor_ids::{IdsDaForma, IdsDoVetor};
+use ph2d_ecs::{FieldKey, SimWorld};
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::widget::key_mark::KeyMark;
 use ph2d_panel_vector::ids as painel;
@@ -276,36 +277,78 @@ fn derivado(id: NodeId) -> Option<PropKind> {
     I.get(&id).copied()
 }
 
-/// O que o painel mostra agora e muda o canal de um campo: a entrada ABERTA da pilha e quantas
-/// entradas há (a swatch da entrada `k` mostra a tinta dela, `i = k + 1`).
+/// O que o painel mostra agora e muda o canal de um campo: a entrada ABERTA da pilha, quantas
+/// entradas há (a swatch da entrada `k` mostra a tinta dela), e os IDS da forma mostrada (F31): a
+/// linha `k` do painel é a entrada `ids.tintas[k]`, a linha de efeito `r` é `ids.efeitos[r]`.
+/// Sem ids (forma por atribuir), as linhas da pilha não têm canal.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct Contexto {
+pub struct Contexto<'a> {
     pub aberta: Option<usize>,
     pub camadas: usize,
     /// A cota escolhida na tool Regras (W4.6): o canal do número dela na ②.
     pub regra: Option<PropKind>,
+    pub ids: Option<&'a IdsDaForma>,
 }
 
-impl Contexto {
-    /// O estado de vista do painel do vetor neste quadro.
+impl<'a> Contexto<'a> {
+    /// O estado de vista do painel do vetor neste quadro; `ids` = [`ids_mostrados`].
     #[must_use]
-    pub fn do_painel() -> Self {
+    pub fn do_painel(ids: Option<&'a IdsDaForma>) -> Self {
         let camadas = ph2d_panel_vector::state::current_appearance().map_or(0, |a| a.layers.len());
         Self {
             aberta: ph2d_panel_vector::state::open_layer_index().filter(|&k| k < camadas),
             camadas,
             regra: crate::cad_tool::canal_da_escolhida(),
+            ids,
         }
     }
+}
+
+/// Os ids da forma que o painel mostra — a 1.ª da seleção ordenada, a mesma do
+/// `paint_stack::published` — lidos do espelho [`IdsDoVetor`].
+#[must_use]
+pub fn ids_mostrados<'a>(
+    sim: &'a SimWorld,
+    vec: &crate::state::VecState,
+) -> Option<&'a IdsDaForma> {
+    let id = *crate::paint_stack::ordered(&vec.pen).first()?;
+    let bits = vec.entities.get(&id)?;
+    sim.world().get_resource::<IdsDoVetor>()?.0.get(bits)
+}
+
+/// A chave POSICIONAL de uma linha do painel → a durável: a posição na lista vira o id da forma
+/// mostrada (`canal_vetor::Lista::posicao_antiga`, a porta única). `None` = a linha não tem canal.
+fn duravel(p: PropKind, ids: Option<&IdsDaForma>) -> Option<PropKind> {
+    let PropKind::Field(kk) = p else {
+        return Some(p);
+    };
+    let lista = v::lista(kk.campo);
+    let Some(pos) = lista.posicao_antiga(kk.i).filter(|_| kk.item.is_none()) else {
+        return Some(p);
+    };
+    let id = *ids?.de(lista)?.get(pos)?;
+    (!id.is_none()).then(|| PropKind::Field(FieldKey::do_item(VETOR, kk.campo, id, kk.j)))
 }
 
 fn entrada(k: usize) -> u16 {
     u16::try_from(k + 1).unwrap_or(u16::MAX)
 }
 
-/// O GRUPO de canais que o campo `id` do painel mostra (vazio = o campo não tem canal).
+/// O GRUPO de canais que o campo `id` do painel mostra (vazio = o campo não tem canal), na chave
+/// durável da forma mostrada.
 #[must_use]
-pub fn canal_do_campo(id: NodeId, ctx: Contexto) -> Vec<PropKind> {
+pub fn canal_do_campo(id: NodeId, ctx: Contexto<'_>) -> Vec<PropKind> {
+    let reps = canal_posicional(id, ctx);
+    let duraveis: Vec<PropKind> = reps.iter().filter_map(|&p| duravel(p, ctx.ids)).collect();
+    if duraveis.len() == reps.len() {
+        duraveis
+    } else {
+        Vec::new()
+    }
+}
+
+/// O grupo na chave posicional (a tabela e os [`derivados`] guardam a posição da linha).
+fn canal_posicional(id: NodeId, ctx: Contexto<'_>) -> Vec<PropKind> {
     if let Some(&(_, g)) = CAMPOS.iter().chain(vivos::CAMPOS).find(|(c, _)| *c == id) {
         return g.to_vec();
     }
@@ -340,7 +383,7 @@ pub fn canal_do_campo(id: NodeId, ctx: Contexto) -> Vec<PropKind> {
 }
 
 /// Todo id que pode ter losango neste contexto.
-fn ids(ctx: Contexto) -> impl Iterator<Item = NodeId> {
+fn ids(ctx: Contexto<'_>) -> impl Iterator<Item = NodeId> + '_ {
     let aberta = ctx.aberta.is_some();
     CAMPOS
         .iter()
@@ -382,7 +425,7 @@ pub fn marca(f: Forca) -> KeyMark {
 #[must_use]
 pub fn marcas(
     doc: &TimelineDoc,
-    ctx: Contexto,
+    ctx: Contexto<'_>,
     entidades: &[u64],
     inst: Instante,
     valor: impl Fn(u64, PropKind) -> Option<f32>,
@@ -409,7 +452,7 @@ pub fn marcas(
 #[allow(clippy::too_many_arguments)]
 pub fn clique(
     doc: &TimelineDoc,
-    ctx: Contexto,
+    ctx: Contexto<'_>,
     campos: &[NodeId],
     entidades: &[u64],
     inst: Instante,

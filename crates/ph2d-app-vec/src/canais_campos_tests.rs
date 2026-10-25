@@ -1,5 +1,5 @@
 use super::*;
-use ph2d_ecs::VecTextParams;
+use ph2d_ecs::{ItemId, VecTextParams};
 use ph2d_vec_scene::effect::{FxEntry, PathEffect};
 use ph2d_vec_scene::fx_trim::TrimSpec;
 use ph2d_vec_scene::paint_stack::PaintEntry;
@@ -29,10 +29,14 @@ fn forma() -> VecPath {
             end: [30.0, 25.0],
         }),
         stroke: Some(traco),
-        paints: vec![PaintEntry::new(PaintKind::Fill(Paint::Solid(Rgba8::new(
-            0, 0, 0, 90,
-        ))))],
-        effects: vec![FxEntry::new(PathEffect::Trim(TrimSpec::default()))],
+        paints: vec![PaintEntry {
+            id: ItemId(11),
+            ..PaintEntry::new(PaintKind::Fill(Paint::Solid(Rgba8::new(0, 0, 0, 90))))
+        }],
+        effects: vec![FxEntry {
+            id: ItemId(12),
+            ..FxEntry::new(PathEffect::Trim(TrimSpec::default()))
+        }],
         ..VecPath::default()
     }
 }
@@ -318,4 +322,117 @@ fn o_pincel_o_desfase_e_a_quebra_fixa_vao_e_voltam() {
     escrever(&mut p, Some(&mut texto), fixa, 0.0);
     let VecShape::Text(t) = &texto else { panic!() };
     assert_eq!(t.wrap_width, None);
+}
+
+fn duas_tintas() -> VecPath {
+    let solida = |r, id| PaintEntry {
+        id: ItemId(id),
+        ..PaintEntry::new(PaintKind::Fill(Paint::Solid(Rgba8::new(r, 0, 0, 255))))
+    };
+    VecPath {
+        verts: vec![VecVertex::corner([0.0, 0.0]), VecVertex::corner([9.0, 5.0])],
+        closed: true,
+        paints: vec![solida(10, 21), solida(200, 22)],
+        ..VecPath::default()
+    }
+}
+
+/// ⭐ F31: a chave de uma entrada da pilha é o ID dela — apagar a de baixo não passa a animação da
+/// vizinha para outra tinta. Mutação que sangra: `campos`/`interno` de volta a `i = k+1`.
+#[test]
+fn apagar_uma_tinta_da_pilha_nao_muda_a_chave_da_vizinha() {
+    let vermelho = c::TINTA_PREENCH + c::OFF_SOLIDA;
+    let a = FieldKey::do_item(VETOR, vermelho, ItemId(21), 0);
+    let b = FieldKey::do_item(VETOR, vermelho, ItemId(22), 0);
+    let mut p = duas_tintas();
+    let cs = campos(&p, None);
+    assert!(cs.contains(&a) && cs.contains(&b));
+    assert!(
+        !cs.iter()
+            .any(|kk| kk.i != 0 && c::lista(kk.campo) != Lista::Nenhuma),
+        "nenhuma chave posicional de lista sai do funil"
+    );
+    assert_eq!(
+        (ler(&p, None, a), ler(&p, None, b)),
+        (Some(10.0), Some(200.0))
+    );
+
+    p.paints.remove(0);
+    assert_eq!(
+        ler(&p, None, b),
+        Some(200.0),
+        "a chave da vizinha lê a MESMA tinta"
+    );
+    assert_eq!(ler(&p, None, a), None, "a apagada não tem canal");
+    assert!(!campos(&p, None).contains(&a));
+    escrever(&mut p, None, b, 77.0);
+    let PaintKind::Fill(Paint::Solid(cor)) = &p.paints[0].kind else {
+        panic!()
+    };
+    assert_eq!(cor.r, 77, "e escreve a mesma tinta");
+    // A chave POSICIONAL antiga é da migração, não do funil.
+    let antiga = FieldKey::new(VETOR, vermelho, 1, 0);
+    assert_eq!(ler(&p, None, antiga), None);
+    escrever(&mut p, None, antiga, 5.0);
+    assert_eq!(p, {
+        let mut q = duas_tintas();
+        q.paints.remove(0);
+        if let PaintKind::Fill(Paint::Solid(c)) = &mut q.paints[0].kind {
+            c.r = 77;
+        }
+        q
+    });
+}
+
+/// Uma entrada com id por atribuir não tem canal.
+#[test]
+fn uma_entrada_sem_id_nao_tem_canal() {
+    let mut p = duas_tintas();
+    p.paints[1].id = ItemId::NONE;
+    let com_item: Vec<FieldKey> = campos(&p, None)
+        .into_iter()
+        .filter(|kk| !kk.item.is_none())
+        .collect();
+    assert!(!com_item.is_empty() && com_item.iter().all(|kk| kk.item == ItemId(21)));
+}
+
+/// ⭐ F31: mover um efeito leva as chaves com ele. Mutação que sangra: a chave do efeito de volta a
+/// `i = e`.
+#[test]
+fn mover_um_efeito_leva_as_chaves_com_ele() {
+    let trim = |start, id| FxEntry {
+        id: ItemId(id),
+        ..FxEntry::new(PathEffect::Trim(TrimSpec {
+            start,
+            ..TrimSpec::default()
+        }))
+    };
+    let mut p = VecPath {
+        verts: vec![VecVertex::corner([0.0, 0.0]), VecVertex::corner([9.0, 5.0])],
+        effects: vec![trim(0.1, 31), trim(0.4, 32)],
+        ..VecPath::default()
+    };
+    let chaves = |id| {
+        campos(&p, None)
+            .into_iter()
+            .filter(|kk| kk.item == ItemId(id))
+            .collect::<Vec<_>>()
+    };
+    let (de31, de32) = (chaves(31), chaves(32));
+    assert!(!de31.is_empty() && de31.len() == de32.len());
+    let antes: Vec<_> = de31.iter().map(|&kk| ler(&p, None, kk)).collect();
+    p.effects.swap(0, 1);
+    let depois: Vec<_> = de31.iter().map(|&kk| ler(&p, None, kk)).collect();
+    assert_eq!(antes, depois, "as chaves do 31 lêem o 31 onde ele estiver");
+    let param = FieldKey::do_item(VETOR, c::EFEITO_PARAM, ItemId(31), 0);
+    let v = ler(&p, None, param).expect("o 1.º parâmetro do Trim");
+    escrever(&mut p, None, param, v + 0.25);
+    assert_eq!(ler(&p, None, param), Some(v + 0.25));
+    assert_eq!(p.effects[0].id, ItemId(32));
+    assert_ne!(p.effects[0].effect, p.effects[1].effect);
+    assert_eq!(
+        ler(&p, None, FieldKey::new(VETOR, c::EFEITO_PARAM, 0, 0)),
+        None,
+        "posicional recusada"
+    );
 }

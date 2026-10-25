@@ -201,6 +201,17 @@ impl SkinnedPath {
 /// [`le`]: a fonte de uma IMAGEM é uma `SkinnedMesh` e não pode ser tomada por um caminho — o que
 /// não se lê exactamente fica como estava.
 pub fn migra_fio(mundo: &mut ph2d_ecs::scene::WorldSnapshot, fio: u32) -> usize {
+    regrava_fontes(mundo, Some(fio))
+}
+
+/// ⭐ **Os binds de um ficheiro anterior ao id da pilha (`VEC_SCENE` v24, F31), regravados na forma
+/// nova** — os ids ficam `NONE` e o passe `ids_da_pilha` do `ph2d-app-vec` atribui-os.
+pub fn migra_pilha_v23(mundo: &mut ph2d_ecs::scene::WorldSnapshot) -> usize {
+    regrava_fontes(mundo, None)
+}
+
+/// Lê cada fonte na forma antiga da pilha (e do fio `fio`, se houver) e regrava-a na viva.
+fn regrava_fontes(mundo: &mut ph2d_ecs::scene::WorldSnapshot, fio: Option<u32>) -> usize {
     fn exacto<'a, T: serde::Deserialize<'a>>(b: &'a [u8]) -> Option<T> {
         match postcard::take_from_bytes::<T>(b) {
             Ok((v, [])) => Some(v),
@@ -208,7 +219,7 @@ pub fn migra_fio(mundo: &mut ph2d_ecs::scene::WorldSnapshot, fio: u32) -> usize 
         }
     }
     let caminho = |b: &[u8]| -> Option<SkinnedPath> {
-        ph2d_vec_scene::with_wire_layout(fio, || {
+        let le = || {
             exacto::<SkinnedPath>(b)
                 .or_else(|| {
                     exacto::<SkinnedPathV2>(b).map(|v2| SkinnedPath {
@@ -226,6 +237,12 @@ pub fn migra_fio(mundo: &mut ph2d_ecs::scene::WorldSnapshot, fio: u32) -> usize 
                         efeitos_cozidos: false,
                     })
                 })
+        };
+        ph2d_vec_scene::with_pilha_layout_v23(|| {
+            match fio {
+                Some(f) => ph2d_vec_scene::with_wire_layout(f, le),
+                None => le(),
+            }
         })
     };
     mundo.rewrite_component_blobs(ph2d_skeleton_ecs::SKIN_TYPE_NAME, |blob| {

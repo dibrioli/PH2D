@@ -902,6 +902,11 @@ impl App {
         // ⭐⭐⭐ A SAÍDA da sessão de receita, ANTES do `post_frame_undo`: um cancelamento é uma
         // mudança do documento como outra qualquer ([`ph2d_app_components::prefab_stage`]).
         self.serve_prefab_exit();
+        // ⭐ F31: o id de cada entrada da pilha nasce ANTES da captura, todo quadro ⇒ no mesmo passo
+        // de undo da entrada (a `fase_autokey` não corre em todo quadro).
+        if let Some(g) = self.gfx.as_mut() {
+            ph2d_app_vec::ids_da_pilha::passe(&mut g.sim, &mut g.vec_scene);
+        }
         // A rede dos escritores tardios da árvore vive DENTRO do [`crate::undo_app`].
         self.post_frame_undo();
         if let Some(g) = self.gfx.as_mut() {

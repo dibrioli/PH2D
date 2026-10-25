@@ -18,7 +18,7 @@ pub struct IdsDaForma {
     pub tintas: Vec<ItemId>,
     /// `p.effects` — o efeito `e`.
     pub efeitos: Vec<ItemId>,
-    /// `VecFilter::ops` — o filtro `op`.
+    /// `VecFilter::ids()` — o id do filtro `op`.
     pub filtros: Vec<ItemId>,
 }
 

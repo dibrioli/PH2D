@@ -50,6 +50,8 @@ impl crate::App {
         publicar.extend(ph2d_app_flip::marcas_camada::alvo(&self.flip_state, flip).map(|a| a.0));
         publicar.sort_unstable();
         publicar.dedup();
+        // A entrada nascida neste quadro já publica o canal (a rede do undo é a do `main.rs`).
+        ph2d_app_vec::ids_da_pilha::passe(sim, vec_scene);
         ph2d_app_vec::canais::publicar(sim, vec_scene, &self.vec.conducao, &publicar);
         ph2d_app_components::canais_objeto::publicar(sim, &publicar);
         ph2d_app_components::canais_componente::publicar(sim, component_registry, &publicar);
@@ -93,7 +95,8 @@ impl crate::App {
             Some(ph2d_anim::AnimValue::Float(v)) => Some(v),
             _ => None,
         };
-        let ctx = ph2d_app_vec::marcas::Contexto::do_painel();
+        let mostrada = ph2d_app_vec::marcas::ids_mostrados(sim, &self.vec);
+        let ctx = ph2d_app_vec::marcas::Contexto::do_painel(mostrada);
         let tl = &self.timeline.doc;
         let camada = ph2d_app_flip::marcas_camada::alvo(&self.flip_state, flip);
         if let Some(c) = ph2d_editor_core::widget::key_mark::take_key_mark_click() {

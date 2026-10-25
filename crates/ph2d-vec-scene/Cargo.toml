@@ -59,6 +59,8 @@ ph2d-asset-id = { path = "../ph2d-asset-id" }
 # `ph2d-ecs` (o componente que o documento guarda). Folha pura (só serde), mesmo precedente das
 # duas acima. Re-exportado por `symmetry.rs`.
 ph2d-symmetry = { path = "../ph2d-symmetry" }
+# O id DURÁVEL de cada entrada da pilha (F31): folha só-serde.
+ph2d-item-id = { path = "../ph2d-item-id" }
 
 [lints]
 workspace = true

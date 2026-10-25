@@ -314,6 +314,9 @@ mod stroke_style;
 pub use dash_pattern::{DashLengths, DashPattern, MAX_DASH_PAIRS};
 /// A leitura por versão — o âmbito do fio (F16c, W4.2).
 mod stroke_wire;
+/// A leitura das entradas da pilha por versão — o âmbito v23 (F31).
+mod pilha_wire;
+pub use pilha_wire::{PilhaLayoutV23, with_pilha_layout_v23};
 pub use brush_stroke::{brush_along_path, brush_copies, brush_height, brush_spans};
 pub use stroke_wire::{WireLayout, with_wire_layout};
 
@@ -671,15 +674,17 @@ impl VecScene {
     }
 
     /// Desserializa uma cena salva por [`Self::to_bytes`]; rejeita schema alheio. Um v22/v23 lê-se
-    /// pela forma da sua versão ([`with_wire_layout`]) e volta igual, com ids `1..=n` por path.
+    /// pela forma da sua versão ([`with_wire_layout`]) e volta igual, com ids `1..=n` por path; um
+    /// ≤ v24 lê também as entradas da pilha sem id ([`with_pilha_layout_v23`], ids `NONE`).
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
         let (ver, _) = postcard::take_from_bytes::<u32>(bytes).map_err(|e| e.to_string())?;
         let read = || postcard::from_bytes::<(u32, VecScene)>(bytes).map_err(|e| e.to_string());
         match ver {
             VEC_SCENE_SCHEMA_VERSION => read().map(|(_, s)| s),
             schema::VEC_SCENE_SCHEMA_V22 | schema::VEC_SCENE_SCHEMA_V23 => {
-                with_wire_layout(ver, read).map(|(_, s)| s)
+                with_pilha_layout_v23(|| with_wire_layout(ver, read)).map(|(_, s)| s)
             }
+            schema::VEC_SCENE_SCHEMA_V24 => with_pilha_layout_v23(read).map(|(_, s)| s),
             _ => Err(format!(
                 "versão de schema {ver} != {VEC_SCENE_SCHEMA_VERSION}"
             )),

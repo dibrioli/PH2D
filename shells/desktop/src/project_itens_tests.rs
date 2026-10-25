@@ -79,3 +79,47 @@ fn o_projeto_195_le_o_vec_filter_sem_ids() {
         "o passe é que dá os ids"
     );
 }
+
+/// ⭐ **Um projecto v195 lê a pilha do Vetor sem ids** (F31 §B1): a `VecScene` dentro do ficheiro na
+/// forma v23 (os bytes gravados pelo código v23, `vec_scene_v23_pilha.bin`) abre com as mesmas
+/// tintas e efeitos e os ids por atribuir. Sem o âmbito `PilhaLayoutV23` o ficheiro não se lê igual.
+#[test]
+fn o_projeto_195_le_a_pilha_do_vetor_sem_ids() {
+    const V23: &[u8] =
+        include_bytes!("../../../crates/ph2d-vec-scene/tests/it/fixtures/vec_scene_v23_pilha.bin");
+    let cena = ph2d_vec_scene::VecScene::from_bytes(V23).expect("a fixtura v23 abre");
+    let mut st = empty_state();
+    st.vec = std::sync::Arc::new(cena.clone());
+    let f = bare_file(st);
+    // A cena VIVA dentro do ficheiro troca-se pelos bytes v23 (o mesmo valor, a forma antiga).
+    let vivo = postcard::to_allocvec(&(195u32, &f)).expect("serializa");
+    let cena_viva = postcard::to_allocvec(&cena).expect("serializa");
+    let at = vivo
+        .windows(cena_viva.len())
+        .position(|w| w == cena_viva.as_slice())
+        .expect("a cena está no ficheiro");
+    assert_eq!(
+        vivo.windows(cena_viva.len())
+            .filter(|w| *w == cena_viva.as_slice())
+            .count(),
+        1
+    );
+    let v195 = [&vivo[..at], &V23[1..], &vivo[at + cena_viva.len()..]].concat();
+    let path = tmp_path("pilha_v195");
+    std::fs::write(&path, &v195).expect("grava");
+    let lido = headless_app().read_project_file(&path.to_string_lossy());
+    let _ = std::fs::remove_file(&path);
+    let (back, _) = lido.expect("um v195 com pilha é aceite");
+    assert_eq!(
+        *back.state.vec, cena,
+        "as mesmas tintas e efeitos, ids NONE"
+    );
+    assert_eq!(back.state.vec.paths()[0].paints.len(), 2);
+    assert!(
+        back.state.vec.paths()[0]
+            .effects
+            .iter()
+            .all(|e| e.id.is_none()),
+        "o passe é que dá os ids"
+    );
+}

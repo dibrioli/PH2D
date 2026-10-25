@@ -9,6 +9,11 @@ fn k(campo: u16, i: u16, j: u16) -> FieldKey {
     FieldKey::new(familia::VETOR, campo, i, j)
 }
 
+/// A chave da entrada da pilha com o id `1` (F31: o endereço é o id, não a posição).
+fn entrada(campo: u16) -> FieldKey {
+    FieldKey::do_item(familia::VETOR, campo, ph2d_ecs::ItemId(1), 0)
+}
+
 /// Dois vértices de uma forma (âncoras e um canto), a largura do traço e a cor de base e da
 /// entrada 0 da pilha — o bastante para ver quem entra no grupo e quem fica de fora.
 fn campos() -> Vec<(FieldKey, f32)> {
@@ -20,7 +25,7 @@ fn campos() -> Vec<(FieldKey, f32)> {
         (k(v::TRACO_LARGURA, 0, 0), 4.0),
         (k(v::TINTA_PREENCH + v::OFF_SOLIDA, 0, 0), 255.0),
         (k(v::TINTA_PREENCH + v::OFF_SOLIDA + 1, 0, 0), 0.0),
-        (k(v::TINTA_PREENCH + v::OFF_SOLIDA, 1, 0), 9.0),
+        (entrada(v::TINTA_PREENCH + v::OFF_SOLIDA), 9.0),
     ]
 }
 
@@ -79,12 +84,12 @@ fn mexer_um_ponto_grava_a_forma_inteira_e_so_ela() {
     assert_eq!(x0.map(|c| c.1), Some(5.0), "o valor da mão");
 }
 
-/// A tinta parte-se por entrada da pilha: mudar o vermelho da entrada 0 não grava a cor de base.
+/// A tinta parte-se por entrada da pilha: mudar o vermelho da entrada não grava a cor de base.
 #[test]
 fn a_cor_grava_inteira_mas_so_a_da_sua_entrada() {
     let antes = campos();
     let mut l = antes.clone();
-    mudar(&mut l, k(v::TINTA_PREENCH + v::OFF_SOLIDA, 1, 0), 10.0);
+    mudar(&mut l, entrada(v::TINTA_PREENCH + v::OFF_SOLIDA), 10.0);
     let plan = autokey_campos(
         &TimelineDoc::new(),
         E,
@@ -96,7 +101,7 @@ fn a_cor_grava_inteira_mas_so_a_da_sua_entrada() {
     );
     assert_eq!(
         chaves(&plan),
-        [k(v::TINTA_PREENCH + v::OFF_SOLIDA, 1, 0)].into()
+        [entrada(v::TINTA_PREENCH + v::OFF_SOLIDA)].into()
     );
 
     let mut l = antes.clone();

@@ -338,8 +338,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ **`205` em 2026-10-25** (`line/UIUX`, F30 §A1) — o ITEM das listas tem identidade:
         // `item: ItemId` no fim de cada item de nove componentes. A tripla NÃO vê este degrau.
         // ⚠️ **`206` em 2026-10-25** (`line/UIUX`, F31 §B2) — o FILTRO da forma tem identidade:
-        // `VecFilter::ids` no fim. A tripla NÃO vê este degrau.
-        (206, 13, 24),
+        // `VecFilter::ids` no fim; e (F31 §B1) cada entrada da pilha do Vetor ganha o `id`
+        // (`VecScene` `24 → 25`), no MESMO degrau.
+        (206, 13, 25),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

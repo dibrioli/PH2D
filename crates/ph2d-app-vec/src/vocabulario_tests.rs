@@ -67,9 +67,10 @@ fn o_menu_de_mistura_e_a_palavra_dizem_o_mesmo_modo() {
 fn alinhamento_e_juncao_so_aceitam_as_tres_escolhas() {
     let mut p = VecPath {
         verts: vec![VecVertex::corner([0.0, 0.0]), VecVertex::corner([9.0, 0.0])],
-        paints: vec![PaintEntry::new(PaintKind::Fill(Paint::Solid(Rgba8::new(
-            0, 0, 0, 255,
-        ))))],
+        paints: vec![PaintEntry {
+            id: ph2d_ecs::ItemId(3),
+            ..PaintEntry::new(PaintKind::Fill(Paint::Solid(Rgba8::new(0, 0, 0, 255))))
+        }],
         ..VecPath::default()
     };
     let mut texto = VecShape::Text(VecTextParams {
@@ -87,7 +88,7 @@ fn alinhamento_e_juncao_so_aceitam_as_tres_escolhas() {
     escrever(&mut p, Some(&mut texto), k(c::TEXTO_ALINHAMENTO), 200.0);
     let VecShape::Text(t) = &texto else { panic!() };
     assert_eq!(t.align, 2, "200 num alinhamento é «Right»");
-    let juncao = FieldKey::new(VETOR, c::PILHA_DILATA_JUNCAO, 1, 0);
+    let juncao = FieldKey::do_item(VETOR, c::PILHA_DILATA_JUNCAO, ph2d_ecs::ItemId(3), 0);
     escrever(&mut p, None, juncao, 200.0);
     assert_eq!(p.paints[0].dilate_join, 2, "200 na junção é «Bevel»");
     assert_eq!(ler(&p, None, juncao), Some(2.0));

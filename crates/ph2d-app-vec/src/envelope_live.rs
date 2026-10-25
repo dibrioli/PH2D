@@ -503,16 +503,31 @@ mod traco_v22_tests;
 /// ⚠️ Consumo EXACTO (`take_from_bytes` sem sobra): uma fonte que não se lê inteira na forma `fio`
 /// fica como estava, em vez de ser regravada a partir de lixo bem-formado.
 pub fn migra_fio(mundo: &mut ph2d_ecs::scene::WorldSnapshot, fio: u32) -> usize {
+    regrava_fontes(mundo, Some(fio))
+}
+
+/// ⭐ **Os envelopes de um ficheiro anterior ao id da pilha (`VEC_SCENE` v24, F31), regravados na
+/// forma nova** — os ids ficam `NONE` e o passe `ids_da_pilha` atribui-os quando a forma for vista.
+pub fn migra_pilha_v23(mundo: &mut ph2d_ecs::scene::WorldSnapshot) -> usize {
+    regrava_fontes(mundo, None)
+}
+
+/// Lê cada fonte na forma antiga da pilha (e do fio `fio`, se houver) e regrava-a na viva.
+fn regrava_fontes(mundo: &mut ph2d_ecs::scene::WorldSnapshot, fio: Option<u32>) -> usize {
     mundo.rewrite_component_blobs(ph2d_ecs::VEC_ENVELOPE_TYPE_NAME, |blob| {
         let Ok((mut env, [])) = postcard::take_from_bytes::<ph2d_ecs::VecEnvelope>(blob) else {
             return None;
         };
         let mut mudou = false;
         for filho in &mut env.children {
-            let fonte = ph2d_vec_scene::with_wire_layout(fio, || {
-                match postcard::take_from_bytes::<VecPath>(&filho.source) {
-                    Ok((p, [])) => Some(p),
-                    _ => None,
+            let le = || match postcard::take_from_bytes::<VecPath>(&filho.source) {
+                Ok((p, [])) => Some(p),
+                _ => None,
+            };
+            let fonte = ph2d_vec_scene::with_pilha_layout_v23(|| {
+                match fio {
+                    Some(f) => ph2d_vec_scene::with_wire_layout(f, le),
+                    None => le(),
                 }
             });
             if let Some(bytes) = fonte.and_then(|p| postcard::to_allocvec(&p).ok()) {

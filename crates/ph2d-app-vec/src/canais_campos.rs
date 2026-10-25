@@ -4,8 +4,8 @@
 //! e `j` significam) é `ph2d_ecs::canal_vetor`; o ECS e a timeline ficam em [`crate::canais`].
 
 use ph2d_ecs::canal::familia::VETOR;
-use ph2d_ecs::canal_vetor as c;
-use ph2d_ecs::{FieldKey, VecShape};
+use ph2d_ecs::canal_vetor::{self as c, Lista};
+use ph2d_ecs::{FieldKey, ItemId, VecShape};
 use ph2d_vec_scene::paint_stack::PaintKind;
 use ph2d_vec_scene::{
     BlendMode, DashPattern, FillRule, GradientStop, LineCap, LineJoin, MAX_DASH_PAIRS, Marker,
@@ -19,6 +19,36 @@ fn k(campo: u16, i: u16, j: u16) -> FieldKey {
 
 fn n16(n: usize) -> u16 {
     u16::try_from(n).unwrap_or(u16::MAX)
+}
+
+/// ⭐ **A porta de tradução da pilha** (F31 §B.4): a chave DURÁVEL (`item` = o id da entrada) → o
+/// `i` interno, posicional, que o resto deste ficheiro usa (tinta: `0` base, `k+1` a entrada `k`;
+/// efeito: `e`). `None` = a chave não endereça nada aqui: id que o caminho não tem, ou a chave
+/// POSICIONAL antiga (item `NONE` numa lista) — essa é da migração, nunca do funil.
+fn interno(p: &VecPath, kk: FieldKey) -> Option<u16> {
+    let com_item = kk.i == 0 && !kk.item.is_none();
+    match c::lista(kk.campo) {
+        Lista::Tinta if kk.item.is_none() => (kk.i == 0).then_some(0),
+        Lista::Tinta if com_item => {
+            let k = p.paints.iter().position(|e| e.id == kk.item)?;
+            Some(n16(k + 1))
+        }
+        Lista::Efeito if com_item => p.effects.iter().position(|e| e.id == kk.item).map(n16),
+        Lista::Tinta | Lista::Efeito => None,
+        Lista::Nenhuma | Lista::Filtro => kk.item.is_none().then_some(kk.i),
+    }
+}
+
+/// O inverso de [`interno`]: a chave interna → a durável; `None` = entrada com id por atribuir
+/// (não tem canal).
+fn duravel(p: &VecPath, kk: FieldKey) -> Option<FieldKey> {
+    let item = match c::lista(kk.campo) {
+        Lista::Tinta if kk.i == 0 => return Some(kk),
+        Lista::Tinta => p.paints.get(usize::from(kk.i) - 1)?.id,
+        Lista::Efeito => p.effects.get(usize::from(kk.i))?.id,
+        Lista::Nenhuma | Lista::Filtro => return Some(kk),
+    };
+    (!item.is_none()).then(|| FieldKey::do_item(VETOR, kk.campo, item, kk.j))
 }
 
 #[expect(
@@ -196,8 +226,8 @@ pub fn campos(p: &VecPath, shape: Option<&VecShape>) -> Vec<FieldKey> {
         }
         _ => {}
     }
-    out.retain(|&kk| ler(p, shape, kk).is_some());
-    out
+    out.retain(|&kk| ler_interno(p, shape, kk).is_some());
+    out.into_iter().filter_map(|kk| duravel(p, kk)).collect()
 }
 
 fn campos_da_tinta(p: &VecPath, base: u16, i: u16, out: &mut Vec<FieldKey>) {
@@ -261,6 +291,19 @@ fn campos_do_traco(p: &VecPath, i: u16, out: &mut Vec<FieldKey>) {
 /// ⭐ **Quanto vale o campo `kk` agora** — `None` se o caminho não o tem.
 #[must_use]
 pub fn ler(p: &VecPath, shape: Option<&VecShape>, kk: FieldKey) -> Option<f32> {
+    let i = interno(p, kk)?;
+    ler_interno(
+        p,
+        shape,
+        FieldKey {
+            i,
+            item: ItemId::NONE,
+            ..kk
+        },
+    )
+}
+
+fn ler_interno(p: &VecPath, shape: Option<&VecShape>, kk: FieldKey) -> Option<f32> {
     let (campo, i, j) = (kk.campo, kk.i, kk.j);
     let ju = usize::from(j);
     match campo {
@@ -408,7 +451,8 @@ pub fn escrever(p: &mut VecPath, shape: Option<&mut VecShape>, kk: FieldKey, v: 
     if ler(p, shape.as_deref(), kk) == Some(v) {
         return;
     }
-    let (campo, i, j) = (kk.campo, kk.i, kk.j);
+    let Some(i) = interno(p, kk) else { return };
+    let (campo, j) = (kk.campo, kk.j);
     let ju = usize::from(j);
     let d = f64::from(v);
     let liga = v >= 0.5;

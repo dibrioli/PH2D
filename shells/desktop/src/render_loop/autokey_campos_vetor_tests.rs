@@ -273,6 +273,7 @@ fn losango(c: &mut Cena, clicar: bool) -> ph2d_editor_core::widget::key_mark::Ke
         aberta: None,
         camadas: 0,
         regra: None,
+        ids: None,
     };
     let inst = marcas::Instante {
         t_cut: c.st.doc.author_cut(true, None, c.ph.time()),

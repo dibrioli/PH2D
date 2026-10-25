@@ -121,6 +121,15 @@ e o tween 1 perde o relógio. Dois defeitos da mesma família, ambos nos LEITORE
 
 ### A2 — ⛔ a pilha do Vetor: o desenho do item 7 NÃO CABE na chave (medido 25/10, parado)
 
+> **Decisão técnica (coordenador, 25/10; delegada pelo dono):** opção **(c)** — a `FieldKey` ganha um 5.º campo, o
+> `ItemId` de 32 bits (`0` em toda família que não o usa; `FieldKey::new` mantém a forma, um construtor novo leva o id),
+> com degrau do `TimelineDoc` e migração trivial (`item = 0`). Recusadas: (a) empacotar no `i:j` põe tectos (8,4 M ids
+> sobre um contador que também dá os ids das entidades; 255 paragens onde hoje não há tecto) — *um máximo escolhido para
+> caber erra sempre para baixo*; (b) tira canal às paragens/pontos das entradas da pilha (contra a lei do dono).
+> **Vai para a onda F31** como primeiro item, com os CONTORNOS (apagar um subcaminho desloca as chaves — medido; cura no
+> `propagar`, a lei do dono de 20/10 «inserir/apagar propagado a todas as chaves») e os FILTROS da forma
+> (`canais_filtros.rs:100,157`, posicionais) no mesmo bloco.
+
 - **A chave VETOR não tem onde pôr um `ItemId` de 32 bits.** `FieldKey` = `familia, campo, i, j` (`u16` cada); na pilha o
   `i` é a entrada e o `j` JÁ está ocupado: paragem e ponto do gradiente (`canais_campos.rs:231-240`, sem tecto — o nº de
   paragens é ele próprio canal, `OFF_N_PARAGENS`), par do tracejado (`MAX_DASH_PAIRS = 3`), parâmetro do efeito

@@ -77,7 +77,10 @@ impl Ecra {
             button: PointerButton::Primary,
             timestamp_ns: 0,
         };
-        let mut ev = self.hero.handle_pointer(ptr(PointerKind::Down), &arena).to_vec();
+        let mut ev = self
+            .hero
+            .handle_pointer(ptr(PointerKind::Down), &arena)
+            .to_vec();
         ev.extend_from_slice(self.hero.handle_pointer(ptr(PointerKind::Up), &arena));
         for e in ev {
             self.hero.apply_event(e);
@@ -184,12 +187,19 @@ fn ok_com_valores_mudados_arma_o_pedido_com_esses_valores_e_fecha() {
         background: NewSpriteBackground::White,
     };
     assert_eq!(e.hero.store.take_new_sprite_request(), Some(pedido));
-    assert_eq!(e.hero.store.take_new_sprite_request(), None, "drenado uma vez só");
+    assert_eq!(
+        e.hero.store.take_new_sprite_request(),
+        None,
+        "drenado uma vez só"
+    );
     assert!(!e.aberto_ainda(), "o OK fecha");
     // Lembrado na sessão: reabre com a última escolha.
     e.hero.store.open_new_sprite_dialog();
     assert_eq!(e.hero.store.new_sprite_choice(), pedido);
-    assert_eq!(e.hero.store.number_value(ids::NEW_SPRITE_HEIGHT), Some(48.0));
+    assert_eq!(
+        e.hero.store.number_value(ids::NEW_SPRITE_HEIGHT),
+        Some(48.0)
+    );
 }
 
 #[test]
@@ -218,13 +228,21 @@ fn enter_e_o_ok_com_o_que_se_escreveu_e_o_lado_tem_tecto_e_piso() {
     let mut e = Ecra::aberto();
     e.escreve(ids::NEW_SPRITE_WIDTH, "70000");
     e.tecla(KEY_ENTER, false);
-    let c = e.hero.store.take_new_sprite_request().expect("o Enter é o OK");
+    let c = e
+        .hero
+        .store
+        .take_new_sprite_request()
+        .expect("o Enter é o OK");
     assert_eq!(c.width, 65_535);
     assert!(!e.aberto_ainda());
 
     let mut e = Ecra::aberto();
     e.escreve(ids::NEW_SPRITE_HEIGHT, "0");
     e.tecla(KEY_ENTER, false);
-    let c = e.hero.store.take_new_sprite_request().expect("o Enter é o OK");
+    let c = e
+        .hero
+        .store
+        .take_new_sprite_request()
+        .expect("o Enter é o OK");
     assert_eq!(c.height, 1);
 }

@@ -16,7 +16,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.nothing_to_undo" => "Nothing to undo in this sprite",
         "pixel.nothing_to_redo" => "Nothing to redo in this sprite",
         "panel.pixel.title" => "Pixel",
-        "panel.pixel.empty" => "Select a Pixel Sprite and press Tab (Edit) to draw with these tools and colors.",
+        "panel.pixel.empty" => {
+            "Select a Pixel Sprite and press Tab (Edit) to draw with these tools and colors."
+        }
         "panel.pixel.swap" => "Swap (X)",
         "panel.pixel.swap_tip" => "Swap the foreground and background colors (X)",
         "panel.pixel.palette" => "Palette",

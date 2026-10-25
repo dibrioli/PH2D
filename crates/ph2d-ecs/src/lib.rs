@@ -86,11 +86,11 @@ pub mod name;
 /// **Named Anchors** (ADR-0072) — socket · slice · região 9-slice, num tipo só.
 pub mod named_anchor;
 pub mod painted_doc;
-/// O objecto Pixel Sprite (ADR-0192).
-pub mod pixel_sprite;
 /// ⭐⭐⭐ **O emissor de partículas de um objecto** (TOP-20 #18) — só CONFIG; a lei é do
 /// `ph2d-particles`.
 pub mod particle_emitter;
+/// O objecto Pixel Sprite (ADR-0192).
+pub mod pixel_sprite;
 pub use motion_input::{MotionInput, MotionSource};
 pub mod motion_inputs;
 pub use motion_inputs::MotionInputs;
@@ -247,9 +247,9 @@ pub use named_anchor::{
     DICT_MAX_KEYS, NamedAnchor, NamedAnchorList, SortedSmallVec, validate_anchor_name,
 };
 pub use painted_doc::PaintedDoc;
-pub use pixel_sprite::PixelSprite;
 pub use path_follow::{PathFollow, Percurso};
 pub use ph2d_item_id::ItemId;
+pub use pixel_sprite::PixelSprite;
 pub use present::{PresentComponent, PresentWorld};
 pub use root_order::{RootOrder, assign_missing_root_order};
 pub use sampling::{

@@ -56,7 +56,8 @@ fn o_ok_nasce_o_sprite_com_as_escolhas_e_pede_o_edit() {
     let (mut sim, mut app) = (SimWorld::new(), PixelApp::default());
     hero.store.open_new_sprite_dialog();
     hero.store.set_new_sprite_mode(NewSpriteMode::Indexed);
-    hero.store.set_new_sprite_background(NewSpriteBackground::White);
+    hero.store
+        .set_new_sprite_background(NewSpriteBackground::White);
     hero.store
         .set_number_value(ph2d_editor_core::ids::NEW_SPRITE_WIDTH, 64.0);
     hero.store
@@ -101,9 +102,16 @@ fn o_painel_abre_no_edit_fecha_ao_sair_e_leva_a_paleta() {
     hero.gizmo.mode.enter(bits, ObjectMode::Edit);
     app.pede(PixelRequest::Tool(PixelTool::Eraser));
     let info = panel::frame(&mut app, sim.world(), &mut hero);
-    assert!(hero.is_panel_visible(panel::PANEL_ID), "entrar em Edit abre o painel");
+    assert!(
+        hero.is_panel_visible(panel::PANEL_ID),
+        "entrar em Edit abre o painel"
+    );
     assert!(info.editing);
-    assert_eq!(info.tool, PixelTool::Eraser, "o pedido do quadro aplicou-se");
+    assert_eq!(
+        info.tool,
+        PixelTool::Eraser,
+        "o pedido do quadro aplicou-se"
+    );
     assert_eq!(info.palette.len(), 32, "a DB32");
 
     // Fechado à mão no meio do Edit: o quadro seguinte não o reabre.
@@ -114,5 +122,8 @@ fn o_painel_abre_no_edit_fecha_ao_sair_e_leva_a_paleta() {
     hero.panel_visibility.insert(panel::PANEL_ID, true);
     let _ = hero.gizmo.mode.leave();
     let _ = panel::frame(&mut app, sim.world(), &mut hero);
-    assert!(!hero.is_panel_visible(panel::PANEL_ID), "sair do Edit fecha");
+    assert!(
+        !hero.is_panel_visible(panel::PANEL_ID),
+        "sair do Edit fecha"
+    );
 }

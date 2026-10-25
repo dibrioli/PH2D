@@ -476,7 +476,9 @@ fn new_sprite_dialog_key<'a>(
         return false;
     }
     if let Some(id) = store.focus_id() {
-        if keycode == KEY_ENTER && matches!(store.get(id), Some(InteractiveState::NumberInput { .. })) {
+        if keycode == KEY_ENTER
+            && matches!(store.get(id), Some(InteractiveState::NumberInput { .. }))
+        {
             commit_number_buffer(store, id, events, true);
         }
         reset_focused_visual_state(store, id);

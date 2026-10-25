@@ -171,8 +171,6 @@ pub mod macro_edits;
 pub mod macro_etapas;
 /// O tutorial «fazer»: a porta da família, o balão e os botões dele (W6).
 pub mod macro_tutorial;
-/// O vocabulário do Pixel Art no chrome: o painel PIXEL e o diálogo New Sprite (ADR-0192).
-pub mod pixel_panel;
 /// O vocabulário da secção MOTION INPUT (ciclo 19 do Motion).
 pub mod motion_input_edits;
 /// ⭐⭐⭐ O vocabulário das secções NAV REGION e NAV AGENT (plano 30, W4).
@@ -182,6 +180,8 @@ pub mod parallax_edits;
 pub mod particles_edits;
 /// ⭐⭐⭐ **O vocabulário do SEGUIDOR DE CAMINHO** (suplente #23) — ver o cabeçalho dele.
 pub mod path_follow_edits;
+/// O vocabulário do Pixel Art no chrome: o painel PIXEL e o diálogo New Sprite (ADR-0192).
+pub mod pixel_panel;
 /// ⭐⭐⭐ **O vocabulário do MOVER DE VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dele.
 pub mod projectile_edits;
 pub mod ray_edits;

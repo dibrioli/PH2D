@@ -15,7 +15,8 @@ fn tinta_do_fio(theme: Theme) -> u32 {
     let mut l = ph2d_vector::BezPath::new();
     l.move_to((0.0, 0.0));
     l.line_to((1.0, 0.0));
-    let ink = ph2d_vec_render::token_ink(ph2d_vec_render::WIRE_TOKEN, theme);
+    // O oráculo fixa o ACENTO — nunca a constante do produto, que se moveria junto (mutação 6, F30).
+    let ink = ph2d_vec_render::token_ink(ColorToken::Accent, theme);
     ph2d_vec_render::stroke_screen(&l, ink, ph2d_vec_render::WIRE_PX, &mut s);
     s.inner().encoding().draw_data[0]
 }

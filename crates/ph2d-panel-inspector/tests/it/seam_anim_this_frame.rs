@@ -74,12 +74,12 @@ fn click_then_type(info: InspectorAnimInfo, typed: &str) -> (String, String, Vec
     (selected, buffer, out)
 }
 
-/// ⭐ **Clicar seleciona o número INTEIRO, e o que se digita SUBSTITUI** — com tempo próprio (120)
-/// e sem ele (o campo mostra o ritmo, 90).
+/// ⭐ **Clicar seleciona o número INTEIRO, e o que se digita SUBSTITUI** — com tempo próprio (180 ms
+/// sobre o ritmo de 90 = 2×) e sem ele (1×). O campo é o MULTIPLICADOR (lei do Godot).
 #[test]
 fn clicar_no_this_frame_seleciona_o_numero_e_digitar_substitui() {
-    for (own, shown) in [(120, "120"), (0, "90")] {
-        let (selected, buffer, out) = click_then_type(on_cell_1(own), "250");
+    for (own, shown) in [(180, "2"), (0, "1")] {
+        let (selected, buffer, out) = click_then_type(on_cell_1(own), "3");
         assert_eq!(buffer, shown, "own = {own}: o campo mostrava outro número");
         assert_eq!(
             selected, shown,
@@ -87,8 +87,8 @@ fn clicar_no_this_frame_seleciona_o_numero_e_digitar_substitui() {
         );
         assert_eq!(
             out,
-            [AnimFieldEdit::FrameMsAt(0, 1, 250)],
-            "own = {own}: «250» + Enter tinha de dar 250 ms à célula 1 (substituir, não juntar)"
+            [AnimFieldEdit::FrameMsAt(0, 1, 270)],
+            "own = {own}: «3» + Enter tinha de dar 3 × 90 = 270 ms à célula 1 (substituir, não juntar)"
         );
     }
 }

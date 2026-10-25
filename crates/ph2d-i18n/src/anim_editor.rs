@@ -32,7 +32,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Click cells on the sheet, or drag across them, to add frames in that order."
         }
         "anim_editor.remove_frame" => "\u{d7}",
-        "anim_editor.ms" => "{ms} ms",
+        "anim_editor.frame_factor" => "{x}x",
         "anim_editor.commit_failed" => "The animation edit did not apply: {e}",
         _ => return None,
     })

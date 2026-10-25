@@ -62,7 +62,10 @@ fn anima(world: &mut ph2d_ecs::World, e: Entity) -> Result<(), String> {
     for t in HERO_SHEET_TAGS {
         let mut tag = ph2d_ecs::AnimationTag::new(t.name, t.from, t.to);
         tag.frame_ms = t.per_frame_ms[0];
-        tag.per_frame_ms = t.per_frame_ms.to_vec();
+        // Só o que difere do ritmo é tempo próprio — senão o Frames/s não move a animação.
+        for (i, ms) in t.per_frame_ms.iter().enumerate() {
+            tag.set_own_ms(i, *ms);
+        }
         tag.repeat = t.once.then_some(1);
         tags.insert(tag).map_err(|e| format!("{e:?}"))?;
     }

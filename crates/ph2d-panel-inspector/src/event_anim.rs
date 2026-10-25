@@ -155,9 +155,9 @@ pub(crate) fn apply_anim_event(
         // outra, e o campo **revertia sozinho** (report do Enio: *«o tempo volta a 0 no enter»*).
         && let Some((row, cell)) = info.this_frame_target()
     {
+        // O campo é o MULTIPLICADOR do ritmo (lei do Godot); o dado continua em ms.
         let v = host.store().number_value(id).unwrap_or(0.0);
-        #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
-        let ms = v.max(0.0).round() as u32;
+        let ms = info.this_frame_ms_of_factor(v).unwrap_or(0);
         push(
             host,
             info.entity_bits,

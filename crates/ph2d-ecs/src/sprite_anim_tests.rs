@@ -534,3 +534,40 @@ fn the_entry_cell_is_the_end_the_effective_direction_starts_from() {
         );
     }
 }
+
+/// ⭐ Report do dono 25/10 (lei do Godot): mudar o ritmo leva os tempos próprios na mesma proporção,
+/// e ida e volta 10 → 12 → 10 quadros/s devolve os tempos do salto do herói.
+#[test]
+fn mudar_o_ritmo_leva_os_tempos_proprios_e_volta_igual() {
+    let mut t = AnimationTag::new("jump", 0, 3);
+    for (i, ms) in [100, 133, 167, 133].into_iter().enumerate() {
+        t.set_own_ms(i, ms);
+    }
+    assert_eq!(
+        t.per_frame_ms,
+        [0, 133, 167, 133],
+        "igual ao ritmo não é próprio"
+    );
+    t.set_rhythm(200);
+    assert_eq!(
+        (t.frame_ms, t.per_frame_ms.as_slice()),
+        (200, &[0, 266, 334, 266][..])
+    );
+    let before = t.clone();
+    t.set_rhythm(83);
+    t.set_rhythm(200);
+    assert_eq!(t, before, "ida e volta mudou os tempos");
+    assert!((t.frame_factor(2) - 1.67).abs() < 0.01);
+    assert_eq!(t.frame_factor(0), 1.0);
+    assert_eq!(t.ms_of_factor(2.0), 400);
+}
+
+/// Limpar e escrever o próprio igual ao ritmo poda o vetor (o ficheiro não guarda resíduo).
+#[test]
+fn um_tempo_igual_ao_ritmo_poda_o_vetor() {
+    let mut t = AnimationTag::new("idle", 0, 3);
+    t.set_own_ms(3, 250);
+    assert_eq!(t.per_frame_ms, [0, 0, 0, 250]);
+    t.set_own_ms(3, t.frame_ms);
+    assert!(t.per_frame_ms.is_empty());
+}

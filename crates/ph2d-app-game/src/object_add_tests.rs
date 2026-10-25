@@ -73,7 +73,17 @@ fn o_personagem_tem_capsula_e_as_quatro_animacoes() {
         let tag = tags
             .get(t.name)
             .unwrap_or_else(|| panic!("falta a animação {}", t.name));
-        assert_eq!(tag.per_frame_ms, t.per_frame_ms, "{}", t.name);
+        // Toca os tempos da folha, mas só o que difere do ritmo é próprio (senão o Frames/s não
+        // move a animação — report do dono 25/10).
+        let tocado: Vec<u32> = (0..t.per_frame_ms.len())
+            .map(|i| (tag.frame_factor(i) * tag.frame_ms as f32).round() as u32)
+            .collect();
+        assert_eq!(tocado, t.per_frame_ms, "{}", t.name);
+        assert!(
+            !tag.per_frame_ms.contains(&tag.frame_ms),
+            "{}: tempo igual ao ritmo gravado como próprio",
+            t.name
+        );
         assert_eq!(tag.repeat, t.once.then_some(1), "{}", t.name);
     }
     let a = w.get::<SpriteAnimator>(e).expect("animador");

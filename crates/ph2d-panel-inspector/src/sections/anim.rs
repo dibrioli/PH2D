@@ -303,7 +303,7 @@ fn player_block(
     // A duração DESTE quadro (spec §8.12), colada à barra, que é o selector do quadro. ⚠️ Sempre
     // pintada enquanto há célula: sem tempo próprio fica APAGADA com o ritmo (o sync marca-a), e
     // digitar dá-lhe o seu — sumir fazia a coluna saltar (report do dono, 25/10).
-    if info.this_frame_shown_ms().is_some() {
+    if info.this_frame_factor().is_some() {
         cur_y = super::rows::fields_row(
             scene,
             text_system,
@@ -315,8 +315,8 @@ fn player_block(
             cur_y,
             tr("panel.inspector.animation.this_frame_ms_0_use"),
             &[ids::INSP_ANIM_FRAME_MS_THIS],
-            10.0, // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
-            Some(ph2d_editor_core::widget::Unit::Milliseconds),
+            0.1, // LITERAL-PX-OK: passo de scrub em MÚLTIPLOS do ritmo, não em pixels
+            Some(ph2d_editor_core::widget::Unit::Times),
             sec,
         );
     }

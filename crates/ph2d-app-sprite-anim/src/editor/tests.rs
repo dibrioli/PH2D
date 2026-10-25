@@ -308,11 +308,45 @@ fn o_tempo_de_um_quadro_escreve_se_no_campo_dele() {
     m.key(Key::Backspace, None);
     m.key(Key::Backspace, None);
     m.key(Key::Backspace, None);
-    m.key(Key::Char('2'), Some("250"));
+    // O campo é o MULTIPLICADOR do ritmo (lei do Godot): 2,5 × 100 ms.
+    m.key(Key::Char('2'), Some("2,5"));
     m.key(Key::Enter, None);
     assert_eq!(m.pending(), [AnimFieldEdit::FrameMsAt(0, 2, 250)]);
     m.frame();
     assert_eq!(m.doc().frame_ms_at(2), 250);
+    assert_eq!(m.doc().ms_label(2), "2.5x");
+}
+
+/// ⭐ Report do dono 25/10: com tempos próprios o Frames/s «não funcionava». Mudar o ritmo leva o
+/// quadro de 2× junto (continua 2×), como no Godot.
+#[test]
+fn mudar_os_quadros_por_segundo_leva_o_tempo_proprio_junto() {
+    let mut m = Mesa::new();
+    let quadro = centre(m.doc().layout.frames[2].1);
+    m.click(quadro);
+    m.key(Key::Backspace, None);
+    m.key(Key::Char('2'), Some("2"));
+    m.key(Key::Enter, None);
+    m.frame();
+    let fps = centre(m.doc().layout.fps);
+    m.click(fps);
+    m.key(Key::Backspace, None);
+    m.key(Key::Backspace, None);
+    m.key(Key::Char('2'), Some("20"));
+    m.key(Key::Enter, None);
+    m.frame();
+    let t = &m
+        .sim
+        .world()
+        .get::<SpriteAnimations>(Entity::from_bits(m.e))
+        .unwrap()
+        .0[0];
+    assert_eq!(
+        (t.frame_ms, t.per_frame_ms.as_slice()),
+        (50, &[0, 0, 100][..])
+    );
+    assert_eq!(m.doc().ms_label(2), "2x");
+    assert_eq!(m.doc().ms_label(0), "1x");
 }
 
 #[test]

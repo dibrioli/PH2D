@@ -220,7 +220,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.animation.off" => "Off",
         "panel.inspector.animation.this_frame_ms_0_use" => "This frame",
         "panel.inspector.animation.this_frame_hint" => {
-            "Dimmed = this frame uses the animation's speed. Type a value to give it its own time."
+            "How long this frame lasts, in times the animation's Frames/s: 2 = twice as long. Dimmed = 1x, the animation's own pace. Changing Frames/s keeps these proportions."
         }
         "panel.inspector.animation.repeat_hint" => "0 = repeat forever.",
         "panel.inspector.animation.this_sprite_has_no_animation" => {

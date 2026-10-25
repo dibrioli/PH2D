@@ -426,9 +426,7 @@ fn write_tag(t: &mut AnimationTag, edit: &AnimFieldEdit) {
         AnimFieldEdit::To(_, v) => t.to = *v,
         // ⚠️ O cap entra na ESCRITA e a lei volta a impô-lo na leitura: a porta cobre o gesto,
         // e a leitura cobre um ficheiro adulterado.
-        AnimFieldEdit::FrameMs(_, v) => {
-            t.frame_ms = (*v).clamp(ph2d_ecs::FRAME_MS_MIN, ph2d_ecs::FRAME_MS_MAX);
-        }
+        AnimFieldEdit::FrameMs(_, v) => t.set_rhythm(*v),
         AnimFieldEdit::HoldMs(_, v) => t.hold_ms = *v,
         AnimFieldEdit::DelayMs(_, v) => t.repeat_delay_ms = *v,
         // `0` no campo = repetir para sempre. O rótulo do campo di-lo.
@@ -439,7 +437,7 @@ fn write_tag(t: &mut AnimationTag, edit: &AnimFieldEdit) {
         // volta é invisível no campo e faz o contrato **não casar** do outro lado.
         AnimFieldEdit::SignalOnFinish(_, v) => t.signal_on_finish = clean_signal_name(v),
         AnimFieldEdit::SignalOnLoop(_, v) => t.signal_on_loop = clean_signal_name(v),
-        AnimFieldEdit::FrameMsAt(_, i, ms) => set_frame_ms_at(t, *i as usize, *ms),
+        AnimFieldEdit::FrameMsAt(_, i, ms) => t.set_own_ms(*i as usize, *ms),
         _ => {}
     }
 }
@@ -518,34 +516,5 @@ fn clean_signal_name(raw: &str) -> String {
             }
             t[..end].to_owned()
         }
-    }
-}
-
-/// **A duração de UMA célula**, escrita no vetor esparso da tag (spec §8.12).
-///
-/// ⚠️ **O vetor cresce só até à célula tocada, e o resto fica a ZERO** — declarar o ritmo de um
-/// quadro não pode escrever os outros sete. Zero é «herda o `frame_ms`», que é a mesma convenção
-/// do `Repeat (0 = forever)` que esta seção já usa, e é o que torna o esparso possível.
-///
-/// ⚠️ **E ele ENCOLHE quando o artista desfaz.** Sem a poda, limpar o último valor deixaria um
-/// vetor de zeros — invisível no ecrã, gravado no ficheiro, e a fazer o aviso *«this animation has
-/// per-frame timing»* mentir para sempre. *Um estado que só existe como resíduo é um estado que
-/// ninguém volta a explicar.*
-fn set_frame_ms_at(t: &mut AnimationTag, index: usize, ms: u32) {
-    let ms = if ms == 0 {
-        0
-    } else {
-        ms.clamp(ph2d_ecs::FRAME_MS_MIN, ph2d_ecs::FRAME_MS_MAX)
-    };
-    if index >= t.per_frame_ms.len() {
-        t.per_frame_ms.resize(index + 1, 0);
-    }
-    t.per_frame_ms[index] = ms;
-    // ⚠️ **A poda é o que torna «limpar» idempotente**, e ela cobre mais do que parece: limpar uma
-    // célula que nunca foi declarada cresce o vetor de zeros e ele volta a encolher aqui — o mesmo
-    // resultado, sem um caso especial. *Uma mutação que sobreviveu foi quem o disse: o atalho que
-    // eu tinha escrito acima («se é zero e está fora, não faças nada») não mudava resultado nenhum.*
-    while t.per_frame_ms.last() == Some(&0) {
-        t.per_frame_ms.pop();
     }
 }

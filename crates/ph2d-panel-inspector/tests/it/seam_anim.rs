@@ -556,7 +556,7 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
         (ph2d_panel_inspector::ids::INSP_ANIM_REPEAT, 2.0),
         (ph2d_panel_inspector::ids::INSP_ANIM_SPEED, 0.5),
         // A duração da célula que a barra mostra (§8.12) — o alvo é a CÉLULA, não a linha.
-        (ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS_THIS, 250.0),
+        (ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS_THIS, 2.0),
     ] {
         note(commit(anim(true, false), id, v));
     }
@@ -758,11 +758,12 @@ fn the_duration_field_edits_the_animation_the_bar_shows() {
     let acts = commit(
         info,
         ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS_THIS,
-        250.0,
+        2.0,
     );
+    // O campo é o multiplicador do ritmo da animação que TOCA (`attack`, 110 ms): 2× = 220 ms.
     expect(
         &acts,
-        AnimFieldEdit::FrameMsAt(1, 1, 250),
+        AnimFieldEdit::FrameMsAt(1, 1, 220),
         "o campo tem de escrever na animacao que a barra mostra (linha 1), na celula 1",
     );
 }
@@ -778,7 +779,7 @@ fn with_nothing_playing_the_duration_field_has_no_target() {
         commit(
             info,
             ph2d_panel_inspector::ids::INSP_ANIM_FRAME_MS_THIS,
-            250.0
+            2.0
         )
         .is_empty(),
         "sem alvo, o campo nao pode inventar um"

@@ -261,18 +261,29 @@ impl InspectorAnimInfo {
         Some(self.rows.get(self.current_index()?)?.frame_ms)
     }
 
-    /// **O que o «This frame» mostra: `(ms, próprio?)`** — o tempo da célula quando ela tem um
-    /// PRÓPRIO (`> 0` e diferente do ritmo), senão o ritmo da animação (o campo fica apagado).
+    /// **O que o «This frame» mostra: `(multiplicador do ritmo, próprio?)`** — a lei do Godot
+    /// (quadros/s + duração relativa por quadro). Sem tempo próprio = `1.0`, e o campo fica apagado.
     /// `None` = não há célula a que a duração se refira.
     #[must_use]
-    pub fn this_frame_shown_ms(&self) -> Option<(u32, bool)> {
+    pub fn this_frame_factor(&self) -> Option<(f64, bool)> {
         let ms = self.this_frame_ms()?;
-        let rhythm = self.current_frame_ms()?;
+        let rhythm = self.current_frame_ms()?.max(1);
         Some(if ms > 0 && ms != rhythm {
-            (ms, true)
+            (f64::from(ms) / f64::from(rhythm), true)
         } else {
-            (rhythm, false)
+            (1.0, false)
         })
+    }
+
+    /// O ms que um multiplicador escrito no «This frame» dá sobre o ritmo que toca (`0` = herda).
+    #[must_use]
+    pub fn this_frame_ms_of_factor(&self, factor: f64) -> Option<u32> {
+        let rhythm = f64::from(self.current_frame_ms()?);
+        if !(factor.is_finite() && factor > 0.0) {
+            return Some(0);
+        }
+        #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+        Some((factor * rhythm).round().max(1.0) as u32)
     }
 
     /// **QUEM o campo de duração edita: `(linha, célula)`** — e as duas saem da mesma lei.

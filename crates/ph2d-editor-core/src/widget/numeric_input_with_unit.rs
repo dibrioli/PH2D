@@ -85,6 +85,9 @@ pub enum Unit {
     ///
     /// ⚠️ **O sufixo acaba em `s`** ⇒ antes de [`Unit::Seconds`], pela mesma lei.
     PerSecond,
+    /// ⭐ **Vezes** — um multiplicador (a duração de um quadro sobre o ritmo da animação, a lei do
+    /// Godot). ⚠️ `x` é o fim de `px` ⇒ depois de [`Unit::Px`] em [`Unit::ALL`].
+    Times,
 }
 
 impl Unit {
@@ -104,6 +107,7 @@ impl Unit {
             Unit::DegreesPerSecond => "deg/s",
             Unit::Milliseconds => "ms",
             Unit::PerSecond => "1/s",
+            Unit::Times => "x",
         }
     }
 
@@ -111,7 +115,7 @@ impl Unit {
     ///
     /// ⚠️ Pública para que o gate possa medir a ORDEM em vez de a repetir — uma cópia da lista no
     /// teste provaria que a cópia está ordenada, não que o parser está.
-    pub const ALL: [Unit; 13] = [
+    pub const ALL: [Unit; 14] = [
         // ⚠️ `deg/s` acaba em `s` ⇒ antes de `Seconds`. (E `deg` **não** é o fim de `deg/s`, logo
         //    `Degrees` pode ficar onde está.)
         Unit::DegreesPerSecond,
@@ -129,6 +133,8 @@ impl Unit {
         Unit::Seconds,
         Unit::Newtons,
         Unit::Percent,
+        // ⚠️ `x` acaba `px` ⇒ depois de `Px`.
+        Unit::Times,
     ];
 
     /// Longest-match parse of a trailing unit suffix. Returns the unit

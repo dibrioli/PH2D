@@ -276,6 +276,9 @@ impl AnimDoc {
     /// O rótulo do tempo do quadro `i` da faixa.
     #[must_use]
     pub fn ms_label(&self, i: usize) -> String {
-        ph2d_i18n::tr_with("anim_editor.ms", &[("ms", &self.frame_ms_at(i))])
+        ph2d_i18n::tr_with(
+            "anim_editor.frame_factor",
+            &[("x", &super::doc::format_factor(self.frame_factor_at(i)))],
+        )
     }
 }

@@ -207,6 +207,29 @@ impl AnimDoc {
             .unwrap_or(r.frame_ms)
     }
 
+    /// O tempo do quadro `i` como MULTIPLICADOR do ritmo da animação (lei do Godot; `1` = herda).
+    #[must_use]
+    pub fn frame_factor_at(&self, i: usize) -> f32 {
+        let Some(r) = self
+            .snap
+            .info
+            .as_ref()
+            .and_then(|x| x.rows.get(self.selected))
+        else {
+            return 1.0;
+        };
+        self.frame_ms_at(i) as f32 / r.frame_ms.max(1) as f32
+    }
+
+    /// O ms que um multiplicador dá sobre o ritmo da animação aberta (`0` = herda).
+    fn ms_of_factor(&self, factor: f32) -> Option<u32> {
+        let r = self.snap.info.as_ref()?.rows.get(self.selected)?;
+        if !(factor.is_finite() && factor > 0.0) {
+            return Some(0);
+        }
+        Some(((factor * r.frame_ms as f32).round() as u32).max(1))
+    }
+
     /// O modo do ciclo da animação aberta.
     #[must_use]
     pub fn mode(&self) -> Option<AnimCycleMode> {
@@ -318,8 +341,11 @@ impl AnimDoc {
                 .filter(|v| *v > 0.0)
                 .and_then(|v| Some(AnimFieldEdit::FrameMs(row?, ph2d_ecs::ms_of_fps(v)))),
             Field::FrameMs(i) => t
-                .parse::<u32>()
+                .trim_end_matches(['x', 'X', '×'])
+                .replace(',', ".")
+                .parse::<f32>()
                 .ok()
+                .and_then(|f| self.ms_of_factor(f))
                 .and_then(|ms| Some(AnimFieldEdit::FrameMsAt(row?, i as u32, ms))),
             Field::Cols => t
                 .parse::<u32>()
@@ -346,7 +372,7 @@ impl AnimDoc {
                 .and_then(|i| i.rows.get(self.selected))
                 .map(|r| format_fps(ph2d_ecs::fps_of_ms(r.frame_ms)))
                 .unwrap_or_default(),
-            Field::FrameMs(i) => self.frame_ms_at(*i).to_string(),
+            Field::FrameMs(i) => format_factor(self.frame_factor_at(*i)),
             Field::Cols => self.snap.hframes.to_string(),
             Field::Rows => self.snap.vframes.to_string(),
             Field::Name(i) => self
@@ -526,7 +552,7 @@ impl AnimDoc {
         for c in text.chars() {
             let ok = match field {
                 Field::Name(_) => !c.is_control(),
-                Field::Fps => c.is_ascii_digit() || c == '.' || c == ',',
+                Field::Fps | Field::FrameMs(_) => c.is_ascii_digit() || c == '.' || c == ',',
                 _ => c.is_ascii_digit(),
             };
             if ok && buf.len() < ph2d_ecs::ANIM_NAME_MAX_BYTES {
@@ -565,6 +591,13 @@ pub fn reorder(frames: &[u32], from: usize, to: usize) -> Vec<u32> {
         v.insert(to.min(v.len()), c);
     }
     v
+}
+
+/// Um multiplicador para ler: até duas casas, sem zeros à direita (`1`, `1.5`, `1.33`).
+#[must_use]
+pub fn format_factor(f: f32) -> String {
+    let s = format!("{:.2}", (f * 100.0).round() / 100.0); // LITERAL-PX-OK: duas casas, não é UI
+    s.trim_end_matches('0').trim_end_matches('.').to_owned()
 }
 
 /// Quadros por segundo para ler: inteiro quando é inteiro, senão uma casa.

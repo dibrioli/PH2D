@@ -365,9 +365,9 @@ fn sync_anim_fields(
     // ela é espelhada todo o quadro, e não só na semente: arrastar a barra muda a célula debaixo do
     // dedo, e um campo que só se actualizasse ao trocar de animação mostraria a duração da anterior.
     // Sem tempo próprio ela mostra o ritmo, APAGADA (report do dono 25/10: *«só esmaecido, não sumir»*).
-    let shown = an.this_frame_shown_ms();
-    if let Some((ms, _)) = shown {
-        put(host, crate::ids::INSP_ANIM_FRAME_MS_THIS, f64::from(ms));
+    let shown = an.this_frame_factor();
+    if let Some((factor, _)) = shown {
+        put(host, crate::ids::INSP_ANIM_FRAME_MS_THIS, factor);
     }
     host.store_mut().set_number_input_inherited(
         crate::ids::INSP_ANIM_FRAME_MS_THIS,

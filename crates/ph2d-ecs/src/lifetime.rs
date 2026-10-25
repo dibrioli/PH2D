@@ -185,6 +185,25 @@ pub fn is_transient(world: &World, e: Entity) -> bool {
     world.get::<Spawned>(e).is_some()
 }
 
+/// ⭐ **A corrida corre sobre uma CÓPIA do documento** (GameEngineFuncional R0a): a shell põe-no
+/// enquanto a sessão do Play guarda a fotografia, e tira-o quando a repõe. Fora do documento salvo.
+#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RunOnCopy;
+
+/// A corrida está sobre uma cópia ([`RunOnCopy`])?
+#[must_use]
+pub fn run_is_on_copy(world: &World) -> bool {
+    world.contains_resource::<RunOnCopy>()
+}
+
+/// ⭐⭐ **Uma corrida pode tirar `e` da cena?** — a porta única de quem remove (o `ph2d.despawn`, o
+/// `Destroy`, as mortes da física). Quem nasceu na corrida, sempre; um objecto do artista, só se a
+/// corrida for sobre uma cópia — aí o Stop devolve-o, e apagá-lo já não destrói autoria.
+#[must_use]
+pub fn removable_in_run(world: &World, e: Entity) -> bool {
+    is_transient(world, e) || run_is_on_copy(world)
+}
+
 /// **Põe o relógio em quem nasceu com uma vida e ainda não o tem.**
 ///
 /// ⚠️ **Idempotente e no caminho do tique**, como o `reconcile` dos timers: o nascimento é o sítio

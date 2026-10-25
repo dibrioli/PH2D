@@ -24,5 +24,9 @@ ph2d-render = { path = "../ph2d-render" }
 # As moedas correm um script da biblioteca do projecto.
 ph2d-script = { path = "../ph2d-script" }
 
+[dev-dependencies]
+# O gate da moeda corre a física do jogador como o app (`PhysicsBridge::dispatch`).
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+
 [lints]
 workspace = true

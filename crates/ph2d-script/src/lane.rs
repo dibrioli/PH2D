@@ -338,7 +338,7 @@ impl<'w> Lane<'w> {
         let Some(e) = entity_of(id).filter(|&e| self.sim.world().get_entity(e).is_ok()) else {
             return Ok(false);
         };
-        if !born_in_run(self.sim.world(), e) {
+        if !ph2d_ecs::removable_in_run(self.sim.world(), e) && !born_in_run(self.sim.world(), e) {
             return Err(Refusal::Warn(format!(
                 "ph2d.despawn: '{}' is part of the scene the artist made — only objects created while \
                  the scene runs can be removed",

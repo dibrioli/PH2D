@@ -284,7 +284,7 @@ impl crate::App {
             deaths.extend(ph2d_ecs::reap_outside(sim.world_mut(), centro, meia));
         }
         // ⭐⭐⭐ **QUEM MORRE por causa da FÍSICA** — o voo acabou (TOP-20 #14), a vida chegou a zero
-        // ou quem bateu some (plano 28, W2). A ponte **anuncia** e já filtra por `is_transient`
+        // ou quem bateu some (plano 28, W2). A ponte **anuncia** e já filtra por `removable_in_run`
         // (uma peça posta à mão é documento, e fica); este dreno é quem remove. Ver
         // `ph2d_physics_ecs::PhysicsBridge::mortes_anunciadas`.
         deaths.extend(physics.mortes_anunciadas(sim.world()));

@@ -21,13 +21,13 @@
 //! diz para onde: a shell passa a chamar UMA porta e encolhe.
 
 use bevy_ecs::world::World;
-use ph2d_ecs::{Death, DeathCause, Entity, is_transient};
+use ph2d_ecs::{Death, DeathCause, Entity, removable_in_run};
 
 use super::PhysicsBridge;
 use super::health::HealthEventKind;
 
 impl PhysicsBridge {
-    /// **As mortes deste dispatch**, já filtradas por `is_transient`, sem repetidos.
+    /// **As mortes deste dispatch**, já filtradas por `removable_in_run`, sem repetidos.
     ///
     /// ⚠️ **Caladas** (`signal: ""`): o sinal de morte da VIDA já saiu pelo `signal_events` (com o
     /// nome que o artista escreveu na `Health`), e o de um projéctil é assunto do `Lifetime`, que já
@@ -36,7 +36,7 @@ impl PhysicsBridge {
     pub fn mortes_anunciadas(&self, world: &World) -> Vec<Death> {
         let mut out: Vec<Death> = Vec::new();
         let mut junta = |entity: Entity, why: DeathCause| {
-            if is_transient(world, entity) && !out.iter().any(|d| d.entity == entity) {
+            if removable_in_run(world, entity) && !out.iter().any(|d| d.entity == entity) {
                 out.push(Death {
                     entity,
                     signal: String::new(),

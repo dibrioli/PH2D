@@ -206,8 +206,8 @@ pub use instantiate::{
     deep_copy_subtree, deep_copy_subtree_many, remap_instance_of,
 };
 pub use lifetime::{
-    Death, DeathCause, DestroyOutside, Lifetime, LifetimeRuntime, Spawned, is_transient,
-    reap_outside, reconcile_lifetimes, tick_lifetimes,
+    Death, DeathCause, DestroyOutside, Lifetime, LifetimeRuntime, RunOnCopy, Spawned, is_transient,
+    reap_outside, reconcile_lifetimes, removable_in_run, run_is_on_copy, tick_lifetimes,
 };
 pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
 pub use master::{

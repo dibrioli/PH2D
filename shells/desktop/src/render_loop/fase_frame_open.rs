@@ -31,6 +31,9 @@ impl crate::App {
             &mut self.playhead,
         );
         self.jogo_quadro(self.timeline.runtime);
+        if let Some(gfx) = self.gfx.as_mut() {
+            ph2d_app_game::marca_a_copia(gfx.sim.world_mut(), self.jogo.foto().is_some());
+        }
         let fase_fixed_step_clocks::FrameClocks {
             report,
             tool_preview_bits,

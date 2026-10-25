@@ -5,4 +5,4 @@
 pub mod sessao;
 pub mod smoke;
 
-pub use sessao::{Passo, Sessao};
+pub use sessao::{Passo, Sessao, marca_a_copia};

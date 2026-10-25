@@ -306,6 +306,9 @@ fn pedido_de_vida(sim: &SimWorld, fx: &SignalEffect) -> Option<ph2d_physics_ecs:
 /// `fase_fabrica_e_morte` da shell: *«um projéctil que ele pôs na cena à mão é documento, e apagá-lo
 /// destruiria autoria»*. Este é o **quarto** leitor daquela porta.
 ///
+/// ⭐ Sobre uma CÓPIA (o Play do jogo, R0a) a razão cai — o Stop devolve o documento ao bit — e a
+/// porta é [`ph2d_ecs::removable_in_run`].
+///
 /// # ⭐⭐ E a recusa NÃO vira aviso de linha no painel, com mecanismo
 ///
 /// A linha `Destroy` de um objecto de documento **está certa**: ela é a receita, e as CÓPIAS que a
@@ -313,7 +316,7 @@ fn pedido_de_vida(sim: &SimWorld, fx: &SignalEffect) -> Option<ph2d_physics_ecs:
 /// cópia* ⇒ um aviso na linha diria que está partido exactamente o que está a funcionar. O que
 /// sobra é o [`ActionReport::inert`] e o diagnóstico, que é onde ele pertence.
 fn morte(sim: &SimWorld, fx: &SignalEffect) -> Option<ph2d_ecs::Death> {
-    if !ph2d_ecs::is_transient(sim.world(), fx.target) {
+    if !ph2d_ecs::removable_in_run(sim.world(), fx.target) {
         if std::env::var_os("PH2D_SIGNAL_LOG").is_some() {
             let nome = ph2d_ecs::signal_actions::name_of(sim.world(), fx.target)
                 .unwrap_or_else(|| "?".to_string());

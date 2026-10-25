@@ -67,6 +67,16 @@ impl<S> Sessao<S> {
     }
 }
 
+/// ⭐ Diz ao mundo se a corrida é sobre uma cópia ([`ph2d_ecs::RunOnCopy`]) — `copia` = a sessão tem a
+/// fotografia. Uma vez por quadro, depois de [`Sessao::quadro`] e antes dos motores.
+pub fn marca_a_copia(world: &mut ph2d_ecs::World, copia: bool) {
+    match (copia, ph2d_ecs::run_is_on_copy(world)) {
+        (true, false) => world.insert_resource(ph2d_ecs::RunOnCopy),
+        (false, true) => drop(world.remove_resource::<ph2d_ecs::RunOnCopy>()),
+        _ => {}
+    }
+}
+
 #[cfg(test)]
 #[path = "sessao_tests.rs"]
 mod tests;

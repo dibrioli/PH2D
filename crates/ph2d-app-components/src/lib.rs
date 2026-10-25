@@ -93,6 +93,7 @@ pub mod camera_2d_smoke;
 pub mod camera_inspector;
 /// ⭐⭐ A família OBJETO nos canais: o skew e a aparência da sprite (plano 35 §3.0).
 pub mod canais_componente;
+pub mod canais_lista;
 pub mod canais_objeto;
 pub mod canais_script;
 pub mod code_smoke;

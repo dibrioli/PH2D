@@ -38,6 +38,7 @@
 #![forbid(unsafe_code)]
 
 pub mod catalog;
+pub mod lista;
 
 pub use catalog::{all, desc_for};
 /// ⭐ O conjunto de componentes de um objecto — o filtro da Hierarquia (F6).

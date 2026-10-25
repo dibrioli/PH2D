@@ -101,6 +101,7 @@ pub mod canal_constraint;
 pub mod canal_fisica;
 pub mod canal_flip;
 pub mod canal_junta;
+pub mod canal_lista;
 pub mod canal_mesa;
 pub mod canal_mundo;
 pub mod canal_objeto;

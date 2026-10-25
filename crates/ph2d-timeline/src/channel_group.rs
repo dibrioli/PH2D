@@ -37,7 +37,7 @@ pub enum Forca {
 /// mesmo grupo se e só se o endereço é igual (a lei de `FieldKey::mesmo_grupo`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Grupo {
-    Familia((u16, u16, u16)),
+    Familia((u16, u16, u32)),
     Canal(PropKind),
 }
 

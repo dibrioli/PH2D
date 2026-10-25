@@ -464,6 +464,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.tween_fields.4" => "Curve",
         "component.field.tween_fields.5" => "Ease",
         "component.field.tween_fields.6" => "When Done",
+        "component.field.tween_fields.7" => "Cycle",
         "component.field.visibility.1" => "Visible",
         "component.field.visibility_layer.1" => "Visibility Layer",
         "component.field.watch_fields.1" => "Counter",

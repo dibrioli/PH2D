@@ -46,12 +46,18 @@ impl FieldKey {
     }
 
     /// O endereço do GRUPO deste campo — `(familia, grupo, i)`, com `i = 0` quando o grupo não se
-    /// parte por `i`. A porta única de «que campos se gravam juntos»: o autokey ([`Self::mesmo_grupo`])
-    /// e a linha de grupo do dope-sheet perguntam aqui.
+    /// parte por `i`; na [`familia::LISTA`] o `i:j` inteiro (o item). A porta única de «que campos se
+    /// gravam juntos»: o autokey ([`Self::mesmo_grupo`]) e a linha de grupo do dope-sheet perguntam aqui.
     #[must_use]
-    pub fn grupo(self) -> Option<(u16, u16, u16)> {
-        self.info()
-            .map(|c| (self.familia, c.grupo, if c.por_i { self.i } else { 0 }))
+    pub fn grupo(self) -> Option<(u16, u16, u32)> {
+        self.info().map(|c| {
+            let sub = match (c.por_i, self.familia) {
+                (false, _) => 0,
+                (true, familia::LISTA) => u32::from(self.i) << 16 | u32::from(self.j),
+                (true, _) => u32::from(self.i),
+            };
+            (self.familia, c.grupo, sub)
+        })
     }
 
     /// `true` se `outro` grava-se na MESMA chave que este (a forma inteira, a cor inteira).
@@ -84,6 +90,7 @@ impl FieldKey {
             familia::SCRIPT => crate::canal_script::membro(self),
             familia::CONSTRAINT => crate::canal_constraint::membro(self.campo),
             familia::CAD => crate::canal_cad::membro(self.campo),
+            familia::LISTA => crate::canal_lista::membro(self),
             familia::MUNDO => crate::canal_mundo::membro(self.campo),
             familia::MESA => crate::canal_mesa::membro(self.campo),
             _ => None,
@@ -243,12 +250,15 @@ pub mod familia {
     pub const CONSTRAINT: u16 = 8;
     /// Uma regra de desenho técnico do vetor (`VecScene.regras`, `i:j` = o `RegraId`) — `crate::canal_cad`.
     pub const CAD: u16 = 9;
-    // `10` é da `LISTA` (F30 §A, o item de uma lista com identidade); `8` e `9` são do main
-    // (CONSTRAINT, CAD) — a linha UIUX renumerou-se na integração de 29/10.
+    // `8` e `9` são do main (CONSTRAINT, CAD): a linha UIUX renumerou-se na integração de 29/10
+    // (LISTA `10`, MUNDO `11`, MESA `12`).
+    /// O campo de um ITEM de uma lista de componente, pelo `ItemId` (`i:j`) — `crate::canal_lista`.
+    /// O número é o do vocabulário da folha (`ph2d_component_desc::lista::FAMILIA`).
+    pub const LISTA: u16 = ph2d_component_desc::lista::FAMILIA;
     /// O MUNDO da física (`PhysicsSettings`) sobre a entidade da Cena — `crate::canal_mundo`.
     pub const MUNDO: u16 = 11;
     /// A MESA DE SOM (`ph2d_audio::Mesa`) sobre a entidade da Cena — `crate::canal_mesa`.
-    pub const MESA: u16 = 10;
+    pub const MESA: u16 = 12;
 }
 
 /// ⭐ **A porta única de «o que é este campo»** — `None` = endereço que nenhuma família declara (um
@@ -265,6 +275,7 @@ pub fn info(k: FieldKey) -> Option<CampoInfo> {
         familia::SCRIPT => crate::canal_script::info(k),
         familia::CONSTRAINT => crate::canal_constraint::info(k.campo),
         familia::CAD => crate::canal_cad::info(k.campo),
+        familia::LISTA => crate::canal_lista::info(k),
         familia::MUNDO => crate::canal_mundo::info(k.campo),
         familia::MESA => crate::canal_mesa::info(k.campo),
         _ => None,

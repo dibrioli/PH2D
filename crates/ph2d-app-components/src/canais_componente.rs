@@ -121,6 +121,7 @@ pub fn publicar(sim: &mut SimWorld, reg: &ComponentRegistry, entidades: &[u64]) 
         })
         .collect();
     crate::canais_script::publicar(sim, entidades, &mut textos);
+    crate::canais_lista::publicar(sim, reg, entidades, &mut textos);
     sim.world_mut().insert_resource(textos);
     let mut lidos = sim
         .world_mut()
@@ -171,6 +172,8 @@ pub fn aplicar(sim: &mut SimWorld, reg: &ComponentRegistry, drive: &mut PreviewD
     }
     // As propriedades que o script declara: a mesma tabela, o mesmo quadro.
     mudou |= crate::canais_script::aplicar(sim, reg, drive, &textos);
+    // Os itens das listas (F30 §A1): a mesma tabela, o mesmo quadro.
+    mudou |= crate::canais_lista::aplicar(sim, reg, drive, &mut textos);
     sim.world_mut().insert_resource(textos);
     let mut lidos = sim
         .world_mut()

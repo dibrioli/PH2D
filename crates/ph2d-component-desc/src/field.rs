@@ -194,6 +194,49 @@ impl FieldDesc {
         let k = self.serde_key();
         k.split_once(':').map_or(k, |(top, _)| top)
     }
+
+    /// ⭐ **Quantas faixas o campo tem como canal de animação** — `0` = não é canal. A lei única
+    /// das famílias COMPONENTE e LISTA (`ph2d_ecs::canal_componente`, `ph2d_ecs::canal_lista`).
+    #[must_use]
+    pub fn faixas_de_canal(&self) -> u16 {
+        if self.serde_key().is_empty() || self.is_ref.is_some() {
+            return 0;
+        }
+        // Um `Named` de texto é o NOME do objecto: anima por degraus. A camada e o script guardam o
+        // ID inteiro (durável): degraus também. Um `Named` de outra forma não tem valor que a curva leia.
+        if matches!(self.view, View::Not) && self.kind != FieldKind::Toggle
+            || matches!(self.view, View::Named(t) if !matches!(t, Target::Layer | Target::Script))
+                && self.kind != FieldKind::Text
+        {
+            return 0;
+        }
+        match (self.kind, self.view) {
+            (
+                FieldKind::Enum,
+                View::Options(_) | View::Toggle(..) | View::Named(Target::Layer | Target::Script),
+            ) => 1,
+            (
+                FieldKind::Enum
+                | FieldKind::Curve
+                | FieldKind::Gradient
+                | FieldKind::Palette
+                | FieldKind::Marker
+                | FieldKind::Ref,
+                _,
+            ) => 0,
+            (FieldKind::Vec2, _) => 2,
+            (FieldKind::Vec4 | FieldKind::Color, _) => 4,
+            (
+                FieldKind::Scalar
+                | FieldKind::Int
+                | FieldKind::Angle
+                | FieldKind::Seed
+                | FieldKind::Toggle
+                | FieldKind::Text,
+                _,
+            ) => 1,
+        }
+    }
 }
 
 /// **Que controlo edita este campo** — espelha o vocabulário do `ParamRow` do Motion (12

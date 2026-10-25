@@ -79,6 +79,11 @@ const NOT_LANGUAGE: &[Excecao] = &[
         "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",
     ),
     (
+        "catalog/listas.rs",
+        "Tagged",
+        "o nome serde de uma VARIANTE no molde json de uma opção (`property_ref::same_option`), nunca texto pintado",
+    ),
+    (
         "catalog/logic.rs",
         "Tagged",
         "o nome serde de uma VARIANTE no molde json de um campo de variante (`property_ref::variant`), nunca texto pintado",

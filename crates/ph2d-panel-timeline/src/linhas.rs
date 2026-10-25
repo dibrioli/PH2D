@@ -33,7 +33,7 @@ pub struct GrupoChave {
     pub entity: u64,
     pub familia: u16,
     pub grupo: u16,
-    pub i: u16,
+    pub i: u32,
 }
 
 impl GrupoChave {

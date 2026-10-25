@@ -46,45 +46,7 @@ pub fn chave(canonical: &str, field_id: u16, faixa: u16) -> Option<FieldKey> {
 /// Quantas faixas o campo tem como canal — `0` = não é canal (e porquê está no gate).
 #[must_use]
 pub fn faixas(f: &FieldDesc) -> u16 {
-    if f.serde_key().is_empty() || f.is_ref.is_some() {
-        return 0;
-    }
-    // ⭐ Um `Named` de texto é o NOME do objecto (a referência durável): anima por degraus — o
-    // corte da câmera para outro alvo. A camada de ordenação e o script guardam o ID inteiro
-    // (durável, nunca reusado): degraus também. Um `Named` de outra forma (hash de nome, tag) não
-    // tem valor que a curva leia.
-    if matches!(f.view, View::Not) && f.kind != FieldKind::Toggle
-        || matches!(f.view, View::Named(t) if !matches!(t, Target::Layer | Target::Script))
-            && f.kind != FieldKind::Text
-    {
-        return 0;
-    }
-    match (f.kind, f.view) {
-        (
-            FieldKind::Enum,
-            View::Options(_) | View::Toggle(..) | View::Named(Target::Layer | Target::Script),
-        ) => 1,
-        (
-            FieldKind::Enum
-            | FieldKind::Curve
-            | FieldKind::Gradient
-            | FieldKind::Palette
-            | FieldKind::Marker
-            | FieldKind::Ref,
-            _,
-        ) => 0,
-        (FieldKind::Vec2, _) => 2,
-        (FieldKind::Vec4 | FieldKind::Color, _) => 4,
-        (
-            FieldKind::Scalar
-            | FieldKind::Int
-            | FieldKind::Angle
-            | FieldKind::Seed
-            | FieldKind::Toggle
-            | FieldKind::Text,
-            _,
-        ) => 1,
-    }
+    f.faixas_de_canal()
 }
 
 struct Tabela {
@@ -220,26 +182,38 @@ pub fn info(k: FieldKey) -> Option<CampoInfo> {
     let id = u32::from(k.i) << 16 | u32::from(k.j);
     Some(CampoInfo {
         rotulo: f.label_key,
-        especie: match (f.kind, f.view) {
-            (FieldKind::Int | FieldKind::Enum, View::Options(_)) => Especie::Catalogo,
-            (FieldKind::Int | FieldKind::Seed, _) => Especie::Numero,
-            (FieldKind::Toggle, _) => Especie::Ligado,
-            (FieldKind::Text, _) => Especie::Texto,
-            (FieldKind::Enum, View::Named(Target::Layer)) => Especie::Camada,
-            (FieldKind::Enum, View::Named(Target::Script)) => Especie::Script,
-            (FieldKind::Enum, _) => Especie::Catalogo,
-            _ => Especie::Continuo,
-        },
+        especie: especie(f),
         grupo: *tabela().grupos.get(&(id, f.field_id))?,
         por_i: false,
     })
 }
 
+/// A espécie do valor de um campo do catálogo (também a de um campo de item, `canal_lista`).
+#[must_use]
+pub fn especie(f: &FieldDesc) -> Especie {
+    match (f.kind, f.view) {
+        (FieldKind::Int | FieldKind::Enum, View::Options(_)) => Especie::Catalogo,
+        (FieldKind::Int | FieldKind::Seed, _) => Especie::Numero,
+        (FieldKind::Toggle, _) => Especie::Ligado,
+        (FieldKind::Text, _) => Especie::Texto,
+        (FieldKind::Enum, View::Named(Target::Layer)) => Especie::Camada,
+        (FieldKind::Enum, View::Named(Target::Script)) => Especie::Script,
+        (FieldKind::Enum, _) => Especie::Catalogo,
+        _ => Especie::Continuo,
+    }
+}
+
 #[must_use]
 pub fn membro(k: FieldKey) -> Option<&'static str> {
+    let (_, f, faixa) = resolver(k)?;
+    nome_da_faixa(f, faixa)
+}
+
+/// O nome da faixa `faixa` de um campo (x/y/z/w, r/g/b/a; o rótulo de um campo de uma faixa).
+#[must_use]
+pub fn nome_da_faixa(f: &'static FieldDesc, faixa: u16) -> Option<&'static str> {
     const XYZW: [&str; 4] = ["canal.m.x", "canal.m.y", "canal.m.z", "canal.m.w"];
     const RGBA: [&str; 4] = ["canal.m.r", "canal.m.g", "canal.m.b", "canal.m.a"];
-    let (_, f, faixa) = resolver(k)?;
     let faixa = usize::from(faixa);
     match f.kind {
         FieldKind::Color => RGBA.get(faixa).copied(),
@@ -248,10 +222,18 @@ pub fn membro(k: FieldKey) -> Option<&'static str> {
     }
 }
 
+/// O campo do catálogo que a chave nomeia — de um componente ou de um ITEM de lista
+/// (`crate::canal_lista`).
+fn campo_de(k: FieldKey) -> Option<&'static FieldDesc> {
+    resolver(k)
+        .map(|(_, f, _)| f)
+        .or_else(|| crate::canal_lista::resolver(k).map(|(_, f, _)| f))
+}
+
 /// Quantas escolhas o campo tem (`View::Options` ou a caixa `View::Toggle`); `None` = não é escolha.
 #[must_use]
 pub fn n_opcoes(k: FieldKey) -> Option<usize> {
-    match resolver(k)?.1.view {
+    match campo_de(k)?.view {
         View::Options(o) => Some(o.len()),
         View::Toggle(..) => Some(2),
         _ => None,
@@ -262,9 +244,10 @@ pub fn n_opcoes(k: FieldKey) -> Option<usize> {
 /// declara, a mesma que o cartão pinta; um `View::Toggle` (a caixa do cartão) diz ligado/desligado.
 #[must_use]
 pub fn chave_da_opcao(k: FieldKey, i: u64) -> Option<&'static str> {
-    let (_, f, _) = resolver(k)?;
+    let f = campo_de(k)?;
     match f.view {
-        View::Options(o) => o.get(usize::try_from(i).ok()?).map(|o| o.rotulo),
+        // `""` = a opção não tem palavra (a comparação da vigia): fica o número.
+        View::Options(o) => (o.get(usize::try_from(i).ok()?).map(|o| o.rotulo)).filter(|r| !r.is_empty()),
         View::Toggle(..) => Some(match i {
             0 => crate::canal_palavra::DESLIGADO,
             _ => crate::canal_palavra::LIGADO,

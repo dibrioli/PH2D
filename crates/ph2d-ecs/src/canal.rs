@@ -12,16 +12,24 @@
 use std::collections::BTreeMap;
 
 use bevy_ecs::resource::Resource;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+
+use crate::ItemId;
 
 /// O endereço DURÁVEL de um campo animável: `familia` e `campo` são números DECLARADOS (fio
 /// congelado só por APPEND, como os discriminantes do `PropKind`); `i`/`j` dizem QUAL — contorno e
 /// vértice, entrada da pilha e paragem, efeito e parâmetro (o sentido é do vocabulário da família).
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+/// `item` é a IDENTIDADE de uma entrada de lista (tinta/efeito da pilha, filtro do Vetor — F31 §A;
+/// `NONE` em quem não a usa): com ela `i` é 0 e `j` continua a dizer o membro.
+///
+/// A ordem dos campos é a da `Ord`: `item` antes de `j` junta os membros de uma entrada.
+/// O `Deserialize` lê a forma v23 dentro de [`crate::canal_chave_v23::with_field_key_layout_v23`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
 pub struct FieldKey {
     pub familia: u16,
     pub campo: u16,
     pub i: u16,
+    pub item: ItemId,
     pub j: u16,
 }
 
@@ -32,12 +40,31 @@ impl FieldKey {
             familia,
             campo,
             i,
+            item: ItemId::NONE,
+            j,
+        }
+    }
+
+    /// O campo `campo` da entrada `item` de uma lista (`i` = 0; `j` = o membro).
+    #[must_use]
+    pub const fn do_item(familia: u16, campo: u16, item: ItemId, j: u16) -> Self {
+        Self {
+            familia,
+            campo,
+            i: 0,
+            item,
             j,
         }
     }
 
     const MIN: FieldKey = FieldKey::new(0, 0, 0, 0);
-    const MAX: FieldKey = FieldKey::new(u16::MAX, u16::MAX, u16::MAX, u16::MAX);
+    const MAX: FieldKey = FieldKey {
+        familia: u16::MAX,
+        campo: u16::MAX,
+        i: u16::MAX,
+        item: ItemId(u32::MAX),
+        j: u16::MAX,
+    };
 
     /// O que este campo É — a porta única ([`info`]).
     #[must_use]
@@ -46,7 +73,8 @@ impl FieldKey {
     }
 
     /// O endereço do GRUPO deste campo — `(familia, grupo, i)`, com `i = 0` quando o grupo não se
-    /// parte por `i`; na [`familia::LISTA`] o `i:j` inteiro (o item). A porta única de «que campos se
+    /// parte por `i`; na [`familia::LISTA`] o `i:j` inteiro (o item); com `item` o próprio item
+    /// (a entrada da pilha, o filtro). A porta única de «que campos se
     /// gravam juntos»: o autokey ([`Self::mesmo_grupo`]) e a linha de grupo do dope-sheet perguntam aqui.
     #[must_use]
     pub fn grupo(self) -> Option<(u16, u16, u32)> {
@@ -54,6 +82,7 @@ impl FieldKey {
             let sub = match (c.por_i, self.familia) {
                 (false, _) => 0,
                 (true, familia::LISTA) => u32::from(self.i) << 16 | u32::from(self.j),
+                (true, _) if !self.item.is_none() => self.item.0,
                 (true, _) => u32::from(self.i),
             };
             (self.familia, c.grupo, sub)
@@ -348,8 +377,14 @@ impl CanaisLidos {
     /// Esquece o que a entidade publicou da `familia` (antes de a republicar: um vértice apagado
     /// sai) — as outras famílias da mesma entidade ficam.
     pub fn esquecer(&mut self, entidade: u64, familia: u16) {
-        let de = FieldKey::new(familia, 0, 0, 0);
-        let ate = FieldKey::new(familia, u16::MAX, u16::MAX, u16::MAX);
+        let de = FieldKey {
+            familia,
+            ..FieldKey::MIN
+        };
+        let ate = FieldKey {
+            familia,
+            ..FieldKey::MAX
+        };
         let dela: Vec<_> = self
             .valores
             .range((entidade, de)..=(entidade, ate))

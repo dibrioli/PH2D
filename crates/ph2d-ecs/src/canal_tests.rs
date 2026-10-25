@@ -240,3 +240,62 @@ fn o_texto_e_um_indice_estavel() {
     assert!(info(k(v::TEXTO_FAMILIA, 0, 0)).is_some_and(|c| c.texto() && c.discreto()));
     assert!(info(k(v::TEXTO_TAMANHO, 0, 0)).is_some_and(|c| !c.texto()));
 }
+
+/// ⭐ F31 §A: uma chave com `item` agrupa-se pelo ITEM — os membros da mesma entrada juntos, a
+/// entrada vizinha noutro grupo, a base (sem item) no seu; a ordem junta os membros de um item.
+#[test]
+fn o_grupo_de_uma_chave_com_item_e_o_item() {
+    use crate::ItemId;
+    let vermelho = v::TINTA_PREENCH + v::OFF_SOLIDA;
+    let a = FieldKey::do_item(familia::VETOR, vermelho, ItemId(70_000), 0);
+    let a_verde = FieldKey::do_item(familia::VETOR, vermelho + 1, ItemId(70_000), 0);
+    let b = FieldKey::do_item(familia::VETOR, vermelho, ItemId(5), 0);
+    let base = k(vermelho, 0, 0);
+    assert_eq!(a.i, 0);
+    assert_eq!(a.grupo(), Some((familia::VETOR, v::TINTA_PREENCH, 70_000)));
+    assert!(a.mesmo_grupo(a_verde));
+    assert!(!a.mesmo_grupo(b) && !a.mesmo_grupo(base));
+    assert_eq!(base.grupo(), Some((familia::VETOR, v::TINTA_PREENCH, 0)));
+    // `por_i = false`: o item não parte a forma inteira.
+    let forma = FieldKey::do_item(familia::VETOR, v::ANCORA_X, ItemId(9), 0);
+    assert_eq!(forma.grupo(), Some((familia::VETOR, v::ANCORA_X, 0)));
+    let p0 = FieldKey::do_item(
+        familia::VETOR,
+        v::TINTA_PREENCH + v::OFF_PARAGEM,
+        ItemId(5),
+        0,
+    );
+    let p1 = FieldKey { j: 1, ..p0 };
+    let outro = FieldKey::do_item(
+        familia::VETOR,
+        v::TINTA_PREENCH + v::OFF_PARAGEM,
+        ItemId(6),
+        0,
+    );
+    assert!(p0 < p1 && p1 < outro, "item antes de j");
+    assert_eq!(v::lista(vermelho), v::Lista::Tinta);
+    assert_eq!(v::lista(v::PILHA_OPACIDADE), v::Lista::Tinta);
+    assert_eq!(v::lista(v::EFEITO_PARAM), v::Lista::Efeito);
+    assert_eq!(v::lista(v::FILTRO_PARAGEM + 4), v::Lista::Filtro);
+    assert_eq!(v::lista(v::ANCORA_X), v::Lista::Nenhuma);
+    assert_eq!(v::lista(v::MISTURA), v::Lista::Nenhuma);
+}
+
+/// `esquecer` leva TODAS as chaves da família, também as de item.
+#[test]
+fn esquecer_leva_as_chaves_de_item() {
+    use crate::ItemId;
+    let mut l = CanaisLidos::default();
+    let fundo = FieldKey::do_item(familia::VETOR, u16::MAX, ItemId(u32::MAX), 3);
+    l.publicar(
+        1,
+        FieldKey {
+            i: u16::MAX,
+            ..fundo
+        },
+        1.0,
+    );
+    l.publicar(1, FieldKey::new(familia::OBJETO, 1, 0, 0), 2.0);
+    l.esquecer(1, familia::VETOR);
+    assert_eq!(l.len(), 1);
+}

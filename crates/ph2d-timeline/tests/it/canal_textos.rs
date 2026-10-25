@@ -56,6 +56,7 @@ fn o_doc_v22_migra_para_v23() {
     assert_eq!(doc.textos(), ["Inter"]);
     let sem = |mut j: serde_json::Value| {
         j.as_object_mut().unwrap().remove("version");
+        crate::canal_item::sem_item(&mut j);
         j
     };
     let antes: serde_json::Value = serde_json::from_str(V22_JSON).unwrap();
@@ -97,13 +98,14 @@ fn o_nome_da_propriedade_de_script_viaja_com_a_chave() {
 fn o_doc_v21_migra_para_v22() {
     const V21_BIN: &[u8] = include_bytes!("../fixtures/timeline_doc_v21.bin");
     const V21_JSON: &str = include_str!("../fixtures/timeline_doc_v21.json");
-    assert_eq!(DOC_VERSION, 23);
+    assert_eq!(DOC_VERSION, 24);
     let doc = TimelineDoc::from_bytes(V21_BIN).expect("o v21 tem de abrir");
     assert_eq!(doc.version, DOC_VERSION);
     assert!(doc.textos().is_empty(), "nenhuma build v21 publicava texto");
     let sem = |mut j: serde_json::Value| {
         j.as_object_mut().unwrap().remove("version");
         j.as_object_mut().unwrap().remove("textos");
+        crate::canal_item::sem_item(&mut j);
         j
     };
     let antes: serde_json::Value = serde_json::from_str(V21_JSON).unwrap();

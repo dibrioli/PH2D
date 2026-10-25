@@ -95,6 +95,7 @@ pub use particle_emitter::{EmissionShape, ParticleEmitter, ParticleSpace};
 /// ⭐⭐⭐ **O canal de qualquer propriedade** (plano 35) — o endereço e os dois quadros de dados.
 pub mod canal;
 pub mod canal_cad;
+pub mod canal_chave_v23;
 pub mod canal_componente;
 pub mod canal_componente_donos;
 pub mod canal_constraint;
@@ -108,6 +109,7 @@ pub mod canal_objeto;
 pub mod canal_palavra;
 pub mod canal_script;
 pub mod canal_vetor;
+pub mod canal_vetor_ids;
 /// ⭐ A Cena como alvo da timeline (F30 §B).
 pub mod cena;
 pub use cena::{Cena, bits_da_cena, entidade_da_cena, garante_cena};

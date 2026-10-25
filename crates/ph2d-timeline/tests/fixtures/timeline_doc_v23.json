@@ -1,0 +1,393 @@
+{
+  "version": 23,
+  "fps_display": 24.0,
+  "clips": [
+    {
+      "name": "Main",
+      "clip": {
+        "tracks": [
+          [
+            0,
+            {
+              "keys": [
+                {
+                  "t": {
+                    "num": 0,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 10.0
+                  },
+                  "interp": "Linear"
+                },
+                {
+                  "t": {
+                    "num": 1000000,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 20.0
+                  },
+                  "interp": "Linear"
+                }
+              ],
+              "default": {
+                "Float": 10.0
+              },
+              "roving": [
+                false,
+                false
+              ],
+              "pre": "Hold",
+              "post": "Hold"
+            }
+          ],
+          [
+            1,
+            {
+              "keys": [
+                {
+                  "t": {
+                    "num": 0,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 0.5
+                  },
+                  "interp": "Linear"
+                },
+                {
+                  "t": {
+                    "num": 1000000,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 1.0
+                  },
+                  "interp": "Linear"
+                }
+              ],
+              "default": {
+                "Float": 0.5
+              },
+              "roving": [
+                false,
+                false
+              ],
+              "pre": "Hold",
+              "post": "Hold"
+            }
+          ],
+          [
+            2,
+            {
+              "keys": [
+                {
+                  "t": {
+                    "num": 0,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 30.0
+                  },
+                  "interp": "Linear"
+                },
+                {
+                  "t": {
+                    "num": 1000000,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 40.0
+                  },
+                  "interp": "Linear"
+                }
+              ],
+              "default": {
+                "Float": 30.0
+              },
+              "roving": [
+                false,
+                false
+              ],
+              "pre": "Hold",
+              "post": "Hold"
+            }
+          ],
+          [
+            3,
+            {
+              "keys": [
+                {
+                  "t": {
+                    "num": 0,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 3.0
+                  },
+                  "interp": "Linear"
+                },
+                {
+                  "t": {
+                    "num": 1000000,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 4.0
+                  },
+                  "interp": "Linear"
+                }
+              ],
+              "default": {
+                "Float": 3.0
+              },
+              "roving": [
+                false,
+                false
+              ],
+              "pre": "Hold",
+              "post": "Hold"
+            }
+          ],
+          [
+            4,
+            {
+              "keys": [
+                {
+                  "t": {
+                    "num": 0,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 5.0
+                  },
+                  "interp": "Linear"
+                },
+                {
+                  "t": {
+                    "num": 1000000,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 6.0
+                  },
+                  "interp": "Linear"
+                }
+              ],
+              "default": {
+                "Float": 5.0
+              },
+              "roving": [
+                false,
+                false
+              ],
+              "pre": "Hold",
+              "post": "Hold"
+            }
+          ],
+          [
+            5,
+            {
+              "keys": [
+                {
+                  "t": {
+                    "num": 0,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 7.0
+                  },
+                  "interp": "Linear"
+                },
+                {
+                  "t": {
+                    "num": 1000000,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 8.0
+                  },
+                  "interp": "Linear"
+                }
+              ],
+              "default": {
+                "Float": 7.0
+              },
+              "roving": [
+                false,
+                false
+              ],
+              "pre": "Hold",
+              "post": "Hold"
+            }
+          ],
+          [
+            6,
+            {
+              "keys": [
+                {
+                  "t": {
+                    "num": 0,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 9.0
+                  },
+                  "interp": "Linear"
+                },
+                {
+                  "t": {
+                    "num": 1000000,
+                    "den": 1000000
+                  },
+                  "value": {
+                    "Float": 11.0
+                  },
+                  "interp": "Linear"
+                }
+              ],
+              "default": {
+                "Float": 9.0
+              },
+              "roving": [
+                false,
+                false
+              ],
+              "pre": "Hold",
+              "post": "Hold"
+            }
+          ]
+        ],
+        "duration": {
+          "num": 0,
+          "den": 1000000
+        }
+      },
+      "loop_range": null,
+      "loop_ping_pong": false,
+      "keys_loop_range": null,
+      "keys_loop_ping_pong": false,
+      "length_override": null,
+      "expr": {},
+      "paths": {},
+      "owner": null,
+      "autoplay": false
+    }
+  ],
+  "active_clip": 0,
+  "bindings": [
+    {
+      "target": 0,
+      "prop": {
+        "Field": {
+          "familia": 1,
+          "campo": 22,
+          "i": 1,
+          "j": 0
+        }
+      },
+      "wire_id": 44,
+      "rest": null,
+      "auto_orient": false,
+      "expr": null
+    },
+    {
+      "target": 1,
+      "prop": {
+        "Field": {
+          "familia": 1,
+          "campo": 151,
+          "i": 2,
+          "j": 0
+        }
+      },
+      "wire_id": 44,
+      "rest": null,
+      "auto_orient": false,
+      "expr": null
+    },
+    {
+      "target": 2,
+      "prop": {
+        "Field": {
+          "familia": 1,
+          "campo": 22,
+          "i": 0,
+          "j": 0
+        }
+      },
+      "wire_id": 44,
+      "rest": null,
+      "auto_orient": false,
+      "expr": null
+    },
+    {
+      "target": 3,
+      "prop": {
+        "Field": {
+          "familia": 1,
+          "campo": 171,
+          "i": 1,
+          "j": 2
+        }
+      },
+      "wire_id": 44,
+      "rest": null,
+      "auto_orient": false,
+      "expr": null
+    },
+    {
+      "target": 4,
+      "prop": {
+        "Field": {
+          "familia": 1,
+          "campo": 222,
+          "i": 0,
+          "j": 0
+        }
+      },
+      "wire_id": 44,
+      "rest": null,
+      "auto_orient": false,
+      "expr": null
+    },
+    {
+      "target": 5,
+      "prop": {
+        "Field": {
+          "familia": 1,
+          "campo": 1,
+          "i": 1,
+          "j": 3
+        }
+      },
+      "wire_id": 44,
+      "rest": null,
+      "auto_orient": false,
+      "expr": null
+    },
+    {
+      "target": 6,
+      "prop": {
+        "Field": {
+          "familia": 1,
+          "campo": 62,
+          "i": 3,
+          "j": 0
+        }
+      },
+      "wire_id": 44,
+      "rest": null,
+      "auto_orient": false,
+      "expr": null
+    }
+  ],
+  "markers": [],
+  "next_target": 7,
+  "next_strip": 0,
+  "stack": [],
+  "containers": [],
+  "scene_length": null,
+  "textos": []
+}

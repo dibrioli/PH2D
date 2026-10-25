@@ -10,7 +10,9 @@
 | `timeline_doc_v20.json` | o MESMO documento em `serde_json` — a régua da migração v20 → v21 | idem |
 | `timeline_doc_v21.bin` | um `TimelineDoc` **v21** (o último sem tabela de textos): o v20 acima migrado + dois campos do vetor no dono `0x1_0000002a` (`wire_id` 44) — a cor sólida do preenchimento (contínua, 2 chaves) e o tipo da tinta (discreto, 2 chaves) | `TimelineDoc::to_bytes` sobre `aa01a0cd06` (antes da v22), por um teste `#[ignore]` de uma corrida só, apagado a seguir |
 | `timeline_doc_v21.json` | o MESMO documento em `serde_json` — a régua da migração v21 → v22 (`tests/it/canal_textos.rs`) | idem |
+| `timeline_doc_v23.bin` | um `TimelineDoc` **v23** (o último com a `FieldKey` de 4 campos, sem `item`): um documento novo, 7 campos do vetor no dono 7 (`wire_id` 44), 2 chaves cada — tinta da entrada 0 (`i` 1) e opacidade da entrada 1 (`i` 2), tinta de base (`i` 0), parâmetro 2 do efeito 1, raio do filtro 0, ponto 3 do contorno 1, e tinta do traço da entrada 2 (`i` 3) | `TimelineDoc::to_bytes` sobre `36c29f1e5e` (antes da v24), por um teste `#[ignore]` de uma corrida só, apagado a seguir |
+| `timeline_doc_v23.json` | o MESMO documento em `serde_json` — a régua da leitura v23 → v24 (`tests/it/canal_item.rs`) | idem |
 
-⛔ Não regenere: depois da v19 o código já não escreve v18, e depois da v20 já não escreve v19, e depois da v21 já não escreve v20, e depois da v22 já não escreve v21. As
+⛔ Não regenere: depois da v19 o código já não escreve v18, e depois da v20 já não escreve v19, e depois da v21 já não escreve v20, e depois da v22 já não escreve v21, e depois da v24 já não escreve v23. As
 migrações (`doc_v18.rs`, `doc_v19.rs`) são provadas contra estes bytes em `tests/it/clip_owner.rs` e
 `tests/it/clip_entry.rs`.

@@ -133,12 +133,19 @@ mod clip_paths;
 /// cada uma passaria a ser outro, calado). A v22 lê-se pela forma actual (provada contra
 /// `tests/fixtures/timeline_doc_v22.bin`): quem apender um campo congela-a num `doc_v22.rs`.
 ///
+/// v24: **a IDENTIDADE na chave** (`FieldKey.item`, F31 §A — `docs/UI_New_and_Simple/F31_plano.md`):
+/// a tinta/efeito da pilha e o filtro do Vetor endereçam-se pelo `ItemId`, nunca pela posição. O
+/// campo entra NO MEIO da chave, então os bytes mudam: a v23 (e abaixo) lê-se dentro de
+/// `ph2d_ecs::canal_chave_v23::with_field_key_layout_v23` (item `NONE`, provada contra
+/// `tests/fixtures/timeline_doc_v23.bin`); a troca `i` → id é semântica e corre no `upkeep` do
+/// `ph2d-timeline-persist`, que tem o mundo.
+///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
 /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
 /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
 /// [ADR-0144]: ../../../docs/architecture/decisions/0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md
 /// [ADR-0151]: ../../../docs/architecture/decisions/0151-timeline-expressions-are-per-clip-so-a-strip-windows-them.md
-pub const DOC_VERSION: u32 = 23;
+pub const DOC_VERSION: u32 = 24;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -424,12 +431,16 @@ impl TimelineDoc {
     /// this build does not understand. The loaded bindings have null `entity`
     /// bits — resolve them with [`crate::resolve_entities`].
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
-        let mut doc: TimelineDoc = match postcard::take_from_bytes::<u32>(bytes) {
-            Ok((v18::VERSION, _)) => v18::migrate(bytes)?,
-            Ok((v19::VERSION, _)) => v19::migrate(bytes)?,
-            Ok((v20::VERSION, _)) => v20::migrate(bytes)?,
-            Ok((v21::VERSION, _)) => v21::migrate(bytes)?,
-            Ok((22, _)) => TimelineDoc {
+        let versao = postcard::take_from_bytes::<u32>(bytes).map(|(v, _)| v);
+        // Abaixo da v24 a `FieldKey` tem 4 campos (o âmbito vale para toda a leitura).
+        let _v23 = matches!(versao, Ok(v) if v < 24)
+            .then(ph2d_ecs::canal_chave_v23::FieldKeyLayoutV23::enter);
+        let mut doc: TimelineDoc = match versao {
+            Ok(v18::VERSION) => v18::migrate(bytes)?,
+            Ok(v19::VERSION) => v19::migrate(bytes)?,
+            Ok(v20::VERSION) => v20::migrate(bytes)?,
+            Ok(v21::VERSION) => v21::migrate(bytes)?,
+            Ok(22 | 23) => TimelineDoc {
                 version: DOC_VERSION,
                 ..postcard::from_bytes(bytes).map_err(|e| e.to_string())?
             },
@@ -608,6 +619,8 @@ pub use owner::{ClipOwner, SCENE};
 
 #[path = "doc_entry.rs"]
 mod entry;
+#[path = "doc_rechave.rs"]
+mod rechave;
 /// **Os textos das chaves de texto** (v22) — filho: lê o campo privado `textos`.
 #[path = "doc_textos.rs"]
 mod textos;

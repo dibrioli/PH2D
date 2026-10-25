@@ -22,6 +22,8 @@ use ph2d_timeline::{PropKind, TimelineDoc};
 
 /// Os 8 campos de um vértice, na ordem do vocabulário (`ANCORA_X ..= TIPO_VERTICE`).
 type Vert = [f32; 8];
+/// Uma escrita de forma: tempo, interpolação e os campos novos.
+type Escrita = (RationalTime, Interp, Vec<(FieldKey, f32)>);
 const N_CAMPOS: u16 = c::TIPO_VERTICE - c::ANCORA_X + 1;
 
 fn k(campo: u16, i: u16, j: u16) -> FieldKey {
@@ -431,7 +433,7 @@ fn propagar_contornos(
     let (forma, tempos) = forma_animada(doc, entidade)?;
     let par = casar(ontem, hoje);
     let lidos_antes: Vec<(FieldKey, f32)> = antes.iter().map(|(&kk, &v)| (kk, v)).collect();
-    let mut escritas: Vec<(RationalTime, Interp, Vec<(FieldKey, f32)>)> = Vec::new();
+    let mut escritas: Vec<Escrita> = Vec::new();
     for (&t, &interp) in &tempos {
         let mut vals = Vec::new();
         for (&hi, h) in hoje {

@@ -246,8 +246,10 @@ impl crate::App {
         }
     }
 
-    /// ⭐ **O Node que não acerta no vetor escolhe o objecto de OUTRO tipo por baixo** — num Edit do
-    /// tipo a rede volta a Object (dono, 05/10). A lei é `vector_mode::another_kind_under`.
+    /// ⭐ **O clique do vetor que não acerta numa forma escolhe o objecto de CIMA, se for de outro
+    /// tipo** — o Node que falha (dono 05/10) e o clique CURTO da Shape, da Frame e do Pencil (dono
+    /// 24/10: *«não consigo selecionar a imagem no canvas. Permita com um clique curto»*). Só o de
+    /// cima (a lei do modo); escolhê-lo volta a Object (`mode_drive::chosen`).
     pub(super) fn vetor_node_escolhe_outro_tipo(&mut self) {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -273,10 +275,11 @@ impl crate::App {
             &self.flip_state.entities,
             self.last_pointer,
         );
-        let whole_kind = hero.gizmo.mode.whole_kind();
+        let top = &hits[..hits.len().min(1)];
         if let Some(b) =
-            ph2d_app_vec::vector_mode::another_kind_under(whole_kind, &hits, &self.vec.entities)
+            ph2d_app_vec::vector_mode::another_kind_under(true, top, &self.vec.entities)
         {
+            ph2d_editor_core::screens::hero::mode_drive::chosen(hero, Some(b), false);
             // ⚠️ Pela porta que avisa a sincronia: sem ela a caneta vazia apagava a escolha.
             ph2d_app_vec::vec_selection::choose_other_kind(
                 &mut hero.gizmo,

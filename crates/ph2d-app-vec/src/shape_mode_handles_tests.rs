@@ -157,7 +157,7 @@ fn drawing_in_shape_mode_shows_the_new_shapes_handles_at_once() {
 
 impl Mesa {
     /// Um CLIQUE da ferramenta de forma (press e soltar no mesmo ponto) e o que a shell faz no Up.
-    fn click(&mut self, at: [f64; 2]) {
+    fn click(&mut self, at: [f64; 2]) -> bool {
         let shape = &mut self.vec.shape;
         shape.on_press(
             &mut self.scene,
@@ -169,7 +169,7 @@ impl Mesa {
         );
         let committed = shape.on_release(&mut self.scene);
         assert!(!committed, "um clique fez forma");
-        crate::shape_live::after_the_shape_release(&mut self.vec, &self.scene, committed);
+        crate::shape_live::after_the_shape_release(&mut self.vec, &self.scene, committed)
     }
 }
 
@@ -183,7 +183,8 @@ fn a_click_in_shape_mode_selects_the_shape_under_it_and_a_drag_still_draws() {
     let disc = m.draw(ShapeKind::Ellipse, [4.0, 0.0], 1.0);
     assert_eq!(m.vec.pen.selected(), Some(disc));
     let paths = m.scene.paths().len();
-    m.click([0.0, 0.0]);
+    let hit_a_shape = m.click([0.0, 0.0]);
+    assert!(hit_a_shape, "o clique na estrela passou a escolha à shell");
     let fill = m
         .scene
         .paths()
@@ -198,7 +199,11 @@ fn a_click_in_shape_mode_selects_the_shape_under_it_and_a_drag_still_draws() {
         "o clique na estrela não a seleccionou (fill {fill:?}, pick {hit:?}, estrela {star:?}, disco {disc:?}, caixa {bounds:?})"
     );
     assert_eq!(m.scene.paths().len(), paths, "o clique deixou uma forma");
-    m.click([20.0, 20.0]);
+    // ⭐ dono 24/10: sem forma debaixo, a shell procura o objecto de CIMA de outro tipo (a imagem).
+    assert!(
+        !m.click([20.0, 20.0]),
+        "o clique sem forma não passou a escolha à shell"
+    );
     assert_eq!(
         m.vec.pen.selected(),
         Some(star),

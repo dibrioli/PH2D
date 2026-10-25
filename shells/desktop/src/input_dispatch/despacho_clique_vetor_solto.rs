@@ -73,13 +73,17 @@ impl crate::App {
             } else {
                 false
             };
-            // A forma nova fica seleccionada (F10); um clique solto selecciona a que está por baixo (F12).
-            if let Some(gfx) = self.gfx.as_ref() {
+            // A forma nova fica seleccionada (F10); um clique solto selecciona a que está por baixo (F12)
+            // — ou, sem forma, o objecto de cima de outro tipo (dono 24/10).
+            let hit_a_shape = self.gfx.as_ref().is_some_and(|gfx| {
                 ph2d_app_vec::shape_live::after_the_shape_release(
                     &mut self.vec,
                     &gfx.vec_scene,
                     committed,
-                );
+                )
+            });
+            if !hit_a_shape {
+                self.vetor_node_escolhe_outro_tipo();
             }
             return true;
         }
@@ -207,6 +211,9 @@ impl crate::App {
             if committed {
                 let sel = self.vec.pencil.selected();
                 self.vec.pen.select(sel);
+            } else {
+                // O traço curto demais é um CLIQUE: escolhe o objecto de cima (dono 24/10).
+                self.vetor_node_escolhe_outro_tipo();
             }
             return true;
         }

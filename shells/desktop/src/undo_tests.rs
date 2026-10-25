@@ -8,7 +8,7 @@ use ph2d_ecs::{Name, VecPathRef};
 use ph2d_render::register_render_components;
 use ph2d_vec_scene::rectangle;
 
-fn registry() -> ComponentRegistry {
+pub(super) fn registry() -> ComponentRegistry {
     let mut reg = ComponentRegistry::new();
     register_ecs_components(&mut reg);
     register_render_components(&mut reg);
@@ -16,7 +16,7 @@ fn registry() -> ComponentRegistry {
 }
 
 /// Uma cena de teste: 1 sprite nomeado + 1 forma vetorial com a entidade dela.
-fn scene() -> (SimWorld, VecScene) {
+pub(super) fn scene() -> (SimWorld, VecScene) {
     let mut sim = SimWorld::new();
     let mut vec = VecScene::new();
     sim.world_mut().spawn((
@@ -31,7 +31,7 @@ fn scene() -> (SimWorld, VecScene) {
 
 /// ⚠️ **Sem passo anterior** (`None`): estes gates medem a captura e o restauro, e a partilha da
 /// cena entre passos vive no [`super::sharing_tests`], que passa o dele.
-fn capture(sim: &mut SimWorld, vec: &VecScene, reg: &ComponentRegistry) -> ProjectState {
+pub(super) fn capture(sim: &mut SimWorld, vec: &VecScene, reg: &ComponentRegistry) -> ProjectState {
     ProjectState::capture(
         // Nada sob condução: estes gates são do diff e do restore, não do ledger
         // (`crate::preview_drive` tem os dele).

@@ -218,6 +218,8 @@ pub(crate) struct App {
     pub(crate) prefab_cancel: Option<crate::undo::ProjectState>,
     /// A sessão abriu neste quadro e a fotografia ainda não foi tirada — ver o `post_frame_undo`.
     pub(crate) prefab_cancel_pending: bool,
+    /// O Play sobre uma cópia (`crate::undo::jogo`): o documento e a selecção de antes da corrida.
+    pub(crate) jogo: ph2d_app_game::Sessao<(crate::undo::ProjectState, crate::undo::SelectionMark)>,
     /// **O som de UI que este quadro deve tocar** (estudo de UI viva, D1), ou `None`.
     ///
     /// ⚠️ **Um canal diferido, e não uma chamada no sítio do gesto**, pelo empréstimo: quase todo

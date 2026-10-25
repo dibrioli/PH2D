@@ -5217,6 +5217,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-game"
+version = "0.0.0"
+
+[[package]]
 name = "ph2d-app-host"
 version = "0.0.0"
 dependencies = [
@@ -6475,6 +6479,7 @@ dependencies = [
  "ph2d-app-code",
  "ph2d-app-components",
  "ph2d-app-flip",
+ "ph2d-app-game",
  "ph2d-app-host",
  "ph2d-app-light2d",
  "ph2d-app-macros",

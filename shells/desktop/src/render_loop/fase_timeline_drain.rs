@@ -32,12 +32,8 @@ impl crate::App {
         // General timeline (W1): drain the panel/K intents into the document, then apply it to
         // the scene, on the clock of the view (`ViewClock`, ADR-0115 R8 emenda 3: Keys rules the
         // CLIP clock only under a stack, else the editor's). Skips the dragged entity.
-        // ⭐ A cena a CORRER (o Play de cima) avalia a CENA no relógio dela, em qualquer aba.
-        ph2d_timeline::take_runtime(
-            &mut self.timeline,
-            &mut self.timeline_intents,
-            &mut self.playhead,
-        );
+        // ⭐ A cena a CORRER (o Play de cima) avalia a CENA no relógio dela, em qualquer aba — a
+        // corrida já foi drenada na `fase_frame_simulation`, antes dos motores.
         let tudo = self.timeline.runtime;
         let (vista_keys, vista_cont) = if tudo {
             (false, None)

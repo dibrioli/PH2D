@@ -439,7 +439,9 @@ impl crate::App {
             self.undo_request = Some(redo);
         }
         if let Some(redo) = self.undo_request.take() {
-            self.apply_undo(redo);
+            if !self.jogo_recusa_o_undo() {
+                self.apply_undo(redo);
+            }
             return;
         }
         // Estabelece o baseline no PRIMEIRO frame (gfx pronto), antes de qualquer
@@ -479,7 +481,10 @@ impl crate::App {
         // documento que não existe. ⇒ **os motivos que são um FACTO do app vêm primeiro; a
         // AUSÊNCIA de eventos é o último.** *Um diagnóstico que nomeia a causa errada entre duas
         // simultâneas é pior do que não nomear nenhuma.*
-        let motivo = if self.held_button.is_some() {
+        // O que o jogo muda não é do artista: a saída da corrida repõe a fotografia (`undo::jogo`).
+        let motivo = if self.jogo.a_correr() {
+            Some(tr("shell.undo_app.o_jogo_esta_a_correr"))
+        } else if self.held_button.is_some() {
             Some(tr("shell.undo_app.botao_do_rato_em_baixo"))
         } else if self
             .flip_state

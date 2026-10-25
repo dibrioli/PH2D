@@ -349,12 +349,28 @@ fn o_play_de_cima_chega_a_timeline_antes_do_relogio_da_vista() {
             .any(|l| l.contains("self.timeline_intents.push(i)")),
         "e entrega-o à timeline"
     );
+    // ⭐ A corrida é drenada no INÍCIO da simulação (GameEngineFuncional R0a): antes dos motores do
+    // passo fixo — a fotografia do Play é do documento, não do 1.º quadro do jogo — e, por isso,
+    // antes do dreno da timeline que escolhe o relógio da vista.
+    let sim = std::fs::read_to_string(raiz.join("fase_frame_open.rs")).unwrap();
+    let take = sim.find("take_runtime(").expect("a simulação passa a corrida");
+    let jogo = sim.find("self.jogo_quadro(").expect("e as bordas do jogo");
+    let motores = sim
+        .find("self.fase_fixed_step_clocks(")
+        .expect("os motores do passo fixo");
+    let drena = sim
+        .find("self.fase_timeline_drain(")
+        .expect("o dreno da timeline");
+    assert!(
+        take < jogo && jogo < motores,
+        "a corrida e a fotografia vêm antes dos motores"
+    );
+    assert!(motores < drena, "e o dreno (o relógio da vista) depois");
     let dreno = std::fs::read_to_string(raiz.join("fase_timeline_drain.rs")).unwrap();
-    let take = dreno.find("take_runtime").expect("o dreno passa a corrida");
-    let relogio = dreno
-        .find("let active_playhead")
-        .expect("a escolha do relógio");
-    assert!(take < relogio, "antes de escolher o relógio da vista");
+    assert!(
+        !dreno.contains("take_runtime("),
+        "uma porta só para a corrida: o dreno não a drena outra vez"
+    );
     let snap = dreno
         .rfind("let active_playhead")
         .expect("o relógio do painel");

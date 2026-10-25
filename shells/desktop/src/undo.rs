@@ -491,6 +491,8 @@ impl ProjectUndo {
 mod app;
 #[path = "undo_app_macros.rs"]
 mod app_macros;
+#[path = "undo_jogo.rs"]
+mod jogo;
 
 #[cfg(test)]
 #[path = "undo_tests.rs"]

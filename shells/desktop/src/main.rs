@@ -726,6 +726,7 @@ impl App {
             prefab_editing: None,
             prefab_cancel: None,
             prefab_cancel_pending: false,
+            jogo: ph2d_app_game::Sessao::default(),
             pending_ui_sound: None,
             hover_outline: Vec::new(),
             dragging: None,

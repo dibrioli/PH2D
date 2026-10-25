@@ -23,6 +23,14 @@ impl crate::App {
         wall_dt: f64,
         player_input: ph2d_physics_ecs::PlayerInput,
     ) -> Option<(ph2d_core::FixedStepReport, [Option<u64>; 3])> {
+        // ⭐ A corrida (o Play de cima) e as bordas do jogo ANTES dos motores: a fotografia do Play é
+        // do documento, não do 1.º quadro do jogo (`undo::jogo`).
+        ph2d_timeline::take_runtime(
+            &mut self.timeline,
+            &mut self.timeline_intents,
+            &mut self.playhead,
+        );
+        self.jogo_quadro(self.timeline.runtime);
         let fase_fixed_step_clocks::FrameClocks {
             report,
             tool_preview_bits,

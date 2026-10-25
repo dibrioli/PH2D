@@ -17,6 +17,11 @@
 //! do estado inteiro, e derivá-los aqui daria uma **segunda** resposta a «em que ponto está esta
 //! animação». O snapshot traz os inteiros; quem os apresenta calcula na hora.
 
+/// O cartão «Animation» e o editor (plano GameEngineFuncional 07) — irmão por assunto.
+#[path = "inspector_model_anim_card.rs"]
+mod card;
+pub use card::*;
+
 /// Uma animação, como o Inspector a lê.
 #[derive(Clone, Debug, PartialEq)]
 pub struct InspectorAnimRow {

@@ -54,7 +54,7 @@ fn guess_axis(occupied: &[bool]) -> Option<u32> {
         return None;
     }
     (runs..=len / CELL_MIN_PX as usize)
-        .filter(|n| len % n == 0)
+        .filter(|&n| len.is_multiple_of(n))
         .find(|&n| {
             let cell = len / n;
             (1..n).all(|k| {

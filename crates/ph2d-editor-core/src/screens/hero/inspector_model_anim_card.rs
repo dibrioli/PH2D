@@ -1,7 +1,7 @@
 //! **O cartão «Animation» e o editor de animações** — o que os dois leem e escrevem
 //! ([plano 07](../../../../../docs/GameEngineFuncional/07_animacao_num_cartao_plano.md)).
 //!
-//! Irmão de [`super::inspector_model_anim`] (a §11 de sempre): estes tipos são as perguntas NOVAS —
+//! Irmão de [`super`] (a §11 de sempre): estes tipos são as perguntas NOVAS —
 //! quem escolhe a animação, o modo do ciclo, a lista de quadros e a imagem da folha para as miniaturas.
 
 use std::sync::Arc;

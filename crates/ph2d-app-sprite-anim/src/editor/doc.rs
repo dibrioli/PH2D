@@ -493,14 +493,13 @@ impl AnimDoc {
                 moved: false,
                 to: i,
             };
-        } else if let Some(cell) = self.cell_at(x, y) {
-            if self.row().is_some() {
+        } else if let Some(cell) = self.cell_at(x, y)
+            && self.row().is_some() {
                 self.drag = Drag::Cells {
                     base: self.click_base(),
                     added: vec![cell],
                 };
             }
-        }
         true
     }
 

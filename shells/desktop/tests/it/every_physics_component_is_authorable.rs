@@ -55,8 +55,9 @@ const WRITERS: [&str; 15] = [
     // rodava em toda cena de smoke (que constrói com código) e era inalcançável
     // no produto.
     "../../crates/ph2d-app-physics/src/inspector/player.rs",
-    // O bloco *Animations* da §14 (GameEngineFuncional N1) escreve o `CharacterAnimations`.
-    "../../crates/ph2d-app-physics/src/inspector/player_anim.rs",
+    // O cartão «Animation» (GameEngineFuncional plano 07) escreve o `CharacterAnimations` (o modo
+    // «O personagem»); antes era o bloco *Auto Animate* da §14.
+    "../../crates/ph2d-app-sprite-anim/src/card.rs",
     // ⚠️⚠️ **O décimo é o PRIMEIRO componente de física autorado a partir da SHELL**, e não da
     // família (TOP-20 #13, o `TopDownPlayer`). A razão é o dono do vocabulário: o mover de vista de
     // cima é do módulo COMPONENTES (a fila do TOP-20), e a secção dele do Inspector segue o molde

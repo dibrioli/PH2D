@@ -217,6 +217,7 @@ pub(crate) fn button_row(
 }
 
 /// Uma frase de ajuda em `Text3` (ou `Danger`). Devolve o `y` seguinte.
+#[allow(clippy::too_many_arguments)]
 fn hint(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,

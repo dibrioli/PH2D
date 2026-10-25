@@ -106,7 +106,7 @@ pub fn paint_doc(
     } else {
         tr("anim_editor.play")
     };
-    button(scene, text, theme, l.play, &play, doc.playing());
+    button(scene, text, theme, l.play, play, doc.playing());
     let fps = info
         .as_ref()
         .and_then(|i| i.rows.get(doc.selected))
@@ -134,7 +134,7 @@ pub fn paint_doc(
             text,
             theme,
             *r,
-            &tr(key),
+            tr(key),
             mode == Some(AnimCycleMode::ALL[i]),
         );
     }
@@ -172,7 +172,7 @@ pub fn paint_doc(
             t.w,
             resolve(ColorToken::Text1, theme),
         );
-        button(scene, text, theme, use_, &tr("anim_editor.use_grid"), true);
+        button(scene, text, theme, use_, tr("anim_editor.use_grid"), true);
     }
 
     // ── A lista ──
@@ -219,7 +219,7 @@ pub fn paint_doc(
                     StrokeToken::Thick.px(),
                     resolve(ColorToken::Accent, theme),
                 );
-                let s = order.join(&tr("anim_editor.order_sep"));
+                let s = order.join(tr("anim_editor.order_sep"));
                 paint_text(
                     text,
                     scene,
@@ -235,7 +235,7 @@ pub fn paint_doc(
         None => paint_text(
             text,
             scene,
-            &tr("anim_editor.no_pixels"),
+            tr("anim_editor.no_pixels"),
             l.sheet.x,
             l.sheet.y,
             font,
@@ -268,7 +268,7 @@ fn paint_list(
         paint_text(
             text,
             scene,
-            &tr("anim_editor.no_animations"),
+            tr("anim_editor.no_animations"),
             l.list.x + Radius::Sm.px(),
             l.list.y,
             font,
@@ -306,14 +306,14 @@ fn paint_list(
             resolve(color, theme),
         );
     }
-    button(scene, text, theme, l.add, &tr("anim_editor.add"), false);
+    button(scene, text, theme, l.add, tr("anim_editor.add"), false);
     if !rows.is_empty() {
         button(
             scene,
             text,
             theme,
             l.remove,
-            &tr("anim_editor.remove"),
+            tr("anim_editor.remove"),
             false,
         );
     }
@@ -339,7 +339,7 @@ fn paint_strip(
         paint_text(
             text,
             scene,
-            &tr("anim_editor.strip_hint"),
+            tr("anim_editor.strip_hint"),
             l.strip.x + Radius::Sm.px(),
             l.strip.y,
             font,
@@ -399,7 +399,7 @@ fn paint_strip(
             paint_text_centered(
                 text,
                 scene,
-                &tr("anim_editor.remove_frame"),
+                tr("anim_editor.remove_frame"),
                 *close,
                 font,
                 resolve(ColorToken::Text2, theme),

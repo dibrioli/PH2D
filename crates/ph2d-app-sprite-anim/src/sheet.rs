@@ -58,7 +58,7 @@ impl SheetCache {
         let Some(sheet) = decode() else {
             return false;
         };
-        let alpha: Vec<u8> = sheet.rgba.chunks_exact(4).map(|p| p[3]).collect();
+        let alpha: Vec<u8> = sheet.rgba.as_chunks::<4>().0.iter().map(|p| p[3]).collect();
         let guess = ph2d_sprite_sheet::guess_grid(&alpha, sheet.w, sheet.h);
         if self.entries.len() >= SHEETS_KEPT {
             self.entries.remove(0);

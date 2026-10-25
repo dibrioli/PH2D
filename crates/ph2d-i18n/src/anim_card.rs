@@ -3,7 +3,15 @@
 //! `inspector.rs` por ASSUNTO (o tecto de 700 linhas). Os nomes dos quatro estados, «Run From» e
 //! «Flip» são os do catálogo (`component.field.character_animations.*`).
 
+/// O editor de animações (`anim_editor.*`) responde por esta mesma porta: as duas tabelas são da
+/// mesma família, e o `lib.rs` (tecto de 700 linhas) conhece uma só.
+#[path = "anim_editor.rs"]
+mod editor;
+
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
+    if let Some(t) = editor::tr(key) {
+        return Some(t);
+    }
     Some(match key {
         "panel.inspector.anim_card.play" => "\u{25B6}",
         "panel.inspector.anim_card.play_tip" => "Play this animation.",

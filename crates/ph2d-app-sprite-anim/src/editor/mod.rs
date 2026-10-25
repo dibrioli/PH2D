@@ -48,7 +48,7 @@ pub fn propose_after_drop(sim: &mut SimWorld, bits: u64, rgba: &[u8], w: u32, h:
     if rgba.len() != (w as usize) * (h as usize) * 4 {
         return false;
     }
-    let alpha: Vec<u8> = rgba.chunks_exact(4).map(|p| p[3]).collect();
+    let alpha: Vec<u8> = rgba.as_chunks::<4>().0.iter().map(|p| p[3]).collect();
     let Some(g) = ph2d_sprite_sheet::guess_grid(&alpha, w, h) else {
         return false;
     };

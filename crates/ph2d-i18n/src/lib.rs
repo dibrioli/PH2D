@@ -27,8 +27,7 @@
 //! assert_eq!(tr("tool.unknown.key"), "tool.unknown.key"); // missing-key passthrough
 //! ```
 
-mod anim_card;
-mod anim_editor;
+mod anim_card; // o cartão «Animation» e o editor de animações (plano 07)
 /// O que a família das INSTÂNCIAS diz (avisos dos verbos de prefab, a paleta de componentes).
 mod app_components;
 /// O que a família do FLIP diz (os avisos de pintar, preencher, colorir, esculpir).
@@ -607,7 +606,6 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| app_motion::tr(k))
             .or_else(|| app_vec::tr(k))
             .or_else(|| code_editor::tr(k))
-            .or_else(|| anim_editor::tr(k))
             .or_else(|| code_explain::tr(k))
             .or_else(|| code_help::tr(k))
             .unwrap_or_else(|| leak_key(k)),

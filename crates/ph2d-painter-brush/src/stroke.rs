@@ -183,6 +183,8 @@ pub struct Stroke {
     warm_buf: Vec<Dab>,
     warm_dist: f32,
     warm_from: [f32; 2],
+    /// A abertura que a 1.ª cápsula leva ([`mod@self::abertura`]).
+    abertura: abertura::Abertura,
     warming: bool,
     /// Cumulative arc-length travelled to `last_pos` (image px), stamped on each [`Dab::arc_len`] and used
     /// by the Shape **Flow** mapping as the along-the-stroke coordinate. Reset in [`Self::begin`]; the shape
@@ -298,6 +300,7 @@ impl Stroke {
             warm_buf: Vec::new(),
             warm_dist: 0.0,
             warm_from: [0.0, 0.0],
+            abertura: abertura::Abertura::default(),
             warming: false,
             arc_len: 0.0,
             taper_head: ends::method_starts_with_head(spec.stroke_method),
@@ -319,6 +322,7 @@ impl Stroke {
     pub fn begin(&mut self, p: StrokePoint, out: &mut Vec<Dab>) {
         out.clear();
         let p = self.le_a_mao(p, true);
+        self.arma_a_abertura();
         self.last_pos = p.pos;
         self.last_pressure = p.pressure;
         self.accum = 0.0;
@@ -377,6 +381,7 @@ impl Stroke {
         }
         self.warmup_gate(out);
         self.espera_a_velocidade(out);
+        self.passa_a_abertura(out, 0, false);
     }
 
     /// Extend the stroke to the raw sample `raw`: average it into the input-sample window, run it
@@ -482,12 +487,14 @@ impl Stroke {
         }
         self.warmup_gate(out);
         self.espera_a_velocidade(out);
+        self.passa_a_abertura(out, 0, false);
     }
 
     /// Fill the straight segment `a → b` with spaced dabs (Blender LINE / CURVE-segment finalise).
     /// Pressure is constant (Blender fills lines/curves at pressure `1.0`). Appends to `out` (the
     /// caller clears) and continues the dash counter so a multi-segment curve dashes continuously.
     pub fn fill_segment(&mut self, a: [f32; 2], b: [f32; 2], pressure: f32, out: &mut Vec<Dab>) {
+        let de = out.len();
         self.last_pos = a;
         self.last_pressure = pressure;
         self.accum = 0.0;
@@ -497,6 +504,7 @@ impl Stroke {
         }
         self.tot_samples = self.tot_samples.wrapping_add(1);
         self.walk_space(StrokePoint { pos: b, pressure }, out);
+        self.passa_a_abertura(out, de, false);
     }
 
     /// Close the stroke on pointer-up. With the stabilizer on, the painted path lags the cursor, so
@@ -530,6 +538,7 @@ impl Stroke {
             self.release_warmup(out);
         }
         self.solta_sem_velocidade(out);
+        self.passa_a_abertura(out, 0, true);
         self.prev_prev = None;
     }
 
@@ -549,6 +558,7 @@ impl Stroke {
         if !segurados.is_empty() {
             out.splice(0..0, segurados);
         }
+        self.passa_a_abertura(out, 0, false);
     }
 
     /// O resto do [`Self::tick`]: a fita e o aerógrafo.
@@ -693,6 +703,8 @@ mod pen_input;
 mod walk;
 /// The texture-Rake **warm-up** (`warmup_gate`/`release_warmup`) deferring a stroke's opening dabs.
 mod warmup;
+
+mod abertura;
 
 #[cfg(test)]
 mod tests;

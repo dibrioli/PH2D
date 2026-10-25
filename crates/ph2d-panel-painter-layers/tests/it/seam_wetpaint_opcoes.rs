@@ -200,3 +200,31 @@ fn as_dicas_das_opcoes() {
         "com a tela direita a Heavy Edge não esmaece com a dica do Tilt"
     );
 }
+
+/// ⭐ **As dicas dos knobs do pincel no cartão** (dono 25/10): o Wet bloom e o Tip pickup dizem que só agem na tinta
+/// MOLHADA de outra cor (R4: «sem efeito» num traço de uma cor só); o Diffusion leva o nome inteiro (R2).
+#[test]
+fn as_dicas_dos_knobs_do_pincel() {
+    use ph2d_tool_painter::ids::{
+        PAINTER_WETPAINT_DIFFUSION, PAINTER_WETPAINT_TIP_PICKUP, PAINTER_WETPAINT_WET_BLOOM,
+    };
+    let (host, _, _) = pinta(&molhado());
+    for (id, chave) in [
+        (
+            PAINTER_WETPAINT_WET_BLOOM,
+            "panel.painter_wet_cartao.wet_bloom_tip",
+        ),
+        (
+            PAINTER_WETPAINT_TIP_PICKUP,
+            "panel.painter_wet_cartao.tip_pickup_tip",
+        ),
+        (
+            PAINTER_WETPAINT_DIFFUSION,
+            "panel.painter_wet_cartao.diffusion_tip",
+        ),
+    ] {
+        let dica = ph2d_i18n::tr(chave);
+        assert_ne!(dica, chave, "{chave} sem tradução");
+        assert_eq!(host.store().tooltip_for(id), Some(dica), "{chave}");
+    }
+}

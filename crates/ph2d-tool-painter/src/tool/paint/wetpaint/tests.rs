@@ -1262,9 +1262,9 @@ fn a_fisica_da_agua_do_cartao_chega_ao_motor_e_muda_a_tinta() {
     }
 }
 
-/// **Os knobs do pincel no cartão, ao lado do Tuning** (dono 25/10: os que mais decidem o pincel e o preset ficam no
-/// cartão Wet Paint): Backruns · Granulation · Wet bloom · Tip pickup — cada linha chega ao knob do motor
-/// EXACTA, o Tuning CONTINUA a mostrá-la (o mesmo knob, dois controlos), e cada uma muda a tinta de um traço vermelho
+/// **Os knobs do pincel no cartão** (dono 25/10: os que mais decidem o pincel e o preset ficam no cartão Wet Paint, e
+/// saem do Tuning — R3): Backruns · Granulation · Pigment diffusion (R2) · Wet bloom · Tip pickup — cada linha chega
+/// ao knob do motor EXACTA, e cada uma muda a tinta de um traço vermelho
 /// que atravessa um azul ainda molhado (o Wet bloom e o Tip pickup só agem sobre OUTRA tinta) e seca um segundo.
 #[test]
 fn os_knobs_do_pincel_no_cartao_chegam_ao_motor_e_mudam_a_tinta() {
@@ -1301,6 +1301,11 @@ fn os_knobs_do_pincel_no_cartao_chegam_ao_motor_e_mudam_a_tinta() {
             Knob::ExtGranulation,
             0.9,
         ),
+        (
+            crate::ids::PAINTER_WETPAINT_DIFFUSION,
+            Knob::ExtDiffusion,
+            0.2,
+        ),
         (crate::ids::PAINTER_WETPAINT_WET_BLOOM, Knob::WetOpen, 0.8),
         (
             crate::ids::PAINTER_WETPAINT_TIP_PICKUP,
@@ -1308,10 +1313,10 @@ fn os_knobs_do_pincel_no_cartao_chegam_ao_motor_e_mudam_a_tinta() {
             0.8,
         ),
     ] {
-        assert_ne!(
+        assert_eq!(
             KNOB_DEFS[knob as usize].group,
             KnobGroup::Hidden,
-            "{knob:?} saiu do Tuning — o dono quer os dois controlos"
+            "{knob:?} ainda no Tuning — o que está no cartão não se repete lá"
         );
         let (px, k) = pinta(Some((id, v)));
         assert_eq!(k.get(knob), v, "{knob:?}: o cartão não chegou ao motor");

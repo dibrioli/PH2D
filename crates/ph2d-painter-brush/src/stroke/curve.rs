@@ -38,6 +38,7 @@ impl Stroke {
         self.last_pressure = 1.0;
         self.accum = 0.0;
         self.tot_samples = 0;
+        self.arma_a_abertura();
         self.heading = [0.0, 0.0]; // fresh fill → the Rake heading re-aims along the spine from the start
         self.arc_len = 0.0; // fresh fill → the Flow along-coordinate starts at the spine's origin
         // An open path keeps the head it started with: the spine's first point IS the beginning of the
@@ -60,6 +61,7 @@ impl Stroke {
                 out,
             );
         }
+        self.passa_a_abertura(out, 0, true);
     }
 }
 

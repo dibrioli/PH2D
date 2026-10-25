@@ -190,6 +190,7 @@ pub(crate) fn paint_wetpaint_section(
             "panel.painter_layers.wetpaint.dust",
             "panel.painter_wet_cartao.backrun",
             "panel.painter_wet_cartao.granulation",
+            "panel.painter_wet_cartao.diffusion",
             "panel.painter_wet_cartao.wet_bloom",
             "panel.painter_wet_cartao.tip_pickup",
         ];

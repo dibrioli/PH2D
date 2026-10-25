@@ -216,10 +216,12 @@ mod tests {
     /// na W1e (F2); do grupo dele só o relevo da tinta (Emboss) voltou, a 11/10. O Spacing saiu
     /// para o Hidden a 11/10 (o do pincel é o do Stroke).
     /// Mais 40 avançados a 25/10 (dono: os escondidos do Wet Paint vão para o Tuning): 19 Bristles · 7 Stroke
-    /// · 7 Wet effects · 5 Look, e o WaterPush/DryerEdge no Tools (5 → 7).
+    /// · 7 Wet effects · 5 Look, e o WaterPush/DryerEdge no Tools (5 → 7). Menos 5 no mesmo dia (dono, R3: o que está
+    /// no cartão Wet Paint não se repete aqui): Backruns, Granulation, Pigment diffusion, Wet bloom (Wet effects
+    /// 7 → 3) e Tip pickup (Stroke 7 → 6).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 84);
+        assert_eq!(rows().len(), 79);
         for g in [
             (KnobGroup::Paint, 25),
             (KnobGroup::Water, 7),
@@ -227,8 +229,8 @@ mod tests {
             (KnobGroup::Tools, 7),
             (KnobGroup::Paper, 1),
             (KnobGroup::Bristles, 19),
-            (KnobGroup::Stroke, 7),
-            (KnobGroup::WetEffects, 7),
+            (KnobGroup::Stroke, 6),
+            (KnobGroup::WetEffects, 3),
             (KnobGroup::Look, 5),
         ] {
             let n = rows().iter().filter(|r| r.group == g.0).count();
@@ -240,7 +242,7 @@ mod tests {
     /// esta lista: um knob novo nasce aqui (e alguém decide onde mora) ou num grupo à vista.
     #[test]
     fn os_escondidos_sao_so_os_de_outra_superficie_ou_de_calibracao() {
-        const NOUTRA_SUPERFICIE: [&str; 10] = [
+        const NOUTRA_SUPERFICIE: [&str; 15] = [
             // a Shape › Bristles (plano 27 W2)
             "felt",
             "bristleCount",
@@ -254,6 +256,12 @@ mod tests {
             "brake",
             "levelClamp",
             "dust",
+            // os do pincel que mais decidem o preset, só no cartão (dono 25/10, R2 e R3)
+            "extBackrun",
+            "extGranulation",
+            "extDiffusion",
+            "wetOpen",
+            "tipReservoir",
         ];
         const CALIBRACAO: [&str; 8] = [
             // normaliza o pigmento pelo comprimento (o preset diz a que Spacing foi afinado)

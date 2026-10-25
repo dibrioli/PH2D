@@ -386,6 +386,7 @@ fn o_sub_dab_leva_o_estado_interpolado() {
             rotation: [1.0, 0.0],
             arc_len: 90.0,
             salto: None,
+            fecho: false,
         }),
         tilt: None,
     };
@@ -523,4 +524,61 @@ fn a_caixa_cresce_para_o_raio_de_tras() {
     };
     let _ = crate::height::accumulate_dab_height(&mut fields, W, H, &spec, &dab, None);
     assert!(atras(&|i| paint[i] > 0.0), "o relevo cortado pela caixa");
+}
+
+/// ⭐ **O fecho leva o dab de abertura** (dono 25/10, R1, `stroke/abertura.rs`): a 1.ª cápsula do traço percorre
+/// também o sub-dab `k = n`, o centro de trás com o estado de trás, e a taxa de cada sub-dab continua a do passo.
+#[test]
+fn o_fecho_leva_o_sub_dab_de_tras() {
+    let c = Capsula::new([10.0, 0.0], 1.0).expect("cápsula");
+    let f = c.com_fecho(true);
+    assert_eq!((c.n(), f.n(), f.n_do_passo()), (10, 11, 10));
+    assert_eq!(f.off(10), [-10.0, 0.0]);
+    assert_eq!(f.caixa().0, [-10.0, 0.0]);
+    assert_eq!(c.caixa().0, [-9.0, 0.0]);
+
+    let spec = crate::BrushSpec::default();
+    let ante = crate::Ante {
+        radius_px: 20.0,
+        coverage: 0.4,
+        dir: [1.0, 0.0],
+        rotation: [1.0, 0.0],
+        arc_len: 90.0,
+        salto: None,
+        fecho: true,
+    };
+    let d = crate::Dab {
+        center: [50.0, 50.0],
+        radius_px: 10.0,
+        coverage: 0.8,
+        color: [0.0; 3],
+        color_shift: [0.0; 3],
+        rotation: [1.0, 0.0],
+        dir: [1.0, 0.0],
+        arc_len: 100.0,
+        stroke_radius_px: 10.0,
+        step: [10.0, 0.0],
+        ante: Some(ante),
+        tilt: None,
+    };
+    let cap = d.capsula(&spec).expect("cápsula");
+    let s = cap.sub_dab(cap.n() - 1);
+    assert_eq!((s.off, s.escala, s.cobertura), ([-10.0, 0.0], 2.0, 0.5));
+    // O mesmo fecho na expansão em dabs (o Wet Paint e a marca do artista): o 1.º é o dab de trás.
+    let sem = sub_dabs(
+        &crate::Dab {
+            ante: Some(crate::Ante {
+                fecho: false,
+                ..ante
+            }),
+            ..d
+        },
+        1.0,
+    );
+    let com = sub_dabs(&d, 1.0);
+    assert_eq!(com.len(), sem.len() + 1);
+    assert_eq!(
+        (com[0].center, com[0].radius_px, com[0].arc_len),
+        ([40.0, 50.0], 20.0, 90.0)
+    );
 }

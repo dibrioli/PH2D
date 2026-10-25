@@ -71,6 +71,7 @@ impl Stroke {
         // these dabs through the Rake warm-up too — otherwise the held opening would never release.
         self.warmup_gate(out);
         self.espera_a_velocidade(out);
+        self.passa_a_abertura(out, 0, false);
     }
 
     /// Advance the Rake **heading** from the previous anchor (`last_pos`) to `to`. The per-event methods

@@ -450,7 +450,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     // ---- gated extensions (SPEC §17): neutral defaults; the art ones in the Tuning's advanced groups (25/10) ----
     k(
         Knob::ExtDiffusion,
-        KnobGroup::WetEffects,
+        KnobGroup::Hidden,
         "extDiffusion",
         0.0,
         0.25,
@@ -460,7 +460,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(
         Knob::ExtBackrun,
-        KnobGroup::WetEffects,
+        KnobGroup::Hidden,
         "extBackrun",
         0.0,
         2.0,
@@ -490,7 +490,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(
         Knob::ExtGranulation,
-        KnobGroup::WetEffects,
+        KnobGroup::Hidden,
         "extGranulation",
         0.0,
         1.0,
@@ -681,7 +681,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::EmbossSizeRef, KnobGroup::Hidden, "embossSizeRef", 1.0, 1000.0, 0.5, 41.0, None),
     k(Knob::BristleTipRagged, KnobGroup::Bristles, "bristleTipRagged", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::LevelingOwnStroke, KnobGroup::Stroke, "levelingOwnStroke", 0.0, 1.0, 1.0, 0.0, None),
-    k(Knob::TipReservoir, KnobGroup::Stroke, "tipReservoir", 0.0, 1.0, 0.01, 0.0, None),
+    k(Knob::TipReservoir, KnobGroup::Hidden, "tipReservoir", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::PressureGrain, KnobGroup::Stroke, "pressureGrain", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::StrokeFilm, KnobGroup::Stroke, "strokeFilm", 0.0, 1.0, 1.0, 0.0, None),
     k(Knob::DustDrop, KnobGroup::Stroke, "dustDrop", 1.0, 32.0, 0.5, 2.0, None),
@@ -693,6 +693,6 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::ThinStrokeRef, KnobGroup::Hidden, "thinStrokeRef", 1.0, 400.0, 0.5, 40.0, None),
     k(Knob::WaterPush, KnobGroup::Tools, "waterPush", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::DryerEdge, KnobGroup::Tools, "dryerEdge", 0.0, 1.0, 0.01, 0.0, None),
-    k(Knob::WetOpen, KnobGroup::WetEffects, "wetOpen", 0.0, 1.0, 0.01, 0.0, None),
+    k(Knob::WetOpen, KnobGroup::Hidden, "wetOpen", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::WetOpenPush, KnobGroup::WetEffects, "wetOpenPush", 0.0, 1.0, 0.01, 0.8, None),
 ];

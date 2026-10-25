@@ -370,12 +370,13 @@ pub(super) fn stamp_band(
             // Accumulate cap, where `w` is a RATE toward the ceiling — the Flow of ONE sub-dab,
             // `1 − (1 − flow)^(1/n)` (the step's rate, shared by its `n` sub-dabs): the rates multiply
             // across capsules exactly as inside one, so the seam between two steps gets no extra pass
-            // (dono 25/10: Continuous + Flow < 1 em contas). Flow 1 ⇒ `1`, the law that shipped.
+            // (dono 25/10: Continuous + Flow < 1 em contas). Flow 1 ⇒ `1`, the law that shipped. `n` is the STEP's:
+            // the opening dab the 1.st capsule carries ([`crate::Ante::fecho`]) is one more sub-dab at that rate.
             // A capsule under a Shape ramp composes its COLOUR over the same sub-dabs
             // ([`super::cor_capsula`], lista 26 A9); `None` ⇒ the colour is read at this pixel below.
             let c_cap = match (mask.is_some(), ctx.capsula) {
                 (true, Some(cap)) if ctx.flow < 1.0 => {
-                    1.0 - (1.0 - ctx.flow.max(0.0)).powf(1.0 / cap.n() as f32)
+                    1.0 - (1.0 - ctx.flow.max(0.0)).powf(1.0 / cap.n_do_passo() as f32)
                 }
                 (true, _) => 1.0,
                 (false, _) => ctx.coverage,

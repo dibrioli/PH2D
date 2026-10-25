@@ -22,6 +22,8 @@ pub struct Capsula {
     passo: [f32; 2],
     n: u32,
     estado: Estado,
+    /// O passo leva também o sub-dab `k = n` (o centro de trás): o dab de abertura do traço ([`Ante::fecho`]).
+    fecho: bool,
 }
 
 /// O dab de trás visto do da frente (prompt 40): o sub-dab `k` leva `lerp(frente, trás, k/n)` de cada um.
@@ -73,7 +75,12 @@ impl Capsula {
             rotor: [1.0, 0.0],
             arco,
         };
-        (n >= 2).then_some(Self { passo, n, estado })
+        (n >= 2).then_some(Self {
+            passo,
+            n,
+            estado,
+            fecho: false,
+        })
     }
 
     /// A mesma cápsula a interpolar até o estado `e` do dab de trás. Um rotor a menos de `1e-6` da
@@ -133,9 +140,22 @@ impl Capsula {
         }
     }
 
+    /// Os sub-dabs a percorrer: os `n` do passo e, com o [`Self::fecho`], o de trás.
     #[must_use]
     pub fn n(self) -> u32 {
+        self.n + u32::from(self.fecho)
+    }
+
+    /// Os sub-dabs do PASSO (`ceil(passo/sub_px)`), sem o do fecho: o denominador da taxa de um sub-dab.
+    #[must_use]
+    pub fn n_do_passo(self) -> u32 {
         self.n
+    }
+
+    /// A mesma cápsula a levar (ou não) o sub-dab de trás, `k = n`: o dab de abertura do traço.
+    #[must_use]
+    pub fn com_fecho(self, fecho: bool) -> Self {
+        Self { fecho, ..self }
     }
 
     /// O desvio do sub-dab `k` ao centro do dab, em px: `−D·k/n`.
@@ -150,7 +170,7 @@ impl Capsula {
     /// (o lado do centro anterior; o outro lado fica `0`).
     #[must_use]
     pub fn caixa(self) -> ([f32; 2], [f32; 2]) {
-        let u = self.off(self.n - 1);
+        let u = self.off(self.n() - 1);
         (
             [u[0].min(0.0), u[1].min(0.0)],
             [u[0].max(0.0), u[1].max(0.0)],
@@ -357,11 +377,20 @@ pub fn sub_dabs(d: &crate::Dab, sub_px: f32) -> Vec<crate::Dab> {
         return vec![*d];
     }
     // Um dab exactamente sobre um múltiplo conta (o `1e-4` do arredondamento do arco em f32).
-    let m0 = (a0 / sub_px + 1e-4).floor() as i64 + 1;
+    let mut m0 = (a0 / sub_px + 1e-4).floor() as i64 + 1;
+    // O fecho ([`Ante::fecho`]): o dab de abertura, no próprio arco de trás (`t = 1`).
+    let fecho = d.ante.is_some_and(|a| a.fecho);
+    if fecho {
+        m0 -= 1;
+    }
     let m1 = (a1 / sub_px + 1e-4).floor() as i64;
     (m0..=m1.min(m0 + i64::from(MAX_SUB) - 1))
         .map(|m| {
-            let a = m as f32 * sub_px;
+            let a = if fecho && m == m0 {
+                a0
+            } else {
+                m as f32 * sub_px
+            };
             let t = ((a1 - a) / comp).clamp(0.0, 1.0);
             let mut s = crate::Dab {
                 center: [d.center[0] - d.step[0] * t, d.center[1] - d.step[1] * t],
@@ -429,6 +458,9 @@ pub struct Ante {
     pub arc_len: f32,
     /// O Jitter de posição do dab da FRENTE ([`Salto`]); `None` = sem Jitter.
     pub salto: Option<Salto>,
+    /// ⭐ Este é o 1.º passo do traço e o dab de trás (a abertura) NÃO foi carimbado: a cápsula leva-o como o
+    /// sub-dab `k = n`, à taxa de um sub-dab (dono 25/10, R1: o 1.º carimbo do Continuous ficava marcado).
+    pub fecho: bool,
 }
 
 /// ⭐ **O Jitter de posição de um dab** — o que [`sub_dabs`] precisa para que cada sub-dab tire o SEU, como o
@@ -460,6 +492,7 @@ impl Ante {
             rotation: d.rotation,
             arc_len: d.arc_len,
             salto: None,
+            fecho: false,
         }
     }
 
@@ -504,12 +537,15 @@ impl crate::Dab {
         });
         // The back rotor relative to the front one: `atras · conj(frente)`.
         let rotor = crate::heading::rotate(atras, [frente[0], -frente[1]]);
-        Some(cap.com_estado(Estado {
-            raio: razao(a.radius_px, self.radius_px),
-            cobertura: razao(a.coverage, self.coverage),
-            rotor,
-            arco: a.arc_len - self.arc_len,
-        }))
+        Some(
+            cap.com_estado(Estado {
+                raio: razao(a.radius_px, self.radius_px),
+                cobertura: razao(a.coverage, self.coverage),
+                rotor,
+                arco: a.arc_len - self.arc_len,
+            })
+            .com_fecho(a.fecho),
+        )
     }
 }
 

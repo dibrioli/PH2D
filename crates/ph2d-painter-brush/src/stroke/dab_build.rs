@@ -86,6 +86,12 @@ impl Stroke {
             _ => [0.0, 0.0],
         };
         self.dab_ante = self.ultimo.filter(|_| self.dab_step != [0.0, 0.0]);
+        if self.dab_step != [0.0, 0.0] && self.abertura.fecho_por_dar {
+            self.abertura.fecho_por_dar = false;
+            if let Some(a) = &mut self.dab_ante {
+                a.fecho = true;
+            }
+        }
     }
 
     /// Constrói UMA marca na posição onde a tinta já caiu (pós-arremesso) — a metade de

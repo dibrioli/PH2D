@@ -9,7 +9,7 @@
 //! **A cauda** (L5): ao levantar, a janela do fim limpa-se no plano e voltam a carimbar-se os LOTES que lhe
 //! tocam, inteiros, pela porta do despacho (as corridas da ponta de N imagens) e com o sorteio e o estado do
 //! trilho de píxel que tiveram (sem costura); os dabs da cauda afilados pela rampa da cabeça espelhada
-//! (`Taper::width_end`) e adensados ao passo da largura nova; fora da janela o plano volta ao que era. Num traço
+//! (`Taper::width_end`) e adensados pela cápsula até ao dab anterior; fora da janela o plano volta ao que era. Num traço
 //! mais curto que as duas janelas elas escalam (a lei do Procreate) e o traço inteiro re-pinta-se. Tudo antes do
 //! fecho do traço: UMA transacção.
 //!
@@ -373,25 +373,53 @@ impl PainterTool {
             (a, b) => a.or(b)?,
         };
         let reach = self.paint.brush.tip_reach();
+        // A ponta fina ADENSA-SE pela cápsula: cada dab da cauda sem passo passa a levá-lo até ao dab anterior do mesmo
+        // caminho, também da cauda (a faixa de antes da janela fica a do traço sem cauda), só num caminho único: sem simetria, spray nem ponta de píxel, onde dois dabs seguidos não são do
+        // mesmo caminho), e os sub-dabs dele seguem o passo da largura nova. A cápsula é UMA passagem por passo — à
+        // taxa do Flow repartida pelos sub-dabs sob o Accumulate desligado (`dab/bands.rs`, `c_cap`) —, como o
+        // corpo; os dabs SOLTOS que adensavam a ponta pousavam cada um a passagem inteira: a cauda escurecia e,
+        // com o Continuous, saía em discos (dono 25/10).
+        // ⚠️ Só onde a passagem é uma TAXA (o Accumulate desligado com o Flow < 1) ou a cápsula já é a lei (o Continuous):
+        // a cápsula interpola a largura em recta entre dois dabs, e com o Flow 1 os dabs soltos re-afilados um a um seguem
+        // a lei exacta e batem no tecto sem escurecer nada (`o_toque_e_o_traco_curto_escalam_as_janelas`). Com o
+        // Accumulate LIGADO a cápsula compõe cada sub-dab à opacidade da passagem (o traço denso, 229 sobre um corpo
+        // espaçado de 72, medido 25/10): não é uma passagem por passo, e fica o adensar de sempre (`o_toque_e_o_traco_curto_escalam_as_janelas`).
+        let b = &self.paint.brush;
+        let um_caminho = !b.symmetry.enabled && b.spray_count <= 1 && !self.pixel_vivo(b);
+        let pela_capsula =
+            (!b.accumulate && b.flow < 1.0) || cauda_orig.iter().any(|x| x.step != [0.0, 0.0]);
+        let passo = self.passo_px();
+        let mut anterior: Option<Dab> = None;
+        let mut encadeia = |x: &Dab| -> Dab {
+            let mut y = *x;
+            if let Some(a) = anterior.filter(|a| {
+                pela_capsula && um_caminho && da_cauda(a) && da_cauda(x) && x.step == [0.0, 0.0]
+            }) {
+                let p = [x.center[0] - a.center[0], x.center[1] - a.center[1]];
+                let dist = p[0].hypot(p[1]);
+                if dist > 0.0 && dist <= 1.5 * passo {
+                    (y.step, y.ante) = (p, Some(ph2d_painter_brush::Ante::de(&a)));
+                }
+            }
+            anterior = Some(*x);
+            y
+        };
         // Os lotes que tocam a janela, INTEIROS e pela ordem, com a cauda re-afilada no lugar.
         let mut lotes: Vec<Lote> = s
             .lotes
             .iter()
-            .filter(|l| ladrilhada(&l.dabs).iter().any(|c| toca(c, limpa, reach)))
-            .map(|l| Lote {
-                dabs: l
-                    .dabs
-                    .iter()
-                    .map(|x| if da_cauda(x) { janela.afila(*x) } else { *x })
+            .map(|l| (l, l.dabs.iter().map(&mut encadeia).collect::<Vec<Dab>>()))
+            .filter(|(l, _)| ladrilhada(&l.dabs).iter().any(|c| toca(c, limpa, reach)))
+            .map(|(l, dabs)| Lote {
+                dabs: dabs
+                    .into_iter()
+                    .map(|x| if da_cauda(&x) { janela.afila(x) } else { x })
                     .collect(),
                 ..l.clone()
             })
             .collect();
-        // Os dabs que adensam a ponta fina — novos, num lote no fim (só num caminho único: sem simetria, spray
-        // nem ponta de píxel, onde dois dabs seguidos não são do mesmo caminho).
-        let b = &self.paint.brush;
-        if !b.symmetry.enabled && b.spray_count <= 1 && !self.pixel_vivo(b) {
-            let extra = adensa(&cauda_orig, &janela, self.passo_px());
+        if !pela_capsula && um_caminho {
+            let extra = adensa(&cauda_orig, &janela, passo);
             if !extra.is_empty() {
                 lotes.push(Lote {
                     rng: self.paint.tex_rng,
@@ -464,15 +492,20 @@ fn sem_a_strength(dabs: &[Dab], escala: f32) -> std::borrow::Cow<'_, [Dab]> {
         return std::borrow::Cow::Borrowed(dabs);
     }
     let mut v = dabs.to_vec();
+    // O estado de trás da cápsula (`Dab::ante`) também: o sub-dab interpola a RAZÃO das duas coberturas, e só a da
+    // frente a `1/S` punha-a em `S` — o traço com a cápsula saía `S` vezes mais claro atrás de cada passo.
     for d in &mut v {
         d.coverage = (d.coverage / escala).min(1.0);
+        if let Some(a) = &mut d.ante {
+            a.coverage = (a.coverage / escala).min(1.0);
+        }
     }
     std::borrow::Cow::Owned(v)
 }
 
 /// O plano da cauda ([`PainterTool::planeia_a_cauda`]).
 struct Cauda {
-    /// Os lotes a re-carimbar: os que tocam a janela (a cauda afilada no lugar) e o adensar da ponta.
+    /// Os lotes a re-carimbar: os que tocam a janela, com a cauda afilada e encadeada em cápsulas no lugar.
     lotes: Vec<Lote>,
     /// A janela que se limpa (a pegada da cauda original).
     limpa: Region,
@@ -490,11 +523,11 @@ pub(super) fn une(a: Option<Region>, b: Option<Region>) -> Option<Region> {
 
 /// O dab `d` toca a região `r`?
 fn toca(d: &Dab, r: Region, reach: f32) -> bool {
-    let e = d.radius_px * reach + 1.0;
-    d.center[0] + e >= r.x as f32
-        && d.center[0] - e <= (r.x + r.w) as f32
-        && d.center[1] + e >= r.y as f32
-        && d.center[1] - e <= (r.y + r.h) as f32
+    let (lo, hi, _) = super::mask::caixa_do_dab(d, reach);
+    hi[0] >= r.x as f32
+        && lo[0] <= (r.x + r.w) as f32
+        && hi[1] >= r.y as f32
+        && lo[1] <= (r.y + r.h) as f32
 }
 
 /// Um lote do traço como foi carimbado: o sorteio (`tex_rng`) e o estado do trilho de píxel ANTES dele.

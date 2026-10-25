@@ -3,7 +3,7 @@
 
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
-use ph2d_painter_brush::BrushSpec;
+use ph2d_painter_brush::{BrushBlend, BrushSpec};
 
 const AZUL: [f32; 3] = [23.0 / 255.0, 101.0 / 255.0, 179.0 / 255.0];
 
@@ -462,8 +462,17 @@ fn o_toque_e_o_traco_curto_escalam_as_janelas() {
 /// cheia — é a do mesmo traço sem cauda (± 8/255). Vermelho antes da cura: o re-carimbo sorteava de novo (costura).
 #[test]
 fn a_cauda_nao_costura_o_grao_aleatorio() {
+    // Também com o Flow 0,3 (o Accumulate desligado): a cauda adensa-se pela cápsula, e só entre dabs DELA — encadear
+    // o 1.º da cauda ao último do corpo re-pintava a faixa de antes da janela (25/10).
+    for flow in [1.0, 0.3] {
+        costura_do_grao(flow);
+    }
+}
+
+fn costura_do_grao(flow: f32) {
     let grao = |end: f32| {
         let mut b = pincel(10.0);
+        b.flow = flow;
         b.texture = ph2d_painter_brush::TextureSettings {
             kind: ph2d_painter_brush::TextureKind::Noise,
             mapping: ph2d_painter_brush::TextureMapping::Random,
@@ -494,7 +503,7 @@ fn a_cauda_nao_costura_o_grao_aleatorio() {
         .unwrap();
     assert!(
         pior <= 8,
-        "a cauda costurou o grão aleatório: {pior}/255 na faixa de antes dela"
+        "Flow {flow}: a cauda costurou o grão aleatório: {pior}/255 na faixa de antes dela"
     );
 }
 
@@ -536,4 +545,234 @@ fn as_trocas_de_plano_aninhadas_ficam_fora_da_tela() {
     super::plane_fork::swap_canvas_plane(&mut tela, &mut livre, &w);
     assert!(!w.on_foreign_plane(), "as duas saídas: de volta à tela");
     assert_eq!(*tela, vec![1u8]);
+}
+
+/// Sonda (dono 25/10): a cauda com o Continuous, o Accumulate desligado e o Flow baixo «buga de vários modos» — discos
+/// e degraus. Grava a prancha em `PH2D_SONDA_DIR` e imprime a tinta no eixo (`255 − R` sobre branco).
+#[test]
+#[ignore = "sonda: a cauda com o Continuous (dono 25/10)"]
+fn sonda_cauda_continuous() {
+    let dir =
+        std::path::PathBuf::from(std::env::var("PH2D_SONDA_DIR").unwrap_or_else(|_| "/tmp".into()));
+    let (w, h) = (600u32, 110u32);
+    let mut prancha = Vec::new();
+    // (nome, cauda, levanta, blend, continuous, accumulate, flow, strength)
+    let casos = [
+        ("cauda", 3.0, true, BrushBlend::Mix, true, false, 0.3, 0.6),
+        (
+            "cauda aberta",
+            3.0,
+            false,
+            BrushBlend::Mix,
+            true,
+            false,
+            0.3,
+            0.6,
+        ),
+        (
+            "multiply",
+            0.0,
+            true,
+            BrushBlend::Multiply,
+            true,
+            false,
+            0.3,
+            0.6,
+        ),
+        ("mix", 0.0, true, BrushBlend::Mix, true, false, 0.3, 0.6),
+        (
+            "cauda sem cont",
+            3.0,
+            true,
+            BrushBlend::Mix,
+            false,
+            false,
+            0.3,
+            0.6,
+        ),
+        (
+            "plano S1",
+            0.0,
+            false,
+            BrushBlend::Multiply,
+            true,
+            false,
+            0.3,
+            1.0,
+        ),
+        ("mix S1", 0.0, false, BrushBlend::Mix, true, false, 0.3, 1.0),
+        (
+            "plano sem cont",
+            0.0,
+            false,
+            BrushBlend::Multiply,
+            false,
+            false,
+            0.3,
+            0.6,
+        ),
+        (
+            "mix sem cont",
+            0.0,
+            false,
+            BrushBlend::Mix,
+            false,
+            false,
+            0.3,
+            0.6,
+        ),
+        (
+            "plano acc",
+            0.0,
+            false,
+            BrushBlend::Multiply,
+            false,
+            true,
+            1.0,
+            0.6,
+        ),
+        (
+            "mix acc",
+            0.0,
+            false,
+            BrushBlend::Mix,
+            false,
+            true,
+            1.0,
+            0.6,
+        ),
+        (
+            "cauda acc translúcida",
+            3.0,
+            true,
+            BrushBlend::Mix,
+            false,
+            true,
+            0.3,
+            0.6,
+        ),
+        (
+            "acc translúcida",
+            0.0,
+            true,
+            BrushBlend::Mix,
+            false,
+            true,
+            0.3,
+            0.6,
+        ),
+    ];
+    for (nome, cauda, levanta, blend, cont, acc, flow, forca) in casos {
+        let mut b = pincel(20.0);
+        b.hardness = 0.3;
+        b.spacing = 0.4;
+        b.continuous_spacing = cont;
+        b.accumulate = acc;
+        b.flow = flow;
+        b.strength = forca;
+        b.blend = blend;
+        b.taper.end = cauda;
+        let mut t = tool(w, h, [255; 4], b);
+        let pts: Vec<[f32; 2]> = (0..=110).map(|k| [50.0 + 4.6 * k as f32, 55.0]).collect();
+        traco(&mut t, &pts, levanta);
+        let eixo: Vec<u8> = (0..w)
+            .step_by(8)
+            .map(|x| 255 - t.canvas_rgba[((55 * w + x) * 4) as usize])
+            .collect();
+        println!("[cauda] {nome}: {eixo:?}");
+        prancha.extend_from_slice(&t.canvas_rgba);
+    }
+    let png = super::composite_look::png_rgba(&prancha, w, h * casos.len() as u32);
+    std::fs::write(dir.join("cauda_continuous.png"), png).unwrap();
+}
+
+/// O recto de 50 a 556 px (raio 20, Spacing 0,4, dureza 0,3) sobre branco: a tinta no eixo, `255 − R`, por píxel.
+fn eixo_do_recto(b: BrushSpec) -> Vec<u8> {
+    let w = 600u32;
+    let mut t = tool(w, 110, [255; 4], b);
+    let pts: Vec<[f32; 2]> = (0..=110).map(|k| [50.0 + 4.6 * k as f32, 55.0]).collect();
+    traco(&mut t, &pts, true);
+    (0..w)
+        .map(|x| 255 - t.canvas_rgba[((55 * w + x) * 4) as usize])
+        .collect()
+}
+
+fn recto_de_taxa(cont: bool, forca: f32, blend: BrushBlend, cauda: f32) -> BrushSpec {
+    recto_translucido(cont, false, forca, blend, cauda)
+}
+
+fn recto_translucido(
+    cont: bool,
+    acc: bool,
+    forca: f32,
+    blend: BrushBlend,
+    cauda: f32,
+) -> BrushSpec {
+    let mut b = pincel(20.0);
+    b.hardness = 0.3;
+    b.spacing = 0.4;
+    b.continuous_spacing = cont;
+    b.accumulate = acc;
+    b.flow = 0.3;
+    b.strength = forca;
+    b.blend = blend;
+    b.taper.end = cauda;
+    b
+}
+
+/// ⭐ **O plano compõe a cápsula INTEIRA** (dono 25/10: o Continuous com a cauda «em degraus»): a região de um lote
+/// parava no disco da frente de cada dab (`mask::caixa_do_dab`) e a faixa de trás de cada passo pintava-se no plano sem
+/// chegar à tela (o traço `−15 %`, em degraus, sem o início); e o plano a `1/S` não escalava a cobertura do dab de
+/// trás (`Dab::ante`). Um traço no plano (Multiply sobre branco) é, texel a texel no eixo, o mesmo traço em Mix (± 1),
+/// à Strength 1 e a 0,6.
+#[test]
+fn o_plano_compoe_a_capsula_inteira() {
+    for forca in [1.0, 0.6] {
+        let plano = eixo_do_recto(recto_de_taxa(true, forca, BrushBlend::Multiply, 0.0));
+        let mix = eixo_do_recto(recto_de_taxa(true, forca, BrushBlend::Mix, 0.0));
+        let pior = plano
+            .iter()
+            .zip(&mix)
+            .map(|(a, b)| a.abs_diff(*b))
+            .max()
+            .unwrap();
+        assert!(
+            pior <= 1,
+            "Strength {forca}: o plano difere do Mix em {pior}/255\n{plano:?}\n{mix:?}"
+        );
+    }
+}
+
+/// ⭐ **A cauda com a taxa afila sem discos nem degraus** (dono 25/10, as duas fotos): com o Flow 0,3 — o Accumulate
+/// desligado com e sem o Continuous, e o Continuous com o Accumulate ligado — o corpo é o do traço sem cauda (± 1) e a cauda, do seu pico ao fim, só desce
+/// (± 1), sem passar 15 % do pico do corpo. Antes: os dabs SOLTOS que adensavam a ponta pousavam o Flow inteiro cada
+/// um (a cauda a `73…101` sobre um corpo de `54/66`, e com o Continuous discos e degraus).
+#[test]
+fn a_cauda_com_a_taxa_afila_sem_discos() {
+    for (cont, acc) in [(true, false), (false, false), (true, true)] {
+        let com = eixo_do_recto(recto_translucido(cont, acc, 0.6, BrushBlend::Mix, 3.0));
+        let sem = eixo_do_recto(recto_translucido(cont, acc, 0.6, BrushBlend::Mix, 0.0));
+        // A janela da cauda: 3 diâmetros (120 px) antes do último dab (556), e a faixa limpa um raio antes dela.
+        let corpo = 60..410;
+        let pior = corpo
+            .clone()
+            .map(|x| com[x].abs_diff(sem[x]))
+            .max()
+            .unwrap();
+        assert!(
+            pior <= 1,
+            "Continuous {cont} Accumulate {acc}: o corpo com a cauda difere em {pior}/255"
+        );
+        let pico_do_corpo = corpo.map(|x| sem[x]).max().unwrap();
+        let cauda = &com[436..600];
+        let (i, &pico) = cauda.iter().enumerate().max_by_key(|(_, v)| **v).unwrap();
+        assert!(
+            f32::from(pico) <= f32::from(pico_do_corpo) * 1.15,
+            "Continuous {cont} Accumulate {acc}: a cauda {pico} sobre o corpo {pico_do_corpo}\n{cauda:?}"
+        );
+        assert!(
+            cauda[i..].windows(2).all(|w| w[1] <= w[0] + 1),
+            "Continuous {cont} Accumulate {acc}: a cauda volta a subir\n{cauda:?}"
+        );
+    }
 }

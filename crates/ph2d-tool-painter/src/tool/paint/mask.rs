@@ -196,8 +196,9 @@ impl PainterTool {
         self.mask_scratch_active() && !matches!(self.paint.paint_mode, super::PaintMode::Mask)
     }
 
-    /// The canvas region a dab batch can touch — the union of each dab's disc (`center ± radius`, +1px)
-    /// plus the previous Smear/Clone position, clamped to the canvas; `None` if empty / off-canvas. With
+    /// The canvas region a dab batch can touch — the union of each dab's reach ([`caixa_do_dab`]: the disc, and
+    /// the capsule back to the previous centre) plus the previous Smear/Clone position, clamped to the canvas;
+    /// `None` if empty / off-canvas. With
     /// **Tiling** on an axis a border dab wraps to the far edge, so that axis spans the full extent. Used
     /// to snapshot + restore ONLY the footprint for the protection gate (never the whole canvas).
     pub(super) fn dab_batch_region(&self, dabs: &[Dab]) -> Option<Region> {
@@ -210,12 +211,12 @@ impl PainterTool {
         // O alcance da ponta de imagem do Shape (Bug #52) — `1` sem ela, ao bit.
         let reach = self.paint.brush.tip_reach();
         for d in dabs {
-            let r = d.radius_px * reach + 1.0;
+            let (lo, hi, r) = caixa_do_dab(d, reach);
             max_r = max_r.max(r);
-            minx = minx.min(d.center[0] - r);
-            maxx = maxx.max(d.center[0] + r);
-            miny = miny.min(d.center[1] - r);
-            maxy = maxy.max(d.center[1] + r);
+            minx = minx.min(lo[0]);
+            maxx = maxx.max(hi[0]);
+            miny = miny.min(lo[1]);
+            maxy = maxy.max(hi[1]);
         }
         if let Some((p, _)) = self.paint.last_smear_pos {
             minx = minx.min(p[0] - max_r);
@@ -622,3 +623,37 @@ fn mask_overlay_rgb(idx: u8) -> [u8; 3] {
 #[cfg(test)]
 #[path = "mask_relief_tests.rs"]
 mod mask_relief_tests;
+
+/// ⭐ **O que um dab pode tocar**: o disco (`center ± radius·reach`, +1 px) e, com o passo da cápsula (Continuous,
+/// [`Dab::capsula`]), o caminho de volta ao centro anterior ao raio do dab de trás, com o Jitter que cada sub-dab
+/// re-sorteia. Sem a cápsula a região de um lote parava no disco da frente: o plano do traço compunha só ela e a
+/// faixa de trás de cada passo nunca chegava à tela (dono 25/10: o traço com a cauda «em degraus», o início em
+/// falta). Devolve `(mín, máx, maior raio)`.
+pub(super) fn caixa_do_dab(d: &Dab, reach: f32) -> ([f32; 2], [f32; 2], f32) {
+    let r = d.radius_px * reach + 1.0;
+    let (mut lo, mut hi) = (
+        [d.center[0] - r, d.center[1] - r],
+        [d.center[0] + r, d.center[1] + r],
+    );
+    if d.step == [0.0, 0.0] {
+        return (lo, hi, r);
+    }
+    let atras = d.ante.map_or(d.radius_px, |a| a.radius_px).max(d.radius_px);
+    let k = if d.radius_px > 1e-6 {
+        atras / d.radius_px
+    } else {
+        1.0
+    };
+    let salto = d.ante.and_then(|a| a.salto).map_or(0.0, |j| {
+        j.desvio[0].hypot(j.desvio[1])
+            + j.alcance * if j.por_raio { k } else { 1.0 }
+            + j.atraves * k
+    });
+    let rb = atras * reach + 1.0 + salto;
+    let tras = [d.center[0] - d.step[0], d.center[1] - d.step[1]];
+    for c in [d.center, tras] {
+        lo = [lo[0].min(c[0] - rb), lo[1].min(c[1] - rb)];
+        hi = [hi[0].max(c[0] + rb), hi[1].max(c[1] + rb)];
+    }
+    (lo, hi, r.max(rb))
+}

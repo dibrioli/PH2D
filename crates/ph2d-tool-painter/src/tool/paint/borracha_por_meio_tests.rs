@@ -328,6 +328,9 @@ fn a_borracha_do_wet_obedece_ao_flow() {
 /// ⭐ **A Borracha do Wet não entra na abertura do Continuous** (25/10): a lei (`stroke/abertura.rs`: sob Flow < 1 o
 /// 1.º dab vai na 1.ª cápsula) é do Digital, e a Borracha do Wet guarda o seu Flow (a taxa do Erase). O traço dela a
 /// Flow 0,3 tem os mesmos dabs que a Flow 1 — onde nenhuma abertura arma.
+///
+/// O CONTROLO: o MESMO spec com as leis do Digital (`fora_do_digital: false`) muda os dabs entre Flow 0,3 e 1 (o
+/// dab de abertura sai, a 1.ª cápsula leva o fecho) — a fixtura vê a abertura quando ela arma.
 #[test]
 fn a_borracha_do_wet_nao_entra_na_abertura_do_digital() {
     use ph2d_painter_brush::{Dynamics, Stroke, StrokePoint};
@@ -347,28 +350,51 @@ fn a_borracha_do_wet_nao_entra_na_abertura_do_digital() {
         !spec.leis_do_digital(),
         "a Borracha do Wet entra nas leis do Digital"
     );
+    // Cada chamada do `Stroke` reescreve o `out`: o traço é a soma dos lotes.
     let dabs = |s| {
         let mut st = Stroke::new(s, Dynamics::default(), 7);
-        let mut out = Vec::new();
+        let (mut lote, mut traco) = (Vec::new(), Vec::new());
         let p = |x: f32| StrokePoint {
             pos: [x, 64.0],
             pressure: 1.0,
         };
-        st.begin(p(20.0), &mut out);
+        st.begin(p(20.0), &mut lote);
+        traco.append(&mut lote);
         let mut x = 20.0;
         while x < 108.0 {
             x += 2.0;
-            st.extend(p(x), &mut out);
+            st.extend(p(x), &mut lote);
+            traco.append(&mut lote);
         }
-        st.finish(&mut out);
-        out.iter()
+        st.finish(&mut lote);
+        traco.append(&mut lote);
+        traco
+            .iter()
             .map(|d| (d.center, d.step, d.ante.map(|a| a.fecho)))
             .collect::<Vec<_>>()
     };
-    let sem_abertura = BrushSpec { flow: 1.0, ..spec };
+    // Os dabs que mudam entre Flow 0,3 e Flow 1 (posição a posição, mais a diferença de contagem).
+    let diferenca = |s: BrushSpec| {
+        let (a, b) = (dabs(s), dabs(BrushSpec { flow: 1.0, ..s }));
+        assert!(
+            a.len() >= 3,
+            "fixtura: o traço não chega a uma cápsula ({})",
+            a.len()
+        );
+        a.len().abs_diff(b.len()) + a.iter().zip(&b).filter(|(x, y)| x != y).count()
+    };
+    let controlo = diferenca(BrushSpec {
+        fora_do_digital: false,
+        ..spec
+    });
+    let wet = diferenca(spec);
+    eprintln!("BWA\tcontrolo (leis do Digital) {controlo}\tBorracha do Wet {wet}");
+    assert!(
+        controlo > 0,
+        "fixtura: com as leis do Digital a abertura não muda os dabs — a fixtura não a vê"
+    );
     assert_eq!(
-        dabs(spec),
-        dabs(sem_abertura),
+        wet, 0,
         "o traço da Borracha do Wet a Flow 0,3 não é o da Flow 1: a abertura do Digital armou"
     );
 }

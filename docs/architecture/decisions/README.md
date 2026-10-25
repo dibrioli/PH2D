@@ -209,10 +209,11 @@
 | [0193](0193-a-cola-e-uma-relacao-simetrica-resolvida-por-grupo-antes-da-pilha.md) | Accepted — o produto (dois OBJECTOS inteiros, tipos Rígido e Pino, arrastar qualquer… | A cola é uma relação simétrica resolvida por GRUPO antes da pilha; a pilha continua de um sentido |
 | [0194](0194-o-hud-arruma-irmaos-com-cassowary.md) | Accepted — provisório (linha `line/BlenderConstraints`; … | O HUD arruma IRMÃOS com o Cassowary; a âncora ao pai e a raiz continuam procedurais |
 | [0195](0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md) | Accepted. … | O Kanban é um documento do projeto; o Quadro referencia-o e a aba abre-o |
+| [0196](0196-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md) | Accepted — o PRODUTO é decisão do DONO (25/10: módulo NOVO e autocontido, sem Painter; … | O Pixel Art é um módulo próprio, com documento inteiro e desfazer por sprite |
 
 ---
 
-**200 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**201 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

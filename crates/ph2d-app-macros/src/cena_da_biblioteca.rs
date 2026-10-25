@@ -449,7 +449,7 @@ pub fn faz(
         Passo::Pinta | Passo::Objeto => {
             use ph2d_editor_core::object_mode::{ModeRequest, ObjectMode};
             let modo = if p == Passo::Pinta {
-                ObjectMode::Paint
+                ObjectMode::Draw
             } else {
                 ObjectMode::Object
             };

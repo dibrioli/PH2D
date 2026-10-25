@@ -195,16 +195,24 @@ fn publish_active(
                 .unwrap_or(bits),
         )
     });
-    let modes: Vec<ObjectMode> = active.map_or_else(Vec::new, |bits| {
-        let kind = kind_of(bits);
+    let kind = active.map(kind_of);
+    let modes: Vec<ObjectMode> = kind.map_or_else(Vec::new, |kind| {
         let declared = families.iter().flat_map(|f| f.modes().iter());
         declared
             .filter(|(k, _)| *k == kind)
             .map(|(_, m)| *m)
             .collect()
     });
-    hero.gizmo.mode.publish(active, &modes);
+    hero.gizmo.mode.publish(active.zip(kind), &modes);
     active
+}
+
+/// ⭐ **O Inspector vem à frente** (dono 24/10: *«quando um objeto é selecionado […] o painel correto
+/// seja aberto no inspector automaticamente»*): aberto, e no topo do encaixe dele. Só na ARESTA —
+/// pedi-lo em todo quadro prenderia a aba (o mesmo cuidado do `skeleton_reveal::on_focus`).
+fn reveal_inspector(hero: &mut HeroScreen) {
+    <HeroScreen as crate::panel::PanelHostInternal>::set_panel_visible(hero, "inspector", true);
+    hero.store.bump_panel_z(crate::ids::INSP_PANEL);
 }
 
 /// ⭐⭐ **O quadro do modo.** `kind_of`/`name_of` respondem pelos bits de uma entidade. Devolve se o
@@ -220,6 +228,7 @@ pub fn drive(
 ) -> bool {
     let mut changed = false;
     let before = (hero.gizmo.selection, hero.gizmo.extra_selection.clone());
+    let (was_entity, was_mode) = (hero.gizmo.mode.published_entity(), hero.gizmo.mode.active());
     // 0. Um objecto que nasceu num modo pede-o (só sem pedido do artista neste quadro). ⚠️ SÓ ele:
     // a selecção de antes não entra junto — a forma desenhada num Edit levaria a anterior com ela.
     let mut born = None;
@@ -241,8 +250,16 @@ pub fn drive(
     });
     // 1. O activo e os modos que o TIPO dele declara.
     let mut active = publish_active(families, kind_of, hero);
-    // 2. A rede de segurança: quem perdeu a entidade (por qualquer porta) volta a Object.
+    // 2a. Uma porta de selecção escolheu OUTRO objecto ([`object_mode::switches`]): Object, com a
+    // selecção que o artista fez — ⛔ não o `Step::Leave`, que a devolve ao trancado.
     let mut fell_from = None;
+    if hero.gizmo.mode.take_release() && hero.gizmo.mode.active().is_some() {
+        leave_current(families, kind_of, tools, hero);
+        toasts.push(Toast::info(ph2d_i18n::tr("object_mode.left")));
+        active = publish_active(families, kind_of, hero);
+        changed = true;
+    }
+    // 2b. A rede de segurança: quem perdeu a entidade (por qualquer porta) volta a Object.
     if let Some(current) = hero.gizmo.mode.active() {
         let f = family(families, kind_of(current.entity), current.mode);
         let (held, parts) = f.map_or((false, None), |f| {
@@ -393,28 +410,35 @@ pub fn drive(
         f.content(tools, &mut content);
     }
     hero.gizmo.content = content;
+    // 4c. Em Object, o objecto activo mudou ou um modo acabou: o Inspector é o painel dele.
+    let now_entity = hero.gizmo.mode.published_entity();
+    if current.is_none() && now_entity.is_some() && (was_mode.is_some() || now_entity != was_entity)
+    {
+        reveal_inspector(hero);
+    }
     // 5. O seletor — em todo quadro, vazio incluído.
     let menu = hero.gizmo.mode.menu(&mut hero.store);
     hero.store.publish_mode_menu(menu);
     changed
 }
 
-/// ⭐ **O cadeado numa porta de selecção** — `true` = a troca foi recusada (e o aviso já foi dado).
-/// As três portas (o clique no canvas, o laço, a linha da Hierarquia) perguntam AQUI.
-pub fn refused(
-    hero: &HeroScreen,
-    target: Option<u64>,
-    additive: bool,
-    toasts: &mut ToastQueue,
-) -> bool {
-    let (locked, parts) = (hero.gizmo.mode.locked_entity(), hero.gizmo.mode.parts());
-    // Num modo do TIPO nada se recusa: um objecto de outro tipo escolhido sai do modo (a rede).
-    let refuse = !hero.gizmo.mode.whole_kind()
-        && object_mode::decide(locked, parts, target, additive) == object_mode::Decision::Refuse;
-    if refuse {
-        toasts.push(Toast::warning(object_mode::refusal(&hero.gizmo.mode)));
+/// ⭐ **Uma porta de selecção escolheu `target`** — se é OUTRO objecto, o modo em curso volta a Object
+/// no próximo quadro ([`object_mode::switches`]); a selecção passa sempre. As três portas (o clique no
+/// canvas, o laço, a linha da Hierarquia) chamam AQUI; `range` = o intervalo da Hierarquia.
+pub fn chosen(hero: &mut HeroScreen, target: Option<u64>, range: bool) {
+    let mode = &hero.gizmo.mode;
+    let (locked, parts, whole) = (mode.locked_entity(), mode.parts(), mode.whole_kind());
+    if object_mode::switches(locked, parts, whole, target, range) {
+        hero.gizmo.mode.ask_release();
     }
-    refuse
+}
+
+/// ⭐ **Num modo de criação o clique pega só o de CIMA** (dono 24/10: *«se um objeto estiver sobre o
+/// outro, não deve ser possível selecionar o que está abaixo»*) — sem o ciclo de sobrepostos nem a
+/// preferência pela selecção, que são do modo Object.
+#[must_use]
+pub fn picks_only_the_top(hero: &HeroScreen) -> bool {
+    hero.gizmo.mode.active().is_some()
 }
 
 /// ⭐ **O gizmo de transformação É o modo Object** (D6): num modo de criação (Paint, Draw) ele
@@ -429,19 +453,12 @@ pub fn object_gizmo_shows(hero: &HeroScreen) -> bool {
     mode.active().is_none() || (mode.part_gizmo() && hero.gizmo.selection.is_some())
 }
 
-/// ⭐ **O cadeado na porta do LAÇO** — num modo de objecto inteiro a multi-selecção é recusada (com
-/// o aviso; `false`); num modo de PARTES o laço fica só com as partes e o objecto trancado (o laço
-/// do Edit do vetor apanha as formas dele).
-pub fn lasso_admits(hero: &HeroScreen, bits: &mut Vec<u64>, toasts: &mut ToastQueue) -> bool {
-    let (Some(locked), parts) = (hero.gizmo.mode.locked_entity(), hero.gizmo.mode.parts()) else {
-        return true;
-    };
-    let Some(parts) = parts else {
-        toasts.push(Toast::warning(object_mode::refusal(&hero.gizmo.mode)));
-        return false;
-    };
-    bits.retain(|b| *b == locked || parts.contains(b));
-    true
+/// ⭐ **A porta do LAÇO** — o que ele apanha passa; se apanha OUTRO objecto, o modo volta a Object
+/// ([`chosen`] por cada um).
+pub fn lasso_chosen(hero: &mut HeroScreen, bits: &[u64]) {
+    for b in bits {
+        chosen(hero, Some(*b), false);
+    }
 }
 
 /// ⭐ **O botão direito no canvas livre** (spec/06 escolha 3): em Object abre o menu Add — o mesmo

@@ -1,6 +1,7 @@
-//! ⭐⭐ **O MODO DO OBJECTO ACTIVO** — spec/06 §3.2 (F2), como o Blender: o modo é do objecto, o
-//! TIPO declara quais tem, e num modo de criação a selecção fica trancada nele
-//! (`docs/UI_New_and_Simple/spec/06_tipos_e_modos_de_objeto.md`).
+//! ⭐⭐ **O MODO DO OBJECTO ACTIVO** — spec/06 §3.2 (F2), como o Blender: o modo é do objecto e o
+//! TIPO declara quais tem (`docs/UI_New_and_Simple/spec/06_tipos_e_modos_de_objeto.md`). Escolher
+//! OUTRO objecto num modo de criação selecciona-o e volta a Object (dono 24/10, [`switches`];
+//! `docs/GameEngineFuncional/01_W1_modos_selecao_inspector.md`).
 //!
 //! - **O vocabulário fecha-se com o que funciona hoje.** Um modo entra em [`ObjectMode`] no dia em
 //!   que o módulo dele abre sobre a entidade (D6: modo que não faz nada é controlo morto).
@@ -14,20 +15,23 @@
 use crate::interaction::{AreaMenu, InteractiveState, WidgetStore};
 use crate::widget::{ButtonState, ToolRailEntry};
 use ph2d_a11y::NodeId;
+/// O tipo é parte do pedido [`ModeRequest::Open`] e do que se publica: viaja com a API.
+pub use ph2d_component_desc::ObjectKind;
 use ph2d_i18n::TextKey;
 use std::collections::BTreeMap;
 
-/// **Um modo de edição.** `Object` é universal; os outros, só o tipo que os declara.
+/// **Um modo de edição.** `Object` é universal; os outros, só o tipo que os declara. ⭐ O mesmo nome
+/// diz o mesmo GESTO em todo tipo (dono 24/10): `Draw` cria o conteúdo do objecto, `Edit` mexe no
+/// que existe — o que cada um abre é da família, por par `(tipo, modo)`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ObjectMode {
     /// Mover, rodar, escalar — o gizmo de transformação.
     Object,
-    /// Pintar a imagem com o Painter (Image ▸ Paint, D6).
-    Paint,
-    /// Desenhar traços no desenho Flip (Flip ▸ Draw, D6 — o Draw Mode do Grease Pencil, que NÃO é
-    /// o Paint: o que se edita é um traço, não um pixel).
+    /// Criar o conteúdo: pintar a imagem (o Painter), traçar no Flip (o Draw Mode do Grease Pencil),
+    /// desenhar formas no vetor.
     Draw,
-    /// Mexer no que já está desenhado: seleccionar traços e pontos, esculpir o traço (Flip ▸ Edit).
+    /// Mexer no que já está desenhado: as ferramentas de imagem, seleccionar e esculpir o traço do
+    /// Flip, a pose de repouso do esqueleto, os nós do Motion.
     Edit,
     /// Posar o esqueleto: rodar e mover ossos, IK, corrigir o peso (Skeleton ▸ Pose — o Pose Mode da
     /// Armature do Blender; o Edit do esqueleto é a pose de repouso). A14.
@@ -36,9 +40,8 @@ pub enum ObjectMode {
 
 impl ObjectMode {
     /// Todos, em ordem — a fonte da iteração (⛔ nunca escreva a lista uma segunda vez).
-    pub const ALL: [ObjectMode; 5] = [
+    pub const ALL: [ObjectMode; 4] = [
         ObjectMode::Object,
-        ObjectMode::Paint,
         ObjectMode::Draw,
         ObjectMode::Edit,
         ObjectMode::Pose,
@@ -49,7 +52,6 @@ impl ObjectMode {
     pub const fn label_key(self) -> TextKey {
         TextKey::new(match self {
             ObjectMode::Object => "object_mode.object",
-            ObjectMode::Paint => "object_mode.paint",
             ObjectMode::Draw => "object_mode.draw",
             ObjectMode::Edit => "object_mode.edit",
             ObjectMode::Pose => "object_mode.pose",
@@ -61,7 +63,6 @@ impl ObjectMode {
     pub const fn row_id(self) -> NodeId {
         match self {
             ObjectMode::Object => crate::ids::OBJECT_MODE_OBJECT,
-            ObjectMode::Paint => crate::ids::OBJECT_MODE_PAINT,
             ObjectMode::Draw => crate::ids::OBJECT_MODE_DRAW,
             ObjectMode::Edit => crate::ids::OBJECT_MODE_EDIT,
             ObjectMode::Pose => crate::ids::OBJECT_MODE_POSE,
@@ -91,9 +92,10 @@ pub enum ModeRequest {
     Enter(ObjectMode),
     /// `Tab`: Object ↔ o último modo de criação deste objecto.
     Toggle,
-    /// Uma aba de cima que pede um modo ao abrir (§3.3): entra se o activo o tiver, senão fica em
-    /// Object com a ferramenta de omissão — ⛔ nunca cria um objecto (§6.5).
-    Open(ObjectMode),
+    /// Uma aba de cima que pede o modo de UM tipo ao abrir (§3.3): entra se o activo for desse tipo
+    /// e o tiver, senão fica em Object com a ferramenta de omissão — ⛔ nunca cria um objecto (§6.5).
+    /// O tipo vai no pedido porque o `Draw` é de três tipos: a aba Flip não abre o Painter.
+    Open(ObjectKind, ObjectMode),
     /// ⭐ Uma sub-linha de CONTEÚDO na Hierarquia (`hier_rows`): selecciona `entity`, entra
     /// em `mode` e entrega `key` (a camada…) à família — o «clicar abre o modo certo» do doc 01 §4.3.
     OpenContent {
@@ -123,9 +125,12 @@ pub enum Step {
 #[derive(Clone, Debug, Default)]
 pub struct ModeState {
     active: Option<ActiveMode>,
-    /// O activo e os modos do tipo dele, publicados pela composição em todo quadro. `None` = nada
+    /// O activo, o tipo e os modos dele, publicados pela composição em todo quadro. `None` = nada
     /// seleccionado.
-    published: Option<(u64, Vec<ObjectMode>)>,
+    published: Option<(u64, ObjectKind, Vec<ObjectMode>)>,
+    /// ⭐ Uma porta de selecção escolheu OUTRO objecto ([`switches`]): o quadro volta a Object
+    /// deixando a selecção como o artista a fez.
+    release: bool,
     /// O último modo de criação de cada objecto — o destino do `Tab`.
     last: BTreeMap<u64, ObjectMode>,
     /// ⭐ **As PARTES da entidade trancada**, publicadas em todo quadro pela família do modo:
@@ -160,21 +165,39 @@ impl ModeState {
     /// Os modos do activo publicados neste quadro (vazio = nada seleccionado).
     #[must_use]
     pub fn available(&self) -> &[ObjectMode] {
-        self.published.as_ref().map_or(&[], |(_, m)| m.as_slice())
+        self.published
+            .as_ref()
+            .map_or(&[], |(_, _, m)| m.as_slice())
     }
 
-    /// ⭐ **A composição publica o activo e os modos do tipo dele** — `Object` à frente, os da
-    /// família a seguir, sem repetidos.
-    pub fn publish(&mut self, active: Option<u64>, family_modes: &[ObjectMode]) {
-        self.published = active.map(|e| {
+    /// O activo publicado neste quadro (a entidade trancada num modo; em Object, a escolhida).
+    #[must_use]
+    pub fn published_entity(&self) -> Option<u64> {
+        self.published.as_ref().map(|(e, _, _)| *e)
+    }
+
+    /// ⭐ **A composição publica o activo, o tipo dele e os modos que o tipo declara** — `Object` à
+    /// frente, os da família a seguir, sem repetidos.
+    pub fn publish(&mut self, active: Option<(u64, ObjectKind)>, family_modes: &[ObjectMode]) {
+        self.published = active.map(|(e, kind)| {
             let mut modes = vec![ObjectMode::Object];
             for m in family_modes {
                 if !modes.contains(m) {
                     modes.push(*m);
                 }
             }
-            (e, modes)
+            (e, kind, modes)
         });
+    }
+
+    /// Uma porta de selecção escolheu outro objecto: o próximo quadro volta a Object.
+    pub fn ask_release(&mut self) {
+        self.release = self.active.is_some();
+    }
+
+    /// O pedido de [`Self::ask_release`], consumido.
+    pub fn take_release(&mut self) -> bool {
+        std::mem::take(&mut self.release)
     }
 
     /// Entra em `mode` sobre `entity` e lembra-o para o `Tab`.
@@ -188,6 +211,7 @@ impl ModeState {
     pub fn leave(&mut self) -> Option<ActiveMode> {
         self.parts = None;
         self.whole_kind = false;
+        self.release = false;
         self.active.take()
     }
 
@@ -246,16 +270,23 @@ impl ModeState {
                 let remembered = self
                     .published
                     .as_ref()
-                    .and_then(|(e, _)| self.last.get(e).copied())
+                    .and_then(|(e, _, _)| self.last.get(e).copied())
                     .filter(|m| has(*m));
                 match remembered.or_else(|| available.iter().copied().find(|m| has(*m))) {
                     Some(m) => Step::Enter(m),
                     None => Step::Refuse,
                 }
             }
-            ModeRequest::Open(m) if self.current() == m && self.active.is_some() => Step::Stay,
-            ModeRequest::Open(m) if has(m) => Step::Enter(m),
-            ModeRequest::Open(_) => Step::LeaveToDefault,
+            ModeRequest::Open(kind, m) => {
+                let of_kind = self.published.as_ref().is_some_and(|(_, k, _)| *k == kind);
+                if of_kind && self.current() == m && self.active.is_some() {
+                    Step::Stay
+                } else if of_kind && has(m) {
+                    Step::Enter(m)
+                } else {
+                    Step::LeaveToDefault
+                }
+            }
             // O quadro troca-o por `Enter` depois de seleccionar a entidade (`mode_drive::drive`).
             ModeRequest::OpenContent { mode, .. } => self.resolve(ModeRequest::Enter(mode)),
         }
@@ -289,7 +320,7 @@ impl ModeState {
     /// `ButtonState` de cada linha (a acesa é a do modo em curso).
     #[must_use]
     pub fn menu(&self, store: &mut WidgetStore) -> Option<AreaMenu> {
-        let modes = self.published.as_ref().map(|(_, m)| m.clone())?;
+        let modes = self.published.as_ref().map(|(_, _, m)| m.clone())?;
         let current = self.current();
         let rows = modes
             .iter()
@@ -317,55 +348,28 @@ impl ModeState {
     }
 }
 
-/// O que fazer com uma tentativa de mudar a selecção.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Decision {
-    /// Deixa passar.
-    Allow,
-    /// Recusa ([`REFUSAL`]).
-    Refuse,
-}
-
-/// ⭐⭐ **O CADEADO** (escolha 4 do dono: *não trocar*) — a lei, pura. `locked` é a
-/// [`ModeState::locked_entity`] e `parts` as [`ModeState::parts`] dela.
+/// ⭐⭐ **Trocar de objecto sai do modo** (dono 24/10 — revoga o cadeado de 03/10): a lei, pura. `true`
+/// = a escolha de uma porta de selecção é OUTRO objecto e o modo em curso volta a Object.
 ///
-/// - em Object ⇒ nada muda;
-/// - o alvo é a MESMA entidade, ou uma parte dela num modo que edita partes ⇒ passa
-///   (re-seleccionar é um no-op, e recusá-lo ensinaria o artista a ignorar avisos);
-/// - **acrescentar** ⇒ só entre partes; num modo de objecto inteiro recusa, mesmo sobre a própria:
-///   o que o modo não sabe representar é o ESTADO de duas seleccionadas;
-/// - limpar (alvo `None`) ⇒ passa SEM aviso, e o modo continua (escolha do dono 05/10: desseleccionar
-///   não sai do Edit — [`ModeState::still_holds`]);
-/// - outra entidade ⇒ recusa.
+/// - em Object ⇒ nada;
+/// - o alvo é o trancado, ou uma parte DE DENTRO dele (os ossos do esqueleto) ⇒ fica;
+/// - num modo do TIPO ([`ModeState::whole_kind`]) as partes são os outros objectos do tipo ⇒ sai
+///   (*«seja do mesmo tipo ou de outro tipo»*);
+/// - limpar (alvo `None`, `range == false`) ⇒ fica (05/10: desseleccionar não sai do Edit);
+/// - um intervalo da Hierarquia (`range`) apanha linhas que a porta não nomeia ⇒ sai.
 #[must_use]
-pub fn decide(
+pub fn switches(
     locked: Option<u64>,
     parts: Option<&[u64]>,
+    whole_kind: bool,
     target: Option<u64>,
-    additive: bool,
-) -> Decision {
+    range: bool,
+) -> bool {
     let Some(locked) = locked else {
-        return Decision::Allow;
+        return false;
     };
-    let inside = |t: u64| t == locked || parts.is_some_and(|p| p.contains(&t));
-    match target {
-        _ if additive && parts.is_none() => Decision::Refuse,
-        None if !additive => Decision::Allow,
-        Some(t) if inside(t) => Decision::Allow,
-        _ => Decision::Refuse,
-    }
-}
-
-/// A frase da recusa do cadeado — nomeia a SAÍDA (`{mode}` é o modo em curso).
-pub const REFUSAL: TextKey = TextKey::new("object_mode.locked");
-
-/// A recusa já redigida, para o modo em curso.
-#[must_use]
-pub fn refusal(state: &ModeState) -> String {
-    ph2d_i18n::tr_with(
-        REFUSAL.key(),
-        &[("mode", &state.current().label_key().tr())],
-    )
+    let inside = |t: u64| t == locked || (!whole_kind && parts.is_some_and(|p| p.contains(&t)));
+    range || target.is_some_and(|t| !inside(t))
 }
 
 /// ⭐ **O objecto ACTIVO** — o último que o artista acrescentou à selecção (o do Blender, e o que o
@@ -378,7 +382,7 @@ pub fn active_of(selection: Option<u64>, extras: &[u64]) -> Option<u64> {
 /// ⛔ **As ferramentas que um MODO abre, e que por isso NÃO são botão da barra IMG** — dois caminhos
 /// para o mesmo módulo divergem (spec/06 §5). A barra salta-as; os gates de alcance perguntam aqui
 /// por que porta elas chegam.
-pub const TOOLS_OPENED_BY_A_MODE: &[(&str, ObjectMode)] = &[("painter", ObjectMode::Paint)];
+pub const TOOLS_OPENED_BY_A_MODE: &[(&str, ObjectMode)] = &[("painter", ObjectMode::Draw)];
 
 #[cfg(test)]
 #[path = "object_mode_tests.rs"]

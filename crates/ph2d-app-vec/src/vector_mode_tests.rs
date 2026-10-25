@@ -102,7 +102,7 @@ impl Cena {
             .gizmo
             .mode
             .active()
-            .filter(|a| a.mode == ObjectMode::Edit)
+            .filter(|a| a.mode == ObjectMode::Draw)
             .map(|a| a.entity)
     }
     pub(super) fn avisos_de_entrada(&self) -> usize {
@@ -119,9 +119,9 @@ impl Cena {
 /// NASCIMENTO (uma só forma nova, fora de gesto, depois do 1.º quadro).
 #[test]
 fn the_pure_laws() {
-    assert!(holds(ObjectMode::Edit, true, true));
-    assert!(!holds(ObjectMode::Edit, false, true), "outra forma");
-    assert!(!holds(ObjectMode::Edit, true, false), "sem a ferramenta");
+    assert!(holds(ObjectMode::Draw, true, true));
+    assert!(!holds(ObjectMode::Draw, false, true), "outra forma");
+    assert!(!holds(ObjectMode::Draw, true, false), "sem a ferramenta");
     assert!(!holds(ObjectMode::Object, true, true));
     assert!(adopt(true, false));
     assert!(!adopt(true, true), "já seguia");
@@ -210,18 +210,17 @@ fn a_shape_born_without_the_tool_does_not_ask_for_edit() {
     assert_ne!(a, b);
 }
 
-/// ⭐⭐ GATE (dono, 05/10: *«o modo de edição significa que todos os objetos daquele tipo estão em
-/// modo de edição. Ao clicar num objeto de outro tipo, o objeto deve ser selecionado mas em modo
-/// object»*) — **o Edit é do TIPO**: com o Edit numa forma, a outra é parte dele (o cadeado deixa-a
-/// seleccionar e o modo fica); um objecto de OUTRO tipo não é recusado — seleccioná-lo volta a
-/// Object e larga a ferramenta; e o `Tab` de volta deixa a selecção como estava (não todas as formas).
-/// CONTROLO: num modo que não é do tipo (o Paint), o mesmo clique é recusado
-/// (`mode_drive_tests::the_lock_door_refuses_and_says_why`).
-/// (Mutações: `holds_the_whole_kind` = `false` ⇒ o sprite é recusado ⇒ RED; `parts` só com as do
-/// Edit ⇒ a outra forma larga o Edit ⇒ RED.)
+/// ⭐⭐ GATE (dono, 05/10, e 24/10: *«se estamos com um objeto selecionado no modo edit e selecionamos
+/// outro objeto, seja do mesmo tipo ou de outro tipo, o novo objeto selecionado abre […] no modo
+/// object»*) — **o Draw é do TIPO, e ESCOLHER outro objecto sai dele**: a outra forma seleccionada por
+/// uma porta que não é gesto (a forma que passa a outra, o desfazer) é parte do modo e ele fica; o
+/// `Tab` de volta deixa a selecção como estava; escolher a outra forma OU um objecto de outro tipo pela
+/// porta de selecção volta a Object com ele seleccionado e larga a ferramenta.
+/// (Mutações: `holds_the_whole_kind` = `false` ⇒ a outra forma por outra porta larga o modo ⇒ RED;
+/// `switches` sem o ramo do tipo ⇒ escolher a outra forma fica no Draw ⇒ RED.)
 #[test]
-fn the_edit_holds_every_shape_and_another_kind_leaves_it() {
-    use ph2d_editor_core::screens::hero::mode_drive::refused;
+fn the_draw_holds_every_shape_and_choosing_another_object_leaves_it() {
+    use ph2d_editor_core::screens::hero::mode_drive::chosen;
     let mut c = cena();
     let (a, b) = (c.forma(0.0), c.forma(3.0));
     let sprite = c.sim.world_mut().spawn_empty().id().to_bits();
@@ -230,16 +229,12 @@ fn the_edit_holds_every_shape_and_another_kind_leaves_it() {
     c.quadro(Some(ModeRequest::Toggle));
     assert_eq!(c.em_edit(), Some(a));
     assert!(c.hero.gizmo.mode.whole_kind());
-    assert!(
-        !refused(&c.hero, Some(b), false, &mut c.toasts),
-        "a outra forma foi recusada no Edit"
-    );
     c.hero.gizmo.replace_selection(Some(b));
     c.quadro(None);
     assert_eq!(
         c.em_edit(),
         Some(a),
-        "seleccionar a outra forma largou o Edit"
+        "a outra forma por uma porta que não é gesto largou o Draw"
     );
     assert!(c.na_mao());
     c.quadro(Some(ModeRequest::Toggle));
@@ -247,22 +242,26 @@ fn the_edit_holds_every_shape_and_another_kind_leaves_it() {
     assert_eq!(
         (c.hero.gizmo.selection, c.hero.gizmo.selected_len()),
         (Some(b), 1),
-        "sair do Edit mudou a selecção"
+        "sair do Draw mudou a selecção"
     );
     c.quadro(Some(ModeRequest::Toggle));
     assert_eq!(c.em_edit(), Some(b));
-    let avisos = c.toasts.iter().count();
-    assert!(
-        !refused(&c.hero, Some(sprite), false, &mut c.toasts),
-        "o objecto de outro tipo foi recusado"
-    );
-    assert_eq!(c.toasts.iter().count(), avisos, "a escolha deu um aviso");
+    chosen(&mut c.hero, Some(a), false);
+    c.hero.gizmo.replace_selection(Some(a));
+    c.quadro(None);
+    assert_eq!(c.em_edit(), None, "escolher a outra forma ficou no Draw");
+    assert_eq!(c.hero.gizmo.selection, Some(a));
+    assert!(!c.na_mao(), "Object não largou a ferramenta");
+    c.hero.gizmo.replace_selection(Some(b));
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(c.em_edit(), Some(b));
+    chosen(&mut c.hero, Some(sprite), false);
     c.hero.gizmo.replace_selection(Some(sprite));
     c.quadro(None);
     assert_eq!(
         c.em_edit(),
         None,
-        "o objecto de outro tipo não saiu do Edit"
+        "o objecto de outro tipo não saiu do Draw"
     );
     assert_eq!(c.hero.gizmo.selection, Some(sprite));
     assert!(!c.na_mao(), "Object não largou a ferramenta");

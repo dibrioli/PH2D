@@ -3,7 +3,7 @@
 
 use super::*;
 use ph2d_editor_core::object_mode::ModeRequest;
-use ph2d_editor_core::screens::hero::mode_drive::{drive, refused};
+use ph2d_editor_core::screens::hero::mode_drive::{chosen, drive};
 use ph2d_editor_core::toast::ToastQueue;
 
 const A: u64 = 10;
@@ -83,7 +83,7 @@ fn the_image_offers_edit_and_edit_is_the_image_tools() {
     c.quadro(None);
     assert_eq!(
         c.hero.gizmo.mode.available(),
-        [ObjectMode::Object, ObjectMode::Paint, ObjectMode::Edit],
+        [ObjectMode::Object, ObjectMode::Draw, ObjectMode::Edit],
         "o seletor da imagem"
     );
     c.quadro(Some(ModeRequest::Enter(ObjectMode::Edit)));
@@ -102,28 +102,28 @@ fn the_image_offers_edit_and_edit_is_the_image_tools() {
         !c.hero.image_edit.mode_on,
         "Object não desligou as ferramentas de imagem"
     );
-    // CONTROLO do espelho: o Paint da imagem e o Edit de outro tipo não as ligam.
-    c.hero.gizmo.mode.enter(A, ObjectMode::Paint);
+    // CONTROLO do espelho: o Draw da imagem e o Edit de outro tipo não as ligam.
+    c.hero.gizmo.mode.enter(A, ObjectMode::Draw);
     mirror(&mut c.hero, |b| b == A || b == B);
     assert!(
         !c.hero.image_edit.mode_on,
-        "o Paint ligou as ferramentas de imagem"
+        "o Draw ligou as ferramentas de imagem"
     );
     c.hero.gizmo.mode.enter(VEC, ObjectMode::Edit);
     mirror(&mut c.hero, |b| b == A || b == B);
     assert!(
         !c.hero.image_edit.mode_on,
-        "o Edit do vetor ligou as ferramentas de imagem"
+        "o Edit de outro tipo ligou as ferramentas de imagem"
     );
 }
 
 /// ⭐⭐ GATE (dono, 05/10: *«todos os objetos daquele tipo estão em modo de edição. Ao clicar num
 /// objeto de outro tipo, o objeto deve ser selecionado mas em modo object»*) — **o Edit da imagem é
 /// do TIPO**: as duas imagens seleccionadas entram juntas (o *Equalize Sizes* trabalha sobre
-/// várias), a outra imagem não é recusada e não larga o modo; apagar a trancada passa o Edit à
-/// outra; um objecto de outro tipo seleccionado volta a Object e desliga as ferramentas.
-/// (Mutações: `holds_the_whole_kind` = `false` ⇒ a outra imagem é recusada ⇒ RED; o `heir` = `None`
-/// ⇒ apagar a trancada larga o Edit ⇒ RED.)
+/// várias), a outra imagem seleccionada por uma porta que não é gesto não larga o modo; apagar a
+/// trancada passa o Edit à outra; um objecto de outro tipo escolhido volta a Object e desliga as
+/// ferramentas. (Mutações: `holds_the_whole_kind` = `false` ⇒ a outra imagem larga o Edit ⇒ RED; o
+/// `heir` = `None` ⇒ apagar a trancada larga o Edit ⇒ RED.)
 #[test]
 fn the_image_edit_holds_every_image_and_another_kind_leaves_it() {
     let mut c = cena();
@@ -136,10 +136,6 @@ fn the_image_edit_holds_every_image_and_another_kind_leaves_it() {
         2,
         "a outra imagem não entrou junto"
     );
-    assert!(
-        !refused(&c.hero, Some(A), false, &mut c.toasts),
-        "a outra imagem foi recusada"
-    );
     c.hero.gizmo.replace_selection(Some(A));
     c.quadro(None);
     assert_eq!(
@@ -151,10 +147,7 @@ fn the_image_edit_holds_every_image_and_another_kind_leaves_it() {
     c.quadro(None);
     assert_eq!(c.em_edit(), Some(A), "apagar a trancada largou o Edit");
     assert!(c.hero.image_edit.mode_on);
-    assert!(
-        !refused(&c.hero, Some(VEC), false, &mut c.toasts),
-        "o vetor foi recusado"
-    );
+    chosen(&mut c.hero, Some(VEC), false);
     c.hero.gizmo.replace_selection(Some(VEC));
     c.quadro(None);
     assert_eq!(

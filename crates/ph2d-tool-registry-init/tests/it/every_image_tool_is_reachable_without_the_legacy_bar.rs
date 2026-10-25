@@ -101,7 +101,10 @@ fn the_painter_is_reached_by_the_paint_mode_of_an_image() {
     ph2d_editor_core::test_support::ensure_panel_registry();
     install_boot_registry();
     let mut hero = HeroScreen::new(ph2d_a11y::NodeId(1));
-    hero.gizmo.mode.publish(Some(7), &[ObjectMode::Paint]);
+    hero.gizmo.mode.publish(
+        Some((7, ph2d_editor_core::object_mode::ObjectKind::Image)),
+        &[ObjectMode::Draw],
+    );
     let menu = hero.gizmo.mode.menu(&mut hero.store);
     hero.store.publish_mode_menu(menu);
     let mut scene = ph2d_vector::VectorScene::new();
@@ -122,10 +125,10 @@ fn the_painter_is_reached_by_the_paint_mode_of_an_image() {
         .filter_map(|e| e.node_id())
         .collect();
     assert!(
-        rows.contains(&ObjectMode::Paint.row_id()),
+        rows.contains(&ObjectMode::Draw.row_id()),
         "o seletor não oferece o Paint"
     );
-    hero.gizmo.mode.enter(7, ObjectMode::Paint);
+    hero.gizmo.mode.enter(7, ObjectMode::Draw);
     hero.image_edit.active_tool_id = Some("painter");
     assert!(!hero.image_edit.mode_on, "precondição: o IMG desligado");
     assert!(

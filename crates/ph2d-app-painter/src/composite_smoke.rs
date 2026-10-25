@@ -101,7 +101,7 @@ pub fn arm_hero(hero: &mut ph2d_editor_core::HeroScreen, bits: u64) {
     });
     hero.bus.push(EditorAction::ObjectMode(
         ph2d_editor_core::object_mode::ModeRequest::Enter(
-            ph2d_editor_core::object_mode::ObjectMode::Paint,
+            ph2d_editor_core::object_mode::ObjectMode::Draw,
         ),
     ));
     // A foto do seletor (24/10): `PH2D_COMPOSITE_PICKER=1` abre-o FIXADO, ao lado do Inspector. O

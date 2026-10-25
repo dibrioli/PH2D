@@ -4,7 +4,7 @@
 
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{ContextMenuKind, WidgetEvent};
-use ph2d_editor_core::object_mode::{ModeRequest, ObjectMode};
+use ph2d_editor_core::object_mode::{ModeRequest, ObjectKind, ObjectMode};
 use ph2d_editor_core::{HeroScreen, NodeId};
 
 /// O chip abre o seletor; a linha *Paint Mode* chega ao barramento como o pedido que a fase drena,
@@ -13,7 +13,9 @@ use ph2d_editor_core::{HeroScreen, NodeId};
 fn the_chip_opens_the_selector_and_a_row_asks_for_the_mode() {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut hero = HeroScreen::new(NodeId(1));
-    hero.gizmo.mode.publish(Some(7), &[ObjectMode::Paint]);
+    hero.gizmo
+        .mode
+        .publish(Some((7, ObjectKind::Image)), &[ObjectMode::Draw]);
     let menu = hero.gizmo.mode.menu(&mut hero.store);
     hero.store.publish_mode_menu(menu);
 
@@ -26,7 +28,7 @@ fn the_chip_opens_the_selector_and_a_row_asks_for_the_mode() {
         "o chip não abriu o seletor"
     );
     let _ = hero.bus.drain().count();
-    hero.apply_event(WidgetEvent::Click(ph2d_editor_core::ids::OBJECT_MODE_PAINT));
+    hero.apply_event(WidgetEvent::Click(ph2d_editor_core::ids::OBJECT_MODE_DRAW));
     let asked: Vec<ModeRequest> = hero
         .bus
         .drain()
@@ -35,7 +37,7 @@ fn the_chip_opens_the_selector_and_a_row_asks_for_the_mode() {
             _ => None,
         })
         .collect();
-    assert_eq!(asked, vec![ModeRequest::Enter(ObjectMode::Paint)]);
+    assert_eq!(asked, vec![ModeRequest::Enter(ObjectMode::Draw)]);
     assert!(
         hero.store.context_menu().is_none(),
         "o pulldown ficou aberto"
@@ -60,9 +62,10 @@ fn every_mode_row_is_registered() {
 fn the_last_row_of_a_two_mode_family_asks_for_its_mode() {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut hero = HeroScreen::new(NodeId(1));
-    hero.gizmo
-        .mode
-        .publish(Some(9), &[ObjectMode::Draw, ObjectMode::Edit]);
+    hero.gizmo.mode.publish(
+        Some((9, ObjectKind::Flip)),
+        &[ObjectMode::Draw, ObjectMode::Edit],
+    );
     let menu = hero.gizmo.mode.menu(&mut hero.store);
     assert_eq!(
         menu.as_ref().map(|m| m.faces.clone()),
@@ -92,7 +95,9 @@ fn the_last_row_of_a_two_mode_family_asks_for_its_mode() {
 fn image_selected() -> HeroScreen {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut hero = HeroScreen::new(NodeId(1));
-    hero.gizmo.mode.publish(Some(7), &[ObjectMode::Paint]);
+    hero.gizmo
+        .mode
+        .publish(Some((7, ObjectKind::Image)), &[ObjectMode::Draw]);
     let menu = hero.gizmo.mode.menu(&mut hero.store);
     hero.store.publish_mode_menu(menu);
     hero

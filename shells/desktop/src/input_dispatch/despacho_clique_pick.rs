@@ -193,24 +193,10 @@ impl crate::App {
             // (group translate via the clicked sprite as
             // pivot, Onda 1).
             let is_modifier_click = picked.is_some() && (shift_held || cmd_held);
-            // **O CADEADO DO MODO, na porta do CANVAS** (Enio, 2026-08-19; do modo desde a
-            // F2 do spec/06). Num modo de criação, um clique noutro objecto não o troca —
-            // e um clique com modificador não abre uma segunda seleção.
-            //
-            // ⚠️ Sai por `picked = None` em vez de por um `return`: o resto deste ramo
-            // é o caminho do **clique vazio**, que limpa e não seleciona outra — a lei
-            // permite-o de propósito (recusar faria o `Esc` e o canvas parecerem
-            // partidos). *Recusar a troca não é recusar o clique.*
-            let refused = ph2d_editor_core::screens::hero::mode_drive::refused;
-            let picked = match picked {
-                Some(bits)
-                    if refused(hero, Some(bits), cmd_held || shift_held, &mut gfx.toasts) =>
-                {
-                    self.pending_ui_sound = Some(crate::ui_sound::UiSound::Refuse);
-                    None
-                }
-                other => other,
-            };
+            // **Num modo de criação, escolher OUTRO objecto sai para Object** (dono 24/10).
+            if picked.is_some() {
+                ph2d_editor_core::screens::hero::mode_drive::chosen(hero, picked, false);
+            }
             if let Some(bits) = picked {
                 if cmd_held || shift_held {
                     // Onda 1: unify Shift + Cmd as toggle on
@@ -388,6 +374,13 @@ impl crate::App {
             let bare_click = !(self.modifiers.shift_key()
                 || self.modifiers.super_key()
                 || self.modifiers.control_key());
+            // Num modo de criação só o de CIMA: nem o ciclo nem a preferência pela seleção.
+            if ph2d_editor_core::screens::hero::mode_drive::picks_only_the_top(hero) {
+                self.cycle_pick_hits.clear();
+                let picked = hits.first().copied();
+                self.ramo_gizmo_pick_selecao(evt, picked, world_pos);
+                return;
+            }
             let cycle_start = if bare_click {
                 crate::pick_order::start_on_selection(
                     &mut hits,

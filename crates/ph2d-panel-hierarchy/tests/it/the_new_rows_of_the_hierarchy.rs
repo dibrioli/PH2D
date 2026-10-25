@@ -43,7 +43,7 @@ fn heroi() -> HierarchyEntity {
             label_key: "hier_rows.content.layers",
             icon: IconId::Layers,
             item_icon: IconId::Layer,
-            opens: ph2d_editor_core::hier_rows::ContentOpens::Mode(ObjectMode::Paint),
+            opens: ph2d_editor_core::hier_rows::ContentOpens::Mode(ObjectMode::Draw),
             items: vec![
                 ContentItem {
                     key: 11,
@@ -152,7 +152,7 @@ fn o_conteudo_nasce_recolhido_e_a_peca_abre_o_modo_com_ela() {
     assert!(
         actions.contains(&EditorAction::Hierarchy(HierRequest::OpenContent {
             owner: HEROI,
-            mode: ObjectMode::Paint,
+            mode: ObjectMode::Draw,
             key: 11,
         })),
         "a camada clicada não pediu o Paint com ela: {actions:?}"

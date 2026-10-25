@@ -68,6 +68,7 @@ fn the_tab_titles_are_distinct_and_short() {
 #[test]
 fn no_two_layouts_hand_the_canvas_to_the_same_owner() {
     let mut seen = std::collections::BTreeSet::new();
+    let mut seen_modes = std::collections::BTreeSet::new();
     let mut modal = 0usize;
     for l in TaskLayout::ALL {
         match l.spec().canvas {
@@ -76,11 +77,12 @@ fn no_two_layouts_hand_the_canvas_to_the_same_owner() {
                 modal += 1;
                 assert!(seen.insert(t), "dois layouts pegam na ferramenta {t:?}");
             }
-            CanvasOwner::Mode(m) => {
+            // O `Draw` é de três tipos (dono 24/10): o dono do canvas é o PAR.
+            CanvasOwner::Mode(k, m) => {
                 modal += 1;
                 assert!(
-                    seen.insert(m.label_key().key()),
-                    "dois layouts pedem o modo {m:?}"
+                    seen_modes.insert((k, m)),
+                    "dois layouts pedem o modo {m:?} de {k:?}"
                 );
             }
         }

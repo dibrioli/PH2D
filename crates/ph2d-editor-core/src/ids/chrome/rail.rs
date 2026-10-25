@@ -71,8 +71,6 @@ pub const MAX_AREA_MENUS: u32 = 4;
 /// a tabela id↔modo é `ObjectMode::row_id`.
 pub const OBJECT_MODE_OBJECT: NodeId = hash_node_id("object_mode.row.object");
 /// Ver [`OBJECT_MODE_OBJECT`].
-pub const OBJECT_MODE_PAINT: NodeId = hash_node_id("object_mode.row.paint");
-/// Ver [`OBJECT_MODE_OBJECT`].
 pub const OBJECT_MODE_DRAW: NodeId = hash_node_id("object_mode.row.draw");
 /// Ver [`OBJECT_MODE_OBJECT`].
 pub const OBJECT_MODE_EDIT: NodeId = hash_node_id("object_mode.row.edit");

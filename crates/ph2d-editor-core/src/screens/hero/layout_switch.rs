@@ -37,8 +37,8 @@ use crate::tool_activation::activation_gate;
 pub fn apply(hero: &mut HeroScreen, layout: TaskLayout) {
     match arrange(hero, layout) {
         CanvasOwner::Tool(tool_id) => hero.bus.push(EditorAction::ActivateTool { tool_id }),
-        CanvasOwner::Mode(mode) => hero.bus.push(EditorAction::ObjectMode(
-            crate::object_mode::ModeRequest::Open(mode),
+        CanvasOwner::Mode(kind, mode) => hero.bus.push(EditorAction::ObjectMode(
+            crate::object_mode::ModeRequest::Open(kind, mode),
         )),
     }
 }

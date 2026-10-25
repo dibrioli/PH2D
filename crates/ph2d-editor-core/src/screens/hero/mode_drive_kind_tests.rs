@@ -47,12 +47,11 @@ impl ModeFamily for KindFamily {
 
 /// ⭐⭐ GATE (dono, 05/10: *«o modo de edição significa que todos os objetos daquele tipo estão em
 /// modo de edição. Ao clicar num objeto de outro tipo, o objeto deve ser selecionado mas em modo
-/// object»*) — **um modo do TIPO**, no quadro da fundação: o cadeado não recusa nada (nem a outra
-/// forma nem a imagem, e sem aviso); a outra forma seleccionada não larga o modo; o `Tab` de volta
-/// deixa a selecção como estava; a forma que NASCE num Edit re-tranca-o sem repetir o aviso; a
-/// trancada que MORRE passa o modo à herdeira sem tocar a selecção; e a imagem seleccionada volta a
-/// Object. CONTROLO: num modo que não é do tipo o cadeado recusa
-/// (`the_lock_door_refuses_and_says_why`, `a_mode_that_joins_takes_the_selected_of_the_same_kind`).
+/// object»*) — **um modo do TIPO**, no quadro da fundação: a outra forma seleccionada por uma porta
+/// que não é gesto não larga o modo; o `Tab` de volta deixa a selecção como estava; a forma que NASCE
+/// num modo re-tranca-o sem repetir o aviso; a trancada que MORRE passa o modo à herdeira sem tocar a
+/// selecção; a imagem seleccionada volta a Object; e ⭐ (dono 24/10) ESCOLHER outra forma do mesmo
+/// tipo também volta a Object, com ela seleccionada.
 #[test]
 fn a_mode_of_the_whole_kind_never_locks_and_hands_itself_on() {
     let mut c = cena();
@@ -82,16 +81,6 @@ fn a_mode_of_the_whole_kind_never_locks_and_hands_itself_on() {
     quadro(&mut c, &mut fam, Some(ModeRequest::Toggle));
     assert_eq!(locked(&c), Some(VEC_A));
     assert!(c.hero.gizmo.mode.whole_kind());
-    let avisos = c.toasts.iter().count();
-    assert!(
-        !refused(&c.hero, Some(VEC_B), true, &mut c.toasts),
-        "a outra forma"
-    );
-    assert!(
-        !refused(&c.hero, Some(IMG), false, &mut c.toasts),
-        "a imagem"
-    );
-    assert_eq!(c.toasts.iter().count(), avisos, "o cadeado avisou");
     c.hero.gizmo.replace_selection(Some(VEC_B));
     quadro(&mut c, &mut fam, None);
     assert_eq!(locked(&c), Some(VEC_A), "a outra forma largou o modo");
@@ -127,4 +116,16 @@ fn a_mode_of_the_whole_kind_never_locks_and_hands_itself_on() {
     quadro(&mut c, &mut fam, None);
     assert_eq!(locked(&c), None, "a imagem não voltou a Object");
     assert_eq!(c.hero.gizmo.selection, Some(IMG));
+    c.hero.gizmo.replace_selection(Some(VEC_B));
+    quadro(&mut c, &mut fam, Some(ModeRequest::Toggle));
+    assert_eq!(locked(&c), Some(VEC_B));
+    chosen(&mut c.hero, Some(VEC_A), false);
+    c.hero.gizmo.replace_selection(Some(VEC_A));
+    quadro(&mut c, &mut fam, None);
+    assert_eq!(
+        locked(&c),
+        None,
+        "escolher outra forma do mesmo tipo ficou no modo"
+    );
+    assert_eq!(c.hero.gizmo.selection, Some(VEC_A), "a escolha perdeu-se");
 }

@@ -8,13 +8,13 @@ const OTHER: u64 = 9;
 
 fn image_selected() -> ModeState {
     let mut s = ModeState::default();
-    s.publish(Some(IMG), &[ObjectMode::Paint]);
+    s.publish(Some((IMG, ObjectKind::Image)), &[ObjectMode::Draw]);
     s
 }
 
 fn object_only_selected() -> ModeState {
     let mut s = ModeState::default();
-    s.publish(Some(OTHER), &[]);
+    s.publish(Some((OTHER, ObjectKind::Empty)), &[]);
     s
 }
 
@@ -24,7 +24,7 @@ fn the_selector_faces_are_the_modes_of_the_active_type() {
     crate::test_support::ensure_panel_registry();
     let mut store = WidgetStore::default();
     let menu = image_selected().menu(&mut store).expect("há activo");
-    assert_eq!(menu.faces, vec!["Object Mode", "Paint Mode"]);
+    assert_eq!(menu.faces, vec!["Object Mode", "Draw Mode"]);
     assert_eq!(menu.face, "Object Mode");
     let ids: Vec<_> = menu
         .rows
@@ -33,10 +33,7 @@ fn the_selector_faces_are_the_modes_of_the_active_type() {
         .collect();
     assert_eq!(
         ids,
-        vec![
-            crate::ids::OBJECT_MODE_OBJECT,
-            crate::ids::OBJECT_MODE_PAINT
-        ]
+        vec![crate::ids::OBJECT_MODE_OBJECT, crate::ids::OBJECT_MODE_DRAW]
     );
 }
 
@@ -55,9 +52,9 @@ fn a_mode_the_type_does_not_have_does_not_appear() {
 #[test]
 fn the_face_reads_the_current_mode() {
     let mut s = image_selected();
-    s.enter(IMG, ObjectMode::Paint);
+    s.enter(IMG, ObjectMode::Draw);
     let mut store = WidgetStore::default();
-    assert_eq!(s.menu(&mut store).expect("activo").face, "Paint Mode");
+    assert_eq!(s.menu(&mut store).expect("activo").face, "Draw Mode");
 }
 
 /// ⭐ GATE — `Tab` ida e volta: Object → o modo do tipo → Object → o MESMO modo outra vez.
@@ -66,15 +63,15 @@ fn tab_goes_there_and_back() {
     let mut s = image_selected();
     assert_eq!(
         s.resolve(ModeRequest::Toggle),
-        Step::Enter(ObjectMode::Paint)
+        Step::Enter(ObjectMode::Draw)
     );
-    s.enter(IMG, ObjectMode::Paint);
+    s.enter(IMG, ObjectMode::Draw);
     assert_eq!(s.resolve(ModeRequest::Toggle), Step::Leave);
     s.leave();
     assert_eq!(s.current(), ObjectMode::Object);
     assert_eq!(
         s.resolve(ModeRequest::Toggle),
-        Step::Enter(ObjectMode::Paint)
+        Step::Enter(ObjectMode::Draw)
     );
 }
 
@@ -100,17 +97,17 @@ fn the_selector_rows_resolve() {
         Step::Stay
     );
     assert_eq!(
-        s.resolve(ModeRequest::Enter(ObjectMode::Paint)),
-        Step::Enter(ObjectMode::Paint)
+        s.resolve(ModeRequest::Enter(ObjectMode::Draw)),
+        Step::Enter(ObjectMode::Draw)
     );
-    s.enter(IMG, ObjectMode::Paint);
-    assert_eq!(s.resolve(ModeRequest::Enter(ObjectMode::Paint)), Step::Stay);
+    s.enter(IMG, ObjectMode::Draw);
+    assert_eq!(s.resolve(ModeRequest::Enter(ObjectMode::Draw)), Step::Stay);
     assert_eq!(
         s.resolve(ModeRequest::Enter(ObjectMode::Object)),
         Step::Leave
     );
     assert_eq!(
-        object_only_selected().resolve(ModeRequest::Enter(ObjectMode::Paint)),
+        object_only_selected().resolve(ModeRequest::Enter(ObjectMode::Draw)),
         Step::Refuse
     );
 }
@@ -120,15 +117,15 @@ fn the_selector_rows_resolve() {
 #[test]
 fn a_layout_asks_for_a_mode_only_the_active_can_give() {
     assert_eq!(
-        image_selected().resolve(ModeRequest::Open(ObjectMode::Paint)),
-        Step::Enter(ObjectMode::Paint)
+        image_selected().resolve(ModeRequest::Open(ObjectKind::Image, ObjectMode::Draw)),
+        Step::Enter(ObjectMode::Draw)
     );
     assert_eq!(
-        object_only_selected().resolve(ModeRequest::Open(ObjectMode::Paint)),
+        object_only_selected().resolve(ModeRequest::Open(ObjectKind::Image, ObjectMode::Draw)),
         Step::LeaveToDefault
     );
     assert_eq!(
-        ModeState::default().resolve(ModeRequest::Open(ObjectMode::Paint)),
+        ModeState::default().resolve(ModeRequest::Open(ObjectKind::Image, ObjectMode::Draw)),
         Step::LeaveToDefault
     );
 }
@@ -141,7 +138,7 @@ fn the_mode_holds_only_its_own_entity() {
         s.still_holds(None, &[], false),
         "em Object não há nada a segurar"
     );
-    s.enter(IMG, ObjectMode::Paint);
+    s.enter(IMG, ObjectMode::Draw);
     assert!(s.still_holds(Some(IMG), &[], true));
     assert!(
         !s.still_holds(Some(OTHER), &[], true),
@@ -158,23 +155,72 @@ fn the_mode_holds_only_its_own_entity() {
     assert!(!s.still_holds(Some(IMG), &[], false), "o módulo largou-a");
 }
 
-/// ⭐ GATE — o cadeado: em Object tudo passa; num modo, só a própria entidade e o limpar.
+/// ⭐⭐ GATE (dono 24/10) — escolher OUTRO objecto num modo sai dele; o próprio e o limpar ficam; em
+/// Object nada sai.
 #[test]
-fn the_lock_refuses_another_object_in_a_creation_mode() {
-    assert_eq!(decide(None, None, Some(OTHER), false), Decision::Allow);
-    assert_eq!(decide(None, None, Some(OTHER), true), Decision::Allow);
-    assert_eq!(
-        decide(Some(IMG), None, Some(OTHER), false),
-        Decision::Refuse
+fn choosing_another_object_in_a_creation_mode_leaves_it() {
+    assert!(
+        !switches(None, None, false, Some(OTHER), false),
+        "em Object"
     );
-    assert_eq!(decide(Some(IMG), None, Some(IMG), false), Decision::Allow);
-    assert_eq!(decide(Some(IMG), None, Some(IMG), true), Decision::Refuse);
-    assert_eq!(decide(Some(IMG), None, Some(OTHER), true), Decision::Refuse);
-    assert_eq!(decide(Some(IMG), None, None, false), Decision::Allow);
+    assert!(
+        !switches(None, None, false, None, true),
+        "em Object, intervalo"
+    );
+    assert!(switches(Some(IMG), None, false, Some(OTHER), false));
+    assert!(
+        !switches(Some(IMG), None, false, Some(IMG), false),
+        "o próprio"
+    );
+    assert!(
+        !switches(Some(IMG), None, false, None, false),
+        "limpar não sai (05/10)"
+    );
+    assert!(
+        switches(Some(IMG), None, false, None, true),
+        "um intervalo da Hierarquia"
+    );
 }
 
-/// ⭐ GATE — num modo que edita PARTES (o Edit do vetor, spec/06 F3) a selecção pode ser qualquer
-/// parte, várias, ou nenhuma; outro objecto continua a derrubar o modo e a ser recusado.
+/// ⭐ O pedido de troca é consumido UMA vez, e só existe num modo.
+#[test]
+fn the_release_is_taken_once_and_only_in_a_mode() {
+    let mut s = image_selected();
+    s.ask_release();
+    assert!(!s.take_release(), "em Object não há o que largar");
+    s.enter(IMG, ObjectMode::Draw);
+    s.ask_release();
+    assert!(s.take_release());
+    assert!(!s.take_release(), "consumido");
+    s.ask_release();
+    s.leave();
+    assert!(!s.take_release(), "sair esquece o pedido");
+}
+
+/// ⭐ GATE — a aba pede o modo de UM tipo: o `Draw` é de três, e a aba do Flip não abre o Painter
+/// numa imagem.
+#[test]
+fn a_layout_asks_for_the_mode_of_one_kind() {
+    assert_eq!(
+        image_selected().resolve(ModeRequest::Open(ObjectKind::Flip, ObjectMode::Draw)),
+        Step::LeaveToDefault
+    );
+    let mut s = image_selected();
+    s.enter(IMG, ObjectMode::Draw);
+    assert_eq!(
+        s.resolve(ModeRequest::Open(ObjectKind::Image, ObjectMode::Draw)),
+        Step::Stay
+    );
+    assert_eq!(
+        s.resolve(ModeRequest::Open(ObjectKind::Flip, ObjectMode::Draw)),
+        Step::LeaveToDefault,
+        "o Draw em curso é da imagem, não do Flip"
+    );
+}
+
+/// ⭐ GATE — num modo que edita PARTES (os ossos do esqueleto) a selecção pode ser qualquer parte,
+/// várias, ou nenhuma; outro objecto derruba o modo. Num modo do TIPO (o Draw do vetor) as partes são
+/// os outros objectos do tipo, e escolher um deles sai (dono 24/10).
 #[test]
 fn a_mode_of_parts_holds_and_admits_its_parts_only() {
     const PART: u64 = 77;
@@ -198,18 +244,16 @@ fn a_mode_of_parts_holds_and_admits_its_parts_only() {
     );
     assert!(!s.still_holds(Some(PART), &[], false), "o módulo largou-a");
     let parts = Some([PART, PART2].as_slice());
-    assert_eq!(decide(Some(IMG), parts, Some(PART), false), Decision::Allow);
-    assert_eq!(decide(Some(IMG), parts, Some(PART2), true), Decision::Allow);
-    assert_eq!(
-        decide(Some(IMG), parts, Some(OTHER), false),
-        Decision::Refuse
+    assert!(
+        !switches(Some(IMG), parts, false, Some(PART), false),
+        "uma parte de dentro"
     );
-    assert_eq!(
-        decide(Some(IMG), parts, Some(OTHER), true),
-        Decision::Refuse
+    assert!(switches(Some(IMG), parts, false, Some(OTHER), false));
+    assert!(!switches(Some(IMG), parts, false, None, false));
+    assert!(
+        switches(Some(IMG), parts, true, Some(PART), false),
+        "num modo do TIPO a «parte» é outro objecto"
     );
-    assert_eq!(decide(Some(IMG), parts, None, true), Decision::Refuse);
-    assert_eq!(decide(Some(IMG), parts, None, false), Decision::Allow);
     s.leave();
     assert_eq!(s.parts(), None, "sair esquece as partes");
 }
@@ -219,7 +263,7 @@ fn a_mode_of_parts_holds_and_admits_its_parts_only() {
 fn the_locked_entity_is_the_one_in_the_mode() {
     let mut s = image_selected();
     assert_eq!(s.locked_entity(), None);
-    s.enter(IMG, ObjectMode::Paint);
+    s.enter(IMG, ObjectMode::Draw);
     assert_eq!(s.locked_entity(), Some(IMG));
     s.leave();
     assert_eq!(s.locked_entity(), None);
@@ -241,8 +285,8 @@ fn every_row_maps_back_to_its_mode() {
         Some(ObjectMode::Object)
     );
     assert_eq!(
-        ObjectMode::of_row(crate::ids::OBJECT_MODE_PAINT),
-        Some(ObjectMode::Paint)
+        ObjectMode::of_row(crate::ids::OBJECT_MODE_DRAW),
+        Some(ObjectMode::Draw)
     );
     assert_eq!(ObjectMode::of_row(crate::ids::TOOL_BAR_OVERFLOW), None);
 }

@@ -50,9 +50,9 @@ const TABLETS: [(&str, f32, f32); 3] = [
 /// Os rótulos das linhas da fixtura — chaves REAIS (HR-15), cuja escolha não pesa na lei.
 const ROTULOS: [&str; 4] = [
     "object_mode.object",
-    "object_mode.paint",
     "object_mode.draw",
     "object_mode.edit",
+    "object_mode.pose",
 ];
 
 /// As fileiras da fixtura: `(família, quantas linhas)`. O pulldown 0 tem a `vista`; o 1 tem TRÊS

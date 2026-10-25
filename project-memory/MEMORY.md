@@ -20,6 +20,7 @@
 - [Enio (dibrioli): dono/decisor; o dev é a LLM · ⛔ SEMPRE PT-BR](user_role.md)
 - ⭐ [Dono decidiu (06/10): o PH2D TERÁ versão no navegador, mas NÃO agora — 1.º degrau: AVIF fora do `wasm32`](project_web_shell_decided_by_owner_2026_10_06.md)
 - ⭐ [Editor de scripts Luau (15/10): script DENTRO do projeto · `luau-lsp` empacotado · IA só no FIM · arrastar objetos para o código](project_code_editor_owner_decisions_2026_10_15.md)
+- ⭐ [Modos (24/10): Paint e o Edit do vetor → Draw · trocar de objecto num modo volta a Object (sem cadeado) · só o de cima · Inspector à frente](project_modes_share_names_and_switching_object_leaves_2026_10_24.md)
 - ⭐ [Biblioteca de macros (23/10): a macro é um OBJECTO (Add ▸ Macro) · por cima = tamanho original onde o gizmo está · mundo = W19](project_macro_library_owner_decisions_2026_10_23.md)
 - [Onde mora cada coisa — tabela verificada](reference_canonical_files.md)
 - [GPU tests headless (evidência velha Mac/Metal)](reference_gpu_tests_run_headless_metal.md)

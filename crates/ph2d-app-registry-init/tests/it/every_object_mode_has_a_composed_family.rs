@@ -94,10 +94,12 @@ fn the_composed_families_declare_every_creation_mode() {
     // sai do PH2D (ADR-0179): (Sculpt3D, Sculpt), (Sculpt3D, Paint) e (Model3D, Edit).
     use ph2d_component_desc::ObjectKind as K;
     let d6 = [
-        (K::Image, ObjectMode::Paint),
+        (K::Image, ObjectMode::Draw),
         (K::Flip, ObjectMode::Draw),
         (K::Flip, ObjectMode::Edit),
-        (K::Vector, ObjectMode::Edit),
+        // ⚠️ 2026-10-24: o Paint da imagem e o Edit do vetor passam a Draw (dono): o mesmo nome diz
+        // o mesmo gesto. Os pares continuam 6; o vocabulário perde o `Paint`.
+        (K::Vector, ObjectMode::Draw),
         // ⚠️ 2026-10-05: `4` -> `6` pares, delta +2 — o esqueleto (A14): Edit e Pose.
         (K::Skeleton, ObjectMode::Edit),
         (K::Skeleton, ObjectMode::Pose),

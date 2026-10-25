@@ -118,10 +118,10 @@ fn nenhuma_face_de_pulldown_da_fila_e_cortada() {
                 store.set_rail_button_size(size);
                 store.set_tool_space_local(local);
                 store.set_tool_view_mode(view);
-                for face in ["object_mode.object", "object_mode.paint"] {
+                for face in ["object_mode.object", "object_mode.pose"] {
                     store.set_area_commands(
                         vec![
-                            area(face, &["object_mode.object", "object_mode.paint"]),
+                            area(face, &["object_mode.object", "object_mode.pose"]),
                             area(
                                 "object_mode.edit",
                                 &["object_mode.draw", "object_mode.edit"],

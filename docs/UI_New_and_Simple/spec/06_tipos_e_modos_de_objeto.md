@@ -172,8 +172,11 @@ Sculpt · Draw · Edit.
 - **Entrar num modo = abrir o módulo SOBRE aquela entidade:** as ferramentas, os painéis e a
   vista do módulo. **Sair** volta a Object e o módulo larga a entidade.
 - **Seleccionar noutro objecto:**
-  - em Object, muda o activo e o Inspector mostra o que é dele (o contexto leve da Godot);
-  - num modo de criação, é recusado (o cadeado).
+  - em Object, muda o activo e o Inspector mostra o que é dele (o contexto leve da Godot) — e vem
+    à FRENTE do seu encaixe (dono 24/10);
+  - ⭐ num modo de criação, **selecciona-o e volta a Object**, seja do mesmo tipo ou de outro (dono
+    24/10 — ⛔ o cadeado de 03/10 saiu); no canvas, só o objecto de CIMA é escolhível nesse modo.
+    Lei e porquê: [`GameEngineFuncional/01_W1`](../../GameEngineFuncional/01_W1_modos_selecao_inspector.md).
 - ⭐ **O tipo continua derivado.** O `ModoActivo` guarda a ENTIDADE, nunca o tipo: o tipo
   pergunta-se ao marcador, e assim não há duas respostas para «que objecto é este».
 
@@ -191,9 +194,13 @@ sozinho (§6.5).
 |---|---|---|
 | qualquer | **Object** (mover · rodar · escalar) | gizmo de transformação |
 | ~~Sculpt (malha) · Model (SDF)~~ | ⛔ saíram com o 3D (ADR-0179, 05/10) | — |
-| Vector (a forma) | Object · **Edit** ✅ — cada forma é um objecto (F3 ▸ Vector, 2.ª volta, 05/10) | `ph2d-app-vec` (o Edit tem o painel inteiro; criar = *Add ▸ Vector Drawing*, nada nasce até ao 1.º traço) |
+| Vector (a forma) | Object · **Draw** ✅ — cada forma é um objecto (F3 ▸ Vector, 2.ª volta, 05/10; era *Edit* até 24/10) | `ph2d-app-vec` (o Draw tem o painel inteiro; criar = *Add ▸ Vector Drawing*, nada nasce até ao 1.º traço) |
 | Flip | Object · **Draw** · **Edit** | `ph2d-app-flip` |
-| Image | Object · **Paint** · **Edit** (as ferramentas de imagem, 05/10; ⛔ o Mask foi retirado pelo dono, 04/10) | `ph2d-app-painter` |
+| Image | Object · **Draw** (o Painter; era *Paint* até 24/10) · **Edit** (as ferramentas de imagem, 05/10; ⛔ o Mask foi retirado pelo dono, 04/10) | `ph2d-app-painter` |
+
+⭐ **O mesmo nome diz o mesmo gesto** (dono 24/10): `Draw` cria o conteúdo do objecto, `Edit` mexe no
+que existe. O `ObjectMode::Paint` saiu do vocabulário; a aba de cima pede o modo de UM tipo
+(`CanvasOwner::Mode(kind, mode)`), porque o `Draw` é de três.
 | Câmara, corpo de física, áudio, HUD… | **só Object** | Inspector |
 
 ⛔ O `Paint` do vetor fica FORA: a feature não existe (D6, correcção 2).
@@ -449,7 +456,7 @@ a 04/10; a recomendação de uma `line/ObjectModes` à parte não se seguiu).
 |---|---|
 | 1 | **modo da imagem** |
 | 3 | **sim, nos dois sítios** (`+` e Shift+A / botão direito) |
-| 4 | **não trocar** (o cadeado ligado) |
+| 4 | **não trocar** (o cadeado ligado) — ⛔ **REVOGADA em 24/10:** escolher outro objecto num modo selecciona-o e volta a Object |
 | 6 | **sim, grupo «Jogo»** |
 | — | ⭐ **o `+` abre um MODAL como o *Add shape…* do Modeling** (pedido a seguir ao plano, §3.1) |
 

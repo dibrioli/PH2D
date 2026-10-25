@@ -112,7 +112,7 @@ fn painting_one_image_leaves_the_other_untouched() {
         .expect("imagem");
     c.hero.gizmo.replace_selection(Some(a));
     c.hero.gizmo.add_to_selection(b);
-    c.quadro(Some(ModeRequest::Enter(ObjectMode::Paint)));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Draw)));
     assert!(c.painter_na_mao(), "o modo não abriu o Painter");
     assert!(holds_an_image(&mut c.tools));
     assert_eq!(
@@ -142,7 +142,7 @@ fn tab_opens_the_painter_and_gives_the_canvas_back() {
     c.quadro(None);
     assert_eq!(
         c.hero.gizmo.mode.current(),
-        ObjectMode::Paint,
+        ObjectMode::Draw,
         "não se segurou"
     );
     // Dono, 06/10: *«melhor deixar o gizmo invisível no paint mode»* (o pincel ganha-lhe o clique).
@@ -206,10 +206,10 @@ fn a_layer_asked_before_the_paint_left_is_not_opened_later() {
     let (baixo, cima) = a_guardada_com_duas_camadas(&mut c, a, b);
     c.quadro(Some(ModeRequest::OpenContent {
         entity: a,
-        mode: ObjectMode::Paint,
+        mode: ObjectMode::Draw,
         key: baixo,
     }));
-    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Paint);
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Draw);
     c.quadro(Some(ModeRequest::Toggle));
     assert_eq!(
         c.hero.gizmo.mode.current(),
@@ -236,7 +236,7 @@ fn binding_another_image_drops_the_layer_asked_of_the_first() {
     let (baixo, cima) = a_guardada_com_duas_camadas(&mut c, a, b);
     c.quadro(Some(ModeRequest::OpenContent {
         entity: a,
-        mode: ObjectMode::Paint,
+        mode: ObjectMode::Draw,
         key: baixo,
     }));
     let px = || vec![255u8; 4 * 4 * 4];
@@ -258,7 +258,7 @@ fn the_layer_asked_is_opened_when_its_image_binds() {
     let (baixo, _) = a_guardada_com_duas_camadas(&mut c, a, b);
     c.quadro(Some(ModeRequest::OpenContent {
         entity: a,
-        mode: ObjectMode::Paint,
+        mode: ObjectMode::Draw,
         key: baixo,
     }));
     let px = vec![255u8; 4 * 4 * 4];

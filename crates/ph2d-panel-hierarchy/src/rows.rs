@@ -225,7 +225,7 @@ mod tests {
             label_key: "hier_rows.content.layers",
             icon: IconId::Layers,
             item_icon: IconId::Layer,
-            opens: ph2d_editor_core::hier_rows::ContentOpens::Mode(ObjectMode::Paint),
+            opens: ph2d_editor_core::hier_rows::ContentOpens::Mode(ObjectMode::Draw),
             items: vec![ContentItem {
                 key: 7,
                 name: "Tinta".into(),

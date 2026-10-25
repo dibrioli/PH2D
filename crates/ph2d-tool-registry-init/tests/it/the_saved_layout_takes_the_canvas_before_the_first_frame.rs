@@ -145,7 +145,7 @@ fn clicking_a_layout_tab_still_requests_its_tool() {
         let esperado: Vec<&str> = match l.spec().canvas {
             CanvasOwner::Tool(id) => vec![id],
             // Um MODO (spec/06 §3.3) não pede ferramenta.
-            CanvasOwner::Mode(_) => vec![],
+            CanvasOwner::Mode(..) => vec![],
         };
         assert_eq!(pedidos_de_ferramenta(&h), esperado, "{l:?}");
     }

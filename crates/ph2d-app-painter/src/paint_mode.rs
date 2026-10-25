@@ -1,9 +1,9 @@
-//! ⭐⭐ **IMAGE ▸ PAINT** — o modo que esta família declara e como ele abre e larga o Painter sobre a
-//! imagem activa (spec/06 F2 + a F3 da Imagem; D6: *imagem → Object · Paint*).
+//! ⭐⭐ **IMAGE ▸ DRAW** — o modo que esta família declara e como ele abre e larga o Painter sobre a
+//! imagem activa (spec/06 F2 + a F3 da Imagem; D6: *imagem → Object · Draw*, era *Paint* até 24/10).
 //!
 //! O Painter já é «o desta entidade» (`PainterTool::bound_doc` = a selecção): entrar no modo é pôr
-//! o Painter em mãos com a selecção colapsada ao activo (`screens::hero::mode_drive`), e o cadeado
-//! da selecção (`ph2d_editor_core::object_mode::decide`) guarda-a lá enquanto o modo durar.
+//! o Painter em mãos com a selecção colapsada ao activo (`screens::hero::mode_drive`); escolher
+//! outro objecto volta a Object (`ph2d_editor_core::object_mode::switches`).
 //!
 //! ⚠️ **A porta do IMG não se aplica aqui:** o modo É a porta do Painter. O botão dele saiu da
 //! barra IMG na mesma fase (dois caminhos para o mesmo módulo divergem — spec/06 §5).
@@ -23,7 +23,7 @@ pub struct Family;
 
 impl ModeFamily for Family {
     fn modes(&self) -> &'static [(ObjectKind, ObjectMode)] {
-        &[(ObjectKind::Image, ObjectMode::Paint)]
+        &[(ObjectKind::Image, ObjectMode::Draw)]
     }
     fn holds(&mut self, _: ObjectMode, _: u64, tools: &mut ToolRegistry) -> bool {
         holds_an_image(tools)
@@ -46,7 +46,7 @@ impl ModeFamily for Family {
                     label_key: "hier_rows.content.layers",
                     icon: IconId::Layers,
                     item_icon: IconId::Layer,
-                    opens: ph2d_editor_core::hier_rows::ContentOpens::Mode(ObjectMode::Paint),
+                    opens: ph2d_editor_core::hier_rows::ContentOpens::Mode(ObjectMode::Draw),
                     items,
                 });
             }
@@ -155,7 +155,7 @@ pub fn smoke_step(
     if stage == 2 {
         STAGE.store(9, Ordering::Relaxed);
         return Some(ph2d_editor_core::object_mode::ModeRequest::Enter(
-            ObjectMode::Paint,
+            ObjectMode::Draw,
         ));
     }
     if stage == 3 {

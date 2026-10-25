@@ -299,8 +299,8 @@ fn a_layout_names_the_inspector_exactly_when_its_canvas_owner_does_not_take_it_o
         let names = l.spec().open.contains(&"inspector");
         let taken = match l.spec().canvas {
             CanvasOwner::Tool(id) => takeover.iter().any(|t| t == id),
-            // Os modos (o Paint abre o Painter) NÃO tomam o inspector: o *Draw* nomeia-o.
-            CanvasOwner::Mode(_) => false,
+            // Os modos (o Draw da imagem abre o Painter) NÃO tomam o inspector: o *Draw* nomeia-o.
+            CanvasOwner::Mode(..) => false,
         };
         assert_eq!(
             names,

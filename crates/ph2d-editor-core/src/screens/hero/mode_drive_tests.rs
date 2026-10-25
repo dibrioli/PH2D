@@ -39,12 +39,12 @@ fn in_hand(t: &ToolRegistry, id: &str) -> bool {
     t.active().is_some_and(|a| a.id() == ToolId::new(id))
 }
 
-/// A família da imagem: Image ▸ Paint põe a ferramenta `fake_paint` em mãos.
+/// A família da imagem: Image ▸ Draw põe a ferramenta `fake_paint` em mãos.
 struct ImageFamily;
 
 impl ModeFamily for ImageFamily {
     fn modes(&self) -> &'static [(ObjectKind, ObjectMode)] {
-        &[(ObjectKind::Image, ObjectMode::Paint)]
+        &[(ObjectKind::Image, ObjectMode::Draw)]
     }
     fn holds(&mut self, _: ObjectMode, _: u64, t: &mut ToolRegistry) -> bool {
         in_hand(t, PAINT)
@@ -162,7 +162,7 @@ fn tab_goes_there_and_back() {
         c.quadro(None);
         assert_eq!(
             c.hero.gizmo.mode.current(),
-            ObjectMode::Paint,
+            ObjectMode::Draw,
             "não se segurou"
         );
         c.quadro(Some(ModeRequest::Toggle));
@@ -180,7 +180,7 @@ fn entering_takes_only_the_active() {
     let mut c = cena();
     c.hero.gizmo.replace_selection(Some(IMG));
     c.hero.gizmo.add_to_selection(IMG2);
-    c.quadro(Some(ModeRequest::Enter(ObjectMode::Paint)));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Draw)));
     assert_eq!(c.hero.gizmo.mode.locked_entity(), Some(IMG2));
     assert_eq!(c.hero.gizmo.selection, Some(IMG2));
     assert!(c.hero.gizmo.extra_selection.is_empty());
@@ -226,11 +226,11 @@ fn an_object_only_type_refuses_and_says_so() {
 fn a_layout_mode_opens_only_on_a_compatible_active() {
     let mut c = cena();
     c.hero.gizmo.replace_selection(Some(IMG));
-    c.quadro(Some(ModeRequest::Open(ObjectMode::Paint)));
+    c.quadro(Some(ModeRequest::Open(ObjectKind::Image, ObjectMode::Draw)));
     assert!(c.paint_in_hand());
     c.hero.gizmo.replace_selection(Some(EMPTY));
     c.quadro(None);
-    c.quadro(Some(ModeRequest::Open(ObjectMode::Paint)));
+    c.quadro(Some(ModeRequest::Open(ObjectKind::Image, ObjectMode::Draw)));
     assert_eq!(c.hero.gizmo.mode.active(), None);
     assert!(in_hand(&c.tools, "move"));
 }
@@ -245,33 +245,97 @@ fn the_selector_follows_the_active_type() {
     c.quadro(None);
     assert_eq!(
         c.hero.store.area_menus()[0].faces,
-        ["Object Mode", "Paint Mode"]
+        ["Object Mode", "Draw Mode"]
     );
     c.hero.gizmo.replace_selection(Some(EMPTY));
     c.quadro(None);
     assert_eq!(c.hero.store.area_menus()[0].faces, ["Object Mode"]);
 }
 
-/// ⭐⭐ GATE — o cadeado nas portas: num modo, outra entidade é recusada COM aviso; a própria e o
-/// limpar passam; em Object nada é recusado.
+/// Uma porta de selecção, como a shell a corre: avisa o modo e troca a selecção.
+fn choose(c: &mut Cena, target: Option<u64>) {
+    chosen(&mut c.hero, target, false);
+    c.hero.gizmo.replace_selection(target);
+}
+
+/// ⭐⭐ GATE (dono 24/10, revoga o cadeado de 03/10) — **num modo, escolher OUTRO objecto selecciona-o
+/// e volta a Object**, com o módulo largado e a selecção que o artista fez; o próprio e o limpar
+/// ficam no modo.
 #[test]
-fn the_lock_door_refuses_and_says_why() {
+fn choosing_another_object_leaves_the_mode_with_the_new_selection() {
     let mut c = cena();
     c.hero.gizmo.replace_selection(Some(IMG));
-    assert!(
-        !refused(&c.hero, Some(IMG2), true, &mut c.toasts),
-        "Object não tranca"
-    );
     c.quadro(Some(ModeRequest::Toggle));
-    let before = c.toasts.len();
-    assert!(refused(&c.hero, Some(IMG2), false, &mut c.toasts));
-    assert_eq!(c.toasts.len(), before + 1, "recusa muda");
-    assert!(!refused(&c.hero, Some(IMG), false, &mut c.toasts));
-    assert!(!refused(&c.hero, None, false, &mut c.toasts));
-    assert!(
-        refused(&c.hero, None, true, &mut c.toasts),
-        "o laço acrescenta"
+    choose(&mut c, Some(IMG));
+    c.quadro(None);
+    assert_eq!(
+        c.hero.gizmo.mode.locked_entity(),
+        Some(IMG),
+        "o próprio saiu"
     );
+    choose(&mut c, None);
+    c.quadro(None);
+    assert_eq!(
+        c.hero.gizmo.mode.locked_entity(),
+        Some(IMG),
+        "limpar saiu (05/10)"
+    );
+    choose(&mut c, Some(IMG2));
+    c.quadro(None);
+    assert_eq!(
+        c.hero.gizmo.mode.active(),
+        None,
+        "outra imagem ficou trancada"
+    );
+    assert_eq!(
+        c.hero.gizmo.selection,
+        Some(IMG2),
+        "a escolha do artista perdeu-se"
+    );
+    assert!(!c.paint_in_hand(), "o módulo ficou com a imagem anterior");
+}
+
+/// ⭐⭐ GATE (dono 24/10: *«o painel correto seja aberto no inspector automaticamente»*) — **o
+/// Inspector vem à frente** quando o activo muda em Object e quando um modo acaba; ⛔ não em todo
+/// quadro (prenderia a aba), nem ao entrar num modo (o painel é do módulo), nem ao desseleccionar.
+#[test]
+fn the_inspector_comes_to_the_front_when_the_object_changes() {
+    let insp = crate::ids::INSP_PANEL;
+    let other = crate::ids::SKELETON_PANEL;
+    let on_top = |c: &Cena| c.hero.store.panel_z_order().last() == Some(&insp);
+    let mut c = cena();
+    c.quadro(None);
+    <HeroScreen as crate::panel::PanelHostInternal>::set_panel_visible(
+        &mut c.hero,
+        "inspector",
+        false,
+    );
+    c.hero.store.bump_panel_z(other);
+    choose(&mut c, Some(IMG));
+    c.quadro(None);
+    assert!(
+        c.hero.is_panel_visible("inspector"),
+        "o Inspector fechado não abriu"
+    );
+    assert!(on_top(&c), "seleccionar não trouxe o Inspector");
+    c.hero.store.bump_panel_z(other);
+    c.quadro(None);
+    assert!(!on_top(&c), "o Inspector prende a aba em todo quadro");
+    c.quadro(Some(ModeRequest::Toggle));
+    assert!(
+        !on_top(&c),
+        "entrar no modo trouxe o Inspector por cima do módulo"
+    );
+    choose(&mut c, Some(IMG2));
+    c.quadro(None);
+    assert!(
+        on_top(&c),
+        "trocar de objecto num modo não trouxe o Inspector"
+    );
+    c.hero.store.bump_panel_z(other);
+    choose(&mut c, None);
+    c.quadro(None);
+    assert!(!on_top(&c), "desseleccionar trouxe o Inspector");
 }
 
 /// ⭐ GATE — o botão direito no canvas: em Object pede o menu Add; num modo, não o toma.
@@ -316,7 +380,8 @@ fn edit_declared_by_two_types_opens_the_family_of_the_type() {
 }
 
 /// ⭐⭐ GATE (spec/06 §4 F3) — dois desenhos do mesmo tipo, o modo num: o outro fica intocado, e a
-/// troca entre os modos da família fica no MESMO desenho.
+/// troca entre os modos da família fica no MESMO desenho; escolher o outro desenho sai para Object
+/// (dono 24/10: *«seja do mesmo tipo ou de outro tipo»*).
 #[test]
 fn two_drawings_the_mode_on_one_leaves_the_other_untouched() {
     let mut c = cena();
@@ -325,10 +390,11 @@ fn two_drawings_the_mode_on_one_leaves_the_other_untouched() {
     assert_eq!(c.flip.held, Some((DRAWING2, ObjectMode::Draw)));
     c.quadro(Some(ModeRequest::Enter(ObjectMode::Edit)));
     assert_eq!(c.flip.held, Some((DRAWING2, ObjectMode::Edit)));
-    assert!(refused(&c.hero, Some(DRAWING), false, &mut c.toasts));
+    choose(&mut c, Some(DRAWING));
     c.quadro(None);
-    assert_eq!(c.hero.gizmo.mode.locked_entity(), Some(DRAWING2));
-    assert_eq!(c.flip.held, Some((DRAWING2, ObjectMode::Edit)));
+    assert_eq!(c.hero.gizmo.mode.active(), None);
+    assert_eq!(c.flip.held, None, "o módulo ficou com o desenho anterior");
+    assert_eq!(c.hero.gizmo.selection, Some(DRAWING));
 }
 
 /// ⭐⭐ GATE — um objecto que NASCE num modo (escolha do dono 03/10) fica
@@ -458,13 +524,10 @@ fn a_mode_of_parts_lets_the_selection_move_inside_the_object() {
         c.hero.gizmo.mode.available().contains(&ObjectMode::Edit),
         "o seletor perdeu o Edit com uma forma seleccionada"
     );
+    chosen(&mut c.hero, Some(SHAPE2), false);
     assert!(
-        refused(&c.hero, Some(CONTAINER2), false, &mut c.toasts),
-        "outro objecto"
-    );
-    assert!(
-        !refused(&c.hero, Some(SHAPE2), true, &mut c.toasts),
-        "acrescentar uma forma"
+        !c.hero.gizmo.mode.take_release(),
+        "uma parte de dentro tirou o modo"
     );
     c.hero.gizmo.replace_selection(None);
     quadro(&mut c, &mut fam, None);
@@ -603,13 +666,10 @@ fn a_mode_that_joins_takes_the_selected_of_the_same_kind() {
         ObjectMode::Edit,
         "as duas derrubaram o Edit"
     );
+    chosen(&mut c.hero, Some(VEC_A), false);
     assert!(
-        refused(&c.hero, Some(VEC_C), false, &mut c.toasts),
-        "uma 3.ª forma"
-    );
-    assert!(
-        !refused(&c.hero, Some(VEC_A), false, &mut c.toasts),
-        "a forma que entrou"
+        !c.hero.gizmo.mode.take_release(),
+        "a forma que entrou tirou o modo"
     );
     c.hero.gizmo.replace_selection(None);
     quadro(&mut c, &mut fam, None);
@@ -641,9 +701,9 @@ fn a_mode_that_joins_takes_the_selected_of_the_same_kind() {
 /// ⭐⭐ GATE (spec/06 F3 ▸ Vector; report do dono 04/10: *«o gizmo não aparece e não consigo a
 /// multiseleção»*; e 05/10: *«ao fazer um boolean o gizmo já não aparece»*) — **num modo que o
 /// declara, a selecção tem o gizmo** — a parte E o objecto trancado (o Edit do vetor é sobre a própria
-/// forma, e a forma da booleana fica sozinha nele); e **o laço fica só
-/// com as partes** em vez de recusar. Num modo de objecto inteiro (o Draw do Flip) o gizmo some e o
-/// laço é recusado, como antes.
+/// forma, e a forma da booleana fica sozinha nele); e **o laço que apanha só partes fica no modo**,
+/// o que apanha outro objecto sai para Object (dono 24/10). Num modo de objecto inteiro (o Draw do
+/// Flip) o gizmo some e o laço com o outro desenho sai.
 #[test]
 fn a_parts_mode_gives_the_part_its_gizmo_and_the_lasso_its_parts() {
     let mut c = cena();
@@ -673,20 +733,24 @@ fn a_parts_mode_gives_the_part_its_gizmo_and_the_lasso_its_parts() {
         object_gizmo_shows(&c.hero),
         "a forma seleccionada em Edit não tem gizmo"
     );
-    let mut bits = vec![VEC_SHAPE, IMG, VEC_C];
+    lasso_chosen(&mut c.hero, &[VEC_SHAPE, VEC_A]);
     assert!(
-        lasso_admits(&c.hero, &mut bits, &mut c.toasts),
-        "o laço foi recusado em Edit"
+        !c.hero.gizmo.mode.take_release(),
+        "o laço de partes tirou o modo"
     );
-    assert_eq!(bits, vec![VEC_SHAPE], "o laço levou o que não é parte");
+    lasso_chosen(&mut c.hero, &[VEC_SHAPE, IMG]);
+    assert!(
+        c.hero.gizmo.mode.take_release(),
+        "o laço com outro objecto ficou no modo"
+    );
 
     let mut s = cena();
     s.hero.gizmo.replace_selection(Some(DRAWING));
     s.quadro(Some(ModeRequest::Enter(ObjectMode::Draw)));
-    let mut bits = vec![DRAWING, DRAWING2];
+    lasso_chosen(&mut s.hero, &[DRAWING, DRAWING2]);
     assert!(
-        !lasso_admits(&s.hero, &mut bits, &mut s.toasts),
-        "o laço passou num modo inteiro"
+        s.hero.gizmo.mode.take_release(),
+        "o laço com o outro desenho ficou no modo"
     );
     assert!(!object_gizmo_shows(&s.hero));
 }

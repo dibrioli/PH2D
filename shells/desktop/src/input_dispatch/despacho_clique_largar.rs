@@ -146,24 +146,14 @@ impl crate::App {
                         rmin,
                         rmax,
                     ));
-                    // ⚠️ **O CADEADO DO MODO também fecha o LAÇO.** O guarda do pick
-                    // trata do clique; a borracha é a outra porta por onde a multi-seleção
-                    // entra, e o Enio nomeou-a: *"não permita a seleção de múltiplas
-                    // imagens se o painter está ativo"*. Uma trava que só cobre o gesto
-                    // óbvio ensina o artista a usar o outro.
-                    if !ph2d_editor_core::screens::hero::mode_drive::lasso_admits(
-                        hero,
-                        &mut bits,
-                        &mut gfx.toasts,
-                    ) {
-                        self.pending_ui_sound = Some(crate::ui_sound::UiSound::Refuse);
-                    } else {
-                        if !rb.add_mode {
-                            hero.gizmo.clear_all_selection();
-                        }
-                        for b in bits {
-                            hero.gizmo.add_to_selection(b);
-                        }
+                    // O laço é a outra porta de selecção: apanhar OUTRO objecto num modo de
+                    // criação sai para Object, como o clique (dono 24/10).
+                    ph2d_editor_core::screens::hero::mode_drive::lasso_chosen(hero, &bits);
+                    if !rb.add_mode {
+                        hero.gizmo.clear_all_selection();
+                    }
+                    for b in bits {
+                        hero.gizmo.add_to_selection(b);
                     }
                     // Sync the panel header label to the new
                     // primary (Fase 0e parity).

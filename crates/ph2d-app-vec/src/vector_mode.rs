@@ -93,7 +93,7 @@ fn in_hand(tools: &mut ToolRegistry) -> bool {
 
 /// ⭐⭐ **A LEI do «tem em mãos»**, pura: Edit, a forma é o alvo e a ferramenta está na mão.
 pub(crate) fn holds(mode: ObjectMode, is_target: bool, tool_in_hand: bool) -> bool {
-    mode == ObjectMode::Edit && is_target && tool_in_hand
+    mode == ObjectMode::Draw && is_target && tool_in_hand
 }
 
 /// ⭐⭐ **A LEI da porta antiga**, pura: a ferramenta na mão que o quadro anterior não seguia pede o
@@ -187,7 +187,7 @@ impl<'a> Family<'a> {
 
 impl ModeFamily for Family<'_> {
     fn modes(&self) -> &'static [(ObjectKind, ObjectMode)] {
-        &[(ObjectKind::Vector, ObjectMode::Edit)]
+        &[(ObjectKind::Vector, ObjectMode::Draw)]
     }
 
     fn holds(&mut self, mode: ObjectMode, entity: u64, tools: &mut ToolRegistry) -> bool {
@@ -200,20 +200,20 @@ impl ModeFamily for Family<'_> {
     }
 
     fn joins(&self, mode: ObjectMode) -> bool {
-        mode == ObjectMode::Edit
+        mode == ObjectMode::Draw
     }
 
     fn parts_take_the_object_gizmo(&self, mode: ObjectMode) -> bool {
-        mode == ObjectMode::Edit
+        mode == ObjectMode::Draw
     }
 
     fn holds_the_whole_kind(&self, mode: ObjectMode) -> bool {
-        mode == ObjectMode::Edit
+        mode == ObjectMode::Draw
     }
 
     fn heir(&mut self, mode: ObjectMode, locked: u64, tools: &mut ToolRegistry) -> Option<u64> {
         let edit = &self.vec.edit;
-        if mode != ObjectMode::Edit
+        if mode != ObjectMode::Draw
             || !edit.following
             || edit.objects.first() != Some(&locked)
             || !in_hand(tools)
@@ -235,7 +235,7 @@ impl ModeFamily for Family<'_> {
         joined: &[u64],
         tools: &mut ToolRegistry,
     ) -> bool {
-        if mode != ObjectMode::Edit || !self.is_shape(entity) {
+        if mode != ObjectMode::Draw || !self.is_shape(entity) {
             return false;
         }
         if !in_hand(tools) && !tools.set_active(&ToolId::new(VECTOR)) {
@@ -276,7 +276,7 @@ impl ModeFamily for Family<'_> {
 
     fn follow(&mut self, current: Option<ActiveMode>, tools: &mut ToolRegistry) {
         let ours = current
-            .filter(|a| a.mode == ObjectMode::Edit && self.is_shape(a.entity))
+            .filter(|a| a.mode == ObjectMode::Draw && self.is_shape(a.entity))
             .map(|a| a.entity);
         let shapes = &self.shapes;
         let edit = &mut self.vec.edit;
@@ -321,13 +321,13 @@ impl ModeFamily for Family<'_> {
             return None;
         }
         if let Some(b) = newborn(&self.shapes, self.vec.edit.known.as_deref(), &self.drawing) {
-            return Some((b, ObjectMode::Edit));
+            return Some((b, ObjectMode::Draw));
         }
         if !adopt(true, self.vec.edit.following) {
             return None;
         }
         self.via_pen = true;
-        Some((*self.pen.last()?, ObjectMode::Edit))
+        Some((*self.pen.last()?, ObjectMode::Draw))
     }
 
     /// ⭐ **Todas as outras formas** — o Edit é do tipo; `None` = uma forma só (o cadeado é exacto).
@@ -420,7 +420,7 @@ pub fn smoke_step(
     let weld = WELD.load(Ordering::Relaxed) == 1;
     let bars = BARS.load(Ordering::Relaxed) == 1;
     let go = |next| STAGE.store(next, Ordering::Relaxed);
-    let edit = hero.gizmo.mode.current() == ObjectMode::Edit;
+    let edit = hero.gizmo.mode.current() == ObjectMode::Draw;
     let shapes = vec.entities.len();
     // A forma mais nova (os ids crescem): é nela que o Edit tem de estar.
     let newest = vec.entities.values().last().copied();

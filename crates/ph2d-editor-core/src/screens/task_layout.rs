@@ -42,6 +42,7 @@
 //! bloqueador, e entram no dia em que o bloqueador cair.
 
 use crate::screens::slot::Slot;
+use ph2d_component_desc::ObjectKind;
 use ph2d_i18n::TextKey;
 
 /// Um layout por tarefa (**D7**).
@@ -71,10 +72,10 @@ pub enum CanvasOwner {
     /// gesto de *largar* — o `CancelActiveTool`, o pill do vetor, o do motion — é escrito como
     /// *«volta à de omissão»*. ⇒ um layout que só quer a cena pede o `move`, e não fica calado.
     Tool(&'static str),
-    /// ⭐ **Um MODO do objecto activo** — o `Mode:` do Workspace do Blender (spec/06 §3.3). Entra
-    /// nele se o activo o tiver; senão fica em Object com a ferramenta de omissão, e ⛔ não cria
-    /// objecto nenhum (§6.5). Ver [`crate::object_mode::ModeRequest::Open`].
-    Mode(crate::object_mode::ObjectMode),
+    /// ⭐ **Um MODO do objecto activo, de um TIPO** — o `Mode:` do Workspace do Blender (spec/06 §3.3).
+    /// Entra nele se o activo for desse tipo e o tiver; senão fica em Object com a ferramenta de
+    /// omissão, e ⛔ não cria objecto nenhum (§6.5). Ver [`crate::object_mode::ModeRequest::Open`].
+    Mode(ObjectKind, crate::object_mode::ObjectMode),
 }
 
 /// O que um layout arruma.
@@ -141,8 +142,8 @@ impl TaskLayout {
                 // nomeia aqui — ver o cabeçalho.
                 open: &["hierarchy", "inspector"],
                 slots: &[],
-                // ⭐ Pintar é o MODO Paint da imagem (spec/06 F2): sem imagem activa, fica em Object.
-                canvas: CanvasOwner::Mode(crate::object_mode::ObjectMode::Paint),
+                // ⭐ Pintar é o MODO Draw da imagem (spec/06 F2): sem imagem activa, fica em Object.
+                canvas: CanvasOwner::Mode(ObjectKind::Image, crate::object_mode::ObjectMode::Draw),
             },
             Self::Vector => LayoutSpec {
                 title: TextKey::new("chrome.layout.vector"),
@@ -156,7 +157,7 @@ impl TaskLayout {
                 wire: "flip",
                 open: &["hierarchy", "inspector"],
                 slots: &[],
-                canvas: CanvasOwner::Mode(crate::object_mode::ObjectMode::Draw),
+                canvas: CanvasOwner::Mode(ObjectKind::Flip, crate::object_mode::ObjectMode::Draw),
             },
             Self::Animation => LayoutSpec {
                 title: TextKey::new("chrome.layout.animate"),

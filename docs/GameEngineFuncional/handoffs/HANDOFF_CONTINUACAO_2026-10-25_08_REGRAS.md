@@ -107,3 +107,23 @@ Para o dono (nomes como na tela):
 ## PRÓXIMO
 
 Smoke do dono das três coisas (Frames/s, teclado no palco, regras); depois o que ele pedir.
+
+## Rodada 2 — smoke do dono (25/10): regras OK; três reports
+
+- `4a722dea59` — A: com uma aba à frente, as teclas só chegavam ao jogo depois de clicar na janela (o foco
+  dava-se na subida do relógio, com o palco ainda fechado). `Cena.palco` + `FocoDoJogo.palcava`: abrir o
+  palco a correr dá o foco. Gate `abrir_o_palco_da_o_teclado_ao_jogo`. B: fechar a janela do jogo (= Stop,
+  que repõe o projecto com entidades novas) fechava o editor de animações. `AnimDoc.stable` +
+  `follow_identity` (segue o `StableId`, continua à frente; sprite tirada pela corrida espera o Stop).
+  Gates `a_aba_sobrevive_ao_restauro_e_continua_a_frente`, `a_aba_espera_pela_sprite_que_a_corrida_tirou`.
+  Shell +2. Foco real da janela só o app prova.
+- `cb5120c1ca` — toda lista de dropdown tem a largura do nome mais comprido (lei única
+  `ph2d-editor-core/src/widget/dropdown/largura.rs`: `list_width`, `popover_rect_placed`,
+  `popover_rect_fitted`; pintura, bandas e clique-fora leem o mesmo rect; desloca à esquerda junto à
+  borda). Consumidores varridos: paleta do color picker, galeria, filtro da Hierarquia, menus da Timeline.
+  Gate `the_dropdown_list_is_as_wide_as_its_names` + seam no Inspector.
+- `a1ab91b4cb` — quatro gates vermelhos da própria linha, pela cura: `sprite_anim.rs` 742→655 (tempo da tag
+  em `sprite_anim_timing.rs`); cauda de bloco por `control_gap_px()` em `anim_card.rs`/`anim_rows.rs`;
+  widget/chrome sync (`illustration`/`sheet_cell` no `PUB_MODULE_OVERRIDE` do gerador; dois testes movidos
+  de pasta); galeria mostra `Illustration`, `sheet_cell` com opt-out (sem pixels de folha).
+- Smoke build: 2.ª corrida `Finished smoke in 0.27s`. Suíte de impacto continua do integrador.

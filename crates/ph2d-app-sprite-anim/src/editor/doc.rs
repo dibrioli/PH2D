@@ -42,14 +42,40 @@ enum Drag {
     None,
     /// Arrastar (ou clicar) na folha: as células juntam-se por ordem a `base`.
     Cells { base: Vec<u32>, added: Vec<u32> },
-    /// Arrastar um quadro da faixa para outra posição.
+    /// Arrastar um quadro da faixa para outro intervalo (`gap`, `0..=n`); `at` é a mão.
     Frame {
         from: usize,
         x0: f32,
         y0: f32,
         moved: bool,
-        to: usize,
+        gap: usize,
+        at: (f32, f32),
     },
+}
+
+/// Um arrasto de quadro já em curso (passou o limiar), como a pintura o lê.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FrameDrag {
+    pub from: usize,
+    pub gap: usize,
+    /// Onde a mão pegou, e onde está.
+    pub grab: (f32, f32),
+    pub at: (f32, f32),
+}
+
+/// O que a última pintura desenhou de um arrasto na faixa (os gates leem-no).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct DragPaint {
+    /// O intervalo (`0..=n`) onde o marcador de inserção foi pintado.
+    pub marker: Option<usize>,
+    /// O rectângulo (antes do afim do fantasma) do quadro que segue a mão.
+    pub ghost: Option<Rect>,
+}
+
+/// A posição final de um quadro tirado de `from` e largado no intervalo `gap` (`0..=n`).
+#[must_use]
+pub fn gap_to_index(from: usize, gap: usize) -> usize {
+    if gap > from { gap - 1 } else { gap }
 }
 
 fn hit(r: Rect, x: f32, y: f32) -> bool {
@@ -69,6 +95,8 @@ pub struct AnimDoc {
     pub editing: Option<(Field, String)>,
     pub layout: Layout,
     pub strip_scroll: f32,
+    /// O que a última pintura desenhou do arrasto.
+    pub painted: DragPaint,
     drag: Drag,
     /// A seleção ainda não leu o snapshot (abre na animação que toca).
     seeded: bool,
@@ -157,12 +185,6 @@ impl AnimDoc {
     pub fn shown_frames(&self) -> Vec<u32> {
         match &self.drag {
             Drag::Cells { base, added } => base.iter().chain(added).copied().collect(),
-            Drag::Frame {
-                from,
-                moved: true,
-                to,
-                ..
-            } => reorder(&self.authored_frames(), *from, *to),
             _ => self.authored_frames(),
         }
     }
@@ -238,15 +260,36 @@ impl AnimDoc {
         )
     }
 
-    /// Para onde um quadro largado em `x` vai na faixa.
-    fn strip_slot(&self, x: f32) -> usize {
-        let n = self.authored_frames().len();
-        let pitch = self.layout.strip_pitch();
-        if pitch <= 0.0 {
-            return 0;
+    /// ⭐ **A lei única do marcador e da largada**: o intervalo (`0..=n`) onde um quadro largado em
+    /// `x` entra — antes do primeiro quadro pintado cujo centro está à direita de `x`.
+    #[must_use]
+    pub fn drop_gap(&self, x: f32) -> usize {
+        self.layout
+            .frames
+            .iter()
+            .filter(|f| f.0.x + f.0.w / 2.0 <= x)
+            .count()
+    }
+
+    /// O arrasto de quadro em curso, se já passou o limiar.
+    #[must_use]
+    pub fn frame_drag(&self) -> Option<FrameDrag> {
+        match self.drag {
+            Drag::Frame {
+                from,
+                x0,
+                y0,
+                moved: true,
+                gap,
+                at,
+            } => Some(FrameDrag {
+                from,
+                gap,
+                grab: (x0, y0),
+                at,
+            }),
+            _ => None,
         }
-        let i = ((x - self.layout.strip.x + self.strip_scroll) / pitch).floor();
-        (i.max(0.0) as usize).min(n.saturating_sub(1))
     }
 
     // ── Os gestos ──────────────────────────────────────────────────────────────────────────────
@@ -367,7 +410,8 @@ impl AnimDoc {
                 x0: x,
                 y0: y,
                 moved: false,
-                to: i,
+                gap: i,
+                at: (x, y),
             };
         } else if let Some(cell) = self.cell_at(x, y)
             && self.row().is_some()
@@ -383,7 +427,7 @@ impl AnimDoc {
     /// O rato moveu-se (com ou sem botão).
     pub fn motion(&mut self, x: f32, y: f32) -> bool {
         let cell = self.cell_at(x, y);
-        let slot = self.strip_slot(x);
+        let slot = self.drop_gap(x);
         match &mut self.drag {
             Drag::Cells { added, .. } => {
                 if let Some(c) = cell
@@ -394,14 +438,20 @@ impl AnimDoc {
                 true
             }
             Drag::Frame {
-                x0, y0, moved, to, ..
+                x0,
+                y0,
+                moved,
+                gap,
+                at,
+                ..
             } => {
                 let slop = ROW_H_PX * DRAG_SLOP_ROWS;
                 if (x - *x0).abs() > slop || (y - *y0).abs() > slop {
                     *moved = true;
                 }
                 if *moved {
-                    *to = slot;
+                    *gap = slot;
+                    *at = (x, y);
                 }
                 true
             }
@@ -418,8 +468,9 @@ impl AnimDoc {
                 true
             }
             Drag::Frame {
-                from, moved, to, ..
+                from, moved, gap, ..
             } => {
+                let to = gap_to_index(from, gap);
                 if moved {
                     if to != from {
                         self.frame_selected = Some(to);

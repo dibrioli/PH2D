@@ -1,10 +1,11 @@
 //! **A pintura de uma aba do editor de animações** — lê a [`super::doc::Layout`] que o documento
 //! acabou de calcular; nada aqui decide (os gestos estão no `doc`).
 
-use super::doc::{AnimDoc, Field};
+use super::doc::{AnimDoc, DragPaint, Field};
 use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rect,
 };
+use ph2d_editor_core::widget::paint_card_ghost;
 use ph2d_editor_core::widget::sheet_cell::paint_sheet_cell;
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{AnimCycleMode, InspectorAnimInfo};
@@ -236,7 +237,7 @@ pub fn paint_doc(
     }
 
     // ── A faixa de quadros ──
-    paint_strip(doc, &l, &frames, info.as_ref(), scene, text, theme);
+    doc.painted = paint_strip(doc, &l, &frames, info.as_ref(), scene, text, theme);
 }
 
 fn paint_list(
@@ -318,7 +319,7 @@ fn paint_strip(
     scene: &mut VectorScene,
     text: &mut TextSystem,
     theme: Theme,
-) {
+) -> DragPaint {
     let font = TypeToken::Sm.px();
     fill_rounded_rect(
         scene,
@@ -337,8 +338,9 @@ fn paint_strip(
             l.strip.w,
             resolve(ColorToken::Text3, theme),
         );
-        return;
+        return DragPaint::default();
     }
+    let drag = doc.frame_drag();
     let on_screen = info.is_some_and(|i| {
         i.rows
             .get(doc.selected)
@@ -366,6 +368,15 @@ fn paint_strip(
                 doc.snap.vframes,
                 *cell,
                 *thumb,
+            );
+        }
+        if drag.is_some_and(|d| d.from == i) {
+            // O lugar de onde o quadro saiu fica apagado enquanto ele anda.
+            fill_rounded_rect(
+                scene,
+                *thumb,
+                Radius::Sm.px(),
+                resolve(ColorToken::BgScrim, theme),
             );
         }
         if doc.frame_selected == Some(i) || (on_screen && step == Some(i)) {
@@ -407,4 +418,48 @@ fn paint_strip(
         );
     }
     scene.pop_layer();
+    let mut painted = DragPaint::default();
+    if let Some((gap, bar)) = l.marker {
+        fill_rounded_rect(
+            scene,
+            bar,
+            Radius::Sm.px(),
+            resolve(ColorToken::Accent, theme),
+        );
+        painted.marker = Some(gap);
+    }
+    if let Some(d) = drag
+        && let (Some(f), Some(cell)) = (l.frames.get(d.from), frames.get(d.from))
+    {
+        let thumb = f.0;
+        let mut content = VectorScene::new();
+        if let Some(sheet) = &doc.snap.sheet {
+            paint_sheet_cell(
+                &mut content,
+                sheet,
+                doc.snap.hframes,
+                doc.snap.vframes,
+                *cell,
+                thumb,
+            );
+        }
+        // A borda separa o fantasma (meio transparente) da miniatura por cima da qual passa.
+        stroke_rect(
+            &mut content,
+            thumb,
+            StrokeToken::Thick.px(),
+            resolve(ColorToken::Accent, theme),
+        );
+        paint_card_ghost(
+            scene,
+            &content,
+            thumb,
+            Radius::Sm.px(),
+            Some(resolve(ColorToken::Bg2, theme)),
+            d.grab,
+            d.at,
+        );
+        painted.ghost = Some(thumb);
+    }
+    painted
 }

@@ -256,14 +256,17 @@ fn arrastar_um_quadro_na_faixa_reordena() {
     m.frame();
     let l = m.doc().layout.clone();
     let from = centre(l.frames[0].0);
-    let to = centre(l.frames[2].0);
+    // Sobre a metade direita do último: o marcador vai para depois dele.
+    let to = (l.frames[2].0.x + l.frames[2].0.w * 0.75, from.1); // LITERAL-PX-OK: a metade direita
     m.pointer(PointerKind::Down, from);
     m.drag_to(to);
+    m.paint();
     assert_eq!(
         m.doc().shown_frames(),
-        [2, 7, 5],
-        "a faixa mostra o arrasto"
+        [5, 2, 7],
+        "a faixa fica como está; quem mostra o destino é o marcador"
     );
+    assert_eq!(m.doc().painted.marker, Some(3));
     m.pointer(PointerKind::Up, to);
     assert_eq!(m.pending(), [AnimFieldEdit::Frames(0, vec![2, 7, 5])]);
     m.frame();
@@ -633,3 +636,6 @@ fn o_cabecalho_da_hierarquia_conta_so_o_jogo_e_nao_cresce_com_os_gestos() {
     m.frame();
     assert_eq!(m.sim.component_count(), 8, "o 2.º «+» não junta nada");
 }
+
+#[path = "tests_strip.rs"]
+mod strip;

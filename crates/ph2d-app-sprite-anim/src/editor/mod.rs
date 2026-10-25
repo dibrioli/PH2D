@@ -150,7 +150,7 @@ impl DocumentSurface for AnimDocs {
             return false;
         }
         let n = d.layout.frames.len() as f32;
-        let max = (n * d.layout.strip_pitch() - s.w).max(0.0);
+        let max = (n * d.layout.strip_pitch() - ph2d_tokens::control_gap_px() - s.w).max(0.0);
         d.strip_scroll = (d.strip_scroll - dy).clamp(0.0, max);
         true
     }

@@ -29,9 +29,7 @@ pub(crate) fn apply_anim_event(
     let sel = panel.anim_selected.min(info.rows.len().saturating_sub(1));
     let sel_u8 = u8::try_from(sel).unwrap_or(0);
 
-    if let WidgetEvent::Click(id) = ev
-        && crate::event_anim_card::apply_card_click(panel, host, &info, id)
-    {
+    if crate::event_anim_card::apply_card_event(panel, host, &info, ev) {
         return true;
     }
     if let WidgetEvent::Click(id) = ev {
@@ -127,18 +125,6 @@ pub(crate) fn apply_anim_event(
         );
         return true;
     }
-    // «Flip» do modo «The Character» — a mesma lei: o contrário do que está DESENHADO.
-    if let WidgetEvent::Toggled(id) = ev
-        && id == crate::ids::INSP_ANIM_FLIP
-        && let Some(ch) = info.card.character.as_ref()
-    {
-        push(
-            host,
-            info.entity_bits,
-            AnimFieldEdit::CharacterFlip(!ch.flip),
-        );
-        return true;
-    }
 
     if let WidgetEvent::TextChanged(id) = ev
         && !info.rows.is_empty()
@@ -157,23 +143,6 @@ pub(crate) fn apply_anim_event(
             return false;
         };
         push(host, info.entity_bits, edit);
-        return true;
-    }
-
-    // ⚠️ **A BARRA DE FRAMES** — o `0..1` do slider vira célula pela INVERSA da mesma lei que a
-    // pinta (`InspectorAnimInfo::scrub_cell` ↔ `scrub_position`).
-    //
-    // ⚠️ **A régua vivia aqui, no pintor e no `sync`, em três cópias** — e uma mutação que mudou só
-    // a do pintor **sobreviveu** à suíte inteira, porque nenhum gate ligava o que se desenha ao que
-    // o clique produz. Hoje é uma função só, com gate de ida-e-volta no modelo.
-    if let WidgetEvent::ValueChanged(id) = ev
-        && id == crate::ids::INSP_ANIM_FRAME_SCRUB
-    {
-        let v = host.store().slider(id).map_or(0.0, |(_, v)| v);
-        // ⭐ Numa lista de quadros o arrasto escolhe o PASSO (`SetStep`), num intervalo a célula.
-        if let Some(edit) = info.scrub_edit(v) {
-            push(host, info.entity_bits, edit);
-        }
         return true;
     }
 
@@ -204,17 +173,6 @@ pub(crate) fn apply_anim_event(
         if id == crate::ids::INSP_ANIM_SPEED {
             #[allow(clippy::cast_possible_truncation)]
             push(host, info.entity_bits, AnimFieldEdit::Speed(v as f32));
-            return true;
-        }
-        if id == crate::ids::INSP_ANIM_RUN_FROM {
-            if info.card.character.is_some() {
-                #[allow(clippy::cast_possible_truncation)]
-                push(
-                    host,
-                    info.entity_bits,
-                    AnimFieldEdit::CharacterRunFrom(v as f32),
-                );
-            }
             return true;
         }
         if info.rows.is_empty() {

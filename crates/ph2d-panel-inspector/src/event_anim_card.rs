@@ -2,15 +2,71 @@
 //! «Edit Animations…», «Who Picks» e as linhas dos menus de estado. Irmão do [`crate::event_anim`]
 //! pelo tecto de função.
 
-use ph2d_editor_core::interaction::InteractiveState;
+use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{AnimChooser, AnimFieldEdit, InspectorAnimInfo};
 
 use crate::event_anim::{demote, push};
 use crate::state::InspectorState;
 
+/// `true` = o evento era do cartão (um clique, «Flip», «Run From» ou a barra) e foi consumido.
+pub(crate) fn apply_card_event(
+    panel: &mut InspectorState,
+    host: &mut dyn PanelHostInternal,
+    info: &InspectorAnimInfo,
+    ev: WidgetEvent,
+) -> bool {
+    if let WidgetEvent::Click(id) = ev {
+        return apply_card_click(panel, host, info, id);
+    }
+    // «Flip» do modo «The Character» — a mesma lei: o contrário do que está DESENHADO.
+    if let WidgetEvent::Toggled(id) = ev
+        && id == crate::ids::INSP_ANIM_FLIP
+        && let Some(ch) = info.card.character.as_ref()
+    {
+        push(
+            host,
+            info.entity_bits,
+            AnimFieldEdit::CharacterFlip(!ch.flip),
+        );
+        return true;
+    }
+    // ⚠️ **A BARRA DE FRAMES** — o `0..1` do slider vira célula pela INVERSA da mesma lei que a
+    // pinta (`InspectorAnimInfo::scrub_cell` ↔ `scrub_position`).
+    //
+    // ⚠️ **A régua vivia aqui, no pintor e no `sync`, em três cópias** — e uma mutação que mudou só
+    // a do pintor **sobreviveu** à suíte inteira, porque nenhum gate ligava o que se desenha ao que
+    // o clique produz. Hoje é uma função só, com gate de ida-e-volta no modelo.
+    if let WidgetEvent::ValueChanged(id) = ev
+        && id == crate::ids::INSP_ANIM_FRAME_SCRUB
+    {
+        let v = host.store().slider(id).map_or(0.0, |(_, v)| v);
+        // ⭐ Numa lista de quadros o arrasto escolhe o PASSO (`SetStep`), num intervalo a célula.
+        if let Some(edit) = info.scrub_edit(v) {
+            push(host, info.entity_bits, edit);
+        }
+        return true;
+    }
+
+    if let WidgetEvent::ValueChanged(id) = ev
+        && id == crate::ids::INSP_ANIM_RUN_FROM
+    {
+        let v = host.store().number_value(id).unwrap_or(0.0);
+        if info.card.character.is_some() {
+            #[allow(clippy::cast_possible_truncation)]
+            push(
+                host,
+                info.entity_bits,
+                AnimFieldEdit::CharacterRunFrom(v as f32),
+            );
+        }
+        return true;
+    }
+    false
+}
+
 /// `true` = o clique era do cartão e foi consumido.
-pub(crate) fn apply_card_click(
+fn apply_card_click(
     panel: &mut InspectorState,
     host: &mut dyn PanelHostInternal,
     info: &InspectorAnimInfo,

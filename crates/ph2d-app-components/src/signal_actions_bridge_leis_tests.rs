@@ -19,7 +19,7 @@ fn mudo() -> impl FnMut(&mut SimWorld, Som, ph2d_ecs::Entity) -> bool {
 use ph2d_ecs::{Timer, TimerState, Transform};
 
 fn um(name: &str, autostart: bool) -> Timer {
-    Timer {
+    Timer { item: Default::default(),
         name: name.into(),
         duration_us: 1_000_000,
         repeat: true,

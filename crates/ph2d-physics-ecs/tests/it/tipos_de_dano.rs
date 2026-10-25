@@ -68,7 +68,7 @@ fn resistente(linhas: &[(&str, f32, bool)]) -> Health {
     Health {
         resistances: linhas
             .iter()
-            .map(|&(kind, rate, absorbs)| Resistance {
+            .map(|&(kind, rate, absorbs)| Resistance { item: Default::default(),
                 kind: kind.to_owned(),
                 rate,
                 absorbs,

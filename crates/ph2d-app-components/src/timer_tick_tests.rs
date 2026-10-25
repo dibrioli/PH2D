@@ -40,7 +40,7 @@ fn mundo_com(timers: Vec<Timer>) -> (SimWorld, ph2d_ecs::Entity) {
 }
 
 fn um(duration_us: u64, repeat: bool, signal: &str) -> Timer {
-    Timer {
+    Timer { item: Default::default(),
         name: "t".into(),
         duration_us,
         repeat,

@@ -6,18 +6,18 @@ use ph2d_ecs::{MachineState, Name, StableId, StateMachine, StateTransition};
 fn maquina() -> StateMachine {
     StateMachine {
         states: vec![
-            MachineState {
+            MachineState { item: Default::default(),
                 name: "Fechada".into(),
                 on_enter: "porta_fechada".into(),
                 on_exit: String::new(),
             },
-            MachineState {
+            MachineState { item: Default::default(),
                 name: "Aberta".into(),
                 on_enter: "porta_aberta".into(),
                 on_exit: String::new(),
             },
         ],
-        transitions: vec![StateTransition {
+        transitions: vec![StateTransition { item: Default::default(),
             from: 0,
             on: "botao".into(),
             to: 1,

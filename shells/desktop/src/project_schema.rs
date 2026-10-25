@@ -567,7 +567,21 @@
 /// Gate: `project_mesa_tests`. Registos de componentes: `0`.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 204;
+///
+/// # `204 → 205` — **o item de uma lista tem identidade** (`line/UIUX`, F30 §A1, 2026-10-25)
+///
+/// `item: ItemId` no FIM de cada item (timer, tween, estado, seta, regra da vigia, acção, gatilho,
+/// fonte de abanão, âncora, resistência): a chave de animação de um campo de item é o id, não a
+/// posição (`docs/UI_New_and_Simple/F30_plano.md` §A1). ⭐ **COM migração:** a forma do ficheiro
+/// não muda (o `204` lê-se com o tipo vivo); todo ficheiro `<= 204` passa os blobs desses nove
+/// componentes pela forma congelada (`ph2d_ecs::item_id::migra_v194`), e o passe dá ids na ordem
+/// da lista. Gate: `project_itens_tests`. Registos de componentes: `0`.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 205;
+
+/// O último degrau em que os itens das listas não tinham `item` (F30 §A1).
+pub(crate) const PROJECT_SCHEMA_ITENS_SEM_ID: u32 = 204;
 
 /// O último degrau sem a mesa de som — a mesma forma do actual, sem o `Vec` final.
 pub(crate) const PROJECT_SCHEMA_SEM_MESA: u32 = 203;

@@ -239,6 +239,11 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     // dano. ⛔ *Um componente não registado não é «ainda não gravável»: é invisível à cópia, ao
     // `Ctrl+Z` e ao ficheiro de uma vez.* Gate: `o_que_o_molde_tem_a_copia_tem`.
     reg.register_default::<Health>("ph2d::physics::Health");
+    // Os itens das resistências têm identidade (F30 §A1): o passe e o degrau 194 → 195.
+    ph2d_ecs::item_id::regista(ph2d_ecs::item_id::Passe::de::<
+        Health,
+        components::health_v194::HealthV194,
+    >("ph2d::physics::Health"));
     reg.register_default::<Damage>("ph2d::physics::Damage");
     // ⭐ **A BARRA DE VIDA** (plano 28, W4) — registada no MESMO commit que a secção e o descritor,
     // pela lição da W3: sem o registo a cópia de um molde nascia SEM barra.

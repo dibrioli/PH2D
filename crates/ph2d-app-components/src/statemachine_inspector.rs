@@ -78,7 +78,7 @@ pub fn apply_statemachine_edit(world: &mut World, bits: u64, edit: &E) -> bool {
                 return false;
             }
             let n = m.states.len();
-            m.states.push(MachineState {
+            m.states.push(MachineState { item: Default::default(),
                 // ⚠️ **Um nome de partida e não vazio**: um estado sem nome lê-se como partido, e a
                 // lista teria N linhas indistinguíveis.
                 name: format!("State {n}"),
@@ -123,7 +123,7 @@ pub fn apply_statemachine_edit(world: &mut World, bits: u64, edit: &E) -> bool {
             // `0 → 0` seria uma auto-transição, que a lei recusa — ela leria-se como um controlo
             // partido no instante em que nasce.
             let ultimo = u8::try_from(m.states.len().saturating_sub(1)).unwrap_or(0);
-            m.transitions.push(StateTransition {
+            m.transitions.push(StateTransition { item: Default::default(),
                 from: 0,
                 on: String::new(),
                 to: ultimo,

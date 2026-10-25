@@ -218,6 +218,8 @@ pub struct Tween {
     /// no fim é a única forma aditiva — e mesmo assim o `PROJECT_SCHEMA` sobe, porque um ficheiro
     /// sem estes bytes tem de ser **recusado em voz alta** em vez de lido a menos.
     pub ciclo: Ciclo,
+    /// A identidade do item (F30 §A1): a chave de animação dos campos dele. `0` = por atribuir.
+    pub item: ph2d_item_id::ItemId,
 }
 
 impl Default for Tween {
@@ -240,6 +242,7 @@ impl Tween {
             easing: Easing::LINEAR,
             ao_acabar: AoAcabar::Hold,
             ciclo: Ciclo::Reinicia,
+            item: ph2d_item_id::ItemId::NONE,
         }
     }
 
@@ -253,6 +256,7 @@ impl Tween {
             easing: Easing::new(EasingFamily::Quad, EasingMode::Out),
             ao_acabar: AoAcabar::Rewind,
             ciclo: Ciclo::Reinicia,
+            item: ph2d_item_id::ItemId::NONE,
         }
     }
 }

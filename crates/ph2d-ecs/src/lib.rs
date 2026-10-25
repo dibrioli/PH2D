@@ -68,6 +68,8 @@ pub mod image_use_memory;
 /// ⭐ **A CÓPIA PROFUNDA** (ADR-0164 / F4.2) — a peça de que *Duplicar* e *Instanciar* nascem,
 /// e o elo `InstanceOf`. ⛔ Ela copia bytes; quem remapeia referências é a porta da shell.
 pub mod instantiate;
+pub mod item_id;
+mod item_id_v194;
 /// ⭐⭐⭐ **O CICLO DE VIDA** — os itens #12 do TOP-20 (`Lifetime`, `DestroyOutside`) e o marcador
 /// [`lifetime::Spawned`], que é a lei *«o que nasce numa corrida não é documento»*.
 pub mod lifetime;
@@ -283,6 +285,7 @@ pub use sprite_pixels::SpritePixels;
 pub use sprite_region::SpriteRegion;
 pub use sprite_sheet_frame::SpriteSheetFrame;
 pub use sprite_sheet_ref::SpriteSheetRef;
+pub use ph2d_item_id::ItemId;
 pub use stable_id::{
     ReataPorIdentidade, StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id,
     entity_with_stable_id, stable_id_for_name, stable_id_named, stable_id_of,

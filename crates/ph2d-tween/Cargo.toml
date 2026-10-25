@@ -22,6 +22,8 @@ authors.workspace = true
 # da `ph2d-morph-machine` (`serde` + `ph2d-spring` + `ph2d-anim`), que o `ph2d-ecs` já
 # declara para guardar o `VecMorphMachine`. Folha → folha não sobe camada nenhuma.
 ph2d-anim = { path = "../ph2d-anim" }
+# A identidade do tween na lista (F30 §A1) — folha, só `serde`.
+ph2d-item-id = { path = "../ph2d-item-id" }
 # O `Tween` é CONFIG: ele viaja no `.ph2dproj` dentro do componente que o guarda.
 serde = { version = "1", features = ["derive"] }
 

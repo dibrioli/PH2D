@@ -128,7 +128,7 @@ fn linha(on: &str, target: &str, verb: SignalVerb, arg: &str) -> SignalAction {
 
 /// Uma regra *«quando as vidas chegarem a `limiar`, diz `sinal`»*.
 fn regra(limiar: i64, sinal: &str) -> CounterWatchRow {
-    CounterWatchRow {
+    CounterWatchRow { item: Default::default(),
         counter: VIDAS.to_owned(),
         compare: Compare::AtMost,
         value: limiar,
@@ -229,7 +229,7 @@ fn cena_um(world: &mut World) -> Entity {
             // ⭐ **A BATIDA**: um relógio que NÃO arranca sozinho — quem o arranca é a tabela, ao
             // ouvir «morri». ⛔ Com `autostart` ele recomeçaria a corrida um segundo depois de ela
             // começar, sem ninguém ter perdido.
-            Timers(vec![Timer {
+            Timers(vec![Timer { item: Default::default(),
                 name: RELOGIO.to_owned(),
                 duration_us: BATIDA_US,
                 repeat: false,

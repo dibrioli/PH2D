@@ -182,6 +182,8 @@ fn the_sprite_authoring_components_survive_the_disk() {
     a.transform.translation = ph2d_core::Vec2::new(0.25, -0.75);
     a.set_bounds(Some([1.0, 2.0, 3.0, 4.0]));
     a.set_center(Some([0.5, 0.5, 0.5, 0.5]));
+    // Com id já dado: a gravação atribui os que faltam (F30 §A1).
+    a.item = crate::ItemId(9);
     anchors.insert(a).expect("cabe");
 
     let mut sim_a = SimWorld::new();

@@ -236,7 +236,7 @@ pub(crate) struct Pendente(pub(crate) Entity);
 /// porque quem o publica é o herói. ⚠️ Arrancar um relógio que já anda **recomeça-o**
 /// (`timer::start`), logo a cura chega um segundo depois do ÚLTIMO toque.
 pub fn tabela_do_roxo() -> SignalActions {
-    let linha = |on: &str, verb, arg: String, from| SignalAction {
+    let linha = |on: &str, verb, arg: String, from| SignalAction { item: Default::default(),
         on: on.to_owned(),
         target: String::new(),
         verb,
@@ -309,7 +309,7 @@ fn receita_do_alvo(
     if nome == ALVOS[ROXO].0 {
         world.entity_mut(e).insert((
             tabela_do_roxo(),
-            Timers(vec![Timer {
+            Timers(vec![Timer { item: Default::default(),
                 name: RELOGIO_CURA.to_owned(),
                 duration_us: CURA_US,
                 signal: SINAL_CURA.to_owned(),
@@ -437,12 +437,12 @@ pub(crate) fn heroi(world: &mut World, xy: [f32; 2], rgba: [f32; 4], bala: Entit
                 ..TopDownLaw::default()
             }),
             SignalOnAction(vec![
-                ph2d_ecs::ActionTriggerRow {
+                ph2d_ecs::ActionTriggerRow { item: Default::default(),
                     action: ACCAO.to_owned(),
                     edge: ph2d_ecs::ActionEdge::Press,
                     signal: SINAL.to_owned(),
                 },
-                ph2d_ecs::ActionTriggerRow {
+                ph2d_ecs::ActionTriggerRow { item: Default::default(),
                     action: ACCAO_VENENO.to_owned(),
                     edge: ph2d_ecs::ActionEdge::Press,
                     signal: SINAL_VENENO.to_owned(),

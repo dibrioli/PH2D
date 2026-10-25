@@ -455,6 +455,8 @@ pub struct SignalAction {
     /// mesma razão que o `target_by` foi: é o que torna a migração de um v148 uma leitura com um
     /// tipo congelado e um re-encode.
     pub from: SignalFrom,
+    /// A identidade do item (F30 §A1): a chave de animação dos campos dele. `0` = por atribuir.
+    pub item: crate::ItemId,
 }
 
 /// **A tabela de uma entidade** — o componente registado.

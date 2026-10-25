@@ -102,7 +102,7 @@ struct Pendente(Entity);
 /// enche-se de avisos `Signal: nascer`. ⭐ O roteiro **nomeia-os** em vez de os esconder: um
 /// aviso que a cena não explica lê-se como parte da lição.
 fn laco(nome: &str, periodo_us: u64) -> Timer {
-    Timer {
+    Timer { item: Default::default(),
         name: nome.to_owned(),
         duration_us: periodo_us,
         repeat: true,
@@ -250,7 +250,7 @@ fn receita(world: &mut World, nome: &str, cor: [f32; 4], com_tweens: bool) -> En
 /// ⚠️ **`autostart` é o que faz a cópia animar-se sozinha** — o `reconcile` cria o estado dela com
 /// `born(t)` no quadro em que ela aparece, e é por isso que isto não precisa de sinal nenhum.
 fn nascimento(nome: &str) -> Timer {
-    Timer {
+    Timer { item: Default::default(),
         name: nome.to_owned(),
         duration_us: 450_000,
         repeat: false,
@@ -264,7 +264,7 @@ fn fabrica(world: &mut World, nome: &str, x: f32, receita_id: Entity) {
     world.spawn((
         Name::new(nome),
         Transform::from_translation(Vec2::new(x, 0.0)),
-        Timers(vec![Timer {
+        Timers(vec![Timer { item: Default::default(),
             name: "nascer".to_owned(),
             duration_us: NASCER_US,
             repeat: true,

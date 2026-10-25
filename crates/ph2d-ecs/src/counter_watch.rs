@@ -101,6 +101,8 @@ pub struct CounterWatchRow {
     /// a MESMA vigia, e cada um morre com a própria vida a zero. Com [`CounterScope::World`] (o de
     /// fábrica, e o comportamento de sempre) os dez lêem a soma dos dez e **morrem todos juntos**.
     pub scope: CounterScope,
+    /// A identidade do item (F30 §A1): a chave de animação dos campos dele. `0` = por atribuir.
+    pub item: crate::ItemId,
 }
 
 /// **Onde a vigia procura o contador que ela julga.**

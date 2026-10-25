@@ -155,6 +155,8 @@ pub struct ShakeSource {
     /// A partir desta distância ele não chega. ⚠️ `fora <= dentro` é um **corte duro** em `dentro` —
     /// a lei responde-o sozinha ([`ph2d_shake::atenuacao`]).
     pub fora: f32,
+    /// A identidade do item (F30 §A1): a chave de animação dos campos dele. `0` = por atribuir.
+    pub item: crate::ItemId,
 }
 
 impl Default for ShakeSource {
@@ -168,6 +170,7 @@ impl Default for ShakeSource {
             forca: 0.6,
             dentro: 3.0,
             fora: 12.0,
+            item: crate::ItemId::NONE,
         }
     }
 }

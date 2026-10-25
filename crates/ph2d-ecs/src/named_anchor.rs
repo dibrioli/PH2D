@@ -231,6 +231,8 @@ pub struct NamedAnchor {
     pub center: Option<[f32; 4]>,
     #[serde(default)]
     pub user_data: AnchorData,
+    /// A identidade do item (F30 §A1): a chave de animação dos campos dele. `0` = por atribuir.
+    pub item: crate::ItemId,
 }
 
 impl NamedAnchor {
@@ -242,6 +244,7 @@ impl NamedAnchor {
             bounds: None,
             center: None,
             user_data: AnchorData::None,
+            item: crate::ItemId::NONE,
         }
     }
 

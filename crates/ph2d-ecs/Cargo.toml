@@ -24,6 +24,8 @@ ph2d-morph-machine = { path = "../ph2d-morph-machine" }
 # `Tweens` guarda-a, e o tipo tem de estar aqui porque o registo de componentes vive nesta
 # crate. Ela é uma FOLHA (`serde` + `ph2d-anim`), com gate a lê-lo.
 ph2d-tween = { path = "../ph2d-tween" }
+# O id de um item de lista (F30 §A1).
+ph2d-item-id = { path = "../ph2d-item-id" }
 # ⭐ A lei do CANVAS do HUD (TOP-20 #20), medida contra o Godot corrido sem interface. Mesmo
 # argumento da linha acima: e' uma FOLHA (so' serde), o `Fit` dela e' campo do `UiCanvas` e
 # portanto viaja no documento, e a mesma lei corre no editor e no runtime do jogo.

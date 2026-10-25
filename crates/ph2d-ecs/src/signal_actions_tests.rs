@@ -8,7 +8,7 @@ use super::*;
 use crate::{StableId, Transform, Visibility, assign_missing_stable_ids};
 
 fn linha(on: &str, target: &str, verb: SignalVerb, arg: &str) -> SignalAction {
-    SignalAction {
+    SignalAction { item: Default::default(),
         on: on.into(),
         target: target.into(),
         verb,
@@ -356,7 +356,7 @@ fn marcado(w: &mut World, nome: &str, tags: &[TagId]) -> Entity {
 }
 
 fn por_tag(on: &str, tag: TagId, verb: SignalVerb) -> SignalAction {
-    SignalAction {
+    SignalAction { item: Default::default(),
         on: on.into(),
         target: String::new(),
         verb,
@@ -524,7 +524,7 @@ fn a_v128_signal_action_loads_as_a_named_target() {
     assert!(resto.is_empty(), "sobraram bytes no blob reescrito");
     assert_eq!(
         lido.0,
-        vec![SignalAction {
+        vec![SignalAction { item: Default::default(),
             on: "botao".into(),
             target: "Parede".into(),
             verb: SignalVerb::Hide,

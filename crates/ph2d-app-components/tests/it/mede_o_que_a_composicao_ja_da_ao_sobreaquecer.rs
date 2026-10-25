@@ -44,7 +44,7 @@ fn cano(sim: &mut SimWorld, arrefece_ms: u64) -> ph2d_ecs::Entity {
                 keep_on_restart: false,
             },
             CounterRuntime { value: 5 },
-            Timers(vec![Timer {
+            Timers(vec![Timer { item: Default::default(),
                 name: "arrefece".into(),
                 duration_us: arrefece_ms * 1000,
                 repeat: true,

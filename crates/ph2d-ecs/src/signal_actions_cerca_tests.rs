@@ -11,7 +11,7 @@ use crate::{Transform, assign_missing_stable_ids};
 
 /// Uma linha com a cerca escolhida.
 fn linha(on: &str, verb: SignalVerb, from: SignalFrom, target_by: SignalTarget) -> SignalAction {
-    SignalAction {
+    SignalAction { item: Default::default(),
         on: on.into(),
         target: String::new(),
         verb,

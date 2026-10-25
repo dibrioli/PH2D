@@ -105,7 +105,7 @@ struct Pendente(Entity);
 
 /// Uma linha de tabela.
 fn linha(on: &str, verb: SignalVerb, from: SignalFrom, target_by: SignalTarget) -> SignalAction {
-    SignalAction {
+    SignalAction { item: Default::default(),
         on: on.to_owned(),
         target: String::new(),
         verb,
@@ -324,7 +324,7 @@ fn cena_um(world: &mut World, tree: &mut TagTree) -> Entity {
                 rotation: ph2d_topdown::rotation::RotationMode::ToMovement,
                 ..TopDownLaw::default()
             }),
-            SignalOnAction(vec![ph2d_ecs::ActionTriggerRow {
+            SignalOnAction(vec![ph2d_ecs::ActionTriggerRow { item: Default::default(),
                 action: ACCAO.to_owned(),
                 edge: ph2d_ecs::ActionEdge::Press,
                 signal: SINAL.to_owned(),

@@ -4,7 +4,7 @@ use super::*;
 use bevy_ecs::world::World;
 
 fn regra(compare: Compare, value: i64) -> CounterWatchRow {
-    CounterWatchRow {
+    CounterWatchRow { item: Default::default(),
         counter: "vidas".into(),
         compare,
         value,
@@ -181,7 +181,7 @@ fn rebobinar_re_arma_a_aresta() {
     let mut world = World::new();
     let e = world
         .spawn((
-            CounterWatch(vec![CounterWatchRow {
+            CounterWatch(vec![CounterWatchRow { item: Default::default(),
                 counter: "vidas".into(),
                 compare: Compare::AtMost,
                 value: 0,

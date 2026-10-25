@@ -335,7 +335,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ **`203` em 2026-10-28** (`line/BlenderConstraints`, W6) — `TimersQuiet` REGISTADO, como a cola; `202` lê-se com o tipo vivo.
         // ⚠️ **`204` em 2026-10-25** (`line/UIUX`, F30 §B2) — a MESA DE SOM: `mesa: Vec<u8>` no fim
         // do `ProjectFile`. A tripla NÃO vê este degrau.
-        (204, 13, 24),
+        // ⚠️ **`205` em 2026-10-25** (`line/UIUX`, F30 §A1) — o ITEM das listas tem identidade:
+        // `item: ItemId` no fim de cada item de nove componentes. A tripla NÃO vê este degrau.
+        (205, 13, 24),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

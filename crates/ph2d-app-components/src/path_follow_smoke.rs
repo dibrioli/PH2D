@@ -102,7 +102,7 @@ fn pista() -> VecPath {
 /// Um relógio que repete para sempre e **não fala** — a lei do `#2`: um nome aqui poria um aviso na
 /// tela a cada volta.
 fn laco() -> Timer {
-    Timer {
+    Timer { item: Default::default(),
         name: "volta".into(),
         duration_us: PERIODO_US,
         repeat: true,

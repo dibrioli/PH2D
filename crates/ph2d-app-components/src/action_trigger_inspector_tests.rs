@@ -82,7 +82,7 @@ fn reescrever_o_mesmo_valor_nao_suja_o_mundo() {
     let mut sim = SimWorld::new();
     let e = sim
         .world_mut()
-        .spawn(SignalOnAction(vec![ActionTriggerRow {
+        .spawn(SignalOnAction(vec![ActionTriggerRow { item: Default::default(),
             action: "fire".into(),
             edge: ActionEdge::Press,
             signal: "shoot".into(),

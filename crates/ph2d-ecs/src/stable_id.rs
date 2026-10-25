@@ -165,6 +165,12 @@ impl StableIdCounter {
         self.0 = self.0.saturating_add(1);
         StableId(id)
     }
+
+    /// O próximo id para um ITEM de lista ([`crate::item_id`]): o mesmo contador, que nunca desce.
+    pub(crate) fn take_item(&mut self) -> crate::ItemId {
+        let id = self.take().0;
+        crate::ItemId(u32::try_from(id).expect("o contador passou os 32 bits de um id de item"))
+    }
 }
 
 /// **Dá um `StableId` a toda entidade editável que ainda não tem um.** Idempotente: rodar de
@@ -227,7 +233,8 @@ pub fn assign_missing_stable_ids(world: &mut World) -> bool {
         world.entity_mut(e).insert(id);
     }
     world.insert_resource(counter);
-    changed
+    // Os itens das listas (F30 §A1): o mesmo contador, no mesmo passe.
+    crate::item_id::assign_missing_item_ids(world) || changed
 }
 
 /// O `StableId` de uma entidade, se ela tiver um.

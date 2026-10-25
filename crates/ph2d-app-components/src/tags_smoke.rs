@@ -144,14 +144,14 @@ fn cena_um(world: &mut World, a: &Arvore) -> Option<u64> {
         Transform::from_translation(Vec2::new(0.0, -2.2)),
         Sprite::atlas(WHITE_TILE_KEY, [1.4, 0.5], CEREBRO_RGBA),
         Name::new("Scene Brain"),
-        Timers(vec![Timer {
+        Timers(vec![Timer { item: Default::default(),
             name: "alarm".to_string(),
             duration_us: 2_000_000,
             repeat: false,
             autostart: true,
             signal: "alarm".to_string(),
         }]),
-        SignalActions(vec![SignalAction {
+        SignalActions(vec![SignalAction { item: Default::default(),
             on: "alarm".into(),
             // ⚠️ **O `target` fica VAZIO de propósito** — com o alvo por TAG ele não é lido, e um
             // nome escrito aqui leria como se os dois estivessem a decidir.
@@ -205,7 +205,7 @@ fn cena_dois(world: &mut World, a: &Arvore) {
         Sprite::atlas(WHITE_TILE_KEY, [1.6, 2.2], PORTA_RGBA),
         Name::new("Door"),
         Visibility::visible(),
-        SignalActions(vec![SignalAction {
+        SignalActions(vec![SignalAction { item: Default::default(),
             on: "trap".into(),
             target: String::new(),
             verb: SignalVerb::Hide,

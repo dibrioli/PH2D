@@ -130,6 +130,8 @@ pub struct Resistance {
     pub rate: f32,
     /// O dano deste tipo CURA (`dano × rate`) em vez de ferir.
     pub absorbs: bool,
+    /// A identidade do item (F30 §A1): a chave de animação dos campos dele. `0` = por atribuir.
+    pub item: ph2d_ecs::ItemId,
 }
 
 impl Default for Resistance {
@@ -138,6 +140,7 @@ impl Default for Resistance {
             kind: String::new(),
             rate: 1.0,
             absorbs: false,
+            item: ph2d_ecs::ItemId::NONE,
         }
     }
 }

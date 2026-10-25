@@ -44,7 +44,7 @@ fn cena(nome: &str, dur_s: f64, t_s: f64, a_correr: bool) -> (SimWorld, u64) {
             SequencePlayer {
                 container: nome.to_owned(),
             },
-            Timers(vec![Timer {
+            Timers(vec![Timer { item: Default::default(),
                 name: "clock".into(),
                 duration_us: (dur_s * 1_000_000.0) as u64,
                 repeat: false,

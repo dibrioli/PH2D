@@ -87,6 +87,8 @@ pub struct Timer {
     /// O nome do sinal publicado a cada disparo. **Vazio = calado** — a lei da §11: um produtor sem
     /// nome não fala, em vez de falar com um nome vazio.
     pub signal: String,
+    /// A identidade do item (F30 §A1): a chave de animação dos campos dele. `0` = por atribuir.
+    pub item: crate::ItemId,
 }
 
 impl Default for Timer {
@@ -99,6 +101,7 @@ impl Default for Timer {
             repeat: false,
             autostart: true,
             signal: String::new(),
+            item: crate::ItemId::NONE,
         }
     }
 }

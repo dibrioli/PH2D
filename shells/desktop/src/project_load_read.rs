@@ -57,8 +57,7 @@ impl crate::App {
         let (mut file, migrated_counter) = match ver {
             // ⭐ **193 → … → 197: as animações do personagem, o `TiledDraw`, a memória do uso da imagem, o
             // `ImageRegion`** — um componente novo cada, a mesma forma; falta-lhes o `jogo` (198): o `0` do `Vec` vazio.
-            PROJECT_SCHEMA
-            | crate::project_schema::PROJECT_SCHEMA_SEM_MESA
+            crate::project_schema::PROJECT_SCHEMA_SEM_MESA..=PROJECT_SCHEMA
             | crate::project_schema::PROJECT_SCHEMA_GEOMETRIA_V23
             | crate::project_schema::PROJECT_SCHEMA_SEM_CONSTRAINTS
             | crate::project_schema::PROJECT_SCHEMA_SEM_FORMATO_DO_JOGO
@@ -67,8 +66,9 @@ impl crate::App {
             | crate::project_schema::PROJECT_SCHEMA_SEM_TILED_DRAW
             | crate::project_schema::PROJECT_SCHEMA_SEM_ANIMACOES_DO_PERSONAGEM => {
                 // ⭐ do `204` (a `mesa` já lá está) para cima os bytes são os do tipo vivo; do `198` ao `203`
-                // falta-lhes a `mesa` (um `0`); abaixo falta-lhes também o `jogo` (outro).
-                let falta: &[u8] = if ver >= PROJECT_SCHEMA {
+                // falta-lhes a `mesa` (um `0`); abaixo falta-lhes também o `jogo` (outro). Os itens (F30 §A1,
+                // `205`) migram em `migra_depois_de_ler`: a forma do ficheiro é a mesma.
+                let falta: &[u8] = if ver > crate::project_schema::PROJECT_SCHEMA_SEM_MESA {
                     &[]
                 } else if ver >= crate::project_schema::PROJECT_SCHEMA_SEM_CONSTRAINTS {
                     &[0]
@@ -221,6 +221,10 @@ fn migra_depois_de_ler(file: &mut ProjectFile, ver: u32, fio: Option<u32>) {
             &file.state.vec,
         );
         eprintln!("[proj] v{ver}: {n} pose(s) de estado com a opacidade da forma");
+    }
+    if ver <= crate::project_schema::PROJECT_SCHEMA_ITENS_SEM_ID {
+        let m = ph2d_ecs::item_id::migra_v194(&mut file.state.world);
+        eprintln!("[proj] v{ver}: {} lista(s) de itens migrada(s), {} ilegivel(eis)", m.migrados, m.ilegiveis);
     }
     if let Some(fio) = fio {
         // As formas guardadas DENTRO de componentes (Envelope, pele) são lidas mais tarde, fora

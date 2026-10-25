@@ -92,6 +92,8 @@ pub struct MachineState {
     pub on_enter: String,
     /// O sinal publicado ao SAIR. Vazio = calado.
     pub on_exit: String,
+    /// A identidade do item (F30 §A1): a chave de animação dos campos dele. `0` = por atribuir.
+    pub item: crate::ItemId,
 }
 
 /// **Uma seta** — de que estado, ao ouvir que sinal, para que estado.
@@ -107,6 +109,8 @@ pub struct Transition {
     pub on: String,
     /// O índice do estado de chegada.
     pub to: u8,
+    /// A identidade do item (F30 §A1): a chave de animação dos campos dele. `0` = por atribuir.
+    pub item: crate::ItemId,
 }
 
 /// **O cérebro de um objecto** — o componente registado, e **CONFIG**.

@@ -29,7 +29,7 @@ const SOLTA: Amostra = Amostra {
 };
 
 fn linha(edge: ActionEdge) -> ActionTriggerRow {
-    ActionTriggerRow {
+    ActionTriggerRow { item: Default::default(),
         action: "fire".into(),
         edge,
         signal: "shoot".into(),
@@ -107,7 +107,7 @@ fn os_disparos_saem_pela_ordem_da_identidade() {
     for id in [9_u64, 2] {
         w.spawn((
             StableId(id),
-            SignalOnAction(vec![ActionTriggerRow {
+            SignalOnAction(vec![ActionTriggerRow { item: Default::default(),
                 action: "fire".into(),
                 edge: ActionEdge::Press,
                 signal: format!("tiro{id}"),
@@ -130,12 +130,12 @@ fn cada_linha_le_a_propria_accao() {
     w.spawn((
         StableId(1),
         SignalOnAction(vec![
-            ActionTriggerRow {
+            ActionTriggerRow { item: Default::default(),
                 action: "fire".into(),
                 edge: ActionEdge::Press,
                 signal: "tiro".into(),
             },
-            ActionTriggerRow {
+            ActionTriggerRow { item: Default::default(),
                 action: "jump".into(),
                 edge: ActionEdge::Press,
                 signal: "salto".into(),

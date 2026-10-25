@@ -101,6 +101,8 @@ pub struct ActionTriggerRow {
     /// **O que emitir.** Vazio = a linha segue a tecla e fica **calada** — uma configuração a meio,
     /// nunca um erro (a lei do `inert` da tabela de acções e do `signal` da vigia).
     pub signal: String,
+    /// A identidade do item (F30 §A1): a chave de animação dos campos dele. `0` = por atribuir.
+    pub item: crate::ItemId,
 }
 
 /// **Os gatilhos de uma entidade** — o componente registado. ⚠️ CONFIG, como o `Timers`.

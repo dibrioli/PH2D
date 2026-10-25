@@ -123,7 +123,7 @@ fn cena_um(world: &mut World) {
         Transform::from_translation(Vec2::new(0.0, 4.5)),
         Sprite::atlas(WHITE_TILE_KEY, [3.0, 0.8], NUVEM_RGBA),
         Name::new("Rain Cloud"),
-        Timers(vec![Timer {
+        Timers(vec![Timer { item: Default::default(),
             name: "drop".to_string(),
             duration_us: 700_000,
             repeat: true,
@@ -200,7 +200,7 @@ fn cena_dois(world: &mut World, tree: &mut TagTree) {
         Transform::from_translation(Vec2::new(0.0, 3.5)),
         Sprite::atlas(WHITE_TILE_KEY, [2.4, 0.8], NUVEM_RGBA),
         Name::new("Spawner"),
-        Timers(vec![Timer {
+        Timers(vec![Timer { item: Default::default(),
             name: "beat".to_string(),
             duration_us: 500_000,
             repeat: true,

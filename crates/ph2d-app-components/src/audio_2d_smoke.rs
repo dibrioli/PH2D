@@ -132,14 +132,14 @@ pub fn audio_2d_smoke(cx: &mut crate::scene_ctx::SceneCtx) {
             Transform::from_translation(Vec2::new(3.0, -1.6)),
             Sprite::atlas(WHITE_TILE_KEY, [1.2, 0.4], [0.35, 0.35, 0.4, 1.0]),
             Name::new("Relogio"),
-            Timers(vec![Timer {
+            Timers(vec![Timer { item: Default::default(),
                 name: "bip".into(),
                 duration_us: 2_000_000,
                 repeat: true,
                 autostart: true,
                 signal: "bip".into(),
             }]),
-            SignalActions(vec![SignalAction {
+            SignalActions(vec![SignalAction { item: Default::default(),
                 on: "bip".into(),
                 target: "Sirene".into(),
                 verb: SignalVerb::PlaySound,

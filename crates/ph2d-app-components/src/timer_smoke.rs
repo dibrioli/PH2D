@@ -56,7 +56,7 @@ fn one(
         Transform::from_translation(Vec2::new(0.0, y)),
         Sprite::atlas(0, [1.2, 0.6], tint),
         Name::new(name),
-        Timers(vec![Timer {
+        Timers(vec![Timer { item: Default::default(),
             name: name.to_string(),
             duration_us,
             repeat,

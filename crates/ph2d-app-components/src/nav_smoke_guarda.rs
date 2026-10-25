@@ -181,7 +181,7 @@ fn zona(world: &mut ph2d_ecs::World, nome: &str, x: f32, sinal: &str, cor: [f32;
 }
 
 fn estado(nome: &str, ao_entrar: &str) -> MachineState {
-    MachineState {
+    MachineState { item: Default::default(),
         name: nome.into(),
         on_enter: ao_entrar.into(),
         on_exit: String::new(),
@@ -189,7 +189,7 @@ fn estado(nome: &str, ao_entrar: &str) -> MachineState {
 }
 
 fn passo(from: u8, on: &str, to: u8) -> StateTransition {
-    StateTransition {
+    StateTransition { item: Default::default(),
         from,
         on: on.into(),
         to,

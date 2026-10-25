@@ -14,7 +14,7 @@ fn cena() -> (SimWorld, u64) {
     let mut sim = SimWorld::default();
     let e = sim
         .world_mut()
-        .spawn(CounterWatch(vec![CounterWatchRow {
+        .spawn(CounterWatch(vec![CounterWatchRow { item: Default::default(),
             counter: "vida".into(),
             compare: Compare::AtMost,
             value: 0,

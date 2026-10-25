@@ -9,6 +9,10 @@ const V192: &[u8] = include_bytes!("../tests/fixtures/projecto_marcas_v192.ph2dp
 #[path = "project_mesa_tests.rs"]
 mod mesa;
 
+/// **Os itens das listas no arquivo** (F30 §A1, v195) — neta pela mesma razão.
+#[path = "project_itens_tests.rs"]
+mod itens;
+
 /// ⭐ **As marcas atravessam o arquivo** — os bytes que o palco deu voltam iguais ao abrir.
 #[test]
 fn as_marcas_do_artista_atravessam_o_arquivo() {

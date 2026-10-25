@@ -121,7 +121,7 @@ fn porta(
             Name::new(nome),
             // ⚠️ **`autostart: false`**: quem o arranca é o sinal. Com `true` a porta subiria
             // sozinha no quadro 1 e a cena deixaria de mostrar o que um sinal compra.
-            Timers(vec![Timer {
+            Timers(vec![Timer { item: Default::default(),
                 name: "cutscene".to_string(),
                 duration_us: (DURACAO_S * 1_000_000.0) as u64,
                 repeat: false,
@@ -130,7 +130,7 @@ fn porta(
             }]),
             // ⚠️ `target` VAZIO = **este objecto**, que é o caso comum e o que faz uma cópia de
             // prefab funcionar sem re-fiar nada.
-            SignalActions(vec![SignalAction {
+            SignalActions(vec![SignalAction { item: Default::default(),
                 on: "tocar".to_string(),
                 target: String::new(),
                 verb: SignalVerb::StartTimer,
@@ -184,7 +184,7 @@ impl crate::App {
                 Transform::from_translation(Vec2::new(0.0, 2.6)),
                 Sprite::atlas(WHITE_TILE_KEY, [1.0, 0.5], [0.92, 0.76, 0.26, 1.0]),
                 Name::new("Button"),
-                Timers(vec![Timer {
+                Timers(vec![Timer { item: Default::default(),
                     name: "botao".to_string(),
                     duration_us: (PERIODO_S * 1_000_000.0) as u64,
                     repeat: true,

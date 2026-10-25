@@ -68,9 +68,10 @@ fn a_curva_muda_a_gravidade_do_mundo_sem_limpar_o_scrub() {
                 curva(&mut sim, m::GRAVIDADE_Y, 9.81);
             }
             aplicar(&mut sim, &mut ponte, &mut cond);
+            // No quadro da mudança, ANTES do passo: um `clear` aqui seria tapado pelos passos seguintes.
+            assert!(ponte.ring_stats().0 >= anel, "o anel foi limpo no tick {t}");
             ponte.dispatch(&mut sim, true, t);
         }
-        assert!(ponte.ring_stats().0 >= anel, "o anel não foi limpo");
         assert_eq!(ponte.settings(), PhysicsSettings::default(), "o autorado");
         (y(&sim, e), ponte)
     };
